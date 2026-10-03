@@ -409,6 +409,8 @@ export interface HeightField {
   _foldAt?(x: number, z: number): number;
   /** The map-borders lane (2026-10-03): the ring's carriageway attribute — [signed offset from a road exit line (m), presence]. */
   _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
+  /** The map-borders lane: the roads that leave the square, as their exit lines past the edge (40 m steps, ~720 m). */
+  _roadExitLines?(): readonly { xs: ArrayLike<number>; zs: ArrayLike<number>; length: number }[];
   /** The map-borders lane: a railway's open line past the edge on the ring — [signed offset (m), presence], faded where
    * the ring's own height there (`surfaceY`) leaves the line's bed. */
   _railExitAt?(x: number, z: number, out: [number, number], surfaceY?: number): [number, number];
@@ -1800,10 +1802,34 @@ function* heightFieldBuildSteps(
     authoringOnLandform = !placementOnly;
     const rimElev = placementOnly ? null : authoringRoads.map((nodes) => nodes.map(([rx, rz]) => heightAt(rx, rz, false, false)));
     authoringOnLandform = false;
+    // (the landform pass's portal tails continue the authored grade to the edge — gradeRoadPortals' shallow cut through
+    // the classic rim's berm — and where that grade climbs over the landform's own ground the tail comes down to it, at
+    // most 1.5 m over it: the road leaves the square on the land, not on a causeway; a cut is kept)
+    const capPortalTails = (elev: number[][], lines: readonly (readonly RoadPoint[])[]): void => {
+      authoringOnLandform = true;
+      for (let r = 0; r < lines.length; r++) {
+        const row = elev[r], nodes = lines[r];
+        let capped = false;
+        for (let i = 0; i < nodes.length; i++) {
+          const [tx, tz] = nodes[i];
+          if (Math.max(Math.abs(tx), Math.abs(tz)) < 430) continue;
+          const land = heightAt(tx, tz, false, false) + 1.5;
+          if (row[i] > land) { row[i] = land; capped = true; }
+        }
+        // ... at a grade a tank can drive: where the cap drops the tail faster than 15 %, the nodes come back up to it
+        if (!capped) continue;
+        for (let pass = 0; pass < 2; pass++) for (let k = 1; k < nodes.length; k++) {
+          const i = pass ? nodes.length - 1 - k : k, j = pass ? i + 1 : i - 1;
+          const run = Math.hypot(nodes[i][0] - nodes[j][0], nodes[i][1] - nodes[j][1]);
+          row[i] = Math.max(row[i], row[j] - 0.15 * run);
+        }
+      }
+      authoringOnLandform = false;
+    };
     if (!placementOnly && !inheritedRoads && T.roads !== 'country' && T.roads.paths) {
       const offset = T.roads.grid ? T.roads.grid.xs.length + T.roads.grid.zs.length : 0;
       gradeRoadPortals(cfg?.id, roads, nodeElev, T.roads.paths, offset);
-      if (rimElev) gradeRoadPortals(cfg?.id, roads, rimElev, T.roads.paths, offset);
+      if (rimElev) { gradeRoadPortals(cfg?.id, roads, rimElev, T.roads.paths, offset); capPortalTails(rimElev, roads); }
     }
     smoothRoadElevations(nodeElev);
     if (rimElev) smoothRoadElevations(rimElev);
@@ -1817,7 +1843,7 @@ function* heightFieldBuildSteps(
       if (T.roads !== 'country' && T.roads.paths) {
         const offset = T.roads.grid ? T.roads.grid.xs.length + T.roads.grid.zs.length : 0;
         gradeRoadPortals(cfg?.id, roads, nodeElev, T.roads.paths, offset);
-        if (rimElev) gradeRoadPortals(cfg?.id, roads, rimElev, T.roads.paths, offset);
+        if (rimElev) { gradeRoadPortals(cfg?.id, roads, rimElev, T.roads.paths, offset); capPortalTails(rimElev, roads); }
       }
       alignAddedRoadJunctionGrades(cfg?.id, inheritedRoads, roads, nodeElev);
       if (rimElev) alignAddedRoadJunctionGrades(cfg?.id, inheritedRoads, roads, rimElev);
@@ -2312,6 +2338,7 @@ function* heightFieldBuildSteps(
       _borderHedgeLines: border.traceHedgeLines,
       _borderFarmsteads: { count: border.settings.farms, style: border.settings.buildings, fieldAngle: border.fieldAngle } }),
     _roadExitAt: roadExitAt,
+    _roadExitLines: () => roadExits().map((exit) => ({ xs: exit.xs, zs: exit.zs, length: exit.length })),
     ...(railCuttings !== null ? { _railExitAt: railExitAt } : {}),
     ...(cfg?.navigationWaterPolicy
       ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),
@@ -4639,10 +4666,10 @@ void splatCompute() {
     // the map-borders lane (2026-10-03): the farmland past the edge in parcels between the hedgerows (stubble, plough,
     // pasture, fallow — the ring's borderTint attribute; zero on the battlefield's own chunks)
     // (calibrated with the ground lane's fields, landUse.ts: the crop's colour as a multiple of the sward's own luminance;
-    // the interpolated colour is premultiplied, so two fields blend along their boundary; none on slopes past ~25 degrees)
+    // the interpolated colour is premultiplied, so two fields blend along their boundary; none on slopes past ~30 degrees)
     float cropWeight = 1.0 - vBorderTint.w;
     if (cropWeight > 0.002) {
-      float cropW = cropWeight * (1.0 - fR) * (1.0 - roadCore) * (1.0 - fMs) * (1.0 - projW) * (1.0 - smoothstep(0.04, 0.10, slope));
+      float cropW = cropWeight * (1.0 - fR) * (1.0 - roadCore) * (1.0 - fMs) * (1.0 - projW) * (1.0 - smoothstep(0.07, 0.15, slope));
       a.rgb = mix(a.rgb, vBorderTint.rgb / cropWeight * reduxLuma(a.rgb), cropW);
     }
     // ... and the farm tracks down some of the field boundaries (borderLandform.ts trackAt): 3 m of packed dirt beside the
@@ -4661,7 +4688,7 @@ void splatCompute() {
       float dR = abs(vRailExit.x);
       float ballastW = (1.0 - smoothstep(1.5, 2.1, dR)) * vRailExit.y * (1.0 - fMs);
       float cessW = (smoothstep(1.5, 2.1, dR) - smoothstep(2.6, 3.8, dR)) * vRailExit.y * (1.0 - fMs);
-      a.rgb = mix(a.rgb, vec3(0.105, 0.098, 0.090) * (0.88 + 0.24 * n1hs), ballastW);
+      a.rgb = mix(a.rgb, vec3(0.125, 0.121, 0.115) * (0.88 + 0.24 * n1hs), ballastW);
       a.rgb = mix(a.rgb, uMeanD.rgb * vec3(0.92, 0.88, 0.82), cessW * 0.55);
       float railAa = fwidth(dR) + 0.02;
       float rail = (1.0 - smoothstep(0.035, 0.035 + railAa, abs(dR - 0.72))) * vRailExit.y * (1.0 - smoothstep(60.0, 220.0, camDist));

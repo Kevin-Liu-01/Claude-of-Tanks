@@ -2133,15 +2133,21 @@ function layRailSpan(
     }
   };
   // ballast slab — grey crushed-stone vertex paint on the matte 'baked'
-  // bucket (the 'stone' bucket is BRICK on railyard and read as brick beds)
+  // bucket (the 'stone' bucket is BRICK on railyard and read as brick beds).
+  // The map-borders lane (2026-10-03, gauntlet wave 9: "a dark ladder of rails and sleepers with no ballast bed,
+  // shoulder or embankment, reading like a toy track"): the bed is light crushed stone (the paint was a near-black
+  // 0.04-0.06 linear) and its sides slope out as shoulders — the bottom face 40 % wider than the top.
   const deep = lay.conform === 'full';
   const bal = box(lay.ballast, deep ? RAIL_SLAB_DEPTH_FULL_M : 0.16, len + RAIL_SLAB_OVERHANG_M, 0.55);
   {
-    const n = bal.attributes.position.count;
+    const pos = bal.attributes.position;
+    for (let i = 0; i < pos.count; i++) if (pos.getY(i) < 0) pos.setX(i, pos.getX(i) * 1.4);
+    bal.computeVertexNormals();
+    const n = pos.count;
     const col = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
-      const v = 0.040 + rng() * 0.018;
-      col[i * 3] = v; col[i * 3 + 1] = v * 0.98; col[i * 3 + 2] = v * 0.94;
+      const v = 0.105 + rng() * 0.04;
+      col[i * 3] = v; col[i * 3 + 1] = v * 0.97; col[i * 3 + 2] = v * 0.92;
     }
     bal.setAttribute('color', new THREE.BufferAttribute(col, 3));
   }

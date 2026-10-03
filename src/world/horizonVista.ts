@@ -690,6 +690,24 @@ interface HorizonForestOptions {
   /** Round 63 (2026-09-24): 0..1 where the ring must stay clear of trees — a railway cutting's outland corridor, the
    * line's right-of-way (terrain.ts getOutlandSeatWeightAt); absent on every other map, whose draws are unchanged. */
   clearAt?: (x: number, z: number) => number;
+  /** The map-borders lane (2026-10-03, gauntlet wave 9: "no forest belts... a road that ends at the skyline"): rows of
+   * trees along lines past the edge — shelter belts on field boundaries, avenues along the roads that leave the square —
+   * placed every `spacing` metres (jittered) at each of `offsets` metres across the line, kept ahead of the random
+   * stands in the budget. `rowGroundAt` is the ring's own surface (NaN where it has none). */
+  treeRows?: readonly HorizonTreeRow[];
+  rowGroundAt?: (x: number, z: number) => number;
+}
+
+/** A row of trees along a polyline: its presence per point (0..1), spacing, offsets across it, scale range and conifers. */
+export interface HorizonTreeRow {
+  xs: ArrayLike<number>;
+  zs: ArrayLike<number>;
+  /** Presence at each point (0..1); a tree stands where it is over 0.3, with that probability. */
+  w: ArrayLike<number>;
+  spacing: number;
+  offsets: readonly number[];
+  scale: readonly [number, number];
+  conifer: number;
 }
 
 /** vegetation.ts buildPineFarGeometry / buildOakFarGeometry defaults (vista pass values). */
@@ -1039,6 +1057,39 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
           band, beyond: beyondRim(x, z), detail: 1, variant: rng() < 0.5 ? 0 : 1, tone: 0.86 + rng() * 0.26, key: rng(),
         };
         candidates.push(placement);
+      }
+    }
+  }
+  // the map-borders lane: the rows (belts and avenues) — deterministic along their lines, keys below every stand's so the
+  // budget keeps them whole
+  if (options.treeRows?.length && options.rowGroundAt) {
+    for (const row of options.treeRows) {
+      const count = row.xs.length;
+      let carry = rng() * row.spacing;
+      for (let i = 0; i + 1 < count; i++) {
+        const ax = row.xs[i], az = row.zs[i], bx = row.xs[i + 1], bz = row.zs[i + 1];
+        const len = Math.hypot(bx - ax, bz - az);
+        if (len < 1e-6) continue;
+        const ux = (bx - ax) / len, uz = (bz - az) / len;
+        let t = carry;
+        for (; t < len; t += row.spacing * (0.75 + rng() * 0.5)) {
+          const f = t / len, w = row.w[i] + (row.w[i + 1] - row.w[i]) * f;
+          if (w <= 0.3 || rng() > w) continue;
+          for (const offset of row.offsets) {
+            const jitter = (rng() - 0.5) * 1.6;
+            const x = ax + ux * t - uz * (offset + jitter), z = az + uz * t + ux * (offset + jitter);
+            const y = options.rowGroundAt(x, z);
+            if (!Number.isFinite(y) || y < 1.0) continue;
+            if (options.clearAt && options.clearAt(x, z) > 0.5) continue;
+            const [lo, hi] = row.scale;
+            candidates.push({
+              x, y: y - 0.4, z, scale: lo + rng() * (hi - lo), yaw: rng() * Math.PI * 2, conifer: rng() < row.conifer,
+              band: true, beyond: beyondRim(x, z), detail: 1, variant: rng() < 0.5 ? 0 : 1, tone: 0.86 + rng() * 0.26,
+              key: -1 - rng(),
+            });
+          }
+        }
+        carry = t - len;
       }
     }
   }

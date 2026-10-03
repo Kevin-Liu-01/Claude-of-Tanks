@@ -56,6 +56,7 @@ import {
   createVistaCanopyTile,
   type VistaGround,
   type HorizonForestSpeciesPalette,
+  type HorizonTreeRow,
 } from '../horizonVista.ts';
 
 type HorizonStyle = 'rolling' | 'alpine' | 'mesa' | 'escarpment';
@@ -178,6 +179,45 @@ function require2DContext(
   const context = canvas.getContext('2d', options);
   if (!context) throw new Error('Horizon texture canvas requires a 2D context');
   return context;
+}
+
+/**
+ * The map-borders lane (wave 3, 2026-10-03, gauntlet wave 9: "no forest belts, field patchwork, villages"; "several views
+ * still stop at a treeline, an earth bank, a grass crest or a road that ends at the skyline"): rows of trees that read at
+ * tank eye height. A third of the hedged stretches of the field boundaries carry a shelter belt from ~150 m past the
+ * edge (a tree every ~9 m, a double row on a third of them, standing over the bush line), and the roads that leave the
+ * square run between avenue trees 8.5 m either side in runs from ~40 m out, so a road's line carries on over a crest.
+ */
+function borderTreeRows(
+  seed: number, hedgeLines: readonly { xs: number[]; zs: number[]; w: number[] }[],
+  exits: readonly { xs: ArrayLike<number>; zs: ArrayLike<number>; length: number }[],
+  exitAt: ((x: number, z: number, out: [number, number]) => [number, number]) | null,
+): HorizonTreeRow[] {
+  const rows: HorizonTreeRow[] = [];
+  const rng = mulberry32((seed ^ 0xB37A) >>> 0);
+  const edgeOut = (x: number, z: number): number => Math.max(Math.abs(x), Math.abs(z)) - 512;
+  for (const line of hedgeLines) {
+    const belt = rng() < 0.34, double = rng() < 0.33;
+    if (!belt) continue;
+    const w = line.w.map((v, i) => v * smoothstep(120, 220, edgeOut(line.xs[i], line.zs[i])));
+    if (!w.some((v) => v > 0.3)) continue;
+    rows.push({ xs: line.xs, zs: line.zs, w, spacing: 9, offsets: double ? [-2.6, 2.6] : [0], scale: [1.0, 1.5], conifer: 0.2 });
+  }
+  if (exitAt) {
+    const hit: [number, number] = [0, 0];
+    for (const exit of exits) {
+      const n = exit.xs.length, w: number[] = [];
+      let run = rng() < 0.7;
+      for (let i = 0; i < n; i++) {
+        if (i % 4 === 0) run = rng() < 0.7; // runs of ~160 m, most of them planted
+        const x = exit.xs[i], z = exit.zs[i];
+        w.push(run ? exitAt(x, z, hit)[1] * smoothstep(30, 60, edgeOut(x, z)) : 0);
+      }
+      if (!w.some((v) => v > 0.3)) continue;
+      rows.push({ xs: exit.xs, zs: exit.zs, w, spacing: 12, offsets: [-8.5, 8.5], scale: [0.9, 1.3], conifer: 0.1 });
+    }
+  }
+  return rows;
 }
 
 function mulberry32(a: number): () => number {
@@ -3591,10 +3631,23 @@ export function* buildHorizonRingSteps(
       blockedAt: (x: number, z: number) => Math.max(ground.getOutlandSeatWeightAt?.(x, z) ?? 0, ground.getOutlandWaterAt?.(x, z)?.wetness ?? 0,
         seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01 ? 1 : 0),
       ...(roadExitAt ? { roadDistanceAt: (x: number, z: number) => (roadExitAt(x, z, exit)[1] > 0.05 ? Math.abs(exit[0]) : Infinity) } : {}),
+      ...(ground._roadExitLines ? { roadLines: ground._roadExitLines() } : {}),
     };
   })() : null;
   const farmSites = farmOptions ? selectFarmsteadSites(farmOptions) : [];
   const borderWoodsAt = ground?.getBorderWoodsAt;
+  // the hedged stretches of the field boundaries past the edge, on the ring's continued ground (not on the ranges, the sea,
+  // the water or a railway's right of way)
+  const hedgeLines = vista && ground?._borderHedgeLines ? ground._borderHedgeLines(900, (x, z) =>
+    (ground.getBorderHandOverAt?.(x, z) ?? 1) > 0.5 && !(seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01)
+    && (ground.getOutlandWaterAt?.(x, z)?.wetness ?? 0) < 0.05 && (ground.getOutlandSeatWeightAt?.(x, z) ?? 0) < 0.05) : [];
+  const treeRows = vista && ground ? borderTreeRows(((seed ^ 0x7E55) ^ idHash(mapId)) >>> 0, hedgeLines,
+    ground._roadExitLines?.() ?? [], ground._roadExitAt ?? null) : [];
+  const rowSurface = treeRows.length ? ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs) : null;
+  const rowGroundAt = rowSurface ? (x: number, z: number): number => {
+    for (const site of farmSites) if (Math.abs(x - site.x) < 20 && Math.abs(z - site.z) < 20) return Number.NaN; // the yards
+    return rowSurface(x, z);
+  } : undefined;
   const forestGroup = buildHorizonForest({
     columns: HORIZON_SEGMENTS, rows, positions: pos, heights: hs, forestCover, maxHeight: maxH, treeline, snowline,
     forest: forestC, fog: fogC, seed: ((seed ^ 0x51F0) ^ idHash(mapId)) >>> 0,
@@ -3621,6 +3674,7 @@ export function* buildHorizonRingSteps(
     ...(ground?.getOutlandSeatWeightAt || seaOpenings.length ? { clearAt: (x: number, z: number): number =>
       Math.max(ground?.getOutlandSeatWeightAt?.(x, z) ?? 0,
         seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.03 ? 1 : 0) } : {}),
+    ...(treeRows.length && rowGroundAt ? { treeRows, rowGroundAt } : {}),
     haze: (vistaUniforms?.uVHaze?.value as number | undefined) ?? haze,
     palettes: {
       conifer: rimConiferLead ? vegetation?.palettes?.[rimConiferLead]?.canopy : undefined,
@@ -3645,10 +3699,8 @@ export function* buildHorizonRingSteps(
   // past the edge (borderFarmsteads.ts) — off the woods, the sea, a railway's right of way and the exit roads'
   // carriageways, gathered along those roads. One merged mesh, one draw, its shadow in the far cascade only.
   // The map-borders lane (2026-10-03, gauntlet wave 1: "the empty middle distance"): the hedges as bush lines along the
-  // hedged stretches of the field boundaries past the edge, on the ring's continued ground (not on the ranges or the sea)
-  const hedgeLines = vista && ground?._borderHedgeLines ? ground._borderHedgeLines(900, (x, z) =>
-    (ground.getBorderHandOverAt?.(x, z) ?? 1) > 0.5 && !(seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01)
-    && (ground.getOutlandWaterAt?.(x, z)?.wetness ?? 0) < 0.05 && (ground.getOutlandSeatWeightAt?.(x, z) ?? 0) < 0.05) : [];
+  // hedged stretches of the field boundaries past the edge (hedgeLines, traced before the forest, which stands their
+  // belts and the roads' avenues)
   if (hedgeLines.length) {
     const hedges = buildBorderHedgerows({
       seed: ((seed ^ 0x4ED9) ^ idHash(mapId)) >>> 0, lines: hedgeLines, groundAt: ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs),

@@ -30,6 +30,9 @@ export interface BorderFarmsteadOptions {
   farM?: number;
   /** Sites already chosen (selectFarmsteadSites with these options): the ring forest read them for the shelter trees. */
   sites?: readonly FarmsteadSite[];
+  /** The roads that leave the square, as their exit lines past the edge (terrain.ts roadExits): villages string along a
+   * few of them. */
+  roadLines?: readonly { xs: ArrayLike<number>; zs: ArrayLike<number>; length: number }[];
 }
 
 export interface FarmsteadSite {
@@ -75,6 +78,7 @@ export function selectFarmsteadSites(options: BorderFarmsteadOptions): Farmstead
   const cos = Math.cos(options.fieldAngle), sin = Math.sin(options.fieldAngle);
   type Candidate = FarmsteadSite & { score: number; side: number };
   const candidates: Candidate[] = [];
+  const village = selectVillageSites(options);
   for (let d = near; d <= far; d += 55) {
     const h = HALF + d, perimeter = 8 * h;
     for (let s = rng() * 90; s < perimeter; s += 90) {
@@ -107,9 +111,11 @@ export function selectFarmsteadSites(options: BorderFarmsteadOptions): Farmstead
   const picked: Candidate[] = [];
   const perSide = [0, 0, 0, 0], sideCap = Math.max(2, Math.ceil(options.count / 3));
   for (const c of candidates) {
-    if (picked.length >= options.count) break;
+    if (picked.length + village.length >= options.count + village.length * 0.5) break;
     if (perSide[c.side] >= sideCap) continue;
     let ok = true, hamlet = 0;
+    for (const v of village) if (Math.hypot(v.x - c.x, v.z - c.z) < 140) { ok = false; break; }
+    if (!ok) continue;
     for (const p of picked) {
       const d = Math.hypot(p.x - c.x, p.z - c.z);
       if (c.road && p.road && d < 150) { hamlet++; if (d < 75) { ok = false; break; } continue; }
@@ -118,7 +124,65 @@ export function selectFarmsteadSites(options: BorderFarmsteadOptions): Farmstead
     if (!ok || hamlet > 2) continue;
     picked.push(c); perSide[c.side]++;
   }
-  return picked.map(({ x, z, yaw, road, shelter }) => ({ x, z, yaw, road, shelter }));
+  return village.concat(picked.map(({ x, z, yaw, road, shelter }) => ({ x, z, yaw, road, shelter })));
+}
+
+/**
+ * The map-borders lane (wave 3, 2026-10-03, gauntlet wave 9: "no ... villages"): a village strung along a few of the
+ * roads that leave the square — from the first flat stretch 260-560 m out, four to six yards facing the road ~28 m off
+ * it on alternate sides, ~62 m apart along it — so a road leaving the square runs on between roofs and gardens. At most
+ * one village a side and three a map; the farms elsewhere keep their own search.
+ */
+function selectVillageSites(options: BorderFarmsteadOptions): FarmsteadSite[] {
+  const lines = options.roadLines ?? [];
+  if (!lines.length || options.count < 4) return [];
+  const rng = mulberry32((options.seed ^ 0x7111A6E) >>> 0);
+  const sites: FarmsteadSite[] = [];
+  const sides = new Set<number>();
+  const pointAt = (line: { xs: ArrayLike<number>; zs: ArrayLike<number> }, s: number): [number, number, number, number] | null => {
+    // the point `s` metres along the line, and its heading
+    let acc = 0;
+    for (let i = 0; i + 1 < line.xs.length; i++) {
+      const ax = line.xs[i], az = line.zs[i], bx = line.xs[i + 1], bz = line.zs[i + 1], len = Math.hypot(bx - ax, bz - az);
+      if (acc + len >= s && len > 1e-6) { const t = (s - acc) / len; return [ax + (bx - ax) * t, az + (bz - az) * t, (bx - ax) / len, (bz - az) / len]; }
+      acc += len;
+    }
+    return null;
+  };
+  const yardOk = (x: number, z: number): boolean => {
+    const g = options.groundAt(x, z);
+    if (!Number.isFinite(g)) return false;
+    let lo = g, hi = g;
+    for (const [du, dv] of [[16, 16], [16, -16], [-16, 16], [-16, -16]]) {
+      const gh = options.groundAt(x + du, z + dv);
+      if (!Number.isFinite(gh)) return false;
+      lo = Math.min(lo, gh); hi = Math.max(hi, gh);
+    }
+    return hi - lo < 5 && options.woodsAt(x, z) < 0.3 && options.blockedAt(x, z) < 0.02 && (options.roadDistanceAt?.(x, z) ?? Infinity) >= 16;
+  };
+  for (const line of lines) {
+    if (sites.length >= 18 || sides.size >= 3) break;
+    if (rng() > 0.62) continue;
+    const ex = line.xs[0], ez = line.zs[0];
+    const side = Math.abs(ex) > Math.abs(ez) ? (ex > 0 ? 1 : 3) : (ez > 0 ? 0 : 2);
+    if (sides.has(side)) continue;
+    const homes = 4 + Math.floor(rng() * 3), spacing = 58 + rng() * 10;
+    for (let start = 260; start <= 560 - homes * spacing * 0.5; start += 40) {
+      const placed: FarmsteadSite[] = [];
+      for (let k = 0; k < homes; k++) {
+        const at = pointAt(line, start + k * spacing);
+        if (!at) break;
+        const [px, pz, hx, hz] = at, sideSign = k % 2 === 0 ? 1 : -1, off = 26 + rng() * 6;
+        const x = px - hz * off * sideSign, z = pz + hx * off * sideSign;
+        if (!yardOk(x, z)) continue;
+        // the house fronts the road: its yaw turns the yard's long side along the road
+        const yaw = Math.atan2(hz, hx) + (sideSign > 0 ? Math.PI / 2 : -Math.PI / 2) + (rng() - 0.5) * 0.08;
+        placed.push({ x, z, yaw, road: true, shelter: Math.atan2(hx * sideSign, -hz * sideSign) + (rng() - 0.5) }); // the trees behind the house
+      }
+      if (placed.length >= 3) { sites.push(...placed); sides.add(side); break; }
+    }
+  }
+  return sites;
 }
 
 /**

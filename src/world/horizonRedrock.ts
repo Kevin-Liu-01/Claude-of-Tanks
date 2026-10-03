@@ -33,6 +33,8 @@ export interface CanyonGround {
   _borderHedgeLines?(maxOut: number, keep?: (x: number, z: number) => boolean): { xs: number[]; zs: number[]; w: number[] }[];
   /** The road exits past the edge: [metres off the nearest exit road, its presence 0..1] (terrain.ts roadExitAt). */
   _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
+  /** The roads that leave the square, as their exit lines past the edge (terrain.ts roadExits). */
+  _roadExitLines?(): readonly { xs: ArrayLike<number>; zs: ArrayLike<number>; length: number }[];
 }
 
 interface SeamPoint { angle: number; x: number; z: number; height: number }
