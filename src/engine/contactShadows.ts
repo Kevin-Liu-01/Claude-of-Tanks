@@ -31,6 +31,7 @@
  * The mobile tier and `?fx=off` never enter the block (uContact 0); a preset without the lever likewise.
  */
 import * as THREE from 'three';
+import { VEHICLE_ALPHA_MIN } from './vehicleOcclusion.ts';
 
 export const CONTACT_SHADOW_STEPS = 12;
 export const CONTACT_SHADOW_MAX_SCREEN_PX = 8;
@@ -124,8 +125,12 @@ export interface ContactShadowAmbient {
  * visibility and A the ambient the rig gives the normal. 0 when the cascades already shadow the pixel or the face
  * turns from the sun; approaches 1 for a sunlit face under a dim sky.
  */
-/** Decode the scene target's alpha: the CSM sun visibility of an opaque lit surface, or -1 for anything else. */
+/**
+ * Decode the scene target's alpha: the CSM sun visibility of an opaque lit surface, or -1 for anything else. A
+ * vehicle pixel carries 4 + its visibility (vehicleOcclusion.ts), every other opaque lit pixel 2 + its visibility.
+ */
 export function contactShadowSunVisibility(alpha: number): number {
+  if (alpha >= VEHICLE_ALPHA_MIN) return THREE.MathUtils.clamp(alpha - 4, 0, 1);
   return alpha >= CONTACT_SHADOW_ALPHA_OPAQUE ? THREE.MathUtils.clamp(alpha - 2, 0, 1) : -1;
 }
 
@@ -181,10 +186,12 @@ const ENV_DISC_FILL = 0.5;
 export function updateContactShadowUniforms(
   uniforms: ContactShadowUniforms | Record<string, THREE.IUniform>, camera: THREE.Camera, scene: THREE.Scene,
   enabled: boolean,
+  /** The vehicle occlusion (vehicleOcclusion.ts) reads the same sun / ambient uniforms with the march off. */
+  ambientNeeded = enabled,
 ): void {
   const u = uniforms as ContactShadowUniforms;
   u.uContact.value = enabled ? 1 : 0;
-  if (!enabled) return;
+  if (!enabled && !ambientNeeded) return;
   u.uContactViewProj.value.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
   const rig = scene.userData.lightRig as PublishedLightRig | undefined;
   if (!rig) return;
@@ -227,8 +234,10 @@ export const CONTACT_SHADOW_GLSL = /* glsl */ `
     vec3 cotWorldAt( vec2 uv ) {
       return cotWorldAtDepth( uv, cotDepthToDist( texture2D( tDepth, uv ).x ) );
     }
-    // the scene target's alpha: 2 + the CSM sun visibility of an opaque lit surface, below 1.5 anything else
+    // the scene target's alpha: 2 + the CSM sun visibility of an opaque lit surface (4 + it on a vehicle,
+    // vehicleOcclusion.ts), below 1.5 anything else
     float cotSunVisOf( float a ) {
+      if ( a >= ${f(VEHICLE_ALPHA_MIN)} ) return clamp( a - 4.0, 0.0, 1.0 );
       return a >= ${f(CONTACT_SHADOW_ALPHA_OPAQUE)} ? clamp( a - 2.0, 0.0, 1.0 ) : -1.0;
     }
     // best-pair normal from the depth neighbours (the smaller step on each axis stays on the surface)
