@@ -628,7 +628,7 @@ Browser probes (they take the machine-wide GPU capture lock; set
 
 | Probe | Checks |
 |---|---|
-| `node tools/audio-mix-balance.mjs` | garage audibility; gunfire at 15/150/400 m and our own gun over the idle battle bed on their loudest 100 ms; each shot's anatomy from its arrival (a near cannon must crack: rise ≤ 15 ms, ≤ 50 % low body) and soft-clip hits; the radio under a near cannon; sound starts and radio lines per second in live combat; the drone in flight (the listener rides it, its motors lead, the feed brightens); an AC-130 battle (the opener, the cabin, the howitzer and its case) |
+| `node tools/audio-mix-balance.mjs` | garage audibility; gunfire at 15/150/400 m and our own gun over the idle battle bed on their loudest 100 ms (14/10/4 and 16 dB), and a near crack's peak (22 dB); each shot's anatomy from its arrival (a near cannon must crack: rise ≤ 15 ms, ≤ 50 % low body) and soft-clip hits; the radio under a near cannon; sound starts and radio lines per second in live combat; the drone in flight (the listener rides it, its motors lead, the feed brightens); an AC-130 battle (the opener, the cabin, the howitzer and its case) |
 | `node tools/sfx-smoke.mjs` | every scene's assets, the calibre ladder, the distance crossfade and propagation delay, routing, jitter, volley headroom (battle held frozen) |
 | `node tools/voice-smoke.mjs` | the national crew, live language switching through the bus and the Sound tab, all 13 packs through the radio chain |
 | `node tools/audio-probe.mjs` | the full event, voice and bus matrix with recordings |
