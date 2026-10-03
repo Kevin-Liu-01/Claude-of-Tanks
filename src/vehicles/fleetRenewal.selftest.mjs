@@ -6,7 +6,7 @@ import {FLEET_RENEWAL_NEW_IDS,FLEET_RENEWAL_DONORS} from './fleetRenewalSpecs.ts
 import {VEHICLE_ROLE_PROFILES} from './roleProfiles.ts';
 import {ensureInteriorFills} from './interiorFills.ts';
 
-const donors={...FLEET_RENEWAL_DONORS,bmpt_terminator2:'t80u_x',
+const donors={...FLEET_RENEWAL_DONORS,bmpt_terminator2:'t80u_x',t84:'t72b3m_x',
   type96_72_long:'t72b3_x',type96_80_feng:'t80u_x',type96_72m_lei:'t72b3m_x'};
 const stock=mesh=>Array.from(mesh.geometry.getAttribute('position').array);
 assert.equal(getSpec('t72b3m').name,'T-72B3M obr. 2022');
@@ -37,6 +37,13 @@ for(const quality of ['high','low']) for(const [id,donorId] of Object.entries(do
     if(id==='bmpt_terminator2') {
       const sectors=tank.root.userData.eraFinishReceipt?.sectors??[];
       assert(!sectors.some(s=>s.startsWith('turret_era_')),'replaced turret cannot leave ghost donor ERA');
+    }
+    if(id==='t84') {
+      for(const sector of ['oplot_cheek_era_L','oplot_cheek_era_R','oplot_side_era_L','oplot_side_era_R']) {
+        assert(spec.armor.turretPlates.some(p=>p.name===sector&&p.era),`${id}: ${sector} retains reactive protection`);
+        assert(tank.stripEra(sector),`${id}: ${sector} removes the corresponding visible cassette`);
+      }
+      tank.resetEra();
     }
   } finally {tank.dispose();donor.dispose();}
 }

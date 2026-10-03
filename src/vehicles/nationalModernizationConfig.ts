@@ -1,4 +1,7 @@
 // Owner-approved original concepts, not claims of historical service variants.
+// Recess the bearing while retaining 25–35 mm of visible running clearance
+// above the three native hull roof courses. Hulls and fenders stay unchanged.
+export const NATIONAL_TURRET_DROPS = [.075, .085, .085] as const;
 export const NATIONAL_MODERNIZATION_CONFIG = [
   {
     "id": "ua_t80u_modern",
@@ -7,7 +10,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "donor": "t80u_x",
     "model": 0,
     "name": "T-80U Zoria (Concept)",
-    "y": 1.565,
+    "y": 1.565 - NATIONAL_TURRET_DROPS[0],
     "z": 0.07187
   },
   {
@@ -17,7 +20,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "donor": "t72b3m_x",
     "model": 1,
     "name": "T-72B3M Hetman (Concept)",
-    "y": 1.545,
+    "y": 1.545 - NATIONAL_TURRET_DROPS[1],
     "z": 0.114315
   },
   {
@@ -27,7 +30,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "donor": "t72b3_x",
     "model": 2,
     "name": "T-72B3 Sich (Concept)",
-    "y": 1.475,
+    "y": 1.475 - NATIONAL_TURRET_DROPS[2],
     "z": 0.065591
   },
   {
@@ -37,7 +40,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "donor": "t80u_x",
     "model": 0,
     "name": "T-80U Husarz (Concept)",
-    "y": 1.565,
+    "y": 1.565 - NATIONAL_TURRET_DROPS[0],
     "z": 0.07187
   },
   {
@@ -47,7 +50,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "donor": "t72b3m_x",
     "model": 1,
     "name": "T-72B3M Wilk (Concept)",
-    "y": 1.545,
+    "y": 1.545 - NATIONAL_TURRET_DROPS[1],
     "z": 0.114315
   },
   {
@@ -57,7 +60,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "donor": "t72b3_x",
     "model": 2,
     "name": "T-72B3 Zubr (Concept)",
-    "y": 1.475,
+    "y": 1.475 - NATIONAL_TURRET_DROPS[2],
     "z": 0.065591
   },
   {
@@ -67,7 +70,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "donor": "t80u_x",
     "model": 0,
     "name": "T-80U Yun (Concept)",
-    "y": 1.565,
+    "y": 1.565 - NATIONAL_TURRET_DROPS[0],
     "z": 0.07187
   },
   {
@@ -77,7 +80,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "donor": "t72b3m_x",
     "model": 1,
     "name": "T-72B3M Kunlun (Concept)",
-    "y": 1.545,
+    "y": 1.545 - NATIONAL_TURRET_DROPS[1],
     "z": 0.114315
   },
   {
@@ -87,7 +90,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "donor": "t72b3_x",
     "model": 2,
     "name": "T-72B3 Qilin (Concept)",
-    "y": 1.475,
+    "y": 1.475 - NATIONAL_TURRET_DROPS[2],
     "z": 0.065591
   },
   {
@@ -97,7 +100,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "donor": "t80u_x",
     "model": 0,
     "name": "T-80U Bars-M (Concept)",
-    "y": 1.565,
+    "y": 1.565 - NATIONAL_TURRET_DROPS[0],
     "z": 0.07187
   },
   {
@@ -107,7 +110,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "donor": "t72b3m_x",
     "model": 1,
     "name": "T-72B3M Bulat-M (Concept)",
-    "y": 1.545,
+    "y": 1.545 - NATIONAL_TURRET_DROPS[1],
     "z": 0.114315
   },
   {
@@ -117,7 +120,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "donor": "t72b3_x",
     "model": 2,
     "name": "T-72B3 Bastion-M (Concept)",
-    "y": 1.475,
+    "y": 1.475 - NATIONAL_TURRET_DROPS[2],
     "z": 0.065591
   }
 ] as const;

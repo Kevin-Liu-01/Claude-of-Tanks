@@ -13,7 +13,7 @@ export function arrangeModeRoster<S extends Seat>(mode: string, arrangement: Tea
   for (const seat of players) seat.team = bossPlayer ? (seat === bossPlayer ? 'alpha' : 'bravo') : 'alpha';
   const { hostile: count, friendly: friendlyCount } = modeBotCounts(rules, !!bossPlayer, players.length);
   for (let i = 0; i < Math.min(Math.max(0,42 - players.length - friendlyCount), count); i++) bots.push({
-    playerId: `mode-bravo-${i}`, name: rules.juggernaut && !bossPlayer ? 'Juggernaut' : rules.infection ? 'Patient Zero' : `Hostile ${i + 1}`,
+    playerId: `mode-bravo-${i}`, name: rules.juggernaut && !bossPlayer ? 'Juggernaut' : rules.infection ? `Infected ${i + 1}` : `Hostile ${i + 1}`,
     team: 'bravo', specId: players[i % players.length]!.specId,
   });
   const friendlySlots = Math.min(42 - players.length - bots.length, friendlyCount);
@@ -25,7 +25,7 @@ export function arrangeModeRoster<S extends Seat>(mode: string, arrangement: Tea
 function modeBotCounts(rules: MatchRuleset, bossPlayer: boolean, players: number): { hostile: number; friendly: number } {
   let hostile = rules.enemies ?? 12;
   if (rules.juggernaut) hostile = bossPlayer ? Math.max(1, hostile - players + 1) : 1;
-  else if (rules.infection) hostile = 1;
+  else if (rules.infection) hostile = Math.max(3, hostile);
   const friendly = rules.aerial === 'gunship' ? (rules.allies??4) : bossPlayer ? 0 : Math.max(0, (rules.allies ?? 0) + 1 - players);
   return { hostile, friendly };
 }

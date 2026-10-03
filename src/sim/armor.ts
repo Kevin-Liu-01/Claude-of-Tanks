@@ -35,6 +35,7 @@ export interface ArmorPoseState {
   visualRoll: number;
   turretYaw: number;
   gunPitch: number;
+  modeScale?: number;
   roofGunYaw?: number;
   roofGunPitch?: number;
 }
@@ -46,6 +47,7 @@ export interface TankArmorPose {
   roll: number;
   turretYaw: number;
   gunPitch: number;
+  modeScale?: number;
   roofGunYaw?: number;
   roofGunPitch?: number;
 }
@@ -362,6 +364,7 @@ export function tankPoseFromState(
   };
   if (!pose.pos) pose.pos = new Vector3();
   pose.pos.copy(state.pos);
+  pose.modeScale=state.modeScale??1;
   pose.yaw = state.yaw;
   pose.pitch = state.visualPitch;
   pose.roll = state.visualRoll;
@@ -381,7 +384,9 @@ function buildFrames(pose: TankArmorPose, armorModel: ArmorModel): void {
   // x=-pitch, z=roll), inverted here for world → hull local.
   _euler.set(-pose.pitch, pose.yaw, pose.roll, 'YXZ');
   _quat.setFromEuler(_euler);
+  _unitScale.setScalar(pose.modeScale??1);
   _hullM.compose(pose.pos, _quat, _unitScale);
+  _unitScale.set(1,1,1); // Child frames inherit the hull scale exactly once.
   _hullInv.copy(_hullM).invert();
 
   const tp = armorModel.turretPivot || [0, 0, 0];
