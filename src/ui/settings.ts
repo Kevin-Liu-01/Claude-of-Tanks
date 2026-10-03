@@ -290,10 +290,6 @@ const SETTINGS_CSS = `
 .cot-set-row .lb{min-width:0;flex:1;display:flex;align-items:center;gap:9px;
   font-size:12.5px;color:#c6d2dc;letter-spacing:.04em;line-height:1.3;}
 .cot-set-crew-field{width:260px;max-width:100%;min-width:0;}
-@media(max-width:600px){
-  .cot-set-crew-row{flex-direction:column;align-items:stretch;gap:10px;}
-  .cot-set-crew-field{width:100%;}
-}
 .cot-setting-icon{position:relative;width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center;
   color:#91a3b2;background:linear-gradient(180deg,rgba(37,46,54,.72),rgba(16,21,26,.78));
   border:1px solid rgba(146,164,180,.24);box-shadow:inset 0 1px 0 rgba(235,243,250,.05);}
