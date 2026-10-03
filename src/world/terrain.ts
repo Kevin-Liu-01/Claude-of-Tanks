@@ -2260,6 +2260,8 @@ function* heightFieldBuildSteps(
       _borderTrackAt: border.trackAt,
       _borderFarmsteads: { count: border.settings.farms, style: border.settings.buildings, fieldAngle: border.fieldAngle } }),
     _roadExitAt: roadExitAt,
+    // the maps-and-layouts lane (2026-10-03): the authored landforms' geological zones, on a map that authors them
+    ...(geologyZones ? { _geologyZoneAt: geologyZones } : {}),
     ...(cfg?.navigationWaterPolicy
       ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),
     bridgeDecks, // round 61
@@ -2280,7 +2282,6 @@ function* heightFieldBuildSteps(
       return yield* heightFieldBuildSteps(seed,originalRoadPlacementConfig(cfg),true);
     }} : {}),
     _mesaW: mesaWeight,
-    ...(geologyZones ? { _geologyZoneAt: geologyZones } : {}),
     ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt } : {}),
   };
 }
