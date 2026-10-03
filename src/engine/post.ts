@@ -396,6 +396,8 @@ const AERIAL_RING_FAR_END_M = 2600;
 const AERIAL_WARM_TINT = [1.16, 1.035, 0.86];
 const AERIAL_COOL_TINT = [0.86, 0.95, 1.13];
 const AERIAL_SUN_POW = 5.0; // width of the warm forward-scatter lobe
+/** 2026-10-03: the share of the legacy warm lobe the haze law keeps toward the sun (the PR head's warm horizon band). */
+const HAZE_LAW_WARM_LOBE = 0.5;
 // r8 highlight rolloff ("horizon haze blows out to clipped pure white — the
 // left half of battlefield_desert loses all sand/mesa contrast into white"):
 // the scatter-in TARGET is the fog color x the warm tint, and on bright-sky
@@ -1116,10 +1118,17 @@ const AerialShader = {
           float skyL = dot( skyT, vec3( 0.2126, 0.7152, 0.0722 ) );
           float tintL = max( dot( uAtmoFogTint, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 );
           vec3 target = mix( skyT, uAtmoFogTint * ( skyL / tintL ), clamp( uAtmoFogMix * uHazeLaw.z, 0.0, 1.0 ) );
-          if ( target.g > target.b ) {
+          // the blue-grey guard catches a greenish cast only (green over both red and blue): 2026-10-03 (the gauntlet's
+          // wave 13 on Frosthollow, "the warm horizon band dims a step") — keyed on green over blue alone it pulled every
+          // warm target (red over green over blue: the low sky toward the sun) to blue-grey, where the PR head's haze
+          // kept a warm band
+          if ( target.g > target.b && target.g > target.r ) {
             float tl = dot( target, vec3( 0.2126, 0.7152, 0.0722 ) );
             target = mix( target, vec3( tl * 0.92, tl * 0.99, tl * 1.12 ), 0.6 );
           }
+          // and the air's forward scatter toward the sun keeps half the legacy warm lobe (AERIAL_WARM_TINT over the same
+          // ${AERIAL_SUN_POW.toFixed(0)}th-power lobe; the cool side is the sky's own blue now)
+          target *= mix( vec3( 1.0 ), vec3( ${AERIAL_WARM_TINT[0].toFixed(3)}, ${AERIAL_WARM_TINT[1].toFixed(3)}, ${AERIAL_WARM_TINT[2].toFixed(3)} ), ${HAZE_LAW_WARM_LOBE.toFixed(2)} * sunAmt );
           hazeCol = target * uHazeLaw.w;
         } else if ( uAtmo > 0.5 ) {
           // round 65: the sky-view LUT along this pixel's ray (just above the horizon for rays below it),
