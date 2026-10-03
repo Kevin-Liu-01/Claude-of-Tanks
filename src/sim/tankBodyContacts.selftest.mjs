@@ -160,9 +160,13 @@ assert(exactRect.exact && exactRect.halfWidth === 1.8 && exactRect.halfLength ==
     `roof-down root uses the 2.2 m armor roof, not 3.5 m published height (${upper.state.pos.y})`);
 }
 
-// Positive visual pitch uses the same -Z contribution as movement's terrain
-// support transform. An asymmetric shell makes a reversed sign obvious: its
-// long nose is the low contact point, so it must be lifted well above 2 m.
+// Visual pitch composes as the renderer's rotation.x = -pitch and movement's
+// terrain support transform (worldY += z * sinPitch): positive pitch raises
+// the nose. This case asserted the mirrored sign from 2026-08-27 to 2026-10-03
+// (physics lane): a pitched hull's roof contact was measured front-to-back
+// reversed. An asymmetric shell makes a reversed sign obvious: pitched
+// nose-down, its long nose is the low contact point, so it must be lifted
+// well above 2 m (the mirrored sign finds only the short tail, clear of the roof).
 {
   const pitchedSpec = {
     ...spec,
@@ -176,7 +180,7 @@ assert(exactRect.exact && exactRect.halfWidth === 1.8 && exactRect.halfLength ==
   const upperState = createTankState(pitchedSpec, new Vector3(0, 1.95, 0), 0);
   lowerState.grounded = lowerState._ride.grounded = true;
   upperState.grounded = upperState._ride.grounded = false;
-  upperState.visualPitch = Math.PI / 6;
+  upperState.visualPitch = -Math.PI / 6;
   upperState.verticalSpeed = upperState._ride.v = -1;
   const lower = { id: 'pitch-lower', spec: pitchedSpec, state: lowerState };
   const upper = { id: 'pitch-upper', spec: pitchedSpec, state: upperState };
