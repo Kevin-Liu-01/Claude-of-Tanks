@@ -24,6 +24,13 @@
  * whole darkening. A grass or leaf card (its alpha is its coverage, no sun state) takes a fixed ambient share. Vehicle
  * pixels are never receivers (their own cavities are vehicleOcclusion.ts's). The term fades out over the selection's
  * last 20 m. `vehicleGroundOcclusionAt` is the CPU twin the receipt pins against the GLSL.
+ *
+ * 2026-10-03 (fp9: Sirocco's hull shadow measured 0.050 of the sunlit sand in display light, where photographs of hulls on
+ * sand run about 0.07–0.16): the sky a hull hides is not all lost — the bright ground around it returns part of it by
+ * interreflection off the hull and the ground. The occlusion keeps the visibility Jimenez et al.'s multi-bounce fit gives
+ * the map's ground albedo (2016, "Practical Realtime Strategies for Accurate Indirect Occlusion": v' = max(v,
+ * ((a v + b) v + c) v), a = 2.0404 ρ − 0.3324, b = −4.7951 ρ + 0.6417, c = 2.7552 ρ + 0.6903): sand (ρ 0.34) keeps
+ * 0.70 of the light where the box alone leaves 0.60, snow (ρ 0.8) 0.87, a dark ground (ρ ≤ 0.1) about what it had.
  */
 import * as THREE from 'three';
 
@@ -40,6 +47,15 @@ export const GROUND_AO_RANGE_M = 70;
 export const GROUND_AO_FADE_M = 20;
 /** A card pixel's assumed ambient share (its sun state is unknown: a meadow half in sun, half in shade). */
 export const GROUND_AO_CARD_AMBIENT_SHARE = 0.6;
+/** The ground albedo the multi-bounce term assumes without a grounded light model (atmosphere.ts's default ground). */
+export const GROUND_AO_DEFAULT_ALBEDO = 0.25;
+
+/** Jimenez et al. 2016's multi-bounce fit: the visibility v of a point whose surroundings have albedo rho, raised by the
+ * light they interreflect (never below v; rho 0 leaves v). The GLSL carries the same polynomial. */
+export function vehicleGroundMultiBounce(v: number, rho: number): number {
+  const a = 2.0404 * rho - 0.3324, b = -4.7951 * rho + 0.6417, c = 2.7552 * rho + 0.6903;
+  return Math.max(v, ((a * v + b) * v + c) * v);
+}
 
 export interface VehicleGroundOcclusionUniforms {
   uVehGround: THREE.IUniform<number>;
@@ -50,6 +66,8 @@ export interface VehicleGroundOcclusionUniforms {
   uVehGroundY: THREE.IUniform<THREE.Vector3[]>;
   uVehGroundZ: THREE.IUniform<THREE.Vector3[]>;
   uVehGroundH: THREE.IUniform<THREE.Vector3[]>;
+  /** 2026-10-03: the ground's albedo (luminance) for the multi-bounce term; 0 turns it off. */
+  uVehGroundAlbedo: THREE.IUniform<number>;
 }
 
 export function createVehicleGroundOcclusionUniforms(): VehicleGroundOcclusionUniforms {
@@ -58,6 +76,7 @@ export function createVehicleGroundOcclusionUniforms(): VehicleGroundOcclusionUn
     uVehGround: { value: 0 },
     uVehGroundC: { value: Array.from({ length: GROUND_AO_MAX_HULLS }, () => new THREE.Vector4()) },
     uVehGroundX: { value: v3() }, uVehGroundY: { value: v3() }, uVehGroundZ: { value: v3() }, uVehGroundH: { value: v3() },
+    uVehGroundAlbedo: { value: GROUND_AO_DEFAULT_ALBEDO },
   };
 }
 
@@ -94,7 +113,9 @@ export function hullProxyOf(root: THREE.Object3D, detailKey = 'nearShadowDetail'
  */
 export function updateVehicleGroundOcclusionUniforms(
   u: VehicleGroundOcclusionUniforms, roots: readonly { readonly root: THREE.Object3D }[] | null | undefined, enabled: boolean,
+  groundAlbedo = GROUND_AO_DEFAULT_ALBEDO,
 ): void {
+  u.uVehGroundAlbedo.value = Math.min(Math.max(groundAlbedo, 0), 0.95);
   let n = 0;
   if (enabled && roots) {
     for (let i = 0; i < roots.length && n < GROUND_AO_MAX_HULLS; i++) {
@@ -156,6 +177,7 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
     uniform vec3 uVehGroundY[ ${GROUND_AO_MAX_HULLS} ];
     uniform vec3 uVehGroundZ[ ${GROUND_AO_MAX_HULLS} ];
     uniform vec3 uVehGroundH[ ${GROUND_AO_MAX_HULLS} ];
+    uniform float uVehGroundAlbedo;
     float cotVehicleGroundOcclusion( vec3 P ) {
       float vis = 1.0;
       for ( int i = 0; i < ${GROUND_AO_MAX_HULLS}; i++ ) {
@@ -187,6 +209,9 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
       float occ = cotVehicleGroundOcclusion( P )
         * ( 1.0 - smoothstep( ${f(GROUND_AO_RANGE_M - GROUND_AO_FADE_M)}, ${f(GROUND_AO_RANGE_M)}, dist ) );
       if ( occ <= 0.003 ) return 1.0;
+      // the light the bright ground returns by interreflection (Jimenez et al. 2016's multi-bounce fit, the map's albedo)
+      float mbV = 1.0 - occ, mbR = uVehGroundAlbedo;
+      occ = 1.0 - max( mbV, ( ( ( 2.0404 * mbR - 0.3324 ) * mbV + ( 0.6417 - 4.7951 * mbR ) ) * mbV + ( 2.7552 * mbR + 0.6903 ) ) * mbV );
       float vis = cotSunVisOf( alpha );
       float ambShare = ${f(GROUND_AO_CARD_AMBIENT_SHARE)};
       if ( vis >= 0.0 ) {

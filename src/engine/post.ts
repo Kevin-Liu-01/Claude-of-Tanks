@@ -105,7 +105,7 @@ import {
 } from './hazeLaw.ts';
 import { setNightEmissionExposure } from './nightEmissionMaterial.ts';
 import {
-  GROUND_AO_RANGE_M, VEHICLE_GROUND_OCCLUSION_GLSL, createVehicleGroundOcclusionUniforms, updateVehicleGroundOcclusionUniforms,
+  GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_RANGE_M, VEHICLE_GROUND_OCCLUSION_GLSL, createVehicleGroundOcclusionUniforms, updateVehicleGroundOcclusionUniforms,
   type VehicleGroundOcclusionUniforms,
 } from './vehicleGroundOcclusion.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
@@ -2800,8 +2800,15 @@ export function createPost(
     const farShade = lightTune('FAR_CLOUD_SHADE', FAR_CLOUD_SHADE_ON) > 0
       ? (scene.userData.volumetricClouds as { farShade?: { texture: THREE.Texture; rect: THREE.Vector3; baseM: number } | null } | null | undefined)?.farShade ?? null
       : null;
+    // (2026-10-03: the ground's albedo for the multi-bounce term — the grounded light model's ground, the legacy rig the
+    // default; QA: __LIGHT_TUNE.GROUND_AO_MULTIBOUNCE 0 turns it off)
+    const groundModel = scene.userData.lightModel as LightModel | undefined;
+    const groundRho = groundModel?.mode === 'physical'
+      ? 0.2126 * groundModel.groundAlbedo[0] + 0.7152 * groundModel.groundAlbedo[1] + 0.0722 * groundModel.groundAlbedo[2]
+      : GROUND_AO_DEFAULT_ALBEDO;
     updateVehicleGroundOcclusionUniforms(aerial.uniforms as unknown as VehicleGroundOcclusionUniforms,
-      scene.userData.nearVehicles as readonly { root: THREE.Object3D }[] | undefined, lightFx.vehicleOcclusion && lightTune('VEHICLE_GROUND_AO', 1) > 0);
+      scene.userData.nearVehicles as readonly { root: THREE.Object3D }[] | undefined, lightFx.vehicleOcclusion && lightTune('VEHICLE_GROUND_AO', 1) > 0,
+      groundRho * lightTune('GROUND_AO_MULTIBOUNCE', 1));
     const fs = aerial.uniforms.uFarShade.value as THREE.Vector4;
     if (farShade) {
       aerial.uniforms.tFarShade.value = farShade.texture;

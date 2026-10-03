@@ -11,6 +11,7 @@ import {
   GROUND_AO_CARD_AMBIENT_SHARE, GROUND_AO_FADE_M, GROUND_AO_GEAR_DROP_M, GROUND_AO_MAX_HULLS, GROUND_AO_RANGE_M, GROUND_AO_UNDER,
   GROUND_AO_CLEARANCE_M, VEHICLE_GROUND_OCCLUSION_GLSL, createVehicleGroundOcclusionUniforms, hullProxyOf,
   updateVehicleGroundOcclusionUniforms, vehicleGroundOcclusionAt, vehicleGroundOcclusionBeside, vehicleGroundOcclusionUnder,
+  vehicleGroundMultiBounce, GROUND_AO_DEFAULT_ALBEDO,
 } from './vehicleGroundOcclusion.ts';
 import { NEAR_VEHICLE_SHADOW_MAX, NEAR_VEHICLE_SHADOW_RANGE_M } from './nearVehicleShadowDetail.ts';
 
@@ -68,6 +69,24 @@ assert.match(g, /vis \*= 1\.0 - occ;/, 'several hulls combine as independent occ
 assert.match(g, /return 1\.0 - occ \* ambShare;/, 'only the ambient share darkens');
 assert.match(g, /ambShare = A \/ max\( T \+ A, 1e-4 \);/, 'the rig\'s ambient over the pixel\'s whole light (contactShadows.ts)');
 
+// ---- the multi-bounce term (2026-10-03): the ground's albedo returns part of the hidden sky, never more than it hid
+for (const rho of [0, 0.1, 0.25, 0.34, 0.6, 0.8]) {
+  for (let v = 0; v <= 1.0001; v += 0.05) {
+    const mb = vehicleGroundMultiBounce(v, rho);
+    assert.ok(mb >= v - 1e-12 && mb <= 1 + 1e-9, `rho ${rho} v ${v.toFixed(2)}: ${mb} within [v, 1]`);
+    if (rho > 0.1) assert.ok(vehicleGroundMultiBounce(v, rho + 0.1) >= mb - 1e-12, 'a brighter ground returns more');
+  }
+}
+near(vehicleGroundMultiBounce(0.6, 0), 0.6, 1e-12, 'albedo 0: the box alone');
+near(vehicleGroundMultiBounce(1, 0.34), 1, 1e-3, 'open sky stays open');
+const sand = vehicleGroundMultiBounce(0.6, 0.34), snow = vehicleGroundMultiBounce(0.6, 0.8);
+assert.ok(sand > 0.68 && sand < 0.72, `sand keeps ~0.70 where the box leaves 0.60 (${sand.toFixed(3)})`);
+assert.ok(snow > 0.84 && snow < 0.9, `snow keeps ~0.87 (${snow.toFixed(3)})`);
+assert.match(g, /occ = 1\.0 - max\( mbV, \( \( \( 2\.0404 \* mbR - 0\.3324 \) \* mbV \+ \( 0\.6417 - 4\.7951 \* mbR \) \) \* mbV \+ \( 2\.7552 \* mbR \+ 0\.6903 \) \) \* mbV \);/,
+  'the GLSL carries the same polynomial');
+assert.ok(g.indexOf('float mbV = 1.0 - occ') > g.indexOf('if ( occ <= 0.003 ) return 1.0;') && g.indexOf('float mbV') < g.indexOf('float vis = cotSunVisOf( alpha );'),
+  'on the faded occlusion, before the ambient share');
+
 // ---- the boxes: from the hull's shadow proxy, carried down over the running gear, written in place
 const root = new THREE.Group();
 const hullG = new THREE.Group(); root.add(hullG);
@@ -82,6 +101,7 @@ const u = createVehicleGroundOcclusionUniforms();
 const firstC = u.uVehGroundC.value[0];
 updateVehicleGroundOcclusionUniforms(u, [{ root }], true);
 assert.equal(u.uVehGround.value, 1);
+assert.equal(u.uVehGroundAlbedo.value, GROUND_AO_DEFAULT_ALBEDO, 'the default ground without a model');
 assert.equal(u.uVehGroundC.value[0], firstC, 'the uniform objects are reused (no per-frame allocation)');
 near(u.uVehGroundH.value[0].x, 1.7, 1e-6, 'half width'); near(u.uVehGroundH.value[0].z, 3.6, 1e-6, 'half length');
 near(u.uVehGroundH.value[0].y, 0.5 + GROUND_AO_GEAR_DROP_M / 2, 1e-6, 'half height with the gear drop');
@@ -103,7 +123,9 @@ const groundAt = post.indexOf('texel.rgb *= cotVehicleGroundShade(');
 const hazeAt = post.indexOf('float wy = uCamPos.y + ray.y * rayT;');
 assert.ok(vehAt > 0 && groundAt > vehAt && hazeAt > groundAt, 'after the vehicle cavities, before the haze');
 assert.ok(post.indexOf('${VEHICLE_GROUND_OCCLUSION_GLSL}') > post.indexOf('${CONTACT_SHADOW_GLSL}'), 'after the contact block it calls');
-assert.match(post, /updateVehicleGroundOcclusionUniforms\(aerial\.uniforms as unknown as VehicleGroundOcclusionUniforms,\s*scene\.userData\.nearVehicles as readonly \{ root: THREE\.Object3D \}\[\] \| undefined, lightFx\.vehicleOcclusion && lightTune\('VEHICLE_GROUND_AO', 1\) > 0\);/,
-  'every frame, on the owner\'s vehicle-occlusion lever');
+assert.match(post, /updateVehicleGroundOcclusionUniforms\(aerial\.uniforms as unknown as VehicleGroundOcclusionUniforms,\s*scene\.userData\.nearVehicles as readonly \{ root: THREE\.Object3D \}\[\] \| undefined, lightFx\.vehicleOcclusion && lightTune\('VEHICLE_GROUND_AO', 1\) > 0,\s*groundRho \* lightTune\('GROUND_AO_MULTIBOUNCE', 1\)\);/,
+  'every frame, on the owner\'s vehicle-occlusion lever, with the ground\'s albedo');
+assert.match(post, /const groundRho = groundModel\?\.mode === 'physical'\s*\? 0\.2126 \* groundModel\.groundAlbedo\[0\] \+ 0\.7152 \* groundModel\.groundAlbedo\[1\] \+ 0\.0722 \* groundModel\.groundAlbedo\[2\]\s*: GROUND_AO_DEFAULT_ALBEDO;/,
+  'the grounded model\'s ground albedo (luminance), the default on the legacy rig');
 
 console.log(`vehicleGroundOcclusion.selftest: the wall law (½ sin²α over the hull's azimuth), the footprint ${GROUND_AO_UNDER}, the CPU twin and the GLSL, the in-place boxes, the receivers and the wiring PASS`);
