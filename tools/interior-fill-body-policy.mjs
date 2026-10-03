@@ -13,6 +13,7 @@ const RENEWED_BODY_IDS = [
   't64bv1', 'ua_t64bv', 't62mv1', 't62mv1_x', 't72m1_jaguar',
   't72_rys', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei',
   'amx30', 'amx30b2', 'upior', 'type89_x',
+  't84', 'pl01_105', 'vt4a1', 'ztz99a2', 'ztz99a2_prototype',
   // Open gun throats: external roof fittings cannot bound turret fill.
   'leo2a7v_x', 'leo2a6m_x', 'leo2a4m_x',
 ];

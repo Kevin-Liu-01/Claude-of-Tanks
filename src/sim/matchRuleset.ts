@@ -24,8 +24,8 @@ export const AERIAL_RULES = Object.freeze({
 });
 export const GUNSHIP_WEAPONS = Object.freeze([
   shell('30 mm Autocannon', 'AP', 30, 220, 180, 160, 1300, { reloadS: .14, reloadGroup: 'gunship-cannon' }),
-  shell('152 mm Howitzer', 'HE', 152, 110, 110, 1500, 800, { reloadS: 3.5, reloadGroup: 'gunship-howitzer' }),
-  shell('Guided Missile', 'HEAT', 180, 1300, 1300, 1600, 400, { guided: true, reloadS: 7, reloadGroup: 'gunship-missile' }),
+  shell('152 mm Howitzer', 'HE', 152, 110, 110, 1500, 800, { reloadS: 3.5, reloadGroup: 'gunship-howitzer', blastRadiusM: 22 }),
+  shell('Guided Missile', 'HE', 180, 320, 320, 1600, 400, { guided: true, reloadS: 7, reloadGroup: 'gunship-missile', blastRadiusM: 18 }),
 ]);
 export const DRONE_WARHEAD = shell('FPV warhead', 'HE', 152, 95, 95, 1400, 42, { tracer: 'DRONE', gravityScale: 0, maxLifetimeS: AERIAL_RULES.drone.batteryS });
 
@@ -212,7 +212,7 @@ export interface MatchRuleset {
   readonly alwaysVisible?: boolean;
   readonly moduleOnlyDamage?: boolean;
   readonly juggernaut?: { readonly team: 'alpha' | 'bravo'; readonly hpScale: number; readonly reloadScale: number; readonly speedScale: number };
-  readonly infection?: { readonly infectedSpeed: number; readonly infectedRespawnS: number };
+  readonly infection?: { readonly infectedSpeed: number; readonly infectedRespawnS: number; readonly survivorHpScale: number; readonly infectedHpScale: number; readonly infectedReloadScale: number };
   readonly gunGame?: { readonly killsPerWeapon: number };
   readonly aerial?: 'drone' | 'gunship';
   readonly scoreTarget?: number | null;
@@ -331,9 +331,9 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   }),
   juggernaut: Object.freeze({ ...STANDARD, mode: 'juggernaut', allies: 0, enemies: 12, respawnS: 6, timeLimitS: 600,
     juggernaut: Object.freeze({ team: 'alpha', hpScale: 8, reloadScale: .5, speedScale: .9 }) }),
-  infected: Object.freeze({ ...STANDARD, mode: 'infected', allies: 12, enemies: 1, respawnS: 4, timeLimitS: 420,
-    infection: Object.freeze({ infectedSpeed: 1.3, infectedRespawnS: 4 }) }),
-  realistic: Object.freeze({ ...STANDARD, mode: 'realistic', alwaysVisible: true, moduleOnlyDamage: true, consumables: false }),
+  infected: Object.freeze({ ...STANDARD, mode: 'infected', allies: 9, enemies: 4, respawnS: 3, timeLimitS: 420,
+    infection: Object.freeze({ infectedSpeed: 1.4, infectedRespawnS: 3, survivorHpScale: .3, infectedHpScale: 1.25, infectedReloadScale: .7 }) }),
+  realistic: Object.freeze({ ...STANDARD, mode: 'realistic', alwaysVisible: false, moduleOnlyDamage: true, consumables: false }),
   gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', respawnS: 4, ammo: 'unlimited', timeLimitS: 900,
     gunGame: Object.freeze({ killsPerWeapon: 2 }) }),
   drone: Object.freeze({ ...STANDARD, mode: 'drone', aerial: 'drone', respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
@@ -482,7 +482,7 @@ export function matchRulesetFor(
       enemies: hunter ? 1 : (arranged?.enemies ?? 12),
       juggernaut: { ...ruleset.juggernaut, team: hunter ? 'bravo' : 'alpha' } };
   }
-  if (ruleset.infection) ruleset = { ...ruleset, enemies: 1 };
+  if (ruleset.infection) ruleset = { ...ruleset, enemies: Math.max(3, arranged?.enemies ?? 4) };
   return ruleset === base ? base : Object.freeze(ruleset);
 }
 

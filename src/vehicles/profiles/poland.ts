@@ -1,3 +1,6 @@
+import {addEscortFieldKit} from './escortFieldKit.ts';
+import {addPL01FieldTurret} from './pl01FieldTurret.ts';
+import {ESCORT_FIELD_KITS} from '../escortFieldKitLayout.ts';
 import { buildJaguarModern } from './t72ModernVariants.ts';
 // Polish armored family — §5.248 GROUND-UP REBUILDS (owner order 2026-08-17:
 // "completely new ones built from the ground up doing high quality visual
@@ -59,6 +62,7 @@ interface PolishBuilderPort {
   muzzleZ?: number;
   topY?: number;
   add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  addExternalArmor(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addCupola(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addEquipment(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
@@ -1209,7 +1213,7 @@ function addPL01RemoteWeaponStation(P: PolishBuilderPort, context: PL01BuildCont
       cx - 0.28, roofEquipmentY(1.085), cz - 0.02);
     const crowsGun = FITTINGS.pintleMG({
       mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.78,
-      elev: 0.05, ammo: false, shield: false, seed: 1058,
+      elev: 0.05, ammo: true, shield: 'armored', remoteControlled: true, seed: 1058,
     });
     crowsGun.name = 'pl01_105_crows_weapon';
     crowsGun.position.set(cx, turretRoofLocalY + 0.16, cz + 0.06);
@@ -1394,6 +1398,10 @@ function buildPL01(P: PolishBuilderPort): void {
   addPL01RemoteWeaponStation(P, context);
   addPL01RoofSuite(P, context);
   addPL01Gun(P, context);
+  if (context.is105) {
+    addEscortFieldKit(P,ESCORT_FIELD_KITS.pl01_105);
+    addPL01FieldTurret(P,context.turretRoofLocalY);
+  }
 }
 
 export const POLAND_PROFILES = {

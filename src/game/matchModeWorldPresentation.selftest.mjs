@@ -282,7 +282,7 @@ assert.equal(pickupMarkers.every(Boolean), true);
 assert.equal(pickupMarkers.every((marker) => !marker.visible), true,
   'new pickup pool starts hidden');
 const [cage, shellGroup, healGroup, cacheIcon] = pickupMarkers[0].children;
-assert.equal(pickupMarkers[0].children.length, 4, 'cage, shells, cross and the cache icon');
+assert.equal(pickupMarkers[0].children.length, 6, 'cage, shells, cross, cache icon, supply crate and parachute');
 assert.equal(cacheIcon.isSprite, true);
 assert.equal(cage.geometry.type, 'OctahedronGeometry');
 assert.equal(cage.material.wireframe, true);
@@ -295,6 +295,15 @@ assertBasicMaterial(shellGroup.children[0].material, AMBER, 1, 'pickup shells ma
 assert.equal(healGroup.children.length, 2);
 assert.equal(healGroup.children.every((part) => part.geometry.type === 'BoxGeometry'), true);
 assertBasicMaterial(healGroup.children[0].material, HEAL, 1, 'pickup heal material');
+
+view.update({...base,id:'ac130',pickups:[{id:'drop',kind:'ammo',x:0,y:80,z:0,airDrop:true,groundY:1.2,active:true}]},3);
+assert.equal(pickupMarkers[0].userData.parachute.visible,true);
+assert.equal(pickupMarkers[0].userData.crate.visible,true);
+assert.equal(pickupMarkers[0].userData.cage.visible,false);
+assert.equal(pickupMarkers[0].position.y,80,'airdrop does not bob');
+view.update({...base,id:'ac130',pickups:[{id:'drop',kind:'ammo',x:0,y:1.2,z:0,airDrop:true,groundY:1.2,active:true}]},6);
+assert.equal(pickupMarkers[0].userData.parachute.visible,false,'canopy disappears on landing');
+assert.equal(pickupMarkers[0].rotation.y,0,'ground crate does not spin');
 
 view.update({
   ...base,

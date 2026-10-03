@@ -105,7 +105,7 @@ export function stepAerial(entity: AerialEntity, timeS: number, dt: number, next
     flight.shell = null; v.active = false; v.launching = false; flight.readyAt = timeS + rules.cooldownS;
   } else if (toggle && !flight.shell && timeS >= flight.readyAt) {
     launchOrigin(entity, flight.launch);
-    const launchYaw=entity.state.yaw+(entity.spec && !entity.spec.armor.turretless ? entity.state.turretYaw??0 : 0);
+    const launchYaw=entity.state.yaw+(entity.spec && missionAttachmentFor(entity.spec).frame==='turret' ? entity.state.turretYaw??0 : 0);
     direction.set(Math.sin(launchYaw), .4, Math.cos(launchYaw)).normalize();
     const shell = createShell(DRONE_WARHEAD, entity.id, !!entity.isPlayer, flight.launch, direction, nextId());
     shell.gravityMps2 = 0; shell.vel.set(0,0,0);
