@@ -126,9 +126,10 @@ export function resolveWeaponReport(caliberMm: number, soundProfile: string | nu
 // ---------------------------------------------------------------- reloads ---
 
 export type ReloadCueType =
-  | 'caseEject' | 'breechOpen' | 'shellGrab' | 'ram' | 'chargeRam' | 'breechClose'
+  | 'caseEject' | 'breechOpen' | 'ammoDoorOpen' | 'shellGrab' | 'ammoDoorClose' | 'ram' | 'chargeRam' | 'breechClose'
   | 'carouselTurn' | 'cassetteLift' | 'chainRam' | 'stubEject'
-  | 'bustleIndex' | 'clipIndex' | 'feedClank' | 'magazineSwap' | 'tubeLoad' | 'latch';
+  | 'bustleIndex' | 'clipIndex' | 'drumRotate' | 'drumLoad' | 'feedClank' | 'magazineSwap'
+  | 'tubeLoad' | 'launcherRaise' | 'latch';
 
 interface ReloadCue {
   readonly at: number;
@@ -163,9 +164,13 @@ export function resolveReloadCuePlan(
   const late = (seconds: number, floor: number): number => Math.max(floor, 1 - seconds / total);
   const early = (seconds: number, ceil: number): number => Math.min(ceil, seconds / total);
   if (kind === 'magazine') {
+    // A drum refill: the drum turns to its first empty chamber, the loader feeds
+    // the rounds in one by one, the drum indexes to the first and the breech closes.
     return plan('magazine', [
-      { at: 0.02, type: 'magazineSwap' }, { at: 0.35, type: 'bustleIndex' },
-      { at: 0.65, type: 'bustleIndex' }, { at: late(0.25, 0.85), type: 'breechClose' },
+      { at: 0.03, type: 'drumRotate' },
+      { at: 0.14, type: 'drumLoad' }, { at: 0.3, type: 'drumLoad' },
+      { at: 0.46, type: 'drumLoad' }, { at: 0.62, type: 'drumLoad' },
+      { at: late(0.5, 0.72), type: 'drumRotate' }, { at: late(0.22, 0.86), type: 'breechClose' },
     ]);
   }
   if (kind === 'intraClip') {
@@ -180,7 +185,8 @@ export function resolveReloadCuePlan(
   }
   if (loader === 'missile') {
     return plan('missile', [
-      { at: 0.05, type: 'tubeLoad' }, { at: late(0.4, 0.7), type: 'tubeLoad' }, { at: late(0.12, 0.88), type: 'latch' },
+      { at: 0.05, type: 'tubeLoad' }, { at: late(0.4, 0.7), type: 'tubeLoad' },
+      { at: late(0.25, 0.8), type: 'launcherRaise' }, { at: late(0.12, 0.88), type: 'latch' },
     ]);
   }
   if (loader === 'carousel') {
@@ -202,10 +208,15 @@ export function resolveReloadCuePlan(
     ]);
   }
   const caliber = Math.max(12, Number(caliberMm) || 100);
+  // The loader's cycle: the breech drops open, the case is thrown out, the
+  // ready-rack door slides open, a round comes out, the door shuts, the round is
+  // rammed home and the breech closes on it.
   const cues: ReloadCue[] = [
     { at: 0.015, type: 'breechOpen' },
     { at: early(0.45, 0.15), type: 'caseEject' },
+    { at: 0.24, type: 'ammoDoorOpen' },
     { at: 0.38, type: 'shellGrab' },
+    { at: 0.5, type: 'ammoDoorClose' },
     { at: late(0.85, 0.66), type: 'ram' },
   ];
   // Separate-loading heavy rounds: a second ram for the propellant charge.

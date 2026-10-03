@@ -1,5 +1,23 @@
-// Estuary channels form a hooked island chain. Three dry radial roads meet
-// at a fishing village; short wet chords expose tanks between cover islands.
+// src/world/maps/mangrove.ts — Mangrove Reach, redesigned 2026-10-02 (maps-and-layouts lane; docs/MAP-LAYOUT-BRIEF.md).
+// The tidal spine and the western creek, the fishing village on its dry island shoulder, the three working landings
+// and the fishery wharf, the hooked fishing lane and its cross tracks, the palette, sky, sea, vegetation, name and id
+// are the map's identity and stay; the battlefield around them is new. The old layout spread 1.7 m of relief over open
+// flats, so sightlines ran long (median 192 m, 26 % of the blocked rays at 300 m or more). Alpha's pad stood in sight
+// of bravo's arc, bravo's sectors had 13-16 % cover, and three compound buildings stood in the carriageway.
+//
+// Reference: the shrimp-farm coast of Ca Mau at the tip of the Mekong Delta: tidal creeks fringed with mangrove, square
+// aquaculture ponds boxed by earth bunds, stilt houses and fishing hamlets along the raised levee roads, and old beach
+// ridges (cheniers) a few metres proud of the flats.
+//
+// The story on the ground: the tidal spine runs north through the map's east-centre and turns west into the creek that
+// wraps the fishing village. The village stands on the dry island shoulder west of the spine, where the fishing lane
+// and the cross tracks meet; its wharf works the creek landing. The delta's old terraces rise gently toward the west
+// and east edges, and pond bunds box the flats on both of them. The bunds give a tank hull-down banks and break the
+// long looks across the ponds. Levees line the spine's banks, broken at the causeways and the landings. Chenier islands
+// screen each deployment: alpha assembles in the south-west, bravo on the northern flats. The landings need lowland
+// relief (the channel receipts pin hillScale at or under 0.25 and microScale at or under 0.3), so the authored
+// landforms carry the relief. The layout is balanced rather than mirrored: the spine and the creek keep their courses,
+// and the three strongpoints and zone-control discs stand within 10 % of equal route distance from both deployments.
 import delta from './delta.ts';
 import { createLakeChannel } from './marshChannel.ts';
 export default {
@@ -14,8 +32,8 @@ export default {
       // The fishing lane follows the dry island shoulder in a hook. Net
       // yards face the landing, and the northern track opens a second exit.
       [[-374, -462], [-290, -290], [-214, -126], [-152, -24], [-114, 26], [-114, 84], [-160, 130], [-204, 214], [-286, 462]],
-      [[-100, -462], [-130, -302], [-68, -138], [2, 16], [108, 170], [234, 314], [342, 462]],
-      [[350, -454], [256, -300], [234, -120], [188, 48], [204, 228], [158, 460]],
+      [[-100, -462], [-130, -302], [-68, -138], [2, 16], [108, 170], [234, 314], [420, 430]],
+      [[350, -454], [256, -300], [234, -120], [188, 48], [204, 228], [300, 460]],
       [[-214, -126], [-82, -186], [54, -160], [198, -174], [234, -120]],
       [[-204, 214], [-160, 130], [-114, 84], [-24, 84], [72, 204], [204, 228]],
     ] },
@@ -42,11 +60,43 @@ export default {
       { kind: 'knoll', x: -92, z: 230, rx: 92, rz: 68, height: 5.2 },
       { kind: 'basin', x: 106, z: -92, rx: 62, rz: 194, height: -2.6, wetScale: 0.2 },
       { kind: 'ridge', x: -276, z: -270, length: 190, width: 58, height: 5.2, yawDeg: 68 },
+      // The chenier islands (old beach ridges) that screen each deployment, and raised islands across the open flats
+      { kind: 'knoll', x: -175, z: -300, rx: 50, rz: 45, height: 7 },
+      { kind: 'knoll', x: 60, z: 335, rx: 55, rz: 40, height: 5, wetScale: 0.2 },
+      { kind: 'knoll', x: -45, z: 348, rx: 42, rz: 30, height: 5, wetScale: 0.2 },
+      // The hard the village landing's boat is hauled up on. The creek's bank blend keeps it a few centimetres proud of
+      // the tide (its natural 10 m reads as about 0.1 m on the bank), enough to keep the beached boat dry at every
+      // terrain seed (riverLandings.ts wants it 5 cm above the water).
+      { kind: 'knoll', x: -143, z: 214.5, rx: 5, rz: 5, height: 10 },
+      { kind: 'knoll', x: -330, z: -200, rx: 70, rz: 60, height: 6 },
+      { kind: 'knoll', x: -300, z: 90, rx: 60, rz: 50, height: 5.5 },
+      { kind: 'knoll', x: 330, z: -250, rx: 70, rz: 60, height: 6 },
+      { kind: 'knoll', x: 310, z: 190, rx: 60, rz: 50, height: 5.5 },
+      { kind: 'knoll', x: 360, z: -60, rx: 55, rz: 50, height: 5 },
+      { kind: 'knoll', x: -260, z: 390, rx: 70, rz: 45, height: 5 },
+      // the old delta terraces: the islands rise gently away from the tidal spine toward each map edge
+      { kind: 'knoll', x: -400, z: 0, rx: 280, rz: 560, height: 8, wetScale: 0.2 },
+      { kind: 'knoll', x: 440, z: 0, rx: 240, rz: 560, height: 8, wetScale: 0.2 },
+      // Aquaculture pond bunds, 2.8 m earth banks, box the open flats on both terraces
+      ...[[310, -330, 260, 0], [310, -200, 260, 0], [360, -40, 160, 0], [310, 120, 260, 0], [330, 260, 220, 0],
+        [230, -320, 160, 90], [340, -180, 240, 90], [340, 240, 180, 90],
+        [-295, 340, 290, 0], [-250, 375, 130, 90], [20, -385, 110, 90], [-320, -370, 140, 90], [-400, 0, 500, 90],
+        [320, 300, 240, 0], [260, 390, 110, 90], [-355, -300, 190, 0], [420, 0, 400, 90], [20, -250, 100, 90],
+        // levees on the spine's banks, broken at the causeways and the working landings
+        [30, -270, 110, 90], [130, -270, 110, 90], [172, -60, 110, 84], [62, -60, 110, 84], [52, 110, 90, 70],
+        [175, 175, 70, 70], [28, 225, 60, 80], [-50, 312, 140, 2],
+      ].map(([x, z, length, yawDeg]) => ({ kind: 'ridge', x, z, length, width: 30, height: 2.8, yawDeg, wetScale: 0.2 })),
     ],
   },
-  spawns: { player: { x: -106, z: -388 }, enemies: [
-    { x: -254, z: 382 }, { x: -170, z: 424 }, { x: -86, z: 380 }, { x: -2, z: 426 },
-    { x: 84, z: 382 }, { x: 168, z: 424 }, { x: 252, z: 388 },
+  layoutBrief: { exceptions: {
+    solidPropsInWater: 'the fishery wharf\'s shed, the planned fishery building that src/world/mangroveFisheryWharf.ts '
+      + 'seats on the village creek landing, stands on its piles at the water\'s edge by design: its annex reaches '
+      + 'over the creek, as it did on the original map',
+  } },
+
+  spawns: { player: { x: -210, z: -390 }, enemies: [
+    { x: 40, z: 380 }, { x: 100, z: 380 }, { x: 160, z: 380 },
+    { x: 10, z: 436 }, { x: 70, z: 436 }, { x: 130, z: 436 }, { x: 190, z: 436 },
   ] },
   splat: {
     ...delta.splat, sourcedPalette: 'monsoon', fieldPatch: 0,
@@ -90,13 +140,15 @@ export default {
       { lakeIndex: 16, shoreAngleDeg: 0 }, // northern creek working bank
     ],
     sourcedPalette: 'delta',
-    plan: ['fishery', 'boatshed', 'marketRow', 'farmhouse', 'compound', 'boatshed', 'market', 'woodshed', 'fishery', 'granary', 'boatshed', 'ruin', 'marketRow', 'farmhouse', 'depot', 'woodshed', 'compound', 'boatshed'],
+    plan: ['fishery', 'boatshed', 'marketRow', 'farmhouse', 'cottage', 'boatshed', 'market', 'woodshed', 'fishery', 'granary', 'boatshed', 'ruin', 'marketRow', 'farmhouse', 'depot', 'woodshed', 'cottage', 'boatshed'],
     destructibleBuildings: ['stilthouse', 'fishershack', 'longhouse', 'fieldhospital'],
     buildingLat: [12, 2], destructibleBuildingLat: [16, 3], sideSkip: 0.18, spacingPad: 7.5,
+    // The three strongpoints stand on the line of equal distance between the deployments: the western fishing
+    // landing below the creek, the stilt watch on the spine's west bank, and the eastern island's aid post.
     tacticalBeats: [
-      { id: 'western-fishing-landing', role: 'brawl', x: -166, z: 90, yawDeg: 90, structure: 'longhouse', redoubt: true, outcrop: { count: 4, radius: 8 }, wreck: true },
-      { id: 'southern-ford-watch', role: 'scout', x: -22, z: -238, yawDeg: -90, structure: 'stilthouse', outcrop: { count: 4, radius: 8 } },
-      { id: 'eastern-relief-island', role: 'support', x: 242, z: 110, yawDeg: -100, structure: 'fieldhospital', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
+      { id: 'western-fishing-landing', role: 'brawl', x: -200, z: 30, yawDeg: 90, structure: 'longhouse', redoubt: true, outcrop: { count: 4, radius: 8 }, wreck: true },
+      { id: 'spine-ford-watch', role: 'scout', x: 50, z: -30, yawDeg: -90, structure: 'stilthouse', outcrop: { count: 4, radius: 8 } },
+      { id: 'eastern-island-aid-post', role: 'support', x: 300, z: -130, yawDeg: -100, structure: 'fieldhospital', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
     ],
     extraKits: ['river'], wallStyle: 'adobe', wallStoneChance: 0.20,
     wallRuns: [[-180, -40, -180, 22, 2], [-178, 124, -116, 124, 2], [-78, 48, -14, 48, 3], [-78, -40, -14, -40, 2], [270, 78, 270, 148, 3], [-58, -268, -58, -204, 2]],

@@ -197,7 +197,9 @@ assert.ok(rayTAt > 0 && shadeAt > rayTAt && shadeAt < extinctionAt, 'the shade l
 assert.ok(aerial.includes('texel.rgb *= cotContactShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );'), 'the alpha channel is the CSM visibility');
 const resetAt = aerial.indexOf('texel.a = 1.0;');
 assert.ok(resetAt > shadeAt && resetAt < aerial.indexOf('gl_FragColor = texel;'), 'the alpha is restored to one before the chain continues');
-assert.match(post, /updateContactShadowUniforms\(aerial\.uniforms, camera, scene, lightFx\.contactShadows\);/, 'per-frame refresh follows the lever');
+// owner 2026-10-02: the vehicle cavity occlusion reads the same sun / ambient uniforms, so they refresh for either lever
+assert.match(post, /updateContactShadowUniforms\(aerial\.uniforms, camera, scene, lightFx\.contactShadows,\s*lightFx\.contactShadows \|\| lightFx\.vehicleOcclusion\);/,
+  'per-frame refresh follows the lever');
 
 const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
 assert.match(lighting, /#define COT_SUN_VIS_CAPTURED 1\nfloat cotSunVis = 1\.0;/, 'the capture marks itself for the alpha write');
@@ -208,6 +210,8 @@ assert.equal(contactShadowSunVisibility(3.0), 1, 'decode: a sunlit opaque pixel'
 assert.ok(near(contactShadowSunVisibility(2.4), 0.4), 'decode: a penumbra pixel');
 assert.equal(contactShadowSunVisibility(1.0), -1, 'decode: an unlit material or the sky is no receiver');
 assert.equal(contactShadowSunVisibility(0.7), -1, 'decode: a grass card (its coverage alpha) is no receiver');
+assert.ok(near(contactShadowSunVisibility(4.4), 0.4), 'decode: a vehicle pixel (4 + v, vehicleOcclusion.ts) keeps its own visibility');
+assert.equal(contactShadowSunVisibility(5.0), 1, 'decode: a sunlit vehicle pixel');
 assert.equal(CONTACT_SHADOW_ALPHA_OPAQUE, 1.5);
 assert.match(CONTACT_SHADOW_GLSL, /texture2D\( tDiffuse, quv \)\.a >= 1\.5000/, 'an occluder must be an opaque lit surface: cards never cast');
 assert.match(CONTACT_SHADOW_GLSL, /float sunVis = cotSunVisOf\( alpha \);\s*if \( sunVis <= 0\.02 \) return 1\.0;/, 'a card or shadowed receiver returns before the normal taps');

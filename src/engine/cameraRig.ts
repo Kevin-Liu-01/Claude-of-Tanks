@@ -19,6 +19,8 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  */
 import * as THREE from 'three';
 import { ImprovedNoise } from 'three/examples/jsm/math/ImprovedNoise.js';
+import { createAerialCamera } from './aerialCamera.ts';
+import type { AerialView } from '../sim/aerialCombat.ts';
 import { createIsometricCamera } from './isometricCamera.ts';
 import { staticMergePartMatrixWorld, staticMergePartsOf } from '../vehicles/staticMergeParts.ts';
 
@@ -120,6 +122,7 @@ interface CameraEntityVisual {
 }
 
 export interface CameraEntity {
+  aerial?: AerialView;
   state: {
     pos: THREE.Vector3;
     yaw: number;
@@ -263,6 +266,7 @@ export function createCameraRig(
   const aimRaycast = deps.aimRaycast || raycast;
   const noise = new ImprovedNoise();
   const isometric = createIsometricCamera(camera, deps);
+  const aerialCamera = createAerialCamera(camera);
   const isIsometric = () => !!deps.getIsometricView?.() && rig.mode === 'ARCADE';
   let wasIsometric = false;
 
@@ -926,6 +930,16 @@ export function createCameraRig(
       const player = getPlayer();
       if (!player) return;
 
+      if (aerialCamera.update(player, camInput, dt)) {
+        cine = null; cursorAimOn = false;
+        camera.getWorldDirection(_rayDir);
+        const aerialHit = aimRaycast(camera.position, _rayDir, 1600);
+        rig.aimDist = aerialHit?.dist ?? 1600;
+        rig.aimPoint.copy(camera.position).addScaledVector(_rayDir, rig.aimDist);
+        player.input?.aimPoint?.copy(rig.aimPoint);
+        applyPlayerVisibility(player, player.aerial?.kind !== 'gunship');
+        return;
+      }
       latchCursorAim(camInput);
 
       if (solveDeathCamera(player, dt)) return;

@@ -44,8 +44,8 @@ const expected = {
   railyard: [2846, 2848, 1899], // 2026-10-01 Cinder Junction redesign (docs/MAP-LAYOUT-BRIEF.md); was [2825, 2785, 1983]
   frontier: [7730, 7594, 8120], // 2026-10-02 Frontier Basin redesign (docs/MAP-LAYOUT-BRIEF.md); was [7905, 7634, 8284]
   fjord: [7357, 7301, 7679],
-  delta: [7742, 7430, 9644],
-  badlands: [3011, 2915, 1920],
+  delta: [8114, 7761, 9770], // 2026-10-02 Jade River Delta redesign (docs/MAP-LAYOUT-BRIEF.md); was [7742, 7430, 9644]
+  badlands: [3013, 2765, 1956], // 2026-10-02 Redrock Divide redesign (docs/MAP-LAYOUT-BRIEF.md); was [3011, 2915, 1920]
   // Native recapture with prior prop code also contains this additional wreck.
   monsoon: [9473, 9215, 12022],
   alpine: [9117, 9044, 8009],
@@ -56,16 +56,16 @@ const expected = {
   blackglass: [3661, 5894, 2333],
   titan_gorge: [2725, 2586, 1230],
   skybridge: [3522, 3725, 2079],
-  polders: [4268, 4025, 3604],
+  polders: [4232, 3998, 3574], // 2026-10-02 Tidegate Polders redesign (docs/MAP-LAYOUT-BRIEF.md); was [4268, 4025, 3604]
   copper_mesa: [2805, 2705, 1984],
   airfield: [3671, 3650, 3173],
   oasis: [2740, 2510, 2031],
   whiteout: [1601, 1467, 875],
   orchard: [4923, 4691, 5160],
   longleaf: [6218, 6021, 7183],
-  mangrove: [5282, 5127, 6502],
+  mangrove: [5377, 5204, 6535], // 2026-10-02 Mangrove Reach redesign (docs/MAP-LAYOUT-BRIEF.md); was [5282, 5127, 6502]
   saltwind: [3811, 3614, 4260], // 2026-10-02 Saltwind Narrows redesign (docs/MAP-LAYOUT-BRIEF.md); was [3629, 3392, 4048]
-  reservoir: [6425, 6300, 7206],
+  reservoir: [6480, 6355, 7309], // 2026-10-02 Highland Reservoir layout-brief revision (docs/MAP-LAYOUT-BRIEF.md); was [6425, 6300, 7206]
   mars: [769, 715, 0],
   moon: [475, 381, 0],
   cliffbridge: [6265, 6435, 5388], // 2026-10-02 Aegis Crossing redesign (docs/MAP-LAYOUT-BRIEF.md); was [5903, 5636, 5243]

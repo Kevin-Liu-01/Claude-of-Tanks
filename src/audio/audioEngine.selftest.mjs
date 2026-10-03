@@ -56,6 +56,8 @@ await audio.warmBattleEvents(['t72b3m', 'leo2a6', 'm1a2', 'bmp2']);
 audio.ambientOn(true);
 for (let i = 0; i < 10; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks); }
 for (let i = 0; i < 6; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+// The battle warm is bounded for the loader; here wait for every decode to land.
+for (let i = 0; i < 1000 && probe.library().pending > 0; i++) await new Promise((resolve) => setTimeout(resolve, 5));
 
 // Vehicle rigs: the occupied hull, near tanks and a far tank with their real powertrains.
 const engines = probe.engineState();
@@ -69,16 +71,30 @@ assert.equal(probe.crewLanguage, 'ru', 'a Russian hull carries a Russian crew');
 assert.ok(fetched.some((p) => p.startsWith('audio/voice/ru/')), 'the national pack loads');
 assert.equal(probe.ambientState().bed, 'amb_urban', 'Steinburg plays its ruined-town scene');
 
+// HDR baseline: a rifle round into the dirt ten metres away, before any gun has fired.
+let since = probe.sfxLog.length ? probe.sfxLog.at(-1).seq : 0;
+bus.emit('shell:expired', { shellId: 90, pos: [6, 0, 8], hitTerrain: true, caliberMm: 7.62 });
+const quietAlone = probe.sfxLog.filter((e) => e.seq > since).find((e) => e.n === 'bullet_dirt');
+assert.ok(quietAlone, 'the rifle round lands');
+
 // Weapons: close report + urban tail near; distant report far; supersonic flyby on a near miss.
 const mark = () => probe.sfxLog.length;
-let since = mark();
+since = mark();
+const oscillatorsBefore = ctx.nodes.filter((n) => n.kind === 'oscillator').length;
 bus.emit('shell:fired', { shellId: 1, shooterId: 'foe', muzzlePos: [-40, 2, 120], dir: [0.316, 0, -0.949], caliberMm: 120, shellType: 'APFSDS', velocityMps: 1650 });
+const oscillatorsAfter = ctx.nodes.filter((n) => n.kind === 'oscillator').length;
 let names = probe.sfxLog.slice(since).map((e) => e.n);
 assert.ok(names.includes('gun_120_close'), `near 120 mm report (${names})`);
 assert.ok(names.includes('tail_urban'), 'the shot rings into the urban tail');
 assert.ok(names.includes('shell_flyby_sabot'), 'the sabot cracks past the listener');
 const close = probe.sfxLog.slice(since).find((e) => e.n === 'gun_120_close');
 assert.ok(close.t > ctx.currentTime + 0.3, 'the report arrives at the speed of sound (126 m ≈ 0.37 s)');
+assert.ok(oscillatorsAfter > oscillatorsBefore, 'a sub-bass thump rides under the cannon');
+const quietSince = probe.sfxLog.at(-1).seq;
+ctx.advance(0.05);
+bus.emit('shell:expired', { shellId: 91, pos: [6, 0, 8], hitTerrain: true, caliberMm: 7.62 });
+const quietAfter = probe.sfxLog.filter((e) => e.seq > quietSince).find((e) => e.n === 'bullet_dirt');
+assert.ok(quietAfter && quietAfter.g < quietAlone.g * 0.5, `small sounds give way to the cannon (${quietAlone.g} → ${quietAfter?.g})`);
 since = mark();
 bus.emit('shell:fired', { shellId: 2, shooterId: 'far', muzzlePos: [0, 2, 700], dir: [1, 0, 0], caliberMm: 30, shellType: 'APFSDS', weaponSound: '2a42' });
 names = probe.sfxLog.slice(since).map((e) => e.n);
@@ -102,7 +118,10 @@ audio.update(1 / 60, listener, tanks);
 // Our own gun, then the reload choreography of a carousel autoloader.
 since = mark();
 bus.emit('shell:fired', { shellId: 3, shooterId: 'me', isPlayer: true, muzzlePos: [0, 2, 3], dir: [0, 0, 1], caliberMm: 125, shellType: 'APFSDS' });
-assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'gun_125_close'));
+names = probe.sfxLog.slice(since).map((e) => e.n);
+assert.equal(probe.sfxLog.slice(since).find((e) => e.n === 'gun_own_large')?.b, 'ownCombat', `our own gun has its own report, on the gunfire channel (${names})`);
+assert.ok(!names.includes('gun_125_close'), 'our report replaces the close bank everyone else hears');
+assert.ok(names.includes('gun_recoil_mech'), 'the breech recoils and runs back into battery');
 assert.equal(probe.busGains().concussion, 0, 'our own gun never concusses its crew');
 since = mark();
 for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.95]) bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 7 * (1 - progress), progress });
@@ -111,6 +130,12 @@ names = probe.sfxLog.slice(since).map((e) => e.n);
 for (const id of ['case_eject_stub', 'autoloader_carousel', 'autoloader_lift', 'autoloader_chain_ram', 'breech_close', 'latch_ready']) {
   assert.ok(names.includes(id), `carousel reload plays ${id} (${names})`);
 }
+since = mark();
+for (const progress of [0, 0.1, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95]) { ctx.advance(0.6); bus.emit('player:reload', { total: 6, kind: 'magazine', caliberMm: 120, t: 6 * (1 - progress), progress }); }
+bus.emit('player:reload', { total: 6, kind: 'magazine', caliberMm: 120, t: 0, progress: 1, done: true });
+names = probe.sfxLog.slice(since).map((e) => e.n);
+assert.equal(names.filter((n) => n === 'drum_load_round').length, 4, `a drum refill feeds its rounds in one by one (${names})`);
+assert.ok(names.includes('drum_rotate') && names.at(-1) === 'latch_ready', 'the drum indexes and the gun locks ready');
 
 // Being hit: exterior impact + interior response + a crew call in Russian.
 for (let i = 0; i < 200 && !probe.voicesLoaded; i++) await new Promise((resolve) => setTimeout(resolve, 5));
@@ -152,12 +177,14 @@ for (let i = 0; i < 180; i++) {
 names = probe.sfxLog.slice(since).map((e) => e.n);
 assert.ok(names.filter((n) => n === 'gun_limit').length <= 2, `a flickering gun stop clunks at most twice in 3 s (${names.filter((n) => n === 'gun_limit').length})`);
 assert.equal(names.filter((n) => n === 'turret_stop').length, 0, 'a hunting servo never clunks');
+assert.equal(names.filter((n) => n === 'turret_start').length, 0, 'nor starts the drive');
 since = mark();
 for (let i = 0; i < 30; i++) { me.state.turretYawRate = 0.4; ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks); }
 me.state.turretYawRate = 0;
 ctx.advance(1 / 60);
 audio.update(1 / 60, listener, tanks);
 assert.equal(probe.sfxLog.slice(since).filter((e) => e.n === 'turret_stop').length, 1, 'a half-second slew ends in one stop clunk');
+assert.equal(probe.sfxLog.slice(since).filter((e) => e.n === 'turret_start').length, 1, 'and began with one drive start');
 me.state.atGunLimit = false;
 
 // Destruction: an ammo-rack kill by us → blast, turret, cook-off, kill confirm.
@@ -165,9 +192,10 @@ since = mark();
 ctx.advance(10);
 bus.emit('tank:destroyed', { id: 'foe', killerId: 'me', pos: [-40, 0, 120], cause: 'ammorack' });
 names = probe.sfxLog.slice(since).map((e) => e.n);
-for (const id of ['tank_explode_ammo', 'debris_metal', 'turret_land', 'cookoff_loop', 'ui_kill']) assert.ok(names.includes(id), `${id} on an ammo-rack kill (${names})`);
-ctx.advance(0.4);
-audio.update(1 / 60, listener, tanks.filter((t) => t.id !== 'foe'));
+for (const id of ['tank_explode_ammo', 'debris_metal', 'turret_land', 'cookoff_loop']) assert.ok(names.includes(id), `${id} on an ammo-rack kill (${names})`);
+assert.ok(!probe.sfxLog.slice(since).some((e) => e.b === 'ui'), 'the target going up confirms the kill, not an interface sound');
+// The crew calls it once they have seen it go up, about half a second later.
+for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(1 / 60, listener, tanks.filter((t) => t.id !== 'foe')); }
 assert.ok(['target_destroyed', 'double_kill'].includes(probe.voiceLog.at(-1)?.id), `kill confirm (${probe.voiceLog.at(-1)?.id})`);
 assert.ok(!probe.engineState().some((e) => e.id === 'foe'), 'the dead tank stops idling');
 
@@ -184,6 +212,38 @@ bus.emit('ui:volumes', { concussion: false });
 bus.emit('shell:hit', { shellId: 6, pos: [3, 0, 3], kind: 'he_splash', targetId: 'ally', attackerId: 'foe', damage: 0, caliberMm: 152, targetHpAfter: 1000 });
 assert.equal(probe.busGains().concussion, 0, 'the concussion setting turns it off');
 bus.emit('ui:volumes', { concussion: true });
+
+// Our hits are confirmed by the world, not an interface marker: the impact at the target from
+// its bearing and distance (the distant bank beyond a few hundred metres, carried further than
+// anyone else's hit), then the gunner's call once the crew has seen it land.
+settle(4);
+since = mark();
+bus.emit('shell:hit', { shellId: 7, pos: [0, 1.5, 700], kind: 'pen', targetId: 'far', attackerId: 'me', damage: 300, caliberMm: 125, targetMaxHp: 1000, targetHpAfter: 700 });
+const hit = probe.sfxLog.slice(since);
+const ourFar = hit.find((e) => e.n === 'impact_far_pen');
+assert.ok(ourFar, `a 700 m penetration is the distant crack (${hit.map((e) => e.n)})`);
+assert.ok(!hit.some((e) => e.n === 'pen_heavy'), 'no close-up tearing metal from 700 m');
+assert.ok(ourFar.t > ctx.currentTime + 1.8, 'heard when its sound arrives (700 m is about 2 s)');
+assert.ok(!hit.some((e) => e.b === 'ui'), 'no interface hit marker');
+since = mark();
+bus.emit('shell:hit', { shellId: 8, pos: [0, 1.5, 700], kind: 'pen', targetId: 'far', attackerId: 'ally', damage: 300, caliberMm: 125, targetMaxHp: 1000, targetHpAfter: 400 });
+const theirFar = probe.sfxLog.slice(since).find((e) => e.n === 'impact_far_pen');
+assert.ok(theirFar && theirFar.g < ourFar.g * 0.5, `our own hit carries further than an ally's (${ourFar.g} vs ${theirFar?.g})`);
+for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(0.25, listener, tanks); }
+assert.equal(probe.voiceLog.at(-1)?.id, 'penetration', 'the gunner calls the penetration');
+
+// A main-gun miss is called too: "short" when the round came down before the enemy it was laid
+// on (the line's second take), a plain "miss" when it went over.
+const miss = (shellId, landedZ) => {
+  settle(9);
+  bus.emit('shell:fired', { shellId, shooterId: 'me', muzzlePos: [0, 2, 3], dir: [0, 0, 1], caliberMm: 125, shellType: 'APFSDS' });
+  ctx.advance(0.3);
+  bus.emit('shell:expired', { shellId, shooterId: 'me', pos: [0, 0, landedZ], hitTerrain: true, caliberMm: 125 });
+  for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(0.25, listener, tanks); }
+  return [probe.voiceLog.at(-1)?.id, probe.voiceLog.at(-1)?.take];
+};
+assert.deepEqual(miss(9, 400), ['miss', 1], 'a round short of the target is called short');
+assert.deepEqual(miss(10, 900), ['miss', 0], 'a round over the target is a plain miss');
 
 // Kill-cam replay: a crisp blast, then debris stretched to the 0.55x replay, all on the cinematic bus.
 since = mark();
@@ -212,11 +272,104 @@ assert.equal(probe.snapshot, 'scoped');
 assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'scope_in'));
 listener.scoped = false;
 
-// Leaving battle tears every world loop down.
+// AC-130: the gunship circling overhead is four turboprops, never a tank on the ground.
+const gunship = tank('gunship', { x: 0, z: 200, team: 'enemy', specId: 'm1a2', nation: 'USA' });
+gunship.state.pos.y = 240;
+gunship.aerial = { kind: 'gunship', active: true, x: 0, y: 240, z: 200 };
+const withGunship = [...tanks, gunship];
+for (let i = 0; i < 6; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, withGunship); }
+// The aircraft set decodes on first sight of one (in a Drone or AC-130 battle, at its start).
+for (let i = 0; i < 6; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+let air = probe.aerialState();
+assert.equal(air.gunships.length, 1, 'the gunship drones overhead');
+assert.ok(air.gunships[0].gain > 0.05, `and carries to the ground (${air.gunships[0].gain})`);
+assert.ok(!probe.engineState().some((e) => e.id === 'gunship'), 'no tank engine or tracks in the sky');
+for (let i = 0; i < 3; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks); }
+assert.equal(probe.aerialState().gunships.length, 0, 'and fades when it is gone');
+
+// Drone: an enemy quadcopter is heard where it flies; ours spins up on our hull, flies on its
+// feed (no world loop for it) and cuts out with the link.
+const drone = { id: 500, shooterId: 'foe', dead: false, spec: { tracer: 'DRONE', type: 'HE' }, pos: { x: 20, y: 25, z: 60 }, vel: { x: 0, y: 0, z: -40 } };
+for (let i = 0; i < 3; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks, [drone]); }
+air = probe.aerialState();
+assert.equal(air.drones.length, 1, 'an enemy drone buzzes');
+assert.ok(air.drones[0].gain > 0.05 && air.drones[0].rate > 1, `close and closing in (${JSON.stringify(air.drones[0])})`);
+drone.dead = true;
+ctx.advance(1 / 60);
+audio.update(1 / 60, listener, tanks, [drone]);
+assert.equal(probe.aerialState().drones.length, 0, 'its buzz ends with it');
+since = mark();
+me.aerial = { kind: 'drone', active: true, x: 0, y: 14, z: 6, batteryS: 40 };
+const ours = { id: 501, shooterId: 'me', dead: false, spec: { tracer: 'DRONE', type: 'HE' }, pos: { x: 0, y: 14, z: 6 }, vel: { x: 0, y: 5, z: 30 } };
+for (let i = 0; i < 3; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks, [ours]); }
+air = probe.aerialState();
+assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'drone_spinup'), 'our drone spins up on the hull');
+assert.equal(air.own?.kind, 'drone', 'and we hear it through its feed');
+assert.equal(air.drones.length, 0, 'not as a drone in the world');
+since = mark();
+me.aerial = { kind: 'drone', active: false, x: 0, y: 2, z: 0, batteryS: 0 };
+ctx.advance(1 / 60);
+audio.update(1 / 60, listener, tanks, []);
+assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'drone_link_lost'), 'the feed dies in a burst of static');
+assert.equal(probe.aerialState().own, null);
+delete me.aerial;
+
+// Gun Game: the crew changes over to the next weapon and calls the load; Infected: a grave sting.
+settle(4);
+since = mark();
+bus.emit('mode:weapon_advanced', { id: 'me', stage: 3, name: '152 mm Howitzer' });
+names = probe.sfxLog.slice(since).map((e) => e.n);
+for (const id of ['breech_open', 'shell_ram', 'breech_close', 'latch_ready']) assert.ok(names.includes(id), `weapon changeover plays ${id} (${names})`);
+for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(0.25, listener, tanks); }
+assert.equal(probe.voiceLog.at(-1)?.id, 'load_he', 'and the loader calls the howitzer round');
+since = mark();
+bus.emit('mode:infected', { id: 'me', team: 'bravo' });
+assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'sting_infected'), 'turned to the infected side');
+
+const buddy = tank('buddy', { x: 4, z: 8, specId: 'leo2a6', nation: 'Germany' });
+for (let i = 0; i < 6; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, [...tanks, buddy]); }
+assert.equal(probe.engineState().find((e) => e.id === 'buddy')?.lod, 'near', 'a tank 9 m away is near, never our own hull');
+assert.equal(probe.engineState().filter((e) => e.lod === 'own').length, 1, 'exactly one own rig');
+
+// Interface sounds: in battle only menus sound, and a control's own 'ui:click' never doubles one.
+since = mark();
+probe.interfaceSound('click', false);
+assert.ok(!probe.sfxLog.slice(since).some((e) => e.b === 'ui'), 'battle controls never click');
+probe.interfaceSound('back', true);
+assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'ui_back'), 'a menu in battle does');
+
+// Leaving battle tears every world loop down — here from the pause menu.
+bus.emit('ui:pause', { on: true });
+audio.update(1 / 60, listener, tanks);
+assert.equal(probe.snapshot, 'paused');
 bus.emit('phase:change', { phase: 'garage' });
 audio.update(1 / 60, listener, tanks);
 assert.equal(probe.engineState().length, 0, 'no rig survives the garage edge');
 assert.equal(probe.snapshot, 'garage');
 assert.equal(probe.ambientState().bed, 'amb_garage');
+// The hangar is indoors: its workshop sounds come from a few metres away.
+const garageFrom = probe.sfxLog.length ? probe.sfxLog.at(-1).seq : 0;
+for (let t = 0; t < 14; t += 0.25) { ctx.advance(0.25); audio.update(0.25, listener, []); }
+const workshop = probe.sfxLog.filter((e) => e.seq > garageFrom && /garage_clank|spot_crane_chain|spot_radio_far/.test(e.n));
+assert.ok(workshop.length > 0 && workshop.every((e) => e.d < 16), `garage spots nearby (${workshop.map((e) => `${e.n}@${e.d}m`)})`);
+// The garage's controls: a tab, then the same press's own 'ui:click' (deduplicated), then a tank card.
+ctx.advance(0.5);
+since = mark();
+probe.interfaceSound('tab', false);
+bus.emit('ui:click', {});
+names = probe.sfxLog.slice(since).map((e) => e.n);
+assert.deepEqual(names.filter((n) => /^ui_/.test(n)), ['ui_tab'], `one sound per press (${names})`);
+ctx.advance(0.2);
+probe.interfaceSound('vehicle', false);
+assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'ui_tank_select'), 'a tank card lifts its tank into place');
+// The next battle does not start under the pause it was left from.
+bus.emit('phase:change', { phase: 'battle' });
+audio.update(1 / 60, listener, tanks);
+assert.equal(probe.snapshot, 'battle', 'a battle left from the pause menu leaves no pause behind');
 
-console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, kill-cam, panning, scope and teardown passed (${probe.sfxLog.length} voices logged)`);
+const lateCtx = createFakeContext({ decode: () => fakeBuffer(1.5) });
+const late = createAudio({ context: lateCtx, getMapId: () => 'urban', getTerrain: () => terrain, tier: 'desktop', initialPhase: 'battle' });
+late.resume();
+assert.ok(globalThis.window.__COT_AUDIO.library().pinned > 100, `adopted mid-battle, the battle set is still warmed and pinned (${globalThis.window.__COT_AUDIO.library().pinned})`);
+
+console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, our hits and misses, kill-cam, panning, scope, aircraft, mode events, interface sounds, rig ownership, late adoption and teardown passed (${probe.sfxLog.length} voices logged)`);

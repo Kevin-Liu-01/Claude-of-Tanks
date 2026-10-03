@@ -170,6 +170,31 @@ props code shaped every layout, and the next maps should start from them:
   replaced the old roll. It fell 69.6 → 65.4 %, 65.8 → 61.5 % and 60.0 → 57.6 % on Frontier Basin, Saltwind Narrows
   and Saltmere Bay, where banks and hedges now stand between the seats. Re-pin that receipt's ceiling from
   before/after rates (Verdant's moved 0.70 → 0.76).
+- **Placed structures and vegetation.** A structure placed after the vegetation pass that needs clear ground (Mangrove
+  Reach's fishery wharf) publishes its footprint through `placedStructureClearances`
+  (`src/world/vegetationClearance.ts`), computed from the same landing and pose its placement uses
+  (`src/world/fisheryWharfSite.ts`). Trees and bushes keep off it. Every other map's vegetation stayed byte-identical
+  on desktop and phone.
+- **Rubble on dry ground.** Street rubble never takes a seat on the water mask.
+- **Tidal maps keep lowland relief.** Where river landings stand, the channel receipts pin `hillScale` at or under 0.25
+  and `microScale` at or under 0.3, and the lake bank blend flattens any landform beside a channel (a 10 m knoll reads
+  as about 0.1 m on the bank). The relief comes from authored landforms away from the water: pond bunds, levees broken
+  at the crossings, and chenier islands.
+- **Planned buildings face their road.** A `compound` plan entry has no frontage axis and can stand in the
+  carriageway. A map rebuilt to the brief plans frontage buildings (cottages, farmhouses) and takes the road-site law in
+  `src/world/props.ts`.
+- **Marine structures.** A wharf seated on its landing stands over the water by design; the map names it as a
+  `solidPropsInWater` exception.
+- **Canyon maps.** On Redrock Divide the canyon (`src/world/redrockCanyon.ts`) stays the regional terrain, and the
+  authored landforms are floor features: inselbergs, dune ridges and sand ramps. `mapQuality` checks that each one
+  stands on the canyon floor. An inselberg is a steep dome with `corridorScale: 1`, so a deployment corridor that
+  crosses it leaves it whole and the bots drive round it.
+- **Aprons are paved.** A hardstand paints the road mask, so a zone apron reads as packed track surface. Seat one
+  where such ground belongs: a square, a farmyard, a depot's vehicle park.
+- **Braided rivers.** A river that splits round a char is authored as trails: the main course and each branch, whose
+  ends join the main course. environmentExpansion checks each trail's continuity and the joins (Jade River Delta).
+- **Cross-road ends.** Start a cross road on a node of the road it meets, as Delta's cross road starts on the west
+  road's node. Left to the endpoint completion, the extension met the other road 1.7 m lower and climbed to it at 29 %.
 - **Budget.** All three pilots exceed point 10's 10 % triangle budget. The coordinator approved this for PR #9 on
   October 2, 2026, pending the owner. The extra triangles are content the brief wants. Trimming goes to frame-time
   work, such as shadow caching and LOD for parapets and wire, rather than to removing content. Whole-map prop

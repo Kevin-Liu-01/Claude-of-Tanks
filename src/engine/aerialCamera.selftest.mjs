@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { PerspectiveCamera, Vector3 } from 'three';
+import { createAerialCamera } from './aerialCamera.ts';
+const camera=new PerspectiveCamera(),rig=createAerialCamera(camera);
+const e={aerial:{kind:'gunship',active:true,launching:false,x:0,y:240,z:90,yaw:0,pitch:0,batteryS:0,cooldownS:0},input:{aimPoint:new Vector3()}};
+const input={mouseDX:0,mouseDY:0,wheel:0};
+rig.update(e,input,1/60);const focus=e.input.aimPoint.clone();
+e.aerial.x=90;e.aerial.z=0;rig.update(e,input,1/60);
+assert.ok(e.input.aimPoint.distanceTo(focus)<1e-8,'orbit preserves chosen ground target');
+input.mouseDX=100;rig.update(e,input,1/60);assert.ok(e.input.aimPoint.distanceTo(focus)>10,'mouse pans the gimbal over the map');
+input.mouseDX=0;input.wheel=1;rig.update(e,input,1/60);assert.ok(camera.fov<55,'zoom-in input magnifies');
+e.aerial.active=false;assert.equal(rig.update(e,input,1/60),false);assert.equal(camera.fov,60,'return clears flight camera');
+console.log('aerialCamera: stable orbital targeting, mouse pan, zoom and exit passed');

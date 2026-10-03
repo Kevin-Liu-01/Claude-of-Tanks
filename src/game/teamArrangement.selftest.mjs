@@ -36,10 +36,16 @@ assert.deepEqual(Object.keys(JSON.parse(memory.get(TEAM_ARRANGEMENT_STORAGE_KEY)
 // sides (owner 2026-09-18): Standard arranges its sides too, and one sides setting serves every symmetric mode
 assert.deepEqual(writeTeamArrangement('standard', { allies: 0 }, storage), { allies: 0, enemies: null, waveSize: null, enemyNation: null },
   'Standard arranges its sides');
-assert.deepEqual([...SIDES_MODES], ['standard', 'capture_the_flag', 'zone_control', 'turbo_ball', 'mars'], 'Mars mode (2026-09-18) is a symmetric mode: the sides switch applies');
+// The six battle modes (2026-10-02) take the sides setting too: Realistic, Gun Game and Drone are team
+// against team, and Juggernaut's hunters, Infected's survivors and the AC-130's ground force are sized from it.
+assert.deepEqual([...SIDES_MODES],
+  ['standard', 'capture_the_flag', 'zone_control', 'turbo_ball', 'mars', 'juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'ac130'],
+  'Mars mode (2026-09-18) and every non-wave mode take the sides switch');
 writeTeamArrangement('turbo_ball', { enemyNation: 'japan' }, storage);
 assert.deepEqual(writeSides({ allies: 13, enemies: 14 }, storage), { allies: 13, enemies: 14 });
-for (const mode of SIDES_MODES) assert.equal(readTeamArrangement(mode, storage).allies, 13, `${mode}: shares the sides setting`);
+// Each mode clamps the shared setting to its own range: the AC-130 reserves two to eight vulnerable ground escorts.
+for (const mode of SIDES_MODES) assert.equal(readTeamArrangement(mode, storage).allies, mode === 'ac130' ? 8 : 13, `${mode}: shares the sides setting`);
+assert.equal(readTeamArrangement('ac130', storage).enemies, 14, 'the AC-130 ground force takes the shared hostile count');
 assert.equal(readTeamArrangement('turbo_ball', storage).enemyNation, 'japan', 'a mode keeps its own nation');
 assert.equal(readTeamArrangement('endless_horde', storage), null, 'the wave modes are untouched by the sides switch');
 assert.deepEqual(readSides(storage), { allies: 13, enemies: 14 });

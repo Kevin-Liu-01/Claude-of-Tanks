@@ -486,6 +486,17 @@ resolved depth and blended into the CSM visibility the opaque lit materials writ
 through the CSM shader patch (`engine/groundBounce.ts`), and quarter-resolution sun shafts and a lens flare
 (`engine/sunShafts.ts`, `engine/lensFlare.ts`) written into one light target the grade adds before its tonemap; the
 pass order above is unchanged and no full-resolution pass was added.
+Vehicle form in shade (2026-10-02): the vehicle readability floors (`vehicles/materials.ts`) aim a shaded plate's
+fill by its world orientation — sky-facing plates most, the sun's bearing a little, a 0.28 lens share kept for
+readability — rather than by how squarely it faces the lens; indirect light falls toward the ground along each
+vehicle's own up axis (× 0.66 at the hull bottom, back to 1 at 1.75 m) through one shared ground reference that every
+vehicle mesh points at its root before it draws (`tankFactoryCore.ts`); and a fifth light lever, `vehicleOcclusion`
+(`engine/vehicleOcclusion.ts`, ultra/high/medium, `?fx=cavity`), adds a vehicle-only cavity occlusion inside the aerial
+pass — fixed horizon taps against the resolved depth on pixels whose alpha carries the vehicle tag, scaling only the
+ambient share — for bustles, skirts and wheel bays. Scene-wide GTAO stays off. The deep-shade floor lifts the light a
+plate receives, not its output: each texel lands in proportion to its own paint against the map's mean tone (its last
+mip), so a camouflage keeps its light/dark contrast on shaded sides and under canopy (the old lift brought every texel
+to one luminance along its hue, and a desert scheme's dark patches vanished into the base tan).
 Volumetric clouds (round 68, 2026-09-24): on the desktop tier `engine/volumetricClouds.ts` raymarches a per-map cloud
 slab (its layer derived by `engine/cloudPresets.ts` from the map's authored sky block, its noise volumes baked by
 `engine/cloudNoise.ts` in a worker) at one sixteenth of a half-resolution history with a 4 × 4 slot cycle and
@@ -1356,14 +1367,15 @@ per-vehicle layer rig); `weaponAudio.ts` (report class by bore and sound
 profile, reload choreography by loader); `soundCues.ts` (per-asset bus,
 space, level, pitch jitter, caps); `environmentScenes.ts` +
 `ambienceDirector.ts` (per-map beds, layers, positioned spot sounds, gun
-tails, reverb); `voiceLines.ts` + `crewRadio.ts` (crew radio); `procedural.ts`
-(synthesized fallbacks and alarms); `mixPolicy.ts` (every level, snapshot,
-HDR, budget and LOD constant).
+tails, reverb; the garage is an indoor scene whose room tone and workshop
+sounds come from a few metres away); `voiceLines.ts` + `crewRadio.ts` (crew
+radio); `procedural.ts` (synthesized fallbacks and alarms); `mixPolicy.ts`
+(every level, snapshot, HDR, budget and LOD constant).
 
-**Assets.** 347 sound assets (554 variant files, 16 MB WebM/Opus) under
+**Assets.** 366 sound assets (596 variant files, 17 MB WebM/Opus) under
 `public/audio/sfx/<group>/`, described by `sfxManifest.generated.ts`
 (duration, channels, rate, loop points, size). Crew radio: 13 language packs
-× 98 lines (one to four takes each, mostly two; ~1.5 MB per pack) under
+× 97 lines (one to four takes each, mostly two; ~1.5 MB per pack) under
 `public/audio/voice/<lang>/`, described by `voiceManifest.generated.ts`. Both
 are generated offline with ElevenLabs (sound generation `eleven_text_to_sound_v2`;
 speech `eleven_v4` with Voice Library voices), verified (speech-to-text
@@ -1373,26 +1385,42 @@ they never click. Browsers without WebM/Opus decode (Safari < 17.4) fall back
 to the procedural synthesis.
 
 **Mix graph.** `weapons, impacts, environment, vehicles → world sum →
-snapshot lowpass/level → HDR window → voice duck`; `own hull → snapshot
-lowpass/level`; `interior`, `cinematic`, `ambience (ducked under radio)`;
-`ui, music, voice, alarm → pre-master`; then `glue compressor → tanh soft
-clip → master`. Settings channels (`cot.settings.v1`, live via 'ui:volumes':
+snapshot lowpass/level → voice duck`; `own (the occupied hull's engine and
+mechanisms) and ownCombat (its gun, interior report and hits on it) →
+snapshot lowpass/level`; `interior`, `cinematic`, `ambience (ducked under
+radio)`; `ui, music, voice, alarm → pre-master`; then `glue compressor (12 ms
+attack, lets transients through) → tanh soft clip → master`. Gunfire leads:
+weapons, impacts and ownCombat run at full level with a low shelf for
+weight, and the constant layers (engines, ambience, radio, interface) sit
+under them. Settings channels (`cot.settings.v1`, live via 'ui:volumes':
 master, engine, combat, ambience, ui, voice, alarmHeartbeat, crewVoice,
-concussion) scale the buses. Snapshots: battle, scoped (the occupied gun and
-engine move to the interior/headset spectrum, world sound dulls), paused,
-killcam (live world ducked, cinematic bus up), spectating, garage. A
-DICE-style HDR window rides the world buses: the loudest recent event sets the
-window top and quieter world sounds below the floor are trimmed or culled, so
-a 152 mm report masks rifle fire the way it does in life. A close blast on
-the occupied hull triggers a concussion (muffle and recovery, optional
-tinnitus; settings toggle).
+concussion) scale the buses; the occupied gun answers to the gunfire channel.
+Snapshots: battle, scoped (the occupied gun and engine move to the
+interior/headset spectrum, world sound dulls), paused, killcam (live world
+ducked, cinematic bus up), spectating, garage; pause and kill-cam end with
+the battle. A DICE-style HDR window: the loudest recent event sets the window
+top; a new voice more than 18 dB below it is trimmed by half the excess (at
+most 12 dB) and one 50 dB below is not started, so a 152 mm report masks
+rifle fire while playing in full itself. A close blast on the occupied hull
+triggers a concussion (muffle and recovery, optional tinnitus; settings
+toggle). Cannons, HE bursts, vehicle explosions and penetrations of the
+occupied hull carry a synthesized sub-bass thump under the samples.
+Hits have no interface marker: the impact at the target (close banks
+crossfading into distant armour-hit banks by range), the target's
+destruction and the gunner's call confirm them, and the listener's own
+rounds are heard landing under a gentler law (`OWN_HIT_FOCUS`: three times
+the reference distance, rolloff at most 0.55, never culled).
 
 **Spatial model.** Distance is measured from the occupied/spectated tank in
 live play (camera pullback must not change range) and from the camera in
 cinematic and garage views; azimuth follows the camera (screen-right is
-`forward × up`). Inverse-distance law with excess attenuation, ISO 9613 air
-absorption lowpass, speed-of-sound delay beyond 18 m, Doppler on passing
-sources, terrain occlusion from seven height samples along the path.
+`forward × up`). Distance law with excess attenuation per cue: gunfire,
+impacts and explosions use a compressed game-mix curve (a cannon at 400 m is
+12 dB down, not 33) so a battle stays audible across the map, while
+small clutter (props, other hulls' brakes and gears, bullet impacts) is
+local and short-ranged. ISO 9613 air absorption lowpass, speed-of-sound
+delay beyond 18 m, Doppler on passing sources, terrain occlusion from seven
+height samples along the path.
 
 **Vehicles.** Eight engine families (`turbine_agt`, `turbine_gtd`,
 `diesel_v12_soviet`, `diesel_two_stroke`, `diesel_v12_modern`,
@@ -1428,20 +1456,37 @@ crew calls; consumables, shell selection, magazine reloads, dry fire,
 auto-aim lock, armor overlay, minimap zoom, spectate, jump, self-right,
 smoke screens, artillery/flak/AA/flyover atmosphere, killcam:begin / done /
 impact / shot / collision (the replay's debris stretches to its 0.55×
-rate), ui:pause, battle phase edges and results, and thirteen match-mode
-events (zones, flags, waves, goals, respawns, pickups).
+rate), ui:pause, battle phase edges and results, and fifteen match-mode
+events (zones, flags, waves, goals, respawns, pickups, Infected conversions,
+Gun Game weapon changeovers).
+
+**Aircraft.** `aerialRig.ts` plays the Drone and AC-130 aircraft: a moving
+loop with distance law, air absorption, pan and Doppler, or the pilot's or
+crew's own perspective. FPV drones fly as shells, so the listener runtime
+passes the live shell list to the audio update; an enemy drone buzzes where it
+flies, ours spins up on our hull and is heard through its band-limited feed
+until it strikes or is recalled. A gunship is a roster tank pinned to its
+orbit: it never gets a tank rig; the ground hears its turboprops overhead and
+its crew the cabin.
 
 **Crew radio.** National crews: a hull speaks its nation's language
 (en-US, en-GB, de, ru, uk, zh, fr, sv, ja, ko, it, pl, he; commander and crew
-voices per nation), or English or the interface language by setting. Radio
-discipline: priority 0–4 with interrupts for survival calls, per-line and
-per-group cooldowns, stale drops, a 0.26 s gap and a two-line queue. Every
-line goes through an intercom chain (a 24 dB/oct 320 Hz–3.4 kHz band, a
-1.9 kHz presence peak, compression, drive, a headset speaker roll-off, a
-static bed and squelch); a damaged radio module narrows the band and adds
-drive, dropouts and interference.
+voices per nation: serious, mature voices reading a terse procedure script
+in a controlled delivery, never cheering or panicked), or English or the
+interface language by setting. Radio discipline: priority 0–4 with
+interrupts for survival calls, per-line and per-group cooldowns, stale
+drops, a 0.8 s gap between calls, a two-line queue, probability gates on
+routine chatter (reloads, allies' kills, autocannon results) and at most one
+spot call per five seconds unless several contacts appear at once. Our
+main-gun results, misses included ("short" by the line's second take when the
+round fell before the enemy it was laid on), are called almost every time,
+half a second after the round lands. Every line goes through an intercom
+chain (a 24 dB/oct 320 Hz–3.4 kHz band, a 1.9 kHz presence peak,
+compression, drive, a headset speaker roll-off, a static bed and squelch); a
+damaged radio module narrows the band and adds drive, dropouts and
+interference.
 
-**Budgets.** Desktop 48 voices with reverb; mobile 24 voices, no convolution
+**Budgets.** Desktop 32 voices with reverb; mobile 16 voices, no convolution
 reverb, assets decoded at 24 kHz with one variant each. The battle set (about
 120–140 MB decoded on desktop, 65–80 MB on mobile) is pinned for the whole
 battle, as are live loops, so a rare sound never meets an evicted buffer;

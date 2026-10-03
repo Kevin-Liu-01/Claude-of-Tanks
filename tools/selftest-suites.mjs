@@ -11,6 +11,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/fleetPassLow.selftest.mjs',
     // 2026-09-29: the three receipts of 0e5fc79e2 sit after the four whole-fleet CPU scans the receipt pins first (runner admission).
     'src/sim/modeConfiguration.selftest.mjs',
+    'src/sim/sixModes.selftest.mjs',
+    'src/sim/droneRecon.selftest.mjs',
+    'src/sim/gunshipEscort.selftest.mjs',
+    'src/sim/gunshipEscortMaps.selftest.mjs',
+    'src/fx/droneMotion.selftest.mjs',
+    'src/engine/aerialCamera.selftest.mjs',
+    'src/sim/sixModesAuthority.selftest.mjs',
+  'src/mp/host/sixModesMigration.selftest.mjs',
     'src/vehicles/tacticalRoles.selftest.mjs',
     'src/world/maps/earthriseCrossing.selftest.mjs',
     'src/sim/auxiliarySystems.selftest.mjs',
@@ -84,6 +92,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/dragunForwardRoofStock.selftest.mjs',
     'tools/interior-fill-body-policy.selftest.mjs',
     'tools/track-lane-boxes.selftest.mjs',
+    // 2026-10-02: the fleet watertight gate's own controls (the gate itself runs in fleetPassDefault)
+    'src/vehicles/watertightAudit.selftest.mjs',
     'tools/barak-rear-bay-fill-policy.selftest.mjs',
     'src/vehicles/profiles/kurganetsRearDoorStock.selftest.mjs',
     'src/vehicles/profiles/kurganetsBowStock.selftest.mjs',
@@ -494,6 +504,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/fleetSweep.selftest.mjs',
     'tools/code-quality-metrics.selftest.mjs',
     'tools/capture-lock.selftest.mjs',
+    'tools/frame-budget-probe.selftest.mjs',
     'tools/capture-command.selftest.mjs',
     'tools/tank-release-plan.selftest.mjs',
     'src/app/checkedIntegrationPort.selftest.mjs',
@@ -521,6 +532,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // round 69 (2026-09-24): the desktop light effects — policy, contact shadows, ground bounce, sun shafts, lens flare
     'src/engine/postLightFxPolicy.selftest.mjs',
     'src/engine/contactShadows.selftest.mjs',
+    'src/engine/vehicleOcclusion.selftest.mjs',
     'src/engine/groundBounce.selftest.mjs',
     'src/engine/sunShafts.selftest.mjs',
     'src/engine/lensFlare.selftest.mjs',
@@ -760,6 +772,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/atmosphere.selftest.mjs',
     // 2026-10-01: the grounded light model (lighting lane): sun through the atmosphere, the sky's own light, the deck, the exposure law
     'src/engine/lightModel.selftest.mjs',
+    // 2026-10-02 (lighting lane): the materials' scene fog on the battlefield's haze layer
+    'src/engine/fogLayer.selftest.mjs',
     'src/engine/volumetricClouds.selftest.mjs',
     // 2026-10-01 (the clouds-and-skyboxes lane): the layered sky — mid layers, contrails, storm cells, rain, fog banks, lightning, the time of day
     'src/engine/cloudWeatherLayers.selftest.mjs',
@@ -774,6 +788,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/shadowStability.selftest.mjs',
     'src/engine/shadowFitCache.selftest.mjs',
     'src/engine/shadowRefresh.selftest.mjs',
+    'src/engine/shadowStaticCache.selftest.mjs', // 2026-10-02: the static shadow-caster cache (P20)
+    'src/engine/resolutionGovernor.selftest.mjs', // 2026-10-02: the resolution governor's state machine
     'src/engine/shadowPrime.selftest.mjs',
     'src/engine/networkShadowPrimeAdapter.selftest.mjs',
     'src/engine/coveredComposerWarm.selftest.mjs',
@@ -787,6 +803,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/assetLibrary.selftest.mjs',
     'src/audio/crewRadio.selftest.mjs',
     'src/audio/audioEngine.selftest.mjs',
+    'src/audio/interfaceSounds.selftest.mjs',
     'src/audio/listenerPoseRuntime.selftest.mjs',
     'src/mp/wire/wire.selftest.mjs',
     'src/mp/wire/wireFuzz.selftest.mjs',
@@ -824,6 +841,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-exit-e2e.selftest.mjs',
     'tools/mp-p2p-headless.selftest.mjs',
     'tools/mp-world-events-audit.selftest.mjs',
+    // 2026-10-02 (ghost-crunch lane): the audit's ghost findings as deterministic authority → presentation scenarios.
+    'tools/mp-world-events-scenarios.selftest.mjs',
     'tools/sim-determinism-audit.selftest.mjs',
     'tools/mp-p2p-peer.selftest.mjs',
     'tools/mp-p2p-decline.selftest.mjs',
@@ -888,11 +907,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/structureSupport.selftest.mjs',
     'src/sim/rollover.selftest.mjs',
     'src/sim/tankBodyContacts.selftest.mjs',
+    'src/sim/tankBodyRest.selftest.mjs',
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
     'src/sim/spotting.selftest.mjs',
     'src/sim/shellSurface.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
+    'src/sim/botRouteClearance.selftest.mjs',
     'src/sim/botNavigationWater.selftest.mjs',
     'src/sim/navigationLiquidSafety.selftest.mjs',
     'src/sim/bridgeDeckNavigation.selftest.mjs',
@@ -909,6 +930,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.selftest.mjs',
     'src/game/ai.targeting.selftest.mjs',
     'src/game/ai.stalls.selftest.mjs',
+    'src/game/ai.levels.selftest.mjs',
+    'src/game/ai.passiveTarget.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',

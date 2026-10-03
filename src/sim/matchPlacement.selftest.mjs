@@ -158,6 +158,25 @@ for (const mode of ['capture_the_flag', 'zone_control', 'turbo_ball']) {
   assert.equal(roundTrip[center + 1], 0, 'one-way downhill access cannot qualify an objective');
 }
 
+// Objective access follows the route search's own edges (bots lane, 2026-10-02): an edge no hull fits through, and an
+// edge over a cliff between two cell centres, close the objective flood as they close a bot's route. A walled compound
+// whose walls stand between cell centres was reachable straight through them before, and through a 0.6 m gap.
+{
+  const wall = (x0, z0, x1, z1) => ({ min: [x0, 0, z0], max: [x1, 6, z1], kind: 'structure' });
+  const compound = (gapM) => [wall(70, 29, 130, 30), wall(70, -30, 130, -29), wall(129, -30, 130, 30),
+    wall(70, gapM / 2, 71, 30), wall(70, -30, 71, -gapM / 2)];
+  const inside = { x: 100, z: 0 };
+  assert.equal(createObjectiveAccess({ heightField: flat, obstacles: compound(0.6) }, anchors).reachable(inside), false,
+    'a compound whose only way in is a 0.6 m gap holds no objective');
+  assert.equal(createObjectiveAccess({ heightField: flat, obstacles: compound(10) }, anchors).reachable(inside), true,
+    'control: through a 10 m gate the same compound is reached');
+  // an 8 m deep, 2 m wide trench across the field between two rows of cell centres (the cells themselves stand level)
+  const trench = { ...flat, getHeightAt: (_x, z) => (Math.abs(z - 12.5) <= 1 ? -8 : 0),
+    getNormalAt: (_x, z) => (Math.abs(z - 12.5) <= 1.5 ? { y: 0.3 } : { y: 1 }) };
+  const across = createObjectiveAccess({ heightField: trench, obstacles: [] }, anchors);
+  assert.equal(across.reachable({ x: 0, z: 100 }), false, 'a trench no hull climbs out of splits the access as it splits routes');
+}
+
 {
   // round 48 (2026-09-23): the Steppe hint moved with the redesign (the caravanserai forecourt at (60, 90)); the obstacle covers it
   const hinted = build({ mapId: 'steppe', obstacles: [{ min: [52, 0, 82], max: [68, 8, 98] }] }, 'zone_control');

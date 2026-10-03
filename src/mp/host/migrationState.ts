@@ -1,3 +1,4 @@
+import type { NewModeCheckpoint } from '../../sim/authoritativeMatch.ts';
 /**
  * Host migration state (P2 client lane, 2026-09-28; docs/MULTIPLAYER-V2.md §13.2 "Keyframes"): the browser host
  * broadcasts, every ROOM_MATCH_KEYFRAME_INTERVAL_MS, a keyframe of EVERY entity — sealed with AES-GCM under a key
@@ -74,6 +75,7 @@ export async function openMigrationBlob(key: unknown, blob: Uint8Array, crypto?:
 // ------------------------------------------------------------ the keyframe payload: [u32 packet bytes][wire keyframe packet][json extras]
 
 export interface MigrationKeyframe {
+  modeCheckpoint?: NewModeCheckpoint | null;
   tick: number;
   battleTimeMs: number;
   phase: 'countdown' | 'playing' | 'ended';
@@ -83,7 +85,7 @@ export interface MigrationKeyframe {
 
 export function encodeMigrationKeyframe(keyframe: MigrationKeyframe): Uint8Array {
   const packet = encodeMessage(buildSnapshotPacket(keyframe.frame, null));
-  const extras = encoder.encode(JSON.stringify({ tick: keyframe.tick, battleTimeMs: keyframe.battleTimeMs, phase: keyframe.phase, entities: keyframe.entities }));
+  const extras = encoder.encode(JSON.stringify({ tick: keyframe.tick, battleTimeMs: keyframe.battleTimeMs, phase: keyframe.phase, entities: keyframe.entities, modeCheckpoint: keyframe.modeCheckpoint }));
   const out = new Uint8Array(4 + packet.byteLength + extras.byteLength);
   new DataView(out.buffer).setUint32(0, packet.byteLength, true);
   out.set(packet, 4);
@@ -110,7 +112,7 @@ export function decodeMigrationKeyframe(bytes: Uint8Array): MigrationKeyframe {
   const phase = extras.phase === 'countdown' || extras.phase === 'ended' ? extras.phase : 'playing';
   const entities = Array.isArray(extras.entities) ? extras.entities.filter(isExtras) : [];
   if (!Number.isInteger(extras.tick) || typeof extras.battleTimeMs !== 'number') throw new Error('migration keyframe extras invalid');
-  return { tick: extras.tick as number, battleTimeMs: extras.battleTimeMs, phase, frame, entities };
+  return { tick: extras.tick as number, battleTimeMs: extras.battleTimeMs, phase, frame, entities, ...(extras.modeCheckpoint ? { modeCheckpoint: extras.modeCheckpoint as NewModeCheckpoint } : {}) };
 }
 
 // ------------------------------------------------------------ chunking over wire events
@@ -163,6 +165,46 @@ function restoreReload(target: ReloadLike | undefined, remainingS: number, total
 const RELOAD_KINDS = ['ready', 'shell', 'intraClip', 'magazine'] as const;
 
 /**
+ * What an elected seat resumes the match from (MatchSession's migration boot): the newer of the sealed keyframe and its
+ * own newest frame — that frame's rows overlaid on the keyframe's, hidden entities keeping the keyframe's — and every
+ * prop it was told fell. A `world_prop_destroyed` reaches a peer the tick its prop falls; the destroyed list rides the
+ * next snapshot, up to two ticks later. A host that died between the two left the fall in the seat's event queue alone
+ * (fix/mp-migration-props, 2026-10-02: 1 world-events audit run in 3 on the PR head): the new host booted without it,
+ * stood the prop again, a hull crushed it a second time and every peer crunched a tree the old host had felled. The
+ * list is the base's plus those falls, at the base's revision plus one per fall it adds — the old host counted each
+ * when it destroyed it — and never below the list's length (the host actor republishes its list when the revision moves).
+ */
+export function resumeStateFromRetained(
+  keyframe: MigrationKeyframe,
+  keyframeAtMs: number,
+  latest: SnapshotFrame | null,
+  latestAtMs: number | null,
+  fallen: readonly number[],
+): { state: HostResumeState; baseTick: number; baseAtMs: number } {
+  const state: HostResumeState = { ...keyframe };
+  let baseTick = keyframe.tick;
+  let baseAtMs = keyframeAtMs;
+  if (latest && latest.tick > keyframe.tick && latestAtMs !== null) {
+    // What this viewer saw is exact to its newest frame: overlay those rows; hidden entities keep the sealed keyframe's.
+    const rows = new Map(state.frame.entities.map((row) => [row.entityId, row]));
+    for (const row of latest.entities) rows.set(row.entityId, row);
+    state.frame = { ...state.frame, tick: latest.tick, serverTimeMs: latest.serverTimeMs, entities: [...rows.values()].sort((a, b) => a.entityId - b.entityId), destroyed: latest.destroyed, meta: latest.meta, modeStateJson: latest.modeStateJson };
+    state.tick = latest.tick;
+    state.battleTimeMs = latest.meta.battleTimeMs;
+    baseTick = latest.tick;
+    baseAtMs = latestAtMs;
+  }
+  const listed = new Set(state.frame.destroyed);
+  const added = [...new Set(fallen)].filter((index) => Number.isSafeInteger(index) && index >= 0 && !listed.has(index));
+  if (added.length) {
+    const destroyed = [...state.frame.destroyed, ...added].sort((a, b) => a - b);
+    const destructibleRevision = Math.max(state.frame.meta.destructibleRevision + added.length, destroyed.length);
+    state.frame = { ...state.frame, destroyed, meta: { ...state.frame.meta, destructibleRevision } };
+  }
+  return { state, baseTick, baseAtMs };
+}
+
+/**
  * Write a keyframe's rows and extras onto the actor's entities, and its persistent destroyed list onto the actor's world
  * (before the loop starts). Returns how many entities matched, and how many destroyed props this world restored or
  * does not have. Without the list (world state audit, 2026-10-01) the elected host stood every felled tree back up
@@ -171,6 +213,7 @@ const RELOAD_KINDS = ['ready', 'shell', 'intraClip', 'magazine'] as const;
  * until the new revision climbed past the old.
  */
 export function applyResumeState(actor: MatchActor, state: HostResumeState): { restored: number; skipped: number; destroyedRestored: number; destroyedUnknown: number } {
+  if (state.modeCheckpoint) actor.authority.restoreModeCheckpoint(state.modeCheckpoint);
   let restored = 0;
   let skipped = 0;
   const extrasById = new Map(state.entities.map((entry) => [entry.entityId, entry]));

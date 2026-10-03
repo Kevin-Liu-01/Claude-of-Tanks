@@ -19,6 +19,9 @@ import { deinterleave } from './pcm.mjs';
 import { measure, onsets } from './sfx-qa.mjs';
 import { masterTake } from './master.mjs';
 
+/** Exactly one asset's take files (`<id>_<n>.webm|m4a`): never a longer id sharing the prefix. */
+const takeFileOf = (id) => new RegExp(`^${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_\\d+\\.(webm|m4a)$`);
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
 const OUT = join(ROOT, 'public', 'audio', 'sfx');
@@ -46,9 +49,14 @@ function clippedRun(file) {
 }
 
 const PUNCHY = new Set(['weapon-close', 'impact', 'foley', 'ui', 'radio']);
+// Takes judged on low-end weight, and groups judged on staying dark (no bright, jingly takes).
+// Loading machinery is judged on weight plus a clean steel transient: dark, but not dull.
+const WEIGHTY = new Set(['weapon-close', 'weapon-far', 'impact']);
+const DARK_GROUPS = new Set(['ui', 'stingers', 'equipment', 'edge']);
+const MECHANICAL = new Set(['mechanism']);
 
 /** Assets played once per round fired/struck: one report each, never a burst. */
-const SINGLE_SHOT = /^(mg_|ac_\d+_close|ac_far_|bullet_|ricochet_light|radio_key_in)/;
+const SINGLE_SHOT = /^(mg_|ac_\d+_close|ac_far_|ac_own|bullet_|ricochet_light|radio_key_in)/;
 
 /**
  * Cut a single-shot take before its second report (some generations answer a
@@ -80,6 +88,16 @@ function score(m, entry, clip) {
   }
   // Dead air: a "4 s" take whose energy is over in 0.2 s is usually a misfire.
   if (!entry.loop && m.decayS < 0.08) s -= 1;
+  // A clunk or clack is one event, not a rattle of them.
+  if (!entry.loop && entry.proc === 'foley' && (MECHANICAL.has(entry.group) || entry.group === 'vehicle')) s -= 0.15 * Math.max(0, m.onsets - 3);
+  // Weight: a serious war game wants the low end in its guns and blasts, and
+  // nothing bright or jingly in its interface, stings and mechanisms.
+  const [low, lowMid, mid, high] = m.bands || [0, 0, 0, 0];
+  if (WEIGHTY.has(entry.proc)) s += 4 * low - 1.5 * high;
+  else if (MECHANICAL.has(entry.group)) s += 1.5 * (low + lowMid) + 0.5 * mid - 3 * Math.max(0, high - 0.3);
+  else if (DARK_GROUPS.has(entry.group)) s += 1.5 * (low + lowMid) - 3 * high;
+  // A battlefield bed wants body under its air: no take that is all hiss.
+  else if (entry.group === 'ambience' && entry.loop) s += 1.2 * (low + lowMid) - 2 * Math.max(0, high - 0.55);
   return s;
 }
 
@@ -103,7 +121,7 @@ for (const entry of SFX_CATALOG) {
   const chosen = pinned ? pinned.map((t) => ranked.find((r) => r.take === t)).filter(Boolean) : ranked.slice(0, entry.variants);
   const dir = join(OUT, entry.group);
   mkdirSync(dir, { recursive: true });
-  for (const name of readdirSync(dir)) if (name.startsWith(`${entry.id}_`)) rmSync(join(dir, name));
+  for (const name of readdirSync(dir)) if (takeFileOf(entry.id).test(name)) rmSync(join(dir, name));
   const files = [];
   chosen.forEach((pick, i) => {
     const channels = firstShotOnly(deinterleave(readFileSync(pick.file), 2), SR, entry);
@@ -121,6 +139,16 @@ for (const entry of SFX_CATALOG) {
   };
   report[entry.id] = { ranked: ranked.map((r) => ({ take: r.take, s: +r.s.toFixed(2), clip: r.clip, ...r.m })), shipped: files };
   console.log(`${entry.id.padEnd(34)} ${files.length} × [${files.map((f) => `${f.dur}s ${f.mMax ?? f.lufs}LU tp${f.truePeak}`).join(' | ')}] picks ${chosen.map((c) => c.take).join(',')}`);
+}
+
+// An asset dropped from the catalog leaves the manifest and the disk.
+const catalogIds = new Set(SFX_CATALOG.map((entry) => entry.id));
+for (const id of Object.keys(manifest)) {
+  if (catalogIds.has(id)) continue;
+  const dir = join(OUT, manifest[id].g);
+  if (existsSync(dir)) for (const name of readdirSync(dir)) if (takeFileOf(id).test(name)) rmSync(join(dir, name));
+  delete manifest[id];
+  console.log(`${id.padEnd(34)} removed (no longer in the catalog)`);
 }
 
 writeFileSync(join(HERE, '.sfx-manifest.json'), JSON.stringify(manifest, null, 1));

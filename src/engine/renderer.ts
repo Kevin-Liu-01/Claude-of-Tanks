@@ -118,6 +118,7 @@ export function createRenderer(container: HTMLElement): GameRenderer {
   renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft is deprecated in r185
   routeShadowOnlyLayer(renderer);
 
+  renderer.domElement.dataset.battleCanvas = '';
   container.appendChild(renderer.domElement);
   return renderer;
 }

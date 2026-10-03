@@ -32,6 +32,8 @@ const audioBindings = {
   shellFlyby: () => calls.push(['whizz']),
   say: () => calls.push(['radio']),
   logSound: (kind) => calls.push(['log', kind]),
+  // Own main-gun rounds in flight, for the gunner's miss call.
+  ownRounds: new Map(),
   resolveWeaponReport: () => ({ cls: { id: 'gun_120' } }),
   // The route log's range and level fields.
   listenerValid: true,

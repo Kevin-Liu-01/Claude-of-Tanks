@@ -4,7 +4,7 @@ import { isLayoutBriefMap } from './maps/layoutBriefMaps.ts';
 import { createHeightField, createLayout } from './terrain.ts';
 import { roadNetworkComponentCount } from './maps/roadEndpoints.ts';
 import { authoredRoadStationCount, authoredRoadStationIndex } from './maps/roadStations.ts';
-import { redrockCanyonCenter } from './redrockCanyon.ts';
+import { redrockCanyonCenter, redrockCanyonFloorHalfWidth } from './redrockCanyon.ts';
 import {
   HORIZON_TREELINE_ATLAS_VARIANTS,
   HORIZON_TREELINE_MAX_LAYERS,
@@ -88,7 +88,12 @@ function assertAuthoredMacroTerrain(config, hf) {
   assert.equal(config.terrain.redrockCanyon, true, 'Badlands explicitly owns the regional canyon');
   assert.equal(config.terrain.mesas, null, 'blanket random mesas cannot substitute for canyon walls');
   assert.equal(config.terrain.rimH, 0, 'canyon mouths are not closed by a square rim');
-  assert.deepEqual(config.terrain.landforms, [], 'held low shelf rows are not the regional terrain');
+  // 2026-10-02 (Redrock Divide rebuilt to docs/MAP-LAYOUT-BRIEF.md): the canyon stays the regional terrain, and the
+  // authored landforms are floor features (inselbergs, dune ridges and sand ramps), never shelf rows on the walls.
+  for (const form of config.terrain.landforms) {
+    assert.ok(Math.abs(form.x - redrockCanyonCenter(form.z)) < redrockCanyonFloorHalfWidth(form.z),
+      `Badlands' ${form.kind} at (${form.x}, ${form.z}) stands on the canyon floor`);
+  }
   // Check the actual completed heightfield, not just a new configuration label.
   // The dedicated badlandsRelief suite additionally covers two seeds, roads,
   // deployment/tactical footprints, support construction and live-cache parity.
@@ -106,8 +111,12 @@ function assertAuthoredMacroTerrain(config, hf) {
   assert.throws(() => assertAuthoredMacroTerrain(canyon, flat), { code: 'ERR_ASSERTION' }, 'metadata alone is not macro terrain');
   assert.throws(() => assertAuthoredMacroTerrain({ ...canyon, terrain: { ...canyon.terrain, redrockCanyon: false } }, flat),
     { code: 'ERR_ASSERTION' }, 'missing explicit canyon owner is rejected');
-  assert.throws(() => assertAuthoredMacroTerrain({ ...canyon, id: 'frontier' }, flat),
-    { code: 'ERR_ASSERTION' }, 'the other29 maps keep the original five-landform requirement');
+  assert.throws(() => assertAuthoredMacroTerrain({ ...canyon, id: 'frontier',
+    terrain: { ...canyon.terrain, landforms: [] } }, flat),
+  { code: 'ERR_ASSERTION' }, 'the other maps keep the original five-landform requirement');
+  assert.throws(() => assertAuthoredMacroTerrain({ ...canyon, terrain: { ...canyon.terrain,
+    landforms: [{ kind: 'ridge', x: redrockCanyonCenter(0) + 300, z: 0, length: 200, width: 40, height: 6 }] } }, flat),
+  { code: 'ERR_ASSERTION' }, 'a shelf row on the canyon wall is rejected');
 }
 
 // Mars mode (2026-09-18): Olympus Basin joins the catalog

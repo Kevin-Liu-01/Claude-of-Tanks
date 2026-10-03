@@ -4858,6 +4858,84 @@
       "equipment": 3,
       "consumables": true,
       "jump": 9.5
+    },
+    {
+      "id": "juggernaut",
+      "clock": 600,
+      "respawn": 6,
+      "score": null,
+      "speed": 1,
+      "hp": 1,
+      "reload": 1,
+      "ammo": "spec",
+      "equipment": 3,
+      "consumables": true,
+      "jump": null
+    },
+    {
+      "id": "infected",
+      "clock": 420,
+      "respawn": 4,
+      "score": null,
+      "speed": 1,
+      "hp": 1,
+      "reload": 1,
+      "ammo": "spec",
+      "equipment": 3,
+      "consumables": true,
+      "jump": null
+    },
+    {
+      "id": "realistic",
+      "clock": 900,
+      "respawn": null,
+      "score": null,
+      "speed": 1,
+      "hp": 1,
+      "reload": 1,
+      "ammo": "spec",
+      "equipment": 3,
+      "consumables": false,
+      "jump": null
+    },
+    {
+      "id": "gun_game",
+      "clock": 900,
+      "respawn": 4,
+      "score": null,
+      "speed": 1,
+      "hp": 1,
+      "reload": 1,
+      "ammo": "unlimited",
+      "equipment": 3,
+      "consumables": true,
+      "jump": null
+    },
+    {
+      "id": "drone",
+      "clock": 600,
+      "respawn": 6,
+      "score": 20,
+      "speed": 1,
+      "hp": 1,
+      "reload": 1,
+      "ammo": "spec",
+      "equipment": 3,
+      "consumables": true,
+      "jump": null
+    },
+    {
+      "id": "ac130",
+      "clock": 480,
+      "respawn": null,
+      "score": null,
+      "speed": 1,
+      "hp": 1,
+      "reload": 1,
+      "ammo": "unlimited",
+      "equipment": 3,
+      "consumables": false,
+      "jump": null
     }
   ]
 }

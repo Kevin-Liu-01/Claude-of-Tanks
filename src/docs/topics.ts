@@ -87,7 +87,8 @@ export const topics: Record<string, TopicDefinition> = {
     lede: t('docs.topic.audio.lede'),
     hero: '/media/hero-rails-r2/05_coastal-shell-skim.webm',
     icon: 'audio',
-    sectionIcons: ['weapons', 'spatial', 'mix', 'radio', 'replay', 'verification'],
+    // Player-facing guide to the sound engine; docs/AUDIO.md is the engineering source of truth.
+    sectionIcons: ['assets', 'weapons', 'armor', 'loading', 'vehicles', 'radio', 'spatial', 'modes', 'mix'],
     sections: [
       [t('docs.topic.audio.s1.t'), t('docs.topic.audio.s1.p1'), t('docs.topic.audio.s1.p2')],
       [t('docs.topic.audio.s2.t'), t('docs.topic.audio.s2.p1'), t('docs.topic.audio.s2.p2')],
@@ -95,10 +96,13 @@ export const topics: Record<string, TopicDefinition> = {
       [t('docs.topic.audio.s4.t'), t('docs.topic.audio.s4.p1'), t('docs.topic.audio.s4.p2')],
       [t('docs.topic.audio.s5.t'), t('docs.topic.audio.s5.p1'), t('docs.topic.audio.s5.p2')],
       [t('docs.topic.audio.s6.t'), t('docs.topic.audio.s6.p1'), t('docs.topic.audio.s6.p2')],
+      [t('docs.topic.audio.s7.t'), t('docs.topic.audio.s7.p1'), t('docs.topic.audio.s7.p2')],
+      [t('docs.topic.audio.s8.t'), t('docs.topic.audio.s8.p1'), t('docs.topic.audio.s8.p2')],
+      [t('docs.topic.audio.s9.t'), t('docs.topic.audio.s9.p1'), t('docs.topic.audio.s9.p2')],
     ],
     media: [
       ['/media/presentation-r1/04_desert_last_stand.webp', t('docs.topic.audio.media1')],
-      ['/media/showcase-r2/25_live_killcam_xray.webp', t('docs.topic.audio.media2')],
+      ['/media/showcase-r2/19_live_sniper.webp', t('docs.topic.audio.media2')],
     ],
   },
   performance: {
@@ -127,13 +131,15 @@ export const topics: Record<string, TopicDefinition> = {
     lede: t('docs.topic.simulation.lede'),
     hero: '/media/hero-rails-r2/01_desert-ground-rush.webm',
     icon: 'combat',
-    sectionIcons: ['simulation', 'aiming', 'armor', 'weapons', 'modes', 'verification'],
+    sectionIcons: ['simulation', 'aiming', 'armor', 'weapons', 'modes', 'modes', 'aiming', 'verification'],
     sections: [
       [t('docs.topic.simulation.s1.t'), t('docs.topic.simulation.s1.p1'), t('docs.topic.simulation.s1.p2')],
       [t('docs.topic.simulation.s2.t'), t('docs.topic.simulation.s2.p1'), t('docs.topic.simulation.s2.p2')],
       [t('docs.topic.simulation.s3.t'), t('docs.topic.simulation.s3.p1'), t('docs.topic.simulation.s3.p2')],
       [t('docs.topic.simulation.s4.t'), t('docs.topic.simulation.s4.p1'), t('docs.topic.simulation.s4.p2')],
       [t('docs.topic.simulation.s5.t'), t('docs.topic.simulation.s5.p1'), t('docs.topic.simulation.s5.p2')],
+      [t('docs.topic.simulation.roles.t'), t('docs.topic.simulation.roles.p1'), t('docs.topic.simulation.roles.p2')],
+      [t('docs.topic.simulation.flight.t'), t('docs.topic.simulation.flight.p1'), t('docs.topic.simulation.flight.p2')],
       [t('docs.topic.simulation.s6.t'), t('docs.topic.simulation.s6.p1'), t('docs.topic.simulation.s6.p2')],
     ],
     media: [

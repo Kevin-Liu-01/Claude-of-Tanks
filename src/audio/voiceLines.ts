@@ -52,7 +52,7 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   enemy_engine_hit: V(1, 10, 'shot_result', 0.9, 3),
   target_destroyed: V(3, 3.5, 'shot_result', 2.0),
   double_kill: V(3, 20, 'shot_result', 2.0),
-  miss: V(0, 14, 'shot_result', 0.6),
+  miss: V(1, 8, 'shot_result', 0.8, 3.5),
   friendly_fire: V(2, 6, 'team', 1.0),
   // loading
   reloading: V(0, 9, 'gun_cycle', 0.45),
@@ -64,7 +64,6 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   ammo_low: V(1, 45, 'ammo', 1.2),
   ammo_empty: V(1, 6, 'ammo', 1.0),
   ammo_out_all: V(3, 30, 'ammo', 1.2),
-  gun_limit: V(1, 25, 'gun_cycle', 0.6),
   target_locked: V(1, 4, 'gun_cycle', 0.5),
   target_lost: V(1, 6, 'gun_cycle', 0.6),
   // incoming
@@ -132,7 +131,8 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
 });
 
 /** One radio net: a dead-air gap between transmissions and a short queue. */
-export const RADIO_DISCIPLINE = Object.freeze({ gapS: 0.26, queueMax: 2, defaultStaleS: 1.2 });
+/** A disciplined net: one transmission at a time with a breath between calls, two waiting at most. */
+export const RADIO_DISCIPLINE = Object.freeze({ gapS: 0.8, queueMax: 2, defaultStaleS: 1.2 });
 
 /**
  * Which language the crew speaks: the operating nation by default; English

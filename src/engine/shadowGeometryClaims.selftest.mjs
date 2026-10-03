@@ -19,9 +19,10 @@ if (typeof global.gc !== 'function') {
 // without constructing a renderer or exposing production test APIs. Three's
 // real meshes, lights and attributes exercise the same proxy build, per-cascade
 // compaction, upload marking and draw hooks the shadow pass uses.
-const source = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
+// 2026-10-02: the block moved from lighting.ts into its own module (loaded outside the boot entry) unchanged.
+const source = readFileSync(new URL('./shadowCasterProxies.ts', import.meta.url), 'utf8');
 const start = source.indexOf('const SHADOW_CULL_MIN_TRIS =');
-const end = source.indexOf('// --- r6 SHADOW-CASTER RESCUE', start);
+const end = source.indexOf('// --- end of the r8 caster-proxy block', start);
 assert.ok(start >= 0 && end > start, 'the complete production caster-proxy block must be present');
 const actual = stripTypeScriptTypes(source.slice(start, end), { mode: 'strip' });
 const shadows = new Function('THREE', 'markShadowOnly', `${actual}\nreturn {
@@ -177,6 +178,41 @@ assert.deepEqual(Array.from(rec.counts), [1, 2], 'cascade 0 (±50 m) sees x=0; c
   assert.equal(shadows.proxyOf.has(rec.proxies[0] ?? {}), false);
 }
 
+// --- 2026-10-02 (the frame-budget lane): a per-frame update skips a compaction it already holds ---
+{
+  const owner = makeMesh(makeGeometry());
+  const root = new THREE.Group();
+  root.add(owner);
+  owner.updateMatrixWorld(true);
+  const record = shadows.build(owner);
+  const frame = () => { for (const light of lights) light.shadow.needsUpdate = true; shadows.update(lights, root, false); };
+  frame();
+  const versions = () => record.proxies.map((proxy) => proxy.instanceMatrix.version);
+  const first = versions();
+  assert.deepEqual(Array.from(record.counts), [1, 2], 'the first frame compacts');
+  frame();
+  assert.deepEqual(versions(), first, 'a still cascade over an unchanged owner is not copied again');
+  owner.setMatrixAt(2, new THREE.Matrix4().makeTranslation(10, 0, 0));
+  owner.instanceMatrix.needsUpdate = true;
+  frame();
+  assert.deepEqual(Array.from(record.counts), [2, 3], 'an instance write recompacts');
+  assert.ok(versions().every((v, i) => v > first[i]));
+  const afterWrite = versions();
+  owner.geometry.attributes.instanceWeight.needsUpdate = true;
+  frame();
+  assert.ok(versions().every((v, i) => v > afterWrite[i]), 'so does a write to another instanced stream (a fade)');
+  const settled = versions();
+  lights[0].position.x += 200; lights[0].target.position.x += 200; // cascade 0 snaps away from its instances
+  frame();
+  assert.equal(record.counts[0], 0, 'a moved cascade recompacts');
+  assert.ok(versions()[1] === settled[1], 'the cascades that did not move keep their compaction');
+  lights[0].position.x -= 200; lights[0].target.position.x -= 200;
+  frame();
+  assert.equal(record.counts[0], 2);
+  shadows.update(lights, root, true);
+  assert.ok(versions().every((v, i) => v > settled[i] || i === 1), 'priming always recompacts');
+}
+
 // --- memory: a discarded world is collected while its shared library geometry lives on ---
 const nextTask = () => new Promise(resolve => setImmediate(resolve));
 async function requireCollected(refs, label) {
@@ -206,6 +242,18 @@ function buildDiscardedWorld(sharedGeometry) {
   assert.equal(library.get('cached-pole'), shared, 'the shared geometry itself stays strongly alive');
   shadows.update(lights, world, true);
   assert.ok(shadows.owners.every((ref) => ref.deref() !== undefined), 'the per-frame pass prunes dead owners');
+}
+
+// lighting.ts loads the block outside the boot entry and registers the rig's cascades before any hook can meet an
+// owner (an unregistered cascade count builds no proxies and remembers the owner as unproxied)
+{
+  const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(lighting, /^import \{[^}]*\} from '\.\/shadowCasterProxies\.ts';/m, 'no static import pulls the proxies into the entry');
+  assert.match(lighting, /module\.registerCasterCascades\(lights\);[^\n]*\n\s*casterProxies = module;/, 'registration precedes publication');
+  assert.match(lighting, /loadCasterProxies\(csm\.lights\);/);
+  assert.match(lighting, /casterProxies\?\.casterProxyBeforeShadow\(object, shadowCamera\);/);
+  assert.match(lighting, /casterProxies\?\.casterProxyAfterShadow\(object\);/);
+  assert.doesNotMatch(lighting, /const SHADOW_CULL_MIN_TRIS/, 'one copy of the block');
 }
 
 console.log(`shadowGeometryClaims.selftest: caster proxies — gate, per-cascade compaction in owner order, upload ranges, draw hooks (owner/proxy/noCull), rewrites, detached worlds, geometry swap and GC PASS`);

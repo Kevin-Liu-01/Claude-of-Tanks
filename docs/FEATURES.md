@@ -19,7 +19,7 @@ stack, authoring tools, test rigs, and public presentation.
 | Battlefields | 33 authored and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
 | Presentation | Direct Three.js WebGL rendering with adaptive quality |
-| Modes | Regular Battle, Capture the Flag, Zone Control, Turbo Ball, Endless Horde, Frontline Assault (campaign ladder), Gravity Mode; one ruleset per mode; solo, private and LAN deployment |
+| Modes | Regular Battle, Capture the Flag, Zone Control, Turbo Ball, Endless Horde, Frontline Assault (campaign ladder), Gravity Mode, Juggernaut, Infected, Realistic, Gun Game, Drone and AC-130; one ruleset per mode; solo, private and LAN deployment |
 | Platforms | Desktop and mobile browsers |
 | Authoring | Scene Studio and Tank Gallery surface markup |
 | Progression | No currency, experience grind, or tech-tree lock |
@@ -35,7 +35,7 @@ The canonical saved-roster report tracks the same 219 playable records.
 
 ## Battle rules
 
-Six rule sets use the same complete armored-combat simulation, each described
+Thirteen modes share the armored-combat simulation, each described
 by one pure ruleset (`src/sim/matchRuleset.ts`) that the sim, the network
 authority, the HUD and the rule cards all read — see `docs/GAME-MODES.md`. Standard
 Battle is the unchanged elimination game. Capture the Flag adds flag carry,
@@ -49,6 +49,18 @@ harder to sustain; every cleared wave repairs the survivors. Frontline Assault i
 the campaign sortie: take three trench sectors against escalating counter-attacks
 and hold the last one before its clock runs out, across a six-operation ladder
 with rising difficulty, per-operation clocks and stars.
+
+Juggernaut lets the host choose to play the boss or hunt it with allies. Infected
+converts destroyed survivors into faster infected tanks. Realistic keeps every
+tank visible and resolves destruction through crew and ammunition damage rather
+than hull HP. Gun Game advances each player through five weapons, with two kills
+per stage and progression retained across respawns.
+
+Drone adds a physical quadcopter launched from the player's tank and directly
+piloted in first-person with keyboard/mouse or touch controls. The carrier remains
+vulnerable while its drone is airborne. AC-130 replaces ground driving with an
+automatic orbit and downward scope, using a 30 mm cannon, 152 mm explosive howitzer
+and guided missiles. Both flight modes use the shared projectile and damage rules.
 
 The room host selects the rule before ready-up. The choice persists through
 the authoritative lobby handoff and rematches. Objective bots pursue live

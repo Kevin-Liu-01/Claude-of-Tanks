@@ -62,7 +62,7 @@ assert.doesNotMatch(mainSource + worldActivationSource, /north-up-v\d/,
   'callers cannot retain a stale hardcoded raster revision');
 // tactical map 2026-09-15: every raster was re-baked (tone curve, hillshade, union
 // shorelines), so one shared revision invalidates every cache entry at once.
-assert.equal(MINIMAP_RASTER_REVISION, 'north-up-v10-layouts'); // 2026-10-02: one bump for the three layout-redesign plates (round 48: v9)
+assert.equal(MINIMAP_RASTER_REVISION, 'north-up-v11-layouts'); // 2026-10-02: batch 1's four layout-redesign plates (the pilot's three: v10; round 48: v9)
 for (const mapId of MAP_IDS) {
   const revision = MINIMAP_RASTER_REVISION;
   assert.equal(minimapAssetUrl(mapId), `/minimaps/${mapId}.webp?v=${revision}`,
@@ -71,7 +71,7 @@ for (const mapId of MAP_IDS) {
   assert.equal(minimapAssetUrl(mapId, '/game/', 'capture-fixture'),
     `/game/minimaps/${mapId}.webp?v=capture-fixture`, 'explicit capture/test overrides remain honored');
 }
-assert.equal(minimapAssetUrl('test/map name', ''), '/minimaps/test%2Fmap%20name.webp?v=north-up-v10-layouts');
+assert.equal(minimapAssetUrl('test/map name', ''), '/minimaps/test%2Fmap%20name.webp?v=north-up-v11-layouts');
 
 // Exercise the actual nested canvas painters without creating the full HUD,
 // WebGL, DOM, or a second copy of their presentation policy.
@@ -139,12 +139,13 @@ assert.doesNotMatch(glyphSource, /\.rotate\(/, 'objective glyphs never rotate th
 {
   const pool = [];
   const pushLiveBlip = (x, y, yaw, fill, s, a, fixed) => pool.push({ x, y, yaw, fill, s, a, fixed });
-  const pushTankBlip = hudPainter('pushTankMinimapBlip', 'collectMinimapTankBlips', {
+  const blipPainter = (playerRef) => hudPainter('pushTankMinimapBlip', 'collectMinimapTankBlips', {
     worldToMap: (x, z) => projectWorldToMinimap(x, z, worldSize, mapSize, painterPoint),
     pushLiveBlip, spotById: new Map([['enemy', { vis: true, ever: true }]]),
-    PEN_GREEN: '#7ee87e', PEN_RED: '#f05a5a',
+    PEN_GREEN: '#7ee87e', PEN_RED: '#f05a5a', playerRef,
     drawGhostMarker() { assert.fail('a spotted enemy is a live arrow, not a ghost'); }, mmCtx: {},
   });
+  const pushTankBlip = blipPainter({ id: 'me', team: 'player' });
   const stacked = { pos: { x: 100, z: -40 } };
   pushTankBlip({ id: 'ally-1', team: 'player' }, { ...stacked, yaw: 0.4 });
   pushTankBlip({ id: 'ally-2', team: 'player' }, { ...stacked, yaw: 2.9 });
@@ -154,6 +155,14 @@ assert.doesNotMatch(glyphSource, /\.rotate\(/, 'objective glyphs never rotate th
     'co-located tanks put their arrows on exactly the same projected point (they overlap)');
   assert.deepEqual(pool.map((blip) => blip.yaw), [0.4, 2.9, -1.2], 'each arrow keeps its own hull heading');
   assert.deepEqual(pool.map((blip) => blip.fill), ['#7ee87e', '#7ee87e', '#f05a5a']);
+  // Infected turns a player to the other side: allies are whoever shares the player's team now.
+  const converted = blipPainter({ id: 'me', team: 'enemy' });
+  const before = pool.length;
+  converted({ id: 'infected-ally', team: 'enemy' }, { ...stacked, yaw: 0 });
+  converted({ id: 'survivor', team: 'player' }, { ...stacked, yaw: 0 });
+  assert.deepEqual(pool.slice(before).map((blip) => blip.fill), ['#7ee87e'],
+    'after conversion the infected side is green and an unspotted survivor is not drawn');
+  pool.length = before;
 
   // the painter draws every pooled arrow where it was pushed (frame clamp only), player last
   const drawn = [];

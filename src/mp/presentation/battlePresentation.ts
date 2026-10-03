@@ -1,3 +1,5 @@
+import type { AerialView } from '../../sim/aerialCombat.ts';
+import { setModeWeapon } from '../../sim/modeLoadout.ts';
 /**
  * The battle presentation: MatchClient frames and events into the existing
  * renderer, HUD, FX and audio through the surfaces the game already owns —
@@ -21,7 +23,7 @@ import { createTankState, shotRecoilScale } from '../../sim/movement.ts';
 import type { TankState } from '../../sim/movement.ts';
 import { SPECIAL_ACTION_KINDS, createSpecialActionState } from '../../sim/specialActionPolicy.ts';
 import type { SpecialActionState } from '../../sim/specialActionPolicy.ts';
-import { matchRulesetFor } from '../../sim/matchRuleset.ts';
+import { AERIAL_RULES, matchRulesetFor } from '../../sim/matchRuleset.ts';
 import type { MatchRuleset } from '../../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../../sim/matchModes.ts';
 import { createTank, ensureTankBuilder } from '../../vehicles/fleetFactory.ts';
@@ -40,6 +42,8 @@ import type { PredictionWorld } from '../match/prediction.ts';
 import type { EventContext, PresentationAdapter, RosterContext } from './adapter.ts';
 import { createPredictionWorld } from './predictionWorld.ts';
 import type { WorldCollisionLike } from './predictionWorld.ts';
+import { createAuthorityObstacles } from './authorityObstacles.ts';
+import type { ObstacleIdentity } from './authorityObstacles.ts';
 
 type RuntimeValue = {} | null | undefined;
 
@@ -71,6 +75,8 @@ export interface MatchActorInput {
 
 /** One roster entity as the game-side modules see it (the shape of a solo TankEntity). */
 export interface MatchActor {
+  aerial?: AerialView;
+  _modeWeapon?: number | string;
   id: string;
   entityId: number;
   specId: string;
@@ -201,6 +207,13 @@ export interface BattlePresentation extends PresentationAdapter {
   /** Spectators: which team reads as "player" (allies) in the HUD. */
   setPerspective(entityId: number): boolean;
   readonly ownActor: MatchActor | null;
+  /** Whether this world's obstacle list is the authority's index space (false for a world laid out otherwise). */
+  readonly sharesAuthorityIndices: boolean;
+  /**
+   * The authority's obstacle identities by index (its collision manifest), so a world laid out otherwise can read the
+   * persistent destroyed list; the list is applied again with them.
+   */
+  setAuthorityObstacles(identity: (index: number) => ObstacleIdentity | null): void;
 }
 
 const POS_SCALE = 1;
@@ -261,6 +274,8 @@ export function createBattlePresentation({
   let snapshotPhase: number | null = null;
   let appliedDestructibleRevision = -1;
   let appliedDestroyedLength = -1;
+  // which record of this world is the authority's obstacle: its index where this world shares them, else its identity
+  const authorityObstacles = createAuthorityObstacles(worldCollision);
   let lastModeStateJson: string | null = null;
   let lastSmokeJson: string | null = null;
   const lastAuxiliaryJson = new WeakMap<object,string>();
@@ -306,6 +321,8 @@ export function createBattlePresentation({
       _networkPoseReady: false, _networkDestroyed: false, _networkDestroyPop: false, _networkEraSpent: new Set(),
       _lastX: 0, _lastZ: 0,
     };
+    if (game.gameMode === 'ac130' && entry.team === TEAM.ALPHA && !entry.bot) actor.aerial = { kind:'gunship',active:true,launching:false,x:0,y:AERIAL_RULES.gunship.altitudeM,z:AERIAL_RULES.gunship.radiusM,yaw:0,pitch:-1,batteryS:0,cooldownS:0 };
+    if (game.gameMode === 'drone') actor.aerial={kind:'drone',active:false,launching:false,x:0,y:0,z:0,yaw:0,pitch:0,batteryS:0,cooldownS:0};
     actors.set(actor.id, actor);
     actorsByEntity.set(actor.entityId, actor);
     roster.push(actor);
@@ -586,9 +603,10 @@ export function createBattlePresentation({
     appliedDestructibleRevision = revision;
     appliedDestroyedLength = indices.length;
     if (!worldCollision || typeof worldCollision.getObstacles !== 'function') return;
-    const obstacles = worldCollision.getObstacles();
+    // the list carries indices only: a world laid out otherwise reads it through the authority's identities, or not at all
+    if (!authorityObstacles.listReadable) return;
     for (const index of indices) {
-      const obstacle = obstacles[index];
+      const obstacle = authorityObstacles.listed(index);
       if (!obstacle || obstacle.crushed) continue;
       // its event is owed to this presentation: it falls then, live
       if (pending && pending(index)) { appliedDestroyedLength = -1; continue; }
@@ -640,6 +658,35 @@ export function createBattlePresentation({
     if (disposed) return;
     snapshotPhase = frame.meta.phase;
     const own = ownActor();
+    if (frame.modeStateJson !== lastModeStateJson) {
+      lastModeStateJson = frame.modeStateJson;
+      try { game.matchModeState = frame.modeStateJson ? JSON.parse(frame.modeStateJson) as RuntimeValue : null; }
+      catch { game.matchModeState = null; }
+    }
+    const modeView = game.matchModeState as { aerial?: AerialView; missionPayloads?: {id:string;ready:boolean}[]; weaponStage?: { index: number }; weaponStages?: { id: string; index: number }[]; factions?: { id: string; team: string }[] } | null;
+    if (own) {
+      own.aerial = modeView?.aerial;
+      const stage = own.aerial?.kind === 'gunship' ? 'gunship' : modeView?.weaponStage?.index;
+      if (stage !== undefined && stage !== own._modeWeapon) {
+        setModeWeapon(own, stage); own._modeWeapon = stage;
+      }
+    }
+    for(const payload of modeView?.missionPayloads ?? []) {
+      const actor=actors.get(payload.id);
+      if(actor!==own && actor?.aerial?.kind==='drone') actor.aerial.cooldownS=payload.ready?0:1;
+    }
+    for (const entry of modeView?.weaponStages ?? []) {
+      const actor = actors.get(entry.id);
+      if (actor && actor._modeWeapon !== entry.index) { setModeWeapon(actor, entry.index); actor._modeWeapon = entry.index; }
+    }
+    if (modeView?.factions) {
+      for (const faction of modeView.factions) {
+        const actor = actors.get(faction.id); if (!actor) continue;
+        actor.networkTeam = faction.team === 'alpha' ? TEAM.ALPHA : TEAM.BRAVO;
+      }
+      if (own) viewerTeam = own.networkTeam;
+      for (const actor of actors.values()) classify(actor);
+    }
     for (const actor of actors.values()) actor.networkVisible = false;
     for (const sample of frame.entities) {
       const actor = actorsByEntity.get(sample.entityId);
@@ -659,11 +706,6 @@ export function createBattlePresentation({
       bus.emit('auxiliary:smokeScreens', { screens: lastSmokeJson ? JSON.parse(lastSmokeJson) : [] });
     }
     game.preBattleS = frame.meta.phase === PHASE.COUNTDOWN ? frame.meta.countdownMs / 1000 : 0;
-    if (frame.modeStateJson !== lastModeStateJson) {
-      lastModeStateJson = frame.modeStateJson;
-      try { game.matchModeState = frame.modeStateJson ? JSON.parse(frame.modeStateJson) as RuntimeValue : null; }
-      catch { game.matchModeState = null; }
-    }
     applyShells(frame.shells);
     applyDestroyed(frame.destroyed, frame.destructibleRevision, typeof frame.destroyedPending === 'function' ? frame.destroyedPending : null);
     const predicted = frame.viewer.predictedShot;
@@ -791,18 +833,24 @@ export function createBattlePresentation({
         const id = String(payload.id ?? '');
         if (typeof payload.cause === 'string') destructionCause.set(id, payload.cause);
         const actor = actors.get(id);
+        // The authority's death position (ghost-crunch lane, 2026-10-02): the explosion, the wreck's smoke column
+        // (effects.ts lastKnownPos) and the killcam sit where the hull died, not where this frame's interpolated or
+        // predicted pose happens to be — up to one snapshot interval of a fall or a slide away. An older host's event
+        // carries no position: the presented pose stands in.
+        const died = typeof payload.x === 'number' && typeof payload.y === 'number' && typeof payload.z === 'number';
         bus.emit('tank:destroyed', {
           id, specId: actor?.specId, killerId: payload.killerId, cause: payload.cause === 'ammo_rack' ? 'ammorack' : payload.cause,
-          pos: actor ? [actor.state.pos.x, actor.state.pos.y, actor.state.pos.z] : null,
+          pos: died ? [payload.x, payload.y, payload.z] : actor ? [actor.state.pos.x, actor.state.pos.y, actor.state.pos.z] : null,
         });
         return;
       }
       case 'world_prop_destroyed': {
         const index = Number(payload.obstacleIndex);
-        const obstacle = worldCollision?.getObstacles && Number.isSafeInteger(index) && index >= 0 ? worldCollision.getObstacles()[index] : null;
-        // A prop this viewer's world does not have (the mobile tier's lighter world, a world without the manifest) has no
-        // position for the effect: nothing to crush here, nothing to emit (2026-09-30, lane mp/ui-sync-check: a `pos: null`
-        // event threw inside the frame pump on every such crush — combatFeedbackRuntime reads pos[0]).
+        // This world's record of the prop that fell — never another prop in its stead (authorityObstacles.ts). A prop this
+        // viewer's world does not have (the mobile tier's lighter world, a world without the manifest) has no position for
+        // the effect: nothing to crush here, nothing to emit (2026-09-30, lane mp/ui-sync-check: a `pos: null` event threw
+        // inside the frame pump on every such crush — combatFeedbackRuntime reads pos[0]).
+        const obstacle = authorityObstacles.fallen(index, payload);
         if (!obstacle) return;
         // A prop that already fell on this seat — laid down as settled state, or felled by this event's first delivery
         // before a host migration re-sent it — falls once: no second fall, no second crunch (world state audit, 2026-10-01).
@@ -813,7 +861,13 @@ export function createBattlePresentation({
         );
         obstacle.crushed = true;
         bus.emit('prop:crushed', {
+          // what fell, by the authority's index (ghost-crunch lane, 2026-10-02): a position cannot name it — a hedgehog's
+          // crossed beams share one box centre, and an audit that read the effect back from `pos` called the sibling's
+          // crunch a ghost
+          obstacleIndex: index,
           kind: payload.kind, speedMps: payload.speedMps, cause: payload.cause,
+          // the prop's height sizes the splinters and picks the sound, as the solo step's crush event does
+          h: obstacle.max[1] - obstacle.min[1],
           pos: [(obstacle.min[0] + obstacle.max[0]) * 0.5, obstacle.min[1], (obstacle.min[2] + obstacle.max[2]) * 0.5],
           dir: [Number(payload.directionX) || 0, 0, Number(payload.directionZ) || 0],
         });
@@ -907,7 +961,8 @@ export function createBattlePresentation({
 
   function predictionWorld(): PredictionWorld | null {
     const own = ownActor();
-    if (!own || !worldCollision) return null;
+    // Aerial movement belongs to the shared flight simulation, never the ground predictor.
+    if (!own || !worldCollision || game.gameMode === 'ac130' || game.gameMode === 'drone') return null;
     if (predictionWorldCache && predictionWorldSpec === own.spec) return predictionWorldCache;
     predictionWorldSpec = own.spec;
     predictionWorldCache = createPredictionWorld({
@@ -955,6 +1010,11 @@ export function createBattlePresentation({
     endDisconnected,
     setPerspective,
     get ownActor() { return ownActor(); },
+    get sharesAuthorityIndices() { return authorityObstacles.shared; },
+    setAuthorityObstacles(identity: (index: number) => ObstacleIdentity | null): void {
+      authorityObstacles.setIdentities(identity);
+      appliedDestructibleRevision = -1;
+    },
     dispose,
   };
 }
