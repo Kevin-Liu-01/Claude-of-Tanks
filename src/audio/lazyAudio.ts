@@ -29,6 +29,7 @@ interface AudioMixerModule {
     context: AudioContext | null;
     preparedBuffers?: unknown;
     getMapId?: () => string | null;
+    getGameMode?: () => string | null;
     getTerrain?: () => AudioTerrainProbe | null;
     initialPhase?: string;
   }): AudioMixer;
@@ -38,6 +39,7 @@ interface LazyAudioOptions {
   loadMixer?(): Promise<AudioMixerModule | null>;
   createContext?(): AudioContext | null;
   getMapId?(): string | null;
+  getGameMode?(): string | null;
   getTerrain?(): AudioTerrainProbe | null;
   hasStickyActivation?(): boolean;
 }
@@ -132,6 +134,7 @@ function storedMasterVolume(): number {
 
 export function createLazyAudio({
   getMapId,
+  getGameMode,
   getTerrain,
   hasStickyActivation = () => (
     typeof navigator !== 'undefined' && navigator.userActivation?.hasBeenActive === true
@@ -233,7 +236,7 @@ export function createLazyAudio({
         // cue remains active, and phase/intent are read again at handoff.
         const preparedBuffers = context && module.prepareAudioBuffers
           ? await module.prepareAudioBuffers(context) : null;
-        return settleReal(module.createAudio({ context, preparedBuffers, getMapId, getTerrain, initialPhase: latestPhase }));
+        return settleReal(module.createAudio({ context, preparedBuffers, getMapId, getGameMode, getTerrain, initialPhase: latestPhase }));
       }).finally(() => {
         if (!real) realPromise = null;
       });

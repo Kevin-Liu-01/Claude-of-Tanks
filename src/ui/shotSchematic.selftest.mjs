@@ -26,14 +26,14 @@ const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve()
   const warm = section('    warmSchematics(specIds:', '    root,');
   const reset = section('    reset() {', '  };\n  return api;');
   const frames = new Map(), requests = [], cancelled = [];
-  let nextFrame = 1, resets = 0;
+  let nextFrame = 1, resets = 0, toastClears = 0; // main 54372f83d: reset() also clears the grouped incoming toasts
   const surface = { classList: { remove() {} } };
   const bindings = {
     requestAnimationFrame(callback) { const id = nextFrame++; frames.set(id, callback); return id; },
     cancelAnimationFrame(id) { cancelled.push(id); frames.delete(id); },
     schematicUrl(...request) { requests.push(request); return Promise.resolve(null); },
     CARD_TOP_S: 96, CARD_SIDE_W: 184, CARD_SIDE_H: 92,
-    clearReportBuffer() { resets++; }, cardHost: { firstChild: null }, toastHost: { firstChild: null },
+    clearReportBuffer() { resets++; }, clearToasts() { toastClears++; }, cardHost: { firstChild: null }, toastHost: { firstChild: null },
     shotLog: [], allShots: [], receivedLog: [], combatants: new Map(), tg: new Map(),
     endRoster: null, endInfo: null, spotWindow: new Map(), spottedSet: new Set(), spotAttributed: false,
     stats: {}, newStats: () => ({}), logOpen: false, logPanel: surface,

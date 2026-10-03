@@ -23,6 +23,9 @@ export const WRAP_PAD = 4096;
  */
 export const PRESETS = {
   'weapon-close': { mono: true, mMax: -9, peak: -1, maxS: 4.5, tailDb: -54, fadeOutS: 0.14, highpass: 22, opusKbps: 80 },
+  // Gun reports keep their crest: normalised on the true peak with the limiter left above it. Normalising a
+  // crack to a loudness target drives its peak far past full scale, and limiting it back squares it into a blast.
+  gunshot: { mono: true, peakNorm: -1.5, peak: -1, maxS: 3.5, tailDb: -50, fadeOutS: 0.12, highpass: 28, opusKbps: 96 },
   'weapon-far': { mono: true, mMax: -14, peak: -1, maxS: 5.5, tailDb: -50, fadeOutS: 0.25, highpass: 30, opusKbps: 56 },
   tail: { mono: true, mMax: -16, peak: -2, maxS: 4.5, tailDb: -50, fadeOutS: 0.4, fadeInS: 0.03, highpass: 35, opusKbps: 56 },
   impact: { mono: true, mMax: -10, peak: -1, maxS: 6, tailDb: -54, fadeOutS: 0.15, highpass: 25, opusKbps: 80 },
@@ -157,6 +160,50 @@ function writeF32Wav(file, channels, sr) {
   writeFileSync(file, Buffer.concat([header, data]));
 }
 
+/**
+ * A transient designer for gun reports (2026-10-02). Generated reports hold a loud "blast" body for
+ * 0.1–0.3 s where a real gun decays about 20 dB within its first tens of milliseconds. This follows the
+ * take's 2 ms envelope and pulls whatever sustains above a decaying target (the loudest window held for
+ * `holdMs` after the onset, then falling with time constant `tauMs` down to `floorDb` re that window) onto
+ * the target. The crack and everything quieter than the floor (the echo) pass untouched.
+ */
+export function shapeTransient(channels, sr, [holdMs, tauMs, floorDb]) {
+  const n = channels[0].length;
+  const w = Math.max(1, Math.round(0.002 * sr));
+  const sq = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    let v = 0;
+    for (const ch of channels) v = Math.max(v, Math.abs(ch[i]));
+    sq[i] = v * v;
+  }
+  const env = new Float32Array(n);
+  let acc = 0;
+  let top = 0;
+  for (let i = 0; i < n; i++) {
+    acc += sq[i];
+    if (i >= w) acc -= sq[i - w];
+    env[i] = Math.sqrt(Math.max(0, acc) / Math.min(w, i + 1));
+    top = Math.max(top, env[i]);
+  }
+  if (top <= 0) return channels;
+  let onset = 0;
+  while (onset < n && env[onset] < top * 0.1) onset++;
+  const hold = (holdMs / 1000) * sr;
+  const tau = (tauMs / 1000) * sr;
+  const floor = top * Math.pow(10, floorDb / 20);
+  const fall = Math.exp(-1 / (0.0005 * sr));
+  const recover = Math.exp(-1 / (0.012 * sr));
+  let g = 1;
+  for (let i = 0; i < n; i++) {
+    const t = i - onset;
+    const target = t < hold ? Infinity : Math.max(floor, top * Math.exp(-(t - hold) / tau));
+    const want = env[i] > target ? target / env[i] : 1;
+    g = want < g ? fall * g + (1 - fall) * want : recover * g + (1 - recover) * want;
+    for (const ch of channels) ch[i] *= g;
+  }
+  return channels;
+}
+
 /** Momentary-max and integrated loudness of a wav (ffmpeg EBU R128, verbose frame log). */
 export function measureLoudness(file) {
   const res = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-loglevel', 'verbose', '-i', file,
@@ -179,7 +226,7 @@ export function highShare(mono, sr) {
  * Master one take and write `${outBase}.webm` and `${outBase}.m4a`.
  * Returns the manifest facts: duration, loop points, channel count, loudness.
  */
-export function masterTake({ channels, sr, preset, outBase, aac = false }) {
+export function masterTake({ channels, sr, preset, outBase, aac = false, shape = null }) {
   const p = PRESETS[preset];
   if (!p) throw new Error(`unknown preset ${preset}`);
   let work = p.mono && channels.length > 1 ? [foldMono(channels[0], channels[1])] : channels.map((c) => c.slice());
@@ -192,6 +239,7 @@ export function masterTake({ channels, sr, preset, outBase, aac = false }) {
     loop = { start: +padS.toFixed(6), end: +(padS + bodyS).toFixed(6) };
   } else {
     work = trim(work, sr, p);
+    if (shape) work = shapeTransient(work, sr, shape);
     work = fades(work, sr, p.fadeInS ?? 0.0015, p.fadeOutS ?? 0.1);
   }
   const tmp = mkdtempSync(join(tmpdir(), 'cot-master-'));
@@ -204,10 +252,12 @@ export function masterTake({ channels, sr, preset, outBase, aac = false }) {
     const before = measureLoudness(pre);
     // Integrated loudness gates out clips shorter than one 400 ms block; fall
     // back on the momentary maximum (≈ integrated + 3 LU for short speech).
-    const measured = p.integrated != null
-      ? (before.integrated ?? (before.mMax != null ? before.mMax - 3 : null))
-      : before.mMax;
-    const target = p.integrated != null ? p.integrated : p.mMax;
+    const measured = p.peakNorm != null
+      ? before.truePeak
+      : p.integrated != null
+        ? (before.integrated ?? (before.mMax != null ? before.mMax - 3 : null))
+        : before.mMax;
+    const target = p.peakNorm != null ? p.peakNorm : p.integrated != null ? p.integrated : p.mMax;
     const gainDb = measured == null ? 0 : Math.max(-30, Math.min(30, target - measured));
     const ceiling = Math.pow(10, p.peak / 20);
     const outRate = p.sampleRate || 48000;
