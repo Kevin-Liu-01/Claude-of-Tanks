@@ -27,7 +27,7 @@ const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const WADI = [[-450, -30], [-300, -8], [-150, 16], [0, 30], [150, 26], [300, 6], [450, -22]] as const;
 
 // The takyr crusts: the silt flats a flood leaves on the wadi's floor when it dries. Each flat is two to four
-// overlapping shallow lobes of unequal size, offset from the centreline, and the flats lie 38-92 m apart with dry
+// overlapping shallow lobes of unequal size, offset from the centreline, and the flats lie 32-72 m apart with dry
 // gravel between them. 2026-10-03 (maps lane B, gauntlet wave 11): one even 28 m pan every 48 m read from the air as
 // "a bead-chain of opaque, soft-edged white ovals". The lobes are drawn from a fixed-seed generator, so the layout is
 // the same on every build.
@@ -48,7 +48,7 @@ function wadiCrusts(): { x: number; z: number; r: number; dip: number }[] {
   const rnd = (): number => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
   // the crusts stop where the border rim begins to lift (|x| > 470); the basins themselves run on past the edge.
   // Overlapping lobes add their dips, so each lobe is shallow (0.25-0.55 m): crusts, not bogs.
-  for (let x = -450; x <= 450; x += 38 + rnd() * 54) {
+  for (let x = -450; x <= 450; x += 32 + rnd() * 40) {
     const zc = zAt(x) + (rnd() - 0.5) * 16;
     const lobes = 2 + Math.floor(rnd() * 3);
     for (let k = 0; k < lobes; k++) {
