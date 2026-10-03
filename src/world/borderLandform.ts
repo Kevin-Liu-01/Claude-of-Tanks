@@ -260,7 +260,15 @@ export function createBorderLandform(
     return w;
   }
   /** 1 on a leaving road's line, 0 by VALLEY_SIDE_M from it (bounding boxes first: most queries touch no line). */
+  // (valleyAt, enclosureAt and hillsAt keep their last point: one lift asks each of them twice of the same point)
+  let valleyX = Number.NaN, valleyZ = Number.NaN, valleyLast = 0;
   function valleyAt(x: number, z: number): number {
+    if (x === valleyX && z === valleyZ) return valleyLast;
+    valleyX = x; valleyZ = z;
+    valleyLast = valleyDistanceWeight(x, z);
+    return valleyLast;
+  }
+  function valleyDistanceWeight(x: number, z: number): number {
     let best = VALLEY_SIDE_M;
     for (let v = 0; v < valleys.length; v++) {
       const line = valleys[v];
@@ -274,7 +282,14 @@ export function createBorderLandform(
     }
     return 1 - smoothstep(VALLEY_FLOOR_M, VALLEY_SIDE_M, best);
   }
+  let enclosureX = Number.NaN, enclosureZ = Number.NaN, enclosureLast = 0;
   function enclosureAt(x: number, z: number): number {
+    if (x === enclosureX && z === enclosureZ) return enclosureLast;
+    enclosureX = x; enclosureZ = z;
+    enclosureLast = enclosureField(x, z);
+    return enclosureLast;
+  }
+  function enclosureField(x: number, z: number): number {
     const e = noise.noise(x * 0.00082 + 17.3, z * 0.00082 - 41.9) * 0.8 + noise.noise(x * 0.0019 - 5.1, z * 0.0019 + 23.7) * 0.25;
     let a = smoothstep(-0.55, 0.55, e + bias);
     if (valleys.length) a *= 1 - 0.9 * valleyAt(x, z);
@@ -291,7 +306,14 @@ export function createBorderLandform(
     return RIM_AT_PLAYABLE * k * (1 - 0.55 * cornerAt(x, z));
   }
   /** The hills (units of rimH): domain-warped fBm with a ridged share, crests where the field is high. */
+  let hillsX = Number.NaN, hillsZ = Number.NaN, hillsLast = 0;
   function hillsAt(x: number, z: number): number {
+    if (x === hillsX && z === hillsZ) return hillsLast;
+    hillsX = x; hillsZ = z;
+    hillsLast = hillsField(x, z);
+    return hillsLast;
+  }
+  function hillsField(x: number, z: number): number {
     const wx = x + noise.noise(x * 0.0024 + 3.7, z * 0.0024 - 8.1) * 90;
     const wz = z + noise.noise(x * 0.0024 - 12.2, z * 0.0024 + 6.4) * 90;
     const u = wx * inv, v = wz * inv;
@@ -331,15 +353,35 @@ export function createBorderLandform(
   const fieldCos = Math.cos(fieldAngle), fieldSin = Math.sin(fieldAngle);
   const fieldShare = FIELD_LINE_SHARE[settings.crops] ?? FIELD_LINE_SHARE.temperate;
   /** The two families' pitch levels at (x, z): continuous, a pitch line on every whole level. */
+  let fieldX = Number.NaN, fieldZ = Number.NaN, fieldA = 0, fieldB = 0;
   function fieldCoords(x: number, z: number): { a: number; b: number } {
-    const u = x * fieldCos + z * fieldSin, v = z * fieldCos - x * fieldSin;
-    _field.a = (u + 22 * noise.noise(x * 0.0011 + 5.1, z * 0.0011 - 3.7)) / FIELD_PITCH_M;
-    _field.b = (v + 22 * noise.noise(x * 0.0011 - 8.2, z * 0.0011 + 6.6)) / FIELD_PITCH_M;
+    if (x !== fieldX || z !== fieldZ) {
+      // (the ring's attribute passes ask parcel, track and woods of one vertex in turn: the last point is kept)
+      const u = x * fieldCos + z * fieldSin, v = z * fieldCos - x * fieldSin;
+      fieldA = (u + 22 * noise.noise(x * 0.0011 + 5.1, z * 0.0011 - 3.7)) / FIELD_PITCH_M;
+      fieldB = (v + 22 * noise.noise(x * 0.0011 - 8.2, z * 0.0011 + 6.6)) / FIELD_PITCH_M;
+      fieldX = x; fieldZ = z;
+    }
+    _field.a = fieldA; _field.b = fieldB;
     return _field;
   }
   const lineHash = (k: number, family: number): number => fieldHash(k * 1.618 + family * 311.7 + 0.5);
-  const isFieldLine = (k: number, family: number): boolean => lineHash(k, family) < fieldShare[family];
-  const isTrackLine = (k: number, family: number): boolean => lineHash(k, family) < fieldShare[family] * TRACK_LINE_SHARE;
+  // the lines as tables over +-FIELD_K pitches (four times the ring's reach): bit 1 a field boundary, bit 2 a track
+  const FIELD_K = 1024, FIELD_SPAN = 2 * FIELD_K + 1;
+  const lineFlags = [new Uint8Array(FIELD_SPAN), new Uint8Array(FIELD_SPAN)];
+  for (let family = 0; family < 2; family++) {
+    for (let i = 0; i < FIELD_SPAN; i++) {
+      const hash = lineHash(i - FIELD_K, family);
+      lineFlags[family][i] = (hash < fieldShare[family] ? 1 : 0) | (hash < fieldShare[family] * TRACK_LINE_SHARE ? 2 : 0);
+    }
+  }
+  const lineIs = (k: number, family: number, bit: number): boolean => {
+    const i = k + FIELD_K;
+    return i >= 0 && i < FIELD_SPAN ? (lineFlags[family][i] & bit) !== 0
+      : lineHash(k, family) < fieldShare[family] * (bit === 2 ? TRACK_LINE_SHARE : 1);
+  };
+  const isFieldLine = (k: number, family: number): boolean => lineIs(k, family, 1);
+  const isTrackLine = (k: number, family: number): boolean => lineIs(k, family, 2);
   /** The field (between two boundaries) a level lies in: the nearest boundary at or below it. */
   function fieldCell(level: number, family: number): number {
     let k = Math.floor(level);
@@ -387,20 +429,38 @@ export function createBorderLandform(
     return samples[Math.min(samples.length - 1, Math.floor((1 - share) * samples.length))];
   })();
 
+  let woodsX = Number.NaN, woodsZ = Number.NaN, woodsLast = 0;
   function woodsAt(x: number, z: number): number {
+    if (x === woodsX && z === woodsZ) return woodsLast;
     // a railway's tunnel hill (a classic island) is wooded over its cutting, as such hills are (the ring forest keeps
     // off the line's own right of way), so it reads as a hill and not a bare cone at the edge
     const island = anchors.length ? smoothstep(0.12, 0.55, anchorAt(x, z)) : 0;
-    if (island > 0.999) return 1;
-    return Math.max(island, woodsAtField(x, z));
+    woodsLast = island > 0.999 ? 1 : Math.max(island, woodsAtField(x, z));
+    woodsX = x; woodsZ = z;
+    return woodsLast;
   }
+  /** A whole field's woods (0/1) by its corner boundaries (field cells repeat across thousands of ring queries). */
+  const fieldWoods = new Map<number, number>();
   function woodsAtField(x: number, z: number): number {
     if (!Number.isFinite(woodsCut)) return woodsCut < 0 ? 1 : 0;
-    if (settings.fields <= 0) return smoothstep(woodsCut - 0.025, woodsCut + 0.025, woodsField(x, z));
+    if (settings.fields <= 0) {
+      // the wild woods (forest, scrub, mangrove) keep clearings along the edge too, lighter than farmland's
+      const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
+      const cut = woodsCut + 0.18 * (1 - smoothstep(30, 160, edgeOut)) + 0.08 * (1 - smoothstep(160, 320, edgeOut));
+      return smoothstep(cut - 0.025, cut + 0.025, woodsField(x, z));
+    }
     // In farmland most woods are whole fields, so their edges run straight along the boundaries: a field is wooded
     // where the woods field at its middle passes the cut. The free-form woods keep only their cores (on the hills).
     const { a, b } = fieldCoords(x, z);
     const ca = fieldCell(a, 0), cb = fieldCell(b, 1);
+    const cellKey = (ca + 4096) * 8192 + (cb + 4096);
+    let field = fieldWoods.get(cellKey);
+    if (field === undefined) { field = fieldCellWoods(ca, cb); fieldWoods.set(cellKey, field); }
+    const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
+    const core = woodsCut + 0.06 + 0.3 * (1 - smoothstep(40, 190, edgeOut)) + 0.12 * (1 - smoothstep(190, 380, edgeOut));
+    return Math.max(field, smoothstep(core, core + 0.05, woodsField(x, z)));
+  }
+  function fieldCellWoods(ca: number, cb: number): number {
     let na = ca + 1, nb = cb + 1;
     for (let i = 0; i < 64 && !isFieldLine(na, 0); i++) na++;
     for (let i = 0; i < 64 && !isFieldLine(nb, 1); i++) nb++;
@@ -418,9 +478,7 @@ export function createBorderLandform(
       const u = cu * FIELD_PITCH_M, v = cv * FIELD_PITCH_M;
       nearest = Math.min(nearest, Math.max(Math.abs(u * fieldCos - v * fieldSin), Math.abs(u * fieldSin + v * fieldCos)) - BORDER_EDGE_M);
     }
-    const field = nearest > 70 && woodsField(mx, mz) > woodsCut + open(mx, mz) ? 1 : 0;
-    const core = woodsCut + 0.06 + open(x, z);
-    return Math.max(field, smoothstep(core, core + 0.05, woodsField(x, z)));
+    return nearest > 70 && woodsField(mx, mz) > woodsCut + open(mx, mz) ? 1 : 0;
   }
 
   if (settings.classic) {
