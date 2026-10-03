@@ -329,6 +329,10 @@ interface PropsSettings {
   snowCap?: boolean;
   streetRowsAfterLandmarks?: boolean;
   streetRowRoadStride?: number;
+  /** Junction corners the roadside buildings keep out of (maps lane B, 2026-10-03): a roadside building's centre stands
+   * outside each disc ({ x, z, r }). The centre test (7.5 m off any road) lets a long building reach into the other road
+   * of an acute junction; Nordhavn Fjord's town crossroads is one. Default none. */
+  roadBuildingKeepouts?: readonly { x: number; z: number; r: number }[];
   /** Open ground the street rows keep out of (maps lane B, 2026-10-02): a street-row building stands only where its
    * whole footprint clears each disc ({ x, z, r }: a square whose zone-control disc must stay open) and each rectangle
    * ({ x0, z0, x1, z1 }: say, gardens along one side of a street). Default none. */
@@ -3578,6 +3582,7 @@ ${snowCap ? `
     const pz = cand.z + cand.tx * side * lat;
     if (px < v.x0 || px > v.x1 || pz < v.z0 || pz > v.z1) return;
     if (heightField._roadDist(px, pz) < 7.5 || noVeg(px, pz)) return;
+    if (P.roadBuildingKeepouts?.some((keep) => Math.hypot(px - keep.x, pz - keep.z) < keep.r)) return;
     if (conflictsTacticalReservation(px, pz) || !isRoadBuildingSiteClear(px, pz)) return;
     const rot = Math.atan2(cand.tx, cand.tz) + (rng() - 0.5) * 0.10;
     // 2026-10-02: Mangrove Reach, rebuilt to the layout brief, takes the frontage law as well

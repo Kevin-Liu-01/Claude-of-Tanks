@@ -26,6 +26,10 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // sawmill, the Bystra crossing's east-bank landing and the moraine crossroads (the last two graded aprons in the map
   // file); the kickoff on the Bystra crossing itself.
   winter: { kickoff: { x: 10, z: 0 }, zones: [{ x: -175, z: 65 }, { x: 95, z: -5 }, { x: 190, z: -40 }] },
+  // Nordhavn Fjord (layout brief, 2026-10-03): three zones on the line of equal drives from the upper town under the
+  // western cliff, through the harbour road in the lower town (also the turbo-ball kickoff), to the curing yards above
+  // the harbour; each team's nearest, middle and farthest zone lie within 1 % of the other's.
+  fjord: { kickoff: { x: 40, z: -65 }, zones: [{ x: -200, z: 35 }, { x: 40, z: -65 }, { x: 150, z: -110 }] },
   // Tarkhan Steppe (layout brief, 2026-10-02): the three aprons — the station's grain yard by the ford on the line of
   // equal drives, the post-road halt on the plateau near the northern arc and the kolkhoz yard near the southern
   // deployment, each team's home zone as far from it as the other's; the kickoff on the wadi's north bank (the bounded

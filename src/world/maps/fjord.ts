@@ -1,6 +1,8 @@
 // fjord.js — cold-water harbor approaches with a clipped coastal road grid,
 // fishing yards, stone settlement, steep conifer shoulders and a deep bay.
 
+import { gully, talusFan } from './geology.ts';
+
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 export default {
@@ -27,12 +29,17 @@ export default {
         radii: [1.00, 0.96, 0.82, 0.60, 0.50, 0.56, 0.72, 0.94, 1.00, 0.95, 0.74, 0.54, 0.46, 0.56, 0.80, 0.96] },
     ],
     marshes: [{ x: 286, z: -218, r: 36, dip: 1.0 }],
+    // 2026-10-03 (maps lane B): the north end of the two central roads crosses the terrace scarp under the northern
+    // deployment (8-9 m in 30 m) on a diagonal instead of straight up it — 21-26 % at terrain seed 1337 — and then runs
+    // north in parallel, 12 m apart, to the shared border cut roadBorderCorridor.ts grades
+    // (alignFjordNorthernRoadGrades); the northern cross road meets the east road on the flat below the scarp, where
+    // the two stand at one height.
     roads: { paths: [
       [[-398, -454], [-346, -278], [-318, -82], [-338, 116], [-286, 302], [-220, 474]],
-      [[-126, -464], [-74, -286], [-32, -114], [18, 44], [62, 226], [96, 456]],
-      [[214, -432], [228, -274], [202, -104], [222, 62], [190, 220], [132, 410]],
+      [[-126, -464], [-74, -286], [-32, -114], [18, 44], [62, 226], [36, 330], [106, 394], [106, 440]],
+      [[214, -432], [228, -274], [202, -104], [222, 62], [190, 220], [172, 330], [118, 394], [118, 440]],
       [[-330, -204], [-192, -154], [-48, -96], [88, -52], [212, -94]],
-      [[-312, 224], [-164, 198], [-28, 224], [102, 284], [180, 354]],
+      [[-312, 224], [-164, 198], [-28, 224], [102, 284], [180, 300]],
     ] },
     village: { x0: -210, x1: 254, z0: -286, z1: 278, cx: 18, cz: -8, feather: 48, flatten: 0.72, relief: 0.22 },
     landforms: [
@@ -49,6 +56,22 @@ export default {
       { kind: 'ridge', x: 395, z: 170, length: 210, width: 46, height: 12.0, yawDeg: 0 },
       { kind: 'ridge', x: 430, z: -268, length: 170, width: 56, height: 12.0, yawDeg: -4 },
       { kind: 'ridge', x: 430, z: 378, length: 160, width: 56, height: 11.0, yawDeg: 4 },
+      // 2026-10-03 (maps lane B): glacial geology (geology.ts). Roches moutonnées on the heights outside the town — the
+      // ice that dug the fjord flowed east, so each knob rises gently from the west and breaks off steep to the east (a
+      // long low dome with a short steep one at its lee end); two gullies cut the western heights' south face; and
+      // scree cones lie at the feet of the two rock peninsulas on the harbour side.
+      { kind: 'knoll', x: -400, z: -140, rx: 30, rz: 18, height: 3.0, yawDeg: 4 },
+      { kind: 'knoll', x: -384, z: -139, rx: 10, rz: 14, height: 2.0, yawDeg: 4 },
+      { kind: 'knoll', x: -432, z: -30, rx: 28, rz: 17, height: 2.8, yawDeg: -6 },
+      { kind: 'knoll', x: -417, z: -32, rx: 10, rz: 13, height: 1.8, yawDeg: -6 },
+      { kind: 'knoll', x: -384, z: 182, rx: 30, rz: 18, height: 3.2, yawDeg: 10 },
+      { kind: 'knoll', x: -368, z: 185, rx: 10, rz: 14, height: 2.0, yawDeg: 10 },
+      { kind: 'knoll', x: 300, z: -300, rx: 26, rz: 16, height: 2.6, yawDeg: -8 },
+      { kind: 'knoll', x: 314, z: -302, rx: 9, rz: 12, height: 1.8, yawDeg: -8 },
+      ...gully(-400, -70, -404, -10, 3.2, 11, 5),
+      ...gully(-296, -66, -300, -8, 3.0, 10, -5),
+      ...talusFan(350, -20, 310, -22, 36, 1.8),
+      ...talusFan(352, 150, 312, 152, 34, 1.7),
     ],
   },
   spawns: {
@@ -83,7 +106,9 @@ export default {
       'boatshed', 'warehouse', 'logcabin', 'ruin', 'netyard', 'depot'],
     destructibleBuildings: ['fishershack', 'saunahut', 'alpinerefuge', 'quonsethut'],
     tacticalBeats: [
-      { id: 'western-cliff-gate', role: 'brawl', x: -286, z: 62, yawDeg: 6,
+      // 2026-10-03 (maps lane B): the gate moves from (-286, 62), 33 m from Verdant's western post, down the cliff road
+      // to its southern bend (the layout brief's skeleton rule: no strongpoint within 60 m of one of Verdant's)
+      { id: 'western-cliff-gate', role: 'brawl', x: -312, z: 20, yawDeg: 6,
         structure: 'alpinerefuge', redoubt: true, outcrop: { count: 7, radius: 11 }, wreck: true, wreckOffsetZ: -16 },
       { id: 'harbor-watch', role: 'scout', x: 206, z: -184, yawDeg: -12,
         structure: 'fishershack', outcrop: { count: 4, radius: 8, scaleMax: 2.7 } },
@@ -97,7 +122,11 @@ export default {
       [-128, -218, -48, -194, 2], [-106, 204, -18, 232, 3],
       [82, -174, 166, -146, 2], [76, 168, 158, 202, 3],
     ],
-    buildingLat: [11, 7], sideSkip: 0.12, maxSpread: 3.0, spacingPad: 8,
+    // 2026-10-03 (maps lane B): one metre farther back from the carriageway (was [11, 7]) and none in the acute corner
+    // of the town crossroads — a warehouse on the town road's bend and a house in that corner reached into the
+    // carriageway (the brief's solidPropsInRoad)
+    buildingLat: [12, 7], sideSkip: 0.12, maxSpread: 3.0, spacingPad: 8,
+    roadBuildingKeepouts: [{ x: 3, z: -67, r: 12 }],
     well: false, hayCrates: false, fences: true, telegraph: true, carts: true, logs: true,
     rocks: 330, outcrops: 60, craters: 54, rubblePiles: 18, hedgehogs: 14,
     sandbagLines: 16, tankWrecks: { era: 'modern', count: 5, debris: true,
