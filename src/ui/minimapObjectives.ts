@@ -115,7 +115,7 @@ function zoneMarkers(state: ObjectiveStateView, perspective: ObjectiveTeamId, ou
     const control = Number.isFinite(zone.control) ? zone.control : 0;
     out.push({
       kind: 'zone', x: zone.x, z: zone.z, side: zoneSide(zone, perspective),
-      label: zoneLetter(index),
+      label: state.id === 'ac130' ? 'E' : zoneLetter(index),
       progress: zone.owner ? 1 : Math.min(1, Math.abs(control)),
       progressSide: objectiveSide(control >= 0 ? 'alpha' : 'bravo', perspective),
       pulse: zone.contested, priority: 2,
@@ -179,7 +179,7 @@ export function objectiveMarkers(state: ObjectiveStateView | null | undefined): 
   const out: ObjectiveMarker[] = [];
   spawnMarkers(state, perspective, out);
   if (state.id === 'capture_the_flag') flagMarkers(state, perspective, out);
-  else if (state.id === 'zone_control' || state.id === 'mars') zoneMarkers(state, perspective, out);
+  else if (state.id === 'zone_control' || state.id === 'mars' || state.id === 'ac130') zoneMarkers(state, perspective, out);
   else if (state.id === 'frontline_assault') sectorMarkers(state, perspective, out);
   else if (state.id === 'turbo_ball') turboMarkers(state, perspective, out);
   pickupMarkers(state, out);

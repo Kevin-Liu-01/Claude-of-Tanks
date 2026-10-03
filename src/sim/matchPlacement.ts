@@ -201,7 +201,7 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
   }
   const middle = mode === 'turbo_ball'
     ? reserve(MATCH_OBJECTIVE_LAYOUTS[options.mapId ?? '']?.kickoff ?? originalMiddle, { radius: 12, relief: 3, normalY: OBJECTIVE_NORMAL_Y, solidOnly: true, halfExtent: MATCH_MODE_ARENA_HALF_EXTENT_M }, 'kickoff')
-    : originalMiddle;
+    : mode === 'ac130' ? reserve(originalMiddle, {radius:30,relief:7,normalY:OBJECTIVE_NORMAL_Y,solidOnly:true}, 'extraction') : originalMiddle;
   function placeZones(): PlacementPoint[] {
     const targets = MATCH_OBJECTIVE_LAYOUTS[options.mapId ?? '']?.zones
       ?? [-105, 0, 105].map(offset => ({ x: originalMiddle.x + uz * offset, z: originalMiddle.z - ux * offset }));

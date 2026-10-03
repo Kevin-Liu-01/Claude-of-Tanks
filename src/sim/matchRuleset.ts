@@ -19,8 +19,8 @@ export const GUN_GAME_WEAPONS = Object.freeze([
   shell('Guided Missile', 'HEAT', 152, 1100, 1100, 1000, 350, { guided: true, reloadS: 5 }),
 ]);
 export const AERIAL_RULES = Object.freeze({
-  drone: Object.freeze({ launchS: 1.4, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: 12 }),
-  gunship: Object.freeze({ altitudeM: 240, radiusM: 180, orbitRadS: .065 }),
+  drone: Object.freeze({ launchS: 2.4, responseHz: 4.5, spotRangeM: 350, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: 12 }),
+  gunship: Object.freeze({ altitudeM: 240, radiusM: 90, orbitRadS: .09 }),
 });
 export const GUNSHIP_WEAPONS = Object.freeze([
   shell('30 mm Autocannon', 'AP', 30, 220, 180, 160, 1300, { reloadS: .14, reloadGroup: 'gunship-cannon' }),
@@ -148,7 +148,7 @@ export const TEAM_ARRANGEMENT_LIMITS: {
   allies: Object.freeze({
     standard: SYMMETRIC_ALLIES, capture_the_flag: SYMMETRIC_ALLIES, zone_control: SYMMETRIC_ALLIES, turbo_ball: SYMMETRIC_ALLIES,
     endless_horde: COOP_ALLIES, frontline_assault: COOP_ALLIES, mars: SYMMETRIC_ALLIES,
-    juggernaut: SYMMETRIC_ALLIES, infected: SYMMETRIC_ALLIES, realistic: SYMMETRIC_ALLIES, gun_game: SYMMETRIC_ALLIES, drone: SYMMETRIC_ALLIES, ac130: range(0, 0),
+    juggernaut: SYMMETRIC_ALLIES, infected: SYMMETRIC_ALLIES, realistic: SYMMETRIC_ALLIES, gun_game: SYMMETRIC_ALLIES, drone: SYMMETRIC_ALLIES, ac130: range(2, 8),
   }),
   enemies: Object.freeze({
     standard: SYMMETRIC_ENEMIES, capture_the_flag: SYMMETRIC_ENEMIES, zone_control: SYMMETRIC_ENEMIES, turbo_ball: SYMMETRIC_ENEMIES,
@@ -337,8 +337,8 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', respawnS: 4, ammo: 'unlimited', timeLimitS: 900,
     gunGame: Object.freeze({ killsPerWeapon: 2 }) }),
   drone: Object.freeze({ ...STANDARD, mode: 'drone', aerial: 'drone', respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
-  ac130: Object.freeze({ ...STANDARD, mode: 'ac130', aerial: 'gunship', allies: 0, enemies: 12, alwaysVisible: true,
-    ammo: 'unlimited', consumables: false, timeLimitS: 480 }),
+  ac130: Object.freeze({ ...STANDARD, mode: 'ac130', aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true,
+    ammo: 'unlimited', consumables: false, timeLimitS: 480, timeout: 'defeat' }),
 });
 
 /** Score targets the modes play to (kept here so rule cards and controller agree). */

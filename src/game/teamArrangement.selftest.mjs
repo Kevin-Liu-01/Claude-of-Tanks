@@ -43,8 +43,8 @@ assert.deepEqual([...SIDES_MODES],
   'Mars mode (2026-09-18) and every non-wave mode take the sides switch');
 writeTeamArrangement('turbo_ball', { enemyNation: 'japan' }, storage);
 assert.deepEqual(writeSides({ allies: 13, enemies: 14 }, storage), { allies: 13, enemies: 14 });
-// Each mode clamps the shared setting to its own range: the AC-130 flies without allied bots.
-for (const mode of SIDES_MODES) assert.equal(readTeamArrangement(mode, storage).allies, mode === 'ac130' ? 0 : 13, `${mode}: shares the sides setting`);
+// Each mode clamps the shared setting to its own range: the AC-130 reserves two to eight vulnerable ground escorts.
+for (const mode of SIDES_MODES) assert.equal(readTeamArrangement(mode, storage).allies, mode === 'ac130' ? 8 : 13, `${mode}: shares the sides setting`);
 assert.equal(readTeamArrangement('ac130', storage).enemies, 14, 'the AC-130 ground force takes the shared hostile count');
 assert.equal(readTeamArrangement('turbo_ball', storage).enemyNation, 'japan', 'a mode keeps its own nation');
 assert.equal(readTeamArrangement('endless_horde', storage), null, 'the wave modes are untouched by the sides switch');

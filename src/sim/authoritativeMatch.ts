@@ -923,7 +923,7 @@ export function createAuthoritativeMatch({
         raycast: spottingRaycast,
         getEnemies: () => {
           opponents.length = 0;
-          for (const candidate of entities) if (candidate.team !== entity.team) opponents.push(candidate);
+          for (const candidate of entities) if (candidate.team !== entity.team && candidate.modeActive !== false && !isGunship(candidate)) opponents.push(candidate);
           return opponents;
         },
         getAllies: () => {
@@ -997,7 +997,7 @@ export function createAuthoritativeMatch({
     initializeAerial(tank, ruleset);
     tank.specialAction = createSpecialActionState(tank.spec);
     bindSpecialActionState(tank);
-    for (let n = 0; n < 30; n++) updateTank(tank, heightField, SIM_DT);
+    if (!isGunship(tank)) for (let n = 0; n < 30; n++) updateTank(tank, heightField, SIM_DT);
   }
 
   const modeController = createMatchModeController<AuthoritativeEntity>({
@@ -2304,7 +2304,12 @@ export function createAuthoritativeMatch({
           ...(viewer ? { localPrediction: capturePredictionAuthorityState(viewer) } : {}),
           ...(normalizedGameMode === 'standard' ? {} : {
             gameMode: normalizedGameMode,
-            modeState: modeController.serialize(viewerId),
+            modeState: {
+              ...modeController.serialize(viewerId),
+              ...(normalizedGameMode === 'drone' ? {missionPayloads: entities
+                .filter(entity => canObserveEntity(viewer,entity.id))
+                .map(entity => ({id:entity.id,ready:!entity.aerial?.active && (entity.aerial?.cooldownS ?? 0)<=0}))} : {}),
+            },
           }),
         },
       });
