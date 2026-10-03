@@ -5,7 +5,8 @@
 // takes render at 2160p and every format comes straight from the film master through the loop graph: no denoise on the
 // videos, generous rates, lanczos downscales from 4K; only the GIFs get a light denoise (grain is what 256-colour
 // palettes cannot hold).
-//   <id>-loop-master.mov  source size HEVC Main10 crf 10 (visually lossless edit master)
+//   <id>-loop-master.mov  source size HEVC Main10 crf 10 (visually lossless edit master; --loop-master only: 3.5 GB
+//                         for the fifty, and the 4K H.264 at crf 16 already carries the picture)
 //   <id>-4k.mp4           3840x2160 H.264 High crf 16, silent           (when the take rendered at 2160p)
 //   <id>.mp4              1920x1080 H.264 High crf 16, silent           (landing loops)
 //   <id>.webm             1920x1080 VP9 crf 24, silent                  (hero rails, docs topic heroes, feature loops)
@@ -16,9 +17,9 @@
 //   <id>-4k.png           the 4K still master; <id>-4k.jpg (q95) and <id>.webp (1920, q92) from it
 //   <id>.scene.json       the Studio scene the take was rendered from (map, hour, cast and paint, turrets, effects,
 //                         lens path); the still is the same scene at meta.still.tMs (owner 2026-10-02)
-//   node tools/media-r5/site-loops.mjs [rendersRoot=shots/media-r5/site50/renders] [deliverRoot=shots/media-r5/site50/deliver] [ids,...] [--drop-film-masters]
+//   node tools/media-r5/site-loops.mjs [rendersRoot=shots/media-r5/site50/renders] [deliverRoot=shots/media-r5/site50/deliver] [ids,...] [--drop-film-masters] [--loop-master]
 // rendersRoot holds the cinema outputs as films/<id>/ (cinema-jobs films) and stills/<id>/ (cinema-jobs blur).
-// --drop-film-masters deletes each ProRes film master once its formats are written (the loop master and the proxy stay).
+// --drop-film-masters deletes each ProRes film master once its formats are written (the proxy stays).
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, copyFileSync, statSync, unlinkSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -63,6 +64,7 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
     `[c]trim=start=${L}:end=${D},setpts=PTS-STARTPTS[tail];[tail][head]xfade=transition=fade:duration=${X}:offset=0[blend];[blend][body]concat=n=2:v=1:a=0[loop]`;
   const files = {};
   for (const [key, suffix, post, enc, needsUhd] of VIDEO) {
+    if (key === 'master' && !flags.has('--loop-master')) continue;
     if (needsUhd && !uhd) continue;
     ff('-i', master, '-filter_complex', `${loop};[loop]${post}[v]`, '-map', '[v]', '-an', ...enc, join(out, `${id}${suffix}`));
     files[key] = `${id}/${id}${suffix}`;
