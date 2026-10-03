@@ -6648,6 +6648,51 @@ PR head → lane (the photographs): p5 / p50 lightness 30.3 / 58.7 → 23.8 / 49
 - Saltwind's sky-w pale band is the sea's horizon (the view looks along open water); the Frontier contrail reads as a
   hard streak.
 
+**The clouds' shadows by one path (fp10; 2292e9149, 0ff4e2949, 495846781).** The ground lane traced a family of the
+gauntlet's defects to the cloud gobos — the "uniform stippled dot pattern" (Saltmere Bay, Sirocco), the "concentric
+arcs" and "weave tile" (Saltmere, Obsidian Caldera), the "checkerboard / diamond tiling" and the "contour-like streaks"
+(Frontier Basin, the ring faces): each cascade's depth map carried the clouds' shade as an interleaved-gradient dither
+(up to 62 % of the texels) and three's PCF read it with five fixed Vogel taps; the high tier runs no TAA, so neither
+noise averaged out. The lines ended at the cascades' 700 m and vanished with the gobos off (Bayer, white-hash and R2
+dithers alias alike: dithered depth coverage itself was the fault). Now:
+- the layer renders the shade undithered into one map at the cloud base — 512² over 12 km around the camera (23 m
+  texels), snapped to its texel, refreshed every eight frames or when the square moves — and publishes it to the
+  scene's shared uniforms the moment it is refreshed (`scene.userData.cloudShadeUniforms`, `cloudShadeMap.ts`);
+- lighting.ts patches three's shared chunks: `shadowmap_vertex` fetches the share per vertex (a cloud shadow is tens
+  to hundreds of metres across), each sun cascade's light takes it before its shadow on both CSM paths, and
+  `cotSunVis` takes it too (the scene alpha, the contact shadows' sun share, the shadowed ambient dim);
+  `setupShadowMaterial` sets `COT_CLOUD_SHADE` and binds the shared uniforms on every desktop CSM material built on
+  three's shaders (opt-out `userData.cotCloudShade = false`, a custom ShaderMaterial opts in with true); a program
+  that would pass sixteen samplers with the map keeps none (three counts a program's units against the fragment
+  limit; the inline standard maps of the physical fragment are not units until set — the terrain counts fourteen,
+  fifteen with the environment, sixteen with the map);
+- the ring's vista samples the same map (`horizonCloudShade.ts`: one fetch where it re-cut two weather fields);
+- phones take nothing (no volumetric layer); the gobo planes, their depth material and the aerial pass's far shade
+  block are gone.
+
+**fp10 and the candidate (2026-10-03; the gauntlet's waves 7, 13 and 14).**
+- *The camera stays the PR head's.* Wave 7 held the calibrated key (EXPOSURE_KEY 1.05 with AgX's own saturation): it
+  greyed every snowfield. The split hand-over put the key (1.5), the saturation (1.4), the night EV (−0.25) and the night
+  lens (.5) back and kept the shading fix — at the PR head's key and saturation Sirocco's hull-shadow light still runs
+  1.13× the sun's B/R (the PR head's 3.75×; 1.06× at saturation 1.0, so the boost re-adds little colour).
+- *A bright ground opens the camera* (`exposureAlbedoEV`, lightModel.ts): a map whose ground albedo passes 0.35 gains
+  0.42 stops per doubling, at most 0.75 EV, by day — Frosthollow and Whiteout (0.80) +0.5 EV, every other map none; the
+  photographer's compensation over snow, keyed to the authored albedo, never the global camera (wave 13: Frosthollow's
+  establishing −1.3 for a greyer frame).
+- *Arid air:* fogDensity 0.00025 on Sirocco, Badlands, Copper Mesa and Oasis (Badlands' far ridge contrast 0.165 against
+  the PR head's 0.114); the mountains lane's panorama bake takes the same law past its shell once hazeLaw.ts is merged.
+- *The hull's multi-bounce* (vehicleGroundOcclusion.ts): the occlusion keeps Jimenez et al.'s multi-bounce visibility on
+  the map's ground albedo (Sirocco's hull shade / sun 0.071 → 0.081; snow lifts most).
+- *No contrails* (cloudscapeLayer.ts `CLOUD_CONTRAILS_ON`): fp10's segmented, thinner trails still read as straight lines
+  and the critics called every one a render glitch; the reference tank games carry none.
+- *No cumuliform far band:* edge-on, its broad coverage turned into one opaque pale ribbon a few degrees over the hills
+  ("a ruler-flat pale band at one constant height"); a cumuliform sky now ends where its traced field does and sinks into
+  the haze, a deck keeps its far rows.
+- *Humilis keeps the even field* (the fields' hearts swelled Sirocco's sparse cells into cotton masses); the street
+  regimes' far cells take the fields' gate (ungated, a street sky's far half came back as even popcorn).
+- Knobs left off until a capture shows them: `deckDetail` (fp10: it thinned the decks instead of defining them) and
+  `CLOUD_FAR_THIN` (the far cumuliform cut).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
