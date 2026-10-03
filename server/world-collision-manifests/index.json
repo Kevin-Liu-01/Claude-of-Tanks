@@ -12,8 +12,8 @@
       "concealers": 7302
     },
     "desert": {
-      "bytes": 1349468,
-      "sha256": "23a868bfad4922c2aa1255608110acce8bc4e5bd2d9bbe113ec98858d000e942",
+      "bytes": 1349476,
+      "sha256": "5bd70e2945fcde5e41847cf6089f580c9d3d431a433f9d95b89efd38e06460c4",
       "obstacles": 2965,
       "colliders": 2905,
       "concealers": 3123
@@ -75,15 +75,15 @@
       "concealers": 7679
     },
     "delta": {
-      "bytes": 1813967,
-      "sha256": "8980e8a0fda8086aede451e053ac3f257d520501151cca91debaa67dee3a62ce",
+      "bytes": 1813969,
+      "sha256": "0e91dfdccc9cf3cd31c89dd796a882de96ca01466c55110b662d5bfba24141f0",
       "obstacles": 8146,
       "colliders": 7784,
       "concealers": 9754
     },
     "badlands": {
-      "bytes": 1146527,
-      "sha256": "64e4b54078903c782165ec44433bf70ab86417a568ddbae21cbcf699a56ca8a2",
+      "bytes": 1146529,
+      "sha256": "efcbab4d0a14b93ffa19145f46db41efd75c4695d7b962cd0c3908e01adaafa4",
       "obstacles": 2997,
       "colliders": 2749,
       "concealers": 1907
@@ -131,8 +131,8 @@
       "concealers": 2333
     },
     "titan_gorge": {
-      "bytes": 1375526,
-      "sha256": "ab2a76a82f39727f71d60cfbbc2699e9a29bdf2cb2d1ca55be0696ba785d79e4",
+      "bytes": 1375512,
+      "sha256": "1d2190424108a82382a1c75ecb1b63f9106b48085da56647d3301485ab4d4f44",
       "obstacles": 2725,
       "colliders": 2586,
       "concealers": 1230
@@ -166,8 +166,8 @@
       "concealers": 3173
     },
     "oasis": {
-      "bytes": 1050027,
-      "sha256": "0097b50f26e7b33c46e28e7f30db71c7c3a787a356b8dc306db129cb58e0c80c",
+      "bytes": 1050033,
+      "sha256": "7f5141cc84f6c39bc004e810575d3e78acafefb1b50994e53d62dc705d684878",
       "obstacles": 2740,
       "colliders": 2510,
       "concealers": 2031
@@ -195,7 +195,7 @@
     },
     "mangrove": {
       "bytes": 1450846,
-      "sha256": "d15522331cd320e7817904710f8d90618fd121921fb2582f97a893d40705f149",
+      "sha256": "8ce6b9a0c090e714dc578eb7aa7839e8c5a07f32d7febac37b69ae42dfdd9d21",
       "obstacles": 5382,
       "colliders": 5209,
       "concealers": 6529
