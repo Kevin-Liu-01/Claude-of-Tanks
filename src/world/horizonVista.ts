@@ -695,6 +695,10 @@ interface HorizonForestOptions {
 /** vegetation.ts buildPineFarGeometry / buildOakFarGeometry defaults (vista pass values). */
 const HORIZON_FOREST_CONIFER_PALETTE: HorizonForestSpeciesPalette = { hue: 0.315, sat: 0.36, l0: 0.165, l1: 0.27 };
 const HORIZON_FOREST_BROADLEAF_PALETTE: HorizonForestSpeciesPalette = { hue: 0.24, sat: 0.37, l0: 0.205, l1: 0.31 };
+/** The ring forest's broadleaf palette with a map's override over it (the hedgerows take the same green). */
+export function horizonBroadleafPalette(override?: Partial<HorizonForestSpeciesPalette>): HorizonForestSpeciesPalette {
+  return { ...HORIZON_FOREST_BROADLEAF_PALETTE, ...(override ?? {}) };
+}
 
 interface TreeGeometry { geometry: THREE.BufferGeometry; height: number }
 
@@ -1001,7 +1005,8 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
         if (bandShare !== undefined) {
           // (a lone field tree's chance follows the country: a wooded valley has more of them than a steppe)
           const lone = 0.045 * bandShare;
-          if (options.woodsAt) stand *= Math.max(lone, options.woodsAt(x, z), options.hedgeAt ? options.hedgeAt(x, z) * 0.9 : 0);
+          // (the hedges' bush lines are geometry now, borderHedgerows.ts: the ring forest stands only their standards)
+          if (options.woodsAt) stand *= Math.max(lone, options.woodsAt(x, z), options.hedgeAt ? options.hedgeAt(x, z) * 0.35 : 0);
           else {
             const w = woodsAt(x, z, faceSlope);
             stand *= w >= woodsCut + 0.04 ? 1 : w >= woodsCut - 0.04 ? smoothstep(woodsCut - 0.04, woodsCut + 0.04, w) : lone;

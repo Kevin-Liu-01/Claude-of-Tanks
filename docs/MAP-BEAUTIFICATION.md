@@ -6426,7 +6426,67 @@ the landform's crests, a corner's rise, the road hold climbing toward the old pl
 
 Largest open item in the band: a railway that leaves the square (Cinder Junction, Steppe) still runs into a tunnel in the
 classic rim's hill at the edge (rounds 63/67) — wooded now, but a hill standing in the view; the open line past the
-edge is the next step.
+edge is the next step. (Closed in wave 2 below: the open line.)
+
+#### Wave 1 — 2026-10-03: the middle distance and the critics' artifacts
+
+Gauntlet wave 1 passed the first pass (3.02 → 3.55, the horizon and border criterion +2 to +4 on most views) and named
+the band's largest remaining defect: past the edge the country read as an empty, uniform plain. It also found four
+artifacts in the after frames.
+
+- **Hedgerows as bush lines** (`world/borderHedgerows.ts`). The field boundaries' hedges were ring-forest trees 20–40 m
+  apart: a dotted line of crowns, nothing past 300 m. Every hedged stretch of a boundary past the edge is now a bush
+  line — a prism 2.6 m across at its foot, 2.4–4.6 m high with a lumpy crest, tapered at its gaps — seated on the ring's
+  surface in the ring forest's broadleaf green a shade darker (the landform's lines: `traceHedgeLines`, each field line
+  traced in 8 m steps by Newton on its level). One merged mesh, one draw and one far-cascade shadow draw (Amberford
+  8 km of hedge in 3.2k triangles; 5–12 ms at ring build). The ring forest stands only the hedges' standards.
+- **Crops in calibrated colours.** The parcels' mild tints (±10–20 %) gave way to the ground lane's calibration
+  (`landUse.ts`): each crop a multiple of the local sward's luminance — ripe wheat 2.8×, barley 3.0×, a young crop
+  1.25× greener, stubble 2.8× straw, plough of dark soil, sunflower 0.7×, the polders' rapeseed — on each region's
+  rotation. The ring's `borderTint` carries the crop premultiplied by its weight, the weight stored as `1 − w` so a
+  geometry without the attribute (WebGL's generic default `(0, 0, 0, 1)`) reads no crop. Faded in over the first 40 m
+  past the edge; none on slopes past ~25°.
+- **One field grid on both sides (pending the ground lane's merge).** On a map with a land-use profile the land past
+  the edge becomes the map's own grid: `borderLandUse.ts` traces its hedged boundaries (on a walled karst region every
+  boundary, as dry stone walls) from `landUseAt`, the grid's heading squares the farmsteads, and the material draws the
+  grid's crops and tracks across the edge; the landform's own fields serve the maps without a profile.
+- **Artifacts.** A road exit is painted only on the ring's continued ground (Cinder Junction: an exit drawn on up a
+  range's face read as a road climbing the backdrop and a bright seam up the mountainside). Round the playable edge
+  (415–800 m) the turf holds to ~35° (the rim's remnants of 20–35° took the slope rock as a violet splotch on Sirocco
+  Wadi and a blue-grey patch on Amberford). The farmsteads' colours sit at 0.8 of their value (a white wall in full sun
+  read as a glowing sprite). The border census has a second protocol, `--set=border2` (`visual-census-border-v2`), whose
+  spots also keep every crown 14 m off inside the view's wedge (Amberford's north view stood beside a tree's leaf cards).
+
+#### Wave 2 — 2026-10-03: the railways run on in the open; the roads come down with the land
+
+- **The open line** (`world/railSpurs.ts` `RAIL_OPEN_*`, supersedes rounds 63/67's tunnel). Cinder Junction's main line
+  and Tarkhan's siding left the square through a cutting into a tunnel portal in a hill the classic rim stood for (a
+  classic-rim island the landform kept round each exit: the last wall round the square). The islands and the tunnels are
+  retired. Past the path's end the line keeps its own heading for 900 m: its bed continues the cutting's and then the
+  outland's own ground, smoothed over ±40 m and graded to at most 1.5 % (`resolveRailOpenLine`, stations 20 m apart),
+  in a shallow cutting or on an embankment with real banks (1.6 run per metre, eased in over the first 20 m); the
+  formation widens over the first 30 m to a 24 m right of way, because the horizon ring's faces are 8–16 m across there
+  and a narrower floor was drawn as a blend of bed and bank; the corridor hands back to the ground over its last third.
+  The ranges stand back 320 m along the line (`BorderValley.holdM`: the landform's hand-over moves out within 90–300 m
+  of the line), so the ring keeps the bed to ~650 m instead of climbing 50 m in 300 m under it; the valley follows the
+  spur that leaves the square, not its cutting, so the map with and without the cutting differ only in the corridor.
+  The kit lays the first 240 m of track on the bed (no collision record: the bounds push keeps hulls inside 470 m); the
+  ring draws the ballast and, near the camera, the rails beyond (`railExitAt`: the signed offset kept 40 m either side
+  so a triangle interpolates it exactly, the presence faded at 0.55–0.9 of the run, at the hand-over and wherever the
+  ring's own height leaves the bed by 0.6–2 m). The ring forest, the hedgerows and the farmsteads keep off the corridor.
+- **The roads come down with the land** (`terrain.ts` heightAt). The first pass lowered the rim but kept road authoring
+  on the classic rim (with a road hold along each road and the road plane shifted down by at most 12 % past the red
+  line): a road authored up the old 20–40 m rim stood on a causeway that high where the land beside it came down —
+  67 of the 223 road exits stood more than 5 m over the land 30–40 m beside them, 50 more than 10 m (Ruin Spires and
+  Olympus Basin 25–33 m at the edge, Foundry 21 m, against 18 over 5 m in the base). The road grades now take a second
+  authoring pass on the landform's rim — the same law (portals, smoothing, junctions, the inherited maps' remap and
+  the northern alignments) run on a second set of node heights — blended in from 430 m, where the rim begins, to
+  460 m; inside 430 m every grade is the classic pass's to the bit (a single landform pass had rippled 1.2 m into the
+  square through the grade smoothing and moved the raw inputs of the inherited-grade maps). The road hold and the
+  plane's shift are gone (the plane comes down only with the foreground clearance, from which a road's own band is
+  exempt); water authoring keeps the classic rim, so no lake, marsh or bank level moves. 8 exits remain over 5 m (the
+  worst 10 m, Cinder Junction's north-west road on a rise at the edge), the median 0.4 m; the in-square ground moves
+  only past 400 m, the bounds push already keeping play inside 470 m.
 
 ## Acceptance is visual and measured
 

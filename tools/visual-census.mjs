@@ -59,13 +59,14 @@ const BOOLEANS = new Set(['force']);
 
 export const CENSUS_HELP = `node tools/${TOOL}.mjs <command> [--flag=value ...]
 
-  capture  --out=<dir> [--root=<checkout>] [--set=core|border] [--maps=a,b] [--views=a,b|none] [--serve=dist|dev]
+  capture  --out=<dir> [--root=<checkout>] [--set=core|border|border2] [--maps=a,b] [--views=a,b|none] [--serve=dist|dev]
            [--pose=name:cx,cy,cz:ax,ay,az[+name:…]] [--port=5421] [--batch=<n>] [--budget-min=<m>]
            [--lock-timeout-min=30] [--settle-ms=1200] [--probe-lock=<dir>]
            Shoot ${CENSUS_VIEWS.map((v) => v.name).join(', ')} of every registered map (or --maps) into <out>/frames
            and merge each map into <out>/census.json. --set=border shoots the border set instead (the eye-height and
            60 m views of the four edges and four corners from inside the square, and a high oblique across the
-           north-east corner; its own protocol, so a border census never merges with a core one). --serve=dist
+           north-east corner; its own protocol, so a border census never merges with a core one); --set=border2 the
+           same views whose spots also keep the frame's near field clear of crowns (protocol v2). --serve=dist
            (default) previews <root>/dist: run npm run build first. --batch / --budget-min bound one run so batches
            resume where the last stopped. --probe-lock waits in the cot-shots FIFO without that session mutex and
            takes it only at the FIFO head (tools/visual-census-lock.mjs); without it the caller holds any session mutex.

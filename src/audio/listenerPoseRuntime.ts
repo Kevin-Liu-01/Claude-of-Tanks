@@ -4,6 +4,7 @@ type AudioListenerKind =
   | 'camera'
   | 'killcam-camera'
   | 'player-tank'
+  | 'player-drone'
   | 'spectated-tank';
 
 export interface AudioListenerPose {
@@ -18,6 +19,8 @@ interface AudioTank {
   id: string;
   state?: { pos?: Vector3 } | null;
   spec?: { dims?: { heightM?: number } } | null;
+  /** Drone mode: the tank's FPV drone, while `active` flying at x, y, z. */
+  aerial?: { kind?: string; active?: boolean; x?: number; y?: number; z?: number } | null;
 }
 
 interface AudioGame {
@@ -57,7 +60,9 @@ export interface ListenerPoseRuntime {
 /**
  * Resolve the hybrid listener used by tank audio without allocating per frame.
  * Azimuth follows the camera while world distance follows the occupied or
- * spectated vehicle. Kill-cam and non-battle views use the camera position.
+ * spectated vehicle. While the player flies the drone the listener rides it,
+ * so the world (and the tank left behind) is heard from the drone. Kill-cam
+ * and non-battle views use the camera position.
  */
 export function createListenerPoseRuntime({
   camera,
@@ -67,6 +72,7 @@ export function createListenerPoseRuntime({
   audio,
 }: ListenerPoseRuntimeOptions): ListenerPoseRuntime {
   const tankPosition = new Vector3();
+  const dronePosition = new Vector3();
   const forward = new Vector3();
   const pose: AudioListenerPose = {
     pos: camera.position,
@@ -87,7 +93,14 @@ export function createListenerPoseRuntime({
       }
 
       const sourcePosition = entity?.state?.pos;
-      if (entity && sourcePosition) {
+      const drone = entity && entity === game.player && !killcam.spectate.active ? entity.aerial : null;
+      if (drone?.kind === 'drone' && drone.active && Number.isFinite(drone.x) && Number.isFinite(drone.y) && Number.isFinite(drone.z)) {
+        dronePosition.set(drone.x!, drone.y!, drone.z!);
+        pose.pos = dronePosition;
+        pose.kind = 'player-drone';
+        pose.ownerId = entity!.id;
+        pose.scoped = false;
+      } else if (entity && sourcePosition) {
         tankPosition.copy(sourcePosition);
         tankPosition.y += entity.spec?.dims?.heightM != null
           ? entity.spec.dims.heightM * 0.68
