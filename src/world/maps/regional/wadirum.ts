@@ -3,7 +3,7 @@
 // the next storey left standing at the corners and black water tanks on the roof, steel doors painted green or blue,
 // window grilles; the Desert Patrol's fort, crenellated with corner towers; steel-portal stores and workshops under
 // low corrugated roofs instead of tiles; walled compounds of block houses.
-import { PartSink, faceBox, pick, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
+import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -83,7 +83,8 @@ const steelStore: RegionalBuilder = (ctx) => {
 /** The Desert Patrol fort: a square crenellated court, corner towers, a gate with the flagpole over it. */
 const fort: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const W = Math.max(14, Math.min(22, ctx.info.w - 0.4)), D = Math.max(13, Math.min(20, ctx.info.d - 0.4));
+  // the corner towers (3.2 m square) stand half a tower out from the walls' corners: walls inset so they stay in the plot
+  const W = Math.max(12, Math.min(22, ctx.info.w - 2.0)), D = Math.max(11, Math.min(20, ctx.info.d - 2.0));
   const t = 0.8, h = 5.0;
   const wall: RegionalBucket = 'plaster2';
   sink.span(wall, -W / 2, -0.3, -D / 2, W / 2, h, -D / 2 + t);
@@ -97,7 +98,8 @@ const fort: RegionalBuilder = (ctx) => {
   for (let x = -W / 2 + 0.4; x < W / 2 - 0.4; x += 1.4) { merlon(x, -D / 2, x + 0.7, -D / 2 + t); if (Math.abs(x) > 2.4) merlon(x, D / 2 - t, x + 0.7, D / 2); }
   for (let z = -D / 2 + 1.4; z < D / 2 - 1.4; z += 1.4) { merlon(-W / 2, z, -W / 2 + t, z + 0.7); merlon(W / 2 - t, z, W / 2, z + 0.7); }
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-    sink.span(wall, sx * W / 2 - 1.6, -0.3, sz * D / 2 - 1.6, sx * W / 2 + 1.6, h + 2.2, sz * D / 2 + 1.6);
+    const tx = sx * (W / 2 - 0.8), tz = sz * (D / 2 - 0.8);
+    sink.span(wall, tx - 1.6, -0.3, tz - 1.6, tx + 1.6, h + 2.2, tz + 1.6);
   }
   // the closed gate's backing in the wall gap
   sink.span(wall, -1.8, -0.3, D / 2 - t, 1.8, 3.6, D / 2 - 0.1);
@@ -136,24 +138,29 @@ const ruin: RegionalBuilder = (ctx) => {
 const souqRow: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
-  const W = Math.max(6, Math.min(10, ctx.info.w - 0.6)), D = Math.max(10, Math.min(18, ctx.info.d - 0.6));
+  // the base market row's plot is wider than deep: the row lies along it, its shopfronts (+x) down one long side
+  const plot = plotAxes(ctx.info);
+  const W = Math.max(plot.turned ? 4.2 : 6, Math.min(10, plot.w - 0.6)), D = Math.max(plot.turned ? 6 : 10, Math.min(18, plot.d - 0.6));
   const H = 3.6, wall: RegionalBucket = ctx.wallBucket === 'stone' ? 'plaster' : ctx.wallBucket as RegionalBucket;
-  sink.span('stone', -W / 2 - 0.05, -0.3, -D / 2 - 0.05, W / 2 + 0.05, 0.25, D / 2 + 0.05);
-  sink.span(wall, -W / 2, 0.25, -D / 2, W / 2, H, D / 2);
-  for (const [x0, z0, x1, z1] of [[-W / 2, -D / 2, W / 2, -D / 2 + 0.22], [-W / 2, D / 2 - 0.22, W / 2, D / 2], [-W / 2, -D / 2, -W / 2 + 0.22, D / 2], [W / 2 - 0.22, -D / 2, W / 2, D / 2]] as const) {
-    sink.span(wall, x0, H, z0, x1, H + 0.6, z1);
-  }
-  // the shopfronts along the street side (+x): rolling shutters half up over dark shops, an awning over each
-  const face: Face = { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
-  const n = Math.max(2, Math.floor(D / 3.2));
-  for (let k = 0; k < n; k++) {
-    const u = -D / 2 + (k + 0.5) * D / n, w = D / n - 0.7;
-    faceBox(sink, 'dark', face, u, 1.45, 0.005, w, 2.3, 0.02, { decor: true });
-    faceBox(sink, 'structureMetal', face, u, 2.15 + rng() * 0.25, 0.04, w, 0.9 + rng() * 0.4, 0.05, { colour: rgb(0x8a8e90), decor: true });
-    faceBox(sink, 'structureMetal', face, u, 2.95, 0.55, w + 0.3, 0.05, 1.1, { colour: pick(rng, SAND_SHEET), decor: true });
-    faceBox(sink, 'structureWood', face, u, 3.3, 0.03, w * 0.8, 0.35, 0.04, { colour: pick(rng, STEEL_DOORS), decor: true });
-  }
-  rooftop(sink, W, D, H, rng);
+  const awning = plot.turned ? 0.8 : 1.1;
+  alongPlot(sink, plot.turned, () => {
+    sink.span('stone', -W / 2 - 0.05, -0.3, -D / 2 - 0.05, W / 2 + 0.05, 0.25, D / 2 + 0.05);
+    sink.span(wall, -W / 2, 0.25, -D / 2, W / 2, H, D / 2);
+    for (const [x0, z0, x1, z1] of [[-W / 2, -D / 2, W / 2, -D / 2 + 0.22], [-W / 2, D / 2 - 0.22, W / 2, D / 2], [-W / 2, -D / 2, -W / 2 + 0.22, D / 2], [W / 2 - 0.22, -D / 2, W / 2, D / 2]] as const) {
+      sink.span(wall, x0, H, z0, x1, H + 0.6, z1);
+    }
+    // the shopfronts along the street side (+x): rolling shutters half up over dark shops, an awning over each
+    const face: Face = { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
+    const n = Math.max(2, Math.floor(D / 3.2));
+    for (let k = 0; k < n; k++) {
+      const u = -D / 2 + (k + 0.5) * D / n, w = D / n - 0.7;
+      faceBox(sink, 'dark', face, u, 1.45, 0.005, w, 2.3, 0.02, { decor: true });
+      faceBox(sink, 'structureMetal', face, u, 2.15 + rng() * 0.25, 0.04, w, 0.9 + rng() * 0.4, 0.05, { colour: rgb(0x8a8e90), decor: true });
+      faceBox(sink, 'structureMetal', face, u, 2.95, awning / 2, w + 0.3, 0.05, awning, { colour: pick(rng, SAND_SHEET), decor: true });
+      faceBox(sink, 'structureWood', face, u, 3.3, 0.03, w * 0.8, 0.35, 0.04, { colour: pick(rng, STEEL_DOORS), decor: true });
+    }
+    rooftop(sink, W, D, H, rng);
+  }, 1);
   return sink.finish();
 };
 
