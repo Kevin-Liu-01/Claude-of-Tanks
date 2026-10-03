@@ -935,6 +935,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/bridgeDeckNavigation.selftest.mjs',
     'src/sim/formationPlacement.selftest.mjs',
     'src/sim/matchModes.selftest.mjs',
+    // 2026-10-03 (bots lane): an idle human far behind the last frontline sector keeps cover.
+    'src/sim/frontlineCover.selftest.mjs',
     'src/sim/matchRuleset.selftest.mjs',
     'src/sim/assaultLines.selftest.mjs',
     'src/sim/matchPlacement.selftest.mjs',
@@ -950,6 +952,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.passiveTarget.selftest.mjs',
     // 2026-10-03 (bots lane): a zone centred on a face is held from holdable ground beside it.
     'src/game/ai.zoneHold.selftest.mjs',
+    // 2026-10-03 (bots lane): a bot covering its idle human holds its post instead of searching.
+    'src/game/ai.coverPost.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',

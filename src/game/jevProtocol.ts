@@ -48,7 +48,7 @@ export interface JevSeenEnemy {
 }
 
 const ABILITIES = new Set(['smoke_ready', 'smoke_reloading', 'roof_gun', 'guided_missile', 'magazine', 'suspension', 'jump', 'airborne', 'burning', 'edge_risk']);
-const MISSIONS = new Set(['carrier', 'recover', 'escort', 'raid', 'defend', 'striker', 'screen', 'capture', 'assault']);
+const MISSIONS = new Set(['carrier', 'recover', 'escort', 'raid', 'defend', 'striker', 'screen', 'capture', 'assault', 'cover']);
 export interface JevTactics {
   readonly mission?: string;
   readonly allies_nearby: number;

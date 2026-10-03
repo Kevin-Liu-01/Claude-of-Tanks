@@ -115,6 +115,20 @@ const ZONE_CAPTURE_S = 8;
 const ZONE_POINTS_PER_SECOND = 2;
 export const ZONE_DESTRUCTION_POINTS = 25;
 const BALL_RADIUS_M = 2.2;
+// Frontline cover (bots lane, 2026-10-03; Redrock Divide and Desert, 24 seeds each): the attackers lose when their
+// humans die (assault_overrun). An idle human stays at its deployment while the attack moves up the lines; once the
+// attack was spent at the last line, the defenders' no-contact search found the human alone at its pad: 33 of 48
+// matches, every one after the last attacking bot had died. On the last line, while a human of the attacking side
+// stands farther than ASSAULT_COVER_FAR_M from it and a defender is left, two attacking bots (one when fewer than
+// ASSAULT_COVER_PAIR_MIN are left; the nearest to the human, kept once chosen) hold covering points
+// ASSAULT_COVER_AHEAD_M in front of it toward the line. They rejoin the attack when no defender is left or the human
+// comes up to the line. The middle lines keep every bot in the attack: covering from the second line on cost the
+// attack 12 of its 13 wins. Measured, not adopted: this last-line cover won none of the first 14 seeds (the base won
+// 3); the hunters outnumber the cover and the human dies after it.
+const ASSAULT_COVER_FAR_M = 250;
+const ASSAULT_COVER_PAIR_MIN = 4;
+const ASSAULT_COVER_AHEAD_M = 30;
+const ASSAULT_COVER_SPREAD_M = 12;
 const BALL_GOAL_RADIUS_M = 18;
 const BALL_LINEAR_DRAG = 0.992;
 const BALL_GRAVITY_MPS2 = 9.81;
@@ -181,7 +195,8 @@ interface MatchModeControllerOptions<Entity extends MatchModeEntity>
   ruleset?: MatchRuleset;
 }
 
-export type BotMission = 'carrier' | 'recover' | 'escort' | 'raid' | 'defend' | 'striker' | 'screen' | 'capture' | 'assault';
+export type BotMission = 'carrier' | 'recover' | 'escort' | 'raid' | 'defend' | 'striker' | 'screen' | 'capture' | 'assault'
+  | 'cover';
 interface BotDestination { x: number; z: number; mission?: BotMission }
 
 interface TeamScore { alpha: number; bravo: number }
@@ -768,6 +783,54 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     // Visible attackers are handled by local perception. Mission orders must
     // not pull defenders toward the live position of an unspotted attacker.
     return { x: zone.x, z: zone.z };
+  };
+
+  // the attackers' cover (see ASSAULT_COVER_FAR_M): re-chosen once a second, kept while they live and are needed
+  const assaultCoverIds: string[] = [];
+  let assaultCoverHuman: Entity | null = null;
+  let assaultCoverAt = -Infinity;
+  const assignAssaultCover = (): void => {
+    if (placementTimeS < assaultCoverAt + 1) return;
+    assaultCoverAt = placementTimeS;
+    const zone = liveLine();
+    assaultCoverHuman = teams.alpha.find((entity) => !entity.bot && activeFriend(entity, 'alpha')) ?? null;
+    const human = assaultCoverHuman;
+    const finalLine = lineIndex >= zones.length - 1;
+    const defendersLeft = teams.bravo.some((entity) => activeFriend(entity, 'bravo'));
+    const far = finalLine && defendersLeft && !!human && !!zone
+      && Math.sqrt(squaredDistance(human, zone.x, zone.z)) > ASSAULT_COVER_FAR_M;
+    const bots = teams.alpha.filter((entity) => entity.bot && activeFriend(entity, 'alpha'));
+    const wanted = !far ? 0 : Math.min(bots.length, bots.length >= ASSAULT_COVER_PAIR_MIN ? 2 : 1);
+    for (let i = assaultCoverIds.length - 1; i >= 0; i--) {
+      if (!bots.some((entity) => entity.id === assaultCoverIds[i])) assaultCoverIds.splice(i, 1);
+    }
+    if (!human || assaultCoverIds.length === wanted) return;
+    const hx = human.state.pos.x, hz = human.state.pos.z;
+    const byDistance = (a: Entity, b: Entity): number =>
+      squaredDistance(a, hx, hz) - squaredDistance(b, hx, hz) || (a.id < b.id ? -1 : 1);
+    if (assaultCoverIds.length > wanted) {
+      const kept = bots.filter((entity) => assaultCoverIds.includes(entity.id)).sort(byDistance).slice(0, wanted);
+      assaultCoverIds.length = 0;
+      for (const entity of kept) assaultCoverIds.push(entity.id);
+      return;
+    }
+    for (const entity of bots.filter((bot) => !assaultCoverIds.includes(bot.id)).sort(byDistance)) {
+      if (assaultCoverIds.length >= wanted) break;
+      assaultCoverIds.push(entity.id);
+    }
+  };
+  /** An attacking bot's covering point in front of its idle human, or null when it does not cover it. */
+  const assaultCoverTarget = (entity: Entity): BotDestination | null => {
+    assignAssaultCover();
+    const slot = assaultCoverIds.indexOf(entity.id);
+    const human = assaultCoverHuman, zone = liveLine();
+    if (slot < 0 || !human || !zone) return null;
+    const hx = human.state.pos.x, hz = human.state.pos.z;
+    const length = Math.hypot(zone.x - hx, zone.z - hz) || 1;
+    const ux = (zone.x - hx) / length, uz = (zone.z - hz) / length;
+    const side = slot % 2 ? 1 : -1, spread = ASSAULT_COVER_SPREAD_M * (1 + (slot >> 1));
+    return { x: hx + ux * ASSAULT_COVER_AHEAD_M + uz * side * spread,
+      z: hz + uz * ASSAULT_COVER_AHEAD_M - ux * side * spread, mission: 'cover' };
   };
 
   const finish = (winner: ObjectiveTeam | 'draw', reason: string): MatchModeResult => {
@@ -1372,6 +1435,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (id === 'turbo_ball') return ballBotTarget(entity, team);
     if (id === 'endless_horde') return hordeBotTarget(entity, team);
     if (id === 'frontline_assault') {
+      const cover = team === 'alpha' && entity.bot ? assaultCoverTarget(entity) : null;
+      if (cover) return cover;
       const point = assaultBotTarget();
       return point ? { ...point, mission: 'assault' } : null;
     }

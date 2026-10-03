@@ -4392,6 +4392,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       }
       return;
     }
+    // a bot covering its idle human holds its post: the search would take it from what it covers (bots lane,
+    // 2026-10-03: a frontline cover left its human on a search leg a minute after taking post)
+    if (getObjective?.()?.mission === 'cover') {
+      if (searching) { searching = false; missionRouteX = missionRouteZ = Infinity; }
+      return;
+    }
     // Deployment limits distant opening shots, not movement toward the battle.
     const maySearch = timeS >= 25 && timeS - lastFiredAtS > 25 && !emptyRack; // an empty rack
     if (!maySearch) return;                                                                   // retires, it does not hunt
