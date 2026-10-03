@@ -622,8 +622,15 @@ export interface HorizonPanoramaHandle {
   /** bake when a capable renderer is present and the atlas is not baked; true when baked after the call */
   ensureBaked(renderer: HorizonPanoramaRenderer | null | undefined): boolean;
   dispose(): void;
-  /** the last bake's duration (ms) and count, for the probes */
-  readonly stats: { bakes: number; ms: number; unsupported: string | null };
+  /** the last bake's duration (ms) and count, for the probes; `tone`: whether the battlefield's own ground and rock
+   * means coloured the bake ('ground') or the authored palette did ('authored') */
+  readonly stats: { bakes: number; ms: number; unsupported: string | null; tone: 'authored' | 'ground' };
+  /**
+   * The battlefield's own ground and rock albedo means (linear), so the far country continues the ring's terrain
+   * material instead of the authored hill palette (Sirocco Wadi's far tables were saturated orange behind a pale
+   * sand ring). Taken only before the bake (a later bake would hitch a frame); false when it came too late.
+   */
+  setGroundTone(ground: THREE.Color | null, rock: THREE.Color | null): boolean;
 }
 
 const _clear = new THREE.Color();
@@ -651,7 +658,8 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   mesh.userData.aoExclude = true;
   let atlas: THREE.WebGLRenderTarget | null = null;
   let baked = false;
-  const stats = { bakes: 0, ms: 0, unsupported: null as string | null };
+  const stats = { bakes: 0, ms: 0, unsupported: null as string | null, tone: 'authored' as 'authored' | 'ground' };
+  const palette = { ...options.palette };
 
   // the per-azimuth edge data: the ring's outer height, the sea weight and level, and the tangent of the ring's own
   // skyline elevation from the bake eye (half floats, filtered)
@@ -689,7 +697,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     const rng = mulberry32((options.seed ^ 0x9A70) >>> 0);
     const off = Array.from({ length: 16 }, () => rng() * 200 - 100);
     const linear = (c: THREE.Color): THREE.Vector3 => new THREE.Vector3(c.r, c.g, c.b);
-    const rock = options.palette.rock;
+    const rock = palette.rock;
     const tables = ch.tables;
     const rock2 = tables ? new THREE.Vector3(rock.r * 1.22, rock.g * 1.05, rock.b * 0.92) : new THREE.Vector3(rock.r * 0.86, rock.g * 0.9, rock.b * 0.98);
     const scree = new THREE.Vector3(rock.r * 1.12 + 0.02, rock.g * 1.1 + 0.02, rock.b * 1.08 + 0.02);
@@ -717,9 +725,9 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       uSun: { value: new THREE.Vector3(...options.sun).normalize() },
       uGains: { value: new THREE.Vector2(options.gains.ambient, options.gains.sunGain) },
       uElev: { value: new THREE.Vector2(P.elevMin, P.elevMax) },
-      uBase: { value: linear(options.palette.base) }, uRock: { value: linear(rock) }, uRock2: { value: rock2 },
-      uScree: { value: scree }, uSnow: { value: linear(options.palette.snow) }, uForest: { value: linear(options.palette.forest) },
-      uFog: { value: linear(options.palette.fog) },
+      uBase: { value: linear(palette.base) }, uRock: { value: linear(rock) }, uRock2: { value: rock2 },
+      uScree: { value: scree }, uSnow: { value: linear(palette.snow) }, uForest: { value: linear(palette.forest) },
+      uFog: { value: linear(palette.fog) },
     };
     const target = (w: number, h: number, type: THREE.TextureDataType, mips: boolean): THREE.WebGLRenderTarget => new THREE.WebGLRenderTarget(w, h, {
       type, format: THREE.RGBAFormat, depthBuffer: false, stencilBuffer: false, generateMipmaps: mips,
@@ -790,6 +798,13 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     mesh,
     get baked() { return baked; },
     stats,
+    setGroundTone(ground, rock) {
+      if (baked || stats.bakes > 0) return false;
+      if (ground) palette.base = ground.clone();
+      if (rock) palette.rock = rock.clone();
+      if (ground || rock) stats.tone = 'ground';
+      return !!(ground || rock);
+    },
     ensureBaked(renderer) {
       if (baked) return true;
       if (!renderer) return false;

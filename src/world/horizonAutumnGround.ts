@@ -184,6 +184,14 @@ function meanAlbedo(texture: Texture | undefined): Color | null {
 export function refreshHorizonGroundTone(mesh: Mesh, groundAlbedo: Texture | undefined, rockAlbedo?: Texture): void {
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
   const vista = materials.map((material: Material) => material.userData.horizonVista as VistaMaterialData | undefined).find(Boolean);
+  // the mountains lane (2026-10-03): the far panorama, before its bake, takes the battlefield's own ground and rock
+  // means (as the vista once did: the ground a little below the sampled field, read under more air), so the far country
+  // continues the ring's terrain material instead of the authored hill palette
+  const panorama = (mesh.userData as { horizonPanorama?: { baked: boolean; setGroundTone?(g: Color | null, r: Color | null): boolean } }).horizonPanorama;
+  if (panorama?.setGroundTone && !panorama.baked) {
+    const ground = meanAlbedo(groundAlbedo), rock = meanAlbedo(rockAlbedo);
+    panorama.setGroundTone(ground ? ground.multiplyScalar(0.94) : null, rock ? rock.multiplyScalar(0.96) : null);
+  }
   // a terrain-bound ring carries no tint for the means to land on: skip the albedo readbacks
   if (!vista || (!vista.uniforms.uVMeadowTint && !vista.uniforms.uVRockTint)) return;
   const mean = meanAlbedo(groundAlbedo);

@@ -137,9 +137,14 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
     assert.equal(stub.calls.length, 0, `${why}: the renderer untouched`);
     assert.equal(fallback.visible, true, `${why}: the fallback stays`);
   }
+  // the battlefield's own ground and rock means colour the far country when they come before the bake
+  assert.equal(handle.stats.tone, 'authored', 'the authored palette until the ground tone arrives');
+  assert.equal(handle.setGroundTone(new THREE.Color(0.31, 0.27, 0.2), null), true, 'the ground tone is taken before the bake');
+  assert.equal(handle.stats.tone, 'ground', 'and recorded for the probes');
   const renderer = recordingRenderer();
   const before = renderer.state();
   assert.equal(handle.ensureBaked(renderer), true, 'a capable renderer bakes');
+  assert.equal(handle.setGroundTone(new THREE.Color(0.5, 0.5, 0.5), null), false, 'a tone after the bake is not taken (a re-bake would hitch a frame)');
   const renders = renderer.calls.filter((c) => c[0] === 'render');
   assert.deepEqual(renders.map((c) => c[1]), [`${P.gridA}x${P.gridR}`, `${P.gridA}x${P.gridR}`, `${P.width}x${P.height}`], 'three passes: the heights, their light, the strip');
   assert.deepEqual(renderer.state(), before, 'the renderer\'s target, clear colour and alpha and auto-clear are restored');
