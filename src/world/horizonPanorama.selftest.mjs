@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
-  HORIZON_PANORAMA, HORIZON_PANORAMA_CHARACTERS, HORIZON_PANORAMA_SHADERS, buildHorizonPanoramaShellGeometry,
+  HORIZON_PANORAMA, HORIZON_PANORAMA_CHARACTERS, HORIZON_PANORAMA_SHADERS, buildHorizonPanoramaShellGeometry, horizonPanoramaHaze,
   createHorizonPanorama, horizonPanoramaUv, horizonRingSkylineTan, resolveHorizonPanoramaCharacter,
 } from './horizonPanorama.ts';
 import { HORIZON_FAR_ROWS } from './horizonFarRange.ts';
@@ -13,6 +13,7 @@ import saltwind from './maps/saltwind.ts';
 import { horizonPanoramaDeckM } from './maps/horizon.ts';
 import { HORIZON_RELIEF_CHARACTERS } from './horizonRelief.ts';
 import { CLOUD_FOGBANK_RANGE_M } from '../engine/cloudWeatherLayers.ts';
+import { hazeSigma } from '../engine/hazeLaw.ts';
 
 const P = HORIZON_PANORAMA;
 const n = 431;
@@ -168,6 +169,22 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
     'the strip bares the peaks: rock over their footprint, no snow on their faces');
 }
 assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('texture2D(uHeight, g).g'), 'the strip zones its forest and snow over the plinth');
+// the shared haze law past the shell (hazeLaw.ts; the coordinator: "read it from hazeLaw rather than your own constants,
+// so near and far stay consistent"): σ from the map's air, the layer's density, the aerial pass's target from the published
+// sky — and the bake's own air only where no sky of this map is published
+{
+  const sun = [0.5, 0.6, 0.6];
+  const atmosphere = { active: true, sunDir: { x: 0.5, y: 0.6, z: 0.6 }, fogDensity: 0.0009, fogMix: 0.5,
+    fogTint: new THREE.Color(0.6, 0.65, 0.7), summary: { horizon: new THREE.Color(0.7, 0.8, 0.95), sunHorizon: new THREE.Color(1.0, 0.95, 0.85) } };
+  const haze = horizonPanoramaHaze(atmosphere, sun, 0.00074, 0);
+  assert.ok(haze && Math.abs(haze.sigma - hazeSigma(0.00074)) < 1e-12, 'the bake takes the map\'s own σ');
+  assert.ok(haze.toward.x > haze.anti.x && haze.anti.z > haze.anti.x, 'the target: the sky at the horizon, warm toward the sun, cool away from it');
+  assert.ok(haze.anti.y < 0.8, 'a step under the sky (a range never pales past it)');
+  assert.equal(horizonPanoramaHaze(null, sun, 0.00074), null, 'no published sky: the bake\'s own air');
+  assert.equal(horizonPanoramaHaze({ ...atmosphere, sunDir: { x: -0.5, y: 0.6, z: 0.6 } }, sun, 0.00074), null, 'another map\'s or hour\'s sky: the bake\'s own air');
+  assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('hazeTransmittance(uHaze.x, max(0.0, rr - uFrame.z), layer, uHazeChroma)')
+    && HORIZON_PANORAMA_SHADERS.strip.includes('hazeLayerMean('), 'the strip hazes the path past the shell by the shared law');
+}
 // the atlas is premultiplied (paired capture d6: a dark dotted outline on every skyline, the shell's filtered samples
 // averaging the land with the sky texels' black)
 assert.ok(/gl_FragColor = vec4\(pow\([^;]*\) \* alpha, alpha\);/.test(HORIZON_PANORAMA_SHADERS.strip), 'the strip writes premultiplied colour');

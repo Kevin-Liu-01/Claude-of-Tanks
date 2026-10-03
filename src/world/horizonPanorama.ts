@@ -24,6 +24,9 @@
 // otherwise), re-bakes after a GPU suspension disposes the atlas, and until it has baked the round-72 far range stays
 // on (the receipts, a renderer without float targets). Desktop tier only: the mobile tier has no far range.
 import * as THREE from 'three';
+import {
+  HAZE_EXT_CHROMA, HAZE_LAW_GLSL, HAZE_OVERCAST_K, HAZE_TARGET_SKY_K, HAZE_TINT_SHARE, hazeLayerInverseScale, hazeSigma,
+} from '../engine/hazeLaw.ts';
 import type { SeaOpening } from './edgeWater.ts';
 import type { HorizonReliefCharacter } from './horizonRelief.ts';
 
@@ -124,6 +127,55 @@ export interface HorizonPanoramaOptions {
   treelineM?: number | null;
   /** the probes' smaller bake (a CPU renderer); production bakes at HORIZON_PANORAMA's sizes */
   resolution?: { width: number; height: number; gridA: number; gridR: number };
+  /** the map's authored fogDensity: the shared haze law's σ (hazeLaw.ts) for the far country past the shell */
+  fogDensity?: number | null;
+}
+
+/** What the bake reads of the sky the battlefield publishes (sky.ts scene.userData.atmosphere). */
+interface PanoramaAtmosphere {
+  active?: boolean;
+  sunDir?: { x: number; y: number; z: number };
+  fogDensity?: number; fogMix?: number; fogTint?: THREE.Color;
+  summary?: { horizon: THREE.Color; sunHorizon: THREE.Color } | null;
+}
+
+/**
+ * The shared haze law (hazeLaw.ts) for the bake: the far country past the shell takes the same Beer–Lambert law the
+ * aerial pass lays over the shell's own depth (post.ts), so near, mid and far ranges stay one law — σ from the map's
+ * fogDensity, the layer's path-averaged density, the per-channel extinction — and the same in-scatter target, the sky
+ * at the horizon (the atmosphere's 1.25° bands away from the sun and toward it) drawn toward the authored tint, a step
+ * under it. Null where there is no published sky for this map (the receipts, the labs, the mobile tier, a sky not yet
+ * applied): the bake keeps its own air.
+ */
+export function horizonPanoramaHaze(atmosphere: PanoramaAtmosphere | null | undefined, sun: readonly [number, number, number],
+  fogDensity: number | null | undefined, overcast = 0): { sigma: number; invScale: number; anti: THREE.Vector3; toward: THREE.Vector3 } | null {
+  if (!atmosphere?.active || !atmosphere.summary || !atmosphere.fogTint) return null;
+  // the map's own sky (a sky still showing the last map, or another hour, would hand its colour to this one's bake)
+  const sd = atmosphere.sunDir;
+  if (!sd) return null;
+  const sl = Math.hypot(sun[0], sun[1], sun[2]) || 1, dl = Math.hypot(sd.x, sd.y, sd.z) || 1;
+  if ((sun[0] * sd.x + sun[1] * sd.y + sun[2] * sd.z) / (sl * dl) < 0.9995) return null;
+  const density = fogDensity ?? atmosphere.fogDensity;
+  if (!(Number.isFinite(density) && (density as number) > 0)) return null;
+  const oc = THREE.MathUtils.clamp(overcast, 0, 1);
+  const tintShare = THREE.MathUtils.lerp(HAZE_TINT_SHARE, 1, oc);
+  const targetK = HAZE_TARGET_SKY_K * THREE.MathUtils.lerp(1, HAZE_OVERCAST_K, oc);
+  const tint = atmosphere.fogTint, tintL = Math.max(0.2126 * tint.r + 0.7152 * tint.g + 0.0722 * tint.b, 1e-4);
+  const mix = THREE.MathUtils.clamp((atmosphere.fogMix ?? 0) * tintShare, 0, 1);
+  const target = (sky: THREE.Color): THREE.Vector3 => {
+    // post.ts's target, term by term
+    const skyL = 0.2126 * sky.r + 0.7152 * sky.g + 0.0722 * sky.b;
+    const k = skyL / tintL;
+    let r = sky.r + (tint.r * k - sky.r) * mix, g = sky.g + (tint.g * k - sky.g) * mix, b = sky.b + (tint.b * k - sky.b) * mix;
+    if (g > b) {
+      const tl = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      r += (tl * 0.92 - r) * 0.6; g += (tl * 0.99 - g) * 0.6; b += (tl * 1.12 - b) * 0.6;
+    }
+    return new THREE.Vector3(r * targetK, g * targetK, b * targetK);
+  };
+  const { horizon, sunHorizon } = atmosphere.summary;
+  if (!(0.2126 * horizon.r + 0.7152 * horizon.g + 0.0722 * horizon.b > 1e-5)) return null;
+  return { sigma: hazeSigma(density as number), invScale: hazeLayerInverseScale(), anti: target(horizon), toward: target(sunHorizon) };
 }
 
 /**
@@ -702,8 +754,12 @@ uniform vec4 uChar3;   // snowline, treeline, rockSlope, bedM
 uniform vec4 uChar4;   // strata, deckM, ampM, farRise
 uniform vec2 uElev;
 uniform sampler2D uEdge;
+uniform vec4 uHaze;       // the shared haze law (hazeLaw.ts): σ (1/m), 1 / the layer's scale height, the datum (m), on
+uniform vec3 uHazeChroma; // its per-channel extinction
+uniform vec3 uHazeAnti, uHazeToward; // its in-scatter target at the horizon away from the sun and toward it
 ${NOISE_GLSL}
 ${GRID_LOOKUP_GLSL}
+${HAZE_LAW_GLSL}
 vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   float slope = 1.0 - n.y;
   // the zones (forest, fields, snow, scree) by the height over the upland's plinth where it has one
@@ -840,9 +896,21 @@ void main() {
   float sea = edge.g * step(wp.y, edge.b + 0.5);
   col = mix(col, uFog * 0.82, sea);
   float open = max(smoothstep(0.02, 0.2, sea), hiddenW * smoothstep(0.3, 0.7, edge.g));
-  // the air past the shell (gauntlet wave 6, the far layers "a flat, hazy, nearly featureless silhouette": a 13 km
-  // e-fold now, and a step under the fog's tone — the battlefield's aerial pass hazes the shell's own depth on top)
-  col = mix(col, uFog * 0.95, 1.0 - exp(-max(0.0, rr - uFrame.z) / 13000.0));
+  // the air past the shell. With the battlefield's sky published, the shared haze law (hazeLaw.ts; the coordinator,
+  // 2026-10-03: "read it from hazeLaw rather than your own constants, so near and far stay consistent"): the aerial pass
+  // hazes the shell's own depth, the bake the rest of the path to the far country — the same σ, the layer's density
+  // between the eye and the point, the per-channel extinction, the same target. Without it the bake's own air (gauntlet
+  // wave 6, "a flat, hazy, nearly featureless silhouette": a 13 km e-fold, a step under the fog's tone).
+  if (uHaze.w > 0.5) {
+    vec2 sunH = uSun.xz / max(length(uSun.xz), 1e-4);
+    float toward = 0.5 + 0.5 * (cos(a) * sunH.x + sin(a) * sunH.y);
+    vec3 target = mix(uHazeAnti, uHazeToward, toward * toward);
+    float layer = hazeLayerMean(max(uFrame.w - uHaze.z, 0.0) * uHaze.y, max(wp.y - uHaze.z, 0.0) * uHaze.y);
+    vec3 T = hazeTransmittance(uHaze.x, max(0.0, rr - uFrame.z), layer, uHazeChroma);
+    col = col * T + target * (1.0 - T);
+  } else {
+    col = mix(col, uFog * 0.95, 1.0 - exp(-max(0.0, rr - uFrame.z) / 13000.0));
+  }
   // into the cloud: a soft, broken fade over the deck's lowest 140 m
   float alpha = (1.0 - smoothstep(uChar4.y - 140.0, uChar4.y + 20.0, wp.y + 60.0 * noised(wp.xz / 260.0 + vec2(4.4, -2.9)).x)) * (1.0 - open);
   // premultiplied (paired capture d6: the skylines carried a dark dotted outline — the shell's filtered, mipmapped samples
@@ -911,7 +979,15 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   mesh.userData.aoExclude = true;
   let atlas: THREE.WebGLRenderTarget | null = null;
   let baked = false;
-  const stats = { bakes: 0, ms: 0, unsupported: null as string | null, tone: 'authored' as 'authored' | 'ground' };
+  const stats = { bakes: 0, ms: 0, unsupported: null as string | null, tone: 'authored' as 'authored' | 'ground', haze: 'own' as 'own' | 'law' };
+  // the haze law's datum: the ground at the square's edge (the ring's seam rows, a low quartile) — the aerial pass takes
+  // the ground under the camera
+  const hazeDatumM = (() => {
+    const hs: number[] = [], e = options.ringEdge;
+    for (let i = 0; i < e.heights.length; i++) if (Math.hypot(e.positions[i * 3], e.positions[i * 3 + 2]) < 600) hs.push(e.heights[i]);
+    hs.sort((a, b) => a - b);
+    return hs.length ? hs[Math.floor(hs.length * 0.25)] : 0;
+  })();
   const palette = { ...options.palette };
 
   // the per-azimuth edge data: the ring's outer height, the sea weight and level, and the tangent of the ring's own
@@ -960,6 +1036,12 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
 
   function bake(renderer: HorizonPanoramaRenderer): void {
     const started = performance.now();
+    // the battlefield's published sky, where the shell already hangs in the scene (the world's warm-up)
+    let root: THREE.Object3D = mesh;
+    while (root.parent) root = root.parent;
+    const published = root.userData as { atmosphere?: PanoramaAtmosphere; lightModel?: { overcast?: number } };
+    const haze = horizonPanoramaHaze(published.atmosphere, options.sun, options.fogDensity, published.lightModel?.overcast ?? 0);
+    stats.haze = haze ? 'law' : 'own';
     const rng = mulberry32((options.seed ^ 0x9A70) >>> 0);
     const off = Array.from({ length: 16 }, () => rng() * 200 - 100);
     const linear = (c: THREE.Color): THREE.Vector3 => new THREE.Vector3(c.r, c.g, c.b);
@@ -990,6 +1072,10 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       uMesa: { value: new THREE.Vector4(ch.mesaTalusM, ch.mesaTalusShare, ch.mesaCliffM, ch.mesaFluteM) },
       uPeaks: { value: new THREE.Vector4(ch.peakShare, ch.peakM, ch.peakRadiusM, ch.peakSharp) },
       uFrame: { value: new THREE.Vector4(P.innerM, P.outerM, P.shellM, P.eyeY) },
+      uHaze: { value: new THREE.Vector4(haze?.sigma ?? 0, haze?.invScale ?? 0, hazeDatumM, haze ? 1 : 0) },
+      uHazeChroma: { value: new THREE.Vector3(...HAZE_EXT_CHROMA) },
+      uHazeAnti: { value: haze?.anti ?? new THREE.Vector3() },
+      uHazeToward: { value: haze?.toward ?? new THREE.Vector3() },
       uGrid: { value: new THREE.Vector2((options.resolution ?? P).gridA, (options.resolution ?? P).gridR) },
       uEdge: { value: edgeTex },
       uSun: { value: new THREE.Vector3(...options.sun).normalize() },

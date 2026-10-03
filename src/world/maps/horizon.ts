@@ -1167,6 +1167,17 @@ function openRoadPasses(ring: HorizonRingGeometry, ground: CanyonGround | undefi
   for (const height of ring.heights) ring.maxHeight = Math.max(ring.maxHeight, height);
 }
 
+/**
+ * The outland boulders' stone: the palette's rock, a cool slate tint held near grey (gauntlet wave 18, Frosthollow: "a line
+ * of saturated navy-blue rock blobs runs the full width of the valley floor" — the ring's blue-grey rock, read off every
+ * boulder under the overcast); warm stone (sandstone, laterite) keeps its colour.
+ */
+function boulderStone(rock: THREE.Color): THREE.Color {
+  const hsl = { h: 0, s: 0, l: 0 };
+  rock.getHSL(hsl);
+  return hsl.h > 0.42 && hsl.h < 0.78 && hsl.s > 0.06 ? new THREE.Color().setHSL(0.08, 0.05, hsl.l) : rock.clone();
+}
+
 /** Grade the dry side as well as the submerged floor. Cutting a high ridge
  * using only the narrow water mask made kilometre-long sawtooth cliffs. */
 function coastalBankHeight(x: number, z: number, height: number, openings: readonly HorizonSeaOpening[], supportM = 0): number {
@@ -2002,7 +2013,7 @@ function* carveHorizonMassifsSteps(
 
 /** The mountains lane: the tableland rings' bed stair (horizonEscarpment.ts) — the style default, per-map overridable. */
 const MESA_ESCARPMENT: EscarpmentSettings = {
-  bedM: [36, 70], cliffShare: [0.28, 0.48], talusRise: 0.32, talusCurve: 2.2, dipPerKm: 6, meanderM: 24, meanderWavelengthM: 300,
+  bedM: [36, 70], cliffShare: [0.28, 0.48], talusRise: 0.32, talusCurve: 2.2, dipPerKm: 24, meanderM: 48, meanderWavelengthM: 300,
 };
 /** The tableland rings' side canyons: the eroded landform cutting into the tables (cut only: min(1, multiplier + bias)).
  * Its base only (erosion 0, 2026-10-03): the drainage octaves cut the crest into a row of narrow fins that the bed stair
@@ -3694,6 +3705,8 @@ export function* buildHorizonRingSteps(
         // country's meet them; the hill countries keep their character's forest cover
         snowlineM: snowline <= 1 ? snowline * maxH : null,
         treelineM: style === 'alpine' && treeline > 0 && treeline < 1.5 ? Math.max(120, treeline * maxH * 1.4) : null,
+        // the shared haze law's σ past the shell (hazeLaw.ts): the map's own air
+        fogDensity: (cfg?.sky as { fogDensity?: number } | undefined)?.fogDensity ?? null,
       }, farRange);
       mesh.add(panorama.mesh);
       mesh.userData.horizonPanorama = panorama;
@@ -3813,7 +3826,7 @@ export function* buildHorizonRingSteps(
   const rockDensity = H.outlandRocks ?? (style === 'mesa' || H.ground === 'sand' ? 1 : treeline < 0.14 ? 0.55 : 0);
   const rockGroup = vista && rockDensity > 0 ? buildHorizonRockfield({
     columns: HORIZON_SEGMENTS, rows, positions: pos, heights: hs, seed: ((seed ^ 0x2C0C) ^ idHash(mapId)) >>> 0,
-    rock: rockC, fog: fogC, haze: (vistaUniforms?.uVHaze?.value as number | undefined) ?? haze,
+    rock: boulderStone(rockC), fog: fogC, haze: (vistaUniforms?.uVHaze?.value as number | undefined) ?? haze,
     density: rockDensity, maxInstances: 3000, maxRadius: 900, nearDepth: 300, ridgeRow,
     // round 72: range boulders only on the near ranges under half the ring, none on a snow map (the trees' rule)
     rangeRadius: snowline <= 1 ? 0 : 880, rangeHeightShare: 0.5, maxHeight: maxH,

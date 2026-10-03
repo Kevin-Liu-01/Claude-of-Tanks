@@ -483,6 +483,9 @@ export default {
     // feature that survives grazing-angle minification on the far ring
     baseHex: 0xa87c4e, amp: 1.15, style: 'mesa', banding: 0.30,
     rockHex: 0x96603a, haze: 0.85, grain: 0.7,
+    // the mountains lane (2026-10-03): the outland boulders a shade sparser — they follow the ring's tilted beds, and
+    // the map's horizon draws no more triangles than the PR head's
+    outlandRocks: 0.95,
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)

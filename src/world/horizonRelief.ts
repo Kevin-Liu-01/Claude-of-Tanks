@@ -166,7 +166,9 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     // the round-72 field's 48 m low ribs, radial, had carried the inward faces' ribs; the couloirs now carry them, down
     // the fall line, at their depth — 30 m over 280 m first gullies)
     drainage: { wavelengthM: 280, octaves: 3, depthM: 30, gain: 0.55, slopeStrength: 2.6, branch: 1.8, grainM: 0.5 },
-    cover: { forest: 0, canopy: 0, fields: 0, varnish: 0.10, beds: 0.30, bedScale: 4 },
+    // (gauntlet wave 18, Frosthollow's massif "wrapped in evenly spaced horizontal bands that read as stair-stepped
+    // heightmap contours": no beds on the polar faces — their rock is the varnish down the couloirs)
+    cover: { forest: 0, canopy: 0, fields: 0, varnish: 0.14, beds: 0, bedScale: 4 },
   },
   // spires and glaciers: sharp multifractal crests, short warps, chutes on the faces
   alpine: {
@@ -175,7 +177,9 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     talusFloor: 0.30, driftM: 0, aoReachM: 160, aoStrength: 0.80, shadowSoft: 0.05, far: FAR_ALPINE,
     massif: { baseWavelengthM: 850, gullyWavelengthM: 290, gullyOctaves: 3, gullyGain: 0.5, slopeStrength: 2.5, branch: 3, erosion: 0.45, concavity: 1.15, contrast: 0.42, smoothM: 140 },
     drainage: { wavelengthM: 260, octaves: 3, depthM: 26, gain: 0.55, slopeStrength: 3.0, branch: 1.6, grainM: 0.6 },
-    cover: { forest: 0.62, canopy: 0.5, fields: 0, varnish: 0.06, beds: 0.24, bedScale: 3.5 },
+    // (gauntlet wave 18: the mountain characters' bands read as contours where they lay level and even — fainter, and
+    // dipping and wandering with their thickness below)
+    cover: { forest: 0.62, canopy: 0.5, fields: 0, varnish: 0.06, beds: 0.12, bedScale: 3.5 },
   },
   // wooded hills: rounded billows with spurs, shallow drainage
   rolling: {
@@ -767,7 +771,10 @@ function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Gener
         if (wall > 0.001) {
           const streak = clamp(-couloir / Math.max(0.5, d.depthM), 0, 1);
           const varnish = (rock.varnish ?? 0) * (0.65 + 0.35 * streak);
-          const hBed = macro[idx] + noise.noise(x / 160 + 5.7, z / 160 - 1.9) * 6;
+          // (a bed wanders and dips with its thickness: a few metres on the tablelands' laminae, tens on a mountain's bands —
+          // level, even bands read as heightmap contours, gauntlet wave 18)
+          const bedWarp = 6 * Math.max(1, s.cover?.bedScale ?? 1);
+          const hBed = macro[idx] + noise.noise(x / 160 + 5.7, z / 160 - 1.9) * bedWarp + (noise.noise(x / 900 - 2.3, z / 900 + 7.1) * 0.5 + (x * 0.6 + z * 0.8) * 0.012) * (bedWarp - 6);
           const beds = (rock.beds ?? 0) * (bedTone[bedAt(hBed)] - 0.35);
           canopyLight[idx] *= clamp(1 - wall * (varnish + beds), 0.3, 1);
         }
