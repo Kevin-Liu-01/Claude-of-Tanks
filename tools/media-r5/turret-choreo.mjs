@@ -6,8 +6,10 @@
 //   - before each of its shots a turret traverses to that shot's target (the tank it knocks out, the enemy that fired
 //     at it, or the nearest enemy still in the fight) at about 30°/s, holds through the shot, then goes back to its
 //     scan; nothing moves inside the loop's crossfade windows;
-//   - style 'flank' turns the hero's first shot onto a flank target on the side away from the lens, so the barrel
-//     crosses the frame; its round lands out on that bearing.
+//   - style 'flank' turns one hero round (never a knockout; the one with the most room to swing out and back) onto a
+//     flank target on the side away from the lens, so the barrel crosses the frame; its round lands out on that bearing;
+//   - style 'lens' (close holds) turns the hero's first round that is not a knockout ~35° toward the lens, so the barrel
+//     angles at the camera (the turret lab's strongest close frames, 2026-10-03).
 // Angles are relative to the hull, + toward the hull's left (headings grow toward +X; a hull facing +Z has -X on its
 // right), the convention setups.mjs uses for turretDeg.
 const deg = r => r * 180 / Math.PI, rad = d => d * Math.PI / 180;
@@ -60,7 +62,7 @@ function engagements(scene, name) {
  * Plans every allied turret and gun for a built shot (setups.mjs buildShot output).
  * @returns {{ turrets: Record<string, [number, number][]>, guns: Record<string, number>, effects: object[], notes: string[] }}
  */
-export function choreograph(scene, { loopMs, xfadeMs, style = 'sectors', flankDeg = 62 }) {
+export function choreograph(scene, { loopMs, xfadeMs, style = 'sectors', flankDeg = 62, lensDeg = 35 }) {
   const dur = loopMs + xfadeMs, allies = scene.actors.filter(a => !a.name.startsWith('foe'));
   const hero0 = poseAt(scene, 'hero', 0), foes = scene.actors.filter(a => a.name.startsWith('foe'));
   const turrets = {}, guns = {}, effects = [], notes = [];
@@ -88,6 +90,18 @@ export function choreograph(scene, { loopMs, xfadeMs, style = 'sectors', flankDe
         effects.push({ type: 'explosion', at: [+q[0].toFixed(2), +q[1].toFixed(2)], tMs: pick.t + 140, params: { size: 'large' }, choreo: true },
           { type: 'debris', at: [+q[0].toFixed(2), +q[1].toFixed(2)], tMs: pick.t + 170, params: { count: 34, speedMps: 15, hot: 0.4, scale: 1.1 }, choreo: true });
         if (pick === plan[0]) center = plan.find(e => !e.flank)?.b ?? wrap(pick.b - side * room(pick));
+      }
+    }
+    // style 'lens' (close holds): the hero's first round that is not a knockout goes out ~lensDeg toward the lens side —
+    // the barrel angles at the camera; the hero watches that bearing and traverses to its knockout targets and back. Its
+    // round lands behind the lens, so it gets no impact.
+    if (a.name === 'hero' && style === 'lens' && plan.length) {
+      const pick = plan.find(e => !e.kill);
+      if (pick) {
+        const pose = poseAt(scene, 'hero', pick.t), cam = camAt(scene, pick.t);
+        const side = lateral(pose, [cam.pos[0], cam.pos[2]]) > 0 ? -1 : 1; // lens on the right -> swing right (-)
+        pick.b = wrap(pick.b + side * lensDeg); pick.flank = true;
+        if (pick === plan[0]) center = pick.b;
       }
     }
     if (a.name !== 'hero') {

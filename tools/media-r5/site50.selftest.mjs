@@ -99,10 +99,10 @@ assert.equal(units.size, SHOTS.length, 'fifty schemes for fifty shots');
 // fifty show off-axis guns: flank swings on the FLANK shots and wingmen watching their own sectors.
 const wrap = d => ((d % 360) + 540) % 360 - 180;
 const trackAt = (keys, t, f) => { let i = 0; while (i < keys.length - 2 && keys[i + 1].tMs <= t) i++; const a = keys[i], b = keys[i + 1] ?? a; const u = Math.min(1, Math.max(0, (t - a.tMs) / Math.max(1, b.tMs - a.tMs))); return a[f] + (b[f] - a[f]) * u; };
-let flankSwings = 0, wideWingmen = 0;
+let flankSwings = 0, wideWingmen = 0, lensAngles = 0;
 for (const shot of SHOTS) {
   const [n, id] = shot, scene = siteScene(shot), tracks = scene.storyboard.actorTracks ?? [];
-  assert.ok(['sectors', 'flank'].includes(scene.meta.turrets?.style), `${id}: a turret style`);
+  assert.ok(['sectors', 'flank', 'lens'].includes(scene.meta.turrets?.style), `${id}: a turret style`);
   for (const a of scene.actors.filter(x => !x.name.startsWith('foe'))) {
     const keys = tracks.find(tr => tr.actor === a.name)?.keys;
     assert.ok(keys?.length > 2, `${id}: ${a.name}'s turret is keyed`);
@@ -117,6 +117,7 @@ for (const shot of SHOTS) {
     }
     assert.ok(fastest <= 70, `${id}: ${a.name} traverses at ${fastest.toFixed(0)}°/s`);
     if (a.name === 'hero' && scene.meta.turrets.style === 'flank' && offAxis >= 40) flankSwings++;
+    if (a.name === 'hero' && scene.meta.turrets.style === 'lens' && offAxis >= 25) lensAngles++;
     if (a.name !== 'hero' && offAxis >= 40) { wideWingmen++; }
   }
   // a knockout round leaves a gun laid on the tank it kills
@@ -134,4 +135,5 @@ for (const shot of SHOTS) {
 }
 assert.ok(flankSwings >= 10, `the hero's gun swings out across the frame in at least ten shots (${flankSwings})`);
 assert.ok(wideWingmen >= 15, `wingmen watch their own sectors in at least fifteen places (${wideWingmen})`);
+assert.ok(lensAngles >= 4, `the hero's barrel angles at the lens in at least four close holds (${lensAngles})`);
 console.log(`site50.selftest: ${SHOTS.length} shots (${KINDS.map(k => `${byKind[k]} ${k}`).join(', ')}) on ${maps.size} battlefields at ${[...times].join(', ')}`);

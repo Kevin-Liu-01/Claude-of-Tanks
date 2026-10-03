@@ -8,7 +8,7 @@
 //   node tools/media-r5/site50-sync.mjs <resolvedDir> [<resolvedDir> ...]
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { FLANK, LOOP_MS, SHOTS, XFADE_MS, siteScene } from './site50.mjs';
+import { LOOP_MS, SHOTS, XFADE_MS, siteScene, turretStyle } from './site50.mjs';
 import { choreograph, poseAt } from './turret-choreo.mjs';
 
 const byNumber = new Map(SHOTS.map(shot => [shot[0], shot]));
@@ -29,7 +29,7 @@ for (const dir of process.argv.slice(2)) {
     // turrets, planned again on the resolved geometry (flank rounds from an earlier sync come out first)
     const planFx = plan.effects.filter(e => e.choreo);
     scene.effects = scene.effects.filter(e => !e.choreo && !planFx.some(p => sameFx(p, e)));
-    const style = FLANK.has(n) ? 'flank' : 'sectors';
+    const style = turretStyle(n);
     const choreo = choreograph(scene, { loopMs: LOOP_MS, xfadeMs: XFADE_MS, style });
     const dur = scene.storyboard.durationMs, tracks = scene.storyboard.actorTracks ?? (scene.storyboard.actorTracks = []);
     for (const [name, keys] of Object.entries(choreo.turrets)) {

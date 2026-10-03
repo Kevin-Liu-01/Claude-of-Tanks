@@ -310,6 +310,9 @@ export const PAINT = Object.freeze({
 // The hero's first round goes out on a flank (the barrel crosses the frame, away from the lens) in a third of the shots,
 // spread over the kinds (owner 2026-10-03: "experiment with turrets being at unique angles and rotations").
 export const FLANK = new Set([2, 5, 8, 9, 12, 15, 19, 21, 25, 28, 30, 35, 39, 43, 45]);
+// Close holds where the hero's first free round angles at the lens instead (the turret lab's strongest close frames).
+export const LENS = new Set([16, 20, 26, 31, 37]);
+export const turretStyle = n => (FLANK.has(n) ? 'flank' : LENS.has(n) ? 'lens' : 'sectors');
 
 const CAMERA_BLOCKED_MAX = 0.1;
 const mirrorCam = cam => cam.map(k => ({ ...k, ...(k.side != null ? { side: -k.side } : {}), ...(k.orbit != null ? { orbit: -k.orbit } : {}),
@@ -339,7 +342,7 @@ export function siteScene([n, id, kind, title, setRef, film, still]) {
   }
   // turrets (turret-choreo.mjs): every gun watches its own sector, traverses to each of its targets and is home again
   // before the loop wraps; the FLANK shots swing the hero's first round out across the frame
-  const style = FLANK.has(n) ? 'flank' : 'sectors';
+  const style = turretStyle(n);
   const choreo = choreograph(scene, { loopMs: LOOP_MS, xfadeMs: XFADE_MS, style });
   scene = buildShot(base, { durMs: DUR, ...film, cam: lens, still, turrets: choreo.turrets, guns: choreo.guns,
     effects: [...(film.effects ?? []), ...choreo.effects] });
