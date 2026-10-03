@@ -1,11 +1,12 @@
 // tools/hardstand-banks.mjs — the apron bank law (docs/MAP-LAYOUT-BRIEF.md, "Apron banks"; maps lane, 2026-10-02).
 //
 // An apron (terrain.hardstands) is stamped into the road grids, so the ground leaves its plane through the road
-// blend: fully on the plane to 3.8 m, back to the natural ground by 14 m, a bank about 10 m wide. An apron that stands
-// metres off its ground turns that band into a wall (Monsoon's first assembly apron cut 10 m into a 30 % hillside and a
-// bot fell 12 m off the cut at t = 6 s). The scan samples the band 1-11 m outside every apron, every 4 m along each
-// ring, and counts the points where the finished ground is steeper than BANK_STEEP and steeper by BANK_MARGIN than the
-// same point with that apron removed: a wall the apron made, not a hillside it stands beside.
+// blend: fully on the plane to 3.8 m, back to the natural ground by 14 m, a bank about 10 m wide (wider where the apron
+// authors bankM). An apron that stands metres off its ground turns that band into a wall (Monsoon's first assembly
+// apron cut 10 m into a 30 % hillside and a bot fell 12 m off the cut at t = 6 s). The scan samples the band from 1 m
+// outside every apron to a metre past its bank, every 4 m along each ring, and counts the points where the finished
+// ground is steeper than BANK_STEEP and steeper by BANK_MARGIN than the same point with that apron removed: a wall the
+// apron made, not a hillside it stands beside.
 //
 //   node tools/hardstand-banks.mjs [map,map,...] [--json=out.json]
 //
@@ -13,6 +14,7 @@
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { getMapConfig, MAP_IDS } from '../src/world/maps/index.ts';
+import { hardstandBankM } from '../src/world/hardstandSurface.ts';
 import { createHeightField } from '../src/world/terrain.ts';
 
 /** A bank steeper than this (31 degrees) is a wall to a tank. */
@@ -21,7 +23,6 @@ export const BANK_STEEP = 0.6;
 export const BANK_MARGIN = 0.25;
 /** The terrain seed the game and the dedicated world build with (server/world-collision-manifests/index.json). */
 const TERRAIN_SEED = 1337;
-const BAND_M = [1, 3, 5, 7, 9, 11];
 const SPACING_M = 4;
 const SLOPE_STEP_M = 1.5;
 const EDGE_M = 495;
@@ -32,10 +33,12 @@ function slopeAt(field, x, z) {
     field.getHeightAt(x, z + e) - field.getHeightAt(x, z - e)) / (2 * e);
 }
 
-/** Every band point round one apron: rings 1-11 m outside its rectangle, one point per 4 m of ring. */
+/** Every band point round one apron: rings every 2 m from 1 m outside its rectangle to a metre past its bank, one point
+ * per 4 m of ring. */
 function bandPoints(stand, visit) {
   const angle = (stand.yawDeg ?? 0) * Math.PI / 180, c = Math.cos(angle), s = Math.sin(angle);
-  for (const d of BAND_M) {
+  // the band runs out to a metre past the apron's bank (hardstandSurface.ts: the road blend's 10.2 m, or bankM)
+  for (let d = 1; d <= hardstandBankM(stand) + 1; d += 2) {
     const hw = stand.width / 2 + d, hl = stand.length / 2 + d;
     const perimeter = 4 * (hw + hl), count = Math.ceil(perimeter / SPACING_M);
     for (let k = 0; k < count; k++) {

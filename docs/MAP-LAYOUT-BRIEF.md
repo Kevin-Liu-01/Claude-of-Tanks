@@ -116,20 +116,30 @@ standing metres off its ground turns that band into a wall: Monsoon's first asse
 5–15 m high, and a bot fell 12 m off the cut six seconds into a match. The law holds on every map: **no apron may make
 its bank steeper than 0.6 where the ground without it is gentler by 0.25.**
 
-- `node tools/hardstand-banks.mjs [maps]` samples the band 1–11 m outside each apron every 4 m and counts the points
-  steeper than 0.6 and 0.25 steeper than the same point with that apron removed. The game's terrain seed (1337) is
-  the one that counts.
+- `node tools/hardstand-banks.mjs [maps]` samples the band from 1 m outside each apron to a metre past its bank
+  (11 m for the road blend's own) every 4 m, and counts the points steeper than 0.6 and 0.25 steeper than the same
+  point with that apron removed. The game's terrain seed (1337) is the one that counts.
 - `src/world/hardstandBanks.selftest.mjs` fails on any apron with such a point, except the ones its pending list
   names with their owner. The list only shrinks: an apron that is clean fails until its entry goes, and the list must
   be empty before PR #9 is ready.
-- `node tools/hardstand-site.mjs <map> <index> [--seat=30,7]` searches sites, sizes and levels for one apron: it
-  builds each candidate into the height field, keeps the ones whose centre still seats what the apron carries, and
-  ranks them by walls, steepening and distance moved.
+- `node tools/hardstand-site.mjs <map> <index> [--seat=30,7] [--tilt] [--road] [--banks=16,24]` searches sites,
+  sizes, levels, tilts, road-following planes and bank widths for one apron. It builds each candidate into the
+  height field, keeps the ones whose centre still seats what the apron carries, and ranks them by walls, distance
+  moved, bank width and steepening.
 
 Siting an apron:
 
 - Put it where its ground spreads least, at that ground's median height, not at the height of the nearest road
   (the default when `level` is omitted).
+- Fix it in place before moving it, so the seats it carries keep their driven distances. Two authored fields help:
+  - `bankM` widens the bank beyond the road blend's 10.2 m (the scan's band follows it). Ground a few metres off the
+    plane all round then meets the apron at a slope a tank climbs.
+  - `grade` tilts the apron along its length, up to 8 %, with `yawDeg` turning the length down the fall line. A zone
+    disc (7 m of relief over 60 m) and a turbo goal (5 m over 36 m) still seat on it. A fitted road grade stays
+    within 1 %.
+  - Where a sloping road crosses the apron, omit `level` and set `grade: 'road'` with the length along the road. The
+    apron then takes the road's own height and grade (up to 8 %) at every terrain seed. A fixed level or grade kinks
+    the road at the apron's edges on the seeds whose ground differs, and `roadGradeSmoothing` checks three.
 - Size it to the seat it carries (zone disc 30 m, turbo goal 18 m, flag 12 m). Do not size it to the area you would
   like paved.
 - An apron that carries a team's turbo goal stands on the team's pad, inside the mode arena
