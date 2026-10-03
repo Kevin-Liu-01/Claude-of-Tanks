@@ -200,6 +200,19 @@ export function measureTreeImpostorRow(
       if (y > yMax) yMax = y;
     }
   }
+  // trees round 2: a facing cluster turns about its own axis (the bake's COT_BAKE_BILLBOARD), so each card vertex may
+  // stand anywhere within its distance across the card from its point on that axis
+  const axisA = source.cards.getAttribute('aAxis'), leafA = source.cards.getAttribute('aLeaf'), cardA = source.cards.getAttribute('aCard');
+  if (axisA && leafA && cardA) {
+    for (let i = 0; i < axisA.count; i++) {
+      const reach = Math.abs(leafA.getX(i)), along = leafA.getY(i);
+      const x = cardA.getX(i) + axisA.getX(i) * along, y = cardA.getY(i) + axisA.getY(i) * along - leafA.getZ(i);
+      const z = cardA.getZ(i) + axisA.getZ(i) * along;
+      radius = Math.max(radius, Math.hypot(x, z) + reach);
+      if (y - reach < yMin) yMin = y - reach;
+      if (y + reach > yMax) yMax = y + reach;
+    }
+  }
   if (!(radius > 0) || !Number.isFinite(yMin) || !Number.isFinite(yMax)) {
     throw new Error(`world/treeImpostors: ${source.species}/${source.variant} has no measurable geometry`);
   }
@@ -211,15 +224,32 @@ export function measureTreeImpostorRow(
   return { species: source.species, variant: source.variant, cellM, baseV, radiusM: radius, heightM: yMax, elevation };
 }
 
+// Trees round 2 (2026-10-03): a grown crown's leaf clusters turn about their own axes to face the camera in the near
+// material (vegetation.ts COT_LEAF_BILLBOARD); the bake turns them the same way toward each capture direction (the
+// orthographic camera's own axis, carried into the copy's frame), so the far tier shows the crown the near tier does.
 const BAKE_VERTEX = /* glsl */`
 varying vec2 vBakeUv;
 varying vec3 vBakeColor;
 varying vec3 vBakeNormal;
+#ifdef COT_BAKE_BILLBOARD
+attribute vec3 aAxis;
+attribute vec3 aLeaf;
+attribute vec4 aCard;
+#endif
 void main() {
   vBakeUv = uv;
   vBakeColor = color;
   vBakeNormal = normalize( normalMatrix * normal );
-  gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+  vec3 bakePosition = position;
+  #ifdef COT_BAKE_BILLBOARD
+  if ( dot( aAxis, aAxis ) > 0.5 ) {
+    vec3 bakeToCamera = transpose( mat3( modelMatrix ) ) * vec3( viewMatrix[ 0 ][ 2 ], viewMatrix[ 1 ][ 2 ], viewMatrix[ 2 ][ 2 ] );
+    vec3 bakeRight = cross( aAxis, bakeToCamera );
+    float bakeRightL = length( bakeRight );
+    if ( bakeRightL > 1e-4 ) bakePosition = aCard.xyz + bakeRight * ( aLeaf.x / bakeRightL ) + aAxis * aLeaf.y - vec3( 0.0, aLeaf.z, 0.0 );
+  }
+  #endif
+  gl_Position = projectionMatrix * modelViewMatrix * vec4( bakePosition, 1.0 );
 }`;
 const BAKE_FRAGMENT = /* glsl */`
 uniform sampler2D map;
@@ -235,11 +265,12 @@ void main() {
   else gl_FragColor = vec4( normalize( vBakeNormal ) * 0.5 + 0.5, 1.0 );
 }`;
 
-function makeBakeMaterial(map: THREE.Texture, alphaTest: number, side: THREE.Side): THREE.ShaderMaterial {
+function makeBakeMaterial(map: THREE.Texture, alphaTest: number, side: THREE.Side, billboard = false): THREE.ShaderMaterial {
   const material = new THREE.ShaderMaterial({
     uniforms: { map: { value: map }, uAlphaTest: { value: alphaTest }, uMode: { value: 0 } },
     vertexShader: BAKE_VERTEX, fragmentShader: BAKE_FRAGMENT,
     vertexColors: true, side, depthTest: true, depthWrite: true, toneMapped: false,
+    ...(billboard ? { defines: { COT_BAKE_BILLBOARD: '' } } : {}),
   });
   return material;
 }
@@ -471,7 +502,7 @@ export function createTreeImpostorLibrary(options: TreeImpostorOptions): TreeImp
         const row = rows[index], source = sources[index];
         let foliageMaterial = foliageMaterials.get(source.foliage);
         if (!foliageMaterial) {
-          foliageMaterial = makeBakeMaterial(source.foliage, TREE_IMPOSTOR_BAKE_ALPHA_TEST, THREE.DoubleSide);
+          foliageMaterial = makeBakeMaterial(source.foliage, TREE_IMPOSTOR_BAKE_ALPHA_TEST, THREE.DoubleSide, true);
           foliageMaterials.set(source.foliage, foliageMaterial);
           materials.push(foliageMaterial);
         }

@@ -37,18 +37,21 @@ import { createTreeImpostorLibrary, type TreeImpostorLibrary, type TreeImpostorR
 // p2 trees lane (2026-10-01): the grown near trees — skeleton, wood, spray cards and crown shadow hull — and their
 // branch-spray atlases
 import {
-  canopySkyOcclusion, emitBranchGeometry, emitCrownShadowHull, emitLeafCards, growShrubSkeleton, GROWTH_SHRUB_VALUE, growthCardRows, GROWTH_CROWN_STEM_WIDTH, growthCrownAttachments,
+  canopySkyOcclusion, crownLobes, crownSurfaceNormal, emitBranchGeometry, emitCrownShadowHull, emitLeafCards, growShrubSkeleton, GROWTH_SHRUB_VALUE, growthCardRows, GROWTH_CROWN_STEM_WIDTH, growthCrownAttachments,
   growTreeSkeleton, GROWTH_CANOPY_AO, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type GrowthSpecies,
 } from './treeGrowth.ts';
 import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
+import { treeBiomeSlot } from './treeBiomes.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import type { PropsMapConfig } from './props.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../engine/quality.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
+// trees round 2 (2026-10-03): the grown crowns' dappled shadow
+import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleFlags } from './crownShadowDapple.ts';
 import { markShadowOnly, setShadowCasterCascades, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { advanceGrassChunkWork, createGrassChunkWork,
@@ -91,6 +94,8 @@ interface CanopyPalette {
 interface VegetationPalette {
   /** Leaf-bearing birch/aspen; omitted for the existing bare winter crowns. */
   birchLeaves?: boolean;
+  /** Trees round 2: the regional form the slot grows as on the desktop tiers (treeBiomes.ts; the map's word wins). */
+  form?: GrowthSpecies;
   canopy?: CanopyPalette;
   cardHue?: number;
   cardSat?: number;
@@ -2174,8 +2179,14 @@ function buildBirchGeometry(
 
 /** The spray atlas a species paints on a map: birches and aspens carry leaves only where the palette says so. */
 export function grownSprayKind(species: Species, palette: VegetationPalette = {}): SprayKind {
-  if (species === 'birch' || species === 'aspen') return palette.birchLeaves === true ? species : 'birch-bare';
-  return species as SprayKind;
+  return grownFormSprayKind(species as GrowthSpecies, palette);
+}
+
+/** Trees round 2: the spray atlas a grown form paints (treeBiomes.ts) — a birch-family form leafy only where the palette
+ * says so (a slot's biome entry can say so too, through palOf). */
+export function grownFormSprayKind(growth: GrowthSpecies, palette: VegetationPalette = {}): SprayKind {
+  if (growth === 'birch' || growth === 'aspen') return palette.birchLeaves === true ? growth : 'birch-bare';
+  return growth as SprayKind;
 }
 
 /**
@@ -2196,6 +2207,24 @@ const GROWN_CROWN_TRANSMISSION = 1.6;
  * grounded light, which retired the anti-sun fill, Saltmere's crowns read 23–36 % under the base.
  */
 const LEAF_TRANSMISSION = 0.45;
+
+/**
+ * Trees round 2 (2026-10-03): the share of the turn a grown crown's leaf cluster makes about its own axis toward the
+ * camera (foliageWindHook COT_LEAF_BILLBOARD): all of it — a cluster is leaves all round its twig, and its edge is the
+ * flat card the gauntlet named.
+ */
+const GROWN_LEAF_BILLBOARD = 1;
+
+/**
+ * Trees round 2 (2026-10-03): the grown crowns' tint gain over the depth shading their cards now carry (treeGrowth.ts
+ * GROWTH_CROWN_SHADING): the visible crown albedo of a portrait at 22 m (.qa-dev trees2-portrait: oak 0.122 → 0.083,
+ * pine 0.089 → 0.072, poplar 0.101 → 0.070 before this gain) comes back to within about a sixth under the round-1
+ * crowns — the lit outer clusters at their old value, the heart of the crown in shade.
+ */
+const GROWN_CROWN_DEPTH_GAIN = 1.25;
+/** Trees round 2: a grown shrub's depth shade (its masses' hearts) and the gain that gives its lit shell back. */
+const GROWN_SHRUB_DEPTH_SHADE = 0.3;
+const GROWN_SHRUB_DEPTH_GAIN = 1.12;
 
 /** The grown crowns' card tint law per family: the legacy HSL multiplier's hue and saturation, and its gain. */
 function grownTintLaw(family: string): readonly [number, number, number] {
@@ -2228,14 +2257,19 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
   const [hueBase, satBase, gain] = grownTintLaw(profile.family);
   const hue0 = (pal.cardHue ?? hueBase) + (kind === 'understorey' ? 0.015 : 0), sat0 = pal.cardSat ?? satBase;
   const shrubValue = GROWTH_SHRUB_VALUE[growth] ?? 1;
+  // trees round 2 (2026-10-03, gauntlet wave 4: the "green balls", the "papercraft" foreground bush): a shrub shades as
+  // its own few masses — its sprays' lobes, the union's normals and a lighter depth shade than a crown's (a shrub is
+  // open to the sky around it), its lit shell given back by GROWN_SHRUB_DEPTH_GAIN
+  skeleton.lobes = crownLobes(skeleton, kind === 'bush' ? 3 : 2);
   const cards = emitLeafCards(skeleton, {
-    tiles: SPRAY_ATLAS_TILES, rng, rows: 2,
+    tiles: SPRAY_ATLAS_TILES, rng, rows: 2, depthShade: GROWN_SHRUB_DEPTH_SHADE,
     tint(shade, site, r) {
       const jitter = r();
       const sk = snow > 0.05 && site.tile < SPRAY_ATLAS_TILES ? 0.85 + jitter * 0.15 : 0;
       _c.setHSL(hue0 + (r() - 0.5) * 0.06 + (0.585 - hue0) * sk, (sat0 + r() * 0.06) * (1 - sk * 0.85) + 0.02 * sk, 0.5,
         THREE.SRGBColorSpace);
-      const value = (0.55 + 0.45 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1) * (sk > 0 ? 1 : shrubValue);
+      const value = (0.55 + 0.45 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1) * (sk > 0 ? 1 : shrubValue)
+        * GROWN_SHRUB_DEPTH_GAIN;
       return [_c.r * gain * value, _c.g * gain * value, _c.b * gain * value];
     },
   });
@@ -2292,9 +2326,11 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   // snow caps showed (six or seven pads a tree at Frosthollow's 0.75–0.9, each a bough wide, spread down the crown,
   // the leader capped), a broadleaf's or a birch's a lighter load riding its limbs
   const snow = pal.snow ?? 0;
-  if (snow > 0.25 || (profile.family === 'birch' && snow > 0.01)) {
-    const conifer = profile.family === 'conifer';
-    const maxPads = Math.round(2 + (conifer ? 6 : 3) * snow);
+  // trees round 2 (2026-10-03, gauntlet wave 4: "white cotton-ball discs perched on the branch tips"): a conifer's load
+  // is the laden spray tiles over its upper crown (below), not lumps on its boughs; a broadleaf's and a birch's light
+  // load still rides their limbs as flat pads
+  if ((snow > 0.25 && profile.family !== 'conifer') || (profile.family === 'birch' && snow > 0.01)) {
+    const maxPads = Math.round(2 + 3 * snow);
     // the highest upward sprays first (a weeping crown's sprays hang: its pads ride the tops of its limbs instead): the
     // top two always carry a pad, the rest by the load and the height
     const upward = profile.habit === 'hanging'
@@ -2322,36 +2358,19 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
       const heightT = clamp(site.y / skeleton.height, 0, 1);
       if (k >= 2 && rng() > snow * (0.6 + 0.4 * heightT)) continue;
       // out along the bough, where the load shows past the sprays above it
-      const along = site.length * (conifer ? 0.58 : 0.45);
+      const along = site.length * 0.45;
       const cx = site.x + site.ax * along, cy = site.y + site.ay * along, cz = site.z + site.az * along;
-      // a conifer's pad is a bough's load, wider low in the crown — a mounded clump and a smaller one heaped beside it
-      // along the bough (a squashed single lobe read as a plate); a limb's load follows its spray
-      const lr = conifer ? (0.26 + rng() * 0.14) * (0.8 + 0.5 * (1 - heightT)) : site.length * 0.15 * (0.8 + rng() * 0.4);
+      // a limb's load follows its spray: one flat pad lying along it, a little out from its seat
+      const lr = site.length * 0.15 * (0.8 + rng() * 0.4);
       const yaw = Math.atan2(site.ax, site.az) + Math.PI / 2;
-      const clumps = conifer ? 2 : 1;
-      for (let c = 0; c < clumps; c++) {
-        const r = c === 0 ? lr : lr * (0.55 + rng() * 0.15);
-        const lobe = new THREE.IcosahedronGeometry(r, 0);
-        shapeTreeSnowLobe(lobe, rng);
-        lobe.scale(conifer ? 1.35 + rng() * 0.35 : 1.7, conifer ? 0.62 + rng() * 0.14 : 0.26, conifer ? 0.95 + rng() * 0.25 : 1.0);
-        // along the spray, a little out from its seat, lying on its face; the second clump heaped beside the first
-        lobe.rotateY(yaw + (rng() - 0.5) * 0.5);
-        const side = c === 0 ? 0 : (rng() < 0.5 ? -1 : 1) * lr * 0.95;
-        lobe.translate(cx + site.nx * 0.05 + site.ax * side, cy + site.ny * 0.05 + r * 0.12 * c, cz + site.nz * 0.05 + site.az * side);
-        _c.setHSL(0.585, 0.04, 0.62, THREE.SRGBColorSpace).multiplyScalar(1.55);
-        parts.push(paintFlat(lobe, _c.clone(), 0.12));
-      }
-      lastAz = Math.atan2(site.z, site.x);
-    }
-    if (conifer) {
-      // the leader's cap: the topmost load every snowbound conifer carries
-      const top = stem.nodes[stem.nodes.length - 1];
-      const cap = new THREE.IcosahedronGeometry(0.2 + 0.12 * snow, 0);
-      shapeTreeSnowLobe(cap, rng);
-      cap.scale(1.1, 0.7, 1.1);
-      cap.translate(top.x, top.y - 0.32, top.z);
+      const lobe = new THREE.IcosahedronGeometry(lr, 0);
+      shapeTreeSnowLobe(lobe, rng);
+      lobe.scale(1.7, 0.26, 1.0);
+      lobe.rotateY(yaw + (rng() - 0.5) * 0.5);
+      lobe.translate(cx + site.nx * 0.05, cy + site.ny * 0.05, cz + site.nz * 0.05);
       _c.setHSL(0.585, 0.04, 0.62, THREE.SRGBColorSpace).multiplyScalar(1.55);
-      parts.push(paintFlat(cap, _c.clone(), 0.18));
+      parts.push(paintFlat(lobe, _c.clone(), 0.12));
+      lastAz = Math.atan2(site.z, site.x);
     }
   }
   // the grown wood and cards are emitted as flat triangle lists; welded (identical vertices shared, an index) they draw
@@ -2394,7 +2413,12 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   if (snow > 0.05) {
     for (const site of skeleton.leaves) {
       const heightT = clamp(site.y / skeleton.height, 0, 1);
-      const up = clamp((site.ny - 0.3) / 0.45, 0, 1);
+      // trees round 2: a spray takes the load where the crown's surface faces the sky (the lobes' union at the card's
+      // centre), so the snow lies over the upper crown and along the tiers' tops instead of wherever a spray's own face
+      // happens to turn up
+      const hull = crownSurfaceNormal(skeleton, site.x + site.ax * site.length * 0.45, site.y + site.ay * site.length * 0.45,
+        site.z + site.az * site.length * 0.45);
+      const up = Math.max(clamp((site.ny - 0.3) / 0.45, 0, 1) * 0.5, clamp((hull[1] - 0.05) / 0.55, 0, 1));
       const hash = Math.sin(site.x * 12.9898 + site.y * 78.233 + site.z * 37.719) * 43758.5453;
       const laden = hash - Math.floor(hash) < up * (0.45 + 0.55 * heightT) * Math.min(1, snow * 1.1);
       site.tile = (laden ? 0 : SPRAY_ATLAS_TILES) + (site.tile % SPRAY_ATLAS_TILES);
@@ -2419,14 +2443,21 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
       _c.setHSL(dead ? 0.085 + (r() - 0.5) * 0.02 : hue0 + (r() - 0.5) * 0.06 + (0.585 - hue0) * sk,
         dead ? 0.34 + r() * 0.06 : (sat0 + r() * 0.06) * (1 - sk * 0.85) + 0.02 * sk, 0.5, THREE.SRGBColorSpace);
       // a laden spray's lift brightens its painted snow far more than its dark needles (the tint multiplies the
-      // texel): the snow reads as snow beside the snowfield, the needles under it stay dark
-      const value = (0.52 + 0.48 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1);
+      // texel): the snow reads as snow beside the snowfield, the needles under it stay dark. Trees round 2: a crown
+      // with lobes darkens its cards by their depth in it (treeGrowth.ts emitLeafCards); GROWN_CROWN_DEPTH_GAIN gives
+      // the lit shell back what that darkening takes
+      const value = (0.52 + 0.48 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1)
+        * (skeleton.lobes ? GROWN_CROWN_DEPTH_GAIN : 1);
       return [_c.r * gain * value, _c.g * gain * value, _c.b * gain * value];
     },
   }));
+  // trees round 2: a palm's fronds keep their authored arch — no billboard frame (foliageWindHook COT_LEAF_BILLBOARD)
+  if (palm) { cards.deleteAttribute('aAxis'); cards.deleteAttribute('aLeaf'); }
   // the crown's own shadow hull rides on the trunk (createTreeMeshPools builds the pool's proxy from it); a mangrove's
   // stilt arches cast with it
-  let hull = emitCrownShadowHull(skeleton);
+  let hull: Float32Array = emitCrownShadowHull(skeleton);
+  // trees round 2: the hull's wood, then its crown masses (crownShadowDapple.ts opens the masses' leaf gaps)
+  trunk.userData.shadowHullCrown = [(hull as Float32Array & { woodVertices: number }).woodVertices, hull.length / 3];
   if (tidal) {
     const arches = parts.slice(rootFirst, rootEnd).map((g) => (g.index ? g.toNonIndexed() : g).getAttribute('position').array as Float32Array);
     const joined = new Float32Array(hull.length + arches.reduce((n, a) => n + a.length, 0));
@@ -4111,7 +4142,7 @@ function* vegetationBuildSteps(
         // <<< gameplay_feel r4 / controls_gunnery r5
       }`);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nuniform float uScopeHard;\nuniform float uSniperFade;\nuniform float uScopeDist;\nvarying float vLodF;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;\nvarying float vWindLift;');
+      '#include <common>\nuniform float uScopeHard;\nuniform float uSniperFade;\nuniform float uScopeDist;\nvarying float vLodF;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;\nvarying float vWindLift;\n#ifdef COT_LEAF_BILLBOARD\nvarying float vCotNearScale;\n#endif');
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', /* glsl */`
       #include <alphatest_fragment>
       {
@@ -4123,7 +4154,13 @@ function* vegetationBuildSteps(
         // corridor — the old 0.12 keep-floor stippled a haze over the tank);
         // trunks keep the 12% ghost so the forest still reads.
         float fadeKeep = 1.0 - ${fullFade ? '1.0' : '0.88'} * vFadeI;
+        #ifdef COT_LEAF_BILLBOARD
+        // trees round 2: a small crown (a bush at the chase camera's side) dissolves only where the camera would be
+        // inside it — the canopy band read as a dithered core on Saltmere's foreground shrub (gauntlet wave 4)
+        fadeKeep *= smoothstep(${nearD0.toFixed(2)} * vCotNearScale, ${nearD1.toFixed(2)} * vCotNearScale, length(vViewPosition));
+        #else
         fadeKeep *= smoothstep(${nearD0.toFixed(2)}, ${nearD1.toFixed(2)}, length(vViewPosition));
+        #endif
         // aa-r1 LOD cross-fade share (repartition transition, see update()):
         // rides the same IGN dissolve below — stable per-pixel pattern, no
         // per-frame reseeding, exactly the killcam/scope-corridor grammar.
@@ -4207,6 +4244,33 @@ function* vegetationBuildSteps(
   };
   const foliageWindHook = (shader: MaterialShader): void => {
     canopyWindHook(shader);
+    // Trees round 2 (2026-10-03): the grown crowns' leaf clusters turn about their own axes to face the camera
+    // (COT_LEAF_BILLBOARD, the share of the turn; the desktop grown builds). A cluster keeps its seat, its axis (a
+    // hanging spray still hangs, a level one still reaches out) and its sag, and shows the viewer its face instead of
+    // its edge, so a crown reads as a mass of leaves from every side (the gauntlet: "flat-card broadleaf", "drooping
+    // card foliage"). The turn is in instance space, ahead of the wind block: the camera is carried into the instance's
+    // frame through the inverse of its rotation × scale (the transpose with each row over its squared length) and the
+    // model-view's rigid inverse; the lighting keeps the crown hull's normals, which never turned with the card. A
+    // geometry without the frame (the round-8 bush cards) reads aAxis as zero and stays as authored.
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
+      '#include <common>\n#ifdef COT_LEAF_BILLBOARD\nattribute vec3 aAxis;\nattribute vec3 aLeaf;\nvarying float vCotNearScale;\n#endif');
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`#include <begin_vertex>
+      #ifdef COT_LEAF_BILLBOARD
+      // the near-camera dissolve's reach by the crown's size: a shrub's (crown ~1.5–3 m across) under half a tree's
+      vCotNearScale = mix( 0.45, 1.0, smoothstep( 1.6, 3.6, aCard.w * length( instanceMatrix[ 0 ].xyz ) ) );
+      if ( dot( aAxis, aAxis ) > 0.5 ) {
+        mat3 cotIm = mat3( instanceMatrix );
+        vec3 cotCam = - ( transpose( mat3( modelViewMatrix ) ) * modelViewMatrix[ 3 ].xyz ) - instanceMatrix[ 3 ].xyz;
+        cotCam = vec3( dot( cotIm[ 0 ], cotCam ) / dot( cotIm[ 0 ], cotIm[ 0 ] ), dot( cotIm[ 1 ], cotCam ) / dot( cotIm[ 1 ], cotIm[ 1 ] ),
+          dot( cotIm[ 2 ], cotCam ) / dot( cotIm[ 2 ], cotIm[ 2 ] ) );
+        vec3 cotRight = cross( aAxis, cotCam - aCard.xyz );
+        float cotRightL = length( cotRight );
+        if ( cotRightL > 1e-4 ) {
+          vec3 cotFacing = aCard.xyz + cotRight * ( aLeaf.x / cotRightL ) + aAxis * aLeaf.y - vec3( 0.0, aLeaf.z, 0.0 );
+          transformed = mix( transformed, cotFacing, COT_LEAF_BILLBOARD );
+        }
+      }
+      #endif`);
     useAttributeNormal(shader);
     // aa-r1: mip-aware alpha BEFORE the built-in alpha test / A2C smoothstep
     // (the canopyWindHook dissolve above keeps the <alphatest_fragment>
@@ -4582,6 +4646,14 @@ function* vegetationBuildSteps(
       },
     };
   }
+  // trees round 2 (2026-10-03): a slot's regional form — the map palette's `form`, else the map's biome (treeBiomes.ts)
+  const formOf = (sp: Species): { form: GrowthSpecies; leaves: boolean } | null => {
+    const explicit = veg.palettes[sp]?.form;
+    if (explicit) return { form: explicit, leaves: veg.palettes[sp]?.birchLeaves === true };
+    const slot = treeBiomeSlot(cfg?.id, sp);
+    return slot ? { form: slot.form, leaves: slot.leaves === true } : null;
+  };
+  const growthOf = (sp: Exclude<Species, 'palm'>): GrowthSpecies => formOf(sp)?.form ?? sp;
   // p2 trees lane (2026-10-01): the desktop tiers grow their near trees (treeGrowth.ts) and paint branch-spray atlases
   // (treeSprayAtlas.ts); the far tier is the bake of those trees (treeImpostors.ts). The mobile tier keeps the
   // legacy card trees, atlases and lobe tier exactly — the phones' cheaper path — and so do the palms and the
@@ -4591,14 +4663,17 @@ function* vegetationBuildSteps(
   // the species whose foliage material paints a spray atlas (the grown crowns' 2 × 2 tiles): the shrubs of such a
   // species grow from its sprays too (buildGrownShrub); any other bush species keeps the round-8 bush cards
   const sprayAtlasSpecies = new Set<Species>();
-  function grownDefinition(species: Exclude<GrowthSpecies, 'snag' | 'palm' | 'mangrove'>, legacy: SpeciesDefinition): SpeciesDefinition {
+  function grownDefinition(species: Exclude<Species, 'palm'>, legacy: SpeciesDefinition): SpeciesDefinition {
     if (!grownTrees) return legacy;
     sprayAtlasSpecies.add(species);
+    // trees round 2: the slot grows as its regional form (treeBiomes.ts); its seeds, its far stand-ins and its records
+    // stay the slot's
+    const growth = growthOf(species);
     return {
       texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed, grown: true,
       // a snowy palette's texTone is the round-8 cards' hoar-frost wash (their snow); the spray atlas paints its snow
-      tex: (r, pal) => makeSprayAtlas(grownSprayKind(species, pal), r, texSize(512), (pal.snow ?? 0) > 0.05 ? null : pal.texTone || null, pal.snow ?? 0),
-      near: (k, pal) => buildGrownTree(species, seed + legacy.nearSeed + k * 7, k, pal),
+      tex: (r, pal) => makeSprayAtlas(grownFormSprayKind(growth, pal), r, texSize(512), (pal.snow ?? 0) > 0.05 ? null : pal.texTone || null, pal.snow ?? 0),
+      near: (k, pal) => buildGrownTree(growth, seed + legacy.nearSeed + k * 7, k, pal),
       far: legacy.far,
     };
   }
@@ -4664,7 +4739,9 @@ function* vegetationBuildSteps(
   if (snagShare > 0) {
     (SPECIES as Record<string, SpeciesDefinition>).snag = {
       texSeed: 65, nearSeed: 361, farSeed: 381, grown: true,
-      tex: (r) => makeSprayAtlas('birch-bare', r, texSize(256), (_h, sat, l) => [0.07, sat * 0.35, l * 0.42]),
+      // trees round 2: weathered grey-brown dead twigs (the charred 0.42 value read as a pitch-black card on Frosthollow's
+      // snow, gauntlet wave 4)
+      tex: (r) => makeSprayAtlas('birch-bare', r, texSize(256), (_h, sat, l) => [0.07, sat * 0.3, l * 0.86]),
       near: (k) => buildGrownTree('snag', seed + 361 + k * 7, k, {}),
       far: (r, _pal, k) => buildSnagFarGeometry(r, k),
     };
@@ -4673,7 +4750,7 @@ function* vegetationBuildSteps(
   if (snagShare > 0) speciesList.push('snag' as Species);
   const bushSpecies = speciesList.includes(veg.bushSpecies) ? veg.bushSpecies : speciesList[0];
   if (!bushSpecies) throw new Error('world/vegetation: at least one species is required');
-  const palOf = (sp: Species): VegetationPalette => {
+  const slotPalette = (sp: Species): VegetationPalette => {
     const explicit = veg.palettes[sp];
     if (explicit) return explicit;
     const family = TREE_ARCHETYPES[sp]?.family; // p2 trees lane: the snag has no archetype (it reads no palette)
@@ -4681,6 +4758,15 @@ function* vegetationBuildSteps(
     if (family === 'birch') return veg.palettes.birch || {};
     if (family === 'palm') return veg.palettes.palm || {};
     return veg.palettes.oak || {};
+  };
+  // trees round 2: a slot grown as a form of another family keeps the map's tone and snow but not the card hue and
+  // saturation tuned for the slot's own family, and takes the form's leaves (a birch form on a pine slot is leafy)
+  const palOf = (sp: Species): VegetationPalette => {
+    const pal = slotPalette(sp);
+    const form = grownTrees ? formOf(sp) : null;
+    if (!form) return pal;
+    const crossFamily = TREE_GROWTH_PROFILES[form.form].family !== (TREE_ARCHETYPES[sp]?.family ?? 'broadleaf');
+    return { ...pal, ...(crossFamily ? { cardHue: undefined, cardSat: undefined } : {}), ...(form.leaves ? { birchLeaves: true } : {}) };
   };
 
   const foliageTex = {} as Record<Species, THREE.Texture>;
@@ -4696,16 +4782,25 @@ function* vegetationBuildSteps(
       fm.envMapIntensity = 0.75; // keep ambient on shaded leaves — no black cards (round 77: 0.85 → 0.75, the cascades now shade the crowns)
       // Round 77b: the class's detail tile as the card's normal map (desktop; the mobile library returns null and the
       // phones keep the flat card program). The tile is a material property, so every species shares one program.
-      const leafTile = leafDetail.texture(leafDetail.classOf(sp, palOf(sp)));
+      // trees round 2: a slot grown as a form of another family takes that family's detail (a holm oak on a cedar slot is
+      // leaves, not needles)
+      const form = grownTrees ? formOf(sp) : null;
+      const formFamily = form ? TREE_GROWTH_PROFILES[form.form].family : null;
+      const detailSpecies: Species = formFamily === 'conifer' ? 'pine' : formFamily === 'birch' ? 'birch' : formFamily === 'broadleaf' ? 'oak' : sp;
+      const leafTile = leafDetail.texture(leafDetail.classOf(detailSpecies, palOf(sp)));
       if (leafTile) { fm.normalMap = leafTile; fm.normalScale.set(LEAF_DETAIL_NORMAL_SCALE, LEAF_DETAIL_NORMAL_SCALE); }
       // p2 trees lane: the grown crowns' edge-on fade (foliageWindHook) and their back-lit transmission gain
       // (canopyLighting.ts COT_GROWN_CROWN: the dark Saltmere and Frontier crowns against a low sun)
-      if (SPECIES[sp].grown) fm.defines = { ...(fm.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2) };
+      // trees round 2: and their clusters turn to face the camera (COT_LEAF_BILLBOARD; the palms' fronds carry no frame)
+      if (SPECIES[sp].grown) {
+        fm.defines = { ...(fm.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2),
+          COT_LEAF_BILLBOARD: GROWN_LEAF_BILLBOARD.toFixed(2) };
+      }
       engineCtx.setupShadowMaterial(fm, foliageWindHook);
       // Species vary textures/uniforms, not this shared shader hook. Three
       // already keys material/geometry defines; a species suffix needlessly
       // recompiles identical programs when the last world using it is evicted.
-      fm.customProgramCacheKey = () => 'world-tree-foliage-v19'; // p2: the edge-on fade (round 77b: the leaf-scale detail; round 77: wind, cluster shadows, translucency)
+      fm.customProgramCacheKey = () => 'world-tree-foliage-v20'; // trees round 2: the facing clusters (p2: the edge-on fade; round 77b: the leaf-scale detail; round 77: wind, cluster shadows, translucency)
       foliageMats[sp] = fm;
       // alpha-tested shadow casting: without this every card shadows as a quad.
       // r6: palm gets a HIGHER shadow alphaTest — its frond texture covers most
@@ -5449,7 +5544,10 @@ function* vegetationBuildSteps(
     markShadowOnly(proxy);
     proxy.castShadow = true;
     proxy.receiveShadow = false;
-    applyLodShadowFadeDepth(proxy);
+    // trees round 2: a grown crown's hull lets the sun through its leaf gaps (crownShadowDapple.ts; it keeps the LOD
+    // dissolve); a lobe proxy stays solid
+    if (geometry.getAttribute(CROWN_DAPPLE_ATTRIBUTE)) applyCrownDappleDepth(proxy);
+    else applyLodShadowFadeDepth(proxy);
     proxy.userData.treeCanopyShadowProxy = true;
     proxy.name = name;
     return proxy;
@@ -5520,6 +5618,11 @@ function* vegetationBuildSteps(
           if (hull) {
             proxyGeometry = new THREE.BufferGeometry();
             proxyGeometry.setAttribute('position', new THREE.BufferAttribute(hull.slice(), 3));
+            // trees round 2: the crown masses' flag (the wood never dapples)
+            const crown = g.trunk.userData.shadowHullCrown as readonly [number, number] | undefined;
+            if (crown) {
+              proxyGeometry.setAttribute(CROWN_DAPPLE_ATTRIBUTE, new THREE.BufferAttribute(crownDappleFlags(hull.length / 3, crown[0], crown[1]), 1));
+            }
             // position-only: the welded hull shares every corner (its shadow passes run a fraction of the vertices)
             proxyGeometry = weldGrownGeometry(proxyGeometry);
             proxyGeometry.computeBoundingSphere();

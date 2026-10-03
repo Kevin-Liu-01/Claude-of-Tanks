@@ -1182,6 +1182,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/horizonForestImpostors.selftest.mjs',
     // p2 trees lane (2026-10-01): the grown near trees, their branch-spray atlases and the build's routing
     'src/world/treeGrowth.selftest.mjs',
+    'src/world/treeCrownShading.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
