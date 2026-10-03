@@ -10,6 +10,8 @@
 // gun mount, mantlet) are skipped, and the remaining cells are greedy-meshed into axis-aligned boxes per component
 // (hull boxes in the hull frame, turret boxes in the turret frame). The boxes are buried strictly inside the body's
 // own shells, so silhouettes never move; behind a real gap they read as the dark interior wall the eye expects.
+// A declared physical muzzle bore is open air by contract (2026-10-03, tools/physical-bore-air.mjs): no voxel that can
+// touch it is ever filled, so a generated box can never cap the recess the build verifies.
 // The generated module is consumed by tankFactory at build time (applyInteriorFills) and excluded from the authored
 // geometry fingerprints.
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -26,6 +28,7 @@ import { interiorFillSelection, mergeInteriorFillGroup } from './interior-fill-s
 import { interiorFillBoundaryTriangles } from './interior-fill-body-policy.mjs';
 import { createBarakBayFillPolicy } from './barak-rear-bay-fill-policy.mjs';
 import { insideTrackLane, trackLaneBoxesForVoxel } from './track-lane-boxes.mjs';
+import { insideBoreAir, physicalBoreAir } from './physical-bore-air.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -159,6 +162,7 @@ for (const id of ids) {
   // track lanes (band: two voxels of clearance, the audit samples 2 cm cells; shoe envelope: one voxel) are never
   // interior air — tools/track-lane-boxes.mjs, shared with the watertight check so both tools read the same lanes
   const laneBoxes = trackLaneBoxesForVoxel(tank.root, VOXEL);
+  const boreAir = physicalBoreAir(tank.root);
   const { tris, meshes } = collectTriangles(tank.root);
   const boundary = interiorFillBoundaryTriangles(id, tris, meshes);
   const grid = voxelise(boundary, meshes, { voxel: VOXEL, exclude: DEFAULT_EXCLUDE });
@@ -174,7 +178,7 @@ for (const id of ids) {
   }
   // leak voxels with component; moving-part columns skipped
   const proper = turretProperSpans(grid), moving = movingSpans(grid);
-  const vox = new Uint8Array(shell.length); let leakVox = 0, skipped = 0, bandVox = 0;
+  const vox = new Uint8Array(shell.length); let leakVox = 0, skipped = 0, bandVox = 0, boreVox = 0;
   const collectLeaks = (extNow, deepNow, first) => {
     let found = 0;
     for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
@@ -182,6 +186,7 @@ for (const id of ids) {
       if (first) leakVox++;
       if(sourceAir?.protects(grid,x,y,z))continue;
       if (insideTrackLane(laneBoxes, grid, x, y, z)) { if (first) bandVox++; continue; }
+      if (insideBoreAir(boreAir, grid, x, y, z)) { if (first) boreVox++; continue; }
       const c = componentAt(grid, x, y, z); if (!c) continue;
       // a pocket closed by the gun or mantlet: filled as turret stock when the turret body itself encloses
       // it, as GUN-frame stock (component 3, rides with elevation) when the moving group encloses it,
@@ -256,7 +261,7 @@ for (const id of ids) {
   const L = (n) => +(n * VOXEL ** 3 * 1000).toFixed(1);
   // origins at 6 decimals: a 4-decimal origin put every fill face a few microns off the lattice
   out[id] = { v: VOXEL, o: origin.map((v) => +v.toFixed(6)), t: turretOrigin.map((v) => +v.toFixed(6)), g: gunOrigin.map((v) => +v.toFixed(6)), ...entry };
-  const row = { id, leakL: L(leakVox), filledL: L(filledVox), residualL: L(residual), skippedL: L(skipped), trackLaneL: L(bandVox), boxes: boxesTotal, tris: boxesTotal * 12, ms: Math.round(performance.now() - t0) };
+  const row = { id, leakL: L(leakVox), filledL: L(filledVox), residualL: L(residual), skippedL: L(skipped), trackLaneL: L(bandVox), boreAirL: L(boreVox), boxes: boxesTotal, tris: boxesTotal * 12, ms: Math.round(performance.now() - t0) };
   if(sourceAir){
     const receipt=sourceAir.receipt();row.preservedSourceAirL=L(receipt.cells.length);
     const evidenceDir=opt('source-air-evidence',null);
@@ -264,7 +269,7 @@ for (const id of ids) {
     console.log(`${id}: retained ${row.preservedSourceAirL} L of measured source air; raw residual remains separately reported`);
   }
   stats.push(row);
-  console.log(`${id}: leak ${row.leakL} L → filled ${row.filledL} L in ${row.boxes} boxes (${row.tris} tris), residual ${row.residualL} L, gun-frame under moving parts ${row.skippedL} L (${row.ms} ms)`);
+  console.log(`${id}: leak ${row.leakL} L → filled ${row.filledL} L in ${row.boxes} boxes (${row.tris} tris), residual ${row.residualL} L, gun-frame under moving parts ${row.skippedL} L${boreAir ? `, declared bore air left open ${row.boreAirL} L` : ''} (${row.ms} ms)`);
   tank.dispose?.();
 }
 if (!flag('stats')) {

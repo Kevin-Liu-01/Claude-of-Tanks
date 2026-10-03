@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Watertight check for tank bodies: "pour water into the turret or hull and it must not spill out".
 //
-//   node tools/tank-watertight-check.mjs --ids=abramsx,leclerc [--voxel=0.025] [--exclude=<regex>] [--json=path] [--gate] [--verbose] [--no-fills] [--no-lanes] [--full-body]
+//   node tools/tank-watertight-check.mjs --ids=abramsx,leclerc [--voxel=0.025] [--exclude=<regex>] [--json=path] [--gate] [--verbose] [--no-fills] [--no-lanes] [--no-bores] [--full-body]
 //   node tools/tank-watertight-check.mjs --self-test
 //
 // The built tank's body triangles (running gear, decals, shadow proxies, wires and soft goods excluded) are
@@ -22,12 +22,16 @@
 // (tools/tank-watertight-measure.mjs, shared with the fleet gate): primary-body and launcher hulls are measured against
 // their authored shells, so the external-fitting air their policy leaves open is not misread as a leak, and the Barak's
 // retained rear bay is reported apart. --full-body restores the all-mesh measurement for diagnosis.
+// Declared physical bores (2026-10-03, tools/physical-bore-air.mjs): a profile's verified open muzzle recess is never
+// body interior, so deep-interior water in a bore column is reported apart as bore air; --no-bores restores the plain
+// measurement.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
 import { collectTriangles } from './tank-surface-collect.mjs';
 import { DEFAULT_EXCLUDE } from './tank-voxel-body.mjs';
 import { trackLaneBoxesForVoxel } from './track-lane-boxes.mjs';
+import { physicalBoreAir } from './physical-bore-air.mjs';
 import { measureWatertight, retainedSourceAir, watertightBody } from './tank-watertight-measure.mjs';
 
 const args = process.argv.slice(2);
@@ -45,21 +49,23 @@ const MAX_LEAK_L = Number(opt('max-leak-l', '0.05'));
 const EXCLUDE = opt('exclude') ? new RegExp(opt('exclude'), 'i') : DEFAULT_EXCLUDE;
 const verbose = flag('verbose');
 const lanesOn = !flag('no-lanes');
+const boresOn = !flag('no-bores');
 const fullBody = flag('full-body');
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 // Interior fills 2026-09-13: the shipped tank carries its generated fills; --no-fills measures the authored shells alone.
 if (!flag('no-fills')) { const { ensureAllInteriorFills } = await import('../src/vehicles/interiorFills.ts'); await ensureAllInteriorFills(); }
 const ids = opt('ids', 'abramsx').split(',').filter(Boolean);
 
-/** One measurement through the shared module (lane volume and retained air are reported apart from the leak). */
-function measure(tris, meshes, laneBoxes, retainedAir = null) {
-  return measureWatertight(tris, meshes, laneBoxes, { voxel: VOXEL, exclude: EXCLUDE, maxLeakL: MAX_LEAK_L, retainedAir });
+/** One measurement through the shared module (lane volume, retained air and bore air are reported apart from the leak). */
+function measure(tris, meshes, laneBoxes, retainedAir = null, boreAir = null) {
+  return measureWatertight(tris, meshes, laneBoxes, { voxel: VOXEL, exclude: EXCLUDE, maxLeakL: MAX_LEAK_L, retainedAir, boreAir });
 }
 // The leading "N L reaches the deep interior" token is the line's contract for log readers; lane evidence follows it.
 function describe(label, r, seconds) {
   const lanes = lanesOn ? `track lane ${r.trackLaneL} L excluded (${r.laneBoxes} lane${r.laneBoxes === 1 ? '' : 's'})` : 'track lanes not excluded (--no-lanes)';
   const retained = r.retainedL ? `; retained source air ${r.retainedL} L` : '';
-  return `${label}: ${r.watertight ? 'WATERTIGHT' : 'LEAKING'} — ${r.leakL} L reaches the deep interior (${r.clusters.length} gap${r.clusters.length === 1 ? '' : 's'}); ${lanes}${retained}; enclosed ${r.enclosedL} L of ${r.deepL} L deep interior; ${r.grid.bodyTris} body tris, grid ${r.grid.nx}x${r.grid.ny}x${r.grid.nz} @ ${VOXEL} m${seconds === undefined ? '' : ` (${seconds} s)`}`;
+  const bore = r.boreAirL ? `; declared bore air ${r.boreAirL} L` : '';
+  return `${label}: ${r.watertight ? 'WATERTIGHT' : 'LEAKING'} — ${r.leakL} L reaches the deep interior (${r.clusters.length} gap${r.clusters.length === 1 ? '' : 's'}); ${lanes}${retained}${bore}; enclosed ${r.enclosedL} L of ${r.deepL} L deep interior; ${r.grid.bodyTris} body tris, grid ${r.grid.nx}x${r.grid.ny}x${r.grid.nz} @ ${VOXEL} m${seconds === undefined ? '' : ` (${seconds} s)`}`;
 }
 
 if (flag('self-test')) {
@@ -94,10 +100,11 @@ for (const id of ids) {
   try { tank = createTank(id, null, { proceduralOnly: true }); } catch (error) { console.log(`${id}: build failed: ${error.message}`); failures++; continue; }
   const { tris, meshes } = collectTriangles(tank.root);
   const body = fullBody ? tris : watertightBody(id, tris, meshes);
-  const r = measure(body, meshes, lanesOn ? trackLaneBoxesForVoxel(tank.root, VOXEL) : [], fullBody ? null : retainedSourceAir(id));
+  const boreAir = boresOn ? physicalBoreAir(tank.root) : null;
+  const r = measure(body, meshes, lanesOn ? trackLaneBoxesForVoxel(tank.root, VOXEL) : [], fullBody ? null : retainedSourceAir(id), boreAir);
   const { grid, clusters, enclosedL, deepL, leakL, trackLaneL, watertight } = r;
   if (!watertight) failures++;
-  report.push({ id, watertight, leakL, trackLaneL, retainedL: r.retainedL, body: fullBody ? 'full' : 'fill-policy', laneBoxes: r.laneBoxes, lanesExcluded: lanesOn, enclosedL, deepL, bodyTris: grid.bodyTris, grid: [grid.nx, grid.ny, grid.nz], clusters: clusters.slice(0, 12) });
+  report.push({ id, watertight, leakL, trackLaneL, retainedL: r.retainedL, boreAirL: r.boreAirL, physicalBore: !!boreAir, body: fullBody ? 'full' : 'fill-policy', laneBoxes: r.laneBoxes, lanesExcluded: lanesOn, boresExcluded: boresOn, enclosedL, deepL, bodyTris: grid.bodyTris, grid: [grid.nx, grid.ny, grid.nz], clusters: clusters.slice(0, 12) });
   console.log(describe(id, r, ((performance.now() - started) / 1000).toFixed(1)));
   for (const c of clusters.slice(0, verbose ? 40 : 8)) {
     console.log(`   gap ${c.litres} L at (${c.centre.join(', ')}) extent (${c.extent.join('x')}) near ${c.groups.join(' ')}`);
