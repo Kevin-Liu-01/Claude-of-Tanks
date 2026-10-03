@@ -4,7 +4,8 @@ import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { DoubleSide, Euler, Matrix4, Mesh, MeshBasicMaterial, Quaternion, Raycaster, Vector3 } from 'three';
 import { fitWallSpan, wallIslandEdges } from './wallSpanPlacement.ts';
-import { DESTRUCTIBLE_TYPES, WALL_SEG, buildAdobePilaster, buildDryStoneWallHead } from './maps/inhabitKit.ts';
+import { ADOBE_UV_PER_M, DESTRUCTIBLE_TYPES, WALL_SEG, buildAdobePilaster, buildDryStoneWallHead } from './maps/inhabitKit.ts';
+import { createWallDressing } from './maps/fieldWallDressing.ts';
 import { sourcedStoneIsBrick } from './sourcedTextures.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { createHeightField } from './terrain.ts';
@@ -251,7 +252,7 @@ function checkSourceLifecycle(pool) {
 function sourceRunFixture(code, runs, field, seed, style = 'fieldstone') {
   const spans = new Map(), records = [], matrices = [];
   const retainedSlots = [];
-  const buckets = { stone: [], fieldStone: [], plaster: [] };
+  const buckets = { stone: [], fieldStone: [], fieldMud: [], plaster: [] };
   let draws = 0;
   const next = seeded(seed), rng = () => { draws++; return next(); };
   const add = (kind, x, y, z, yaw, sc, tiltX, tiltZ) => {
@@ -265,10 +266,12 @@ function sourceRunFixture(code, runs, field, seed, style = 'fieldstone') {
   // (the run's ends are wall heads — the scenery lane's builders — keyed by the map's stone print; a dry-stone run's
   // posts and breach draw the field walls' print)
   const run = new Function('P', 'heightField', 'WALL_SEG', 'rng', 'buckets', 'box', 'jitterUV', 'addDestructible', 'noVeg', 'wallSpans', 'wallIslandEdges', 'legacyWallEdges',
-    'mapId', 'sourcedStoneIsBrick', 'buildDryStoneWallHead', 'buildAdobePilaster', 'fieldWallBucket',
+    'mapId', 'sourcedStoneIsBrick', 'buildDryStoneWallHead', 'buildAdobePilaster', 'fieldWallBucket', 'wallDressing',
     `const _rubbleOff = new Float32Array(24); ${rubbleSource}; ${code}; return addWallRun;`)(
     { wallStyle: style }, field, WALL_SEG, rng, buckets, box, jitterUV, add, field._noVeg, spans, wallIslandEdges, legacyWallEdges,
-    field._layout?.id ?? 'verdant', sourcedStoneIsBrick, buildDryStoneWallHead, buildAdobePilaster, 'fieldStone');
+    field._layout?.id ?? 'verdant', sourcedStoneIsBrick, buildDryStoneWallHead, buildAdobePilaster, 'fieldStone',
+    // the walls' feet and weather (fieldWallDressing.ts): their own streams, so the run's draws stay the props stream's
+    createWallDressing({ ground: field, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: ADOBE_UV_PER_M }));
   runs.forEach((args, runIndex) => {
     const [x0, z0, x1, z1] = args, start = records.length;
     const length = Math.hypot(x1 - x0, z1 - z0);

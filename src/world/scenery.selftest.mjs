@@ -16,7 +16,8 @@
 //      objective disc (every mode's, as the match placement places them on this world, and the authored targets), a
 //      spawn pad, a road or a bridge with its approaches, and none stands taller than 1.05 m;
 //   5. props.ts and vegetation.ts carry the pass, the late field works, the field walls' own rubble print (pool, posts
-//      and masonry tint on it, never on the house masonry) and the keep-out (source pins).
+//      and masonry tint on it, never on the house masonry), the mud walls' own worn render, the walls' feet, drifts
+//      and snow loads, the turned modules, and the keep-out (source pins).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
@@ -578,9 +579,16 @@ assert.match(propsSource, /mats\.fieldStone\.color\.setRGB\(masonryTint\[0\], ma
 assert.doesNotMatch(propsSource, /mats\.stone\.color\.setRGB\(masonryTint/, 'the masonry tint never multiplies the house masonry (a regional kit\'s print under it burns out)');
 // the dry-stone walls draw the field print, never the house masonry (a regional kit's brick, block or dressed stone)
 assert.match(propsSource, /const fieldWallBucket = P\.wallStyle === 'adobe' \|\| sourcedStoneIsBrick\(mapId\) \? 'stone' : 'fieldStone';/, 'the field print is the dry-stone walls\'');
-assert.match(propsSource, /wallstone: \{ \.\.\.DESTRUCTIBLE_TYPES\.wallstone, mat: fieldWallBucket \}/, 'the wall pool draws the field print');
-assert.match(propsSource, /const wallB = style === 'adobe' \? 'plaster' : fieldWallBucket;/, 'the run posts, breach stubs and tumbled blocks draw the field print');
+assert.match(propsSource, /wallstone: \{ \.\.\.DESTRUCTIBLE_TYPES\.wallstone, mat: fieldWallBucket[,} ]/, 'the wall pool draws the field print');
+assert.match(propsSource, /const wallB = style === 'adobe' \? wallDressing\.adobeBucket : fieldWallBucket;/, 'the run posts, breach stubs and tumbled blocks draw the field print (or the mud print)');
 assert.match(propsSource, /fieldStone: new THREE\.MeshStandardMaterial\(\{ map: fieldStone\.albedo,/, 'the field print has its own material');
+// wave 20: the mud walls' own worn render; the walls' feet, drifts and snow loads; the modules turned round by place
+assert.match(propsSource, /walladobe: \{ \.\.\.DESTRUCTIBLE_TYPES\.walladobe, mat: adobeWallBucket \}/, 'the mud wall pool draws the mud print');
+assert.match(propsSource, /fieldMud: new THREE\.MeshStandardMaterial\(\{ map: fieldMud\.albedo,/, 'the mud print has its own material');
+assert.match(propsSource, /\.\.\.\(snowCap \? \{ build: snowLoadedWallstone \} : \{\}\)/, 'a snow map\'s module carries its snow load');
+assert.match(propsSource, /const wallDressing = createWallDressing\(\{/, 'the wall runs dress their islands through one owner');
+assert.match(propsSource, /if \(prevBuilt\) \{ endPost\(x1, z1\); dressIsland\(islandFrom, along\); \}/, 'a run\'s last island is dressed');
+assert.match(propsSource, /cx \+ tz \* nudge, cy - 0\.13, cz - tx \* nudge, yaw \+ turn,/, 'a run turns its modules round by place, neighbours apart');
 const vegetationSource = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
 assert.match(vegetationSource, /placedStructureClearances\([^;]*\(cfg as SceneryMapConfig \| null\)\?\.scenery\)/s, 'the trees keep off the scenery');
 const clearanceSource = readFileSync(new URL('./vegetationClearance.ts', import.meta.url), 'utf8');

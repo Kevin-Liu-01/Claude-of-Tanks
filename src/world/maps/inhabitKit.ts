@@ -925,6 +925,8 @@ function bGateBroken(_rng: Rng): THREE.BufferGeometry {
 // ---------------------------------------------------------------------------
 
 export const WALL_SEG = 3.0; // wall-kit module pitch, meters
+/** The mud wall's print density along and round it: one field-mud tile (fieldMudSurface.ts) is one module, 3 m. */
+export const ADOBE_UV_PER_M = 1 / WALL_SEG;
 
 // dark faded olive-drab / field-grey band — the first cut sat at l 0.22-0.30
 // with s 0.24+ and the truck cabs tonemapped to toy lego-green in the frame
@@ -1118,12 +1120,15 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
       for (let i = a; i <= b; i++) sky[i] = top;
       const hh = top - base;
       if (hh < 0.04) continue;
-      const yc = base + hh / 2, proud = 0.015 + r() * 0.06;
+      // (wave 20, "jagged like voxels": the face stones stand one to three centimetres proud of the hearting, not seven to eleven, and lean
+      // their tops out a little, as a face settles, so no row of flat ledges catches the light)
+      const yc = base + hh / 2, proud = 0.008 + r() * 0.02;
       const za = zOf(a) + gap / 2, zb = zOf(b) - gap / 2;
       // (a field stone, not a dressed block: its corners knocked well back, set at a tilt of its own)
-      const stone = roughStone(proud + 0.07, hh * 0.97, Math.max(0.05, zb - za), r, keep, 0.24);
-      stone.rotateZ(face * (r() - 0.5) * 0.12); stone.rotateX((r() - 0.5) * 0.14); stone.rotateY((r() - 0.5) * 0.08);
-      parts.push(stone.translate(face * (halfAt(yc) - 0.035 + (proud + 0.07) / 2), yc, (za + zb) / 2));
+      const stone = roughStone(proud + 0.07, hh * 0.97, Math.max(0.05, zb - za), r, keep, 0.32);
+      stone.rotateZ(face * ((r() - 0.5) * 0.12 - 0.09)); stone.rotateX((r() - 0.5) * 0.14); stone.rotateY((r() - 0.5) * 0.08);
+      // (its face `proud` outside the hearting's face, which stands 3 cm inside the batter line; the rest of it in the core)
+      parts.push(stone.translate(face * (halfAt(yc) - 0.03 + proud - (proud + 0.07) / 2), yc, (za + zb) / 2));
     }
     skylines.push(sky);
   }
@@ -1142,8 +1147,9 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
       const a = Math.max(0, Math.floor((z + L / 2) / CELL)), b = Math.min(cells, Math.ceil((z + len + L / 2) / CELL));
       let base = 0;
       for (const sky of skylines) for (let i = a; i <= b; i++) base = Math.max(base, sky[i]);
-      const cap = roughStone(top * 2 + 0.05 + r() * 0.06, th, len * 0.97, r, [0, 1, 2, 4, 5], 0.2);
-      cap.rotateX((r() - 0.5) * 0.12); cap.rotateZ((r() - 0.5) * 0.1);
+      // (wave 20: rounder, and steadier in their tilt, so the top line is a row of stones, not a staircase)
+      const cap = roughStone(top * 2 + 0.05 + r() * 0.06, th, len * 0.97, r, [0, 1, 2, 4, 5], 0.34);
+      cap.rotateX((r() - 0.5) * 0.08); cap.rotateZ((r() - 0.5) * 0.07);
       parts.push(cap.translate((r() - 0.5) * 0.03, base + th * 0.45, z + len / 2));
       z += len * (0.96 + r() * 0.03);
     }
@@ -1229,7 +1235,7 @@ export function buildAdobePilaster(seed: number, thick: number, height: number):
     p.setXYZ(i, sx * w / 2 + lean * y * h, y * h + slump * h, sz * w / 2);
   }
   g.computeVertexNormals();
-  return keepFaces(scaleUV(g, w * 1.4, h * 1.4), [0, 1, 2, 4, 5]);
+  return keepFaces(scaleUV(g, w * ADOBE_UV_PER_M, h * ADOBE_UV_PER_M), [0, 1, 2, 4, 5]); // the field-mud print's density
 }
 
 function bWallStone(rng: Rng): THREE.BufferGeometry {
@@ -1254,47 +1260,69 @@ function adobeEnvelope(rng: Rng): THREE.BufferGeometry {
 }
 
 /**
- * The scenery lane (2026-10-03): the mud wall as one rendered mass instead of two stacked boxes and a cap — a battered
- * section with a bellied foot and a crown rounded by the rain, the crown rising and falling along the wall where it
- * has weathered and the shoulders worn back, a shallow rain gully down each face here and there. One extrusion of an
- * eleven-point section every quarter metre (about 260 triangles) on the plaster atlas (u along the wall, v round the
- * section). Like the stone wall, the original builder still runs first (its draws, its envelope) and the mass is
- * fitted to that envelope, so the fitted wall collider keeps its plan and height.
+ * The scenery lane (2026-10-03; wave 20, "smooth pillow- and pipe-shaped walls instead of eroded mud brick"): the mud
+ * wall as an eroded slab — near-upright faces battered a little, cut back at the foot where the splash wore it, squared
+ * shoulders rubbed round; its crown bitten by the rain in scalloped losses (one broad loss a module, up to a quarter
+ * metre deep, and a couple of small ones, each cut steeper on one side; none at the module's ends so a run's crown
+ * meets itself, and no row of even teeth along a run), rain gullies
+ * down the faces from the crown, deepest at the top. One extrusion of a seventeen-point section every 12.5 cm (about
+ * 800 triangles) on the field-mud print, one tile a module (u along the wall, v round the section). Like the stone
+ * wall, the original builder still runs first (its draws, its envelope) and the mass is fitted to that envelope, so the
+ * fitted wall collider keeps its plan and height.
  */
 function adobeModule(r: Rng): THREE.BufferGeometry {
-  const L = WALL_SEG, H = 1.0, half = 0.26, crown = 0.15;
-  const segs = 12, phase = r() * 10, bow = (r() < 0.5 ? -1 : 1) * 0.01;
-  const gullies = Array.from({ length: 2 + Math.floor(r() * 3) }, () => [(r() - 0.5) * L * 0.85, r() < 0.5 ? -1 : 1, 0.012 + r() * 0.014]);
-  // the section, one side then the crown then the other: [across (x / half), height (y / H)]
-  // (wave 16: the arrises rubbed round — a bellied, slumped foot, the shoulders worn back in two steps, the crown a
-  // flattened dome)
-  const section: Array<[number, number]> = [[-1.02, 0], [-1.06, 0.07], [-1.04, 0.2], [-0.96, 0.5], [-0.9, 0.74], [-0.79, 0.88], [-0.58, 0.97],
-    [-0.28, 1.03], [0, 1.0 + crown / H], [0.28, 1.03], [0.58, 0.97], [0.79, 0.88], [0.9, 0.74], [0.96, 0.5], [1.04, 0.2], [1.06, 0.07], [1.02, 0]];
+  const L = WALL_SEG, H = 1.0, half = 0.26;
+  const segs = 24, phase = r() * 10, bow = (r() < 0.5 ? -1 : 1) * 0.01;
+  // the gullies: a few each face, narrow, from the crown down, fading toward the foot
+  // (clear of the module's ends, so a turned neighbour's face meets this one's where neither is cut)
+  const gullies = Array.from({ length: 3 + Math.floor(r() * 4) }, () => [(r() - 0.5) * (L - 0.8), r() < 0.5 ? -1 : 1, 0.012 + r() * 0.016, 0.07 + r() * 0.07]);
+  // the crown's losses: [centre along, half width, depth, lean]; one broad loss and a couple of small ones, each
+  // steeper on one side (the rain cuts back into the wall), clear of the module's ends; a run repeats the module, so
+  // no row of even teeth
+  const bites: Array<[number, number, number, number]> = [];
+  for (let k = 0, n = 2 + Math.floor(r() * 2); k < n; k++) {
+    const broad = k === 0;
+    const w = broad ? 0.45 + r() * 0.3 : 0.1 + r() * 0.14, d = broad ? 0.12 + r() * 0.12 : 0.03 + r() * 0.06;
+    const c = (r() - 0.5) * (L - 2 * w - 0.3);
+    bites.push([c, w, d, (r() - 0.5) * 1.2]);
+  }
+  // the section, one foot over the crown to the other: [across (x / half), height (y / H)]
+  const section: Array<[number, number]> = [[-1.03, 0], [-0.98, 0.06], [-1.02, 0.18], [-1.0, 0.45], [-0.97, 0.72], [-0.94, 0.88],
+    [-0.82, 0.97], [-0.45, 1.0], [0, 1.0], [0.45, 1.0], [0.82, 0.97], [0.94, 0.88], [0.97, 0.72], [1.0, 0.45], [1.02, 0.18], [0.98, 0.06], [1.03, 0]];
   const positions: number[] = [], uvs: number[] = [], index: number[] = [];
-  const rowLength = section.length;
-  // the section's arc length (for v)
+  const rowLength = section.length, y0 = 0.55;
   const arc = [0];
   for (let k = 1; k < rowLength; k++) arc.push(arc[k - 1] + Math.hypot((section[k][0] - section[k - 1][0]) * half, (section[k][1] - section[k - 1][1]) * H));
   for (let i = 0; i <= segs; i++) {
     const u = i / segs, z = (u - 0.5) * L * 0.995;
-    // the crown weathers lower and higher along the wall, in waves whose period is the module's (the next module
-    // meets it at the same height), gently: a run repeats the module, and a strong wave would show the repeat
-    const wave = (k: number, p: number) => Math.sin(2 * Math.PI * k * u + p);
-    const wear = wave(1, phase) * 0.034 + wave(2, phase * 1.3) * 0.016 + wave(3, phase * 1.7) * 0.012;
-    const shoulder = 1 - (wave(2, phase * 0.6) * 0.5 + 0.5) * 0.06;
-    // the +z end steps inside the next module's start (no shared planes in a run's overlaps)
-    const tuck = 1 - Math.max(0, u - 0.9) * 0.3;
+    // the crown's bites (a U each), and a long gentle wave whose period is the module's
+    let loss = 0;
+    for (const [c, w, d, lean] of bites) {
+      // a skewed U: the lean moves the deepest point toward one side and steepens that side
+      const t = (z - c) / w;
+      if (Math.abs(t) >= 1) continue;
+      const tt = t >= lean * 0.5 ? (t - lean * 0.5) / (1 - lean * 0.5) : (t - lean * 0.5) / (1 + lean * 0.5);
+      loss = Math.max(loss, d * Math.max(0, 1 - tt * tt) * Math.max(0, 1 - tt * tt));
+    }
+    // the crown's own unevenness: two harmonics of the module and a finer ripple
+    loss += (Math.sin(2 * Math.PI * u + phase) * 0.5 + 0.5) * 0.03 + (Math.sin(6 * Math.PI * u + phase * 2.1) * 0.5 + 0.5) * 0.012
+      + (Math.sin(14 * Math.PI * u + phase * 0.7) * 0.5 + 0.5) * 0.006;
+    const tuck = 1 - Math.max(0, u - 0.9) * 0.3; // the +z end steps inside the next module's start
     for (let k = 0; k < rowLength; k++) {
       const [sx, sy] = section[k];
       const side = Math.sign(sx);
+      // the upper section compresses into the loss (the shoulders follow the crown down)
+      let y = sy * H;
+      if (sy > y0) y = y0 * H + (sy * H - y0 * H) * (H - loss - y0 * H) / (H - y0 * H);
       let gully = 0;
-      for (const [gz, gs, depth] of gullies) if (gs === side && sy > 0.1) gully += depth * Math.max(0, 1 - Math.abs(z - gz) / 0.18);
-      // the top slumps where it wears (the crown and the upper shoulders follow the wear; the foot stays)
-      const y = sy * H + (sy > 0.5 ? wear * Math.min(1, (sy - 0.5) * 2.2) : 0);
-      const widen = sy > 0.7 ? shoulder : 1;
-      const x = sx * half * widen * tuck - side * gully + Math.sin(Math.PI * u) * bow;
+      for (const [gz, gs, depth, gw] of gullies) {
+        if (gs === side && sy > 0.08) gully += depth * Math.max(0, 1 - Math.abs(z - gz) / gw) * Math.min(1, sy * 1.3);
+      }
+      // a loss also eats the shoulder on its side: the crown narrows where it is bitten
+      const narrow = sy > 0.85 ? 1 - Math.min(0.12, loss * 0.5) : 1;
+      const x = sx * half * narrow * tuck - side * gully + Math.sin(Math.PI * u) * bow;
       positions.push(x, y, z);
-      uvs.push(z * 0.7 + L, arc[k] * 0.7);
+      uvs.push(u, arc[k] * ADOBE_UV_PER_M);
     }
   }
   for (let i = 0; i < segs; i++) {
@@ -1307,7 +1335,7 @@ function adobeModule(r: Rng): THREE.BufferGeometry {
   g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   g.setIndex(index);
-  g.computeVertexNormals(); // the mud's faces shade soft all round
+  g.computeVertexNormals();
   // the end faces: a flat fan over each end's section, their own corners (so the sides keep their soft normals)
   const capPositions: number[] = [], capUvs: number[] = [];
   for (const [i, last] of [[0, false], [segs, true]] as const) {
@@ -1315,7 +1343,7 @@ function adobeModule(r: Rng): THREE.BufferGeometry {
     const at = (k: number) => [positions[(base + k) * 3], positions[(base + k) * 3 + 1], positions[(base + k) * 3 + 2]];
     for (let k = 1; k + 1 < rowLength; k++) {
       const tri = last ? [0, k, k + 1] : [0, k + 1, k];
-      for (const q of tri) { const p = at(q); capPositions.push(...p); capUvs.push(p[0] * 0.7, p[1] * 0.7); }
+      for (const q of tri) { const p = at(q); capPositions.push(...p); capUvs.push(p[0] * ADOBE_UV_PER_M, p[1] * ADOBE_UV_PER_M); }
     }
   }
   const caps = new THREE.BufferGeometry();
@@ -1336,12 +1364,12 @@ function bWallAdobe(rng: Rng): THREE.BufferGeometry {
 function bWallAdobeBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const h = 0.24 + rng() * 0.2;
-  const stub = box(0.52, h, WALL_SEG * 0.44, 0.7);
+  const stub = box(0.52, h, WALL_SEG * 0.44, ADOBE_UV_PER_M);
   stub.rotateX((rng() - 0.5) * 0.12);
   parts.push(stub.translate(0, h / 2, -WALL_SEG * 0.22));
   for (let k = 0; k < 5; k++) { // mud-brick clods
     const bs = 0.13 + rng() * 0.16;
-    const blk = box(bs * 1.4, bs * 0.6, bs, 1.2);
+    const blk = box(bs * 1.4, bs * 0.6, bs, ADOBE_UV_PER_M * 1.6);
     blk.rotateY(rng() * Math.PI);
     parts.push(blk.translate((rng() - 0.5) * 1.5, bs * 0.28, (rng() - 0.5) * WALL_SEG * 0.9));
   }
