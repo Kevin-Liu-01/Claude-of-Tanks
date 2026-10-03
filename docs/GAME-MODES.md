@@ -70,6 +70,8 @@ buttons in the dedicated flight console: a rapid 30 mm cannon, a 152 mm explosiv
 The weapon channels reload independently. Missiles follow the sight; cannon and
 howitzer rounds travel through the normal ballistic and armor simulation.
 
+The autocannon uses short, bright streaks; the howitzer leaves a broader, longer wake; guided missiles retain a curved exhaust trail. Each round has a small hot head that remains visible when viewed directly from behind. Tracer size follows scope zoom and distance, with a limit to prevent oversized glows. These effects follow the actual projectiles and disappear on impact.
+
 Four allied ground vehicles accompany the gunship by default. They have 35% of their normal hull strength, slower reloads and reduced speed, and use normal navigation to reach the green **E** extraction area. Enemies pursue the convoy. Save at least half; killing enemies alone does not complete the mission. The objective shows allies still on the field, the number extracted, the rescue requirement and route progress. Casualties do not respawn. An eight-minute timeout or losing too many escorts fails the operation. Multiplayer pilots all provide air support, with separate friendly bots reserved for the escort. Extraction and casualty state survive host migration.
 
 ## Asymmetric teams and progression
