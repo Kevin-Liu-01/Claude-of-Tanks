@@ -35,6 +35,8 @@ const buildSurfaces = new Function('THREE', 'resolveStructureWindowStyle', 'make
   `return ${stripTypeScriptTypes(`function* testSurfaceSteps(group, engineCtx, mapId, P, atlases) {
     const { ${families.join(', ')} } = atlases;
     const noi = null, aniso = 4;
+    // a map without a regional architecture kit (maps/regional): the kit's weathered materials stay absent
+    const regionalArchitecture = null;
     const grimeTex = makeGrimeTexture(); // Completed before the material stage.
     ${source.slice(start, end)}
     return { mats, grimeTex, retainedSurfaceMaterials };
