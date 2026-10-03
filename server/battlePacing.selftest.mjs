@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buildPacingRoster } from './pacingRoster.test-support.ts';
+import { preparePacingRoster } from './pacingRoster.test-support.ts';
 import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.ts';
 import { MAP_IDS } from '../src/world/maps/index.ts';
 import { createDedicatedWorldCollision } from './dedicatedWorldCollision.ts';
@@ -28,7 +28,7 @@ for (let mapIndex = 0; mapIndex < MAPS.length; mapIndex++) {
       players: [{ id: 'host', name: 'Host', specId: 'm1a2', team: 'alpha' }],
     };
     const match = createAuthoritativeMatch({
-      players: buildPacingRoster(lobby),
+      players: await preparePacingRoster(lobby),
       mapId,
       seed: matchSeed,
       countdownS: 0,

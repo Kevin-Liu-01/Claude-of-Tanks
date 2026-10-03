@@ -1,10 +1,17 @@
 /**
  * The battle-pacing gate's roster (server/battlePacing.selftest.mjs, tools/pacing-trace.mjs): the deterministic
  * era-matched bot fill the private-room handoff of the first multiplayer produced for a default room — one idle
- * human, the other seats filled from the production catalog by a seed. The gate's 5-8 minute bands were measured
- * over exactly this roster, so the fill stays byte-identical here as the gate's fixture after that stack left the
- * tree (docs/MULTIPLAYER-V2.md §13.10). Rooms themselves plan their bots in src/mp/room/roomPolicy.ts.
+ * human, the other seats filled from the production catalog by a seed. The fill kept that stack's code when it left
+ * the tree (docs/MULTIPLAYER-V2.md §13.10); rooms themselves plan their bots in src/mp/room/roomPolicy.ts.
+ *
+ * The fleet registers here the way the game's authorities register it (src/vehicles/authorityFleet.ts): the ordered
+ * fleet registration when this module loads, then the roster's combat anatomy before its match, as
+ * src/mp/host/matchHostCore.ts boots one. Until 2026-10-03 the gate imported neither: the production catalog held
+ * only the five ids specs.ts registers by itself, four specs filled all 396 bot seats (T-90M 106, M1A2 98, Strv 103
+ * 97, T-90M Proryv 95), and both T-90Ms ran at their pre-resize 6.86 x 3.78 m instead of 7.92 x 3.97 m. The fill now
+ * draws from the 219-id production catalog.
  */
+import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
 import { getSpec, PRODUCTION_TANK_IDS } from '../src/vehicles/specs.ts';
 import { isBotTankId } from '../src/game/matchmaking.ts';
 
@@ -83,5 +90,12 @@ export function buildPacingRoster(lobby: PacingLobby): PacingPlayer[] {
       });
     }
   }
+  return players;
+}
+
+/** The roster with its combat anatomy loaded, as the game's host loads a roster before its match. */
+export async function preparePacingRoster(lobby: PacingLobby): Promise<PacingPlayer[]> {
+  const players = buildPacingRoster(lobby);
+  await ensureAuthorityFleet(players.map((player) => player.specId));
   return players;
 }
