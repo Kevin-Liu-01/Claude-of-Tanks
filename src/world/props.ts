@@ -128,7 +128,10 @@ import type { UtilityNetwork } from './utilityNetwork.ts';
 import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildContext, type StructureDimensions } from './maps/exteriorDetailKit.ts';
 // regional-buildings lane (2026-10-03): the map's regional architecture kit replaces each placed building's geometry
 // after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
-import { rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
+import { buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
+import { YARD_SHED, gardenParts, planYard, yardKeepOut, type YardWorld } from './maps/regional/yards.ts';
+import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
+import type { RegionalBuildContext } from './maps/regional/types.ts';
 import { makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
 import { geologyBoulderSite } from './landformGeology.ts';
@@ -6267,6 +6270,89 @@ ${snowCap ? `
   }
   yield* placeTankWrecks();
   yield { fine: true, stage: 'wrecks-finalized' };
+
+  // regional-buildings lane (2026-10-03): the yards round a kit's houses (maps/regional/yards.ts), once every building,
+  // wall, rock and wreck stands: a yard on each house's freest side, its fence or wall modules (destructibles) with a
+  // gate, an outbuilding the kit builds and kitchen-garden beds, each placed only where it clears the road frontage,
+  // the other plots, the solids, the objective discs and the spawn pads. Its own stream: nothing placed earlier moves.
+  function placeRegionalYards(): void {
+    const yard = regionalArchitecture?.yard;
+    if (!yard || !regionalArchitecture) return;
+    const style = regionalArchitecture;
+    const kinds = new Set(yard.kinds);
+    const houses = buildingFeatures.filter((b) => b.kind && kinds.has(b.kind));
+    if (!houses.length) return;
+    const yrngYard = mulberry32(seed + 1307);
+    const keepOut = yardKeepOut(mapId, L.spawns,
+      (cfg as { terrain?: { hardstands?: SceneryHardstand[] } } | null)?.terrain?.hardstands ?? [],
+      heightField.bridgeDecks ?? []);
+    const world: YardWorld = {
+      ground: {
+        roadDist: (x, z) => heightField._roadDist(x, z),
+        water: (x, z) => heightField.getWaterMaskAt(x, z),
+        normalY: (x, z) => heightField.getNormalAt(x, z).y,
+      },
+      plots: buildingFeatures, solids: obstacles, destructibles, keepOut,
+    };
+    const fenceMeta = resolveDestructibleMeta(destructibleContext, yard.fence);
+    const seg = fenceMeta.wall ? WALL_SEG : FENCE_SEG, sink = fenceMeta.wall ? 0.1 : 0.06;
+    for (const house of houses) {
+      const plan = planYard(house, world, yard, yrngYard, seg);
+      if (!plan) continue;
+      for (const m of plan.modules) {
+        const ya = heightField.getHeightAt(m.x - Math.sin(m.yaw) * seg / 2, m.z - Math.cos(m.yaw) * seg / 2);
+        const yb = heightField.getHeightAt(m.x + Math.sin(m.yaw) * seg / 2, m.z + Math.cos(m.yaw) * seg / 2);
+        addDestructible(yard.fence, m.x, Math.min(ya, yb) - sink, m.z, m.yaw, 0.96 + yrngYard() * 0.08, Math.atan2(yb - ya, seg) * 0.85);
+      }
+      if (plan.gate && yard.gate) addDestructible(yard.gate, plan.gate.x, heightField.getHeightAt(plan.gate.x, plan.gate.z) - 0.06, plan.gate.z, plan.gate.yaw, 1);
+      if (plan.shed && yard.shed && style.builders[yard.shed]) {
+        const { x, z, yaw, w: sw, d: sd } = plan.shed;
+        const fit = groundFit(x, z, sw, sd, yaw);
+        if (fit.spread <= 1.0) {
+          const ctx: RegionalBuildContext = {
+            structureId: yard.shed, info: { w: sw, d: sd, h: YARD_SHED.h }, wallBucket: 'plaster',
+            bounds: { minX: -sw / 2, maxX: sw / 2, minZ: -sd / 2, maxZ: sd / 2, maxY: YARD_SHED.h },
+            rng: streamFrom(hashSeed(`${style.id}:yardshed:${mapId}`, seed, x, z, yaw)),
+            variant: streamFrom(hashSeed(`${style.id}:yardshed-variant:${mapId}`, seed, x, z, yaw)),
+            mapId, snowCap: structureContext.snowCap, tier: mobileProps ? 'mobile' : 'desktop',
+          };
+          const parts = buildRegionalParts(style, ctx, streamFrom(hashSeed(`${style.id}:yardshed-weather:${mapId}`, seed, x, z, yaw)));
+          const solid = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
+          for (const list of Object.values(parts)) for (const g of list) {
+            if (g.userData.noCollision) continue;
+            g.computeBoundingBox();
+            const b = g.boundingBox;
+            if (!b) continue;
+            solid.minX = Math.min(solid.minX, b.min.x); solid.maxX = Math.max(solid.maxX, b.max.x);
+            solid.minZ = Math.min(solid.minZ, b.min.z); solid.maxZ = Math.max(solid.maxZ, b.max.z);
+          }
+          // the kit's shed must keep to the shed's plot (its corner was cleared for that plot, not for more)
+          if (Math.max(-solid.minX, solid.maxX) <= sw / 2 + 0.35 && Math.max(-solid.minZ, solid.maxZ) <= sd / 2 + 0.35) {
+            const tmp = parts as unknown as PropsBuckets;
+            addStructureCollision(yard.shed, tmp, x, fit.y + 0.05, z, yaw);
+            _quat.setFromAxisAngle(_upAxis, yaw);
+            _mat4.compose(_posv.set(x, fit.y + 0.05, z), _quat, _one);
+            mergeInto(buckets, tmp, _mat4);
+            buildingFeatures.push({ x, z, w: sw, d: sd, rot: yaw });
+          } else {
+            for (const list of Object.values(parts)) for (const g of list) g.dispose();
+          }
+        }
+      }
+      if (plan.garden && !mobileProps) {
+        const { x, z, yaw, w, d } = plan.garden;
+        const fit = groundFit(x, z, w, d, yaw);
+        if (fit.spread <= 0.5) {
+          const parts = gardenParts(w, d, mulberry32(hashSeed(`${style.id}:garden:${mapId}`, seed, x, z)), fit.spread);
+          _quat.setFromAxisAngle(_upAxis, yaw);
+          _mat4.compose(_posv.set(x, fit.y + fit.spread, z), _quat, _one);
+          mergeInto(buckets, parts as unknown as PropsBuckets, _mat4);
+        }
+      }
+    }
+  }
+  placeRegionalYards();
+  yield { fine: true, progress: false, stage: 'regional-yards' };
 
   // --- street rubble piles (urban): heaped masonry chunks + broken beams ---
   // r6: every 4th candidate may land in a 90 m OUTSKIRT band around the town

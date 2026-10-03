@@ -1253,6 +1253,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/orchardBathhouse.selftest.mjs',
     // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap
     'src/world/maps/regional/regionalArchitecture.selftest.mjs',
+    'src/world/maps/regional/yards.selftest.mjs', // 2026-10-03: the yards round a kit's houses, clear of roads, plots, objectives and pads
     'src/world/mangroveFisheryWharf.selftest.mjs',
     'src/world/structureConnectivity.selftest.mjs',
     'src/world/structureCollision.selftest.mjs',
