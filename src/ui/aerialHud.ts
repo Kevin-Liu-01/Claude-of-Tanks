@@ -30,7 +30,6 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
   const switchScope=()=>{if(!scopeView.hidden)cycleScopeVision();};scopeView.addEventListener('click',switchScope);bus.on('ui:aerialVision',switchScope);
   const root=node('section' ,'cot-flight-hud',parent);root.hidden=true;
   const sight=node('div','flight-sight',root);sight.setAttribute('aria-hidden','true');
-  const readout=node('div','flight-sight-readout',root);
   const panel=node('div','flight-console',root);
   const heading=node('div','flight-heading',panel),emblem=icon(heading,'modeDrone','flight-emblem');
   const identity=node('button','flight-identity flight-view-switch',heading),title=node('strong','',identity);
@@ -107,7 +106,7 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
       timer.host.hidden=link.host.hidden=speedometer.host.hidden=!drone;
       zoom.host.hidden=distance.host.hidden=drone;
       timer.value.textContent=`${Math.ceil(view.batteryS)}s`;link.value.textContent=`${Math.round(range)}m`;speedometer.value.textContent=`${Math.round(speed*3.6)}km/h`;
-      zoom.value.textContent=`×${(55/fov).toFixed(1)}`;distance.value.textContent=`${Math.round(dist)}m`;readout.hidden=drone;readout.textContent=zoom.value.textContent+' · '+distance.value.textContent;
+      zoom.value.textContent=`×${(55/fov).toFixed(1)}`;distance.value.textContent=`${Math.round(dist)}m`;
       battery.hidden=!drone;battery.value=view.batteryS;
       root.classList.toggle('low-battery',drone&&view.batteryS<10);
       weapons.hidden=drone;back.hidden=!drone;

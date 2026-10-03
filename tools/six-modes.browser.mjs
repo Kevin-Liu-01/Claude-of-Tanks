@@ -74,6 +74,8 @@ try{
     await page.waitForFunction(()=>{const e=window.__DEBUG.game.matchModeController.state.escort;return e.progress>.01||e.rescued>0;},{timeout:30000});
     const buttons=await page.$$eval('.flight-supply',els=>els.map(el=>{const r=el.getBoundingClientRect();return{w:r.width,h:r.height};}));
     assert.ok(buttons.every(b=>b.w>=44&&b.h>=44),'supply controls remain accessible');
+    assert.equal(await page.$eval('.flight-telemetry',e=>getComputedStyle(e).display!=='none'),true,'gunship range and zoom stay visible');
+    assert.equal(await page.$eval('.flight-heading',e=>{const children=[...e.children].filter(c=>c.getBoundingClientRect().width>0);return children.every((c,i)=>!i||children[i-1].getBoundingClientRect().right<=c.getBoundingClientRect().left+1);}),true,'sensor, range and supplies do not overlap');
     if(mobile)await page.tap('[data-supply="ammo"]');else await page.keyboard.press('KeyJ');
     await page.waitForFunction(()=>window.__DEBUG.game.matchModeController.state.pickups.some(p=>p.airDrop));
     assert.equal(await page.$eval('[data-supply="ammo"]',e=>e.disabled),true,'supply cooldown appears');
