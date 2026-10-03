@@ -3772,7 +3772,7 @@
   "hud.objective.realistic": "Realistic",
   "hud.objective.gun_game": "Gun Game",
   "hud.objective.drone": "Drone",
-  "hud.objective.ac130": "AC-130 · PROTECT THE CONVOY",
+  "hud.objective.ac130": "PROTECT THE CONVOY",
   "docs.topic.simulation.roles.t": "Bosses, infection, critical damage and weapon ladders",
   "docs.topic.simulation.roles.p1": "Juggernaut lets you play the boss or join the hunters. The boss has eight times its normal hull health and half its reload time; hunters respawn, while the boss must survive ten minutes. Infected starts with one infected opponent. Destroyed survivors change sides and respawn as faster infected tanks. Survive seven minutes, or convert everyone.",
   "docs.topic.simulation.roles.p2": "Realistic keeps vehicles visible and removes hull HP attrition: armor, crew casualties, ammunition destruction and persistent module damage decide the fight. Gun Game replaces the main weapon with a five-stage ladder: 30 mm AP, 105 mm APFSDS, 120 mm APFSDS, 152 mm HE and a guided HEAT missile. Two kills advance each stage; respawns preserve progress.",

@@ -26,7 +26,7 @@
 .flight-battery::-webkit-meter-optimum-value{background:#f0b452}.flight-battery::-moz-meter-bar{background:#f0b452}
 .low-battery .flight-battery::-webkit-meter-optimum-value{background:#f26957}.low-battery .flight-instrument:first-child{color:#ff9b7f}
 .flight-weapons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:8px 0}
-.flight-weapon,.cot-drone-return{border:1px solid #52616b;border-bottom:2px solid #6b7c89;background:linear-gradient(#25333d,#111b23);color:#e3ebef;font:inherit;cursor:pointer;min-height:44px}
+.flight-weapon,.cot-drone-return{-webkit-tap-highlight-color:transparent;border:1px solid #52616b;border-bottom:2px solid #6b7c89;background:linear-gradient(#25333d,#111b23);color:#e3ebef;font:inherit;cursor:pointer;min-height:44px}
 .flight-weapon{position:relative;display:flex;align-items:center;min-height:62px;padding:8px 18px 8px 8px;gap:7px;text-align:left}
 .flight-weapon-icon{display:flex;flex:0 0 24px;color:#bac8d2}.flight-weapon-icon svg{width:24px;height:30px}
 .flight-weapon-copy{display:flex;flex-direction:column;min-width:0;gap:5px}
