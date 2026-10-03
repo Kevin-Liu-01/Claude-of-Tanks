@@ -1,7 +1,25 @@
-// Redrock — a north/south canyon with a sheltered logistics outpost on its
-// traversable floor, unequal layered flanks and road-connected side ravines.
+// src/world/maps/badlands.ts — Redrock Divide, redesigned 2026-10-02 (maps-and-layouts lane; docs/MAP-LAYOUT-BRIEF.md).
+// The canyon (src/world/redrockCanyon.ts: its oblique axis, unequal walls, side ravines and closed heads), the outpost,
+// the five tracks, the palette, sky, vegetation, name and id are the map's identity and stay; the battlefield on the
+// canyon floor is new. The old floor was one open lane 420 m wide. Its sightlines ran long (19 % of the blocked rays
+// at 300 m or more), the middle third had 24 % cover, and three solid props stood in the tracks. Alpha deployed in the
+// south-west corner of the mouth, and the 2v2 pacing receipt's seed 32002 ended in 105 s.
+//
+// Reference: Wadi Rum in southern Jordan: a broad sand valley between sheer sandstone jebels, with domed inselbergs
+// standing free on the valley floor, sand ramps banked against the walls, and siqs cutting through to the next valley.
+//
+// The story on the ground: the outpost stands at the centre of the floor where the valley track crosses it, a walled
+// depot round a square. Two tracks run along the wall toes, and two cross tracks leave through the side ravines.
+// Inselbergs stand on the floor. A gate dome in front of each deployment hides it from the other, and a pair of domes
+// on each side of the outpost stands between the tracks, so the floor splits into a west lane, the outpost lane and an
+// east lane. Dune ridges and sand ramps give hull-down ground in the open. The floor's layout turns through 180 degrees
+// about the outpost (8, 0): alpha deploys in the south mouth, bravo in the north mouth, and every inselberg, ridge,
+// strongpoint, floor track and objective has its counterpart. The canyon walls and their ravines keep their own shapes.
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+
+// The floor's layout turns through 180 degrees about the outpost (8, 0): every feature has its counterpart.
+const pair = <T extends { x: number; z: number }>(form: T): T[] => [form, { ...form, x: 16 - form.x, z: -form.z }];
 
 export default {
   id: 'badlands',
@@ -13,20 +31,49 @@ export default {
     redrockCanyon: true, hillScale: 0.24, microScale: 0.40, rimH: 0,
     dunes: { amp: 0.7 }, mesas: null, marshes: [],
     roads: { paths: [
+      // The west and east tracks along the wall toes, the valley track through the outpost and the floor courses of
+      // the two cross tracks are each other's rotation about the outpost; the cross tracks leave through the ravines.
       [[-432, -452], [-254, -292], [-206, -92], [-182, 112], [-190, 306], [-210, 470]],
-      [[-188, -466], [-104, -306], [-28, -150], [54, 8], [126, 174], [204, 344], [286, 466]],
-      [[344, -452], [186, -272], [196, -82], [220, 112], [270, 298], [382, 456]],
-      [[-362, 182], [-210, 128], [-52, 102], [108, 126], [272, 194]],
+      [[-188, -466], [-104, -306], [-28, -150], [8, 0], [44, 150], [120, 306], [204, 466]],
+      [[226, -470], [206, -306], [198, -112], [222, 92], [270, 292], [448, 452]],
+      [[-362, 182], [-240, 170], [-150, 236], [-2, 202], [148, 232], [272, 194]],
       [[-286, -214], [-132, -232], [18, -202], [166, -244], [304, -198]],
     ] },
-    village: { x0: -176, x1: 190, z0: -166, z1: 196, cx: 8, cz: 22, feather: 48, flatten: 0.76, relief: 0.16 },
-    landforms: [],
+    // The outpost's square and a vehicle park in each flank lane, on the line of equal distance between the
+    // deployments: level aprons the zone-control placement seats its 30 m discs on.
+    hardstands: [
+      { x: 8, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0 },
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): tilted 7 % down to the east with its ground
+      { x: -122, z: 21, width: 60, length: 60, yawDeg: -87, level: 6.2, grade: 0.07 },
+      { x: 138, z: -21, width: 60, length: 60, yawDeg: 0, grade: 0 },
+    ],
+    village: { x0: -96, x1: 112, z0: -86, z1: 106, cx: 8, cz: 0, feather: 40, flatten: 0.76, relief: 0.16 },
+    landforms: [
+      // The inselbergs: sandstone domes on the floor, each a main dome, a lower lobe and a talus skirt. The gate pair
+      // screens each deployment from the other; the lane pairs stand between the tracks on the slices at 35 and 65 %
+      // of the way, where they split the floor into three lanes.
+      ...[
+        [-40, -292, 36, 30, 26, -8, -300, 22, 18], // gate
+        [-118, -128, 34, 40, 24, -140, -98, 20, 24], // west lane
+        [96, -112, 34, 40, 24, 118, -140, 20, 24], // east lane
+      ].flatMap(([x, z, rx, rz, height, lx, lz, lrx, lrz]) => [
+        ...pair({ kind: 'knoll', x, z, rx, rz, height, corridorScale: 1 }),
+        ...pair({ kind: 'knoll', x: lx, z: lz, rx: lrx, rz: lrz, height: Math.round(height * 0.65), corridorScale: 1 }),
+        ...pair({ kind: 'knoll', x: (x * 3 + lx) / 4, z: (z * 3 + lz) / 4, rx: rx * 1.7, rz: rz * 1.7, height: 3.2 }),
+      ]),
+      // Sand ramps banked against the wall toes and dune ridges across the floor: hull-down ground in the open
+      ...[[-150, -300, 120, 30], [-170, 20, 110, 80], [-20, -40, 90, 40], [110, -310, 100, 20],
+        [-196, -130, 80, 10], [150, -330, 90, 60],
+      ].flatMap(([x, z, length, yawDeg]) => pair({ kind: 'ridge', x, z, length, width: 34, height: 4.2, yawDeg })),
+    ],
   },
   spawns: {
-    player: { x: -318, z: -380 },
+    // Alpha deploys in the south mouth behind its gate dome; bravo's seven pads are an arc in the north mouth behind
+    // the other, its centroid the rotation of alpha's pad about the outpost. 795 m between the anchors.
+    player: { x: -56, z: -392 },
     enemies: [
-      { x: -214, z: 382 }, { x: -140, z: 420 }, { x: -62, z: 372 },
-      { x: 18, z: 414 }, { x: 100, z: 370 }, { x: 182, z: 406 }, { x: 260, z: 360 },
+      { x: 71, z: 394 }, { x: 21, z: 384 }, { x: 123, z: 384 }, { x: -25, z: 366 },
+      { x: 169, z: 366 }, { x: 47, z: 426 }, { x: 99, z: 426 },
     ],
   },
   splat: {
@@ -51,20 +98,28 @@ export default {
       'warehouse', 'adobe', 'compoundSouk', 'depot', 'containerRow', 'ruin', 'factory', 'marketRow',
       'compound', 'watertower', 'warehouse', 'gantry'],
     destructibleBuildings: ['deserttent', 'motorpool', 'quonsethut', 'checkpointhut'],
+    // Three strongpoint pairs, each the other's rotation about the outpost: a cistern yard in each flank lane, a
+    // lookout in front of the outpost on each side, and a fuel point by each deployment's flank track.
     tacticalBeats: [
-      { id: 'northwest-mesa-notch', role: 'brawl', x: -162, z: 112, yawDeg: 4,
+      { id: 'west-lane-cistern', role: 'brawl', x: -165, z: -60, yawDeg: 90,
         structure: 'motorpool', redoubt: true, outcrop: { count: 8, radius: 12, scaleMax: 3.5 }, wreck: true, wreckOffsetX: -16 },
-      { id: 'wash-recon-camp', role: 'scout', x: 42, z: -206, yawDeg: 24,
+      { id: 'east-lane-cistern', role: 'brawl', x: 181, z: 60, yawDeg: 270,
+        structure: 'motorpool', redoubt: true, outcrop: { count: 8, radius: 12, scaleMax: 3.5 }, wreck: true, wreckOffsetX: 16 },
+      { id: 'south-butte-lookout', role: 'scout', x: 0, z: -160, yawDeg: 10,
         structure: 'deserttent', outcrop: { count: 5, radius: 9, scaleMax: 2.8 } },
-      { id: 'eastern-pipeline-stop', role: 'support', x: 182, z: 98, yawDeg: -8,
+      { id: 'north-butte-lookout', role: 'scout', x: 16, z: 160, yawDeg: 190,
+        structure: 'deserttent', outcrop: { count: 5, radius: 9, scaleMax: 2.8 } },
+      { id: 'southwest-fuel-point', role: 'support', x: -180, z: -250, yawDeg: 30,
         structure: 'checkpointhut', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetZ: 15 },
+      { id: 'northeast-fuel-point', role: 'support', x: 196, z: 250, yawDeg: 210,
+        structure: 'checkpointhut', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetZ: -15 },
     ],
     blockFill: true,
     wallStyle: 'adobe', wallStoneChance: 0.12, buildingLat: [11, 6], sideSkip: 0.1,
+    // The outpost's perimeter walls at its four corners, open where the tracks come in.
     wallRuns: [
-      [-198, -142, -108, -104, 2], [-194, 128, -104, 162, 3],
-      [116, -144, 202, -106, 3], [116, 132, 202, 166, 2],
-      [-142, 250, -44, 278, 3], [70, -270, 164, -238, 2],
+      [-96, -86, -40, -86, 3], [-96, -86, -96, -30, 3], [56, 86, 112, 86, 3], [112, 30, 112, 86, 3],
+      [60, -86, 112, -86, 2], [112, -86, 112, -40, 2], [-44, 86, -96, 86, 2], [-96, 40, -96, 86, 2],
     ],
     well: true, hayCrates: false, fences: true, telegraph: true, carts: false, logs: false,
     rocks: 264, outcrops: 58, craters: 74, rubblePiles: 22,
@@ -85,7 +140,7 @@ export default {
     forestHex: 0x58402f, rockHex: 0x96533b, haze: 0.92, grain: 0.58,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'cumulus-humilis', coverage: 0.18, cirrus: 0.35 },
+  clouds: { regime: 'cumulus-humilis', coverage: 0.18, cirrus: 0.35, virga: 0.9 },
   sky: {
     sunElevationDeg: 30, sunAzimuthDeg: 116, turbidity: 7.2, rayleigh: 1.05,
     mieCoefficient: 0.0095, mieDirectionalG: 0.86, fogDensity: 0.00058,

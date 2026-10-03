@@ -4,8 +4,8 @@ import { readFileSync } from 'node:fs';
 import { registerHooks, stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
-import { ROAD_ENDPOINT_INTENTS, completeRoadEndpoints, usesInheritedRoadGrades,
-  remapInheritedRoadElevations, alignAddedRoadJunctionGrades } from './maps/roadEndpoints.ts';
+import { ROAD_ENDPOINT_INTENTS, completeRoadsWithIntents, usesInheritedRoadGrades, remapInheritedRoadElevations,
+  alignAddedRoadJunctionGradesWithIntents } from './maps/roadEndpoints.ts';
 import { usesPhysicalRoadStations, buildRoadStationOrigins, authoredRoadStationIndex } from './maps/roadStations.ts';
 
 const selected = ['blackglass', 'titan_gorge', 'skybridge'];
@@ -78,10 +78,14 @@ assert.notDeepEqual(wrongJunctionBake.map(row => row.slice(1)), oldJunctionBake,
 
 // Retain the FULL original row through smoothing, including neighbors later
 // trimmed away. Intersections are new owners, never replacements for old IDs.
+// Three north-south spines and a crossbar joining the first and third: the synthetic road set these checks complete
+// under explicit intents (Frontier Basin carried exactly these intents until its 2026-10-02 redesign).
+const CROSSBAR_INTENTS = [['boundary', 'boundary'], ['boundary', 'boundary'], ['boundary', 'boundary'],
+  [{ junction: 0 }, { junction: 2 }]];
 const crossingSource = [-100, 0, 100].map(x => [[x, -400], [x, 0], [x, 400]]);
 crossingSource.push([-150, -125, -75, 0, 75, 125, 150].map(x => [x, 0]));
 const beforeSource = JSON.stringify(crossingSource);
-const crossing = completeRoadEndpoints('frontier', crossingSource);
+const crossing = completeRoadsWithIntents(CROSSBAR_INTENTS, crossingSource);
 const layout = { roads: crossing, roadStations: buildRoadStationOrigins(crossingSource, crossing) };
 assert.deepEqual(layout.roadStations[3], { count: 7, first: 2, last: 4, offset: -1 });
 const trimValues = [[10, 20, 30], [35, 40, 45], [50, 60, 70], [90, -20, 15, 0, 30, 80, -40]];
@@ -104,17 +108,17 @@ const fullSmoothed = [trimValues[3].slice()];
 trimBake.smoothRoadElevations(fullSmoothed);
 assert.notDeepEqual(wrongTrim[0], fullSmoothed[0].slice(2, 5), 'trim-first smoothing loses real neighbors');
 const beforeSeating = copy(seated);
-alignAddedRoadJunctionGrades('frontier', crossingSource, crossing, seated);
+alignAddedRoadJunctionGradesWithIntents(CROSSBAR_INTENTS, crossingSource, crossing, seated);
 assert.equal(seated[3][0], seated[0][crossing[0].indexOf(crossingSource[0][1])]);
 assert.equal(seated[3].at(-1), seated[2][crossing[2].indexOf(crossingSource[2][1])]);
 assert.deepEqual(seated.slice(0, 3), beforeSeating.slice(0, 3), 'spines are not regraded to their new crossbar');
 assert.deepEqual(seated[3].slice(1, -1), beforeSeating[3].slice(1, -1), 'only inserted endpoints are seated');
 assert.equal(JSON.stringify(crossingSource), beforeSource, 'completion and grade helpers leave source rows immutable');
 const exactSource = [...crossingSource.slice(0, 3), [[-100, 0], [-50, 0], [50, 0], [100, 0]]];
-const exactCompleted = completeRoadEndpoints('frontier', exactSource);
+const exactCompleted = completeRoadsWithIntents(CROSSBAR_INTENTS, exactSource);
 const exactValues = exactCompleted.map((row, r) => row.map((_, i) => r * 10 + i));
 const exactBefore = copy(exactValues);
-alignAddedRoadJunctionGrades('frontier', exactSource, exactCompleted, exactValues);
+alignAddedRoadJunctionGradesWithIntents(CROSSBAR_INTENTS, exactSource, exactCompleted, exactValues);
 assert.deepEqual(exactValues, exactBefore, 'original endpoints at an exact junction are not new owners');
 
 // Private, test-only taps execute the complete production constructor. The

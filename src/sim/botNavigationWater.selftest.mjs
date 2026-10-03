@@ -64,12 +64,16 @@ const legacy = createBotNavigationGrid({
     trace.push(['obstacles', x0 + 4.5, z0 + 4.5]); out.length = 0; return out;
   },
 });
-assert.equal(trace.length, N * N * 3);
 for (let iz = 0; iz < N; iz++) for (let ix = 0; ix < N; ix++) {
   const at = (iz * N + ix) * 3, x = MIN + ix * CELL, z = MIN + iz * CELL;
   assert.deepEqual(trace.slice(at, at + 3),
     [['height', x, z], ['ground', x, z], ['obstacles', x, z]]);
 }
+// the edge passes (2026-10-02: each edge's steepest stretch, its hull clearance) follow the row pass with height
+// samples and obstacle queries only: no ground and no liquid reads
+assert.ok(trace.length > N * N * 3);
+assert.ok(trace.slice(N * N * 3).every(([kind]) => kind === 'height' || kind === 'obstacles'),
+  'the edge passes read heights and obstacles only');
 assert.equal(legacy.navigationWaterPolicy, undefined);
 assert.equal(legacy.waterBlockedEdges, undefined);
 assert.equal(legacy.blocked.reduce((a, b) => a + b, 0), 0, 'default shallow soft ground remains legal');
@@ -169,8 +173,10 @@ assert.deepEqual(plan(drySoft, { x: 500, z: 0 }, { x: 700, z: 0 }), [[500, 0]],
 // one-way downhill shortcuts), so the weak tank on the lip keeps its reachable
 // singleton instead of dropping off an edge it could never climb back, and the
 // strong tank, which climbs the lip, still descends it.
+// the lip climbs at the cell-to-cell grade (72 %): the route search reads each edge's steepest stretch, so a vertical
+// step would be a wall for both tanks (2026-10-02)
 const lip = dryGrid({
-  getHeightAt: x => x >= 0 ? 18 : 0,
+  getHeightAt: x => x >= 0 ? 18 : x <= -25 ? 0 : 18 * (x + 25) / 25,
   getWaterMaskAt: x => x > 0 ? 1 : 0,
 });
 const weak = { ...spec, enginePowerHp: 180 };

@@ -37,7 +37,9 @@ export interface BattleHudAccess {
 }
 
 const DEFAULT_LOADERS: BattleHudLoaders = {
-  hud: () => import('./hud.ts'),
+  // The aerial instruments' stylesheet loads beside the HUD, never from inside its graph:
+  // plain-Node selftests import hud.ts, and Node cannot load a stylesheet.
+  hud: async () => (await Promise.all([import('./hud.ts'), import('./aerialHud.css')]))[0],
   damagePanel: async () => await import('./damagePanel.ts'),
   tankThumbs: () => import('./tankThumbs.ts'),
 };

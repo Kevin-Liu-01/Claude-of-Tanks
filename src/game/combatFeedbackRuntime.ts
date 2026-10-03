@@ -37,10 +37,6 @@ interface FeedbackRig {
   recoilKick?(amount: number, fovScale: number): RuntimeValue;
 }
 
-interface FeedbackAudio {
-  hitConfirm(kind: string, damage: number): void;
-}
-
 interface FeedbackFx {
   propCrush(position: THREE.Vector3, direction: THREE.Vector3, heightM: number): void;
 }
@@ -82,7 +78,6 @@ interface CombatFeedbackRuntimeOptions {
   bus: EventBus;
   game: FeedbackGame;
   rig: FeedbackRig;
-  audio: FeedbackAudio;
   getFx(): FeedbackFx | null;
   hasNetworkMatch(): boolean;
   shotRecoilScale(spec: FeedbackTankSpec, shell: FeedbackShellSpec | null): number;
@@ -100,7 +95,6 @@ export function createCombatFeedbackRuntime({
   bus,
   game,
   rig,
-  audio,
   getFx,
   hasNetworkMatch,
   shotRecoilScale,
@@ -130,9 +124,6 @@ export function createCombatFeedbackRuntime({
     }
     const player = game.player;
     if (!player) return;
-    if (event.attackerId === player.id && event.targetId && event.targetId !== player.id) {
-      audio.hitConfirm(event.kind, event.damage || 0);
-    }
     if (event.targetId === player.id && (event.damage || 0) > 0) {
       const shock = Math.min(
         0.62,

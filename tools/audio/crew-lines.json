@@ -1,0 +1,5282 @@
+{
+  "$comment": "Crew radio script, one entry per line id. 'role' picks the speaking voice (commander = voice A; gunner/loader/driver = voice B). 'delivery' is the ElevenLabs v4 audio-tag direction (English, prefixed in brackets at generation time): controlled, professional, never cheering or panicked. 'en-US' is the master; every other language is the register that country's armoured crews use over the intercom, not a literal translation. Keep takes short: crew radio, 1-6 words.",
+  "languages": [
+    "en-US",
+    "en-GB",
+    "de",
+    "ru",
+    "uk",
+    "zh",
+    "fr",
+    "sv",
+    "ja",
+    "ko",
+    "it",
+    "pl",
+    "he"
+  ],
+  "lines": [
+    {
+      "id": "battle_start",
+      "role": "commander",
+      "delivery": "steady, firm, over engine noise",
+      "context": "Battle begins, countdown reached zero.",
+      "en-US": [
+        "All crews, advance.",
+        "Driver, move out.",
+        "Crew, combat stations."
+      ],
+      "en-GB": [
+        "All callsigns, advance.",
+        "Driver, advance.",
+        "Crew, stand to."
+      ],
+      "de": [
+        "An alle, Panzer marsch.",
+        "Fahrer, marsch.",
+        "Besatzung, Gefechtsbereitschaft herstellen."
+      ],
+      "ru": [
+        "Всем экипажам, вперёд.",
+        "Механик, вперёд.",
+        "Экипаж, к бою."
+      ],
+      "uk": [
+        "Усім екіпажам, вперед.",
+        "Механіку, вперед.",
+        "Екіпаже, до бою."
+      ],
+      "zh": [
+        "各车注意，前进。",
+        "驾驶员，前进。",
+        "车组，准备战斗。"
+      ],
+      "fr": [
+        "À tous, en avant.",
+        "Pilote, avance.",
+        "Équipage, aux postes de combat."
+      ],
+      "sv": [
+        "Alla vagnar, framåt.",
+        "Förare, kör.",
+        "Besättning, stridsberedskap."
+      ],
+      "ja": [
+        "各車、前進。",
+        "操縦手、前へ。",
+        "各員、戦闘準備。"
+      ],
+      "ko": [
+        "전 전차, 전진.",
+        "조종수, 전진.",
+        "승무원, 전투 위치로."
+      ],
+      "it": [
+        "A tutti, avanzare.",
+        "Pilota, avanti.",
+        "Equipaggio, ai posti di combattimento."
+      ],
+      "pl": [
+        "Wszystkie załogi, naprzód.",
+        "Kierowca, ruszaj.",
+        "Załoga, na stanowiska bojowe."
+      ],
+      "he": [
+        "כל התחנות, להתקדם.",
+        "נהג, נוע.",
+        "צוות, להיערך לקרב."
+      ]
+    },
+    {
+      "id": "on_the_move",
+      "role": "driver",
+      "delivery": "calm, clipped",
+      "context": "Our tank starts moving for the first time this battle.",
+      "en-US": [
+        "Moving.",
+        "Driver moving."
+      ],
+      "en-GB": [
+        "Moving now.",
+        "Advancing."
+      ],
+      "de": [
+        "Fahre an.",
+        "Fahrzeug rollt."
+      ],
+      "ru": [
+        "Трогаюсь.",
+        "Есть, вперёд."
+      ],
+      "uk": [
+        "Рушаю.",
+        "Є, вперед."
+      ],
+      "zh": [
+        "起步。",
+        "驾驶员起步。"
+      ],
+      "fr": [
+        "En mouvement.",
+        "Pilote en mouvement."
+      ],
+      "sv": [
+        "Rullar.",
+        "Föraren kör."
+      ],
+      "ja": [
+        "前進。",
+        "操縦手、前進開始。"
+      ],
+      "ko": [
+        "이동 중.",
+        "조종수, 출발."
+      ],
+      "it": [
+        "In marcia.",
+        "Pilota in movimento."
+      ],
+      "pl": [
+        "W ruchu.",
+        "Ruszam."
+      ],
+      "he": [
+        "נוסע.",
+        "נהג, נע."
+      ]
+    },
+    {
+      "id": "victory",
+      "role": "commander",
+      "delivery": "calm, quiet, controlled",
+      "context": "Our team won the battle.",
+      "en-US": [
+        "Engagement over. Area secure.",
+        "Enemy force destroyed. Good work."
+      ],
+      "en-GB": [
+        "Engagement over. Area secure.",
+        "Enemy force destroyed. Well done."
+      ],
+      "de": [
+        "Gefecht beendet. Raum gesichert.",
+        "Feind vernichtet. Gute Arbeit."
+      ],
+      "ru": [
+        "Бой окончен. Рубеж за нами.",
+        "Противник уничтожен. Молодцы."
+      ],
+      "uk": [
+        "Бій завершено. Рубіж за нами.",
+        "Противника знищено. Молодці."
+      ],
+      "zh": [
+        "战斗结束。区域安全。",
+        "敌军全部歼灭。打得好。"
+      ],
+      "fr": [
+        "Fin de l'engagement. Zone sécurisée.",
+        "Force ennemie détruite. Bon travail."
+      ],
+      "sv": [
+        "Striden är över. Området säkrat.",
+        "Fienden nedkämpad. Bra jobbat."
+      ],
+      "ja": [
+        "戦闘終了。地域を確保。",
+        "敵部隊、撃破。ご苦労。"
+      ],
+      "ko": [
+        "교전 종료. 지역 확보.",
+        "적 부대 격멸. 수고했다."
+      ],
+      "it": [
+        "Ingaggio concluso. Zona in sicurezza.",
+        "Forze nemiche distrutte. Ben fatto."
+      ],
+      "pl": [
+        "Koniec walki. Rejon zabezpieczony.",
+        "Siły przeciwnika zniszczone. Dobra robota."
+      ],
+      "he": [
+        "הקרב הסתיים. השטח בשליטה.",
+        "כוח האויב הושמד. כל הכבוד."
+      ]
+    },
+    {
+      "id": "defeat",
+      "role": "commander",
+      "delivery": "low, grim, tired",
+      "context": "Our team lost the battle.",
+      "en-US": [
+        "Battle's lost. Fall back.",
+        "We're finished. Withdraw."
+      ],
+      "en-GB": [
+        "Battle's lost. Withdraw.",
+        "That's it. Pull back."
+      ],
+      "de": [
+        "Gefecht verloren. Ausweichen.",
+        "Es ist vorbei. Absetzen."
+      ],
+      "ru": [
+        "Бой проигран. Отходим.",
+        "Всё кончено. Отступаем."
+      ],
+      "uk": [
+        "Бій програно. Відходимо.",
+        "Усе скінчено. Відступаємо."
+      ],
+      "zh": [
+        "战斗失利，后撤。",
+        "我们败了。撤出战斗。"
+      ],
+      "fr": [
+        "Combat perdu. Repli.",
+        "C'est fini. On décroche."
+      ],
+      "sv": [
+        "Striden förlorad. Dra er tillbaka.",
+        "Vi är slagna. Vi drar oss ur."
+      ],
+      "ja": [
+        "戦闘に敗れた。後退する。",
+        "ここまでだ。離脱する。"
+      ],
+      "ko": [
+        "전투 패배. 후퇴한다.",
+        "여기까지다. 철수한다."
+      ],
+      "it": [
+        "Battaglia persa. Ripiegare.",
+        "Siamo finiti. Sganciarsi."
+      ],
+      "pl": [
+        "Bitwa przegrana. Wycofać się.",
+        "To koniec. Odwrót."
+      ],
+      "he": [
+        "הקרב אבוד. לסגת.",
+        "נגמר. להתנתק."
+      ]
+    },
+    {
+      "id": "draw",
+      "role": "commander",
+      "delivery": "flat, tired",
+      "context": "Battle ended in a draw.",
+      "en-US": [
+        "Cease fire. Neither side holds."
+      ],
+      "en-GB": [
+        "Cease fire. Nobody holds the ground."
+      ],
+      "de": [
+        "Feuer einstellen. Keiner setzt sich durch."
+      ],
+      "ru": [
+        "Прекратить огонь. Рубеж ничей."
+      ],
+      "uk": [
+        "Припинити вогонь. Рубіж нічий."
+      ],
+      "zh": [
+        "停止射击。双方相持不下。"
+      ],
+      "fr": [
+        "Cessez le feu. Personne ne tient le terrain."
+      ],
+      "sv": [
+        "Eld upphör. Ingen håller terrängen."
+      ],
+      "ja": [
+        "撃ち方やめ。双方、決着つかず。"
+      ],
+      "ko": [
+        "사격 중지. 어느 쪽도 우세하지 않다."
+      ],
+      "it": [
+        "Cessate il fuoco. Nessuno tiene il terreno."
+      ],
+      "pl": [
+        "Przerwać ogień. Nikt nie utrzymał terenu."
+      ],
+      "he": [
+        "חדל אש. אף צד לא מחזיק בשטח."
+      ]
+    },
+    {
+      "id": "enemy_spotted",
+      "role": "commander",
+      "delivery": "calm, alert, clipped",
+      "context": "Our crew spotted a new enemy vehicle.",
+      "en-US": [
+        "Contact. Enemy armor.",
+        "Tank spotted.",
+        "Enemy vehicle, contact."
+      ],
+      "en-GB": [
+        "Contact. Enemy armour.",
+        "Tank spotted.",
+        "Enemy vehicle. Contact, wait out."
+      ],
+      "de": [
+        "Achtung, Feindpanzer.",
+        "Panzer erkannt.",
+        "Feindkontakt, Fahrzeug."
+      ],
+      "ru": [
+        "Внимание. Бронетехника противника.",
+        "Вижу танк.",
+        "Цель, техника противника."
+      ],
+      "uk": [
+        "Увага. Ворожа бронетехніка.",
+        "Бачу танк.",
+        "Ціль, техніка противника."
+      ],
+      "zh": [
+        "发现敌装甲目标。",
+        "发现坦克。",
+        "发现敌车辆。"
+      ],
+      "fr": [
+        "Contact. Blindé ennemi.",
+        "Char repéré.",
+        "Véhicule ennemi, contact."
+      ],
+      "sv": [
+        "Kontakt. Fientligt pansar.",
+        "Stridsvagn upptäckt.",
+        "Fientligt fordon, kontakt."
+      ],
+      "ja": [
+        "接敵。敵戦車。",
+        "戦車、発見。",
+        "敵車両、発見。"
+      ],
+      "ko": [
+        "접적. 적 전차.",
+        "전차 발견.",
+        "적 차량, 접적."
+      ],
+      "it": [
+        "Contatto. Corazzato nemico.",
+        "Carro avvistato.",
+        "Mezzo nemico, contatto."
+      ],
+      "pl": [
+        "Kontakt. Pojazd pancerny wroga.",
+        "Wykryto czołg.",
+        "Pojazd przeciwnika, kontakt."
+      ],
+      "he": [
+        "מגע. שריון אויב.",
+        "זוהה טנק.",
+        "רכב אויב, מגע."
+      ]
+    },
+    {
+      "id": "spotted_front",
+      "role": "commander",
+      "delivery": "calm, alert, clipped",
+      "context": "New enemy contact directly ahead of our hull.",
+      "en-US": [
+        "Contact front.",
+        "Tank, front."
+      ],
+      "en-GB": [
+        "Contact front.",
+        "Tank, twelve o'clock."
+      ],
+      "de": [
+        "Feind vorn.",
+        "Panzer, zwölf Uhr."
+      ],
+      "ru": [
+        "Противник впереди.",
+        "Танк прямо."
+      ],
+      "uk": [
+        "Противник попереду.",
+        "Танк прямо."
+      ],
+      "zh": [
+        "正前方发现目标。",
+        "坦克，正前方。"
+      ],
+      "fr": [
+        "Contact devant.",
+        "Char à midi."
+      ],
+      "sv": [
+        "Kontakt rakt fram.",
+        "Stridsvagn klockan tolv."
+      ],
+      "ja": [
+        "接敵、正面。",
+        "戦車、正面。"
+      ],
+      "ko": [
+        "전방 접적.",
+        "전차, 전방."
+      ],
+      "it": [
+        "Contatto di fronte.",
+        "Carro a ore dodici."
+      ],
+      "pl": [
+        "Kontakt z przodu.",
+        "Czołg na godzinie dwunastej."
+      ],
+      "he": [
+        "מגע מלפנים.",
+        "טנק, שעה שתים עשרה."
+      ]
+    },
+    {
+      "id": "spotted_left",
+      "role": "commander",
+      "delivery": "calm, alert, clipped",
+      "context": "New enemy contact to our left.",
+      "en-US": [
+        "Contact left.",
+        "Tank, left."
+      ],
+      "en-GB": [
+        "Contact left.",
+        "Tank, nine o'clock."
+      ],
+      "de": [
+        "Feind links.",
+        "Panzer, neun Uhr."
+      ],
+      "ru": [
+        "Противник слева.",
+        "Слева танк."
+      ],
+      "uk": [
+        "Противник ліворуч.",
+        "Ліворуч танк."
+      ],
+      "zh": [
+        "左侧发现目标。",
+        "坦克，左侧。"
+      ],
+      "fr": [
+        "Contact à gauche.",
+        "Char à neuf heures."
+      ],
+      "sv": [
+        "Kontakt vänster.",
+        "Stridsvagn klockan nio."
+      ],
+      "ja": [
+        "接敵、左。",
+        "戦車、左。"
+      ],
+      "ko": [
+        "좌측 접적.",
+        "전차, 좌측."
+      ],
+      "it": [
+        "Contatto a sinistra.",
+        "Carro a ore nove."
+      ],
+      "pl": [
+        "Kontakt z lewej.",
+        "Czołg na godzinie dziewiątej."
+      ],
+      "he": [
+        "מגע משמאל.",
+        "טנק, שעה תשע."
+      ]
+    },
+    {
+      "id": "spotted_right",
+      "role": "commander",
+      "delivery": "calm, alert, clipped",
+      "context": "New enemy contact to our right.",
+      "en-US": [
+        "Contact right.",
+        "Tank, right."
+      ],
+      "en-GB": [
+        "Contact right.",
+        "Tank, three o'clock."
+      ],
+      "de": [
+        "Feind rechts.",
+        "Panzer, drei Uhr."
+      ],
+      "ru": [
+        "Противник справа.",
+        "Справа танк."
+      ],
+      "uk": [
+        "Противник праворуч.",
+        "Праворуч танк."
+      ],
+      "zh": [
+        "右侧发现目标。",
+        "坦克，右侧。"
+      ],
+      "fr": [
+        "Contact à droite.",
+        "Char à trois heures."
+      ],
+      "sv": [
+        "Kontakt höger.",
+        "Stridsvagn klockan tre."
+      ],
+      "ja": [
+        "接敵、右。",
+        "戦車、右。"
+      ],
+      "ko": [
+        "우측 접적.",
+        "전차, 우측."
+      ],
+      "it": [
+        "Contatto a destra.",
+        "Carro a ore tre."
+      ],
+      "pl": [
+        "Kontakt z prawej.",
+        "Czołg na godzinie trzeciej."
+      ],
+      "he": [
+        "מגע מימין.",
+        "טנק, שעה שלוש."
+      ]
+    },
+    {
+      "id": "spotted_rear",
+      "role": "commander",
+      "delivery": "controlled urgency, clipped",
+      "context": "New enemy contact behind us.",
+      "en-US": [
+        "Contact rear!",
+        "Tank behind us!"
+      ],
+      "en-GB": [
+        "Contact rear!",
+        "Tank, six o'clock!"
+      ],
+      "de": [
+        "Feind hinten!",
+        "Panzer, sechs Uhr!"
+      ],
+      "ru": [
+        "Противник сзади!",
+        "Сзади танк!"
+      ],
+      "uk": [
+        "Противник позаду!",
+        "Позаду танк!"
+      ],
+      "zh": [
+        "后方发现目标！",
+        "坦克在我后方！"
+      ],
+      "fr": [
+        "Contact derrière !",
+        "Char à six heures !"
+      ],
+      "sv": [
+        "Kontakt bakom oss!",
+        "Stridsvagn klockan sex!"
+      ],
+      "ja": [
+        "接敵、後方！",
+        "後方に戦車！"
+      ],
+      "ko": [
+        "후방 접적!",
+        "후방에 전차!"
+      ],
+      "it": [
+        "Contatto alle spalle!",
+        "Carro a ore sei!"
+      ],
+      "pl": [
+        "Kontakt z tyłu!",
+        "Czołg na godzinie szóstej!"
+      ],
+      "he": [
+        "מגע מאחור!",
+        "טנק מאחורינו!"
+      ]
+    },
+    {
+      "id": "sixth_sense",
+      "role": "commander",
+      "delivery": "low, tense, controlled",
+      "context": "The enemy has spotted our tank.",
+      "en-US": [
+        "We're spotted.",
+        "They have eyes on us."
+      ],
+      "en-GB": [
+        "We've been seen.",
+        "They've got eyes on us."
+      ],
+      "de": [
+        "Wir sind aufgeklärt.",
+        "Feind hat uns erkannt."
+      ],
+      "ru": [
+        "Нас обнаружили.",
+        "Нас видят."
+      ],
+      "uk": [
+        "Нас виявили.",
+        "Нас бачать."
+      ],
+      "zh": [
+        "我车已暴露。",
+        "敌人盯上我们了。"
+      ],
+      "fr": [
+        "On est repérés.",
+        "Ils nous ont en vue."
+      ],
+      "sv": [
+        "Vi är upptäckta.",
+        "De har oss i sikte."
+      ],
+      "ja": [
+        "発見された。",
+        "敵に捕捉されている。"
+      ],
+      "ko": [
+        "노출됐다.",
+        "적이 우리를 보고 있다."
+      ],
+      "it": [
+        "Siamo stati individuati.",
+        "Ci stanno osservando."
+      ],
+      "pl": [
+        "Jesteśmy wykryci.",
+        "Obserwują nas."
+      ],
+      "he": [
+        "זוהינו.",
+        "הם רואים אותנו."
+      ]
+    },
+    {
+      "id": "firing",
+      "role": "gunner",
+      "delivery": "clipped, matter-of-fact",
+      "context": "Our gunner fires the main gun.",
+      "en-US": [
+        "On the way.",
+        "Firing.",
+        "Shot."
+      ],
+      "en-GB": [
+        "Firing now.",
+        "Firing.",
+        "Round away."
+      ],
+      "de": [
+        "Schuss ist raus.",
+        "Feuer.",
+        "Schuss."
+      ],
+      "ru": [
+        "Снаряд пошёл.",
+        "Огонь.",
+        "Выстрел."
+      ],
+      "uk": [
+        "Снаряд пішов.",
+        "Вогонь.",
+        "Постріл."
+      ],
+      "zh": [
+        "发射。",
+        "射击。",
+        "放。"
+      ],
+      "fr": [
+        "Coup parti.",
+        "Je tire.",
+        "Départ."
+      ],
+      "sv": [
+        "Skott iväg.",
+        "Skjuter.",
+        "Skott lossat."
+      ],
+      "ja": [
+        "発射。",
+        "射撃。",
+        "撃つ。"
+      ],
+      "ko": [
+        "발사.",
+        "쏜다.",
+        "탄 나간다."
+      ],
+      "it": [
+        "Colpo partito.",
+        "Sparo.",
+        "Fuoco."
+      ],
+      "pl": [
+        "Poszedł.",
+        "Strzelam.",
+        "Strzał."
+      ],
+      "he": [
+        "יורה.",
+        "אש.",
+        "פגז יצא."
+      ]
+    },
+    {
+      "id": "missile_away",
+      "role": "gunner",
+      "delivery": "calm, focused",
+      "context": "We launched a guided missile.",
+      "en-US": [
+        "Missile away.",
+        "Missile out, guiding."
+      ],
+      "en-GB": [
+        "Missile away.",
+        "Missile in flight, guiding."
+      ],
+      "de": [
+        "Flugkörper ab.",
+        "Flugkörper raus, lenke ins Ziel."
+      ],
+      "ru": [
+        "Пуск.",
+        "Ракета пошла, навожу."
+      ],
+      "uk": [
+        "Пуск.",
+        "Ракета пішла, наводжу."
+      ],
+      "zh": [
+        "导弹发射。",
+        "导弹已发射，制导中。"
+      ],
+      "fr": [
+        "Missile parti.",
+        "Missile lancé, je guide."
+      ],
+      "sv": [
+        "Robot iväg.",
+        "Robot avfyrad, jag styr."
+      ],
+      "ja": [
+        "誘導弾、発射。",
+        "誘導弾発射、誘導中。"
+      ],
+      "ko": [
+        "유도탄 발사.",
+        "유도탄 발사, 유도 중."
+      ],
+      "it": [
+        "Missile partito.",
+        "Missile lanciato, in guida."
+      ],
+      "pl": [
+        "Rakieta poszła.",
+        "Rakieta odpalona, naprowadzam."
+      ],
+      "he": [
+        "טיל שוגר.",
+        "טיל באוויר, מנחה."
+      ]
+    },
+    {
+      "id": "penetration",
+      "role": "gunner",
+      "delivery": "calm, clipped",
+      "context": "Our shell penetrated the enemy armor.",
+      "en-US": [
+        "Penetration.",
+        "Target. Through the armor."
+      ],
+      "en-GB": [
+        "Penetration.",
+        "Target. Straight through."
+      ],
+      "de": [
+        "Durchschlag.",
+        "Treffer. Panzerung durchschlagen."
+      ],
+      "ru": [
+        "Есть пробитие.",
+        "Попал. Броня пробита."
+      ],
+      "uk": [
+        "Є пробиття.",
+        "Влучив. Броню пробито."
+      ],
+      "zh": [
+        "击穿。",
+        "命中，已击穿装甲。"
+      ],
+      "fr": [
+        "Perforation.",
+        "Au but. Blindage perforé."
+      ],
+      "sv": [
+        "Genomslag.",
+        "Träff. Genom pansaret."
+      ],
+      "ja": [
+        "貫通。",
+        "命中。装甲を貫徹。"
+      ],
+      "ko": [
+        "관통.",
+        "명중. 장갑 관통."
+      ],
+      "it": [
+        "Perforazione.",
+        "Colpito. Corazza perforata."
+      ],
+      "pl": [
+        "Przebicie.",
+        "Trafienie. Pancerz przebity."
+      ],
+      "he": [
+        "חדירה.",
+        "פגיעה. חדר את השריון."
+      ]
+    },
+    {
+      "id": "nonpen",
+      "role": "gunner",
+      "delivery": "flat, clipped",
+      "context": "Our shell hit but did not penetrate.",
+      "en-US": [
+        "No penetration.",
+        "Didn't go through."
+      ],
+      "en-GB": [
+        "No penetration.",
+        "Not gone through."
+      ],
+      "de": [
+        "Kein Durchschlag.",
+        "Nicht durchgekommen."
+      ],
+      "ru": [
+        "Без пробития.",
+        "Не пробил."
+      ],
+      "uk": [
+        "Без пробиття.",
+        "Не пробив."
+      ],
+      "zh": [
+        "未击穿。",
+        "没打穿。"
+      ],
+      "fr": [
+        "Pas de perforation.",
+        "Ça n'a pas percé."
+      ],
+      "sv": [
+        "Inget genomslag.",
+        "Gick inte igenom."
+      ],
+      "ja": [
+        "貫通せず。",
+        "抜けていない。"
+      ],
+      "ko": [
+        "관통 실패.",
+        "뚫지 못했다."
+      ],
+      "it": [
+        "Nessuna perforazione.",
+        "Non è passato."
+      ],
+      "pl": [
+        "Brak przebicia.",
+        "Nie przebił."
+      ],
+      "he": [
+        "לא חדר.",
+        "לא עבר."
+      ]
+    },
+    {
+      "id": "ricochet",
+      "role": "gunner",
+      "delivery": "flat, clipped",
+      "context": "Our shell glanced off the enemy armor.",
+      "en-US": [
+        "Ricochet.",
+        "Bounced."
+      ],
+      "en-GB": [
+        "Ricochet.",
+        "Glanced off."
+      ],
+      "de": [
+        "Abpraller.",
+        "Abgeprallt."
+      ],
+      "ru": [
+        "Рикошет.",
+        "Отскочил."
+      ],
+      "uk": [
+        "Рикошет.",
+        "Відскочив."
+      ],
+      "zh": [
+        "跳弹。",
+        "被弹开了。"
+      ],
+      "fr": [
+        "Ricochet.",
+        "Ça a ricoché."
+      ],
+      "sv": [
+        "Rikoschett.",
+        "Studsade."
+      ],
+      "ja": [
+        "跳弾。",
+        "弾かれた。"
+      ],
+      "ko": [
+        "도탄.",
+        "튕겨 나갔다."
+      ],
+      "it": [
+        "Rimbalzo.",
+        "Rimbalzato."
+      ],
+      "pl": [
+        "Rykoszet.",
+        "Odbił się."
+      ],
+      "he": [
+        "ריקושט.",
+        "ניתז."
+      ]
+    },
+    {
+      "id": "enemy_crit",
+      "role": "gunner",
+      "delivery": "calm, clipped",
+      "context": "Our hit damaged an enemy module or crew.",
+      "en-US": [
+        "Good hit. Something's damaged.",
+        "Critical hit."
+      ],
+      "en-GB": [
+        "Good hit. Something's damaged.",
+        "That's hurt him."
+      ],
+      "de": [
+        "Guter Treffer. Wirkung im Ziel.",
+        "Wirkungstreffer."
+      ],
+      "ru": [
+        "Хорошо попал. Что-то повредил.",
+        "Есть поражение."
+      ],
+      "uk": [
+        "Добре влучив. Щось пошкодив.",
+        "Є ураження."
+      ],
+      "zh": [
+        "有效命中，目标受损。",
+        "击中要害。"
+      ],
+      "fr": [
+        "Bon coup. Il a des dégâts.",
+        "Coup efficace."
+      ],
+      "sv": [
+        "Bra träff. Något är skadat.",
+        "Verkan i mål."
+      ],
+      "ja": [
+        "有効弾。損傷を与えた。",
+        "急所に命中。"
+      ],
+      "ko": [
+        "유효타. 장비 손상.",
+        "급소 명중."
+      ],
+      "it": [
+        "Buon colpo. Ha subito danni.",
+        "Colpo efficace."
+      ],
+      "pl": [
+        "Dobre trafienie. Ma uszkodzenia.",
+        "Skuteczne trafienie."
+      ],
+      "he": [
+        "פגיעה טובה. משהו אצלו נפגע.",
+        "פגיעה קשה."
+      ]
+    },
+    {
+      "id": "enemy_fire",
+      "role": "gunner",
+      "delivery": "calm, clipped",
+      "context": "Our hit set the enemy vehicle on fire.",
+      "en-US": [
+        "Target's burning."
+      ],
+      "en-GB": [
+        "Target's burning."
+      ],
+      "de": [
+        "Ziel brennt."
+      ],
+      "ru": [
+        "Цель горит."
+      ],
+      "uk": [
+        "Ціль горить."
+      ],
+      "zh": [
+        "目标起火。"
+      ],
+      "fr": [
+        "La cible brûle."
+      ],
+      "sv": [
+        "Målet brinner."
+      ],
+      "ja": [
+        "目標、炎上。"
+      ],
+      "ko": [
+        "목표 화재."
+      ],
+      "it": [
+        "Bersaglio in fiamme."
+      ],
+      "pl": [
+        "Cel się pali."
+      ],
+      "he": [
+        "המטרה בוערת."
+      ]
+    },
+    {
+      "id": "enemy_ammo_rack",
+      "role": "gunner",
+      "delivery": "firm, controlled",
+      "context": "Our hit struck the enemy ammunition.",
+      "en-US": [
+        "Ammo rack hit. He's cooking off."
+      ],
+      "en-GB": [
+        "His ammo's hit. He's cooking off."
+      ],
+      "de": [
+        "Munition getroffen. Der geht hoch."
+      ],
+      "ru": [
+        "Попал в боеукладку. Рвётся боекомплект."
+      ],
+      "uk": [
+        "Влучив у боєукладку. Детонує боєкомплект."
+      ],
+      "zh": [
+        "命中弹药舱，正在殉爆。"
+      ],
+      "fr": [
+        "Munitions touchées. Il explose."
+      ],
+      "sv": [
+        "Träff i ammunitionen. Den detonerar."
+      ],
+      "ja": [
+        "弾薬庫に命中。誘爆中。"
+      ],
+      "ko": [
+        "탄약고 명중. 유폭 중."
+      ],
+      "it": [
+        "Munizioni colpite. Sta esplodendo."
+      ],
+      "pl": [
+        "Trafienie w amunicję. Wybucha."
+      ],
+      "he": [
+        "פגיעה בתחמושת שלו. הוא מתפוצץ."
+      ]
+    },
+    {
+      "id": "target_destroyed",
+      "role": "gunner",
+      "delivery": "calm, controlled",
+      "context": "We destroyed an enemy vehicle.",
+      "en-US": [
+        "Target destroyed.",
+        "Target down.",
+        "Tank knocked out."
+      ],
+      "en-GB": [
+        "Target destroyed.",
+        "Target stop.",
+        "Tank knocked out."
+      ],
+      "de": [
+        "Ziel vernichtet.",
+        "Ziel ausgeschaltet.",
+        "Panzer abgeschossen."
+      ],
+      "ru": [
+        "Цель уничтожена.",
+        "Цель поражена.",
+        "Танк подбит."
+      ],
+      "uk": [
+        "Ціль знищено.",
+        "Ціль уражено.",
+        "Танк підбито."
+      ],
+      "zh": [
+        "目标击毁。",
+        "目标消灭。",
+        "敌坦克已击毁。"
+      ],
+      "fr": [
+        "Objectif détruit.",
+        "Cible neutralisée.",
+        "Char hors de combat."
+      ],
+      "sv": [
+        "Målet förstört.",
+        "Målet nedkämpat.",
+        "Stridsvagn utslagen."
+      ],
+      "ja": [
+        "目標撃破。",
+        "目標、沈黙。",
+        "戦車、撃破。"
+      ],
+      "ko": [
+        "목표 파괴.",
+        "목표 제압.",
+        "전차 격파."
+      ],
+      "it": [
+        "Bersaglio distrutto.",
+        "Bersaglio neutralizzato.",
+        "Carro fuori combattimento."
+      ],
+      "pl": [
+        "Cel zniszczony.",
+        "Cel zlikwidowany.",
+        "Czołg wyłączony z walki."
+      ],
+      "he": [
+        "מטרה הושמדה.",
+        "מטרה חוסלה.",
+        "טנק הושבת."
+      ]
+    },
+    {
+      "id": "miss",
+      "role": "gunner",
+      "delivery": "flat, quick",
+      "context": "Our shell missed the target.",
+      "en-US": [
+        "Miss.",
+        "Short. Adjusting."
+      ],
+      "en-GB": [
+        "Miss.",
+        "Short. Re-laying."
+      ],
+      "de": [
+        "Daneben.",
+        "Zu kurz. Korrigiere."
+      ],
+      "ru": [
+        "Промах.",
+        "Недолёт. Поправляю."
+      ],
+      "uk": [
+        "Промах.",
+        "Недоліт. Коригую."
+      ],
+      "zh": [
+        "未命中。",
+        "近弹，修正。"
+      ],
+      "fr": [
+        "Manqué.",
+        "Court. Je corrige."
+      ],
+      "sv": [
+        "Bom.",
+        "Kort. Korrigerar."
+      ],
+      "ja": [
+        "外れ。",
+        "近弾、修正。"
+      ],
+      "ko": [
+        "빗나감.",
+        "짧다. 수정."
+      ],
+      "it": [
+        "Mancato.",
+        "Corto. Correggo."
+      ],
+      "pl": [
+        "Chybiony.",
+        "Niedolot. Poprawiam."
+      ],
+      "he": [
+        "החטאה.",
+        "קצר. מתקן."
+      ]
+    },
+    {
+      "id": "reloading",
+      "role": "loader",
+      "delivery": "clipped, under effort",
+      "context": "Loader starts a long reload.",
+      "en-US": [
+        "Loading.",
+        "Reloading."
+      ],
+      "en-GB": [
+        "Loading.",
+        "Reloading."
+      ],
+      "de": [
+        "Lade.",
+        "Lade nach."
+      ],
+      "ru": [
+        "Заряжаю.",
+        "Перезаряжаю."
+      ],
+      "uk": [
+        "Заряджаю.",
+        "Перезаряджаю."
+      ],
+      "zh": [
+        "装填。",
+        "正在装填。"
+      ],
+      "fr": [
+        "Chargement.",
+        "Je recharge."
+      ],
+      "sv": [
+        "Laddar.",
+        "Laddar om."
+      ],
+      "ja": [
+        "装填。",
+        "装填中。"
+      ],
+      "ko": [
+        "장전 중.",
+        "재장전 중."
+      ],
+      "it": [
+        "Caricamento.",
+        "Ricarico."
+      ],
+      "pl": [
+        "Ładuję.",
+        "Przeładowuję."
+      ],
+      "he": [
+        "טוען.",
+        "טוען מחדש."
+      ]
+    },
+    {
+      "id": "reloaded",
+      "role": "loader",
+      "delivery": "crisp, steady",
+      "context": "Main gun is loaded and ready.",
+      "en-US": [
+        "Up.",
+        "Loaded.",
+        "Ready."
+      ],
+      "en-GB": [
+        "Loaded.",
+        "Gun loaded.",
+        "Ready."
+      ],
+      "de": [
+        "Geladen.",
+        "Kanone geladen.",
+        "Feuerbereit."
+      ],
+      "ru": [
+        "Готово.",
+        "Заряжено.",
+        "Орудие готово."
+      ],
+      "uk": [
+        "Готово.",
+        "Заряджено.",
+        "Гармата готова."
+      ],
+      "zh": [
+        "好。",
+        "装填完毕。",
+        "可以射击。"
+      ],
+      "fr": [
+        "Paré.",
+        "Chargé.",
+        "Prêt."
+      ],
+      "sv": [
+        "Laddat.",
+        "Kanonen laddad.",
+        "Klar."
+      ],
+      "ja": [
+        "よし。",
+        "装填よし。",
+        "射撃準備よし。"
+      ],
+      "ko": [
+        "장전 끝.",
+        "장전 완료.",
+        "준비 완료."
+      ],
+      "it": [
+        "Carico.",
+        "Cannone carico.",
+        "Pronto."
+      ],
+      "pl": [
+        "Gotów.",
+        "Załadowane.",
+        "Gotowe do strzału."
+      ],
+      "he": [
+        "טעון.",
+        "פגז בפנים.",
+        "מוכן."
+      ]
+    },
+    {
+      "id": "load_kinetic",
+      "role": "loader",
+      "delivery": "crisp, steady",
+      "context": "Switching to armor-piercing kinetic rounds (APFSDS / AP).",
+      "en-US": [
+        "Sabot.",
+        "Loading sabot."
+      ],
+      "en-GB": [
+        "Sabot.",
+        "Sabot, loading."
+      ],
+      "de": [
+        "Wuchtgeschoss.",
+        "Lade Wuchtgeschoss."
+      ],
+      "ru": [
+        "Бронебойный.",
+        "Заряжаю бронебойный."
+      ],
+      "uk": [
+        "Бронебійний.",
+        "Заряджаю бронебійний."
+      ],
+      "zh": [
+        "穿甲弹。",
+        "装填穿甲弹。"
+      ],
+      "fr": [
+        "Flèche.",
+        "Chargement obus flèche."
+      ],
+      "sv": [
+        "Pil.",
+        "Laddar pilprojektil."
+      ],
+      "ja": [
+        "徹甲弾。",
+        "徹甲弾、装填。"
+      ],
+      "ko": [
+        "철갑탄.",
+        "철갑탄 장전."
+      ],
+      "it": [
+        "Sottocalibro.",
+        "Carico sottocalibro."
+      ],
+      "pl": [
+        "Podkalibrowy.",
+        "Ładuję podkalibrowy."
+      ],
+      "he": [
+        "חץ.",
+        "טוען חץ."
+      ]
+    },
+    {
+      "id": "load_heat",
+      "role": "loader",
+      "delivery": "crisp, steady",
+      "context": "Switching to HEAT rounds.",
+      "en-US": [
+        "HEAT.",
+        "Loading HEAT."
+      ],
+      "en-GB": [
+        "HEAT.",
+        "HEAT, loading."
+      ],
+      "de": [
+        "Hohlladung.",
+        "Lade Hohlladung."
+      ],
+      "ru": [
+        "Кумулятивный.",
+        "Заряжаю кумулятивный."
+      ],
+      "uk": [
+        "Кумулятивний.",
+        "Заряджаю кумулятивний."
+      ],
+      "zh": [
+        "破甲弹。",
+        "装填破甲弹。"
+      ],
+      "fr": [
+        "Charge creuse.",
+        "Chargement obus à charge creuse."
+      ],
+      "sv": [
+        "Pansarspräng.",
+        "Laddar pansarspränggranat."
+      ],
+      "ja": [
+        "対戦車榴弾。",
+        "対戦車榴弾、装填。"
+      ],
+      "ko": [
+        "대전차고폭탄.",
+        "대전차고폭탄 장전."
+      ],
+      "it": [
+        "Carica cava.",
+        "Carico proietto a carica cava."
+      ],
+      "pl": [
+        "Kumulacyjny.",
+        "Ładuję kumulacyjny."
+      ],
+      "he": [
+        "חלול.",
+        "טוען חלול."
+      ]
+    },
+    {
+      "id": "load_he",
+      "role": "loader",
+      "delivery": "crisp, steady",
+      "context": "Switching to high-explosive rounds.",
+      "en-US": [
+        "H-E.",
+        "Loading H-E."
+      ],
+      "en-GB": [
+        "H-E.",
+        "H-E, loading."
+      ],
+      "de": [
+        "Sprenggranate.",
+        "Lade Sprenggranate."
+      ],
+      "ru": [
+        "Осколочно-фугасный.",
+        "Заряжаю осколочно-фугасный."
+      ],
+      "uk": [
+        "Осколково-фугасний.",
+        "Заряджаю осколково-фугасний."
+      ],
+      "zh": [
+        "榴弹。",
+        "装填榴弹。"
+      ],
+      "fr": [
+        "Explosif.",
+        "Chargement obus explosif."
+      ],
+      "sv": [
+        "Spräng.",
+        "Laddar spränggranat."
+      ],
+      "ja": [
+        "榴弾。",
+        "榴弾、装填。"
+      ],
+      "ko": [
+        "고폭탄.",
+        "고폭탄 장전."
+      ],
+      "it": [
+        "Esplosivo.",
+        "Carico alto esplosivo."
+      ],
+      "pl": [
+        "Odłamkowo-burzący.",
+        "Ładuję odłamkowo-burzący."
+      ],
+      "he": [
+        "נפיץ.",
+        "טוען נפיץ."
+      ]
+    },
+    {
+      "id": "load_missile",
+      "role": "loader",
+      "delivery": "crisp, steady",
+      "context": "Switching to the guided missile.",
+      "en-US": [
+        "Missile ready.",
+        "Launcher armed."
+      ],
+      "en-GB": [
+        "Missile ready.",
+        "Launcher armed."
+      ],
+      "de": [
+        "Flugkörper bereit.",
+        "Startgerät scharf."
+      ],
+      "ru": [
+        "Ракета готова.",
+        "К пуску готов."
+      ],
+      "uk": [
+        "Ракета готова.",
+        "До пуску готовий."
+      ],
+      "zh": [
+        "导弹准备完毕。",
+        "发射装置就绪。"
+      ],
+      "fr": [
+        "Missile prêt.",
+        "Lanceur armé."
+      ],
+      "sv": [
+        "Robot klar.",
+        "Robotsystemet armerat."
+      ],
+      "ja": [
+        "誘導弾、準備よし。",
+        "発射機、準備よし。"
+      ],
+      "ko": [
+        "유도탄 준비 완료.",
+        "발사기 준비 완료."
+      ],
+      "it": [
+        "Missile pronto.",
+        "Lanciatore armato."
+      ],
+      "pl": [
+        "Rakieta gotowa.",
+        "Wyrzutnia uzbrojona."
+      ],
+      "he": [
+        "טיל מוכן.",
+        "משגר דרוך."
+      ]
+    },
+    {
+      "id": "ammo_low",
+      "role": "loader",
+      "delivery": "steady, concerned",
+      "context": "Ammunition is running low.",
+      "en-US": [
+        "Ammo's running low."
+      ],
+      "en-GB": [
+        "Running short of ammo."
+      ],
+      "de": [
+        "Munition wird knapp."
+      ],
+      "ru": [
+        "Боекомплект на исходе."
+      ],
+      "uk": [
+        "Боєкомплект закінчується."
+      ],
+      "zh": [
+        "弹药不足。"
+      ],
+      "fr": [
+        "Munitions bientôt épuisées."
+      ],
+      "sv": [
+        "Ammunitionen börjar ta slut."
+      ],
+      "ja": [
+        "残弾わずか。"
+      ],
+      "ko": [
+        "탄약 부족."
+      ],
+      "it": [
+        "Munizioni in esaurimento."
+      ],
+      "pl": [
+        "Kończy się amunicja."
+      ],
+      "he": [
+        "התחמושת אוזלת."
+      ]
+    },
+    {
+      "id": "ammo_empty",
+      "role": "loader",
+      "delivery": "clipped, flat",
+      "context": "The selected ammunition type is used up.",
+      "en-US": [
+        "That round's gone.",
+        "Out of that type."
+      ],
+      "en-GB": [
+        "That round's finished.",
+        "Out of that type."
+      ],
+      "de": [
+        "Diese Sorte ist verschossen.",
+        "Davon ist nichts mehr da."
+      ],
+      "ru": [
+        "Этих больше нет.",
+        "Такие кончились."
+      ],
+      "uk": [
+        "Цих більше немає.",
+        "Такі скінчилися."
+      ],
+      "zh": [
+        "这种弹打完了。",
+        "该弹种已用完。"
+      ],
+      "fr": [
+        "Cette munition est épuisée.",
+        "Plus d'obus de ce type."
+      ],
+      "sv": [
+        "Den ammunitionen är slut.",
+        "Slut på den typen."
+      ],
+      "ja": [
+        "その弾はもうない。",
+        "その弾種、残弾なし。"
+      ],
+      "ko": [
+        "그 탄은 다 썼다.",
+        "해당 탄종 소진."
+      ],
+      "it": [
+        "Quel colpo è esaurito.",
+        "Niente più di quel tipo."
+      ],
+      "pl": [
+        "Tych pocisków już nie ma.",
+        "Brak tego typu."
+      ],
+      "he": [
+        "נגמרו הפגזים האלה.",
+        "אין יותר מהסוג הזה."
+      ]
+    },
+    {
+      "id": "were_hit",
+      "role": "commander",
+      "delivery": "controlled urgency",
+      "context": "An enemy shell penetrated our armor.",
+      "en-US": [
+        "We're hit.",
+        "Taking hits."
+      ],
+      "en-GB": [
+        "We've been hit.",
+        "We're taking hits."
+      ],
+      "de": [
+        "Wir sind getroffen.",
+        "Wir bekommen Treffer."
+      ],
+      "ru": [
+        "В нас попали.",
+        "По нам бьют."
+      ],
+      "uk": [
+        "У нас влучили.",
+        "По нас б'ють."
+      ],
+      "zh": [
+        "我车中弹。",
+        "连续中弹。"
+      ],
+      "fr": [
+        "On est touchés.",
+        "On prend des coups."
+      ],
+      "sv": [
+        "Vi är träffade.",
+        "Vi tar träffar."
+      ],
+      "ja": [
+        "被弾。",
+        "被弾が続く。"
+      ],
+      "ko": [
+        "피격.",
+        "계속 피격 중."
+      ],
+      "it": [
+        "Siamo colpiti.",
+        "Ci stanno colpendo."
+      ],
+      "pl": [
+        "Jesteśmy trafieni.",
+        "Trafiają nas."
+      ],
+      "he": [
+        "נפגענו.",
+        "סופגים פגיעות."
+      ]
+    },
+    {
+      "id": "bounced_us",
+      "role": "commander",
+      "delivery": "steady, exhale",
+      "context": "An enemy shell hit us but did not penetrate.",
+      "en-US": [
+        "Armor held.",
+        "It bounced."
+      ],
+      "en-GB": [
+        "Armour's held.",
+        "That's bounced off."
+      ],
+      "de": [
+        "Panzerung hat gehalten.",
+        "Der ist abgeprallt."
+      ],
+      "ru": [
+        "Броня выдержала.",
+        "Срикошетил."
+      ],
+      "uk": [
+        "Броня витримала.",
+        "Зрикошетив."
+      ],
+      "zh": [
+        "装甲挡住了。",
+        "弹开了。"
+      ],
+      "fr": [
+        "Le blindage a tenu.",
+        "Ça a ricoché."
+      ],
+      "sv": [
+        "Pansaret höll.",
+        "Den studsade."
+      ],
+      "ja": [
+        "装甲が持った。",
+        "弾いた。"
+      ],
+      "ko": [
+        "장갑이 막았다.",
+        "튕겼다."
+      ],
+      "it": [
+        "La corazza ha tenuto.",
+        "È rimbalzato."
+      ],
+      "pl": [
+        "Pancerz wytrzymał.",
+        "Odbił się."
+      ],
+      "he": [
+        "השריון החזיק.",
+        "זה ניתז."
+      ]
+    },
+    {
+      "id": "low_hp",
+      "role": "commander",
+      "delivery": "strained, controlled",
+      "context": "Our tank is critically damaged.",
+      "en-US": [
+        "Armor's failing. Can't take much more."
+      ],
+      "en-GB": [
+        "Armour's going. Can't take much more."
+      ],
+      "de": [
+        "Panzerung gibt nach. Nicht mehr lange."
+      ],
+      "ru": [
+        "Броня не держит. Долго не протянем."
+      ],
+      "uk": [
+        "Броня не тримає. Довго не протримаємося."
+      ],
+      "zh": [
+        "车体损伤严重，撑不了多久。"
+      ],
+      "fr": [
+        "Le blindage cède. On ne tiendra pas longtemps."
+      ],
+      "sv": [
+        "Pansaret ger vika. Vi tål inte mycket mer."
+      ],
+      "ja": [
+        "装甲が限界だ。これ以上は持たない。"
+      ],
+      "ko": [
+        "장갑 한계. 더는 못 버틴다."
+      ],
+      "it": [
+        "Corazza al limite. Non reggeremo a lungo."
+      ],
+      "pl": [
+        "Pancerz słabnie. Długo nie wytrzymamy."
+      ],
+      "he": [
+        "השריון קורס. לא נחזיק עוד הרבה."
+      ]
+    },
+    {
+      "id": "ammo_rack",
+      "role": "loader",
+      "delivery": "urgent, controlled",
+      "context": "Our own ammunition storage was hit.",
+      "en-US": [
+        "Ammo rack hit!",
+        "Ammunition damaged!"
+      ],
+      "en-GB": [
+        "Ammo bins hit!",
+        "Ammunition's damaged!"
+      ],
+      "de": [
+        "Munitionsbunker getroffen!",
+        "Munition beschädigt!"
+      ],
+      "ru": [
+        "Попадание в боеукладку!",
+        "Боекомплект повреждён!"
+      ],
+      "uk": [
+        "Влучання в боєукладку!",
+        "Боєкомплект пошкоджено!"
+      ],
+      "zh": [
+        "弹药舱中弹！",
+        "弹药受损！"
+      ],
+      "fr": [
+        "Soute à munitions touchée !",
+        "Munitions endommagées !"
+      ],
+      "sv": [
+        "Träff i ammunitionen!",
+        "Ammunitionen skadad!"
+      ],
+      "ja": [
+        "弾薬庫、被弾！",
+        "弾薬、損傷！"
+      ],
+      "ko": [
+        "탄약고 피격!",
+        "탄약 손상!"
+      ],
+      "it": [
+        "Riservetta colpita!",
+        "Munizioni danneggiate!"
+      ],
+      "pl": [
+        "Trafiony magazyn amunicji!",
+        "Amunicja uszkodzona!"
+      ],
+      "he": [
+        "פגיעה בתחמושת!",
+        "התחמושת נפגעה!"
+      ]
+    },
+    {
+      "id": "fuel_tank",
+      "role": "driver",
+      "delivery": "urgent, controlled",
+      "context": "Our fuel tank was hit.",
+      "en-US": [
+        "Fuel tank hit.",
+        "We're leaking fuel."
+      ],
+      "en-GB": [
+        "Fuel tank's holed.",
+        "We're losing fuel."
+      ],
+      "de": [
+        "Kraftstofftank getroffen.",
+        "Wir verlieren Kraftstoff."
+      ],
+      "ru": [
+        "Топливный бак пробит.",
+        "Течёт топливо."
+      ],
+      "uk": [
+        "Паливний бак пробито.",
+        "Тече пальне."
+      ],
+      "zh": [
+        "油箱中弹。",
+        "正在漏油。"
+      ],
+      "fr": [
+        "Réservoir touché.",
+        "On perd du carburant."
+      ],
+      "sv": [
+        "Bränsletanken träffad.",
+        "Vi läcker bränsle."
+      ],
+      "ja": [
+        "燃料タンク、被弾。",
+        "燃料が漏れている。"
+      ],
+      "ko": [
+        "연료탱크 피격.",
+        "연료 누출."
+      ],
+      "it": [
+        "Serbatoio colpito.",
+        "Perdiamo carburante."
+      ],
+      "pl": [
+        "Zbiornik paliwa trafiony.",
+        "Wyciek paliwa."
+      ],
+      "he": [
+        "מיכל הדלק נפגע.",
+        "דולף לנו דלק."
+      ]
+    },
+    {
+      "id": "fire",
+      "role": "commander",
+      "delivery": "urgent, controlled, over noise",
+      "context": "Our tank is on fire.",
+      "en-US": [
+        "Fire! Engine compartment!",
+        "Fire in the hull!"
+      ],
+      "en-GB": [
+        "Fire, fire! Engine bay!",
+        "Fire in the fighting compartment!"
+      ],
+      "de": [
+        "Brand! Motorraum!",
+        "Brand im Kampfraum!"
+      ],
+      "ru": [
+        "Пожар! Моторное отделение!",
+        "Пожар в боевом отделении!"
+      ],
+      "uk": [
+        "Пожежа! Моторне відділення!",
+        "Пожежа в бойовому відділенні!"
+      ],
+      "zh": [
+        "起火！动力舱起火！",
+        "车内起火！"
+      ],
+      "fr": [
+        "Incendie ! Compartiment moteur !",
+        "Incendie dans la caisse !"
+      ],
+      "sv": [
+        "Brand! Motorrummet!",
+        "Brand i chassit!"
+      ],
+      "ja": [
+        "火災！機関室！",
+        "車内火災！"
+      ],
+      "ko": [
+        "화재! 엔진실!",
+        "차내 화재!"
+      ],
+      "it": [
+        "Incendio! Vano motore!",
+        "Incendio nello scafo!"
+      ],
+      "pl": [
+        "Pożar! Przedział silnikowy!",
+        "Pożar w kadłubie!"
+      ],
+      "he": [
+        "שריפה! תא המנוע!",
+        "שריפה בתובה!"
+      ]
+    },
+    {
+      "id": "fire_out",
+      "role": "commander",
+      "delivery": "steady, relieved",
+      "context": "The fire on our tank is out.",
+      "en-US": [
+        "Fire's out.",
+        "Fire suppressed."
+      ],
+      "en-GB": [
+        "Fire's out.",
+        "Fire extinguished."
+      ],
+      "de": [
+        "Brand gelöscht.",
+        "Feuer ist aus."
+      ],
+      "ru": [
+        "Пожар потушен.",
+        "Огонь сбит."
+      ],
+      "uk": [
+        "Пожежу погашено.",
+        "Вогонь збито."
+      ],
+      "zh": [
+        "火已扑灭。",
+        "灭火完毕。"
+      ],
+      "fr": [
+        "Incendie éteint.",
+        "Feu maîtrisé."
+      ],
+      "sv": [
+        "Branden är släckt.",
+        "Branden under kontroll."
+      ],
+      "ja": [
+        "鎮火。",
+        "消火完了。"
+      ],
+      "ko": [
+        "화재 진압.",
+        "진화 완료."
+      ],
+      "it": [
+        "Incendio spento.",
+        "Incendio domato."
+      ],
+      "pl": [
+        "Pożar ugaszony.",
+        "Ogień opanowany."
+      ],
+      "he": [
+        "האש כבתה.",
+        "השריפה כובתה."
+      ]
+    },
+    {
+      "id": "engine_damaged",
+      "role": "driver",
+      "delivery": "controlled urgency",
+      "context": "Our engine is damaged.",
+      "en-US": [
+        "Engine's damaged.",
+        "Engine hit. Losing power."
+      ],
+      "en-GB": [
+        "Engine's taken a hit.",
+        "Engine hit. Losing power."
+      ],
+      "de": [
+        "Motor beschädigt.",
+        "Motor getroffen. Wir verlieren Leistung."
+      ],
+      "ru": [
+        "Двигатель повреждён.",
+        "Двигатель подбит. Теряем тягу."
+      ],
+      "uk": [
+        "Двигун пошкоджено.",
+        "Двигун підбито. Втрачаємо тягу."
+      ],
+      "zh": [
+        "发动机受损。",
+        "发动机中弹，动力下降。"
+      ],
+      "fr": [
+        "Moteur endommagé.",
+        "Moteur touché. Perte de puissance."
+      ],
+      "sv": [
+        "Motorn skadad.",
+        "Motorträff. Tappar effekt."
+      ],
+      "ja": [
+        "エンジン損傷。",
+        "エンジン被弾。出力低下。"
+      ],
+      "ko": [
+        "엔진 손상.",
+        "엔진 피격. 출력 저하."
+      ],
+      "it": [
+        "Motore danneggiato.",
+        "Motore colpito. Perdiamo potenza."
+      ],
+      "pl": [
+        "Silnik uszkodzony.",
+        "Silnik trafiony. Tracimy moc."
+      ],
+      "he": [
+        "המנוע נפגע.",
+        "פגיעה במנוע. מאבדים כוח."
+      ]
+    },
+    {
+      "id": "engine_destroyed",
+      "role": "driver",
+      "delivery": "urgent, controlled",
+      "context": "Our engine stopped completely.",
+      "en-US": [
+        "Engine's dead.",
+        "We've lost the engine."
+      ],
+      "en-GB": [
+        "Engine's dead.",
+        "We've lost the engine."
+      ],
+      "de": [
+        "Motor ist tot.",
+        "Motor ausgefallen."
+      ],
+      "ru": [
+        "Двигатель заглох.",
+        "Двигатель вышел из строя."
+      ],
+      "uk": [
+        "Двигун заглух.",
+        "Двигун вийшов з ладу."
+      ],
+      "zh": [
+        "发动机熄火。",
+        "发动机失效。"
+      ],
+      "fr": [
+        "Moteur hors service.",
+        "On a perdu le moteur."
+      ],
+      "sv": [
+        "Motorn är död.",
+        "Vi har tappat motorn."
+      ],
+      "ja": [
+        "エンジン停止。",
+        "エンジン、作動不能。"
+      ],
+      "ko": [
+        "엔진 정지.",
+        "엔진 작동 불능."
+      ],
+      "it": [
+        "Motore fuori uso.",
+        "Abbiamo perso il motore."
+      ],
+      "pl": [
+        "Silnik nie działa.",
+        "Straciliśmy silnik."
+      ],
+      "he": [
+        "המנוע מת.",
+        "איבדנו מנוע."
+      ]
+    },
+    {
+      "id": "transmission_damaged",
+      "role": "driver",
+      "delivery": "controlled urgency",
+      "context": "Our transmission is damaged.",
+      "en-US": [
+        "Transmission's hit."
+      ],
+      "en-GB": [
+        "Gearbox has been hit."
+      ],
+      "de": [
+        "Getriebe getroffen."
+      ],
+      "ru": [
+        "Трансмиссия повреждена."
+      ],
+      "uk": [
+        "Трансмісію пошкоджено."
+      ],
+      "zh": [
+        "变速箱中弹。"
+      ],
+      "fr": [
+        "Transmission touchée."
+      ],
+      "sv": [
+        "Växellådan träffad."
+      ],
+      "ja": [
+        "変速機、被弾。"
+      ],
+      "ko": [
+        "변속기 피격."
+      ],
+      "it": [
+        "Trasmissione colpita."
+      ],
+      "pl": [
+        "Skrzynia biegów trafiona."
+      ],
+      "he": [
+        "הממסרה נפגעה."
+      ]
+    },
+    {
+      "id": "track_gone",
+      "role": "driver",
+      "delivery": "urgent, controlled",
+      "context": "A track was broken; we cannot move.",
+      "en-US": [
+        "Track's gone. We're immobilized.",
+        "Lost a track."
+      ],
+      "en-GB": [
+        "Track's off. We're immobilised.",
+        "We've thrown a track."
+      ],
+      "de": [
+        "Kette gerissen. Wir sind bewegungsunfähig.",
+        "Kette ist ab."
+      ],
+      "ru": [
+        "Гусеница перебита. Стоим.",
+        "Гусеницу сбили."
+      ],
+      "uk": [
+        "Гусеницю перебито. Стоїмо.",
+        "Гусеницю збили."
+      ],
+      "zh": [
+        "履带断了，无法机动。",
+        "掉履带了。"
+      ],
+      "fr": [
+        "Chenille rompue. On est immobilisés.",
+        "On a déchenillé."
+      ],
+      "sv": [
+        "Bandet är av. Vi kan inte köra.",
+        "Vi har tappat ett band."
+      ],
+      "ja": [
+        "履帯切断。行動不能。",
+        "履帯をやられた。"
+      ],
+      "ko": [
+        "궤도 절단. 기동 불능.",
+        "궤도가 나갔다."
+      ],
+      "it": [
+        "Cingolo rotto. Siamo immobilizzati.",
+        "Siamo scingolati."
+      ],
+      "pl": [
+        "Gąsienica zerwana. Jesteśmy unieruchomieni.",
+        "Straciliśmy gąsienicę."
+      ],
+      "he": [
+        "ירד זחל. אנחנו משותקים.",
+        "איבדנו זחל."
+      ]
+    },
+    {
+      "id": "gun_damaged",
+      "role": "gunner",
+      "delivery": "controlled urgency",
+      "context": "Our main gun is damaged.",
+      "en-US": [
+        "Main gun's damaged.",
+        "Gun's hit."
+      ],
+      "en-GB": [
+        "Main armament's damaged.",
+        "Gun's hit."
+      ],
+      "de": [
+        "Hauptwaffe beschädigt.",
+        "Kanone getroffen."
+      ],
+      "ru": [
+        "Орудие повреждено.",
+        "Пушку задело."
+      ],
+      "uk": [
+        "Гармату пошкоджено.",
+        "Гармату зачепило."
+      ],
+      "zh": [
+        "主炮受损。",
+        "火炮中弹。"
+      ],
+      "fr": [
+        "Canon endommagé.",
+        "Canon touché."
+      ],
+      "sv": [
+        "Kanonen skadad.",
+        "Träff i kanonen."
+      ],
+      "ja": [
+        "主砲、損傷。",
+        "主砲、被弾。"
+      ],
+      "ko": [
+        "주포 손상.",
+        "주포 피격."
+      ],
+      "it": [
+        "Cannone danneggiato.",
+        "Colpito il cannone."
+      ],
+      "pl": [
+        "Armata uszkodzona.",
+        "Działo trafione."
+      ],
+      "he": [
+        "התותח נפגע.",
+        "פגיעה בתותח."
+      ]
+    },
+    {
+      "id": "turret_jammed",
+      "role": "gunner",
+      "delivery": "strained, controlled",
+      "context": "Our turret ring is damaged; traverse is slow.",
+      "en-US": [
+        "Turret ring's jammed.",
+        "Turret won't traverse."
+      ],
+      "en-GB": [
+        "Turret ring's jammed.",
+        "Turret won't traverse."
+      ],
+      "de": [
+        "Turmdrehkranz klemmt.",
+        "Turm schwenkt nicht."
+      ],
+      "ru": [
+        "Погон заклинило.",
+        "Башня не поворачивается."
+      ],
+      "uk": [
+        "Погон заклинило.",
+        "Башта не повертається."
+      ],
+      "zh": [
+        "炮塔座圈卡死了。",
+        "炮塔转不动。"
+      ],
+      "fr": [
+        "Couronne de tourelle bloquée.",
+        "La tourelle ne tourne plus."
+      ],
+      "sv": [
+        "Tornkransen kärvar.",
+        "Tornet vrider inte."
+      ],
+      "ja": [
+        "砲塔リング、固着。",
+        "砲塔、旋回不能。"
+      ],
+      "ko": [
+        "포탑 링 고착.",
+        "포탑 선회 불가."
+      ],
+      "it": [
+        "Ralla della torretta bloccata.",
+        "La torretta non brandeggia."
+      ],
+      "pl": [
+        "Pierścień wieży zablokowany.",
+        "Wieża się nie obraca."
+      ],
+      "he": [
+        "טבעת הצריח תקועה.",
+        "הצריח לא מסתובב."
+      ]
+    },
+    {
+      "id": "gun_mount_damaged",
+      "role": "gunner",
+      "delivery": "controlled urgency",
+      "context": "Our gun mount is damaged.",
+      "en-US": [
+        "Gun mount's damaged."
+      ],
+      "en-GB": [
+        "Gun cradle's damaged."
+      ],
+      "de": [
+        "Rohrwiege beschädigt."
+      ],
+      "ru": [
+        "Люлька орудия повреждена."
+      ],
+      "uk": [
+        "Люльку гармати пошкоджено."
+      ],
+      "zh": [
+        "炮架受损。"
+      ],
+      "fr": [
+        "Affût du canon endommagé."
+      ],
+      "sv": [
+        "Kanonlavetten skadad."
+      ],
+      "ja": [
+        "砲架、損傷。"
+      ],
+      "ko": [
+        "포가 손상."
+      ],
+      "it": [
+        "Affusto del cannone danneggiato."
+      ],
+      "pl": [
+        "Mocowanie armaty uszkodzone."
+      ],
+      "he": [
+        "תושבת התותח נפגעה."
+      ]
+    },
+    {
+      "id": "autoloader_damaged",
+      "role": "loader",
+      "delivery": "controlled urgency",
+      "context": "Our autoloader is damaged; reloads are slower.",
+      "en-US": [
+        "Autoloader's damaged."
+      ],
+      "en-GB": [
+        "Autoloader's unserviceable."
+      ],
+      "de": [
+        "Ladeautomat beschädigt."
+      ],
+      "ru": [
+        "Автомат заряжания повреждён."
+      ],
+      "uk": [
+        "Механізм заряджання пошкоджено."
+      ],
+      "zh": [
+        "自动装弹机受损。"
+      ],
+      "fr": [
+        "Chargeur automatique endommagé."
+      ],
+      "sv": [
+        "Laddautomaten skadad."
+      ],
+      "ja": [
+        "自動装填装置、損傷。"
+      ],
+      "ko": [
+        "자동장전장치 손상."
+      ],
+      "it": [
+        "Caricatore automatico danneggiato."
+      ],
+      "pl": [
+        "Automat ładowania uszkodzony."
+      ],
+      "he": [
+        "מערכת הטעינה האוטומטית נפגעה."
+      ]
+    },
+    {
+      "id": "feed_damaged",
+      "role": "loader",
+      "delivery": "controlled urgency",
+      "context": "The weapon feed system is damaged.",
+      "en-US": [
+        "Feed's jammed."
+      ],
+      "en-GB": [
+        "Feed stoppage."
+      ],
+      "de": [
+        "Zuführung klemmt."
+      ],
+      "ru": [
+        "Подачу заклинило."
+      ],
+      "uk": [
+        "Подачу заклинило."
+      ],
+      "zh": [
+        "供弹机构卡住了。"
+      ],
+      "fr": [
+        "L'alimentation est enrayée."
+      ],
+      "sv": [
+        "Stopp i matningen."
+      ],
+      "ja": [
+        "給弾が詰まった。"
+      ],
+      "ko": [
+        "급탄 걸림."
+      ],
+      "it": [
+        "Alimentazione inceppata."
+      ],
+      "pl": [
+        "Zacięcie podajnika."
+      ],
+      "he": [
+        "ההזנה תקועה."
+      ]
+    },
+    {
+      "id": "roof_gun_damaged",
+      "role": "commander",
+      "delivery": "flat",
+      "context": "Our roof machine gun is knocked out.",
+      "en-US": [
+        "Roof gun's out."
+      ],
+      "en-GB": [
+        "Pintle gun's out of action."
+      ],
+      "de": [
+        "Turm-Maschinengewehr ausgefallen."
+      ],
+      "ru": [
+        "Зенитный пулемёт выбит."
+      ],
+      "uk": [
+        "Зенітний кулемет вибито."
+      ],
+      "zh": [
+        "高射机枪失效。"
+      ],
+      "fr": [
+        "Mitrailleuse de tourelleau hors service."
+      ],
+      "sv": [
+        "Takkulsprutan ur funktion."
+      ],
+      "ja": [
+        "重機関銃、使用不能。"
+      ],
+      "ko": [
+        "상부 기관총 작동 불능."
+      ],
+      "it": [
+        "Mitragliatrice contraerea fuori uso."
+      ],
+      "pl": [
+        "Karabin na wieży niesprawny."
+      ],
+      "he": [
+        "מקלע המפקד מושבת."
+      ]
+    },
+    {
+      "id": "missile_rack_damaged",
+      "role": "loader",
+      "delivery": "controlled urgency",
+      "context": "Our missile launcher rack is damaged.",
+      "en-US": [
+        "Missile rack's hit."
+      ],
+      "en-GB": [
+        "Missile launcher's hit."
+      ],
+      "de": [
+        "Startgerät getroffen."
+      ],
+      "ru": [
+        "Пусковая установка повреждена."
+      ],
+      "uk": [
+        "Пускову установку пошкоджено."
+      ],
+      "zh": [
+        "导弹发射架中弹。"
+      ],
+      "fr": [
+        "Lanceur de missiles touché."
+      ],
+      "sv": [
+        "Robotrampen träffad."
+      ],
+      "ja": [
+        "誘導弾発射機、被弾。"
+      ],
+      "ko": [
+        "유도탄 발사기 피격."
+      ],
+      "it": [
+        "Lanciamissili colpito."
+      ],
+      "pl": [
+        "Wyrzutnia rakiet trafiona."
+      ],
+      "he": [
+        "משגר הטילים נפגע."
+      ]
+    },
+    {
+      "id": "optics_damaged",
+      "role": "gunner",
+      "delivery": "controlled urgency",
+      "context": "Our sights/optics are damaged.",
+      "en-US": [
+        "Optics are hit.",
+        "Sight's damaged."
+      ],
+      "en-GB": [
+        "Optics are hit.",
+        "My sight's gone."
+      ],
+      "de": [
+        "Optik getroffen.",
+        "Zieloptik ausgefallen."
+      ],
+      "ru": [
+        "Оптику разбило.",
+        "Прицел повреждён."
+      ],
+      "uk": [
+        "Оптику розбито.",
+        "Приціл пошкоджено."
+      ],
+      "zh": [
+        "观瞄设备中弹。",
+        "瞄准镜受损。"
+      ],
+      "fr": [
+        "Optiques touchées.",
+        "Viseur endommagé."
+      ],
+      "sv": [
+        "Optiken träffad.",
+        "Siktet skadat."
+      ],
+      "ja": [
+        "光学機器、被弾。",
+        "照準器、損傷。"
+      ],
+      "ko": [
+        "광학장비 피격.",
+        "조준경 손상."
+      ],
+      "it": [
+        "Ottiche colpite.",
+        "Sistema di mira danneggiato."
+      ],
+      "pl": [
+        "Optyka trafiona.",
+        "Celownik uszkodzony."
+      ],
+      "he": [
+        "האופטיקה נפגעה.",
+        "הכוונת נפגעה."
+      ]
+    },
+    {
+      "id": "radio_damaged",
+      "role": "commander",
+      "delivery": "steady, through static",
+      "context": "Our radio is damaged.",
+      "en-US": [
+        "Radio's damaged.",
+        "Comms are down."
+      ],
+      "en-GB": [
+        "Radio's damaged.",
+        "We're off the net."
+      ],
+      "de": [
+        "Funkgerät beschädigt.",
+        "Keine Funkverbindung."
+      ],
+      "ru": [
+        "Рация повреждена.",
+        "Связи нет."
+      ],
+      "uk": [
+        "Рацію пошкоджено.",
+        "Зв'язку немає."
+      ],
+      "zh": [
+        "电台受损。",
+        "通信中断。"
+      ],
+      "fr": [
+        "Radio endommagée.",
+        "Liaison perdue."
+      ],
+      "sv": [
+        "Radion skadad.",
+        "Sambandet brutet."
+      ],
+      "ja": [
+        "無線機、損傷。",
+        "通信途絶。"
+      ],
+      "ko": [
+        "무전기 손상.",
+        "통신 두절."
+      ],
+      "it": [
+        "Radio danneggiata.",
+        "Collegamenti interrotti."
+      ],
+      "pl": [
+        "Radiostacja uszkodzona.",
+        "Brak łączności."
+      ],
+      "he": [
+        "מכשיר הקשר נפגע.",
+        "אין קשר."
+      ]
+    },
+    {
+      "id": "commander_down",
+      "role": "gunner",
+      "delivery": "shaken, controlled",
+      "context": "Our commander was wounded.",
+      "en-US": [
+        "Commander's hit.",
+        "Commander's down. I have command."
+      ],
+      "en-GB": [
+        "Commander's been hit.",
+        "Commander's a casualty. I have command."
+      ],
+      "de": [
+        "Kommandant getroffen.",
+        "Kommandant ausgefallen. Ich übernehme."
+      ],
+      "ru": [
+        "Командира ранило.",
+        "Командир выбыл. Принимаю командование."
+      ],
+      "uk": [
+        "Командира поранено.",
+        "Командир вибув. Приймаю командування."
+      ],
+      "zh": [
+        "车长中弹。",
+        "车长负伤。由我指挥。"
+      ],
+      "fr": [
+        "Chef de char touché.",
+        "Chef de char blessé. Je prends le commandement."
+      ],
+      "sv": [
+        "Vagnchefen träffad.",
+        "Vagnchefen sårad. Jag tar befälet."
+      ],
+      "ja": [
+        "車長、被弾。",
+        "車長負傷。指揮を執る。"
+      ],
+      "ko": [
+        "전차장 피격.",
+        "전차장 부상. 내가 지휘한다."
+      ],
+      "it": [
+        "Capocarro colpito.",
+        "Capocarro ferito. Assumo il comando."
+      ],
+      "pl": [
+        "Dowódca trafiony.",
+        "Dowódca ranny. Przejmuję dowodzenie."
+      ],
+      "he": [
+        "המפקד נפגע.",
+        "המפקד פצוע. אני לוקח פיקוד."
+      ]
+    },
+    {
+      "id": "gunner_down",
+      "role": "commander",
+      "delivery": "shaken, steady",
+      "context": "Our gunner was wounded.",
+      "en-US": [
+        "Gunner's down.",
+        "Gunner's hit."
+      ],
+      "en-GB": [
+        "Gunner's a casualty.",
+        "Gunner's been hit."
+      ],
+      "de": [
+        "Richtschütze ausgefallen.",
+        "Richtschütze getroffen."
+      ],
+      "ru": [
+        "Наводчик выбыл.",
+        "Наводчика ранило."
+      ],
+      "uk": [
+        "Навідник вибув.",
+        "Навідника поранено."
+      ],
+      "zh": [
+        "炮长负伤。",
+        "炮长中弹。"
+      ],
+      "fr": [
+        "Tireur hors de combat.",
+        "Tireur touché."
+      ],
+      "sv": [
+        "Skytten sårad.",
+        "Skytten träffad."
+      ],
+      "ja": [
+        "砲手、負傷。",
+        "砲手、被弾。"
+      ],
+      "ko": [
+        "포수 부상.",
+        "포수 피격."
+      ],
+      "it": [
+        "Cannoniere fuori combattimento.",
+        "Cannoniere colpito."
+      ],
+      "pl": [
+        "Działonowy ranny.",
+        "Działonowy trafiony."
+      ],
+      "he": [
+        "התותחן פצוע.",
+        "התותחן נפגע."
+      ]
+    },
+    {
+      "id": "driver_down",
+      "role": "commander",
+      "delivery": "shaken, steady",
+      "context": "Our driver was wounded.",
+      "en-US": [
+        "Driver's down.",
+        "Driver's hit."
+      ],
+      "en-GB": [
+        "Driver's a casualty.",
+        "Driver's been hit."
+      ],
+      "de": [
+        "Fahrer ausgefallen.",
+        "Fahrer getroffen."
+      ],
+      "ru": [
+        "Механик-водитель выбыл.",
+        "Мехвода ранило."
+      ],
+      "uk": [
+        "Механік-водій вибув.",
+        "Мехвода поранено."
+      ],
+      "zh": [
+        "驾驶员负伤。",
+        "驾驶员中弹。"
+      ],
+      "fr": [
+        "Pilote hors de combat.",
+        "Pilote touché."
+      ],
+      "sv": [
+        "Föraren sårad.",
+        "Föraren träffad."
+      ],
+      "ja": [
+        "操縦手、負傷。",
+        "操縦手、被弾。"
+      ],
+      "ko": [
+        "조종수 부상.",
+        "조종수 피격."
+      ],
+      "it": [
+        "Pilota fuori combattimento.",
+        "Pilota colpito."
+      ],
+      "pl": [
+        "Kierowca ranny.",
+        "Kierowca trafiony."
+      ],
+      "he": [
+        "הנהג פצוע.",
+        "הנהג נפגע."
+      ]
+    },
+    {
+      "id": "loader_down",
+      "role": "commander",
+      "delivery": "shaken, steady",
+      "context": "Our loader was wounded.",
+      "en-US": [
+        "Loader's down.",
+        "Loader's hit."
+      ],
+      "en-GB": [
+        "Loader's a casualty.",
+        "Loader's been hit."
+      ],
+      "de": [
+        "Ladeschütze ausgefallen.",
+        "Ladeschütze getroffen."
+      ],
+      "ru": [
+        "Заряжающий выбыл.",
+        "Заряжающего ранило."
+      ],
+      "uk": [
+        "Заряджальний вибув.",
+        "Заряджального поранено."
+      ],
+      "zh": [
+        "装填手负伤。",
+        "装填手中弹。"
+      ],
+      "fr": [
+        "Chargeur hors de combat.",
+        "Chargeur touché."
+      ],
+      "sv": [
+        "Laddaren sårad.",
+        "Laddaren träffad."
+      ],
+      "ja": [
+        "装填手、負傷。",
+        "装填手、被弾。"
+      ],
+      "ko": [
+        "탄약수 부상.",
+        "탄약수 피격."
+      ],
+      "it": [
+        "Servente fuori combattimento.",
+        "Servente colpito."
+      ],
+      "pl": [
+        "Ładowniczy ranny.",
+        "Ładowniczy trafiony."
+      ],
+      "he": [
+        "הטען פצוע.",
+        "הטען נפגע."
+      ]
+    },
+    {
+      "id": "repairs",
+      "role": "driver",
+      "delivery": "steady",
+      "context": "Repairs finished with the repair kit.",
+      "en-US": [
+        "Repairs complete.",
+        "Systems restored."
+      ],
+      "en-GB": [
+        "Repairs complete.",
+        "All systems serviceable."
+      ],
+      "de": [
+        "Instandsetzung abgeschlossen.",
+        "Systeme wieder einsatzbereit."
+      ],
+      "ru": [
+        "Ремонт закончен.",
+        "Неисправности устранены."
+      ],
+      "uk": [
+        "Ремонт завершено.",
+        "Несправності усунено."
+      ],
+      "zh": [
+        "抢修完毕。",
+        "系统恢复。"
+      ],
+      "fr": [
+        "Réparations terminées.",
+        "Systèmes rétablis."
+      ],
+      "sv": [
+        "Reparationen klar.",
+        "Systemen återställda."
+      ],
+      "ja": [
+        "修理完了。",
+        "機能回復。"
+      ],
+      "ko": [
+        "수리 완료.",
+        "장비 복구."
+      ],
+      "it": [
+        "Riparazioni completate.",
+        "Sistemi ripristinati."
+      ],
+      "pl": [
+        "Naprawa zakończona.",
+        "Systemy sprawne."
+      ],
+      "he": [
+        "התיקון הושלם.",
+        "המערכות חזרו."
+      ]
+    },
+    {
+      "id": "crew_recovered",
+      "role": "commander",
+      "delivery": "steady",
+      "context": "First aid kit used; wounded crew recovered.",
+      "en-US": [
+        "Crew's back on station."
+      ],
+      "en-GB": [
+        "Crew's back in position."
+      ],
+      "de": [
+        "Besatzung wieder vollzählig."
+      ],
+      "ru": [
+        "Экипаж на местах."
+      ],
+      "uk": [
+        "Екіпаж на місцях."
+      ],
+      "zh": [
+        "乘员已归位。"
+      ],
+      "fr": [
+        "Équipage de retour aux postes."
+      ],
+      "sv": [
+        "Besättningen på plats igen."
+      ],
+      "ja": [
+        "乗員、配置に復帰。"
+      ],
+      "ko": [
+        "승무원 위치 복귀."
+      ],
+      "it": [
+        "Equipaggio di nuovo ai posti."
+      ],
+      "pl": [
+        "Załoga z powrotem na stanowiskach."
+      ],
+      "he": [
+        "הצוות חזר לעמדות."
+      ]
+    },
+    {
+      "id": "track_repaired",
+      "role": "driver",
+      "delivery": "steady",
+      "context": "Broken track repaired.",
+      "en-US": [
+        "Track's repaired. We can move.",
+        "Track's back on."
+      ],
+      "en-GB": [
+        "Track's fixed. We're mobile.",
+        "Track's back on."
+      ],
+      "de": [
+        "Kette repariert. Wir können fahren.",
+        "Kette ist wieder drauf."
+      ],
+      "ru": [
+        "Гусеницу починили. Можем двигаться.",
+        "Гусеницу натянули."
+      ],
+      "uk": [
+        "Гусеницю полагодили. Можемо рухатися.",
+        "Гусеницю натягнули."
+      ],
+      "zh": [
+        "履带修复，可以机动。",
+        "履带接上了。"
+      ],
+      "fr": [
+        "Chenille réparée. On peut rouler.",
+        "Chenille remontée."
+      ],
+      "sv": [
+        "Bandet lagat. Vi kan köra.",
+        "Bandet är på igen."
+      ],
+      "ja": [
+        "履帯修理完了。行動可能。",
+        "履帯、復旧。"
+      ],
+      "ko": [
+        "궤도 수리 완료. 기동 가능.",
+        "궤도 복구."
+      ],
+      "it": [
+        "Cingolo riparato. Possiamo muoverci.",
+        "Cingolo rimontato."
+      ],
+      "pl": [
+        "Gąsienica naprawiona. Możemy jechać.",
+        "Gąsienica założona."
+      ],
+      "he": [
+        "הזחל תוקן. אפשר לנוע.",
+        "הזחל עלה."
+      ]
+    },
+    {
+      "id": "gun_repaired",
+      "role": "gunner",
+      "delivery": "steady",
+      "context": "Main gun repaired.",
+      "en-US": [
+        "Gun's operational.",
+        "Main gun's back."
+      ],
+      "en-GB": [
+        "Gun's serviceable.",
+        "Main armament's back."
+      ],
+      "de": [
+        "Kanone einsatzbereit.",
+        "Hauptwaffe wieder klar."
+      ],
+      "ru": [
+        "Орудие исправно.",
+        "Пушка снова в строю."
+      ],
+      "uk": [
+        "Гармата справна.",
+        "Гармата знову в строю."
+      ],
+      "zh": [
+        "火炮恢复正常。",
+        "主炮恢复。"
+      ],
+      "fr": [
+        "Canon opérationnel.",
+        "Canon de nouveau en service."
+      ],
+      "sv": [
+        "Kanonen i funktion.",
+        "Kanonen fungerar igen."
+      ],
+      "ja": [
+        "主砲、使用可能。",
+        "主砲、復旧。"
+      ],
+      "ko": [
+        "주포 정상.",
+        "주포 복구."
+      ],
+      "it": [
+        "Cannone operativo.",
+        "Cannone di nuovo efficiente."
+      ],
+      "pl": [
+        "Armata sprawna.",
+        "Działo znów gotowe."
+      ],
+      "he": [
+        "התותח תקין.",
+        "התותח חזר."
+      ]
+    },
+    {
+      "id": "engine_repaired",
+      "role": "driver",
+      "delivery": "steady",
+      "context": "Engine repaired.",
+      "en-US": [
+        "Engine's running.",
+        "Power's back."
+      ],
+      "en-GB": [
+        "Engine's running again.",
+        "Power's back."
+      ],
+      "de": [
+        "Motor läuft.",
+        "Leistung ist wieder da."
+      ],
+      "ru": [
+        "Двигатель работает.",
+        "Тяга есть."
+      ],
+      "uk": [
+        "Двигун працює.",
+        "Тяга є."
+      ],
+      "zh": [
+        "发动机运转正常。",
+        "动力恢复。"
+      ],
+      "fr": [
+        "Le moteur tourne.",
+        "Puissance rétablie."
+      ],
+      "sv": [
+        "Motorn går.",
+        "Effekten är tillbaka."
+      ],
+      "ja": [
+        "エンジン、正常。",
+        "出力回復。"
+      ],
+      "ko": [
+        "엔진 정상 가동.",
+        "출력 회복."
+      ],
+      "it": [
+        "Il motore gira.",
+        "Potenza ripristinata."
+      ],
+      "pl": [
+        "Silnik pracuje.",
+        "Moc wróciła."
+      ],
+      "he": [
+        "המנוע עובד.",
+        "הכוח חזר."
+      ]
+    },
+    {
+      "id": "extinguishing",
+      "role": "commander",
+      "delivery": "urgent, clipped",
+      "context": "We trigger the fire extinguisher.",
+      "en-US": [
+        "Extinguisher.",
+        "Putting it out."
+      ],
+      "en-GB": [
+        "Firing extinguishers.",
+        "Putting it out."
+      ],
+      "de": [
+        "Löschanlage.",
+        "Wird gelöscht."
+      ],
+      "ru": [
+        "Огнетушитель.",
+        "Тушим."
+      ],
+      "uk": [
+        "Вогнегасник.",
+        "Гасимо."
+      ],
+      "zh": [
+        "启动灭火器。",
+        "正在灭火。"
+      ],
+      "fr": [
+        "Extincteur.",
+        "Extinction en cours."
+      ],
+      "sv": [
+        "Brandsläckning.",
+        "Släcker branden."
+      ],
+      "ja": [
+        "消火装置、作動。",
+        "消火中。"
+      ],
+      "ko": [
+        "소화 장치 작동.",
+        "진화 중."
+      ],
+      "it": [
+        "Estintore.",
+        "Spengo l'incendio."
+      ],
+      "pl": [
+        "Gaśnica.",
+        "Gaszę pożar."
+      ],
+      "he": [
+        "מפעיל מטפים.",
+        "מכבה."
+      ]
+    },
+    {
+      "id": "smoke_out",
+      "role": "commander",
+      "delivery": "clipped",
+      "context": "We fire our smoke grenade launchers.",
+      "en-US": [
+        "Smoke out.",
+        "Popping smoke."
+      ],
+      "en-GB": [
+        "Smoke away.",
+        "Firing dischargers."
+      ],
+      "de": [
+        "Nebel raus.",
+        "Werfe Nebel."
+      ],
+      "ru": [
+        "Дымовая завеса.",
+        "Ставлю дымы."
+      ],
+      "uk": [
+        "Димова завіса.",
+        "Ставлю дим."
+      ],
+      "zh": [
+        "施放烟幕。",
+        "发射烟幕弹。"
+      ],
+      "fr": [
+        "Fumigènes lancés.",
+        "Lancement des fumigènes."
+      ],
+      "sv": [
+        "Rök lagd.",
+        "Skjuter rök."
+      ],
+      "ja": [
+        "発煙弾、発射。",
+        "煙幕展張。"
+      ],
+      "ko": [
+        "연막탄 발사.",
+        "연막 전개."
+      ],
+      "it": [
+        "Fumogeni lanciati.",
+        "Lancio fumogeni."
+      ],
+      "pl": [
+        "Zasłona dymna postawiona.",
+        "Odpalam granaty dymne."
+      ],
+      "he": [
+        "עשן.",
+        "יורה רימוני עשן."
+      ]
+    },
+    {
+      "id": "ally_destroyed",
+      "role": "commander",
+      "delivery": "low, grim",
+      "context": "A friendly tank nearby was destroyed.",
+      "en-US": [
+        "We lost one.",
+        "Friendly tank down."
+      ],
+      "en-GB": [
+        "We've lost a callsign.",
+        "Friendly tank knocked out."
+      ],
+      "de": [
+        "Wir haben einen verloren.",
+        "Eigener Panzer abgeschossen."
+      ],
+      "ru": [
+        "Одного потеряли.",
+        "Наш танк подбит."
+      ],
+      "uk": [
+        "Одного втратили.",
+        "Наш танк підбито."
+      ],
+      "zh": [
+        "我们损失一辆。",
+        "我方坦克被击毁。"
+      ],
+      "fr": [
+        "On en a perdu un.",
+        "Char ami détruit."
+      ],
+      "sv": [
+        "Vi har förlorat en.",
+        "Egen vagn utslagen."
+      ],
+      "ja": [
+        "一両失った。",
+        "味方戦車、撃破された。"
+      ],
+      "ko": [
+        "아군 한 대 손실.",
+        "아군 전차 격파됨."
+      ],
+      "it": [
+        "Ne abbiamo perso uno.",
+        "Carro amico distrutto."
+      ],
+      "pl": [
+        "Straciliśmy jednego.",
+        "Nasz czołg zniszczony."
+      ],
+      "he": [
+        "איבדנו אחד.",
+        "טנק שלנו הושמד."
+      ]
+    },
+    {
+      "id": "last_tank",
+      "role": "commander",
+      "delivery": "low, grim, steady",
+      "context": "We are the last surviving tank on our team.",
+      "en-US": [
+        "We're the last tank. Make every shot count."
+      ],
+      "en-GB": [
+        "Last callsign left. Make every round count."
+      ],
+      "de": [
+        "Nur noch wir. Jeder Schuss muss sitzen."
+      ],
+      "ru": [
+        "Мы последние. Бить только наверняка."
+      ],
+      "uk": [
+        "Ми останні. Бити без промаху."
+      ],
+      "zh": [
+        "只剩我车了。务必弹无虚发。"
+      ],
+      "fr": [
+        "On est le dernier char. Chaque coup doit porter."
+      ],
+      "sv": [
+        "Vi är sista vagnen. Varje skott måste sitta."
+      ],
+      "ja": [
+        "残るは我々だけだ。一発も無駄にするな。"
+      ],
+      "ko": [
+        "우리가 마지막 전차다. 한 발도 낭비하지 마라."
+      ],
+      "it": [
+        "Siamo l'ultimo carro. Ogni colpo conta."
+      ],
+      "pl": [
+        "Jesteśmy ostatnim czołgiem. Każdy strzał musi trafić."
+      ],
+      "he": [
+        "אנחנו הטנק האחרון. כל פגז חייב לפגוע."
+      ]
+    },
+    {
+      "id": "objective_captured",
+      "role": "commander",
+      "delivery": "calm",
+      "context": "Our team captured an objective zone.",
+      "en-US": [
+        "Objective secured.",
+        "The point is ours."
+      ],
+      "en-GB": [
+        "Objective secure.",
+        "Position's ours."
+      ],
+      "de": [
+        "Angriffsziel genommen.",
+        "Raum in eigener Hand."
+      ],
+      "ru": [
+        "Объект взят.",
+        "Позиция за нами."
+      ],
+      "uk": [
+        "Об'єкт взято.",
+        "Позиція за нами."
+      ],
+      "zh": [
+        "要点已占领。",
+        "要点已被我控制。"
+      ],
+      "fr": [
+        "Objectif sécurisé.",
+        "Le point est à nous."
+      ],
+      "sv": [
+        "Objektet säkrat.",
+        "Punkten är vår."
+      ],
+      "ja": [
+        "目標確保。",
+        "拠点を押さえた。"
+      ],
+      "ko": [
+        "목표 확보.",
+        "거점 장악."
+      ],
+      "it": [
+        "Obiettivo conquistato.",
+        "Il punto è nostro."
+      ],
+      "pl": [
+        "Obiekt zabezpieczony.",
+        "Punkt jest nasz."
+      ],
+      "he": [
+        "היעד נכבש.",
+        "הנקודה בידינו."
+      ]
+    },
+    {
+      "id": "objective_lost",
+      "role": "commander",
+      "delivery": "controlled urgency",
+      "context": "The enemy captured an objective zone.",
+      "en-US": [
+        "We've lost the objective."
+      ],
+      "en-GB": [
+        "We've lost the objective."
+      ],
+      "de": [
+        "Wir haben den Raum verloren."
+      ],
+      "ru": [
+        "Объект потерян."
+      ],
+      "uk": [
+        "Об'єкт втрачено."
+      ],
+      "zh": [
+        "要点失守。"
+      ],
+      "fr": [
+        "On a perdu l'objectif."
+      ],
+      "sv": [
+        "Vi har förlorat objektet."
+      ],
+      "ja": [
+        "拠点を奪われた。"
+      ],
+      "ko": [
+        "거점을 빼앗겼다."
+      ],
+      "it": [
+        "Abbiamo perso l'obiettivo."
+      ],
+      "pl": [
+        "Straciliśmy obiekt."
+      ],
+      "he": [
+        "איבדנו את היעד."
+      ]
+    },
+    {
+      "id": "flag_taken_ours",
+      "role": "commander",
+      "delivery": "firm",
+      "context": "Our team picked up the enemy flag.",
+      "en-US": [
+        "We have their flag."
+      ],
+      "en-GB": [
+        "We've got their flag."
+      ],
+      "de": [
+        "Wir haben ihre Flagge."
+      ],
+      "ru": [
+        "Их флаг у нас."
+      ],
+      "uk": [
+        "Їхній прапор у нас."
+      ],
+      "zh": [
+        "敌方旗帜已到手。"
+      ],
+      "fr": [
+        "On tient leur drapeau."
+      ],
+      "sv": [
+        "Vi har deras flagga."
+      ],
+      "ja": [
+        "敵の旗を確保。"
+      ],
+      "ko": [
+        "적 깃발 확보."
+      ],
+      "it": [
+        "Abbiamo la loro bandiera."
+      ],
+      "pl": [
+        "Mamy ich flagę."
+      ],
+      "he": [
+        "הדגל שלהם אצלנו."
+      ]
+    },
+    {
+      "id": "flag_taken_theirs",
+      "role": "commander",
+      "delivery": "urgent, controlled",
+      "context": "The enemy picked up our flag.",
+      "en-US": [
+        "They have our flag."
+      ],
+      "en-GB": [
+        "They've got our flag."
+      ],
+      "de": [
+        "Feind hat unsere Flagge."
+      ],
+      "ru": [
+        "Наш флаг у противника."
+      ],
+      "uk": [
+        "Наш прапор у противника."
+      ],
+      "zh": [
+        "我方旗帜被夺。"
+      ],
+      "fr": [
+        "Ils ont notre drapeau."
+      ],
+      "sv": [
+        "De har vår flagga."
+      ],
+      "ja": [
+        "味方の旗を奪われた。"
+      ],
+      "ko": [
+        "우리 깃발을 빼앗겼다."
+      ],
+      "it": [
+        "Hanno la nostra bandiera."
+      ],
+      "pl": [
+        "Mają naszą flagę."
+      ],
+      "he": [
+        "הדגל שלנו אצלם."
+      ]
+    },
+    {
+      "id": "flag_captured",
+      "role": "commander",
+      "delivery": "calm",
+      "context": "Our team scored a flag capture.",
+      "en-US": [
+        "Flag captured."
+      ],
+      "en-GB": [
+        "Flag captured."
+      ],
+      "de": [
+        "Flagge erobert."
+      ],
+      "ru": [
+        "Флаг захвачен."
+      ],
+      "uk": [
+        "Прапор захоплено."
+      ],
+      "zh": [
+        "夺旗完成。"
+      ],
+      "fr": [
+        "Drapeau capturé."
+      ],
+      "sv": [
+        "Flaggan erövrad."
+      ],
+      "ja": [
+        "旗、奪取。"
+      ],
+      "ko": [
+        "깃발 탈취 완료."
+      ],
+      "it": [
+        "Bandiera conquistata."
+      ],
+      "pl": [
+        "Flaga zdobyta."
+      ],
+      "he": [
+        "הדגל נכבש."
+      ]
+    },
+    {
+      "id": "flag_returned",
+      "role": "commander",
+      "delivery": "steady",
+      "context": "Our flag was returned to base.",
+      "en-US": [
+        "Our flag's back."
+      ],
+      "en-GB": [
+        "Our flag's recovered."
+      ],
+      "de": [
+        "Unsere Flagge ist zurück."
+      ],
+      "ru": [
+        "Наш флаг возвращён."
+      ],
+      "uk": [
+        "Наш прапор повернуто."
+      ],
+      "zh": [
+        "我方旗帜已归位。"
+      ],
+      "fr": [
+        "Notre drapeau est de retour."
+      ],
+      "sv": [
+        "Vår flagga är tillbaka."
+      ],
+      "ja": [
+        "味方の旗、回収。"
+      ],
+      "ko": [
+        "아군 깃발 회수."
+      ],
+      "it": [
+        "La nostra bandiera è rientrata."
+      ],
+      "pl": [
+        "Nasza flaga wróciła."
+      ],
+      "he": [
+        "הדגל שלנו חזר."
+      ]
+    },
+    {
+      "id": "wave_incoming",
+      "role": "commander",
+      "delivery": "tense, low",
+      "context": "A new enemy wave is attacking.",
+      "en-US": [
+        "Here they come.",
+        "Enemy wave inbound."
+      ],
+      "en-GB": [
+        "Stand to, here they come.",
+        "Enemy wave inbound."
+      ],
+      "de": [
+        "Da kommen sie.",
+        "Nächste Angriffswelle im Anmarsch."
+      ],
+      "ru": [
+        "Вот они, идут.",
+        "Новая волна на подходе."
+      ],
+      "uk": [
+        "Ось вони, йдуть.",
+        "Нова хвиля на підході."
+      ],
+      "zh": [
+        "敌人来了。",
+        "新一波敌人正在接近。"
+      ],
+      "fr": [
+        "Les voilà.",
+        "Vague ennemie en approche."
+      ],
+      "sv": [
+        "Där kommer de.",
+        "Fientlig anfallsvåg på väg."
+      ],
+      "ja": [
+        "来るぞ。",
+        "敵攻撃波、接近。"
+      ],
+      "ko": [
+        "온다.",
+        "적 공격파 접근."
+      ],
+      "it": [
+        "Eccoli.",
+        "Ondata nemica in arrivo."
+      ],
+      "pl": [
+        "Nadchodzą.",
+        "Nadciąga fala przeciwnika."
+      ],
+      "he": [
+        "הנה הם באים.",
+        "גל אויב מתקרב."
+      ]
+    },
+    {
+      "id": "wave_cleared",
+      "role": "commander",
+      "delivery": "tired, steady",
+      "context": "The enemy wave was defeated.",
+      "en-US": [
+        "Wave cleared.",
+        "That's the last of them. For now."
+      ],
+      "en-GB": [
+        "Wave seen off.",
+        "That's the lot. For now."
+      ],
+      "de": [
+        "Angriff abgewehrt.",
+        "Das waren die Letzten. Vorerst."
+      ],
+      "ru": [
+        "Атака отбита.",
+        "Это были последние. Пока что."
+      ],
+      "uk": [
+        "Атаку відбито.",
+        "Це були останні. Поки що."
+      ],
+      "zh": [
+        "本波敌人已击退。",
+        "全部肃清了。暂时而已。"
+      ],
+      "fr": [
+        "Vague repoussée.",
+        "C'étaient les derniers. Pour l'instant."
+      ],
+      "sv": [
+        "Vågen avvärjd.",
+        "Det var de sista. Tills vidare."
+      ],
+      "ja": [
+        "攻撃波、撃退。",
+        "これで最後だ。今のところは。"
+      ],
+      "ko": [
+        "공격파 격퇴.",
+        "이번이 마지막이다. 일단은."
+      ],
+      "it": [
+        "Ondata respinta.",
+        "Erano gli ultimi. Per ora."
+      ],
+      "pl": [
+        "Fala odparta.",
+        "To byli ostatni. Na razie."
+      ],
+      "he": [
+        "הגל נהדף.",
+        "אלה היו האחרונים. בינתיים."
+      ]
+    },
+    {
+      "id": "line_advanced",
+      "role": "commander",
+      "delivery": "firm",
+      "context": "The front line advanced in our favor.",
+      "en-US": [
+        "The line's moving up."
+      ],
+      "en-GB": [
+        "The line's pushing forward."
+      ],
+      "de": [
+        "Die Front rückt vor."
+      ],
+      "ru": [
+        "Линия фронта продвинулась."
+      ],
+      "uk": [
+        "Лінія фронту просунулася."
+      ],
+      "zh": [
+        "战线向前推进。"
+      ],
+      "fr": [
+        "La ligne progresse."
+      ],
+      "sv": [
+        "Linjen flyttas fram."
+      ],
+      "ja": [
+        "前線、前進中。"
+      ],
+      "ko": [
+        "전선 전진 중."
+      ],
+      "it": [
+        "La linea avanza."
+      ],
+      "pl": [
+        "Linia przesuwa się naprzód."
+      ],
+      "he": [
+        "הקו מתקדם."
+      ]
+    },
+    {
+      "id": "goal_scored",
+      "role": "commander",
+      "delivery": "calm",
+      "context": "Our team scored a goal in the ball mode.",
+      "en-US": [
+        "Goal.",
+        "That's a score."
+      ],
+      "en-GB": [
+        "Goal.",
+        "That's a goal."
+      ],
+      "de": [
+        "Tor.",
+        "Das war ein Tor."
+      ],
+      "ru": [
+        "Гол.",
+        "Мяч в воротах."
+      ],
+      "uk": [
+        "Гол.",
+        "М'яч у воротах."
+      ],
+      "zh": [
+        "进球。",
+        "得分。"
+      ],
+      "fr": [
+        "But marqué.",
+        "Un point pour nous."
+      ],
+      "sv": [
+        "Mål.",
+        "Poäng till oss."
+      ],
+      "ja": [
+        "ゴール。",
+        "得点。"
+      ],
+      "ko": [
+        "골.",
+        "득점."
+      ],
+      "it": [
+        "Gol.",
+        "Punto segnato."
+      ],
+      "pl": [
+        "Gol.",
+        "Punkt dla nas."
+      ],
+      "he": [
+        "גול.",
+        "שער."
+      ]
+    },
+    {
+      "id": "respawn",
+      "role": "commander",
+      "delivery": "steady, determined",
+      "context": "We respawned into the battle.",
+      "en-US": [
+        "Back in the fight."
+      ],
+      "en-GB": [
+        "Back in action."
+      ],
+      "de": [
+        "Wieder im Gefecht."
+      ],
+      "ru": [
+        "Снова в бою."
+      ],
+      "uk": [
+        "Знову в бою."
+      ],
+      "zh": [
+        "重返战斗。"
+      ],
+      "fr": [
+        "De retour au combat."
+      ],
+      "sv": [
+        "Tillbaka i striden."
+      ],
+      "ja": [
+        "戦闘に復帰。"
+      ],
+      "ko": [
+        "전투 복귀."
+      ],
+      "it": [
+        "Di nuovo in combattimento."
+      ],
+      "pl": [
+        "Z powrotem w walce."
+      ],
+      "he": [
+        "חוזרים לקרב."
+      ]
+    },
+    {
+      "id": "pickup_collected",
+      "role": "loader",
+      "delivery": "flat",
+      "context": "We collected a supply pickup.",
+      "en-US": [
+        "Supplies aboard."
+      ],
+      "en-GB": [
+        "Resupply on board."
+      ],
+      "de": [
+        "Nachschub an Bord."
+      ],
+      "ru": [
+        "Припасы на борту."
+      ],
+      "uk": [
+        "Припаси на борту."
+      ],
+      "zh": [
+        "补给已装车。"
+      ],
+      "fr": [
+        "Ravitaillement à bord."
+      ],
+      "sv": [
+        "Förnödenheter ombord."
+      ],
+      "ja": [
+        "補給品、搭載。"
+      ],
+      "ko": [
+        "보급품 적재."
+      ],
+      "it": [
+        "Rifornimenti a bordo."
+      ],
+      "pl": [
+        "Zaopatrzenie pobrane."
+      ],
+      "he": [
+        "קיבלנו אספקה."
+      ]
+    },
+    {
+      "id": "friendly_fire",
+      "role": "gunner",
+      "delivery": "urgent, firm",
+      "context": "Our shot hit a friendly tank by mistake.",
+      "en-US": [
+        "Check fire! That's a friendly!",
+        "Cease fire, friendly!"
+      ],
+      "en-GB": [
+        "Check fire! That's a friendly!",
+        "Stop, blue on blue!"
+      ],
+      "de": [
+        "Feuer halt! Das ist ein Eigener!",
+        "Feuer einstellen, eigene Kräfte!"
+      ],
+      "ru": [
+        "Отставить! Это свой!",
+        "Прекратить огонь, свои!"
+      ],
+      "uk": [
+        "Відставити! Це свій!",
+        "Припинити вогонь, свої!"
+      ],
+      "zh": [
+        "停止射击！是自己人！",
+        "停火，友军！"
+      ],
+      "fr": [
+        "Halte au feu ! C'est un ami !",
+        "Cessez le feu, char ami !"
+      ],
+      "sv": [
+        "Avbryt eld! Det är en egen!",
+        "Eld upphör, egen vagn!"
+      ],
+      "ja": [
+        "撃ち方やめ！味方だ！",
+        "射撃中止、味方！"
+      ],
+      "ko": [
+        "사격 중지! 아군이다!",
+        "사격 중지, 아군!"
+      ],
+      "it": [
+        "Cessate il fuoco! È dei nostri!",
+        "Non sparate, carro amico!"
+      ],
+      "pl": [
+        "Wstrzymać ogień! To swój!",
+        "Przerwać ogień, swój!"
+      ],
+      "he": [
+        "חדל אש! זה כוח שלנו!",
+        "חדל אש, כוחותינו!"
+      ]
+    },
+    {
+      "id": "hit_by_friendly",
+      "role": "commander",
+      "delivery": "angry, firm, controlled",
+      "context": "A friendly tank's shell hit us.",
+      "en-US": [
+        "Check fire! We're friendly!"
+      ],
+      "en-GB": [
+        "Check fire! Blue on blue!"
+      ],
+      "de": [
+        "Feuer halt! Eigenbeschuss!"
+      ],
+      "ru": [
+        "Не стрелять! Мы свои!"
+      ],
+      "uk": [
+        "Не стріляти! Ми свої!"
+      ],
+      "zh": [
+        "停止射击！我们是自己人！"
+      ],
+      "fr": [
+        "Halte au feu ! Tir fratricide !"
+      ],
+      "sv": [
+        "Avbryt eld! Vi är egna!"
+      ],
+      "ja": [
+        "撃ち方やめ！こちらは味方だ！"
+      ],
+      "ko": [
+        "사격 중지! 여기 아군이다!"
+      ],
+      "it": [
+        "Cessate il fuoco! Siamo dei vostri!"
+      ],
+      "pl": [
+        "Wstrzymać ogień! Jesteśmy swoi!"
+      ],
+      "he": [
+        "חדל אש! כאן כוחותינו!"
+      ]
+    },
+    {
+      "id": "friendly_ram",
+      "role": "driver",
+      "delivery": "flat, annoyed",
+      "context": "We collided with a friendly tank.",
+      "en-US": [
+        "Watch it. That's a friendly.",
+        "Easy. Friendly."
+      ],
+      "en-GB": [
+        "Watch it. Friendly callsign.",
+        "Steady. Friendly."
+      ],
+      "de": [
+        "Vorsicht. Das ist ein Eigener.",
+        "Langsam. Eigener."
+      ],
+      "ru": [
+        "Смотри, куда едешь. Это свой.",
+        "Полегче. Свои."
+      ],
+      "uk": [
+        "Дивись, куди їдеш. Це свій.",
+        "Обережніше. Свої."
+      ],
+      "zh": [
+        "注意，那是友车。",
+        "慢点，自己人。"
+      ],
+      "fr": [
+        "Attention, c'est un ami.",
+        "Doucement. Char ami."
+      ],
+      "sv": [
+        "Se upp. Det är en egen.",
+        "Lugnt. Egen vagn."
+      ],
+      "ja": [
+        "気をつけろ。味方だ。",
+        "慎重に。味方だ。"
+      ],
+      "ko": [
+        "조심해. 아군이다.",
+        "천천히. 아군."
+      ],
+      "it": [
+        "Attenzione, è dei nostri.",
+        "Piano. Carro amico."
+      ],
+      "pl": [
+        "Uważaj. To swój.",
+        "Spokojnie. Swój."
+      ],
+      "he": [
+        "זהירות. זה שלנו.",
+        "לאט. כוחותינו."
+      ]
+    },
+    {
+      "id": "rammed",
+      "role": "driver",
+      "delivery": "urgent",
+      "context": "An enemy tank rammed us.",
+      "en-US": [
+        "We're being rammed!"
+      ],
+      "en-GB": [
+        "He's ramming us!"
+      ],
+      "de": [
+        "Wir werden gerammt!"
+      ],
+      "ru": [
+        "Нас таранят!"
+      ],
+      "uk": [
+        "Нас таранять!"
+      ],
+      "zh": [
+        "敌车在撞我们！"
+      ],
+      "fr": [
+        "On nous percute !"
+      ],
+      "sv": [
+        "Vi blir rammade!"
+      ],
+      "ja": [
+        "体当たりされている！"
+      ],
+      "ko": [
+        "적이 들이받는다!"
+      ],
+      "it": [
+        "Ci stanno speronando!"
+      ],
+      "pl": [
+        "Taranują nas!"
+      ],
+      "he": [
+        "נוגחים בנו!"
+      ]
+    },
+    {
+      "id": "ally_kill",
+      "role": "commander",
+      "delivery": "calm",
+      "context": "A teammate destroyed an enemy vehicle.",
+      "en-US": [
+        "One down.",
+        "Enemy knocked out."
+      ],
+      "en-GB": [
+        "One down.",
+        "Enemy knocked out."
+      ],
+      "de": [
+        "Einer weniger.",
+        "Feind ausgeschaltet."
+      ],
+      "ru": [
+        "Минус один.",
+        "Противник подбит."
+      ],
+      "uk": [
+        "Мінус один.",
+        "Противника підбито."
+      ],
+      "zh": [
+        "击毁一辆。",
+        "敌车被击毁。"
+      ],
+      "fr": [
+        "Un de moins.",
+        "Ennemi hors de combat."
+      ],
+      "sv": [
+        "En borta.",
+        "Fientlig vagn utslagen."
+      ],
+      "ja": [
+        "一両撃破。",
+        "敵車両、撃破。"
+      ],
+      "ko": [
+        "한 대 격파.",
+        "적 차량 격파."
+      ],
+      "it": [
+        "Uno in meno.",
+        "Nemico fuori combattimento."
+      ],
+      "pl": [
+        "Jeden mniej.",
+        "Przeciwnik wyłączony z walki."
+      ],
+      "he": [
+        "אחד ירד.",
+        "טנק אויב הושמד."
+      ]
+    },
+    {
+      "id": "double_kill",
+      "role": "gunner",
+      "delivery": "calm, controlled",
+      "context": "We destroyed a second enemy within seconds.",
+      "en-US": [
+        "Another one down.",
+        "Second target destroyed."
+      ],
+      "en-GB": [
+        "Another one down.",
+        "Second target destroyed."
+      ],
+      "de": [
+        "Noch einer weniger.",
+        "Zweites Ziel vernichtet."
+      ],
+      "ru": [
+        "Ещё один.",
+        "Вторая цель уничтожена."
+      ],
+      "uk": [
+        "Ще один.",
+        "Другу ціль знищено."
+      ],
+      "zh": [
+        "又击毁一辆。",
+        "第二个目标击毁。"
+      ],
+      "fr": [
+        "Encore un de moins.",
+        "Deuxième objectif détruit."
+      ],
+      "sv": [
+        "En till borta.",
+        "Andra målet förstört."
+      ],
+      "ja": [
+        "もう一両、撃破。",
+        "第二目標、撃破。"
+      ],
+      "ko": [
+        "또 한 대 격파.",
+        "두 번째 목표 파괴."
+      ],
+      "it": [
+        "Un altro in meno.",
+        "Secondo bersaglio distrutto."
+      ],
+      "pl": [
+        "Następny wyeliminowany.",
+        "Drugi cel zniszczony."
+      ],
+      "he": [
+        "עוד אחד ירד.",
+        "מטרה שנייה הושמדה."
+      ]
+    },
+    {
+      "id": "last_enemy",
+      "role": "commander",
+      "delivery": "intense, controlled",
+      "context": "Only one enemy vehicle remains.",
+      "en-US": [
+        "One enemy left. Finish it."
+      ],
+      "en-GB": [
+        "One left. Finish him off."
+      ],
+      "de": [
+        "Nur noch einer. Ausschalten."
+      ],
+      "ru": [
+        "Остался один. Добить."
+      ],
+      "uk": [
+        "Лишився один. Добити."
+      ],
+      "zh": [
+        "敌人只剩一辆，消灭它。"
+      ],
+      "fr": [
+        "Il en reste un. On l'achève."
+      ],
+      "sv": [
+        "En fiende kvar. Slå ut honom."
+      ],
+      "ja": [
+        "敵は残り一両。仕留めろ。"
+      ],
+      "ko": [
+        "적 한 대 남았다. 끝내라."
+      ],
+      "it": [
+        "Resta un nemico. Finiamolo."
+      ],
+      "pl": [
+        "Został jeden. Dobić go."
+      ],
+      "he": [
+        "נשאר אויב אחד. לגמור אותו."
+      ]
+    },
+    {
+      "id": "outnumbered",
+      "role": "commander",
+      "delivery": "tense, low",
+      "context": "The enemy has far more tanks left than our team.",
+      "en-US": [
+        "We're outnumbered."
+      ],
+      "en-GB": [
+        "We're outnumbered."
+      ],
+      "de": [
+        "Wir sind in Unterzahl."
+      ],
+      "ru": [
+        "Их больше нас."
+      ],
+      "uk": [
+        "Їх більше за нас."
+      ],
+      "zh": [
+        "敌众我寡。"
+      ],
+      "fr": [
+        "On est en infériorité numérique."
+      ],
+      "sv": [
+        "Vi är numerärt underlägsna."
+      ],
+      "ja": [
+        "数で劣勢だ。"
+      ],
+      "ko": [
+        "수적 열세다."
+      ],
+      "it": [
+        "Siamo in inferiorità numerica."
+      ],
+      "pl": [
+        "Przeciwnik ma przewagę liczebną."
+      ],
+      "he": [
+        "אנחנו בנחיתות מספרית."
+      ]
+    },
+    {
+      "id": "spotted_multiple",
+      "role": "commander",
+      "delivery": "tense, controlled",
+      "context": "Several new enemy contacts at once.",
+      "en-US": [
+        "Multiple contacts.",
+        "Several enemy tanks."
+      ],
+      "en-GB": [
+        "Multiple contacts.",
+        "Several enemy tanks."
+      ],
+      "de": [
+        "Mehrere Feindkontakte.",
+        "Mehrere Feindpanzer."
+      ],
+      "ru": [
+        "Несколько целей.",
+        "Вижу группу танков."
+      ],
+      "uk": [
+        "Кілька цілей.",
+        "Бачу групу танків."
+      ],
+      "zh": [
+        "多个目标。",
+        "发现数辆敌坦克。"
+      ],
+      "fr": [
+        "Contacts multiples.",
+        "Plusieurs chars ennemis."
+      ],
+      "sv": [
+        "Flera kontakter.",
+        "Flera fientliga stridsvagnar."
+      ],
+      "ja": [
+        "複数目標。",
+        "敵戦車、多数。"
+      ],
+      "ko": [
+        "다수 접적.",
+        "적 전차 여러 대."
+      ],
+      "it": [
+        "Contatti multipli.",
+        "Diversi carri nemici."
+      ],
+      "pl": [
+        "Wiele kontaktów.",
+        "Kilka czołgów przeciwnika."
+      ],
+      "he": [
+        "מגעים מרובים.",
+        "כמה טנקי אויב."
+      ]
+    },
+    {
+      "id": "missile_incoming",
+      "role": "commander",
+      "delivery": "urgent, controlled, loud",
+      "context": "A guided missile is flying at us.",
+      "en-US": [
+        "Missile incoming!",
+        "Incoming missile, brace!"
+      ],
+      "en-GB": [
+        "Missile incoming!",
+        "Missile inbound, brace!"
+      ],
+      "de": [
+        "Flugkörper im Anflug!",
+        "Flugkörper kommt, festhalten!"
+      ],
+      "ru": [
+        "Пуск по нам!",
+        "Ракета на нас, держитесь!"
+      ],
+      "uk": [
+        "Пуск по нас!",
+        "Ракета на нас, тримайтеся!"
+      ],
+      "zh": [
+        "导弹来袭！",
+        "来袭导弹，抓紧！"
+      ],
+      "fr": [
+        "Missile en approche !",
+        "Départ missile, accrochez-vous !"
+      ],
+      "sv": [
+        "Inkommande robot!",
+        "Robot mot oss, håll i er!"
+      ],
+      "ja": [
+        "ミサイル接近！",
+        "ミサイル飛来、衝撃に備えろ！"
+      ],
+      "ko": [
+        "미사일 접근!",
+        "미사일 온다, 충격 대비!"
+      ],
+      "it": [
+        "Missile in arrivo!",
+        "Missile su di noi, tenetevi!"
+      ],
+      "pl": [
+        "Nadlatuje rakieta!",
+        "Rakieta na nas, trzymać się!"
+      ],
+      "he": [
+        "טיל נכנס!",
+        "טיל עלינו, להיאחז!"
+      ]
+    },
+    {
+      "id": "near_miss",
+      "role": "driver",
+      "delivery": "exhale, steady",
+      "context": "An enemy shell just missed us.",
+      "en-US": [
+        "Close one.",
+        "Near miss."
+      ],
+      "en-GB": [
+        "That was close.",
+        "Near miss."
+      ],
+      "de": [
+        "Das war knapp.",
+        "Knapp vorbei."
+      ],
+      "ru": [
+        "Близко прошёл.",
+        "Чуть не попали."
+      ],
+      "uk": [
+        "Близько пройшов.",
+        "Ледь не влучили."
+      ],
+      "zh": [
+        "好险。",
+        "近失弹。"
+      ],
+      "fr": [
+        "C'était juste.",
+        "Passé tout près."
+      ],
+      "sv": [
+        "Det var nära.",
+        "Nedslag nära."
+      ],
+      "ja": [
+        "危なかった。",
+        "至近弾。"
+      ],
+      "ko": [
+        "아슬아슬했다.",
+        "근접 탄착."
+      ],
+      "it": [
+        "C'è mancato poco.",
+        "Colpo vicino."
+      ],
+      "pl": [
+        "Było blisko.",
+        "Pocisk tuż obok."
+      ],
+      "he": [
+        "היה קרוב.",
+        "כמעט פגע."
+      ]
+    },
+    {
+      "id": "flipped",
+      "role": "driver",
+      "delivery": "strained, urgent",
+      "context": "Our tank rolled over.",
+      "en-US": [
+        "We're on our side!",
+        "We've rolled over!"
+      ],
+      "en-GB": [
+        "We're on our side!",
+        "We've gone over!"
+      ],
+      "de": [
+        "Wir liegen auf der Seite!",
+        "Wir haben uns überschlagen!"
+      ],
+      "ru": [
+        "Лежим на боку!",
+        "Перевернулись!"
+      ],
+      "uk": [
+        "Лежимо на боці!",
+        "Перекинулися!"
+      ],
+      "zh": [
+        "侧翻了！",
+        "翻车了！"
+      ],
+      "fr": [
+        "On est sur le flanc !",
+        "On s'est retournés !"
+      ],
+      "sv": [
+        "Vi ligger på sidan!",
+        "Vi har vält!"
+      ],
+      "ja": [
+        "横転した！",
+        "転覆した！"
+      ],
+      "ko": [
+        "옆으로 넘어갔다!",
+        "전복됐다!"
+      ],
+      "it": [
+        "Siamo su un fianco!",
+        "Ci siamo ribaltati!"
+      ],
+      "pl": [
+        "Leżymy na boku!",
+        "Przewróciliśmy się!"
+      ],
+      "he": [
+        "אנחנו על הצד!",
+        "התהפכנו!"
+      ]
+    },
+    {
+      "id": "back_on_tracks",
+      "role": "driver",
+      "delivery": "steady, relieved",
+      "context": "Our tank is upright again.",
+      "en-US": [
+        "Back on our tracks."
+      ],
+      "en-GB": [
+        "Right way up again."
+      ],
+      "de": [
+        "Wieder auf den Ketten."
+      ],
+      "ru": [
+        "Снова на гусеницах."
+      ],
+      "uk": [
+        "Знову на гусеницях."
+      ],
+      "zh": [
+        "车辆已扶正。"
+      ],
+      "fr": [
+        "De nouveau sur nos chenilles."
+      ],
+      "sv": [
+        "På banden igen."
+      ],
+      "ja": [
+        "車体、元に戻った。"
+      ],
+      "ko": [
+        "다시 바로 섰다."
+      ],
+      "it": [
+        "Di nuovo sui cingoli."
+      ],
+      "pl": [
+        "Znowu na gąsienicach."
+      ],
+      "he": [
+        "חזרנו על הזחלים."
+      ]
+    },
+    {
+      "id": "taking_water",
+      "role": "driver",
+      "delivery": "urgent, controlled",
+      "context": "We drove into deep water.",
+      "en-US": [
+        "We're taking on water."
+      ],
+      "en-GB": [
+        "We're taking on water."
+      ],
+      "de": [
+        "Wir haben Wassereinbruch."
+      ],
+      "ru": [
+        "Набираем воду."
+      ],
+      "uk": [
+        "Набираємо воду."
+      ],
+      "zh": [
+        "车内进水。"
+      ],
+      "fr": [
+        "On prend l'eau."
+      ],
+      "sv": [
+        "Vi tar in vatten."
+      ],
+      "ja": [
+        "浸水している。"
+      ],
+      "ko": [
+        "차내 침수 중."
+      ],
+      "it": [
+        "Stiamo imbarcando acqua."
+      ],
+      "pl": [
+        "Nabieramy wody."
+      ],
+      "he": [
+        "נכנסים לנו מים."
+      ]
+    },
+    {
+      "id": "stuck",
+      "role": "driver",
+      "delivery": "strained",
+      "context": "The tracks can't get traction; we're stuck.",
+      "en-US": [
+        "We're stuck.",
+        "No traction."
+      ],
+      "en-GB": [
+        "We're bogged down.",
+        "No grip."
+      ],
+      "de": [
+        "Wir sitzen fest.",
+        "Ketten greifen nicht."
+      ],
+      "ru": [
+        "Застряли.",
+        "Буксуем."
+      ],
+      "uk": [
+        "Застрягли.",
+        "Буксуємо."
+      ],
+      "zh": [
+        "车陷住了。",
+        "履带打滑。"
+      ],
+      "fr": [
+        "On est bloqués.",
+        "Les chenilles patinent."
+      ],
+      "sv": [
+        "Vi sitter fast.",
+        "Banden slirar."
+      ],
+      "ja": [
+        "スタックした。",
+        "履帯が空転している。"
+      ],
+      "ko": [
+        "빠졌다.",
+        "궤도가 헛돈다."
+      ],
+      "it": [
+        "Siamo bloccati.",
+        "I cingoli slittano."
+      ],
+      "pl": [
+        "Utknęliśmy.",
+        "Gąsienice buksują."
+      ],
+      "he": [
+        "נתקענו.",
+        "אין אחיזה."
+      ]
+    },
+    {
+      "id": "target_locked",
+      "role": "gunner",
+      "delivery": "calm, focused",
+      "context": "The fire-control system locked onto a target.",
+      "en-US": [
+        "Target locked.",
+        "Locked."
+      ],
+      "en-GB": [
+        "Target locked.",
+        "On target."
+      ],
+      "de": [
+        "Ziel erfasst.",
+        "Aufgeschaltet."
+      ],
+      "ru": [
+        "Цель захвачена.",
+        "Есть захват."
+      ],
+      "uk": [
+        "Ціль захоплено.",
+        "Є захоплення."
+      ],
+      "zh": [
+        "目标锁定。",
+        "锁定。"
+      ],
+      "fr": [
+        "Cible accrochée.",
+        "Accroché."
+      ],
+      "sv": [
+        "Målet låst.",
+        "Låst."
+      ],
+      "ja": [
+        "目標、捕捉。",
+        "捕捉。"
+      ],
+      "ko": [
+        "목표 고정.",
+        "고정 완료."
+      ],
+      "it": [
+        "Bersaglio agganciato.",
+        "Agganciato."
+      ],
+      "pl": [
+        "Cel namierzony.",
+        "Namierzony."
+      ],
+      "he": [
+        "מטרה נעולה.",
+        "נעול."
+      ]
+    },
+    {
+      "id": "target_lost",
+      "role": "gunner",
+      "delivery": "flat",
+      "context": "We lost our locked target.",
+      "en-US": [
+        "Lost him.",
+        "Target lost."
+      ],
+      "en-GB": [
+        "Lost him.",
+        "Target lost."
+      ],
+      "de": [
+        "Hab ihn verloren.",
+        "Ziel verloren."
+      ],
+      "ru": [
+        "Потерял.",
+        "Цель потеряна."
+      ],
+      "uk": [
+        "Загубив.",
+        "Ціль втрачено."
+      ],
+      "zh": [
+        "跟丢了。",
+        "目标丢失。"
+      ],
+      "fr": [
+        "Je l'ai perdu.",
+        "Cible perdue."
+      ],
+      "sv": [
+        "Tappade honom.",
+        "Målet förlorat."
+      ],
+      "ja": [
+        "見失った。",
+        "目標ロスト。"
+      ],
+      "ko": [
+        "놓쳤다.",
+        "목표 상실."
+      ],
+      "it": [
+        "L'ho perso.",
+        "Bersaglio perso."
+      ],
+      "pl": [
+        "Zgubiłem go.",
+        "Cel utracony."
+      ],
+      "he": [
+        "איבדתי אותו.",
+        "המטרה אבדה."
+      ]
+    },
+    {
+      "id": "enemy_immobilized",
+      "role": "gunner",
+      "delivery": "calm, clipped",
+      "context": "Our hit broke the enemy's track.",
+      "en-US": [
+        "His track's off. He's immobilized."
+      ],
+      "en-GB": [
+        "He's thrown a track. He's immobilised."
+      ],
+      "de": [
+        "Seine Kette ist ab. Bewegungsunfähig."
+      ],
+      "ru": [
+        "Гусеницу ему сбил. Он стоит."
+      ],
+      "uk": [
+        "Гусеницю йому збив. Стоїть."
+      ],
+      "zh": [
+        "敌车掉履带了，已无法机动。"
+      ],
+      "fr": [
+        "Il a déchenillé. Il est immobilisé."
+      ],
+      "sv": [
+        "Hans band är av. Han står still."
+      ],
+      "ja": [
+        "敵の履帯を切った。行動不能。"
+      ],
+      "ko": [
+        "적 궤도 끊었다. 기동 불능."
+      ],
+      "it": [
+        "Ha perso il cingolo. È immobilizzato."
+      ],
+      "pl": [
+        "Ma zerwaną gąsienicę. Jest unieruchomiony."
+      ],
+      "he": [
+        "ירד לו זחל. הוא משותק."
+      ]
+    },
+    {
+      "id": "enemy_gun_damaged",
+      "role": "gunner",
+      "delivery": "calm, clipped",
+      "context": "Our hit damaged the enemy's main gun.",
+      "en-US": [
+        "His gun's knocked out."
+      ],
+      "en-GB": [
+        "His main armament's out."
+      ],
+      "de": [
+        "Seine Kanone ist ausgefallen."
+      ],
+      "ru": [
+        "Пушку ему выбил."
+      ],
+      "uk": [
+        "Гармату йому вибив."
+      ],
+      "zh": [
+        "敌车火炮被打坏。"
+      ],
+      "fr": [
+        "Son canon est hors service."
+      ],
+      "sv": [
+        "Hans kanon är utslagen."
+      ],
+      "ja": [
+        "敵の主砲を破壊。"
+      ],
+      "ko": [
+        "적 주포 무력화."
+      ],
+      "it": [
+        "Il suo cannone è fuori uso."
+      ],
+      "pl": [
+        "Jego armata unieszkodliwiona."
+      ],
+      "he": [
+        "התותח שלו מושבת."
+      ]
+    },
+    {
+      "id": "enemy_crew_hit",
+      "role": "gunner",
+      "delivery": "low, flat",
+      "context": "Our hit wounded the enemy crew.",
+      "en-US": [
+        "Their crew's hit."
+      ],
+      "en-GB": [
+        "His crew's been hit."
+      ],
+      "de": [
+        "Seine Besatzung ist getroffen."
+      ],
+      "ru": [
+        "Экипаж у него задело."
+      ],
+      "uk": [
+        "Екіпаж у нього зачепило."
+      ],
+      "zh": [
+        "敌车乘员中弹。"
+      ],
+      "fr": [
+        "Son équipage est touché."
+      ],
+      "sv": [
+        "Deras besättning är träffad."
+      ],
+      "ja": [
+        "敵乗員に損害。"
+      ],
+      "ko": [
+        "적 승무원 피해."
+      ],
+      "it": [
+        "Equipaggio nemico colpito."
+      ],
+      "pl": [
+        "Załoga przeciwnika trafiona."
+      ],
+      "he": [
+        "הצוות שלו נפגע."
+      ]
+    },
+    {
+      "id": "enemy_engine_hit",
+      "role": "gunner",
+      "delivery": "calm, clipped",
+      "context": "Our hit damaged the enemy's engine.",
+      "en-US": [
+        "Hit his engine."
+      ],
+      "en-GB": [
+        "Hit his engine decks."
+      ],
+      "de": [
+        "Seinen Motor getroffen."
+      ],
+      "ru": [
+        "Попал ему в двигатель."
+      ],
+      "uk": [
+        "Влучив йому в двигун."
+      ],
+      "zh": [
+        "命中敌车发动机。"
+      ],
+      "fr": [
+        "Je l'ai touché au moteur."
+      ],
+      "sv": [
+        "Träff i hans motor."
+      ],
+      "ja": [
+        "敵エンジンに命中。"
+      ],
+      "ko": [
+        "적 엔진 명중."
+      ],
+      "it": [
+        "Colpito il suo motore."
+      ],
+      "pl": [
+        "Trafiłem go w silnik."
+      ],
+      "he": [
+        "פגענו לו במנוע."
+      ]
+    },
+    {
+      "id": "ammo_out_all",
+      "role": "loader",
+      "delivery": "low, grim",
+      "context": "All ammunition is gone.",
+      "en-US": [
+        "We're out of ammunition."
+      ],
+      "en-GB": [
+        "That's us out of ammunition."
+      ],
+      "de": [
+        "Keine Munition mehr."
+      ],
+      "ru": [
+        "Боекомплект израсходован."
+      ],
+      "uk": [
+        "Боєкомплект витрачено."
+      ],
+      "zh": [
+        "弹药已经打光。"
+      ],
+      "fr": [
+        "Plus aucune munition."
+      ],
+      "sv": [
+        "Ingen ammunition kvar."
+      ],
+      "ja": [
+        "全弾、撃ち尽くした。"
+      ],
+      "ko": [
+        "탄약 전부 소진."
+      ],
+      "it": [
+        "Munizioni esaurite."
+      ],
+      "pl": [
+        "Amunicja wyczerpana."
+      ],
+      "he": [
+        "נגמרה לנו התחמושת."
+      ]
+    },
+    {
+      "id": "objective_contested",
+      "role": "commander",
+      "delivery": "controlled urgency",
+      "context": "Enemies are contesting an objective we hold.",
+      "en-US": [
+        "They're contesting the point."
+      ],
+      "en-GB": [
+        "Enemy on the objective."
+      ],
+      "de": [
+        "Feind im Raum."
+      ],
+      "ru": [
+        "Противник на объекте."
+      ],
+      "uk": [
+        "Противник на об'єкті."
+      ],
+      "zh": [
+        "敌人正在争夺要点。"
+      ],
+      "fr": [
+        "L'ennemi nous dispute le point."
+      ],
+      "sv": [
+        "Fienden är inne på punkten."
+      ],
+      "ja": [
+        "拠点に敵が侵入。"
+      ],
+      "ko": [
+        "거점에 적 진입."
+      ],
+      "it": [
+        "Ci contendono il punto."
+      ],
+      "pl": [
+        "Przeciwnik walczy o punkt."
+      ],
+      "he": [
+        "האויב נכנס לנקודה."
+      ]
+    }
+  ]
+}

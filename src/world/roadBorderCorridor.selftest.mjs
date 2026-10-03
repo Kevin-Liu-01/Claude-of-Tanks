@@ -100,7 +100,11 @@ for (const id of MAP_IDS) {
 // with 0e5fc79e2): the count follows the registry instead of a literal.
 assert.equal(unchangedStampMaps, MAP_IDS.filter(id => id !== 'skybridge').length,
   'every battlefield but Skybridge keeps the unchanged construction stamp');
-const skyConfig = getMapConfig('skybridge');
+// The map-borders lane (2026-10-03): the retained failure is a bank on the CLASSIC rim (the S-curve the stamp was
+// written against); the border landform lowers that rim at the road's exit, so both the predecessor and the current
+// stamp are replayed on the classic border (terrain.border.classic) and the gate is checked on the landform as well.
+const skyLandform = getMapConfig('skybridge');
+const skyConfig = { ...skyLandform, terrain: { ...skyLandform.terrain, border: { classic: true } } };
 const oldSky = oldCreateHeightField(1337, skyConfig), newSky = createHeightField(1337, skyConfig);
 assert.deepEqual(newSky._layout, oldSky._layout, 'profile does not change road/layout/station ownership');
 assert.deepEqual(Object.keys(newSky), Object.keys(oldSky), 'no retained owner or grid field');
@@ -113,6 +117,7 @@ const oldPeak = peakSlope(oldSky), newPeak = peakSlope(newSky);
 assert.equal(oldPeak, 2.008386024307697, 'actual predecessor reproduces the retained48m failure');
 assert.ok(oldPeak > 2, 'old constant core fails the unchanged bank gate');
 assert.ok(newPeak <= 2, 'fixed retained peak must pass; whole-bank gates remain separate');
+assert.ok(peakSlope(createHeightField(1337, skyLandform)) <= 2, 'the retained peak passes on the border landform too');
 assert.equal(minimumRoadSegmentRadius([300, -100], [100, -300]), 200, 'inward x=-z crossing owns the minimum');
 assert.equal(minimumRoadSegmentRadius([100, -300], [300, -100]), 200, 'reversing the route preserves the bound');
 assert.equal(minimumRoadSegmentRadius([100, 300], [300, 100]), 200, 'x=z crossing is also checked');

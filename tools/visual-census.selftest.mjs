@@ -5,8 +5,8 @@
 // compare outputs are produced from a synthetic census, and the CLI fails closed without starting a server or browser.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createCanvas } from '@napi-rs/canvas';
@@ -14,13 +14,14 @@ import { loadRgba } from './map-metrics.mjs';
 import { MAP_VIEW_PROBE_VIEWS } from './map-view-probe-views.mjs';
 import { selectStandView } from './environment-shot-camera.mjs';
 import {
-  CENSUS_FOV, CENSUS_HALF, CENSUS_PROTOCOL, CENSUS_VIEWPORT, CENSUS_VIEWS, horizonRow, pitchOf, selectCensusViews,
-  selectChasePose, selectSkySite, selectTerrainSite, selectTreePose, skyPose, skySamplePoints, skySiteCandidates,
-  terrainPose, terrainSamplePoints, terrainSiteCandidates,
+  BORDER_EDGE, BORDER_EYE, BORDER_PROTOCOL, BORDER_VIEWS, CENSUS_FOV, CENSUS_HALF, CENSUS_PROTOCOL, CENSUS_VIEWPORT,
+  CENSUS_VIEWS, borderPose, borderSamplePoints, borderSiteCandidates, censusViewSet, horizonRow, obliquePose,
+  obliqueSamplePoints, pitchOf, selectBorderSite, selectCensusViews, selectChasePose, selectSkySite, selectTerrainSite,
+  selectTreePose, skyPose, skySamplePoints, skySiteCandidates, terrainPose, terrainSamplePoints, terrainSiteCandidates,
 } from './visual-census-views.mjs';
 import { CENSUS_HEADLINE_METRICS, detectSkyline, frameMetrics, highPass, histogramQuantile } from './visual-census-metrics.mjs';
 import {
-  buildSheets, compareCensus, horizonOfState, loadCensus, measureCensus, openCensus, pixelDiff, renderIndex, saveCensus, writeIndex,
+  buildSheets, censusViewsOf, compareCensus, horizonOfState, loadCensus, measureCensus, openCensus, pixelDiff, renderIndex, saveCensus, writeIndex,
 } from './visual-census-report.mjs';
 import { CENSUS_HELP, parseCensusArgs, pickCaptureMaps } from './visual-census.mjs';
 import { createPoliteCaptureLock, stepBehindStamp } from './visual-census-lock.mjs';
@@ -62,6 +63,73 @@ try {
   assert.deepEqual(selectCensusViews().map((v) => v.name), CENSUS_VIEWS.map((v) => v.name));
   assert.deepEqual(selectCensusViews(['tree', 'chase']).map((v) => v.name), ['chase', 'tree'], 'subsets keep table order');
   assert.throws(() => selectCensusViews(['chase', 'nope']), /Unknown census view\(s\): nope/);
+
+  // ------------------------------------------------------------------ the border set (2026-10-02, map-borders lane)
+  assert.equal(BORDER_PROTOCOL, 'visual-census-border-v1'); assert.equal(BORDER_EDGE, 512); assert.equal(BORDER_EYE, 2.5);
+  assert.deepEqual(BORDER_VIEWS.map((v) => v.name), [
+    'edge-n', 'edge-e', 'edge-s', 'edge-w', 'corner-ne', 'corner-se', 'corner-sw', 'corner-nw',
+    'edge-n-up', 'edge-e-up', 'edge-s-up', 'edge-w-up', 'corner-ne-up', 'corner-se-up', 'corner-sw-up', 'corner-nw-up', 'oblique-ne',
+  ]);
+  assert.ok(BORDER_VIEWS.slice(0, 8).every((v) => v.kind === 'border' && v.camAbove === 2.5 && v.pitchDeg === 0), 'eye height, level');
+  assert.ok(BORDER_VIEWS.slice(8, 16).every((v) => v.kind === 'border' && v.camAbove === 60 && v.pitchDeg === -15), '60 m up, 15° down');
+  assert.equal(createHash('sha256').update(JSON.stringify(BORDER_VIEWS)).digest('hex'),
+    '1bce6d5c96cc297a27dad0e1c738549683c6d2084a6e43b950dfd3da4f48a3df',
+    'the border camera set is pinned: a moved or added view is a deliberate, dated re-pin (old border censuses stop comparing)');
+  assert.ok(Object.isFrozen(BORDER_VIEWS) && BORDER_VIEWS.every((v) => Object.isFrozen(v)));
+  assert.equal(censusViewSet('core').views, CENSUS_VIEWS, 'the core set is the seven views, unchanged');
+  assert.equal(censusViewSet('core').protocol, CENSUS_PROTOCOL);
+  assert.equal(censusViewSet('border').protocol, BORDER_PROTOCOL, 'the border set has its own protocol: it never merges with a core census');
+  assert.throws(() => censusViewSet('rim'), /Unknown census view set "rim"/);
+  assert.deepEqual(selectCensusViews(['oblique-ne', 'edge-n'], 'border').map((v) => v.name), ['edge-n', 'oblique-ne']);
+  assert.throws(() => selectCensusViews(['edge-n']), /Unknown census view\(s\): edge-n/, 'border views are not core views');
+  const edgeN = BORDER_VIEWS.find((v) => v.name === 'edge-n'), cornerNe = BORDER_VIEWS.find((v) => v.name === 'corner-ne');
+  const nCandidates = borderSiteCandidates(edgeN);
+  assert.equal(nCandidates.length, 11 * 5);
+  assert.deepEqual([nCandidates[0].p, nCandidates[0].dir, nCandidates[0].inset, nCandidates[0].offset], [[0, 432], [0, 1], 80, 0], 'the side centre, 80 m inside');
+  assert.deepEqual(nCandidates.slice(0, 5).map((c) => c.inset), [80, 70, 90, 60, 100], 'insets 60–100 m, 80 first');
+  assert.deepEqual(nCandidates[5].p, [-40, 432], 'then offsets along the edge');
+  assert.deepEqual(nCandidates[0].corridor, [[0, 440], [0, 448], [0, 456]]);
+  assert.ok(nCandidates.every((c) => BORDER_EDGE - Math.max(Math.abs(c.p[0]), Math.abs(c.p[1])) >= 60 - 1e-9
+    && BORDER_EDGE - Math.max(Math.abs(c.p[0]), Math.abs(c.p[1])) <= 100 + 1e-9), 'every spot 60–100 m inside the edge');
+  const neCandidates = borderSiteCandidates(cornerNe);
+  assert.equal(neCandidates.length, 5 * 5);
+  assert.deepEqual(neCandidates[0].p, [432, 432], 'a corner spot is 80 m inside both edges');
+  assert.deepEqual(neCandidates.slice(0, 6).map((c) => [c.insetX, c.insetZ]), [[80, 80], [70, 70], [90, 90], [60, 60], [100, 100], [80, 70]],
+    'equal insets first, then the skewed pairs');
+  near(neCandidates[0].dir[0], Math.SQRT1_2, 1e-12, 'corners look along the diagonal');
+  assert.ok(neCandidates.every((c) => [c.p[0], c.p[1]].every((v) => BORDER_EDGE - Math.abs(v) >= 60 && BORDER_EDGE - Math.abs(v) <= 100)),
+    'every corner spot 60–100 m inside both edges');
+  assert.deepEqual(borderSiteCandidates(BORDER_VIEWS.find((v) => v.name === 'corner-sw'))[0].p, [-432, -432]);
+  assert.equal(borderSamplePoints(nCandidates).length, 4 * nCandidates.length);
+  assert.deepEqual(borderSiteCandidates(edgeN), nCandidates, 'deterministic from the table alone');
+  const level = () => 10;
+  const nSite = selectBorderSite(nCandidates, { heightAt: level });
+  assert.deepEqual([nSite.candidate.index, nSite.pass, nSite.rule], [0, 1, 'clear']);
+  const nEye = borderPose(nSite, edgeN, 10, 0);
+  assert.deepEqual(nEye.cam, [0, 12.5, 432]); assert.ok(nEye.absolute);
+  near(nEye.at[1], 12.5, 1e-9, 'the eye view is level'); assert.ok(nEye.at[2] > 800 && nEye.at[0] === 0, 'looking north, out of the square');
+  const nUp = borderPose(nSite, BORDER_VIEWS.find((v) => v.name === 'edge-n-up'), 10, 0);
+  near(pitchOf(nUp.cam, nUp.at), (-15 * Math.PI) / 180, 1e-9, 'the 60 m view pitches 15° down'); assert.equal(nUp.cam[1], 70);
+  const wetSpot = borderPose(nSite, edgeN, -4, 1.5);
+  assert.equal(wetSpot.cam[1], -4 + 1.5 + 2.5, 'over water the eye stands on the surface');
+  const shed = selectBorderSite(nCandidates, { heightAt: level, buildings: [{ x: 0, z: 432, w: 12, d: 12 }] });
+  assert.ok(shed.candidate.index > 0 && shed.pass === 1, 'a footprint on the spot moves it');
+  assert.ok(Math.hypot(shed.candidate.p[0], shed.candidate.p[1] - 432) - Math.hypot(12, 12) / 2 >= 10);
+  const bank = selectBorderSite(nCandidates, { heightAt: (x, z) => (z > 436 && Math.abs(x) < 50 ? 14 : 10) });
+  assert.ok(Math.abs(bank.candidate.p[0]) >= 50 || bank.candidate.inset < 80, 'a bank rising above the eye in front moves the spot');
+  const wall = selectBorderSite(nCandidates, { heightAt: (x, z) => z * 0.2 });
+  assert.equal(wall.pass, 2, 'ground climbing everywhere relaxes the rise rule');
+  const sea = selectBorderSite(nCandidates, { heightAt: level, waterDepthAt: () => 2 });
+  assert.deepEqual([sea.candidate.index, sea.pass, sea.rule], [0, 4, 'wet-allowed'], 'all water: the centre spot over the water');
+  const fenced = selectBorderSite(nCandidates, { heightAt: level, buildings: [{ x: 0, z: 400, w: 1200, d: 400 }] });
+  assert.deepEqual([fenced.candidate.index, fenced.pass, fenced.rule], [0, 5, 'anchor'], 'nowhere clear: the anchor, flagged');
+  assert.throws(() => selectBorderSite(nCandidates, {}), /heightAt/);
+  assert.throws(() => borderPose(nSite, edgeN, undefined), /no ground height/);
+  const oblique = BORDER_VIEWS.at(-1);
+  assert.deepEqual(obliqueSamplePoints(oblique), [[230, 230]]);
+  const op = obliquePose(oblique, 5);
+  assert.deepEqual(op.cam, [230, 285, 230]); near(pitchOf(op.cam, op.at), (-22 * Math.PI) / 180, 1e-9, 'the oblique pitches 22° down');
+  assert.ok(op.at[0] > 230 && Math.abs(op.at[0] - op.at[2]) < 1e-9, 'across the north-east corner');
 
   // ------------------------------------------------------------------ chase
   const north = { x: 100, z: 50, yaw: 0 };
@@ -243,6 +311,26 @@ try {
   writeIndex(outA, census, { mapIds: ['verdant', 'desert'], sheets, reproduce });
   assert.ok(readFileSync(written, 'utf8').includes('Verdant: flat light.'), 'regenerating keeps the hand-written read');
 
+  // a border census: its sheets, index and compare follow the census's own camera set
+  const outBorder = path.join(dir, 'census-border');
+  const borderCensus = openCensus(null, { ...header, protocol: BORDER_PROTOCOL, viewSet: 'border', viewsDigest: 'b1' });
+  assert.equal(censusViewsOf(borderCensus), BORDER_VIEWS); assert.equal(censusViewsOf(census), CENSUS_VIEWS);
+  borderCensus.maps.verdant = { name: 'Verdant Fields', status: 'ok', views: {} };
+  for (const view of BORDER_VIEWS) {
+    const f = await frame(`census-border/frames/verdant/${view.name}.png`, 320, 180, (x, y) => (y < 80 ? SKY : GROUND));
+    borderCensus.maps.verdant.views[view.name] = { status: 'ok', attempts: 1, file: path.relative(outBorder, f.file), state: shotState(0) };
+  }
+  saveCensus(outBorder, borderCensus);
+  assert.equal(await measureCensus(outBorder, borderCensus), BORDER_VIEWS.length);
+  const borderSheets = await buildSheets(outBorder, borderCensus, { mapIds: ['verdant'] });
+  assert.equal(borderSheets.views.length, BORDER_VIEWS.length, 'one sheet per border view');
+  const borderMap = await loadRgba(path.join(outBorder, borderSheets.maps[0]));
+  assert.deepEqual([borderMap.width, borderMap.height], [6 + 4 * 646, 46 + 5 * (360 + 26 + 6) + 6], 'four columns: edges, corners, edges up, corners up, oblique');
+  const borderIndex = renderIndex(borderCensus, { mapIds: ['verdant'], sheets: borderSheets });
+  assert.match(borderIndex, /^# Visual census \(border set\)/);
+  assert.match(borderIndex, /\| map \| edge-n \| edge-e \|/);
+  await assert.rejects(compareCensus(outA, outBorder, path.join(dir, 'cmp-mixed')), /one camera set/, 'a core and a border census never compare');
+
   // ------------------------------------------------------------------ compare
   const a = await frame('d/a.png', 64, 32, () => [10, 20, 30]);
   assert.deepEqual(pixelDiff(a.image, a.image), { meanAbsDiff: 0, shareOver16: 0 });
@@ -273,11 +361,16 @@ try {
   assert.deepEqual(cap.maps, ['desert', 'verdant']); assert.deepEqual(cap.views.map((v) => v.name), ['sky-w']);
   assert.equal(cap.batch, 5); assert.equal(cap.budgetMin, 16);
   assert.equal(parseCensusArgs(['capture', '--out=o']).options.views.length, CENSUS_VIEWS.length);
+  assert.equal(parseCensusArgs(['capture', '--out=o']).options.set, 'core');
+  const borderRun = parseCensusArgs(['capture', '--out=o', '--set=border', '--views=corner-sw,edge-n']).options;
+  assert.deepEqual([borderRun.set, borderRun.views.map((v) => v.name)], ['border', ['edge-n', 'corner-sw']]);
+  assert.equal(parseCensusArgs(['capture', '--out=o', '--set=border']).options.views.length, BORDER_VIEWS.length);
   for (const [argv, message] of [
     [['bogus'], /Unknown command/], [['capture'], /--out=<dir> is required/], [['capture', '--out=o', '--nope=1'], /Unknown argument --nope/],
     [['capture', '--out=o', 'positional'], /Unknown argument "positional"/], [['capture', '--out=o', '--out=p'], /Duplicate --out/],
     [['capture', '--out=o', '--serve=prod'], /--serve must be dist or dev/], [['capture', '--out=o', '--port=5190'], /avoid 5197/],
     [['capture', '--out=o', '--port=0'], /positive number/], [['capture', '--out=o', '--views=up'], /Unknown census view/],
+    [['capture', '--out=o', '--set=rim'], /Unknown census view set/], [['capture', '--out=o', '--set=border', '--views=chase'], /Unknown census view/],
     [['metrics', '--out=o', '--force=1'], /takes no value/], [['compare', '--a=x', '--out=o'], /--b=<dir> is required/],
     [['sheets', '--maps=a', '--out=o'], /Unknown argument --maps for sheets/],
   ]) assert.throws(() => parseCensusArgs(argv), message, argv.join(' '));
@@ -318,8 +411,30 @@ try {
   mkdirSync(dirs.lockDir);
   await assert.rejects(createPoliteCaptureLock({ ...dirs, ...fast }).acquire(300), /cot-shots lock timeout/);
   assert.ok(!existsSync(dirs.probeDir), 'a FIFO holder outlasting the wait gets the session mutex handed back');
+  // 2026-10-03: a waiter older than the stale age keeps its place. It renews its ticket while it waits and restores it
+  // when another waiter reaps it; before, it was deleted at 60 min and waited outside the queue behind every later arrival.
+  rmSync(dirs.lockDir, { recursive: true, force: true });
+  const front = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 30000)'], { stdio: 'ignore' });
+  const frontTicket = path.join(dirs.queueDir, t(1, front.pid));
+  writeFileSync(frontTicket, String(front.pid));
+  const frontAlive = setInterval(() => { const now = new Date(); try { utimesSync(frontTicket, now, now); } catch { /* gone */ } }, 30);
+  const ownTickets = () => readdirSync(dirs.queueDir).filter((n) => n.endsWith(`-${process.pid}.t`));
+  const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const patient = createPoliteCaptureLock({ ...dirs, ...fast, ticketStaleMs: 150, ticketRefreshMs: 40 });
+  const waiting = patient.acquire(5000);
+  await pause(450);
+  assert.equal(ownTickets().length, 1, 'a waiter past the stale age still holds its ticket');
+  assert.ok(Date.now() - statSync(path.join(dirs.queueDir, ownTickets()[0])).mtimeMs < 150, 'and keeps renewing it, so no peer reaps it');
+  for (const name of ownTickets()) rmSync(path.join(dirs.queueDir, name));
+  await pause(160);
+  assert.equal(ownTickets().length, 1, 'a reaped ticket is restored in place');
+  assert.ok(!existsSync(dirs.lockDir), 'it still waits behind the live waiter ahead of it');
+  clearInterval(frontAlive); front.kill();
+  await waiting;
+  assert.ok(existsSync(dirs.lockDir), 'and takes the lock when that waiter goes');
+  patient.release();
   rmSync(lockRoot, { recursive: true, force: true });
-  console.log('visual-census.selftest: camera set pinned, site selection, metrics, store, sheets, index, compare and CLI verified');
+  console.log('visual-census.selftest: camera sets pinned (core and border), site selection, metrics, store, sheets, index, compare and CLI verified');
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }

@@ -1,4 +1,7 @@
+import { drawAerialMinimap } from './aerialMinimap.ts';
+import { createAerialHud } from './aerialHud.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
+import type { AerialView } from '../sim/aerialCombat.ts';
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 // src/ui/hud.ts — battle HUD overlay: dispersion/reload reticle, shell
 // selector with ammo counts, consumable slots, penetration indicator, sniper
@@ -179,6 +182,7 @@ interface HudTankVisual {
 }
 
 export interface HudTank {
+  aerial?: AerialView;
   input?: {shellSlot:number};
   id: string;
   team?: string;
@@ -211,6 +215,11 @@ export interface HudSpottingView {
 // tactical map 2026-09-15: the objective arrays (flags, zones, ball, goals, pickups, spawns)
 // ride along structurally from the sim's presentation state for the minimap markers.
 export interface HudMatchModeState extends ObjectiveStateView {
+  support?:{ammoReadyInS:number;healReadyInS:number};
+  escort?: {alive:number;total:number;rescued:number;required:number;progress:number};
+  boss?: { id?: string; hp: number; maxHp: number };
+  infection?: { survivors: number; infected: number };
+  weaponStage?: { index: number; total: number; name: string; kills: number; required: number };
   id?: string;
   label?: string;
   perspectiveTeam?: 'alpha' | 'bravo';
@@ -236,7 +245,7 @@ export interface HudFrame {
   /** Ruleset clock in seconds (null = no clock); undefined lets the HUD derive it from the mode. */
   timeLimitS?: number | null;
   selfRightKeyLabel?: string;
-  auxiliaryKeyLabels?: {smoke:string;lights:string;roofGun:string;missile:string};
+  auxiliaryKeyLabels?: {smoke:string;lights:string;roofGun:string;missile:string;drone?:string;aerialVision?:string;supplyAmmo?:string;supplyHeal?:string};
 }
 
 interface HudHeightField {
@@ -1750,6 +1759,13 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-con.used{opacity:.35;filter:grayscale(1);}
 .cot-con.deny{animation:cotConDeny .3s;}
 @keyframes cotConDeny{0%,100%{border-color:rgba(146,164,180,.28);}50%{border-color:rgba(240,90,90,.9);}}
+.aerial-drone .cot-shells{visibility:hidden}
+.cot-shell[hidden]{display:none!important}
+.cot-aerial-readout{position:absolute;top:calc(50% + 64px);left:50%;transform:translateX(-50%);max-width:80vw;color:#dbffef;font:700 11px monospace;letter-spacing:.08em;text-align:center;pointer-events:none;text-shadow:0 1px 3px #000}
+.cot-aerial-readout[hidden]{display:none}
+.realistic-mode .hprow,.realistic-mode .hptrack,.realistic-mode .hpm,.realistic-mode .cot-hpb .tr,.realistic-mode .cot-tgt .hp,.realistic-mode .cot-tgt .bar{display:none!important}
+
+body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);font-size:9px}
 .cot-hpbars{position:absolute;z-index:var(--hud-layer-world);inset:0;}
 .cot-hpb{position:absolute;width:128px;height:31px;text-align:center;will-change:transform;
   contain:layout paint style;transform:translate3d(0,0,0);}
@@ -2369,6 +2385,12 @@ export function initHud(bus: EventBus): HudRuntime {
   let specialSpecId: string | null = null;
   let specialKind: SpecialActionKind = SPECIAL_ACTION_KINDS.NONE;
 
+  const droneButton = el('button', 'cot-auxiliary cot-drone-control', controlsRow); droneButton.type = 'button'; droneButton.hidden = true;
+  droneButton.innerHTML = `<span class="si">${uiIconSVG('modeDrone',18)}</span><span class="sl"></span><span class="sk">V</span>`;
+  droneButton.setAttribute('aria-label', t('systems.drone.help'));
+  droneButton.addEventListener('pointerdown', event => { event.preventDefault(); event.stopPropagation(); if (!droneButton.disabled) bus.emit('ui:drone', {}); });
+  droneButton.addEventListener('click', event => { event.stopPropagation(); if (event.detail === 0 && !droneButton.disabled) bus.emit('ui:drone', {}); });
+  const aerialHud = createAerialHud(root,bus);
   const missileButton=el('button','cot-auxiliary',controlsRow);missileButton.type='button';missileButton.hidden=true;
   missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">ATGM</span><span class="sk"></span><small class="system-status"></small>`;
   let missilePlayer:HudTank|null|undefined=null,previousConventionalSlot=0;
@@ -2394,6 +2416,15 @@ export function initHud(bus: EventBus): HudRuntime {
     const canControl=!!player?.combat&&!player.combat.destroyed;
     jumpHint.disabled=!canControl;
     controlsRow.hidden=!player;
+    const flight = player?.aerial;
+    droneButton.hidden = flight?.kind !== 'drone';
+    droneButton.disabled = !canControl || (!flight?.active && (flight?.cooldownS ?? 0) > 0);
+    droneButton.classList.toggle('active', !!flight?.active);
+    droneButton.setAttribute('aria-pressed', String(!!flight?.active));
+    droneButton.querySelector('.sl')!.textContent = flight?.active ? t('systems.drone.return') : (flight?.cooldownS ?? 0) > 0 ? `${Math.ceil(flight!.cooldownS)}s` : t('systems.drone');
+
+    root.classList.toggle('aerial-active', !!flight?.active);
+    root.classList.toggle('aerial-drone', flight?.kind === 'drone' && flight.active);
     const kit=auxiliaryCapabilities(player?.spec), state=player?.combat?.auxiliary;
     for(const {action,button,label,status} of auxiliaryButtons){
       button.hidden=!(action==='smoke'?kit?.smoke.length:action==='lights'?kit?.lights:kit?.guns.length);
@@ -2827,7 +2858,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const spotting = frame.spotting?.isSpotted ? frame.spotting : null;
     for (let i = 0; i < tanks.length; i++) {
       const tank = tanks[i];
-      if (!tank?.state || tank.isPlayer || tank.team === 'player') continue;
+      if (!tank?.state || tank.isPlayer || tank.team === (playerRef?.team ?? 'player')) continue;
       // Wave reserves are off the battlefield. Discard their previous wave's
       // contact so reactivation cannot resurrect a stale map position.
       if (tank.modeActive === false) {
@@ -2938,12 +2969,14 @@ export function initHud(bus: EventBus): HudRuntime {
       `<span class="veh"><i class="tier"></i><span class="vn"></span><i class="brain" hidden></i></span></span>` +
       `<div class="hpm"><i></i></div>`;
     const iconEl = requireElement<HTMLElement>(rootEl, '.ic');
-    maskIcon(iconEl, spec.id, 'side_silhouette', ally ? PEN_GREEN : PEN_RED);
+    const gunship=tank.aerial?.kind==='gunship';
+    if(gunship)iconEl.innerHTML=uiIconSVG('modeAc130',24,ally?PEN_GREEN:PEN_RED);
+    else maskIcon(iconEl, spec.id, 'side_silhouette', ally ? PEN_GREEN : PEN_RED);
     if (tank.isPlayer) rootEl.classList.add('me');
-    requireElement<HTMLElement>(rootEl, '.tier').textContent = tierNumeral(spec.id) || '–';
+    requireElement<HTMLElement>(rootEl, '.tier').textContent = gunship ? '' : tierNumeral(spec.id) || '–';
     requireElement<HTMLElement>(rootEl, '.nick').textContent = nickFor(tank);
-    requireElement<HTMLElement>(rootEl, '.vn').textContent = spec.name;
-    rootEl.title = `${nickFor(tank)} · ${spec.name}`;
+    requireElement<HTMLElement>(rootEl, '.vn').textContent = gunship ? 'AC-130' : spec.name;
+    rootEl.title = `${nickFor(tank)} · ${gunship?'AC-130':spec.name}`;
     // Jev commander (2026-09-25): a bot under Jev's orders carries a small tag beside its vehicle
     const brainEl = requireElement<HTMLElement>(rootEl, '.brain');
     brainEl.textContent = t('hud.brain.jev');
@@ -3005,7 +3038,7 @@ export function initHud(bus: EventBus): HudRuntime {
     resetTeamTally();
     for (const tank of tanks) {
       if (!tank?.spec) continue;
-      const ally = tank.team === 'player' || !!tank.isPlayer;
+      const ally = tank.team === (playerRef?.team ?? 'player') || !!tank.isPlayer;
       const dead = !!tank.combat?.destroyed;
       tallyTank(ally, dead);
       updateEarRow(tank, ally, dead);
@@ -3042,10 +3075,22 @@ export function initHud(bus: EventBus): HudRuntime {
     return limitS == null ? t('hud.timer.survive') : t('hud.team.time');
   }
 
+  function additionalModeStatusCopy(modeState: HudMatchModeState, ownScore: string | number): string | null {
+    if (modeState.id === 'juggernaut') return t(modeState.boss?.id === playerRef?.id ? 'hud.modeStatus.juggernautBoss' : 'hud.modeStatus.juggernaut', { hp: Math.ceil(modeState.boss?.hp ?? 0), max: Math.ceil(modeState.boss?.maxHp ?? 0) });
+    if (modeState.id === 'infected') return t('hud.modeStatus.infected', { survivors: modeState.infection?.survivors ?? 0, infected: modeState.infection?.infected ?? 0 });
+    if(modeState.id==='ac130'){const e=modeState.escort;return t('hud.modeStatus.ac130',{alive:e?.alive??0,rescued:e?.rescued??0,required:e?.required??1,progress:Math.round((e?.progress??0)*100)});}
+    if (modeState.id === 'realistic') return t(`hud.modeStatus.${modeState.id}`);
+    if (modeState.id === 'drone') return t('hud.modeStatus.drone', { own: ownScore, target: modeState.target ?? 20 });
+    if (modeState.id === 'gun_game') { const stage = modeState.weaponStage; return t('hud.modeStatus.gun_game', { stage: (stage?.index ?? 0) + 1, total: stage?.total ?? 5, name: stage?.name ?? '', kills: stage?.kills ?? 0, required: stage?.required ?? 2 }); }
+    return null;
+  }
+
   function modeStatusCopy(
     modeState: HudMatchModeState,
     ownScore: string | number,
   ): string {
+    const special = additionalModeStatusCopy(modeState, ownScore);
+    if (special !== null) return special;
     if (modeState.id === 'standard') return t('hud.modeStatus.eliminate', {own:String(ownScore), target:String(modeState.target || 0)});
     if (modeState.id === 'capture_the_flag') {
       return t('hud.modeStatus.flags', { own: String(ownScore), target: String(modeState.target || 3) });
@@ -3073,6 +3118,8 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function modeStatusIconName(modeId: string): string {
+    const icon = { juggernaut: 'modeJuggernaut', infected: 'modeInfected', realistic: 'modeRealistic', gun_game: 'modeGunGame', drone: 'modeDrone', ac130: 'modeAc130' }[modeId];
+    if (icon) return icon;
     if (modeId === 'standard') return 'modeStandard';
     if (modeId === 'capture_the_flag') return 'modeFlag';
     if (modeId === 'mars') return 'modeMars';
@@ -4065,6 +4112,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function sniperAmmoReadoutY(draw: ReticleDrawState): number {
     // Short landscape keeps the whole readout stack close to the scope.
+    if (h <= 300) return draw.cy + 32;
     if (h <= 430) return draw.cy + 44;
     return Math.min(
       draw.cy + Math.max(draw.radius * 1.02 + 24, draw.radius * 1.55 + 18, 96),
@@ -4111,7 +4159,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (window.__HUD_HIDE_ZOOM_PLATE) return;
     // Keep the familiar zoom line directly beneath ammunition, not over the
     // target or detached down beside the vehicle console.
-    const y = sniperAmmoReadoutY(draw) + 24;
+    const y = sniperAmmoReadoutY(draw) + (h <= 300 ? 18 : 24);
     const text = `×${(view.zoom || 8).toFixed(1)}`;
     ctx.font = `700 16px ${FONT_COND}`;
     ctx.fillStyle = 'rgba(196,246,202,0.95)';
@@ -4323,6 +4371,8 @@ export function initHud(bus: EventBus): HudRuntime {
   // ---------- shell selector ----------
   function renderShells(shells: HudShellCard[] | null | undefined, slot: number, pending = false): void {
     for (let i = 0; i < 3; i++) {
+      const unavailable = !!shells?.length && !shells[i];
+      if (slotEls[i].hidden !== unavailable) slotEls[i].hidden = unavailable;
       slotPresentations[i].render(shells?.[i] || DEFAULT_SHELLS[i], i === slot, pending);
     }
     if (ammoSwitchingStatus.hidden === pending) {
@@ -4353,7 +4403,7 @@ export function initHud(bus: EventBus): HudRuntime {
   } {
     if (!tank || tank.isPlayer || !tank.combat || tank.combat.destroyed) return false;
     if (tank.id === aimTargetId) return false;
-    return tank.team === 'player' || isSpotted(tank.id);
+    return tank.team === (playerRef?.team ?? 'player') || isSpotted(tank.id);
   }
 
   function projectHpBarAnchor(tank: HudTank, camera: THREE.PerspectiveCamera): boolean {
@@ -4370,7 +4420,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function createHpBar(tank: HudTank): HpBar {
-    const ally = tank.team === 'player';
+    const ally = tank.team === (playerRef?.team ?? 'player');
     const rootEl = el('div', ally ? 'cot-hpb ally' : 'cot-hpb', hpLayer);
     rootEl.innerHTML = `<div class="nm"><i class="si"></i><span></span></div>`
       + `<div class="tr"><div class="fl"></div></div>`;
@@ -4453,7 +4503,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // spotted; forced screenshot stills trust the recipe (vehicle is rendered).
   function isAimTargetCandidate(tank: HudTank | null | undefined): tank is HudTargetTank {
     if (!tank || tank.isPlayer || !tank.state || !tank.combat || tank.combat.destroyed) return false;
-    if (tank.team === 'player') return false;
+    if (tank.team === (playerRef?.team ?? 'player')) return false;
     return forcedStill || isSpotted(tank.id);
   }
 
@@ -5241,7 +5291,7 @@ export function initHud(bus: EventBus): HudRuntime {
     let ax = 0, az = 0, an = 0, ex = 0, ez = 0, en = 0;
     for (const t of tanks) {
       if (!t || !t.state) continue;
-      if (t.team === 'player' || t.isPlayer) { ax += t.state.pos.x; az += t.state.pos.z; an++; }
+      if (t.team === (playerRef?.team ?? 'player') || t.isPlayer) { ax += t.state.pos.x; az += t.state.pos.z; an++; }
       else { ex += t.state.pos.x; ez += t.state.pos.z; en++; }
     }
     if (!an || !en) return;
@@ -5477,7 +5527,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function pushTankMinimapBlip(tank: HudTank, state: TankState): void {
-    const ally = tank.team === 'player';
+    const ally = tank.team === (playerRef?.team ?? 'player');
     if (ally) {
       const point = worldToMap(state.pos.x, state.pos.z);
       pushLiveBlip(point[0], point[1], state.yaw, PEN_GREEN, 5, 0.95, false);
@@ -5597,7 +5647,7 @@ export function initHud(bus: EventBus): HudRuntime {
     // player map position first — base rings fade while the arrow sits on them
     let plMapX = NaN, plMapY = NaN;
     if (player?.state) {
-      const pm = worldToMap(player.state.pos.x, player.state.pos.z);
+      const pm = worldToMap(player.aerial?.active?player.aerial.x:player.state.pos.x, player.aerial?.active?player.aerial.z:player.state.pos.z);
       plMapX = pm[0]; plMapY = pm[1];
     }
     // Team bases sit under vehicle contacts, using the shared team-tinted
@@ -5628,10 +5678,14 @@ export function initHud(bus: EventBus): HudRuntime {
     // render-range SQUARE is gone — at 500 m on a 1 km map its edges sliced
     // across the terrain and read as a stray playable-bounds frame floating
     // inset from the map border (the panel frame IS the map bound).
-    if (player?.state) drawPlayerMinimapOverlay(player.state, frame.camera);
+    if (player?.state && !player.aerial?.active) drawPlayerMinimapOverlay(player.state, frame.camera);
     // clamp inside the map frame and draw the player arrow LAST so it always
     // sits on top.
     paintMinimapBlips();
+    if(player?.state&&player.aerial?.active){
+      _fwd.set(0,0,-1);if(frame.camera)_fwd.transformDirection(frame.camera.matrixWorld);
+      drawAerialMinimap(mmCtx,player.aerial,player.state.pos,frame.aim?.point,_fwd,worldToMap,MM/mapWorldSize);
+    }
   }
 
   // ---------- bus feeds ----------
@@ -6220,9 +6274,9 @@ export function initHud(bus: EventBus): HudRuntime {
       reticlePaint.valid = false;
       return;
     }
-    if (mode === 'sniper') drawScope(aimView);
+    if (mode === 'sniper' && !playerRef?.aerial?.active) drawScope(aimView);
     drawHitIndicators(lastTimeS);
-    drawReticle(aimView, dt);
+    if (!playerRef?.aerial?.active) drawReticle(aimView, dt);
     drawHitMark(aimView, lastTimeS);
     captureReticlePaint(aimView);
   }
@@ -6240,6 +6294,7 @@ export function initHud(bus: EventBus): HudRuntime {
     return sceneCanvasEl;
   }
   function applyMode(): void {
+    if (mode === 'hidden') {document.documentElement.classList.remove('cot-thermal-flight');document.documentElement.dataset.flight='';}
     root.style.display = mode === 'hidden' ? 'none' : 'block';
     // scope shadow fades in over ~0.1 s on ENTERING sniper (movement §9.2)
     if (mode === 'sniper' && scopePrevMode !== 'sniper') scopeFadeMs = performance.now();
@@ -6295,8 +6350,11 @@ export function initHud(bus: EventBus): HudRuntime {
     if(frame.auxiliaryKeyLabels){
       for(const item of auxiliaryButtons)item.key.textContent=frame.auxiliaryKeyLabels[item.action];
       missileButton.querySelector('.sk')!.textContent=frame.auxiliaryKeyLabels.missile;
+      droneButton.querySelector('.sk')!.textContent=frame.auxiliaryKeyLabels.drone || 'V';
     }
+    root.classList.toggle('realistic-mode', frame.matchModeState?.id === 'realistic');
     updateSpecialAction(frame.player || playerRef);
+    aerialHud.update(frame.player || playerRef,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone || 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision || 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper');
     updateDriveReadout(frame.player || playerRef, frame.timeS);
     updateDamagePanelPose(state.camera);
     shotInfo.setPlayer(playerId);

@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
-// audio-probe.mjs — auditable verification for the SOUND overhaul.
+// audio-probe.mjs — auditable verification for the sound engine
+// (src/audio/audioEngine.ts and its __COT_AUDIO debug surface).
 //
 // Boots the game headless (own vite on a 7xxx port — NEVER 5001/5002), enters
 // a battle, then drives the full event → sound matrix through window.__DEBUG
-// while recording the REAL master output via the __COT_AUDIO PCM tap
-// (src/audio/audio.ts debug surface). Writes the recordings as .wav files
-// under shots/audio-probe/ so the mix can be listened to, and asserts:
-//   - zero page console errors
+// while recording the REAL master output via the __COT_AUDIO PCM tap. Writes
+// the recordings as .wav files under shots/audio-probe/ so the mix can be
+// listened to, and asserts:
+//   - zero page console errors and zero asset decode failures
 //   - no digital clipping (peak < 0 dBFS on every capture; warn above -1)
 //   - every canonical combat event reaches its intended audio route
-//   - crew voice lines actually trigger on their events (voiceLog)
+//   - the occupied hull runs its powertrain rig and the map plays its scene
+//   - the M1A2's crew speaks American English, and every crew voice line
+//     triggers on its event (voiceLog)
 //   - channel buses respond to the settings mix (combat/voice sliders)
 // Exit 0 = green. Shares the FIFO capture lock with tools/screenshot.mjs so
 // parallel harnesses never contend for the GPU.
@@ -19,7 +22,7 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
 // --- FIFO capture lock (same protocol/dirs as tools/screenshot.mjs) ---------
@@ -71,8 +74,12 @@ lockRefresher.unref();
 
 // --- server (own 7xxx port per the SOUND agent mandate) ----------------------
 const port = 7100 + Math.floor(Math.random() * 500);
+// A private dep cache: node_modules (and its .vite) can be shared between checkouts.
+const viteCacheDir = resolve('/tmp', `cot-audio-probe-vite-${process.pid}`);
+process.on('exit', () => rmSync(viteCacheDir, { recursive: true, force: true }));
 const server = await createServer({
   root: process.cwd(),
+  cacheDir: viteCacheDir,
   logLevel: 'error',
   server: { port, strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
   optimizeDeps: {
@@ -215,6 +222,30 @@ try {
     .catch(() => console.warn('[audio-probe] voices not loaded within 15 s — continuing'));
   console.log(`[audio-probe] context up (sr=${sampleRate}), voices loaded=` +
     `${await page.evaluate(() => window.__COT_AUDIO.voicesLoaded)}`);
+  // The engine state the event matrix runs against.
+  const engineView = await page.evaluate(() => ({
+    crewLanguage: window.__COT_AUDIO.crewLanguage,
+    snapshot: window.__COT_AUDIO.snapshot,
+    ambience: window.__COT_AUDIO.ambientState(),
+    engines: window.__COT_AUDIO.engineState(),
+    library: window.__COT_AUDIO.library(),
+  }));
+  report.engine = engineView;
+  console.log(`[audio-probe] crew=${engineView.crewLanguage} snapshot=${engineView.snapshot} ` +
+    `bed=${engineView.ambience.bed} rigs=${engineView.engines.map((e) => `${e.id}:${e.family}:${e.lod}`).join(',')}`);
+  if (engineView.crewLanguage !== 'en-US') {
+    failed = true;
+    report.errors.push(`M1A2 crew speaks ${engineView.crewLanguage}, expected en-US`);
+  }
+  const ownRig = engineView.engines.find((e) => e.own);
+  if (!ownRig || ownRig.family !== 'turbine_agt') {
+    failed = true;
+    report.errors.push(`occupied M1A2 rig missing or wrong powertrain (${ownRig ? ownRig.family : 'none'})`);
+  }
+  if (!engineView.ambience.bed) {
+    failed = true;
+    report.errors.push('no ambience bed playing in battle');
+  }
 
   // In-page helpers for scripted events.
   await page.evaluate(() => {
@@ -289,6 +320,8 @@ try {
   await emit('tank:destroyed', `{id:window.__P.enemyId, specId:'t90m', pos:window.__P.pos(0,0,35), killerId:window.__P.playerId, cause:'shot'}`);
   await sleep(3200);
   capReport('combat-oneshots', await tapStopAndFetch());
+  // The route log is bounded; read it before the live battle below rotates it.
+  const earlyRoutes = await page.evaluate(() => window.__COT_AUDIO.soundLog.map((entry) => entry.type));
 
   // ---- capture 2: alarms + crew voices --------------------------------------
   // Freeze the sim and let earlier combat chatter drain. Without this clean
@@ -315,8 +348,13 @@ try {
   await sleep(2600);
   await emit('tank:fire', `{id:window.__P.playerId, burning:false}`);
   await sleep(1400);
-  await emit('player:reload', `{t:0, total:7, done:true}`);
-  await sleep(1500);
+  // "Loaded!" is called on 80 % of reloads (3 s line cooldown): retry a few cycles.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await emit('player:reload', `{t:0, total:7, kind:'shell', caliberMm:120, progress:1, done:true}`);
+    await sleep(1500);
+    if (await page.evaluate(() => window.__COT_AUDIO.voiceLog.some((v) => v.id === 'reloaded'))) break;
+    await sleep(1800);
+  }
   // Critical HP → heartbeat pulse window (settings alarmHeartbeat default on).
   await page.evaluate(() => {
     const p = window.__DEBUG.game.player;
@@ -397,7 +435,7 @@ try {
   capReport('battle-mix', await tapStopAndFetch());
 
   // ---- canonical gameplay event route assertions ---------------------------
-  const soundLog = await page.evaluate(() => window.__COT_AUDIO.soundLog.map((entry) => entry.type));
+  const soundLog = [...earlyRoutes, ...await page.evaluate(() => window.__COT_AUDIO.soundLog.map((entry) => entry.type))];
   const mustRoute = ['shell:fired', 'shell:hit', 'shell:expired', 'tank:impact',
     'tank:ram', 'prop:crushed', 'tank:destroyed', 'tank:fire'];
   const missingRoutes = mustRoute.filter((type) => !soundLog.includes(type));
@@ -414,9 +452,13 @@ try {
   // ---- voice trigger assertions ----------------------------------------------
   const voiceLog = await page.evaluate(() => window.__COT_AUDIO.voiceLog.map((v) => v.id));
   report.voice.played = voiceLog;
+  // A spot is called by bearing ("tank, front/left/right/rear") or plain.
+  const SPOTTED = ['enemy_spotted', 'spotted_front', 'spotted_left', 'spotted_right', 'spotted_rear', 'spotted_multiple'];
   const mustHave = ['target_destroyed', 'enemy_spotted', 'ammo_rack', 'track_gone',
     'bounced_us', 'were_hit', 'fire', 'reloaded'];
-  const missing = mustHave.filter((id) => !voiceLog.includes(id));
+  const missing = mustHave.filter((id) => (id === 'enemy_spotted'
+    ? !voiceLog.some((v) => SPOTTED.includes(v))
+    : !voiceLog.includes(id)));
   report.voice.missing = missing;
   if (await page.evaluate(() => window.__COT_AUDIO.voicesLoaded)) {
     if (missing.length) {
@@ -435,6 +477,12 @@ try {
   // everything else fails the probe.
   const KNOWN_UNRELATED = /syncFromState|multiplyQuaternions|tankFactory\.ts/;
   const audioErrors = consoleErrors.filter((e) => !KNOWN_UNRELATED.test(e));
+  const finalLibrary = await page.evaluate(() => window.__COT_AUDIO.library());
+  report.library = finalLibrary;
+  if (finalLibrary.failed) {
+    failed = true;
+    report.errors.push(`${finalLibrary.failed} audio assets failed to decode`);
+  }
   const quarantined = consoleErrors.filter((e) => KNOWN_UNRELATED.test(e));
   if (quarantined.length) {
     report.quarantinedErrors = [...new Set(quarantined)].slice(0, 3);

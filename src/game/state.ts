@@ -1,3 +1,5 @@
+import { initializeAerial, stepAerial, isGunship, type AerialView } from '../sim/aerialCombat.ts';
+import { setModeWeapon } from '../sim/modeLoadout.ts';
 import { requestAuxiliary, stepRoofGun, auxiliaryShot, smokeBlocks, type SmokeScreen } from '../sim/auxiliarySystems.ts';
 import { bridgeBallFloor } from '../sim/bridgeBallSupport.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
@@ -96,7 +98,10 @@ import {
   totalAmmunitionCapacity,
 } from '../sim/ammunition.ts';
 import { createAI, roleOf, type AiOrder } from './ai.ts';
-import { createBotNavigationGrid, planBotRoute } from '../sim/botRoutePlanner.ts';
+import {
+  collectNavigationWrecks, createBotNavigationGrid, planBotRoute, syncNavigationWrecks,
+  type NavigationWreck,
+} from '../sim/botRoutePlanner.ts';
 import {
   pushHullFromHull,
   hullPassesObstacleTop, pushHullFromObstacle,
@@ -227,6 +232,7 @@ type SoloPooledEntity = Omit<RosterEntity,
     bot?: boolean;
     /** Jev commander (2026-09-25): who commands this bot this battle (the HUD roster tags 'jev'). */
     brain?: 'classic' | 'jev';
+    aerial?: AerialView;
     modeActive?: boolean;
     modeSpeedMultiplier?: number;
     modeGravityScale?: number;
@@ -284,6 +290,7 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _engineCtx: EngineContext;
   shells: DamageShell[];
   nextShellId: number;
+  aerialCallbacks?: { nextId: () => number; launch: (shell: SoloGameState["shells"][number]) => void };
   timeS: number;
   fireTickAcc: number;
   combatRng: RandomSource;
@@ -308,6 +315,10 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   jev?: JevCommander | null;
   _jevView?: JevBattleView | null;
   _ramPairT?: Map<string, number>;
+  /** The bots' navigation grid for this battle and its wreck footprints (synced like the authority's). */
+  _botNavigation?: Readonly<BotNavigationGrid> | null;
+  _navigationWrecks?: NavigationWreck[];
+  _navigationWreckTicks?: number;
 }
 
 interface SpawnPoint {
@@ -608,6 +619,8 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
     if (_shellPool.length < 64) _shellPool.push(shell);
   }
   game.shells.length = 0;
+  // Pool entries survive between battles; mode weapons must not leak into the next sortie.
+  for (const entity of game.allTanks) entity.spec = getSpec(entity.specId);
   game.nextShellId = 1;
   game.timeS = 0;
   game.auxiliarySmokeScreens = [];
@@ -679,6 +692,7 @@ function prepareBattleVisuals(game: SoloGameState, deferVisuals: boolean): void 
 function createBattleSpotting(game: SoloGameState, world: SoloWorld): SpottingSystem {
   return createSpottingSystem({
     getTanks: () => game.tanks as SpottingTank[],
+    alwaysVisible: !!game.ruleset.alwaysVisible,
     raycast: world.raycast,
     opticalBlocked: (a,b) => smokeBlocks(game.auxiliarySmokeScreens||[],a,b,game.timeS,world.heightField.getHeightAt),
     concealers: world.getConcealment?.() || [],
@@ -1043,14 +1057,15 @@ function createBattleBot(
     rng: mulberry32(7000 + entityIndex),
     deps: {
       ...context.aiDependencies,
-      planRoute: (start: { x: number; z: number }, goal: { x: number; z: number }) => planBotRoute({
+      planRoute: (start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
+        options?: { requireGoalLevel?: boolean }) => planBotRoute({
         start, goal, navigation: context.botNavigation, rng: searchRng, role: roleOf(entity.spec),
-        spec: entity.spec, useRoleDetour: false,
+        spec: entity.spec, useRoleDetour: false, requireGoalLevel: options?.requireGoalLevel === true,
       }),
       getEnemies: () => {
         enemyScratch.length = 0;
         for (const candidate of context.game.tanks) {
-          if (candidate.team !== entity.team && !candidate.combat.destroyed) {
+          if (candidate.team !== entity.team && candidate.modeActive !== false && !candidate.combat.destroyed && !isGunship(candidate)) {
             enemyScratch.push(candidate);
           }
         }
@@ -1245,6 +1260,9 @@ export function setupBattle(
     queryObstacles: botObstacleQuery,
     getObstacles: () => world.getObstacles(),
   });
+  game._botNavigation = botNavigation;
+  game._navigationWrecks = [];
+  game._navigationWreckTicks = 0;
 
   // SYMMETRIC TEAMS (hud_ui r1) → BATTLE-AI r7 (7v7): random battles field 13
   // non-players and split them 6 ALLIES + 7 ENEMIES with a tier-balanced
@@ -1306,11 +1324,12 @@ export function setupBattle(
     allyIndex: 0,
   };
   spawnBattleEntities(spawnContext);
-  game.matchModeController = createMatchModeController({
+  game.matchModeController = createMatchModeController<SoloEntity>({
     mode: game.gameMode,
     ruleset: game.ruleset,
     entities: game.tanks,
     seed: COMBAT_SEED + game.battleCount,
+    setWeaponStage: setModeWeapon,
     placement,
     terrainHeight: (x, z) => world.heightField.getHeightAt(x, z),
     ballFloorHeight: (x, z, previousBottomY) => bridgeBallFloor(world.heightField, x, z, previousBottomY),
@@ -1330,6 +1349,7 @@ export function setupBattle(
       );
       // the wave's health scale folds into the ruleset stamp (hull, damage-taken, reload, ammunition)
       applyRulesetToCombat(ent.combat, ent.spec.gun.shells, game.ruleset, healthScale);
+      initializeAerial(ent, game.ruleset);
       ent.specialAction = createSpecialActionState(ent.spec);
       bindSpecialActionState(ent);
       ent.input.throttle = 0;
@@ -1342,12 +1362,16 @@ export function setupBattle(
       ent.visual?.resetDestroyed?.();
       ent.visual?.setVisible(true);
       refreshContactGeometry(ent);
-      for (let tick = 0; tick < 30; tick++) {
+      for (let tick = 0; !isGunship(ent) && tick < 30; tick++) {
         updateTank(ent, world.heightField, SIM_DT);
       }
       ent.visual?.syncFromState?.(ent.state);
     },
   });
+  for (const entity of game.tanks) {
+    initializeAerial(entity, game.ruleset);
+    if (isGunship(entity)) setModeWeapon(entity, 'gunship');
+  }
   game.matchModeState = game.matchModeController.state;
   game._nextModeRouteS = 0;
   attachBattleCommander(game);
@@ -1742,7 +1766,7 @@ function notifyTeamUnderFire(
   event: SoloHitEvent,
 ): void {
   if (!isActiveSoloEntity(shooter) || !isActiveSoloEntity(target) ||
-      shooter.team === target.team) return;
+      shooter.team === target.team || isGunship(shooter)) return;
   for (const entity of game.tanks) {
     if (entity.team !== target.team || !entity.aiCtl || entity.combat.destroyed) continue;
     if (entity !== target &&
@@ -1796,6 +1820,7 @@ function readyShellForFire(
   bus: EventBus,
 ): DamageShellSpec | null {
   const combat = entity.combat;
+  if (entity.aerial?.kind === 'drone' && entity.aerial.active) return null;
   if (!entity.input.fire || combat.destroyed) return null;
   const maximumSlot = entity.spec.gun.shells.length - 1;
   const requestedSlot = Math.max(
@@ -1819,6 +1844,11 @@ function readyShellForFire(
 }
 
 function prepareMuzzleDirection(entity: SoloEntity, shell: DamageShellSpec): number | null {
+  if (isGunship(entity)) {
+    _muzzle.copy(entity.state.pos);
+    _dir.copy(entity.input.aimPoint).sub(_muzzle).normalize();
+    return -1;
+  }
   const visual = entity.visual;
   if (!visual) return null;
   const launchers = usesLauncherMuzzles(entity.spec.gun, shell)
@@ -1892,6 +1922,7 @@ function emitShellFired(
 }
 
 function notifyEnemyShot(game: SoloGameState, shooter: SoloEntity): void {
+  if(isGunship(shooter))return;
   for (const entity of game.tanks) {
     if (entity.team === shooter.team || !entity.aiCtl || entity.combat.destroyed) continue;
     if (entity.state.pos.distanceToSquared(shooter.state.pos) <= 500 * 500) {
@@ -1927,10 +1958,10 @@ function tryFire(
   // ruleset gravity rides the shooter's stamp (Turbo Ball: 0.6 g lobs); unlimited rounds refill the channel
   shell.rocket = isUnguidedRocket(entity.spec.gun, shellSpec);
   shell.gravityMps2 = shellGravityMps2(shellSpec) * (Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1);
-  refillUnlimitedAmmunition(game.ruleset, entity.combat, firedSlot);
+  if(game.ruleset.aerial!=='gunship'||isGunship(entity))refillUnlimitedAmmunition(game.ruleset, entity.combat, firedSlot);
   game.shells.push(shell);
   const recoilScale = shotRecoilScale(entity.spec, shellSpec);
-  applyShotFeedback(entity, shellSpec, muzzleIndex, recoilScale, rig);
+  if (!isGunship(entity)) applyShotFeedback(entity, shellSpec, muzzleIndex, recoilScale, rig);
   emitShellFired(game, entity, shell, shellSpec, muzzleIndex, recoilScale, bus);
   startPostShotReload(entity.combat, entity.spec);
   if (!hasAmmunition(entity.combat, firedSlot)) {
@@ -1945,7 +1976,7 @@ function tryFire(
 }
 function advanceGuidedShell(game: SoloGameState, shell: DamageShell): boolean {
   const shooter = game.tankById.get(shell.shooterId);
-  if (isActiveSoloEntity(shooter) && specialActionGuidesShell(shooter, shell)) {
+  if (isActiveSoloEntity(shooter) && (specialActionGuidesShell(shooter, shell) || (isGunship(shooter) && shell.spec.guided))) {
     guideShellToward(shell, shooter.input.aimPoint, SIM_DT);
   }
   stepShell(shell, SIM_DT);
@@ -1962,7 +1993,7 @@ function traceNearestTank(
   nearest.entity = null;
   nearest.intersections = null;
   for (const entity of game.tanks) {
-    if (entity.modeActive === false || entity.id === shell.shooterId) continue;
+    if (entity.modeActive === false || entity.id === shell.shooterId || isGunship(entity)) continue;
     const radius = entity.spec.armor.boundingRadiusM;
     _toC.copy(entity.state.pos);
     _toC.y += entity.spec.dims.heightM * 0.5;
@@ -2242,6 +2273,11 @@ function retargetObjectiveBots(game: SoloGameState): void {
 }
 
 function stepBotControllers(game: SoloGameState): void {
+  // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (as the authority does)
+  if (game._botNavigation && game._navigationWrecks && (game._navigationWreckTicks = (game._navigationWreckTicks ?? 0) + 1) % 15 === 1) {
+    syncNavigationWrecks(game._botNavigation, game._navigationWrecks,
+      collectNavigationWrecks(game.tanks, game._navigationWrecks));
+  }
   for (const entity of game.tanks) {
     if (entity.modeActive !== false && entity.aiCtl && !entity.combat.destroyed) {
       entity.aiCtl.update(SIM_DT, game.timeS);
@@ -2440,13 +2476,20 @@ function stepTankMovement(
     // wrecks stay in the step (2026-09-19): readDebuffs marks them immobile / skidding, so a destroyed hull
     // keeps its momentum, its ballistic arc and its ground contact instead of freezing where it died
     if (entity.modeActive === false) continue;
+    if (isGunship(entity)) continue;
     refreshContactGeometry(entity);
     collider.setSelf(entity);
     // round 30: a hull above a building's roof stands on it (structureSupport.ts); the belly line is the hull
     // origin plus the contact geometry's belly offset
     support.beginHull(entity.state.pos.x, entity.state.pos.z,
       entity.state.pos.y + (entity.contactGeom?.bottomYM ?? 0));
-    updateTank(entity, support, SIM_DT, collider.collide);
+    // Park the carrier only during ground integration; preserve held flight controls
+    // for additional fixed steps when rendering slower than the simulation.
+    const parking = entity.aerial?.kind === 'drone' && entity.aerial.active;
+    const { throttle, steer, brake, aimLocked } = entity.input;
+    if (parking) { entity.input.throttle = 0; entity.input.steer = 0; entity.input.brake = true; entity.input.aimLocked = true; }
+    try { updateTank(entity, support, SIM_DT, collider.collide); }
+    finally { if (parking) { entity.input.throttle = throttle; entity.input.steer = steer; entity.input.brake = brake; entity.input.aimLocked = aimLocked; } }
     resolveTankImpacts(game, entity, bus, rig, collider);
   }
 }
@@ -2703,6 +2746,8 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
   if(screens)for(let i=screens.length-1;i>=0;i--)if(game.timeS-screens[i]!.born>18)screens.splice(i,1);
   for(const entity of game.tanks){
     const bits=entity.input.auxiliaryBits||0; entity.input.auxiliaryBits=0;
+    if(bits&2048)game.matchModeController?.requestSupply(entity.id,'ammo',game.timeS);
+    if(bits&4096)game.matchModeController?.requestSupply(entity.id,'heal',game.timeS);
     if(bits&64 && requestAuxiliary(entity,'smoke',game.timeS,world.heightField.getHeightAt)){
       const screens=game.auxiliarySmokeScreens??=[];screens.push(entity.combat.auxiliary!.smoke!);
       if(screens.length>84)screens.shift();
@@ -2737,6 +2782,9 @@ function stepFireDamage(game: SoloGameState, bus: EventBus): void {
 function stepMatchMode(game: SoloGameState, bus: EventBus): MatchModeResult | null {
   const outcome = game.matchModeController?.step(SIM_DT, game.timeS) || null;
   if (game.matchModeState && game.player) {
+    if (game.ruleset.gunGame || game.ruleset.infection || game.ruleset.aerial) {
+      game.matchModeState = game.matchModeController!.serialize(game.player.id);
+    }
     game.matchModeState.playerAmmo = totalAmmunition(game.player.combat);
     game.matchModeState.playerAmmoCapacity = totalAmmunitionCapacity(game.player.combat);
   }
@@ -2820,9 +2868,10 @@ function settleBattleResult(
     if (entity.team === 'enemy') enemiesLeft++;
     else if (entity.id !== game.player.id) alliesLeft++;
   }
+  const playerTeam = game.player.team === 'enemy' ? 'bravo' : 'alpha';
   if (modeOutcome) {
     game.result = modeOutcome.result === 'draw' ? 'draw'
-      : modeOutcome.result === 'alpha' ? 'victory' : 'defeat';
+      : modeOutcome.result === playerTeam ? 'victory' : 'defeat';
     game.resultReason = modeOutcome.reason;
   } else if (!game.matchModeController || game.matchModeController.usesElimination) {
     applyEliminationResult(game, enemiesLeft, alliesLeft);
@@ -2868,6 +2917,8 @@ export function simStep(
   stepBotControllers(game);
   silenceGunsAfterVerdict(game);
   applyBotSupportActions(game, bus);
+  const aerialCallbacks = game.aerialCallbacks ??= { nextId: () => game.nextShellId++, launch: shell => { game.shells.push(shell); } };
+  for (const entity of game.tanks) stepAerial(entity, game.timeS, SIM_DT, aerialCallbacks.nextId, aerialCallbacks.launch);
   stepTankMovement(game, bus, world, rig, collider);
   resolveTankBodyContacts(game.tanks, SIM_DT,
     (upper, lower, closing, nx, nz) =>

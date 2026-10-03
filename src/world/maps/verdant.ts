@@ -1,9 +1,34 @@
-// src/world/maps/verdant.ts — the classic grassland village battlefield
-// (Malinovka/Prokhorovka vibes). This config reproduces the original
-// hardcoded map exactly: every field left undefined falls back to the
-// defaults baked into terrain/vegetation/props.
+// src/world/maps/verdant.ts — Verdant Fields, redesigned 2026-10-02 (maps-and-layouts lane; docs/MAP-LAYOUT-BRIEF.md).
+// The palette, sky, vegetation, the country cross of roads (on its classic courses, now authored paths whose exits are
+// graded through the rim) and its junction village are the map's identity and stay (every field the config leaves
+// undefined still falls back to the defaults baked into terrain/vegetation/props); the battlefield around them is new. The old layout put alpha's pad beside the village, 457 m from bravo's arc and in
+// its sight, on five generic landforms that eleven other maps then copied; the 2v2 pacing receipt's seed 21002 ended
+// in 98 s.
+//
+// Reference: the black-earth farmland of the Kursk salient around Prokhorovka: open rolling fields on a broad plateau,
+// a village where two country roads cross, field shelterbelts and hedgerow banks, and long low swells that hide a
+// whole battalion behind them until it crests.
+//
+// The story on the ground: the two country roads cross at the village. South and north of it a long swell runs east to
+// west across the fields, broken where the north-south road crosses it, and screens each team's assembly area from the
+// other. Hedgerow banks and the farmsteads along the roads stand between the swells. The layout is rotationally
+// symmetric about the village (10, 20) in its landforms, pads, strongpoints and objectives (the country roads keep
+// their own course): alpha assembles behind the southern swell's western arm, bravo behind the northern swell's eastern
+// arm, so neither sees the other and every approach crests a swell or takes the road through a gap.
 
 import { DEFAULT_GARAGE_SKY } from './catalog.ts';
+
+// The two country roads on their classic courses (terrain.ts buildCountryRoads), as authored paths that stop inside
+// the square, so the endpoint completion grades each exit through the rim (the full-span country cross climbed the
+// rim at 30-36 %).
+const countryNorthSouth = Array.from({ length: 29 }, (_, k): [number, number] => {
+  const z = -448 + k * 32;
+  return [10 + 26 * Math.sin(z * 0.0062) + 8 * Math.sin(z * 0.017 + 2.1), z];
+});
+const countryEastWest = Array.from({ length: 29 }, (_, k): [number, number] => {
+  const x = -448 + k * 32;
+  return [x, 46 + 34 * Math.sin(x * 0.0043 + 1.0) + 7 * Math.sin(x * 0.013 - 0.6)];
+});
 
 export default {
   id: 'verdant',
@@ -11,31 +36,47 @@ export default {
   blurb: 'Rolling grassland, hedgerows and a road-junction village',
 
   terrain: {
-    // defaults: country roads, classic village rect, three marshes
+    // the classic village rect stays the default; the three default marsh dips go
+    roads: { paths: [countryNorthSouth, countryEastWest] },
+    hillScale: 0.6,   // the plateau's broad roll (the default 1.0 broke every sightline inside 80 m)
+    microScale: 0.75, // field-scale folds (default 1.0)
+    // the default rim, stated: the authored border roads' portal shoulders size their support from it
+    rimH: 24,
+    marshes: [],
+    // The village square and the two field greens on the swells' inner slopes: level aprons the zone-control placement
+    // seats its 30 m discs on, each clear of the country roads.
+    hardstands: [
+      { x: 10, z: 20, width: 60, length: 60, yawDeg: 0, grade: 0 },
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): 24 m north onto flatter ground, a 16 m bank
+      { x: -250, z: -126, width: 60, length: 60, yawDeg: 0, level: 1.0, grade: 0, bankM: 16 },
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): 24 m south onto flatter ground, a 16 m bank
+      { x: 270, z: 166, width: 60, length: 60, yawDeg: 0, level: 1.5, grade: 0, bankM: 16 },
+    ],
     landforms: [
-      { kind: 'ridge', x: -244, z: 18, length: 318, width: 70, height: 6.4, yawDeg: 10 },
-      { kind: 'ridge', x: 246, z: 54, length: 304, width: 72, height: 6.0, yawDeg: -14 },
-      { kind: 'ridge', x: -54, z: 232, length: 190, width: 56, height: 4.6, yawDeg: 74 },
-      { kind: 'knoll', x: 168, z: -218, rx: 82, rz: 62, height: 5.2, yawDeg: 22 },
-      { kind: 'basin', x: -142, z: -176, rx: 96, rz: 72, height: -2.4, yawDeg: -16 },
+      // The swells: the southern one broken at the north-south road (x -25..50); the northern one is its rotation.
+      { kind: 'ridge', x: -190, z: -245, length: 330, width: 80, height: 10, yawDeg: 0 },
+      { kind: 'ridge', x: 150, z: -270, length: 200, width: 70, height: 8, yawDeg: 0 },
+      { kind: 'ridge', x: 210, z: 285, length: 330, width: 80, height: 10, yawDeg: 0 },
+      { kind: 'ridge', x: -130, z: 310, length: 200, width: 70, height: 8, yawDeg: 0 },
+      // the barrow on each swell's crest where the line between the pads crosses it (a kurgan, as on the Psyol plateau)
+      { kind: 'knoll', x: -75, z: -245, rx: 50, rz: 40, height: 6 },
+      { kind: 'knoll', x: 95, z: 285, rx: 50, rz: 40, height: 6 },
+      // Hedgerow banks between the swells, each with its rotation: hull-down lines for both teams.
+      ...[[-260, -90, 130, 0], [120, -110, 120, 4]].flatMap(([x, z, length, yaw]) => [
+        { kind: 'ridge', x, z, length, width: 22, height: 2.4, yawDeg: yaw },
+        { kind: 'ridge', x: 20 - x, z: 40 - z, length, width: 22, height: 2.4, yawDeg: yaw },
+      ]),
     ],
   },
 
   spawns: {
-    // player pulled 20 m toward the establishing camera (was 14,-78): the
-    // battlefield shot must show SEVERAL tanks (contract), and the ally
-    // cluster (lateral ±22/44 m) now sits center-frame at ~70 m instead of
-    // reading as two dark specks at the frame edge
-    player: { x: 2, z: -95 },
-    // BATTLE-AI r7 TEAM SPAWNS: the seven enemy points form ONE spawn arc on
-    // the enemy base side (two staggered rows around the base bearing) instead
-    // of the old mid-map east/west scatter (±330,~135 sat abreast of the
-    // village). Cells flat-scanned via tools/tmp-ai-r7-spawnscan.mjs — raw
-    // terrain (pads stripped) minNy>=0.86, relief<=5 m over the 22 m pad
-    // radius, no soft ground/lakes, >=38 m apart, >=380 m from the player pad.
+    // Alpha assembles behind the southern swell's western arm, 180 m off the north-south road; bravo's seven pads stand
+    // behind the northern swell's eastern arm, their centroid the rotation of alpha's pad about the village. Off the
+    // road, neither side's first bound runs straight down it into the village. 850 m between the anchors.
+    player: { x: -170, z: -365 },
     enemies: [
-      { x: 37, z: 331 }, { x: -25, z: 337 }, { x: 101, z: 322 }, { x: -63, z: 364 },
-      { x: 188, z: 382 }, { x: -123, z: 395 }, { x: 235, z: 384 },
+      { x: 130, z: 390 }, { x: 190, z: 390 }, { x: 250, z: 390 },
+      { x: 160, z: 426 }, { x: 220, z: 426 }, { x: 90, z: 408 }, { x: 290, z: 408 },
     ],
   },
 
@@ -76,22 +117,28 @@ export default {
     plan: ['farmhouse', 'barn', 'tavern', 'chapel', 'cottage', 'ruin',
       'granary', 'schoolhouse', 'mill', 'cottage', 'farmhouse', 'cottage'],
     destructibleBuildings: ['fieldhut', 'leanto', 'huntingblind', 'commandtent'],
+    // Three strongpoint pairs by the country roads and the swells, each the other's rotation about the village.
     tacticalBeats: [
-      { id: 'western-hedgerow-post', role: 'brawl', x: -254, z: 64, yawDeg: 12,
-        structure: 'fieldhut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: -14 },
-      { id: 'eastern-field-observer', role: 'scout', x: 246, z: 70, yawDeg: -12,
+      { id: 'south-road-observer', role: 'scout', x: -60, z: -200, yawDeg: 8,
         structure: 'huntingblind', outcrop: { count: 4, radius: 8, scaleMax: 2.6 } },
-      { id: 'northern-command-fold', role: 'support', x: 24, z: 270, yawDeg: 4,
+      { id: 'north-road-observer', role: 'scout', x: 80, z: 240, yawDeg: 188,
+        structure: 'huntingblind', outcrop: { count: 4, radius: 8, scaleMax: 2.6 } },
+      { id: 'south-assembly-post', role: 'brawl', x: 90, z: -320, yawDeg: 0,
+        structure: 'fieldhut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: -14 },
+      { id: 'north-assembly-post', role: 'brawl', x: -70, z: 360, yawDeg: 180,
+        structure: 'fieldhut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: 14 },
+      { id: 'west-command-fold', role: 'support', x: -300, z: 0, yawDeg: 90,
         structure: 'commandtent', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -14 },
+      { id: 'east-command-fold', role: 'support', x: 320, z: 40, yawDeg: 270,
+        structure: 'commandtent', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: 14 },
     ],
     wallRuns: [
       // village walls (relative to the classic village rect)
       [-56, 8, -56, 64, 2], [-56, 8, -20, 8, 3], [74, 30, 74, 96, 4],
       [-8, 110, 52, 110, 2], [38, -34, 74, -34, 1], [-44, 108, -10, 108, 0],
-      // midfield field-boundary walls
-      [-186, -62, -118, -62, 3], [-118, -62, -118, -14, 1], [148, -196, 148, -132, 2],
-      [-64, 218, 8, 218, 4], [196, 108, 258, 108, 2], [-266, 66, -212, 66, 1],
-      [96, -320, 158, -320, 3],
+      // field walls on the hedgerow banks between the swells, each with its rotation about the village
+      [-320, -60, -260, -60, 3], [340, 100, 280, 100, 3], [80, -150, 150, -150, 2], [-60, 190, -130, 190, 2],
+      [-160, -150, -100, -150, 1], [180, 190, 120, 190, 1],
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     // r2: more midfield material breakup (craters/haystacks) — the open
@@ -99,7 +146,7 @@ export default {
     // r4: another push (haystacks 18 -> 26, craters 42 -> 58, outcrops 16 ->
     // 24, rocks 170 -> 195) — the critique still read "one lone bale" and a
     // golf course; paired with the bigger crater radii in props.ts
-    haystacks: 26, rocks: 195, outcrops: 24, craters: 58, rubblePiles: 0,
+    haystacks: 26, rocks: 150, outcrops: 18, craters: 58, rubblePiles: 0,
     // Legacy-map quality backport: a deliberate modern wreck cast staged as
     // roadside kills +
     // paired duels (baked static via src/world/wrecks.ts), soft-vehicle and
@@ -140,7 +187,7 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'fair-weather-cumulus', streets: 0.45, coverage: 0.36 },
+  clouds: { regime: 'fair-weather-cumulus', streets: 0.45, coverage: 0.36, contrails: 0.35, contrailAge: 0.7 },
   sky: DEFAULT_GARAGE_SKY,
 
   minimap: {

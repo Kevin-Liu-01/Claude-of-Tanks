@@ -14,7 +14,7 @@
 - [Battlefields and destruction](https://cot.kevinliu.studio/docs/worlds): Thirty authored maps, terrain, routes, structures, collision, environment, destruction, props, and wrecks.
 - [Bots and tactical AI](https://cot.kevinliu.studio/docs/ai): Perception, deterministic route planning, gun handling, team safety, survival behavior, and tests.
 - [Multiplayer authority](https://cot.kevinliu.studio/docs/multiplayer): Rooms, input intent, authority, snapshots, prediction, reconciliation, spotting, bots, and host migration.
-- [Audio and battlefield FX](https://cot.kevinliu.studio/docs/audio): Weapons, engines, spatial listeners, bounded mix state, crew radio, and killcam timing.
+- [Audio and battlefield FX](https://cot.kevinliu.studio/docs/audio): Weapon reports and distance, hits heard at the target, engines and tracks, national crew radio, ambience, mode sounds, and Sound settings.
 - [Interface and controls](https://cot.kevinliu.studio/docs/interface): Garage, HUD, aiming feedback, ammunition, killcam, spectator mode, reports, settings, desktop input, and touch.
 - [Scene Studio and capture](https://cot.kevinliu.studio/docs/studio): Scene data, maps, vehicles, cameras, effects, timeline, stills, GIFs, video, and review workflow.
 

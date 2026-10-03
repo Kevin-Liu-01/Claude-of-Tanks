@@ -160,6 +160,9 @@ interface RigidBodyState {
   landingBlendS: number;
   dynamicSupport: boolean;
   autoRighting: boolean;
+  /** Set by the tank contact pass (tankBodyContacts.ts) while the hull rests on another hull's roof: the root height
+   * the ride stands at, its ground for the next step (NaN otherwise). */
+  restSupportY: number;
 }
 
 export interface MovementContactGeometry {
@@ -272,6 +275,7 @@ interface DriveStep {
 }
 
 export interface TankState {
+  modeScale?: number;
   /** Independent roof station pose, shared by firing and its damage volume. */
   roofGunYaw?: number;
   roofGunPitch?: number;
@@ -1169,7 +1173,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
       y: pos.y, v: 0, supportY: NaN, groundV: 0, grounded: true, airTime: 0, bounces: 0,
     },
     _body: { // rigid attitude/contact state; dormant during ordinary driving
-      tumbling: false, landingBlendS: 0, dynamicSupport: false, autoRighting: false,
+      tumbling: false, landingBlendS: 0, dynamicSupport: false, autoRighting: false, restSupportY: NaN,
     },
     _rollover: { elapsedS: 0, expired: false },
     _groundType: 'medium',
@@ -1220,6 +1224,7 @@ export function resetTankVerticalState(
   state._sup.x = NaN;
   state._body.landingBlendS = 0;
   state._body.dynamicSupport = false;
+  state._body.restSupportY = NaN;
   if (grounded !== false && !state.overturned) state._body.tumbling = false;
 }
 
@@ -1333,8 +1338,12 @@ function constrainLoadedRide(
 }
 
 function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: number, drive: DriveStep): void {
-  const supportY = state._sup.y;
-  const floorY = Number.isFinite(state._sup.floorY) ? state._sup.floorY : supportY;
+  // a hull resting on another hull's roof stands on it: that roof is its ground until it drives off the edge
+  const rest = state._body.restSupportY;
+  const terrainSupportY = state._sup.y;
+  const supportY = Number.isFinite(rest) ? Math.max(terrainSupportY, rest) : terrainSupportY;
+  const terrainFloorY = Number.isFinite(state._sup.floorY) ? state._sup.floorY : terrainSupportY;
+  const floorY = Number.isFinite(rest) ? Math.max(terrainFloorY, rest) : terrainFloorY;
   const ride = initializeRideState(state, supportY);
   if (groundedAtStart || !Number.isFinite(drive.bounceMaxHeight)) updateRideSupportVelocity(ride, supportY, dt);
   else {

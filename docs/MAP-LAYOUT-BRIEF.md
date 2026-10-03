@@ -108,6 +108,44 @@ least three strongpoints, every role present, each at least 180 m from the other
 `server/collisionManifestDrift.selftest.mjs` rebuilds every shard in Node and fails on any that no longer matches
 the tree.
 
+### Apron banks
+
+An apron (`terrain.hardstands`) is stamped into the road grids. The ground holds the apron's plane to 3.8 m outside
+it and is back on its own height by 14 m, so the bank is about 10 m wide whatever height it has to make up. An apron
+standing metres off its ground turns that band into a wall: Monsoon's first assembly apron sat at 1.0 m on a hillside
+5–15 m high, and a bot fell 12 m off the cut six seconds into a match. The law holds on every map: **no apron may make
+its bank steeper than 0.6 where the ground without it is gentler by 0.25.**
+
+- `node tools/hardstand-banks.mjs [maps]` samples the band from 1 m outside each apron to a metre past its bank
+  (11 m for the road blend's own) every 4 m, and counts the points steeper than 0.6 and 0.25 steeper than the same
+  point with that apron removed. The game's terrain seed (1337) is the one that counts.
+- `src/world/hardstandBanks.selftest.mjs` fails on any apron with such a point, except the ones its pending list
+  names with their owner. The list only shrinks: an apron that is clean fails until its entry goes, and the list must
+  be empty before PR #9 is ready.
+- `node tools/hardstand-site.mjs <map> <index> [--seat=30,7] [--tilt] [--road] [--banks=16,24]` searches sites,
+  sizes, levels, tilts, road-following planes and bank widths for one apron. It builds each candidate into the
+  height field, keeps the ones whose centre still seats what the apron carries, and ranks them by walls, distance
+  moved, bank width and steepening.
+
+Siting an apron:
+
+- Put it where its ground spreads least, at that ground's median height, not at the height of the nearest road
+  (the default when `level` is omitted).
+- Fix it in place before moving it, so the seats it carries keep their driven distances. Two authored fields help:
+  - `bankM` widens the bank beyond the road blend's 10.2 m (the scan's band follows it). Ground a few metres off the
+    plane all round then meets the apron at a slope a tank climbs.
+  - `grade` tilts the apron along its length, up to 8 %, with `yawDeg` turning the length down the fall line. A zone
+    disc (7 m of relief over 60 m) and a turbo goal (5 m over 36 m) still seat on it. A fitted road grade stays
+    within 1 %.
+  - Where a sloping road crosses the apron, omit `level` and set `grade: 'road'` with the length along the road. The
+    apron then takes the road's own height and grade (up to 8 %) at every terrain seed. A fixed level or grade kinks
+    the road at the apron's edges on the seeds whose ground differs, and `roadGradeSmoothing` checks three.
+- Size it to the seat it carries (zone disc 30 m, turbo goal 18 m, flag 12 m). Do not size it to the area you would
+  like paved.
+- An apron that carries a team's turbo goal stands on the team's pad, inside the mode arena
+  (`MATCH_MODE_ARENA_HALF_EXTENT_M`, 420 m, less the goal's 18 m). If no ground there is level enough, the
+  deployment moves to ground that is.
+
 ## Procedure for one map
 
 1. Write the reference and geological story into the map file header.
@@ -159,6 +197,42 @@ props code shaped every layout, and the next maps should start from them:
   rejected when the ground under its footprint varies by more than the map's `maxSpread`; check that every landmark
   actually stands.
 - **Worked ground.** A `workedGround` patch takes at most 24 vertices; split larger ones.
+- **Footprints, not centres.** The rubble, boulder, field-work, wreck and well passes keep a solid's whole footprint
+  4 m from every road centreline (`src/world/roadFootprint.ts`): the 3.5 m core plus the road-distance grid's margin.
+  A wreck or rubble pile that reaches in steps straight off the road, and a well takes the nearest clear seat round its
+  junction. A boulder or field-work piece that would reach in is left out, with its draws still taken so no other
+  placement moves. Planned and street-row buildings still clear only their centres; that law is its own fix.
+- **Bot hit rates.** The bots' moving-battle hit rate follows the ground between the hulls, so clearer sightlines raise
+  it. The authoritativeBots calibration (four bots from fixed seats 250 m apart, eight seeds) runs on Verdant. Run on
+  each batch-1 map with the aim model unchanged, it rose 67.0 → 71.7 % on Verdant Fields, whose even village square
+  replaced the old roll. It fell 69.6 → 65.4 %, 65.8 → 61.5 % and 60.0 → 57.6 % on Frontier Basin, Saltwind Narrows
+  and Saltmere Bay, where banks and hedges now stand between the seats. Re-pin that receipt's ceiling from
+  before/after rates (Verdant's moved 0.70 → 0.76).
+- **Placed structures and vegetation.** A structure placed after the vegetation pass that needs clear ground (Mangrove
+  Reach's fishery wharf) publishes its footprint through `placedStructureClearances`
+  (`src/world/vegetationClearance.ts`), computed from the same landing and pose its placement uses
+  (`src/world/fisheryWharfSite.ts`). Trees and bushes keep off it. Every other map's vegetation stayed byte-identical
+  on desktop and phone.
+- **Rubble on dry ground.** Street rubble never takes a seat on the water mask.
+- **Tidal maps keep lowland relief.** Where river landings stand, the channel receipts pin `hillScale` at or under 0.25
+  and `microScale` at or under 0.3, and the lake bank blend flattens any landform beside a channel (a 10 m knoll reads
+  as about 0.1 m on the bank). The relief comes from authored landforms away from the water: pond bunds, levees broken
+  at the crossings, and chenier islands.
+- **Planned buildings face their road.** A `compound` plan entry has no frontage axis and can stand in the
+  carriageway. A map rebuilt to the brief plans frontage buildings (cottages, farmhouses) and takes the road-site law in
+  `src/world/props.ts`.
+- **Marine structures.** A wharf seated on its landing stands over the water by design; the map names it as a
+  `solidPropsInWater` exception.
+- **Canyon maps.** On Redrock Divide the canyon (`src/world/redrockCanyon.ts`) stays the regional terrain, and the
+  authored landforms are floor features: inselbergs, dune ridges and sand ramps. `mapQuality` checks that each one
+  stands on the canyon floor. An inselberg is a steep dome with `corridorScale: 1`, so a deployment corridor that
+  crosses it leaves it whole and the bots drive round it.
+- **Aprons are paved.** A hardstand paints the road mask, so a zone apron reads as packed track surface. Seat one
+  where such ground belongs: a square, a farmyard, a depot's vehicle park.
+- **Braided rivers.** A river that splits round a char is authored as trails: the main course and each branch, whose
+  ends join the main course. environmentExpansion checks each trail's continuity and the joins (Jade River Delta).
+- **Cross-road ends.** Start a cross road on a node of the road it meets, as Delta's cross road starts on the west
+  road's node. Left to the endpoint completion, the extension met the other road 1.7 m lower and climbed to it at 29 %.
 - **Budget.** All three pilots exceed point 10's 10 % triangle budget. The coordinator approved this for PR #9 on
   October 2, 2026, pending the owner. The extra triangles are content the brief wants. Trimming goes to frame-time
   work, such as shadow caching and LOD for parapets and wire, rather than to removing content. Whole-map prop

@@ -33,6 +33,7 @@ import { createBattlePresentation } from '../presentation/battlePresentation.ts'
 import type {
   BattlePresentation, BattlePresentationOptions, EngineContext, EventBus, MatchActor, PresentationGameState, TankVisual,
 } from '../presentation/battlePresentation.ts';
+import type { ObstacleIdentity } from '../presentation/authorityObstacles.ts';
 import type { WorldCollisionLike } from '../presentation/predictionWorld.ts';
 import type { ControlSample } from '../match/inputStream.ts';
 import type { MatchFrame } from '../match/matchClient.ts';
@@ -122,6 +123,11 @@ export interface BrowserLoadPorts {
   /** The battle-only modules a round needs before it presents (HUD, touch controls, FX, killcam, warm owners). */
   loadModules(): MaybePromise<RuntimeValue>;
   loadWorld(mapId: string, onProgress: (fraction: number, label: string) => void, terrainVariant?: TerrainVariant): MaybePromise<RuntimeValue>;
+  /**
+   * The authority's obstacle identities by index (its collision manifest, src/mp/host/worldCollision.ts): loaded only for
+   * a world laid out otherwise than the manifest, so the presentation can read the persistent destroyed list.
+   */
+  loadAuthorityObstacles?(mapId: string, signal: AbortSignal): Promise<(index: number) => ObstacleIdentity | null>;
   nextFrame(): MaybePromise<RuntimeValue>;
   setAdaptiveSuspended(suspended: boolean): void;
   now?(): number;
@@ -390,7 +396,7 @@ export interface BrowserComposition {
   /** The hidden-tab cadence: the socket keeps its pings and acks. */
   pumpBackground(nowMs: number): void;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal'): void;
   /** The Garage return's network port: keep the room across the return? */
   shouldPreserveRoom(): boolean;
   /** Leave the match, keep the seat (the Garage return with a preserved room). */
@@ -411,11 +417,11 @@ export interface BrowserComposition {
 
 // ------------------------------------------------------------ controls
 
-const NAMED_ACTION_BITS: Readonly<Record<'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff', number>> = Object.freeze({
+const NAMED_ACTION_BITS: Readonly<Record<'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal', number>> = Object.freeze({
   reloadMagazine: ACTION_BITS.RELOAD_MAGAZINE,
   specialAction: ACTION_BITS.SPECIAL_ACTION,
   selfRight: ACTION_BITS.SELF_RIGHT,
-  smoke: ACTION_BITS.SMOKE, lights: ACTION_BITS.LIGHTS, roofGun: ACTION_BITS.ROOF_GUN, lightsOff: ACTION_BITS.LIGHTS_OFF,
+  smoke: ACTION_BITS.SMOKE, lights: ACTION_BITS.LIGHTS, roofGun: ACTION_BITS.ROOF_GUN, lightsOff: ACTION_BITS.LIGHTS_OFF, drone: ACTION_BITS.DRONE, supplyAmmo: ACTION_BITS.SUPPLY_AMMO, supplyHeal: ACTION_BITS.SUPPLY_HEAL,
 });
 const CONSUMABLE_BITS = ACTION_BITS.REPAIR | ACTION_BITS.FIRST_AID | ACTION_BITS.EXTINGUISHER;
 const DEFAULT_AIM_DISTANCE_M = 1000;
@@ -431,7 +437,7 @@ export interface ControlSampler {
   /** The viewer's controls for a tick from the own actor's input record (the rig writes its aim point every frame). */
   sample(tick: number): Readonly<ControlSample> | null;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal'): void;
   reset(): void;
 }
 
@@ -447,7 +453,7 @@ export function createControlSampler(getOwn: () => MatchActor | null): ControlSa
       const own = getOwn();
       if (!own || own.combat.destroyed) return null;
       const { input, state } = own;
-      const pos = state.pos;
+      const pos = own.aerial?.active ? own.aerial : state.pos;
       const target = input.aimPoint;
       const dx = target ? target.x - pos.x : Math.sin(state.yaw) * DEFAULT_AIM_DISTANCE_M;
       const dy = target ? target.y - pos.y : 0;
@@ -981,6 +987,16 @@ export function createBrowserComposition({
         },
       });
       active.presentation = battlePresentation;
+      // A world laid out otherwise than the authority's manifest (the mobile tier, Frontline Assault's trench works) finds
+      // every live fall by the event's own identity, and reads the persistent destroyed list through the manifest's
+      // (ghost-crunch lane, 2026-10-02). Loaded beside the roster and never awaited: until it lands the list waits.
+      if (!battlePresentation.sharesAuthorityIndices && load.loadAuthorityObstacles) {
+        void Promise.resolve().then(() => load.loadAuthorityObstacles!(active.mapId, active.abort.signal)).then((identity) => {
+          if (round === active && !disposed) battlePresentation.setAuthorityObstacles(identity);
+        }).catch((error) => {
+          if (!active.abort.signal.aborted) reportWarning('multiplayer v2 authority obstacles', messageOf(error));
+        });
+      }
       load.battleLoad.progress(0.56, 'Opening match channel');
       const sessionPresentation: SessionPresentation = {
         adapter: battlePresentation,

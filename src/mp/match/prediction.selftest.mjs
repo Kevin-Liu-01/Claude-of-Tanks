@@ -62,7 +62,7 @@ function viewerOf(entity) {
  * Drive both sides from one control script. The authority row for tick S reaches
  * the client `lagTicks` later (it has predicted up to S + lagTicks by then).
  */
-function simulate({ ticks, script, lagTicks = 6, serverScript = script, predictor = new LocalPredictor(SPEC, { heightField: FIELD }), seedFirst = true, onTick = () => {} }) {
+function simulate({ ticks, script, lagTicks = 6, serverScript = script, predictor = new LocalPredictor(SPEC, { heightField: FIELD }), seedFirst = true, onTick = () => {}, beforeServerStep = null, viewerFor = viewerOf }) {
   const server = createReference();
   const history = new Map();
   const errors = [];
@@ -75,8 +75,9 @@ function simulate({ ticks, script, lagTicks = 6, serverScript = script, predicto
     controls.set(tick, c);
     const serverControl = control(tick, serverScript(tick));
     applyControl(server, serverControl);
+    if (beforeServerStep) beforeServerStep(server, tick);
     updateTank(server, FIELD, SIM_DT, null);
-    if (tick % 2 === 0) history.set(tick, { row: rowOf(server), viewer: viewerOf(server) });
+    if (tick % 2 === 0) history.set(tick, { row: rowOf(server), viewer: viewerFor(server) });
     // The authority for tick (tick - lagTicks) arrives now.
     const authorityTick = tick - lagTicks;
     if (seedFirst && !rowSeeded && authorityTick >= 0) {
@@ -290,6 +291,32 @@ function maxStep(presented, from = 1) {
     `seated: ${seatedAngled.stats.maxPositionErrorM.toFixed(3)} m against ${plainAngled.stats.maxPositionErrorM.toFixed(3)} m`);
 }
 
+// ------------------------------------------------------------ a hull resting on another hull's roof (checkpoint v3)
+// The authority's contact pass seats a hull that settled on a wreck's roof every tick (`_body.restSupportY`); the
+// client's replay has no contact pass. Carried by the checkpoint the roof holds the replay up; without it (the version-2
+// layout) every replay sank toward the terrain under the roof and every snapshot pulled the hull back up.
+{
+  const ROOF_M = 1.6;
+  const onRoof = (server) => { server.state._body.restSupportY = height(server.state.pos.x, server.state.pos.z) + ROOF_M; };
+  const withoutRoof = (server) => {
+    const viewer = viewerOf(server);
+    const roofless = captureMovementCheckpoint({ ...server.state, _body: { ...server.state._body, restSupportY: NaN } });
+    return { ...viewer, movementFlags: roofless.flags, movementValues: roofless.values.map(Math.fround) };
+  };
+  const rest = (viewerFor) => {
+    const { predictor, server } = simulate({ ticks: 360, script: () => ({}), lagTicks: 6, beforeServerStep: onRoof, viewerFor });
+    return { stats: predictor.getStats(), server, predicted: predictor.simulationState };
+  };
+  const carried = rest(viewerOf);
+  const dropped = rest(withoutRoof);
+  assert.ok(carried.server.state.pos.y > height(0, 0) + ROOF_M - 0.2, `fixture: the authority hull rests on the roof (y ${carried.server.state.pos.y.toFixed(2)})`);
+  assert.ok(dropped.stats.maxPositionErrorM > 0.02 && dropped.stats.reconciliations > 100,
+    `control: without the roof every replay sinks (${dropped.stats.maxPositionErrorM.toFixed(3)} m)`);
+  assert.ok(carried.stats.maxPositionErrorM < 0.005, `with the roof the replay stays on it (${carried.stats.maxPositionErrorM.toFixed(4)} m)`);
+  assert.ok(Math.abs(carried.predicted.pos.y - carried.server.state.pos.y) < 0.01, 'the predicted hull sits where the authority\'s does');
+  assert.equal(carried.stats.hardSnaps, 0);
+}
+
 // ------------------------------------------------------------ missing checkpoint, contact smoothing hook, reset
 {
   let contacts = 0;
@@ -312,4 +339,4 @@ function maxStep(presented, from = 1) {
   assert.throws(() => new LocalPredictor(SPEC, { heightField: null }));
 }
 
-console.log('mp prediction: exact replay with matching controls, divergence corrected inside the 110/160/75 ms envelopes with ≤ 0.2 m releases, hard snap at 7 m, death/respawn, resting hold, stale presented hulls seated at the rewind, collision adapter pass');
+console.log('mp prediction: exact replay with matching controls, divergence corrected inside the 110/160/75 ms envelopes with ≤ 0.2 m releases, hard snap at 7 m, death/respawn, resting hold, stale presented hulls seated at the rewind, a hull resting on a roof replayed on it, collision adapter pass');

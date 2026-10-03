@@ -646,6 +646,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-battle-choice" type="button" data-game-mode="mars" aria-pressed="false">` +
     `<span class="choice-icon">${uiIconSVG('modeMars', 17)}</span>` +
     `<span class="choice-name">${t('garage.battle.modeMars')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="juggernaut" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeJuggernaut', 17)}</span><span class="choice-name">${t('playMenu.matchMode.juggernaut.label')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="infected" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeInfected', 17)}</span><span class="choice-name">${t('playMenu.matchMode.infected.label')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="realistic" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeRealistic', 17)}</span><span class="choice-name">${t('playMenu.matchMode.realistic.label')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="gun_game" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeGunGame', 17)}</span><span class="choice-name">${t('playMenu.matchMode.gun_game.label')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="drone" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeDrone', 17)}</span><span class="choice-name">${t('playMenu.matchMode.drone.label')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="ac130" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeAc130', 17)}</span><span class="choice-name">${t('playMenu.matchMode.ac130.label')}</span></button>` +
     `</div><div class="cot-battle-menu-label" id="cot-multiplayer-modes">${t('garage.battle.multiplayer')}</div>` +
     `<div class="cot-battle-choice-grid" role="group" aria-labelledby="cot-multiplayer-modes">` +
     `<button class="cot-battle-choice" type="button" data-mode="private" aria-pressed="false">` +
@@ -2864,6 +2870,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     lan: { short: 'LAN', label: t('garage.battle.lanLabel'), icon: 'battleLan' },
   };
   const battleRuleMeta: Partial<Record<GameModeId, BattleChoiceMeta>> = {
+    juggernaut: { short: 'BOSS', label: t('playMenu.matchMode.juggernaut.label'), icon: 'modeJuggernaut' },
+    infected: { short: 'INFECT', label: t('playMenu.matchMode.infected.label'), icon: 'modeInfected' },
+    realistic: { short: 'REAL', label: t('playMenu.matchMode.realistic.label'), icon: 'modeRealistic' },
+    gun_game: { short: 'GUNS', label: t('playMenu.matchMode.gun_game.label'), icon: 'modeGunGame' },
+    drone: { short: 'FPV', label: t('playMenu.matchMode.drone.label'), icon: 'modeDrone' },
+    ac130: { short: 'AC-130', label: t('playMenu.matchMode.ac130.label'), icon: 'modeAc130' },
+
     capture_the_flag: { short: 'CTF', label: t('garage.battle.ctfLabel'), icon: 'modeFlag' },
     zone_control: { short: '750', label: t('garage.battle.zoneLabel'), icon: 'modeZones' },
     turbo_ball: { short: 'TURBO', label: t('garage.battle.ballLabel'), icon: 'modeTurbo' },

@@ -1,11 +1,29 @@
-// A working reclaimed wetland: offset drainage cells leave a dry diagonal
-// causeway, a western farm loop and an eastern pumping-station approach.
+// src/world/maps/polders.ts — Tidegate Polders, redesigned 2026-10-02 (maps-and-layouts lane; docs/MAP-LAYOUT-BRIEF.md).
+// The five drainage basins, the farm court on the mill lane's loop, the pumping station, the roads, the palette, sky,
+// sea, vegetation, name and id are the map's identity and stay; the ground between them is new. The old ground rolled
+// like upland pasture (hillScale 0.72), not reclaimed land. Alpha's pad stood in sight of bravo's arc, bravo's seven
+// pads spread 500 m along the north edge, and the zone-control discs stood up to 1.3 times farther from one team.
+//
+// Reference: the polders of the Scheldt estuary (South Beveland and Walcheren, autumn 1944): reclaimed clay fields
+// boxed by dykes, roads along the dykes, poplar windbreaks, farms round paved yards, a pumping station at the tidegate,
+// and drainage basins held at different levels.
+//
+// The story on the ground: the old land in the west stands a few metres above the new polders in the east, which
+// sank after they were drained, and the basins step down with it, from the field drain in the south-west at +1.4 m to
+// the overflow reach in the north-east at -5.4 m. The farm court stands where the causeway crosses the mill lane. The
+// main dyke runs east and west through the middle of the polder, broken by a sluice in the west, and the pumping
+// station works the hooked basin below it. Narrow field dykes box the polder: cross dykes face the deployments and
+// long dykes run between the lanes, and the roads cut through them. Alpha deploys behind the southern cross dyke and
+// bravo behind the northern one. The zone-control discs are the farm court's paved yard and a field on each side of
+// it, the second within 8 m of the first's rotation about the farm court.
 import { roundRoadBends } from './roadBends.ts';
 export default {
   id: 'polders', name: 'Tidegate Polders',
   blurb: 'Pump-controlled retention basins, windbreak farms and raised causeways across reclaimed coastal fields',
   terrain: {
-    hillScale: 0.72, microScale: 0.64, rimH: 18, clearMarshVeg: true, softLakes: true,
+    hillScale: 0.42, microScale: 0.4, rimH: 18, clearMarshVeg: true, softLakes: true,
+    // The farm court's paved yard, inside the mill lane's loop: the zone-control placement seats its middle disc there.
+    hardstands: [{ x: -40, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0 }],
     village: { x0: -178, x1: 68, z0: -96, z1: 122, cx: -64, cz: 12, feather: 42, flatten: 0.88, relief: 0.12 },
     roads: { paths: roundRoadBends([
       // The mill lane folds around a compact farm court before joining the
@@ -44,18 +62,30 @@ export default {
     ],
     marshes: [],
     landforms: [
-      { kind: 'ridge', x: -226, z: 0, length: 550, width: 44, height: 4.8, yawDeg: 0 },
+      // the main dyke's western half, broken by a sluice where the west drain's outfall crosses it
+      { kind: 'ridge', x: -171, z: 0, length: 440, width: 44, height: 4.8, yawDeg: 0 },
+      { kind: 'ridge', x: -446, z: 0, length: 110, width: 44, height: 4.8, yawDeg: 0 },
       { kind: 'ridge', x: 224, z: 12, length: 540, width: 46, height: 4.5, yawDeg: -4 },
       { kind: 'ridge', x: 10, z: 70, length: 360, width: 52, height: 5.2, yawDeg: -40, wetScale: 0.2 },
       { kind: 'knoll', x: -354, z: 74, rx: 66, rz: 84, height: 4.6 },
       { kind: 'basin', x: 114, z: -238, rx: 88, rz: 76, height: -2.2 },
       { kind: 'ridge', x: -18, z: 300, length: 180, width: 40, height: 4.0, yawDeg: 88 },
+      // The old land in the west stands higher than the new polders in the east, whose basins lie lower.
+      { kind: 'knoll', x: -470, z: 20, rx: 320, rz: 640, height: 7, wetScale: 0.2 },
+      { kind: 'basin', x: 470, z: -10, rx: 300, rz: 640, height: -3, wetScale: 0.2 },
+      // Field dykes: narrow earth banks on the field grid, cross dykes facing the deployments and long dykes between
+      // the lanes; the roads cut through them at grade.
+      ...[[-60, -282, 300, 0, 22], [-68, 306, 300, 0, 22], [-15, -150, 150, 0], [-113, 174, 150, 0],
+        [250, -210, 180, 0], [-378, 234, 180, 0], [-180, -178, 144, 90], [52, 202, 144, 90], [100, -135, 230, 90],
+        [-228, 159, 230, 90],
+      ].map(([x, z, length, yawDeg, width = 18]) => ({ kind: 'ridge', x, z, length, width, height: 3.8, yawDeg })),
     ],
   },
+  // Bravo's seven pads stand in two staggered rows 62 m apart behind the northern cross dyke, their centroid near the
+  // rotation of alpha's pad about the farm court. 812 m between the anchors.
   spawns: { player: { x: -94, z: -390 }, enemies: [
-    // The second pad sits clear of the west causeway's graded shoulder.
-    { x: -246, z: 390 }, { x: -152, z: 426 }, { x: -92, z: 378 }, { x: -10, z: 420 },
-    { x: 76, z: 386 }, { x: 162, z: 422 }, { x: 248, z: 388 },
+    { x: -34, z: 450 }, { x: -65, z: 398 }, { x: -3, z: 398 }, { x: -127, z: 398 },
+    { x: 59, z: 398 }, { x: -96, z: 450 }, { x: 28, z: 450 },
   ] },
   splat: { sourcedPalette: 'verdant',
     fieldPatch: 1.25, seaLake: true, seaFoam: 0.05, seaRamp: [0.12, 0.48], shoreDirt: true, iceDrift: 0.02,
@@ -84,7 +114,7 @@ export default {
     destructibleBuildings: ['fieldhut', 'fishershack', 'transformershed', 'huntingblind'],
     buildingLat: [12, 2], destructibleBuildingLat: [16, 3], sideSkip: 0.18, spacingPad: 8,
     tacticalBeats: [
-      { id: 'tidegate-pump-yard', role: 'brawl', x: 244, z: 24, yawDeg: 75, structure: 'transformershed', redoubt: true, outcrop: { count: 4, radius: 8 }, wreck: true },
+      { id: 'tidegate-pump-yard', role: 'brawl', x: 250, z: 0, yawDeg: 75, structure: 'transformershed', redoubt: true, outcrop: { count: 4, radius: 8 }, wreck: true },
       { id: 'western-windbreak-hide', role: 'scout', x: -334, z: 22, yawDeg: 90, structure: 'huntingblind', outcrop: { count: 4, radius: 8 } },
       { id: 'causeway-farm-store', role: 'support', x: -48, z: 228, yawDeg: 175, structure: 'fieldhut', redoubt: true, outcrop: { count: 4, radius: 8 }, wreck: true },
     ],
@@ -104,7 +134,7 @@ export default {
   // auto branch (0.95 / 0.90 and turbidity 7), so over the flattest ring in the game the 620 m deck was fully hazed
   // at 2-12° — an explicit 420 m North Sea stratocumulus of 2600 m masses; light patchiness (cloudShadowAmp 0.18)
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'broken-stratocumulus', baseM: 600, coverage: 0.68, streets: 0.4, cells: 0.8, cellM: 750 },
+  clouds: { regime: 'broken-stratocumulus', baseM: 600, coverage: 0.68, streets: 0.4, cells: 0.8, cellM: 750, fogBank: 0.35, fogBankTopM: 80, contrails: 0.5, contrailAge: 0.75, nightGlow: 0.6, nightGlowHex: 0xffb070 },
   sky: { sunElevationDeg: 23, sunAzimuthDeg: 148, turbidity: 4.8, rayleigh: 1.5, mieCoefficient: 0.006, mieDirectionalG: 0.82, fogDensity: 0.00062, fogTintHex: 0x96a8ad, fogMix: 0.54, envIntensity: 0.24, cloudOpacity: 1.1, cloudOpacity2: 0.72, cloudTintHex: 0xe7eded, cloudAltM: 420, cloudHazeK: 0.00016, cloudUvM: 2600, cloudShadowAmp: 0.18, sunIntensity: 3.7, sunColorHex: 0xffe9ca, hemiIntensity: 0.43 },
   minimap: { base: [88, 112, 69], hard: [122, 117, 90], soft: [54, 80, 67], forest: 'rgba(44,78,43,.84)', forestStroke: 'rgba(26,51,27,.92)', water: 'rgba(66,103,114,.84)', waterStroke: 'rgba(35,67,78,.94)', roadCasing: 'rgba(54,47,36,.92)', roadFill: 'rgba(188,176,144,.96)', buildingFill: '#d3ccb9' },
   shot: { pos: [-268, 46, -256], look: [28, 1, 112] },

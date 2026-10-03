@@ -118,8 +118,12 @@ for (const [ringSeed, groundSeed] of [[1337,1337],[2049,2049],[7719,7719],[1337,
     let unrefinedMax=0;
     const probe=(x,z)=>{unrefinedMax=Math.max(unrefinedMax,Math.abs(surface(unrefined,x,z)-field.getHeightAt(x,z)));};
     for(let along=-512;along<=512;along+=8) for(const [x,z] of [[-512,along],[512,along],[along,-512],[along,512]]) probe(x,z);
-    // the 431-column ring halves the unrefined chord error (worst about 2.1 m); the refinement must still beat 2 m
-    assert.ok(unrefinedMax>2,`unrefined current-road seam must exceed 2 m somewhere (worst ${unrefinedMax.toFixed(2)} m)`);
+    // the 431-column ring halves the unrefined chord error (worst about 2.1 m); the map-borders lane's road exits
+    // (2026-10-03) grade the outland to every road that leaves the square, which takes another tenth off the worst
+    // chord at an exit (1.89 m), and its road hold (the classic rim's level at the red line, not its climb) and foreground
+    // clearance past it take the steepest chords off the square's edge (1.33 m); the unrefined control must still show a
+    // metre somewhere — the refined seat below stays within 0.00001 m
+    assert.ok(unrefinedMax>1.0,`unrefined current-road seam must exceed 1 m somewhere (worst ${unrefinedMax.toFixed(2)} m)`);
   }
   const step=2*Math.PI/columns;
   let lastAngle=-Infinity;
@@ -146,6 +150,7 @@ for (const [ringSeed, groundSeed] of [[1337,1337],[2049,2049],[7719,7719],[1337,
     assert.equal(ring.positions[k*3+2],previous.positions[k*3+2]);
     assert.ok(ring.heights[k]<-64,'Closing anchors stay below the whole canyon');
   }
+  let exterior = 0, stepped = 0;
   for (let index = columns; index < ring.heights.length; index++) {
     const o = index * 3, row = Math.floor(index / columns), x = ring.positions[o], z = ring.positions[o + 2];
     assert.equal(ring.heights[index], ring.positions[o + 1]); assert.ok(Number.isFinite(ring.heights[index]));
@@ -153,11 +158,21 @@ for (const [ringSeed, groundSeed] of [[1337,1337],[2049,2049],[7719,7719],[1337,
       assert.ok(Math.abs(Math.max(Math.abs(x), Math.abs(z)) - 511.5) < .001);
       assert.ok(Math.abs(ring.heights[index] - field.getHeightAt(x, z)) < .00001, 'First row seats on final conditioned ground');
     } else {
-      if (Math.max(Math.abs(x),Math.abs(z)) >= 692) assert.ok(Math.abs(ring.heights[index] - field.getOutlandHeightAt(x,z)) < .00002, 'Resolved exterior follows the playable regional geology');
+      // 2026-10-02 (the mountains lane; owner: "plain mesa walls … Redrock Divide"): past the seam band the regional
+      // geology runs through the tableland bed stair (horizonEscarpment.ts: nil within 70 m of the edge, full by 230 m),
+      // so the resolved exterior (180 m and more past the edge) follows the playable geology within one bed — 72 m, the
+      // stair's thickest — instead of to the metre; the canyon's own form (the open floor, the headwalls, the unequal
+      // plateau walls) is asserted below on the stepped ring, and the seam on the actual perimeter triangles
+      if (Math.max(Math.abs(x), Math.abs(z)) >= 692) {
+        const delta = Math.abs(ring.heights[index] - field.getOutlandHeightAt(x, z));
+        assert.ok(delta <= 72, `Resolved exterior follows the playable regional geology within one bed (${delta.toFixed(1)} m)`);
+        exterior++; if (delta > 4) stepped++;
+      }
     }
     const before = o - columns * 3;
     assert.ok(Math.hypot(x, z) - Math.hypot(ring.positions[before], ring.positions[before + 2]) > 1, 'No folded radial faces');
   }
+  assert.ok(stepped > exterior * 0.2, `the bed stair reaches the canyon's exterior walls (${stepped} of ${exterior} vertices moved past 4 m)`);
   assertEnclosedCanyon(ring);
   // negative control: the pre-round-39 open design (the same ring with its mouth lanes forced back to the floor)
   const openMouths = structuredClone(ring);
@@ -213,7 +228,8 @@ for (const id of MAP_IDS) if (id !== 'badlands') {
     }
   }
   assert.ok(protrusion<0,`Closing triangles stay below Alpine's playable valleys: ${protrusion}`);
-  assert.ok(oldProtrusion>1.5,`Negative control reproduces the visible ledge: ${oldProtrusion}`);
+  // (the map-borders lane's foreground clearance, 2026-10-03, lowers the ground the old anchors bridged toward: 1.46 m)
+  assert.ok(oldProtrusion>1.0,`Negative control reproduces the visible ledge: ${oldProtrusion}`);
 }
 console.log(JSON.stringify({ test: 'redrockCanyonHorizon', receipts,
   limits: 'CPU actual-triangle seam/mouth/topology. Native visual/prop/collision/FPS acceptance remains separate.' }, null, 2));

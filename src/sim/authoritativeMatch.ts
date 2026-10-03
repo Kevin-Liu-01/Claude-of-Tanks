@@ -1,3 +1,6 @@
+import type { ModeCheckpoint } from './matchModes.ts';
+import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, type AerialCheckpoint, type AerialView } from './aerialCombat.ts';
+import { setModeWeapon } from './modeLoadout.ts';
 import { packSmokeScreen } from './smokeReceipt.ts';
 import { requestAuxiliary, stepRoofGun, auxiliaryShot, smokeBlocks, type SmokeScreen } from './auxiliarySystems.ts';
 import { bridgeBallFloor } from './bridgeBallSupport.ts';
@@ -97,7 +100,9 @@ import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.ts'
 import type { EquipmentCombatState } from '../game/equipment.ts';
 import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.ts';
 import type { AiDifficulty } from '../game/ai.ts';
-import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.ts';
+import {
+  collectNavigationWrecks, createBotNavigationGrid, planBotRoute, syncNavigationWrecks, type NavigationWreck,
+} from './botRoutePlanner.ts';
 import type { BotRoutePoint } from './botRoutePlanner.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from '../game/consumables.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
@@ -157,9 +162,11 @@ export interface AuthoritativePlayerInput extends AimIntentInput {
   aimLocked?: boolean;
   shellSlot: number;
   actionBits: number;
+  auxiliaryBits?: number;
 }
 
 interface AuthoritativeInput {
+  auxiliaryBits?: number;
   throttle: number;
   steer: number;
   brake: boolean;
@@ -209,6 +216,7 @@ export interface AuthoritativeEntity {
   consumableReadyAt: number[];
   specialAction: SpecialActionState;
   aiCtl?: AuthoritativeAIController;
+  aerial?: AerialView;
   modeActive?: boolean;
   modeSpeedMultiplier?: number;
   modeGravityScale?: number;
@@ -276,6 +284,11 @@ export interface ShellRewindHook {
 /** Roster limit: 14v14 plus bots and headroom, bounded by the wire's 64 entity ids. */
 export const MAX_AUTHORITATIVE_PLAYERS = 64;
 
+export interface NewModeCheckpoint {
+  mode: ModeCheckpoint;
+  flights: { id: string; flight: AerialCheckpoint }[];
+}
+
 export interface AuthoritativeMatchOptions {
   players?: AuthoritativePlayerRecord[];
   mapId?: string;
@@ -339,6 +352,8 @@ export interface AuthoritativeMatch {
    * destructible revision continues past the previous host's so every client's persistent-state check stays
    * monotonic. Indices this world does not have are counted, never applied.
    */
+  captureModeCheckpoint(): NewModeCheckpoint | null;
+  restoreModeCheckpoint(checkpoint: NewModeCheckpoint): void;
   restoreDestroyedObstacles(indices: readonly number[], revision: number): { restored: number; unknown: number };
 }
 
@@ -591,6 +606,7 @@ function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec):
 
   _euler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
   _quat.setFromEuler(_euler);
+  _unit.setScalar(state.modeScale??1);
   _hullMatrix.compose(state.pos, _quat, _unit);
   _localMatrix.makeRotationY(state.turretYaw);
   _localMatrix.setPosition(turretPivot[0], turretPivot[1], turretPivot[2]);
@@ -601,7 +617,7 @@ function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec):
   _gunDir.set(0, sinPitch, cosPitch).transformDirection(_turretMatrix).normalize();
   _muzzle.set(gunPivot[0], gunPivot[1], gunPivot[2])
     .applyMatrix4(_turretMatrix)
-    .addScaledVector(_gunDir, barrelM);
+    .addScaledVector(_gunDir, barrelM*(state.modeScale??1));
   const launchers = usesLauncherMuzzles(entity.spec.gun, shellSpec) ? entity.spec.gun.launcherMuzzles : undefined;
   if (launchers?.length) {
     const index = launcherMuzzleIndex(entity.spec.gun, shellSpec, entity.combat.launcherCursor ?? 0);
@@ -664,7 +680,7 @@ function firstTankTrace(
   let bestDistance = Infinity;
   const segmentLength = shell.prevPos.distanceTo(shell.pos);
   for (const target of entities) {
-    if (target.id === shell.shooterId || target.modeActive === false ||
+    if (target.id === shell.shooterId || target.modeActive === false || isGunship(target) ||
         !target.state || !target.combat) continue;
     const radius = finite(target.spec.armor && target.spec.armor.boundingRadiusM,
       target.spec.dims.hullLengthM * 0.65);
@@ -749,7 +765,10 @@ export function createAuthoritativeMatch({
   const shells: DamageShell[] = [];
   const destroyedBeforeBurst = new Map<string, boolean>();
   let nextShellId = 1;
+  const nextAerialShellId = () => nextShellId++;
+  const launchAerialShell = (shell: DamageShell) => { shells.push(shell); };
   let timeS = 0;
+  let modeTimeOffsetS = 0;
   let fireTickAcc = 0;
   let result: MatchResult | null = null;
   let resultReason: string | null = null;
@@ -873,6 +892,7 @@ export function createAuthoritativeMatch({
   const auxiliarySmokeScreens: SmokeScreen[] = [];
   const spotting = createSpottingSystem({
     getTanks: () => entities,
+    alwaysVisible: !!ruleset.alwaysVisible,
     raycast: spottingRaycast,
     opticalBlocked: (a,b) => smokeBlocks(auxiliarySmokeScreens,a,b,timeS,heightField.getHeightAt),
     concealers: worldCollision && typeof worldCollision.getConcealment === 'function'
@@ -904,8 +924,16 @@ export function createAuthoritativeMatch({
       deps: {
         heightField,
         raycast: spottingRaycast,
-        getEnemies: () => opponents,
-        getAllies: () => allies,
+        getEnemies: () => {
+          opponents.length = 0;
+          for (const candidate of entities) if (candidate.team !== entity.team && candidate.modeActive !== false && !isGunship(candidate)) opponents.push(candidate);
+          return opponents;
+        },
+        getAllies: () => {
+          allies.length = 0;
+          for (const candidate of entities) if (candidate !== entity && candidate.team === entity.team) allies.push(candidate);
+          return allies;
+        },
         getObstacles: () => staticObstacles,
         queryObstacles: worldCollision?.queryObstacles || null,
         spotting: {
@@ -915,9 +943,10 @@ export function createAuthoritativeMatch({
         // bot philosophy r1: the mode's live objective ranks targets (objective → closest → weakest)
         getObjective: () => modeController.botObjective(entity),
         ...(navigation ? {
-          planRoute: (start: { x: number; z: number }, goal: { x: number; z: number }) => planBotRoute({
+          planRoute: (start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
+            options?: { requireGoalLevel?: boolean }) => planBotRoute({
             start, goal, navigation, rng: searchRng, role: roleOf(entity.spec), spec: entity.spec,
-            useRoleDetour: false,
+            useRoleDetour: false, requireGoalLevel: options?.requireGoalLevel === true,
           }),
         } : {}),
       },
@@ -950,7 +979,15 @@ export function createAuthoritativeMatch({
     if (type === 'tank_destroyed') modeController.recordDestruction(String(payload.id),
       typeof payload.killerId==='string'?payload.killerId:null);
     if (pendingEvents.length >= MAX_EVENTS) pendingEvents.shift();
-    pendingEvents.push({ type, timeS, ...payload });
+    const event: AuthoritativeEvent = { type, timeS, ...payload };
+    // Where the hull died (ghost-crunch lane, 2026-10-02), as tank_ram and tank_impact carry theirs: a peer presents the
+    // death one interpolation step from the pose it shows that frame — mid-fall, mid-slide — and its explosion, wreck
+    // smoke and killcam sat 0.3–0.8 m from the authority's hull (the world-events audit's p2 fall death).
+    if (type === 'tank_destroyed' && typeof payload.x !== 'number') {
+      const dead = entityById.get(String(payload.id));
+      if (dead) { event.x = dead.state.pos.x; event.y = dead.state.pos.y; event.z = dead.state.pos.z; }
+    }
+    pendingEvents.push(event);
   }
 
   function reviveForMode(
@@ -969,23 +1006,29 @@ export function createAuthoritativeMatch({
     // the wave's health scale folds into the ruleset stamp (hull, damage-taken, reload, ammunition)
     applyRulesetToCombat(tank.combat, tank.spec.gun.shells, ruleset, healthScale);
     tank.consumableReadyAt = [0, 0, 0];
+    initializeAerial(tank, ruleset);
     tank.specialAction = createSpecialActionState(tank.spec);
     bindSpecialActionState(tank);
-    for (let n = 0; n < 30; n++) updateTank(tank, heightField, SIM_DT);
+    if (!isGunship(tank)) for (let n = 0; n < 30; n++) updateTank(tank, heightField, SIM_DT);
   }
 
-  const modeController = createMatchModeController({
+  const modeController = createMatchModeController<AuthoritativeEntity>({
     mode: normalizedGameMode,
     entities,
     seed,
     placement,
     ruleset,
     revive: reviveForMode,
+    setWeaponStage: setModeWeapon,
     setActive(entity, active) { entity.modeActive = active; },
     terrainHeight: (x, z) => heightField.getHeightAt(x, z),
     ballFloorHeight: (x, z, previousBottomY) => bridgeBallFloor(heightField, x, z, previousBottomY),
     emit,
   });
+  for (const entity of entities) {
+    initializeAerial(entity, ruleset);
+    if (isGunship(entity)) setModeWeapon(entity, 'gunship');
+  }
   let nextModeRouteS = 0;
 
   function applyNetworkInput(
@@ -1032,7 +1075,7 @@ export function createAuthoritativeMatch({
       }
     }
     entity.input.shellSlot = entity.combat.shellSlot;
-    decodeAimIntent(input, entity.state.pos, _aim);
+    decodeAimIntent(input, entity.aerial?.active ? entity.aerial : entity.state.pos, _aim);
     entity.input.aimPoint.copy(_aim);
   }
 
@@ -1245,6 +1288,12 @@ export function createAuthoritativeMatch({
       directionX,
       directionZ,
       speedMps,
+      // What fell in any world (ghost-crunch lane, 2026-10-02): the record's box centre at its base. The index is this
+      // authority's (the map's collision manifest); a peer whose world is laid out otherwise — the mobile tier's lighter
+      // placements, Frontline Assault's trench works — finds its own record of the prop by this, or none.
+      x: (obstacle.min[0] + obstacle.max[0]) * 0.5,
+      y: obstacle.min[1],
+      z: (obstacle.min[2] + obstacle.max[2]) * 0.5,
     });
     return true;
   }
@@ -1451,10 +1500,13 @@ export function createAuthoritativeMatch({
     entity.input.actionBits = 0;
     if (!bits || entity.combat.destroyed) return;
     if (!result) {
+      if(bits&PLAYER_ACTION_BITS.SUPPLY_AMMO)modeController.requestSupply(entity.id,'ammo',timeS+modeTimeOffsetS);
+      if(bits&PLAYER_ACTION_BITS.SUPPLY_HEAL)modeController.requestSupply(entity.id,'heal',timeS+modeTimeOffsetS);
       if (bits & PLAYER_ACTION_BITS.SMOKE && requestAuxiliary(entity, 'smoke', timeS, heightField.getHeightAt)) {
         auxiliarySmokeScreens.push(entity.combat.auxiliary!.smoke!);
         if(auxiliarySmokeScreens.length>84)auxiliarySmokeScreens.shift();
       }
+      if (bits & PLAYER_ACTION_BITS.DRONE) entity.input.auxiliaryBits = (entity.input.auxiliaryBits ?? 0) | PLAYER_ACTION_BITS.DRONE;
       if (bits & PLAYER_ACTION_BITS.LIGHTS_OFF) requestAuxiliary(entity, 'lightsOff', timeS);
       if (bits & PLAYER_ACTION_BITS.LIGHTS) requestAuxiliary(entity, 'lights', timeS);
       if (bits & PLAYER_ACTION_BITS.ROOF_GUN) requestAuxiliary(entity, 'roofGun', timeS);
@@ -1473,6 +1525,7 @@ export function createAuthoritativeMatch({
   function selectedShellForFire(
     entity: AuthoritativeEntity,
   ): AuthoritativeSpec['gun']['shells'][number] | null {
+    if (entity.aerial?.kind === 'drone' && entity.aerial.active) return null;
     const combat = entity.combat;
     if (!entity.input.fire || combat.destroyed || combat.reload.t > 0) return null;
       const shellSpec = entity.spec.gun.shells[combat.shellSlot];
@@ -1511,6 +1564,7 @@ export function createAuthoritativeMatch({
   }
 
   function notifyEnemyBotsOfShot(entity: AuthoritativeEntity): void {
+    if(isGunship(entity))return;
     for (const other of entities) {
       if (!other.bot || other.team === entity.team || other.combat.destroyed || !other.aiCtl) continue;
       if (other.state.pos.distanceToSquared(entity.state.pos) <= 500 * 500) other.aiCtl.notifyEnemyFired(entity);
@@ -1551,6 +1605,7 @@ export function createAuthoritativeMatch({
     if (!shellSpec || !botShotIsClear(entity, shellSpec)) return;
     const combat = entity.combat;
     const gun = gunWorldPose(entity, shellSpec);
+    if (isGunship(entity)) { gun.muzzle.copy(entity.state.pos); gun.direction.copy(entity.input.aimPoint).sub(gun.muzzle).normalize(); }
     _gunDir.copy(gun.direction);
     const sigma = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
     applyDispersion(_gunDir, sigma, rng);
@@ -1563,7 +1618,7 @@ export function createAuthoritativeMatch({
     }
     // ruleset gravity rides the shooter's stamp (Turbo Ball: 0.6 g lobs); unlimited rounds refill the channel
     shell.gravityMps2 *= Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1;
-    refillUnlimitedAmmunition(ruleset, combat, firedSlot);
+    if(ruleset.aerial!=='gunship'||isGunship(entity))refillUnlimitedAmmunition(ruleset, combat, firedSlot);
     shells.push(shell);
     startPostShotReload(combat, entity.spec);
     selectFallbackAfterShot(entity, firedSlot);
@@ -1585,7 +1640,7 @@ export function createAuthoritativeMatch({
       targetId: target?.id || null,
     });
     // bot philosophy r1: a bounce is still a shot at the team — the struck hull reacts, teammates gain intel
-    if (!shooter || !target) return;
+    if (!shooter || !target || isGunship(shooter)) return;
     for (const ally of entities) {
       if (ally.team === target.team && ally.aiCtl && !ally.combat.destroyed &&
           (ally === target || ally.state.pos.distanceToSquared(target.state.pos) <= 200 * 200)) ally.aiCtl.notifyUnderFire(shooter, {
@@ -1795,7 +1850,7 @@ export function createAuthoritativeMatch({
     for (const shell of shells) {
       if (shell.dead) continue;
       const shooter = entityById.get(shell.shooterId);
-      if (shooter && specialActionGuidesShell(shooter, shell)) {
+      if (shooter && (specialActionGuidesShell(shooter, shell) || (isGunship(shooter) && shell.spec.guided))) {
         guideShellToward(shell, shooter.input?.aimPoint, dt);
       }
       stepShell(shell, dt);
@@ -1925,10 +1980,17 @@ export function createAuthoritativeMatch({
     }
   }
 
+  // wrecks narrow streets: the bots' grid re-tests the edges round them a few times a second (the solo step too)
+  const navigationWrecks: NavigationWreck[] = [];
+  let navigationWreckTicks = 0;
+
   function updateEntityControls(
     dt: number,
     inputs: ReadonlyMap<string, AuthoritativePlayerInput | null | undefined>,
   ): void {
+    if (botNavigation && navigationWreckTicks++ % 15 === 0) {
+      syncNavigationWrecks(botNavigation, navigationWrecks, collectNavigationWrecks(entities, navigationWrecks));
+    }
     for (const entity of entities) {
       if (entity.modeActive === false) continue;
       if (entity.bot) {
@@ -2036,10 +2098,17 @@ export function createAuthoritativeMatch({
     for (const entity of entities) {
       // wrecks keep moving (2026-09-19): applyNetworkInput already zeroes their input; readDebuffs skids them
       if (entity.modeActive === false) continue;
+      if (isGunship(entity)) continue;
       movingEntity = entity;
       // the authority has no rendered contact geometry: the hull origin is its belly line (movement's default)
       structureSupport.beginHull(entity.state.pos.x, entity.state.pos.z, entity.state.pos.y);
-      updateTank(entity, structureSupport, dt, collideMovingEntity);
+      // Park the carrier only during ground integration; preserve held flight controls
+      // for additional fixed steps when rendering slower than the simulation.
+      const parking = entity.aerial?.kind === 'drone' && entity.aerial.active;
+      const { throttle, steer, brake, aimLocked } = entity.input;
+      if (parking) { entity.input.throttle = 0; entity.input.steer = 0; entity.input.brake = true; entity.input.aimLocked = true; }
+      try { updateTank(entity, structureSupport, dt, collideMovingEntity); }
+      finally { if (parking) { entity.input.throttle = throttle; entity.input.steer = steer; entity.input.brake = brake; entity.input.aimLocked = aimLocked; } }
       resolveEntityImpacts(entity);
     }
     movingEntity = null;
@@ -2130,6 +2199,7 @@ export function createAuthoritativeMatch({
     timeS += dt;
     refreshModeBotRoutes();
     updateEntityControls(dt, inputs);
+    for (const entity of entities) stepAerial(entity, timeS + modeTimeOffsetS, dt, nextAerialShellId, launchAerialShell);
     advanceTankMovement(dt);
     advanceTankContacts(dt);
     advanceRollover(dt);
@@ -2137,7 +2207,7 @@ export function createAuthoritativeMatch({
     advanceFires(dt);
     advanceRepairs(dt);
     updateVisibility();
-    determineResult(modeController.step(dt, timeS));
+    determineResult(modeController.step(dt, timeS + modeTimeOffsetS));
   }
 
   function canObserveEntity(viewer: AuthoritativeEntity | undefined, entityId: string): boolean {
@@ -2262,7 +2332,12 @@ export function createAuthoritativeMatch({
           ...(viewer ? { localPrediction: capturePredictionAuthorityState(viewer) } : {}),
           ...(normalizedGameMode === 'standard' ? {} : {
             gameMode: normalizedGameMode,
-            modeState: modeController.serialize(viewerId),
+            modeState: {
+              ...modeController.serialize(viewerId),
+              ...(normalizedGameMode === 'drone' ? {missionPayloads: entities
+                .filter(entity => canObserveEntity(viewer,entity.id))
+                .map(entity => ({id:entity.id,ready:!entity.aerial?.active && (entity.aerial?.cooldownS ?? 0)<=0}))} : {}),
+            },
           }),
         },
       });
@@ -2272,6 +2347,17 @@ export function createAuthoritativeMatch({
       pendingEvents.length = 0;
     },
 
+    captureModeCheckpoint() {
+      if (!['juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'ac130'].includes(normalizedGameMode)) return null;
+      const flightStates: NewModeCheckpoint['flights'] = [];
+      for (const entity of entities) { const flight = captureAerial(entity); if (flight) flightStates.push({ id: entity.id, flight }); }
+      return { mode: modeController.captureCheckpoint(timeS + modeTimeOffsetS), flights: flightStates };
+    },
+    restoreModeCheckpoint(checkpoint) {
+      modeTimeOffsetS = Math.max(0, checkpoint.mode.elapsedS);
+      modeController.restoreCheckpoint(checkpoint.mode);
+      for (const entry of checkpoint.flights) { const entity = entityById.get(entry.id); if (entity) restoreAerial(entity, entry.flight, nextAerialShellId, launchAerialShell); }
+    },
     restoreDestroyedObstacles,
   };
   updateVisibility();

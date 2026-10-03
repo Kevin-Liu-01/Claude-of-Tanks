@@ -1,5 +1,23 @@
-// Limestone shore with a hooked bay on the west. The harbor road hugs the
-// coast while inland hairpins climb behind the fishing village.
+// src/world/maps/saltwind.ts — Saltwind Narrows, redesigned 2026-10-02 (maps-and-layouts lane; docs/MAP-LAYOUT-BRIEF.md).
+// The bay, the harbour village and its roads, the palette, sky, sea, vegetation, name and id are the map's identity
+// and stay; the battlefield around them is new. The old layout put its three strongpoints on Verdant's three beat
+// sites, spread bravo's pads over 500 m, and left the inland slopes open, so the 2v2 pacing receipt's fastest match
+// (seed 49002) ended in 104 s.
+//
+// Reference: a Dalmatian limestone coast on the Adriatic channels (the Peljesac and Kornati narrows): a sheltered
+// bay hooked behind a headland, a fishing village on its shore, and dry-stone terraces (gromace) stepping up the bare
+// limestone slopes above it, with scrub and olive walls between them and a low karst spine running inland.
+//
+// The story on the ground: the bay opens on the west edge. The harbour village stands on its east shore, with the
+// coast road along the quays and the market street climbing inland. Above the village a low karst spine runs east
+// along the bay's axis. South and north of it, the limestone slopes rise in two flights of dry-stone terraces with
+// scrub knolls on their eastern flank, and a hairpin road crosses each flight.
+//
+// The layout is mirror-symmetric across the bay's axis (z = 10): every terrace, knoll, wall, strongpoint and objective
+// in the southern half has a counterpart reflected into the northern half. Alpha deploys on the southern upland,
+// behind the southern terrace flight, and bravo on the northern upland behind the northern flight, so the pads cannot
+// see each other. The three zone-control objectives stand on the axis: the village square, the market crossroads and
+// the karst spine's saddle.
 import coastal from './coastal.ts';
 import { roundRoadBends } from './roadBends.ts';
 export default {
@@ -33,6 +51,8 @@ export default {
       // A single market street leaves the harbor junction; no folded-back loop.
       [[-190, -36], [-138, -44], [-82, -40], [-20, -30], [80, -8], [156, 6], [228, 14]],
       [[-224, 206], [-6, 242], [126, 218], [266, 330]],
+      // The southern hairpin road, the reflection of the northern one across the bay's axis.
+      [[-230, -186], [-6, -222], [126, -198], [266, -310]],
     ]) },
     // Round 40 (2026-09-22, AAA map program): the hooked bay is one authored shoreline. The former three overlapping
     // circles rasterised into three straight-edged basins with sand strips between them and dried in the last
@@ -46,19 +66,48 @@ export default {
       radii: [0.70, 0.66, 0.44, 0.48, 0.86, 1.00, 1.00, 1.00,
         1.00, 1.00, 1.00, 0.97, 0.86, 0.66, 0.58, 0.62] }],
     marshes: [{ x: -286, z: 4, r: 27, dip: 0.6 }],
+    // The spine saddle: a level apron the zone-control placement seats its 30 m disc on. The village square's and the
+    // market crossroads' discs seat on the village's own graded floor (an apron there would repaint the protected
+    // road channel under the activity-patch wear).
+    hardstands: [
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): 16 m north, at its ground's median height, a 24 m bank
+      { x: 230, z: 26, width: 60, length: 60, yawDeg: 0, level: 2.4, grade: 0, bankM: 24 },
+    ],
     landforms: [
+      // the village's hill under the market street, on the axis
       { kind: 'ridge', x: -166, z: 22, length: 348, width: 60, height: 5.8, yawDeg: 2 },
-      { kind: 'ridge', x: 182, z: 18, length: 440, width: 86, height: 9.0, yawDeg: -8 },
-      { kind: 'knoll', x: 328, z: -248, rx: 74, rz: 94, height: 7.0 },
-      { kind: 'ridge', x: 62, z: 272, length: 210, width: 66, height: 6.4, yawDeg: 82 },
+      // the bay's shore basin: the strand grading under the harbour (round 40)
       { kind: 'basin', x: -344, z: 12, rx: 114, rz: 280, height: -3.6, wetScale: 0.2 },
-      { kind: 'knoll', x: -122, z: -264, rx: 78, rz: 64, height: 5.2 },
+      // the karst spine east of the village along the axis: two low knolls with the saddle between them
+      { kind: 'knoll', x: 130, z: 10, rx: 70, rz: 42, height: 6.5 },
+      { kind: 'knoll', x: 330, z: 10, rx: 64, rz: 42, height: 6 },
+      // the dry-stone terrace flights, south and north: each screens its pad from the axis
+      ...[[40, -230, 300, 70, 8, 6], [-90, -300, 180, 56, 5, 10]].flatMap(([x, z, length, width, height, yaw]) => [
+        { kind: 'ridge', x, z, length, width, height, yawDeg: yaw },
+        { kind: 'ridge', x, z: 20 - z, length, width, height, yawDeg: -yaw },
+      ]),
+      // the scrub knolls on the flights' eastern flank
+      { kind: 'knoll', x: 300, z: -220, rx: 70, rz: 60, height: 6 },
+      { kind: 'knoll', x: 300, z: 240, rx: 70, rz: 60, height: 6 },
+      // limestone outcrops on the lower slopes, south and north of the village: they part the harbour lane from the
+      // market lane, and the market lane from the spine lane
+      ...[[-190, -118], [90, -126]].flatMap(([x, z]) => [
+        { kind: 'knoll', x, z, rx: 34, rz: 26, height: 6.5 },
+        { kind: 'knoll', x, z: 20 - z, rx: 34, rz: 26, height: 6.5 },
+      ]),
     ],
   },
-  spawns: { player: { x: -94, z: -390 }, enemies: [
-    { x: -244, z: 384 }, { x: -162, z: 424 }, { x: -78, z: 380 }, { x: 6, z: 424 },
-    { x: 90, z: 382 }, { x: 174, z: 424 }, { x: 258, z: 388 },
-  ] },
+
+  spawns: {
+    // Alpha deploys on the southern upland behind the southern terrace flight; bravo's seven pads (two rows, 60 m
+    // apart) stand on the northern upland behind the northern flight, their centroid the reflection of alpha's pad
+    // across the bay's axis. 809 m between the anchors.
+    player: { x: 140, z: -394 },
+    enemies: [
+      { x: 140, z: 380 }, { x: 80, z: 380 }, { x: 200, z: 380 },
+      { x: 50, z: 440 }, { x: 110, z: 440 }, { x: 170, z: 440 }, { x: 230, z: 440 },
+    ],
+  },
   splat: { sourcedPalette: 'coastal', ...coastal.splat, seaLake: true, seaFoam: 0.2, seaRamp: [0.16, 0.54], iceDrift: 0.02, marshGloss: 0.90, iceSky: [0.23, 0.44, 0.58], tintA: [1.08, 1.04, 0.82], tintB: [0.73, 0.78, 0.62], tintC: [1.14, 1.08, 0.88], roadTint: [0.82, 0.76, 0.63], midRelief: 0.68 },
   vegetation: {
     species: ['cedar', 'acacia', 'pine'], clusterMix: [['cedar', 0.46], ['acacia', 0.38], ['pine', 0.16]],
@@ -84,13 +133,17 @@ export default {
     plan: ['fishery', 'boatshed', 'marketRow', 'farmhouse', 'bathhouse', 'cottage', 'depot', 'tavern', 'boatshed', 'ruin', 'cornershop', 'market', 'farmhouse', 'woodshed', 'fishery', 'cottage', 'granary', 'ruin'],
     destructibleBuildings: ['fishershack', 'fieldhut', 'guardpost', 'checkpointhut'],
     buildingLat: [12, 2], destructibleBuildingLat: [16, 3], sideSkip: 0.16, spacingPad: 7.5,
+    // One strongpoint per role, balanced across the bay's axis: the quay cooperative at the harbour's north end, the
+    // toll farm below the spine's western knoll on the south side, the limestone watch on the spine's eastern knoll.
     tacticalBeats: [
-      { id: 'harbor-cooperative', role: 'brawl', x: -220, z: 92, yawDeg: 90, structure: 'fishershack', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
-      { id: 'inland-limestone-watch', role: 'scout', x: 280, z: 54, yawDeg: -90, structure: 'guardpost', outcrop: { count: 5, radius: 10 } },
-      { id: 'northern-toll-farm', role: 'support', x: 32, z: 278, yawDeg: 180, structure: 'checkpointhut', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
+      { id: 'quay-cooperative', role: 'brawl', x: -210, z: 120, yawDeg: 90, structure: 'fishershack', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
+      { id: 'spine-toll-farm', role: 'support', x: 130, z: -30, yawDeg: 0, structure: 'checkpointhut', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
+      { id: 'spine-limestone-watch', role: 'scout', x: 330, z: 10, yawDeg: -90, structure: 'guardpost', outcrop: { count: 5, radius: 10 } },
     ],
     wallStyle: 'fieldstone', wallStoneChance: 0.82,
-    wallRuns: [[-244, -80, -232, -16, 2], [-244, 56, -244, 120, 3], [-150, -72, -80, -72, 2], [-142, 78, -72, 78, 3], [2, 306, 78, 306, 2], [310, 14, 310, 86, 3]],
+    // the village crofts and a dry-stone terrace wall (gromace) on each flight, its reflection on the other
+    wallRuns: [[-244, -80, -232, -16, 2], [-244, 36, -244, 100, 3], [-150, -72, -80, -72, 2], [-150, 92, -80, 92, 3],
+      [60, -150, 140, -160, 2], [60, 170, 140, 180, 2]],
     well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
     haystacks: 8, rocks: 188, outcrops: 30, craters: 48, rubblePiles: 12, cropFields: 4, sandbagLines: 14, hedgehogs: 8,
     tankWrecks: { era: 'modern', count: 5, debris: true,
@@ -99,10 +152,11 @@ export default {
   },
   horizon: { baseHex: 0x7f8977, amp: 0.90, style: 'rolling', treeline: 0.42, forestHex: 0x506044, rockHex: 0xa4a391, haze: 0.90, grain: 0.46 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'sea-streets', coverage: 0.30, windDirDeg: 200, farBand: 0.55 },
+  clouds: { regime: 'sea-streets', coverage: 0.30, windDirDeg: 200, farBand: 0.55, fogBank: 0.35, fogBankTopM: 100 },
   sky: { ...coastal.sky, sunElevationDeg: 30, sunAzimuthDeg: 112, turbidity: 3.9, fogDensity: 0.00052, fogTintHex: 0x9cb8c5, fogMix: 0.48, cloudOpacity: 0.86, cloudOpacity2: 0.5, sunIntensity: 3.95, hemiIntensity: 0.42 },
   minimap: { ...coastal.minimap, base: [117, 123, 91], hard: [142, 137, 114], soft: [63, 88, 84] },
-  shot: { pos: [-252, 58, -248], look: [-52, 0, 90] },
+  // over the southern terraces to the harbour village, the bay and the northern flight
+  shot: { pos: [-60, 52, -300], look: [-150, 2, 80] },
   // round 66 (2026-09-24, the FFT ocean): the narrows' westerly runs up the bay from the open sea, a longer swell
   // under the chop; the surf breaks on the 20 m strand (round 52) and runs up it
   ocean: { windSpeed: 5.0, windDirDeg: 8, fetchKm: 24, swell: 0.4, swellDirDeg: 5, amplitude: 0.75, choppiness: 0.9, foam: 0.5, breakers: 0.9, caustics: 0.7 },

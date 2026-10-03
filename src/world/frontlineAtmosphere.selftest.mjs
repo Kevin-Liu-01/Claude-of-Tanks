@@ -161,7 +161,7 @@ assert.match(main, /createFrontlineAtmosphereAccess\(/, 'main owns the frontline
 assert.match(main, /frontline\.prepare\(/, 'prepared with the battle atmosphere');
 assert.match(main, /frontline\.reset\(\)/, 'reset with the garage presentation');
 assert.match(main, /frontline\.update\(/, 'ticked from the battle frame');
-const audio = readFileSync(new URL('../audio/audio.ts', import.meta.url), 'utf8');
+const audio = readFileSync(new URL('../audio/audioEngine.ts', import.meta.url), 'utf8');
 for (const name of ['atmosphere:artillery', 'atmosphere:flak', 'atmosphere:flyover', 'atmosphere:aa']) {
   assert.ok(audio.includes(`'${name}'`), `audio subscribes to ${name}`);
 }

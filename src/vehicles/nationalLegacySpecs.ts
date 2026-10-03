@@ -23,6 +23,7 @@ export function synchronizeNationalLegacyMetadata():void {
     // independently counts any metric that later changes.
     s.balancePeerOf=c.predecessor;
     s.variantOf=c.donor;
+    s.armor.turretPivot=[.008,c.y,c.z];
     s.dims={...s.dims,hullLengthM:d.hullLength,widthM:d.width,heightM:d.heightM,
       overallLengthM:d.hullLength/2+c.z+NATIONAL_GUN_PIVOT[2]+NATIONAL_BARREL_LENGTH};
     stripSilhouetteDimensions(s.dims);

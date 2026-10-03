@@ -11,8 +11,9 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 // hard segmented picker — consumed by game/state.ts via getStoredDifficulty at
 // battle setup), controller aim sensitivity — each slider is paired with a
 // numeric entry field. SOUND tab: master/engine/gunfire/ambience/UI volume
-// sliders (persisted with the gameplay settings; broadcast live over the bus
-// as 'ui:volumes' for src/audio/audio.ts). All state persists via the input
+// sliders, the crew voices (national crews / one nation's pack) and the
+// concussion toggle (persisted with the gameplay settings; broadcast live over
+// the bus as 'ui:volumes' for src/audio/audioEngine.ts). All state persists via the input
 // layer's localStorage stores. Also owns the fading controls-hint strip
 // shown on battle start and the garage gear button, and broadcasts
 // 'ui:bindingsChanged' so the HUD's shell/consumable hotkey labels stay honest.
@@ -43,6 +44,8 @@ import {
 import { containModalTab, isAnyModalOpen } from './modal.ts';
 import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
+import { CREW_VOICE_NATIONS, isCrewVoiceSetting } from '../audio/crewVoice.ts';
+import type { CustomSelectController } from './customSelect.ts';
 import {
   getLocale,
   getSupportedLocales,
@@ -97,7 +100,8 @@ type BooleanSettingKey =
   | 'showDebugHud'
   | 'showDirectionalHitValues'
   | 'armorAimOverlay'
-  | 'alarmHeartbeat';
+  | 'alarmHeartbeat'
+  | 'audioConcussion';
 type ActionDefinition = InputLayer['actionDefs'][number];
 type TimerHandle = ReturnType<typeof setTimeout>;
 
@@ -285,6 +289,11 @@ const SETTINGS_CSS = `
 .cot-set-row.alt:hover{background:rgba(146,164,180,.06);}
 .cot-set-row .lb{min-width:0;flex:1;display:flex;align-items:center;gap:9px;
   font-size:12.5px;color:#c6d2dc;letter-spacing:.04em;line-height:1.3;}
+.cot-set-crew-field{width:260px;max-width:100%;min-width:0;}
+@media(max-width:600px){
+  .cot-set-crew-row{flex-direction:column;align-items:stretch;gap:10px;}
+  .cot-set-crew-field{width:100%;}
+}
 .cot-setting-icon{position:relative;width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center;
   color:#91a3b2;background:linear-gradient(180deg,rgba(37,46,54,.72),rgba(16,21,26,.78));
   border:1px solid rgba(146,164,180,.24);box-shadow:inset 0 1px 0 rgba(235,243,250,.05);}
@@ -660,6 +669,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const replayOwnsScreen = () => kcReplay || nowMs() - kcDoneMs < KC_DONE_GRACE_MS;
   let activeTab: SettingsTab = 'controls';
+  let crewSelectController: CustomSelectController | null = null;
   // A touch-only device has no keyboard to rebind, so the Controls
   // tab rendered 70+ sub-30px keycap chips (useless, and every one a failed
   // touch target). Hide the tab and land on Gameplay instead.
@@ -1090,6 +1100,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       ui: s.volUi,
       voice: s.volVoice,
       alarmHeartbeat: !!s.alarmHeartbeat,
+      crewVoice: s.crewVoice,
+      concussion: !!s.audioConcussion,
     });
   }
 
@@ -1103,8 +1115,42 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         onChange: emitVolumes, blipOnCommit: true,
       });
     }
+    // One flag dropdown: national crews, or a fixed pack for every vehicle.
+    const crew = groupCard(body, t('settings.crew.title'));
+    const crewRow = el('div', 'cot-set-row cot-set-crew-row', crew);
+    settingLabel(crewRow, t('settings.crew.voice'), SETTINGS_OPTION_ICONS.crewVoice);
+    const crewField = el('div', 'cot-set-crew-field', crewRow);
+    const crewSelect = el('select', '', crewField);
+    crewSelect.dataset.setting = 'crewVoice';
+    crewSelect.setAttribute('aria-label', t('settings.crew.voice'));
+    crewSelect.add(new Option(t('settings.crew.national'), 'national'));
+    for (const [value, nation] of Object.entries(CREW_VOICE_NATIONS)) {
+      crewSelect.add(new Option(t(`nation.${nation}`), value));
+    }
+    crewSelect.value = input.getSettings().crewVoice;
+    crewSelect.addEventListener('change', () => {
+      if (!isCrewVoiceSetting(crewSelect.value)) return;
+      input.setSetting('crewVoice', crewSelect.value);
+      emitVolumes();
+      emit('ui:click', {});
+    });
+    // Let the shared dropdown handle keys first, then contain Tab and prevent
+    // game shortcuts. The panel's capture listener yields this field below.
+    crewField.addEventListener('keydown', event => {
+      event.stopPropagation();
+      containModalTab(event, root, requiredElement<HTMLButtonElement>(root, '.cot-set-close'));
+    });
+    // Flag assets are browser-only; retain the settings policy's Node import.
+    void import('./nationSelect.ts').then(({ createNationSelect }) => {
+      if (!crewSelect.isConnected) return;
+      crewSelectController = createNationSelect(crewSelect, t('settings.crew.voice'), value =>
+        isCrewVoiceSetting(value) && value !== 'national' ? CREW_VOICE_NATIONS[value] : undefined);
+    });
+    const crewNote = el('div', 'cot-set-note', crew);
+    crewNote.textContent = t('settings.crew.note');
     const alarms = groupCard(body, t('settings.alarms.title'));
     onOffRow(alarms, t('settings.alarms.heartbeat'), 'alarmHeartbeat', emitVolumes);
+    onOffRow(alarms, t('settings.alarms.concussion'), 'audioConcussion', emitVolumes);
 
     const note = el('div', 'cot-set-note', body);
     note.textContent = t('settings.sound.note');
@@ -1206,6 +1252,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   }
 
   function renderTab() {
+    crewSelectController?.close();
+    crewSelectController = null;
     cancelCapture();
     clearConflict();
     for (const t of root.querySelectorAll<HTMLButtonElement>('.cot-set-tab')) {
@@ -1366,6 +1414,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       if (!e.repeat) finishCapture(e.code);
       return;
     }
+    // The dropdown consumes arrows, typeahead and its first Escape. Its field
+    // contains bubbling keys so they still cannot reach the game behind us.
+    if (e.target instanceof Element && e.target.closest('.cot-set-crew-field') &&
+        (e.code !== 'Escape' || root.querySelector('.cot-custom-select-list:popover-open'))) return;
     // While the panel is open it owns the keyboard: nothing leaks to the HUD
     // shell hotkeys or the garage's Enter-to-battle handler behind it.
     e.stopPropagation();
@@ -1477,6 +1529,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
    */
   function closePanel(o: { noRelock?: boolean } = {}): void {
     if (!open) return;
+    crewSelectController?.close();
     if (o && o.noRelock) relockOnClose = false;
     cancelCapture();
     clearConflict();
@@ -1522,6 +1575,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         input.setSetting(key, 1);
       }
       input.setSetting('alarmHeartbeat', true);
+      input.setSetting('audioConcussion', true);
+      input.setSetting('crewVoice', 'national');
       emitVolumes();
       renderTab();
       emit('ui:click', {});

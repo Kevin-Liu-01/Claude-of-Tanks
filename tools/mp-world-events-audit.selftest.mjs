@@ -8,9 +8,17 @@
 //   - a seat whose view begins on a running match (the rejoin, the return after the migration) lays every earlier fall
 //     down settled — final pose, no animation, no sound — and animates none of them;
 //   - the elected host resumes with the old host's destroyed props felled in its own world and its revision continued,
-//     re-destroys none of them and no seat hears a ghost crunch;
+//     re-destroys none of them and no seat hears a ghost crunch. What the elected seat knew is read independently of its
+//     boot: the newer of the sealed keyframe and its newest frame, plus every fall the old host sent it (2026-10-02,
+//     fix/mp-migration-props: a fall whose frame the dying host never published stood again on the new host, a bot
+//     crushed it a second time and p2 and p3 crunched it — 1 run in 3; and the old check compared the boot with the
+//     newest frame alone, failing a boot that rightly used a newer keyframe);
 //   - no shell impact, hit, destruction, ram or crash a seat received goes missing, doubles, or lands > 0.5 m from the
-//     authority's position.
+//     authority's position;
+//   - (ghost-crunch lane, 2026-10-02) every crunch names the obstacle it fells, and a scripted bot driven into a hedgehog
+//     whose crossed beams share one box centre fells it with exactly one event — the three "ghost" crunches of 2026-10-02
+//     were that crunch read back from its position as the sibling beam; a scripted bot falling to its death beside a
+//     crushable tree is presented where its hull died (within 1 cm) on every view — not mid-air, 0.3–0.8 m off.
 // Shorter windows than the tool's defaults (8 s of play, 4 s after each scenario; ≈ 45 s wall).
 import assert from 'node:assert/strict';
 import { formatMatrix, runWorldEventsAudit } from './mp-world-events-audit.mjs';
@@ -20,6 +28,13 @@ const text = formatMatrix(report);
 if (!report.pass) { console.log(text); assert.fail(`the audit did not complete: ${report.failures.join('; ')}`); }
 const failures = [];
 const check = (condition, message) => { if (!condition) failures.push(message); };
+// Timing judgments (a beat presented late, a slow re-welcome) need a harness that kept its frame cadence: the host, the
+// seats and the transport share one process, so on a starved machine (event-loop delay p99 over 50 ms) a late beat is
+// the harness's own. They are reported, not failed, then; every correctness judgment below always applies.
+// (2026-10-02: one late finding in 1 of 3 runs under machine load; clean when run alone.)
+const starved = (report.loopDelay?.p99Ms ?? 0) > 50;
+const timingSkipped = [];
+const timing = (condition, message) => { if (!condition) (starved ? timingSkipped : failures).push(message); };
 
 check(report.steps.live.hostCrushes >= 3, `the live window produced ${report.steps.live.hostCrushes} crushes on the host (needs a few to judge)`);
 for (const row of report.matrix) {
@@ -29,7 +44,7 @@ for (const row of report.matrix) {
   check(row.duplicate === 0, `${view}: ${row.duplicate} presented twice`);
   check(row.wrongPlace === 0, `${view}: ${row.wrongPlace} presented > 0.5 m from the authority's position`);
   // the budget's deadline bounds a beat to four ticks past its tick; a slow frame of the single-process presenter can add two
-  check(row.late <= 2, `${view}: ${row.late} presented more than two snapshot intervals after their tick`);
+  timing(row.late <= 2, `${view}: ${row.late} presented more than two snapshot intervals after their tick`);
   if (row.kind === 'world_prop_destroyed') {
     // a fall whose event a link reset swallowed lands settled from the list: never animated, never early, never a crunch
     check(row.viaFrame === row.settled, `${view}: ${row.viaFrame - row.settled} props felled by the destroyed list with an animation`);
@@ -40,24 +55,35 @@ for (const row of report.matrix) {
 }
 for (const [view, row] of Object.entries(report.perPeer)) {
   check(row.ghostFx === 0, `${view}: ${row.ghostFx} prop:crushed effects for nothing this view received`);
+  check(row.unattributedFx === 0, `${view}: ${row.unattributedFx} prop:crushed effects name no obstacle`);
   check(row.replaysAnimated === 0, `${view}: ${row.replaysAnimated} falls that predate this view were animated (settled expected)`);
 }
-const { rejoin, migration, return: returned } = report.steps;
+const { rejoin, migration, return: returned, scripted } = report.steps;
+check(scripted?.hedgehog && scripted.hedgehog.events === 1, `scripted hedgehog: ${scripted?.hedgehog?.events ?? 'no'} events for one ${scripted?.hedgehog?.kind ?? 'shared-centre'} prop (one expected: its records fall together)`);
+check(scripted?.fall?.died === true, `scripted fall: the bot dropped on one hit point beside a tree did not die (${JSON.stringify(scripted?.fall ?? null)})`);
+const fallViews = Object.entries(scripted?.fall?.presentedErrM ?? {});
+check(fallViews.length > 0 && fallViews.every(([, err]) => err <= 0.01), `scripted fall: presented ${JSON.stringify(scripted?.fall?.presentedErrM ?? {})} m from the hull at its death (≤ 0.01 m on every view)`);
 check(rejoin.replayedAnimated === 0 && rejoin.replayedSettled === rejoin.replayedOnJoin, `rejoin: ${rejoin.replayedAnimated} of ${rejoin.replayedOnJoin} earlier falls animated on the fresh presentation`);
 check(rejoin.fxOnJoin === 0, `rejoin: ${rejoin.fxOnJoin} crunches for props that fell before the view began`);
-// the elected seat boots from the sealed keyframe overlaid with its own newest frame: every destroyed prop it knew of is restored,
-// at the revision it knew (what fell inside the last in-flight snapshot before the host died is the one bounded loss)
-check(migration.restored === migration.knownByElectedAtClose, `migration: ${migration.restored} destroyed props restored on the new host, the elected seat knew ${migration.knownByElectedAtClose} (the old host had ${migration.destroyedOld})`);
-check(migration.revisionNewAtBoot === migration.knownRevisionAtClose && migration.revisionNewAtBoot >= migration.restored, `migration: the new host's revision ${migration.revisionNewAtBoot} is not the elected seat's ${migration.knownRevisionAtClose} (the old host's ${migration.revisionOld})`);
+// the elected seat boots from the newer of the sealed keyframe and its own newest frame, plus every fall it was sent: everything it
+// knew is restored, nothing beyond the old host's list is invented, and the revision counts every restored fall without
+// running ahead of the old host's (the base's plus one per fall known from events alone)
+check(migration.knownNotRestored === 0, `migration: ${migration.knownNotRestored} of the ${migration.knownBySeat} destroyed props the elected seat knew are standing on the new host (its ${migration.bootBase} at tick ${migration.baseTick} listed ${migration.baseDestroyed}; ${migration.knownFromEventsOnly} more it had from events; the old host had ${migration.destroyedOld})`);
+check(migration.revisionNewAtBoot >= migration.destroyedNewAtBoot && migration.revisionNewAtBoot >= migration.baseRevision + migration.knownFromEventsOnly && migration.revisionNewAtBoot <= migration.revisionOld,
+  `migration: the new host's revision ${migration.revisionNewAtBoot} (its list ${migration.destroyedNewAtBoot}) does not count the seat's ${migration.bootBase} revision ${migration.baseRevision} plus ${migration.knownFromEventsOnly} falls from events within the old host's ${migration.revisionOld}`);
 check(migration.inventedOnMigration === 0, `migration: ${migration.inventedOnMigration} props destroyed on the new host that the old host never destroyed`);
 check(migration.recrushEvents === 0, `migration: ${migration.recrushEvents} props re-destroyed on the new host`);
 check(migration.ghostFxP2 === 0 && migration.ghostFxP3 === 0, `migration: ghost crunches p2 ${migration.ghostFxP2}, p3 ${migration.ghostFxP3}`);
 check(returned.replayedAnimated === 0, `return: ${returned.replayedAnimated} of ${returned.replayedOnJoin} earlier falls animated for the returning seat`);
-check(report.steps.reconnect.outageMs < 5000, `reconnect: ${report.steps.reconnect.outageMs} ms to be welcomed again`);
+timing(report.steps.reconnect.outageMs < 5000, `reconnect: ${report.steps.reconnect.outageMs} ms to be welcomed again`);
+if (timingSkipped.length) {
+  console.log(`world events audit: harness starved (event-loop delay p99 ${report.loopDelay.p99Ms} ms, max ${report.loopDelay.maxMs} ms); `
+    + `timing findings reported, not judged:\n  ${timingSkipped.join('\n  ')}`);
+}
 
 if (failures.length) {
   console.log(text);
   assert.fail(`world events audit: ${failures.length} finding(s)\n  ${failures.join('\n  ')}`);
 }
 const crushRows = report.matrix.filter((row) => row.kind === 'world_prop_destroyed' && row.sent > 0);
-console.log(`mp world events audit: ${report.steps.live.hostCrushes} live crushes, ${crushRows.reduce((sum, row) => sum + row.viaEvent, 0)} prop falls over ${crushRows.length} views all through their events (Δticks p50 ${crushRows.map((row) => row.dTicks.p50).join('/')}), rejoin ${rejoin.replayedSettled}/${rejoin.replayedOnJoin} earlier falls settled, migration ${migration.restored}/${migration.destroyedOld} destroyed props restored at revision ${migration.revisionNewAtBoot} with ${migration.recrushEvents} re-destroyed, return ${returned.replayedSettled}/${returned.replayedOnJoin} settled, ${report.hostEvents} deliveries judged in ${report.wallMs} ms`);
+console.log(`mp world events audit: scripted ${scripted.hedgehog.kind} (records ${scripted.hedgehog.records.join('/')}, centre shared by ${scripted.hedgehog.sharedCenter.join('/')}) felled by ${scripted.hedgehog.events} event (${scripted.hedgehog.eventIndices.join('/')}), fall death (${scripted.fall.cause}) presented ${fallViews.map(([view, err]) => `${view} ${err} m`).join(', ')}; ${report.steps.live.hostCrushes} live crushes, ${crushRows.reduce((sum, row) => sum + row.viaEvent, 0)} prop falls over ${crushRows.length} views all through their events (Δticks p50 ${crushRows.map((row) => row.dTicks.p50).join('/')}), rejoin ${rejoin.replayedSettled}/${rejoin.replayedOnJoin} earlier falls settled, migration ${migration.restored}/${migration.destroyedOld} destroyed props restored at revision ${migration.revisionNewAtBoot} (the seat's ${migration.bootBase} plus ${migration.knownFromEventsOnly} from events) with ${migration.recrushEvents} re-destroyed, return ${returned.replayedSettled}/${returned.replayedOnJoin} settled, ${report.hostEvents} deliveries judged in ${report.wallMs} ms (harness event-loop delay p99 ${report.loopDelay?.p99Ms ?? '?'} ms)`);

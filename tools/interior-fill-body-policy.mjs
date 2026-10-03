@@ -13,6 +13,7 @@ const RENEWED_BODY_IDS = [
   't64bv1', 'ua_t64bv', 't62mv1', 't62mv1_x', 't72m1_jaguar',
   't72_rys', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei',
   'amx30', 'amx30b2', 'upior', 'type89_x',
+  't84', 'pl01_105', 'vt4a1', 'ztz99a2', 'ztz99a2_prototype',
   // Open gun throats: external roof fittings cannot bound turret fill.
   'leo2a7v_x', 'leo2a6m_x', 'leo2a4m_x',
 ];
@@ -33,6 +34,13 @@ const PRIMARY_BODY_BUCKETS = Object.freeze({
   // slat rails and roof optics sit outside them: combining those separate parts
   // into one vertical span would invent body volume across their real air gaps.
   bmp3m_dragun125_x: Object.freeze(['hull', 'turret']),
+  // 2026-10-02 (fleet watertight gate): the K21's turret launcher tubes and the
+  // Kurganets-25's roof launcher fan are open exterior stock around closed
+  // primary shells. A fills-to-zero pass against every body mesh filled the
+  // launcher bores in front of their closed caps (k21Launcher) and the deck air
+  // over the fan receivers (kurganetsSourceDetail); their air stays exterior.
+  k21_x: Object.freeze(['hull', 'turret']),
+  kurganets25_x: Object.freeze(['hull', 'turret']),
   // The supplied Trophy Mk.4 likewise uses its primary hull/turret shells as
   // the repair boundary; its bounded authored seams are handled by the fill
   // generator rather than by treating unrelated exterior fittings as shell.

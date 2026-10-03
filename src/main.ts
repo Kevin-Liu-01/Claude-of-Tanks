@@ -69,6 +69,8 @@ import {
 } from './engine/quality.ts';
 import { createSky } from './engine/sky.ts';
 import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
+import { loadGroundedLightModel } from './engine/lightModelCore.ts';
+import { loadCloudscapeLayers } from './engine/cloudPresets.ts';
 import { battlePreferences } from './game/battlePreferences.ts';
 import { createFrontlineAtmosphereAccess } from './world/frontlineAtmosphereAccess.ts';
 import { createNightLightingAccess } from './engine/nightLightingAccess.ts';
@@ -1326,7 +1328,9 @@ const transition = createTransition();
 // --- audio --------------------------------------------------------------------
 const audio = await bootStage('audio', () => {
   const a = createLazyAudio({ getMapId: () => game.phase === 'battle'
-    ? game.mapId : currentWorld()?.mapId ?? game.mapId });
+    ? game.mapId : currentWorld()?.mapId ?? game.mapId,
+  // Surface under each hull (track sounds), water depth and terrain occlusion.
+  getTerrain: () => (currentWorld() ? hfProxy : null) });
   a.bindBus(bus);
   return a;
 });
@@ -1446,7 +1450,6 @@ createCombatFeedbackRuntime({
   bus,
   game,
   rig,
-  audio,
   getFx: () => fxRuntimeAccess.current,
   hasNetworkMatch: networkMatchActive,
   shotRecoilScale,
@@ -2186,7 +2189,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
     import('./mp/host/browserHostPort.ts'),
     import('./mp/host/worldCollision.ts'),
     import('./mp/transport/iceConfig.ts'),
-  ]).then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE }, { createRoomIceResolver }]) => {
+  ]).then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE, loadObstacleIdentities }, { createRoomIceResolver }]) => {
     // The launch runs on the app's ports: the loader, the world, the warm owners, the activation.
     const options = multiplayerAppPorts();
     const activation = createActivationRuntime(options.activation);
@@ -2194,7 +2197,8 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
       clientBuild: import.meta.env.MODE,
       ports: {
         lifecycle: battleEntryLifecycle,
-        load: options.load,
+        // a world laid out otherwise than the host's manifest reads the destroyed list through the manifest's identities
+        load: { ...options.load, loadAuthorityObstacles: (mapId, signal) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal }) },
         roster: options.roster,
         scene: {
           engineCtx,
@@ -3024,7 +3028,8 @@ window.__SHOTS = {
     if (!isShotViewName(name)) {
       throw new Error(`Unknown screenshot view: ${name}`);
     }
-    const { setShotView } = await import('./dev/shotRuntime.ts');
+    const [{ setShotView }] = await Promise.all([import('./dev/shotRuntime.ts'), loadGroundedLightModel(), loadCloudscapeLayers()]);
+    // (the staged map's open sky takes the grounded light model and its cloudscape, as a battle's does: the boot weight)
     type ShotRuntimeContext = Parameters<typeof setShotView>[1];
     return setShotView(name, checkedIntegrationPort<ShotRuntimeContext>({
       preloadSoloBattleRuntime,

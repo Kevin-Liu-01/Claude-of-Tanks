@@ -67,8 +67,9 @@ a session scratchpad), which was not versioned and was lost once with a scratchp
     node tools/gate.mjs --only='src/vehicles/**'       # receipt selection passes through: --shard=i/n, --all, --order=registry
     node tools/gate.mjs --dry-run                      # print the plan, run nothing
 
-- **build** is `npm run build`; its prebuild runs `npm run i18n:validate`, so **i18n** adds only
-  `tools/i18n-scan.mjs --check`, the other half of `npm run i18n:check`.
+- **build** is `npm run build`; its prebuild runs `npm run i18n:validate` and its page catalog plugin
+  runs the `tools/i18n-page-catalogs.mjs` scan, so **i18n** adds only `tools/i18n-scan.mjs --check`, the
+  rest of `npm run i18n:check`.
 - **budget** runs `tools/bundle-budget.mjs` once that file exists and is skipped until then.
 - **workers** runs the `typecheck` and `test` scripts of every `cloudflare/*/package.json` (rooms and
   telemetry). They were in no gate before: the rooms typecheck was red on main for days unseen.
@@ -237,7 +238,7 @@ wait is stale by the time the lock arrives — re-read it after `acquire()` and 
 
 **Asset caching (2026-09-25).** Vite emits content-hashed files under `/assets/`. Do NOT add a header rule for `/assets/(.*)` in `vercel.json`: a `headers` rule applies to every response on the path including a 404, and Vercel's edge then caches that 404 for the rule's lifetime — under deploy 89's immutable rule one transient miss during a promotion became a permanent "A game file failed to download" for every player on that edge node (`tools/vercel-config.selftest.mjs` and `src/gallery/chunkRecovery.selftest.mjs` refuse the rule). The year-long header comes from the deploy step instead: `node tools/vercel-output-immutable.mjs` runs between `vercel build` and `vercel deploy --prebuilt` and writes immutable, case-sensitive header routes for exactly the hashed files that exist in `.vercel/output/static/assets` (groups of 40 names per route, ahead of the filesystem handle; `--check` verifies coverage; `tools/vercel-output-immutable.selftest.mjs`). A path that is not in the build matches no rule, keeps Vercel's default `public, max-age=0, must-revalidate` answer and heals on the next request; documents keep that default too. Since 2026-10-01 the same per-file routes make the content-addressed collision manifests (`/mp-collision/<map>.<sha12>.json`; the index stays default) immutable and give the existing images, audio and fonts under `/textures`, `/icons`, `/fonts`, `/audio`, `/maps` and `/minimaps` `public, max-age=3600, stale-while-revalidate=86400` (they keep their URL across deploys, so an hour fresh and a day served stale while revalidating); `--check` covers all three families (deploy 163's output: 949 + 33 + 2,480 files, 90 routes, config.json 39 → 119 KB). Deploy 94 also re-encoded every chunk hash as base36 (`build.rollupOptions.output.hashCharacters`), so every `/assets` URL changed once and an edge node that had cached 404s for deploy-93 chunks (a browser's boot-retry loop during the promotion, answered by the old config) never serves them again. Every deploy's verify step then sweeps the served index's chunks (all must answer 200), checks that a missing `/assets` path is not cacheable and boots the alias headless before the DEPLOYS.md row is written.
 
-**Versioned runtime audio (2026-10-02).** A battle session fetches 111 sound files by name (29 combat samples, 82 radio lines); under the one-hour rule above every returning session revalidated all of them. The build now emits a copy of each `public/audio` file under `/assets/audio/` with an eight-character content hash in its name (`tools/viteRuntimeFiles.ts`) and defines the map `src/runtimeFiles.ts` resolves the two fetch sites (`audio.ts`, `voices.ts`) through, so the copies take the immutable `/assets` routes and the release carry-forward; the unhashed originals stay deployed, and development and Node fetch the public paths. Fonts are not versioned: index.html, three stylesheets, `src/ui/fonts.ts`'s injected faces, `public/home.css` and the material painter all name them, and a partial rewrite would download a face twice (`tools/viteRuntimeFiles.selftest.mjs`).
+**Versioned runtime audio (2026-10-02, withdrawn the same day).** A build-only plugin served the old engine's 111 sound files from content-hashed `/assets/audio` copies so returning visitors skipped their revalidations. The SFX engine redesign (main 0924ef281) replaced that engine and its files with 2,868 `.webm` assets fetched by `src/audio/assetLibrary.ts`, so the plugin and `src/runtimeFiles.ts` were removed rather than left copying nothing. Versioned URLs for the new engine's assets are a follow-up for its owner (the removed plugin is in PR #9's history).
 
 ## Development services
 
@@ -404,8 +405,9 @@ exercise each case. The impact plan reduces deployment-note invalidation from
 roughly 500 checks to 161 on this revision; fresh environmental checks are additional.
 This is a dependency count, not a claim about elapsed time on a busy host.
 
-**One fleet pass per build (2026-10-02).** Ten receipts used to rebuild all 217 tanks each, and the build is
-nearly all of their cost (the audits themselves take under 5 s per fleet). Three fleet passes now build each tank once
+**One fleet pass per build (2026-10-02).** Ten receipts used to rebuild the whole fleet each (219 playable tanks
+since main's Hetman II and Zubr II), and the build is nearly all of their cost (the audits themselves take under 5 s
+per fleet). Three fleet passes now build each tank once
 per build and run every audit that reads that build on it (`src/vehicles/fleetPass.test-support.mjs`; the audits are
 the former receipts' checks, with their assertions unchanged, in `*Audit.test-support.mjs` modules beside them):
 
@@ -415,7 +417,12 @@ the former receipts' checks, with their assertions unchanged, in `*Audit.test-su
 - `fleetPassLow` — the same build at LOW: the ledger's LOW rows, ERA registration and gun articulation (formerly
   `gunArticulation` and `eraGameplayRegistration`).
 - `fleetPassDefault` — the factory default (seed 4000), the build the marking-seat and combat-anatomy generators
-  measure: combat anatomy, mudguard seating, vehicle markings and tank assets (formerly four receipts).
+  measure: combat anatomy, mudguard seating, vehicle markings and tank assets (formerly four receipts), and the
+  fleet watertight gate (2026-10-02, `watertightAudit.test-support.mjs`): every hull holds water with its shipped
+  fills, measured exactly as `tools/tank-watertight-check.mjs` does (the body each tank's fills bound, track-lane and
+  retained air reported apart). The pass builds without the fill registry, so the audit attaches each tank's fills
+  through `applyInteriorFills` and removes them again; it costs about 1 s of CPU a hull (209 s for the fleet) and no
+  extra build. A stale fill record fails by name with its regeneration command.
 
 The builds stay separate where the checks read different models: camo seeds move seeded stowage, the generated seats
 and calibrations are solved on the default seed, the ledger pins seed 4242, and `fleetFloorClearance` needs the static
@@ -425,9 +432,11 @@ before the build's microtasks (kf51, kf51b and the PT-91M rewrite UVs or vertex 
 one microtask turn. An audit that poses the model restores it or is declared last; after every other audit the pass
 compares each node's parent, visibility and transform and every mesh's bytes, instances and materials with what the
 audit received, and fails the audit that left a difference. A failing audit stops receiving tanks while the others go
-on, its build is discarded, and the pass names every failed audit and tank. Measured on this host (CPU-seconds, load
-about 25): the ten receipts 1,961 s, the five that replace them 1,025 s (the three passes 602 s); a whole cold suite
-91 CPU-min instead of 106.
+on, its build is discarded, and the pass names every failed audit and tank. Main's integration (2026-10-02)
+strengthened the guard to material colors, physical parameters, shader hooks, texture bindings/transforms and
+semantic metadata on every node and geometry, with cyclic-reference handling and negative controls. Measured on the
+217-tank roster (CPU-seconds, load about 25): the ten receipts 1,961 s, the five that replace them 1,025 s (the three
+passes 602 s); a whole cold suite 91 CPU-min instead of 106.
 
 Receipts share `tools/receipt-kit.test-support.mjs` (`near`, `nearStrict`, `geometryHash`) instead of defining their
 own copies. Source-shape guards, functional simulation tests and real visual checks still make different claims:

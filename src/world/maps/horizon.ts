@@ -42,11 +42,16 @@ import {
   bakeHorizonReliefSteps, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
 } from '../horizonRelief.ts';
 import { buildHorizonFarRange } from '../horizonFarRange.ts';
+import { type MassifSettings, carveMassifRingSteps, createMassifField, cutMassifCanyonsSteps } from '../horizonMassif.ts';
+import { type EscarpmentSettings, carveEscarpmentRingSteps, createEscarpmentField } from '../horizonEscarpment.ts';
 import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloudShadeUniforms } from '../horizonCloudShade.ts';
 import { continuedGroundAt } from '../horizonSurface.ts';
+import { resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
+import { buildBorderFarmsteads, farmsteadTreesAt, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
+  createVistaCanopyTile,
   type VistaGround,
   type HorizonForestSpeciesPalette,
 } from '../horizonVista.ts';
@@ -87,6 +92,13 @@ interface HorizonConfig {
   relief?: HorizonReliefCharacter;
   /** Round 72: false keeps the far range (the peaks behind the ring, 1.9–3.3 km out) off this map. */
   farRange?: boolean;
+  /** The mountains lane (2026-10-02): the tableland bed stair (horizonEscarpment.ts) — overrides of the mesa style's
+   * default (a block on another style opts that ring in), or false for none. */
+  escarpment?: Partial<EscarpmentSettings> | false;
+  /** The mountains lane (2026-10-02): false keeps a ranged ring's round-72b relief (no eroded landform, no range
+   * twist) — the receipts' negative control and an authoring opt-out; an object overrides the character's landform
+   * knobs (horizonMassif.ts MassifSettings) for this ring and its far range. */
+  massif?: false | Partial<MassifSettings>;
   seaOpening?: HorizonSeaOpening;
   /**
    * Terrain-following canopy belts across the visible mountain faces. Off by
@@ -1046,7 +1058,9 @@ function continueHorizonGround(ring: HorizonRingGeometry, ground: CanyonGround |
   for (let i = HORIZON_SEGMENTS; i < ring.heights.length; i++) {
     const x = ring.positions[i * 3], z = ring.positions[i * 3 + 2];
     const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - 512;
-    let weight = canyon ? 1 : 1 - smoothstep(140, 460, edgeOut);
+    // the map-borders lane (2026-10-03): the field says where its landform hands over to the authored ranges (a band
+    // that wanders 150–750 m past the edge, so the hand-over draws no ring parallel to the square)
+    let weight = canyon ? 1 : ground.getBorderHandOverAt ? ground.getBorderHandOverAt(x, z) : 1 - smoothstep(140, 460, edgeOut);
     // A rail valley closes over its existing tunnel gallery. Keep the
     // approach on the real bed, then let the authored ridge cover the bore.
     const seat = ground.getOutlandSeatWeightAt?.(x, z) ?? 0;
@@ -1241,6 +1255,10 @@ function relievedHeight(relief: HorizonReliefField, x: number, z: number, profil
   return rowBase + above * (1 + carve * 0.9) + rel * (rel > 0 ? crestLift : 0.3) * weight;
 }
 
+/** The mountains lane: each authored range's profile offset (rad, by authored rank), so successive ranges step off
+ * one another instead of lining up radially (about 7 degrees: 120 m of arc on the 1 km ranges, half a massif). */
+const PROFILE_TWIST_RAD: readonly number[] = [0, 0.12, -0.09, 0.14, -0.13, 0.08, -0.11];
+
 function buildInitialHorizonGeometry(
   rows: HorizonRingRow[],
   style: HorizonStyle,
@@ -1248,6 +1266,7 @@ function buildInitialHorizonGeometry(
   noise: SimplexNoise,
   amp: number,
   relief: HorizonReliefField | null = null,
+  massifOn = true,
 ): HorizonRingGeometry {
   const positions = new Float32Array(HORIZON_SEGMENTS * rows.length * 3);
   const heights = new Float32Array(HORIZON_SEGMENTS * rows.length);
@@ -1260,6 +1279,7 @@ function buildInitialHorizonGeometry(
   // ridge), and the character's range boost ramps in over the authored ranks (half on the second range, full
   // beyond) and with the amplitude, so a tight corner gap between the first two ranges never becomes a cliff
   const reliefScale = clamp(amp, 0.15, 1.6);
+  const twistRanges = massifOn && !!relief?.settings.massif && relief.settings.rangeCount > 0;
   const rangeBoostAt = (rank: number): number => {
     if (!relief || rank < 1) return 1;
     const full = 1 + (relief.settings.rangeBoost - 1) * clamp(amp, 0, 1);
@@ -1285,7 +1305,11 @@ function buildInitialHorizonGeometry(
       // terrain-material foothill the seam laws seat (rows to 700 m), and at the old proportions it hid the vista's
       // ranges behind it (Whiteout's grey wall was that foothill); the skirt rows and the first ridge keep their heights
       const boost = row.skirt ? 1 : rangeBoostAt(authoredRank);
-      let height = sampleRingRowHeight(row, angle, noise, profile) * amp * boost;
+      // the mountains lane (2026-10-02): on the eroded (massif) characters each authored range samples its profile at
+      // its own small angular offset, so a massif no longer stands at the same azimuth on every row — a spur that ran
+      // straight at the battlefield (a cone seen end-on) becomes ranges stepping off one another in depth
+      const twist = twistRanges && !row.skirt ? PROFILE_TWIST_RAD[authoredRank % PROFILE_TWIST_RAD.length] : 0;
+      let height = sampleRingRowHeight(row, angle + twist, noise, profile) * amp * boost;
       const profileHeight = height;
       rowBases[rowIndex] = row.base * amp * boost;
       // Round 72 (owner 2026-09-25, "the mountains look so flat"): the coarse relief field (horizonRelief.ts, a
@@ -1718,7 +1742,8 @@ function seatHorizonSkirtOnGround(
           seat = seatWeight.call(ground, x, z);
           if (seat > 0) geology += (outland.call(ground, x, z) - geology) * seat;
         }
-        const handOver = ri < ridgeRow ? smoothstep(60, 380, edgeOut) : 1;
+        const handOver = ri < ridgeRow
+          ? (ground.getBorderHandOverAt ? 1 - ground.getBorderHandOverAt(x, z) : smoothstep(60, 380, edgeOut)) : 1;
         // Round 67 (2026-09-24, the cutting's tunnel portal): where the weight says the row seats on the outland, the
         // authored profile's share stands down with it — the hand-over left the seated rows 0.5–3.4 m over the bed
         // 100–145 m out (a track laid on the bed there ran under the ring), and the valley now lies on the bed plane
@@ -1824,6 +1849,142 @@ function enforceLedgerSlopes(ring: HorizonRingGeometry, style: HorizonStyle, cap
   }
 }
 
+/**
+ * The mountains lane (2026-10-02, owner: "clouds are the bar; mountains, horizons and terrain must match"): massifs, not
+ * cones. On the ranged characters each row beyond the first ridge keeps its composition — its relief over its floor,
+ * smoothed along the row so the profile's radial spurs (the cones seen end-on from the battlefield) become broad
+ * masses — and multiplies it by the eroded landform (horizonMassif.ts: a dendritic drainage cut into a smooth base,
+ * mean one), so the authored tall sectors and passes stay where they were and every mass in them is carved into
+ * ridges, spurs, couloirs and cols. The tableland rings (the mesa style; Redrock's canyon outland included) take the
+ * same landform as side canyons instead — cut-only, so the caps it misses keep their level — before their bed stair.
+ * The first ridge keeps its own crest; the pass ramps in over the 140 m behind it. Runs after the wandering slope
+ * breaks and before the ledger's slope law, which still bounds every row step. Each row's floor is its base as the
+ * relief carved above it (row.base x amp x the character's range boost at its rank, interpolated between the authored
+ * rows); the tablelands' floor is their plain (0.8 x the lowest row base). A generator: it yields every few rows.
+ */
+function* carveHorizonMassifsSteps(
+  ring: HorizonRingGeometry, relief: HorizonReliefField | null, horizon: HorizonConfig, mapId: string, style: HorizonStyle, seed: number,
+): Generator<void, void, void> {
+  const amp = horizon.amp ?? 1;
+  // (a near-flat ring — Polders' 30 m dike-country ridge — keeps its round-72 relief, as the slope-break wander does)
+  const massif = relief && relief.settings.rangeCount > 0 && ring.maxHeight >= 60 ? resolveMassifSettings(horizon, relief.settings.massif) : null;
+  // (Redrock's outland is the analytic canyon, which the continued ground writes over every row: no side canyons there)
+  const canyons = !massif && style === 'mesa' && horizon.escarpment !== false && !(mapId === 'badlands' && horizon.redrockCanyon !== false);
+  if (!massif && !canyons) return;
+  const rows = ring.rows, n = HORIZON_SEGMENTS;
+  const ridgeRow = rows.findIndex((row) => !row.skirt && !row.interpolated);
+  if (ridgeRow < 0) return;
+  const floors = new Float32Array(rows.length), weights = new Float32Array(rows.length);
+  const ridgeR = rows[ridgeRow].r;
+  const fieldSeed = ((seed ^ 0x7E11) ^ idHash(mapId)) >>> 0;
+  if (massif && relief) {
+    const full = 1 + (relief.settings.rangeBoost - 1) * clamp(amp, 0, 1);
+    const boostAt = (rank: number): number => (rank < 1 ? 1 : rank === 1 ? 1 + (full - 1) * 0.5 : full);
+    // the authored rows' floors, then the interpolated rows' by their radius between them
+    const authored: { index: number; r: number; floor: number }[] = [];
+    let rank = 0;
+    rows.forEach((row, index) => {
+      if (row.skirt || row.interpolated) return;
+      authored.push({ index, r: row.r, floor: row.base * amp * boostAt(rank) });
+      rank++;
+    });
+    for (let i = ridgeRow; i < rows.length; i++) {
+      const row = rows[i];
+      if (row.skirt) continue;
+      let a = authored[0], b = authored[authored.length - 1];
+      for (let k = 0; k < authored.length - 1; k++) if (authored[k].index <= i && authored[k + 1].index >= i) { a = authored[k]; b = authored[k + 1]; break; }
+      const t = b.r > a.r ? clamp((row.r - a.r) / (b.r - a.r), 0, 1) : 0;
+      floors[i] = a.floor + (b.floor - a.floor) * t;
+      weights[i] = smoothstep(0, 140, row.r - ridgeR);
+    }
+    const field = createMassifField(fieldSeed, massif, [ridgeR, rows[rows.length - 1].r + 60]);
+    yield;
+    yield* carveMassifRingSteps({ columns: n, rowCount: rows.length, positions: ring.positions, heights: ring.heights, floors, weights }, field);
+  } else {
+    floors.fill(mesaPlain(rows, amp));
+    for (let i = ridgeRow; i < rows.length; i++) weights[i] = rows[i].skirt ? 0 : smoothstep(0, 140, rows[i].r - ridgeR);
+    const field = createMassifField(((seed ^ 0x6CA7) ^ idHash(mapId)) >>> 0, MESA_CANYONS, [ridgeR, rows[rows.length - 1].r + 60]);
+    yield;
+    yield* cutMassifCanyonsSteps({ columns: n, rowCount: rows.length, positions: ring.positions, heights: ring.heights, floors, weights }, field, MESA_CANYON_BIAS);
+  }
+  let maxHeight = 1;
+  for (let i = n * 2; i < ring.heights.length; i++) if (ring.heights[i] > maxHeight) maxHeight = ring.heights[i];
+  ring.maxHeight = maxHeight;
+}
+
+/** The mountains lane: the tableland rings' bed stair (horizonEscarpment.ts) — the style default, per-map overridable. */
+const MESA_ESCARPMENT: EscarpmentSettings = {
+  bedM: [36, 70], cliffShare: [0.28, 0.48], talusRise: 0.32, talusCurve: 2.2, dipPerKm: 6, meanderM: 24, meanderWavelengthM: 300,
+};
+/** The tableland rings' side canyons: the eroded landform cutting into the tables (cut only: min(1, multiplier + bias)). */
+const MESA_CANYONS: MassifSettings = { baseWavelengthM: 1000, gullyWavelengthM: 380, gullyOctaves: 3, gullyGain: 0.5, slopeStrength: 2.5, branch: 2.5,
+  erosion: 0.5, concavity: 1.0, contrast: 0.5, smoothM: 0 };
+const MESA_CANYON_BIAS = 0.22;
+
+/** The plain the tablelands stand on: 0.8 x the lowest non-skirt row base (amp included). */
+function mesaPlain(rows: readonly HorizonRingRow[], amp: number): number {
+  let plain = Infinity;
+  for (const row of rows) if (!row.skirt) plain = Math.min(plain, row.base * amp);
+  return Number.isFinite(plain) ? plain * 0.8 : 20;
+}
+
+/**
+ * The mountains lane (2026-10-02): layered escarpments on the tableland rings (the mesa style, Redrock's canyon
+ * outland included) — every height above the plain through the bed stair (cliff over talus slope per bed, the caprock
+ * rim at each bed top, world-level beds with a slight dip, a plan meander for the buttresses and embayments), the talus
+ * aprons at the cliff feet and the 3.6:1 cliff bound, after the rows are refined (so the stair has the refined rows to
+ * live on) and before the near band is handed to the continued ground (which the per-vertex weight also leaves alone:
+ * nil within 70 m of the playable edge, full by 230 m). A generator: it yields between its stages.
+ */
+function* carveHorizonEscarpmentsSteps(ring: HorizonRingGeometry, horizon: HorizonConfig, mapId: string, style: HorizonStyle, seed: number): Generator<void, void, void> {
+  // the mesa style by default; any other ring that authors an escarpment block (an arid rolling ring's gour hills)
+  const authored = typeof horizon.escarpment === 'object' && horizon.escarpment !== null;
+  if ((style !== 'mesa' && !authored) || horizon.escarpment === false) return;
+  const settings: EscarpmentSettings = { ...MESA_ESCARPMENT, ...(authored ? horizon.escarpment as Partial<EscarpmentSettings> : {}) };
+  const rows = ring.rows;
+  const floors = new Float32Array(rows.length).fill(mesaPlain(rows, horizon.amp ?? 1));
+  const weights = new Float32Array(rows.length);
+  for (let i = 0; i < rows.length; i++) weights[i] = rows[i].skirt ? 0 : 1;
+  const field = createEscarpmentField(((seed ^ 0x5E5C) ^ idHash(mapId)) >>> 0, settings);
+  yield* carveEscarpmentRingSteps({ columns: HORIZON_SEGMENTS, rowCount: rows.length, positions: ring.positions, heights: ring.heights, floors, weights,
+    weightAt: (x, z) => smoothstep(70, 230, Math.max(Math.abs(x), Math.abs(z)) - 512) }, field, { talusFill: 0.34 });
+  // every row, as continueHorizonGround measures it: on Redrock this runs after the hand-over, whose seam rows can carry the
+  // ring's highest point (seed 2049: the edge mesa at 94.9 m over the outland's 94.7)
+  let maxHeight = 1;
+  for (let i = 0; i < ring.heights.length; i++) if (ring.heights[i] > maxHeight) maxHeight = ring.heights[i];
+  ring.maxHeight = maxHeight;
+}
+
+/** Drain a construction generator synchronously (the headless sampler). */
+function drainSteps<T>(steps: Generator<void, T, void>): T {
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+/** The ring's landform: the character's, with the map's authored knobs over it (`horizon.massif`), or null when the map
+ * opts out or the character carries none. */
+function resolveMassifSettings(horizon: HorizonConfig, character: MassifSettings | null): MassifSettings | null {
+  if (horizon.massif === false || !character) return null;
+  return typeof horizon.massif === 'object' ? { ...character, ...horizon.massif } : character;
+}
+
+/** The mountains lane: the far range's landform — the ring's at 2.2 x its wavelengths (the tableland rings, which carry
+ * no ranged landform, take the rolling one's), the erosion turned down a little through the extra air. */
+function farMassifSettings(ring: MassifSettings | null): MassifSettings {
+  const m = ring ?? resolveHorizonRelief('rolling').massif!;
+  return { ...m, baseWavelengthM: m.baseWavelengthM * 2.2, gullyWavelengthM: m.gullyWavelengthM * 2.2, smoothM: 0 };
+}
+
+/** The mountains lane: a tableland ring's far plateaus — its bed stair at about 2.6 x the beds (the far rows stand a
+ * few hundred metres apart, so only the big tiers read: flat tops stepping down the far skyline); null elsewhere. */
+function farEscarpmentSettings(horizon: HorizonConfig, style: HorizonStyle): EscarpmentSettings | null {
+  const authored = typeof horizon.escarpment === 'object' && horizon.escarpment !== null;
+  if ((style !== 'mesa' && !authored) || horizon.escarpment === false) return null;
+  const near: EscarpmentSettings = { ...MESA_ESCARPMENT, ...(authored ? horizon.escarpment as Partial<EscarpmentSettings> : {}) };
+  return { ...near, bedM: [near.bedM[0] * 2.6, near.bedM[1] * 2.6], meanderM: near.meanderM * 2.6, meanderWavelengthM: near.meanderWavelengthM * 2.2 };
+}
+
 function usesFiniteTableCaps(horizon: HorizonConfig, mapId: string, style: HorizonStyle): boolean {
   return style === 'mesa' && horizon.finiteTableCaps !== false
     && (mapId === 'skybridge' || mapId === 'copper_mesa' || mapId === 'titan_gorge');
@@ -1849,7 +2010,7 @@ export function sampleHorizonGeometry(
   const relief = resolveHorizonReliefFieldFor(horizon, mapId, seed);
   const source = buildInitialHorizonGeometry(
     horizonRows(style, mapId),
-    style, PROFILES[style], noise, horizon.amp ?? 1, relief,
+    style, PROFILES[style], noise, horizon.amp ?? 1, relief, horizon.massif !== false,
   );
   const ring = subdivideHorizonGeometry(source, style, noise, relief);
   const openings = resolveSeaOpenings(horizon.seaOpening, ground, mapId);
@@ -1864,10 +2025,15 @@ export function sampleHorizonGeometry(
     reshapeFiniteTableCaps(ring, horizon.amp ?? 1, mapId === 'titan_gorge' ? 0.60 : 0.64, [1.25, 1.80]);
   }
   if (relief) wanderProfileBreaks(ring, relief, style, seed);
+  drainSteps(carveHorizonMassifsSteps(ring, relief, horizon, mapId, style, seed));
   if (relief) enforceLedgerSlopes(ring, style, capFrontRows(ring, horizon, mapId, style));
   if (ground) seatHorizonTerrainSeam(ring, ground);
   refineCoastRows(ring, openings, ground);
-  continueHorizonGround(ring, ground, mapId === 'badlands' && horizon.redrockCanyon !== false);
+  // Redrock's continued ground IS its whole outland (the analytic canyon), so its beds are cut after the hand-over
+  const canyonOutland = mapId === 'badlands' && horizon.redrockCanyon !== false;
+  if (!canyonOutland) drainSteps(carveHorizonEscarpmentsSteps(ring, horizon, mapId, style, seed));
+  continueHorizonGround(ring, ground, canyonOutland);
+  if (canyonOutland) drainSteps(carveHorizonEscarpmentsSteps(ring, horizon, mapId, style, seed));
   openHorizonToSea(ring, openings, ground);
   return ring;
 }
@@ -2298,6 +2464,18 @@ interface HorizonMaterialContext {
   relief: { bake: HorizonReliefBake | null; settings: HorizonReliefSettings };
   /** Round 72: the map's lighting the ring's gains follow (the sky preset's sun and hemisphere, the deck's cover). */
   lighting: HorizonLighting;
+  /**
+   * 2026-10-02: the ring will draw every face with the battlefield's terrain material (terrain.ts binds it with
+   * continuousGround), so its own material is a data carrier only: no vista program, no ground / rock / scree / snow
+   * tiles; the relief atlas, the canopy tile and the haze stay for the terrain bands and the ring forest.
+   */
+  terrainBound: boolean;
+}
+
+/** Build-time options of the ring. */
+interface HorizonRingOptions {
+  /** The caller binds every ring face to the terrain material (terrain.ts): build no vista program. */
+  terrainBound?: boolean;
 }
 
 /** Round 72: the vista's sun and sky gains, and the far range's, from the map's own lighting. */
@@ -2427,6 +2605,7 @@ float horizonWaterVariation = 0.0;
 function* buildHorizonMaterialSteps({
   noise: gnoi, banding, snowline, treeline, grainAmp, style, seed, mapId,
   sun, maxHeight: maxH, retainedTextures, base, forest, snow, rock, fog, haze, vista, ground, bareRock, outcrops, relief, lighting,
+  terrainBound,
 }: HorizonMaterialContext): Generator<void, THREE.MeshBasicMaterial, void> {
   const [lx, ly, lz] = sun;
   const gullyAmp = style === 'alpine' ? 0.06 : style === 'mesa' ? 0.14 : 0.0;
@@ -2519,6 +2698,27 @@ function* buildHorizonMaterialSteps({
     // broad stands from the 312 m field opened by the 83 m field, held off steep faces and the crests and
     // tinted with the map's forest ratio, give them the patchwork real hills carry
     const standFrag = style === 'rolling' || style === 'escarpment' ? 0.72 : 0.0;
+    // 2026-10-02 (the frame-budget lane): a terrain-bound ring never draws this material — its relief atlas, canopy
+    // tile and haze are all the terrain bands and the ring forest read, so it carries those and no vista program
+    if (vista && terrainBound) {
+      const canopyTile = createVistaCanopyTile();
+      retainedTextures.push(canopyTile.canopy);
+      const reliefTexture = relief.bake ? makeReliefTexture(relief.bake) : null;
+      if (reliefTexture) retainedTextures.push(reliefTexture);
+      const carried: Record<string, THREE.IUniform> = {
+        uVRelief: { value: reliefTexture },
+        uVReliefR: { value: new THREE.Vector2(relief.bake?.r0 ?? 0, 1 / Math.max(1, (relief.bake?.r1 ?? 1) - (relief.bake?.r0 ?? 0))) },
+        uVReliefGrad: { value: relief.bake?.gradScale ?? 1 },
+        uVReliefAmp: { value: reliefTexture ? 1 : 0 },
+        uVCanopy: { value: canopyTile.canopy },
+        uVHaze: { value: haze * (style === 'alpine' ? 0.78 : 0.92) },
+      };
+      mat.userData.horizonDetailNoise = detailNoise;
+      mat.userData.horizonDetail2 = detail2;
+      mat.userData.horizonVista = { uniforms: carried, base: base.clone(), canopyMean: canopyTile.canopyMean };
+      mat.userData.horizonTerrainBound = true;
+      return mat;
+    }
     // Vista pass (2026-09-19): one layered world-anchored material for every style on the desktop tier — see
     // horizonVista.ts. Tints are ratios to the base tone; amplitudes follow the style's landform language.
     const tiles = vista ? createVistaTiles() : null;
@@ -3144,6 +3344,7 @@ export function* buildHorizonRingSteps(
   cfg: HorizonMapConfig | null | undefined,
   seed: number,
   ground?: CanyonGround,
+  { terrainBound = false }: HorizonRingOptions = {},
 ): Generator<void, THREE.Mesh, void> {
   const H = cfg?.horizon || {};
   const mapId = cfg?.id || 'verdant';
@@ -3191,7 +3392,7 @@ export function* buildHorizonRingSteps(
   const reliefCharacter = resolveHorizonReliefCharacter(H, mapId);
   const reliefSettings = resolveHorizonRelief(reliefCharacter);
   const reliefField = resolveHorizonReliefFieldFor(H, mapId, seed);
-  const initialRing = buildInitialHorizonGeometry(rows0, style, profile, noi, amp, reliefField);
+  const initialRing = buildInitialHorizonGeometry(rows0, style, profile, noi, amp, reliefField, H.massif !== false);
   yield;
 
   // Authored crests keep their silhouette; inserted shoulders and gullies
@@ -3209,10 +3410,15 @@ export function* buildHorizonRingSteps(
     reshapeFiniteTableCaps(ring, amp, mapId === 'titan_gorge' ? 0.60 : 0.64, [1.25, 1.80]);
   }
   if (reliefField) wanderProfileBreaks(ring, reliefField, style, seed);
+  yield* carveHorizonMassifsSteps(ring, reliefField, H, mapId, style, seed);
   if (reliefField) enforceLedgerSlopes(ring, style, capFrontRows(ring, H, mapId, style));
   if (ground) seatHorizonTerrainSeam(ring, ground);
   refineCoastRows(ring, seaOpenings, ground);
-  continueHorizonGround(ring, ground, mapId === 'badlands' && H.redrockCanyon !== false);
+  // Redrock's continued ground IS its whole outland (the analytic canyon), so its beds are cut after the hand-over
+  const canyonOutland = mapId === 'badlands' && H.redrockCanyon !== false;
+  if (!canyonOutland) yield* carveHorizonEscarpmentsSteps(ring, H, mapId, style, seed);
+  continueHorizonGround(ring, ground, canyonOutland);
+  if (canyonOutland) yield* carveHorizonEscarpmentsSteps(ring, H, mapId, style, seed);
   const sea = openHorizonToSea(ring, seaOpenings, ground);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
   const uvA = buildHorizonUvs(hs, maxH, sea);
@@ -3307,7 +3513,7 @@ export function* buildHorizonRingSteps(
     mapId,
     sun: [lx, ly, lz], maxHeight: maxH, retainedTextures,
     base, forest: forestC, snow: snowC, rock: rockC, fog: fogC, haze, vista, ground: vistaGround, bareRock, outcrops,
-    relief: { bake: reliefBake, settings: reliefSettings }, lighting,
+    relief: { bake: reliefBake, settings: reliefSettings }, lighting, terrainBound,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = 'horizon-ring';
@@ -3351,6 +3557,8 @@ export function* buildHorizonRingSteps(
       treeline: treeline > 0 && treeline < 1.5 ? treeline : 0, seaOpenings, nearMaxHeight: maxH,
       nearEdge: { columns: HORIZON_SEGMENTS, positions: pos, heights: hs },
       detailTexture: mat.userData.horizonDetail2 as THREE.Texture | undefined,
+      massif: H.massif === false ? null : farMassifSettings(resolveMassifSettings(H, reliefSettings.massif)),
+      escarpment: farEscarpmentSettings(H, style),
     });
     if (farRange) mesh.add(farRange);
   }
@@ -3371,6 +3579,23 @@ export function* buildHorizonRingSteps(
   const rimConiferLead = leadOf(true), rimBroadleaf = leadOf(false);
   const horizonVista = mat.userData.horizonVista as { uniforms: Record<string, THREE.IUniform>; canopyMean?: THREE.Vector3 } | undefined;
   const vistaUniforms = horizonVista?.uniforms;
+  // The map-borders lane (2026-10-03): the farmsteads' yards are chosen before the forest, which stands their shelter
+  // trees (borderFarmsteads.ts farmsteadTreesAt); the buildings follow below
+  const farmSpec = ground?._borderFarmsteads;
+  const farmOptions: BorderFarmsteadOptions | null = vista && ground && farmSpec && farmSpec.count > 0 ? (() => {
+    const exit: [number, number] = [0, 0];
+    const roadExitAt = ground._roadExitAt;
+    return {
+      seed: ((seed ^ 0xFA4D) ^ idHash(mapId)) >>> 0, style: farmSpec.style, count: farmSpec.count, fieldAngle: farmSpec.fieldAngle,
+      groundAt: ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs),
+      woodsAt: (x: number, z: number) => ground.getBorderWoodsAt?.(x, z) ?? 0,
+      blockedAt: (x: number, z: number) => Math.max(ground.getOutlandSeatWeightAt?.(x, z) ?? 0, ground.getOutlandWaterAt?.(x, z)?.wetness ?? 0,
+        seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01 ? 1 : 0),
+      ...(roadExitAt ? { roadDistanceAt: (x: number, z: number) => (roadExitAt(x, z, exit)[1] > 0.05 ? Math.abs(exit[0]) : Infinity) } : {}),
+    };
+  })() : null;
+  const farmSites = farmOptions ? selectFarmsteadSites(farmOptions) : [];
+  const borderWoodsAt = ground?.getBorderWoodsAt;
   const forestGroup = buildHorizonForest({
     columns: HORIZON_SEGMENTS, rows, positions: pos, heights: hs, forestCover, maxHeight: maxH, treeline, snowline,
     forest: forestC, fog: fogC, seed: ((seed ^ 0x51F0) ^ idHash(mapId)) >>> 0,
@@ -3380,6 +3605,11 @@ export function* buildHorizonRingSteps(
     // it replaced; 3000 still measured +0.65-0.85): the polar character keeps 1600 instances, clumped by the relief
     // (horizonVista.ts)
     maxInstances: vista ? (reliefCharacter === 'polar' ? 1600 : 8000) : 0, maxRadius: 1050, nearDepth: 300, ridgeRow,
+    // the map-borders lane (2026-10-03): the band's woods take the border landform's share (no hedge round the square)
+    bandShare: resolveBorderLandform(style, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border, mapId).forest,
+    ...(borderWoodsAt ? { woodsAt: farmSites.length
+      ? (x: number, z: number) => Math.max(borderWoodsAt(x, z), farmsteadTreesAt(farmSites, x, z)) : borderWoodsAt } : {}),
+    ...(ground?.getBorderHedgeAt ? { hedgeAt: ground.getBorderHedgeAt } : {}),
     detailNoise: mat.userData.horizonDetailNoise as DetailNoiseSampler,
     // round 72c: the stands follow the coarse relief (clumps in the hollows, gaps on the crests, a wandering treeline)
     ...(reliefField ? { reliefAt: (x: number, z: number) => reliefField.low(x, z) / Math.max(1, reliefField.settings.lowAmpM) } : {}),
@@ -3410,6 +3640,18 @@ export function* buildHorizonRingSteps(
       if (setup && material && !Array.isArray(material)) setup.call(_engineCtx, material, hook ? (shader: unknown) => hook(shader) : null);
     });
     mesh.add(forestGroup);
+  }
+  // The map-borders lane (2026-10-03, gauntlet wave 0: "the border reads as an enclosing clay wall"; the bar is World of
+  // Tanks' red-line shots, villages carrying on past the boundary): farmsteads and hamlets on the ring's seated surface
+  // past the edge (borderFarmsteads.ts) — off the woods, the sea, a railway's right of way and the exit roads'
+  // carriageways, gathered along those roads. One merged mesh, one draw, its shadow in the far cascade only.
+  if (farmOptions && farmSites.length) {
+    const farms = buildBorderFarmsteads({ ...farmOptions, sites: farmSites });
+    if (farms) {
+      const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;
+      if (setup) setup.call(_engineCtx, farms.material as THREE.Material, null);
+      mesh.add(farms);
+    }
   }
   // Round 32 (owner 2026-09-21, "redrock still has the noticeable texture/shadow/quality loss beyond the map
   // borders"): the rock and sand outlands carry instanced boulders on the near ring faces — the battlefield's own

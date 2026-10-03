@@ -1,3 +1,4 @@
+import type { NewModeCheckpoint } from '../../sim/authoritativeMatch.ts';
 /**
  * The browser host (P2 client lane, 2026-09-28; docs/MULTIPLAYER-V2.md §13): the vocabulary between the main thread
  * (`matchHost.ts`: the room, the WebRTC acceptor, the host's own loopback client) and the Worker that runs the match
@@ -38,6 +39,7 @@ export interface MigrationEntityExtras {
 
 /** The retained state a newly elected host boots from (decrypted on the main thread with the host secret). */
 export interface HostResumeState {
+  modeCheckpoint?: NewModeCheckpoint | null;
   /** The authority tick the keyframe describes. */
   tick: number;
   battleTimeMs: number;

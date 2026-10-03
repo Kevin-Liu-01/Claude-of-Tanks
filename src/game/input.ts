@@ -1,5 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createWheelNotcher } from './wheelNotches.ts';
+import { isCrewVoiceSetting, normalizeCrewVoiceSetting, type CrewVoiceSetting } from '../audio/crewVoice.ts';
+import { getLocale } from '../ui/i18n.ts';
 // src/game/input.ts — rebindable action-map input layer.
 //
 // Raw KeyboardEvent.code / mouse-button / mouse-wheel / gamepad events are
@@ -60,6 +62,10 @@ const ACTION_DEFS = [
   { id: 'shell1', label: 'action.shell1', group: 'settings.group.combat' },
   { id: 'shell2', label: 'action.shell2', group: 'settings.group.combat' },
   { id: 'shell3', label: 'action.shell3', group: 'settings.group.combat' },
+  { id: 'supplyAmmo', label: 'flight.supply.ammo', group: 'settings.group.combat' },
+  { id: 'supplyHeal', label: 'flight.supply.heal', group: 'settings.group.combat' },
+  { id: 'aerialVision', label: 'flight.view.action', group: 'settings.group.combat' },
+  { id: 'drone', label: 'systems.drone', group: 'settings.group.combat' },
   { id: 'smoke', label: 'systems.smoke', group: 'settings.group.combat' },
   { id: 'lights', label: 'systems.lights', group: 'settings.group.combat' },
   { id: 'roofGun', label: 'systems.roofGun', group: 'settings.group.combat' },
@@ -117,6 +123,10 @@ export interface InputSettings {
   volUi: number;
   volVoice: number;
   alarmHeartbeat: boolean;
+  /** National crews or one fixed crew pack (src/audio/crewVoice.ts). */
+  crewVoice: CrewVoiceSetting;
+  /** Muffle and ear-ringing after a close blast. */
+  audioConcussion: boolean;
 }
 
 type BindingMap = Record<ActionId, string | null>;
@@ -205,6 +215,10 @@ export const DEFAULT_BINDINGS: Partial<Record<ActionId, string>> = {
   shell2: 'Digit2',
   shell3: 'Digit3',
   specialAction: 'KeyE',
+  drone: 'KeyV',
+  aerialVision: 'KeyI',
+  supplyAmmo: 'KeyJ',
+  supplyHeal: 'KeyK',
   smoke: 'KeyG',
   lights: 'KeyN',
   roofGun: 'KeyB',
@@ -289,9 +303,9 @@ const DEFAULT_SETTINGS: InputSettings = {
   // Keep scoped armor highlighting opt-in. Explicit saved preferences and
   // the live keyboard / Interface toggle still control the overlay.
   armorAimOverlay: false,
-  // Sound mix (settings panel SOUND tab). The synth audio stack
-  // (src/audio/audio.ts) reads these at graph build and live-follows the
-  // 'ui:volumes' bus event the panel emits on every slider change.
+  // Sound mix (settings panel SOUND tab). The sound engine
+  // (src/audio/audioEngine.ts) reads these at graph build and live-follows
+  // the 'ui:volumes' bus event the panel emits on every change.
   volMaster: 0.8, // final output gain 0..1
   volEngine: 1, // engine loops
   volCombat: 1, // gunfire / impacts / explosions
@@ -301,6 +315,10 @@ const DEFAULT_SETTINGS: InputSettings = {
   // Critical-HP heartbeat alarm (short pulse window per threshold crossing).
   // Optional per the sound-system spec; some players find HP alarms stressful.
   alarmHeartbeat: true,
+  // National crews speak their operating nation's language by default.
+  crewVoice: 'national',
+  // Close-blast muffle + ringing; optional for players sensitive to tinnitus.
+  audioConcussion: true,
 };
 
 const VOLUME_KEYS: readonly VolumeSettingKey[] = [
@@ -614,6 +632,9 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     }
     if (typeof storedSettings.armorAimOverlay === 'boolean') settings.armorAimOverlay = storedSettings.armorAimOverlay;
     if (typeof storedSettings.alarmHeartbeat === 'boolean') settings.alarmHeartbeat = storedSettings.alarmHeartbeat;
+    settings.crewVoice = normalizeCrewVoiceSetting(storedSettings.crewVoice,
+      storedSettings.crewVoice === 'interface' ? getLocale() : null);
+    if (typeof storedSettings.audioConcussion === 'boolean') settings.audioConcussion = storedSettings.audioConcussion;
     for (const k of VOLUME_KEYS) {
       if (typeof storedSettings[k] === 'number') settings[k] = clamp(storedSettings[k], 0, 1);
     }
@@ -622,7 +643,12 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   // --- gameplay settings -------------------------------------------------------
   const settings: InputSettings = { ...DEFAULT_SETTINGS };
   const storedSettings = loadJson(SETTINGS_KEY);
-  if (isRecord(storedSettings)) applyStoredSettings(settings, storedSettings);
+  if (isRecord(storedSettings)) {
+    applyStoredSettings(settings, storedSettings);
+    if (storedSettings.crewVoice === 'english' || storedSettings.crewVoice === 'interface') {
+      saveJson(SETTINGS_KEY, { ...storedSettings, crewVoice: settings.crewVoice });
+    }
+  }
 
   // --- live state ----------------------------------------------------------------
   const down = new Set<string>(); // active codes — Set semantics kill key-ghosting
@@ -1212,6 +1238,10 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       else if (key === 'showDirectionalHitValues') settings.showDirectionalHitValues = !!value;
       else if (key === 'armorAimOverlay') settings.armorAimOverlay = !!value;
       else if (key === 'alarmHeartbeat') settings.alarmHeartbeat = !!value;
+      else if (key === 'audioConcussion') settings.audioConcussion = !!value;
+      else if (key === 'crewVoice') {
+        if (isCrewVoiceSetting(value)) settings.crewVoice = value;
+      }
       else if (key === 'sensitivity') settings.sensitivity = num(1, 0.2, 3);
       else if (key === 'sniperSensScale') settings.sniperSensScale = num(1, 0.2, 3);
       else if (key === 'aimSmoothing') settings.aimSmoothing = num(0.5, 0, 1);

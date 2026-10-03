@@ -1,13 +1,18 @@
 #!/usr/bin/env node
-// Focused SOUND r3 browser gate:
+// Focused browser gate for the sound engine (src/audio/audioEngine.ts):
 //   1. a cannon 12 m from the occupied tank has the same audible level in
 //      third-person and sniper view (camera pullback must not change range),
-//   2. the real lethal-shell -> kill-cam path produces a dedicated audible
-//      replay impact whose debris layers run at the visual 0.55x rate,
-//   3. live combat ducks under that replay while the cinematic bus stays up.
+//   2. cannon and engine sources get quieter and darker with distance but stay
+//      audible at the horizon,
+//   3. the real lethal-shell -> kill-cam path produces a dedicated audible
+//      replay impact whose debris layers run at the visual 0.55x rate on the
+//      cinematic bus,
+//   4. live combat ducks under that replay while the cinematic bus stays up.
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { rmSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const fail = (msg) => { throw new Error(msg); };
@@ -38,8 +43,12 @@ function analyze(i16) {
 }
 
 const port = 7920 + Math.floor(Math.random() * 70);
+// A private dep cache: node_modules (and its .vite) can be shared between checkouts.
+const viteCacheDir = resolve('/tmp', `cot-audio-spatial-vite-${process.pid}`);
+process.on('exit', () => rmSync(viteCacheDir, { recursive: true, force: true }));
 const server = await createServer({
   root: process.cwd(),
+  cacheDir: viteCacheDir,
   logLevel: 'error',
   server: { port, strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
   optimizeDeps: {
@@ -155,7 +164,7 @@ try {
   if (arcadePose.listener.kind !== 'player-tank') fail(`arcade listener kind ${arcadePose.listener.kind}`);
   if (arcadePose.cameraTankM < 8) fail(`arcade camera unexpectedly near tank (${arcadePose.cameraTankM.toFixed(2)} m)`);
   if (arcadePose.listenerTankM > 3) fail(`audio listener missed tank (${arcadePose.listenerTankM.toFixed(2)} m)`);
-  if (arcadePose.gain12m < 0.99) fail(`nearby arcade source attenuated to ${arcadePose.gain12m.toFixed(3)}`);
+  if (arcadePose.gain12m < 0.97) fail(`nearby arcade source attenuated to ${arcadePose.gain12m.toFixed(3)}`);
   if (arcadeShot.rmsDb < -45) fail(`nearby arcade cannon too quiet (${arcadeShot.rmsDb.toFixed(1)} dBFS RMS)`);
 
   await page.keyboard.down('Shift');
@@ -285,7 +294,8 @@ try {
     if (i > 0) {
       const prev = engineDistance[i - 1];
       if (!(cur.state.gain < prev.state.gain)) fail(`engine gain is not distance-ordered at ${cur.distanceM} m`);
-      if (!(cur.state.cutoffHz < prev.state.cutoffHz)) fail(`engine air absorption is not distance-ordered at ${cur.distanceM} m`);
+      // Air absorption alone: terrain between the tanks (occlusion) is position-dependent, not distance-ordered.
+      if (!(cur.state.airHz < prev.state.airHz)) fail(`engine air absorption is not distance-ordered at ${cur.distanceM} m`);
       if (!(cur.audio.rmsDb < prev.audio.rmsDb + 1)) fail(`engine PCM is not distance-ordered at ${cur.distanceM} m`);
     }
   }
@@ -412,13 +422,14 @@ try {
     const A = window.__COT_AUDIO;
     return {
       impact: A.killcamSfxLog.slice(kc),
-      layers: A.sfxLog.filter((x) => x.seq > seq && x.killcam),
+      layers: A.sfxLog.filter((x) => x.seq > seq && x.b === 'cinematic'),
     };
   }, before);
   if (replayAudio.rmsDb < -50) fail(`kill-cam replay inaudible (${replayAudio.rmsDb.toFixed(1)} dBFS RMS)`);
   if (!replay.impact.length) fail('kill-cam impact did not reach audio');
   if (Math.abs(replay.impact.at(-1).slowRate - 0.55) > 1e-6) fail('kill-cam rate did not match 0.55x visual rate');
-  if (!replay.layers.some((x) => x.n === 'expl_tank_debris' && Math.abs(x.r - 0.55) < 1e-6)) {
+  // The pool's per-asset pitch jitter rides on top of the replay rate.
+  if (!replay.layers.some((x) => x.n === 'debris_metal' && Math.abs(x.r - 0.55) < 0.04)) {
     fail('stretched kill-cam debris layer missing');
   }
   if (impactState.listener.kind !== 'killcam-camera') fail(`replay listener kind ${impactState.listener.kind}`);
@@ -430,7 +441,8 @@ try {
   await page.evaluate(() => window.__DEBUG.killcam.cancel());
   await sleep(500);
   const restored = await page.evaluate(() => window.__COT_AUDIO.busGains());
-  if (restored.sfx < 0.9) fail(`combat bus did not restore (${restored.sfx.toFixed(3)})`);
+  // The dead player now spectates: that snapshot trims the world by 1 dB.
+  if (restored.sfx < 0.85) fail(`combat bus did not restore (${restored.sfx.toFixed(3)})`);
   await page.evaluate(() => window.__DEBUG.enterGarage());
   await sleep(250);
   const garageAudio = await page.evaluate(() => ({

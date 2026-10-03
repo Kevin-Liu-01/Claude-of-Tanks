@@ -32,7 +32,10 @@ import {
   torus, xform,
 } from './factoryGeometry.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
-import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish } from './materials.ts';
+import {
+  createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
+  setVehicleGroundFromRoot, resetVehicleGround,
+} from './materials.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
@@ -930,6 +933,7 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
   clearDecals(...parents: Array<string | string[]>): void;
   scaleAllBuckets(x?: number, y?: number, z?: number): void;
   scaleDecals(scale: number): void;
+  extendHullLength(factor: number): void;
   scaleBuckets(names: string | string[], x?: number, y?: number, z?: number): void;
   offsetBuckets(names: string | string[], x?: number, y?: number, z?: number): void;
   forEachBucketPart(
@@ -1510,6 +1514,26 @@ function installBattleDetailGroups(records: readonly StaticDetailRecord[]): {
 // object-local even though materials are shared: Three invokes it immediately
 // before applying the material's raster state for that draw. Shadow materials
 // are deliberately ignored, so the arbitration cannot introduce shadow acne.
+// Owner 2026-10-02 ("shadows on tanks make them look a lil flat"): the vehicle materials' ground occlusion reads one
+// shared ground reference (materials.ts); every final mesh of this vehicle points it at the vehicle's root just
+// before it draws and releases it after, so the lower hull, running gear and track run of whichever tank is drawing
+// fall off toward its own ground contact. Installed after decoration, batching and detail regrouping, beside the
+// coplanar layers, so every color-pass mesh carries it; the root closure costs no parent walk per draw.
+function installVehicleGroundReference(root: THREE.Object3D): void {
+  root.traverse((object) => {
+    if (!(object as THREE.Mesh).isMesh) return;
+    const before = object.onBeforeRender, after = object.onAfterRender;
+    object.onBeforeRender = function vehicleGroundBefore(...args: Parameters<THREE.Object3D['onBeforeRender']>) {
+      setVehicleGroundFromRoot(root);
+      before.apply(this, args);
+    };
+    object.onAfterRender = function vehicleGroundAfter(...args: Parameters<THREE.Object3D['onAfterRender']>) {
+      after.apply(this, args);
+      resetVehicleGround();
+    };
+  });
+}
+
 function collectCoplanarDepthLayers(root: THREE.Object3D): CoplanarLayerRecord[] {
   interface DepthRecord {
     object: VehicleMesh;
@@ -7032,6 +7056,20 @@ function* createTankOwnedSteps(
         for (const geo of list) geo.scale(x, y, z);
       }
     },
+    // Chassis stretch is separate from the wheel course: the profile authors
+    // new axle/end stations, so round tires and rigid track shoes stay round.
+    extendHullLength(factor) {
+      for (const [name, list] of Object.entries(buckets)) {
+        if (BUCKET_DEF[name]?.[0] !== 'hullG') continue;
+        for (const geo of list) geo.scale(1, 1, factor);
+      }
+      for (const child of hullG.children) {
+        let movingGear = child.userData.runningGear === true;
+        child.traverse(node => { movingGear ||= node.userData.runningGear === true; });
+        if (!movingGear) { child.position.z *= factor; child.scale.z *= factor; }
+      }
+      for (const decal of decals) if (decal.parent === 'hull') decal.pos[2] *= factor;
+    },
     scaleDecals(scale) {
       for (const decal of decals) {
         decal.size *= scale;
@@ -9711,6 +9749,8 @@ function* createTankOwnedSteps(
       depthLayers = mergeBattleStaticRuns(depthLayers, staticDrawMerge === 'translations');
     }
     installCoplanarDepthLayers(root, depthLayers);
+    // after the static merge, so the merged draws carry it too; it wraps the layer hook, as on main
+    installVehicleGroundReference(root);
     const tailFinalizeFinishedAt = performance.now();
     // Retain each authored hull/turret/gun proxy and its articulation owner.
     // Only battle builds combine their submissions; no silhouette, cascade

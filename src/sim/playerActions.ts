@@ -15,4 +15,7 @@ export const PLAYER_ACTION_BITS = Object.freeze({
   LIGHTS: 1 << 7,
   ROOF_GUN: 1 << 8,
   LIGHTS_OFF: 1 << 9,
+  DRONE: 1 << 10,
+  SUPPLY_AMMO: 1 << 11,
+  SUPPLY_HEAL: 1 << 12,
 } as const);

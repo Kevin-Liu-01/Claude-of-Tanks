@@ -74,7 +74,7 @@ interface ActionInput {
 interface NetworkActionPort {
   isActive(): boolean;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal'): void;
 }
 
 interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
@@ -124,6 +124,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   }
 
   const shellCards: ShellCard[] = [];
+  let lastShells: ActionShell[] | null = null;
   const consumableReadyAt = [0, 0, 0];
   const disposeCallbacks: Array<() => void> = [];
   const listen = (event: string, listener: (payload: RuntimeValue) => void): void => {
@@ -143,6 +144,12 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     const combat = game.player?.combat;
     if (!combat || !Array.isArray(combat.ammo)) return;
     const unlimited = game.ruleset?.ammo === 'unlimited';
+    const shells = game.player?.spec.gun.shells;
+    if (shells && shells !== lastShells) {
+      lastShells = shells; shellCards.length = 0;
+      for (const shell of shells) shellCards.push({ name: shell.name, type: shell.guided ? 'ATGM' : shell.type,
+        dmg: shell.dmg, penLabel: `${Math.round(shell.pen100Mm)} mm`, count: rules.shellAmmunitionCapacity(shell), ...(unlimited ? { unlimited: true } : {}) });
+    }
     for (let slot = 0; slot < shellCards.length; slot++) {
       shellCards[slot].count = Math.max(0, Math.floor(combat.ammo[slot] || 0));
       if (unlimited) shellCards[slot].unlimited = true; // finite loadouts carry no mark (cards are rebuilt per tank)
@@ -330,6 +337,11 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     bus.emit('ui:click', {});
   });
 
+  onAction('aerialVision', () => { if(battleInputAllowed())bus.emit('ui:aerialVision', {}); });
+  onAction('supplyAmmo',()=>bus.emit('ui:supplyAmmo',{}));
+  onAction('supplyHeal',()=>bus.emit('ui:supplyHeal',{}));
+  onAction('drone', () => bus.emit('ui:drone', {}));
+
   let defaultLightsOn=false, lightIntent:boolean|null=null, lightIntentAt=-Infinity;
   let lightIntentOwner:TEntity|null=null;
   listen('auxiliary:defaultLights',payload=>{defaultLightsOn=!!(payload as {on?:boolean}).on;});
@@ -342,7 +354,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     lightIntent=!current;lightIntentAt=game.timeS;lightIntentOwner=player;
     bus.emit(lightIntent?'ui:lights':'ui:lightsOff',{});
   });
-  for (const [action, bit] of [['smoke', 64], ['lights', 128], ['roofGun', 256], ['lightsOff', 512]] as const) {
+  for (const [action, bit] of [['smoke', 64], ['lights', 128], ['roofGun', 256], ['lightsOff', 512], ['drone', 1024], ['supplyAmmo',2048], ['supplyHeal',4096]] as const) {
     listen(`ui:${action}`, () => {
       const player = battleInputAllowed() ? livePlayer() : null;
       if (!player) return;
@@ -396,6 +408,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
   return {
     shellCards,
     setTank(spec) {
+      lastShells = spec.gun.shells;
       shellCards.length = 0;
       for (const shell of spec.gun.shells) {
         shellCards.push({

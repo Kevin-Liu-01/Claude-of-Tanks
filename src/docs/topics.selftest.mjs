@@ -4,6 +4,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DOCS_ICON_SPECS } from './docsIcons.ts';
 import { TOPIC_ORDER, topicSectionId, topics } from './topics.ts';
+import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
+import { WEAPON_CLASSES } from '../audio/weaponAudio.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const expected = [
@@ -56,4 +58,31 @@ assert.match(modelText, /Generate icons and technical cards/);
 assert.match(modelText, /tank:anatomy:update/);
 assert.match(modelText, /tank:release:check/);
 
-console.log('topics.selftest: 12 indexed manuals with complete icon and workflow coverage passed');
+// The audio manual is player-facing copy over docs/AUDIO.md; its counts follow the engine.
+const audioText = [topics.audio.lede, ...topics.audio.sections.flat()].join(' ');
+const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+  'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
+const reportClasses = NUMBER_WORDS[Object.keys(WEAPON_CLASSES).length];
+assert.ok(reportClasses, 'the weapon report-class count must be expressible in the manual');
+assert.match(audioText, new RegExp(`\\b${reportClasses} report classes\\b`),
+  'the audio manual states the engine weapon report-class count');
+const CREW_LANGUAGE_NAMES = {
+  'en-US': 'American', 'en-GB': 'British', de: 'German', ru: 'Russian', uk: 'Ukrainian', zh: 'Chinese',
+  fr: 'French', sv: 'Swedish', ja: 'Japanese', ko: 'Korean', it: 'Italian', pl: 'Polish', he: 'Hebrew',
+};
+const crewRadioText = topics.audio.sections.find(([title]) => title === 'Crew radio')?.join(' ') ?? '';
+for (const language of CREW_LANGUAGES) {
+  const name = CREW_LANGUAGE_NAMES[language];
+  assert.ok(name, `crew language ${language} needs a name in the audio manual`);
+  assert.match(crewRadioText, new RegExp(`\\b${name}\\b`), `the audio manual names the ${name} crews`);
+}
+assert.match(audioText, /ElevenLabs/);
+assert.match(audioText, /nothing is generated while you play/);
+assert.match(audioText, /No interface sound tells you a shot hit/);
+assert.match(audioText, /Short\. Adjusting\./);
+assert.match(audioText, /National crews/);
+assert.match(audioText, /13 existing national crews for every tank/);
+assert.match(audioText, /saved across battles and reloads/);
+assert.doesNotMatch(audioText, /selftest|node (?:src|tools)\//, 'the audio manual is written for players, not as a test checklist');
+
+console.log('topics.selftest: 12 indexed manuals with complete icon, workflow, and audio coverage passed');

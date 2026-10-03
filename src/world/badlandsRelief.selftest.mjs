@@ -29,7 +29,12 @@ const config = getMapConfig('badlands'), layout = current.createLayout(config);
 assert.equal(config.terrain.redrockCanyon, true);
 assert.equal(config.terrain.mesas, null, 'blanket random mesas no longer define this canyon');
 assert.equal(config.terrain.rimH, 0, 'no closed square wall across the two canyon mouths');
-assert.deepEqual(config.terrain.landforms, [], 'rejected scattered shelf pilot is not layered underneath');
+// 2026-10-02 (Redrock Divide rebuilt to docs/MAP-LAYOUT-BRIEF.md): the authored landforms are floor features
+// (inselbergs, dune ridges, sand ramps); the rejected scattered shelf pilot stays out, so none stands on a wall.
+for (const form of config.terrain.landforms) {
+  assert.ok(Math.abs(form.x - redrockCanyonCenter(form.z)) < redrockCanyonFloorHalfWidth(form.z),
+    `rejected scattered shelf pilot is not layered underneath: ${form.kind} at (${form.x}, ${form.z}) is on the floor`);
+}
 const optedOut = { ...config, terrain: { ...config.terrain, redrockCanyon: false } };
 
 function canyonContract(sample) {

@@ -21,13 +21,15 @@ assert.deepEqual(classicGroups.find(([, actionIds]) => actionIds[0] === 'freeCam
   'controls reference follows the selected RMB behavior');
 
 const iconIds = new Set(uiIconIds());
-for (const action of ['smoke', 'lights', 'roofGun']) assert.ok(SETTINGS_ACTION_ICONS[action]);
+for (const action of ['smoke', 'lights', 'roofGun', 'drone', 'aerialVision']) assert.ok(SETTINGS_ACTION_ICONS[action]);
 // round 30 (2026-09-20): autoAim (T) and hitboxOverlay (H) join the remappable actions with their own icons;
-// multiplayer v2 status surface (2026-09-26): networkPanel (F3) and leaveBattle (F4) join them
-assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 31,
+// multiplayer v2 status surface (2026-09-26): networkPanel (F3) and leaveBattle (F4) join them;
+// six battle modes (2026-10-02): the drone launch (V) joins them
+assert.equal(Object.keys(SETTINGS_ACTION_ICONS).length, 35,
   'every remappable action has a settings icon');
+// sfx engine redesign (2026-10-02): crew-radio language and the concussion toggle join the sound tab
 assert.deepEqual(Object.keys(SETTINGS_OPTION_ICONS).sort(), [
-  'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay',
+  'aiDifficulty', 'aimSmoothing', 'alarmHeartbeat', 'armorAimOverlay', 'audioConcussion', 'crewVoice',
   'graphicsQuality', 'hideBattleUi', 'invertY', 'isometricView', 'padSensitivity', 'rmbMode', 'sensitivity',
   'showDebugHud', 'showDirectionalHitValues', 'showPerfMeter', 'sniperSensScale', 'volAmbience',
   'volCombat', 'volEngine', 'volMaster', 'volUi', 'volVoice',

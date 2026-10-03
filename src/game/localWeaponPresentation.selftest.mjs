@@ -28,15 +28,21 @@ const fxCallback = (event) => (node) => ts.isArrowFunction(node)
 const calls = [];
 const audioBindings = {
   ctx: {}, phase: 'battle', battleOver: false, listenerOwnerId: 'player', listenerScoped: false,
-  spat: () => ({ dist: 1, gain: 1 }),
-  gunshot: (...args) => calls.push(['report', ...args]),
-  scheduleWhizz: () => calls.push(['whizz']),
-  radio: { say: () => calls.push(['radio']) },
+  fireWeapon: (...args) => calls.push(['report', ...args]),
+  shellFlyby: () => calls.push(['whizz']),
+  say: () => calls.push(['radio']),
   logSound: (kind) => calls.push(['log', kind]),
-  resolveWeaponReportProfile: () => ({ kind: 'cannon' }),
+  // Own main-gun rounds in flight, for the gunner's miss call.
+  ownRounds: new Map(),
+  resolveWeaponReport: () => ({ cls: { id: 'gun_120' } }),
+  // The route log's range and level fields.
+  listenerValid: true,
+  distanceTo: () => 120,
+  distanceAttenuationDb: () => -20,
+  dbToGain: (db) => 10 ** (db / 20),
 };
-const predictAudio = await receiver('../audio/audio.ts', namedFunction('onPredictedWeapon'), audioBindings);
-const confirmAudio = await receiver('../audio/audio.ts', namedFunction('onShellFired'), audioBindings);
+const predictAudio = await receiver('../audio/audioEngine.ts', namedFunction('onPredictedWeapon'), audioBindings);
+const confirmAudio = await receiver('../audio/audioEngine.ts', namedFunction('onShellFired'), audioBindings);
 const shot = { muzzlePos: [1, 2, 3], dir: [0, 0, 1], caliberMm: 120,
   isPlayer: true, shooterId: 'player', shellType: 'APFSDS', fireIntentSeq: 7 };
 predictAudio(shot);
@@ -50,7 +56,7 @@ assert.equal(calls.filter(([kind]) => kind === 'report').length, 3, 'ordinary ow
 assert.equal(calls.filter(([kind]) => kind === 'whizz').length, 1, 'only remote confirmed shot schedules a whizz');
 const reportCount = calls.length;
 for (const change of [{ ctx: null }, { phase: 'garage' }, { battleOver: true }, { listenerOwnerId: null }]) {
-  const denied = await receiver('../audio/audio.ts', namedFunction('onPredictedWeapon'), { ...audioBindings, ...change });
+  const denied = await receiver('../audio/audioEngine.ts', namedFunction('onPredictedWeapon'), { ...audioBindings, ...change });
   denied(shot);
 }
 predictAudio({ ...shot, shooterId: 'enemy' });

@@ -549,6 +549,231 @@ in the page (decal meshes unculled) as an ABBA (draw counts, so the pairs are ex
 carrying a scar. The hulls that submit any draw fall from 13 to 3, 11 to 2 and 13 to 3. The overview, with
 every scarred hull in view, is unchanged.
 
+Those ten scars were the rare combat warm's own. It stamps one armour scar per fielded hull so its hidden-variant
+compile prepares the impact-decal program inside every hull, and their only cleanup was the destruction warm's
+`resetAll`, which a cached destruction warm skips; the covered deployment always warms destruction first. With
+every bot frozen from the first battle frame (no shell fired), ten of the 28 hulls carried a scar at rollout on a
+fresh profile and again on a second battle entry, on Verdant Fields and Sirocco Wadi: all on the player's side
+(the enemies' countdown-built roots are detached, so the decal sweep drops theirs). The rare warm now clears exactly
+the scars it stamped once that compile is done, or when it fails or is closed (`createCombatRareWarmSteps`): no
+scarred hull in any of the four entries. The overview loses those ten draws (966 → 956 and 953 → 943 forward
+calls); the rollout chase pose, with the scarred allies off screen and already culled, is unchanged (293 and 287).
+
+## Frame budget (2026-10-02)
+
+Owner target: desktop High holds 60 fps (16.7 ms) on a mid-range laptop GPU; phones keep their cheaper path.
+
+### Method
+
+`tools/frame-budget-probe.mjs` measures production builds (`vite preview`, one headless Chrome on hardware ANGLE,
+the repo's capture flags) in A B B A slots. Each slot is a fresh page: the High preset pinned before boot, a solo
+battle with the 14 v 14 sides switch and a pinned roster (`t90m_x` for the player, 27 opponents taken from the
+sorted catalog, so every build of one catalog fields the same hulls), the sourced textures awaited, every bot frozen
+and the governor pinned at full scale. Per viewport (1600×900 and 1920×1080 at device pixel ratio 1) and view
+(`chase`, the hull-relative chase pose; `centre-far`, the battle overview) it settles, then samples whole frames and
+the prefix decomposition through `tools/frame-pass-timer.mjs`:
+
+- GPU per pass: one `EXT_disjoint_timer_query_webgl2` query per frame, from the frame's start to a checkpoint that
+  rotates over the frame (world simulations, clouds, shadow maps, main scene draw, aerial, late FX, bloom, sun
+  shafts, lens flare, grade, SMAA, upscale); a pass is the difference of consecutive checkpoint medians. Split
+  queries (one per pass) over-count on ANGLE's Metal backend — their pieces summed to 4–5.5× the whole frame in the
+  pilots, flushed or not — so they are a diagnostic only (`--segmented`).
+- CPU per pass: `performance.now()` around the same boundaries (the main thread's render path), draw calls and
+  triangles from `renderer.info`; `--profile` adds a CDP CPU profile at the first pose, self time per emitted chunk
+  per frame, which attributes the work no label covers (the audio engine's per-frame update among it).
+- Pairs: a delta is the median of the A B B A pair deltas, both shown. The machine is shared with other sessions'
+  headless browsers; the probe records the load and the foreign GPU processes' CPU per slot. Under that load the
+  whole-frame query reads high — in the pilots 20–55 ms against a presented interval of 16.5–16.7 ms, a span that
+  includes other work rather than the frame's occupancy — so the tables lead with p25 and the paired deltas.
+- Toggles (`--toggle=shadow-cache|sim-sleep`): A B B A blocks of a runtime switch inside one page and pose, with
+  moving views (`chase@7`, the pose gliding over the ground at 7 m/s) where the cascades' snapped poses change.
+- Unchanged pictures: `tools/shadow-cache-truth.mjs` renders every scenario through the cache and without it inside
+  one page task (temporal AA and the cloud history held, so a frame is a function of the scene state) and runs the
+  2026-09-12 consecutive-frame flicker meter on live frames; `tools/frame-capture-compare.mjs` compares the probe's
+  `--shots` captures across builds on the pixels each build reproduces across its own two loads.
+
+### The mid-range proxy
+
+Measuring machine: Apple M5 Max, 40-core GPU. Proxy: GeForce RTX 4050 Laptop with a Ryzen 7 7840HS, the volume
+gaming-laptop pairing. Throughput ratios from published results (notebookcheck):
+
+| | RTX 4050 Laptop | M5 Max 40-core | ratio |
+| --- | ---: | ---: | ---: |
+| 3DMark Wild Life Extreme | 13,488 | 39,389 | 0.342 |
+| 3DMark Steel Nomad Light | 7,254 | 16,191 | 0.448 |
+| 3DMark Steel Nomad | 1,669 | 3,924 | 0.425 |
+| Geekbench 6 single-core (7840HS / M5 Max) | 2,664 | 4,268 | 0.624 |
+
+The projection takes the most conservative GPU ratio (Wild Life Extreme) and the single-core CPU ratio for the main
+thread: `projected = max(GPU here / 0.342, main thread here / 0.624)`. For 16.7 ms on the proxy the frame must
+take at most 5.7 ms of GPU here (7.5 ms at the Steel Nomad Light ratio) and 10.4 ms of main thread. The Radeon 780M
+(the same CPU's iGPU) is 0.126 (Wild Life Extreme 4,945) to 0.171 (Steel Nomad Light 2,775) of this GPU — a third
+of the 4050 — and would need 2.1–2.9 ms here.
+
+### The changes
+
+- Static shadow-caster cache (P20, `src/engine/shadowStaticCache.ts`). Each desktop cascade keeps a depth copy of
+  the battle world's casters (the world root `map.ts` freezes after its build) rendered from the cascade's snapped
+  light pose; a frame that keeps the pose and the static content copies it into the live map and draws only the
+  dynamic casters on top (hulls, wrecks, effects, the cloud gobos, and any world caster seen changing on
+  consecutive frames — a moored hull's bob, a falling tree, a toppling pole — until it has been still for a
+  second). The static content is hashed every frame from what three's shadow traversal reads (visibility, layers,
+  cast flag, geometry and draw range, materials and versions, world matrix, instance count and every instanced
+  stream's version, the router's cascade masks); a change, a pose change (cascade snap, sun) or a map reallocation
+  re-renders that layer. A cascade takes the cache only once its snapped pose has held for two lighting updates: a
+  camera on the move re-snaps nearly every cascade every frame — on live frames, driving and turning, 315 of 315
+  cached cascade renders were re-renders, each the ordinary render plus a copy and a second pass — so a moving
+  cascade renders the ordinary way and the saving is the held camera's: a parked or aiming hull, the overview, a
+  held sniper view. A reuse always copies the static layer back (a single-light render — the deployment warm, the
+  covered prime — writes the live map without the cache seeing it). Phones keep the plain render. Cost: one depth
+  copy per cascade (5 bytes a texel): 68 MB on High (2048² ×3 + 1024²), 52 MB on Medium, 273 MB on Ultra.
+  Rendered proof (`tools/shadow-cache-truth.mjs`, Verdant Fields and Monsoon, 1600×900): the uncached render twice
+  differs by 0 px, and every scenario — still, a hull moved and turned and back, camera steps of 0.37 m, 11 cm and
+  1.8 m across the snaps, the sun turned 7° and back, a felled tree and a destroyed prop through 240 frames of their
+  fall (the falling caster promoted to the dynamic layer), a hull driving past a still camera for 25 frames and a
+  25-step camera dolly — renders 0 px apart through the cache and without it. On live frames (temporal AA on, the
+  flicker meter's one-frame blips at 320×180, cache on and off in A B B A segments) driving and turning took no
+  cached path at all (0 re-renders, 0 reuses: the ordinary render) and their blip counts differ by less than the
+  segments of one mode do; parked, the cascades reused 258–315 of 315 renders, the blips stayed level or fell
+  (Verdant 1.7 / 1.2 against 2.9 / 1.5, Monsoon 66 / 53 against 96 / 139) and the presented rate rose from 39 / 40
+  to 47 / 49 fps on Verdant and from 38 / 35 to 48 / 51 fps on Monsoon on this shared machine.
+- The governor (`src/engine/post.ts`, `adaptiveQualityPolicy.ts`, `gpuFrameTimer.ts`): High may now lower its
+  raster on a native-density display (device pixel ratio below 1.75) down to `nativeDynMin` 0.67 per axis, FSR1's
+  quality ratio, reconstructed by EASU + RCAS to the native canvas (retina keeps 0.9). Every fourth frame's GPU time
+  is sampled; a window's median lets the policy predict an up-step's cost (taken only if
+  `gpu × (next / now)² ≤ 0.85 × budget`), cut proportionally (at most two 0.09 steps) and leave a main-thread
+  overload to the tier lever. A sample longer than 1.2 × the presented frame interval is not occupancy and is set
+  aside, so a pessimistic timer can never hold the scale down. Without the extension (Firefox, Safari) the cadence
+  rules decide as before.
+- Default tiers (`quality.ts` `heuristicAutoCap`): discrete GPUs (RTX 4050 class and up) start on High with the
+  governor; the RDNA iGPUs that name their model (Radeon 680M / 760M / 780M / 880M / 890M) and Intel's Arc iGPUs
+  (Meteor Lake "Arc Graphics", Lunar Lake 130V / 140V) now start on Medium like the generic iGPUs; Strix Halo's
+  8050S / 8060S and the RX / Pro / Arc A / B dGPUs stay uncapped.
+- Idle simulations: the water-ripple field (512², up to three steps a frame) sleeps after 20 s without a hull in
+  the water or a splash, set to rest (its largest wake is then ~1e-7 m) until the next disturbance; the tall-grass
+  pressure field (256²) steps every eighth frame with the summed time while every stamp and the window hold (its
+  max/decay step composes exactly), and steps every frame again the moment anything moves.
+- The horizon ring bound to the terrain material builds no vista program: its own material only carries the
+  relief atlas, the canopy tile and the haze the terrain bands and the ring forest read, and the empty face group
+  that made three link and bind the vista program every frame is gone.
+- Boot entry: the cache (`shadowStaticCache.ts`, loaded with the first battle world), the GPU timer (loaded at the
+  governor's first decision over a battle world) and the r8 cascade caster proxies (`shadowCasterProxies.ts`, moved
+  out of `lighting.ts` and imported when the first lighting rig is created) live outside the entry chunk: 762,514 →
+  760,037 bytes raw and 227,873 → 227,153 brotli against the PR head (a24eb4770). Until a module arrives the ordinary path
+  renders — every caster into every cascade (a proxy only drops instances outside its cascade, so the maps are the
+  same), the cadence rules.
+
+### Before / after (the PR head d3202245c against this branch)
+
+A B B A slots per map (base, new, new, base: each cell lists a label's two slots), the pinned 14 v 14 roster, High,
+the governor pinned at 1, each pose a still camera (the static shadow cache's case; a moving camera renders the
+ordinary way). Draw calls are exact; CPU is the main thread's render path (world update to the end of the post
+transaction); presented fps is the median frame interval at the game's 60 fps cap. The machine's load average ran
+40–225 with other sessions' headless browsers on the GPU: the whole-frame GPU query (last column) reads 13–27 ms
+while the same frames presented every 16.7 ms, so it measures spans with other work in them, not occupancy, and is
+listed only for completeness; the prefix decomposition per pass was swamped the same way (negative steps) and is
+kept in the probe's JSON only.
+
+| pose | draws base → new | shadow draws | render-path CPU ms (base / base → new / new) | shadow CPU ms | presented fps | frame GPU p25 ms |
+| --- | --- | --- | --- | --- | --- | --- |
+| verdant · centre-far · 1600x900 | 500 / 421 → 261 / 261 | 297 / 218 → 60 / 60 | 7.5 / 7.2 → 5.7 / 6.3 | 2.4 / 1.9 → 1.0 / 1.2 | 60 / 61 → 60 / 60 | 17.4 / 14.5 → 18.8 / 17.6 |
+| verdant · chase · 1600x900 | 774 / 777 → 538 / 521 | 369 / 369 → 135 / 118 | 11.3 / 11.3 → 7.8 / 7.8 | 3.8 / 3.8 → 1.6 / 1.4 | 61 / 61 → 60 / 60 | 18.4 / 20.0 → 19.7 / 19.2 |
+| verdant · centre-far · 1920x1080 | 501 / 501 → 262 / 261 | 297 / 297 → 60 / 60 | 7.0 / 8.1 → 4.9 / 5.9 | 2.5 / 2.9 → 1.0 / 1.2 | 60 / 60 → 60 / 61 | 17.6 / 16.7 → 16.6 / 16.4 |
+| verdant · chase · 1920x1080 | 774 / 777 → 538 / 538 | 369 / 369 → 135 / 135 | 10.9 / 12.4 → 8.1 / 8.3 | 3.3 / 4.3 → 1.7 / 1.9 | 60 / 60 → 60 / 59 | 19.9 / 20.0 → 20.4 / 18.5 |
+| desert · centre-far · 1600x900 | 366 / 366 → 171 / 171 | 206 / 206 → 12 / 12 | 8.4 / 8.3 → 6.9 / 7.6 | 2.0 / 1.9 → 0.5 / 0.7 | 60 / 60 → 60 / 60 | 15.8 / 16.5 → 22.8 / 26.8 |
+| desert · chase · 1600x900 | 590 / 586 → 419 / 434 | 289 / 289 → 121 / 138 | 9.6 / 14.6 → 8.2 / 12.6 | 3.3 / 5.0 → 2.0 / 3.3 | 61 / 56 → 61 / 55 | 13.3 / 15.4 → 18.3 / 25.9 |
+| desert · centre-far · 1920x1080 | 378 / 379 → 183 / 184 | 206 / 206 → 12 / 12 | 7.0 / 5.8 → 5.5 / 5.7 | 2.0 / 1.5 → 0.6 / 0.4 | 60 / 60 → 61 / 60 | 15.2 / 18.7 → 20.0 / 22.3 |
+| desert · chase · 1920x1080 | 588 / 584 → 434 / 415 | 289 / 289 → 138 / 121 | 9.8 / 9.6 → 8.3 / 8.3 | 3.5 / 3.4 → 2.2 / 1.8 | 59 / 60 → 60 / 60 | 21.4 / 22.2 → 22.2 / 24.4 |
+| whiteout · centre-far · 1600x900 | 355 / 304 → 176 / 176 | 183 / 132 → 6 / 6 | 7.1 / 8.2 → 6.3 / 6.7 | 1.4 / 1.5 → 0.4 / 0.4 | 60 / 59 → 61 / 60 | 24.1 / 23.0 → 16.6 / 22.9 |
+| whiteout · chase · 1600x900 | 634 / 645 → 451 / 448 | 322 / 322 → 129 / 129 | 9.5 / 10.9 → 8.6 / 8.8 | 2.9 / 3.7 → 2.1 / 1.9 | 61 / 60 → 60 / 60 | 21.6 / 21.1 → 18.4 / 19.1 |
+| whiteout · centre-far · 1920x1080 | 355 / 355 → 177 / 178 | 183 / 183 → 8 / 8 | 6.5 / 6.5 → 5.4 / 7.2 | 1.6 / 1.4 → 0.5 / 0.8 | 60 / 60 → 60 / 59 | 23.8 / 25.7 → 22.8 / 27.1 |
+| whiteout · chase · 1920x1080 | 569 / 649 → 436 / 448 | 256 / 325 → 112 / 128 | 9.2 / 11.3 → 9.5 / 10.7 | 2.6 / 3.9 → 2.2 / 2.5 | 60 / 60 → 60 / 59 | 25.4 / 26.8 → 21.0 / 26.3 |
+| monsoon · centre-far · 1600x900 | 369 / 428 → 206 / 205 | 170 / 231 → 13 / 13 | 12.1 / 11.9 → 7.7 / 6.2 | 2.9 / 3.6 → 0.8 / 0.5 | 54 / 40 → 59 / 60 | 23.2 / 17.1 → 20.4 / 18.5 |
+| monsoon · chase · 1600x900 | 671 / 600 → 456 / 456 | 318 / 244 → 104 / 104 | 13.7 / 16.8 → 10.1 / 7.8 | 4.6 / 5.0 → 2.3 / 1.4 | 34 / 44 → 59 / 60 | 70.7 / 61.1 → 20.1 / 23.1 |
+| monsoon · centre-far · 1920x1080 | 438 / 378 → 217 / 214 | 231 / 170 → 9 / 9 | 11.4 / 9.2 → 5.5 / 5.8 | 3.6 / 2.6 → 0.4 / 0.5 | 58 / 59 → 60 / 60 | 17.8 / 20.1 → 18.1 / 20.2 |
+| monsoon · chase · 1920x1080 | 670 / 598 → 455 / 471 | 318 / 244 → 104 / 121 | 16.4 / 16.0 → 8.9 / 9.3 | 5.8 / 4.7 → 1.9 / 2.1 | 49 / 35 → 60 / 60 | 38.9 / 22.5 → 21.8 / 21.8 |
+
+What the rows show: the cache removes 135–240 draws a frame at a held camera (shadow draws 132–369 → 6–138, the
+dynamic hulls and cloud gobos are what remain) and 1–3.5 ms of shadow CPU; the render path falls 1–3.5 ms on Verdant
+Fields and Sirocco Wadi, 0.2–1 ms on Whiteout and 4–7 ms on Monsoon, where the base build fell to 34–58 fps at
+three of four poses (its main thread had 1.3 ms of idle a frame in the CDP profile against 6.4 ms in the new build)
+and the new one held 59–60. The audio engine's per-frame main-thread work is a 0.07–0.12 ms line item in both
+builds (CDP self time of its chunks). Across builds the captures differ on pixels both builds reproduce only along
+the borders of animated regions: Whiteout 0 px at all four poses, Verdant and Sirocco 3–171 px (grass blades
+beside a hull, a distant forest edge), Monsoon 158–1,105 px except the 1080p overview, the slot's last capture,
+whose cloud field — and its shadow on the ground — had drifted differently (the base build's slower frames
+reached it later); the cache's rendered proof is the in-page comparison above.
+
+### The cache in one page (`--toggle=shadow-cache`)
+
+Cache on and off in A B B A blocks at one pose of one page, 1600×900, all four maps (off / off → on / on):
+
+| pose | draws | render-path CPU ms | shadow CPU ms |
+| --- | --- | --- | --- |
+| Verdant chase | 753 / 674 → 519 / 519 | 11.2 / 11.1 → 9.6 / 10.3 | 3.5 / 3.2 → 2.0 / 2.4 |
+| Verdant overview | 498 / 499 → 262 / 245 | 8.1 / 7.8 → 6.6 / 6.4 | 2.7 / 2.8 → 1.4 / 1.1 |
+| Sirocco chase | 522 / 587 → 436 / 419 | 8.9 / 8.9 → 7.5 / 7.9 | 2.4 / 2.6 → 1.6 / 1.6 |
+| Sirocco overview | 318 / 329 → 176 / 181 | 7.9 / 6.4 → 5.6 / 5.5 | 1.3 / 1.3 → 0.4 / 0.4 |
+| Whiteout chase | 627 / 627 → 434 / 418 | 9.5 / 10.8 → 8.4 / 7.9 | 3.1 / 3.6 → 1.9 / 1.6 |
+| Whiteout overview | 301 / 352 → 177 / 177 | 7.2 / 5.3 → 4.9 / 4.8 | 1.2 / 1.1 → 0.4 / 0.5 |
+| Monsoon chase | 670 / 669 → 473 / 455 | 9.7 / 9.2 → 8.0 / 8.1 | 3.1 / 2.9 → 1.8 / 1.7 |
+| Monsoon overview | 424 / 429 → 204 / 207 | 7.1 / 7.0 → 5.6 / 5.5 | 1.6 / 1.7 → 0.4 / 0.4 |
+| moving chase (`chase@7`, 7 m/s), every map | equal within the blocks' spread | equal within the blocks' spread | equal |
+
+The moving pose takes no cached path — 0–3 reuses in 1,152–1,159 cascade renders, every cascade re-snapping every
+frame and rendering the ordinary way — so the cache costs nothing there; at the held poses 1,131–1,158 of the
+cascade renders were reuses (4–24 re-renders: the first held frame, and at the overview 3–6 static-content
+changes during the sample). Every block presented at the 60 fps cap except one Whiteout block during a load spike,
+so the GPU saving shows only as throughput below the cap: in the parked flicker segments above (TAA on, frames
+under the cap) the presented rate rose 8–13 fps with the cache on (39 / 40 → 47 / 49 on Verdant, 38 / 35 → 48 / 51
+on Monsoon).
+
+### The governor's scale (`--scales=1,0.82,0.67`, 1920×1080)
+
+High pinned at each step of the governor's ladder down to its native-density floor, Verdant Fields and Whiteout,
+chase and overview: the 3D view keeps 74–78 % of its native edge energy (summed luminance gradients outside the
+HUD) at 0.82 and 69–74 % at 0.67, reconstructed by EASU + RCAS (the HUD stays native); the whole-frame GPU p25 fell
+17–28 % at 0.67 on this shared GPU (Verdant chase 27.1 → 22.8 → 19.4 ms), where a GPU-bound laptop would shed up
+to 55 % of its raster work. The policy's own state machine — the predicted up-step, the proportional cut, the
+main-thread guard, the trust rule — is held by `resolutionGovernor.selftest.mjs`: driven by a frame model of a
+4050-class GPU (8 ms fixed + 18 ms × scale², a 9 ms main thread, vsync-quantized presentation) it settles at a
+scale between 0.67 and 0.85 inside the budget within 8 s and makes no change from 20 s to the end of the two-minute
+run, where the
+cadence-only rules probe upward and are pushed back periodically; a 21 ms main thread keeps full resolution.
+
+### Projected mid-range frame
+
+- Main thread. The new build's render path at a held camera is 4.9–10.7 ms here (chase 7.8–10.7, overview 4.9–7.7)
+  and, with no cached path while the camera moves, 9.2–13.0 ms at a moving chase; the CDP profile puts the whole
+  main thread at 9.4–12.4 ms busy in each 16.7 ms frame at a held chase with the bots frozen. At the 7840HS's
+  single-core ratio (0.624) that is 15–20 ms held and 15–21 ms for the moving render path alone, before the 27
+  bots' AI: a mid-range laptop is main-thread bound at or above 16.7 ms in a 14 v 14 battle. These numbers come from a machine running at load average 40–225,
+  so they are upper bounds, but the conclusion stands: the next 60 fps work on mid-range hardware is the main
+  thread (three's per-draw submission is 4.3–5.0 ms of it here), not the raster.
+- GPU. The proxy needs ≤ 5.7 ms of GPU here (≤ 7.5 ms at the Steel Nomad Light ratio). This shared GPU cannot
+  certify that: every pose presented at the 60 fps cap, so occupancy here is below 16.7 ms, but the timer's spans
+  (13–27 ms) include other sessions' work. If the 4050 is GPU-bound, High's governor has the raster lever down to
+  0.67² = 45 % of the pixels, reconstructed by EASU + RCAS; the cache removes the static casters' shadow draws at
+  a held camera.
+- Where the frame was over budget here, the changes fixed it: Monsoon's base build presented 34–58 fps at three of
+  its four poses (main thread saturated: 1.3 ms idle a frame), the new build 59–60.
+
+### Risks and follow-ups
+
+- Static shadow cache: 68 MB of depth copies on High (273 MB on Ultra). Its correctness rests on the per-frame hash
+  covering what three's shadow traversal reads; a static caster whose depth material animated vertices from a
+  uniform would not be seen (none does today: the foliage depth materials do not sway, LOD and occlusion fades are
+  instanced streams). It saves only at a held camera; making the far cascade's fit follow the camera position
+  rather than its frustum would let the far cascades reuse while driving (a lighting-lane decision).
+- The governor on a shared or tiled GPU: samples longer than the presented interval are set aside, so such a
+  machine runs the cadence rules (and their periodic up-probes) as before.
+- High's native floor lowers sharpness under load on 1080p laptops (EASU + RCAS reconstruct it); the 780M / 680M /
+  Arc iGPUs now start on Medium.
+- The caster proxies arrive asynchronously at boot: until then heavy owners draw every instance into every cascade
+  (the same maps, more shadow draws for those first frames).
+- Not measured here: a live-governor run with an emulated 4050 and Medium's cost — this machine's GPU timer cannot
+  drive or judge them. A quiet machine or the target laptop is the remaining certification step.
+
 ## Asset and geometry policy
 
 Playable tanks are assembled from first-party code and cached/generated

@@ -106,7 +106,8 @@ export default {
     hardstands: [
       { x: 0, z: 0, width: 62, length: 62, yawDeg: 0, grade: 0 },
       { x: -262, z: lineZ(-262) - 4, width: 60, length: 60, yawDeg: 4, grade: 0 },
-      { x: 262, z: lineZ(262) + 4, width: 60, length: 60, yawDeg: 4, grade: 0 },
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): at its ground's median height, a 16 m bank
+      { x: 262, z: lineZ(262) + 4, width: 60, length: 60, yawDeg: 4, level: 1.6, grade: 0, bankM: 16 },
     ],
     landforms: [
       // The main-line embankment outside the yard, each half from the throat to the cutting.
@@ -124,12 +125,6 @@ export default {
       { kind: 'basin', x: -60, z: 230, rx: 150, rz: 60, height: -2.4, yawDeg: 6 },
     ],
   },
-
-  layoutBrief: { exceptions: {
-    solidPropsInRoad: 'a roadside wreck and a field-work pillbox from the shared props passes (centre clearances of 6 m '
-      + 'against footprint radii up to 5.8 m) reach the carriageway edge; the shared laws are fixed fleet-wide in '
-      + 'roll-out batch 1',
-  } },
 
   spawns: {
     // Alpha deploys south of the yard between the spoil bank and the eastern works; bravo's pads are the rotation.
@@ -292,7 +287,7 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 800, thicknessM: 460, cells: 0.9, cellM: 1300, undulatus: 0.35, density: 0.16, sunGain: 0.7, tintHex: 0xbab5ac },
+  clouds: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 800, thicknessM: 460, cells: 0.9, cellM: 1300, undulatus: 0.35, density: 0.16, sunGain: 0.7, tintHex: 0xbab5ac, nightGlow: 0.85, nightGlowHex: 0xffa050 },
   sky: {
     // FLAT OVERCAST (trips the sky.ts overcast deck auto-detect: opacity 1.0
     // + layer2 0.95 + turbidity 9): weak high sun, dirty stratus, lifted fill

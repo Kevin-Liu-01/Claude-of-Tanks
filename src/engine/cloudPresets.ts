@@ -16,6 +16,7 @@
  */
 import type { AtmosphereSkyPresetInput } from './atmosphere.ts';
 import { CLOUDSCAPE_REGIMES, type CloudscapeConfig, type CloudscapeRegime } from './cloudscapes.ts';
+import { CLOUD_CONTRAIL_MAX } from './cloudWeatherLayers.ts';
 
 export type CloudLayerRegime = 'scattered' | 'broken' | 'overcast' | 'storm' | CloudscapeRegime;
 
@@ -81,7 +82,25 @@ export interface CloudLayerPreset {
   undulatus: number;
   /** Round 76: 0..1 the interior density octave inside cumuliform masses (a detailed first light tap). */
   interior: number;
+  /** 2026-10-01: the time of day the layer was resolved for (cloudTimeOfDay: the diurnal law's input). */
+  timeOfDay: CloudTimeOfDay;
+  /** 2026-10-01: contrails — how many (0..6) and their mean spread (0 fresh, 1 old contrail cirrus). */
+  contrails: number;
+  contrailAge: number;
+  /** 2026-10-01: 0..1 rain shafts under the precipitating cores, and the share of their fall that evaporates (virga). */
+  rain: number;
+  virga: number;
+  /** 2026-10-01: 0..1 a fog bank on the sea at the horizon and its top (m over the camera's ground). */
+  fogBank: number;
+  fogBankTopM: number;
+  /** 2026-10-01: the ground's light on the cloud bases (linear rgb, already scaled by the night amount: 0 by day). */
+  groundGlow: readonly [number, number, number];
+  /** 2026-10-01: the key light's colour on the clouds (luminance 1): white by day (the atmosphere colours the sun), the moonlight's at night. */
+  keyTint: readonly [number, number, number];
 }
+
+/** 2026-10-01: the three skies a battle can open under (battleWeatherPolicy.ts BATTLE_TIMES). */
+export type CloudTimeOfDay = 'day' | 'sunset' | 'night';
 
 /** The sky preset fields the derivation reads (a subset of sky.ts's SkyPreset). */
 export interface CloudLayerSkyInput extends AtmosphereSkyPresetInput {
@@ -92,6 +111,8 @@ export interface CloudLayerSkyInput extends AtmosphereSkyPresetInput {
   cloudAltM: number | null;
   cloudShadowAmp: number | null;
   fogDensity: number;
+  /** The key light's colour (the moon's at night: battleAtmosphereRuntime's night preset). */
+  sunColorHex?: number;
   cloudLayer?: Partial<CloudLayerPreset> | null;
   /** Round 71: the map's authored cloudscape (its `clouds` block, carried on the preset by main.ts). */
   cloudscape?: CloudscapeConfig | null;
@@ -116,7 +137,8 @@ export const CLOUD_LAYER_RULES = Object.freeze({
   coveragePower: 1.3,
   coverageBias: 0,
   coverageMin: 0.05,
-  coverageMax: 0.97,
+  // (2026-10-02: 1 — a whiteout's total overcast; at the old 0.97 its deck kept a blue ink-blot hole in the sky west)
+  coverageMax: 1,
   /** sky.ts's overcast rule: cloudOpacity ≥ 0.95, cloudOpacity2 ≥ 0.9, turbidity ≥ 7 */
   overcastOpacity: 0.95,
   overcastOpacity2: 0.9,
@@ -147,6 +169,31 @@ export const CLOUD_LAYER_RULES = Object.freeze({
   farBandMaxAltM: 2200,
   /** round 71: the cirrus streak direction sits a third of a quarter turn off the wind (the upper wind veers) */
   cirrusVeerRad: Math.PI / 6,
+});
+
+/**
+ * 2026-10-01: the time of day from the sky preset the battle applies — the night preset dims the dome to .08 (the
+ * night amount of sky.ts: full at .08, none from .30), the sunset preset lowers the sun to 7°.
+ */
+const CLOUD_TIME_RULES = Object.freeze({ nightTop: 0.30, nightFull: 0.08, sunsetMaxElevationDeg: 10 });
+
+export function cloudNightAmount(skyIntensity: number): number {
+  const R = CLOUD_TIME_RULES;
+  return clamp((R.nightTop - skyIntensity) / (R.nightTop - R.nightFull), 0, 1);
+}
+
+export function cloudTimeOfDay(sky: { skyIntensity: number; sunElevationDeg: number }): CloudTimeOfDay {
+  if (cloudNightAmount(sky.skyIntensity) >= 0.5) return 'night';
+  return sky.sunElevationDeg <= CLOUD_TIME_RULES.sunsetMaxElevationDeg ? 'sunset' : 'day';
+}
+
+/** 2026-10-01: the weather beyond the slab's defaults (the fog bank, the night glow and albedo). */
+const CLOUD_WEATHER_RULES = Object.freeze({
+  fogBankTopM: 120,
+  /** the sodium-orange glow of a lit town on the cloud bases (a map authors its own hue) */
+  nightGlowHex: 0xff9a52,
+  /** the night albedo: a moonlit cloud is a grey-white diffuser — the night preset's dark blue deck tint is a dome colour */
+  nightTintHex: 0xe9edf2,
 });
 
 function hexToLinear(hex: number): [number, number, number] {
@@ -212,95 +259,56 @@ function deriveLegacy(sky: CloudLayerSkyInput): CloudLayerPreset {
     sunGain: 1, ambientScale: 1, farBand: 0, farBandAltM: Math.min(R.farBandMaxAltM, baseM + thicknessM * 0.5), scud: 0,
     // round 76 fields at their neutral values: no deck cells, the round-71 floor lighting, no undulatus, no interior octave
     cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0,
+    // 2026-10-01 fields at their neutral values: no weather beyond the slab, a white key light, no ground glow
+    ...neutralWeather(cloudTimeOfDay(sky)),
   };
 }
 
-const degToRad = (deg: number): number => deg * Math.PI / 180;
-
-/** The cloudscape over the legacy derivation: the regime's row, then the map's own knobs. */
-function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scape: CloudscapeConfig): CloudLayerPreset {
-  const R = CLOUD_LAYER_RULES;
-  const row = scape.regime ? CLOUDSCAPE_REGIMES[scape.regime] : null;
-  const pick = <K extends keyof CloudscapeConfig & keyof typeof rowDefaults>(key: K): number => {
-    const authored = scape[key];
-    if (typeof authored === 'number') return authored;
-    return rowDefaults[key];
-  };
-  // the row's numbers, or the legacy layer's where a map authors knobs without a regime
-  const rowDefaults = {
-    coverage: row?.coverage ?? legacy.coverage,
-    thicknessM: row?.thicknessM ?? legacy.thicknessM,
-    towers: row?.towers ?? legacy.towers,
-    anvil: row?.anvil ?? legacy.anvil,
-    wispiness: row?.wispiness ?? legacy.wispiness,
-    windSpeed: row?.windSpeed ?? legacy.windSpeed,
-    shear: row ? row.shear : legacy.shearM / Math.max(1, legacy.thicknessM),
-    streets: row?.streets ?? legacy.streets,
-    cirrus: row?.cirrus ?? legacy.cirrus,
-    cirrusAltM: row?.cirrusAltM ?? legacy.cirrusAltM,
-    stratiform: row?.stratiform ?? legacy.stratiform,
-    density: row?.density ?? legacy.density,
-    farBand: row?.farBand ?? legacy.farBand,
-    scud: row?.scud ?? legacy.scud,
-    sunGain: row?.sunGain ?? legacy.sunGain,
-    ambientScale: row?.ambientScale ?? legacy.ambientScale,
-    clearRadiusM: row?.clearRadiusM ?? legacy.clearRadiusM,
-    cells: row?.cells ?? legacy.cells,
-    cellM: row?.cellM ?? legacy.cellM,
-    deckLight: row?.deckLight ?? legacy.deckLight,
-    undulatus: row?.undulatus ?? legacy.undulatus,
-    interior: row?.interior ?? legacy.interior,
-  };
-  const coverage = clamp(pick('coverage'), 0, R.coverageMax);
-  const thicknessM = Math.max(50, pick('thicknessM'));
-  const stratiform = clamp(pick('stratiform'), 0, 1);
-  const sheet = stratiform >= R.sheetStratiform;
-  // the base: the map's, the regime's, or (a regime whose base is open) the sky block's deck-derived one
-  const baseM = Math.max(60, scape.baseM ?? row?.baseM ?? legacy.baseM);
-  const windDirRad = scape.windDirDeg != null ? degToRad(scape.windDirDeg) : legacy.windDirRad;
-  const typeRange = scape.type ?? row?.type ?? legacy.typeRange;
-  const shadowDay = sky.skyIntensity >= R.shadowMinSkyIntensity;
-  const shadow = scape.shadow ?? ((row ? row.shadow : legacy.shadow) && shadowDay);
+/** The 2026-10-01 fields at their neutral values (a sky block alone, the Garage). */
+function neutralWeather(timeOfDay: CloudTimeOfDay): Pick<CloudLayerPreset,
+  'timeOfDay' | 'contrails' | 'contrailAge' | 'rain' | 'virga' | 'fogBank' | 'fogBankTopM' | 'groundGlow' | 'keyTint'> {
   return {
-    regime: scape.regime ?? legacy.regime,
-    coverage, baseM, thicknessM,
-    towers: clamp(pick('towers'), 0, 1),
-    stratiform,
-    fieldMix: clamp(scape.fieldMix ?? (row ? row.fieldMix : legacy.fieldMix), 0, 1),
-    density: Math.max(1e-4, pick('density')),
-    tint: scape.tintHex != null ? tintOf(scape.tintHex, sheet) : tintOf(sky.cloudTintHex, sheet),
-    windDirRad,
-    windSpeed: Math.max(0, pick('windSpeed')),
-    offset: legacy.offset,
-    clearRadiusM: Math.max(0, pick('clearRadiusM')),
-    shadow: shadow && shadowDay,
-    shadowThreshold: clamp(1 - coverage + R.shadowCoreBand, 0, 1),
-    typeRange: [clamp(typeRange[0], 0, 1), clamp(typeRange[1], 0, 1)],
-    anvil: clamp(pick('anvil'), 0, 1),
-    wispiness: clamp(pick('wispiness'), 0, 1),
-    shearM: clamp(pick('shear'), 0, 2) * thicknessM,
-    streets: clamp(pick('streets'), 0, 1),
-    cirrus: clamp(pick('cirrus'), 0, 1),
-    cirrusAngleRad: scape.cirrusAngleDeg != null ? degToRad(scape.cirrusAngleDeg) : windDirRad + R.cirrusVeerRad,
-    cirrusAltM: Math.max(baseM + thicknessM + 500, pick('cirrusAltM')),
-    cirrusDensity: R.cirrusDensity,
-    sunGain: Math.max(0, pick('sunGain')),
-    ambientScale: Math.max(0, pick('ambientScale')),
-    farBand: clamp(pick('farBand'), 0, 1),
-    farBandAltM: Math.min(R.farBandMaxAltM, baseM + thicknessM * 0.5),
-    scud: clamp(pick('scud'), 0, 1),
-    cells: clamp(pick('cells'), 0, 1),
-    cellM: Math.max(100, pick('cellM')),
-    deckLight: clamp(pick('deckLight'), 0, 1),
-    undulatus: clamp(pick('undulatus'), 0, 1),
-    interior: clamp(pick('interior'), 0, 1),
+    timeOfDay, contrails: 0, contrailAge: 0.5, rain: 0, virga: 0, fogBank: 0, fogBankTopM: CLOUD_WEATHER_RULES.fogBankTopM,
+    groundGlow: [0, 0, 0], keyTint: [1, 1, 1],
   };
+}
+
+
+/** What cloudPresets.ts hands the cloudscape resolver on load, so its chunk imports nothing at runtime. */
+export interface CloudscapeEnv {
+  readonly rules: typeof CLOUD_LAYER_RULES;
+  readonly weather: typeof CLOUD_WEATHER_RULES;
+  readonly regimes: typeof CLOUDSCAPE_REGIMES;
+  readonly contrailMax: number;
+  readonly clamp: typeof clamp;
+  readonly tintOf: typeof tintOf;
+  readonly hexToLinear: typeof hexToLinear;
+  readonly neutralWeather: typeof neutralWeather;
+  readonly cloudNightAmount: typeof cloudNightAmount;
+  readonly cloudTimeOfDay: typeof cloudTimeOfDay;
+}
+type CloudscapeResolver = (legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scape: CloudscapeConfig) => CloudLayerPreset;
+let cloudscape: CloudscapeResolver | null = null;
+let cloudscapeLoad: Promise<void> | null = null;
+/**
+ * 2026-10-02 (the boot weight): a map's cloudscape (its regime, its knobs, the time of day, the weather beyond the
+ * slab) lights only a battlefield, so it loads behind the battle entry (cloudscapeLayer.ts: the battle atmosphere's
+ * acquisition and the capture staging await it); the Garage's open destinations read the deck derivation alone. Never
+ * rejects: a failed chunk keeps the deck derivation and the next call retries.
+ */
+export function loadCloudscapeLayers(): Promise<void> {
+  return cloudscapeLoad ??= import('./cloudscapeLayer.ts').then((module) => {
+    cloudscape = module.cloudscapeLayer({
+      rules: CLOUD_LAYER_RULES, weather: CLOUD_WEATHER_RULES, regimes: CLOUDSCAPE_REGIMES, contrailMax: CLOUD_CONTRAIL_MAX,
+      clamp, tintOf, hexToLinear, neutralWeather, cloudNightAmount, cloudTimeOfDay,
+    });
+  }, () => { cloudscapeLoad = null; });
 }
 
 /** Derive the layer from a sky preset; the cloudscape refines it, an authored `cloudLayer` override wins field by field. */
 export function deriveCloudLayerPreset(sky: CloudLayerSkyInput): CloudLayerPreset {
   const legacy = deriveLegacy(sky);
-  const derived = sky.cloudscape ? applyCloudscape(legacy, sky, sky.cloudscape) : legacy;
+  const derived = sky.cloudscape && cloudscape ? cloudscape(legacy, sky, sky.cloudscape) : legacy;
   const authored = sky.cloudLayer;
   if (!authored) return derived;
   const merged = { ...derived };
@@ -316,5 +324,7 @@ export function cloudLayerKey(p: CloudLayerPreset): string {
   return [p.regime, p.coverage, p.baseM, p.thicknessM, p.towers, p.stratiform, p.fieldMix, p.density, ...p.tint,
     p.windDirRad, p.windSpeed, ...p.offset, p.clearRadiusM, p.shadow ? 1 : 0, p.shadowThreshold,
     ...p.typeRange, p.anvil, p.wispiness, p.shearM, p.streets, p.cirrus, p.cirrusAngleRad, p.cirrusAltM, p.cirrusDensity,
-    p.sunGain, p.ambientScale, p.farBand, p.farBandAltM, p.scud, p.cells, p.cellM, p.deckLight, p.undulatus, p.interior].map((v) => (typeof v === 'number' ? v.toFixed(5) : v)).join(',');
+    p.sunGain, p.ambientScale, p.farBand, p.farBandAltM, p.scud, p.cells, p.cellM, p.deckLight, p.undulatus, p.interior,
+    p.timeOfDay, p.contrails, p.contrailAge, p.rain, p.virga, p.fogBank, p.fogBankTopM, ...p.groundGlow, ...p.keyTint,
+  ].map((v) => (typeof v === 'number' ? v.toFixed(5) : v)).join(',');
 }

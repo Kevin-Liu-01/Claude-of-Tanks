@@ -121,15 +121,16 @@ export default {
     // the road's natural floor in the gap: an apron there would ramp the bypass past a road grade.
     hardstands: [
       { x: -50, z: 0, width: 64, length: 64, yawDeg: 0, grade: 0 },
-      { x: -330, z: 24, width: 60, length: 60, yawDeg: 0, grade: 0 },
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): on the west road's own grade, a 16 m bank
+      { x: -330, z: 24, width: 60, length: 60, yawDeg: 100, grade: 'road', bankM: 16 },
     ],
   },
 
   // docs/MAP-LAYOUT-BRIEF.md exceptions (tools/map-layout-metrics.mjs reports the reason instead of a miss).
   layoutBrief: { exceptions: {
     solidPropsInRoad: 'one street-front row building at the south wall lane\'s eastern chamfer stands 0.35 m into the '
-      + 'carriageway: street rows keep clear of other roads but not of the other legs of their own road; the shared '
-      + 'law is fixed fleet-wide in roll-out batch 1',
+      + 'carriageway: street rows keep clear of other roads but not of the other legs of their own road. The road '
+      + 'footprint fix (2026-10-02) covers the scatter passes; the street-row and planned-building law is its own fix',
   } },
 
   spawns: {
@@ -314,7 +315,7 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'altocumulus', coverage: 0.55, cirrus: 0.3 },
+  clouds: { regime: 'altocumulus', coverage: 0.55, cirrus: 0.3, contrails: 0.6, contrailAge: 0.6, nightGlow: 0.8, nightGlowHex: 0xffb46a },
   sky: {
     sunElevationDeg: 36, sunAzimuthDeg: 115,
     // lighting_post r5: turbidity 5.5->4.0, mie 0.007->0.005, fog 0.00092->

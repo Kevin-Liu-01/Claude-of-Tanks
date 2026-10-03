@@ -46,6 +46,8 @@ import { VEHICLE_ROLE_PROFILES } from '../vehicles/roleProfiles.ts';
  * injected `raycast(origin, dir, maxDist)` only ever READS those fields.
  */
 
+import { AERIAL_RULES } from './matchRuleset.ts';
+
 export interface SpottingVector3 {
   x: number;
   y: number;
@@ -62,6 +64,7 @@ interface SpottingTankSpec {
 }
 
 export interface SpottingTank {
+  aerial?: {kind: string;active: boolean;launching: boolean;x: number;y: number;z: number};
   id: string;
   team: string;
   spec: SpottingTankSpec;
@@ -87,6 +90,8 @@ export interface SpottingRayHit {
 }
 
 interface SpottingDependencies {
+  /** Explicit match rule: render/intel visibility no longer depends on detection. */
+  alwaysVisible?: boolean;
   opticalBlocked?: (a: SpottingVector3, b: SpottingVector3) => boolean;
   getTanks: () => SpottingTank[];
   raycast?: (
@@ -580,11 +585,11 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
 
   const _opticalTarget = {x:0,y:0,z:0};
   /** Hard-cover LOS: clear to either the turret top or the hull center. */
-  function hardLos(spotter: SpottingTank, target: SpottingTank): boolean {
+  function hardLos(spotter: SpottingTank, target: SpottingTank, drone = false): boolean {
     if (!raycast && !deps.opticalBlocked) return true;
-    const sp = spotter.state.pos, tp = target.state.pos;
+    const sp = drone && spotter.aerial ? spotter.aerial : spotter.state.pos, tp = target.state.pos;
     const h = target.spec.dims ? target.spec.dims.heightM : 2.6;
-    const sy = eyeY(spotter);
+    const sy = drone ? sp.y : eyeY(spotter);
     for (const frac of [0.85, 0.45]) {
       _o.x = sp.x; _o.y = sy; _o.z = sp.z;
       const dx = tp.x - sp.x, dy = tp.y + h * frac - sy, dz = tp.z - sp.z;
@@ -611,19 +616,20 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
   ) as Record<string, SpotterContact | null>;
 
   /** Full spot test: does `spotter` see `target` right now? */
-  function canSpot(
+  function canSpotFrom(
     spotter: SpottingTank,
     target: SpottingTank,
     timeS: number,
+    drone = false,
   ): boolean {
-    const sp = spotter.state.pos, tp = target.state.pos;
+    const sp = drone && spotter.aerial ? spotter.aerial : spotter.state.pos, tp = target.state.pos;
     const dx = tp.x - sp.x, dy = tp.y - sp.y, dz = tp.z - sp.z;
     const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
     // Proximity rule: inside 50 m the spot is UNCONDITIONAL — WoT's proximity
     // detection works through obstacles (a tank idling 30 m away behind a
     // house lights up; r8: the old hardLos gate here read as a spotting bug
     // when brawling around the Steinburg blocks).
-    if (dist <= MIN_SPOT_RANGE_M) return true;
+    if (!drone && dist <= MIN_SPOT_RANGE_M) return true;
     if (dist > MAX_SPOT_RANGE_M) return false;
     const rec = recOf(target);
     const bloom = fireBloomAt(rec.firedAtS, timeS);
@@ -638,7 +644,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
     const camo = combineCamo(_camoArgs);
     // spotter view range: module damage (optics) x equipment (binocs/vents)
     const spotterMoving = Math.abs(spotter.state.speed || 0) > MOVING_SPEED_MPS;
-    const vr = effectiveViewRangeM(spotter) *
+    const vr = drone ? AERIAL_RULES.drone.spotRangeM : effectiveViewRangeM(spotter) *
       equipViewMult(getEquipment(spotter), spotterMoving);
     if (dist > spotRangeM(vr, camo)) {
       // Muzzle-flash reveal (see the constants block): the formula hides the
@@ -655,7 +661,14 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
         return false;
       }
     }
-    return hardLos(spotter, target);
+    return hardLos(spotter, target, drone);
+  }
+
+  function canSpot(spotter: SpottingTank, target: SpottingTank, timeS: number): boolean {
+    if (!alive(spotter) || (target.aerial?.kind === 'gunship' && target.team !== spotter.team)) return false;
+    if (canSpotFrom(spotter,target,timeS)) return true;
+    const view=spotter.aerial;
+    return !!(view?.kind==='drone' && view.active && !view.launching && canSpotFrom(spotter,target,timeS,true));
   }
 
   function resetSeenVia(): void {
@@ -875,6 +888,7 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
      * @param {object} [receiver] TankEntity-like teammate asking for the intel
      */
     isSpotted(id: string, team: string, receiver?: SpottingTank | null): boolean {
+      if (deps.alwaysVisible) return deps.getTanks().some(tank => tank.id === id && (tank.aerial?.kind !== 'gunship' || tank.team === team));
       const r = recs.get(id);
       const st = r ? r.byTeam[team] : null;
       if (!st || !st.spotted) return false;
@@ -945,7 +959,9 @@ export function createSpottingSystem(deps: SpottingDependencies): SpottingSystem
       // (minimap-known contacts only, so no hidden enemy's bearing leaks
       // into a HUD number) and keep the larger term.
       const bush = concealmentBushBonus(ent, p, bloom);
-      return fillConcealmentSnapshot(ent, rec, timeS, moving, bloom, bush);
+      const snapshot = fillConcealmentSnapshot(ent, rec, timeS, moving, bloom, bush);
+      if (deps.alwaysVisible) { snapshot.spotted = false; snapshot.camo = 0; snapshot.inBush = false; }
+      return snapshot;
     },
 
     /** Bush bonus along the observer→target LOS (debug/tests). */

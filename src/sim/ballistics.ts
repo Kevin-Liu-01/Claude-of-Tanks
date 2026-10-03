@@ -15,6 +15,7 @@ import { Vector3 } from 'three';
 
 export interface BallisticShellSpec {
   velocityMps: number;
+  maxLifetimeS?: number;
   guided?: boolean;
   gravityScale?: number;
   guidanceTurnRateRadS?: number;
@@ -204,7 +205,7 @@ export function stepShell(shell: ShellEntity, dt: number) {
   shell.distM += shell.pos.distanceTo(shell.prevPos); // true arc length for pen falloff
   shell.vel.y -= gravity * dt;
   shell.ageS += dt;
-  if (shell.ageS > SHELL_MAX_LIFETIME_S) shell.dead = true;
+  if (shell.ageS > (shell.spec.maxLifetimeS ?? SHELL_MAX_LIFETIME_S)) shell.dead = true;
 }
 
 /**

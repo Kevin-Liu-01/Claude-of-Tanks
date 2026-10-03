@@ -1,3 +1,9 @@
+import { applyJuggernautScale } from '../sim/juggernautScale.ts';
+import { syncJuggernautVisual } from './juggernautVisual.ts';
+import type { ArmorEnvelope } from '../vehicles/specHelpers.ts';
+import { syncMissionAttachment } from './missionAttachmentVisual.ts';
+import { syncGunshipVisual, hideGunshipVisual } from './gunshipVisual.ts';
+import type { AerialView } from '../sim/aerialCombat.ts';
 import {
   MathUtils,
   Vector3,
@@ -15,6 +21,7 @@ interface TankState {
   yaw: number;
   speed: number;
   grounded?: boolean;
+  modeScale?: number;
 }
 
 type PresentedTankState = TankState;
@@ -34,13 +41,15 @@ interface TankVisual {
 }
 
 interface TankEntity {
+  aerial?: AerialView;
   id: string;
   team: string;
   isPlayer?: boolean;
   state: TankState | null;
-  combat: { destroyed?: boolean; modules?: Partial<Record<string, {state: 'ok' | 'yellow' | 'red'}>> } | null;
+  combat: { hp?:number;maxHp?:number;destroyed?: boolean; modules?: Partial<Record<string, {state: 'ok' | 'yellow' | 'red'}>> } | null;
   visual: TankVisual | null;
   spec: {
+    armor: ArmorEnvelope;
     era: string;
     topSpeedKmh: number;
     dims: { heightM: number; widthM: number; hullLengthM: number };
@@ -98,7 +107,7 @@ interface BattlePresentationRuntime {
 }
 
 interface BattlePresentationRuntimeOptions {
-  game: Pick<GameState, 'phase' | 'tanks' | 'player' | 'spotting'>;
+  game: Pick<GameState, 'phase' | 'tanks' | 'player' | 'spotting' | 'matchModeState'>;
   camera: PerspectiveCamera;
   scene: Scene;
   battleClient: PosePorts;
@@ -187,9 +196,9 @@ export function createBattlePresentationRuntime({
     const visual = entity.visual as TankVisual;
     const combat = entity.combat as NonNullable<TankEntity['combat']>;
     if (game.phase !== 'battle') return true;
-    if (spotState && entity.team === 'enemy') {
+    if (spotState && entity.team !== (currentPlayer?.team ?? 'player')) {
       const spotted = combat.destroyed
-        || spotState.isSpotted(entity.id, 'player', currentPlayer);
+        || spotState.isSpotted(entity.id, currentPlayer?.team ?? 'player', currentPlayer);
       const target = spotted ? 1 : 0;
       if (entity._spotFade === undefined) entity._spotFade = target;
       entity._spotFade += (target - entity._spotFade)
@@ -262,6 +271,11 @@ export function createBattlePresentationRuntime({
         detailVisible,
       );
     }
+    if((game.matchModeState as {boss?:{id:string}}|null)?.boss?.id===entity.id)applyJuggernautScale(entity as TankEntity & {state:TankState});
+    syncJuggernautVisual(visual.root,entity.spec.dims,state.modeScale??1,entity.combat?.hp??0,entity.combat?.maxHp??1,dtFrame??0);
+    syncMissionAttachment(visual.root,entity.spec,entity.aerial,!!entity.combat?.destroyed);
+    if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0, !entity.isPlayer && visual.root.visible);
+    else hideGunshipVisual(visual.root);
     return viewDistanceM;
   };
 

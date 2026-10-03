@@ -21,6 +21,10 @@ export const SETTINGS_ACTION_ICONS = Object.freeze({
   shell1: { id: 'shell', tone: 'amber', badge: '1' },
   shell2: { id: 'shell', tone: 'amber', badge: '2' },
   shell3: { id: 'shell', tone: 'amber', badge: '3' },
+  supplyAmmo: {id:'shell',tone:'amber'},
+  supplyHeal: {id:'medkit',tone:'green'},
+  aerialVision: { id: 'scope', tone: 'green' },
+  drone: { id: 'scope', tone: 'cyan' },
   smoke: { id: 'smoke', tone: 'steel' },
   lights: { id: 'lightbulb', tone: 'amber' },
   roofGun: { id: 'roofGun', tone: 'amber' },
@@ -66,5 +70,7 @@ export const SETTINGS_OPTION_ICONS = Object.freeze({
   volUi: { id: 'music', tone: 'amber' },
   volVoice: { id: 'radio', tone: 'cyan' },
   alarmHeartbeat: { id: 'heartbeat', tone: 'red' },
+  crewVoice: { id: 'radio', tone: 'amber' },
+  audioConcussion: { id: 'sound', tone: 'red' },
   graphicsQuality: { id: 'graphics', tone: 'cyan' },
 } satisfies Readonly<Record<SettingsOptionIconKey, SettingsIconSpec>>);

@@ -16,6 +16,45 @@ for (let z = -80; z <= 80; z += 4) for (let x = -16; x <= 16; x += 4) {
   assert.ok(Math.abs(heights[at] - (3 + z * 0.005)) < 1e-6,
     'the entire pavement width is one plane, not two flattened wheel lanes');
 }
+// 2026-10-02 (the apron bank law, tools/hardstand-banks.mjs): an authored grade tilts an apron with its hillside up to
+// 8 %, grade 'road' fits the crossing road's grade up to 8 % (an omitted grade still fits it within 1 %), and an
+// authored bankM widens the band over which the ground leaves the apron's plane; without one, the band is the road
+// blend's own.
+{
+  const cell = (x, z) => ((z + 128) / 4) * size + (x + 128) / 4;
+  const stamp = (stand) => {
+    const d = new Float32Array(size * size).fill(1000), h = new Float32Array(size * size).fill(10);
+    stampHardstandRoadGrids([stand], d, h, size, mapSize, () => 10);
+    return { d, h };
+  };
+  const tilted = stamp({ x: 0, z: 0, width: 36, length: 120, level: 3, grade: 0.05 });
+  const held = stamp({ x: 0, z: 0, width: 36, length: 120, level: 3, grade: 0.3 });
+  // 'road' fits the crossing road's own grade up to 8 %; omitted holds that fit to 1 %
+  const roadAt = (x, z) => 10 + z * 0.06;
+  const stampOn = (stand) => {
+    const d = new Float32Array(size * size).fill(1000), h = new Float32Array(size * size).fill(10);
+    stampHardstandRoadGrids([stand], d, h, size, mapSize, roadAt);
+    return h;
+  };
+  const followed = stampOn({ x: 0, z: 0, width: 36, length: 120, grade: 'road' });
+  const fitted = stampOn({ x: 0, z: 0, width: 36, length: 120 });
+  for (let z = -56; z <= 56; z += 8) {
+    assert.ok(Math.abs(tilted.h[cell(0, z)] - (3 + z * 0.05)) < 1e-6, 'an authored 5 % grade is the plane');
+    assert.ok(Math.abs(held.h[cell(0, z)] - (3 + z * 0.08)) < 1e-6, 'an authored grade is held to 8 %');
+    assert.ok(Math.abs(followed[cell(0, z)] - (10 + z * 0.06)) < 1e-4, "'road' follows a 6 % road at its height");
+    assert.ok(Math.abs(fitted[cell(0, z)] - (10 + z * 0.01)) < 1e-4, 'an omitted grade fits the road within 1 %');
+  }
+  const guard = 4 * Math.SQRT2, smooth = (t) => t * t * (3 - 2 * t);
+  const narrow = stamp({ x: 0, z: 0, width: 36, length: 36, level: 3 });
+  const wide = stamp({ x: 0, z: 0, width: 36, length: 36, level: 3, bankM: 30 });
+  // 22 m outside the east edge: past the road blend's own bank, inside the authored 30 m one
+  const sd = 22 - guard, at = cell(40, 0);
+  assert.equal(narrow.d[at], 1000, 'the default bank leaves ground 22 m out alone');
+  assert.equal(narrow.h[at], 10);
+  assert.ok(Math.abs(wide.d[at] - (3.8 + sd * (10.2 / 30))) < 1e-4, 'a 30 m bank reads 22 m out as inside its blend');
+  assert.ok(Math.abs(wide.h[at] - (10 + (3 - 10) * (1 - smooth(sd / 33.8)))) < 1e-4, 'and feathers its plane over 33.8 m');
+  assert.equal(wide.d[cell(76, 0)], 1000, 'and leaves ground past its bank alone');
+}
 const pixels = new Uint8ClampedArray(128 * 128 * 4).fill(37);
 const pixelBuffer = pixels.buffer;
 stampHardstandRoadMask([strip], pixels, 128, mapSize);

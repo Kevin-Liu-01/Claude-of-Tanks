@@ -12,8 +12,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  */
 
 import type { AudioListenerPose } from './listenerPoseRuntime.ts';
-import type { AudioMixer } from './audio.ts';
-import type { PreparedAudioBuffers } from './audioBuffers.ts';
+import type { AudioMixer, AudioTerrainProbe } from './audioEngine.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { nextPaintFrame } from '../engine/frameScheduler.ts';
 
@@ -24,11 +23,13 @@ interface FallbackLoadingTone {
 }
 
 interface AudioMixerModule {
-  prepareAudioBuffers?(context: AudioContext): Promise<PreparedAudioBuffers>;
+  /** Optional cooperative preparation the mixer may want before adoption. */
+  prepareAudioBuffers?(context: AudioContext): Promise<unknown>;
   createAudio(options: {
     context: AudioContext | null;
-    preparedBuffers?: PreparedAudioBuffers | null;
+    preparedBuffers?: unknown;
     getMapId?: () => string | null;
+    getTerrain?: () => AudioTerrainProbe | null;
     initialPhase?: string;
   }): AudioMixer;
 }
@@ -37,6 +38,7 @@ interface LazyAudioOptions {
   loadMixer?(): Promise<AudioMixerModule | null>;
   createContext?(): AudioContext | null;
   getMapId?(): string | null;
+  getTerrain?(): AudioTerrainProbe | null;
   hasStickyActivation?(): boolean;
 }
 
@@ -48,14 +50,14 @@ export interface LazyAudio {
   /** Explicit Battle intent only; preserves legacy gesture-time unlocking. */
   startLoadingAfterPaint(yieldForPaint?: () => Promise<void>): Promise<void>;
   bindBus(bus: EventBus): void;
-  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[]): void;
+  update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[], shells?: readonly RuntimeValue[]): void;
   setMasterVolume(value: number): void;
   mute(muted: boolean): void;
   playGarageSting(): void;
   loadingOn(active: boolean): void;
-  warmBattleEvents(): Promise<RuntimeValue>;
+  /** Load the battle's sound groups (optionally its planned roster) before rollout. */
+  warmBattleEvents(roster?: readonly string[]): Promise<RuntimeValue>;
   ambientOn(active: boolean): void;
-  hitConfirm(kind: string, damage?: number): void;
   readonly ready: boolean;
   readonly loadingActive: boolean;
 }
@@ -130,10 +132,11 @@ function storedMasterVolume(): number {
 
 export function createLazyAudio({
   getMapId,
+  getTerrain,
   hasStickyActivation = () => (
     typeof navigator !== 'undefined' && navigator.userActivation?.hasBeenActive === true
   ),
-  loadMixer = () => import('./audio.ts'),
+  loadMixer = () => import('./audioEngine.ts'),
   createContext = () => {
     const scope = globalThis as typeof globalThis & {
       webkitAudioContext?: typeof AudioContext;
@@ -160,6 +163,7 @@ export function createLazyAudio({
   let masterVolume = storedMasterVolume();
   let garageStingPending = false;
   let loadingRevision = 0;
+  let gestureBound = false;
 
   const unlockContext = (): AudioContext | null => {
     if (!context) context = createContext();
@@ -229,7 +233,7 @@ export function createLazyAudio({
         // cue remains active, and phase/intent are read again at handoff.
         const preparedBuffers = context && module.prepareAudioBuffers
           ? await module.prepareAudioBuffers(context) : null;
-        return settleReal(module.createAudio({ context, preparedBuffers, getMapId, initialPhase: latestPhase }));
+        return settleReal(module.createAudio({ context, preparedBuffers, getMapId, getTerrain, initialPhase: latestPhase }));
       }).finally(() => {
         if (!real) realPromise = null;
       });
@@ -310,9 +314,22 @@ export function createLazyAudio({
         if (latestPhase !== 'battle') ambientRequested = false;
       });
       if (real) real.bindBus(nextBus);
+      // The garage has sound of its own (its hangar, its controls): the first
+      // gesture anywhere unlocks the context inside the gesture and loads the
+      // mixer, so neither waits for a first battle.
+      if (!gestureBound && typeof document !== 'undefined') {
+        gestureBound = true;
+        const onGesture = (): void => {
+          document.removeEventListener('pointerdown', onGesture, true);
+          document.removeEventListener('keydown', onGesture, true);
+          if (!muted && masterVolume > 0) resume();
+        };
+        document.addEventListener('pointerdown', onGesture, true);
+        document.addEventListener('keydown', onGesture, true);
+      }
     },
-    update(dt: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[]) {
-      real?.update(dt, listener, tanks);
+    update(dt: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[], shells?: readonly RuntimeValue[]) {
+      real?.update(dt, listener, tanks, shells);
     },
     setMasterVolume(value: number) {
       latchMasterVolume(value);
@@ -328,14 +345,13 @@ export function createLazyAudio({
       else { garageStingPending = true; requestReal(); }
     },
     loadingOn,
-    warmBattleEvents() {
-      return ensureReal().then((mixer) => mixer?.warmBattleEvents?.());
+    warmBattleEvents(roster?: readonly string[]) {
+      return ensureReal().then((mixer) => mixer?.warmBattleEvents?.(roster));
     },
     ambientOn(on: boolean) {
       ambientRequested = !!on;
       real?.ambientOn(ambientRequested);
     },
-    hitConfirm(kind: string, damage = 0) { real?.hitConfirm(kind, damage); },
     get ready() { return !!real; },
     get loadingActive() { return !!fallback || loadingRequested; },
   };

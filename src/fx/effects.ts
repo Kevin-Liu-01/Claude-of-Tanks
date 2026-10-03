@@ -15,6 +15,8 @@ import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
  */
 import * as THREE from 'three';
 import type { TrackSurface } from '../world/trackSurface.ts';
+import { createDronePresentation } from './dronePresentation.ts';
+import { aerialTracerProfile, aerialTracerWidth, aerialTracerLength, type AerialTracerProfile } from './aerialTracers.ts';
 import { waterContactMaskAt } from '../world/waterContactMask.ts';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.ts';
 import { LATE_FX_LAYER } from './layers.ts';
@@ -34,7 +36,7 @@ type Rng = () => number;
 type MutableVec3 = [number, number, number];
 type WireVec3 = readonly [number, number, number];
 type ShellId = string | number;
-type TracerType = 'ATGM' | 'AP' | 'APCR' | 'HEAT' | 'HE' | 'HESH' | 'APFSDS';
+type TracerType = 'DRONE' | 'ATGM' | 'AP' | 'APCR' | 'HEAT' | 'HE' | 'HESH' | 'APFSDS';
 type DestructionCause = 'ammorack' | 'shot' | 'fire';
 
 interface FxEngineContext {
@@ -132,6 +134,8 @@ interface FxDecalVisual {
 }
 
 interface FxEntity {
+  spec?: {id:string;nation?:string};
+  aerial?: {active:boolean;yaw:number;kind?:'drone'|'gunship'};
   visual: FxVisual;
   state: {
     pos?: THREE.Vector3;
@@ -187,6 +191,7 @@ function isRingVisible(ring: ShockRingState | MuzzleRingState): boolean {
 }
 
 interface GuidedTrail {
+  aerialWidth?: number;
   points: Float32Array;
   count: number;
   age: number;
@@ -227,6 +232,8 @@ interface SmokeColumn {
 }
 
 interface LiveShell {
+  ageS?: number;
+  shooterId?: ShellId;
   rocket?: boolean;
   id: ShellId;
   pos: THREE.Vector3;
@@ -238,6 +245,7 @@ interface LiveShell {
   spec?: {
     guided?: boolean;
     tracer?: TracerType;
+    reloadGroup?: string;
   };
 }
 
@@ -565,12 +573,13 @@ varying vec3 vGlow;
 varying float vBright;
 varying float vSeed;
 varying float vTint;
+varying float vHead;
 #ifdef USE_FOG
   varying float vFogDepth;
 #endif
 uniform vec2 uNearFade;
 void main() {
-  vUv = uv; vCore = aCore; vGlow = aGlow; vBright = aB.w; vTint = aTint;
+  vUv = uv; vCore = aCore; vGlow = aGlow; vBright = aB.w; vTint = min(aTint, 1.0); vHead = step(1.5, aTint);
   vSeed = fract( dot( aA.xyz, vec3( 0.1031, 0.11369, 0.13787 ) ) );
   if ( aB.w <= 0.0 ) {
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
@@ -596,6 +605,14 @@ void main() {
   float along = position.x + 0.5;
   float widthProfile = mix( 0.38, 1.0, smoothstep( 0.08, 0.78, along ) );
   wpos += side * position.y * aA.w * 3.2 * widthProfile;
+  // A round seen end-on needs a camera-facing hot head: the flight ribbon
+  // otherwise collapses to zero projected area in the gunship gimbal.
+  if ( vHead > 0.5 ) {
+    vec3 right = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
+    vec3 up = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
+    wpos = aB.xyz + (right * position.x + up * position.y) * aA.w * 3.2;
+    vBright = aB.w * smoothstep(uNearFade.x, uNearFade.y, distance(aB.xyz, cameraPosition));
+  }
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   #ifdef USE_FOG
     vFogDepth = -mvPosition.z;
@@ -611,6 +628,7 @@ varying vec3 vGlow;
 varying float vBright;
 varying float vSeed;
 varying float vTint;
+varying float vHead;
 #ifdef USE_FOG
   uniform vec3 fogColor;
   uniform float fogNear;
@@ -631,12 +649,20 @@ void main() {
   float bead = exp( -dot( hp, hp ) * 15.0 );
   float a = ((core * 0.92 + corona * 0.28) * tailEnergy * shimmer
     + bead * 1.15) * vBright;
-  if ( a < 0.004 ) discard;
+  if ( vHead < 0.5 && a < 0.004 ) discard;
   #ifdef USE_FOG
     float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
   #else
     float fogFactor = 0.0;
   #endif
+  if ( vHead > 0.5 ) {
+    vec2 p = vUv * 2.0 - 1.0;
+    float r2 = dot(p,p);
+    float hot = exp(-r2 * 30.0);
+    float halo = exp(-r2 * 6.0) * (1.0 - smoothstep(0.55,1.0,r2));
+    gl_FragColor = vec4((vCore * hot * 3.0 + vGlow * halo * 0.7) * vBright * (1.0-fogFactor), (hot + halo * 0.35) * vBright);
+    return;
+  }
   // A neutral hot core preserves the physical incandescent read; the shell
   // preset lives in the close corona, so AP/APCR/HE remain distinguishable.
   vec3 neutralHot = mix( vCore, vec3( 1.0, 0.97, 0.88 ), 0.72 );
@@ -896,6 +922,7 @@ function* createFxSteps(
   });
   const group = new THREE.Group();
   group.name = 'fx';
+  const drones = createDronePresentation(group);
   group.matrixAutoUpdate = false;
   group.add(particles.group);
 
@@ -1007,6 +1034,7 @@ function* createFxSteps(
     fog: true,
   });
   const tracerMesh = new THREE.Mesh(tracerGeo, tracerMat);
+  tracerMesh.name = 'Ballistic tracer ribbons and heads';
   tracerMesh.frustumCulled = false;
   tracerMesh.matrixAutoUpdate = false;
   tracerMesh.renderOrder = 24;
@@ -1571,8 +1599,8 @@ function* createFxSteps(
       writeTracer(instance++,
         points[a], points[a + 1], points[a + 2],
         points[b], points[b + 1], points[b + 2],
-        0.08 + 0.09 * head,
-        (0.55 + 1.05 * head) * opacity,
+        trail.aerialWidth ? trail.aerialWidth * (0.55 + 0.45 * head) : 0.08 + 0.09 * head,
+        (trail.aerialWidth ? 0.22 + 0.6 * head : 0.55 + 1.05 * head) * opacity,
         _atgmCore, _atgmGlow, 1);
       renderedAtgmTrailSegments++;
     }
@@ -3580,7 +3608,7 @@ function* createFxSteps(
     }
   }
 
-  function writeGuidedShell(shell: LiveShell, tracerIndex: number): number {
+  function writeGuidedShell(shell: LiveShell, tracerIndex: number, aerialWidth = 0): number {
     const shellPos = shell.pos;
     writeGuidedBody(shellPos, _v1);
     let trail = guidedTrails.get(shell.id);
@@ -3598,6 +3626,7 @@ function* createFxSteps(
     }
     trail.age = 0;
     trail.seen = true;
+    trail.aerialWidth = aerialWidth;
     appendGuidedTrailPoint(trail, shellPos.x, shellPos.y, shellPos.z);
     return writeGuidedTrail(trail, tracerIndex);
   }
@@ -3608,6 +3637,7 @@ function* createFxSteps(
     preset: (typeof TRACER_PRESETS)[keyof typeof TRACER_PRESETS],
     guided: boolean,
     tracerIndex: number,
+    aerial: AerialTracerProfile | null,
   ): number {
     const shellPos = shell.pos;
     col3(preset.core, _coreArr);
@@ -3625,19 +3655,26 @@ function* createFxSteps(
       widthScale *= 1 + 2.6 * alignment;
       brightness *= 1 + 0.9 * alignment;
     }
-    const width = Math.min(preset.width * widthScale, 0.15);
+    const width = aerial ? aerialTracerWidth(aerial, cameraDistance, camera.projectionMatrix.elements[5])
+      : Math.min(preset.width * widthScale, 0.15);
+    if (aerial) brightness = aerial.brightness;
     writeTracer(
       tracerIndex,
       _v2.x, _v2.y, _v2.z,
       shellPos.x, shellPos.y, shellPos.z,
       width,
       brightness,
-      guided ? _atgmCore : _coreArr,
-      guided ? _atgmGlow : _glowArr,
-      guided ? 1 : 0,
+      guided && !aerial ? _atgmCore : _coreArr,
+      guided && !aerial ? _atgmGlow : _glowArr,
+      guided && !aerial ? 1 : 0,
     );
     if (!guided) rememberShellTrail(shell, width, brightness);
-    return tracerIndex + 1;
+    tracerIndex++;
+    if (aerial && tracerIndex < MAX_TRACERS) {
+      writeTracer(tracerIndex++, shellPos.x,shellPos.y,shellPos.z,
+        shellPos.x,shellPos.y,shellPos.z, width*aerial.headScale, brightness, _coreArr,_glowArr,2);
+    }
+    return tracerIndex;
   }
 
   function rememberShellTrail(shell: LiveShell, width: number, brightness: number): void {
@@ -3666,6 +3703,7 @@ function* createFxSteps(
   }
 
   function writeLiveShellTracers(shells: LiveShell[], camera: THREE.Camera): number {
+    drones.begin(particles.getTime());
     let tracerCount = 0;
     liveAtgmCount = 0;
     renderedAtgmTrailSegments = 0;
@@ -3673,22 +3711,35 @@ function* createFxSteps(
     for (let index = 0; index < shells.length && tracerCount < MAX_TRACERS; index++) {
       const shell = shells[index];
       if (shell.dead) continue;
+      if (shell.spec?.tracer === 'DRONE') {
+        // The FPV camera sits inside its airframe; retain the launch/remote silhouette.
+        if (shell.pos.distanceToSquared(camera.position) > 4) {
+          const owner=decalEntityFor(shell.shooterId),flyer=owner?.aerial;
+          drones.write(shell.pos,shell.vel,shell.id,flyer?.active?flyer.yaw:undefined,shell.ageS,owner?.spec?.nation);
+        }
+        continue;
+      }
       const guided = !!shell.spec?.guided || shell.rocket === true;
       const tracerId = guided ? 'ATGM' : shell.spec?.tracer;
-      const preset = TRACER_PRESETS[tracerId ?? 'AP'];
+      // Snapshot shells carry type/guidance, not the complete local gun record.
+      const aerial = aerialTracerProfile(shell.spec?.reloadGroup) ??
+        (decalEntityFor(shell.shooterId)?.aerial?.kind === 'gunship'
+          ? aerialTracerProfile(guided ? 'gunship-missile' : tracerId === 'HE' ? 'gunship-howitzer' : 'gunship-cannon') : null);
+      const preset = aerial ?? TRACER_PRESETS[tracerId ?? 'AP'];
       const speed = shell.vel.length();
-      const length = Math.min(
+      const length = aerial ? aerialTracerLength(aerial, speed, shell.distM ?? 0) : Math.min(
         THREE.MathUtils.clamp(speed * 0.0035, 3, 6),
         Math.max(shell.distM || 0, 0.08),
       );
       _v1.copy(shell.vel).normalize();
       _v2.copy(shell.pos).addScaledVector(_v1, -length);
       if (guided) {
-        tracerCount = writeGuidedShell(shell, tracerCount);
+        tracerCount = writeGuidedShell(shell, tracerCount, aerial ? aerialTracerWidth(aerial, shell.pos.distanceTo(camera.position), camera.projectionMatrix.elements[5]) : 0);
         if (tracerCount >= MAX_TRACERS) continue;
       }
-      tracerCount = writeShellBolt(shell, camera, preset, guided, tracerCount);
+      tracerCount = writeShellBolt(shell, camera, preset, guided, tracerCount, aerial);
     }
+    drones.end();
     return tracerCount;
   }
 
@@ -5404,7 +5455,7 @@ function* createFxSteps(
     /** Kill all particles, tracers, decals, timers, emitters and lights. */
     resetAll() {
       replaySuppressed = false;
-      auxiliary?.reset();
+      auxiliary?.reset(); drones.reset();
       particles.resetAll();
       lastTickS = particles.getTime();
       battleFreshS = 0; // fresh battle — arm the flyby exhaust start-up burst
@@ -5446,8 +5497,8 @@ function* createFxSteps(
      *           tracerType: string, ageS: number }} o
      */
     composeFiringMoment({ muzzlePos, dir, caliberMm, tracerType, ageS, rocket = false, velocityMps }: FiringMoment): void {
-      const preset = rocket ? TRACER_PRESETS.ATGM : TRACER_PRESETS[tracerType] || TRACER_PRESETS.AP;
-      const vel = rocket ? velocityMps || 300 : COMPOSE_VELOCITY[tracerType] || 800;
+      const preset = rocket ? TRACER_PRESETS.ATGM : TRACER_PRESETS[tracerType === 'DRONE' ? 'AP' : tracerType] || TRACER_PRESETS.AP;
+      const vel = rocket ? velocityMps || 300 : COMPOSE_VELOCITY[tracerType === 'DRONE' ? 'AP' : tracerType] || 800;
       // NOTE (r5): the recipe samples gunMuzzleWorld AFTER advancing the
       // recoil, and the rendered barrel is equally recoiled — the anchor
       // always matches the visible tip, so the flash spawns exactly on it.

@@ -128,6 +128,28 @@ console.log('[3] trigger hold and firing-lane response');
   ok(firedClear, 'bot resumes fire after the friendly clears the lane');
 }
 
+console.log('[3b] a lane search that finds no lane waits before the next one (Steinburg 7v7 seed 88677 CPU)');
+{
+  const bot = entity('bot', 't90m', 'player', 0, 0);
+  const ally = entity('ally', 'm1a2', 'player', 0, 35);
+  const target = entity('target', 'm1a2', 'enemy', 0, 80);
+  // every other sight line is clear; the lateral lane points (22-46 m to either side) are masked, so no search can
+  // succeed
+  let laneRays = 0;
+  const raycast = (origin) => {
+    if (Math.abs(origin.x - bot.state.pos.x) < 15 || Math.abs(origin.z - bot.state.pos.z) > 10) return null;
+    laneRays++;
+    return { dist: 1 };
+  };
+  const ctl = controller(bot, [target], [ally], 41, 'normal', { raycast });
+  tick(ctl, bot, 12);
+  const info = ctl.debugInfo();
+  ok(info.friendlyBlockCount >= 1 && info.friendlyLaneMoves === 0, 'the block holds and no lane is found');
+  ok(info.friendlyLaneSearches >= 5 && info.friendlyLaneSearches <= 12,
+    `the search repeats about every 1.2 s, not every tick (${info.friendlyLaneSearches} searches in 12 s)`);
+  ok(laneRays <= 12 * 6, `lane sight lines stay bounded (${laneRays} in 12 s; every tick would be thousands)`);
+}
+
 console.log('[4] distributed target scoring');
 {
   const bot = entity('bot', 't90m', 'player', 0, 0);

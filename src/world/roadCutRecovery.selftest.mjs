@@ -132,12 +132,18 @@ const failures = [
   { id: 'alpine', seed: 1337, x: -142, z: -510, nx: 1, nz: 0, span: 2, limit: 2, old: 2.046130209195251 },
   { id: 'alpine', seed: 2025, x: -50, z: 510, nx: 1, nz: 0, span: 2, limit: 2, old: 2.2056770037931983 },
   { id: 'alpine', seed: 2025, x: -28, z: 472, nx: 1, nz: 0, span: 2, limit: 1.4, old: 1.5010676125114628 },
-  { id: 'reservoir', seed: 1337, x: -446, z: -72, nx: 1, nz: 0, span: 4, limit: .35, old: .42576754093170166 },
-  { id: 'reservoir', seed: 2025, x: -446, z: -72, nx: 1, nz: 0, span: 4, limit: .35, old: .40824294090270996 },
+  // 2026-10-02 (the apron bank law): Highland Reservoir's western apron now rises 5 % to the west with its hillside
+  // (docs/MAP-LAYOUT-BRIEF.md, "Apron banks"), so the plane its west gate continues is the hill's own. The predecessor
+  // program no longer fails there: 0.080 and 0.050 at (-446, -72), and at most 0.092 and 0.120 anywhere on the road
+  // west of the apron, all under the 0.35 limit (the witnesses were 0.583 and 0.529). Alpine's witnesses carry the
+  // negative; Reservoir keeps its pad, lake-centre and alignment checks below.
 ];
 const records = [], errors = [];
 for (const id of ['alpine', 'reservoir']) for (const seed of [1337, 2025]) {
-  const config = getMapConfig(id), old = before.createHeightField(seed, config), next = createHeightField(seed, config);
+  // the map-borders lane (2026-10-03): the retained failures are banks on the CLASSIC rim; the predecessor and the current
+  // program are replayed on it (terrain.border.classic) and the limits are checked on the border landform as well
+  const landform = getMapConfig(id), config = { ...landform, terrain: { ...landform.terrain, border: { classic: true } } };
+  const old = before.createHeightField(seed, config), next = createHeightField(seed, config), live = createHeightField(seed, landform);
   assert.deepEqual(next._layout.roads, old._layout.roads, 'no new road alignment changes');
   assert.deepEqual(next._layout.roadStations, old._layout.roadStations);
   assert.deepEqual(Object.keys(next), Object.keys(old), 'no returned owner fields');
@@ -148,6 +154,8 @@ for (const id of ['alpine', 'reservoir']) for (const seed of [1337, 2025]) {
     assert.ok(prior > fixture.limit, 'actual old-bug negative fails the unchanged physical gate');
     records.push({ ...fixture, prior, current });
     if (current > fixture.limit) errors.push(`${id}/${seed} fixed physical failure (${current} > ${fixture.limit})`);
+    const onLandform = crossSlope(live, fixture.x, fixture.z, fixture.nx, fixture.nz, fixture.span);
+    if (onLandform > fixture.limit) errors.push(`${id}/${seed} physical failure on the border landform (${onLandform} > ${fixture.limit})`);
   }
   for (const p of [config.spawns.player, ...config.spawns.enemies, ...(config.terrain.lakes ?? [])]) {
     assert.equal(next.getHeightAt(p.x, p.z), old.getHeightAt(p.x, p.z), 'actual pad and lake-centre height precedence remains exact');

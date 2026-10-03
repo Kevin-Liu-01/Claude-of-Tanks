@@ -34,9 +34,8 @@ export function mountReference(article: HTMLElement, slug: string): void {
       <strong>${escape(m.name)}</strong><span>${text(m.random ? 'randomPool' : 'explicitMap')}</span></summary>
       <a href="/maps/${m.id}.webp" target="_blank" rel="noopener">${text('fullMap')}</a></details>`).join('');
   } else {
-    const labels: Record<string,string> = {standard:'regular',capture_the_flag:'ctf',zone_control:'zones',turbo_ball:'ball',endless_horde:'horde',frontline_assault:'frontline',mars:'gravity'};
-    records.innerHTML = data.modes.map(m => `<details class="manual-record" data-search="${text(labels[m.id])}" open>
-      <summary><strong>${text(labels[m.id])}</strong></summary><dl>
+    records.innerHTML = data.modes.map(m => `<details class="manual-record" data-search="${escape(t(`playMenu.matchMode.${m.id}.label`))}" open>
+      <summary><strong>${escape(t(`playMenu.matchMode.${m.id}.label`))}</strong></summary><p>${escape(t(`playMenu.matchMode.${m.id}.desc`))}</p><dl>
       ${pair('clock',m.clock == null ? text('none') : `${m.clock / 60} min`)}
       ${pair('respawn',m.respawn == null ? text('none') : `${m.respawn} s`)}
       ${pair('score',m.score ?? text('objective'))}${pair('speedScale',`${number(m.speed)}×`)}

@@ -39,6 +39,7 @@ export interface MainEntity extends Omit<
   RosterEntity,
   'spec' | 'state' | 'combat' | 'specialAction' | 'visual'
 > {
+  aerial?: import('../sim/aerialCombat.ts').AerialView;
   spec: ReturnType<typeof getSpec> & { name: string };
   state: TankState | null;
   combat: CombatState | null;
