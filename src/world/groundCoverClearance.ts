@@ -41,7 +41,8 @@ function needsVerticalDetail(solids: readonly StructureSourceSolid[], contactTop
   for (const solid of solids) floor = Math.min(floor, solid.minY);
   const grounded = solids.filter(solid => solid.minY <= floor + 0.06);
   for (const solid of solids) {
-    if (solid.bucket === 'roof' || solid.minY <= floor + 0.06 || solid.minY > contactTop) continue;
+    // a regional kit's weathered roof (maps/regional/weather.ts) is a roof too
+    if (solid.bucket === 'roof' || solid.bucket === 'regionalRoof' || solid.minY <= floor + 0.06 || solid.minY > contactTop) continue;
     if (!grounded.some(base => polygonContains(base.points, solid.points))) return true;
   }
   return false;

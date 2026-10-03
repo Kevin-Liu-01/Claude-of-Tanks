@@ -26,6 +26,8 @@ const SECTION_CLIP_VERTICES = 48;
  * never stop a shell in play and they were more than half of every dense city shard. */
 const SHELL_MIN_PART_AREA = 0.02;
 const IGNORED_BUCKETS = new Set(['glass', 'curtain']);
+/** Roof coverings: never a ground-contact part (the regional kits' weathered roofs keep the role, maps/regional). */
+const ROOF_BUCKETS = new Set(['roof', 'regionalRoof']);
 
 interface LocalSolid {
   bucket: string;
@@ -484,6 +486,28 @@ function triangulateLoop(points: number[]): number[][] {
   return triangles.filter((triangle) => Math.abs(polygonArea(triangle)) >= 1e-6);
 }
 
+/** A packed convex part carries at most 64 corners (server/collisionManifestFormat.ts). */
+const PACKED_POLYGON_VERTICES = 64;
+
+/**
+ * Drop the straight-through corners of a closed section loop. A long wall cut by many openings (the regional kits'
+ * holed faces, maps/regional/house.ts) is a row of strips, and its section collects a corner at every strip edge; only
+ * a loop over the packed limit is simplified, so every loop the manifests already carried stays as it was.
+ */
+function dropCollinearCorners(points: number[]): number[] {
+  const n = points.length / 2;
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i + n - 1) % n, c = (i + 1) % n;
+    const ax = points[a * 2], az = points[a * 2 + 1], bx = points[i * 2], bz = points[i * 2 + 1], cx = points[c * 2], cz = points[c * 2 + 1];
+    const cross = (bx - ax) * (cz - az) - (bz - az) * (cx - ax);
+    const scale = Math.hypot(bx - ax, bz - az) * Math.hypot(cx - ax, cz - az);
+    if (Math.abs(cross) <= 1e-6 * scale) continue;
+    out.push(bx, bz);
+  }
+  return out.length >= 6 ? out : points;
+}
+
 function isConvexPolygon(points: number[]): boolean {
   const count = points.length / 2;
   let sign = 0;
@@ -530,9 +554,14 @@ function bandProjection(solid: LocalSolid, bandMin: number, bandMax: number): { 
   let loops = 0;
   for (const level of [bandMin, bandMax]) {
     if (level <= solid.minY + 1e-6 || level >= solid.maxY - 1e-6) continue;
-    for (const loop of sliceContours(solid, level)) {
+    for (const section of sliceContours(solid, level)) {
       loops++;
-      if (isConvexPolygon(loop)) { pieces.push({ points: loop, y0: slabMin, y1: slabMax }); continue; }
+      if (isConvexPolygon(section)) {
+        const loop = section.length > 2 * PACKED_POLYGON_VERTICES ? dropCollinearCorners(section) : section;
+        pieces.push({ points: loop, y0: slabMin, y1: slabMax });
+        continue;
+      }
+      const loop = section;
       // an authored concave section (a wall with recesses, a courtyard ring) is ear-clipped and the merge below
       // reassembles its convex pieces the way it assembles a face's triangles; a scanned ring of hundreds of
       // vertices stays whole and sends the band to the raster (ear-clipping it is slow and brittle)
@@ -987,7 +1016,12 @@ function collectSolids(buckets: StructureGeometryBuckets) {
   const solids: LocalSolid[] = [];
   for (const [bucket, geometries] of Object.entries(buckets)) {
     if (!geometries || IGNORED_BUCKETS.has(bucket)) continue;
-    for (const geometry of geometries) solids.push(...geometrySolids(geometry, bucket));
+    for (const geometry of geometries) {
+      // regional kits (maps/regional/geometry.ts) finish their surface dressing — framing, joinery, shutters, gutters —
+      // as separate geometries flagged noCollision: a member 3 cm proud of a wall is not a collision part
+      if (geometry.userData?.noCollision) continue;
+      solids.push(...geometrySolids(geometry, bucket));
+    }
   }
   return solids;
 }
@@ -997,7 +1031,7 @@ function deriveContactBand<T extends StructureCollisionRuntimeBand>(
   createBand: (active: LocalSolid[], minY: number, maxY: number, ground: boolean) => T,
 ): T {
   const contactSolids = solids.filter((solid) =>
-    solid.bucket !== 'roof' && solid.minY <= CONTACT_TOP && solid.maxY >= 0.06);
+    !ROOF_BUCKETS.has(solid.bucket) && solid.minY <= CONTACT_TOP && solid.maxY >= 0.06);
   if (!contactSolids.length) throw new Error('structure has no ground-contact collision solids');
   return createBand(
     contactSolids,
@@ -1114,7 +1148,7 @@ export function certifyStructureCollisionProfile(
     return scoreFootprint(source, band.parts.map(shapePolygon));
   };
   const contactSolids = solids.filter((solid) =>
-    solid.bucket !== 'roof' && solid.minY <= CONTACT_TOP && solid.maxY >= 0.06);
+    !ROOF_BUCKETS.has(solid.bucket) && solid.minY <= CONTACT_TOP && solid.maxY >= 0.06);
   const contact = scoreSolids(contactSolids, profile.contact);
   // shell bands hold height-clipped strips: score them against the same band pieces the runtime selects, with the
   // same sub-threshold trim shed (a 14 cm post is not published, so it is not owed either)

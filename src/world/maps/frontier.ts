@@ -122,6 +122,8 @@ export default {
     bushCount: 1.18, bushSpecies: 'oak',
   },
   props: {
+    // regional-buildings lane: the Hessian Fachwerk kit (maps/regional/hessian.ts)
+    architecture: 'hessian',
     plan: ['farmhouse', 'tavern', 'barn', 'schoolhouse', 'cottage', 'granary', 'depot', 'cottage', 'farmhouse',
       'woodshed', 'cornershop', 'barn', 'cottage', 'ruin', 'farmhouse', 'depot', 'cottage', 'granary', 'barn',
       'woodshed', 'cottage', 'ruin'],

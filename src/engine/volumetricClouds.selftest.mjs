@@ -420,7 +420,44 @@ assert.deepEqual([...CLOUD_AERIAL.cool], JSON.parse(postSource.match(/const AERI
 // datum the pass computes for the frame (the ground under the camera), and the square's ceilings a third lower
 assert.equal(CLOUD_AERIAL.layerH, postConst('AERIAL_LAYER_H'));
 assert.ok(layerSource.includes('float layer = cloudHazeLayer( dist, dir );') && layerSource.includes('* ${f(CLOUD_AERIAL.hazeDensity)} * layer;'), 'the layer factor scales both haze curves');
-assert.ok(postSource.includes('beforeSceneRender(renderer, camera, dt, sceneTarget.width, sceneTarget.height, aerial.uniforms.uHazeDatum.value)'), 'the pass hands the clouds its datum');
+assert.ok(postSource.includes('beforeSceneRender(renderer, camera, dt, sceneTarget.width, sceneTarget.height, aerial.uniforms.uHazeDatum.value, sceneTarget.depthTexture)'), 'the pass hands the clouds its datum and the scene depth');
+// ---- 2026-10-03 (the mountains lane: "seaFogBank() integrates out to 30 km regardless of scene depth"): every layer the
+// trace sums ends at the scene's surface — the previous frame's resolved depth read through the camera that drew it
+{
+  const trace = layerSource.slice(layerSource.indexOf('const TRACE_FRAGMENT'), layerSource.indexOf('const RESOLVE_FRAGMENT'));
+  for (const u of ['tSceneDepth', 'uSceneDepthOn', 'uSceneNearFar', 'uDepthRight', 'uDepthUp', 'uDepthFwd', 'uDepthTan']) {
+    assert.match(trace, new RegExp(`uniform [a-zA-Z0-9]+ ${u};`), `${u} is declared`);
+    assert.match(layerSource, new RegExp(`${u}: \\{ value: `), `${u} has a uniform object`);
+  }
+  assert.ok(trace.indexOf('float cloudSceneT( vec3 dir )') < trace.indexOf('vec4 slabRain('), 'the helper stands ahead of the layers');
+  assert.match(trace, /if \( uSceneDepthOn < 0\.5 \) return 1e9;/, 'off: no limit');
+  assert.match(trace, /if \( depth >= 0\.999999 \) return 1e9;/, 'the sky (cleared depth): no limit');
+  assert.match(trace, /float sceneT = cloudSceneT\( dir \);\s*t1 = min\( t1, sceneT \);/, 'the slab ends at the surface');
+  assert.match(trace, /float tB = min\( min\( tTop, \$\{f\(CLOUD_FOGBANK_RANGE_M\[1\]\)\} \), sceneT \);/, 'the sea fog bank ends at the surface');
+  assert.match(trace, /tEnd = min\( min\( tEnd, \$\{f\(CLOUD_RAIN_RANGE_M\[1\]\)\} \), sceneT \);/, 'the rain ends at the surface');
+  assert.match(trace, /if \( tb <= 0\.0 \|\| horiz <= fbStart \|\| tb >= sceneT \) return none;/, 'a far band behind a surface is hidden');
+  assert.match(trace, /if \( tc <= 0\.0 \|\| tc >= sceneT \) return none;/, 'the cirrus behind a surface is hidden');
+  // the JS: the previous camera's frame, off for a camera in or over the slab, until the scene has drawn, after a resize
+  assert.match(layerSource, /const depthOn = !!depthTex && this\.sceneDepthReady && this\.hasPrev && C\.pos\.y <= \(t\.uSlabLow\.value as number\);/);
+  assert.match(layerSource, /\(t\.uDepthFwd\.value as THREE\.Vector3\)\.copy\(P\.fwd\);/, 'the camera that drew the depth (the previous frame\'s)');
+  assert.ok(layerSource.indexOf('(t.uSceneNearFar.value as THREE.Vector2).copy(this.depthPlanes);') < layerSource.indexOf('this.depthPlanes.set(camera.near, camera.far);'), 'its planes, before this frame\'s replace them');
+  assert.match(layerSource, /this\.resize\(width, height\); this\.sceneDepthReady = false;/, 'a resize drops the stale depth');
+  assert.match(layerSource, /\/\/ the scene draws next with this camera: its depth is the next frame's cloudSceneT\s*this\.sceneDepthReady = true;/);
+  // the twin of the GLSL's projection and linear depth: a surface 3.8 km out along a ray 20° right of the view, seen by
+  // a camera with near 0.5 / far 4000, comes back at 3.8 km
+  const near = 0.5, far = 4000, tanX = Math.tan(Math.PI / 4) * 16 / 9, tanY = Math.tan(Math.PI / 6);
+  const dir = [Math.sin(0.35), 0.01, -Math.cos(0.35)]; const n = Math.hypot(...dir); dir.forEach((v, i) => { dir[i] = v / n; });
+  const fz = -dir[2], viewZ = -3800 * fz;
+  const depth = (far / (far - near)) * (1 + near / viewZ); // three's perspective depth (OpenGL convention), viewZ < 0
+  const uv = [0.5 + 0.5 * dir[0] / (fz * tanX), 0.5 + 0.5 * dir[1] / (fz * tanY)];
+  assert.ok(uv[0] > 0 && uv[0] < 1 && uv[1] > 0 && uv[1] < 1, 'inside the frame');
+  const back = -((near * far) / ((far - near) * depth - far)) / fz;
+  assert.ok(Math.abs(back - 3800) < 1e-6, `the linear depth round-trips (${back})`);
+  assert.match(trace, /float viewZ = \( uSceneNearFar\.x \* uSceneNearFar\.y \) \/ \( \( uSceneNearFar\.y - uSceneNearFar\.x \) \* depth - uSceneNearFar\.y \);\s*float t = -viewZ \/ fz;/, 'the same linearisation as the aerial pass');
+  // only a surface past the dome limits the layers: inside it the dome's depth test hides them, and a history traced
+  // whole behind a near ridge has nothing missing when a camera turn reveals it
+  assert.match(trace, /return t < \$\{f\(CLOUD_DOME_RADIUS_M\)\} \? 1e9 : t;/, 'a surface inside the dome: the whole sky traced');
+}
 assert.ok(CLOUD_AERIAL.extCeiling <= 0.45 && CLOUD_AERIAL.scatterCeiling <= 0.4, 'the square keeps most of a far range\'s colour');
 // round 71: the far ramp moved out so a deck stays readable at the horizon
 assert.ok(CLOUD_AERIAL.farStartM >= 5000 && CLOUD_AERIAL.farEndM >= 20000 && CLOUD_AERIAL.farScatterCeiling <= 0.85, 'the far scatter ramp keeps a far deck readable');

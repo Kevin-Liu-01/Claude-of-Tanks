@@ -31,6 +31,11 @@ null on mobile and in receipts); every terrain chunk vertex carries a `fold` byt
 sea and lake maps, a `shore` byte (metres landward of the waterline from the shoreline contours, inverted so a geometry
 without it reads as far) that the material's strand runs up (round 73b); `wrecks.ts` owns typed,
 deterministic static tank-wreck and zero-extra-draw-call debris baking.
+`maps/regional/` holds the regional architecture kits (2026-10-03): a map's `props.architecture` names one, and after
+each planned building's placement settles the kit replaces its geometry with the region's version inside the same
+footprint (house grammar `house.ts`, openings cut with reveals, `weather.ts` tints and weathering into the vertex-
+coloured `regional*` buckets, war wear, `dressing.ts`); collision follows the new shell, so a kit change regenerates
+the map's shard. The kit guide is in docs/MAP-LAYOUT-BRIEF.md ("Regional building kits").
 `destructibles.ts` is the typed, allocation-free active-world seam between
 shell traffic, break FX, prop destruction events, and cached map handlers.
 `utilityNetwork.ts` owns renderer-free pole adjacency, hinge poses, stable
@@ -219,8 +224,9 @@ works (a karst's dry stone walls, a bocage's hedge banks) on the ground lane's l
 1 m tall; a world without the hook builds none. Props builds them last (`placeFieldBoundaryWorks`, after the pools'
 refit, through `scenery.ts` `composeFieldWorks`), so they keep off every mode's objective discs where the match
 placement seats them on those final solids, as well as the aprons, yards, bridges, trenches, pads and roads; the
-selftest proves it on Saltwind and Saltmere. A map's `scenery.masonryTint` tints the props stone print (Saltwind's
-limestone).
+selftest proves it on Saltwind and Saltmere. The dry-stone field walls draw their own rubble print (`fieldStone`,
+`fieldStoneSurface.ts`), never the house masonry a regional kit repaints; a map's `scenery.masonryTint` tints that
+print (Saltwind's limestone).
 A plan builder reads its battlefield through `structureBuildContext(buckets)`
 (`maps/exteriorDetailKit.ts`), never a positional argument; a part new to a
 builder's seeded stream is tagged `userData.uvJitter = 'none'`, a part that

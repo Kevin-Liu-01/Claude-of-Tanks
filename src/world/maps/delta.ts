@@ -113,6 +113,8 @@ export default {
     clusterScrub: 2.2, bushCount: 1.45, bushSpecies: 'oak',
   },
   props: {
+    // regional-buildings lane: the Jamuna char tin-homestead kit (maps/regional/bengal.ts)
+    architecture: 'bengal',
     plan: ['marketRow', 'farmhouse', 'fishery', 'market', 'chapel', 'granary',
       'farmhouse', 'cornershop', 'ruin', 'boatshed', 'farmhouse', 'depot', 'marketRow', 'woodshed',
       'boatshed', 'market', 'cottage', 'farmhouse', 'granary', 'marketRow', 'depot', 'ruin',

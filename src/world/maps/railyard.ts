@@ -177,6 +177,8 @@ export default {
   },
 
   props: {
+    // regional-buildings lane: the Ruhr colliery-junction kit (maps/regional/ruhr.ts)
+    architecture: 'ruhr',
     plan: PLAN,
     destructibleBuildings: ['quonsethut', 'transformershed', 'motorpool', 'guardpost'],
     // Rotational pairs about the station square, each at least 180 m from every other: a post covering each level

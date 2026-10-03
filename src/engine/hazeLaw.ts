@@ -46,6 +46,21 @@ export const HAZE_OVERCAST_K = 0.45;
 /** The materials' FogExp2 share of its old extinction share on the physically based sky (sky.ts applyFog). */
 export const HAZE_MATERIAL_FOG_SHARE = 0.3;
 
+/**
+ * The in-scatter target's two terms under the light model's overcast, into `out` (no allocation per frame): x the authored
+ * tint's share of the target's hue before the map's fogMix (HAZE_TINT_SHARE, all of it under a closed deck), y the
+ * target's level against the sky behind (HAZE_TARGET_SKY_K, × HAZE_OVERCAST_K under a closed deck). The aerial pass
+ * (post.ts) and the cloud trace (volumetricClouds.ts: a deck's far rows, 2026-10-03) read the same terms, so far ranges
+ * and the deck over them converge on one colour at the horizon.
+ */
+export function hazeTargetTerms<T extends { x: number; y: number }>(overcast: number, out: T): T {
+  const o = Math.min(1, Math.max(0, Number.isFinite(overcast) ? overcast : 0));
+  const share = lightTune('AERIAL_TINT_SHARE', HAZE_TINT_SHARE);
+  out.x = share + (1 - share) * o;
+  out.y = lightTune('AERIAL_TARGET_SKY_K', HAZE_TARGET_SKY_K) * (1 + (lightTune('AERIAL_OVERCAST_K', HAZE_OVERCAST_K) - 1) * o);
+  return out;
+}
+
 /** σ (1/m) of a map's fogDensity (QA-tunable). */
 export function hazeSigma(fogDensity: number): number {
   return Math.max(0, (Number.isFinite(fogDensity) ? fogDensity : 0) * lightTune('AERIAL_SIGMA_PER_FOG', HAZE_SIGMA_PER_FOG));

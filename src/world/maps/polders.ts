@@ -109,6 +109,8 @@ export default {
     ],
   },
   props: {
+    // regional-buildings lane: the Zeeland polder kit (maps/regional/polder.ts)
+    architecture: 'polder',
     sourcedPalette: 'coastal',
     plan: ['mill', 'farmhouse', 'granary', 'fishery', 'depot', 'cottage', 'woodshed', 'tavern', 'farmhouse', 'barn', 'barn', 'cottage', 'granary', 'ruin', 'depot', 'woodshed', 'farmhouse', 'barn'],
     destructibleBuildings: ['fieldhut', 'fishershack', 'transformershed', 'huntingblind'],

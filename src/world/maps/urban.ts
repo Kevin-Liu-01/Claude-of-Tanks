@@ -187,6 +187,8 @@ export default {
   },
 
   props: {
+    // regional-buildings lane: the Franconian town kit (maps/regional/franconian.ts)
+    architecture: 'franconian',
     plan: PLAN, // consumed by blockFill for the block interiors
     destructibleBuildings: [
       'guardpost', 'checkpointhut', 'fieldhospital', 'transformershed', 'motorpool',

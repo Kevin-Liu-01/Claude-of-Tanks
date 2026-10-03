@@ -28,7 +28,8 @@ export default {
   splat: {...verdant.splat, sourcedPalette:'verdant', fieldPatch:.35,
     tintA:[.94,1.04,.87],tintB:[.82,.91,.74],tintC:[1,1.05,.88],roadTint:[.83,.80,.70]},
   vegetation: {...verdant.vegetation,clusterCount:60,loneCount:130,rimCount:95,grassDensity:1,bushCount:.8},
-  props: {...verdant.props,plan:['cottage','farmhouse','tavern','chapel','barn','schoolhouse','cottage','granary','cottage','farmhouse'],
+  // regional-buildings lane: Verdant's Prokhorovka kolkhoz kit stays on Verdant (architecture: undefined)
+  props: {...verdant.props,architecture:undefined,plan:['cottage','farmhouse','tavern','chapel','barn','schoolhouse','cottage','granary','cottage','farmhouse'],
     destructibleBuildings:['fieldhut','leanto'], blockFill:false,extraKits:[],buildingLat:[20,5],spacingPad:12,sideSkip:.12,
     wallRuns:[],telegraph:true,rocks:180,outcrops:38,craters:8,rubblePiles:0,hedgehogs:4,sandbagLines:6,
     cropFields:3,haystacks:14,
