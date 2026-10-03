@@ -10,9 +10,10 @@ import {
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, roofGeometry, windowRhythm, H,
+  buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, H,
   type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type WallRect,
 } from './house.ts';
+import { bench, flowerBox, roofLadder, tvAerial, woodpile } from './dressing.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
@@ -38,7 +39,8 @@ export interface FachwerkPalette {
 }
 
 export const HESSIAN_PALETTE: FachwerkPalette = Object.freeze({
-  timbers: [0x5c4434, 0x7c3527, 0x6c625a, 0x4a3a2f, 0x8c4c32, 0x56483e].map(rgb),
+  // v1 captures: the pale grey-brown (0x6c625a) read as concrete in sun; oak darkens to brown-black or is painted oxblood
+  timbers: [0x5c4434, 0x6e3024, 0x4a3a2f, 0x7a3a28, 0x45362c, 0x56483e].map(rgb),
   frame: rgb(0xcfcabd),
   doors: [0x426b49, 0x7a3024, 0x6a4b33, 0x55687a, 0x8a6338].map(rgb),
   shutters: [0x4a7451, 0x6a4b33, 0x667a86].map(rgb),
@@ -306,7 +308,49 @@ function hessianDwelling(ctx: RegionalBuildContext, opts: { storeys?: number; sh
   const frame = buildHouse(sink, spec, hessianDialect(st));
   if (opts.tavern) innSign(sink, frame, st);
   if (opts.school) roofTurret(sink, frame, st, 0.3);
+  dressHessianHouse(sink, frame, st, { aerial: opts.school ? 0.2 : 0.45, boxes: opts.school ? 0.2 : 0.6 });
   return sink.finish();
+}
+
+const BLOOMS: readonly Rgb[] = [0xc0242a, 0xd23a5a, 0xc8462e, 0xe0e0d8, 0xb0306a].map(rgb);
+const BOX_COLOURS: readonly Rgb[] = [0x4a3a2c, 0x3e5a3a, 0x6a4a30].map(rgb);
+
+/**
+ * The lived-in dressing of a Hessian house (dressing.ts): geraniums in window boxes on the street faces, the bench by
+ * the front door, a woodpile under the eaves at the back, the chimney sweep's roof ladder, a television aerial on the
+ * ridge (1980s). Every choice is drawn before the phones leave the parts out, so both tiers draw alike.
+ */
+export function dressHessianHouse(sink: PartSink, frame: HouseFrame, st: HessianState, opts: { aerial?: number; boxes?: number } = {}): void {
+  const rng = st.rng;
+  const boxes = rng() < (opts.boxes ?? 0.55), bloom = pick(rng, BLOOMS), boxColour = pick(rng, BOX_COLOURS);
+  const aerial = rng() < (opts.aerial ?? 0.45), aerialZ = (rng() - 0.5) * frame.roof.halfD;
+  const ladder = rng() < 0.4, pile = rng() < 0.45, seat = rng() < 0.6;
+  const picks = frame.spec.openings.map(() => rng());
+  if (st.mobile) return;
+  const spec = frame.spec;
+  if (boxes) {
+    let placed = 0;
+    spec.openings.forEach((o, k) => {
+      if (placed >= 8 || o.kind !== 'window' || o.state || o.storey > 1 || (o.face !== 'front' && o.face !== 'right') || picks[k] > 0.7) return;
+      const face = storeyFaces(frame, o.storey)[o.face];
+      flowerBox(sink, face, o.u, frame.bodies[o.storey].y0 + o.y0, o.w, boxColour, bloom, rng);
+      placed++;
+    });
+  }
+  const door = spec.openings.find((o) => o.kind === 'door' && o.storey === 0);
+  if (seat && door) {
+    const face = frame.faces[door.face];
+    const side = door.u > 0 ? -1 : 1, u = door.u + side * (door.w / 2 + 1.05);
+    if (Math.abs(u) + 0.8 < face.width / 2) bench(sink, face, u, 1.4, shade(st.timber, 1.25));
+  }
+  if (pile) {
+    const face = frame.faces.back;
+    const blocked = spec.openings.some((o) => o.face === 'back' && o.storey === 0 && o.kind !== 'window' && o.u < -face.width / 2 + 3.4);
+    if (!blocked) woodpile(sink, face, -face.width / 2 + 0.4, Math.min(face.width / 2 - 0.4, -face.width / 2 + 2.9), 1.15, rng);
+  }
+  const stack = spec.chimneys[0];
+  if (ladder && stack) roofLadder(sink, frame, stack.x >= 0 ? 1 : -1, stack.z - 0.7, 0.85, [0.36, 0.3, 0.24]);
+  if (aerial) tvAerial(sink, frame, aerialZ, rng);
 }
 
 /** A wrought-iron bracket with a hanging inn sign at the street gable. */
@@ -348,7 +392,8 @@ const farmhouse: RegionalBuilder = (ctx) => {
   };
   // the wing's footprint is kept off the dwelling's right face openings
   spec.openings = spec.openings.filter((o) => !(o.face === 'right' && o.storey === 0 && Math.abs(o.u + D * 0.16) < W * 0.4));
-  buildHouse(sink, spec, hessianDialect(st));
+  const house = buildHouse(sink, spec, hessianDialect(st));
+  dressHessianHouse(sink, house, st);
   // the stable wing (ridge along x): stone ground, framed half storey, its gable toward +x
   const ww = Math.min(W * 0.66, 5.2);
   sink.placed(Math.PI / 2, W / 2 + wingL / 2 - 0.2, 0, -D * 0.16, () => {
@@ -678,6 +723,14 @@ export const HESSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     sourced: { plaster: true, wood: true },
   },
   builders: HESSIAN_BUILDERS,
+  // limewash from white to pale ochre, plain tiles from new red to old brown, a wet upland climate
+  weather: {
+    plaster: [[1, 1, 1], [1, 0.97, 0.9], [1, 0.94, 0.84], [0.97, 0.96, 0.93], [1, 0.93, 0.89]],
+    stone: [[1, 1, 1], [0.92, 0.9, 0.88], [1.04, 0.98, 0.94]],
+    roof: [[1, 1, 1], [0.86, 0.8, 0.74], [0.78, 0.74, 0.7], [1.05, 0.98, 0.95], [0.92, 0.86, 0.82]],
+    damp: 0.85, moss: 0.55,
+  },
+  wear: 0.22,
 });
 
 export { hashSeed };

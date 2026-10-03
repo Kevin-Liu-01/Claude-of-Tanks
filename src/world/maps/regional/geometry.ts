@@ -19,14 +19,20 @@ export type Rgb = readonly [number, number, number];
 export const REGIONAL_BUCKETS = Object.freeze([
   'plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'curtain', 'straw',
   'structureMetal', 'structureWood',
+  // the weathered, vertex-coloured walls and roofs (weather.ts moves the plain buckets here after a build)
+  'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof',
 ] as const);
 export type RegionalBucket = (typeof REGIONAL_BUCKETS)[number];
 /** Buckets whose material is vertex-coloured: every part there carries a colour attribute. */
-const COLOURED: ReadonlySet<string> = new Set(['structureMetal', 'structureWood']);
+const COLOURED: ReadonlySet<string> = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3',
+  'regionalStone', 'regionalRoof']);
+/** Buckets the weathering pass repaints: their parts may carry a per-vertex occlusion `shade` (reveals, soffits). */
+const SHADED: ReadonlySet<string> = new Set(['plaster', 'plaster2', 'plaster3', 'stone', 'roof']);
 /** World-metre UV density (texture repeats per metre) of each textured bucket's tile. */
 export const BUCKET_UV_DENSITY: Readonly<Record<RegionalBucket, number>> = Object.freeze({
   plaster: 0.42, plaster2: 0.42, plaster3: 0.42, stone: 0.5, roof: 0.5, wood: 0.55, dark: 0.5,
   glass: 0.5, curtain: 0.5, straw: 0.45, structureMetal: 0.55, structureWood: 0.55,
+  regionalPlaster: 0.42, regionalPlaster2: 0.42, regionalPlaster3: 0.42, regionalStone: 0.5, regionalRoof: 0.5,
 });
 
 export type RegionalParts = Record<RegionalBucket, THREE.BufferGeometry[]>;
@@ -53,6 +59,8 @@ interface Accumulator {
   uv: number[];
   col: number[] | null;
   mask: number[] | null;
+  /** occlusion factor per vertex (weathered buckets only; 1 = open wall) */
+  shade: number[] | null;
 }
 
 export interface EmitOptions {
@@ -65,6 +73,10 @@ export interface EmitOptions {
   window?: Vec3;
   /** UV density override (repeats per metre) */
   density?: number;
+  /** occlusion of this part's surface (a reveal, a recess): multiplied into the weathered colour (weather.ts) */
+  shade?: number;
+  /** per-corner occlusion (a stain fading along a face), given the corner in the emitting frame; wins over `shade` */
+  shadeAt?: (p: Vec3) => number;
 }
 
 const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpC = new THREE.Vector3(), tmpD = new THREE.Vector3();
@@ -80,6 +92,11 @@ export class PartSink {
   /** an optional placement of everything emitted (a wing built in its own frame): rotation about Y + offset */
   private place: { cos: number; sin: number; x: number; y: number; z: number } | null = null;
   readonly uvOffset: readonly [number, number];
+  /**
+   * The depth of the reveal the opening units are being built into (house.ts sets it around each dialect call of a
+   * wall it has cut openings in; 0 everywhere else, where a unit sits on a solid face).
+   */
+  recess = 0;
   constructor(uvOffset: readonly [number, number] = [0, 0]) { this.uvOffset = uvOffset; }
 
   /** Emit `body` with every point turned `yaw` about Y and moved by (x, y, z); UVs stay in the body's own frame. */
@@ -98,7 +115,8 @@ export class PartSink {
     const key = `${bucket}|${decor ? 'd' : 's'}`;
     let group = this.groups.get(key);
     if (!group) {
-      group = { pos: [], nor: [], uv: [], col: COLOURED.has(bucket) ? [] : null, mask: bucket === 'curtain' ? [] : null };
+      group = { pos: [], nor: [], uv: [], col: COLOURED.has(bucket) ? [] : null, mask: bucket === 'curtain' ? [] : null,
+        shade: SHADED.has(bucket) ? [] : null };
       this.groups.set(key, group);
     }
     return group;
@@ -140,6 +158,7 @@ export class PartSink {
         g.uv.push(u, v);
         if (g.col && colour) g.col.push(colour[0], colour[1], colour[2]);
         if (g.mask) g.mask.push(glow);
+        if (g.shade) g.shade.push(opts.shadeAt ? opts.shadeAt(p) : opts.shade ?? 1);
       }
       this.triangles++;
     }
@@ -285,6 +304,8 @@ export class PartSink {
       geometry.setAttribute('uv', new THREE.Float32BufferAttribute(g.uv, 2));
       if (g.col) geometry.setAttribute('color', new THREE.Float32BufferAttribute(g.col, 3));
       if (g.mask) geometry.setAttribute(NIGHT_EMISSION_ATTRIBUTE, new THREE.BufferAttribute(Uint8Array.from(g.mask), 1));
+      // the weathering pass consumes (and removes) the occlusion record; an all-open part carries none
+      if (g.shade && g.shade.some((v) => v !== 1)) geometry.setAttribute('shade', new THREE.Float32BufferAttribute(g.shade, 1));
       if (role === 'd') geometry.userData.noCollision = true;
       geometry.userData.uvJitter = 'none';
       geometry.userData.regional = true;

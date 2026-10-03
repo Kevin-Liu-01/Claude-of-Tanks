@@ -9,7 +9,7 @@ import {
   PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalBucket, type RegionalParts, type Rgb,
 } from './geometry.ts';
-import { buildHouse, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
@@ -342,6 +342,132 @@ const ruin: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+const canalHip = (pitch: number, eave: number): RoofSpec => ({ kind: 'hip', pitchDeg: pitch, eave, verge: eave, thickness: 0.15, bucket: 'roof', ridge: 'round' });
+
+/**
+ * The fish store on the riva (magazin): two storeys of limestone under a hipped canal-tile roof, a row of arched
+ * cellar doors to the quay, small square loft windows above, a hoist beam over a loading door, and the quay apron
+ * with its bollards (the base fishery's dock side, +z).
+ */
+const fishStore: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const st = stateFor(ctx);
+  const W = Math.max(7, Math.min(10.5, ctx.info.w - 6)), D = Math.max(10, Math.min(15, ctx.info.d - 4.6));
+  const openings: Opening[] = [];
+  const n = Math.max(2, Math.floor(W / 2.7));
+  for (let k = 0; k < n; k++) openings.push({ face: 'front', storey: 0, kind: 'door', u: -W / 2 + (k + 0.5) * W / n, w: 1.45, y0: 0, h: 2.4 });
+  openings.push({ face: 'front', storey: 1, kind: 'loft', u: 0, w: 1.1, y0: 0.15, h: 1.7 });
+  for (const face of ['right', 'left', 'back'] as const) {
+    const width = face === 'back' ? W : D;
+    for (const o of windowRhythm(face, 0, width, { w: 0.5, h: 0.55, sill: 1.75, spacing: 2.6, margin: 1.1 })) openings.push(o);
+  }
+  for (const face of ['front', 'right', 'back', 'left'] as const) {
+    const width = face === 'front' || face === 'back' ? W : D;
+    const avoid: Array<[number, number]> = face === 'front' ? [[-0.8, 0.8]] : [];
+    for (const o of windowRhythm(face, 1, width, { w: 0.62, h: 0.72, sill: 0.95, spacing: 2.3, margin: 1.0, avoid })) openings.push(o);
+  }
+  const frame = buildHouse(sink, {
+    w: W, d: D, plinth: { h: 0.22, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.1, wall: 'stone' }, { h: 2.5, wall: 'stone' }],
+    roof: canalHip(21, 0.24), openings, chimneys: [], gutters: null, verge: null, reveal: 0.32,
+  }, dialect({ ...st, litShare: 0.12 }));
+  eaveCourse(sink, frame);
+  // the hoist beam over the loading door, its pulley block hanging from the end
+  const f = frame.faces.front, top = frame.eaveY - 0.25;
+  faceBox(sink, 'structureWood', f, 0, top, 0.55, 0.18, 0.2, 1.1, { colour: rgb(0x5a4632), decor: true, uv: UV_MEMBER });
+  faceBox(sink, 'dark', f, 0, top - 0.32, 0.98, 0.12, 0.28, 0.1, { decor: true });
+  // the quay apron to the water with three bollards
+  const qz0 = D / 2, qz1 = Math.max(qz0 + 1.6, Math.min(ctx.info.d / 2 - 0.2, D / 2 + 3.2));
+  sink.span('stone', -W / 2 - 1.2, -0.5, qz0, W / 2 + 1.2, 0.24, qz1);
+  for (const x of [-W / 2 - 0.5, 0, W / 2 + 0.5]) sink.cylinder('stone', [x, 0.24, qz1 - 0.45], 'y', 0.55, 0.2, 8, { decor: true }, 0.15);
+  return sink.finish();
+};
+
+/**
+ * The loggia (loža) of the harbour square: an open arcade of limestone piers carrying a stone architrave and a hipped
+ * canal-tile roof, a solid back wall with a stone bench, two steps up from the square.
+ */
+const loggia: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const W = Math.max(5.4, Math.min(8, ctx.info.w - 0.8)), D = Math.max(8, Math.min(15, ctx.info.d - 0.8));
+  const H = 3.7, beam = 0.42, p = 0.26;
+  sink.span('stone', -W / 2, -0.45, -D / 2, W / 2, 0.32, D / 2);
+  faceBox(sink, 'stone', { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D }, 0, 0.08, 0.2, D, 0.16, 0.4, { decor: true });
+  // the back wall (-x) and its bench
+  sink.span('stone', -W / 2, 0.32, -D / 2, -W / 2 + 0.45, H, D / 2);
+  sink.span('stone', -W / 2 + 0.45, 0.32, -D / 2 + 0.6, -W / 2 + 0.95, 0.78, D / 2 - 0.6, { decor: true });
+  // the piers: along the open long side and the two ends
+  const nz = Math.max(3, Math.round(D / 3));
+  const piers: Array<[number, number]> = [];
+  for (let k = 0; k <= nz; k++) piers.push([W / 2 - p, -D / 2 + p + (D - 2 * p) * k / nz]);
+  for (const z of [-D / 2 + p, D / 2 - p]) piers.push([0.15, z]);
+  for (const [x, z] of piers) {
+    sink.span('stone', x - p, 0.32, z - p, x + p, H - beam, z + p);
+    sink.span('stone', x - p - 0.06, H - beam - 0.16, z - p - 0.06, x + p + 0.06, H - beam, z + p + 0.06, { decor: true });
+  }
+  // the architrave round the open sides
+  sink.span('stone', W / 2 - 2 * p - 0.04, H - beam, -D / 2, W / 2, H, D / 2);
+  for (const z of [-D / 2, D / 2 - 2 * p - 0.04]) sink.span('stone', -W / 2 + 0.45, H - beam, z, W / 2 - 2 * p, H, z + 2 * p + 0.04);
+  // round arches between the piers of the long side: a ring of voussoirs under the architrave
+  const open: Face = { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
+  for (let k = 0; k < nz; k++) {
+    const za = -D / 2 + p + (D - 2 * p) * k / nz, zb = -D / 2 + p + (D - 2 * p) * (k + 1) / nz;
+    const uc = -(za + zb) / 2, half = (zb - za) / 2 - p, spring = H - beam - 0.2 - half * 0.75;
+    for (let a = 0; a <= 6; a++) {
+      const t = Math.PI * a / 6;
+      faceBox(sink, 'stone', open, uc + Math.cos(t) * half, spring + Math.sin(t) * half * 0.75, 0.04, 0.26, 0.22, 0.12, { decor: true });
+    }
+  }
+  const roof = canalHip(22, 0.36);
+  emitRoof(sink, roofGeometry(W, D, H, roof), roof);
+  return sink.finish();
+};
+
+/**
+ * The customs house on the riva (the base bathhouse's plot): a rendered two-storey public building on a stone plinth,
+ * a hipped roof, a string course and a cornice, dressed quoins, a central arched door under a stone balcony.
+ */
+const customsHouse: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const st = stateFor(ctx);
+  const W = Math.max(8, Math.min(11, ctx.info.w - 0.6)), D = Math.max(7.6, Math.min(9.6, ctx.info.d - 2.2));
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.45, y0: 0, h: 2.75 },
+    { face: 'front', storey: 1, kind: 'door', u: 0, w: 1.1, y0: 0, h: 2.3 }];
+  for (const [face, width] of [['front', W], ['back', W], ['right', D], ['left', D]] as const) {
+    for (const i of [0, 1]) {
+      const avoid: Array<[number, number]> = face === 'front' ? [[-1.0, 1.0]] : [];
+      for (const o of windowRhythm(face, i, width, { w: 0.86, h: i ? 1.55 : 1.35, sill: i ? 0.6 : 1.0, spacing: 1.95, margin: 1.05, avoid })) openings.push(o);
+    }
+  }
+  const frame = buildHouse(sink, {
+    w: W, d: D, plinth: { h: 0.5, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.6, wall: 'plaster' }, { h: 3.3, wall: 'plaster' }],
+    roof: canalHip(23, 0.42), openings, gutters: null, verge: null, reveal: 0.28,
+    chimneys: [{ x: -W * 0.25, z: 0, sx: 0.6, sz: 0.6, above: 0.8, bucket: 'stone', cap: 'tile' }, { x: W * 0.25, z: 0, sx: 0.6, sz: 0.6, above: 0.8, bucket: 'stone', cap: 'tile' }],
+  }, dialect({ ...st, litShare: 0.3 }));
+  const b0 = frame.bodies[0];
+  // the string course at the floor and the cornice under the eaves, run round the four faces
+  for (const [y, h, o] of [[frame.floors[1], 0.2, 0.08], [frame.eaveY - 0.26, 0.26, 0.14]] as const) {
+    sink.span('stone', b0.x0 - o, y - h / 2, b0.z0 - o, b0.x1 + o, y + h / 2, b0.z1 + o, { decor: true });
+  }
+  // quoins: long and short dressed blocks up the four corners
+  for (const [cx, cz] of [[b0.x0, b0.z0], [b0.x1, b0.z0], [b0.x0, b0.z1], [b0.x1, b0.z1]] as const) {
+    // each quoin turns the corner: long on one face, short on the other, 3 cm proud of the render
+    const sx = cx > 0 ? 1 : -1, sz = cz > 0 ? 1 : -1;
+    for (let y = 0.5, k = 0; y < frame.eaveY - 0.5; y += 0.42, k++) {
+      const lx = k % 2 ? 0.55 : 0.3, lz = k % 2 ? 0.3 : 0.55;
+      sink.span('stone', cx - sx * lx, y, cz - sz * lz, cx + sx * 0.03, y + 0.36, cz + sz * 0.03, { decor: true });
+    }
+  }
+  // the balcony over the door: a stone slab on two consoles, an iron railing
+  const f = frame.faces.front, y1 = frame.floors[1];
+  faceBox(sink, 'stone', f, 0, y1 - 0.09, 0.45, 2.1, 0.16, 0.9, { decor: true });
+  for (const u of [-0.8, 0.8]) faceBox(sink, 'stone', f, u, y1 - 0.38, 0.25, 0.18, 0.42, 0.5, { decor: true });
+  const iron = rgb(0x2e3032);
+  faceBox(sink, 'structureMetal', f, 0, y1 + 0.93, 0.86, 2.0, 0.05, 0.05, { colour: iron, decor: true });
+  for (const u of [-1, 1]) faceBox(sink, 'structureMetal', f, u * 0.98, y1 + 0.93, 0.47, 0.05, 0.05, 0.82, { colour: iron, decor: true });
+  for (let u = -0.95; u <= 0.96; u += 0.13) faceBox(sink, 'structureMetal', f, u, y1 + 0.47, 0.86, 0.025, 0.9, 0.025, { colour: iron, decor: true });
+  return sink.finish();
+};
+
 export const DALMATIAN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => dwelling(ctx),
   tavern: (ctx) => dwelling(ctx, { storeys: 3, tavern: true }),
@@ -349,6 +475,9 @@ export const DALMATIAN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Obj
   farmhouse, depot, granary, ruin,
   woodshed: kazun,
   boatshed: boathouse,
+  fishery: fishStore,
+  marketRow: loggia,
+  bathhouse: customsHouse,
 });
 
 export const DALMATIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
@@ -356,8 +485,16 @@ export const DALMATIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyl
   region: 'Central Dalmatian coast (Brač, Šibenik hinterland): limestone villages under canal tiles',
   surfaces: {
     roof: { kind: 'canal', tint: [0.70, 0.42, 0.29] },
-    stone: { kind: 'limestone', tint: [0.76, 0.73, 0.66] },
+    stone: { kind: 'limestone', tint: [0.8, 0.75, 0.64] },
     sourced: { plaster: true, wood: true },
   },
   builders: DALMATIAN_BUILDERS,
+  // sun-bleached limestone and render, canal tiles from fresh to grey-brown, a dry coast (1991–95 war damage)
+  weather: {
+    plaster: [[1, 1, 1], [1, 0.97, 0.92], [0.98, 0.95, 0.88], [1, 0.96, 0.94]],
+    stone: [[1, 1, 1], [0.95, 0.94, 0.9], [1.03, 1.01, 0.96], [0.9, 0.89, 0.86]],
+    roof: [[1, 1, 1], [0.9, 0.82, 0.74], [1.05, 0.95, 0.88], [0.84, 0.8, 0.76]],
+    damp: 0.45, moss: 0.25, mossTint: [0.9, 0.88, 0.76],
+  },
+  wear: 0.3,
 });

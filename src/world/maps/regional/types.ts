@@ -1,6 +1,7 @@
 // src/world/maps/regional/types.ts — the contract between props.ts and the regional architecture kits.
 import type * as THREE from 'three';
 import type { RegionalParts } from './geometry.ts';
+import type { WeatherPalette } from './weather.ts';
 
 /** The base geometry's measured extent (building-local, before placement). */
 export interface BaseBounds {
@@ -48,6 +49,10 @@ export interface ArchitectureStyle {
   region: string;
   surfaces: ArchitectureSurfaces;
   builders: Readonly<Record<string, RegionalBuilder>>;
+  /** per-building tint palettes and weathering strengths (weather.ts DEFAULT_WEATHER when absent) */
+  weather?: WeatherPalette;
+  /** share of houses showing war damage: burnt or boarded windows, a stripped roof patch (house.ts; default 0.2) */
+  wear?: number;
 }
 
 export type RegionalGeometryBuckets = Record<string, THREE.BufferGeometry[]>;

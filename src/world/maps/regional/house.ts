@@ -53,6 +53,8 @@ export interface Opening {
   /** bottom above the storey floor */
   y0: number;
   h: number;
+  /** war wear: a burnt-out opening (charred void, soot plume up the wall) or one boarded over (wear pass) */
+  state?: 'burnt' | 'boarded';
 }
 
 export interface ChimneySpec {
@@ -88,6 +90,11 @@ export interface HouseSpec {
   verge?: { colour: Rgb; bucket: RegionalBucket } | null;
   /** the roof covering's livery when it lies in a vertex-coloured bucket (painted sheet) */
   roofColour?: Rgb;
+  /**
+   * Depth of the openings' reveals (m): every window and door is cut into its storey wall and its unit is set back
+   * this far, the jambs, head and sill showing the wall's thickness (granite 0.3+, brick 0.15, a framed wall 0.1).
+   */
+  reveal?: number;
 }
 
 /** What a dialect sees of the house it dresses. */
@@ -100,6 +107,8 @@ export interface HouseFrame {
   /** the body half extents of each storey (with jetties) */
   bodies: Array<{ x0: number; x1: number; z0: number; z1: number; y0: number; y1: number }>;
   roof: RoofGeometry;
+  /** the openings' reveal depth (HouseSpec.reveal) */
+  reveal: number;
 }
 
 export interface HouseDialect {
@@ -139,6 +148,89 @@ export interface RoofGeometry {
 
 const DEG = Math.PI / 180;
 const FACE_NAMES: readonly FaceName[] = ['front', 'right', 'back', 'left'];
+
+/**
+ * War wear of the houses being built (index.ts sets it around a kit build; builders are synchronous, so the module
+ * slot never leaks between buildings): `amount` is the share of houses showing damage, drawn from the wear stream, never
+ * the build stream, so an undamaged house builds exactly as it would without wear.
+ */
+interface WearContext { amount: number; rng: () => number }
+let wearContext: WearContext | null = null;
+export function withWear<T>(wear: WearContext | null, build: () => T): T {
+  const prior = wearContext;
+  wearContext = wear;
+  try { return build(); } finally { wearContext = prior; }
+}
+
+interface RoofPatch { side: 1 | -1; z0: number; z1: number; x0: number; x1: number }
+
+/** Mark a damaged house's openings (burnt, boarded) and pick its stripped roof patch. */
+function wearHouse(spec: HouseSpec, rg: RoofGeometry): RoofPatch | null {
+  const wear = wearContext;
+  if (!wear || wear.amount <= 0) return null;
+  const rng = wear.rng;
+  if (rng() >= wear.amount) return null;
+  const windows = spec.openings.filter((o) => o.kind === 'window');
+  // one fire guts a room: a burnt window takes its neighbours on the same storey and face with it
+  const n = Math.min(windows.length, 1 + Math.floor(rng() * 4));
+  for (let k = 0; k < n; k++) {
+    const o = windows[Math.floor(rng() * windows.length)];
+    if (o.state) continue;
+    o.state = rng() < 0.6 ? 'burnt' : 'boarded';
+    if (o.state === 'burnt') {
+      for (const q of windows) if (!q.state && q.face === o.face && q.storey === o.storey && Math.abs(q.u - o.u) < 2.2 && rng() < 0.6) q.state = 'burnt';
+    }
+  }
+  if (rg.kind === 'flat' || rg.kind === 'shed' || rng() >= 0.7) return null;
+  // tiles blown off: a patch on one slope, between the ridge and the eaves, inside the ridge run
+  const run = rg.s * 0.98, len = Math.max(0.6, rg.ridgeHalf * 1.6);
+  const w = 0.9 + rng() * 1.4, h = Math.min(run * 0.8, 0.8 + rng() * 1.3);
+  const zc = (rng() - 0.5) * Math.max(0, len - w), x0 = 0.25 + rng() * Math.max(0, run - h - 0.35);
+  return { side: rng() < 0.5 ? 1 : -1, z0: zc - w / 2, z1: zc + w / 2, x0, x1: x0 + h };
+}
+
+/** A stripped roof patch: the tiles gone, the void under them, battens and two rafters left across it. */
+function emitRoofPatch(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, p: RoofPatch): void {
+  const cosP = Math.cos(Math.atan(rg.tanP));
+  const top = (x: number) => rg.ridgeY + roof.thickness / cosP - x * rg.tanP;
+  const on = (x: number, z: number, lift: number): Vec3 => [p.side * x, top(x) + lift / cosP, z];
+  // the void: a dark plane just proud of the covering, its outline ragged along the courses
+  const pts: Vec3[] = [];
+  const steps = 5;
+  for (let i = 0; i <= steps; i++) pts.push(on(p.x0 + (i % 2) * 0.06, p.z0 + (p.z1 - p.z0) * i / steps, 0.012));
+  for (let i = steps; i >= 0; i--) pts.push(on(p.x1 - (i % 2) * 0.08, p.z0 + (p.z1 - p.z0) * i / steps, 0.012));
+  // ccw seen from above the slope: the +x slope reads z from z0 to z1 along the ridge-side edge
+  sink.polygon('dark', p.side > 0 ? pts : pts.reverse(), { decor: true });
+  const n = normalize3([p.side * Math.sin(Math.atan(rg.tanP)), cosP, 0]);
+  const batten: Rgb = [0.42, 0.33, 0.22], rafter: Rgb = [0.3, 0.22, 0.15];
+  for (let x = p.x0 + 0.14; x < p.x1 - 0.06; x += 0.3) {
+    sink.member('structureWood', on(x, p.z0 + 0.02, 0.02), on(x, p.z1 - 0.02, 0.02), 0.045, 0.03, n, { colour: batten, decor: true, ends: true });
+  }
+  for (const z of [p.z0 + 0.18, p.z1 - 0.18]) {
+    sink.member('structureWood', on(p.x0 + 0.02, z, 0.0), on(p.x1 - 0.02, z, 0.0), 0.1, 0.06, n, { colour: rafter, decor: true, ends: true });
+  }
+}
+
+/** A damaged window: burnt out (a charred frame in the void) or boarded over with salvaged planks. */
+function damagedOpening(sink: PartSink, face: Face, o: Opening, y0: number, reveal: number): void {
+  const u = o.u, y = y0 + o.y0, w = o.w, h = o.h;
+  if (o.state === 'burnt') {
+    const char: Rgb = [0.06, 0.05, 0.045];
+    const back = reveal > 0 ? -reveal : 0;
+    faceBox(sink, 'structureWood', face, u - w / 2 + 0.035, y + h / 2, back + 0.03, 0.06, h, 0.06, { colour: char, decor: true });
+    faceBox(sink, 'structureWood', face, u + 0.1, y + h * 0.35, back + 0.03, 0.05, h * 0.62, 0.05, { colour: char, decor: true });
+    faceBox(sink, 'structureWood', face, u, y + 0.035, back + 0.03, w - 0.07, 0.06, 0.06, { colour: char, decor: true }, 'ends');
+    return;
+  }
+  // boarded: three or four planks nailed across the reveal mouth at odd angles
+  const plank: Rgb = [0.5, 0.43, 0.34];
+  const count = h > 1 ? 4 : 3;
+  for (let k = 0; k < count; k++) {
+    const yy = y + h * (k + 0.5) / count, tilt = (k % 2 ? 1 : -1) * 0.05;
+    sink.member('structureWood', facePoint(face, u - w / 2 - 0.08, yy - tilt), facePoint(face, u + w / 2 + 0.08, yy + tilt),
+      0.17, 0.025, face.out, { colour: [plank[0] * (0.85 + k * 0.05), plank[1] * (0.85 + k * 0.05), plank[2] * (0.85 + k * 0.05)], decor: true, ends: true }, -0.004);
+  }
+}
 
 /** Lay out a roof over a w × d wall top at height eaveY (ridge along Z). */
 export function roofGeometry(w: number, d: number, eaveY: number, roof: RoofSpec): RoofGeometry {
@@ -276,6 +368,15 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
   }
 }
 
+/** The four faces of storey `i` of a built house (a jettied storey's faces stand proud of the ground storey's). */
+export function storeyFaces(frame: HouseFrame, i: number): Record<FaceName, Face> {
+  const b = frame.bodies[Math.max(0, Math.min(frame.bodies.length - 1, i))];
+  const f = bodyFaces(b.x1 - b.x0, b.z1 - b.z0);
+  const cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2;
+  for (const name of FACE_NAMES) f[name].origin = [f[name].origin[0] + cx, 0, f[name].origin[2] + cz];
+  return f;
+}
+
 /** Lay out a regular window rhythm on one storey of one face, leaving room for doors. */
 export function windowRhythm(face: FaceName, storey: number, width: number, opts: {
   w: number; h: number; sill: number; spacing: number; margin?: number; avoid?: Array<[number, number]>;
@@ -311,11 +412,12 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
   spec.storeys.forEach((storey) => {
     if (storey.jetty) for (let k = 0; k < 4; k++) jet[k] += storey.jetty[k];
     const body = { x0: -spec.w / 2 - jet[3], x1: spec.w / 2 + jet[1], z0: -spec.d / 2 - jet[2], z1: spec.d / 2 + jet[0], y0: y, y1: y + storey.h };
-    sink.span(storey.wall, body.x0, body.y0, body.z0, body.x1, body.y1, body.z1);
     floors.push(y);
     bodies.push(body);
     y += storey.h;
   });
+  const reveal = Math.max(0, spec.reveal ?? 0.16);
+  // war wear marks openings before the walls are cut (a burnt opening keeps its soot plume on the face)
   const eaveY = y;
   const top = bodies[bodies.length - 1];
   // the roof bears on the top storey's body; a jettied body is offset, so lay the roof out centred and move it
@@ -329,11 +431,39 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     return f;
   };
   const faces = frameFaces(bodies[0]);
-  const frame: HouseFrame = { spec, faces, floors, eaveY, bodies, roof: rg };
+  const frame: HouseFrame = { spec, faces, floors, eaveY, bodies, roof: rg, reveal };
+  const roofPatch = wearHouse(spec, rg);
+  // the storey bodies: four faces cut by their openings (with reveals), the top, and a jetty's underside
+  bodies.forEach((b, i) => {
+    const wall = spec.storeys[i].wall;
+    const sf = frameFaces(b);
+    for (const name of FACE_NAMES) {
+      const face = sf[name];
+      const own = spec.openings.filter((o) => o.face === name && o.storey === i);
+      const holes = own.map((o) => {
+        // a shopfront keeps its stall riser: the glazing starts above it
+        const riser = o.kind === 'shopfront' ? 0.55 : 0;
+        return { u0: o.u - o.w / 2, u1: o.u + o.w / 2, y0: b.y0 + o.y0 + riser, y1: b.y0 + o.y0 + o.h };
+      });
+      // weathering: rain runs from each sill down the wall below it; a burnt opening's soot climbs the wall over it
+      const stains: Stain[] = [];
+      own.forEach((o, k) => {
+        const h = holes[k];
+        if (o.kind === 'window' && o.state !== 'burnt') stains.push({ u0: h.u0 + 0.06, u1: h.u1 - 0.06, y0: h.y0 - 1.1, y1: h.y0, bottom: 1, top: 0.82 });
+        if (o.state === 'burnt') stains.push({ u0: h.u0 - 0.3, u1: h.u1 + 0.3, y0: h.y1, y1: h.y1 + 1.7, bottom: 0.32, top: 1 });
+      });
+      holedFace(sink, wall, face, { u0: -face.width / 2, u1: face.width / 2, y0: b.y0, y1: b.y1 }, holes, reveal, stains,
+        own.map((o) => (o.state === 'burnt' ? 0.4 : 1)));
+    }
+    sink.quad(wall, [b.x0, b.y1, b.z1], [b.x1, b.y1, b.z1], [b.x1, b.y1, b.z0], [b.x0, b.y1, b.z0]);
+    // the underside: a jetty's soffit, or the ground storey's base (seen where the ground falls away from it)
+    sink.quad(wall, [b.x0, b.y0, b.z0], [b.x1, b.y0, b.z0], [b.x1, b.y0, b.z1], [b.x0, b.y0, b.z1], { shade: 0.8 });
+  });
   // the roof and gables in the top body's frame
   const moveRoof = (fn: () => void) => (Math.abs(roofCx) < 1e-6 && Math.abs(roofCz) < 1e-6 ? fn() : sink.placed(0, roofCx, 0, roofCz, fn));
   moveRoof(() => {
     emitRoof(sink, rg, spec.roof, spec.roofColour);
+    if (roofPatch) emitRoofPatch(sink, rg, spec.roof, roofPatch);
     if (rg.gable) {
       const gableBucket = spec.gableBucket ?? spec.storeys[spec.storeys.length - 1].wall;
       const f = bodyFaces(roofW, roofD);
@@ -366,10 +496,15 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
       if (storey.framed && dialect.dressWall) {
         dialect.dressWall(sink, face, { u0: -face.width / 2, u1: face.width / 2, y0: bodies[i].y0, y1: bodies[i].y1 }, own, frame);
       }
-      for (const o of own) {
-        if (o.kind === 'door' || o.kind === 'gate' || o.kind === 'shopfront') dialect.door(sink, face, o, bodies[i].y0, frame);
-        else dialect.window(sink, face, o, bodies[i].y0, frame);
-      }
+      // the units stand in the cut openings, set back by the reveal
+      sink.recess = reveal;
+      try {
+        for (const o of own) {
+          if (o.state) damagedOpening(sink, face, o, bodies[i].y0, reveal);
+          else if (o.kind === 'door' || o.kind === 'gate' || o.kind === 'shopfront') dialect.door(sink, face, o, bodies[i].y0, frame);
+          else dialect.window(sink, face, o, bodies[i].y0, frame);
+        }
+      } finally { sink.recess = 0; }
     }
     // jetty dressing on the faces this storey oversails
     if (i > 0 && storey.jetty && dialect.dressJetty) {
@@ -421,6 +556,71 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     }
   }
   return frame;
+}
+
+export interface HoleRect { u0: number; u1: number; y0: number; y1: number }
+/** A weathering stain on a face: the wall inside it shaded from `bottom` (at y0) to `top` (at y1). */
+export interface Stain { u0: number; u1: number; y0: number; y1: number; bottom: number; top: number }
+
+/**
+ * A wall face cut by openings: the face around them in horizontal bands, each opening's reveal (jambs, head, sill)
+ * back to the frame plane `reveal` metres in, and a dark backing just behind it (a unit's pane or leaf covers it; an
+ * opening a dialect leaves empty reads as a dark void, never as a hole through the house). The reveals carry an
+ * occlusion shade for the weathering pass. Strips and reveals share their corners exactly (welded solids).
+ */
+export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, rect: WallRect, holes: readonly HoleRect[], reveal: number,
+  stains: readonly Stain[] = [], revealShade: readonly number[] = []): void {
+  const m = 0.04;
+  const kept: number[] = [];
+  const hs = holes.map((h) => ({ u0: Math.max(h.u0, rect.u0 + m), u1: Math.min(h.u1, rect.u1 - m), y0: Math.max(h.y0, rect.y0),
+    y1: Math.min(h.y1, rect.y1 - m) })).filter((h, k) => {
+    const ok = h.u1 - h.u0 > 0.05 && h.y1 - h.y0 > 0.05;
+    if (ok) kept.push(k);
+    return ok;
+  });
+  // stains clipped to the face (a stain never reaches into another storey)
+  const ss = stains.map((t) => ({ ...t, u0: Math.max(t.u0, rect.u0), u1: Math.min(t.u1, rect.u1), y0c: Math.max(t.y0, rect.y0),
+    y1c: Math.min(t.y1, rect.y1) })).filter((t) => t.u1 - t.u0 > 0.05 && t.y1c - t.y0c > 0.05);
+  const P = (u: number, yy: number, o = 0): Vec3 => facePoint(face, u, yy, o);
+  const ys = [...new Set([rect.y0, rect.y1, ...hs.flatMap((h) => [h.y0, h.y1]), ...ss.flatMap((t) => [t.y0c, t.y1c])])].sort((a, b) => a - b);
+  const stainAt = (t: (typeof ss)[number], yy: number) => t.bottom + (t.top - t.bottom) * Math.min(1, Math.max(0, (yy - t.y0) / (t.y1 - t.y0)));
+  for (let i = 0; i + 1 < ys.length; i++) {
+    const ya = ys[i], yb = ys[i + 1];
+    if (yb - ya < 1e-5) continue;
+    const cuts = hs.filter((h) => h.y0 <= ya + 1e-6 && h.y1 >= yb - 1e-6).map((h): [number, number] => [h.u0, h.u1]).sort((a, b) => a[0] - b[0]);
+    const live = ss.filter((t) => t.y0c <= ya + 1e-6 && t.y1c >= yb - 1e-6);
+    // the strips between openings, split again at the edges of the stains that run through this band
+    const marks = [...new Set(live.flatMap((t) => [t.u0, t.u1]))].sort((a, b) => a - b);
+    const strip = (ua: number, ub: number) => {
+      const edges = [ua, ...marks.filter((x) => x > ua + 1e-5 && x < ub - 1e-5), ub];
+      for (let k = 0; k + 1 < edges.length; k++) {
+        const a = edges[k], b = edges[k + 1];
+        if (b - a <= 1e-5) continue;
+        const mid = (a + b) / 2;
+        const inStain = live.filter((t) => mid > t.u0 && mid < t.u1);
+        if (!inStain.length) { sink.quad(bucket, P(a, ya), P(b, ya), P(b, yb), P(a, yb)); continue; }
+        const lo = inStain.reduce((v, t) => v * stainAt(t, ya), 1), hi = inStain.reduce((v, t) => v * stainAt(t, yb), 1);
+        // each row of corners carries its own shade: the stain fades along the face
+        const midY = (ya + yb) / 2;
+        sink.quad(bucket, P(a, ya), P(b, ya), P(b, yb), P(a, yb), { shadeAt: (q) => (q[1] < midY ? lo : hi) });
+      }
+    };
+    let cur = rect.u0;
+    for (const [a, b] of cuts) { strip(cur, a); cur = Math.max(cur, b); }
+    strip(cur, rect.u1);
+  }
+  if (reveal <= 0) return;
+  const r = -reveal;
+  hs.forEach((h, k) => {
+    const dark = revealShade[kept[k]] ?? 1;
+    // left jamb faces +u, right jamb -u, the head down, the sill up
+    sink.quad(bucket, P(h.u0, h.y0), P(h.u0, h.y0, r), P(h.u0, h.y1, r), P(h.u0, h.y1), { shade: 0.74 * dark });
+    sink.quad(bucket, P(h.u1, h.y0), P(h.u1, h.y1), P(h.u1, h.y1, r), P(h.u1, h.y0, r), { shade: 0.74 * dark });
+    sink.quad(bucket, P(h.u0, h.y1), P(h.u0, h.y1, r), P(h.u1, h.y1, r), P(h.u1, h.y1), { shade: 0.66 * dark });
+    sink.quad(bucket, P(h.u0, h.y0), P(h.u1, h.y0), P(h.u1, h.y0, r), P(h.u0, h.y0, r), { shade: 0.9 * dark });
+    const back = r - 0.004;
+    sink.quad('dark', P(h.u0, h.y0, back), P(h.u1, h.y0, back), P(h.u1, h.y1, back), P(h.u0, h.y1, back), { decor: true });
+  });
 }
 
 /** A wall polygon (u, y pairs, counter-clockwise seen from outside) on a face, `depth` thick inward. */

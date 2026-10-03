@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
-import { ARCHITECTURE_STYLES, ARCHITECTURE_STYLE_IDS, rebuildRegionalStructure, resolveRegionalArchitecture } from './index.ts';
+import { ARCHITECTURE_STYLES, ARCHITECTURE_STYLE_IDS, buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitecture } from './index.ts';
 import { streamFrom } from './geometry.ts';
 import { auditStructureAssembly } from '../structureAssemblyAudit.ts';
 import { deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand } from '../../structureCollision.ts';
@@ -38,7 +38,9 @@ assert.ok(STYLES.length >= 13, 'a kit for every map rebuilt to the layout brief'
 assert.equal(resolveRegionalArchitecture(undefined), null);
 assert.throws(() => resolveRegionalArchitecture('atlantean'), /Unknown architecture style/);
 
-const COLOURED = new Set(['structureMetal', 'structureWood']);
+const COLOURED = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']);
+/** After the weathering pass the plain wall and roof buckets are empty: every wall and roof is weathered. */
+const WEATHERED_SOURCES = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof'];
 /** Representative base footprints (info) of the plan ids, measured from the base builders. */
 const INFO = {
   cottage: [6.0, 8.4, 5.0], farmhouse: [13.4, 9.9, 6.0], tavern: [9.7, 14.9, 8.4], schoolhouse: [9.1, 16.1, 11],
@@ -49,15 +51,18 @@ const INFO = {
   adobe: [6.6, 7.6, 4.2], caravanserai: [21.4, 19.4, 7.4], compound: [23, 14.5, 5.6], compoundSouk: [22, 16, 6],
   minaret: [4, 4, 13], bathhouse: [11, 10, 7], factory: [16, 26, 15], watertower: [5.6, 5.6, 14],
 };
-const BUDGET = 9000; // triangles per building, the three-storey tavern included
+// triangles per building, the three-storey tavern included (its forty windows cut into the wall with reveals, sills,
+// frames, bars and shutters, its window boxes, bench, woodpile, roof ladder and aerial, and a stripped roof patch when
+// the wear pass damages it)
+const BUDGET = 12000;
 const ray = new THREE.Raycaster();
 
 function build(style, id, seed, wallBucket, tier = 'desktop') {
   const [w, d, h] = INFO[id] ?? [7, 9, 6];
-  return style.builders[id]({
+  return buildRegionalParts(style, {
     structureId: id, info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
     wallBucket, rng: streamFrom(seed), mapId: 'selftest', snowCap: false, tier,
-  });
+  }, streamFrom(seed * 3 + 5));
 }
 const all = (parts) => Object.values(parts).flat();
 function positions(parts) {
@@ -89,6 +94,7 @@ for (const style of STYLES) {
           if (bucket === 'curtain') lit += Array.from(g.getAttribute(NIGHT_EMISSION_ATTRIBUTE).array).filter((m) => m === 1).length;
         }
         assert.ok(sets.size <= 1, `${style.id}/${id}/${bucket}: one attribute set (${[...sets].join(' | ')})`);
+        if (WEATHERED_SOURCES.includes(bucket)) assert.equal(list.length, 0, `${style.id}/${id}/${bucket}: weathered into its regional bucket`);
       }
       if (parts.curtain.length) assert.ok(lit >= 6, `${style.id}/${id}: curtain panes carry a lit outward face`);
       assert.ok(structural > 0, `${style.id}/${id}: structural geometry for collision`);
@@ -160,7 +166,8 @@ const hooks = registerHooks({ load(url, context, next) {
 const originals = await import('../../props.ts');
 hooks.deregister();
 const source = readFileSync(new URL('../../props.ts', import.meta.url), 'utf8');
-const names = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked', 'steel', 'structureMetal', 'structureWood'];
+const names = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked', 'steel', 'structureMetal', 'structureWood',
+  'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof'];
 function section(start, end) {
   const a = source.indexOf(start), b = source.indexOf(end, a + start.length);
   assert.ok(a >= 0 && b > a, start); return source.slice(a, b);

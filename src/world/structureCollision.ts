@@ -26,6 +26,8 @@ const SECTION_CLIP_VERTICES = 48;
  * never stop a shell in play and they were more than half of every dense city shard. */
 const SHELL_MIN_PART_AREA = 0.02;
 const IGNORED_BUCKETS = new Set(['glass', 'curtain']);
+/** Roof coverings: never a ground-contact part (the regional kits' weathered roofs keep the role, maps/regional). */
+const ROOF_BUCKETS = new Set(['roof', 'regionalRoof']);
 
 interface LocalSolid {
   bucket: string;
@@ -1002,7 +1004,7 @@ function deriveContactBand<T extends StructureCollisionRuntimeBand>(
   createBand: (active: LocalSolid[], minY: number, maxY: number, ground: boolean) => T,
 ): T {
   const contactSolids = solids.filter((solid) =>
-    solid.bucket !== 'roof' && solid.minY <= CONTACT_TOP && solid.maxY >= 0.06);
+    !ROOF_BUCKETS.has(solid.bucket) && solid.minY <= CONTACT_TOP && solid.maxY >= 0.06);
   if (!contactSolids.length) throw new Error('structure has no ground-contact collision solids');
   return createBand(
     contactSolids,
@@ -1119,7 +1121,7 @@ export function certifyStructureCollisionProfile(
     return scoreFootprint(source, band.parts.map(shapePolygon));
   };
   const contactSolids = solids.filter((solid) =>
-    solid.bucket !== 'roof' && solid.minY <= CONTACT_TOP && solid.maxY >= 0.06);
+    !ROOF_BUCKETS.has(solid.bucket) && solid.minY <= CONTACT_TOP && solid.maxY >= 0.06);
   const contact = scoreSolids(contactSolids, profile.contact);
   // shell bands hold height-clipped strips: score them against the same band pieces the runtime selects, with the
   // same sub-threshold trim shed (a 14 cm post is not published, so it is not owed either)

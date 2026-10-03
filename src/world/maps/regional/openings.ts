@@ -23,26 +23,31 @@ export function paneBucket(rng: () => number, litShare: number): 'glass' | 'curt
   return rng() < litShare ? 'curtain' : 'glass';
 }
 
-/** One window: pane, frame and bars, surround, sill, shutters. (u, y) is the bottom-centre of the clear opening. */
+/**
+ * One window: pane, frame and bars, surround, sill, shutters. (u, y) is the bottom-centre of the clear opening. In a
+ * wall the house grammar has cut the opening into (sink.recess > 0) the pane and frame stand at the back of the
+ * reveal; the surround, the open shutters and the sill's nose stay on the face.
+ */
 export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, style: WindowStyle,
   rng: () => number, litShare = 0.4): void {
   const pane = paneBucket(rng, litShare);
   const dec = { decor: true };
-  facePanel(sink, pane, face, u, y + h / 2, 0.018, w, h, { ...dec, window: face.out });
+  const r = sink.recess, back = r > 0 ? -r : 0;
+  facePanel(sink, pane, face, u, y + h / 2, r > 0 ? back + 0.012 : 0.018, w, h, { ...dec, window: face.out });
   const F = style.frameWidth, O = style.frameOut;
   const fc = { colour: style.frame, decor: true };
-  // frame: jambs, head and bottom rail, proud of the wall
-  faceBox(sink, 'structureWood', face, u - w / 2 + F / 2, y + h / 2, O / 2, F, h, O, fc);
-  faceBox(sink, 'structureWood', face, u + w / 2 - F / 2, y + h / 2, O / 2, F, h, O, fc);
-  faceBox(sink, 'structureWood', face, u, y + h - F / 2, O / 2, w - 2 * F, F, O, fc, 'ends');
-  faceBox(sink, 'structureWood', face, u, y + F / 2, O / 2, w - 2 * F, F, O, fc, 'ends');
+  // frame: jambs, head and bottom rail, standing out of the pane plane
+  faceBox(sink, 'structureWood', face, u - w / 2 + F / 2, y + h / 2, back + O / 2, F, h, O, fc);
+  faceBox(sink, 'structureWood', face, u + w / 2 - F / 2, y + h / 2, back + O / 2, F, h, O, fc);
+  faceBox(sink, 'structureWood', face, u, y + h - F / 2, back + O / 2, w - 2 * F, F, O, fc, 'ends');
+  faceBox(sink, 'structureWood', face, u, y + F / 2, back + O / 2, w - 2 * F, F, O, fc, 'ends');
   const bar = Math.max(0.03, F * 0.55), barO = O * 0.7;
   if (style.bars === 'cross' || style.bars === 'two' || style.bars === 'six') {
-    faceBox(sink, 'structureWood', face, u, y + h / 2, barO / 2, bar, h - 2 * F, barO, fc, 'caps');
+    faceBox(sink, 'structureWood', face, u, y + h / 2, back + barO / 2, bar, h - 2 * F, barO, fc, 'caps');
   }
-  if (style.bars === 'cross') faceBox(sink, 'structureWood', face, u, y + h * 0.64, barO / 2, w - 2 * F, bar, barO, fc, 'ends');
+  if (style.bars === 'cross') faceBox(sink, 'structureWood', face, u, y + h * 0.64, back + barO / 2, w - 2 * F, bar, barO, fc, 'ends');
   if (style.bars === 'six') {
-    for (const t of [1 / 3, 2 / 3]) faceBox(sink, 'structureWood', face, u, y + h * t, barO / 2, w - 2 * F, bar, barO, fc, 'ends');
+    for (const t of [1 / 3, 2 / 3]) faceBox(sink, 'structureWood', face, u, y + h * t, back + barO / 2, w - 2 * F, bar, barO, fc, 'ends');
   }
   if (style.surround) {
     const s = style.surround, sw = s.width, so = s.out, lintel = s.lintel ?? sw;
@@ -52,8 +57,9 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
     faceBox(sink, s.bucket, face, u, y + h + lintel / 2, so / 2, w + 2 * sw, lintel, so, sc);
   }
   if (style.sill) {
+    // the sill runs through the reveal from the frame to its nose past the face
     const so = style.sill.out;
-    faceBox(sink, style.sill.bucket, face, u, y - 0.045, so / 2, w + (style.surround ? 2 * style.surround.width : 0) + 0.1, 0.09, so,
+    faceBox(sink, style.sill.bucket, face, u, y - 0.045, (so - r) / 2, w + (style.surround ? 2 * style.surround.width : 0) + 0.1, 0.09, so + r,
       { decor: true, ...(style.sill.colour ? { colour: style.sill.colour } : {}) });
   }
   if (style.shutters) {
@@ -62,8 +68,9 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
     const sc = { colour: sh.colour, decor: true, uv: UV_MEMBER };
     if (rng() < closed) {
       // closed: both leaves across the opening, proud of the frame
-      faceBox(sink, 'structureWood', face, u - leaf / 2 + 0.015, y + h / 2, O + 0.025, leaf, h + 0.02, 0.035, sc);
-      faceBox(sink, 'structureWood', face, u + leaf / 2 - 0.015, y + h / 2, O + 0.028, leaf, h + 0.02, 0.035, sc);
+      const shut = Math.max(0, O - r);
+      faceBox(sink, 'structureWood', face, u - leaf / 2 + 0.015, y + h / 2, shut + 0.025, leaf, h + 0.02, 0.035, sc);
+      faceBox(sink, 'structureWood', face, u + leaf / 2 - 0.015, y + h / 2, shut + 0.028, leaf, h + 0.02, 0.035, sc);
     } else {
       for (const side of [-1, 1]) {
         const cu = u + side * (w / 2 + sideOff + leaf / 2 + 0.02);
@@ -98,17 +105,19 @@ export interface DoorStyle {
 export function doorUnit(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, style: DoorStyle, floorY = y): void {
   const leafH = style.transom ? h - 0.42 : h;
   const lc = { colour: style.leaf, decor: true, uv: UV_MEMBER };
-  faceBox(sink, 'structureWood', face, u, y + leafH / 2, 0.012, w, leafH, 0.04, lc);
+  // in a cut opening (sink.recess) the leaf hangs at the back of the reveal
+  const r = sink.recess, lo = r > 0 ? -r + 0.022 : 0.012;
+  faceBox(sink, 'structureWood', face, u, y + leafH / 2, lo, w, leafH, 0.04, lc);
   if (style.leafKind === 'panel') {
-    for (const t of [0.28, 0.72]) faceBox(sink, 'structureWood', face, u, y + leafH * t, 0.04, w * 0.7, leafH * 0.34, 0.02, lc);
+    for (const t of [0.28, 0.72]) faceBox(sink, 'structureWood', face, u, y + leafH * t, lo + 0.028, w * 0.7, leafH * 0.34, 0.02, lc);
   } else if (style.leafKind === 'plank') {
-    for (const t of [0.15, 0.85]) faceBox(sink, 'structureWood', face, u, y + leafH * t, 0.04, w - 0.08, 0.09, 0.03, lc);
+    for (const t of [0.15, 0.85]) faceBox(sink, 'structureWood', face, u, y + leafH * t, lo + 0.028, w - 0.08, 0.09, 0.03, lc);
   } else {
-    faceBox(sink, 'glass', face, u, y + leafH * 0.66, 0.035, w * 0.6, leafH * 0.42, 0.02, { decor: true });
+    faceBox(sink, 'glass', face, u, y + leafH * 0.66, lo + 0.023, w * 0.6, leafH * 0.42, 0.02, { decor: true });
   }
   if (style.transom) {
-    faceBox(sink, 'glass', face, u, y + h - 0.21, 0.006, w, 0.36, 0.03, { decor: true });
-    faceBox(sink, 'structureWood', face, u, y + leafH + 0.03, 0.04, w, 0.06, 0.06, { colour: style.leaf, decor: true });
+    faceBox(sink, 'glass', face, u, y + h - 0.21, lo - 0.006, w, 0.36, 0.03, { decor: true });
+    faceBox(sink, 'structureWood', face, u, y + leafH + 0.03, lo + 0.028, w, 0.06, 0.06, { colour: style.leaf, decor: true });
   }
   const f = style.frame, fw = f.width;
   const fo = { decor: true, ...(f.colour ? { colour: f.colour } : {}) };
@@ -138,13 +147,15 @@ export function doorUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
 export function gateUnit(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, leaf: Rgb,
   frame: { bucket: RegionalBucket; width: number; out: number; colour?: Rgb }): void {
   const lc = { colour: leaf, decor: true, uv: UV_MEMBER };
+  // in a cut opening (sink.recess) the leaves hang at the back of the reveal
+  const r = sink.recess, go = r > 0 ? -r + 0.03 : 0.015;
   for (const side of [-1, 1]) {
     const cu = u + side * w / 4;
-    faceBox(sink, 'structureWood', face, cu, y + h / 2, 0.015, w / 2 - 0.02, h, 0.05, lc);
-    for (const t of [0.12, 0.5, 0.88]) faceBox(sink, 'structureWood', face, cu, y + h * t, 0.05, w / 2 - 0.1, 0.1, 0.03, lc);
+    faceBox(sink, 'structureWood', face, cu, y + h / 2, go, w / 2 - 0.02, h, 0.05, lc);
+    for (const t of [0.12, 0.5, 0.88]) faceBox(sink, 'structureWood', face, cu, y + h * t, go + 0.035, w / 2 - 0.1, 0.1, 0.03, lc);
   }
   // a wicket door outline in one leaf
-  faceBox(sink, 'dark', face, u - w / 4, y + 0.95, 0.045, 0.7, 1.75, 0.02, { decor: true });
+  faceBox(sink, 'dark', face, u - w / 4, y + 0.95, go + 0.03, 0.7, 1.75, 0.02, { decor: true });
   const fo = { decor: true, ...(frame.colour ? { colour: frame.colour } : {}) };
   faceBox(sink, frame.bucket, face, u - w / 2 - frame.width / 2, y + h / 2, frame.out / 2, frame.width, h, frame.out, fo);
   faceBox(sink, frame.bucket, face, u + w / 2 + frame.width / 2, y + h / 2, frame.out / 2, frame.width, h, frame.out, fo);

@@ -81,7 +81,8 @@ const hooks = registerHooks({ load(url, context, next) {
 const originals = await import('./props.ts');
 hooks.deregister();
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-const names = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked', 'steel', 'structureMetal', 'structureWood'];
+const names = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked', 'steel', 'structureMetal', 'structureWood',
+  'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof'];
 function section(start, end) {
   const a = source.indexOf(start), b = source.indexOf(end, a + start.length);
   assert.ok(a >= 0 && b > a, start); return source.slice(a, b);

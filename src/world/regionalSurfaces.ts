@@ -162,14 +162,15 @@ function* canal(s: number, tint: Tint, seed: number): Generator<SurfaceSlice, [U
       const lap = fy < 0.05 ? 1 : 0;
       const shadowTail = cover ? smooth(0.0, 0.12, fy) : 1;
       const grime = (1 - prof) * (cover ? 0.35 : 0.15) + (cover ? 0 : 0.18);
-      const lichen = smooth(0.62, 0.82, lichenF(x, y)) * (cover ? 1 : 0.4) * smooth(0.3, 0.7, k2);
+      // grey-ochre crust lichen, a partial veil over the clay (never a white blot)
+      const lichen = smooth(0.64, 0.86, lichenF(x, y)) * (cover ? 0.55 : 0.25) * smooth(0.3, 0.7, k2);
       const fade = fadeF(x, y);
       let v = (0.74 + k * 0.38) * (0.88 + prof * 0.18) - grime * 0.35;
       v *= 0.65 + 0.35 * shadowTail;
       v *= 1 - lap * 0.35;
       const pale = smooth(0.4, 0.9, fade) * 0.35 + k2 * 0.15; // sun-bleached tiles go toward pale ochre
       let rr = tint[0] * v * (1 + pale * 0.15), gg = tint[1] * v * (1 + pale * 0.45), bb = tint[2] * v * (1 + pale * 0.55);
-      rr = rr * (1 - lichen) + 0.74 * lichen; gg = gg * (1 - lichen) + 0.72 * lichen; bb = bb * (1 - lichen) + 0.64 * lichen;
+      rr = rr * (1 - lichen) + 0.6 * lichen; gg = gg * (1 - lichen) + 0.57 * lichen; bb = bb * (1 - lichen) + 0.47 * lichen;
       put(px, j, rr, gg, bb);
       hgt[i] = clamp((cover ? 0.45 + prof * 0.5 : 0.35 - prof * 0.25) - lap * 0.2);
       rough[i] = clamp(0.74 + (cover ? 0 : 0.08) + lichen * 0.12);
@@ -334,10 +335,13 @@ interface MasonryRecipe {
 const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze({
   sandstone: { courseMin: 52, courseMax: 92, blockMin: 90, blockMax: 210, mortar: 1.8, mortarTint: [0.62, 0.57, 0.52],
     tint: [1, 1, 1], spread: 0.18, hue: 0.08, relief: 0.45, pillow: 0.3, speckle: 0.05, lichen: 0.3, grime: 0.4, rubble: 0.2, bedding: 0.05 },
-  limestone: { courseMin: 46, courseMax: 96, blockMin: 70, blockMax: 190, mortar: 3.2, mortarTint: [0.62, 0.6, 0.55],
-    tint: [1, 1, 1], spread: 0.16, hue: 0.05, relief: 0.75, pillow: 0.55, speckle: 0, lichen: 0.35, grime: 0.25, rubble: 0.25, bedding: 0.025 },
-  granite: { courseMin: 40, courseMax: 110, blockMin: 60, blockMax: 200, mortar: 3.6, mortarTint: [0.58, 0.57, 0.53],
-    tint: [1, 1, 1], spread: 0.2, hue: 0.03, relief: 0.6, pillow: 0.75, speckle: 0.8, lichen: 0.45, grime: 0.3, rubble: 0.55 },
+  // 2026-10-03 gauntlet wave 0 / kits v1 captures: the first limestone and granite read as a blue-grey checkerboard (one
+  // tone a block, dark pillowed joints): the stones are smaller and more irregular, the tone moves within a stone more
+  // than between stones, and the joints are pale lime mortar, not shadow
+  limestone: { courseMin: 34, courseMax: 74, blockMin: 52, blockMax: 150, mortar: 2.4, mortarTint: [0.8, 0.77, 0.7],
+    tint: [1, 1, 1], spread: 0.08, hue: 0.04, relief: 0.6, pillow: 0.3, speckle: 0, lichen: 0.3, grime: 0.22, rubble: 0.35, bedding: 0.03 },
+  granite: { courseMin: 38, courseMax: 96, blockMin: 56, blockMax: 176, mortar: 2.8, mortarTint: [0.7, 0.68, 0.63],
+    tint: [1, 1, 1], spread: 0.11, hue: 0.05, relief: 0.6, pillow: 0.5, speckle: 0.7, lichen: 0.5, grime: 0.3, rubble: 0.55 },
   brick: { courseMin: 20, courseMax: 21, blockMin: 62, blockMax: 63, mortar: 1.6, mortarTint: [0.62, 0.6, 0.56],
     tint: [1, 1, 1], spread: 0.22, hue: 0.06, relief: 0.2, pillow: 0.15, speckle: 0.15, lichen: 0.08, grime: 0.3, rubble: 0 },
   greywacke: { courseMin: 34, courseMax: 80, blockMin: 60, blockMax: 170, mortar: 3.2, mortarTint: [0.5, 0.49, 0.46],
@@ -453,7 +457,8 @@ export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotrop
   Generator<SurfaceSlice, RegionalSurfaceTextures, void> {
   const s = 512;
   const [px, hgt, rough] = yield* cached(`stone:${kind}:${tint.join(',')}:${seed}`, () => masonry(s, kind, tint, seed));
-  return finish(px, hgt, rough, s, anisotropy, kind === 'brick' ? 2.2 : 3.0, 0.66);
+  const relief = kind === 'brick' ? 2.2 : kind === 'limestone' ? 2.0 : kind === 'granite' ? 2.4 : 3.0;
+  return finish(px, hgt, rough, s, anisotropy, relief, kind === 'limestone' ? 0.74 : 0.66);
 }
 
 /** Paint-only access for receipts (no canvas): the raw buffers. */

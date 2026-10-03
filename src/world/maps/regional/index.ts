@@ -12,7 +12,9 @@
 // regenerates its collision shard (tools/capture-world-collision-manifests.mjs --node --maps <id>).
 import type * as THREE from 'three';
 import { getDeviceTier } from '../../../engine/quality.ts';
-import { hashSeed, streamFrom, REGIONAL_BUCKETS } from './geometry.ts';
+import { hashSeed, streamFrom, REGIONAL_BUCKETS, type RegionalParts } from './geometry.ts';
+import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts } from './weather.ts';
+import { withWear } from './house.ts';
 import { HESSIAN_STYLE } from './hessian.ts';
 import { DALMATIAN_STYLE } from './dalmatian.ts';
 import { BRETON_STYLE } from './breton.ts';
@@ -79,6 +81,20 @@ function measure(buckets: Buckets): BaseBounds {
   return b;
 }
 
+/**
+ * A kit's whole build of one structure: the builder's parts, then the building's own tint and weathering
+ * (weather.ts) drawn from `weatherRng` (never the build stream). Receipts build through this too.
+ */
+export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildContext, weatherRng: () => number): RegionalParts {
+  const palette = style.weather ?? DEFAULT_WEATHER;
+  const builder = style.builders[ctx.structureId];
+  if (!builder) throw new Error(`${style.id} has no ${ctx.structureId}`);
+  // war wear (burnt and boarded windows, stripped roof patches) draws from its own fork of the weather stream
+  const wear = { amount: style.wear ?? 0.2, rng: streamFrom(Math.floor(weatherRng() * 4294967296)) };
+  const tints = pickWeatherTints(palette, weatherRng);
+  return weatherRegionalParts(withWear(wear, () => builder(ctx)), tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
+}
+
 interface RebuildContext {
   mapId: string;
   snowCap: boolean;
@@ -101,7 +117,9 @@ export function rebuildRegionalStructure(
     rng: streamFrom(hashSeed(`${style.id}:${context.mapId}:${structureId}`, context.seed, x, z, yaw)),
     mapId: context.mapId, snowCap: context.snowCap, tier: getDeviceTier() === 'mobile' ? 'mobile' : 'desktop',
   };
-  const parts = builder(ctx);
+  // the walls and roofs take the building's own tints and weathering (weather.ts), from a stream of their own
+  const parts = buildRegionalParts(style, ctx,
+    streamFrom(hashSeed(`${style.id}:weather:${context.mapId}:${structureId}`, context.seed, x, z, yaw)));
   for (const list of Object.values(base)) if (Array.isArray(list)) for (const geometry of list) geometry.dispose();
   const out = {} as PropsLikeBuckets;
   for (const name of REGIONAL_BUCKETS) out[name] = parts[name] ?? [];
