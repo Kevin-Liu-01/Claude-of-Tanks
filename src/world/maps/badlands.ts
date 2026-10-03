@@ -20,6 +20,10 @@ const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 // The floor's layout turns through 180 degrees about the outpost (8, 0): every feature has its counterpart.
 const pair = <T extends { x: number; z: number }>(form: T): T[] => [form, { ...form, x: 16 - form.x, z: -form.z }];
+// The scenery lane (2026-10-03): Redrock's scenery stone in the terrain's own sandstone (sRGB HSL; the terrain's rock
+// reads hue 0.03-0.05, saturation 0.22, lightness 0.5-0.57 lit): the domes' beds, the ledges and the cairns read as one
+// rock with the walls they stand on, not as darker, redder cladding.
+const WADI_RUM_STONE = [0.045, 0.32, 0.52] as const;
 
 export default {
   id: 'badlands',
@@ -140,34 +144,34 @@ export default {
     // the inselbergs' own rock: level beds ringing each dome's steep flanks above the talus, split by master joints
     // into clefts, a bare crown; a skin on ground no hull reaches (the domes stay the terrain)
     bedrock: [
-      { geology: 'sandstone', x: -40, z: -292, radius: 42, name: 'the south gate dome' },
-      { geology: 'sandstone', x: 56, z: 292, radius: 42, name: 'the north gate dome' },
-      { geology: 'sandstone', x: -8, z: -300, radius: 26, name: 'the south gate dome\'s lobe' },
-      { geology: 'sandstone', x: 24, z: 300, radius: 26, name: 'the north gate dome\'s lobe' },
-      { geology: 'sandstone', x: -118, z: -128, radius: 46, name: 'the south-west lane dome' },
-      { geology: 'sandstone', x: 134, z: 128, radius: 46, name: 'the north-east lane dome' },
-      { geology: 'sandstone', x: -140, z: -98, radius: 28, name: 'the south-west lane dome\'s lobe' },
-      { geology: 'sandstone', x: 156, z: 98, radius: 28, name: 'the north-east lane dome\'s lobe' },
-      { geology: 'sandstone', x: 96, z: -112, radius: 46, name: 'the south-east lane dome' },
-      { geology: 'sandstone', x: -80, z: 112, radius: 46, name: 'the north-west lane dome' },
-      { geology: 'sandstone', x: 118, z: -140, radius: 28, name: 'the south-east lane dome\'s lobe' },
-      { geology: 'sandstone', x: -102, z: 140, radius: 28, name: 'the north-west lane dome\'s lobe' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -40, z: -292, radius: 42, name: 'the south gate dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 56, z: 292, radius: 42, name: 'the north gate dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -8, z: -300, radius: 26, name: 'the south gate dome\'s lobe' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 24, z: 300, radius: 26, name: 'the north gate dome\'s lobe' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -118, z: -128, radius: 46, name: 'the south-west lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 134, z: 128, radius: 46, name: 'the north-east lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -140, z: -98, radius: 28, name: 'the south-west lane dome\'s lobe' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 156, z: 98, radius: 28, name: 'the north-east lane dome\'s lobe' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 96, z: -112, radius: 46, name: 'the south-east lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -80, z: 112, radius: 46, name: 'the north-west lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 118, z: -140, radius: 28, name: 'the south-east lane dome\'s lobe' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -102, z: 140, radius: 28, name: 'the north-west lane dome\'s lobe' },
     ],
     rocks: [
-      { form: 'hoodoo', geology: 'sandstone', x: 70, z: -330, radius: 3.4, height: 7, yawDeg: 30, name: 'the south mushroom rock' },
-      { form: 'hoodoo', geology: 'sandstone', x: -54, z: 330, radius: 3.4, height: 7, yawDeg: 210, name: 'the north mushroom rock' },
+      { form: 'hoodoo', geology: 'sandstone', tone: WADI_RUM_STONE, x: 70, z: -330, radius: 3.4, height: 7, yawDeg: 30, name: 'the south mushroom rock' },
+      { form: 'hoodoo', geology: 'sandstone', tone: WADI_RUM_STONE, x: -54, z: 330, radius: 3.4, height: 7, yawDeg: 210, name: 'the north mushroom rock' },
     ],
     rockFields: [
-      { geology: 'sandstone', x: -40, z: -292, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south gate dome' },
-      { geology: 'sandstone', x: 56, z: 292, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north gate dome' },
-      { geology: 'sandstone', x: -118, z: -128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south-west lane dome' },
-      { geology: 'sandstone', x: 134, z: 128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north-east lane dome' },
-      { geology: 'sandstone', x: 96, z: -112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south-east lane dome' },
-      { geology: 'sandstone', x: -80, z: 112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north-west lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -40, z: -292, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south gate dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 56, z: 292, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north gate dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -118, z: -128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south-west lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 134, z: 128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north-east lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 96, z: -112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south-east lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -80, z: 112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north-west lane dome' },
     ],
     landmarks: [
-      { kind: 'cairn', x: -270, z: -228, scale: 1.6, height: 1.6, geology: 'sandstone', name: 'the rujm at the south ravine' },
-      { kind: 'cairn', x: 286, z: 228, scale: 1.6, height: 1.6, geology: 'sandstone', name: 'the rujm at the north ravine' },
+      { kind: 'cairn', x: -270, z: -228, scale: 1.6, height: 1.6, geology: 'sandstone', tone: WADI_RUM_STONE, name: 'the rujm at the south ravine' },
+      { kind: 'cairn', x: 286, z: 228, scale: 1.6, height: 1.6, geology: 'sandstone', tone: WADI_RUM_STONE, name: 'the rujm at the north ravine' },
     ],
   },
   horizon: {
