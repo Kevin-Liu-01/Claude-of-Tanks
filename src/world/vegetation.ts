@@ -6673,6 +6673,54 @@ function* vegetationBuildSteps(
    *   the corridor/bush fades switch from screen-door dither to a binary
    *   cut (uScopeHard) so the magnified picture carries no stipple.
    */
+  // Ground lane (2026-10-03, the gauntlet: trees "scattered evenly instead of growing in clumps, groves and forest
+  // masses"; round 77's open item "no floor darkening — terrain has no canopy channel"): the canopy's cover over the
+  // square, rasterised once from the final tree records (every placement, exclusion and relocation pass is done; the
+  // snag conversion is a look only) — each crown a soft disc of its own radius, the crowns' union then spread over
+  // 12 m and thresholded, so a stand whose canopy closes reads 1 and a lone tree or an open row of them next to
+  // nothing (a pasture runs to a lone oak's trunk; a wood's floor is litter) — the mask the terrain reads (a forest
+  // floor, no field under the trees) and the ground tiers thin under. Self-contained between the factory's functions (the placement
+  // harnesses compile the sections above on their own, the grass-work receipt its slices from dispose to the return).
+  const woodsSize = 256, woodsCell = 1024 / 256;
+  const woodsCrowns = new Float32Array(woodsSize * woodsSize);
+  for (const tree of trees) {
+    const r = Math.max(1.5, tree.cr) * 1.15;
+    const i0 = Math.max(0, Math.floor((tree.x - r + 512) / woodsCell)), i1 = Math.min(woodsSize - 1, Math.floor((tree.x + r + 512) / woodsCell));
+    const j0 = Math.max(0, Math.floor((tree.z - r + 512) / woodsCell)), j1 = Math.min(woodsSize - 1, Math.floor((tree.z + r + 512) / woodsCell));
+    for (let j = j0; j <= j1; j++) {
+      const cz = -512 + (j + 0.5) * woodsCell;
+      for (let i = i0; i <= i1; i++) {
+        const cx = -512 + (i + 0.5) * woodsCell;
+        const w = Math.max(0, Math.min(1, 1.3 - Math.hypot(cx - tree.x, cz - tree.z) / r));
+        const k = j * woodsSize + i;
+        if (w > woodsCrowns[k]) woodsCrowns[k] = w;
+      }
+    }
+  }
+  // the 3 × 3 box (separable, clamped at the square's edge), then the stand threshold
+  const woodsRows = new Float32Array(woodsSize * woodsSize), woodsMask = new Float32Array(woodsSize * woodsSize);
+  for (let j = 0; j < woodsSize; j++) {
+    for (let i = 0; i < woodsSize; i++) {
+      const k = j * woodsSize + i;
+      woodsRows[k] = (woodsCrowns[k] + woodsCrowns[i > 0 ? k - 1 : k] + woodsCrowns[i < woodsSize - 1 ? k + 1 : k]) / 3;
+    }
+  }
+  for (let j = 0; j < woodsSize; j++) {
+    for (let i = 0; i < woodsSize; i++) {
+      const k = j * woodsSize + i;
+      const spread = (woodsRows[k] + woodsRows[j > 0 ? k - woodsSize : k] + woodsRows[j < woodsSize - 1 ? k + woodsSize : k]) / 3;
+      const t = Math.max(0, Math.min(1, (spread - 0.30) / 0.55));
+      woodsMask[k] = t * t * (3 - 2 * t);
+    }
+  }
+  woodsCoverAt = (x: number, z: number): number => {
+    const u = Math.max(0, Math.min(woodsSize - 1.001, (x + 512) / woodsCell - 0.5));
+    const v = Math.max(0, Math.min(woodsSize - 1.001, (z + 512) / woodsCell - 0.5));
+    const i = Math.floor(u), j = Math.floor(v), fu = u - i, fv = v - j, k = j * woodsSize + i;
+    const a = woodsMask[k] + (woodsMask[k + 1] - woodsMask[k]) * fu;
+    const b = woodsMask[k + woodsSize] + (woodsMask[k + woodsSize + 1] - woodsMask[k + woodsSize]) * fu;
+    return a + (b - a) * fv;
+  };
   function setSniperFade(
     f: number,
     immediate = false,
@@ -6743,54 +6791,6 @@ function* vegetationBuildSteps(
     }
   }
   rimTrees.length = 0;
-  // Ground lane (2026-10-03, the gauntlet: trees "scattered evenly instead of growing in clumps, groves and forest
-  // masses"; round 77's open item "no floor darkening — terrain has no canopy channel"): the canopy's cover over the
-  // square, rasterised once from the final tree records (every placement, exclusion and relocation pass is done; the
-  // snag conversion is a look only) — each crown a soft disc of its own radius, the crowns' union then spread over
-  // 12 m and thresholded, so a stand whose canopy closes reads 1 and a lone tree or an open row of them next to
-  // nothing (a pasture runs to a lone oak's trunk; a wood's floor is litter) — the mask the terrain reads (a forest
-  // floor, no field under the trees) and the ground tiers thin under. Self-contained at the build's end (the placement
-  // harnesses compile the sections above on their own).
-  const woodsSize = 256, woodsCell = 1024 / 256;
-  const woodsCrowns = new Float32Array(woodsSize * woodsSize);
-  for (const tree of trees) {
-    const r = Math.max(1.5, tree.cr) * 1.15;
-    const i0 = Math.max(0, Math.floor((tree.x - r + 512) / woodsCell)), i1 = Math.min(woodsSize - 1, Math.floor((tree.x + r + 512) / woodsCell));
-    const j0 = Math.max(0, Math.floor((tree.z - r + 512) / woodsCell)), j1 = Math.min(woodsSize - 1, Math.floor((tree.z + r + 512) / woodsCell));
-    for (let j = j0; j <= j1; j++) {
-      const cz = -512 + (j + 0.5) * woodsCell;
-      for (let i = i0; i <= i1; i++) {
-        const cx = -512 + (i + 0.5) * woodsCell;
-        const w = Math.max(0, Math.min(1, 1.3 - Math.hypot(cx - tree.x, cz - tree.z) / r));
-        const k = j * woodsSize + i;
-        if (w > woodsCrowns[k]) woodsCrowns[k] = w;
-      }
-    }
-  }
-  // the 3 × 3 box (separable, clamped at the square's edge), then the stand threshold
-  const woodsRows = new Float32Array(woodsSize * woodsSize), woodsMask = new Float32Array(woodsSize * woodsSize);
-  for (let j = 0; j < woodsSize; j++) {
-    for (let i = 0; i < woodsSize; i++) {
-      const k = j * woodsSize + i;
-      woodsRows[k] = (woodsCrowns[k] + woodsCrowns[i > 0 ? k - 1 : k] + woodsCrowns[i < woodsSize - 1 ? k + 1 : k]) / 3;
-    }
-  }
-  for (let j = 0; j < woodsSize; j++) {
-    for (let i = 0; i < woodsSize; i++) {
-      const k = j * woodsSize + i;
-      const spread = (woodsRows[k] + woodsRows[j > 0 ? k - woodsSize : k] + woodsRows[j < woodsSize - 1 ? k + woodsSize : k]) / 3;
-      const t = Math.max(0, Math.min(1, (spread - 0.30) / 0.55));
-      woodsMask[k] = t * t * (3 - 2 * t);
-    }
-  }
-  woodsCoverAt = (x: number, z: number): number => {
-    const u = Math.max(0, Math.min(woodsSize - 1.001, (x + 512) / woodsCell - 0.5));
-    const v = Math.max(0, Math.min(woodsSize - 1.001, (z + 512) / woodsCell - 0.5));
-    const i = Math.floor(u), j = Math.floor(v), fu = u - i, fv = v - j, k = j * woodsSize + i;
-    const a = woodsMask[k] + (woodsMask[k + 1] - woodsMask[k]) * fu;
-    const b = woodsMask[k + woodsSize] + (woodsMask[k + woodsSize + 1] - woodsMask[k + woodsSize]) * fu;
-    return a + (b - a) * fv;
-  };
   return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
     crushTree, resetToppled, _clusters: clusters, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
