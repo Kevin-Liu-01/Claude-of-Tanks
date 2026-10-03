@@ -844,6 +844,8 @@ const JUMP_AIR_REPEAT_S = 0.35;
 const JUMP_CEILING_APEXES = 2;
 const RECOIL_KICK_MIN_DEGS = 8;  // spring pitch-rate kick, light gun
 const RECOIL_KICK_MAX_DEGS = 15; // spring pitch-rate kick, heavy gun
+/** The share of the recoil kick an airborne hull takes as rotation (fireRecoil). */
+const AIR_RECOIL_TURN_SCALE = 0.1;
 const OUTER_TRACK_ARM_M = 1.5;   // trackScroll differential arm: v ± yawRate × 1.5
 const GUN_YELLOW_BLOOM_FLOOR = 2;    // gun module yellow: no aim shrink below f = 2
 const GUNNER_DEAD_AIMTIME_MULT = 1.5;
@@ -1450,7 +1452,8 @@ function constrainLoadedRide(
   // the slope, and it follows that much as surface, not as a fall (physics lane, 2026-10-03). Only ground that curves
   // away faster is a flight; a hull sliding down a 45-degree face left it and bounced down it, unable to steer or stop.
   // (only a hang the grade's own descent this tick explains: ground that dropped away further is a drop, and flies)
-  if (hang > 0 && slopeFollowMps > 0 && hang <= 2 * slopeFollowMps * dt + RIDE_DETACH_CLEARANCE_M) {
+  // (and only a ride that is not still rising: one going up over a crest cannot be pulled down the far face, it flies)
+  if (hang > 0 && slopeFollowMps > 0 && ride.v <= 0 && hang <= 2 * slopeFollowMps * dt + RIDE_DETACH_CLEARANCE_M) {
     const pull = Math.min(hang, slopeFollowMps * dt);
     ride.y -= pull;
     hang -= pull;
@@ -1492,6 +1495,8 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   const terrainFloorY = Number.isFinite(state._sup.floorY) ? state._sup.floorY : terrainSupportY;
   const floorY = Number.isFinite(rest) ? Math.max(terrainFloorY, rest) : terrainFloorY;
   const ride = initializeRideState(state, supportY);
+  const vStart = ride.v;
+  let groundTurn = 0;
   if (groundedAtStart) {
     // a blow that took the hull's travel takes the climb (or descent) that travel carried (_blockedSpeed)
     if (_blockedSpeed > 0) {
@@ -1506,7 +1511,9 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
       ride.y -= follow;
       ride.supportY -= follow;
     }
+    const groundVStart = ride.groundV;
     updateRideSupportVelocity(ride, supportY, dt);
+    groundTurn = ride.groundV - groundVStart;
   } else {
     // The support envelope changes when an airborne hull rotates. That is
     // geometry, not a moving floor. The bounded low-gravity rules must not
@@ -1528,6 +1535,11 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
       _wholeTrackOnGround ? Math.max(0, -state.speed * Math.tan(state._terr.pitch)) : 0)
     : advanceAirborneRide(state, ride, dt, contactY, floorY, drive.gravityScale, drive.restitution, drive.bounceMin, drive.bounceMaxHeight);
   if (grounded) ride.bounces = 0;
+  if (groundedAtStart) {
+    if (_wholeTrackOnGround) turnAlongGrade(state, groundTurn);
+  } else if (state.landingImpactMps > 0) {
+    landAlongGrade(state, ride, vStart - GRAVITY * drive.gravityScale * dt, grounded);
+  }
   state.grounded = grounded;
   ride.grounded = grounded;
   state.verticalSpeed = ride.v;
@@ -1536,6 +1548,60 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
 
 /** The weighted z-variance of supporting samples that span a pitch (a 1.5 m run: L²/12). */
 const FIT_MIN_SPAN_ZZ = 1.5 * 1.5 / 12;
+
+/** The steepest grade the turn reads (a face past it is a wall; cliffAhead and the grade rule own it). */
+const GRADE_PUSH_MAX = Math.tan(60 * Math.PI / 180);
+/** Below this travel the turn is nothing to see, and clipping it at zero would ratchet a crawl up a face. */
+const GRADE_PUSH_MIN_TRAVEL_MPS = 1;
+
+/**
+ * The ground pushes along its normal (physics lane, 2026-10-03; Titan Gorge, Caldera CTF seed 0): the vertical speed a
+ * grade gives a hull turns its travel, it does not add to it. Without the turn a hull's travel climbed for free:
+ * driving at 9 m/s up a face steepening to 38 degrees it rose at 8.4 m/s with all its travel kept and flew 1.9 m off
+ * the crest, and a hull falling at 9 m/s onto a 36 % upslope at 15 m/s rebounded at +6.6 m/s (the ground's rise under
+ * its undiminished travel, plus the rebound) still at 15 m/s.
+ *
+ * Loaded on the ground, a change in the rate the ground lifts the hull at (the support's vertical speed under its
+ * travel) moves the travel the other way by the grade, ds = -tan θ · dv: a grade taken gradually turns the velocity at
+ * constant magnitude (travel × cos θ), one taken at once loses the plastic share (travel × cos² θ), and a crest the
+ * hull stays on gives the travel back. The support's rate, not the ride's, so the suspension's swings move nothing.
+ * The travel never passes through zero, and a crawl under a metre a second is left alone (a turn clipped at zero and
+ * given back on the swing ratcheted a hull up a 45-degree face). Only a hull whose whole track is on the ground turns:
+ * the plane of a partial contact (an edge, a trench wall its nose meets) is not a grade it travels along. In flight
+ * nothing touches it.
+ */
+function turnAlongGrade(state: TankState, groundTurn: number): void {
+  if (!(groundTurn !== 0) || !Number.isFinite(groundTurn)) return;
+  shiftTravelAlongGrade(state, groundTurn);
+}
+
+/**
+ * A landing on a face rising in the travel's direction is a normal impulse (turnAlongGrade's rule above): its vertical
+ * part is cos² θ of the vertical closing law's rebound and its horizontal part comes out of the travel; a hull that
+ * settles then rides a ground rising at the turned travel's rate. A landing on a face falling away keeps the vertical
+ * law and the travel (the drive, not the fall, decides how fast a hull runs downhill).
+ */
+function landAlongGrade(state: TankState, ride: RideState, freeV: number, settled: boolean): void {
+  const push = ride.v - freeV;
+  if (!(push > 0) || Math.abs(state.speed) < GRADE_PUSH_MIN_TRAVEL_MPS) return;
+  const grade = clamp(Math.tan(state._terr.fitPitch), -GRADE_PUSH_MAX, GRADE_PUSH_MAX);
+  if (!(grade * state.speed > 0)) return;
+  const rise = push / (1 + grade * grade);
+  ride.v = freeV + rise;
+  shiftTravelAlongGrade(state, rise);
+  if (settled) ride.groundV = state.speed * grade;
+}
+
+function shiftTravelAlongGrade(state: TankState, rise: number): void {
+  if (Math.abs(state.speed) < GRADE_PUSH_MIN_TRAVEL_MPS) return;
+  const grade = clamp(Math.tan(state._terr.fitPitch), -GRADE_PUSH_MAX, GRADE_PUSH_MAX);
+  if (grade === 0) return;
+  const next = state.speed - grade * rise;
+  const kept = state.speed > 0 ? Math.max(0, next) : Math.min(0, next);
+  // the turn is not a braking or a launch of the drive: the inertial pitch reads the drive's change, not this one
+  state._prevSpeed += kept - state.speed;
+  state.speed = kept;
+}
 
 function solveGunLay(
   spec: MovementSpec,
@@ -3532,8 +3598,13 @@ export function fireRecoil(
   // left-side-down (= right side UP: positive roll under the renderer's
   // rotation.z = +visualRoll composition — see the roll-sign note up top).
   const ct = Math.cos(state.turretYaw), st = Math.sin(state.turretYaw);
-  spr.pitchV += kick * ct * recoilScale;
-  spr.rollV += kick * st * recoilScale;
+  // In flight there is no suspension to rock against: the shot turns the whole hull about its centre of mass, the
+  // impulse times the gun's height over the hull's inertia — a tenth of the rock (physics lane, 2026-10-03; at Mars
+  // gravity a bot firing through a boost flight pitched over 95 degrees and came down on its back: the ground rock's
+  // kick, three times a flight, and the air does not damp it back)
+  const turn = state.grounded === false ? AIR_RECOIL_TURN_SCALE : 1;
+  spr.pitchV += kick * ct * recoilScale * turn;
+  spr.rollV += kick * st * recoilScale * turn;
   // Backward translation impulse along the horizontal gun direction.
   const gunYawWorld = state.yaw + state.turretYaw;
   const v = RECOIL_VEL_MPS * (0.7 + 0.6 * heavy) * recoilScale;

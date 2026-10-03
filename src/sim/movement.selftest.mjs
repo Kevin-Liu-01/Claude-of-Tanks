@@ -261,7 +261,10 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   });
   assert(worstPen < 0.22,
     `sine drive λ=${wl} A=${amp}: root plane exceeds track up-travel (${worstPen.toFixed(3)} m)`);
-  assert(worstFloat < 0.23,
+  // The droop (0.18 m) plus the visual rock's reach at the line ends on the tick a hop lands: a landing seats the ride
+  // on the drooped tracks' line. With the grade turn (physics lane, 2026-10-03) the hull's travel over the λ=8 faces
+  // changed and its worst grounded tick moved from a crest (0.220 m) to such a landing on the next face (0.240 m).
+  assert(worstFloat < 0.26,
     `sine drive λ=${wl} A=${amp}: root plane exceeds track droop (${worstFloat.toFixed(3)} m)`);
   assert(worstCompression <= 0.201,
     `sine drive λ=${wl} A=${amp}: compression travel ${worstCompression.toFixed(3)} m`);
@@ -717,11 +720,20 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   ent.state.speed = 12;
   ent.input.throttle = 1;
   let farthestZ = ent.state.pos.z;
-  run(ent, field, 240, () => { farthestZ = Math.max(farthestZ, ent.state.pos.z); });
+  // Physics lane (2026-10-03): the ram rebounds off the face and the held throttle walks the hull back up to its stall
+  // (rear tracks on the level, nose on the face, about 33 degrees) — a cycle whose phase at any one tick (this check
+  // used to read the speed at tick 240) flips with any change to the contact. The stall is the steady state: over the
+  // last two seconds of ten the hull holds its place.
+  let settledFromZ = NaN;
+  run(ent, field, 600, (i) => {
+    farthestZ = Math.max(farthestZ, ent.state.pos.z);
+    if (i === 480) settledFromZ = ent.state.pos.z;
+  });
   assert(farthestZ < 1.5,
     `45-degree face approach: high-speed entry remains bounded (max z=${farthestZ.toFixed(2)})`);
-  assert(ent.state.speed <= 0.05,
-    `45-degree face approach: no sustained uphill velocity (${ent.state.speed.toFixed(2)} m/s)`);
+  const settledRate = (ent.state.pos.z - settledFromZ) / (119 * SIM_DT);
+  assert(settledRate <= 0.05,
+    `45-degree face approach: no sustained uphill velocity (${settledRate.toFixed(2)} m/s over the last two seconds)`);
 }
 {
   const grade = Math.tan(20 * Math.PI / 180);

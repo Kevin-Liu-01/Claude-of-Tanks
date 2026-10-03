@@ -94,10 +94,28 @@ check('land-roof-edge', 'low', 'earth', [
   g('roof sink (m)', (m) => m.roofSinkMaxM, 0.25, 'before: 0.55 m'),
 ]);
 
+// Slopes that turn speed into a launch (Titan Gorge; Caldera CTF seed 0): the ground's vertical push on a grade turns
+// the hull's travel (movement.ts turnAlongGrade / landAlongGrade).
+check('climb-crest', 'medium', 'earth', [
+  g('lift off the crest (m)', (m) => m.liftM, 0.6, 'before: 1.88 m (rose at 8.4 m/s up a 38-degree face, travel kept)'),
+]);
+check('land-upslope', 'medium', 'earth', [
+  g('travel kept landing on a 36 % upslope (m/s)', (m) => m.landingTravel[0]?.[1] ?? 0, 12.5, 'before: 15.0 of 15.0'),
+  g('rebound off the face (m/s)', (m) => m.landingTravel[0]?.[2] ?? 0, 6.0, 'before: +6.59 m/s'),
+]);
+
 // An assault trench under a heavy hull (its 45-degree far wall under the nose, its tail over the trench): the wall is not
 // its grade (movement.ts contactAwareFit's span rule). The grade rule stopped it dead in the trench and it see-sawed.
 check('drive-assault-trench', 'heavy', 'earth', [
-  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 800, 'before: 1366 (see-sawing at 40 degrees in the trench)'),
+  g('progress short of 30 m (m)', (m) => 30 - m.progressM, 0, 'before: 19.6 m'),
+  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 800, 'before: 1366'),
+]);
+
+// Firing in flight (Mars gravity field audit): the shot turns an airborne hull by its rigid-body share, not the
+// suspension's rock (movement.ts fireRecoil). Six shots through a Moon boost flight tipped the heavy hull 112 degrees.
+check('air-fire', 'heavy', 'moon', [
+  g('tilt in flight (rad)', (m) => m.airTiltMaxRad, 0.5, 'before: 1.95 rad'),
+  g('overturned (s)', (m) => m.overturnedS, 0, 'before: 12.1 s on its back'),
 ]);
 
 // Prediction replays the authority's step from the checkpoint (movement checkpoint v4 carries the tip state).
@@ -116,4 +134,4 @@ if (failures.length) {
   for (const line of failures) console.error(`  ${line}`);
   process.exit(1);
 }
-console.log(`physics-torture.selftest: ${runs} torture runs — boost ceiling, cliff edges, the Sirocco climb and swing, stacking, roof edges, the Moon step, prediction replay and rest all hold`);
+console.log(`physics-torture.selftest: ${runs} torture runs — boost ceiling, cliff edges, the Sirocco climb and swing, stacking, roof edges, the Moon step, crest launches, trench crossings, firing in flight, prediction replay and rest all hold`);
