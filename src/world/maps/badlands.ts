@@ -143,7 +143,8 @@ export default {
   clouds: { regime: 'cumulus-humilis', coverage: 0.18, cirrus: 0.35, virga: 0.9 },
   sky: {
     sunElevationDeg: 30, sunAzimuthDeg: 116, turbidity: 7.2, rayleigh: 1.05,
-    mieCoefficient: 0.0095, mieDirectionalG: 0.86, fogDensity: 0.00058,
+    // 2026-10-03 (the skies lane, agreed with the mountains lane: one haze law from the camera to the far country, the map's fogDensity its one lever): arid air is clear — 0.00025 on the four arid maps (a meteorological range near 37 km; a ridge 300 m up at 7.5 km keeps about 60 % of its contrast) (was 0.00058)
+    mieCoefficient: 0.0095, mieDirectionalG: 0.86, fogDensity: 0.00025,
     fogTintHex: 0xb18b77, fogMix: 0.56, envIntensity: 0.17,
     cloudOpacity: 0.62, cloudOpacity2: 0.26, cloudTintHex: 0xffe4cb,
     sunIntensity: 4.25, sunColorHex: 0xffd4ad, hemiIntensity: 0.25, postExposure: 0.92,
