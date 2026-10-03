@@ -147,6 +147,8 @@ function sampleKeys(keys, t, ease) {
  *   cam: [...], cues, effects, film, still: { tMs, exposureMs } }
  * `turrets` / `guns` pose any actor (turret relative to its hull, + toward the hull's left; gun elevation): a number
  * holds, keys ease (smoothstep) from one to the next. */
+/** The Studio's storyboard caps (src/game/studioTimeline.ts): keys past them are dropped without a word. */
+export const STUDIO_MAX_ACTOR_KEYS = 64, STUDIO_MAX_CAMERA_SHOTS = 32;
 const keyAt = (spec, t) => {
   if (!Array.isArray(spec)) return spec;
   if (t <= spec[0][0]) return spec[0][1];
@@ -164,10 +166,16 @@ export function buildShot(s, m) {
     if (m.turrets?.[a.name] != null) a.turretDeg = +keyAt(m.turrets[a.name], 0).toFixed(2);
     if (m.guns?.[a.name] != null) a.gunDeg = +keyAt(m.guns[a.name], 0).toFixed(2);
   }
-  const step = m.stepMs ?? (curve || (m.cam ?? []).length > 2 || m.keepWidth || keyedPose ? 100 : 250);
-  const grid = []; for (let t = 0; t < dur; t += step) grid.push(Math.round(t)); grid.push(dur);
-  for (const c of m.cam) { const t = c.tMs === 'end' ? dur : c.tMs; if (!grid.includes(t)) grid.push(t); }
-  grid.sort((a, b) => a - b);
+  // The Studio keeps at most 64 keys per actor track and 32 camera shots (src/game/studioTimeline.ts) and silently
+  // drops the rest: a 100 ms grid over a 6.6 s take froze the lens at 3.1 s and every turret at 6.3 s (2026-10-03).
+  // Tracks sample on the finest step that fits 64 keys, the lens on the finest that fits 32, both with the lens's own
+  // key times.
+  const fit = (want, max) => Math.max(want, Math.ceil(dur / (max - 4) / 10) * 10);
+  const camTimes = m.cam.map(c => (c.tMs === 'end' ? dur : c.tMs));
+  const sampled = st => { const g = []; for (let t = 0; t < dur; t += st) g.push(Math.round(t)); g.push(dur); for (const t of camTimes) if (!g.includes(t)) g.push(t); return g.sort((a, b) => a - b); };
+  const step = fit(m.stepMs ?? (curve || (m.cam ?? []).length > 2 || m.keepWidth || keyedPose ? 100 : 250), STUDIO_MAX_ACTOR_KEYS);
+  const grid = sampled(step), camGrid = sampled(fit(step, STUDIO_MAX_CAMERA_SHOTS));
+  if (grid.length > STUDIO_MAX_ACTOR_KEYS || camGrid.length > STUDIO_MAX_CAMERA_SHOTS) throw new Error(`buildShot: ${grid.length} track keys / ${camGrid.length} lens keys exceed the Studio's caps`);
   const hero0 = scene.actors[0];
   const heroPath = pathOf(hero0.pos, s.heading, sp, curve);
   // each actor: hero-relative rigid offset (allies) or its own straight path (foes)
@@ -212,7 +220,7 @@ export function buildShot(s, m) {
     return [p[0], c.pos ? c.pos[1] : (c.lift ?? 2), p[1], q[0], c.ll, q[1], c.fov ?? 40, c.roll ?? 0];
   };
   const keyIndex = t => { let i = 0; while (i < keys.length - 2 && keys[i + 1].tMs <= t) i++; return i; };
-  const shots = grid.map((t, n) => {
+  const shots = camGrid.map((t, n) => {
     let pose;
     if (keys.length === 1 || t <= keys[0].tMs) pose = evalKey(keys[0], t);
     else if (t >= keys[keys.length - 1].tMs) pose = evalKey(keys[keys.length - 1], t);

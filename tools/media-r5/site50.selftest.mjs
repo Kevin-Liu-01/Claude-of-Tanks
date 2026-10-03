@@ -4,6 +4,7 @@ import { CAST } from './cast.mjs';
 import { isBuiltInCamoId } from '../../src/vehicles/camoPolicy.ts';
 import { DUR, KINDS, LOOP_MS, PAINT, SHOTS, XFADE_MS, siteScene } from './site50.mjs';
 import { blockedFraction, heroInFrameFraction } from './camera-clearance.mjs';
+import { STUDIO_MAX_ACTOR_KEYS, STUDIO_MAX_CAMERA_SHOTS } from './setups.mjs';
 
 // Owner 2026-10-02: fifty new shots of tanks, battles and battlefields for the site, each one continuous take that
 // site-loops.mjs turns into a seamless loop. Round 2 sets the bar by the owner's own Open Graph key art and Steinburg
@@ -103,6 +104,10 @@ let flankSwings = 0, wideWingmen = 0, lensAngles = 0;
 for (const shot of SHOTS) {
   const [n, id] = shot, scene = siteScene(shot), tracks = scene.storyboard.actorTracks ?? [];
   assert.ok(['sectors', 'flank', 'lens'].includes(scene.meta.turrets?.style), `${id}: a turret style`);
+  // the Studio drops keys past its caps without a word (a 100 ms lens grid froze the camera at 3.1 s, 2026-10-03)
+  const sb = scene.storyboard;
+  assert.ok(sb.shots.length <= STUDIO_MAX_CAMERA_SHOTS && sb.shots.at(-1).tMs === sb.durationMs, `${id}: the lens fits the Studio's ${STUDIO_MAX_CAMERA_SHOTS} keys and runs to the end (${sb.shots.length})`);
+  for (const tr of tracks) assert.ok(tr.keys.length <= STUDIO_MAX_ACTOR_KEYS && tr.keys.at(-1).tMs === sb.durationMs, `${id}: ${tr.actor}'s track fits ${STUDIO_MAX_ACTOR_KEYS} keys and runs to the end (${tr.keys.length})`);
   for (const a of scene.actors.filter(x => !x.name.startsWith('foe'))) {
     const keys = tracks.find(tr => tr.actor === a.name)?.keys;
     assert.ok(keys?.length > 2, `${id}: ${a.name}'s turret is keyed`);
