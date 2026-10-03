@@ -67,8 +67,9 @@ a session scratchpad), which was not versioned and was lost once with a scratchp
     node tools/gate.mjs --only='src/vehicles/**'       # receipt selection passes through: --shard=i/n, --all, --order=registry
     node tools/gate.mjs --dry-run                      # print the plan, run nothing
 
-- **build** is `npm run build`; its prebuild runs `npm run i18n:validate`, so **i18n** adds only
-  `tools/i18n-scan.mjs --check`, the other half of `npm run i18n:check`.
+- **build** is `npm run build`; its prebuild runs `npm run i18n:validate` and its page catalog plugin
+  runs the `tools/i18n-page-catalogs.mjs` scan, so **i18n** adds only `tools/i18n-scan.mjs --check`, the
+  rest of `npm run i18n:check`.
 - **budget** runs `tools/bundle-budget.mjs` once that file exists and is skipped until then.
 - **workers** runs the `typecheck` and `test` scripts of every `cloudflare/*/package.json` (rooms and
   telemetry). They were in no gate before: the rooms typecheck was red on main for days unseen.

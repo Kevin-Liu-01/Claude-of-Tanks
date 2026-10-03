@@ -1,4 +1,6 @@
-// i18nLazyCatalog.selftest.mjs — English documents never load the zh-CN catalog; Chinese ones preload it (FE-P3).
+// i18nLazyCatalog.selftest.mjs — every document loads its own catalogs on demand: English documents never load the
+// zh-CN catalog and Chinese ones preload it (FE-P3); no page's static graph holds a catalog, so a public page loads only
+// its generated page catalog (tools/i18n-page-catalogs.selftest.mjs) and the game the full catalogs.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -8,15 +10,19 @@ import { importChain, runtimeImportSpecifiers, staticImportClosure } from '../..
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
-// 1. No page's static graph holds the Chinese catalog; every page keeps English resident.
-const PAGE_ENTRIES = ['src/main.ts', 'src/presentation/notFound.ts', 'src/presentation/publicNav.ts',
-  'src/presentation/publicPages.ts', 'src/docs/docs.ts', 'src/docs/topics.ts', 'src/gallery/gallery.ts'];
+// 1. No page's static graph holds a catalog: the runtime awaits the document's dictionaries (the game's full catalogs or
+//    a public page's page catalog), and English leaves the shared runtime chunk for the game's own catalog chunk.
+const PAGE_ENTRIES = ['src/main.ts', 'src/ui/localeBootstrap.ts', 'src/presentation/notFound.ts',
+  'src/presentation/publicNav.ts', 'src/presentation/publicPages.ts', 'src/docs/docs.ts', 'src/docs/topics.ts',
+  'src/gallery/gallery.ts'];
+const CATALOG_MODULES = ['src/ui/i18nCatalog.en-US.json', 'src/ui/i18nCatalogEnUS.ts', 'src/ui/i18nCatalog.zh-CN.json',
+  'src/ui/i18nCatalogZhCN.ts', 'src/ui/i18nCatalog.ts'];
 for (const entry of PAGE_ENTRIES) {
   const closure = staticImportClosure(entry, { root: ROOT });
-  for (const forbidden of ['src/ui/i18nCatalog.zh-CN.json', 'src/ui/i18nCatalogZhCN.ts', 'src/ui/i18nCatalog.ts']) {
+  assert.ok(closure.has('src/ui/i18n.ts'), `${entry} reaches the i18n runtime`);
+  for (const forbidden of CATALOG_MODULES) {
     assert.ok(!closure.has(forbidden), `${entry} statically loads ${forbidden}: ${importChain(closure, forbidden)}`);
   }
-  if (closure.has('src/ui/i18n.ts')) assert.ok(closure.has('src/ui/i18nCatalog.en-US.json'), `${entry}: English stays resident`);
 }
 
 // 2. Browser code reaches the full two-locale catalog through no import, static or dynamic: inside src/ only the
@@ -35,25 +41,33 @@ assert.deepEqual(importersOf('src/ui/i18nCatalog.ts'), ['src/presentation/locali
 assert.deepEqual(importersOf('src/presentation/localizedHtml.ts'), [],
   'the localizer runs in the middleware, the Vite config and the page generator, never in the browser');
 
-// The lazy loader imports a module, never the JSON file: Rolldown leaves an attributed dynamic JSON import
-// unrewritten (the browser would request /assets/i18nCatalog.zh-CN.json), and the build plugin now refuses it.
+// The lazy loaders import modules, never the JSON files: Rolldown leaves an attributed dynamic JSON import
+// unrewritten (the browser would request /assets/i18nCatalog.zh-CN.json), and the build plugin refuses it.
 const dictionariesSource = readFileSync(resolve(ROOT, 'src/ui/i18nDictionaries.ts'), 'utf8');
 assert.match(dictionariesSource, /import\('\.\/i18nCatalogZhCN\.ts'\)/);
+assert.match(dictionariesSource, /import\('\.\/i18nCatalogEnUS\.ts'\)/);
 assert.doesNotMatch(dictionariesSource, /import\(\s*['"][^'"]+\.json['"]/, 'no dynamic JSON import in browser code');
+assert.doesNotMatch(dictionariesSource, /^import\b/m, 'the registry ships no catalog: it has no static import');
 
 // 3. Runtime: an English boot leaves zh-CN unloaded; Chinese text appears only once its dictionary is resident.
 const stored = new Map();
 const defineGlobal = (name, value) => Object.defineProperty(globalThis, name, { configurable: true, value });
 defineGlobal('localStorage', { getItem: (key) => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, String(value)) });
-// A worker or server reaches the runtime through shared code (the map catalog): evaluating it never starts a
-// download or awaits one, even with a Chinese navigator — a module worker must not miss its first messages.
+// A worker or server reaches the runtime through shared code (the map catalog): evaluating it never starts a Chinese
+// download, even with a Chinese navigator. Outside Vite (here, Node) the full English catalog stays resident for
+// servers, tools and receipts; a Vite-built module worker (import.meta.env defined, no window) awaits nothing, so it
+// cannot miss its first messages.
 defineGlobal('navigator', { language: 'zh-CN', languages: ['zh-CN'] });
 const dictionaries = await import('./i18nDictionaries.ts');
-await import('./i18n.ts?context=worker');
-assert.equal(dictionaries.localeDictionary('zh-CN'), undefined, 'a windowless context leaves the catalog unloaded');
+const worker = await import('./i18n.ts?context=worker');
+assert.equal(dictionaries.localeDictionary('zh-CN'), undefined, 'a windowless context leaves the Chinese catalog unloaded');
+assert.ok(dictionaries.localeDictionary('en-US'), 'Node keeps the full English catalog resident');
+assert.equal(worker.t('garage.battle'), 'BATTLE', 'a windowless Node context translates through English');
 const runtimeSource = readFileSync(resolve(ROOT, 'src/ui/i18n.ts'), 'utf8');
-assert.match(runtimeSource, /if \(typeof window !== 'undefined'\) \{\s*await loadLocaleDictionary\(detectLocale\(\)\)/,
-  'the boot await is confined to browser documents');
+const bootAwait = /^if \(typeof window !== 'undefined'\) \{\s*await Promise\.all\(\[\s*loadLocaleDictionary\(FALLBACK_LOCALE\),\s*loadLocaleDictionary\(detectLocale\(\)\)\.catch\([\s\S]*?\]\);\s*\} else if \(!import\.meta\.env\) \{\s*await loadLocaleDictionary\(FALLBACK_LOCALE\);\s*\}\s*$/m;
+assert.match(runtimeSource, bootAwait,
+  'browser documents await English (a failure propagates) and the boot locale (a failure degrades); only Node awaits otherwise');
+assert.equal(runtimeSource.match(/^\s*await /gm)?.length, 2, 'the runtime has no other top-level await');
 
 defineGlobal('navigator', { language: 'en-US', languages: ['en-US'] });
 defineGlobal('document', { documentElement: { lang: '', dir: '', style: { setProperty() {} } } });
@@ -103,7 +117,10 @@ assert.ok(!localizeHtmlDocument(built.replace(/<meta name="cot-locale-catalog"[^
   .includes('modulepreload" crossorigin href="/assets/i18nCatalog'), 'no meta (the dev server) means no preload');
 
 const viteConfig = readFileSync(resolve(ROOT, 'vite.config.ts'), 'utf8');
-assert.match(viteConfig, /name: 'cot-locale-catalog-meta',[\s\S]{0,400}order: 'post'/,
-  'the build names the zh-CN chunk in every page after bundling');
+assert.match(viteConfig, /^\s*i18nPageCatalogs\(\),$/m, 'the build registers the page catalog plugin');
+const pluginSource = readFileSync(resolve(ROOT, 'tools/viteI18nPageCatalogs.ts'), 'utf8');
+assert.match(pluginSource, /transformIndexHtml: \{\s*order: 'post',/,
+  'the build names each page\'s catalog chunks after bundling');
 
-console.log('i18nLazyCatalog.selftest: zh-CN loads on demand, English pages never fetch it, /cn/ preloads it');
+console.log('i18nLazyCatalog.selftest: no page graph holds a catalog; zh-CN loads on demand, English pages never fetch it, '
+  + '/cn/ preloads it');

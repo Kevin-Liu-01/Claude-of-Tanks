@@ -26,13 +26,14 @@ import { dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Connect } from 'vite';
 import { renderProductStats } from './src/productStats.ts';
-import { LOCALE_CATALOG_META, localizeHtmlDocument } from './src/presentation/localizedHtml.ts';
+import { localizeHtmlDocument } from './src/presentation/localizedHtml.ts';
 import { publicRouteForEntry, resolveLocalePath } from './src/ui/localeRouting.ts';
 import { replaceAppVersionTokens, resolveAppVersion } from './tools/appVersion.ts';
 import { assertPublicBuildEnv } from './tools/publicBuildEnv.ts';
 import { isExistingProjectDocument } from './tools/existing-document-route.ts';
 import { sharedWorkerChunks } from './tools/viteSharedWorkers.ts';
 import { glslMinify } from './tools/viteGlslMinify.ts';
+import { BOOT_RUNTIME_MODULES, i18nPageCatalogs, VITE_PRELOAD_HELPER } from './tools/viteI18nPageCatalogs.ts';
 
 const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
 
@@ -252,33 +253,12 @@ export default defineConfig({
         return localizeHtmlDocument(html, route, locale);
       },
     },
-    {
-      // FE-P3: zh-CN is a lazy chunk. Every built page names it in an inert meta; localizeHtmlDocument turns
-      // the meta into a modulepreload on Chinese documents (build-time /cn/ pages and the middleware's
-      // request-time ones), so the catalog downloads with the boot graph and English pages never fetch it.
-      name: 'cot-locale-catalog-meta',
-      apply: 'build',
-      transformIndexHtml: {
-        order: 'post',
-        handler(_html, ctx) {
-          const catalog = Object.values(ctx.bundle ?? {}).find((output) => output.type === 'chunk'
-            && output.moduleIds.some((id) => id.split('?', 1)[0].endsWith('/src/ui/i18nCatalog.zh-CN.json')));
-          if (!catalog) throw new Error('cot-locale-catalog-meta: the zh-CN catalog chunk is missing from the bundle');
-          // The loader must name the emitted chunk: an unrewritten specifier would request a file that does not exist.
-          const loaders = Object.values(ctx.bundle ?? {}).filter((output) => output.type === 'chunk'
-            && output.dynamicImports.includes(catalog.fileName));
-          const chunkName = catalog.fileName.split('/').pop() ?? catalog.fileName;
-          if (!loaders.length || loaders.some((output) => output.type === 'chunk' && !output.code.includes(chunkName))) {
-            throw new Error(`cot-locale-catalog-meta: no chunk imports ${catalog.fileName} by its emitted name`);
-          }
-          return [{
-            tag: 'meta',
-            attrs: { name: LOCALE_CATALOG_META, 'data-locale': 'zh-CN', content: `/${catalog.fileName}` },
-            injectTo: 'head',
-          }];
-        },
-      },
-    },
+    // FE-P3 + 2026-10-02 (tools/viteI18nPageCatalogs.ts): every document loads its own catalogs. The game keeps the full
+    // ones; each public page loads a generated page catalog holding only the keys its code and markup can show. Every
+    // built page preloads its English chunk and names its zh-CN chunk in an inert meta, which localizeHtmlDocument turns
+    // into a modulepreload on Chinese documents (build-time /cn/ pages and the middleware's request-time ones), so
+    // English visitors never fetch Chinese and Chinese pages never flash English.
+    i18nPageCatalogs(),
     {
       name: 'cot-site-entry-output',
       enforce: 'post',
@@ -365,6 +345,19 @@ export default defineConfig({
         // the 404s it cached for deploy-93 chunks under the deploy-89 immutable rule (docs/DEVELOPMENT.md
         // "Asset caching"); the eight-character width and the [name]-[hash] shape stay the same.
         hashCharacters: 'base36',
+        // 2026-10-02 (tools/viteI18nPageCatalogs.ts): every document's boot runtime is one chunk — the locale runtime
+        // and routing, static-markup localization, responsive layout and Vite's modulepreload polyfill. Every page loads
+        // all of them at boot; automatic chunking split them in two only because lazy chunks import the locale runtime
+        // alone. One chunk keeps the game at its request count now that its English catalog is a chunk of its own.
+        // Vite's preload helper keeps a chunk of its own (the higher priority claims it before the boot group would
+        // pull it in as a dependency): the shared workers load it, and the boot chunk's polyfill needs a document. The
+        // plugin fails the build when the boot chunk holds anything else or a worker reaches it.
+        codeSplitting: {
+          groups: [
+            { name: 'preload-helper', test: VITE_PRELOAD_HELPER, priority: 1 },
+            { name: 'i18n', test: BOOT_RUNTIME_MODULES },
+          ],
+        },
       },
     },
   },
