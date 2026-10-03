@@ -12,7 +12,7 @@
 //   <id>.webm             1920x1080 VP9 crf 24, silent                  (hero rails, docs topic heroes, feature loops)
 //   <id>-mobile.mp4       1280x720 H.264 crf 22, capped at 3 Mbit/s     (phone variants)
 //   <id>.gif              960 px, 25 fps, loop palette, error diffusion (full-quality GIF)
-//   <id>-share.gif        640 px, 20 fps, loop palette, ordered dither  (fits common upload limits)
+//   <id>-share.gif        640 px / 20 fps, stepped down to 560/18, 480/16, 400/15 until under 15 MB (upload limits)
 //   <id>.jpg              1920x1080 poster = the loop's first frame
 //   <id>-4k.png           the 4K still master; <id>-4k.jpg (q95) and <id>.webp (1920, q92) from it
 //   <id>.scene.json       the Studio scene the take was rendered from (map, hour, cast and paint, turrets, effects,
@@ -48,6 +48,8 @@ const GIF = [
   ['gif', '.gif', 'hqdn3d=3:2.5:6:5,fps=25,' + DOWN(960), 'palettegen=max_colors=256:stats_mode=diff', 'paletteuse=dither=sierra2_4a:diff_mode=rectangle'],
   ['gifShare', '-share.gif', 'hqdn3d=3:2.5:6:5,fps=20,' + DOWN(640), 'palettegen=max_colors=256:stats_mode=diff', 'paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle'],
 ];
+// 15 MB fits the common GIF limits; busy smoke-and-fire loops came out at 18-21 MB at 640 px / 20 fps (2026-10-03)
+const SHARE_GIF_MAX = 15e6, SHARE_LADDER = [[560, 18, 'bayer:bayer_scale=4'], [480, 16, 'bayer:bayer_scale=4'], [400, 15, 'bayer:bayer_scale=4']];
 mkdirSync(deliver, { recursive: true });
 const rows = [];
 for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders, 'films')) : []).filter(d => /^s\d\d-/.test(d)).sort()) {
@@ -79,6 +81,12 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   for (const [key, suffix, pre, gen, use] of GIF) {
     ff('-i', master, '-filter_complex', `${loop};[loop]${pre},split[g1][g2];[g1]${gen}[p];[g2][p]${use}[v]`, '-map', '[v]', '-loop', '0', join(out, `${id}${suffix}`));
     files[key] = `${id}/${id}${suffix}`;
+  }
+  // the share GIF must fit common upload limits: step down size and rate until it is under SHARE_GIF_MAX
+  for (const [w, fps, dither] of SHARE_LADDER) {
+    if (statSync(join(out, `${id}-share.gif`)).size <= SHARE_GIF_MAX) break;
+    ff('-i', master, '-filter_complex', `${loop};[loop]hqdn3d=3:2.5:6:5,fps=${fps},${DOWN(w)},split[g1][g2];[g1]palettegen=max_colors=256:stats_mode=diff[p];[g2][p]paletteuse=dither=${dither}:diff_mode=rectangle[v]`,
+      '-map', '[v]', '-loop', '0', join(out, `${id}-share.gif`));
   }
   ff('-i', master, '-filter_complex', `${loop};[loop]${DOWN(1920)}[v]`, '-map', '[v]', '-frames:v', '1', '-q:v', '2', join(out, `${id}.jpg`));
   files.poster = `${id}/${id}.jpg`;
