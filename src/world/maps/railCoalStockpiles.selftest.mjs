@@ -164,26 +164,14 @@ for(const mapId of MAP_IDS) {
       }
       for(const parapet of parapets){assert.equal(parapet.y0,deck.deckY);assert.ok(parapet.y1-parapet.y0>=1,'a parapet stops a hull');}
     });
-    // Round 67 (2026-09-24): Tarkhan's tunnel portal is the third — the rail kit's one record where a spur's cutting
-    // leaves the square (a compound: the gallery block and two flank walls closing the valley at the headwall's
-    // plane, footed under the outland bed); railCutting.selftest certifies its parts, here only the footprint contract.
-    // 2026-10-01: Cinder Junction's through line ends in a portal at each end, the only other map with cuttings.
-    const portals=candidate.obstacles.filter(record=>record.kind==='tunnel-portal');
-    assert.equal(portals.length,mapId==='steppe'?1:mapId==='railyard'?2:0,
-      `${mapId}: only Tarkhan's spur and Cinder Junction's main line end in tunnel portals`);
-    assert.equal(candidate.colliders.filter(record=>record.kind==='tunnel-portal').length,portals.length);
-    for(const portal of portals){
-      assert.equal(portal.shape2.kind,'compound');assert.equal(portal.shape2.parts.length,3,'the gallery block and two flank walls');
-      assert.ok(Math.min(Math.abs(portal.min[0]),Math.abs(portal.max[0]))>512,'the portal stands past the red line, down the valley');
-      const bed=field.getOutlandHeightAt(portal.shape2.cx,portal.shape2.cz);
-      assert.ok(portal.min[1]<bed&&portal.max[1]>bed+10,'footed under the outland bed, taller than a hull can mount');
-      assert.equal(Math.min(...portal.shape2.parts.map(part=>part.y0)),portal.min[1]);assert.equal(Math.max(...portal.shape2.parts.map(part=>part.y1)),portal.max[1]);
-    }
-    const solids=coal.length+mills.length+bridges.length+portals.length;
+    // Round 67's tunnel portals (Tarkhan's spur, 2026-10-01 Cinder Junction's main line) are retired (2026-10-03, the
+    // map-borders lane): a cutting's line runs on in the open past the edge and publishes no record (railCutting.selftest).
+    assert.equal(candidate.obstacles.filter(record=>record.kind==='tunnel-portal').length,0,`${mapId}: no tunnel portal`);
+    const solids=coal.length+mills.length+bridges.length;
     assert.equal(candidate.obstacles.length,solids);assert.equal(candidate.colliders.length,solids);
     if(railMaps.includes(mapId)) assert.ok(coal.length>0,`${mapId}: retain recognizable coal stockpiles`);
     else assert.equal(coal.length,0,`${mapId}: all26 other map outputs unchanged`);
-    const soft=record=>record.kind!=='mill-house'&&record.kind!=='bridge'&&record.kind!=='tunnel-portal';
+    const soft=record=>record.kind!=='mill-house'&&record.kind!=='bridge';
     const heaps=candidate.obstacles.filter(soft), heapColliders=candidate.colliders.filter(soft);
     const strip=coalStrip(field);
     coal.forEach((geometry,index)=>validatePile(geometry,heaps[index],heapColliders[index],field,strip));
