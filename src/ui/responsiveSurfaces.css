@@ -177,6 +177,12 @@ body.cot-touch-layout .cot-si-toasthost{
 }
 
 /* SETTINGS --------------------------------------------------------------- */
+/* the crew voice row stacks on phones and compact screens (main's crew packs, 2026-10-02; moved here from a
+   600 px media query in settings.ts, so the shared width classes own the breakpoint) */
+body[data-cot-width='compact'] .cot-set-crew-row,
+body[data-cot-width='phone'] .cot-set-crew-row{flex-direction:column;align-items:stretch;gap:10px}
+body[data-cot-width='compact'] .cot-set-crew-field,
+body[data-cot-width='phone'] .cot-set-crew-field{width:100%}
 body[data-cot-width='tablet'] .cot-set-panel{width:min(744px,calc(100vw - 32px));max-height:calc(var(--cot-viewport-height,100dvh) - 32px)}
 body[data-cot-width='compact'] .cot-settings,
 body[data-cot-width='phone'] .cot-settings{align-items:stretch;justify-content:stretch;padding:0}
