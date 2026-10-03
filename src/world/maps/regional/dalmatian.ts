@@ -464,6 +464,49 @@ const loggia: RegionalBuilder = (ctx) => {
 };
 
 /**
+ * The fish market (ribarnica) on the base market plot: four limestone piers with moulded bases and caps on a stepped
+ * platform, an eave course of dressed stone, a low hipped roof of canal tiles; two stone tables for the morning catch
+ * under it, crates of fish on the slabs (Trogir, Hvar, Supetar).
+ */
+const fishMarket: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const look = ctx.variant;
+  const W = Math.max(4.8, Math.min(6.4, ctx.info.w - 0.3)), D = Math.max(3.8, Math.min(5.0, ctx.info.d - 0.3));
+  const floor = 0.32, top = 2.75, course = 0.3, p = 0.19;
+  // the platform of dressed slabs on a step all round
+  sink.span('stone', -W / 2 - 0.3, -0.3, -D / 2 - 0.3, W / 2 + 0.3, floor - 0.16, D / 2 + 0.3);
+  sink.span('stone', -W / 2 - 0.02, floor - 0.16, -D / 2 - 0.02, W / 2 + 0.02, floor, D / 2 + 0.02);
+  const px = W / 2 - 0.32, pz = D / 2 - 0.32;
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+    const x = sx * px, z = sz * pz;
+    sink.span('stone', x - p - 0.08, floor, z - p - 0.08, x + p + 0.08, floor + 0.24, z + p + 0.08);
+    sink.span('stone', x - p, floor + 0.24, z - p, x + p, top - 0.18, z + p);
+    sink.span('stone', x - p - 0.08, top - 0.18, z - p - 0.08, x + p + 0.08, top, z + p + 0.08);
+  }
+  // the eave course on the pier caps all round
+  const e = p + 0.06;
+  for (const sz of [-1, 1]) sink.span('stone', -px - e, top, sz * pz - e, px + e, top + course, sz * pz + e);
+  for (const sx of [-1, 1]) sink.span('stone', sx * px - e, top, -pz + e, sx * px + e, top + course, pz - e);
+  // the roof: canal tiles on four low slopes, laid along the long side
+  const roof: RoofSpec = canalHip(21, 0.32);
+  const along = W >= D, across = 2 * (along ? pz : px) + 2 * e, length = 2 * (along ? px : pz) + 2 * e;
+  sink.placed(along ? Math.PI / 2 : 0, 0, 0, 0, () => emitRoof(sink, roofGeometry(across, length, top + course, roof), roof));
+  // the tables: a limestone slab on two stone legs either side of the middle, crates of the catch on them
+  const L = Math.max(2.4, 2 * px - 1.0), crate = rgb(0x8a7458), catches: readonly Rgb[] = [0x9aa4a8, 0xa8aeb0, 0x7e8a90].map(rgb);
+  for (const sz of [-1, 1]) {
+    const z = sz * Math.min(0.85, pz - 0.6);
+    for (const sx of [-1, 1]) sink.span('stone', sx * (L / 2 - 0.35) - 0.13, floor, z - 0.26, sx * (L / 2 - 0.35) + 0.13, floor + 0.76, z + 0.26);
+    sink.span('stone', -L / 2, floor + 0.76, z - 0.38, L / 2, floor + 0.88, z + 0.38);
+    for (let k = 0, n = 2 + Math.floor(look() * 2); k < n; k++) {
+      const x = -L / 2 + 0.45 + (L - 0.9) * k / (n - 1) + (look() - 0.5) * 0.12;
+      sink.span('structureWood', x - 0.28, floor + 0.88, z - 0.19, x + 0.28, floor + 1.04, z + 0.19, { colour: shade(crate, 0.85 + look() * 0.3), decor: true });
+      sink.span('structureWood', x - 0.24, floor + 1.04, z - 0.15, x + 0.24, floor + 1.08, z + 0.15, { colour: pick(look, catches), decor: true });
+    }
+  }
+  return sink.finish();
+};
+
+/**
  * The customs house on the riva (the base bathhouse's plot): a rendered two-storey public building on a stone plinth,
  * a hipped roof, a string course and a cornice, dressed quoins, a central arched door under a stone balcony.
  */
@@ -519,6 +562,8 @@ export const DALMATIAN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Obj
   fishery: fishStore,
   marketRow: loggia,
   bathhouse: customsHouse,
+  // the base market plot: the generic canvas stall becomes the fish market
+  market: fishMarket,
 });
 
 export const DALMATIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
