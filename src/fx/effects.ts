@@ -134,6 +134,7 @@ interface FxDecalVisual {
 }
 
 interface FxEntity {
+  spec?: {id:string;nation?:string};
   aerial?: {active:boolean;yaw:number;kind?:'drone'|'gunship'};
   visual: FxVisual;
   state: {
@@ -3713,8 +3714,8 @@ function* createFxSteps(
       if (shell.spec?.tracer === 'DRONE') {
         // The FPV camera sits inside its airframe; retain the launch/remote silhouette.
         if (shell.pos.distanceToSquared(camera.position) > 4) {
-          const flyer=decalEntityFor(shell.shooterId)?.aerial;
-          drones.write(shell.pos,shell.vel,shell.id,flyer?.active?flyer.yaw:undefined,shell.ageS);
+          const owner=decalEntityFor(shell.shooterId),flyer=owner?.aerial;
+          drones.write(shell.pos,shell.vel,shell.id,flyer?.active?flyer.yaw:undefined,shell.ageS,owner?.spec?.nation);
         }
         continue;
       }

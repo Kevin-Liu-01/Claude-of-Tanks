@@ -1,3 +1,5 @@
+import {applyEscortFieldKitArmor} from './escortFieldKitArmor.ts';
+import {ESCORT_FIELD_KITS} from './escortFieldKitLayout.ts';
 // Polish armored-family gameplay/spec registration. The owner-supplied GLBs
 // remain external visual and metric oracles; all playable geometry is the
 // first-party procedural work in profiles/poland.ts.
@@ -174,6 +176,8 @@ pl01_105.gun = {
 };
 pl01_105.armor.gunBarrel.radiusM = 0.086;
 pl01_105.visual = { ...pl01_105.visual, number: 'PL-105' };
+
+applyEscortFieldKitArmor(pl01_105,ESCORT_FIELD_KITS.pl01_105);
 
 const POLAND_SPECS = {
   t72m1_jaguar: t72m1Jaguar,

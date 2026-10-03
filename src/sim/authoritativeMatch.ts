@@ -606,6 +606,7 @@ function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec):
 
   _euler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
   _quat.setFromEuler(_euler);
+  _unit.setScalar(state.modeScale??1);
   _hullMatrix.compose(state.pos, _quat, _unit);
   _localMatrix.makeRotationY(state.turretYaw);
   _localMatrix.setPosition(turretPivot[0], turretPivot[1], turretPivot[2]);
@@ -616,7 +617,7 @@ function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec):
   _gunDir.set(0, sinPitch, cosPitch).transformDirection(_turretMatrix).normalize();
   _muzzle.set(gunPivot[0], gunPivot[1], gunPivot[2])
     .applyMatrix4(_turretMatrix)
-    .addScaledVector(_gunDir, barrelM);
+    .addScaledVector(_gunDir, barrelM*(state.modeScale??1));
   const launchers = usesLauncherMuzzles(entity.spec.gun, shellSpec) ? entity.spec.gun.launcherMuzzles : undefined;
   if (launchers?.length) {
     const index = launcherMuzzleIndex(entity.spec.gun, shellSpec, entity.combat.launcherCursor ?? 0);
@@ -679,7 +680,7 @@ function firstTankTrace(
   let bestDistance = Infinity;
   const segmentLength = shell.prevPos.distanceTo(shell.pos);
   for (const target of entities) {
-    if (target.id === shell.shooterId || target.modeActive === false ||
+    if (target.id === shell.shooterId || target.modeActive === false || isGunship(target) ||
         !target.state || !target.combat) continue;
     const radius = finite(target.spec.armor && target.spec.armor.boundingRadiusM,
       target.spec.dims.hullLengthM * 0.65);
@@ -1499,6 +1500,8 @@ export function createAuthoritativeMatch({
     entity.input.actionBits = 0;
     if (!bits || entity.combat.destroyed) return;
     if (!result) {
+      if(bits&PLAYER_ACTION_BITS.SUPPLY_AMMO)modeController.requestSupply(entity.id,'ammo',timeS+modeTimeOffsetS);
+      if(bits&PLAYER_ACTION_BITS.SUPPLY_HEAL)modeController.requestSupply(entity.id,'heal',timeS+modeTimeOffsetS);
       if (bits & PLAYER_ACTION_BITS.SMOKE && requestAuxiliary(entity, 'smoke', timeS, heightField.getHeightAt)) {
         auxiliarySmokeScreens.push(entity.combat.auxiliary!.smoke!);
         if(auxiliarySmokeScreens.length>84)auxiliarySmokeScreens.shift();
@@ -1561,6 +1564,7 @@ export function createAuthoritativeMatch({
   }
 
   function notifyEnemyBotsOfShot(entity: AuthoritativeEntity): void {
+    if(isGunship(entity))return;
     for (const other of entities) {
       if (!other.bot || other.team === entity.team || other.combat.destroyed || !other.aiCtl) continue;
       if (other.state.pos.distanceToSquared(entity.state.pos) <= 500 * 500) other.aiCtl.notifyEnemyFired(entity);
@@ -1614,7 +1618,7 @@ export function createAuthoritativeMatch({
     }
     // ruleset gravity rides the shooter's stamp (Turbo Ball: 0.6 g lobs); unlimited rounds refill the channel
     shell.gravityMps2 *= Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1;
-    refillUnlimitedAmmunition(ruleset, combat, firedSlot);
+    if(ruleset.aerial!=='gunship'||isGunship(entity))refillUnlimitedAmmunition(ruleset, combat, firedSlot);
     shells.push(shell);
     startPostShotReload(combat, entity.spec);
     selectFallbackAfterShot(entity, firedSlot);
@@ -1636,7 +1640,7 @@ export function createAuthoritativeMatch({
       targetId: target?.id || null,
     });
     // bot philosophy r1: a bounce is still a shot at the team — the struck hull reacts, teammates gain intel
-    if (!shooter || !target) return;
+    if (!shooter || !target || isGunship(shooter)) return;
     for (const ally of entities) {
       if (ally.team === target.team && ally.aiCtl && !ally.combat.destroyed &&
           (ally === target || ally.state.pos.distanceToSquared(target.state.pos) <= 200 * 200)) ally.aiCtl.notifyUnderFire(shooter, {

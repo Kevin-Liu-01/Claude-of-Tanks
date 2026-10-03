@@ -102,6 +102,7 @@ try {
         width: rendered.width,
         height: rendered.height,
         distanceM: distance,
+        fillLoaded: rendered.fillLoaded === true,
       };
       completed++;
       process.stdout.write(`\r[fleet-battle-views] ${completed}/${jobs.length} ${id} @ ${distance} m          `);

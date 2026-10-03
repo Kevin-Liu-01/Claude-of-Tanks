@@ -252,7 +252,6 @@ assert.equal(CAMO_PATTERN_IDS[CAMO_PATTERN_IDS.indexOf('national_usa') - 1], 'si
 assert.equal(defaultCamoPatternId('tos1a_tagil'), 'factory');
 assert.equal(stockCamoPatternIdFor('tos1a_tagil'), 'sig_tos1a_tagil');
 assert.equal(CAMO_PATTERN_LABEL.sig_tos1a_tagil, 'TOS-1A Steppe Bands');
-// The photographic fleet appends five stock finishes after the TOS-1A signature.
 // Italian defaults must reach their distinct field finishes; aliases and the
 // Chinese prototype retain the same saved/network paint IDs.
 for (const [tank, paint] of Object.entries({
@@ -261,6 +260,7 @@ for (const [tank, paint] of Object.entries({
   lrmv_lynx: 'sig_lrmv_lynx', type100: 'sig_type100',
   ztz100_x: 'sig_ztz100_x', ztz100_prototype: 'sig_ztz100_x',
 })) assert.equal(stockCamoPatternIdFor(tank, tank.startsWith('ariete') ? 'Italy' : undefined), paint);
+// The photographic fleet appends five stock finishes after the TOS-1A signature.
 const photoFinishes=['sig_dardo','sig_lrmv_lynx','sig_borsuk','sig_amx10p','sig_amx10p_25'];
 assert.deepEqual(CAMO_PATTERN_IDS.slice(CAMO_PATTERN_IDS.indexOf('sig_tos1a_tagil')+1,CAMO_PATTERN_IDS.indexOf('national_usa')),photoFinishes);
 for(const pattern of photoFinishes){

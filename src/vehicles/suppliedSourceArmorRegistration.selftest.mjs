@@ -6,6 +6,7 @@ const {getSpec}=await import('./specs.ts');
 const {SUPPLIED_SOURCE_IDS,synchronizeSuppliedSourceCombatMetadata}=await import('./suppliedSourceFleetSpecs.ts');
 const {ensureInteriorFills}=await import('./interiorFills.ts');
 const {stripActivatedEra}=await import('../game/eraActivation.ts');
+const {combatAnatomyCalibration}=await import('./combatAnatomy.ts');
 
 const owners = ['hull', 'turret'];
 const rows = armor => owners.flatMap(owner => armor[`${owner}Plates`]
@@ -23,6 +24,37 @@ const cases = [
   return {id, spec, donor, donorReactive, donorBefore: JSON.stringify(donor.armor),
     initialArmor: structuredClone(spec.armor)};
 });
+// Each vehicle's own combat-anatomy calibration appends its measured roof structures (hatches, cupolas) as permanent
+// plates during finalization (combatAnatomy.ts appendStructurePlates: `${owner}_${kind}_NN_${face}`), which runs
+// after donor synchronization. 2026-10-01: since 0e5fc79e2 made donor synchronization initialization-only, the loop
+// below no longer re-clones the finalized donor (whose m551_sheridan hatch/cupola plates the AFT-10 never had in
+// production: aft10_x read 10 hull plates on 581cd5119 too) and instead checks the production armor, so each
+// side's own calibrated structures are told apart by name. Every excluded name must exist on its own vehicle.
+const calibratedStructureNames = (id, owner) => {
+  const names = [];
+  (combatAnatomyCalibration(id)?.[`${owner}Structures`] || []).forEach((structure, index) => {
+    const [x0, y0, z0] = structure.min, [x1, y1, z1] = structure.max;
+    if (!(x1 > x0 && y1 > y0 && z1 > z0)) return;
+    const prefix = `${owner}_${structure.kind || 'roof_structure'}_${String(index + 1).padStart(2, '0')}`;
+    for (const face of ['front', 'rear', 'right', 'left', 'top']) names.push(`${prefix}_${face}`);
+  });
+  return names;
+};
+const withoutOwnStructures = (id, owner, plates) => {
+  const own = calibratedStructureNames(id, owner);
+  for (const name of own) assert.equal(plates.filter(p => p.name === name && p.kind === 'main' && !p.era).length, 1,
+    `${id}/${owner}: calibrated structure plate ${name} is installed once`);
+  return plates.filter(p => !own.includes(p.name));
+};
+for (const {id, spec, donor} of cases) {
+  for (const owner of owners) {
+    const permanent = withoutOwnStructures(donor.id, owner, donor.armor[`${owner}Plates`]).filter(p => p.kind !== 'era');
+    const current = withoutOwnStructures(id, owner, spec.armor[`${owner}Plates`]);
+    assert.deepEqual(current.map(p => [p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era]),
+      permanent.map(p => [p.name,p.kind,p.physicalMm,p.keMm,p.ceMm,p.era]),
+      `${id}/${owner}: permanent donor protection retained apart from each vehicle's own calibrated roof structures`);
+  }
+}
 // Once role tuning and anatomy are finalized, synchronization is deliberately
 // immutable. Changing donors here must not replace any finalized recipient.
 const finalized = new Map(SUPPLIED_SOURCE_IDS.map(id => [id, JSON.stringify(getSpec(id))]));

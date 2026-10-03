@@ -158,6 +158,9 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
   function bufferFor(id: string, take?: number): { buffer: AudioBuffer; lang: string } | null {
     const own = library.voice(language, id, random, take);
     if (own) return { buffer: own, lang: language };
+    // A newly chosen pack is still decoding, not missing a take. Do not
+    // briefly speak another nation's lines while switching crews.
+    if (!library.voiceReady(language)) return null;
     if (language === fallbackLanguage) return null;
     const fallback = library.voice(fallbackLanguage, id, random, take);
     // The fallback crew loads only when a national take is actually missing.
@@ -348,6 +351,10 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
       if (stopObsoleteActive && currentSrc && (!currentGroup || !keep.has(currentGroup))) stopCurrent();
     },
     setLanguage(next) {
+      if (next !== language) {
+        queue.length = 0;
+        if (currentSrc) stopCurrent();
+      }
       language = next;
       void library.loadVoice(next);
     },
