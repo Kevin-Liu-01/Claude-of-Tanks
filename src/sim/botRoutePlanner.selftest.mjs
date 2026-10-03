@@ -36,9 +36,10 @@ const deps = {
   spec: routeSpec,
 };
 const navigation = createBotNavigationGrid(deps);
-// one scan when the grid is built: the cells, then three samples along each edge for its steepest stretch
+// one scan when the grid is built: the cells, then three samples along each edge for its steepest stretch, each with
+// the side slope across the edge (two more reads)
 const scanSamples = heightSamples;
-assert.ok(scanSamples >= 41 * 41 && scanSamples <= 41 * 41 * 13, `one bounded terrain scan (${scanSamples} samples)`);
+assert.ok(scanSamples >= 41 * 41 && scanSamples <= 41 * 41 * 37, `one bounded terrain scan (${scanSamples} samples)`);
 const routeA = planBotRoute({ ...deps, navigation, rng: seeded(7) });
 const routeA2 = planBotRoute({ ...deps, navigation, rng: seeded(7) });
 const routeB = planBotRoute({ ...deps, navigation, rng: seeded(99) });

@@ -67,6 +67,13 @@ const WAY_STRIDE = FORWARD_STEPS_COUNT * WAY_FLOATS;
 /** Interior terrain samples along each edge for its steepest stretch (a cliff between two cell centres whose heights
  * alone read as a climb: a gorge wall, a deck's cliff edge). One every quarter: a rise of CLIFF_GRADE over 6.25 m. */
 const EDGE_STEEP_SAMPLES = 3;
+/**
+ * Each interior sample also reads the side slope across the edge's line, over this much ground either side of it
+ * (about a hull's half track), and the edge holds it to the same two-way rule as its grade (bots lane, 2026-10-03).
+ * Redrock Divide's plateau face (55-63 degrees) carried edges along it and slanting across it, because an edge read
+ * only the grade along its own line: defenders bound for the plateau were routed across the face and fell off it.
+ */
+const EDGE_SIDE_HALF_M = 2;
 /** Detour points tried round a leg's blocked end: rings of twelve bearings. */
 const NAV_VIA_RINGS_M = [8, 14, 20] as const;
 const NAV_VIA_BEARINGS = 12;
@@ -137,8 +144,9 @@ export interface BotNavigationGrid {
   readonly hullClearance?: NavigationClearance;
   /** Wrecks narrow streets after the grid is built (navigationWrecks below): the edges they close or bend. */
   readonly wreckOverlay?: WreckOverlay;
-  /** Per cell and NEIGHBOR_STEPS direction, the steepest uphill stretch of that edge (percent grade, capped at 255):
-   * the route search holds every edge to it both ways, as it holds the cell-to-cell grade. */
+  /** Per cell and NEIGHBOR_STEPS direction, the steepest uphill stretch of that edge, or the steepest side slope across
+   * its line at its interior samples when that is steeper (percent grade, capped at 255): the route search holds every
+   * edge to it both ways, as it holds the cell-to-cell grade. */
   readonly edgeSteepness?: Uint8Array;
 }
 
@@ -863,19 +871,20 @@ export function syncNavigationWrecks(navigation: BotNavigationGrid | null | unde
 }
 
 /** The ground a route rides at (x, z): a bridge deck's own height over the span, else the terrain. */
-function routeHeightAt(field: NavigationHeightField, decks: readonly NavigationBridgeDeck[] | null, x: number,
-  z: number): number {
+/** The bridge deck over (x, z), or null. */
+function deckOver(decks: readonly NavigationBridgeDeck[] | null, x: number, z: number): NavigationBridgeDeck | null {
   if (decks) {
     for (let i = 0; i < decks.length; i++) {
       const deck = decks[i], dx = x - deck.x, dz = z - deck.z;
       if (Math.abs(dx * deck.ux + dz * deck.uz) <= deck.halfLength
-        && Math.abs(dx * deck.uz - dz * deck.ux) <= deck.halfWidth) return deck.deckY;
+        && Math.abs(dx * deck.uz - dz * deck.ux) <= deck.halfWidth) return deck;
     }
   }
-  return field.getHeightAt(x, z);
+  return null;
 }
 
-/** The steepest uphill stretch of every edge between open cells, both ways (see BotNavigationGrid.edgeSteepness). */
+/** The steepest uphill stretch of every edge between open cells, both ways, or the steepest side slope across its line
+ * (see BotNavigationGrid.edgeSteepness). */
 function edgeSteepnessPass(field: NavigationHeightField, decks: readonly NavigationBridgeDeck[] | null,
   blocked: Uint8Array, heights: Float32Array, positions: Float32Array | undefined): Uint8Array {
   const steep = new Uint8Array(GRID_N * GRID_N * 8);
@@ -893,10 +902,21 @@ function edgeSteepnessPass(field: NavigationHeightField, decks: readonly Navigat
       const intervals = EDGE_STEEP_SAMPLES + 1, span = Math.hypot(bx - ax, bz - az) / intervals;
       samples[0] = heights[index];
       samples[intervals] = heights[next];
+      // the side slope across the edge's line at each interior sample: the terrain's own (a deck's sides are the deck's
+      // rules; under a deck the gorge floor is read, not the deck above it)
+      const sideScale = EDGE_SIDE_HALF_M / (span * intervals);
+      const sideX = (bz - az) * sideScale, sideZ = -(bx - ax) * sideScale;
+      let across = 0;
       for (let k = 1; k < intervals; k++) {
-        samples[k] = routeHeightAt(field, decks, ax + (bx - ax) * k / intervals, az + (bz - az) * k / intervals);
+        const x = ax + (bx - ax) * k / intervals, z = az + (bz - az) * k / intervals;
+        const deck = deckOver(decks, x, z);
+        samples[k] = deck ? deck.deckY : field.getHeightAt(x, z);
+        if (deck) continue;
+        const side = Math.abs(field.getHeightAt(x + sideX, z + sideZ) - field.getHeightAt(x - sideX, z - sideZ))
+          / (2 * EDGE_SIDE_HALF_M);
+        if (side > across) across = side;
       }
-      let up = 0, down = 0;
+      let up = across, down = across;
       for (let k = 0; k < intervals; k++) {
         const grade = (samples[k + 1] - samples[k]) / span;
         if (grade > up) up = grade;
