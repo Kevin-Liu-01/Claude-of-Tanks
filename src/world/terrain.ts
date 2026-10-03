@@ -2217,23 +2217,32 @@ function* heightFieldBuildSteps(
   // horizontal terracing (the "heightmap quantization" critique). Baked to a
   // small mask (createSplatMaterial) so rock/strata live only on real mesas.
   const mesas = T.mesas;
+  // the authored landforms' geological zones (pure; for the terrain material and CPU-side dressing)
+  const geologyZones = createGeologyZoneSampler(T.landforms);
+  // The maps-and-layouts lane (2026-10-03): a map whose landforms author lava flows gates its rock on their footprints
+  // too, the zone's 4 m edge the basalt's (the ground lane's volcanic zoning reads a flow as basalt over its whole
+  // surface through mask B and rockGate). Maps without flows keep the mesa wall and rim alone, byte for byte.
+  const flowZones = geologyZones && T.landforms.some((form) => form.kind === 'ridge' && form.geology?.profile === 'flow')
+    ? geologyZones : null;
   function createMesaWeightSampler(): HeightField['_mesaW'] {
-    if (!mesas) return null;
+    if (!mesas && !flowZones) return null;
+    const zone: GeologyZones = [0, 0, 0];
     return (x: number, z: number): number => {
-      const mn = sampleMesaNoise(x, z);
-      const band = mesas.thr1 - mesas.thr0;
-      // low edge pulled 0.55 band below thr0: the talus apron at the mesa foot
-      // keeps its rock identity, the open dune field beyond it does not
-      const wall = smoothstep(mesas.thr0 - band * 0.55,
-        mesas.thr0 + band * (mesas.wallWidth ?? 0.42), mn);
+      let wall = 0;
+      if (mesas) {
+        const mn = sampleMesaNoise(x, z);
+        const band = mesas.thr1 - mesas.thr0;
+        // low edge pulled 0.55 band below thr0: the talus apron at the mesa foot
+        // keeps its rock identity, the open dune field beyond it does not
+        wall = smoothstep(mesas.thr0 - band * 0.55,
+          mesas.thr0 + band * (mesas.wallWidth ?? 0.42), mn);
+      }
       // the map-borders lane: the rim is rock only where the border landform keeps it (an open sector's low rim is ground)
       const rim = smoothstep(408, 468, Math.max(Math.abs(x), Math.abs(z))) * smoothstep(0.35, 0.8, border.rimFactorAt(x, z));
-      return Math.max(wall, rim);
+      return flowZones ? Math.max(wall, rim, flowZones(x, z, zone)[0]) : Math.max(wall, rim);
     };
   }
   const mesaWeight = createMesaWeightSampler();
-  // the authored landforms' geological zones (pure; for the terrain material and CPU-side dressing)
-  const geologyZones = createGeologyZoneSampler(T.landforms);
 
   return {
     getHeightAt, getHeightAtFast, getContactHeightAt, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,

@@ -2,7 +2,7 @@
 // landform as a smooth shell. A landform with `geology` takes a lobed outline, a butte or cone profile, rills, bedding
 // and a knobbly surface; one without it keeps its exact smooth shape. This receipt holds both halves of that contract.
 import assert from 'node:assert/strict';
-import { sampleLandformHeight } from './terrain.ts';
+import { createHeightField, sampleLandformHeight } from './terrain.ts';
 import { createGeologyZoneSampler, geologyZoneWeights, knollGeologyHeight, ridgeGeologyHeight } from './landformGeology.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 
@@ -293,7 +293,24 @@ for (let z = -160; z <= 200; z += 3.3) for (let x = -200; x <= 200; x += 3.3) {
   samplerPoints++;
 }
 
+// 13. The height field publishes the zones (_geologyZoneAt) on a map that authors them, and a map whose landforms author
+// lava flows gates its rock on their footprints: inside the rim band Caldera's landform mask (it has no mesa wall) is
+// exactly the flow zone. A map without flows or mesas keeps no mask and publishes no zones.
+const caldera = createHeightField(1337, getMapConfig('caldera'));
+assert.equal(typeof caldera._geologyZoneAt, 'function', 'Caldera publishes its zones');
+let maskPoints = 0, onFlows = 0;
+for (let z = -400; z <= 400; z += 7.3) for (let x = -400; x <= 400; x += 7.3) {
+  const flow = caldera._geologyZoneAt(x, z, zone)[0];
+  assert.equal(caldera._mesaW(x, z), flow, `Caldera's landform mask is its flow zone at (${x}, ${z})`);
+  maskPoints++;
+  if (flow === 1) onFlows++;
+}
+assert.ok(onFlows > maskPoints * 0.04, `the six flows cover their share of the floor (${onFlows} of ${maskPoints})`);
+const plain = createHeightField(1337, getMapConfig('verdant'));
+assert.equal(plain._mesaW, null, 'no flows and no mesas: no landform mask');
+assert.equal(plain._geologyZoneAt, undefined, 'and no zones');
+
 console.log(`landformGeology.selftest: ${smoothForms} smooth landforms unchanged; cone flank ${steepest.toFixed(3)} `
   + `(predicted ${predicted.toFixed(3)}), ${notches} rills, lobed reach ${Math.min(...reach)}-${Math.max(...reach)} m, `
   + `${benches} benches on ${benchedBearings} of 12 bearings, `
-  + `flow margin ${Math.min(...edges)}-${Math.max(...edges)} m, ${seamSamples} seam samples continuous, ${fanPeaks} talus fans, flow levee ${(levee - channel).toFixed(2)} m front ${frontSlope.toFixed(2)} vent ${ventSlope.toFixed(2)}; zones: flow ${flowInside} inside, ${flowFaded} faded, cone ${coneInside} inside, fans ${fanPositive} of ${fanSamples} toe samples, sampler ${samplerPoints} points`);
+  + `flow margin ${Math.min(...edges)}-${Math.max(...edges)} m, ${seamSamples} seam samples continuous, ${fanPeaks} talus fans, flow levee ${(levee - channel).toFixed(2)} m front ${frontSlope.toFixed(2)} vent ${ventSlope.toFixed(2)}; zones: flow ${flowInside} inside, ${flowFaded} faded, cone ${coneInside} inside, fans ${fanPositive} of ${fanSamples} toe samples, sampler ${samplerPoints} points; Caldera's mask = its flow zone at ${maskPoints} points (${onFlows} on flows)`);
