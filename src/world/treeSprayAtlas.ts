@@ -33,8 +33,8 @@ export const SPRAY_ATLAS_TILES = 2;
  */
 export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.freeze({
   oak: 0.318, poplar: 0.285, willow: 0.17, acacia: 0.362, eucalyptus: 0.239, birch: 0.219, aspen: 0.274, 'birch-bare': 0.13,
-  spruce: 0.269, fir: 0.329, pine: 0.161, cedar: 0.188, cypress: 0.291, mangrove: 0.264, beech: 0.313, chestnut: 0.396,
-  holmOak: 0.213, olive: 0.225, canaryPine: 0.197, aleppoPine: 0.108, larch: 0.157, broom: 0.131,
+  spruce: 0.269, fir: 0.329, pine: 0.155, cedar: 0.188, cypress: 0.291, mangrove: 0.264, beech: 0.313, chestnut: 0.396,
+  holmOak: 0.213, olive: 0.225, canaryPine: 0.199, aleppoPine: 0.11, larch: 0.157, broom: 0.131,
 });
 
 interface LeafColor { hue: number; sat: number; light: number }
@@ -425,42 +425,52 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
   const wood = css(0.06, 0.25, 0.09);
   const p0 = { x: S * 0.5, y: S * 0.95 };
   if (kind === 'pine' || kind === 'canaryPine' || kind === 'aleppoPine') {
-    // a short woody shoot ending in bundles of long needles fanned forward (and a second, older tuft below). Trees
-    // round 2: the Canary pine's needles are half as long again and hang (a pendulous tuft), the Aleppo pine's finer
-    // and fewer
+    // Trees round 2 (2026-10-03): a pine shoot is a brush, not a star. The needle fascicles stand all along each shoot's
+    // last half, every one pointing forward and out from it (the tip's more forward), so a tile reads as the fox-tail
+    // tufts a pine crown is made of; round 1's tuft radiating from one point read as a palm frond or a maple leaf at
+    // the chase camera (the lab's Caldera pairs). A main shoot and two side shoots off its lower half; the Canary pine's
+    // needles long and hanging, the Aleppo pine's fine and sparse.
     const canary = kind === 'canaryPine', aleppo = kind === 'aleppoPine';
-    const reachN = canary ? 1.32 : aleppo ? 0.92 : 1, droopN = canary ? 0.42 : 0.12, countN = canary ? 1.1 : aleppo ? 0.72 : 1;
-    const stem = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.3, S * (canary ? 0.36 : 0.42), (rng() - 0.5) * 0.4, 6);
-    taperStroke(ctx, stem, S * 0.016, S * 0.009, wood);
-    const tufts = [{ t: 1, r: 1 }, { t: 0.55, r: 0.75 }, { t: 0.78, r: 0.7 }];
-    // each tuft's dense heart: the needles crowd at the shoot's tip
-    for (const tuft of tufts) {
-      const at = pointAt(stem, tuft.t), r = S * 0.17 * tuft.r;
-      const gr = ctx.createRadialGradient(at.p.x, at.p.y - r * 0.4, 0, at.p.x, at.p.y - r * 0.4, r);
-      gr.addColorStop(0, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0.75));
-      gr.addColorStop(1, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0));
-      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(at.p.x, at.p.y - r * 0.4, r, 0, Math.PI * 2); ctx.fill();
+    const needleL = canary ? 0.23 : aleppo ? 0.16 : 0.19, droopN = canary ? 0.3 : aleppo ? 0.1 : 0.08;
+    const perShoot = canary ? 96 : aleppo ? 50 : 76;
+    const main = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * 0.56, (rng() - 0.5) * 0.35, 8);
+    const shoots: Pt[][] = [main];
+    for (const side of [-1, 1]) {
+      const at = pointAt(main, 0.3 + rng() * 0.12);
+      shoots.push(twigPoints(at.p, at.a + side * (0.55 + rng() * 0.25), S * (0.27 + rng() * 0.07), side * (0.15 + rng() * 0.2), 6));
     }
-    for (const tuft of tufts) {
-      const at = pointAt(stem, tuft.t);
-      const bundles = Math.round(46 * tuft.r * countN);
-      for (let k = 0; k < bundles; k++) {
-        const a = at.a + (rng() - 0.5) * (tuft.t === 1 ? 2.6 : 3.2) * (canary ? 1.15 : 1);
-        const nl = S * (0.30 + rng() * 0.16) * tuft.r * (tuft.t === 1 ? 1 : 0.8) * reachN;
-        const light = base.light * (0.7 + rng() * 0.55) * (tuft.t === 1 ? 1.05 : 0.85);
-        ctx.strokeStyle = css(base.hue + (rng() - 0.5) * 0.03, base.sat, light);
-        ctx.lineWidth = Math.max(0.7, S / 256 * (aleppo ? 1.0 : 1.3));
-        for (let pair = 0; pair < 2; pair++) {
-          const aa = a + (pair - 0.5) * 0.06;
-          ctx.beginPath();
-          ctx.moveTo(at.p.x, at.p.y);
-          ctx.quadraticCurveTo(at.p.x + Math.cos(aa) * nl * 0.5, at.p.y + Math.sin(aa) * nl * 0.5 + nl * (0.06 + droopN * 0.25),
-            at.p.x + Math.cos(aa) * nl, at.p.y + Math.sin(aa) * nl + nl * (0.12 + droopN));
-          ctx.stroke();
-        }
+    for (const shoot of shoots) taperStroke(ctx, shoot, S * 0.014, S * 0.008, wood);
+    // each brush's shaded heart: a soft dark band along the needled half of its shoot
+    for (const shoot of shoots) {
+      for (let k = 0; k < 4; k++) {
+        const at = pointAt(shoot, 0.55 + k * 0.13), r = S * needleL * 0.72;
+        const gr = ctx.createRadialGradient(at.p.x, at.p.y, 0, at.p.x, at.p.y, r);
+        gr.addColorStop(0, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0.7));
+        gr.addColorStop(1, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0));
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(at.p.x, at.p.y, r, 0, Math.PI * 2); ctx.fill();
       }
     }
-    return [stem];
+    for (let si = 0; si < shoots.length; si++) {
+      const shoot = shoots[si], n = Math.round(perShoot * (si === 0 ? 1 : 0.7));
+      for (let k = 0; k < n; k++) {
+        // the fascicles stand round the shoot, not in two rows: a seat anywhere on its last 58 %, a side and an angle
+        // out of it at random (seen from the side, a brush is needles at every angle over each other, never a fishbone)
+        const t = 0.42 + Math.sqrt(rng()) * 0.58;
+        const at = pointAt(shoot, t), side = rng() < 0.5 ? 1 : -1;
+        const out = (0.12 + rng() * 1.05) * (1 - 0.35 * (t - 0.42) / 0.58);
+        const a = at.a + side * out;
+        const nl = S * needleL * (0.75 + rng() * 0.45) * (0.8 + 0.2 * (1 - t));
+        const light = base.light * (0.72 + rng() * 0.5) * (si === 0 ? 1.04 : 0.92);
+        ctx.strokeStyle = css(base.hue + (rng() - 0.5) * 0.03, base.sat, light);
+        ctx.lineWidth = Math.max(0.7, S / 256 * (aleppo ? 1.0 : 1.25));
+        ctx.beginPath();
+        ctx.moveTo(at.p.x, at.p.y);
+        ctx.quadraticCurveTo(at.p.x + Math.cos(a) * nl * 0.5, at.p.y + Math.sin(a) * nl * 0.5 + nl * droopN * 0.3,
+          at.p.x + Math.cos(a) * nl, at.p.y + Math.sin(a) * nl + nl * droopN);
+        ctx.stroke();
+      }
+    }
+    return shoots;
   }
   if (kind === 'cypress') {
     // scale-leaf fronds: a flattened spray that forks again and again, thick and dense
