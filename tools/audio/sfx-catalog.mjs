@@ -51,6 +51,11 @@ const weapons = [
   sfx('gun_interior_medium', 'weapons', `One-shot heard from inside a tank turret as its own 105 mm main gun fires: enormous muffled thump through the hull, steel resonance, recoil slam of the breech, no outside echo. ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 3, proc: 'weapon-close' }),
   sfx('gun_interior_large', 'weapons', `One-shot heard from inside a tank turret as its own 125 mm main gun fires: massive muffled concussion, steel hull ringing, heavy recoil slam of the breech block. ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 3, proc: 'weapon-close' }),
   sfx('gun_interior_heavy', 'weapons', `One-shot heard from inside a heavy armoured vehicle as its own huge gun fires: crushing muffled blast, deep hull boom, violent recoil slam. ${NO_MUSIC}.`, 2.8, { variants: 2, takes: 2, proc: 'weapon-close' }),
+  // The crew's own gun, heard from the hatch beside it: the report the player hears on every shot,
+  // fuller and more detailed than anyone else's (the interior reports above cover the sight).
+  sfx('gun_own_medium', 'weapons', `Gunshot sound effect: one single shot of a 105 mm tank main gun heard from the commander's open hatch right beside it: a sharp supersonic crack fused with a deep chest-thumping boom, the turret's steel ringing, the clank of the recoiling breech, then a short rolling outdoor echo. One isolated shot.`, 4, { inf: 0.6, variants: 3, takes: 5, proc: 'weapon-close' }),
+  sfx('gun_own_large', 'weapons', `Gunshot sound effect: one single shot of a 120 mm smoothbore tank gun heard from the commander's open hatch right beside it: an enormous sharp crack fused with a massive deep boom that shakes the hull, the steel turret ringing, the heavy clank of the recoiling breech, then a rolling outdoor echo. One isolated shot.`, 4.5, { inf: 0.6, variants: 3, takes: 5, proc: 'weapon-close' }),
+  sfx('gun_own_heavy', 'weapons', `Gunshot sound effect: one single shot of a 152 mm heavy tank gun heard from the commander's open hatch right beside it: a colossal blast with a crushing deep pressure wave, the whole vehicle shuddering, the slam of the huge breech recoiling, then a long rolling echo. One isolated shot.`, 5, { inf: 0.6, variants: 3, takes: 5, proc: 'weapon-close' }),
   sfx('tail_open', 'weapons', `One-shot echo tail only of a distant gunshot over open fields: no initial blast, a soft diffuse rolling reverberation decaying over four seconds. ${NO_MUSIC}.`, 4, { variants: 2, takes: 2, proc: 'tail' }),
   sfx('tail_urban', 'weapons', `One-shot echo tail only of a gunshot between concrete buildings in a ruined town: no initial blast, sharp slap-back echoes then a long low reverberant tail. ${NO_MUSIC}.`, 4, { variants: 2, takes: 2, proc: 'tail' }),
   sfx('tail_mountain', 'weapons', `One-shot echo tail only of a gunshot in a mountain valley: no initial blast, distinct delayed echoes bouncing off cliffs, long decay. ${NO_MUSIC}.`, 4.5, { variants: 2, takes: 2, proc: 'tail' }),
@@ -87,6 +92,7 @@ const machineGuns = [
 
 // ------------------------------------------------------------ launchers ---
 const launchers = [
+  sfx('missile_launch_own', 'weapons', `Sound effect: an anti-tank guided missile launched from the tube right above you: the sharp pop of the ejection charge, then the rocket motor igniting into a fierce roaring hiss that races away into the distance.`, 3.5, { inf: 0.55, variants: 2, takes: 4, proc: 'weapon-close' }),
   sfx('atgm_launch', 'weapons', `One-shot of an anti-tank guided missile launching from a vehicle launcher: sharp ejection pop, then a roaring rocket motor ignition whoosh with hiss moving away. ${FIELD}, ${NO_MUSIC}.`, 3, { variants: 3, takes: 4, proc: 'weapon-close' }),
   sfx('missile_flight_loop', 'weapons', `Seamless loop of a guided missile rocket motor in flight: steady roaring hiss with a thin whistle, constant intensity. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('rocket_salvo', 'weapons', `One-shot of a heavy multiple rocket launcher salvo: rapid sequence of powerful rocket launches, roaring whooshes ripping away. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 2, takes: 2, proc: 'weapon-close' }),
@@ -95,21 +101,29 @@ const launchers = [
 ];
 
 // ------------------------------------------------- loading and mechanisms ---
+const TURRET = 'close-miked inside a tank turret, weighty steel with crisp mechanical detail';
 const mechanisms = [
-  sfx('breech_open', 'mechanism', `One-shot of a heavy tank gun breech block opening: steel sliding, solid metallic clack, close-mic inside the turret. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'foley' }),
-  sfx('breech_close', 'mechanism', `One-shot of a heavy tank gun breech slamming shut: loud satisfying steel clack, close-mic inside the turret. ${NO_MUSIC}.`, 1, { variants: 3, takes: 4, proc: 'foley' }),
-  sfx('case_eject_brass', 'mechanism', `One-shot of a huge spent brass tank gun cartridge case dropped onto a steel turret floor: a heavy dull clang and a low rolling rumble, not tinkly. ${NO_MUSIC}.`, 1.6, { variants: 2, takes: 3, proc: 'foley' }),
-  sfx('case_eject_stub', 'mechanism', `One-shot of a spent tank round stub base ejected: dull metallic clunk and short rattle on steel. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 3, proc: 'foley' }),
-  sfx('shell_grab', 'mechanism', `One-shot of a loader pulling a heavy tank shell out of a steel ready rack: metal scrape and clunk. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 3, proc: 'foley' }),
-  sfx('shell_ram', 'mechanism', `One-shot of a heavy tank shell rammed into a gun breech: sliding metal and a solid thunk. ${NO_MUSIC}.`, 1, { variants: 3, takes: 4, proc: 'foley' }),
-  sfx('autoloader_carousel', 'mechanism', `One-shot of a tank autoloader carousel rotating under the turret floor: electric motor whir with mechanical ratcheting, stopping with a clunk. ${NO_MUSIC}.`, 1.8, { variants: 2, takes: 3, proc: 'foley' }),
-  sfx('autoloader_lift', 'mechanism', `One-shot of a tank autoloader lifting an ammunition cassette: short hydraulic whine and a heavy clunk. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 3, proc: 'foley' }),
-  sfx('autoloader_chain_ram', 'mechanism', `One-shot of a chain rammer pushing a projectile into a gun: fast metallic chain rattle ending in a thud. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'foley' }),
-  sfx('bustle_index', 'mechanism', `One-shot of a turret bustle autoloader indexing a round: quick servo whir and mechanical clack. ${NO_MUSIC}.`, 1.3, { variants: 2, takes: 3, proc: 'foley' }),
-  sfx('ac_feed', 'mechanism', `One-shot of an autocannon ammunition belt feeding and the bolt cycling: crisp mechanical clatter. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'foley' }),
-  sfx('magazine_swap', 'mechanism', `One-shot of a heavy ammunition box latched into an autocannon feed: metallic clatter and a firm latch. ${NO_MUSIC}.`, 1.6, { variants: 2, takes: 2, proc: 'foley' }),
-  sfx('missile_tube_load', 'mechanism', `One-shot of a missile canister sliding into a launcher tube: hollow metal scrape and a locking latch. ${NO_MUSIC}.`, 1.6, { variants: 2, takes: 2, proc: 'foley' }),
-  sfx('latch_ready', 'mechanism', `One-shot of a heavy tank breech safety latch locking into place: a solid low metal clack with no ring. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'foley' }),
+  sfx('gun_recoil_mech', 'mechanism', `One-shot inside a tank turret right after its main gun fires: the breech recoils and runs back into battery with a heavy steel slam, a hydraulic buffer hiss and loose equipment rattling, ${TURRET}. ${NO_MUSIC}.`, 2, { variants: 3, takes: 4, proc: 'foley' }),
+  sfx('breech_open', 'mechanism', `One-shot of a tank gun's semi-automatic breech block dropping open after firing: a heavy steel slide and a weighty metallic clack, ${TURRET}. ${NO_MUSIC}.`, 1, { variants: 2, takes: 4, proc: 'foley' }),
+  sfx('breech_close', 'mechanism', `One-shot of a tank gun's breech block slamming shut on a fresh round: a crisp, weighty, satisfying steel clack, ${TURRET}. ${NO_MUSIC}.`, 1, { variants: 3, takes: 5, proc: 'foley' }),
+  sfx('latch_ready', 'mechanism', `One-shot of a tank gun locked and ready to fire: the loader snaps the safety lever over with a firm double clack of heavy steel, ${TURRET}. ${NO_MUSIC}.`, 1, { variants: 2, takes: 4, proc: 'foley' }),
+  sfx('case_eject_brass', 'mechanism', `One-shot of a huge spent brass tank gun case thrown out of the breech onto the steel turret floor: a heavy clang and a hollow rolling rumble as it settles, ${TURRET}. ${NO_MUSIC}.`, 1.8, { variants: 2, takes: 4, proc: 'foley' }),
+  sfx('case_eject_stub', 'mechanism', `One-shot of the spent metal stub base of a tank round kicked out of the breech: a dull metallic clunk and a short skittering rattle across steel, ${TURRET}. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 3, proc: 'foley' }),
+  sfx('shell_grab', 'mechanism', `One-shot of a tank loader pulling a heavy 120 mm round out of a steel ready rack: a long metallic scrape, the round knocking against the rack and a solid clunk as it comes free, ${TURRET}. ${NO_MUSIC}.`, 1.6, { variants: 2, takes: 4, proc: 'foley' }),
+  sfx('shell_ram', 'mechanism', `One-shot of a tank loader ramming a heavy round into the gun breech with his fist: a fast metallic slide along the tray ending in a solid seating thunk, ${TURRET}. ${NO_MUSIC}.`, 1.2, { variants: 3, takes: 4, proc: 'foley' }),
+  sfx('charge_ram', 'mechanism', `One-shot of a separate propellant charge pushed into a big gun's breech behind the shell: a soft heavy thud with a short scrape of the charge casing on steel, ${TURRET}. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'foley' }),
+  sfx('ammo_door_open', 'mechanism', `One-shot of the armoured ammunition door of a tank's turret bustle sliding open at the touch of a knee switch: a heavy steel door rumbling along its rail with a hydraulic hiss, ${TURRET}. ${NO_MUSIC}.`, 1.4, { variants: 2, takes: 3, proc: 'foley' }),
+  sfx('ammo_door_close', 'mechanism', `One-shot of the armoured ammunition door of a tank's turret bustle sliding shut: a short rumble along its rail and a heavy armoured thud, ${TURRET}. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 3, proc: 'foley' }),
+  sfx('autoloader_carousel', 'mechanism', `One-shot of a tank's carousel autoloader turning under the turret floor to bring up the next round: an electric motor whirring with heavy chain and ratchet clatter, stopping with a solid clunk, ${TURRET}. ${NO_MUSIC}.`, 2, { variants: 2, takes: 4, proc: 'foley' }),
+  sfx('autoloader_lift', 'mechanism', `One-shot of a tank autoloader lifting an ammunition cassette up to the breech: a short electric-hydraulic whine and a heavy steel clunk as it locks, ${TURRET}. ${NO_MUSIC}.`, 1.3, { variants: 2, takes: 3, proc: 'foley' }),
+  sfx('autoloader_chain_ram', 'mechanism', `One-shot of a tank autoloader's chain rammer driving a round into the breech: a fast steel chain rattle ending in a hard seating thud, ${TURRET}. ${NO_MUSIC}.`, 1, { variants: 2, takes: 4, proc: 'foley' }),
+  sfx('bustle_index', 'mechanism', `One-shot of a turret bustle autoloader indexing the next round into line: a quick servo whir and a precise heavy mechanical clack, ${TURRET}. ${NO_MUSIC}.`, 1.3, { variants: 2, takes: 3, proc: 'foley' }),
+  sfx('drum_rotate', 'mechanism', `One-shot of a revolver ammunition drum in a tank turret turning one position to the next round: a heavy ratchet click and a solid metallic clunk, ${TURRET}. ${NO_MUSIC}.`, 0.8, { variants: 2, takes: 4, proc: 'foley' }),
+  sfx('drum_load_round', 'mechanism', `One-shot of a single heavy tank shell pushed into a revolver ammunition drum: a short metal slide and a firm click as it locks in, ${TURRET}. ${NO_MUSIC}.`, 0.9, { variants: 3, takes: 4, proc: 'foley' }),
+  sfx('ac_feed', 'mechanism', `One-shot of an autocannon's ammunition feed and bolt cycling inside a turret: a crisp heavy clatter of belt links and steel, ${TURRET}. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'foley' }),
+  sfx('magazine_swap', 'mechanism', `One-shot of a heavy ammunition box latched into an autocannon feed: metallic clatter, belt links sliding and a firm latch, ${TURRET}. ${NO_MUSIC}.`, 1.6, { variants: 2, takes: 3, proc: 'foley' }),
+  sfx('missile_tube_load', 'mechanism', `One-shot of a missile canister slid into a vehicle launcher tube: a long hollow metal scrape and a heavy locking latch, ${TURRET}. ${NO_MUSIC}.`, 1.6, { variants: 2, takes: 3, proc: 'foley' }),
+  sfx('launcher_raise', 'mechanism', `One-shot of a vehicle's missile launcher arm swinging up into firing position: a hydraulic whine and a heavy locking clunk. ${NO_MUSIC}.`, 2, { variants: 1, takes: 3, proc: 'foley' }),
 ];
 
 // --------------------------------------------------------------- flybys ---
@@ -214,14 +228,15 @@ const foley = [
   sfx('track_squeal_loop', 'vehicle', `Seamless loop of tank tracks squealing and grinding during a sharp pivot turn: screeching steel links and scrubbing. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('track_break', 'vehicle', `One-shot of a tank track snapping: loud metallic snap and heavy track links clattering off the wheels. ${NO_MUSIC}.`, 2, { variants: 2, takes: 3, proc: 'impact' }),
   sfx('hydro_susp', 'vehicle', `One-shot of a hydropneumatic tank suspension adjusting: hydraulic pump whine and a pressurised hiss. ${NO_MUSIC}.`, 2, { variants: 2, takes: 2, proc: 'foley' }),
-  sfx('turret_electric_loop', 'vehicle', `Seamless loop of a modern tank's electric turret traverse drive: smooth steady electric motor whir with gear mesh. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
-  sfx('turret_hydraulic_loop', 'vehicle', `Seamless loop of a hydraulic tank turret traverse: hydraulic pump whine with a low gear rumble. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
-  sfx('turret_stop', 'vehicle', `One-shot of a tank turret stopping its traverse: short mechanical clunk. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'foley' }),
-  sfx('elevation_servo_loop', 'vehicle', `Seamless loop of a tank gun elevation servo motor: thin steady electric whine. ${NO_MUSIC}.`, 3, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('engine_knock_loop', 'vehicle', `Seamless loop of a damaged diesel engine knocking and misfiring: irregular clanks and sputtering. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('engine_stall', 'vehicle', `One-shot of a big diesel engine sputtering, coughing and dying. ${NO_MUSIC}.`, 2.5, { variants: 1, takes: 2, proc: 'foley' }),
   sfx('jump_launch', 'vehicle', `One-shot of a powerful hydraulic boost: pressurised hiss and a heavy mechanical clunk. ${NO_MUSIC}.`, 1.5, { variants: 1, takes: 2, proc: 'foley' }),
   sfx('self_right', 'vehicle', `One-shot of a heavy tank rolling back onto its tracks: metal crash, suspension bounce and rattling. ${NO_MUSIC}.`, 2.5, { variants: 1, takes: 2, proc: 'impact', punch: false }),
+  sfx('turret_start', 'vehicle', `One-shot of a heavy tank turret starting to traverse: the drive motor spinning up and the gears taking up the load with a deep clunk. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 3, proc: 'foley' }),
+  sfx('turret_electric_loop', 'vehicle', `Seamless loop of a heavy tank turret traversing on its electric drive: a smooth motor whine over a deep gear rumble and the turret ring rolling under load. ${NO_MUSIC}.`, 5, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
+  sfx('turret_hydraulic_loop', 'vehicle', `Seamless loop of a heavy tank turret traversing on a hydraulic drive: a strained hydraulic pump whine over a deep grinding gear rumble. ${NO_MUSIC}.`, 5, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
+  sfx('turret_stop', 'vehicle', `One-shot of a heavy tank turret braking to a stop: the drive winding down and a solid, weighty gear clunk. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 4, proc: 'foley' }),
+  sfx('elevation_servo_loop', 'vehicle', `Seamless loop of a tank's gun elevation drive moving the heavy gun: a low electric servo hum with a faint gear whine. ${NO_MUSIC}.`, 3, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
   sfx('hatch', 'vehicle', `One-shot of a heavy steel tank hatch closing: hinge creak and a solid clank. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 2, proc: 'foley' }),
   sfx('switch_toggle', 'vehicle', `One-shot of a heavy military toggle switch flipped, with a relay click. ${NO_MUSIC}.`, 0.8, { variants: 2, takes: 3, proc: 'foley' }),
 ];
@@ -343,30 +358,34 @@ const equipment = [
 // bed with an optional water/machinery layer and a set of positional spot
 // sounds (src/audio/environmentScenes.ts owns the per-map recipe).
 const AMBIENCE = {
-  field: 'open grassland on a breezy day: soft wind through grass, distant songbirds, insects',
-  steppe: 'a vast windswept steppe: steady wind through dry tall grass, larks high above, open emptiness',
-  forest: 'a temperate deciduous forest: wind rustling leaves, creaking trunks, birdsong',
-  pine: 'a pine forest: wind hissing through pine needles, creaking trunks, distant woodpecker',
-  orchard: 'a sunny orchard: bees buzzing among fruit trees, songbirds, gentle breeze in leaves',
-  coastal: 'a windy coast: waves breaking on rocks, gulls, sea wind',
-  wetland: 'a marsh: frogs croaking, insects buzzing, reeds swaying, still water',
-  jungle: 'a humid tropical jungle by day: dense insect drone, exotic birds calling, dripping leaves',
-  mangrove: 'a mangrove swamp: water lapping between roots, frogs, buzzing insects, distant tropical birds',
-  desert: 'a hot desert: dry gusting wind, hissing blown sand, desolate silence',
-  oasis: 'a desert oasis: palm fronds rustling, a trickling spring, dry wind, distant desert birds',
-  canyon: 'a deep rocky canyon: wind howling between cliffs, a distant river, falling pebbles',
-  alpine: 'high mountains: strong cold wind gusts, distant snow sliding, sparse birds',
+  orchard: 'an abandoned orchard in farmland: a gentle wind in the fruit trees, rustling leaves, a distant crow, quiet fields',
+  coastal: 'a windy coast: heavy waves breaking on rocks, sea wind, distant gulls',
+  wetland: 'a marsh: frogs croaking, reeds swaying in the wind, still water lapping, a distant heron',
+  alpine: 'high mountains: strong cold wind gusts across the peaks, distant snow sliding',
   polar: 'an arctic blizzard: howling icy wind and blowing snow',
-  highwind: 'a high exposed chasm: strong buffeting wind, a long bridge creaking and humming in the gusts',
-  volcanic: 'a volcanic caldera: deep geothermal rumble, hissing steam vents, crackling cooling rock',
+  highwind: 'a high exposed chasm: strong buffeting wind, a long steel bridge creaking and humming in the gusts',
+  volcanic: 'a volcanic caldera: a deep geothermal rumble, hissing steam vents, crackling cooling rock',
   industrial: 'a ruined industrial town: wind through broken buildings, distant metal creaks and clanks, flapping sheeting',
-  urban: 'a war-torn city: distant fires crackling, settling rubble, a far-off siren, wind in broken windows',
-  railyard: 'a rail yard: distant freight wagons clanking, a far train horn, wind over steel rails, buzzing wires',
-  foundry: 'an ironworks: deep machinery hum, distant rhythmic hammering, steam venting, metal clanging',
+  urban: 'a war-torn city: distant fires crackling, rubble settling, wind through broken windows, a far-off low rumble',
+  railyard: 'a rail yard: distant freight wagons clanking, wind over steel rails, buzzing overhead wires',
+  foundry: 'an ironworks: a deep machinery hum, distant rhythmic hammering, steam venting, metal clanging',
   mine: 'an open-pit mine: dry wind, distant conveyor clatter, heavy machinery rumbling far away',
-  airfield: 'a military airfield: open wind, a distant jet engine idling, flags snapping, faint radio chatter tones',
   mars: 'a thin cold alien atmosphere on Mars: faint eerie low wind, desolate hollow silence',
-  moon: 'the inside of a sealed armoured vehicle on the Moon: soft electrical hum, faint air recycler hiss, utter silence outside',
+  moon: 'the inside of a sealed armoured vehicle on the Moon: a soft electrical hum, a faint air recycler hiss, utter silence outside',
+};
+
+/** Beds regenerated for an even level start to end and less hiss (four takes each). */
+const AMBIENCE_EVEN = {
+  field: 'open farmland: a steady wind across tall grass and crops, the grass hissing softly, a distant crow',
+  steppe: 'a vast windswept steppe: a deep steady wind rumbling across the open plain and hissing softly through dry grass',
+  forest: 'a dense temperate forest: a low wind moving through the canopy, deep creaking trunks and branches, leaves rustling softly, a distant crow',
+  pine: 'a pine forest: a low wind sighing through the pines, deep creaking trunks, a distant woodpecker',
+  jungle: 'a humid tropical jungle: a low dense insect drone, water dripping from leaves, distant animal calls, heavy humid air',
+  mangrove: 'a mangrove swamp: water lapping between the roots, frogs, a low insect drone',
+  desert: 'a hot desert: a low dry wind gusting, sand hissing softly, desolate silence',
+  oasis: 'a desert oasis: palm fronds rustling in a dry wind, a trickling spring, open desert silence',
+  canyon: 'a deep rocky canyon: a low wind moaning between the cliffs, a distant river, falling pebbles',
+  airfield: 'a military airfield: open wind across the runway, a distant jet engine idling steadily, flags snapping',
 };
 
 /** Water and machinery layers placed under a bed on the maps that have them. */
@@ -380,10 +399,13 @@ const LAYERS = {
 
 const ambience = [
   ...Object.entries(AMBIENCE).map(([biome, desc]) => sfx(`amb_${biome}`, 'ambience',
-    `Seamless loop of the ambience of ${desc}. Continuous, even intensity, wide stereo, no engines, no gunfire, ${NO_MUSIC}.`,
-    20, { inf: 0.4, loop: true, variants: 1, takes: 1, proc: 'ambience', ch: 'stereo' })),
+    `Seamless loop of the ambience of ${desc}. Continuous and natural, rich and detailed, wide stereo, no engines, no gunfire, ${NO_MUSIC}.`,
+    20, { inf: 0.4, loop: true, variants: 1, takes: 2, proc: 'ambience', ch: 'stereo' })),
+  ...Object.entries(AMBIENCE_EVEN).map(([biome, desc]) => sfx(`amb_${biome}`, 'ambience',
+    `Seamless loop of the ambience of ${desc}. Continuous at an even level from start to end, rich and detailed, wide stereo, no engines, no gunfire, ${NO_MUSIC}.`,
+    20, { inf: 0.4, loop: true, variants: 1, takes: 4, proc: 'ambience', ch: 'stereo' })),
   sfx('amb_distant_battle', 'ambience', `Seamless loop of a distant battle far beyond the horizon: occasional muffled artillery booms, faint machine gun bursts, low rumble. ${NO_MUSIC}.`, 20, { loop: true, variants: 1, takes: 1, proc: 'ambience', ch: 'stereo' }),
-  sfx('amb_garage', 'ambience', `Seamless loop of a large military vehicle hangar: low ventilation hum, distant mechanics working, occasional echoing clank. ${NO_MUSIC}.`, 16, { loop: true, variants: 1, takes: 1, proc: 'ambience', ch: 'stereo' }),
+  sfx('amb_garage', 'ambience', `Seamless loop of the inside of a huge military vehicle hangar: a deep reverberant room tone, ventilation, distant mechanics at work with tools, a far-off generator hum, occasional echoing clanks. ${NO_MUSIC}.`, 16, { loop: true, variants: 1, takes: 2, proc: 'ambience', ch: 'stereo' }),
   sfx('distant_artillery', 'ambience', `One-shot of a distant artillery shell exploding many kilometres away: deep rolling rumble. ${NO_MUSIC}.`, 4, { variants: 3, takes: 3, proc: 'weapon-far' }),
   sfx('distant_flak', 'ambience', `One-shot of distant anti-aircraft flak bursts high in the sky: sharp muffled cracks. ${NO_MUSIC}.`, 2, { variants: 2, takes: 2, proc: 'weapon-far' }),
   sfx('distant_mg', 'ambience', `One-shot of a distant machine gun burst far away: rapid faint popping. ${NO_MUSIC}.`, 2.5, { variants: 3, takes: 3, proc: 'weapon-far' }),
@@ -399,23 +421,18 @@ const ambience = [
 // Short positional one-shots the environment director scatters around the
 // listener (random bearing, 40–400 m) so a map never sounds like a loop.
 const SPOTS = [
-  ['songbird', 'a songbird singing a short phrase', 3, 3],
   ['crow', 'a crow cawing twice', 2, 2],
-  ['lark', 'a skylark trilling high above', 3, 2],
   ['hawk', 'a hawk screeching in the sky', 2, 2],
   ['eagle', 'an eagle crying out over a valley', 2.5, 1],
   ['woodpecker', 'a woodpecker drumming on a tree trunk', 2, 2],
   ['gulls', 'seagulls crying overhead', 3, 2],
   ['geese', 'a flock of geese honking as they fly past', 3.5, 1],
   ['heron', 'a heron croaking harshly', 1.5, 1],
-  ['tropical_bird', 'an exotic tropical bird calling', 2.5, 3],
   ['cicadas', 'a burst of cicadas buzzing then fading', 4, 2],
   ['frog', 'a large frog croaking', 1.5, 2],
   ['bees', 'bees buzzing past', 2.5, 1],
   ['dog', 'a dog barking in the distance', 2, 2],
-  ['cowbell', 'distant cowbells and a cow lowing', 3, 1],
   ['foghorn', 'a ship foghorn sounding far away', 4, 1],
-  ['buoy_bell', 'a buoy bell clanging in the swell', 3, 1],
   ['wave_crash', 'a big wave crashing on rocks', 3, 2],
   ['train_horn', 'a freight train horn sounding far away', 3.5, 2],
   ['wagon_clank', 'freight wagons bumping and clanking together', 2.5, 2],
@@ -425,8 +442,6 @@ const SPOTS = [
   ['metal_groan', 'a large steel structure groaning in the wind', 3, 2],
   ['conveyor', 'a mine conveyor belt clattering', 3, 1],
   ['siren_far', 'a distant air-raid siren rising and falling', 5, 1],
-  ['car_alarm', 'a car alarm going off far away', 3, 1],
-  ['glass_fall', 'broken glass falling from a window onto pavement', 1.5, 2],
   ['debris_settle', 'loose rubble and bricks settling in a ruined building', 2, 2],
   ['rockfall', 'small rocks tumbling down a cliff', 2.5, 2],
   ['ice_crack', 'lake ice cracking with a deep twang', 2, 2],
@@ -443,13 +458,27 @@ const SPOTS = [
   ['radio_far', 'a distant military radio squawking with static', 2, 2],
 ];
 
-const spots = SPOTS.map(([id, desc, dur, variants]) => sfx(`spot_${id}`, 'spots',
-  `One-shot of ${desc}, outdoors at a distance, natural. ${NO_MUSIC}.`, dur, { variants, takes: variants, proc: 'spot' }));
+// The garage hangar's workshop, placed a few metres away by the indoor garage scene.
+const GARAGE_SPOTS = [
+  ['garage_compressor', 'an air compressor starting up, running briefly and shutting off with a hiss', 4, 1],
+  ['garage_wrench', 'a pneumatic impact wrench rattling a heavy bolt loose', 2, 2],
+  ['garage_hammer', 'a heavy hammer striking a steel track pin, three blows', 2.5, 2],
+  ['garage_engine', 'a big tank diesel engine started and briefly revved, then settling to idle', 5, 1],
+  ['garage_door', 'a huge hangar door rolling along its track with a deep rumble', 4, 1],
+  ['garage_tools', 'a heavy toolbox set down and tools rattling on a concrete floor', 1.5, 2],
+];
+
+const spots = [
+  ...SPOTS.map(([id, desc, dur, variants]) => sfx(`spot_${id}`, 'spots',
+    `One-shot of ${desc}, outdoors at a distance, natural. ${NO_MUSIC}.`, dur, { variants, takes: variants, proc: 'spot' })),
+  ...GARAGE_SPOTS.map(([id, desc, dur, variants]) => sfx(`spot_${id}`, 'spots',
+    `One-shot of ${desc}, inside a large concrete military hangar with a long echo. ${NO_MUSIC}.`, dur, { variants, takes: variants + 1, proc: 'spot' })),
+];
 
 // ------------------------------------------------------------ edge cases ---
 const edgeCases = [
   sfx('dry_fire', 'edge', `One-shot of a tank gun firing circuit clicking on an empty breech: a dry metallic click with a dull electrical clunk, nothing fires. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'foley' }),
-  sfx('gun_limit', 'edge', `One-shot of a tank gun hitting its mechanical elevation stop: heavy dull steel clunk. ${NO_MUSIC}.`, 1, { variants: 2, takes: 3, proc: 'foley' }),
+  sfx('gun_limit', 'edge', `One-shot of a tank gun reaching the end of its elevation travel: the elevation drive straining briefly against the stop, a low motor groan and a soft heavy bump through the mount. ${NO_MUSIC}.`, 0.9, { variants: 2, takes: 4, proc: 'foley' }),
   sfx('traverse_grind_loop', 'edge', `Seamless loop of a damaged tank turret ring grinding while turning: straining motor and scraping steel bearings. ${NO_MUSIC}.`, 3, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('rollover', 'edge', `One-shot of a heavy tank rolling over onto its side: tumbling crashing steel, loose equipment clattering. ${NO_MUSIC}.`, 3, { variants: 2, takes: 2, proc: 'impact', punch: false }),
   sfx('overturned_groan', 'edge', `One-shot of an overturned tank lying on its side: steel groaning under its own weight, road wheels spinning freely. ${NO_MUSIC}.`, 3, { variants: 1, takes: 2, proc: 'foley' }),

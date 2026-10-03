@@ -236,6 +236,22 @@ for (const lang of languages) {
 }
 
 rmSync(tmp, { recursive: true, force: true });
+// A line dropped from the script leaves the manifest and the disk, in every language.
+const scriptIds = new Set(script.lines.map((line) => line.id));
+let pruned = 0;
+for (const lang of Object.keys(state)) {
+  for (const id of Object.keys(state[lang])) {
+    if (scriptIds.has(id)) continue;
+    const dir = join(OUT, lang);
+    if (existsSync(dir)) for (const name of readdirSync(dir)) if (takeFileOf(id).test(name)) rmSync(join(dir, name));
+    delete state[lang][id];
+    pruned++;
+  }
+}
+if (pruned) {
+  writeFileSync(STATE, JSON.stringify(state, null, 1));
+  console.log(`pruned ${pruned} line packs no longer in the script`);
+}
 const body = Object.keys(state).sort().map((lang) => {
   const lines = Object.keys(state[lang]).sort().map((id) => `    ${JSON.stringify(id)}: ${JSON.stringify(state[lang][id])},`);
   return `  ${JSON.stringify(lang)}: {\n${lines.join('\n')}\n  },`;

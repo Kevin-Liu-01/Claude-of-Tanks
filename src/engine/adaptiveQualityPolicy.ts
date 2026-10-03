@@ -25,6 +25,11 @@ interface AdaptiveQualityWindow {
   readonly dynamicScaleFloor: number;
   readonly maximumTrim: number;
   readonly mayRaiseTier: boolean;
+  /**
+   * 2026-10-02 (the frame-budget lane): the median GPU time of the window's sampled frames (gpuFrameTimer.ts), or
+   * null/absent where the timer extension is unavailable — the policy then decides on the frame cadence alone.
+   */
+  readonly gpuFrameMs?: number | null;
 }
 
 const RESOLUTION_STEP = 0.09;
@@ -48,6 +53,33 @@ const TRIM_UP_MISS_MAXIMUM = 0.10;
 const TRIM_UP_BACKOFF_SECONDS = 15;
 const TRIM_FLAP_SECONDS = RESOLUTION_FLAP_SECONDS * 2;
 const TRIM_BACKOFF_MAX_SECONDS = 90;
+/**
+ * GPU-informed resolution (2026-10-02, the frame-budget lane). Under vsync a healthy 60 Hz cadence hides the headroom,
+ * so a cadence-only governor can only probe upward and step back (the anti-flap backoff bounds that to one probe per
+ * 20 s, each a second and a half of missed frames). With the frame's measured GPU time the policy predicts instead:
+ * the cost of the raster scales at most with the pixel count, so the next step up costs at most gpu × (next / now)²
+ * — an up-step is taken only when that fits GPU_UP_HEADROOM of the budget. An overload with the GPU well inside the
+ * budget (under GPU_BOUND_SHARE of it) is the main thread's: resolution would cost picture and buy nothing, so the
+ * policy goes to the tier lever. A GPU-bound cut aims the predicted GPU time at GPU_DOWN_TARGET of the budget, at
+ * most MAX_RESOLUTION_STEPS_PER_CUT steps at once.
+ */
+export const GPU_UP_HEADROOM = 0.85;
+export const GPU_BOUND_SHARE = 0.75;
+export const GPU_DOWN_TARGET = 0.9;
+export const MAX_RESOLUTION_STEPS_PER_CUT = 2;
+/**
+ * A sample longer than the frames it was taken in is not the frame's GPU occupancy: a timer may report the span from
+ * the frame's first command to its last including other work (ANGLE's Metal backend on a shared GPU read 20–55 ms
+ * against a 16.7 ms cadence in the 2026-10-02 probes), and in steady state a frame's GPU work cannot outlast the
+ * interval between presented frames. A sample beyond GPU_TRUST_SHARE of the frame cadence is set aside: that window
+ * decides on the cadence alone, so a pessimistic timer can never hold the scale down.
+ */
+export const GPU_TRUST_SHARE = 1.2;
+const knownGpu = (window: AdaptiveQualityWindow): number | null => {
+  const gpu = window.gpuFrameMs;
+  if (typeof gpu !== 'number' || !Number.isFinite(gpu) || gpu <= 0) return null;
+  return gpu <= window.frameEmaMs * GPU_TRUST_SHARE ? gpu : null;
+};
 
 interface LoadClassification {
   readonly overloaded: boolean;
@@ -196,7 +228,12 @@ export class AdaptiveQualityPolicy {
       window.dynamicScaleFloor,
     );
     if (lever === 'trim') return this.applyTrimRelief(window);
-    if (lever === 'resolution') return this.applyResolutionRelief(window);
+    if (lever === 'resolution') {
+      const gpu = knownGpu(window);
+      // a main-thread overload: fewer pixels would not shorten the frame
+      if (gpu !== null && gpu < window.frameBudgetMs * GPU_BOUND_SHARE) return this.applyTierRelief(window.clockSeconds);
+      return this.applyResolutionRelief(window);
+    }
     return this.applyTierRelief(window.clockSeconds);
   }
 
@@ -216,7 +253,14 @@ export class AdaptiveQualityPolicy {
   }
 
   private applyResolutionRelief(window: AdaptiveQualityWindow): AdaptiveQualityAction {
-    this.scale = Math.max(window.dynamicScaleFloor, this.scale - RESOLUTION_STEP);
+    let steps = 1;
+    const gpu = knownGpu(window);
+    if (gpu !== null && gpu > window.frameBudgetMs) {
+      // the scale whose predicted GPU time (pixel-proportional) lands at the target share of the budget
+      const target = this.scale * Math.sqrt((GPU_DOWN_TARGET * window.frameBudgetMs) / gpu);
+      steps = Math.max(1, Math.min(MAX_RESOLUTION_STEPS_PER_CUT, Math.ceil((this.scale - target) / RESOLUTION_STEP - 1e-9)));
+    }
+    this.scale = Math.max(window.dynamicScaleFloor, this.scale - RESOLUTION_STEP * steps);
     if (window.clockSeconds - this.lastResolutionUpAt < RESOLUTION_FLAP_SECONDS) {
       this.resolutionUpBackoffSeconds = Math.min(
         this.resolutionUpBackoffSeconds * 2,
@@ -240,7 +284,7 @@ export class AdaptiveQualityPolicy {
     window: AdaptiveQualityWindow,
     clean: boolean,
   ): AdaptiveQualityAction {
-    if (clean && this.canRestoreResolution(window.clockSeconds)) {
+    if (clean && this.canRestoreResolution(window.clockSeconds) && this.gpuFitsStepUp(window)) {
       this.tierUpStrikes = 0;
       this.scale = Math.min(1, this.scale + RESOLUTION_STEP);
       this.lastResolutionUpAt = window.clockSeconds;
@@ -269,6 +313,14 @@ export class AdaptiveQualityPolicy {
     if (this.tierUpStrikes < TIER_UP_STRIKES) return 'none';
     this.tierUpStrikes = 0;
     return 'tier-up';
+  }
+
+  /** Without a GPU measurement the cadence rule alone decides; with one, the next step must fit the headroom. */
+  private gpuFitsStepUp(window: AdaptiveQualityWindow): boolean {
+    const gpu = knownGpu(window);
+    if (gpu === null || !(this.scale > 0)) return true;
+    const next = Math.min(1, this.scale + RESOLUTION_STEP);
+    return gpu * (next / this.scale) ** 2 <= window.frameBudgetMs * GPU_UP_HEADROOM;
   }
 
   private canRestoreResolution(clockSeconds: number): boolean {

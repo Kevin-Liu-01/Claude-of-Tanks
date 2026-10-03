@@ -68,6 +68,11 @@ export interface QualityPreset {
   readonly sunShafts?: boolean;
   readonly lensFlare?: boolean;
   /**
+   * Owner 2026-10-02: cavity occlusion on vehicle pixels only (vehicleOcclusion.ts, in the aerial pass) — the shaded
+   * side of a hull keeps its bustle, skirt and wheel-bay depth while scene-wide GTAO stays off. Absent means off.
+   */
+  readonly vehicleOcclusion?: boolean;
+  /**
    * Round 73 (2026-09-25): the tall-grass tier's density scale (world/tallGrass.ts) — 1 the full sward, Low a
    * quarter, Medium half; absent means no tier (the mobile presets keep today's ground). Read live per cell build.
    */
@@ -75,6 +80,11 @@ export interface QualityPreset {
   readonly maxPixelRatio: number;
   readonly adaptiveBasePixelRatio?: number;
   readonly dynMin: number;
+  /**
+   * 2026-10-02 (the frame-budget lane): the governor's floor on displays below the retina threshold
+   * (renderScalePolicy.RETINA_PIXEL_RATIO). Absent keeps the native fence (never below 1 CSS pixel per axis).
+   */
+  readonly nativeDynMin?: number;
   readonly aoScale: number;
   readonly bloomScale: number;
   readonly shadowMapSizes: readonly [number, number, number, number];
@@ -265,6 +275,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     // The pass, its RCAS floor and receipts stay in place: set taa: true on a preset to re-enable it.
     taa: false,
     contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, // round 69 (2026-09-24)
+    vehicleOcclusion: true, // owner 2026-10-02: vehicle-only cavity occlusion (vehicleOcclusion.ts)
     tallGrass: 1.0, // round 73 (2026-09-25): the full sward
     maxPixelRatio: 2.0,
     // Native DPR-2 is the explicit Ultra promise. Under sustained overload it
@@ -295,10 +306,16 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     msaaSamples: 0,
     taa: false, // 2026-09-14: off by default, see the Ultra note
     contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, // round 69 (2026-09-24)
+    vehicleOcclusion: true, // owner 2026-10-02: vehicle-only cavity occlusion (vehicleOcclusion.ts)
     tallGrass: 1.0, // round 73 (2026-09-25): the full sward
     maxPixelRatio: 1.5,
     adaptiveBasePixelRatio: 1.5,
     dynMin: 0.9,
+    // 2026-10-02 (owner: "60 fps desktop"; the frame-budget lane): a 1080p laptop at 100-150 % scaling renders High
+    // at its native density with nothing above it to give up, so under load the governor may lower the raster to
+    // two thirds per axis there — FSR1's quality ratio, reconstructed by EASU + RCAS to the native canvas — and
+    // raise it again only when the measured GPU time predicts room (adaptiveQualityPolicy.ts). Retina keeps 0.9.
+    nativeDynMin: 0.67,
     aoScale: 0,
     bloomScale: 0.6,
     shadowMapSizes: [2048, 2048, 2048, 1024],
@@ -309,6 +326,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     msaaSamples: 0,
     taa: false, // 2026-09-14: off by default, see the Ultra note
     contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, // round 69 (2026-09-24)
+    vehicleOcclusion: true, // owner 2026-10-02: vehicle-only cavity occlusion (vehicleOcclusion.ts)
     tallGrass: 0.5, // round 73 (2026-09-25): half the sward
     maxPixelRatio: 1.0,
     // Medium/Low already shed AA, AO and shadow cost. Do not multiply that
@@ -457,10 +475,17 @@ function heuristicAutoCap(): AutoTier | null {
   const intelIntegrated = /intel/.test(gpu)
     && !/\b(?:arc|iris.*xe\s*max)\b/.test(gpu)
     && /\b(?:u?hd(?:\s+graphics)?|iris|graphics\s+[456]\d{2})\b/.test(gpu);
+  // 2026-10-02 (the frame-budget lane): the RDNA iGPUs name their model ("AMD Radeon 780M Graphics", "Radeon(TM)
+  // 680M", 760M / 880M / 890M) and slipped past the generic "Radeon(TM) Graphics" pattern into High; a 780M is about
+  // an eighth of the M5 Max the frame budget is measured on (3DMark Wild Life Extreme 4,945 vs 39,389), a third of an
+  // RTX 4050 Laptop. Strix Halo's 8060S / 8050S ("S", a 4060-class part) and the RX / Pro dGPUs stay uncapped.
   const amdIntegrated = /(?:amd|radeon)/.test(gpu)
     && !/\bradeon\s+(?:rx|pro)\b/.test(gpu)
-    && /\b(?:radeon(?:\(tm\))?\s+graphics|vega)\b/.test(gpu);
-  if (intelIntegrated || amdIntegrated
+    && /\b(?:radeon(?:\(tm\))?\s+(?:graphics|\d{3}m)|vega)\b/.test(gpu);
+  // Meteor Lake's "Intel(R) Arc(TM) Graphics" and Lunar Lake's "Arc(TM) 140V / 130V" are integrated (780M class);
+  // the Arc dGPUs carry an A / B model ("Arc(TM) A770", "B580") and stay uncapped.
+  const intelArcIntegrated = /intel/.test(gpu) && /\barc(?:\(tm\))?\s+(?:graphics|1\d0[vt])\b/.test(gpu);
+  if (intelIntegrated || amdIntegrated || intelArcIntegrated
     || /\b(mali|adreno|powervr|videocore)\b/.test(gpu)) return 'medium';
   let mem: number | null | undefined = null;
   let cores: number | null | undefined = null;

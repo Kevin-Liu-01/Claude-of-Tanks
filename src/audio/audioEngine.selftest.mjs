@@ -56,6 +56,8 @@ await audio.warmBattleEvents(['t72b3m', 'leo2a6', 'm1a2', 'bmp2']);
 audio.ambientOn(true);
 for (let i = 0; i < 10; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks); }
 for (let i = 0; i < 6; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+// The battle warm is bounded for the loader; here wait for every decode to land.
+for (let i = 0; i < 1000 && probe.library().pending > 0; i++) await new Promise((resolve) => setTimeout(resolve, 5));
 
 // Vehicle rigs: the occupied hull, near tanks and a far tank with their real powertrains.
 const engines = probe.engineState();
@@ -116,7 +118,10 @@ audio.update(1 / 60, listener, tanks);
 // Our own gun, then the reload choreography of a carousel autoloader.
 since = mark();
 bus.emit('shell:fired', { shellId: 3, shooterId: 'me', isPlayer: true, muzzlePos: [0, 2, 3], dir: [0, 0, 1], caliberMm: 125, shellType: 'APFSDS' });
-assert.equal(probe.sfxLog.slice(since).find((e) => e.n === 'gun_125_close')?.b, 'ownCombat', 'our own gun is gunfire, not engine noise');
+names = probe.sfxLog.slice(since).map((e) => e.n);
+assert.equal(probe.sfxLog.slice(since).find((e) => e.n === 'gun_own_large')?.b, 'ownCombat', `our own gun has its own report, on the gunfire channel (${names})`);
+assert.ok(!names.includes('gun_125_close'), 'our report replaces the close bank everyone else hears');
+assert.ok(names.includes('gun_recoil_mech'), 'the breech recoils and runs back into battery');
 assert.equal(probe.busGains().concussion, 0, 'our own gun never concusses its crew');
 since = mark();
 for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.95]) bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 7 * (1 - progress), progress });
@@ -125,6 +130,12 @@ names = probe.sfxLog.slice(since).map((e) => e.n);
 for (const id of ['case_eject_stub', 'autoloader_carousel', 'autoloader_lift', 'autoloader_chain_ram', 'breech_close', 'latch_ready']) {
   assert.ok(names.includes(id), `carousel reload plays ${id} (${names})`);
 }
+since = mark();
+for (const progress of [0, 0.1, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95]) { ctx.advance(0.6); bus.emit('player:reload', { total: 6, kind: 'magazine', caliberMm: 120, t: 6 * (1 - progress), progress }); }
+bus.emit('player:reload', { total: 6, kind: 'magazine', caliberMm: 120, t: 0, progress: 1, done: true });
+names = probe.sfxLog.slice(since).map((e) => e.n);
+assert.equal(names.filter((n) => n === 'drum_load_round').length, 4, `a drum refill feeds its rounds in one by one (${names})`);
+assert.ok(names.includes('drum_rotate') && names.at(-1) === 'latch_ready', 'the drum indexes and the gun locks ready');
 
 // Being hit: exterior impact + interior response + a crew call in Russian.
 for (let i = 0; i < 200 && !probe.voicesLoaded; i++) await new Promise((resolve) => setTimeout(resolve, 5));
@@ -166,12 +177,14 @@ for (let i = 0; i < 180; i++) {
 names = probe.sfxLog.slice(since).map((e) => e.n);
 assert.ok(names.filter((n) => n === 'gun_limit').length <= 2, `a flickering gun stop clunks at most twice in 3 s (${names.filter((n) => n === 'gun_limit').length})`);
 assert.equal(names.filter((n) => n === 'turret_stop').length, 0, 'a hunting servo never clunks');
+assert.equal(names.filter((n) => n === 'turret_start').length, 0, 'nor starts the drive');
 since = mark();
 for (let i = 0; i < 30; i++) { me.state.turretYawRate = 0.4; ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks); }
 me.state.turretYawRate = 0;
 ctx.advance(1 / 60);
 audio.update(1 / 60, listener, tanks);
 assert.equal(probe.sfxLog.slice(since).filter((e) => e.n === 'turret_stop').length, 1, 'a half-second slew ends in one stop clunk');
+assert.equal(probe.sfxLog.slice(since).filter((e) => e.n === 'turret_start').length, 1, 'and began with one drive start');
 me.state.atGunLimit = false;
 
 // Destruction: an ammo-rack kill by us → blast, turret, cook-off, kill confirm.
@@ -313,6 +326,18 @@ since = mark();
 bus.emit('mode:infected', { id: 'me', team: 'bravo' });
 assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'sting_infected'), 'turned to the infected side');
 
+const buddy = tank('buddy', { x: 4, z: 8, specId: 'leo2a6', nation: 'Germany' });
+for (let i = 0; i < 6; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, [...tanks, buddy]); }
+assert.equal(probe.engineState().find((e) => e.id === 'buddy')?.lod, 'near', 'a tank 9 m away is near, never our own hull');
+assert.equal(probe.engineState().filter((e) => e.lod === 'own').length, 1, 'exactly one own rig');
+
+// Interface sounds: in battle only menus sound, and a control's own 'ui:click' never doubles one.
+since = mark();
+probe.interfaceSound('click', false);
+assert.ok(!probe.sfxLog.slice(since).some((e) => e.b === 'ui'), 'battle controls never click');
+probe.interfaceSound('back', true);
+assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'ui_back'), 'a menu in battle does');
+
 // Leaving battle tears every world loop down — here from the pause menu.
 bus.emit('ui:pause', { on: true });
 audio.update(1 / 60, listener, tanks);
@@ -327,9 +352,24 @@ const garageFrom = probe.sfxLog.length ? probe.sfxLog.at(-1).seq : 0;
 for (let t = 0; t < 14; t += 0.25) { ctx.advance(0.25); audio.update(0.25, listener, []); }
 const workshop = probe.sfxLog.filter((e) => e.seq > garageFrom && /garage_clank|spot_crane_chain|spot_radio_far/.test(e.n));
 assert.ok(workshop.length > 0 && workshop.every((e) => e.d < 16), `garage spots nearby (${workshop.map((e) => `${e.n}@${e.d}m`)})`);
+// The garage's controls: a tab, then the same press's own 'ui:click' (deduplicated), then a tank card.
+ctx.advance(0.5);
+since = mark();
+probe.interfaceSound('tab', false);
+bus.emit('ui:click', {});
+names = probe.sfxLog.slice(since).map((e) => e.n);
+assert.deepEqual(names.filter((n) => /^ui_/.test(n)), ['ui_tab'], `one sound per press (${names})`);
+ctx.advance(0.2);
+probe.interfaceSound('vehicle', false);
+assert.ok(probe.sfxLog.slice(since).some((e) => e.n === 'ui_tank_select'), 'a tank card lifts its tank into place');
 // The next battle does not start under the pause it was left from.
 bus.emit('phase:change', { phase: 'battle' });
 audio.update(1 / 60, listener, tanks);
 assert.equal(probe.snapshot, 'battle', 'a battle left from the pause menu leaves no pause behind');
 
-console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, our hits and misses, kill-cam, panning, scope, aircraft, mode events and teardown passed (${probe.sfxLog.length} voices logged)`);
+const lateCtx = createFakeContext({ decode: () => fakeBuffer(1.5) });
+const late = createAudio({ context: lateCtx, getMapId: () => 'urban', getTerrain: () => terrain, tier: 'desktop', initialPhase: 'battle' });
+late.resume();
+assert.ok(globalThis.window.__COT_AUDIO.library().pinned > 100, `adopted mid-battle, the battle set is still warmed and pinned (${globalThis.window.__COT_AUDIO.library().pinned})`);
+
+console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, our hits and misses, kill-cam, panning, scope, aircraft, mode events, interface sounds, rig ownership, late adoption and teardown passed (${probe.sfxLog.length} voices logged)`);

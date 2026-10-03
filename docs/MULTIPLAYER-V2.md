@@ -1874,6 +1874,47 @@ against its own layout (props the authority lacks, props it cannot see) and sees
 assault host plays the base terrain under the clients' carved trenches. The fix there is one layout for every peer of a
 match (or a manifest per layout), not a translation.
 
+### 13.16 A migration keeps every fall the seat knew (lane `fix/mp-migration-props`, 2026-10-02)
+
+**The finding.** On the PR head with main's six modes (47ff227c2) the world-events audit failed 3 runs in 10 (4 of 4
+passed before the merge; nothing in main touches destroyed-prop migration — the merge only made a race visible): the old
+host had 55 destroyed props, the elected seat's newest frame 54, the new host booted with 54; that prop stood again, a bot
+crushed it a second time and p2 and p3 both crunched it. A second failure was the audit's own: it compared the boot with
+the seat's newest frame alone while the boot had rightly used a newer sealed keyframe.
+
+**Traced** (the audit with the old host's tab closed the moment a scripted fall's event went out): tree 1307 fell at host
+tick 1150; its `world_prop_destroyed` reached p2 and p3 — still queued, the presented tick never reached it — while the
+frame listing it (the next snapshot, up to two ticks later) was never published; both seats' newest frame was tick 1149
+(41 props, without 1307), the keyframe tick 1131. The elected p2 booted from that frame (41: lost 1), and the migration's
+link reset cleared both queues: nobody presented the fall, the new host stood the tree, and the next hull through it
+felled it again with a crunch on every seat.
+
+**Fix.** The match client retains the obstacle index of every `world_prop_destroyed` it receives in the round, presented or
+queued (`RetainedMigrationState.fallen`; a link reset clears the queue, never this). The elected seat's boot state
+(`migrationState.resumeStateFromRetained`, called by `MatchSession.becomeHost`) is the newer of the sealed keyframe and its
+newest frame, plus those falls, at the base's revision plus one per fall it adds (the old host counted each when it
+destroyed it), never below the list's length. The peers' queued fall events are still cleared at the reset; the new host's
+first frame lists the prop and their presentations lay it down settled — no fall replayed, no crunch.
+
+**What the revision means to the clients' reading.** It counts falls (one per destroyed record; a restore continues it).
+The host actor republishes its sorted list only when the revision moves (`destroyedList`), so a restored list must come
+with a revision at least its length — a resumed actor starts at −1 and lists everything in its first frame. The wire
+carries the list whole in a keyframe and as additions in a delta, by content; a client's assembled list is their union,
+replaced by a new socket's keyframe. The presentation re-reads the list whenever the pair (revision, length) changes and
+judges each listed prop by itself (`authorityObstacles`), so nothing reads the revision as monotonic: a booted host whose
+revision and list match what the seat knew converges every peer, and a peer that saw the fall already keeps it down.
+
+**Receipts.** `tools/mp-world-events-scenarios.selftest.mjs` part D (fails on 47ff227c2: the seat kept no record of the
+fall; its boot logic listed `[0]` of the two fences): the real host core and a peer client on virtual time, the peer's
+snapshots cut from a fence's fall while its event still arrives, the host closed — once with the peer's newest frame newer
+than the keyframe, once with the keyframe newer (cut since before an earlier fence the keyframe lists) — the seat retains the
+fall, the boot names both fences at the old host's revision, the second host stands neither again, and the seat's first
+frame from it lists the fall. `migrationState.selftest` (the base choice, the overlay, the merge, the revision; an actor
+booted from it), `matchClient.selftest` (retained across a reset). The audit judges what the seat knew independently of
+the boot — the newer of the keyframe (opened with the room's host secret) and the newest frame, plus every fall the old
+host sent it — everything known is restored, nothing beyond the old host's list is invented, and the revision counts the
+restored falls within the old host's.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers
