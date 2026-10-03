@@ -111,7 +111,7 @@ export const TALL_GRASS = Object.freeze({
                       // of Tarkhan's 44 k clumps sat over the tier's 1 ms budget on the toggle bench)
     fade: Object.freeze([-1, 0, 38, 46] as const), // (in0, in1, out0, out1) m — a strict in-ramp (smoothstep needs edge0 < edge1)
     cap: 56000,       // Tarkhan's 1.2 × steppe filled 40 000 and dropped its ring's far cells (the first sheets)
-    programKey: 'world-tall-grass-near-v2', // v2 (ground lane): the shaded sky light desaturated
+    programKey: 'world-tall-grass-near-v3', // v3 (ground lane): the shaded sward's light neutralised after the chunk
   }),
   far: Object.freeze({
     cellM: 24,
@@ -119,7 +119,7 @@ export const TALL_GRASS = Object.freeze({
     perM2: 0.20,      // single wide blades per square metre (0.30 on the first sheet massed into a dark carpet at 30–120 m)
     fade: Object.freeze([34, 46, 104, 120] as const),
     cap: 28000,
-    programKey: 'world-tall-grass-far-v3', // v3 (ground lane): the shaded sky light desaturated
+    programKey: 'world-tall-grass-far-v4', // v4 (ground lane): the shaded sward's light neutralised after the chunk
   }),
   /** Blade width multiplier of the far ring (one strip carries the read), the root-to-tip gradient exponents and the
    * far ring's lift: the near clump keeps a dark root; the far blade — seen from above, mostly root in screen space,
@@ -255,6 +255,15 @@ interface SharedUniforms {
   uGrassDry: { value: THREE.Vector3 };
 }
 
+/** The shaded sward's light (both grass tiers append it after `lights_fragment_end`): see tallGrassHook. */
+export const SHADED_SWARD_GLSL = /* glsl */ `{ vec3 cotAlb = max( material.diffuseColor, vec3( 1e-4 ) ); vec3 cotIrr = reflectedLight.indirectDiffuse / cotAlb; float cotL = dot( cotIrr, vec3( 0.2126, 0.7152, 0.0722 ) );
+#ifdef COT_SUN_VIS_CAPTURED
+float cotShade = 1.0 - clamp( cotSunVis, 0.0, 1.0 );
+#else
+float cotShade = 1.0;
+#endif
+reflectedLight.indirectDiffuse = mix( cotIrr, vec3( cotL ) * vec3( 1.05, 1.0, 0.86 ), 0.75 * cotShade ) * cotAlb; }`;
+
 /** The blade shader: every dimension from the instance attribute, the press from the field, the shadow at the root. */
 function tallGrassHook(shared: SharedUniforms, fade: readonly [number, number, number, number], bendRad: number,
   bladeGamma: number = TALL_GRASS.bladeGamma.near, bladeLift: number = TALL_GRASS.bladeLift.near): TallGrassMaterialHook {
@@ -351,12 +360,15 @@ varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;`);
       '#include <common>\nuniform vec3 uGrassBase; uniform vec3 uGrassTip; uniform vec3 uGrassDry; uniform float uBladeGamma; uniform float uBladeLift; varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;');
     // both faces of a strip light the same way (no back-face flip) and the root is dark under the sward
     // ground lane (2026-10-03, waves 13/14: "grass in shadow turns a saturated teal or indigo" — the tank's shadow on the
-    // sward): a blade's indirect light is the sky's blue fill; desaturated to a third of its hue and warmed a little (the
-    // ground's bounce through the sward), the shaded sward reads as a darker version of its own colour
-    // (a lit program carries the anchor; the receipts' bare shader stand-ins do not, so it is placed where it exists)
+    // sward): a shaded blade's light is the sky's own — strongly blue, cooled again by the engine's shadow dim, and a 1.4
+    // scene saturation turns that into teal straw and indigo turf (hold 7: shaded straw at 51/81/76 beside sunlit
+    // 141/131/90). As far as the blade stands in shadow (its root's sun visibility), its final indirect light is a
+    // quarter of that hue over its luminance, warmed a little (the sward's own interreflection and the sunlit ground's
+    // bounce): the shaded sward reads as a darker version of its own colour. Applied after the chunk, so after the
+    // engine's dim and bounce (a lit program carries the anchor; the receipts' bare stand-ins do not).
     if (shader.fragmentShader.includes('#include <lights_fragment_end>')) {
       shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>',
-        'irradiance = mix( vec3( dot( irradiance, vec3( 0.2126, 0.7152, 0.0722 ) ) ), irradiance, 0.33 ) * vec3( 1.04, 1.0, 0.90 );\n#include <lights_fragment_end>');
+        `#include <lights_fragment_end>\n${SHADED_SWARD_GLSL}`);
     }
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <normal_fragment_begin>',
       '#include <normal_fragment_begin>\nnormal = normalize( vNormal );\nnonPerturbedNormal = normal;');

@@ -351,6 +351,14 @@ function attribute(geometry: THREE.BufferGeometry, name: string): THREE.BufferAt
 export function mulberry32(a: number): RandomSource {return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
+// the shaded sward's light (a copy of tallGrass.ts SHADED_SWARD_GLSL; tallGrass.selftest pins them equal)
+const SHADED_SWARD_GLSL = /* glsl */ `{ vec3 cotAlb = max( material.diffuseColor, vec3( 1e-4 ) ); vec3 cotIrr = reflectedLight.indirectDiffuse / cotAlb; float cotL = dot( cotIrr, vec3( 0.2126, 0.7152, 0.0722 ) );
+#ifdef COT_SUN_VIS_CAPTURED
+float cotShade = 1.0 - clamp( cotSunVis, 0.0, 1.0 );
+#else
+float cotShade = 1.0;
+#endif
+reflectedLight.indirectDiffuse = mix( cotIrr, vec3( cotL ) * vec3( 1.05, 1.0, 0.86 ), 0.75 * cotShade ) * cotAlb; }`;
 const HALF = 512;
 const CHUNKS = 8, CHUNK_SIZE = 128;
 // Performance pass: terrain splat/detail already carries the meadow at range;
@@ -3522,14 +3530,11 @@ function* vegetationBuildSteps(
         if (vColor.r < 0.0) diffuseColor.rgb = -vColor.rgb * (dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) / 0.28);
         else diffuseColor *= vColor;
       #endif`);
-    // ground lane (2026-10-03, waves 13/14: "grass in shadow turns a saturated teal or indigo"): a blade's indirect light
-    // is the sky's blue fill; desaturated to a third of its hue and warmed a little (the ground's bounce through the
-    // sward), the shaded sward reads as a darker version of its own colour, not a coloured decal (placed where the lit
-    // program carries the anchor; the receipts' bare stand-ins do not)
+    // ground lane (2026-10-03, waves 13/14: "grass in shadow turns a saturated teal or indigo"): the shaded sward's light
+    // as the tall grass takes it — the same text as tallGrass.ts SHADED_SWARD_GLSL (tallGrass.selftest compares them; a
+    // copy keeps the carpet's module free of the tall-grass tier): after the chunk, as far as the blade is in shadow
     if (shader.fragmentShader.includes('#include <lights_fragment_end>')) {
-      shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>', /* glsl */`
-      irradiance = mix( vec3( dot( irradiance, vec3( 0.2126, 0.7152, 0.0722 ) ) ), irradiance, 0.33 ) * vec3( 1.04, 1.0, 0.90 );
-      #include <lights_fragment_end>`);
+      shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>', `#include <lights_fragment_end>\n${SHADED_SWARD_GLSL}`);
     }
     useAttributeNormal(shader);
     mipAlphaGuard(shader); // aa-r1: distance-stable blade coverage
@@ -3584,8 +3589,8 @@ function* vegetationBuildSteps(
         // tuft cover the 1049e4e pastures showed to ~300 m; the near carpet
         // keeps the crisp 0.44 edge beside the tracks.
         // v8/v7: root-anchored shadow lookup; v9/v8 (ground lane): the crop tuft's colour branch; v10/v9: the shaded sky light desaturated
-        matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v10', 0.34),
-        matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v9'),
+        matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v11', 0.34),
+        matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v10'),
       });
       yield { stage: 'grassPrep', fine: true };
     }
