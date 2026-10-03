@@ -57,10 +57,11 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
     }
   }
   return {
-    update(player:HudTank|null|undefined,now:number,fov:number,dist:number,visible:boolean,key='V'){
+    update(player:HudTank|null|undefined,now:number,fov:number,dist:number,visible:boolean,key='V',thermalReady=false){
       const view=player?.aerial,active=!!view?.active&&visible;
       root.hidden=!active;document.documentElement.dataset.flight=active?view!.kind:'';
       if(!active||!view){wasActive=false;return;}
+      feed.hidden=!thermalReady;
       const drone=view.kind==='drone';root.dataset.kind=view.kind;backKey.textContent=key;
       if(kind!==view.kind){kind=view.kind;emblem.innerHTML=uiIconSVG(drone?'modeDrone':'modeAc130',24);}
       title.textContent=drone?t(view.launching?'flight.launching':'flight.drone'):t('flight.gunship');

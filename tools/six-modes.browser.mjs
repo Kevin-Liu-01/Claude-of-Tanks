@@ -42,8 +42,10 @@ try{
     else {await page.mouse.click(640,400);await page.keyboard.press('KeyV');}
     await page.waitForFunction(()=>window.__DEBUG.game.player.aerial?.active,{timeout:10000});
     await new Promise(r=>setTimeout(r,700));
+    assert.equal(await page.evaluate(()=>window.__DEBUG.camera.userData.thermalFlight),false,'launch camera stays in color');
     await page.screenshot({path:resolve(out,`drone-launch-${suffix}.png`)});
     await page.waitForFunction(()=>!window.__DEBUG.game.player.aerial.launching,{timeout:10000});
+    await page.waitForFunction(()=>window.__DEBUG.camera.userData.thermalFlight===true,{timeout:5000});
     const before=await page.evaluate(()=>{const v=window.__DEBUG.game.player.aerial;return{x:v.x,y:v.y,z:v.z};});
     if(mobile){
      const box=await page.$eval('.cot-touch .joy',el=>{const r=el.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2,dy:r.height*.35};});
@@ -70,6 +72,7 @@ try{
     assert.ok(Math.hypot(after.x-before.x,after.z-before.z)>1,'aircraft orbits during play');
     assert.equal(await page.evaluate(()=>window.__DEBUG.game.player.spec.gun.shells[1].caliberMm),152);
     assert.ok(after.y>=230,'gunship starts and stays airborne');
+    assert.equal(await page.evaluate(()=>window.__DEBUG.post.composer.passes.find(p=>p.isOutputGradePass).uniforms.uThermal.value),1,'gunship uses real thermal postprocessing');
     assert.match(await page.$eval('.flight-weapons',el=>el.textContent),/30 mm cannon.*152 mm HE.*Guided missile/s);
     const howitzer=await page.$('.flight-weapon:nth-child(2)');if(mobile)await howitzer.tap();else await howitzer.click();
     await page.waitForFunction(()=>window.__DEBUG.game.player.combat.shellSlot===1);
