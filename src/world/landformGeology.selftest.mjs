@@ -155,7 +155,33 @@ assert.ok(Math.max(...edges) - Math.min(...edges) > 3,
   `the flow's margin is lobed (${Math.min(...edges)}-${Math.max(...edges)} m)`);
 assert.equal(ridgeGeologyHeight({ kind: 'ridge', x: 0, z: 0, height: 5 }, 0, 0, 1), null, 'no geology, no override');
 
+// 9. Continuous everywhere: no seam where one rill's ground hands over to the next, none round a knoll's back bearing
+// (where the bearing wraps) and none at a breached crater's centre, where every bearing meets. A 1 cm step never moves
+// the ground more than 3 cm on these forms (no strata here, whose risers are walls by design).
+const seamTests = [
+  frame({ kind: 'knoll', x: 0, z: 0, rx: 48, rz: 60, height: 24, yawDeg: 0, geology: { profile: 'cone',
+    crater: { rim: 0.16, depthM: 4, breachDeg: 200 }, outline: 0.1, gullies: { count: 11, depthM: 3.2, width: 0.6 },
+    rough: 1.1 } }),
+  frame({ kind: 'knoll', x: 0, z: 0, rx: 60, rz: 60, height: 18, yawDeg: 0, geology: { profile: 'cone',
+    crater: { rim: 0.15, depthM: 2.5, breachDeg: 180 }, outline: 0.14, gullies: { count: 12, depthM: 3.5, width: 0.6 },
+    rough: 1.1 } }),
+  frame({ kind: 'ridge', x: 0, z: 0, length: 200, width: 60, height: 7, yawDeg: 0, geology: { profile: 'butte',
+    wall: [0.4, 0.58], apron: 0.25, outline: 0.28, rough: 0.7, gullies: { count: 3, depthM: 1.2, width: 0.6 } } }),
+];
+let seamSamples = 0;
+for (const form of seamTests) {
+  const reach = Math.max(form.rx ?? 0, form.rz ?? 0, (form.length ?? 0) / 2, form.width ?? 0) * 1.4;
+  for (let z = -reach; z <= reach; z += 0.37) for (let x = -reach; x <= reach; x += 0.37) {
+    const h = sampleLandformHeight(form, x, z);
+    for (const [dx, dz] of [[0.01, 0], [0, 0.01]]) {
+      seamSamples++;
+      const jump = Math.abs(sampleLandformHeight(form, x + dx, z + dz) - h);
+      assert.ok(jump <= 0.03, `${form.kind} geology is continuous at (${x.toFixed(2)}, ${z.toFixed(2)}): ${jump.toFixed(3)} m in 1 cm`);
+    }
+  }
+}
+
 console.log(`landformGeology.selftest: ${smoothForms} smooth landforms unchanged; cone flank ${steepest.toFixed(3)} `
   + `(predicted ${predicted.toFixed(3)}), ${notches} rills, lobed reach ${Math.min(...reach)}-${Math.max(...reach)} m, `
   + `${benches} benches on ${benchedBearings} of 12 bearings, `
-  + `flow margin ${Math.min(...edges)}-${Math.max(...edges)} m`);
+  + `flow margin ${Math.min(...edges)}-${Math.max(...edges)} m, ${seamSamples} seam samples continuous`);

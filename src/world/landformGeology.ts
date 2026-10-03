@@ -25,8 +25,9 @@ export interface LandformGeology {
   /** cone: the crater's rim as a fraction of the radius, its depth in metres and an optional breach bearing in
    * degrees (0 = local +x, counter-clockwise towards local +z). */
   crater?: { rim: number; depthM: number; breachDeg?: number };
-  /** Rills down the flanks: how many round a knoll (or per 100 m of a ridge), their deepest cut in metres and their
-   * width as a share of their spacing (default 0.45); each rill varies its own depth, head and meander. */
+  /** Rills down the flanks: how many round a knoll (a whole number; or per 100 m of a ridge), their deepest cut in
+   * metres and their width as a share of their spacing (default 0.45); each rill varies its own depth, head and
+   * meander. */
   gullies?: { count: number; depthM: number; width?: number };
   /** Bedding: the bed thickness in metres and the riser's share of each bed (default 0.3). */
   strata?: { stepM: number; riser?: number };
@@ -161,19 +162,26 @@ function gullyFlank(q: number, geology: LandformGeology): number {
 /**
  * Rills of a coordinate u (one per unit), in [0, 1] of their deepest cut. Each rill has its own depth, its own head
  * (it begins further down the flank or nearer the top), a meander along the fall line and a rounded V section, so the
- * rills never read as regular spokes. `fall` is the position down the flank in [0, 1]; `jitter` shifts the pattern.
+ * rills never read as regular spokes. `fall` is the position down the flank in [0, 1]; `jitter` shifts the pattern;
+ * `period` (a knoll's rill count) makes rill i and rill i + period the same rill, so the grooves close round a knoll.
+ * The cut is the deeper of the two nearest rills, each measured to its own meandering line, so it is continuous
+ * everywhere: no seam where one rill's ground hands over to the next's.
  */
-function gully(u: number, fall: number, width: number, jitter: number, salt: number): number {
-  const index = Math.round(u + jitter);
-  const meander = 0.14 * Math.sin(fall * 7 + hash2(index, 1, salt) * TAU)
-    + 0.06 * Math.sin(fall * 17 + hash2(index, 2, salt) * TAU);
-  const v = u + jitter + meander;
-  const d = Math.abs(v - Math.round(v)); // 0 on a rill's line, 0.5 halfway to the next
-  const half = Math.max(0.05, width * (0.7 + 0.6 * hash2(index, 3, salt)) * 0.5);
-  const section = smoothstep(0, 1, 1 - d / half);
-  const depth = 0.4 + 0.6 * hash2(index, 4, salt);
-  const head = 0.05 + 0.4 * hash2(index, 5, salt);
-  return section * depth * smoothstep(head, head + 0.18, fall);
+function gully(u: number, fall: number, width: number, jitter: number, salt: number, period = 0): number {
+  const w = u + jitter, first = Math.floor(w);
+  let cut = 0;
+  for (let i = first; i <= first + 1; i++) {
+    const key = period > 0 ? ((i % period) + period) % period : i;
+    const meander = 0.14 * Math.sin(fall * 7 + hash2(key, 1, salt) * TAU)
+      + 0.06 * Math.sin(fall * 17 + hash2(key, 2, salt) * TAU);
+    const d = Math.abs(w + meander - i); // 0 on this rill's line
+    const half = Math.max(0.05, width * (0.7 + 0.6 * hash2(key, 3, salt)) * 0.5);
+    if (d >= half) continue;
+    const depth = 0.4 + 0.6 * hash2(key, 4, salt);
+    const head = 0.05 + 0.4 * hash2(key, 5, salt);
+    cut = Math.max(cut, smoothstep(0, 1, 1 - d / half) * depth * smoothstep(head, head + 0.18, fall));
+  }
+  return cut;
 }
 
 /**
@@ -221,17 +229,20 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
   let shape = profileOf(q, geology, height, domeProfile);
   const breach = geology.profile === 'cone' ? geology.crater?.breachDeg : undefined;
   if (breach !== undefined) {
-    // the crater wall opens on one bearing, and a lower notch runs down the flank below it
+    // the crater wall opens on one bearing, and a lower notch runs down the flank below it; the notch is deepest at the
+    // rim and fades into the crater, so it vanishes at the centre where every bearing meets
     let d = Math.abs(theta - breach * Math.PI / 180) % TAU;
     if (d > Math.PI) d = TAU - d;
-    shape -= Math.max(0, 1 - d / 0.45) * smoothstep(0.75, 0, q) * 0.35 * Math.max(0, shape);
+    const rim = Math.max(0.02, Math.min(0.5, geology.crater?.rim ?? 0.12));
+    const radial = q < rim ? smoothstep(0, rim, q) : smoothstep(0.75, rim, q);
+    shape -= Math.max(0, 1 - d / 0.45) * radial * 0.35 * Math.max(0, shape);
   }
   let h = height * shape;
   if (geology.gullies && height > 0) {
     // the jitter is periodic in the bearing, so the grooves close round the knoll without a seam
     const jitter = (valueNoise(Math.cos(theta) * 1.6 + 7, Math.sin(theta) * 1.6 - 3, salt + 11) - 0.5) * 0.6;
-    const count = Math.max(1, geology.gullies.count);
-    const g = gully((theta / TAU + 1) * count, q, geology.gullies.width ?? 0.45, jitter, salt + 13);
+    const count = Math.max(1, Math.round(geology.gullies.count));
+    const g = gully((theta / TAU + 1) * count, q, geology.gullies.width ?? 0.45, jitter, salt + 13, count);
     h -= geology.gullies.depthM * g * gullyFlank(q, geology) * Math.min(1, shape * 3);
   }
   if (geology.strata && height > 0) {

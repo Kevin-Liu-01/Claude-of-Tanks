@@ -52,7 +52,7 @@ const expected = {
   monsoon: [9855, 9630, 12375], // 2026-10-02 Monsoon Ridge layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md); was [9473, 9215, 12022]
   alpine: [9117, 9044, 8009],
   // Same prior-props baseline verification as Monsoon.
-  caldera: [4890, 5035, 3695], // 2026-10-03 Obsidian Caldera layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md); was [5000, 5107, 3810]
+  caldera: [4673, 4818, 3484], // 2026-10-03 Obsidian Caldera layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md); was [5000, 5107, 3810]; the geology continuity fix re-rolled its scatter from [4890, 5035, 3695] (trees 3580 -> 3362, the same slope distribution)
   foundry: [4277, 4385, 3119],
   ruinspires: [2823, 9284, 1050],
   blackglass: [3661, 5894, 2333],
