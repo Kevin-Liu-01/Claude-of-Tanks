@@ -40,7 +40,7 @@ import {
   exchangeRamMomentum, fallAttitudeFactor, hullVelocityAlong, ramAggression, ramShares, resolveHullImpact,
   type HullImpactKind, type HullImpactResult,
 } from './impact.ts';
-import { createStructureSupportField } from './structureSupport.ts';
+import { createHullSupportPose, createStructureSupportField, hullSupportPose } from './structureSupport.ts';
 import {
   prefersVerticalTankContact,
   tanksVerticallyClear,
@@ -91,7 +91,7 @@ import type {
 } from './worldSnapshot.ts';
 import {
   pushHullFromHull,
-  hullPassesObstacleTop, pushHullFromObstacle,
+  hullPassesObstacleTop, hullUndersideOver, pushHullFromObstacle,
   shellPassesThroughCollisionRecord,
 } from '../world/collision.ts';
 import type { CollisionRecord } from '../world/collision.ts';
@@ -1129,9 +1129,15 @@ export function createAuthoritativeMatch({
   ): boolean {
     const broadRadius = Math.hypot(halfL, halfW) + 0.01;
     const spanTop = pos.y + tankBodyTopM(entity.spec);
+    const lifts = tankContactRect(entity.spec);
+    // the standing rule reads the hull's underside over each record, at its attitude (world/collision.ts hullUndersideOver)
+    const sinPitch = Math.sin(entity.state.visualPitch || 0), sinRoll = Math.sin(entity.state.visualRoll || 0);
     let hard = false;
     for (const obstacle of obstacleCandidates(centerX, centerZ, broadRadius)) {
-      if (obstacle.crushed || hullPassesObstacleTop(pos.y, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+      if (obstacle.crushed) continue;
+      const spanBottom = hullUndersideOver(obstacle, centerX, centerZ, fx, fz, rx, rz, halfL, halfW, pos.y, sinPitch, sinRoll,
+        lifts.frontLiftM, lifts.rearLiftM);
+      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
       const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
       const closestZ = Math.max(obstacle.min[2], Math.min(centerZ, obstacle.max[2]));
       const dx = centerX - closestX;
@@ -1140,7 +1146,7 @@ export function createAuthoritativeMatch({
       const beforeX = outPush.x;
       const beforeZ = outPush.z;
       const pushed = pushHullFromObstacle(
-        _contactCenter, fx, fz, rx, rz, halfL, halfW, obstacle, outPush, pos.y, spanTop,
+        _contactCenter, fx, fz, rx, rz, halfL, halfW, obstacle, outPush, spanBottom, spanTop,
       );
       if (!pushed) continue;
       if (!obstacle.crushable || !obstacleIsPressedThrough(entity, obstacle)) {
@@ -1511,8 +1517,8 @@ export function createAuthoritativeMatch({
     if (bits & PLAYER_ACTION_BITS.RELOAD_MAGAZINE) reloadMagazine(entity);
     if (bits & PLAYER_ACTION_BITS.SPECIAL_ACTION) useSpecialAction(entity);
     if (bits & PLAYER_ACTION_BITS.SELF_RIGHT) {
-      if (requestTankSelfRight(entity.state)) emit('tank_self_right', { id: entity.id });
-      else requestTankJump(entity.state, entity.modeJumpMps);
+      if (requestTankSelfRight(entity.state, entity.modeGravityScale ?? 1)) emit('tank_self_right', { id: entity.id });
+      else requestTankJump(entity.state, entity.modeJumpMps, entity.modeGravityScale ?? 1);
     }
     for (let slot = 0; slot < CONSUMABLE_RULES.length; slot++) {
       useConsumableSlot(entity, bits, slot);
@@ -2084,6 +2090,7 @@ export function createAuthoritativeMatch({
   }
 
   // round 30: hulls stand on the primitives they are above (structureSupport.ts), the same field the solo sim rides
+  const _supportPose = createHullSupportPose();
   const structureSupport = createStructureSupportField(heightField, {
     queryObstacles: worldCollision && typeof worldCollision.queryObstacles === 'function'
       ? worldCollision.queryObstacles.bind(worldCollision) : undefined,
@@ -2096,8 +2103,10 @@ export function createAuthoritativeMatch({
       if (entity.modeActive === false) continue;
       if (isGunship(entity)) continue;
       movingEntity = entity;
-      // the authority has no rendered contact geometry: the hull origin is its belly line (movement's default)
-      structureSupport.beginHull(entity.state.pos.x, entity.state.pos.z, entity.state.pos.y);
+      // the authority has no rendered contact geometry: the hull origin is its belly line (movement's default); a part
+      // is a floor by the hull's underside over it, the obstacle solver's standing rule (structureSupport.ts)
+      structureSupport.beginHull(entity.state.pos.x, entity.state.pos.z, entity.state.pos.y,
+        hullSupportPose(entity.spec, entity.state, _supportPose));
       // Park the carrier only during ground integration; preserve held flight controls
       // for additional fixed steps when rendering slower than the simulation.
       const parking = entity.aerial?.kind === 'drone' && entity.aerial.active;

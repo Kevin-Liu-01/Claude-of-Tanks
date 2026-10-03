@@ -22,11 +22,13 @@
  */
 import type { Vector3 } from 'three';
 import type { MovementCollisionResolver, MovementHeightField, TankState } from '../../sim/movement.ts';
-import { tankContactRect } from '../../sim/tankContactShape.ts';
+import { tankBodyTopM, tankContactRect } from '../../sim/tankContactShape.ts';
 import { pushHullInsidePlayableBounds } from '../../world/battlefieldBounds.ts';
-import { hullPassesObstacleTop, pushHullFromHull, pushHullFromObstacle } from '../../world/collision.ts';
+import { hullPassesObstacleTop, hullUndersideOver, pushHullFromHull, pushHullFromObstacle } from '../../world/collision.ts';
 import type { CollisionRecord } from '../../world/collision.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
+import { createHullSupportPose, createStructureSupportField, hullSupportPose } from '../../sim/structureSupport.ts';
+import { prefersVerticalTankContact, tanksVerticallyClear } from '../../sim/tankBodyContacts.ts';
 import { normalizeGameMode } from '../../sim/matchModes.ts';
 import type { PredictionWorld } from '../match/prediction.ts';
 
@@ -116,6 +118,14 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
   const otherFrame: ContactFrame = { ...frame };
   const nearby: PredictionObstacle[] = [];
   const center = { x: 0, y: 0, z: 0 };
+  const bodyTop = tankBodyTopM(ownSpec);
+  const ownRect = tankContactRect(ownSpec);
+  // physics lane (2026-10-03): the authority's two vertical rules, which the replay lacked. A hull on a roof stands on
+  // the structure support field the authority rides (sim/structureSupport.ts; the replay fell through roofs and decks:
+  // up to 9.5 m replay error landing on a roof edge), and a hull above or on another hull is not shoved sideways off it
+  // (tankBodyContacts: the replay pushed a hull resting on a wreck 1.9 m off in 12 ticks).
+  const support = createStructureSupportField(heightField, worldCollision);
+  const ownBody = { spec: ownSpec, state: null as TankState | null };
   // The hulls the last anchor found stale, by their `state.pos`, and the shift that seats each one against the
   // authority's own pose (slot lists reused every reconciliation).
   const staleHulls: unknown[] = [];
@@ -176,8 +186,17 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
         frame.centerX + frame.broadRadius, frame.centerZ + frame.broadRadius, nearby,
       )
       : (typeof worldCollision.getObstacles === 'function' ? worldCollision.getObstacles() : []);
+    // the authority's standing rule and per-part vertical extents (sim/authoritativeMatch.ts collideWithObstacles): the
+    // underside over each record at the hull's attitude, the body's top for parts it passes beneath
+    const sinPitch = state ? Math.sin(state.visualPitch || 0) : 0;
+    const sinRoll = state ? Math.sin(state.visualRoll || 0) : 0;
+    const spanTop = position.y + bodyTop;
     for (const obstacle of obstacles) {
-      if (obstacle.crushed || hullPassesObstacleTop(position.y, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+      if (obstacle.crushed) continue;
+      const spanBottom = hullUndersideOver(obstacle, frame.centerX, frame.centerZ, frame.forwardX, frame.forwardZ,
+        frame.rightX, frame.rightZ, frame.halfLength, frame.halfWidth, position.y, sinPitch, sinRoll,
+        ownRect.frontLiftM, ownRect.rearLiftM);
+      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
       if (obstacle.crushable && speed > (obstacle.crushMin ?? 2.8)) continue;
       const closestX = Math.max(obstacle.min[0], Math.min(frame.centerX, obstacle.max[0]));
       const closestZ = Math.max(obstacle.min[2], Math.min(frame.centerZ, obstacle.max[2]));
@@ -186,10 +205,13 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
       if (dx * dx + dz * dz >= frame.broadRadius * frame.broadRadius) continue;
       pushHullFromObstacle(
         center, frame.forwardX, frame.forwardZ, frame.rightX, frame.rightZ, frame.halfLength, frame.halfWidth, obstacle, outPush,
+        spanBottom, spanTop,
       );
     }
+    ownBody.state = state;
     for (const other of others()) {
       if (!other.collidable) continue;
+      if (state && (prefersVerticalTankContact(ownBody as never, other as never) || tanksVerticallyClear(ownBody as never, other as never))) continue;
       const slot = staleCount > 0 ? staleSlot(other.state.pos) : -1;
       if (slot < 0) hullOverlap(other, 0, 0, outPush);
       else hullOverlap(other, staleShift[slot * 2]!, staleShift[slot * 2 + 1]!, outPush);
@@ -197,5 +219,10 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
     return outPush.x !== 0 || outPush.z !== 0;
   };
 
-  return { heightField, collide, contactGeom: null, physics, anchor };
+  // the authority's floor rule: the hull's underside over each part (structureSupport.ts hullSupportPose)
+  const supportPose = createHullSupportPose();
+  const beginStep = (state: TankState): void => {
+    support.beginHull(state.pos.x, state.pos.z, state.pos.y, hullSupportPose(ownSpec, state, supportPose));
+  };
+  return { heightField: support, collide, contactGeom: null, physics, anchor, beginStep };
 }

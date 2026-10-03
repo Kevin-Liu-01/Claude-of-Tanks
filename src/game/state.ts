@@ -11,7 +11,9 @@ import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../s
  */
 import * as THREE from 'three';
 import type { ArmorIntersection, ArmorModel } from '../sim/armor.ts';
-import { createStructureSupportField, type StructureSupportField } from '../sim/structureSupport.ts';
+import {
+  createHullSupportPose, createStructureSupportField, hullSupportPose, type StructureSupportField,
+} from '../sim/structureSupport.ts';
 import type { BotNavigationGrid, BotRoutePoint } from '../sim/botRoutePlanner.ts';
 import type {
   DamageGunSpec,
@@ -104,7 +106,7 @@ import {
 } from '../sim/botRoutePlanner.ts';
 import {
   pushHullFromHull,
-  hullPassesObstacleTop, pushHullFromObstacle,
+  hullPassesObstacleTop, hullUndersideOver, pushHullFromObstacle,
   shellPassesThroughCollisionRecord,
 } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
@@ -532,6 +534,7 @@ const FIRE_TICK_S = 0.5;
 
 // module-scope scratch — no per-frame allocation
 const _muzzle = new THREE.Vector3();
+const _supportPose = createHullSupportPose();
 const _dir = new THREE.Vector3();
 const _seg = new THREE.Vector3();
 const _worldRayOrigin = new THREE.Vector3();
@@ -1636,9 +1639,16 @@ function resolveObstacleCollisions(
   const selfSpeed = self ? Math.abs(self.state.speed) : 0;
   // the hull's vertical span: a structure part it clears or stays under is no obstacle (2026-09-19)
   const spanTop = positionY + (self ? tankBodyTopM(self.spec) : 3);
+  // the standing rule reads the hull's underside over each record, at its attitude (world/collision.ts hullUndersideOver)
+  const sinPitch = self ? Math.sin(self.state.visualPitch || 0) : 0;
+  const sinRoll = self ? Math.sin(self.state.visualRoll || 0) : 0;
+  const lifts = self ? tankContactRect(self.spec) : null;
   let pushed = false;
   for (const obstacle of candidates) {
-    if (obstacle.crushed || hullPassesObstacleTop(positionY, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+    if (obstacle.crushed) continue;
+    const spanBottom = hullUndersideOver(obstacle, centerX, centerZ, forwardX, forwardZ, rightX, rightZ,
+      halfLength, halfWidth, positionY, sinPitch, sinRoll, lifts?.frontLiftM ?? 0, lifts?.rearLiftM ?? 0);
+    if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
     const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
     const closestZ = Math.max(obstacle.min[2], Math.min(centerZ, obstacle.max[2]));
     const deltaX = centerX - closestX;
@@ -1656,7 +1666,7 @@ function resolveObstacleCollisions(
       halfWidth,
       obstacle,
       outPush,
-      positionY,
+      spanBottom,
       spanTop,
     )) continue;
     if (obstacle.crushable && self &&
@@ -2333,7 +2343,9 @@ function applyBotSupportActions(game: SoloGameState, bus: EventBus): void {
     if (actionBits & PLAYER_ACTION_BITS.SPECIAL_ACTION) activateSpecialAction(entity);
     // round 60 pacing: an overturned bot asks for the self-right a player has (the authority does the same)
     if (actionBits & PLAYER_ACTION_BITS.SELF_RIGHT) {
-      if (!requestTankSelfRight(entity.state)) requestTankJump(entity.state, entity.modeJumpMps);
+      if (!requestTankSelfRight(entity.state, entity.modeGravityScale ?? 1)) {
+        requestTankJump(entity.state, entity.modeJumpMps, entity.modeGravityScale ?? 1);
+      }
     }
     entity.input.auxiliaryBits = (entity.input.auxiliaryBits || 0) | (actionBits & (
       PLAYER_ACTION_BITS.SMOKE | PLAYER_ACTION_BITS.LIGHTS | PLAYER_ACTION_BITS.LIGHTS_OFF | PLAYER_ACTION_BITS.ROOF_GUN
@@ -2481,7 +2493,7 @@ function stepTankMovement(
     // round 30: a hull above a building's roof stands on it (structureSupport.ts); the belly line is the hull
     // origin plus the contact geometry's belly offset
     support.beginHull(entity.state.pos.x, entity.state.pos.z,
-      entity.state.pos.y + (entity.contactGeom?.bottomYM ?? 0));
+      entity.state.pos.y + (entity.contactGeom?.bottomYM ?? 0), hullSupportPose(entity.spec, entity.state, _supportPose));
     // Park the carrier only during ground integration; preserve held flight controls
     // for additional fixed steps when rendering slower than the simulation.
     const parking = entity.aerial?.kind === 'drone' && entity.aerial.active;

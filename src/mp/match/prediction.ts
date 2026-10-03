@@ -44,6 +44,8 @@ export interface PredictionWorld {
    * the replay does not start inside it and grind its speed away (client soak, 2026-10-01).
    */
   anchor?: ((state: TankState) => void) | null;
+  /** Called before every replayed step with the simulated hull (the structure support gathers the primitives under it). */
+  beginStep?: ((state: TankState) => void) | null;
 }
 
 export interface PredictionAuthority {
@@ -354,6 +356,7 @@ export class LocalPredictor {
       origin.y + Math.sin(control.aimPitch) * control.aimDistance,
       origin.z + Math.cos(control.aimYaw) * cosPitch * control.aimDistance,
     );
+    this.world.beginStep?.(this.sim.state);
     updateTank(this.sim, this.world.heightField, SIM_DT, this.collide);
   }
 

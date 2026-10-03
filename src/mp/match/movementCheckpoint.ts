@@ -14,17 +14,20 @@
  * hull that settled on another hull's roof every tick, and the client's replay
  * has no contact pass, so without it a hull resting on a wreck sank toward the
  * terrain in every replay and was pulled back up by every snapshot.
+ * Version 4 (physics lane, 2026-10-03) adds the gravity tip of a hull whose centre of mass overhangs its loaded
+ * track samples (`_terr.tipPitch`, `_terr.tipRoll`, 48 values): the attitude step reads it before the support solve
+ * re-derives it, so a replay starting on an edge tipped like the authority only with it.
  */
 import type { MovementContactGeometry, TankState } from '../../sim/movement.ts';
 
-export const MOVEMENT_CHECKPOINT_VERSION = 3;
+export const MOVEMENT_CHECKPOINT_VERSION = 4;
 
 const SCALARS = ['yawRate', 'turretYawRate', 'suspensionAimPitch', 'bloomF',
   '_prevSpeed', '_spool', '_fanYield', '_perch', '_gunLimitHoldS', '_swayEst',
   'landingImpactMps', '_autoTraverse'] as const;
 const SPRING = ['pitch', 'roll', 'pitchV', 'rollV', 'recoilVX', 'recoilVZ'] as const;
 const ROCK = ['p', 'r', 'pv', 'rv'] as const;
-const TERRAIN = ['pitch', 'roll', 'fitPitch'] as const;
+const TERRAIN = ['pitch', 'roll', 'fitPitch', 'tipPitch', 'tipRoll'] as const;
 const RIDE = ['y', 'v', 'groundV', 'airTime'] as const;
 const TRACK = ['l', 'r'] as const;
 const SUPPORT = ['yaw', 'pitch', 'roll', 'y', 'floorY'] as const;

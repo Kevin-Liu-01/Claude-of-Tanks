@@ -40,8 +40,9 @@ test('fixed checkpoint is detached, JSON safe, and restores every admitted scala
   const source = entity();
   for (let tick = 0; tick < 90; tick++) updateTank(source, field, SIM_DT);
   const checkpoint = captureMovementPredictionState(source.state);
-  // round 32: + _autoTraverse; impact physics (2026-09-25): + _terr.fitPitch; bots lane (2026-10-02): + _body.restSupportY
-  assert.equal(checkpoint.values.length, 46);
+  // round 32: + _autoTraverse; impact physics (2026-09-25): + _terr.fitPitch; bots lane (2026-10-02): + _body.restSupportY;
+  // physics lane (2026-10-03, version 4): + _terr.tipPitch / tipRoll, the gravity tip of an overhanging hull
+  assert.equal(checkpoint.values.length, 48);
   assert.deepEqual(JSON.parse(JSON.stringify(checkpoint)), checkpoint);
   const target = entity().state;
   const ride = target._ride;
@@ -79,7 +80,7 @@ test('malformed checkpoints are rejected atomically, including sparse or oversiz
   const sparse = good.values.slice();
   delete sparse[8];
   const badNumbers = [NaN, Infinity, -Infinity, 1_000_001, '1', null, undefined];
-  const bad = [null, [], 1, {}, { ...good, version: 2 }, { ...good, version: 4 },
+  const bad = [null, [], 1, {}, { ...good, version: 3 }, { ...good, version: 5 },
     { ...good, values: [] }, { ...good, values: [...good.values, 0] },
     { ...good, values: sparse }, ...[-1, 2048, 1.5, NaN].map(flags => ({ ...good, flags })),
     ...badNumbers.map(value => ({ ...good, values: good.values.map((old, i) => i === 5 ? value : old) }))];

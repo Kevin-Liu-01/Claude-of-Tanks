@@ -25,8 +25,9 @@ function drive(ticks) {
   return state;
 }
 
-assert.equal(MOVEMENT_CHECKPOINT_VERSION, 3, 'bots lane (2026-10-02): the roof a hull rests on rides with the integrator');
-assert.equal(MOVEMENT_CHECKPOINT_VALUES, 46);
+assert.equal(MOVEMENT_CHECKPOINT_VERSION, 4,
+  'bots lane (2026-10-02): the roof a hull rests on rides with the integrator; physics lane (2026-10-03): and its gravity tip');
+assert.equal(MOVEMENT_CHECKPOINT_VALUES, 48);
 
 const driven = drive(180);
 const ours = captureMovementCheckpoint(driven);
@@ -60,11 +61,11 @@ assert.ok(Math.abs(f32._ride.y - driven._ride.y) < 1e-4);
 // Rejections leave the state untouched.
 const untouched = createTankState(SPEC, new Vector3(), 0);
 const before = JSON.stringify(captureMovementCheckpoint(untouched));
-assert.equal(applyMovementCheckpoint(untouched, { version: 2, values: ours.values.slice(0, 45), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 4, values: ours.values, flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 3, values: ours.values.slice(1), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 3, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 3, values: ours.values, flags: 4096 }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 3, values: ours.values.slice(0, 46), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 5, values: ours.values, flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 4, values: ours.values.slice(1), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 4, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 4, values: ours.values, flags: 4096 }), false);
 assert.equal(JSON.stringify(captureMovementCheckpoint(untouched)), before);
 
 // Version 3: a hull resting on another hull's roof carries that roof; a free hull carries none (flag bit 10 clear).
@@ -80,4 +81,4 @@ assert.equal(seated._body.restSupportY, resting._body.restSupportY, 'the replay 
 assert.equal(applyMovementCheckpoint(seated, ours), true);
 assert.ok(Number.isNaN(seated._body.restSupportY), 'a checkpoint without a roof clears it');
 
-console.log('mp movement checkpoint: 46-value version-3 layout identical to the authority encoder, the roof a hull rests on carried and cleared, identity after apply, f32 tolerant, typed rejections pass');
+console.log('mp movement checkpoint: 48-value version-4 layout identical to the authority encoder, the roof a hull rests on carried and cleared, identity after apply, f32 tolerant, typed rejections pass');

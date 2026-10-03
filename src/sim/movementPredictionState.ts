@@ -10,7 +10,9 @@ const SCALARS = ['yawRate', 'turretYawRate', 'suspensionAimPitch', 'bloomF',
 const SPRING = ['pitch', 'roll', 'pitchV', 'rollV', 'recoilVX', 'recoilVZ'] as const;
 const ROCK = ['p', 'r', 'pv', 'rv'] as const;
 // version 2 (impact physics, 2026-09-25): the pure least-squares pitch the settle residuals are measured against
-const TERRAIN = ['pitch', 'roll', 'fitPitch'] as const;
+// version 4 (physics lane, 2026-10-03): the gravity tip of a hull overhanging its loaded contacts (_terr.tipPitch /
+// tipRoll), which the attitude step reads before the support solve re-derives it
+const TERRAIN = ['pitch', 'roll', 'fitPitch', 'tipPitch', 'tipRoll'] as const;
 const RIDE = ['y', 'v', 'groundV', 'airTime'] as const;
 const TRACK = ['l', 'r'] as const;
 const SUPPORT = ['yaw', 'pitch', 'roll', 'y', 'floorY'] as const;
@@ -22,7 +24,7 @@ const MAX_ABS_VALUE = 1_000_000;
 const MAX_FLAGS = 2047;
 
 interface MovementPredictionState {
-  version: 3;
+  version: 4;
   values: number[];
   flags: number;
 }
@@ -71,7 +73,7 @@ export function captureMovementPredictionState(state: TankState): MovementPredic
     Number(state._body.autoRighting) << 4 | Number(state._rollover.expired) << 5 |
     Number(state.atGunLimit) << 6 | Number(state.gunLimitSpec) << 7 |
     Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9 | Number(restInitialized) << 10;
-  return { version: 3, values, flags };
+  return { version: 4, values, flags };
 }
 
 export function applyMovementPredictionState(
@@ -79,7 +81,7 @@ export function applyMovementPredictionState(
 ): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const record = value as Record<string, RuntimeValue>;
-  if (record.version !== 3 || !finiteValues(record.values) ||
+  if (record.version !== 4 || !finiteValues(record.values) ||
       typeof record.flags !== 'number' || !Number.isInteger(record.flags) ||
       record.flags < 0 || record.flags > MAX_FLAGS) return false;
   const values = record.values;

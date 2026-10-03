@@ -40,6 +40,51 @@ export function hullPassesObstacleTop(spanBottom: number, top: number, bottom: n
   return standable && top - bottom >= HULL_STANDABLE_HEIGHT_M && spanBottom > top - HULL_STEP_UP_M;
 }
 
+/**
+ * The standing rule's span bottom for a tilted hull (physics lane, 2026-10-03): the lowest point of the hull's
+ * underside (its track-bottom plane at its pitch and roll, sampled on a 5 x 3 grid over its rect; the nose and tail
+ * rows rise by the shell's lift there, the glacis and tail plates the tracks run under) that lies over the record's
+ * footprint, or the root when none does. The root alone said a hull pivoting off a roof edge (its belly on
+ * the edge, its root dropped below the roof behind it) was inside the building, and the solver shoved it out sideways
+ * at a metre a tick. The highest corner over the footprint (this rule's first form) let a hull tipped nose-up over the
+ * edge sink beside the wall with its belly inside the building, its raised nose still "on the roof", until a 2.9 m
+ * overlap was pushed out three metres in three ticks. A hull driving into a wall at ground level has its underside
+ * over the footprint at ground level: still a push.
+ */
+export function hullUndersideOver(
+  record: CollisionRecord,
+  centerX: number, centerZ: number,
+  forwardX: number, forwardZ: number, rightX: number, rightZ: number,
+  halfLength: number, halfWidth: number,
+  rootY: number, sinPitch: number, sinRoll: number,
+  frontLift = 0, rearLift = 0,
+): number {
+  let lowest = Infinity;
+  for (let i = 0; i < 5; i++) {
+    const along = (i * 0.5 - 1) * halfLength;
+    const lift = i === 4 ? frontLift : i === 0 ? rearLift : 0;
+    for (let j = 0; j < 3; j++) {
+      const across = (j - 1) * halfWidth;
+      const x = centerX + forwardX * along + rightX * across;
+      const z = centerZ + forwardZ * along + rightZ * across;
+      if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
+      if (!footprintHolds(record, x, z)) continue;
+      const y = rootY + along * sinPitch + across * sinRoll + lift;
+      if (y < lowest) lowest = y;
+    }
+  }
+  return lowest < Infinity ? lowest : rootY;
+}
+
+/** Allocation-free footprint containment (the compound loop of collisionFootprintContainsPoint, margin 0). */
+function footprintHolds(record: CollisionRecord, x: number, z: number): boolean {
+  const shape = record.shape2;
+  if (!shape) return true; // the caller has tested the AABB
+  if (shape.kind !== 'compound') return simpleFootprintContainsPoint(shape, x, z, 0);
+  for (const part of shape.parts) if (simpleFootprintContainsPoint(part, x, z, 0)) return true;
+  return false;
+}
+
 export type CollisionShape = SimpleCollisionShape | {
   kind: 'compound';
   cx: number;

@@ -12,7 +12,8 @@
  */
 import type { CollisionRecord, SimpleCollisionShape } from '../world/collision.ts';
 import { driveGroundTypeAt } from './terrainMobility.ts';
-import { HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, pointInsideCollisionRecord } from '../world/collision.ts';
+import { tankContactRect } from './tankContactShape.ts';
+import { HULL_STANDABLE_HEIGHT_M, HULL_STEP_UP_M, hullUndersideOver, pointInsideCollisionRecord } from '../world/collision.ts';
 
 /** A hull stands on a part whose top is at most this far above the hull's current belly line (the same step the
  * ground OBB solver treats as "on top of", collision.ts hullPassesObstacleTop). */
@@ -35,9 +36,32 @@ interface SupportObstacleSource {
   getObstacles?(): CollisionRecord[];
 }
 
+/**
+ * The hull's contact rect and attitude for the floor rule (physics lane, 2026-10-03): with it, a part is a floor when
+ * its top is within the step-up of the hull's lowest underside point over that part's footprint — the ground OBB
+ * solver's standing rule (world/collision.ts hullUndersideOver) — instead of the belly line at the hull's origin. The
+ * origin alone dropped the roof from under a hull pivoting off its edge (belly on the edge, origin already behind and
+ * below it): the hull fell into the building, which the solver then judged it to be standing on.
+ */
+export interface HullSupportPose {
+  centerX: number;
+  centerZ: number;
+  forwardX: number;
+  forwardZ: number;
+  rightX: number;
+  rightZ: number;
+  halfLength: number;
+  halfWidth: number;
+  sinPitch: number;
+  sinRoll: number;
+  frontLift: number;
+  rearLift: number;
+}
+
 export interface StructureSupportField extends SupportHeightField {
-  /** Select the hull about to be stepped: gathers the primitives within reach and its belly line. */
-  beginHull(x: number, z: number, bellyY: number): void;
+  /** Select the hull about to be stepped: gathers the primitives within reach and its belly line (and, with a pose,
+   * its underside over each primitive). */
+  beginHull(x: number, z: number, bellyY: number, pose?: HullSupportPose | null): void;
   /** Number of primitives considered for the current hull (probes / receipts). */
   readonly candidateCount: number;
 }
@@ -46,13 +70,15 @@ function partTop(record: CollisionRecord, part: SimpleCollisionShape | null): nu
   return part?.y1 ?? record.max[1];
 }
 
-/** Highest standable top under (x, z) among the candidates, or -Infinity. */
+/** Highest standable top under (x, z) among the candidates, or -Infinity. `floors` (beginHull's pose rule) holds each
+ * candidate's own belly line; without it every candidate uses `bellyY`. */
 export function structureTopAt(
   candidates: readonly CollisionRecord[], count: number, x: number, z: number, bellyY: number,
+  floors: Float64Array | null = null,
 ): number {
   let best = -Infinity;
-  const ceiling = bellyY + SUPPORT_STEP_UP_M;
   for (let i = 0; i < count; i++) {
+    const ceiling = (floors ? floors[i] : bellyY) + SUPPORT_STEP_UP_M;
     const record = candidates[i];
     if (record.crushed || record.dead || record.crushable) continue; // crushable cover is crushed, not stood on
     if (record.max[1] - record.min[1] < SUPPORT_MIN_HEIGHT_M) continue;
@@ -73,6 +99,34 @@ export function structureTopAt(
   return best;
 }
 
+type PoseSpec = Parameters<typeof tankContactRect>[0];
+interface PoseState { pos: { x: number; z: number }; yaw: number; visualPitch?: number; visualRoll?: number }
+
+/** Fill `out` with the hull's contact rect and rendered attitude (the ground OBB solver's frame). */
+export function hullSupportPose(spec: PoseSpec, state: PoseState, out: HullSupportPose): HullSupportPose {
+  const rect = tankContactRect(spec);
+  const forwardX = Math.sin(state.yaw), forwardZ = Math.cos(state.yaw);
+  out.forwardX = forwardX;
+  out.forwardZ = forwardZ;
+  out.rightX = forwardZ;
+  out.rightZ = -forwardX;
+  out.centerX = state.pos.x + forwardZ * rect.centerX + forwardX * rect.centerZ;
+  out.centerZ = state.pos.z - forwardX * rect.centerX + forwardZ * rect.centerZ;
+  out.halfLength = rect.halfLength;
+  out.halfWidth = rect.halfWidth;
+  out.sinPitch = Math.sin(state.visualPitch || 0);
+  out.sinRoll = Math.sin(state.visualRoll || 0);
+  out.frontLift = rect.frontLiftM;
+  out.rearLift = rect.rearLiftM;
+  return out;
+}
+
+/** A pose object for one caller's reuse (allocation-free stepping). */
+export function createHullSupportPose(): HullSupportPose {
+  return { centerX: 0, centerZ: 0, forwardX: 0, forwardZ: 1, rightX: 1, rightZ: 0, halfLength: 0, halfWidth: 0,
+    sinPitch: 0, sinRoll: 0, frontLift: 0, rearLift: 0 };
+}
+
 export function createStructureSupportField(
   terrain: SupportHeightField,
   source: SupportObstacleSource,
@@ -80,12 +134,14 @@ export function createStructureSupportField(
   const candidates: CollisionRecord[] = [];
   let count = 0;
   let belly = -Infinity;
+  let floors = new Float64Array(16);
+  let posed = false;
   const terrainAt = terrain.getHeightAt.bind(terrain);
   const terrainFast = terrain.getHeightAtFast ? terrain.getHeightAtFast.bind(terrain) : terrainAt;
   const sample = (base: (x: number, z: number) => number) => (x: number, z: number): number => {
     const ground = base(x, z);
     if (count === 0) return ground;
-    const top = structureTopAt(candidates, count, x, z, belly);
+    const top = structureTopAt(candidates, count, x, z, belly, posed ? floors : null);
     return top > ground ? top : ground;
   };
   const getHeightAt = sample(terrainAt);
@@ -97,7 +153,7 @@ export function createStructureSupportField(
     getContactHeightAt,
     getGroundType: (x, z) => terrain.getGroundType(x, z),
     getDriveGroundType: (x, z) => driveGroundTypeAt(terrain, x, z),
-    beginHull(x, z, bellyY) {
+    beginHull(x, z, bellyY, pose) {
       belly = bellyY;
       candidates.length = 0;
       if (source.queryObstacles) {
@@ -111,6 +167,14 @@ export function createStructureSupportField(
         }
       }
       count = candidates.length;
+      posed = !!pose;
+      if (!pose) return;
+      if (floors.length < count) floors = new Float64Array(Math.max(count, floors.length * 2));
+      for (let i = 0; i < count; i++) {
+        floors[i] = hullUndersideOver(candidates[i], pose.centerX, pose.centerZ, pose.forwardX, pose.forwardZ,
+          pose.rightX, pose.rightZ, pose.halfLength, pose.halfWidth, bellyY, pose.sinPitch, pose.sinRoll,
+          pose.frontLift, pose.rearLift);
+      }
     },
     get candidateCount() { return count; },
   };

@@ -579,8 +579,19 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   assert(!requestTankJump(ent.state, 9), 'no second boost inside the first 0.35 s of flight');
   run(ent, field, 20);
   const beforeBoost = ent.state.verticalSpeed;
+  const heightBefore = ent.state.pos.y - startY;
   assert(requestTankJump(ent.state, 9), 'round 30: an airborne hull boosts again after 0.35 s of flight');
-  assert(ent.state.verticalSpeed > beforeBoost + 8, 'the boost adds its full launch on top of the flight');
+  // Physics lane (2026-10-03): the boost adds its launch up to a ceiling two single-jump apexes over the ground
+  // under the hull — the full launch on top of any flight let a mashed boost climb 262 m at 1 g and 6.6 km at 0.17 g.
+  const ceiling = 2 * 9 * 9 / (2 * 9.81);
+  const capped = Math.min(Math.max(beforeBoost, 0) + 9, Math.sqrt(2 * 9.81 * (ceiling - heightBefore)));
+  assert(Math.abs(ent.state.verticalSpeed - capped) < 0.05,
+    `the boost adds its launch up to the two-apex ceiling (${ent.state.verticalSpeed.toFixed(2)} vs ${capped.toFixed(2)} m/s)`);
+  let apex = ent.state.pos.y;
+  for (let i = 0; i < 120; i++) { updateTank(ent, field, SIM_DT); apex = Math.max(apex, ent.state.pos.y); }
+  assert(apex - startY < ceiling + 0.1, `the boosted flight stays under the ceiling (${(apex - startY).toFixed(2)} m)`);
+  assert(!requestTankJump(ent.state, 9) || ent.state.pos.y - startY < ceiling,
+    'a boost at the ceiling adds nothing');
   run(ent, field, 600);
   assert(Math.abs(ent.state.pos.y - startY) < 0.3, 'it lands back on the field');
   const flipped = makeEntity(field, 0, 0, 0);
