@@ -295,7 +295,10 @@ roofs with eaves, verges, ridge caps, gutters and downpipes, chimneys and gable 
 into its wall with a reveal as deep as the wall is thick (`HouseSpec.reveal`). `weather.ts` gives each house its own
 tint from the kit's palette, darkens the wall foot with splash and rising damp, shades reveals and soffits, runs rain
 stains under the sills and moss or lichen toward the eaves. A share of houses per kit (`ArchitectureStyle.wear`)
-shows war damage: burnt-out windows with soot up the wall, boarded windows, a stripped roof patch. `dressing.ts` adds
+shows war damage: burnt-out windows with soot up the wall, boarded windows, a stripped roof patch; on its rendered
+storeys the render spalls (a ragged band at the wall foot, a patch under a sill, a scar in a pier) to show the kit's
+masonry under it (`HouseSpec.spall`; none on clay walls), decor from the wear context's own stream. A painted sheet
+roof weathers down its slope: chalky toward the ridge, rust and grime along the eaves. `dressing.ts` adds
 the lived-in parts a kit uses (window boxes, the bench by the door, a woodpile, the roof ladder, an aerial); they are
 dressing (no collision) and the phones leave them out, so the collision a host certifies is tier-independent.
 

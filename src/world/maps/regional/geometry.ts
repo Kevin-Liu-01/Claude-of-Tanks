@@ -77,6 +77,8 @@ export interface EmitOptions {
   shade?: number;
   /** per-corner occlusion (a stain fading along a face), given the corner in the emitting frame; wins over `shade` */
   shadeAt?: (p: Vec3) => number;
+  /** per-corner colour in a coloured bucket (a painted sheet weathering down its slope), emitting frame; wins over `colour` */
+  colourAt?: (p: Vec3) => Rgb;
 }
 
 const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpC = new THREE.Vector3(), tmpD = new THREE.Vector3();
@@ -156,7 +158,10 @@ export class PartSink {
         g.nor.push(nx, n[1], nz);
         const [u, v] = this.uvOf(p, n, mode, density, local);
         g.uv.push(u, v);
-        if (g.col && colour) g.col.push(colour[0], colour[1], colour[2]);
+        if (g.col && colour) {
+          const c = opts.colourAt ? opts.colourAt(p) : colour;
+          g.col.push(c[0], c[1], c[2]);
+        }
         if (g.mask) g.mask.push(glow);
         if (g.shade) g.shade.push(opts.shadeAt ? opts.shadeAt(p) : opts.shade ?? 1);
       }

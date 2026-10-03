@@ -341,13 +341,33 @@ export function roofGeometry(w: number, d: number, eaveY: number, roof: RoofSpec
   };
 }
 
+const RUST: Rgb = [0.36, 0.2, 0.12];
+
+/**
+ * A painted sheet roof weathered down its slope (vertex colour, per corner): the paint sun-faded and chalky toward the
+ * ridge, rust and grime gathering along the eaves where the water runs off (gauntlet wave 0: "no wear").
+ */
+function weatheredSheet(c: Rgb, lo: number, hi: number): (p: Vec3) => Rgb {
+  const span = Math.max(0.5, hi - lo), grey = (c[0] + c[1] + c[2]) / 3;
+  const step = (a: number, b: number, x: number) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+  return (p) => {
+    const t = Math.min(1, Math.max(0, (p[1] - lo) / span));
+    const fade = 0.22 * step(0.4, 1, t), rust = 0.42 * (1 - step(0, 0.45, t));
+    const lift = 1 + fade * 0.35;
+    const f = (k: number) => (c[k] + (grey - c[k]) * fade) * lift;
+    return [f(0) + (RUST[0] - f(0)) * rust, f(1) + (RUST[1] - f(1)) * rust, f(2) + (RUST[2] - f(2)) * rust];
+  };
+}
+
 /** Emit the roof slabs, ridge and hip caps. */
 export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colour?: Rgb): void {
   const { s, halfD, tanP, eaveY, ridgeY } = rg;
   const t = roof.thickness;
   const bucket = roof.bucket;
-  // a vertex-coloured covering (painted sheet in structureMetal) takes its livery here
-  const dec: EmitOptions = { ...(roof.decor ? { decor: true } : {}), ...(colour ? { colour } : {}) };
+  // a vertex-coloured covering (painted sheet in structureMetal) takes its livery here, weathered down the slope
+  const lowY = eaveY - roof.eave * tanP, highY = roof.kind === 'shed' ? eaveY + 2 * s * tanP : ridgeY;
+  const dec: EmitOptions = { ...(roof.decor ? { decor: true } : {}), ...(colour ? { colour } : {}),
+    ...(colour && roof.kind !== 'flat' ? { colourAt: weatheredSheet(colour, lowY, highY + t) } : {}) };
   if (roof.kind === 'flat') {
     const e = roof.eave;
     sink.span(bucket, -s - e, eaveY, -halfD - e, s + e, eaveY + t, halfD + e, dec);
