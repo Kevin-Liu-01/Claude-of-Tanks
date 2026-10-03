@@ -78,6 +78,10 @@ export interface HorizonPanoramaOptions {
   /** the ring's outer edge: its last row's heights round the ring (431 columns), the panorama's first kilometre eases
    * out of them */
   ringEdge: { columns: number; positions: Float32Array; heights: Float32Array };
+  /** the ring's own snowline and treeline as altitudes (m), so the far country's snow and forest meet the ring's; null
+   * keeps the character's (fractions of its amplitude) */
+  snowlineM?: number | null;
+  treelineM?: number | null;
   /** the probes' smaller bake (a CPU renderer); production bakes at HORIZON_PANORAMA's sizes */
   resolution?: { width: number; height: number; gridA: number; gridR: number };
 }
@@ -594,7 +598,11 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       uChar0: { value: new THREE.Vector4(ch.ampM, ch.foot, ch.macroL, ch.sharp) },
       uChar1: { value: new THREE.Vector4(ch.midL, ch.gullyL, ch.gullyM, ch.warpM) },
       uChar2: { value: new THREE.Vector4(ch.valley, ch.valleyL, tables ? 1 : 0, 0) },
-      uChar3: { value: new THREE.Vector4(ch.snowline, ch.treeline, ch.rockSlope, ch.bedM) },
+      // the snowline and the treeline as fractions of the amplitude the strip's law reads them by (the ring's own
+      // altitudes where it has them)
+      uChar3: { value: new THREE.Vector4(
+        options.snowlineM != null ? options.snowlineM / ch.ampM : ch.snowline,
+        options.treelineM != null ? options.treelineM / ch.ampM : ch.treeline, ch.rockSlope, ch.bedM) },
       uChar4: { value: new THREE.Vector4(ch.strata, options.deckBaseM, ch.ampM, ch.farRise) },
       uFrame: { value: new THREE.Vector4(P.innerM, P.outerM, P.shellM, P.eyeY) },
       uGrid: { value: new THREE.Vector2((options.resolution ?? P).gridA, (options.resolution ?? P).gridR) },

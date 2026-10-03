@@ -3587,6 +3587,10 @@ export function* buildHorizonRingSteps(
           return { weight: opening ? seaOpeningWeight(angle, opening) : 0, level: opening?.level ?? 0 };
         },
         ringEdge: { columns: HORIZON_SEGMENTS, positions: pos, heights: hs },
+        // the ring's snow and (on a mountain ring) forest altitudes — its fractions of its own crest height — so the far
+        // country's meet them; the hill countries keep their character's forest cover
+        snowlineM: snowline <= 1 ? snowline * maxH : null,
+        treelineM: style === 'alpine' && treeline > 0 && treeline < 1.5 ? Math.max(120, treeline * maxH * 1.4) : null,
       }, farRange);
       mesh.add(panorama.mesh);
       mesh.userData.horizonPanorama = panorama;
