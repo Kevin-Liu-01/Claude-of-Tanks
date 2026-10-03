@@ -196,6 +196,22 @@ for (const tool of TOOLS) {
   assert.match(badRun.stderr, /Unknown argument/, `${tool} bad flag names the argument`);
   assert.ok(badRun.stderr.includes(`node tools/${tool}.mjs [flags]`), `${tool} bad flag prints usage`);
 }
+// the suspension strip probe (physics lane, 2026-10-03) is built on the same runtime and serves a built dist through vite
+// preview (--dist) or the live tree; its CLI ends before any launch as the map tools' does
+{
+  assert.equal(parseProbeArgs(['--dist=/tmp/cot-dist'], { tool: 'x', accepts: ['dist'] }).options.dist, '/tmp/cot-dist');
+  assert.throws(() => parseProbeArgs(['--dist=/tmp/cot-dist'], base), /Unknown argument --dist/, 'a tool that does not accept --dist refuses it');
+  const source = readFileSync(path.join(ROOT, 'tools', 'suspension-strip-probe.mjs'), 'utf8');
+  assert.match(source, /withDistProbeSession/, 'the strip probe serves a built dist through the runtime');
+  assert.ok(!/puppeteer\.launch|createServer\(|preview\(/.test(source), 'the strip probe launches no server or browser of its own');
+  assert.match(source, /if \(isMainModule\(import\.meta\.url\)\) await runProbeCli\(/, 'the strip probe: main guard');
+  const helpRun = spawnSync(process.execPath, ['tools/suspension-strip-probe.mjs', '--help'], { cwd: ROOT, encoding: 'utf8', timeout: 60000 });
+  assert.equal(helpRun.status, 0, `suspension-strip-probe --help exits 0: ${helpRun.stderr}`);
+  assert.ok(helpRun.stdout.includes('--dist=<value>') && /Cases: rough, hardstop/.test(helpRun.stdout), 'its --help lists --dist and the cases');
+  const badRun = spawnSync(process.execPath, ['tools/suspension-strip-probe.mjs', '--ids=no-such-case'], { cwd: ROOT, encoding: 'utf8', timeout: 60000 });
+  assert.equal(badRun.status, 1, 'an unknown strip case exits 1');
+  assert.match(badRun.stderr, /Unknown case no-such-case/, 'and names the case');
+}
 const runtime = readFileSync(path.join(ROOT, 'tools', 'map-probe-runtime.mjs'), 'utf8');
 assert.match(runtime, /The probe mutex is the CALLER's business/, 'the mutex contract is documented in the runtime header');
 assert.match(runtime, /probe\.lock/); assert.match(runtime, /never on 5197–5199/);

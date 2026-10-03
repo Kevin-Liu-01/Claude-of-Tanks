@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import './tankFactory.ts'; // registers the complete modern roster
 import { ALL_TANK_IDS, TANK_SPECS, getSpec } from './specs.ts';
+import { VEHICLE_SIZE_FACTORS } from './vehicleSizePolicy.ts';
 
 const EXPECTED = Object.freeze({
   amx10p: { hp: 2000, speed: 65, reverse: 22, traverse: 53.8, damage: 44, pen: [190, 170, 150], reload: .22, sound: 'rh202', missile: null },
@@ -120,9 +121,11 @@ assert.equal(getSpec('bmp3').gun.shells[2].dmg, 360, 'BMP-3 keeps its 100 mm HE 
 assert.equal(getSpec('bmp3').gun.shells[2].reloadS, 4, 'BMP-3 100 mm HE has a full reload');
 assert.equal(getSpec('bmp3').gun.shells[2].soundProfile, 'bmp3-100mm',
   'BMP-3 100 mm report does not masquerade as its 30 mm autocannon');
+// The authored axes are source-frame stations; the installed spec carries the owner's whole-vehicle size
+// (bmpt_t90 at 1.05 with the T-90 family, 2026-10-02 main 245aa4e4e) exactly once.
 for (const id of ['bmpt_terminator2', 'bmpt_t90']) {
   assert.deepEqual(getSpec(id).gun.muzzles.map((muzzle) => muzzle.x),
-    id === 'bmpt_t90' ? [-0.20, 0.20] : [-0.16, 0.16],
+    (id === 'bmpt_t90' ? [-0.20, 0.20] : [-0.16, 0.16]).map((x) => x * (VEHICLE_SIZE_FACTORS[id] ?? 1)),
     `${id}: authentic twin-barrel fire axes`);
 }
 

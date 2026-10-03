@@ -115,6 +115,15 @@ const ZONE_CAPTURE_S = 8;
 const ZONE_POINTS_PER_SECOND = 2;
 export const ZONE_DESTRUCTION_POINTS = 25;
 const BALL_RADIUS_M = 2.2;
+// Frontline regroup (bots lane, 2026-10-03; Redrock Divide and Desert, 24 seeds each): the last sector decides the
+// frontline. Its counter-attack wave (five defenders at 1.32x hp) met the four survivors of the second sector, while the
+// bots revived at the spawn arrived 40-80 s behind them and died alone. When the attack takes the second-to-last
+// sector, its bots hold that sector until every living bot stands within ASSAULT_REGROUP_RADIUS_M of it, for at most
+// ASSAULT_REGROUP_MAX_S, then attack the last one together. A human of the attacking side within
+// ASSAULT_REGROUP_HUMAN_M of the last sector ends the wait: the bots follow a human who leads.
+const ASSAULT_REGROUP_MAX_S = 60;
+const ASSAULT_REGROUP_RADIUS_M = 80;
+const ASSAULT_REGROUP_HUMAN_M = 250;
 const BALL_GOAL_RADIUS_M = 18;
 const BALL_LINEAR_DRAG = 0.992;
 const BALL_GRAVITY_MPS2 = 9.81;
@@ -702,6 +711,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   // ----------------------------------------------------- frontline assault ---
   let lineIndex = 0;
   let holdUntilS: number | null = null;
+  // the attack's regroup on the sector it just took, before the last one (see ASSAULT_REGROUP_MAX_S)
+  let regroup: { x: number; z: number; untilS: number; checkedS: number } | null = null;
   const liveLine = (): ZoneState | null => zones[Math.min(lineIndex, zones.length - 1)] ?? null;
 
   const assaultRules = ruleset.assault ?? matchRulesetFor('frontline_assault').assault!;
@@ -734,6 +745,15 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (!humansAlive) return finish('bravo', 'assault_overrun');
     const zone = liveLine();
     if (!zone) return null;
+    if (regroup && timeS >= regroup.checkedS + 1) {
+      regroup.checkedS = timeS;
+      const point = regroup;
+      const gathered = teams.alpha.every((entity) => !entity.bot || !activeFriend(entity, 'alpha')
+        || squaredDistance(entity, point.x, point.z) <= ASSAULT_REGROUP_RADIUS_M ** 2);
+      const humanLeads = teams.alpha.some((entity) => !entity.bot && activeFriend(entity, 'alpha')
+        && squaredDistance(entity, zone.x, zone.z) <= ASSAULT_REGROUP_HUMAN_M ** 2);
+      if (timeS >= point.untilS || gathered || humanLeads) regroup = null;
+    }
     const occupancy = zoneOccupancy(zone);
     advanceZoneControl(zone, Math.floor(occupancy / 16), occupancy % 16, dt);
     if (state.horde) state.horde.alive = livingHordeEnemyCount();
@@ -744,6 +764,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         if (state.line) state.line.index = lineIndex;
         emit('mode_line_advanced', { line: lineIndex, total: zones.length });
         startAssaultWave();
+        if (lineIndex === zones.length - 1) {
+          regroup = { x: zone.x, z: zone.z, untilS: timeS + ASSAULT_REGROUP_MAX_S, checkedS: timeS };
+        }
       }
       return null;
     }
@@ -1372,6 +1395,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (id === 'turbo_ball') return ballBotTarget(entity, team);
     if (id === 'endless_horde') return hordeBotTarget(entity, team);
     if (id === 'frontline_assault') {
+      if (regroup && team === 'alpha' && entity.bot) return { x: regroup.x, z: regroup.z, mission: 'assault' };
       const point = assaultBotTarget();
       return point ? { ...point, mission: 'assault' } : null;
     }

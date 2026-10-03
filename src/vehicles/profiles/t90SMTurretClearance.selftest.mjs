@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
+
+// Owner-directed 1.05 T-90 family size (2026-10-02, main 245aa4e4e): the factory bakes the source-frame build into the
+// installed turret frame, so every source-frame anchor (present or removed) and the deck height map by `f`. The fit
+// and family-gun receipts are the builder's source-frame records and stay exact.
+const f = VEHICLE_SIZE_FACTORS.t90sm ?? 1;
 
 const tank = createTank('t90sm', null, {
   proceduralOnly: true,
@@ -38,11 +44,11 @@ try {
     }
     return vertices;
   };
-  const vertices = collectVertices(turret);
+  let vertices = collectVertices(turret);
   const darkVertices = collectVertices(turretDark);
   const near = (value, target, epsilon = 1e-3) => Math.abs(value - target) < epsilon;
-  const hasVertexIn = (list, [x, y, z]) => list.some(vertex => near(vertex.x, x)
-    && near(vertex.y, y) && near(vertex.z, z));
+  const hasVertexIn = (list, [x, y, z]) => list.some(vertex => near(vertex.x, x * f)
+    && near(vertex.y, y * f) && near(vertex.z, z * f));
   const hasVertex = (anchor) => hasVertexIn(vertices, anchor);
 
   const lowerRingAnchors = [
@@ -51,21 +57,27 @@ try {
     [-1.42, 0.080, 0.14],
     [1.42, 0.080, 0.14],
   ];
-  for (const anchor of lowerRingAnchors) {
-    assert.ok(hasVertex(anchor),
-      `mirrored cheek lower ring remains raised at ${anchor.join(',')}`);
-  }
-
   const formerDeckAnchors = [
     [-1.565, -0.005, 1.18],
     [1.565, -0.005, 1.18],
     [-1.42, 0.000, 0.14],
     [1.42, 0.000, 0.14],
   ];
-  for (const anchor of formerDeckAnchors) {
-    assert.equal(hasVertex(anchor), false,
-      `marked cheek lower ring must not remain on the hull deck at ${anchor.join(',')}`);
-  }
+  const raisedRing = () => {
+    for (const anchor of lowerRingAnchors) {
+      assert.ok(hasVertex(anchor),
+        `mirrored cheek lower ring remains raised at ${anchor.join(',')}`);
+    }
+    for (const anchor of formerDeckAnchors) {
+      assert.equal(hasVertex(anchor), false,
+        `marked cheek lower ring must not remain on the hull deck at ${anchor.join(',')}`);
+    }
+  };
+  raisedRing();
+  // Seeded defect: the installed turret stock dropped back by the 85 mm lift must fail.
+  vertices = vertices.map((vertex) => vertex.clone().setY(vertex.y - 0.085 * f));
+  assert.throws(raisedRing, assert.AssertionError, 'a lower ring dropped back onto the deck is rejected');
+  vertices = collectVertices(turret);
 
   const removedOuterCheekAnchors = [
     [-1.86, 0.02, 0.5765],
@@ -117,16 +129,16 @@ try {
     yM: 0.02,
     zM: -0.06,
   }, 'T-90SM turret ring receipt remains dimensionally stable');
-  assert.ok(vertices.some((vertex) => near(vertex.y, ring.yM - ring.heightM / 2)
-    && near(Math.hypot(vertex.x, vertex.z - ring.zM), ring.bottomRadiusM)),
+  assert.ok(vertices.some((vertex) => near(vertex.y, (ring.yM - ring.heightM / 2) * f)
+    && near(Math.hypot(vertex.x, vertex.z - ring.zM * f), ring.bottomRadiusM * f)),
   'T-90SM turret ring lower edge is present in structural turret geometry');
 
   for (const yaw of [0, Math.PI / 2]) {
     turretRig.rotation.y = yaw;
     tank.root.updateMatrixWorld(true);
     for (const anchor of lowerRingAnchors) {
-      const world = turret.localToWorld(new THREE.Vector3(...anchor));
-      assert.ok(world.y >= 1.475,
+      const world = turret.localToWorld(new THREE.Vector3(...anchor).multiplyScalar(f));
+      assert.ok(world.y >= 1.475 * f,
         `cheek lower ring clears the hull deck through yaw ${yaw}: ${world.y}`);
     }
   }

@@ -14,6 +14,10 @@ interface TankContactRect {
   maxY: number;
   height: number;
   exact: boolean;
+  /** How far the shell's underside rises above the root at the nose and the tail (the lowest point in the front and
+   * rear tenths of its length, never below 0): the glacis and tail plates the track plane runs under. */
+  frontLiftM: number;
+  rearLiftM: number;
 }
 
 interface ContactSpec {
@@ -80,8 +84,21 @@ function exactContactBounds(points: readonly number[]): ContactBounds {
   return bounds;
 }
 
-function contactRectFromBounds(bounds: ContactBounds, exact: boolean): TankContactRect {
+/** The lowest shell point (local y) in the front and rear tenths of the hull's length, clamped at the root. */
+function endLifts(points: readonly number[], minZ: number, maxZ: number): { front: number; rear: number } {
+  const band = (maxZ - minZ) * 0.1;
+  let front = Infinity, rear = Infinity;
+  for (let index = 0; index + 2 < points.length; index += 3) {
+    const y = points[index + 1], z = points[index + 2];
+    if (z >= maxZ - band && y < front) front = y;
+    if (z <= minZ + band && y < rear) rear = y;
+  }
+  return { front: Number.isFinite(front) ? Math.max(0, front) : 0, rear: Number.isFinite(rear) ? Math.max(0, rear) : 0 };
+}
+
+function contactRectFromBounds(bounds: ContactBounds, exact: boolean, points: readonly number[] | null): TankContactRect {
   const { minX, maxX, minY, maxY, minZ, maxZ } = bounds;
+  const lifts = points ? endLifts(points, minZ, maxZ) : { front: 0, rear: 0 };
   return Object.freeze({
     centerX: (minX + maxX) * 0.5,
     centerZ: (minZ + maxZ) * 0.5,
@@ -91,6 +108,8 @@ function contactRectFromBounds(bounds: ContactBounds, exact: boolean): TankConta
     maxY,
     height: Math.max(0.1, maxY - minY),
     exact,
+    frontLiftM: lifts.front,
+    rearLiftM: lifts.rear,
   });
 }
 
@@ -122,7 +141,7 @@ export function tankContactRect(spec: ContactSpec): TankContactRect {
   if (previous?.source === source) return previous.rect;
 
   const bounds = exact ? exactContactBounds(points) : publishedContactBounds(spec.dims);
-  const rect = contactRectFromBounds(bounds, exact);
+  const rect = contactRectFromBounds(bounds, exact, exact ? points : null);
   cache.set(spec, { source, rect });
   return rect;
 }
