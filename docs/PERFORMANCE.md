@@ -728,6 +728,19 @@ so the GPU saving shows only as throughput below the cap: in the parked flicker 
 under the cap) the presented rate rose 8–13 fps with the cache on (39 / 40 → 47 / 49 on Verdant, 38 / 35 → 48 / 51
 on Monsoon).
 
+### The governor's scale (`--scales=1,0.82,0.67`, 1920×1080)
+
+High pinned at each step of the governor's ladder down to its native-density floor, Verdant Fields and Whiteout,
+chase and overview: the 3D view keeps 74–78 % of its native edge energy (summed luminance gradients outside the
+HUD) at 0.82 and 69–74 % at 0.67, reconstructed by EASU + RCAS (the HUD stays native); the whole-frame GPU p25 fell
+17–28 % at 0.67 on this shared GPU (Verdant chase 27.1 → 22.8 → 19.4 ms), where a GPU-bound laptop would shed up
+to 55 % of its raster work. The policy's own state machine — the predicted up-step, the proportional cut, the
+main-thread guard, the trust rule — is held by `resolutionGovernor.selftest.mjs`: driven by a frame model of a
+4050-class GPU (8 ms fixed + 18 ms × scale², a 9 ms main thread, vsync-quantized presentation) it settles at a
+scale between 0.67 and 0.85 inside the budget within 8 s and makes no change from 20 s to the end of the two-minute
+run, where the
+cadence-only rules probe upward and are pushed back periodically; a 21 ms main thread keeps full resolution.
+
 ### Projected mid-range frame
 
 - Main thread. The new build's render path at a held camera is 4.9–10.7 ms here (chase 7.8–10.7, overview 4.9–7.7)
