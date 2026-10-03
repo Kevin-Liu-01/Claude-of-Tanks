@@ -79,6 +79,10 @@ try {
   const movedRow = structuredClone(ledger);
   movedRow.tanks[PROBE].low.digest = '0000000000000000';
   assert.equal(compareFleetGeometry(movedRow, rows, { qualities: ['low'] }).length, 1, 'a moved row is reported');
+  const missingQuality = structuredClone(ledger);
+  delete missingQuality.tanks[PROBE].low;
+  assert.match(compareFleetGeometry(missingQuality, rows, { qualities: ['low'] }).join('\n'), /missing ledger row/);
+  assert.match(compareFleetGeometry(ledger, { [PROBE]: {} }, { qualities: ['low'] }).join('\n'), /missing measured row/);
   const missing = structuredClone(ledger);
   delete missing.tanks[roster[0]];
   assert.match(compareFleetGeometry(missing, rows, { roster }).join('\n'), new RegExp(`^${roster[0]}: missing from the ledger$`, 'm'));

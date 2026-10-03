@@ -131,7 +131,10 @@ for (const seed of seeds) {
       }
       area += Math.abs(doubleArea) * 0.5; capQuads++;
     }
-    assert.ok(capQuads >= 35 && area > (top === 9 ? 40000 : 120000), // vista pass: narrower 431-column quads
+    // 2026-10-02 (the mountains lane): the tableland rings' side canyons (horizonMassif.ts, cut only) dissect the tables
+    // before the bed stair, so the far range keeps broad caps over less of its arc (60k m2, was 120k: the canyons take
+    // the rest); the near range's floor and the quad count's are the same broad-top law
+    assert.ok(capQuads >= 30 && area > (top === 9 ? 40000 : 60000), // vista pass: narrower 431-column quads
       `Both ranges have finite attached cap surfaces (range ${top}: ${capQuads} quads, ${Math.round(area)} m2)`);
   }
 }

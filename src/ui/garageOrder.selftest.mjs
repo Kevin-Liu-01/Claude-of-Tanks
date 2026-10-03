@@ -118,12 +118,12 @@ const nationalShowcaseCases = [
     ],
   },
   {
-    nation: 'China', filler: 'type99a',
-    expected: ['vt4a1', 'ztz100_x', 'type96b_x', 'aft10_x', 'type100', 'ztz99a2'],
+    nation: 'China', filler: 'unlisted_chinese_vehicle',
+    expected: ['vt4a1', 'ztz99a2', 'ztz99a2_prototype', 'cn_t72b3_modern', 'cn_t72b3m_modern', 'cn_t80u_modern', 'type96b_x', 'type96_80_feng', 'type96_72m_lei', 'aft10_x', 'ztz100_x', 'type100', 'ztz100_prototype', 'type96_72_long', 'type99a', 'ztz85_iii', 'type59'],
   },
   {
     nation: 'Russia', filler: 't90m_proryv',
-    expected: ['t90m_x', 't90sm_x', 't14_x', 'kurganets25_x', 'bmp3m_dragun125_x', 't90a_vladimir_x', 't90a_x', 'object695_x', 'tos1a_tagil'],
+    expected: ['t90m_x', 't90sm_x', 't14_x', 'kurganets25_x', 'bmp3m_dragun125_x', 't90a_vladimir_x', 't90a_x', 'object695_x', 'tos1a_tagil', 'ru_t80u_modern', 'ru_t72b3m_modern', 'ru_t72b3_modern', 't14', 't90ms'],
   },
   {
     nation: 'USSR/Russia', filler: 't90a_burlak',
@@ -177,6 +177,28 @@ assert.deepEqual(
   ['kf51b', 'spz_puma_s1', 'leo2a5'],
   'descending tier remains authoritative even when a lower-tier tank belongs to a hero run',
 );
+
+
+// The requested China order deliberately crosses tiers; reverse input and
+// duplicate public names must not change it or lose stable selection IDs.
+const chineseRun = nationalShowcaseCases.find(row => row.nation === 'China').expected;
+assert.deepEqual(chineseRun.toReversed().map(id => ({id, nation:'China', name:'same'}))
+ .sort((a,b) => compareCountryThenTierThenName(a,b,rank,id => id === 'ztz99a2_prototype' ? 9 : 10))
+ .map(row => row.id), chineseRun);
+const polishRun = ['pl_t72b3_modern','pl01','pl_t80u_modern','pl01_105','pl_t72b3_zubr_ii']
+ .map(id => ({id,nation:'Poland',name:id}));
+assert.deepEqual(polishRun.sort((a,b) => compareCountryThenTierThenName(a,b,rank,() => 10))
+ .slice(0,2).map(row=>row.id), ['pl01_105','pl01']);
+const mixedRussian = ['t90ms','ru_t80u_modern','ru_t72b3m_modern','ru_t72b3_modern','t14','t90ms_x','t90_x']
+ .map((id,i) => ({id, nation: i % 2 ? 'Russia' : 'USSR/Russia', name:id}));
+const compareRussian = (a,b) => compareCountryThenTierThenName(a,b,rank,() => 10);
+for (const a of mixedRussian) for (const b of mixedRussian) {
+ assert.equal(Math.sign(compareRussian(a,b))+Math.sign(compareRussian(b,a)),0,'shared flag comparator is antisymmetric');
+}
+const russianOrder = mixedRussian.toSorted(compareRussian).map(row=>row.id);
+for (const id of ['ru_t80u_modern','ru_t72b3m_modern','ru_t72b3_modern','t14'])
+ assert.ok(russianOrder.indexOf(id)<russianOrder.indexOf('t90ms'), `${id} precedes T-90MS`);
+assert.deepEqual(mixedRussian.toReversed().sort(compareRussian).map(row=>row.id),russianOrder);
 
 let storedSelections = null;
 const selectionStorage = {

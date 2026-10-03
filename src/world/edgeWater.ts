@@ -108,7 +108,14 @@ export function seaCoastDistanceAt(x: number, z: number, opening: SeaOpening, ha
     const bend = Math.sin(at * 0.004 + direction * 3) * Math.min(90, width * 0.12) * grow;
     const recess = (Math.sin(at * 0.012 + direction) * 0.7 + Math.sin(at * 0.031 - direction) * 0.3)
       * Math.min(28, width * 0.05) * grow;
-    return [bend - width - recess, bend + width + recess];
+    // the map-borders lane (2026-10-03): far out each shore has its own headlands and bays (three octaves, 3 km to
+    // 420 m, up to 30 % of the half-width), so the two coasts stop running as straight lines out of the mouth's fan
+    const far = smoothstep(150, 700, at) * Math.min(260, width * 0.3);
+    const lowCoast = (Math.sin(at * 0.0021 + direction * 5 + 1.3) * 0.55 + Math.sin(at * 0.0057 - direction * 2) * 0.3
+      + Math.sin(at * 0.0149 + direction * 7) * 0.15) * far;
+    const highCoast = (Math.sin(at * 0.0019 - direction * 4 + 0.4) * 0.55 + Math.sin(at * 0.0063 + direction * 3) * 0.3
+      + Math.sin(at * 0.0137 - direction * 6) * 0.15) * far;
+    return [bend - width - recess + lowCoast, bend + width + recess + highCoast];
   };
   let [low, high] = banks(along);
   const profile = opening.bankProfile, length = Math.max(240, Math.min(480, (opening.coastReachM ?? 0) * 1.5 + 80));
@@ -132,7 +139,12 @@ vec2 seaBanks(float along, vec4 o, float halfSize) {
   float grow = smoothstep(0.0, 160.0, along);
   float bend = sin(along * 0.004 + o.x * 3.0) * min(90.0, width * 0.12) * grow;
   float recess = (sin(along * 0.012 + o.x) * 0.7 + sin(along * 0.031 - o.x) * 0.3) * min(28.0, width * 0.05) * grow;
-  return vec2(bend - width - recess, bend + width + recess);
+  float far = smoothstep(150.0, 700.0, along) * min(260.0, width * 0.3);
+  float lowCoast = (sin(along * 0.0021 + o.x * 5.0 + 1.3) * 0.55 + sin(along * 0.0057 - o.x * 2.0) * 0.3
+    + sin(along * 0.0149 + o.x * 7.0) * 0.15) * far;
+  float highCoast = (sin(along * 0.0019 - o.x * 4.0 + 0.4) * 0.55 + sin(along * 0.0063 + o.x * 3.0) * 0.3
+    + sin(along * 0.0137 - o.x * 6.0) * 0.15) * far;
+  return vec2(bend - width - recess + lowCoast, bend + width + recess + highCoast);
 }
 float seaCoastWeight(vec2 world, vec4 o, vec4 profile, float halfSize) {
   vec2 direction = vec2(cos(o.x), sin(o.x));

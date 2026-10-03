@@ -101,8 +101,10 @@ export default {
     // level, clear of the lanes) the zone-control placement seats its 30 m discs on. The village disc seats on the
     // village's graded floor.
     hardstands: [
-      { x: -290, z: 22, width: 60, length: 60, yawDeg: 0, level: -0.7, grade: 0 },
-      { x: -155, z: 22, width: 60, length: 60, yawDeg: 0, level: 6.6, grade: 0 },
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): tilted 7 % with its slope, a 16 m bank
+      { x: -290, z: 22, width: 60, length: 60, yawDeg: 179, level: -0.4, grade: 0.072, bankM: 16 },
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): a 20 m bank
+      { x: -155, z: 22, width: 60, length: 60, yawDeg: 0, level: 6.6, grade: 0, bankM: 20 },
     ],
     // E-W lanes CLIP at the strand (hi: 262) so no road paves into the bay
     // 2026-10-02 redesign: the four village lanes keep their own 32 m lattice inside the village. The inland road (road

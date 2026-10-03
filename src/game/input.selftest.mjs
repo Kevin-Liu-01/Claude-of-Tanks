@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { createInput, DEFAULT_BINDINGS, migrateShiftAimCapsFreeLookBindings } from './input.ts';
+import { CREW_VOICE_NATIONS } from '../audio/crewVoice.ts';
+import { getLocale, setLocale } from '../ui/i18n.ts';
 
 assert.equal(DEFAULT_BINDINGS.sniperToggle, 'ShiftLeft',
   'left Shift toggles sniper mode');
@@ -95,4 +97,52 @@ assert.deepEqual(capsCollision,
   }
 }
 
-console.log('input.selftest: binding migration and keyboard/touch blur intent reset passed');
+// The real input store persists every voice pack and upgrades the two legacy
+// choices once, without making future interface-language changes change crews.
+{
+  const prior = { window: globalThis.window, document: globalThis.document, localStorage: globalThis.localStorage };
+  const locale = getLocale();
+  const stored = new Map();
+  try {
+    globalThis.window = new EventTarget();
+    globalThis.document = new EventTarget();
+    globalThis.localStorage = {
+      getItem: key => stored.get(key) ?? null,
+      setItem: (key, value) => stored.set(key, value),
+    };
+    const newInput = () => {
+      globalThis.window = new EventTarget();
+      globalThis.document = new EventTarget();
+      return createInput();
+    };
+    assert.equal(newInput().getSettings().crewVoice, 'national');
+    for (const choice of ['national', ...Object.keys(CREW_VOICE_NATIONS)]) {
+      const input = newInput();
+      input.setSetting('crewVoice', choice);
+      assert.equal(JSON.parse(stored.get('cot.settings.v1')).crewVoice, choice);
+      assert.equal(newInput().getSettings().crewVoice, choice, 'choice survives a new input owner');
+      input.setSetting('crewVoice', 'not-a-pack');
+      assert.equal(input.getSettings().crewVoice, choice, 'invalid live changes are ignored');
+    }
+    setLocale('zh-CN');
+    for (const [legacy, expected] of [['english', 'en-US'], ['interface', 'zh']]) {
+      stored.set('cot.settings.v1', JSON.stringify({ crewVoice: legacy, volMaster: 0.37, futureSetting: true }));
+      assert.equal(newInput().getSettings().crewVoice, expected);
+      assert.deepEqual(JSON.parse(stored.get('cot.settings.v1')), { crewVoice: expected, volMaster: 0.37, futureSetting: true });
+    }
+    setLocale('en-US');
+    assert.equal(newInput().getSettings().crewVoice, 'zh', 'migrated Interface becomes a fixed nation');
+    for (const raw of ['{"crewVoice":"bogus"}', '{broken json', 'null']) {
+      stored.set('cot.settings.v1', raw);
+      assert.equal(newInput().getSettings().crewVoice, 'national');
+    }
+  } finally {
+    setLocale(locale);
+    for (const [key, value] of Object.entries(prior)) {
+      if (value === undefined) delete globalThis[key];
+      else globalThis[key] = value;
+    }
+  }
+}
+
+console.log('input.selftest: bindings, blur reset and persisted crew voice migration passed');

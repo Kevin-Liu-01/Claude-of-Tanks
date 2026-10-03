@@ -14,7 +14,7 @@ export interface AerialView {
 export interface AerialEntity {
   id: string; bot?: boolean; isPlayer?: boolean; team: string;
   spec?: MissionCarrierSpec;
-  state: { pos: Vector3; yaw: number; speed: number; visualPitch?: number; visualRoll?: number };
+  state: { pos: Vector3; yaw: number; speed: number; turretYaw?: number; visualPitch?: number; visualRoll?: number };
   combat: { destroyed: boolean };
   input: { throttle: number; steer: number; fire: boolean; brake: boolean; aimPoint: Vector3; auxiliaryBits?: number };
   aerial?: AerialView;
@@ -54,6 +54,12 @@ function launchOrigin(entity: AerialEntity, out: Vector3): void {
   if(entity.spec){
     const mount=missionAttachmentFor(entity.spec);
     out.set(mount.x,mount.y+DRONE_DOCK_HEIGHT_M,mount.z);
+    if(mount.frame==='turret'){
+      attitude.set(0,entity.state.turretYaw??0,0);
+      out.applyEuler(attitude);
+      const pivot=entity.spec.armor.turretPivot;
+      out.x+=pivot[0];out.y+=pivot[1];out.z+=pivot[2];
+    }
   }else out.set(0,3.5,0);
   attitude.set(-(entity.state.visualPitch ?? 0),entity.state.yaw,entity.state.visualRoll ?? 0);
   out.applyEuler(attitude).add(entity.state.pos);
@@ -99,11 +105,12 @@ export function stepAerial(entity: AerialEntity, timeS: number, dt: number, next
     flight.shell = null; v.active = false; v.launching = false; flight.readyAt = timeS + rules.cooldownS;
   } else if (toggle && !flight.shell && timeS >= flight.readyAt) {
     launchOrigin(entity, flight.launch);
-    direction.set(Math.sin(entity.state.yaw), .4, Math.cos(entity.state.yaw)).normalize();
+    const launchYaw=entity.state.yaw+(entity.spec && missionAttachmentFor(entity.spec).frame==='turret' ? entity.state.turretYaw??0 : 0);
+    direction.set(Math.sin(launchYaw), .4, Math.cos(launchYaw)).normalize();
     const shell = createShell(DRONE_WARHEAD, entity.id, !!entity.isPlayer, flight.launch, direction, nextId());
     shell.gravityMps2 = 0; shell.vel.set(0,0,0);
     flight.shell = shell; flight.shellId = shell.id; flight.born = timeS;
-    v.active = true; v.launching = true; v.yaw = entity.state.yaw; v.pitch = .2;
+    v.active = true; v.launching = true; v.yaw = launchYaw; v.pitch = .2;
     launchShell(shell);
   }
   v.cooldownS = Math.max(0, flight.readyAt - timeS);
@@ -124,11 +131,11 @@ function advanceDrone(entity:AerialEntity,flight:Flight,shell:ShellEntity<ShellS
   }
   else {
     steerDrone(entity, v, shell, dt);
-    // Small zero-mean air disturbances; the velocity controller continuously corrects them.
+    // Bounded, zero-mean gusts; the velocity controller continuously corrects them.
     const phase=flight.born*.73;
-    direction.x+=.1*Math.sin(age*1.7+phase);
-    direction.y+=.12*Math.sin(age*2.3+phase);
-    direction.z+=.08*Math.sin(age*1.9+phase);
+    direction.x+=.85*Math.sin(age*1.7+phase)+.35*Math.sin(age*4.3+phase);
+    direction.y+=.65*Math.sin(age*2.3+phase)+.25*Math.sin(age*5.7+phase);
+    direction.z+=.7*Math.sin(age*1.9+phase)+.3*Math.sin(age*3.7+phase);
 
   }
   if(v.launching) shell.vel.copy(direction);

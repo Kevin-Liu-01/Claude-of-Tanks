@@ -116,8 +116,10 @@ export default {
       // levels: the bed under each apron (a hardstand otherwise takes the nearest road's grade, the bank's)
       // each strip's length runs along its leg of the bed (a strip's local +Z is (sin yaw, cos yaw))
       { x: 0, z: 0, width: 64, length: 72, yawDeg: 106, level: -2.4, grade: 0 },
-      { x: -292, z: 112, width: 60, length: 64, yawDeg: 104, level: -7.4, grade: 0 },
-      { x: 292, z: -112, width: 60, length: 64, yawDeg: 104, level: -0.3, grade: 0 },
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): 29 m south, off the mesa's foot onto the bed, a 16 m bank
+      { x: -300, z: 84, width: 56, length: 64, yawDeg: 104, level: -7.8, grade: 0, bankM: 16 },
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): a 20 m bank
+      { x: 292, z: -112, width: 60, length: 64, yawDeg: 104, level: -0.5, grade: 0, bankM: 20 },
     ],
     // The gravel bed between the banks is bare worked ground (the D layer's dusty dirt): one band per half of the
     // wadi (a worked-ground patch takes at most 24 vertices).
