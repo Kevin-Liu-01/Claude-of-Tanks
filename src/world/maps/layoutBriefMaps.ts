@@ -12,7 +12,7 @@ export const LAYOUT_BRIEF_MAPS = Object.freeze([
   // maps lane B, batch 6
   'copper_mesa', 'moon', 'orchard', 'longleaf',
   // maps lane B, batch 7
-  'steppe',
+  'autumn', 'steppe',
 ] as const);
 
 export type LayoutBriefMapId = (typeof LAYOUT_BRIEF_MAPS)[number];

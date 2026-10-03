@@ -39,7 +39,7 @@ const expected = {
   winter: [5931, 5786, 4919],
   urban: [3859, 6519, 3510], // 2026-10-01 Steinburg redesign (docs/MAP-LAYOUT-BRIEF.md); was [3898, 9290, 3530]
   coastal: [4091, 3931, 4107], // 2026-10-02 Saltmere Bay redesign (docs/MAP-LAYOUT-BRIEF.md); was [4161, 3964, 4249], and [4413, 4253, 4411] before its aprons stood on their ground (apron bank law)
-  autumn: [5872, 5726, 5822],
+  autumn: [5721, 5607, 5773], // 2026-10-03 Amberford layout pass (docs/MAP-LAYOUT-BRIEF.md); was [5872, 5726, 5822]
   steppe: [2399, 2110, 1273], // 2026-10-03 Tarkhan Steppe layout pass (docs/MAP-LAYOUT-BRIEF.md); was [2426, 2138, 1302]
   railyard: [2846, 2848, 1899], // 2026-10-01 Cinder Junction redesign (docs/MAP-LAYOUT-BRIEF.md); was [2825, 2785, 1983]
   frontier: [7987, 7851, 8359], // 2026-10-02 Frontier Basin redesign (docs/MAP-LAYOUT-BRIEF.md); was [7905, 7634, 8284], and [7730, 7594, 8120] before its aprons stood on their ground (apron bank law)

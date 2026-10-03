@@ -12,6 +12,7 @@
 // sky, vegetation species, prop tones, minimap and river material are the
 // round-1 identity and are unchanged.
 
+import { gully } from './geology.ts';
 import { createMarshChannel } from './marshChannel.ts';
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
@@ -79,6 +80,17 @@ export default {
     microScale: 1.0,
     rimH: 26,
     marshes: RIVER, // the river IS the marsh chain (soft, wadeable)
+    // 2026-10-03 (maps lane B): three greens the zone-control discs seat on, sited for equal drives — the sunken lane's
+    // green in the south-bank orchards near the southern deployment, the ford green on the north bank on the line of
+    // equal drives and the fair green outside the walled town's east side near the northern arc. The two a lane
+    // crosses take its height and grade (the brief's road-graded apron: a fixed level kinked the lane past 18 % at
+    // seeds 2025 and 7719); the fair green stands at its ground's level. Each bank is wide enough to make no wall (maps
+    // lane A's apron bank law).
+    hardstands: [
+      { x: 22, z: -192, width: 56, length: 56, yawDeg: 76, grade: 'road', bankM: 24 },
+      { x: 154, z: 54, width: 56, length: 56, yawDeg: -22, grade: 'road', bankM: 18 },
+      { x: 0, z: 102, width: 56, length: 56, yawDeg: 0, level: 4.5, grade: 0, bankM: 18 },
+    ],
     clearMarshVeg: true, // keep the channel clear of tufts; reeds stay on the banks
     // the manor lake is liquid water like the river (bogged 'soft'), not an ice pan
     softLakes: true,
@@ -107,6 +119,11 @@ export default {
     landforms: [
       // the wooded escarpment along the east (the manor park lies beyond its northern end)
       { kind: 'ridge', x: 420, z: -80, length: 480, width: 92, height: 11.5, yawDeg: 88 },
+      // 2026-10-03 (maps lane B): coombes (geology.ts gullies) — dry chalk valleys cut the escarpment's west face
+      // from the crown down to its foot, each a sheltered lane up the scarp
+      ...gully(346, -232, 404, -226, 3.4, 14, 6),
+      ...gully(344, -128, 404, -122, 3.8, 15, -7),
+      ...gully(344, -22, 406, -16, 3.6, 14, 5),
       // the town rise on the north bank: the settlement keeps the whole knoll
       { kind: 'knoll', x: -110, z: 120, rx: 190, rz: 150, height: 4.2, settlementScale: 1 },
       // the west spur above the mill reach

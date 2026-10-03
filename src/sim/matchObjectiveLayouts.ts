@@ -18,6 +18,10 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // (level aprons in the map file) and the gorge floor west of the viaduct, where the mills stood; the turbo-ball
   // kickoff on the gorge floor east of it. Both teams reach the floor from the fords at the gorge's two ends.
   cliffbridge: { kickoff: { x: 130, z: 0 }, zones: [{ x: 0, z: -172 }, { x: 0, z: 172 }, { x: -130, z: 0 }] },
+  // Amberford (layout brief, 2026-10-03): the three greens — the sunken lane's green in the south-bank orchards near the
+  // southern deployment, the ford green on the line of equal drives and the fair green near the northern arc; the
+  // kickoff on the north-bank meadow between the bridge and the ford.
+  autumn: { kickoff: { x: 119, z: 34 }, zones: [{ x: 22, z: -192 }, { x: 154, z: 54 }, { x: 0, z: 102 }] },
   // Tarkhan Steppe (layout brief, 2026-10-02): the three aprons — the station's grain yard by the ford on the line of
   // equal drives, the post-road halt on the plateau near the northern arc and the kolkhoz yard near the southern
   // deployment, each team's home zone as far from it as the other's; the kickoff on the wadi's north bank (the bounded
