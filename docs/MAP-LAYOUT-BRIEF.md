@@ -108,6 +108,34 @@ least three strongpoints, every role present, each at least 180 m from the other
 `server/collisionManifestDrift.selftest.mjs` rebuilds every shard in Node and fails on any that no longer matches
 the tree.
 
+### Apron banks
+
+An apron (`terrain.hardstands`) is stamped into the road grids. The ground holds the apron's plane to 3.8 m outside
+it and is back on its own height by 14 m, so the bank is about 10 m wide whatever height it has to make up. An apron
+standing metres off its ground turns that band into a wall: Monsoon's first assembly apron sat at 1.0 m on a hillside
+5–15 m high, and a bot fell 12 m off the cut six seconds into a match. The law holds on every map: **no apron may make
+its bank steeper than 0.6 where the ground without it is gentler by 0.25.**
+
+- `node tools/hardstand-banks.mjs [maps]` samples the band 1–11 m outside each apron every 4 m and counts the points
+  steeper than 0.6 and 0.25 steeper than the same point with that apron removed. The game's terrain seed (1337) is
+  the one that counts.
+- `src/world/hardstandBanks.selftest.mjs` fails on any apron with such a point, except the ones its pending list
+  names with their owner. The list only shrinks: an apron that is clean fails until its entry goes, and the list must
+  be empty before PR #9 is ready.
+- `node tools/hardstand-site.mjs <map> <index> [--seat=30,7]` searches sites, sizes and levels for one apron: it
+  builds each candidate into the height field, keeps the ones whose centre still seats what the apron carries, and
+  ranks them by walls, steepening and distance moved.
+
+Siting an apron:
+
+- Put it where its ground spreads least, at that ground's median height, not at the height of the nearest road
+  (the default when `level` is omitted).
+- Size it to the seat it carries (zone disc 30 m, turbo goal 18 m, flag 12 m). Do not size it to the area you would
+  like paved.
+- An apron that carries a team's turbo goal stands on the team's pad, inside the mode arena
+  (`MATCH_MODE_ARENA_HALF_EXTENT_M`, 420 m, less the goal's 18 m). If no ground there is level enough, the
+  deployment moves to ground that is.
+
 ## Procedure for one map
 
 1. Write the reference and geological story into the map file header.
