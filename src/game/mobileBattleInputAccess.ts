@@ -19,6 +19,7 @@ import {
 } from '../ui/touchControlsAccess.ts';
 
 interface MobileBattleInputTank extends MobileAutoAimCandidate {
+  aerial?: {active:boolean;kind:string};
   id: string;
   spec: MobileAutoAimCandidate['spec'] & { name?: string };
 }
@@ -117,7 +118,8 @@ export function createMobileBattleInputAccess<
       setSoundMuted(soundMuted);
       return soundMuted;
     },
-    isSniper,
+    isSniper: () => getPlayer()?.aerial?.kind==='gunship' || isSniper(),
+    getFlightKind: () => {const flight=getPlayer()?.aerial;return flight?.active?flight.kind:undefined;},
   });
 
   const ensureAutoAim = async (): Promise<MobileAutoAimRuntime> => {

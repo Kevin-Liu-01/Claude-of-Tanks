@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { isGunship } from '../sim/aerialCombat.ts';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { Vector3 } from 'three';
@@ -25,7 +26,12 @@ function privateFunction(file, name, dependencies) {
 }
 
 const muzzle = new Vector3(), direction = new Vector3(), origins = [];
-const prepare = privateFunction('./state.ts', 'prepareMuzzleDirection', { _muzzle: muzzle, _dir: direction, usesLauncherMuzzles, launcherMuzzleIndex });
+const prepare = privateFunction('./state.ts', 'prepareMuzzleDirection', { _muzzle: muzzle, _dir: direction, usesLauncherMuzzles, launcherMuzzleIndex, isGunship });
+// The AC-130 fires from its orbit toward the aim point, with no muzzle rotation.
+const gunship = { aerial: { kind: 'gunship' }, state: { pos: new Vector3(0, 240, 180) }, input: { aimPoint: new Vector3(0, 0, 0) } };
+assert.equal(prepare(gunship, { guided: false }), -1);
+assert.deepEqual([muzzle.x, muzzle.y, muzzle.z], [0, 240, 180], 'gunship rounds leave from the orbit');
+assert.ok(Math.abs(direction.y + 240 / Math.hypot(240, 180)) < 1e-9, 'and fly toward the aim point');
 const rack = [{ x: -1 }, { x: 1 }, { x: 2 }];
 const entity = {
   spec: { gun: { launcherMuzzles: rack, muzzles: [{ x: -.2 }, { x: .2 }] } },

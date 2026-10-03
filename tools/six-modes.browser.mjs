@@ -4,18 +4,22 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createCaptureLock } from './capture-lock.mjs';
 import { withMapProbeSession, openGamePage, beginSoloBattle } from './map-probe-runtime.mjs';
-const out=resolve('.qa-dev/six-modes');mkdirSync(out,{recursive:true});
+const remote=process.env.COT_MODE_VERIFY_URL;
+const out=resolve(remote?'.qa-dev/six-modes-live':'.qa-dev/six-modes');mkdirSync(out,{recursive:true});
 const lock=createCaptureLock();let heartbeat;
 const reports=[];
+const battleModes=process.env.COT_AERIAL_ONLY?['drone','ac130']:['drone','ac130','juggernaut','infected','realistic','gun_game'];
 
 try{
  await lock.acquire();heartbeat=setInterval(()=>lock.refresh(),30000);
  console.log('six-modes: acquired native capture slot');
  await withMapProbeSession({root:process.cwd(),launch:{executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'}},async({browser,port})=>{
-  for(const mobile of [false,true]) {
-  const initialViewport=mobile?{width:568,height:320,deviceScaleFactor:1,isMobile:true,hasTouch:true}:{width:1280,height:800};
-  const suffix=mobile?'touch':'desktop';
-  const {page,errors}=await openGamePage(browser,{port,viewport:initialViewport});
+  const profiles=[{width:1280,height:800},{width:568,height:320,deviceScaleFactor:1,isMobile:true,hasTouch:true},{width:480,height:270,deviceScaleFactor:1,isMobile:true,hasTouch:true}];
+  for(const initialViewport of profiles) {
+  const mobile=!!initialViewport.isMobile;
+  if(process.env.COT_AERIAL_TOUCH_ONLY&&!mobile)continue;
+  const suffix=mobile?(initialViewport.width<500?'touch-small':'touch'):'desktop';
+  const {page,errors}=remote?await openPublishedPage(browser,remote,initialViewport):await openGamePage(browser,{port,viewport:initialViewport});
   page.on('console',message=>{if(message.type()==='error')console.error('browser:',message.text().slice(0,500));});
   await page.click('.cot-battle-mode');
   for(const mode of ['juggernaut','infected','realistic','gun_game','drone','ac130']){
@@ -26,15 +30,19 @@ try{
   }
   await page.screenshot({path:resolve(out,`garage-modes-${suffix}.png`)});
   await page.click('[data-battle-close]');
-  for(const mode of ['drone','ac130','juggernaut','infected','realistic','gun_game']){
-   await page.evaluate(async mode=>{const {writeTeamArrangement}=await import('/src/game/teamArrangement.ts');writeTeamArrangement(mode,{allies:1,enemies:2});},mode);
+  for(const mode of battleModes){
+   if(!remote)await page.evaluate(async mode=>{const {writeTeamArrangement}=await import('/src/game/teamArrangement.ts');writeTeamArrangement(mode,mode==='ac130'?{allies:4,enemies:8}:{allies:1,enemies:2});},mode);
    console.log('six-modes: entering',mode,suffix);
    await beginSoloBattle(page,{specId:'m1a2',mapId:'verdant',gameMode:mode});
    assert.equal(await page.evaluate(()=>window.__DEBUG.game.gameMode),mode);
    if(mode==='drone'){
+    assert.equal(await page.evaluate(()=>!!window.__DEBUG.game.player.visual.root.getObjectByName('Docked FPV mission payload')?.visible),true,'drone starts on the carrier');
+    await page.screenshot({path:resolve(out,`drone-docked-${suffix}.png`)});
     if(mobile)await page.tap('.cot-drone-control');
     else {await page.mouse.click(640,400);await page.keyboard.press('KeyV');}
     await page.waitForFunction(()=>window.__DEBUG.game.player.aerial?.active,{timeout:10000});
+    await new Promise(r=>setTimeout(r,700));
+    await page.screenshot({path:resolve(out,`drone-launch-${suffix}.png`)});
     await page.waitForFunction(()=>!window.__DEBUG.game.player.aerial.launching,{timeout:10000});
     const before=await page.evaluate(()=>{const v=window.__DEBUG.game.player.aerial;return{x:v.x,y:v.y,z:v.z};});
     if(mobile){
@@ -45,16 +53,43 @@ try{
     const after=await page.evaluate(()=>{const v=window.__DEBUG.game.player.aerial;return{x:v.x,y:v.y,z:v.z};});
     assert.ok(Math.hypot(after.x-before.x,after.y-before.y,after.z-before.z)>3,'pilot movement flies the drone');
     await page.screenshot({path:resolve(out,`drone-flight-${suffix}.png`)});
-    if(mobile)await page.tap('.cot-drone-control');else await page.keyboard.press('KeyV');await page.waitForFunction(()=>!window.__DEBUG.game.player.aerial.active);
+    assert.equal(await page.$eval('.cot-drive',el=>getComputedStyle(el).display),'none','no tank speedometer during FPV flight');
+    assert.equal(await page.$eval('.cot-dp',el=>getComputedStyle(el).display),'none','no tank damage panel during FPV flight');
+    const consoleBounds=await page.$eval('.flight-console',el=>{const r=el.getBoundingClientRect();return{top:r.top,left:r.left,right:r.right,bottom:r.bottom};});
+    assert.ok(consoleBounds.top>initialViewport.height/2+12,'flight console stays below the sight');
+    if(mobile)await page.tap('.cot-drone-return');else await page.keyboard.press('KeyV');await page.waitForFunction(()=>!window.__DEBUG.game.player.aerial.active);
     reports.push({mode,mobile,before,after,returned:true});
    }else if(mode==='ac130'){
+    const escort=await page.evaluate(()=>({...window.__DEBUG.game.matchModeController.state.escort}));
+    assert.ok(escort.total>=2&&escort.required>=1,'gunship has a vulnerable ground escort');
+    assert.match(await page.$eval('.cot-mode-status',el=>el.textContent),/PROTECT THE CONVOY/);
+    await page.waitForFunction(()=>{const e=window.__DEBUG.game.matchModeController.state.escort;return e.progress>.01||e.rescued>0;},{timeout:30000});
     const before=await page.evaluate(()=>({...window.__DEBUG.game.player.aerial}));
     await new Promise(r=>setTimeout(r,1200));
     const after=await page.evaluate(()=>({...window.__DEBUG.game.player.aerial}));
     assert.ok(Math.hypot(after.x-before.x,after.z-before.z)>1,'aircraft orbits during play');
     assert.equal(await page.evaluate(()=>window.__DEBUG.game.player.spec.gun.shells[1].caliberMm),152);
+    assert.ok(after.y>=230,'gunship starts and stays airborne');
+    assert.match(await page.$eval('.flight-weapons',el=>el.textContent),/30 mm cannon.*152 mm HE.*Guided missile/s);
+    const howitzer=await page.$('.flight-weapon:nth-child(2)');if(mobile)await howitzer.tap();else await howitzer.click();
+    await page.waitForFunction(()=>window.__DEBUG.game.player.combat.shellSlot===1);
     reports.push({mode,mobile,before,after});
    }else reports.push({mode,mobile,state:await page.evaluate(()=>window.__DEBUG.game.matchModeState)});
+   if(mode==='ac130'){
+    const bounds=await page.$eval('.flight-console',el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom};});
+    assert.ok(bounds.x>=0&&bounds.y>initialViewport.height/2+12&&bounds.right<=initialViewport.width&&bounds.bottom<=initialViewport.height,'flight controls fit below sight');
+    assert.equal(await page.$eval('.cot-drive',el=>getComputedStyle(el).display),'none','no tank speedometer in gunship');
+    if(mobile){
+     const controlsClear=await page.evaluate(()=>{
+      const panel=document.querySelector('.flight-console').getBoundingClientRect();
+      return ['.cot-touch .scope','.cot-touch .fire:not(.alt)'].every(selector=>{
+       const button=document.querySelector(selector).getBoundingClientRect();
+       return button.right<=panel.left||button.left>=panel.right||button.bottom<=panel.top||button.top>=panel.bottom;
+      });
+     });
+     assert.ok(controlsClear,'aircraft zoom and fire buttons stay outside weapon cards');
+    }
+   }
    if(mode==='gun_game')assert.equal(await page.$$eval('.cot-shell:not([hidden])',els=>els.length),1,'Gun Game exposes only the current weapon');
    if(mode==='juggernaut')assert.match(await page.$eval('.cot-mode-status',el=>el.textContent),/SURVIVE/,'the boss receives its own survival objective');
    await page.screenshot({path:resolve(out,`${mode}-${suffix}.png`)});
@@ -75,3 +110,11 @@ try{
   console.log('six-modes: all mode entries, FPV controls, orbit and compact screenshots passed');
  });
 }finally{clearInterval(heartbeat);lock.release();}
+
+async function openPublishedPage(browser,url,viewport){
+ const page=await browser.newPage(),errors=[];
+ await page.setViewport({...viewport,deviceScaleFactor:1});page.on('pageerror',error=>errors.push(String(error.message)));
+ await page.goto(url+'/?nosplash=1&tier=desktop&gfxreset=1',{waitUntil:'domcontentloaded',timeout:180000});
+ await page.waitForFunction('window.__GAME_READY === true',{timeout:300000});
+ return {page,errors};
+}

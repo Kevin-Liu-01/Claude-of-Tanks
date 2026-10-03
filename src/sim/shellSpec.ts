@@ -1,6 +1,12 @@
-// The shell contract every gun spec, mode weapon and ballistic shell shares. It lives in src/sim, apart from the vehicle
-// helpers that re-export it (src/vehicles/specHelpers.ts), because the mode rulesets read it and the rooms Worker's
-// DOM-free program reaches them (src/mp/room/roomWorkerProgram.selftest.mjs).
+/**
+ * A gun's shell record and the one builder every fleet gun and every mode
+ * ladder uses. DOM-free and vehicle-free: the mode rulesets build their weapon
+ * ladders with it, and the rooms Worker reaches the rulesets through
+ * src/mp/room/protocol.ts, so this must never import from src/vehicles
+ * (src/mp/room/roomWorkerProgram.selftest.mjs). `vehicles/specHelpers.ts`
+ * re-exports both for the fleet.
+ */
+
 import type { RuntimeValue } from '../runtimeTypes.ts';
 
 export interface ShellSpec extends Record<string, RuntimeValue> {
@@ -23,3 +29,17 @@ export interface ShellSpec extends Record<string, RuntimeValue> {
    * guidedLauncherTubes.selftest against the profiles' published tube censuses. */
   launcherTubes?: number;
 }
+
+export const shell = (
+  name: string,
+  type: string,
+  caliberMm: number,
+  pen100Mm: number,
+  pen1000Mm: number,
+  dmg: number,
+  velocityMps: number,
+  extra: Readonly<Record<string, RuntimeValue>> | null = null,
+): ShellSpec => ({
+    name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps,
+    moduleDmg: caliberMm, tracer: type, ...(extra || {}),
+});

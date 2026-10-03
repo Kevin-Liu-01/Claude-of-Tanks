@@ -23,7 +23,7 @@ import { createTankState, shotRecoilScale } from '../../sim/movement.ts';
 import type { TankState } from '../../sim/movement.ts';
 import { SPECIAL_ACTION_KINDS, createSpecialActionState } from '../../sim/specialActionPolicy.ts';
 import type { SpecialActionState } from '../../sim/specialActionPolicy.ts';
-import { matchRulesetFor } from '../../sim/matchRuleset.ts';
+import { AERIAL_RULES, matchRulesetFor } from '../../sim/matchRuleset.ts';
 import type { MatchRuleset } from '../../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../../sim/matchModes.ts';
 import { createTank, ensureTankBuilder } from '../../vehicles/fleetFactory.ts';
@@ -321,7 +321,8 @@ export function createBattlePresentation({
       _networkPoseReady: false, _networkDestroyed: false, _networkDestroyPop: false, _networkEraSpent: new Set(),
       _lastX: 0, _lastZ: 0,
     };
-    if (game.gameMode === 'ac130' && entry.team === TEAM.ALPHA && !entry.bot) actor.aerial = { kind:'gunship',active:true,launching:false,x:0,y:0,z:0,yaw:0,pitch:-1,batteryS:0,cooldownS:0 };
+    if (game.gameMode === 'ac130' && entry.team === TEAM.ALPHA && !entry.bot) actor.aerial = { kind:'gunship',active:true,launching:false,x:0,y:AERIAL_RULES.gunship.altitudeM,z:AERIAL_RULES.gunship.radiusM,yaw:0,pitch:-1,batteryS:0,cooldownS:0 };
+    if (game.gameMode === 'drone') actor.aerial={kind:'drone',active:false,launching:false,x:0,y:0,z:0,yaw:0,pitch:0,batteryS:0,cooldownS:0};
     actors.set(actor.id, actor);
     actorsByEntity.set(actor.entityId, actor);
     roster.push(actor);
@@ -662,13 +663,17 @@ export function createBattlePresentation({
       try { game.matchModeState = frame.modeStateJson ? JSON.parse(frame.modeStateJson) as RuntimeValue : null; }
       catch { game.matchModeState = null; }
     }
-    const modeView = game.matchModeState as { aerial?: AerialView; weaponStage?: { index: number }; weaponStages?: { id: string; index: number }[]; factions?: { id: string; team: string }[] } | null;
+    const modeView = game.matchModeState as { aerial?: AerialView; missionPayloads?: {id:string;ready:boolean}[]; weaponStage?: { index: number }; weaponStages?: { id: string; index: number }[]; factions?: { id: string; team: string }[] } | null;
     if (own) {
       own.aerial = modeView?.aerial;
       const stage = own.aerial?.kind === 'gunship' ? 'gunship' : modeView?.weaponStage?.index;
       if (stage !== undefined && stage !== own._modeWeapon) {
         setModeWeapon(own, stage); own._modeWeapon = stage;
       }
+    }
+    for(const payload of modeView?.missionPayloads ?? []) {
+      const actor=actors.get(payload.id);
+      if(actor!==own && actor?.aerial?.kind==='drone') actor.aerial.cooldownS=payload.ready?0:1;
     }
     for (const entry of modeView?.weaponStages ?? []) {
       const actor = actors.get(entry.id);
