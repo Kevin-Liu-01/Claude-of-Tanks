@@ -82,6 +82,10 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // Orchard Valley (layout brief, 2026-10-02): the bounded search's validated seats, west of the bathhouse village, in
   // its square and east of it on the valley road; the kickoff beside the square.
   orchard: { kickoff: { x: -36.4, z: 3.9 }, zones: [{ x: -98.7, z: 60.1 }, { x: -36.4, z: -4.1 }, { x: 68.2, z: -4.5 }] },
+  // Longleaf Crossing (layout brief, 2026-10-02): the western loading bays (nearer the northern landing), the crossing
+  // south of the timber yard (nearer the southern height) and the eastern cut on the line of equal drives, so each
+  // team's nearest, middle and farthest zones lie within 6 % of the other's; the kickoff on that line.
+  longleaf: { kickoff: { x: 25, z: -20 }, zones: [{ x: -147.5, z: 83.2 }, { x: -10, z: -45 }, { x: 95, z: -20 }] },
   skybridge: { zones: [{ x: -176.06506695110778, z: 137.3917255616368 }, { x: 89.52728122683749, z: -163.28455235885394 }, { x: 110, z: -30 }] },
   // Copper Mesa (layout brief, 2026-10-02): the zones keep their validated seats on the loading shelf; the turbo-ball
   // kickoff is the bounded search's validated seat by the pit's rim, which both teams reach over near-equal drives.

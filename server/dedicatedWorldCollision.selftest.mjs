@@ -62,7 +62,7 @@ const expected = {
   oasis: [2740, 2510, 2031],
   whiteout: [1601, 1467, 875],
   orchard: [4928, 4694, 5140], // 2026-10-02 Orchard Valley layout pass (docs/MAP-LAYOUT-BRIEF.md); was [4923, 4691, 5160]
-  longleaf: [6218, 6021, 7183],
+  longleaf: [6054, 5851, 6971], // 2026-10-02 Longleaf Crossing layout pass (docs/MAP-LAYOUT-BRIEF.md); was [6218, 6021, 7183]
   mangrove: [5377, 5204, 6535], // 2026-10-02 Mangrove Reach redesign (docs/MAP-LAYOUT-BRIEF.md); was [5282, 5127, 6502]
   saltwind: [3811, 3614, 4260], // 2026-10-02 Saltwind Narrows redesign (docs/MAP-LAYOUT-BRIEF.md); was [3629, 3392, 4048]
   reservoir: [6480, 6355, 7309], // 2026-10-02 Highland Reservoir layout-brief revision (docs/MAP-LAYOUT-BRIEF.md); was [6425, 6300, 7206]
@@ -315,8 +315,11 @@ function assertLoggingYard(mapWorld, independentWorld) {
   const colliders = mapWorld.getColliders().filter(record => record.kind === 'truckflatbed' && atBay(record));
   // Both original donor heights and authored destinations remain exact.
   // The original sites below still detect phantom copies after relocation.
-  const donors = [{ propIdx: 309, height: 2.0045, old: [-149.2308419066663, -173.92149064282697] },
-    { propIdx: 310, height: 1.9813, old: [-80.60376542456797, 239.70308177010833] }];
+  // 2026-10-02 (maps lane B): Longleaf Crossing's gentler relief moves the same two donors (src/world/loggingYard
+  // .selftest.mjs replays them) and two props fewer precede them; was propIdx 309 / 310, heights 2.0045 / 1.9813 from
+  // (-149.2308, -173.9215) and (-80.6038, 239.7031).
+  const donors = [{ propIdx: 307, height: 2.0045, old: [-149.2563437955792, -173.84073125534042] },
+    { propIdx: 308, height: 1.9812, old: [-80.53000567837782, 239.67939683819532] }];
   assert.deepEqual(flatbeds.map(record => record.propIdx), donors.map(record => record.propIdx));
   assert.deepEqual(colliders.map(record => record.propIdx), donors.map(record => record.propIdx));
   const sites = getMapConfig('longleaf').props.loggingYard.flatbeds;
