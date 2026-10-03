@@ -193,7 +193,9 @@ export const SHOTS = [
     { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1400), ...incoming('foe1', 5, 14, 2600), fire('ally1', 3800)], cam: OG_HOLD() },
     { tMs: 1480, exposureMs: 16 }],
   [26, 'minaret-fire', 'battle', 'A Merkava Mk 3D fires past the minaret at Sunscar Oasis', S.oMinaret,
-    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1600), fire('ally1', 2900), ...incoming('foe1', -6, 18, 3600)], cam: OG_HOLD() },
+    // low and level: from the shoulder height the oasis floor's dark contour bands filled the frame and hid the minaret
+    { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1600), fire('ally1', 2900), ...incoming('foe1', -6, 18, 3600)],
+      cam: hold({ side: 6.5, along: -7.5, lift: 1.6, fov: 44, lookHero: [-1.5, 30, 2.6] }, { side: 6, along: -6.9, lift: 1.6, fov: 42, lookHero: [-1.5, 30, 2.6] }) },
     { tMs: 1680, exposureMs: 16 }],
   [27, 'caravanserai-kill', 'battle', 'A T-62MV-1 is knocked out by the caravanserai', S.oCaravan,
     { speed: 0, sun: 'side', effects: [...wreck('foe1'), ...knockout('hero', 'foe0', 2000), fire('ally1', 3600)], cam: REAR_HOLD() },
