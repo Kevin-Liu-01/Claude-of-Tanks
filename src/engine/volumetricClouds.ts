@@ -154,6 +154,14 @@ export const CLOUD_FAR_SHADE_SPAN_M = 12000;
 export const CLOUD_FAR_SHADE_EVERY = 8;
 /** 2026-10-03: the far cumuliform field's thinning past ~9 km (cloudWeather; QA: __LIGHT_TUNE.CLOUD_FAR_THIN). 0 = off until a lab shows it. */
 export const CLOUD_FAR_THIN = 0;
+/**
+ * 2026-10-03 (fp11: a deck's lumps at 0.8 gave its base rolls and lumps but at one strength everywhere, a texture laid over
+ * the sheet): the share of a deck's lump strength a broad field gates (the weather's broad channel at 1.5x its tile, its
+ * own offset), so the base reads lumpy over some stretches of the deck and smooth over others. 0 = the lumps everywhere.
+ */
+export const CLOUD_LUMP_GATE = 1;
+/** The broad field's period for the lump gate (x the weather tile: 18 km, stretches of a few kilometres). */
+export const CLOUD_LUMP_GATE_PERIOD_K = 1.5;
 /** The share of the sun a cloud core takes (the map's darkest texel). */
 export const CLOUD_SHADOW_CORE = 0.62;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
@@ -455,6 +463,13 @@ float cloudCoverageAt( vec2 pxz ) {
 // a slice at the slab's mid altitude at the deck's own period: 1 at a cell's core, near 0 on its borders. The
 // column's thickness follows it (a stratocumulus deck is thick cells with thin borders), its base hangs under the
 // cores, and the borders open where the coverage is marginal. 1 when the regime has no cells (round 71's sheet).
+// 2026-10-03: a deck's lump strength at a column — the regime's lumps under a broad field's gate (CLOUD_LUMP_GATE), so
+// the rolls come and go across the deck instead of one even mottle; 0 without lumps
+float cloudLumpK( vec2 cxz ) {
+	if ( uLumps <= 0.0 ) return 0.0;
+	float b = textureLod( tWeather, ( cxz + uWeatherShift * 0.5 ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_LUMP_GATE_PERIOD_K)} + vec2( 0.53, 0.29 ), 0.0 ).b;
+	return uLumps * mix( 1.0, smoothstep( 0.3, 0.7, b ), ${f(CLOUD_LUMP_GATE)} );
+}
 float cloudCellK( vec2 cxz ) {
 	if ( uCells <= 0.0 ) return 1.0;
 	vec3 cp = ( vec3( cxz.x, uBase + uThick * 0.5, cxz.y ) + uNoiseShift ) / uCellTile;
@@ -463,10 +478,11 @@ float cloudCellK( vec2 cxz ) {
 	// 2026-10-03: the sub-cell lumps — the detail volume's Worley lumps at twice its period (lumps of a few hundred
 	// metres) carry the cell factor down to the scale of a stratocumulus base's rolls: each lump core a thicker, lower,
 	// darker column, the lanes between them thinner and brighter (one fetch per column, the deck rows only)
-	if ( uLumps > 0.0 ) {
+	float lk = cloudLumpK( cxz );
+	if ( lk > 0.0 ) {
 		vec3 dl = texture( tDetail, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift * 0.73 ) / ${f(CLOUD_DETAIL_TILE_M * 2)} ).rgb;
 		float lump = smoothstep( 0.25, 0.8, dl.r * 0.55 + dl.g * 0.3 + dl.b * 0.15 );
-		k *= mix( 1.0, 0.45 + 0.85 * lump, uLumps );
+		k *= mix( 1.0, 0.45 + 0.85 * lump, lk );
 	}
 	return k;
 }
@@ -1022,9 +1038,10 @@ void main() {
 							// 2026-10-03 (the skies lane): the base's fine mottle — the detail volume's Worley lumps on the base
 							// plane (coherent through the column, so the view march keeps them), each lump a thicker, darker
 							// column with lighter seams between: a stratocumulus base reads lumpy, not airbrushed
-							if ( uLumps > 0.0 ) {
+							float lkB = cloudLumpK( cxz );
+							if ( lkB > 0.0 ) {
 								vec3 dm = texture( tDetail, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift * 0.91 ) / ${f(CLOUD_DETAIL_TILE_M)} ).rgb;
-								tauAbove *= mix( 1.0, 0.3 + 1.4 * smoothstep( 0.15, 0.85, dm.r * 0.55 + dm.g * 0.3 + dm.b * 0.15 ), uLumps );
+								tauAbove *= mix( 1.0, 0.3 + 1.4 * smoothstep( 0.15, 0.85, dm.r * 0.55 + dm.g * 0.3 + dm.b * 0.15 ), lkB );
 							}
 						}
 						float Tdiff = 1.0 / ( 1.0 + 0.1125 * tauAbove );

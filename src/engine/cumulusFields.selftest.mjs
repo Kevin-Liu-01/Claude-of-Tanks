@@ -6,7 +6,7 @@
 // regimes that take them (a stratiform deck never does).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { CLOUD_CLUSTER_GAP, CLOUD_CLUSTER_PERIOD_K, CLOUD_FAR_THIN } from './volumetricClouds.ts';
+import { CLOUD_CLUSTER_GAP, CLOUD_CLUSTER_PERIOD_K, CLOUD_FAR_THIN, CLOUD_LUMP_GATE, CLOUD_LUMP_GATE_PERIOD_K } from './volumetricClouds.ts';
 import { CLOUDSCAPE_REGIMES } from './cloudscapes.ts';
 
 const here = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
@@ -60,6 +60,19 @@ assert.match(clouds, /t\.uDeckDetail\.value = preset\.deckDetail \?\? 0;/);
 assert.match(layer, /deckDetail: clamp\(pick\('deckDetail'\), 0, 1\),/);
 assert.match(presets, /p\.cluster \?\? 0, p\.deckDetail \?\? 0,/, 'in the layer\'s key');
 for (const [name, r] of Object.entries(CLOUDSCAPE_REGIMES)) assert.equal(r.deckDetail, 0, `${name}: round 76's deck until a lab shows the knob`);
+// ---- a deck's lumps (2026-10-03; fp11: lumps 0.8 gave a deck's base its rolls, at one strength everywhere — a texture
+// laid over the sheet): a broad field gates the strength, so the base reads lumpy over some stretches of the deck and
+// smooth over others; both lump sites read the gated strength; no regime takes lumps until a lab shows the gated knob
+assert.equal(CLOUD_LUMP_GATE, 1, 'the lumps come and go with the broad field');
+assert.ok(CLOUD_LUMP_GATE_PERIOD_K >= 1 && CLOUD_LUMP_GATE_PERIOD_K <= 3, 'stretches of a few kilometres');
+assert.match(clouds, /float cloudLumpK\( vec2 cxz \) \{\s*if \( uLumps <= 0\.0 \) return 0\.0;/, 'no fetch without lumps');
+assert.match(clouds, /\$\{f\(CLOUD_WEATHER_TILE_M \* CLOUD_LUMP_GATE_PERIOD_K\)\} \+ vec2\( 0\.53, 0\.29 \), 0\.0 \)\.b;/, 'the broad channel at its own period and offset');
+assert.match(clouds, /return uLumps \* mix\( 1\.0, smoothstep\( 0\.3, 0\.7, b \), \$\{f\(CLOUD_LUMP_GATE\)\} \);/, 'the gate');
+assert.equal((clouds.match(/= cloudLumpK\( cxz \);/g) ?? []).length, 2, 'the cell factor and the base mottle read the gated strength');
+assert.match(clouds, /k \*= mix\( 1\.0, 0\.45 \+ 0\.85 \* lump, lk \);/, 'the cell factor');
+assert.match(clouds, /dm\.b \* 0\.15 \), lkB \);/, 'the base mottle');
+assert.ok(!/, uLumps \);/.test(clouds), 'no ungated lump site left');
+for (const [name, r] of Object.entries(CLOUDSCAPE_REGIMES)) assert.equal(r.lumps ?? 0, 0, `${name}: no lumps until a lab shows the gated knob`);
 assert.match(clouds, /uFieldMix: \{ value: 0 \}, uCluster: \{ value: 0 \},/, 'every consumer\'s field uniforms carry it');
 assert.match(clouds, /uFieldMix: gu\.uFieldMix, uCluster: gu\.uCluster,/, 'the far shade reads the gobos\' own');
 assert.match(clouds, /g\.uCluster\.value = preset\?\.cluster \?\? 0;/, 'the gobos follow the preset');
@@ -93,4 +106,4 @@ for (const regime of ['stratocumulus-deck', 'overcast-stratus', 'low-stratus', '
 assert.ok(CLOUDSCAPE_REGIMES['fair-weather-cumulus'].density > 0.1, 'a fair-weather cumulus dense enough to shade its own base');
 assert.ok(CLOUDSCAPE_REGIMES['fair-weather-cumulus'].ambientScale < 1, 'and its shaded base not lifted back by the fill');
 
-console.log(`cumulusFields.selftest: the cumulus fields' gate (gap ${CLOUD_CLUSTER_GAP}, mean 1, ${CLOUD_CLUSTER_PERIOD_K}x the tile), the flat base, the plumbing and the cumuliform regimes PASS`);
+console.log(`cumulusFields.selftest: the cumulus fields' gate (gap ${CLOUD_CLUSTER_GAP}, mean 1, ${CLOUD_CLUSTER_PERIOD_K}x the tile), the deck lumps' broad gate, the flat base, the plumbing and the cumuliform regimes PASS`);
