@@ -73,7 +73,9 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   badlands: [through, through, through, join(0, 2), join(0, 2)],
   monsoon: [through, through, through, join(0, 2), join(0, 2)],
   alpine: [through, through, through, join(0, 2), join(0, 2)],
-  caldera: [['loop', 'loop'], through, through, join(1, 2), join(1, 2)],
+  // Obsidian Caldera redesign (2026-10-02): the south cross road leaves the west road and ends on the mining loop, which
+  // carries it on to the east road; a second crossing of the loop compressed its grade between two junction plateaus.
+  caldera: [['loop', 'loop'], through, through, join(1, 0), join(1, 2)],
   foundry: [...Array.from({ length: 6 }, () => through), join(0, 2), join(0, 2), join(0, 2)],
   ruinspires: Array.from({ length: 12 }, () => through),
   blackglass: Array.from({ length: 6 }, () => through),
