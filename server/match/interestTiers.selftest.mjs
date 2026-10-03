@@ -205,12 +205,15 @@ const distinctTickGaps = (frames, entityId) => {
 {
   const viewer = actor.entityForWireId(ids.p1);
   const shooter = actor.entityForWireId(ids.p3);
-  // the near enemy (40 m, level ground) lays its gun on the viewer's hull and fires once
+  // the near enemy (40 m) lays its gun on the viewer's hull and fires once. The authority decodes the aim from the hull
+  // origin (decodeAimIntent(input, entity.state.pos, ...)), so the pitch is taken from there: the former 2.2 m origin
+  // laid the gun on a point 1 m under the viewer, which struck the hull only where the ground fell away between the two
+  // (2026-10-02: on the rebuilt Verdant's even field the round went under the side skirt into the ground)
   const aimAtViewer = () => {
     const dx = viewer.state.pos.x - shooter.state.pos.x;
     const dz = viewer.state.pos.z - shooter.state.pos.z;
     const distanceM = Math.hypot(dx, dz);
-    const dy = viewer.state.pos.y + 1.2 - (shooter.state.pos.y + 2.2);
+    const dy = viewer.state.pos.y + 1.2 - shooter.state.pos.y;
     return { aimYaw: quantizeAngle(Math.atan2(dx, dz)), aimPitch: quantizeAimPitch(Math.atan2(dy, distanceM)), aimDistance: quantizeAimDistance(distanceM) };
   };
   overrides.set(p3, { ...aimAtViewer(), fireSeq: 0 });

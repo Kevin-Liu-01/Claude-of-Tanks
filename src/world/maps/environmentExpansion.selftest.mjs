@@ -228,11 +228,26 @@ for (const config of [delta, monsoon, autumn]) {
   };
   // Monsoon retains one separate rain-fed roadside pool after its channel.
   const channel = config.id === 'monsoon' ? config.terrain.marshes.slice(0, -1) : config.terrain.marshes;
+  // 2026-10-02 (Jade River Delta rebuilt to docs/MAP-LAYOUT-BRIEF.md): a braided river is several trails, each
+  // continuous: Delta's main course and its east branch, whose ends join the main course at the split and the rejoin.
+  const trails = [];
+  for (const station of channel) {
+    const last = trails.at(-1)?.at(-1);
+    if (last && Math.hypot(station.x - last.x, station.z - last.z) <= Math.min(station.r, last.r) * 1.15 + 1e-9) {
+      trails.at(-1).push(station);
+    } else trails.push([station]);
+  }
+  assert.equal(trails.length, config.id === 'delta' ? 2 : 1, `${config.id}: the river's authored trails`);
+  for (const trail of trails.slice(1)) for (const end of [trail[0], trail.at(-1)]) {
+    assert.ok(trails[0].some((station) => Math.hypot(station.x - end.x, station.z - end.z) <= station.r),
+      `${config.id}: a branch leaves and rejoins the main course`);
+  }
   // Amberford redesign (owner 2026-09-23): the diagonal SW->NE river is longer than the round-1 W->E chain (59 stations)
-  assert.ok(channel.length >= 20 && channel.length <= (config.id === 'autumn' ? 64 : 36),
+  assert.ok(trails.every((trail) => trail.length >= (trail === trails[0] ? 20 : 8))
+    && trails[0].length <= (config.id === 'autumn' ? 64 : 36) && channel.length <= (config.id === 'delta' ? 56 : 64),
     `${config.id}: continuous river uses a bounded authoring sample count`);
-  for (let index = 1; index < channel.length; index++) {
-    const a = channel[index - 1], b = channel[index];
+  for (const trail of trails) for (let index = 1; index < trail.length; index++) {
+    const a = trail[index - 1], b = trail[index];
     assert.ok(Math.hypot(b.x - a.x, b.z - a.z) <= Math.min(a.r, b.r) * 1.15 + 1e-9,
       `${config.id}: channel overlaps survive the contracted irregular shore envelope`);
     for (let step = 0; step <= 4; step++) {

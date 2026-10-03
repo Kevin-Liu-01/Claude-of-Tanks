@@ -1,51 +1,114 @@
-// frontier.js — temperate NATO training country turned into a fought-over
-// combined-arms basin: long field lanes, a dense service village, checkpoints,
-// farm compounds and modern roadside losses.
+// src/world/maps/frontier.ts — Frontier Basin, redesigned 2026-10-02 (maps-and-layouts lane; docs/MAP-LAYOUT-BRIEF.md).
+// The palette, sky, vegetation, name and id are the map's identity and stay; the battlefield under them is new. The
+// old layout was Verdant's five landforms with relief spurs added, its western beat site, three straight north-south
+// roads and an east-west cross road through a village rect; its bumpy floor broke every sightline inside 74 m and
+// bots met in the open middle within two minutes.
+//
+// Reference: the Fulda Gap's Huenfeld basin in eastern Hesse, NATO's Cold War frontier: a broad farming basin
+// drained west to east by a small river between two wooded Buntsandstein ridges, with a village at the crossing, mills
+// on the river, farm estates on the slopes, field lanes and stone field walls, and a checkpoint where the main road
+// crosses each ridge.
+//
+// The story on the ground: the river valley runs west to east across the middle of the map, a broad shallow floor of
+// open fields. A wooded sandstone ridge closes each side, broken by one saddle where the main road crosses it, with a
+// checkpoint beside the road. Lynchet banks (old field terraces) step down each slope toward the river. The village
+// stands at the crossing of the main road and the valley road. A mill stands on the river west and east of it, and a
+// farm estate stands on each slope between the saddle and the river.
+//
+// The layout is rotationally symmetric about the village crossroads (0, 0): every feature in one half has a
+// counterpart of the same kind and value turned through 180 degrees. Alpha deploys south of the southern ridge, bravo
+// north of the northern ridge; each ridge screens its pad, and the two saddles sit on opposite sides of the line
+// between the pads, so neither pad sees the other and every approach crosses a ridge. The three zone-control
+// objectives stand on the valley floor: the west river meadow below its mill, the village square and the east river
+// meadow. Three lanes cross the slopes: the west farm lane, the main road, and the ridge lane past the estate.
+
+const rot = ([x, z]: readonly [number, number]): [number, number] => [-x, -z];
+const both = (path: readonly (readonly [number, number])[]): [number, number][][] => [
+  path.map(([x, z]) => [x, z] as [number, number]), path.map(rot),
+];
+
+// The valley's trough: broad, shallow gorge segments along the river, symmetric through the crossroads.
+const RIVER = [[-512, 34], [-400, 30], [-300, 22], [-200, 14], [-110, 8], [0, 0],
+  [110, -8], [200, -14], [300, -22], [400, -30], [512, -34]] as const;
+function valleyTrough(): { kind: string; x: number; z: number; length: number; width: number; height: number;
+  yawDeg: number }[] {
+  const out = [];
+  for (let i = 1; i < RIVER.length; i++) {
+    const [ax, az] = RIVER[i - 1], [bx, bz] = RIVER[i];
+    const leg = Math.hypot(bx - ax, bz - az);
+    out.push({ kind: 'gorge', x: (ax + bx) / 2, z: (az + bz) / 2, length: Math.round(leg / 0.86), width: 150,
+      height: -3.2, yawDeg: Math.round(Math.atan2(bz - az, bx - ax) * 1800 / Math.PI) / 10 });
+  }
+  return out;
+}
 
 export default {
   id: 'frontier',
   name: 'Frontier Basin',
-  blurb: 'A broad farming basin cut by checkpoints, hedgerows and hull-down ridges',
+  blurb: 'A broad farming basin between two wooded ridges, a river village, mills and ridge checkpoints',
 
   terrain: {
-    hillScale: 1.08, microScale: 1.16, rimH: 31,
+    hillScale: 0.55,  // the basin's broad swell (was 1.08: the bumpy floor broke every sightline inside 74 m)
+    microScale: 0.75, // field-scale folds (was 1.16)
+    rimH: 31,
+    marshes: [],
+    // The village: one graded rect around the crossroads.
+    village: { x0: -128, x1: 128, z0: -86, z1: 86, cx: 0, cz: 0, feather: 44, flatten: 0.86, relief: 0.14 },
+    // Authored paths stop inside the square; the endpoint completion grades each exit through the rim
+    // (maps/roadEndpoints.ts).
     roads: { paths: [
-      [[-426, -456], [-344, -286], [-286, -96], [-302, 108], [-236, 292], [-172, 472]],
-      [[-58, -470], [-34, -278], [-10, -104], [18, 44], [54, 228], [98, 476]],
-      [[354, -458], [286, -292], [250, -112], [274, 74], [232, 262], [176, 470]],
-      [[-388, 26], [-214, 2], [-42, 28], [138, 18], [326, 64]],
+      // 0 — the main road: south edge, over the southern saddle past its checkpoint, through the crossroads, over the
+      // northern saddle, north edge. Road 0 carries the utility-pole line (mapQuality).
+      [[62, -448], [60, -380], [54, -300], [40, -220], [24, -140], [8, -60], [0, 0],
+        [-8, 60], [-24, 140], [-40, 220], [-54, 300], [-60, 380], [-62, 448]],
+      // 1 — the valley road: west edge, along the river's north bank past the west mill, through the crossroads, past
+      // the east mill, east edge.
+      [[-448, 44], [-380, 40], [-300, 34], [-200, 22], [-120, 10], [-60, 4], [0, 0],
+        [60, -4], [120, -10], [200, -22], [300, -34], [380, -40], [448, -44]],
+      // 2 / 3 — the farm lanes: from the edge past the west end of a ridge, down the slope past the farm estate to
+      // the valley road.
+      ...both([[-366, -448], [-356, -380], [-346, -300], [-306, -214], [-250, -138], [-214, -70], [-200, 22]]),
+      // 4 / 5 — the ridge lanes: from the main road at the saddle along the ridge's foot to the support camp, then
+      // down to the valley road at the east mill.
+      ...both([[54, -300], [130, -236], [206, -176], [268, -110], [300, -34]]),
     ] },
-    marshes: [
-      { x: -282, z: 118, r: 34, dip: 1.8 },
-      { x: 244, z: -196, r: 42, dip: 2.2 },
+    // The village square and the two river meadows below the mills, the mowing grounds by the river: level aprons the
+    // zone-control placement seats its 30 m discs on. Each meadow lies on the river flats clear of the valley road
+    // (an apron on the road would ramp it past a road grade), at the flats' own level.
+    hardstands: [
+      { x: 0, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0 },
+      { x: -290, z: -30, width: 60, length: 60, yawDeg: 0, level: -3.5, grade: 0 },
+      { x: 290, z: 30, width: 60, length: 60, yawDeg: 0, level: -2.6, grade: 0 },
     ],
-    village: { x0: -112, x1: 122, z0: -76, z1: 150, cx: 6, cz: 38, feather: 44, flatten: 0.86, relief: 0.14 },
     landforms: [
-      // Original records freeze support levels; final axes describe unequal field interfluves.
-      { kind: 'ridge', x: -244, z: -18, length: 330, width: 72, height: 7.8, yawDeg: 12,
-        relief: { kind: 'spur', startX: -388, startZ: -310, endX: -188, endZ: 240,
-          leftWidthM: 74, rightWidthM: 44, bendM: -35, branchSide: 1, notchAtFraction: 0.40 } },
-      { kind: 'ridge', x: 252, z: 36, length: 300, width: 76, height: 7.2, yawDeg: -16,
-        relief: { kind: 'spur', startX: 114, startZ: -286, endX: 348, endZ: 188,
-          leftWidthM: 48, rightWidthM: 104, bendM: 36, branchSide: -1, notchAtFraction: 0.62 } },
-      { kind: 'ridge', x: -116, z: 244, length: 190, width: 62, height: 5.2, yawDeg: 78,
-        relief: { kind: 'spur', startX: -208, startZ: 210, endX: 182, endZ: 302,
-          leftWidthM: 34, rightWidthM: 66, bendM: -26, branchSide: -1, notchAtFraction: 0.46 } },
-      { kind: 'knoll', x: 174, z: -224, rx: 84, rz: 66, height: 5.6, yawDeg: 24,
-        relief: { kind: 'spur', startX: -34, startZ: -302, endX: 206, endZ: -162,
-          leftWidthM: 52, rightWidthM: 34, bendM: 24, branchSide: 1, notchAtFraction: 0.40 } },
-      { kind: 'basin', x: -154, z: -176, rx: 92, rz: 72, height: -2.8, yawDeg: -18,
-        relief: { kind: 'spur', startX: -286, startZ: -250, endX: -62, endZ: -52,
-          leftWidthM: 36, rightWidthM: 62, bendM: -21, branchSide: 1, notchAtFraction: 0.56 } },
+      ...valleyTrough(),
+      // The southern ridge, broken at the saddle (x 20..126) where the main road crosses; the northern ridge is its
+      // rotation, its saddle on the other side of the line between the pads.
+      { kind: 'ridge', x: -150, z: -262, length: 340, width: 84, height: 12, yawDeg: -4 },
+      { kind: 'ridge', x: 236, z: -290, length: 220, width: 80, height: 9, yawDeg: 6 },
+      { kind: 'ridge', x: 150, z: 262, length: 340, width: 84, height: 12, yawDeg: -4 },
+      { kind: 'ridge', x: -236, z: 290, length: 220, width: 80, height: 9, yawDeg: 6 },
+      // The wooded knob at each ridge's saddle end, over the hollow the line between the pads crosses.
+      { kind: 'knoll', x: -48, z: -266, rx: 56, rz: 44, height: 6, yawDeg: -4 },
+      { kind: 'knoll', x: 48, z: 266, rx: 56, rz: 44, height: 6, yawDeg: -4 },
+      // Lynchet banks: old field terraces stepping down each slope toward the river, hull-down lines for both teams.
+      ...[[-250, -168, 160, -3], [110, -176, 150, 4], [-110, -122, 130, 2], [-70, -100, 80, -2]].flatMap(([x, z, length, yaw]) => [
+        { kind: 'ridge', x, z, length, width: 26, height: 2.6, yawDeg: yaw },
+        { kind: 'ridge', x: -x, z: -z, length, width: 26, height: 2.6, yawDeg: yaw },
+      ]),
     ],
   },
+
   spawns: {
-    player: { x: -42, z: -382 },
+    // Alpha deploys behind the southern ridge's western arm; bravo's seven pads are the rotation of that ground,
+    // behind the northern ridge's eastern arm. 830 m between the anchors.
+    player: { x: -70, z: -410 },
     enemies: [
-      { x: -130, z: 360 }, { x: -67, z: 398 }, { x: 4, z: 370 },
-      { x: 78, z: 402 }, { x: 144, z: 352 }, { x: 208, z: 382 }, { x: -205, z: 400 },
+      { x: 70, z: 410 }, { x: 22, z: 400 }, { x: 118, z: 400 }, { x: -22, z: 382 },
+      { x: 162, z: 382 }, { x: 46, z: 442 }, { x: 94, z: 442 },
     ],
   },
+
   splat: {
     fieldPatch: 1, tintA: [1.10, 1.03, 0.78], tintB: [0.72, 0.78, 0.58],
     tintC: [1.04, 0.98, 0.73], roadTint: [0.82, 0.77, 0.66], midRelief: 0.82,
@@ -57,29 +120,56 @@ export default {
     bushCount: 1.18, bushSpecies: 'oak',
   },
   props: {
-    plan: ['rangerlodge', 'barn', 'depot', 'tavern', 'schoolhouse', 'chapel',
-      'granary', 'farmhouse', 'ruin', 'barn', 'woodshed', 'cottage', 'tower', 'depot',
-      'farmhouse', 'granary', 'barn', 'cottage', 'depot', 'woodshed', 'farmhouse', 'ruin',
-      'chapel', 'cornershop', 'barn', 'cottage'],
+    plan: ['farmhouse', 'tavern', 'barn', 'schoolhouse', 'cottage', 'granary', 'depot', 'cottage', 'farmhouse',
+      'woodshed', 'cornershop', 'barn', 'cottage', 'ruin', 'farmhouse', 'depot', 'cottage', 'granary', 'barn',
+      'woodshed', 'cottage', 'ruin'],
+    // The landmarks: the church on the square, the two mills on the river, the farm estates on the slopes.
+    plannedSites: [
+      { structure: 'church', x: -34, z: 40, yawDeg: 180 }, { structure: 'chapel', x: 34, z: -40, yawDeg: 0 },
+      { structure: 'mill', x: -370, z: 58, yawDeg: 180 }, { structure: 'mill', x: 352, z: -64, yawDeg: 0 },
+      // the farm estates by the farm lanes: house, barn and granary round a yard (sited on the slope's level shelves,
+      // so the halves differ by a few metres)
+      { structure: 'farmhouse', x: -214, z: -112, yawDeg: 90 }, { structure: 'barn', x: -208, z: -138, yawDeg: 0 },
+      { structure: 'granary', x: -186, z: -96, yawDeg: 90 },
+      { structure: 'farmhouse', x: 172, z: 100, yawDeg: 270 }, { structure: 'barn', x: 214, z: 112, yawDeg: 180 },
+      { structure: 'granary', x: 210, z: 92, yawDeg: 270 },
+      // the farmsteads by the ridge lanes
+      { structure: 'farmhouse', x: 202, z: -136, yawDeg: 0 }, { structure: 'barn', x: 250, z: -70, yawDeg: 90 },
+      { structure: 'farmhouse', x: -214, z: 112, yawDeg: 180 }, { structure: 'barn', x: -238, z: 88, yawDeg: 270 },
+    ],
     destructibleBuildings: ['fieldhut', 'huntingblind', 'commandtent', 'checkpointhut'],
     tacticalBeats: [
-      { id: 'western-checkpoint', role: 'brawl', x: -252, z: 54, yawDeg: 8,
-        structure: 'checkpointhut', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: -14 },
-      { id: 'basin-observation-post', role: 'scout', x: 44, z: -168, yawDeg: 18,
-        structure: 'huntingblind', outcrop: { count: 4, radius: 8, scaleMax: 2.6 } },
-      { id: 'eastern-field-hq', role: 'support', x: 254, z: 164, yawDeg: -18,
+      { id: 'south-saddle-checkpoint', role: 'scout', x: 90, z: -330, yawDeg: 8,
+        structure: 'checkpointhut', outcrop: { count: 4, radius: 8, scaleMax: 2.6 } },
+      { id: 'north-saddle-checkpoint', role: 'scout', x: -90, z: 330, yawDeg: 188,
+        structure: 'checkpointhut', outcrop: { count: 4, radius: 8, scaleMax: 2.6 } },
+      { id: 'west-hof', role: 'brawl', x: -320, z: -60, yawDeg: 90,
+        structure: 'fieldhut', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: -14 },
+      { id: 'east-hof', role: 'brawl', x: 320, z: 60, yawDeg: 270,
+        structure: 'fieldhut', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: 14 },
+      { id: 'south-ridge-camp', role: 'support', x: 255, z: -160, yawDeg: 20,
         structure: 'commandtent', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
+      { id: 'north-ridge-camp', role: 'support', x: -255, z: 160, yawDeg: 200,
+        structure: 'commandtent', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: 15 },
     ],
+    buildingLat: [11, 4], maxSpread: 2.4,
     wallStyle: 'fieldstone', wallStoneChance: 0.55,
+    // Field walls: the estate yards and the field boundaries on the slopes, each with its rotated twin.
     wallRuns: [
-      [-294, -126, -198, -98, 3], [-286, 82, -186, 104, 2],
-      [172, -122, 282, -150, 4], [182, 126, 286, 102, 3],
-      [-138, 224, -36, 250, 2], [72, -240, 160, -214, 3],
-      [-160, -220, -92, -160, 2], [116, 196, 196, 244, 3],
+      [-286, -150, -200, -150, 3], [286, 150, 200, 150, 3],
+      [-170, -190, -100, -190, 2], [170, 190, 100, 190, 2],
+      [120, -200, 200, -200, 3], [-120, 200, -200, 200, 3],
+      [-60, -110, 0, -116, 2], [60, 110, 0, 116, 2],
+      [300, -150, 360, -170, 2], [-300, 150, -360, 170, 2],
+      // the village's orchard and churchyard walls on the valley floor
+      [-160, -40, -160, -100, 3], [160, 40, 160, 100, 3],
+      [-110, 96, -40, 104, 2], [110, -96, 40, -104, 2],
+      [70, 30, 70, 80, 1], [-70, -30, -70, -80, 1],
+      [-210, 40, -150, 56, 2], [210, -40, 150, -56, 2],
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
-    haystacks: 28, rocks: 205, outcrops: 28, craters: 68, rubblePiles: 12,
-    cropFields: 9, hedgehogs: 14, sandbagLines: 18,
+    haystacks: 24, rocks: 150, outcrops: 20, craters: 48, rubblePiles: 10,
+    cropFields: 9, hedgehogs: 10, sandbagLines: 14,
     tankWrecks: { era: 'modern', count: 6, debris: true,
       ids: ['m1a2', 't90m', 'm551_sheridan', 'm60a2', 'marder1a3', 'pl01'] },
     inhabit: {
@@ -108,5 +198,6 @@ export default {
     water: 'rgba(54,78,80,.72)', waterStroke: 'rgba(28,44,46,.9)',
     roadCasing: 'rgba(46,40,31,.92)', roadFill: 'rgba(188,171,137,.96)', buildingFill: '#cbd0d2',
   },
-  shot: { pos: [-132, 39, -220], look: [36, 2, 116] },
+  // from the southern saddle over the estate and the lynchets to the village, the river and the northern ridge
+  shot: { pos: [150, 40, -330], look: [-20, 2, 40] },
 } satisfies import('./contracts.ts').MapCompositionConfig;
