@@ -106,12 +106,20 @@ assert.match(lighting, /#if defined\( COT_CLOUD_SHADE \) && defined\( USE_SHADOW
     assert.strictEqual(scene.userData.cloudShadeUniforms?.uCotCloudShade?.value?.isVector4, true, 'the scene carries the shared uniforms');
     // the material hook: the define, the shared uniforms, the budget
     const shared = scene.userData.cloudShadeUniforms;
+    // (the material's real ShaderLib sources, as three hands them to onBeforeCompile: the physical fragment declares five
+    // standard maps inline under their #ifdefs — counted, they took the terrain's cloud shade away in the ground lane's lab)
+    const libOf = (mat) => (mat.isMeshStandardMaterial ? THREE.ShaderLib.standard : mat.isMeshLambertMaterial ? THREE.ShaderLib.lambert : { vertexShader: '#include <common>\nvoid main() {}', fragmentShader: '#include <common>\nvoid main() {}' });
     const compile = (mat, extra) => {
       rig.setupShadowMaterial(mat, extra ?? null);
-      const shader = { uniforms: {}, vertexShader: '#include <common>\nvoid main() {}', fragmentShader: '#include <common>\nvoid main() {}' };
+      const lib = libOf(mat);
+      const shader = { uniforms: {}, vertexShader: lib.vertexShader, fragmentShader: lib.fragmentShader };
       mat.onBeforeCompile(shader, null);
       return shader;
     };
+    assert.equal(cloudShadeSamplerCount({ vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader },
+      new THREE.MeshStandardMaterial(), 4, false), 4, 'a bare standard material: the cascades alone (the inline standard maps cost nothing unset)');
+    assert.equal(cloudShadeSamplerCount({ vertexShader: '', fragmentShader: THREE.ShaderLib.standard.fragmentShader },
+      new THREE.MeshPhysicalMaterial({ sheenColorMap: new THREE.Texture() }), 4, false), 5, 'a set inline map counts once');
     const plain = new THREE.MeshStandardMaterial({ map: new THREE.Texture() });
     const s1 = compile(plain);
     assert.equal(plain.defines.COT_CLOUD_SHADE, '', 'a desktop CSM material takes the define');
@@ -129,7 +137,7 @@ assert.match(lighting, /#if defined\( COT_CLOUD_SHADE \) && defined\( USE_SHADOW
       shader.fragmentShader = 'uniform sampler2D uAlbG, uAlbD, uAlbR, uAlbM;\nuniform sampler2D uNrmG, uNrmD, uNrmR, uNrmM;\nuniform sampler2D uMask, uNoise;\n' + shader.fragmentShader;
     });
     const cascades = rig.csm.lights.length;
-    assert.equal(cloudShadeSamplerCount(s2, terrainLike, cascades, true), 10 + cascades + 1, 'ten, the cascades and the environment');
+    assert.equal(cloudShadeSamplerCount(s2, terrainLike, cascades, true), 10 + cascades + 1, 'ten, the cascades and the environment (the physical fragment\'s inline maps skipped)');
     assert.equal(cascades, 4, 'four desktop cascades: the terrain\'s fifteen plus the map is the budget exactly (a fifth cascade drops the terrain\'s cloud shade: revisit the budget first)');
     assert.ok(!s2.vertexShader.startsWith('#undef COT_CLOUD_SHADE'), 'the terrain keeps its cloud shade (no scene environment yet in this fixture: fourteen + 1)');
     const crowded = new THREE.MeshStandardMaterial();

@@ -123,14 +123,20 @@ const STANDARD_MAPS = Object.freeze([
 /**
  * The samplers a CSM material's program declares before the map: its own (the `uniform sampler*` lines its patches
  * write into the shader), its standard maps, the scene environment a standard material takes without its own, and the
- * cascades' shadow maps.
+ * cascades' shadow maps. A declaration named after a standard map is skipped: three's physical fragment writes five of
+ * them inline under their #ifdefs (specularColorMap, specularIntensityMap, sheenColorMap, sheenRoughnessMap,
+ * anisotropyMap) and an unused one costs no unit — a set one is counted once, through the material's own property
+ * (the ground lane's lab: counted, they put the terrain at nineteen and took its cloud shade away).
  */
 export function cloudShadeSamplerCount(
   shader: { vertexShader: string; fragmentShader: string }, material: object, cascades: number, sceneEnvironment: boolean,
 ): number {
   let n = 0;
+  const standard = new Set<string>(STANDARD_MAPS);
   for (const src of [shader.vertexShader, shader.fragmentShader]) {
-    for (const m of src.matchAll(SAMPLER_DECL)) n += m[1].split(',').filter((s) => s.trim()).length;
+    for (const m of src.matchAll(SAMPLER_DECL)) {
+      for (const name of m[1].split(',')) { const id = name.trim(); if (id && !standard.has(id)) n++; }
+    }
   }
   const mat = material as Record<string, unknown> & { isMeshStandardMaterial?: boolean };
   for (const key of STANDARD_MAPS) if ((mat[key] as { isTexture?: boolean } | null | undefined)?.isTexture) n++;
