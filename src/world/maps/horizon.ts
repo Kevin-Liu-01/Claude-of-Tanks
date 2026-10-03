@@ -42,6 +42,7 @@ import {
   bakeHorizonReliefSteps, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
 } from '../horizonRelief.ts';
 import { buildHorizonFarRange } from '../horizonFarRange.ts';
+import { type HorizonPanoramaCharacter, createHorizonPanorama } from '../horizonPanorama.ts';
 import { type MassifSettings, carveMassifRingSteps, createMassifField, cutMassifCanyonsSteps } from '../horizonMassif.ts';
 import { type EscarpmentSettings, carveEscarpmentRingSteps, createEscarpmentField } from '../horizonEscarpment.ts';
 import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloudShadeUniforms } from '../horizonCloudShade.ts';
@@ -93,6 +94,9 @@ interface HorizonConfig {
   /** The mountains lane (2026-10-02): the tableland bed stair (horizonEscarpment.ts) — overrides of the mesa style's
    * default (a block on another style opts that ring in), or false for none. */
   escarpment?: Partial<EscarpmentSettings> | false;
+  /** The mountains lane (2026-10-03): the far country baked into a panorama (horizonPanorama.ts) beyond the ring on the
+   * desktop tier — false keeps the round-72 far range; an object overrides the character's far knobs. */
+  panorama?: false | Partial<HorizonPanoramaCharacter>;
   /** The mountains lane (2026-10-03): false marks an authored escarpment as a massif's shoulders rather than a
    * tableland (Frosthollow): its summits keep standing (no table opening on the ring) and the far range keeps its
    * peaks (no far plateaus). */
@@ -3568,6 +3572,25 @@ export function* buildHorizonRingSteps(
       escarpment: farEscarpmentSettings(H, style),
     });
     if (farRange) mesh.add(farRange);
+    // the mountains lane (2026-10-03, the owner: "i literally just see a treeline and then nothing transitioning and
+    // going into mountains"): the far country 1.5-9 km baked into a cylindrical panorama where a renderer is (the
+    // world's warm-up, horizonPanorama.ts) and shown on one shell beyond the ring; the round-72 far range above stays
+    // the fallback until the bake has run (the receipts, a renderer without float targets)
+    if (H.panorama !== false) {
+      const panorama = createHorizonPanorama({
+        seed: ((seed ^ 0x9A70) ^ idHash(mapId)) >>> 0, character: reliefCharacter,
+        overrides: typeof H.panorama === 'object' ? H.panorama : undefined,
+        palette: { base, rock: rockC, snow: snowC, forest: forestC, fog: fogC },
+        sun: [lx, ly, lz], gains: resolveHorizonLightingGains(lighting), deckBaseM, seaOpenings,
+        seaWeightAt: (angle) => {
+          const opening = dominantSeaOpening(angle, seaOpenings);
+          return { weight: opening ? seaOpeningWeight(angle, opening) : 0, level: opening?.level ?? 0 };
+        },
+        ringEdge: { columns: HORIZON_SEGMENTS, positions: pos, heights: hs },
+      }, farRange);
+      mesh.add(panorama.mesh);
+      mesh.userData.horizonPanorama = panorama;
+    }
   }
   // The species mix and crown palettes follow the map's own rim forest (vegetation.ts rimMix / palettes), so the
   // trees over the edge are the same trees as the ones inside it.

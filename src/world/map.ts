@@ -24,6 +24,7 @@ import {
 } from './vegetation.ts';
 import type { TreeObstacle } from './vegetation.ts';
 import { bindHorizonForestImpostors } from './horizonForestImpostors.ts';
+import type { HorizonPanoramaHandle } from './horizonPanorama.ts';
 import {
   createProps,
   createPropsAsync,
@@ -362,6 +363,15 @@ function assembleWorld(
       releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
     });
   }
+  // the mountains lane (2026-10-03): the far horizon panorama bakes where the renderer is — under the loading cover with
+  // the impostors (warmImpostors), else on the first update — and again after a GPU suspension (horizonPanorama.ts)
+  const horizonPanorama = (terrain.getObjectByName('horizon-ring')?.userData.horizonPanorama ?? null) as HorizonPanoramaHandle | null;
+  const panoramaRenderer = (engineCtx as { renderer?: THREE.WebGLRenderer }).renderer ?? null;
+  let panoramaFailed = false;
+  const bakePanorama = (): void => {
+    if (!horizonPanorama || panoramaFailed || horizonPanorama.baked || !panoramaRenderer) return;
+    try { horizonPanorama.ensureBaked(panoramaRenderer); } catch { panoramaFailed = true; }
+  };
   // perf-governor r1 (discoverthreejs "matrixAutoUpdate = false for static
   // objects"): every world dynamic goes through instanceMatrix writes or
   // shader uniforms — no object-level transform under this group ever changes
@@ -549,6 +559,7 @@ function assembleWorld(
       litter.dispose();
       tallGrass.dispose(); // round 73: the sward, its materials and the pressure field's targets
       terrain.userData.disposeWater?.(); // water pass 8: the reactive field's render targets
+      horizonPanorama?.dispose(); // the mountains lane: the far panorama's atlas
     },
     config,
     heightField,
@@ -668,6 +679,7 @@ function assembleWorld(
       const waterAnchor = focusPos ?? cameraPos;
       terrain.userData.updateWater?.(dt, waterAnchor.x, waterAnchor.z);
       vegetation.update(dt, cameraPos, cameraFwd, focusPos);
+      bakePanorama(); // a no-op once baked
       litter.update(cameraPos);
       tallGrass.update(dt, cameraPos, focusPos, cameraFwd); // round 73: the sward's ring, wind and press
       if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims
@@ -680,7 +692,7 @@ function assembleWorld(
     warmTerrainLookahead(cameraPos: THREE.Vector3, maxJobs = 1) {
       return terrain.userData.warmStreaming?.(cameraPos, maxJobs) || 0;
     },
-    warmImpostors: () => vegetation.warmImpostors(),
+    warmImpostors: () => { bakePanorama(); return vegetation.warmImpostors(); },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); tallGrass.setWindTime(t); },
     setWaterDisturbances(sources) { terrain.userData.setWaterDisturbances?.(sources); },
