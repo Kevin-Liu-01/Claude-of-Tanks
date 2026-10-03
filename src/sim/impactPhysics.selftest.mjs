@@ -226,7 +226,9 @@ for (const mode of ['mars', 'turbo_ball']) for (const gravityScale of [.17, .38,
     assert.ok(trace.apexes[i] < trace.apexes[i - 1] * 0.5, `each hop is under half the last (${trace.apexes[i - 1].toFixed(2)} → ${trace.apexes[i].toFixed(2)})`);
   }
   near(trace.landings[0], jump, 0.4, 'the first landing closes at the launch speed (energy conservation at 0.38 g)');
-  near(trace.landings[1], jump * 0.3, 0.4, 'the second at the reduced ruleset restitution × the first');
+  // the rebound is the ruleset's restitution × the first landing, capped at the arcade hop (matchRuleset LANDING_HOP_MAX_M)
+  const hopCapMps = Math.sqrt(2 * 9.81 * 0.38 * 0.25);
+  near(trace.landings[1], Math.min(jump * 0.3, hopCapMps), 0.4, 'the second at the ruleset restitution × the first, capped at the 0.25 m hop');
   assert.ok(entity.state.grounded, 'the hull settles');
   near(entity.state.pos.y, y0 + 0.18, 0.03, 'on the droop line (the tracks touch first)');
   run(entity, field, 120);

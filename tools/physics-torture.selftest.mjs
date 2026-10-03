@@ -142,11 +142,13 @@ check('drive-field-trench', 'medium', 'earth', [
 ]);
 
 // Gauntlet wave 2 (the motion strips scored 4.70 and held the merge): a landing on the tracks is taken by the springs
-// (the landing stroke): they compress, then return the ruleset's rebound. Before, the hull bounced off the drooped
-// tracks' line like a rigid ball, its wheels hanging.
+// (the landing stroke): they compress, then return the ruleset's capped rebound; the Moon's capped rebound is under the
+// floor, so its springs settle it. Before, the hull bounced off the drooped tracks' line like a rigid ball, its wheels
+// hanging, to 50-70 % of its drop.
 for (const world of ['mars', 'moon', 'turbo']) {
   check('jump-flat', 'medium', world, [
     g('compression short of 15 cm (m)', (m) => 0.15 - m.gearCompMaxM, 0, 'before: 0 (the rebound left from the drooped line)'),
+    g('hop above the drooped line (m)', (m) => Math.max(0, (m.apexes[1] ?? 0) - 0.18), 0.3, 'before: 1.10 m at Mars, 1.54 m at the Moon'),
   ]);
 }
 // Gauntlet wave 2 (the motion strips scored 4.70 and held the merge): the suspension takes the stop.

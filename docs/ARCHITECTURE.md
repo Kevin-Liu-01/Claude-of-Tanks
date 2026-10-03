@@ -786,10 +786,10 @@ contact constraints and cannot be crossed by residual uphill speed.
   rate) and the remainder of the step integrates after the contact, so a 40 m/s fall never ends a step
   under the terrain or under a structure top and the rebound is the same at 60 or 120 steps/s. The
   closing speed rebounds by the ruleset's `physics.restitution` (`entity.modePhysics`, default
-  `STANDARD_PHYSICS`); a rebound under `bounceMinMps` settles onto the loaded suspension. A landing on the
-  tracks is the suspension's (physics lane, 2026-10-03; see *The landing stroke* below): the springs take the
-  closing and return the rebound as they extend. A hull coming down on its shell (tumbling, on its side or roof)
-  rebounds rigidly at once.
+  `STANDARD_PHYSICS`), capped by `bounceMaxHeightM` (the arcade modes' 0.25 m hop); a rebound under
+  `bounceMinMps` settles onto the loaded suspension. A landing on the tracks is the suspension's (physics
+  lane, 2026-10-03; see *The landing stroke* below): the springs take the closing and return the rebound as
+  they extend. A hull coming down on its shell (tumbling, on its side or roof) rebounds rigidly at once.
   `state._ride.bounces` counts the hops of one flight. The landing torque turns the hull toward the
   ground plane it struck (`_terr`), so a nose-first landing pitches even while it rebounds.
 - *Blocked drive.* `state.impactMps` is the closing speed the tracks lost this step; `impactSource` says
