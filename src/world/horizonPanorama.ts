@@ -44,17 +44,19 @@ export interface HorizonPanoramaCharacter {
   ampM: number; foot: number; macroL: number; sharp: number; midL: number; gullyL: number; gullyM: number;
   warpM: number; valley: number; valleyL: number; snowline: number; treeline: number; rockSlope: number;
   bedM: number; strata: number; tables: boolean;
+  /** the far ranges' extra rise past 4 km (the hill countries' low mountains behind their hills) */
+  farRise: number;
 }
 
 export const HORIZON_PANORAMA_CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonPanoramaCharacter>> = Object.freeze({
-  alpine: { ampM: 1700, foot: 0.16, macroL: 5200, sharp: 1.45, midL: 1500, gullyL: 520, gullyM: 55, warpM: 900, valley: 0.4, valleyL: 7500, snowline: 0.40, treeline: 0.22, rockSlope: 0.30, bedM: 70, strata: 0.10, tables: false },
-  polar: { ampM: 1300, foot: 0.18, macroL: 5800, sharp: 1.3, midL: 1700, gullyL: 560, gullyM: 45, warpM: 1000, valley: 0.4, valleyL: 8000, snowline: 0.05, treeline: 0.10, rockSlope: 0.34, bedM: 80, strata: 0.08, tables: false },
-  rolling: { ampM: 620, foot: 0.24, macroL: 5600, sharp: 1.15, midL: 2000, gullyL: 600, gullyM: 22, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.85, rockSlope: 0.42, bedM: 60, strata: 0.05, tables: false },
-  coastal: { ampM: 520, foot: 0.24, macroL: 5400, sharp: 1.15, midL: 1900, gullyL: 600, gullyM: 20, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.80, rockSlope: 0.40, bedM: 50, strata: 0.06, tables: false },
-  volcanic: { ampM: 1300, foot: 0.2, macroL: 5000, sharp: 1.3, midL: 1400, gullyL: 420, gullyM: 45, warpM: 800, valley: 0.4, valleyL: 7500, snowline: 2, treeline: 0.35, rockSlope: 0.32, bedM: 40, strata: 0.16, tables: false },
-  karst: { ampM: 760, foot: 0.26, macroL: 2600, sharp: 2.2, midL: 900, gullyL: 300, gullyM: 30, warpM: 400, valley: 0.5, valleyL: 5500, snowline: 2, treeline: 0.95, rockSlope: 0.36, bedM: 30, strata: 0.12, tables: false },
-  mesa: { ampM: 620, foot: 0.24, macroL: 6000, sharp: 1.0, midL: 2000, gullyL: 500, gullyM: 30, warpM: 900, valley: 0.5, valleyL: 7000, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 46, strata: 0.32, tables: true },
-  martian: { ampM: 1300, foot: 0.24, macroL: 7000, sharp: 1.0, midL: 2400, gullyL: 600, gullyM: 35, warpM: 1100, valley: 0.5, valleyL: 8500, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 60, strata: 0.26, tables: true },
+  alpine: { ampM: 1700, foot: 0.16, macroL: 5200, sharp: 1.45, midL: 1500, gullyL: 520, gullyM: 55, warpM: 900, valley: 0.4, valleyL: 7500, snowline: 0.40, treeline: 0.22, rockSlope: 0.30, bedM: 70, strata: 0.10, tables: false, farRise: 0 },
+  polar: { ampM: 1300, foot: 0.18, macroL: 5800, sharp: 1.3, midL: 1700, gullyL: 560, gullyM: 45, warpM: 1000, valley: 0.4, valleyL: 8000, snowline: 0.05, treeline: 0.10, rockSlope: 0.34, bedM: 80, strata: 0.08, tables: false, farRise: 0 },
+  rolling: { ampM: 620, foot: 0.24, macroL: 5600, sharp: 1.15, midL: 2000, gullyL: 600, gullyM: 22, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.85, rockSlope: 0.42, bedM: 60, strata: 0.05, tables: false, farRise: 1.1 },
+  coastal: { ampM: 520, foot: 0.24, macroL: 5400, sharp: 1.15, midL: 1900, gullyL: 600, gullyM: 20, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.80, rockSlope: 0.40, bedM: 50, strata: 0.06, tables: false, farRise: 0.9 },
+  volcanic: { ampM: 1300, foot: 0.2, macroL: 5000, sharp: 1.3, midL: 1400, gullyL: 420, gullyM: 45, warpM: 800, valley: 0.4, valleyL: 7500, snowline: 2, treeline: 0.35, rockSlope: 0.32, bedM: 40, strata: 0.16, tables: false, farRise: 0 },
+  karst: { ampM: 760, foot: 0.26, macroL: 2600, sharp: 2.2, midL: 900, gullyL: 300, gullyM: 30, warpM: 400, valley: 0.5, valleyL: 5500, snowline: 2, treeline: 0.95, rockSlope: 0.36, bedM: 30, strata: 0.12, tables: false, farRise: 0.3 },
+  mesa: { ampM: 900, foot: 0.24, macroL: 6000, sharp: 1.0, midL: 2000, gullyL: 500, gullyM: 30, warpM: 900, valley: 0.3, valleyL: 7000, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 46, strata: 0.32, tables: true, farRise: 0 },
+  martian: { ampM: 1300, foot: 0.24, macroL: 7000, sharp: 1.0, midL: 2400, gullyL: 600, gullyM: 35, warpM: 1100, valley: 0.5, valleyL: 8500, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 60, strata: 0.26, tables: true, farRise: 0 },
 });
 
 export interface HorizonPanoramaPalette { base: THREE.Color; rock: THREE.Color; snow: THREE.Color; forest: THREE.Color; fog: THREE.Color }
@@ -209,7 +211,7 @@ uniform vec4 uChar0;   // ampM, foot, macroL, sharp
 uniform vec4 uChar1;   // midL, gullyL, gullyM, warpM
 uniform vec4 uChar2;   // valley, valleyL, tables, unused
 uniform vec4 uChar3;   // snowline, treeline, rockSlope, bedM
-uniform vec4 uChar4;   // strata, deckM, unused, unused
+uniform vec4 uChar4;   // strata, deckM, ampM, farRise
 uniform vec4 uFrame;   // innerM, outerM, shellM, eyeY
 uniform sampler2D uEdge; // per azimuth: r = the ring's outer height, g = sea weight, b = sea level
 
@@ -254,11 +256,15 @@ float gullyOctave(vec2 p, vec2 dir, float seed) {
 float envelopeAt(vec2 p, float r) {
   float d = smoothstep(uFrame.x, uFrame.x + 1600.0, r);
   float rise = (uChar0.y + (1.0 - uChar0.y) * d) * (1.0 - 0.18 * smoothstep(5500.0, 9000.0, r));
+  // the hill countries' far ranges: low mountains behind the hills (uChar4.w: their extra rise past 4 km)
+  rise *= 1.0 + uChar4.w * smoothstep(3800.0, 7500.0, r);
   float az = noised(p / 11000.0 + uOff2.xy).x * 0.5 + 0.5;
   vec2 w = p + uChar1.w * vec2(noised(p / 3300.0 + uOff0.zw).x, noised(p / 3300.0 + uOff1.xy).x);
   float vf = abs(noised(w / uChar2.y + uOff2.zw).x);
   float valley = 1.0 - uChar2.x * (1.0 - smoothstep(0.0, 0.45, vf));
-  return uChar0.x * rise * (0.55 + 0.45 * smoothstep(0.15, 0.85, az)) * valley;
+  // under a low cloud deck the far country stays mostly beneath it (the round-72 far range's law: its ranges scaled
+  // under the deck), the summits that still reach it fading into the cloud (the strip's alpha)
+  return min(uChar0.x, max(150.0, uChar4.y * 1.4)) * rise * (0.55 + 0.45 * smoothstep(0.15, 0.85, az)) * valley;
 }
 // a tableland: broad tables cut by canyons, buttes standing off them, a low plain between; each table's edge a cliff
 // over a talus ramp, its top one of two caprock levels
@@ -266,12 +272,17 @@ float mesaField(vec2 p, float A) {
   vec2 w = p + uChar1.w * vec2(noised(p / 3300.0 + uOff0.zw).x, noised(p / 3300.0 + uOff1.xy).x);
   float big = noised(w / uChar0.z + uOff0.xy).x * 0.65 + noised(w / (uChar0.z * 0.37) + uOff1.zw).x * 0.35;
   float butte = noised(w / (uChar0.z * 0.16) + uOff2.zw).x;
-  float t = smoothstep(0.02, 0.06, big);
-  float tb = smoothstep(0.5, 0.56, butte) * (1.0 - t);
+  // (few tables in the first kilometre past the ring: the threshold falls with the distance, so a table's edge is
+  // still a noise-shaped cliff — a mask ramp there drew a smooth sand slope in front of every far table)
+  float th = mix(0.9, -0.12, smoothstep(uFrame.x + 300.0, uFrame.x + 1500.0, length(p)));
+  float t = smoothstep(th, th + 0.015, big);
+  float tb = smoothstep(th + 0.5, th + 0.52, butte) * (1.0 - t);
   float edge = max(t, tb * 0.9);
   float profile = 0.22 * smoothstep(0.0, 0.45, edge) + 0.78 * smoothstep(0.3, 1.0, edge);
-  float level = 0.58 + 0.2 * step(0.1, noised(w / (uChar0.z * 1.3) + uOff3.xy).x) + 0.04 * noised(w / 1300.0).x;
-  float plain = A * (0.05 + 0.04 * noised(w / 900.0 + uOff3.zw).x);
+  float lv = noised(w / (uChar0.z * 1.3) + uOff3.xy).x;
+  float level = 0.42 + 0.22 * step(-0.15, lv) + 0.2 * step(0.3, lv) + 0.04 * noised(w / 1300.0).x;
+  level = mix(level, level + 0.22, tb); // the buttes stand above the tables round them
+  float plain = A * (0.04 + 0.05 * (noised(w / 900.0 + uOff3.zw).x * 0.5 + 0.5));
   return mix(plain, A * level, profile);
 }
 float farField(vec2 p) {
@@ -293,7 +304,7 @@ float farField(vec2 p) {
   // the first kilometre eases out of the ring's outer heights; the sea sectors sink under their level
   float a = atan(p.y, p.x) * 0.15915494309;
   vec4 edge = texture2D(uEdge, vec2(fract(a), 0.5));
-  h = mix(edge.r * 0.8, h, smoothstep(uFrame.x, uFrame.x + 900.0, r));
+  h = mix(edge.r * 0.8, h, smoothstep(uFrame.x, uFrame.x + 500.0, r));
   h = mix(h, edge.b - 6.0, edge.g * smoothstep(0.0, 0.35, edge.g));
   return h;
 }
@@ -394,7 +405,7 @@ uniform vec3 uSun;
 uniform vec2 uGains;
 uniform vec3 uBase, uRock, uRock2, uScree, uSnow, uForest, uFog;
 uniform vec4 uChar3;   // snowline, treeline, rockSlope, bedM
-uniform vec4 uChar4;   // strata, deckM, ampM, unused
+uniform vec4 uChar4;   // strata, deckM, ampM, farRise
 uniform vec2 uElev;
 uniform sampler2D uEdge;
 ${NOISE_GLSL}
@@ -423,16 +434,28 @@ void main() {
   float rr = rowRadius(hitV);
   vec3 wp = vec3(cos(a) * rr, uFrame.w + tanE * rr, sin(a) * rr);
   vec3 n = gridNormal(g);
+  // below the first row's elevation: the ground between the ring and the annulus (the shell's apron reads it from
+  // below) — the ray's own meeting with that row's level, so the apron carries ground texture, not one streak per column
+  float h0 = texture2D(uHeight, vec2(u, 0.5 / uGrid.y)).r;
+  if (hitV <= 0.5 / uGrid.y + 1e-5 && tanE < -1e-4 && h0 < uFrame.w) {
+    rr = clamp((uFrame.w - h0) / -tanE, 300.0, uFrame.x);
+    wp = vec3(cos(a) * rr, h0, sin(a) * rr);
+    n = vec3(0.0, 1.0, 0.0);
+  }
   vec4 light = texture2D(uLight, g);
   float slope = 1.0 - n.y;
   float hT = clamp(wp.y / uChar4.z, 0.0, 1.0);
-  float n1 = sin(wp.x * 0.0021 + wp.z * 0.0013) * 0.5 + sin(wp.x * 0.0007 - wp.z * 0.0011 + 1.3) * 0.5;
-  // the lower flanks: stands of the map's forest and their clearings (meadow), the crowns' mottle
-  float vegW = uChar3.y > 0.0 ? (1.0 - smoothstep(uChar3.y * 0.75, uChar3.y * 1.05, hT + 0.05 * n1)) * (1.0 - smoothstep(0.28, 0.5, slope)) : 0.0;
-  float stand = smoothstep(-0.25, 0.25, noised(wp.xz / 260.0 + vec2(3.1, -7.7)).x + 0.35 * noised(wp.xz / 90.0).x);
-  float mottle = 0.78 + 0.32 * (noised(wp.xz / 38.0 + vec2(11.3, 5.1)).x * 0.5 + 0.5);
-  vec3 meadow = uBase * (1.08 + 0.1 * noised(wp.xz / 140.0 + vec2(-2.2, 9.4)).x);
-  vec3 col = mix(uBase, mix(meadow, uForest * mottle, stand), vegW);
+  float n1 = noised(wp.xz / 1900.0 + vec2(5.3, 1.7)).x * 0.7 + noised(wp.xz / 700.0 + vec2(-3.1, 8.2)).x * 0.3;
+  // the lower flanks: stands of the map's forest (denser on the slopes, broken by clearings and fields on the gentle
+  // lowland), the crowns' mottle; the meadows and fields a patchwork of their own tones
+  float vegW = uChar3.y > 0.0 ? (1.0 - smoothstep(uChar3.y * 0.75, uChar3.y * 1.05, hT + 0.05 * n1)) * (1.0 - smoothstep(0.32, 0.55, slope)) : 0.0;
+  float standN = noised(wp.xz / 170.0 + vec2(3.1, -7.7)).x + 0.45 * noised(wp.xz / 61.0 + vec2(-9.2, 4.4)).x + 0.25 * noised(wp.xz / 23.0).x;
+  float stand = smoothstep(-0.15, 0.2, standN + 1.4 * smoothstep(0.03, 0.18, slope) - 0.55);
+  float mottle = 0.72 + 0.4 * (noised(wp.xz / 29.0 + vec2(11.3, 5.1)).x * 0.5 + 0.5);
+  float field = noised(floor(wp.xz / 210.0) * 1.7 + vec2(0.5)).x;
+  vec3 meadow = uBase * (1.0 + 0.16 * field + 0.08 * noised(wp.xz / 90.0 + vec2(-2.2, 9.4)).x) * vec3(1.0 + 0.06 * field, 1.0, 1.0 - 0.05 * field);
+  vec3 ground = uBase * (0.92 + 0.16 * (noised(wp.xz / 120.0 + vec2(7.7, -1.3)).x * 0.5 + 0.5));
+  vec3 col = mix(ground, mix(meadow, uForest * mottle, stand), vegW);
   // rock on the steep faces, its beds: a tone per bed, the bedding planes darker
   float bt = (wp.y + (wp.x * 0.6 + wp.z * 0.8) * 0.004) / uChar3.w;
   float bi = floor(bt), bf = bt - bi;
@@ -458,7 +481,8 @@ void main() {
   col = mix(col, uFog * 0.82, sea);
   // the air past the shell
   col = mix(col, uFog * 1.05, 1.0 - exp(-max(0.0, rr - uFrame.z) / 9000.0));
-  float alpha = 1.0 - smoothstep(uChar4.y - 70.0, uChar4.y, wp.y);
+  // into the cloud: a soft, broken fade over the deck's lowest 140 m
+  float alpha = 1.0 - smoothstep(uChar4.y - 140.0, uChar4.y + 20.0, wp.y + 60.0 * noised(wp.xz / 260.0 + vec2(4.4, -2.9)).x);
   gl_FragColor = vec4(pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2)), alpha);
 }
 `;
@@ -564,7 +588,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       uChar1: { value: new THREE.Vector4(ch.midL, ch.gullyL, ch.gullyM, ch.warpM) },
       uChar2: { value: new THREE.Vector4(ch.valley, ch.valleyL, tables ? 1 : 0, 0) },
       uChar3: { value: new THREE.Vector4(ch.snowline, ch.treeline, ch.rockSlope, ch.bedM) },
-      uChar4: { value: new THREE.Vector4(ch.strata, options.deckBaseM, ch.ampM, 0) },
+      uChar4: { value: new THREE.Vector4(ch.strata, options.deckBaseM, ch.ampM, ch.farRise) },
       uFrame: { value: new THREE.Vector4(P.innerM, P.outerM, P.shellM, P.eyeY) },
       uGrid: { value: new THREE.Vector2((options.resolution ?? P).gridA, (options.resolution ?? P).gridR) },
       uEdge: { value: edgeTex },
