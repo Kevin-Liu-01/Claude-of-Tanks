@@ -5,10 +5,10 @@
   "vegetationSeed": 2001,
   "maps": {
     "verdant": {
-      "bytes": 1405020,
-      "sha256": "a63275c2234942bdbbb634a5a2eb88e961dd6bc6990d7de0aa7425e5961847fd",
-      "obstacles": 5319,
-      "colliders": 5052,
+      "bytes": 1361460,
+      "sha256": "240261c43d890ae55731068837b57115eab9dc59a92f680e5b5828b20eb39b63",
+      "obstacles": 5135,
+      "colliders": 4869,
       "concealers": 5938
     },
     "desert": {
@@ -82,11 +82,11 @@
       "concealers": 8263
     },
     "badlands": {
-      "bytes": 1080540,
-      "sha256": "9934946f990c7ecaef254d6f09bf0946222d6560c3c48701e1aaeab2c772ec9b",
-      "obstacles": 2554,
-      "colliders": 2306,
-      "concealers": 1464
+      "bytes": 1109615,
+      "sha256": "1c73060508c707ccb1221906715577568a9074a0a2b56734b18275206049c56f",
+      "obstacles": 2709,
+      "colliders": 2468,
+      "concealers": 1486
     },
     "monsoon": {
       "bytes": 1895620,
@@ -96,25 +96,25 @@
       "concealers": 10468
     },
     "alpine": {
-      "bytes": 1861651,
-      "sha256": "6ac6db964feefc6de6bf019970dee5fa7010f1ebaca400cbe65343896bf1468a",
-      "obstacles": 7005,
-      "colliders": 6932,
-      "concealers": 5907
+      "bytes": 1949224,
+      "sha256": "768eb53ff77191625699489bffca1f946c9dab1421e4f444328dcd0097ef64ae",
+      "obstacles": 7093,
+      "colliders": 7018,
+      "concealers": 5955
     },
     "caldera": {
-      "bytes": 1406525,
-      "sha256": "b3fd3c046c877581180b651cdae99aa4f34adf59485e5089a9e17a5c1f515c01",
-      "obstacles": 4033,
-      "colliders": 4140,
-      "concealers": 2845
+      "bytes": 1212642,
+      "sha256": "977b5620b75607d5e689c4079b664ae06c5e2054df670bf9705c9f1f5d18c6fb",
+      "obstacles": 2474,
+      "colliders": 2594,
+      "concealers": 1227
     },
     "foundry": {
-      "bytes": 1425882,
-      "sha256": "43892b9030fe30139ae683514f47ff42c6cb6077f28e288b19807d8bed7ae89e",
-      "obstacles": 3249,
-      "colliders": 3360,
-      "concealers": 2082
+      "bytes": 1442640,
+      "sha256": "d0c38143a158a802159539a855868b411724371f0a8c0bbafc534069e8e04d2d",
+      "obstacles": 3034,
+      "colliders": 3276,
+      "concealers": 1897
     },
     "ruinspires": {
       "bytes": 7289336,

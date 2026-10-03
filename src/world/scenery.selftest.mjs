@@ -541,14 +541,16 @@ for (const mapId of maps.MAP_IDS) {
   const rock = dressing.group.getObjectByName('props-scenery-rock');
   assert.equal(!!rock, receipt.rockTriangles > 0, `${mapId}: one rock mesh when rock stands`);
   if (rock) assert.ok(rock.castShadow && rock.receiveShadow, `${mapId}: the rock mesh casts and receives`);
-  // no tree trunk stands inside a standing mass
+  // no tree trunk stands inside a scenery rock's standing mass (a mass is a feature's when its centre is within 10 m of
+  // the feature's; another lane's convex solids — the jebels' boulder aprons — are not this receipt's)
   const masses = dressing.obstacles.filter((r) => r.shape2?.kind === 'convex' && !r.crushable && r.kind === undefined && r.max[1] - r.min[1] > 2.4);
   for (const tree of flora.treeObstacles) {
     const x = (tree.min[0] + tree.max[0]) / 2, z = (tree.min[2] + tree.max[2]) / 2;
     for (const mass of masses) {
       if (x < mass.min[0] || x > mass.max[0] || z < mass.min[2] || z > mass.max[2]) continue;
+      const mx = (mass.min[0] + mass.max[0]) / 2, mz = (mass.min[2] + mass.max[2]) / 2;
       for (const feature of receipt.features) {
-        if (feature.family !== 'rock' || Math.hypot(feature.x - x, feature.z - z) > 30) continue;
+        if (feature.family !== 'rock' || Math.hypot(feature.x - mx, feature.z - mz) > 10) continue;
         assert.ok(!collisionFootprintContainsPoint(mass, x, z), `${mapId}: no tree inside ${feature.name}`);
       }
     }

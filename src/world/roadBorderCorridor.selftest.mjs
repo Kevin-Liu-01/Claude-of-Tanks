@@ -128,7 +128,9 @@ assert.equal(roadBorderCorridorStart('alpine',
   [[[400, 350], [400, 400], [100, 100], [100, 512]]],
   [[[400, 350], [400, 400]]], 0, 1024), 68, 'the actual bent added polyline, not its endpoint chord, owns admission');
 const bounds = {};
-for (const [id, expected, historical] of [['fjord', 430, false], ['alpine', 378, true],
+// 2026-10-03 (the Glacier Pass redesign): alpine's historical extrapolated exits follow its new interiors
+// (tools/road-authored-exit-fixture.mjs), so its historical opening is 314 (was 378); the authored opening stays 448.
+for (const [id, expected, historical] of [['fjord', 430, false], ['alpine', 314, true],
   ['reservoir', 311.8490566037736, true], ['alpine', 448, false], ['reservoir', 448, false]]) {
   const cfg = historical ? originalExitConfig(getMapConfig(id)) : getMapConfig(id);
   const layout = createLayout(cfg), grid = new Float32Array(257 * 257);

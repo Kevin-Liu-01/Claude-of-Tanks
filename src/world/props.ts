@@ -127,6 +127,7 @@ import type { LoosePropBody, LoosePropKickCause } from './loosePropPhysics.ts';
 import type { UtilityNetwork } from './utilityNetwork.ts';
 import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildContext, type StructureDimensions } from './maps/exteriorDetailKit.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
+import { geologyBoulderSite } from './landformGeology.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). The exact float/index streams live in a gzip-packed
 // binary archive; createMapAsync starts it while terrain is being constructed.
@@ -5144,6 +5145,19 @@ ${snowCap ? `
   }
   }
   placeTacticalOutcrops();
+  // The maps-and-layouts lane (2026-10-03): boulder aprons, the blocks a knoll's walls shed onto its talus and fans
+  // (its geology.boulders; landformGeology.ts geologyBoulderSite crowds them towards the wall's foot). A map without
+  // them draws nothing here, so its scatter keeps every seat.
+  function placeLandformBoulders(): void {
+    for (const form of L.terrain.landforms) {
+      const count = form.kind === 'ridge' ? 0 : form.geology?.boulders ?? 0;
+      for (let i = 0, placed = 0; i < count * 6 && placed < count; i++) {
+        const [x, z] = geologyBoulderSite(form, rng(), rng());
+        if (tryRock(x, z, 0.9, 3.0, false, 0.3)) placed++;
+      }
+    }
+  }
+  placeLandformBoulders();
 
   yield { fine: true, stage: 'tactical-outcrops' };
   // r3: per-map surface-rock sink (winter buries boulders deeper so they
