@@ -129,7 +129,7 @@ function localizeStructuredData(
   );
 }
 
-/** Meta naming a locale's lazy catalog chunk; the Vite build adds one to every page (vite.config.ts). */
+/** Meta naming a page's zh-CN catalog chunk; the Vite build adds one to every page (tools/viteI18nPageCatalogs.ts). */
 export const LOCALE_CATALOG_META = 'cot-locale-catalog';
 
 /**

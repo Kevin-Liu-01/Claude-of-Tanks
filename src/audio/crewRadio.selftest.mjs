@@ -67,9 +67,10 @@ function harness({ languages = ['en-US', 'de'], missing = [] } = {}) {
   radio.setRadioDamage(2);
   radio.say('were_hit');
   const filters = ctx.nodes.filter((n) => n.kind === 'filter');
-  const highpass = filters.find((n) => n.type === 'highpass');
+  // (the mixer's own high-passes, such as the ambience bus's, are not the radio's band)
+  const highpass = filters.find((n) => n.type === 'highpass' && n.frequency.value >= 600);
   const lowpass = filters.find((n) => n.type === 'lowpass' && n.frequency.events.some((e) => e[1] === 2100));
-  assert.ok(highpass && highpass.frequency.value >= 600, 'damaged set loses the low band');
+  assert.ok(highpass, 'damaged set loses the low band');
   assert.ok(lowpass, 'damaged set loses the high band');
 }
 
