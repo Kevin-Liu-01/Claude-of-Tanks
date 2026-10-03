@@ -55,7 +55,7 @@ function entity(id, specId, team, x, z, yaw = 0, hp = null) {
   };
 }
 
-function controller(bot, ground, enemies) {
+function controller(bot, ground, enemies, obstacles = []) {
   const ctl = createAI(bot, {
     difficulty: 'normal',
     rng: mulberry32(57),
@@ -64,7 +64,7 @@ function controller(bot, ground, enemies) {
       raycast: terrainRaycast(ground),
       getEnemies: () => enemies,
       getAllies: () => [],
-      getObstacles: () => [],
+      getObstacles: () => obstacles,
       spotting: { isSpotted: () => true },
     },
   });
@@ -77,7 +77,7 @@ function controller(bot, ground, enemies) {
  * 'miss' lets rounds leave and none reports back, 'hit' reports each round as a penetration on the host; the gun is
  * held for the first `heldS` seconds either way.
  */
-function drive(bot, ctl, ground, host, seconds, { gun = 'held', heldS = 0, onTick = null } = {}) {
+function drive(bot, ctl, ground, host, seconds, { gun = 'held', heldS = 0, onTick = null, collide = null } = {}) {
   let shots = 0;
   const pending = [];
   for (let i = 0; i < seconds / SIM_DT; i++) {
@@ -94,7 +94,7 @@ function drive(bot, ctl, ground, host, seconds, { gun = 'held', heldS = 0, onTic
       pending.shift();
       ctl.notifyShellResult({ targetId: host.id, kind: 'pen' });
     }
-    updateTank(bot, ground, SIM_DT, null);
+    updateTank(bot, ground, SIM_DT, collide);
     if (onTick && onTick(i * SIM_DT, t) === false) break;
   }
   return shots;
@@ -208,6 +208,46 @@ function emptyRack(hostHp, moving = false) {
 {
   const { ramAt } = emptyRack(320, true);
   ok(ramAt === null, 'control: a moving host is judged at full speed, and that run would cost the rammer its hull');
+}
+
+console.log('[4] a press point the hull cannot reach is given up, not driven at forever');
+// Reservoir pacing seed 50003 (maps lane's tree): the press point lay below a bank the terrain guard would not let the
+// hull descend. Here the near-side press point stands in a closed pen the hull cannot enter (the eye sees over it).
+{
+  const ground = field(false);
+  const host = idleHost();
+  const wall = (x0, z0, x1, z1) => ({ min: [x0, -1, z0], max: [x1, 3, z1], kind: 'building' });
+  const pen = [wall(58.5, 9.7, 76.5, 10.7), wall(58.5, 26.7, 76.5, 27.7), wall(58.5, 9.7, 59.5, 27.7),
+    wall(75.5, 9.7, 76.5, 27.7)];
+  const bot = entity('bot', 't90m', 'enemy', 120, -40, -Math.PI / 2);
+  /** Push the hull out of the pen's walls: three discs of its half-width along its length. */
+  const collide = (pos, _radius, out) => {
+    const r = bot.spec.dims.widthM * 0.5, reach = Math.max(0, bot.spec.dims.hullLengthM * 0.5 - r);
+    const fx = Math.sin(bot.state.yaw), fz = Math.cos(bot.state.yaw);
+    let px = 0, pz = 0;
+    for (const along of [-reach, 0, reach]) {
+      const sx = pos.x + fx * along + px, sz = pos.z + fz * along + pz;
+      for (const o of pen) {
+        const cx = Math.max(o.min[0], Math.min(sx, o.max[0])), cz = Math.max(o.min[2], Math.min(sz, o.max[2]));
+        const d = Math.hypot(sx - cx, sz - cz);
+        if (d < r && d > 1e-6) { px += (sx - cx) / d * (r - d); pz += (sz - cz) / d * (r - d); }
+      }
+    }
+    if (px === 0 && pz === 0) return false;
+    out.x = px; out.z = pz;
+    return true;
+  };
+  const ctl = controller(bot, ground, [host], pen);
+  let firstPoint = null, givenUpAt = null;
+  drive(bot, ctl, ground, host, 100, { collide, onTick: (t) => {
+    const info = ctl.debugInfo();
+    if (firstPoint === null && info.passivePress) firstPoint = { x: info.pressPointX, z: info.pressPointZ };
+    if (givenUpAt === null && info.passivePressRepicks >= 1) givenUpAt = t;
+  } });
+  ok(firstPoint !== null && firstPoint.x > 58.5 && firstPoint.x < 76.5 && firstPoint.z > 9.7 && firstPoint.z < 27.7,
+    `fixture: the press point stands inside the pen (${firstPoint ? `${firstPoint.x.toFixed(0)}, ${firstPoint.z.toFixed(0)}` : 'none'})`);
+  ok(givenUpAt !== null && givenUpAt < 75, `the unreached point is given up (at ${givenUpAt?.toFixed(0) ?? 'never'} s)`);
+  ok(ctl.debugInfo().pressUnreached >= 1, 'as unreached, not masked');
 }
 
 if (failures) {
