@@ -8,7 +8,11 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 //   - gunfire stands above the idle battle bed (own engine, ambience, other
 //     hulls idling), judged on its loudest 100 ms (a report is an impulse: a
 //     400 ms window rewards a long boom over a crack): a cannon at 15 m by at
-//     least 16 dB, at 150 m by 10, at 400 m by 4, our own gun by 16;
+//     least 14 dB, at 150 m by 10, at 400 m by 4, our own gun by 16; and the
+//     crack itself, a near cannon's and our own, peaks at least 22 dB over the
+//     bed. (A near crack is bounded by the master's ceiling, and its 100 ms
+//     sits its crest, about 11 dB, under that peak: 16 dB of 100 ms would mean
+//     squashing it back into a blast.)
 //   - the crew radio sits under a near cannon (at least 6 dB below);
 //   - a live battle stays readable: sound starts per second over 20 s of
 //     real bot combat stay under a ceiling;
@@ -55,6 +59,7 @@ function measure(i16, sampleRate) {
   const frames = i16.length / 2;
   const win = Math.round(0.4 * sampleRate);
   const burst = Math.round(0.1 * sampleRate);
+  let peak = 0;
   let total = 0;
   let windowSum = 0;
   let burstSum = 0;
@@ -63,6 +68,7 @@ function measure(i16, sampleRate) {
   const sq = new Float64Array(frames);
   for (let i = 0; i < frames; i++) {
     const x = (i16[2 * i] + i16[2 * i + 1]) / 65536;
+    peak = Math.max(peak, Math.abs(x));
     sq[i] = x * x;
     total += sq[i];
     windowSum += sq[i];
@@ -73,7 +79,7 @@ function measure(i16, sampleRate) {
     if (i >= burst - 1) maxBurst = Math.max(maxBurst, burstSum / burst);
   }
   const db = (v) => (v > 0 ? 10 * Math.log10(v) : -120);
-  return { rmsDb: db(total / Math.max(1, frames)), shortTermDb: db(maxWindow), burstDb: db(maxBurst) };
+  return { rmsDb: db(total / Math.max(1, frames)), shortTermDb: db(maxWindow), burstDb: db(maxBurst), peakDb: db(peak * peak) };
 }
 
 /** Mono float of a stereo s16 capture. */
@@ -165,7 +171,7 @@ try {
     writeWav(join(outDir, `${name}.wav`), i16, sampleRate);
     lastI16 = i16;
     const m = measure(i16, sampleRate);
-    console.log(`[mix] ${name.padEnd(18)} rms ${m.rmsDb.toFixed(1).padStart(6)} dBFS  loudest 400 ms ${m.shortTermDb.toFixed(1).padStart(6)} dBFS  100 ms ${m.burstDb.toFixed(1).padStart(6)} dBFS`);
+    console.log(`[mix] ${name.padEnd(18)} rms ${m.rmsDb.toFixed(1).padStart(6)} dBFS  loudest 400 ms ${m.shortTermDb.toFixed(1).padStart(6)} dBFS  100 ms ${m.burstDb.toFixed(1).padStart(6)} dBFS  peak ${m.peakDb.toFixed(1).padStart(6)} dBFS`);
     return m;
   }
 
@@ -186,11 +192,11 @@ try {
   let shellId = 880000;
   const shot = (dx, dz) => `(() => { const D = window.__DEBUG; const p = D.game.player.state.pos; const e = D.game.tanks.find((t) => t.team === 'enemy' && t.state);
     D.bus.emit('shell:fired', { shellId: ${++shellId}, shooterId: e.id, isPlayer: false, shellType: 'APFSDS', caliberMm: 125, muzzlePos: [p.x + ${dx}, p.y + 1.5, p.z + ${dz}], dir: [0, 0, 1] }); })()`;
-  for (const [name, dx, dz, minOverBed] of [['cannon_15m', 12, 9, 16], ['cannon_150m', 106, 106, 10], ['cannon_400m', 283, 283, 4]]) {
+  for (const [name, dx, dz, minOverBed] of [['cannon_15m', 12, 9, 14], ['cannon_150m', 106, 106, 10], ['cannon_400m', 283, 283, 4]]) {
     const m = await capture(name, 3500, shot(dx, dz));
     const over = m.burstDb - report.bed.rmsDb;
     const anatomy = shotAnatomy(lastI16, sampleRate, 0.8);
-    report.shots[name] = { ...m, overBedDb: +over.toFixed(1), anatomy };
+    report.shots[name] = { ...m, overBedDb: +over.toFixed(1), peakOverBedDb: +(m.peakDb - report.bed.rmsDb).toFixed(1), anatomy };
     console.log(`[mix] ${''.padEnd(18)} anatomy ${JSON.stringify(anatomy)}`);
     if (over < minOverBed) fail(`${name} stands only ${over.toFixed(1)} dB over the battle bed (want ≥ ${minOverBed})`);
     // Let the shot's tails die away before the next capture measures against the bed.
@@ -200,14 +206,16 @@ try {
   if (near.riseMs > 15) fail(`a near cannon swells to its peak ${near.riseMs} ms after the shot (want ≤ 15: a crack, not an explosion)`);
   if (near.lowBody > 0.5) fail(`a near cannon's body is ${(100 * near.lowBody).toFixed(0)} % below 100 Hz (want ≤ 50: a report, not a boom)`);
   if (near.atKnee > 10) fail(`a near cannon rides the soft clip (${near.atKnee} samples at its knee; the limiter should take the peak)`);
+  if (report.shots.cannon_15m.peakOverBedDb < 22) fail(`a near cannon's crack peaks only ${report.shots.cannon_15m.peakOverBedDb} dB over the battle bed (want ≥ 22)`);
   // Our own gun, from the hatch beside it.
   const ownShot = `(() => { const D = window.__DEBUG; const me = D.game.player; const p = me.state.pos;
     D.bus.emit('shell:fired', { shellId: ${++shellId}, shooterId: me.id, isPlayer: true, shellType: 'APFSDS', caliberMm: 125, muzzlePos: [p.x, p.y + 2, p.z + 4], dir: [0, 0, 1] }); })()`;
   const own = await capture('cannon_own', 3500, ownShot);
-  report.shots.cannon_own = { ...own, overBedDb: +(own.burstDb - report.bed.rmsDb).toFixed(1), anatomy: shotAnatomy(lastI16, sampleRate, 0.8) };
+  report.shots.cannon_own = { ...own, overBedDb: +(own.burstDb - report.bed.rmsDb).toFixed(1), peakOverBedDb: +(own.peakDb - report.bed.rmsDb).toFixed(1), anatomy: shotAnatomy(lastI16, sampleRate, 0.8) };
   console.log(`[mix] ${''.padEnd(18)} anatomy ${JSON.stringify(report.shots.cannon_own.anatomy)}`);
   if (report.shots.cannon_own.overBedDb < 16) fail(`our own gun stands only ${report.shots.cannon_own.overBedDb} dB over the battle bed (want ≥ 16)`);
   if (report.shots.cannon_own.anatomy.atKnee > 10) fail(`our own gun rides the soft clip (${report.shots.cannon_own.anatomy.atKnee} samples at its knee)`);
+  if (report.shots.cannon_own.peakOverBedDb < 22) fail(`our own gun's crack peaks only ${report.shots.cannon_own.peakOverBedDb} dB over the battle bed (want ≥ 22)`);
   await sleep(4000);
   // 3) The crew radio against a near cannon.
   await page.waitForFunction('window.__COT_AUDIO.voicesLoaded === true', { timeout: 20000 }).catch(() => fail('crew pack did not decode'));

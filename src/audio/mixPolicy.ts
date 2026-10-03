@@ -38,20 +38,20 @@ export const BUS_LEVELS: Readonly<Record<BusId, number>> = Object.freeze({
   // and the radio under a near cannon. Gun reports are cracks now (2026-10-02),
   // their energy in tens of milliseconds, so the gun bus runs hotter and the
   // master's limiter takes the crack's peak.
-  weapons: 2.6,
+  weapons: 3,
   impacts: 1.3,
   environment: 0.85,
   cinematic: 1,
-  vehicles: 0.5,
+  vehicles: 0.45,
   // Our own tank leads: its engine and running gear, its gun, and the loading
   // and turret machinery inside it sit above everyone else's.
-  own: 0.6,
-  ownCombat: 1.8,
+  own: 0.52,
+  ownCombat: 2,
   interior: 0.95,
-  ambience: 0.33,
+  ambience: 0.28,
   ui: 0.6,
   music: 0.6,
-  voice: 0.24,
+  voice: 0.17,
   alarm: 0.55,
 });
 

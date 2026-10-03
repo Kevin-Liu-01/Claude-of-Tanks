@@ -143,12 +143,12 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
   // clip would square it off (old-film grit). The compressor's built-in look-ahead lets a 2 ms attack take the
   // peak down smoothly, so the clip is only the last resort.
   const limiter = ctx.createDynamicsCompressor();
-  limiter.threshold.value = -3;
+  limiter.threshold.value = -2.2;
   limiter.knee.value = 0;
   limiter.ratio.value = 20;
   limiter.attack.value = 0.002;
   limiter.release.value = 0.09;
-  // A Web Audio compressor adds its own makeup gain ((1 / curve(0 dBFS))^0.6, +1.7 dB here) that cannot be
+  // A Web Audio compressor adds its own makeup gain ((1 / curve(0 dBFS))^0.6, +1.25 dB here) that cannot be
   // switched off; taken back out, the limiter is unity below its threshold and its ceiling stays under the clip.
   const limiterTrim = ctx.createGain();
   limiterTrim.gain.value = Math.pow(Math.pow(10, (limiter.threshold.value - limiter.threshold.value / limiter.ratio.value) / 20), 0.6);
