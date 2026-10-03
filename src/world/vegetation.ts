@@ -5054,12 +5054,15 @@ function* vegetationBuildSteps(
     // range. Rolled from a POSITION HASH, not the shared rng stream — one
     // extra rng() here would shift every subsequent placement and re-break
     // the authored establishing-shot compositions (see sapRng note above).
+    // Trees round 2 (2026-10-03, the gauntlet's wave 6: "multiple trees in the treeline show dead/brown foliage
+    // scattered randomly among healthy green trees, reading as a widespread asset bug", Cinder Junction and Frontier
+    // Basin): the amber and browned-off tenth read as broken assets beside the grown crowns. A summer wood keeps a few
+    // trees a shade drier and yellower, no more (the battle zones' snags carry the dead).
     const dryRoll = treePositionNoise(x, z, 0);
-    if (pj >= 0.5 && dryRoll < 0.10) {
-      const deep = dryRoll < 0.03; // a few fully browned-off trees
-      _c.r *= deep ? 1.30 : 1.26;
-      _c.g *= deep ? 0.82 : 0.96;
-      _c.b *= deep ? 0.38 : 0.48;
+    if (pj >= 0.5 && dryRoll < 0.04) {
+      _c.r *= 1.1;
+      _c.g *= 0.98;
+      _c.b *= 0.8;
     }
     trees.push({
       x, z, species, variant: (rng() * 3) | 0, fv: (rng() * 2) | 0,
