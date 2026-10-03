@@ -644,6 +644,22 @@ const RACK_SPENT_FOR_S = 90;
 // the target ends it.
 const OBJECTIVE_SHIFT_DWELL_S = 4;
 const OBJECTIVE_SHIFT_RINGS = Object.freeze([0.6, 0.8]);
+// A zone's hold point (bots lane, 2026-10-03; Redrock Divide frontline): line 3's centre (52.9, 274.6) lies on the
+// plateau's 55-63 degree south face, and a zone mission drove every holder to that centre. Hulls climbed onto the face,
+// pivoted there for half a minute while the terrain guard flickered, slid off and fell; one M1A2 slid onto a wreck
+// and dropped 12 m (24 seeds: 45 damaging falls, 44 of them off that face). A zone mission holds the ground nearest
+// the centre a hull can stand on: the centre itself when its footprint is level enough to hold (the relocation
+// cell's SPOT_NORMAL_Y_MIN at the centre and over a hull's length round it, and dry), else the first such point on
+// the ZONE_HOLD_RINGS_M rings (inside ZONE_HOLD_MAX_FRAC of the zone's radius), the hull's own side of the zone first.
+// A zone on holdable ground is held at its centre as before.
+const ZONE_HOLD_RINGS_M = Object.freeze([4, 8, 12, 16, 20]);
+const ZONE_HOLD_BEARINGS = 16;
+const ZONE_HOLD_FOOTPRINT_M = 5;
+const ZONE_HOLD_MAX_FRAC = 0.7;
+// The on-objective shift's points obey the same rule (their old test sampled the leg twice, and a defender on the
+// plateau picked shift points on the floor beyond the face, drove onto it and pivoted there for a minute): holdable
+// ground, reached by a straight leg sampled every ZONE_LEG_STEP_M no steeper than LEG_NORMAL_Y_MIN.
+const ZONE_LEG_STEP_M = 3;
 // A route used up short of the objective (the mission's own plan ends in another connected component for this
 // hull or comes back empty, or a search leg took the waypoints) releases the hull to the classic drivers for this
 // long before the mission plans again (Cinder Junction frontline seed 72839: a Challenger 2 stood 494 s at its route
@@ -1180,6 +1196,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   const objectiveShiftPoint = { x: 0, z: 0 };
   let objectiveShifting = false;
   let objectiveShifts = 0;                   // probe-visible count
+  // the zone's hold point (see ZONE_HOLD_RINGS_M), kept for the zone centre it was found for
+  const zoneHold = { x: 0, z: 0 };
+  let zoneHoldForX = NaN, zoneHoldForZ = NaN;
+  let zoneHoldMoves = 0;                     // probe-visible count of zone centres held from ground beside them
   let missionReleaseUntilS = -1;             // a blocked mission route has released the hull until then
   let missionReleases = 0;                   // probe-visible count
   // another level (see ELEVATION_LOCK_S)
@@ -5062,6 +5082,57 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return objective && (objective.mission === 'capture' || objective.mission === 'assault') ? objective : null;
   }
 
+  /** Ground a hull can stand and hold on: level enough at the point and round its footprint, and dry. */
+  function holdableGround(x: number, z: number): boolean {
+    const min = casemate ? CASEMATE_SPOT_NORMAL_Y_MIN : SPOT_NORMAL_Y_MIN;
+    if (hf.getNormalAt!(x, z).y < min) return false;
+    for (let k = 0; k < 8; k++) {
+      const a = k * (TAU / 8);
+      if (hf.getNormalAt!(x + Math.sin(a) * ZONE_HOLD_FOOTPRINT_M, z + Math.cos(a) * ZONE_HOLD_FOOTPRINT_M).y < min) {
+        return false;
+      }
+    }
+    return !liquidSafe || liquidSafe(x, z, 0, 0);
+  }
+
+  /** The straight leg from (x0, z0) to (x1, z1) is no steeper than a comfortable climb (every ZONE_LEG_STEP_M). */
+  function legDrivable(x0: number, z0: number, x1: number, z1: number): boolean {
+    const length = Math.hypot(x1 - x0, z1 - z0);
+    for (let d = ZONE_LEG_STEP_M; d < length; d += ZONE_LEG_STEP_M) {
+      const f = d / length;
+      if (hf.getNormalAt!(x0 + (x1 - x0) * f, z0 + (z1 - z0) * f).y < LEG_NORMAL_Y_MIN) return false;
+    }
+    return true;
+  }
+
+  /** Where a zone mission holds the zone centred at (x, z): its centre, or holdable ground beside it. */
+  function zoneHoldPoint(x: number, z: number, radiusM: number): { x: number; z: number } {
+    if (Math.abs(x - zoneHoldForX) < 1 && Math.abs(z - zoneHoldForZ) < 1) return zoneHold;
+    zoneHoldForX = x;
+    zoneHoldForZ = z;
+    zoneHold.x = x;
+    zoneHold.z = z;
+    if (!hf.getNormalAt || holdableGround(x, z)) return zoneHold;
+    const st = entity.state;
+    const own = Math.atan2(st.pos.x - x, st.pos.z - z);
+    for (let ring = 0; ring < ZONE_HOLD_RINGS_M.length; ring++) {
+      const r = ZONE_HOLD_RINGS_M[ring];
+      if (r > radiusM * ZONE_HOLD_MAX_FRAC) break;
+      for (let k = 0; k < ZONE_HOLD_BEARINGS; k++) {
+        // the hull's own side first, then alternately either way round
+        const step = (k + 1) >> 1;
+        const a = own + (k & 1 ? step : -step) * (TAU / ZONE_HOLD_BEARINGS);
+        const px = x + Math.sin(a) * r, pz = z + Math.cos(a) * r;
+        if (!holdableGround(px, pz)) continue;
+        zoneHold.x = px;
+        zoneHold.z = pz;
+        zoneHoldMoves++;
+        return zoneHold;
+      }
+    }
+    return zoneHold; // nothing holdable inside the zone: the centre, as before
+  }
+
   /** Pick the shift point: on the ring round the zone, in sight of the target, as far round its side as possible. */
   function pickObjectiveShift(objective: AiObjective): boolean {
     if (!target) return false;
@@ -5076,6 +5147,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const z = objective.z + Math.cos(a) * radius;
       if (Math.hypot(x - st.pos.x, z - st.pos.z) < ARRIVE_DIST_M * 1.5) continue; // where it already stands
       if (!reachableSpot(x, z)) continue;
+      // the shift point is holdable ground the hull reaches without crossing a face (see ZONE_HOLD_RINGS_M)
+      if (hf.getNormalAt && (!holdableGround(x, z) || !legDrivable(st.pos.x, st.pos.z, x, z))) continue;
       if (liquidSafe && !liquidSafe(x, z, Math.atan2(tp.x - x, tp.z - z), 0)) continue;
       if (!hasLos(x, hf.getHeightAt(x, z) + selfEyeM, z, tp.x, ty, tp.z)) continue;
       // 0 at the target's bow, π at its rear: a gate the front shuts is opened from the side
@@ -5142,8 +5215,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const offObjective = Math.hypot(destination.x - entity.state.pos.x, destination.z - entity.state.pos.z)
       > objective.radiusM;
     missionOffObjective = offObjective;
-    if (missionRouteNeedsRefresh(destination.x, destination.z)) {
-      setWaypoints([[destination.x, destination.z]], { loop: false });
+    // a zone is held from ground a hull can stand on (see ZONE_HOLD_RINGS_M)
+    const hold = objective.mission === 'capture' || objective.mission === 'assault'
+      ? zoneHoldPoint(destination.x, destination.z, objective.radiusM) : destination;
+    if (missionRouteNeedsRefresh(hold.x, hold.z)) {
+      setWaypoints([[hold.x, hold.z]], { loop: false });
     }
     // a route used up short of the objective (the mission's own, or a search leg that took the waypoints) is no
     // reason to park: the classic drivers take the hull for a while (Sirocco Wadi frontline seed 57001: a defender
@@ -5673,7 +5749,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       conserveHolds, emptyRack, ramming, ramRuns, ramCapMps: Number.isFinite(ramCapMps) ? +ramCapMps.toFixed(2) : null,
       missStreak, missVerdicts,
       rackSpent: !!target && target.id === rackSpentId, rackSpentT: +rackSpentT.toFixed(1), rackSpentVerdicts,
-      objectiveShifts, objectiveShifting,
+      objectiveShifts, objectiveShifting, zoneHoldMoves,
+      objectiveShiftX: objectiveShifting ? +objectiveShiftPoint.x.toFixed(1) : null,
+      objectiveShiftZ: objectiveShifting ? +objectiveShiftPoint.z.toFixed(1) : null,
+      zoneHoldX: Number.isFinite(zoneHoldForX) ? +zoneHold.x.toFixed(1) : null,
+      zoneHoldZ: Number.isFinite(zoneHoldForZ) ? +zoneHold.z.toFixed(1) : null,
       missionReleases, missionReleased: nowS < missionReleaseUntilS,
       levelRouting, levelRoutes, unbearableVerdicts, unbearable: unbearableId, elevationLockT: +elevationLockT.toFixed(1),
       pressing: nowS < pressUntilS,
