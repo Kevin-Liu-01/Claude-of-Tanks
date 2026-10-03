@@ -1311,7 +1311,7 @@
       "delivery": "crisp, steady",
       "context": "Main gun is loaded and ready.",
       "en-US": [
-        "Up.",
+        "Gun up.",
         "Loaded.",
         "Ready."
       ],
@@ -4626,6 +4626,64 @@
       "he": [
         "טיל נכנס!",
         "טיל עלינו, להיאחז!"
+      ]
+    },
+    {
+      "id": "drone_incoming",
+      "role": "commander",
+      "delivery": "urgent, controlled, loud",
+      "context": "An enemy FPV attack drone is diving at our tank.",
+      "en-US": [
+        "Drone inbound!",
+        "Drone on us, overhead!"
+      ],
+      "en-GB": [
+        "Drone inbound!",
+        "Drone overhead, brace!"
+      ],
+      "de": [
+        "Drohne im Anflug!",
+        "Drohne über uns, festhalten!"
+      ],
+      "ru": [
+        "Дрон на подлёте!",
+        "Дрон над нами, держитесь!"
+      ],
+      "uk": [
+        "Дрон на підльоті!",
+        "Дрон над нами, тримайтеся!"
+      ],
+      "zh": [
+        "无人机来袭！",
+        "头顶无人机，抓紧！"
+      ],
+      "fr": [
+        "Drone en approche !",
+        "Drone au-dessus, accrochez-vous !"
+      ],
+      "sv": [
+        "Drönare inkommande!",
+        "Drönare över oss, håll i er!"
+      ],
+      "ja": [
+        "ドローン接近！",
+        "上空にドローン、衝撃に備えろ！"
+      ],
+      "ko": [
+        "드론 접근!",
+        "머리 위에 드론, 충격 대비!"
+      ],
+      "it": [
+        "Drone in arrivo!",
+        "Drone sopra di noi, tenetevi!"
+      ],
+      "pl": [
+        "Dron nadlatuje!",
+        "Dron nad nami, trzymać się!"
+      ],
+      "he": [
+        "רחפן נכנס!",
+        "רחפן מעלינו, להיאחז!"
       ]
     },
     {

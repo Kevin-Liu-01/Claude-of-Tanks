@@ -609,7 +609,6 @@ interface HudDebugSurface {
 
 declare global {
   interface Window {
-    webkitAudioContext?: typeof AudioContext;
     __HUD_DEBUG?: HudDebugSurface;
     __HUD_HIDE_ZOOM_PLATE?: boolean;
   }
@@ -2256,8 +2255,9 @@ export function initHud(bus: EventBus): HudRuntime {
 
   // ========================= SPOTTING SECTION ===============================
   // Sixth-sense lamp: 'player:spotted' (src/game/state.ts spotting wiring)
-  // arms a 3 s fuse; when it burns down the bulb lights for 8 s with a short
-  // synthesized two-tone sting. Battle restarts reset the lamp (sim clock
+  // arms a 3 s fuse; when it burns down the bulb lights for 8 s. Its sound is
+  // the audio engine's (a recorded alert through the mixer, so it follows the
+  // volume and mute settings). Battle restarts reset the lamp (sim clock
   // restarts at 0).
   const sixthEl = el('div', 'cot-sixth', root);
   sixthEl.innerHTML = `<span class="sig">${uiIconSVG('lightbulb', 24)}</span>` +
@@ -2266,29 +2266,6 @@ export function initHud(bus: EventBus): HudRuntime {
   let sixthPendingS = -1; // sim time the lamp should light (spot time + 3 s)
   let sixthUntilS = -1;
   let sixthOn = false;
-  let stingCtx: AudioContext | null = null;
-  function playSixthSting(): void {
-    try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      stingCtx = stingCtx || new AC();
-      if (stingCtx.state === 'suspended') stingCtx.resume();
-      const t0 = stingCtx.currentTime + 0.01;
-      // two falling tones — the classic "you are seen" sting
-      for (const [freq, at] of [[1244.5, 0], [830.6, 0.13]]) {
-        const osc = stingCtx.createOscillator();
-        const g = stingCtx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.value = freq;
-        g.gain.setValueAtTime(0.0001, t0 + at);
-        g.gain.exponentialRampToValueAtTime(0.16, t0 + at + 0.015);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + 0.3);
-        osc.connect(g).connect(stingCtx.destination);
-        osc.start(t0 + at);
-        osc.stop(t0 + at + 0.32);
-      }
-    } catch (e) { /* audio unavailable (headless/autoplay) — lamp still shows */ }
-  }
   on('player:spotted', ({ timeS = 0 }) => {
     if (sixthPendingS < 0 && !(sixthOn && timeS < sixthUntilS - SIXTH_SENSE_DELAY_S)) {
       sixthPendingS = timeS + SIXTH_SENSE_DELAY_S;
@@ -2299,7 +2276,6 @@ export function initHud(bus: EventBus): HudRuntime {
       sixthPendingS = -1;
       sixthUntilS = timeS + SIXTH_SENSE_SHOW_S;
       if (!sixthOn) { sixthOn = true; sixthEl.classList.add('on'); }
-      playSixthSting();
     }
     if (sixthOn && (timeS > sixthUntilS || timeS < sixthUntilS - SIXTH_SENSE_SHOW_S - 1)) {
       sixthOn = false;

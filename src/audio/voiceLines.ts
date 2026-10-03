@@ -69,6 +69,7 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   bounced_us: V(2, 6, 'incoming', 0.8),
   near_miss: V(2, 12, 'incoming', 0.7),
   missile_incoming: V(4, 6, 'incoming', 0.8),
+  drone_incoming: V(4, 8, 'incoming', 0.9),
   hit_by_friendly: V(3, 10, 'team', 1.0),
   rammed: V(3, 8, 'incoming', 0.8),
   friendly_ram: V(1, 12, 'team', 0.8),
