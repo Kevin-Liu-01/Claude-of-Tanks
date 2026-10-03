@@ -450,20 +450,26 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   let takeoffY = null;
   let takeoffVY = null;
   let apexY = -Infinity;
+  // the lip: the height of the last step on the ramp (physics lane, 2026-10-03: the step that leaves the ground now
+  // moves on gravity, so the first airborne height is past the lip, where it used to stand still 2.5 cm under it)
+  let lipY = null;
   run(ent, field, 150, () => {
     if (ent.state.grounded === false) {
       if (takeoffY === null) {
-        takeoffY = ent.state.pos.y;
+        takeoffY = lipY;
         takeoffVY = ent.state.verticalSpeed;
       }
       apexY = Math.max(apexY, ent.state.pos.y);
+    } else if (takeoffY === null) {
+      lipY = ent.state.pos.y;
     }
   });
   assert(takeoffY !== null, 'ramp: tank enters free flight at the lip');
   assert(takeoffVY > 0.5,
     `ramp: upward terrain velocity becomes launch velocity (${takeoffVY} m/s)`);
-  assert(apexY > takeoffY + 0.08,
-    `ramp: projectile rises beyond the lip before falling (${(apexY - takeoffY).toFixed(2)} m)`);
+  // (0.055 m over the lip is the 0.08 this read over the first airborne height, which sat 2.5 cm under the lip)
+  assert(apexY > takeoffY + 0.055,
+    `ramp: projectile rises beyond the lip before falling (${(apexY - takeoffY).toFixed(3)} m)`);
 }
 
 // A continuous rolling crest (no discontinuity) must also release contact

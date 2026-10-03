@@ -203,6 +203,16 @@ export const TERRAIN = {
       return top + Math.min(d - reach, run) * grade;
     };
   },
+  /** Level ground to z = at, then a convex arc of radius r falling away to maxDeg, then that grade for `run` metres. */
+  flank: (at, r, maxDeg, run) => {
+    const reach = r * Math.sin(maxDeg * RAD), drop = r - Math.sqrt(r * r - reach * reach), grade = Math.tan(maxDeg * RAD);
+    return (_x, z) => {
+      const d = z - at;
+      if (d <= 0) return 0;
+      if (d < reach) return -(r - Math.sqrt(r * r - d * d));
+      return -drop - Math.min(d - reach, run) * grade;
+    };
+  },
   /** A height profile along z: straight runs between [z, h] points, level beyond the ends. */
   profile: (points) => (_x, z) => {
     if (z <= points[0][0]) return points[0][1];
@@ -301,6 +311,15 @@ export const CASES = [
   // launched off the crest.
   { id: 'land-upslope', group: 'air', seconds: 7, spawn: { z: 2, dropTo: 4, speed: 15 }, input: hold(1),
     terrain: TERRAIN.profile([[0, 0], [30, 10.8], [32, 10.8], [60, 0.5]]) },
+  // Ironworks endless horde (maps lane, visual/maps-layouts 0da345f67): a bot taking the slag tip's loose flank downhill
+  // at speed was thrown off it and fell for 420 hp. A flank the tracks can follow (its curvature under g·cos θ / v²) is
+  // followed: no launch, no fall.
+  { id: 'flank-down', group: 'air', seconds: 7, spawn: { speed: 14 }, input: hold(1), terrain: TERRAIN.flank(12, 40, 32, 40),
+    ground: () => 'soft' },
+  // ... and one too sharp to follow at 12 m/s (v²/r > g·cos θ) flies: it lands on the flank by the flank's own fall under
+  // its travel, not as onto level ground (a hull pitched nose-down off it read the flank as level: 4632 hp).
+  { id: 'flank-steep', group: 'air', seconds: 6, spawn: { speed: 12 }, input: hold(1), terrain: TERRAIN.flank(12, 12, 45, 40),
+    ground: () => 'soft' },
   { id: 'climb-crest', group: 'air', seconds: 7, spawn: { speed: 9 }, input: hold(1), terrain: TERRAIN.crestFace(14, 12, 38, 5) },
   // Mars gravity (field audit): a bot firing three times in a 3.7 s boost flight pitched over 95 degrees and came down
   // on its back — every shot spun the airborne hull by the suspension's ground rock, and the air barely damps a spin.

@@ -651,6 +651,20 @@ let _rotationDrop = 0;
 /** Whether this tick's fit found every track sample carrying the hull (no edge, no drop under it): only then does a
  * grade it runs down carry its tracks with it (constrainLoadedRide). */
 let _wholeTrackOnGround = true;
+/** The support's own rise rate this step, unsmoothed (updateRideSupportVelocity; the floor clamp carries the ride at it). */
+let _supportRate = 0;
+/** World-space grade along the travel under an airborne hull this step (worldGradeAlong). */
+let _airGrade = 0;
+/** Half the run the world grade is read over. */
+const AIR_GRADE_PROBE_M = 1.5;
+/** Below this cosine of pitch the track samples no longer span the travel (worldGradeAlong reads the grade). */
+const AIR_GRADE_MIN_COS = 0.3;
+
+function worldGradeAlong(hAt: HeightSampler, x: number, z: number, forwardX: number, forwardZ: number): number {
+  const ahead = hAt(x + forwardX * AIR_GRADE_PROBE_M, z + forwardZ * AIR_GRADE_PROBE_M);
+  const behind = hAt(x - forwardX * AIR_GRADE_PROBE_M, z - forwardZ * AIR_GRADE_PROBE_M);
+  return (ahead - behind) / (2 * AIR_GRADE_PROBE_M);
+}
 let _tippedThisTick = false;
 const RIDE_SUPPORT_V_CAP = 12;         // m/s; bounds extreme launch ramps
 /** Closing speed beyond what the suspension's travel takes softly (about sqrt(2 g C) x 1.5 for C = 0.2 m). */
@@ -1372,6 +1386,7 @@ function updateRideSupportVelocity(ride: RideState, supportY: number, dt: number
     -RIDE_SUPPORT_V_FALL_CAP,
     RIDE_SUPPORT_V_CAP,
   );
+  _supportRate = rawGroundV;
   const groundAlpha = 1 - Math.exp(-dt / RIDE_GROUND_V_TAU);
   ride.groundV += (rawGroundV - ride.groundV) * groundAlpha;
   ride.supportY = supportY;
@@ -1454,14 +1469,23 @@ function constrainLoadedRide(
   // away faster is a flight; a hull sliding down a 45-degree face left it and bounced down it, unable to steer or stop.
   // (only a hang the grade's own descent this tick explains: ground that dropped away further is a drop, and flies)
   // (and only a ride that is not still rising: one going up over a crest cannot be pulled down the far face, it flies)
+  // (the follow is the ride's own velocity, integrated once below: a pull of the position as well moved the hull twice
+  // the grade's rate in a tick, a 0.17 m vertical pop entering a 32-degree flank)
   if (hang > 0 && slopeFollowMps > 0 && ride.v <= 0 && hang <= 2 * slopeFollowMps * dt + RIDE_DETACH_CLEARANCE_M) {
-    const pull = Math.min(hang, slopeFollowMps * dt);
-    ride.y -= pull;
-    hang -= pull;
     if (ride.v > -slopeFollowMps) ride.v = -slopeFollowMps;
+    hang = Math.max(0, hang - slopeFollowMps * dt);
   }
   const separating = ride.v - ride.groundV > RIDE_DETACH_REL_V_MPS;
-  if (hang > RIDE_DETACH_CLEARANCE_M && (separating || hang > RIDE_HANG_M)) {
+  // A ride still closing on ground that sinks away slower than it falls is in contact: it meets that ground within the
+  // step (physics lane, 2026-10-03). A hull landing nose-first, its support sinking as it turned level about its nose,
+  // lost the ground every other tick and landed again at full speed: nine landings at 13-14 m/s in a sixth of a second
+  // off a 10 m cliff, 4044 hp, where the springs take the one landing.
+  const closingGap = Math.max(0, ride.groundV - ride.v) * dt;
+  if (hang > RIDE_DETACH_CLEARANCE_M + closingGap && (separating || hang > RIDE_HANG_M)) {
+    // the step that leaves the ground is the flight's first: the ride moves through it on gravity alone (it used to
+    // stand still for the step, a 13 cm stall in the motion of a hull leaving a face at 8 m/s)
+    ride.v -= gravity * dt;
+    ride.y += ride.v * dt;
     ride.airTime = 0;
     return false;
   }
@@ -1479,7 +1503,12 @@ function constrainLoadedRide(
   ride.y += ride.v * dt;
   if (ride.y < floorY) {
     ride.y = floorY;
-    if (ride.v < ride.groundV) ride.v = ride.groundV;
+    // a floor that stops falling stops the ride's fall with it this step (the smoothed ground rate lags it: a hull
+    // bottoming out at the foot of a 32-degree flank at 22 m/s was lifted by the floor 9 cm a tick while its velocity
+    // still read the fall); a rising floor carries it at the smoothed rate, as before (a face struck by the nose pushes
+    // the nose, not the whole hull, at its own rate)
+    const floorV = Math.max(ride.groundV, Math.min(_supportRate, Math.max(ride.groundV, 0)));
+    if (ride.v < floorV) ride.v = floorV;
     return true;
   }
   if (ride.y <= contactY) return true;
@@ -1524,11 +1553,13 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
     // lane, 2026-10-03, Sirocco Wadi seed 57001: an M1A2 on its side yawing over
     // a 40-degree face read the envelope's 5.5 m/s as a rising floor, landed at
     // 12.8 m/s from a 2.8 m drop — 922 hp where its own 7.3 m/s costs 33 — and
-    // rebounded at 7.2 m/s).
+    // rebounded at 7.2 m/s). Ground falling away under the travel falls as fast as it does (the launch cap bounds only a
+    // rising one): a hull flying down a 45-degree flank at 14.6 m/s read the flank falling at 12, and landed on it 2.6 m/s
+    // harder than its own approach.
     ride.supportY = supportY;
     ride.groundV = Number.isFinite(drive.bounceMaxHeight)
       ? 0
-      : clamp(state.speed * Math.tan(state._terr.fitPitch), -RIDE_SUPPORT_V_CAP, RIDE_SUPPORT_V_CAP);
+      : clamp(state.speed * _airGrade, -RIDE_SUPPORT_V_FALL_CAP, RIDE_SUPPORT_V_CAP);
   }
   const contactY = supportY + RIDE_DROOP_M;
   const grounded = groundedAtStart
@@ -3334,6 +3365,7 @@ export function updateTank(
   state.slopeBlocked = false;
   _blockedSpeed = 0;
   _rotationDrop = 0;
+  _supportRate = 0;
   _tippedThisTick = false;
   _wholeTrackOnGround = true;
 
@@ -3460,6 +3492,17 @@ export function updateTank(
     dt,
   );
 
+  // The ground's grade along the travel under a hull in flight, per horizontal metre (physics lane, 2026-10-03). The
+  // track samples just taken lie at z·cos(pitch) along the travel, so their fit reads the grade times that cosine; past
+  // 72 degrees of pitch they stack over one point and two world samples read it instead. A hull that left a 45-degree
+  // flank nose-down read the flank as level, landed on it at 18.7 m/s "closing" against ground that was falling away at
+  // 14.4 m/s under its travel, and took 4632 hp.
+  if (!groundedAtStart) {
+    const cosPitch = Math.cos(pitchEff);
+    _airGrade = Math.abs(cosPitch) > AIR_GRADE_MIN_COS
+      ? Math.tan(state._terr.fitPitch) / cosPitch
+      : worldGradeAlong(hAt, state.pos.x, state.pos.z, drive.forwardX, drive.forwardZ);
+  }
   // Loaded suspension follows the support envelope; once the droop limit is
   // exceeded, the chassis uses an independent ballistic phase until landing.
   updateVerticalContact(state, groundedAtStart, dt, drive);

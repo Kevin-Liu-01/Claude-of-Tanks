@@ -104,6 +104,17 @@ check('land-upslope', 'medium', 'earth', [
   g('rebound off the face (m/s)', (m) => m.landingTravel[0]?.[2] ?? 0, 6.0, 'before: +6.59 m/s'),
 ]);
 
+// A loose flank taken downhill at speed (Ironworks endless horde, maps lane: a 420 hp fall off the slag tip's flank). A
+// flank the tracks can follow is followed; one too sharp to follow is flown off and landed on by its own grade.
+check('flank-down', 'medium', 'earth', [
+  g('lift off the flank (m)', (m) => m.liftM, 0.3, 'guard: a followable flank keeps the tracks on it'),
+  g('fall damage (hp)', (m) => m.fallDamageHp, 0, 'guard: no fall where the tracks could stay down'),
+  g('vertical pop (m)', (m) => m.popYMaxM, 0.12, 'before: 0.14 m bottoming out at its foot'),
+]);
+check('flank-steep', 'medium', 'earth', [
+  g('fall damage (hp)', (m) => m.fallDamageHp, 300, 'before: 4564 hp (the flank read as level under a nose-down hull)'),
+]);
+
 // An assault trench under a heavy hull (its 45-degree far wall under the nose, its tail over the trench): the wall is not
 // its grade (movement.ts contactAwareFit's span rule). The grade rule stopped it dead in the trench and it see-sawed.
 check('drive-assault-trench', 'heavy', 'earth', [

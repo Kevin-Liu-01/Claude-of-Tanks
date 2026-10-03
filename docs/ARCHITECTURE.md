@@ -830,9 +830,12 @@ contact constraints and cannot be crossed by residual uphill speed.
   travel's direction is a normal impulse (its vertical part `cos²θ` of the vertical closing law's, its horizontal part
   out of the travel). Downhill landings and a crawl under 1 m/s are left alone; the travel never passes through zero.
 - *Landing speed is the hull's own approach.* An airborne hull's ground moves only with its own travel over the
-  slope beneath it (`speed · tan(fit pitch)`), never with the support envelope's swing as the hull turns; a hard
-  landing (closing > 3 m/s) that does not rebound stops the closing at the contact. Falling support is followed
-  uncapped; only a rising one is bounded (12 m/s) as a launch.
+  slope beneath it (its grade along the travel, read from two world samples once the hull is pitched past 72
+  degrees and its track samples stack over one point), never with the support envelope's swing as the hull turns;
+  a hard landing (closing > 3 m/s) that does not rebound stops the closing at the contact. Falling support is
+  followed uncapped; only a rising one is bounded (12 m/s) as a launch.
+- *The step that leaves the ground moves.* A loaded ride that detaches integrates that step on gravity alone; it
+  used to stand still for it, a 13 cm stall in the motion of a hull leaving a face at 8 m/s.
 - *Structures are floors by the underside.* A part is a floor for a hull when its top is within the 0.55 m
   step-up of the hull's lowest underside point over that part's footprint (a 5 × 3 grid over the hull's footprint,
   the nose and tail rows lifted by the shell's own rise there; the track rows decide when any lies over the part) —
