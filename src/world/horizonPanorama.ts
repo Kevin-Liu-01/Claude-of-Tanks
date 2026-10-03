@@ -40,6 +40,11 @@ export const HORIZON_PANORAMA = Object.freeze({
    * direction from the eye, so rows between them drew triangles without changing a pixel */
   apronM: [1900, 2300] as readonly number[],
   wallElevDeg: [-4, 22] as readonly number[],
+  /** the farthest the shell's edge row stands out over a sea opening (m; the wall 160 m past it). The scene depth the
+   * cloud layer composites against is the shell's, not the far shore's painted on it, and its sea fog bank starts at
+   * 3.6 km (CLOUD_FOGBANK_RANGE_M) — paired capture d6: a shell at 4.5 km over Saltwind's channel took the bank,
+   * integrated to its far range, over the far shore (pale slabs with sheer ends, a box of cloud in the range) */
+  seaEdgeMaxM: 3200,
 });
 
 /** The far country's vocabulary per relief character (amplitudes in m; wavelengths in m). */
@@ -221,13 +226,16 @@ export function buildHorizonPanoramaShellGeometry(ringEdge: HorizonPanoramaOptio
   // else (the census, Saltwind's establishing view: a far range cut off sheer over the bay, a pale wedge beside it);
   // a ring without openings stays within 1.6 km, so its shell is unchanged
   const SPAN = 24, outerR = new Float32Array(n), runMax = new Float32Array(n), baseR = new Float32Array(n);
-  for (let c = 0; c < n; c++) outerR[c] = Math.hypot(ringEdge.positions[(start + c) * 3], ringEdge.positions[(start + c) * 3 + 2]);
+  for (let c = 0; c < n; c++) outerR[c] = Math.min(P.seaEdgeMaxM, Math.hypot(ringEdge.positions[(start + c) * 3], ringEdge.positions[(start + c) * 3 + 2]));
   for (let c = 0; c < n; c++) { let m = 0; for (let d = -SPAN; d <= SPAN; d++) m = Math.max(m, outerR[((c + d) % n + n) % n]); runMax[c] = m; }
   for (let c = 0; c < n; c++) { let sum = 0; for (let d = -SPAN; d <= SPAN; d++) sum += runMax[((c + d) % n + n) % n]; baseR[c] = sum / (2 * SPAN + 1); }
   for (let k = 0; k <= n; k++) {
     const c = k % n, i = start + c;
-    const ex = ringEdge.positions[i * 3], ez = ringEdge.positions[i * 3 + 2], eh = ringEdge.heights[i];
-    const a = Math.atan2(ez, ex), ca = Math.cos(a), sa = Math.sin(a);
+    const rx = ringEdge.positions[i * 3], rz = ringEdge.positions[i * 3 + 2], eh = ringEdge.heights[i];
+    const a = Math.atan2(rz, rx), ca = Math.cos(a), sa = Math.sin(a);
+    // (over a sea opening the edge row stands on the ring's marine faces at seaEdgeMaxM; they run on under the apron)
+    const er = Math.hypot(rx, rz), ek = er > P.seaEdgeMaxM ? P.seaEdgeMaxM / er : 1;
+    const ex = rx * ek, ez = rz * ek;
     const edgeR = baseR[c];
     let row = 0;
     const put = (x: number, y: number, z: number): void => {
@@ -297,12 +305,13 @@ function buildShellMaterial(): THREE.MeshBasicMaterial {
         float e = atan(d.y, length(d.xz));
         vec4 pano = texture2D(map, vec2(vPanoU, clamp((e - uPanoElev.x) / (uPanoElev.y - uPanoElev.x), 0.002, 0.998)));
         if (pano.a < 0.5) discard;
-        // the atlas holds display-encoded colour (more precision in the shadows): back to linear
-        diffuseColor.rgb *= pow(pano.rgb, vec3(2.2));
+        // the atlas holds display-encoded colour (more precision in the shadows), premultiplied so its filtered edge
+        // samples carry no black from the sky texels: divided back out, then back to linear
+        diffuseColor.rgb *= pow(pano.rgb / pano.a, vec3(2.2));
       }
       #endif`);
   };
-  material.customProgramCacheKey = () => 'horizon-panorama-v2';
+  material.customProgramCacheKey = () => 'horizon-panorama-v3';
   return material;
 }
 
@@ -836,7 +845,9 @@ void main() {
   col = mix(col, uFog * 0.95, 1.0 - exp(-max(0.0, rr - uFrame.z) / 13000.0));
   // into the cloud: a soft, broken fade over the deck's lowest 140 m
   float alpha = (1.0 - smoothstep(uChar4.y - 140.0, uChar4.y + 20.0, wp.y + 60.0 * noised(wp.xz / 260.0 + vec2(4.4, -2.9)).x)) * (1.0 - open);
-  gl_FragColor = vec4(pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2)), alpha);
+  // premultiplied (paired capture d6: the skylines carried a dark dotted outline — the shell's filtered, mipmapped samples
+  // at the edge averaged the land with the sky texels' black; the shell divides it back out)
+  gl_FragColor = vec4(pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2)) * alpha, alpha);
 }
 `;
 

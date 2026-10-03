@@ -12,6 +12,7 @@ import { HORIZON_FAR_ROWS } from './horizonFarRange.ts';
 import saltwind from './maps/saltwind.ts';
 import { horizonPanoramaDeckM } from './maps/horizon.ts';
 import { HORIZON_RELIEF_CHARACTERS } from './horizonRelief.ts';
+import { CLOUD_FOGBANK_RANGE_M } from '../engine/cloudWeatherLayers.ts';
 
 const P = HORIZON_PANORAMA;
 const n = 431;
@@ -63,6 +64,37 @@ const ringEdge = (() => {
     assert.ok(Math.abs(u - uWrapped) < 1e-4 || Math.abs(u + 1 - uWrapped) < 1e-4 || (k === 0 && Math.abs(u - 1) < 1e-4) || (k === n && Math.abs(u) < 1e-4),
       `a wall vertex's azimuth is its u (${u.toFixed(5)} vs ${uWrapped.toFixed(5)})`);
     assert.ok(Math.abs(v - 1) < 1e-6, 'the wall\'s top row is the strip\'s top');
+  }
+  geometry.dispose();
+}
+
+// --- a sea opening (the ring's marine faces out to 4.35 km over 40 columns, Saltwind's channel): the shell's edge row
+// stands on them at seaEdgeMaxM and nothing of the shell reaches the cloud layer's sea fog bank (paired capture d6: a
+// shell at 4.5 km took the bank, integrated to its far range, over the far shore painted on it) -------------------------
+{
+  const sea = (() => {
+    const rows = 3, positions = new Float32Array(n * rows * 3), heights = new Float32Array(n * rows);
+    for (let row = 0; row < rows; row++) for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2, open = row === rows - 1 && k >= 100 && k < 140, r = open ? 4350 : 1000 + row * 160, i = row * n + k;
+      positions[i * 3] = Math.cos(a) * r; positions[i * 3 + 2] = Math.sin(a) * r;
+      heights[i] = positions[i * 3 + 1] = open ? 0.4 : 40 + row * 10;
+    }
+    return { columns: n, positions, heights };
+  })();
+  const geometry = buildHorizonPanoramaShellGeometry(sea), pos = geometry.getAttribute('position');
+  let farthest = 0;
+  for (let i = 0; i < pos.count; i++) farthest = Math.max(farthest, Math.hypot(pos.getX(i), pos.getZ(i)));
+  assert.ok(P.seaEdgeMaxM + 160 < CLOUD_FOGBANK_RANGE_M[0] && farthest < CLOUD_FOGBANK_RANGE_M[0],
+    `the shell stays inside the sea fog bank's range (${farthest.toFixed(0)} m < ${CLOUD_FOGBANK_RANGE_M[0]} m)`);
+  const rowsN = 1 + P.apronM.length + P.wallElevDeg.length, strideN = n + 1;
+  for (let k = 0; k <= n; k++) for (let row = 1; row < rowsN; row++) {
+    const i = row * strideN + k, j = i - strideN;
+    assert.ok(Math.hypot(pos.getX(i), pos.getZ(i)) >= Math.hypot(pos.getX(j), pos.getZ(j)) - 1e-3, 'over the opening too the shell never folds back');
+  }
+  for (let k = 100; k < 140; k++) {
+    const r = Math.hypot(pos.getX(k), pos.getZ(k));
+    assert.ok(Math.abs(r - P.seaEdgeMaxM) < 1e-2 && Math.abs(pos.getY(k) - (0.4 - 0.05)) < 1e-3,
+      'over the opening the edge row stands on the marine faces at seaEdgeMaxM');
   }
   geometry.dispose();
 }
@@ -136,6 +168,9 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
     'the strip bares the peaks: rock over their footprint, no snow on their faces');
 }
 assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('texture2D(uHeight, g).g'), 'the strip zones its forest and snow over the plinth');
+// the atlas is premultiplied (paired capture d6: a dark dotted outline on every skyline, the shell's filtered samples
+// averaging the land with the sky texels' black)
+assert.ok(/gl_FragColor = vec4\(pow\([^;]*\) \* alpha, alpha\);/.test(HORIZON_PANORAMA_SHADERS.strip), 'the strip writes premultiplied colour');
 
 // --- the far country's deck (gauntlet wave 6: over Verdant's and Frontier Basin's scattered cumulus the far crests were
 // capped and faded at the default 1400 m deck): a closed cloudscape keeps the deck, scattered clouds leave the summits
