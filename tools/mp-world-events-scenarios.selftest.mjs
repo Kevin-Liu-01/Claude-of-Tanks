@@ -373,9 +373,16 @@ ploughWorld.release?.();
 // ------------------------------------------------------------ D. the host dies between a fall and its frame
 /**
  * One migration: the real host core (virtual time) with the host's own seat driving north into two fences, a peer (bob)
- * over the scripted WebRTC world; bob's snapshots are cut from the second fence's fall (keyframeNewer: from before the
- * first one, so a keyframe sealed between the falls is newer than bob's newest frame), the event still arrives, and the
- * host closes. Bob's retained state builds the boot as MatchSession does, and a second core boots from it.
+ * over the scripted WebRTC world; bob's snapshots are cut from the second fence's fall (keyframeNewer: from just before
+ * the first one, so a keyframe sealed between the falls is newer than bob's newest frame), the event still arrives, and
+ * the host closes. Bob's retained state builds the boot as MatchSession does, and a second core boots from it.
+ *
+ * The scenario owns its ordering (2026-10-02, fix/mp-scenarios-determinism): the core seals no keyframe on its own
+ * cadence after its first — the receipt seals each one (`core.broadcastKeyframe`) at the tick it needs and waits until
+ * bob holds it — and the host's hull stands still until bob holds a keyframe and the boot configuration. Before, a
+ * keyframe sealed every 500 ms of virtual time could land on the tick of bob's newest frame (1 run in 10 under load:
+ * the seats' Web Crypto handshakes ride the thread pool, so when the hull set off — and so which tick each fence fell
+ * on — drifted with the machine's load against that cadence), and the "frame newer" case found the two equal.
  */
 async function migrationScenario({ keyframeNewer }) {
   let nowMs = 100_000;
@@ -431,7 +438,8 @@ async function migrationScenario({ keyframeNewer }) {
     worlds.push(world);
     cores.push(createMatchHostCore({
       port: pair.worker, buildWorld: async () => world, now: time.clock, schedule: time.schedule, setTimer: time.setTimer, clearTimer: time.clearTimer,
-      keyframeIntervalMs: 500, configIntervalMs: 1500, reportIntervalMs: 2000, endedLingerTicks: 30,
+      // one keyframe at the first housekeeping, then only the ones the receipt seals (sealKeyframe)
+      keyframeIntervalMs: Number.MAX_SAFE_INTEGER, configIntervalMs: 1500, reportIntervalMs: 2000, endedLingerTicks: 30,
     }));
     return pair.main;
   };
@@ -452,9 +460,11 @@ async function migrationScenario({ keyframeNewer }) {
   const starting = host.start(config);
   await settle(12);
   await starting;
+  // the hull stands until bob holds what a migration boots from (released below)
+  let drive = false;
   const hostClient = new MatchClient({
     transport: new MigratingTransport(host.transport), token: tokenFor(0, 'host', 'alpha', 'm1a2'), clock: time.clock,
-    controls: () => ({ throttle: 1, steer: 0, brake: false, fire: false, aimLocked: false, aimYaw: 0, aimPitch: 0, aimDistance: 300, shellSlot: 0, actionPresses: 0 }),
+    controls: () => ({ throttle: drive ? 1 : 0, steer: 0, brake: !drive, fire: false, aimLocked: false, aimYaw: 0, aimPitch: 0, aimDistance: 300, shellSlot: 0, actionPresses: 0 }),
   });
   clients.push(hostClient);
   hostClient.connect();
@@ -467,19 +477,40 @@ async function migrationScenario({ keyframeNewer }) {
   const bobClient = new MatchClient({ transport: bobTransport, token: tokenFor(1, 'bob', 'bravo', 't90m'), clock: time.clock });
   clients.push(bobClient);
   bobClient.connect();
-  for (let n = 0; n < 240 && !(bobClient.retainedMigration().keyframe && bobClient.retainedMigration().config); n++) await step();
-  assert.ok(bobClient.retainedMigration().keyframe && bobClient.retainedMigration().config, 'D: the peer retained the sealed keyframe and boot configuration');
+  /** Seal a keyframe at the host's current tick and deliver it (no virtual time passes while it is sealed and sent). */
+  const sealKeyframe = async () => {
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const tick = cores[0].actor.tick;
+      await cores[0].broadcastKeyframe();
+      for (let n = 0; n < 400 && (bobClient.retainedMigration().keyframe?.tick ?? -1) < tick; n++) await settle(1);
+      if (bobClient.retainedMigration().keyframe?.tick === tick) return tick;
+      await step(); // the first housekeeping's keyframe was still sealing: let it land, seal again
+    }
+    throw new Error('D: no sealed keyframe reached bob');
+  };
+  for (let n = 0; n < 1800 && !(bobClient.welcome && bobClient.retainedMigration().config); n++) await step();
+  assert.ok(bobClient.welcome && bobClient.retainedMigration().config, 'D: the peer was welcomed and retained the boot configuration');
+  const firstKeyframe = await sealKeyframe();
   const worldA = worlds[0];
   const hullA = cores[0].actor.entityForWireId(1);
-  assert.ok(!worldA.getObstacles()[0].crushed, `D: the host is still short of the first fence (z ${hullA.state.pos.z.toFixed(1)})`);
-  if (keyframeNewer) cutSnapshots = true;
-  // drive on until the second fence falls; cut bob's snapshots from that tick (its event is already on the wire)
+  const fenceZ = (index) => (worldA.getObstacles()[index].min[2] + worldA.getObstacles()[index].max[2]) * 0.5;
+  assert.ok(!worldA.getObstacles()[0].crushed, `D: the hull stood short of the first fence (z ${hullA.state.pos.z.toFixed(1)})`);
+  drive = true;
+  // drive on: (keyframeNewer) cut bob's snapshots a few metres short of the first fence, seal a keyframe once it is down;
+  // cut them from the second fence's fall (its event is already on the wire: `between` runs before the deliveries)
   let fellAt = -1;
-  for (let n = 0; n < 900 && fellAt < 0; n++) {
-    await step(() => { if (worldA.getObstacles()[1].crushed && fellAt < 0) { fellAt = cores[0].actor.tick; cutSnapshots = true; } });
+  let keyframeAfterFirst = null;
+  for (let n = 0; n < 1200 && fellAt < 0; n++) {
+    await step(() => {
+      if (keyframeNewer && !cutSnapshots && fenceZ(0) - hullA.state.pos.z < 7) cutSnapshots = true;
+      if (worldA.getObstacles()[1].crushed && fellAt < 0) { fellAt = cores[0].actor.tick; cutSnapshots = true; }
+    });
+    if (keyframeNewer && keyframeAfterFirst === null && worldA.getObstacles()[0].crushed) keyframeAfterFirst = await sealKeyframe();
   }
   assert.ok(fellAt > 0, 'D: the host crushed both fences');
+  if (keyframeNewer) assert.ok(keyframeAfterFirst !== null && keyframeAfterFirst < fellAt, `D: a keyframe was sealed between the falls (tick ${keyframeAfterFirst}, the second fell at ${fellAt})`);
   for (let n = 0; n < 3; n++) await step();
+  assert.equal(bobClient.stats().reconnects, 0, 'D: bob\'s link held (the cut stayed under the stall watchdog)');
   const old = cores[0].actor.authority.snapshot({ tick: 0, serverTimeMs: 0, viewerId: 'migration', ackInputSeq: null }).meta;
   assert.deepEqual([...old.destroyedObstacleIndices].sort((a, b) => a - b), [0, 1], 'D: the old host destroyed both fences');
   host.stop(CLOSE_REASON.ROOM_CLOSED, 'host left');
@@ -527,7 +558,7 @@ async function migrationScenario({ keyframeNewer }) {
   host2.stop();
   await settle(4);
   for (const client of clients) client.dispose();
-  return `${keyframeNewer ? 'keyframe newer' : 'frame newer'}: fall at tick ${fellAt}, newest frame ${latest.tick}, keyframe ${keyframe.tick}, boot from ${keyframeNewer ? 'the keyframe' : 'the frame'} with ${state.frame.destroyed.length} destroyed at revision ${state.frame.meta.destructibleRevision}`;
+  return `${keyframeNewer ? 'keyframe newer' : 'frame newer'}: keyframes sealed at ${[firstKeyframe, keyframeAfterFirst].filter((tick) => tick !== null).join(' and ')}, fall at tick ${fellAt}, newest frame ${latest.tick}, boot from ${keyframeNewer ? 'the keyframe' : 'the frame'} with ${state.frame.destroyed.length} destroyed at revision ${state.frame.meta.destructibleRevision}`;
 }
 const migrationReport = [await migrationScenario({ keyframeNewer: false }), await migrationScenario({ keyframeNewer: true })];
 
