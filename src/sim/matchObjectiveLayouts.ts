@@ -20,8 +20,9 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   cliffbridge: { kickoff: { x: 130, z: 0 }, zones: [{ x: 0, z: -172 }, { x: 0, z: 172 }, { x: -130, z: 0 }] },
   // Amberford (layout brief, 2026-10-03): the three greens — the sunken lane's green in the south-bank orchards near the
   // southern deployment, the ford green on the line of equal drives and the fair green near the northern arc; the
-  // kickoff on the north-bank meadow between the bridge and the ford.
-  autumn: { kickoff: { x: 119, z: 34 }, zones: [{ x: 22, z: -192 }, { x: 154, z: 54 }, { x: 0, z: 102 }] },
+  // kickoff on the north-bank meadow between the bridge and the ford (2026-10-03: 8 m north, where the bounded search
+  // seats it beside the meandering river).
+  autumn: { kickoff: { x: 119, z: 42 }, zones: [{ x: 22, z: -192 }, { x: 154, z: 54 }, { x: 0, z: 102 }] },
   // Frosthollow (layout brief, 2026-10-03): three zones across the valley's waist — the terrace hay meadow behind the
   // sawmill, the Bystra crossing's east-bank landing and the moraine crossroads (the last two graded aprons in the map
   // file); the kickoff on the Bystra crossing itself.
