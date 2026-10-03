@@ -87,7 +87,7 @@ export function choreograph(scene, { loopMs, xfadeMs, style = 'sectors', flankDe
         const side = lateral(pose, [cam.pos[0], cam.pos[2]]) > 0 ? 1 : -1; // lens on the right -> swing left (+)
         pick.b = wrap(pick.b + side * room(pick)); pick.flank = true;
         const yaw = rad(pose.h + pick.b), q = [pose.p[0] + Math.sin(yaw) * 75, pose.p[1] + Math.cos(yaw) * 75];
-        effects.push({ type: 'explosion', at: [+q[0].toFixed(2), +q[1].toFixed(2)], tMs: pick.t + 140, params: { size: 'large' }, choreo: true },
+        effects.push({ type: 'explosion', at: [+q[0].toFixed(2), +q[1].toFixed(2)], tMs: pick.t + 140, params: { size: 'large', cause: 'shot' }, choreo: true },
           { type: 'debris', at: [+q[0].toFixed(2), +q[1].toFixed(2)], tMs: pick.t + 170, params: { count: 34, speedMps: 15, hot: 0.4, scale: 1.1 }, choreo: true });
         if (pick === plan[0]) center = plan.find(e => !e.flank)?.b ?? wrap(pick.b - side * room(pick));
       }

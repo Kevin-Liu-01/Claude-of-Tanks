@@ -118,7 +118,8 @@
     -37
    ],
    "params": {
-    "size": "large"
+    "size": "large",
+    "cause": "shot"
    },
    "tMs": 1400
   },
@@ -145,7 +146,8 @@
     -53
    ],
    "params": {
-    "size": "large"
+    "size": "large",
+    "cause": "shot"
    },
    "tMs": 3000
   },
@@ -183,7 +185,8 @@
     -26
    ],
    "params": {
-    "size": "huge"
+    "size": "huge",
+    "cause": "shot"
    },
    "tMs": 4700
   }

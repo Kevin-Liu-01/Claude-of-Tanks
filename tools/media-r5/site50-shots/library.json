@@ -7,6 +7,12 @@
      "sha256": "35aa15ea03bda0b2bc09e10b532d2bce5bafeba8d0ef1afb0c6f9ce9754b65dd",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "476ec0b3255c80c47efc8e57910dc2d6109f8aa57dfbef00fce6af823a35ed92",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [
@@ -16,8 +22,12 @@
      "sceneSha256": "35aa15ea03bda0b2bc09e10b532d2bce5bafeba8d0ef1afb0c6f9ce9754b65dd",
      "renderer": "fcf58b091",
      "at": "2026-10-03T16:55:40.162Z",
-     "kept": "shots/media-r5/site50/{renders,deliver}",
-     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5"
+     "kept": "shots/media-r5/site50/versions/r4a",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5",
+     "superseded": {
+      "at": "2026-10-03T18:31:40.585Z",
+      "why": "floating fire: shell hits used the ammo-rack tank blast, whose turret-ring fire burns at hull height with no tank under it"
+     }
     }
    ],
    "title": "A Leopard 2A6 pushes up the main street of burning Steinburg",
@@ -41,6 +51,12 @@
      "sha256": "8d4ad751d130b9f625baa5f92c0acd411e6cd29bee7f9886eacb5823bd230349",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "548a68c5742c69b0365f359e1e763198ca0b519ec40763c33361cfa5a03295b3",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [
@@ -79,6 +95,12 @@
      "sha256": "8779f583bab04a52ddb77e1ffa1f6d3139352b709999a83dc0faa28ee5d8f95d",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "c98c00ba27c6643134e13521aa9893c72ec7f42dbfef2a4efb4f05bb7bc4bea7",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [
@@ -117,6 +139,12 @@
      "sha256": "91a59b71b803c4ac2aa6eb38cd96eba2ac617cacd40e90c619a7387390ca0a9a",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "80b15aa2230146b0313fc8d248e484bc9ccaec1731ab352a4bb92c14d52cae66",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [
@@ -155,6 +183,12 @@
      "sha256": "21d1307fb1b3b96030d18c5cd3ea90ac5ec8160eba02aad6dee61f70278f9657",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "f37b28b5ca292cf9a5f90a48a8f7411e367dcd66fd385ffc3915aac6370c4f87",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [
@@ -164,8 +198,12 @@
      "sceneSha256": "21d1307fb1b3b96030d18c5cd3ea90ac5ec8160eba02aad6dee61f70278f9657",
      "renderer": "fcf58b091",
      "at": "2026-10-03T16:55:40.162Z",
-     "kept": "shots/media-r5/site50/{renders,deliver}",
-     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5"
+     "kept": "shots/media-r5/site50/versions/r4a",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5",
+     "superseded": {
+      "at": "2026-10-03T18:31:40.585Z",
+      "why": "floating fire: shell hits used the ammo-rack tank blast, whose turret-ring fire burns at hull height with no tank under it"
+     }
     }
    ],
    "title": "A T-14 Armata advances past the barns of Verdant Fields",
@@ -189,6 +227,12 @@
      "sha256": "6dd1a1dea25fca90e993f68a1d546e45141600d2dd9752e1ee1cbde6fdf688d6",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "f0d84df44ff0d83f567b8a962a6d7ca22ac2b85854ed4ec801d7e9cd47c51c69",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [
@@ -227,6 +271,12 @@
      "sha256": "b7ba784dc37dd4c7c4132e6d56068975927d55a45c76808b83534c718d3c2e45",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "f55d2ee8df0d399a20c0536c16136b9a9ce30e496bc95706cd82147f6803d85a",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [
@@ -236,8 +286,12 @@
      "sceneSha256": "b7ba784dc37dd4c7c4132e6d56068975927d55a45c76808b83534c718d3c2e45",
      "renderer": "fcf58b091",
      "at": "2026-10-03T16:55:40.162Z",
-     "kept": "shots/media-r5/site50/{renders,deliver}",
-     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5"
+     "kept": "shots/media-r5/site50/versions/r4a",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5",
+     "superseded": {
+      "at": "2026-10-03T18:31:40.585Z",
+      "why": "floating fire: shell hits used the ammo-rack tank blast, whose turret-ring fire burns at hull height with no tank under it"
+     }
     }
    ],
    "title": "A Stridsvagn 122 crosses the frozen lake through shellfire",
@@ -261,6 +315,12 @@
      "sha256": "2b8dd6f21f05eaade4ac245b0d75444d806925ab7c038e25ff76a98047a7f73e",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "2d3e79ce44b2d5d5506ffdab5fc32112313e2ed3acf36d51948c76885351328a",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [
@@ -299,6 +359,12 @@
      "sha256": "f44416735857f9c09155ed9e76dee318373c88bb4ebbffd70fd131669d55b24d",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "76542ede6f5c4c6fb5ad1784840168039d7e1858dfe8e283480cb32e9387908e",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [
@@ -337,6 +403,12 @@
      "sha256": "491cc0f16752d694087bcd0e86727e7488fe77a83bcd9051b0f249c7c4c5dcbb",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "588a7b5edd95a2fd8bd807b489942ad3849184c23b6f0a2a579bc5da5a4b536d",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -361,6 +433,12 @@
      "sha256": "5ee75b9ea3d8c66a1bb7d1e318659938a144c1c334a4c95204834e36851b8a9b",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "679da03c1b2440cf9fb6ff3f4dbb635d7ca2b8d803fe10e6c2b9e1b7c5ec6fa1",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -385,6 +463,12 @@
      "sha256": "f0f447a31f320af00621671a6247138ec0c439fee1ee893422ac5153cd8dd46c",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "8c2918bb13a527a87bf6ca85e291967bea1f0f08e8a47e19c9b23afcbed10385",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -409,6 +493,12 @@
      "sha256": "9728aa3ad7fa1f23ff81331893a9733e6bac3b6e70e300979e2d0e2335de1652",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "6904ae43eaf8747573b35ee42003581eb0464dda117d06ffe32f0236768f85e0",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -433,6 +523,12 @@
      "sha256": "b9e55888e73f50044511afe1c2a680e0a11f855a590785b3e3f36b3282ba163f",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "d481ccdfb87bf687c8bc1b315a21a6aaf449e2bf57a9a9ab2164d569400037e5",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -457,6 +553,12 @@
      "sha256": "a971ae1b752043edd2c456dd8b9e548fdfbcc6bf676d99fdf47df4b952e1e90a",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "9dd3c4432f8bb7ca5a60534eb8e08190ce72635448fd2384a48581b6bed6b30b",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -481,6 +583,12 @@
      "sha256": "6265337986fb7d228c29b1d03b3a3ff9c016462f56852f9ef80d57531d06f479",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "668fe111367b25512e850143e57be33c8970d394c2cffb69f77549225267cc57",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -505,6 +613,12 @@
      "sha256": "c897293af6b6e26e88144c94502ffd7192470a571ca6c75268950458d4ec171b",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "a13b5c5e266108125fa0b1bb00a53a2a38d3f74d42b862d811cfcb9bc5d4efe9",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -553,6 +667,12 @@
      "sha256": "9417c86dc934e0211cd7a691c9de53ee05c57d697135adf6a98a2b407a4d2cff",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "5e29fede10d863af26e667803c237ea6fcd06933d09e48248a11ff63af40fcc7",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -577,6 +697,12 @@
      "sha256": "e681349fce9efd1d1b3ac63f3e2f4b13171cecb5799dc98ac1a7095a324681b1",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "72fde7c53a504d6706e586a61a8c7cdabd7867fd5fd6a5b6b50a73b692b3961e",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -601,6 +727,12 @@
      "sha256": "7f1c53794ff8b4bedce1e49bf4ad7308f90c3be2b8ab6e5fac3bc1e9686ece9e",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "57f63e3fbb6e1fe09eb013d4c0d30036635dc71e1ee63900b87358b59b6dd9ea",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -649,6 +781,12 @@
      "sha256": "089aa9cd33389e73d6e3fb947f286fe40dde61ff7395fa290ed7929d6ffcccd3",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "d654b74fbebdaa021daee23e53a83fa1d62a74642af22dd97ebc693dcab708a7",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -673,6 +811,12 @@
      "sha256": "c29d4951c135aa8cdc82e45659f73ca31cd02acccc48809c6d38dc0e17287c94",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "e3b18c3390ef95cd0662f4d40c484bb2c2350f07c49ed4a31ded97eb9d7a991b",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -697,6 +841,12 @@
      "sha256": "7a1d220b5fb4a1173d1c1a1012456460fcbea12ac09d943b3be19f30164a0775",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "07c40f31a4786d951b9871d9b0309b7b102b04840d15b47416110a43e411827e",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -721,6 +871,12 @@
      "sha256": "4b8ba383071f44ec040da94cdfa04a1df869c87b58e5c53fe7ca06be953ec098",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "99d3d2a2a9c1e0e3f970c4f2f8f29d83028be162d04aad8f21279f4d38d35e3a",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -769,6 +925,12 @@
      "sha256": "0159b853a58c2a1bbc50f8a5e690e0f019024fab041d31ae8d7410c01828b064",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "a11bcc12783e0d0db49e6bf8ab0719fb1edd8d1815f21b08ffb23e5267882576",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -817,6 +979,12 @@
      "sha256": "dfb851e0d9f396c7492749f147e29670cafdf89c6cc5ac1c190ab087952fbf5f",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "adf292009191be35b3fdd4eed04400355fc9318b87a57bdb05bdceec61638660",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -841,6 +1009,12 @@
      "sha256": "68a984a7dac944ae941c804f698dfc993190ca342f6126c5cedda7b9fa604b4a",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "4dbc2ce4e0e193bd9be755e81085b42082bd19fc3702e30afa949bf7478700fa",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -865,6 +1039,12 @@
      "sha256": "8e861b0e96828a5089f4f783421597bbe45ee8f8d241046664f8430be3a68427",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "ec1a9f90ebd96c1475b0a8ed3cc4a6b6e529f3162cfa216c9a1866874d33d6c3",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -889,6 +1069,12 @@
      "sha256": "0e1a2fb01cbef8dac2c83bca81cba5b3f029097ebeba1f548dd80c61b3f895b2",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "3b53e5e1b50af1d85c99d34f9279014a125c7b4e2d90f2ccfc0cdba33c0b7016",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -937,6 +1123,12 @@
      "sha256": "4681f819a8035e5dc9822e9f8008977033b16b614e939f8125495b29f3f30601",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "64c37b5d47c63535bda0da201f1e508acf15fc8857aa63cb35dfdb9eb4980acf",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -985,6 +1177,12 @@
      "sha256": "30a2f6556a889c8e41e8d2c59b1b2677ea7db9e69fd02f29ef6c0b4cad65b793",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "ed0ebe8e5697d5702ec7940138cc03493e647fc01aa63a3aacc03993c8861c9e",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -1033,6 +1231,12 @@
      "sha256": "8ddca8884fe3fc9ae1cb52711c8b14e9474aa05790355a762b0d76ee66e6943d",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "add83b9b61065c8f44dc0e59679a3164f9cc527e0448b94b58f86641ec32f5b2",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -1081,6 +1285,12 @@
      "sha256": "f934bea01858370d3e4ee3b579845e4ef276512881e05dcafae723cce321c0e4",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "ec300a0f280ab64dd35c704692b0af8936235cc978ac0bafcc9fce6eb67397c3",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -1105,6 +1315,12 @@
      "sha256": "4c0ddf25364284ffada8be3d9c948b1ce1d0328b249611c71ff404881b68925c",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "f4242e75600d3634246e41e031d94f10d1c2758181d083f348a7964fcf65f80d",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -1129,6 +1345,12 @@
      "sha256": "e31a60f9f3044dae44680e22f9ff78d1cfd43131249960e354e2acac088a9a51",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "229dcbc70553c70cdc84d16b8171f58fb567e64e6594d466e2e822672bd9d73b",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -1153,6 +1375,12 @@
      "sha256": "1fb491308581cf4f6d84f128b6ac7dfbec240fbf673657830ccb639b280ed2df",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "bbf93b237609daab192947398ae9220472fdabc7797246ea017e1b813f5838f2",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -1177,6 +1405,12 @@
      "sha256": "13fac84dc78af048da88df3631f1b9c0570d7b644a984710f59b774cb0742409",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "d5c3bc70393f2248f76386eeb7cb833362cdf339d78813ffaba7270406dbd53f",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -1273,6 +1507,12 @@
      "sha256": "0df8060d4520b666b25cd8852ca1467b0f4614661a03766dff1d2cb7ca15725e",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "fbf8143858c1cc2952aa94d4a7bb1cc333a845b60752e02e0eb1eab725615faf",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],
@@ -1297,6 +1537,12 @@
      "sha256": "aef7a0c487741e3b4fbff1995f14c86970ef8325726f3d2b13cb50c8da1abbe9",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "700ea188ff60137f6e17aa6f00fa1ed21b9414db1f515c059ed5497d3a6ecb0f",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
     }
    ],
    "renders": [],

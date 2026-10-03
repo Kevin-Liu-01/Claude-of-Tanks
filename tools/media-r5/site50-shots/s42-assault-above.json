@@ -167,7 +167,8 @@
     20.91
    ],
    "params": {
-    "size": "huge"
+    "size": "huge",
+    "cause": "shot"
    },
    "tMs": 1800
   },

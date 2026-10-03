@@ -135,7 +135,8 @@
     68.08
    ],
    "params": {
-    "size": "large"
+    "size": "large",
+    "cause": "shot"
    },
    "tMs": 2000
   },
@@ -174,7 +175,8 @@
    ],
    "tMs": 3440,
    "params": {
-    "size": "large"
+    "size": "large",
+    "cause": "shot"
    },
    "choreo": true
   },

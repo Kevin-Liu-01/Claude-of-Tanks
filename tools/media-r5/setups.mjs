@@ -91,7 +91,7 @@ export const kill = (actor, tMs, extra = {}) => ({ type: 'tank_kill', actor, tMs
 export const pen = (actor, tMs, caliberMm = 120) => ({ type: 'impact', actor, tMs, params: { kind: 'pen', caliberMm } });
 export const burn = (actor, tMs) => ({ type: 'burning', actor, tMs, params: {} });
 export const smoke = (actor, tMs) => ({ type: 'engine_smoke', actor, tMs, params: {} });
-export const boom = (at, tMs, size = 'large') => ({ type: 'explosion', at, tMs, params: { size } });
+export const boom = (at, tMs, size = 'large', extra = {}) => ({ type: 'explosion', at, tMs, params: { size, ...extra } });
 export const dust = (actor, tMs, count = 10, intensity = 0.9) => ({ type: 'dust', actor, tMs, params: { count, intensity } });
 export const mg = (actor, tMs, count = 9) => ({ type: 'mg_burst', actor, tMs, params: { count } });
 export const barrage = (at, tMs, count = 6, radiusM = 14, extra = {}) => ({ type: 'barrage', at, tMs, params: { count, radiusM: Math.min(16, radiusM), size: 'mixed', durationS: 3.5, ...extra } });
@@ -104,7 +104,7 @@ export const embers = (at, tMs, extra = {}) => ({ type: 'embers', ...(typeof at 
 export const debris = (at, tMs, extra = {}) => ({ type: 'debris', ...(typeof at === 'string' ? { actor: at } : { at }), tMs, params: { count: 30, speedMps: 18, hot: 0.6, scale: 1, ...extra } });
 export const shockwave = (at, tMs, extra = {}) => ({ type: 'shockwave', at, tMs, params: { radiusM: 22, strength: 1.2, ...extra } });
 export const fireField = (at, tMs, extra = {}) => ({ type: 'fire_field', at, tMs, params: { radiusM: 5, durationS: 30, intensity: 1, smoke: true, ...extra } });
-export const huge = (at, tMs) => ({ type: 'explosion', at, tMs, params: { size: 'huge' } });
+export const huge = (at, tMs, extra = {}) => ({ type: 'explosion', at, tMs, params: { size: 'huge', ...extra } });
 /** A point in the hero's frame at the effect's own time (resolved by buildShot): boom(H(-3, 4), t). */
 export const H = (lat, lon) => ({ hero: [lat, lon] });
 

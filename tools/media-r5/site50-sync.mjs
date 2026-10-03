@@ -5,6 +5,7 @@
 //     a few metres, and a knockout round must stay laid on its target), every allied track rebuilt on a grid at
 //     the resolved positions (within the Studio's 64-key cap; a track already cut at the cap runs on along its last
 //     leg); the flank and lens shots' rounds go out on their resolved bearings;
+//   - effect parameters from the planned twin of each resolved effect (a shell hit's blast cause, 2026-10-03);
 //   - meta.paint and meta.turrets refreshed.
 //   node tools/media-r5/site50-sync.mjs <resolvedDir> [<resolvedDir> ...]
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -28,6 +29,14 @@ for (const dir of process.argv.slice(2)) {
       a.camo = p.camo; a.camoSeed = p.camoSeed;
     }
     if (scene.actors.length !== plan.actors.length) throw new Error(`${f}: ${scene.actors.length} actors resolved, ${plan.actors.length} planned`);
+    // effect parameters follow the plan (they never move a thing; positions stay as the lab placed them): each resolved
+    // effect takes the params of its planned twin — same type, time and actor, the nearest when several match
+    for (const e of scene.effects.filter(x => !x.choreo)) {
+      const twins = plan.effects.filter(p => !p.choreo && p.type === e.type && p.tMs === e.tMs && (p.actor ?? null) === (e.actor ?? null));
+      const d = p => (Array.isArray(p.at) && Array.isArray(e.at) ? Math.hypot(p.at[0] - e.at[0], p.at[1] - e.at[1]) : 0);
+      const twin = twins.sort((a, b) => d(a) - d(b))[0];
+      if (twin) e.params = { ...e.params, ...twin.params };
+    }
     // turrets, planned again on the resolved geometry (flank rounds from an earlier sync come out first)
     const planFx = plan.effects.filter(e => e.choreo);
     scene.effects = scene.effects.filter(e => !e.choreo && !planFx.some(p => sameFx(p, e)));

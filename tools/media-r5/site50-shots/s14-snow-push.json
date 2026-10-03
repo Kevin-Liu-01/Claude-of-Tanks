@@ -134,7 +134,8 @@
     -69.0451537041051
    ],
    "params": {
-    "size": "large"
+    "size": "large",
+    "cause": "shot"
    },
    "tMs": 2100
   },

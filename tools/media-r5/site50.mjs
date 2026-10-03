@@ -8,7 +8,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { buildShot, fire, kill, pen, burn, smoke, boom, dust, mg, barrage, exhaust, flare, embers, debris, fireField, huge, H } from './setups.mjs';
+import { buildShot, fire, kill, pen, burn, smoke, boom as blast, dust, mg, barrage, exhaust, flare, embers, debris, fireField, huge as hugeBlast, H } from './setups.mjs';
 import { setById, T, pictureFor, LIGHT_READY, sunFor, RIG } from './sets.mjs';
 import { CAST, CAST_NAMES } from './cast.mjs';
 import { blockedFraction } from './camera-clearance.mjs';
@@ -91,6 +91,12 @@ S.oGolden = { ...S.oMinaret, id: 'sunscar-golden-minaret', time: 'golden', lineu
 
 // combat beats: a burning wreck with its smoke column, a shell landing near the hero with flying debris, a knockout
 const wreck = foe => [burn(foe, 0), smoke(foe, 0), embers(foe, 0)];
+// Shell hits borrow the tank-destruction blast (owner 2026-10-03: "fine"), but as a shot, not an ammo-rack kill: the
+// ammo-rack blast also lights a turret-ring fire, cook-off jets and a hatch at hull height, and with no tank under them
+// that fire floated in mid-air ("the only weird thing is there's a floating fire").
+const SHOT = { cause: 'shot' };
+const boom = (at, tMs, size = 'large') => blast(at, tMs, size, SHOT);
+const huge = (at, tMs) => hugeBlast(at, tMs, SHOT);
 const hitNear = (lat, lon, tMs, size = 'large') => [boom(H(lat, lon), tMs, size), debris(H(lat, lon), tMs + 30, { count: 34, speedMps: 15, hot: 0.4, scale: 1.1 })];
 const incoming = (foe, lat, lon, tMs) => [fire(foe, tMs), ...hitNear(lat, lon, tMs + 110)];
 const knockout = (shooter, target, tMs) => [fire(shooter, tMs), pen(target, tMs + 90), kill(target, tMs + 210), debris(target, tMs + 230, { count: 44, speedMps: 20, hot: 0.7, scale: 1.2 })];
