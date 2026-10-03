@@ -12,13 +12,26 @@ interface Shield {
 }
 const scales=new WeakMap<THREE.Object3D,number>();
 const shields=new WeakMap<THREE.Object3D,Shield>();
+// Wreck/repair snapshots can retain a highlight after its live effect is gone.
+// Weak ownership receipts let the Garage unwrap those saved materials later.
+const highlightSources=new WeakMap<THREE.Material,THREE.Material>();
+function originalMaterial(material:THREE.Material):THREE.Material {
+  return highlightSources.get(material)??material;
+}
 
 /** End the effect before a surviving battle visual is adopted by the Garage. */
-export function clearJuggernautVisual(root:THREE.Object3D):void {
+export function clearJuggernautVisual(root:THREE.Object3D,restoreSavedMaterials=false):void {
   shields.get(root)?.dispose();
   const scale=scales.get(root)??1;
   if(scale!==1)root.scale.multiplyScalar(1/scale);
   scales.delete(root);
+  if(restoreSavedMaterials)root.traverse(object=>{
+    if(!(object instanceof THREE.Mesh))return;
+    const current=object.material;
+    if(Array.isArray(current)){
+      if(current.some(m=>highlightSources.has(m)))object.material=current.map(originalMaterial);
+    }else object.material=originalMaterial(current);
+  });
 }
 
 /** Shade the actual vehicle surfaces: no enclosing geometry, extra draw calls,
@@ -48,7 +61,8 @@ export function syncJuggernautVisual(root:THREE.Object3D,_dims:{widthM:number;hu
       if(!(object instanceof THREE.Mesh))return;
       const bound=bindings.get(object);
       if(bound&&object.material===bound.highlight)return;
-      const original=object.material;
+      const current=object.material;
+      const original=Array.isArray(current)?current.map(originalMaterial):originalMaterial(current);
       const highlight=Array.isArray(original)?original.map(m=>highlightMaterial(m,shield!)):highlightMaterial(original,shield!);
       if(Array.isArray(original)?!(highlight as THREE.Material[]).some((m,i)=>m!==original[i]):highlight===original)return;
       if(bound){bound.original=original;bound.highlight=highlight;}
@@ -152,5 +166,6 @@ function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
         #include <opaque_fragment>`);
   };
   material.customProgramCacheKey=()=>cacheKey+'|juggernaut-surface-waves-v3';
+  highlightSources.set(material,source);
   shield.materials.set(source,material);return material;
 }
