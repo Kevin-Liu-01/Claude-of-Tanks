@@ -42,6 +42,7 @@ import {
 } from './treeGrowth.ts';
 import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
+import type { LandFieldSample } from './landUse.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -3574,6 +3575,10 @@ function* vegetationBuildSteps(
   // Map-wide scatter evaluates this field hundreds of thousands of times.
   // Reuse the result record so those reads stay allocation-free.
   const _splatScratch = { n1: 0, n2: 0, mA: 0 };
+  // ground lane (2026-10-03): the field the terrain draws under a tuft (the height field's landUse.ts hook; absent on a
+  // map without fields and in the sandboxed harnesses) — a reused record, inline so the section needs no import
+  const _landScratch: LandFieldSample = { active: 0, crop: 0, edgeM: 0, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0 };
+  const landUseAt = heightField._landUseAt ?? null;
   // r5 terrain_environment: map-authored no-vegetation discs (desert uses one
   // to keep the establishing camera's foreground frame edge clear — a squat
   // palm sat clipped at the bottom-left of battlefield_desert.png)
@@ -3667,6 +3672,17 @@ function* vegetationBuildSteps(
     let dry = terrainDryness(x, z, roll, carpet);
     if (dry < 0) return null;
     if (dry > 0) sy *= 1.5;
+    // ground lane: inside a cultivated field (past its grass margin) the tuft is the crop — none on a plough, a few on
+    // a track, short straw on stubble, gold on ripe grain (crop ids: landUse.ts LAND_CROP)
+    let crop = -1;
+    if (landUseAt !== null) {
+      const f = landUseAt(x, z, _landScratch);
+      if (f.active && f.track > 0.5 && clJ < 0.7) return null;
+      if (f.active && f.track <= 0.5 && f.edgeM >= f.marginM && heightField._roadDist(x, z) > 7) {
+        crop = f.crop;
+        if (crop === 4) return null;
+      }
+    }
     // splat-aware thinning: drier + thinner on dirt patches, dense in meadows
     const sn = sampleSplatNoise(x, z, _splatScratch);
     // (thresholds track the shader's `worn` band — r4: 0.55/0.80 + warp)
@@ -3718,12 +3734,18 @@ function* vegetationBuildSteps(
     ts *= 1 - dryPatch * 0.30;
     tl += dryPatch * 0.05;
     if (veg.tuftTone) [th, ts, tl] = veg.tuftTone(th, ts, tl);
+    let cropHeight = 1;
+    if (crop === 1) { th = 0.112 + (hueJ - 0.5) * 0.02; ts = 0.52; tl = 0.50 + (lumJ - 0.5) * 0.08; cropHeight = 1.15; } // ripe wheat
+    else if (crop === 2) { th = 0.128 + (hueJ - 0.5) * 0.02; ts = 0.44; tl = 0.56 + (lumJ - 0.5) * 0.08; } // barley
+    else if (crop === 3) { th = 0.245 + (hueJ - 0.5) * 0.02; ts = 0.46; tl = 0.40 + (lumJ - 0.5) * 0.06; cropHeight = 0.8; } // green crop
+    else if (crop === 5) { th = 0.108; ts = 0.36; tl = 0.52 + (lumJ - 0.5) * 0.08; cropHeight = 0.32; } // stubble
+    else if (crop === 6) { th = 0.27; ts = 0.38; tl = 0.30 + (lumJ - 0.5) * 0.06; cropHeight = 1.4; } // sunflower
     _c.setHSL(((th % 1) + 1) % 1, clamp(ts, 0, 1), clamp(tl, 0, 1));
     const t = _tuftScratch;
     // r2: midfield (non-carpet) tufts run ~15% wider — see the cull note
     // above (r3: 1.15 -> 1.28, coverage where the carpet hands over)
     t[0] = x; t[1] = y - 0.03; t[2] = z; t[3] = yaw;
-    t[4] = sxz * sxzMul * (carpet ? 1 : 1.28); t[5] = tuftHeight;
+    t[4] = sxz * sxzMul * (carpet ? 1 : 1.28); t[5] = tuftHeight * cropHeight;
     t[6] = _c.r; t[7] = _c.g; t[8] = _c.b; t[9] = vv;
     return t;
   }

@@ -56,6 +56,7 @@ import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
 import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
+import { LAND_USE_GLSL, landUseAt, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -388,6 +389,9 @@ export interface HeightField {
   /** Round 73 (2026-09-25): the baked fold term of the terrain build (−1 crest .. +1 hollow, the 8 m / 24 m Laplacian
    * of the relief the chunk vertices carry) — the tall-grass tier thickens and lifts the sward in the hollows. */
   _foldAt?(x: number, z: number): number;
+  /** Ground lane (2026-10-03): the field the terrain material draws at (x, z) (landUse.ts) — absent on a map without
+   * fields; the tiers that grow on the ground (tall grass, tufts) stand as its crop. */
+  _landUseAt?(x: number, z: number, out: LandFieldSample): LandFieldSample;
   _layout: TerrainLayout;
   /** Frontline Assault trench plan carved into this field (assault-trenches variant), else null. */
   assaultTrenchLines?: AssaultTrenchPlan | null;
@@ -2901,9 +2905,12 @@ uniform vec4 uReduxC;
 // bed irregularity 0..1, the cover's 2–8 m patchwork) — the slope-aspect ecology, the non-periodic bedding and the
 // patchwork (groundRedux.ts), no sampler.
 uniform vec4 uReduxD;
+// ground lane (2026-10-03): the land use's field layout (landUse.ts) — three vec4 uniforms, no sampler
+${LAND_USE_GLSL}
 varying float vShore;        // metres landward of the waterline (32 = no shore near)
 float gScour = 0.0;          // round 73b: the wind-scoured crust (a satin sheen in the roughness stage)
 float gStrandFoam = 0.0;     // round 73b: the foam line the last run-up left (matte in the roughness stage)
+float gRoadPuddle = 0.0;     // ground lane: water standing in a road's ruts (smooth in the roughness stage)
 varying float vFold;         // round 73: the baked fold attribute (−1 crest .. +1 hollow) the chunk vertices carry
 float gFoldAO = 1.0;         // round 73: indirect occlusion in the folds, read by the aomap hook
 vec3 gSplatAlbedo; float gSplatRough; vec3 gSplatNrm; float gSplatFar; float gSplatSteepAtt;
@@ -3273,6 +3280,25 @@ void splatCompute() {
     float notCliff = 1.0 - smoothstep(0.28, 0.45, slope);
     roadCore *= notCliff; shoulder *= notCliff; rut *= notCliff;
   }
+  // Ground lane (2026-10-03, the gauntlet: "roads are flat painted strips of constant width with hard edges: no verges,
+  // ruts, mud, puddles or broken edges"). Where its texels can be seen, a country road's edge wanders by the metre — the
+  // turf bites into it in tongues, the wheels spill past it — and it is a sharper line than the 1.1 m feather the gauge
+  // keeps at range; the trodden verge beside it ends on a ragged line of its own. Paved streets keep their kerb law.
+  float roadVis = tileVis(2.6) * (1.0 - uRoadTex);
+  vec2 roadBite = nzq(uv, 0.38, vec2(0.17, 0.53)) - 0.5; // a 2.6 m tile of 0.3–0.7 m tongues
+  float roadHalfB = roadHalf + roadBite.x * 1.7 * roadVis;
+  if (roadVis > 0.002) {
+    float notCliffB = 1.0 - smoothstep(0.28, 0.45, slope);
+    float featherB = mix(0.55, 0.22, roadVis);
+    float coreB = (1.0 - smoothstep(roadHalfB - featherB, roadHalfB + featherB, dRoad)) * notCliffB;
+    roadCore = mix(roadCore, coreB, roadVis);
+    rut = lane * roadCore * rutAmp;
+    crown = (1.0 - smoothstep(0.0, 1.25, dRoad)) * roadCore;
+    float vergeOut = roadHalfB + 1.3 + roadBite.y * 2.2;
+    float vergeB = (1.0 - smoothstep(vergeOut - 0.45, vergeOut + 0.45, dRoad)) * (0.55 + 0.45 * smoothstep(0.30, 0.70, n1h))
+      * notCliffB;
+    shoulder = mix(shoulder, max(roadCore, vergeB), roadVis * smoothstep(0.02, 0.10, mk.g));
+  }
   // dirt patches: noise-broken threshold => small worn patches with ragged
   // edges instead of giant airbrushed smears. r6: warped samples + slightly
   // softer band — the hard 0.62-0.78 step on unwarped texels was the
@@ -3561,6 +3587,74 @@ void splatCompute() {
     }
     a = mix(a, aB, bankSoil);
     n = mix(n, nB, bankSoil);
+  }
+  // Ground lane (2026-10-03, the gauntlet: "WoT's Prokhorovka and the Breton bocage photo show patchworks of fields in
+  // distinct crops and colours, with boundaries, tracks and hedgerows. Ours is one uniform plain."): the land use
+  // (landUse.ts, lu_field) over the open, level ground — off the roads, villages, water, rock and slopes past ~12°.
+  // A field takes its crop's colour over the local sward's own tone (the texture's grain survives): ripe wheat, pale
+  // barley, young green crop, stubble, dark sunflower, or the soil layer for a plough of black earth; every crop
+  // carries its own rows — furrows, tramlines, combine swaths, mowing stripes — each faded by its period over the
+  // footprint; a grass margin rings every field, and dirt tracks with two ruts run along the long boundaries.
+  float landW = 0.0;
+  if (uLandA.x > 0.001) {
+    landW = uLandA.x * meadowG * (1.0 - fR) * (1.0 - outsideW) * (1.0 - smoothstep(0.05, 0.30, mk.a))
+      * (1.0 - shoulder) * (1.0 - smoothstep(0.020, 0.060, slope)) * (1.0 - smoothstep(0.02, 0.10, fM));
+    if (landW > 0.003) {
+      float crop, edgeM, track, jit; vec2 rowDir;
+      lu_field(wp.xz, crop, edgeM, track, rowDir, jit);
+      float marginM = uLandB.y * (0.7 + 0.6 * n1h);
+      float inField = smoothstep(marginM * 0.5, marginM * 1.3, edgeM) * (1.0 - track);
+      float across = dot(wp.xz, vec2(-rowDir.y, rowDir.x)); // metres across the rows
+      float baseL = reduxLuma(a.rgb);
+      float bright = 0.90 + 0.20 * jit;
+      vec3 cropCol = a.rgb;
+      float rows = 0.0; // the crop's row tone, signed
+      vec4 soil = vec4(0.0);
+      bool needSoil = (crop > 3.5 && crop < 4.5) || track > 0.01;
+      if (needSoil) soil = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
+      if (crop < 0.5) {
+        // pasture: half the meadows are hay — mown in stripes up and down the field
+        rows = jit > 0.5 ? sin(across * 2.094) * 0.06 * tileVis(3.0) : 0.0;
+      } else if (crop < 1.5) {
+        cropCol = vec3(1.375, 0.994, 0.399) * baseL * 2.0 * bright; // ripe wheat
+      } else if (crop < 2.5) {
+        cropCol = vec3(1.239, 1.043, 0.530) * baseL * 2.3 * bright; // barley
+      } else if (crop < 3.5) {
+        cropCol = vec3(0.906, 1.416, 0.362) * baseL * 1.25 * bright; // young green crop
+      } else if (crop < 4.5) {
+        // plough: the black earth, turned in furrows across the field, pressed into bands by the tractor's passes
+        cropCol = soil.rgb * vec3(0.62, 0.55, 0.50) * bright;
+        float fur = sin(across * 7.854);
+        rows = fur * 0.16 * tileVis(0.8) + sin(across * 0.483 + jit * 6.0) * 0.05 * tileVis(13.0);
+        if (nrmOn) n.xy += vec2(-rowDir.y, rowDir.x) * cos(across * 7.854) * 0.22 * tileVis(0.8) * inField * landW;
+      } else if (crop < 5.5) {
+        cropCol = vec3(1.218, 1.010, 0.627) * baseL * 1.75 * bright; // stubble
+        rows = sin(across * 1.047 + jit * 6.0) * 0.07 * tileVis(6.0); // the combine's swaths
+      } else {
+        cropCol = vec3(0.942, 1.330, 0.466) * baseL * 0.70 * bright; // sunflower
+        rows = sin(across * 8.976) * 0.10 * tileVis(0.7);
+      }
+      if (crop > 0.5 && crop < 3.5) {
+        // tramlines: the sprayer's wheel tracks, a pair every 18–24 m, a darker crushed line each (a line 0.5 m wide
+        // fades as the footprint outgrows it)
+        float period = 18.0 + floor(jit * 4.0) * 2.0;
+        float dT = abs(mod(across + jit * 37.0, period) - period * 0.5);
+        float tq = (dT - 0.9) / 0.25;
+        float tram = exp(-tq * tq) * smoothstep(0.12, 0.45, 0.5 / max(gFootM, 1e-3));
+        rows -= tram * 0.22;
+      }
+      cropCol *= 1.0 + rows;
+      a.rgb = mix(a.rgb, cropCol, inField * landW);
+      // the margin: an uncultivated strip of rank grass, a shade darker and greener than the fields either side
+      a.rgb = mix(a.rgb, a.rgb * vec3(0.90, 0.98, 0.84), (1.0 - inField) * (1.0 - track) * landW * 0.7);
+      // a track along the boundary line: trodden soil, two wheel ruts 1.7 m apart astride the line, grass on the crown
+      if (track > 0.01) {
+        float rq = (edgeM - 0.85) / 0.30;
+        float ruts = exp(-rq * rq);
+        vec3 trackCol = soil.rgb * vec3(0.92, 0.88, 0.80) * (1.0 - 0.28 * ruts);
+        a.rgb = mix(a.rgb, trackCol, track * landW * clamp(ruts * 1.3 + 0.35, 0.0, 1.0));
+      }
+    }
   }
   // Terrain v2 (2026-10-01, grounded realism): the cover's own patchwork at 2–8 m. A meadow is never one green — paler
   // yellow-green swards, darker blue-green clumps, dead patches; a desert floor has its lag and its blown sand; a
@@ -4059,6 +4153,14 @@ void splatCompute() {
       vec3 roadCol = mix(packedRoad, a.rgb, 0.30) * uRoadTint
         + vec3(0.014, 0.010, 0.006);
       roadCol = mix(roadCol, vec3(dot(roadCol, vec3(0.34, 0.45, 0.21))), 0.26);
+      // ground lane (2026-10-03, the gauntlet: the winter road was "a flat chocolate-brown slab laid into pristine
+      // snow"): a winter road is packed snow, greyer and smoother than the field, with brown slush churned into the two
+      // wheel tracks and spattered between them
+      if (uReduxD.y > 1.5) {
+        vec3 packedSnow = uMeanG.rgb * vec3(0.84, 0.85, 0.87) * (0.94 + 0.12 * n1h);
+        float slush = clamp(lane * rutAmp * 1.25 + crown * 0.10 + (roadBite.y + 0.5) * 0.18, 0.0, 1.0);
+        roadCol = mix(packedSnow, roadCol * 1.05, slush);
+      }
       a.rgb = mix(a.rgb, roadCol, dW);
       // The sourced dirt normal contains deep clod/pothole forms intended for
       // open ground. Repeating it at full strength down a road produced the
@@ -4068,6 +4170,28 @@ void splatCompute() {
       vec2 packedRoadN = nrmOn ? groundNrm(uNrmD, uv * 0.210, df, mipB + 4.0).xy : vec2(0.5);
       packedRoadN = mix(vec2(0.5), packedRoadN, 0.30);
       n.xy = mix(n.xy, packedRoadN, dW);
+    }
+    // Ground lane (2026-10-03): the road's own surface. Its tone drifts along it — a damp stretch, a dusty one, a
+    // gravelled patch every 10–40 m; on stretches of a vegetated map's farm road a weedy crown grows between the wheel
+    // tracks; and water stands in the ruts' low spots as puddles ringed with mud (dark, smooth, a mirror of the sky).
+    if (dW > 0.002) {
+      vec2 drift = nzq(uv, 0.034, vec2(0.61, 0.29));
+      a.rgb *= mix(1.0, 0.86 + drift.x * 0.28, dW);
+      a.rgb = mix(a.rgb, a.rgb * vec3(1.04, 1.02, 0.95), smoothstep(0.55, 0.85, drift.y) * dW * 0.6);
+      if (uReduxD.y < 0.5) {
+        float crownGrass = crown * dW * smoothstep(0.48, 0.66, drift.y) * smoothstep(0.30, 0.62, n1h + roadBite.y * 0.4);
+        if (crownGrass > 0.01) {
+          vec4 cg = groundSamp(uAlbG, uMeanG, uv * 0.240, df, mipB);
+          a = mix(a, cg * vec4(0.92, 0.95, 0.85, 1.0), crownGrass * 0.80);
+        }
+        float wet = rut * dW * (1.0 - farM * 0.6);
+        float pool = smoothstep(0.62, 0.78, nzq(uv, 0.071, vec2(0.83, 0.11)).x + hollow * 0.18);
+        gRoadPuddle = wet * pool;
+        float mud = wet * smoothstep(0.52, 0.66, nzq(uv, 0.071, vec2(0.83, 0.11)).x + hollow * 0.18) * (1.0 - gRoadPuddle);
+        a.rgb *= 1.0 - 0.30 * mud;
+        a.rgb = mix(a.rgb, a.rgb * 0.34 + vec3(0.006, 0.008, 0.010), gRoadPuddle);
+        n.xy = mix(n.xy, vec2(0.5), gRoadPuddle);
+      }
     }
     // Keep compacted wheel lanes legible without painting near-black marks
     // into the road albedo. The previous 55% dirt-road multiplier turned the
@@ -4097,6 +4221,23 @@ void splatCompute() {
       // sky ambient read as a frozen canal; darker worn stone keeps the
       // street below the facade value range
       pav.rgb *= 0.72 + smoothstep(0.35, 0.75, pvar) * 0.22;
+      // ground lane (2026-10-03, the gauntlet: the cobble road "meets meadow at a knife edge with no verge, mud or broken
+      // stones"): a country sett road's margin is broken — setts lost in runs along the edge with soil in the gaps (the
+      // shoulder's own soil shows through), grass and moss climbing into the joints of the outer setts, and a strip of
+      // trodden mud and grit beyond the last of them
+      {
+        float paveVis = tileVis(1.6);
+        float paveN = nzq(uv, 0.62, vec2(0.71, 0.37)).x;
+        float paveKept = smoothstep(0.15, 0.24, mk.r + (n1hs - 0.5) * 0.025 + (paveN - 0.5) * 0.20 * paveVis) * uRoadTex;
+        paveCore = min(paveCore, paveKept);
+        float outer = paveCore * (1.0 - smoothstep(0.24, 0.46, mk.r));
+        float pavL = dot(pav.rgb, vec3(0.34, 0.45, 0.21)) / max(dot(uMeanR.rgb, vec3(0.34, 0.45, 0.21)) * 0.8, 1e-3);
+        float joint = 1.0 - smoothstep(0.55, 0.95, pavL);
+        pav.rgb = mix(pav.rgb, pav.rgb * vec3(0.70, 0.96, 0.50), joint * outer * 0.85);
+        float margin = smoothstep(0.02, 0.15, mk.r + (paveN - 0.5) * 0.06) * (1.0 - paveCore) * uRoadTex;
+        a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.76, 0.68), margin * 0.65);
+        a.a = mix(a.a, max(a.a, 0.94), margin);
+      }
       a.rgb = mix(a.rgb, pav.rgb * uRoadTint, paveCore * 0.94);
       a.a = mix(a.a, pav.a, paveCore * 0.85);
       n = mix(n, pnn, paveCore * 0.85);
@@ -4476,6 +4617,7 @@ void splatCompute() {
   // when its albedo and normal detail were correct. Ice and open water keep
   // their authored response through iceW; every dry texel is >= 0.92.
   gSplatRough = max(rough0, 0.92 * (1.0 - iceW) + shoreW * -0.04);
+  gSplatRough = mix(gSplatRough, 0.12, gRoadPuddle); // ground lane: a puddle is still water — it mirrors the sky
   // Round 73: micro-roughness. Wet sand glosses (the swash band above), a hollow's damp ground a step less matte, and
   // snow sparkles — sparse near texels of a high-frequency noise drop to a tight lobe, so under a grazing sun a few
   // glints light per square metre and move with the camera; gone by 42 m, where a glint would be a shimmer.
@@ -4661,11 +4803,16 @@ function* createSplatMaterialSteps(
   // shared with the water sheet's own time by terrainBuildSteps
   const groundProfile = resolveGroundReduxProfile(mapId);
   const redux = groundReduxUniformValues(groundProfile);
+  // ground lane (2026-10-03): the map's land use (landUse.ts) — its field system's three packed vectors (zero
+  // strength on a map without a row)
+  const landUseProfile = resolveLandUseProfile(mapId);
+  const landUse = landUseUniformValues(landUseProfile);
   // `?ground=legacy`: every redux term at zero on the same build — the round's before / after captures A/B against it
   if (typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '')) {
     redux.reduxA.fill(0); redux.reduxFold.fill(0); redux.reduxSwash.fill(0); redux.reduxSnow.fill(0);
     redux.reduxB.fill(0); redux.reduxC.fill(0); // round 73b
     redux.reduxD.fill(0); // terrain v2
+    landUse.landA[0] = 0; // ground lane: no fields
   }
   const groundClock = { value: 0 };
   // the live uniform objects (a probe zeroes a term to isolate its cost or its look)
@@ -4798,7 +4945,11 @@ function* createSplatMaterialSteps(
     // round 55: the bedded sandstone R (no sourced R in the map's plan) carries the noise wall crag, not the tile's beds
     shader.uniforms.uBeddedR = { value: S.sandstone && !sourcedTerrainLayerPlanned(mapId, S, 'R') ? 1 : 0 };
     // r2: agrarian field patchwork — only sensible on temperate farmland maps
-    shader.uniforms.uFieldPatch = { value: S.fieldPatch ?? 0 };
+    // ground lane (2026-10-03): a map with a land-use row (landUse.ts) draws its real fields instead
+    shader.uniforms.uFieldPatch = { value: landUseProfile ? 0 : S.fieldPatch ?? 0 };
+    shader.uniforms.uLandA = { value: new THREE.Vector4(...landUse.landA) };
+    shader.uniforms.uLandB = { value: new THREE.Vector4(...landUse.landB) };
+    shader.uniforms.uLandC = { value: new THREE.Vector4(...landUse.landC) };
     // r3: desert macro sheet variation + ice fresnel sky tint
     shader.uniforms.uSandMacro = { value: S.sandMacro ?? 0 };
     shader.uniforms.uIceSky = { value: new THREE.Vector3(...(S.iceSky || [0.66, 0.72, 0.82])) };
@@ -4881,6 +5032,17 @@ function* createSplatMaterialSteps(
     rock.albedo, rock.normal, wet.albedo, wet.normal, mask, noiseTex,
     outlandWaterMask, ...(groundMask === mask ? [] : [groundMask]),
   ], sourcedReady: sourcedTexturesReady.then(() => undefined, () => undefined) };
+}
+
+/**
+ * Ground lane (2026-10-03): the field system the terrain material draws (landUse.ts), exposed on the height field for
+ * the tiers that grow on the ground (the tall grass and the tufts stand as its crop). Attached by both terrain build
+ * wrappers before their steps run; `?ground=legacy` draws no fields and grows no crops.
+ */
+function attachTerrainLandUse(heightField: HeightField, cfg: TerrainMapConfig | null): void {
+  const profile = resolveLandUseProfile(cfg?.id);
+  const legacyGround = typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '');
+  if (profile && !legacyGround) heightField._landUseAt = (x, z, out) => landUseAt(profile, x, z, out);
 }
 
 // ---------------------------------------------------------------------------
@@ -5140,6 +5302,7 @@ export function buildTerrainMeshes(
   engineCtx: TerrainEngineContext,
   cfg: TerrainMapConfig | null = null,
 ): THREE.Group {
+  attachTerrainLandUse(heightField, cfg); // ground lane
   const g = terrainBuildSteps(heightField, engineCtx, cfg);
   let r = g.next();
   while (!r.done) r = g.next();
@@ -5163,6 +5326,7 @@ export async function buildTerrainMeshesAsync(
   streamOpts: TerrainStreamOptions | null = null,
   sourcePreparation = prepareSourcedTerrain(cfg?.id || 'verdant', cfg?.splat || {}, { worker: true }),
 ): Promise<THREE.Group> {
+  attachTerrainLandUse(heightField, cfg); // ground lane
   const g: Iterator<TerrainBuildProgress, THREE.Group, void> =
     terrainBuildSteps(heightField, engineCtx, cfg, streamOpts, sourcePreparation);
   let completed = false;

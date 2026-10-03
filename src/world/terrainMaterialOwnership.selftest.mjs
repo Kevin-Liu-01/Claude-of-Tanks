@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+// ground lane (2026-10-03): the land use's field layout is declared in landUse.ts and spliced into the splat fragment
+// (`${'$'}{LAND_USE_GLSL}`); its uniform declarations count as the material's own
+const landUseSource = readFileSync(new URL('./landUse.ts', import.meta.url), 'utf8');
+const landUseGlsl = landUseSource.slice(landUseSource.indexOf('export const LAND_USE_GLSL'));
 const compact = text => text.replace(/\s+/g, '');
 function unique(text, pattern, label) {
   const matches = [...text.matchAll(pattern)];
@@ -94,7 +98,8 @@ function checkSourceContract(text) {
     'authored dirt/road/town blend policy unchanged');
   assertTerrainFetchExpressionCensus(text);
   assert.deepEqual(text.match(/texSize\(\d+\)/g), [...Array(6).fill('texSize(256)'), 'texSize(512)']);
-  const declarations = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  const declarations = (text.includes('${LAND_USE_GLSL}') ? text + landUseGlsl : text)
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
   const uniforms = [...declarations.matchAll(/\buniform\s+\w+\s+([^;]+);/g)]
     // round 40: an array uniform (`uSeaOpenings[4]`) is owned by its name, like its `shader.uniforms.uSeaOpenings =` assignment
     .map((m) => [m[0], m[1].replace(/\[\d+\]$/, '')])
@@ -128,6 +133,8 @@ function checkSourceContract(text) {
     'uMeanG', 'uMeanD', 'uMeanR', 'uMeanM', 'uReduxD',
     // terrain v3 (2026-10-02): the ring atlas gradient's wall fade (vec2, set per relief character at the ring's bind) — no sampler
     'uRingReliefWall',
+    // ground lane (2026-10-03): the land use's field system (landUse.ts) — three packed vectors, no sampler
+    'uLandA', 'uLandB', 'uLandC',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);

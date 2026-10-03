@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { getDeviceTier, getPreset } from '../engine/quality.ts';
 import { createGroundPressureField, type GroundDisturbance, type GroundPressureField } from './groundPressure.ts';
 import { resolveGroundReduxProfile, tallGrassQualityScale, type TallGrassBiome } from './groundRedux.ts';
+import { createLandFieldSample, LAND_CROP, type LandFieldSample } from './landUse.ts';
 
 // Round 73 (2026-09-25, the ground redux; owner: "add tall grass that interacts with tanks"): the tall-grass tier.
 // The meadows carried a knee-high tuft carpet of alpha cards that nothing in the battle ever touched; this tier
@@ -33,6 +34,8 @@ interface TallGrassField {
   _waterWetnessAt?(x: number, z: number): number;
   /** Round 73: the baked fold term (−1 crest .. +1 hollow) the terrain vertices carry. */
   _foldAt?(x: number, z: number): number;
+  /** Ground lane (2026-10-03): the field the terrain draws here (landUse.ts); absent on a map without fields. */
+  _landUseAt?(x: number, z: number, out: LandFieldSample): LandFieldSample;
 }
 
 type TallGrassBlocked = (x: number, y: number, z: number, height: number, radius: number) => boolean;
@@ -45,6 +48,7 @@ interface SplatNoiseSample { n1: number; n2: number; mA: number }
 interface TallGrassOptions {
   seed?: number;
   mapId?: string;
+
   /** Overrides the map's biome (receipts, studio). */
   biome?: TallGrassBiome | null;
   blocked?: TallGrassBlocked | null;
@@ -377,6 +381,9 @@ interface Ring {
 export function createTallGrass(field: TallGrassField, options: TallGrassOptions = {}): TallGrass {
   const seed = options.seed ?? 2006;
   const biome = options.biome === undefined ? resolveGroundReduxProfile(options.mapId).grass : options.biome;
+  // ground lane (2026-10-03): the map's field system (the height field's landUse.ts hook) — inside a field the sward
+  // stands as its crop
+  const _field = createLandFieldSample();
   const blocked = options.blocked ?? null;
   const tier = options.tier ?? getDeviceTier();
   // `?tallgrass=off` and `?ground=legacy` (the same-build A/B the round's captures compare against) keep the tier off
@@ -504,6 +511,32 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       keep *= (0.06 + 1.6 * hollow) * (0.35 + 0.65 * lee) * (0.15 + 0.85 * cluster);
       heightScale *= 0.85 + 0.45 * hollow;
     }
+    // Ground lane (2026-10-03): the land use. Inside a cultivated field the sward IS the crop — ripe wheat stands
+    // thick, tall and gold, barley paler, a young green crop low and dense, stubble a sparse stubble of straw, a plough
+    // bare; the field's grass margin grows rank and a little taller, its tracks thin out. The fields keep to the open,
+    // level ground the terrain draws them on (off roads, villages, water and slopes) — the same layout (landUseAt).
+    let cropTint: readonly [number, number, number] | null = null;
+    if (field._landUseAt && b.kind !== 'reed' && b.kind !== 'tundra') {
+      field._landUseAt(x, z, _field);
+      const vm = field._villageMask ? field._villageMask(x, z) : 0;
+      const slopeN = n ? 1 - n.y : 0;
+      const landW = (1 - smoothstep(0.05, 0.30, vm)) * smoothstep(5.0, 8.0, roadD) * (1 - smoothstep(0.02, 0.06, slopeN))
+        * (1 - smoothstep(0.02, 0.10, water));
+      if (landW > 0.5 && _field.active) {
+        if (_field.track > 0.5) keep *= 0.25;
+        else if (_field.edgeM < _field.marginM) { keep = Math.min(1, keep * 1.2); heightScale *= 1.15; }
+        else {
+          const crop = _field.crop;
+          if (crop === LAND_CROP.plough) return;
+          if (crop !== LAND_CROP.pasture) keep = 1; // a sown field has no bare dirt patches
+          if (crop === LAND_CROP.wheat) { heightScale *= 1.25; cropTint = [2.05, 1.18, 1.45]; }
+          else if (crop === LAND_CROP.barley) { heightScale *= 1.05; cropTint = [2.15, 1.38, 1.95]; }
+          else if (crop === LAND_CROP.green) { heightScale *= 0.75; cropTint = [1.05, 1.22, 0.92]; }
+          else if (crop === LAND_CROP.stubble) { keep = 0.55; heightScale *= 0.24; cropTint = [1.95, 1.32, 1.65]; }
+          else if (crop === LAND_CROP.sunflower) { keep = 0.7; heightScale *= 1.6; cropTint = [0.82, 1.02, 0.78]; }
+        }
+      }
+    }
     if (roll > keep) return;
     if (n && n.y < TALL_GRASS.minSlopeY) return;
     const y = heightAt(x, z);
@@ -521,6 +554,12 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     // sedge's own darkness (the far ring lifts its tips a third — on the snow that lit them white as frost spikes)
     const farDim = ring.far && b.kind === 'tundra' ? 0.5 : 1;
     const rr = (reedTint ? 0.95 : 1) * farDim, rg = (reedTint ? 0.86 : 1) * farDim, rb = (reedTint ? 0.55 : 1) * farDim;
+    if (cropTint) {
+      // a crop's own colour (a multiplier on the biome's root-to-tip ramp, like every clump's tint), its lum jitter kept
+      const cl = 0.90 + 0.20 * tintR;
+      list.push(x, y, z, yawR * Math.PI * 2, heightM, widthM, rnd, cropTint[0] * cl, cropTint[1] * cl, cropTint[2] * cl);
+      return;
+    }
     list.push(x, y, z, yawR * Math.PI * 2, heightM, widthM * (reedTint ? 1.25 : 1), rnd,
       Math.min(1.6, r * lum * moist * rr), Math.min(1.6, g * lum * rg), Math.min(1.6, bl * lum * moist * rb));
   }
