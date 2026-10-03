@@ -46,19 +46,63 @@ The following content intentionally remains source-language content:
 
 - `src/ui/i18n.ts` owns locale detection, persistence, interpolation, events,
   document language, and `Intl` formatting.
+- `src/ui/i18nDictionaries.ts` holds the dictionaries the document has loaded
+  and ships no catalog itself (see "Page catalogs" below).
 - `src/ui/localeRouting.ts` owns the `/cn` alias, route manifest, localized
   links, redirects, and route preservation.
 - `src/ui/i18nCatalog.en-US.json` is the source catalog.
 - `src/ui/i18nCatalog.zh-CN.json` is the reviewed Simplified Chinese catalog.
 - `src/ui/i18nCatalog.en-US.metadata.json` supplies General Translation with
   per-key terminology and placeholder context for discovery and invitation copy.
-- `src/ui/i18nCatalog.ts` assembles those JSON files for direct use by the game runtime.
+- `src/ui/i18nCatalog.ts` registers both full catalogs for server and build-time
+  code (the middleware, the Vite config, the page generator, receipts); browser
+  code never imports it.
 - `src/presentation/staticI18n.ts` translates static public-page text and
   attributes. `data-i18n-html` is restricted to source-controlled rich copy.
 - `src/presentation/localizedHtml.ts` owns crawl-time language, route metadata,
   canonical/hreflang, Open Graph locale, and JSON-LD route localization.
 - `tools/generate-localized-pages.mjs` materializes the `/cn` HTML shells after
   every build; `tools/generate-locale-sitemap.mjs` owns the paired sitemap graph.
+
+## Page catalogs
+
+Each document loads only the catalog it needs. Every HTML entry declares one with
+`<meta name="cot-i18n-catalog" content="…">`: the game (`index.html`) declares
+`game` and loads the full catalogs (`i18nCatalogEnUS.ts`, and
+`i18nCatalogZhCN.ts` on demand); the public pages declare `home`, `docs`,
+`docsTopic` (the twelve manual topics and their fallback share one), `notFound`
+and `gallery`. The i18n runtime awaits the document's English dictionary and its
+boot locale before any module that imports it evaluates, so `t()` stays
+synchronous. English is every lookup's fallback: if its chunk fails the page
+stops as if a static chunk had failed, while a failed Chinese chunk degrades to
+English. Node (servers, tools, receipts) keeps the full English catalog resident.
+
+`tools/i18n-page-catalogs.mjs` derives a page catalog from real usage: every
+catalog key that the declaring pages' module scripts, and everything they import
+statically or through a literal `import()`, spell as a string literal, a key
+prefix ending in `.`, or a template that starts with a key namespace
+(`` `docs.guide.${slug}.t` ``), plus the pages' `data-i18n` markup and key strings
+in imported JSON. `tools/viteI18nPageCatalogs.ts` builds one chunk per page
+catalog and locale, names both on the page's meta (`data-en-us`, `data-zh-cn`),
+preloads the English one and points the `/cn/` preload at the Chinese one; the
+dev server serves the same subsets from `/@cot-i18n/`. The locale runtime,
+static-markup localization and responsive layout share one boot chunk so every
+page keeps its request count.
+
+A way for a public page to show a raw key fails the build and
+`tools/i18n-page-catalogs.selftest.mjs`: a `t()` key template or concatenation
+without a leading namespace (`` t(`${area}.title`) ``), a literal or `data-i18n`
+key the catalog lacks, a computed `import()` or `import.meta.glob` in a page's
+graph, a re-export of `t`, or an HTML entry without a catalog. A key passed to
+`t()` as a value (`t(row.labelKey)`) must be spelled as a literal somewhere in
+the page's graph. Check a change with:
+
+```bash
+node tools/i18n-page-catalogs.mjs --check
+```
+
+A new public page declares its catalog in its HTML; nothing else is listed by
+hand.
 
 Vercel routing middleware uses the Node.js runtime because its legacy Edge
 bundler rejects the JSON import attributes used by the catalogs. Deployment

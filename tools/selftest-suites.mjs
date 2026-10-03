@@ -514,6 +514,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/i18n.selftest.mjs',
     'src/ui/i18nRuntime.selftest.mjs',
     'src/ui/i18nLazyCatalog.selftest.mjs',
+    'tools/i18n-page-catalogs.selftest.mjs',
     'src/dev/mapCaptureReadiness.selftest.mjs',
     'src/dev/debugTelemetry.selftest.mjs',
     'src/dev/driveTestAccess.selftest.mjs',

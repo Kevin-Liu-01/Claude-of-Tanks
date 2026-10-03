@@ -23,6 +23,10 @@ and loading policy; those contracts extend beyond this directory.
 <!-- agent-docs:fill:patterns -->
 
 - Preserve public/game bundle isolation and lazy archive/recipe loading.
+- Every public HTML entry declares its page catalog
+  (`<meta name="cot-i18n-catalog">`); keep `node tools/i18n-page-catalogs.mjs
+  --check` clean when adding a page or a key pattern (docs/LOCALIZATION.md
+  "Page catalogs").
 - Respect reduced motion, data-saving preferences, compact layouts, and
   document visibility when deciding autoplay and source retention.
 - Keep near-viewport transfer separate from actual visible playback; retain
