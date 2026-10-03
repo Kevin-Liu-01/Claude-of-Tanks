@@ -118,6 +118,16 @@ catalog façade pass (the masonry buckets carry the centred wall envelope).
 legacy displacement's projected hull stays the collision proxy: every cut
 moves a vertex inward), the per-map moss / dust / soil dressing, the triplanar
 rock tile and the hook layered on the grime hook.
+The scenery lane (2026-10-03): a map's named landscape features live in its top-level `scenery` block
+(`sceneryPlan.ts` holds the contract, the config-only footprints the vegetation keeps off and the hedgerow planner);
+`sceneryRocks.ts` builds the rock forms (granite tors, bedded sandstone / limestone outcrops, slate crags, limestone
+pavement, scree, menhirs, cairns, calvaries) as welded vertex-coloured geometry with a convex mass per standing form;
+`maps/sceneryKit.ts` holds the timber and steel landmarks (`SCENERY_DESTRUCTIBLE_TYPES`, merged into the props type
+registry after the inhabiting kit's) and the lattice pylons; `scenery.ts` composes them in props after every other
+placement and before the bucket merge (one rock-material mesh for the map, the pylons folded into `baked`, each
+feature on its own seeded stream, every refusal named in `props.group.userData.scenery`); the vegetation grows the
+hedgerows. `scenery.selftest.mjs` pins the forms, the kit, the admission and every authoring map's placement;
+docs/MAP-LAYOUT-BRIEF.md "Scenery" is the authoring guide.
 A plan builder reads its battlefield through `structureBuildContext(buckets)`
 (`maps/exteriorDetailKit.ts`), never a positional argument; a part new to a
 builder's seeded stream is tagged `userData.uvJitter = 'none'`, a part that

@@ -245,3 +245,85 @@ props code shaped every layout, and the next maps should start from them:
 
   Draw calls fell at the fixed overhead pose: −10 %, 0 % and −21 %.
 
+
+## Scenery
+
+October 3, 2026 (the scenery lane). A battlefield needs features you can name: "the tor on the axis knoll", "the
+calvary at the crossroads", "the windmotor on the retention bay". A map authors them in a top-level `scenery` block;
+the generators and their placement rules live in `src/world/sceneryRocks.ts` (rock), `src/world/maps/sceneryKit.ts`
+(timber and steel landmarks, pylons), `src/world/sceneryPlan.ts` (the contract, footprints, hedgerows) and
+`src/world/scenery.ts` (the composer that places them). The map file carries only placements and parameters.
+
+```ts
+scenery: {
+  rocks: [{ form: 'tor', geology: 'granite', x: -222, z: 22, radius: 7, height: 5.5, yawDeg: 24, name: 'the axis tor' }],
+  rockFields: [{ geology: 'limestone', x: 40, z: -235, radius: 115, count: 14, slopeBias: 0.6, name: 'the terrace karst' }],
+  hedgerows: [{ path: [[-305, -122], [-250, -120], [-194, -118]], gates: [0.62], height: 1.35, name: 'the croft bank' }],
+  landmarks: [{ kind: 'calvary', x: -78, z: -140, yawDeg: 15, name: 'the crossroads calvary' }],
+  powerLines: [{ towers: [[-440, -150], [-147, -50], [147, 50], [440, 150]], heightM: 36, name: 'the 380 kV line' }],
+},
+```
+
+### What there is
+
+| Family | Kinds | Gameplay | Cost |
+| --- | --- | --- | --- |
+| Rock forms (`rocks`) | `tor` (granite: jointed slab stacks on a bedrock base, clitter round the foot), `outcrop` (sandstone or limestone: hard beds stepping back from a scarp that faces downhill, split into joint blocks), `crag` (slate: steeply dipping plates in ranks, scree below), `pavement` (limestone: clints and grikes flush with the turf, a low scar upslope), `scree` (an angular fan, fining up its apex), `hoodoo` (sandstone: a wind-cut pedestal under a broad cap, the mushroom rocks of Wadi Rum) | a standing form is one static convex collider from the ground to its top (hard cover, never crushed); pavement and scree lie under a hull's 0.55 m step and carry none | one welded mesh on the props rock material for the whole map: one draw plus its shadow passes; a tor about 4.5 k triangles (2 k on phones), an outcrop 2 k, a pavement 3.5 k |
+| Rock fields (`rockFields`) | the exposed bedrock of a hillside: forms drawn from the geology's mix (`FIELD_FORMS`), the steeper ground first | as above, per form | into the same mesh |
+| Hedgerows (`hedgerows`) | two staggered rows of the map's bush species along a line, gateways where authored | every shrub conceals like a field bush (the bocage is cover); blocks nothing | one instanced mesh |
+| Stone landmarks (`landmarks`) | `calvary` (granite steps, octagonal shaft, cross), `menhir` (a standing stone), `cairn` (a clearance cairn: the gomila, the rujm) | static colliders | in the rock mesh |
+| Timber, steel and stucco landmarks (`landmarks`) | `bildstock` (a carved shrine on its pillar; breaks to its stump), `waysidecross` and `orthodoxcross` (topple), `windpump` (an American windmotor; topples), `tomb` (a Mekong-delta family tomb; breaks), `strawstack` (rice straw packed round a bamboo pole; breaks) | props destructibles (`SCENERY_DESTRUCTIBLE_TYPES`): crushable, their state synced like every other destructible | one instanced pool per kind a map uses |
+| Power lines (`powerLines`) | lattice towers (a double-circuit tower scaled to `heightM`) and sagging conductors | four leg colliders per tower; a hull drives between the legs | folded into the props `baked` bucket: no draw of its own; about 2 k triangles a tower |
+
+The rock material is the boulders' (`rockDressing.ts`): the map's moss, dust and soil laws, the triplanar detail tile
+and the cascade setup, so a tor and the boulders round it are one rock. A geology's tone can be overridden with `tone`
+(sRGB HSL), for example to match a map's `rockTone`.
+
+### What the composer checks
+
+Every feature is checked before it is laid, and `props.group.userData.scenery` says what stood and why anything did
+not (`status`, `reason`); nothing is moved silently.
+
+- Inside the square (|x|, |z| + footprint at most 480 m), 22 m plus its footprint from every spawn pad.
+- Out of the road core: the footprint 4 m off every road centreline (2 m for pavement and scree).
+- Dry: no water under the centre or the footprint's rim.
+- Off the hard solids already placed (buildings, walls, bunkers, wrecks). Soft records under a standing footprint
+  (bales, fences, boulders) are allowed and listed in `overlaps`: move the feature if they read badly.
+- Trees: authored rocks, landmarks and towers publish their footprints to the vegetation from the config alone
+  (`sceneryClearances` through `placedStructureClearances`), so the trees and shrubs keep off them; rock fields keep
+  off the trees instead. Hedgerows keep 4.5 m off roads, 1.5 m off wall runs and 11 m off planned buildings.
+- Every feature draws its own seeded stream (by family and index), so authoring one never moves another, and a map
+  without a `scenery` block builds exactly as before.
+
+### Choosing scenery for a place
+
+Pick what the place's rock and people actually put there, and name it in the map file. What the rebuilt maps use:
+
+| Place | Scenery |
+| --- | --- |
+| Breton bocage (Saltmere Bay) | granite tors on the knolls, granite whalebacks on the downs, an overgrown hedge on every hedge bank, calvaries at the crossroads, menhirs on the downs |
+| The Fulda country (Frontier Basin) | Buntsandstein ledges breaking out of the ridge woods, a Bildstock where a farm lane meets the valley road, a timber field cross below each saddle, a 380 kV line through the basin |
+| The Dalmatian karst (Saltwind Narrows) | limestone pavement on the uplands, bedded scars on the outcrop knolls, rock fields of small pavements and ledges on the terraces, a gomila on each upland |
+| Zeeland polders (Tidegate Polders) | a steel windmotor on the bank of each low basin, every rotor in the same sea wind; a 150 kV line across the flats |
+| Kursk black earth (Verdant Fields) | a field hedge on every hedgerow bank, a standing stone on each kurgan, Orthodox crosses at the village entries, a 110 kV line across the southern fields |
+| The Eifel (Highland Reservoir) | slate crags and scree on every ridge's flanks, crags above the lake's shores, a timber cross in the angle of the road fork |
+| Wadi Rum (Redrock Divide) | bedded ledges, scree and pedestal rocks round every inselberg's foot, a mushroom rock in each mouth, a rujm (cairn) at each cross track's ravine |
+| The Dahar (Sirocco Wadi) | ledges and scree on the wadi's cut banks and the North Mesa's flanks, rujms beside the caravan road and the wadi track |
+| The Mekong delta (Mangrove Reach) | family tombs in pairs and threes on the raised ground by the ponds |
+| The Jamuna chars (Jade River Delta) | rice straw stacks at the foot of the homestead mounds |
+| The Naga Hills (Monsoon Ridge) | a memorial monolith on Garrison Hill, a row of Naga memorial stones by the temple |
+| The Franconian Jura (Steinburg) | limestone crags round the castle rock, Bildstocks at the farm crossings |
+| The coalfield (Cinder Junction) | a 220 kV line across the south of the junction |
+
+Restraint: no smoke (the owner removed distant plumes and hearth smoke as wrong). A feature that hides a hull or breaks
+a sightline changes the map's cover: agree it with the map's layout owner and run its metrics.
+
+### Procedure
+
+1. Author the block with a name per feature.
+2. `node src/world/scenery.selftest.mjs`: every map's features must place (the receipt fails on any skip), rock fields
+   must lay at least three quarters of their count, and no tree may stand inside a standing mass.
+3. Rebuild the map's collision shard (`node tools/capture-world-collision-manifests.mjs --node --maps <id>`), re-pin its
+   census in `server/dedicatedWorldCollision.selftest.mjs` with the before value, and run
+   `node tools/map-layout-metrics.mjs --maps=<id> --check`.
+4. Capture the features close up by day and by night, and the map's census views, before and after.

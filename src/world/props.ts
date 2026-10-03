@@ -46,6 +46,9 @@ import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNe
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import { applyRockShaderHook, fractureRockGeometry, makeRockDetail, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
+import { composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
+import type { SceneryMapConfig } from './sceneryPlan.ts';
+import { SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 // world-dressing r1: building-catalog extension + destructible small props
@@ -639,7 +642,8 @@ export interface PropsRuntime {
   _buildDetail?: PropsBuildDetail;
 }
 
-const PROP_TYPE_REGISTRY: Readonly<Record<string, PropsDestructibleMeta>> = DESTRUCTIBLE_TYPES;
+// The scenery lane's landmark kinds follow the inhabiting kit's, so no existing kind moves (2026-10-03).
+const PROP_TYPE_REGISTRY: Readonly<Record<string, PropsDestructibleMeta>> = { ...DESTRUCTIBLE_TYPES, ...SCENERY_DESTRUCTIBLE_TYPES };
 
 function canvas2d(
   canvas: HTMLCanvasElement,
@@ -3087,6 +3091,8 @@ ${snowCap ? `
     mats.steel.needsUpdate = true;
   }
   const obstacles: PropsCollisionRecord[] = [];
+  // the scenery pass (2026-10-03) keeps its rock fields off the trees; the vegetation is released before it runs
+  const sceneryTrees = vegetation?.treeObstacles ?? [];
   const colliders: CollisionRecord[] = [];
   // crushables — the main.ts hull-radius contact loop (effects_combat r1).
   // Entries are telegraph poles ({index} into the pole InstancedMesh) OR
@@ -7081,6 +7087,37 @@ ${snowCap ? `
     };
   }
   yield* placeYardDressing();
+
+  // -------------------------------------------------------------------------
+  // 2026-10-03 (the scenery lane): the map's authored landscape features and landmarks (world/scenery.ts) — its rock
+  // formations on one mesh on the rock material (one draw for the map), its landmark destructibles in the pools, its
+  // pylon lines folded into the baked bucket. Own streams, after every other placement and before the bucket merge,
+  // so a map without a `scenery` block builds exactly as before.
+  // -------------------------------------------------------------------------
+  function* placeScenery(): Generator<PropsBuildSlice, void, void> {
+    const scenery = (cfg as (PropsMapConfig & SceneryMapConfig) | null)?.scenery;
+    if (!scenery) return;
+    const built = yield* composeScenery({
+      mapId, scenery, heightField, spawns: [L.spawns.player, ...L.spawns.enemies],
+      obstacles, colliders, trees: sceneryTrees, baked: buckets.baked, conform: conformYardPiece,
+      addDestructible: (kind, x, y, z, yaw, scale) => addDestructible(kind, x, y, z, yaw, scale),
+      seed, mobile: mobileProps,
+    });
+    if (built.rockPieces.length) {
+      const profile = bucketShadowProfile(built.rockPieces);
+      const merged = mergeGeometries(built.rockPieces, false);
+      for (const piece of built.rockPieces) piece.dispose();
+      const mesh = new THREE.Mesh(merged, mats.rock);
+      mesh.name = 'props-scenery-rock';
+      setShadowCasterProfile(mesh, profile);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.matrixAutoUpdate = false;
+      group.add(mesh);
+    }
+    group.userData.scenery = built.receipt;
+  }
+  yield* placeScenery();
 
   function* mergeMaterialBuckets(): Generator<PropsBuildSlice, void, void> {
     for (const key of Object.keys(buckets)) {

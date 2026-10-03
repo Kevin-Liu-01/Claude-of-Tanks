@@ -21,6 +21,7 @@ import {
 import { isClearOfSpawns } from './spawnClearance.ts';
 import { createStructureClearances, excludeStructureVegetation, excludeVegetation, overlapsStructureClearance,
   placedStructureClearances } from './vegetationClearance.ts';
+import { planHedgerows, type SceneryMapConfig } from './sceneryPlan.ts';
 import { compactGroundCoverInstances, type GroundCoverBlocked } from './groundCoverClearance.ts';
 import { attachTreeCards, attachTreeLobes } from './treeAttachments.ts';
 import { applyCanopyDiffuseWrap } from './canopyLighting.ts'; // round 55: shared with the horizon ring (leaf module)
@@ -5252,8 +5253,9 @@ function* vegetationBuildSteps(
   // root decal is built, so no rejected tree survives as collision/spotting.
   // Placed structures that need clear ground (Mangrove's fishery wharf) join them with the footprint their own plan
   // gives; no other map publishes one.
+  // The scenery lane (2026-10-03): a map's rock formations and landmarks claim their ground from the config alone.
   const placedClearances = placedStructureClearances((cfg as { id?: string } | null)?.id, heightField,
-    cfg?.props?.riverLandings ?? []);
+    cfg?.props?.riverLandings ?? [], (cfg as SceneryMapConfig | null)?.scenery);
   const structureClearances = [...createStructureClearances(
     cfg?.props?.tacticalBeats ?? [], DESTRUCTIBLE_BUILDING_TYPES,
   ), ...placedClearances];
@@ -5843,12 +5845,75 @@ function* vegetationBuildSteps(
       m.computeBoundingSphere();
       group.add(m);
     }
+    // The scenery lane (2026-10-03): the map's hedgerows (sceneryPlan.ts planHedgerows) — shrubs of the bush species in
+    // two staggered rows along authored lines, one instanced mesh of their own and their own stream and tints, so no
+    // other placement moves; each shrub conceals like any bush (a hedge is cover) and stops nothing; the bush admission
+    // (roads, soft ground, water, slopes, pads, keep-outs) and a metre and a half off the map's wall runs.
+    const hedgePlacements: THREE.Matrix4[] = [];
+    const hedgeTints: THREE.Color[] = [];
+    function placeHedgerows(): void {
+      const plan = planHedgerows((cfg as SceneryMapConfig | null)?.scenery?.hedgerows, seed, mobileTier);
+      if (!plan.length) return;
+      const walls = (cfg?.props?.wallRuns ?? []) as ReadonlyArray<readonly number[]>;
+      // the planned buildings stand after the vegetation: a hedge keeps 11 m off each one's centre (a barn's corner)
+      const sites = (cfg?.props?.plannedSites ?? []) as ReadonlyArray<{ x: number; z: number }>;
+      const nearWall = (x: number, z: number): boolean => walls.some(([x0, z0, x1, z1]) => {
+        const dx = x1 - x0, dz = z1 - z0, l2 = dx * dx + dz * dz || 1;
+        const t = Math.max(0, Math.min(1, ((x - x0) * dx + (z - z0) * dz) / l2));
+        return Math.hypot(x - x0 - dx * t, z - z0 - dz * t) < 1.5;
+      });
+      for (const shrub of plan) {
+        const { x, z } = shrub;
+        if (Math.max(Math.abs(x), Math.abs(z)) > 470 || inAvoid(x, z)) continue;
+        if (heightField._roadDist(x, z) < 4.5 || admission()._roadDist(x, z) < 4.5) continue;
+        if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) continue;
+        if (admission().getNormalAt(x, z).y < 0.74) continue;
+        if (!isClearOfSpawns(x, z, protectedSpawns, 18)) continue;
+        if (overlapsStructureClearance(structureClearances, x, z, 1.1 * shrub.scale) || nearWall(x, z)) continue;
+        if (sites.some((site) => Math.hypot(site.x - x, site.z - z) < 11)) continue;
+        _q.setFromAxisAngle(_up, shrub.yaw);
+        _m4.compose(_pv.set(x, heightField.getHeightAt(x, z) - 0.06, z), _q, _sv.set(shrub.scale, shrub.scale * shrub.hy, shrub.scale));
+        hedgePlacements.push(_m4.clone());
+        const [tj, tr, tg, tb] = shrub.tint, bj = 0.5 + tj * 0.3;
+        hedgeTints.push(new THREE.Color(bj * (0.94 + tr * 0.12), bj * (0.98 + tg * 0.12), bj * (0.86 + tb * 0.12)));
+        concealers.push({ x, z, r: 2.0 * shrub.scale, add: 0.35 }); // SPOTTING WIRING: hedge cover
+      }
+    }
+    function createHedgeMesh(): void {
+      const n = hedgePlacements.length;
+      if (n === 0) return;
+      const geometry = sprayAtlasSpecies.has(bushSpecies) ? buildGrownShrub('bush', mulberry32(seed + 34), bushPal, shrubGrowth)
+        : buildBushCards(mulberry32(seed + 34), bushPal);
+      geometry.setAttribute('aFadeI', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
+      geometry.setAttribute('aLodF', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
+      const fadeAttr = attribute(geometry, 'aFadeI');
+      const m = new THREE.InstancedMesh(geometry, foliageMats[bushSpecies], n);
+      for (let i = 0; i < n; i++) {
+        const e = hedgePlacements[i].elements;
+        m.setMatrixAt(i, hedgePlacements[i]);
+        m.setColorAt(i, hedgeTints[i]);
+        bushFadeReg.push({ attr: fadeAttr, slot: i, x: e[12], z: e[14], fade: 0 });
+      }
+      m.castShadow = true;
+      setShadowCasterCascades(m, BUSH_SHADOW_CASCADES);
+      m.receiveShadow = canopyShadowReceive;
+      m.matrixAutoUpdate = false;
+      m.customDepthMaterial = foliageDepthMats[bushSpecies];
+      m.userData.aoExclude = true;
+      m.userData.bush = true;
+      m.name = 'hedgerows';
+      m.computeBoundingSphere();
+      group.add(m);
+      group.userData.hedgerows = { shrubs: n };
+    }
     placeBushFringes();
     placeFieldBushes();
     placeBushClumps();
     createBushMeshes();
     placeUnderstorey();
     createUnderstoreyMesh();
+    placeHedgerows();
+    createHedgeMesh();
   }
   createBushes();
   placementAdmission=null;
