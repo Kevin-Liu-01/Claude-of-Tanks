@@ -272,8 +272,11 @@ region, registered in `index.ts`:
 first: every draw, the ground fit, the UV jitter and the road frontage see the base geometry, so every building keeps
 its pose, footprint and door side, and every later placement (walls, rocks, crates, trees) stays where it was. Only
 then the kit replaces the building's geometry with the region's version of the same structure, inside the same
-footprint. A structure the kit has no builder for keeps its base geometry; the light destructibles (field huts,
-checkpoints, tents, guard posts) always keep theirs, with their broken states.
+footprint. A structure the kit has no builder for keeps its base geometry. The light destructibles (field huts,
+checkpoints, tents, guard posts) keep theirs too, unless the kit names a variant of the family in
+`REGIONAL_DESTRUCTIBLE_TYPES` (`structureKit.ts`: the Bengal tin homestead, the Angami house, the Mekong long house and
+pond hut): a variant keeps the family's footprint, class, hit points, crush threshold and broken state, and `props.ts`
+swaps it in through `LOCAL_TYPES`.
 
 **What a kit changes, and the receipts that follow:**
 
@@ -286,7 +289,8 @@ checkpoints, tents, guard posts) always keep theirs, with their broken states.
   `regionalPlaster3`, `regionalStone`, `regionalRoof`) and painted joinery from `structureWood`: up to six draw calls
   more than the base map, whatever the number of buildings.
 - `src/world/maps/regional/regionalArchitecture.selftest.mjs` runs the road-building stage with and without the kit
-  for every adopting map and fails if a building, a stream draw or a contact record moves.
+  for every adopting map and fails if a building, a stream draw or a contact record moves, or if a kit building's
+  collision-bearing parts reach more than 0.8 m past a side of its plot (or past the base geometry's own reach there).
 - Layout metrics do not move with a kit (the cover and sightline bands read the collision manifest: rerun
   `tools/map-layout-metrics.mjs` for the map after its shard is regenerated, and report any band that moves).
 
@@ -304,7 +308,11 @@ dressing (no collision) and the phones leave them out, so the collision a host c
 
 **Adding a builder or a kit.** A builder is `(ctx) => RegionalParts`: build within `ctx.info.w × ctx.info.d`, door
 side +z unless the base builder's frontage says otherwise, draw only from `ctx.rng`, and keep tier-dependent parts to
-dressing. A look-only choice added later (render or bare stone, a paint) draws from `ctx.variant`, a second stream from
+dressing. Plots are not all deep: a market row is 12 × 5.2 m, a yard shed 11.7 × 7.2 m, a farmhouse lot 15 × 9 m. A
+long building reads its plot along the long side (`plotAxes` in `geometry.ts`) and builds there (`alongPlot`) instead
+of running across the plot and out of it (the first kits overran 39 plots by up to 4.9 m that way). Which side of a
+plot meets the road differs by kind (farmhouse and market plots mostly meet it at their ±x end), so a porch or a
+canopy is kept inside the plot on every side, not only the front. A look-only choice added later (render or bare stone, a paint) draws from `ctx.variant`, a second stream from
 the same building identity, so it never reshuffles the geometry drawn after it. A new kit exports an `ArchitectureStyle` (region, surfaces, builders, weather palette, wear) and joins the
 registry in `index.ts`; the regional receipt then builds every builder at two seeds and checks determinism, attribute
 sets, night masks, the triangle budget, outward-facing faces and tier-independent collision. Judge a kit on Studio
