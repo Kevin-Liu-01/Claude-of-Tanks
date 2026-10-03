@@ -19,6 +19,7 @@
 // Corners lower the rim further (the creases were the strongest tell). Everything is a pure function of (x, z): no
 // grid, no allocation, deterministic per seed, Node-runnable (the authority and the collision builders share it).
 import { SimplexNoise } from '../engine/simplexFast.ts';
+import { createMassifField } from './horizonMassif.ts';
 
 /** The playable half extent (battlefieldBounds PLAYABLE_HALF_EXTENT_M): the rim inside it may only be lowered. */
 export const BORDER_PLAYABLE_M = 470;
@@ -106,6 +107,11 @@ export interface BorderLandformSettings {
   crops: 'temperate' | 'steppe' | 'polder';
   /** Farmsteads round the square past the edge (borderFarmsteads.ts; a hamlet's farms counted), 0 none. */
   farms: number;
+  /**
+   * 0..~0.5: the foothills' erosion — the mountains lane's dendritic drainage (horizonMassif.ts) cut into the outland's
+   * crests at foothill scale (couloirs ~180 m apart), the multiplier's contrast; 0 leaves the rounded hills.
+   */
+  erosion: number;
   /** The farmsteads' build and materials. */
   buildings: 'temperate' | 'steppe' | 'polder' | 'winter' | 'arid' | 'nordic' | 'tropical' | 'alpine';
   /**
@@ -118,10 +124,10 @@ export interface BorderLandformSettings {
 
 /** Defaults by horizon style (the ring's character beyond): enclosed valleys and canyons, open rolling country. */
 const STYLE_DEFAULTS: Readonly<Record<string, BorderLandformSettings>> = {
-  rolling: { enclosure: 0.42, hillHeight: 1.9, reachM: 260, rimFloor: 0.22, wavelengthM: 560, ridged: 0.2, terrace: 0, forest: 0.34, hedgerows: 0.7, fields: 0.6, crops: 'temperate', farms: 10, buildings: 'temperate' },
-  escarpment: { enclosure: 0.5, hillHeight: 2.0, reachM: 240, rimFloor: 0.25, wavelengthM: 540, ridged: 0.35, terrace: 0.25, forest: 0.3, hedgerows: 0.45, fields: 0.45, crops: 'temperate', farms: 6, buildings: 'temperate' },
-  alpine: { enclosure: 0.7, hillHeight: 2.3, reachM: 220, rimFloor: 0.35, wavelengthM: 520, ridged: 0.6, terrace: 0, forest: 0.42, hedgerows: 0.15, fields: 0.15, crops: 'temperate', farms: 4, buildings: 'alpine' },
-  mesa: { enclosure: 0.55, hillHeight: 1.9, reachM: 240, rimFloor: 0.3, wavelengthM: 560, ridged: 0.3, terrace: 0.85, forest: 0.06, hedgerows: 0, fields: 0, crops: 'temperate', farms: 2, buildings: 'arid' },
+  rolling: { enclosure: 0.42, hillHeight: 1.9, reachM: 260, rimFloor: 0.22, wavelengthM: 560, ridged: 0.2, terrace: 0, forest: 0.34, hedgerows: 0.7, fields: 0.6, crops: 'temperate', farms: 10, buildings: 'temperate', erosion: 0.3 },
+  escarpment: { enclosure: 0.5, hillHeight: 2.0, reachM: 240, rimFloor: 0.25, wavelengthM: 540, ridged: 0.35, terrace: 0.25, forest: 0.3, hedgerows: 0.45, fields: 0.45, crops: 'temperate', farms: 6, buildings: 'temperate', erosion: 0.34 },
+  alpine: { enclosure: 0.7, hillHeight: 2.3, reachM: 220, rimFloor: 0.35, wavelengthM: 520, ridged: 0.6, terrace: 0, forest: 0.42, hedgerows: 0.15, fields: 0.15, crops: 'temperate', farms: 4, buildings: 'alpine', erosion: 0.4 },
+  mesa: { enclosure: 0.55, hillHeight: 1.9, reachM: 240, rimFloor: 0.3, wavelengthM: 560, ridged: 0.3, terrace: 0.85, forest: 0.06, hedgerows: 0, fields: 0, crops: 'temperate', farms: 2, buildings: 'arid', erosion: 0.2 },
 };
 
 /**
@@ -140,7 +146,7 @@ const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
   railyard: { forest: 0.22, hedgerows: 0.3, fields: 0.35, farms: 9 },
   frontier: { forest: 0.36, enclosure: 0.5, hedgerows: 0.6, fields: 0.6, farms: 10 },
   fjord: { forest: 0.42, fields: 0.1, farms: 5, buildings: 'nordic' },
-  delta: { enclosure: 0.08, hillHeight: 0.6, reachM: 360, rimFloor: 0.15, wavelengthM: 700, forest: 0.26, hedgerows: 0.35, fields: 0.55, crops: 'polder', farms: 10, buildings: 'tropical' },
+  delta: { enclosure: 0.08, hillHeight: 0.6, reachM: 360, rimFloor: 0.15, wavelengthM: 700, forest: 0.26, hedgerows: 0.35, fields: 0.55, crops: 'polder', farms: 10, buildings: 'tropical', erosion: 0 },
   monsoon: { forest: 0.6, fields: 0.25, farms: 6, buildings: 'tropical' },
   alpine: { forest: 0.32, fields: 0.05 },
   caldera: { forest: 0.06, terrace: 0.55, ridged: 0.45, hedgerows: 0, fields: 0, farms: 1 },
@@ -149,14 +155,14 @@ const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
   blackglass: { forest: 0.1, hedgerows: 0.2, fields: 0.1, farms: 2, buildings: 'nordic' },
   titan_gorge: { forest: 0.02, hedgerows: 0, farms: 1 },
   skybridge: { forest: 0.05, hedgerows: 0, farms: 1 },
-  polders: { enclosure: 0.04, hillHeight: 0.35, reachM: 420, rimFloor: 0.12, wavelengthM: 820, forest: 0.12, hedgerows: 0.55, fields: 0.8, crops: 'polder', farms: 12, buildings: 'polder' },
+  polders: { enclosure: 0.04, hillHeight: 0.35, reachM: 420, rimFloor: 0.12, wavelengthM: 820, forest: 0.12, hedgerows: 0.55, fields: 0.8, crops: 'polder', farms: 12, buildings: 'polder', erosion: 0 },
   copper_mesa: { forest: 0.03, hedgerows: 0, farms: 2 },
   airfield: { enclosure: 0.18, hillHeight: 1.2, reachM: 360, rimFloor: 0.18, wavelengthM: 700, forest: 0.22, hedgerows: 0.4, fields: 0.6, crops: 'steppe', farms: 9, buildings: 'steppe' },
   oasis: { enclosure: 0.32, hillHeight: 1.3, forest: 0.02, hedgerows: 0, fields: 0, farms: 4, buildings: 'arid' },
   whiteout: { forest: 0.08, ridged: 0.4, hedgerows: 0, fields: 0, farms: 0 },
   orchard: { forest: 0.4, hedgerows: 0.75, fields: 0.65, farms: 12 },
   longleaf: { forest: 0.62, hedgerows: 0.2, fields: 0.15, farms: 6 },
-  mangrove: { enclosure: 0.04, hillHeight: 0.35, reachM: 420, rimFloor: 0.12, wavelengthM: 820, forest: 0.42, hedgerows: 0, fields: 0, farms: 6, buildings: 'tropical' },
+  mangrove: { enclosure: 0.04, hillHeight: 0.35, reachM: 420, rimFloor: 0.12, wavelengthM: 820, forest: 0.42, hedgerows: 0, fields: 0, farms: 6, buildings: 'tropical', erosion: 0 },
   saltwind: { forest: 0.14, terrace: 0.35, hedgerows: 0.35, fields: 0.3, crops: 'steppe', farms: 7, buildings: 'steppe' },
   reservoir: { forest: 0.5, fields: 0.15, farms: 6 },
   mars: { forest: 0, hedgerows: 0, fields: 0, farms: 0 },
@@ -247,6 +253,11 @@ export function createBorderLandform(
 ): BorderLandform {
   const noise = new SimplexNoise({ random: mulberry32((seed ^ 0xB0BDE5) >>> 0) });
   const { enclosure, hillHeight, reachM, rimFloor, wavelengthM, ridged, terrace } = settings;
+  // the foothills' erosion (settings.erosion): the massif landform at foothill scale, calibrated past the edge
+  const foothills = settings.erosion > 0 && !settings.classic ? createMassifField((seed ^ 0xE40D) >>> 0, {
+    baseWavelengthM: 620, gullyWavelengthM: 180, gullyOctaves: 2, gullyGain: 0.5, slopeStrength: 2.5, branch: 2.5,
+    erosion: 0.5, concavity: 1.1, contrast: settings.erosion, smoothM: 0,
+  }, [560, 1500]) : null;
   const inv = 1 / Math.max(120, wavelengthM);
   const bias = (Math.max(0, Math.min(1, enclosure)) * 2 - 1) * 0.75;
 
@@ -342,7 +353,13 @@ export function createBorderLandform(
     const reach = reachM * (1.3 - 0.7 * a);
     // the hills grow with distance into the foothills of the ranges behind (which the ring's rows carry from ~350 m on)
     const grow = 1 + 1.1 * smoothstep(reach, reach + 520, d);
-    const crest = hillHeight * (0.12 + 0.88 * h) * (0.5 + 0.5 * a) * grow;
+    let crest = hillHeight * (0.12 + 0.88 * h) * (0.5 + 0.5 * a) * grow;
+    // the crests carved into spurs, couloirs and cols (the multiplier averages one over the band), from 20 m past the
+    // edge on: the square's own mesh (and every collision record on it) keeps its ground
+    if (foothills) {
+      const carve = smoothstep(20, 120, r - BORDER_EDGE_M);
+      if (carve > 0) crest *= 1 + (foothills.multiplier(x, z) - 1) * carve;
+    }
     const ramp = smoothstep(-25, reach, d);
     return near + (crest - near) * ramp;
   }
