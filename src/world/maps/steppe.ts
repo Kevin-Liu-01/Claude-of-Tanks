@@ -26,8 +26,11 @@ const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // the east edge. The basins below, the gravel bed and the ford all follow it.
 const WADI = [[-450, -30], [-300, -8], [-150, 16], [0, 30], [150, 26], [300, 6], [450, -22]] as const;
 
-// The takyr crusts: one shallow pale marsh every 48 m along the wadi
-// centreline across the playable square.
+// The takyr crusts: the silt flats a flood leaves on the wadi's floor when it dries. Each flat is two to four
+// overlapping shallow lobes of unequal size, offset from the centreline, and the flats lie 38-92 m apart with dry
+// gravel between them. 2026-10-03 (maps lane B, gauntlet wave 11): one even 28 m pan every 48 m read from the air as
+// "a bead-chain of opaque, soft-edged white ovals". The lobes are drawn from a fixed-seed generator, so the layout is
+// the same on every build.
 function wadiCrusts(): { x: number; z: number; r: number; dip: number }[] {
   const out: { x: number; z: number; r: number; dip: number }[] = [];
   const zAt = (x: number): number => {
@@ -41,9 +44,33 @@ function wadiCrusts(): { x: number; z: number; r: number; dip: number }[] {
     }
     return 0;
   };
-  // the crusts stop where the border rim begins to lift (|x| > 470); the basins themselves run on past the edge
-  for (let x = -456; x <= 456; x += 48) out.push({ x, z: Math.round(zAt(x)), r: 28, dip: 0.8 });
+  let seed = 0x2f6b9d1;
+  const rnd = (): number => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+  // the crusts stop where the border rim begins to lift (|x| > 470); the basins themselves run on past the edge.
+  // Overlapping lobes add their dips, so each lobe is shallow (0.25-0.55 m): crusts, not bogs.
+  for (let x = -450; x <= 450; x += 38 + rnd() * 54) {
+    const zc = zAt(x) + (rnd() - 0.5) * 16;
+    const lobes = 2 + Math.floor(rnd() * 3);
+    for (let k = 0; k < lobes; k++) {
+      const lx = Math.max(-462, Math.min(462, x + (rnd() - 0.5) * 34));
+      out.push({ x: Math.round(lx), z: Math.round(zc + (rnd() - 0.5) * 22), r: Math.round(12 + rnd() * 18),
+        dip: Math.round((0.25 + rnd() * 0.3) * 100) / 100 });
+    }
+  }
   return out;
+}
+
+// A shelterbelt from (x0, z0) to (x1, z1) as runs [t0, t1, species (null: the lone-tree mix), gap, skip, lateral
+// offset in metres]: each run is a vegetation.ts belt with its own spacing and losses, the gaps between runs are
+// field tracks and dead stretches, and a run may stand a few metres off its neighbour's line.
+type BeltRun = readonly [number, number, 'poplar' | 'oak' | 'pine' | null, number, number, number];
+function shelterbelt(x0: number, z0: number, x1: number, z1: number, runs: readonly BeltRun[]) {
+  const len = Math.hypot(x1 - x0, z1 - z0), nx = -(z1 - z0) / len, nz = (x1 - x0) / len;
+  return runs.map(([t0, t1, species, gap, skip, lateral]) => ({
+    x0: Math.round(x0 + (x1 - x0) * t0 + nx * lateral), z0: Math.round(z0 + (z1 - z0) * t0 + nz * lateral),
+    x1: Math.round(x0 + (x1 - x0) * t1 + nx * lateral), z1: Math.round(z0 + (z1 - z0) * t1 + nz * lateral),
+    gap, jitter: 4.5, skip, ...(species ? { species } : {}),
+  }));
 }
 
 // Stone kerb (kromlech) around a kurgan: a hexagon of low fieldstone walls with
@@ -76,8 +103,10 @@ export default {
     // foot. dip well under the 2.6 m soggy-bowl default — crusts, not bogs.
     marshes: [
       ...wadiCrusts(),
-      { x: -318, z: 128, r: 66, dip: 0.6 },
-      { x: -404, z: 62, r: 40, dip: 0.5 },
+      // the sor: two salt flats of unequal lobes (2026-10-03, gauntlet wave 11: two round pans read as decals)
+      { x: -318, z: 128, r: 48, dip: 0.6 }, { x: -286, z: 150, r: 30, dip: 0.45 }, { x: -350, z: 104, r: 28, dip: 0.5 },
+      { x: -300, z: 96, r: 18, dip: 0.35 }, { x: -340, z: 160, r: 16, dip: 0.3 },
+      { x: -404, z: 62, r: 30, dip: 0.5 }, { x: -420, z: 84, r: 20, dip: 0.4 }, { x: -386, z: 44, r: 16, dip: 0.35 },
     ],
     clearMarshVeg: true, // a dry crust grows no tufts
     // The grain station: one graded rect around the station road / east track
@@ -208,8 +237,9 @@ export default {
     // r2: warm sun-bleached outcrop stone — the neutral grey read as cold
     // blue slag wherever a fold crest picked up partial rock
     rockTone: (h: number, s: number, l: number) => [0.082, clamp01(s * 0.30 + 0.10), clamp01(l * 1.05 + 0.05)],
-    // round 48: the marsh layer is the salt pan — a pale, near-white crust
-    mudTone: (h: number, s: number, l: number) => [0.10, 0.10, clamp01(l * 1.45 + 0.22)],
+    // round 48: the marsh layer is the salt pan. 2026-10-03 (maps lane B, gauntlet wave 11): a pale buff silt
+    // crust, not near-white (l * 1.45 + 0.22 clipped to flat white: "flat white decals with no shoreline")
+    mudTone: (h: number, s: number, l: number) => [0.105, 0.16, clamp01(l * 1.18 + 0.1)],
     mudRough: 1.2,
     // straw lift / olive-brown DARKENER / pale hay — the macro range that
     // keeps 300-800 m readable on an open plain (the desert r3 lesson)
@@ -239,16 +269,23 @@ export default {
     // Shelterbelts (vegetation.ts belts): poplar rows along the highway and the
     // station road, oak windbreaks on the kolkhoz and the plateau — the
     // steppe's man-made tree geometry and its concealment corridors.
+    // 2026-10-03 (maps lane B, gauntlet wave 11: "unnaturally straight, evenly spaced rows… copy-pasted windbreak
+    // instancing"): a sixty-year-old belt stands in runs of different ages. Replanted runs are mixed, and a run lies a
+    // few metres off its neighbour's line, with gaps where trees died or a field track crosses. Each run has its own
+    // spacing, lateral jitter and losses. Dead snags come with the map's craters (vegetation.ts battleSnagShare).
     belts: [
-      { x0: -150, z0: -470, x1: -102, z1: -60, species: 'poplar', gap: 9 },   // highway, west verge (south)
-      { x0: -118, z0: -470, x1: -70, z1: -60, species: 'poplar', gap: 9 },    // highway, east verge (south)
-      { x0: -82, z0: 90, x1: -58, z1: 330, species: 'poplar', gap: 9 },       // highway, west verge (north)
-      { x0: -50, z0: 90, x1: -27, z1: 330, species: 'poplar', gap: 9 },       // highway, east verge (north)
-      { x0: -380, z0: -130, x1: -190, z1: -142, species: 'poplar', gap: 8 },  // station road, kolkhoz reach
-      { x0: -190, z0: -142, x1: 150, z1: -196, species: 'poplar', gap: 8 },   // station road, to the station
-      { x0: 300, z0: -470, x1: 266, z1: -240, species: 'poplar', gap: 9 },    // east track approach
-      { x0: -370, z0: -86, x1: -250, z1: -80, species: 'oak', gap: 8 },       // kolkhoz windbreak
-      { x0: -440, z0: 386, x1: -300, z1: 382, species: 'oak', gap: 10 },      // plateau field boundary
+      ...shelterbelt(-150, -470, -102, -60, [[0, 0.3, 'poplar', 9, 0.18, 0], [0.36, 0.62, null, 11, 0.3, 3],
+        [0.68, 1, 'poplar', 8, 0.22, -2]]),                                      // highway, west verge (south)
+      ...shelterbelt(-118, -470, -70, -60, [[0, 0.18, 'oak', 10, 0.25, 0], [0.24, 0.55, 'poplar', 9, 0.2, -3],
+        [0.6, 0.78, null, 12, 0.35, 2], [0.84, 1, 'poplar', 9, 0.2, 0]]),        // highway, east verge (south)
+      ...shelterbelt(-82, 90, -58, 330, [[0, 0.45, 'poplar', 9, 0.2, 0], [0.52, 1, null, 11, 0.3, -3]]),     // highway, west verge (north)
+      ...shelterbelt(-50, 90, -27, 330, [[0, 0.3, null, 12, 0.3, 2], [0.38, 0.86, 'poplar', 9, 0.22, 0]]),  // highway, east verge (north)
+      ...shelterbelt(-380, -130, -190, -142, [[0, 0.4, 'poplar', 8, 0.2, 0], [0.48, 1, null, 10, 0.3, 3]]),  // station road, kolkhoz reach
+      ...shelterbelt(-190, -142, 150, -196, [[0, 0.22, 'poplar', 8, 0.2, 0], [0.28, 0.5, null, 11, 0.32, -3],
+        [0.56, 0.8, 'poplar', 9, 0.22, 2], [0.88, 1, 'oak', 10, 0.3, 0]]),       // station road, to the station
+      ...shelterbelt(300, -470, 266, -240, [[0, 0.55, 'poplar', 9, 0.2, 0], [0.62, 1, null, 12, 0.3, -3]]),  // east track approach
+      ...shelterbelt(-370, -86, -250, -80, [[0, 0.45, 'oak', 8, 0.25, 0], [0.55, 1, null, 10, 0.3, 2]]),     // kolkhoz windbreak
+      ...shelterbelt(-440, 386, -300, 382, [[0, 0.6, 'oak', 10, 0.28, 0], [0.7, 1, null, 12, 0.35, -2]]),    // plateau field boundary
     ],
     grassTexTone: (h: number, s: number, l: number) => [0.118, clamp01(s * 0.75 + 0.05), clamp01(l * 1.05 + 0.07)],
     tuftTone: (h: number, s: number, l: number) => [0.122, 0.30, clamp01(l * 0.85 + 0.14)],
