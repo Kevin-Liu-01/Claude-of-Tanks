@@ -134,6 +134,14 @@ check('drive-field-trench', 'medium', 'earth', [
   g('prediction replay error (m)', (m) => m.replay.maxErrM, 0.02, 'guard: without the tip state the replay ran 0.3–1.2 m off', true),
 ]);
 
+// Gauntlet wave 2 (the motion strips scored 4.70 and held the merge): a landing on the tracks is taken by the springs
+// (the landing stroke): they compress, then return the ruleset's rebound. Before, the hull bounced off the drooped
+// tracks' line like a rigid ball, its wheels hanging.
+for (const world of ['mars', 'moon', 'turbo']) {
+  check('jump-flat', 'medium', world, [
+    g('compression short of 15 cm (m)', (m) => 0.15 - m.gearCompMaxM, 0, 'before: 0 (the rebound left from the drooped line)'),
+  ]);
+}
 // A hull pivoting across a fence line (Foundry field audit; the bots lane's Coastal seed 25003 jink): a rail under each
 // end pushed it both ways at once and it flipped from side to side every step.
 check('fence-straddle', 'medium', 'earth', [
@@ -151,4 +159,4 @@ if (failures.length) {
   for (const line of failures) console.error(`  ${line}`);
   process.exit(1);
 }
-console.log(`physics-torture.selftest: ${runs} torture runs — boost ceiling, cliff edges, the Sirocco climb and swing, stacking, roof edges, the Moon step, crest launches, trench crossings, firing in flight, settling contacts, prediction replay and rest all hold`);
+console.log(`physics-torture.selftest: ${runs} torture runs — boost ceiling, cliff edges, the Sirocco climb and swing, stacking, roof edges, the Moon step, crest launches, trench crossings, firing in flight, the landing stroke, settling contacts, prediction replay and rest all hold`);

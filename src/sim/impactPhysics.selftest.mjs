@@ -33,6 +33,9 @@ const SPEC = {
 const FAST_SPEC = { ...SPEC, topSpeedKmh: 160 };
 
 const flat = () => 0;
+/** The suspension's full compression under the seat (movement.ts RIDE_COMPRESSION_M): a landing's springs take its
+ * closing down to it (physics lane, 2026-10-03), and the rigid floor there is what the ride may never pass. */
+const FULL_COMPRESSION_M = 0.20;
 function makeField(fn, groundType = 'medium') {
   return { getHeightAt: fn, getNormalAt: () => null, getGroundType: () => groundType };
 }
@@ -68,7 +71,9 @@ function run(entity, field, ticks, onTick = null, collide = null, dt = SIM_DT) {
   }
 }
 
-/** Jump and record the flight: apex per hop, landings (closing speeds), bounces, the lowest clearance. */
+/** Jump and record the flight: apex per hop, landings (closing speeds), bounces, the lowest clearance. A landing's
+ * rebound comes out of the springs after it (movement.ts constrainLoadedRide), so the flight ends at the first landing
+ * that owes none. */
 function flight(entity, field, jumpMps, { dt = SIM_DT, maxS = 20 } = {}) {
   assert.ok(requestTankJump(entity.state, jumpMps), 'the jump is accepted');
   const state = entity.state;
@@ -91,7 +96,7 @@ function flight(entity, field, jumpMps, { dt = SIM_DT, maxS = 20 } = {}) {
       peak = -Infinity;
     }
     bounces = Math.max(bounces, state._ride.bounces);
-    if (!before && state.grounded && landings.length) break;
+    if (!before && state.grounded && landings.length && !(state._ride.rebound > 0)) break;
   }
   return { apexes, landings, bounces, minClearance, ticks, timeS: ticks * dt };
 }
@@ -226,7 +231,7 @@ for (const mode of ['mars', 'turbo_ball']) for (const gravityScale of [.17, .38,
   near(entity.state.pos.y, y0 + 0.18, 0.03, 'on the droop line (the tracks touch first)');
   run(entity, field, 120);
   near(entity.state.pos.y, y0, 0.03, 'then the loaded suspension compresses it back onto its seat');
-  assert.ok(trace.minClearance > -0.02, `the ride never ends a step below the ground (${trace.minClearance.toFixed(3)} m)`);
+  assert.ok(trace.minClearance > y0 - FULL_COMPRESSION_M - 0.02, `the ride never ends a step below its floor (${trace.minClearance.toFixed(3)} m)`);
   // at rest again: no jitter once the attitude spring's tail has died (four seconds after the settle)
   run(entity, field, 120);
   const ys = [];
@@ -303,7 +308,7 @@ for (const mode of ['mars', 'turbo_ball']) for (const gravityScale of [.17, .38,
   });
   assert.ok(landedAt > 0, 'the fall lands');
   near(landing, Math.sqrt(2 * 9.81 * (82 - 0.18)), 1.2, 'the swept contact reads the true closing speed of an 82 m fall (~40 m/s)');
-  assert.ok(minY >= seat - 0.02, `the ride never tunnels under the terrain (${(minY - seat).toFixed(3)} m)`);
+  assert.ok(minY >= seat - FULL_COMPRESSION_M - 0.02, `the ride never tunnels under the terrain (${(minY - seat).toFixed(3)} m)`);
   assert.ok(entity.state.grounded, 'and it is grounded at the end');
   near(entity.state.pos.y, seat, 0.03, 'resting on its seat');
 }
@@ -321,7 +326,7 @@ for (const mode of ['mars', 'turbo_ball']) for (const gravityScale of [.17, .38,
     updateTank(entity, support, SIM_DT, null);
     minY = Math.min(minY, entity.state.pos.y);
   }
-  assert.ok(minY >= 5 - 0.02, `a 34 m/s fall onto a roof stops on the roof (${minY.toFixed(3)} m)`);
+  assert.ok(minY >= 5 - FULL_COMPRESSION_M - 0.02, `a 34 m/s fall onto a roof stops on the roof (${minY.toFixed(3)} m)`);
   assert.ok(entity.state.grounded && entity.state.pos.y >= 5 - 0.02, 'and stands on it');
 }
 

@@ -786,7 +786,10 @@ contact constraints and cannot be crossed by residual uphill speed.
   rate) and the remainder of the step integrates after the contact, so a 40 m/s fall never ends a step
   under the terrain or under a structure top and the rebound is the same at 60 or 120 steps/s. The
   closing speed rebounds by the ruleset's `physics.restitution` (`entity.modePhysics`, default
-  `STANDARD_PHYSICS`); a rebound under `bounceMinMps` settles onto the loaded suspension.
+  `STANDARD_PHYSICS`); a rebound under `bounceMinMps` settles onto the loaded suspension. A landing on the
+  tracks is the suspension's (physics lane, 2026-10-03; see *The landing stroke* below): the springs take the
+  closing and return the rebound as they extend. A hull coming down on its shell (tumbling, on its side or roof)
+  rebounds rigidly at once.
   `state._ride.bounces` counts the hops of one flight. The landing torque turns the hull toward the
   ground plane it struck (`_terr`), so a nose-first landing pitches even while it rebounds.
 - *Blocked drive.* `state.impactMps` is the closing speed the tracks lost this step; `impactSource` says
@@ -831,9 +834,18 @@ contact constraints and cannot be crossed by residual uphill speed.
   out of the travel). Downhill landings and a crawl under 1 m/s are left alone; the travel never passes through zero.
 - *Landing speed is the hull's own approach.* An airborne hull's ground moves only with its own travel over the
   slope beneath it (its grade along the travel, read from two world samples once the hull is pitched past 72
-  degrees and its track samples stack over one point), never with the support envelope's swing as the hull turns;
-  a hard landing (closing > 3 m/s) that does not rebound stops the closing at the contact. Falling support is
-  followed uncapped; only a rising one is bounded (12 m/s) as a launch.
+  degrees and its track samples stack over one point), never with the support envelope's swing as the hull turns.
+  Falling support is followed uncapped; only a rising one is bounded (12 m/s) as a launch.
+- *The landing stroke.* A landing on the tracks carries its closing into the springs: from the touchdown on the
+  drooped tracks' line until the hull has come back up through its seat they work at the landing damping (ζ 0.45,
+  `LANDING_ZETA`; driving keeps the critical damping), so a hard landing bottoms on the stops and a soft one dips,
+  then rises through the seat and settles. The bump stops are progressive: a fall the springs would not stop in the
+  travel left above the floor is stopped across that travel, never in one step at the floor. The rebound the
+  ruleset owes is returned by the springs once they have stopped the fall (`_ride.rebound`): they extend and the hull
+  leaves the drooped line at that speed. Ground moving faster than the rebound (a face the hull then runs down, or a
+  wall lifting it) leaves none to return. A hull coming down on its shell rebounds rigidly at once, or stops its
+  closing at the contact past 3 m/s. The rendered road wheels droop in the air and are pushed up into the hull by the
+  compression (the gear conforms them to the ground at the rendered pose).
 - *The step that leaves the ground moves.* A loaded ride that detaches integrates that step on gravity alone; it
   used to stand still for it, a 13 cm stall in the motion of a hull leaving a face at 8 m/s.
 - *Structures are floors by the underside.* A part is a floor for a hull when its top is within the 0.55 m

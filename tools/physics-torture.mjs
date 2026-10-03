@@ -661,6 +661,8 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
   let airRun = 0;
   let apex = -Infinity;
   let lastAirborne = false;
+  // the last landing: its closing (the rebound law's input) and the ticks its springs take to return a rebound
+  let lastLanding = null;
   let wallSide = 0;
   let stuckRun = 0;
   // the prediction world over the same collision, seeing every other hull where the authority has it now
@@ -726,6 +728,7 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
     const pre = {
       x: before.pos.x, y: before.pos.y, z: before.pos.z, yaw: before.yaw, pitch: before.visualPitch, roll: before.visualRoll,
       speed: before.speed, recoil: Math.hypot(before._spring.recoilVX, before._spring.recoilVZ), grounded: before.grounded,
+      bounces: before._ride.bounces ?? 0,
     };
     match.step({ dt: DT, inputs });
     trace?.(tick, match);
@@ -888,14 +891,23 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
       const kinematic = Math.max(0, -(prev?.rideV ?? 0) + gravity * DT) + rise;
       metrics.closingExcessMps = Math.max(metrics.closingExcessMps, state.landingImpactMps - kinematic);
       metrics.landings.push(+state.landingImpactMps.toFixed(2));
-      // the travel a landing keeps (a face takes its share of it: the push along its normal)
+      // the travel a landing keeps (a face takes its share of it: the push along its normal), and the hull's fastest
+      // rise off the landing while its springs return it (updated below for a second)
       metrics.landingTravel.push([+Math.abs(pre.speed).toFixed(2), +Math.abs(state.speed).toFixed(2), +state._ride.v.toFixed(2)]);
+      lastLanding = { closing: state.landingImpactMps, tick, travel: metrics.landingTravel.at(-1) };
       metrics.maxLandingMps = Math.max(metrics.maxLandingMps, state.landingImpactMps);
       metrics.apexes.push(+(apex - world.fn(state.pos.x, state.pos.z)).toFixed(2));
       apex = -Infinity;
-      const allowed = state.landingImpactMps * physics.restitution;
+    }
+    if (lastLanding && !landed && tick - lastLanding.tick <= 60) {
+      lastLanding.travel[2] = Math.max(lastLanding.travel[2], +state._ride.v.toFixed(2));
+    }
+    // a landing's rebound is returned by its springs as they extend (movement.ts constrainLoadedRide): read it off the
+    // line, where the bounce is counted
+    if (lastLanding && (state._ride.bounces ?? 0) > pre.bounces) {
+      const allowed = lastLanding.closing * physics.restitution;
       const rebound = state._ride.v - (state._ride.groundV ?? 0);
-      if (!state.grounded) metrics.reboundExcessMps = Math.max(metrics.reboundExcessMps, rebound - allowed - gravity * DT);
+      metrics.reboundExcessMps = Math.max(metrics.reboundExcessMps, rebound - allowed - gravity * DT);
     }
     if (state.grounded) airRun = 0;
     if (!pre.grounded && !state.grounded && !impulseTicks.has(tick) && !landed) {

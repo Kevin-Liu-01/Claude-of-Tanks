@@ -678,8 +678,23 @@ function worldGradeAlong(hAt: HeightSampler, x: number, z: number, forwardX: num
 }
 let _tippedThisTick = false;
 const RIDE_SUPPORT_V_CAP = 12;         // m/s; bounds extreme launch ramps
-/** Closing speed beyond what the suspension's travel takes softly (about sqrt(2 g C) x 1.5 for C = 0.2 m). */
+/** A hull coming down on its shell stops its closing at the contact past this (m/s): the armour has no stroke. */
 const LANDING_STOP_MPS = 3;
+/** The springs turn a landing's fall into its rebound once they have slowed the fall into them below this (m/s). */
+const REBOUND_TURN_MPS = 0.25;
+/**
+ * The landing stroke (physics lane, 2026-10-03; gauntlet wave 2: "wheels droop in the air, compress on impact, then a
+ * damped settle with low restitution"). A landing on the tracks is taken by the springs at this damping ratio until the
+ * hull has come back up through its seat: a hard landing bottoms on the stops (full compression), a soft one dips, and
+ * each rises through the seat and overshoots it a little on drooping wheels before the ordinary, critically damped ride
+ * settles it. Driving keeps the critical damping (no heave bob over every bump).
+ */
+const LANDING_ZETA = 0.45;
+/** A closing under this is a settle onto the tracks, not a landing stroke (a hop off a kerb, the small re-landing after
+ * a rebound): the ordinary ride takes it without the overshoot. */
+const LANDING_STROKE_MIN_MPS = 2;
+/** The bump stops never read less travel than this above the floor (bounds the stopping deceleration). */
+const BUMP_STOP_MIN_ROOM_M = 0.01;
 /** Ground falling away under a hull is followed as fast as it falls (physics lane, 2026-10-03): the launch bound held
  * the support's descent to 12 m/s too, so a hull sliding down a 48-degree face past 12 m/s fell behind its own
  * support, went airborne on the face and "landed" on it at 9 m/s. Only a rising support launches a hull. */
@@ -1449,21 +1464,35 @@ function advanceAirborneRide(
   state.landingImpactMps = closing;
   const seat = crossed ? Math.max(contactY, floorY) : Math.max(Math.min(ride.y, contactY), floorY);
   const rebound = Math.min(closing * restitution, Math.sqrt(2 * gravity * bounceMaxHeight));
-  if (rebound > bounceMin) {
-    const rest = (1 - fraction) * dt;
-    const vOut = ride.groundV + rebound;
-    ride.v = vOut - gravity * rest;
-    ride.y = Math.max(seat, seat + vOut * rest - 0.5 * gravity * rest * rest);
-    ride.bounces = (ride.bounces || 0) + 1;
-    return false;
-  }
-  ride.y = seat;
-  // A hard landing that does not rebound stops the closing at the contact (physics lane, 2026-10-03): the ride kept
-  // its fall for the suspension to take, so a hull landing nose-first, whose support fell away as it turned level, landed
-  // ten times at 6-8 m/s in a third of a second. A soft one (a hop off a crest) still compresses the suspension.
-  if (closing > LANDING_STOP_MPS && ride.v < ride.groundV) ride.v = ride.groundV;
   ride.airTime = 0;
-  ride.bounces = 0;
+  ride.rebound = 0;
+  ride.stroke = 0;
+  if (state._body.tumbling || Math.cos(state.visualPitch) * Math.cos(state.visualRoll) <= TUMBLE_ENTER_UP_Y) {
+    // A hull coming down on its shell (tumbling, on its side, on its roof) has no springs under it: the armour rebounds
+    // at once by the ruleset's restitution, or stops the closing at the contact.
+    if (rebound > bounceMin) {
+      const rest = (1 - fraction) * dt;
+      const vOut = ride.groundV + rebound;
+      ride.v = vOut - gravity * rest;
+      ride.y = Math.max(seat, seat + vOut * rest - 0.5 * gravity * rest * rest);
+      ride.bounces = (ride.bounces || 0) + 1;
+      return false;
+    }
+    ride.y = seat;
+    if (closing > LANDING_STOP_MPS && ride.v < ride.groundV) ride.v = ride.groundV;
+    ride.bounces = 0;
+    return true;
+  }
+  // A landing on the tracks is the suspension's (physics lane, 2026-10-03; gauntlet wave 2). The rebound used to reverse
+  // the hull at the drooped-track line like a rigid ball, its wheels still hanging, and a landing that did not rebound
+  // stopped dead at that line before the springs took any load. The ride now carries its closing into the springs at the
+  // landing stroke's damping (the floor, full compression, stops what they cannot), and the rebound the ruleset's
+  // restitution owes is paid when the springs have stopped the fall and extend again (constrainLoadedRide): the hull
+  // dips onto its suspension and rises off it.
+  ride.y = seat;
+  ride.rebound = rebound > bounceMin ? rebound : 0;
+  ride.stroke = closing > LANDING_STROKE_MIN_MPS ? 1 : 0;
+  if (ride.rebound === 0) ride.bounces = 0;
   return true;
 }
 
@@ -1488,18 +1517,31 @@ function constrainLoadedRide(
     if (ride.v > -slopeFollowMps) ride.v = -slopeFollowMps;
     hang = Math.max(0, hang - slopeFollowMps * dt);
   }
+  // A landing's rebound comes out of the springs (physics lane, 2026-10-03; gauntlet wave 2). The loaded law below takes
+  // the landing's closing; once the springs have stopped the hull's fall into them they extend and throw it off the
+  // drooped tracks' line at the rebound the ruleset's restitution owes. On the way up they act as a spring whose free
+  // length is that line, as stiff as the depth below it needs to return the rebound (energy: ½r² = ½u² + ½k·h² − g·h at
+  // depth h and relative rate u), so their push fades to nothing at the line and the hull leaves it on gravity alone.
+  // Ground that moves faster than the rebound leaves none to return: a hull landing on a face it then runs down, or one
+  // the ground lifts (a trench's far wall under its nose carried a hull up at 5 m/s, and the rebound added on top of
+  // that threw it a metre out of the trench).
+  if (ride.rebound > 0 && Math.abs(ride.groundV) > ride.rebound) ride.rebound = 0;
+  // the landing stroke ends once the springs have carried the hull back up through its seat
+  if (ride.stroke > 0 && ride.y >= supportY && ride.v >= ride.groundV) ride.stroke = 0;
+  const extending = ride.rebound > 0 && ride.v - ride.groundV >= -REBOUND_TURN_MPS;
   const separating = ride.v - ride.groundV > RIDE_DETACH_REL_V_MPS;
   // A ride still closing on ground that sinks away slower than it falls is in contact: it meets that ground within the
   // step (physics lane, 2026-10-03). A hull landing nose-first, its support sinking as it turned level about its nose,
   // lost the ground every other tick and landed again at full speed: nine landings at 13-14 m/s in a sixth of a second
   // off a 10 m cliff, 4044 hp, where the springs take the one landing.
   const closingGap = Math.max(0, ride.groundV - ride.v) * dt;
-  if (hang > RIDE_DETACH_CLEARANCE_M + closingGap && (separating || hang > RIDE_HANG_M)) {
+  if (!extending && hang > RIDE_DETACH_CLEARANCE_M + closingGap && (separating || hang > RIDE_HANG_M)) {
     // the step that leaves the ground is the flight's first: the ride moves through it on gravity alone (it used to
     // stand still for the step, a 13 cm stall in the motion of a hull leaving a face at 8 m/s)
     ride.v -= gravity * dt;
     ride.y += ride.v * dt;
     ride.airTime = 0;
+    ride.stroke = 0;
     return false;
   }
 
@@ -1509,9 +1551,37 @@ function constrainLoadedRide(
   // spring used to drag a hull down a support that fell away (a hull leaving a 30 m cliff at 15 m/s stuck to the face
   // and followed it at 35 m/s, faster than it could fall) and glued every hull to the ground over crests at any gravity.
   // Inside the droop the suspension extends to keep the tracks on the ground, as before.
-  let accel = RIDE_OMEGA * RIDE_OMEGA * (supportY - ride.y) +
-    2 * RIDE_ZETA * RIDE_OMEGA * (ride.groundV - ride.v);
-  if (hang > 0 && accel < -gravity) accel = -gravity;
+  let accel: number;
+  if (extending) {
+    const depth = contactY - ride.y;
+    const u = ride.v - ride.groundV;
+    const r = ride.rebound;
+    if (depth > Math.max(u, r) * dt) {
+      accel = Math.max(0, r * r - u * u + 2 * gravity * depth) / depth - gravity;
+    } else {
+      // the last step to the line: it leaves the line at the rebound, gravity alone acting over what remains
+      ride.v = ride.groundV + Math.sqrt(r * r + 2 * gravity * Math.max(0, depth));
+      accel = 0;
+    }
+  } else {
+    const zeta = ride.stroke > 0 ? LANDING_ZETA : RIDE_ZETA;
+    accel = RIDE_OMEGA * RIDE_OMEGA * (supportY - ride.y) + 2 * zeta * RIDE_OMEGA * (ride.groundV - ride.v);
+    if (hang > 0 && accel < -gravity) accel = -gravity;
+    // The bump stops are progressive (physics lane, 2026-10-03): a fall the springs would not stop in the travel left
+    // above the floor is stopped across that travel, not at the floor in one step (a hull bottoming at 9 m/s used to
+    // halt dead there, a velocity step the size of the fall). The springs' own work over that travel (linear from here
+    // to the floor) is what they stop: a slower fall is theirs alone (a hull sliding down a 48-degree face, its ride a
+    // little behind its sinking support, was held up by the stops and floated off the face every few steps).
+    const closingOnFloor = ride.groundV - ride.v;
+    const room = ride.y - floorY;
+    if (closingOnFloor > 0 && room > 0) {
+      const springWork = RIDE_OMEGA * RIDE_OMEGA * ((supportY - ride.y) * room + 0.5 * room * room);
+      if (0.5 * closingOnFloor * closingOnFloor > springWork) {
+        const stop = closingOnFloor * closingOnFloor / (2 * Math.max(room, BUMP_STOP_MIN_ROOM_M));
+        if (accel < stop) accel = Math.min(stop, closingOnFloor / dt);
+      }
+    }
+  }
   ride.v += accel * dt;
   ride.y += ride.v * dt;
   if (ride.y < floorY) {
@@ -1524,8 +1594,18 @@ function constrainLoadedRide(
     if (ride.v < floorV) ride.v = floorV;
     return true;
   }
+  if (extending && ride.y > contactY) {
+    // off the line: in flight once clear of it (this step's motion kept, no stall at the lift-off)
+    ride.rebound = 0;
+    ride.stroke = 0;
+    ride.bounces = (ride.bounces || 0) + 1;
+    return ride.y - contactY <= RIDE_DETACH_CLEARANCE_M;
+  }
   if (ride.y <= contactY) return true;
-  if (ride.v - ride.groundV > RIDE_DETACH_REL_V_MPS) return false;
+  if (ride.v - ride.groundV > RIDE_DETACH_REL_V_MPS) {
+    ride.stroke = 0;
+    return false;
+  }
   // hanging on the drooped tracks: grounded while the wheels still reach (RIDE_HANG_M), in flight beyond
   return ride.y - contactY <= RIDE_HANG_M;
 }
@@ -1538,7 +1618,6 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   const terrainFloorY = Number.isFinite(state._sup.floorY) ? state._sup.floorY : terrainSupportY;
   const floorY = Number.isFinite(rest) ? Math.max(terrainFloorY, rest) : terrainFloorY;
   const ride = initializeRideState(state, supportY);
-  const vStart = ride.v;
   let groundTurn = 0;
   if (groundedAtStart) {
     // a blow that took the hull's travel takes the climb (or descent) that travel carried (_blockedSpeed)
@@ -1579,7 +1658,6 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
     ? constrainLoadedRide(ride, supportY, contactY, floorY, dt, GRAVITY * drive.gravityScale,
       _wholeTrackOnGround ? Math.max(0, -state.speed * Math.tan(state._terr.pitch)) : 0)
     : advanceAirborneRide(state, ride, dt, contactY, floorY, drive.gravityScale, drive.restitution, drive.bounceMin, drive.bounceMaxHeight);
-  if (grounded) ride.bounces = 0;
   if (groundedAtStart) {
     // a hull turning about its own axes (settling from a tumble, righting) moves its support by geometry, not by travel
     // over a grade, and a hull sliding on a face its tracks cannot hold moves along it under the slide law
@@ -1587,7 +1665,7 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
       turnAlongGrade(state, groundTurn);
     }
   } else if (state.landingImpactMps > 0) {
-    landAlongGrade(state, ride, vStart - GRAVITY * drive.gravityScale * dt, grounded);
+    landAlongGrade(state, ride);
   }
   state.grounded = grounded;
   ride.grounded = grounded;
@@ -1625,20 +1703,21 @@ function turnAlongGrade(state: TankState, groundTurn: number): void {
 }
 
 /**
- * A landing on a face rising in the travel's direction is a normal impulse (turnAlongGrade's rule above): its vertical
- * part is cos² θ of the vertical closing law's rebound and its horizontal part comes out of the travel; a hull that
- * settles then rides a ground rising at the turned travel's rate. A landing on a face falling away keeps the vertical
- * law and the travel (the drive, not the fall, decides how fast a hull runs downhill).
+ * A landing on a face rising in the travel's direction is a normal impulse (turnAlongGrade's rule above): of the
+ * vertical change the landing law owes (the closing, and the rebound) the travel gives up its share at the contact, and
+ * the springs then take the hull to the ground's rise under the travel it kept and return the rebound over that (the
+ * vertical part, cos² θ of the law's). A landing on a face falling away keeps the vertical law and the travel (the
+ * drive, not the fall, decides how fast a hull runs downhill).
  */
-function landAlongGrade(state: TankState, ride: RideState, freeV: number, settled: boolean): void {
-  const push = ride.v - freeV;
+function landAlongGrade(state: TankState, ride: RideState): void {
+  // the vertical change the landing law owes: the closing the springs take to the ground's rate, and the rebound
+  const push = state.landingImpactMps + ride.rebound;
   if (!(push > 0) || Math.abs(state.speed) < GRADE_PUSH_MIN_TRAVEL_MPS) return;
   const grade = clamp(Math.tan(state._terr.fitPitch), -GRADE_PUSH_MAX, GRADE_PUSH_MAX);
   if (!(grade * state.speed > 0)) return;
-  const rise = push / (1 + grade * grade);
-  ride.v = freeV + rise;
-  shiftTravelAlongGrade(state, rise);
-  if (settled) ride.groundV = state.speed * grade;
+  shiftTravelAlongGrade(state, push / (1 + grade * grade));
+  // the springs close to the ground's rise under the travel it kept
+  ride.groundV = state.speed * grade;
 }
 
 function shiftTravelAlongGrade(state: TankState, rise: number): void {
