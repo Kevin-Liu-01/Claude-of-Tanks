@@ -816,7 +816,8 @@ function pushBedBlocks(rows: ReadonlyArray<number[] | null>, layer: number, piec
     while (i < rows.length && !rows[i]) i++;
     const firstRow = i;
     while (i < rows.length && rows[i]) i++;
-    if (i - firstRow < 2) continue;
+    // (a run of two rows is a sliver a few metres long, standing off a wall where the ground breaks up: none)
+    if (i - firstRow < 3) continue;
     const run = rows.slice(firstRow, i) as number[][];
     const positions: number[] = [];
     for (const row of run) positions.push(...row);
@@ -969,11 +970,12 @@ export function buildBedrock(
     noise.noise(Math.cos(theta) * rRef / 16 + k * 3.71 + 40, Math.sin(theta) * rRef / 16 - k * 1.33);
   /**
    * How far the ground at a height falls back into the hill on each ray against the foot line a few metres either side
-   * (m): a cleft, the rill the weather cut down the wall, reads metres deep; a lobe's broad bay curves back far less
-   * over so short a run. Past CLEFT_M a bed breaks off at the cleft's lips (it follows the cleft's shoulders in a
-   * little), and the cleft's walls are the hill's own.
+   * (m): a cleft, the rill the weather cut down the wall, reads a metre or more (the maps lane's jebels: a 3-4 m cut
+   * down a 70 degree wall falls back 0.6-2.2 m); a lobe's broad bay curves back far less over so short a run (Redrock's
+   * smooth domes: no master cleft at 0.9 m). Past CLEFT_M a bed breaks off at the cleft's lips (it follows the cleft's
+   * shoulders in a little), and the cleft's walls are the hill's own.
    */
-  const CLEFT_M = 1.8;
+  const CLEFT_M = 0.9;
   const recessAt = (y: (j: number) => number, rAt: number): Float32Array => {
     const e = new Float32Array(rays);
     for (let j = 0; j < rays; j++) e[j] = edge(j, y(j));
