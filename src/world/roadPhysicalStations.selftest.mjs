@@ -82,5 +82,5 @@ for (const id of MAP_IDS) {
 }
 // 2026-10-01: Steinburg's redesigned streets grade by physical distance and every real crossing (its wall lanes
 // meet the Hauptstrasse and the trade road twice each), so it joins the seven rounded-road maps.
-assert.equal(roundedMaps, 9); // 2026-10-02: + Saltmere Bay (layout brief: physical stations grade its T-junctions)
+assert.equal(roundedMaps, 10); // 2026-10-02: + Saltmere Bay (layout brief: physical stations grade its T-junctions); 2026-10-03: + Ironworks (its street grid and the three cross roads graded as one network)
 console.log('roadPhysicalStations: sparse physical spacing, trimmed-neighbor semantics and all 31 map policies pass');

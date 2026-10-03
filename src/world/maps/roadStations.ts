@@ -67,11 +67,13 @@ export function authoredRoadStationIndex(layout: StationLayout, road: number, or
 }
 
 /** The seven authored rounded networks need independent presentation spacing:
- * four curve chords are geometry, not four utility poles or house parcels. */
+ * four curve chords are geometry, not four utility poles or house parcels. Ironworks (2026-10-03) joins for its
+ * grading: its street grid and three cross roads meet at a dozen crossings, which only the network solve grades to
+ * one height each. */
 export function usesPhysicalRoadStations(mapId: string | undefined): boolean {
   return mapId === 'saltwind' || mapId === 'whiteout' || mapId === 'polders'
     || mapId === 'copper_mesa' || mapId === 'orchard' || mapId === 'longleaf' || mapId === 'oasis' || mapId === 'urban'
-    || mapId === 'coastal';
+    || mapId === 'coastal' || mapId === 'foundry';
 }
 
 const MIN_DRESSING_STATION_M = 24;
