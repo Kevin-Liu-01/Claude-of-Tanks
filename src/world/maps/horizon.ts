@@ -48,9 +48,11 @@ import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloud
 import { continuedGroundAt } from '../horizonSurface.ts';
 import { resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
 import { buildBorderFarmsteads, farmsteadTreesAt, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
+import { buildBorderHedgerows } from '../borderHedgerows.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
+  horizonBroadleafPalette,
   createVistaCanopyTile,
   type VistaGround,
   type HorizonForestSpeciesPalette,
@@ -3645,6 +3647,22 @@ export function* buildHorizonRingSteps(
   // Tanks' red-line shots, villages carrying on past the boundary): farmsteads and hamlets on the ring's seated surface
   // past the edge (borderFarmsteads.ts) — off the woods, the sea, a railway's right of way and the exit roads'
   // carriageways, gathered along those roads. One merged mesh, one draw, its shadow in the far cascade only.
+  // The map-borders lane (2026-10-03, gauntlet wave 1: "the empty middle distance"): the hedges as bush lines along the
+  // hedged stretches of the field boundaries past the edge, on the ring's continued ground (not on the ranges or the sea)
+  const hedgeLines = vista && ground?._borderHedgeLines ? ground._borderHedgeLines(900, (x, z) =>
+    (ground.getBorderHandOverAt?.(x, z) ?? 1) > 0.5 && !(seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01)
+    && (ground.getOutlandWaterAt?.(x, z)?.wetness ?? 0) < 0.05 && (ground.getOutlandSeatWeightAt?.(x, z) ?? 0) < 0.05) : [];
+  if (hedgeLines.length) {
+    const hedges = buildBorderHedgerows({
+      seed: ((seed ^ 0x4ED9) ^ idHash(mapId)) >>> 0, lines: hedgeLines, groundAt: ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs),
+      palette: horizonBroadleafPalette(rimBroadleaf ? vegetation?.palettes?.[rimBroadleaf]?.canopy : undefined),
+    });
+    if (hedges) {
+      const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;
+      if (setup) setup.call(_engineCtx, hedges.material as THREE.Material, null);
+      mesh.add(hedges);
+    }
+  }
   if (farmOptions && farmSites.length) {
     const farms = buildBorderFarmsteads({ ...farmOptions, sites: farmSites });
     if (farms) {

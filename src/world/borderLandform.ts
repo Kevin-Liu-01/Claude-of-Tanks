@@ -56,26 +56,34 @@ function fieldHash(n: number): number {
   const s = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
   return s - Math.floor(s);
 }
-/** A parcel's albedo multiplier: the crop by `roll`, its season's shade by `shade`. */
-function cropTint(crops: 'temperate' | 'steppe' | 'polder', roll: number, shade: number): [number, number, number] {
-  const k = 0.92 + shade * 0.16;
-  if (crops === 'steppe') {
-    if (roll < 0.45) return [1.16 * k, 1.07 * k, 0.80 * k];      // stubble, gold
-    if (roll < 0.72) return [0.80 * k, 0.70 * k, 0.58 * k];      // plough, brown
-    if (roll < 0.9) return [1.06 * k, 1.02 * k, 0.86 * k];       // pale straw
-    return [1, 1, 1];
-  }
-  if (crops === 'polder') {
-    if (roll < 0.42) return [0.88 * k, 1.02 * k, 0.82 * k];      // pasture
-    if (roll < 0.66) return [0.82 * k, 0.74 * k, 0.62 * k];      // plough
-    if (roll < 0.8) return [1.22 * k, 1.16 * k, 0.66 * k];       // rapeseed
-    return [1, 1, 1];
-  }
-  if (roll < 0.28) return [1.14 * k, 1.06 * k, 0.80 * k];        // stubble / hay
-  if (roll < 0.48) return [0.82 * k, 0.73 * k, 0.62 * k];        // plough
-  if (roll < 0.66) return [0.90 * k, 1.03 * k, 0.84 * k];        // pasture
-  if (roll < 0.8) return [0.98 * k, 0.88 * k, 0.88 * k];         // fallow
-  return [1, 1, 1];
+/**
+ * The crops past the edge, calibrated with the ground lane's field system (landUse.ts, the terrain material's lu_field):
+ * each crop's colour as a multiple of the local sward's luminance (~0.075 linear) — ripe wheat 2.8x, barley 3.0x, a
+ * young crop 1.25x greener, stubble 2.8x straw, plough of dark soil (~0.035), sunflower 0.70x — so a field reads the
+ * same either side of the red line. [r, g, b, weight]: pasture keeps most of the sward's own tone.
+ */
+const CROPS: Readonly<Record<string, readonly [number, number, number, number]>> = Object.freeze({
+  pasture: [0.86, 1.12, 0.62, 0.35],
+  wheat: [3.85, 2.78, 1.12, 1],
+  barley: [3.72, 3.13, 1.59, 1],
+  green: [1.13, 1.77, 0.45, 1],
+  plough: [0.66, 0.45, 0.28, 1],
+  stubble: [3.41, 2.83, 1.76, 1],
+  sunflower: [0.66, 0.93, 0.33, 1],
+  rapeseed: [3.2, 2.9, 0.55, 1],
+});
+/** Each region's rotation (landUse.ts ROTATIONS; the polders take the bocage's grazing with rapeseed for sunflower). */
+const ROTATIONS: Readonly<Record<'temperate' | 'steppe' | 'polder', readonly (readonly [string, number])[]>> = Object.freeze({
+  steppe: [['pasture', 0.16], ['wheat', 0.27], ['barley', 0.11], ['green', 0.14], ['plough', 0.15], ['stubble', 0.11], ['sunflower', 0.06]],
+  temperate: [['pasture', 0.30], ['wheat', 0.19], ['barley', 0.12], ['green', 0.14], ['plough', 0.13], ['stubble', 0.08], ['sunflower', 0.04]],
+  polder: [['pasture', 0.46], ['wheat', 0.10], ['barley', 0.06], ['green', 0.14], ['plough', 0.12], ['stubble', 0.07], ['rapeseed', 0.05]],
+});
+/** A field's crop by its roll (0..1) on the region's rotation. */
+function cropOf(crops: 'temperate' | 'steppe' | 'polder', roll: number): readonly [number, number, number, number] {
+  const table = ROTATIONS[crops] ?? ROTATIONS.temperate;
+  let acc = 0;
+  for (const [name, share] of table) { acc += share; if (roll < acc) return CROPS[name]; }
+  return CROPS[table[table.length - 1][0]];
 }
 
 /** A map's border landform (all optional; resolveBorderLandform fills the style's defaults). */
@@ -204,11 +212,21 @@ export interface BorderLandform {
   /** The border's hedgerows at (x, z): 0 … 1 on a field boundary's tree line (farmland past the edge reads as fields). */
   hedgeAt(x: number, z: number): number;
   /**
-   * The parcel the land past the edge belongs to, as an albedo offset (multiplier − 1, already weighted): stubble, plough,
-   * pasture or fallow between the hedgerows, faded in from 30 to 150 m past the edge, off the woods and the crests.
-   * Zero wherever there are no fields — a geometry without the attribute reads the same.
+   * The hedged stretches of the field boundaries past the edge (borderHedgerows.ts builds their bush lines): every
+   * field line of both families traced across the band in 8 m steps, each point with the hedge's presence (the
+   * boundary's stretch hedged, its gates and gaps, the fade from the edge, none in a wood); nothing beyond `maxOut` m
+   * past the edge or where `keep(x, z)` is false (the ranges' hand-over, the sea).
    */
-  parcelTintAt(x: number, z: number, out: [number, number, number]): [number, number, number];
+  traceHedgeLines(maxOut: number, keep?: (x: number, z: number) => boolean): { xs: number[]; zs: number[]; w: number[] }[];
+  /**
+   * The crop of the field the land past the edge belongs to, premultiplied by its weight: [colour x w, 1 - w] (the
+   * weight stored as its complement, so a geometry without the attribute — WebGL's generic default (0, 0, 0, 1) — reads
+   * no crop), the colour
+   * as a multiple of the local sward's luminance (CROPS); faded in over the first 40 m past the edge (no plain band
+   * after the square's own fields), off the woods and the crests. Zero wherever there are no fields — a geometry without
+   * the attribute reads the same.
+   */
+  parcelTintAt(x: number, z: number, out: [number, number, number, number]): [number, number, number, number];
   /**
    * The farm tracks past the edge, as the ring's borderTrack attribute: per field family, [1000 + signed metres from the
    * nearest track's centre line divided by the tracks' presence (so a fading track narrows), that track's boundary
@@ -510,7 +528,8 @@ export function createBorderLandform(
       handOverAt: (x, z) => 1 - smoothstep(140, 460, Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M),
       woodsAt: () => 0,
       hedgeAt: () => 0,
-      parcelTintAt: (_x, _z, out) => { out[0] = 0; out[1] = 0; out[2] = 0; return out; },
+      traceHedgeLines: () => [],
+      parcelTintAt: (_x, _z, out) => { out[0] = 0; out[1] = 0; out[2] = 0; out[3] = 1; return out; },
       trackAt: (_x, _z, out) => { out[0] = 0; out[1] = 0; out[2] = 0; out[3] = 0; return out; },
     };
   }
@@ -529,6 +548,47 @@ export function createBorderLandform(
       // gates and gaps break every boundary; a boundary inside a wood needs no hedge
       const gaps = smoothstep(-0.3, 0.0, noise.noise(x * 0.017 + 3.3, z * 0.017 - 7.1));
       return line * gaps * fade * settings.hedgerows;
+    },
+    traceHedgeLines(maxOut: number, keep?: (x: number, z: number) => boolean): { xs: number[]; zs: number[]; w: number[] }[] {
+      const lines: { xs: number[]; zs: number[]; w: number[] }[] = [];
+      if (settings.hedgerows <= 0) return lines;
+      const STEP = 8, span = (BORDER_EDGE_M + maxOut) * Math.SQRT2 + 40, kMax = Math.ceil(span / FIELD_PITCH_M) + 2;
+      for (let family = 0; family < 2; family++) {
+        for (let k = -kMax; k <= kMax; k++) {
+          if (!isFieldLine(k, family)) continue;
+          let cur: { xs: number[]; zs: number[]; w: number[] } | null = null;
+          const close = (): void => { if (cur && cur.xs.length >= 2) lines.push(cur); cur = null; };
+          for (let s = -span; s <= span; s += STEP) {
+            // the point of level k at along-coordinate s: the unwarped line, then Newton on the level (the warp is slow)
+            let across = k * FIELD_PITCH_M, x = 0, z = 0;
+            const at = (): void => {
+              if (family === 0) { x = across * fieldCos - s * fieldSin; z = across * fieldSin + s * fieldCos; }
+              else { x = s * fieldCos - across * fieldSin; z = s * fieldSin + across * fieldCos; }
+            };
+            at();
+            const out0 = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
+            if (out0 < -10 || out0 > maxOut + 40) { close(); continue; }
+            for (let it = 0; it < 3; it++) {
+              const c = fieldCoords(x, z);
+              across -= ((family ? c.b : c.a) - k) * FIELD_PITCH_M;
+              at();
+            }
+            const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
+            if (edgeOut < 20 || edgeOut > maxOut || (keep && !keep(x, z))) { close(); continue; }
+            const c = fieldCoords(x, z), other = fieldCell(family ? c.a : c.b, 1 - family);
+            let w = 0;
+            if (fieldHash(k * 3.7 + other * 11.3 + family * 5.9) <= 0.8) {
+              const gaps = smoothstep(-0.3, 0.0, noise.noise(x * 0.017 + 3.3, z * 0.017 - 7.1));
+              w = gaps * smoothstep(25, 110, edgeOut) * Math.min(1, settings.hedgerows * 1.25);
+              if (w > 0) w *= 1 - woodsAt(x, z);
+            }
+            if (!cur) cur = { xs: [], zs: [], w: [] };
+            cur.xs.push(x); cur.zs.push(z); cur.w.push(w);
+          }
+          close();
+        }
+      }
+      return lines;
     },
     trackAt(x: number, z: number, out: [number, number, number, number]): [number, number, number, number] {
       out[0] = 0; out[1] = 0; out[2] = 0; out[3] = 0;
@@ -560,20 +620,19 @@ export function createBorderLandform(
       }
       return out;
     },
-    parcelTintAt(x: number, z: number, out: [number, number, number]): [number, number, number] {
-      out[0] = 0; out[1] = 0; out[2] = 0;
+    parcelTintAt(x: number, z: number, out: [number, number, number, number]): [number, number, number, number] {
+      out[0] = 0; out[1] = 0; out[2] = 0; out[3] = 1;
       if (settings.fields <= 0) return out;
       const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
-      const fade = smoothstep(30, 150, edgeOut);
+      const fade = smoothstep(0, 40, edgeOut);
       if (fade <= 0) return out;
       // farmland keeps to the gentler ground: off the woods, thinning onto the crests of the hills
-      const w = settings.fields * fade * (1 - woodsAt(x, z)) * (1 - 0.7 * smoothstep(0.62, 0.92, hillsAt(x, z)));
-      if (w <= 0.002) return out;
+      const w0 = Math.min(1, settings.fields * 1.25) * fade * (1 - woodsAt(x, z)) * (1 - 0.7 * smoothstep(0.62, 0.92, hillsAt(x, z)));
+      if (w0 <= 0.002) return out;
       const { a, b } = fieldCoords(x, z);
       const id = fieldCell(a, 0) * 7919 + fieldCell(b, 1) * 104729;
-      const roll = fieldHash(id), shade = fieldHash(id + 31);
-      const crop = cropTint(settings.crops, roll, shade);
-      out[0] = (crop[0] - 1) * w; out[1] = (crop[1] - 1) * w; out[2] = (crop[2] - 1) * w;
+      const crop = cropOf(settings.crops, fieldHash(id)), bright = 0.9 + 0.2 * fieldHash(id + 31), w = w0 * crop[3];
+      out[0] = crop[0] * bright * w; out[1] = crop[1] * bright * w; out[2] = crop[2] * bright * w; out[3] = 1 - w;
       return out;
     },
     woodsAt,

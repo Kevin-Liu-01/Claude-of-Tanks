@@ -361,8 +361,10 @@ export interface HeightField {
   getBorderWoodsAt?(x: number, z: number): number;
   /** The map-borders lane: the border's hedgerows (0 … 1 on a field boundary's tree line past the edge). */
   getBorderHedgeAt?(x: number, z: number): number;
-  /** The map-borders lane: the parcel past the edge as a weighted albedo offset (the ring's borderTint attribute). */
-  _borderParcelAt?(x: number, z: number, out: [number, number, number]): [number, number, number];
+  /** The map-borders lane: the crop of the field past the edge, premultiplied by its weight (the ring's borderTint). */
+  _borderParcelAt?(x: number, z: number, out: [number, number, number, number]): [number, number, number, number];
+  /** The map-borders lane: the hedged stretches of the field boundaries past the edge (borderHedgerows.ts). */
+  _borderHedgeLines?(maxOut: number, keep?: (x: number, z: number) => boolean): { xs: number[]; zs: number[]; w: number[] }[];
   /** The map-borders lane: the farmsteads past the edge (borderFarmsteads.ts), built with the ring. */
   _borderFarmsteads?: { count: number; style: FarmsteadStyle; fieldAngle: number };
   /** The map-borders lane: the farm tracks past the edge (the ring's borderTrack attribute, borderLandform.ts trackAt). */
@@ -2241,6 +2243,7 @@ function* heightFieldBuildSteps(
     // (a receipt's classic border — the rim before the landform — publishes no woods, hedges or parcels)
     ...(border.settings.classic ? {} : { getBorderWoodsAt: border.woodsAt, getBorderHedgeAt: border.hedgeAt, _borderParcelAt: border.parcelTintAt,
       _borderTrackAt: border.trackAt,
+      _borderHedgeLines: border.traceHedgeLines,
       _borderFarmsteads: { count: border.settings.farms, style: border.settings.buildings, fieldAngle: border.fieldAngle } }),
     _roadExitAt: roadExitAt,
     ...(cfg?.navigationWaterPolicy
@@ -3153,7 +3156,7 @@ uniform vec4 uReduxC;
 uniform vec4 uReduxD;
 varying float vShore;        // metres landward of the waterline (32 = no shore near)
 varying vec2 vRoadExit;      // the map-borders lane: [signed offset from a road exit line (m), presence] on the ring
-varying vec3 vBorderTint;    // the map-borders lane: the ring's farmland parcel, a weighted albedo offset (0 = none)
+varying vec4 vBorderTint;    // the map-borders lane: the ring's field crop [colour / sward luminance x w, 1 - w] (default: none)
 varying vec4 vBorderTrack;   // the map-borders lane: the ring's farm tracks, per family [1000 + metres, boundary] (0 = none)
 float gScour = 0.0;          // round 73b: the wind-scoured crust (a satin sheen in the roughness stage)
 float gStrandFoam = 0.0;     // round 73b: the foam line the last run-up left (matte in the roughness stage)
@@ -4567,7 +4570,13 @@ void splatCompute() {
     }
     // the map-borders lane (2026-10-03): the farmland past the edge in parcels between the hedgerows (stubble, plough,
     // pasture, fallow — the ring's borderTint attribute; zero on the battlefield's own chunks)
-    a.rgb *= 1.0 + vBorderTint * (1.0 - fR) * (1.0 - roadCore) * (1.0 - fMs) * (1.0 - projW);
+    // (calibrated with the ground lane's fields, landUse.ts: the crop's colour as a multiple of the sward's own luminance;
+    // the interpolated colour is premultiplied, so two fields blend along their boundary; none on slopes past ~25 degrees)
+    float cropWeight = 1.0 - vBorderTint.w;
+    if (cropWeight > 0.002) {
+      float cropW = cropWeight * (1.0 - fR) * (1.0 - roadCore) * (1.0 - fMs) * (1.0 - projW) * (1.0 - smoothstep(0.04, 0.10, slope));
+      a.rgb = mix(a.rgb, vBorderTint.rgb / cropWeight * reduxLuma(a.rgb), cropW);
+    }
     // ... and the farm tracks down some of the field boundaries (borderLandform.ts trackAt): 3 m of packed dirt beside the
     // hedge, ragged at the edges, anti-aliased by the pixel's footprint and gone beyond ~1.2 km so it never shimmers
     if (vBorderTrack.x > 0.5) {
@@ -5050,7 +5059,7 @@ function* createSplatMaterialSteps(
     assignSplatBiomeUniforms(shader);
     // round 73: the baked fold attribute rides the chunk vertices (the horizon ring's faces carry none and read 0)
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\nattribute float fold;\nvarying float vFold;\nattribute float shore;\nvarying float vShore;\nattribute vec2 roadExit;\nvarying vec2 vRoadExit;\nattribute vec3 borderTint;\nvarying vec3 vBorderTint;\nattribute vec4 borderTrack;\nvarying vec4 vBorderTrack;');
+      '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\nattribute float fold;\nvarying float vFold;\nattribute float shore;\nvarying float vShore;\nattribute vec2 roadExit;\nvarying vec2 vRoadExit;\nattribute vec4 borderTint;\nvarying vec4 vBorderTint;\nattribute vec4 borderTrack;\nvarying vec4 vBorderTrack;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <worldpos_vertex>',
       '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNormal = normalize(mat3(modelMatrix) * objectNormal);\nvFold = fold;\nvShore = (1.0 - shore) * 32.0;\nvRoadExit = roadExit;\nvBorderTint = borderTint;\nvBorderTrack = borderTrack;'); // round 73b: the shore byte is inverted so a geometry without it (the ring bands) reads 32 m; the map-borders lane: roadExit (a geometry without it reads no road)
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
@@ -5549,19 +5558,19 @@ function* terrainBuildSteps(
     if (any) geometry.setAttribute('roadExit', new THREE.BufferAttribute(exitAttr, 2));
   }
   // The map-borders lane (2026-10-03, owner: "rolling ground with field patterns"): the farmland past the edge in
-  // parcels between the hedgerows — each ring vertex carries its parcel's albedo offset (borderLandform.ts parcelTintAt)
+  // parcels between the hedgerows — each ring vertex carries its field's crop, premultiplied (borderLandform.ts parcelTintAt)
   if (heightField._borderParcelAt && horizonStep.value.userData.horizonRing) {
     const geometry = horizonStep.value.geometry;
     const position = geometry.getAttribute('position');
-    const tintAttr = new Float32Array(position.count * 3);
-    const tint: [number, number, number] = [0, 0, 0];
+    const tintAttr = new Float32Array(position.count * 4);
+    const tint: [number, number, number, number] = [0, 0, 0, 1];
     let any = false;
     for (let i = 0; i < position.count; i++) {
       heightField._borderParcelAt(position.getX(i), position.getZ(i), tint);
-      tintAttr[i * 3] = tint[0]; tintAttr[i * 3 + 1] = tint[1]; tintAttr[i * 3 + 2] = tint[2];
-      if (tint[0] !== 0 || tint[1] !== 0 || tint[2] !== 0) any = true;
+      tintAttr.set(tint, i * 4);
+      if (tint[3] < 1) any = true;
     }
-    if (any) geometry.setAttribute('borderTint', new THREE.BufferAttribute(tintAttr, 3));
+    if (any) geometry.setAttribute('borderTint', new THREE.BufferAttribute(tintAttr, 4));
   }
   // ... and the farm tracks down some of the field boundaries (borderLandform.ts trackAt): per family the metres from the
   // nearest track and its boundary, so the shader draws a 3 m dirt track beside the hedge
