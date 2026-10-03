@@ -3,7 +3,7 @@
 // building with its gabled central block, low wings and a platform canopy on cast columns; long goods sheds with a
 // loading dock under a deep canopy; the brick water tower carrying its tank house; colliery cottages in pairs with
 // two doors and a dormer each; a shelled brick shell.
-import { PartSink, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
+import { PartSink, alongPlot, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -59,19 +59,25 @@ const cottagePair: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The goods shed: a long brick shed, sliding doors along a loading dock under a deep canopy on brackets. */
+/**
+ * The goods shed: a long brick shed, sliding doors along a loading dock under a deep canopy on brackets. A yard shed's
+ * plot (11.7 x 7.2 m) is wider than deep: the shed lies along it (plotAxes), its loading dock down one long side,
+ * instead of running 16 m deep across the plot, 4.4 m past either side.
+ */
 const goodsShed: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
-  const W = Math.max(9, Math.min(14, ctx.info.w - 3.5)), D = Math.max(16, Math.min(26, ctx.info.d - 0.6));
+  const plot = plotAxes(ctx.info);
+  const W = Math.max(plot.turned ? 4.4 : 9, Math.min(14, plot.w - 3.5)), D = Math.max(plot.turned ? 8 : 16, Math.min(26, plot.d - 0.6));
   const openings: Opening[] = [];
   for (let k = 0, n = Math.max(3, Math.round(D / 5)); k < n; k++) {
     const u = -D / 2 + (k + 0.5) * (D / n);
     openings.push(k % 2 === 0 ? { face: 'right', storey: 0, kind: 'gate', u, w: 2.6, y0: 1.1, h: 2.6 } : { face: 'right', storey: 0, kind: 'window', u, w: 1.1, y0: 2.2, h: 1.3 });
     if (k % 2 === 1) openings.push({ face: 'left', storey: 0, kind: 'window', u, w: 1.1, y0: 2.2, h: 1.3 });
   }
-  const cx = ctx.bounds.minX + 0.3 + W / 2;
-  sink.placed(0, cx, 0, 0, () => {
+  // the body against one side of the plot, the dock beside it (turned: in the plot-axes frame)
+  const cx = plot.turned ? -plot.w / 2 + 0.3 + W / 2 : ctx.bounds.minX + 0.3 + W / 2;
+  alongPlot(sink, plot.turned, () => sink.placed(0, cx, 0, 0, () => {
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 1.1, out: 0.04, bucket: 'stone' }, storeys: [{ h: 4.4, wall: 'stone' }],
       roof: slate(28), gableBucket: 'stone', openings, chimneys: [], gutters: { colour: rgb(0x6a6e70) }, verge: null,
@@ -80,23 +86,26 @@ const goodsShed: RegionalBuilder = (ctx) => {
     // the loading dock and its canopy on brackets
     sink.span('stone', W / 2, -0.4, -D / 2, W / 2 + 2.4, 1.1, D / 2);
     const canopy: RoofSpec = { kind: 'shed', pitchDeg: 7, eave: 0.1, verge: 0.3, thickness: 0.08, bucket: 'roof' };
-    sink.placed(Math.PI, W / 2 + 1.5, 0, 0, () => emitRoof(sink, roofGeometry(3.0, D + 0.4, 4.9, canopy), canopy));
+    const cw = plot.turned ? 2.6 : 3.0;
+    sink.placed(Math.PI, W / 2 + cw / 2, 0, 0, () => emitRoof(sink, roofGeometry(cw, D + 0.4, 4.9, canopy), canopy));
     for (let z = -D / 2 + 1; z < D / 2; z += 3.2) {
       sink.member('structureWood', [W / 2 + 0.05, 3.8, z], [W / 2 + 2.4, 4.85, z], 0.12, 0.12, [0, 0, 1], { colour: IRON, decor: true, exposed: true });
     }
-  });
+  }), 1);
   return sink.finish();
 };
 
 /** The water tower: a brick shaft and a riveted tank house with a hipped cap. */
 const waterTower: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const R = 2.2, H = 11.0;
+  // the tank house stays over the plot (a 5.4 m plot: the cap's eaves reach its edge)
+  const half = Math.min(ctx.info.w, ctx.info.d) / 2;
+  const R = Math.max(1.5, Math.min(2.2, half - 0.75)), H = 11.0;
   sink.cylinder('stone', [0, -0.4, 0], 'y', 0.9, R + 0.25, 8, {}, R + 0.2, true, Math.PI / 8);
   sink.cylinder('stone', [0, 0.5, 0], 'y', H, R, 8, {}, R * 0.9, true, Math.PI / 8);
   for (const y of [3.2, 6.6, 10.0]) sink.cylinder(YELLOW_BRICK, [0, y, 0], 'y', 0.3, R * (1 - (y / H) * 0.1) + 0.05, 8, { decor: true }, R * (1 - (y / H) * 0.1) + 0.05, true, Math.PI / 8);
   // the tank house: wider than the shaft, sheet-clad, under a hipped slate cap
-  const T = 3.4, th = 3.6, ty = H + 0.5;
+  const T = Math.max(R + 0.3, Math.min(3.4, half - 0.4)), th = 3.6, ty = H + 0.5;
   sink.span('structureMetal', -T, ty, -T, T, ty + th, T, { colour: rgb(0x5a6266) });
   for (let u = -T + 0.6; u < T; u += 1.2) for (const sgn of [-1, 1]) {
     sink.span('structureMetal', u - 0.04, ty, sgn * T - 0.04, u + 0.04, ty + th, sgn * T + 0.04, { colour: rgb(0x3e4448), decor: true });
@@ -113,7 +122,8 @@ const waterTower: RegionalBuilder = (ctx) => {
 const station: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
-  const W = Math.max(8, Math.min(10, ctx.info.w - 4)), D = Math.max(14, Math.min(22, ctx.info.d - 2));
+  // the body and the platform canopy (3.4 m past its track side) inside the plot
+  const W = Math.max(6.4, Math.min(10, ctx.info.w - 4.6)), D = Math.max(14, Math.min(22, ctx.info.d - 2));
   const coreD = Math.min(9, D * 0.45), wingD = (D - coreD) / 2;
   const door = DOOR[0];
   const coreOpenings: Opening[] = [{ face: 'left', storey: 0, kind: 'door', u: 0, w: 1.6, y0: 0, h: 2.8 }];
