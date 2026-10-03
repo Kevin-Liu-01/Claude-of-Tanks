@@ -945,6 +945,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/bridgeDeckNavigation.selftest.mjs',
     'src/sim/formationPlacement.selftest.mjs',
     'src/sim/matchModes.selftest.mjs',
+    // 2026-10-03 (bots lane): the frontline attack regroups before the last sector.
+    'src/sim/frontlineRegroup.selftest.mjs',
     'src/sim/matchRuleset.selftest.mjs',
     'src/sim/assaultLines.selftest.mjs',
     'src/sim/matchPlacement.selftest.mjs',
@@ -962,6 +964,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.zoneHold.selftest.mjs',
     // 2026-10-03 (bots lane): a route corner the hull pivots toward is held through the rechecks.
     'src/game/ai.cornerHold.selftest.mjs',
+    // 2026-10-03 (bots lane): an engaged casemate keeps its bow on its target (scoots, jinks, cover).
+    'src/game/ai.casemateLay.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',
