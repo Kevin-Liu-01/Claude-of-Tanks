@@ -6,7 +6,7 @@
 // floor with a parapet; dry-stone shepherd huts (kažun) in the fields; stone boathouses on the quay; abandoned houses
 // stand roofless with their gables.
 import {
-  PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER,
+  PartSink, alongPlot, faceBox, facePoint, pick, plotAxes, rgb, shade, UV_MEMBER,
   type Face, type RegionalBucket, type RegionalParts, type Rgb,
 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
@@ -180,11 +180,20 @@ function dwelling(ctx: RegionalBuildContext, opts: { storeys?: number; shop?: bo
       }
     }
     if (opts.tavern) {
-      // a vine pergola (odrina) on posts before the street gable
-      const f = frame.faces.front, timber = rgb(0x6a5440);
-      for (const u of [-W / 2 + 0.4, 0, W / 2 - 0.4]) faceBox(sink, 'structureWood', f, u, 1.25, 2.6, 0.14, 2.5, 0.14, { colour: timber });
-      for (let u = -W / 2 + 0.2; u <= W / 2 - 0.2; u += 0.55) faceBox(sink, 'structureWood', f, u, 2.56, 1.45, 0.09, 0.09, 2.9, { colour: timber, decor: true, uv: UV_MEMBER });
-      faceBox(sink, 'structureWood', f, 0, 2.48, 2.6, W, 0.1, 0.12, { colour: timber, decor: true, uv: UV_MEMBER });
+      // a vine trained on a trellis across the street gable over the door (an odrina on posts would stand in the
+      // street: the house fills its plot)
+      const f = frame.faces.front, timber = rgb(0x6a5440), leaf = rgb(0x4f6a34), look = ctx.variant;
+      faceBox(sink, 'structureWood', f, 0, 2.62, 0.2, W - 0.4, 0.08, 0.08, { colour: timber, decor: true, uv: UV_MEMBER });
+      for (const u of [-W / 2 + 0.4, W / 2 - 0.4]) faceBox(sink, 'structureWood', f, u, 2.62, 0.12, 0.08, 0.08, 0.24, { colour: timber, decor: true });
+      // the foliage in loose clumps along the trellis, trailing down the wall either side of the door (never over a
+      // window), never one even band
+      const door = openings[0];
+      for (let u = -W / 2 + 0.45; u <= W / 2 - 0.45; u += 0.35 + look() * 0.25) {
+        const off = Math.abs(u - door.u) - door.w / 2;
+        const trail = off > 0.05 && off < 0.6 && look() < 0.7, w = 0.35 + look() * 0.4, h = trail ? 0.7 + look() * 0.5 : 0.3 + look() * 0.3;
+        const y = trail ? 2.55 - h / 2 : 2.66 + (look() - 0.5) * 0.24;
+        faceBox(sink, 'structureWood', f, u + (look() - 0.5) * 0.15, y, 0.22 + look() * 0.12, w, h, 0.18 + look() * 0.16, { colour: shade(leaf, 0.75 + look() * 0.45), decor: true });
+      }
     }
   });
   return sink.finish();
@@ -429,37 +438,41 @@ const fishStore: RegionalBuilder = (ctx) => {
  */
 const loggia: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const W = Math.max(5.4, Math.min(8, ctx.info.w - 0.8)), D = Math.max(8, Math.min(15, ctx.info.d - 0.8));
-  const H = 3.7, beam = 0.42, p = 0.26;
-  sink.span('stone', -W / 2, -0.45, -D / 2, W / 2, 0.32, D / 2);
-  faceBox(sink, 'stone', { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D }, 0, 0.08, 0.2, D, 0.16, 0.4, { decor: true });
-  // the back wall (-x) and its bench
-  sink.span('stone', -W / 2, 0.32, -D / 2, -W / 2 + 0.45, H, D / 2);
-  sink.span('stone', -W / 2 + 0.45, 0.32, -D / 2 + 0.6, -W / 2 + 0.95, 0.78, D / 2 - 0.6, { decor: true });
-  // the piers: along the open long side and the two ends
-  const nz = Math.max(3, Math.round(D / 3));
-  const piers: Array<[number, number]> = [];
-  for (let k = 0; k <= nz; k++) piers.push([W / 2 - p, -D / 2 + p + (D - 2 * p) * k / nz]);
-  for (const z of [-D / 2 + p, D / 2 - p]) piers.push([0.15, z]);
-  for (const [x, z] of piers) {
-    sink.span('stone', x - p, 0.32, z - p, x + p, H - beam, z + p);
-    sink.span('stone', x - p - 0.06, H - beam - 0.16, z - p - 0.06, x + p + 0.06, H - beam, z + p + 0.06, { decor: true });
-  }
-  // the architrave round the open sides
-  sink.span('stone', W / 2 - 2 * p - 0.04, H - beam, -D / 2, W / 2, H, D / 2);
-  for (const z of [-D / 2, D / 2 - 2 * p - 0.04]) sink.span('stone', -W / 2 + 0.45, H - beam, z, W / 2 - 2 * p, H, z + 2 * p + 0.04);
-  // round arches between the piers of the long side: a ring of voussoirs under the architrave
-  const open: Face = { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
-  for (let k = 0; k < nz; k++) {
-    const za = -D / 2 + p + (D - 2 * p) * k / nz, zb = -D / 2 + p + (D - 2 * p) * (k + 1) / nz;
-    const uc = -(za + zb) / 2, half = (zb - za) / 2 - p, spring = H - beam - 0.2 - half * 0.75;
-    for (let a = 0; a <= 6; a++) {
-      const t = Math.PI * a / 6;
-      faceBox(sink, 'stone', open, uc + Math.cos(t) * half, spring + Math.sin(t) * half * 0.75, 0.04, 0.26, 0.22, 0.12, { decor: true });
+  // on a market row's plot (wider than deep) the loggia lies along it, its arcade down one long side (plotAxes)
+  const plot = plotAxes(ctx.info);
+  const W = Math.max(plot.turned ? 4.0 : 5.4, Math.min(8, plot.w - 0.8)), D = Math.max(8, Math.min(15, plot.d - 0.8));
+  alongPlot(sink, plot.turned, () => {
+    const H = 3.7, beam = 0.42, p = 0.26;
+    sink.span('stone', -W / 2, -0.45, -D / 2, W / 2, 0.32, D / 2);
+    faceBox(sink, 'stone', { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D }, 0, 0.08, 0.2, D, 0.16, 0.4, { decor: true });
+    // the back wall (-x) and its bench
+    sink.span('stone', -W / 2, 0.32, -D / 2, -W / 2 + 0.45, H, D / 2);
+    sink.span('stone', -W / 2 + 0.45, 0.32, -D / 2 + 0.6, -W / 2 + 0.95, 0.78, D / 2 - 0.6, { decor: true });
+    // the piers: along the open long side and the two ends
+    const nz = Math.max(3, Math.round(D / 3));
+    const piers: Array<[number, number]> = [];
+    for (let k = 0; k <= nz; k++) piers.push([W / 2 - p, -D / 2 + p + (D - 2 * p) * k / nz]);
+    for (const z of [-D / 2 + p, D / 2 - p]) piers.push([0.15, z]);
+    for (const [x, z] of piers) {
+      sink.span('stone', x - p, 0.32, z - p, x + p, H - beam, z + p);
+      sink.span('stone', x - p - 0.06, H - beam - 0.16, z - p - 0.06, x + p + 0.06, H - beam, z + p + 0.06, { decor: true });
     }
-  }
-  const roof = canalHip(22, 0.36);
-  emitRoof(sink, roofGeometry(W, D, H, roof), roof);
+    // the architrave round the open sides
+    sink.span('stone', W / 2 - 2 * p - 0.04, H - beam, -D / 2, W / 2, H, D / 2);
+    for (const z of [-D / 2, D / 2 - 2 * p - 0.04]) sink.span('stone', -W / 2 + 0.45, H - beam, z, W / 2 - 2 * p, H, z + 2 * p + 0.04);
+    // round arches between the piers of the long side: a ring of voussoirs under the architrave
+    const open: Face = { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
+    for (let k = 0; k < nz; k++) {
+      const za = -D / 2 + p + (D - 2 * p) * k / nz, zb = -D / 2 + p + (D - 2 * p) * (k + 1) / nz;
+      const uc = -(za + zb) / 2, half = (zb - za) / 2 - p, spring = H - beam - 0.2 - half * 0.75;
+      for (let a = 0; a <= 6; a++) {
+        const t = Math.PI * a / 6;
+        faceBox(sink, 'stone', open, uc + Math.cos(t) * half, spring + Math.sin(t) * half * 0.75, 0.04, 0.26, 0.22, 0.12, { decor: true });
+      }
+    }
+    const roof = canalHip(22, 0.36);
+    emitRoof(sink, roofGeometry(W, D, H, roof), roof);
+  }, 1);
   return sink.finish();
 };
 

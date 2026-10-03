@@ -201,10 +201,10 @@
       "concealers": 5680
     },
     "saltwind": {
-      "bytes": 1143444,
-      "sha256": "2a4591d2fef6ba20b166c3a1696065971f86d91f0597cca4eed1ad7f9dd1e8af",
+      "bytes": 1141586,
+      "sha256": "3cab9ed69d37e8ec941a6b202a34c6b39853dd2900a55569bbe10e65dc883006",
       "obstacles": 2971,
-      "colliders": 2790,
+      "colliders": 2788,
       "concealers": 3371
     },
     "reservoir": {
