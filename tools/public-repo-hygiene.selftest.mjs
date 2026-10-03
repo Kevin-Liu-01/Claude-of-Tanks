@@ -36,6 +36,7 @@ assert.deepEqual(missingSelftests, [],
 // independent. Historical experiments belong in Git history, not the public
 // checkout.
 const maintainedStandaloneTools = new Set([
+  'tools/aerial-tracers.browser.mjs', // main's AC-130 tracer GPU regression (native capture, run by hand)
   'tools/atgm-guidance-probe.mjs',
   'tools/bot-combat-probe.mjs',
   'tools/fleet-battle-views.mjs',
