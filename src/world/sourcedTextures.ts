@@ -176,7 +176,9 @@ const TERRAIN_PLAN = {
     // D doubles as the BEACH layer (the uSea shore apron + shoals sample it):
     // pale dry strand sand
     D: { set: 'sand', tint: [0.92, 0.87, 0.76], roughMul: 1.25 },
-    R: { set: 'rock', tint: [1.06, 1.05, 1.02], roughMul: 1.15 }, M: null,
+    // ground lane (2026-10-03): Rock058 ships blue-grey (0.28/0.31/0.33); the coast's granite and Saltwind's limestone
+    // are neutral to warm — the cool cast read as a blue-grey decal under the sky's fill
+    R: { set: 'rock', tint: [1.12, 1.05, 0.95], roughMul: 1.15 }, M: null,
   },
   autumn: {
     // fall meadow: green grass multiplied toward olive-gold hay
@@ -199,7 +201,9 @@ const TERRAIN_PLAN = {
     // brownfield: trodden grey-green verge grass, ash/cinder dirt, and the
     // R layer doubles as CONCRETE hardstand + road paving (uRoadTex)
     G: { set: 'grass', tint: [0.80, 0.78, 0.66], roughMul: 1.3 }, // r3: duller — read as mowed lawn
-    D: { set: 'dirt', tint: [0.66, 0.64, 0.60], roughMul: 1.35 },
+    // ground lane (2026-10-03, wave 8: the yard floor between the tracks "a flat uniform brown plane"): cinder — the
+    // dirt photo's brown half taken out, a grey a shade darker
+    D: { set: 'dirt', tint: [0.62, 0.61, 0.60], desat: 0.5, roughMul: 1.35 },
     R: { set: 'cobble', tint: [0.88, 0.88, 0.86], roughMul: 1.5 }, M: null,
   },
   // Map-quality expansion. Unknown ids intentionally fall back to Verdant,
@@ -247,9 +251,14 @@ const TERRAIN_PLAN = {
   caldera: {
     // Charcoal ash still needs a diffuse floor: near-black sourced cavities
     // multiplied by the old tints erased entire shadowed shelves after grade.
-    G: { set: 'dirt', tint: [0.50, 0.47, 0.42], lift: 0.04, roughMul: 1.34 },
-    D: { set: 'dirt', tint: [0.40, 0.38, 0.37], lift: 0.04, roughMul: 1.4 },
-    R: { set: 'rock', tint: [0.52, 0.50, 0.49], lift: 0.04, roughMul: 1.2 }, M: null,
+    // Ground lane (2026-10-03, Caldera's gauntlet: "dunes on a volcanic basin", "a fine repeating weave tile"): the dirt
+    // set is a forest floor of twigs and straw, whose fibres tiled into diagonal streaks the critics read as wind
+    // ripple. The ground is now ash and cinder — the fine-grained sand set, desaturated to a warm dark grey (ash
+    // ~0.15 albedo; the volcanic zoning pales it on the level, blackens and reddens it on the cones), the worn variant
+    // a step darker; the rock a desaturated basalt
+    G: { set: 'sand', desat: 0.85, tint: [0.40, 0.38, 0.36], lift: 0.02, roughMul: 1.3 },
+    D: { set: 'sand', desat: 0.8, tint: [0.31, 0.29, 0.28], lift: 0.02, roughMul: 1.35 },
+    R: { set: 'rock', desat: 0.7, tint: [0.62, 0.60, 0.59], lift: 0.03, roughMul: 1.2 }, M: null,
   },
   foundry: {
     G: { set: 'grass', tint: [0.66, 0.65, 0.56], roughMul: 1.32 },

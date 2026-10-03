@@ -21,6 +21,7 @@ import { readFileSync } from 'node:fs';
 import { groundReduxProfileIds, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { MAP_IDS } from './maps/catalog.ts';
 import { RING_RELIEF_WALL_BAND } from './horizonAutumnGround.ts';
+import { terrainBedWobbleAt, terrainFormationBoundaryY } from './terrain.ts';
 
 const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const active = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
@@ -111,7 +112,12 @@ function checkTerrain(source) {
   assert.ok(frag.includes('uniform vec4 uReduxD;'), 'the exposure / bedding vector is declared');
   assert.ok(blockAfter(frag, 'uReduxD.x > 0.001', 'exposure').includes('normalize(uSunDirW.xz'), 'exposure reads the map sun');
   unique(frag, /float bedSignal\(float y, float scale, float ph\) \{/g, 'the bed signal');
-  assert.ok(blockAfter(frag, 'patchW > 0.003', 'patchwork').includes('nz(uvW, 0.057'), 'the cover patchwork is one explicit-LOD field');
+  // ground lane (2026-10-03, the gauntlet's "softly repeating blotches"): the patchwork is the non-periodic field — two
+  // explicit-LOD reads of the noise, turned 42° apart at incommensurate scales (nzq), so its 17.5 m tile never repeats
+  assert.ok(blockAfter(frag, 'patchW > 0.003', 'patchwork').includes('nzq(uvW, 0.057'), 'the cover patchwork is the non-periodic explicit-LOD field');
+  const nzq = unique(frag, /vec2 nzq\(vec2 p, float s, vec2 o\) \{([\s\S]*?)\n\}/g, 'the non-periodic field')[1];
+  assert.equal((nzq.match(/\bnz\(/g) ?? []).length, 2, 'nzq: two explicit-LOD reads');
+  assert.ok(/0\.7431 \* p\.x - 0\.6691 \* p\.y/.test(nzq) && nzq.includes('s * 0.7243'), 'nzq: the second read is turned and rescaled');
   assert.ok(/float bedA = mix\(sin\([^;]*bedSignal\([^;]*uReduxD\.z\);/.test(frag), 'the marker beds take the non-periodic signal');
   assert.ok(/float ledge = mix\(sin\(ledgePhase\), bedSignal\([^;]*uReduxD\.z\);/.test(frag), 'the far ledges take it too');
   // the sampler budget is unchanged: ten declared samplers
@@ -152,7 +158,10 @@ for (const id of MAP_IDS) {
 }
 assert.equal(resolveGroundReduxProfile('moon').exposure, 0, 'airless regolith: nothing follows the sun');
 assert.equal(resolveGroundReduxProfile('moon').windRipple, 0, 'and no wind ripples on it');
-for (const id of MAP_IDS) if (id !== 'moon') assert.equal(resolveGroundReduxProfile(id).windRipple, 1, `${id}: its authored ripples at full`);
+// 2026-10-03 the ground lane: a volcanic basin (Caldera, groundRedux VOLCANIC) takes no wind's ripples either
+assert.equal(resolveGroundReduxProfile('caldera').windRipple, 0, 'no wind ripples on the volcanic basin');
+assert.equal(resolveGroundReduxProfile('caldera').patchwork, 0, 'and no blown-sand patchwork');
+for (const id of MAP_IDS) if (id !== 'moon' && id !== 'caldera') assert.equal(resolveGroundReduxProfile(id).windRipple, 1, `${id}: its authored ripples at full`);
 // the sand trains: no global phase over a per-position wind (the round-43 marble), the cell function in its place
 assert.ok(!/float rphase = dot\(uv, wind\)/.test(active(terrain)), 'the global ripple phase over a turned wind is gone');
 assert.ok(/vec2 sandWaves\(vec2 p, vec2 w0, float cellM, float swing, float warp, vec2 k, vec2 amp, out float tone\) \{/.test(terrain), 'the cell-blended wave trains');
@@ -204,4 +213,23 @@ for (const [character, [lo, hi]] of Object.entries(RING_RELIEF_WALL_BAND)) {
 assert.ok(ground.includes("const wallBand = character ? RING_RELIEF_WALL_BAND[character] : undefined;") && ground.includes('wall.set(...(wallBand ?? RING_RELIEF_WALL_NONE));'),
   'the ring bind sets the band per relief character (none elsewhere)');
 
+// 2026-10-03 the ground lane: the bed law's CPU twins (terrainBedWobbleAt, terrainFormationBoundaryY) carry the shader's
+// constants (gBedWob, the uFormation step), stay inside their amplitudes and wander — the scenery lane's bedrock skin
+// stripes by them, so its beds and the terrain's strata are one rock
+{
+  const shader = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  assert.ok(shader.includes('gBedWob = (nz(wp.xz, 0.0208, vec2(0.37, 0.83)).g - 0.5) * 3.2 + (nz(wp.xz, 0.0588, vec2(0.71, 0.19)).r - 0.5) * 1.1;'),
+    'the shader\'s bed wander is the twin\'s law');
+  assert.ok(shader.includes('(nz(wp.xz, 0.0071, vec2(0.83, 0.41)).r - 0.5) * 2.0 * uFormation.y'), 'the formation boundary\'s wander is the twin\'s law');
+  let lo = Infinity, hi = -Infinity, sum = 0, sq = 0, n = 0;
+  for (let z = -500; z <= 500; z += 7.3) for (let x = -500; x <= 500; x += 7.3) {
+    const w = terrainBedWobbleAt(x, z);
+    lo = Math.min(lo, w); hi = Math.max(hi, w); sum += w; sq += w * w; n++;
+    const y = terrainFormationBoundaryY(x, z, 10, 110, { atFrac: 0.3, wobbleM: 3 });
+    assert.ok(y >= 40 - 3 - 1e-9 && y <= 40 + 3 + 1e-9, 'the formation boundary wanders within its ±m');
+  }
+  const sd = Math.sqrt(sq / n - (sum / n) ** 2);
+  assert.ok(lo >= -2.15 - 1e-9 && hi <= 2.15 + 1e-9, `the bed wander stays inside ±2.15 m (${lo.toFixed(2)}..${hi.toFixed(2)})`);
+  assert.ok(sd > 0.2, `the beds wander (sd ${sd.toFixed(2)} m)`);
+}
 console.log(`terrainMaterialV2: coverage-gated layers (7 gates, 512 executed coverage cases), far band without detail normals, one-fetch far variant on measured means, explicit-LOD noise, exposure and non-periodic beds on ${MAP_IDS.length} maps, the ring as this material (bedforms on gentle sand, distance-faded slip-face sines, the atlas gradient's wall band), ${mutants.length + 3} mutation controls PASS; no GPU/art claim`);

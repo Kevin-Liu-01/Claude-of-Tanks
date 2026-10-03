@@ -2134,27 +2134,60 @@ function layRailSpan(
   };
   // ballast slab — grey crushed-stone vertex paint on the matte 'baked'
   // bucket (the 'stone' bucket is BRICK on railyard and read as brick beds)
+  // Ground lane (2026-10-03, the gauntlet: rails were "flat dark strips painted on bare brown dirt, with no raised
+  // ballast beds, sleepers, rail heads"): the bed is weathered crushed stone (0.062–0.082, a warm cast), not near-black
+  // nor pale; its sides fall away as sloped shoulders to the ground, so the line stands as a raised bed; every rail
+  // carries a worn bright head; and the sleepers lie every ~0.7 m. The seeded draws are exactly the old ones (24 slab
+  // colours, one jitter per seeded sleeper): the infill sleepers and the new parts take none.
   const deep = lay.conform === 'full';
   const bal = box(lay.ballast, deep ? RAIL_SLAB_DEPTH_FULL_M : 0.16, len + RAIL_SLAB_OVERHANG_M, 0.55);
   {
     const n = bal.attributes.position.count;
     const col = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
-      const v = 0.040 + rng() * 0.018;
-      col[i * 3] = v; col[i * 3 + 1] = v * 0.98; col[i * 3 + 2] = v * 0.94;
+      // (wave 8, railyard establishing: the pale bed and bright heads read as "flat gray grid patches … solar-panel
+      // arrays"): weathered, oil-dark crushed stone — between the old near-black and the first pale pass
+      const v = 0.062 + rng() * 0.020;
+      col[i * 3] = v; col[i * 3 + 1] = v * 0.97; col[i * 3 + 2] = v * 0.92;
     }
     bal.setAttribute('color', new THREE.BufferAttribute(col, 3));
   }
   place(bal, 0, deep ? 0.15 - RAIL_SLAB_DEPTH_FULL_M / 2 : 0.07, 0);
   (buckets.baked || buckets.stone).push(bal);
+  // the shoulders: a sloped plank each side from the bed's top edge (0.15 m) down into the ground 0.6 m out, its
+  // foot darkened toward the soil it spills onto
+  {
+    const run = 0.62, drop = 0.24, slopeLen = Math.hypot(run, drop), slopeAng = Math.atan2(drop, run);
+    for (const sideSign of [-1, 1]) {
+      const shoulder = box(slopeLen, 0.05, len + RAIL_SLAB_OVERHANG_M, 0.55);
+      const pos = shoulder.attributes.position, col = new Float32Array(pos.count * 3);
+      for (let i = 0; i < pos.count; i++) {
+        const foot = (pos.getX(i) * sideSign + slopeLen / 2) / slopeLen; // 0 at the bed's edge, 1 at the foot
+        const v = 0.072 - 0.016 * foot;
+        col[i * 3] = v; col[i * 3 + 1] = v * (0.97 - 0.03 * foot); col[i * 3 + 2] = v * (0.90 - 0.06 * foot);
+      }
+      shoulder.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      shoulder.rotateZ(-sideSign * slopeAng);
+      place(shoulder, sideSign * (lay.ballast / 2 + run / 2 - 0.02), 0.15 - drop / 2 - 0.02, 0);
+      (buckets.baked || buckets.stone).push(shoulder);
+    }
+  }
   // twin rails
   const half = lay.gauge / 2;
   for (const side of [-half, half]) {
     const rail = box(0.09, 0.17, len + 0.06, 2.0);
     place(rail, side, 0.24, 0);
     buckets.dark.push(rail);
+    // ground lane: the head the wheels keep bright — worn steel over the rusted web
+    const head = box(0.066, 0.016, len + 0.06, 2.0);
+    const hp = head.attributes.position, hc = new Float32Array(hp.count * 3);
+    for (let i = 0; i < hp.count; i++) { hc[i * 3] = 0.23; hc[i * 3 + 1] = 0.232; hc[i * 3 + 2] = 0.24; }
+    head.setAttribute('color', new THREE.BufferAttribute(hc, 3));
+    place(head, side, 0.24 + 0.085 + 0.004, 0);
+    (buckets.baked || buckets.dark).push(head);
   }
-  // sleepers every ~1.4 m
+  // sleepers every ~1.4 m, seeded; ground lane: an infill sleeper midway before each seeded one (a hashed jitter, no
+  // draw), so the track lies on sleepers every ~0.7 m
   for (let sI = 0; sI < nS; sI++) {
     const t = (sI + 0.5) / nS;
     const sl = box(lay.gauge + 0.66, 0.09, 0.28, 1.4);
@@ -2167,6 +2200,18 @@ function layRailSpan(
       sl.translate(sx + jitter * c, sy + 0.17, sz - jitter * s);
     }
     buckets.wood.push(sl);
+    const ti = sI / nS; // on the span's start for the first: the gap across the joint with the last span closes too
+    const infill = box(lay.gauge + 0.66, 0.09, 0.28, 1.4);
+    infill.userData.railInfill = true;
+    const hashJ = (((Math.imul(Math.round((ax + dx * ti) * 100) ^ Math.imul(Math.round((az + dz * ti) * 100), 0x27d4eb2d), 0x165667b1) >>> 8) & 0xffff) / 65535 - 0.5) * 0.05;
+    if (lay.conform === 'full') {
+      place(infill, hashJ, 0.17, (ti - 0.5) * len);
+    } else {
+      const sx = ax + dx * ti, sz = az + dz * ti, sy = ya + (yb - ya) * ti;
+      if (yaw !== 0) infill.rotateY(yaw);
+      infill.translate(sx + hashJ * c, sy + 0.17, sz - hashJ * s);
+    }
+    buckets.wood.push(infill);
   }
 }
 

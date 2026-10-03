@@ -9,7 +9,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createHeightField } from './terrain.ts';
-import { createVegetation } from './vegetation.ts';
+import { createVegetation, standLobeAt } from './vegetation.ts';
 import { getMapConfig } from './maps/index.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
@@ -108,7 +108,9 @@ function produce(id, extra = {}) {
     // round 77b (2026-09-26): the rim-forest blocks feather through the same law, at the rim trees' scale (× 1.4)
     // and the rim's bound (506 m); every instance stands in a stand's annulus or a rim block's
     const rimBlocks = world._rimBlocks;
-    const annulus = (discs, x, z) => discs.map(c => Math.hypot(x - c.x, z - c.z) / c.r)
+    // 2026-10-03 the ground lane: a stand's edge runs in lobes (vegetation.ts standLobeAt) — the annulus is read against
+    // the lobed radius at the instance's bearing
+    const annulus = (discs, x, z) => discs.map(c => Math.hypot(x - c.x, z - c.z) / (c.r * standLobeAt(c.x, c.z, Math.atan2(z - c.z, x - c.x))))
       .filter(r => r >= 0.82 - 1e-4 && r <= 1.6 + 1e-4).sort((a, b) => a - b)[0];
     let minR = Infinity, maxR = 0, standCount = 0, rimCount = 0;
     for (let i = 0; i < mesh.count; i++) {
