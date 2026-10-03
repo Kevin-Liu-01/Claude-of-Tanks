@@ -1913,7 +1913,7 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
 
 // ------------------------------------------------------------------------------------------ regional light variants
 // Regional-buildings lane (2026-10-03; gauntlet wave 15: "the American plank barn with the shingle roof and ranch rail
-// fence is still in [Jade River Delta's] street"). A map that adopts an
+// fence is still in [Jade River Delta's] street", Kohima's "bare plank barn on posts"). A map that adopts an
 // architecture kit (maps/regional) builds these in place of the generic light families under the same key (props.ts
 // LOCAL_TYPES): the footprint (hw, hl, h), class, hit points, crush threshold and debris shape stay the family's; the
 // build and its palette are the region's. Every build stands inside the family's footprint box.
@@ -1922,6 +1922,8 @@ const REGIONAL_PAL = {
   tin: [0x8f9699, 0xb8bfc1, 0x4b5053],
   mud: [0x7b6650, 0x9c8669, 0x4f4335],
   bamboo: [0x9f8a62, 0xbfa97e, 0x5d4f37],
+  thatch: [0x7c6b4d, 0x9f8c65, 0x3e3327],
+  nagaWood: [0x5b4735, 0x856b51, 0x2f251b],
 } as const satisfies Record<string, Palette>;
 
 /** A light gable roof built at the origin and moved: the shared roof helper lays its planes out centred on x = 0. */
@@ -2002,6 +2004,42 @@ function makeBengalFisherShed(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('fishershack', out);
 }
 
+/**
+ * The Angami house (Kohima, Naga Hills): low plank walls under a deep thatch swept nearly to the ground, the front
+ * gable crowned with the crossed house-horn boards (kika) of a feast-giver's house, a plank porch wall with its door.
+ */
+function makeAngamiHouse(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], th = REGIONAL_PAL.thatch, wd = REGIONAL_PAL.nagaWood;
+  const w = 5.6, d = 11.2, wallH = 1.8;
+  colored(out, box(w, wallH, d).translate(0, wallH / 2, 0), wd[0], rng, 0.08);
+  // the thatch: a thick prism from 1.1 m to the ridge, its eaves low over the walls
+  colored(out, gable(7.2, 4.4, 12.4).translate(0, 1.1, 0), th[0], rng, 0.1);
+  colored(out, box(0.32, 0.26, 12.6).translate(0, 5.42, 0), th[2], rng, 0.06);
+  // the front: a plank wall under the gable with its door, and the crossed horns at the apex
+  colored(out, box(w - 0.4, 1.7, 0.12).translate(0, 0.85, d / 2 + 0.06), wd[1], rng, 0.08);
+  colored(out, box(0.9, 1.5, 0.06).translate(0.7, 0.75, d / 2 + 0.14), 0x221a12, rng, 0.04);
+  for (const side of [-1, 1]) {
+    const horn = box(0.16, 2.3, 0.1); horn.rotateZ(side * 0.62);
+    colored(out, horn.translate(side * 0.42, 5.55, 6.22), wd[2], rng, 0.05);
+  }
+  return mergeConnectedStructure('longhouse', out);
+}
+
+/** A Naga granary on posts: a plank and bamboo store raised on timber legs under a steep thatch, a notched-log ladder. */
+function makeNagaGranary(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], th = REGIONAL_PAL.thatch, wd = REGIONAL_PAL.nagaWood, bam = REGIONAL_PAL.bamboo;
+  const lift = 1.4, w = 4.2, d = 5.8, wallH = 1.9;
+  for (const x of [-w / 2 + 0.15, w / 2 - 0.15]) for (const z of [-d / 2 + 0.15, 0, d / 2 - 0.15]) {
+    colored(out, box(0.18, lift + 0.08, 0.18).translate(x, (lift + 0.08) / 2, z), wd[2], rng);
+  }
+  colored(out, slab(w + 0.4, 0.12, d + 0.4).translate(0, lift + 0.06, 0), wd[1], rng);
+  colored(out, box(w, wallH, d).translate(0, lift + 0.12 + wallH / 2, 0), bam[0], rng, 0.1);
+  colored(out, gable(5.8, 2.9, 7.2).translate(0, lift + 0.12 + wallH - 0.5, 0), th[0], rng, 0.1);
+  const log = box(0.3, 2.1, 0.3); log.rotateX(-0.5);
+  colored(out, log.translate(0.8, 1.0, d / 2 + 0.55), wd[1], rng);
+  return mergeConnectedStructure('stilthouse', out);
+}
+
 /** The architecture kits' light-family variants (maps/regional): kit id -> family key -> the variant. */
 export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = (() => {
   const B = DESTRUCTIBLE_BUILDING_TYPES;
@@ -2014,6 +2052,10 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
       longhouse: variant('longhouse', REGIONAL_PAL.tin, makeBengalHomestead, 'metal'),
       stilthouse: variant('stilthouse', REGIONAL_PAL.bamboo, makeBengalStiltHouse),
       fishershack: variant('fishershack', REGIONAL_PAL.bamboo, makeBengalFisherShed),
+    }),
+    kohima: Object.freeze({
+      longhouse: variant('longhouse', REGIONAL_PAL.thatch, makeAngamiHouse),
+      stilthouse: variant('stilthouse', REGIONAL_PAL.thatch, makeNagaGranary),
     }),
   });
 })();

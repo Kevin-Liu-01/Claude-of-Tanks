@@ -143,6 +143,53 @@ const shelled: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+/**
+ * The mission bell tower (the base tower plot; gauntlet wave 15 still saw a tiled European steeple there): a rough
+ * stone base, a whitewashed timber belfry with louvred openings, a pyramid of painted tin and a cross.
+ */
+const bellTower: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const S = Math.max(2.8, Math.min(3.6, Math.min(ctx.info.w, ctx.info.d) - 0.3)), H = Math.max(7.5, Math.min(9.4, ctx.info.h));
+  const base = H * 0.5, bel = H * 0.82;
+  sink.span('stone', -S / 2, -0.4, -S / 2, S / 2, base, S / 2);
+  sink.span('stone', -S / 2 - 0.12, base - 0.05, -S / 2 - 0.12, S / 2 + 0.12, base + 0.2, S / 2 + 0.12, { decor: true });
+  const T = S - 0.5;
+  sink.span('structureWood', -T / 2, base + 0.2, -T / 2, T / 2, bel, T / 2, { colour: WHITE });
+  for (const f of [{ origin: [0, 0, T / 2], u: [1, 0, 0], out: [0, 0, 1], width: T }, { origin: [T / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: T },
+    { origin: [0, 0, -T / 2], u: [-1, 0, 0], out: [0, 0, -1], width: T }, { origin: [-T / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: T }] as Face[]) {
+    faceBox(sink, 'dark', f, 0, bel - 0.85, 0.005, T * 0.5, 1.1, 0.02, { decor: true });
+    for (let k = 0; k < 4; k++) faceBox(sink, 'structureWood', f, 0, bel - 1.3 + k * 0.28, 0.04, T * 0.52, 0.05, 0.06, { colour: GREEN_TRIM, decor: true });
+  }
+  const door: Face = { origin: [0, 0, S / 2], u: [1, 0, 0], out: [0, 0, 1], width: S };
+  doorUnit(sink, door, 0, 0, 1.0, 2.1, { leaf: rgb(0x6a4b33), frame: { bucket: 'stone', width: 0.2, out: 0.06, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank' });
+  sink.cylinder('structureMetal', [0, bel, 0], 'y', H - bel, T * 0.78, 4, { colour: TIN[0] }, 0.04, true, Math.PI / 4);
+  sink.span('structureWood', -0.04, H - 0.05, -0.04, 0.04, H + 0.75, 0.04, { colour: WHITE, decor: true });
+  sink.span('structureWood', -0.24, H + 0.45, -0.04, 0.24, H + 0.53, 0.04, { colour: WHITE, decor: true });
+  return sink.finish();
+};
+
+/** A bazaar stall (the base market plot): timber posts under a painted tin roof, a plank counter of baskets. */
+const bazaarStall: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng;
+  const W = Math.max(4.5, Math.min(6.4, ctx.info.w - 0.4)), D = Math.max(3.6, Math.min(5.0, ctx.info.d - 0.4));
+  const floor = 0.3, back = 2.9, front = 2.35, post = pick(rng, WEATHERED_PLANK);
+  sink.span('stone', -W / 2 - 0.2, -0.3, -D / 2 - 0.2, W / 2 + 0.2, floor, D / 2 + 0.2);
+  for (const [x, z, h] of [[-1, -1, back], [1, -1, back], [-1, 1, front], [1, 1, front]] as const) {
+    sink.span('structureWood', x * (W / 2 - 0.15) - 0.08, floor, z * (D / 2 - 0.15) - 0.08, x * (W / 2 - 0.15) + 0.08, h, z * (D / 2 - 0.15) + 0.08, { colour: post });
+  }
+  sink.span('structureWood', -W / 2 + 0.1, floor, -D / 2 + 0.08, W / 2 - 0.1, back - 0.12, -D / 2 + 0.18, { colour: shade(post, 0.85) });
+  const roof: RoofSpec = { kind: 'shed', pitchDeg: Math.atan2(back - front, D) * 180 / Math.PI, eave: 0.35, verge: 0.3, thickness: 0.05, bucket: 'structureMetal', ridge: null };
+  sink.placed(-Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(D, W, front, roof), roof, pick(rng, TIN)));
+  sink.span('structureWood', -W / 2 + 0.35, floor, D / 2 - 1.0, W / 2 - 0.35, floor + 0.85, D / 2 - 0.45, { colour: shade(post, 1.1) });
+  const produce: readonly Rgb[] = [0x6a8a3a, 0xb0802a, 0x8a3a2a, 0x9a8a5a].map(rgb);
+  for (let k = 0; k < 4; k++) {
+    const x = -W / 2 + 0.75 + k * (W - 1.5) / 3;
+    sink.cylinder('structureWood', [x, floor + 0.85, D / 2 - 0.72], 'y', 0.16, 0.26, 8, { colour: pick(rng, produce), decor: true }, 0.2);
+  }
+  return sink.finish();
+};
+
 export const KOHIMA_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   bathhouse: bungalow,
   farmhouse: nagaHouse,
@@ -153,6 +200,9 @@ export const KOHIMA_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object
   granary,
   woodshed: granary,
   ruin: shelled,
+  // the base plots the first kit left: the steeple and the market stalls (gauntlet wave 15)
+  tower: bellTower,
+  market: bazaarStall,
 });
 
 export const KOHIMA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
