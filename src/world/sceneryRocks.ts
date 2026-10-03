@@ -945,10 +945,11 @@ export function buildBedrock(
     // a third of the hard beds stand out as ledges, the rest a hand's breadth proud; and no bed rings the whole hill:
     // each shows as its own rock along stretches of the girth (`show`, a threshold on its exposure field), and the
     // hill's weathered wall between them
-    const ledge = !isSoft && rng() < 0.34;
+    // (a ledge's lip is weathered round, not a cushion: a small bevel, a face that barely bellies)
+    const ledge = !isSoft && rng() < 0.25;
     plan.push({ t, soft: isSoft, layer: isSoft ? 2 * soft++ + 1 : 2 * hard++,
-      proud: isSoft ? 0.06 + rng() * 0.1 : ledge ? 0.55 + rng() * 0.45 : 0.16 + rng() * 0.3, batter: (0.06 + rng() * 0.12) * t,
-      bev: isSoft ? Math.min(0.15, t * 0.3) : Math.min(0.5, t * 0.22), stagger: rng(),
+      proud: isSoft ? 0.05 + rng() * 0.08 : ledge ? 0.5 + rng() * 0.4 : 0.08 + rng() * 0.17, batter: (0.04 + rng() * 0.08) * t,
+      bev: isSoft ? Math.min(0.1, t * 0.2) : Math.min(0.28, t * 0.11), stagger: rng(),
       show: isSoft ? -0.6 + rng() * 0.5 : -0.85 + rng() * 0.35 });
     level.push(level[k] + t);
   }
@@ -1067,7 +1068,7 @@ export function buildBedrock(
           const wob = noise.noise(th * rMean * 0.35 + k * 3.1, b0 * 0.21) * 0.5 + 0.5;
           // (a ledge thins back into the wall toward the ends of its stretch)
           const pp = p * (0.8 + 0.4 * wob) * (0.3 + 0.7 * Math.min(1, shown / 0.22));
-          const bulge = noise.noise(th * rMean * 0.9 - k * 1.7, b0 * 0.4 + 5) * 0.14 * tt;
+          const bulge = noise.noise(th * rMean * 0.9 - k * 1.7, b0 * 0.4 + 5) * 0.06 * tt;
           const row: number[] = [];
           for (const [r, y] of bedProfile(r0, r1, b0, b1, tt, pp, bulge, batter, bev)) row.push(spec.x + c * r, y, spec.z + sn * r);
           rows.push(row);
@@ -1129,6 +1130,20 @@ export function buildBedrock(
   }
   const count = pieces.length;
   const geometry = count ? finish(pieces, spec.geology, spec.tone, ground, noise, spec.x * 0.017 - spec.z * 0.011) : null;
+  if (geometry) {
+    // desert varnish (Wadi Rum's walls): dark manganese streaks running straight down the faces from the ledges — a field
+    // of the bearing alone, so a streak runs across the beds below it — a little cooler than the rock; none on the benches
+    const pos = geometry.attributes.position, nor = geometry.attributes.normal, col = geometry.attributes.color;
+    for (let v = 0; v < pos.count; v++) {
+      if (Math.abs(nor.getY(v)) > 0.55) continue;
+      const arc = Math.atan2(pos.getZ(v) - spec.z, pos.getX(v) - spec.x) * rRef;
+      const field = noise.noise(arc * 0.45 + 17.3, 3.1) * 0.6 + noise.noise(arc * 1.7 - 4.7, 8.3) * 0.4;
+      const streak = Math.min(1, Math.max(0, (field - 0.18) / 0.32));
+      if (streak <= 0) continue;
+      const dark = 1 - 0.42 * streak * streak * (3 - 2 * streak);
+      col.setXYZ(v, col.getX(v) * dark * 0.97, col.getY(v) * dark * 0.98, col.getZ(v) * dark);
+    }
+  }
   const formation = strata?.formation;
   if (geometry && bedWob && formation) {
     // the map's two formations, as the terrain draws them on its rock: the paler below the boundary, the redder above,
