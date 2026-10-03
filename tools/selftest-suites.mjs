@@ -1100,6 +1100,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/hardstandSurface.selftest.mjs',
     'src/world/hardstandBanks.selftest.mjs', // 2026-10-02: the apron bank law, every map, with its pending list
     'src/world/landformGeology.selftest.mjs', // 2026-10-03: landform geology, and every smooth landform unchanged
+    'src/world/verdantTownPlan.selftest.mjs', // 2026-10-03: Verdant's classic town plan (every house and village wall where main has it)
     'src/world/terrainSurfaceDetail.selftest.mjs',
     'src/world/terrainMaterialOwnership.selftest.mjs',
     'src/world/terrainProjection.selftest.mjs',
