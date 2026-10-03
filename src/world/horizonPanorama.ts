@@ -24,9 +24,7 @@
 // otherwise), re-bakes after a GPU suspension disposes the atlas, and until it has baked the round-72 far range stays
 // on (the receipts, a renderer without float targets). Desktop tier only: the mobile tier has no far range.
 import * as THREE from 'three';
-import {
-  HAZE_EXT_CHROMA, HAZE_LAW_GLSL, HAZE_OVERCAST_K, HAZE_TARGET_SKY_K, HAZE_TINT_SHARE, hazeLayerInverseScale, hazeSigma,
-} from '../engine/hazeLaw.ts';
+import { HAZE_EXT_CHROMA, HAZE_LAW_GLSL, hazeLayerInverseScale, hazeSigma, hazeTargetTerms } from '../engine/hazeLaw.ts';
 import type { SeaOpening } from './edgeWater.ts';
 import type { HorizonReliefCharacter } from './horizonRelief.ts';
 
@@ -160,9 +158,9 @@ export function horizonPanoramaHaze(atmosphere: PanoramaAtmosphere | null | unde
   if ((sun[0] * sd.x + sun[1] * sd.y + sun[2] * sd.z) / (sl * dl) < 0.9995) return null;
   const density = fogDensity ?? atmosphere.fogDensity;
   if (!(Number.isFinite(density) && (density as number) > 0)) return null;
-  const oc = THREE.MathUtils.clamp(overcast, 0, 1);
-  const tintShare = THREE.MathUtils.lerp(HAZE_TINT_SHARE, 1, oc);
-  const targetK = HAZE_TARGET_SKY_K * THREE.MathUtils.lerp(1, HAZE_OVERCAST_K, oc);
+  // the target's tint share and level under the deck: the aerial pass's own terms (hazeLaw.ts hazeTargetTerms)
+  const terms = hazeTargetTerms(overcast, { x: 0, y: 0 });
+  const tintShare = terms.x, targetK = terms.y;
   const tint = atmosphere.fogTint, tintL = Math.max(0.2126 * tint.r + 0.7152 * tint.g + 0.0722 * tint.b, 1e-4);
   const mix = THREE.MathUtils.clamp((atmosphere.fogMix ?? 0) * tintShare, 0, 1);
   const target = (sky: THREE.Color): THREE.Vector3 => {
