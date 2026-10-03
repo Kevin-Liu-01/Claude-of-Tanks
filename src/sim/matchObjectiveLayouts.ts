@@ -23,7 +23,7 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // Sirocco Wadi (redesign 2026-10-01): three gravel bars in the wadi bed, rotationally symmetric about the ford — the
   // gap between the mesas, the souk ground at the ford (also the turbo-ball kickoff), the eastern fan. Each is a graded
   // apron in the map file, so the discs seat where they are authored and both teams drive the same distances.
-  desert: { kickoff: { x: 0, z: 0 }, zones: [{ x: -292, z: 112 }, { x: 0, z: 0 }, { x: 292, z: -112 }] },
+  desert: { kickoff: { x: 0, z: 0 }, zones: [{ x: -300, z: 84 }, { x: 0, z: 0 }, { x: 292, z: -112 }] },
   // Steinburg (redesign 2026-10-01): three discs on the spur's crest, mirror-symmetric across it — the farm road's
   // crossing in the western orchards and the market square (also the turbo-ball kickoff), each a paved apron in the
   // map file, and the bypass in the gap beyond the castle rock, the validated seat of the bounded search on the
