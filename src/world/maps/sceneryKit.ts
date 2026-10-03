@@ -405,3 +405,174 @@ export function buildConductor(
   }
   return merge(parts, true, false);
 }
+
+// ---------------------------------------------------------------------------------------------- sandbag stacks
+
+// The scenery lane (2026-10-03; the gauntlet's wave 0: "a pile of identical pale ellipsoids"): the field works' sandbag
+// stacks are laid bag by bag. Each bag is a filled sack — thick in the middle, thin and narrow at its folded and tied
+// ends, sagging where it settled — in its own tone (sun-bleached hessian, weathered hessian, olive and grey-green
+// polypropylene, a few dirty ones), grimed toward its bed, its weave on the props canvas atlas. The courses are laid
+// in stretcher bond, front and back rows, each course stepping in a little (a battered parapet), the top course
+// uneven. A stack fills the envelope of the sourced model it replaces (the same footprint and height on the same
+// placements), so its cover stays where it was; the builders draw only their own stream, never the props stream.
+
+/** The stacks' envelopes (the sourced models they replace): half length along the wall, half depth, top, sink. */
+const SANDBAG_STACKS = {
+  sandbagbig: { along: 'x', half: 1.787, depth: 0.438, top: 1.23, sink: 0.12, seed: 0x5b16 },
+  sandbagsmall: { along: 'x', half: 1.304, depth: 0.421, top: 0.95, sink: 0.1, seed: 0x5b5a },
+  sandbagwall: { along: 'z', half: 1.477, depth: 0.497, top: 0.9, sink: 0.1, seed: 0x5ba1 },
+} as const;
+type SandbagStackKind = keyof typeof SANDBAG_STACKS;
+
+/** The bags' tones (sRGB HSL) and their shares. */
+const SANDBAG_TONES: ReadonlyArray<readonly [Palette, number]> = [
+  [[0.092, 0.26, 0.42], 0.42], // sun-bleached hessian
+  [[0.086, 0.2, 0.36], 0.33],  // weathered hessian
+  [[0.15, 0.17, 0.31], 0.12],  // olive polypropylene, faded
+  [[0.078, 0.22, 0.29], 0.13], // dirty
+];
+
+function sandbagRng(seed: number): Rng {
+  let a = seed | 0;
+  return () => {
+    a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * One filled bag along +X (length), Y (thickness), Z (width), centred: a box of 3 x 1 x 2 segments shaped to a pillow
+ * (thin and narrow at the ends, sagging on top), welded so it shades soft, with a planar weave UV, its tone and a
+ * grime toward its bed. About 44 triangles.
+ */
+function sandbagBag(len: number, thick: number, wid: number, r: Rng): THREE.BufferGeometry {
+  const box3 = new THREE.BoxGeometry(1, 1, 1, 3, 1, 2);
+  box3.deleteAttribute('uv');
+  box3.deleteAttribute('normal');
+  const p = box3.attributes.position;
+  const sag = 0.06 + r() * 0.1, twist = (r() - 0.5) * 0.12, tie = r() < 0.5 ? 1 : -1;
+  for (let i = 0; i < p.count; i++) {
+    const u = p.getX(i) * 2, v = p.getY(i) * 2, w = p.getZ(i) * 2; // -1..1
+    const endT = Math.pow(Math.abs(u), 4);
+    // the tied end pinches harder than the folded one
+    const pinch = u * tie > 0 ? 0.36 : 0.24;
+    const y = v * 0.5 * thick * (1 - pinch * endT) * (1 - 0.32 * w * w) - (v > 0 ? sag * thick * (1 - u * u) * (1 - 0.5 * w * w) : 0);
+    const z = w * 0.5 * wid * (1 - 0.1 * Math.pow(Math.abs(u), 6) * (u * tie > 0 ? 1.4 : 1));
+    const x = u * 0.5 * len * (1 - 0.06 * w * w);
+    p.setXYZ(i, x, y + twist * u * w * thick * 0.5, z);
+  }
+  const g = mergeVerticesKeepIndex(box3);
+  g.computeVertexNormals();
+  // the tone, and a grime band toward the bed
+  const [tone] = (() => { let pick = r(), at = SANDBAG_TONES[0]; for (const t of SANDBAG_TONES) { if ((pick -= t[1]) <= 0) { at = t; break; } } return at; })();
+  const lift = (r() - 0.5) * 0.05, hue = (r() - 0.5) * 0.01;
+  const gp = g.attributes.position, n = gp.count;
+  const col = new Float32Array(n * 3), uv = new Float32Array(n * 2);
+  const du = r() * 7, dv = r() * 7;
+  for (let i = 0; i < n; i++) {
+    const x = gp.getX(i), y = gp.getY(i), z = gp.getZ(i);
+    const bed = Math.max(0, Math.min(1, (-y / (thick * 0.5) + 0.2) / 1.2));
+    _c.setHSL(tone[0] + hue, tone[1] * (1 - bed * 0.25), Math.max(0.05, (tone[2] + lift) * (1 - bed * 0.32)), THREE.SRGBColorSpace);
+    col[i * 3] = _c.r; col[i * 3 + 1] = _c.g; col[i * 3 + 2] = _c.b;
+    // the weave runs along the bag and round it (a planar wrap: x along, z and y around)
+    uv[i * 2] = du + x * 4.2;
+    uv[i * 2 + 1] = dv + (z + (y > 0 ? 0 : wid) + y * Math.sign(z || 1)) * 4.2;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return g;
+}
+
+/** Weld coincident corners (positions only) so a shaped box shades as one soft surface. */
+function mergeVerticesKeepIndex(g: THREE.BufferGeometry): THREE.BufferGeometry {
+  const p = g.attributes.position, index = g.index!.array;
+  const key = (i: number) => `${p.getX(i).toFixed(4)},${p.getY(i).toFixed(4)},${p.getZ(i).toFixed(4)}`;
+  const seen = new Map<string, number>(), remap = new Int32Array(p.count), out: number[] = [];
+  for (let i = 0; i < p.count; i++) {
+    const k = key(i);
+    let at = seen.get(k);
+    if (at === undefined) { at = out.length / 3; seen.set(k, at); out.push(p.getX(i), p.getY(i), p.getZ(i)); }
+    remap[i] = at;
+  }
+  const welded = new THREE.BufferGeometry();
+  welded.setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
+  welded.setIndex(Array.from(index, (i) => remap[i]));
+  g.dispose();
+  return welded;
+}
+
+/** The stack along local +X (base on y = 0 before the sink), front and back rows, stretcher bond, a battered parapet. */
+function sandbagCourses(half: number, depth: number, height: number, r: Rng): THREE.BufferGeometry[] {
+  const parts: THREE.BufferGeometry[] = [];
+  const courses = Math.max(2, Math.round(height / 0.17));
+  const thick = height / courses;
+  for (let c = 0; c < courses; c++) {
+    const inset = c * 0.022 + (c === courses - 1 ? 0.02 : 0);
+    const rowHalf = depth - inset;
+    // two rows across (each a stretcher) meeting in the middle, their bags as long as the wall's length allows; odd
+    // courses shifted half a bag
+    for (const side of [-1, 1]) {
+      const wid = Math.max(0.2, rowHalf - 0.005);
+      const n = Math.max(2, Math.round((half * 2) / 0.6));
+      const len = (half * 2) / n;
+      const shift = c % 2 ? len * 0.5 : 0;
+      for (let k = -1; k < n; k++) {
+        let x0 = -half + shift + k * len, x1 = x0 + len;
+        x0 = Math.max(-half, x0); x1 = Math.min(half, x1);
+        if (x1 - x0 < len * 0.3) continue;
+        // the top course: the odd bag missing or slumped
+        if (c === courses - 1 && r() < 0.12) continue;
+        const bagLen = (x1 - x0) * (0.97 + r() * 0.05);
+        const bag = sandbagBag(bagLen, thick * (1.12 + r() * 0.14), wid * (0.95 + r() * 0.08), r);
+        bag.rotateY((r() - 0.5) * 0.05 + (side < 0 ? Math.PI : 0));
+        bag.rotateZ((r() - 0.5) * 0.05);
+        bag.rotateX((r() - 0.5) * 0.06 - side * 0.04);
+        bag.translate((x0 + x1) / 2 + (r() - 0.5) * 0.03, c * thick + thick * 0.5 + (r() - 0.5) * 0.015, side * (rowHalf - wid * 0.5) + (r() - 0.5) * 0.03);
+        parts.push(bag);
+      }
+    }
+  }
+  return parts;
+}
+
+function sandbagMerge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
+  const merged = mergeGeometries(parts.map((part) => part.toNonIndexed()), false);
+  for (const part of parts) part.dispose();
+  if (!merged) throw new Error('sceneryKit: sandbag merge produced no geometry');
+  return merged;
+}
+
+/** A sandbag stack (props local types: sandbagbig, sandbagsmall, sandbagwall), its sink below y = 0. */
+export function buildSandbagStack(kind: SandbagStackKind): THREE.BufferGeometry {
+  const s = SANDBAG_STACKS[kind];
+  const r = sandbagRng(s.seed);
+  const g = sandbagMerge(sandbagCourses(s.half, s.depth, s.top + s.sink, r));
+  g.translate(0, -s.sink, 0);
+  if (s.along === 'z') g.rotateY(Math.PI / 2);
+  return g;
+}
+
+/**
+ * A breached stack: a low surviving course at one end and the burst and spilled bags fanned round it. `spend` runs the
+ * remnant builder it replaces first, so the props stream keeps every draw it always made.
+ */
+export function buildSandbagHeap(kind: SandbagStackKind, spend: () => void): THREE.BufferGeometry {
+  spend();
+  const s = SANDBAG_STACKS[kind];
+  const r = sandbagRng(s.seed ^ 0x2f);
+  const parts = sandbagCourses(s.half * 0.45, s.depth, 0.36, r).map((bag) => bag.translate(-s.half * 0.5, 0, 0));
+  for (let k = 0; k < 12; k++) {
+    const a = r() * Math.PI * 2, rr = 0.4 + Math.sqrt(r()) * s.half * 0.9;
+    const burst = r() < 0.4;
+    const bag = sandbagBag(0.5 + r() * 0.14, burst ? 0.07 + r() * 0.04 : 0.15 + r() * 0.04, burst ? 0.42 : 0.33, r);
+    bag.rotateY(r() * Math.PI); bag.rotateX((r() - 0.5) * 0.3); bag.rotateZ((r() - 0.5) * 0.3);
+    bag.translate(Math.cos(a) * rr * 0.9, burst ? 0.02 : 0.06, Math.sin(a) * rr * 0.55);
+    parts.push(bag);
+  }
+  const g = sandbagMerge(parts);
+  g.translate(0, -s.sink * 0.5, 0);
+  if (s.along === 'z') g.rotateY(Math.PI / 2);
+  return g;
+}

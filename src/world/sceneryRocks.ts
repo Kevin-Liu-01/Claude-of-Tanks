@@ -744,7 +744,7 @@ function calvary(spec: RockFormationSpec, ground: RockGround, noise: SimplexNois
 // ---------------------------------------------------------------------------------------------- bedrock
 
 /** Bedrock on a hill's steep flanks (the scenery `bedrock` family). */
-export interface BedrockSpec {
+interface BedrockSpec {
   geology: RockGeology;
   /** The hill's summit: the centre the beds ring. */
   x: number;

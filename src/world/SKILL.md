@@ -144,7 +144,9 @@ placement and before the bucket merge (one rock-material mesh for the map, the p
 feature on its own seeded stream, every refusal named in `props.group.userData.scenery`). `scenery.selftest.mjs` pins the forms, the kit, the admission and every authoring map's placement;
 docs/MAP-LAYOUT-BRIEF.md "Scenery" is the authoring guide. The field wall module (`maps/inhabitKit.ts` `wallstone`)
 is a dry-stone wall fitted to the old coursed module's envelope after spending its draws; brick-print maps
-(`sourcedTextures.ts` `sourcedStoneIsBrick`) keep the coursed module through props' local types.
+(`sourcedTextures.ts` `sourcedStoneIsBrick`) keep the coursed module through props' local types. The sandbag stacks
+(props local types) are `maps/sceneryKit.ts` `buildSandbagStack`, laid bag by bag in the sourced models' envelopes on
+the canvas weave; their remnants spend the old remnant's draws first.
 A plan builder reads its battlefield through `structureBuildContext(buckets)`
 (`maps/exteriorDetailKit.ts`), never a positional argument; a part new to a
 builder's seeded stream is tagged `userData.uvJitter = 'none'`, a part that

@@ -285,6 +285,13 @@ corners knocked off, and a coping of cope stones on edge. The module keeps the o
 so the fitted wall colliders keep their plan and height. The maps whose stone bucket is the sourced brick print
 (`sourcedStoneIsBrick`) keep the coursed module (`COURSED_WALLSTONE`) the print was laid out for.
 
+The field works' sandbag stacks (`sandbagbig`, `sandbagsmall`, `sandbagwall`, wherever the fortification passes put
+them) are laid bag by bag (`maps/sceneryKit.ts` `buildSandbagStack`): filled sacks thin and narrow at their ends,
+sagging on top, each in its own tone (hessian, weathered hessian, faded olive polypropylene, a few dirty ones) on the
+props canvas weave, in stretcher bond, a battered parapet; every stack also gets its own weathering tint. Each stack
+fills the envelope of the sourced model it replaced, so the cover is where it was; a breached stack is a low course and
+the burst bags round it.
+
 ### What the composer checks
 
 Every feature is checked before it is laid, and `props.group.userData.scenery` says what stood and why anything did

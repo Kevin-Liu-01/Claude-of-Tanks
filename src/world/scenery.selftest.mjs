@@ -5,7 +5,8 @@
 //      standing forms publish a convex collision mass, pavements and scree none (they lie under a hull's step); a
 //      hill's bedrock rings only the flanks no hull climbs, faces outward and publishes no mass;
 //   2. the kit's destructible landmarks keep their collision inside their visible geometry and certify like every
-//      other small item, and the config-only footprints (sceneryPlan.ts) equal the kit's radii;
+//      other small item, and the config-only footprints (sceneryPlan.ts) equal the kit's radii; the sandbag stacks
+//      fill the sourced models' envelopes and certify the same way;
 //   3. the composer admits a feature only inside the square, off the pads, out of the road core, out of the water and
 //      off the hard solids, says why it refused, appends static masses, and draws only its own streams;
 //   4. every map that authors scenery places all of it on its real ground (a headless props build), its standing
@@ -16,7 +17,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildBedrock, buildRockFormation } from './sceneryRocks.ts';
-import { SCENERY_DESTRUCTIBLE_TYPES, buildConductor, buildPylon } from './maps/sceneryKit.ts';
+import { SCENERY_DESTRUCTIBLE_TYPES, buildConductor, buildPylon, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
 import {
   BEDROCK_TREE_CLEAR, LANDMARK_RADIUS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, pylonLegHalf, rockReach,
   sceneryClearances, withGroundCoverHoles,
@@ -127,6 +128,35 @@ for (const [kind, meta] of Object.entries(SCENERY_DESTRUCTIBLE_TYPES)) {
   geometry.dispose();
 }
 for (const kind of Object.keys(STONE_LANDMARKS)) assert.ok(isStoneLandmark(kind) && !isDestructibleLandmark(kind), `${kind}: a stone landmark`);
+// the sandbag stacks: laid in the sourced models' envelopes (their cover stays where it was), certified like every small
+// item, the canvas weave's UVs and the bags' colours, varied bag by bag, deterministic, the remnant spends its draws
+{
+  const ENVELOPES = { sandbagbig: [1.787, 0.438, 1.23], sandbagsmall: [1.304, 0.421, 0.95], sandbagwall: [0.497, 1.477, 0.9] };
+  for (const [kind, [hx, hz, top]] of Object.entries(ENVELOPES)) {
+    const g = buildSandbagStack(kind), again = buildSandbagStack(kind);
+    g.computeBoundingBox();
+    const b = g.boundingBox;
+    assert.ok(Math.abs(b.max.x - hx) < 0.06 && Math.abs(b.min.x + hx) < 0.06 && Math.abs(b.max.z - hz) < 0.06 && Math.abs(b.min.z + hz) < 0.06,
+      `${kind}: fills the sourced envelope's plan (${b.min.x.toFixed(2)}..${b.max.x.toFixed(2)} x ${b.min.z.toFixed(2)}..${b.max.z.toFixed(2)})`);
+    assert.ok(Math.abs(b.max.y - top) < 0.06, `${kind}: stands the sourced height (${b.max.y.toFixed(2)} vs ${top})`);
+    for (const name of ['position', 'normal', 'uv', 'color']) assert.ok(g.attributes[name], `${kind}: carries ${name}`);
+    assert.deepEqual(Array.from(again.attributes.position.array), Array.from(g.attributes.position.array), `${kind}: deterministic`);
+    assert.ok(g.attributes.position.count / 3 < 5000, `${kind}: under 5000 triangles`);
+    const col = g.attributes.color.array, tones = new Set();
+    for (let i = 0; i < col.length; i += 3 * 44 * 3) tones.add(`${col[i].toFixed(2)},${col[i + 1].toFixed(2)}`);
+    assert.ok(tones.size > 8, `${kind}: its bags are not one tone (${tones.size})`);
+    const buckets = { baked: [buildSandbagStack(kind)] };
+    const profile = deriveRuntimeStructureCollisionProfile(buckets);
+    const certification = certifyStructureCollisionProfile(buckets, profile);
+    assert.ok(certification.minimumScore > 90, `${kind}: small-item collision certification above 90 (${certification.minimumScore.toFixed(1)})`);
+    assert.ok(profile.contact.parts.length <= 64, `${kind}: its contact stays bounded (${profile.contact.parts.length} parts)`);
+    let spent = 0;
+    const heap = buildSandbagHeap(kind, () => { spent++; });
+    assert.equal(spent, 1, `${kind}: the remnant spends the old remnant's draws first`);
+    assert.ok(heap.attributes.position.count > 0 && heap.attributes.uv && heap.attributes.color, `${kind}: a breached heap`);
+    for (const geometry of [g, again, heap, ...buckets.baked]) geometry.dispose();
+  }
+}
 {
   const pylon = buildPylon(mulberry32(5), 34);
   assert.equal(pylon.legHalf, pylonLegHalf(34), 'the pylon footprint the vegetation reserves is the tower\'s');
