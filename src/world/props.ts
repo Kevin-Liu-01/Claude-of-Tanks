@@ -121,6 +121,10 @@ import type { CollisionRecord } from './collision.ts';
 import type { LoosePropBody, LoosePropKickCause } from './loosePropPhysics.ts';
 import type { UtilityNetwork } from './utilityNetwork.ts';
 import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildContext, type StructureDimensions } from './maps/exteriorDetailKit.ts';
+// regional-buildings lane (2026-10-03): the map's regional architecture kit replaces each placed building's geometry
+// after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
+import { rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
+import { makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). The exact float/index streams live in a gzip-packed
@@ -161,6 +165,8 @@ interface CompletePropsBuckets extends GeometryBuckets {
   baked: THREE.BufferGeometry[];
   steel: THREE.BufferGeometry[];
   structureMetal: THREE.BufferGeometry[];
+  /** regional kits: painted joinery and timber framing (the light kit's vertex-coloured wood material) */
+  structureWood: THREE.BufferGeometry[];
   [name: string]: THREE.BufferGeometry[];
 }
 type PropsStructureBuilder = (
@@ -285,6 +291,8 @@ export const HAY_CRATE_SITES: Readonly<Record<string, number>> = Object.freeze({
 
 interface PropsSettings {
   sourcedPalette?: BuildingPaletteId;
+  /** regional-buildings lane: the regional architecture kit of this map's settlements (maps/regional/index.ts). */
+  architecture?: string;
   bathhouseStyle?: 'timber';
   loggingYard?: LoggingYardConfig;
   reservoirWaterworks?: ReservoirWaterworksConfig;
@@ -2798,6 +2806,9 @@ function* propsBuildSteps(
   const decorationGroundingReceipts: DecorationGroundingReceipt[] = [];
   const v = L.village;
 
+  // regional-buildings lane: the map's architecture kit (maps/regional/index.ts) — its default tones sit under the map's
+  const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
+  if (regionalArchitecture?.surfaces.tones) P.tones = { ...regionalArchitecture.surfaces.tones, ...(P.tones || {}) };
   const T = P.tones || {};
   const plaster = makePlaster(noi, aniso, T.plaster || null);
   yield { fine: true };
@@ -2825,9 +2836,13 @@ function* propsBuildSteps(
   const plaster3 = makePlaster(noi, aniso,
     T.plaster3 || _tShift(T.plaster, -0.035, 0.72, 0.84), plaster2);
   yield { fine: true };
-  const roofT = makeRoofTiles(noi, aniso, T.roof || null);
+  const roofT = regionalArchitecture
+    ? yield* makeRegionalRoof(regionalArchitecture.surfaces.roof.kind, regionalArchitecture.surfaces.roof.tint, aniso)
+    : makeRoofTiles(noi, aniso, T.roof || null);
   yield { fine: true };
-  const stone = yield* makeStone(noi, aniso, T.stone || null);
+  const stone = regionalArchitecture
+    ? yield* makeRegionalStone(regionalArchitecture.surfaces.stone.kind, regionalArchitecture.surfaces.stone.tint, aniso)
+    : yield* makeStone(noi, aniso, T.stone || null);
   yield { fine: true, stage: 'stone-maps' };
   const wood = makeWood(noi, aniso, T.wood || null);
   yield { fine: true };
@@ -2879,8 +2894,15 @@ function* propsBuildSteps(
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
   // urban) in place when they load; procedural stays the fallback of record.
+  // A regional kit keeps its own roof and masonry painters; it opts into the plaster and timber photo sets.
   const sourcedTexturesReady = applySourcedBuildings(
-    { plaster, roof: roofT, wood, stone }, mapId, P, sourceApplication,
+    regionalArchitecture
+      ? {
+        ...(regionalArchitecture.surfaces.sourced.plaster ? { plaster } : {}),
+        ...(regionalArchitecture.surfaces.sourced.wood ? { wood } : {}),
+      }
+      : { plaster, roof: roofT, wood, stone },
+    mapId, P, sourceApplication,
   );
 
   const windowStyle = resolveStructureWindowStyle(mapId);
@@ -3065,7 +3087,7 @@ ${snowCap ? `
 
   const buckets: CompletePropsBuckets = {
     plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
-    glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
+    glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [], structureWood: [],
   };
   group.userData.steelAtlas = steelAtlas;
   /** A steel part on a map the plan-time predicate did not foresee: paint the atlas now, in one slice, and say so. */
@@ -3463,7 +3485,7 @@ ${snowCap ? `
     mapId, snowCap: mapId === 'winter' || !!P.snowCap, seed, cladding: P.industrialCladding ?? 'brick',
   };
   function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string): boolean {
-    const tmp: PropsBuckets = {
+    let tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
     };
@@ -3471,7 +3493,8 @@ ${snowCap ? `
     attachStructureBuildContext(tmp, structureContext);
     const builder = explicitStructure ? BUILDER_BY_NAME[explicitStructure] : builders[bi];
     if (!builder) throw new Error(`Unknown planned structure ${structureId}`);
-    const info = builder(rng, tmp, pickWall(rng));
+    const wallBucket = pickWall(rng);
+    const info = builder(rng, tmp, wallBucket);
     if (tmp.steel?.length) ensureSteelAtlas('plan:' + structureId);
     addCatalogExterior(tmp, { id: structureId, info, variant: bi,
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
@@ -3532,6 +3555,15 @@ ${snowCap ? `
       const receipt = group.userData.roadBuildingFrontage ??= [];
       receipt.push({ kind: structureId, before, after: { x: px, z: pz, rot },
         w, d, status });
+    }
+    // regional-buildings lane: every draw, the ground fit and the frontage above saw the base geometry, so the pose is
+    // settled; the map's kit now swaps in the region's version of this structure (the wharf fishery and the foundry
+    // court donors keep theirs: later passes re-seat those exact parts)
+    const regionalDonor = (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery)
+      || (!!foundryDonors && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId));
+    if (regionalArchitecture && !regionalDonor) {
+      tmp = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
+        { mapId, snowCap: structureContext.snowCap, seed }, px, pz, rot) ?? tmp;
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
@@ -3747,18 +3779,25 @@ ${snowCap ? `
       const hx = (width * cs + depth * sn) / 2, hz = (width * sn + depth * cs) / 2;
       if (intersectsStreetRow(x, z, hx, hz)) return distance + width * 0.6;
       const ruined = roll < (P.ruinChance ?? 0.24);
-      const tmp: PropsBuckets = {
+      let tmp: PropsBuckets = {
         plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
         glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
       };
+      // the wall draw stays where the rowhouse call evaluated it (a ruin draws none)
+      const rowWall = ruined ? 'stone' : pickWall(srng);
       const info = ruined
         ? makeRuin(rng, tmp)
-        : makeRowhouse(rng, tmp, pickWall(srng), {
+        : makeRowhouse(rng, tmp, rowWall, {
           w: width, d: depth, lowContrastTrim: mapId === 'ruinspires',
         });
       const fit = groundFit(x, z, info.w, info.d, rot);
       if (fit.spread > 3.2) return distance + width;
       jitterBuildingUvs(tmp);
+      // regional-buildings lane: the street row's draws and pose are settled; the map's kit swaps in its row house
+      if (regionalArchitecture) {
+        tmp = rebuildRegionalStructure(regionalArchitecture, ruined ? 'ruin' : 'rowhouse', tmp, info, rowWall,
+          { mapId, snowCap: structureContext.snowCap, seed }, x, z, rot) ?? tmp;
+      }
       addStructureCollision(ruined ? 'ruin' : 'rowhouse', tmp, x, fit.y + 0.05, z, rot);
       _quat.setFromAxisAngle(_upAxis, rot);
       _mat4.compose(_posv.set(x, fit.y + 0.05, z), _quat, _one);

@@ -117,6 +117,8 @@ export default {
     clusterCount: 34, loneCount: 52, rimCount: 62, grassDensity: 0.68, bushCount: 1.3, bushSpecies: 'acacia', clusterScrub: 1.9,
   },
   props: {
+    // regional-buildings lane: the Dalmatian limestone kit (maps/regional/dalmatian.ts)
+    architecture: 'dalmatian',
     sourcedPalette: 'coastal',
     extraKits: ['river'],
     // Two low timber landings face the village and its northern coastal exit.

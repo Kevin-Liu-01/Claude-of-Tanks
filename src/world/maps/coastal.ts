@@ -198,6 +198,8 @@ export default {
   },
 
   props: {
+    // regional-buildings lane: the Breton granite kit (maps/regional/breton.ts)
+    architecture: 'breton',
     // world-dressing r1: + chapel and granary in the fishing village
     plan: ['fishery', 'boatshed', 'chapel', 'netyard', 'market', 'cottage',
       'lighthouse', 'cottage', 'ruin', 'barn', 'granary', 'boatshed',

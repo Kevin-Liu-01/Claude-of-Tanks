@@ -987,7 +987,12 @@ function collectSolids(buckets: StructureGeometryBuckets) {
   const solids: LocalSolid[] = [];
   for (const [bucket, geometries] of Object.entries(buckets)) {
     if (!geometries || IGNORED_BUCKETS.has(bucket)) continue;
-    for (const geometry of geometries) solids.push(...geometrySolids(geometry, bucket));
+    for (const geometry of geometries) {
+      // regional kits (maps/regional/geometry.ts) finish their surface dressing — framing, joinery, shutters, gutters —
+      // as separate geometries flagged noCollision: a member 3 cm proud of a wall is not a collision part
+      if (geometry.userData?.noCollision) continue;
+      solids.push(...geometrySolids(geometry, bucket));
+    }
   }
   return solids;
 }

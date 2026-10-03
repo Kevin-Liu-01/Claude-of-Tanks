@@ -1,0 +1,322 @@
+// src/world/maps/regional/kolkhoz.ts — the kolkhoz kit (Verdant Fields: the Prokhorovka farmland, Belgorod oblast).
+// The south-Russian black-earth village: whitewashed khatas (clay-rendered timber or adobe) under thick hipped thatch
+// or later asbestos-cement sheet, window frames and plank shutters painted blue or green, a brick plinth; the
+// collective farm's long cowsheds (korovniki) of red or whitewashed brick under corrugated asbestos sheet with ridge
+// vents; plank granaries (ambary) raised on stones under a projecting gable; a wooden post mill; a whitewashed
+// Orthodox church with green onion domes; and, after the fighting, burnt khatas of which only the stove and its
+// chimney stand.
+import {
+  PartSink, faceBox, pick, rgb, shade,
+  type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
+} from './geometry.ts';
+import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+
+const PAINTS: readonly Rgb[] = [0x4a7aa8, 0x5a8fb8, 0x4f8a5a, 0x3f6f8f, 0x6b8a4a].map(rgb);
+const WHITE_FRAME = rgb(0xd0ccc0);
+const PLANK = rgb(0x7a6048);
+const GREEN_ROOF = rgb(0x4f7d5a), DOME_GREEN = rgb(0x3f7a52), GILT = rgb(0xb8933e);
+
+interface KolkhozState {
+  rng: () => number;
+  paint: Rgb;
+  window: WindowStyle;
+  litShare: number;
+}
+
+function stateFor(ctx: RegionalBuildContext): KolkhozState {
+  const rng = ctx.rng;
+  const paint = pick(rng, PAINTS);
+  return {
+    rng, paint,
+    window: {
+      frame: rng() < 0.6 ? paint : WHITE_FRAME, frameWidth: 0.07, frameOut: 0.05, bars: rng() < 0.7 ? 'cross' : 'six',
+      // the carved surround (nalichnik), painted: a board frame with a peaked head
+      surround: { bucket: 'structureWood', width: 0.12, out: 0.04, lintel: 0.2, colour: rng() < 0.5 ? WHITE_FRAME : paint },
+      sill: { bucket: 'structureWood', out: 0.08, colour: paint },
+      shutters: rng() < 0.7 ? { colour: shade(paint, 0.9), kind: 'plank', closed: 0.1 } : null,
+    },
+    litShare: 0.45,
+  };
+}
+
+function dialect(st: KolkhozState): HouseDialect {
+  return {
+    window: (sink, face, o, y0) => windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h,
+      o.kind === 'loft' ? { ...st.window, shutters: null, bars: 'none', surround: null } : st.window, st.rng, o.kind === 'loft' ? 0 : st.litShare),
+    door: (sink, face, o, y0, frame) => {
+      if (o.kind === 'gate') {
+        gateUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, PLANK, { bucket: 'structureWood', width: 0.16, out: 0.06, colour: shade(PLANK, 0.8) });
+        return;
+      }
+      doorUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, {
+        leaf: st.rng() < 0.5 ? st.paint : PLANK, frame: { bucket: 'structureWood', width: 0.12, out: 0.05, colour: WHITE_FRAME },
+        steps: { bucket: 'stone' }, leafKind: 'plank',
+      }, frame.floors[o.storey] + o.y0);
+    },
+  };
+}
+
+function uvOffset(ctx: RegionalBuildContext): [number, number] {
+  return [ctx.rng() * 7.31, ctx.rng() * 5.17];
+}
+
+const thatch = (pitch: number): RoofSpec => ({ kind: 'hip', pitchDeg: pitch, eave: 0.5, verge: 0.5, thickness: 0.34, bucket: 'straw', ridge: 'round' });
+const shifer = (pitch: number, kind: RoofSpec['kind'] = 'gable'): RoofSpec => ({ kind, pitchDeg: pitch, eave: 0.35, verge: 0.3, thickness: 0.1, bucket: 'roof', ridge: 'saddle' });
+
+/** The khata: whitewashed walls on a brick plinth, painted joinery, a hipped thatch (or a later sheet roof). */
+function khata(ctx: RegionalBuildContext, opts: { long?: boolean } = {}): RegionalParts {
+  const sink = new PartSink(uvOffset(ctx));
+  const st = stateFor(ctx);
+  const rng = st.rng;
+  const W = Math.max(4.8, Math.min(6.2, ctx.info.w - 0.6)), D = Math.max(7.0, Math.min(opts.long ? 12 : 10, ctx.info.d - 0.4));
+  const wall: RegionalBucket = ctx.wallBucket === 'stone' ? 'plaster' : ctx.wallBucket as RegionalBucket;
+  const thatched = rng() < 0.7;
+  const openings: Opening[] = [{ face: 'left', storey: 0, kind: 'door', u: D * 0.2, w: 0.95, y0: 0, h: 1.95 }];
+  for (const face of ['left', 'right'] as const) {
+    for (const o of windowRhythm(face, 0, D, { w: 0.72, h: 0.95, sill: 0.85, spacing: 2.0, margin: 0.9, max: 3,
+      avoid: face === 'left' ? [[D * 0.2 - 0.6, D * 0.2 + 0.6]] : [] })) openings.push(o);
+  }
+  for (const o of windowRhythm('front', 0, W, { w: 0.72, h: 0.95, sill: 0.85, spacing: 1.8, margin: 0.9, max: 2 })) openings.push(o);
+  const frame = buildHouse(sink, {
+    w: W, d: D, plinth: { h: 0.45, out: 0.06, bucket: 'stone' }, storeys: [{ h: 2.45 + rng() * 0.2, wall }],
+    roof: thatched ? thatch(40 + rng() * 6) : shifer(30, 'hip'), gableBucket: wall, openings,
+    chimneys: [{ x: (rng() - 0.5) * 0.8, z: (rng() - 0.5) * D * 0.3, sx: 0.5, sz: 0.5, above: thatched ? 0.55 : 0.75, bucket: 'plaster', cap: 'slab' }],
+    gutters: null, verge: null,
+  }, dialect(st));
+  // the porch (ganok) over the door: two posts and a small lean-to
+  const f = frame.faces.left, u = D * 0.2, y = frame.eaveY - 0.1;
+  for (const du of [-0.75, 0.75]) faceBox(sink, 'structureWood', f, u + du, y / 2, 1.05, 0.12, y, 0.12, { colour: PLANK });
+  const porch: RoofSpec = { kind: 'shed', pitchDeg: 14, eave: 0.1, verge: 0.12, thickness: 0.08, bucket: 'roof' };
+  const pg = roofGeometry(1.15, 1.7, y, porch);
+  // a shed rises toward -x of its own frame: turned half round, its high side meets the wall
+  sink.placed(Math.PI, -W / 2 - 0.58, 0, f.u[2] * u, () => emitRoof(sink, pg, porch));
+  return sink.finish();
+}
+
+/** The korovnik: a long brick cowshed, small windows in a row, cart doors at both gables, ridge vents. */
+const korovnik: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const st = stateFor(ctx);
+  const rng = st.rng;
+  const W = Math.max(7.0, ctx.info.w - 0.3), D = Math.max(11, ctx.info.d - 0.3);
+  const wall: RegionalBucket = rng() < 0.55 ? 'stone' : 'plaster';
+  const openings: Opening[] = [
+    { face: 'front', storey: 0, kind: 'gate', u: 0, w: 2.4, y0: 0, h: 2.6 },
+    { face: 'back', storey: 0, kind: 'gate', u: 0, w: 2.4, y0: 0, h: 2.6 },
+  ];
+  for (const face of ['left', 'right'] as const) {
+    for (const o of windowRhythm(face, 0, D, { w: 0.7, h: 0.55, sill: 1.75, spacing: 1.9, margin: 1.0 })) openings.push({ ...o, kind: 'loft' });
+  }
+  const frame = buildHouse(sink, {
+    w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.0, wall }],
+    roof: shifer(26), gableBucket: wall === 'stone' ? 'stone' : 'plaster', openings, chimneys: [], gutters: null, verge: null,
+  }, dialect({ ...st, litShare: 0 }));
+  // ventilation stacks on the ridge: boarded boxes with little gabled caps
+  const rg = frame.roof;
+  for (const z of [-D * 0.28, D * 0.28]) {
+    const top = rg.ridgeTopY;
+    sink.span('structureWood', -0.35, top - 0.4, z - 0.35, 0.35, top + 0.9, z + 0.35, { colour: shade(PLANK, 0.9) });
+    const cap: RoofSpec = { kind: 'gable', pitchDeg: 30, eave: 0.12, verge: 0.1, thickness: 0.06, bucket: 'roof', ridge: null };
+    sink.placed(0, 0, 0, z, () => emitRoof(sink, roofGeometry(0.7, 0.7, top + 0.9, cap), cap));
+  }
+  return sink.finish();
+};
+
+/** The ambar: a plank granary on stone pads, its gable roof carried forward over the door on two posts. */
+const ambar: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const st = stateFor(ctx);
+  const W = Math.max(3.2, ctx.info.w - 0.6), D = Math.max(4.0, ctx.info.d - 2.0);
+  const raise = 0.55;
+  for (const sx of [-1, 1]) for (const sz of [-1, 0, 1]) sink.span('stone', sx * (W / 2 - 0.25) - 0.22, -0.3, sz * (D / 2 - 0.25) - 0.22, sx * (W / 2 - 0.25) + 0.22, raise, sz * (D / 2 - 0.25) + 0.22);
+  sink.placed(0, 0, raise, 0, () => {
+    buildHouse(sink, {
+      w: W, d: D, plinth: null, storeys: [{ h: 2.2, wall: 'wood' }],
+      roof: { kind: 'gable', pitchDeg: 38, eave: 0.3, verge: 1.2, thickness: 0.1, bucket: 'roof', ridge: 'saddle' },
+      gableBucket: 'wood', openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.0, y0: 0, h: 1.8 }],
+      chimneys: [], gutters: null, verge: { colour: shade(PLANK, 0.85), bucket: 'structureWood' },
+    }, dialect({ ...st, litShare: 0 }));
+  });
+  // the posts under the projecting gable
+  for (const sx of [-1, 1]) sink.span('structureWood', sx * (W / 2 - 0.1) - 0.08, 0, D / 2 + 1.0 - 0.08, sx * (W / 2 - 0.1) + 0.08, raise + 2.2, D / 2 + 1.0 + 0.08, { colour: PLANK });
+  // three plank treads up to the door
+  for (let k = 0; k < 3; k++) sink.span('structureWood', -0.5, raise * (k / 3) - 0.05, D / 2 + 0.25 + (2 - k) * 0.28, 0.5, raise * ((k + 1) / 3), D / 2 + 0.25 + (3 - k) * 0.28, { colour: PLANK, decor: true });
+  return sink.finish();
+};
+
+/** The wooden post mill: the body on its post and crosstrees, four lattice sails, the tail pole and the ladder. */
+const postMill: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const timber = rgb(0x6a5440), dark = rgb(0x4a3b2e);
+  const bw = 3.4, bd = 4.2, bh = 4.4, lift = 3.4;
+  // trestle: crosstrees on stone piers, quarterbars up to the post
+  for (const [x, z] of [[-2.2, 0], [2.2, 0], [0, -2.2], [0, 2.2]] as const) sink.span('stone', x - 0.35, -0.4, z - 0.35, x + 0.35, 0.45, z + 0.35);
+  sink.span('structureWood', -2.4, 0.45, -0.17, 2.4, 0.8, 0.17, { colour: dark });
+  sink.span('structureWood', -0.17, 0.45, -2.4, 0.17, 0.8, 2.4, { colour: dark });
+  sink.span('structureWood', -0.22, 0.45, -0.22, 0.22, lift, 0.22, { colour: dark });
+  for (const [x, z] of [[-2.0, 0], [2.0, 0], [0, -2.0], [0, 2.0]] as const) {
+    sink.member('structureWood', [x, 0.8, z], [x * 0.08, lift - 0.4, z * 0.08], 0.16, 0.16, [x !== 0 ? 0 : 1, 0, x !== 0 ? 1 : 0], { colour: dark, exposed: true });
+  }
+  // the body (buck): a boarded box with a gable roof, sails on its +z breast
+  sink.placed(0, 0, lift, 0, () => {
+    buildHouse(sink, {
+      w: bw, d: bd, plinth: null, storeys: [{ h: bh, wall: 'wood' }],
+      roof: { kind: 'gable', pitchDeg: 35, eave: 0.2, verge: 0.25, thickness: 0.1, bucket: 'roof', ridge: 'saddle' },
+      gableBucket: 'wood', openings: [{ face: 'back', storey: 0, kind: 'door', u: 0, w: 0.9, y0: 0, h: 1.8 }],
+      chimneys: [], gutters: null, verge: null,
+    }, { window: () => {}, door: (s, face, o, y0) => doorUnit(s, face, o.u, y0, o.w, o.h, { leaf: timber, frame: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: dark }, steps: null, leafKind: 'plank' }) });
+  });
+  const hubY = lift + bh * 0.82, hubZ = bd / 2 + 0.55, sailL = 7.2;
+  sink.cylinder('structureWood', [0, hubY, bd / 2 - 0.3], 'z', 1.0, 0.18, 8, { colour: dark, decor: true });
+  for (let k = 0; k < 4; k++) {
+    const a = Math.PI / 4 + k * Math.PI / 2, ca = Math.cos(a), sa = Math.sin(a);
+    const tip: Vec3 = [ca * sailL, hubY + sa * sailL, hubZ];
+    sink.member('structureWood', [0, hubY, hubZ], tip, 0.2, 0.16, [0, 0, 1], { colour: timber, decor: true, exposed: true });
+    // the lattice: a sail frame beside the whip, bars across it
+    const px = -sa, py = ca;
+    const edgeA: Vec3 = [ca * 2.0 + px * 0.95, hubY + sa * 2.0 + py * 0.95, hubZ], edgeB: Vec3 = [ca * sailL + px * 0.95, hubY + sa * sailL + py * 0.95, hubZ];
+    sink.member('structureWood', edgeA, edgeB, 0.1, 0.08, [0, 0, 1], { colour: timber, decor: true, exposed: true });
+    for (let r = 2.2; r < sailL; r += 0.62) {
+      sink.member('structureWood', [ca * r, hubY + sa * r, hubZ], [ca * r + px * 0.95, hubY + sa * r + py * 0.95, hubZ], 0.07, 0.06, [0, 0, 1], { colour: timber, decor: true, exposed: true });
+    }
+  }
+  // the tail pole down to the ground and the ladder to the door
+  sink.member('structureWood', [0, lift + 0.3, -bd / 2], [0, 0.4, -bd / 2 - 4.6], 0.2, 0.2, [1, 0, 0], { colour: dark, exposed: true, decor: true });
+  for (const sx of [-0.45, 0.45]) sink.member('structureWood', [sx, lift, -bd / 2 - 0.1], [sx, 0.05, -bd / 2 - 2.6], 0.12, 0.1, [1, 0, 0], { colour: dark, exposed: true, decor: true });
+  return sink.finish();
+};
+
+/** An onion dome on a drum: stacked frustums swelling and narrowing to a gilt cross. */
+function onion(sink: PartSink, x: number, y: number, z: number, r: number, colour: Rgb): void {
+  const profile = [1.0, 1.18, 1.22, 1.12, 0.9, 0.6, 0.32, 0.14];
+  let yy = y;
+  for (let k = 0; k + 1 < profile.length; k++) {
+    const h = r * 0.34;
+    sink.cylinder('structureMetal', [x, yy, z], 'y', h, r * profile[k], 12, { colour }, r * profile[k + 1], k === 0 || k === profile.length - 2);
+    yy += h;
+  }
+  sink.cylinder('structureMetal', [x, yy, z], 'y', r * 0.5, r * 0.08, 6, { colour: GILT, decor: true }, r * 0.04);
+  sink.span('structureMetal', x - 0.03, yy + r * 0.5, z - 0.03, x + 0.03, yy + r * 0.5 + 1.0, z + 0.03, { colour: GILT, decor: true });
+  sink.span('structureMetal', x - 0.28, yy + r * 0.5 + 0.62, z - 0.03, x + 0.28, yy + r * 0.5 + 0.7, z + 0.03, { colour: GILT, decor: true });
+}
+
+/** The village church: whitewashed nave and drum, a green sheet roof, onion domes on the drum and the bell tower. */
+const church: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const st = stateFor(ctx);
+  const W = Math.max(6.0, Math.min(8.6, ctx.info.w - 0.6)), D = Math.max(9, Math.min(16, ctx.info.d - 4.0));
+  const openings: Opening[] = [];
+  for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, D, { w: 0.85, h: 1.8, sill: 1.6, spacing: 2.6, margin: 1.2 })) openings.push(o);
+  const frame = buildHouse(sink, {
+    w: W, d: D, plinth: { h: 0.4, out: 0.08, bucket: 'stone' }, storeys: [{ h: 5.2, wall: 'plaster' }],
+    roof: { kind: 'gable', pitchDeg: 34, eave: 0.35, verge: 0.2, thickness: 0.1, bucket: 'structureMetal', ridge: null },
+    gableBucket: 'plaster', openings, chimneys: [], gutters: null, verge: null,
+  }, {
+    ...dialect(st),
+    window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+      frame: WHITE_FRAME, frameWidth: 0.06, frameOut: 0.04, bars: 'six',
+      surround: { bucket: 'plaster', width: 0.18, out: 0.06, lintel: 0.3 }, sill: { bucket: 'plaster', out: 0.1 }, shutters: null,
+    }, st.rng, 0.2),
+  });
+  void frame;
+  // the drum and its dome over the crossing
+  const top = frame.roof.ridgeTopY;
+  sink.cylinder('plaster', [0, top - 1.2, -D * 0.1], 'y', 2.4, 1.5, 12, {});
+  onion(sink, 0, top + 1.2, -D * 0.1, 1.5, DOME_GREEN);
+  // the bell tower at the west (+z) end: two square tiers and a small onion
+  const tz = D / 2 + 1.6;
+  sink.span('stone', -1.95, -0.4, tz - 1.95, 1.95, 0.4, tz + 1.95);
+  sink.span('plaster', -1.6, 0.4, tz - 1.6, 1.6, 7.0, tz + 1.6);
+  sink.span('plaster', -1.25, 7.0, tz - 1.25, 1.25, 9.6, tz + 1.25);
+  const towerFace: Face = { origin: [0, 0, tz + 1.6], u: [1, 0, 0], out: [0, 0, 1], width: 3.2 };
+  doorUnit(sink, towerFace, 0, 0.4, 1.3, 2.6, { leaf: rgb(0x6e5440), frame: { bucket: 'plaster', width: 0.24, out: 0.08, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.4);
+  for (const [o, u] of [[[0, 0, tz + 1.25], [1, 0, 0]], [[0, 0, tz - 1.25], [-1, 0, 0]], [[1.25, 0, tz], [0, 0, -1]], [[-1.25, 0, tz], [0, 0, 1]]] as const) {
+    const f: Face = { origin: o as Vec3, u: u as Vec3, out: [Math.sign(o[0]), 0, o[0] === 0 ? Math.sign(o[2] - tz) : 0], width: 2.5 };
+    faceBox(sink, 'dark', f, 0, 8.3, 0.005, 0.8, 1.5, 0.02, { decor: true });
+  }
+  sink.span('structureMetal', -1.35, 9.6, tz - 1.35, 1.35, 9.75, tz + 1.35, { colour: GREEN_ROOF });
+  onion(sink, 0, 9.75, tz, 0.95, DOME_GREEN);
+  return sink.finish();
+};
+
+/** The club or village shop (sel'po): one storey of whitewashed brick under a hipped sheet roof, a porch canopy. */
+function club(ctx: RegionalBuildContext, school = false): RegionalParts {
+  const sink = new PartSink(uvOffset(ctx));
+  const st = stateFor(ctx);
+  const W = Math.max(7, Math.min(9.5, ctx.info.w - 0.4)), D = Math.max(10, Math.min(15, ctx.info.d - 2.0));
+  const wall: RegionalBucket = school ? 'stone' : 'plaster';
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.3, y0: 0, h: 2.3 }];
+  for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, D, { w: school ? 1.25 : 1.0, h: 1.5, sill: 0.95, spacing: school ? 2.2 : 2.6, margin: 1.0 })) openings.push(o);
+  for (const o of windowRhythm('front', 0, W, { w: 1.0, h: 1.4, sill: 1.0, spacing: 2.4, margin: 1.0, avoid: [[-1.0, 1.0]] })) openings.push(o);
+  const frame = buildHouse(sink, {
+    w: W, d: D, plinth: { h: 0.5, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.3, wall }], roof: shifer(26, 'hip'), gableBucket: wall,
+    openings, chimneys: [{ x: 0.9, z: -D * 0.2, sx: 0.55, sz: 0.55, above: 0.8, bucket: 'stone', cap: 'slab' }], gutters: null, verge: null,
+  }, dialect({ ...st, window: { ...st.window, shutters: null, surround: school ? null : st.window.surround } }));
+  // the porch canopy on two posts and its sign board
+  const f = frame.faces.front;
+  for (const du of [-1.0, 1.0]) faceBox(sink, 'structureWood', f, du, 1.45, 1.5, 0.14, 2.9, 0.14, { colour: WHITE_FRAME });
+  const canopy: RoofSpec = { kind: 'gable', pitchDeg: 24, eave: 0.15, verge: 0.1, thickness: 0.08, bucket: 'roof', ridge: null };
+  sink.placed(Math.PI / 2, 0, 0, D / 2 + 0.85, () => emitRoof(sink, roofGeometry(1.8, 2.6, 2.9, canopy), canopy));
+  faceBox(sink, 'structureWood', f, 0, 3.0, 0.03, 2.6, 0.55, 0.04, { colour: school ? rgb(0x8a2e26) : st.paint, decor: true });
+  return sink.finish();
+}
+
+/** The burnt khata: the stove and its chimney standing in the black stubs of the walls. */
+const burnt: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng;
+  const W = Math.max(5.0, ctx.info.w - 0.6), D = Math.max(7.0, ctx.info.d - 0.6);
+  const char = rgb(0x2e2925);
+  sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 0.42, D / 2);
+  // the stove block and its whitewashed chimney stack, scorched
+  sink.span('plaster', -0.9, 0.42, -0.6, 0.6, 1.9, 0.9);
+  sink.span('plaster', -0.45, 1.9, -0.1, 0.15, 5.2 + rng() * 0.6, 0.5);
+  sink.span('stone', -0.55, 5.2, -0.2, 0.25, 5.35, 0.6);
+  // charred wall stubs and fallen beams
+  for (let k = 0; k < 8; k++) {
+    const side = k % 4, t = rng();
+    const h = 0.4 + rng() * 1.1;
+    const x = side < 2 ? (side === 0 ? -1 : 1) * (W / 2 - 0.15) : (t - 0.5) * W * 0.8;
+    const z = side < 2 ? (t - 0.5) * D * 0.8 : (side === 2 ? -1 : 1) * (D / 2 - 0.15);
+    sink.span('structureWood', x - 0.12, 0.4, z - 0.12, x + 0.12, 0.4 + h, z + 0.12, { colour: char });
+  }
+  for (let k = 0; k < 4; k++) {
+    const a: Vec3 = [(rng() - 0.5) * W, 0.5, (rng() - 0.5) * D], b: Vec3 = [a[0] + (rng() - 0.5) * 3, 0.5 + rng() * 0.7, a[2] + (rng() - 0.5) * 3];
+    sink.member('structureWood', a, b, 0.16, 0.16, [0, 1, 0], { colour: char, decor: true, exposed: true });
+  }
+  return sink.finish();
+};
+
+export const KOLKHOZ_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+  cottage: (ctx) => khata(ctx),
+  farmhouse: (ctx) => khata(ctx, { long: true }),
+  barn: korovnik,
+  granary: ambar,
+  mill: postMill,
+  chapel: church,
+  tavern: (ctx) => club(ctx),
+  schoolhouse: (ctx) => club(ctx, true),
+  ruin: burnt,
+});
+
+/** whitewash: the khatas' lime render, cool and bright (the photo render set stays off) */
+const whitewash = (_h: number, s: number, l: number): readonly [number, number, number] => [0.12, Math.min(1, s * 0.25), Math.min(1, l * 1.28 + 0.12)];
+
+export const KOLKHOZ_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
+  id: 'kolkhoz',
+  region: 'Belgorod black-earth steppe (Prokhorovka): whitewashed khatas under thatch, kolkhoz brick and asbestos sheet',
+  surfaces: {
+    roof: { kind: 'asbestos', tint: [0.60, 0.61, 0.58] },
+    stone: { kind: 'brick', tint: [0.60, 0.33, 0.25] },
+    sourced: { plaster: false, wood: true },
+    tones: {
+      plaster: whitewash,
+      plaster2: (_h, s, l) => [0.11, Math.min(1, s * 0.3), Math.min(1, l * 1.2 + 0.1)],
+      plaster3: (_h, s, l) => [0.58, Math.min(1, s * 0.2 + 0.03), Math.min(1, l * 1.15 + 0.1)],
+      straw: (h, s, l) => [h - 0.01, Math.min(1, s * 0.62), Math.min(1, l * 0.86)],
+    },
+  },
+  builders: KOLKHOZ_BUILDERS,
+});
