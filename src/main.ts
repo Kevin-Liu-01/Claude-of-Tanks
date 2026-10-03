@@ -1,7 +1,6 @@
 import { structureTopAt, SUPPORT_STEP_UP_M } from './sim/structureSupport.ts';
 import type { CollisionRecord } from './world/collision.ts';
 import './ui/battleUiVisibility.css';
-import './ui/aerialHud.css';
 import type { RuntimeValue } from './runtimeTypes.ts';
 /**
  * main.ts — typed integration entry point (ARCHITECTURE.md §4, §5).
