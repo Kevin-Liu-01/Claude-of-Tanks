@@ -222,13 +222,15 @@ assert.ok(g.includes(`smoothstep( H * ${f4(GROUND_AO_REACH[0])}, H * ${f4(GROUND
 assert.ok(g.includes(`th * ${f4(GROUND_AO_TRACK_REACH[0])}, th * ${f4(GROUND_AO_TRACK_REACH[1])}`), 'the runs\' reach');
 assert.match(g, /float wl = clamp\( \( b1\.z - q\.x \) \/ span, 0\.0, 1\.0 \)/, 'the left run hides past the right one');
 assert.match(g, /float wr = clamp\( \( q\.x \+ b1\.z \) \/ span, 0\.0, 1\.0 \)/, 'and the reverse');
-assert.ok(g.includes(`mix( sWall, sBelly, 1.0 - smoothstep( ${f4(-GROUND_AO_EDGE_M)}, ${f4(GROUND_AO_EDGE_M)}, sd ) )`), 'the strengths across the edge');
+assert.ok(g.includes(`float inside = 1.0 - smoothstep( ${f4(-GROUND_AO_EDGE_M)}, ${f4(GROUND_AO_EDGE_M)}, sd );`)
+  && g.includes('mix( sWall, sBelly, inside )'), 'the strengths across the edge');
 assert.match(g, /float sBelly = clamp\( 1\.0 - lt\.y \* lt\.x \* \( lt\.z \* \( 1\.0 \+ kSun \) \+ \( 1\.0 - lt\.z \) \* lt\.w \), 0\.0, 1\.0 \);/, 'the belly\'s interreflection');
 assert.match(g, /float sWall = clamp\( 1\.0 - lt\.y \* \( 0\.5 \+ 0\.5 \* lt\.x \* \( 1\.0 \+ 0\.5 \* kSun \) \), 0\.0, 1\.0 \);/, 'the walls\'');
 assert.match(g, /float kSun = uContactSunLum \* max\( uSunDir\.y, 0\.0 \) \/ max\( aUp, 1e-4 \);/, 'the rig\'s sun over its sky');
 assert.match(g, /vis \*= 1\.0 - min\( ho, 1\.0 \) \*/, 'hulls combine as independent occluders');
 assert.ok(g.includes(`smoothstep( ${f4(GROUND_AO_RANGE_M - GROUND_AO_FADE_M)}, ${f4(GROUND_AO_RANGE_M)}, dist )`), 'the range fade');
-assert.ok(g.includes(`float ambShare = ${f4(GROUND_AO_CARD_AMBIENT_SHARE)};`), 'a card\'s fixed ambient share');
+assert.ok(g.includes(`float ambShare = mix( ${f4(GROUND_AO_CARD_AMBIENT_SHARE)}, 1.0, under );`), 'a card\'s ambient share: fixed in the open, whole under a belly');
+assert.match(g, /under = max\( under, inside \* step\( q\.y, b0\.y \) \);/, 'under = inside a footprint and below its belly');
 assert.match(g, /ambShare = A \/ max\( T \+ A, 1e-4 \);/, 'only the ambient share darkens');
 assert.match(g, /return 1\.0 - occ \* ambShare;/);
 assert.ok(!/2\.0404|Jimenez|fract\( sin/.test(g), 'no ground-albedo multi-bounce, no per-pixel noise');

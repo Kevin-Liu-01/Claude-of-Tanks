@@ -9,7 +9,7 @@
  * ambient share, as the vehicle cavity term does (vehicleOcclusion.ts): colour · (1 − occ · A / (T + A)), the sun term
  * T and the ambient A the light rig gives the pixel's depth normal (contactShadows.ts) — sunlit ground beside a hull
  * keeps its sun, the ground in the hull's own shadow (T = 0) takes the whole darkening. A grass or leaf card (its
- * alpha is its coverage, no sun state) takes a fixed ambient share. Vehicle pixels are never receivers (their own
+ * alpha is its coverage, no sun state) takes a fixed ambient share in the open and the whole of it under a belly. Vehicle pixels are never receivers (their own
  * cavities are vehicleOcclusion.ts's). The term fades out over the selection's last 20 m.
  *
  * 2026-10-03 (the vehicle-ground lane, wave 13: "a strip of fully-lit snow under the belly makes the vehicle look like it
@@ -372,6 +372,7 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
       vec3 N = vec3( 0.0, 1.0, 0.0 );
       bool haveN = false;
       float vis = 1.0;
+      float under = 0.0; // how far inside a footprint, below its belly, the pixel stands: no sun reaches it there
       for ( int i = 0; i < ${GROUND_AO_MAX_HULLS}; i++ ) {
         if ( float( i ) >= uVehGround ) break;
         vec4 m0 = uVehGroundM[ i * 3 ], m1 = uVehGroundM[ i * 3 + 1 ], m2 = uVehGroundM[ i * 3 + 2 ];
@@ -409,11 +410,14 @@ export const VEHICLE_GROUND_OCCLUSION_GLSL = /* glsl */ `
         }
         // the belly's strength under the hull, the walls' beside it, blended across the footprint's edge
         float sd = dOut + min( max( dd.x, dd.y ), 0.0 );
-        vis *= 1.0 - min( ho, 1.0 ) * mix( sWall, sBelly, 1.0 - smoothstep( ${f(-GROUND_AO_EDGE_M)}, ${f(GROUND_AO_EDGE_M)}, sd ) ) * b2.z;
+        float inside = 1.0 - smoothstep( ${f(-GROUND_AO_EDGE_M)}, ${f(GROUND_AO_EDGE_M)}, sd );
+        vis *= 1.0 - min( ho, 1.0 ) * mix( sWall, sBelly, inside ) * b2.z;
+        under = max( under, inside * step( q.y, b0.y ) );
       }
       float occ = ( 1.0 - vis ) * fade;
       if ( occ <= 0.003 ) return 1.0;
-      float ambShare = ${f(GROUND_AO_CARD_AMBIENT_SHARE)};
+      // a card has no sun state: half in sun in the open, in the hull's own shade under its belly
+      float ambShare = mix( ${f(GROUND_AO_CARD_AMBIENT_SHARE)}, 1.0, under );
       if ( sunVis >= 0.0 ) {
         float T = uContactSunLum * max( dot( N, uSunDir ), 0.0 ) * clamp( sunVis, 0.0, 1.0 );
         float A = mix( uContactAmb.y, uContactAmb.x, N.y * 0.5 + 0.5 ) + uContactAmb.z
