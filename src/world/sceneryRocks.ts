@@ -756,7 +756,7 @@ interface BedrockSpec {
   minGrade?: number;
   /** The beds' thickness range (m). */
   beds?: readonly [number, number];
-  /** Rounded knobs on the summit. */
+  /** A bare-rock sheet over the summit. */
   crown?: boolean;
   tone?: readonly [number, number, number];
 }
@@ -772,6 +772,54 @@ const BEDROCK_JOINTS: Readonly<Record<RockGeology, readonly [number, number, num
   granite: [4, 10, 0.3, 0.8],
   slate: [1.5, 4, 0.1, 0.3],
 });
+
+/**
+ * A bed's cross-section in its outward frame (r out of the hill from the bed's foot line, y up): inner bottom, outer
+ * bottom (undercut), the face's belly, the face under the lip, the lip, inner top. r0 / r1 are where the ground falls
+ * through the bed's foot and top along the frame (the top is uphill, r1 < r0).
+ */
+function bedProfile(r0: number, r1: number, b0: number, b1: number, t: number, proud: number, bulge: number, batter: number, bev: number): Array<[number, number]> {
+  return [
+    [r0 - 0.7, b0 - 0.05],
+    [r0 + proud * 0.55, b0 - 0.05],
+    [r0 + proud + bulge - batter * 0.45, b0 + t * 0.42],
+    [r0 + proud - batter - bev * 0.6, b1 - bev],
+    [r0 + proud - batter - bev * 1.8, b1 + 0.02],
+    [r1 - 0.7, b1 + 0.02],
+  ];
+}
+
+/**
+ * Sweep a bed's profile rows (six world points each, ordered so the outward frame turns left of the run: walking
+ * direction = outward x up) into blocks: every run of cut rows is one welded block, an uncut row parts it. The underside
+ * is left out (a bed sits on the bench below it; under the lowest the hill shows through).
+ */
+function pushBedBlocks(rows: ReadonlyArray<number[] | null>, layer: number, pieces: Piece[]): void {
+  let i = 0;
+  while (i < rows.length) {
+    while (i < rows.length && !rows[i]) i++;
+    const firstRow = i;
+    while (i < rows.length && rows[i]) i++;
+    if (i - firstRow < 2) continue;
+    const run = rows.slice(firstRow, i) as number[][];
+    const positions: number[] = [];
+    for (const row of run) positions.push(...row);
+    const index: number[] = [];
+    const v = (k: number, q: number) => k * 6 + q;
+    for (let k = 0; k + 1 < run.length; k++) {
+      for (let q = 1; q < 5; q++) index.push(v(k, q), v(k + 1, q + 1), v(k + 1, q), v(k, q), v(k, q + 1), v(k + 1, q + 1));
+    }
+    const last = run.length - 1;
+    for (let q = 1; q < 5; q++) {
+      index.push(v(0, 0), v(0, q + 1), v(0, q));          // the block's first end faces back along the run
+      index.push(v(last, 0), v(last, q), v(last, q + 1)); // its last end faces on along it
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    g.setIndex(index);
+    pieces.push({ geometry: g, layer, standing: false });
+  }
+}
 
 /**
  * Bedrock showing through a hill's steep flanks: the hill's own beds, level, ringing it from the highest ground a hull
@@ -912,45 +960,11 @@ export function buildBedrock(
           const wob = noise.noise(th * rMean * 0.35 + bed * 3.1, b0 * 0.21) * 0.5 + 0.5;
           const pp = p * (0.8 + 0.4 * wob);
           const bulge = noise.noise(th * rMean * 0.9 - bed * 1.7, b0 * 0.4 + 5) * 0.14 * t;
-          // inner bottom, outer bottom (undercut), the face's belly, the face under the lip, the lip, inner top
-          const prof: Array<[number, number]> = [
-            [r0 - 0.7, b0 - 0.05],
-            [r0 + pp * 0.55, b0 - 0.05],
-            [r0 + pp + bulge - batter * 0.45, b0 + t * 0.42],
-            [r0 + pp - batter - bev * 0.6, b1 - bev],
-            [r0 + pp - batter - bev * 1.8, b1 + 0.02],
-            [r1 - 0.7, b1 + 0.02],
-          ];
           const row: number[] = [];
-          for (const [r, y] of prof) row.push(spec.x + c * r, y, spec.z + sn * r);
+          for (const [r, y] of bedProfile(r0, r1, b0, b1, t, pp, bulge, batter, bev)) row.push(spec.x + c * r, y, spec.z + sn * r);
           rows.push(row);
         }
-        // each run of cut samples is one block (an uncut sample parts it)
-        let i = 0;
-        while (i < rows.length) {
-          while (i < rows.length && !rows[i]) i++;
-          const firstRow = i;
-          while (i < rows.length && rows[i]) i++;
-          if (i - firstRow < 2) continue;
-          const run = rows.slice(firstRow, i) as number[][];
-          const positions: number[] = [];
-          for (const row of run) positions.push(...row);
-          const index: number[] = [];
-          const v = (k: number, q: number) => k * 6 + q;
-          // the underside is left out: a bed sits on the bench below it, and under the lowest the hill shows through
-          for (let k = 0; k + 1 < run.length; k++) {
-            for (let q = 1; q < 5; q++) index.push(v(k, q), v(k + 1, q + 1), v(k + 1, q), v(k, q), v(k, q + 1), v(k + 1, q + 1));
-          }
-          const last = run.length - 1;
-          for (let q = 1; q < 5; q++) {
-            index.push(v(0, 0), v(0, q + 1), v(0, q));          // the block's first end faces back along the ring
-            index.push(v(last, 0), v(last, q), v(last, q + 1)); // its last end faces on along it
-          }
-          const g = new THREE.BufferGeometry();
-          g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-          g.setIndex(index);
-          pieces.push({ geometry: g, layer, standing: false });
-        }
+        pushBedBlocks(rows, layer, pieces);
       }
     }
     bedTops.push(y1);

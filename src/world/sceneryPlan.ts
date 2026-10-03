@@ -99,7 +99,7 @@ interface SceneryBedrock {
   minGrade?: number;
   /** The beds' thickness range (m). */
   beds?: readonly [number, number];
-  /** Rounded knobs on the summit (default true). */
+  /** A bare-rock sheet over the summit (default true). */
   crown?: boolean;
   tone?: readonly [number, number, number];
   name?: string;
