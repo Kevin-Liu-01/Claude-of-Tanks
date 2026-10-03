@@ -44,7 +44,9 @@ export function hullPassesObstacleTop(spanBottom: number, top: number, bottom: n
  * The standing rule's span bottom for a tilted hull (physics lane, 2026-10-03): the lowest point of the hull's
  * underside (its track-bottom plane at its pitch and roll, sampled on a 5 x 3 grid over its rect; the nose and tail
  * rows rise by the shell's lift there, the glacis and tail plates the tracks run under) that lies over the record's
- * footprint, or the root when none does. The root alone said a hull pivoting off a roof edge (its belly on
+ * footprint, or the root when none does. Only the tracks step up onto a top: a nose or tail row counts the step-up
+ * against itself, so it stands on a part only by clearing it (a level hull nosing into a 1.2 m boulder read its 0.7 m
+ * glacis lift as standing height and was lifted onto the rock 0.9 m in a tick). The root alone said a hull pivoting off a roof edge (its belly on
  * the edge, its root dropped below the roof behind it) was inside the building, and the solver shoved it out sideways
  * at a metre a tick. The highest corner over the footprint (this rule's first form) let a hull tipped nose-up over the
  * edge sink beside the wall with its belly inside the building, its raised nose still "on the roof", until a 2.9 m
@@ -62,7 +64,7 @@ export function hullUndersideOver(
   let lowest = Infinity;
   for (let i = 0; i < 5; i++) {
     const along = (i * 0.5 - 1) * halfLength;
-    const lift = i === 4 ? frontLift : i === 0 ? rearLift : 0;
+    const lift = i === 4 ? frontLift - HULL_STEP_UP_M : i === 0 ? rearLift - HULL_STEP_UP_M : 0;
     for (let j = 0; j < 3; j++) {
       const across = (j - 1) * halfWidth;
       const x = centerX + forwardX * along + rightX * across;

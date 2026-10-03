@@ -803,6 +803,40 @@ contact constraints and cannot be crossed by residual uphill speed.
 - *Rest.* A stopped hull with no throttle holds its grade when the holding decel (coast, brake, a
   wreck's locked tracks) matches the pull — no creep, no jitter.
 
+**Contact edge cases (physics lane, 2026-10-03; torture harness `tools/physics-torture.mjs`, receipt
+`tools/physics-torture.selftest.mjs`).** The rules each glitch class was decided by:
+- *Boost ceiling.* An airborne boost (Turbo/Gravity jump) climbs no higher than two single-jump apexes over the
+  ground under the hull; a boost that would add nothing is refused. Self-right hops keep one height in every
+  gravity world (the launch scales with √g) and leave the ground as a jump does.
+- *Ground pushes, never pulls.* Beyond the tracks' droop the ride falls no faster than gravity and is airborne
+  (no hang allowance: the sprung mass never uses more than its authored droop while grounded). Two exceptions are
+  kinematic, not pulls: a hull running down a grade keeps its tracks on it at its own travel's rate over the slope
+  (only when every track sample carries it), and a hull tipping about an edge has its root follow the turn.
+- *Edges are tipped over, not chased.* Track samples hanging past 1.2 m over ground that is not one plane do not
+  steer the attitude; a centre of mass beyond the samples still touching (the droop's reach) tips the hull about
+  that edge under gravity, `α = g·d·cosθ/(r²+d²)` (only toward the side it drives to, or at a crawl); a hull
+  pivoting on an edge slides on its own belly (the grade the slope pull reads is its pitch); the spring that takes
+  over when the tip ends starts from the landing blend's soft end. Faces (one plane under the hull) and bridged
+  dips (nothing past 1.2 m) keep the full fit.
+- *A stop takes the climb with it.* A blow that removes the hull's travel (the grade rule, the cliff probe, a
+  collider) removes the same share of the vertical motion that travel carried; it prices nothing by itself.
+- *Landing speed is the hull's own approach.* An airborne hull's ground moves only with its own travel over the
+  slope beneath it (`speed · tan(fit pitch)`), never with the support envelope's swing as the hull turns; a hard
+  landing (closing > 3 m/s) that does not rebound stops the closing at the contact. Falling support is followed
+  uncapped; only a rising one is bounded (12 m/s) as a launch.
+- *Structures are floors by the underside.* A part is a floor for a hull when its top is within the 0.55 m
+  step-up of the hull's lowest underside point over that part's footprint (a 5 × 3 grid over the contact rect,
+  the nose and tail rows lifted by the shell's own rise there) — in the support field
+  (`structureSupport.beginHull` with `hullSupportPose`), the authority's and the solo sim's obstacle solver and the
+  client's prediction world alike; otherwise it is a wall.
+- *Hull on hull.* A roof contact is measured where the footprints overlap (the upper's lowest shell point over the
+  lower's rect against the lower's highest under the upper's); the horizontal solver reserves a pair for the
+  vertical layer by that same depth, and a hull standing 0.5 m above its own support is never ground traffic.
+  Shell pitch composes as the renderer does (`+z·sin pitch`).
+- *Known limits.* Rigid rotation is still about the root (a nose-first landing settles about its centre, so it can
+  hop a few times on a sharp kicker); the drivetrain reads the grade over the hull's run (1° flatter than a 25° face,
+  7° on 45° — the felt grade is its calibration); casemate barrels can dig in.
+
 ### 3.5 combat — `src/sim/` (pure logic)
 
 #### 3.5.1 `ballistics.ts`
