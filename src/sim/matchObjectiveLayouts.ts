@@ -79,6 +79,9 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // Earthrise Basin (redesign 2026-10-02): the outpost's landing field (also the turbo-ball kickoff) and the open
   // floor either side of it on the valley track, rotationally symmetric about the landing field.
   moon: { kickoff: { x: 0, z: 0 }, zones: [{ x: -102, z: 30 }, { x: 0, z: 0 }, { x: 102, z: -30 }] },
+  // Orchard Valley (layout brief, 2026-10-02): the bounded search's validated seats, west of the bathhouse village, in
+  // its square and east of it on the valley road; the kickoff beside the square.
+  orchard: { kickoff: { x: -36.4, z: 3.9 }, zones: [{ x: -98.7, z: 60.1 }, { x: -36.4, z: -4.1 }, { x: 68.2, z: -4.5 }] },
   skybridge: { zones: [{ x: -176.06506695110778, z: 137.3917255616368 }, { x: 89.52728122683749, z: -163.28455235885394 }, { x: 110, z: -30 }] },
   // Copper Mesa (layout brief, 2026-10-02): the zones keep their validated seats on the loading shelf; the turbo-ball
   // kickoff is the bounded search's validated seat by the pit's rim, which both teams reach over near-equal drives.

@@ -61,7 +61,7 @@ const expected = {
   airfield: [3507, 3643, 2970], // 2026-10-02 Kestrel Airfield redesign (docs/MAP-LAYOUT-BRIEF.md); was [3671, 3650, 3173]
   oasis: [2740, 2510, 2031],
   whiteout: [1601, 1467, 875],
-  orchard: [4923, 4691, 5160],
+  orchard: [4928, 4694, 5140], // 2026-10-02 Orchard Valley layout pass (docs/MAP-LAYOUT-BRIEF.md); was [4923, 4691, 5160]
   longleaf: [6218, 6021, 7183],
   mangrove: [5377, 5204, 6535], // 2026-10-02 Mangrove Reach redesign (docs/MAP-LAYOUT-BRIEF.md); was [5282, 5127, 6502]
   saltwind: [3811, 3614, 4260], // 2026-10-02 Saltwind Narrows redesign (docs/MAP-LAYOUT-BRIEF.md); was [3629, 3392, 4048]
