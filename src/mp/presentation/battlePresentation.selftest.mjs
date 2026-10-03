@@ -329,7 +329,13 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
   await p.applyRoster(roster, context);
   p.applyFrame(frame({ entities: [sample(2, 20, 12), sample(3, -50, -50)] }));
   const world = p.predictionWorld();
-  assert.ok(world && world.heightField === worldCollision.heightField);
+  // The prediction world rides the authority's structure support field over the shared terrain (physics lane,
+  // 2026-10-03; it used to hand movement the bare height field, so a predicted hull fell through a roof the authority
+  // stood it on): the terrain is the same function, the wall's top a floor only for a hull above it.
+  assert.ok(world && typeof world.heightField.beginHull === 'function' && typeof world.beginStep === 'function');
+  for (const [x, z] of [[20, -20], [-60, 40], [5, 5]]) {
+    assert.equal(world.heightField.getHeightAt(x, z), worldCollision.heightField.getHeightAt(x, z), 'the same terrain away from parts');
+  }
   assert.equal(p.predictionWorld(), world, 'the world is built once per viewer spec');
   const push = new Vector3();
   assert.equal(world.collide(new Vector3(20, 0, -20), 4, push), false, 'open ground pushes nothing');

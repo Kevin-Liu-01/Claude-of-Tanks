@@ -14,6 +14,26 @@ const hullHit = (pos, ob, halfL = 0.3, halfW = 0.3) => {
   return { hit: pushHullFromObstacle(pos, 0, 1, 1, 0, halfL, halfW, ob, out), out };
 };
 
+// A hull deep in a footprint leaves by the shortest way out (physics lane, 2026-10-03). The SAT took the overlap of the
+// two projections as the push; for a hull lying inside the footprint on an axis that is the hull's own width, so a hull
+// that fell over the back edge of a 14 m roof was pushed 2.76 m sideways a step and walked 8 m along the building at the
+// 1 m step cap instead of backing out the 4.2 m it overlapped; and a thin wall across a long hull pushed it only the
+// wall's 0.3 m thickness a step.
+{
+  const roof = setObbShape(rec(4), 0, 6, 7, 6, 0);
+  const deep = hullHit({ x: 0, z: 0.37 }, roof, 3.83, 1.38);
+  assert.equal(deep.hit, true, 'a hull over the roof footprint overlaps it');
+  assert.ok(Math.abs(deep.out.x) < 1e-9 && Math.abs(deep.out.z + 4.2) < 1e-6,
+    `a hull deep in a wide footprint backs out the 4.2 m it overlaps, not its 2.76 m width sideways: ${JSON.stringify(deep.out)}`);
+  assert.equal(hullHit({ x: deep.out.x, z: 0.37 + deep.out.z - 1e-6 }, roof, 3.83, 1.38).hit, false, 'the push clears the footprint');
+  const wall = setObbShape(rec(3), 0, 0, 5, 0.15, 0);
+  const across = hullHit({ x: 0, z: 1 }, wall, 3.5, 1.7);
+  assert.ok(Math.abs(across.out.x) < 1e-9 && Math.abs(across.out.z - 2.65) < 1e-6,
+    `a thin wall across a long hull pushes it clear of the wall (2.65 m), not the wall's thickness: ${JSON.stringify(across.out)}`);
+  const shallow = hullHit({ x: 0, z: -3.6 }, wall, 3.5, 1.7);
+  assert.ok(Math.abs(shallow.out.z + 0.05) < 1e-6, 'a shallow contact still backs out its own overlap');
+}
+
 // Rotated structure: its enclosing AABB corner is empty and must stay empty.
 const building = setObbShape(rec(8), 0, 0, 1, 4, Math.PI / 4);
 assert.equal(hullHit({ x: 3.3, z: -3.3 }, building, 0.2, 0.2).hit, false,

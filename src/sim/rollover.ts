@@ -14,6 +14,8 @@
  */
 export const ROLLOVER_AUTO_RIGHT_S = 5;
 export const SELF_RIGHT_LAUNCH_MPS = 2.8;
+/** The launch lifts the ride just clear of its contact line (movement.ts RIDE_DETACH_CLEARANCE_M + 5 mm). */
+const SELF_RIGHT_CLEARANCE_M = 0.02;
 export const SELF_RIGHT_ANGULAR_MPS = 2.05;
 
 interface RolloverState {
@@ -27,7 +29,7 @@ interface RolloverState {
   _spring?: { pitchV?: number; rollV?: number };
   _body?: { tumbling?: boolean; autoRighting?: boolean };
   _terr?: { pitch?: number; roll?: number };
-  _ride?: { y?: number; v?: number; airTime?: number };
+  _ride?: { y?: number; v?: number; airTime?: number; grounded?: boolean };
   _rollover?: { elapsedS: number; expired: boolean };
 }
 
@@ -55,7 +57,11 @@ export function canSelfRightTank(state: RolloverState | null | undefined): boole
  * while the vertical ride gets enough separation for the hull to visibly
  * bounce before the existing critically damped righting torque takes over.
  */
-export function requestTankSelfRight(state: RolloverState | null | undefined): boolean {
+/**
+ * `gravityScale` (physics lane, 2026-10-03): the hop keeps one height in every gravity world — the 1 g launch at the
+ * Moon's 0.17 g threw a righting hull 2.3 m up and three seconds into the air.
+ */
+export function requestTankSelfRight(state: RolloverState | null | undefined, gravityScale = 1): boolean {
   if (!state || !canSelfRightTank(state)) return false;
   const body = state._body!;
   const spring = state._spring;
@@ -73,11 +79,17 @@ export function requestTankSelfRight(state: RolloverState | null | undefined): b
   }
 
   state.speed = (state.speed || 0) * 0.2;
-  state.verticalSpeed = Math.max(state.verticalSpeed || 0, SELF_RIGHT_LAUNCH_MPS);
+  const launch = SELF_RIGHT_LAUNCH_MPS * Math.sqrt(Math.min(3, Math.max(0.1, Number.isFinite(gravityScale) ? gravityScale : 1)));
+  state.verticalSpeed = Math.max(state.verticalSpeed || 0, launch);
   if (state._ride) {
-    state._ride.v = Math.max(state._ride.v || 0, SELF_RIGHT_LAUNCH_MPS);
+    state._ride.v = Math.max(state._ride.v || 0, launch);
     state._ride.airTime = 0;
+    // the launch leaves the ground as a jump does (movement.ts liftTankRide): a ride still loaded on its support took
+    // the kick back into its suspension spring and the hull never left the roof it was rolling over (physics lane)
+    state._ride.grounded = false;
+    if (Number.isFinite(state._ride.y)) state._ride.y = (state._ride.y as number) + SELF_RIGHT_CLEARANCE_M;
   }
+  state.grounded = false;
   body.tumbling = true;
   body.autoRighting = true;
   state.rolloverCountdownS = 0;

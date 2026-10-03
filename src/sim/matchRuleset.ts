@@ -190,6 +190,14 @@ export interface RulesetPhysics {
   readonly ramRestitution: number;
 }
 
+/**
+ * The arcade modes' landing hop: the tracks leave the ground by at most this much on a landing's rebound, whatever the
+ * gravity (physics lane, 2026-10-03; gauntlet wave 2). The springs take the landing and return its rebound
+ * (sim/movement.ts); at 1.5 m a Mars rocket jump came back up a metre and the Moon's took 2.7 s to come down again, a
+ * rubber ball, not a tracked hull — the critics' target was a damped settle with low restitution. At the Moon's 0.17 g
+ * the capped rebound is under the 1.2 m/s floor, so its springs settle it.
+ */
+const LANDING_HOP_MAX_M = 0.25;
 /** The whole-game impact physics: a tracked hull barely rebounds, a 1.8 m drop is free, walls hurt from 4 m/s. */
 export const STANDARD_PHYSICS: RulesetPhysics = Object.freeze({
   restitution: 0.15, bounceMinMps: 1.2, fallMinMps: 6, fallHpPerKj: 0.25,
@@ -197,13 +205,13 @@ export const STANDARD_PHYSICS: RulesetPhysics = Object.freeze({
 });
 /** Turbo Ball: arcade rebounds at 0.6 g, a single 13 m/s jump lands free, walls at 1.85× speed cost less per kJ. */
 const TURBO_PHYSICS: RulesetPhysics = Object.freeze({
-  restitution: 0.28, bounceMinMps: 1.5, bounceMaxHeightM: 1.5, airAngularDrag: 0.9, airAngularSpeedMax: 1.4,
+  restitution: 0.28, bounceMinMps: 1.5, bounceMaxHeightM: LANDING_HOP_MAX_M, airAngularDrag: 0.9, airAngularSpeedMax: 1.4,
   fallMinMps: 15, fallHpPerKj: 0.12,
   impactMinMps: 9, impactHpPerKj: 0.05, ramScale: 1, ramRestitution: 0.5,
 });
 /** Mars: a small, bounded landing rebound; the full 9.5 m/s rocket jump still lands free. */
 const MARS_PHYSICS: RulesetPhysics = Object.freeze({
-  restitution: 0.30, bounceMinMps: 1.2, bounceMaxHeightM: 1.5, airAngularDrag: 0.8, airAngularSpeedMax: 1.2,
+  restitution: 0.30, bounceMinMps: 1.2, bounceMaxHeightM: LANDING_HOP_MAX_M, airAngularDrag: 0.8, airAngularSpeedMax: 1.2,
   fallMinMps: 10.5, fallHpPerKj: 0.16,
   impactMinMps: 5, impactHpPerKj: 0.12, ramScale: 1, ramRestitution: 0.35,
 });

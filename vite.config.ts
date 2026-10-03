@@ -356,6 +356,11 @@ export default defineConfig({
           groups: [
             { name: 'preload-helper', test: VITE_PRELOAD_HELPER, priority: 1 },
             { name: 'i18n', test: BOOT_RUNTIME_MODULES },
+            // 2026-10-03 (physics lane): the solo sim, the authority host and the client's prediction world all step
+            // hulls against the same contact rules — the structure support field and the hull-on-hull pass ride with
+            // the collision primitives they are built on, instead of splitting into two chunks of their own (+1 game
+            // request) once the prediction world became their third importer.
+            { name: 'collision', test: /[\\/]src[\\/](world[\\/]collision|sim[\\/]structureSupport|sim[\\/]tankBodyContacts)\.ts$/ },
           ],
         },
       },
