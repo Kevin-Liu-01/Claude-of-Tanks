@@ -165,7 +165,8 @@ for (const kind of Object.keys(STONE_LANDMARKS)) assert.ok(isStoneLandmark(kind)
 {
   const pylon = buildPylon(mulberry32(5), 34);
   assert.equal(pylon.legHalf, pylonLegHalf(34), 'the pylon footprint the vegetation reserves is the tower\'s');
-  assert.ok(pylon.geometry.attributes.position.count / 3 < 4000, 'a pylon stays under 4000 triangles');
+  // (the lattice's secondary members and the disc insulator strings, wave 16, cost about a thousand more)
+  assert.ok(pylon.geometry.attributes.position.count / 3 < 4600, `a pylon stays under 4600 triangles (${pylon.geometry.attributes.position.count / 3})`);
   assert.ok(pylon.arms.length >= 5, 'the pylon carries its phases and its earth wire');
   const wire = buildConductor(0, 20, 0, 300, 22, 0, 9, 18, 0.045);
   const ys = wire.attributes.position.array.filter((_, i) => i % 3 === 1);
@@ -345,7 +346,7 @@ function compose(scenery, solids = [], mobile = false) {
     landmarks: [{ kind: 'calvary', x: 50, z: 0 }, { kind: 'windpump', x: -50, z: 0, scale: 1.2 }],
     powerLines: [{ towers: [[100, 100], [300, 100]] }],
   });
-  assert.equal(clear.length, 2 + 2 + 2);
+  assert.equal(clear.length, 2 + 2 + 2, 'two rocks, two landmarks, two towers (the spans keep their trees: the towers stand over them)');
   const hill = sceneryClearances({ bedrock: [{ geology: 'sandstone', x: 5, z: 6, radius: 40 }] });
   assert.deepEqual(hill.map((c) => [c.x, c.z, c.halfWidth]), [[5, 6, 40 * BEDROCK_TREE_CLEAR]], 'a bedrock hill keeps the trees off its flanks');
   assert.equal(clear[0].halfWidth, rockReach({ form: 'tor', radius: 6 }) + 1.5);
@@ -555,7 +556,11 @@ for (const mapId of maps.MAP_IDS) {
       }
     }
   }
-  console.log(`scenery.selftest: ${mapId} — ${receipt.placed} features, ${receipt.rockTriangles} rock + ${receipt.bakedTriangles} baked triangles, ${receipt.colliders} colliders${worksLine}`);
+  // a pylon line stands its towers over the crowns under its spans (wave 16): its conductors clear them in their sag
+  const pylons = receipt.features.filter((f) => f.family === 'powerLine' && f.status === 'placed');
+  for (const p of pylons) assert.ok(p.heightM >= p.authoredHeightM && p.heightM <= 70, `${mapId}: a pylon stands ${p.heightM} m (authored ${p.authoredHeightM} m)`);
+  const pylonLine = pylons.length ? `; pylons ${pylons[0].authoredHeightM} -> ${pylons[0].heightM.toFixed(1)} m` : '';
+  console.log(`scenery.selftest: ${mapId} — ${receipt.placed} features, ${receipt.rockTriangles} rock + ${receipt.bakedTriangles} baked triangles, ${receipt.colliders} colliders${worksLine}${pylonLine}`);
 }
 
 // ---------------------------------------------------------------------------------------------- 5. the wiring

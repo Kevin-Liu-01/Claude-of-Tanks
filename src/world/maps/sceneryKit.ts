@@ -334,9 +334,11 @@ export const SCENERY_DESTRUCTIBLE_TYPES = {
 // ---------------------------------------------------------------------------------------------- the pylon line
 
 /** One lattice tower's geometry (baked, world-oriented later): a 400 kV double-circuit "Donau" tower, scaled. */
-export function buildPylon(rng: Rng, height = 34, mobile = false): { geometry: THREE.BufferGeometry; legHalf: number; arms: Array<[number, number]> } {
+export function buildPylon(rng: Rng, height = 34, mobile = false, breadthOf = height): { geometry: THREE.BufferGeometry; legHalf: number; arms: Array<[number, number]> } {
   const parts: THREE.BufferGeometry[] = [];
-  const H = height, base = 4.2 * (height / 34), waist = 1.1 * (height / 34), waistY = H * 0.62;
+  // (a tower stood taller over the woods keeps the breadth of the tower it was authored as: its footing, its waist and
+  // its arms, so its legs and its conductors' spread stay where they were; only its body rises)
+  const H = height, wide = breadthOf / 34, base = 4.2 * wide, waist = 1.1 * wide, waistY = H * 0.62;
   const strut = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, t: number, pal: Palette) => {
     const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
     const len = Math.hypot(dx, dy, dz);
@@ -351,7 +353,7 @@ export function buildPylon(rng: Rng, height = 34, mobile = false): { geometry: T
   const levels: number[] = [];
   for (let i = 0; i <= sections; i++) levels.push((i / sections) * H * 0.97);
   for (let i = 0; i < sections; i++) {
-    const y0 = levels[i], y1 = levels[i + 1], h0 = halfAt(y0), h1 = halfAt(y1);
+    const y0 = levels[i], y1 = levels[i + 1], h0 = halfAt(y0), h1 = halfAt(y1), ym = (y0 + y1) / 2, hm = halfAt(ym);
     for (let k = 0; k < 4; k++) {
       const [ax, az] = corners[k], [bx, bz] = corners[(k + 1) % 4];
       strut(ax * h0, y0, az * h0, ax * h1, y1, az * h1, 0.16, GALV);
@@ -360,19 +362,45 @@ export function buildPylon(rng: Rng, height = 34, mobile = false): { geometry: T
         strut(ax * h0, y0, az * h0, bx * h1, y1, bz * h1, 0.06, GALV_DARK);
         strut(bx * h0, y0, bz * h0, ax * h1, y1, az * h1, 0.06, GALV_DARK);
       }
+      if (!mobile) {
+        // the secondary members: a redundant strut across each panel's middle and the short ties from it to the legs
+        // (the lattice's fine print, which reads from the field as a tower and not as a sketch of one)
+        const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+        strut(ax * hm, ym, az * hm, bx * hm, ym, bz * hm, 0.045, GALV_DARK);
+        strut(mx * h0, y0, mz * h0, mx * hm, ym, mz * hm, 0.04, GALV_DARK);
+      }
+    }
+    // a plan brace across the body every other section (the tower's diaphragms)
+    if (!mobile && i % 2 === 1) {
+      strut(-h1, y1, -h1, h1, y1, h1, 0.05, GALV_DARK);
+      strut(h1, y1, -h1, -h1, y1, h1, 0.05, GALV_DARK);
     }
   }
   // the crossarms: a lower wide pair and an upper narrower pair, each a lattice triangle; insulator strings hang off
   const arms: Array<[number, number]> = [];
-  for (const [y, span] of [[waistY + 0.4, 11.5 * (height / 34)], [waistY + (H - waistY) * 0.55, 8.2 * (height / 34)]] as Array<[number, number]>) {
+  for (const [y, span] of [[waistY + 0.4, 11.5 * wide], [waistY + (H - waistY) * 0.55, 8.2 * wide]] as Array<[number, number]>) {
     const h = halfAt(y);
     for (const side of [-1, 1]) {
       strut(side * h, y, -h, side * span, y, 0, 0.1, GALV);
       strut(side * h, y, h, side * span, y, 0, 0.1, GALV);
       strut(side * h, y + 1.6, 0, side * span, y, 0, 0.08, GALV_DARK);
-      const ins = new THREE.CylinderGeometry(0.11, 0.11, 2.6, 6, 1);
-      parts.push(paint(ins.translate(side * (span - 0.3), y - 1.3, 0), INSULATOR, 0.04, rng));
-      arms.push([side * (span - 0.3), y - 2.6]);
+      // the arm's own lattice: two ties from its top chord down to the bottom chords, the far end braced across
+      for (const f of [0.38, 0.7]) {
+        const ax = side * (h + (span - h) * f), topY = y + 1.6 * (1 - f);
+        strut(ax, topY, 0, ax, y, -h * (1 - f), 0.045, GALV_DARK);
+        strut(ax, topY, 0, ax, y, h * (1 - f), 0.045, GALV_DARK);
+      }
+      // the insulator string: a rod of glass discs under the arm's tip, a yoke at the bottom (a pylon reads by them)
+      const ix = side * (span - 0.3);
+      const rod = new THREE.CylinderGeometry(0.025, 0.025, 2.6, 4, 1);
+      parts.push(paint(rod.translate(ix, y - 1.3, 0), INSULATOR, 0.04, rng));
+      const discs = mobile ? 4 : 7;
+      for (let d = 0; d < discs; d++) {
+        const disc = new THREE.CylinderGeometry(0.15, 0.13, 0.07, 6, 1);
+        parts.push(paint(disc.translate(ix, y - 0.35 - (d / Math.max(1, discs - 1)) * 2.0, 0), INSULATOR, 0.04, rng));
+      }
+      parts.push(paint(box(0.42, 0.06, 0.12).translate(ix, y - 2.55, 0), GALV, 0.04, rng));
+      arms.push([ix, y - 2.6]);
     }
   }
   // the earth-wire peak

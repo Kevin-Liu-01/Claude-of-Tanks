@@ -47,6 +47,7 @@ import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructu
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import { applyRockShaderHook, fractureRockGeometry, makeRockDetail, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
+import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
@@ -3102,6 +3103,7 @@ ${snowCap ? `
   const obstacles: PropsCollisionRecord[] = [];
   // the scenery pass (2026-10-03) keeps its rock fields off the trees; the vegetation is released before it runs
   const sceneryTrees = vegetation?.treeObstacles ?? [];
+  const sceneryTreeKinds = (vegetation as { _trees?: ReadonlyArray<{ species: TreeSpecies }> } | null)?._trees ?? null;
   const colliders: CollisionRecord[] = [];
   // crushables — the main.ts hull-radius contact loop (effects_combat r1).
   // Entries are telegraph poles ({index} into the pole InstancedMesh) OR
@@ -7134,9 +7136,24 @@ ${snowCap ? `
   function* placeScenery(): Generator<PropsBuildSlice, void, void> {
     const scenery = (cfg as (PropsMapConfig & SceneryMapConfig) | null)?.scenery;
     if (!scenery) return;
+    // the trees' crown tops, for the pylon lines' towers to stand over (a crown's height from its trunk's, by species)
+    const treeKinds = sceneryTreeKinds;
+    const treeTops: Array<{ x: number; z: number; top: number }> = [];
+    if (treeKinds && scenery.powerLines?.length) {
+      for (const ob of sceneryTrees) {
+        const kind = ob.treeIdx == null ? undefined : treeKinds[ob.treeIdx];
+        const a = kind && TREE_ARCHETYPES[kind.species];
+        if (!a) continue;
+        // (the instance's scale from its trunk's collider; the crown's height from the archetype under the species'
+        // geometry scale, and a sixth more for the tallest card of the crown)
+        const scaleY = (ob.max[1] - ob.min[1]) / a.trunkHeightM;
+        const crown = Math.max(a.fallHeightM, a.canopyCenterM + a.canopyRadiusM) * TREE_GEOMETRY_SCALE[kind.species][1] * 1.16;
+        treeTops.push({ x: (ob.min[0] + ob.max[0]) / 2, z: (ob.min[2] + ob.max[2]) / 2, top: ob.min[1] + crown * scaleY });
+      }
+    }
     const built = yield* composeScenery({
       mapId, scenery, heightField, spawns: [L.spawns.player, ...L.spawns.enemies],
-      obstacles, colliders, trees: sceneryTrees, baked: buckets.baked, conform: conformYardPiece,
+      obstacles, colliders, trees: sceneryTrees, treeTops, baked: buckets.baked, conform: conformYardPiece,
       addDestructible: (kind, x, y, z, yaw, scale) => addDestructible(kind, x, y, z, yaw, scale),
       seed, mobile: mobileProps,
     });
