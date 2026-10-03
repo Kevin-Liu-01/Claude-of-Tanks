@@ -4,6 +4,7 @@ import { AERIAL_RULES, matchRulesetFor } from '../sim/matchRuleset.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
 import { uiIconSVG, type UiIconId } from './uiIcons.ts';
 import { t } from './i18n.ts';
+import { getAerialVision, nextAerialVision, setAerialVision } from '../engine/aerialVision.ts';
 
 const GUNSHIP_UNLIMITED=matchRulesetFor('ac130').ammo==='unlimited';
 function node<K extends keyof HTMLElementTagNameMap>(tag:K,cls:string,parent:HTMLElement):HTMLElementTagNameMap[K]{
@@ -22,8 +23,10 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
   const sight=node('div','flight-sight',root);sight.setAttribute('aria-hidden','true');
   const panel=node('div','flight-console',root);
   const heading=node('div','flight-heading',panel),emblem=icon(heading,'modeDrone','flight-emblem');
-  const identity=node('div','flight-identity',heading),title=node('strong','',identity);
-  const feed=node('span','flight-feed',identity);feed.textContent=t('flight.thermal');
+  const identity=node('button','flight-identity flight-view-switch',heading),title=node('strong','',identity);
+  identity.type='button';
+  const feed=node('span','flight-feed',identity),viewLabel=node('span','',feed);icon(feed,'undo','flight-cycle-icon');
+  identity.addEventListener('click',()=>setAerialVision(nextAerialVision()));
   const telemetry=node('div','flight-telemetry',heading);
   const timer=instrument(telemetry,'reload',t('flight.battery'));
   const link=instrument(telemetry,'radio',t('flight.link'));
@@ -61,7 +64,10 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
       const view=player?.aerial,active=!!view?.active&&visible;
       root.hidden=!active;document.documentElement.dataset.flight=active?view!.kind:'';
       if(!active||!view){wasActive=false;return;}
-      feed.hidden=!thermalReady;
+      identity.disabled=!thermalReady;
+      viewLabel.textContent=t('flight.view.'+getAerialVision());
+      identity.title=t('flight.view.next',{view:t('flight.view.'+nextAerialVision())});
+      identity.setAttribute('aria-label',t('flight.view.switch',{current:t('flight.view.'+getAerialVision()),next:t('flight.view.'+nextAerialVision())}));
       const drone=view.kind==='drone';root.dataset.kind=view.kind;backKey.textContent=key;
       if(kind!==view.kind){kind=view.kind;emblem.innerHTML=uiIconSVG(drone?'modeDrone':'modeAc130',24);}
       title.textContent=drone?t(view.launching?'flight.launching':'flight.drone'):t('flight.gunship');

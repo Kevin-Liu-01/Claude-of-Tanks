@@ -30,11 +30,26 @@ rule the battle does not keep.
 | Drone | Destroy opponents with tanks and directly piloted drones | Launch a physical FPV quadcopter from the tank; contact uses normal explosive collision and damage | 6 s | First team to 20 kills (configurable), or 10:00 score decision |
 | AC-130 | Protect ground allies until at least half reach extraction | Fragile escorts, a marked exit, overhead scope, three independent weapon channels and unlimited ammunition | No | Half extracted; defeat if too few survive or 8:00 expires |
 
+## Aerial sensor views
+
+In Drone and AC-130, click or tap the view button beside the aircraft icon to cycle
+**Infrared → Thermal → Night vision → Daylight**. The button shows the active view
+and remembers your choice between flights. It stays disabled until the drone camera
+has entered first-person flight, so takeoff stays in normal color.
+
+- **Infrared:** white-hot vehicles, a cooler monochrome landscape, and soft sensor glow.
+- **Thermal:** hot vehicles appear orange through pale yellow against cool blue terrain.
+- **Night vision:** green light amplification reveals ambient detail without adding vehicle heat.
+- **Daylight:** the normal scene colors and lighting.
+
+These are camera treatments. Terrain, buildings, smoke, and multiplayer spotting
+still determine which enemies are visible; changing views does not reveal hidden tanks.
+
 ## Flying a drone
 
 Select **Drone**, enter a battle in your tank, then press **V** or the drone control.
 The quadcopter starts visibly docked on a reusable mission rail seated on the turret. Turretless tank destroyers use a hull-mounted rail.
-The rail and its four feet are fitted to each vehicle’s own hull surfaces; the same
+The rail and its four feet are fitted to each vehicle’s own turret or casemate surfaces; the same
 attachment frame follows turret rotation, and the drone launches from that same moving seat. It can carry future mode equipment. A 2.4-second rotor spool-up and
 smooth lift clear the carrier before the camera eases into first-person
 flight with a white-hot infrared view. The launch and camera handoff stay in normal color; infrared begins only when the view is inside the drone. You directly fly it: **W/S**

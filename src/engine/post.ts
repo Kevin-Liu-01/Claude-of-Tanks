@@ -1575,14 +1575,25 @@ const GradeShader = {
       float ign = fract( 52.9829189 * fract(
         dot( gl_FragCoord.xy, vec2( 0.06711056, 0.00583715 ) ) ) );
       col += ( ign - 0.5 ) * ( 1.4 / 255.0 );
-      if ( uThermal > 0.5 ) {
+      if ( uThermal > 0.5 && uThermal < 2.5 ) {
         float heat = thermalHeat(vUv);
         // A small sensor point-spread halo, not an outline through cover.
         vec2 d = uThermalPixel * 2.2;
         float halo = (thermalHeat(vUv+vec2(d.x,0.0))+thermalHeat(vUv-vec2(d.x,0.0))
           +thermalHeat(vUv+vec2(0.0,d.y))+thermalHeat(vUv-vec2(0.0,d.y))) * 0.25;
         float cool = 0.055 + dot(col,vec3(0.2126,0.7152,0.0722)) * 0.38;
-        col = vec3(mix(cool,0.97,clamp(heat+halo*0.22,0.0,1.0)));
+        float signal = clamp(heat+halo*0.22,0.0,1.0);
+        if (uThermal < 1.5) col = vec3(mix(cool,0.97,signal));
+        else {
+          vec3 cold = mix(vec3(0.025,0.04,0.11),vec3(0.18,0.25,0.42),clamp(cool*2.0,0.0,1.0));
+          vec3 hot = mix(vec3(1.0,0.25,0.025),vec3(1.0,0.97,0.72),smoothstep(0.4,1.0,signal));
+          col = mix(cold,hot,smoothstep(0.015,0.8,signal));
+        }
+      } else if (uThermal > 2.5) {
+        // Image intensifier: amplify ambient detail, without synthetic vehicle heat.
+        float light = pow(max(dot(col,vec3(0.2126,0.7152,0.0722)),0.0),0.52);
+        float grain = (ign-0.5)*0.035;
+        col = vec3(0.12,0.96,0.28)*clamp(light*1.3+0.035+grain,0.0,1.0);
       }
       gl_FragColor = vec4( clamp( col, 0.0, 1.0 ), texel.a );
     }`,
@@ -2683,7 +2694,7 @@ export function createPost(
     dynGovern(adaptiveFrameSeconds(dt, frameWallDtSeconds));
     updateAerialZoom();
     grade.uniforms.uExposure.value = scene.userData.postExposure || 1;
-    grade.uniforms.uThermal.value = camera.userData.thermalFlight === true ? 1 : 0;
+    grade.uniforms.uThermal.value = camera.userData.thermalFlight === true ? (camera.userData.flightVision ?? 1) : 0;
     grade.uniforms.uThermalPixel.value.set(1/sceneTarget.width,1/sceneTarget.height);
     aerial.uniforms.uCloudShade.value = scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT;
     updateScopeGrade();
