@@ -19,7 +19,9 @@ import * as THREE from 'three';
 export type GrowthSpecies = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus'
   | 'pine' | 'spruce' | 'fir' | 'cedar' | 'cypress' | 'birch' | 'aspen' | 'palm' | 'snag' | 'mangrove'
   // trees round 2 (2026-10-03): the regional forms a battlefield's species slots grow as (treeBiomes.ts)
-  | 'beech' | 'chestnut' | 'holmOak' | 'olive' | 'canaryPine' | 'aleppoPine' | 'larch';
+  | 'beech' | 'chestnut' | 'holmOak' | 'olive' | 'canaryPine' | 'aleppoPine' | 'larch'
+  // a shrub-only form (treeBiomes.ts `shrub`): the broom scrub of a volcanic upland — never a tree slot
+  | 'broom';
 type Rng = () => number;
 
 export const GROWTH_SPECIES: readonly GrowthSpecies[] = Object.freeze([
@@ -261,7 +263,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     family: 'broadleaf', height: 7.8, heightSpread: 0.12, trunkR: 0.36, form: 'decurrent',
     forkAt: [0.30, 0.38], scaffolds: [4, 6], scaffoldAngle: [0.55, 1.0], crownBase: 0.34, crownR: 3.1,
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.55, angleLow: 1.15, angleHigh: 0.6,
-    droop: 0.38, upturn: 0.35, sidePerM: 2.3, sideAngle: 0.75, sideRatio: 0.62, sideDroop: 0.3, twigPerM: 1.8,
+    droop: 0.38, upturn: 0.35, sidePerM: 2.1, sideAngle: 0.75, sideRatio: 0.62, sideDroop: 0.3, twigPerM: 0.9,
     leafOrder: 1, leafPerM: 3.6, leafFrom: 0.3, spray: [0.68, 1.0], aspect: 0.86, habit: 'spray', tipSprays: 2,
     cardBend: 0.18, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.44, 0.38, 0.32], barkTopTint: null,
     foliageValue: 1.2,
@@ -271,7 +273,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     family: 'broadleaf', height: 6.2, heightSpread: 0.12, trunkR: 0.30, form: 'decurrent',
     forkAt: [0.24, 0.32], scaffolds: [4, 6], scaffoldAngle: [0.6, 1.05], crownBase: 0.28, crownR: 2.6,
     envelope: 'ellipsoid', whorled: false, perWhorl: [1, 1], spacing: 0.5, angleLow: 1.15, angleHigh: 0.6,
-    droop: 0.32, upturn: 0.3, sidePerM: 2.6, sideAngle: 0.8, sideRatio: 0.6, sideDroop: 0.25, twigPerM: 2.0,
+    droop: 0.32, upturn: 0.3, sidePerM: 2.4, sideAngle: 0.8, sideRatio: 0.6, sideDroop: 0.25, twigPerM: 1.1,
     leafOrder: 1, leafPerM: 5.0, leafFrom: 0.15, spray: [0.66, 0.96], aspect: 0.92, habit: 'spray', tipSprays: 2,
     cardBend: 0.12, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.32, 0.30, 0.28], barkTopTint: null,
     foliageValue: 1.12,
@@ -307,6 +309,16 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     leafOrder: 1, leafPerM: 2.2, leafFrom: 0.5, spray: [0.72, 1.0], aspect: 0.92, habit: 'tuft', tipSprays: 3,
     cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.46, 0.40, 0.36], barkTopTint: [0.58, 0.46, 0.38],
     foliageValue: 1.18,
+  }),
+  // the broom scrub of Las Cañadas (retama del Teide, codeso): a shrub of leafless-looking green-grey switches, only ever
+  // grown as a shrub (growShrubSkeleton reads the aspect, the bend and the family); the tree fields mirror the birch's
+  broom: P({
+    family: 'broadleaf', height: 2.4, heightSpread: 0.14, trunkR: 0.08, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.1, crownR: 1.1,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.3, angleLow: 0.6, angleHigh: 0.3,
+    droop: 0.05, upturn: 0.3, sidePerM: 1.0, sideAngle: 0.4, sideRatio: 0.5, sideDroop: 0, twigPerM: 0,
+    leafOrder: 1, leafPerM: 4, leafFrom: 0, spray: [0.6, 0.9], aspect: 0.56, habit: 'upright', tipSprays: 1,
+    cardBend: 0.04, flatRoll: 0.6, flatDroop: 0, bark: 2, barkTint: [0.36, 0.38, 0.30], barkTopTint: null,
   }),
   // the European larch (the Alps): a narrow open cone of level whorls whose side shoots hang, soft light-green needles
   // in rosettes along them
@@ -1120,46 +1132,36 @@ function sprayCentre(l: LeafSite): V3 {
 }
 
 /**
- * Trees round 2 (2026-10-03): thin `leaves` to at most `budget` survivors spread evenly over the crown — a greedy pass in
- * seat order that keeps a spray only where no kept card centre lies within the spacing (scaled per spray by `scale`:
- * where the crown's envelope narrows — an apex, a dome's rim — the sprays stand closer and stay), the spacing found by
- * bisection (a grid of spacing-sized cells makes each pass linear). Deterministic; the seat order (parents first, base
- * to tip) decides between neighbours.
+ * Trees round 2 (2026-10-03): thin `leaves` to `budget` survivors spread evenly over the crown — farthest-point sampling
+ * from the first seat: each step keeps the spray whose card centre lies farthest from every kept one, distances divided
+ * by the spray's `scale` (where the crown's envelope narrows — an apex, a dome's rim — the sprays count as farther apart
+ * and stay). The survivors keep their seat order. Deterministic; O(budget × sprays).
  */
 function thinEvenly(leaves: LeafSite[], budget: number, scale: readonly number[] | null = null): LeafSite[] {
-  if (leaves.length <= budget) return leaves.slice();
-  const centres = leaves.map(sprayCentre);
-  const pass = (spacing: number, out: LeafSite[] | null): number => {
-    const cells = new Map<string, V3[]>();
-    const inv = 1 / spacing;
-    let kept = 0;
-    for (let i = 0; i < leaves.length; i++) {
-      const c = centres[i];
-      const reach = spacing * (scale ? scale[i] : 1), s2 = reach * reach;
-      const gx = Math.floor(c.x * inv), gy = Math.floor(c.y * inv), gz = Math.floor(c.z * inv);
-      let near = false;
-      for (let dx = -1; dx <= 1 && !near; dx++) for (let dy = -1; dy <= 1 && !near; dy++) for (let dz = -1; dz <= 1 && !near; dz++) {
-        const list = cells.get(`${gx + dx},${gy + dy},${gz + dz}`);
-        if (!list) continue;
-        for (const q of list) if ((q.x - c.x) ** 2 + (q.y - c.y) ** 2 + (q.z - c.z) ** 2 < s2) { near = true; break; }
-      }
-      if (near) continue;
-      const key = `${gx},${gy},${gz}`;
-      const list = cells.get(key);
-      if (list) list.push(c); else cells.set(key, [c]);
-      kept++;
-      if (out) out.push(leaves[i]);
-    }
-    return kept;
-  };
-  let lo = 0.02, hi = 2.5;
-  for (let iter = 0; iter < 22; iter++) {
-    const mid = (lo + hi) * 0.5;
-    if (pass(mid, null) > budget) lo = mid; else hi = mid;
+  const n = leaves.length;
+  if (n <= budget) return leaves.slice();
+  const cx = new Float64Array(n), cy = new Float64Array(n), cz = new Float64Array(n), w = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    const c = sprayCentre(leaves[i]);
+    cx[i] = c.x; cy[i] = c.y; cz[i] = c.z;
+    const s = scale ? Math.max(0.05, scale[i]) : 1;
+    w[i] = 1 / (s * s);
   }
-  const out: LeafSite[] = [];
-  pass(hi, out);
-  return out;
+  const nearest = new Float64Array(n).fill(Infinity), kept = new Uint8Array(n);
+  let next = 0;
+  for (let k = 0; k < budget && next >= 0; k++) {
+    kept[next] = 1;
+    const x = cx[next], y = cy[next], z = cz[next];
+    let best = -1, bestD = -1;
+    for (let i = 0; i < n; i++) {
+      if (kept[i]) continue;
+      const d = ((cx[i] - x) ** 2 + (cy[i] - y) ** 2 + (cz[i] - z) ** 2) * w[i];
+      if (d < nearest[i]) nearest[i] = d;
+      if (nearest[i] > bestD) { bestD = nearest[i]; best = i; }
+    }
+    next = best;
+  }
+  return leaves.filter((_, i) => kept[i] === 1);
 }
 
 /**

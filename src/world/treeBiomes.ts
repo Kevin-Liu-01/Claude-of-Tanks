@@ -24,9 +24,12 @@ export interface TreeBiome {
   /** The real place the map is built on (for the record and the reports). */
   place: string;
   slots: Readonly<Partial<Record<TreeSpecies, Readonly<TreeBiomeSlot>>>>;
+  /** The form the map's shrubs (its bushes and understorey) grow as, with their own atlas (vegetation.ts createBushes). */
+  shrub?: GrowthSpecies;
 }
 
-const B = (place: string, slots: TreeBiome['slots']): Readonly<TreeBiome> => Object.freeze({ place, slots: Object.freeze(slots) });
+const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies): Readonly<TreeBiome> =>
+  Object.freeze({ place, slots: Object.freeze(slots), ...(shrub ? { shrub } : {}) });
 
 /**
  * Per map id. Slots a map does not plant are harmless (the table is read per planted slot). Maps that are absent keep
@@ -34,15 +37,17 @@ const B = (place: string, slots: TreeBiome['slots']): Readonly<TreeBiome> => Obj
  */
 export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object.freeze({
   // Las Cañadas del Teide: sparse Canary pines on bare cinder (the map's density and its scrub are the maps lane's)
-  caldera: B('Las Cañadas del Teide, Tenerife', { pine: { form: 'canaryPine' }, cedar: { form: 'canaryPine' }, eucalyptus: { form: 'canaryPine' } }),
+  caldera: B('Las Cañadas del Teide, Tenerife', { pine: { form: 'canaryPine' }, cedar: { form: 'canaryPine' }, eucalyptus: { form: 'canaryPine' } },
+    'broom'),
   // the Dalmatian coast: Aleppo pine, holm oak and olive (and cypress, which the map names directly)
   saltwind: B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak' }, acacia: { form: 'olive' } }),
   // the Breton bocage: oak and sweet chestnut along the hedgebanks (the maritime pine stays a pine)
   coastal: B('the Breton bocage, Brittany', { cedar: { form: 'chestnut' } }),
   // the Fulda Gap: beech woods with spruce, oak and birch
   frontier: B('the Fulda Gap, Hesse', { pine: { form: 'beech' }, aspen: { form: 'birch', leaves: true } }),
-  // Prokhorovka: birch and oak shelterbelts, poplars along the tracks, willows by the water
-  verdant: B('Prokhorovka, Kursk oblast', { pine: { form: 'birch', leaves: true } }),
+  // Prokhorovka: birch and oak shelterbelts, poplars along the tracks (the map's willow and pine slots grow as birches:
+  // wave 4 read the weeping willows of the left treeline as "hanging curtains of flat strips")
+  verdant: B('Prokhorovka, Kursk oblast', { pine: { form: 'birch', leaves: true }, willow: { form: 'birch', leaves: true } }),
   // Wadi Rum: sparse umbrella acacias (and the oasis palms)
   badlands: B('Wadi Rum, Jordan', { cedar: { form: 'acacia' }, oak: { form: 'acacia' } }),
   // a Saharan wadi: date palms and acacias
@@ -61,6 +66,11 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // the Scheldt polders: poplar and willow rows (the map's own slots already)
   polders: B('the Scheldt polders, Zeeland', {}),
 });
+
+/** The form a map's shrubs grow as (their own atlas), or none (the bush slot's). */
+export function treeBiomeShrub(mapId: string | null | undefined): GrowthSpecies | null {
+  return (mapId ? TREE_BIOMES[mapId]?.shrub : null) ?? null;
+}
 
 /** The form a map's slot grows as: the table's, or none (the slot's own species). */
 export function treeBiomeSlot(mapId: string | null | undefined, slot: TreeSpecies): Readonly<TreeBiomeSlot> | null {

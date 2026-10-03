@@ -43,7 +43,7 @@ import {
 import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
-import { treeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -5786,11 +5786,37 @@ function* vegetationBuildSteps(
 
   yield { stage: 'treeRootDecals' };
   // ---- bushes (hedgerow / field-edge cover, purely visual) ----
+  /**
+   * Trees round 2: a map's own shrub form (treeBiomes.ts `shrub`: Las Cañadas' broom) — its spray atlas on a foliage
+   * material of its own, set up exactly as a grown species' (the hooks, the defines, the leaf detail, the cascades),
+   * with its alpha-tested shadow material; null without one (the shrubs take the bush slot's material).
+   */
+  function shrubMaterials(form: GrowthSpecies | null, pal: VegetationPalette): [THREE.MeshStandardMaterial, THREE.MeshDepthMaterial] | null {
+    if (!form) return null;
+    const map = makeSprayAtlas(grownFormSprayKind(form, pal), mulberry32(seed + 77), texSize(512), pal.texTone || null, 0);
+    const material = new THREE.MeshStandardMaterial({
+      map, alphaTest: 0.38, alphaToCoverage: true, side: THREE.DoubleSide, vertexColors: true, roughness: 1.0, metalness: 0.0,
+    });
+    material.envMapIntensity = 0.75;
+    const tile = leafDetail.texture(leafDetail.classOf('oak', pal));
+    if (tile) { material.normalMap = tile; material.normalScale.set(LEAF_DETAIL_NORMAL_SCALE, LEAF_DETAIL_NORMAL_SCALE); }
+    material.defines = { ...(material.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2),
+      COT_LEAF_BILLBOARD: GROWN_LEAF_BILLBOARD.toFixed(2) };
+    engineCtx.setupShadowMaterial(material, foliageWindHook);
+    material.customProgramCacheKey = () => 'world-tree-foliage-v20';
+    const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map, alphaTest: 0.38 });
+    retainedMaterials.push(material, depth);
+    retainedTextures.push(map);
+    return [material, depth];
+  }
   function createBushes(): void {
     const bushPal = palOf(bushSpecies);
     // p2 trees lane: the desktop shrubs grow from the bush species' sprays (buildGrownShrub); the phones keep the cards
     // the shrub grows from the sprays its material paints: the Mangrove map's willow form is the mangrove
-    const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove' : bushSpecies;
+    // trees round 2: the shrubs grow as the map's shrub form (their own material: shrubMaterials) or the bush slot's form
+    const shrubForm = grownTrees ? treeBiomeShrub(cfg?.id) : null, shrubMats = shrubMaterials(shrubForm, bushPal);
+    const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove'
+      : shrubForm ?? (grownTrees ? formOf(bushSpecies)?.form : null) ?? bushSpecies;
     const bushGeos = sprayAtlasSpecies.has(bushSpecies)
       ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, shrubGrowth), buildGrownShrub('bush', mulberry32(seed + 32), bushPal, shrubGrowth)]
       : [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
@@ -5880,7 +5906,7 @@ function* vegetationBuildSteps(
         bushGeos[bv].setAttribute('aLodF',
           new THREE.InstancedBufferAttribute(new Float32Array(bushPlacements[bv].length), 1));
         const bAttr = attribute(bushGeos[bv], 'aFadeI');
-        const m = new THREE.InstancedMesh(bushGeos[bv], foliageMats[bushSpecies], bushPlacements[bv].length);
+        const m = new THREE.InstancedMesh(bushGeos[bv], shrubMats?.[0] ?? foliageMats[bushSpecies], bushPlacements[bv].length);
         let kept=0;
         for (let i = 0; i < bushPlacements[bv].length; i++) {
           // darker, near-neutral multipliers: the old 0.8-1.1 range let lit
@@ -5901,7 +5927,7 @@ function* vegetationBuildSteps(
         // toward the sun (foliageWindHook), so a bush under a crown sits in the crown's shadow, one state per shrub
         m.receiveShadow = canopyShadowReceive;
         m.matrixAutoUpdate = false;
-        m.customDepthMaterial = foliageDepthMats[bushSpecies];
+        m.customDepthMaterial = shrubMats?.[1] ?? foliageDepthMats[bushSpecies];
         m.userData.aoExclude = true; // GTAO override prepass ignores alphaTest
         m.userData.bush = true;
         m.computeBoundingSphere();
@@ -5961,7 +5987,7 @@ function* vegetationBuildSteps(
       geometry.setAttribute('aFadeI', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
       geometry.setAttribute('aLodF', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
       const fadeAttr = attribute(geometry, 'aFadeI');
-      const m = new THREE.InstancedMesh(geometry, foliageMats[bushSpecies], n);
+      const m = new THREE.InstancedMesh(geometry, shrubMats?.[0] ?? foliageMats[bushSpecies], n);
       for (let i = 0; i < n; i++) {
         const e = understoreyPlacements[i].elements;
         m.setMatrixAt(i, understoreyPlacements[i]);
@@ -5972,7 +5998,7 @@ function* vegetationBuildSteps(
       setShadowCasterCascades(m, UNDERSTOREY_SHADOW_CASCADES); // round 78: the two nearest cascades only
       m.receiveShadow = canopyShadowReceive;
       m.matrixAutoUpdate = false;
-      m.customDepthMaterial = foliageDepthMats[bushSpecies];
+      m.customDepthMaterial = shrubMats?.[1] ?? foliageDepthMats[bushSpecies];
       m.userData.aoExclude = true;
       m.userData.understorey = true;
       m.name = 'understorey';

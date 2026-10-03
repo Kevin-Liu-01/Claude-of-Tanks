@@ -20,10 +20,10 @@ type ToneFunction = (hue: number, saturation: number, lightness: number) => read
 export type SprayKind = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus' | 'birch' | 'aspen' | 'birch-bare'
   | 'spruce' | 'fir' | 'pine' | 'cedar' | 'cypress' | 'mangrove'
   // trees round 2 (2026-10-03): the regional forms (treeBiomes.ts)
-  | 'beech' | 'chestnut' | 'holmOak' | 'olive' | 'canaryPine' | 'aleppoPine' | 'larch';
+  | 'beech' | 'chestnut' | 'holmOak' | 'olive' | 'canaryPine' | 'aleppoPine' | 'larch' | 'broom';
 export const SPRAY_KINDS: readonly SprayKind[] = Object.freeze(['oak', 'poplar', 'willow', 'acacia', 'eucalyptus',
   'birch', 'aspen', 'birch-bare', 'spruce', 'fir', 'pine', 'cedar', 'cypress', 'mangrove',
-  'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch']);
+  'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'broom']);
 /** Tiles per side of every spray atlas. */
 export const SPRAY_ATLAS_TILES = 2;
 
@@ -55,6 +55,8 @@ const LEAF_COLOR: Readonly<Record<SprayKind, LeafColor>> = Object.freeze({
   canaryPine: { hue: 0.245, sat: 0.36, light: 0.19 },
   aleppoPine: { hue: 0.255, sat: 0.28, light: 0.21 },
   larch: { hue: 0.255, sat: 0.40, light: 0.25 },
+  // the broom's green-grey switches
+  broom: { hue: 0.22, sat: 0.16, light: 0.26 },
 });
 
 const _cc = new THREE.Color();
@@ -516,6 +518,42 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
   return twigs;
 }
 
+/**
+ * Trees round 2: a broom's switches (retama, codeso) — a sheaf of long thin green-grey rods fanning up from the seat,
+ * nearly leafless, a few tiny leaves on the younger ones and a scatter of pale flowers near their tips.
+ */
+function paintBroomTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[][] {
+  const base = LEAF_COLOR.broom;
+  const p0 = { x: S * 0.5, y: S * 0.95 };
+  const rods: Pt[][] = [];
+  const n = 26 + ((rng() * 8) | 0);
+  for (let k = 0; k < n; k++) {
+    const a = -Math.PI / 2 + (rng() - 0.5) * 1.3;
+    const len = S * (0.48 + rng() * 0.36);
+    const start = { x: p0.x + (rng() - 0.5) * S * 0.06, y: p0.y - rng() * S * 0.08 };
+    rods.push(twigPoints(start, a, len, (rng() - 0.5) * 0.5 + (a + Math.PI / 2) * 0.35, 8));
+  }
+  // the sheaf's soft shaded heart, then the rods back to front, lighter toward their tips
+  paintSprayBody(ctx, rods.slice(0, 10), S * 0.028, base, 0.35, 0.15);
+  for (const rod of rods) {
+    const light = base.light * (0.75 + rng() * 0.5);
+    taperStroke(ctx, rod, S * 0.011, S * 0.005, css(base.hue + (rng() - 0.5) * 0.03, base.sat * (0.8 + rng() * 0.4), light));
+    for (let t = 0.45; t < 0.95; t += 0.09 + rng() * 0.08) {
+      if (rng() < 0.55) continue;
+      const at = pointAt(rod, t), side = rng() < 0.5 ? -1 : 1;
+      ctx.fillStyle = css(base.hue + 0.02, base.sat * 1.2, light * 1.1);
+      ctx.save(); ctx.translate(at.p.x, at.p.y); ctx.rotate(at.a + side * 0.6);
+      leafPath(ctx, 'lance', S * 0.03, S * 0.006, rng); ctx.fill(); ctx.restore();
+    }
+    if (rng() < 0.4) {
+      const tip = pointAt(rod, 0.82 + rng() * 0.15);
+      ctx.fillStyle = css(0.95, 0.18, 0.78, 0.85);
+      ctx.beginPath(); ctx.arc(tip.p.x, tip.p.y, S * (0.006 + rng() * 0.005), 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  return rods;
+}
+
 /** Bare winter twigs: a fine forked lattice (birch / aspen crowns without leaves). */
 function paintBareTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[][] {
   const base = LEAF_COLOR['birch-bare'];
@@ -564,7 +602,7 @@ export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: To
     ctx.rect(tx * S, ty * S, S, S);
     ctx.clip();
     ctx.translate(tx * S, ty * S);
-    const twigs = kind === 'birch-bare' ? paintBareTile(ctx, S, rng)
+    const twigs = kind === 'birch-bare' ? paintBareTile(ctx, S, rng) : kind === 'broom' ? paintBroomTile(ctx, S, rng)
       : BROADLEAF_RECIPES[kind] ? paintBroadleafTile(ctx, S, rng, kind, BROADLEAF_RECIPES[kind])
         : paintConiferTile(ctx, S, rng, kind);
     // a winter palette's snow load rides the twigs of the top tile row — the snow-laden sprays the sky-facing seats

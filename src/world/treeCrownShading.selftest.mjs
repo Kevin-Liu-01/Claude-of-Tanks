@@ -13,6 +13,10 @@ import {
   patchCrownDappleDepthShader,
 } from './crownShadowDapple.ts';
 import { LOD_SHADOW_FADE_ATTRIBUTE } from '../engine/lodShadowFade.ts';
+import { growShrubSkeleton } from './treeGrowth.ts';
+import { TREE_BIOMES, treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
+import { TREE_SPECIES } from './treeSpecies.ts';
+import { MAP_IDS } from './maps/mapIds.ts';
 
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const lum = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
@@ -174,6 +178,25 @@ for (const species of GROWTH_SPECIES) {
   const share = open / total;
   assert.ok(share > 0.18 && share < 0.38, `the crown lets ${(share * 100).toFixed(1)} % of the sun through`);
   report.dapple = { gapShare: +share.toFixed(3) };
+}
+
+// the biomes: every entry names a registered map, real slots and grown forms; Las Cañadas' shrubs are its broom, and a
+// broom mound is a shrub like any other (the shrub law's budget and grounding)
+for (const [mapId, biome] of Object.entries(TREE_BIOMES)) {
+  assert.ok(MAP_IDS.includes(mapId), `${mapId}: a registered map`);
+  for (const [slot, entry] of Object.entries(biome.slots)) {
+    assert.ok(TREE_SPECIES.includes(slot), `${mapId}: ${slot} is a species slot`);
+    assert.ok(TREE_GROWTH_PROFILES[entry.form] && GROWTH_SPECIES.includes(entry.form), `${mapId}: ${slot} grows as a grown tree form (${entry.form})`);
+  }
+  if (biome.shrub) assert.ok(TREE_GROWTH_PROFILES[biome.shrub], `${mapId}: its shrub form exists`);
+}
+assert.equal(treeBiomeShrub('caldera'), 'broom');
+assert.equal(treeBiomeSlot('caldera', 'pine')?.form, 'canaryPine');
+assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alone grows as itself');
+assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a tree slot');
+{
+  const broom = growShrubSkeleton('broom', 'bush', mulberry32(9));
+  assert.ok(broom.leaves.length >= 32 && broom.leaves.every((l) => l.y >= -0.0601), `a broom mound of ${broom.leaves.length} sprays on the ground`);
 }
 
 console.log(JSON.stringify(report));
