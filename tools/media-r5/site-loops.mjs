@@ -37,10 +37,12 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
     `[c]trim=start=${L}:end=${D},setpts=PTS-STARTPTS[tail];[tail][head]xfade=transition=fade:duration=${X}:offset=0[blend];[blend][body]concat=n=2:v=1:a=0,format=yuv420p[v]`;
   const loopMaster = join(out, `${id}-loop-master.mov`);
   ff('-i', master, '-filter_complex', graph, '-map', '[v]', '-an', '-c:v', 'prores_ks', '-profile:v', '3', '-pix_fmt', 'yuv422p10le', loopMaster);
-  const scale = w => `scale=${w}:-2:flags=lanczos`;
+  // the web encodes drop the film grain (a light temporal denoise; the masters keep it): grain is what smoke-and-fire
+  // takes cannot compress, and the phone variant has to fit the landing page's mobile budget
+  const scale = w => `hqdn3d=1.5:1.5:6:6,scale=${w}:-2:flags=lanczos`;
   ff('-i', loopMaster, '-vf', scale(1920), '-an', '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '31', '-row-mt', '1', '-deadline', 'good', '-cpu-used', '2', '-pix_fmt', 'yuv420p', join(out, `${id}.webm`));
-  ff('-i', loopMaster, '-vf', scale(1920), '-an', '-c:v', 'libx264', '-crf', '18', '-preset', 'slow', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', join(out, `${id}.mp4`));
-  ff('-i', loopMaster, '-vf', `${scale(960)},fps=24`, '-an', '-c:v', 'libx264', '-crf', '26', '-maxrate', '1400k', '-bufsize', '2800k', '-preset', 'slow', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', join(out, `${id}-mobile.mp4`));
+  ff('-i', loopMaster, '-vf', scale(1920), '-an', '-c:v', 'libx264', '-crf', '20', '-preset', 'slow', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', join(out, `${id}.mp4`));
+  ff('-i', loopMaster, '-vf', `${scale(960)},fps=24`, '-an', '-c:v', 'libx264', '-crf', '30', '-maxrate', '800k', '-bufsize', '1600k', '-preset', 'slow', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', join(out, `${id}-mobile.mp4`));
   ff('-i', loopMaster, '-frames:v', '1', '-vf', scale(1920), '-q:v', '3', join(out, `${id}.jpg`));
   const files = { webm: `${id}/${id}.webm`, mp4: `${id}/${id}.mp4`, mobile: `${id}/${id}-mobile.mp4`, poster: `${id}/${id}.jpg` };
   if (still) {
