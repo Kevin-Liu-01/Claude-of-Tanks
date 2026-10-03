@@ -3459,8 +3459,13 @@ export function* buildHorizonRingSteps(
   // relief's gradient, the occlusion and the sun's visibility across the ranges, in slices like the terrain build
   const vista = getDeviceTier() !== 'mobile';
   const bakeField = reliefField ?? createHorizonReliefField(((seed ^ 0x7E11) ^ idHash(mapId)) >>> 0, reliefSettings);
+  // the mountains lane (2026-10-03): the bake's drainage and landcover take the map's relief seed, its treeline and its
+  // snow line (horizonRelief.ts HorizonReliefCover)
   const reliefBake: HorizonReliefBake | null = vista ? yield* bakeHorizonReliefSteps({
     columns: HORIZON_SEGMENTS, rowCount: rows.length, positions: pos, heights: hs, maxHeight: maxH, marine: sea.weight,
+    seed: ((seed ^ 0x7E11) ^ idHash(mapId)) >>> 0,
+    treelineM: treeline > 0 ? Math.min(treeline, 1.2) * maxH : 0,
+    snowlineM: snowline <= 1 ? snowline * maxH : null,
   }, bakeField, [lx, ly, lz]) : null;
   // detail-texture UVs: u wraps the ring, v = absolute altitude fraction so
   // strata/snow features in the texture land at constant world height

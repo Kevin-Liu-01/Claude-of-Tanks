@@ -1,6 +1,7 @@
 import { BufferAttribute, Color, type Material, type Mesh, type MeshStandardMaterial, type Texture, type Vector3, type WebGLRenderer } from 'three';
 import { refineHorizonGroundSeam } from './horizonSeam.ts';
 import type { CanyonGround } from './horizonRedrock.ts';
+import { HORIZON_RELIEF_SHADE } from './horizonRelief.ts';
 
 const RETAINED = new WeakMap<Mesh, Texture[]>();
 /** Keep the existing live ownership array, including the original detail atlas. */
@@ -149,7 +150,7 @@ interface VistaMaterialData { uniforms: Record<string, { value: unknown }>; base
 /** The ring atlas's gradient share (terrain v2's subordinate fine relief) and its shading share (the mountains lane:
  * the folds' occlusion and the ridges' cast shadows at 0.7 x their baked strength). */
 export const RING_RELIEF_GRADIENT = 0.18;
-export const RING_RELIEF_SHADE = 0.7;
+export const RING_RELIEF_SHADE = HORIZON_RELIEF_SHADE; // the bake encodes the landcover against it (horizonRelief.ts)
 
 /** Terrain v3: the slope band (1 - n.y of the ring face) over which the atlas gradient fades, per relief character. */
 export const RING_RELIEF_WALL_BAND: Readonly<Record<string, readonly [number, number]>> = { mesa: [0.06, 0.25], martian: [0.06, 0.25] };
