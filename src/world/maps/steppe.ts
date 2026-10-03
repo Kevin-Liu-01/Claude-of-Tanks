@@ -44,6 +44,29 @@ function wadiCrusts(): { x: number; z: number; r: number; dip: number }[] {
   return out;
 }
 
+// A balka (2026-10-03, maps lane B): the dry ravine that loess steppe cuts into every scarp and terrace edge. Three
+// overlapping troughs climb from the mouth to the head, each narrower and shallower than the one below, bending as
+// they go, so the floor undulates and the cut narrows into the slope like a real gully head.
+function balka(mouthX: number, mouthZ: number, headX: number, headZ: number, depth: number, mouthHalfWidth: number,
+  bendM: number): { kind: 'basin'; x: number; z: number; rx: number; rz: number; height: number; yawDeg: number }[] {
+  const dx = headX - mouthX, dz = headZ - mouthZ, length = Math.hypot(dx, dz);
+  const nx = -dz / length, nz = dx / length;
+  return [0, 1, 2].map((i) => {
+    const t = (i + 0.5) / 3, bend = bendM * Math.sin(Math.PI * t);
+    const x0 = mouthX + dx * (t - 0.08) + nx * bendM * Math.sin(Math.PI * (t - 0.08));
+    const z0 = mouthZ + dz * (t - 0.08) + nz * bendM * Math.sin(Math.PI * (t - 0.08));
+    const x1 = mouthX + dx * (t + 0.08) + nx * bendM * Math.sin(Math.PI * (t + 0.08));
+    const z1 = mouthZ + dz * (t + 0.08) + nz * bendM * Math.sin(Math.PI * (t + 0.08));
+    return {
+      kind: 'basin' as const,
+      x: Math.round(mouthX + dx * t + nx * bend), z: Math.round(mouthZ + dz * t + nz * bend),
+      rx: Math.round(length * 0.26), rz: Math.round(mouthHalfWidth * [1, 0.72, 0.5][i]),
+      height: -Math.round(depth * [1, 0.8, 0.55][i] * 10) / 10,
+      yawDeg: Math.round(Math.atan2(z1 - z0, x1 - x0) * 180 / Math.PI),
+    };
+  });
+}
+
 // Stone kerb (kromlech) around a kurgan: a hexagon of low fieldstone walls with
 // one gap on the south side, radius r around (cx, cz).
 function kurganKerb(cx: number, cz: number, r: number): readonly [number, number, number, number, number][] {
@@ -85,36 +108,41 @@ export default {
       // 0 — the steppe highway: one straight bearing from the south edge across
       // the wadi ford, through the western escarpment ramp and over the plateau.
       // Road 0 also carries the utility-pole line (mapQuality).
-      [[-138, -512], [-118, -330], [-98, -160], [-80, -14], [-62, 130], [-40, 356], [-22, 512]],
+      [[-131, -448], [-118, -330], [-98, -160], [-80, -14], [-62, 130], [-40, 356], [-29, 448]],
       // 1 — the station road: west edge → kolkhoz → highway crossing → grain
       // station → east edge, along the south bank of the wadi.
-      [[-512, -150], [-386, -146], [-300, -142], [-190, -158], [-92, -172], [40, -196], [160, -212], [284, -222], [410, -226], [512, -232]],
+      [[-448, -148], [-386, -146], [-300, -142], [-190, -158], [-92, -172], [40, -196], [160, -212], [284, -222],
+        [410, -226], [448, -246]],
       // 2 — the east track: south edge → station → wadi crossing → the eastern
       // escarpment ramp → plateau → north edge.
-      [[336, -512], [318, -400], [296, -290], [284, -222], [272, -120], [262, 20], [256, 150], [248, 344], [244, 400], [240, 512]],
+      [[326, -448], [318, -400], [296, -290], [284, -222], [272, -120], [262, 20], [256, 150], [248, 344], [244, 400],
+        [242, 448]],
       // 3 — the plateau road: across the plateau behind the kurgan line.
-      [[-512, 368], [-380, 364], [-230, 360], [-40, 356], [110, 350], [248, 344], [400, 338], [512, 334]],
+      [[-448, 366], [-380, 364], [-230, 360], [-40, 356], [110, 350], [248, 344], [400, 338], [448, 336]],
       // 4 — the sor track: from the kolkhoz across the wadi to the salt pan's shore (a dead end).
-      [[-300, -142], [-306, -60], [-302, 20], [-282, 96], [-250, 136]],
+      [[-300, -142], [-306, -60], [-302, 20], [-282, 96], [-270, 112]],
     ] },
-    // Three graded aprons (hardstandSurface.ts): the kolkhoz machine yard south
-    // of the corrals, the caravanserai's beaten forecourt at the foot of its
-    // rise, and the post-road halt beside the east track on the eastern ramp
-    // — firm level ground the objective placement seats its 30 m zones on
-    // (the open folds, the road banks and the seeded props leave no such disc
-    // west of centre or on the ramps).
+    // Graded aprons (hardstandSurface.ts), redrawn 2026-10-03 (maps lane B) — three the zone-control discs seat on,
+    // sited for equal drives (objective symmetry 1.62 -> 1.12, see the hints): the kolkhoz machine yard south of the
+    // corrals near the southern deployment, the station's grain yard by the east track's ford on the line of equal
+    // drives and the post-road halt on the plateau near the northern arc; the two a road crosses take its height and
+    // grade. The fourth is the caravanserai's beaten forecourt at the foot of its rise, tilted down its fall line. Each
+    // stands on its ground with a bank wide enough to make no wall (maps lane A's apron bank law: 115 wall points
+    // before, none now).
     hardstands: [
-      { x: -330, z: -240, width: 64, length: 68, yawDeg: 0, level: -2.0, grade: 0 },
-      { x: 60, z: 90, width: 60, length: 60, yawDeg: 0, level: 2.2, grade: 0 },
-      { x: 292, z: 312, width: 58, length: 58, yawDeg: 0, level: 7.5, grade: 0 },
+      { x: -330, z: -240, width: 64, length: 68, yawDeg: 0, level: 1.5, grade: 0 },
+      { x: 271, z: -64, width: 56, length: 56, yawDeg: 0, grade: 'road', bankM: 18 },
+      { x: 206, z: 360, width: 58, length: 58, yawDeg: 0, grade: 'road', bankM: 18 },
+      { x: 52, z: 82, width: 50, length: 50, yawDeg: -23, level: 1.9, grade: 0.054, bankM: 24 },
     ],
     // Round 57 (2026-09-24): the grain station's rail spur (railSpurs.ts; maps/mapKits.ts lays the track). One
     // siding along the elevator row's loading face — 7 m north of the long store's back wall, past the head
     // tower and the granaries, a level crossing over the east track — from a buffer stop west of the store.
     // Round 63 (2026-09-24): the line leaves the square through a railway cutting in the eastern rim band — the
-    // bed graded at 2.4 % from the portal at x 440 (the ground twists up from x ≈ 446; the station road climbs
-    // the rim at 24 % beside it) to the map edge, an 8 m floor between faces battered 0.7:1, ~18 m deep at the
-    // edge, opening past it into a valley along the radial (the horizon ring seats its near rows on it, terrain.ts).
+    // bed graded at 2.4 % from the portal at x 440 (the ground twists up from x ≈ 446; since 2026-10-03 the station
+    // road leaves through its own graded cut 99 m south of it) to the map edge, an 8 m floor between faces battered
+    // 0.7:1, ~18 m deep at the edge, opening past it into a valley along the radial (the horizon ring seats its near
+    // rows on it, terrain.ts).
     // The height field keeps vegetation and scattered props 3.6 m off the centreline and off the cutting's floor
     // and faces.
     railSpurs: [{ path: [[144, -181], [512, -181]], bufferStop: 'start', cutting: { from: [440, -181] } }],
@@ -161,8 +189,18 @@ export default {
       { kind: 'knoll', x: -150, z: 227, r: 36, height: 8.4 },  // the great kurgan
       { kind: 'knoll', x: 60, z: 224, r: 30, height: 6.6 },
       { kind: 'knoll', x: 170, z: 220, r: 32, height: 7.0 },
+      // 2026-10-03 (maps lane B): balkas — the escarpment face is cut by dry ravines between the kurgans, from the
+      // crest's shoulder down to the terrace above the wadi (one drains into the salt pan), and two short side
+      // ravines break the wadi's south bank. Each is a covered lane up the face and keeps the face from reading
+      // as a smooth swell.
+      ...balka(-206, 118, -214, 214, 4.2, 15, 8),
+      ...balka(136, 118, 124, 208, 3.8, 14, -7),
+      ...balka(362, 96, 374, 196, 4.0, 15, 9),
+      ...balka(-432, 128, -446, 222, 3.6, 13, -6),
+      ...balka(-372, -62, -380, -116, 2.6, 11, 4),
+      ...balka(124, -42, 114, -100, 2.4, 10, -4),
       // The caravanserai rise between the wadi's north bank and the escarpment foot.
-      // (its forecourt apron below flattens the toe; the mound stands 20 m up-slope of the apron's edge)
+      // (its forecourt apron levels the toe below it)
       { kind: 'knoll', x: 70, z: 142, rx: 56, rz: 46, height: 6.5, yawDeg: 12 },
     ],
   },

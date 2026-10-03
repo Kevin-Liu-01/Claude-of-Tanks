@@ -18,7 +18,11 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // (level aprons in the map file) and the gorge floor west of the viaduct, where the mills stood; the turbo-ball
   // kickoff on the gorge floor east of it. Both teams reach the floor from the fords at the gorge's two ends.
   cliffbridge: { kickoff: { x: 130, z: 0 }, zones: [{ x: 0, z: -172 }, { x: 0, z: 172 }, { x: -130, z: 0 }] },
-  steppe: { zones: [{ x: 60, z: 90 }, { x: 292, z: 312 }, { x: -330, z: -240 }] },
+  // Tarkhan Steppe (layout brief, 2026-10-02): the three aprons — the station's grain yard by the ford on the line of
+  // equal drives, the post-road halt on the plateau near the northern arc and the kolkhoz yard near the southern
+  // deployment, each team's home zone as far from it as the other's; the kickoff on the wadi's north bank (the bounded
+  // search's seat, 420 / 375 m: the bed between them is the crusts' soft ground).
+  steppe: { kickoff: { x: -77.1, z: 76.4 }, zones: [{ x: 271, z: -64 }, { x: 206, z: 360 }, { x: -330, z: -240 }] },
   // Validated full-disc results of the bounded search on these constrained
   // maps. Start with the known clearings; changed terrain still revalidates
   // every footprint and both-team connection before using the ordinary search.

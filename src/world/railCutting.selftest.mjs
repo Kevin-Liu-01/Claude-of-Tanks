@@ -104,7 +104,11 @@ assert.ok(uncut.getHeightAt(511.9, -181) - field.getHeightAt(511.9, -181) > 17.5
 near(field.getHeightAt(500, -191), portalY + RAIL_CUTTING_GRADE * 60 + 6 / RAIL_CUTTING_BATTER, 1e-9, 'the south face at the batter');
 near(field.getHeightAt(500, -171), portalY + RAIL_CUTTING_GRADE * 60 + 6 / RAIL_CUTTING_BATTER, 1e-9, 'the north face at the batter');
 near(field.getHeightAt(511.9, -201), 20.88, 0.02, 'the plateau beside the notch is the ground it was (2026-09-24 base measurement)');
-near(field.getHeightAt(410, -226), 0.53, 0.02, 'the station road node before the rim'); near(field.getHeightAt(512, -232), 20.37, 0.02, 'and at the edge');
+// 2026-10-03 (maps lane B, Tarkhan Steppe to the layout brief): the station road stops at (448, -246) and the endpoint
+// completion grades its exit through the rim on its last bearing, 99 m south of the notch at the edge (nearer, its
+// corridor lowered the ring's plateau beside the notch below 14 m)
+near(field.getHeightAt(410, -226), -0.17, 0.02, 'the station road node before the rim');
+near(field.getHeightAt(512, -279.6842105263158), -3.06, 0.02, 'its graded exit at the edge');
 near(field.getHeightAt(424, -181), -1.55, 0.02, 'the plain before the fade');
 // every sample outside the corridor is byte-identical to the map without the cutting; the road nodes to the bit
 let moved = 0, outside = 0, west = 0;

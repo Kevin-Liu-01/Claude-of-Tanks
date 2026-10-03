@@ -11,6 +11,8 @@ export const LAYOUT_BRIEF_MAPS = Object.freeze([
   'cliffbridge', 'ruinspires', 'airfield',
   // maps lane B, batch 6
   'copper_mesa', 'moon', 'orchard', 'longleaf',
+  // maps lane B, batch 7
+  'steppe',
 ] as const);
 
 export type LayoutBriefMapId = (typeof LAYOUT_BRIEF_MAPS)[number];
