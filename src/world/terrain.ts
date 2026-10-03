@@ -4424,15 +4424,22 @@ void splatCompute() {
     float rMod = 0.55 + 0.9 * nz(uv, 0.0064, vec2(0.83, 0.41)).g;
     float sinuosity = nz(uv, 0.019, vec2(0.0)).r * 1.6;
     float rw = uRipple.z * (1.0 - fR) * (1.0 - triW * 0.9) * (1.0 - fMs) * sandCoverage;
-    float nearRip = 1.0 - smoothstep(40.0, 150.0, camDist);
-    float megaRip = 1.1 * (1.0 - smoothstep(110.0, 300.0, camDist)) * rMod;
-    nearRip *= tileVis(2.17); megaRip *= tileVis(11.4); // ground lane: the 2.2 m and 11 m trains at a grazing view
+    // Ground lane (2026-10-03, the coordinator's Sirocco smoke frames: "regular, high-contrast dark stripe bands across
+    // the whole valley floor at chase range, a few metres apart"): the near train ran at 2.2 m (a megaripple's spacing,
+    // not a ripple's) with a 0.34 tilt cap, phase-locked over 36 m cells. Real wind ripples are fine crests — the near
+    // train now runs at 0.38 m and fades out by 45 m; the 11 m megaripples are a third as strong; the cells are 22 m
+    // and swing ±0.6 rad; the tilt caps at 0.12; and both ride the loose sand sheets only — between them a valley floor
+    // is smooth, lag-strewn sand
+    float sheet = smoothstep(0.42, 0.68, nzq(uvW, 0.0061, vec2(0.29, 0.61)).x);
+    float nearRip = (1.0 - smoothstep(12.0, 45.0, camDist)) * sheet * 0.5;
+    float megaRip = 0.36 * (1.0 - smoothstep(80.0, 220.0, camDist)) * rMod * (0.3 + 0.7 * sheet);
+    nearRip *= tileVis(0.38); megaRip *= tileVis(11.4); // ground lane: each train fades as its period nears the pixel
     if (rw * max(nearRip, megaRip) > 0.0005) {
       float rTone;
-      vec2 rSlope = sandWaves(uv, wind0, 36.0, 0.35, sinuosity, vec2(2.9, 0.55), vec2(nearRip, megaRip), rTone);
+      vec2 rSlope = sandWaves(uv, wind0, 22.0, 0.6, sinuosity, vec2(16.5, 0.55), vec2(nearRip, megaRip), rTone);
       rSlope *= rw;
       float rLen = length(rSlope);
-      if (rLen > 0.34) rSlope *= 0.34 / rLen;
+      if (rLen > 0.12) rSlope *= 0.12 / rLen;
       n.xy += rSlope * (1.0 - 0.8 * smoothstep(0.004, 0.035, slope));
     }
     float bedMod = smoothstep(0.30, 0.72, nz(uvW, 0.0035, vec2(0.67, 0.23)).r);
@@ -4448,8 +4455,8 @@ void splatCompute() {
       // Round 43: the albedo band is what survives to the horizon; past ~320 m it eases to half so the far basin reads as
       // dune trains fading with distance rather than a printed sheet (the normal wave already mips away out there).
       float bedFar = 1.0 - 0.5 * smoothstep(320.0, 640.0, effDist);
-      a.rgb *= 1.0 + bed * 0.15 * bedW * bedFar;
-      n.xy += bedSlope * 0.55 * bedW;
+      a.rgb *= 1.0 + bed * 0.08 * bedW * bedFar; // ground lane: a low-contrast undulation, not a painted band (was 0.15)
+      n.xy += bedSlope * 0.35 * bedW;
     }
     float sandFaceW = triW * (1.0 - fR) * (1.0 - fMs) * sandCoverage;
     if (sandFaceW > 0.01) {
