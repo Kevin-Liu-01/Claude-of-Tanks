@@ -328,8 +328,9 @@ Frosthollow, Nordhavn Fjord; Sunscar Oasis, Whiteout Station; October 2–3, 202
   north still went 29-11 over 40 seeds. Before keeping a pacing fix, play 40 all-bot seeds.
 - **One-sided shelves.** The bots' opening goals (`botOpeningGoal` in `src/sim/authoritativeMatch.ts`) sit in
   rotational symmetry about the midpoint of the two spawn anchors. A landform under one team's goals with no match
-  under the other team's goals decides all-bot matches. On Copper Mesa an east-west ridge north of the pit lifted the
-  north team's central goals 4–6 m onto a forward slope, in view of the south rim. The south won 29–11 over 40 seeds,
+  under the other team's goals decides all-bot matches. On Copper Mesa an 8.6 m ridge ran north-south down the middle
+  of the north approach (x −58, z 120–400). It lifted the north team's central goals 4–6 m onto a forward slope, in
+  view of the south rim. The south won 29–11 over 40 seeds,
   whichever team deployed there, and took 15 of 16 first kills. With the ridge removed, the split was 19–21 in each of
   two 40-seed blocks. A copy of the ridge on the south side did not fix it (30–10). Compare the ground under each
   team's goals before you move the spawns.
