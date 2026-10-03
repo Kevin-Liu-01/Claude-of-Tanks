@@ -59,6 +59,15 @@ export function createPoliteCaptureLock({
     }
     return own;
   };
+  // A waiting ticket is renewed every poll (and restored under its own name if a scan reaped it): the queue reaps
+  // tickets an hour stale, and a census that waited longer lost its place for good and waited out its timeout
+  // (2026-10-03, the map-borders lane's first-3 capture: its ticket vanished at 61 min, the process polled on).
+  const keep = (name) => {
+    const ticketPath = join(queueDir, name), now = new Date();
+    try { utimesSync(ticketPath, now, now); } catch (error) {
+      if (error.code === 'ENOENT') { try { writeFileSync(ticketPath, String(process.pid), { flag: 'wx' }); } catch { /* raced */ } }
+    }
+  };
   const tryMkdir = (dir) => { try { mkdirSync(dir); return true; } catch { return false; } };
   const reapStaleLock = () => {
     try {
@@ -78,6 +87,7 @@ export function createPoliteCaptureLock({
       try {
         while (head(ticket) !== ticket) {
           if (late()) throw new Error('cot-shots lock timeout');
+          keep(ticket);
           await sleep(headPollMs);
         }
         if (tryMkdir(probeDir)) {
