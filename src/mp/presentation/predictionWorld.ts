@@ -121,6 +121,7 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
   const nearby: PredictionObstacle[] = [];
   const footCenter = { x: 0, y: 0, z: 0 };
   const ownFoot = createHullFootprint();
+  const hardObstacles: PredictionObstacle[] = [];
   const bodyTop = tankBodyTopM(ownSpec);
   const ownRect = tankContactRect(ownSpec);
   // physics lane (2026-10-03): the authority's two vertical rules, which the replay lacked. A hull on a roof stands on
@@ -192,11 +193,16 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
     // hull's footprint at its attitude and its underside there, the body's top for parts it passes beneath
     const foot = hullFootprint(ownRect, position.x, position.z, yaw, state ? state.visualPitch || 0 : 0,
       state ? state.visualRoll || 0 : 0, ownFoot);
-    footCenter.x = foot.centerX; footCenter.y = position.y; footCenter.z = foot.centerZ;
     const footRadius = Math.hypot(foot.halfLength, foot.halfWidth) + 0.01;
     const spanTop = position.y + bodyTop;
+    // each record meets the hull where the records before it have pushed it, as the authority resolves them
+    const baseX = foot.centerX, baseZ = foot.centerZ, startX = outPush.x, startZ = outPush.z;
+    let hardCount = 0;
     for (const obstacle of obstacles) {
       if (obstacle.crushed) continue;
+      foot.centerX = baseX + outPush.x - startX;
+      foot.centerZ = baseZ + outPush.z - startZ;
+      footCenter.x = foot.centerX; footCenter.y = position.y; footCenter.z = foot.centerZ;
       const spanBottom = hullUndersideOver(obstacle, foot, position.y);
       if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
       if (obstacle.crushable && speed > (obstacle.crushMin ?? 2.8)) continue;
@@ -205,11 +211,25 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
       const dx = foot.centerX - closestX;
       const dz = foot.centerZ - closestZ;
       if (dx * dx + dz * dz >= footRadius * footRadius) continue;
+      if (pushHullFromObstacle(
+        footCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth, obstacle, outPush,
+        spanBottom, spanTop,
+      )) hardObstacles[hardCount++] = obstacle;
+    }
+    // the authority's second sweep over the contacts that pushed
+    for (let index = 0; index < hardCount; index++) {
+      const obstacle = hardObstacles[index]!;
+      foot.centerX = baseX + outPush.x - startX;
+      foot.centerZ = baseZ + outPush.z - startZ;
+      footCenter.x = foot.centerX; footCenter.y = position.y; footCenter.z = foot.centerZ;
+      const spanBottom = hullUndersideOver(obstacle, foot, position.y);
+      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
       pushHullFromObstacle(
         footCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth, obstacle, outPush,
         spanBottom, spanTop,
       );
     }
+    hardObstacles.length = 0;
     ownBody.state = state;
     for (const other of others()) {
       if (!other.collidable) continue;

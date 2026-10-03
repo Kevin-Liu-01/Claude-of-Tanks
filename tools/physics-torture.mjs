@@ -52,7 +52,7 @@ import { createTerrainContactSampler } from '../src/world/terrainContactSurface.
 import * as collisionModule from '../src/world/collision.ts';
 import { createPredictionWorld } from '../src/mp/presentation/predictionWorld.ts';
 
-const { hullPassesObstacleTop, pointInsideCollisionRecord, pushHullFromHull, pushHullFromObstacle, setObbShape } = collisionModule;
+const { hullPassesObstacleTop, pointInsideCollisionRecord, pushHullFromHull, pushHullFromObstacle, setObbShape, setCircleShape } = collisionModule;
 // The standing rule's underside and the footprint the obstacle solver pushes, as the tree under test has them: the
 // hull's footprint at its attitude (world/collision.ts hullFootprint), the flat rect with the earlier underside grid, or
 // (the A/B base, without either) the flat rect and the root.
@@ -223,6 +223,10 @@ export function box(cx, cz, halfWidth, halfLength, bottom, top, { yaw = 0, crush
   const record = { min: [0, bottom, 0], max: [0, top, 0], kind, crushable };
   return setObbShape(record, cx, cz, halfWidth, halfLength, yaw);
 }
+/** A boulder: a vertical cylinder footprint (the rocks the maps scatter). */
+export function boulder(cx, cz, radius, top) {
+  return setCircleShape({ min: [0, 0, 0], max: [0, top, 0], kind: 'rock', crushable: false }, cx, cz, radius);
+}
 
 // ---- cases --------------------------------------------------------------------------------------------------------
 // t is seconds since the start. `input(t)` must be a pure function of time (the prediction replay reads future ticks).
@@ -339,6 +343,19 @@ export const CASES = [
     spawn: { speed: 'top' }, input: hold(1), allowBlocked: true, wall: { z: 22 } },
   { id: 'wall-thin-launch', group: 'contact', seconds: 4, terrain: TERRAIN.flat(), obstacles: [box(0, 22, 12, 0.12, 0, 5, { kind: 'wall' })],
     spawn: { speed: 45 }, input: hold(1), allowBlocked: true, wall: { z: 22 } },
+  // Coastal, battlePacing seed 25003 (bots lane, 2026-10-03): a bot pivoting beside a rock jinked ±0.36 m a step. A hull
+  // turning on the spot against a boulder or a block is pushed off it the shortest way and settles there: the push never
+  // flips from one side to the other step after step (the pop gate holds it to the rotation's own sweep).
+  { id: 'pivot-boulder', group: 'contact', seconds: 6, terrain: TERRAIN.flat(), obstacles: [boulder(3.4, 0.8, 1.0, 1.6)],
+    input: hold(0, 1), drive: [0, 6], allowBlocked: true },
+  { id: 'pivot-block', group: 'contact', seconds: 6, terrain: TERRAIN.flat(), obstacles: [box(3.6, -2.4, 0.8, 0.8, 0, 1.4, { yaw: 0.5 })],
+    input: hold(0, -1), drive: [0, 6], allowBlocked: true },
+  // Foundry field audit (physics lane, 2026-10-03): a hull pivoting across a fence line, a rail segment under each end,
+  // was pushed both ways at once and flipped from side to side every step (0.03 m, growing to a 0.65 m jump). Each
+  // record now meets the hull where the records before it have pushed it, and the push settles.
+  { id: 'fence-straddle', group: 'contact', seconds: 4, terrain: TERRAIN.flat(), spawn: { yaw: -0.3 },
+    obstacles: Array.from({ length: 7 }, (_, i) => box(0, -8.75 + i * 2.5, 0.035, 1.24, 0.5, 1.6, { kind: 'fencerail' })),
+    input: hold(0, -1), drive: [0, 4], allowBlocked: true, popFromS: 0.5, allowOverlap: true },
   { id: 'wedge', group: 'contact', seconds: 8, terrain: TERRAIN.flat(),
     obstacles: [box(-3.4, 18, 1, 8, 0, 4, { yaw: 0.35, kind: 'wall' }), box(3.4, 18, 1, 8, 0, 4, { yaw: -0.35, kind: 'wall' })],
     input: after(5, hold(1), hold(-1)), drive: [5.5, 8], allowBlocked: true },
@@ -443,7 +460,7 @@ function newMetrics() {
     airS: 0, longestAirS: 0, hops: 0, landings: [], contactLandings: [], maxLandingMps: 0, reboundExcessMps: 0, closingExcessMps: 0,
     liftM: 0,
     energyGainMaxJkg: 0, energyGainSumJkg: 0, apexes: [],
-    rest: null, stuckS: 0, longestStuckS: 0, progressM: 0,
+    rest: null, stuckS: 0, longestStuckS: 0, progressM: 0, pushFlips: 0, lastPush: null,
     overturnedS: 0, tumblingS: 0, finalUpY: 1, finalOverturned: false,
     settleOscillations: null,
     replay: { samples: 0, maxErrM: 0, sumErrM: 0, maxAttErrRad: 0 },
@@ -708,8 +725,20 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
     const allowedXZ = (Math.max(Math.abs(pre.speed), Math.abs(state.speed)) + pre.recoil) * DT
       + 1.2 * Math.abs(state.yawRate) * DT + 0.002;
     const popXZ = dxz - allowedXZ;
-    if (popXZ > metrics.popXZMaxM) metrics.popXZMaxM = popXZ;
-    if (popXZ > 0.05) metrics.popsXZ++;
+    if (t >= (caseDef.popFromS ?? 0)) {
+      if (popXZ > metrics.popXZMaxM) metrics.popXZMaxM = popXZ;
+      if (popXZ > 0.05) metrics.popsXZ++;
+    }
+    // a push that flips from one side to the other on consecutive steps (a jink): the step less the travel its speed and
+    // recoil explain, reversing with both over a centimetre
+    {
+      const ex = (Math.sin(state.yaw) * state.speed + state._spring.recoilVX) * DT;
+      const ez = (Math.cos(state.yaw) * state.speed + state._spring.recoilVZ) * DT;
+      const px = state.pos.x - pre.x - ex, pz = state.pos.z - pre.z - ez, pr = Math.hypot(px, pz);
+      const last = metrics.lastPush;
+      if (last && pr > 0.01 && last.r > 0.01 && px * last.x + pz * last.z < -0.5 * pr * last.r) metrics.pushFlips++;
+      metrics.lastPush = { x: px, z: pz, r: pr };
+    }
     const dy = state.pos.y - pre.y;
     const landed = state.landingImpactMps > 0;
     const popY = Math.abs(dy - state._ride.v * DT);
@@ -962,7 +991,7 @@ export const GATES = Object.freeze({
   pop: (m) => m.popXZMaxM <= 0.12 && m.popYMaxM <= 0.12,
   snap: (m) => m.snapMaxRad <= 0.05,
   bodyPen: (m) => m.bodyPenMaxM <= 0.05,
-  obstaclePen: (m) => m.obstaclePenMaxM <= 0.1,
+  obstaclePen: (m, c) => c.allowOverlap || m.obstaclePenMaxM <= 0.1,
   hullPen: (m) => m.hullPenMaxM <= 0.15,
   roofSink: (m) => m.roofSinkMaxM <= 0.25,
   tunnel: (m) => !m.tunnelled,
@@ -970,6 +999,8 @@ export const GATES = Object.freeze({
   restJitter: (m) => !m.rest || (m.rest.jitterYRmsMm <= 0.5 && m.rest.jitterAttRmsMrad <= 0.5),
   restCreep: (m) => !m.rest || Math.abs(m.rest.creepMmS) <= 5,
   stuck: (m, c) => c.allowBlocked || m.longestStuckS <= 0.6,
+  // a contact push settles: it does not flip the hull from side to side step after step (Coastal seed 25003, Foundry)
+  jink: (m) => m.pushFlips <= 3,
   // a hull that only drives never leaves the ground (climb-face); a landing never reads more than the hull's approach
   flight: (m, c) => !c.grounded || m.liftM <= 0.3,
   closing: (m) => m.closingExcessMps <= 1.0,

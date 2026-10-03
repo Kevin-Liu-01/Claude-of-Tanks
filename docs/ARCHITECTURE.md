@@ -845,6 +845,11 @@ contact constraints and cannot be crossed by residual uphill speed.
   projections, which for a hull inside a wide footprint is its own width).
 - *Firing in flight.* An airborne hull takes a tenth of the recoil's ground rock as rotation (the rigid body's share;
   there is no suspension to rock against).
+- *Contacts settle.* Each obstacle record meets the hull where the records before it have pushed it, as a
+  compound's parts do, and the contacts that pushed are swept once more from where the first sweep left it, in the
+  authority, the solo sim and the prediction world alike. Summed from one position, two contacts pushing opposite
+  ways (a hull pivoting across a fence line, a rail under each end) each corrected the whole overlap, and the hull
+  flipped from side to side every step until one contact won with a 0.65 m jump.
 - *Hull on hull.* A roof contact is measured where the footprints overlap (the upper's lowest shell point over the
   lower's rect against the lower's highest under the upper's); the horizontal solver reserves a pair for the
   vertical layer by that same depth, and a hull standing 0.5 m above its own support is never ground traffic.

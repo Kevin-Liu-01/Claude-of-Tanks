@@ -1618,6 +1618,9 @@ function queueCrush(
   pendingCrush.push({ ob: obstacle, ent: self });
 }
 
+/** The contacts the first obstacle sweep found hard, swept again (resolveObstacleCollisions). */
+const _hardObstacles: SoloObstacle[] = [];
+
 function resolveObstacleCollisions(
   game: SoloGameState,
   world: SoloWorld,
@@ -1631,7 +1634,6 @@ function resolveObstacleCollisions(
 ): boolean {
   // the hull's footprint at its attitude (world/collision.ts hullFootprint), as the authority pushes it
   const { centerX, centerZ, forwardX, forwardZ, rightX, rightZ, halfLength, halfWidth } = foot;
-  _obstacleCenter.set(centerX, positionY, centerZ);
   const broadRadius = Math.sqrt(halfLength * halfLength + halfWidth * halfWidth) + 0.01;
   const candidates = world.queryObstacles
     ? world.queryObstacles(
@@ -1647,14 +1649,21 @@ function resolveObstacleCollisions(
   const spanTop = positionY + (self ? tankBodyTopM(self.spec) : 3);
   // the standing rule reads the hull's underside over each record, at its attitude (world/collision.ts hullUndersideOver)
   let pushed = false;
+  // each record meets the hull where the records before it have pushed it (sim/authoritativeMatch.ts
+  // collideWithObstacles): two opposing contacts summed from one position flipped the hull from side to side
+  const startX = outPush.x, startZ = outPush.z;
+  let hardCount = 0;
   for (const obstacle of candidates) {
     if (obstacle.crushed) continue;
+    foot.centerX = centerX + outPush.x - startX;
+    foot.centerZ = centerZ + outPush.z - startZ;
+    _obstacleCenter.set(foot.centerX, positionY, foot.centerZ);
     const spanBottom = hullUndersideOver(obstacle, foot, positionY);
     if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
-    const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
-    const closestZ = Math.max(obstacle.min[2], Math.min(centerZ, obstacle.max[2]));
-    const deltaX = centerX - closestX;
-    const deltaZ = centerZ - closestZ;
+    const closestX = Math.max(obstacle.min[0], Math.min(foot.centerX, obstacle.max[0]));
+    const closestZ = Math.max(obstacle.min[2], Math.min(foot.centerZ, obstacle.max[2]));
+    const deltaX = foot.centerX - closestX;
+    const deltaZ = foot.centerZ - closestZ;
     if (deltaX * deltaX + deltaZ * deltaZ >= broadRadius * broadRadius) continue;
     const beforeX = outPush.x;
     const beforeZ = outPush.z;
@@ -1679,7 +1688,20 @@ function resolveObstacleCollisions(
       continue;
     }
     pushed = true;
+    _hardObstacles[hardCount++] = obstacle;
   }
+  // a second sweep over the contacts that pushed, from where the first left the hull (sim/authoritativeMatch.ts)
+  for (let index = 0; index < hardCount; index++) {
+    const obstacle = _hardObstacles[index]!;
+    foot.centerX = centerX + outPush.x - startX;
+    foot.centerZ = centerZ + outPush.z - startZ;
+    _obstacleCenter.set(foot.centerX, positionY, foot.centerZ);
+    const spanBottom = hullUndersideOver(obstacle, foot, positionY);
+    if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+    pushHullFromObstacle(_obstacleCenter, forwardX, forwardZ, rightX, rightZ, halfLength, halfWidth, obstacle, outPush,
+      spanBottom, spanTop);
+  }
+  _hardObstacles.length = 0;
   return pushed;
 }
 

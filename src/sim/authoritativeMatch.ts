@@ -1117,6 +1117,9 @@ export function createAuthoritativeMatch({
     pendingCrush.push({ obstacle, entity, cause: 'ram' });
   }
 
+  /** The contacts the first obstacle sweep found hard, swept again (collideWithObstacles). */
+  const hardObstacles: AuthoritativeObstacle[] = [];
+
   function collideWithObstacles(
     entity: AuthoritativeEntity,
     pos: Vector3,
@@ -1128,18 +1131,26 @@ export function createAuthoritativeMatch({
     const foot = hullFootprint(tankContactRect(entity.spec), pos.x, pos.z, state.yaw, state.visualPitch || 0,
       state.visualRoll || 0, _obstacleFoot);
     const centerX = foot.centerX, centerZ = foot.centerZ;
-    _obstacleCenter.set(centerX, pos.y, centerZ);
     const broadRadius = Math.hypot(foot.halfLength, foot.halfWidth) + 0.01;
     const spanTop = pos.y + tankBodyTopM(entity.spec);
     let hard = false;
+    // Each record meets the hull where the records before it have pushed it (physics lane, 2026-10-03; Foundry field
+    // audit), as a compound's parts already do: summed from one position, two contacts that push opposite ways (a hull
+    // pivoting across a fence line, a rail under each end) each corrected the whole overlap, so the hull overshot by
+    // the other's share every step and flipped from side to side until one contact won with a 0.65 m jump.
+    const startX = outPush.x, startZ = outPush.z;
+    let hardCount = 0;
     for (const obstacle of obstacleCandidates(centerX, centerZ, broadRadius)) {
       if (obstacle.crushed) continue;
+      foot.centerX = centerX + outPush.x - startX;
+      foot.centerZ = centerZ + outPush.z - startZ;
+      _obstacleCenter.set(foot.centerX, pos.y, foot.centerZ);
       const spanBottom = hullUndersideOver(obstacle, foot, pos.y);
       if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
-      const closestX = Math.max(obstacle.min[0], Math.min(centerX, obstacle.max[0]));
-      const closestZ = Math.max(obstacle.min[2], Math.min(centerZ, obstacle.max[2]));
-      const dx = centerX - closestX;
-      const dz = centerZ - closestZ;
+      const closestX = Math.max(obstacle.min[0], Math.min(foot.centerX, obstacle.max[0]));
+      const closestZ = Math.max(obstacle.min[2], Math.min(foot.centerZ, obstacle.max[2]));
+      const dx = foot.centerX - closestX;
+      const dz = foot.centerZ - closestZ;
       if (dx * dx + dz * dz >= broadRadius * broadRadius) continue;
       const beforeX = outPush.x;
       const beforeZ = outPush.z;
@@ -1150,12 +1161,28 @@ export function createAuthoritativeMatch({
       if (!pushed) continue;
       if (!obstacle.crushable || !obstacleIsPressedThrough(entity, obstacle)) {
         hard = true; // a solid primitive (or a trunk too slow to fell) is a hard surface
+        hardObstacles[hardCount++] = obstacle;
         continue;
       }
       outPush.x = beforeX;
       outPush.z = beforeZ;
       queueCrushedObstacle(entity, obstacle);
     }
+    // a second sweep over the contacts that pushed, from where the first left the hull: contacts that meet at an angle (a
+    // V of walls the hull is driven into) settle against both instead of leaving the first one's overlap behind
+    for (let index = 0; index < hardCount; index++) {
+      const obstacle = hardObstacles[index]!;
+      foot.centerX = centerX + outPush.x - startX;
+      foot.centerZ = centerZ + outPush.z - startZ;
+      _obstacleCenter.set(foot.centerX, pos.y, foot.centerZ);
+      const spanBottom = hullUndersideOver(obstacle, foot, pos.y);
+      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+      pushHullFromObstacle(
+        _obstacleCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth,
+        obstacle, outPush, spanBottom, spanTop,
+      );
+    }
+    hardObstacles.length = 0;
     return hard;
   }
 
