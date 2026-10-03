@@ -68,7 +68,7 @@ const expected = {
   reservoir: [6480, 6355, 7309], // 2026-10-02 Highland Reservoir layout-brief revision (docs/MAP-LAYOUT-BRIEF.md); was [6425, 6300, 7206]
   mars: [769, 715, 0],
   moon: [475, 381, 0],
-  cliffbridge: [6291, 6440, 5388], // 2026-10-02 Aegis Crossing redesign (docs/MAP-LAYOUT-BRIEF.md); was [5903, 5636, 5243]
+  cliffbridge: [6193, 6341, 5320], // 2026-10-02 Aegis Crossing redesign (docs/MAP-LAYOUT-BRIEF.md); was [5903, 5636, 5243]
 };
 const stats = dedicatedCollisionManifestStats();
 assert.deepEqual(Object.keys(expected), MAP_IDS, 'every registered map has a fixed census expectation');

@@ -19,7 +19,7 @@
 // The layout is mirror-symmetric across the gorge's axis (z = 0): alpha deploys on the south tableland, bravo on the
 // north. Three lanes cross the middle: the west ford past the olive terraces, the viaduct between the two towns, and
 // the east ford through the bottomland woods. The gorge walls cannot be driven. The routes between the deck and the
-// gorge floor run from each abutment along the rim lips to the river terraces at the gorge's ends and down them: about
+// gorge floor run from each abutment along the rim to the river terraces at the gorge's ends and down them: about
 // 610 m from the deck's end to the floor beside the viaduct, against 200 m over the deck. The zone-control discs stand
 // on the two market squares and on the gorge floor west of the viaduct, where the mills stood; the turbo-ball kickoff
 // on the gorge floor east of it.
@@ -109,10 +109,11 @@ export default {
         { kind: 'ridge', x, z: 25, length, width: 22, height: 2.6, yawDeg: 0, corridorScale: 1, settlementScale: 1 },
       ]),
       // The raised lips along both rims where the gorge is deep, open where the main road reaches the abutments
-      // (mirror pairs).
+      // (mirror pairs). They stand 20 m back from the edge: when their flat tops ran to it, a bot heading for the
+      // gorge-floor zone along one drove off (a 1068 HP fall in botModes' zone-control match).
       ...[-152, 152].flatMap((x) => [
-        { kind: 'ridge', x, z: -104, length: 264, width: 18, height: 2.6, yawDeg: 0, settlementScale: 1 },
-        { kind: 'ridge', x, z: 104, length: 264, width: 18, height: 2.6, yawDeg: 0, settlementScale: 1 },
+        { kind: 'ridge', x, z: -114, length: 264, width: 18, height: 2.6, yawDeg: 0, settlementScale: 1 },
+        { kind: 'ridge', x, z: 114, length: 264, width: 18, height: 2.6, yawDeg: 0, settlementScale: 1 },
       ]),
       // Terrace banks across the gorge's end ramps, where the floor climbs to the fords (mirror pairs, both ends).
       ...[-330, 330].flatMap((x) => [64, 96].flatMap((z) => [
