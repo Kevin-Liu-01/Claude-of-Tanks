@@ -9,6 +9,7 @@ import {
   totalAmmunition,
   totalAmmunitionCapacity,
 } from './ammunition.ts';
+import { createGunshipEscort, ESCORT_RULES, type EscortState } from './gunshipEscort.ts';
 import type { AerialView } from './aerialCombat.ts';
 import type { MatchPlacement } from './matchPlacement.ts';
 import { ASSAULT_LINE_FRACTIONS } from './assaultLines.ts';
@@ -98,7 +99,7 @@ export const GAME_MODE_DEFINITIONS: Readonly<Record<GameModeId, GameModeDefiniti
     drone: Object.freeze({ id: 'drone', label: 'Drone', shortLabel: 'FPV', icon: 'modeDrone',
       description: 'Fight in your tank, launch an FPV attack drone, then pilot it into an enemy. Your parked tank stays vulnerable.', respawns: true }),
     ac130: Object.freeze({ id: 'ac130', label: 'AC-130', shortLabel: 'AC-130', icon: 'modeAc130',
-      description: 'Orbit the battlefield in a gunship. Use the autocannon, 152 mm explosive howitzer and guided missiles from an overhead gunsight.', respawns: false }),
+      description: 'Protect vulnerable ground troops as they reach extraction. Save at least half using your autocannon, 152 mm howitzer and missiles.', respawns: false }),
   });
 
 const MODE_SET = new Set<string>(GAME_MODE_IDS);
@@ -265,6 +266,7 @@ export interface MatchModePresentationState {
   playerAmmo: number | null;
   playerAmmoCapacity: number | null;
   aerial?: AerialView;
+  escort?: EscortState;
   factions?: { id: string; team: ObjectiveTeam }[];
   boss?: { id: string; team: ObjectiveTeam; hp: number; maxHp: number };
   infection?: { survivors: number; infected: number };
@@ -276,7 +278,7 @@ export interface MatchModePresentationState {
 export interface ModeCheckpoint {
   elapsedS: number; score: TeamScore; weaponKills: [string, number][];
   teams: [string, ObjectiveTeam][]; respawns: [string, { atS: number; healthScale: number }][];
-  destroyed: [string, boolean][]; scored: string[];
+  destroyed: [string, boolean][]; scored: string[]; escortRescued?: string[];
 }
 
 export interface MatchModeResult {
@@ -378,6 +380,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   // flag changes hands.
   const stampPhysics = (entity: Entity, speed = baseSpeed): void => {
     entity.modeSpeedMultiplier = speed * (ruleset.infection && teamOf(entity) === 'bravo' ? ruleset.infection.infectedSpeed : 1)
+      * (id === 'ac130' && entity.bot && teamOf(entity) === 'alpha' ? ESCORT_RULES.speedScale : 1)
       * (ruleset.juggernaut && teamOf(entity) === ruleset.juggernaut.team ? ruleset.juggernaut.speedScale : 1);
     entity.modeGravityScale = ruleset.gravityScale;
     entity.modeJumpMps = ruleset.jumpMps;
@@ -483,6 +486,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
           control: 0, owner: null, contested: false,
         };
       }) : [];
+  const escortPoint=placement?.zones[1] ?? {x:midX,z:midZ};
+  const escort=id==='ac130'?createGunshipEscort(entities,{...escortPoint,y:terrainHeight(escortPoint.x,escortPoint.z)+.12},setActive):null;
+  if(escort)zones.push({id:'extraction',x:escortPoint.x,y:escort.state.y,z:escortPoint.z,control:1,owner:'alpha',contested:false});
   const ball: BallState | null = id === 'turbo_ball' ? {
     x: midX, y: ballFloorHeight(midX, midZ, Infinity) + BALL_RADIUS_M, z: midZ,
     vx: 0, vy: 0, vz: 0, lastTouchId: null,
@@ -525,6 +531,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     pickups,
     playerAmmo: null,
     playerAmmoCapacity: null,
+    ...(escort ? { escort:escort.state } : {}),
     ...(boss ? { boss: { id: boss.id, team: teamOf(boss), hp: boss.combat.hp, maxHp: boss.combat.maxHp } } : {}),
     ...(ruleset.infection ? { infection: { survivors: teams.alpha.length, infected: teams.bravo.length } } : {}),
   };
@@ -1119,6 +1126,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       playerAmmoCapacity: viewer ? totalAmmunitionCapacity(viewer.combat) : null,
       ...(viewer?.aerial ? { aerial: { ...viewer.aerial } } : {}),
       ...(ruleset.infection ? { factions: entities.map(entity => ({ id: entity.id, team: teamOf(entity) })) } : {}),
+      ...(escort ? { escort:{...escort.state} } : {}),
       ...(state.boss ? { boss: { ...state.boss } } : {}),
       ...(state.infection ? { infection: { ...state.infection } } : {}),
       ...(ruleset.gunGame ? { weaponStages: entities.map(entity => ({ id: entity.id, index: Math.min(GUN_GAME_WEAPONS.length - 1, Math.floor((weaponKills.get(entity.id) ?? 0) / ruleset.gunGame!.killsPerWeapon)) })) } : {}),
@@ -1291,6 +1299,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const botTarget = (entity: Entity): BotDestination | null => {
     if (entity.modeActive === false || entity.combat.destroyed) return null;
     const team = teamOf(entity);
+    if (escort) return escort.target(entity);
     if (id === 'capture_the_flag') return flagBotTarget(entity, team);
     if (objective === 'zone_control') {
       const point = zoneBotTarget(entity, team);
@@ -1310,7 +1319,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     definition,
     ruleset,
     state,
-    usesElimination: id === 'standard' || id === 'realistic' || id === 'ac130',
+    usesElimination: id === 'standard' || id === 'realistic',
     recordDestruction(victimId, killerId) {
       if (result || (objective !== 'zone_control' && !['drone', 'gun_game', 'juggernaut', 'realistic', 'ac130'].includes(id)) || !killerId || killerId === victimId || scoredDeaths.has(victimId)) return;
       const victim=entities.find(entity=>entity.id===victimId);
@@ -1337,6 +1346,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (result) return result;
       placementTimeS = timeS;
       handleDeathsAndRespawns(timeS);
+      if(escort){const outcome=escort.step(timeS,ruleset.timeLimitS??480);if(outcome)return finish(outcome.result,outcome.reason);}
       if (boss && state.boss) {
         state.boss.hp = boss.combat.hp;
         if (boss.combat.destroyed) return finish(otherTeam(teamOf(boss)), 'juggernaut_destroyed');
@@ -1373,7 +1383,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     botObjective,
     captureCheckpoint(elapsedS) {
       return { elapsedS, score: { ...score }, weaponKills: [...weaponKills], teams: entities.map(entity => [entity.id, teamOf(entity)]),
-        respawns: [...respawnAt].map(([key, value]) => [key, { ...value }]), destroyed: [...destroyed], scored: [...scoredDeaths] };
+        respawns: [...respawnAt].map(([key, value]) => [key, { ...value }]), destroyed: [...destroyed], scored: [...scoredDeaths], ...(escort?{escortRescued:escort.capture()}:{}) };
     },
     restoreCheckpoint(checkpoint) {
       score.alpha = checkpoint.score.alpha; score.bravo = checkpoint.score.bravo;
@@ -1389,6 +1399,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       respawnAt.clear(); for (const [key, value] of checkpoint.respawns) respawnAt.set(key, { ...value });
       destroyed.clear(); for (const [key, value] of checkpoint.destroyed) destroyed.set(key, value);
       scoredDeaths.clear(); for (const key of checkpoint.scored) scoredDeaths.add(key);
+      escort?.restore(checkpoint.escortRescued??[]);
     },
     serialize,
   };

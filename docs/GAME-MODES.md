@@ -28,32 +28,49 @@ rule the battle does not keep.
 | Realistic | Destroy the opposing force through critical damage | Always-visible vehicles; no hull HP attrition, automatic module repair or consumables | No | Crew eliminated or ammunition destruction eliminates a team; 15:00 draw |
 | Gun Game | Complete a five-weapon ladder | Two confirmed kills per stage; unlimited ammunition | 4 s | First player to complete the ladder; 15:00 score decision |
 | Drone | Destroy opponents with tanks and directly piloted drones | Launch a physical FPV quadcopter from the tank; contact uses normal explosive collision and damage | 6 s | First team to 20 kills (configurable), or 10:00 score decision |
-| AC-130 | Clear the ground force from an orbiting gunship | Overhead scope, three independent weapon channels, unlimited ammunition and always-visible targets | No | Ground force eliminated, aircraft destroyed, or 8:00 draw |
+| AC-130 | Protect ground allies until at least half reach extraction | Fragile escorts, a marked exit, overhead scope, three independent weapon channels and unlimited ammunition | No | Half extracted; defeat if too few survive or 8:00 expires |
 
 ## Flying a drone
 
 Select **Drone**, enter a battle in your tank, then press **V** or the drone control.
-The quadcopter rises from the vehicle before the camera switches to first-person
+The quadcopter starts visibly docked on a reusable mission rail on the rear hull.
+The rail and its four feet are fitted to each vehicle’s own hull surfaces; the same
+attachment frame can carry future mode equipment. A 2.4-second rotor spool-up and
+smooth lift clear the carrier before the camera eases into first-person
 flight with a monochrome thermal-style treatment. You directly fly it: **W/S**
 move forward or backward, **A/D** strafe, **Space** climbs, and mouse look steers.
 Pitch down and fly forward to descend or dive into a target. Releasing movement
-holds position. Touch look and the movement controls use the same flight inputs.
+brakes smoothly into a hover. Light air disturbances, body banking, rotor
+spool-up and continuous stabilization corrections keep the drone visibly airborne;
+the FPV camera filters that motion down to a small stabilized sway. Touch look and the movement controls use the same
+flight inputs, with a dedicated **Climb** button. The flight console shows battery
+time, carrier-link distance, speed, and **Return to tank**. Tank ammunition and
+vehicle controls are hidden while flying.
 
 The drone has a 40-second battery and an 850 m operating radius. Its impact is a
 real explosive projectile: terrain, structures and vehicle armor matter. It does
 not award a kill merely for reaching an enemy. **V** returns to the tank, ending
 that flight. Impact, cancellation or battery/range exhaustion starts a 25-second
 cooldown. The parked tank remains vulnerable; destroying it ends its drone flight.
-Other players see the quadcopter and its spinning rotors. Bots can fly drones too.
+Other players see the quadcopter, camera, underslung warhead, and spinning rotors.
+Bots can fly drones too. An airborne drone also supplies its carrier’s team with
+reconnaissance out to 350 m, reduced by target camouflage. Buildings, terrain and
+smoke still block its line of sight, including at close range; the thermal-style
+picture is not permission to see through cover. Destroying the carrier removes
+the drone observer, and contacts use the normal spotting linger and radio sharing.
 
 ## AC-130 controls and weapons
 
 The gunship automatically circles at 240 m above its starting ground height on a
-180 m orbit. Aim with mouse or touch look; use the wheel to zoom the downward scope.
+90 m orbit. It starts airborne before the first gameplay frame. Aim with mouse
+or touch look: the gimbal keeps looking at your chosen ground point as the aircraft
+circles. Use the wheel, pinch gesture, or touch scope control to zoom.
 Fire with the normal fire control and select weapons with **1–3** or the ammunition
-buttons: a rapid 30 mm cannon, a 152 mm explosive howitzer, and guided missiles.
+buttons in the dedicated flight console: a rapid 30 mm cannon, a 152 mm explosive howitzer, and guided missiles.
 The weapon channels reload independently. Missiles follow the sight; cannon and
 howitzer rounds travel through the normal ballistic and armor simulation.
+
+Four allied ground vehicles accompany the gunship by default. They have 35% of their normal hull strength, slower reloads and reduced speed, and use normal navigation to reach the green **E** extraction area. Enemies pursue the convoy. Save at least half; killing enemies alone does not complete the mission. The objective shows allies still on the field, the number extracted, the rescue requirement and route progress. Casualties do not respawn. An eight-minute timeout or losing too many escorts fails the operation. Multiplayer pilots all provide air support, with separate friendly bots reserved for the escort. Extraction and casualty state survive host migration.
 
 ## Asymmetric teams and progression
 
