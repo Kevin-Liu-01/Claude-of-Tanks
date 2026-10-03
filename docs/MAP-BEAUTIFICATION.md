@@ -6428,6 +6428,35 @@ Largest open item in the band: a railway that leaves the square (Cinder Junction
 classic rim's hill at the edge (rounds 63/67) — wooded now, but a hill standing in the view; the open line past the
 edge is the next step.
 
+#### Wave 1 — 2026-10-03: the middle distance and the critics' artifacts
+
+Gauntlet wave 1 passed the first pass (3.02 → 3.55, the horizon and border criterion +2 to +4 on most views) and named
+the band's largest remaining defect: past the edge the country read as an empty, uniform plain. It also found four
+artifacts in the after frames.
+
+- **Hedgerows as bush lines** (`world/borderHedgerows.ts`). The field boundaries' hedges were ring-forest trees 20–40 m
+  apart: a dotted line of crowns, nothing past 300 m. Every hedged stretch of a boundary past the edge is now a bush
+  line — a prism 2.6 m across at its foot, 2.4–4.6 m high with a lumpy crest, tapered at its gaps — seated on the ring's
+  surface in the ring forest's broadleaf green a shade darker (the landform's lines: `traceHedgeLines`, each field line
+  traced in 8 m steps by Newton on its level). One merged mesh, one draw and one far-cascade shadow draw (Amberford
+  8 km of hedge in 3.2k triangles; 5–12 ms at ring build). The ring forest stands only the hedges' standards.
+- **Crops in calibrated colours.** The parcels' mild tints (±10–20 %) gave way to the ground lane's calibration
+  (`landUse.ts`): each crop a multiple of the local sward's luminance — ripe wheat 2.8×, barley 3.0×, a young crop
+  1.25× greener, stubble 2.8× straw, plough of dark soil, sunflower 0.7×, the polders' rapeseed — on each region's
+  rotation. The ring's `borderTint` carries the crop premultiplied by its weight, the weight stored as `1 − w` so a
+  geometry without the attribute (WebGL's generic default `(0, 0, 0, 1)`) reads no crop. Faded in over the first 40 m
+  past the edge; none on slopes past ~25°.
+- **One field grid on both sides (pending the ground lane's merge).** On a map with a land-use profile the land past
+  the edge becomes the map's own grid: `borderLandUse.ts` traces its hedged boundaries (on a walled karst region every
+  boundary, as dry stone walls) from `landUseAt`, the grid's heading squares the farmsteads, and the material draws the
+  grid's crops and tracks across the edge; the landform's own fields serve the maps without a profile.
+- **Artifacts.** A road exit is painted only on the ring's continued ground (Cinder Junction: an exit drawn on up a
+  range's face read as a road climbing the backdrop and a bright seam up the mountainside). Round the playable edge
+  (415–800 m) the turf holds to ~35° (the rim's remnants of 20–35° took the slope rock as a violet splotch on Sirocco
+  Wadi and a blue-grey patch on Amberford). The farmsteads' colours sit at 0.8 of their value (a white wall in full sun
+  read as a glowing sprite). The border census has a second protocol, `--set=border2` (`visual-census-border-v2`), whose
+  spots also keep every crown 14 m off inside the view's wedge (Amberford's north view stood beside a tree's leaf cards).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
