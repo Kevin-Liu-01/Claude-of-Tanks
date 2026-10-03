@@ -21,6 +21,7 @@ import { readFileSync } from 'node:fs';
 import { groundReduxProfileIds, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { MAP_IDS } from './maps/catalog.ts';
 import { RING_RELIEF_WALL_BAND } from './horizonAutumnGround.ts';
+import { terrainBedWobbleAt, terrainFormationBoundaryY } from './terrain.ts';
 
 const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const active = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
@@ -212,4 +213,23 @@ for (const [character, [lo, hi]] of Object.entries(RING_RELIEF_WALL_BAND)) {
 assert.ok(ground.includes("const wallBand = character ? RING_RELIEF_WALL_BAND[character] : undefined;") && ground.includes('wall.set(...(wallBand ?? RING_RELIEF_WALL_NONE));'),
   'the ring bind sets the band per relief character (none elsewhere)');
 
+// 2026-10-03 the ground lane: the bed law's CPU twins (terrainBedWobbleAt, terrainFormationBoundaryY) carry the shader's
+// constants (gBedWob, the uFormation step), stay inside their amplitudes and wander — the scenery lane's bedrock skin
+// stripes by them, so its beds and the terrain's strata are one rock
+{
+  const shader = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  assert.ok(shader.includes('gBedWob = (nz(wp.xz, 0.0208, vec2(0.37, 0.83)).g - 0.5) * 3.2 + (nz(wp.xz, 0.0588, vec2(0.71, 0.19)).r - 0.5) * 1.1;'),
+    'the shader\'s bed wander is the twin\'s law');
+  assert.ok(shader.includes('(nz(wp.xz, 0.0071, vec2(0.83, 0.41)).r - 0.5) * 2.0 * uFormation.y'), 'the formation boundary\'s wander is the twin\'s law');
+  let lo = Infinity, hi = -Infinity, sum = 0, sq = 0, n = 0;
+  for (let z = -500; z <= 500; z += 7.3) for (let x = -500; x <= 500; x += 7.3) {
+    const w = terrainBedWobbleAt(x, z);
+    lo = Math.min(lo, w); hi = Math.max(hi, w); sum += w; sq += w * w; n++;
+    const y = terrainFormationBoundaryY(x, z, 10, 110, { atFrac: 0.3, wobbleM: 3 });
+    assert.ok(y >= 40 - 3 - 1e-9 && y <= 40 + 3 + 1e-9, 'the formation boundary wanders within its ±m');
+  }
+  const sd = Math.sqrt(sq / n - (sum / n) ** 2);
+  assert.ok(lo >= -2.15 - 1e-9 && hi <= 2.15 + 1e-9, `the bed wander stays inside ±2.15 m (${lo.toFixed(2)}..${hi.toFixed(2)})`);
+  assert.ok(sd > 0.2, `the beds wander (sd ${sd.toFixed(2)} m)`);
+}
 console.log(`terrainMaterialV2: coverage-gated layers (7 gates, 512 executed coverage cases), far band without detail normals, one-fetch far variant on measured means, explicit-LOD noise, exposure and non-periodic beds on ${MAP_IDS.length} maps, the ring as this material (bedforms on gentle sand, distance-faded slip-face sines, the atlas gradient's wall band), ${mutants.length + 3} mutation controls PASS; no GPU/art claim`);

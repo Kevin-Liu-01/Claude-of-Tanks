@@ -2406,6 +2406,31 @@ export function sampleSplatNoise(
   return result;
 }
 
+/**
+ * Ground lane (2026-10-03): the bedded rock's wander, in metres of height — the CPU twin of the terrain material's
+ * gBedWob (its beds lie at bedY = y − terrainBedWobbleAt(x, z)), so a bedrock skin or a prop striped by the same law
+ * reads as one rock with the terrain's strata (the scenery lane's domes). The shader reads the 8-bit noise texture at
+ * the footprint's mip; the twin reads the same float fields bilinearly (a level-0 sample, sampleSplatNoise's
+ * convention): within a few centimetres of the shader near the camera.
+ */
+export function terrainBedWobbleAt(x: number, z: number): number {
+  const f = splatFields();
+  const b = fieldSample(f.b, wrapUnit(x * 0.0208 + 0.37), wrapUnit(z * 0.0208 + 0.83));
+  const a = fieldSample(f.a, wrapUnit(x * 0.0588 + 0.71), wrapUnit(z * 0.0588 + 0.19));
+  return b * 1.6 + a * 0.55;
+}
+
+/**
+ * Ground lane (2026-10-03): where a two-formation bedrock's boundary lies at (x, z), in the beds' own height (compare it
+ * with y − terrainBedWobbleAt(x, z)) — the twin of the material's uFormation step for a splat `formation` (the field's
+ * min/max heights and the row's atFrac and wobbleM). Below it the paler formation, above it the redder one.
+ */
+export function terrainFormationBoundaryY(x: number, z: number, minY: number, maxY: number,
+  formation: { atFrac: number; wobbleM?: number }): number {
+  const a = fieldSample(splatFields().a, wrapUnit(x * 0.0071 + 0.83), wrapUnit(z * 0.0071 + 0.41));
+  return minY + (maxY - minY) * formation.atFrac - a * (formation.wobbleM ?? 2.5);
+}
+
 const _col = new THREE.Color();
 function _css(h: number, s: number, l: number): string { _col.setHSL(h, s, l); return _col.getStyle(); }
 
