@@ -30,9 +30,9 @@ import { composeLakeHeight, type LakeHeightResult } from './lakeHeightCompositio
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
 import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
 import {
-  createRailSpurExclusion, railCuttingExcludes, railCuttingFaceSeedAt, railCuttingHeight, railCuttingSeatWeight,
-  resolveRailCuttings,
-  type RailSpurConfig,
+  RAIL_OPEN_RANGES_BACK_M, RAIL_OPEN_RUN_M, createRailSpurExclusion, railCuttingExcludes, railCuttingFaceSeedAt, railCuttingHeight,
+  railCuttingSeatWeight, resolveRailCuttings, resolveRailOpenLine,
+  type RailOpenLine, type RailSpurConfig,
 } from './railSpurs.ts';
 import { roadCoreMask, roadLaneSharpness } from './roadMaskProfile.ts';
 import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSurface.ts';
@@ -409,6 +409,9 @@ export interface HeightField {
   _foldAt?(x: number, z: number): number;
   /** The map-borders lane (2026-10-03): the ring's carriageway attribute — [signed offset from a road exit line (m), presence]. */
   _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
+  /** The map-borders lane: a railway's open line past the edge on the ring — [signed offset (m), presence], faded where
+   * the ring's own height there (`surfaceY`) leaves the line's bed. */
+  _railExitAt?(x: number, z: number, out: [number, number], surfaceY?: number): [number, number];
   _layout: TerrainLayout;
   /** Frontline Assault trench plan carved into this field (assault-trenches variant), else null. */
   assaultTrenchLines?: AssaultTrenchPlan | null;
@@ -901,6 +904,8 @@ function* heightFieldBuildSteps(
   // faces. Applied to every final query once the portals' ground is frozen (below); null on every map without one.
   const railCuttings = resolveRailCuttings(T.railSpurs);
   const railCuttingPortalYs = new Float64Array(railCuttings ? railCuttings.length : 0);
+  // the open lines past the edge (resolved once the portals stand, from the uncut outland)
+  let railOpenLines: (RailOpenLine | null)[] | null = null;
   let railCuttingsOn = false, railCuttingsSuspended = false;
   const _VILLAGE = layout.village;
   const _MARSHES = layout.marshes;
@@ -990,19 +995,26 @@ function* heightFieldBuildSteps(
   const noi = new SimplexNoise({ random: mulberry32((seed ^ 0x9e3779b9) >>> 0) });
   // The map-borders lane (2026-10-03): the land around the square — the rim lift's landform (borderLandform.ts). Its
   // own noise stream: the terrain's `noi` sequence is untouched.
-  // a railway cutting's tunnel runs into the hill the old rim stood for: the landform keeps it enclosed there
-  // and a road that leaves the square leaves through a valley (the land opens along its line past the edge)
+  // a road that leaves the square leaves through a valley (the land opens along its line past the edge), and so does a
+  // railway: it runs on in the open along its last edge's heading (railSpurs.ts RAIL_OPEN_*; the round-67 tunnel and
+  // the classic-rim hill it bored are retired), with the ranges held back from its line. The valley follows the spur
+  // that leaves the square (its path ending on the edge), not whether it is cut, so a field with the cutting and one
+  // without it share their landform and differ only in the corridor.
   const roadExitLines = buildRoadExitLines(layout.roads, seed);
-  // (the anchor follows the railway that leaves the square — a spur path ending on the edge — not whether it is cut, so a
-  // field with the cutting and one without it share their ground at the portal)
-  const railExitAnchors = (T.railSpurs ?? []).flatMap((spur) => {
-    const end = spur.path[spur.path.length - 1];
-    if (!end || Math.max(Math.abs(end[0]), Math.abs(end[1])) < HALF - 4) return [];
-    const len = Math.max(1, Math.hypot(end[0], end[1]));
-    return [{ x: end[0] + (end[0] / len) * 100, z: end[1] + (end[1] / len) * 100, radius: 340 }];
+  const railExitValleys = (T.railSpurs ?? []).flatMap((spur) => {
+    const end = spur.path[spur.path.length - 1], prev = spur.path[spur.path.length - 2];
+    if (!end || !prev || Math.max(Math.abs(end[0]), Math.abs(end[1])) < HALF - 4) return [];
+    const len = Math.hypot(end[0] - prev[0], end[1] - prev[1]) || 1;
+    const ux = (end[0] - prev[0]) / len, uz = (end[1] - prev[1]) / len;
+    const xs: number[] = [], zs: number[] = [];
+    for (let s = 0; s <= RAIL_OPEN_RUN_M; s += 40) { xs.push(end[0] + ux * s); zs.push(end[1] + uz * s); }
+    return [{ xs, zs, minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs),
+      holdM: RAIL_OPEN_RANGES_BACK_M }];
   });
   const border = createBorderLandform(seed, T.rimH, resolveBorderLandform(cfg?.horizon?.style, T.border, cfg?.id),
-    railExitAnchors, roadExitLines);
+    [...roadExitLines, ...railExitValleys]);
+  /** The classic rim lift rimH · s(r)² (s = smoothstep(430, 512, r)): what the water authoring queries keep. */
+  const classicRimLift = (r: number): number => { const s = smoothstep(430, 512, r); return s * s * T.rimH; };
 
   // --- base noise: fBm detail + domain-warped ridge, and a smooth variant ---
   function core(x: number, z: number): { d: number; s: number } {
@@ -1398,8 +1410,8 @@ function* heightFieldBuildSteps(
   // line — the geology's own hills, the landform's crests, a corner's rise. Past the playable edge the ground rises at
   // most ~2.5° over the square's own edge (its outland composition along the 470 m square, smoothed over ±40 m) for its
   // first ~260 m and is released by ~540 m, so from inside the square the eye runs over the near country to the woods,
-  // farms and foothills behind. A smooth minimum (no crease) that never raises anything; a railway's classic island (its
-  // cutting and tunnel hill) keeps its ground; inside the playable square nothing changes.
+  // farms and foothills behind. A smooth minimum (no crease) that never raises anything; inside the playable square
+  // nothing changes.
   const CLEARANCE_SIDE_M = 940, CLEARANCE_STEP_M = 10, CLEARANCE_SOFT_M = 4;
   let clearanceRef: Float32Array | null = null, clearanceBuilding = false;
   function clearanceReference(): Float32Array {
@@ -1442,7 +1454,7 @@ function* heightFieldBuildSteps(
     if (excess <= -CLEARANCE_SOFT_M) return 0;
     const soft = excess >= CLEARANCE_SOFT_M ? excess : (excess + CLEARANCE_SOFT_M) ** 2 / (4 * CLEARANCE_SOFT_M);
     const roadBand = roadDistance < 95 ? 1 - smoothstep(18, 95, roadDistance) : 0;
-    return soft * smoothstep(0, 40, dist) * (1 - release) * (1 - roadBand) * (1 - border.classicIslandAt(x, z));
+    return soft * smoothstep(0, 40, dist) * (1 - release) * (1 - roadBand);
   }
 
   // The map-borders lane (2026-10-03, owner: "roads ... continue and fade naturally"): every road that reaches the
@@ -1524,6 +1536,37 @@ function* heightFieldBuildSteps(
     // Cinder Junction: an exit drawn on up a range's face read as a road climbing the backdrop)
     out[1] = smoothstep(-2, 6, edgeOut) * (1 - smoothstep(exit.length * 0.55, exit.length * 0.95, hit.along))
       * smoothstep(0.45, 0.9, border.handOverAt(x, z));
+    return out;
+  }
+
+  /**
+   * The ring's ballast attribute at (x, z): [signed offset from a railway's open line (m), presence 0..1]. The offset is
+   * kept 40 m either side of the line (and 40 m before and past it) even where the presence is 0, so a ring triangle
+   * that straddles the line interpolates the true offset (the ring's faces are 8-20 m across). Given the ring's own
+   * height there (`surfaceY`), the ballast also fades where the ring leaves the line's bed — where the ranges' foot
+   * blends into the continued ground, a line painted on would climb the backdrop.
+   */
+  function railExitAt(x: number, z: number, out: [number, number], surfaceY = Number.NaN): [number, number] {
+    out[0] = 0; out[1] = 0;
+    if (!railCuttings || !railOpenLines) return out;
+    const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - HALF;
+    if (edgeOut < -40) return out;
+    let reach = 40;
+    for (const cut of railCuttings) {
+      const dx = x - cut.ex, dz = z - cut.ez, past = dx * cut.ux + dz * cut.uz;
+      if (past < -40 || past > RAIL_OPEN_RUN_M + 40) continue;
+      const lateral = dx * -cut.uz + dz * cut.ux;
+      if (Math.abs(lateral) >= reach) continue;
+      reach = Math.abs(lateral);
+      out[0] = lateral;
+      // fading where the ring hands its continued ground over to the ranges, as a road exit does
+      out[1] = smoothstep(-2, 6, edgeOut) * (1 - smoothstep(RAIL_OPEN_RUN_M * 0.55, RAIL_OPEN_RUN_M * 0.9, past))
+        * smoothstep(0.45, 0.9, border.handOverAt(x, z));
+    }
+    if (out[1] > 0 && Number.isFinite(surfaceY)) {
+      const bed = railCuttingHeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt(x, z), railOpenLines);
+      out[1] *= 1 - smoothstep(0.6, 2.0, Math.abs(surfaceY - bed));
+    }
     return out;
   }
 
@@ -1629,10 +1672,13 @@ function* heightFieldBuildSteps(
     }
     const borderRadius = Math.max(Math.abs(x), Math.abs(z));
     // the map-borders lane (2026-10-03): the rim lift is the border landform's (borderLandform.ts) — inside the playable
-    // square the classic S-curve, only ever lowered; past it, the outland's hills. Authoring queries (road node grades,
-    // pad seats, lake levels: roads off) keep the classic rim, so every road grade, pad and lake level inside the square
-    // is exactly what it was and nothing ripples into the playable ground through the grade smoothing.
-    const rimLift = roadsOn ? border.liftAt(x, z, borderRadius, rd) : border.classicLiftAt(borderRadius);
+    // square the classic S-curve, only ever lowered; past it, the outland's hills. The road and bridge authoring queries
+    // (road node grades, bridge beds: roads off) read the same rim as the final ground: the first pass kept them on the
+    // classic rim, so a road authored up the old 20-40 m rim stood on a causeway that high where the land beside it
+    // came down (68 of the 223 road exits over 5 m, Ruin Spires' and Olympus Basin's 25-33 m at the edge). The water
+    // authoring queries (lakes off: lake levels, marsh and lake banks) keep the classic rim, so every water level and
+    // bank is what it was.
+    const rimLift = lakesOn ? border.liftAt(x, z, borderRadius) : classicRimLift(borderRadius);
     const rimKeep = rimLift > 0 ? coastRimKeep(x, z) : 1;
     // CW also contains old deployment lanes. Only the two inward pilots
     // limit the new earthwork to actual road shoulders, with a smooth join.
@@ -1647,15 +1693,10 @@ function* heightFieldBuildSteps(
     // the foreground clearance past the red line (final queries; the road plane below comes down with its ground)
     const clearance = roadsOn && borderRadius > 470 ? clearanceReduction(x, z, h, rd) * (1 - waterWeight) : 0;
     h -= clearance;
-    // The road grades were authored on the classic rim; a final query's road plane follows the landform's rim instead
-    // (the difference, weighted as the authoring weighted the rim), so a road that climbed the old rim never stands on
-    // an embankment where the land was lowered. Zero inside 430 m, where both rims are nothing, and along a road inside
-    // the playable square, where the landform keeps the classic rim (its road hold), so every grade there is authored.
-    let roadRimShift = roadsOn && borderRadius > 430
-      ? (rimLift - border.classicLiftAt(borderRadius)) * (1 - waterWeight) * rimKeep
-        * roadRimWeight(borderCorridorStart, false, boundedRoadCorridor, cw, roadCorridorWeight) - clearance : 0;
-    // ... but a road that cut through the old rim was never on it: past the red line the plane comes down at most on a
-    // gentle ramp (level at the line, 12 % from 20 m on), so no road drops off the square's edge
+    // The road grades are authored on the same rim, so a final query's road plane comes down only with the foreground
+    // clearance (a road's own band is exempt from it: clearanceReduction) — past the red line at most on a gentle ramp
+    // (level at the line, 12 % from 20 m on), so no road drops off the square's edge
+    let roadRimShift = -clearance;
     if (roadRimShift < 0 && borderRadius > 470) {
       const over = borderRadius - 470;
       roadRimShift = Math.max(roadRimShift, -0.12 * (over < 20 ? (over * over) / 40 : over - 10));
@@ -1696,7 +1737,7 @@ function* heightFieldBuildSteps(
     }
     // round 63: the rail cutting is dug last, through the rim band and every constraint above, on final queries only
     if (railCuttingsOn && roadsOn && padsOn && !railCuttingsSuspended) {
-      h = railCuttingHeight(railCuttings!, railCuttingPortalYs, x, z, h);
+      h = railCuttingHeight(railCuttings!, railCuttingPortalYs, x, z, h, railOpenLines);
     }
     return h;
   }
@@ -1935,6 +1976,7 @@ function* heightFieldBuildSteps(
       railCuttingPortalYs[i] = heightAt(railCuttings[i].px, railCuttings[i].pz, true, true);
     }
     railCuttingsOn = true;
+    railOpenLines = railCuttings.map((cut, i) => resolveRailOpenLine(cut, railCuttingPortalYs[i], outlandHeightAt));
   }
   // Explicit second phase: all legacy support targets above are frozen.
   // Exact mesh/physics and the existing one-metre live cache share this surface.
@@ -2158,7 +2200,7 @@ function* heightFieldBuildSteps(
   function noVeg(x: number, z: number): boolean {
     if (railSpurNoVeg !== null && railSpurNoVeg(x, z)) return true; // round 57: the rail spur's berth
     // round 63: the cutting's floor, cess and faces — the daylight line is read on the ground before the cut
-    if (railCuttingsOn && railCuttingExcludes(railCuttings!, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8)) {
+    if (railCuttingsOn && railCuttingExcludes(railCuttings!, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8, railOpenLines)) {
       return true;
     }
     for (const lk of _LAKES) {
@@ -2233,10 +2275,10 @@ function* heightFieldBuildSteps(
     getHeightAt, getHeightAtFast, getContactHeightAt, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,
     // round 63: the rail cutting continues past the red line — the ring's near rows seat on the same notch
     getOutlandHeightAt: railCuttings !== null
-      ? (x: number, z: number): number => railCuttingHeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt(x, z))
+      ? (x: number, z: number): number => railCuttingHeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt(x, z), railOpenLines)
       : outlandHeightAt,
     ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
-      railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt) } : {}),
+      railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt, railOpenLines) } : {}),
     getWaterMaskAt, getWaterDepthAt, getTrackSurfaceAt,
     // the map-borders lane: where the near ring hands its continued ground over to the authored ranges
     getBorderHandOverAt: border.handOverAt,
@@ -2246,6 +2288,7 @@ function* heightFieldBuildSteps(
       _borderHedgeLines: border.traceHedgeLines,
       _borderFarmsteads: { count: border.settings.farms, style: border.settings.buildings, fieldAngle: border.fieldAngle } }),
     _roadExitAt: roadExitAt,
+    ...(railCuttings !== null ? { _railExitAt: railExitAt } : {}),
     ...(cfg?.navigationWaterPolicy
       ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),
     bridgeDecks, // round 61
@@ -2260,7 +2303,7 @@ function* heightFieldBuildSteps(
     _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,
     // round 67: the cut faces' seeding weight, read on the uncut ground like the exclusion
     ...(railCuttings !== null ? { _batterSeedAt: (x: number, z: number): number =>
-      railCuttingFaceSeedAt(railCuttings, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8) } : {}),
+      railCuttingFaceSeedAt(railCuttings, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8, railOpenLines) } : {}),
     _layout: layout,
     ...(layout.roadStations ? {_createRoadPlacementSampler:function* () {
       return yield* heightFieldBuildSteps(seed,originalRoadPlacementConfig(cfg),true);
@@ -3156,6 +3199,7 @@ uniform vec4 uReduxC;
 uniform vec4 uReduxD;
 varying float vShore;        // metres landward of the waterline (32 = no shore near)
 varying vec2 vRoadExit;      // the map-borders lane: [signed offset from a road exit line (m), presence] on the ring
+varying vec2 vRailExit;      // the map-borders lane: [signed offset from a railway's open line (m), presence] on the ring
 varying vec4 vBorderTint;    // the map-borders lane: the ring's field crop [colour / sward luminance x w, 1 - w] (default: none)
 varying vec4 vBorderTrack;   // the map-borders lane: the ring's farm tracks, per family [1000 + metres, boundary] (0 = none)
 float gScour = 0.0;          // round 73b: the wind-scoured crust (a satin sheen in the roughness stage)
@@ -4587,6 +4631,18 @@ void splatCompute() {
         * (1.0 - smoothstep(700.0, 1500.0, camDist));
       a.rgb = mix(a.rgb, uMeanD.rgb * vec3(1.06, 1.0, 0.92), trackW * 0.78);
     }
+    // ... and a railway's open line past the edge (railSpurs.ts RAIL_OPEN_*; the kit lays its first 240 m): grey-brown
+    // ballast 3.6 m wide, a cess of trodden soil either side, the two rails as thin steel lines faded by the footprint
+    if (vRailExit.y > 0.002) {
+      float dR = abs(vRailExit.x);
+      float ballastW = (1.0 - smoothstep(1.5, 2.1, dR)) * vRailExit.y * (1.0 - fMs);
+      float cessW = (smoothstep(1.5, 2.1, dR) - smoothstep(2.6, 3.8, dR)) * vRailExit.y * (1.0 - fMs);
+      a.rgb = mix(a.rgb, vec3(0.105, 0.098, 0.090) * (0.88 + 0.24 * n1hs), ballastW);
+      a.rgb = mix(a.rgb, uMeanD.rgb * vec3(0.92, 0.88, 0.82), cessW * 0.55);
+      float railAa = fwidth(dR) + 0.02;
+      float rail = (1.0 - smoothstep(0.035, 0.035 + railAa, abs(dR - 0.72))) * vRailExit.y * (1.0 - smoothstep(60.0, 220.0, camDist));
+      a.rgb = mix(a.rgb, vec3(0.30, 0.29, 0.28), rail * 0.8);
+    }
     // coarse turf relief at range (all maps): the far band keeps macro
     // normal structure where the per-texel detail normals have faded out
     float farG = farM * (1.0 - fR) * meadowG * (1.0 - roadCore);
@@ -5059,9 +5115,9 @@ function* createSplatMaterialSteps(
     assignSplatBiomeUniforms(shader);
     // round 73: the baked fold attribute rides the chunk vertices (the horizon ring's faces carry none and read 0)
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\nattribute float fold;\nvarying float vFold;\nattribute float shore;\nvarying float vShore;\nattribute vec2 roadExit;\nvarying vec2 vRoadExit;\nattribute vec4 borderTint;\nvarying vec4 vBorderTint;\nattribute vec4 borderTrack;\nvarying vec4 vBorderTrack;');
+      '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\nattribute float fold;\nvarying float vFold;\nattribute float shore;\nvarying float vShore;\nattribute vec2 roadExit;\nvarying vec2 vRoadExit;\nattribute vec4 borderTint;\nvarying vec4 vBorderTint;\nattribute vec4 borderTrack;\nvarying vec4 vBorderTrack;\nattribute vec2 railExit;\nvarying vec2 vRailExit;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <worldpos_vertex>',
-      '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNormal = normalize(mat3(modelMatrix) * objectNormal);\nvFold = fold;\nvShore = (1.0 - shore) * 32.0;\nvRoadExit = roadExit;\nvBorderTint = borderTint;\nvBorderTrack = borderTrack;'); // round 73b: the shore byte is inverted so a geometry without it (the ring bands) reads 32 m; the map-borders lane: roadExit (a geometry without it reads no road)
+      '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNormal = normalize(mat3(modelMatrix) * objectNormal);\nvFold = fold;\nvShore = (1.0 - shore) * 32.0;\nvRoadExit = roadExit;\nvBorderTint = borderTint;\nvBorderTrack = borderTrack;\nvRailExit = railExit;'); // round 73b: the shore byte is inverted so a geometry without it (the ring bands) reads 32 m; the map-borders lane: roadExit (a geometry without it reads no road)
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
       '#include <common>\n' + SPLAT_COMMON_FRAG);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <map_fragment>',
@@ -5571,6 +5627,21 @@ function* terrainBuildSteps(
       if (tint[3] < 1) any = true;
     }
     if (any) geometry.setAttribute('borderTint', new THREE.BufferAttribute(tintAttr, 4));
+  }
+  // ... and a railway's open line past the edge (terrain.ts railExitAt): its ballast rides the ring's vertices as
+  // [signed offset from the line, presence]
+  if (heightField._railExitAt && horizonStep.value.userData.horizonRing) {
+    const geometry = horizonStep.value.geometry;
+    const position = geometry.getAttribute('position');
+    const railAttr = new Float32Array(position.count * 2);
+    const hit: [number, number] = [0, 0];
+    let any = false;
+    for (let i = 0; i < position.count; i++) {
+      heightField._railExitAt(position.getX(i), position.getZ(i), hit, position.getY(i));
+      railAttr[i * 2] = hit[0]; railAttr[i * 2 + 1] = hit[1];
+      if (hit[1] > 0) any = true;
+    }
+    if (any) geometry.setAttribute('railExit', new THREE.BufferAttribute(railAttr, 2));
   }
   // ... and the farm tracks down some of the field boundaries (borderLandform.ts trackAt): per family the metres from the
   // nearest track and its boundary, so the shader draws a 3 m dirt track beside the hedge

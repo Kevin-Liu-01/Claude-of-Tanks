@@ -33,13 +33,6 @@ const RIM_AT_PLAYABLE = (() => { const t = (470 - 430) / 82, s = t * t * (3 - 2 
 /** Metres past the playable edge over which the square's rim hands over to the outland. */
 const HANDOVER_M = 40;
 /**
- * A road keeps the classic rim across the playable band (its grades were authored on that rim, and a road's grade is a
- * driving law): full within ROAD_HOLD_IN_M of its centre line, the landform from ROAD_HOLD_OUT_M, handed over to the
- * landform between the red line and the edge — so a road leaves the square over a low rise, never on an embankment.
- */
-const ROAD_HOLD_IN_M = 18;
-const ROAD_HOLD_OUT_M = 95;
-/**
  * The field system past the edge: two families of near-straight lines (one per map, 7–21° off the square's axes so no
  * hedge runs along the red line; warped ±22 m over a kilometre) on a 46 m pitch. A share of each family's pitch lines
  * are field boundaries — fields from 46 m strips to ~600 m blocks, never a closed loop — and a share of those carry a
@@ -189,17 +182,13 @@ export interface BorderLandform {
   readonly settings: BorderLandformSettings;
   /** The field system's orientation (rad; 0 in classic mode): the farmsteads square up to it. */
   readonly fieldAngle: number;
-  /** 0..1: a classic-rim island here (a railway's cutting and tunnel hill), which keeps its ground. */
-  classicIslandAt(x: number, z: number): number;
   /**
    * The rim lift in metres at (x, z) for a square radius r (max(|x|, |z|)), replacing rimH · s(r)²: below 430 m nothing,
    * inside the playable square the classic curve times the rim factor (<= 1), past the playable edge the outland's
-   * hills. Callers keep their water, coast and road weights on top. Given the distance to the nearest road, the band
-   * keeps the classic rim along it (ROAD_HOLD_IN_M … ROAD_HOLD_OUT_M), handed over to the landform by the edge.
+   * hills. Callers keep their water, coast and road weights on top; the road grades are authored on this same lift
+   * (terrain.ts), so a road comes down with the land beside it.
    */
-  liftAt(x: number, z: number, r: number, roadDistance?: number): number;
-  /** The classic rim lift rimH · s(r)² (s = smoothstep(430, 512, r)): what authoring queries (road grades, pads) keep. */
-  classicLiftAt(r: number): number;
+  liftAt(x: number, z: number, r: number): number;
   /** The rim factor of the playable band at (x, z): 1 keeps the classic rim, rimFloor is the most open. */
   rimFactorAt(x: number, z: number): number;
   /** The near ring's hand-over to the authored ranges: 1 = this landform (the continued ground), 0 = the ring's rows. */
@@ -251,24 +240,22 @@ function mulberry32(a: number): () => number {
   };
 }
 
-/**
- * A place where the border keeps the classic rim: a railway that leaves the square runs through a cutting into a tunnel
- * in the hill the old rim stood for (railSpurs.ts, rounds 63 and 67 — the bed, the batter faces, the portal and its
- * gallery are measured against that rim and its plateau), so within the anchor's radius the lift is the classic rim and
- * plateau, fading back to the landform over its outer half.
- */
-export interface BorderAnchor { x: number; z: number; radius: number }
-/** A road leaving the square (terrain.ts buildRoadExitLines): the land opens into a valley along its line. */
-export interface BorderValley { xs: ArrayLike<number>; zs: ArrayLike<number>; minX: number; maxX: number; minZ: number; maxZ: number }
+/** A road or a railway leaving the square (terrain.ts buildRoadExitLines, a cutting's open line): the land opens into a
+ * valley along its line. `holdM` (a railway's): the ranges stand back from the line by up to that much — the hand-over
+ * to the authored ranges moves out along it (full within HOLD_FLOOR_M of the line, none by HOLD_SIDE_M), so the
+ * graded line runs on into a valley instead of under the foot of a range that rises 50 m in 300 m. */
+export interface BorderValley {
+  xs: ArrayLike<number>; zs: ArrayLike<number>; minX: number; maxX: number; minZ: number; maxZ: number; holdM?: number;
+}
 const VALLEY_FLOOR_M = 70, VALLEY_SIDE_M = 190;
+const HOLD_FLOOR_M = 90, HOLD_SIDE_M = 300;
 
 /**
  * The map's border landform. `rimH` is the map's authored rim height (TerrainSettings.rimH) — the scale every height
  * here is measured in, so a 58 m canyon rim and an 18 m polder dike keep their proportions.
  */
 export function createBorderLandform(
-  seed: number, rimH: number, settings: BorderLandformSettings, anchors: readonly BorderAnchor[] = [],
-  valleys: readonly BorderValley[] = [],
+  seed: number, rimH: number, settings: BorderLandformSettings, valleys: readonly BorderValley[] = [],
   /**
    * The map's land use (the ground lane's landUse.ts grid, borderLandUse.ts) when it has a profile: the land past the
    * edge is then that same grid — its heading squares the farmsteads, its hedged boundaries carry the bush lines (on a
@@ -287,15 +274,6 @@ export function createBorderLandform(
   const inv = 1 / Math.max(120, wavelengthM);
   const bias = (Math.max(0, Math.min(1, enclosure)) * 2 - 1) * 0.75;
 
-  /** 0..1: enclosed (hills close to the edge) vs open, a ~1.2 km field so a side changes character once or twice. */
-  function anchorAt(x: number, z: number): number {
-    let w = 0;
-    for (let i = 0; i < anchors.length; i++) {
-      const anchor = anchors[i];
-      w = Math.max(w, 1 - smoothstep(anchor.radius * 0.55, anchor.radius, Math.hypot(x - anchor.x, z - anchor.z)));
-    }
-    return w;
-  }
   /** 1 on a leaving road's line, 0 by VALLEY_SIDE_M from it (bounding boxes first: most queries touch no line). */
   // (valleyAt, enclosureAt and hillsAt keep their last point: one lift asks each of them twice of the same point)
   let valleyX = Number.NaN, valleyZ = Number.NaN, valleyLast = 0;
@@ -305,19 +283,33 @@ export function createBorderLandform(
     valleyLast = valleyDistanceWeight(x, z);
     return valleyLast;
   }
+  /** The distance from (x, z) to a valley's line, or `reach` when it is farther. */
+  function lineDistance(line: BorderValley, x: number, z: number, reach: number): number {
+    let best = reach;
+    if (x < line.minX - best || x > line.maxX + best || z < line.minZ - best || z > line.maxZ + best) return best;
+    for (let i = 0; i + 1 < line.xs.length; i++) {
+      const ax = line.xs[i], az = line.zs[i], bx = line.xs[i + 1] - ax, bz = line.zs[i + 1] - az;
+      const t = Math.max(0, Math.min(1, ((x - ax) * bx + (z - az) * bz) / (bx * bx + bz * bz)));
+      const d = Math.hypot(x - ax - bx * t, z - az - bz * t);
+      if (d < best) best = d;
+    }
+    return best;
+  }
   function valleyDistanceWeight(x: number, z: number): number {
     let best = VALLEY_SIDE_M;
-    for (let v = 0; v < valleys.length; v++) {
-      const line = valleys[v];
-      if (x < line.minX - best || x > line.maxX + best || z < line.minZ - best || z > line.maxZ + best) continue;
-      for (let i = 0; i + 1 < line.xs.length; i++) {
-        const ax = line.xs[i], az = line.zs[i], bx = line.xs[i + 1] - ax, bz = line.zs[i + 1] - az;
-        const t = Math.max(0, Math.min(1, ((x - ax) * bx + (z - az) * bz) / (bx * bx + bz * bz)));
-        const d = Math.hypot(x - ax - bx * t, z - az - bz * t);
-        if (d < best) best = d;
-      }
-    }
+    for (let v = 0; v < valleys.length; v++) best = lineDistance(valleys[v], x, z, best);
     return 1 - smoothstep(VALLEY_FLOOR_M, VALLEY_SIDE_M, best);
+  }
+  /** How far (m) the hand-over to the ranges moves out at (x, z): a railway's valley holds them back (BorderValley.holdM). */
+  const holdValleys = valleys.filter((line) => (line.holdM ?? 0) > 0);
+  function holdAt(x: number, z: number): number {
+    let hold = 0;
+    for (let v = 0; v < holdValleys.length; v++) {
+      const line = holdValleys[v];
+      const d = lineDistance(line, x, z, HOLD_SIDE_M);
+      if (d < HOLD_SIDE_M) hold = Math.max(hold, line.holdM! * (1 - smoothstep(HOLD_FLOOR_M, HOLD_SIDE_M, d)));
+    }
+    return hold;
   }
   let enclosureX = Number.NaN, enclosureZ = Number.NaN, enclosureLast = 0;
   function enclosureAt(x: number, z: number): number {
@@ -330,7 +322,7 @@ export function createBorderLandform(
     const e = noise.noise(x * 0.00082 + 17.3, z * 0.00082 - 41.9) * 0.8 + noise.noise(x * 0.0019 - 5.1, z * 0.0019 + 23.7) * 0.25;
     let a = smoothstep(-0.55, 0.55, e + bias);
     if (valleys.length) a *= 1 - 0.9 * valleyAt(x, z);
-    return anchors.length ? Math.max(a, anchorAt(x, z)) : a;  // (an anchored sector reads as enclosed for the woods and rim)
+    return a;
   }
   /** 0..1: the corner share — the creases of the old rim stood where both edges are near. */
   function cornerAt(x: number, z: number): number {
@@ -478,10 +470,7 @@ export function createBorderLandform(
   let woodsX = Number.NaN, woodsZ = Number.NaN, woodsLast = 0;
   function woodsAt(x: number, z: number): number {
     if (x === woodsX && z === woodsZ) return woodsLast;
-    // a railway's tunnel hill (a classic island) is wooded over its cutting, as such hills are (the ring forest keeps
-    // off the line's own right of way), so it reads as a hill and not a bare cone at the edge
-    const island = anchors.length ? smoothstep(0.12, 0.55, anchorAt(x, z)) : 0;
-    woodsLast = island > 0.999 ? 1 : Math.max(island, woodsAtField(x, z));
+    woodsLast = woodsAtField(x, z);
     woodsX = x; woodsZ = z;
     return woodsLast;
   }
@@ -533,9 +522,7 @@ export function createBorderLandform(
     return {
       settings,
       fieldAngle: 0,
-      classicIslandAt: () => 1,
       liftAt: (_x, _z, r) => classicLiftAt(r),
-      classicLiftAt,
       rimFactorAt: () => 1,
       handOverAt: (x, z) => 1 - smoothstep(140, 460, Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M),
       woodsAt: () => 0,
@@ -549,7 +536,6 @@ export function createBorderLandform(
   return {
     settings,
     fieldAngle,
-    classicIslandAt: (x: number, z: number): number => (anchors.length ? anchorAt(x, z) : 0),
     hedgeAt(x: number, z: number): number {
       if (landUse) {
         // the map's own hedged boundaries (landUse.ts), from ~40 m past the edge, none in a wood
@@ -668,7 +654,7 @@ export function createBorderLandform(
       return out;
     },
     woodsAt,
-    liftAt(x: number, z: number, r: number, roadDistance = Infinity): number {
+    liftAt(x: number, z: number, r: number): number {
       if (r <= BORDER_RIM_START_M) return 0;
       const a = enclosureAt(x, z);
       const k = nearLevelAt(x, z, a) / RIM_AT_PLAYABLE;
@@ -679,36 +665,15 @@ export function createBorderLandform(
         const w = smoothstep(BORDER_PLAYABLE_M, BORDER_PLAYABLE_M + HANDOVER_M, r);
         lift = square + (outlandLevel(x, z, r, a) - square) * w;
       }
-      let island = 0;
-      if (anchors.length) {
-        island = anchorAt(x, z);
-        if (island > 0) lift += (s * s - lift) * island; // the classic rim and its plateau (s = 1 past the edge)
-      }
-      if (roadDistance < ROAD_HOLD_OUT_M && r < BORDER_EDGE_M && island < 1) {
-        // past the red line the road keeps the classic rim's level there (it never climbs toward the old plateau), and
-        // hands over to the landform by the edge; a classic island keeps its own rim and plateau
-        const hold = (1 - smoothstep(ROAD_HOLD_IN_M, ROAD_HOLD_OUT_M, roadDistance))
-          * (1 - smoothstep(BORDER_PLAYABLE_M - 2, BORDER_EDGE_M, r)) * (1 - island);
-        lift += (Math.min(s * s, RIM_AT_PLAYABLE) - lift) * hold;
-      }
       return lift * rimH;
     },
-    classicLiftAt(r: number): number {
-      const s = smoothstep(BORDER_RIM_START_M, BORDER_EDGE_M, r);
-      return s * s * rimH;
-    },
     rimFactorAt(x: number, z: number): number {
-      const k = nearLevelAt(x, z, enclosureAt(x, z)) / RIM_AT_PLAYABLE;
-      return anchors.length ? k + (1 - k) * anchorAt(x, z) : k;
+      return nearLevelAt(x, z, enclosureAt(x, z)) / RIM_AT_PLAYABLE;
     },
     handOverAt(x: number, z: number): number {
       const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
       const wander = noise.noise(x * 0.0019 - 71.7, z * 0.0019 + 14.9) * 110;
-      const landform = 1 - smoothstep(330, 820, edgeOut + wander);
-      if (!anchors.length) return landform;
-      // an anchored sector hands over by the classic law (the tunnel's gallery meets the ring's first ridge at 200 m)
-      const classic = 1 - smoothstep(140, 460, edgeOut);
-      return landform + (classic - landform) * anchorAt(x, z);
+      return 1 - smoothstep(330, 820, edgeOut + wander - (holdValleys.length ? holdAt(x, z) : 0));
     },
   };
 }

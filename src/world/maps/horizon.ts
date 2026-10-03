@@ -1063,11 +1063,9 @@ function continueHorizonGround(ring: HorizonRingGeometry, ground: CanyonGround |
     // the map-borders lane (2026-10-03): the field says where its landform hands over to the authored ranges (a band
     // that wanders 150–750 m past the edge, so the hand-over draws no ring parallel to the square)
     let weight = canyon ? 1 : ground.getBorderHandOverAt ? ground.getBorderHandOverAt(x, z) : 1 - smoothstep(140, 460, edgeOut);
-    // A rail valley closes over its existing tunnel gallery. Keep the
-    // approach on the real bed, then let the authored ridge cover the bore.
+    // A railway's open line past the edge (railSpurs.ts RAIL_OPEN_*): the rows lie on its real bed (the round-67 tunnel
+    // gallery the authored ridge closed over is retired)
     const seat = ground.getOutlandSeatWeightAt?.(x, z) ?? 0;
-    const radialRun = edgeOut * Math.hypot(x, z) / Math.max(Math.abs(x), Math.abs(z));
-    weight *= 1 - seat * smoothstep(125, 200, radialRun);
     if (weight <= 0) continue;
     let height = continuedGroundAt(ground, x, z);
     // The square-clamped residual can sample the cutting's side bank. Its
@@ -1210,8 +1208,7 @@ function openHorizonToSea(
 
 /**
  * Round 67 (2026-09-24): the first authored ridge of every style stands this far past the rim (its row margin below;
- * the row's own radius only exceeds it on the square's sides) — a railway cutting's tunnel portal (railSpurs.ts
- * RAIL_TUNNEL_RIDGE_RUN_M, held equal by railCutting.selftest) ends its gallery on that line.
+ * the row's own radius only exceeds it on the square's sides).
  */
 export const HORIZON_FIRST_RIDGE_MARGIN_M = 200;
 
