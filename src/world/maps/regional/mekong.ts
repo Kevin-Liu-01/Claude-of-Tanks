@@ -64,7 +64,26 @@ function stiltHouse(ctx: RegionalBuildContext, opts: { lift?: number } = {}): Re
   const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
   veranda(sink, front, lift, top - 0.05, W, 1.3, post, { bucket: thatched ? 'straw' : 'roof' });
   ladder(sink, { ...front, origin: [0, 0, D / 2 + 1.3] }, W * 0.3, 0, lift + 0.16, shade(post, 0.9));
+  wetYard(sink, ctx);
   return sink.finish();
+}
+
+/**
+ * The wet yard under a house on stilts (gauntlet wave 15: "the stilt house stands on dry mown lawn"): a skin of dark
+ * tidal mud over the plot and standing water in its hollows. Decor only (no collision), its pools drawn from the look
+ * stream so the build stream never moves; a phone builds the same house without it. (A plank walkway to the bank was
+ * tried here and dropped: the base plots end under the veranda, so it never fitted.)
+ */
+function wetYard(sink: PartSink, ctx: RegionalBuildContext): void {
+  if (ctx.tier === 'mobile') return;
+  const look = ctx.variant;
+  const mx = ctx.info.w / 2 - 0.15, mz = ctx.info.d / 2 - 0.15;
+  // the mud: a slab whose top stands 3 cm over the plot's ground, deep enough to show on its low side
+  sink.span('structureWood', -mx, -0.3, -mz, mx, 0.03, mz, { colour: rgb(0x3a3024), decor: true });
+  for (let k = 0; k < 3; k++) {
+    const x = (look() - 0.5) * mx * 1.4, z = (look() - 0.5) * mz * 1.2, a = 0.5 + look() * 0.9, b = 0.4 + look() * 0.7;
+    sink.span('glass', x - a, 0.03, z - b, x + a, 0.042, z + b, { decor: true });
+  }
 }
 
 /** The ground house: rendered brick painted pale, a sheet roof, a columned porch, shutters. */
@@ -105,6 +124,7 @@ function shelter(ctx: RegionalBuildContext, opts: { deck?: boolean; walls?: 0 | 
   const post = pick(rng, WEATHERED_PLANK);
   const lift = opts.deck ? 0.9 : 0;
   if (opts.deck) stilts(sink, W, D, lift, shade(post, 0.85), { brace: false });
+  if (opts.deck) wetYard(sink, ctx);
   const top = lift + 2.6;
   for (const sx of [-1, 1]) for (let k = 0, n = Math.max(2, Math.round(D / 2.6) + 1); k < n; k++) {
     const x = sx * (W / 2 - 0.12), z = -D / 2 + 0.12 + (D - 0.24) * k / (n - 1);
@@ -173,6 +193,27 @@ const collapsed: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+/** A market stall (the base market plot): a plank platform, a bamboo frame under a nipa-thatch roof, a counter of baskets. */
+const marketStall: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng;
+  const W = Math.max(4.5, Math.min(6.4, ctx.info.w - 0.4)), D = Math.max(3.6, Math.min(5.0, ctx.info.d - 0.4));
+  const floor = 0.2, top = 2.5;
+  // a plank platform on the mud (the canal-side stall), not a slab of concrete
+  sink.span('structureWood', -W / 2 - 0.2, -0.3, -D / 2 - 0.2, W / 2 + 0.2, floor, D / 2 + 0.2, { colour: shade(pick(rng, WEATHERED_PLANK), 0.82) });
+  for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+    sink.span('structureWood', x * (W / 2 - 0.15) - 0.07, floor, z * (D / 2 - 0.15) - 0.07, x * (W / 2 - 0.15) + 0.07, top, z * (D / 2 - 0.15) + 0.07, { colour: BAMBOO_MAT });
+  }
+  const roof = nipa(24);
+  emitRoof(sink, roofGeometry(W, D, top, roof), roof);
+  sink.span('structureWood', -W / 2 + 0.35, floor, D / 2 - 1.0, W / 2 - 0.35, floor + 0.8, D / 2 - 0.45, { colour: pick(rng, WEATHERED_PLANK) });
+  const produce: readonly Rgb[] = [0x5a7a3a, 0xc0902a, 0x8a3a2a, 0xa8a090].map(rgb);
+  for (let k = 0; k < 4; k++) {
+    sink.cylinder('structureWood', [-W / 2 + 0.75 + k * (W - 1.5) / 3, floor + 0.8, D / 2 - 0.72], 'y', 0.14, 0.27, 8, { colour: pick(rng, produce), decor: true }, 0.22);
+  }
+  return sink.finish();
+};
+
 export const MEKONG_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => stiltHouse(ctx),
   farmhouse: (ctx) => groundHouse(ctx),
@@ -184,6 +225,9 @@ export const MEKONG_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object
   marketRow: marketHall,
   depot: (ctx) => groundHouse(ctx),
   ruin: collapsed,
+  // the base plots the first kit left (gauntlet wave 15): the fish landings under a long tin hall, the market stalls
+  fishery: marketHall,
+  market: marketStall,
 });
 
 export const MEKONG_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({

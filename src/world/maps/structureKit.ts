@@ -1924,6 +1924,8 @@ const REGIONAL_PAL = {
   bamboo: [0x9f8a62, 0xbfa97e, 0x5d4f37],
   thatch: [0x7c6b4d, 0x9f8c65, 0x3e3327],
   nagaWood: [0x5b4735, 0x856b51, 0x2f251b],
+  nipa: [0x6e6447, 0x8f8460, 0x3a3426],
+  mekongPlank: [0x6f6150, 0x8d7c66, 0x3c342b],
 } as const satisfies Record<string, Palette>;
 
 /** A light gable roof built at the origin and moved: the shared roof helper lays its planes out centred on x = 0. */
@@ -2040,6 +2042,50 @@ function makeNagaGranary(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('stilthouse', out);
 }
 
+/**
+ * The Mekong long house (Ca Mau): weathered plank walls on a low deck over posts, a nipa-palm thatch, a front porch on
+ * posts and a plank step down to the mud.
+ */
+function makeMekongLongHouse(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], th = REGIONAL_PAL.nipa, wd = REGIONAL_PAL.mekongPlank;
+  const lift = 0.9, w = 5.6, d = 10.0, wallH = 2.4, roofH = 2.2;
+  for (const x of [-w / 2 + 0.2, 0, w / 2 - 0.2]) for (const z of [-d / 2 + 0.2, -d / 6, d / 6, d / 2 - 0.2]) {
+    colored(out, box(0.16, lift + 0.06, 0.16).translate(x, (lift + 0.06) / 2, z), wd[2], rng);
+  }
+  colored(out, slab(w + 0.3, 0.12, d + 1.6).translate(0, lift + 0.06, 0.65), wd[1], rng);
+  const y0 = lift + 0.12;
+  colored(out, box(w, wallH, d).translate(0, y0 + wallH / 2, 0), wd[0], rng, 0.1);
+  for (const z of [d / 2 - 0.06, -d / 2 + 0.06]) colored(out, gable(w, roofH, 0.12).translate(0, y0 + wallH, z), wd[0], rng);
+  colored(out, gable(w + 1.2, roofH + 0.35, d + 2.0).translate(0, y0 + wallH - 0.25, 0.6), th[0], rng, 0.1);
+  for (const x of [-w / 2 + 0.25, w / 2 - 0.25]) colored(out, box(0.14, wallH, 0.14).translate(x, y0 + wallH / 2, d / 2 + 1.25), wd[2], rng);
+  colored(out, box(0.9, 1.9, 0.06).translate(0.6, y0 + 0.95, d / 2 + 0.03), 0x2a2018, rng, 0.04);
+  colored(out, markWorldAperture(box(0.06, 0.7, 0.9), [1, 0, 0]).translate(w / 2 + 0.03, y0 + 1.35, -1.5), 0x52656a, rng, 0.04);
+  colored(out, box(1.0, 0.1, 0.5).translate(0.6, 0.45, d / 2 + 1.75), wd[1], rng);
+  colored(out, box(0.14, 0.45, 0.14).translate(0.6, 0.225, d / 2 + 1.75), wd[2], rng);
+  return mergeConnectedStructure('longhouse', out);
+}
+
+/** A shrimp-pond guard hut on tall stilts: a small plank room on posts under nipa, its ladder down to the bund. */
+function makeMekongPondHut(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], th = REGIONAL_PAL.nipa, wd = REGIONAL_PAL.mekongPlank;
+  const lift = 1.4, w = 3.6, d = 4.6, wallH = 1.8, roofH = 1.0;
+  for (const x of [-w / 2 + 0.15, w / 2 - 0.15]) for (const z of [-d / 2 + 0.15, d / 2 - 0.15]) {
+    colored(out, box(0.16, lift + 0.06, 0.16).translate(x, (lift + 0.06) / 2, z), wd[2], rng);
+  }
+  colored(out, slab(w + 0.5, 0.12, d + 0.5).translate(0, lift + 0.06, 0), wd[1], rng);
+  const y0 = lift + 0.12;
+  colored(out, box(w, wallH, d).translate(0, y0 + wallH / 2, 0), wd[0], rng, 0.1);
+  colored(out, gable(w + 0.9, roofH + 0.3, d + 0.9).translate(0, y0 + wallH - 0.15, 0), th[0], rng, 0.1);
+  colored(out, box(0.06, 1.6, 0.8).translate(w / 2 + 0.03, y0 + 0.8, 0.8), 0x2a2018, rng, 0.04);
+  const foot = w / 2 + 1.2, head = w / 2 + 0.25, run = foot - head;
+  for (const dz of [0.4, 1.2]) {
+    const rail = box(0.07, Math.hypot(run, lift), 0.07); rail.rotateZ(Math.atan2(run, lift));
+    colored(out, rail.translate((foot + head) / 2, lift / 2, dz), wd[2], rng);
+  }
+  for (let i = 0; i < 5; i++) { const y = 0.3 + i * 0.32; colored(out, box(0.07, 0.07, 0.9).translate(foot - run * (y / lift), y, 0.8), wd[1], rng); }
+  return mergeConnectedStructure('fishershack', out);
+}
+
 /** The architecture kits' light-family variants (maps/regional): kit id -> family key -> the variant. */
 export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = (() => {
   const B = DESTRUCTIBLE_BUILDING_TYPES;
@@ -2056,6 +2102,11 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
     kohima: Object.freeze({
       longhouse: variant('longhouse', REGIONAL_PAL.thatch, makeAngamiHouse),
       stilthouse: variant('stilthouse', REGIONAL_PAL.thatch, makeNagaGranary),
+    }),
+    // the stilt house keeps the generic wetland family (already a plank house on posts); the barn and the shack go
+    mekong: Object.freeze({
+      longhouse: variant('longhouse', REGIONAL_PAL.mekongPlank, makeMekongLongHouse),
+      fishershack: variant('fishershack', REGIONAL_PAL.mekongPlank, makeMekongPondHut),
     }),
   });
 })();

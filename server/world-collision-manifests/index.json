@@ -194,10 +194,10 @@
       "concealers": 5912
     },
     "mangrove": {
-      "bytes": 1278500,
-      "sha256": "f99feb85fbc42d237e941da6dae360974687b128121016745693235f35ea6c90",
+      "bytes": 1265840,
+      "sha256": "31eb3ff2afee4b263847011ac1657d664f08996b26fc2a0b1046eb02c0b03e35",
       "obstacles": 4520,
-      "colliders": 4305,
+      "colliders": 4301,
       "concealers": 5686
     },
     "saltwind": {
