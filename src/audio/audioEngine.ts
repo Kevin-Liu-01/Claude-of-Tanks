@@ -48,7 +48,7 @@ import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
 import { resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type VehicleAudioIdentity } from './vehicleAudioProfiles.ts';
 import type { ModuleHealth, SurfaceId, VehicleAudioInput } from './vehicleAudioModel.ts';
 import { resolveReloadCuePlan, resolveWeaponReport, type ReloadCuePlan, type ReloadCueType, type WeaponClassId } from './weaponAudio.ts';
-import { isCrewVoiceSetting, resolveCrewLanguage, type CrewVoiceSetting } from './voiceLines.ts';
+import { isCrewVoiceSetting, normalizeCrewVoiceSetting, resolveCrewLanguage, type CrewVoiceSetting } from './crewVoice.ts';
 
 type Vec3 = readonly [number, number, number];
 type ResultKind = 'victory' | 'defeat' | 'draw';
@@ -326,7 +326,7 @@ export function createAudio({
       chan.voice = unit(s.volVoice, 1);
       if (typeof s.alarmHeartbeat === 'boolean') alarmHeartbeat = s.alarmHeartbeat;
       if (typeof s.audioConcussion === 'boolean') concussionFx = s.audioConcussion;
-      if (isCrewVoiceSetting(s.crewVoice)) crewVoice = s.crewVoice;
+      crewVoice = normalizeCrewVoiceSetting(s.crewVoice, s.crewVoice === 'interface' ? getLocale() : null);
     }
   } catch { /* private mode */ }
 
@@ -1294,6 +1294,9 @@ export function createAudio({
       }
       info.team = String(entity.team ?? info.team);
       info.isPlayer = !!entity.isPlayer;
+      const nation = String(entity.spec?.nation ?? '');
+      const nationChanged = info.nation !== nation;
+      info.nation = nation;
       info.pos = p;
       if (dt > 1e-4) {
         const k = clamp(dt / 0.15, 0, 1);
@@ -1309,7 +1312,7 @@ export function createAudio({
         loaderKind = info.identity.loader;
         applyCrewLanguage();
         preloadVehicle(info.identity);
-      }
+      } else if (entity.isPlayer && nationChanged) applyCrewLanguage();
     }
     if (listenerOwnerId == null && listenerKind === 'player-tank') listenerOwnerId = playerId;
   }
@@ -1326,7 +1329,7 @@ export function createAudio({
   function applyCrewLanguage(): void {
     if (!radio) return;
     const nation = playerId ? tanks.get(playerId)?.nation : null;
-    radio.setLanguage(forcedCrewLanguage ?? resolveCrewLanguage(nation, crewVoice, getLocale()));
+    radio.setLanguage(forcedCrewLanguage ?? resolveCrewLanguage(nation, crewVoice));
   }
 
   // Per-frame scratch (no allocation in the update loop).
@@ -1620,7 +1623,7 @@ export function createAudio({
     library.pin([...UI_SET, 'radio_interference']);
     void library.load([...UI_SET, 'radio_interference']);
     // A battle hull may already be indexed (late adoption mid-battle).
-    if (playerId) applyCrewLanguage();
+    if (playerId || crewVoice !== 'national') applyCrewLanguage();
     installDebugSurface();
     applyScene();
     chooseSnapshot();
@@ -1867,7 +1870,9 @@ export function createAudio({
     });
     on<TankRamEvent>('killcam:collision', (e) => onTankRam(e, true));
     on<{ on?: boolean }>('ui:pause', (e) => { paused = !!e?.on; chooseSnapshot(); });
-    on<VolumeEvent>('ui:volumes', (v) => {
+    // Preferences are state, so retain them even before the first audio gesture.
+    bus.on('ui:volumes', (payload) => {
+      const v = payload as VolumeEvent | undefined;
       if (!v) return;
       if (typeof v.master === 'number') { masterVolume = clamp(v.master, 0, 1); mixer?.setMaster(masterVolume); }
       for (const channel of ['engine', 'combat', 'ambience', 'ui', 'voice'] as const) {

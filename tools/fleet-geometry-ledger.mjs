@@ -58,6 +58,14 @@ function runShard(ids, qualities, shard, jobs) {
   });
 }
 
+function updateLedger(options, rows, roster) {
+  const partial = options.ids || options.qualities.length !== LEDGER_QUALITIES.length;
+  const tanks = partial ? readFleetGeometryLedger().tanks : {};
+  for (const [id, row] of Object.entries(rows)) tanks[id] = { ...tanks[id], ...row };
+  for (const id of Object.keys(tanks)) if (!roster.includes(id)) delete tanks[id];
+  writeFileSync(LEDGER_PATH, serializeFleetGeometryLedger(tanks));
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const roster = fleetRoster();
@@ -76,11 +84,7 @@ async function main() {
     : await measureFleetGeometry(ids, options.qualities);
   const seconds = () => ((Date.now() - started) / 1000).toFixed(0);
   if (options.update) {
-    const partial = options.ids || options.qualities.length !== LEDGER_QUALITIES.length;
-    const tanks = partial ? readFleetGeometryLedger().tanks : {};
-    for (const [id, row] of Object.entries(rows)) tanks[id] = { ...tanks[id], ...row };
-    for (const id of Object.keys(tanks)) if (!roster.includes(id)) delete tanks[id];
-    writeFileSync(LEDGER_PATH, serializeFleetGeometryLedger(tanks));
+    updateLedger(options, rows, roster);
     console.log(`[fleet-geometry] wrote ${Object.keys(rows).length} tanks x ${options.qualities.join('/')} to docs/references/fleet-geometry-ledger.json (${seconds()} s)`);
     return;
   }

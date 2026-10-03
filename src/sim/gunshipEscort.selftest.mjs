@@ -11,7 +11,7 @@ const make=entities=>createMatchModeController({mode:'ac130',entities,revive(){t
 {
  const entities=fixture(),mode=make(entities),escort=mode.state.escort;
  assert.equal(mode.usesElimination,false);assert.equal(escort.total,4);assert.equal(escort.required,2);
- assert.equal(entities[1].combat.maxHp,700);assert.equal(entities[0].combat.maxHp,2000);assert.equal(entities[5].combat.maxHp,2000);
+ assert.equal(entities[1].combat.maxHp,1800);assert.equal(entities[0].combat.maxHp,2000);assert.equal(entities[5].combat.maxHp,2000);
  assert.equal(entities[1].modeSpeedMultiplier,ESCORT_RULES.speedScale);
  assert.equal(mode.botObjective(entities[1]).mission,'carrier');assert.equal(mode.botObjective(entities[5]).mission,'raid');
  assert.equal(mode.botObjective(entities[5]).z,-150,'enemies pursue ground troops, not the aircraft');

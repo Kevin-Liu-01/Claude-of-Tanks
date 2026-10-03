@@ -105,6 +105,15 @@ export function readFleetGeometryLedger(path = LEDGER_PATH) {
   return JSON.parse(readFileSync(path, 'utf8'));
 }
 
+function compareGeometryRow(id, quality, expected, actual) {
+  if (!expected) return `${id}/${quality}: missing ledger row`;
+  if (!actual) return `${id}/${quality}: missing measured row`;
+  if (expected.digest === actual.digest) return null;
+  const moved = GROUPS.filter(group => expected.groups?.[group] !== actual.groups[group]);
+  return `${id}/${quality}: geometry moved (${moved.join(', ') || 'mesh census'}; meshes ${expected.meshes}->${actual.meshes}, `
+    + `vertices ${expected.vertices}->${actual.vertices}, triangles ${expected.triangles}->${actual.triangles})`;
+}
+
 /** Compare measured rows with the ledger. Returns human-readable differences (empty when everything matches). */
 export function compareFleetGeometry(ledger, rows, { roster = null, qualities = LEDGER_QUALITIES } = {}) {
   const problems = [];
@@ -115,11 +124,8 @@ export function compareFleetGeometry(ledger, rows, { roster = null, qualities = 
   }
   for (const [id, row] of Object.entries(rows)) {
     for (const quality of qualities) {
-      const expected = ledger.tanks[id]?.[quality], actual = row[quality];
-      if (!expected || !actual || expected.digest === actual.digest) continue;
-      const moved = GROUPS.filter(group => expected.groups?.[group] !== actual.groups[group]);
-      problems.push(`${id}/${quality}: geometry moved (${moved.join(', ') || 'mesh census'}; meshes ${expected.meshes}->${actual.meshes}, `
-        + `vertices ${expected.vertices}->${actual.vertices}, triangles ${expected.triangles}->${actual.triangles})`);
+      const problem = compareGeometryRow(id, quality, ledger.tanks[id]?.[quality], row[quality]);
+      if (problem) problems.push(problem);
     }
   }
   return problems;

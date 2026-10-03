@@ -4,10 +4,30 @@ import type { FleetTankSpec } from './specContracts.ts';
 import { fitArmorToDims } from './specs.ts';
 
 export const VEHICLE_SIZE_FACTORS: Readonly<Record<string, number>> = Object.freeze({
+  object695_x: .90, bmp3m_dragun125_x: .90, kurganets25_x: .90,
+  t90a_vladimir: 1.05, t90m: 1.05, t90sm: 1.05, bmpt_t90: 1.05,
+  t90: 1.05, t90a_burlak: 1.05, t90m_proryv: 1.05, t90ms: 1.05,
   k21_x: .90, kf41_lynx_x: .90, type100: .90, lrmv_lynx: .90,
   borsuk: .90, ajax_x: .90, ares_apc_x: .90, griffin50_x: .90,
   griffin_viper: .90, challenger1_x: 1.10, upior: 1.10,
 });
+/** Additional longitudinal chassis change, before the uniform installed scale.
+ * Turret-local armor, weapon stations and ring position retain their dimensions. */
+export const VEHICLE_HULL_LENGTH_FACTORS: Readonly<Record<string, number>> = Object.freeze({
+  t90m: 1.10, t90m_proryv: 1.10,
+});
+function extendHullMetadata(spec: FleetTankSpec, factor: number): void {
+  const oldLength = spec.dims.hullLengthM;
+  spec.dims.hullLengthM *= factor;
+  spec.dims.overallLengthM += oldLength * (factor - 1) / 2;
+  for (const plate of spec.armor.hullPlates) plate.verts = plate.verts.map(p => [p[0], p[1], p[2] * factor]);
+  for (const box of [...spec.armor.modules, ...spec.armor.crew]) {
+    if (box.turretLocal || ('module' in box && box.module === 'turretRing')) continue;
+    box.min = [box.min[0], box.min[1], box.min[2] * factor];
+    box.max = [box.max[0], box.max[1], box.max[2] * factor];
+  }
+  spec.armor.boundingRadiusM *= factor;
+}
 const authoringFrames = new WeakMap<object, { source: FleetTankSpec; armor: FleetTankSpec['armor'] }>();
 
 /** Donor combat refreshes may replace the armor/gun records after resizing. */
@@ -41,6 +61,8 @@ export function applyVehicleSizePolicy(specs: Record<string, FleetTankSpec>): vo
       continue;
     }
     authoringFrames.set(spec, { source: structuredClone(spec), armor: spec.armor });
+    const hullFactor = VEHICLE_HULL_LENGTH_FACTORS[id];
+    if (hullFactor) extendHullMetadata(spec, hullFactor);
     const previous = { ...spec.dims };
     for (const key of Object.keys(spec.dims)) {
       if (key.endsWith('M') && typeof spec.dims[key] === 'number') spec.dims[key] *= factor;

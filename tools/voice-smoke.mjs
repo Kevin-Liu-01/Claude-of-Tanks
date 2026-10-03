@@ -224,9 +224,9 @@ try {
   }
 
   // 4) the crew-voice setting switches live.
-  await page.evaluate(() => window.__P.emit('ui:volumes', { crewVoice: 'english' }));
+  await page.evaluate(() => window.__P.emit('ui:volumes', { crewVoice: 'en-US' }));
   await page.waitForFunction('window.__COT_AUDIO.crewLanguage === "en-US" && window.__COT_AUDIO.voicesLoaded === true', { timeout: 20000 })
-    .catch(() => fail('crew voice setting "english" did not switch to en-US'));
+    .catch(() => fail('crew voice setting "en-US" did not switch to en-US'));
   await page.evaluate(() => window.__P.emit('ui:volumes', { crewVoice: 'national' }));
   await page.waitForFunction('window.__COT_AUDIO.crewLanguage === "ru"', { timeout: 5000 })
     .catch(() => fail('crew voice setting "national" did not return to ru'));
@@ -239,12 +239,15 @@ try {
     const tab = S.root.querySelector('.cot-set-tab[data-tab="sound"]');
     tab?.click();
     await wait(250);
-    const english = S.root.querySelector('.cot-set-seg button[data-mode="english"]');
+    const picker = S.root.querySelector('[data-setting="crewVoice"]');
+    picker?.parentElement.querySelector('.cot-custom-select-trigger')?.click();
+    const english = picker?.parentElement.querySelector('[role="option"][data-value="en-US"]');
     english?.click();
     await wait(250);
     const stored = JSON.parse(localStorage.getItem('cot.settings.v1') || '{}');
     const lang = window.__COT_AUDIO.crewLanguage;
-    S.root.querySelector('.cot-set-seg button[data-mode="national"]')?.click();
+    picker?.parentElement.querySelector('.cot-custom-select-trigger')?.click();
+    picker?.parentElement.querySelector('[role="option"][data-value="national"]')?.click();
     await wait(250);
     const back = window.__COT_AUDIO.crewLanguage;
     const toggles = S.root.querySelectorAll('.cot-set-row').length;
@@ -254,7 +257,7 @@ try {
   report.settingsUi = ui;
   console.log(`[voice-smoke] Sound tab: picker=${ui.found} stored=${ui.stored} lang=${ui.lang} back=${ui.back}`);
   if (!ui.found) fail('Sound tab has no crew-language picker');
-  if (ui.stored !== 'english' || ui.lang !== 'en-US') fail(`Sound tab "English" did not persist and switch (stored ${ui.stored}, crew ${ui.lang})`);
+  if (ui.stored !== 'en-US' || ui.lang !== 'en-US') fail(`Sound tab "English" did not persist and switch (stored ${ui.stored}, crew ${ui.lang})`);
   if (ui.back !== 'ru') fail(`Sound tab "National" did not return the crew to ru (${ui.back})`);
 
   // 5) every pack through the radio chain, isolated from the rest of the mix.
