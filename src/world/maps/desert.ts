@@ -297,6 +297,14 @@ export default {
     // thickets keep their density
     bushCount: 1.1, // r4: more wadi scrub — mid-map emptiness critique (map pass 2026-09-12: denser)
     bushSpecies: 'acacia',
+    // Trees round 2b (2026-10-03, the gauntlet's wave 15: "palms included, whatever the place"): date palms grow where
+    // the water table is shallow, in the Wadi Sirocco's bed and on its banks; a palm drawn on the open flats grows as an
+    // acacia. Discs along the centreline (each leg's middle and each joint, six tenths of the bed's width).
+    palmSites: [
+      ...WADI.slice(1).map(([bx, bz], i) => ({ x: (WADI[i][0] + bx) / 2, z: (WADI[i][1] + bz) / 2, r: WADI_WIDTH[i] * 0.6 })),
+      ...WADI.slice(1, -1).map(([x, z], i) => ({ x, z, r: (WADI_WIDTH[i] + WADI_WIDTH[i + 1]) * 0.3 })),
+    ],
+    palmFallback: 'acacia',
     palettes: {
       oak: { // r7: sun-bleached sage scrub — the r6 olive still bottomed out
         // at ~0.26 luminance in the far cards, and against ~0.85-luminance
