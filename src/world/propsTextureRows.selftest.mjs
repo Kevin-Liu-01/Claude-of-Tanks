@@ -95,7 +95,8 @@ for (const [before, after] of [
   await assert.rejects(checkWrapperOwnership(mutated), assert.AssertionError,
     'reject changed forwarding, incomplete drains and cloned sync/async ownership');
 }
-assert.match(source, /const stone = yield\* makeStone\(noi, aniso, T\.stone \|\| null\)/);
+// a regional architecture kit paints its own masonry through the same generator delegation (maps/regional)
+assert.match(source, /const stone = regionalArchitecture\s*\?\s*yield\* makeRegionalStone\([^)]*\)\s*:\s*yield\* makeStone\(noi, aniso, T\.stone \|\| null\)/);
 assert.match(source, /const grimeTex = yield\* makeGrimeTexture\(noi, aniso\)/);
 assert.ok(source.indexOf('const grimeTex = yield*') < source.indexOf('const sourcedTexturesReady ='),
   'all new grime checkpoints precede material allocation and sourced-load ownership');

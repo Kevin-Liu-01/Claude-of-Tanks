@@ -790,7 +790,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/lightModel.selftest.mjs',
     // 2026-10-02 (lighting lane): the materials' scene fog on the battlefield's haze layer
     'src/engine/fogLayer.selftest.mjs',
+    // 2026-10-03 (the skies-and-atmosphere lane): the Beer–Lambert aerial perspective on the physically based sky
+    'src/engine/hazeLaw.selftest.mjs',
     'src/engine/volumetricClouds.selftest.mjs',
+    // 2026-10-03 (the skies-and-atmosphere lane): the clouds' shadows by one undithered map on every lit material
+    'src/engine/cloudShadeMap.selftest.mjs',
+    // 2026-10-03 (the skies-and-atmosphere lane): the ground's sky under and beside the near hulls
+    'src/engine/vehicleGroundOcclusion.selftest.mjs',
+    // 2026-10-03 (the skies-and-atmosphere lane): the cumulus fields and the flat condensation base
+    'src/engine/cumulusFields.selftest.mjs',
     // 2026-10-01 (the clouds-and-skyboxes lane): the layered sky — mid layers, contrails, storm cells, rain, fog banks, lightning, the time of day
     'src/engine/cloudWeatherLayers.selftest.mjs',
     'src/engine/rendererContextRecovery.selftest.mjs',
@@ -939,6 +947,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/bridgeDeckNavigation.selftest.mjs',
     'src/sim/formationPlacement.selftest.mjs',
     'src/sim/matchModes.selftest.mjs',
+    // 2026-10-03 (bots lane): the frontline attack regroups before the last sector.
+    'src/sim/frontlineRegroup.selftest.mjs',
     'src/sim/matchRuleset.selftest.mjs',
     'src/sim/assaultLines.selftest.mjs',
     'src/sim/matchPlacement.selftest.mjs',
@@ -956,6 +966,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.zoneHold.selftest.mjs',
     // 2026-10-03 (bots lane): a route corner the hull pivots toward is held through the rechecks.
     'src/game/ai.cornerHold.selftest.mjs',
+    // 2026-10-03 (bots lane): an engaged casemate keeps its bow on its target (scoots, jinks, cover).
+    'src/game/ai.casemateLay.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',
@@ -1106,7 +1118,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/hardstandSurface.selftest.mjs',
     'src/world/hardstandBanks.selftest.mjs', // 2026-10-02: the apron bank law, every map, with its pending list
     'src/world/landformGeology.selftest.mjs', // 2026-10-03: landform geology, and every smooth landform unchanged
-    'src/world/verdantTownPlan.selftest.mjs', // 2026-10-03: Verdant's classic town plan (every house and village wall where main has it)
+    'src/world/verdantTownPlan.selftest.mjs', // 2026-10-03: Verdant's classic town plan (every planned building on main's plot, the village walls)
     'src/world/terrainSurfaceDetail.selftest.mjs',
     'src/world/terrainMaterialOwnership.selftest.mjs',
     'src/world/terrainProjection.selftest.mjs',
@@ -1154,6 +1166,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
     'src/world/rockDressing.selftest.mjs',
+    'src/world/scenery.selftest.mjs',
+    // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
+    'src/world/fieldStoneSurface.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
     'src/world/loggingYard.selftest.mjs',
     'src/world/foundryServiceCourt.selftest.mjs',
@@ -1240,6 +1255,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/structureKit.selftest.mjs',
     'src/world/maps/marsSettlement.selftest.mjs',
     'src/world/orchardBathhouse.selftest.mjs',
+    // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap
+    'src/world/maps/regional/regionalArchitecture.selftest.mjs',
     'src/world/mangroveFisheryWharf.selftest.mjs',
     'src/world/structureConnectivity.selftest.mjs',
     'src/world/structureCollision.selftest.mjs',

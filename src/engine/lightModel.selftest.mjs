@@ -8,8 +8,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  EXPOSURE_ADAPTATION, EXPOSURE_KEY, EXPOSURE_MAX, EXPOSURE_MIN, GROUND_SUNLIT_SHARE, LIGHT_SOLAR_IRRADIANCE, LOW_SUN_EV, NIGHT_SKY_GLOW, OVERCAST_SKY_CUT,
-  SKY_DIFFUSE_GAIN, atmosphereTransmittance, deriveSun, exposureFor, linearToHex, whiteBalanceGains,
+  EXPOSURE_ADAPTATION, EXPOSURE_KEY, EXPOSURE_MAX, EXPOSURE_MIN, GROUND_SUNLIT_SHARE, LIGHT_SOLAR_IRRADIANCE, LOW_SUN_EV, NIGHT_EV, NIGHT_SKY_GLOW, OVERCAST_GROUND_RETURN, OVERCAST_SKY_CUT,
+  SKY_DIFFUSE_CHROMA, SKY_DIFFUSE_GAIN, atmosphereTransmittance, deriveSun, exposureFor, linearToHex, whiteBalanceGains,
+  EXPOSURE_ALBEDO_K, EXPOSURE_ALBEDO_REF, exposureAlbedoEV,
 } from './lightModel.ts';
 import {
   DEFAULT_GROUND_ALBEDO, EXPOSURE_REFERENCE_ILLUMINANCE, hexToLinear, isGalaxySky, lightTune, loadGroundedLightModel, luminance,
@@ -81,6 +82,19 @@ assert.equal(clear.fillIntensity, 0, 'the anti-sun rescue fill is retired');
 assert.equal(clear.hemiIntensity, 0, 'an open sky has no deck glow');
 assert.equal(clear.envIntensity, 1, 'the environment shows the dome at its own radiance (a mirror reflects the sky the eye sees)');
 near(clear.envDiffuseGain, SKY_DIFFUSE_GAIN, 1e-12, 'the sky\'s diffuse share takes the aerosol / cloud gain');
+// 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: the shade under a hull rendered indigo on straw):
+// the diffuse share keeps part of the clean dome's hue — the light real open shade takes from a clear sky is far whiter
+// than a Rayleigh dome's (9 000–15 000 K, B/R 1.6–2.2, against the dome's 3.3–4)
+near(clear.envDiffuseChroma, SKY_DIFFUSE_CHROMA, 1e-12, 'the sky\'s diffuse share keeps SKY_DIFFUSE_CHROMA of its hue');
+assert.ok(SKY_DIFFUSE_CHROMA > 0.2 && SKY_DIFFUSE_CHROMA < 0.7, 'some of the sky\'s blue, never all of it, never none');
+{
+  const dome = [0.069, 0.130, 0.273]; // Verdant's measured dome irradiance (2026-10-03 census)
+  const L = luminance(dome);
+  const shade = dome.map((c) => L + SKY_DIFFUSE_CHROMA * (c - L));
+  near(luminance(shade), L, 1e-12, 'the chroma keeps the luminance: the shade\'s level and the metered illuminance are unchanged');
+  assert.ok(dome[2] / dome[0] > 3.3, 'the clean dome\'s own light is a deep Rayleigh blue');
+  assert.ok(shade[2] / shade[0] > 1.5 && shade[2] / shade[0] < 2.2, `the shade light ${(shade[2] / shade[0]).toFixed(2)} B/R: open shade's 9 000–15 000 K`);
+}
 clear.groundRadiance.forEach((g, c) => near(g, DEFAULT_GROUND_ALBEDO[c] * (irr[c] + GROUND_SUNLIT_SHARE * clear.sunIntensity * clear.sunColor[c]
   * verdant.sunDir[1] / (Math.PI * SKY_DIFFUSE_GAIN)), 1e-12, `below the horizon: the ground under the sky, half of it sunlit (ch${c})`));
 assert.ok(luminance(clear.groundRadiance) > 2 * luminance(DEFAULT_GROUND_ALBEDO.map((a, i) => a * irr[i])), 'a mirror turned down sees lit ground, not the shade');
@@ -94,6 +108,33 @@ assert.ok(overcastModel.hemiIntensity > shadeH, 'and glows brighter than the cle
 assert.ok(overcastModel.illuminance < clear.illuminance, 'an overcast day is darker than a clear one');
 assert.ok(overcastModel.exposure > clear.exposure, 'and the camera opens up for it');
 assert.ok(overcastModel.exposure / clear.exposure < clear.illuminance / overcastModel.illuminance, 'part of the way: an overcast day still reads darker');
+// 2026-10-03 (the gauntlet's wave 17 on Whiteout's chase: the overcast snow "darker and much bluer than the neutral overcast
+// sky"): the deck sends back OVERCAST_GROUND_RETURN of what the ground sends up, in its own light — the direct light
+// × g / (1 − g), g = overcast × the share × the ground's albedo — and the clear sky's share under a closed deck keeps
+// none of the dome's blue
+{
+  const at = (overcast, groundAlbedoHex, tune) => {
+    const saved = globalThis.__LIGHT_TUNE; globalThis.__LIGHT_TUNE = tune;
+    try { return resolveLightModel({ ...verdantSky, lighting: { overcast, groundAlbedoHex } }, verdant, { irradianceRaw: irr }, null); }
+    finally { globalThis.__LIGHT_TUNE = saved; }
+  };
+  const ratio = (overcast, hex) => {
+    const m = at(overcast, hex, undefined), m0 = at(overcast, hex, { OVERCAST_GROUND_RETURN: 0 });
+    const g = Math.min(0.9, overcast * OVERCAST_GROUND_RETURN * luminance(m.groundAlbedo));
+    near(m.hemiIntensity - m0.hemiIntensity, m0.illuminance * g / (1 - g), 1e-9, `the returned light (overcast ${overcast}, ground ${hex.toString(16)})`);
+    return m.illuminance / m0.illuminance;
+  };
+  const snowGain = ratio(1, 0xe5e7ec), grassGain = ratio(1, 0x6a7a4a), partGain = ratio(0.5, 0xe5e7ec);
+  assert.ok(snowGain > 1.5 && snowGain < 1.8, `a snowfield under a closed deck: ×${snowGain.toFixed(2)}`);
+  assert.ok(grassGain > 1.0 && grassGain < 1.12, `grass under the same deck: ×${grassGain.toFixed(2)}`);
+  assert.ok(partGain > 1 && partGain < snowGain, `a half-closed deck returns less (×${partGain.toFixed(2)})`);
+  near(ratio(0, 0xe5e7ec), 1, 1e-12, 'an open sky returns nothing');
+  near(at(1, 0xe5e7ec, undefined).envDiffuseChroma, 0, 1e-12, 'a closed deck: the clear share without the dome\'s blue');
+  near(at(0.5, 0xe5e7ec, undefined).envDiffuseChroma, SKY_DIFFUSE_CHROMA * 0.5, 1e-12, 'half the hue under half a deck');
+  const snowDeck = at(1, 0xe5e7ec, undefined), snowDeck0 = at(1, 0xe5e7ec, { OVERCAST_GROUND_RETURN: 0 });
+  assert.ok(snowDeck.exposure < snowDeck0.exposure, 'the camera follows part of the way: the snow reads brighter, the deck a little darker');
+  assert.ok(snowDeck.illuminance * snowDeck.exposure > snowDeck0.illuminance * snowDeck0.exposure, 'the snow keeps most of its gain on screen');
+}
 const authoredGround = resolveLightModel({ ...verdantSky, lighting: { groundAlbedoHex: 0xd8d4cc, skyLight: 1.2, exposureEV: 1, warmth: 0.1, saturation: 0.9, contrast: 1.05 } },
   verdant, { irradianceRaw: irr }, null);
 assert.ok(authoredGround.groundAlbedo[1] > 0.6, 'snow\'s albedo from the lighting block');
@@ -108,6 +149,10 @@ near(nightModel.hemiIntensity, NIGHT_SKY_GLOW, 1e-9, 'the night sky\'s own glow 
 assert.ok(nightModel.hemiSky[2] > nightModel.hemiSky[0] * 1.5, 'in the moonlit sky\'s blue');
 assert.ok(nightModel.exposure > clear.exposure, 'the camera opens for the night');
 const nightKey = (nightModel.illuminance * nightModel.exposure) / (clear.illuminance * clear.exposure);
+// (2026-10-03: the night's camera is the owner's — "a little more visible, not darker", 2026-09-14 — whatever the day key:
+// the key, its bound and NIGHT_EV hold 1.5 × 2.6 × 2^−0.25 between them)
+near(nightModel.exposure, 1.5 * 2.6 * 2 ** -0.25, 0.02 * nightModel.exposure, 'the night\'s camera (the key, the bound and the night EV)');
+near(EXPOSURE_KEY * EXPOSURE_MAX * 2 ** NIGHT_EV, 1.5 * 2.6 * 2 ** -0.25, 0.01, 'NIGHT_EV holds it with the day key');
 assert.ok(nightKey > 0.2 && nightKey < 0.35, `and the night reads as night, a little more visible than the old rig's (${nightKey.toFixed(2)} of the day's key)`);
 near(nightModel.sunIntensity, 0.6, 1e-9, 'the night\'s direct light is the authored moon');
 hexToLinear(0xafc3ec).forEach((v, c) => near(nightModel.sunColor[c], v, 1e-12, `the moon's colour ch${c}`));
@@ -151,6 +196,25 @@ const legacy = resolveLightModel({ sunIntensity: 3.6, sunColorHex: 0xfae8d0, hem
 assert.equal(legacy.mode, 'legacy');
 assert.equal(legacy.sunIntensity, 3.6); assert.equal(legacy.envIntensity, 0.27); assert.equal(legacy.fillIntensity, 0.66);
 near(legacy.hemiIntensity, 0.46 + 0.15, 1e-12, 'the authored hemisphere and its bounce floor');
+assert.equal(legacy.envDiffuseGain, 1); assert.equal(legacy.envDiffuseChroma, 1, 'the legacy rig keeps its environment as it was');
+
+// ---- 6b. the bright-ground lift (2026-10-03; the gauntlet's wave 7: a median-matched key greyed the snow): a snowfield
+// opens about a third of a stop at K 0.25 (the gauntlet's wave 19, with the deck's ground return brightening an overcast
+// snowfield by itself; K 0.42 before it), a ground at or under the reference is untouched
+assert.equal(EXPOSURE_ALBEDO_K, 0.25, 'about a third of a stop on Frosthollow');
+assert.ok(Math.abs(exposureAlbedoEV(0.799) - 0.3) < 0.03, `Frosthollow opens about a third of a stop by default (${exposureAlbedoEV(0.799).toFixed(3)})`);
+assert.equal(exposureAlbedoEV(0.338), 0, 'Sirocco\'s sand (0.34) is untouched');
+{
+  const saved = globalThis.__LIGHT_TUNE;
+  globalThis.__LIGHT_TUNE = { EXPOSURE_ALBEDO_K: 0.42 };
+  near(exposureAlbedoEV(0.799), 0.42 * Math.log2(0.799 / EXPOSURE_ALBEDO_REF), 1e-12, 'Frosthollow\'s snow');
+  assert.ok(exposureAlbedoEV(0.799) > 0.45 && exposureAlbedoEV(0.799) < 0.55, 'about half a stop');
+  assert.equal(exposureAlbedoEV(EXPOSURE_ALBEDO_REF), 0, 'the reference ground is untouched');
+  assert.equal(exposureAlbedoEV(0.16), 0, 'a darker ground never darkens');
+  assert.ok(exposureAlbedoEV(5) <= 0.75 + 1e-12, 'capped');
+  globalThis.__LIGHT_TUNE = saved;
+}
+assert.match(readFileSync(new URL('./lightModel.ts', import.meta.url), 'utf8'), /\+ \(1 - night\) \* exposureAlbedoEV\(luminance\(ground\)\)\);/, 'by day, on the map\'s ground albedo');
 
 // ---- 7. the wiring
 const sky = readFileSync(new URL('./sky.ts', import.meta.url), 'utf8');
