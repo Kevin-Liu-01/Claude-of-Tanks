@@ -5,6 +5,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.ts';
+import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { getSpec } from '/src/vehicles/specs.ts';
 import { createTankState } from '/src/sim/movement.ts';
 
@@ -37,6 +38,8 @@ const camera = new THREE.PerspectiveCamera(50, WIDTH / HEIGHT, 0.1, 800);
 const target = new THREE.Vector3(0, 1.1, 0);
 
 window.__RENDER_BATTLE_VIEW = async (id, distanceM, options = {}) => {
+  await ensureInteriorFills([id]);
+  if (!hasInteriorFills(id)) throw new Error(`Missing final interior fill record for ${id}`);
   const visual = createTank(id, { renderer, scene }, {
     camoSeed: 4242,
     quality: options.geometryQuality === 'high' ? 'high' : 'ai',
@@ -68,7 +71,7 @@ window.__RENDER_BATTLE_VIEW = async (id, distanceM, options = {}) => {
   scene.remove(visual.root);
   visual.dispose();
   renderer.render(scene, camera);
-  return { dataUrl, width, height };
+  return { dataUrl, width, height, fillLoaded: true };
 };
 window.__BATTLE_VIEW_READY = true;
 </script>

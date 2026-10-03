@@ -4,6 +4,7 @@
 // geometry comes from the shared procedural A2 hull and a new lower,
 // deep-bustle VT turret authored in the game's native +Z-forward frame.
 
+import {addChineseThroatStock,addChineseMovingMantlet} from './chineseGunOpening.ts';
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, muzzleTipDot } from './kit.ts';
 import {
@@ -53,6 +54,9 @@ function addChinese125Gun(
   P.addGunExtra(cylZ(config.rootR * 0.56, 0.68, P.q ? 12 : 8,
     config.rootR * 0.94), 0, 0, 0.47);
   P.addGunExtraDark(cylZ(config.rootR * 0.59, 0.08, 12), 0, 0, 0.85);
+  if(P.spec.id==='vt4a1'){
+    P.clear('gunMount','gunMountDark');addChineseMovingMantlet(P,.39,.98);
+  }
   KIT.buildGun(P, { len: config.length, r: 0.071, sleeve: false, collar: false, baseR: 0.105 });
   P.add('gun', cylZ(0.105, config.sleeveEnd - config.sleeveStart, 18, 0.090),
     0, 0, (config.sleeveStart + config.sleeveEnd) * 0.5);
@@ -210,24 +214,26 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
   } else {
     P.add('turretDark', KIT.polyTurret(plan, 0.09, 0.97, 0.98), 0, -0.04, 0);
   }
-  P.add('turret', polyMultiLoft(plan, [
+  const shell = polyMultiLoft(plan, [
     { height: lowerHeights, inset: 1.00 },
     { height: midHeights, inset: 1.00 },
     { height: shellHeight,
       inset: [0.66, 0.72, 0.80, 0.87, 0.91, 0.94, 0.95, 0.95,
         0.95, 0.95, 0.94, 0.91, 0.87, 0.80, 0.72, 0.66],
       centerHeight: shellHeight },
-  ]));
+  ]);
+  if (variant === 'vt4a1') addChineseThroatStock(P, shell); else P.add('turret', shell);
   P.add('turret', cylY(sx(1.10), sx(1.16), 0.11, P.q ? 20 : 14), 0, -0.04, shellZ(-0.30));
   // A low roof bridge overlaps the primary shell and the inner chevron roots.
-  P.add('turret', orientedSlab(
+  const bridge = orientedSlab(
     [sx(-0.80), sy(0.59), shellZ(0.48)], [sx(0.80), sy(0.59), shellZ(0.48)],
     [sx(1.18), rearTopY(0.60, -2.30), rearZ(-2.30)],
     [sx(-1.18), rearTopY(0.60, -2.30), rearZ(-2.30)],
     [sx(-0.68), sy(0.69), shellZ(0.34)], [sx(0.68), sy(0.69), shellZ(0.34)],
     [sx(1.03), rearTopY(0.70, -2.26), rearZ(-2.26)],
     [sx(-1.03), rearTopY(0.70, -2.26), rearZ(-2.26)],
-  ));
+  );
+  if (variant === 'vt4a1') addChineseThroatStock(P, bridge); else P.add('turret', bridge);
   // Leopard-style chevrons now provide the complete frontal volume. Their
   // outer stations penetrate the shell shoulder and their inner stations
   // close around the gun throat, leaving no legacy frontal wedge underneath.
@@ -274,7 +280,8 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
   // ERA cluster. Keeping the carrier in the primary turret also prevents the
   // spent state from exposing the deliberately truncated shell behind it.
   for (const side of [-1, 1] as const) {
-    P.add('turret', closedIntegratedChevron(chevronStations, side));
+    const stock=closedIntegratedChevron(chevronStations, side);
+    if (variant==='vt4a1') addChineseThroatStock(P,stock); else P.add('turret',stock);
   }
   P.visualEraCluster(`${variant}-integrated-chevron-front`, 'turret', () => {
     for (const side of [-1, 1] as const) {
@@ -283,11 +290,13 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
           chevronStations.at(-1)!.x, startT);
         const endX = THREE.MathUtils.lerp(chevronStations[0].x,
           chevronStations.at(-1)!.x, endT);
-        P.addExternalArmor('turret', chevronSurfacePanel(
+        const panel=chevronSurfacePanel(
           interpolateChevronStation(chevronStations, startX),
           interpolateChevronStation(chevronStations, endX),
           side,
-        ));
+        );
+        if(variant==='vt4a1')addChineseThroatStock(P,panel,'turretExternalArmor');
+        else P.addExternalArmor('turret',panel);
       }
     }
   });

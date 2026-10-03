@@ -516,7 +516,8 @@ export const MODERN2_SPECS: TankSpecRegistry = {
   },
 
   type99a: {
-    id: 'type99a', name: 'Type 99A (ZTZ-99A)', nation: 'China', era: 'modern', role: 'mbt',
+    id: 'type99a', name: 'ZTZ-99 Longwei', nation: 'China', era: 'modern', role: 'mbt',
+    description: 'Original Chinese game concept: the retained ZTZ-99A-derived Longwei design.',
     hp: 2400,
     enginePowerHp: 1500, weightTons: 55, topSpeedKmh: 70, reverseSpeedKmh: 12,
     hullTraverseDegS: 42,
