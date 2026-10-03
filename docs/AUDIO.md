@@ -92,7 +92,7 @@ profile from `soundCues.ts` (per manifest group, with per-asset overrides):
 weapons, impacts, environment, vehicles ─→ world sum → snapshot lowpass/level → voice duck ─┐
 own (hull engine, mechanisms), ownCombat (hull gun, interior hits) → snapshot lowpass/level ─┤
 interior, cinematic, ambience (ducked under radio) ───────────────────────────────────────────┼→ body → concussion → ┐
-ui, music, voice, alarm ──────────────────────────────────────────────────────────────────────────────────────────────┴→ glue → soft clip → master
+ui, music, voice, alarm ──────────────────────────────────────────────────────────────────────────────────────────────┴→ glue → limiter → soft clip → master
 ```
 
 - Gunfire and our own tank lead. Weapons (1.5), impacts (1.3) and the occupied
@@ -113,7 +113,11 @@ ui, music, voice, alarm ──────────────────�
   7.9 dB above it at 15, 150 and 400 m, and the radio sits 8.4 dB under a
   near cannon.
 - The glue compressor has a 12 ms attack and 2.5:1 ratio so cannon transients
-  reach the tanh soft clip, which catches the peaks.
+  reach the limiter after it (−2 dBFS, 20:1, 2 ms attack, 90 ms release): the
+  compressor's built-in look-ahead lets it take a crack's peak down smoothly,
+  and the tanh soft clip behind it is only the last resort. Before the limiter
+  the cracking guns rode the clip (a near cannon put 111 samples at its knee,
+  our own gun 254), which squares a crack off into old-film grit.
 - Settings channels from the Sound tab (`cot.settings.v1`, live via
   `ui:volumes`) scale the buses: master, engine, gunfire (combat), ambience,
   interface, voice. The occupied gun answers to the gunfire slider.
@@ -156,23 +160,40 @@ centred, with the cabin extras).
 
 ### Weapons
 
-`weaponAudio.ts` classifies every gun into one of fifteen report classes: rifle
-and heavy machine guns, 20/25/30/40/50 mm autocannons, 90/105/120/125/130/152 mm
-cannons, ATGM and heavy rocket launchers (sound profiles refine the trim, e.g.
-the BMP-3's low-pressure 100 mm). Each class has a close bank and a distant
-bank crossfaded by range (a cannon keeps its close report to about 150 m), a
-gun tail matched to the map (open, forest, urban,
-mountain), and for the occupied gun in the sight an interior report. Our
-own gun has a dedicated report per bore (`gun_own_medium` for 90–105 mm,
-`gun_own_large` for 120–125 mm, `gun_own_heavy` for 130–152 mm, and
-`missile_launch_own` for launchers), fuller and more detailed than anyone
-else's, as World of Tanks keeps the player's shot apart, with the breech's
-recoil and run-out (`gun_recoil_mech`) under it. A
-synthesized sub-bass thump (a sine falling from about 78 to 26 Hz with a short
-low-passed noise kick) sits under every cannon within 700 m, HE bursts,
-vehicle explosions and penetrations of the occupied hull, because the
-generated reports are thin below 80 Hz. Shell flybys and near-miss cracks are
-timed from the shell's closest approach and muzzle velocity.
+`weaponAudio.ts` classifies every gun into one of eighteen report classes:
+rifle and heavy machine guns, 20/25/30/40/50 mm autocannons,
+90/105/120/125/130/152 mm cannons, ATGM and heavy rocket launchers, and the
+AC-130's autocannon, howitzer and missiles (sound profiles refine the trim,
+e.g. the BMP-3's low-pressure 100 mm, or name a class outright, as the
+gunship's shells do). Each class has a close bank and a distant bank
+crossfaded by range (a cannon keeps its close report to about 150 m), a gun
+tail matched to the map (open, forest, urban, mountain; a machine-gun burst
+gets it once per 0.22 s beat, not once per round), and for the occupied gun
+in the sight an interior report. Our own gun has a dedicated report per bore
+(`gun_own_medium` for 90–105 mm, `gun_own_large` for 120–125 mm,
+`gun_own_heavy` for 130–152 mm, and `missile_launch_own` for launchers),
+fuller and more detailed than anyone else's, as World of Tanks keeps the
+player's shot apart, with the breech's recoil and run-out (`gun_recoil_mech`)
+under it.
+
+A gun report is a crack: the close reports were regenerated on 2026-10-02 and
+measure 13–22 dB of crest, their loudest millisecond 4–41 ms after the onset
+and at most 22 % of their body below 100 Hz (see Sound effects below). Under
+each one, within the close range, plays a procedural muzzle blast
+(`renderMuzzleBlast` in `procedural.ts`, rendered once per bore and played
+through the voice pool like a recorded report): the Friedlander pressure pulse
+of the charge, with an instant rise and a positive phase of 0.15 ms + 0.02 ms
+per millimetre of bore (0.3 ms for a rifle round, 2.6 ms for a 120 mm gun),
+its reflection off the ground, the punch of the expanding gas (a heavily damped
+low partial only large charges have) and the gas roar. It sits 4 dB under a
+cannon's report and 6 dB under autocannons and machine guns (2 dB higher for
+our own gun); air absorption leaves only a thud at range. Until then a
+synthesized sine sweep from about 78 to 26 Hz sat under every cannon within
+700 m; 0.5–0.8 s of falling sine is a trailer boom, it made gunfire read as
+explosions, and it is gone from the firing path (HE bursts, vehicle
+explosions and penetrations of the occupied hull keep their thump). Shell
+flybys and near-miss cracks are timed from the shell's closest approach and
+muzzle velocity.
 
 ### Your own tank: loading and machinery
 
@@ -241,8 +262,32 @@ or an own perspective for the pilot or crew.
   flying drone sounded like the tank's own engine with a quiet, muffled buzz
   under it.
 - **AC-130.** A gunship is a roster tank pinned to its orbit; it never gets a
-  tank rig. The ground hears four turboprops circling overhead; its crew hears
-  the cabin drone. Its guns use the normal report classes.
+  tank rig. The ground hears four turboprops circling overhead, the 30 mm
+  thumping (`gunship_30mm_far`) and the howitzer booming (`gunship_howitzer_far`)
+  from the sky. Its crew hears the cabin: the turboprops with the airframe
+  rattling and wind at the gun ports under them (`gunship_cabin_rattle_loop`),
+  the 30 mm, the howitzer and the missile leaving the wing pylon inside the
+  fuselage (`gunship_30mm_own`, `gunship_howitzer_own`, `gunship_missile_own`),
+  the howitzer's hot case clanging onto the deck 0.45 s after each shot, the
+  crew loading the howitzer by hand (breech open, `gunship_round_load`, breech
+  closed; missiles arm on the pylon) and the selector arming each gun
+  (`gunship_weapon_select`). The gunship's shells carry `gunship-*` sound
+  profiles in `matchRuleset.ts`; until 2026-10-02 they had none, so the crew
+  heard tank reports from a commander's hatch, the 180 mm guided missile played
+  as a 152 mm cannon and howitzer reloads ran the hull's autoloader.
+- **Mode openers.** Each mode opens on its own field sound at roll-out
+  (`MODE_OPENER`, read through the `getGameMode` getter): an air-raid siren for
+  the Endless Horde, a distant preparatory barrage for the Frontline Assault, a
+  vault door slamming for the Juggernaut, broken radio for Infected, a foghorn
+  for Turbo Ball, an armory for Gun Game and the gunship passing overhead for
+  the AC-130; Realistic opens on silence and the rest on the battle horn. The
+  Horde's waves come on the siren with the all-clear after them, the
+  Frontline's counter-attacks and advances under the barrage, and a cache lands
+  with a thud where it arrives (`cache_drop`). The Juggernaut itself (found by
+  its hull, at least three times anyone else's) runs its engine bank 14 %
+  deeper, lands and rams with a superheavy's mass, and its gun reports carry
+  2.5 dB further, a little deeper. Gravity mode's Olympus Basin has Mars
+  acoustics (sound at 240 m/s, 14 dB thinner, nothing above 3.2 kHz).
 - **Gun Game.** Advancing a stage plays the weapon changeover (breech, ram or
   missile tube, latch) and the loader's call for the new round. **Infected.**
   Being turned plays a grave sting and radio interference. The drone switch
@@ -344,8 +389,9 @@ sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──
 4. **Selection** (`build-sfx.mjs`). Takes are scored: level, clipping, a hard
    first onset for punchy presets, exactly one onset for single-shot assets (MG
    and autocannon close reports, bullets, the radio key), loop seams for loops,
-   dead-air rejection, low-end weight for guns and blasts (reward 20–150 Hz,
-   penalise harsh highs), darkness for the interface and stingers, weight
+   dead-air rejection, transient anatomy for gun reports (below), low-end
+   weight for distant reports and blasts (reward 20–150 Hz, penalise harsh
+   highs), darkness for the interface and stingers, weight
    plus a clean steel transient for the loading machinery (and one event per
    clunk, not a rattle of them), and body under the hiss for ambience beds. The best `variants` takes ship; an optional
    `tools/audio/sfx-picks.json` (`{ "<id>": [take, …] }`) pins specific takes. Single-shot assets are truncated after the first
@@ -354,12 +400,36 @@ sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──
    cancellation, high-pass, trim, fades, a loudness target, a true-peak ceiling
    and the Opus bitrate. Loops are repaired at the seam and wrap-padded
    (`[last 4096 samples | body | first 4096]`) so `loopStart`/`loopEnd` from the
-   manifest never click. Close weapon reports land at −9 LUFS momentary max,
-   impacts −10, foley −14, the interface −16, ambience beds −24 LUFS integrated.
+   manifest never click. Gun reports (the `gunshot` preset) are normalised on
+   their true peak (−1.5 dBTP, the limiter left above it) and shaped by the
+   transient designer below; other close weapon sounds land at −9 LUFS
+   momentary max, impacts −10, foley −14, the interface −16, ambience beds −21
+   LUFS integrated.
    Assets with almost no energy above 12 kHz are stored at 24 kHz.
 6. **Manifest**. `build-sfx.mjs` writes `src/audio/sfxManifest.generated.ts`
    (group, variant count, durations, channels, rate, loop points, size) and the
    incremental state `tools/audio/.sfx-manifest.json`.
+
+**Gun reports** (2026-10-02). The owner heard firing as old film or gamey
+blasts, and the files agreed: the cannon reports swelled to their loudest
+60–320 ms after the shot with 25–96 % of their body below 100 Hz, several
+machine-gun takes were clipped, selection rewarded exactly that low end, and
+mastering normalised each crack to −9 LUFS momentary and limited it back,
+squaring the peak. Now:
+- range-recording prompts with a crack per calibre (below), 6–8 takes each;
+- `transientAnatomy` (`pcm.mjs`) on every take: the rise to its loudest
+  millisecond, the energy in its first 10 ms, its crest, its body below 100 Hz;
+  `build-sfx.mjs` scores an instant rise, early energy and crest up and a late
+  swell, low boom and any clipping down;
+- a single-shot take that was really a burst is cut at its second report only
+  when that report is within 8 dB of the first (a quieter onset is its own
+  echo), and a cut that leaves under 0.25 s is skipped (fewer variants ship
+  rather than a click);
+- the `gunshot` preset normalises on the true peak, and a transient designer
+  (`shapeTransient`, the entry's `shape: [holdMs, tauMs, floorDb]`) follows the
+  take's envelope and pulls a sustained blast body down onto a decaying target
+  (25–35 ms for machine guns, 30–55 ms for autocannons, 90–150 ms for tank guns,
+  floors 15–26 dB under the peak) while the crack and the echo pass untouched.
 
 **Prompt lessons.**
 - Short machine-gun and autocannon prompts produced bursts. "Gunshot sound
@@ -367,8 +437,14 @@ sfx-catalog.mjs ──→ generate-sfx.mjs ──→ sfx-qa.mjs (measure) ──
   first-shot truncation fixed them.
 - Every prompt ends with "no music, no voices"; impacts add "very loud, with an
   immediate hard attack".
-- The model rolls off the deep low end, which is why cannons and blasts get the
-  synthesized sub-bass layer and a low shelf.
+- Asked for a "deep concussive low-frequency punch … rolling outdoor echo",
+  the model returns cinematic explosions that swell to their peak a tenth of a
+  second or more after the shot. Range-recording prompts return cracks: "at a
+  military range, recorded 30 metres beside it: instantaneous, … muzzle-blast
+  crack, a hard concussive punch as the pressure wave slaps off the ground,
+  then a dry echo rolling off distant hills. Realistic documentary field
+  recording, not cinematic, no explosion, no rumble swell, no debris". A prompt
+  may be at most 450 characters.
 - Words like "ding", "chime", "beep", "bright" or "triumphant" produce exactly
   the light, jingly sounds a serious war game should not have. The interface is
   described as heavy hardware ("a heavy armoured-vehicle console push button…
@@ -475,6 +551,20 @@ crew-lines.json ─┐                    crew-voices.json
   armour-hit banks, the own-hit law), the target's destruction and the gunner's
   calls including misses; the drone, gunship, Gun Game and Infected sounds
   were generated and wired as above.
+- **2026-10-02, the drone's own sound.** The owner heard the tank's engine while
+  flying the drone: the listener stayed in the hull, so the tank played as our
+  own vehicle at full level with the drone's buzz 12 dB under it behind a feed
+  filter. The listener now rides the drone, the tank is heard from outside, and
+  the drone's motors lead with a new hover loop and wind.
+- **2026-10-02, guns that crack.** The owner heard firing as old film or gamey
+  blasts. Measured, the reports were explosions (above); all 16 close reports
+  were regenerated and picked by transient anatomy, mastered on the true peak
+  and shaped, a procedural muzzle blast went under every gun, the firing sub
+  sweep was removed and a look-ahead limiter went in ahead of the soft clip.
+- **2026-10-03, the AC-130 and every mode.** The owner asked for many AC-130
+  sounds and custom sounds for every mode: the gunship's crew cabin, its guns
+  inside and from the sky, its hand-loaded howitzer and selector, and an opener
+  per mode with the Horde's siren, the Frontline's barrage and the caches.
 
 ### Cost
 
@@ -483,17 +573,19 @@ rounds:
 
 | Kind | First round | Feedback rounds | Total |
 |---|---|---|---|
-| Sound generation | 26,625 | 26,935 | 53,560 |
+| Sound generation | 26,625 | 33,503 | 60,128 |
 | Text-to-speech (casts, auditions, builds, re-rolls) | 9,029 | 10,520 | 19,549 |
 | Speech-to-text verification | 1,718 | 1,909 | 3,627 |
-| **All** | **37,372** | **39,364** | **76,736** |
+| **All** | **37,372** | **45,932** | **83,304** |
 
 The feedback rounds' sound generation is the regenerated interface, stingers
 and foley, the distant armour hits (400), the aircraft and Infected sounds
 (1,350), and the own-tank round (22,819: the own-gun reports and machinery,
 the turret drive, every battlefield bed twice and ten of them again with four
-takes, the hangar); nearly all of their speech is the serious recast and
-rebuild of all 13 packs (10,873) plus the re-rolls of doubled calls (634).
+takes, the hangar), the drone's hover and wind (528), the regenerated gun
+reports (3,044) and the AC-130 and mode packs (2,996); nearly all of their
+speech is the serious recast and rebuild of all 13 packs (10,873) plus the
+re-rolls of doubled calls (634).
 
 ## Changing or extending it
 
@@ -522,7 +614,7 @@ Headless selftests (all in `npm test`):
 |---|---|
 | `src/audio/audioMath.selftest.mjs` | distance law, air absorption, atmospheres, delay, Doppler, crossfades, listener frame and pan side |
 | `src/audio/vehicleAudioProfiles.selftest.mjs` | powertrain mapping, families, crews, loaders, drives |
-| `src/audio/weaponAudio.selftest.mjs` | bore classes, ordering, report trims, reload choreography |
+| `src/audio/weaponAudio.selftest.mjs` | bore classes, ordering, report trims, reload choreography, the muzzle blast (instant, peak-normalised, deterministic, longer and lower with the bore) |
 | `src/audio/vehicleAudioModel.selftest.mjs` | idle, gearboxes, no gear hunting, turbine spool, braking, scrub, landings, stalls |
 | `src/audio/soundAssets.selftest.mjs` | manifests against files, every engine reference, families, tracks, scenes, packs, payload budgets |
 | `src/audio/assetLibrary.selftest.mjs` | pinning, eviction and reload, voice bytes, the mobile variant cap |
@@ -536,7 +628,7 @@ Browser probes (they take the machine-wide GPU capture lock; set
 
 | Probe | Checks |
 |---|---|
-| `node tools/audio-mix-balance.mjs` | garage audibility, gunfire at 15/150/400 m over the idle battle bed, the radio under a near cannon, sound starts and radio lines per second in live combat |
+| `node tools/audio-mix-balance.mjs` | garage audibility; gunfire at 15/150/400 m and our own gun over the idle battle bed on their loudest 100 ms; each shot's anatomy from its arrival (a near cannon must crack: rise ≤ 15 ms, ≤ 50 % low body) and soft-clip hits; the radio under a near cannon; sound starts and radio lines per second in live combat; the drone in flight (the listener rides it, its motors lead, the feed brightens); an AC-130 battle (the opener, the cabin, the howitzer and its case) |
 | `node tools/sfx-smoke.mjs` | every scene's assets, the calibre ladder, the distance crossfade and propagation delay, routing, jitter, volley headroom (battle held frozen) |
 | `node tools/voice-smoke.mjs` | the national crew, live language switching through the bus and the Sound tab, all 13 packs through the radio chain |
 | `node tools/audio-probe.mjs` | the full event, voice and bus matrix with recordings |

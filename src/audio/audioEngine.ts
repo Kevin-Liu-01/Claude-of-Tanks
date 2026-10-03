@@ -389,6 +389,8 @@ export function createAudio({
 
   // Player battle bookkeeping.
   let rolledOut = false;
+  let bossId: string | null = null;
+  let bossChecked = false;
   let movedOnce = false;
   let lowHpCalled = false;
   let ammoLowCalled = false;
@@ -542,9 +544,11 @@ export function createAudio({
     return buffer;
   }
 
-  function fireWeapon(pos: Vec3, caliberMm: number, soundProfile: string | null | undefined, own: boolean, muzzleIndex = -1, cinematic = false): void {
+  function fireWeapon(pos: Vec3, caliberMm: number, soundProfile: string | null | undefined, own: boolean, muzzleIndex = -1, cinematic = false, shooterId: string | null = null): void {
     if (!ready()) return;
-    const report = resolveWeaponReport(caliberMm, soundProfile);
+    const resolved = resolveWeaponReport(caliberMm, soundProfile);
+    // The Juggernaut's gun carries further and sits a little deeper.
+    const report = shooterId != null && shooterId === bossId ? { ...resolved, gainDb: resolved.gainDb + 2.5, rate: resolved.rate * 0.94 } : resolved;
     const cls = report.cls;
     const [x, y, z] = pos;
     const distance = own ? 2 : distanceTo(x, y, z);
@@ -634,7 +638,7 @@ export function createAudio({
 
   function onShellFired(event: ShellFiredEvent): void {
     const ownShot = listenerOwnerId != null ? event.shooterId === listenerOwnerId : !!event.isPlayer;
-    if (!event.feedbackPredicted) fireWeapon(event.muzzlePos, event.caliberMm, event.weaponSound, ownShot, event.muzzleIndex);
+    if (!event.feedbackPredicted) fireWeapon(event.muzzlePos, event.caliberMm, event.weaponSound, ownShot, event.muzzleIndex, false, event.shooterId);
     if (!ownShot) shellFlyby(event);
     if (event.isPlayer) {
       if (/launch/.test(String(event.weaponSound || ''))) say('missile_away', { prob: 0.5, delayS: 0.1 });
@@ -1381,6 +1385,31 @@ export function createAudio({
       }
     }
     if (listenerOwnerId == null && listenerKind === 'player-tank') listenerOwnerId = playerId;
+    if (!bossChecked && getGameMode?.() === 'juggernaut') markJuggernaut(list);
+  }
+
+  /**
+   * Juggernaut: the boss (eight times anyone's hull) sounds like one. Its engine bank runs deeper, it lands and
+   * rams with a superheavy's mass and its gun reports carry further (fireWeapon). Found once per battle by its hull.
+   */
+  function markJuggernaut(list: readonly RuntimeValue[]): void {
+    let top: AudioEntity | null = null;
+    let topHp = 0;
+    let nextHp = 0;
+    for (let i = 0; i < list.length; i++) {
+      const entity = toEntity(list[i]);
+      const hp = entity?.combat?.maxHp ?? 0;
+      if (hp > topHp) { nextHp = topHp; topHp = hp; top = entity; } else if (hp > nextHp) nextHp = hp;
+    }
+    if (!top || nextHp <= 0) return;
+    bossChecked = true;
+    if (topHp < 3 * nextHp) return;
+    bossId = top.id;
+    const info = tanks.get(top.id);
+    if (info) info.identity = Object.freeze({ ...info.identity, enginePitch: info.identity.enginePitch * 0.86, mass: 1 });
+    const rig = rigs.get(top.id);
+    if (rig) { rig.kill(0.2); rigs.delete(top.id); }
+    logSound('mode:juggernaut-boss', { id: top.id });
   }
 
   function preloadVehicle(identity: VehicleAudioIdentity): void {
@@ -1891,6 +1920,8 @@ export function createAudio({
         playerId = null;
         playerTeam = null;
         rolledOut = false;
+        bossId = null;
+        bossChecked = false;
         movedOnce = false;
         lowHpCalled = false;
         ammoLowCalled = false;

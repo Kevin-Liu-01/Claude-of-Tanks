@@ -399,6 +399,23 @@ ctx.advance(1);
 since = mark();
 bus.emit('mode:line_advanced', { line: 1, total: 3 });
 assert.ok(logSince(since).some((e) => e.n === 'mode_frontline_barrage'), 'the Frontline moves up behind a barrage');
+// Juggernaut: the boss (eight times anyone's hull) is found once per battle, and its gun carries further.
+gameMode = 'juggernaut';
+const boss = tank('boss', { x: -30, z: 60, team: 'enemy', specId: 'm1a2', nation: 'USA' });
+boss.combat.maxHp = 8000;
+boss.combat.hp = 8000;
+ctx.advance(1 / 60);
+audio.update(1 / 60, listener, [...tanks, boss]);
+assert.ok(probe.soundLog.some((e) => e.type === 'mode:juggernaut-boss' && e.id === 'boss'), 'the juggernaut is found by its hull');
+ctx.advance(1);
+since = mark();
+bus.emit('shell:fired', { shellId: volleyId++, shooterId: 'foe', muzzlePos: [-30, 2, 60], dir: [0, 0, -1], caliberMm: 120, shellType: 'APFSDS' });
+const hunterShot = logSince(since).find((e) => e.n === 'gun_120_close');
+ctx.advance(1);
+since = mark();
+bus.emit('shell:fired', { shellId: volleyId++, shooterId: 'boss', muzzlePos: [-30, 2, 60], dir: [0, 0, -1], caliberMm: 120, shellType: 'APFSDS' });
+const bossShot = logSince(since).find((e) => e.n === 'gun_120_close');
+assert.ok(hunterShot && bossShot && bossShot.g > hunterShot.g * 1.2, `the juggernaut's gun carries further (${hunterShot?.g} → ${bossShot?.g})`);
 gameMode = 'standard';
 
 // Gun Game: the crew changes over to the next weapon and calls the load; Infected: a grave sting.
