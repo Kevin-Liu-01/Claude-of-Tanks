@@ -358,6 +358,8 @@ export interface HeightField {
   getBorderHandOverAt?(x: number, z: number): number;
   /** The map-borders lane: the border's woods (0 open … 1 wooded) — the ring forest and the rim trees past 470 m stand by it. */
   getBorderWoodsAt?(x: number, z: number): number;
+  /** The map-borders lane: the border's hedgerows (0 … 1 on a field boundary's tree line past the edge). */
+  getBorderHedgeAt?(x: number, z: number): number;
   getHeightAtFast(x: number, z: number): number;
   /** Near-mesh triangle surface shared by movement and visible suspension. */
   getContactHeightAt?(x: number, z: number): number;
@@ -2149,6 +2151,7 @@ function* heightFieldBuildSteps(
     // the map-borders lane: where the near ring hands its continued ground over to the authored ranges
     getBorderHandOverAt: border.handOverAt,
     getBorderWoodsAt: border.woodsAt,
+    getBorderHedgeAt: border.hedgeAt,
     _roadExitAt: roadExitAt,
     ...(cfg?.navigationWaterPolicy
       ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),

@@ -3423,6 +3423,7 @@ export function* buildHorizonRingSteps(
     // the map-borders lane (2026-10-03): the band's woods take the border landform's share (no hedge round the square)
     bandShare: resolveBorderLandform(style, (cfg as { terrain?: { border?: Partial<BorderLandformSettings> } } | null | undefined)?.terrain?.border, mapId).forest,
     ...(ground?.getBorderWoodsAt ? { woodsAt: ground.getBorderWoodsAt } : {}),
+    ...(ground?.getBorderHedgeAt ? { hedgeAt: ground.getBorderHedgeAt } : {}),
     detailNoise: mat.userData.horizonDetailNoise as DetailNoiseSampler,
     // round 72c: the stands follow the coarse relief (clumps in the hollows, gaps on the crests, a wandering treeline)
     ...(reliefField ? { reliefAt: (x: number, z: number) => reliefField.low(x, z) / Math.max(1, reliefField.settings.lowAmpM) } : {}),

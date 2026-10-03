@@ -680,6 +680,9 @@ interface HorizonForestOptions {
   /** The map-borders lane: the border's woods field (borderLandform.ts woodsAt, 0..1) — when given, the stands follow it
    * (the square's rim trees past the playable edge stand by the same field) instead of the ring's own patch field. */
   woodsAt?: (x: number, z: number) => number;
+  /** The map-borders lane: the border's hedgerows (borderLandform.ts hedgeAt, 0..1) — tree lines along the field
+   * boundaries past the edge. */
+  hedgeAt?: (x: number, z: number) => number;
   /** Strength of the per-fragment aerial haze toward the fog tint (the ring's own uVHaze). */
   haze?: number;
   /** Textures created here join the ring's retained list. */
@@ -998,7 +1001,7 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
         if (bandShare !== undefined) {
           // (a lone field tree's chance follows the country: a wooded valley has more of them than a steppe)
           const lone = 0.045 * bandShare;
-          if (options.woodsAt) stand *= Math.max(lone, options.woodsAt(x, z));
+          if (options.woodsAt) stand *= Math.max(lone, options.woodsAt(x, z), options.hedgeAt ? options.hedgeAt(x, z) * 0.9 : 0);
           else {
             const w = woodsAt(x, z, faceSlope);
             stand *= w >= woodsCut + 0.04 ? 1 : w >= woodsCut - 0.04 ? smoothstep(woodsCut - 0.04, woodsCut + 0.04, w) : lone;

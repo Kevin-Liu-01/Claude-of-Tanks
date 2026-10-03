@@ -24,6 +24,8 @@ export interface CanyonGround {
   getBorderHandOverAt?(x: number, z: number): number;
   /** The map-borders lane: the border's woods (0 open … 1 wooded). */
   getBorderWoodsAt?(x: number, z: number): number;
+  /** The map-borders lane: the border's hedgerows (0 … 1 on a field boundary's tree line). */
+  getBorderHedgeAt?(x: number, z: number): number;
 }
 
 interface SeamPoint { angle: number; x: number; z: number; height: number }
