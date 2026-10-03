@@ -70,13 +70,25 @@ const timeouts = resultReasons.filter((reason) => reason === 'time_limit').lengt
 // the 4–8 minute target. Until the owner rules (accept a 3–8 minute band, or slow the bots), a median in
 // [180, 240) passes as this pending ruling; anything faster still fails.
 //
-// The same pending ruling bounds the two-minute floor: at most 4 of the default matches, and never more than 3 %
-// of them (rounded to the nearest whole match, so 4 of the fleet's 132 and none of a single map's 4), may end
-// inside 120 s; none may end inside 90 s; and each fast match is named. On 87fbeaec1, the merged tree with the
-// maps lane's rebuilt Sirocco Wadi, Steinburg and Cinder Junction, they are Verdant Fields 98 s, Frontier Basin
-// 104 s, Saltwind Narrows 104 s and Saltmere Bay 113 s. All four predate the maps lane: the PR head 1cc106369,
-// with the old pilot maps, ends the same four matches at the same times. Those four maps lead the maps lane's
-// next layout batch, each rebuilt for a longer opening; remove this allowance once their matches clear 120 s.
+// The fast tail is a proportional design rule (the PR #9 coordinator's rulings, 2026-10-02). The receipt guards
+// against bots converging and deciding matches in about two minutes. That is a property of the distribution, not of
+// any one seed: the 132 matches are deterministic, but each outcome is chaotic in its inputs, so every correct routing
+// or placement change flips a few seeds either way. Two such changes showed it:
+// - The maps lane's road footprint fix left out a boulder that stood in Redrock Divide's road at (-200, 21). Alpha's
+//   bot then drove straight up the road and won seed 32002's 1v2 in 105 s, where it had lost at 269 s. (Redrock's
+//   rebuild to the layout brief, 2026-10-02, reseeded that ground; its four seeds now run 165-279 s.)
+// - The bots lane's clearance-aware navigation grid stopped 28-65 % of each map's planned routes from passing through
+//   cover or sub-hull gaps. On the maps tree with that fix, three matches end inside 120 s (Fjord 30001 110 s,
+//   Redrock 32003 102 s, Mangrove 48001 117 s), each one alpha's lone bot winning its 1v2 with no pile-on.
+// A fixed match count would turn red on each such fix, so the tail is held as a share:
+// - p10 >= 120 s;
+// - at most 3 % of the matches (rounded to the nearest whole match: 4 of the fleet's 132, none of one map's 4) end
+//   inside 120 s;
+// - none ends inside 90 s;
+// - each fast match is printed by map, seed and seconds, with its cause where one is known (FAST_MATCH_CAUSES).
+// History: the original rule allowed no match inside 120 s. The pending ruling of 614323cc7 named four (Verdant 98 s,
+// Frontier 104 s, Saltwind 104 s and Saltmere 113 s, all older than the maps lane); the maps lane's batch 1 rebuilt
+// those maps, and d98a997c9 restored the strict rule until the footprint fix (753f228d0 allowed 2, at most 1.5 %).
 const TARGET_MEDIAN_S = { min: 240, max: 480 };
 const PENDING_RULING_MEDIAN_FLOOR_S = 180;
 assert.ok(medianS >= PENDING_RULING_MEDIAN_FLOOR_S && medianS <= TARGET_MEDIAN_S.max,
@@ -88,22 +100,26 @@ if (medianS < TARGET_MEDIAN_S.min) {
 }
 assert.ok(p10S >= 120,
   `even the fast tail must retain a tactical opening (p10 ${p10S.toFixed(1)} s)`);
-const PENDING_RULING_FAST = { maxMatches: 4, maxShare: 0.03, floorS: 90 };
-const fastAllowed = Math.min(PENDING_RULING_FAST.maxMatches, Math.round(matches.length * PENDING_RULING_FAST.maxShare));
+const FAST_TAIL = { maxShare: 0.03, floorS: 90 };
+/** One-line causes of known fast matches, keyed `${mapId} ${seed}`. */
+const LONE_BOT_WINS = 'alpha\'s lone bot wins its 1v2 on the clearance-aware route grid, with no pile-on';
+const FAST_MATCH_CAUSES = {
+  'fjord 30001': LONE_BOT_WINS,
+  'badlands 32003': LONE_BOT_WINS,
+  'mangrove 48001': LONE_BOT_WINS,
+};
+const fastAllowed = Math.round(matches.length * FAST_TAIL.maxShare);
 const fastMatches = matches.filter((entry) => entry.timeS < 120);
-const fastList = fastMatches.map((entry) => `${entry.mapId} seed ${entry.seed} ${entry.timeS.toFixed(0)} s`).join(', ');
-assert.equal(subTwoMinute, fastMatches.length, 'every sub-two-minute match is accounted for');
-assert.ok(matches.every((entry) => entry.timeS >= PENDING_RULING_FAST.floorS),
-  `no default bot match may end inside ${PENDING_RULING_FAST.floorS} s (got ${matches
-    .filter((entry) => entry.timeS < PENDING_RULING_FAST.floorS)
-    .map((entry) => `${entry.mapId} seed ${entry.seed} ${entry.timeS.toFixed(0)} s`).join(', ')})`);
+const fastName = (entry) => `${entry.mapId} seed ${entry.seed} ${entry.timeS.toFixed(0)} s` +
+  (FAST_MATCH_CAUSES[`${entry.mapId} ${entry.seed}`] ? ` (${FAST_MATCH_CAUSES[`${entry.mapId} ${entry.seed}`]})` : '');
+assert.equal(subTwoMinute, fastMatches.length, 'every sub-two-minute match is named');
+assert.ok(matches.every((entry) => entry.timeS >= FAST_TAIL.floorS),
+  `no default bot match may end inside ${FAST_TAIL.floorS} s (got ${matches
+    .filter((entry) => entry.timeS < FAST_TAIL.floorS).map(fastName).join('; ')})`);
 assert.ok(fastMatches.length <= fastAllowed,
-  'default bot matches no longer collapse inside two minutes: at most ' +
-  `${fastAllowed} of ${matches.length} under the pending owner ruling (got ${fastMatches.length}: ${fastList})`);
-if (fastMatches.length) {
-  console.log(`battlePacing.selftest: ${fastMatches.length} of ${matches.length} matches ended inside 120 s ` +
-    `(target 0; passing as the pending owner ruling of 2026-10-02, at most ${fastAllowed}): ${fastList}`);
-}
+  `default bot matches no longer collapse inside two minutes: at most ${fastAllowed} of ${matches.length} may ` +
+  `(got ${fastMatches.length}: ${fastMatches.map(fastName).join('; ')})`);
+for (const entry of fastMatches) console.log(`battlePacing.selftest: fast match ${fastName(entry)}`);
 const maxTimeouts = Math.floor(durations.length * 0.125);
 assert.ok(timeouts <= maxTimeouts,
   `no more than 12.5% may reach the safety cap (got ${timeouts}/${durations.length})`);

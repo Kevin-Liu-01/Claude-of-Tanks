@@ -3,7 +3,7 @@
  * all maps (tactical map 2026-09-15: cartographic tone curve, hillshade, union
  * shorelines — every raster was re-baked, so every cache entry invalidates).
  */
-export const MINIMAP_RASTER_REVISION = 'north-up-v10-layouts'; // 2026-10-02: Sirocco Wadi, Steinburg and Cinder Junction plates re-baked for the layout redesigns (round 48: Frosthollow, Amberford, Tarkhan Steppe)
+export const MINIMAP_RASTER_REVISION = 'north-up-v11-layouts'; // 2026-10-02: Frontier Basin, Saltwind Narrows, Saltmere Bay and Verdant Fields plates re-baked for their layout redesigns (v10: Sirocco Wadi, Steinburg and Cinder Junction; round 48: Frosthollow, Amberford, Tarkhan Steppe)
 
 /** Shared by intent prefetch and world activation; keep unchanged maps cached. */
 export function minimapAssetUrl(mapId: string, baseUrl = '/', version?: string): string {

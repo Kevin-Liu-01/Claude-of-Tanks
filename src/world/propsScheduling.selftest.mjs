@@ -4,6 +4,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { box, jitterUV } from './propGeometry.ts';
+import { boxClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
 
 // Execute the actual public scheduling wrapper with an owned generator fixture.
 // Geometry/output equivalence is separately checked by the whole-world profile;
@@ -383,7 +384,7 @@ assert.ok(placementStart > 0 && placementEnd > placementStart);
 const placementSource = stripTypeScriptTypes(source.slice(placementStart, placementEnd));
 const wreckCast = ['m551_sheridan', 'marder1a3', 'leo2a7v', 'm1a1', 't90a'];
 
-function placementFixture({ authored = true, random = () => 0.25, code = placementSource } = {}) {
+function placementFixture({ authored = true, random = () => 0.25, code = placementSource, roadDistance = 1e9 } = {}) {
   const state = { nullBake: false, maxEmbed: 0, bakes: [], bakeDrains: 0, randomCalls: 0 };
   const outputs = { wreckGeos: [], wreckShadowGeos: [], obstacles: [], colliders: [],
     wreckScorch: [], tankWreckSpots: [], decorationGroundingReceipts: [] };
@@ -400,7 +401,9 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     },
     planGroundedObbPose: () => ({ y: 0, normalX: 0, normalY: 1, normalZ: 0,
       min: 0, max: 0, spread: 0, maxEmbed: state.maxEmbed, maxFloat: 0 }),
-    heightField: {}, _quat: { setFromUnitVectors() {} }, _upAxis: {},
+    // the road footprint law (roadFootprint.ts): far from every road unless a case puts the wreck on one
+    heightField: { _roadDist: () => roadDistance }, shiftClearOfRoadCore, boxClearOfRoadCore, placedB: [],
+    _quat: { setFromUnitVectors() {} }, _upAxis: {},
     _posv: { set() { return this; } },
     setObbShape: record => record, cloneCollisionRecord: record => structuredClone(record),
   };
@@ -450,6 +453,12 @@ function assertRejectedWreckRetry(code = placementSource) {
   assert.equal(f.outputs.colliders.length, wreckCast.length);
 }
 assertRejectedWreckRetry();
+{
+  // a hull whose footprint the road core takes everywhere within 8 m is not placed, and keeps its authored slot
+  const onRoad = placementFixture({ roadDistance: 0 });
+  assert.deepEqual(attemptWreck(onRoad), { placed: false, selected: wreckCast[0] });
+  assertNoPlacement(onRoad);
+}
 
 // Restore the observed defect in memory: selection itself consumed the slot.
 // The same functional assertion must reject this exact old ordering.

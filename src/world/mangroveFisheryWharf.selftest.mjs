@@ -12,6 +12,7 @@ import { convexHull2 } from './collision.ts';
 import { appendStructureCollisionBand, certifyStructureCollisionProfile, deriveRuntimeStructureCollisionProfile } from './structureCollision.ts';
 import { certifyGroundedStructureParts, measureBoundsJoint } from './structureConnectivity.ts';
 import { planRiverLanding } from './maps/riverLandings.ts';
+import { fisheryWharfClearance } from './fisheryWharfSite.ts';
 import mangrove from './maps/mangrove.ts';
 
 const propsSource = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
@@ -194,6 +195,19 @@ assert.deepEqual(after.captured.totalBudget, before.captured.totalBudget);
 assert.deepEqual(after.meshes, before.meshes, 'actual merged/instanced mesh counts, buffers, materials and every unrelated instance transform exact');
 assert.notDeepEqual(after.props.features.buildings[0], before.props.features.buildings[0]);
 assert.equal(originalCompose('polders', field, null, undefined, [], null, []), null, 'non-Mangrove no-op');
+// 2026-10-02: the vegetation keepout (vegetationClearance.ts placedStructureClearances) stands where the placed wharf
+// does. Its world box sits inside the clearance the same landing gives, which is grown by the crown test's 0.3 m, so
+// no tree or bush can take the wharf's ground whatever the terrain, the landing or the seed.
+{
+  const clearance = fisheryWharfClearance('mangrove', field, mangrove.props.riverLandings);
+  assert.ok(clearance, 'the wharf landing publishes a vegetation clearance');
+  assert.equal(fisheryWharfClearance('polders', field, mangrove.props.riverLandings), null, 'no other map publishes one');
+  const box = new THREE.Box3();
+  for (const g of Object.values(after.captured.packet.buckets).flat()) { g.computeBoundingBox(); box.union(g.boundingBox); }
+  const inner = (lo, hi, centre, half) => lo >= centre - half + 0.3 - 1e-6 && hi <= centre + half - 0.3 + 1e-6;
+  assert.ok(inner(box.min.x, box.max.x, clearance.x, clearance.halfWidth) && inner(box.min.z, box.max.z, clearance.z, clearance.halfLength),
+    `the placed wharf [${box.min.x.toFixed(2)}, ${box.min.z.toFixed(2)} .. ${box.max.x.toFixed(2)}, ${box.max.z.toFixed(2)}] stays inside its vegetation clearance`);
+}
 
 function matrix(p) { return new THREE.Matrix4().makeRotationY(p.yaw).setPosition(p.x, p.y, p.z); }
 function localPacket(packet, pose) {

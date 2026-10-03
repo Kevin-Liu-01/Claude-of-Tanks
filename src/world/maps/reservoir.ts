@@ -1,5 +1,16 @@
-// Upland waterworks: a western deployment forks around the offset reservoir,
-// with a screened northern bank and a dry southern dam-side saddle.
+// src/world/maps/reservoir.ts — Highland Reservoir, revised 2026-10-02 (maps-and-layouts lane; docs/MAP-LAYOUT-BRIEF.md).
+// The three-lobed reservoir, the waterworks, the service settlement, the ridges, the road fork and both deployments are
+// the map's identity and stay. The old layout let alpha's pad see the middle of bravo's assembly ground over the east
+// ridge, left that ground between bravo's two pockets with 15 % cover, and put every zone-control disc 30-130 m closer
+// to alpha: the lake makes bravo drive round it.
+//
+// Reference: the Roer dams in the Eifel highlands (the Urft and Schwammenauel reservoirs, winter 1944-45): an upland
+// lake held by a dam, spruce and pine on the ridges, waterworks on the shore, and a service village below the woods.
+//
+// The story on the ground: alpha forms up on the western apron behind the west ridge, and the road forks round the
+// lake. Bravo assembles in two pockets on the east plateau, south and north of the lake, with a spruce knoll between
+// them that hides both from the west. The zone-control discs stand on the waterworks' three gravel yards, which lie on
+// the line of equal driven distance between the deployments: it runs east of the straight midline, round the lake.
 import frontier from './frontier.ts';
 export default {
   id: 'reservoir', name: 'Highland Reservoir',
@@ -13,7 +24,16 @@ export default {
     // Existing hardstand stamps grade the current road grids/mask; no mesh,
     // additional terrain buffer, path or material is constructed here.
     hardstands: [
-      { x: -393, z: -73, width: 76, length: 260, yawDeg: -7, grade: 0 },
+      // Its plane stands at 2.0 m, between the road's height at its western and eastern edges, so both feathers
+      // stay under the brief's 18 % road grade (at the road's centre height, 3.6 m, the eastern feather fell 3 m
+      // into the fork at 27 %).
+      { x: -393, z: -73, width: 76, length: 260, yawDeg: -7, level: 2.0, grade: 0 },
+      // The waterworks' three gravel yards on the line of equal driven distance between the deployments (the lake
+      // makes bravo drive round it, so the line runs east of the straight one): the north bank's timber landing, the
+      // shore yard below the village and the south yard beyond the substation. The zone-control discs seat on them.
+      { x: 0, z: 300, width: 56, length: 56, yawDeg: 0, grade: 0 },
+      { x: 40, z: -120, width: 50, length: 50, yawDeg: 0, grade: 0 },
+      { x: 40, z: -340, width: 56, length: 56, yawDeg: 0, grade: 0 },
     ],
     roads: { paths: [
       // Western deployment enters one fork, not one of several full-height
@@ -40,7 +60,7 @@ export default {
       // Stay east of the basin: extrapolating the first interior tangent
       // previously sent this service road 355m southwest to the wrong gate.
       // The intermediate bend spreads the turn before the southern spawn.
-      [[420, -480], [420, -448], [370, -400], [370, -328], [436, -288], [420, -208], [392, -100], [416, 0],
+      [[420, -480], [420, -448], [370, -400], [370, -328], [436, -288], [420, -208], [392, -100], [424, 0],
         [388, 160], [448, 226], [372, 282], [440, 354], [448, 400], [480, 400]],
     ] },
     // Three unequal lobes form an irregular upland retention basin. Their
@@ -59,8 +79,16 @@ export default {
       { kind: 'ridge', x: 102, z: 282, length: 290, width: 68, height: 7.0, yawDeg: 86 },
       { kind: 'basin', x: 162, z: 12, rx: 152, rz: 232, height: -5.0, wetScale: 0.2 },
       { kind: 'knoll', x: -126, z: 250, rx: 94, rz: 68, height: 5.8 },
+      // a spruce knoll on the east plateau between bravo's two assembly pockets: it hides them from the western
+      // deployment and gives the plateau's open middle its cover
+      { kind: 'knoll', x: 372, z: 30, rx: 34, rz: 46, height: 5.5 },
     ],
   },
+  layoutBrief: { exceptions: {
+    solidPropsInWater: 'the waterworks\' bank manifold and submerged-footed intake (src/world/reservoirWaterworks.ts) '
+      + 'stand in the lake by design, where they draw water from the middle lobe',
+  } },
+
   spawns: {
     player: { x: -384, z: -72,
       formation: { columnSpacingM: 8, rowSpacingM: 13 } },

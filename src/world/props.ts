@@ -58,6 +58,8 @@ import {
   type DestructiblePropType,
 } from './maps/inhabitKit.ts';
 import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
+import { boxClearOfRoadCore, discClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
+import { FISHERY_WHARF_LAKE_INDEX } from './fisheryWharfSite.ts';
 import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } from './loggingYard.ts';
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
 import { composeMangroveFisheryWharf, type FisheryPacket, type FisheryVegetation } from './mangroveFisheryWharf.ts';
@@ -80,7 +82,7 @@ import {
   resolveLoosePropObstacle, resolveLoosePropPair, stepLoosePropBody,
 } from './loosePropPhysics.ts';
 import {
-  cloneCollisionRecord, convexHull2, setCircleShape, setConvexShape, setObbShape,
+  cloneCollisionRecord, convexHull2, setCircleShape, setCompoundShape, setConvexShape, setObbShape,
   type SimpleCollisionShape,
 } from './collision.ts';
 import {
@@ -3179,6 +3181,31 @@ ${snowCap ? `
       destructibleContext, kind, x, y, z, yaw, sc, tiltX, tiltZ,
     );
   }
+  // A destructible's placed obstacle is refitted at pool finalization to the solids its built geometry bears on the
+  // ground (refitDestructibleColliders), and that band can outreach the metadata box: a bunker's reaches 5.3 m from its
+  // centre, its box 4.0 m. The band's half extents (across, along) at scale 1 are measured once per kind on a
+  // fixed-seed build, outside every placement stream.
+  const destructibleFootprints = new Map<string, readonly [number, number]>();
+  function destructibleFootprint(kind: string): readonly [number, number] {
+    let extents = destructibleFootprints.get(kind);
+    if (!extents) {
+      const meta = resolveDestructibleMeta(destructibleContext, kind);
+      const geometry = meta.build(mulberry32(0x0f0f7));
+      const band = deriveRuntimeStructureContactBand({ baked: [geometry] });
+      geometry.dispose();
+      const bounds = setCompoundShape({ min: [0, 0, 0], max: [0, 0, 0] }, band.parts);
+      extents = band.parts.length
+        ? [Math.max(-bounds.min[0], bounds.max[0]), Math.max(-bounds.min[2], bounds.max[2])]
+        : [meta.hw ?? meta.r, meta.hl ?? meta.r];
+      destructibleFootprints.set(kind, extents);
+    }
+    return extents;
+  }
+  /** Whether a destructible's whole contact footprint at this seat stays out of the road core (roadFootprint.ts). */
+  function destructibleClearOfRoad(kind: string, x: number, z: number, yaw: number, sc: number): boolean {
+    const [hw, hl] = destructibleFootprint(kind);
+    return boxClearOfRoadCore(heightField, x, z, hw * sc + 0.05, hl * sc + 0.05, yaw);
+  }
   /**
    * March destructible fence MODULES (FENCE_SEG pitch) along a ground line —
    * the wooden-fence side of the wall kit. Modules pitch to the terrain,
@@ -3536,7 +3563,8 @@ ${snowCap ? `
     if (heightField._roadDist(px, pz) < 7.5 || noVeg(px, pz)) return;
     if (conflictsTacticalReservation(px, pz) || !isRoadBuildingSiteClear(px, pz)) return;
     const rot = Math.atan2(cand.tx, cand.tz) + (rng() - 0.5) * 0.10;
-    const roadSite = mapId !== 'verdant' && mapId !== 'mangrove' && mapId !== 'foundry'
+    // 2026-10-02: Mangrove Reach, rebuilt to the layout brief, takes the frontage law as well
+    const roadSite = mapId !== 'verdant' && mapId !== 'foundry'
       && !P.streetRows && !P.orbitalSettlement ? { ...cand, side } : undefined;
     placePlannedBuilding(px, pz, rot, roadSite);
   }
@@ -3689,7 +3717,14 @@ ${snowCap ? `
     ): void => {
       if (!ruined) return;
       const x = rx + nx * (offset - depth * 0.55), z = rz + nz * (offset - depth * 0.55);
-      if (heightField._roadDist(x, z) > 3.4) addRubblePile(x, z, 1.8 + srng() * 1.2, srng);
+      if (heightField._roadDist(x, z) <= 3.4) return;
+      // The spill keeps its whole pile out of the road core, moved back toward the ruin when it reaches in. Where no
+      // seat within 8 m clears (a dense street grid), the pile keeps its old seat: it is drive-through rubble, and
+      // its draws feed the next street-row slots.
+      const pr = 1.8 + srng() * 1.2;
+      const seat = shiftClearOfRoadCore(heightField, x, z, (px, pz) => discClearOfRoadCore(heightField, px, pz, pr))
+        ?? [x, z];
+      addRubblePile(seat[0], seat[1], pr, srng);
     };
     const placeStreetRowSlot = (
       distance: number,
@@ -4292,6 +4327,21 @@ ${snowCap ? `
     if (!P.well) return;
     let wx = junction.x + 9, wz = junction.z + 7;
     for (let i = 0; i < 20 && heightField._roadDist(wx, wz) < 6.5; i++) { wx += 2; wz += 1; }
+    if (heightField._roadDist(wx, wz) < 6.5) {
+      // the walk ran out inside a dense street grid and left the well in the carriageway: take the nearest seat round
+      // the junction whose ring clears the roads (and the buildings), or no well
+      let seat: [number, number] | null = null;
+      for (let radius = 10; radius <= 60 && !seat; radius += 5) {
+        for (let k = 0; k < 16 && !seat; k++) {
+          const a = (k / 16) * Math.PI * 2;
+          const px = junction.x + Math.cos(a) * radius, pz = junction.z + Math.sin(a) * radius;
+          if (heightField._roadDist(px, pz) >= 6.5
+            && !placedB.some((building) => Math.hypot(px - building.x, pz - building.z) < building.rr + 1.5)) seat = [px, pz];
+        }
+      }
+      if (!seat) return;
+      [wx, wz] = seat;
+    }
     const wy = heightField.getHeightAt(wx, wz);
     const ring = new THREE.CylinderGeometry(1.0, 1.1, 0.9, 10, 1);
     scaleUV(ring, 3, 0.5);
@@ -5024,6 +5074,12 @@ ${snowCap ? `
     _quat.setFromAxisAngle(_upAxis, yawR);
     _mat4.compose(_posv.set(x, y, z), _quat,
       _scalev.set(sc, sc * (0.8 + rng() * 0.35), sc));
+    // The boulder keeps its whole footprint (the collision hull) out of the road core. One that would reach into it is
+    // left out, its draws still taken and its count kept, so every later placement keeps its seat.
+    const hull = rockHulls[vv];
+    let hullReach = 0;
+    for (let i = 0; i < hull.length; i += 2) hullReach = Math.max(hullReach, Math.hypot(hull[i], hull[i + 1]));
+    if (!discClearOfRoadCore(heightField, x, z, hullReach * sc)) return true;
     const placement = _mat4.clone();
     rockPlacements[vv].push(placement);
     // sink <= 0.5: half-drifted surface rocks keep their cover role; only the
@@ -5710,13 +5766,22 @@ ${snowCap ? `
         if (heightField.getGroundType(px, pz) === 'soft' || noVeg(px, pz)) continue;
         const roll = trng();
         const kind = roll < 0.5 ? 'sandbagwall' : roll < 0.8 ? 'sandbagbig' : 'sandbagsmall';
-        addDestructible(kind, px, heightField.getHeightAt(px, pz) - 0.04, pz, yaw + (trng() - 0.5) * 0.12, 1.15 + trng() * 0.25);
+        // every piece keeps its whole footprint out of the road core: one that would reach into it is left out, its
+        // draws still taken and its station counted, so the rest of the works keep their seats
+        const parapetYaw = yaw + (trng() - 0.5) * 0.12, parapetScale = 1.15 + trng() * 0.25;
+        if (destructibleClearOfRoad(kind, px, pz, parapetYaw, parapetScale)) {
+          addDestructible(kind, px, heightField.getHeightAt(px, pz) - 0.04, pz, parapetYaw, parapetScale);
+        }
         placed++;
         // friendly lip: ammunition and crates every third station
         if (placed % 3 === 0) {
           const fx = line.x + line.lx * along - line.ax * (lip + 0.6), fz = line.z + line.lz * along - line.az * (lip + 0.6);
           if (Math.max(Math.abs(fx), Math.abs(fz)) <= 455 && heightField._roadDist(fx, fz) >= 5 && !noVeg(fx, fz)) {
-            addDestructible(trng() < 0.6 ? 'ammobox' : 'crate', fx, heightField.getHeightAt(fx, fz) - 0.03, fz, yaw + (trng() - 0.5) * 0.9, 0.95 + trng() * 0.15);
+            const lipKind = trng() < 0.6 ? 'ammobox' : 'crate';
+            const lipYaw = yaw + (trng() - 0.5) * 0.9, lipScale = 0.95 + trng() * 0.15;
+            if (destructibleClearOfRoad(lipKind, fx, fz, lipYaw, lipScale)) {
+              addDestructible(lipKind, fx, heightField.getHeightAt(fx, fz) - 0.03, fz, lipYaw, lipScale);
+            }
           }
         }
       }
@@ -5724,14 +5789,19 @@ ${snowCap ? `
       for (const end of [-1, 1]) {
         const ex = line.x + line.lx * end * (line.halfLengthM - 2), ez = line.z + line.lz * end * (line.halfLengthM - 2);
         if (Math.max(Math.abs(ex), Math.abs(ez)) > 455 || heightField._roadDist(ex, ez) < 5 || noVeg(ex, ez)) continue;
-        addDestructible(trng() < 0.5 ? 'drum' : 'barrier', ex, heightField.getHeightAt(ex, ez) - 0.03, ez, yaw + Math.PI / 2, 1);
+        const endKind = trng() < 0.5 ? 'drum' : 'barrier';
+        if (!destructibleClearOfRoad(endKind, ex, ez, yaw + Math.PI / 2, 1)) continue;
+        addDestructible(endKind, ex, heightField.getHeightAt(ex, ez) - 0.03, ez, yaw + Math.PI / 2, 1);
       }
       // owner 2026-09-17 ("extra in Frontline Assault"): a barbed-wire belt 7.5 m ahead of every parapet
       for (let along = -reach; along <= reach; along += 2.65) {
         const wx = line.x + line.lx * along + line.ax * (lip + 7.5), wz = line.z + line.lz * along + line.az * (lip + 7.5);
         if (Math.max(Math.abs(wx), Math.abs(wz)) > 455 || heightField._roadDist(wx, wz) < 5) continue;
         if (heightField.getGroundType(wx, wz) === 'soft' || noVeg(wx, wz)) continue;
-        addDestructible('barbedwire', wx, heightField.getHeightAt(wx, wz) - 0.02, wz, yaw + (trng() - 0.5) * 0.1, 0.95 + trng() * 0.15);
+        const wireYaw = yaw + (trng() - 0.5) * 0.1, wireScale = 0.95 + trng() * 0.15;
+        if (destructibleClearOfRoad('barbedwire', wx, wz, wireYaw, wireScale)) {
+          addDestructible('barbedwire', wx, heightField.getHeightAt(wx, wz) - 0.02, wz, wireYaw, wireScale);
+        }
       }
     }
   }
@@ -5786,8 +5856,11 @@ ${snowCap ? `
       if (!stations.every(([bx, bz]) => clear(bx, bz))) continue;
       for (const [bx, bz] of stations) {
         const kind = SOURCED.sandbags ? (wrng() < 0.6 ? 'sandbagwall' : 'sandbagbig') : 'barrier';
-        addDestructible(kind, bx, heightField.getHeightAt(bx, bz) - 0.04, bz, yaw + (wrng() - 0.5) * 0.1,
-          SOURCED.sandbags ? 1.15 + wrng() * 0.2 : 1);
+        // every piece keeps its whole footprint out of the road core: one that would reach into it is left out, its
+        // draws still taken, so the rest of the works keep their seats
+        const moduleYaw = yaw + (wrng() - 0.5) * 0.1, moduleScale = SOURCED.sandbags ? 1.15 + wrng() * 0.2 : 1;
+        if (!destructibleClearOfRoad(kind, bx, bz, moduleYaw, moduleScale)) continue;
+        addDestructible(kind, bx, heightField.getHeightAt(bx, bz) - 0.04, bz, moduleYaw, moduleScale);
       }
       // wire belt 14–18 m toward the threat, one module wider than the breastwork on each side
       const wireDist = 14 + wrng() * 4;
@@ -5795,7 +5868,9 @@ ${snowCap ? `
         const off = (m - (modules - 1) / 2) * 2.6;
         const wx = cx + fx * wireDist + lx * off, wz = cz + fz * wireDist + lz * off;
         if (!clear(wx, wz)) continue;
-        addDestructible('barbedwire', wx, heightField.getHeightAt(wx, wz) - 0.02, wz, yaw + (wrng() - 0.5) * 0.12, 0.95 + wrng() * 0.15);
+        const wireYaw = yaw + (wrng() - 0.5) * 0.12, wireScale = 0.95 + wrng() * 0.15;
+        if (!destructibleClearOfRoad('barbedwire', wx, wz, wireYaw, wireScale)) continue;
+        addDestructible('barbedwire', wx, heightField.getHeightAt(wx, wz) - 0.02, wz, wireYaw, wireScale);
       }
       // a pillbox closes one end of every second work (either end, else the centre) 3–4 m behind the breastwork line
       if (placed % 2 === 0) {
@@ -5803,7 +5878,9 @@ ${snowCap ? `
         const reach = modules * 1.35 + 4.4;
         for (const [ox, oz] of [[lx * first * reach, lz * first * reach], [-lx * first * reach, -lz * first * reach], [-fx * 4, -fz * 4]]) {
           const px = cx + ox - fx * 3, pz = cz + oz - fz * 3;
-          if (!clear(px, pz) || heightField.getNormalAt(px, pz).y < 0.9) continue;
+          // the pillbox's whole footprint (an 8 m square) keeps out of the road core, not just its centre
+          if (!clear(px, pz) || heightField.getNormalAt(px, pz).y < 0.9
+            || !destructibleClearOfRoad('bunker', px, pz, Math.atan2(fx, fz), 1)) continue;
           addDestructible('bunker', px, heightField.getHeightAt(px, pz) - 0.08, pz, Math.atan2(fx, fz), 1);
           if (wrng() < 0.7) scatterDestructibles('ammobox', px - fx * 4.5, pz - fz * 4.5, 1, 1.5, 3);
           break;
@@ -5890,6 +5967,16 @@ ${snowCap ? `
         yield { fine: true, tankBuilder: specId };
         const baked = yield* bakeFor(specId, pop);
         if (!baked) return false;
+        // The whole hulk keeps out of the road core, not just its centre: a hull that reaches into the carriageway
+        // moves straight off the road (up to 8 m), and one that cannot is not placed here.
+        const seat = shiftClearOfRoadCore(heightField, x, z,
+          (px, pz) => boxClearOfRoadCore(heightField, px, pz, baked.hx + 0.2, baked.hz + 0.2, yaw));
+        if (!seat) return false;
+        if (seat[0] !== x || seat[1] !== z) {
+          [x, z] = seat;
+          if (Math.max(Math.abs(x), Math.abs(z)) > 440
+            || placedB.some((building) => Math.hypot(x - building.x, z - building.z) < building.rr + 2)) return false;
+        }
         const support = planGroundedObbPose(
           heightField, x, z, baked.hx, baked.hz, yaw, 0.14,
         );
@@ -6111,10 +6198,17 @@ ${snowCap ? `
       const nearSpawn = [L.spawns.player, ...L.spawns.enemies]
         .some((spawn) => Math.hypot(x - spawn.x, z - spawn.z) < 20);
       if (nearSpawn || Math.hypot(x - junction.x, z - junction.z) < 16) return false;
+      // a pile stands on dry ground, never in a channel or a lake
+      if (heightField.getWaterMaskAt(x, z) > 0) return false;
+      // The pile keeps its whole footprint out of the road core, moved off the road when it reaches in. Where no seat
+      // within 8 m clears, it keeps its old seat: it is drive-through rubble, and its draws feed the next candidates.
+      const pr = 1.6 + rrng() * 1.3;
+      const seat = shiftClearOfRoadCore(heightField, x, z, (px, pz) => discClearOfRoadCore(heightField, px, pz, pr))
+        ?? [x, z];
       const capture = waterworksRubble && waterworksRubble.length < 3;
       const stoneStart = capture ? buckets.stone.length : 0;
       const woodStart = capture ? buckets.wood.length : 0;
-      addRubblePile(x, z, 1.6 + rrng() * 1.3, rrng);
+      addRubblePile(seat[0], seat[1], pr, rrng);
       if (capture) waterworksRubble!.push({
         stone: buckets.stone.slice(stoneStart), wood: buckets.wood.slice(woodStart),
         obstacle: obstacles[obstacles.length - 1], collider: colliders[colliders.length - 1],
@@ -6845,7 +6939,7 @@ ${snowCap ? `
   function composeAuthoredFisheryWharf(): void {
     if (mapId !== 'mangrove') return;
     group.userData.fisheryWharf = composeMangroveFisheryWharf(mapId, heightField, wharfFishery,
-      P.riverLandings?.find(site => site.lakeIndex === 20), [...obstacles, ...colliders],
+      P.riverLandings?.find(site => site.lakeIndex === FISHERY_WHARF_LAKE_INDEX), [...obstacles, ...colliders],
       vegetation, buckets.wood.slice(wharfDressingStart));
     wharfFishery = null;
   }
