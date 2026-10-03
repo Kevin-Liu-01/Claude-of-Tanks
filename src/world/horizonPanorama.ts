@@ -46,17 +46,23 @@ export interface HorizonPanoramaCharacter {
   bedM: number; strata: number; tables: boolean;
   /** the far ranges' extra rise past 4 km (the hill countries' low mountains behind their hills) */
   farRise: number;
+  /** 0..1: how far the ranges past ~3.5 km rise to stand a margin above the ring's own skyline from the battlefield
+   * (the layers behind the ring); 0 leaves the far field as it falls */
+  layers: number;
+  /** true: the layers rise as a broad upland plinth under the far country's own hills (the hill countries: their slopes
+   * stay gentle, wooded and farmed); false: the ranges' relief is scaled (the mountain countries: steeper, rockier) */
+  plinth: boolean;
 }
 
 export const HORIZON_PANORAMA_CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonPanoramaCharacter>> = Object.freeze({
-  alpine: { ampM: 1700, foot: 0.16, macroL: 5200, sharp: 1.45, midL: 1500, gullyL: 520, gullyM: 55, warpM: 900, valley: 0.4, valleyL: 7500, snowline: 0.40, treeline: 0.22, rockSlope: 0.30, bedM: 70, strata: 0.10, tables: false, farRise: 0 },
-  polar: { ampM: 1300, foot: 0.18, macroL: 5800, sharp: 1.3, midL: 1700, gullyL: 560, gullyM: 45, warpM: 1000, valley: 0.4, valleyL: 8000, snowline: 0.05, treeline: 0.10, rockSlope: 0.34, bedM: 80, strata: 0.08, tables: false, farRise: 0 },
-  rolling: { ampM: 620, foot: 0.24, macroL: 5600, sharp: 1.15, midL: 2000, gullyL: 600, gullyM: 22, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.85, rockSlope: 0.42, bedM: 60, strata: 0.05, tables: false, farRise: 1.1 },
-  coastal: { ampM: 520, foot: 0.24, macroL: 5400, sharp: 1.15, midL: 1900, gullyL: 600, gullyM: 20, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.80, rockSlope: 0.40, bedM: 50, strata: 0.06, tables: false, farRise: 0.9 },
-  volcanic: { ampM: 1300, foot: 0.2, macroL: 5000, sharp: 1.3, midL: 1400, gullyL: 420, gullyM: 45, warpM: 800, valley: 0.4, valleyL: 7500, snowline: 2, treeline: 0.35, rockSlope: 0.32, bedM: 40, strata: 0.16, tables: false, farRise: 0 },
-  karst: { ampM: 760, foot: 0.26, macroL: 2600, sharp: 2.2, midL: 900, gullyL: 300, gullyM: 30, warpM: 400, valley: 0.5, valleyL: 5500, snowline: 2, treeline: 0.95, rockSlope: 0.36, bedM: 30, strata: 0.12, tables: false, farRise: 0.3 },
-  mesa: { ampM: 900, foot: 0.24, macroL: 6000, sharp: 1.0, midL: 2000, gullyL: 500, gullyM: 30, warpM: 900, valley: 0.3, valleyL: 7000, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 46, strata: 0.32, tables: true, farRise: 0 },
-  martian: { ampM: 1300, foot: 0.24, macroL: 7000, sharp: 1.0, midL: 2400, gullyL: 600, gullyM: 35, warpM: 1100, valley: 0.5, valleyL: 8500, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 60, strata: 0.26, tables: true, farRise: 0 },
+  alpine: { ampM: 1700, foot: 0.16, macroL: 5200, sharp: 1.45, midL: 1500, gullyL: 520, gullyM: 55, warpM: 900, valley: 0.4, valleyL: 7500, snowline: 0.40, treeline: 0.22, rockSlope: 0.30, bedM: 70, strata: 0.10, tables: false, farRise: 0, layers: 1, plinth: false },
+  polar: { ampM: 1300, foot: 0.18, macroL: 5800, sharp: 1.3, midL: 1700, gullyL: 560, gullyM: 45, warpM: 1000, valley: 0.4, valleyL: 8000, snowline: 0.05, treeline: 0.10, rockSlope: 0.34, bedM: 80, strata: 0.08, tables: false, farRise: 0, layers: 1, plinth: false },
+  rolling: { ampM: 620, foot: 0.24, macroL: 5600, sharp: 1.15, midL: 2000, gullyL: 600, gullyM: 22, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.85, rockSlope: 0.42, bedM: 60, strata: 0.05, tables: false, farRise: 1.1, layers: 1, plinth: true },
+  coastal: { ampM: 520, foot: 0.24, macroL: 5400, sharp: 1.15, midL: 1900, gullyL: 600, gullyM: 20, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.80, rockSlope: 0.40, bedM: 50, strata: 0.06, tables: false, farRise: 0.9, layers: 1, plinth: true },
+  volcanic: { ampM: 1300, foot: 0.2, macroL: 5000, sharp: 1.3, midL: 1400, gullyL: 420, gullyM: 45, warpM: 800, valley: 0.4, valleyL: 7500, snowline: 2, treeline: 0.35, rockSlope: 0.32, bedM: 40, strata: 0.16, tables: false, farRise: 0, layers: 1, plinth: false },
+  karst: { ampM: 760, foot: 0.26, macroL: 2600, sharp: 2.2, midL: 900, gullyL: 300, gullyM: 30, warpM: 400, valley: 0.5, valleyL: 5500, snowline: 2, treeline: 0.95, rockSlope: 0.36, bedM: 30, strata: 0.12, tables: false, farRise: 0.3, layers: 1, plinth: false },
+  mesa: { ampM: 900, foot: 0.24, macroL: 6000, sharp: 1.0, midL: 2000, gullyL: 500, gullyM: 30, warpM: 900, valley: 0.3, valleyL: 7000, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 46, strata: 0.32, tables: true, farRise: 0, layers: 1, plinth: false },
+  martian: { ampM: 1300, foot: 0.24, macroL: 7000, sharp: 1.0, midL: 2400, gullyL: 600, gullyM: 35, warpM: 1100, valley: 0.5, valleyL: 8500, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 60, strata: 0.26, tables: true, farRise: 0, layers: 1, plinth: false },
 });
 
 export interface HorizonPanoramaPalette { base: THREE.Color; rock: THREE.Color; snow: THREE.Color; forest: THREE.Color; fog: THREE.Color }
@@ -84,6 +90,36 @@ export interface HorizonPanoramaOptions {
   treelineM?: number | null;
   /** the probes' smaller bake (a CPU renderer); production bakes at HORIZON_PANORAMA's sizes */
   resolution?: { width: number; height: number; gridA: number; gridR: number };
+}
+
+/**
+ * Per ring column, the tangent of the ring's own skyline elevation from the bake eye: the highest of its rows seen from
+ * (0, eyeY, 0). The far ranges stand a margin above it (HorizonPanoramaCharacter.layers).
+ */
+export function horizonRingSkylineTan(ringEdge: HorizonPanoramaOptions['ringEdge'], eyeY: number): Float32Array {
+  const n = ringEdge.columns, rows = Math.floor(ringEdge.heights.length / n);
+  const out = new Float32Array(n).fill(-1);
+  for (let row = 0; row < rows; row++) {
+    for (let k = 0; k < n; k++) {
+      const i = row * n + k;
+      const r = Math.hypot(ringEdge.positions[i * 3], ringEdge.positions[i * 3 + 2]);
+      if (r < 520) continue; // the battlefield's own seam rows
+      const t = (ringEdge.heights[i] - eyeY) / r;
+      if (t > out[k]) out[k] = t;
+    }
+  }
+  // the envelope the far country answers: a running max over about 3 degrees (a ring summit's own width), then two box
+  // passes over about 8 degrees — the layers rise with the ring's massing, not with every column of its skyline (a
+  // target that jumped column to column stood the uplands' plinth up as walls)
+  const wrap = (k: number): number => ((k % n) + n) % n;
+  const maxR = Math.max(1, Math.round(n * 3 / 360)), boxR = Math.max(1, Math.round(n * 8 / 360));
+  const tmp = new Float32Array(n);
+  for (let k = 0; k < n; k++) { let m = -1; for (let d = -maxR; d <= maxR; d++) m = Math.max(m, out[wrap(k + d)]); tmp[k] = m; }
+  for (let pass = 0; pass < 2; pass++) {
+    const src = pass === 0 ? tmp : out, dst = pass === 0 ? out : tmp;
+    for (let k = 0; k < n; k++) { let sum = 0; for (let d = -boxR; d <= boxR; d++) sum += src[wrap(k + d)]; dst[k] = sum / (2 * boxR + 1); }
+  }
+  return tmp;
 }
 
 /** The atlas's v for a direction's elevation from the bake eye (clamped by the sampler). */
@@ -213,11 +249,11 @@ const FIELD_GLSL = /* glsl */`
 uniform vec4 uOff0, uOff1, uOff2, uOff3;  // the seed's offsets
 uniform vec4 uChar0;   // ampM, foot, macroL, sharp
 uniform vec4 uChar1;   // midL, gullyL, gullyM, warpM
-uniform vec4 uChar2;   // valley, valleyL, tables, unused
+uniform vec4 uChar2;   // valley, valleyL, tables, layers (negative: as a plinth)
 uniform vec4 uChar3;   // snowline, treeline, rockSlope, bedM
 uniform vec4 uChar4;   // strata, deckM, ampM, farRise
 uniform vec4 uFrame;   // innerM, outerM, shellM, eyeY
-uniform sampler2D uEdge; // per azimuth: r = the ring's outer height, g = sea weight, b = sea level
+uniform sampler2D uEdge; // per azimuth: r = the ring's outer height, g = sea weight, b = sea level, a = tan of the ring's skyline
 
 float macroField(vec2 q) {
   float sum = 0.0, amp = 1.0, weight = 1.0, norm = 0.0;
@@ -289,7 +325,9 @@ float mesaField(vec2 p, float A) {
   float plain = A * (0.04 + 0.05 * (noised(w / 900.0 + uOff3.zw).x * 0.5 + 0.5));
   return mix(plain, A * level, profile);
 }
+float gPlinth = 0.0; // farField's plinth at its last point (the height pass writes it beside the height)
 float farField(vec2 p) {
+  gPlinth = 0.0;
   float r = length(p);
   float A = envelopeAt(p, r);
   float h = uChar2.z > 0.5 ? mesaField(p, A) : A * baseField(p);
@@ -305,9 +343,48 @@ float farField(vec2 p) {
     h += uChar1.z * smoothstep(0.05, 0.35, s) * gs * (0.4 + 0.6 * smoothstep(0.0, A * 0.5, h));
   }
   h = max(0.0, h);
-  // the first kilometre eases out of the ring's outer heights; the sea sectors sink under their level
   float a = atan(p.y, p.x) * 0.15915494309;
   vec4 edge = texture2D(uEdge, vec2(fract(a), 0.5));
+  // the layers behind the ring (the mountains lane, 2026-10-03: from the battlefield the far country hid behind the
+  // ring's own skyline on most bearings): past ~3.5 km the ranges rise until their crests stand a margin above the
+  // ring's skyline seen from the eye — the margin wanders round the compass (-0.9 to +4.3 degrees), so some sectors
+  // stay behind the ring and the rest show their layers — and never into the cloud deck. Ranges keep their shape (the
+  // field is scaled); tables lift to the level (their cliffs keep their profile).
+  float behind = abs(uChar2.w) * smoothstep(uChar2.w < 0.0 ? 2800.0 : 3400.0, uChar2.w < 0.0 ? 4200.0 : 6500.0, r);
+  if (behind > 0.001 && h > 0.0) {
+    vec2 du = p / max(r, 1.0);
+    float m = noised(du * 6.0 + uOff1.zw).x * 0.6 + noised(du * 15.0 + uOff2.xy).x * 0.4;
+    float margin = mix(-0.015, 0.075, smoothstep(-0.55, 0.55, m));
+    float target = min(uFrame.w + r * (edge.a + margin), max(150.0, uChar4.y * 1.25));
+    if (uChar2.z > 0.5) {
+      h = mix(h, max(h, target), behind * smoothstep(0.25 * A, 0.4 * A, h));
+    } else if (uChar2.w < 0.0) {
+      // the hill countries: ridgelines in layers behind the ring — three, at about 4.6, 6.5 and 8.3 km (each wandering
+      // 600 m in distance round the compass), each crest a little higher over the ring's skyline than the one before
+      // (from the eye: bands of hills above the ring, each hazier), the country's own hills and valleys riding on them;
+      // a single ramp to the target stood the uplands up as tepuis
+      float cap = max(150.0, uChar4.y * 1.25), lift = 0.0;
+      for (int i = 0; i < 3; i++) {
+        float fi = float(i);
+        float rc = 4600.0 + fi * 1850.0 + 600.0 * noised(du * (3.0 + fi) + uOff3.xy + vec2(fi * 7.1, 1.3)).x;
+        // broad (a hill country's far slopes are 10-25 degrees, a narrow ridge stood as a wall)
+        float wr = 1500.0 + 420.0 * fi;
+        float prof = exp(-((r - rc) * (r - rc)) / (wr * wr));
+        float cm = mix(-0.012, 0.03 + 0.022 * fi, smoothstep(-0.6, 0.6, noised(du * (5.0 + 2.0 * fi) + uOff1.zw + vec2(fi * 3.3, -2.1)).x));
+        // the crest line's own summits and saddles (a kilometre or two apart), so no ridge runs level; under the deck
+        // the crest bows down instead of flattening on it
+        float und = noised(du * (rc / 1400.0) + vec2(fi * 5.7, 9.1)).x * 0.6 + noised(du * (rc / 520.0) + vec2(-fi * 2.3, 4.4)).x * 0.4;
+        float crest = (uFrame.w + rc * (edge.a + cm)) * (0.86 + 0.16 * und);
+        crest = crest < cap * 0.8 ? crest : cap * (0.8 + 0.2 * (1.0 - exp(-(crest - cap * 0.8) / (cap * 0.2))));
+        lift = max(lift, (crest - 0.6 * A) * prof);
+      }
+      gPlinth = max(0.0, lift) * behind;
+      h += gPlinth;
+    } else {
+      h *= mix(1.0, clamp(target / max(1.0, 0.8 * A), 1.0, 3.0), behind);
+    }
+  }
+  // the first kilometre eases out of the ring's outer heights; the sea sectors sink under their level
   h = mix(edge.r * 0.8, h, smoothstep(uFrame.x, uFrame.x + 500.0, r));
   h = mix(h, edge.b - 6.0, edge.g * smoothstep(0.0, 0.35, edge.g));
   return h;
@@ -328,7 +405,8 @@ ${FIELD_GLSL}
 void main() {
   float a = vUv.x * 6.2831853;
   float r = uFrame.x * pow(uFrame.y / uFrame.x, vUv.y);
-  gl_FragColor = vec4(farField(vec2(cos(a), sin(a)) * r), 0.0, 0.0, 1.0);
+  float h = farField(vec2(cos(a), sin(a)) * r);
+  gl_FragColor = vec4(h, gPlinth, 0.0, 1.0);
 }
 `;
 
@@ -448,7 +526,8 @@ void main() {
   }
   vec4 light = texture2D(uLight, g);
   float slope = 1.0 - n.y;
-  float hT = clamp(wp.y / uChar4.z, 0.0, 1.0);
+  // the zones (forest, fields, snow, scree) by the height over the upland's plinth where it has one
+  float hT = clamp((wp.y - texture2D(uHeight, g).g) / uChar4.z, 0.0, 1.0);
   float n1 = noised(wp.xz / 1900.0 + vec2(5.3, 1.7)).x * 0.7 + noised(wp.xz / 700.0 + vec2(-3.1, 8.2)).x * 0.3;
   // the lower flanks: stands of the map's forest (denser on the slopes, broken by clearings and fields on the gentle
   // lowland), the crowns' mottle; the meadows and fields a patchwork of their own tones
@@ -561,9 +640,11 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   let baked = false;
   const stats = { bakes: 0, ms: 0, unsupported: null as string | null };
 
-  // the per-azimuth edge data: the ring's outer height, the sea weight and level (half floats, filtered)
+  // the per-azimuth edge data: the ring's outer height, the sea weight and level, and the tangent of the ring's own
+  // skyline elevation from the bake eye (half floats, filtered)
   const EDGE_W = 1024;
   const edgeData = new Uint16Array(EDGE_W * 4);
+  const ringSkyline = horizonRingSkylineTan(options.ringEdge, P.eyeY);
   {
     const n = options.ringEdge.columns, start = options.ringEdge.heights.length - n;
     for (let i = 0; i < EDGE_W; i++) {
@@ -575,7 +656,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       edgeData[i * 4] = THREE.DataUtils.toHalfFloat(h);
       edgeData[i * 4 + 1] = THREE.DataUtils.toHalfFloat(sea.weight);
       edgeData[i * 4 + 2] = THREE.DataUtils.toHalfFloat(sea.level);
-      edgeData[i * 4 + 3] = THREE.DataUtils.toHalfFloat(1);
+      edgeData[i * 4 + 3] = THREE.DataUtils.toHalfFloat(ringSkyline[k]);
     }
   }
 
@@ -605,7 +686,8 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       uOff3: { value: new THREE.Vector4(off[12], off[13], off[14], off[15]) },
       uChar0: { value: new THREE.Vector4(ch.ampM, ch.foot, ch.macroL, ch.sharp) },
       uChar1: { value: new THREE.Vector4(ch.midL, ch.gullyL, ch.gullyM, ch.warpM) },
-      uChar2: { value: new THREE.Vector4(ch.valley, ch.valleyL, tables ? 1 : 0, 0) },
+      // .w: the layers' strength, negative for the plinth (the hill countries)
+      uChar2: { value: new THREE.Vector4(ch.valley, ch.valleyL, tables ? 1 : 0, ch.plinth ? -ch.layers : ch.layers) },
       // the snowline and the treeline as fractions of the amplitude the strip's law reads them by (the ring's own
       // altitudes where it has them)
       uChar3: { value: new THREE.Vector4(

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
   HORIZON_PANORAMA, HORIZON_PANORAMA_CHARACTERS, HORIZON_PANORAMA_SHADERS, buildHorizonPanoramaShellGeometry,
-  createHorizonPanorama, horizonPanoramaUv, resolveHorizonPanoramaCharacter,
+  createHorizonPanorama, horizonPanoramaUv, horizonRingSkylineTan, resolveHorizonPanoramaCharacter,
 } from './horizonPanorama.ts';
 import { HORIZON_RELIEF_CHARACTERS } from './horizonRelief.ts';
 
@@ -67,6 +67,32 @@ for (const character of HORIZON_RELIEF_CHARACTERS) {
 }
 assert.equal(resolveHorizonPanoramaCharacter('alpine', { ampM: 1 }).ampM, 1, 'a map overrides its character\'s knobs');
 assert.equal(resolveHorizonPanoramaCharacter('alpine', { ampM: 1 }).macroL, HORIZON_PANORAMA_CHARACTERS.alpine.macroL, 'the others stay');
+
+// --- the layers behind the ring: the far country answers the ring's own skyline from the bake eye ----------------------
+// (the panorama lab, SwiftShader: on Verdant, Frontier Basin and Saltmere the far country stood above the ring's skyline
+// on 14-35 % of the bearings, by about a degree and a half; with the layers on 55-63 %, by about two)
+{
+  const sky = horizonRingSkylineTan(ringEdge, P.eyeY);
+  assert.equal(sky.length, n, 'one skyline value per ring column');
+  // the raw skyline of the fixture ring: its highest row seen from the eye
+  let rawMax = -1, rawMin = 1;
+  for (let k = 0; k < n; k++) {
+    let t = -1;
+    for (let row = 0; row < 3; row++) { const i = row * n + k, r = Math.hypot(ringEdge.positions[i * 3], ringEdge.positions[i * 3 + 2]); if (r >= 520) t = Math.max(t, (ringEdge.heights[i] - P.eyeY) / r); }
+    rawMax = Math.max(rawMax, t); rawMin = Math.min(rawMin, t);
+  }
+  const lo = Math.min(...sky), hi = Math.max(...sky);
+  assert.ok(lo >= rawMin - 1e-6 && hi <= rawMax + 1e-6, 'the envelope stays within the ring\'s own skyline');
+  let jump = 0;
+  for (let k = 0; k < n; k++) jump = Math.max(jump, Math.abs(sky[k] - sky[(k + 1) % n]));
+  assert.ok(jump < (rawMax - rawMin) * 0.12, `the envelope is smooth round the compass (largest column step ${jump.toFixed(4)})`);
+}
+for (const [character, c] of Object.entries(HORIZON_PANORAMA_CHARACTERS)) {
+  assert.ok(c.layers >= 0 && c.layers <= 1, `${character}: the layers' strength is a share`);
+  assert.equal(c.plinth, character === 'rolling' || character === 'coastal', `${character}: the hill countries layer as ridgelines, the mountain countries scale their ranges`);
+}
+assert.ok(HORIZON_PANORAMA_SHADERS.height.includes('edge.a') && HORIZON_PANORAMA_SHADERS.height.includes('gPlinth'), 'the height pass reads the ring\'s skyline and writes the plinth');
+assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('texture2D(uHeight, g).g'), 'the strip zones its forest and snow over the plinth');
 
 // --- the shaders: the passes read the uniforms the baker binds -------------------------------------------------------
 for (const [name, source] of Object.entries(HORIZON_PANORAMA_SHADERS)) {
