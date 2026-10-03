@@ -78,9 +78,10 @@ export default {
     ] },
     // The boggy floors of the two valleys (rotation pair), the Irpin's floodplain: every way between a team's assembly
     // ground and the plateau crosses soft ground, except the access roads' causeways.
-    marshes: [-360, -280, -200, -120, -40, 40, 120, 200, 280, 360].flatMap((x) => [
-      { x, z: 335, r: 42, dip: 0.7 },
-      { x: -x, z: -335, r: 42, dip: 0.7 },
+    marshes: [[-372, 330, 40], [-296, 345, 46], [-214, 322, 36], [-138, 340, 44], [-52, 328, 38], [30, 344, 48],
+      [108, 326, 36], [190, 338, 42], [268, 350, 46], [352, 324, 38]].flatMap(([x, z, r]) => [
+      { x, z, r, dip: 0.7 },
+      { x: -x, z: -z, r, dip: 0.7 },
     ]),
     landforms: [
       // The plateau the airfield was laid out on, standing above the valleys either side of it.
