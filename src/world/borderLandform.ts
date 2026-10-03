@@ -104,6 +104,10 @@ export interface BorderLandformSettings {
   /** The fields' crops: 'temperate' (stubble, plough, pasture, fallow), 'steppe' (stubble and plough), 'polder'
    * (pasture, plough, rapeseed). */
   crops: 'temperate' | 'steppe' | 'polder';
+  /** Farmsteads round the square past the edge (borderFarmsteads.ts; a hamlet's farms counted), 0 none. */
+  farms: number;
+  /** The farmsteads' build and materials. */
+  buildings: 'temperate' | 'steppe' | 'polder' | 'winter' | 'arid' | 'nordic' | 'tropical' | 'alpine';
   /**
    * The rim as it stood before the border landform (the classic S-curve and the plateau rimH over the geology past the
    * edge, the old 140–460 m ring hand-over, no woods field): the receipts that replay a pre-landform failure build
@@ -114,10 +118,10 @@ export interface BorderLandformSettings {
 
 /** Defaults by horizon style (the ring's character beyond): enclosed valleys and canyons, open rolling country. */
 const STYLE_DEFAULTS: Readonly<Record<string, BorderLandformSettings>> = {
-  rolling: { enclosure: 0.42, hillHeight: 1.9, reachM: 260, rimFloor: 0.22, wavelengthM: 560, ridged: 0.2, terrace: 0, forest: 0.34, hedgerows: 0.7, fields: 0.6, crops: 'temperate' },
-  escarpment: { enclosure: 0.5, hillHeight: 2.0, reachM: 240, rimFloor: 0.25, wavelengthM: 540, ridged: 0.35, terrace: 0.25, forest: 0.3, hedgerows: 0.45, fields: 0.45, crops: 'temperate' },
-  alpine: { enclosure: 0.7, hillHeight: 2.3, reachM: 220, rimFloor: 0.35, wavelengthM: 520, ridged: 0.6, terrace: 0, forest: 0.42, hedgerows: 0.15, fields: 0.15, crops: 'temperate' },
-  mesa: { enclosure: 0.55, hillHeight: 1.9, reachM: 240, rimFloor: 0.3, wavelengthM: 560, ridged: 0.3, terrace: 0.85, forest: 0.06, hedgerows: 0, fields: 0, crops: 'temperate' },
+  rolling: { enclosure: 0.42, hillHeight: 1.9, reachM: 260, rimFloor: 0.22, wavelengthM: 560, ridged: 0.2, terrace: 0, forest: 0.34, hedgerows: 0.7, fields: 0.6, crops: 'temperate', farms: 10, buildings: 'temperate' },
+  escarpment: { enclosure: 0.5, hillHeight: 2.0, reachM: 240, rimFloor: 0.25, wavelengthM: 540, ridged: 0.35, terrace: 0.25, forest: 0.3, hedgerows: 0.45, fields: 0.45, crops: 'temperate', farms: 6, buildings: 'temperate' },
+  alpine: { enclosure: 0.7, hillHeight: 2.3, reachM: 220, rimFloor: 0.35, wavelengthM: 520, ridged: 0.6, terrace: 0, forest: 0.42, hedgerows: 0.15, fields: 0.15, crops: 'temperate', farms: 4, buildings: 'alpine' },
+  mesa: { enclosure: 0.55, hillHeight: 1.9, reachM: 240, rimFloor: 0.3, wavelengthM: 560, ridged: 0.3, terrace: 0.85, forest: 0.06, hedgerows: 0, fields: 0, crops: 'temperate', farms: 2, buildings: 'arid' },
 };
 
 /**
@@ -126,38 +130,38 @@ const STYLE_DEFAULTS: Readonly<Record<string, BorderLandformSettings>> = {
  * valleys and logging country, tablelands and canyons, mountain valleys. A map config's `terrain.border` overrides it.
  */
 const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
-  verdant: { forest: 0.36, hedgerows: 0.85, fields: 0.75 },
-  desert: { forest: 0.03, enclosure: 0.5, hedgerows: 0, fields: 0 },
-  winter: { forest: 0.44, hedgerows: 0.2, fields: 0.1 },
-  urban: { forest: 0.28, hedgerows: 0.5, fields: 0.45 },
-  coastal: { forest: 0.24, enclosure: 0.36, hedgerows: 0.55, fields: 0.5 },
-  autumn: { forest: 0.42, enclosure: 0.5, hedgerows: 0.9, fields: 0.8 },
-  steppe: { enclosure: 0.12, hillHeight: 1.25, reachM: 340, rimFloor: 0.18, wavelengthM: 760, forest: 0.07, hedgerows: 0.55, fields: 0.85, crops: 'steppe' },
-  railyard: { forest: 0.22, hedgerows: 0.3, fields: 0.35 },
-  frontier: { forest: 0.36, enclosure: 0.5, hedgerows: 0.6, fields: 0.6 },
-  fjord: { forest: 0.42, fields: 0.1 },
-  delta: { enclosure: 0.08, hillHeight: 0.6, reachM: 360, rimFloor: 0.15, wavelengthM: 700, forest: 0.26, hedgerows: 0.35, fields: 0.55, crops: 'polder' },
-  monsoon: { forest: 0.6, fields: 0.25 },
+  verdant: { forest: 0.36, hedgerows: 0.85, fields: 0.75, farms: 12 },
+  desert: { forest: 0.03, enclosure: 0.5, hedgerows: 0, fields: 0, farms: 4, buildings: 'arid' },
+  winter: { forest: 0.44, hedgerows: 0.2, fields: 0.1, farms: 6, buildings: 'winter' },
+  urban: { forest: 0.28, hedgerows: 0.5, fields: 0.45, farms: 14 },
+  coastal: { forest: 0.24, enclosure: 0.36, hedgerows: 0.55, fields: 0.5, farms: 9 },
+  autumn: { forest: 0.42, enclosure: 0.5, hedgerows: 0.9, fields: 0.8, farms: 12 },
+  steppe: { enclosure: 0.12, hillHeight: 1.25, reachM: 340, rimFloor: 0.18, wavelengthM: 760, forest: 0.07, hedgerows: 0.55, fields: 0.85, crops: 'steppe', farms: 10, buildings: 'steppe' },
+  railyard: { forest: 0.22, hedgerows: 0.3, fields: 0.35, farms: 9 },
+  frontier: { forest: 0.36, enclosure: 0.5, hedgerows: 0.6, fields: 0.6, farms: 10 },
+  fjord: { forest: 0.42, fields: 0.1, farms: 5, buildings: 'nordic' },
+  delta: { enclosure: 0.08, hillHeight: 0.6, reachM: 360, rimFloor: 0.15, wavelengthM: 700, forest: 0.26, hedgerows: 0.35, fields: 0.55, crops: 'polder', farms: 10, buildings: 'tropical' },
+  monsoon: { forest: 0.6, fields: 0.25, farms: 6, buildings: 'tropical' },
   alpine: { forest: 0.32, fields: 0.05 },
-  caldera: { forest: 0.06, terrace: 0.55, ridged: 0.45, hedgerows: 0, fields: 0 },
-  foundry: { forest: 0.2, hedgerows: 0.35, fields: 0.3 },
-  ruinspires: { forest: 0.1, hedgerows: 0.2, fields: 0.1 },
-  blackglass: { forest: 0.1, hedgerows: 0.2, fields: 0.1 },
-  titan_gorge: { forest: 0.02, hedgerows: 0 },
-  skybridge: { forest: 0.05, hedgerows: 0 },
-  polders: { enclosure: 0.04, hillHeight: 0.35, reachM: 420, rimFloor: 0.12, wavelengthM: 820, forest: 0.12, hedgerows: 0.55, fields: 0.8, crops: 'polder' },
-  copper_mesa: { forest: 0.03, hedgerows: 0 },
-  airfield: { enclosure: 0.18, hillHeight: 1.2, reachM: 360, rimFloor: 0.18, wavelengthM: 700, forest: 0.22, hedgerows: 0.4, fields: 0.6, crops: 'steppe' },
-  oasis: { enclosure: 0.32, hillHeight: 1.3, forest: 0.02, hedgerows: 0, fields: 0 },
-  whiteout: { forest: 0.08, ridged: 0.4, hedgerows: 0, fields: 0 },
-  orchard: { forest: 0.4, hedgerows: 0.75, fields: 0.65 },
-  longleaf: { forest: 0.62, hedgerows: 0.2, fields: 0.15 },
-  mangrove: { enclosure: 0.04, hillHeight: 0.35, reachM: 420, rimFloor: 0.12, wavelengthM: 820, forest: 0.42, hedgerows: 0, fields: 0 },
-  saltwind: { forest: 0.14, terrace: 0.35, hedgerows: 0.35, fields: 0.3, crops: 'steppe' },
-  reservoir: { forest: 0.5, fields: 0.15 },
-  mars: { forest: 0, hedgerows: 0, fields: 0 },
-  moon: { forest: 0, hillHeight: 1.6, hedgerows: 0, fields: 0 },
-  cliffbridge: { forest: 0.36, hedgerows: 0.7, fields: 0.65 },
+  caldera: { forest: 0.06, terrace: 0.55, ridged: 0.45, hedgerows: 0, fields: 0, farms: 1 },
+  foundry: { forest: 0.2, hedgerows: 0.35, fields: 0.3, farms: 6 },
+  ruinspires: { forest: 0.1, hedgerows: 0.2, fields: 0.1, farms: 3 },
+  blackglass: { forest: 0.1, hedgerows: 0.2, fields: 0.1, farms: 2, buildings: 'nordic' },
+  titan_gorge: { forest: 0.02, hedgerows: 0, farms: 1 },
+  skybridge: { forest: 0.05, hedgerows: 0, farms: 1 },
+  polders: { enclosure: 0.04, hillHeight: 0.35, reachM: 420, rimFloor: 0.12, wavelengthM: 820, forest: 0.12, hedgerows: 0.55, fields: 0.8, crops: 'polder', farms: 12, buildings: 'polder' },
+  copper_mesa: { forest: 0.03, hedgerows: 0, farms: 2 },
+  airfield: { enclosure: 0.18, hillHeight: 1.2, reachM: 360, rimFloor: 0.18, wavelengthM: 700, forest: 0.22, hedgerows: 0.4, fields: 0.6, crops: 'steppe', farms: 9, buildings: 'steppe' },
+  oasis: { enclosure: 0.32, hillHeight: 1.3, forest: 0.02, hedgerows: 0, fields: 0, farms: 4, buildings: 'arid' },
+  whiteout: { forest: 0.08, ridged: 0.4, hedgerows: 0, fields: 0, farms: 0 },
+  orchard: { forest: 0.4, hedgerows: 0.75, fields: 0.65, farms: 12 },
+  longleaf: { forest: 0.62, hedgerows: 0.2, fields: 0.15, farms: 6 },
+  mangrove: { enclosure: 0.04, hillHeight: 0.35, reachM: 420, rimFloor: 0.12, wavelengthM: 820, forest: 0.42, hedgerows: 0, fields: 0, farms: 6, buildings: 'tropical' },
+  saltwind: { forest: 0.14, terrace: 0.35, hedgerows: 0.35, fields: 0.3, crops: 'steppe', farms: 7, buildings: 'steppe' },
+  reservoir: { forest: 0.5, fields: 0.15, farms: 6 },
+  mars: { forest: 0, hedgerows: 0, fields: 0, farms: 0 },
+  moon: { forest: 0, hillHeight: 1.6, hedgerows: 0, fields: 0, farms: 0 },
+  cliffbridge: { forest: 0.36, hedgerows: 0.7, fields: 0.65, farms: 9 },
 };
 
 export function resolveBorderLandform(
@@ -168,6 +172,10 @@ export function resolveBorderLandform(
 
 export interface BorderLandform {
   readonly settings: BorderLandformSettings;
+  /** The field system's orientation (rad; 0 in classic mode): the farmsteads square up to it. */
+  readonly fieldAngle: number;
+  /** 0..1: a classic-rim island here (a railway's cutting and tunnel hill), which keeps its ground. */
+  classicIslandAt(x: number, z: number): number;
   /**
    * The rim lift in metres at (x, z) for a square radius r (max(|x|, |z|)), replacing rimH · s(r)²: below 430 m nothing,
    * inside the playable square the classic curve times the rim factor (<= 1), past the playable edge the outland's
@@ -380,6 +388,13 @@ export function createBorderLandform(
   })();
 
   function woodsAt(x: number, z: number): number {
+    // a railway's tunnel hill (a classic island) is wooded over its cutting, as such hills are (the ring forest keeps
+    // off the line's own right of way), so it reads as a hill and not a bare cone at the edge
+    const island = anchors.length ? smoothstep(0.12, 0.55, anchorAt(x, z)) : 0;
+    if (island > 0.999) return 1;
+    return Math.max(island, woodsAtField(x, z));
+  }
+  function woodsAtField(x: number, z: number): number {
     if (!Number.isFinite(woodsCut)) return woodsCut < 0 ? 1 : 0;
     if (settings.fields <= 0) return smoothstep(woodsCut - 0.025, woodsCut + 0.025, woodsField(x, z));
     // In farmland most woods are whole fields, so their edges run straight along the boundaries: a field is wooded
@@ -393,8 +408,17 @@ export function createBorderLandform(
     const mx = mu * fieldCos - mv * fieldSin, mz = mu * fieldSin + mv * fieldCos;
     // the first ~250 m past the edge stay mostly open, so from the square the eye runs over fields to the woods rising
     // behind them (a wood on the red line is the hedge the owner saw, "a treeline and then nothing")
-    const open = (ex: number, ez: number) => 0.14 * (1 - smoothstep(110, 360, Math.max(Math.abs(ex), Math.abs(ez)) - BORDER_EDGE_M));
-    const field = woodsField(mx, mz) > woodsCut + open(mx, mz) ? 1 : 0;
+    const open = (ex: number, ez: number) => {
+      const out = Math.max(Math.abs(ex), Math.abs(ez)) - BORDER_EDGE_M;
+      return 0.3 * (1 - smoothstep(40, 190, out)) + 0.12 * (1 - smoothstep(190, 380, out));
+    };
+    // ... and a whole field near the edge is never a wood: every corner of it stands 70 m or more past the edge
+    let nearest = Infinity;
+    for (const [cu, cv] of [[ca, cb], [na, cb], [na, nb], [ca, nb]]) {
+      const u = cu * FIELD_PITCH_M, v = cv * FIELD_PITCH_M;
+      nearest = Math.min(nearest, Math.max(Math.abs(u * fieldCos - v * fieldSin), Math.abs(u * fieldSin + v * fieldCos)) - BORDER_EDGE_M);
+    }
+    const field = nearest > 70 && woodsField(mx, mz) > woodsCut + open(mx, mz) ? 1 : 0;
     const core = woodsCut + 0.06 + open(x, z);
     return Math.max(field, smoothstep(core, core + 0.05, woodsField(x, z)));
   }
@@ -403,6 +427,8 @@ export function createBorderLandform(
     const classicLiftAt = (r: number): number => { const s = smoothstep(BORDER_RIM_START_M, BORDER_EDGE_M, r); return s * s * rimH; };
     return {
       settings,
+      fieldAngle: 0,
+      classicIslandAt: () => 1,
       liftAt: (_x, _z, r) => classicLiftAt(r),
       classicLiftAt,
       rimFactorAt: () => 1,
@@ -416,6 +442,8 @@ export function createBorderLandform(
 
   return {
     settings,
+    fieldAngle,
+    classicIslandAt: (x: number, z: number): number => (anchors.length ? anchorAt(x, z) : 0),
     hedgeAt(x: number, z: number): number {
       if (settings.hedgerows <= 0) return 0;
       // no hedge along the edge itself: the field boundaries are hedged from ~40 m past it
@@ -490,9 +518,11 @@ export function createBorderLandform(
         if (c > 0) lift += (s * s - lift) * c; // the classic rim and its plateau (s = 1 past the edge)
       }
       if (roadDistance < ROAD_HOLD_OUT_M && r < BORDER_EDGE_M) {
+        // past the red line the road keeps the classic rim's level there (it never climbs toward the old plateau), and
+        // hands over to the landform by the edge
         const hold = (1 - smoothstep(ROAD_HOLD_IN_M, ROAD_HOLD_OUT_M, roadDistance))
           * (1 - smoothstep(BORDER_PLAYABLE_M - 2, BORDER_EDGE_M, r));
-        lift += (s * s - lift) * hold;
+        lift += (Math.min(s * s, RIM_AT_PLAYABLE) - lift) * hold;
       }
       return lift * rimH;
     },

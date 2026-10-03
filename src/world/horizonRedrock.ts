@@ -1,5 +1,6 @@
 /** Redrock's canyon continues beyond the playable square on the existing ring.
  * Shared geological shape, not another mountain/noise profile or scene owner. */
+import type { FarmsteadStyle } from './borderFarmsteads.ts';
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import type { Color } from 'three';
 
@@ -26,6 +27,10 @@ export interface CanyonGround {
   getBorderWoodsAt?(x: number, z: number): number;
   /** The map-borders lane: the border's hedgerows (0 … 1 on a field boundary's tree line). */
   getBorderHedgeAt?(x: number, z: number): number;
+  /** The map-borders lane: the farmsteads past the edge — how many, their build, the field system they square to. */
+  _borderFarmsteads?: { count: number; style: FarmsteadStyle; fieldAngle: number };
+  /** The road exits past the edge: [metres off the nearest exit road, its presence 0..1] (terrain.ts roadExitAt). */
+  _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
 }
 
 interface SeamPoint { angle: number; x: number; z: number; height: number }

@@ -47,6 +47,7 @@ import { type EscarpmentSettings, carveEscarpmentRingSteps, createEscarpmentFiel
 import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloudShadeUniforms } from '../horizonCloudShade.ts';
 import { continuedGroundAt } from '../horizonSurface.ts';
 import { resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
+import { buildBorderFarmsteads, ringSurfaceSampler } from '../borderFarmsteads.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
   HORIZON_VISTA_FRAGMENT, HORIZON_VISTA_HAZE_FRAGMENT, HORIZON_VISTA_UNIFORM_DECLARATIONS, buildHorizonForest, createVistaTiles,
@@ -3619,6 +3620,28 @@ export function* buildHorizonRingSteps(
       if (setup && material && !Array.isArray(material)) setup.call(_engineCtx, material, hook ? (shader: unknown) => hook(shader) : null);
     });
     mesh.add(forestGroup);
+  }
+  // The map-borders lane (2026-10-03, gauntlet wave 0: "the border reads as an enclosing clay wall"; the bar is World of
+  // Tanks' red-line shots, villages carrying on past the boundary): farmsteads and hamlets on the ring's seated surface
+  // past the edge (borderFarmsteads.ts) — off the woods, the sea, a railway's right of way and the exit roads'
+  // carriageways, gathered along those roads. One merged mesh, one draw, its shadow in the far cascade only.
+  const farmSpec = ground?._borderFarmsteads;
+  if (vista && ground && farmSpec && farmSpec.count > 0) {
+    const exit: [number, number] = [0, 0];
+    const roadExitAt = ground._roadExitAt;
+    const farms = buildBorderFarmsteads({
+      seed: ((seed ^ 0xFA4D) ^ idHash(mapId)) >>> 0, style: farmSpec.style, count: farmSpec.count, fieldAngle: farmSpec.fieldAngle,
+      groundAt: ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs),
+      woodsAt: (x, z) => ground.getBorderWoodsAt?.(x, z) ?? 0,
+      blockedAt: (x, z) => Math.max(ground.getOutlandSeatWeightAt?.(x, z) ?? 0, ground.getOutlandWaterAt?.(x, z)?.wetness ?? 0,
+        seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01 ? 1 : 0),
+      ...(roadExitAt ? { roadDistanceAt: (x: number, z: number) => (roadExitAt(x, z, exit)[1] > 0.05 ? Math.abs(exit[0]) : Infinity) } : {}),
+    });
+    if (farms) {
+      const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;
+      if (setup) setup.call(_engineCtx, farms.material as THREE.Material, null);
+      mesh.add(farms);
+    }
   }
   // Round 32 (owner 2026-09-21, "redrock still has the noticeable texture/shadow/quality loss beyond the map
   // borders"): the rock and sand outlands carry instanced boulders on the near ring faces — the battlefield's own

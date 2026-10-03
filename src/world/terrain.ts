@@ -48,6 +48,7 @@ import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './
 import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
+import type { FarmsteadStyle } from './borderFarmsteads.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
 import { createWaterRippleField } from './waterRipples.ts';
@@ -362,6 +363,8 @@ export interface HeightField {
   getBorderHedgeAt?(x: number, z: number): number;
   /** The map-borders lane: the parcel past the edge as a weighted albedo offset (the ring's borderTint attribute). */
   _borderParcelAt?(x: number, z: number, out: [number, number, number]): [number, number, number];
+  /** The map-borders lane: the farmsteads past the edge (borderFarmsteads.ts), built with the ring. */
+  _borderFarmsteads?: { count: number; style: FarmsteadStyle; fieldAngle: number };
   /** The map-borders lane: the farm tracks past the edge (the ring's borderTrack attribute, borderLandform.ts trackAt). */
   _borderTrackAt?(x: number, z: number, out: [number, number, number, number]): [number, number, number, number];
   getHeightAtFast(x: number, z: number): number;
@@ -1377,6 +1380,7 @@ function* heightFieldBuildSteps(
       // standing rimH over the battlefield
       const lift = border.liftAt(x, z, borderRadius);
       h += lift * (1 - waterWeight) * (lift > 0 ? coastRimKeep(x, z) : 1);
+      if (!clearanceBuilding) h -= clearanceReduction(x, z, h);
       if (waterWeight > 0) h += (waterLevelSum / waterWeightSum - h) * waterWeight;
     }
     if (liquidLakeBanks !== null) {
@@ -1386,6 +1390,53 @@ function* heightFieldBuildSteps(
     return h;
   }
   const outlandLakeHeight: LakeHeightResult = { height: 0, wetness: 0 };
+
+  // The map-borders lane (2026-10-03, gauntlet wave 0: "the border reads as an enclosing clay wall rather than land
+  // continuing"): the foreground clearance. The border census's eye views met 13–25° banks a few metres past the red
+  // line — the geology's own hills, the landform's crests, a corner's rise. Past the playable edge the ground rises at
+  // most ~2.5° over the square's own edge (its outland composition along the 470 m square, smoothed over ±40 m) for its
+  // first ~260 m and is released by ~540 m, so from inside the square the eye runs over the near country to the woods,
+  // farms and foothills behind. A smooth minimum (no crease) that never raises anything; a railway's classic island (its
+  // cutting and tunnel hill) keeps its ground; inside the playable square nothing changes.
+  const CLEARANCE_SIDE_M = 940, CLEARANCE_STEP_M = 10, CLEARANCE_SOFT_M = 4;
+  let clearanceRef: Float32Array | null = null, clearanceBuilding = false;
+  function clearanceReference(): Float32Array {
+    if (clearanceRef) return clearanceRef;
+    const n = (4 * CLEARANCE_SIDE_M) / CLEARANCE_STEP_M, raw = new Float32Array(n), half = CLEARANCE_SIDE_M / 2;
+    clearanceBuilding = true;
+    for (let i = 0; i < n; i++) {
+      const s = i * CLEARANCE_STEP_M, side = Math.floor(s / CLEARANCE_SIDE_M), p = s - side * CLEARANCE_SIDE_M;
+      const x = side === 0 ? -half + p : side === 1 ? half : side === 2 ? half - p : -half;
+      const z = side === 0 ? half : side === 1 ? half - p : side === 2 ? -half : -half + p;
+      raw[i] = outlandBaseHeightAt(x, z);
+    }
+    clearanceBuilding = false;
+    const ref = new Float32Array(n), reach = 4;
+    for (let i = 0; i < n; i++) {
+      let sum = 0;
+      for (let k = -reach; k <= reach; k++) sum += raw[(i + k + n) % n];
+      ref[i] = sum / (2 * reach + 1);
+    }
+    clearanceRef = ref;
+    return ref;
+  }
+  /** How far (m) the ground past the playable edge comes down under the clearance at (x, z), given its height there. */
+  function clearanceReduction(x: number, z: number, h: number): number {
+    const half = CLEARANCE_SIDE_M / 2;
+    if (Math.max(Math.abs(x), Math.abs(z)) <= half || border.settings.classic) return 0;
+    const cx = clamp(x, -half, half), cz = clamp(z, -half, half), dist = Math.hypot(x - cx, z - cz);
+    const release = smoothstep(260, 540, dist);
+    if (release >= 1) return 0;
+    const ref = clearanceReference(), n = ref.length;
+    const s = cz >= half ? cx + half : cx >= half ? CLEARANCE_SIDE_M + (half - cz)
+      : cz <= -half ? 2 * CLEARANCE_SIDE_M + (half - cx) : 3 * CLEARANCE_SIDE_M + (cz + half);
+    const f = s / CLEARANCE_STEP_M, i0 = Math.floor(f), t = f - i0;
+    const edge = ref[((i0 % n) + n) % n] * (1 - t) + ref[(((i0 + 1) % n) + n) % n] * t;
+    const excess = h - (edge + 2 + dist * 0.044);
+    if (excess <= -CLEARANCE_SOFT_M) return 0;
+    const soft = excess >= CLEARANCE_SOFT_M ? excess : (excess + CLEARANCE_SOFT_M) ** 2 / (4 * CLEARANCE_SOFT_M);
+    return soft * (1 - release) * (1 - border.classicIslandAt(x, z));
+  }
 
   // The map-borders lane (2026-10-03, owner: "roads ... continue and fade naturally"): every road that reaches the
   // playable edge runs on past it. The border census showed each one ending where the square ends — the mask's clamped
@@ -1583,13 +1634,16 @@ function* heightFieldBuildSteps(
     // Chebyshev square, so inside a bay's bank band it forced the waterline parallel to the red line and raised a wall
     // where the shore should run on; the lift yields to the water weight, so the shore keeps the bay's own contour.
     h += rimLift * (1 - waterWeight) * rimKeep * roadRimWeight(borderCorridorStart, roadsOn, boundedRoadCorridor, cw, roadCorridorWeight);
+    // the foreground clearance past the red line (final queries; the road plane below comes down with its ground)
+    const clearance = roadsOn && borderRadius > 470 ? clearanceReduction(x, z, h) * (1 - waterWeight) : 0;
+    h -= clearance;
     // The road grades were authored on the classic rim; a final query's road plane follows the landform's rim instead
     // (the difference, weighted as the authoring weighted the rim), so a road that climbed the old rim never stands on
     // an embankment where the land was lowered. Zero inside 430 m, where both rims are nothing, and along a road inside
     // the playable square, where the landform keeps the classic rim (its road hold), so every grade there is authored.
     const roadRimShift = roadsOn && borderRadius > 430
       ? (rimLift - border.classicLiftAt(borderRadius)) * (1 - waterWeight) * rimKeep
-        * roadRimWeight(borderCorridorStart, false, boundedRoadCorridor, cw, roadCorridorWeight) : 0;
+        * roadRimWeight(borderCorridorStart, false, boundedRoadCorridor, cw, roadCorridorWeight) - clearance : 0;
     if (waterWeight > 0) {
       const target = waterLevelSum / waterWeightSum;
       h += (target - h) * waterWeight;
@@ -2172,7 +2226,8 @@ function* heightFieldBuildSteps(
     getBorderHandOverAt: border.handOverAt,
     // (a receipt's classic border — the rim before the landform — publishes no woods, hedges or parcels)
     ...(border.settings.classic ? {} : { getBorderWoodsAt: border.woodsAt, getBorderHedgeAt: border.hedgeAt, _borderParcelAt: border.parcelTintAt,
-      _borderTrackAt: border.trackAt }),
+      _borderTrackAt: border.trackAt,
+      _borderFarmsteads: { count: border.settings.farms, style: border.settings.buildings, fieldAngle: border.fieldAngle } }),
     _roadExitAt: roadExitAt,
     ...(cfg?.navigationWaterPolicy
       ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),
