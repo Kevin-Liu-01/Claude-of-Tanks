@@ -3755,6 +3755,7 @@ function* vegetationBuildSteps(
             if (f.boundary === 3 && f.edgeM < 0.62) return null;
             if (f.boundary === 2 && f.edgeM < 0.55 && clJ < 0.5) return null;
           } else if (!f.sward) return null;
+          else if (f.weed) dry = Math.max(dry, 0.75); // a bare field's weeds: the tuft's own straw, not the soil's colour
           else if (f.crop !== 0) crop = f.crop;
         }
       }

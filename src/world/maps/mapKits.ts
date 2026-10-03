@@ -2137,8 +2137,8 @@ function layRailSpan(
   // ballast slab — grey crushed-stone vertex paint on the matte 'baked'
   // bucket (the 'stone' bucket is BRICK on railyard and read as brick beds)
   // Ground lane (2026-10-03, the gauntlet: rails were "flat dark strips painted on bare brown dirt, with no raised
-  // ballast beds, sleepers, rail heads"): the bed is crushed stone's own pale grey (0.10–0.135, a warm cast), not
-  // near-black; its sides fall away as sloped shoulders to the ground, so the line stands as a raised bed; every rail
+  // ballast beds, sleepers, rail heads"): the bed is weathered crushed stone (0.062–0.082, a warm cast), not near-black
+  // nor pale; its sides fall away as sloped shoulders to the ground, so the line stands as a raised bed; every rail
   // carries a worn bright head; and the sleepers lie every ~0.7 m. The seeded draws are exactly the old ones (24 slab
   // colours, one jitter per seeded sleeper): the infill sleepers and the new parts take none.
   const deep = lay.conform === 'full';
@@ -2147,8 +2147,10 @@ function layRailSpan(
     const n = bal.attributes.position.count;
     const col = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
-      const v = 0.100 + rng() * 0.035;
-      col[i * 3] = v; col[i * 3 + 1] = v * 0.97; col[i * 3 + 2] = v * 0.91;
+      // (wave 8, railyard establishing: the pale bed and bright heads read as "flat gray grid patches … solar-panel
+      // arrays"): weathered, oil-dark crushed stone — between the old near-black and the first pale pass
+      const v = 0.062 + rng() * 0.020;
+      col[i * 3] = v; col[i * 3 + 1] = v * 0.97; col[i * 3 + 2] = v * 0.92;
     }
     bal.setAttribute('color', new THREE.BufferAttribute(col, 3));
   }
@@ -2163,7 +2165,7 @@ function layRailSpan(
       const pos = shoulder.attributes.position, col = new Float32Array(pos.count * 3);
       for (let i = 0; i < pos.count; i++) {
         const foot = (pos.getX(i) * sideSign + slopeLen / 2) / slopeLen; // 0 at the bed's edge, 1 at the foot
-        const v = 0.118 - 0.030 * foot;
+        const v = 0.072 - 0.016 * foot;
         col[i * 3] = v; col[i * 3 + 1] = v * (0.97 - 0.03 * foot); col[i * 3 + 2] = v * (0.90 - 0.06 * foot);
       }
       shoulder.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -2181,7 +2183,7 @@ function layRailSpan(
     // ground lane: the head the wheels keep bright — worn steel over the rusted web
     const head = box(0.066, 0.016, len + 0.06, 2.0);
     const hp = head.attributes.position, hc = new Float32Array(hp.count * 3);
-    for (let i = 0; i < hp.count; i++) { hc[i * 3] = 0.42; hc[i * 3 + 1] = 0.425; hc[i * 3 + 2] = 0.44; }
+    for (let i = 0; i < hp.count; i++) { hc[i * 3] = 0.23; hc[i * 3 + 1] = 0.232; hc[i * 3 + 2] = 0.24; }
     head.setAttribute('color', new THREE.BufferAttribute(hc, 3));
     place(head, side, 0.24 + 0.085 + 0.004, 0);
     (buckets.baked || buckets.dark).push(head);

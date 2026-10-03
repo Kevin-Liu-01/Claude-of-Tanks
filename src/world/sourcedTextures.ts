@@ -201,7 +201,9 @@ const TERRAIN_PLAN = {
     // brownfield: trodden grey-green verge grass, ash/cinder dirt, and the
     // R layer doubles as CONCRETE hardstand + road paving (uRoadTex)
     G: { set: 'grass', tint: [0.80, 0.78, 0.66], roughMul: 1.3 }, // r3: duller — read as mowed lawn
-    D: { set: 'dirt', tint: [0.66, 0.64, 0.60], roughMul: 1.35 },
+    // ground lane (2026-10-03, wave 8: the yard floor between the tracks "a flat uniform brown plane"): cinder — the
+    // dirt photo's brown half taken out, a grey a shade darker
+    D: { set: 'dirt', tint: [0.62, 0.61, 0.60], desat: 0.5, roughMul: 1.35 },
     R: { set: 'cobble', tint: [0.88, 0.88, 0.86], roughMul: 1.5 }, M: null,
   },
   // Map-quality expansion. Unknown ids intentionally fall back to Verdant,

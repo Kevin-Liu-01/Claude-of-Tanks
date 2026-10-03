@@ -579,7 +579,9 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
           // the crop's own colour (landUse.ts LAND_CROP_ALBEDO, measured: ripe wheat 0.30/0.22/0.075, barley
           // 0.33/0.28/0.12, a young crop 0.075/0.19/0.04, stubble 0.30/0.25/0.13 …) as a multiplier on THIS biome's
           // ramp — a fixed multiplier set against the meadow's tip turned a steppe or savanna sward pink
-          if (crop !== LAND_CROP.pasture) cropTint = [_field.tintR / b.tip[0], _field.tintG / b.tip[1], _field.tintB / b.tip[2]];
+          // (a bare field's weeds keep the grass's own cured end, not the soil's colour: LAND_CROP_GROWTH weed)
+          if (_field.weed) cropTint = [b.dry[0] / b.tip[0], b.dry[1] / b.tip[1], b.dry[2] / b.tip[2]];
+          else if (crop !== LAND_CROP.pasture) cropTint = [_field.tintR / b.tip[0], _field.tintG / b.tip[1], _field.tintB / b.tip[2]];
         }
       }
     }

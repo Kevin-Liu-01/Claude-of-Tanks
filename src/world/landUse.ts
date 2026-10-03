@@ -21,7 +21,7 @@
 // walls.
 
 export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst'
-  | 'brownfield';
+  | 'brownfield' | 'coalfield';
 
 /** How a region's fields are bounded (the material's uLandE.z). */
 export type LandBoundary = 'margin' | 'ditch' | 'bund' | 'wall';
@@ -101,7 +101,9 @@ export const LAND_CROP_ALBEDO: Readonly<Record<LandCropId, readonly [number, num
  * crop is a sward that grows tufts and blades (0 = bare: plough, water, turned soil, dense row foliage), its height
  * against the biome's sward and the share of candidates kept.
  */
-export const LAND_CROP_GROWTH: Readonly<Record<LandCropId, Readonly<{ sward: boolean; height: number; keep: number }>>> = Object.freeze({
+// `weed`: the sward on a bare field is its weeds — the grass's own cured tones, not the field's albedo (wave 8, Saltwind's
+// chase: the red earth "carpeted with evenly spaced lilac-purple grass cards" — blades tinted the soil's red)
+export const LAND_CROP_GROWTH: Readonly<Record<LandCropId, Readonly<{ sward: boolean; height: number; keep: number; weed?: boolean }>>> = Object.freeze({
   0: { sward: true, height: 1, keep: -1 },     // pasture: the wild sward's own law (keep -1 = unchanged)
   // (the hold-2 ABBA: +1.1–1.3 ms GPU at the chase views of Amberford and Saltmere, whose cameras stand in or beside
   // sown fields — a sown field drew every candidate blade, taller, half again the wild sward's; now about its density)
@@ -115,12 +117,12 @@ export const LAND_CROP_GROWTH: Readonly<Record<LandCropId, Readonly<{ sward: boo
   8: { sward: false, height: 0, keep: 0 },
   9: { sward: true, height: 0.6, keep: 0.8 },
   10: { sward: true, height: 0.75, keep: 0.75 },
-  11: { sward: true, height: 0.5, keep: 0.12 }, // turned red earth: a few weeds
-  12: { sward: true, height: 0.35, keep: 0.35 },
+  11: { sward: true, height: 0.5, keep: 0.12, weed: true }, // turned red earth: a few weeds
+  12: { sward: true, height: 0.35, keep: 0.35, weed: true },
   13: { sward: true, height: 0.30, keep: 0.8 },
   14: { sward: true, height: 1.9, keep: 0.85 },
   15: { sward: false, height: 0, keep: 0 },
-  16: { sward: true, height: 0.4, keep: 0.12 },
+  16: { sward: true, height: 0.4, keep: 0.12, weed: true },
   17: { sward: true, height: 0.85, keep: 0.6 },
 });
 
@@ -147,12 +149,15 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // an ironworks' ground (Völklingen on the Saar): plots of brownfield grass, tipped slag, ballast and hardcore,
   // rank grass and bare earth, between the works' tracks and the birch scrub that seeds itself along them
   brownfield: [[17, 0.40], [15, 0.22], [16, 0.18], [0, 0.12], [4, 0.08], [5, 0.0], [3, 0.0]],
+  // a coalfield valley's farmland (the Ruhr's, Silesia's, the Valleys'): pasture and rough grazing gone ruderal round the
+  // pits, small arable fields, and here and there a plot of tipped slag
+  coalfield: [[0, 0.26], [17, 0.22], [4, 0.14], [5, 0.14], [1, 0.12], [3, 0.06], [15, 0.06]],
 });
 
 /** Each region's field boundary. */
 const BOUNDARIES: Readonly<Record<LandRegion, LandBoundary>> = Object.freeze({
   steppe: 'margin', bocage: 'margin', temperate: 'margin', upland: 'margin', strip: 'margin',
-  polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin',
+  polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin',
 });
 
 /** The rotation's cumulative shares at slots 0..5 (slot 6 takes the rest), normalised. */
@@ -227,6 +232,13 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     strength: 0.75, heading: 0, blockU: 96, blockV: 64, maxSplit: 3, marginM: 1.6, trackShare: 0.45, hedgeShare: 0.35,
     warpM: 18, region: 'brownfield', salt: 89,
   },
+  // Cinder Junction (railyard: a coalfield rail junction): the valley floor's fields and grazing round the yard, laid along
+  // the main line (its chord rises 6.6 m per 100 m of easting); the graded yard itself is worn ground (the material's
+  // village wear keeps the fields off it). (The hold-3 pairs: "a uniform, saturated green blanket".)
+  railyard: {
+    strength: 0.65, heading: 0.066, blockU: 84, blockV: 52, maxSplit: 3, marginM: 1.5, trackShare: 0.3, hedgeShare: 0.3,
+    warpM: 14, region: 'coalfield', salt: 97,
+  },
 });
 
 /** The map's land use, or null (no fields). */
@@ -294,6 +306,8 @@ export interface LandFieldSample {
   crop: LandCropId;
   /** Metres to the field's nearest boundary. */
   edgeM: number;
+  /** Metres to the nearer of the field's two row ends (where the rows stop and the tractor turns: the headland). */
+  endM: number;
   /** The field's grass margin (m): inside it the ground is the margin's rank grass, not the crop. */
   marginM: number;
   /** 1 on a dirt track (the track's own width), 0 off it. */
@@ -316,11 +330,13 @@ export interface LandFieldSample {
   sward: number;
   cropHeight: number;
   cropKeep: number;
+  /** 1 when the field's sward is its weeds (cured grass tones, not the crop's albedo). */
+  weed: number;
 }
 
 export function createLandFieldSample(): LandFieldSample {
-  return { active: 0, crop: 0, edgeM: 1e9, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
-    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1 };
+  return { active: 0, crop: 0, edgeM: 1e9, endM: 1e9, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
 }
 
 /** The analytic warp of the boundaries (m): two slow sines per axis, identical in GLSL. */
@@ -369,9 +385,9 @@ function compile(profile: LandUseProfile): CompiledLandUse {
  * the square; the cell hash keeps its period beyond ±160 km.
  */
 export function landUseAt(profile: LandUseProfile | null, x: number, z: number, out: LandFieldSample): LandFieldSample {
-  out.active = 0; out.crop = 0; out.edgeM = 1e9; out.marginM = 0; out.track = 0; out.hedge = 0; out.rowX = 1; out.rowZ = 0;
+  out.active = 0; out.crop = 0; out.edgeM = 1e9; out.endM = 1e9; out.marginM = 0; out.track = 0; out.hedge = 0; out.rowX = 1; out.rowZ = 0;
   out.jitter = 0; out.id = 0; out.boundary = 0; out.tintR = 0; out.tintG = 0; out.tintB = 0; out.sward = 1;
-  out.cropHeight = 1; out.cropKeep = -1;
+  out.cropHeight = 1; out.cropKeep = -1; out.weed = 0;
   if (!profile || !(profile.strength > 0)) return out;
   const { ch, sh, blockU, blockV, maxSplit, marginM, trackShare, hedgeShare, warpM, salt, cum, kinds, boundary } = compile(profile);
   const px = x + warpX(x, z) * warpM, pz = z + warpZ(x, z) * warpM;
@@ -415,6 +431,7 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   out.active = 1;
   out.crop = crop;
   out.edgeM = Math.min(edgeU, edgeV);
+  out.endM = rowAlongU ? edgeU : edgeV;
   const rx = rowAlongU ? ch : -sh, rz = rowAlongU ? sh : ch;
   out.rowX = rx; out.rowZ = rz;
   out.jitter = luRand(fieldA, fieldB, salt + 29);
@@ -424,7 +441,7 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   out.boundary = boundary;
   const albedo = LAND_CROP_ALBEDO[crop], growth = LAND_CROP_GROWTH[crop];
   out.tintR = albedo[0]; out.tintG = albedo[1]; out.tintB = albedo[2];
-  out.sward = growth.sward ? 1 : 0; out.cropHeight = growth.height; out.cropKeep = growth.keep;
+  out.sward = growth.sward ? 1 : 0; out.cropHeight = growth.height; out.cropKeep = growth.keep; out.weed = growth.weed ? 1 : 0;
   out.id = (U32(Math.imul(fieldA + 4096, 65537) ^ (fieldB + 4096)) % 1000003);
   return out;
 }
@@ -464,7 +481,7 @@ float lu_kind(float slot) {
   int packed = s < 4 ? int(uLandE.x + 0.5) : int(uLandE.y + 0.5);
   return float((packed >> ((s < 4 ? s : s - 4) * 5)) & 31);
 }
-void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2 rowDir, out float jitter) {
+void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2 rowDir, out float jitter, out float endM) {
   float warpM = uLandC.x, salt = uLandC.y;
   vec2 w = vec2(sin(p.x * 0.00523 + p.y * 0.00311 + 1.3) + 0.5 * sin(p.x * -0.00197 + p.y * 0.00877 + 4.1),
                 sin(p.x * 0.00409 - p.y * 0.00587 + 2.7) + 0.5 * sin(p.x * 0.00913 + p.y * 0.00241 + 0.6));
@@ -502,6 +519,7 @@ void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2
   float dLine = min(lv, blockV - lv);
   track = trackOn ? 1.0 - smoothstep(1.6, 2.6, dLine) : 0.0;
   edgeM = min(edgeU, edgeV);
+  endM = rowAlongU ? edgeU : edgeV;
   rowDir = rowAlongU ? vec2(ch, sh) : vec2(-sh, ch);
   jitter = lu_rand(row, fieldB, salt + 29.0);
 }
