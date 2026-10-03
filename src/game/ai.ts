@@ -1201,7 +1201,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let ramCapMps = Infinity;                  // the run's closing-speed cap (see RAM_FINISH_MARGIN)
   let ramLineCheckS = -Infinity;
   let ramLineClear = false;                  // the straight line to the rammed hull at the last check
-  let ramContactUntilS = -1;                 // the run touched the hull: its motion until then is our push
+  let ramContactUntilS = -1;                 // the run touched the hull: its motion until then is our push…
+  let ramContactId: string | null = null;    // …on this hull
   const ramPoint = { x: 0, z: 0 };
   // geometry-hard blocked commit → follow the authored lane a while
   let laneFallbackUntilS = -1;
@@ -3195,7 +3196,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         return;
       }
       // in contact with the hull: what it moves now is the run's own push (see RAM_CONTACT_HOLD_S)
-      if (dist < (spec.dims.hullLengthM + target.spec.dims.hullLengthM) * 0.5 + 1.5) ramContactUntilS = timeS + RAM_CONTACT_HOLD_S;
+      if (dist < (spec.dims.hullLengthM + target.spec.dims.hullLengthM) * 0.5 + 1.5) {
+        ramContactUntilS = timeS + RAM_CONTACT_HOLD_S;
+        ramContactId = target.id;
+      }
       if (timeS - ramLineCheckS >= RAM_LINE_RECHECK_S) {
         ramLineCheckS = timeS;
         ramLineClear = dist <= RAM_STRAIGHT_M && !findBlockingObstacle(st.pos.x, st.pos.z, dx / dist, dz / dist,
@@ -4762,7 +4766,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     // a hull this bot's ram run is pushing has not moved itself (see RAM_CONTACT_HOLD_S)
     const still = (Math.abs(target.state.speed ?? 0) < 0.5 && Math.abs(target.state.yawRate ?? 0) < 0.05)
-      || (ramming && timeS < ramContactUntilS);
+      || (ramming && timeS < ramContactUntilS && ramContactId === target.id);
     targetStillS = still ? targetStillS + dt : 0;
     const reloadT = target.combat?.reload?.t ?? 0;
     if (reloadT > prevTargetReloadT + 1) targetLastShotS = timeS; // a shell left its gun
