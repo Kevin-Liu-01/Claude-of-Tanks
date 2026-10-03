@@ -1514,7 +1514,17 @@ interface CardEmitOptions {
  * (lobeField's field: under a lone lobe's surface value nothing, toward its heart up to `depthShade`) and on the crown's
  * underside, which sees the ground instead of the sky.
  */
-export const GROWTH_CROWN_SHADING = Object.freeze({ lobeShare: 0.5, volume: 0.25, upBias: 0.2, depthShade: 0.4, underside: 0.18 });
+export const GROWTH_CROWN_SHADING = Object.freeze({
+  lobeShare: 0.5, volume: 0.25, upBias: 0.2, depthShade: 0.4, underside: 0.18,
+  /**
+   * The grown crowns' tint gain over that shade (vegetation.ts buildGrownTree): the visible crown albedo of a portrait
+   * at 22 m (.qa-dev trees2-portrait: oak 0.122 → 0.083, pine 0.089 → 0.072, poplar 0.101 → 0.070 before it) comes
+   * back to within about a sixth under the round-1 crowns — the lit outer clusters at their old value, the heart in shade.
+   */
+  crownGain: 1.25,
+  /** A grown shrub's lighter depth shade (a shrub is open to the sky round it) and the gain that gives its shell back. */
+  shrubDepthShade: 0.3, shrubGain: 1.12,
+});
 
 /**
  * The foliage as one flat geometry: per leaf site a spray card seated with its stem end ON the branch (a few

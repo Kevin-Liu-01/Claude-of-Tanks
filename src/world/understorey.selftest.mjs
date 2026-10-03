@@ -61,7 +61,8 @@ function legacyShapeContract(geometry) {
 // sprays carries up to a third more), welded to four vertices a spray, the six streams of the grown crowns' cards
 function grownShapeContract(geometry) {
   assert.ok(geometry.index, 'welded: indexed');
-  assert.deepEqual(Object.keys(geometry.attributes).filter(k => k !== 'aFadeI' && k !== 'aLodF').sort(), ['aCard', 'aFlex', 'color', 'normal', 'position', 'uv']);
+  // trees round 2 (2026-10-03): and the billboard frame its cards turn about (aAxis, aLeaf: vegetation.ts COT_LEAF_BILLBOARD)
+  assert.deepEqual(Object.keys(geometry.attributes).filter(k => k !== 'aFadeI' && k !== 'aLodF').sort(), ['aAxis', 'aCard', 'aFlex', 'aLeaf', 'color', 'normal', 'position', 'uv']);
   const p = geometry.attributes.position, sprays = geometry.index.count / 6;
   assert.ok(Number.isInteger(sprays) && sprays >= 20 && sprays <= 27, `twenty to twenty-seven two-triangle sprays (${sprays})`);
   assert.equal(p.count, sprays * 4, 'four vertices a spray');

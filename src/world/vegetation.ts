@@ -37,13 +37,14 @@ import { createTreeImpostorLibrary, type TreeImpostorLibrary, type TreeImpostorR
 // p2 trees lane (2026-10-01): the grown near trees — skeleton, wood, spray cards and crown shadow hull — and their
 // branch-spray atlases
 import {
-  canopySkyOcclusion, crownLobes, crownSurfaceNormal, emitBranchGeometry, emitCrownShadowHull, emitLeafCards, growShrubSkeleton, GROWTH_SHRUB_VALUE, growthCardRows, GROWTH_CROWN_STEM_WIDTH, growthCrownAttachments,
+  canopySkyOcclusion, crownLobes, crownSurfaceNormal, emitBranchGeometry, GROWTH_CROWN_SHADING, emitCrownShadowHull, emitLeafCards, growShrubSkeleton, GROWTH_SHRUB_VALUE, growthCardRows, GROWTH_CROWN_STEM_WIDTH, growthCrownAttachments,
   growTreeSkeleton, GROWTH_CANOPY_AO, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type GrowthSpecies,
 } from './treeGrowth.ts';
 import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
 import { treeBiomeSlot } from './treeBiomes.ts';
+import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import type { PropsMapConfig } from './props.ts';
@@ -2215,16 +2216,6 @@ const LEAF_TRANSMISSION = 0.45;
  */
 const GROWN_LEAF_BILLBOARD = 1;
 
-/**
- * Trees round 2 (2026-10-03): the grown crowns' tint gain over the depth shading their cards now carry (treeGrowth.ts
- * GROWTH_CROWN_SHADING): the visible crown albedo of a portrait at 22 m (.qa-dev trees2-portrait: oak 0.122 → 0.083,
- * pine 0.089 → 0.072, poplar 0.101 → 0.070 before this gain) comes back to within about a sixth under the round-1
- * crowns — the lit outer clusters at their old value, the heart of the crown in shade.
- */
-const GROWN_CROWN_DEPTH_GAIN = 1.25;
-/** Trees round 2: a grown shrub's depth shade (its masses' hearts) and the gain that gives its lit shell back. */
-const GROWN_SHRUB_DEPTH_SHADE = 0.3;
-const GROWN_SHRUB_DEPTH_GAIN = 1.12;
 
 /** The grown crowns' card tint law per family: the legacy HSL multiplier's hue and saturation, and its gain. */
 function grownTintLaw(family: string): readonly [number, number, number] {
@@ -2259,17 +2250,17 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
   const shrubValue = GROWTH_SHRUB_VALUE[growth] ?? 1;
   // trees round 2 (2026-10-03, gauntlet wave 4: the "green balls", the "papercraft" foreground bush): a shrub shades as
   // its own few masses — its sprays' lobes, the union's normals and a lighter depth shade than a crown's (a shrub is
-  // open to the sky around it), its lit shell given back by GROWN_SHRUB_DEPTH_GAIN
+  // open to the sky around it), its lit shell given back by the shrub gain (GROWTH_CROWN_SHADING)
   skeleton.lobes = crownLobes(skeleton, kind === 'bush' ? 3 : 2);
   const cards = emitLeafCards(skeleton, {
-    tiles: SPRAY_ATLAS_TILES, rng, rows: 2, depthShade: GROWN_SHRUB_DEPTH_SHADE,
+    tiles: SPRAY_ATLAS_TILES, rng, rows: 2, depthShade: GROWTH_CROWN_SHADING.shrubDepthShade,
     tint(shade, site, r) {
       const jitter = r();
       const sk = snow > 0.05 && site.tile < SPRAY_ATLAS_TILES ? 0.85 + jitter * 0.15 : 0;
       _c.setHSL(hue0 + (r() - 0.5) * 0.06 + (0.585 - hue0) * sk, (sat0 + r() * 0.06) * (1 - sk * 0.85) + 0.02 * sk, 0.5,
         THREE.SRGBColorSpace);
       const value = (0.55 + 0.45 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1) * (sk > 0 ? 1 : shrubValue)
-        * GROWN_SHRUB_DEPTH_GAIN;
+        * GROWTH_CROWN_SHADING.shrubGain;
       return [_c.r * gain * value, _c.g * gain * value, _c.b * gain * value];
     },
   });
@@ -2444,10 +2435,10 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
         dead ? 0.34 + r() * 0.06 : (sat0 + r() * 0.06) * (1 - sk * 0.85) + 0.02 * sk, 0.5, THREE.SRGBColorSpace);
       // a laden spray's lift brightens its painted snow far more than its dark needles (the tint multiplies the
       // texel): the snow reads as snow beside the snowfield, the needles under it stay dark. Trees round 2: a crown
-      // with lobes darkens its cards by their depth in it (treeGrowth.ts emitLeafCards); GROWN_CROWN_DEPTH_GAIN gives
-      // the lit shell back what that darkening takes
+      // with lobes darkens its cards by their depth in it (treeGrowth.ts emitLeafCards); the crown gain gives the lit
+      // shell back what that darkening takes
       const value = (0.52 + 0.48 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1)
-        * (skeleton.lobes ? GROWN_CROWN_DEPTH_GAIN : 1);
+        * (skeleton.lobes ? GROWTH_CROWN_SHADING.crownGain : 1);
       return [_c.r * gain * value, _c.g * gain * value, _c.b * gain * value];
     },
   }));
@@ -3298,6 +3289,24 @@ export function buildGrassTuftGeometry(
 // the authored counts. Read at build time, after the device tier is resolved.
 export function treeRichness(): number { return getDeviceTier() === 'mobile' ? 1 : 1.1; }
 
+/**
+ * Trees round 2 (2026-10-03; Glacier Pass's census, gauntlet wave 4's "lone needle-like grass stalks" on Frosthollow):
+ * on a snowbound battlefield (its ground profile's snow climate, groundRedux.ts) the classic grass tufts are dead winter
+ * grass — the rimed straw tone on the card wherever the map names none (Frosthollow's own), a sixth of a meadow's density
+ * at most (the sparse law then gathers them into clumps, resolveTuftScale), and short: stalks that barely clear the snow
+ * (a field-wide stubble patch at 45 %, the stubble law's own height scale) — instead of a spring-green sward pushed
+ * through the snowfield. The tall-grass tier's sedge is the ground profile's (tundra). A config, not a code path: the
+ * tufts' draws and their placement law stay what they were.
+ */
+export const SNOW_GRASS_LAW = Object.freeze({ maxDensity: 0.12, heightScale: 0.45 });
+function applySnowGrassLaw(veg: VegetationConfig, mapId: string | null): void {
+  if (resolveGroundReduxProfile(mapId).climate !== 'snow') return;
+  veg.grassTexTone ??= (_h, _s, l) => [0.105, 0.10, clamp(l + 0.36, 0, 1)];
+  veg.grassDensity = Math.min(veg.grassDensity, SNOW_GRASS_LAW.maxDensity);
+  veg.stubblePatches = [...(veg.stubblePatches ?? []),
+    { x0: -700, x1: 700, z0: -700, z1: 700, feather: 1, heightScale: SNOW_GRASS_LAW.heightScale }];
+}
+
 /** p2 trees lane (2026-10-01): the desktop tiers grow their near trees (treeGrowth.ts); the mobile tier keeps the
  * legacy card trees. Read at build time, after the device tier is resolved. */
 export function vegetationGrowsTrees(): boolean {
@@ -3422,6 +3431,8 @@ function* vegetationBuildSteps(
   const v = L.village;
   const noVeg = heightField._noVeg || (() => false);
   let groundCoverBlocked: GroundCoverBlocked | null = null;
+  // trees round 2 (2026-10-03): a snowbound map's classic tufts are dead winter grass (applySnowGrassLaw)
+  applySnowGrassLaw(veg, cfg?.id ?? null);
   const grassPerChunk = Math.round(GRASS_PER_CHUNK * veg.grassDensity
     * (mobileTier ? 0.62 : 1));
   const carpetPerCell = Math.round(CARPET_PER_CELL * veg.grassDensity
@@ -4582,6 +4593,8 @@ function* vegetationBuildSteps(
     far(rng: RandomSource, palette: VegetationPalette, index: number): FarTreeGeometryPair;
     /** p2 trees lane: the near trees grow (treeGrowth.ts): their cards take the grown crowns' edge-on fade. */
     grown?: boolean;
+    /** Trees round 2: the species whose leaf-detail class the material takes (a regional form's family). */
+    detailSpecies?: Species;
   }
   function scaleNear(
     pair: TreeGeometryPair,
@@ -4653,7 +4666,6 @@ function* vegetationBuildSteps(
     const slot = treeBiomeSlot(cfg?.id, sp);
     return slot ? { form: slot.form, leaves: slot.leaves === true } : null;
   };
-  const growthOf = (sp: Exclude<Species, 'palm'>): GrowthSpecies => formOf(sp)?.form ?? sp;
   // p2 trees lane (2026-10-01): the desktop tiers grow their near trees (treeGrowth.ts) and paint branch-spray atlases
   // (treeSprayAtlas.ts); the far tier is the bake of those trees (treeImpostors.ts). The mobile tier keeps the
   // legacy card trees, atlases and lobe tier exactly — the phones' cheaper path — and so do the palms and the
@@ -4667,13 +4679,20 @@ function* vegetationBuildSteps(
     if (!grownTrees) return legacy;
     sprayAtlasSpecies.add(species);
     // trees round 2: the slot grows as its regional form (treeBiomes.ts); its seeds, its far stand-ins and its records
-    // stay the slot's
-    const growth = growthOf(species);
+    // stay the slot's. A form of another family keeps the map palette's tone and snow but not the card hue and
+    // saturation tuned for the slot's family, and takes the form's leaves (a birch form on a pine slot is leafy).
+    const form = formOf(species), growth: GrowthSpecies = form?.form ?? species;
+    const family = TREE_GROWTH_PROFILES[growth].family;
+    const crossFamily = !!form && family !== (TREE_ARCHETYPES[species]?.family ?? 'broadleaf');
+    const formPal = (pal: VegetationPalette): VegetationPalette => (!form ? pal
+      : { ...pal, ...(crossFamily ? { cardHue: undefined, cardSat: undefined } : {}), ...(form.leaves ? { birchLeaves: true } : {}) });
     return {
       texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed, grown: true,
+      // the leaf-scale detail of the form's family (a holm oak on a cedar slot is leaves, not needles)
+      detailSpecies: !form ? species : family === 'conifer' ? 'pine' : family === 'birch' ? 'birch' : 'oak',
       // a snowy palette's texTone is the round-8 cards' hoar-frost wash (their snow); the spray atlas paints its snow
-      tex: (r, pal) => makeSprayAtlas(grownFormSprayKind(growth, pal), r, texSize(512), (pal.snow ?? 0) > 0.05 ? null : pal.texTone || null, pal.snow ?? 0),
-      near: (k, pal) => buildGrownTree(growth, seed + legacy.nearSeed + k * 7, k, pal),
+      tex: (r, pal) => makeSprayAtlas(grownFormSprayKind(growth, formPal(pal)), r, texSize(512), (pal.snow ?? 0) > 0.05 ? null : pal.texTone || null, pal.snow ?? 0),
+      near: (k, pal) => buildGrownTree(growth, seed + legacy.nearSeed + k * 7, k, formPal(pal)),
       far: legacy.far,
     };
   }
@@ -4750,7 +4769,7 @@ function* vegetationBuildSteps(
   if (snagShare > 0) speciesList.push('snag' as Species);
   const bushSpecies = speciesList.includes(veg.bushSpecies) ? veg.bushSpecies : speciesList[0];
   if (!bushSpecies) throw new Error('world/vegetation: at least one species is required');
-  const slotPalette = (sp: Species): VegetationPalette => {
+  const palOf = (sp: Species): VegetationPalette => {
     const explicit = veg.palettes[sp];
     if (explicit) return explicit;
     const family = TREE_ARCHETYPES[sp]?.family; // p2 trees lane: the snag has no archetype (it reads no palette)
@@ -4758,15 +4777,6 @@ function* vegetationBuildSteps(
     if (family === 'birch') return veg.palettes.birch || {};
     if (family === 'palm') return veg.palettes.palm || {};
     return veg.palettes.oak || {};
-  };
-  // trees round 2: a slot grown as a form of another family keeps the map's tone and snow but not the card hue and
-  // saturation tuned for the slot's own family, and takes the form's leaves (a birch form on a pine slot is leafy)
-  const palOf = (sp: Species): VegetationPalette => {
-    const pal = slotPalette(sp);
-    const form = grownTrees ? formOf(sp) : null;
-    if (!form) return pal;
-    const crossFamily = TREE_GROWTH_PROFILES[form.form].family !== (TREE_ARCHETYPES[sp]?.family ?? 'broadleaf');
-    return { ...pal, ...(crossFamily ? { cardHue: undefined, cardSat: undefined } : {}), ...(form.leaves ? { birchLeaves: true } : {}) };
   };
 
   const foliageTex = {} as Record<Species, THREE.Texture>;
@@ -4782,12 +4792,8 @@ function* vegetationBuildSteps(
       fm.envMapIntensity = 0.75; // keep ambient on shaded leaves — no black cards (round 77: 0.85 → 0.75, the cascades now shade the crowns)
       // Round 77b: the class's detail tile as the card's normal map (desktop; the mobile library returns null and the
       // phones keep the flat card program). The tile is a material property, so every species shares one program.
-      // trees round 2: a slot grown as a form of another family takes that family's detail (a holm oak on a cedar slot is
-      // leaves, not needles)
-      const form = grownTrees ? formOf(sp) : null;
-      const formFamily = form ? TREE_GROWTH_PROFILES[form.form].family : null;
-      const detailSpecies: Species = formFamily === 'conifer' ? 'pine' : formFamily === 'birch' ? 'birch' : formFamily === 'broadleaf' ? 'oak' : sp;
-      const leafTile = leafDetail.texture(leafDetail.classOf(detailSpecies, palOf(sp)));
+      // trees round 2: a slot grown as a form of another family takes that family's detail (grownDefinition)
+      const leafTile = leafDetail.texture(leafDetail.classOf(SPECIES[sp].detailSpecies ?? sp, palOf(sp)));
       if (leafTile) { fm.normalMap = leafTile; fm.normalScale.set(LEAF_DETAIL_NORMAL_SCALE, LEAF_DETAIL_NORMAL_SCALE); }
       // p2 trees lane: the grown crowns' edge-on fade (foliageWindHook) and their back-lit transmission gain
       // (canopyLighting.ts COT_GROWN_CROWN: the dark Saltmere and Frontier crowns against a low sun)

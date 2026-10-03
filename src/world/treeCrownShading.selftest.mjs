@@ -22,8 +22,8 @@ for (const species of GROWTH_SPECIES) {
   const profile = TREE_GROWTH_PROFILES[species];
   for (let variant = 0; variant < 3; variant++) {
     const skeleton = growTreeSkeleton(species, mulberry32(4001 + variant * 13), { variant, tier: 'desktop' });
-    if (profile.family === 'palm') { assert.equal(skeleton.lobes, undefined, 'a palm head carries no lobes'); continue; }
-    if (skeleton.leaves.length < 8) continue; // a snag's few dead sprays
+    // a palm's head (fronds round one point) and a snag's few dead twigs carry no masses
+    if (profile.family === 'palm' || profile.family === 'dead') { assert.equal(skeleton.lobes, undefined, `${species}: no lobes`); continue; }
     // the lobes: a handful of masses covering the crown (every card centre inside its nearest lobe, a little slack)
     const lobes = skeleton.lobes;
     assert.ok(lobes && lobes.length >= 2 && lobes.length <= 10, `${species}/${variant}: ${lobes?.length} lobes`);
