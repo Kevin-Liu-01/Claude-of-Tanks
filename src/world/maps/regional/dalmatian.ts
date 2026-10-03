@@ -17,6 +17,8 @@ import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from '.
 const SHUTTERS: readonly Rgb[] = [0x557a4c, 0x416650, 0x7a5a42, 0x7890a0, 0x8e7a52].map(rgb);
 const DOORS: readonly Rgb[] = [0x6e5440, 0x4f6a4e, 0x7a6048, 0x5e6c76].map(rgb);
 const FRAME: readonly Rgb[] = [0xcac4b6, 0x7a634c].map(rgb);
+/** Share of the map's bare-stone dwellings shown rendered (2026-10-03 w2 review against Pucisca, Brac). */
+const RENDER_SHARE = 0.4;
 
 interface DalmatianState {
   rng: () => number;
@@ -114,10 +116,17 @@ function dwelling(ctx: RegionalBuildContext, opts: { storeys?: number; shop?: bo
   const W = stairSide ? Math.max(4.6, W0 - 1.05) : W0;
   const shiftX = stairSide ? -(W0 - W) / 2 : 0;
   const count = opts.storeys ?? (rng() < 0.25 ? 3 : 2);
-  const rendered = opts.render ?? (ctx.wallBucket !== 'stone');
+  // Brac and the Sibenik villages: besides the houses the map renders, a share of the bare-stone ones carry a pale lime
+  // render over the rubble core, the dressed surrounds left bare (the look-only stream: geometry and build stream as before)
+  const shareRendered = opts.render === undefined && ctx.wallBucket === 'stone' && ctx.variant() < RENDER_SHARE;
+  const rendered = opts.render ?? (ctx.wallBucket !== 'stone' || shareRendered);
   const upper: RegionalBucket = rendered ? (ctx.wallBucket === 'stone' ? 'plaster' : ctx.wallBucket as RegionalBucket) : 'stone';
   const sts: HouseSpec['storeys'] = [];
-  for (let i = 0; i < count; i++) sts.push({ h: i === 0 ? 2.75 + rng() * 0.2 : 2.65 + rng() * 0.2, wall: i === 0 && rendered && rng() < 0.5 ? 'stone' : upper });
+  for (let i = 0; i < count; i++) {
+    const h = i === 0 ? 2.75 + rng() * 0.2 : 2.65 + rng() * 0.2;
+    // a rendered house often keeps its konoba storey in bare stone
+    sts.push({ h, wall: i === 0 && rendered && (shareRendered ? ctx.variant() : rng()) < 0.5 ? 'stone' : upper });
+  }
   const openings: Opening[] = [];
   // the konoba door in the street gable, the living floor's windows above it
   openings.push({ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * W * 0.25, w: opts.shop ? 1.6 : 1.25, y0: 0, h: opts.shop ? 2.5 : 2.3 });
@@ -517,7 +526,8 @@ export const DALMATIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyl
   region: 'Central Dalmatian coast (Brač, Šibenik hinterland): limestone villages under canal tiles',
   surfaces: {
     roof: { kind: 'canal', tint: [0.70, 0.42, 0.29] },
-    stone: { kind: 'limestone', tint: [0.8, 0.75, 0.64] },
+    // Brac stone: near-white dressed limestone (2026-10-03 w2 review; was [0.8, 0.75, 0.64])
+    stone: { kind: 'limestone', tint: [0.83, 0.79, 0.70] },
     sourced: { plaster: true, wood: true },
   },
   builders: DALMATIAN_BUILDERS,

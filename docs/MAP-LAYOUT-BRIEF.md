@@ -301,7 +301,8 @@ dressing (no collision) and the phones leave them out, so the collision a host c
 
 **Adding a builder or a kit.** A builder is `(ctx) => RegionalParts`: build within `ctx.info.w × ctx.info.d`, door
 side +z unless the base builder's frontage says otherwise, draw only from `ctx.rng`, and keep tier-dependent parts to
-dressing. A new kit exports an `ArchitectureStyle` (region, surfaces, builders, weather palette, wear) and joins the
+dressing. A look-only choice added later (render or bare stone, a paint) draws from `ctx.variant`, a second stream from
+the same building identity, so it never reshuffles the geometry drawn after it. A new kit exports an `ArchitectureStyle` (region, surfaces, builders, weather palette, wear) and joins the
 registry in `index.ts`; the regional receipt then builds every builder at two seeds and checks determinism, attribute
 sets, night masks, the triangle budget, outward-facing faces and tier-independent collision. Judge a kit on Studio
 captures of its map: an establishing view, two street-level views and each structure kind, by day and by night.

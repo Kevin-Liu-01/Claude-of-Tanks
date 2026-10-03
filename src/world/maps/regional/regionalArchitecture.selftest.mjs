@@ -62,7 +62,7 @@ function build(style, id, seed, wallBucket, tier = 'desktop') {
   const [w, d, h] = INFO[id] ?? [7, 9, 6];
   return buildRegionalParts(style, {
     structureId: id, info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
-    wallBucket, rng: streamFrom(seed), mapId: 'selftest', snowCap: false, tier,
+    wallBucket, rng: streamFrom(seed), variant: streamFrom(seed * 7 + 3), mapId: 'selftest', snowCap: false, tier,
   }, streamFrom(seed * 3 + 5));
 }
 const all = (parts) => Object.values(parts).flat();

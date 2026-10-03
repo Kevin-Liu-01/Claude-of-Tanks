@@ -115,6 +115,7 @@ export function rebuildRegionalStructure(
   const ctx: RegionalBuildContext = {
     structureId, info, bounds, wallBucket,
     rng: streamFrom(hashSeed(`${style.id}:${context.mapId}:${structureId}`, context.seed, x, z, yaw)),
+    variant: streamFrom(hashSeed(`${style.id}:variant:${context.mapId}:${structureId}`, context.seed, x, z, yaw)),
     mapId: context.mapId, snowCap: context.snowCap, tier: getDeviceTier() === 'mobile' ? 'mobile' : 'desktop',
   };
   // the walls and roofs take the building's own tints and weathering (weather.ts), from a stream of their own

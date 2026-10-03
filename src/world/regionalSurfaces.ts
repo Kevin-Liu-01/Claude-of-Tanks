@@ -330,6 +330,8 @@ interface MasonryRecipe {
   rubble: number;
   /** sedimentary bedding stripes (sandstone, limestone) */
   bedding?: number;
+  /** the cloudy tone variation inside one stone (default 0.3; dressed stone is even) */
+  mottle?: number;
 }
 
 const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze({
@@ -338,8 +340,11 @@ const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze
   // 2026-10-03 gauntlet wave 0 / kits v1 captures: the first limestone and granite read as a blue-grey checkerboard (one
   // tone a block, dark pillowed joints): the stones are smaller and more irregular, the tone moves within a stone more
   // than between stones, and the joints are pale lime mortar, not shadow
-  limestone: { courseMin: 34, courseMax: 74, blockMin: 52, blockMax: 150, mortar: 2.4, mortarTint: [0.8, 0.77, 0.7],
-    tint: [1, 1, 1], spread: 0.08, hue: 0.04, relief: 0.6, pillow: 0.3, speckle: 0, lichen: 0.3, grime: 0.22, rubble: 0.35, bedding: 0.03 },
+  // 2026-10-03 w2 review against Pucisca (Brac): dressed Brac stone is near-white and even, laid in long courses with tight
+  // joints; the first recipe's grey-green lichen and tan-grey swing between stones read as a patchwork wallpaper
+  limestone: { courseMin: 40, courseMax: 84, blockMin: 70, blockMax: 180, mortar: 2.0, mortarTint: [0.84, 0.81, 0.75],
+    tint: [1, 1, 1], spread: 0.06, hue: 0.02, relief: 0.5, pillow: 0.25, speckle: 0, lichen: 0.1, grime: 0.18, rubble: 0.25, bedding: 0.03,
+    mottle: 0.16 },
   granite: { courseMin: 38, courseMax: 96, blockMin: 56, blockMax: 176, mortar: 2.8, mortarTint: [0.7, 0.68, 0.63],
     tint: [1, 1, 1], spread: 0.11, hue: 0.05, relief: 0.6, pillow: 0.5, speckle: 0.7, lichen: 0.5, grime: 0.3, rubble: 0.55 },
   brick: { courseMin: 20, courseMax: 21, blockMin: 62, blockMax: 63, mortar: 1.6, mortarTint: [0.62, 0.6, 0.56],
@@ -407,7 +412,8 @@ function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number): 
       } else {
         // bedding: sedimentary stones show faint layers along the course
         const bed = R.bedding ? Math.sin((y + k * 37) * 0.33 + bedF(x, y) * 3) * R.bedding : 0;
-        const v = (1 + (k - 0.5) * 2 * R.spread) * (0.86 + 0.14 * pill) * (0.84 + tex * 0.3) + bed - grime + speck * 0.12;
+        const cloud = R.mottle === undefined ? 0.84 + tex * 0.3 : 0.99 - R.mottle / 2 + tex * R.mottle;
+        const v = (1 + (k - 0.5) * 2 * R.spread) * (0.86 + 0.14 * pill) * cloud + bed - grime + speck * 0.12;
         const h = (k2 - 0.5) * R.hue * 2;
         rr = tint[0] * v * (1 + h); gg = tint[1] * v; bb = tint[2] * v * (1 - h);
         rr = rr * (1 - lichen) + 0.68 * lichen; gg = gg * (1 - lichen) + 0.64 * lichen; bb = bb * (1 - lichen) + 0.48 * lichen;

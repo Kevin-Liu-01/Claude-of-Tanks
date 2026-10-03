@@ -20,6 +20,11 @@ export interface RegionalBuildContext {
   wallBucket: string;
   /** the building's own stream, forked from its identity (map seed, structure, world pose) */
   rng: () => number;
+  /**
+   * A second stream from the same identity for a kit's look-only choices (render or bare stone, a paint): a builder may
+   * draw from it anywhere without moving the build stream, so a new choice never reshuffles the geometry after it.
+   */
+  variant: () => number;
   mapId: string;
   snowCap: boolean;
   /** 'mobile' builds leave out the finest dressing (never a structural part: collision stays tier-independent) */
