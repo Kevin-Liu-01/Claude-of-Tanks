@@ -26,8 +26,8 @@
       "concealers": 4125
     },
     "urban": {
-      "bytes": 3965454,
-      "sha256": "14fe0dfa9925151978fd65a190ee91ffb3635a37f88c3df4e05fea259ea7157d",
+      "bytes": 3965469,
+      "sha256": "9ca5f98aebdd77f4957648c3496b1d88bb9d5f998b08d4e508fbcf71626782dc",
       "obstacles": 2833,
       "colliders": 5493,
       "concealers": 2475
@@ -48,7 +48,7 @@
     },
     "steppe": {
       "bytes": 1098179,
-      "sha256": "d18ef00446e44947f21e75e6cf056aba47106c53eb3ee3d7c894968ba6d4ed99",
+      "sha256": "5d33e4aebc82e74a4f15ebc0d518e76e3eb4940bb006e166f3f0ed28c5d16bb7",
       "obstacles": 1990,
       "colliders": 1702,
       "concealers": 879
@@ -61,8 +61,8 @@
       "concealers": 1220
     },
     "frontier": {
-      "bytes": 1821267,
-      "sha256": "b7602bb106ccb4dc28f5fa25671436362b75b4bd85472d588d30d7ab11a4f6f8",
+      "bytes": 1821270,
+      "sha256": "3a9aec92f4cae391c9cad86988325aa6478d2c52d3aacc3f1c8c199faf18fefa",
       "obstacles": 6317,
       "colliders": 6179,
       "concealers": 6647
@@ -103,22 +103,22 @@
       "concealers": 5906
     },
     "caldera": {
-      "bytes": 1406112,
-      "sha256": "c84126bf211f5031a4889e1e3f6aa00b71731b0ff10fdd046d127e09b0e80a7e",
+      "bytes": 1406118,
+      "sha256": "4b0f03e97e303a5370c21b60ea752dbff34d5c0f6682c07570903468643b9508",
       "obstacles": 4031,
       "colliders": 4138,
       "concealers": 2845
     },
     "foundry": {
-      "bytes": 1420971,
-      "sha256": "5d1d8fb372b84d2465f7c0fc146ed41c3ffe7f3ff1590378b5bddf393703ce2f",
+      "bytes": 1420973,
+      "sha256": "6eddc4baac42cf16bc576daf9bbebbbbac82e07faecdf398fab9d182b58506c1",
       "obstacles": 3242,
       "colliders": 3350,
       "concealers": 2082
     },
     "ruinspires": {
-      "bytes": 7294759,
-      "sha256": "5abd2938c536bdc69eee6e2eb18b5b6821d849e7e5de603bac780f37782002ee",
+      "bytes": 7294769,
+      "sha256": "3f2062eaa9906d47d206c8d1b6319b330730684265261d8f8c0f91ff9ff3b38f",
       "obstacles": 2111,
       "colliders": 8572,
       "concealers": 345
