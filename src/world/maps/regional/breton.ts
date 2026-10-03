@@ -5,7 +5,7 @@
 // through the eaves on the long front; small casements with painted plank shutters (blue, green, red); granite barns;
 // a chapel with a pierced bell gable.
 import {
-  PartSink, faceBox, facePoint, pick, rgb, shade,
+  PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
@@ -397,6 +397,57 @@ const cannery: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+/**
+ * The covered market (halles) on the base market plot: oak posts on granite plinths, knee-braced to the wall plates
+ * and tie beams, under a steep hipped slate roof that comes down low; trestle tables of Léon cauliflowers and
+ * artichokes down the middle (Le Faouët, Questembert, Saint-Pol-de-Léon).
+ */
+const halles: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const look = ctx.variant;
+  const W = Math.max(4.8, Math.min(6.4, ctx.info.w - 0.3)), D = Math.max(3.8, Math.min(5.0, ctx.info.d - 0.3));
+  const floor = 0.1, plinth = 0.62, plate = 2.3;
+  const oak = rgb(0x5a4a3a);
+  // a floor of granite setts
+  sink.span('stone', -W / 2 - 0.1, -0.3, -D / 2 - 0.1, W / 2 + 0.1, floor, D / 2 + 0.1);
+  const px = W / 2 - 0.25, pz = D / 2 - 0.25;
+  for (const sz of [-1, 1]) for (let k = 0; k < 3; k++) {
+    const x = -px + px * k, z = sz * pz;
+    sink.span('stone', x - 0.25, floor, z - 0.25, x + 0.25, floor + plinth, z + 0.25);
+    sink.span('structureWood', x - 0.12, floor + plinth, z - 0.12, x + 0.12, plate, z + 0.12, { colour: oak, uv: UV_MEMBER });
+    // knee braces up to the wall plate
+    for (const dx of [-1, 1]) {
+      if (Math.abs(x + dx * 0.75) > px + 0.01) continue;
+      sink.member('structureWood', [x + dx * 0.1, plate - 0.75, z], [x + dx * 0.75, plate - 0.02, z], 0.1, 0.1, [0, 0, sz], { colour: shade(oak, 0.95) });
+    }
+  }
+  // the wall plates along the long sides, the tie beams across on the posts
+  for (const sz of [-1, 1]) sink.span('structureWood', -px - 0.22, plate, sz * pz - 0.13, px + 0.22, plate + 0.22, sz * pz + 0.13, { colour: oak, uv: UV_MEMBER });
+  for (let k = 0; k < 3; k++) sink.span('structureWood', -px + px * k - 0.11, plate + 0.22, -pz - 0.15, -px + px * k + 0.11, plate + 0.44, pz + 0.15, { colour: oak, uv: UV_MEMBER });
+  // the roof: steep slate on four slopes, laid along the long side, its eaves low over the plates
+  const roof: RoofSpec = { kind: 'hip', pitchDeg: 47, eave: 0.42, verge: 0.42, thickness: 0.12, bucket: 'roof', ridge: 'saddle' };
+  sink.placed(Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(2 * pz + 0.3, 2 * px + 0.5, plate + 0.22, roof), roof));
+  // trestle tables down the middle: boards on splayed trestles, heaped with cauliflowers and artichokes
+  const board = rgb(0x8a7a64), cauli = rgb(0xe2dcc4), leaf = rgb(0x5d7042), artichoke = rgb(0x4e5e44);
+  for (const sz of [-1, 1]) {
+    const z = sz * Math.min(0.62, pz - 0.75), L = 2 * px - 1.2;
+    sink.span('structureWood', -L / 2, floor + 0.72, z - 0.36, L / 2, floor + 0.77, z + 0.36, { colour: board });
+    for (const sx of [-1, 1]) for (const dz of [-1, 1]) {
+      sink.member('structureWood', [sx * (L / 2 - 0.3), floor, z + dz * 0.34], [sx * (L / 2 - 0.3), floor + 0.72, z + dz * 0.18], 0.06, 0.06, [1, 0, 0], { colour: shade(board, 0.8) });
+    }
+    for (let k = 0, n = 5 + Math.floor(look() * 3); k < n; k++) {
+      const x = -L / 2 + 0.3 + (L - 0.6) * k / (n - 1), zz = z + (look() - 0.5) * 0.3;
+      if (look() < 0.6) {
+        sink.cylinder('structureWood', [x, floor + 0.77, zz], 'y', 0.1, 0.17, 6, { colour: leaf, decor: true }, 0.15);
+        sink.cylinder('structureWood', [x, floor + 0.87, zz], 'y', 0.08, 0.13, 6, { colour: cauli, decor: true }, 0.06);
+      } else {
+        sink.cylinder('structureWood', [x, floor + 0.77, zz], 'y', 0.14, 0.08, 6, { colour: artichoke, decor: true }, 0.03);
+      }
+    }
+  }
+  return sink.finish();
+};
+
 export const BRETON_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => dwelling(ctx),
   tavern: (ctx) => dwelling(ctx, { longere: false, storeys: 2 }),
@@ -404,6 +455,8 @@ export const BRETON_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object
   farmhouse, barn, granary, chapel, ruin, tower,
   boatshed: boathouse,
   fishery: cannery,
+  // the base market plot: the generic canvas stall becomes the covered market
+  market: halles,
 });
 
 export const BRETON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
