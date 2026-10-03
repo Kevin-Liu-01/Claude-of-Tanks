@@ -249,7 +249,7 @@ function turretEquipment(P:TankBuilderPort,stock:readonly THREE.BufferGeometry[]
 /** Shared gun, cupola and independent RWS are added by the integrator. */
 export function buildZubrII(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);
-  P.turretG.position.set(.008,1.475,.065591);
+  P.turretG.position.set(.008,ZUBR_II_DESIGN.y,.065591);
   buildT72B3XHullCore(P);buildT72B3XRunningGear(P);buildT72B3XFenders(P);
   hullEquipment(P);skirts(P);turretShell(P);
   const armor=armorShell(P);turretEquipment(P,armor);

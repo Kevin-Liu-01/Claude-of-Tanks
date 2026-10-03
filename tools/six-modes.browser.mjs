@@ -5,10 +5,10 @@ import { resolve } from 'node:path';
 import { createCaptureLock } from './capture-lock.mjs';
 import { withMapProbeSession, openGamePage, beginSoloBattle } from './map-probe-runtime.mjs';
 const remote=process.env.COT_MODE_VERIFY_URL;
-const out=resolve(remote?'.qa-dev/six-modes-live':'.qa-dev/six-modes');mkdirSync(out,{recursive:true});
+const out=resolve(process.env.COT_MODE_LIST==='realistic'?'.qa-dev/scope-views':remote?'.qa-dev/six-modes-live':'.qa-dev/six-modes');mkdirSync(out,{recursive:true});
 const lock=createCaptureLock();let heartbeat;
 const reports=[];
-const battleModes=process.env.COT_AERIAL_ONLY?['drone','ac130']:['drone','ac130','juggernaut','infected','realistic','gun_game'];
+const battleModes=process.env.COT_MODE_LIST?process.env.COT_MODE_LIST.split(','):process.env.COT_AERIAL_ONLY?['drone','ac130']:['drone','ac130','juggernaut','infected','realistic','gun_game'];
 
 try{
  await lock.acquire();heartbeat=setInterval(()=>lock.refresh(),30000);
@@ -17,7 +17,9 @@ try{
   const profiles=[{width:1280,height:800},{width:568,height:320,deviceScaleFactor:1,isMobile:true,hasTouch:true},{width:480,height:270,deviceScaleFactor:1,isMobile:true,hasTouch:true}];
   for(const initialViewport of profiles) {
   const mobile=!!initialViewport.isMobile;
+  if(process.env.COT_TINY_ONLY&&initialViewport.width!==480)continue;
   if(process.env.COT_AERIAL_TOUCH_ONLY&&!mobile)continue;
+  if(process.env.COT_DESKTOP_ONLY&&mobile)continue;
   const suffix=mobile?(initialViewport.width<500?'touch-small':'touch'):'desktop';
   const {page,errors}=remote?await openPublishedPage(browser,remote,initialViewport):await openGamePage(browser,{port,viewport:initialViewport});
   page.on('console',message=>{if(message.type()==='error')console.error('browser:',message.text().slice(0,500));});
@@ -62,12 +64,22 @@ try{
     assert.ok(consoleBounds.top>initialViewport.height/2+12,'flight console stays below the sight');
     await checkSensors(page,mode,suffix,mobile);
     if(mobile)await page.tap('.cot-drone-return');else await page.keyboard.press('KeyV');await page.waitForFunction(()=>!window.__DEBUG.game.player.aerial.active);
+    assert.equal(await page.$eval('.cot-drone-signal-loss',e=>e.hidden),false,'return has a signal-loss transition');
+    await page.screenshot({path:resolve(out,`drone-static-${suffix}.png`)});
+    await page.waitForFunction(()=>document.querySelector('.cot-drone-signal-loss').hidden);
     reports.push({mode,mobile,before,after,returned:true});
    }else if(mode==='ac130'){
     const escort=await page.evaluate(()=>({...window.__DEBUG.game.matchModeController.state.escort}));
     assert.ok(escort.total>=2&&escort.required>=1,'gunship has a vulnerable ground escort');
     assert.match(await page.$eval('.cot-mode-status',el=>el.textContent),/PROTECT THE CONVOY/);
     await page.waitForFunction(()=>{const e=window.__DEBUG.game.matchModeController.state.escort;return e.progress>.01||e.rescued>0;},{timeout:30000});
+    const buttons=await page.$$eval('.flight-supply',els=>els.map(el=>{const r=el.getBoundingClientRect();return{w:r.width,h:r.height};}));
+    assert.ok(buttons.every(b=>b.w>=44&&b.h>=44),'supply controls remain accessible');
+    assert.equal(await page.$eval('.flight-telemetry',e=>getComputedStyle(e).display!=='none'),true,'gunship range and zoom stay visible');
+    assert.equal(await page.$eval('.flight-heading',e=>{const children=[...e.children].filter(c=>c.getBoundingClientRect().width>0);return children.every((c,i)=>!i||children[i-1].getBoundingClientRect().right<=c.getBoundingClientRect().left+1);}),true,'sensor, range and supplies do not overlap');
+    if(mobile)await page.tap('[data-supply="ammo"]');else await page.keyboard.press('KeyJ');
+    await page.waitForFunction(()=>window.__DEBUG.game.matchModeController.state.pickups.some(p=>p.airDrop));
+    assert.equal(await page.$eval('[data-supply="ammo"]',e=>e.disabled),true,'supply cooldown appears');
     const before=await page.evaluate(()=>({...window.__DEBUG.game.player.aerial}));
     await new Promise(r=>setTimeout(r,1200));
     const after=await page.evaluate(()=>({...window.__DEBUG.game.player.aerial}));
@@ -96,7 +108,18 @@ try{
      assert.ok(controlsClear,'aircraft zoom and fire buttons stay outside weapon cards');
     }
    }
+   if(mode==='realistic'){
+    if(mobile)await page.tap('.cot-touch .scope');else {await page.mouse.click(initialViewport.width/2,initialViewport.height/2);await page.keyboard.press('ShiftLeft');}
+    await page.waitForSelector('.cot-scope-vision',{visible:true});
+    assert.equal(await page.$eval('.cot-scope-vision',e=>{const a=e.getBoundingClientRect();return ['.cot-mode-status','.cot-touch .fire:not(.alt)','.cot-touch .scope','.cot-touch .autoaim'].every(selector=>{const other=document.querySelector(selector);if(!other||getComputedStyle(other).display==='none')return true;const b=other.getBoundingClientRect();return !b.width||a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom;});}),true,'scope sensor clears objective and touch controls');
+    for(const [view,code] of [['daylight',0],['infrared',1],['thermal',2],['night',3]]){
+     await page.waitForFunction(code=>window.__DEBUG.post.composer.passes.find(p=>p.isOutputGradePass).uniforms.uThermal.value===code,{},code);
+     await page.screenshot({path:resolve(out,`tank-scope-${view}-${suffix}.png`)});
+     if(mobile)await page.tap('.cot-scope-vision');else await page.keyboard.press('KeyI');
+    }
+   }
    if(mode==='gun_game')assert.equal(await page.$$eval('.cot-shell:not([hidden])',els=>els.length),1,'Gun Game exposes only the current weapon');
+   if(mode==='juggernaut')assert.ok(await page.evaluate(()=>window.__DEBUG.game.player.visual.root.getObjectByName('Juggernaut energy shield')?.visible),'boss aura is present');
    if(mode==='juggernaut')assert.match(await page.$eval('.cot-mode-status',el=>el.textContent),/SURVIVE/,'the boss receives its own survival objective');
    await page.screenshot({path:resolve(out,`${mode}-${suffix}.png`)});
    await page.evaluate(()=>document.exitPointerLock());
@@ -126,16 +149,16 @@ async function openPublishedPage(browser,url,viewport){
 }
 
 async function checkSensors(page,mode,suffix,mobile){
- await page.evaluate(()=>document.exitPointerLock());
  for(const [label,code] of [['Infrared',1],['Thermal',2],['Night vision',3],['Daylight',0]]){
   await page.waitForFunction((code)=>window.__DEBUG.post.composer.passes.find(p=>p.isOutputGradePass).uniforms.uThermal.value===code,{timeout:5000},code);
+  console.log('six-modes: sensor',mode,suffix,label);
   assert.match(await page.$eval('.flight-view-switch',el=>el.textContent),new RegExp(label));
   const spacing=await page.$eval('.flight-console',el=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return{padding:parseFloat(s.paddingLeft),top:r.top,height:r.height};});
   assert.ok(spacing.padding>=6,'flight panel retains padding against HUD reset');
   const button=await page.$eval('.flight-view-switch',el=>{const r=el.getBoundingClientRect();return{width:r.width,height:r.height};});
   assert.ok(button.width>=44&&button.height>=44,'sensor control has a touch-sized target');
   await page.screenshot({path:resolve(out,`${mode}-sensor-${code}-${suffix}.png`)});
-  if(mobile)await page.tap('.flight-view-switch');else await page.click('.flight-view-switch');
+  if(mobile)await page.tap('.flight-view-switch');else await page.keyboard.press('KeyI');
  }
  await page.waitForFunction(()=>window.__DEBUG.post.composer.passes.find(p=>p.isOutputGradePass).uniforms.uThermal.value===1);
 }

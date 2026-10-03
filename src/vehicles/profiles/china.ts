@@ -10,6 +10,7 @@
 // The type99a oracle package below is a RESIDENT of this module riding the
 // frozen canonical Type-99A constructor — it is guard-held and unchanged.
 
+import {addChineseThroatStock,addChineseMovingMantlet} from './chineseGunOpening.ts';
 import { KIT, FITTINGS, MUDGUARDS, orientedSlab, muzzleBore } from './kit.ts';
 import {
   chevronSurfacePanel,
@@ -850,8 +851,9 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
 }
 
 function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
-  const { box, cylY, cylZ, torus, periscope, liftEye } = KIT;
+  const { box, cylY, torus, periscope, liftEye } = KIT;
   const seg = P.q ? 20 : 14;
+  P.gunG.position.set(0, .39, .75);
 
   // ---- WELDED WEDGE TURRET: one connected shell with the A2's DEEP cheek
   // rake (nose base +1.45 world raking to the +0.66 crown lip), near-vertical
@@ -866,7 +868,7 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   ];
   const inset99 = [0.52, 0.56, 0.80, 0.82, 0.88, 0.92, 0.92, 0.88, 0.82, 0.80, 0.56, 0.52];
   const crown99 = 0.89;
-  P.add('turret', KIT.polyMultiLoft(plan99, [
+  addChineseThroatStock(P, KIT.polyMultiLoft(plan99, [
     { height: 0.03, inset: 1.0 },
     { height: 0.34, inset: 1.0 },
     { height: crown99, inset: inset99, centerHeight: 0.89 },
@@ -893,7 +895,7 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   // two courses per side, seam battens between, gun channel kept open.
   P.visualEraCluster('ztz99a2-cheek-era', 'turret', () => {
   for (const s of [-1, 1]) {
-    P.add('turret', orientedSlab(
+    addChineseThroatStock(P, orientedSlab(
       [s * 0.34, 0.06, 1.52], [s * 0.94, 0.06, 0.90], [s * 0.80, 0.06, 0.62], [s * 0.30, 0.06, 1.18],
       [s * 0.26, 0.62, 0.94], [s * 0.68, 0.60, 0.56], [s * 0.60, 0.56, 0.36], [s * 0.24, 0.58, 0.70]));
     P.add('turret', orientedSlab(
@@ -909,7 +911,7 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   // full elevation arc (§B3.1).  §5.266 fix 3: chord widened with the plan
   // nose (walls now span x 0.20..0.56 per side — the broad-arrow read).
   for (const s of [-1, 1]) {
-    P.add('turret', orientedSlab(
+    addChineseThroatStock(P, orientedSlab(
       [s * 0.20, 0.30, 1.60], [s * 0.56, 0.32, 1.42], [s * 0.50, 0.40, 0.98], [s * 0.18, 0.38, 1.10],
       [s * 0.20, 0.50, 1.68], [s * 0.56, 0.52, 1.50], [s * 0.44, 0.84, 0.84], [s * 0.16, 0.82, 0.92]));
     P.add('turretDark', box(0.030, 0.030, 0.62), s * 0.34, 0.60, 1.24, -0.36, 0, 0);
@@ -1003,10 +1005,7 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   // print's own tube (whole-registration counterweight; published 11.0
   // stays the spec/UI overall datum).
   P.gunG.position.set(0, 0.39, 0.75);
-  P.addGunExtra(cylZ(0.235, 0.20, seg), 0, 0, 0.28);
-  P.addGunExtra(cylZ(0.165, 0.34, seg, 0.20), 0, 0, 0.55);
-  P.addGunExtraDark(torus(0.185, 0.024, seg), 0, 0, 0.735);
-  P.addGunExtraDark(box(0.44, 0.05, 0.06), 0, -0.235, 0.38);
+  addChineseMovingMantlet(P, .45, .96);
   tubeGun(P, [
     [0.75, 1.60, 0.104], [1.60, 3.05, 0.090], [3.05, 3.75, 0.118],
     [3.75, 5.90, 0.086], [5.90, 6.42, 0.091],
@@ -1034,8 +1033,9 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
 }
 
 function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
-  const { box, cylY, cylZ, torus, periscope, liftEye } = KIT;
+  const { box, cylY, torus, periscope, liftEye } = KIT;
   const seg = P.q ? 20 : 14;
+  P.gunG.position.set(0, .38, .78);
   const bustleExtensionM = 0.50;
   const bustleUndersideRiseM = 0.42;
 
@@ -1060,7 +1060,7 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
     0.80, 0.80, 0.82, 0.82, 0.79, 0.76, 0.76];
   const crownInset = [0.63, 0.66, 0.80, 0.87, 0.90, 0.93, 0.94,
     0.94, 0.93, 0.90, 0.87, 0.80, 0.66, 0.63];
-  P.add('turret', KIT.polyMultiLoft(plan, [
+  addChineseThroatStock(P, KIT.polyMultiLoft(plan, [
     { height: lower, inset: 1 },
     { height: belt, inset: 1 },
     { height: crown, inset: crownInset, centerHeight: 0.80 },
@@ -1093,7 +1093,7 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   // The closed arrow is permanent turret structure. Only the four raised
   // face cassettes per side are ERA and may disappear after detonation.
   for (const s of [-1, 1] as const) {
-    P.add('turret', closedIntegratedChevron(chevronStations, s));
+    addChineseThroatStock(P, closedIntegratedChevron(chevronStations, s));
     P.add('turretDark', box(0.034, 0.46, 0.034), s * 0.84, 0.35, 1.06, -0.45, s * 0.70, 0);
   }
   P.visualEraCluster('ztz99a2-production-chevron-era', 'turret', () => {
@@ -1103,11 +1103,11 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
           + (chevronStations.at(-1)!.x - chevronStations[0].x) * startT;
         const endX = chevronStations[0].x
           + (chevronStations.at(-1)!.x - chevronStations[0].x) * endT;
-        P.addExternalArmor('turret', chevronSurfacePanel(
+        addChineseThroatStock(P, chevronSurfacePanel(
           interpolateChevronStation(chevronStations, startX),
           interpolateChevronStation(chevronStations, endX),
           s,
-        ));
+        ), 'turretExternalArmor');
       }
     }
   });
@@ -1163,9 +1163,7 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   // ZPT-98 in an open chevron throat, with the recoil collar buried into
   // the connected nose rather than carried by a separate mantlet shell.
   P.gunG.position.set(0, 0.38, 0.78);
-  P.addGunExtra(cylZ(0.23, 0.22, seg), 0, 0, 0.27);
-  P.addGunExtra(cylZ(0.16, 0.32, seg, 0.19), 0, 0, 0.54);
-  P.addGunExtraDark(torus(0.18, 0.022, seg), 0, 0, 0.72);
+  addChineseMovingMantlet(P, .42, .97);
   tubeGun(P, [
     [0.72, 1.58, 0.104], [1.58, 3.03, 0.090], [3.03, 3.72, 0.118],
     [3.72, 5.90, 0.086], [5.90, 6.42, 0.091],

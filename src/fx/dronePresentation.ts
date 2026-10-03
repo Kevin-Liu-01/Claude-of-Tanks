@@ -1,23 +1,29 @@
 import * as THREE from 'three';
 import { createDroneAttitude, updateDroneAttitude, droneWobblePitch, droneWobbleRoll, type DroneAttitude } from './droneMotion.ts';
-import { createDroneModelKit, poseDroneRotor } from './droneModel.ts';
+import { createDroneModelKit, droneNation, poseDroneRotor } from './droneModel.ts';
 /** Bounded pools; a quadcopter banks modestly under motion, never points its body vertically. */
 export function createDronePresentation(parent: THREE.Group) {
-  const kit=createDroneModelKit();
-  const bodies=new THREE.InstancedMesh(kit.body,kit.bodyMaterial,42);
-  const equipment=new THREE.InstancedMesh(kit.equipment,kit.equipmentMaterial,42);
-  const lenses=new THREE.InstancedMesh(kit.lens,kit.lensMaterial,42);
-  const rotors=new THREE.InstancedMesh(kit.rotor,kit.bodyMaterial,168);
-  const pools=[bodies,equipment,lenses,rotors];
-  for(const pool of pools){pool.count=0;pool.frustumCulled=false;parent.add(pool);}
-  bodies.name='FPV drone airframes';rotors.name='FPV spinning propellers';
+  const variants=new Map<string,ReturnType<typeof buildPool>>();
+  function buildPool(nation:string){
+    const kit=createDroneModelKit(nation);
+    const bodies=new THREE.InstancedMesh(kit.body,kit.bodyMaterial,42);
+    const equipment=new THREE.InstancedMesh(kit.equipment,kit.equipmentMaterial,42);
+    const lenses=new THREE.InstancedMesh(kit.lens,kit.lensMaterial,42);
+    const rotors=new THREE.InstancedMesh(kit.rotor,kit.bodyMaterial,168);
+    const pools=[bodies,equipment,lenses,rotors];
+    for(const pool of pools){pool.count=0;pool.visible=false;pool.frustumCulled=false;parent.add(pool);}
+    bodies.name='FPV '+kit.name+' airframes';rotors.name='FPV spinning propellers';
+    return {bodies,equipment,lenses,rotors,pools,count:0};
+  }
   const pose=new THREE.Object3D(),prop=new THREE.Object3D(),matrix=new THREE.Matrix4();
   pose.rotation.order='YXZ';let count=0,time=0,dt=1/60,frame=0;
   const attitudes=new Map<string|number,DroneAttitude>();
   return {
-    begin(timeS:number){count=0;dt=Math.min(.1,Math.max(0,timeS-time));time=timeS;frame++;},
-    write(position:THREE.Vector3,velocity:THREE.Vector3,id:string|number,heading?:number,ageS=1){
+    begin(timeS:number){count=0;dt=Math.min(.1,Math.max(0,timeS-time));time=timeS;frame++;for(const pool of variants.values())pool.count=0;},
+    write(position:THREE.Vector3,velocity:THREE.Vector3,id:string|number,heading?:number,ageS=1,nation?:string){
       if(count>=42)return;
+      const key=droneNation(nation);let pool=variants.get(key);if(!pool){pool=buildPool(key);variants.set(key,pool);}
+      const {bodies,equipment,lenses,rotors}=pool,index=pool.count++;
       const horizontal=Math.hypot(velocity.x,velocity.z);
       let state=attitudes.get(id);if(!state){state=createDroneAttitude();attitudes.set(id,state);}
       const phase=typeof id==='number'?id*.71:id.length*.71;
@@ -27,13 +33,13 @@ export function createDronePresentation(parent: THREE.Group) {
       pose.position.copy(position);pose.position.y+=state.bob;
       pose.rotation.set(state.pitch+droneWobblePitch(time,phase),state.yaw,state.roll+droneWobbleRoll(time,phase));
       pose.updateMatrix();
-      bodies.setMatrixAt(count,pose.matrix);equipment.setMatrixAt(count,pose.matrix);lenses.setMatrixAt(count,pose.matrix);
+      bodies.setMatrixAt(index,pose.matrix);equipment.setMatrixAt(index,pose.matrix);lenses.setMatrixAt(index,pose.matrix);
       for(let n=0;n<4;n++){
-        poseDroneRotor(prop,n,state.rotorSpin);matrix.multiplyMatrices(pose.matrix,prop.matrix);rotors.setMatrixAt(count*4+n,matrix);
+        poseDroneRotor(prop,n,state.rotorSpin);matrix.multiplyMatrices(pose.matrix,prop.matrix);rotors.setMatrixAt(index*4+n,matrix);
       }
       count++;
     },
-    end(){bodies.count=equipment.count=lenses.count=count;rotors.count=count*4;for(const pool of pools)pool.instanceMatrix.needsUpdate=true;for(const [id,state] of attitudes)if(state.seen!==frame)attitudes.delete(id);},
-    reset(){for(const pool of pools)pool.count=0;attitudes.clear();},
+    end(){for(const v of variants.values()){v.bodies.count=v.equipment.count=v.lenses.count=v.count;v.rotors.count=v.count*4;for(const pool of v.pools){pool.visible=v.count>0;pool.instanceMatrix.needsUpdate=true;}}for(const [id,state] of attitudes)if(state.seen!==frame)attitudes.delete(id);},
+    reset(){for(const v of variants.values())for(const pool of v.pools){pool.count=0;pool.visible=false;}attitudes.clear();},
   };
 }

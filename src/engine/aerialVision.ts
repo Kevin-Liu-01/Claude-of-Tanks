@@ -13,3 +13,14 @@ export function setAerialVision(value:AerialVision):void {
 }
 export function nextAerialVision():AerialVision {return AERIAL_VIEWS[(AERIAL_VIEWS.indexOf(getAerialVision())+1)%AERIAL_VIEWS.length]!;}
 export function aerialVisionCode(value:AerialVision):number {return value==='daylight'?0:value==='infrared'?1:value==='thermal'?2:3;}
+
+let scopeSelected:AerialVision='daylight',scopeLoaded=false;
+export function getScopeVision():AerialVision {
+ if(!scopeLoaded){scopeLoaded=true;try{const saved=globalThis.localStorage?.getItem('cot.scopeVision');if(AERIAL_VIEWS.includes(saved as AerialVision))scopeSelected=saved as AerialVision;}catch{}}
+ return scopeSelected;
+}
+export function cycleScopeVision():AerialVision {
+ scopeSelected=AERIAL_VIEWS[(AERIAL_VIEWS.indexOf(getScopeVision())+1)%AERIAL_VIEWS.length]!;
+ try{globalThis.localStorage?.setItem('cot.scopeVision',scopeSelected);}catch{}
+ return scopeSelected;
+}

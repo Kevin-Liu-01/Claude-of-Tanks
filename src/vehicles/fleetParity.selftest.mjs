@@ -18,7 +18,7 @@ import { stableDigest } from './fleetParity.test-support.mjs';
 
 const run = promisify(execFile);
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
-const ROSTER = ['type96b_x', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 'm1a2', 'strv122_x'];
+const ROSTER = ['type96b_x', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei', 'm1a2', 'strv122_x', 'ua_t72b3m_hetman_ii', 'pl_t72b3_zubr_ii'];
 const LOADS = {
   player: `const fleet = await import('./src/vehicles/fleetFactory.ts'); await fleet.ensureFullFleet();`,
   playerRoster: `const fleet = await import('./src/vehicles/fleetFactory.ts'); await fleet.ensureTankBuilders(${JSON.stringify(ROSTER)});`,

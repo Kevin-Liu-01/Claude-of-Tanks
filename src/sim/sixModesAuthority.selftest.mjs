@@ -15,7 +15,7 @@ for(const mode of modes){
  match.step({dt:1/60,inputs});inputs.get('pilot').actionBits=0;
  const snap=match.snapshot({tick:1,serverTimeMs:17,viewerId:'pilot',ackInputSeq:1});
  assert.equal(snap.meta.modeState.id,mode);
- if(mode==='realistic'){assert.equal(pilot.combat.modeModuleOnlyDamage,true);assert.equal(snap.entities.length,2,'realistic has no fog-of-war hiding');}
+ if(mode==='realistic'){assert.equal(pilot.combat.modeModuleOnlyDamage,true);assert.equal(match.ruleset?.alwaysVisible??false,false,'realistic uses normal spotting');}
  if(mode==='juggernaut')assert.ok(pilot.combat.maxHp>10000);
  if(mode==='infected'){
   pilot.combat.destroyed=true;match.step({dt:1/60,inputs});assert.equal(pilot.team,'bravo');
@@ -31,7 +31,9 @@ for(const mode of modes){
  }
  if(mode==='ac130'){
   assert.equal(snap.meta.modeState.escort.total,1);assert.equal(match.entityById.get('escort').aerial,undefined,'escorts remain ground vehicles');
-  assert.ok(match.entityById.get('escort').combat.maxHp<1000,'authority applies escort vulnerability');
+  assert.equal(match.entityById.get('escort').combat.maxHp,Math.round(pilot.combat.maxHp*.9),'authority gives escorts 90% hull strength');
+  const enemyView=match.snapshot({tick:1,serverTimeMs:17,viewerId:'hostile',ackInputSeq:1});assert.ok(!enemyView.entities.some(e=>e.id==='pilot'),'enemy snapshots never reveal the aircraft');
+  inputs.get('pilot').actionBits=PLAYER_ACTION_BITS.SUPPLY_AMMO;match.step({dt:1/60,inputs});inputs.get('pilot').actionBits=0;assert.equal(match.snapshot({tick:2,serverTimeMs:34,viewerId:'pilot',ackInputSeq:2}).meta.modeState.pickups[0].kind,'ammo','supply action reaches authority');
   assert.ok(pilot.state.pos.y>=AERIAL_RULES.gunship.altitudeM);assert.equal(pilot.spec.gun.shells[1].caliberMm,152);
   inputs.get('pilot').fire=true;match.step({dt:1/60,inputs});
   const fired=match.eventsForViewer('pilot').filter(e=>e.type==='shell_fired');assert.ok(fired.length,'gunship fires an actual authoritative projectile');
@@ -44,7 +46,7 @@ for(const mode of ['juggernaut','infected','ac130']){
  assert.ok(bots.length);assert.ok(seats.length+bots.length<=42);
  if(mode==='juggernaut')assert.equal([...seats,...bots].filter(e=>e.team==='alpha').length,1);
  else assert.ok(seats.every(seat=>seat.team==='alpha'));
- if(mode==='infected'){assert.equal(bots.filter(bot=>bot.team==='bravo').length,1);assert.equal(bots.filter(bot=>bot.team==='alpha').length,11,'fill the entire survivor roster');}
+ if(mode==='infected'){assert.equal(bots.filter(bot=>bot.team==='bravo').length,4);assert.equal(bots.filter(bot=>bot.team==='alpha').length,8,'fill the entire survivor roster');}
 }
 console.log('sixModesAuthority: all six modes spawn and step; multiplayer flight, visibility, roles and infection passed');
 

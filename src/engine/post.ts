@@ -2819,7 +2819,7 @@ export function createPost(
     dynGovern(adaptiveFrameSeconds(dt, frameWallDtSeconds));
     updateAerialZoom();
     updateOutputGrade();
-    grade.uniforms.uThermal.value = camera.userData.thermalFlight === true ? (camera.userData.flightVision ?? 1) : 0;
+    grade.uniforms.uThermal.value = camera.userData.sensorVision ?? (camera.userData.thermalFlight === true ? (camera.userData.flightVision ?? 1) : 0);
     grade.uniforms.uThermalPixel.value.set(1/sceneTarget.width,1/sceneTarget.height);
     aerial.uniforms.uCloudShade.value = scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT;
     updateScopeGrade();
