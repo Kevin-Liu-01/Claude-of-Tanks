@@ -279,6 +279,11 @@ export default {
   },
 
 
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the coalfield's grid. A
+  // 220 kV line strides across the south of the junction on lattice towers, past the spoil tips.
+  scenery: {
+    powerLines: [{ towers: [[-445, -140], [-180, -300], [110, -330], [430, -300]], heightM: 34, name: 'the 220 kV line' }],
+  },
   horizon: {
     // industrial hinterland: low escarpment under smoke-grey haze
     baseHex: 0x4f554a, amp: 0.8, style: 'escarpment', treeline: 0.90,

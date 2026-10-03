@@ -131,6 +131,28 @@ export default {
       roadFence: 'fencerail', yardFence: 'fencewattle',
     },
   },
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): Wadi Rum's sandstone. Bedded
+  // ledges, scree and the odd pedestal rock break out round the foot of every inselberg; a mushroom rock (a hoodoo,
+  // its cap on a wind-cut pedestal) stands in the open floor of each mouth; a rujm, the Bedouin cairn, marks each cross
+  // track where it leaves for its ravine. Turned through 180 degrees about the outpost like the rest of the floor.
+  scenery: {
+    rocks: [
+      { form: 'hoodoo', geology: 'sandstone', x: 70, z: -330, radius: 3.4, height: 7, yawDeg: 30, name: 'the south mushroom rock' },
+      { form: 'hoodoo', geology: 'sandstone', x: -54, z: 330, radius: 3.4, height: 7, yawDeg: 210, name: 'the north mushroom rock' },
+    ],
+    rockFields: [
+      { geology: 'sandstone', x: -40, z: -292, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the dome at -40,-292' },
+      { geology: 'sandstone', x: 56, z: 292, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the dome at 56,292' },
+      { geology: 'sandstone', x: -118, z: -128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the dome at -118,-128' },
+      { geology: 'sandstone', x: 134, z: 128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the dome at 134,128' },
+      { geology: 'sandstone', x: 96, z: -112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the dome at 96,-112' },
+      { geology: 'sandstone', x: -80, z: 112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the dome at -80,112' },
+    ],
+    landmarks: [
+      { kind: 'cairn', x: -270, z: -228, scale: 1.6, height: 1.6, geology: 'sandstone', name: 'the rujm at the south ravine' },
+      { kind: 'cairn', x: 286, z: 228, scale: 1.6, height: 1.6, geology: 'sandstone', name: 'the rujm at the north ravine' },
+    ],
+  },
   horizon: {
     // Round 29 (owner 2026-09-20, "see where the texture just stops"): treeline 0.06 let the vista paint every
     // outland surface under 8 m — the canyon-mouth floors past both deployment ends — as dark woodland (green

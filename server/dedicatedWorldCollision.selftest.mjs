@@ -34,20 +34,20 @@ const coalCensus = { railyard: 10, caldera: 7, foundry: 7, skybridge: 5 };
 // a solid's whole footprint out of the road core. Sixteen censuses lose the 1-3 boulders that reached into a road;
 // roadside wrecks, rubble and two pillboxes step off the carriageway with their counts unchanged.
 const expected = {
-  verdant: [6845, 6575, 7445], // 2026-10-02 Verdant Fields redesign (docs/MAP-LAYOUT-BRIEF.md); was [6977, 6678, 7507]
-  desert: [2856, 2796, 2991], // 2026-10-01 Sirocco Wadi redesign (docs/MAP-LAYOUT-BRIEF.md); was [2673, 2605, 3139]
+  verdant: [6854, 6582, 7604], // 2026-10-03 scenery (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [6845, 6575, 7445]
+  desert: [2877, 2817, 2990], // 2026-10-03 scenery (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [2856, 2796, 2991]
   winter: [5931, 5786, 4919],
-  urban: [3859, 6519, 3510], // 2026-10-01 Steinburg redesign (docs/MAP-LAYOUT-BRIEF.md); was [3898, 9290, 3530]
-  coastal: [4413, 4253, 4411], // 2026-10-02 Saltmere Bay redesign (docs/MAP-LAYOUT-BRIEF.md); was [4161, 3964, 4249]
+  urban: [3855, 6515, 3497], // 2026-10-03 scenery (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [3859, 6519, 3510]
+  coastal: [4423, 4263, 4640], // 2026-10-03 scenery (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [4413, 4253, 4411]
   autumn: [5872, 5726, 5822],
   steppe: [2426, 2138, 1302],
-  railyard: [2846, 2848, 1899], // 2026-10-01 Cinder Junction redesign (docs/MAP-LAYOUT-BRIEF.md); was [2825, 2785, 1983]
-  frontier: [7730, 7594, 8120], // 2026-10-02 Frontier Basin redesign (docs/MAP-LAYOUT-BRIEF.md); was [7905, 7634, 8284]
+  railyard: [2858, 2860, 1895], // 2026-10-03 scenery (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [2846, 2848, 1899]
+  frontier: [7726, 7588, 8074], // 2026-10-03 scenery (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [7730, 7594, 8120]
   fjord: [7357, 7301, 7679],
-  delta: [8114, 7761, 9770], // 2026-10-02 Jade River Delta redesign (docs/MAP-LAYOUT-BRIEF.md); was [7742, 7430, 9644]
-  badlands: [3013, 2765, 1956], // 2026-10-02 Redrock Divide redesign (docs/MAP-LAYOUT-BRIEF.md); was [3011, 2915, 1920]
+  delta: [8118, 7756, 9756], // 2026-10-03 scenery (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [8114, 7761, 9770]
+  badlands: [3037, 2789, 1952], // 2026-10-03 scenery (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [3013, 2765, 1956]
   // Native recapture with prior prop code also contains this additional wreck.
-  monsoon: [9855, 9630, 12375], // 2026-10-02 Monsoon Ridge layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md); was [9473, 9215, 12022]
+  monsoon: [9859, 9634, 12374], // 2026-10-03 scenery (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [9855, 9630, 12375]
   alpine: [9117, 9044, 8009],
   // Same prior-props baseline verification as Monsoon.
   caldera: [5000, 5107, 3810],
@@ -56,16 +56,16 @@ const expected = {
   blackglass: [3661, 5894, 2333],
   titan_gorge: [2725, 2586, 1230],
   skybridge: [3522, 3725, 2079],
-  polders: [4232, 3998, 3574], // 2026-10-02 Tidegate Polders redesign (docs/MAP-LAYOUT-BRIEF.md); was [4268, 4025, 3604]
+  polders: [4242, 4005, 3564], // 2026-10-03 scenery (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [4232, 3998, 3574]
   copper_mesa: [2805, 2705, 1984],
   airfield: [3671, 3650, 3173],
   oasis: [2740, 2510, 2031],
   whiteout: [1601, 1467, 875],
   orchard: [4923, 4691, 5160],
   longleaf: [6218, 6021, 7183],
-  mangrove: [5377, 5204, 6535], // 2026-10-02 Mangrove Reach redesign (docs/MAP-LAYOUT-BRIEF.md); was [5282, 5127, 6502]
-  saltwind: [3811, 3614, 4260], // 2026-10-02 Saltwind Narrows redesign (docs/MAP-LAYOUT-BRIEF.md); was [3629, 3392, 4048]
-  reservoir: [6480, 6355, 7309], // 2026-10-02 Highland Reservoir layout-brief revision (docs/MAP-LAYOUT-BRIEF.md); was [6425, 6300, 7206]
+  mangrove: [5382, 5209, 6529], // 2026-10-03 scenery (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [5377, 5204, 6535]
+  saltwind: [3809, 3612, 4204], // 2026-10-03 scenery (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [3811, 3614, 4260]
+  reservoir: [6494, 6368, 7306], // 2026-10-03 scenery (world/scenery.ts): its rock masses and landmarks, the trees and shrubs off them; was [6480, 6355, 7309]
   mars: [769, 715, 0],
   moon: [475, 381, 0],
   cliffbridge: [5903, 5636, 5243],

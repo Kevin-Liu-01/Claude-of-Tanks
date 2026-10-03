@@ -447,6 +447,28 @@ export default {
     },
   },
 
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Dahar sandstone. The wadi
+  // cuts its banks into bedded ledges and scree on both sides; the North Mesa's flanks break into ledges; a rujm, the
+  // cairn that marks a desert track, stands beside the caravan road and the wadi track where each enters the basin.
+  // Turned through 180 degrees about the ford like the rest of the map.
+  scenery: {
+    rockFields: [
+      { geology: 'sandstone', x: -330, z: 120, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the wadi banks at -330,120' },
+      { geology: 'sandstone', x: -250, z: 100, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the wadi banks at -250,100' },
+      { geology: 'sandstone', x: -180, z: 66, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the wadi banks at -180,66' },
+      { geology: 'sandstone', x: 180, z: -66, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the wadi banks at 180,-66' },
+      { geology: 'sandstone', x: 250, z: -100, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the wadi banks at 250,-100' },
+      { geology: 'sandstone', x: 330, z: -120, radius: 46, count: 3, slopeBias: 0.95, size: [2.5, 5], forms: [['outcrop', 0.65], ['scree', 0.35]], name: 'the wadi banks at 330,-120' },
+      { geology: 'sandstone', x: -264, z: 376, radius: 90, count: 8, slopeBias: 1, size: [3, 6], forms: [['outcrop', 0.7], ['scree', 0.3]], name: 'the North Mesa ledges' },
+    ],
+    landmarks: [
+      { kind: 'cairn', x: 88, z: -360, scale: 1.5, height: 1.5, geology: 'sandstone', name: 'the rujm on the caravan road' },
+      { kind: 'cairn', x: -88, z: 360, scale: 1.5, height: 1.5, geology: 'sandstone', name: 'the rujm on the caravan road north' },
+      { kind: 'cairn', x: -380, z: 200, scale: 1.4, height: 1.4, geology: 'sandstone', name: 'the rujm on the wadi track' },
+      { kind: 'cairn', x: 380, z: -200, scale: 1.4, height: 1.4, geology: 'sandstone', name: 'the rujm on the wadi track east' },
+    ],
+  },
+
   horizon: {
     // banding up / grain down (r3): the far canyon walls must read as
     // stratified sandstone beds, not vertical fiber — constant-altitude
