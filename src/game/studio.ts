@@ -89,6 +89,7 @@ import {
   STUDIO_FX_QUALITIES, STUDIO_FX_PARAMS, normalizeStudioFx, studioFxState, fxParam, flareColor,
 } from './studioFxSettings.ts';
 import type { StudioFxQuality, StudioFxSettings } from './studioFxSettings.ts';
+import { createTrackDustAdapters } from './studioTrackDust.ts';
 import { requestAuxiliary } from '../sim/auxiliarySystems.ts';
 import type { AuxiliaryEntity } from '../sim/auxiliarySystems.ts';
 import { createSmokeCanister, SMOKE_GRAVITY_MPS2 } from '../sim/smokeBallistics.ts';
@@ -1645,34 +1646,31 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     };
   }
 
-  const trackAdapters = new Map<string, CineTrackActor>();
   const trackList: CineTrackActor[] = [];
   const _trackSample: ActorTrackSample = { x: 0, z: 0, facingDeg: 0, turretDeg: 0, gunDeg: 0, keyId: undefined };
+  // Keyed by the actor, not its uid: load() restarts uids at a1 (studioTrackDust.ts).
+  const trackAdapters = createTrackDustAdapters<StudioActor>((actorRef) => {
+    const rect = tankContactRect(actorRef.spec);
+    return {
+      uid: actorRef.uid,
+      halfLengthM: rect.halfLength,
+      halfWidthM: rect.halfWidth,
+      poseAt(tS: number, out: CineTrackSample): boolean {
+        const keys = actorRef.timelineTrack?.keys;
+        if (!keys || !sampleActorTrack(keys, tS * 1000, _trackSample)) return false;
+        out.x = _trackSample.x ?? 0; out.z = _trackSample.z ?? 0;
+        out.yawRad = (_trackSample.facingDeg ?? 0) * DEG;
+        return true;
+      },
+    };
+  });
   function trackActors(): readonly CineTrackActor[] {
     trackList.length = 0;
     if (!fxSettings.trackDust) return trackList;
     for (const a of actors) {
       const track = a.timelineTrack;
       if (!track || track.keys.length < 2 || a.visual.isDestroyed?.()) continue;
-      let adapter = trackAdapters.get(a.uid);
-      if (!adapter) {
-        const rect = tankContactRect(a.spec);
-        const actorRef = a;
-        adapter = {
-          uid: a.uid,
-          halfLengthM: rect.halfLength,
-          halfWidthM: rect.halfWidth,
-          poseAt(tS: number, out: CineTrackSample): boolean {
-            const keys = actorRef.timelineTrack?.keys;
-            if (!keys || !sampleActorTrack(keys, tS * 1000, _trackSample)) return false;
-            out.x = _trackSample.x ?? 0; out.z = _trackSample.z ?? 0;
-            out.yawRad = (_trackSample.facingDeg ?? 0) * DEG;
-            return true;
-          },
-        };
-        trackAdapters.set(a.uid, adapter);
-      }
-      trackList.push(adapter);
+      trackList.push(trackAdapters.adapterFor(a));
     }
     return trackList;
   }

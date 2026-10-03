@@ -220,6 +220,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioRecording.selftest.mjs',
     'src/game/studioActorSupport.selftest.mjs',
     'src/game/studioFxSettings.selftest.mjs',
+    'src/game/studioTrackDust.selftest.mjs',
     'src/fx/cinematicFx.selftest.mjs',
     'tools/studio-example-scenarios.selftest.mjs',
     'src/vehicles/spareTrackAttachment.selftest.mjs',
