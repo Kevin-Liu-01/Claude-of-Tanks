@@ -23,9 +23,12 @@ const previousDocument=globalThis.document;
 }
 // Delta's southwestern shoulder exposed the interior of a coarse chord as a
 // raised grass lip. Measure its actual drawn edge, not just seated vertices.
+// The map-borders lane (2026-10-03): the border landform lowered Delta's rim, which took the lip down to 0.11 m; the
+// control replays the shoulder on the classic border (terrain.border.classic), where the coarse chord still stands proud.
 {
- const ground=createHeightField(5000,getMapConfig('delta'));
- const ring=sampleHorizonGeometry(getMapConfig('delta'),1337,ground),n=HORIZON_SEGMENTS,stride=n+1;
+ const deltaConfig=getMapConfig('delta'),classicDelta={...deltaConfig,terrain:{...deltaConfig.terrain,border:{classic:true}}};
+ const ground=createHeightField(5000,classicDelta);
+ const ring=sampleHorizonGeometry(classicDelta,1337,ground),n=HORIZON_SEGMENTS,stride=n+1;
  const g=new BufferGeometry(),p=new Float32Array(ring.rows.length*stride*3),normals=new Float32Array(p.length),indices=[];
  for(let row=0;row<ring.rows.length;row++)for(let col=0;col<=n;col++) {
   const source=(row*n+col%n)*3,target=(row*stride+col)*3;
