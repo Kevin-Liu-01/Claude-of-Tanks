@@ -6693,6 +6693,24 @@ dithers alias alike: dithered depth coverage itself was the fault). Now:
 - Knobs left off until a capture shows them: `deckDetail` (fp10: it thinned the decks instead of defining them) and
   `CLOUD_FAR_THIN` (the far cumuliform cut).
 
+**fp11, the gate capture (2026-10-03; the PR head 0bbb0cddc against the candidate ffc6e86ab in one hold, the census
+recipe and its cloudscape gate, nine maps).**
+- *Snow* (ground L*, the frame's lower quarter, median): Frosthollow establishing 80.2 → 85.4 and chase 79.2 → 84.0,
+  Whiteout 64.5 → 72.2 and 63.8 → 70.3 — above the PR head on all four. The candidate without the lift matches the PR
+  head (80.0, 78.5, 64.7, 62.7): the albedo lift is the whole difference (exposure × √2 on the two snow maps, every other
+  map's exposure unchanged).
+- *The horizon band* (wave 13: "the warm horizon band dims a step"): on Frosthollow's establishing view the far ranges
+  and their haze (frame rows 180–315) run L* 72.3–73.6 on the PR head, 67.4–70.7 without the lift (the dimming fp10
+  showed) and 74.4–77.3 with it, 1.4–2.5 b* less blue. A warm lobe in the haze law's target (half the legacy forward lobe
+  toward the sun, the hue guard keyed on green casts only) changed no pixel of the eighteen establishing and sky-w frames
+  — no census view faces the sun — and stays off the candidate.
+- *Decks:* lumps 0.8 raised a deck's structure by half (sky-w structure: Railyard 1.90 → 2.82, Frosthollow 1.31 → 1.95)
+  as one even mottle over the whole sheet; the interior octave does nothing on a deck (Railyard 1.884 against 1.897) and
+  `CLOUD_FAR_THIN` 1 removed only a few marginal puffs on the horizon (Frontier, Coastal). Both stay off.
+- *Chase frames vary on the tank from run to run:* the dev root (the candidate's code but for the haze hue) differs from
+  the candidate only on the hull in every chase frame (Whiteout's tank renders darker in the candidate's frame than in
+  either other root's), so a chase pair is no evidence about the hull's light.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
