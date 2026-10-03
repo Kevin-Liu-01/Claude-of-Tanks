@@ -597,4 +597,6 @@ export const DALMATIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyl
     damp: 0.45, moss: 0.25, mossTint: [0.9, 0.88, 0.76],
   },
   wear: 0.3,
+  // the yards: dry-stone walls round a kitchen garden and the stone hut (kazun), a gate (yards.ts)
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gate', shed: 'woodshed', shedSize: [3.8, 3.4], garden: true },
 });
