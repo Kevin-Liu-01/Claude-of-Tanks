@@ -78,6 +78,8 @@ export default {
         structure: 'transformershed', redoubt: true, wreck: true, wreckOffsetZ: 16 },
     ],
     blockFill: true, streetRows: true, streetRowsAfterLandmarks: true,
+    // the district's massive blocks keep their footprints off every carriageway, not only their own street's
+    roadBuildingClearance: true,
     streetRowRoadStride: 2, ruinChance: 0.54, curbs: true, lampposts: true,
     tones: makeRealisticCityBuildingTones({
       value: 0.73, saturation: 0.82, soot: 0.035, roofValue: 0.72, coolAccent: 0.015,
