@@ -8,7 +8,9 @@
 //   - the surfaces: deterministic painters, values in range, the session cache returning the same pixels;
 //   - placement: the real road-building stage of props.ts (the frontage receipt's section harness) run with and
 //     without each kit-adopting map's architecture places the same buildings, draws the same stream and builds the
-//     same number of collision records.
+//     same number of collision records;
+//   - the plot: on those maps every kit building's collision-bearing parts stay inside its plot, at most PLOT_SLACK past
+//     a side (or past the base geometry's own reach there): a kit builds the region's version inside the same lot.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
@@ -47,7 +49,7 @@ const INFO = {
   cornershop: [9.0, 9.0, 7.3], barn: [8.4, 12.3, 6.2], granary: [4.2, 6.4, 4.7], woodshed: [4.3, 5.4, 3.1],
   depot: [11, 20, 6], ruin: [6.8, 9.0, 3.0], church: [9.6, 23.1, 20.4], chapel: [5.8, 8.6, 8.0], mill: [6.6, 6.6, 9.9],
   boatshed: [9.0, 12.0, 5.0], tower: [3.8, 3.8, 9.4], foundryoffice: [13.5, 14.4, 9.8], warehouse: [16, 24, 7.5],
-  rangerlodge: [12.8, 16.4, 10.7], marketRow: [9, 16, 4], fishery: [18, 20, 7], rowhouse: [9.6, 10.2, 11],
+  rangerlodge: [12.8, 16.4, 10.7], marketRow: [12, 5.2, 3.2], fishery: [18, 20, 7], rowhouse: [9.6, 10.2, 11],
   adobe: [6.6, 7.6, 4.2], caravanserai: [21.4, 19.4, 7.4], compound: [23, 14.5, 5.6], compoundSouk: [22, 16, 6],
   minaret: [4, 4, 13], bathhouse: [11, 10, 7], factory: [16, 26, 15], watertower: [5.6, 5.6, 14],
   shed: [8, 14, 6], stack: [3.4, 3.4, 26], market: [6.6, 5.2, 3.0], containerRow: [15, 6.4, 3.4], gantry: [21, 5.4, 12],
@@ -173,10 +175,34 @@ function section(start, end) {
   const a = source.indexOf(start), b = source.indexOf(end, a + start.length);
   assert.ok(a >= 0 && b > a, start); return source.slice(a, b);
 }
+// the plot audit: each kit rebuild's solid envelope against its plot and the base geometry it replaced
+const PLOT_SLACK = 0.8;
+const envelopes = [];
+function boundsOf(buckets, keep) {
+  const b = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
+  for (const list of Object.values(buckets)) {
+    if (!Array.isArray(list)) continue;
+    for (const g of list) {
+      if (!keep(g)) continue;
+      g.computeBoundingBox();
+      const box = g.boundingBox;
+      if (!box || box.isEmpty()) continue;
+      b.minX = Math.min(b.minX, box.min.x); b.maxX = Math.max(b.maxX, box.max.x);
+      b.minZ = Math.min(b.minZ, box.min.z); b.maxZ = Math.max(b.maxZ, box.max.z);
+    }
+  }
+  return b;
+}
+function recordingRebuild(style, structureId, base, info, wallBucket, context, x, z, yaw) {
+  const before = boundsOf(base, () => true);
+  const out = rebuildRegionalStructure(style, structureId, base, info, wallBucket, context, x, z, yaw);
+  if (out) envelopes.push({ structureId, x, z, info, base: before, kit: boundsOf(out, (g) => !g.userData.noCollision) });
+  return out;
+}
 const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE, VILLAGE_BUILDERS, URBAN_BUILDERS, STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES,
   makeTimberBathhouse, addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, jitterUV,
   sampleObbGround, deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand,
-  rebuildRegionalStructure, resolveRegionalArchitecture,
+  rebuildRegionalStructure: recordingRebuild, resolveRegionalArchitecture,
   buildingFootprintClearsRoads, roadBuildingFrontage, roadBuildingDoorAxis, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion,
   ...Object.fromEntries(['mulberry32', 'makeCottage', 'makeBarn', 'makeTower', 'makeRuin', 'makeAdobe', 'makeRowhouse'].map((key) => [key, originals[key]])),
 };
@@ -210,12 +236,29 @@ for (const id of adopting) {
   const config = getMapConfig(id);
   assert.ok(resolveRegionalArchitecture(config.props.architecture), `${id}: names a known kit`);
   const without = { ...config, props: { ...config.props, architecture: undefined } };
-  const before = run(without), after = run(config);
+  const before = run(without);
+  envelopes.length = 0;
+  const after = run(config);
   assert.deepEqual(after.buildings, before.buildings, `${id}: every building keeps its pose, footprint and kind`);
   assert.equal(after.rngTail, before.rngTail, `${id}: the placement stream draws exactly as before`);
   assert.equal(after.obstacles, before.obstacles, `${id}: one ground-contact record per building, as before`);
+  let worstPast = 0;
+  for (const e of envelopes) {
+    const hw = e.info.w / 2, hd = e.info.d / 2;
+    for (const [side, kitPast, basePast] of [
+      ['+x', e.kit.maxX - hw, e.base.maxX - hw], ['-x', -e.kit.minX - hw, -e.base.minX - hw],
+      ['+z', e.kit.maxZ - hd, e.base.maxZ - hd], ['-z', -e.kit.minZ - hd, -e.base.minZ - hd],
+    ]) {
+      if (!Number.isFinite(kitPast)) continue;
+      worstPast = Math.max(worstPast, kitPast - Math.max(0, basePast));
+      assert.ok(kitPast <= Math.max(0, basePast) + PLOT_SLACK, `${id}: the ${config.props.architecture} ${e.structureId} at (${e.x.toFixed(1)}, ${e.z.toFixed(1)}) `
+        + `reaches ${kitPast.toFixed(2)} m past its ${e.info.w.toFixed(1)} x ${e.info.d.toFixed(1)} m plot on ${side} (the base geometry ${basePast.toFixed(2)} m)`);
+    }
+  }
+  assert.ok(envelopes.length > 0, `${id}: the kit rebuilt no building`);
   const tb = Object.values(before.triangles).reduce((a, b) => a + b, 0), ta = Object.values(after.triangles).reduce((a, b) => a + b, 0);
-  console.log(`${id} (${config.props.architecture}): ${after.buildings.length} buildings in place, stream exact; settlement triangles ${tb} → ${ta}, shell records ${before.colliders} → ${after.colliders}`);
+  console.log(`${id} (${config.props.architecture}): ${after.buildings.length} buildings in place, stream exact; settlement triangles ${tb} → ${ta}, shell records ${before.colliders} → ${after.colliders}; `
+    + `${envelopes.length} kit buildings inside their plots (worst ${worstPast.toFixed(2)} m past the plot or the base)`);
 }
 // the kits' light-family variants (structureKit REGIONAL_DESTRUCTIBLE_TYPES, swapped in through props.ts LOCAL_TYPES):
 // a known kit, an existing family, the family's footprint, class, hit points and crush threshold, a grounded build
