@@ -46,6 +46,7 @@ import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
+import { knollGeologyHeight, ridgeGeologyHeight, type LandformGeology } from './landformGeology.ts';
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
@@ -207,6 +208,9 @@ interface LandformConfig {
   /** Final authored surface; original fields still define road/water/pad support initialization. */
   relief?: PlayableRelief;
   _relief?: PreparedPlayableRelief;
+  /** Geological structure of a knoll, basin or ridge: outline, profile, gullies, strata, roughness
+   * (landformGeology.ts). Without it a landform keeps its smooth shape exactly. */
+  geology?: LandformGeology;
 }
 
 interface DuneConfig {
@@ -754,12 +758,14 @@ export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
     const half = Math.max(1, (form.length || 100) * 0.5);
     const width = Math.max(1, form.width || 45);
     const along = 1 - smoothstep(half * 0.72, half, Math.abs(lx));
+    if (form.geology) return ridgeGeologyHeight(form, lx, lz, along) ?? 0;
     const across = 1 - smoothstep(width * 0.22, width, Math.abs(lz));
     // A wide crown plus a softer shoulder reads as a natural fold and keeps
     // tanks stable on the crest; the squared falloff avoids cliff walls.
     const shoulder = across * across * (3 - 2 * across);
     return height * along * shoulder;
   }
+  if (form.geology) return knollGeologyHeight(form, lx, lz) ?? 0;
   const rx = Math.max(1, form.rx || form.r || 70);
   const rz = Math.max(1, form.rz || form.r || rx);
   const q = Math.sqrt((lx * lx) / (rx * rx) + (lz * lz) / (rz * rz));
