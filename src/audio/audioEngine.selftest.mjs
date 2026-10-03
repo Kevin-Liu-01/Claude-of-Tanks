@@ -96,7 +96,7 @@ assert.ok(close.t > ctx.currentTime + 0.3, 'the report arrives at the speed of s
 // The muzzle blast: the instant crack ahead of the recorded report, arriving with it, under it; no sub sweep.
 const muzzle = logSince(since).find((e) => e.n === 'muzzle_blast');
 assert.ok(muzzle && Math.abs(muzzle.t - close.t) < 0.005, `the muzzle blast arrives with the report (${muzzle?.t} vs ${close.t})`);
-assert.ok(muzzle.g < close.g && muzzle.g > close.g * 0.4, `and sits just under it (${muzzle.g} vs ${close.g})`);
+assert.ok(muzzle.g < close.g && muzzle.g > close.g * 0.3, `and sits just under it (${muzzle.g} vs ${close.g})`);
 assert.equal(oscillatorsAfter, oscillatorsBefore, 'no synthesized sub sweep under the cannon');
 const quietSince = probe.sfxLog.at(-1).seq;
 ctx.advance(0.05);

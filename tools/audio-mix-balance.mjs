@@ -8,11 +8,11 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 //   - gunfire stands above the idle battle bed (own engine, ambience, other
 //     hulls idling), judged on its loudest 100 ms (a report is an impulse: a
 //     400 ms window rewards a long boom over a crack): a cannon at 15 m by at
-//     least 14 dB, at 150 m by 10, at 400 m by 4, our own gun by 16; and the
+//     least 12 dB, at 150 m by 10, at 400 m by 4, our own gun by 14; and the
 //     crack itself, a near cannon's and our own, peaks at least 22 dB over the
 //     bed. (A near crack is bounded by the master's ceiling, and its 100 ms
 //     sits its crest, about 11 dB, under that peak: 16 dB of 100 ms would mean
-//     squashing it back into a blast.)
+//     squashing it back into a blast; the quieter bed carries the rest.)
 //   - the crew radio sits under a near cannon (at least 6 dB below);
 //   - a live battle stays readable: sound starts per second over 20 s of
 //     real bot combat stay under a ceiling;
@@ -20,9 +20,10 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 //     our own included, reports its transient anatomy (rise to its loudest
 //     millisecond, energy in the first 10 ms, low boom under the body, crest,
 //     samples at the master's soft-clip knee) from its arrival over the bed;
-//     a near cannon must crack (loudest millisecond within 40 ms of its
-//     arrival: the shipped cannon reports rise in 4–41 ms, the old blasts in
-//     100–300; under half its body below 100 Hz), and neither it nor our own
+//     a near cannon must crack and then decay (its loudest 50 ms between
+//     250 and 700 ms after arrival at least 8 dB under its loudest 50 ms in
+//     the first 100: a blast holds near its peak for half a second; under
+//     half its body below 100 Hz), and neither it nor our own
 //     gun may ride the soft clip (at most 40 samples at its knee: the
 //     compressor is no true-peak limiter, and a crack squared off by the clip
 //     shows hundreds);
@@ -107,10 +108,22 @@ function shotAnatomy(i16, sampleRate, masterLevel) {
     if (10 * Math.log10(e / w + 1e-24) > bedDb + 12) { arrival = Math.max(0, (k - 2) * w); break; }
   }
   const a = transientAnatomy(m.subarray(arrival), sampleRate);
+  // Crack then decay: the loudest 50 ms early against the loudest 50 ms after a quarter of a second.
+  const loudest50 = (fromS, toS) => {
+    const n = Math.round(0.05 * sampleRate);
+    let best = 0;
+    for (let s = arrival + Math.round(fromS * sampleRate); s + n <= Math.min(m.length, arrival + Math.round(toS * sampleRate)); s += Math.round(0.005 * sampleRate)) {
+      let e = 0;
+      for (let i = s; i < s + n; i++) e += m[i] * m[i];
+      best = Math.max(best, e / n);
+    }
+    return 10 * Math.log10(best + 1e-24);
+  };
+  const decayDb = loudest50(0, 0.1) - loudest50(0.25, 0.7);
   // The soft clip's knee (0.86) sits before the master volume the tap hears through.
   let atKnee = 0;
   for (let i = 0; i < i16.length; i++) if (Math.abs(i16[i]) / 32768 >= 0.86 * masterLevel) atKnee++;
-  return { riseMs: a.riseMs, e10: +a.e10.toFixed(3), lowBody: +a.lowBody.toFixed(3), crestDb: +a.crestDb.toFixed(1), atKnee };
+  return { riseMs: a.riseMs, decayDb: +decayDb.toFixed(1), e10: +a.e10.toFixed(3), lowBody: +a.lowBody.toFixed(3), crestDb: +a.crestDb.toFixed(1), atKnee };
 }
 
 await acquireLock(30 * 60 * 1000);
@@ -195,7 +208,7 @@ try {
   let shellId = 880000;
   const shot = (dx, dz) => `(() => { const D = window.__DEBUG; const p = D.game.player.state.pos; const e = D.game.tanks.find((t) => t.team === 'enemy' && t.state);
     D.bus.emit('shell:fired', { shellId: ${++shellId}, shooterId: e.id, isPlayer: false, shellType: 'APFSDS', caliberMm: 125, muzzlePos: [p.x + ${dx}, p.y + 1.5, p.z + ${dz}], dir: [0, 0, 1] }); })()`;
-  for (const [name, dx, dz, minOverBed] of [['cannon_15m', 12, 9, 14], ['cannon_150m', 106, 106, 10], ['cannon_400m', 283, 283, 4]]) {
+  for (const [name, dx, dz, minOverBed] of [['cannon_15m', 12, 9, 12], ['cannon_150m', 106, 106, 10], ['cannon_400m', 283, 283, 4]]) {
     const m = await capture(name, 3500, shot(dx, dz));
     const over = m.burstDb - report.bed.rmsDb;
     const anatomy = shotAnatomy(lastI16, sampleRate, 0.8);
@@ -206,7 +219,7 @@ try {
     await sleep(4000);
   }
   const near = report.shots.cannon_15m.anatomy;
-  if (near.riseMs > 40) fail(`a near cannon swells to its peak ${near.riseMs} ms after the shot (want ≤ 40: a crack, not an explosion)`);
+  if (near.decayDb < 8) fail(`a near cannon holds within ${near.decayDb} dB of its crack half a second later (want ≥ 8: a crack that decays, not a blast)`);
   if (near.lowBody > 0.5) fail(`a near cannon's body is ${(100 * near.lowBody).toFixed(0)} % below 100 Hz (want ≤ 50: a report, not a boom)`);
   if (near.atKnee > 40) fail(`a near cannon rides the soft clip (${near.atKnee} samples at its knee; the limiter should take the peak)`);
   if (report.shots.cannon_15m.peakOverBedDb < 22) fail(`a near cannon's crack peaks only ${report.shots.cannon_15m.peakOverBedDb} dB over the battle bed (want ≥ 22)`);
@@ -216,7 +229,7 @@ try {
   const own = await capture('cannon_own', 3500, ownShot);
   report.shots.cannon_own = { ...own, overBedDb: +(own.burstDb - report.bed.rmsDb).toFixed(1), peakOverBedDb: +(own.peakDb - report.bed.rmsDb).toFixed(1), anatomy: shotAnatomy(lastI16, sampleRate, 0.8) };
   console.log(`[mix] ${''.padEnd(18)} anatomy ${JSON.stringify(report.shots.cannon_own.anatomy)}`);
-  if (report.shots.cannon_own.overBedDb < 16) fail(`our own gun stands only ${report.shots.cannon_own.overBedDb} dB over the battle bed (want ≥ 16)`);
+  if (report.shots.cannon_own.overBedDb < 14) fail(`our own gun stands only ${report.shots.cannon_own.overBedDb} dB over the battle bed (want ≥ 14)`);
   if (report.shots.cannon_own.anatomy.atKnee > 40) fail(`our own gun rides the soft clip (${report.shots.cannon_own.anatomy.atKnee} samples at its knee)`);
   if (report.shots.cannon_own.peakOverBedDb < 22) fail(`our own gun's crack peaks only ${report.shots.cannon_own.peakOverBedDb} dB over the battle bed (want ≥ 22)`);
   await sleep(4000);

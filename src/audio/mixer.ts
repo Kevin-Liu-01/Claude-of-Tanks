@@ -147,7 +147,7 @@ export function createMixer({ context: ctx, reverb, channelVolumes, masterVolume
   limiter.knee.value = 0;
   limiter.ratio.value = 20;
   limiter.attack.value = 0.002;
-  limiter.release.value = 0.09;
+  limiter.release.value = 0.25;
   // A Web Audio compressor adds its own makeup gain ((1 / curve(0 dBFS))^0.6, +1.5 dB here) that cannot be
   // switched off; taken back out, the limiter is unity below its threshold and its ceiling stays under the clip.
   const limiterTrim = ctx.createGain();

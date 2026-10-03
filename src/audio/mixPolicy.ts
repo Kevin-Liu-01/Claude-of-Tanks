@@ -42,16 +42,16 @@ export const BUS_LEVELS: Readonly<Record<BusId, number>> = Object.freeze({
   impacts: 1.3,
   environment: 0.85,
   cinematic: 1,
-  vehicles: 0.4,
+  vehicles: 0.36,
   // Our own tank leads: its engine and running gear, its gun, and the loading
   // and turret machinery inside it sit above everyone else's.
-  own: 0.46,
-  ownCombat: 2,
+  own: 0.42,
+  ownCombat: 2.2,
   interior: 0.95,
-  ambience: 0.24,
+  ambience: 0.21,
   ui: 0.6,
   music: 0.6,
-  voice: 0.15,
+  voice: 0.11,
   alarm: 0.55,
 });
 

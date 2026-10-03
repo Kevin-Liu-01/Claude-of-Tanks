@@ -532,7 +532,7 @@ export function createAudio({
   // Muzzle blasts, rendered once per bore (procedural.ts): the instant pressure crack a recorded report
   // never quite has. Level re the report: under it, so it sharpens the attack without reading as a click.
   const blastBuffers = new Map<number, AudioBuffer>();
-  const BLAST_DB: Readonly<Record<string, number>> = Object.freeze({ cannon: -4, autocannon: -6, mg: -6 });
+  const BLAST_DB: Readonly<Record<string, number>> = Object.freeze({ cannon: -8, autocannon: -9, mg: -9 });
   // Machine-gun bursts echo once per beat, not once per round.
   const lastBurstTail = new Map<string, number>();
 
@@ -556,7 +556,7 @@ export function createAudio({
     const far = WEAPON_FAR[cls.id];
     const closeK = own ? 1 : 1 - rampBetween(distance, cls.closeFadeM[0], cls.closeFadeM[1]);
     // Our own shot keeps a trace of its distant report; a gunship's distant report is the ground's, not its crew's.
-    const farK = own ? (cls.id.startsWith('gunship_') ? 0 : 0.35) : rampBetween(distance, cls.farFadeM[0], cls.farFadeM[1]);
+    const farK = own ? (cls.id.startsWith('gunship_') ? 0 : 0.18) : rampBetween(distance, cls.farFadeM[0], cls.farFadeM[1]);
     const bus = cinematic ? 'cinematic' as const : own ? 'ownCombat' as const : undefined;
     const base: PlayOptions = { x, y, z, rate: report.rate, gainDb: report.gainDb, ...(bus ? { bus } : {}) };
     if (own) { base.propagate = false; base.priority = 95; }
@@ -569,7 +569,8 @@ export function createAudio({
     }
     const closePlayed = (!!ownReport && !!play(ownReport, { ...base, gainDb: (base.gainDb ?? 0) + 2.5 }))
       || (closeK > 0.03 && !!play(close, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(closeK) + (own ? 2.5 : 0) }));
-    const farPlayed = farK > 0.03 && play(far, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(farK) });
+    // The distant banks are loudness-mastered booms, the close reports peak-mastered cracks: the boom sits under.
+    const farPlayed = farK > 0.03 && play(far, { ...base, gainDb: (base.gainDb ?? 0) + gainToDb(farK) - 3 });
     // A report whose close bank is still decoding must not read as distant.
     const played = (closePlayed || closeK <= 0.4) && (closePlayed || farPlayed);
     if (report.twin) play(close, { ...base, delayS: 0.016, rate: report.rate * (muzzleIndex === 1 ? 1.04 : 0.97), gainDb: (base.gainDb ?? 0) + gainToDb(Math.max(closeK, 0.05)) - 2 });
@@ -577,7 +578,9 @@ export function createAudio({
       const now = mixer.ctx.currentTime;
       if (cls.family !== 'mg' || now - (lastBurstTail.get(cls.id) ?? -1) > 0.22) {
         if (cls.family === 'mg') lastBurstTail.set(cls.id, now);
-        play(`tail_${scene.tail}`, { ...base, rate: cls.tailRate * report.rate, delayS: 0.035 + random() * 0.02, gainDb: gainToDb(cls.tailGain) - (own ? 4 : 2) });
+        // The echo sits well under the crack (2026-10-02): at the old level it was nearly as loud as a
+        // peak-mastered report and held a near shot within 2–9 dB of its peak for half a second, a blast.
+        play(`tail_${scene.tail}`, { ...base, rate: cls.tailRate * report.rate, delayS: 0.035 + random() * 0.02, gainDb: gainToDb(cls.tailGain) - (own ? 12 : 10) });
       }
     }
     if (own && listenerScoped && cls.family === 'cannon') {
