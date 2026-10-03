@@ -86,7 +86,7 @@ function decodeSextets(encoded: string): Uint16Array {
 }
 
 /** Decode one component's boxes into [centre, size] metres in the TANK frame (build pose). */
-function interiorFillBoxes(record: InteriorFillRecord, component: InteriorFillComponent): InteriorFillBox[] {
+export function interiorFillBoxes(record: InteriorFillRecord, component: InteriorFillComponent): InteriorFillBox[] {
   const encoded = record[component];
   if (!encoded) return [];
   const spans = decodeSextets(encoded);
