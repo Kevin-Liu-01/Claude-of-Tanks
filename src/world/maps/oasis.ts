@@ -50,6 +50,15 @@ export default {
     loneMix: [['acacia', 0.65], ['palm', 0.3], ['eucalyptus', 0.05]], rimMix: [['acacia', 0.55], ['palm', 0.35], ['eucalyptus', 0.1]],
     clusterCount: 24, loneCount: 28, rimCount: 30, grassDensity: 0.5, clusterScrub: 2.0, bushCount: 0.8, bushSpecies: 'acacia', palettes: desert.vegetation.palettes,
     belts: [{ x0: -208, z0: -104, x1: -218, z1: 148, gap: 18, jitter: 5, species: 'palm' }, { x0: 10, z0: -102, x1: 24, z1: 142, gap: 19, jitter: 5, species: 'palm' }],
+    // Trees round 2b (2026-10-03, the gauntlet's wave 15): the palms grow in the oasis only: the spring basin and its
+    // banks, and the two palm rows along its east and west shores (discs every 40 m down each row); a palm drawn out
+    // on the sand grows as an acacia.
+    palmSites: [
+      { x: -114, z: 46, r: 160 },
+      ...[[-208, -104, -218, 148], [10, -102, 24, 142]].flatMap(([x0, z0, x1, z1]) => Array.from({ length: 8 },
+        (_, i) => ({ x: x0 + (x1 - x0) * i / 7, z: z0 + (z1 - z0) * i / 7, r: 26 }))),
+    ],
+    palmFallback: 'acacia',
   },
   props: {
     sourcedPalette: 'desert',
