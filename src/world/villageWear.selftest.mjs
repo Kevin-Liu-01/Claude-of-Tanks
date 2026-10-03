@@ -4,6 +4,7 @@ import { createHeightField, makeMaskTexture, mulberry32, selectTerrainLandformMa
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
+import { createHardstandVegetationExclusion } from './hardstandSurface.ts';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const stringify = value => JSON.stringify(value, (_key, item) => typeof item === 'function' ? String(item) : item);
@@ -48,11 +49,19 @@ function bake(cfg, seed, constructor = createHeightField) {
 function at(size, x, z) {
   return (Math.floor((z + 512) * size / 1024) * size + Math.floor((x + 512) * size / 1024)) * 4;
 }
-function protectedChannels(before, after) {
+// 2026-10-03 (the Ironworks redesign): a zone-control apron is stamped onto the road channel AFTER the wear pass
+// (terrain.ts stampHardstandRoadMask), so an apron inside the village rectangle carries blanket wear in the comparison
+// bake and none in activity mode, exactly as the dry ground it paves did. Its pixels are not protected road; every
+// other road and water pixel keeps its exact alpha.
+function protectedChannels(before, after, paved = () => false) {
   assert.equal(after.length, before.length);
+  const size = Math.round(Math.sqrt(before.length / 4));
   for (let i = 0; i < before.length; i += 4) {
     for (let c = 0; c < 3; c++) assert.equal(after[i + c], before[i + c], 'road/rut/water channel is exact');
-    if (before[i] || before[i + 2]) assert.equal(after[i + 3], before[i + 3], 'protected road/water alpha is exact too');
+    if ((before[i] || before[i + 2]) && !paved(((i / 4) % size + .5) * 1024 / size - 512,
+      (Math.floor(i / 4 / size) + .5) * 1024 / size - 512)) {
+      assert.equal(after[i + 3], before[i + 3], 'protected road/water alpha is exact too');
+    }
   }
 }
 function extent(patch) {
@@ -123,7 +132,7 @@ function checkPilot(id, seed) {
     compareTexture(original.texture, current.texture);
     assert.equal(current.draws, original.draws, 'identical caller RNG draw count');
     assert.deepEqual(current.rngTail, original.rngTail, 'identical caller RNG tail');
-    protectedChannels(original.pixels, current.pixels);
+    protectedChannels(original.pixels, current.pixels, createHardstandVegetationExclusion(cfg.terrain.hardstands) ?? undefined);
     const coverage = activityCoverage(original.pixels, current.pixels, current.size, cfg.terrain.workedGround);
     if (id === 'foundry') {
       assert.ok(coverage.newArea < 5000 && coverage.coreArea > 500,

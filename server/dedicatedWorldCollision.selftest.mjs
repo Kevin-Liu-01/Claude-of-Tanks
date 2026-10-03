@@ -25,7 +25,9 @@ const authoredWorlds = new Map();
 // admits seven, measured); Cinder Junction's stage is authored
 // 2026-10-03 Obsidian Caldera's rebuild (docs/MAP-LAYOUT-BRIEF.md) on that border: its seven heap draws all clear the site
 // law again (the rebuilt floor moves the strip's seeded draws), so Caldera keeps seven.
-const coalCensus = { railyard: 10, caldera: 7, foundry: 5, skybridge: 3 };
+// 2026-10-03 Ironworks' rebuild on that border: its streets are authored paths now, so the yard's seeded heap draws
+// land on a different strip of ground and six of seven clear the site law.
+const coalCensus = { railyard: 10, caldera: 7, foundry: 6, skybridge: 3 };
 
 // 2026-09-29 roads/settlements: native all31-map recapture, terrain1337,
 // props2002, vegetation2001. Counts include shared tree colliders (the capture
@@ -57,7 +59,7 @@ const expected = {
   alpine: [7079, 7008, 5955], // 2026-10-03 Glacier Pass layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md) on the map-borders lane's first pass; was [7004, 6931, 5906] on the old pass, [9117, 9044, 8009] before the border pass
   // Same prior-props baseline verification as Monsoon.
   caldera: [3904, 4049, 2722], // 2026-10-03 Obsidian Caldera layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md) on the map-borders lane's first pass; was [4031, 4138, 2845] on the old floor, [4673, 4818, 3484] on the old border, [5000, 5107, 3810] before both
-  foundry: [3242, 3350, 2082], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [4277, 4385, 3119]
+  foundry: [3033, 3275, 1897], // 2026-10-03 Ironworks layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md) on the map-borders lane's first pass; was [3242, 3350, 2082] on the old floor, [4277, 4385, 3119] before the border pass
   ruinspires: [2111, 8572, 345], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [2823, 9284, 1050]
   blackglass: [2809, 5042, 1477], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [3661, 5894, 2333]
   titan_gorge: [2486, 2347, 987], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [2725, 2586, 1230]

@@ -20,6 +20,10 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // west pass road (a level apron in the map file), the lake ice off the village (also the turbo-ball kickoff) and the
   // lake ice by the east shore. The frozen lake is firm, level ground, so the two ice discs seat as they lie.
   alpine: { kickoff: { x: -25, z: -28 }, zones: [{ x: -266, z: 44 }, { x: -25, z: -28 }, { x: 150, z: -60 }] },
+  // Ironworks (redesign 2026-10-03): three discs on the line of equal driven distance, each on a paved yard in the map
+  // file — the west street's yard, the casting yard below the blast furnace block (also the turbo-ball kickoff) and the
+  // slag road's yard in the south-east.
+  foundry: { kickoff: { x: 0, z: -72 }, zones: [{ x: -258, z: 50 }, { x: 0, z: -72 }, { x: 200, z: -176 }] },
   // Validated full-disc results of the bounded search on these constrained
   // maps. Start with the known clearings; changed terrain still revalidates
   // every footprint and both-team connection before using the ordinary search.
