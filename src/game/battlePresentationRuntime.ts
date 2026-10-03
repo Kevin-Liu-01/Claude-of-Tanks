@@ -1,3 +1,5 @@
+import type { ArmorEnvelope } from '../vehicles/specHelpers.ts';
+import { syncMissionAttachment } from './missionAttachmentVisual.ts';
 import { syncGunshipVisual, hideGunshipVisual } from './gunshipVisual.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 import {
@@ -44,6 +46,7 @@ interface TankEntity {
   combat: { destroyed?: boolean; modules?: Partial<Record<string, {state: 'ok' | 'yellow' | 'red'}>> } | null;
   visual: TankVisual | null;
   spec: {
+    armor: ArmorEnvelope;
     era: string;
     topSpeedKmh: number;
     dims: { heightM: number; widthM: number; hullLengthM: number };
@@ -265,6 +268,7 @@ export function createBattlePresentationRuntime({
         detailVisible,
       );
     }
+    syncMissionAttachment(visual.root,entity.spec,entity.aerial,!!entity.combat?.destroyed);
     if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0, !entity.isPlayer && visual.root.visible);
     else hideGunshipVisual(visual.root);
     return viewDistanceM;

@@ -1,10 +1,9 @@
 import type { EraProtection } from '../sim/armor.ts';
 import type { ModuleId } from '../sim/moduleCatalog.ts';
-import type { RuntimeValue } from '../runtimeTypes.ts';
-import type { ShellSpec } from '../sim/shellSpec.ts';
 
-// The shell contract lives in src/sim (DOM-free): the mode rulesets and the rooms Worker read it without the vehicle modules.
-export type { ShellSpec };
+// The shell record and builder live in the DOM-free sim (the mode rulesets, which the rooms Worker reaches, use them).
+export { shell } from '../sim/shellSpec.ts';
+export type { ShellSpec } from '../sim/shellSpec.ts';
 
 // Pure constructors shared by fleet spec packs. Keep this module free of
 // registry imports so extension packs can use it without creating cycles.
@@ -59,7 +58,6 @@ export interface CrewBox {
   max: Vec3Tuple;
   turretLocal: boolean;
 }
-
 
 export interface ArmorEnvelope {
   boundingRadiusM: number;
@@ -176,20 +174,6 @@ export const moduleBox = (
 export const crewBox = (
   crew: string, min: Vec3Tuple, max: Vec3Tuple, turretLocal = false,
 ): CrewBox => ({ crew, min, max, turretLocal });
-
-export const shell = (
-  name: string,
-  type: string,
-  caliberMm: number,
-  pen100Mm: number,
-  pen1000Mm: number,
-  dmg: number,
-  velocityMps: number,
-  extra: Readonly<Record<string, RuntimeValue>> | null = null,
-): ShellSpec => ({
-    name, type, caliberMm, pen100Mm, pen1000Mm, dmg, velocityMps,
-    moduleDmg: caliberMm, tracer: type, ...(extra || {}),
-});
 
 export const apfsdsPenetration = (quoted2km: number): [number, number, number] => {
   const pen1000 = quoted2km / 0.90;
