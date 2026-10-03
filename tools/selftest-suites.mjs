@@ -1081,6 +1081,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/shoreline.selftest.mjs',
     'src/world/liquidMarshSurface.selftest.mjs',
     'src/world/hardstandSurface.selftest.mjs',
+    'src/world/hardstandBanks.selftest.mjs', // 2026-10-02: the apron bank law, every map, with its pending list
     'src/world/terrainSurfaceDetail.selftest.mjs',
     'src/world/terrainMaterialOwnership.selftest.mjs',
     'src/world/terrainProjection.selftest.mjs',
