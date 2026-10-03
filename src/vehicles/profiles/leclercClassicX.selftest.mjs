@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank, KIT } from '../tankFactory.ts';
 import { LECLERC_CLASSIC_X_DATUMS as D } from './leclercClassicXFrame.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
+import { getSpec } from '../specs.ts';
+import { traceTank, tankPoseFromState } from '../../sim/armor.ts';
+import { AMX56_KIT_SURFACE_GROUP } from '../leclercClassicXKitArmor.ts';
 
-const near = (actual, expected, tolerance, label) => assert.ok(Number.isFinite(actual)
-  && Math.abs(actual - expected) <= tolerance, `${label}: ${actual}, source ${expected} ±${tolerance}`);
 const ray = (objects, p, d, far = 20) => new THREE.Raycaster(
   new THREE.Vector3(...p), new THREE.Vector3(...d), 0, far).intersectObjects(objects, false)[0];
 
@@ -287,6 +289,59 @@ function fieldPackage(tank, all) {
   turret.rotation.y=0;tank.root.updateMatrixWorld(true);
 }
 
+// 2026-10-02: the owner's field kit (6e8c2fbd3) is installed side armor. Its thick folded modules carry
+// spaced plates on the exact loft triangles (leclercClassicXKitArmor.ts), in the AMX-10P 25 kit's protection
+// family; the open slat screens below stay unarmored, and the retained source skirt is the layer behind.
+function fieldKitArmor(all) {
+  const spec = getSpec('leclerc_classic_x');
+  const kit = spec.armor.hullPlates.filter(p => p.surfaceGroup?.startsWith(`${AMX56_KIT_SURFACE_GROUP}:`));
+  const loft = all.find(m => m.name === 'hullExternalArmor');
+  const key = vs => vs.map(v => v.map(n => n.toFixed(5)).join(',')).sort().join('|');
+  const rendered = new Set(), position = loft.geometry.attributes.position, point = new THREE.Vector3();
+  for (let i = 0; i < position.count; i += 3) rendered.add(key([0, 1, 2].map(offset =>
+    point.fromBufferAttribute(position, i + offset).applyMatrix4(loft.matrixWorld).toArray())));
+  assert.equal(kit.length, 80, 'five outward faces x four station spans x two triangles x two sides');
+  const family = getSpec('amx10p_25').armor.hullPlates.find(p => /^skirt_[LR]_\d/.test(p.name));
+  for (const plate of kit) {
+    assert(rendered.has(key(plate.verts)), `${plate.name}: combat armor is an actual rendered field-kit facet`);
+    assert.equal(plate.kind, 'spaced');
+    assert.deepEqual([plate.physicalMm, plate.keMm, plate.ceMm], [family.physicalMm, family.keMm, family.ceMm],
+      'the AMX-10P 25 kit protection family');
+    assert(plate.verts.every(v => v[1] >= .94), 'the open lower slat screens carry no invisible solid armor');
+  }
+  const pose = tankPoseFromState({ pos: new THREE.Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw: 0, gunPitch: 0 });
+  const spaced = (from, to) => traceTank(new THREE.Vector3(...from), new THREE.Vector3(...to), pose, spec.armor)
+    .filter(h => h.kind === 'plate' && h.plate.kind === 'spaced');
+  for (const side of [-1, 1]) {
+    for (const z of [-2.925, -1.575, -.225, 1.125, 2.475]) for (const y of [.47, .62, .78, .90])
+      assert.equal(spaced([side * 2.4, y, z], [side * 1.85, y, z]).length, 0, 'slat screens and their gaps stay unarmored');
+    for (const z of [-1.8, -.8, .2, 1.0]) {
+      const layers = spaced([side * 3, 1.19, z], [side * 1.0, 1.19, z]);
+      assert.equal(layers.length, 2, `side shot at z${z}: kit module then retained source skirt, once each`);
+      assert.equal(layers[0].plate.surfaceGroup, `${AMX56_KIT_SURFACE_GROUP}:${side}`, 'the outer layer is the installed kit');
+      assert(layers[1].plate.name.includes('_source_'), 'the inner layer is the retained source skirt');
+    }
+  }
+  // Exact shared kit edges charge once along the faces' own normal.
+  const normal = v => new THREE.Vector3(...v[1]).sub(new THREE.Vector3(...v[0]))
+    .cross(new THREE.Vector3(...v[2]).sub(new THREE.Vector3(...v[0]))).normalize();
+  const edges = new Map(); let shared = 0;
+  for (const plate of kit) for (let i = 0; i < 3; i++) {
+    const a = plate.verts[i], b = plate.verts[(i + 1) % 3];
+    const edge = `${plate.surfaceGroup}:` + [a, b].map(v => v.map(n => n.toFixed(6)).join(',')).sort().join('|');
+    const other = edges.get(edge);
+    if (!other) { edges.set(edge, plate); continue; }
+    const n = normal(plate.verts).add(normal(other.verts)).normalize();
+    if (n.lengthSq() < .5) continue;
+    const mid = new THREE.Vector3(...a).add(new THREE.Vector3(...b)).multiplyScalar(.5);
+    const hits = spaced(mid.clone().addScaledVector(n, .05).toArray(), mid.clone().addScaledVector(n, -.01).toArray())
+      .filter(h => h.plate.surfaceGroup === plate.surfaceGroup);
+    assert.equal(hits.length, 1, `${plate.name}/${other.name}: an exact shared kit edge charges once`);
+    shared++;
+  }
+  assert(shared > 100, 'the seam sweep covers the kit triangles');
+}
+
 for (const quality of ['high', 'low']) {
   const original = KIT.buildRunningGear;
   let tank, gear;
@@ -299,7 +354,7 @@ for (const quality of ['high', 'low']) {
     const all = visibleMeshes(tank.root);
     framesAndEnvelope(tank, all); heldOutSurfaces(all); opticalAir(all); correctedRoof(all); guardAndCarry(all);
     hullEquipment(all); rearRoofFold(all);
-    boreAndOwnership(tank, all); groundScroll(tank, gear); fieldPackage(tank, all);
+    boreAndOwnership(tank, all); groundScroll(tank, gear); fieldPackage(tank, all); fieldKitArmor(all);
   } finally { tank.dispose(); }
 }
-console.log('leclercClassicX: actual high/low source frame, selected surfaces/optical and basket air, round deep bore, ownership and48-phase ground PASS');
+console.log('leclercClassicX: actual high/low source frame, selected surfaces/optical and basket air, round deep bore, ownership, 48-phase ground and field-kit armor (80 loft plates, open slats, kit-then-skirt layering, single-charge seams) PASS');

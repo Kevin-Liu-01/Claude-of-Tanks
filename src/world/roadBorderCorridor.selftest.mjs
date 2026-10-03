@@ -96,7 +96,10 @@ for (const id of MAP_IDS) {
     assert.deepEqual(after, oldProfile, `${id}: no other-map profile change`); unchangedStampMaps++;
   }
 }
-assert.equal(unchangedStampMaps, 30); // 2026-09-19: Mars joins the unchanged-stamp maps
+// Every battlefield but Skybridge keeps the unchanged construction stamp (Mars joined 2026-09-19, moon and cliffbridge
+// with 0e5fc79e2): the count follows the registry instead of a literal.
+assert.equal(unchangedStampMaps, MAP_IDS.filter(id => id !== 'skybridge').length,
+  'every battlefield but Skybridge keeps the unchanged construction stamp');
 const skyConfig = getMapConfig('skybridge');
 const oldSky = oldCreateHeightField(1337, skyConfig), newSky = createHeightField(1337, skyConfig);
 assert.deepEqual(newSky._layout, oldSky._layout, 'profile does not change road/layout/station ownership');
@@ -279,7 +282,9 @@ const constraintFactory = new Function('fixture', `
     _LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons, lakeHeightResult,
     padPts, padYs, smoothstep, waterRampStart, waterRampEnd, noi,
     // round 61: the road-plane blend yields under a bridge deck (bridgeTermsAt); this fixture authors none
-    bridgeDecks = [], bridgeTermsAt = () => ({ span: 0, approach: 0, deckY: 0 }) } = fixture;
+    bridgeDecks = [], bridgeTermsAt = () => ({ span: 0, approach: 0, deckY: 0 }),
+    // 0e5fc79e2: a dry viaduct (T.bridges, Aegis Crossing) cuts shoulder noise flush with its deck; none authored here
+    T = {}, bridgeDeckOver = () => null } = fixture;
   ${roadBankPolicy}
   ${stripTypeScriptTypes(constraintSource)}
   return applyHeightConstraints;

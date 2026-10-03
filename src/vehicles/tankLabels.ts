@@ -210,8 +210,8 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['ARES APC', 'Ajax Ares', 'Ajax-family APC', 'British Ares'],
   },
   type99a: {
-    displayName: 'ZTZ-99A (Type 99A)', shortName: 'ZTZ-99A',
-    searchAliases: ['Type 99A (ZTZ-99A)', 'Type 99A'],
+    displayName: 'ZTZ-99 Longwei', shortName: 'Longwei',
+    searchAliases: ['ZTZ-99A (Type 99A)', 'Type 99A (ZTZ-99A)', 'Type 99A', 'Longwei original concept'],
   },
   vt4a1: {
     displayName: 'VT-4A1', shortName: 'VT-4A1',
@@ -226,7 +226,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['Type 99A2', 'ZTZ 99A2'],
   },
   ztz99a2_prototype: {
-    displayName: 'ZTZ-99A2 Prototype', shortName: 'ZTZ-99A2 Proto',
+    displayName: 'ZTZ-99A', shortName: 'ZTZ-99A',
     searchAliases: ['Type 99A2 Prototype', 'ZTZ 99A2 Prototype', '99A2-P'],
   },
   type100: {

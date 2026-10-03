@@ -287,23 +287,6 @@ function pushTopFan(
   }
 }
 
-function pushOrderedFan(
-  positions: number[],
-  ring: readonly Point3[],
-  center: Point2,
-  top: boolean,
-  centerHeight?: number,
-): void {
-  const [centerX, centerZ] = center;
-  const y = centerHeight ?? ring.reduce((sum, point) => sum + point[1], 0) / ring.length;
-  const centerPoint: Point3 = [centerX, y, centerZ];
-  for (let index = 0; index < ring.length; index++) {
-    const next = (index + 1) % ring.length;
-    if (top) positions.push(...ring[index], ...ring[next], ...centerPoint);
-    else positions.push(...ring[next], ...ring[index], ...centerPoint);
-  }
-}
-
 export function polyTurret(
   plan: readonly Point2[],
   height: number,

@@ -3,9 +3,8 @@ import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { createTank, KIT } from '../tankFactory.ts';
 import { addT90AWSideMounts } from './t90AwXSideMounts.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
-const near = (a, b, tolerance, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b) <= tolerance,
-  `${label}: ${a} vs ${b}`);
 const ray = (meshes, o, d, far = 12) => new THREE.Raycaster(new THREE.Vector3(...o),
   new THREE.Vector3(...d), 0, far).intersectObjects(meshes, false)[0];
 const physical = root => {

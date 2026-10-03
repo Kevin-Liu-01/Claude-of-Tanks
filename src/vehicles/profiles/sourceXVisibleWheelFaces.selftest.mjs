@@ -32,9 +32,13 @@ const CASES = {
     xLeft:1.437, xRight:1.437,
     zsLeft:[-1.81590002775,-.97714999318,-.12659997866,.72445000755,1.57635003328,2.42254996300],
     zsRight:[-1.74285000563,-.90240001678,-.05049999041,.80055001006,1.65250003338,2.49795007706]},
-  t62mv1_x: {radius:.391615, standard:'t90', y:.4616149961948395,
-    xLeft:1.199465, xRight:1.199465,
-    zs:[-1.858795,-.805165,.24309,1.14781,2.00987]},
+  // 2026-10-01: the owner's rebuild (4c34b3e8b, fleet-renewal-publication-20260930.md) puts the T-62MV-1 on the
+  // T-62 obr. 1975 chassis; the supplied fused-FBX witnesses (r .391615, x 1.199465, five source stations) left
+  // with the source build. The rebuild runs its chassis donor's five-wheel course (proved equal to the live
+  // t62mv1 below) under the same Russia nation face.
+  t62mv1_x: {radius:.42, standard:'t90', y:.491,
+    xLeft:1.397, xRight:1.397,
+    zs:[-1.933,-.791,.293,1.297,2.235]},
 };
 const near = (a,b,label) => assert.ok(Number.isFinite(a) && Math.abs(a-b)<1e-6,
   `${label}: ${a}, expected ${b}`);
@@ -128,3 +132,10 @@ function check(id,fixture,quality) {
   } finally {tank.dispose();}
 }
 for(const [id,fixture] of Object.entries(CASES)) for(const quality of ['high','low']) check(id,fixture,quality);
+for(const quality of ['high','low']) {
+  const tires=id=>{const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+    try{const mesh=tank.root.getObjectByName('gearRoadWheelTires');
+      return{matrices:Array.from(mesh.instanceMatrix.array.subarray(0,mesh.count*16)),
+        positions:Array.from(mesh.geometry.attributes.position.array)};}finally{tank.dispose();}};
+  assert.deepEqual(tires('t62mv1_x'),tires('t62mv1'),`t62mv1_x/${quality}: the rebuild runs the T-62 obr. 1975 donor's own road wheels`);
+}

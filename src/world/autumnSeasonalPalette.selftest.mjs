@@ -90,8 +90,9 @@ const snapshot = value => JSON.stringify(value, (_, item) => typeof item === 'fu
 function withoutPalettes(config) { const {palettes, ...vegetation} = config.vegetation; return {...config, vegetation}; }
 assert.equal(snapshot(withoutPalettes(current)), snapshot(withoutPalettes(before)), 'non-palette Autumn input unchanged');
 const otherMaps = MAP_IDS.filter(id => id !== 'autumn').map(id => snapshot(getMapConfig(id)));
-// Mars mode (2026-09-18): Olympus Basin joins the catalog (31 maps)
-assert.equal(otherMaps.length, 30);
+// Every registered battlefield but Autumn (Mars joined 2026-09-18, moon and cliffbridge with 0e5fc79e2): the snapshot
+// follows the registry instead of a literal count.
+assert.equal(otherMaps.length, MAP_IDS.length - 1, 'every other registered battlefield is snapshotted');
 if (values['baseline-root']) {
   const base = await import(pathToFileURL(join(values['baseline-root'], 'src/world/maps/index.ts')).href);
   for (const id of MAP_IDS) assert.equal(snapshot(id === 'autumn' ? withoutPalettes(getMapConfig(id)) : getMapConfig(id)),
@@ -184,6 +185,6 @@ try {
 } finally {
   if (priorDocument === undefined) delete globalThis.document; else globalThis.document = priorDocument;
 }
-assert.deepEqual(MAP_IDS.filter(id => id !== 'autumn').map(id => snapshot(getMapConfig(id))), otherMaps, '30 maps not mutated');
+assert.deepEqual(MAP_IDS.filter(id => id !== 'autumn').map(id => snapshot(getMapConfig(id))), otherMaps, `${otherMaps.length} other maps not mutated`);
 console.log(JSON.stringify({rows, baselineRoot:values['baseline-root'] ?? null,
   scope:'actual palette/Canvas/registry construction; 12 near, 8 far, 2 bush pairs; no world placement, GPU, timing or visual acceptance'}));

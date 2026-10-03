@@ -386,7 +386,7 @@ export interface BrowserComposition {
   /** The hidden-tab cadence: the socket keeps its pings and acks. */
   pumpBackground(nowMs: number): void;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal'): void;
   /** The Garage return's network port: keep the room across the return? */
   shouldPreserveRoom(): boolean;
   /** Leave the match, keep the seat (the Garage return with a preserved room). */
@@ -407,11 +407,11 @@ export interface BrowserComposition {
 
 // ------------------------------------------------------------ controls
 
-const NAMED_ACTION_BITS: Readonly<Record<'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone', number>> = Object.freeze({
+const NAMED_ACTION_BITS: Readonly<Record<'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal', number>> = Object.freeze({
   reloadMagazine: ACTION_BITS.RELOAD_MAGAZINE,
   specialAction: ACTION_BITS.SPECIAL_ACTION,
   selfRight: ACTION_BITS.SELF_RIGHT,
-  smoke: ACTION_BITS.SMOKE, lights: ACTION_BITS.LIGHTS, roofGun: ACTION_BITS.ROOF_GUN, lightsOff: ACTION_BITS.LIGHTS_OFF, drone: ACTION_BITS.DRONE,
+  smoke: ACTION_BITS.SMOKE, lights: ACTION_BITS.LIGHTS, roofGun: ACTION_BITS.ROOF_GUN, lightsOff: ACTION_BITS.LIGHTS_OFF, drone: ACTION_BITS.DRONE, supplyAmmo: ACTION_BITS.SUPPLY_AMMO, supplyHeal: ACTION_BITS.SUPPLY_HEAL,
 });
 const CONSUMABLE_BITS = ACTION_BITS.REPAIR | ACTION_BITS.FIRST_AID | ACTION_BITS.EXTINGUISHER;
 const DEFAULT_AIM_DISTANCE_M = 1000;
@@ -427,7 +427,7 @@ export interface ControlSampler {
   /** The viewer's controls for a tick from the own actor's input record (the rig writes its aim point every frame). */
   sample(tick: number): Readonly<ControlSample> | null;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal'): void;
   reset(): void;
 }
 

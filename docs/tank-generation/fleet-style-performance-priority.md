@@ -360,7 +360,7 @@ existing quality gates.
 - Start from current `origin/main` and reconcile the relevant candidate's
   ancestry once. Do not repeat a full worktree/recovery scan at each checkpoint.
 - During iteration, run the changed profile's contact/material/shape tests.
-  Do not add `wheelQuality.selftest.mjs` as a single-tank preflight: it builds
+  Do not add `fleetPassHigh.selftest.mjs` (the wheel-quality audit) as a single-tank preflight: it builds
   the entire fleet and runs again in the mandatory release. Use the existing
   `auditTankWheelQuality` function on the selected actual model for iteration.
 - Check types and strict selected source geometry before expensive asset and

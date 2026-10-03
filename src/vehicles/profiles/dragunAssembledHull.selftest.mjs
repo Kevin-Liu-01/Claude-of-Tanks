@@ -3,13 +3,13 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {ensureInteriorFills,hasInteriorFills} from '../interiorFills.ts';
 import {sourceOpeningRayProbe} from '../../../tools/source-opening-rays.mjs';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Source-only Object_15/23 calipers in the original canonical frame; the
 // accepted assembly changes only its detached door. No source mesh is loaded.
 const id='bmp3m_dragun125_x';
 await ensureInteriorFills([id]);
 assert.ok(hasInteriorFills(id));
-const near=(actual,expected,tolerance,label)=>assert.ok(Number.isFinite(actual)&&Math.abs(actual-expected)<=tolerance,`${label}: ${actual} vs ${expected}`);
 for(const quality of ['high','low']) {
   const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
   tank.root.traverse(o=>{if(o.isLOD){o.autoUpdate=false;o.levels.forEach((level,i)=>level.object.visible=i===0);}});

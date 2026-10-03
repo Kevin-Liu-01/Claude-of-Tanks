@@ -60,8 +60,20 @@ for (const id of ids) {
   const hullNet = tank.root.getObjectByName(`${id}_ghillie_hull_net`);
   const hullBounds = new THREE.Box3().setFromObject(hullNet);
   assert.ok(hullBounds.min.y > 0.52, `${id} ghillie stays above the live track corridor`);
-  assert.ok(hullBounds.max.z - hullBounds.min.z > 5.5,
-    `${id} hull blanket spans the vehicle instead of one selected panel`);
+  if (id === 'ua_t64bv') {
+    // 2026-10-01: the owner's Donbas rebuild (cdbfe54dc, "ua_t64bv with supported foliage, net and cages";
+    // profiles/donbasFieldCover.ts) replaced the deck-wide blanket with supported flank drapes over the five side
+    // ERA cassettes (z -1.9..1.7 on the t72b3_x hull) and a bustle cover behind the open sights and hatches.
+    const cover = turretRig.userData.fieldCover;
+    assert.deepEqual(cover, { supported: true, sightsOpen: true, hatchesOpen: true, revision: 1 },
+      `${id} field cover is carried on real rails with sights and hatches open`);
+    assert.ok(hullBounds.min.x < -1.7 && hullBounds.max.x > 1.7, `${id} drapes hang on both flanks`);
+    assert.ok(hullBounds.min.z <= -1.9 && hullBounds.max.z >= 1.7,
+      `${id} flank drapes run past every side cassette instead of one selected panel`);
+  } else {
+    assert.ok(hullBounds.max.z - hullBounds.min.z > 5.5,
+      `${id} hull blanket spans the vehicle instead of one selected panel`);
+  }
 
   if (cfg.turret) {
     const turretNet = tank.root.getObjectByName(`${id}_ghillie_turret_net`);
@@ -73,6 +85,30 @@ for (const id of ids) {
     ).intersectObject(turretNet, false);
     assert.ok(hits.every((hit) => hit.point.z < turretRig.position.z - 0.72),
       `${id} leaves the complete mantlet/gun corridor open`);
+  }
+
+  if (id === 't84') {
+    const net=tank.root.getObjectByName('t84_ghillie_turret_net'),hard=[];
+    turretRig.traverse(o=>{if(o.isMesh&&!/ghillie|Fill|Shadow|Decal/i.test(o.name))hard.push(o)});
+    for(const [x,z] of [[0,-.9],[0,-1.73],[.74,.62]]){
+      const origin=turretRig.localToWorld(new THREE.Vector3(x,2,z));
+      const probe=new THREE.Raycaster(origin,new THREE.Vector3(0,-1,0),0,3);
+      const cloth=probe.intersectObject(net)[0],seat=probe.intersectObjects(hard)[0];
+      assert(cloth&&seat,'Oplot cloth has actual roof or stowage beneath it');
+      const gap=cloth.point.y-seat.point.y;
+      assert(gap>.005&&gap<.055,`Oplot cloth stays seated on the rebuilt hard surface (${gap}m)`);
+    }
+    // Live gunner lens and roof-MG muzzle have a clear forward view/fire lane.
+    const cover=[];turretRig.traverse(o=>{if(o.isMesh&&/ghillie/.test(o.name))cover.push(o)});
+    for(const point of [[-.56,1.035,-.16],[.52,1.21,.31]]){
+      const probe=new THREE.Raycaster(turretRig.localToWorld(new THREE.Vector3(...point)),new THREE.Vector3(0,0,1),0,8);
+      assert.equal(probe.intersectObjects(cover).length,0,'Oplot foliage leaves working roof equipment clear');
+    }
+    const local=new THREE.Vector3().fromBufferAttribute(net.geometry.getAttribute('position'),0);
+    const rest=net.localToWorld(local.clone());
+    turretRig.rotation.y=1.4;tank.root.updateMatrixWorld(true);
+    assert(net.localToWorld(local.clone()).distanceTo(rest)>.4,'bustle net turns with the turret');
+    turretRig.rotation.y=0;tank.root.updateMatrixWorld(true);
   }
 
   if (cfg.gun) {
@@ -99,24 +135,5 @@ assert.ok(twardy.turret.side[0].topAt(0.90) < twardy.turret.side[0].topAt(-0.40)
   'Twardy side drape follows the falling front shoulder');
 assert.ok(twardy.turret.face[0].zAt(1.0, 0.42) < twardy.turret.face[0].zAt(0.35, 0.42),
   'Twardy front drape follows the swept ERAWA wedge instead of one flat face');
-
-const oplot = GHILLIE_SUIT_CONFIGS.t84;
-const oplotTop = oplot.turret.top[0];
-assert.equal(oplotTop.seat, 'roof-equipment-envelope',
-  'T-84 net declares the completed roof-equipment envelope as its carrier');
-assert.ok(oplotTop.seatGapM > 0.02 && oplotTop.seatGapM <= 0.03,
-  'T-84 net keeps only a small physical clearance from its support');
-assert.ok(oplotTop.yAt(0, 0.30) < 0.76,
-  'T-84 net descends onto the center roof lane instead of floating at y=.89');
-assert.ok(oplotTop.yAt(-0.55, 0.52) > 0.83,
-  'T-84 net rises over the gunner sight housing');
-assert.ok(oplotTop.yAt(-0.55, -0.16) > 0.92,
-  'T-84 net clears the complete Kord assembly instead of slicing through it');
-assert.ok(oplotTop.yAt(0.43, -1.74) > 0.83,
-  'T-84 net lands over the bustle stowage lid');
-assert.ok(oplotTop.yAt(0.82, 1.20) < 0.70,
-  'T-84 net follows the Duplet cheek field instead of bridging above it');
-assert.ok(oplot.turret.side[0].topAt(0.20) < 0.58,
-  'T-84 side net attaches to the flank carrier rather than a high flat rail');
 
 console.log('Shared physical-ghillie suit selftest passed');

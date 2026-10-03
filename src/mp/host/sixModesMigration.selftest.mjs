@@ -4,7 +4,9 @@ import { createMatchActor } from '../../../server/match/matchActor.ts';
 import { captureEntityRow, captureMeta, createEraIndexer } from '../../../server/match/entityRows.ts';
 import { captureEntityExtras, encodeMigrationKeyframe, decodeMigrationKeyframe, applyResumeState } from './migrationState.ts';
 import { PLAYER_ACTION_BITS } from '../../sim/playerActions.ts';
+import { ensureAuthorityFleet } from '../../vehicles/authorityFleet.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
+await ensureAuthorityFleet(['m1a2']);
 const seats=[{seat:0,playerId:'pilot',name:'Pilot',team:'alpha',specId:'m1a2'},{seat:1,playerId:'enemy',name:'Enemy',team:'bravo',specId:'m1a2'},{seat:2,playerId:'friend',name:'Friend',team:'alpha',specId:'m1a2'}];
 const world=()=>({mapId:'verdant',heightField:{getHeightAt:()=>0,getGroundType:()=> 'hard',getNormalAt:()=>new Vector3(0,1,0)},getObstacles:()=>[]});
 for(const mode of ['gun_game','infected','drone','ac130','juggernaut']){
@@ -20,11 +22,13 @@ for(const mode of ['gun_game','infected','drone','ac130','juggernaut']){
  if(mode==='drone'){input.actionBits=PLAYER_ACTION_BITS.DRONE;sim.step({dt:1/60,inputs});input.actionBits=0;for(let n=0;n<100;n++)sim.step({dt:1/60,inputs});}
  if(mode==='ac130'||mode==='juggernaut')for(let n=0;n<120;n++)sim.step({dt:1/60,inputs});
  if(mode==='ac130'){const e=sim.modeController.state.escort;sim.entityById.get('ground-0').state.pos.set(e.x,e.y,e.z);sim.step({dt:1/60,inputs});assert.equal(e.rescued,1);}
+ if(mode==='ac130'){assert.equal(sim.modeController.requestSupply('pilot','ammo',sim.timeS),true);}
  const tick=Math.round(sim.timeS*60),battleTimeMs=Math.round(sim.timeS*1000),era=createEraIndexer();
  const snapshot=sim.snapshot({tick,serverTimeMs:battleTimeMs,viewerId:'migration',ackInputSeq:null});
  const keyframe={tick,battleTimeMs,phase:'playing',modeCheckpoint:sim.captureModeCheckpoint(),entities:captureEntityExtras(first),frame:{tick,serverTimeMs:battleTimeMs,ackedInputTick:0xffffffff,ackedFireSeq:0,ackedActionSeq:0,inputMarginTicks:127,meta:captureMeta({...snapshot.meta,battleTimeMs},false),destroyed:[],entities:sim.entities.map(e=>captureEntityRow(e,first.wireIdOf(e.id),era,tick)),shells:[],viewer:null,modeStateJson:null}};
  const saved=decodeMigrationKeyframe(encodeMigrationKeyframe(keyframe));
  const second=make({tick,battleTimeMs});applyResumeState(second,saved);const restored=second.authority.entityById.get('pilot');
+ if(mode==='ac130'){assert.ok(second.authority.modeController.state.pickups.some(p=>p.airDrop),'parachuting supply survives encrypted migration');assert.equal(second.authority.modeController.requestSupply('pilot','ammo',sim.timeS),false,'shared drop cooldown survives migration');}
  assert.equal(restored.team,pilot.team,`${mode}: faction survives host change`);
  assert.equal(restored.spec.gun.shells[0].name,pilot.spec.gun.shells[0].name,`${mode}: weapon survives host change`);
  assert.deepEqual(second.authority.modeController.state.score,sim.modeController.state.score,`${mode}: scores survive`);

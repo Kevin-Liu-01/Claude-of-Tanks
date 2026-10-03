@@ -1,5 +1,5 @@
 // Owner-directed family rebuilds on the detailed T-72 foundations (2026-09-30).
-import {KIT, FITTINGS} from './kit.ts';
+import {KIT} from './kit.ts';
 import {buildT72B3MXHull} from './t72b3mX.ts';
 import {buildT72B3X} from './t72b3X.ts';
 import {buildT90SMXTurret} from './t90X.ts';
@@ -21,24 +21,6 @@ function addB3M2022HullProtection(P:TankBuilderPort):void {
 }
 export function buildT72B3M2022Hull(P:TankBuilderPort):void {
   buildT72B3MXHull(P);addB3M2022HullProtection(P);
-}
-export function addB3M2022Protection(P:TankBuilderPort):void {
-  addB3M2022HullProtection(P);
-  // Smaller cheek infill leaves the mantlet and optical sight apertures clear.
-  for(const side of [-1,1])for(let i=0;i<3;i++){
-    const x=side*(.60+i*.28),z=1.48-i*.20;
-    eraCassette(P,'turret',`turret_era_${side<0?'L':'R'}`,
-      [x,1.90-P.turretG.position.y,z-P.turretG.position.z],[.245,.11,.25],[.47,side*(.2+i*.17),0]);
-  }
-  // The new thermal channel, separate command aerial and externally carried
-  // field kit retain the modernization functions of the superseded model.
-  supportedSensor(P,[.25,.91,-.54],.71);
-  P.addEquipment('turretDetail',cylY(.06,.075,.11,12),.20,.76,-.92);
-  P.addEquipment('turretDark',cylY(.009,.015,.78,10),.20,1.19,-.92);
-  attachedCage(P,'turret',[0,.29,-2.02],2.14,.48,.48);
-  strappedPack(P,'turret',[-.44,.41,-1.74],[.62,.24,.35]);
-  strappedPack(P,'turret',[.42,.40,-1.74],[.60,.22,.35]);
-  P.hullG.userData.familyRebuild={donor:'t72b3m_x',revision:1,features:['relikt-side','lower-soft-cases','cheek-infill','thermal-channel','rear-cage','field-kit']};
 }
 export function buildT72B3M2022(P:TankBuilderPort):void {
   buildT72B3M2022Hull(P);

@@ -46,9 +46,18 @@ function localRay(owner,origin,direction,objects){
  return new T.Raycaster(owner.localToWorld(new T.Vector3(...origin)),new T.Vector3(...direction).transformDirection(owner.matrixWorld),0,1)
   .intersectObjects(objects,false)[0];
 }
+// 2026-09-30 (4c34b3e8b, owner's remote roof weapons): a remote MAG keeps its fixed foundation in
+// browningDerivedMachineGunBody and pitches its receiver, connector and barrel in the fitting's own
+// auxiliaryWeaponPitch group; a manned MAG still carries all of them in the body.
+function weaponStock(mg){
+ const pitch=mg.children.find(o=>o.name==='auxiliaryWeaponPitch');
+ if(!pitch)return mg.getObjectByName('browningDerivedMachineGunBody');
+ const stock=pitch.children.find(o=>o.name==='fitting_auxiliaryWeapon_dark');
+ assert.ok(stock?.isMesh,'remote MAG receiver/barrel pitches inside its own fitting');return stock;
+}
 function barrelContinuous(mg,scale){
  const s=scale*.78,axisY=.014+.16*s+.080*s+.025*s+.004,frontZ=.23*s;
- const body=mg.getObjectByName('browningDerivedMachineGunBody');assert.ok(body?.isMesh);
+ const body=weaponStock(mg);assert.ok(body?.isMesh);
  // Two interior samples of the old open run, its forward overlap, and the
  // real barrel: no painted ring or isolated tip can satisfy these first hits.
  for(const z of [.015,.06,.102,.14].map(v=>frontZ+v*s)){
@@ -102,10 +111,12 @@ function verifySeats(tank,id){
   const seatedY=mg.position.y;mg.position.y+=.10;mg.updateMatrixWorld(true);
   try{assert.throws(()=>footSeated(mg,[turret,detail]),/MG base seated/,'raised real fitting must lose its seat');}
   finally{mg.position.y=seatedY;mg.updateMatrixWorld(true);}
-  const body=mg.getObjectByName('browningDerivedMachineGunBody'),original=body.geometry;
+  const body=weaponStock(mg),original=body.geometry;
   // Remove only the actual connecting cylinder, preserving receiver/barrel.
-  const s=scale*.78,bridge=components(body).find(p=>Math.abs(p.bounds.getCenter(new T.Vector3()).z-(.23+.0525)*s)<1e-5
-    &&Math.abs(p.bounds.getSize(new T.Vector3()).z-.105*s)<1e-5);
+  // Component bounds are compared in the fitting frame (a remote pitch group is offset inside it).
+  const toFitting=new T.Matrix4().copy(mg.matrixWorld).invert().multiply(body.matrixWorld);
+  const s=scale*.78,bridge=components(body).find(p=>{const b=p.bounds.clone().applyMatrix4(toFitting);
+    return Math.abs(b.getCenter(new T.Vector3()).z-(.23+.0525)*s)<1e-5&&Math.abs(b.getSize(new T.Vector3()).z-.105*s)<1e-5;});
   assert.ok(bridge,'actual receiver connector exists');
   const points=components(body).filter(p=>!p.bounds.equals(bridge.bounds)).flatMap(p=>p.points.flatMap(v=>v.toArray()));
   body.geometry=new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute(points,3));

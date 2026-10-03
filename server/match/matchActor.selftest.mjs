@@ -7,6 +7,10 @@ import { applySnapshotPacket, decodeMessage, encodeMessage } from '../../src/mp/
 import { quantizeAimDistance, quantizeAngle } from '../../src/mp/wire/quantize.ts';
 import { createLoopbackLink } from './link.ts';
 import { SNAPSHOT_SKIP_BYTES, createMatchActor } from './matchActor.ts';
+import { ensureAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
+
+// The actor reads finalized combat anatomy; production hosts load their roster's groups first (Node: all).
+await ensureAuthorityFleet();
 
 const TICK_MS = 1000 / 60;
 let nowMs = 10_000;

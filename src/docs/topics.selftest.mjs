@@ -80,7 +80,9 @@ assert.match(audioText, /ElevenLabs/);
 assert.match(audioText, /nothing is generated while you play/);
 assert.match(audioText, /No interface sound tells you a shot hit/);
 assert.match(audioText, /Short\. Adjusting\./);
-assert.match(audioText, /National, English or the interface language/);
+assert.match(audioText, /National crews/);
+assert.match(audioText, /13 existing national crews for every tank/);
+assert.match(audioText, /saved across battles and reloads/);
 assert.doesNotMatch(audioText, /selftest|node (?:src|tools)\//, 'the audio manual is written for players, not as a test checklist');
 
 console.log('topics.selftest: 12 indexed manuals with complete icon, workflow, and audio coverage passed');

@@ -22,7 +22,7 @@ assert.equal(fallback.swashStrength, 0, 'and has no wet strand');
 assert.deepEqual(resolveGroundReduxProfile(undefined), fallback);
 
 // 2. Knob bands and the biomes where they belong.
-const ARID = ['desert', 'badlands', 'caldera', 'titan_gorge', 'skybridge', 'copper_mesa', 'mars'];
+const ARID = ['desert', 'badlands', 'caldera', 'titan_gorge', 'skybridge', 'copper_mesa', 'mars', 'moon']; // moon (2026-10-01): airless regolith grows no sward
 const SNOW = ['winter', 'whiteout', 'alpine'];
 const COAST = ['coastal', 'saltwind', 'fjord', 'mangrove'];
 const STILL = ['delta', 'polders', 'reservoir', 'monsoon', 'oasis', 'skybridge'];

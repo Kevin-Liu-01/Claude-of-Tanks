@@ -25,7 +25,7 @@ import { roundedTrackContact } from './roundedTrackContact.ts';
 import { chieftainCastSection, chieftainCheekHorn, chieftainHullSection } from './chieftainXFoundation.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
-const { box, cylX, cylY, cylZ, torus } = KIT;
+const { box, cylY, cylZ, torus } = KIT;
 type Point = readonly [number, number, number];
 type Slab = readonly [z: number, left: number, right: number, bottom: number, top: number];
 type CastRow = readonly [z: number, width: number, crown: number, shoulder: number];

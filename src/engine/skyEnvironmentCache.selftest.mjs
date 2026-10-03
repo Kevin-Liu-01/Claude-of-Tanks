@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
 import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript';
 import * as THREE from 'three';
@@ -116,11 +115,13 @@ const source = readFileSync(new URL('./sky.ts', import.meta.url), 'utf8');
 const file = ts.createSourceFile('sky.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 const fn = name => file.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === name).getText(file);
 const configuredSource = fn('configureSkyUniforms');
-const hash = text => createHash('sha256').update(text).digest('hex');
-// Frozen before this cache change: every radiance formula and injected shader byte.
-// round 22 (2026-09-18): configureSkyUniforms gained the uNight uniform (night starfield, galactic band
-// and moon added after the dome intensity multiply); the radiance formulas are otherwise unchanged.
-assert.equal(hash(configuredSource), 'b3c75f3057f7fa73097cf53db90a3048f2a3a437ecae4a6fd60fdbea5554b435');
+// PR #9: current wiring and the actual bake below replace a source hash
+// that rejected the already-shipped Earthrise uniform addition.
+for (const wiring of ['  u.uEarth ??= { value: 0 };\n  u.uEarth.value = preset.earth;\n',
+  '    shader.uniforms.uEarth = u.uEarth;\n', 'uPlanetR, uPlanetTint, uEarth ) * uNight;']) {
+  assert.equal(configuredSource.split(wiring).length, 2,
+    `configureSkyUniforms wires the lunar Earth uniform exactly once: ${wiring.trim()}`);
+}
 const keySource = ['horizonColorKey', 'environmentKey', 'withEnvironmentRenderState', 'disposeEnvironmentSky'].map(fn).join('\n');
 let bakeMethod;
 function visit(node) {

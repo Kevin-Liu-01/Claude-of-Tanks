@@ -6,7 +6,7 @@ import { mergeAll, xform } from '../factoryGeometry.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
-import { barrel, equipment, hatch, panel, hullSolid, hullStation, optic, smokeBank, towEye, turretStation } from './easternSourceKit.ts';
+import { barrel, equipment, hatch, panel, hullStation, optic, smokeBank, towEye, turretStation } from './easternSourceKit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { DRAGUN_TIRE_BANDS, dragunRoadWheelCore } from '../nationWheelConstructions.ts';
 const { box, cylX, cylY, cylZ, torus } = KIT;
@@ -190,7 +190,7 @@ function addDragunBowLamps(P: TankBuilderPort): void {
                 add('bow-lamp-visor-foot', box(.018, .037, .029).translate(x + side * .0716, 1.776, 3.50875));
         }
     }
-    for (const [x, y, back, front, guardBack, crown, crownZ, topEnd] of [
+    for (const [x, y, back, front, _guardBack, _crown, _crownZ, _topEnd] of [
         [.53413, 1.74560, 3.33010, 3.49610, 3.3215, 1.8455, 3.4355, 1.8235],
         [-.62347, 1.72510, 3.44140, 3.60550, 3.4387, 1.7960, 3.5117, 1.7940],
     ]) {
@@ -708,4 +708,3 @@ export function buildBmp3mDragun125X(P: TankBuilderPort): void {
     preserveSourceStudyGunMountAppearance(P);
     P.hullG.userData.xRebuild = { candidate: 'bmp3m_dragun125_x', independent: true, sourceLocalOnly: true };
 }
-export const BMP3M_DRAGUN125_X_PROFILE = { bmp3m_dragun125_x: { build: buildBmp3mDragun125X } };

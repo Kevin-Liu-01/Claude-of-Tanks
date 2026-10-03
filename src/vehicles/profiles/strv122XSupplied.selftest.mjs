@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Independent source-frame and held-out source-ray values. This test uses the
 // actual registered ID, never the superseded photo builder or source geometry.
 const yawPoint=[0,1.705,-.12],pitchPoint=[.00787,2.02397,1.24],muzzle=5.48842252;
-const near=(a,b,e,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=e,`${label}: ${a} vs ${b} ±${e}`);
 const ray=(meshes,origin,axis,far=20)=>new T.Raycaster(new T.Vector3(...origin),
   new T.Vector3(...axis),0,far).intersectObjects(meshes,false)[0];
 

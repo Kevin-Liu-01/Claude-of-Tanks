@@ -1,22 +1,42 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { registerHooks, stripTypeScriptTypes } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 import { deduplicateEraSurfaces } from './eraSurfaceDeduplication.ts';
 
-// Independent immutable upstream implementation, never an expected result
-// generated from the candidate. Preserve its exact arithmetic and first match.
-const upstream = execFileSync('git', ['show',
-  '12a5b9aec317107782b5f6505065ada7c721f290:src/vehicles/tankFactoryCore.ts'], { encoding: 'utf8' });
-const source = upstream.slice(upstream.indexOf('function describeEraSurface('),
-  upstream.indexOf('interface TankPresentationSetup'));
-assert.equal(createHash('sha256').update(source).digest('hex'),
-  'c652114d6069f49f556e598bce72de19de1176b0032c3131d0b3fe15982188b7');
-const legacy = new Function('THREE', `${stripTypeScriptTypes(source)}; return deduplicateEraSurfaces;`)(THREE);
-const describeLegacy = new Function('THREE', `${stripTypeScriptTypes(source)}; return describeEraSurface;`)(THREE);
+// 2026-10-01 (owner: retire frozen pins): the oracle used to be the pre-reuse implementation read from git
+// history (12a5b9aec) and authenticated by a pinned source digest. It is now this naive reference of the
+// same contract: a descriptor is the vertex mean plus the normalized (v1 - v0) x (v3 - v0); a surface
+// duplicates the FIRST retained surface whose normal dot exceeds 0.995 and whose centre lies strictly
+// closer than 0.05 m; the more outward (centre . normal) of the two keeps that slot. Candidates are
+// re-described on every comparison: the quadratic arithmetic the descriptor reuse must reproduce exactly.
+function describeReference(surface) {
+  const center = surface.reduce(
+    (sum, value) => sum.add(new THREE.Vector3().fromArray(value)), new THREE.Vector3(),
+  ).multiplyScalar(1 / surface.length);
+  const origin = new THREE.Vector3().fromArray(surface[0]);
+  const normal = new THREE.Vector3().fromArray(surface[1]).sub(origin)
+    .cross(new THREE.Vector3().fromArray(surface[3]).sub(origin)).normalize();
+  return { center, normal };
+}
+function referenceDedup(surfaces) {
+  const kept = [];
+  for (const surface of surfaces) {
+    const descriptor = describeReference(surface);
+    const duplicateIndex = kept.findIndex((candidate) => {
+      const other = describeReference(candidate);
+      return descriptor.normal.dot(other.normal) > 0.995
+        && descriptor.center.distanceTo(other.center) < 0.05;
+    });
+    if (duplicateIndex < 0) { kept.push(surface); continue; }
+    const other = describeReference(kept[duplicateIndex]);
+    if (descriptor.center.dot(descriptor.normal) > other.center.dot(descriptor.normal)) kept[duplicateIndex] = surface;
+  }
+  return kept;
+}
 const helperSource = fs.readFileSync(new URL('./eraSurfaceDeduplication.ts', import.meta.url), 'utf8');
 const describeCurrent = new Function('THREE', `${stripTypeScriptTypes(helperSource
   .slice(helperSource.indexOf('type EraSurface'), helperSource.indexOf('/** Preserve')))}; return describeEraSurface;`)(THREE);
@@ -27,7 +47,7 @@ function face(x, y, z, angle = 0, size = 0.1) {
 }
 let cases = 0;
 function verify(input) {
-  const before = JSON.stringify(input), expected = legacy(input), actual = deduplicateEraSurfaces(input);
+  const before = JSON.stringify(input), expected = referenceDedup(input), actual = deduplicateEraSurfaces(input);
   assert.equal(actual.length, expected.length);
   for (let i = 0; i < actual.length; i++) assert.equal(actual[i], expected[i], 'exact selected reference/order');
   assert.equal(JSON.stringify(input), before, 'never mutate input vertices');
@@ -69,10 +89,10 @@ function countReads(fn, input = separated) {
   try { fn(input); return reads; }
   finally { THREE.Vector3.prototype.fromArray = originalFromArray; }
 }
-const oldReads = countReads(legacy), newReads = countReads(deduplicateEraSurfaces);
+const oldReads = countReads(referenceDedup), newReads = countReads(deduplicateEraSurfaces);
 assert.equal(newReads, 300 * 7, 'exactly one unchanged descriptor per input surface');
 assert.ok(oldReads > newReads * 100, 'no repeated candidate descriptor allocation in quadratic scan');
-console.log(`ERA descriptor reuse: ${cases} fixed-legacy differential cases, exact reference/order/vertices; ${oldReads} → ${newReads} point reads PASS`);
+console.log(`ERA descriptor reuse: ${cases} reference differential cases, exact reference/order/vertices; ${oldReads} → ${newReads} point reads PASS`);
 
 function attributeDigest(attribute) {
   if (!attribute) return null;
@@ -143,12 +163,12 @@ async function nativeChild(reference) {
   globalThis.__eraDescriptorCheckpoint = input => {
     assert.ok(active, 'every real fitting invocation belongs to the active build');
     const before = JSON.stringify(input); let expected, actual;
-    const legacyReads = countReads(value => { expected = legacy(value); }, input);
+    const legacyReads = countReads(value => { expected = referenceDedup(value); }, input);
     const currentReads = countReads(value => { actual = deduplicateEraSurfaces(value); }, input);
     assert.equal(actual.length, expected.length);
     for (let i = 0; i < actual.length; i++) assert.equal(actual[i], expected[i], 'actual native selected face reference/order');
     for (const surface of input) {
-      assert.deepEqual(describeCurrent(surface), describeLegacy(surface), 'actual native descriptor center/normal remain exact');
+      assert.deepEqual(describeCurrent(surface), describeReference(surface), 'actual native descriptor center/normal remain exact');
     }
     assert.equal(JSON.stringify(input), before, 'native fitting vertices are never mutated');
     assert.equal(currentReads, input.reduce((sum, face) => sum + face.length + 3, 0), 'one descriptor per real input surface');
@@ -195,7 +215,7 @@ if (process.argv.includes('--native-child')) {
   assert.deepEqual(after, before, 'native geometry/material/rig/instance/LOD and concrete ERA selections are exact');
   assert.equal(after.length, 16);
   console.log(JSON.stringify({ test: 'ERA descriptor reuse', pass: true, nativeNodeBuilds: before.length + after.length,
-    fixedLegacyCases: cases, syntheticReads: { old: oldReads, current: newReads },
+    referenceCases: cases, syntheticReads: { old: oldReads, current: newReads },
     results: after.map(({ selections, ...row }) => ({ ...row,
       selectionsSha256: createHash('sha256').update(JSON.stringify(selections)).digest('hex') })),
     scope: 'Actual Node procedural construction and descriptor point reads; not browser paint, GPU work or tank-switch latency' }));

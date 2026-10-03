@@ -16,7 +16,7 @@ export const WIRE_VERSION = 3;
  * otherwise unchanged (WIRE_VERSION stays 1: the handshake is where a mismatch is caught, cleanly, as PROTOCOL_VERSION).
  */
 // 4: complete module health uses a 32-bit word (wire layout 3).
-export const PROTOCOL_VERSION = 5; // six mode rules, FPV action and viewer flight state
+export const PROTOCOL_VERSION = 6; // aerial supply actions and expanded mode checkpoints
 
 export const TICK_HZ = 60;
 /**
@@ -117,11 +117,9 @@ export const TEAM_NAMES = Object.freeze(['alpha', 'bravo', 'spectator'] as const
 
 export const PHASE = Object.freeze({ LOADING: 0, COUNTDOWN: 1, PLAYING: 2, ENDED: 3 } as const);
 export type PhaseId = typeof PHASE[keyof typeof PHASE];
-export const PHASE_NAMES = Object.freeze(['loading', 'countdown', 'playing', 'ended'] as const);
 
 export const VERDICT = Object.freeze({ NONE: 0, ALPHA: 1, BRAVO: 2, DRAW: 3 } as const);
 export type VerdictId = typeof VERDICT[keyof typeof VERDICT];
-export const VERDICT_NAMES = Object.freeze([null, 'alpha', 'bravo', 'draw'] as const);
 
 export const HELLO_CAPABILITY = Object.freeze({
   /** The client presents immediate own-shot feedback (v1 shotFeedbackVersion 1). */
@@ -156,7 +154,7 @@ export const CONTROL_FLAGS = Object.freeze({
 /** Edge-triggered actions (identical to v1 PLAYER_ACTION_BITS). */
 /** The simulation's action bits (src/sim/playerActions.ts): one table for the solo step and the wire. */
 export const ACTION_BITS = PLAYER_ACTION_BITS;
-export const ACTION_BIT_MASK = 0x7ff; // eleven action bits, including FPV launch/return
+export const ACTION_BIT_MASK = 0x1fff; // thirteen action bits, including FPV launch/return
 
 /** Shell types the fleet authors; unknown types encode as OTHER. */
 export const SHELL_TYPE_NAMES = Object.freeze(['AP', 'APCR', 'APFSDS', 'HEAT', 'HE', 'DRONE'] as const);

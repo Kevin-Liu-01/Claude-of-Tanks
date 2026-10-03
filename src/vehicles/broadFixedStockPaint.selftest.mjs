@@ -1,14 +1,11 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
-import {registerHooks,stripTypeScriptTypes} from 'node:module';
 import * as T from 'three';
 import {createTank} from './tankFactory.ts';
 import {TANK_SPECS} from './specs.ts';
 import {registerProfiledBuilders} from './tankFactoryCore.ts';
 import {buildLeopard2A5X} from './profiles/leopardX.ts';
 import {installCanvasFixture} from './canvasFixture.test-support.mjs';
-import {BROAD_STOCK_PRE_PAINT_SHA,beforeBroadFixedStockPaint} from './broadFixedStockPaint.test-support.mjs';
 
 const directNames=new Set(['leo2a5_xSourceFixture_ServiceCoverRight','leo2a5_xSourceFixture_ServiceCoverLeft']);
 const methods=new Set(['add','addEquipment','addMudguard','addHatch','addCupola','addExternalArmor','addModuleVisual']);
@@ -16,33 +13,10 @@ function hash(g,omitUV=false){const h=createHash('sha256');for(const key of Obje
  if(omitUV&&key==='uv')continue;const a=g.attributes[key];h.update(key).update(String(a.itemSize)).update(String(a.normalized));
  h.update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));}
  if(g.index){const a=g.index.array;h.update(Buffer.from(a.buffer,a.byteOffset,a.byteLength));}return h.digest('hex');}
-async function originalModule(name){const url=new URL('./profiles/'+name,import.meta.url),source=readFileSync(url,'utf8');
- const old=beforeBroadFixedStockPaint(name,source),key=url.href+'?authenticated-before-broad-paint';
- assert.throws(()=>beforeBroadFixedStockPaint(name,source+'\n'),'undeclared edits reject, including whitespace');
- const hook=registerHooks({load(at,context,next){if(at!==key)return next(at,context);
-  return{format:'module',shortCircuit:true,source:stripTypeScriptTypes(old)};}});
- try{return await import(key);}finally{hook.deregister();}
-}
-const oldDetails=await originalModule('leopardA5XDetails.ts'),details=await import('./profiles/leopardA5XDetails.ts');
-let rawChecks=0;
-for(const q of[true,false]){
- function observeDetails(module){const hullG=new T.Group(),turretG=new T.Group(),disposables=[];
-  const mats={hull:new T.MeshStandardMaterial(),detail:new T.MeshStandardMaterial()};
-  hullG.position.set(.2,.1,-.04);turretG.position.set(-.1,1.8,.6);
-  module.addLeopardA5XSourceDetails({q,hullG,turretG,disposables,mats,spec:TANK_SPECS.leo2a5_x});
-  const rows=[];for(const parent of[hullG,turretG])for(const o of parent.children)rows.push({name:o.name,
-   owner:parent===hullG?'hull':'turret',position:o.position.toArray(),hash:hash(o.geometry,directNames.has(o.name)),
-   fullHash:hash(o.geometry),metadata:{...o.userData},paint:o.material===mats.hull,geometry:o.geometry});
-  for(const g of disposables)g.dispose();Object.values(mats).forEach(m=>m.dispose());return rows;}
- const old=observeDetails(oldDetails),now=observeDetails(details);let covers=0;
- for(let i=0;i<now.length;i++){const x=old[i],y=now[i];if(directNames.has(y.name)){
-   assert.equal(y.paint,true);assert.equal(x.paint,false);assert.equal(y.metadata.appearanceRole,'armorPaint');
-   assert.notEqual(y.fullHash,x.fullHash,'only known cover UVs change to spatial camouflage');
-   y.metadata.appearanceRole='fittingPaint';y.paint=false;covers++;
-  }else assert.equal(y.fullHash,x.fullHash,'all other direct optic/hoist geometry and UVs held');
-  delete x.fullHash;delete y.fullHash;delete x.geometry;delete y.geometry;assert.deepEqual(y,x);rawChecks++;
- }assert.equal(covers,2);
-}
+// 2026-10-01 (owner: retire frozen pins): the replay of the authenticated pre-paint leopardA5XDetails.ts
+// source (pinned digest, undeclared-edit negative control, raw old-versus-new detail emissions) is gone.
+// The live differential stays: each build is compared with the same build whose two service covers are
+// returned to the fitting paint, so the cover paint stays material-only.
 function build(id,quality,camoPattern,inverse=false){const selected=[],emissions=[];
  const builder=buildLeopard2A5X;
  registerProfiledBuilders({[id]:P=>{
@@ -122,5 +96,5 @@ try{for(const id of['leo2a5_x'])for(const quality of['high','low'])for(const cam
   rows.push({id,quality,camo,selected:now.selected.length,decorTriangles:now.tank.root.userData.__decorSummary.tris});
  }finally{old.tank.dispose();now.tank.dispose();}
 }}finally{restore();}
-console.log(JSON.stringify({pass:true,sourceHashes:BROAD_STOCK_PRE_PAINT_SHA,rawChecks,posedSpentReceivingRays:rays,rows,
+console.log(JSON.stringify({pass:true,posedSpentReceivingRays:rays,rows,
  limitation:'Exact raw/physical attributes, ownership, native material and UV response. Inert Canvas fixture does not draw pixels; separate native H/L camouflage check is required.'}));

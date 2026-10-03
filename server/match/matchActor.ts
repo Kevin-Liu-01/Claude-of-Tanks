@@ -5,8 +5,12 @@
  * snapshot publisher (20 Hz by default; interest tiers, per-peer skips), reliable
  * event delivery under the authority's reveal rules, chat, the verdict
  * callback and a graceful stop. Transport-agnostic (ClientLink).
+ *
+ * Vehicles: the spec-only authority fleet (src/vehicles/authorityFleet.ts), never the fleet's geometry. The caller
+ * loads the roster's combat anatomy first (`ensureAuthorityFleet`: the browser host at boot, the Node service at
+ * start); the actor refuses a roster whose calibration groups never loaded.
  */
-import '../../src/vehicles/tankFactory.ts';
+import { requireAuthorityFleet } from '../../src/vehicles/authorityFleet.ts';
 import { createAuthoritativeMatch } from '../../src/sim/authoritativeMatch.ts';
 import type {
   AuthoritativeEntity, AuthoritativeMatch, AuthoritativePlayerInput, AuthoritativePlayerRecord, AuthoritativeWorldCollision,
@@ -331,6 +335,8 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     rosterEntries.push({ entityId, seat: NO_SEAT, team: TEAM_ID[bot.team], bot: true, connected: true, playerId: bot.playerId, name: bot.name, specId: bot.specId });
   }
   if (players.length < 1 || players.length > MAX_ENTITIES) throw new TypeError(`rooms field 1..${MAX_ENTITIES} entities`);
+  // Every hull's armor, modules, crew and hit shells are finalized before the authority reads them (spectators ride no hull).
+  requireAuthorityFleet(players.map((player) => player.specId));
 
   // ---- authority and world
   const collision: ActorWorldCollision | null = typeof world === 'object' && world !== null ? world

@@ -556,6 +556,34 @@ try {
   fx.armorScar(scarVisual, new Vector3(12, 4, -24), new Vector3(0, 1, 0), 120);
   assert.equal(scarRoot.getObjectByName('fx_impactDecals'), submittedScarMesh,
     'the first real impact reuses the exact submitted mesh, geometry and shared atlas');
+  {
+    // Live scars cull with their own quads (P21): only the covered warm draw above lifts
+    // culling, so this off-camera hull stops submitting its decal draw.
+    assert.equal(submittedScarMesh.frustumCulled, true, 'a live scar culls with its hull');
+    scarRoot.updateMatrixWorld(true);
+    const sees = (eye, target) => {
+      const view = new PerspectiveCamera(55, 1.6, 0.5, 2000);
+      view.position.copy(eye);
+      view.lookAt(target);
+      view.updateMatrixWorld(true);
+      return new Frustum().setFromProjectionMatrix(
+        new Matrix4().multiplyMatrices(view.projectionMatrix, view.matrixWorldInverse),
+      ).intersectsObject(submittedScarMesh);
+    };
+    assert.equal(sees(camera.position, new Vector3(150, 32, -190)), false,
+      'the warm camera does not see the hull, so its live scar is culled');
+    assert.equal(sees(new Vector3(12, 8, -6), scarRoot.position), true, 'a camera on the hull keeps the scar');
+    const positions = submittedScarMesh.geometry.getAttribute('position');
+    const sphere = submittedScarMesh.geometry.boundingSphere;
+    const corner = new Vector3();
+    let written = 0;
+    for (let i = 0; i < positions.count; i += 1) {
+      if (corner.fromBufferAttribute(positions, i).lengthSq() === 0) continue;
+      written += 1;
+      assert.ok(sphere.distanceToPoint(corner) <= 1e-6, 'the scar bounds cover every written corner');
+    }
+    assert.ok(written >= 4, 'the live scar wrote at least one quad');
+  }
   fx.clearVehicleDecals(scarVisual);
   submissionValidated = false;
   await warmNetworkOpeningEffects(options);
@@ -673,6 +701,74 @@ try {
   else globalThis.window = priorWindow;
   assert.equal(getEventListeners(paintDocument, 'visibilitychange').length, 0,
     'the real FX fixture retains no document listeners after cleanup and retry cases');
+}
+
+// Warm-only armour scars (2026-10-02): the rare warm stamps one real scar per fielded hull so the hidden-variant
+// compile prepares the impact-decal program inside every hull, then removes exactly those scars when it is done or
+// closed. Their only cleanup used to be the destruction warm's resetAll, which a cached destruction warm skips, and
+// the covered deployment always warms destruction first: every solo battle carried them onto hulls never hit.
+function rareWarmScarProbe({ close = false } = {}) {
+  const priorWarmDocument = globalThis.document, priorWarmWindow = globalThis.window;
+  globalThis.document = paintDocument;
+  globalThis.window = {};
+  const camera = new PerspectiveCamera(55, 1.6, 0.5, 2000), scene = new Scene();
+  const fx = createFx({ camera, scene }, { getHeightAt: () => 0 });
+  const geometry = new BoxGeometry(3.6, 2.2, 7), material = new MeshBasicMaterial();
+  const tanks = [-12, 0, 12].map((x) => {
+    const root = new Group(), hull = new Mesh(geometry, material);
+    hull.position.y = 1.1;
+    root.position.set(x, 0, 30);
+    root.add(hull);
+    scene.add(root);
+    return { visual: { root }, state: { pos: root.position.clone() }, spec: { dims: { heightM: 2.2 } } };
+  });
+  scene.updateMatrixWorld(true);
+  const compiledScars = [];
+  const context = {
+    game: { tanks }, fx, camera, scene, world: () => null, anisotropy: 1,
+    renderer: { info: { programs: [] }, getContext: () => ({ isContextLost: () => false }), initTexture() {} },
+    scratch1: new Vector3(), scratch2: new Vector3(), scratch3: new Vector3(),
+    isOpeningReady: () => true, isRareReady: () => false, markRareReady() {},
+    // The production order: the covered deployment already warmed destruction, so its resetAll never runs here.
+    isDestructionWarmed: () => true, setDestructionWarmed() {},
+    warmWreckTextures() {}, deploymentShadowWarm: { *warmDepthProgramSteps() {} },
+    forwardProgramWarm: {
+      compile(object) { if (object.name === 'fx_impactDecals') compiledScars.push(object); },
+      *linkerBreathingSlices() {},
+    },
+    lighting: { updateFrustums() {} }, warmRender() {},
+  };
+  const scarred = () => tanks.filter(({ visual }) => visual.root.getObjectByName('fx_impactDecals')).length;
+  const steps = createCombatRareWarmSteps(context);
+  try {
+    let stamped = 0;
+    for (let result = steps.next(); !result.done; result = steps.next()) {
+      stamped = Math.max(stamped, scarred());
+      if (close && stamped === tanks.length) break;
+    }
+    steps.return();
+    const { vehicles, decals, meshes } = fx.impactDecalStats();
+    return { stamped, compiled: compiledScars.length, after: scarred(), live: { vehicles, decals, meshes } };
+  } finally {
+    steps.return();
+    geometry.dispose();
+    material.dispose();
+    if (priorWarmDocument === undefined) delete globalThis.document;
+    else globalThis.document = priorWarmDocument;
+    if (priorWarmWindow === undefined) delete globalThis.window;
+    else globalThis.window = priorWarmWindow;
+  }
+}
+{
+  const drained = rareWarmScarProbe();
+  assert.equal(drained.stamped, 3, 'the rare warm stamps a real scar on every fielded hull');
+  assert.equal(drained.compiled, 3, 'the hidden-variant compile still prepares the decal program inside every hull');
+  assert.equal(drained.after, 0, 'no hull carries a warm scar out of a finished rare warm');
+  assert.deepEqual(drained.live, { vehicles: 0, decals: 0, meshes: 0 }, 'the decal runtime holds no warm record');
+  const closed = rareWarmScarProbe({ close: true });
+  assert.equal(closed.stamped, 3);
+  assert.equal(closed.after, 0, 'a rare warm closed after stamping removes its scars');
+  assert.deepEqual(closed.live, { vehicles: 0, decals: 0, meshes: 0 });
 }
 
 const scene = new Scene();

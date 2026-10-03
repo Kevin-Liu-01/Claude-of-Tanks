@@ -2,11 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { smEngineDeckSupportRoof } from './t90SMXEngineDeck.ts';
-
-const near = (actual, expected, tolerance, label) => assert.ok(
-  Number.isFinite(actual) && Math.abs(actual - expected) <= tolerance,
-  `${label}: ${actual} vs source ${expected} ±${tolerance}`,
-);
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 function top(root, x, z) {
   return new THREE.Raycaster(new THREE.Vector3(x, 2, z), new THREE.Vector3(0, -1, 0), 0, 2)

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { isOpenLatticeMesh } from '../../../tools/standard-continuity-policy.mjs';
+import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Fixed measurements came from the owner source BEFORE authoring (see each
 // reference packet and source-measurements.json). Do not replace these with
@@ -26,9 +27,6 @@ const sources = {
     roofProbes:[[-1.5,2.51290],[-.5,2.51306],[.5,2.51868],[1.5,2.40398],[2.5,2.2139]] },
 };
 
-const near = (actual, target, tolerance, label) => assert.ok(
-  Number.isFinite(actual) && Math.abs(actual-target) <= tolerance,
-  `${label}: ${actual.toFixed(5)}; source ${target} ± ${tolerance} m`);
 const vertices = (mesh) => {
   const p = mesh.geometry.getAttribute('position');
   return Array.from({length:p.count}, (_,i) => new THREE.Vector3().fromBufferAttribute(p,i).applyMatrix4(mesh.matrixWorld));

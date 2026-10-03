@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.mjs';
 import { createBus } from '../game/stateCore.ts';
+import { CREW_VOICE_NATIONS } from './crewVoice.ts';
 
 // Serve the shipped assets from disk; "decode" them as 1.5 s fake buffers.
 const publicRoot = new URL('../../public/', import.meta.url);
@@ -477,9 +478,55 @@ bus.emit('battle:rollout', {});
 assert.ok(!logSince(since).some((e) => e.b === 'music'), `Realistic opens without a stinger (${logSince(since).map((e) => e.n)})`);
 gameMode = 'standard';
 
+// The real settings event reaches every radio call, across every shipped pack.
+for (const language of Object.keys(CREW_VOICE_NATIONS)) {
+  bus.emit('ui:volumes', { crewVoice: language });
+  assert.equal(probe.crewLanguage, language);
+  for (let i = 0; i < 1000 && !probe.voicesLoaded; i++) await new Promise(resolve => setTimeout(resolve, 5));
+  assert.equal(probe.voicesLoaded, true, `${language} decodes`);
+  assert.equal(probe.sayVoice('were_hit'), true, `${language} plays through the radio`);
+  assert.equal(probe.voiceLog.at(-1).lang, language);
+}
+bus.emit('ui:volumes', { crewVoice: 'not-a-pack' });
+assert.equal(probe.crewLanguage, 'he', 'invalid live payload cannot replace the last valid choice');
+me.spec.nation = 'Germany';
+audio.update(1 / 60, listener, tanks);
+assert.equal(probe.crewLanguage, 'he', 'fixed crew survives a vehicle change on the same entity');
+bus.emit('ui:volumes', { crewVoice: 'national' });
+assert.equal(probe.crewLanguage, 'de', 'restoring National uses the current hull, not its original nation');
+me.spec.nation = 'Ukraine';
+audio.update(1 / 60, listener, tanks);
+assert.equal(probe.crewLanguage, 'uk', 'National follows a same-entity nation change');
+bus.emit('ui:volumes', { crewVoice: 'en-GB' });
+bus.emit('phase:change', { phase: 'garage' });
+bus.emit('phase:change', { phase: 'battle' });
+audio.update(1 / 60, listener, [tank('new-player', { isPlayer: true, nation: 'Japan' })]);
+assert.equal(probe.crewLanguage, 'en-GB', 'fixed crew survives another battle and player entity');
+bus.emit('ui:volumes', { crewVoice: 'national' });
+assert.equal(probe.crewLanguage, 'ja', 'National restores the new player crew');
+
 const lateCtx = createFakeContext({ decode: () => fakeBuffer(1.5) });
 const late = createAudio({ context: lateCtx, getMapId: () => 'urban', getTerrain: () => terrain, tier: 'desktop', initialPhase: 'battle' });
 late.resume();
 assert.ok(globalThis.window.__COT_AUDIO.library().pinned > 100, `adopted mid-battle, the battle set is still warmed and pinned (${globalThis.window.__COT_AUDIO.library().pinned})`);
+
+// Audio can be created before the Settings panel. It must read the persisted
+// fixed pack itself, or retain a live choice delivered before first resume.
+const priorStorage = globalThis.localStorage;
+for (const [stored, expected] of [['en-GB', 'en-GB'], ['english', 'en-US']]) {
+  globalThis.localStorage = { getItem: key => key === 'cot.settings.v1' ? JSON.stringify({ crewVoice: stored }) : null };
+  const fresh = createAudio({ context: createFakeContext(), tier: 'mobile' });
+  fresh.resume();
+  assert.equal(window.__COT_AUDIO.crewLanguage, expected, 'cold audio restores saved crew before a tank is indexed');
+}
+globalThis.localStorage = { getItem: () => null };
+const early = createAudio({ context: createFakeContext(), tier: 'mobile' });
+const earlyBus = createBus();
+early.bindBus(earlyBus);
+earlyBus.emit('ui:volumes', { crewVoice: 'fr' });
+early.resume();
+assert.equal(window.__COT_AUDIO.crewLanguage, 'fr', 'pre-resume events retain the chosen pack');
+if (priorStorage === undefined) delete globalThis.localStorage;
+else globalThis.localStorage = priorStorage;
 
 console.log(`audioEngine.selftest: rigs by powertrain, national crew, scenes, weapon layering + delay + flyby, reload choreography, hits, edge cases, destruction, concussion, our hits and misses, kill-cam, panning, scope, aircraft, mode events, interface sounds, rig ownership, late adoption and teardown passed (${probe.sfxLog.length} voices logged)`);

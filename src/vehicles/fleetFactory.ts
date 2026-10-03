@@ -1,9 +1,9 @@
-import { applyTacticalRoleBalance } from './tacticalRoleBalance.ts';
-import { applyVehicleSizePolicy } from './vehicleSizePolicy.ts';
-import { prepareXk2DonorMetadata, synchronizeXk2CombatMetadata } from './xk2Specs.ts';
-// Browser-facing procedural fleet facade. The roster registry remains eager;
-// authored visual families and canonical packs that do not participate in the
+// Browser-facing procedural fleet facade. The roster registry remains eager:
+// the shared ordered registration (fleetRegistration.ts) registers every spec
+// and runs the registration passes before anything else here evaluates.
+// Authored visual families and canonical packs that do not participate in the
 // opening vehicle are registered only when a concrete tank id requests them.
+import './fleetRegistration.ts';
 import {
   configureTankFactory,
   createTank as createTankCore,
@@ -26,51 +26,8 @@ import {
   isCombatAnatomyCalibrationReady,
 } from './combatAnatomyCalibrationLoader.ts';
 import { finalizeCombatAnatomy } from './combatAnatomy.ts';
-import { applyFleetBalancePass } from './fleetBalancePass.ts';
-
-import './combatVariantSpecs.ts';
-import './modern1Specs.generated.ts';
-import './modern2Specs.generated.ts';
-import './chineseFrontlineSpecs.ts';
-import './russianFrontlineSpecs.ts';
-import './kf51Specs.ts';
-import './abramsConceptSpecs.ts';
-import './challengerSpecs.ts';
-import './modern3Specs.ts';
-import './additionalFleetSpecs.ts';
-import './aresApcXSpecs.ts';
-import './classicFleetSpecs.ts';
-import './franceSpecs.ts';
-import './ukraine.ts';
-import './china.ts';
-import './sweden.ts';
-import './poland.ts';
-import './korea.ts';
-import './japan.ts';
-import './germany.ts';
-import './afvFamily.ts';
-import './sheridan.ts';
-import { synchronizeSourceXCombatMetadata } from './sourceXFleetSpecs.ts';
-import { synchronizeSuppliedSourceCombatMetadata } from './suppliedSourceFleetSpecs.ts';
-import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
-import { ABRAMS_SOURCE_X_IDS, synchronizeAbramsSourceXCombatMetadata } from './abramsSourceXSpecs.ts';
-import './merkavaModernSpecs.ts';
-import './arieteModernSpecs.ts';
-import './tos1aTagilSpecs.ts';
-import './griffinViperSpecs.ts';
-import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
-import './europePhotoIfvSpecs.ts';
-import './amx10pSpecs.ts';
-import './marder2Specs.ts';
-import {synchronizeFleetRenewalMetadata} from './fleetRenewalSpecs.ts';
-import {synchronizeNationalModernizationMetadata} from './nationalModernizationSpecs.ts';
-
-import {
-  SAVED_TANK_IDS,
-  TANK_SPECS,
-  finalizeFirstPartyRoster,
-} from './specs.ts';
-import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';
+import { ABRAMS_SOURCE_X_IDS } from './abramsSourceXSpecs.ts';
+import { SAVED_TANK_IDS, TANK_SPECS } from './specs.ts';
 import {
   createProfileBuilders,
   type ProfileBuildFunctions,
@@ -97,21 +54,6 @@ export interface CreateTankOptions {
   quality?: 'high' | 'ai' | 'low' | 'preview';
   staticPreview?: boolean;
 }
-
-applyFleetBalancePass(TANK_SPECS);
-prepareXk2DonorMetadata();
-synchronizeSourceXCombatMetadata();
-synchronizeSuppliedSourceCombatMetadata();
-synchronizeSecondWaveXCombatMetadata();
-synchronizeAbramsSourceXCombatMetadata();
-synchronizeXk2CombatMetadata();
-synchronizeIfvReplicaCombatMetadata();
-synchronizeFleetRenewalMetadata();
-synchronizeNationalModernizationMetadata();
-applyTacticalRoleBalance(TANK_SPECS);
-finalizeFirstPartyRoster();
-applyVehicleSizePolicy(TANK_SPECS);
-applyNativeFamilyOrderToCatalogs();
 
 let profileKit: ProfileBuildFunctions | null = null;
 let factoryReady = false;

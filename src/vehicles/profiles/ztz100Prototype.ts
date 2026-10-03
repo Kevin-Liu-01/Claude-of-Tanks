@@ -6,7 +6,7 @@ import { weaponAssembly } from './weaponStock.ts';
 import * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
-import { KIT, orientedSlab } from './kit.ts';
+import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection, type SectionPoint } from './sectionSolid.ts';
 import { lathedWheelSection } from './lathedWheelStock.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';

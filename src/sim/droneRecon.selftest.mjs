@@ -2,21 +2,29 @@ import assert from 'node:assert/strict';
 import { createSpottingSystem } from './spotting.ts';
 import { initializeAerial, stepAerial } from './aerialCombat.ts';
 import { matchRulesetFor } from './matchRuleset.ts';
-import { missionAttachmentFor, hullSurfaceAt, DRONE_DOCK_HEIGHT_M } from './missionAttachment.ts';
+import { missionAttachmentFor, missionSurfaceAt, DRONE_DOCK_HEIGHT_M } from './missionAttachment.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
-import { Vector3 } from 'three';
+import { Vector3, Euler } from 'three';
 import '../vehicles/tankFactory.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 let count=0;
 for(const spec of Object.values(TANK_SPECS)){
  const seat=missionAttachmentFor(spec);assert.ok(Number.isFinite(seat.y),spec.id);
- for(const dx of[-.32,.32])for(const dz of[-.4,.4]){const height=hullSurfaceAt(spec,seat.x+dx,seat.z+dz);assert.ok(Number.isFinite(height)&&seat.y-height>=.119,`${spec.id}: every foot seats on its hull`);}
- const e={id:spec.id,team:'alpha',spec,state:{pos:new Vector3(10,0,20),yaw:.6,speed:0},combat:{destroyed:false},input:{auxiliaryBits:PLAYER_ACTION_BITS.DRONE,throttle:0,steer:0,fire:false,brake:false,aimPoint:new Vector3()}};
+ if(spec.armor.turretless)assert.equal(seat.frame,'hull',spec.id);
+ if(spec.id==='m1a2')assert.equal(seat.frame,'turret');
+ if(['bmp2','spz_puma','type100'].includes(spec.id))assert.equal(seat.frame,'hull','compact IFV turret uses supported hull rail');
+ for(const dx of[-seat.footX,seat.footX])for(const dz of[-seat.footZ,seat.footZ]){const height=missionSurfaceAt(spec,seat.x+dx,seat.z+dz);assert.ok(Number.isFinite(height)&&seat.y-height>=.119,`${spec.id}: every foot seats on its owner`);}
+ for(const turretYaw of [0,Math.PI/2,-2.1]){
+ const e={id:spec.id,team:'alpha',spec,state:{pos:new Vector3(10,0,20),yaw:.6,turretYaw,visualPitch:.12,visualRoll:-.08,speed:0},combat:{destroyed:false},input:{auxiliaryBits:PLAYER_ACTION_BITS.DRONE,throttle:0,steer:0,fire:false,brake:false,aimPoint:new Vector3()}};
  initializeAerial(e,matchRulesetFor('drone'));let shell;
  stepAerial(e,0,1/60,()=>1,s=>{shell=s;});
- assert.ok(shell);assert.equal(shell.pos.y,seat.y+DRONE_DOCK_HEIGHT_M);
- assert.ok(Math.abs(shell.pos.x-(10+seat.x*Math.cos(.6)+seat.z*Math.sin(.6)))<1e-8);
- assert.equal(shell.vel.length(),0,'motors spool up from rest');count++;
+ assert.ok(shell);const expected=new Vector3(seat.x,seat.y+DRONE_DOCK_HEIGHT_M,seat.z);
+ if(seat.frame==='turret')expected.applyEuler(new Euler(0,turretYaw,0)).add(new Vector3(...spec.armor.turretPivot));
+ expected.applyEuler(new Euler(-.12,.6,-.08,'YXZ')).add(e.state.pos);
+ assert.ok(shell.pos.distanceTo(expected)<1e-8,`${spec.id}: launch matches turned turret and tilted hull`);
+ assert.equal(e.aerial.yaw,.6+(seat.frame==='turret'?turretYaw:0));
+ assert.equal(shell.vel.length(),0,'motors spool up from rest');}
+ count++;
 }
 const spec={id:'fixture',dims:{heightM:2.6},role:'medium'};
 const owner={id:'owner',team:'alpha',spec,state:{pos:{x:0,y:0,z:0}},combat:{destroyed:false},aerial:{kind:'drone',active:true,launching:false,x:0,y:20,z:570}};

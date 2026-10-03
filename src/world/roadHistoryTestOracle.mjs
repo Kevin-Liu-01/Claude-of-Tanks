@@ -40,12 +40,32 @@ for (const declaration of [historicalSmoothing, historicalJunctionBlend]) {
 }
 const historicalLayoutReturn = '  return {\n    village,\n';
 assert.equal(referenceSource.split(historicalLayoutReturn).length, 2, 'one historical layout return');
+// 2026-09-29 (Cliffbridge's viaduct): authored dry bridge decks (terrain.bridges) and the abutment clamp that cuts
+// shoulder noise flush with the deck are construction laws of the same kind. The constructor fixture strips both from
+// the historical text (its first two deltas); the relief-law constructor restores the CURRENT deck block and applies the
+// clamp at both exits of the historical road-detail tail, so the placement sampler is compared against the field it
+// actually reproduces.
+const historicalDeckResolve = '  if (liquidWater && liquidSurfaces) bridgeDecks = resolveBridgeDecks();\n';
+assert.equal(referenceSource.split(historicalDeckResolve).length, 2, 'one historical bridge-deck resolution');
+const deckBlockStart = '  if (T.bridges?.length) {\n    const authored = T.bridges.map(';
+const deckBlockEnd = '    bridgeDecks = Object.freeze([...bridgeDecks, ...authored]);\n  }\n';
+assert.equal(source.split(deckBlockStart).length, 2, 'one current authored-deck block');
+const authoredDecks = source.slice(source.indexOf(deckBlockStart), source.indexOf(deckBlockEnd) + deckBlockEnd.length);
+const historicalDetailExit = '      if (liquidDetail === 0 || marshWeight === 1) return h;\n';
+const historicalDetailReturn = '      h += (berm + ditch) * (1 - settlementWeight) * (1 - marshWeight) * liquidDetail;\n    }\n    return h;\n  }\n';
+for (const text of [historicalDetailExit, historicalDetailReturn]) {
+  assert.equal(referenceSource.split(text).length, 2, 'one historical road-detail exit');
+}
+const dryDeckClamp = '(T.bridges?.length ? Math.min(h, bridgeDeckOver(x, z)?.deckY ?? Infinity) : h)';
 // The authentic constructor indentation is retained by its fixture.
 const desertGradeAnchor = referenceSource.match(/([ \t]*)blendRoadJunctions\(nodeElev\);/);
 assert.ok(desertGradeAnchor, 'one historical junction bake to extend for current Desert placement');
 const historicalBankBake = '      gRoadElev[i] = e[s] + (e[s + 1] - e[s]) * gSegT[i];\n    }\n';
 assert.equal(referenceSource.split(historicalBankBake).length, 2, 'one historical bank bake');
 const reliefLawSource = referenceSource
+  .replace(historicalDeckResolve, historicalDeckResolve + authoredDecks)
+  .replace(historicalDetailExit, historicalDetailExit.replace('return h;', `return ${dryDeckClamp};`))
+  .replace(historicalDetailReturn, historicalDetailReturn.replace('    return h;\n', `    return ${dryDeckClamp};\n`))
   .replace(historicalBankBake, historicalBankBake + '    blendDesertRoadBanks(cfg?.id, roads, nodeElev, gRoadDist, gRoadElev, GN, MAP_SIZE, _VILLAGE.cx, _VILLAGE.cz);\n')
   .replace(historicalLayoutReturn, '  routeDesertRoads(cfg?.id, roads);\n' + historicalLayoutReturn)
   .replace(desertGradeAnchor[0], desertGradeAnchor[0] + '\n' + desertGradeAnchor[1] + 'gradeDesertRoads(cfg?.id, roads, nodeElev);')

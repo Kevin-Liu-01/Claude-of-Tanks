@@ -29,6 +29,9 @@ interface MarkerGroup extends THREE.Group {
   userData: {
     markerMaterial?: THREE.MeshBasicMaterial;
     heal?: THREE.Object3D;
+    crate?: THREE.Object3D;
+    parachute?: THREE.Object3D;
+    cage?: THREE.Object3D;
     ammo?: THREE.Object3D;
     /** materials tinted by the viewer's side (own / enemy) on every update */
     teamMaterials?: THREE.MeshBasicMaterial[];
@@ -506,10 +509,19 @@ export function createMatchModeWorldPresentation(
       );
       (cage.material as THREE.MeshBasicMaterial).wireframe = true;
       const icon = iconSprite(`horde-pickup-${index + 1}-icon`, 3.4, 4.4);
+      const crate=new THREE.Mesh(new THREE.BoxGeometry(2.2,2.4,2),basic(0x586653));
+      const parachute=new THREE.Group();
+      const canopyMaterial=basic(0xb6bf9a,.85);canopyMaterial.side=THREE.DoubleSide;
+      const canopy=new THREE.Mesh(new THREE.SphereGeometry(3.8,16,8,0,Math.PI*2,0,Math.PI/2),canopyMaterial);
+      canopy.position.y=7;parachute.add(canopy);
+      for(const x of[-1,1])for(const z of[-1,1]){
+        const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x,1,z),new THREE.Vector3(x*3.8/Math.SQRT2,7,z*3.8/Math.SQRT2)]),new THREE.LineBasicMaterial({color:0xc8d2b1}));parachute.add(line);
+      }
+      marker.userData.crate=crate;marker.userData.parachute=parachute;marker.userData.cage=cage;
       marker.userData.heal = healGroup;
       marker.userData.ammo = shellGroup;
       marker.userData.icon = icon;
-      marker.add(cage, shellGroup, healGroup, icon);
+      marker.add(cage, shellGroup, healGroup, icon, crate, parachute);
       marker.visible = false;
       root.add(marker);
       return marker;
@@ -816,10 +828,15 @@ export function createMatchModeWorldPresentation(
       marker.visible = true;
       marker.position.set(
         pickup.x,
-        pickup.y + Math.sin(timeS * 2.1 + markerIndex) * 0.45,
+        pickup.y + (pickup.airDrop?0:Math.sin(timeS * 2.1 + markerIndex) * 0.45),
         pickup.z,
       );
-      marker.rotation.y = timeS * 0.75 + markerIndex * 0.6;
+      marker.rotation.y = pickup.airDrop?0:timeS * 0.75 + markerIndex * 0.6;
+      if(marker.userData.crate)marker.userData.crate.visible=!!pickup.airDrop;
+      if(marker.userData.parachute)marker.userData.parachute.visible=!!pickup.airDrop&&pickup.y>(pickup.groundY??0)+.1;
+      if(marker.userData.cage)marker.userData.cage.visible=!pickup.airDrop;
+      if(marker.userData.heal)marker.userData.heal.position.z=pickup.airDrop?1.02:0;
+      if(marker.userData.ammo)marker.userData.ammo.position.z=pickup.airDrop?1.02:0;
       if (marker.userData.heal) marker.userData.heal.visible = pickup.kind === 'heal';
       if (marker.userData.ammo) marker.userData.ammo.visible = pickup.kind === 'ammo';
       const kind = pickup.kind === 'heal' ? 'heal' : 'ammo';

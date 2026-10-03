@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-// Load the eager facade's actual dependency list, but stop before its one-shot
+// Load the registration owner's actual dependency list, but stop before its one-shot
 // role/anatomy finalization so the initialization-only synchronizer really runs.
-const factory=new URL('./tankFactory.ts',import.meta.url);
+// The eager facade now imports fleetRegistration itself, which would finalize
+// balance before these deliberately pre-finalization donor-refresh checks.
+const factory=new URL('./fleetRegistration.ts',import.meta.url);
 for(const match of fs.readFileSync(factory,'utf8').matchAll(/^import(?:[^;]*?\bfrom\s+)?\s*['"](\.[^'"]+)['"]\s*;/gm))await import(new URL(match[1],factory));
 const {TANK_SPECS}=await import('./specs.ts');
 const {isFleetBalanceFinalized}=await import('./fleetBalanceState.ts');

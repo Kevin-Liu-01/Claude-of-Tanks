@@ -74,7 +74,7 @@ interface ActionInput {
 interface NetworkActionPort {
   isActive(): boolean;
   queueConsumable(slot: number): void;
-  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone'): void;
+  queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'lightsOff' | 'drone' | 'supplyAmmo' | 'supplyHeal'): void;
 }
 
 interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
@@ -337,6 +337,9 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     bus.emit('ui:click', {});
   });
 
+  onAction('aerialVision', () => { if(battleInputAllowed())bus.emit('ui:aerialVision', {}); });
+  onAction('supplyAmmo',()=>bus.emit('ui:supplyAmmo',{}));
+  onAction('supplyHeal',()=>bus.emit('ui:supplyHeal',{}));
   onAction('drone', () => bus.emit('ui:drone', {}));
 
   let defaultLightsOn=false, lightIntent:boolean|null=null, lightIntentAt=-Infinity;
@@ -351,7 +354,7 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     lightIntent=!current;lightIntentAt=game.timeS;lightIntentOwner=player;
     bus.emit(lightIntent?'ui:lights':'ui:lightsOff',{});
   });
-  for (const [action, bit] of [['smoke', 64], ['lights', 128], ['roofGun', 256], ['lightsOff', 512], ['drone', 1024]] as const) {
+  for (const [action, bit] of [['smoke', 64], ['lights', 128], ['roofGun', 256], ['lightsOff', 512], ['drone', 1024], ['supplyAmmo',2048], ['supplyHeal',4096]] as const) {
     listen(`ui:${action}`, () => {
       const player = battleInputAllowed() ? livePlayer() : null;
       if (!player) return;

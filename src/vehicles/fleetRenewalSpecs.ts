@@ -3,7 +3,7 @@
 import {TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS} from './specs.ts';
 import {bindFleetRegistries,cloneFleetVariant,registerFleetSpecs,stripSilhouetteDimensions} from './fleetSpecRegistry.ts';
 import {createT62MV1XArmorZones} from './t62mv1XArmor.ts';
-import {leftSidePlate,rightSidePlate} from './specHelpers.ts';
+import {modernArmor,leftSidePlate,rightSidePlate,plate} from './specHelpers.ts';
 import type {FleetTankSpec} from './specContracts.ts';
 
 export const FLEET_RENEWAL_NEW_IDS=['type96_72_long','type96_80_feng','type96_72m_lei','t72_rys'] as const;
@@ -71,6 +71,11 @@ export function synchronizeFleetRenewalMetadata():void{
   // The T-62 chassis now carries the complete 125 mm T-72B 1987 upper assembly.
   TANK_SPECS.t62mv1_x.armor.turretPivot=[0,1.4804,.676];
   const t62Era=createT62MV1XArmorZones();
+  // The 1975 chassis has an exposed five-wheel course: the donor record's
+  // spaced rubber-skirt planes (x +-1.83, from the superseded MV-era model)
+  // stand in open air beside the wheels, so the rebuild drops them.
+  TANK_SPECS.t62mv1_x.armor.hullPlates=TANK_SPECS.t62mv1_x.armor.hullPlates
+    .filter(p=>!(p.kind==='spaced'&&!p.era&&/^skirt(?:_rubber)?_[LR]$/.test(p.name)));
   TANK_SPECS.t62mv1_x.armor.hullPlates.push(...t62Era.hullPlates);
   // The rebuilt MV-1 adds two independently removable side fields beyond
   // the former four-zone package; gameplay must cover those new cassettes.
@@ -92,6 +97,34 @@ export function synchronizeFleetRenewalMetadata():void{
   bmpt.armor.turretPivot=[0,1.565,.07187];bmpt.armor.gunPivot=[0,.50,.36];
   bmpt.armor.gunBarrel={lengthM:3.22,radiusM:.033};
   bmpt.visual.trackWidthM=hull.visual.trackWidthM;
+  // Owner-authorized Oplot hybrid: retain the original weapon and protection
+  // ratings, replace the physical frame with the 2016 hull and welded turret.
+  const oplot=TANK_SPECS.t84, oldOplot=donors.t84, chassis=donors.t72b3m_x;
+  const frame=modernArmor({hl:chassis.dims.hullLengthM/2,hw:1.86,inW:1.25,floor:.39,trkTop:1.22,roofY:1.529,
+    turretPivot:[.008,1.535,.114315],gunPivot:[0,.35,1.02],barrelLenM:4.26,barrelRadM:.104,
+    glacis:[80,300,450],lower:[80,180,230],side:[80,100,150],rear:45,roof:30,
+    tw:1.48,tFrontZ:1.63,tRearZ:-2.15,tH:.74,cheek:[200,400,500],tSide:[80,140,180],
+    tRear:60,tRoof:35,mantlet:[200,400,500]});
+  for(const plate of frame.turretPlates){
+    const previous=oldOplot.armor.turretPlates.find(p=>p.name===plate.name);
+    if(previous)Object.assign(plate,{physicalMm:previous.physicalMm,keMm:previous.keMm,ceMm:previous.ceMm});
+  }
+  // Seed the same protection family as the retained Oplot reactive arrays.
+  // Anatomy replaces these seeds with the marked cassette lid triangles.
+  const era=oldOplot.armor.turretPlates.find(p=>p.era)?.era;
+  if(!era)throw new Error('Oplot modernization requires its existing ERA family');
+  const eraOptions={kind:'era',era:{...era}};
+  frame.turretPlates.push(
+    plate('oplot_cheek_era_L',15,[-1.20,.50,1.39],[-.50,.50,1.57],[-1.20,.60,1.20],eraOptions),
+    plate('oplot_cheek_era_R',15,[.50,.50,1.57],[1.20,.50,1.39],[.50,.60,1.38],eraOptions),
+    leftSidePlate('oplot_side_era_L',15,1.53,.105,1.53,.535,-1.68,-.405,eraOptions),
+    rightSidePlate('oplot_side_era_R',15,1.53,.105,1.53,.535,-1.68,-.405,eraOptions),
+  );
+  oplot.armor={...frame,hullPlates:structuredClone(chassis.armor.hullPlates)};
+  oplot.armor.modules=hybridModules(chassis,{...oplot,armor:frame});
+  oplot.armor.crew=[...structuredClone(chassis.armor.crew.filter(c=>!c.turretLocal)),...frame.crew.filter(c=>c.turretLocal)];
+  oplot.dims={...chassis.dims,overallLengthM:chassis.dims.hullLengthM/2+.114315+1.02+4.26,heightM:3.15};
+  stripSilhouetteDimensions(oplot.dims);oplot.visual.trackWidthM=chassis.visual.trackWidthM;
   const variants=[['type96_72_long','t72b3_x',1.475,.065591],['type96_80_feng','t80u_x',1.565,.07187],['type96_72m_lei','t72b3m_x',1.545,.114315]] as const;
   for(const [id,donor,y,z] of variants){
     const s=TANK_SPECS[id],base=donors[donor],turret=donors.type96b_x;

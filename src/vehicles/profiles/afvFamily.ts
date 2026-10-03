@@ -1,6 +1,6 @@
+import {buildUpiorUpgrade} from './upiorUpgrade.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { buildT80UXHull } from './t80uX.ts';
-import { attachedCage, strappedPack, supportedSensor } from './modernizationFittings.ts';
 import { weaponAssembly } from './weaponStock.ts';
 // First-party procedural AFV family.
 //
@@ -19,7 +19,6 @@ import {
   buildPuma,
   bradleyFlankDressing,
 } from '../modern3.ts';
-import { T72_PROFILES } from './t72.ts';
 import { T90_PROFILES } from './t90.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount } from './fittingMount.ts';
@@ -551,7 +550,7 @@ function buildBWP1Variant(P: AfvBuilderPort): void {
 // top 1.905: the collar's local -0.02..0.08 band buries 0.03 into the roof,
 // §B2 no-air at the ring seam). Seat rides the spec armor turretPivot.
 function addMarderCastTurret(P: AfvBuilderPort): void {
-  const { box, cylY, cylZ, lathe, xform, buildGun } = KIT;
+  const { box, cylY, cylZ, lathe, buildGun } = KIT;
   clearUpperStructure(P);
   // ---- LOW CAST ROUND-FRONTED turret (§5.269 rebuild: the tall two-tier
   // box is dead — one smooth casting, longer than wide, rounded front,
@@ -986,7 +985,7 @@ function addBmp3WaveBreakerRibs(P: AfvBuilderPort): void {
 }
 
 function buildBMP3(P: AfvBuilderPort): void {
-  const { box, cylX, cylY, cylZ, frustum, slab, lathe, sph, xform, torus,
+  const { box, cylX, cylY, cylZ, frustum, lathe, sph, xform, torus,
     buildGun, buildRunningGear, periscope, shovelTool, stowage } = KIT;
   const { rng } = P;
   // ---- hull core (print lines x0.9684): tub floor 0.29, deck 1.80-1.84,
@@ -1262,8 +1261,8 @@ function buildBMP3(P: AfvBuilderPort): void {
 // narrow-gauge tracks, BMP-2-class faceted turret rear-of-mid with a thin
 // 30 mm, and the tall LEFT sensor tower behind the ring (crown 2.55).
 function buildUpior(P: AfvBuilderPort): void {
-  const { box, cylX, cylY, cylZ, frustum, slab, xform, torus,
-    buildGun, buildRunningGear, periscope, stowage } = KIT;
+  const { box, cylX, cylY, frustum, slab, xform, torus,
+    buildRunningGear, periscope, stowage } = KIT;
   const { rng } = P;
   // OWNER FLIP ORDER (2026-08-17, "the upior ifv's hull is backwards"): the
   // §5.269 "native-frame rebuild" was itself the mirrored read — pixel
@@ -1399,90 +1398,15 @@ function buildUpior(P: AfvBuilderPort): void {
   // ---- running gear (print-true): 6 wheels r 0.235, raised FRONT idler +
   // REAR drive sprocket (§5.248 identity); wraps at the print's thin band --
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.235, wheelW: 0.15, wheelY: 0.29, xc: 0.94, dishR: 0.82,
+    style: 'rubber', wheelR: 0.285, wheelW: 0.22, wheelY: 0.33, xc: 1.06, dishR: 0.82,
     wheelZs: [1.577, 0.978, 0.345, -0.435, -1.032, -1.628],
-    sprocket: { z: -2.10, y: 0.50, r: 0.18 }, idler: { z: 2.20, y: 0.58, r: 0.18 },
-    rollers: [[1.28, 0.72], [0.0, 0.72], [-1.30, 0.72]].map(([z, y]) => ({ z, y, r: 0.055 })),
-    trackW: 0.36, topY: 0.72, botY: 0.045, arms: true, paintedEnds: true,
+    sprocket: { z: -2.10, y: 0.50, r: 0.21 }, idler: { z: 2.20, y: 0.58, r: 0.21 },
+    rollers: [[1.28, 0.78], [0.0, 0.78], [-1.30, 0.78]].map(([z, y]) => ({ z, y, r: 0.07 })),
+    trackW: 0.44, topY: 0.83, botY: 0.045, arms: true, paintedEnds: true,
     contactZF: 1.577, contactZR: -1.628,
   });
   P.topY = 0.92;
-  // ---- BMP-2-class FACETED DRUM turret (§5.269: drum, not smooth dome) ----
-  // Ring 1.47 at [x -0.10, z -0.74] (rear-of-mid, spec pivot — the print's
-  // own ring station; the §5.269 +0.74 seat was the mirrored frame).
-  P.add('turret', cylY(0.82, 0.88, 0.08, 24), 0, -0.005, 0.02);                // ring collar
-  P.add('turret', cylY(0.84, 0.86, 0.30, 14), 0, 0.16, 0.02);                  // faceted drum wall (14 flats)
-  P.add('turret', cylY(0.62, 0.83, 0.09, 14), 0, 0.355, 0.02);                 // chamfer shoulder ring
-  P.add('turret', cylY(0.60, 0.62, 0.035, 14), 0, 0.418, 0.02);                // crown ring, top 1.905
-  P.add('turret', box(0.72, 0.03, 0.72), 0, 0.42, 0.02);                       // crown plate
-  // mantlet saddle + REAL GUN CRADLE MASS (§5.269)
-  P.add('turret', orientedSlab(
-    [-0.34, 0.08, 0.62], [0.34, 0.08, 0.62], [0.22, 0.10, 0.86], [-0.22, 0.10, 0.86],
-    [-0.26, 0.34, 0.56], [0.26, 0.34, 0.56], [0.16, 0.28, 0.84], [-0.16, 0.28, 0.84]));
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.10, 0.22, 0.26), s * 0.30, 0.16, 0.72);              // trunnion cheeks
-  }
-  P.add('turret', box(0.40, 0.16, 0.22), 0, 0.05, 0.80);                       // recoil housing under the root
-  // commander cupola right + gunner hatch left (flush lids on the crown)
-  P.add('turret', cylY(0.20, 0.22, 0.05, 16), 0.34, 0.44, -0.20);
-  P.add('turretDark', torus(0.20, 0.010, 16), 0.34, 0.475, -0.20);
-  P.add('turret', cylY(0.19, 0.20, 0.045, 16), -0.36, 0.435, -0.28);
-  P.add('turretDark', torus(0.19, 0.010, 16), -0.36, 0.467, -0.28);
-  P.add('turret', box(0.13, 0.08, 0.13), 0.34, 0.52, -0.04);                   // TKN stalk
-  P.add('turretGlass', box(0.09, 0.028, 0.014), 0.34, 0.545, 0.03);
-  // ---- L-PEDESTAL sight + roof ATGM (§5.269: the print's defining tower
-  // is TURRET-mounted — post + head arm + boxy sight + elevated tube) -------
-  P.add('turret', box(0.16, 0.36, 0.16), -0.30, 0.58, -0.52);                  // pedestal post (roots in the drum)
-  P.add('turret', box(0.16, 0.12, 0.32), -0.30, 0.80, -0.43);                  // L head arm forward
-  // (§B2 handoff upior(b) re-adjudicated POST-FLIP: the pre-flip 1154px
-  // cradle pocket does not reproduce in the corrected frame — the post-flip
-  // sweep's largest turret-height cluster is 75px kit-sliver class. A solid
-  // cradle block was trialed and REVERTED: it legitimized the pedestal
-  // columns into the 12%-band body read and pushed measured heightM 2.57 ->
-  // 2.62 vs the banked 2.55 datum, dims 100 -> 87.)
-  P.addEquipment('turret', box(0.32, 0.26, 0.32), -0.30, 0.86, -0.32);                  // boxy sight head, top 2.46 world
-  P.add('turretDark', box(0.26, 0.12, 0.03), -0.30, 0.88, -0.145);             // sight aperture
-  P.add('turretGlass', box(0.20, 0.075, 0.015), -0.30, 0.875, -0.132);
-  P.add('turretDark', box(0.03, 0.06, 0.28), -0.475, 0.80, -0.32);             // cable run on the post
-  weaponAssembly(P, () => {
-    P.add('turret', box(0.14, 0.055, 0.28), -0.30, 0.985, -0.32);                // tube saddle
-    P.add('turretDark', cylZ(0.070, 0.92, 12), -0.30, 1.042, 0.06);              // ATGM tube over the sight —
-    P.add('turretDetail', cylZ(0.077, 0.03, 12), -0.30, 1.042, 0.525);           //   crown 2.582 world: the pedestal
-    P.add('turretDark', cylZ(0.058, 0.02, 12), -0.30, 1.042, 0.543);             //   cluster IS the print's own
-    P.add('turretDetail', cylZ(0.077, 0.03, 12), -0.30, 1.042, -0.40);           //   2.55-class p95 roof
-  });
-  // low rear equipment shelf inside the drum's rear taper
-  P.add('turretDark', box(0.88, 0.07, 0.045), 0, 0.16, -0.78);
-  mount(P, 'turret', FITTINGS.stowageRack({
-    mats: P.mats, w: 0.84, d: 0.24, h: 0.16, fill: 0.58, rails: 2, seed: 3398,
-  }), 0, 0.24, -0.74);
-  roofMG(P, -0.36, 0.46, -0.60, 4020, 'mag', -0.04, 0.58);                     // §B3 MG law
-  smokePair(P, 0.60, 0.26, 0.42, 3, 4030, -0.38);
-  radioPair(P, 0.30, -0.68, 4040, 0.56);
-  P.decal('turret', 'number', 'W-01', 0.18, [0.84, 0.20, -0.02], Math.PI / 2, 0, 0.04);
-  // ---- 30 mm plant (muzzle +z, inside the 5.11 mask) ----------------------
-  P.addGunExtra(box(0.30, 0.24, 0.34), 0, 0.0, 0.26);                          // cradle
-  P.addGunExtra(cylZ(0.062, 0.20, 12, 0.05), 0, 0, 0.50);                      // collar
-  buildGun(P, { len: 2.40, r: 0.035, sleeve: false, collar: true, baseR: 0.085 });
-  muzzleBore(P, { len: 2.40, r: 0.035 });
-  P.addGunExtraDark(cylZ(0.013, 0.50, 8), 0.15, 0.03, 0.85);                   // coax tube
-  muzzleTipDot(P, 0.15, 0.03, 1.09, 0.010, { parent: 'gunG' });
-  // Larger owner-directed reconnaissance/escort fit. Brackets close each
-  // cage back to the body; roof gear retains the turret's articulation.
-  attachedCage(P,'hull',[0,1.13,-2.71],1.90,.48,.35);
-  for(const side of [-1,1]){
-    for(let i=0;i<4;i++){
-      const z=-1.63+i*.81;
-      P.addEquipment('hullDetail',box(.11,.42,.72),side*1.13,1.10,z);
-      P.addEquipment('hullDetail',box(.15,.038,.75),side*1.11,1.32,z);
-    }
-    strappedPack(P,'hull',[side*.88,1.59,-1.58],[.36,.24,.61]);
-    P.addEquipment('turretDetail',box(.17,.13,.25),side*.72,.28,-.32);
-    P.addEquipment('turretGlass',box(.10,.055,.014),side*.72,.29,-.188);
-  }
-  supportedSensor(P,[.32,.60,-.48],.36);
-  attachedCage(P,'turret',[0,.20,-1.00],1.21,.32,.25);
-  P.topY = Math.max(P.topY || 0, 1.62);
+  buildUpiorUpgrade(P);
 }
 
 function addPumaOraclePackage(P: AfvBuilderPort): void {
