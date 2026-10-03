@@ -3799,10 +3799,17 @@ void splatCompute() {
   float bankSoil = 0.0;
   if (uReduxD.y < 0.5 && uRockGate < 0.5) {
     float earthwork = max(smoothstep(0.02, 0.14, mk.g), smoothstep(0.10, 0.35, mk.a)) * (1.0 - smoothstep(0.44, 0.60, slope));
-    float outcrop = smoothstep(0.42, 0.70, nzq(uvW, 0.0093, vec2(0.21, 0.67)).x + (n1h - 0.5) * 0.22);
-    float held = mix(1.0, outcrop, 1.0 - smoothstep(0.22, 0.34, slopeR));
+    // (wave 21, Sonnet on the coastal and Verdant chase: "grey rock outcrops with hard unblended edges on green
+    // hillsides") a vegetated hill's sod holds its moderate slopes: an outcrop patch shows rock only where the patch is
+    // strong (half as many patches), the rock breaks through the turf there in a ragged partial cover rather than one
+    // solid grey decal, and a fringe of bare soil and scree rings it into the sward (the bank's D layer, below)
+    float outN = nzq(uvW, 0.0093, vec2(0.21, 0.67)).x + (n1h - 0.5) * 0.22;
+    float outcrop = smoothstep(0.50, 0.80, outN) * (0.40 + 0.60 * smoothstep(0.35, 0.70, n1hs));
+    float moderate = 1.0 - smoothstep(0.24, 0.38, slopeR);
+    float held = mix(1.0, outcrop, moderate);
     float rockKeep = (1.0 - earthwork) * held;
-    bankSoil = max(fR, steepW) * earthwork * (0.30 + 0.50 * smoothstep(0.35, 0.75, n1h * 0.6 + n1 * 0.4));
+    float fringe = moderate * smoothstep(0.38, 0.58, outN) * (1.0 - outcrop) * 0.55;
+    bankSoil = max(fR, steepW) * max(earthwork, fringe) * (0.30 + 0.50 * smoothstep(0.35, 0.75, n1h * 0.6 + n1 * 0.4));
     fR *= rockKeep;
     steepW *= rockKeep;
   }
