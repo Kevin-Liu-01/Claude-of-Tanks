@@ -118,8 +118,10 @@ for (const [ringSeed, groundSeed] of [[1337,1337],[2049,2049],[7719,7719],[1337,
     let unrefinedMax=0;
     const probe=(x,z)=>{unrefinedMax=Math.max(unrefinedMax,Math.abs(surface(unrefined,x,z)-field.getHeightAt(x,z)));};
     for(let along=-512;along<=512;along+=8) for(const [x,z] of [[-512,along],[512,along],[along,-512],[along,512]]) probe(x,z);
-    // the 431-column ring halves the unrefined chord error (worst about 2.1 m); the refinement must still beat 2 m
-    assert.ok(unrefinedMax>2,`unrefined current-road seam must exceed 2 m somewhere (worst ${unrefinedMax.toFixed(2)} m)`);
+    // the 431-column ring halves the unrefined chord error (worst about 2.1 m); the map-borders lane's road exits
+    // (2026-10-03) grade the outland to every road that leaves the square, which takes another tenth off the worst
+    // chord at an exit (1.89 m); the unrefined control must still show a metre and a half somewhere
+    assert.ok(unrefinedMax>1.5,`unrefined current-road seam must exceed 1.5 m somewhere (worst ${unrefinedMax.toFixed(2)} m)`);
   }
   const step=2*Math.PI/columns;
   let lastAngle=-Infinity;
