@@ -26,7 +26,26 @@ const seeds=[1337,7719],receipts=[];
 const stripRelief=form=>{const {relief,_relief,...old}=form;return old;};
 const supportHashes=s=>Object.fromEntries(Object.entries(s).map(([k,v])=>[k,v?hash(v):null]));
 const pilots=MAP_IDS.filter(id=>(getMapConfig(id).terrain.landforms??[]).some(form=>form.relief));
-assert.ok(pilots.length>0,'at least one battlefield authors playable relief, so the live A/B below exercises real data');
+// 2026-10-03 (the Glacier Pass redesign, docs/MAP-LAYOUT-BRIEF.md): Glacier Pass, the last battlefield with playable
+// relief, now shapes its ground with landform geology, so no battlefield authors relief. The law is still proven live
+// on real terrain: the A/B below runs on a fixture battlefield, Glacier Pass carrying its former five glacial relief
+// bars (as they stood before the redesign), whenever no battlefield opts in.
+const RELIEF_FIXTURE_LANDFORMS=[
+  {kind:'ridge',x:-286,z:22,length:390,width:86,height:10.8,yawDeg:7,corridorScale:0.78,
+    relief:{kind:'glacial',startX:-408,startZ:-278,endX:-244,endZ:284,leftWidthM:86,rightWidthM:38,bendM:-24,branchSide:1,notchAtFraction:0.55}},
+  {kind:'ridge',x:282,z:28,length:370,width:84,height:10.2,yawDeg:-8,corridorScale:0.78,
+    relief:{kind:'glacial',startX:174,startZ:-340,endX:366,endZ:248,leftWidthM:44,rightWidthM:118,bendM:38,branchSide:-1,notchAtFraction:0.64}},
+  {kind:'ridge',x:-64,z:292,length:230,width:70,height:7.0,yawDeg:80,
+    relief:{kind:'glacial',startX:-224,startZ:306,endX:196,endZ:238,leftWidthM:62,rightWidthM:34,bendM:-22,branchSide:1,notchAtFraction:0.36}},
+  {kind:'knoll',x:154,z:-254,rx:86,rz:64,height:6.4,yawDeg:22,
+    relief:{kind:'glacial',startX:-84,startZ:-286,endX:232,endZ:-344,leftWidthM:30,rightWidthM:72,bendM:28,branchSide:-1,notchAtFraction:0.62}},
+  {kind:'basin',x:-166,z:-218,rx:96,rz:70,height:-3.0,yawDeg:-16,
+    relief:{kind:'glacial',startX:-178,startZ:-280,endX:-82,endZ:214,leftWidthM:64,rightWidthM:42,bendM:-22,branchSide:1,notchAtFraction:0.35}},
+];
+const fixtureBase=getMapConfig('alpine');
+const pilotConfigs=pilots.length?pilots.map(id=>[id,getMapConfig(id)])
+  :[['alpine-relief-fixture',{...fixtureBase,terrain:{...fixtureBase.terrain,landforms:RELIEF_FIXTURE_LANDFORMS}}]];
+assert.ok(pilotConfigs.length>0,'the live A/B below exercises real data');
 
 
 function point(form,along,acrossM){
@@ -73,8 +92,8 @@ for(const kind of ['spur','glacial','terrace']){
   receipts.push({profile:kind,asymmetry,maxScalarSlope:maxSlope});
 }
 
-for(const id of pilots){
-  const cfg=getMapConfig(id),flat={...cfg,terrain:{...cfg.terrain,landforms:cfg.terrain.landforms.map(stripRelief)}};
+for(const [id,cfg] of pilotConfigs){
+  const flat={...cfg,terrain:{...cfg.terrain,landforms:cfg.terrain.landforms.map(stripRelief)}};
   const layout=observed.createLayout(cfg),flatLayout=observed.createLayout(flat);
   assert.ok(layout.terrain.landforms.every(f=>f._relief),`${id}: every landform of a relief map carries a prepared profile`);
   assert.ok(flatLayout.terrain.landforms.every(f=>!f._relief),`${id}: the stripped control has no relief`);

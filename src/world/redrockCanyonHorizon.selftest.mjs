@@ -228,8 +228,10 @@ for (const id of MAP_IDS) if (id !== 'badlands') {
     }
   }
   assert.ok(protrusion<0,`Closing triangles stay below Alpine's playable valleys: ${protrusion}`);
-  // (the map-borders lane's foreground clearance, 2026-10-03, lowers the ground the old anchors bridged toward: 1.46 m)
-  assert.ok(oldProtrusion>1.0,`Negative control reproduces the visible ledge: ${oldProtrusion}`);
+  // (the map-borders lane's foreground clearance, 2026-10-03, lowers the ground the old anchors bridged toward: 1.46 m;
+  // Glacier Pass's layout-brief rebuild on the borders' second pass, merged 2026-10-03, leaves 0.85 m: still a ledge the
+  // old anchors raise above the valley, against a closing surface that now stays below it)
+  assert.ok(oldProtrusion>0.5,`Negative control reproduces the visible ledge: ${oldProtrusion}`);
 }
 console.log(JSON.stringify({ test: 'redrockCanyonHorizon', receipts,
   limits: 'CPU actual-triangle seam/mouth/topology. Native visual/prop/collision/FPS acceptance remains separate.' }, null, 2));

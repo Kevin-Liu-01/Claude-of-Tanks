@@ -134,14 +134,11 @@ export default {
       { id: 'east-command-fold', role: 'support', x: 320, z: 40, yawDeg: 270,
         structure: 'commandtent', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: 14 },
     ],
-    wallRuns: [
-      // village walls (relative to the classic village rect)
-      [-56, 8, -56, 64, 2], [-56, 8, -20, 8, 3], [74, 30, 74, 96, 4],
-      [-8, 110, 52, 110, 2], [38, -34, 74, -34, 1], [-44, 108, -10, 108, 0],
-      // field walls on the hedgerow banks between the swells, each with its rotation about the village
-      [-320, -60, -260, -60, 3], [340, 100, 280, 100, 3], [80, -150, 150, -150, 2], [-60, 190, -130, 190, 2],
-      [-160, -150, -100, -150, 1], [180, 190, 120, 190, 1],
-    ],
+    // No stone walls (the scenery lane's palette note, 2026-10-03): Kursk black-earth farmland has none. Its field edges
+    // are the hedgerow banks above (terrain, hull-down lines) and shelterbelts; its village yards are fenced in timber
+    // (fences, inhabit.yardFence). The layout's cover holds without the wall runs (coverMid 0.465 -> 0.44, the
+    // weakest sector 0.404 -> 0.346, hull-down 0.187 -> 0.179; docs/MAP-LAYOUT-BRIEF.md).
+    wallRuns: [],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     // r2: more midfield material breakup (craters/haystacks) — the open
     // field between orchards and village read as a manicured golf course
@@ -168,6 +165,11 @@ export default {
     // the well, working farm clutter through the yards, round bales + stooks
     // on the open fields; wooden fences are the breakable plank/picket kit
     wallStyle: 'fieldstone',
+    // the stone that remains (house plinths, the well, rubble) is a dark, warm fieldstone: the default pale grey read
+    // as concrete on the black earth
+    tones: {
+      stone: (_h: number, s: number, l: number) => [0.075, Math.min(1, s * 1.3 + 0.02), l * 0.76],
+    },
     inhabit: {
       stalls: 3, benches: 2, coreClutter: 10,
       bales: 10, stooks: 8,
