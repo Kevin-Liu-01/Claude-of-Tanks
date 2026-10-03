@@ -8,7 +8,8 @@ import { AUTHORED_EXIT_FIXTURE, assertAuthoredExitConfig, authoredApproachEntrie
   originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
 
 const expectedGates = {
-  alpine: [[-420, -512], [-202, 512], [-112, -512], [-18, 512], [330, -512], [212, 512]],
+  // Glacier Pass redesign (2026-10-03): the south gates moved with the exits (tools/road-authored-exit-fixture.mjs)
+  alpine: [[-346, -512], [-202, 512], [-160, -512], [-18, 512], [330, -512], [212, 512]],
   reservoir: [[-512, -72], [420, -512], [512, 400]],
 };
 const records = [];

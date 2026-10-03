@@ -1,5 +1,25 @@
-// foundry.js — dense heavy-industrial battlefield with a rail fan, factory
-// blocks, container yards, workers' streets and layered hard cover.
+// src/world/maps/foundry.ts — Ironworks, redesigned 2026-10-03 (maps-and-layouts lane; docs/MAP-LAYOUT-BRIEF.md).
+// The works streets, the rail fan, the loading court, the palette, sky, name and id are the map's identity and stay;
+// the ground and the works plan are new. The old floor was Verdant's five landforms round a generated street grid:
+// works buildings stood in seven carriageways (roadside works buildings had no frontage contract), the grid's exits
+// climbed the rim at up to 33 % and its centre crossing stepped at 17 %, the zone-control discs sat 1.13 times
+// farther from one team, and the ground's relief (3.02 m) stood at the brief's floor.
+//
+// Reference: the Völklingen ironworks on the Saar (fought over in March 1945): blast furnaces and their stacks along
+// the casting street, the ore yard's stockpiles, the rail fan, a rolling mill, and slag tipped into banks and cones at
+// the works' edge.
+//
+// The story on the ground: the works stand on a levelled floor inside their street grid. The Great Slag Tip rises
+// south-east of the works and an old tip inside them west of the casting yard, both flat-topped where the tipping track
+// ran and rilled by rain; slag banks line the west and east edges and a long tipped bank closes the north; the ore
+// yard's two stockpile berms cross the floor. Alpha deploys in the south-west corner, bravo along the north. The
+// zone-control discs stand on the line of equal driven distance, on paved yards: the west street's yard, the casting
+// yard below the blast furnace block (also the turbo-ball kickoff), and the slag road's yard in the south-east.
+//
+// Landmarks: the blast furnace block (the casting house and two stacks), the Great Slag Tip, the old tip, the ore
+// yard's berms, the loading court, the rolling mill's warehouse. At the square's edge the west and east slag banks
+// and the north bank run toward the rim and every works street leaves on its own line: the borders lane carries them
+// outward.
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 
@@ -9,15 +29,26 @@ export default {
   blurb: 'A sprawling foundry district of rail sidings, brick works and container yards',
   terrain: {
     hillScale: 0.62, microScale: 0.66, rimH: 26,
+    // The works streets are authored paths, not a generated grid: each ends on a boundary anchor whose portal carries
+    // its grade through the rim, and the crossings are shared stations graded as one network
+    // (roadStations.ts usesPhysicalRoadStations), so no street steps at a junction or climbs the rim.
     roads: {
-      grid: { xs: [-258, 0, 258], zs: [-260, 0, 262], jitter: 1.4 },
       paths: [
-        [[-438, -330], [-284, -244], [-120, -126], [48, -12], [220, 112], [404, 226]],
-        [[-398, 286], [-248, 206], [-94, 118], [72, 26], [232, -86], [398, -228]],
-        [[-318, -170], [-190, -210], [-42, -196], [104, -158], [248, -194], [340, -278]],
+        ...[-258, 0, 258].map((x) => [[x, -480], [x, -260], [x, 0], [x, 262], [x, 480]] as [number, number][]),
+        ...[-260, 0, 262].map((z) => [[-480, z], [-258, z], [0, z], [258, z], [480, z]] as [number, number][]),
+        [[-258, -225], [-120, -126], [48, -12], [220, 112], [258, 136]],
+        [[-258, 211], [-248, 206], [-94, 118], [72, 26], [232, -86], [258, -108]],
+        [[-258, -189], [-190, -210], [-42, -196], [104, -158], [248, -194], [258, -203]],
       ],
     },
     marshes: [],
+    // The zone-control seats on the line of equal driven distance: the west street's yard and the slag road's yard on
+    // their roads' grades, the casting yard tilted with its floor; all three keep the apron bank law.
+    hardstands: [
+      { x: -258, z: 50, width: 56, length: 56, yawDeg: 0, grade: 'road' },
+      { x: 0, z: -72, width: 50, length: 50, yawDeg: 56, level: 0.7, grade: 0.016 },
+      { x: 200, z: -176, width: 56, length: 56, yawDeg: 104, grade: 'road' },
+    ],
     villageWear: 'activity-patches',
     // A compact loading court and its southern access, not a new flattened
     // terrain pad. Existing mask alpha supplies broken soil/wheel wear.
@@ -31,13 +62,28 @@ export default {
     ],
     village: { x0: -286, x1: 286, z0: -288, z1: 288, cx: 0, cz: 0, feather: 38, flatten: 0.9, relief: 0.1 },
     landforms: [
-      { kind: 'ridge', x: -302, z: 8, length: 360, width: 78, height: 8.4, yawDeg: 3, settlementScale: 0.86 },
-      { kind: 'ridge', x: 304, z: 22, length: 350, width: 78, height: 8.0, yawDeg: -3, settlementScale: 0.86 },
-      { kind: 'ridge', x: -18, z: 304, length: 280, width: 70, height: 7.4, yawDeg: 86, settlementScale: 0.86 },
-      { kind: 'ridge', x: -88, z: -54, length: 244, width: 58, height: 7.8, yawDeg: 38, corridorScale: 0.82, settlementScale: 0.88 },
-      { kind: 'ridge', x: 142, z: 112, length: 216, width: 56, height: 7.2, yawDeg: -42, corridorScale: 0.82, settlementScale: 0.88 },
-      { kind: 'knoll', x: 178, z: -268, rx: 84, rz: 64, height: 8.2, yawDeg: 22, settlementScale: 0.86 },
-      { kind: 'basin', x: -168, z: -246, rx: 92, rz: 64, height: -2.4, yawDeg: -18, settlementScale: 0.8 },
+      // The Great Slag Tip south-east of the works and the old tip inside them, west of the casting yard: cones of
+      // tipped slag, flat on top where the tipping track ran, rilled by rain (landformGeology.ts).
+      { kind: 'knoll', x: 372, z: -372, rx: 72, rz: 72, height: 30,
+        geology: { profile: 'cone', crater: { rim: 0.22, depthM: 0 }, outline: 0.12,
+          gullies: { count: 16, depthM: 3, width: 0.5 }, rough: 0.9 } },
+      { kind: 'knoll', x: -160, z: 75, rx: 46, rz: 46, height: 16, settlementScale: 1,
+        geology: { profile: 'cone', crater: { rim: 0.2, depthM: 0 }, outline: 0.12,
+          gullies: { count: 11, depthM: 2, width: 0.5 }, rough: 0.8 } },
+      // the slag banks along the west and east edges: flat-topped tips with a steep tipping face and a talus apron
+      ...[[-385, -60, 240, 56, 10], [385, 40, 220, 50, 9]].map(([x, z, length, width, height]) => ({
+        kind: 'ridge', x, z, length, width, height, yawDeg: 90,
+        geology: { profile: 'butte' as const, wall: [0.4, 0.62] as const, apron: 0.25, outline: 0.25, rough: 0.6,
+          gullies: { count: 2, depthM: 1.2, width: 0.5 } } })),
+      // the long tipped bank north of the works, its tipping face to the west
+      { kind: 'ridge', x: -18, z: 304, length: 280, width: 70, height: 7.4, yawDeg: 86, settlementScale: 0.86,
+        geology: { profile: 'butte', wall: [0.38, 0.6], apron: 0.25, outline: 0.22, rough: 0.6,
+          gullies: { count: 3, depthM: 1.2, width: 0.5 } } },
+      // the ore yard's stockpile berms: long heaps of ore and sinter with lumpy flanks
+      { kind: 'ridge', x: -88, z: -54, length: 244, width: 58, height: 7.8, yawDeg: 38, corridorScale: 0.82, settlementScale: 0.88,
+        geology: { outline: 0.15, rough: 0.6 } },
+      { kind: 'ridge', x: 142, z: 112, length: 216, width: 56, height: 7.2, yawDeg: -42, corridorScale: 0.82, settlementScale: 0.88,
+        geology: { outline: 0.15, rough: 0.6 } },
     ],
   },
   spawns: {
@@ -75,16 +121,23 @@ export default {
       'depot', 'gantry', 'warehouse', 'ruin', 'containerRow', 'watertower',
       'factory', 'shed', 'containerRow', 'warehouse', 'stack', 'depot',
       'gantry', 'containerRow', 'ruin', 'warehouse', 'factory', 'shed'],
+    // The blast furnace block between the casting street and the ore yard: the casting house and the furnaces' two
+    // stacks; east of the rail fan, the rolling mill's warehouse. They stand across the approach lanes.
+    plannedSites: [
+      { structure: 'factory', x: -74, z: -29, yawDeg: 25 },
+      { structure: 'stack', x: -44, z: -36, yawDeg: 0 }, { structure: 'stack', x: -104, z: -64, yawDeg: 0 },
+      { structure: 'warehouse', x: 199, z: -28, yawDeg: 0 },
+    ],
     destructibleBuildings: [
       'quonsethut', 'transformershed', 'motorpool', 'checkpointhut',
       'securityoffice', 'servicegarage', 'relaystation', 'corneroffice',
     ],
     tacticalBeats: [
-      { id: 'western-rail-fan', role: 'brawl', x: -274, z: 86, yawDeg: 4,
+      { id: 'western-rail-fan', role: 'brawl', x: -280, z: 146, yawDeg: 4,
         structure: 'motorpool', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetZ: -15 },
-      { id: 'slag-heap-observer', role: 'scout', x: 52, z: -214, yawDeg: 34,
+      { id: 'slag-heap-observer', role: 'scout', x: 278, z: -282, yawDeg: 34,
         structure: 'checkpointhut', outcrop: { count: 5, radius: 9, scaleMax: 3.0 } },
-      { id: 'eastern-power-yard', role: 'support', x: 274, z: 118, yawDeg: -8,
+      { id: 'eastern-power-yard', role: 'support', x: 305, z: 125, yawDeg: -8,
         structure: 'transformershed', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: 15 },
     ],
     extraKits: ['rail'], wallStyle: 'fieldstone', wallStoneChance: 0.76,
@@ -100,7 +153,7 @@ export default {
     tones: makeRealisticCityBuildingTones({
       value: 0.88, saturation: 0.92, soot: 0.035, roofValue: 0.84,
     }),
-    buildingLat: [10, 4], sideSkip: 0.06, maxSpread: 2.4, spacingPad: 6,
+    buildingLat: [18, 4], sideSkip: 0.06, maxSpread: 2.4, spacingPad: 6,
     well: false, hayCrates: false, fences: true, telegraph: true, carts: false, logs: false,
     rocks: 142, outcrops: 12, craters: 86, rubblePiles: 48,
     hedgehogs: 36, sandbagLines: 28,

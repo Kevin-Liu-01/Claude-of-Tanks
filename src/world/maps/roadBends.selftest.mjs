@@ -22,7 +22,7 @@ assert.deepEqual(roundRoadBends([path,[[0,-50],[0,50]]])[0],path,'intersection r
 assert.deepEqual(roundRoadBends([path],0)[0],path,'opt-out keeps exact geometry');
 assert.throws(()=>roundRoadBends([path],NaN));
 assert.throws(()=>roundRoadBends([path],100));
-const changed=['polders','copper_mesa','oasis','whiteout','orchard','longleaf','saltwind','verdant'];
+const changed=['polders','copper_mesa','oasis','whiteout','orchard','longleaf','saltwind'];
 for(const id of changed) {
  const routes=getMapConfig(id).terrain.roads.paths;
  assert.ok(routes.every(line=>line.every(p=>p.every(Number.isFinite))),`${id}: finite roads`);
@@ -34,15 +34,10 @@ assert.ok(white.every(p=>p[1]<=-104),'Whiteout service street has no triangular1
 const salt=getMapConfig('saltwind').terrain.roads.paths[3];
 assert.deepEqual(salt[0],[-190,-36],'market street starts at existing harbor plaza');
 assert.ok(salt.every((p,i)=>!i||p[0]>salt[i-1][0]),'market street progresses inland without doubled-back loops');
-// 2026-10-02 (Verdant rebuilt to the layout brief): the country generator's exits climbed the rim at 30-37 %, so the two
-// country roads are authored paths now, each a 29-vertex line from border to border.
-const verdantRoads=getMapConfig('verdant').terrain.roads.paths;
-assert.equal(verdantRoads.length,2,'Verdant authors its two country roads');
-for(const line of verdantRoads) {
- assert.ok(line.length===29&&line.every(p=>p.every(Number.isFinite)),'verdant: finite 29-vertex country road');
- assert.ok(Math.abs(Math.max(...line[0].map(Math.abs))-448)<1e-9&&Math.abs(Math.max(...line[28].map(Math.abs))-448)<1e-9,
-  'verdant: each country road runs from border to border');
-}
+// 2026-10-03 (the classic Verdant town plan restored): the village's frontage lots stand at the country generator's 32 m
+// nodes, which authored paths split in two (buildPathRoads), so Verdant keeps the generator; the map-borders lane grades
+// its exits through the rim.
+assert.equal(getMapConfig('verdant').terrain.roads,undefined,'Verdant keeps its existing country route generator');
 // The registry stays intact, whatever its size (it grew 31 -> 33 with moon and cliffbridge, 0e5fc79e2): every id is
 // unique and resolves to its own config rather than getMapConfig's Verdant fallback.
 assert.equal(new Set(MAP_IDS).size,MAP_IDS.length,'map ids are unique');
