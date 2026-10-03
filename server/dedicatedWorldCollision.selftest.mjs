@@ -44,7 +44,7 @@ const expected = {
   railyard: [2846, 2848, 1899], // 2026-10-01 Cinder Junction redesign (docs/MAP-LAYOUT-BRIEF.md); was [2825, 2785, 1983]
   frontier: [7987, 7851, 8359], // 2026-10-02 Frontier Basin redesign (docs/MAP-LAYOUT-BRIEF.md); was [7905, 7634, 8284], and [7730, 7594, 8120] before its aprons stood on their ground (apron bank law)
   fjord: [7357, 7301, 7679],
-  delta: [8114, 7761, 9770], // 2026-10-02 Jade River Delta redesign (docs/MAP-LAYOUT-BRIEF.md); was [7742, 7430, 9644]
+  delta: [8149, 7796, 9775], // 2026-10-02 Jade River Delta redesign (docs/MAP-LAYOUT-BRIEF.md); was [7742, 7430, 9644], and [8114, 7761, 9770] before its aprons stood on their ground (apron bank law)
   badlands: [3013, 2765, 1956], // 2026-10-02 Redrock Divide redesign (docs/MAP-LAYOUT-BRIEF.md); was [3011, 2915, 1920]
   // Native recapture with prior prop code also contains this additional wreck.
   monsoon: [9855, 9630, 12375], // 2026-10-02 Monsoon Ridge layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md); was [9473, 9215, 12022]
