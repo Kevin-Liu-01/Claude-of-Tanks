@@ -158,6 +158,12 @@ check('fence-straddle', 'medium', 'earth', [
   g('push flips', (m) => m.pushFlips, 3, 'before: 210 flips in 4 s'),
 ]);
 
+// A hull dropped across a roof's edge tips off and falls instead of see-sawing on the edge (an undriven hull resting on
+// an edge slides on its belly).
+check('land-roof-edge', 'medium', 'mars', [
+  g('rest jitter at the end (mm rms)', (m) => m.rest?.jitterYRmsMm ?? 0, 0.5, 'before: 12.6 mm, still see-sawing on the edge'),
+]);
+
 // Rest stays rest: no jitter, no creep on a 25-degree grade on the brake.
 check('rest-slope25', 'medium', 'earth', [
   g('rest jitter (mm rms)', (m) => m.rest?.jitterYRmsMm ?? 0, 0.5, 'guard: a parked hull does not shimmer'),

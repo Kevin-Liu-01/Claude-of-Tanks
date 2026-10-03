@@ -334,8 +334,9 @@ export const CASES = [
     spawn: { x: -0.8, z: 1.2, dropTo: 7, yaw: 0.7 }, input: hold(), rest: 'tail' },
   { id: 'land-roof', group: 'air', seconds: (w) => w.dropS(8) + 6, terrain: TERRAIN.flat(), obstacles: [box(0, 0, 7, 9, 0, 4)], spawn: { dropTo: 8 },
     input: hold(), rest: 'tail' },
-  { id: 'land-roof-edge', group: 'air', seconds: (w) => w.dropS(6) + 6, terrain: TERRAIN.flat(), obstacles: [box(0, 6, 7, 6, 0, 4)], spawn: { dropTo: 6 },
-    input: hold(), rest: 'tail' },
+  // (the hull tips off the edge and falls the 4 m to the ground, rather than see-sawing on the edge: 9 s at the Moon)
+  { id: 'land-roof-edge', group: 'air', seconds: (w) => w.dropS(6) + 6 + w.dropS(4), terrain: TERRAIN.flat(), obstacles: [box(0, 6, 7, 6, 0, 4)],
+    spawn: { dropTo: 6 }, input: hold(), rest: 'tail' },
   { id: 'land-bank', group: 'air', seconds: (w) => w.dropS(9) + 6, terrain: TERRAIN.lake(-2, 30), ground: (_x, z) => (z > -2 && z < 30 ? 'soft' : 'medium'),
     spawn: { dropTo: 9, z: 1 }, input: hold(), rest: 'tail' },
   { id: 'land-nose', group: 'air', seconds: (w) => w.dropS(9) + 6, terrain: TERRAIN.flat(), spawn: { dropTo: 9, pitch: -0.55 }, input: hold(), rest: 'tail' },

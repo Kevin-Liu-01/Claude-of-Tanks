@@ -3240,8 +3240,13 @@ function prepareTargetSpeed(
   const driveSign = drive.throttle !== 0 ? Math.sign(drive.throttle) : Math.sign(state.speed);
   const pitchAlong = drive.terrainPitch * (driveSign || 1);
   // a face steeper than the tracks hold in either direction: the drivetrain has no purchase (applySlopeForces slides)
+  // A hull tipping about an edge rests on that edge, and a tumbling one on its shell, not on its tracks: left alone,
+  // nothing holds either but sliding friction (physics lane, 2026-10-03). Their tracks' coasting held a hull pivoting
+  // nose-up on a roof's edge at 40 degrees for seconds while it see-sawed there, where its belly slides off. A driven
+  // hull still has its tracks' purchase (a heavy hull nosing out of an assault trench over the lip it tips about).
+  const offTracks = drive.throttle === 0 && (state._body.tumbling || state._terr.tipPitch !== 0 || state._terr.tipRoll !== 0);
   drive.gripLost = drive.grounded &&
-    trackGripMargin(spec, drive.ground, Math.abs(drive.terrainPitch)) <= TERRAIN_MARGIN_EPS;
+    (offTracks || trackGripMargin(spec, drive.ground, Math.abs(drive.terrainPitch)) <= TERRAIN_MARGIN_EPS);
   drive.speedLimit = drive.throttle >= 0 ? drive.topSpeed : drive.reverseSpeed;
   drive.speedLimit *= slopeSpeedFactor(
     spec,

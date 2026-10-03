@@ -868,6 +868,9 @@ contact constraints and cannot be crossed by residual uphill speed.
   projections, which for a hull inside a wide footprint is its own width).
 - *Firing in flight.* An airborne hull takes a tenth of the recoil's ground rock as rotation (the rigid body's share;
   there is no suspension to rock against).
+- *Edges and shells slide.* An undriven hull tipping about an edge, or tumbling, rests on that edge or on its shell,
+  not on its tracks: nothing holds it but sliding friction (the slide law), so a hull that lands across a roof's edge
+  tips off it and falls instead of see-sawing there for seconds. A driven hull keeps its tracks' purchase.
 - *Contacts settle.* Each obstacle record meets the hull where the records before it have pushed it, as a
   compound's parts do, and the contacts that pushed are swept once more from where the first sweep left it, in the
   authority, the solo sim and the prediction world alike. Summed from one position, two contacts pushing opposite
