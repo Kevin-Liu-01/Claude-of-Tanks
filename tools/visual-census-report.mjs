@@ -6,10 +6,15 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import path from 'node:path';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { loadRgba } from './map-metrics.mjs';
-import { CENSUS_VIEWPORT, CENSUS_VIEWS, horizonRow } from './visual-census-views.mjs';
+import { CENSUS_VIEWPORT, censusViewSet, horizonRow } from './visual-census-views.mjs';
 import { CENSUS_HEADLINE_METRICS, frameMetrics } from './visual-census-metrics.mjs';
 
 const CENSUS_FILE = 'census.json';
+
+/** The camera set a census holds: the core seven unless its header names another set (the border census). */
+export function censusViewsOf(census) {
+  return censusViewSet(census?.viewSet ?? 'core').views;
+}
 const READ_START = '<!-- visual-read:start -->';
 const READ_END = '<!-- visual-read:end -->';
 
@@ -133,7 +138,7 @@ async function viewSheet(out, census, view, mapIds) {
 
 /** One sheet per map: every view, plus a numbers cell. */
 async function mapSheet(out, census, mapId) {
-  const map = census.maps[mapId] || {};
+  const map = census.maps[mapId] || {}, CENSUS_VIEWS = censusViewsOf(census);
   const g = gridGeometry(CENSUS_VIEWS.length + 1, 4, 640, 360, 26);
   const canvas = createCanvas(g.width, g.height), ctx = canvas.getContext('2d');
   ctx.fillStyle = SHEET_BG; ctx.fillRect(0, 0, g.width, g.height);
@@ -152,6 +157,7 @@ async function mapSheet(out, census, mapId) {
   let cx = x + 8;
   ctx.fillStyle = INK;
   for (const [label, w] of cols) { ctx.fillText(label, cx, y + 20); cx += w; }
+  const rowH = Math.min(20, Math.floor((g.h - 50) / CENSUS_VIEWS.length));
   CENSUS_VIEWS.forEach((view, row) => {
     const m = map.views?.[view.name]?.metrics;
     const cells = [view.name, fmt(m?.lumaMean, 0), fmt(m?.lumaP5, 0), fmt(m?.satMean), fmt(m?.skyGroundContrast),
@@ -159,7 +165,7 @@ async function mapSheet(out, census, mapId) {
       fmt(m?.skyDetail, 1), fmt(m?.sharpness, 1)];
     let px = x + 8;
     ctx.fillStyle = row % 2 ? DIM : INK;
-    cells.forEach((text, k) => { ctx.fillText(String(text), px, y + 44 + row * 20); px += cols[k][1]; });
+    cells.forEach((text, k) => { ctx.fillText(String(text), px, y + 44 + row * rowH); px += cols[k][1]; });
   });
   return canvas;
 }
@@ -173,7 +179,7 @@ export async function buildSheets(out, census, { mapIds = Object.keys(census.map
     writeFileSync(path.join(dir, name), await canvas.encode('jpeg', quality));
     return `sheets/${name}`;
   };
-  for (const view of CENSUS_VIEWS) written.views.push(await save(await viewSheet(out, census, view, mapIds), `view-${view.name}.jpg`));
+  for (const view of censusViewsOf(census)) written.views.push(await save(await viewSheet(out, census, view, mapIds), `view-${view.name}.jpg`));
   for (const mapId of mapIds) written.maps.push(await save(await mapSheet(out, census, mapId), `map-${mapId}.jpg`));
   return written;
 }
@@ -191,7 +197,7 @@ function preservedRead(previous) {
 
 /** The census index markdown (commit, date, reproduce commands, sheets, status, headline numbers). */
 export function renderIndex(census, { mapIds = Object.keys(census.maps), sheets = null, previous = null, reproduce = [] } = {}) {
-  const sessions = census.sessions || [];
+  const sessions = census.sessions || [], CENSUS_VIEWS = censusViewsOf(census), border = census.viewSet === 'border';
   const first = sessions[0]?.startedAt || census.createdAt, last = sessions.at(-1)?.endedAt || census.updatedAt;
   const failed = [], skipped = [];
   for (const mapId of mapIds) {
@@ -205,8 +211,10 @@ export function renderIndex(census, { mapIds = Object.keys(census.maps), sheets 
   }
   const okFrames = mapIds.reduce((n, id) => n + Object.values(census.maps[id]?.views || {}).filter((s) => s.status === 'ok').length, 0);
   const lines = [
-    `# Visual census — ${census.revisionShort} (${String(last || '').slice(0, 10)})`, '',
-    `Baseline of every registered battlefield before the visual redesign: the same ${CENSUS_VIEWS.length} views of each map, captured`,
+    `# Visual census${border ? ' (border set)' : ''} — ${census.revisionShort} (${String(last || '').slice(0, 10)})`, '',
+    border
+      ? `Every registered battlefield's rim, the owner's eye test of the border: the same ${CENSUS_VIEWS.length} views of each map (the four edges and four corners from inside the square at eye height and 60 m up, a high oblique across the north-east corner), captured`
+      : `Baseline of every registered battlefield before the visual redesign: the same ${CENSUS_VIEWS.length} views of each map, captured`,
     'the same way, with numbers, so later changes compare frame for frame (`node tools/visual-census.mjs compare`).', '',
     `- **Commit:** \`${census.revision}\` (${census.branch || 'detached'})${census.gameRevision ? `; game tree last changed in \`${census.gameRevision.slice(0, 9)}\` (${census.gameRevision.slice(41)})` : ''}; source trees src \`${census.sourceTree?.src?.slice(0, 12)}\`, public \`${census.sourceTree?.public?.slice(0, 12)}\`, index.html \`${census.sourceTree?.index?.slice(0, 12)}\`${census.dirtyGamePaths?.length ? `; uncommitted game paths: ${census.dirtyGamePaths.join(', ')}` : '; no uncommitted game paths'}`,
     `- **Captured:** ${first} → ${last} in ${sessions.length} session(s); ${okFrames} frames over ${mapIds.length} maps`,
@@ -263,7 +271,8 @@ export async function compareCensus(aDir, bDir, out, { log = () => {} } = {}) {
   if (!A || !B) throw new Error('compare needs two census directories (census.json in --a and --b)');
   mkdirSync(path.join(out, 'compare'), { recursive: true });
   const rows = [];
-  const mapIds = Object.keys(A.maps).filter((id) => B.maps[id]);
+  if ((A.viewSet ?? 'core') !== (B.viewSet ?? 'core')) throw new Error(`compare needs two censuses of one camera set (${A.viewSet ?? 'core'} vs ${B.viewSet ?? 'core'})`);
+  const mapIds = Object.keys(A.maps).filter((id) => B.maps[id]), CENSUS_VIEWS = censusViewsOf(A);
   for (const mapId of mapIds) {
     const views = CENSUS_VIEWS.filter((v) => A.maps[mapId].views?.[v.name]?.status === 'ok' && B.maps[mapId].views?.[v.name]?.status === 'ok');
     if (!views.length) continue;

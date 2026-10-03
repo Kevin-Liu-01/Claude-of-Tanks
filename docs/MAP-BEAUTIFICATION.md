@@ -6321,6 +6321,113 @@ sky-w −2.5 [−3.7..−1.2]; Sirocco Wadi chase −3.5 [−5.3..−2.1], sky-w
 pairs (load 7–109, foreign GPU-process CPU up to 12 cores), which is why single pairs spread; the interleaved
 hide/show attribution was too noisy under that load to split terrain from ring and is not quoted.
 
+### The border landform — 2026-10-03 (the map-borders lane of the Opus 5.5 redesign)
+
+Owner (2026-10-02): "maps need to look so much better esp the horizons and transitions around map borders"; (2026-10-03)
+"i literally just see a treeline and then nothing transitioning and going into mountains or stuff beyond border". The
+border census (`tools/visual-census.mjs capture --set=border`: the four edges and four corners from a spot 60–100 m
+inside the square at tank eye height and 60 m up, and a high oblique across the north-east corner — the owner's eye
+test as seventeen pinned views with their own protocol, `visual-census-border-v1`) showed one cause behind most of it:
+
+- **The square sat in a bowl.** The rim lift was one Chebyshev-square S-curve — `rimH · s(r)²`, `s = smoothstep(430,
+  512, max(|x|, |z|))` — so every side was the same 18–58 m escarpment, every corner a V-shaped crease where two
+  walls met, and past the edge the land was a plateau standing `rimH` over the battlefield with the authored ranges
+  behind it. The rim's 25–45° faces took the steep-slope rock layer: the pale streaks along all four sides (on the
+  paved maps, whose R layer is cobble, white ones).
+- **A hedge round the square.** The rim forest's blocks inside the square and the ring forest's band past it (a stand
+  law that wooded almost the whole band) stood all round as one tree wall, hiding whatever lay behind.
+- **Roads ended.** The mask's clamped edge texel dragged a road 24–96 m out, bent to the perpendicular, and the ring
+  closed over it.
+
+What changed (`world/borderLandform.ts`, wired through `terrain.ts`, `maps/horizon.ts`, `horizonVista.ts`,
+`vegetation.ts`):
+
+- **The lift is a landform.** Inside the playable square (|x|, |z| ≤ 470) the classic S-curve stays and may only be
+  LOWERED (a rim factor ≤ 1: no slope, cover or obstacle is added where tanks drive); past it the lift hands over within
+  40 m to the outland's own hills — domain-warped fBm in 2D with the map's character (rounded downs, ridged crests or
+  tableland terraces), rising from the square's level over a reach that wanders along the border and growing into the
+  foothills of the ranges behind. A low-frequency enclosure field decides where hills stand close and where the land
+  opens out; the in-square rim factor follows it, and corners lower the rim further. Each map has its character
+  (`MAP_BORDERS`: open steppe and airfield country, flat deltas, polders and tidal flats, wooded valleys, tablelands,
+  mountain valleys; `terrain.border` overrides). The near ring hands its continued ground to the authored ranges over a
+  band that wanders 330–820 m past the edge (`getBorderHandOverAt`), not a ring parallel to the square.
+- **Authoring keeps the classic rim.** Road node grades, pad seats and lake levels (queries with roads off) read the
+  classic rim, so no road grade, pad or lake level inside the square moves; a final query shifts the road plane by the
+  difference between the landform's rim and the classic one, so a road that climbed the old rim does not stand on an
+  embankment where the land was lowered.
+- **Roads run on.** Every road that reaches the edge leaves along its own heading for ~720 m (40 m steps that wander a
+  few degrees, never back toward the square); the landform opens a valley along that line; the outland lies on a
+  graded corridor (cut and fill, at most 7 %, starting at the square's road at the edge); the ring carries the
+  carriageway as a vertex attribute (`roadExit`: the signed offset from the line and its presence) that the splat
+  program reads with the square's own road law — no sampler, no loop.
+- **Woods, hedgerows and fields across the red line.** The landform owns one woods field (patches of a few hundred
+  metres leaning onto its hills, calibrated to the map's woodland share), a hedgerow field (field boundaries as levels
+  of two ~330 m fields, 2–3 m lines with gates and gaps) and the parcels between them (stubble, plough, pasture,
+  fallow — temperate, steppe or polder crops — carried on the ring as an albedo-offset attribute, `borderTint`, faded
+  in from 30 m past the edge). The ring forest stands by the woods and the hedgerows; the square's rim trees past the
+  playable edge stand by the woods, and inside it a third of the trees in the open stay as scattered cover (the
+  placement stream is consumed exactly as before; a dropped tree's trunk record and concealment disc go with it).
+- **Railways keep their hill.** Within 340 m of a railway that leaves the square (Tarkhan's and Cinder Junction's
+  cuttings, rounds 63/67) the lift is the classic rim and plateau and the ring hands over by the classic law, so the
+  cutting, the portal and its gallery stand where they were measured.
+- **Paved maps' hillsides are ground.** Where the map's R layer is its paving (`uPavedRock`: Cinder Junction, Steinburg,
+  Ironworks, Kestrel) a natural steep face takes the D layer instead of drawing cobbles.
+
+Receipts: `terrain.border.classic` rebuilds the rim as it stood before the landform, so the receipts that replay a
+pre-landform failure (`roadBorderCorridor`, `roadCutRecovery`, Delta's seam lip in `horizonAutumnGround`) build their
+predecessor and current fields on it and check their physical limits on the landform as well; the history oracle's
+relief-law constructor carries the landform's rim and the road plane's shift; the material receipts follow the exit
+attribute, the parcels and the paved rock.
+
+#### The second pass — 2026-10-03: what the eye sees from the square (gauntlet wave 0)
+
+The gauntlet's wave 0 (3.16/10, every shot AMATEUR) named the band: "the border reads as an enclosing clay wall
+rather than land continuing into foothills and mountains"; the bar is World of Tanks' red-line shots, where terrain,
+fields and villages carry on past the boundary. An offline eye-view probe (a ray march over the square's heights and
+the ring's seated surface, woods as a 15 m canopy: per border view, 13 rays across the frame and the range of each
+ray's skyline) showed what blocked the view: banks of 13–25° a few metres past the red line — the geology's own hills,
+the landform's crests, a corner's rise, the road hold climbing toward the old plateau — and woods standing on it.
+
+- **The foreground clearance.** Past the playable edge the ground rises at most ~2.5° over the square's own edge (its
+  outland composition along the 470 m square, smoothed over ±40 m) for its first ~260 m, released by ~540 m: a smooth
+  minimum that never raises anything, ramped in over the first 40 m past the line (no step at the square's edge); a
+  road's own band keeps its ground (the road hold grades it), a railway's classic island keeps its ground, nothing
+  inside the playable square moves. Over the 33 maps' eight eye views (terrain only, 13 rays a view) the views whose
+  skyline stood within 300 m of the edge above 1.5° fell from 198 of 264 to 30 (the rest are the maps' own mountains
+  inside the square and the two railway tunnel hills); the skylines now stand at the foothills 550–830 m out.
+- **A field system.** The parcels were the level sets of two noise fields (curving blobs, little oval islands). The
+  fields are now two families of near-straight lines on a 46 m pitch, one orientation per map 7–21° off the square's
+  axes (no boundary runs along the red line), warped ±22 m over a kilometre; a share of each family's lines are field
+  boundaries (temperate ~190 × 255 m, steppe ~500 × 650 m, polder 84 m strips), never a closed loop. Hedgerows stand on
+  the boundaries by stretches from ~40 m past the edge; 42 % of the boundaries carry a 3 m packed-dirt farm track 4 m
+  beside the hedge in runs of ~320 m (the ring's `borderTrack` attribute: per family the metres from the nearest track
+  and its boundary, linear across the track so a triangle interpolates it exactly; the splat program draws it
+  anti-aliased by the pixel's footprint and fades it beyond ~1.2 km).
+- **Whole-field woods and an open near band.** In farmland most woods are whole fields with straight edges along the
+  boundaries (the free-form woods keep their cores on the hills); a field touching the first 70 m past the edge is never
+  a wood and the near band stays mostly open to ~190 m (strongly) and ~380 m, so the eye runs over fields to the woods
+  rising behind. The wild woods (maps without fields) keep lighter clearings along the edge.
+- **Farmsteads and hamlets** (`world/borderFarmsteads.ts`). Yards are searched on the ring's seated surface (flat, off
+  the woods, the sea, a railway's right of way and the exit roads' carriageways), gather along the exit roads as hamlets
+  and stand alone among the fields elsewhere; a house, a barn, most a shed and on the steppe and polders sometimes a silo,
+  squared to the fields, in the region's build (temperate, steppe, polder, winter, arid, nordic, tropical, alpine; 0–14
+  a map), and a map's first hamlet in a parish style has its church (nave, tower, spire). The ring forest stands each
+  farm's shelter trees (an arc 26–58 m round the yard). One merged vertex-coloured mesh: one draw and one far-cascade
+  shadow draw, ~0.4–1.2k triangles.
+- **Coasts.** Past ~150 m each bank of a sea opening takes its own headlands and bays (three octaves, 3 km to 420 m, up
+  to 30 % of the half-width), CPU sector and GLSL twin alike.
+- **The road hold.** Along a road inside the playable band the landform keeps the classic rim (its grades are authored
+  on it: every grade in the square is unchanged), and past the red line it holds the rim's level at the red line rather
+  than its climb, handing over to the landform by the edge (never inside a railway's classic island); a road that cut
+  through the old rim comes down past the line on a gentle ramp (level at the line, 12 % from 20 m on).
+- **Cost at ring build.** The land-use queries keep tables of the field lines, a field's woods by its corners and the
+  last point of each field: the ring builds in 290–590 ms on Verdant, Railyard, Desert and Steppe (base 270–540 ms) and
+  its attributes in 26–81 ms; no per-frame CPU work; the track adds a vec4 attribute and a few ALU on ring pixels.
+
+Largest open item in the band: a railway that leaves the square (Cinder Junction, Steppe) still runs into a tunnel in the
+classic rim's hill at the edge (rounds 63/67) — wooded now, but a hill standing in the view; the open line past the
+edge is the next step.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
