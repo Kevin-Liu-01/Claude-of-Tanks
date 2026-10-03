@@ -198,10 +198,11 @@ assert.equal(legacy.sunIntensity, 3.6); assert.equal(legacy.envIntensity, 0.27);
 near(legacy.hemiIntensity, 0.46 + 0.15, 1e-12, 'the authored hemisphere and its bounce floor');
 assert.equal(legacy.envDiffuseGain, 1); assert.equal(legacy.envDiffuseChroma, 1, 'the legacy rig keeps its environment as it was');
 
-// ---- 6b. the bright-ground lift (2026-10-03; the gauntlet's wave 7: a median-matched key greyed the snow): off until a
-// capture shows it; a snowfield opens about half a stop at K 0.42, a ground at or under the reference is untouched
-assert.equal(EXPOSURE_ALBEDO_K, 0.42, 'about half a stop on Frosthollow');
-assert.ok(Math.abs(exposureAlbedoEV(0.799) - 0.5) < 0.05, 'Frosthollow opens about half a stop by default');
+// ---- 6b. the bright-ground lift (2026-10-03; the gauntlet's wave 7: a median-matched key greyed the snow): a snowfield
+// opens about a third of a stop at K 0.25 (the gauntlet's wave 19, with the deck's ground return brightening an overcast
+// snowfield by itself; K 0.42 before it), a ground at or under the reference is untouched
+assert.equal(EXPOSURE_ALBEDO_K, 0.25, 'about a third of a stop on Frosthollow');
+assert.ok(Math.abs(exposureAlbedoEV(0.799) - 0.3) < 0.03, `Frosthollow opens about a third of a stop by default (${exposureAlbedoEV(0.799).toFixed(3)})`);
 assert.equal(exposureAlbedoEV(0.338), 0, 'Sirocco\'s sand (0.34) is untouched');
 {
   const saved = globalThis.__LIGHT_TUNE;
