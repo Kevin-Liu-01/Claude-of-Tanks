@@ -5080,18 +5080,21 @@ function* vegetationBuildSteps(
   // broken shelterbelts. The admission is decided where the seeded stream drew the candidate (the same draws, the same
   // trees); the tree moves only where the boundary site is a site too. Without a field system nothing moves.
   const _hedgeSite = [0, 0, 0, 0]; // x, z, tangent x, tangent z
+  // the field system read here from the height field itself (this section runs in the placement harnesses too)
+  const hedgeLandAt = heightField._landUseAt ?? null;
+  const _hedgeLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0 };
   function hedgeSite(x: number, z: number, salt: number): number[] {
     _hedgeSite[0] = x; _hedgeSite[1] = z; _hedgeSite[2] = 0; _hedgeSite[3] = 0;
-    if (landUseAt === null) return _hedgeSite;
-    const e0 = landUseAt(x, z, _landScratch).edgeM;
-    if (!_landScratch.active || e0 > 45) return _hedgeSite;
-    const gx = landUseAt(x + 1, z, _landScratch).edgeM - e0, gz = landUseAt(x, z + 1, _landScratch).edgeM - e0;
+    if (hedgeLandAt === null) return _hedgeSite;
+    const e0 = hedgeLandAt(x, z, _hedgeLand).edgeM;
+    if (!_hedgeLand.active || e0 > 45) return _hedgeSite;
+    const gx = hedgeLandAt(x + 1, z, _hedgeLand).edgeM - e0, gz = hedgeLandAt(x, z + 1, _hedgeLand).edgeM - e0;
     const gl = Math.hypot(gx, gz);
     if (gl < 0.3) return _hedgeSite;
     const ux = gx / gl, uz = gz / gl;
     const offset = 1.0 + 1.5 * treePositionNoise(x, z, salt);
     let tx = x - ux * (e0 - offset), tz = z - uz * (e0 - offset);
-    const at = landUseAt(tx, tz, _landScratch);
+    const at = hedgeLandAt(tx, tz, _hedgeLand);
     if (at.edgeM > 3.5) return _hedgeSite;
     if (at.track > 0.3) { tx = x - ux * (e0 - offset - 3.0); tz = z - uz * (e0 - offset - 3.0); }
     if (!siteOk(tx, tz, 0)) return _hedgeSite;

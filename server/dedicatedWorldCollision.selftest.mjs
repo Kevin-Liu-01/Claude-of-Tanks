@@ -34,7 +34,7 @@ const coalCensus = { railyard: 10, caldera: 7, foundry: 7, skybridge: 5 };
 // a solid's whole footprint out of the road core. Sixteen censuses lose the 1-3 boulders that reached into a road;
 // roadside wrecks, rubble and two pillboxes step off the carriageway with their counts unchanged.
 const expected = {
-  verdant: [6678, 6413, 7323], // 2026-10-02 Verdant Fields redesign (docs/MAP-LAYOUT-BRIEF.md); was [6977, 6678, 7507], and [6845, 6575, 7445] before its aprons stood on their ground (apron bank law)
+  verdant: [6679, 6414, 7324], // 2026-10-03 ground lane: its field trees and bushes stand on the field boundaries (landUse.ts), one more prop then fits; was [6678, 6413, 7323] (2026-10-02 Verdant Fields redesign, docs/MAP-LAYOUT-BRIEF.md), [6977, 6678, 7507], and [6845, 6575, 7445] before its aprons stood on their ground (apron bank law)
   desert: [2943, 2883, 3123], // 2026-10-01 Sirocco Wadi redesign (docs/MAP-LAYOUT-BRIEF.md); was [2673, 2605, 3139], and [2856, 2796, 2991] before its aprons stood on their ground (apron bank law)
   winter: [5931, 5786, 4919],
   urban: [3859, 6519, 3510], // 2026-10-01 Steinburg redesign (docs/MAP-LAYOUT-BRIEF.md); was [3898, 9290, 3530]
