@@ -47,9 +47,11 @@ export default {
       { kind: 'ridge', x: 330, z: -340, length: 300, width: 120, height: 11, yawDeg: 4, corridorScale: 1 },
       { kind: 'ridge', x: 230, z: 345, length: 520, width: 130, height: 13, yawDeg: -3, corridorScale: 1 },
       { kind: 'ridge', x: -330, z: 340, length: 300, width: 120, height: 11, yawDeg: 4, corridorScale: 1 },
-      // The craters of the valley floor (rotation pairs): each a bowl inside a raised rim of ejecta.
+      // The craters of the valley floor (rotation pairs): each a bowl inside a raised rim of ejecta. The last pair
+      // (2026-10-03) keeps the middle lane's cover over the layout brief's band once the map-borders lane's edge
+      // pass had moved the props beside it (0.156 -> 0.146; now 0.164).
       ...[[-230, -150, 56, 16], [205, -190, 40, 12], [-70, -230, 34, 10], [320, -150, 46, 13], [-120, 165, 30, 9],
-        [-60, -110, 22, 7], [-5, -122, 20, 6], [200, -75, 20, 6]]
+        [-60, -110, 22, 7], [-5, -122, 20, 6], [200, -75, 20, 6], [-74, -34, 16, 5]]
         .flatMap(([x, z, r, depth]) => [
           { kind: 'knoll', x, z, r: r * 1.32, height: depth * 0.62, settlementScale: 1, corridorScale: 1 },
           { kind: 'basin', x, z, r, height: -depth * 1.45, settlementScale: 1, corridorScale: 1 },

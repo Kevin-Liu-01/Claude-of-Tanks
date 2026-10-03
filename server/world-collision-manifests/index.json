@@ -222,9 +222,9 @@
       "concealers": 0
     },
     "moon": {
-      "bytes": 598771,
-      "sha256": "2ce2803d70b1468d835e6237666fa977100227c1927c9874197c8d4305ef7257",
-      "obstacles": 577,
+      "bytes": 606463,
+      "sha256": "2c47f9537331ffa169f9de4c9c98f52d8206a5b2478a43cce7a07f52f10a6ea5",
+      "obstacles": 579,
       "colliders": 417,
       "concealers": 0
     },

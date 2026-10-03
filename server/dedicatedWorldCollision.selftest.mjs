@@ -71,7 +71,7 @@ const expected = {
   saltwind: [2970, 2773, 3428], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [3666, 3469, 4131] (2026-10-02 Saltwind Narrows redesign (docs/MAP-LAYOUT-BRIEF.md); was [3629, 3392, 4048], and [3811, 3614, 4260] before its aprons stood on their ground (apron bank law))
   reservoir: [5194, 5067, 6054], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [6495, 6368, 7349] (2026-10-02 Highland Reservoir layout-brief revision and its aprons on their ground (docs/MAP-LAYOUT-BRIEF.md); was [6425, 6300, 7206])
   mars: [765, 711, 0], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [769, 715, 0]
-  moon: [577, 417, 0], // 2026-10-02 Earthrise Basin redesign (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [474, 380, 0]; was [475, 381, 0]
+  moon: [579, 417, 0], // 2026-10-03 Earthrise Basin redesign (docs/MAP-LAYOUT-BRIEF.md) and its middle-lane craters, on the map-borders lane's edge [474, 380, 0]; was [475, 381, 0]
   cliffbridge: [4834, 4982, 3962], // 2026-10-02 Aegis Crossing redesign (docs/MAP-LAYOUT-BRIEF.md), on the map-borders lane's edge [4656, 4389, 4003]; was [5903, 5636, 5243]
 };
 const stats = dedicatedCollisionManifestStats();
