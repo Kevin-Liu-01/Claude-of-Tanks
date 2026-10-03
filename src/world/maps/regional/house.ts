@@ -95,6 +95,8 @@ export interface HouseSpec {
    * this far, the jambs, head and sill showing the wall's thickness (granite 0.3+, brick 0.15, a framed wall 0.1).
    */
   reveal?: number;
+  /** rafter feet showing under the eaves overhang (their colour), or none (a kit leaves them out on phones) */
+  rafters?: Rgb | null;
 }
 
 /** What a dialect sees of the house it dresses. */
@@ -538,6 +540,19 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     if (cap === 'pots') {
       for (const k of [-1, 1]) sink.span('roof', c.x + k * c.sx * 0.22 - 0.09, topY + 0.1, c.z - 0.09, c.x + k * c.sx * 0.22 + 0.09, topY + 0.42, c.z + 0.09);
     }
+  }
+  // rafter feet under the eaves overhang, every 0.8 m along both eaves (dressing)
+  if (spec.rafters && (rg.kind === 'gable' || rg.kind === 'halfhip' || rg.kind === 'hip') && spec.roof.eave >= 0.25) {
+    const e = spec.roof.eave, c = spec.rafters;
+    moveRoof(() => {
+      const n = Math.max(2, Math.round((rg.ridgeHalf > 0 ? 2 * rg.halfD : 2 * rg.halfD) / 0.8));
+      for (const side of [1, -1]) for (let k = 0; k <= n; k++) {
+        const z = -rg.halfD + 0.15 + (2 * rg.halfD - 0.3) * k / n;
+        const a: Vec3 = [side * (rg.s - 0.02), eaveY - 0.09, z];
+        const b: Vec3 = [side * (rg.s + e - 0.06), eaveY - (e - 0.06) * rg.tanP - 0.09, z];
+        sink.member('structureWood', a, b, 0.08, 0.1, [0, 0, 1], { colour: c, decor: true, ends: true }, 0.05);
+      }
+    });
   }
   // gutters and downpipes on the eaves sides (+x, -x)
   if (spec.gutters && spec.roof.kind !== 'flat') {

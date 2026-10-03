@@ -97,6 +97,18 @@ export function tvAerial(sink: PartSink, frame: HouseFrame, z: number, rng: () =
   }
 }
 
+/**
+ * A wall lantern on an iron bracket beside a door: its glass is a curtain pane, so it glows with the lit windows at
+ * night. (u, y) is the lantern's centre on the face.
+ */
+export function wallLantern(sink: PartSink, face: Face, u: number, y: number): void {
+  const iron: Rgb = [0.12, 0.12, 0.12];
+  faceBox(sink, 'structureMetal', face, u, y + 0.3, 0.2, 0.04, 0.04, 0.4, { ...DECOR, colour: iron });
+  faceBox(sink, 'structureMetal', face, u, y + 0.2, 0.36, 0.2, 0.04, 0.2, { ...DECOR, colour: iron });
+  faceBox(sink, 'curtain', face, u, y, 0.36, 0.16, 0.26, 0.16, { ...DECOR, window: face.out });
+  faceBox(sink, 'structureMetal', face, u, y - 0.15, 0.36, 0.2, 0.04, 0.2, { ...DECOR, colour: iron });
+}
+
 /** A terracotta pot with a plant (a stair tread, a doorstep, a wall top). (x, y, z) is the pot's base. */
 export function pottedPlant(sink: PartSink, x: number, y: number, z: number, size: number, rng: () => number): void {
   const clay: Rgb = [0.56 + rng() * 0.08, 0.26 + rng() * 0.04, 0.15];

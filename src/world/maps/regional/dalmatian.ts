@@ -11,7 +11,7 @@ import {
 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { pottedPlant, tvAerial, washingLine } from './dressing.ts';
+import { pottedPlant, tvAerial, wallLantern, washingLine } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const SHUTTERS: readonly Rgb[] = [0x557a4c, 0x416650, 0x7a5a42, 0x7890a0, 0x8e7a52].map(rgb);
@@ -145,13 +145,17 @@ function dwelling(ctx: RegionalBuildContext, opts: { storeys?: number; shop?: bo
     gutters: null, verge: null, reveal: 0.3,
   };
   // the lived-in dressing, drawn before the phones leave it out: an aerial, a washing line, pots up the stair
-  const aerial = rng() < 0.5, aerialZ = (rng() - 0.5) * D * 0.4, wash = rng() < 0.45 && count > 1, pots = rng() < 0.7;
+  const aerial = rng() < 0.5, aerialZ = (rng() - 0.5) * D * 0.4, wash = rng() < 0.45 && count > 1, pots = rng() < 0.7, lantern = rng() < 0.4;
   sink.placed(0, shiftX, 0, 0, () => {
     const frame = buildHouse(sink, spec, dialect(st));
     eaveCourse(sink, frame);
     if (stairSide) balatura(sink, frame.faces.right, D * 0.26, frame.floors[1], 1);
     if (!st.mobile) {
       if (aerial) tvAerial(sink, frame, aerialZ, rng);
+      if (lantern) {
+        const door = openings[0], f = frame.faces.front, u = door.u + (door.u > 0 ? -1 : 1) * (door.w / 2 + 0.45);
+        if (Math.abs(u) + 0.3 < f.width / 2) wallLantern(sink, f, u, 2.45);
+      }
       if (wash) {
         const f = frame.faces.left, y = frame.floors[1] + 2.0;
         washingLine(sink, f, -f.width / 2 + 0.6, Math.min(f.width / 2 - 0.6, -f.width / 2 + 3.6), y, rng);

@@ -13,7 +13,7 @@ import {
   buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, H,
   type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type WallRect,
 } from './house.ts';
-import { bench, flowerBox, roofLadder, tvAerial, woodpile } from './dressing.ts';
+import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
@@ -305,6 +305,7 @@ function hessianDwelling(ctx: RegionalBuildContext, opts: { storeys?: number; sh
     chimneys: chimneyFor(st.rng, D, st.rng() < 0.5 ? 'stone' : 'plaster'),
     gutters: st.rng() < 0.7 ? { colour: ZINC } : null,
     verge: { colour: st.timber, bucket: SW },
+    rafters: st.mobile ? null : shade(st.timber, 0.92),
   };
   const frame = buildHouse(sink, spec, hessianDialect(st));
   if (opts.tavern) innSign(sink, frame, st);
@@ -325,7 +326,7 @@ export function dressHessianHouse(sink: PartSink, frame: HouseFrame, st: Hessian
   const rng = st.rng;
   const boxes = rng() < (opts.boxes ?? 0.55), bloom = pick(rng, BLOOMS), boxColour = pick(rng, BOX_COLOURS);
   const aerial = rng() < (opts.aerial ?? 0.45), aerialZ = (rng() - 0.5) * frame.roof.halfD;
-  const ladder = rng() < 0.4, pile = rng() < 0.45, seat = rng() < 0.6;
+  const ladder = rng() < 0.4, pile = rng() < 0.45, seat = rng() < 0.6, lantern = rng() < 0.5;
   const picks = frame.spec.openings.map(() => rng());
   if (st.mobile) return;
   const spec = frame.spec;
@@ -343,6 +344,10 @@ export function dressHessianHouse(sink: PartSink, frame: HouseFrame, st: Hessian
     const face = frame.faces[door.face];
     const side = door.u > 0 ? -1 : 1, u = door.u + side * (door.w / 2 + 1.05);
     if (Math.abs(u) + 0.8 < face.width / 2) bench(sink, face, u, 1.4, shade(st.timber, 1.25));
+  }
+  if (lantern && door) {
+    const face = frame.faces[door.face], u = door.u + (door.u > 0 ? 1 : -1) * (door.w / 2 + 0.38);
+    if (Math.abs(u) + 0.3 < face.width / 2) wallLantern(sink, face, u, frame.floors[0] + 2.05);
   }
   if (pile) {
     const face = frame.faces.back;
@@ -390,6 +395,7 @@ const farmhouse: RegionalBuilder = (ctx) => {
     roof: roofFor(st.rng, { halfHip: 0.55 }), gableFramed: true, gableBucket: st.infill,
     openings: houseOpenings(W, D, sts, { face: 'left', u: D * 0.12 }, st),
     chimneys: chimneyFor(st.rng, D, 'stone'), gutters: { colour: ZINC }, verge: { colour: st.timber, bucket: SW },
+    rafters: st.mobile ? null : shade(st.timber, 0.92),
   };
   // the wing's footprint is kept off the dwelling's right face openings
   spec.openings = spec.openings.filter((o) => !(o.face === 'right' && o.storey === 0 && Math.abs(o.u + D * 0.16) < W * 0.4));
