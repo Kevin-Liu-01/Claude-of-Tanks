@@ -207,3 +207,57 @@ props code shaped every layout, and the next maps should start from them:
 
   Draw calls fell at the fixed overhead pose: −10 %, 0 % and −21 %.
 
+
+## Authoring notes from batches 5–8
+
+Maps lane B rebuilt Aegis Crossing, Ruinspires and Kestrel Airfield (batch 5) on October 2, 2026. These laws came out
+of them:
+
+- **Viaducts.** `terrain.bridges` lays a level deck over dry ground. The brief metrics read the deck
+  (`tools/map-layout-metrics.mjs`): a deck cell passes at the deck's height and joins the ground only beyond the
+  abutments, so the gorge under a viaduct is neither a cliff on the deck nor a link down to the bed. The road
+  constructor levels the stations over a viaduct's span to the deck (`levelViaductSpanNodes` in `src/world/terrain.ts`).
+  Before, they sampled the bed under the span, and the abutment approaches ramped past 18 %. `roadGradeSmoothing`'s
+  brief section grades the deck plane over a span.
+- **Nothing to stand on under a deck.** Bots on a gorge floor under a viaduct and bots on its deck cannot shoot each
+  other, and the planner's 2.5D grid snaps both to the deck. Aegis Crossing closes the floor under the span with a rock
+  rib too steep to drive, so the floor's two reaches meet only over the bridge.
+- **Sheer walls.** A gorge wall that the planner's 25 m grid reads as one cliff must be one. Troughs stacked to the
+  same wall line climb at a 1.0–1.3 grade along their whole length. A terraced wall with a drivable step lets bots
+  onto ledges they cannot leave.
+- **Fences and decks.** A roadside fence run leaves out the modules and gates over a bridge deck's footprint and still
+  takes their draws (`src/world/props.ts`). Aegis Crossing's run used to hang down the gorge wall under the span.
+- **Open squares.** Street rows clear only their centres, so a city square's zone disc seated by luck.
+  `props.streetRowKeepouts` keeps every row building's whole footprint out of a named disc. Author one for each square
+  that seats a zone or the kickoff.
+- **Paired landmarks.** The roadside plan hands out its list in road order, which stacks the tallest structures along
+  the first roads. A symmetric map authors its landmarks as `plannedSites` pairs: Ruinspires rotates them about its
+  central square, and Aegis Crossing mirrors them across the gorge. `mapQuality` counts planned sites with the plan.
+- **Rear seats.** A 1 v 41 field seats its hostiles up to about 45 m behind the enemy pads, and `battleSides` checks
+  this on Ruinspires. Keep a map's pads at least 45 m inside the playable edge.
+- **Bridgehead standoffs.** Before the bots' second pass, Aegis Crossing's capped matches were standoffs between the
+  two abutments, 200 m apart across the deck: over three minutes of one, six bots there fired 30 shells, and the
+  shooters standing beside a deck end put theirs into its parapets. The routes from a deck end down to the gorge floor
+  run 610 m, against 200 m over the deck, so no bot flanked. Removing the rim lips did not help (two of three capped
+  seeds still capped, and bots fell into the gorge). On the second pass no match caps (16 all-bot, 8 standard).
+- **Frozen fixtures.** When a map is rebuilt, a receipt that pinned its ground keeps that ground as a fixture.
+  `botGunLane`'s Airfield crest is now the old height profile along its shot line
+  (`src/sim/fixtures/airfieldCrestProfile.json`).
+- **Apron banks.** Maps lane A's scan counts the points of an apron's bank steeper than 0.6 and 0.25 steeper than the
+  ground without the aprons. A 100 m market square on Aegis Crossing reached 6 m from the end of a rim lip (10
+  points); at 80 m it clears it. Kestrel Airfield's runway ran past its graded core into the plateau's noise (13
+  points at its east end), and a shoulder berm sat inside its blend (68 more); the core now spans the runway, and the
+  berm stands off it. Run the scan on every apron you author.
+- **Ramps.** The bot planner's 25 m grid does not see a 12 m earthwork, so bots drive over it, and a 4.5 m revetment
+  launches them: two to six damaging falls a match on Kestrel Airfield, up to 387 HP. At 3.2 m the revetments still
+  split the lanes and cost about one 50-140 HP fall a match.
+- **Sides.** Alpha's bots seat round the player pad within 25 m, and its rear rank stalls for about 20 s while the
+  front clears; bravo's seven pads stand 40-60 m apart and leave at once. On an open map whose centre the first bots
+  reach in 40 s that decides matches: with alpha in Kestrel Airfield's south half bravo won 13 of 16, with alpha in
+  the north 8 of 16. Test both sides on a rotationally symmetric map and choose by the result.
+- **Slowing a rush.** A boggy valley floor (`terrain.marshes`, soft ground) between each assembly ground and the
+  centre slows every approach but the causeway roads. On Kestrel Airfield it lifted the fastest battlePacing seed from
+  116 s to 171 s.
+- **Sealed blocks.** Street rows on both sides of every street can seal a block's interior; a bot hunting a hull beyond
+  it presses at the gaps until the match times out. Leave one side of a contour street open (`streetRowKeepouts`
+  rectangles: Ruinspires' terrace gardens).
