@@ -761,6 +761,22 @@ interface BedrockSpec {
   tone?: readonly [number, number, number];
 }
 
+/**
+ * The terrain's bed law, when the world carries it (the ground lane's terrain.ts terrainBedWobbleAt and
+ * terrainFormationBoundaryY): the skin's bed boundaries lie on its bedY surfaces (bedY = y − wobbleAt(x, z)), so the
+ * skin's beds and the terrain's strata are one bedding, and the skin takes the map's two formations' tones.
+ */
+interface BedrockStrata {
+  /** The beds' wander in metres of height at (x, z). */
+  wobbleAt(x: number, z: number): number;
+  /** Two formations: the boundary in the beds' own height at (x, z), and the linear RGB multipliers below and above. */
+  formation?: { boundaryAt(x: number, z: number): number; lower: readonly [number, number, number]; upper: readonly [number, number, number] };
+}
+
+interface BedrockBuildOptions extends RockBuildOptions {
+  strata?: BedrockStrata;
+}
+
 const BEDROCK_STEP = 0.5;   // the ray profiles' step (m)
 const BEDROCK_CLEAR = 1.6;  // the lowest bed stands this far above the highest ground a hull climbs to on its ray
 const BEDROCK_BENCH = 3.4;  // a bed whose bench would run wider than this is not cut: the ground there is gentle
@@ -831,16 +847,16 @@ function pushBedBlocks(rows: ReadonlyArray<number[] | null>, layer: number, piec
  * nothing is drawn where the ground is gentle, under water or beyond the search radius.
  */
 export function buildBedrock(
-  spec: BedrockSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, { mobile = false }: RockBuildOptions = {},
+  spec: BedrockSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, { mobile = false, strata }: BedrockBuildOptions = {},
 ): RockFormationBuild {
   const minGrade = spec.minGrade ?? 0.9;
   const [tMin, tMax] = spec.beds ?? (spec.geology === 'sandstone' ? [1.2, 3.2] : spec.geology === 'limestone' ? [0.8, 2.2] : [1.0, 2.6]);
   // (a phone's beds keep their joints farther apart: fewer blocks, the same rock)
   const [jMin0, jMax0, cleftMax] = BEDROCK_JOINTS[spec.geology];
   const jMin = jMin0 * (mobile ? 1.6 : 1), jMax = jMax0 * (mobile ? 1.6 : 1);
-  // the rays: one every 3.5 m (6 m on phones) round the search radius's middle, so a big mesa's rim is read as finely
-  // as a dome's
-  const rays = Math.max(mobile ? 36 : 48, Math.min(mobile ? 120 : 200, Math.round((Math.PI * spec.radius) / (mobile ? 6 : 3.5))));
+  // the rays: one every 1.5 m (2.5 m on phones) round six tenths of the search radius, where a dome's wall stands, so
+  // a cleft a few metres wide is read on two rays or more and the beds follow a lobed foot
+  const rays = Math.max(mobile ? 36 : 48, Math.min(mobile ? 120 : 200, Math.round((Math.PI * 2 * spec.radius * 0.6) / (mobile ? 2.5 : 1.5))));
   const steps = Math.max(4, Math.ceil(spec.radius / BEDROCK_STEP)), stride = steps + 1;
   const groundAt = ground.getHeightAtFast ? (x: number, z: number) => ground.getHeightAtFast!(x, z) : (x: number, z: number) => ground.getHeightAt(x, z);
   // the ray profiles: the ground from the summit outward
@@ -905,33 +921,111 @@ export function buildBedrock(
   for (let j = 0; j < rays; j += 4) { const r = edge(j, (lowest + top) * 0.5); if (Number.isFinite(r)) { rs += r; rn++; } }
   if (!rn) return { geometry: null, masses: [], pieces: 0, triangles: 0 };
   const rRef = Math.max(3, rs / rn);
-  // the beds dip a little (one to four degrees) toward one side; the master joints cut every bed at the same places,
-  // opening clefts from the crown to the foot, and the beds' own joints between them are tight and staggered
-  const dipAz = rng() * Math.PI * 2, tanDip = spec.geology === 'slate' ? 0 : 0.02 + rng() * 0.05;
-  const dipAt = (theta: number) => tanDip * rRef * Math.cos(theta - dipAz);
-  const masters = Math.max(3, Math.round((Math.PI * 2 * rRef) / (10 + rng() * 8)));
-  const master: Array<[number, number]> = []; // [angle, cleft width m]
-  const m0 = rng() * Math.PI * 2;
-  // (a cleft is narrow enough that its own shaded walls fill it, not the sunlit slope behind)
-  for (let m = 0; m < masters; m++) master.push([m0 + (m + (rng() - 0.5) * 0.6) * (Math.PI * 2 / masters), cleftMax * (0.55 + rng() * 0.5)]);
-  let y0 = lowest + BEDROCK_CLEAR;
+  const rayAngle = (j: number) => (j / rays) * Math.PI * 2;
+  // ---- the hill's own bedding (the beehive read: every dome bedded alike, its beds level and even as courses): its
+  // beds thicker or thinner than the geology's run, dipping its own way by its own amount (up to five degrees); every
+  // bed boundary dips a shade off the next and swells and pinches along its run. A boundary is the top of one bed and
+  // the foot of the next, so the beds sit on each other wherever they run, and no bed pinches out.
+  // (on a world with the terrain's bed law the beds lie on its bedY surfaces instead: no dip or swell of their own)
+  const bedWob = strata?.wobbleAt;
+  const thick = 0.72 + rng() * 0.62;
+  const dipAz = rng() * Math.PI * 2, tanDip = spec.geology === 'slate' || bedWob ? 0 : 0.015 + rng() * 0.075;
+  const swell = bedWob ? 0 : 0.12 + rng() * 0.16;
+  const plan: Array<{ t: number; soft: boolean; layer: number; proud: number; batter: number; bev: number; stagger: number; show: number }> = [];
+  const level: number[] = [lowest + BEDROCK_CLEAR]; // the boundaries' mean heights: level[k] is bed k's foot
   let hard = 0, soft = 0;
-  const bedTops: number[] = [];
-  for (let bed = 0; bed < 60; bed++) {
-    // a sandstone's thick hard beds part on thin soft ones that the weather cuts back
-    const isSoft = sandstone && bed > 0 && rng() < 0.55 && !(pieces.length && soft > hard);
-    const t = isSoft ? 0.3 + rng() * 0.4 : tMin + rng() * (tMax - tMin);
-    const y1 = y0 + t;
-    if (y1 > top - 0.6) break;
-    const layer = isSoft ? 2 * soft++ + 1 : 2 * hard++;
+  while (plan.length < 60) {
+    const k = plan.length;
+    // a sandstone's thick hard beds part on thin soft ones that the weather cuts back; now and then a massive bed
+    const isSoft = sandstone && k > 0 && rng() < 0.55 && !(soft > hard);
+    const massive = !isSoft && rng() < 0.22;
+    const t = (isSoft ? 0.3 + rng() * 0.4 : (tMin + rng() * (tMax - tMin)) * (massive ? 1.8 : 1)) * thick;
+    if (level[k] + t > top - 0.6) break;
+    // a third of the hard beds stand out as ledges, the rest a hand's breadth proud; and no bed rings the whole hill:
+    // each shows as its own rock along stretches of the girth (`show`, a threshold on its exposure field), and the
+    // hill's weathered wall between them
+    const ledge = !isSoft && rng() < 0.34;
+    plan.push({ t, soft: isSoft, layer: isSoft ? 2 * soft++ + 1 : 2 * hard++,
+      proud: isSoft ? 0.06 + rng() * 0.1 : ledge ? 0.55 + rng() * 0.45 : 0.16 + rng() * 0.3, batter: (0.06 + rng() * 0.12) * t,
+      bev: isSoft ? Math.min(0.15, t * 0.3) : Math.min(0.5, t * 0.22), stagger: rng(),
+      show: isSoft ? -0.6 + rng() * 0.5 : -0.85 + rng() * 0.35 });
+    level.push(level[k] + t);
+  }
+  // each boundary's own dip and swell, each held to under a sixth of the thinner bed it parts
+  const drift: number[] = [], amp: number[] = [];
+  for (let k = 0; k <= plan.length; k++) {
+    const thin = Math.min(plan[Math.max(0, k - 1)]?.t ?? 1, plan[Math.min(plan.length - 1, k)]?.t ?? 1);
+    drift.push(bedWob ? 0 : (rng() - 0.5) * 0.3 * thin / rRef);
+    amp.push(swell * 0.5 * thin);
+  }
+  /** Boundary k's height at a bearing (k = 0 the lowest bed's foot, k = plan.length the top bed's top), read half way
+   * up the rock (a row refines it at its own face). The swell is periodic round the hill (no seam where it wraps). */
+  const boundaryAt = (k: number, theta: number): number => level[k] + (bedWob
+    ? bedWob(spec.x + Math.cos(theta) * rRef, spec.z + Math.sin(theta) * rRef)
+    : (tanDip + drift[k]) * rRef * Math.cos(theta - dipAz)
+      + amp[k] * noise.noise(Math.cos(theta) * rRef / 9 + k * 5.31, Math.sin(theta) * rRef / 9 - k * 2.17));
+  /** Bed k's exposure along the girth, in [-1, 1]: it shows as its own rock where this clears its `show`. */
+  const exposure = (k: number, theta: number): number =>
+    noise.noise(Math.cos(theta) * rRef / 16 + k * 3.71 + 40, Math.sin(theta) * rRef / 16 - k * 1.33);
+  /**
+   * How far the ground at a height falls back into the hill on each ray against the foot line a few metres either side
+   * (m): a cleft, the rill the weather cut down the wall, reads metres deep; a lobe's broad bay curves back far less
+   * over so short a run. Past CLEFT_M a bed breaks off at the cleft's lips (it follows the cleft's shoulders in a
+   * little), and the cleft's walls are the hill's own.
+   */
+  const CLEFT_M = 1.8;
+  const recessAt = (y: (j: number) => number, rAt: number): Float32Array => {
+    const e = new Float32Array(rays);
+    for (let j = 0; j < rays; j++) e[j] = edge(j, y(j));
+    const w = Math.max(2, Math.round((5 * rays) / (Math.PI * 2 * Math.max(3, rAt))));
+    const out = new Float32Array(rays);
+    for (let j = 0; j < rays; j++) {
+      if (!Number.isFinite(e[j])) continue;
+      let left = -Infinity, right = -Infinity;
+      for (let d = 1; d <= w; d++) {
+        const a = e[(j - d + rays) % rays], b = e[(j + d) % rays];
+        if (Number.isFinite(a)) left = Math.max(left, a);
+        if (Number.isFinite(b)) right = Math.max(right, b);
+      }
+      out[j] = Math.max(0, Math.min(left, right) - e[j]);
+    }
+    return out;
+  };
+  // the master joints: one in every cleft half way up the rock (a run of cleft rays is one cleft, its joint as wide as
+  // the run's deep middle), and between them one every 10 to 18 m of the hill's girth; each parts every bed from the
+  // crown to the foot
+  const midK = Math.min(plan.length, Math.floor(plan.length / 2));
+  const midRecess = recessAt((j) => boundaryAt(midK, rayAngle(j)) + (plan[midK]?.t ?? 0) * 0.5, rRef);
+  const clefts: Array<[number, number]> = [];
+  const deep = (j: number) => midRecess[(j + rays) % rays] > CLEFT_M;
+  for (let j = 0; j < rays; j++) {
+    if (!deep(j) || deep(j - 1)) continue;
+    let n = 1;
+    while (n < rays && deep(j + n)) n++;
+    clefts.push([rayAngle(j + (n - 1) / 2), Math.max(cleftMax * 0.55, (n * Math.PI * 2 / rays) * rRef * 0.6)]);
+  }
+  if (!clefts.length) clefts.push([rng() * Math.PI * 2, cleftMax * (0.55 + rng() * 0.5)]);
+  const master: Array<[number, number]> = []; // [angle, cleft width m], ascending
+  for (let m = 0; m < clefts.length; m++) {
+    const [a, w] = clefts[m];
+    master.push([a, w]);
+    const next = m + 1 < clefts.length ? clefts[m + 1][0] : clefts[0][0] + Math.PI * 2;
+    // (a cleft is narrow enough that its own shaded walls fill it, not the sunlit slope behind)
+    const parts = Math.max(1, Math.round(((next - a) * rRef) / (10 + rng() * 8)));
+    for (let i = 1; i < parts; i++) master.push([a + (next - a) * (i + (rng() - 0.5) * 0.6) / parts, cleftMax * (0.55 + rng() * 0.5)]);
+  }
+  const masters = master.length;
+  for (let k = 0; k < plan.length; k++) {
+    const { t, soft: isSoft, layer, proud, batter, bev, stagger, show } = plan[k];
     let bs = 0, bn = 0;
-    for (let j = 0; j < rays; j += 4) { const r = edge(j, (y0 + y1) * 0.5); if (Number.isFinite(r)) { bs += r; bn++; } }
-    const proud = isSoft ? 0.06 + rng() * 0.1 : 0.4 + rng() * 0.5;
-    const batter = (0.06 + rng() * 0.12) * t;
-    const bev = isSoft ? Math.min(0.15, t * 0.3) : Math.min(0.5, t * 0.22);
-    const stagger = rng();
-    if (!bn) { y0 = y1; continue; }
+    for (let j = 0; j < rays; j += 4) {
+      const r = edge(j, (boundaryAt(k, rayAngle(j)) + boundaryAt(k + 1, rayAngle(j))) * 0.5);
+      if (Number.isFinite(r)) { bs += r; bn++; }
+    }
+    if (!bn) continue;
     const rMean = Math.max(2, bs / bn);
+    // the clefts this bed's foot runs into: the bed stops at their lips
+    const recess = recessAt((j) => boundaryAt(k, rayAngle(j)) + t * 0.3, rMean);
     for (let m = 0; m < masters; m++) {
       const [aStart, wStart] = master[m], [aNext, wNext] = master[(m + 1) % masters];
       const spanStart = aStart + wStart * 0.5 / rMean;
@@ -951,41 +1045,50 @@ export function buildBedrock(
         // every block weathered back its own way, and set a little high or low on its bed (the beds are not courses)
         const p = proud * (0.6 + rng() * 0.8), lift = isSoft ? 0 : (rng() - 0.5) * 0.16;
         const n = Math.max(2, Math.ceil(((t1b - t0) * rMean) / segLen));
-        // the profile at each sample, or null where the bed is not cut (gentle, unreachable or climbable ground)
+        // the profile at each sample, or null where the bed is not cut (gentle, unreachable, climbable or cleft ground)
         const rows: Array<number[] | null> = [];
         for (let i = 0; i <= n; i++) {
           const th = t0 + (t1b - t0) * (i / n);
-          const dy = dipAt(th) + lift, b0 = y0 + dy, b1 = y1 + dy;
-          const r0 = edgeAt(th, b0), r1 = edgeAt(th, b1);
-          if (!Number.isFinite(r0) || !Number.isFinite(r1) || r0 < 1.5 || r0 - r1 > BEDROCK_BENCH || b0 < climbAt(th) + BEDROCK_CLEAR) { rows.push(null); continue; }
+          const [j0, j1, f] = rayAt(th);
+          const shown = exposure(k, th) - show;
+          if (recess[j0] + (recess[j1] - recess[j0]) * f > CLEFT_M || shown < 0) { rows.push(null); continue; }
           const c = Math.cos(th), sn = Math.sin(th);
-          const wob = noise.noise(th * rMean * 0.35 + bed * 3.1, b0 * 0.21) * 0.5 + 0.5;
-          const pp = p * (0.8 + 0.4 * wob);
-          const bulge = noise.noise(th * rMean * 0.9 - bed * 1.7, b0 * 0.4 + 5) * 0.14 * t;
+          let b0 = boundaryAt(k, th) + lift, b1 = boundaryAt(k + 1, th) + lift;
+          let r0 = edgeAt(th, b0), r1 = edgeAt(th, b1);
+          if (bedWob && Number.isFinite(r0) && Number.isFinite(r1)) {
+            // the terrain's bedY read where each boundary meets the ground, once refined
+            b0 = level[k] + bedWob(spec.x + c * r0, spec.z + sn * r0) + lift; r0 = edgeAt(th, b0);
+            b1 = level[k + 1] + bedWob(spec.x + c * r1, spec.z + sn * r1) + lift; r1 = edgeAt(th, b1);
+          }
+          const tt = b1 - b0;
+          if (!Number.isFinite(r0) || !Number.isFinite(r1) || r0 < 1.5 || r0 - r1 > BEDROCK_BENCH || tt < 0.15 || b0 < climbAt(th) + BEDROCK_CLEAR) { rows.push(null); continue; }
+          const wob = noise.noise(th * rMean * 0.35 + k * 3.1, b0 * 0.21) * 0.5 + 0.5;
+          // (a ledge thins back into the wall toward the ends of its stretch)
+          const pp = p * (0.8 + 0.4 * wob) * (0.3 + 0.7 * Math.min(1, shown / 0.22));
+          const bulge = noise.noise(th * rMean * 0.9 - k * 1.7, b0 * 0.4 + 5) * 0.14 * tt;
           const row: number[] = [];
-          for (const [r, y] of bedProfile(r0, r1, b0, b1, t, pp, bulge, batter, bev)) row.push(spec.x + c * r, y, spec.z + sn * r);
+          for (const [r, y] of bedProfile(r0, r1, b0, b1, tt, pp, bulge, batter, bev)) row.push(spec.x + c * r, y, spec.z + sn * r);
           rows.push(row);
         }
         pushBedBlocks(rows, layer, pieces);
       }
     }
-    bedTops.push(y1);
-    y0 = y1;
   }
   // the crown: the bare rock of the summit, one sheet laid over the cap above the last bed (its rim tucked into that
   // bed's bench), a little proud of the ground and swelling where the weather has left it
   // (it starts from the highest bed whose top rings most of the hill: a lobe's last beds run only along its saddle)
-  let capY = NaN;
-  for (let b = bedTops.length - 1; b >= 0 && Number.isNaN(capY); b--) {
+  let capK = -1;
+  for (let k = plan.length; k >= 1 && capK < 0; k--) {
     let ring = 0;
-    for (let j = 0; j < rays; j++) if (Number.isFinite(edge(j, bedTops[b] + dipAt((j / rays) * Math.PI * 2)))) ring++;
-    if (ring >= rays * 0.6) capY = bedTops[b];
+    for (let j = 0; j < rays; j++) if (Number.isFinite(edge(j, boundaryAt(k, rayAngle(j))))) ring++;
+    if (ring >= rays * 0.6) capK = k;
   }
+  const capY = capK >= 0 ? level[capK] : NaN;
   if ((spec.crown ?? true) && Number.isFinite(capY)) {
     const rings = mobile ? 4 : 6;
     const rim = new Float32Array(rays);
     let ok = 0;
-    for (let j = 0; j < rays; j++) { const r = edge(j, capY + dipAt((j / rays) * Math.PI * 2)); rim[j] = Number.isFinite(r) ? Math.max(0, r - 0.4) : NaN; if (Number.isFinite(r)) ok++; }
+    for (let j = 0; j < rays; j++) { const r = edge(j, boundaryAt(capK, rayAngle(j))); rim[j] = Number.isFinite(r) ? Math.max(0, r - 0.4) : NaN; if (Number.isFinite(r)) ok++; }
     if (ok >= rays * 0.5) {
       // a ray with no rim (it runs on over a saddle) takes the nearest rims either side, so the sheet stays whole
       const known = Float32Array.from(rim);
@@ -999,19 +1102,22 @@ export function buildBedrock(
       const positions: number[] = [], index: number[] = [];
       const peakY = groundAt(summitX, summitZ);
       positions.push(summitX, peakY + 0.45, summitZ);
+      // (the sheet takes a bearing every 3 m or so of its rim, not every ray: the crown is smooth)
+      const spokes = Math.min(rays, mobile ? 36 : 56);
       for (let k = 1; k <= rings; k++) {
-        for (let j = 0; j < rays; j++) {
-          const a = (j / rays) * Math.PI * 2, f = k / rings, r = rim[j] * f;
-          // the rays start at the authored centre; the sheet's rings start at the summit and reach each ray's rim
-          const x = summitX + (spec.x + Math.cos(a) * rim[j] - summitX) * f, z = summitZ + (spec.z + Math.sin(a) * rim[j] - summitZ) * f;
+        for (let j = 0; j < spokes; j++) {
+          const a = (j / spokes) * Math.PI * 2, f = k / rings;
+          const [j0, j1, w] = rayAt(a), rimA = rim[j0] + (rim[j1] - rim[j0]) * w;
+          // the rays start at the authored centre; the sheet's rings start at the summit and reach each bearing's rim
+          const x = summitX + (spec.x + Math.cos(a) * rimA - summitX) * f, z = summitZ + (spec.z + Math.sin(a) * rimA - summitZ) * f;
           const swell = (noise.noise(x * 0.11 + 7.3, z * 0.11 - 2.9) * 0.5 + 0.5) * 0.5 * (1 - f * f);
-          positions.push(x, groundAt(x, z) + 0.3 + swell - (k === rings ? 0.25 : 0) + r * 0, z);
+          positions.push(x, groundAt(x, z) + 0.3 + swell - (k === rings ? 0.25 : 0), z);
         }
       }
-      const at = (k: number, j: number) => (k === 0 ? 0 : 1 + (k - 1) * rays + (j % rays));
-      for (let j = 0; j < rays; j++) index.push(at(0, 0), at(1, j + 1), at(1, j));
+      const at = (k: number, j: number) => (k === 0 ? 0 : 1 + (k - 1) * spokes + (j % spokes));
+      for (let j = 0; j < spokes; j++) index.push(at(0, 0), at(1, j + 1), at(1, j));
       for (let k = 1; k < rings; k++) {
-        for (let j = 0; j < rays; j++) index.push(at(k, j), at(k, j + 1), at(k + 1, j + 1), at(k, j), at(k + 1, j + 1), at(k + 1, j));
+        for (let j = 0; j < spokes; j++) index.push(at(k, j), at(k, j + 1), at(k + 1, j + 1), at(k, j), at(k + 1, j + 1), at(k + 1, j));
       }
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -1021,6 +1127,19 @@ export function buildBedrock(
   }
   const count = pieces.length;
   const geometry = count ? finish(pieces, spec.geology, spec.tone, ground, noise, spec.x * 0.017 - spec.z * 0.011) : null;
+  const formation = strata?.formation;
+  if (geometry && bedWob && formation) {
+    // the map's two formations, as the terrain draws them on its rock: the paler below the boundary, the redder above,
+    // the step one bed thick (smoothstep ±1.2 m in the beds' own height)
+    const pos = geometry.attributes.position, col = geometry.attributes.color;
+    const [lr, lg, lb] = formation.lower, [ur, ug, ub] = formation.upper;
+    for (let v = 0; v < pos.count; v++) {
+      const x = pos.getX(v), z = pos.getZ(v);
+      const t = Math.min(1, Math.max(0, (pos.getY(v) - bedWob(x, z) - formation.boundaryAt(x, z) + 1.2) / 2.4));
+      const u = t * t * (3 - 2 * t);
+      col.setXYZ(v, col.getX(v) * (lr + (ur - lr) * u), col.getY(v) * (lg + (ug - lg) * u), col.getZ(v) * (lb + (ub - lb) * u));
+    }
+  }
   return { geometry, masses: [], pieces: count, triangles: geometry ? geometry.attributes.position.count / 3 : 0 };
 }
 

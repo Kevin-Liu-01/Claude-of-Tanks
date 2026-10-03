@@ -27,11 +27,14 @@ import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildBedrock, buildRockFormation, type RockFormationSpec } from './sceneryRocks.ts';
 import { buildConductor, buildPylon, SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
-import { buildFieldWorks, type FieldWorksReceipt } from './fieldWorks.ts';
+import { buildFieldWorks, type FieldWorksKeepOut, type FieldWorksReceipt, type FieldWorksRect } from './fieldWorks.ts';
+import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
+import { ASSAULT_TRENCH, planAssaultTrenchLines } from '../sim/assaultLines.ts';
+import { createMatchPlacement, matchPlacementAnchors, type MatchPlacement, type PlacementTerrain } from '../sim/matchPlacement.ts';
 import {
   FIELD_FORMS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, rockReach, type GroundCoverHole, type SceneryConfig,
 } from './sceneryPlan.ts';
-import { cloneCollisionRecord, setCircleShape, setConvexShape, type CollisionRecord } from './collision.ts';
+import { cloneCollisionRecord, createObstacleGrid, setCircleShape, setConvexShape, type CollisionRecord } from './collision.ts';
 
 type Rng = () => number;
 
@@ -55,7 +58,18 @@ interface SceneryHeightField {
   _villageMask?(x: number, z: number): number;
   /** The ground lane's land use (landUse.ts landUseAt through terrain.ts), when the world has one. */
   _landUseAt?(x: number, z: number, out: { active: number; edgeM: number; boundary: number; track: number; hedge: number }): { active: number; edgeM: number; boundary: number; track: number; hedge: number };
+  /** The bridge decks (terrain.ts BridgeDeckPlane) and the field trenches the terrain carved. */
+  bridgeDecks?: ReadonlyArray<{ x: number; z: number; ux: number; uz: number; halfLength: number; halfWidth: number; approachM: number }>;
+  fieldTrenchLines?: {
+    lines: ReadonlyArray<{ x: number; z: number; lx: number; lz: number; halfLengthM: number }>;
+    profile?: { floorHalfWidthM: number; wallRunM: number; endRampM: number };
+  } | null;
+  /** The assault world's sector trenches (their lines are the sectors' own) and its communication trench. */
+  assaultTrenchLines?: { connector: { x0: number; z0: number; x1: number; z1: number } | null } | null;
 }
+
+/** How far a yard's dressing reaches outside its structure's envelope (m; yardDressing.ts). */
+const YARD_REACH_M = 7.6;
 
 interface SceneryBuildContext {
   mapId: string;
@@ -75,6 +89,9 @@ interface SceneryBuildContext {
   addDestructible(kind: string, x: number, y: number, z: number, yaw: number, scale: number): unknown;
   seed: number;
   mobile: boolean;
+  /** The map's aprons (terrain hardstands: yards, squares, vehicle parks, runways) and the yard structures' envelopes. */
+  hardstands?: ReadonlyArray<{ x: number; z: number; width: number; length: number; yawDeg?: number }>;
+  yards?: ReadonlyArray<{ x: number; z: number; w: number; d: number }>;
 }
 
 interface SceneryFeatureReceipt {
@@ -108,10 +125,12 @@ interface SceneryReceipt {
 interface SceneryBuild {
   /** One geometry per rock formation (the props owner merges them into one mesh on the rock material). */
   rockPieces: THREE.BufferGeometry[];
-  /** The field boundaries' walls and banks: one welded geometry on the rock material, decor that casts no shadow. */
-  fieldWorks: THREE.BufferGeometry | null;
   receipt: SceneryReceipt;
 }
+
+/** What the field works read: the map's block, its ground, its pads, its final solids, its aprons and yards. */
+type FieldWorksBuildContext = Pick<SceneryBuildContext,
+  'mapId' | 'scenery' | 'heightField' | 'spawns' | 'obstacles' | 'trees' | 'seed' | 'mobile' | 'hardstands' | 'yards'>;
 
 type SceneryBuildSlice = { fine: true; progress: false; stage: string };
 
@@ -160,12 +179,89 @@ function staticMass(points: number[], y0: number, y1: number): CollisionRecord {
   return setConvexShape({ min: [x0, y0, z0], max: [x1, y1, z1] } as CollisionRecord, points);
 }
 
+/** The modes whose objective discs the match placement searches for, and how it reads each one's discs. */
+const PLACED_DISCS: ReadonlyArray<readonly [string, (placement: MatchPlacement) => Array<[number, number, number]>]> = [
+  ['zone_control', (p) => p.zones.map((zone) => [zone.x, zone.z, 30])],
+  ['capture_the_flag', (p) => [[p.centers.alpha.x, p.centers.alpha.z, 12], [p.centers.bravo.x, p.centers.bravo.z, 12]]],
+  ['turbo_ball', (p) => [[p.centers.alpha.x, p.centers.alpha.z, 18], [p.centers.bravo.x, p.centers.bravo.z, 18], [p.middle.x, p.middle.z, 12]]],
+  ['ac130', (p) => [[p.middle.x, p.middle.z, 30]]],
+];
+
+/**
+ * The layout footprints the field works keep off (the maps lane's clearances, 2026-10-03): every mode's objective
+ * discs where the match placement seats them on this world — the zone-control discs (30 m), the flag bases (12 m), the
+ * turbo-ball goals (18 m) and kickoff (12 m), the gunship's extraction (30 m); the search moves a goal or the extraction
+ * off rough ground, so the placement itself runs here, on this world's ground and final solids, as the battle's does —
+ * with their authored targets beside them, the Frontline Assault sectors (30 m) and their trenches (the assault
+ * world's communication trench too), the field trenches the terrain carved, the bridge decks with their approaches,
+ * the aprons and the yards, each with a 3 m margin (the spawn pads and the roads keep their own gates in
+ * fieldWorks.ts). A generator: one slice per mode's placement.
+ */
+function* fieldWorksKeepOut(ctx: FieldWorksBuildContext): Generator<SceneryBuildSlice, FieldWorksKeepOut, void> {
+  const discs: Array<[number, number, number]> = [];
+  const rects: FieldWorksRect[] = [];
+  const M = 3;
+  const [player, ...enemies] = ctx.spawns;
+  if (player) {
+    const anchors = matchPlacementAnchors({ player, enemies });
+    const obstacles = [...ctx.obstacles, ...(ctx.trees ?? [])];
+    const world = { mapId: ctx.mapId, anchors, obstacles, queryObstacles: createObstacleGrid(obstacles),
+      heightField: ctx.heightField as unknown as PlacementTerrain };
+    for (const [mode, read] of PLACED_DISCS) {
+      try {
+        for (const [x, z, r] of read(createMatchPlacement({ ...world, mode }))) discs.push([x, z, r + M]);
+      } catch {
+        // no safe placement for the mode on this world (the battle cannot start it either): its targets below stand
+      }
+      yield { fine: true, progress: false, stage: 'field-works' };
+    }
+    const { alpha, bravo } = anchors;
+    const mx = (alpha.x + bravo.x) * 0.5, mz = (alpha.z + bravo.z) * 0.5;
+    const al = Math.hypot(bravo.x - alpha.x, bravo.z - alpha.z) || 1;
+    const ux = (bravo.x - alpha.x) / al, uz = (bravo.z - alpha.z) / al;
+    const layout = MATCH_OBJECTIVE_LAYOUTS[ctx.mapId];
+    for (const zone of layout?.zones ?? [-105, 0, 105].map((o) => ({ x: mx + uz * o, z: mz - ux * o }))) discs.push([zone.x, zone.z, 30 + M]);
+    const kickoff = layout?.kickoff ?? { x: mx, z: mz };
+    discs.push([kickoff.x, kickoff.z, 12 + M], [mx, mz, 30 + M], [alpha.x, alpha.z, 18 + M], [bravo.x, bravo.z, 18 + M]);
+    for (const line of planAssaultTrenchLines(alpha, bravo).lines) {
+      discs.push([line.x, line.z, 30 + M]);
+      rects.push({ x: line.x, z: line.z, ux: line.lx, uz: line.lz, halfAlong: line.halfLengthM + ASSAULT_TRENCH.endRampM + M,
+        halfAcross: ASSAULT_TRENCH.floorHalfWidthM + ASSAULT_TRENCH.wallRunM + M });
+    }
+  }
+  // the assault world's communication trench along the axis
+  const connector = ctx.heightField.assaultTrenchLines?.connector;
+  if (connector) {
+    const cl = Math.hypot(connector.x1 - connector.x0, connector.z1 - connector.z0) || 1;
+    rects.push({ x: (connector.x0 + connector.x1) * 0.5, z: (connector.z0 + connector.z1) * 0.5,
+      ux: (connector.x1 - connector.x0) / cl, uz: (connector.z1 - connector.z0) / cl,
+      halfAlong: cl * 0.5 + M, halfAcross: ASSAULT_TRENCH.connectorHalfWidthM + ASSAULT_TRENCH.connectorWallRunM + M });
+  }
+  const field = ctx.heightField.fieldTrenchLines;
+  for (const line of field?.lines ?? []) {
+    const profile = field?.profile ?? ASSAULT_TRENCH;
+    rects.push({ x: line.x, z: line.z, ux: line.lx, uz: line.lz, halfAlong: line.halfLengthM + profile.endRampM + M,
+      halfAcross: profile.floorHalfWidthM + profile.wallRunM + M });
+  }
+  for (const deck of ctx.heightField.bridgeDecks ?? []) {
+    rects.push({ x: deck.x, z: deck.z, ux: deck.ux, uz: deck.uz, halfAlong: deck.halfLength + deck.approachM + M, halfAcross: deck.halfWidth + M });
+  }
+  for (const strip of ctx.hardstands ?? []) {
+    const a = THREE.MathUtils.degToRad(strip.yawDeg ?? 0);
+    rects.push({ x: strip.x, z: strip.z, ux: Math.sin(a), uz: Math.cos(a), halfAlong: strip.length * 0.5 + M, halfAcross: strip.width * 0.5 + M });
+  }
+  // a yard's dressing reaches 7.6 m outside its structure's envelope (yardDressing.ts: a piece's centre 0.6 + r + 2 m
+  // out, its radius r at most 2.5 m)
+  for (const yard of ctx.yards ?? []) discs.push([yard.x, yard.z, Math.hypot(yard.w, yard.d) * 0.5 + YARD_REACH_M + M]);
+  return { discs, rects };
+}
+
 /** Build the map's scenery. A generator: one slice per feature, so a loading frame never carries more than one. */
 export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuildSlice, SceneryBuild, void> {
   const receipt: SceneryReceipt = { features: [], groundCoverHoles: [], placed: 0, skipped: 0, rockTriangles: 0, bakedTriangles: 0, colliders: 0 };
   const rockPieces: THREE.BufferGeometry[] = [];
   const scenery = ctx.scenery;
-  if (!scenery) return { rockPieces, fieldWorks: null, receipt };
+  if (!scenery) return { rockPieces, receipt };
   const noise = new SimplexNoise({ random: mulberry32(ctx.seed + 9299) });
   const ground = ctx.heightField;
   const skip = (feature: SceneryFeatureReceipt, reason: string) => {
@@ -363,17 +459,25 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
     yield { fine: true, progress: false, stage: 'scenery' };
   }
 
-  // ---- the field boundaries' works: walls and banks on the land use's own lines (decor, no collision)
-  let fieldWorks: THREE.BufferGeometry | null = null;
-  const works = scenery.fieldWorks;
-  if (works && (works.walls || works.banks)) {
-    // (the hard solids already placed: buildings, walls, the rock masses above; not the trees, not the crushable clutter)
-    const solids = ctx.obstacles.filter((ob) => ob.treeIdx == null && !ob.crushable && !SOFT_KINDS.has(ob.kind ?? ''));
-    const built = yield* buildFieldWorks(ground, noise, {
-      walls: !!works.walls, banks: !!works.banks, spawns: ctx.spawns, solids, mobile: ctx.mobile, wallTone: works.wallTone, bankTone: works.bankTone,
-    });
-    fieldWorks = built.geometry;
-    receipt.fieldWorks = built.receipt;
-  }
-  return { rockPieces, fieldWorks, receipt };
+  return { rockPieces, receipt };
+}
+
+/**
+ * The field boundaries' works: walls and banks on the land use's own lines (decor, no collision; fieldWorks.ts). The
+ * props owner runs this once every solid is final (after its pools' refit), so the keep-out's match placement reads the
+ * same solids the battle's does. Null when the map asks for none or the world has no land use.
+ */
+export function* composeFieldWorks(
+  ctx: FieldWorksBuildContext,
+): Generator<SceneryBuildSlice, { geometry: THREE.BufferGeometry | null; receipt: FieldWorksReceipt | null }, void> {
+  const works = ctx.scenery?.fieldWorks;
+  if (!works || (!works.walls && !works.banks) || !ctx.heightField._landUseAt) return { geometry: null, receipt: null };
+  // (the hard solids: buildings, walls, the rock masses; not the trees, not the crushable clutter)
+  const solids = ctx.obstacles.filter((ob) => ob.treeIdx == null && !ob.crushable && !SOFT_KINDS.has(ob.kind ?? ''));
+  const keepOut = yield* fieldWorksKeepOut(ctx);
+  const noise = new SimplexNoise({ random: mulberry32(ctx.seed + 9299) });
+  return yield* buildFieldWorks(ctx.heightField, noise, {
+    walls: !!works.walls, banks: !!works.banks, spawns: ctx.spawns, solids, keepOut, mobile: ctx.mobile,
+    wallTone: works.wallTone, bankTone: works.bankTone,
+  });
 }

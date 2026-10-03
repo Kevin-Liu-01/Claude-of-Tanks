@@ -158,7 +158,10 @@ export default {
   scenery: {
     // the karst's small fields are walled in dry stone: the ground lane's land use draws their footing (landUse.ts, boundary
     // 3) and the walls stand on the same lines (fieldWorks.ts; decor, no collision)
-    fieldWorks: { walls: true },
+    fieldWorks: { walls: true, wallTone: [0.11, 0.07, 0.6] },
+    // the masonry is the same pale limestone as the outcrops (the maps lane's boulders, lightness 0.52-0.73): the stone
+    // print (mean sRGB lightness 0.36) lifted to lightness 0.6 at the limestone's hue
+    masonryTint: [2.74, 3.01, 3.2],
     rocks: [
       { form: 'pavement', geology: 'limestone', x: -350, z: -262, radius: 15, height: 1.6, yawDeg: 30, name: 'the south karst pavement' },
       { form: 'pavement', geology: 'limestone', x: -350, z: 282, radius: 15, height: 1.6, yawDeg: -30, name: 'the north karst pavement' },

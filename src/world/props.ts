@@ -46,8 +46,9 @@ import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNe
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import { applyRockShaderHook, fractureRockGeometry, makeRockDetail, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
-import { composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
+import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import type { SceneryMapConfig } from './sceneryPlan.ts';
+type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
@@ -3072,6 +3073,10 @@ ${snowCap ? `
     plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
     glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
   };
+  // the scenery lane (2026-10-03): a map whose masonry is its own rock tints the stone print (Saltwind: the karst
+  // limestone of its outcrops, for its dry-stone walls, their posts and its stone-built houses alike)
+  const masonryTint = (cfg as SceneryMapConfig | null)?.scenery?.masonryTint;
+  if (masonryTint) mats.stone.color.setRGB(masonryTint[0], masonryTint[1], masonryTint[2]);
   group.userData.steelAtlas = steelAtlas;
   /** A steel part on a map the plan-time predicate did not foresee: paint the atlas now, in one slice, and say so. */
   function ensureSteelAtlas(reason: string): void {
@@ -7120,15 +7125,6 @@ ${snowCap ? `
       mesh.matrixAutoUpdate = false;
       group.add(mesh);
     }
-    if (built.fieldWorks) {
-      // the field boundaries' walls and banks: low and long, grounded by their own shading and dark foot (no shadow)
-      const works = new THREE.Mesh(built.fieldWorks, mats.rock);
-      works.name = 'props-field-works';
-      works.castShadow = false;
-      works.receiveShadow = true;
-      works.matrixAutoUpdate = false;
-      group.add(works);
-    }
     group.userData.scenery = built.receipt;
   }
   yield* placeScenery();
@@ -7349,6 +7345,32 @@ ${snowCap ? `
     }
   }
   yield* finalizeDestructiblePools();
+
+  // the scenery lane (2026-10-03): the field boundaries' walls and banks (world/scenery.ts composeFieldWorks), once
+  // every solid is final — the pools' refit above reshapes the buildings' records, and the works keep off the objective
+  // discs where the match placement seats them on these very solids — and off the aprons and the yards (the yard
+  // structures, as placeYardDressing reads them). Low and long, grounded by their own shading and dark foot (no shadow).
+  function* placeFieldBoundaryWorks(): Generator<PropsBuildSlice, void, void> {
+    const scenery = (cfg as (PropsMapConfig & SceneryMapConfig) | null)?.scenery;
+    if (!scenery?.fieldWorks) return;
+    const yardKinds = new Set(yardStructureKinds());
+    const built = yield* composeFieldWorks({
+      mapId, scenery, heightField, spawns: [L.spawns.player, ...L.spawns.enemies], obstacles, trees: sceneryTrees,
+      seed, mobile: mobileProps,
+      hardstands: (cfg as { terrain?: { hardstands?: SceneryHardstand[] } } | null)?.terrain?.hardstands ?? [],
+      yards: buildingFeatures.filter((b) => b.kind && yardKinds.has(b.kind)).map((b) => ({ x: b.x, z: b.z, w: b.w, d: b.d })),
+    });
+    const receipt = group.userData.scenery as { fieldWorks?: unknown } | undefined;
+    if (receipt && built.receipt) receipt.fieldWorks = built.receipt;
+    if (!built.geometry) return;
+    const works = new THREE.Mesh(built.geometry, mats.rock);
+    works.name = 'props-field-works';
+    works.castShadow = false;
+    works.receiveShadow = true;
+    works.matrixAutoUpdate = false;
+    group.add(works);
+  }
+  yield* placeFieldBoundaryWorks();
   // Construction-only spans are now sealed into matrices/support/colliders;
   // runtime destruction closures must not retain the placement graph.
   wallSpans.clear();

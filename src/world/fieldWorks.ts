@@ -3,8 +3,10 @@
 // 3 wall, edgeM the distance to the field's edge). The karst's dry stone walls stand on the grid's wall boundaries and
 // a bocage's hedge lines get their earth banks, on the same layout the terrain draws (the boundary band, the same field
 // gate: off the villages, the roads, the water and the slopes), so a wall stands exactly where the ground shows its
-// footing. They are decor: a low rubble wall or a bank is crossed, not cover — no collision; one welded mesh on the
-// props rock material, casting no shadow (their own shading and a darkened foot ground them).
+// footing. They are decor: a low rubble wall or a bank is crossed, not cover — no collision (should they ever matter in
+// play they become crushable like the fences, never blocking), no taller than a metre, kept off the roads, the bridges
+// and their approaches, the aprons and yards, every mode's objective discs and the spawn pads (the maps lane owns the
+// layouts these keep clear); one welded mesh on the props rock material, casting no shadow.
 //
 // The land use reaches the props through the height field's hook (`_landUseAt`, terrain.ts), so this module imports
 // nothing of it; a map without a field system, or a world built without the hook, builds nothing.
@@ -29,12 +31,26 @@ interface FieldWorksGround {
 /** A placed solid's footprint (props obstacles): the works keep off it. */
 interface FieldWorksSolid { min: ArrayLike<number>; max: ArrayLike<number> }
 
+/** An oriented rectangle the works keep off: its centre, its unit axis along, its half extents along and across. */
+export interface FieldWorksRect { x: number; z: number; ux: number; uz: number; halfAlong: number; halfAcross: number }
+
+/** The layout's footprints the works keep off (scenery.ts builds them): discs [x, z, r] and oriented rectangles. */
+export interface FieldWorksKeepOut {
+  discs: ReadonlyArray<readonly [number, number, number]>;
+  rects: readonly FieldWorksRect[];
+}
+
+/** The tallest a field wall or a bank stands above its own ground (m): a low wall, never the cover the game gives. */
+const FIELD_WORKS_MAX_M = 1.0;
+
 interface FieldWorksOptions {
   walls: boolean;
   banks: boolean;
   spawns: ReadonlyArray<{ x: number; z: number }>;
   /** The hard solids already placed (buildings, walls, rock masses): a wall or a bank never runs through one. */
   solids?: readonly FieldWorksSolid[];
+  /** The layout's aprons, yards, bridges, trenches and objective discs. */
+  keepOut?: FieldWorksKeepOut;
   mobile: boolean;
   /** sRGB HSL base tones of the wall stone and the bank's earth. */
   wallTone?: readonly [number, number, number];
@@ -54,7 +70,12 @@ export interface FieldWorksReceipt {
 type FieldWorksSlice = { fine: true; progress: false; stage: string };
 
 const SQUARE = 466;
+/** The spawn pads' flat (terrain.ts levels a pad out to 22 m) and a berth. */
 const SPAWN_CLEAR = 24;
+/** The road's painted core at its widest (terrain.ts: a 3.85 m half width and its edge noise): a work's toe stays out. */
+const FIELD_WORKS_ROAD_CORE_M = 5.7;
+/** A work's half width at its toe (the swept section's base, with its lump), wall and bank. */
+const TOE_M = [0.52, 1.36] as const;
 
 function smooth(a: number, b: number, x: number): number { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
 
@@ -109,6 +130,39 @@ export function* buildFieldWorks(
     }
     return false;
   };
+  // the layout's keep-out footprints on the same 8 m grid (by their bounds)
+  const keepGrid = new Map<number, number[]>();
+  const discs = options.keepOut?.discs ?? [], rects = options.keepOut?.rects ?? [];
+  const indexBounds = (k: number, x0: number, z0: number, x1: number, z1: number) => {
+    for (let cx = Math.floor(x0 / SOLID_CELL); cx <= Math.floor(x1 / SOLID_CELL); cx++) {
+      for (let cz = Math.floor(z0 / SOLID_CELL); cz <= Math.floor(z1 / SOLID_CELL); cz++) {
+        const list = keepGrid.get(solidKey(cx, cz)); if (list) list.push(k); else keepGrid.set(solidKey(cx, cz), [k]);
+      }
+    }
+  };
+  const PAD_MAX = 2;
+  discs.forEach(([x, z, r], k) => indexBounds(k, x - r - PAD_MAX, z - r - PAD_MAX, x + r + PAD_MAX, z + r + PAD_MAX));
+  rects.forEach((rect, k) => {
+    const ex = Math.abs(rect.ux) * rect.halfAlong + Math.abs(rect.uz) * rect.halfAcross + PAD_MAX;
+    const ez = Math.abs(rect.uz) * rect.halfAlong + Math.abs(rect.ux) * rect.halfAcross + PAD_MAX;
+    indexBounds(discs.length + k, rect.x - ex, rect.z - ez, rect.x + ex, rect.z + ez);
+  });
+  /** Inside a keep-out footprint grown by `pad` (the work's half width and a margin). */
+  const inKeepOut = (x: number, z: number, pad: number): boolean => {
+    const list = keepGrid.get(solidKey(Math.floor(x / SOLID_CELL), Math.floor(z / SOLID_CELL)));
+    if (!list) return false;
+    for (const k of list) {
+      if (k < discs.length) {
+        const [dx, dz, r] = discs[k];
+        if (Math.hypot(x - dx, z - dz) < r + pad) return true;
+        continue;
+      }
+      const rect = rects[k - discs.length];
+      const ox = x - rect.x, oz = z - rect.z;
+      if (Math.abs(ox * rect.ux + oz * rect.uz) < rect.halfAlong + pad && Math.abs(-ox * rect.uz + oz * rect.ux) < rect.halfAcross + pad) return true;
+    }
+    return false;
+  };
   const step = options.mobile ? 2 : 1.5;
   // the feet on a 2 m hash: one foot a metre or so along a line
   const cell = 2, hash = new Map<number, number[]>();
@@ -148,7 +202,8 @@ export function* buildFieldWorks(
       const ux = gx / gl, uz = gz / gl;
       const fx = px - ux * e0, fz = pz - uz * e0;
       if (near(fx, fz, 0.9)) continue;
-      if (!fieldGate(fx, fz) || inSolid(fx, fz, wall ? 0.7 : 1.5)) continue;
+      if (!fieldGate(fx, fz) || inSolid(fx, fz, wall ? 0.7 : 1.5) || inKeepOut(fx, fz, wall ? 1.0 : 1.8)) continue;
+      if (ground._roadDist(fx, fz) < FIELD_WORKS_ROAD_CORE_M + TOE_M[wall ? 0 : 1]) continue;
       if (options.spawns.some((p) => Math.hypot(p.x - fx, p.z - fz) < SPAWN_CLEAR)) continue;
       const list = hash.get(key(fx, fz));
       if (list) list.push(fx, fz); else hash.set(key(fx, fz), [fx, fz]);
@@ -186,7 +241,9 @@ export function* buildFieldWorks(
   const links = (i: number, j: number) => {
     if (j < 0 || (fwd[j] !== i && back[j] !== i)) return false;
     const mx = (feet[i * 5] + feet[j * 5]) * 0.5, mz = (feet[i * 5 + 1] + feet[j * 5 + 1]) * 0.5;
-    return fieldGate(mx, mz) && !inSolid(mx, mz, feet[i * 5 + 4] === 0 ? 0.7 : 1.5);
+    const wallLink = feet[i * 5 + 4] === 0;
+    return fieldGate(mx, mz) && !inSolid(mx, mz, wallLink ? 0.7 : 1.5) && !inKeepOut(mx, mz, wallLink ? 1.0 : 1.8)
+      && ground._roadDist(mx, mz) >= FIELD_WORKS_ROAD_CORE_M + TOE_M[wallLink ? 0 : 1];
   };
   const edgeA = new Int32Array(count0).fill(-1), edgeB = new Int32Array(count0).fill(-1);
   for (let i = 0; i < count0; i++) {
@@ -251,14 +308,15 @@ export function* buildFieldWorks(
       const endTaper = Math.min(1, Math.min(c, len - 1 - c) / 1.5) * 0.35 + 0.65;
       // and stone by stone the crown is broken: a station's own jitter (a hash of its place, not of the walk's order)
       const hash = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453, jag = hash - Math.floor(hash);
-      const height = (wall ? 0.62 : 0.85) * (0.82 + 0.36 * (noise.noise(x * 0.11 + 5.1, z * 0.11 - 3.3) * 0.5 + 0.5)) * endTaper
+      const height = (wall ? 0.62 : 0.78) * (0.82 + 0.36 * (noise.noise(x * 0.11 + 5.1, z * 0.11 - 3.3) * 0.5 + 0.5)) * endTaper
         * (wall ? 0.88 + 0.24 * jag : 1);
       const row: number[] = [];
       for (const [a, b] of section) {
         const lump = b > 0.9 ? noise.noise(x * 2.1 + a * 3, z * 2.1) * (wall ? 0.09 : 0.06) : noise.noise(x * 1.7 + 9, z * 1.7 + a) * (wall ? 0.05 : 0.04);
         const px = x + ax * (a + (b > 0 && b < 0.9 ? lump : 0)), pz = z + az * (a + (b > 0 && b < 0.9 ? lump : 0));
         const g = heightAt(px, pz);
-        row.push(px, g + b * height + (b > 0.9 ? lump : 0), pz, g);
+        // the crown never stands above FIELD_WORKS_MAX_M over its own ground
+        row.push(px, g + Math.min(FIELD_WORKS_MAX_M, b * height + (b > 0.9 ? lump : 0)), pz, g);
       }
       rows.push(row);
     }

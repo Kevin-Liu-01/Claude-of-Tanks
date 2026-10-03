@@ -11,8 +11,11 @@
 //      off the hard solids, says why it refused, appends static masses, and draws only its own streams; the field
 //      boundaries' walls and banks stand on the land use's lines only;
 //   4. every map that authors scenery places all of it on its real ground (a headless props build), its standing
-//      masses reach the collision lists, and no tree stands inside one;
-//   5. props.ts and vegetation.ts carry the pass and the keep-out (source pins).
+//      masses reach the collision lists, and no tree stands inside one; on the maps with field works (Saltwind,
+//      Saltmere) no wall or bank stands inside an apron (the hardstands and runways, the yards' dressing), an
+//      objective disc (every mode's, as the match placement places them on this world, and the authored targets), a
+//      spawn pad, a road or a bridge with its approaches, and none stands taller than 1.05 m;
+//   5. props.ts and vegetation.ts carry the pass, the late field works, the masonry tint and the keep-out (source pins).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
@@ -195,21 +198,60 @@ for (const kind of Object.keys(STONE_LANDMARKS)) assert.ok(isStoneLandmark(kind)
   for (const name of ['position', 'normal', 'color', 'aRockGround', 'uv']) assert.ok(desk.geometry.attributes[name], `bedrock: carries ${name}`);
   const p = desk.geometry.attributes.position.array, n = desk.geometry.attributes.normal.array;
   assert.ok(p.every(Number.isFinite) && n.every(Number.isFinite), 'bedrock: finite');
-  let lowest = Infinity, outward = 0, faces = 0;
+  let lowest = Infinity, outward = 0, inward = 0;
   for (let i = 0; i < p.length; i += 3) {
     lowest = Math.min(lowest, p[i + 1]);
     const r = Math.hypot(p[i], p[i + 2]);
-    // the beds' faces (steep normals) point out of the hill
-    if (r > 4 && Math.abs(n[i + 1]) < 0.5) { outward += (n[i] * p[i] + n[i + 2] * p[i + 2]) / r; faces++; }
+    // the beds' faces (steep normals) point out of the hill, none into it (a block's ends face along its run)
+    if (r > 4 && Math.abs(n[i + 1]) < 0.5) {
+      const d = (n[i] * p[i] + n[i + 2] * p[i + 2]) / r;
+      if (d > 0.5) outward++; else if (d < -0.5) inward++;
+    }
   }
   assert.ok(lowest > climbTop + 1.2, `bedrock starts above the highest climbable ground (${lowest.toFixed(2)} > ${climbTop.toFixed(2)})`);
-  assert.ok(faces > 100 && outward / faces > 0.5, `bedrock faces out of the hill (${(outward / faces).toFixed(2)})`);
+  assert.ok(outward > 300 && inward <= outward * 0.02, `bedrock faces out of the hill (${outward} out, ${inward} in)`);
   assert.ok(desk.triangles <= 14000, `bedrock: ${desk.triangles} triangles within 14000`);
   assert.ok(phone.triangles < desk.triangles, `bedrock: the phones draw fewer (${phone.triangles} < ${desk.triangles})`);
   // a plain shows none
   const flat = buildBedrock(spec, { getHeightAt: () => 3 }, noise, mulberry32(91));
   assert.equal(flat.geometry, null, 'a plain has no flank to show rock');
-  for (const b of [desk, again, phone]) b.geometry.dispose();
+  // on a world with the terrain's bed law (terrain.ts terrainBedWobbleAt) the beds lie on its bedY surfaces: level beds
+  // of the skin's own thicknesses, every bench top at its bed's level plus the wobble (a block set a little high or low,
+  // ±0.08 m), and lifted with the wobble
+  const benchTops = (wobble) => {
+    const b = buildBedrock({ ...spec, crown: false }, dome, noise, mulberry32(91), { strata: { wobbleAt: () => wobble } });
+    const bp = b.geometry.attributes.position.array, bn = b.geometry.attributes.normal.array, ys = [];
+    for (let i = 0; i < bp.length; i += 3) if (bn[i + 1] > 0.97 && Math.hypot(bp[i], bp[i + 2]) > 4) ys.push(bp[i + 1]);
+    ys.sort((x, y) => x - y);
+    const levels = [];
+    for (let i = 0, start = 0; i < ys.length; i++) {
+      if (i + 1 < ys.length && ys[i + 1] - ys[i] < 0.12) continue;
+      levels.push([ys[start], ys[i]]);
+      start = i + 1;
+    }
+    b.geometry.dispose();
+    return levels;
+  };
+  const still = benchTops(0), raised = benchTops(0.7);
+  assert.ok(still.length >= 4 && still.every(([lo, hi]) => hi - lo <= 0.2), `the beds lie level on the bed law (${still.length} bench levels, each within 0.2 m)`);
+  const near = (y, set) => set.some(([lo, hi]) => y >= lo - 0.03 && y <= hi + 0.03);
+  const followed = still.filter(([lo, hi]) => near((lo + hi) / 2 + 0.7, raised)).length;
+  assert.ok(followed >= still.length * 0.8, `the beds move with the terrain's bedY (${followed}/${still.length} levels 0.7 m higher)`);
+  // the map's two formations: the skin takes the terrain's multipliers below and above the boundary
+  const lower = [1.16, 1.144, 1.12], upper = [1.048, 0.958, 0.934];
+  const plain = buildBedrock(spec, dome, noise, mulberry32(91), { strata: { wobbleAt: () => 0.4 } });
+  const formed = buildBedrock(spec, dome, noise, mulberry32(91), { strata: { wobbleAt: () => 0.4, formation: { boundaryAt: () => 12, lower, upper } } });
+  const pc = plain.geometry.attributes.color.array, fc = formed.geometry.attributes.color.array, fp = formed.geometry.attributes.position.array;
+  let below = 0, above = 0;
+  for (let i = 0; i < fp.length; i += 3) {
+    const bedY = fp[i + 1] - 0.4;
+    const want = bedY < 12 - 1.2 ? lower : bedY > 12 + 1.2 ? upper : null;
+    if (!want || pc[i] < 0.01) continue;
+    for (let c = 0; c < 3; c++) assert.ok(Math.abs(fc[i + c] / pc[i + c] - want[c]) < 1e-3, `formation tint ${want === lower ? 'below' : 'above'} the boundary`);
+    if (want === lower) below++; else above++;
+  }
+  assert.ok(below > 100 && above > 100, `both formations show on the skin (${below} below, ${above} above)`);
+  for (const b of [desk, again, phone, plain, formed]) b.geometry.dispose();
 }
 
 // ---------------------------------------------------------------------------------------------- 3. the composer
@@ -374,10 +416,83 @@ function compose(scenery, solids = [], mobile = false) {
 
 const { installWorldBuildFixture } = await import('../../tools/headlessWorldCollision.mjs');
 installWorldBuildFixture();
-const [maps, terrain, vegetationModule, props, fleet, models] = await Promise.all([
+const [maps, terrain, vegetationModule, props, fleet, models, placementModule, layouts, assault, yards, collision] = await Promise.all([
   import('./maps/index.ts'), import('./terrain.ts'), import('./vegetation.ts'), import('./props.ts'),
-  import('../vehicles/fleetFactory.ts'), import('./propsModelStore.ts'),
+  import('../vehicles/fleetFactory.ts'), import('./propsModelStore.ts'), import('../sim/matchPlacement.ts'),
+  import('../sim/matchObjectiveLayouts.ts'), import('../sim/assaultLines.ts'), import('./yardDressing.ts'), import('./collision.ts'),
 ]);
+
+/**
+ * The field works' clearances on a built world (the maps lane's layouts): every footprint the works must keep off, from
+ * the sources the game reads — the terrain's hardstands (aprons and runways), the yard structures' dressing reach, the
+ * match placement's objective discs for every mode on this world (and the authored targets), the Frontline Assault
+ * sectors, the spawn pads' flats, the roads' painted core and the bridge decks with their approaches — and the
+ * largest height a work stands over its own ground.
+ */
+function fieldWorksClearances(mapId, config, heightField, dressing, flora, works) {
+  const spawns = heightField._layout.spawns;
+  const anchors = placementModule.matchPlacementAnchors(spawns);
+  const obstacles = [...dressing.obstacles, ...flora.treeObstacles];
+  const world = { mapId, heightField, obstacles, queryObstacles: collision.createObstacleGrid(obstacles), anchors };
+  const discs = []; // [x, z, r, what]
+  const disc = (p, r, what) => discs.push([p.x, p.z, r, what]);
+  for (const mode of ['zone_control', 'capture_the_flag', 'turbo_ball', 'ac130']) {
+    const placed = placementModule.createMatchPlacement({ ...world, mode });
+    if (mode === 'zone_control') placed.zones.forEach((zone, i) => disc(zone, 30, `zone ${i + 1}`));
+    if (mode === 'capture_the_flag') for (const team of ['alpha', 'bravo']) disc(placed.centers[team], 12, `${team} flag base`);
+    if (mode === 'turbo_ball') {
+      for (const team of ['alpha', 'bravo']) disc(placed.centers[team], 18, `${team} goal`);
+      disc(placed.middle, 12, 'kickoff');
+    }
+    if (mode === 'ac130') disc(placed.middle, 30, 'extraction');
+  }
+  const authored = layouts.MATCH_OBJECTIVE_LAYOUTS[mapId];
+  for (const [i, zone] of (authored?.zones ?? []).entries()) disc(zone, 30, `authored zone ${i + 1}`);
+  if (authored?.kickoff) disc(authored.kickoff, 12, 'authored kickoff');
+  const { alpha, bravo } = anchors;
+  const axis = Math.hypot(bravo.x - alpha.x, bravo.z - alpha.z);
+  for (const [i, f] of assault.ASSAULT_LINE_FRACTIONS.entries()) {
+    disc({ x: alpha.x + (bravo.x - alpha.x) * f, z: alpha.z + (bravo.z - alpha.z) * f }, 30, `assault sector ${i + 1}`);
+  }
+  assert.ok(axis > 0);
+  for (const pad of [spawns.player, ...spawns.enemies]) disc(pad, 22, 'spawn pad');
+  const rects = []; // [x, z, ux, uz, halfAlong, halfAcross, what]
+  for (const strip of config.terrain?.hardstands ?? []) {
+    const a = (strip.yawDeg ?? 0) * Math.PI / 180;
+    rects.push([strip.x, strip.z, Math.sin(a), Math.cos(a), strip.length / 2, strip.width / 2, 'apron']);
+  }
+  const yardKinds = new Set(yards.yardStructureKinds());
+  for (const b of dressing.features.buildings) {
+    if (!b.kind || !yardKinds.has(b.kind)) continue;
+    // the structure's frame (yardDressing.ts insideEnvelope): u across its width, v along its depth
+    rects.push([b.x, b.z, Math.sin(b.rot ?? 0), Math.cos(b.rot ?? 0), b.d / 2 + 7.6, b.w / 2 + 7.6, `${b.kind} yard`]);
+  }
+  for (const deck of heightField.bridgeDecks ?? []) {
+    rects.push([deck.x, deck.z, deck.ux, deck.uz, deck.halfLength + deck.approachM, deck.halfWidth, 'bridge']);
+  }
+  const p = works.geometry.attributes.position.array;
+  let height = 0, discGap = Infinity, rectGap = Infinity, roadGap = Infinity;
+  for (let i = 0; i < p.length; i += 3) {
+    const x = p[i], y = p[i + 1], z = p[i + 2];
+    height = Math.max(height, y - heightField.getHeightAt(x, z));
+    for (const [dx, dz, r, what] of discs) {
+      const gap = Math.hypot(x - dx, z - dz) - r;
+      assert.ok(gap > 0, `${mapId}: a field work stands inside the ${what} (${x.toFixed(1)}, ${z.toFixed(1)})`);
+      discGap = Math.min(discGap, gap);
+    }
+    for (const [rx, rz, ux, uz, ha, hc, what] of rects) {
+      const ox = x - rx, oz = z - rz, along = Math.abs(ox * ux + oz * uz), across = Math.abs(-ox * uz + oz * ux);
+      const gap = Math.max(along - ha, across - hc);
+      assert.ok(gap > 0, `${mapId}: a field work stands inside the ${what} (${x.toFixed(1)}, ${z.toFixed(1)})`);
+      rectGap = Math.min(rectGap, gap);
+    }
+    const road = heightField._roadDist(x, z);
+    assert.ok(road > 5.7, `${mapId}: a field work stands on the road's core (${x.toFixed(1)}, ${z.toFixed(1)}: ${road.toFixed(2)} m)`);
+    roadGap = Math.min(roadGap, road);
+  }
+  assert.ok(height <= 1.05, `${mapId}: the field works stand at most 1.05 m (${height.toFixed(3)} m)`);
+  return { discs: discs.length, rects: rects.length, height, discGap, rectGap, roadGap };
+}
 await models.preloadPropModels();
 let mapsWithScenery = 0;
 for (const mapId of maps.MAP_IDS) {
@@ -389,8 +504,29 @@ for (const mapId of maps.MAP_IDS) {
   const engine = { anisotropy: 4, setupShadowMaterial() {} };
   const heightField = terrain.createHeightField(1337, config);
   const flora = vegetationModule.createVegetation(heightField, engine, 2001, config);
+  // a map with field works on a world without the ground lane's land use: a synthetic field system (fields 40 x 30 m;
+  // a wall on every line, or a hedge on every other) so the clearances below are proven against works that run
+  // everywhere the land would let them
+  const works = config.scenery.fieldWorks;
+  if (works && !heightField._landUseAt) {
+    heightField._landUseAt = (x, z, out) => {
+      const u = ((x % 40) + 40) % 40, v = ((z % 30) + 30) % 30, du = Math.min(u, 40 - u), dv = Math.min(v, 30 - v);
+      out.active = 1; out.edgeM = Math.min(du, dv); out.boundary = works.walls ? 3 : 0; out.track = 0;
+      out.hedge = works.banks && du < 1.2 ? 1 : 0;
+      return out;
+    };
+  }
   const dressing = props.createProps(heightField, engine, 2002, config, flora);
   const receipt = dressing.group.userData.scenery;
+  let worksLine = '';
+  if (works) {
+    const built = dressing.group.getObjectByName('props-field-works');
+    assert.ok(built && receipt.fieldWorks, `${mapId}: the field works stand`);
+    const c = fieldWorksClearances(mapId, config, heightField, dressing, flora, built);
+    worksLine = `; field works ${Math.round(receipt.fieldWorks.wallM)} m walls + ${Math.round(receipt.fieldWorks.bankM)} m banks clear of ${c.discs} discs `
+      + `(${c.discGap.toFixed(1)} m) and ${c.rects} aprons/yards/bridges (${c.rectGap.toFixed(1)} m), ${c.roadGap.toFixed(1)} m off the roads, `
+      + `${c.height.toFixed(2)} m tall at most`;
+  }
   assert.ok(receipt, `${mapId}: the scenery pass ran`);
   for (const feature of receipt.features) {
     assert.equal(feature.status, 'placed', `${mapId}: ${feature.name ?? feature.kind} stands (${feature.reason ?? ''})`);
@@ -417,7 +553,7 @@ for (const mapId of maps.MAP_IDS) {
       }
     }
   }
-  console.log(`scenery.selftest: ${mapId} — ${receipt.placed} features, ${receipt.rockTriangles} rock + ${receipt.bakedTriangles} baked triangles, ${receipt.colliders} colliders`);
+  console.log(`scenery.selftest: ${mapId} — ${receipt.placed} features, ${receipt.rockTriangles} rock + ${receipt.bakedTriangles} baked triangles, ${receipt.colliders} colliders${worksLine}`);
 }
 
 // ---------------------------------------------------------------------------------------------- 5. the wiring
@@ -428,6 +564,9 @@ const yard = propsSource.indexOf('  yield* placeYardDressing();'), pass = propsS
 const merge = propsSource.indexOf('  yield* mergeMaterialBuckets();');
 assert.ok(yard > 0 && pass > yard && merge > pass, 'the pass runs after every placement and before the bucket merge');
 assert.match(propsSource, /new THREE\.Mesh\(merged, mats\.rock\)/, 'the rock forms draw on the props rock material (its cascade setup and hook)');
+const pools = propsSource.indexOf('  yield* finalizeDestructiblePools();'), works = propsSource.indexOf('  yield* placeFieldBoundaryWorks();');
+assert.ok(pools > merge && works > pools, 'the field works build once the pools\' refit has made every solid final (the placement they keep off reads those)');
+assert.match(propsSource, /mats\.stone\.color\.setRGB\(masonryTint\[0\], masonryTint\[1\], masonryTint\[2\]\)/, 'a map\'s masonry tint reaches the stone print');
 const vegetationSource = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
 assert.match(vegetationSource, /placedStructureClearances\([^;]*\(cfg as SceneryMapConfig \| null\)\?\.scenery\)/s, 'the trees keep off the scenery');
 const clearanceSource = readFileSync(new URL('./vegetationClearance.ts', import.meta.url), 'utf8');

@@ -127,6 +127,11 @@ export interface SceneryConfig {
   landmarks?: readonly SceneryLandmark[];
   powerLines?: readonly SceneryPowerLine[];
   fieldWorks?: SceneryFieldWorks;
+  /**
+   * A linear multiplier on the map's masonry print (the props stone material): its field walls, their posts and its
+   * stone-built houses in the map's own rock (Saltwind's karst limestone). Omitted, the print is the map's tone.
+   */
+  masonryTint?: readonly [number, number, number];
 }
 
 /** The share of a bedrock hill's search radius the trees keep off (its flanks and crown; its foot keeps them). */

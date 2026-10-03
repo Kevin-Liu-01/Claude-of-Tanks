@@ -158,12 +158,12 @@ export default {
       { form: 'hoodoo', geology: 'sandstone', x: -54, z: 330, radius: 3.4, height: 7, yawDeg: 210, name: 'the north mushroom rock' },
     ],
     rockFields: [
-      { geology: 'sandstone', x: -40, z: -292, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the dome at -40,-292' },
-      { geology: 'sandstone', x: 56, z: 292, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the dome at 56,292' },
-      { geology: 'sandstone', x: -118, z: -128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the dome at -118,-128' },
-      { geology: 'sandstone', x: 134, z: 128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the dome at 134,128' },
-      { geology: 'sandstone', x: 96, z: -112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the dome at 96,-112' },
-      { geology: 'sandstone', x: -80, z: 112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the dome at -80,112' },
+      { geology: 'sandstone', x: -40, z: -292, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south gate dome' },
+      { geology: 'sandstone', x: 56, z: 292, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north gate dome' },
+      { geology: 'sandstone', x: -118, z: -128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south-west lane dome' },
+      { geology: 'sandstone', x: 134, z: 128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north-east lane dome' },
+      { geology: 'sandstone', x: 96, z: -112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south-east lane dome' },
+      { geology: 'sandstone', x: -80, z: 112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north-west lane dome' },
     ],
     landmarks: [
       { kind: 'cairn', x: -270, z: -228, scale: 1.6, height: 1.6, geology: 'sandstone', name: 'the rujm at the south ravine' },
