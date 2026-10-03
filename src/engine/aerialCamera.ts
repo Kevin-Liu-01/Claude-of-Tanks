@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { getAerialVision, aerialVisionCode } from './aerialVision.ts';
+import { droneWobblePitch, droneWobbleRoll } from '../fx/droneMotion.ts';
 import { AERIAL_RULES } from '../sim/matchRuleset.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 
@@ -32,6 +34,7 @@ export function createAerialCamera(camera: THREE.PerspectiveCamera) {
     update(entity: { aerial?: AerialView; input?: { aimPoint?: THREE.Vector3 | null }; visual?: { root: THREE.Object3D } | null }, input: { mouseDX: number; mouseDY: number; wheel: number; shiftPressed?: boolean; cursorAim?: boolean; cursorX?: number; cursorY?: number }, dt: number): boolean {
       const view=entity.aerial;
       if(!view?.active){
+        camera.userData.thermalFlight=false;
         if(previousKind){camera.fov=60;camera.updateProjectionMatrix();previousKind='';owner=null;}
         return false;
       }
@@ -39,7 +42,10 @@ export function createAerialCamera(camera: THREE.PerspectiveCamera) {
         owner=entity;previousKind=view.kind;yaw=view.yaw;pitch=-.12;zoom=1;launchBlend=view.launching?1:0;
         focus.set(0,view.kind==='gunship'?view.y-AERIAL_RULES.gunship.altitudeM:0,0);
       }
-      const dx=input.mouseDX+(input.cursorAim?(input.cursorX??0)*dt*350:0);
+      // consumeMouseDelta supplies world-yaw X (already negated), while
+      // the gimbal and FPV helpers below take screen-right-positive motion.
+      // Absolute cursor coordinates are already in screen space.
+      const dx=-input.mouseDX+(input.cursorAim?(input.cursorX??0)*dt*350:0);
       const dy=input.mouseDY-(input.cursorAim?(input.cursorY??0)*dt*250:0);
       camera.position.set(view.x,view.y+.12,view.z);
       if(view.kind==='gunship') aimGunship(view,input,dx,dy);
@@ -47,7 +53,15 @@ export function createAerialCamera(camera: THREE.PerspectiveCamera) {
       const fov=view.kind==='gunship'?55/zoom:85;
       if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
       camera.lookAt(target);
-      if(view.kind==='drone'&&!view.launching) camera.rotateZ(Math.sin(view.batteryS*2.6)*.0025);
+      const fpv=view.kind==='drone'&&!view.launching&&launchBlend<=0;
+      camera.userData.thermalFlight=view.kind==='gunship'||fpv;
+      camera.userData.flightVision=aerialVisionCode(getAerialVision());
+      if(fpv){
+        // Lens follows the airframe's corrections without the full exterior bank.
+        const time=AERIAL_RULES.drone.batteryS-view.batteryS;
+        camera.rotateX(droneWobblePitch(time,0)*.32);
+        camera.rotateZ(droneWobbleRoll(time,0)*.45);
+      }
       entity.input?.aimPoint?.copy(target);return true;
     },
   };

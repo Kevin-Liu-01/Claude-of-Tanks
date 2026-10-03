@@ -30,14 +30,29 @@ rule the battle does not keep.
 | Drone | Destroy opponents with tanks and directly piloted drones | Launch a physical FPV quadcopter from the tank; contact uses normal explosive collision and damage | 6 s | First team to 20 kills (configurable), or 10:00 score decision |
 | AC-130 | Protect ground allies until at least half reach extraction | Fragile escorts, a marked exit, overhead scope, three independent weapon channels and unlimited ammunition | No | Half extracted; defeat if too few survive or 8:00 expires |
 
+## Aerial sensor views
+
+In Drone and AC-130, click or tap the view button beside the aircraft icon to cycle
+**Infrared → Thermal → Night vision → Daylight**. The button shows the active view
+and remembers your choice between flights. It stays disabled until the drone camera
+has entered first-person flight, so takeoff stays in normal color.
+
+- **Infrared:** white-hot vehicles, a cooler monochrome landscape, and soft sensor glow.
+- **Thermal:** hot vehicles appear orange through pale yellow against cool blue terrain.
+- **Night vision:** green light amplification reveals ambient detail without adding vehicle heat.
+- **Daylight:** the normal scene colors and lighting.
+
+These are camera treatments. Terrain, buildings, smoke, and multiplayer spotting
+still determine which enemies are visible; changing views does not reveal hidden tanks.
+
 ## Flying a drone
 
 Select **Drone**, enter a battle in your tank, then press **V** or the drone control.
-The quadcopter starts visibly docked on a reusable mission rail on the rear hull.
-The rail and its four feet are fitted to each vehicle’s own hull surfaces; the same
-attachment frame can carry future mode equipment. A 2.4-second rotor spool-up and
+The quadcopter starts visibly docked on a reusable mission rail seated on the turret. Turretless tank destroyers use a hull-mounted rail.
+The rail and its four feet are fitted to each vehicle’s own turret or casemate surfaces; the same
+attachment frame follows turret rotation, and the drone launches from that same moving seat. It can carry future mode equipment. A 2.4-second rotor spool-up and
 smooth lift clear the carrier before the camera eases into first-person
-flight with a monochrome thermal-style treatment. You directly fly it: **W/S**
+flight with a white-hot infrared view. The launch and camera handoff stay in normal color; infrared begins only when the view is inside the drone. You directly fly it: **W/S**
 move forward or backward, **A/D** strafe, **Space** climbs, and mouse look steers.
 Pitch down and fly forward to descend or dive into a target. Releasing movement
 brakes smoothly into a hover. Light air disturbances, body banking, rotor
@@ -55,7 +70,7 @@ cooldown. The parked tank remains vulnerable; destroying it ends its drone fligh
 Other players see the quadcopter, camera, underslung warhead, and spinning rotors.
 Bots can fly drones too. An airborne drone also supplies its carrier’s team with
 reconnaissance out to 350 m, reduced by target camouflage. Buildings, terrain and
-smoke still block its line of sight, including at close range; the thermal-style
+smoke still block its line of sight, including at close range; the infrared
 picture is not permission to see through cover. Destroying the carrier removes
 the drone observer, and contacts use the normal spotting linger and radio sharing.
 
@@ -69,6 +84,8 @@ Fire with the normal fire control and select weapons with **1–3** or the ammun
 buttons in the dedicated flight console: a rapid 30 mm cannon, a 152 mm explosive howitzer, and guided missiles.
 The weapon channels reload independently. Missiles follow the sight; cannon and
 howitzer rounds travel through the normal ballistic and armor simulation.
+
+The autocannon uses short, bright streaks; the howitzer leaves a broader, longer wake; guided missiles retain a curved exhaust trail. Each round has a small hot head that remains visible when viewed directly from behind. Tracer size follows scope zoom and distance, with a limit to prevent oversized glows. These effects follow the actual projectiles and disappear on impact.
 
 Four allied ground vehicles accompany the gunship by default. They have 35% of their normal hull strength, slower reloads and reduced speed, and use normal navigation to reach the green **E** extraction area. Enemies pursue the convoy. Save at least half; killing enemies alone does not complete the mission. The objective shows allies still on the field, the number extracted, the rescue requirement and route progress. Casualties do not respawn. An eight-minute timeout or losing too many escorts fails the operation. Multiplayer pilots all provide air support, with separate friendly bots reserved for the escort. Extraction and casualty state survive host migration.
 
@@ -420,3 +437,9 @@ The browser probe `.qa-dev/mode-loop.mjs` plays every mode against the dev serve
 it asserts the ruleset stamps on the player (hull, gravity, equipment), the HUD
 objective line and clock, a single result, the end screen (with the campaign block
 after a ladder sortie) and a clean Garage return, then starts the next mode.
+
+### Infrared and flight motion
+
+Drone FPV and the AC-130 sight show cool, dark terrain and bright vehicle heat, with a soft sensor glow around hot surfaces. Hostile tanks read brighter than friendly vehicles; team markers remain available. Heat follows visible vehicle geometry, respects depth and alpha cutouts, and does not reveal unspotted or network-hidden enemies through cover. Exiting the aerial camera restores normal materials and color.
+
+The drone reacts to bounded gusts, banks under acceleration and makes visible stabilization corrections. Its camera follows a smaller share of the wobble so the pilot can still aim. Horizontal mouse and touch movement follow screen direction in both flight modes; vertical behavior is unchanged.
