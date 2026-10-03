@@ -101,6 +101,24 @@ concealment records stay the living tree's on every tier). The mobile tier keeps
 sheet and lobe tier byte for byte; placements and RNG streams are unchanged; the impostor bake takes the grown trees.
 `treeGrowth.selftest.mjs` pins the budgets, structure, supports, silhouettes, atlases, the weld, the snow split, the
 canopy shade, tier-independent records and routing.
+Trees round 2 (2026-10-03, PR #9's gauntlet: "flat-card broadleaf", "broccoli canopy", "drooping card foliage", "solid
+black tree shadows", "stamped circular clumps"): a grown crown is ~230 smaller leaf CLUSTERS on two-row cards (the
+conifers 166), thinned evenly over the crown (`thinEvenly`: a narrow apex keeps its sprays; a conifer's apex is a spire
+of shoots, no bare leader), shaded as a mass — `crownLobes` fits the crown's masses, the cards' normals bend to the
+lobes' smooth union and their vertices darken by depth in it and on the underside (`GROWTH_CROWN_SHADING`, the tint gain
+giving the lit shell back) — and each card carries a billboard frame (`aAxis`, `aLeaf`) the near material turns about
+the card's own axis toward the camera (`COT_LEAF_BILLBOARD`, ahead of the wind; the impostor bake turns them the same
+way, `COT_BAKE_BILLBOARD`); a small crown's near-camera dissolve keeps to its size (`vCotNearScale`). The tiles are leaf
+clusters (smaller leaves, lit by where they sit in the cluster). `crownShadowDapple.ts` opens sun-space leaf gaps in the
+crown hull's depth pass (world-anchored, wood excluded by `aCrown`, closing where a cascade's texel outgrows them).
+`treeBiomes.ts` (THREE-free) routes a map's species SLOTS to the regional FORMS of its real place on the desktop tiers
+(new profiles and tiles: beech, chestnut, holmOak, olive, canaryPine, aleppoPine, larch; summer birches in leaf; a map's
+shrub form, Las Cañadas' broom) — records, seeds, placement and the mobile look stay the slot's. Snow maps: a conifer's
+load is its laden sprays over the upper crown (no bough lumps); the classic tufts follow `applySnowGrassLaw` (straw,
+sparse, short). Stands are woodlots (`placeTreeClusters`: the round-1 draws replayed on the shared stream so every later
+placement keeps its seat, then irregular outlines with denser margins, clearings and thin patches on their own stream;
+`standPoint` puts the saplings, fringe scrub and understorey on the real outline). `treeCrownShading.selftest.mjs` pins
+the laws.
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
 pole distance representation; callers dispose or transfer every returned mesh.
 `propPlacement.ts` owns typed terrain-support, rigid-footprint, utility-pole,

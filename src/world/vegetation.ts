@@ -291,6 +291,8 @@ export interface VegetationRuntime {
   crushTree(record: TreeObstacle, dx: number, dz: number, settled?: boolean): boolean;
   resetToppled(): void;
   _clusters: VegetationDisc[];
+  /** Trees round 2: the fraction of a stand's own outline a point stands at (the receipts' woodlot law). */
+  _standOutline(index: number, x: number, z: number): number;
   /** Round 77b: the rim-forest blocks as discs (their understorey's stands) and the impostor library (null: lobes). */
   _rimBlocks: VegetationDisc[];
   _treeImpostors: TreeImpostorLibrary | null;
@@ -5031,9 +5033,11 @@ function* vegetationBuildSteps(
     scMin: number,
     scMax: number,
     withObstacle: boolean,
+    // trees round 2: the stream the tree's own draws come from (the woodlots draw from theirs, placeTreeClusters)
+    r: RandomSource = rng,
   ): void {
     const y = heightField.getHeightAt(x, z);
-    const sc = scMin + rng() * (scMax - scMin);
+    const sc = scMin + r() * (scMax - scMin);
     const archetype = TREE_ARCHETYPES[species];
     // Independent, position-keyed width/depth/height variation changes the
     // silhouette without consuming the placement RNG stream. Stands retain
@@ -5041,11 +5045,11 @@ function* vegetationBuildSteps(
     const sx = sc * (0.86 + treePositionNoise(x, z, 1) * 0.28);
     const sy = sc * (0.88 + treePositionNoise(x, z, 2) * 0.24);
     const sz = sc * (0.86 + treePositionNoise(x, z, 3) * 0.28);
-    _q.setFromAxisAngle(_up, rng() * Math.PI * 2);
+    _q.setFromAxisAngle(_up, r() * Math.PI * 2);
     // r3 terrain_environment: per-instance LEAN jitter — every trunk used to
     // stand bolt vertical, a loud repetition tell in stands; a few degrees of
     // random tilt (more for palms) reads as natural growth
-    const leanA = rng() * Math.PI * 2;
+    const leanA = r() * Math.PI * 2;
     const leanM = treePositionNoise(x, z, 4) * archetype.leanMaxRad;
     _qLean.setFromAxisAngle(_axLean.set(Math.cos(leanA), 0, Math.sin(leanA)), leanM);
     _q.multiply(_qLean);
@@ -5054,15 +5058,15 @@ function* vegetationBuildSteps(
     // per-tree hue/value jitter, WIDE: identical-sibling canopies are the
     // loudest mid-distance tell, so value swings ~2x and hue drifts between
     // yellow-green and blue-green per instance
-    const vj = 0.58 + rng() * 0.42;
+    const vj = 0.58 + r() * 0.42;
     // content_breadth r3: the wide hue jitter is authored for verdant
     // variety — on the winter map a g-heavy roll re-saturated a frosted pine
     // back to summer green (the critique's lone green tree). pal.jitterHue
     // (0..1, default 1) scales the per-channel spread around the neutral
     // value jitter; winter runs ~0.22 = near value-only.
     const pj = palOf(species).jitterHue ?? 1;
-    _c.setRGB(vj * (1 + (rng() * 0.26 - 0.12) * pj), vj * (1 + (rng() * 0.22 - 0.04) * pj),
-      vj * (1 + (rng() * 0.24 - 0.16) * pj));
+    _c.setRGB(vj * (1 + (r() * 0.26 - 0.12) * pj), vj * (1 + (r() * 0.22 - 0.04) * pj),
+      vj * (1 + (r() * 0.24 - 0.16) * pj));
     // r7 terrain_environment: ~10% DRY/YELLOWED individuals (critique: "no
     // dry/dead mix-ins... monoculture"). A strong per-instance tint pull
     // toward sun-scorched straw/amber — broadleafs go autumn-gold, conifers
@@ -5082,7 +5086,7 @@ function* vegetationBuildSteps(
       _c.b *= 0.8;
     }
     trees.push({
-      x, z, species, variant: (rng() * 3) | 0, fv: (rng() * 2) | 0,
+      x, z, species, variant: (r() * 3) | 0, fv: (r() * 2) | 0,
       mat: _m4.clone(), tint: _c.clone(), near: false,
       // occlusion-fade bookkeeping: canopy proxy sphere (world center/radius,
       // generous enough for every species' card spread), eased fade 0..1 and
@@ -5113,20 +5117,21 @@ function* vegetationBuildSteps(
       // MAX_BUSH_BONUS 0.6 -> 0.5 in src/sim/spotting.ts (already applied).
     }
   }
-  function addTree(x: number, z: number, species: Species): boolean {
+  function addTree(x: number, z: number, species: Species, r: RandomSource = rng): boolean {
     if (!siteOk(x, z, 0)) return false;
-    pushTree(x, z, species, 0.95, 1.7, true); // wide size spread per stand
+    pushTree(x, z, species, 0.95, 1.7, true, r); // wide size spread per stand
     return true;
   }
-  function isSeparatedTreeCluster(x: number, z: number): boolean {
+  function isSeparatedTreeCluster(x: number, z: number, r = 0): boolean {
+    // trees round 2: a woodlot keeps clear of the others by its own reach too (the round-1 stands by the others' only)
     for (const c of clusters) {
-      if (Math.hypot(x - c.x, z - c.z) < c.r + 26) return false;
+      if (Math.hypot(x - c.x, z - c.z) < c.r + 26 + r * 0.5) return false;
     }
     return true;
   }
-  function tintTreeStand(startIndex: number): void {
-    const toneBias = rng();
-    const lightness = 0.95 + (rng() - 0.5) * 0.12;
+  function tintTreeStand(startIndex: number, r: RandomSource = rng): void {
+    const toneBias = r();
+    const lightness = 0.95 + (r() - 0.5) * 0.12;
     for (let i = startIndex; i < trees.length; i++) {
       trees[i].tint.multiplyScalar(lightness);
       trees[i].tint.r *= 0.90 + toneBias * 0.20;
@@ -5137,17 +5142,63 @@ function* vegetationBuildSteps(
     if (!authoredTreeDonors) return;
     for (let i = start; i < start + count; i++) authoredTreeDonors.add(trees[i]);
   }
-  function placeTreeClusters(): void {
+  // Trees round 2 (2026-10-03, the gauntlet: "uniform circular stamped tree-clump placement visible from altitude"): the
+  // stands are woodlots — an irregular, often elongated outline (a few harmonics of a radius, stretched along an axis),
+  // a denser edge (the trees crowd toward the light at a wood's margin, so its outline reads from the air), a clearing in
+  // a large one and patches where the stand thins. Each woodlot's shape is kept (woodlotShapes) so its edge growth —
+  // the saplings, the fringe scrub, the understorey — follows the real outline (standPoint), not a circle round it.
+  interface WoodlotShape { cos: number; sin: number; stretch: number; h: readonly [number, number, number]; p: readonly [number, number, number] }
+  const woodlotShapes: WoodlotShape[] = [];
+  /** The outline's radius at polar angle a in the woodlot's frame (its harmonics), as a fraction of the base radius. */
+  function woodlotRim(shape: WoodlotShape, a: number): number {
+    return 1 + shape.h[0] * Math.cos(2 * a + shape.p[0]) + shape.h[1] * Math.cos(3 * a + shape.p[1]) + shape.h[2] * Math.cos(5 * a + shape.p[2]);
+  }
+  const _standPoint = [0, 0];
+  /**
+   * The world point at polar angle a and fraction k of a stand's outline (k = 1 on the rim): a woodlot's own shape, a
+   * round stand (no shape: a rim block) its circle. The stand disc's r is the woodlot's base radius times its stretch.
+   */
+  function standPoint(index: number, stand: VegetationDisc, a: number, k: number): number[] {
+    const shape = woodlotShapes[index];
+    if (!shape) { _standPoint[0] = stand.x + Math.cos(a) * stand.r * k; _standPoint[1] = stand.z + Math.sin(a) * stand.r * k; return _standPoint; }
+    const base = stand.r / shape.stretch, f = k * woodlotRim(shape, a) * base;
+    const u = Math.cos(a) * f * shape.stretch, w = Math.sin(a) * f / shape.stretch;
+    _standPoint[0] = stand.x + u * shape.cos - w * shape.sin;
+    _standPoint[1] = stand.z + u * shape.sin + w * shape.cos;
+    return _standPoint;
+  }
+  /** A smooth hashed field over the battlefield (0..1, ~22 m cells): where a woodlot's stand thins. */
+  /** The fraction of its outline a point stands at from a stand's centre (1 on the rim; the circle's for a rim block). */
+  function standOutlineFraction(index: number, x: number, z: number): number {
+    const stand = clusters[index], shape = woodlotShapes[index];
+    if (!stand) return Infinity;
+    const dx = x - stand.x, dz = z - stand.z;
+    if (!shape) return Math.hypot(dx, dz) / stand.r;
+    const u = (dx * shape.cos + dz * shape.sin) / shape.stretch, w = (dz * shape.cos - dx * shape.sin) * shape.stretch;
+    return Math.hypot(u, w) / ((stand.r / shape.stretch) * woodlotRim(shape, Math.atan2(w, u)));
+  }
+  function woodlotDensity(x: number, z: number): number {
+    const gx = x / 22, gz = z / 22, ix = Math.floor(gx), iz = Math.floor(gz), fx = gx - ix, fz = gz - iz;
+    const ux = fx * fx * (3 - 2 * fx), uz = fz * fz * (3 - 2 * fz);
+    const h = (i: number, j: number): number => treePositionNoise(i * 7.31, j * 7.31, 23);
+    return (h(ix, iz) * (1 - ux) + h(ix + 1, iz) * ux) * (1 - uz) + (h(ix, iz + 1) * (1 - ux) + h(ix + 1, iz + 1) * ux) * uz;
+  }
+  /**
+   * The round-1 stands' draws on the shared stream: the loop runs as it always did — its trees placed, then popped with
+   * the trunk records and the concealment discs they registered (dropRimTreeOutsideWoods' rule) — so every placement
+   * after it (the lone trees, the belts, the rim, the bushes) keeps its seat; the woodlots then grow on their own stream.
+   */
+  function replayRoundOneStandDraws(): void {
+    const t0 = trees.length, o0 = treeObstacles.length, c0 = concealers.length;
+    const scratch: VegetationDisc[] = [];
     let attempts = 0;
     const clusterTarget = Math.round(veg.clusterCount * treeRichness());
-    while (clusters.length < clusterTarget && attempts++ < 2600) {
+    while (scratch.length < clusterTarget && attempts++ < 2600) {
       const x = (rng() * 2 - 1) * 430, z = (rng() * 2 - 1) * 430;
       if (!siteOk(x, z, 6)) continue;
-      if (!isSeparatedTreeCluster(x, z)) continue;
+      if (scratch.some((c) => Math.hypot(x - c.x, z - c.z) < c.r + 26)) continue;
       const r = 16 + rng() * 26;
       const species = pickSpecies(veg.clusterMix, rng());
-      // r5: ~1.7x trees per stand — designated forest strips must read DENSE
-      // (closed canopy) next to WoT tree lines, not as loose orchards
       const n = 24 + (rng() * 34) | 0;
       let placed = 0;
       const cb0 = trees.length;
@@ -5156,16 +5207,62 @@ function* vegetationBuildSteps(
         const sp = rng() < 0.8 ? species : pickSpecies(veg.loneMix, rng());
         if (addTree(x + Math.cos(a) * rr, z + Math.sin(a) * rr, sp)) placed++;
       }
-      // r6 (content_breadth): coherent PER-STAND tint bias — per-tree jitter
-      // alone averages every distant stand toward the same mid-green; a whole-
-      // cluster lean (warm vs cool, small value drift) is what makes
-      // mid-distance forest blocks read as distinct species stands instead of
-      // "uniform leaf-card blobs" (critique).
       tintTreeStand(cb0);
-      // Keep at least three quarters of every existing stand in place. The
-      // map-authored rows consume records, never add trees or change RNG.
+      if (placed > 2) scratch.push({ x, z, r });
+    }
+    trees.length = t0; treeObstacles.length = o0; concealers.length = c0;
+  }
+  function placeTreeClusters(): void {
+    replayRoundOneStandDraws();
+    const wr = mulberry32((seed ^ 0x30d1a7) >>> 0);
+    let attempts = 0;
+    const clusterTarget = Math.round(veg.clusterCount * treeRichness());
+    while (clusters.length < clusterTarget && attempts++ < 2600) {
+      const x = (wr() * 2 - 1) * 430, z = (wr() * 2 - 1) * 430;
+      if (!siteOk(x, z, 6)) continue;
+      // the stand's trees and the canopy each takes (a closed wood: 26–42 m² a tree), so its area follows its count — a
+      // round-1 stand drew its radius apart from its count and many read as thin orchards; then a stretch along a
+      // heading (area kept) and three harmonics of the outline
+      // r5: ~1.7x trees per stand — designated forest strips must read DENSE (closed canopy) next to WoT tree lines
+      const n = 24 + (wr() * 34) | 0;
+      const base = Math.sqrt(n * (26 + wr() * 16) / Math.PI);
+      const stretch = Math.sqrt(1 + wr() * wr() * 1.6);
+      const heading = wr() * Math.PI;
+      const shape: WoodlotShape = {
+        cos: Math.cos(heading), sin: Math.sin(heading), stretch,
+        h: [0.06 + wr() * 0.12, 0.04 + wr() * 0.1, 0.02 + wr() * 0.07],
+        p: [wr() * Math.PI * 2, wr() * Math.PI * 2, wr() * Math.PI * 2],
+      };
+      const r = base * stretch;
+      if (!isSeparatedTreeCluster(x, z, r)) continue;
+      const species = pickSpecies(veg.clusterMix, wr());
+      // a large wood holds a clearing (a glade, a felled patch) off its centre
+      const clearing = base > 21 ? { a: wr() * Math.PI * 2, k: 0.3 + wr() * 0.3, r: base * (0.2 + wr() * 0.12) } : null;
+      let placed = 0;
+      const cb0 = trees.length;
+      const index = clusters.length;
+      woodlotShapes[index] = shape;
+      const disc: VegetationDisc = { x, z, r };
+      let cx = 0, cz = 0;
+      if (clearing) { const p = standPoint(index, disc, clearing.a, clearing.k); cx = p[0]; cz = p[1]; }
+      for (let i = 0; i < n * 4 && placed < n; i++) {
+        // the margin is denser than the heart (k ~ u^0.42), the stand thins in patches, a clearing stays open
+        const a = wr() * Math.PI * 2, k = Math.pow(wr(), 0.42), keep = wr();
+        const sp = wr() < 0.8 ? species : pickSpecies(veg.loneMix, wr());
+        const p = standPoint(index, disc, a, k);
+        const px = p[0], pz = p[1];
+        if (clearing && Math.hypot(px - cx, pz - cz) < clearing.r) continue;
+        if (k < 0.85 && keep > 0.5 + 0.8 * woodlotDensity(px, pz)) continue;
+        if (addTree(px, pz, sp, wr)) placed++;
+      }
+      // r6 (content_breadth): coherent PER-STAND tint bias — a whole-stand lean (warm vs cool, small value drift) is
+      // what makes mid-distance forest blocks read as distinct species stands
+      tintTreeStand(cb0, wr);
+      // Keep at least three quarters of every existing stand in place. The map-authored rows consume records, never
+      // add trees or change RNG.
       rememberAuthoredDonors(cb0, Math.floor(placed / 4));
-      if (placed > 2) clusters.push({ x, z, r });
+      if (placed > 2) clusters.push(disc);
+      else woodlotShapes.length = index;
     }
   }
   placeTreeClusters();
@@ -5311,12 +5408,14 @@ function* vegetationBuildSteps(
   // untouched. These young trees still register a proportionally small trunk
   // so shells and hulls topple them through the same path as mature trees.
   function placeSaplings(): void {
-    for (const c of clusters) {
+    for (let ci = 0; ci < clusters.length; ci++) {
+      const c = clusters[ci];
       const nSap = 3 + (sapRng() * 4) | 0;
       for (let sIt = 0; sIt < nSap; sIt++) {
         const sa = sapRng() * Math.PI * 2;
-        const sr = c.r * (1.02 + sapRng() * 0.35);
-        const sx = c.x + Math.cos(sa) * sr, sz = c.z + Math.sin(sa) * sr;
+        // trees round 2: just past the woodlot's own outline (standPoint)
+        const edge = standPoint(ci, c, sa, 1.02 + sapRng() * 0.35);
+        const sx = edge[0], sz = edge[1];
         const roll = sapRng(), sc = 0.42 + sapRng() * 0.26;
         const yawS = sapRng() * Math.PI * 2;
         const vjS = 0.60 + sapRng() * 0.40;
@@ -5890,13 +5989,15 @@ function* vegetationBuildSteps(
       // the cluster as understory at the trunk bases, grounding the palm
       // clusters that used to stand as bare sticks on clean sand.
       const scrubMul = (veg.clusterScrub ?? 1) * bushRichness;
-      for (const c of clusters) {
+      for (let ci = 0; ci < clusters.length; ci++) {
+        const c = clusters[ci];
         const n = Math.round((5 + (rng() * 6) | 0) * scrubMul);
         for (let i = 0; i < n; i++) {
           const a = rng() * Math.PI * 2;
           const inside = scrubMul > 1 && rng() < 0.55;
-          const rr = c.r * (inside ? 0.25 + rng() * 0.6 : 1.05 + rng() * 0.5);
-          addBush(c.x + Math.cos(a) * rr, c.z + Math.sin(a) * rr);
+          // trees round 2: round the woodlot's own outline (standPoint)
+          const p = standPoint(ci, c, a, inside ? 0.25 + rng() * 0.6 : 1.05 + rng() * 0.5);
+          addBush(p[0], p[1]);
         }
       }
     }
@@ -5975,7 +6076,7 @@ function* vegetationBuildSteps(
       // draws in the same order for the stands (their placements stay byte-identical), then the blocks from the
       // stream's continuation, with the rim trees' own scale (1.35–2.2 × the interior stands' 0.95–1.7) and the
       // rim's own bound (the blocks stand at 442–506 m, past the field bushes' 470).
-      const plant = (stand: VegetationDisc, scaleMul: number, bound: number): void => {
+      const plant = (stand: VegetationDisc, scaleMul: number, bound: number, index = -1): void => {
         const n = Math.round((7 + understoreyRng() * 9) * bushRichness);
         for (let i = 0; i < n; i++) {
           const a = understoreyRng() * Math.PI * 2;
@@ -5984,7 +6085,8 @@ function* vegetationBuildSteps(
           const tj = understoreyRng(), tr = understoreyRng(), tg = understoreyRng(), tb = understoreyRng();
           const keepRoll = understoreyRng();
           if (keepRoll > (1 - smoothstepJs(1.05, 1.6, rr)) * 0.9 + 0.1) continue;
-          const x = stand.x + Math.cos(a) * stand.r * rr, z = stand.z + Math.sin(a) * stand.r * rr;
+          // trees round 2: a woodlot's understorey follows its own outline (standPoint; a rim block's is its circle)
+          const at = standPoint(index, stand, a, rr), x = at[0], z = at[1];
           if (Math.max(Math.abs(x), Math.abs(z)) > bound || inAvoid(x, z)) continue;
           // the map-borders lane: past the playable edge a block's undergrowth keeps to the border's woods
           if (borderWoodsAt && Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M && borderWoodsAt(x, z) < 0.5) continue;
@@ -6002,7 +6104,7 @@ function* vegetationBuildSteps(
           understoreyTints.push(new THREE.Color(bj * (0.96 + tr * 0.14), bj * (1.0 + tg * 0.14), bj * (0.86 + tb * 0.14)));
         }
       };
-      for (const c of clusters) plant(c, 1, 470);
+      clusters.forEach((c, index) => plant(c, 1, 470, index));
       for (const b of rimBlocks) plant(b, RIM_UNDERSTOREY_SCALE, RIM_UNDERSTOREY_BOUND_M);
     }
     function createUnderstoreyMesh(): void {
@@ -6777,7 +6879,7 @@ function* vegetationBuildSteps(
   }
   rimTrees.length = 0;
   return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
-    crushTree, resetToppled, _clusters: clusters, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
+    crushTree, resetToppled, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,
     warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false) };
 }
