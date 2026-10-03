@@ -133,5 +133,9 @@ smallest screen module, then run its selftest and browser verification.
 <!-- agent-docs:fill:gotchas -->
 Garage and shared responsive styles are static Vite-managed CSS imported in
 responsive-before-Garage cascade order by `src/main.ts`. Do not move them back
-into JavaScript or reverse that order. Avoid boot-critical imports and do not
-leave XP/currency labels after progression removal.
+into JavaScript or reverse that order. A lazy surface loads its stylesheet with
+a dynamic import beside its module at the boundary (`aerialHud.css` in
+`battleHudAccess.ts`), never a static import inside its graph: plain-Node
+selftests import `hud.ts` and cannot load CSS (`runtimeStyles.selftest.mjs`
+enforces it). Avoid boot-critical imports and do not leave XP/currency labels
+after progression removal.
