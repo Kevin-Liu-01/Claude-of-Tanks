@@ -314,7 +314,11 @@ float mesaField(vec2 p, float A) {
   float butte = noised(w / (uChar0.z * 0.16) + uOff2.zw).x;
   // (few tables in the first kilometre past the ring: the threshold falls with the distance, so a table's edge is
   // still a noise-shaped cliff — a mask ramp there drew a smooth sand slope in front of every far table)
-  float th = mix(0.9, -0.12, smoothstep(uFrame.x + 300.0, uFrame.x + 1500.0, length(p)));
+  // (a third of the far country in tables, not half: at -0.12 they joined into one plateau whose rim ran round the
+  // whole ring as a wall — Copper Mesa — instead of mesas and buttes standing over the plain)
+  // (and none in the first one and a half kilometres past the ring: a near table mapped onto the shell stood over the
+  // ring as a curved band from a camera off the square's centre)
+  float th = mix(0.9, 0.16, smoothstep(uFrame.x + 1500.0, uFrame.x + 3000.0, length(p)));
   float t = smoothstep(th, th + 0.015, big);
   float tb = smoothstep(th + 0.5, th + 0.52, butte) * (1.0 - t);
   float edge = max(t, tb * 0.9);
@@ -359,7 +363,9 @@ float farField(vec2 p) {
     float margin = mix(-0.015, 0.075, smoothstep(-0.55, 0.55, m));
     float target = min(uFrame.w + r * (edge.a + margin), max(150.0, uChar4.y * 1.25));
     if (uChar2.z > 0.5) {
-      h = mix(h, max(h, target), behind * smoothstep(0.25 * A, 0.4 * A, h));
+      // the tablelands scale too (their cliffs and talus keep their profile; lifting the tables to the target stood
+      // them as boxes, and on Copper Mesa as one slab overhanging the frame), and by little
+      h *= mix(1.0, clamp(target / max(1.0, 0.75 * A), 1.0, 1.6), behind);
     } else if (uChar2.w < 0.0) {
       // the hill countries: ridgelines in layers behind the ring — three, at about 4.6, 6.5 and 8.3 km (each wandering
       // 600 m in distance round the compass), each crest a little higher over the ring's skyline than the one before
@@ -383,9 +389,17 @@ float farField(vec2 p) {
       gPlinth = max(0.0, lift) * behind;
       h += gPlinth;
     } else {
-      h *= mix(1.0, clamp(target / max(1.0, 0.8 * A), 1.0, 3.0), behind);
+      // (at most 1.8 x: a range scaled three times stood as a monolith — Nordhavn Fjord's far block)
+      h *= mix(1.0, clamp(target / max(1.0, 0.8 * A), 1.0, 1.8), behind);
     }
   }
+  // the near band stays under the ring's own skyline from the eye: what stands in the first two kilometres past the ring
+  // is mapped onto the shell 2.6 km out, and seen from anywhere but the bake eye a tall near form bends with the shell
+  // (Copper Mesa's near tables arched across the frame as one slab, Nordhavn Fjord's beside its bay stood as a block);
+  // its excess over a line 1.7 degrees under that skyline is compressed to a seventh, released between 3.2 and 4.8 km
+  float nearCap = uFrame.w + r * (edge.a - 0.03);
+  float nearW = 1.0 - smoothstep(3200.0, 4800.0, r);
+  if (h > nearCap) h = mix(h, nearCap + (h - nearCap) * 0.15, nearW);
   // the first kilometre eases out of the ring's outer heights; the sea sectors sink under their level
   h = mix(edge.r * 0.8, h, smoothstep(uFrame.x, uFrame.x + 500.0, r));
   h = mix(h, edge.b - 6.0, edge.g * smoothstep(0.0, 0.35, edge.g));
@@ -534,9 +548,15 @@ void main() {
     // fine tones would stand as one streak per column (where a low ring shows it) — it keeps the broad tones only
     apron = 1.0;
   }
+  // the texel's footprint on the ground along the ray (one strip row is 25/512 degrees): at a grazing angle it spans
+  // hundreds of metres, and the parcels and the fine tones would alias into one streak per column (Saltmere's coast
+  // where the ring is low) — they fade out over a 40-160 m footprint, the broad tones stay
+  vec3 rayD = vec3(cos(e) * cos(a), sin(e), cos(e) * sin(a));
+  float footprint = rr * ((uElev.y - uElev.x) / 512.0) / max(0.01, abs(dot(rayD, n)));
   // (the apron: its first row's light is one value per column — the near ridges' shadows across it — so it would streak;
   // it takes the open sky's)
   vec4 light = mix(texture2D(uLight, g), vec4(1.0, 0.92, 0.0, 1.0), apron);
+  apron = max(apron, smoothstep(40.0, 160.0, footprint));
   float slope = 1.0 - n.y;
   // the zones (forest, fields, snow, scree) by the height over the upland's plinth where it has one
   float hT = clamp((wp.y - texture2D(uHeight, g).g) / uChar4.z, 0.0, 1.0);
@@ -666,6 +686,20 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   const EDGE_W = 1024;
   const edgeData = new Uint16Array(EDGE_W * 4);
   const ringSkyline = horizonRingSkylineTan(options.ringEdge, P.eyeY);
+  // the sea weight round the compass, softened over about 4 degrees each way: the far country beside a bay dropped to
+  // the sea in a degree or two of azimuth — at 5 km a wall a few hundred metres wide (Nordhavn Fjord's far block)
+  const seaW = new Float32Array(EDGE_W), seaL = new Float32Array(EDGE_W);
+  for (let i = 0; i < EDGE_W; i++) {
+    const sea = options.seaWeightAt ? options.seaWeightAt((i / EDGE_W) * Math.PI * 2) : { weight: 0, level: 0 };
+    seaW[i] = sea.weight; seaL[i] = sea.level;
+  }
+  {
+    const R = Math.round(EDGE_W * 4 / 360), tmp = new Float32Array(EDGE_W);
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0; i < EDGE_W; i++) { let sum = 0; for (let d = -R; d <= R; d++) sum += seaW[(i + d + EDGE_W) % EDGE_W]; tmp[i] = sum / (2 * R + 1); }
+      seaW.set(tmp);
+    }
+  }
   {
     const n = options.ringEdge.columns, start = options.ringEdge.heights.length - n;
     for (let i = 0; i < EDGE_W; i++) {
@@ -677,10 +711,9 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       let h = 0;
       for (let d = -4; d <= 4; d++) h += options.ringEdge.heights[start + ((k + d) % n + n) % n];
       h /= 9;
-      const sea = options.seaWeightAt ? options.seaWeightAt(angle) : { weight: 0, level: 0 };
       edgeData[i * 4] = THREE.DataUtils.toHalfFloat(h);
-      edgeData[i * 4 + 1] = THREE.DataUtils.toHalfFloat(sea.weight);
-      edgeData[i * 4 + 2] = THREE.DataUtils.toHalfFloat(sea.level);
+      edgeData[i * 4 + 1] = THREE.DataUtils.toHalfFloat(seaW[i]);
+      edgeData[i * 4 + 2] = THREE.DataUtils.toHalfFloat(seaL[i]);
       edgeData[i * 4 + 3] = THREE.DataUtils.toHalfFloat(ringSkyline[k]);
     }
   }
