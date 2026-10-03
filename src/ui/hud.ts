@@ -4112,6 +4112,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function sniperAmmoReadoutY(draw: ReticleDrawState): number {
     // Short landscape keeps the whole readout stack close to the scope.
+    if (h <= 300) return draw.cy + 32;
     if (h <= 430) return draw.cy + 44;
     return Math.min(
       draw.cy + Math.max(draw.radius * 1.02 + 24, draw.radius * 1.55 + 18, 96),
@@ -4158,7 +4159,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (window.__HUD_HIDE_ZOOM_PLATE) return;
     // Keep the familiar zoom line directly beneath ammunition, not over the
     // target or detached down beside the vehicle console.
-    const y = sniperAmmoReadoutY(draw) + 24;
+    const y = sniperAmmoReadoutY(draw) + (h <= 300 ? 18 : 24);
     const text = `×${(view.zoom || 8).toFixed(1)}`;
     ctx.font = `700 16px ${FONT_COND}`;
     ctx.fillStyle = 'rgba(196,246,202,0.95)';

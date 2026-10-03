@@ -17,6 +17,7 @@ try{
   const profiles=[{width:1280,height:800},{width:568,height:320,deviceScaleFactor:1,isMobile:true,hasTouch:true},{width:480,height:270,deviceScaleFactor:1,isMobile:true,hasTouch:true}];
   for(const initialViewport of profiles) {
   const mobile=!!initialViewport.isMobile;
+  if(process.env.COT_TINY_ONLY&&initialViewport.width!==480)continue;
   if(process.env.COT_AERIAL_TOUCH_ONLY&&!mobile)continue;
   if(process.env.COT_DESKTOP_ONLY&&mobile)continue;
   const suffix=mobile?(initialViewport.width<500?'touch-small':'touch'):'desktop';
@@ -110,6 +111,7 @@ try{
    if(mode==='realistic'){
     if(mobile)await page.tap('.cot-touch .scope');else {await page.mouse.click(initialViewport.width/2,initialViewport.height/2);await page.keyboard.press('ShiftLeft');}
     await page.waitForSelector('.cot-scope-vision',{visible:true});
+    assert.equal(await page.$eval('.cot-scope-vision',e=>{const a=e.getBoundingClientRect();return ['.cot-mode-status','.cot-touch .fire:not(.alt)','.cot-touch .scope','.cot-touch .autoaim'].every(selector=>{const other=document.querySelector(selector);if(!other||getComputedStyle(other).display==='none')return true;const b=other.getBoundingClientRect();return !b.width||a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom;});}),true,'scope sensor clears objective and touch controls');
     for(const [view,code] of [['daylight',0],['infrared',1],['thermal',2],['night',3]]){
      await page.waitForFunction(code=>window.__DEBUG.post.composer.passes.find(p=>p.isOutputGradePass).uniforms.uThermal.value===code,{},code);
      await page.screenshot({path:resolve(out,`tank-scope-${view}-${suffix}.png`)});
