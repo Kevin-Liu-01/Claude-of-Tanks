@@ -37,7 +37,7 @@ const pick = (dir, re) => existsSync(dir) ? readdirSync(dir).filter(f => re.test
 const DOWN = w => `scale=${w}:-2:flags=lanczos`;
 // [label, file suffix, filter after the loop graph, encoder args, needs a 2160p take]
 const VIDEO = [
-  ['master', '-loop-master.mov', 'format=yuv420p10le', ['-c:v', 'libx265', '-preset', 'slow', '-crf', '10', '-pix_fmt', 'yuv420p10le', '-tag:v', 'hvc1', '-x265-params', 'log-level=error']],
+  ['master', '-loop-master.mov', 'format=yuv420p10le', ['-c:v', 'libx265', '-preset', 'medium', '-crf', '10', '-pix_fmt', 'yuv420p10le', '-tag:v', 'hvc1', '-x265-params', 'log-level=error']],
   ['mp4k', '-4k.mp4', `${DOWN(3840)},format=yuv420p`, ['-c:v', 'libx264', '-preset', 'slow', '-crf', '16', '-profile:v', 'high', '-level:v', '5.1', '-movflags', '+faststart'], true],
   ['mp4', '.mp4', `${DOWN(1920)},format=yuv420p`, ['-c:v', 'libx264', '-preset', 'slow', '-crf', '16', '-profile:v', 'high', '-movflags', '+faststart']],
   ['webm', '.webm', `${DOWN(1920)},format=yuv420p`, ['-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '24', '-row-mt', '1', '-tile-columns', '2', '-deadline', 'good', '-cpu-used', '1', '-auto-alt-ref', '1', '-lag-in-frames', '25']],

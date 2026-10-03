@@ -42,14 +42,23 @@ const films = 'skip-films' in flags ? [] : JSON.parse(readFileSync(filmJobs, 'ut
 const stills = 'skip-stills' in flags ? [] : JSON.parse(readFileSync(stillJobs, 'utf8'));
 const idOf = job => job.out.split('/').pop();
 const ids = [...new Set([...films, ...stills].map(idOf))].sort();
-// one lease per chunk: its films and stills together; its loops encode on the CPU while the next chunk waits for the GPU
+// one lease per chunk: its films and stills together; its formats encode on the CPU while the next chunk renders. The
+// encodes run one chunk at a time and niced (other sessions time frames on this machine), and a chunk renders only once
+// the encode two chunks back is done: at most two chunks of 2160p ProRes masters (~0.77 GB a take) wait on disk.
 const encoders = [];
-const encodeLoops = part => encoders.push(new Promise((done, fail) => {
-  console.log(`[finals] loops for ${[...part][0]}… (background)`);
-  const child = spawn('node', [join(TOOL, 'site-loops.mjs'), renders, join(SHOTS, 'site50/deliver'), [...part].join(','), ...('keep-film-masters' in flags ? [] : ['--drop-film-masters'])], { stdio: 'inherit' });
-  child.on('exit', code => (code === 0 ? done() : fail(new Error(`loops exited ${code}`))));
-}));
+let encodeChain = Promise.resolve();
+const encodeLoops = part => {
+  encodeChain = encodeChain.then(() => new Promise((done, fail) => {
+    console.log(`[finals] loops for ${[...part][0]}… (background)`);
+    const child = spawn('nice', ['-n', '10', 'node', join(TOOL, 'site-loops.mjs'), renders, join(SHOTS, 'site50/deliver'), [...part].join(','),
+      ...('keep-film-masters' in flags ? [] : ['--drop-film-masters'])], { stdio: 'inherit' });
+    child.on('exit', code => (code === 0 ? done() : fail(new Error(`loops exited ${code}`))));
+  }));
+  encoders.push(encodeChain);
+};
 for (let i = 0; i < ids.length; i += chunk) {
+  const k = i / chunk;
+  if (k >= 2 && encoders[k - 2]) await encoders[k - 2];
   const part = new Set(ids.slice(i, i + chunk));
   // cinema.mjs reads resume per job: a re-run keeps every finished film and still
   const jobs = [...films.filter(j => part.has(idOf(j))), ...stills.filter(j => part.has(idOf(j)))].map(j => ({ ...j, resume: 'true' }));
