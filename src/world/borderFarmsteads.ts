@@ -185,6 +185,8 @@ const PALETTES: Readonly<Record<FarmsteadStyle, Palette>> = {
     barnWalls: [[0.36, 0.26, 0.18]], barnRoofs: [[0.32, 0.32, 0.33]], storeys: [2, 2],
   },
 };
+/** The buildings' albedo scale over their authored colours (after the 0.8 value cap). */
+const BUILDING_ALBEDO = 0.9;
 const WINDOW: RGB = [0.08, 0.085, 0.09];
 const DOOR: RGB = [0.26, 0.19, 0.13];
 const STONE: RGB = [0.52, 0.50, 0.47];
@@ -194,8 +196,11 @@ class Soup {
   positions: number[] = [];
   normals: number[] = [];
   colors: number[] = [];
+  // (gauntlet wave 1: a white wall in full sun read as "a glowing white sprite" — the authored colours are sRGB at
+  // full value; the buildings sit at 0.8 of it, so plaster stays under the bloom threshold beside the lit meadow)
   private lin(c: RGB, shade: number): [number, number, number] {
-    return [Math.pow(c[0], 2.2) * shade, Math.pow(c[1], 2.2) * shade, Math.pow(c[2], 2.2) * shade];
+    const k = BUILDING_ALBEDO * shade;
+    return [Math.pow(c[0] * 0.8, 2.2) * k, Math.pow(c[1] * 0.8, 2.2) * k, Math.pow(c[2] * 0.8, 2.2) * k];
   }
   tri(a: number[], b: number[], c: number[], color: RGB, shade = 1): void {
     const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];

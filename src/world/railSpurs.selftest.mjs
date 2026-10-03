@@ -15,7 +15,7 @@ import { createHeightField, createLayout, mulberry32 } from './terrain.ts';
 import { dressMapExtras, railSegmentIsDry, railSpanIsDry } from './maps/mapKits.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import {
-  RAIL_COAL_STAGE_OFFSET_M, RAIL_COAL_STAGE_PITCH_M, RAIL_SPUR_BALLAST_M, RAIL_SPUR_BERTH_M, RAIL_SPUR_GAUGE_M,
+  RAIL_COAL_STAGE_OFFSET_M, RAIL_COAL_STAGE_PITCH_M, RAIL_OPEN_KIT_M, RAIL_SPUR_BALLAST_M, RAIL_SPUR_BERTH_M, RAIL_SPUR_GAUGE_M,
   RAIL_SPUR_LAY_M, RAIL_SPUR_SPAN_M, createRailSpurExclusion, railCoalStageStations, railRunLength, railSpurDistance,
   resampleRailPath,
 } from './railSpurs.ts';
@@ -130,8 +130,8 @@ const spurSpans = resampleRailPath(authored[0].path, RAIL_SPUR_LAY_M, true);
 assert.equal(spurSpans.length, 92, '368 m in 4 m spans'); assert.equal(RAIL_SPUR_LAY_M, 4); assert.equal(RAIL_SPUR_SPAN_M, 10);
 const built = build('steppe', steppe, 1337);
 try {
-  // round 67 (2026-09-24): the line runs on past the edge to the tunnel portal (railCutting.selftest audits that
-  // approach and the portal); the siding's own parts are the ones inside the square
+  // the line runs on past the edge in the open (2026-10-03, the map-borders lane: the round-67 tunnel portal is retired;
+  // railCutting.selftest audits the open line); the siding's own parts are the ones inside the square
   const centreX = (g) => { g.computeBoundingBox(); return g.boundingBox.getCenter(new THREE.Vector3()).x; };
   const inSquare = (list) => list.filter((g) => centreX(g) <= 512);
   const approach = { slab: built.parts.slab.filter((g) => centreX(g) > 512), sleeper: built.parts.sleeper.filter((g) => centreX(g) > 512), rail: built.parts.rail.filter((g) => centreX(g) > 512) };
@@ -145,12 +145,11 @@ try {
   assert.equal(slab.length, 92); assert.equal(rail.length, 184); assert.equal(strut.length, 2); assert.equal(beam.length, 1, 'one stop: the west stub');
   assert.equal(sleeper.length, spurSpans.reduce((n, s) => n + Math.round(railRunLength(s.bx - s.ax, s.bz - s.az) / 1.4), 0) + 0,
     'one sleeper every ~1.4 m of every span (the fitted rise of a 4 m span never changes the count)');
-  assert.equal(approach.slab.length, 33, 'round 67: the approach down the valley to the portal, 33 spans'); assert.equal(approach.rail.length, 66);
-  assert.equal(built.obstacles.length, 1); assert.equal(built.colliders.length, 1, 'round 67: the tunnel portal is the one record; the track is soft dressing');
-  assert.equal(built.obstacles[0].kind, 'tunnel-portal');
-  const stoneJitters = 4 * built.buckets.stone.length; // round 67: the portal's nine stone pieces take four UV draws each
-  assert.equal(built.calls, 24 * (slab.length + approach.slab.length) + sleeper.length + approach.sleeper.length + 4 * beam.length + stoneJitters,
-    'every seeded draw: 24 slab colours, one sleeper jitter, four beam UV jitters, the portal masonry\'s UV jitters');
+  assert.equal(approach.slab.length, RAIL_OPEN_KIT_M / RAIL_SPUR_LAY_M, 'the open line past the edge, 60 spans'); assert.equal(approach.rail.length, 2 * RAIL_OPEN_KIT_M / RAIL_SPUR_LAY_M);
+  assert.equal(built.obstacles.length, 0); assert.equal(built.colliders.length, 0, 'no record: the track is soft dressing');
+  assert.equal(built.buckets.stone.length, 0, 'no masonry');
+  assert.equal(built.calls, 24 * (slab.length + approach.slab.length) + sleeper.length + approach.sleeper.length + 4 * beam.length,
+    'every seeded draw: 24 slab colours, one sleeper jitter, four beam UV jitters');
   const rebuilt = build('steppe', steppe, 1337);
   try { assert.equal(rebuilt.digest, built.digest, 'the siding rebuilds byte-identically from the same seed'); }
   finally { dispose(rebuilt); }
@@ -205,7 +204,8 @@ try {
 // The redesigned junction lays its double main line, the three sidings each side, the two loading stubs and their coal
 // stages from the layout it authors; the legacy siding fan is gone. Every spur keeps its berth, the track rebuilds
 // byte-identically, both stubs close at their buffer stops, every coal heap stands at its stage's offset beside its
-// stub, and the only collision records are the heaps and the two tunnel portals (railCutting.selftest).
+// stub, and the only collision records are the heaps (2026-10-03: the two tunnel portals are retired; the line runs on in
+// the open past each edge, railCutting.selftest).
 let junctionSummary = '';
 {
   const cfg = getMapConfig('railyard'), authored = cfg.terrain.railSpurs;
@@ -243,10 +243,9 @@ let junctionSummary = '';
         assert.ok(Math.abs(Math.hypot(own[i].x - own[i - 1].x, own[i].z - own[i - 1].z) - RAIL_COAL_STAGE_PITCH_M) < 1e-9, 'stations at the stage pitch');
       }
     }
-    const portals = built.obstacles.filter((record) => record.kind === 'tunnel-portal');
-    assert.equal(portals.length, 2, 'the through line ends in a tunnel portal at each end');
-    assert.equal(built.obstacles.length, coal.length + portals.length, 'nothing else on the line publishes collision');
-    junctionSummary = `Cinder Junction ${authored.length} spurs / ${built.parts.slab.length} slabs / ${coal.length} coal heaps / ${portals.length} portals`;
+    assert.equal(built.obstacles.filter((record) => record.kind === 'tunnel-portal').length, 0, 'no tunnel portal');
+    assert.equal(built.obstacles.length, coal.length, 'nothing else on the line publishes collision');
+    junctionSummary = `Cinder Junction ${authored.length} spurs / ${built.parts.slab.length} slabs / ${coal.length} coal heaps`;
   } finally { dispose(built); dispose(again); }
 }
 
@@ -257,4 +256,4 @@ for (const mapId of MAP_IDS) {
   assert.equal(cfg.terrain?.railSpurs, undefined, `${mapId}: no authored spur`);
   assert.equal(createLayout(cfg).railSpurs, undefined, `${mapId}: no layout key`);
 }
-console.log(`railSpurs.selftest: resampler (yard rule + even split), berth, dry-span reduction; three yards deterministic with their 0.16 m slab; Tarkhan siding 92 spans / 184 rails / 276 sleepers / 1 stop bedded with no gap to the map edge, then 33 spans down the valley to the tunnel portal (its one record); ${junctionSummary}; ${MAP_IDS.length - 2} other layouts carry no spur`);
+console.log(`railSpurs.selftest: resampler (yard rule + even split), berth, dry-span reduction; three yards deterministic with their 0.16 m slab; Tarkhan siding 92 spans / 184 rails / 276 sleepers / 1 stop bedded with no gap to the map edge, then ${RAIL_OPEN_KIT_M / RAIL_SPUR_LAY_M} spans on the open line past the edge (no record); ${junctionSummary}; ${MAP_IDS.length - 2} other layouts carry no spur`);

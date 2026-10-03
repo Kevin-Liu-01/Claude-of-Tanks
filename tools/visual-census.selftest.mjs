@@ -14,7 +14,7 @@ import { loadRgba } from './map-metrics.mjs';
 import { MAP_VIEW_PROBE_VIEWS } from './map-view-probe-views.mjs';
 import { selectStandView } from './environment-shot-camera.mjs';
 import {
-  BORDER_EDGE, BORDER_EYE, BORDER_PROTOCOL, BORDER_VIEWS, CENSUS_FOV, CENSUS_HALF, CENSUS_PROTOCOL, CENSUS_VIEWPORT,
+  BORDER2_PROTOCOL, BORDER2_VIEWS, BORDER_EDGE, BORDER_EYE, BORDER_FRAME_CLEAR_M, BORDER_PROTOCOL, BORDER_VIEWS, CENSUS_FOV, CENSUS_HALF, CENSUS_PROTOCOL, CENSUS_VIEWPORT,
   CENSUS_VIEWS, borderPose, borderSamplePoints, borderSiteCandidates, censusViewSet, horizonRow, obliquePose,
   obliqueSamplePoints, pitchOf, selectBorderSite, selectCensusViews, selectChasePose, selectSkySite, selectTerrainSite,
   selectTreePose, skyPose, skySamplePoints, skySiteCandidates, terrainPose, terrainSamplePoints, terrainSiteCandidates,
@@ -23,7 +23,11 @@ import { CENSUS_HEADLINE_METRICS, detectSkyline, frameMetrics, highPass, histogr
 import {
   buildSheets, censusViewsOf, compareCensus, horizonOfState, loadCensus, measureCensus, openCensus, pixelDiff, renderIndex, saveCensus, writeIndex,
 } from './visual-census-report.mjs';
-import { CENSUS_HELP, parseCensusArgs, pickCaptureMaps } from './visual-census.mjs';
+import {
+  CENSUS_HELP, CLOUDSCAPE_WAIT_MS, censusShotView, censusWarmupMap, cloudscapeVerdict, parseCensusArgs, pickCaptureMaps,
+} from './visual-census.mjs';
+import { MAP_IDS, getMapConfig } from '../src/world/maps/index.ts';
+import { CLOUDSCAPE_REGIMES } from '../src/engine/cloudscapes.ts';
 import { createPoliteCaptureLock, stepBehindStamp, ticketName } from './visual-census-lock.mjs';
 import { near } from './receipt-kit.test-support.mjs';
 
@@ -124,6 +128,28 @@ try {
   const fenced = selectBorderSite(nCandidates, { heightAt: level, buildings: [{ x: 0, z: 400, w: 1200, d: 400 }] });
   assert.deepEqual([fenced.candidate.index, fenced.pass, fenced.rule], [0, 5, 'anchor'], 'nowhere clear: the anchor, flagged');
   assert.throws(() => selectBorderSite(nCandidates, {}), /heightAt/);
+  // the border set's second protocol (2026-10-03, gauntlet wave 1: a tree's leaf cards filled the Verdant north eye
+  // view's corner): the same views, whose spots keep the frame's near field clear of crowns
+  assert.equal(BORDER2_PROTOCOL, 'visual-census-border-v2'); assert.equal(BORDER_FRAME_CLEAR_M, 14);
+  assert.equal(censusViewSet('border2').protocol, BORDER2_PROTOCOL, 'v2 never merges with a v1 census');
+  assert.deepEqual(BORDER2_VIEWS.map((v) => v.name), BORDER_VIEWS.map((v) => v.name), 'the same seventeen views');
+  assert.ok(BORDER2_VIEWS.every((v, i) => v.kind !== 'border' ? JSON.stringify(v) === JSON.stringify(BORDER_VIEWS[i])
+    : v.frameClearM === BORDER_FRAME_CLEAR_M && JSON.stringify({ ...v, frameClearM: undefined }) === JSON.stringify(BORDER_VIEWS[i])),
+  'v2 adds the frame-clear rule to the sixteen rim views and nothing else');
+  assert.equal(createHash('sha256').update(JSON.stringify(BORDER2_VIEWS)).digest('hex'),
+    '8c893c68441109cf70411548d2b46a109c0da103b4e2bf50899632afbe010c54', 'the v2 camera set is pinned');
+  assert.ok(Object.isFrozen(BORDER2_VIEWS) && BORDER2_VIEWS.every((v) => Object.isFrozen(v)));
+  const n2Candidates = borderSiteCandidates(BORDER2_VIEWS.find((v) => v.name === 'edge-n'));
+  assert.ok(n2Candidates.every((c) => c.frameClearM === BORDER_FRAME_CLEAR_M) && nCandidates.every((c) => c.frameClearM === undefined));
+  // a crown 8 m left of the eye and 8 m ahead: clear of the v1 spot rules (3 m round the spot, 1.5 m round the corridor
+  // straight ahead) but inside the frame — v1 keeps the spot, v2 moves it
+  const sideCrown = [{ x: -8, z: 440, r: 4 }];
+  assert.equal(selectBorderSite(nCandidates, { heightAt: level, concealers: sideCrown }).candidate.index, 0, 'v1: the near side crown is allowed');
+  const v2Site = selectBorderSite(n2Candidates, { heightAt: level, concealers: sideCrown });
+  assert.ok(v2Site.candidate.index > 0 && v2Site.pass === 1, 'v2: a crown in the near frame moves the spot');
+  // behind the eye, or past the near field, a crown stays allowed
+  assert.equal(selectBorderSite(n2Candidates, { heightAt: level, concealers: [{ x: 0, z: 410, r: 4 }] }).candidate.index, 0, 'behind the eye');
+  assert.equal(selectBorderSite(n2Candidates, { heightAt: level, concealers: [{ x: -30, z: 462, r: 4 }] }).candidate.index, 0, 'past the near field');
   assert.throws(() => borderPose(nSite, edgeN, undefined), /no ground height/);
   const oblique = BORDER_VIEWS.at(-1);
   assert.deepEqual(obliqueSamplePoints(oblique), [[230, 230]]);
@@ -315,6 +341,9 @@ try {
   const outBorder = path.join(dir, 'census-border');
   const borderCensus = openCensus(null, { ...header, protocol: BORDER_PROTOCOL, viewSet: 'border', viewsDigest: 'b1' });
   assert.equal(censusViewsOf(borderCensus), BORDER_VIEWS); assert.equal(censusViewsOf(census), CENSUS_VIEWS);
+  // authored --pose views (maps lane, 2026-10-03) follow the set's fixed views in a census that recorded them
+  assert.deepEqual(censusViewsOf({ authoredViews: [{ name: 'cone-nw', kind: 'table' }] }).map((v) => v.name),
+    [...CENSUS_VIEWS.map((v) => v.name), 'cone-nw']);
   borderCensus.maps.verdant = { name: 'Verdant Fields', status: 'ok', views: {} };
   for (const view of BORDER_VIEWS) {
     const f = await frame(`census-border/frames/verdant/${view.name}.png`, 320, 180, (x, y) => (y < 80 ? SKY : GROUND));
@@ -362,6 +391,14 @@ try {
   assert.equal(cap.batch, 5); assert.equal(cap.budgetMin, 16);
   assert.equal(parseCensusArgs(['capture', '--out=o']).options.views.length, CENSUS_VIEWS.length);
   assert.equal(parseCensusArgs(['capture', '--out=o']).options.set, 'core');
+  const posed = parseCensusArgs(['capture', '--out=o', '--views=none', '--pose=cone-nw:-120,30,180:-185,10,266+cone-se:120,25,-200:205,8,-300']).options;
+  assert.deepEqual(posed.views.map((v) => [v.name, v.kind, v.cam, v.at, v.authored]),
+    [['cone-nw', 'table', [-120, 30, 180], [-185, 10, 266], true], ['cone-se', 'table', [120, 25, -200], [205, 8, -300], true]]);
+  assert.equal(parseCensusArgs(['capture', '--out=o', '--pose=a:1,2,3:4,5,6']).options.views.length, CENSUS_VIEWS.length + 1);
+  for (const [argv, message] of [[['capture', '--out=o', '--views=none'], /needs at least one --pose/],
+    [['capture', '--out=o', '--pose=bad'], /--pose needs/], [['capture', '--out=o', '--pose=chase:1,2,3:4,5,6'], /Duplicate census view name/]]) {
+    assert.throws(() => parseCensusArgs(argv), message, argv.join(' '));
+  }
   const borderRun = parseCensusArgs(['capture', '--out=o', '--set=border', '--views=corner-sw,edge-n']).options;
   assert.deepEqual([borderRun.set, borderRun.views.map((v) => v.name)], ['border', ['edge-n', 'corner-sw']]);
   assert.equal(parseCensusArgs(['capture', '--out=o', '--set=border']).options.views.length, BORDER_VIEWS.length);
@@ -390,6 +427,47 @@ try {
   assert.ok(CENSUS_HELP.includes('establishing, chase, bird, sky-w, sky-s, terrain, tree'));
   assert.equal(parseCensusArgs(['capture', '--out=o', '--probe-lock=rel/probe.lock']).options.probeLock, path.resolve('rel/probe.lock'));
   assert.equal(parseCensusArgs(['capture', '--out=o']).options.probeLock, null);
+
+  // ------------------------------------------------------------------ the cloudscape gate (2026-10-03, the skies lane's race)
+  // The first map staged after boot could keep the deck derivation its sky took before the lazy cloudscape module
+  // loaded (staging the map the world already shows applies no sky): fp8's Verdant rendered the legacy 'scattered'
+  // layer on both roots. Every map passes the gate before any view: its layer's regime is the authored one, or a
+  // throwaway warm-up map is staged and then the map again; a map that still fails is not captured.
+  assert.equal(cloudscapeVerdict({ layer: false, authored: 'sea-streets', regime: null }), 'none', 'no volumetric layer');
+  assert.equal(cloudscapeVerdict({ layer: true, authored: null, regime: 'scattered' }), 'none', 'no authored cloudscape');
+  assert.equal(cloudscapeVerdict({ layer: true, authored: 'sea-streets', regime: null }), 'decks', 'the baked decks show');
+  assert.equal(cloudscapeVerdict({ layer: true, authored: 'sea-streets', regime: 'sea-streets' }), 'ready');
+  assert.equal(cloudscapeVerdict({ layer: true, authored: 'fair-weather-cumulus', regime: 'scattered' }), 'legacy', 'the race');
+  assert.equal(cloudscapeVerdict(null), 'none');
+  assert.equal(censusShotView('verdant'), 'battlefield');
+  assert.equal(censusShotView('caldera'), 'battlefield_caldera');
+  assert.equal(censusWarmupMap(['garage', 'battlefield', 'battlefield_desert'], 'verdant'), 'desert', 'the boot map warms up elsewhere');
+  assert.equal(censusWarmupMap(['garage', 'battlefield', 'battlefield_desert'], 'caldera'), 'verdant');
+  assert.throws(() => censusWarmupMap(['garage', 'battlefield'], 'verdant'), /no warm-up map/);
+  assert.ok(CLOUDSCAPE_WAIT_MS >= 5000 && CLOUDSCAPE_WAIT_MS <= 60000);
+  // the gate can tell the race apart on every map: an authored cloudscape names a regime of its own, never one of the
+  // deck derivation's four (cloudPresets.ts deriveLegacy), and the resolver keeps it (cloudscapeLayer.ts)
+  const legacyRegimes = ['scattered', 'broken', 'overcast', 'storm'];
+  let authoredScapes = 0;
+  for (const id of MAP_IDS) {
+    const config = getMapConfig(id), scape = config.clouds ?? config.sky?.cloudscape ?? null;
+    if (!scape) continue;
+    assert.ok(Object.hasOwn(CLOUDSCAPE_REGIMES, scape.regime), `${id} names a cloudscape regime (${scape.regime})`);
+    assert.ok(!legacyRegimes.includes(scape.regime), `${id}'s regime is not a deck derivation's`);
+    authoredScapes++;
+  }
+  assert.ok(authoredScapes >= 30, `the gate covers the maps' authored cloudscapes (${authoredScapes})`);
+  const layerSource = readFileSync(path.join(ROOT, 'src/engine/cloudscapeLayer.ts'), 'utf8');
+  assert.match(layerSource, /regime: scape\.regime \?\? legacy\.regime/, 'the resolver keeps the authored regime');
+  assert.match(readFileSync(path.join(ROOT, 'src/engine/volumetricClouds.ts'), 'utf8'), /get currentPreset\(\)/,
+    'the layer publishes the preset it draws');
+  // and stageMap runs it before the map's texture settle (so before every view), with the warm-up fallback
+  const toolSource = readFileSync(path.join(ROOT, 'tools/visual-census.mjs'), 'utf8');
+  const stageSource = toolSource.slice(toolSource.indexOf('async function stageMap('), toolSource.indexOf('/** Node-side poses of every view'));
+  const gateAt = stageSource.indexOf('let cloudscape = await awaitCloudscape(page);');
+  assert.ok(gateAt > 0 && gateAt < stageSource.indexOf('settleMapTextures'), 'the gate precedes the texture settle');
+  assert.match(stageSource, /await setShot\(warmup\);\s*await setShot\(mapId\);/, 'the fallback stages the warm-up, then the map');
+  assert.match(stageSource, /cloudscape, \.\.\.state \}/, 'the stage record carries the gate\'s evidence');
 
   // ------------------------------------------------------------------ polite lock (FIFO first, session mutex at the head)
   const t = (stamp, pid) => `${String(stamp).padStart(15, '0')}-000000000000-${pid}.t`;
@@ -439,7 +517,7 @@ try {
   assert.ok(existsSync(dirs.lockDir), 'and takes the lock when that waiter goes');
   patient.release();
   rmSync(lockRoot, { recursive: true, force: true });
-  console.log('visual-census.selftest: camera sets pinned (core and border), site selection, metrics, store, sheets, index, compare and CLI verified');
+  console.log(`visual-census.selftest: camera sets pinned (core and border), site selection, metrics, store, sheets, index, compare, CLI and the cloudscape gate (${authoredScapes} authored cloudscapes) verified`);
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }
