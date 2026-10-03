@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask } from './hardstandSurface.ts';
+import { HARDSTAND_PAINT_SPILL_M, createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask } from './hardstandSurface.ts';
 import { createHeightField } from './terrain.ts';
 import airfield from './maps/airfield.ts';
 
@@ -66,6 +66,22 @@ for (let z = -80; z <= 80; z += 2) for (let x = -16; x <= 16; x += 2) {
     'hardstands do not overwrite wetness or village channels');
 }
 
+// 2026-10-03 (maps lane): the paint spills past the apron's edge in irregular tongues, never inward, and never past its
+// spill reach; the apron itself stays fully paved (above).
+{
+  const big = { x: 0, z: 0, width: 160, length: 160, yawDeg: 0 };
+  const px = new Uint8ClampedArray(512 * 512 * 4).fill(0);
+  stampHardstandRoadMask([big], px, 512, 1024);
+  let spilled = 0, ring = 0;
+  for (let iz = 0; iz < 512; iz++) for (let ix = 0; ix < 512; ix++) {
+    const x = (ix + 0.5) * 2 - 512, z = (iz + 0.5) * 2 - 512, at = (iz * 512 + ix) * 4;
+    const out = Math.max(Math.abs(x), Math.abs(z)) - 80;
+    if (out <= -1) assert.equal(px[at], 255, 'the apron stays fully paved');
+    if (out >= HARDSTAND_PAINT_SPILL_M + 1.25) assert.equal(px[at], 0, 'no paint past the spill reach');
+    if (out >= 2 && out < 4) { ring++; if (px[at] > 0) spilled++; }
+  }
+  assert.ok(spilled > ring * 0.1 && spilled < ring * 0.9, `the outline wanders: ${spilled} of ${ring} pixels 2-4 m out painted`);
+}
 // Kestrel Airfield (redesigned 2026-10-02, maps lane B): the runway runs east-west across the field's centre (yaw 90,
 // its length along x), and the level holding apron where the taxiways meet it carries the zone-control disc and the
 // kickoff. Outside the apron and its blend the runway is one graded plane over its whole width; the apron is level; the

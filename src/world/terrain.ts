@@ -46,6 +46,7 @@ import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
+import { createGeologyZoneSampler, knollGeologyHeight, ridgeGeologyHeight, type GeologyZones, type LandformGeology } from './landformGeology.ts';
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
@@ -209,6 +210,9 @@ interface LandformConfig {
   /** Final authored surface; original fields still define road/water/pad support initialization. */
   relief?: PlayableRelief;
   _relief?: PreparedPlayableRelief;
+  /** Geological structure of a knoll, basin or ridge: outline, profile, gullies, strata, roughness
+   * (landformGeology.ts). Without it a landform keeps its smooth shape exactly. */
+  geology?: LandformGeology;
 }
 
 interface DuneConfig {
@@ -407,6 +411,9 @@ export interface HeightField {
   /** Round 73 (2026-09-25): the baked fold term of the terrain build (−1 crest .. +1 hollow, the 8 m / 24 m Laplacian
    * of the relief the chunk vertices carry) — the tall-grass tier thickens and lifts the sward in the hollows. */
   _foldAt?(x: number, z: number): number;
+  /** The maps-and-layouts lane (2026-10-03): the authored landforms' geological zones at (x, z), each 0..1 —
+   * [lava flow, cinder cone, talus fan] (landformGeology.ts geologyZoneWeights); absent on a map without them. */
+  _geologyZoneAt?(x: number, z: number, out: GeologyZones): GeologyZones;
   /** The map-borders lane (2026-10-03): the ring's carriageway attribute — [signed offset from a road exit line (m), presence]. */
   _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
   /** The map-borders lane: a railway's open line past the edge on the ring — [signed offset (m), presence], faded where
@@ -824,12 +831,14 @@ export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
     const half = Math.max(1, (form.length || 100) * 0.5);
     const width = Math.max(1, form.width || 45);
     const along = 1 - smoothstep(half * 0.72, half, Math.abs(lx));
+    if (form.geology) return ridgeGeologyHeight(form, lx, lz, along) ?? 0;
     const across = 1 - smoothstep(width * 0.22, width, Math.abs(lz));
     // A wide crown plus a softer shoulder reads as a natural fold and keeps
     // tanks stable on the crest; the squared falloff avoids cliff walls.
     const shoulder = across * across * (3 - 2 * across);
     return height * along * shoulder;
   }
+  if (form.geology) return knollGeologyHeight(form, lx, lz) ?? 0;
   const rx = Math.max(1, form.rx || form.r || 70);
   const rz = Math.max(1, form.rz || form.r || rx);
   const q = Math.sqrt((lx * lx) / (rx * rx) + (lz * lz) / (rz * rz));
@@ -2300,18 +2309,29 @@ function* heightFieldBuildSteps(
   // horizontal terracing (the "heightmap quantization" critique). Baked to a
   // small mask (createSplatMaterial) so rock/strata live only on real mesas.
   const mesas = T.mesas;
+  // the authored landforms' geological zones (pure; for the terrain material and CPU-side dressing)
+  const geologyZones = createGeologyZoneSampler(T.landforms);
+  // The maps-and-layouts lane (2026-10-03): a map whose landforms author lava flows gates its rock on their footprints
+  // too, the zone's 4 m edge the basalt's (the ground lane's volcanic zoning reads a flow as basalt over its whole
+  // surface through mask B and rockGate). Maps without flows keep the mesa wall and rim alone, byte for byte.
+  const flowZones = geologyZones && T.landforms.some((form) => form.kind === 'ridge' && form.geology?.profile === 'flow')
+    ? geologyZones : null;
   function createMesaWeightSampler(): HeightField['_mesaW'] {
-    if (!mesas) return null;
+    if (!mesas && !flowZones) return null;
+    const zone: GeologyZones = [0, 0, 0];
     return (x: number, z: number): number => {
-      const mn = sampleMesaNoise(x, z);
-      const band = mesas.thr1 - mesas.thr0;
-      // low edge pulled 0.55 band below thr0: the talus apron at the mesa foot
-      // keeps its rock identity, the open dune field beyond it does not
-      const wall = smoothstep(mesas.thr0 - band * 0.55,
-        mesas.thr0 + band * (mesas.wallWidth ?? 0.42), mn);
+      let wall = 0;
+      if (mesas) {
+        const mn = sampleMesaNoise(x, z);
+        const band = mesas.thr1 - mesas.thr0;
+        // low edge pulled 0.55 band below thr0: the talus apron at the mesa foot
+        // keeps its rock identity, the open dune field beyond it does not
+        wall = smoothstep(mesas.thr0 - band * 0.55,
+          mesas.thr0 + band * (mesas.wallWidth ?? 0.42), mn);
+      }
       // the map-borders lane: the rim is rock only where the border landform keeps it (an open sector's low rim is ground)
       const rim = smoothstep(408, 468, Math.max(Math.abs(x), Math.abs(z))) * smoothstep(0.35, 0.8, border.rimFactorAt(x, z));
-      return Math.max(wall, rim);
+      return flowZones ? Math.max(wall, rim, flowZones(x, z, zone)[0]) : Math.max(wall, rim);
     };
   }
   const mesaWeight = createMesaWeightSampler();
@@ -2334,6 +2354,8 @@ function* heightFieldBuildSteps(
       _borderFarmsteads: { count: border.settings.farms, style: border.settings.buildings, fieldAngle: border.fieldAngle } }),
     _roadExitAt: roadExitAt,
     ...(railCuttings !== null ? { _railExitAt: railExitAt } : {}),
+    // the maps-and-layouts lane (2026-10-03): the authored landforms' geological zones, on a map that authors them
+    ...(geologyZones ? { _geologyZoneAt: geologyZones } : {}),
     ...(cfg?.navigationWaterPolicy
       ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),
     bridgeDecks, // round 61

@@ -13,7 +13,9 @@ const CENSUS_FILE = 'census.json';
 
 /** The camera set a census holds: the core seven unless its header names another set (the border census). */
 export function censusViewsOf(census) {
-  return censusViewSet(census?.viewSet ?? 'core').views;
+  // a run with authored --pose views lists them after the set's fixed views (tools/visual-census.mjs parseCensusPoses)
+  const views = censusViewSet(census?.viewSet ?? 'core').views;
+  return census?.authoredViews?.length ? [...views, ...census.authoredViews] : views;
 }
 const READ_START = '<!-- visual-read:start -->';
 const READ_END = '<!-- visual-read:end -->';
@@ -46,6 +48,7 @@ export function openCensus(existing, header) {
   if (existing.protocol !== header.protocol) problems.push(`protocol ${existing.protocol} vs ${header.protocol}`);
   if (JSON.stringify(existing.viewport) !== JSON.stringify(header.viewport)) problems.push('viewport');
   if (existing.viewsDigest !== header.viewsDigest) problems.push('camera set (views digest)');
+  if ((existing.authoredDigest ?? null) !== (header.authoredDigest ?? null)) problems.push('authored poses (--pose)');
   if (JSON.stringify(existing.sourceTree) !== JSON.stringify(header.sourceTree)) problems.push('source tree (src/, public/, index.html)');
   if (JSON.stringify(existing.dirtyGamePaths ?? []) !== JSON.stringify(header.dirtyGamePaths ?? [])) problems.push('uncommitted game paths');
   if (existing.serve !== header.serve) problems.push(`serve ${existing.serve} vs ${header.serve}`);

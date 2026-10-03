@@ -43,6 +43,14 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // deployment, each team's home zone as far from it as the other's; the kickoff on the wadi's north bank (the bounded
   // search's seat, 420 / 375 m: the bed between them is the crusts' soft ground).
   steppe: { kickoff: { x: -77.1, z: 76.4 }, zones: [{ x: 271, z: -64 }, { x: 206, z: 360 }, { x: -330, z: -240 }] },
+  // Glacier Pass (redesign 2026-10-03): three discs on the line of equal driven distance — the col yard east of the
+  // west pass road (a level apron in the map file), the lake ice off the village (also the turbo-ball kickoff) and the
+  // lake ice by the east shore. The frozen lake is firm, level ground, so the two ice discs seat as they lie.
+  alpine: { kickoff: { x: -25, z: -28 }, zones: [{ x: -266, z: 44 }, { x: -25, z: -28 }, { x: 150, z: -60 }] },
+  // Ironworks (redesign 2026-10-03): three discs on the line of equal driven distance, each on a paved yard in the map
+  // file — the west street's yard, the casting yard below the blast furnace block (also the turbo-ball kickoff) and the
+  // slag road's yard in the south-east.
+  foundry: { kickoff: { x: 0, z: -72 }, zones: [{ x: -258, z: 50 }, { x: 0, z: -72 }, { x: 200, z: -176 }] },
   // Validated full-disc results of the bounded search on these constrained
   // maps. Start with the known clearings; changed terrain still revalidates
   // every footprint and both-team connection before using the ordinary search.
@@ -92,6 +100,10 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // between the deployments — the north bank's timber landing, the shore yard (also the turbo-ball kickoff), the
   // south yard.
   monsoon: { kickoff: { x: -60, z: 24 }, zones: [{ x: -306, z: 16 }, { x: -60, z: 24 }, { x: 400, z: 8 }] },
+  // Obsidian Caldera (redesign 2026-10-03): three discs on the line of equal driven distance — the Sulphur Works' yard
+  // by the west road, the settlement's west end on the basin floor (also the turbo-ball kickoff), the eastern Loading
+  // Yard. The two yards are graded aprons in the map file; the settlement's floor seats its disc as it lies.
+  caldera: { kickoff: { x: -120, z: 0 }, zones: [{ x: -332, z: 96 }, { x: -120, z: 0 }, { x: 340, z: -200 }] },
   reservoir: { kickoff: { x: 88, z: 8 }, zones: [{ x: -8, z: 154 }, { x: 88, z: 8 }, { x: 12, z: -170 }] },
   // Ruinspires (redesign 2026-10-02): the boulevard's three squares, level aprons in the map file, rotationally
   // symmetric about the Square of the Republic (also the turbo-ball kickoff).
