@@ -1,11 +1,15 @@
 # Fleet follow-up — 2026-10-02
 
-Status: source implementation and first visual pass complete; regeneration and
-physical/release checks in progress. NOT PUBLISHED.
+Status: source implementation and visual review complete; final generated-record
+refresh and publication in progress. The failed and incomplete checks below
+remain open; this is not a fully qualified release.
 Branch `codex/pr9-general-and-fleet-followup`, isolated worktree
 `/Users/kevinliu/.codex/worktrees/pr9-general-improvements/claude-of-tanks`.
-Base `1aff79733001601086689097b0092dc45cfa63a7`; the previous PR #9 integration
-remains frozen in its own worktree while its full suite completes.
+Rebased cleanly onto `origin/main` at `ea639952b` on 2026-10-03. The earlier
+PR #9 integration remains frozen at `1aff79733001601086689097b0092dc45cfa63a7`;
+its complete 1,243-check run finished with 30 failures. Twenty-five subsequently
+passed focused reruns, while five remain unresolved (listed in the companion
+`pr9-general-followup-20261002.md`). Post-rebase typecheck passes.
 
 ## Owner's exact scope
 
@@ -110,7 +114,8 @@ that registration and generated anatomy are verified in the later checks.
   corners are also absent from damage traces. Oplot cloth seating, open roof
   weapon/sight lanes and turret-following checks PASS. 1280 px angle/side
   captures completed; the side view confirms the descending PL-01 armor crown
-  and raked cage nose. Front/top review and full regeneration remain pending.
+  and raked cage nose. Front/top review also completed; full regeneration is
+  repeated after the following turret package.
   Evidence: `.qa-dev/pr9-followup/latest.json`, `latest-angle/`, `latest-side/`.
 
 ## Regeneration and raw closure status
@@ -130,9 +135,76 @@ existing kit air with changed geometry and remain unclassified. Raw reports
 are `.qa-dev/pr9-followup/{water-check,water-comparison}.json`; do not replace
 these with a blanket zero-leak claim or broad invisible filler.
 
-The new default-resolution closure recheck remains red: Oplot 104.42 L and
-PL-01 105 8.30 L. The uniform-resize diagnostic at 0.02625 m is zero for
+The default-resolution closure recheck remains red: Oplot 104.42 L and
+PL-01 105 8.30 L. The PL-01 measurement predates its final turret equipment
+package; that revision has not yet had another 25 mm water scan. The
+uniform-resize diagnostic at 0.02625 m is zero for
 T-90SM and BMPT T-90, but T-90 obr. 1992 still measures 0.07 L and T-90MS
 4.03 L. This supports sampling sensitivity for part of the findings; it
 does not overturn any default-resolution failure. Raw diagnostic files are
 `latest-water.json` and `uniform-voxel-diagnostic.json` in the same evidence folder.
+
+## Final PL-01 105 turret package
+
+The owner additionally requested substantial turret equipment, lights and gun
+assemblies. The 105 now carries guarded white/IR cheek lamps on supported
+crossmembers, two faceted mission pods with eight additional smoke tubes,
+braced bustle baskets with strapped stores and rear cameras, a low screened
+electronics enclosure and two compact warning heads. Its existing M2 CROWS
+now uses the shared articulated remote-gun mechanism, an armored shield and a
+connected ammunition feed. The base PL-01 is unchanged.
+
+The new tests check actual bracket-to-shell contact, unobstructed white-light
+apertures, smoke ownership during traverse, and main-gun/CROWS firing clearance
+at multiple poses in HIGH and LOW. The earlier CROWS test retains its hull
+floor, roof and length constraints; its width now includes the already requested
+side cage. The first run reached the final base-vehicle control before failing
+because the Node test omitted `geometryReceipt`; that harness defect is fixed
+and the final rerun is recorded separately.
+
+Actual 1280-by-900 angle, roof and side captures were inspected:
+`.qa-dev/pr9-followup/pl01-turret-{angle,top,side}/views/pl01_105-battle11.png`.
+The equipment, supported baskets, clear hatches and tapered side assemblies
+are visible. These are procedural game renders, not generated illustrations.
+
+## Publication scope and unresolved checks
+
+On 2026-10-03 the owner explicitly requested: “commit and push origin main
+everything, these pl01 and oplot, then all this”, followed by the complete
+Russia/China/Poland/14-national/Oplot/Upior batch listed above. Publication is
+limited to this implemented batch and the reviewed PR #9 follow-up. This
+request is recorded alongside the disclosed red closure/reference results and
+incomplete combined rerun; it does not turn those results into passes or waive
+future unrelated work. No unrelated shared-checkout changes are included.
+
+Remaining full-suite failures are fleet balance, collision-manifest map budgets,
+bot navigation at a water/drop boundary, multiplayer world-event evidence and
+battle pacing. The first three reproduce on the clean baseline; the latter two
+still need isolated baseline characterization. Existing source-comparison and
+default-resolution closure failures also remain, including the PL-01/Oplot
+measurements above. Final generated-record and release-command outcomes are
+appended below when they finish.
+
+## Regenerated records audit
+
+The final regeneration completed all 219 combat-anatomy and marking records,
+657 technical images, and scoped presentation assets for 33 IDs. An independent
+diff audit found no vehicle metadata changes outside those 33 IDs. All 835
+changed image files, including thumbnails, match their registered byte counts
+and SHA-256 hashes. The geometry ledger measured 32 IDs in HIGH and LOW; 31
+ledger rows changed (the AMX 56 panel hitbox correction leaves its visual
+geometry unchanged). All runtime inventory, anatomy and marking-row changes
+also stay within the requested scope.
+
+The two final PL-01 tests, generated auxiliary-gun consistency check and all 15
+owner-concept checks passed. PL-01 105's final control summary has 32 smoke
+apertures, driving lights and one articulated roof gun. These passes do not
+resolve the separately recorded water/reference or wider-suite failures.
+
+The same serial run completed all 33 final 1280 px portraits, typecheck,
+private and public production builds, and attribution audit successfully.
+The anatomy check rejected an unsynchronized Oplot presentation projection
+after its generated anatomy and marking checks passed. The saved images are
+fresh; the remaining correction is to synchronize the runtime projection with
+the hash-verified native capture and repeat the anatomy check. The failed
+attempt is retained in `.qa-dev/pr9-followup/presentation-v3.json`.
