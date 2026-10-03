@@ -560,6 +560,14 @@ const PASSIVE_PRESS_REPICK_S = 3;
 const PASSIVE_PRESS_LANE_HULL_FRAC = 0.4; // the press point must reach the HULL with the gun, not only the turret top
 const PASSIVE_PRESS_DENIED_S = 6;          // closed penetration gate held at the press point before it is given up
 const PASSIVE_PRESS_ARC_S = 3;             // gun pinned at a pitch stop at the press point before it is given up
+// An unreachable press point (bots lane, 2026-10-02; Reservoir pacing seed 50003 on the maps lane's tree with the
+// liquid-start fix): the last bravo T-90M's press point lay below a bank the terrain guard would not let it descend,
+// and the press gave a point up only once the hull stood on it, so for 540 s it drove at the bank, reversed and drove
+// again, firing a round now and then. A press point the hull has not reached within its distance at
+// PRESS_REACH_SPEED_MPS plus PRESS_REACH_SLACK_S (kept across the press restarts a flickering sight line makes) is
+// given up like a masked one and another is picked.
+const PRESS_REACH_SPEED_MPS = 4;
+const PRESS_REACH_SLACK_S = 20;
 // Missing an idle target (bots lane, 2026-10-02; Winter pacing seed 23000 on the maps lane's tree): a T-90M stood
 // 57-66 m off the idle host's flank for five minutes while its HEAT rounds dug into a crest 16 m short of the hull or
 // passed over the turret. The press held off because the hull stood "already on its flank at point-blank", and the
@@ -644,6 +652,22 @@ const RACK_SPENT_FOR_S = 90;
 // the target ends it.
 const OBJECTIVE_SHIFT_DWELL_S = 4;
 const OBJECTIVE_SHIFT_RINGS = Object.freeze([0.6, 0.8]);
+// A zone's hold point (bots lane, 2026-10-03; Redrock Divide frontline): line 3's centre (52.9, 274.6) lies on the
+// plateau's 55-63 degree south face, and a zone mission drove every holder to that centre. Hulls climbed onto the face,
+// pivoted there for half a minute while the terrain guard flickered, slid off and fell; one M1A2 slid onto a wreck
+// and dropped 12 m (24 seeds: 45 damaging falls, 44 of them off that face). A zone mission holds the ground nearest
+// the centre a hull can stand on: the centre itself when its footprint is level enough to hold (the relocation
+// cell's SPOT_NORMAL_Y_MIN at the centre and over a hull's length round it, and dry), else the first such point on
+// the ZONE_HOLD_RINGS_M rings (inside ZONE_HOLD_MAX_FRAC of the zone's radius), the hull's own side of the zone first.
+// A zone on holdable ground is held at its centre as before.
+const ZONE_HOLD_RINGS_M = Object.freeze([4, 8, 12, 16, 20]);
+const ZONE_HOLD_BEARINGS = 16;
+const ZONE_HOLD_FOOTPRINT_M = 5;
+const ZONE_HOLD_MAX_FRAC = 0.7;
+// The on-objective shift's points obey the same rule (their old test sampled the leg twice, and a defender on the
+// plateau picked shift points on the floor beyond the face, drove onto it and pivoted there for a minute): holdable
+// ground, reached by a straight leg sampled every ZONE_LEG_STEP_M no steeper than LEG_NORMAL_Y_MIN.
+const ZONE_LEG_STEP_M = 3;
 // A route used up short of the objective (the mission's own plan ends in another connected component for this
 // hull or comes back empty, or a search leg took the waypoints) releases the hull to the classic drivers for this
 // long before the mission plans again (Cinder Junction frontline seed 72839: a Challenger 2 stood 494 s at its route
@@ -1146,6 +1170,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   const missSpot = { x: 0, z: 0 };           // …all fired from within MISS_SPOT_M of this spot
   let missLastShotS = -Infinity;
   let missVerdicts = 0;                      // probe-visible count of spots given up for their misses
+  let pressPickS = -Infinity;                // when the press point was last picked…
+  let pressReachByS = Infinity;              // …and the time it must be reached by (PRESS_REACH_SLACK_S)
+  let pressUnreached = 0;                    // probe-visible count of press points given up unreached
   let flankLaneCheckS = -Infinity;
   let flankLaneClear = false;                // the flank exemption's gun-to-hull lane at the last check
   // round 62 pacing: the search for a lost enemy (beginSearchLeg / updateSearchLeg)
@@ -1180,6 +1207,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   const objectiveShiftPoint = { x: 0, z: 0 };
   let objectiveShifting = false;
   let objectiveShifts = 0;                   // probe-visible count
+  // the zone's hold point (see ZONE_HOLD_RINGS_M), kept for the zone centre it was found for
+  const zoneHold = { x: 0, z: 0 };
+  let zoneHoldForX = NaN, zoneHoldForZ = NaN;
+  let zoneHoldMoves = 0;                     // probe-visible count of zone centres held from ground beside them
   let missionReleaseUntilS = -1;             // a blocked mission route has released the hull until then
   let missionReleases = 0;                   // probe-visible count
   // another level (see ELEVATION_LOCK_S)
@@ -2765,6 +2796,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (clear < 12) continue;
       const ex = sx + ux * clear, ez = sz + uz * clear;
       if (Math.max(Math.abs(ex), Math.abs(ez)) > 470) continue;
+      // a lane the final liquid brake would refuse is no escape (a hull already in the liquid keeps the ways out)
+      if (liquidSafe && !liquidSafe(sx, sz, a, clear)) continue;
       const h0 = terrainSafety.surfaceY(sx, sz);
       const terrainCost = terrainLineCost(sx, sz, h0, ux, uz);
       if (!Number.isFinite(terrainCost)) continue;
@@ -2852,14 +2885,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     let dx = x - st.pos.x, dz = z - st.pos.z;
     let dist = Math.hypot(dx, dz);
-    trackNavProgress(x, z, dist); // r6 wedge watchdog (see update())
     if (dist < ARRIVE_DIST_M) {
+      // an arrival holds the hull on purpose: no drive intent, or the low-speed watchdog read every hold at a
+      // destination as a wedge and reversed the hull off it (a zone holder jiggled on its line every 4-5 s)
       input.throttle = 0;
       input.steer = 0;
       input.brake = Math.abs(st.speed) > 0.5;
       if (crossBridge && combatRouteIndex < combatRoute.length - 1) { combatRouteIndex++; return false; }
       return true;
     }
+    trackNavProgress(x, z, dist); // r6 wedge watchdog (see update())
     // r7 CORNER-HOP ROUTER (see planRoute): re-plan when the goal moved or
     // the recheck timer lapsed; while a solid blocker sits on the straight
     // line, the steering goal becomes the corner around it.
@@ -4842,6 +4877,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         // Copper Mesa seeds 0/1/3 after the first press: the point at the foot of the host's plateau masked the
         // hull behind the rim — the gun, not the eye, must reach the hull from the press point.
         if (!pressLaneClear(x, z, radius)) continue;
+        // the reach deadline survives a restart onto the same point, or a flickering sight line would reset it forever
+        const samePoint = Math.hypot(x - pressPoint.x, z - pressPoint.z) <= 12 && nowS - pressPickS < 30;
+        if (!samePoint) {
+          pressReachByS = nowS + PRESS_REACH_SLACK_S + Math.hypot(x - st.pos.x, z - st.pos.z) / PRESS_REACH_SPEED_MPS;
+        }
+        pressPickS = nowS;
         pressPoint.x = x;
         pressPoint.z = z;
         passivePressCandidate = ring * 16 + k; // round 67: 0/1 the sides, 2–9 the fallbacks, 10 straight in
@@ -4888,14 +4929,17 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // glacis) with the hull in plain view — a closed gate held at the press point is the same verdict, and so
       // is a gun pinned at its pitch stop there (Coastal seed 3).
       // A press point its rounds do not reach from (missedOut) is given up the same way.
-      if (atPoint && (probeMiss || penDeniedT >= PASSIVE_PRESS_DENIED_S || passivePressArcT >= PASSIVE_PRESS_ARC_S
-          || missed) && firstAvailableSlot() >= 0) {
+      // So is a point the hull has not reached in time (see PRESS_REACH_SLACK_S).
+      const unreached = !atPoint && timeS >= pressReachByS;
+      if (((atPoint && (probeMiss || penDeniedT >= PASSIVE_PRESS_DENIED_S || passivePressArcT >= PASSIVE_PRESS_ARC_S
+          || missed)) || unreached) && firstAvailableSlot() >= 0) {
         passivePressArcT = 0;
         if (missed) giveUpMissedSpot(missSpot.x, missSpot.z, timeS);
         pressVeto.x = pressPoint.x;
         pressVeto.z = pressPoint.z;
         pressVeto.untilS = timeS + 120;
         passivePressRepicks++;
+        if (unreached) pressUnreached++;
         if (!pickPressPoint()) passivePressing = false;
       }
     }
@@ -5062,6 +5106,57 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return objective && (objective.mission === 'capture' || objective.mission === 'assault') ? objective : null;
   }
 
+  /** Ground a hull can stand and hold on: level enough at the point and round its footprint, and dry. */
+  function holdableGround(x: number, z: number): boolean {
+    const min = casemate ? CASEMATE_SPOT_NORMAL_Y_MIN : SPOT_NORMAL_Y_MIN;
+    if (hf.getNormalAt!(x, z).y < min) return false;
+    for (let k = 0; k < 8; k++) {
+      const a = k * (TAU / 8);
+      if (hf.getNormalAt!(x + Math.sin(a) * ZONE_HOLD_FOOTPRINT_M, z + Math.cos(a) * ZONE_HOLD_FOOTPRINT_M).y < min) {
+        return false;
+      }
+    }
+    return !liquidSafe || liquidSafe(x, z, 0, 0);
+  }
+
+  /** The straight leg from (x0, z0) to (x1, z1) is no steeper than a comfortable climb (every ZONE_LEG_STEP_M). */
+  function legDrivable(x0: number, z0: number, x1: number, z1: number): boolean {
+    const length = Math.hypot(x1 - x0, z1 - z0);
+    for (let d = ZONE_LEG_STEP_M; d < length; d += ZONE_LEG_STEP_M) {
+      const f = d / length;
+      if (hf.getNormalAt!(x0 + (x1 - x0) * f, z0 + (z1 - z0) * f).y < LEG_NORMAL_Y_MIN) return false;
+    }
+    return true;
+  }
+
+  /** Where a zone mission holds the zone centred at (x, z): its centre, or holdable ground beside it. */
+  function zoneHoldPoint(x: number, z: number, radiusM: number): { x: number; z: number } {
+    if (Math.abs(x - zoneHoldForX) < 1 && Math.abs(z - zoneHoldForZ) < 1) return zoneHold;
+    zoneHoldForX = x;
+    zoneHoldForZ = z;
+    zoneHold.x = x;
+    zoneHold.z = z;
+    if (!hf.getNormalAt || holdableGround(x, z)) return zoneHold;
+    const st = entity.state;
+    const own = Math.atan2(st.pos.x - x, st.pos.z - z);
+    for (let ring = 0; ring < ZONE_HOLD_RINGS_M.length; ring++) {
+      const r = ZONE_HOLD_RINGS_M[ring];
+      if (r > radiusM * ZONE_HOLD_MAX_FRAC) break;
+      for (let k = 0; k < ZONE_HOLD_BEARINGS; k++) {
+        // the hull's own side first, then alternately either way round
+        const step = (k + 1) >> 1;
+        const a = own + (k & 1 ? step : -step) * (TAU / ZONE_HOLD_BEARINGS);
+        const px = x + Math.sin(a) * r, pz = z + Math.cos(a) * r;
+        if (!holdableGround(px, pz)) continue;
+        zoneHold.x = px;
+        zoneHold.z = pz;
+        zoneHoldMoves++;
+        return zoneHold;
+      }
+    }
+    return zoneHold; // nothing holdable inside the zone: the centre, as before
+  }
+
   /** Pick the shift point: on the ring round the zone, in sight of the target, as far round its side as possible. */
   function pickObjectiveShift(objective: AiObjective): boolean {
     if (!target) return false;
@@ -5076,6 +5171,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const z = objective.z + Math.cos(a) * radius;
       if (Math.hypot(x - st.pos.x, z - st.pos.z) < ARRIVE_DIST_M * 1.5) continue; // where it already stands
       if (!reachableSpot(x, z)) continue;
+      // the shift point is holdable ground the hull reaches without crossing a face (see ZONE_HOLD_RINGS_M)
+      if (hf.getNormalAt && (!holdableGround(x, z) || !legDrivable(st.pos.x, st.pos.z, x, z))) continue;
       if (liquidSafe && !liquidSafe(x, z, Math.atan2(tp.x - x, tp.z - z), 0)) continue;
       if (!hasLos(x, hf.getHeightAt(x, z) + selfEyeM, z, tp.x, ty, tp.z)) continue;
       // 0 at the target's bow, π at its rear: a gate the front shuts is opened from the side
@@ -5142,8 +5239,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const offObjective = Math.hypot(destination.x - entity.state.pos.x, destination.z - entity.state.pos.z)
       > objective.radiusM;
     missionOffObjective = offObjective;
-    if (missionRouteNeedsRefresh(destination.x, destination.z)) {
-      setWaypoints([[destination.x, destination.z]], { loop: false });
+    // a zone is held from ground a hull can stand on (see ZONE_HOLD_RINGS_M)
+    const hold = objective.mission === 'capture' || objective.mission === 'assault'
+      ? zoneHoldPoint(destination.x, destination.z, objective.radiusM) : destination;
+    if (missionRouteNeedsRefresh(hold.x, hold.z)) {
+      setWaypoints([[hold.x, hold.z]], { loop: false });
     }
     // a route used up short of the objective (the mission's own, or a search leg that took the waypoints) is no
     // reason to park: the classic drivers take the hull for a while (Sirocco Wadi frontline seed 57001: a defender
@@ -5671,9 +5771,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       wpIndex, wpCount: waypoints.length,
       waypointX: waypoints[wpIndex]?.x ?? null, waypointZ: waypoints[wpIndex]?.z ?? null,
       conserveHolds, emptyRack, ramming, ramRuns, ramCapMps: Number.isFinite(ramCapMps) ? +ramCapMps.toFixed(2) : null,
-      missStreak, missVerdicts,
+      missStreak, missVerdicts, pressUnreached,
       rackSpent: !!target && target.id === rackSpentId, rackSpentT: +rackSpentT.toFixed(1), rackSpentVerdicts,
-      objectiveShifts, objectiveShifting,
+      objectiveShifts, objectiveShifting, zoneHoldMoves,
+      objectiveShiftX: objectiveShifting ? +objectiveShiftPoint.x.toFixed(1) : null,
+      objectiveShiftZ: objectiveShifting ? +objectiveShiftPoint.z.toFixed(1) : null,
+      zoneHoldX: Number.isFinite(zoneHoldForX) ? +zoneHold.x.toFixed(1) : null,
+      zoneHoldZ: Number.isFinite(zoneHoldForZ) ? +zoneHold.z.toFixed(1) : null,
       missionReleases, missionReleased: nowS < missionReleaseUntilS,
       levelRouting, levelRoutes, unbearableVerdicts, unbearable: unbearableId, elevationLockT: +elevationLockT.toFixed(1),
       pressing: nowS < pressUntilS,
