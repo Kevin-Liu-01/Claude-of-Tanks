@@ -545,4 +545,29 @@ for (const mode of ['mars', 'turbo_ball']) for (const gravityScale of [.17, .38,
   assert.equal(STANDARD_PHYSICS.restitution, 0.15);
 }
 
-console.log('impactPhysics.selftest: Mars/Turbo bounces decay and settle, 1 g barely hops, no tunnelling at 40 m/s (terrain, roof, wall, cliff), slope slide and hold, lateral grip, wreck momentum, landing torque and step-size independence pass');
+// ---- 12. the ground lifts a ride at most 0.25 m a step (physics lane, 2026-10-03) ---------------------------------
+// A support that jumps under a parked hull (a 2 m pad rising under it here, as a solver's correction can; the static
+// pose cache dropped with it) lifts it over steps, never in one; it used to put the hull on top in a single step.
+function padField() {
+  const field = makeField((x, z) => (Math.abs(x) < 6 && Math.abs(z) < 6 ? field.pad : 0));
+  field.pad = 0;
+  return field;
+}
+{
+  const field = padField();
+  const entity = makeEntity(field, { mode: 'standard' });
+  settle(entity, field);
+  const seat = entity.state.pos.y;
+  field.pad = 2;
+  entity.state._sup.x = NaN;
+  let maxStep = 0;
+  let prevY = entity.state.pos.y;
+  run(entity, field, 30, () => {
+    maxStep = Math.max(maxStep, entity.state.pos.y - prevY);
+    prevY = entity.state.pos.y;
+  });
+  assert.ok(maxStep <= 0.25 + 1e-9, `the floor lifts the ride at most 0.25 m a step (${maxStep.toFixed(3)} m)`);
+  near(entity.state.pos.y, seat + 2, 0.06, 'and the hull stands on the pad');
+}
+
+console.log('impactPhysics.selftest: Mars/Turbo bounces decay and settle, 1 g barely hops, no tunnelling at 40 m/s (terrain, roof, wall, cliff), slope slide and hold, lateral grip, wreck momentum, landing torque, step-size independence and the ground\'s lift cap pass');

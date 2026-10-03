@@ -809,6 +809,9 @@ const WALL_STOP_FACING = 0.75;
 /** The most a face pushes a hull off in one step, 6 m/s (a deep overlap leaves over a few steps; one step's push is
  * never a visible jump, the pop receipt's 0.12 m). */
 const WALL_PUSH_MAX_M_PER_STEP = 0.1;
+/** The ground lifts a ride at most this far in one step: a solver's correction (a support that jumped under the hull,
+ * a top found under it) is spread over steps, never a teleport. */
+const FLOOR_LIFT_MAX_M_PER_STEP = 0.25;
 let _reachBaseH: HeightSampler | null = null;
 let _reachTerrainH: HeightSampler | null = null;
 let _reachRootX = 0;
@@ -1611,7 +1614,9 @@ function advanceAirborneRide(
   const vAtContact = vBefore - gravity * fraction * dt;
   const closing = Math.max(0, ride.groundV - vAtContact);
   state.landingImpactMps = closing;
-  const seat = crossed ? Math.max(contactY, floorY) : Math.max(Math.min(ride.y, contactY), floorY);
+  let seat = crossed ? Math.max(contactY, floorY) : Math.max(Math.min(ride.y, contactY), floorY);
+  // a floor that rose past a ride in flight lifts it at most a step's worth, as the loaded floor does
+  if (!crossed && seat > ride.y) seat = Math.min(seat, ride.y + FLOOR_LIFT_MAX_M_PER_STEP);
   const rebound = Math.min(closing * restitution, Math.sqrt(2 * gravity * bounceMaxHeight));
   ride.airTime = 0;
   ride.rebound = 0;
@@ -1731,10 +1736,13 @@ function constrainLoadedRide(
       }
     }
   }
+  const yStart = ride.y;
   ride.v += accel * dt;
   ride.y += ride.v * dt;
   if (ride.y < floorY) {
-    ride.y = floorY;
+    // the floor moves the ride at most FLOOR_LIFT_MAX_M_PER_STEP above where it began the step: a solver's correction is
+    // spread over steps
+    ride.y += Math.max(0, Math.min(floorY - ride.y, yStart + FLOOR_LIFT_MAX_M_PER_STEP - ride.y));
     // a floor that stops falling stops the ride's fall with it this step (the smoothed ground rate lags it: a hull
     // bottoming out at the foot of a 32-degree flank at 22 m/s was lifted by the floor 9 cm a tick while its velocity
     // still read the fall); a rising floor carries it at the smoothed rate, as before (a face struck by the nose pushes

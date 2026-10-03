@@ -888,6 +888,8 @@ contact constraints and cannot be crossed by residual uphill speed.
   3 cm clear, at most 0.1 m a step, taking the travel into it as a wall impact (the hull's outline as drawn: 11-21
   points of its closed shell). A hull partly over an 80-degree face at the foot of its apron (maps lane A's Redrock and
   Skybridge faces) was carried 7-12 m up the face by its own samples and dropped back, again and again, for 500-1900 hp.
+- *The ground lifts a ride at most 0.25 m a step.* A floor that rises past the ride faster (a support that jumped
+  under the hull, a top found under it) lifts it over several steps, never in one.
 - *Known limits.* Rigid rotation is still about the root, though the tip lever reads the box centre (a nose-first
   landing settles about its centre, so it can hop a few times on a sharp kicker); a hull balanced exactly on a 4 m
   edge hangs nose-up near 80° before it slides off (its tail cannot reach the ground sooner); the drivetrain reads the grade over the hull's run (1° flatter than a 25° face,
