@@ -10,7 +10,18 @@ import { getMapConfig } from './maps/index.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 
 assert.ok(LAYOUT_BRIEF_MAPS.length > 0, 'the brief roster names at least one rebuilt map');
-const verdant = getMapConfig('verdant');
+// The skeleton the census found under twelve maps: Verdant Fields' five landforms and three strongpoint sites as they
+// stood before the brief (frozen here when Verdant itself was rebuilt, 2026-10-02, so the check keeps its meaning).
+const VERDANT_SKELETON = {
+  landforms: [
+    { kind: 'ridge', x: -244, z: 18 }, { kind: 'ridge', x: 246, z: 54 }, { kind: 'ridge', x: -54, z: 232 },
+    { kind: 'knoll', x: 168, z: -218 }, { kind: 'basin', x: -142, z: -176 },
+  ],
+  beats: [
+    { id: 'western-hedgerow-post', x: -254, z: 64 }, { id: 'eastern-field-observer', x: 246, z: 70 },
+    { id: 'northern-command-fold', x: 24, z: 270 },
+  ],
+};
 for (const mapId of LAYOUT_BRIEF_MAPS) {
   const config = getMapConfig(mapId);
   const m = await computeLayoutMetrics(mapId);
@@ -37,10 +48,10 @@ for (const mapId of LAYOUT_BRIEF_MAPS) {
 
   // no borrowed skeleton: at most one of Verdant's five landforms survives within 75 m, none of its beat sites
   const forms = config.terrain.landforms ?? [];
-  const borrowed = verdant.terrain.landforms.filter((form) => forms.some((own) => own.kind === form.kind
+  const borrowed = VERDANT_SKELETON.landforms.filter((form) => forms.some((own) => own.kind === form.kind
     && Math.hypot(own.x - form.x, own.z - form.z) < 75)).length;
   assert.ok(borrowed <= 1, `${mapId}: Verdant's landform skeleton is gone (${borrowed}/5 within 75 m)`);
-  for (const beat of verdant.props.tacticalBeats) {
+  for (const beat of VERDANT_SKELETON.beats) {
     assert.ok((config.props.tacticalBeats ?? []).every((own) => Math.hypot(own.x - beat.x, own.z - beat.z) >= 60),
       `${mapId}: no strongpoint on Verdant's ${beat.id} site`);
   }

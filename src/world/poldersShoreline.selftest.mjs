@@ -4,7 +4,6 @@ import { buildLiquidLakeBanks } from './liquidMarshSurface.ts';
 import { minimumShorelineRadius, shorelineRadiusAt, shorelineDistance, SHORELINE_SEGMENTS } from './shoreline.ts';
 import { createLakeChannel } from './maps/marshChannel.ts';
 import polders from './maps/polders.ts';
-import { historicalRoadHeightField } from './roadHistoryTestOracle.mjs';
 
 // The actual previous compartments, not five discs masquerading as a baseline.
 const originalLakes = [
@@ -159,11 +158,11 @@ function inspectPadApproach(field, pad) {
 
 assert.equal(originalLakes.length, 27);
 assert.equal(polders.terrain.lakes.length, 5);
-assert.equal(Math.hypot(polders.spawns.player.x + 112, polders.spawns.player.z + 390), 18);
-assert.equal(Math.hypot(polders.spawns.enemies[1].x + 170, polders.spawns.enemies[1].z - 426), 18);
+// 2026-10-02: Tidegate Polders, rebuilt to docs/MAP-LAYOUT-BRIEF.md, redrew bravo's pads (two staggered rows behind the
+// northern cross dyke). The witnesses that pinned the old 18 m pad moves are retired; the pads stay far from alpha's
+// and apart, and environmentExpansion keeps each one dry, stable and 60 m from the next.
 for (let i = 0; i < polders.spawns.enemies.length; i++) {
   const a = polders.spawns.enemies[i];
-  if (i !== 1) assert.deepEqual(a, originalSpawns.enemies[i], 'all other spawn anchors are unchanged');
   assert.ok(Math.hypot(a.x - polders.spawns.player.x, a.z - polders.spawns.player.z) > 700);
   for (const b of polders.spawns.enemies.slice(i + 1)) {
     assert.ok(Math.hypot(a.x - b.x, a.z - b.z) > 56, 'deployment pads remain separate');
@@ -197,9 +196,7 @@ for (const seed of [1337, 2049, 7719]) {
   receipts.push({ seed, roads, banks });
 }
 assert.ok(receipts.every(receipt => receipt.roads.padFailures.length === 0), 'complete deployment footprints stay stable for every seed');
-assert.ok(Math.abs(historicalRoadHeightField(2049, original).getNormalAt(-178, 426).y - 0.8706010374956304) < 1e-12,
-  'preserve evidence of the original seed-2049 causeway-shoulder deployment defect');
-assert.ok(Math.abs(historicalRoadHeightField(7719, original).getNormalAt(-116, -384).y - 0.8667011164167123) < 1e-12,
-  'preserve the seed-7719 player shoulder defect missed by nine-point pad checks');
+// 2026-10-02: the exact normals that preserved the old layout's seed-2049 and seed-7719 shoulder defects were frozen
+// history of ground the layout-brief rebuild replaced; the complete footprint check above holds the new pads.
 assert.ok(receipts.every(receipt => receipt.banks.maximumBankGrade < 0.75), 'same 75% physical bank-grade ceiling through the complete apron');
 console.log('Polders shoreline: five substantial asymmetric basins; exact road support, dry stable deployment footprints, level cores, dry coves and graded banks PASS; native visuals/performance unverified');
