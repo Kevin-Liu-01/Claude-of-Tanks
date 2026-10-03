@@ -78,6 +78,18 @@ runs after its ground hand-over. Both run once per ring at construction as slice
 rings) and an `escarpment` block on another style opts it in (Sunscar Oasis). The
 ring atlas's occlusion and cast shadows take their own share (`RING_RELIEF_SHADE`, horizonAutumnGround.ts) beside the
 gradient's 0.18. `horizonMassif.selftest.mjs` pins the laws and the skyline cone measure.
+The ring atlas's surface (the mountains lane, 2026-10-03, gauntlet wave 0: "a repeating diagonal corduroy ridge
+pattern" on Verdant's and Frontier Basin's flanks, Sirocco Wadi's "blobby" walls, "smooth, evenly lit mountain
+blankets with no forest, rock or gully structure"): `horizonRelief.ts` no longer stretches its fine relief along the
+radius (a flank seen obliquely does not fall along it, so the crests crossed it as combs); every character's
+`drainage` cuts couloirs down the fall line of the ring's own smoothed surface with `horizonMassif.ts erosionOctave`,
+and its `cover` lays the landcover as the light it leaves — forest stands past the ring forest's 880 m (lobed, crisp,
+denser in the hollows, to the treeline, never under the snow; their crowns grain the relief and their 16 m canopy
+stands in the occlusion and sun searches), field parcels on the gentle open ground, and on the arid walls varnish down
+the couloirs and bed tones by height — folded into the occlusion and sun texels the terrain program already reads
+(`encodeCanopyAo` / `encodeCanopySun` against the program's 1.4 power, 0.8 and 0.85 depths and the 0.7 share; no
+shader, sampler or draw). `horizonRelief.selftest.mjs` pins the encoding, the program's constants, the fall-line
+alignment on oblique flanks (the round-72 field fails it) and where the stands may stand.
 p2 trees lane (2026-10-01): the desktop tiers GROW their near trees — `treeGrowth.ts` (a THREE-free skeleton per
 species profile: stem or leader, scaffolds or whorls, side shoots and twigs bent by gravity and clipped by the crown
 envelope; spray seats on the outer branches; `supportSprays` draws every spray-bearing branch the tube budget left
