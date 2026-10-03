@@ -30,6 +30,15 @@ export default {
       // screens the two deployments from each other
       { kind: 'ridge', x: -14, z: 300, length: 170, width: 50, height: 8.4, yawDeg: 4 },
       { kind: 'ridge', x: -10, z: -270, length: 200, width: 56, height: 5.8, yawDeg: 88 },
+      // 2026-10-03 (maps lane B): two snow berms the station banked against the drift. One crosses the service street's
+      // northern approach, where the street runs out through a cut. The other lies across the open ground south-east of
+      // the station, its rotation about the midpoint of the two deployments. Both stand more than 75 m from Verdant's
+      // ridges (the layout brief's skeleton rule). With the PR head's bot fixes, both teams drove the street straight into
+      // the court. battlePacing's seed 45003 ended there in 77 s, under the 90 s floor. Now the four receipt seeds take
+      // 134 / 128 / 163 / 260 s, and none of twelve takes under 128 s. Over 40 all-bot seeds the split is 17-23 (14-26
+      // without them). The berms stand 3.6 m: at 4.2 m a hull crossing a berm's end at speed took a 163 HP fall.
+      { kind: 'ridge', x: -124, z: 186, length: 130, width: 40, height: 3.6, yawDeg: 0 },
+      { kind: 'ridge', x: 22, z: -173, length: 130, width: 40, height: 3.6, yawDeg: 0 },
       { kind: 'basin', x: 98, z: 12, rx: 108, rz: 128, height: -2.2, wetScale: 0.2 },
       { kind: 'knoll', x: -346, z: 24, rx: 84, rz: 102, height: 7.0 },
       // 2026-10-03 (maps lane B): periglacial geology — an esker, the sinuous gravel ridge a meltwater tunnel left under
