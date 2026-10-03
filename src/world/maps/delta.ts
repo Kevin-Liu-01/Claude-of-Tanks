@@ -47,8 +47,10 @@ export default {
     // The market square on the char and a rice-drying yard on each bank: level aprons the zone-control discs seat on.
     hardstands: [
       { x: -4, z: 14, width: 50, length: 50, yawDeg: 45, grade: 0 },
-      { x: -151, z: 43, width: 56, length: 56, yawDeg: 0, grade: 0 },
-      { x: 143, z: -15, width: 56, length: 56, yawDeg: 0, grade: 0 },
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): on the cross road's own grade, a 16 m bank
+      { x: -151, z: 43, width: 56, length: 56, yawDeg: 90, grade: 'road', bankM: 16 },
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): at its ground's median height
+      { x: 143, z: -15, width: 56, length: 56, yawDeg: 0, level: 3.0, grade: 0 },
     ],
     village: { x0: -126, x1: 40, z0: -92, z1: 180, cx: -4, cz: 14, feather: 52, flatten: 0.88, relief: 0.08 },
     landforms: [

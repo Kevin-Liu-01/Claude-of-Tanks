@@ -63,6 +63,21 @@ species where that keeps the row cap and the ground tile (every 3-species map); 
 tile toward it and tilts the card. The bake runs under cover through `world.warmImpostors()` (the solo loading
 runtime, the activation runtime's precompile). `horizonForestImpostors.selftest.mjs` and the `vegetationFarSeams`
 law section pin the seam.
+The mountains lane (2026-10-02, "clouds are the bar; mountains, horizons and terrain must match"): `horizonMassif.ts`
+(THREE-free) carves the ranged rings' composition — each row's relief smoothed along the row — by an eroded landform (a
+Clay-John-style dendritic drainage cut into a smooth base, mean one, the summits through a soft knee), and each
+authored range samples its profile at its own small angular offset (`PROFILE_TWIST_RAD` in `maps/horizon.ts`) so a
+massif is no longer a radial spur seen end-on as a cone; the far range takes the landform at 2.2 x its scale and wanders
+its crest row in depth, and a tableland's far rows pass a grey-scale opening (`openRowTables`) so their summits stand as
+tables, not stepped pyramids. `horizonEscarpment.ts` (THREE-free) lays the tableland rings' world-level bed stair (a cliff
+over a concave talus slope per bed, caprock rims as fixed points, a slope-weighted plan meander, talus aprons, a 3.6:1
+cliff bound enforced by lowering only) after the side canyons (the landform, cut-only) and the row refinement; Redrock's
+runs after its ground hand-over. Both run once per ring at construction as sliceable generators inside
+`buildHorizonRingSteps` and move heights only (the same rows, columns and triangles); `horizon.massif: false` /
+`horizon.escarpment: false` opt a ring out (Nordhavn Fjord's aiguilles and Earthrise Basin's walls keep their round-72b
+rings) and an `escarpment` block on another style opts it in (Sunscar Oasis). The
+ring atlas's occlusion and cast shadows take their own share (`RING_RELIEF_SHADE`, horizonAutumnGround.ts) beside the
+gradient's 0.18. `horizonMassif.selftest.mjs` pins the laws and the skyline cone measure.
 p2 trees lane (2026-10-01): the desktop tiers GROW their near trees — `treeGrowth.ts` (a THREE-free skeleton per
 species profile: stem or leader, scaffolds or whorls, side shoots and twigs bent by gravity and clipped by the crown
 envelope; spray seats on the outer branches; `supportSprays` draws every spray-bearing branch the tube budget left

@@ -106,7 +106,8 @@ export default {
     hardstands: [
       { x: 0, z: 0, width: 62, length: 62, yawDeg: 0, grade: 0 },
       { x: -262, z: lineZ(-262) - 4, width: 60, length: 60, yawDeg: 4, grade: 0 },
-      { x: 262, z: lineZ(262) + 4, width: 60, length: 60, yawDeg: 4, grade: 0 },
+      // apron bank law (docs/MAP-LAYOUT-BRIEF.md): at its ground's median height, a 16 m bank
+      { x: 262, z: lineZ(262) + 4, width: 60, length: 60, yawDeg: 4, level: 1.6, grade: 0, bankM: 16 },
     ],
     landforms: [
       // The main-line embankment outside the yard, each half from the throat to the cutting.
