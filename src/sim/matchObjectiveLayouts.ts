@@ -24,11 +24,12 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // file — the west street's yard, the casting yard below the blast furnace block (also the turbo-ball kickoff) and the
   // slag road's yard in the south-east.
   foundry: { kickoff: { x: 0, z: -72 }, zones: [{ x: -258, z: 50 }, { x: 0, z: -72 }, { x: 200, z: -176 }] },
-  // Titan Gorge (redesign 2026-10-03): three discs on the line of equal driven distance across the canyon floor — the
-  // western switchback's yard (a tilted apron in the map file), the crossroads below the old town (the validated seat
-  // of the bounded search beside its apron: a compound's yard wall reaches the authored centre's disc) with the
-  // turbo-ball kickoff on the apron itself, and the eastern shelf road's yard (a level apron).
-  titan_gorge: { kickoff: { x: 0, z: -65 }, zones: [{ x: -250, z: 50 }, { x: 5.7, z: -59.3 }, { x: 200, z: -140 }] },
+  // Titan Gorge (redesign 2026-10-03, the deployments at the gorge's two ends): three discs on the line of equal driven
+  // distance across the canyon floor — the western switchback's yard (a tilted apron in the map file), the crossroads
+  // below the old town on the deployments' bisector (a validated seat on the floor, also the turbo-ball kickoff) and
+  // the eastern shelf road's yard, the western yard's rotation about the centre (a level apron). Driven reach
+  // 549 / 454 m, 417 / 398 m and 449 / 554 m.
+  titan_gorge: { kickoff: { x: 0, z: 10 }, zones: [{ x: -250, z: 50 }, { x: 0, z: 10 }, { x: 250, z: -50 }] },
   // Validated full-disc results of the bounded search on these constrained
   // maps. Start with the known clearings; changed terrain still revalidates
   // every footprint and both-team connection before using the ordinary search.

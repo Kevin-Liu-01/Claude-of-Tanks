@@ -13,6 +13,18 @@ import { TOWN_PLANS } from './maps/townPlans.generated.ts';
 // The PR head's (0bbb0cddc) 'structure' footprints per map, [centre x, centre z, width, depth] in metres, and how many
 // of them stood in a carriageway there (and so may move off it).
 const PR_HEAD = {
+  titan_gorge: { carriageway: 5, structures: [
+    [-112.8, 48.69, 27.35, 26.51], [58.71, -50.19, 27.41, 24.25], [75.47, -24.66, 18.7, 23.15],
+    [46.16, -6.49, 11.23, 11.9], [90.05, 3.45, 11.48, 9.24], [61.22, 21.14, 5.64, 5.64],
+    [106.94, 29.99, 10.05, 9.36], [128.68, 19.75, 24.06, 22.37], [111.97, 46.53, 19.7, 22.73],
+    [94.61, 72.92, 10.5, 10.95], [102.99, 113.98, 15.45, 12.71], [78.25, 99.65, 4.91, 4.91],
+    [89.02, 143.74, 18.32, 20.96], [62.74, 127.32, 24.86, 28.81], [115.69, -35.67, 15.35, 24.56],
+    [138.14, -69.41, 9.71, 8.57], [144.82, -38.87, 7.61, 18.3], [-126.18, -123.24, 4.66, 10.93],
+    [-43.68, -122.04, 20.23, 21.39], [-18.22, -119.67, 6.73, 8.39], [39.26, -122.48, 4.1, 4.1],
+    [62.11, -114.35, 8.78, 6.53], [87.58, -116.85, 12.37, 19.8], [92.25, -92.22, 20.76, 10.11],
+    [118.28, -61.62, 14.96, 7.18], [-100.21, -35.47, 14.76, 19.7], [95.77, -41.61, 24.29, 17.09],
+    [-127.75, -8.86, 8.59, 6.81],
+  ] },
   // Blackglass generates its district (no recorded plan) with the clearance: nine of its blocks stood in a carriageway;
   // eight moved off it, and the civic hall at (-101.9, -85.8), with no clear place within 30 m, stays where it stood
   blackglass: { carriageway: 9, structures: [

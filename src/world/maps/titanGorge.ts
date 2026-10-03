@@ -14,13 +14,18 @@
 // sandstone 22 m high that end in cliffs short of both deployments. The old town stands in the middle of the floor, in
 // the shallow hollow of the wash. Three roads run the valley's length, the west road from the south-west corner and
 // two diagonals that cross in the old town, and two cross roads join them south and north of the town. Four buttes
-// stand free on the floor, one in each quarter, and break the long lines between the shelves. Alpha deploys in the
-// south-west corner, bravo across the northern floor. The zone-control discs stand on the line of equal driven
-// distance: the western switchback's yard, the crossroads below the old town and the eastern shelf road's yard.
+// stand free on the floor, one in each quarter, in pairs that are each other's rotation about the centre, and break the
+// long lines between the shelves. The teams come in from opposite ends of the gorge, each in a 4 x 2 block behind a gate
+// butte that screens it from the other down the gorge's axis; each block and its butte are the other's rotation about
+// the centre. The zone-control discs stand on the line of equal driven distance: the western switchback's yard, the
+// crossroads below the old town on the deployments' bisector and the eastern shelf road's yard, the western yard's
+// rotation about the centre.
 //
-// Landmarks: the West Shelf, the East Shelf, the four buttes, the wash, the old town's crossroads, the western
+// Landmarks: the West Shelf, the East Shelf, the four buttes, the gate buttes, the wash, the old town's crossroads, the western
 // switchback, the dry-river camp and the eastern shelf battery. The horizon ring still carries the gigantic stacked
 // escarpments beyond the edge without collision or draw calls.
+
+import { TOWN_PLANS } from './townPlans.generated.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -35,8 +40,7 @@ export default {
     mesas: null, landformRock: true,
     hardstands: [
       { x: -250, z: 50, width: 52, length: 52, yawDeg: 133, level: -1.9, grade: 0.08, bankM: 16 },
-      { x: 0, z: -65, width: 56, length: 56, yawDeg: 0 },
-      { x: 200, z: -140, width: 48, length: 48, yawDeg: 0, level: 3.4, grade: 0, bankM: 16 },
+      { x: 250, z: -50, width: 48, length: 48, yawDeg: -47, level: 8.1, grade: 0, bankM: 20 },
     ],
     village: { x0: -138, x1: 148, z0: -132, z1: 152, cx: 8, cz: 12, feather: 58, flatten: 0.66, relief: 0.30 },
     // each cross road's junctions and the northern fork are nodes both roads share, so the junction blend grades one
@@ -56,10 +60,16 @@ export default {
       ...[[-390, 0], [390, 0]].map(([x, z]) => ({ kind: 'ridge', x, z, length: 660, width: 90, height: 22, yawDeg: 90,
         corridorScale: 0.38, geology: { profile: 'butte' as const, wall: [0.35, 0.55] as const, apron: 0.3, cliffEnd: 'both' as const,
           strata: { stepM: 4.5, riser: 0.35 }, outline: 0.25, rough: 0.8, gullies: { count: 2, depthM: 2, width: 0.5 } } })),
-      // buttes standing free on the valley floor, the shelves' outliers
-      ...[[-170, -160, 45, 18], [160, 150, 40, 16], [-140, 280, 34, 14], [250, -270, 40, 15]].map(([x, z, r, height]) => ({
-        kind: 'knoll', x, z, rx: r, rz: r, height, corridorScale: 0.44,
+      // buttes standing free on the valley floor, the shelves' outliers, in pairs that are each other's rotation about the
+      // centre (the west lane's and the east lane's between the roads and the town)
+      ...[[-188, -120, 30, 40, 18], [188, 120, 30, 40, 18], [-140, 280, 34, 34, 14], [140, -280, 34, 34, 14]].map(([x, z, rx, rz, height]) => ({
+        kind: 'knoll', x, z, rx, rz, height, corridorScale: 0.44,
         geology: { profile: 'butte' as const, wall: [0.4, 0.62] as const, apron: 0.28, strata: { stepM: 4 }, outline: 0.22,
+          rough: 0.8, gullies: { count: 5, depthM: 1.5, width: 0.5 } } })),
+      // the gate buttes: one in front of each deployment, each the other's rotation about the centre, screening the
+      // deployments from each other down the gorge's axis (whole through the deployment corridors: bots drive round them)
+      ...[[-12, -300], [12, 300]].map(([x, z]) => ({ kind: 'knoll', x, z, rx: 24, rz: 22, height: 20, corridorScale: 1,
+        geology: { profile: 'butte' as const, wall: [0.4, 0.62] as const, apron: 0.28, strata: { stepM: 4 }, outline: 0.2,
           rough: 0.8, gullies: { count: 5, depthM: 1.5, width: 0.5 } } })),
       // the wadi's floor, where the valley's streams braid
       { kind: 'basin', x: 22, z: 18, rx: 188, rz: 124, height: -7.0, yawDeg: -12, corridorScale: 0.68,
@@ -67,11 +77,12 @@ export default {
     ],
   },
   spawns: {
-    player: { x: -330, z: -372 },
-    enemies: [
-      { x: -250, z: 390 }, { x: -172, z: 426 }, { x: -92, z: 382 },
-      { x: -10, z: 422 }, { x: 74, z: 380 }, { x: 158, z: 416 }, { x: 244, z: 374 },
-    ],
+    // The teams come in from opposite ends of the gorge: alpha's 4 x 2 block on the southern floor and bravo's seven
+    // pads as its rotation about the centre on the northern floor, each screened by the gate butte in front of it (the
+    // bots lane, 2026-10-03: alpha's south-west corner block lost 25 of 36 paired games to bravo's northern deployment,
+    // the deployments exchanged or not).
+    player: { x: 0, z: -395 },
+    enemies: [{ x: 12, z: 395 }, { x: 4, z: 395 }, { x: -4, z: 395 }, { x: -12, z: 395 }, { x: 12, z: 405 }, { x: 4, z: 405 }, { x: -4, z: 405 }],
   },
   splat: {
     grassTone: (h: number, s: number, l: number) => [0.075, 0.39, clamp01(0.19 + l * 0.78)],
@@ -113,6 +124,10 @@ export default {
       { id: 'eastern-shelf-battery', role: 'support', x: 300, z: 150, yawDeg: 7,
         structure: 'checkpointhut', redoubt: true, outcrop: { count: 8, radius: 12, scaleMax: 3.8 }, wreck: true, wreckOffsetX: 18 },
     ],
+    // the town stands as PR #9's head seated it (the owner's town-plan ruling, 2026-10-03), whatever the redesigned ground
+    townPlan: TOWN_PLANS.titan_gorge,
+    // its five buildings that stand in a carriageway move by the least distance that clears it; the rest stay put
+    roadBuildingClearance: true,
     blockFill: true, wallStyle: 'adobe', wallStoneChance: 0.18,
     buildingLat: [16, 6], sideSkip: 0.08, spacingPad: 3.0, maxSpread: 4.0,
     wallRuns: [
