@@ -687,6 +687,7 @@ export function releaseCsmShaderMaterial(
     delete material.defines.USE_CSM;
     delete material.defines.CSM_CASCADES;
     delete material.defines.CSM_FADE;
+    delete material.defines.COT_CLOUD_SHADE; // 2026-10-03: the cloud shade rides on the CSM registration (cloudShadeMap.ts)
   }
   material.needsUpdate = true;
   return true;
