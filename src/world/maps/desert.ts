@@ -467,7 +467,12 @@ export default {
     // saturated blue right down to the ridges (40 display luma at +4° against a horizon band near 140), so the pale
     // ranges read 2.3× brighter than the sky behind them; more Rayleigh lifts the low sky toward the dusty pale blue a
     // real desert horizon carries (Oasis inherits this sky), the zenith stays deep
-    turbidity: 7, rayleigh: 0.85, mieCoefficient: 0.009, mieDirectionalG: 0.8,
+    // 2026-10-03 (the skies lane; the gauntlet's wave 4, Sirocco's establishing: "the background ranges share the sand's
+    // pale beige ... mountains, plain and village dissolve into one washed-out plane with none of the hard-sun shadow a
+    // desert should show"): dry desert air is clear — turbidity 7 -> 5 and Mie 0.009 -> 0.006 (a bluer low sky behind the
+    // ranges, the haze's target) with the haze itself thinned below (fogDensity 0.00047 -> 0.0003: a range 10 km out
+    // keeps about half its contrast instead of a third)
+    turbidity: 5, rayleigh: 0.85, mieCoefficient: 0.006, mieDirectionalG: 0.8,
     // 0.00105 washed the mesa tablelands to unshaded clay by 900 m — 0.00086
     // keeps the heat haze but lets the strata banding read on the skyline
     // r1 (content_breadth): 0.00086 -> 0.00066 — even at 0.00086 everything
@@ -484,7 +489,7 @@ export default {
     // round 47 (2026-09-23): envIntensity stays 0.16 — sky.ts clamps scene.environmentIntensity to
     // ENV_INTENSITY_FLOOR (0.21), so any preset value below that (0.16, or the 0.19 the audit proposed) renders the
     // same; a real environment lift here must exceed 0.21 and was not tested this round. Oasis inherits this value.
-    fogDensity: 0.00047, fogTintHex: 0xbdb5a8 /* round 47 (2026-09-23): a step cooler than the sun so haze and sand stop sharing one ochre (lane r47c) */, fogMix: 0.60, envIntensity: 0.16, // lighting_post r4: 0.22 -> 0.16 (sun/lee dune separation)
+    fogDensity: 0.0003, fogTintHex: 0xbdb5a8 /* round 47 (2026-09-23): a step cooler than the sun so haze and sand stop sharing one ochre (lane r47c) */, fogMix: 0.60, envIntensity: 0.16, // lighting_post r4: 0.22 -> 0.16 (sun/lee dune separation)
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): a textured high sky instead of a thin veil —
     // broken altocumulus (0.35 -> 0.78) under a cirrus sheet (0.18 -> 0.48) on an explicit 900 m virtual deck with a
     // slower slant haze (0.00012) and smaller 2600 m cells, so the deck keeps its cauliflower structure down to the
