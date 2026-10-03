@@ -2289,6 +2289,9 @@ const VEHICLE_FORM_LENS = 0.28;
 // each vehicle mesh points it at its own root just before it draws and releases it after (tankFactoryCore.ts
 // installVehicleGroundReference), so decorations, profile parts, clones and instanced gear all share it. Anything
 // drawn without a root (thumbnail stubs, tooling) sees the far-below idle ground: nothing changes there.
+// The deep-shade floor's paint reference: the last mip of a painted map is the tile's mean paint (a 2048 tile has
+// eleven levels; textureLod clamps to the last one).
+const VEHICLE_PAINT_MEAN_LOD = 16;
 const VEHICLE_GROUND_DARK = 0.66;
 const VEHICLE_GROUND_H0 = 0.12;
 const VEHICLE_GROUND_H1 = 1.75;
@@ -2450,12 +2453,19 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 		vehFloorL *= mix( 0.30, 1.0, smoothstep( 0.025, 0.09, vehLuma ) );
 		vehFloorL *= uVehicleReadabilityScale;
 		// <<< gameplay_feel r5
-		if ( vehOutL < vehFloorL ) {
-			vec3 vehTint = material.diffuseColor / vehLuma;
-			// r1: 0.75 -> 0.92 hue retention — the washed-white component of
-			// the lift is what read as clay/chalk on every GLB vehicle.
-			vehTint = mix( vec3( 1.0 ), vehTint, 0.92 );
-			reflectedLight.indirectDiffuse += vehTint * ( vehFloorL - vehOutL );
+		// owner 2026-10-02 ("the camo and colours on the tank look so weird and not crisp"): the floor lifts the light a
+		// plate RECEIVES, not its output. It used to bring every texel to one luminance along its hue, so in deep shade the
+		// dark, base and pale tones of a camouflage converged into one muddy tone (desert 0.11 / 0.27 / 0.41 linear luma all
+		// to ~0.21). Now vehFloorL is where the paint's MEAN tone lands (the map's last mip is the tile's mean paint) and
+		// each texel lands in proportion to its own paint against it: the pattern keeps its light/dark contrast, solid
+		// coats (no map) land exactly where they did, dark hardware stays dark.
+		float vehRefL = vehLuma;
+		#ifdef USE_MAP
+		vehRefL = max( dot( textureLod( map, vMapUv, ${VEHICLE_PAINT_MEAN_LOD.toFixed(1)} ).rgb * diffuse, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.001 );
+		#endif
+		float vehTargetL = vehFloorL * vehLuma / vehRefL;
+		if ( vehOutL < vehTargetL ) {
+			reflectedLight.indirectDiffuse += material.diffuseColor * ( ( vehTargetL - vehOutL ) / vehLuma );
 		}
 		// <<< gameplay_feel r4
 	}
@@ -2513,7 +2523,7 @@ export function createTankMaterials(
   const setup = <T extends THREE.Material>(material: T): T => {
     if (shadowHookSupported && shadowSetup) shadowSetup(material, vehicleAmbientFloorHook);
     else material.onBeforeCompile = vehicleAmbientFloorHook;
-    material.customProgramCacheKey = () => 'veh-ambient-floor-v4';
+    material.customProgramCacheKey = () => 'veh-ambient-floor-v5';
     return material;
   };
   const aniso = engineCtx?.anisotropy || 8;

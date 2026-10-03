@@ -23,8 +23,10 @@ assert.equal(uniform.value, 1);
 // Owner 2026-10-02 ("shadows on tanks make them look a lil flat"): the floors keep the shade readable but are aimed by
 // each plate's WORLD orientation as well as the lens, and the indirect light falls toward the ground along the
 // vehicle's own axis. This replaces the frozen shader fingerprint with the invariants that matter: the readability
-// scale still gates both floors, the legacy safeguards (high-albedo rolloff, lit gating, deep-shade hue tint, dark
-// hardware) survive, both floors take the form aim, the ground occlusion and the vehicle pixel tag appear once.
+// scale still gates both floors, the legacy safeguards (high-albedo rolloff, lit gating, dark hardware) survive, both
+// floors take the form aim, the ground occlusion and the vehicle pixel tag appear once. Owner 2026-10-02 ("the camo and
+// colours on the tank look so weird and not crisp"): the deep-shade floor lifts received light, so a camouflage keeps
+// its light/dark contrast instead of every texel converging on one luminance.
 const additions = [
   'uniform float uVehicleReadabilityScale;\n',
   '\t\tvehFill *= uVehicleReadabilityScale;\n',
@@ -44,9 +46,20 @@ assert.match(frag, /0\.550 \* \( 0\.400 \+ 0\.600 \* vehAim \)/, 'the indirect f
 assert.match(frag, /\* \( 0\.40 \+ 0\.60 \* vehAim \+ 0\.45 \* vehRim \* vehShade \);/, 'the deep-shade floor takes the form aim');
 for (const kept of ['vehFill = min( vehFill, 0.30 / vehLuma );', 'vehFill *= mix( 1.0, 0.12, smoothstep( 0.10, 0.55, vehIrrad ) );',
   'reflectedLight.indirectDiffuse = max( reflectedLight.indirectDiffuse, material.diffuseColor * vehFill );',
-  'vehFloorL *= mix( 0.30, 1.0, smoothstep( 0.025, 0.09, vehLuma ) );', 'vehTint = mix( vec3( 1.0 ), vehTint, 0.92 );']) {
+  'vehFloorL *= mix( 0.30, 1.0, smoothstep( 0.025, 0.09, vehLuma ) );']) {
   assert.ok(frag.includes(kept), `legacy readability safeguard kept: ${kept}`);
 }
+// the deep-shade floor: the map's last mip is the paint reference, each texel lands in proportion to its own paint and
+// the lift runs along the albedo; the old one-luminance hue lift is gone
+assert.match(frag, /#ifdef USE_MAP\n\t\tvehRefL = max\( dot\( textureLod\( map, vMapUv, 16\.0 \)\.rgb \* diffuse, /, 'a painted map references its mean paint');
+once('float vehTargetL = vehFloorL * vehLuma / vehRefL;', 'each texel lands in proportion to its paint');
+once('reflectedLight.indirectDiffuse += material.diffuseColor * ( ( vehTargetL - vehOutL ) / vehLuma );', 'the lift runs along the albedo');
+assert.ok(!frag.includes('vehTint'), 'no one-luminance hue lift');
+// the same law on the CPU: desert dark / base / pale tones (linear luma) under the 0.21 canopy floor
+const deepShade = (texelL, meanL, floorL = 0.21) => floorL * texelL / meanL;
+const desert = [0.11, 0.27, 0.41].map(l => deepShade(l, 0.25));
+assert.ok(desert[2] / desert[0] > 3.5, `the pale tone stays ${(desert[2] / desert[0]).toFixed(1)}x the dark tone (it was 1x)`);
+assert.ok(Math.abs(deepShade(0.25, 0.25) - 0.21) < 1e-9, 'the mean paint lands where every texel used to');
 once('float vehHeight = dot( vehWorldPos - uVehGround.xyz, uVehUp );', 'ground occlusion measures height along the vehicle axis');
 assert.match(frag, /reflectedLight\.indirectDiffuse \*= mix\( 0\.\d+, 1\.0,\s*smoothstep\( 0\.\d+, 1\.\d+, vehHeight \) \);/, 'indirect light falls toward the ground');
 assert.ok(!frag.includes('uVehicleShadeModel'), 'one shade model, no A/B branch');
