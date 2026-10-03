@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { MAP_IDS } from '../../src/world/maps/mapIds.ts';
 import { CAST } from './cast.mjs';
 import { DUR, KINDS, LOOP_MS, SHOTS, XFADE_MS, siteScene } from './site50.mjs';
+import { blockedFraction, heroInFrameFraction } from './camera-clearance.mjs';
 
 // Owner 2026-10-02: fifty new shots of tanks, battles and battlefields for the site, each one continuous take that
 // site-loops.mjs turns into a seamless loop. Round 2 sets the bar by the owner's own Open Graph key art and Steinburg
@@ -42,6 +43,9 @@ for (const shot of SHOTS) {
   assert.ok(ramp || dur === DUR, `${id}: one ${DUR} ms take (a speed ramp may stretch a shorter timeline)`);
   assert.equal(scene.film.fps, 30);
   assert.ok(scene.storyboard.shots.length >= 2, `${id}: a moving lens`);
+  // review 2026-10-02: lenses that sat ahead of the hero (it fell behind them) or inside a building wasted a GPU pass
+  assert.ok(heroInFrameFraction(scene) >= 0.9, `${id}: the hero stays in frame (${heroInFrameFraction(scene).toFixed(2)})`);
+  assert.ok(blockedFraction(scene) <= 0.1, `${id}: the lens clears the buildings (${blockedFraction(scene).toFixed(2)} blocked)`);
   assert.ok(scene.meta.still.tMs > 0 && scene.meta.still.tMs < dur, `${id}: the still moment lies inside the take`);
   for (const a of scene.actors.filter(a => !a.name.startsWith('foe'))) assert.ok(cast.has(a.id), `${id}: ${a.name} is a cast tank (${a.id})`);
   const types = new Set(scene.effects.map(e => e.type));

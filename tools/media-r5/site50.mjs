@@ -11,6 +11,7 @@ import { pathToFileURL } from 'node:url';
 import { buildShot, fire, kill, pen, burn, smoke, boom, dust, mg, barrage, exhaust, flare, embers, debris, fireField, huge, H } from './setups.mjs';
 import { setById, T, pictureFor, LIGHT_READY, sunFor, RIG } from './sets.mjs';
 import { CAST, CAST_NAMES } from './cast.mjs';
+import { blockedFraction } from './camera-clearance.mjs';
 
 export const LOOP_MS = 6000, XFADE_MS = 600, DUR = LOOP_MS + XFADE_MS;
 export const KINDS = Object.freeze(['tank', 'battle', 'scene']);
@@ -92,13 +93,15 @@ const wreck = foe => [burn(foe, 0), smoke(foe, 0), embers(foe, 0)];
 const hitNear = (lat, lon, tMs, size = 'large') => [boom(H(lat, lon), tMs, size), debris(H(lat, lon), tMs + 30, { count: 34, speedMps: 15, hot: 0.4, scale: 1.1 })];
 const incoming = (foe, lat, lon, tMs) => [fire(foe, tMs), ...hitNear(lat, lon, tMs + 110)];
 const knockout = (shooter, target, tMs) => [fire(shooter, tMs), pen(target, tMs + 90), kill(target, tMs + 210), debris(target, tMs + 230, { count: 44, speedMps: 20, hot: 0.7, scale: 1.2 })];
-// lenses: the Open Graph high three-quarter (ahead and to the side, looking back across the hull at the fight) and the
-// Steinburg high rear quarter (over the engine deck, down the street); k = -1 mirrors to the other side
-const OG = (k = 1, look = 55) => RIG.follow({ side: [7.5 * k, 6.6 * k], along: [6, 4.4], lift: [3.4, 3.2], fov: 46, look: [-7 * k, look, 1.5] });
-const OG_HOLD = (k = 1, look = 55) => hold({ side: 7.5 * k, along: 6, lift: 3.4, fov: 46, lookHero: [-7 * k, look, 1.5] }, { side: 6.8 * k, along: 5.2, lift: 3.2, fov: 44, lookHero: [-7 * k, look, 1.5] });
-const REAR = (k = 1) => RIG.follow({ side: [-6.5 * k, -5.8 * k], along: [-9, -7.6], lift: [5.6, 5.2], fov: 46, look: [2 * k, 45, 1] });
-const REAR_HOLD = (k = 1) => hold({ side: -7 * k, along: -9, lift: 5.6, fov: 44, lookHero: [2 * k, 40, 1] }, { side: -6.3 * k, along: -8, lift: 5.3, fov: 42, lookHero: [2 * k, 40, 1] });
-const DRONE = (k = 1) => RIG.drone({ side: 10 * k, along: [-30, -14], lift: [30, 24], fov: 48, look: [0, 40, 0] });
+// lenses: the Open Graph high three-quarter (over the hero's right shoulder, the hull big in the lower frame, the fight
+// ahead behind it) and the Steinburg high rear quarter (over the engine deck, down the street); k = -1 mirrors sides.
+// Review 2026-10-02: the three-quarter first sat AHEAD of the hero looking further ahead, which put the hero behind the
+// lens — a hero-and-fight frame needs the lens behind the hero's shoulder.
+const OG = (k = 1, look = 22) => RIG.follow({ side: [6.5 * k, 6 * k], along: [-7, -6], lift: [3.6, 3.3], fov: 46, look: [-1.5 * k, look, 0.9] });
+const OG_HOLD = (k = 1, look = 22) => hold({ side: 6.5 * k, along: -7.5, lift: 3.6, fov: 46, lookHero: [-1.5 * k, look, 0.9] }, { side: 5.9 * k, along: -6.8, lift: 3.4, fov: 44, lookHero: [-1.5 * k, look, 0.9] });
+const REAR = (k = 1) => RIG.follow({ side: [-5.5 * k, -5 * k], along: [-8.5, -7.2], lift: [4.6, 4.3], fov: 46, look: [1.5 * k, 24, 0.8] });
+const REAR_HOLD = (k = 1) => hold({ side: -6 * k, along: -9, lift: 4.8, fov: 44, lookHero: [1.5 * k, 22, 0.8] }, { side: -5.4 * k, along: -8, lift: 4.5, fov: 42, lookHero: [1.5 * k, 22, 0.8] });
+const DRONE = (k = 1) => RIG.drone({ side: 9 * k, along: [-24, -12], lift: [24, 20], fov: 46, look: [0, 12, 0] });
 const CRANE = (k = 1) => RIG.crane({ side: -6 * k, along: [-12, -17], lift: [1.8, 11], fov: 46, look: [0, 40, 1] });
 
 // [n, id, kind, title, set (staging), film (buildShot fields; durMs defaults to DUR), still { tMs, exposureMs }]
@@ -108,27 +111,27 @@ export const SHOTS = [
     { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', 5, 24, 1500), fire('hero', 3400), mg('ally1', 2600, 9), dust('hero', 800, 10, 0.8)], cam: REAR() },
     { tMs: 3480, exposureMs: 25 }],
   [2, 'factory-road', 'tank', 'An M1A2 Abrams TUSK rolls past the factory under fire', S.stEast,
-    { speed: 2.8, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', -5, 18, 2000), mg('ally1', 1200, 9), fire('hero', 3900), dust('hero', 700, 10, 0.8)], cam: OG() },
+    { count: 2, speed: 2.8, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', -5, 18, 2000), mg('ally1', 1200, 9), fire('hero', 3900), dust('hero', 700, 10, 0.8)], cam: OG() },
     { tMs: 3980, exposureMs: 25 }],
   [3, 'square-pass', 'tank', 'A Leclerc XLR crosses the burning square', S.stSquare,
-    { speed: 2.2, pinMs: 3300, sun: 'side', effects: [...wreck('foe0'), burn('foe1', 0), smoke('foe1', 0), fireField(H(-9, 12), 0, { radiusM: 4 }), huge(H(10, 46), 2600), fire('hero', 4200)],
-      cam: RIG.passby({ side: 9, along: 0, lift: 1.8, fov: 42, look: [0, 0, 1.6] }) },
+    { speed: 1.5, pinMs: 3300, sun: 'side', effects: [...wreck('foe0'), burn('foe1', 0), smoke('foe1', 0), fireField(H(-9, 12), 0, { radiusM: 4 }), huge(H(10, 46), 2600), fire('hero', 4200)],
+      cam: RIG.passby({ side: -8, along: 0, lift: 3, fov: 42, look: [0, 0, 1.6] }) },
     { tMs: 3300, exposureMs: 33 }],
   [4, 'column-under-fire', 'tank', 'A T-90M column drives into the fight on the country road', S.vRoad,
     { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), burn('foe2', 0), smoke('foe2', 0), ...incoming('foe1', -4, 10, 1300), fire('hero', 2600), huge(H(-30, 70), 3300), barrage(H(-24, 46), 3900, 6, 14), mg('ally1', 4400, 9), fire('ally1', 5200)], cam: OG() },
     { tMs: 2700, exposureMs: 25 }],
   [5, 'barn-advance', 'tank', 'A T-14 Armata advances past the barns of Verdant Fields', S.vVillage,
-    { speed: 2.6, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', 6, 20, 2200), fire('hero', 3700), dust('hero', 800, 10, 0.8)], cam: RIG.orbit({ radius: 13, from: 30, to: 72, lift: 3.2, fov: 42, look: [0, 3, 1.4] }) },
+    { speed: 2.6, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', 6, 20, 2200), fire('hero', 3700), dust('hero', 800, 10, 0.8)], cam: RIG.orbit({ radius: 13, from: 26, to: 54, lift: 3.2, fov: 42, look: [0, 3, 1.4] }) },
     { tMs: 3780, exposureMs: 25 }],
   [6, 'farm-charge', 'tank', 'A KF51 Panther charges past the farmhouse through artillery', S.vFarm,
-    { speed: 3.2, sun: 'side', effects: [...wreck('foe0'), barrage(H(-14, 28), 900, 6, 12), barrage(H(12, 44), 3200, 5, 12), fire('hero', 4300), dust('hero', 700, 12, 1)], cam: RIG.lead({ side: 2.5, along: [22, 15], lift: 2.0, fov: 36, look: [0, -3, 1.6] }) },
+    { count: 1, speed: 3.2, sun: 'side', effects: [...wreck('foe0'), barrage(H(-14, 28), 900, 6, 12), barrage(H(12, 44), 3200, 5, 12), fire('hero', 4300), dust('hero', 700, 12, 1)], cam: RIG.lead({ side: 2.5, along: [15, 10], lift: 2.2, fov: 38, look: [0, -2, 1.5] }) },
     { tMs: 4380, exposureMs: 25 }],
   [7, 'lake-shellfire', 'tank', 'A Stridsvagn 122 crosses the frozen lake through shellfire', S.gLake,
     { speed: 3.6, sun: 'side', effects: [burn('foe1', 0), smoke('foe1', 0), ...hitNear(-7, 16, 1400), ...hitNear(9, 32, 3000), fire('hero', 4500), huge(H(-18, 70), 4700), exhaust('hero', 100)],
       cam: RIG.follow({ side: [10, 8.5], along: [3, 0.5], lift: 1.8, fov: 36, look: [0, 4, 1.4] }) },
     { tMs: 3060, exposureMs: 25 }],
   [8, 'market-push', 'tank', 'An M1A2 Abrams column pushes through the market street of Sunscar Oasis', S.oMarket,
-    { speed: 2.6, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', -5, 15, 1800), fire('hero', 3600), dust('hero', 700, 12, 1)], cam: REAR() },
+    { count: 1, speed: 2.6, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', -5, 15, 1800), fire('hero', 3600), dust('hero', 700, 12, 1)], cam: REAR() },
     { tMs: 3680, exposureMs: 25 }],
   [9, 'harbor-run', 'tank', 'A Leopard 2A7V runs the harbor road at Nordhavn under fire', S.fHarbor,
     { speed: 3, sun: 'side', effects: [...wreck('foe0'), ...hitNear(8, 20, 1500), mg('ally1', 2400, 9), huge(H(-12, 70), 3200), fire('hero', 4100)], cam: OG() },
@@ -143,7 +146,7 @@ export const SHOTS = [
     { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), fireField(H(-8, 20), 0, { radiusM: 3 }), ...hitNear(6, 30, 2000), fire('hero', 3300)], cam: OG() },
     { tMs: 3380, exposureMs: 25 }],
   [13, 'farm-race', 'tank', 'A K2 Black Panther races past the red-roofed farm at sunset', S.frFarm,
-    { time: 'sunset', speed: 3.4, pinMs: 3300, effects: [fireField(H(14, 36), 0, { radiusM: 5 }), embers(H(14, 36), 0), ...hitNear(-10, 40, 1700), fire('hero', 3300), dust('hero', 900, 10, 0.8)], cam: RIG.passby({ side: -12, along: 0, lift: 1.6, fov: 38, look: [0, 0, 1.7] }) },
+    { time: 'sunset', speed: 3.0, pinMs: 3300, effects: [fireField(H(14, 36), 0, { radiusM: 5 }), embers(H(14, 36), 0), ...hitNear(-10, 40, 1700), fire('hero', 3300), dust('hero', 900, 10, 0.8)], cam: RIG.passby({ side: -12, along: 0, lift: 1.6, fov: 38, look: [0, 0, 1.7] }) },
     { tMs: 3380, exposureMs: 25 }],
   [14, 'snow-push', 'tank', 'A T-80U pushes through snowy Frosthollow', S.wVillage,
     { speed: 2.4, count: 2, sun: 'side', effects: [...wreck('foe0'), burn('foe1', 0), smoke('foe1', 0), ...hitNear(8, 24, 2100), mg('ally1', 1300, 9), fire('hero', 3600)], cam: RIG.chase({ side: -3, along: [-16, -12.5], lift: 3, fov: 44, look: [0, 30, 1.8] }) },
@@ -162,7 +165,7 @@ export const SHOTS = [
     { tMs: 1380, exposureMs: 16 }],
   [18, 'street-knockout', 'battle', 'A T-90A is knocked out at the end of a Steinburg street at night', S.stSouth,
     { time: 'night', picture: { exposure: 0.6 }, speed: 0, effects: [NIGHT_FLARE(H(4, 50), 90), ...wreck('foe1'), ...knockout('hero', 'foe0', 1700), mg('ally1', 3000, 9), fire('ally1', 4400)],
-      cam: hold({ side: 6, along: 7, lift: 3.6, fov: 42, lookHero: [-1, 45, 1.5] }, { side: 5.4, along: 6.2, lift: 3.4, fov: 40, lookHero: [-1, 45, 1.5] }) },
+      cam: hold({ side: 6, along: -8, lift: 3.6, fov: 42, lookHero: [-1, 30, 1.2] }, { side: 5.4, along: -7.2, lift: 3.4, fov: 40, lookHero: [-1, 30, 1.2] }) },
     { tMs: 2060, exposureMs: 16 }],
   [19, 'roof-tiles', 'battle', 'Roof tiles rain down as a Leopard 2A6 fires up the street', S.stMain,
     { speed: 0, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', -9, 22, 1200), debris(H(-10, 24), 1360, { count: 50, speedMps: 12, hot: 0.1, scale: 1.4 }), fire('hero', 2600), fire('ally1', 3900)],
@@ -173,7 +176,7 @@ export const SHOTS = [
     { tMs: 1380, exposureMs: 16 }],
   [21, 'fields-assault', 'battle', 'A T-90SM wedge assaults through the burning fields', S.vAssault,
     { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), burn('foe1', 0), smoke('foe1', 0), fire('ally1', 1100), huge(H(-6, 52), 2100), fire('hero', 3600), boom(H(-20, 40), 4600, 'large')],
-      cam: RIG.follow({ side: [7, 6], along: [6, 4.5], lift: 3.2, fov: 46, look: [-6, 60, 2] }) },
+      cam: OG() },
     { tMs: 3720, exposureMs: 25 }],
   [22, 'walking-barrage', 'battle', 'Artillery walks across the fields toward the wedge at night', S.vAssault,
     { time: 'night', picture: { exposure: 0.6 }, speed: 0, effects: [NIGHT_FLARE(H(-10, 70), 100), ...wreck('foe0'), barrage(H(-10, 70), 800, 6, 14), barrage(H(-6, 48), 2200, 6, 14), barrage(H(-2, 28), 3600, 5, 12), fire('hero', 4600)],
@@ -184,7 +187,7 @@ export const SHOTS = [
     { tMs: 1580, exposureMs: 16 }],
   [24, 'ice-duel', 'battle', 'A duel on the frozen lake: a T-80U takes the hit', S.gLake,
     { speed: 0, sun: 'side', effects: [burn('foe1', 0), smoke('foe1', 0), ...knockout('hero', 'foe0', 1500), ...hitNear(-6, 14, 3300), fire('ally1', 4400)],
-      cam: hold({ side: 5, along: 10, lift: 1.0, fov: 38, lookHero: [-1, 40, 1.2] }, { side: 4.6, along: 9.2, lift: 1.05, fov: 36, lookHero: [-1, 40, 1.2] }) },
+      cam: hold({ side: 4.5, along: -9, lift: 1.1, fov: 38, lookHero: [-1, 40, 1.2] }, { side: 4.1, along: -8.2, lift: 1.15, fov: 36, lookHero: [-1, 40, 1.2] }) },
     { tMs: 1860, exposureMs: 16 }],
   [25, 'alpine-village', 'battle', 'A Leopard 2A5 and a CV90105 fight through the alpine village', S.gVillage,
     { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1400), ...incoming('foe1', 5, 14, 2600), fire('ally1', 3800)], cam: OG_HOLD() },
@@ -209,7 +212,7 @@ export const SHOTS = [
     { tMs: 1780, exposureMs: 16 }],
   [32, 'yard-salvo', 'battle', 'M1A2 SEPv3 tanks fire across the rail yard at golden hour', S.rTracks,
     { speed: 0, effects: [...wreck('foe0'), fire('hero', 1300), fire('ally1', 1900), fire('ally2', 2500), ...incoming('foe1', 6, 14, 3600)],
-      cam: hold({ side: 9, along: 13, lift: 3.4, fov: 42, lookHero: [-4, 40, 1.4] }, { side: 8.2, along: 11.8, lift: 3.2, fov: 40, lookHero: [-4, 40, 1.4] }) },
+      cam: hold({ side: 9, along: -10, lift: 3.4, fov: 42, lookHero: [-4, 40, 1.4] }, { side: 8.2, along: -9, lift: 3.2, fov: 40, lookHero: [-4, 40, 1.4] }) },
     { tMs: 1380, exposureMs: 16 }],
   [33, 'water-tower', 'battle', 'The line advances past the burning water tower at night', S.rFactory,
     { time: 'night', picture: { exposure: 0.6 }, speed: 2.2, effects: [NIGHT_FLARE(H(-4, 60), 90), ...wreck('foe0'), fireField(H(-12, 18), 0, { radiusM: 5 }), ...hitNear(-8, 25, 1900), fire('hero', 3600)], cam: RIG.chase({ side: -3, along: [-16, -12], lift: 3.4, fov: 44, look: [0, 40, 1.6] }) },
@@ -272,6 +275,10 @@ export const SHOTS = [
     { tMs: 4600, exposureMs: 25 }],
 ];
 
+const CAMERA_BLOCKED_MAX = 0.1;
+const mirrorCam = cam => cam.map(k => ({ ...k, ...(k.side != null ? { side: -k.side } : {}), ...(k.orbit != null ? { orbit: -k.orbit } : {}),
+  ...(k.lookHero ? { lookHero: [-k.lookHero[0], k.lookHero[1], k.lookHero[2]] } : {}) }));
+const tuckCam = cam => cam.map(k => ({ ...k, ...(k.side != null ? { side: k.side * 0.6 } : {}), ...(k.lift != null ? { lift: k.lift + 1.6 } : {}) }));
 /** Builds one site shot's scene JSON (storyboard + still moment + meta). */
 export function siteScene([n, id, kind, title, setRef, film, still]) {
   const set = typeof setRef === 'string' ? setById(setRef) : setRef;
@@ -280,14 +287,24 @@ export function siteScene([n, id, kind, title, setRef, film, still]) {
     ...(film.formation ? { formation: film.formation } : {}), ...(film.count ? { count: film.count } : {}),
     ...(film.lineup ? { lineup: film.lineup } : {}), ...('enemies' in film ? { enemies: film.enemies } : {}),
     ...(film.anchor ? { anchor: film.anchor } : {}), ...(film.heading != null ? { heading: film.heading } : {}) };
-  const scene = buildShot(base, { durMs: DUR, ...film, still });
+  // the lens must clear the battlefield's buildings: a camera path inside a wall or blind behind one is mirrored to the
+  // hero's other side, tucked in and raised, or both — whichever clears the most (camera-clearance.mjs)
+  let scene = buildShot(base, { durMs: DUR, ...film, still }), cameraFix = null;
+  const blocked0 = blockedFraction(scene);
+  if (blocked0 > CAMERA_BLOCKED_MAX) {
+    let best = blocked0;
+    for (const [name, cam] of [['mirrored', mirrorCam(film.cam)], ['tucked', tuckCam(film.cam)], ['mirrored+tucked', tuckCam(mirrorCam(film.cam))]]) {
+      const alt = buildShot(base, { durMs: DUR, ...film, cam, still }), f = blockedFraction(alt);
+      if (f < best) { best = f; scene = alt; cameraFix = name; }
+    }
+  }
   if (set.autoPlace === false) scene.autoPlace = false;
   if (set.allowWater) for (const a of scene.actors) a.allowWater = true;
   const az = LIGHT_READY ? sunFor(scene, film.sun ?? set.sun, time) : null;
   if (az != null) scene.light = { ...(scene.light ?? {}), sunAzimuthDeg: az };
   const hero = scene.actors[0]?.id;
   scene.meta = { n, id: `s${String(n).padStart(2, '0')}-${id}`, kind, title, set: set.id, map: set.map, time, hero, heroName: CAST_NAMES[hero]?.[0] ?? hero,
-    loopMs: LOOP_MS, xfadeMs: XFADE_MS, still };
+    loopMs: LOOP_MS, xfadeMs: XFADE_MS, still, ...(cameraFix ? { cameraFix } : {}) };
   return scene;
 }
 
