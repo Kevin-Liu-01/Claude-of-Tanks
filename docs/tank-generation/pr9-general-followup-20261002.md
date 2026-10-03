@@ -34,7 +34,11 @@ against unchanged `1aff79733` geometry. Their validation report is
 
 ## Inherited failures and limits
 
-The full `1aff79733` run is still in progress. Eight fast failures also reproduce
+The frozen `1aff79733` run finished all 1,243 checks with 30 failures. Its final report is
+`.qa-dev/pr9-integration/rebased-full-suite.json` in the integration worktree; the failure list is copied to
+`.qa-dev/pr9-followup/frozen-suite-failures-final.json`. Twenty-five of those failures have subsequently
+passed focused candidate reruns; five remain unresolved.
+Eight fast failures also reproduce
 on clean baseline `1e6b4b738`: fleet balance; sourced-palette map coverage;
 foundry map coverage; moon track-palette aliases; sky-environment hash;
 collision-manifest map coverage; bot-water endpoint; and the now-fixed decal
@@ -61,7 +65,7 @@ The conflicting broadleaf patch was excluded; current map geometry and
 material sources remain unchanged. All sixteen affected world tests passed in the isolated candidate checkout.
 The complete 17-test report, including the sky-cache check, is
 `.qa-dev/pr9-followup/map-receipts.json`; every entry has exit code 0.
-These focused passes do not replace the pending combined full-suite result.
+These focused passes do not retroactively change the frozen combined full-suite result; a new combined run remains required.
 
 From `125729301`, the sky-cache test now checks the shipped lunar Earth
 uniform wiring and still executes the actual cache/bake state owner, replacing
@@ -69,3 +73,9 @@ its obsolete pre-Earth source hash. The PR's collision-shard uniform size ceilin
 was not imported: replacing every map's individual ceiling with 8.5 MB would
 materially relax several existing storage limits and needs a separate budget
 review. Sky-cache validation also passed in that focused batch.
+
+The `f6f50caa9` road-admission, bridge compound-record and orbital-settlement
+fixture corrections were adapted after checking their current runtime contracts.
+All three passed on the candidate in `.qa-dev/pr9-followup/pl01-turret-r1.json`.
+Physical deck/parapet/abutment bounds and the 64-part wire split stay enforced;
+structure coverage now requires four distinct families.
