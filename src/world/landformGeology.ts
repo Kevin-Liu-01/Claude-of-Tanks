@@ -37,6 +37,16 @@ export interface LandformGeology {
   /** inselberg: the crown's breadth, the power of the dome's fall to its wall (default 4: higher is a broader crown
    * and a steeper wall). */
   crown?: number;
+  /** inselberg: a sheer jebel instead of a bornhardt's rounded crown (Wadi Rum's sandstone massifs): the cap's edge, the
+   * wall's top, as a share of the wall's foot (0.5-0.95). The cap stays nearly level (it falls 8 % of the height to its
+   * edge) and the wall drops from there to the apron within the rest of the width, near-vertical over most of the
+   * height (inselbergSection). Without it the crown rounds down into the wall as before. */
+  rim?: number;
+  /** inselberg with a rim: rounded bosses breaking the cap, how many and how high in metres. */
+  bosses?: { count: number; heightM: number };
+  /** inselberg with a rim: vertical flutes down the wall, how many round the jebel and how far each sets the wall back,
+   * as a share of the wall's width (default 0.5). */
+  flutes?: { count: number; depth?: number };
   /** cone: the crater's rim as a fraction of the radius, its depth in metres and an optional breach bearing in
    * degrees (0 = local +x, counter-clockwise towards local +z). */
   crater?: { rim: number; depthM: number; breachDeg?: number };
@@ -65,8 +75,11 @@ export interface LandformGeology {
    * the length, while the other end thins out gently over its last half (a lava flow's vent end). */
   front?: 1 | -1;
   /** Ridges only: a cliff end: +1 ends the local +x end, -1 the -x end, 'both' both ends, in a steep wall over the last
-   * 6 % of the length instead of the smooth taper (a shelf whose end would otherwise ramp up onto its cap). */
-  cliffEnd?: 1 | -1 | 'both';
+   * 6 % of the length instead of the smooth taper (a shelf whose end would otherwise ramp up onto its cap). 'nose'
+   * instead turns the whole section round both ends, wall and talus apron alike, on a half-disc as wide as the ridge
+   * (a butte's nose, ridgeNose): the end is as steep as the sides, and its apron runs on round it instead of stopping
+   * in a cut. */
+  cliffEnd?: 1 | -1 | 'both' | 'nose';
 }
 
 /** The slice of a landform the geology reads. */
@@ -189,29 +202,76 @@ function coneProfile(q: number, geology: LandformGeology, height: number): numbe
   return s * (1 - Math.exp(-6 * s)) / (1 - Math.exp(-6));
 }
 
-/** An inselberg (a bornhardt): a broadly rounded crown steepening into a near-vertical wall down to the wall's foot
- * `foot` (q), then a concave talus apron `apron` high at the foot thinning to the plain at the toe; the crown's fall is
- * the power `crown` (its steepest, at the foot, is crown x (1 - apron) / foot). */
-function inselbergProfile(q: number, foot: number, apron: number, crown: number): number {
+/** A sheer jebel's cap falls this share of its height from the centre to the wall's top. */
+const JEBEL_CAP_DROP = 0.08;
+
+/**
+ * An inselberg's radial section, 0..1 of its height at the normalized radius q (1 at the toe), shared with the
+ * horizon's far jebels so that near and far rock keep one form:
+ * - without `rim` (a bornhardt): a broadly rounded crown steepening into a near-vertical wall down to the wall's foot
+ *   `foot`, its fall the power `crown` (its steepest, at the foot, is crown x (1 - apron) / foot);
+ * - with `rim` (a sheer jebel): a nearly level cap out to rim x foot, then a smoothstep wall down to the foot, its
+ *   steepest 1.5 x (1 - 0.08 - apron) / ((1 - rim) x foot), near-vertical over most of the height;
+ * then a concave talus apron `apron` high at the foot thinning to the plain at the toe.
+ */
+export function inselbergSection(q: number, foot: number, apron: number, crown = 4, rim = 0): number {
   if (q >= 1) return 0;
-  if (q <= foot) return 1 - (1 - apron) * (q / foot) ** crown;
+  if (rim > 0) {
+    const top = foot * rim;
+    if (q <= top) return 1 - JEBEL_CAP_DROP * (q / top) ** 2;
+    if (q <= foot) {
+      const t = (q - top) / (foot - top);
+      return apron + (1 - JEBEL_CAP_DROP - apron) * (1 - t * t * (3 - 2 * t));
+    }
+  } else if (q <= foot) return 1 - (1 - apron) * (q / foot) ** crown;
   const t = (1 - q) / (1 - foot);
   return apron * t * t;
 }
 
-/** An inselberg's wall foot and apron on one bearing: each wanders round the dome (smooth, periodic in the bearing). */
+/** An inselberg's wall foot and apron on one bearing: each wanders round the dome (smooth, periodic in the bearing). A
+ * sheer jebel's flutes set the whole wall back in vertical grooves: each flute a rounded notch in the bearing. */
 function inselbergFoot(geology: LandformGeology, theta: number, salt: number): [number, number] {
   const foot = Math.max(0.3, Math.min(0.9, geology.foot ?? 0.68));
   const vary = Math.max(0, Math.min(0.3, geology.footVary ?? 0.12));
   const apron = Math.max(0, Math.min(0.5, geology.apron ?? 0.16));
-  return [Math.max(0.25, Math.min(0.92, foot * (1 + vary * lobe(theta, salt + 29)))),
-    apron * (1 + 0.5 * lobe(theta, salt + 31))];
+  let wall = Math.max(0.25, Math.min(0.92, foot * (1 + vary * lobe(theta, salt + 29))));
+  const rim = jebelRim(geology);
+  if (rim > 0 && geology.flutes && geology.flutes.count >= 1) {
+    const count = Math.round(geology.flutes.count), depth = Math.max(0, Math.min(1, geology.flutes.depth ?? 0.5));
+    // a groove where cos peaks: a rounded notch half a flute wide, the wall standing at its line between the grooves
+    const phase = (theta / TAU) * count + hash2(count, 3, salt + 37);
+    const notch = Math.max(0, Math.cos(phase * TAU)) ** 2;
+    wall -= notch * depth * (1 - rim) * wall;
+  }
+  return [wall, apron * (1 + 0.5 * lobe(theta, salt + 31))];
+}
+
+/** A sheer jebel's cap edge as a share of its wall's foot, or 0 for a bornhardt (and for every other profile). */
+function jebelRim(geology: LandformGeology): number {
+  return geology.profile === 'inselberg' && geology.rim ? Math.max(0.5, Math.min(0.95, geology.rim)) : 0;
+}
+
+/** The rounded bosses breaking a sheer jebel's cap at the normalized point (nx, nz), in metres (their union, not a
+ * stack): each a dome placed from the landform's own salt inside the cap. */
+function jebelBosses(geology: LandformGeology, nx: number, nz: number, top: number, salt: number): number {
+  const bosses = geology.bosses;
+  if (!bosses || bosses.count < 1 || !(bosses.heightM > 0)) return 0;
+  let best = 0;
+  for (let k = 0; k < Math.round(bosses.count); k++) {
+    const a = hash2(k, 1, salt + 41) * TAU, r = Math.sqrt(hash2(k, 2, salt + 41)) * top * 0.62;
+    const radius = top * (0.3 + 0.16 * hash2(k, 3, salt + 41));
+    const d = Math.hypot(nx - Math.cos(a) * r, nz - Math.sin(a) * r) / radius;
+    if (d >= 1) continue;
+    const dome = (1 - d * d) ** 2 * (0.6 + 0.4 * hash2(k, 4, salt + 41));
+    best = Math.max(best, dome);
+  }
+  return bosses.heightM * best;
 }
 
 function profileOf(q: number, geology: LandformGeology, height: number, fallback: (q: number) => number,
   foot: readonly [number, number] | null = null): number {
   const profile = geology.profile ?? 'dome';
-  if (profile === 'inselberg' && foot) return inselbergProfile(q, foot[0], foot[1], Math.max(1.5, geology.crown ?? 4));
+  if (profile === 'inselberg' && foot) return inselbergSection(q, foot[0], foot[1], Math.max(1.5, geology.crown ?? 4), jebelRim(geology));
   if (profile === 'butte') return butteProfile(q, geology);
   if (profile === 'cone') return coneProfile(q, geology, height);
   if (profile === 'flow') return flowProfile(q);
@@ -223,6 +283,9 @@ function profileOf(q: number, geology: LandformGeology, height: number, fallback
 function gullyFlank(q: number, geology: LandformGeology, foot: readonly [number, number] | null = null): number {
   const profile = geology.profile ?? 'dome';
   if (profile === 'inselberg' && foot) {
+    // a sheer jebel's clefts bite back into the cap's edge and run down the whole wall to its foot
+    const rim = jebelRim(geology);
+    if (rim > 0) return smoothstep(foot[0] * rim - 0.14, foot[0] * rim, q) * (1 - smoothstep(foot[0], foot[0] + 0.12, q));
     return smoothstep(foot[0] * 0.3, foot[0] * 0.75, q) * (1 - smoothstep(foot[0], foot[0] + 0.18, q));
   }
   if (profile === 'butte') {
@@ -355,6 +418,12 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
     shape -= Math.max(0, 1 - d / 0.45) * radial * 0.35 * Math.max(0, shape);
   }
   let h = height * shape;
+  const rim = foot ? jebelRim(geology) : 0;
+  if (rim > 0 && foot && height > 0) {
+    // the bosses on the cap, fading out before its edge so the wall's brow stays one line
+    const top = foot[0] * rim;
+    h += jebelBosses(geology, nx, nz, top, salt) * (1 - smoothstep(top * 0.8, top, q));
+  }
   if (geology.gullies && height > 0) {
     // the jitter is periodic in the bearing, so the grooves close round the knoll without a seam
     const jitter = (valueNoise(Math.cos(theta) * 1.6 + 7, Math.sin(theta) * 1.6 - 3, salt + 11) - 0.5) * 0.6;
@@ -371,6 +440,44 @@ export function knollGeologyHeight(form: GeologicForm, lx: number, lz: number): 
   return h + fanHeight();
 }
 
+/** Where a point stands on a ridge's section: its distance from the axis (`across`), and the axial station (`at`) and
+ * side weight (`side`, 0 on the -z side, 1 on the +z side) its margin lobes and rills read. Along the straight sides
+ * that is |lz|, lx and the side; past a nose's centre the section turns round the end, so the distance is measured from
+ * the centre and the two sides' lobes and rills blend by bearing, meeting at the tip without a step. */
+interface RidgeStation { across: number; at: number; side: number }
+const ridgeStation: RidgeStation = { across: 0, at: 0, side: 0 };
+function ridgeNose(form: GeologicForm, lx: number, lz: number, width: number, outline: number): RidgeStation {
+  ridgeStation.across = Math.abs(lz); ridgeStation.at = lx; ridgeStation.side = lz >= 0 ? 1 : 0;
+  if (form.geology?.cliffEnd !== 'nose') return ridgeStation;
+  // the half-disc's centre stands far enough in that the lobed margin stays inside the ridge's length
+  const centre = Math.max(0, Math.max(1, (form.length || 100) * 0.5) - width * (1 + outline));
+  const into = Math.abs(lx) - centre;
+  if (into <= 0) return ridgeStation;
+  ridgeStation.across = Math.hypot(lz, into);
+  ridgeStation.at = Math.sign(lx) * centre;
+  ridgeStation.side = 0.5 + Math.atan2(lz, into) / Math.PI;
+  return ridgeStation;
+}
+
+/** A ridge's margin lobe at an axial station, blended between its sides by the side weight (ridgeNose). */
+function ridgeLobe(at: number, side: number, salt: number): number {
+  return side >= 1 ? edgeLobe(at, 1, salt) : side <= 0 ? edgeLobe(at, -1, salt)
+    : edgeLobe(at, -1, salt) * (1 - side) + edgeLobe(at, 1, salt) * side;
+}
+
+/** One side's rill cut down a ridge's wall at an axial station (gully), `sign` -1 or +1. */
+function ridgeSideRill(at: number, sign: number, q: number, perMetre: number, width: number, salt: number): number {
+  const jitter = (valueNoise(at * perMetre * 0.9, sign * 2.3, salt + 11) - 0.5) * 0.6;
+  return gully(at * perMetre + sign * 0.37, q, width, jitter, salt + (sign > 0 ? 13 : 14));
+}
+
+/** A ridge's rill cut, blended between its sides by the side weight (ridgeNose). */
+function ridgeRill(at: number, side: number, q: number, perMetre: number, width: number, salt: number): number {
+  return side >= 1 ? ridgeSideRill(at, 1, q, perMetre, width, salt)
+    : side <= 0 ? ridgeSideRill(at, -1, q, perMetre, width, salt)
+      : ridgeSideRill(at, -1, q, perMetre, width, salt) * (1 - side) + ridgeSideRill(at, 1, q, perMetre, width, salt) * side;
+}
+
 /**
  * A ridge's geological height in metres: lx along its axis, lz across it. `along` is the smooth ridge's end weight
  * (terrain.ts), so the bar's ends taper as before.
@@ -381,11 +488,12 @@ export function ridgeGeologyHeight(form: GeologicForm, lx: number, lz: number, a
   const width = Math.max(1, form.width || 45);
   const height = form.height || 0;
   const outline = Math.max(0, Math.min(0.35, geology.outline ?? 0));
-  if (along <= 0 || Math.abs(lz) > width * (1 + outline) + 0.5) return 0;
+  const { across, at, side: sideW } = ridgeNose(form, lx, lz, width, outline);
+  if (geology.cliffEnd === 'nose') along = 1;
+  if (along <= 0 || across > width * (1 + outline) + 0.5) return 0;
   const salt = formSalt(form);
-  const side = lz >= 0 ? 1 : -1;
-  let q = Math.abs(lz) / width;
-  if (outline > 0) q /= 1 + outline * edgeLobe(lx, side, salt);
+  let q = across / width;
+  if (outline > 0) q /= 1 + outline * ridgeLobe(at, sideW, salt);
   if (q >= 1) return 0;
   const shape = profileOf(q, geology, height, ridgeShoulder);
   if (geology.front) {
@@ -393,7 +501,7 @@ export function ridgeGeologyHeight(form: GeologicForm, lx: number, lz: number, a
     const half = Math.max(1, (form.length || 100) * 0.5), t = Math.max(-1, Math.min(1, lx / half)) * geology.front;
     along = t > 0 ? 1 - smoothstep(0.92, 1, t) : 1 - smoothstep(0.5, 1, -t);
     if (along <= 0) return 0;
-  } else if (geology.cliffEnd && (geology.cliffEnd === 'both' || lx * geology.cliffEnd > 0)) {
+  } else if (geology.cliffEnd && geology.cliffEnd !== 'nose' && (geology.cliffEnd === 'both' || lx * geology.cliffEnd > 0)) {
     const half = Math.max(1, (form.length || 100) * 0.5);
     along = 1 - smoothstep(0.94, 1, Math.abs(lx) / half);
     if (along <= 0) return 0;
@@ -407,8 +515,7 @@ export function ridgeGeologyHeight(form: GeologicForm, lx: number, lz: number, a
   let h = height * along * fall * shape;
   if (geology.gullies && height > 0) {
     const perMetre = Math.max(0.01, geology.gullies.count / 100);
-    const jitter = (valueNoise(lx * perMetre * 0.9, side * 2.3, salt + 11) - 0.5) * 0.6;
-    const g = gully(lx * perMetre + side * 0.37, q, geology.gullies.width ?? 0.45, jitter, salt + (side > 0 ? 13 : 14));
+    const g = ridgeRill(at, sideW, q, perMetre, geology.gullies.width ?? 0.45, salt);
     h -= geology.gullies.depthM * g * gullyFlank(q, geology) * Math.min(1, along * shape * 3);
   }
   if (geology.strata && height > 0) {
@@ -569,8 +676,11 @@ export function geologyRockWeight(form: GeologicForm, x: number, z: number): num
   const salt = formSalt(form);
   if (form.kind === 'ridge') {
     const width = Math.max(1, form.width || 45), half = Math.max(1, (form.length || 100) * 0.5);
-    const edge = width * (outline > 0 ? 1 + outline * edgeLobe(lx, lz >= 0 ? 1 : -1, salt) : 1);
-    return (1 - smoothstep(0, FLOW_EDGE_M, Math.abs(lz) - edge)) * (1 - smoothstep(0, FLOW_EDGE_M, Math.abs(lx) - half));
+    const { across, at, side } = ridgeNose(form, lx, lz, width, outline);
+    const edge = width * (outline > 0 ? 1 + outline * ridgeLobe(at, side, salt) : 1);
+    // a nose's footprint turns round its ends with the section; any other ridge's runs square to its length
+    const ends = geology.cliffEnd === 'nose' ? 1 : 1 - smoothstep(0, FLOW_EDGE_M, Math.abs(lx) - half);
+    return (1 - smoothstep(0, FLOW_EDGE_M, across - edge)) * ends;
   }
   const rx = Math.max(1, form.rx || form.r || 70), rz = Math.max(1, form.rz || form.r || rx);
   const nx = lx / rx, nz = lz / rz;
