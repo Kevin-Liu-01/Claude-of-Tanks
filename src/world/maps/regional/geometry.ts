@@ -434,3 +434,22 @@ export function rgb(hex: number): Rgb {
 export function shade(c: Rgb, k: number): Rgb {
   return [Math.min(1, c[0] * k), Math.min(1, c[1] * k), Math.min(1, c[2] * k)];
 }
+
+/**
+ * A plot read along its long side. A builder lays a long building along its local z (its d); on a plot wider than it is
+ * deep (a market row is 12 x 5.2 m) it builds in a frame turned a quarter, so the building lies along the plot instead
+ * of reaching out of its long sides. `w` and `d` are the plot in that frame (d the long side).
+ */
+export function plotAxes(info: { w: number; d: number }, slack = 1): { turned: boolean; w: number; d: number } {
+  const turned = info.w > info.d + slack;
+  return { turned, w: turned ? info.d : info.w, d: turned ? info.w : info.d };
+}
+
+/**
+ * Emit `body` in the plot-axes frame: turned, the body's long faces look to the plot's +z and -z sides, and `front`
+ * names the body's local x side (-1 or +1) that faces the plot's +z.
+ */
+export function alongPlot(sink: PartSink, turned: boolean, body: () => void, front: -1 | 1 = -1): void {
+  if (turned) sink.placed(front < 0 ? Math.PI / 2 : -Math.PI / 2, 0, 0, 0, body);
+  else body();
+}
