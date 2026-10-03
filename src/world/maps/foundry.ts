@@ -61,24 +61,27 @@ export default {
         [176, -100], [155, -100], [136, -88], [118, -87]], feather: 4, strength: 1 },
     ],
     village: { x0: -286, x1: 286, z0: -288, z1: 288, cx: 0, cz: 0, feather: 38, flatten: 0.9, relief: 0.1 },
+    // the rock gate reads the slag landforms (terrain.ts landformRock), so the terrain material can draw the tips and
+    // banks as slag while the ore berms, cuts and embankments stay ground
+    landformRock: true,
     landforms: [
       // The Great Slag Tip south-east of the works and the old tip inside them, west of the casting yard: cones of
       // tipped slag, flat on top where the tipping track ran, rilled by rain (landformGeology.ts).
       { kind: 'knoll', x: 372, z: -372, rx: 72, rz: 72, height: 30,
         geology: { profile: 'cone', crater: { rim: 0.22, depthM: 0 }, outline: 0.12,
-          gullies: { count: 16, depthM: 3, width: 0.5 }, rough: 0.9 } },
+          gullies: { count: 16, depthM: 3, width: 0.5 }, rough: 0.9, material: 'slag' } },
       { kind: 'knoll', x: -160, z: 75, rx: 46, rz: 46, height: 16, settlementScale: 1,
         geology: { profile: 'cone', crater: { rim: 0.2, depthM: 0 }, outline: 0.12,
-          gullies: { count: 11, depthM: 2, width: 0.5 }, rough: 0.8 } },
+          gullies: { count: 11, depthM: 2, width: 0.5 }, rough: 0.8, material: 'slag' } },
       // the slag banks along the west and east edges: flat-topped tips with a steep tipping face and a talus apron
       ...[[-385, -60, 240, 56, 10], [385, 40, 220, 50, 9]].map(([x, z, length, width, height]) => ({
         kind: 'ridge', x, z, length, width, height, yawDeg: 90,
         geology: { profile: 'butte' as const, wall: [0.4, 0.62] as const, apron: 0.25, outline: 0.25, rough: 0.6,
-          gullies: { count: 2, depthM: 1.2, width: 0.5 } } })),
+          gullies: { count: 2, depthM: 1.2, width: 0.5 }, material: 'slag' as const } })),
       // the long tipped bank north of the works, its tipping face to the west
       { kind: 'ridge', x: -18, z: 304, length: 280, width: 70, height: 7.4, yawDeg: 86, settlementScale: 0.86,
         geology: { profile: 'butte', wall: [0.38, 0.6], apron: 0.25, outline: 0.22, rough: 0.6,
-          gullies: { count: 3, depthM: 1.2, width: 0.5 } } },
+          gullies: { count: 3, depthM: 1.2, width: 0.5 }, material: 'slag' } },
       // the ore yard's stockpile berms: long heaps of ore and sinter with lumpy flanks
       { kind: 'ridge', x: -88, z: -54, length: 244, width: 58, height: 7.8, yawDeg: 38, corridorScale: 0.82, settlementScale: 0.88,
         geology: { outline: 0.15, rough: 0.6 } },
