@@ -61,6 +61,8 @@ import {
   WALL_SEG,
   bSandbagBroken,
   type DestructiblePropType,
+  buildAdobePilaster,
+  buildDryStoneWallHead,
 } from './maps/inhabitKit.ts';
 import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import { boxClearOfRoadCore, discClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
@@ -4233,6 +4235,17 @@ ${snowCap ? `
     function endPost(px: number, pz: number): void {
       const py = heightField.getHeightAt(px, pz) - 0.15;
       const ph = runH * 1.05 + 0.3;
+      // the scenery lane (wave 16, "a miniature castle battlement"): a dry-stone run ends in a rubble wall head and a mud
+      // wall in an eroded pier, each from a stream named by its place; a square post capped with a slab stays for the
+      // brick-print walls. The props stream spends the same draws either way (jitterUV's four).
+      if (style === 'adobe' || !sourcedStoneIsBrick(mapId)) {
+        const seedAt = (Math.round(px * 73.1) * 92821) ^ Math.round(pz * 41.7) * 68917;
+        const head = style === 'adobe' ? buildAdobePilaster(seedAt, thick, ph - 0.15) : buildDryStoneWallHead(seedAt, thick, runH * 0.98 + 0.12);
+        jitterUV(head, rng);
+        head.rotateY(yaw);
+        buckets[wallB].push(head.translate(px, py, pz));
+        return;
+      }
       const post = box(thick + 0.22, ph, thick + 0.22, 0.7);
       jitterUV(post, rng);
       buckets[wallB].push(post.translate(px, py + ph / 2, pz));
