@@ -6,7 +6,7 @@
 // ring as the negative control.
 import assert from 'node:assert/strict';
 import { createMassifField, carveMassifRing, cutMassifCanyonsSteps, erosionOctave, suppressNeedles } from './horizonMassif.ts';
-import { createEscarpmentField, carveEscarpmentRing } from './horizonEscarpment.ts';
+import { createEscarpmentField, carveEscarpmentRing, openRowTables } from './horizonEscarpment.ts';
 import { HORIZON_RELIEF_CHARACTERS, resolveHorizonRelief } from './horizonRelief.ts';
 import { HORIZON_SEGMENTS, sampleHorizonGeometry } from './maps/horizon.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
@@ -150,6 +150,23 @@ function syntheticRing(rows, heightAt) {
   assert.ok(tiers > n * 0.5, `the ramp became tiers at most columns (${tiers} of ${n})`);
 }
 
+// --- the far tables: the opening along a closed far row brings a narrow summit down to its shoulder ---------------
+{
+  const N = 120, h = new Float32Array(N).fill(100), scratch = new Float32Array(N);
+  for (let k = 10; k < 50; k++) h[k] = 300; // a broad table
+  for (let k = 70; k < 90; k++) h[k] = 200; // a shoulder ...
+  for (let k = 78; k < 83; k++) h[k] = 420; // ... under a horn five columns wide
+  h[100] = 380; // a lone needle on the plain
+  for (let k = 112; k < 128; k++) h[k % N] = 260; // a table across the row's seam
+  const before = h.slice();
+  openRowTables(h, 0, N, 4, scratch);
+  for (let k = 0; k < N; k++) assert.ok(h[k] <= before[k] + 1e-6, 'the opening never raises a column');
+  for (let k = 10; k < 50; k++) assert.equal(h[k], 300, 'a table wider than the window keeps its outline');
+  for (let k = 70; k < 90; k++) assert.equal(h[k], 200, 'a horn narrower than the window comes down to its shoulder');
+  assert.equal(h[100], 100, 'a lone needle comes down to the plain');
+  for (let k = 112; k < 128; k++) assert.equal(h[k % N], 260, 'the row is closed: a table across the seam keeps its outline');
+}
+
 // --- every map: the passes move heights only — the same rows, the same plan positions, the same triangle budget ----
 for (const id of MAP_IDS) {
   const config = getMapConfig(id);
@@ -215,8 +232,10 @@ const coneReport = {};
 let carvedTotal = 0, plainTotal = 0;
 // the three cone maps the owner named, the polar station and the two ranged maps with the most cones in the round-72b
 // ring (2026-10-02, 3 seeds x 5 eyes: winter 12 -> 0, frontier 13 -> 0, caldera 16 -> 8, whiteout 22 -> 5,
-// alpine 12 -> 3, cliffbridge 36 -> 6; fleet-wide 224 -> 86 — Nordhavn Fjord rises 3 -> 11, its alpine ranges carving
-// into horns between the sea openings, and Jade River Delta 0 -> 7, Earthrise Basin 0 -> 5: noted, not gated)
+// alpine 12 -> 3, cliffbridge 36 -> 6; fleet-wide 224 -> 73. Nordhavn Fjord and Earthrise Basin keep their round-72b
+// rings (massif: false — the carve smoothed Fjord's serrated crest into a wall, 3 -> 11, and drew straight-flanked
+// pyramids on the airless walls, 0 -> 13); Jade River Delta 0 -> 7 and Steinburg 2 -> 4 from the range twist: noted,
+// not gated)
 for (const id of ['winter', 'frontier', 'caldera', 'whiteout', 'alpine', 'cliffbridge']) {
   const config = getMapConfig(id);
   let carved = 0, plain = 0;
@@ -232,4 +251,4 @@ for (const id of ['winter', 'frontier', 'caldera', 'whiteout', 'alpine', 'cliffb
   }
 }
 assert.ok(carvedTotal <= plainTotal * 0.4, `the measured ranged rings stand far fewer cones (${carvedTotal} vs ${plainTotal})`);
-console.log('horizonMassif.selftest: the landform, the downslope couloirs, the carve, the canyons, the bed stair, the budget and the skyline cones PASS', JSON.stringify(coneReport));
+console.log('horizonMassif.selftest: the landform, the downslope couloirs, the carve, the canyons, the bed stair, the far tables, the budget and the skyline cones PASS', JSON.stringify(coneReport));

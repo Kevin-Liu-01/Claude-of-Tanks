@@ -255,3 +255,22 @@ export function carveEscarpmentRing(input: EscarpmentRingInput, field: Escarpmen
   while (!step.done) step = steps.next();
   return step.value;
 }
+
+/**
+ * The caprock of a far tableland: a grey-scale opening along one closed row (a running minimum, then a running maximum,
+ * over `half` columns either side). A summit narrower than the window comes down to the shoulder it stands on and stays
+ * flat there, a table wider than the window keeps its own outline, and nothing rises — the far skyline of mesas and
+ * buttes rather than stepped pyramids. `scratch` holds `n` values and is overwritten.
+ */
+export function openRowTables(heights: Float32Array, off: number, n: number, half: number, scratch: Float32Array): void {
+  for (let k = 0; k < n; k++) {
+    let lo = Infinity;
+    for (let d = -half; d <= half; d++) lo = Math.min(lo, heights[off + (k + d + n) % n]);
+    scratch[k] = lo;
+  }
+  for (let k = 0; k < n; k++) {
+    let hi = -Infinity;
+    for (let d = -half; d <= half; d++) hi = Math.max(hi, scratch[(k + d + n) % n]);
+    heights[off + k] = hi;
+  }
+}

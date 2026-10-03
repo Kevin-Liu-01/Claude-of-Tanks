@@ -15,7 +15,7 @@ import { SimplexNoise } from '../engine/simplexFast.ts';
 import { type SeaOpening, dominantSeaOpening, seaOpeningWeight, seaHeadlandWeight } from './edgeWater.ts';
 import type { HorizonFarRangeSettings, HorizonReliefCharacter } from './horizonRelief.ts';
 import { type MassifSettings, createMassifField, suppressNeedles } from './horizonMassif.ts';
-import { type EscarpmentSettings, createEscarpmentField } from './horizonEscarpment.ts';
+import { type EscarpmentSettings, createEscarpmentField, openRowTables } from './horizonEscarpment.ts';
 
 export const HORIZON_FAR_SEGMENTS = 288;
 
@@ -31,6 +31,8 @@ export const HORIZON_FAR_ROWS: readonly { r: number; lift: number; aer: number }
 
 /** The far ring's foot: the plain the ranges rise from (m), a little under the ring's own outer shoulders. */
 export const HORIZON_FAR_FOOT_M = 40;
+/** The mountains lane: half the narrowest far table a tableland keeps (openRowTables, horizonEscarpment.ts). */
+const FAR_TABLE_HALF_M = 235;
 
 interface HorizonFarRangeOptions {
   seed: number;
@@ -239,8 +241,13 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
   // column-to-column step of at most 0.9 of the row's arc, a 42° flank. The mountains lane: with the eroded landform
   // the bound opens to 1.1 of the arc (48°) and the one-column needles come out first (horizonMassif.ts), so a summit
   // keeps its own flanks instead of the clamp's straight 42° lines (the round-72b cones of the far horizon)
+  // a tableland's far summits are tables: the opening along each row brings every top narrower than about 470 m down
+  // to its shoulder (the ranged crests through the bed stair alone were stepped pyramids — the far horns over Redrock,
+  // Oasis and Sirocco in the mountains-lane census)
+  const tableScratch = plateaus ? new Float32Array(n) : null;
   for (let row = 1; row < rows.length; row++) {
     const off = row * n;
+    if (tableScratch) openRowTables(heights, off, n, Math.max(2, Math.round(FAR_TABLE_HALF_M / (rows[row].r * TAU / n))), tableScratch);
     if (massif) suppressNeedles(heights, positions, off, n);
     // no smoothing pass (round 72b: three rounded every crest into a dome); the step clamp below keeps the needles out
     const maxStep = rows[row].r * TAU / n * (massif ? 1.1 : 0.9);
