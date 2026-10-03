@@ -17,8 +17,6 @@ const PENDING = Object.freeze([
   { apron: 'desert:1', at: [-292, 112], owner: MAPS_LANE },
   { apron: 'desert:2', at: [292, -112], owner: MAPS_LANE },
   { apron: 'urban:1', at: [-330, 24], owner: MAPS_LANE },
-  { apron: 'coastal:0', at: [-290, 22], owner: MAPS_LANE },
-  { apron: 'coastal:1', at: [-155, 22], owner: MAPS_LANE },
   { apron: 'railyard:2', at: [262, 21.3], owner: MAPS_LANE },
   { apron: 'frontier:1', at: [-290, -30], owner: MAPS_LANE },
   { apron: 'frontier:2', at: [290, 30], owner: MAPS_LANE },
