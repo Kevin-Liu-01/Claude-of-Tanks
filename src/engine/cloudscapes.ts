@@ -145,6 +145,12 @@ export interface CloudscapeConfig {
    * kept to the flanks and tops (the lumps under the base rounded every cumulus into a cotton ball). 0 = the round base.
    */
   baseFlat?: number;
+  /**
+   * 2026-10-03 (the skies lane; the gauntlet's wave 5: "a flat, blurry, low-definition overcast sky asset that recurs on
+   * multiple maps ... reads as a placeholder skybox"): 0..1 a deck's definition — less of the sheet's flattening, the
+   * detail erosion near a cumulus's strength and a crisper outline. 0 = round 76's deck.
+   */
+  deckDetail?: number;
   // ---- 2026-10-01: the weather layers beyond the slab (cloudWeatherLayers.ts) and the time of day
   /** 0..1 contrails (six at 1) over the sky and their spread: 0 fresh lines, 1 old contrail cirrus. */
   contrails?: number;
@@ -205,13 +211,15 @@ interface CloudscapeRegimeRow {
   /** 2026-10-03: the cumulus fields and gaps (0 = the even field) and the flat condensation base (0 = the round base). */
   cluster: number;
   baseFlat: number;
+  /** 2026-10-03: a deck's definition (0 = round 76's deck). */
+  deckDetail: number;
   /** 2026-10-01: the regime's weather beyond the slab (a map authors the rest: contrails, the fog bank, the night glow). */
   rain: number;
   virga: number;
 }
 
 /** A row names the layered sky's weather only where it has some (2026-10-01): the rest is a clear sky's. */
-const CLEAR_WEATHER = Object.freeze({ rain: 0, virga: 0, lumps: 0, cluster: 0, baseFlat: 0 } as const);
+const CLEAR_WEATHER = Object.freeze({ rain: 0, virga: 0, lumps: 0, cluster: 0, baseFlat: 0, deckDetail: 0 } as const);
 type CloudscapeRegimeRowInput = Omit<CloudscapeRegimeRow, keyof typeof CLEAR_WEATHER> & Partial<Pick<CloudscapeRegimeRow, keyof typeof CLEAR_WEATHER>>;
 const row = (r: CloudscapeRegimeRowInput): CloudscapeRegimeRow => Object.freeze({ ...CLEAR_WEATHER, ...r });
 

@@ -275,6 +275,8 @@ uniform vec2 uWindDir;
 uniform float uStreets;
 uniform float uFieldMix;
 uniform float uCluster;
+// the last cloudField call's cumulus-field gate (1 without fields): the trace's far-field re-mix gates its cells alike
+float cloudGate = 1.0;
 // the equalised field the coverage cuts at a world xz: the cell-carried cumuliform one blended toward the
 // street field in the wind frame (rows along the wind), or the broad stratiform one
 float cloudField( vec2 pxz, out vec4 w, out vec4 st ) {
@@ -286,9 +288,11 @@ float cloudField( vec2 pxz, out vec4 w, out vec4 st ) {
 	float field = mix( mix( w.r, st.r, uStreets ), w.b, uFieldMix );
 	// 2026-10-03: the cumulus fields (CloudscapeConfig.cluster) — a broad field at ${CLOUD_CLUSTER_PERIOD_K}x the tile gates the cells:
 	// inside a field they merge into large masses, at its edge they fray small, between fields the sky is clear
+	cloudGate = 1.0;
 	if ( uCluster > 0.0 ) {
 		float g = textureLod( tWeather, ( pxz + uWeatherShift * 0.5 ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_CLUSTER_PERIOD_K)} + vec2( 0.37, 0.61 ), 0.0 ).b;
-		field *= mix( 1.0, ${f(CLOUD_CLUSTER_GAP)} + ${f(2 * (1 - CLOUD_CLUSTER_GAP))} * smoothstep( 0.3, 0.7, g ), uCluster );
+		cloudGate = mix( 1.0, ${f(CLOUD_CLUSTER_GAP)} + ${f(2 * (1 - CLOUD_CLUSTER_GAP))} * smoothstep( 0.3, 0.7, g ), uCluster );
+		field *= cloudGate;
 	}
 	return field;
 }
@@ -352,6 +356,8 @@ uniform float uInterior;
 // 2026-10-03: a deck's sub-cell lumps (cloudscapes.ts lumps; 0 = the cells alone)
 uniform float uLumps;
 uniform float uBaseFlat;
+// 2026-10-03: a deck's definition (CloudLayerPreset.deckDetail; 0 = round 76's deck)
+uniform float uDeckDetail;
 uniform vec3 uSkyIrradiance;
 uniform float uHang;
 // QA: 1 = no depth-above term, 2 = no detail erosion, 3 = no light march, 4 = flat white density (structure only),
@@ -388,7 +394,9 @@ Weather cloudWeather( vec2 pxz ) {
 	// the street share fades past four kilometres: the far field reads as scattered cumulus, not as rolls
 	// converging on the horizon (71c)
 	float farK = smoothstep( 4000.0, 11000.0, length( pxz - uCamPos.xz ) );
-	field = mix( field, mix( w.r, w.b, uFieldMix ), uStreets * 0.55 * farK );
+	// (2026-10-03: the far cells take the cumulus-field gate too — ungated, a street regime's far half came back as the even
+	// popcorn the fields remove: 41 % of Saltwind's and Saltmere Bay's far field at streets 0.75)
+	field = mix( field, mix( w.r, w.b, uFieldMix ) * cloudGate, uStreets * 0.55 * farK );
 	float anvilField = st.g;
 	// the field is equalised: the map's coverage admits exactly that fraction; inside, the local coverage runs
 	// 0..1 (skewed high) and carves the base shape into masses — a region is never one solid slab
@@ -484,6 +492,10 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 	float hN = hRel / max( w.top * thickK, 0.05 );
 	if ( hN >= 1.25 ) return 0.0;
 	float t = w.type;
+	// 2026-10-03 (the skies lane; the gauntlet's wave 5: "a flat, blurry, low-definition overcast sky ... reads as a
+	// placeholder skybox"): a deck's definition — less of the sheet's flattening, the detail erosion near a cumulus's
+	// strength and a crisper outline, so the rolls and cloudlets of a stratocumulus base read
+	float deckK = uDeckDetail * max( smoothstep( 0.3, 0.6, uStratiform ), uCells * 0.8 );
 	// (2026-10-03: a cumulus base is its condensation level — uBaseFlat sharpens the rise, CloudLayerPreset.baseFlat)
 	float riseEnd = mix( 0.05, 0.14, t ) * ( 1.0 - 0.6 * uBaseFlat * ( 1.0 - uStratiform ) );
 	float fallStart = t < 0.5 ? mix( 0.5, 0.48, t * 2.0 ) : mix( 0.48, 0.86, ( t - 0.5 ) * 2.0 );
@@ -530,7 +542,7 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 	}
 	// a stratus sheet is dense across its footprint (with a little mottle); cumulus keeps the shape's billows
 	// (round 76: a cellular deck keeps more of the mottle inside its cells)
-	base = mix( base, base * 0.3 + 0.7 * hg, uStratiform * 0.8 * ( 1.0 - 0.3 * uCells ) );
+	base = mix( base, base * 0.3 + 0.7 * hg, uStratiform * 0.8 * ( 1.0 - 0.3 * uCells ) * ( 1.0 - 0.5 * deckK ) );
 	// the coverage threshold rises with height so a mass is widest at its base and narrows to a dome (a tower
 	// to a head); a cumulonimbus narrows less, and the anvil lowers the threshold again
 	float narrow = mix( 0.45, 0.75, uTowers ) * ( 1.0 - uStratiform ) * ( 1.0 - 0.6 * smoothstep( 0.6, 1.0, t ) );
@@ -571,10 +583,11 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 		// 2026-10-03: a flat base keeps its erosion to the flanks and the tops (the lumps under the base rounded every
 		// cumulus into a cotton ball)
 		amount *= mix( 1.0, smoothstep( 0.0, 0.18, hN ), uBaseFlat * ( 1.0 - uStratiform ) );
+		amount *= 1.0 + 1.8 * deckK;
 		d = remap( d, erode * amount, 1.0, 0.0, 1.0 );
 		// a sharper threshold: the density saturates a short way in from the outline (crisper edges, no
-		// semi-transparent halo around every mass)
-		d = smoothstep( 0.03, 0.6, d );
+		// semi-transparent halo around every mass; a defined deck's crisper still)
+		d = smoothstep( 0.03 + 0.09 * deckK, 0.6 - 0.25 * deckK, d );
 		// round 76: the interior octave — the coarse detail lumps (25–100 m) modulate the density inside the mass
 		// instead of vanishing in the remap, so the light march shades the lit face bulge by bulge
 		if ( uInterior > 0.0 ) d *= mix( 1.0, 0.5 + 0.5 * hfCoarse, uInterior );
@@ -665,7 +678,8 @@ float contrailDepth( vec2 xz, float foot ) {
 		// 0 at the tail, 1 at the head (where the aircraft is): the trail is older toward its tail
 		float s = along / B.x * 0.5 + 0.5;
 		float age = mix( B.z, B.y, s );
-		float w = mix( 22.0, 1500.0, age * age );
+		// (2026-10-03: a fresh trail 40 m wide, not 22 — a line two or three pixels wide at 10 km read as a scratch)
+		float w = mix( 40.0, 1500.0, age * age );
 		// (foot is the trace texel's footprint, four history pixels; each history pixel takes its own jittered sample
 		// over the cycle, so a trail keeps a history pixel's width — the accumulation averages the rest)
 		float wf = max( w, foot * 0.3 );
@@ -674,10 +688,14 @@ float contrailDepth( vec2 xz, float foot ) {
 		float u0 = ( across - split ) / wf, u1 = ( across + split ) / wf;
 		float prof = 0.5 * ( exp( -u0 * u0 ) + exp( -u1 * u1 ) );
 		// the ice spreads: the depth falls with the width (and a texel wider than the trail averages it)
-		float peak = B.w * sqrt( 22.0 / w ) * ( w / wf );
+		float peak = B.w * sqrt( 40.0 / w ) * ( w / wf );
 		// an old trail breaks into fibres and lumps along its length
 		vec4 fib = textureLod( tStreets, vec2( along, across * 3.0 ) / 30000.0, 0.0 );
 		peak *= mix( 1.0, 0.45 + 0.9 * fib.a, smoothstep( 0.2, 0.7, age ) );
+		// 2026-10-03 (the skies lane; wave 5's "perfectly straight streak ... a rendering artifact"): a trail persists only
+		// where the air at its height is supersaturated over ice, so it runs in segments of a few kilometres with gaps where
+		// the air is dry — the broad weather channel along the track, at its own phase per trail
+		peak *= smoothstep( 0.3, 0.55, textureLod( tWeather, vec2( along / 30000.0 + float( i ) * 0.173, 0.29 + float( i ) * 0.137 ), 0.0 ).b );
 		float ends = smoothstep( 0.0, 0.3, s ) * ( 1.0 - smoothstep( 0.992, 1.0, s ) );
 		tau += prof * peak * ends;
 	}
@@ -1497,7 +1515,7 @@ export class VolumetricCloudLayer {
         uCirrus: { value: 0 }, uCirrusDir: { value: new THREE.Vector2(1, 0) }, uCirrusAlt: { value: 10000 }, uCirrusShift: { value: new THREE.Vector2() }, uCirrusDensity: { value: 0.7 },
         uFarBand: { value: 0 }, uFarBandAlt: { value: 2000 }, uFarBandShift: { value: new THREE.Vector2() },
         uStepScale: { value: 1 }, uDebug: { value: 0 },
-        uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 }, uBaseFlat: { value: 0 },
+        uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 }, uBaseFlat: { value: 0 }, uDeckDetail: { value: 0 },
         uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
         // 2026-10-01: the weather layers beyond the slab (cloudWeatherLayers.ts)
         ...createCloudWeatherUniforms(),
@@ -1726,6 +1744,7 @@ export class VolumetricCloudLayer {
     t.uInterior.value = preset.interior;
     t.uLumps.value = preset.lumps ?? 0;
     t.uBaseFlat.value = preset.baseFlat ?? 0;
+    t.uDeckDetail.value = preset.deckDetail ?? 0;
     t.uCluster.value = preset.cluster ?? 0;
     // the scud band never reaches down past the lower half of the base altitude (a 300 m ceiling's rags stay aloft)
     t.uSlabLow.value = Math.min(preset.baseM - hang, preset.scud > 0 ? Math.max(preset.baseM * 0.45, preset.baseM - CLOUD_SCUD_BAND_M) : preset.baseM);

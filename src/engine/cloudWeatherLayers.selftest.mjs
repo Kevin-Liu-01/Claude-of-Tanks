@@ -32,8 +32,10 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   for (const t of a) {
     assert.ok(Math.abs(Math.hypot(...t.dir) - 1) < 1e-9, 'unit headings');
     assert.ok(t.headAge <= t.tailAge && t.tailAge <= 1 && t.headAge >= 0, 'a trail is younger at its head');
-    assert.ok(Math.abs(t.offsetM) <= 13000 && Math.abs(t.centreM) <= 9000 && t.halfLengthM >= 14000 && t.halfLengthM <= 40000);
-    assert.ok(t.depth > 0.3 && t.depth < 0.65);
+    // (2026-10-03, the gauntlet's wave 5: "a bright, perfectly straight diagonal streak spans almost the entire sky"):
+    // 14–44 km long, a fresh trail's optical depth 0.2–0.38 (a thin veil, not a glaring line)
+    assert.ok(Math.abs(t.offsetM) <= 13000 && Math.abs(t.centreM) <= 9000 && t.halfLengthM >= 7000 && t.halfLengthM <= 22000);
+    assert.ok(t.depth >= 0.2 && t.depth <= 0.38);
   }
   assert.equal(cloudContrails({ ...base, contrails: 0 }).length, 0);
   assert.equal(cloudContrails({ ...base, contrails: 9 }).length, CLOUD_CONTRAIL_MAX, 'never past the uniform arrays');
@@ -67,6 +69,11 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   // (2026-10-02: the mid layer and the distant storm cells were removed after the labs — pancakes and mushroom clouds)
   for (const gone of ['midLayer', 'midThickness', 'stormCells', 'stormDensity', 'cloudCylinderSpan', 'uMid', 'uStorm']) assert.ok(!src.includes(gone), `${gone} is gone`);
   assert.match(glsl, /float\( i \) >= uContrails/, 'the trails by their count');
+  // a trail persists only in supersaturated air: segments of a few kilometres with dry gaps, its own phase per trail
+  assert.match(glsl, /peak \*= smoothstep\( 0\.3, 0\.55, textureLod\( tWeather, vec2\( along \/ 30000\.0 \+ float\( i \) \* 0\.173, 0\.29 \+ float\( i \) \* 0\.137 \), 0\.0 \)\.b \);/,
+    'the persistence segments along each trail');
+  assert.match(glsl, /float w = mix\( 40\.0, 1500\.0, age \* age \);/, 'a fresh trail 40 m wide');
+  assert.match(glsl, /float peak = B\.w \* sqrt\( 40\.0 \/ w \) \* \( w \/ wf \);/, 'its depth spreads with its width');
   assert.match(glsl, /if \( uRain\.x <= 0\.0/, 'the rain by its amount');
   assert.match(glsl, /if \( uFogBank\.x <= 0\.0/, 'the fog bank by its amount');
   assert.doesNotMatch(glsl, /pow\( \(/, 'no pow of a signed difference (undefined in GLSL for a negative base)');
