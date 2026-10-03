@@ -3,7 +3,7 @@
 // iron, with a front veranda, a rail and a ladder; ground houses of rendered brick painted pale blue, green or yellow
 // under sheet roofs with a columned porch; open boat shelters and shrimp-pond guard huts on stilts; tin-roofed market
 // halls; a collapsed stilt house where the shelling found it.
-import { PartSink, faceBox, pick, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
+import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, RUSTED, WEATHERED_PLANK, boardWall, ladder, stilts, veranda } from './vernacular.ts';
@@ -86,11 +86,19 @@ function wetYard(sink: PartSink, ctx: RegionalBuildContext): void {
   }
 }
 
-/** The ground house: rendered brick painted pale, a sheet roof, a columned porch, shutters. */
+/**
+ * The ground house: rendered brick painted pale, a sheet roof, a columned porch, shutters. On a farmhouse plot (wider
+ * than deep) it is the three-bay house (nha ba gian) lying along the plot with its porch down one long side
+ * (plotAxes), not a gable-fronted house whose porch reached 2 m past the plot.
+ */
 function groundHouse(ctx: RegionalBuildContext): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
-  const W = Math.max(5.6, Math.min(8, ctx.info.w - 0.4)), D = Math.max(7.2, Math.min(11, ctx.info.d - 0.4));
+  const plot = plotAxes(ctx.info);
+  // turned, the porch (2 m) and the house stand inside the plot's depth; the house runs the plot's length
+  const W = plot.turned ? Math.max(5.0, Math.min(8, plot.w - 4.4)) : Math.max(5.6, Math.min(8, ctx.info.w - 0.4));
+  const D = plot.turned ? Math.max(7.2, Math.min(14, plot.d - 0.8)) : Math.max(7.2, Math.min(11, ctx.info.d - 0.4));
+  const porchFace = plot.turned ? 'left' : 'front', porchWidth = plot.turned ? D : W;
   const wall: RegionalBucket = ctx.wallBucket === 'stone' ? 'plaster2' : ctx.wallBucket as RegionalBucket;
   const shutter = pick(rng, SHUTTER);
   const style: WindowStyle = {
@@ -98,21 +106,24 @@ function groundHouse(ctx: RegionalBuildContext): RegionalParts {
     surround: { bucket: 'plaster', width: 0.12, out: 0.04 }, sill: { bucket: 'plaster', out: 0.08 },
     shutters: { colour: shutter, kind: 'louvred', closed: 0.5 },
   };
-  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.6, y0: 0, h: 2.3 }];
-  for (const face of ['front', 'left', 'right'] as const) {
-    const width = face === 'front' ? W : D;
-    for (const o of windowRhythm(face, 0, width, { w: 0.9, h: 1.2, sill: 0.9, spacing: 2.2, margin: 0.9, avoid: face === 'front' ? [[-1.0, 1.0]] : [] })) openings.push(o);
+  const openings: Opening[] = [{ face: porchFace, storey: 0, kind: 'door', u: 0, w: 1.6, y0: 0, h: 2.3 }];
+  const faces = plot.turned ? (['left', 'front', 'back'] as const) : (['front', 'left', 'right'] as const);
+  for (const face of faces) {
+    const width = face === 'front' || face === 'back' ? W : D;
+    for (const o of windowRhythm(face, 0, width, { w: 0.9, h: 1.2, sill: 0.9, spacing: 2.2, margin: 0.9, avoid: face === porchFace ? [[-1.0, 1.0]] : [] })) openings.push(o);
   }
   const dialect: HouseDialect = {
     window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, style, rng, 0.5),
     door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shutter, frame: { bucket: 'plaster', width: 0.14, out: 0.05 }, steps: { bucket: 'stone' }, leafKind: 'panel' }, y0 + o.y0),
   };
-  const frame = buildHouse(sink, {
-    w: W, d: D, plinth: { h: 0.55, out: 0.08, bucket: 'stone' }, storeys: [{ h: 3.0, wall }],
-    roof: tole(22 + rng() * 6, rng() < 0.4 ? 'hip' : 'gable'), gableBucket: wall, openings, chimneys: [], gutters: null, verge: null,
-  }, dialect);
-  const post = rgb(0xd6d0c2);
-  veranda(sink, frame.faces.front, 0.55, frame.eaveY - 0.1, W, 2.0, post, { bucket: 'roof' }, false);
+  alongPlot(sink, plot.turned, () => {
+    const frame = buildHouse(sink, {
+      w: W, d: D, plinth: { h: 0.55, out: 0.08, bucket: 'stone' }, storeys: [{ h: 3.0, wall }],
+      roof: tole(22 + rng() * 6, rng() < 0.4 ? 'hip' : 'gable'), gableBucket: wall, openings, chimneys: [], gutters: null, verge: null,
+    }, dialect);
+    const post = rgb(0xd6d0c2);
+    veranda(sink, frame.faces[porchFace], 0.55, frame.eaveY - 0.1, porchWidth, 2.0, post, { bucket: 'roof' }, false);
+  });
   return sink.finish();
 }
 
@@ -155,23 +166,29 @@ function shelter(ctx: RegionalBuildContext, opts: { deck?: boolean; walls?: 0 | 
   return sink.finish();
 }
 
-/** A tin-roofed market hall: open sides, concrete posts, a long sheet roof, stall counters. */
+/**
+ * A tin-roofed market hall: open sides, concrete posts, a long sheet roof, stall counters. On a market row's plot (wider
+ * than deep) the hall lies along it (plotAxes): it no longer reaches 2.4 m past the plot's long sides.
+ */
 const marketHall: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
-  const W = Math.max(6, Math.min(10, ctx.info.w - 0.6)), D = Math.max(10, Math.min(20, ctx.info.d - 0.6));
-  sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 0.25, D / 2);
-  const top = 3.4;
-  for (const sx of [-1, 0, 1]) for (let k = 0, n = Math.max(2, Math.round(D / 3.5) + 1); k < n; k++) {
-    const x = sx * (W / 2 - 0.2), z = -D / 2 + 0.2 + (D - 0.4) * k / (n - 1);
-    sink.span('plaster', x - 0.14, 0.25, z - 0.14, x + 0.14, top + (sx === 0 ? 1.4 : 0), z + 0.14);
-  }
-  const roof = tole(16);
-  emitRoof(sink, roofGeometry(W, D, top, roof), roof, rng() < 0.5 ? pick(rng, RUSTED) : undefined);
-  // the stall platforms: fixed counters of plank on block (they stand as the base hall's walls stood: cover)
-  for (const side of [-1, 1]) for (let z = -D / 2 + 1.2; z < D / 2 - 1; z += 2.4) {
-    sink.span('structureWood', side * (W / 2 - 1.3) - 0.5, 0.25, z - 1.0, side * (W / 2 - 1.3) + 0.5, 1.15, z + 1.0, { colour: pick(rng, WEATHERED_PLANK) });
-  }
+  const plot = plotAxes(ctx.info);
+  const W = Math.max(plot.turned ? 4.2 : 6, Math.min(10, plot.w - 0.6)), D = Math.max(plot.turned ? 6 : 10, Math.min(20, plot.d - 0.6));
+  alongPlot(sink, plot.turned, () => {
+    sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 0.25, D / 2);
+    const top = 3.4;
+    for (const sx of [-1, 0, 1]) for (let k = 0, n = Math.max(2, Math.round(D / 3.5) + 1); k < n; k++) {
+      const x = sx * (W / 2 - 0.2), z = -D / 2 + 0.2 + (D - 0.4) * k / (n - 1);
+      sink.span('plaster', x - 0.14, 0.25, z - 0.14, x + 0.14, top + (sx === 0 ? (plot.turned ? 0.65 : 1.4) : 0), z + 0.14);
+    }
+    const roof = plot.turned ? { ...tole(16), eave: 0.3 } : tole(16);
+    emitRoof(sink, roofGeometry(W, D, top, roof), roof, rng() < 0.5 ? pick(rng, RUSTED) : undefined);
+    // the stall platforms: fixed counters of plank on block (they stand as the base hall's walls stood: cover)
+    for (const side of [-1, 1]) for (let z = -D / 2 + 1.2; z < D / 2 - 1; z += 2.4) {
+      sink.span('structureWood', side * (W / 2 - 1.3) - 0.5, 0.25, z - 1.0, side * (W / 2 - 1.3) + 0.5, 1.15, z + 1.0, { colour: pick(rng, WEATHERED_PLANK) });
+    }
+  });
   return sink.finish();
 };
 
