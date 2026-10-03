@@ -97,6 +97,11 @@ export interface HouseSpec {
   reveal?: number;
   /** rafter feet showing under the eaves overhang (their colour), or none (a kit leaves them out on phones) */
   rafters?: Rgb | null;
+  /**
+   * The masonry a rendered storey shows where its render has spalled (rising damp at the wall foot, the drip under a
+   * sill, a splinter scar): the kit's stone by default, null for none (a clay or wattle wall has no stone under it)
+   */
+  spall?: RegionalBucket | null;
 }
 
 /** What a dialect sees of the house it dresses. */
@@ -156,7 +161,12 @@ const FACE_NAMES: readonly FaceName[] = ['front', 'right', 'back', 'left'];
  * slot never leaks between buildings): `amount` is the share of houses showing damage, drawn from the wear stream, never
  * the build stream, so an undamaged house builds exactly as it would without wear.
  */
-interface WearContext { amount: number; rng: () => number }
+interface WearContext {
+  amount: number;
+  rng: () => number;
+  /** spalled render (decor only) draws from its own stream: the damage decisions above never move */
+  spall?: () => number;
+}
 let wearContext: WearContext | null = null;
 export function withWear<T>(wear: WearContext | null, build: () => T): T {
   const prior = wearContext;
@@ -235,6 +245,53 @@ function damagedOpening(sink: PartSink, face: Face, o: Opening, y0: number, reve
 }
 
 /** Lay out a roof over a w × d wall top at height eaveY (ridge along Z). */
+const RENDERS: ReadonlySet<RegionalBucket> = new Set<RegionalBucket>(['plaster', 'plaster2', 'plaster3']);
+
+/**
+ * Spalled render on a worn house (gauntlet wave 0: "no wear"): where a rendered storey's render has fallen away, the
+ * masonry under it shows: a ragged band at the wall foot (rising damp), a patch under a sill (the drip), a scar in a
+ * pier (a splinter, a sheet come loose). Decor a few millimetres proud of the wall, clear of every opening, from the
+ * wear context's own spall stream: the walls, the damage decisions and the collision never change.
+ */
+function spallRender(sink: PartSink, spec: HouseSpec, wall: RegionalBucket, face: Face,
+  body: { y0: number; y1: number }, storey: number, own: readonly Opening[]): void {
+  const wear = wearContext, rng = wear?.spall;
+  const bucket = spec.spall === undefined ? 'stone' : spec.spall;
+  if (!wear || !rng || wear.amount <= 0 || !bucket || !RENDERS.has(wall)) return;
+  if (rng() >= Math.min(0.75, 0.25 + 1.5 * wear.amount)) return;
+  const half = face.width / 2, y0 = body.y0, y1 = body.y1;
+  const keepOut = own.map((o) => ({ u0: o.u - o.w / 2 - 0.1, u1: o.u + o.w / 2 + 0.1, y0: y0 + o.y0 - 0.1, y1: y0 + o.y0 + o.h + 0.1 }));
+  const windows = own.filter((o) => o.kind === 'window' && !o.state);
+  const n = 1 + Math.floor(rng() * 3);
+  for (let k = 0; k < n; k++) {
+    const roll = rng(), a = rng(), b = rng(), c = rng();
+    let cu: number, cy: number, ru: number, ry: number;
+    if (roll < 0.4 && storey === 0) {
+      // rising damp: a ragged band along the wall foot
+      ru = 0.8 + a * 1.4; ry = 0.26 + b * 0.36; cu = (c - 0.5) * (face.width - 2 * ru); cy = y0 + 0.03 + ry;
+    } else if (roll < 0.7 && windows.length) {
+      // the sill's drip has washed the render off below it
+      const o = windows[Math.floor(a * windows.length)];
+      ru = o.w * (0.5 + b * 0.4); ry = 0.24 + c * 0.36; cu = o.u + (b - 0.5) * o.w * 0.3; cy = y0 + o.y0 - 0.12 - ry;
+    } else {
+      // a scar in a pier: a splinter strike, a sheet come loose
+      ru = 0.3 + a * 0.6; ry = ru * (0.55 + b * 0.5); cu = (c - 0.5) * (face.width - 2 * ru);
+      cy = y0 + ry + 0.25 + rng() * Math.max(0, y1 - y0 - 2 * ry - 0.5);
+    }
+    // a ragged outline, star-shaped about its centre (the fan below needs no more): the radius wanders vertex to vertex
+    const ragged: Array<[number, number]> = [];
+    for (let j = 0; j < 11; j++) {
+      const t = (j / 11) * Math.PI * 2, r = 0.55 + rng() * 0.45;
+      ragged.push([cu + Math.cos(t) * ru * r, cy + Math.sin(t) * ry * r]);
+    }
+    if (Math.abs(cu) + ru > half - 0.08 || cy - ry < y0 + 0.02 || cy + ry > y1 - 0.08) continue;
+    if (keepOut.some((h) => cu + ru > h.u0 && cu - ru < h.u1 && cy + ry > h.y0 && cy - ry < h.y1)) continue;
+    // fanned from the centre, a few millimetres proud: the masonry reads through the render without fighting it
+    const fan: Array<[number, number]> = [[cu, cy], ...ragged, ragged[0]];
+    sink.polygon(bucket, fan.map(([u, yy]) => facePoint(face, u, yy, 0.006)), { decor: true, shade: 0.86 });
+  }
+}
+
 export function roofGeometry(w: number, d: number, eaveY: number, roof: RoofSpec): RoofGeometry {
   const s = w / 2, halfD = d / 2;
   const tanP = Math.tan(roof.pitchDeg * DEG);
@@ -497,7 +554,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
       const own = spec.openings.filter((o) => o.face === name && o.storey === i);
       if (storey.framed && dialect.dressWall) {
         dialect.dressWall(sink, face, { u0: -face.width / 2, u1: face.width / 2, y0: bodies[i].y0, y1: bodies[i].y1 }, own, frame);
-      }
+      } else spallRender(sink, spec, storey.wall, face, bodies[i], i, own);
       // the units stand in the cut openings, set back by the reveal
       sink.recess = reveal;
       try {

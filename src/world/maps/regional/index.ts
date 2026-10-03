@@ -90,7 +90,8 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
   const builder = style.builders[ctx.structureId];
   if (!builder) throw new Error(`${style.id} has no ${ctx.structureId}`);
   // war wear (burnt and boarded windows, stripped roof patches) draws from its own fork of the weather stream
-  const wear = { amount: style.wear ?? 0.2, rng: streamFrom(Math.floor(weatherRng() * 4294967296)) };
+  const wearSeed = Math.floor(weatherRng() * 4294967296);
+  const wear = { amount: style.wear ?? 0.2, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0) };
   const tints = pickWeatherTints(palette, weatherRng);
   return weatherRegionalParts(withWear(wear, () => builder(ctx)), tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
 }

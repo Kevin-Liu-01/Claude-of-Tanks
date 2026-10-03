@@ -83,7 +83,8 @@ function khata(ctx: RegionalBuildContext, opts: { long?: boolean } = {}): Region
     w: W, d: D, plinth: { h: 0.45, out: 0.06, bucket: 'stone' }, storeys: [{ h: 2.45 + rng() * 0.2, wall }],
     roof: thatched ? thatch(40 + rng() * 6) : shifer(30, 'hip'), gableBucket: wall, openings,
     chimneys: [{ x: (rng() - 0.5) * 0.8, z: (rng() - 0.5) * D * 0.3, sx: 0.5, sz: 0.5, above: thatched ? 0.55 : 0.75, bucket: 'plaster', cap: 'slab' }],
-    gutters: null, verge: null,
+    // clay-rendered timber or adobe: no brick under the whitewash to show where it has spalled
+    gutters: null, verge: null, spall: null,
   }, dialect(st));
   // the porch (ganok) over the door: two posts and a small lean-to
   const f = frame.faces.left, u = D * 0.2, y = frame.eaveY - 0.1;
