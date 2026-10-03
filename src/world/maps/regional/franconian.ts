@@ -126,6 +126,8 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     damp: 0.8, moss: 0.5,
   },
   wear: 0.25,
+  // the yards of the outlying farms: sandstone walls round a kitchen garden, a gate (yards.ts)
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gate', shed: null, garden: true },
 });
 
 export type { RegionalParts, RegionalBuildContext };
