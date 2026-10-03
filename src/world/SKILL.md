@@ -31,6 +31,11 @@ null on mobile and in receipts); every terrain chunk vertex carries a `fold` byt
 sea and lake maps, a `shore` byte (metres landward of the waterline from the shoreline contours, inverted so a geometry
 without it reads as far) that the material's strand runs up (round 73b); `wrecks.ts` owns typed,
 deterministic static tank-wreck and zero-extra-draw-call debris baking.
+`maps/regional/` holds the regional architecture kits (2026-10-03): a map's `props.architecture` names one, and after
+each planned building's placement settles the kit replaces its geometry with the region's version inside the same
+footprint (house grammar `house.ts`, openings cut with reveals, `weather.ts` tints and weathering into the vertex-
+coloured `regional*` buckets, war wear, `dressing.ts`); collision follows the new shell, so a kit change regenerates
+the map's shard. The kit guide is in docs/MAP-LAYOUT-BRIEF.md ("Regional building kits").
 `destructibles.ts` is the typed, allocation-free active-world seam between
 shell traffic, break FX, prop destruction events, and cached map handlers.
 `utilityNetwork.ts` owns renderer-free pole adjacency, hinge poses, stable

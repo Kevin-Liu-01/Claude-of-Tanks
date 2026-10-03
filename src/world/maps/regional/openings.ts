@@ -65,7 +65,9 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
   if (style.shutters) {
     const sh = style.shutters, leaf = w / 2 + 0.03, sideOff = style.surround ? style.surround.width : 0;
     const closed = sh.closed ?? 0;
-    const sc = { colour: sh.colour, decor: true, uv: UV_MEMBER };
+    // each window's shutters weathered a little differently (repainted one year, sun-faded another)
+    const fade = 0.88 + rng() * 0.2;
+    const sc = { colour: [sh.colour[0] * fade, sh.colour[1] * fade, sh.colour[2] * fade] as Rgb, decor: true, uv: UV_MEMBER };
     if (rng() < closed) {
       // closed: both leaves across the opening, proud of the frame
       const shut = Math.max(0, O - r);

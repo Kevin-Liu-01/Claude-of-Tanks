@@ -520,9 +520,12 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     const roofY = rg.topAt(c.x - roofCx, c.z - roofCz);
     const topY = (roofY ?? rg.ridgeTopY) + c.above;
     const baseY = c.inWall ? 0 : Math.max(eaveY - 0.4, (roofY ?? eaveY) - 1.2);
-    sink.span(c.bucket, c.x - c.sx / 2, baseY, c.z - c.sz / 2, c.x + c.sx / 2, topY, c.z + c.sz / 2);
+    // soot: the stack blackens toward its mouth (the weathering pass reads the shade)
+    const soot = { shadeAt: (p: Vec3) => (p[1] > topY - 0.05 ? 0.5 : p[1] > topY - 0.7 ? 0.78 : 1) };
+    sink.span(c.bucket, c.x - c.sx / 2, baseY, c.z - c.sz / 2, c.x + c.sx / 2, topY - 0.7, c.z + c.sz / 2);
+    sink.span(c.bucket, c.x - c.sx / 2, topY - 0.7, c.z - c.sz / 2, c.x + c.sx / 2, topY, c.z + c.sz / 2, soot);
     const cap = c.cap ?? 'slab';
-    if (cap === 'slab' || cap === 'pots') sink.span(c.bucket, c.x - c.sx / 2 - 0.07, topY, c.z - c.sz / 2 - 0.07, c.x + c.sx / 2 + 0.07, topY + 0.1, c.z + c.sz / 2 + 0.07);
+    if (cap === 'slab' || cap === 'pots') sink.span(c.bucket, c.x - c.sx / 2 - 0.07, topY, c.z - c.sz / 2 - 0.07, c.x + c.sx / 2 + 0.07, topY + 0.1, c.z + c.sz / 2 + 0.07, { shade: 0.5 });
     if (cap === 'tile') {
       // a little gabled tile hood on corner piers (Dalmatian / Mediterranean)
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) {

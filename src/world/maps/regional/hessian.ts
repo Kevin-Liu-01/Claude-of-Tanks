@@ -74,9 +74,10 @@ const OUT = 0.035, POST = 0.17;
 const SW: RegionalBucket = 'structureWood';
 
 export function stateFor(ctx: RegionalBuildContext, rng: () => number): HessianState {
-  const infill: RegionalBucket = ctx.wallBucket === 'stone'
-    ? pick(rng, ['plaster', 'plaster', 'plaster2', 'plaster3'] as const)
-    : (ctx.wallBucket as RegionalBucket);
+  // the infill is limewash on daub: the primary render (the map's plaster photo set) under each house's own tint
+  // (weather.ts); the v1 captures showed the procedural plaster2/plaster3 canvases reading as grey cobbles in the panels
+  const infill: RegionalBucket = 'plaster';
+  if (ctx.wallBucket === 'stone') rng(); // the stream keeps the draw the old variant pick took
   const shutters = rng() < palette.shutterShare ? pick(rng, palette.shutters) : null;
   return {
     rng,

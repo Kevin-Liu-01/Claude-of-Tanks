@@ -245,3 +245,63 @@ props code shaped every layout, and the next maps should start from them:
 
   Draw calls fell at the fixed overhead pose: −10 %, 0 % and −21 %.
 
+
+## Regional building kits
+
+October 3, 2026 (regional-buildings lane). The settlements of a rebuilt map are built in the architecture of the real
+place the map stands on. Each kit is first-party procedural geometry under `src/world/maps/regional/`, one file per
+region, registered in `index.ts`:
+
+| Kit (`architecture`) | Region | For |
+| --- | --- | --- |
+| `hessian` | Osthessen, Fulda Gap: Fachwerk on Buntsandstein, plain tiles | Frontier Basin |
+| `dalmatian` | Brač, Šibenik hinterland: limestone and render, canal tiles, outside stairs | Saltwind Narrows |
+| `breton` | Finistère: granite and limewash, slate, coped gables, dormers | Saltmere Bay |
+| `kolkhoz` | Prokhorovka: whitewashed khatas, thatch and asbestos sheet, kolkhoz brick | Verdant Fields |
+| `polder` | Zeeland: brick farms, pantiles, tarred barns under thatch, a smock mill | Tidegate Polders |
+| `eifel` | Rur dams: black-and-white Fachwerk on greywacke, slate, the dam company's stone | Highland Reservoir |
+| `mekong` | Cà Mau: stilt houses of plank and palm, nipa and corrugated iron | Mangrove Reach |
+| `bengal` | Jamuna chars: tin homesteads on earthen plinths, a tin bazaar, a mosque | Jade River Delta |
+| `franconian` | Kronach, Meissen: framed and rendered town houses, plain tiles | Steinburg |
+| `ksar` | Dahar plateau: vaulted ghorfa ranges, flat-roofed houses, a minaret | Sirocco Wadi |
+| `wadirum` | Wadi Rum: block houses, rooftop tanks, the Desert Patrol fort | Redrock Divide |
+| `ruhr` | Ruhr and Silesian junctions: soot-dark brick, yellow-brick bands, slate | Cinder Junction |
+| `kohima` | Kohima 1944: bungalows under painted tin, a bazaar, Angami houses | Monsoon Ridge |
+
+**Adopting a kit is one line** in the map's props settings: `architecture: '<kit>'`. The plan builders still run
+first: every draw, the ground fit, the UV jitter and the road frontage see the base geometry, so every building keeps
+its pose, footprint and door side, and every later placement (walls, rocks, crates, trees) stays where it was. Only
+then the kit replaces the building's geometry with the region's version of the same structure, inside the same
+footprint. A structure the kit has no builder for keeps its base geometry; the light destructibles (field huts,
+checkpoints, tents, guard posts) always keep theirs, with their broken states.
+
+**What a kit changes, and the receipts that follow:**
+
+- Collision is derived from the regional geometry, so adopting or changing a kit regenerates the map's shard
+  (`node tools/capture-world-collision-manifests.mjs --node --maps <id>`) and re-pins its census in
+  `server/dedicatedWorldCollision.selftest.mjs` (obstacles and concealers do not move; colliders do).
+- The map's roof and masonry textures become the kit's painted surfaces (`src/world/regionalSurfaces.ts`); the
+  plaster and timber photo sets stay when the kit opts in.
+- Walls and roofs render from three to five vertex-coloured buckets (`regionalPlaster`, `regionalPlaster2`,
+  `regionalPlaster3`, `regionalStone`, `regionalRoof`) and painted joinery from `structureWood`: up to six draw calls
+  more than the base map, whatever the number of buildings.
+- `src/world/maps/regional/regionalArchitecture.selftest.mjs` runs the road-building stage with and without the kit
+  for every adopting map and fails if a building, a stream draw or a contact record moves.
+- Layout metrics do not move with a kit (the cover and sightline bands read the collision manifest: rerun
+  `tools/map-layout-metrics.mjs` for the map after its shard is regenerated, and report any band that moves).
+
+**What a house carries.** The house grammar (`house.ts`) lays out plinth, storeys, jetties, gable, half-hip and hip
+roofs with eaves, verges, ridge caps, gutters and downpipes, chimneys and gable stacks. Every window and door is cut
+into its wall with a reveal as deep as the wall is thick (`HouseSpec.reveal`). `weather.ts` gives each house its own
+tint from the kit's palette, darkens the wall foot with splash and rising damp, shades reveals and soffits, runs rain
+stains under the sills and moss or lichen toward the eaves. A share of houses per kit (`ArchitectureStyle.wear`)
+shows war damage: burnt-out windows with soot up the wall, boarded windows, a stripped roof patch. `dressing.ts` adds
+the lived-in parts a kit uses (window boxes, the bench by the door, a woodpile, the roof ladder, an aerial); they are
+dressing (no collision) and the phones leave them out, so the collision a host certifies is tier-independent.
+
+**Adding a builder or a kit.** A builder is `(ctx) => RegionalParts`: build within `ctx.info.w × ctx.info.d`, door
+side +z unless the base builder's frontage says otherwise, draw only from `ctx.rng`, and keep tier-dependent parts to
+dressing. A new kit exports an `ArchitectureStyle` (region, surfaces, builders, weather palette, wear) and joins the
+registry in `index.ts`; the regional receipt then builds every builder at two seeds and checks determinism, attribute
+sets, night masks, the triangle budget, outward-facing faces and tier-independent collision. Judge a kit on Studio
+captures of its map: an establishing view, two street-level views and each structure kind, by day and by night.
