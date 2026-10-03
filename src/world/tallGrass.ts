@@ -602,8 +602,8 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     } else if (cropTint) {
       // (wave 14, verdant chase: a sown field read as "a uniform carpet … at one height and spacing, like artificial
       // turf") a crop stands evenly but not as a mat: thinner and shorter in its wet and poor patches, every few metres
-      keep *= 0.55 + 0.45 * smoothstep(0.25, 0.70, swardNoise(x, z, 2.3, 0x51a7));
-      heightScale *= 0.80 + 0.40 * swardNoise(x, z, 6.5, 0x2c3d);
+      keep *= 0.40 + 0.60 * smoothstep(0.25, 0.70, swardNoise(x, z, 2.3, 0x51a7));
+      heightScale *= 0.70 + 0.60 * swardNoise(x, z, 6.5, 0x2c3d);
     }
     if (roll > keep) return;
     if (n && n.y < TALL_GRASS.minSlopeY) return;

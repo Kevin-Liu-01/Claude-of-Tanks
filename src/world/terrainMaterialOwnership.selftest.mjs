@@ -27,7 +27,8 @@ async function compile(text) {
     .map(name => `const ${name} = ${scalar(text, name)};`).join('\n');
   const body = `const clamp = (x,a,b) => Math.max(a,Math.min(b,x));
     const mix = (a,b,w) => a*(1-w)+b*w;
-    export function sample({fD,fR,fMs,projW,roadCore,dNear2,farM,dn2,gnF,gl2,glM,gLum}) {
+    const max = Math.max;
+    export function sample({fD,fR,fMs,projW,roadCore,dNear2,farM,dn2,gnF,gl2,glM,gLum,gCropW,gSoilW}) {
       ${declarations}
       return {nearG,farG,nearN:${normalTerm(text, 'dn2')},nearA:${nearAlbedo(text)},
         farN:${normalTerm(text, 'gnF')},farA:${farAlbedo(text)}};
@@ -37,7 +38,7 @@ async function compile(text) {
 const fields = ['fD', 'fR', 'fMs', 'projW', 'roadCore'];
 const ports = overrides => ({ fD: 0, fR: 0, fMs: 0, projW: 0, roadCore: 0,
   dNear2: .73, farM: .61, dn2: { xy: -.7 }, gnF: { xy: .4 },
-  gl2: .8, glM: .2, gLum: .7, ...overrides });
+  gl2: .8, glM: .2, gLum: .7, gCropW: 0, gSoilW: 0, ...overrides });
 function close(a, b, label) {
   assert.ok(Number.isFinite(a) && Math.abs(a - b) <= 2e-14, `${label}: ${a} != ${b}`);
 }
@@ -86,6 +87,20 @@ function checkFractional(sample) {
       assert.ok(high.nearG <= low.nearG && high.farG <= low.farG);
       assert.ok(low.nearG - high.nearG < 2e-8 && low.farG - high.farG < 2e-8);
     }
+  }
+}
+// ground lane (2026-10-03): the land use owns its share of the meadow's detail as the layers do — a turned field
+// (gSoilW) draws no near blades and keeps 15 % of the far turf, a sown crop (gCropW) keeps 40 % of the near grass
+// detail and 15 % of the far turf; with neither (every map without a field system) the response above is unchanged
+function checkLandCover(sample) {
+  const base = sample(ports()), soil = sample(ports({ gSoilW: 1 })), crop = sample(ports({ gCropW: 1 }));
+  assert.equal(soil.nearG, 0, 'a turned field draws no near blades');
+  close(soil.farG, base.farG * 0.15, 'a turned field keeps 15 % of the far turf');
+  close(crop.nearG, base.nearG * 0.4, 'a sown field keeps 40 % of the near grass detail');
+  close(crop.farG, base.farG * 0.15, 'a sown field keeps 15 % of the far turf');
+  for (const key of ['gCropW', 'gSoilW']) for (let v = 0; v < 1; v += 0.125) {
+    const lo = sample(ports({ [key]: v })), hi = sample(ports({ [key]: v + 0.125 }));
+    assert.ok(hi.nearG <= lo.nearG && hi.farG <= lo.farG, `${key} attenuates the meadow's detail monotonically`);
   }
 }
 function checkSourceContract(text) {
@@ -178,6 +193,7 @@ checkSourceContract(source + '\n// uniform float commentaryIsNotADeclaration;\n'
 const sample = await compile(source);
 checkEndpoints(sample);
 checkFractional(sample);
+checkLandCover(sample);
 await rejects(replaceOnce(source, scalar(source, 'nearG'), 'openNear2 * (1.0 - fMs)'), 'old near reinjection');
 await rejects(replaceOnce(source, scalar(source, 'farG'), 'farM * (1.0 - fR) * (1.0 - fMs) * (1.0 - projW)'), 'old far reinjection');
 await rejects(replaceOnce(source, scalar(source, 'meadowG'), '(1.0 - projW) * (1.0 - fMs)'), 'missing dirt ownership');
@@ -188,4 +204,4 @@ await rejects(replaceOnce(source, farAlbedo(source), farAlbedo(source).replace('
 assert.throws(() => checkSourceContract(source.replace('uniform float uSea;', 'uniform float uNewDetail; uniform float uSea;')));
 assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v54', 'world-terrain-splat-v53')));
 assert.throws(() => checkSourceContract(source.replace('uniform sampler2D uMask, uNoise;', 'uniform sampler2D uMask, uNoise, uRingRelief;')), 'a seventeenth sampler is refused');
-console.log('terrainMaterialOwnership: actual scalar/consumer endpoints, pure-G legacy response, 2048 fractional cases, continuity and nine mutation controls PASS; no GPU/art/performance claim');
+console.log('terrainMaterialOwnership: actual scalar/consumer endpoints, pure-G legacy response, 2048 fractional cases, continuity, the land-use cover share and nine mutation controls PASS; no GPU/art/performance claim');

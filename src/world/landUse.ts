@@ -79,13 +79,14 @@ export const LAND_CROP_ALBEDO: Readonly<Record<LandCropId, readonly [number, num
   0: [0.085, 0.170, 0.035], // pasture: the calibrated meadow tip (groundRedux.ts MEADOW_TIP)
   1: [0.30, 0.22, 0.075],   // ripe wheat
   2: [0.33, 0.28, 0.12],    // barley
-  3: [0.065, 0.13, 0.05],   // young green crop (wave 14, verdant chase: "oversaturated lime … artificial turf": a deeper, bluer green)
+  3: [0.078, 0.150, 0.032], // young green crop (wave 14, verdant chase: "oversaturated lime … artificial turf"): the meadow's own
+  //   hue a shade deeper — a crop tint divides by the biome's tip, so a bluer albedo turned the blades teal (hold 6)
   4: [0.050, 0.042, 0.034], // plough (black earth; the terrain uses its own soil layer)
   5: [0.30, 0.25, 0.13],    // stubble
   6: [0.045, 0.10, 0.025],  // sunflower foliage
   7: [0.050, 0.105, 0.030], // row crop foliage
   8: [0.040, 0.046, 0.040], // flooded paddy (muddy water)
-  9: [0.085, 0.17, 0.05],   // growing rice
+  9: [0.085, 0.165, 0.036], // growing rice
   10: [0.26, 0.22, 0.085],  // ripe rice
   11: [0.16, 0.10, 0.075],  // terra rossa (a dull brick, not an orange floor)
   12: [0.060, 0.115, 0.035], // vine foliage
