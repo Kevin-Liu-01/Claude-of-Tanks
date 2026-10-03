@@ -125,6 +125,7 @@ const materialFactory = new Function('THREE', 'resolveStructureWindowStyle', 'ma
   'registerRetainedObject3DResources', '_mustReplace', 'rockDressingFor', 'applyRockShaderHook', `${stripTypeScriptTypes(`
   function* materialSteps(group, engineCtx, mapId, atlases, grimeTex) {
     const { ${[...families, ...remaining].join(', ')} } = atlases, P = {};
+    const regionalArchitecture = null; // a map without a regional kit (maps/regional): no weathered materials
     ${materialStage}
     return { mats, retainedSurfaceMaterials };
   }`)}\nreturn materialSteps;`)(THREE, resolveStructureWindowStyle, roof, registerRetainedObject3DResources,

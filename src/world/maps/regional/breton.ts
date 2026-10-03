@@ -13,6 +13,7 @@ import {
   type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { bench, floweringShrub } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const PAINTS: readonly Rgb[] = [0x3f78a6, 0x4f88aa, 0x3f7a60, 0x9a3a32, 0x7a8890, 0x3e6688].map(rgb);
@@ -146,6 +147,7 @@ function dwelling(ctx: RegionalBuildContext, opts: { longere?: boolean; storeys?
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.12, out: 0.03, bucket: 'stone' }, storeys: sts,
     roof: slate(46 + rng() * 6), gableBucket: st.wall, openings, chimneys: [], gutters: rng() < 0.3 ? { colour: rgb(0x5a5e60) } : null, verge: null,
+    reveal: 0.34,
   }, dialect(st));
   gableParapets(sink, frame, rng() < 0.55 ? 2 : 1, rng);
   if (longere) {
@@ -153,6 +155,14 @@ function dwelling(ctx: RegionalBuildContext, opts: { longere?: boolean; storeys?
     for (let k = 0; k < n; k++) dormer(sink, frame, 1, n === 1 ? -D * 0.15 : (k === 0 ? -D * 0.25 : D * 0.22), st);
   }
   quoins(sink, frame);
+  // the lived-in dressing: a hydrangea by the door (blue on the acid granite soil, sometimes pink), a bench
+  const shrub = rng() < 0.6, bloom: Rgb = rng() < 0.7 ? [0.36, 0.46, 0.78] : [0.82, 0.48, 0.62], seat = rng() < 0.3;
+  if (ctx.tier !== 'mobile') {
+    const door = openings[0], face = frame.faces[door.face];
+    const side = door.u > 0 ? -1 : 1;
+    if (shrub && Math.abs(door.u + side * (door.w / 2 + 0.75)) + 0.6 < face.width / 2) floweringShrub(sink, face, door.u + side * (door.w / 2 + 0.75), 0.9, bloom, rng);
+    if (seat && Math.abs(door.u - side * (door.w / 2 + 1.1)) + 0.8 < face.width / 2) bench(sink, face, door.u - side * (door.w / 2 + 1.1), 1.3, [0.42, 0.36, 0.28]);
+  }
   return sink.finish();
 }
 
@@ -184,7 +194,7 @@ const barn: RegionalBuilder = (ctx) => {
       { face: 'right', storey: 0, kind: 'loft', u: D * 0.18, w: 0.55, y0: 1.9, h: 0.6 },
       { face: 'left', storey: 0, kind: 'loft', u: 0, w: 0.55, y0: 1.9, h: 0.6 },
     ],
-    chimneys: [], gutters: null, verge: null,
+    chimneys: [], gutters: null, verge: null, reveal: 0.36,
   }, dialect({ ...st, litShare: 0 }));
   gableParapets(sink, frame, 0, st.rng);
   // the loft door high in the street gable and its granite lintel
@@ -217,7 +227,7 @@ const chapel: RegionalBuilder = (ctx) => {
   for (const face of ['right', 'left'] as const) for (const u of [-D * 0.22, D * 0.22]) openings.push({ face, storey: 0, kind: 'window', u, w: 0.7, y0: 1.5, h: 1.7 });
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.25, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.8, wall: 'stone' }], roof: slate(52),
-    gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null,
+    gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, reveal: 0.4,
   }, {
     ...dialect(st),
     window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {

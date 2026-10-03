@@ -2983,22 +2983,25 @@ function* propsBuildSteps(
       roughnessMap: structureMetal.surface, aoMap: structureMetal.surface,
       vertexColors: true, roughness: 1, metalness: 0.08,
     }),
-    // regional kits (maps/regional/weather.ts): the same plaster, stone and roof textures (a sourced swap replaces
-    // the shared Texture's source in place, so these follow it) under each building's per-vertex tint and weathering
-    regionalPlaster: new THREE.MeshStandardMaterial({ map: plaster.albedo, normalMap: plaster.normal,
-      roughnessMap: plaster.surface, aoMap: plaster.surface, vertexColors: true, roughness: 1, metalness: 0 }),
-    regionalPlaster2: new THREE.MeshStandardMaterial({ map: plaster2.albedo, normalMap: plaster2.normal,
-      roughnessMap: plaster2.surface, aoMap: plaster2.surface, vertexColors: true, roughness: 1, metalness: 0 }),
-    regionalPlaster3: new THREE.MeshStandardMaterial({ map: plaster3.albedo, normalMap: plaster3.normal,
-      roughnessMap: plaster3.surface, aoMap: plaster3.surface, vertexColors: true, roughness: 1, metalness: 0 }),
-    regionalStone: new THREE.MeshStandardMaterial({ map: stone.albedo, normalMap: stone.normal,
-      roughnessMap: stone.surface, aoMap: stone.surface, vertexColors: true, roughness: 1, metalness: 0 }),
-    regionalRoof: Object.assign(makeRoofMaterial(roofT, mapId), { vertexColors: true }),
+    // regional kits (maps/regional/weather.ts), on a map that adopted one: the same plaster, stone and roof textures
+    // (a sourced swap replaces the shared Texture's source in place, so these follow it) under each building's
+    // per-vertex tint and weathering. A map without a kit owns none of them.
+    ...(regionalArchitecture ? {
+      regionalPlaster: new THREE.MeshStandardMaterial({ map: plaster.albedo, normalMap: plaster.normal,
+        roughnessMap: plaster.surface, aoMap: plaster.surface, vertexColors: true, roughness: 1, metalness: 0 }),
+      regionalPlaster2: new THREE.MeshStandardMaterial({ map: plaster2.albedo, normalMap: plaster2.normal,
+        roughnessMap: plaster2.surface, aoMap: plaster2.surface, vertexColors: true, roughness: 1, metalness: 0 }),
+      regionalPlaster3: new THREE.MeshStandardMaterial({ map: plaster3.albedo, normalMap: plaster3.normal,
+        roughnessMap: plaster3.surface, aoMap: plaster3.surface, vertexColors: true, roughness: 1, metalness: 0 }),
+      regionalStone: new THREE.MeshStandardMaterial({ map: stone.albedo, normalMap: stone.normal,
+        roughnessMap: stone.surface, aoMap: stone.surface, vertexColors: true, roughness: 1, metalness: 0 }),
+      regionalRoof: Object.assign(makeRoofMaterial(roofT, mapId), { vertexColors: true }),
+    } : {}),
   };
   function configureSurfaceMaterials(): void {
     for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'wood',
       'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
-      mats[key].aoMapIntensity = 0.82;
+      if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
     mats.steel.envMapIntensity = 0.42; // round 75: painted sheet, a little sky on the crests
     mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance

@@ -104,3 +104,43 @@ export function pottedPlant(sink: PartSink, x: number, y: number, z: number, siz
   const leaf: Rgb = [0.12 + rng() * 0.05, 0.26 + rng() * 0.08, 0.07];
   sink.cylinder('structureWood', [x, y + size * 0.8, z], 'y', size * 0.5, size * 0.5, 7, { ...DECOR, colour: leaf }, size * 0.18);
 }
+
+/**
+ * A washing line strung across a face between two wall brackets, the washing pegged along it (the Mediterranean
+ * street front). (u0, u1, y) on the face; the line sags a hand's breadth in the middle.
+ */
+export function washingLine(sink: PartSink, face: Face, u0: number, u1: number, y: number, rng: () => number): void {
+  const out = 0.55, sag = 0.12;
+  const iron: Rgb = [0.18, 0.18, 0.18];
+  for (const u of [u0, u1]) faceBox(sink, 'structureMetal', face, u, y, out / 2, 0.03, 0.03, out, { ...DECOR, colour: iron });
+  const pegs = Math.max(3, Math.floor((u1 - u0) / 0.42));
+  const at = (t: number) => y - sag * 4 * t * (1 - t);
+  for (let k = 0; k < 8; k++) {
+    const a = k / 8, b = (k + 1) / 8;
+    const p = facePointOut(face, u0 + (u1 - u0) * a, at(a), out), q = facePointOut(face, u0 + (u1 - u0) * b, at(b), out);
+    sink.member('structureMetal', p, q, 0.012, 0.012, face.out, { ...DECOR, colour: [0.75, 0.75, 0.72], exposed: true }, 0);
+  }
+  const cloth: readonly Rgb[] = [[0.82, 0.82, 0.8], [0.62, 0.16, 0.14], [0.2, 0.32, 0.58], [0.85, 0.72, 0.32], [0.45, 0.6, 0.42], [0.9, 0.88, 0.84]];
+  for (let k = 0; k < pegs; k++) {
+    if (rng() < 0.25) continue;
+    const t = (k + 0.5) / pegs, w = 0.24 + rng() * 0.3, h = 0.3 + rng() * 0.45;
+    const c = cloth[Math.floor(rng() * cloth.length)];
+    faceBox(sink, 'structureWood', face, u0 + (u1 - u0) * t, at(t) - h / 2 - 0.01, out, w, h, 0.012, { ...DECOR, colour: c });
+  }
+}
+
+/** A flowering shrub against a wall (a Breton hydrangea): a leafy mound and its flower heads. */
+export function floweringShrub(sink: PartSink, face: Face, u: number, size: number, bloom: Rgb, rng: () => number): void {
+  const leaf: Rgb = [0.1 + rng() * 0.04, 0.22 + rng() * 0.06, 0.08];
+  faceBox(sink, 'structureWood', face, u, size * 0.42, size * 0.42, size * 1.3, size * 0.84, size * 0.8, { ...DECOR, colour: leaf });
+  for (let k = 0; k < 7; k++) {
+    const s = size * (0.22 + rng() * 0.12);
+    faceBox(sink, 'structureWood', face, u + (rng() - 0.5) * size, size * (0.55 + rng() * 0.32), size * (0.3 + rng() * 0.5), s, s, s,
+      { ...DECOR, colour: [bloom[0] * (0.85 + rng() * 0.3), bloom[1] * (0.85 + rng() * 0.3), bloom[2] * (0.85 + rng() * 0.3)] });
+  }
+}
+
+/** A point `o` metres out of a face (u along it, y up). */
+function facePointOut(face: Face, u: number, y: number, o: number): Vec3 {
+  return [face.origin[0] + face.u[0] * u + face.out[0] * o, y, face.origin[2] + face.u[2] * u + face.out[2] * o];
+}

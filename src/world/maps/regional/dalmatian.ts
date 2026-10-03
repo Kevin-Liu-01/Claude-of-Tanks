@@ -11,6 +11,7 @@ import {
 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { pottedPlant, tvAerial, washingLine } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const SHUTTERS: readonly Rgb[] = [0x557a4c, 0x416650, 0x7a5a42, 0x7890a0, 0x8e7a52].map(rgb);
@@ -141,12 +142,30 @@ function dwelling(ctx: RegionalBuildContext, opts: { storeys?: number; shop?: bo
     roof: { kind: 'gable', pitchDeg: 19 + rng() * 6, eave: 0.22, verge: 0.08, thickness: 0.15, bucket: 'roof', ridge: 'round' },
     gableBucket: upper, openings,
     chimneys: [{ x: (rng() < 0.5 ? -1 : 1) * W * 0.18, z: (rng() < 0.5 ? -1 : 1) * (D / 2 - 0.55), sx: 0.62, sz: 0.62, above: 0.85, bucket: 'stone', cap: 'tile' }],
-    gutters: null, verge: null,
+    gutters: null, verge: null, reveal: 0.3,
   };
+  // the lived-in dressing, drawn before the phones leave it out: an aerial, a washing line, pots up the stair
+  const aerial = rng() < 0.5, aerialZ = (rng() - 0.5) * D * 0.4, wash = rng() < 0.45 && count > 1, pots = rng() < 0.7;
   sink.placed(0, shiftX, 0, 0, () => {
     const frame = buildHouse(sink, spec, dialect(st));
     eaveCourse(sink, frame);
     if (stairSide) balatura(sink, frame.faces.right, D * 0.26, frame.floors[1], 1);
+    if (!st.mobile) {
+      if (aerial) tvAerial(sink, frame, aerialZ, rng);
+      if (wash) {
+        const f = frame.faces.left, y = frame.floors[1] + 2.0;
+        washingLine(sink, f, -f.width / 2 + 0.6, Math.min(f.width / 2 - 0.6, -f.width / 2 + 3.6), y, rng);
+      }
+      if (pots && stairSide) {
+        // terracotta pots on every other tread of the balatura and two on the landing
+        const f = frame.faces.right, floorY = frame.floors[1], uDoor = D * 0.26;
+        for (let k = 1; k < 6; k += 2) {
+          const t = k / 6, p = floorY * t;
+          const u = uDoor - 0.6 - (1 - t) * Math.max(1.8, Math.min(floorY / 0.18 * 0.28, D * 0.26 + D / 2 - 0.75));
+          pottedPlant(sink, f.origin[0] + f.out[0] * 0.75 + f.u[0] * u, p, f.origin[2] + f.out[2] * 0.75 + f.u[2] * u, 0.32, rng);
+        }
+      }
+    }
     if (opts.tavern) {
       // a vine pergola (odrina) on posts before the street gable
       const f = frame.faces.front, timber = rgb(0x6a5440);
@@ -178,7 +197,7 @@ const farmhouse: RegionalBuilder = (ctx) => {
     roof: { kind: 'gable', pitchDeg: 20 + rng() * 5, eave: 0.22, verge: 0.08, thickness: 0.15, bucket: 'roof', ridge: 'round' },
     gableBucket: 'stone', openings,
     chimneys: [{ x: -W * 0.2, z: -(D / 2 - 0.55), sx: 0.62, sz: 0.62, above: 0.85, bucket: 'stone', cap: 'tile' }],
-    gutters: null, verge: null,
+    gutters: null, verge: null, reveal: 0.32,
   }, dialect(st));
   eaveCourse(sink, frame);
   // the stable wing on +x: one storey of rubble under a lean-to of canal tiles falling away from the house
