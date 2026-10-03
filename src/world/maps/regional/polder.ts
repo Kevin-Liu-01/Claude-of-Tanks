@@ -272,6 +272,8 @@ export const POLDER_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object
   granary: tarShed,
   woodshed: tarShed,
   ruin,
+  // the fish auction and mussel sheds of the Scheldt harbours: a brick pakhuis
+  fishery: pakhuis,
 });
 
 export const POLDER_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({

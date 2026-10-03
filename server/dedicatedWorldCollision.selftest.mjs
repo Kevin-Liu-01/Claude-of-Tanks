@@ -34,20 +34,20 @@ const coalCensus = { railyard: 10, caldera: 7, foundry: 7, skybridge: 5 };
 // a solid's whole footprint out of the road core. Sixteen censuses lose the 1-3 boulders that reached into a road;
 // roadside wrecks, rubble and two pillboxes step off the carriageway with their counts unchanged.
 const expected = {
-  verdant: [6678, 6413, 7323], // 2026-10-02 Verdant Fields redesign (docs/MAP-LAYOUT-BRIEF.md); was [6977, 6678, 7507], and [6845, 6575, 7445] before its aprons stood on their ground (apron bank law)
-  desert: [2943, 2883, 3123], // 2026-10-01 Sirocco Wadi redesign (docs/MAP-LAYOUT-BRIEF.md); was [2673, 2605, 3139], and [2856, 2796, 2991] before its aprons stood on their ground (apron bank law)
+  verdant: [6678, 6383, 7323], // 2026-10-03 regional kolkhoz kit (maps/regional/kolkhoz.ts): the shells follow the region's buildings (was [6678, 6413, 7323]); 2026-10-02 Verdant Fields redesign (docs/MAP-LAYOUT-BRIEF.md); was [6977, 6678, 7507], and [6845, 6575, 7445] before its aprons stood on their ground (apron bank law)
+  desert: [2943, 2796, 3123], // 2026-10-03 regional ksar kit (maps/regional/ksar.ts): the shells follow the region's buildings (was [2943, 2883, 3123]); 2026-10-01 Sirocco Wadi redesign (docs/MAP-LAYOUT-BRIEF.md); was [2673, 2605, 3139], and [2856, 2796, 2991] before its aprons stood on their ground (apron bank law)
   winter: [5931, 5786, 4919],
-  urban: [3859, 6519, 3510], // 2026-10-01 Steinburg redesign (docs/MAP-LAYOUT-BRIEF.md); was [3898, 9290, 3530]
+  urban: [3859, 7820, 3510], // 2026-10-03 regional franconian kit (maps/regional/franconian.ts): the shells follow the region's buildings (was [3859, 6519, 3510]); 2026-10-01 Steinburg redesign (docs/MAP-LAYOUT-BRIEF.md); was [3898, 9290, 3530]
   coastal: [4091, 3979, 4107], // 2026-10-03 kits v2: openings cut with reveals, the cannery (was [4091, 3911, 4107]); Breton kit (maps/regional/breton.ts): the shell bands follow the granite houses; was [4091, 3931, 4107], [4161, 3964, 4249] before the Saltmere Bay redesign (docs/MAP-LAYOUT-BRIEF.md), and [4413, 4253, 4411] before its aprons stood on their ground (apron bank law)
   autumn: [5872, 5726, 5822],
   steppe: [2426, 2138, 1302],
-  railyard: [2846, 2848, 1899], // 2026-10-01 Cinder Junction redesign (docs/MAP-LAYOUT-BRIEF.md); was [2825, 2785, 1983]
+  railyard: [2846, 2946, 1899], // 2026-10-03 regional ruhr kit (maps/regional/ruhr.ts): the shells follow the region's buildings (was [2846, 2848, 1899]); 2026-10-01 Cinder Junction redesign (docs/MAP-LAYOUT-BRIEF.md); was [2825, 2785, 1983]
   frontier: [7987, 7942, 8359], // 2026-10-03 kits v2: openings cut with reveals (was [7987, 7907, 8359]); Hessian kit (maps/regional/hessian.ts): two-storey Fachwerk shells; was [7987, 7851, 8359], [7905, 7634, 8284] before the Frontier Basin redesign (docs/MAP-LAYOUT-BRIEF.md), and [7730, 7594, 8120] before its aprons stood on their ground (apron bank law)
   fjord: [7357, 7301, 7679],
-  delta: [8149, 7796, 9775], // 2026-10-02 Jade River Delta redesign (docs/MAP-LAYOUT-BRIEF.md); was [7742, 7430, 9644], and [8114, 7761, 9770] before its aprons stood on their ground (apron bank law)
-  badlands: [3013, 2765, 1956], // 2026-10-02 Redrock Divide redesign (docs/MAP-LAYOUT-BRIEF.md); was [3011, 2915, 1920]
+  delta: [8149, 7789, 9775], // 2026-10-03 regional bengal kit (maps/regional/bengal.ts): the shells follow the region's buildings (was [8149, 7796, 9775]); 2026-10-02 Jade River Delta redesign (docs/MAP-LAYOUT-BRIEF.md); was [7742, 7430, 9644], and [8114, 7761, 9770] before its aprons stood on their ground (apron bank law)
+  badlands: [3013, 2681, 1956], // 2026-10-03 regional wadirum kit (maps/regional/wadirum.ts): the shells follow the region's buildings (was [3013, 2765, 1956]); 2026-10-02 Redrock Divide redesign (docs/MAP-LAYOUT-BRIEF.md); was [3011, 2915, 1920]
   // Native recapture with prior prop code also contains this additional wreck.
-  monsoon: [9855, 9630, 12375], // 2026-10-02 Monsoon Ridge layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md); was [9473, 9215, 12022]
+  monsoon: [9855, 9632, 12375], // 2026-10-03 regional kohima kit (maps/regional/kohima.ts): the shells follow the region's buildings (was [9855, 9630, 12375]); 2026-10-02 Monsoon Ridge layout-brief rebuild (docs/MAP-LAYOUT-BRIEF.md); was [9473, 9215, 12022]
   alpine: [9117, 9044, 8009],
   // Same prior-props baseline verification as Monsoon.
   caldera: [5000, 5107, 3810],
@@ -56,16 +56,16 @@ const expected = {
   blackglass: [3661, 5894, 2333],
   titan_gorge: [2725, 2586, 1230],
   skybridge: [3522, 3725, 2079],
-  polders: [4232, 3998, 3574], // 2026-10-02 Tidegate Polders redesign (docs/MAP-LAYOUT-BRIEF.md); was [4268, 4025, 3604]
+  polders: [4232, 4096, 3574], // 2026-10-03 regional polder kit (maps/regional/polder.ts): the shells follow the region's buildings (was [4232, 3998, 3574]); 2026-10-02 Tidegate Polders redesign (docs/MAP-LAYOUT-BRIEF.md); was [4268, 4025, 3604]
   copper_mesa: [2805, 2705, 1984],
   airfield: [3671, 3650, 3173],
   oasis: [2740, 2510, 2031],
   whiteout: [1601, 1467, 875],
   orchard: [4923, 4691, 5160],
   longleaf: [6218, 6021, 7183],
-  mangrove: [5377, 5204, 6535], // 2026-10-02 Mangrove Reach redesign (docs/MAP-LAYOUT-BRIEF.md); was [5282, 5127, 6502]
+  mangrove: [5377, 5156, 6535], // 2026-10-03 regional mekong kit (maps/regional/mekong.ts): the shells follow the region's buildings (was [5377, 5204, 6535]); 2026-10-02 Mangrove Reach redesign (docs/MAP-LAYOUT-BRIEF.md); was [5282, 5127, 6502]
   saltwind: [3666, 3461, 4131], // 2026-10-03 kits v2: openings cut with reveals, the fish store, loggia and customs house (was [3666, 3429, 4131]); Dalmatian kit (maps/regional/dalmatian.ts): low limestone shells; was [3666, 3469, 4131], [3629, 3392, 4048] before the Saltwind Narrows redesign (docs/MAP-LAYOUT-BRIEF.md), and [3811, 3614, 4260] before its aprons stood on their ground (apron bank law)
-  reservoir: [6495, 6368, 7349], // 2026-10-02 Highland Reservoir layout-brief revision and its aprons on their ground (docs/MAP-LAYOUT-BRIEF.md); was [6425, 6300, 7206]
+  reservoir: [6495, 6402, 7349], // 2026-10-03 regional eifel kit (maps/regional/eifel.ts): the shells follow the region's buildings (was [6495, 6368, 7349]); 2026-10-02 Highland Reservoir layout-brief revision and its aprons on their ground (docs/MAP-LAYOUT-BRIEF.md); was [6425, 6300, 7206]
   mars: [769, 715, 0],
   moon: [475, 381, 0],
   cliffbridge: [5903, 5636, 5243],

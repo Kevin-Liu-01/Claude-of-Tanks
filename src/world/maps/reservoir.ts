@@ -108,6 +108,8 @@ export default {
     clusterCount: 66, loneCount: 98, rimCount: 108, grassDensity: 0.96, bushCount: 1.0, bushSpecies: 'birch', clusterScrub: 1.6,
   },
   props: {
+    // regional-buildings lane: the Eifel Fachwerk-and-greywacke kit (maps/regional/eifel.ts)
+    architecture: 'eifel',
     sourcedPalette: 'frontier',
     // A supported control kiosk, bank manifold and submerged-footed intake
     // replace three accepted rubble piles; the closed works leave roads open.

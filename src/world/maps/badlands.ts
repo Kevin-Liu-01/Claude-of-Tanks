@@ -93,6 +93,8 @@ export default {
     clusterScrub: 1.5, bushCount: 0.74, bushSpecies: 'oak',
   },
   props: {
+    // regional-buildings lane: the Wadi Rum outpost kit (maps/regional/wadirum.ts)
+    architecture: 'wadirum',
     plan: ['caravanserai', 'depot', 'warehouse', 'compoundSouk', 'factory', 'minaret',
       'adobe', 'ruin', 'containerRow', 'marketRow', 'watertower', 'depot', 'gantry', 'compound',
       'warehouse', 'adobe', 'compoundSouk', 'depot', 'containerRow', 'ruin', 'factory', 'marketRow',

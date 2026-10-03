@@ -97,6 +97,8 @@ export default {
     clusterScrub: 2.7, bushCount: 1.72, bushSpecies: 'oak',
   },
   props: {
+    // regional-buildings lane: the Kohima 1944 kit (maps/regional/kohima.ts)
+    architecture: 'kohima',
     plan: ['ruin', 'chapel', 'bathhouse', 'marketRow', 'ruin', 'cornershop',
       'granary', 'ruin', 'depot', 'farmhouse', 'tower', 'market', 'ruin', 'woodshed',
       'marketRow', 'ruin', 'farmhouse', 'chapel', 'depot', 'ruin', 'granary', 'cornershop',

@@ -7,6 +7,7 @@ import { PartSink, rgb, shade, type Face, type RegionalParts, type Rgb } from '.
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { factoryStack } from './shared.ts';
 
 const YELLOW_BRICK = 'plaster2' as const; // the bands and dressings: the map's second render family
 const FRAME = rgb(0xc8c2b4), DOOR: readonly Rgb[] = [0x3e5a46, 0x6a2c22, 0x3e4e5a].map(rgb);
@@ -169,6 +170,8 @@ export const RUHR_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.f
   watertower: waterTower,
   depot: station,
   ruin,
+  shed: goodsShed,
+  stack: factoryStack,
 });
 
 export const RUHR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({

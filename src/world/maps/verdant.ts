@@ -112,6 +112,8 @@ export default {
   },
 
   props: {
+    // regional-buildings lane: the Prokhorovka kolkhoz kit (maps/regional/kolkhoz.ts)
+    architecture: 'kolkhoz',
     // world-dressing r1: farm-theme catalog — farmhouse (L-wing + porch),
     // raised granary, chapel and a tower windmill join the cottage/barn set
     plan: ['farmhouse', 'barn', 'tavern', 'chapel', 'cottage', 'ruin',

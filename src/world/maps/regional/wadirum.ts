@@ -134,6 +134,9 @@ export const WADIRUM_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Objec
   warehouse: steelStore,
   factory: steelStore,
   caravanserai: fort,
+  // the walled compounds of the village edge read as the patrol post's enclosure
+  compound: fort,
+  compoundSouk: fort,
   ruin,
 });
 

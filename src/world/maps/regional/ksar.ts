@@ -177,6 +177,8 @@ export const KSAR_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.f
   caravanserai: ghorfaRange,
   compound: ghorfaRange,
   compoundSouk: ghorfaRange,
+  // the market row: a range of vaulted shop cells
+  marketRow: ghorfaRange,
   minaret,
   tower: borj,
   bathhouse: hammam,

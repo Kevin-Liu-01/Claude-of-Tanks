@@ -134,6 +134,8 @@ export default {
     ],
   },
   props: {
+    // regional-buildings lane: the Ca Mau stilt-house kit (maps/regional/mekong.ts)
+    architecture: 'mekong',
     riverLandings: [
       { lakeIndex: 20, shoreAngleDeg: 285 }, // village-facing creek landing
       { lakeIndex: 10, shoreAngleDeg: 0 }, // relief-island net yard
