@@ -6296,9 +6296,15 @@ ${snowCap ? `
     };
     const fenceMeta = resolveDestructibleMeta(destructibleContext, yard.fence);
     const seg = fenceMeta.wall ? WALL_SEG : FENCE_SEG, sink = fenceMeta.wall ? 0.1 : 0.06;
+    // the stage's counts on the props group (receipts and captures read them)
+    const stats = { houses: houses.length, yards: 0, modules: 0, gates: 0, sheds: 0, gardens: 0 };
+    group.userData.regionalYards = stats;
     for (const house of houses) {
       const plan = planYard(house, world, yard, yrngYard, seg);
       if (!plan) continue;
+      stats.yards++;
+      stats.modules += plan.modules.length;
+      if (plan.gate && yard.gate) stats.gates++;
       for (const m of plan.modules) {
         const ya = heightField.getHeightAt(m.x - Math.sin(m.yaw) * seg / 2, m.z - Math.cos(m.yaw) * seg / 2);
         const yb = heightField.getHeightAt(m.x + Math.sin(m.yaw) * seg / 2, m.z + Math.cos(m.yaw) * seg / 2);
@@ -6334,6 +6340,7 @@ ${snowCap ? `
             _mat4.compose(_posv.set(x, fit.y + 0.05, z), _quat, _one);
             mergeInto(buckets, tmp, _mat4);
             buildingFeatures.push({ x, z, w: sw, d: sd, rot: yaw });
+            stats.sheds++;
           } else {
             for (const list of Object.values(parts)) for (const g of list) g.dispose();
           }
@@ -6347,6 +6354,7 @@ ${snowCap ? `
           _quat.setFromAxisAngle(_upAxis, yaw);
           _mat4.compose(_posv.set(x, fit.y + fit.spread, z), _quat, _one);
           mergeInto(buckets, parts as unknown as PropsBuckets, _mat4);
+          stats.gardens++;
         }
       }
     }
