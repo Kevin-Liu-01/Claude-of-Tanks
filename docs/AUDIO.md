@@ -98,12 +98,20 @@ ui, music, voice, alarm ──────────────────�
 - Gunfire and our own tank lead. Weapons (1.5), impacts (1.3) and the occupied
   hull's gun (1.4) carry a +4–5 dB low shelf at 110 Hz; our own engine and
   running gear (0.6) and the loading and turret machinery inside it (0.95) sit
-  above other tanks' engines (0.5); ambience (0.45, beds mastered at −21
-  LUFS), radio (0.5) and the interface (0.6, with a high-shelf cut) sit
-  underneath. The levels are measured on the master by the mix-balance
-  probe: its first run, on deploy 169's louder engine and ambience (0.8 and
-  0.65), put the idle battle bed at −22 dBFS and a cannon at 15 m only 11.6
-  dB above it, so the bed came down and gunfire went up.
+  above other tanks' engines (0.5); ambience (0.37, beds mastered at −21 LUFS
+  and high-passed at 90 Hz on the bus), radio (0.28) and the interface (0.6,
+  with a high-shelf cut) sit underneath.
+- The levels are measured on the master by `tools/audio-mix-balance.mjs`. Its
+  first run, on deploy 169's louder engine and ambience (0.8 and 0.65), put
+  the idle battle bed at −22 dBFS with a cannon at 15 m only 11.6 dB above it.
+  The bed was 79 % below 200 Hz: loudness-normalised (K-weighted) beds carry
+  far more rumble than they sound like, and the near cannon cannot get louder
+  (the glue compressor and soft clip hold its short-term level near −10
+  dBFS). Four runs later — the ambience bus high-pass, idling engines quieter
+  than loaded ones, cannons keeping their close report to about 150 m, and
+  the trims above — the bed is −27.7 dBFS, a cannon stands 17.9, 11.1 and
+  7.9 dB above it at 15, 150 and 400 m, and the radio sits 8.4 dB under a
+  near cannon.
 - The glue compressor has a 12 ms attack and 2.5:1 ratio so cannon transients
   reach the tanh soft clip, which catches the peaks.
 - Settings channels from the Sound tab (`cot.settings.v1`, live via
@@ -135,7 +143,8 @@ shifting. It also derives track speed (with yaw scrub), braking, skids,
 landings, bumps, stalls and restarts.
 
 `vehicleRig.ts` plays the result: idle/low/mid/high engine bands crossfaded and
-pitched by RPM, start and wind-down, light/heavy track sets per surface (earth,
+pitched by RPM (an idling engine at about a third of its full-load level),
+start and wind-down, light/heavy track sets per surface (earth,
 hard, mud, sand, snow; water runs the mud set under a wading loop) at slow/fast
 speed, squeal, skid and damaged-engine knock loops, and shift, brake,
 suspension and stall one-shots. The occupied hull adds turret drive, elevation
@@ -151,7 +160,8 @@ centred, with the cabin extras).
 and heavy machine guns, 20/25/30/40/50 mm autocannons, 90/105/120/125/130/152 mm
 cannons, ATGM and heavy rocket launchers (sound profiles refine the trim, e.g.
 the BMP-3's low-pressure 100 mm). Each class has a close bank and a distant
-bank crossfaded by range, a gun tail matched to the map (open, forest, urban,
+bank crossfaded by range (a cannon keeps its close report to about 150 m), a
+gun tail matched to the map (open, forest, urban,
 mountain), and for the occupied gun in the sight an interior report. Our
 own gun has a dedicated report per bore (`gun_own_medium` for 90–105 mm,
 `gun_own_large` for 120–125 mm, `gun_own_heavy` for 130–152 mm, and
@@ -537,10 +547,6 @@ Browser probes (they take the machine-wide GPU capture lock; set
   `crew-lines.json`. Two takes remain flagged (a scripted exhale before the
   Chinese near-miss call, a one-syllable Hebrew "goal"), besides homophones
   the transcriber spells differently.
-- The mix-balance probe's first completed run (deploy 169's levels) failed
-  every gunfire threshold; the levels above are the rebalance it prompted,
-  awaiting its next run. Earlier runs waited out the GPU queue or timed out on
-  the garage, where the engine did not load until a battle.
 - The first garage click loads the engine, so that click itself is silent.
 - The oasis bed's loop seam steps 2.8 dB and the jungle and mangrove beds are
   mostly insect hiss; every take generated for them was like that.
