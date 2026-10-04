@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   HAZE_EXT_CHROMA, HAZE_LAW_GLSL, HAZE_LAYER_SCALE_M, HAZE_MATERIAL_FOG_SHARE, HAZE_OVERCAST_K, HAZE_SIGMA_PER_FOG,
-  HAZE_TARGET_SKY_K, HAZE_TINT_SHARE, hazeLayerInverseScale, hazeSigma, hazeTargetTerms,
+  HAZE_TARGET_SKY_K, HAZE_TINT_SHARE, hazeExtinctionChroma, hazeLayerInverseScale, hazeSigma, hazeTargetTerms,
 } from './hazeLaw.ts';
 import { MAP_IDS } from '../world/maps/mapIds.ts';
 
@@ -75,17 +75,32 @@ assert.match(sky, /atmosphereState\.fogDensity = preset\.fogDensity;/, 'the sky 
 assert.match(sky, /\* \(atmosphereState\.active \? lightTune\('AERIAL_MATERIAL_FOG_SHARE', HAZE_MATERIAL_FOG_SHARE\) : 1\)\);/, 'the materials\' fog thins only over the physically based sky');
 // the target's two terms under the light model's overcast, shared by the aerial pass and the cloud trace (2026-10-03, the
 // gauntlet's wave 17 on Frosthollow: the deck's far rows paled to the clear horizon over ranges on the dim overcast haze)
-assert.match(post, /const terms = hazeTargetTerms\(overcast, hazeTermsScratch\);\s*law\.set\(hazeSigma\(atmosphere\.fogDensity\), hazeLayerInverseScale\(\), terms\.x, terms\.y\);/,
-  'the light model\'s overcast dims the target');
+assert.match(post, /const terms = hazeTargetTerms\(overcast, atmosphere\.fogMix, hazeTermsScratch\);\s*law\.set\(hazeSigma\(atmosphere\.fogDensity\), hazeLayerInverseScale\(\), terms\.x, terms\.y\);\s*hazeExtinctionChroma\(u\.uHazeChroma\.value as THREE\.Vector3\);/,
+  'the light model\'s overcast and the map\'s fogMix set the target; the extinction\'s chroma per frame (QA-tunable)');
+// the pass draws the hue by the terms' whole weight (2026-10-04: fogMix × the share under an open sky, the whole tint under
+// a closed deck — the mountains lane's trace of Whiteout's beige band over its far ice sheet)
+assert.match(post, /vec3 target = mix\( skyT, uAtmoFogTint \* \( skyL \/ tintL \), uHazeLaw\.z \);/, 'the target\'s hue by the terms\' weight');
 {
-  const open = hazeTargetTerms(0, { x: 0, y: 0 }), closed = hazeTargetTerms(1, { x: 0, y: 0 }), half = hazeTargetTerms(0.5, { x: 0, y: 0 });
-  assert.equal(open.x, HAZE_TINT_SHARE); assert.equal(open.y, HAZE_TARGET_SKY_K);
-  assert.equal(closed.x, 1, 'all of the authored tint under a closed deck');
-  assert.ok(Math.abs(closed.y - HAZE_TARGET_SKY_K * HAZE_OVERCAST_K) < 1e-12, 'the deck\'s level');
-  assert.ok(half.x > open.x && half.x < 1 && half.y < open.y && half.y > closed.y, 'between them under half a deck');
-  const out = { x: 0, y: 0 }; assert.equal(hazeTargetTerms(0.3, out), out, 'written in place');
-  assert.match(clouds, /const terms = hazeTargetTerms\(overcast, this\.hazeTerms\);/, 'the cloud trace reads the same terms');
-  assert.match(clouds, /\(a\.fogMix \?\? 0\) \* terms\.x\)\), terms\.y, 0, smoothstep01\(overcast \/ 0\.3\)\);/, 'its share by the map\'s fogMix, its weight by the overcast');
+  for (const fogMix of [0.3, 0.56, 0.82, 1.4]) {
+    const open = hazeTargetTerms(0, fogMix, { x: 0, y: 0 }), closed = hazeTargetTerms(1, fogMix, { x: 0, y: 0 }), half = hazeTargetTerms(0.5, fogMix, { x: 0, y: 0 });
+    near(open.x, Math.min(1, fogMix * HAZE_TINT_SHARE), 1e-12, `fogMix ${fogMix}: the tint's share of the hue under an open sky`);
+    assert.equal(open.y, HAZE_TARGET_SKY_K);
+    // under a closed deck the target is the deck's grey whatever the map's fogMix: the clear sky's LUT is light no one sees
+    // there (Whiteout, fogMix 0.56: the old rule kept 44 % of its warm anti-sun horizon at the 13° sun)
+    assert.equal(closed.x, 1, `fogMix ${fogMix}: all of the authored tint under a closed deck`);
+    assert.ok(Math.abs(closed.y - HAZE_TARGET_SKY_K * HAZE_OVERCAST_K) < 1e-12, 'the deck\'s level');
+    assert.ok(half.x >= open.x && half.x <= 1 && half.y < open.y && half.y > closed.y, 'between them under half a deck');
+  }
+  assert.equal(hazeTargetTerms(1, Number.NaN, { x: 0, y: 0 }).x, 1, 'a missing fogMix: still the deck\'s grey under a closed deck');
+  const out = { x: 0, y: 0 }; assert.equal(hazeTargetTerms(0.3, 0.5, out), out, 'written in place');
+  assert.match(clouds, /const terms = hazeTargetTerms\(overcast, a\.fogMix \?\? 0, this\.hazeTerms\);/, 'the cloud trace reads the same terms');
+  assert.match(clouds, /\.set\(terms\.x, terms\.y, 0, smoothstep01\(overcast \/ 0\.3\)\);/, 'its hue by the terms\' weight, its share by the overcast');
+  const panorama = here('../world/horizonPanorama.ts');
+  assert.match(panorama, /const terms = hazeTargetTerms\(overcast, atmosphere\.fogMix \?\? 0, \{ x: 0, y: 0 \}\);\s*const mix = terms\.x, targetK = terms\.y;/,
+    'the far bake\'s port reads the same terms');
+  // the extinction's chroma, read per frame (1: HAZE_EXT_CHROMA exactly)
+  const v = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } };
+  assert.deepEqual([...Object.values(hazeExtinctionChroma(v)).slice(0, 3)], [...HAZE_EXT_CHROMA], 'the per-channel extinction');
   assert.match(clouds, /vec3 law = mix\( target, uOvercastTint \* \( luma\( target \) \/ max\( luma\( uOvercastTint \), 1e-4 \) \), uOvercastHaze\.x \) \* uOvercastHaze\.y;/,
     'the pass\'s target: the tint\'s hue at the sky\'s luminance, a level under it');
 }

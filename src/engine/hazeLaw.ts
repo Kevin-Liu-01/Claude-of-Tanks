@@ -32,7 +32,7 @@ export const HAZE_SIGMA_PER_FOG = 0.42;
 export const HAZE_LAYER_SCALE_M = 400;
 /** Per-channel extinction, luminance-weighted mean 1. */
 export const HAZE_EXT_CHROMA: readonly [number, number, number] = Object.freeze([0.90, 1.0, 1.14]) as readonly [number, number, number];
-/** The authored fog tint's share of the in-scatter target (× the map's fogMix); all of it under a closed deck. */
+/** The authored fog tint's share of the in-scatter target's hue under an open sky (× the map's fogMix); all of it under a closed deck. */
 export const HAZE_TINT_SHARE = 0.4;
 /** The in-scatter target relative to the sky behind the surface (a range never pales past the sky). */
 export const HAZE_TARGET_SKY_K = 0.92;
@@ -47,17 +47,32 @@ export const HAZE_OVERCAST_K = 0.45;
 export const HAZE_MATERIAL_FOG_SHARE = 0.3;
 
 /**
- * The in-scatter target's two terms under the light model's overcast, into `out` (no allocation per frame): x the authored
- * tint's share of the target's hue before the map's fogMix (HAZE_TINT_SHARE, all of it under a closed deck), y the
- * target's level against the sky behind (HAZE_TARGET_SKY_K, × HAZE_OVERCAST_K under a closed deck). The aerial pass
- * (post.ts) and the cloud trace (volumetricClouds.ts: a deck's far rows, 2026-10-03) read the same terms, so far ranges
- * and the deck over them converge on one colour at the horizon.
+ * The in-scatter target's two terms under the light model's overcast and the map's fogMix, into `out` (no allocation per
+ * frame): x how far the target's hue is drawn from the clear sky's LUT to the authored tint — the map's fogMix ×
+ * HAZE_TINT_SHARE under an open sky, all of the tint under a closed deck — and y the target's level against the sky behind
+ * (HAZE_TARGET_SKY_K, × HAZE_OVERCAST_K under a closed deck). The aerial pass (post.ts), the cloud trace
+ * (volumetricClouds.ts: a deck's far rows, 2026-10-03) and the far bake's port (horizonPanorama.ts) read the same terms,
+ * so far ranges and the deck over them converge on one colour at the horizon.
+ *
+ * 2026-10-04 (the mountains lane's trace of Whiteout's beige band over its far ice sheet to the aerial pass): the deck's
+ * share used to be the tint's share × fogMix, so a closed deck kept 1 − fogMix of the clear sky's colour (44 % on
+ * Whiteout, whose anti-sun horizon at the 13° sun is warm) — but under a closed deck the air is lit by the deck, and the
+ * clear sky's LUT is light no one sees: the target is the deck's grey, the mix going to 1 with the overcast.
  */
-export function hazeTargetTerms<T extends { x: number; y: number }>(overcast: number, out: T): T {
+export function hazeTargetTerms<T extends { x: number; y: number }>(overcast: number, fogMix: number, out: T): T {
   const o = Math.min(1, Math.max(0, Number.isFinite(overcast) ? overcast : 0));
-  const share = lightTune('AERIAL_TINT_SHARE', HAZE_TINT_SHARE);
-  out.x = share + (1 - share) * o;
+  const open = Math.min(1, Math.max(0, (Number.isFinite(fogMix) ? fogMix : 0) * lightTune('AERIAL_TINT_SHARE', HAZE_TINT_SHARE)));
+  out.x = open + (1 - open) * o;
   out.y = lightTune('AERIAL_TARGET_SKY_K', HAZE_TARGET_SKY_K) * (1 + (lightTune('AERIAL_OVERCAST_K', HAZE_OVERCAST_K) - 1) * o);
+  return out;
+}
+
+/**
+ * The per-channel extinction into `out` (QA-tunable: AERIAL_EXT_CHROMA scales its departure from neutral, 1 = HAZE_EXT_CHROMA).
+ */
+export function hazeExtinctionChroma<T extends { set(x: number, y: number, z: number): unknown }>(out: T): T {
+  const k = lightTune('AERIAL_EXT_CHROMA', 1);
+  out.set(1 + (HAZE_EXT_CHROMA[0] - 1) * k, 1 + (HAZE_EXT_CHROMA[1] - 1) * k, 1 + (HAZE_EXT_CHROMA[2] - 1) * k);
   return out;
 }
 

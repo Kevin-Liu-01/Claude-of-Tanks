@@ -1998,10 +1998,9 @@ export class VolumetricCloudLayer {
     // (2026-10-03: the aerial pass's overcast target for the deck's far rows — cloudHaze)
     {
       const overcast = (this.scene.userData.lightModel as { overcast?: number } | undefined)?.overcast ?? 0;
-      const terms = hazeTargetTerms(overcast, this.hazeTerms);
       const a = this.atmosphere;
-      (t.uOvercastHaze.value as THREE.Vector4).set(
-        Math.min(1, Math.max(0, (a.fogMix ?? 0) * terms.x)), terms.y, 0, smoothstep01(overcast / 0.3));
+      const terms = hazeTargetTerms(overcast, a.fogMix ?? 0, this.hazeTerms);
+      (t.uOvercastHaze.value as THREE.Vector4).set(terms.x, terms.y, 0, smoothstep01(overcast / 0.3));
       const tint = a.fogTint;
       if (tint) (t.uOvercastTint.value as THREE.Vector3).set(tint.r, tint.g, tint.b);
     }
