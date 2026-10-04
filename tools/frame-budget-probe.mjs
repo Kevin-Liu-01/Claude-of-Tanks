@@ -67,6 +67,27 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   'field-walls': Object.freeze({
     on: `window.__DEBUG.scene.traverse((o) => { if (/^(destructible-wall(stone|adobe)(-broken)?|props-bucket-field(Stone|Mud)|props-snow-drifts)$/.test(o.name)) o.visible = true; })`,
     off: `window.__DEBUG.scene.traverse((o) => { if (/^(destructible-wall(stone|adobe)(-broken)?|props-bucket-field(Stone|Mud)|props-snow-drifts)$/.test(o.name)) o.visible = false; })` }),
+  // the scenery lane (wave 34): the sandbag stacks and the nests' bedding (sceneryKit.ts buildSandbagStack and
+  // buildSandbagBedding: the spoil, the spill and the emptied bag); off hides them, so the delta is their whole cost
+  'sandbag-nests': Object.freeze({
+    on: `window.__DEBUG.scene.traverse((o) => { if (/^(destructible-sandbag(big|small|wall)(-broken)?|props-sandbag-beds)$/.test(o.name)) o.visible = true; })`,
+    off: `window.__DEBUG.scene.traverse((o) => { if (/^(destructible-sandbag(big|small|wall)(-broken)?|props-sandbag-beds)$/.test(o.name)) o.visible = false; })` }),
+  // the scenery lane (wave 48, the merge's bench): both of the above at once — the field walls with their dressing and
+  // the sandbag nests with their bedding
+  'scenery-dressing': Object.freeze({
+    on: `window.__DEBUG.scene.traverse((o) => { if (/^(destructible-wall(stone|adobe)(-broken)?|props-bucket-field(Stone|Mud)|props-snow-drifts|destructible-sandbag(big|small|wall)(-broken)?|props-sandbag-beds)$/.test(o.name)) o.visible = true; })`,
+    off: `window.__DEBUG.scene.traverse((o) => { if (/^(destructible-wall(stone|adobe)(-broken)?|props-bucket-field(Stone|Mud)|props-snow-drifts|destructible-sandbag(big|small|wall)(-broken)?|props-sandbag-beds)$/.test(o.name)) o.visible = false; })` }),
+  // the scenery lane (wave 48): the power lines' conductors on the wire material (wireMaterial.ts, one mesh); a tree
+  // without that mesh has nothing to hide (its conductors are in the baked bucket), so read the toggle on the new tree
+  'pylon-wires': Object.freeze({
+    on: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'props-pylon-wires') o.visible = true; })`,
+    off: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'props-pylon-wires') o.visible = false; })` }),
+  // the scenery lane (wave 52): the boulders (props.ts rock-variant-0..2, three instanced pools drawn whole, map-wide);
+  // off hides them, so the delta is their whole frame cost. Both sides run without the static shadow cache, so every
+  // cascade redraws every boulder every frame, as it does while the camera moves (an upper bound)
+  'boulders': Object.freeze({
+    on: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d$/.test(o.name)) o.visible = true; })`,
+    off: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d$/.test(o.name)) o.visible = false; })` }),
   // the water / grass simulations' idle sleep (waterRipples.ts, groundPressure.ts): off steps them every frame; the
   // ripple field falls asleep only after 20 s of quiet, so an 'on' block that follows an 'off' one waits that long
   'sim-sleep': Object.freeze({ on: 'window.__WORLD_SIM_DEBUG = Object.assign(window.__WORLD_SIM_DEBUG || {}, { noSleep: false })',
@@ -471,6 +492,9 @@ export function foreignGpuCpu() {
 export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, fifoTimeoutMs = 3 * 60 * 60 * 1000,
   mutexWaitMs = 60_000, mutexIdleWaitMs = 45 * 60_000, lock = createCaptureLock(), tryMutex = defaultTryMutex,
   releaseMutex = defaultReleaseMutex, pause = sleep, mutexBusy = defaultMutexBusy, holderQueued = defaultHolderQueued } = {}) {
+  // a lane hold (one ticket for several probe steps, tools/tmp-lane-hold.mjs) already holds the FIFO and the mutex for
+  // the steps it spawns with COT_LANE_HOLD=1: they take nothing and release nothing
+  if (process.env.COT_LANE_HOLD === '1') { log('the capture FIFO and the session mutex are the lane hold\'s'); return { round: 0, release: () => {}, refresh: () => {} }; }
   let ticket = null; // the first ticket: our place in the FIFO, kept across a turn given back
   for (let round = 1; ; round++) {
     await lock.acquire(fifoTimeoutMs, ticket ? { ticket } : {});

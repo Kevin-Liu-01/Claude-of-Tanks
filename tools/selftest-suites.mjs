@@ -646,6 +646,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/camoWorldScale.selftest.mjs',
     'src/vehicles/brandCamo.selftest.mjs',
     'src/vehicles/catalogCamoPainter.selftest.mjs',
+    // 2026-10-04 (the vehicle-look lane): the field camouflages' boundaries at the tile's own resolution
+    'src/vehicles/camoFieldEdges.selftest.mjs',
     'src/vehicles/vehicleMarkingsCanvas.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
@@ -787,6 +789,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/night-fixture-census.selftest.mjs',
     'src/vehicles/equipmentDamage.selftest.mjs',
     'src/vehicles/vehicleReadability.selftest.mjs',
+    // 2026-10-04 (the vehicle-look lane): a cloned vehicle material (the track shoes) joins its source's cascade registration
+    'src/vehicles/vehicleMaterialClone.selftest.mjs',
     'src/engine/skyCloudBake.selftest.mjs',
     'src/engine/skyHorizonCache.selftest.mjs',
     'src/engine/skyEnvironmentCache.selftest.mjs',
@@ -806,6 +810,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/cumulusFields.selftest.mjs',
     // 2026-10-03 (the shade-fill lane): shade on dark materials kept off black — the photographic toe, the dim's facing rule
     'src/engine/shadeFill.selftest.mjs',
+    // 2026-10-04 (the sun-bloom lane): the sun's glow a gradient toward a visible disc — only the disc HDR, the glow under the
+    // knee, the knee as the camera shows the dome
+    'src/engine/sunGlare.selftest.mjs',
     // 2026-10-01 (the clouds-and-skyboxes lane): the layered sky — mid layers, contrails, storm cells, rain, fog banks, lightning, the time of day
     'src/engine/cloudWeatherLayers.selftest.mjs',
     'src/engine/rendererContextRecovery.selftest.mjs',
@@ -1186,6 +1193,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/fieldStoneSurface.selftest.mjs',
     // the scenery lane (wave 20): the mud walls' worn render; the walls' feet, drifts and snow loads
     'src/world/fieldMudSurface.selftest.mjs',
+    'src/world/wireMaterial.selftest.mjs',
     'src/world/maps/fieldWallDressing.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
     'src/world/loggingYard.selftest.mjs',

@@ -6985,6 +6985,100 @@ fails the receipt; the composite slope 0.9–1.25 to four stops under the card; 
 colour's channels lifted alike and deep shade per channel; the facing rule; the five probe pairs' shares) — and
 `groundBounce`, `cloudShadeMap`, `lightModel` and `nightEmissionMaterial` follow the new code.
 
+### 2026-10-04 — the deck's grey at the horizon, closed decks closed, and the sky's blue in clear shade (the skies lane's follow-ups)
+
+**Whiteout's beige band (the mountains lane's trace; Titan Gorge and Frosthollow show the same).** From an elevated eye a
+band of warm cream (L* 85, b* +16.6 against the deck's −5.8 in Whiteout's bird view) lay between the deck and the far
+ridges. The first fix followed the trace to the aerial pass: under a closed deck the haze law's in-scatter target kept
+1 − fogMix of the clear sky's LUT (44 % on Whiteout, whose anti-sun horizon at the 13° sun is warm), and `hazeTargetTerms`
+now returns the hue's whole weight — fogMix × HAZE_TINT_SHARE under an open sky, the whole authored tint under a closed
+deck, linear in the light model's overcast — read as it is by the aerial pass, the cloud trace's deck rows and the far
+bake's port (`hazeLaw.ts`). The pair left the band pixel for pixel, though, through neutral-extinction and target-level
+variants too: the band is sky, which the aerial pass never touches. The dome drew the clear sky's LUT, and from 300 m —
+the deck's own base — the strip under the deck shows it. `sky.ts` now takes the deck's grey there: the tint's hue at the
+sky's own luminance, by the overcast, over the horizon's first seven degrees (`uDeckHorizon`; the environment bake keeps
+the raw sky; the grounded rig only). Whiteout's band b* +16.6 → −2.2, Frosthollow's +4.0 → −2.7; the in-page switch
+(`SKY_DECK_HORIZON` 0) restores both exactly; the far ice takes the tint (b* −2.9 → −4.1).
+
+**Closed decks (Titan Gorge, overcast 1.00 under its dense-overcast regime, showed a large blue hole).** The hole is the
+cloud field's, not the dome's: the sheet's coverage ramp (a third of the range for a stratiform deck) maps the equalised
+weather field's lowest values to no cover even at full coverage. Titan's deck is now closed at the map (coverage 1, as
+Whiteout's stratus; the regime rows keep the round-71 bound), a closed deck keeps a thin sheet at its field's floor
+(`CLOUD_CLOSED_COVER_FLOOR` 0.5, slab and far band, from coverage 0.97), and under a closed deck the dome takes the
+deck's grey at every elevation (smoothstep 0.9–1.0 of the overcast: the 0.8 decks keep the blue in their breaks) at the
+horizon's luminance, so a residual gap reads as bright as the deck's horizon. Titan's hole shrank to a soft pale patch in
+the tint (with the switch off, a small blue gap: the floor at 0.5 does not close the field's deepest minimum; a floor of
+0.7–0.8 is the next step if the patch reads). GPU, the dome switch in-page, ABBA over six views: on − off −0.04 ms (p25)
+— a few operations and one sky-view sample a sky pixel, inside the pass noise.
+
+**The sky's blue in clear shade (the gauntlet's wave 46: on Sirocco's sand the cast shadows read warmer than the sunlit
+sand; wave 47: "no blue in the shade" on clear Saltwind).** The shade's light was already bluer than the sun's (1.8× in
+B/R on the sand), but warm sand keeps a warm shade, and the shade-fill toe's per-channel lift in deep shade took the
+margin. `SKY_DIFFUSE_CHROMA` (lightModel.ts) 0.4 → 0.5 — the smallest of a GPU sweep (0.40, 0.45, 0.50, 0.55, 0.65) at
+which the tank's shadow on the sand reads cooler than the sand in the sun; the measure is CIELAB b* per L*, shade minus
+sun: +0.03, −0.01, −0.04, −0.08, −0.15 (0.45 reaches parity only). The pair (e675ad400 against the branch): the tank's
+shadow on sand +0.03 → −0.04, the palms' shadow −0.05 → −0.11; the grass under Verdant's hull stays green (hue 132° →
+134°; the early waves' teal was 180–200°), its woodland shade 109° → 112°; sunlit sand and grass ΔE 0.42–0.55 (b* −0.2
+to −0.4: the same sky lights them); Whiteout ΔE 0.00 (a closed deck takes none of the sky's hue). No shader change.
+Frames and tables: `$SP/p2/haze/cap3`, `$SP/p2/shadehue/cap` (the sweep) and `cap2` (the pair).
+
+### 2026-10-04 — the sun's glow a gradient toward a visible disc; Titan Gorge's deck closed (the sun-bloom lane)
+
+**The gauntlet's waves 46 and 50: on sun-facing views a quarter of the frame read flat white with no sun disc** (Redrock's
+edge-e, "an exposure/tone-mapping miss rather than a deliberate flare"). At the census pose (cam (432, 91.5, 0) toward +x,
+fov 55; desktop high, 1600 × 900; the lab's frame matches the wave's to 2.1 levels in 255) no pixel was display white: the
+near-sun sky sat at L* 88 with chroma 5.5, 6.6 % of the top-left near white (every channel ≥ 235) — a pale plateau, not a
+clip. Facing the sun, a white blob covered 37 % of the sun's region and no disc showed. A sweep of in-page knobs on one
+build (bloom, the dome's knee, its compact glow, a highlight shoulder in the output pass, an exposure-aware knee) found two
+causes: the bloom swallowed the disc in a halo fed by the compact glow and by 0.5–0.9° of aureole kept HDR around the
+disc (bloom off: a distinct disc in a natural glow), and the dome's knee — a plateau at 1.45 raw, which a camera at
+exposure 1.6 shows near white — flattened the aureole. A highlight shoulder in the grade cleared the white but greyed the
+disc and reached snow; the cap the coordinator chose is the sky's own.
+
+**The fix (sky.ts; sunGlare.selftest).** Only the disc stays HDR (the knee's exemption at the disc's own edge), and the
+compact glow is part of the sky under the knee: the disc alone reaches the bloom's threshold, so its halo is the disc's.
+On the grounded rig the knee is set as the camera shows the dome (`SKY_KNEE_EV`): it eases from 1.8 stops over the card
+toward 1.2 stops more, the aureole from once to ten times the start spread across that range — a gradient toward the disc,
+not a plateau. The sky only; the bloom (muzzle flash, fire, tracers) and the grade are unchanged.
+- *The pair* (dec034617 against the branch): Redrock edge-e near white 6.6 % → 3.0 %, the glow L* 88.1 → 85.9 with
+  chroma 5.5 → 6.0; facing Redrock's sun 36.6 % → 17.0 %, the disc visible in a falloff; facing Verdant's sun 1.2 % →
+  0.3 %. No harm: away from the sun (Redrock hz-w), Frosthollow's snow and Saltwind's clouds ΔE 0.00.
+- *GPU* (the old dome switched in-page, on / off / off / on): −1.5 and +1.6 ms on the two views, inside a run-to-run spread
+  of ±1.5 ms — the change is a few operations a sky pixel.
+
+**Titan Gorge's deck** (`CLOUD_CLOSED_COVER_FLOOR` 0.5 → 0.7, volumetricClouds.ts): the closed deck's floor at 0.7 closes
+the residual gap at establishing and bird — the old hole reads as a thin, slightly brighter patch of the deck (ΔE 4.1 from
+the deck beside it; 0.5 left a cream patch at ΔE 11.5).
+
+**The sea's far band (next).** The split on Saltwind's edge-w: the sky over the horizon L* 85; the far band 13–17 under
+it and teal. Without the haze law the band is darker still (L* 70 against 73): the aerial target is not the cause; the
+water's own reflection at grazing incidence is (the sky's reflection × 3.5 / 1.75 at grazing: 4–5 under the sky, bluer).
+The water's knobs ride in this branch at today's values (`WATER_ENV_NORMAL` / `_GRAZING`, `WATER_SPEC_CAP`,
+`WATER_BODY_GRAZE`).
+
+**Not this lane's:** Saltwind's cumulus (wave 46's "blown out") is not clipped (L* 72, no near-white pixel) and no
+exposure or bloom setting moves it: the flat internal shading is the cloud model's, the item after the sea.
+Frames: `$SP/p2/bloom/pair/<map>/{a,g}-<view>.png`; the sweeps `$SP/p2/bloom/cap{,2,3}`.
+
+### 2026-10-04 — the sea mirrors the sky toward the horizon (the sea's far band)
+
+**The gauntlet (both critics): the sea at grazing angles — "the far band turns teal and darker than the sky instead of
+brightening toward the horizon (Fresnel), with no sun glitter".** The split, in-page on one build (Saltwind's edge-w, the
+sea to the west; desktop high): the sky over the horizon sits at L* 85 and the far band 13–17 under it, teal. The haze law
+is not the cause — without it (σ 0) the band is darker still (L* 70 against 73), and its target at the sky's own level
+moves it 0.8 — the water's own reflection at grazing incidence is: `shallowWater.ts` weighted the sky's reflection
+`mix(0.45, 1.75, grazing)`. `WATER_ENV_GRAZING` 1.75 → 3.5 (the FFT path untouched):
+- *Saltwind edge-w:* the far band L* 67.4 → 78.6 (6.4 under the sky; it was 17.6), a* −6.8 → −5.6, b* −8.5 → −7.0 — the
+  mirror a calm sea is toward the horizon; the mid field +6.5 to +9 L*; the water under the camera +1.2 (no wash-out).
+- *Saltmere's bay (establishing):* the water +4 to +5 L* along its far half, the rest of the frame unchanged (median ΔE
+  0.00); land-only views unchanged.
+- *Sun glitter:* a sun-over-water pose on Saltwind (the camera over the sea, facing the 30° sun) shows the glitter path
+  already, its sparkles held under white by the specular cap (1.15, pre-exposure; max channel 236). The cap at 2.5 lets
+  the sparkles reach white and blooms the path's far end (16 750 white pixels), kept at 1.15 here; a choice for the
+  critics (`WATER_SPEC_CAP`). The edge-w view faces away from the sun, where no glitter belongs.
+- *GPU:* the old weight switched in-page, on / off / off / on: −1.3 and −0.3 ms (p25) — a constant.
+Frames: `$SP/p2/sea/pair/{saltwind,coastal}/{a,g}-<view>.png`, the glint `saltwind/{a,g,g~spec25,g~spec4}-glint.png`.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

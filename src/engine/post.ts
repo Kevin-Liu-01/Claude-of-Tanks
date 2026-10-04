@@ -101,7 +101,7 @@ import { LEGACY_EXPOSURE, lightTune, type LightModel } from './lightModelCore.ts
 import { FOG_LAYER, FOG_LAYER_MIN_M } from './fogLayer.ts';
 import {
   HAZE_EXT_CHROMA, HAZE_LAW_GLSL, HAZE_TARGET_SKY_K, HAZE_TINT_SHARE, HAZE_LAYER_SCALE_M, hazeLayerInverseScale,
-  hazeSigma, hazeTargetTerms,
+  hazeExtinctionChroma, hazeSigma, hazeTargetTerms,
 } from './hazeLaw.ts';
 import { setNightEmissionExposure } from './nightEmissionMaterial.ts';
 import {
@@ -1110,14 +1110,14 @@ const AerialShader = {
         if ( hazeLaw ) {
           // 2026-10-03 (hazeLaw.ts): the in-scatter target is the sky behind the surface (the
           // sky-view LUT along the ray, the horizon for rays below it) a step under its own luminance, its hue drawn
-          // toward the map's authored fog tint by the tint's share (all of it under a closed deck, whose grey the
-          // clear sky's LUT does not know) — never the clear sky's luminance cap of the legacy target below, which
-          // pulled every far range toward one grey
+          // toward the map's authored fog tint by the tint's share (hazeLaw.ts hazeTargetTerms: fogMix × the share
+          // under an open sky, the whole tint under a closed deck, whose grey the clear sky's LUT does not know) —
+          // never the clear sky's luminance cap of the legacy target below, which pulled every far range toward one grey
           vec3 skyDir = normalize( vec3( ray.x, max( ray.y, 0.02 ), ray.z ) );
           vec3 skyT = atmoSkyVisible( skyDir );
           float skyL = dot( skyT, vec3( 0.2126, 0.7152, 0.0722 ) );
           float tintL = max( dot( uAtmoFogTint, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 );
-          vec3 target = mix( skyT, uAtmoFogTint * ( skyL / tintL ), clamp( uAtmoFogMix * uHazeLaw.z, 0.0, 1.0 ) );
+          vec3 target = mix( skyT, uAtmoFogTint * ( skyL / tintL ), uHazeLaw.z );
           if ( target.g > target.b ) {
             float tl = dot( target, vec3( 0.2126, 0.7152, 0.0722 ) );
             target = mix( target, vec3( tl * 0.92, tl * 0.99, tl * 1.12 ), 0.6 );
@@ -1371,14 +1371,17 @@ const GRADE_TOE_SLOPE = 0.7;
 const GRADE_TOE_STOPS = 2.5;
 const GRADE_TOE_CHANNEL_FROM = 1.0;
 const GRADE_TOE_CHANNEL_TO = 2.5;
-// 2026-10-02 (the Garage under AgX): the showroom keeps its authored rig (lighting.ts, an enclosed presentation), tuned
-// under ACES's steep shoulder; AgX's gentler path to white compressed its spot-lit highlights (garage boot p95 182 →
-// 161, the showroom's own p90/p95/p99 197/207/215 → 162/179/194) while the dark bay and the midtones held (frame
-// median 24, showroom median 87). A display shoulder for the enclosed presentation only: luma
-// L + k·L·(1 − L)^1.5·smoothstep(0.36, 0.66, L), each pixel's hue kept. The lift peaks where AgX compressed most (a
-// display level of 0.6–0.7) and eases toward white; nothing below the showroom's median moves, white stays white
-// (the boot frame: p95 182, p99 211, the showroom's p90/p95/p99 195/206/216, both medians held).
-const GARAGE_HIGHLIGHT_LIFT = 0.95;
+// The enclosed Garage (2026-10-04, the vehicle-look lane; gauntlet wave 49: the desert-camo hull "washed to near-white" on
+// the turntable). The showroom keeps its authored rig (lighting.ts, an enclosed presentation) under the legacy exposure;
+// the 2026-10-02 display shoulder that restored its frame percentiles under AgX (GARAGE_HIGHLIGHT_LIFT 0.95) pushed the
+// hull's lit paint up with them. Measured on one pose (m1a2, the camo-difference mask of its paint, display luma median /
+// p95 / saturation): main's ACES grade 158 / 211 / 0.49, the shoulder 185 / 223 / 0.37, without it 152 / 207 / 0.37 — the
+// shoulder put about 32 levels on every lit plate and the light camos lost their pattern to white; the shared bloom
+// changed 0.7 % of the frame on main and on the PR alike (not the halo). The shoulder is retired and the Garage takes the
+// same grade as every legacy frame. (Wave 55 re-pair, one capture hold, three camos: a garage-only steeper slope and
+// saturation with a 0.8 exposure trim dimmed the bay to median 71 against the shoulder's 90 — "the hangar is dim, cold
+// and thinly dressed" — and the slope alone, at full exposure, pushed the winter wash's p95 back to 222; the shoulder's
+// retirement alone keeps the bay at 88 and the winter wash at p95 211, desert tan 152 / 207, summer green 101 / 152.)
 // r4 LP2 ("vignette stacks to a ~30-35% corner luminance falloff on bright daylight wides"): the shader keys
 // the vignette to the PIXEL's own luma — bright sky/haze corners keep most of their level — and
 // terrain_environment r4 eased it to 0.14; 2026-10-01: 0.10, a lens's natural falloff.
@@ -1449,11 +1452,12 @@ const GradeShader = {
     // 2026-10-03: the photographic toe (GRADE_TOE_SLOPE note): x the slope it eases to, y the stops it eases over (0 = off),
     // z / w the stops under the card over which its lift hands over from the pixel's luminance to each channel's own level
     uToe: { value: new THREE.Vector4(0, 0, 0, 0) },
+    // 2026-10-04: a luminance shoulder (QA: GRADE_SHOULDER_SLOPE / _STOPS / _START; off at stops 0)
+    uShoulder: { value: new THREE.Vector4(0, 0, 0, 0) },
     uBlackPoint: { value: GRADE_BLACK_POINT },
     uThermal: { value: 0 },
     uThermalPixel: { value: new THREE.Vector2(1/1280,1/720) },
     uSaturation: { value: GRADE_SATURATION },
-    uHighlightLift: { value: 0 },
     uVignette: { value: GRADE_VIGNETTE },
     // 2026-10-01: the light model's linear exposure (lightModel.ts exposureFor, scene.userData.lightModel),
     // applied before the tone curve with its white balance — never a display-space trim again
@@ -1485,7 +1489,6 @@ const GradeShader = {
     uniform float uThermal;
     uniform vec2 uThermalPixel;
     uniform float uSaturation;
-    uniform float uHighlightLift;
     uniform float uBlackPoint;
     uniform float uVignette;
     uniform float uNight;
@@ -1541,13 +1544,6 @@ const GradeShader = {
       // saturation around the pixel's own luma
       float luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
       col = clamp( mix( vec3( luma ), col, uSaturation ), 0.0, 1.0 );
-      // the enclosed Garage's highlight shoulder (GARAGE_HIGHLIGHT_LIFT note)
-      if ( uHighlightLift > 0.001 ) {
-        float hlL = max( dot( col, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 );
-        float hlD = max( 1.0 - hlL, 0.0 );
-        float hlLift = hlL + uHighlightLift * hlL * hlD * sqrt( hlD ) * smoothstep( 0.36, 0.66, hlL );
-        col = clamp( col * ( hlLift / hlL ), 0.0, 1.0 );
-      }
       // night (2026-10-01): low light reads through the rods — colour drains from the shadows and dim midtones
       // toward a cool blue (the Purkinje shift); highlights (lamps, the moon, muzzle flashes) keep their colour
       if ( uNight > 0.001 ) {
@@ -1622,6 +1618,7 @@ function createOutputGradePass(): OutputGradePass {
     uniform float uSatLinear;
     uniform float uContrast;
     uniform vec4 uToe;
+    uniform vec4 uShoulder;
     #include <tonemapping_pars_fragment>
     #include <colorspace_pars_fragment>
 
@@ -1654,6 +1651,13 @@ function createOutputGradePass(): OutputGradePass {
         outputColor.rgb = 0.18 * exp2( uContrast * cotU + cotLift );
       } else {
         outputColor.rgb = 0.18 * pow( max( outputColor.rgb, vec3( 1e-6 ) ) * ( 1.0 / 0.18 ), vec3( uContrast ) );
+      }
+      // 2026-10-04 (the sun-bloom lane; QA: GRADE_SHOULDER_*): a shoulder on the pixel's luminance above uShoulder.z stops
+      // over the card — the slope eases from uContrast to uShoulder.x over uShoulder.y stops, every channel alike (off at 0)
+      if ( uShoulder.y > 0.0 ) {
+        float cotShT = max( ( log2( max( sceneLuma, 1e-6 ) * ( 1.0 / 0.18 ) ) - uShoulder.z ) / uShoulder.y, 0.0 );
+        float cotShG = cotShT < 1.0 ? cotShT * cotShT * cotShT * ( 1.0 - 0.5 * cotShT ) : cotShT - 0.5;
+        outputColor.rgb *= exp2( -( uContrast - uShoulder.x ) * uShoulder.y * cotShG );
       }
       #ifdef LINEAR_TONE_MAPPING
         outputColor.rgb = LinearToneMapping( outputColor.rgb );
@@ -2686,7 +2690,6 @@ export function createPost(
     const satLinear = model?.mode === 'physical'
       ? lightTune('GRADE_SAT_LINEAR', GRADE_SAT_LINEAR) : lightTune('GRADE_SAT_LINEAR_LEGACY', GRADE_SAT_LINEAR_LEGACY);
     u.uSaturation.value = lightTune('GRADE_SATURATION', GRADE_SATURATION);
-    u.uHighlightLift.value = scene.userData.lightEnclosed ? lightTune('GARAGE_HIGHLIGHT_LIFT', GARAGE_HIGHLIGHT_LIFT) : 0;
     u.uBlackPoint.value = lightTune('GRADE_BLACK_POINT', GRADE_BLACK_POINT);
     u.uVignette.value = lightTune('GRADE_VIGNETTE', GRADE_VIGNETTE);
     u.uNight.value = model?.night ?? 0;
@@ -2724,7 +2727,12 @@ export function createPost(
       * 0.95
       * Math.min(1, Math.max(0, (16 - camera.fov) / 10));
     const scopeWeight = grade.uniforms.uScope.value;
-    bloom.strength = BLOOM_STRENGTH * (1 - 0.5 * scopeWeight);
+    // 2026-10-04 (the sun-bloom lane): the bloom's strength, threshold and radius through the light model's QA hook
+    bloom.strength = lightTune('BLOOM_STRENGTH', BLOOM_STRENGTH) * (1 - 0.5 * scopeWeight);
+    bloom.threshold = lightTune('BLOOM_THRESHOLD', BLOOM_THRESHOLD);
+    bloom.radius = lightTune('BLOOM_RADIUS', BLOOM_RADIUS);
+    (grade.uniforms.uShoulder.value as THREE.Vector4).set(lightTune('GRADE_SHOULDER_SLOPE', 0.6), lightTune('GRADE_SHOULDER_STOPS', 0),
+      lightTune('GRADE_SHOULDER_START', 2), 0);
     aerial.uniforms.uDensity.value *= 1 - 0.22 * scopeWeight;
     aerial.uniforms.uHazeDensity.value *= 1 - 0.30 * scopeWeight;
     aerial.uniforms.uHazeZoom.value *= 1 - 0.30 * scopeWeight;
@@ -2770,8 +2778,9 @@ export function createPost(
       const overcast = (scene.userData.lightModel as LightModel | undefined)?.overcast ?? 0;
       const law = u.uHazeLaw.value as THREE.Vector4;
       // (the target's tint share and level: hazeLaw.ts hazeTargetTerms, the cloud trace's deck rows read the same)
-      const terms = hazeTargetTerms(overcast, hazeTermsScratch);
+      const terms = hazeTargetTerms(overcast, atmosphere.fogMix, hazeTermsScratch);
       law.set(hazeSigma(atmosphere.fogDensity), hazeLayerInverseScale(), terms.x, terms.y);
+      hazeExtinctionChroma(u.uHazeChroma.value as THREE.Vector3);
     } else {
       (u.uHazeLaw.value as THREE.Vector4).x = 0;
     }

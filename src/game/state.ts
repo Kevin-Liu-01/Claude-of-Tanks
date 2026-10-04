@@ -2483,8 +2483,10 @@ function resolveTankImpacts(
   // the fall the hull made (movement.ts fallImpactMps: the landing less the height the solver gave it, by energy)
   const landing = Number.isFinite(state.fallImpactMps) ? state.fallImpactMps : state.landingImpactMps;
   if (landing > 0) {
-    const upY = Math.cos(state.visualPitch) * Math.cos(state.visualRoll);
-    const attitudeFactor = fallAttitudeFactor(state.visualPitch - state._terr.pitch, state.visualRoll - state._terr.roll, upY);
+    // the landing's attitude is the tracks' (the attitude spring's): the posture a hull holds over them on a grade
+    // (movement.ts state._hold) is no part of how it meets the ground
+    const upY = Math.cos(state._spring.pitch) * Math.cos(state._spring.roll);
+    const attitudeFactor = fallAttitudeFactor(state._spring.pitch - state._terr.pitch, state._spring.roll - state._terr.roll, upY);
     const result = resolveHullImpact({
       combat: entity.combat, massTons: entity.spec.weightTons, physics, kind: 'fall',
       closingMps: landing, priorClosingMps: 0, faceForward: 0, sideSign: 0, attitudeFactor, rng: game.combatRng,
