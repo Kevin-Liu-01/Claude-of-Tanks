@@ -475,6 +475,27 @@ key, the shared sun vector), `terrainMaterialOwnership` (two uniforms declared, 
 **Still open under 4/11.** Flat ground in cast shadow still takes the hemisphere preset colour rather than the rendered
 sky (check 11's second half); Mars' black is the far vista ring's night side, a vista item.
 
+**2026-10-04: off on the grounded rig (the skies lane, agreed with the ground lane).** Redrock's battlefield inselbergs,
+their faces turned from the sun on the into-sun frame, read 0.84–1.00 of the sunlit sand (the gauntlet's wave 50 frame;
+the mountains lane had cleared their normals). Each non-sun term switched off alone in the page, the boxes taken back to
+scene light through the output pass's twin: this lift carried 0.54–0.71 of the sunlit sand's light, the environment's sky
+diffuse 0.13–0.17, the ground bounce and the facing rule nothing (the face's own shadow covers the ground before it); with
+all three off, 0.13–0.18 remained — the haze's in-scatter toward the sun. The grounded rig (2026-10-01) lights a steep
+face's open sky through its environment, so the lift counted that light twice. The gain is now the rig's
+(`groundBounce.ts` `terrainWallSkyLift`, one uniform object every terrain program binds; `lighting.ts` applyGroundBounce
+sets it): round 42's 7 on the legacy rig (phones, the Preetham tier, the galaxy skies), none on the grounded rig
+(`WALL_SKY_LIFT_GROUNDED`, a QA knob); a map's own `splat.wallSkyLift` stays its own. The shader is unchanged.
+- *Redrock, facing the sun:* the faces 0.28–0.33 of the sunlit sand (a backlit wall under a clear sky: half the dome and
+  the bounce, about 0.20–0.35), a shaded red-brown; the touched pixels' median 145 → 88 display luma.
+- *The slopes round 42 rescued* (the pixels the lift touched, display luma p5): Caldera's e-wall-300 61.7 → 53.6 (32 % of
+  the sky; round 42 measured its black at 6.6, 3 %, and its fix at 16.7); Skybridge's e-wall-300 85.8 → 67.3 (43 % of the
+  sky; round 42: 21.2 → 34.8). Mars barely moves (0.5 % of its establishing frame, a slope by the settlement; the other
+  touched pixels are the starfield's twinkle). No slope returns to black.
+- *Overcast:* Titan Gorge's walls untouched (at most 3 levels). Frosthollow's snow slopes on e-wall-300 (5 % of the frame)
+  p5 127 → 112.
+- *GPU* (the old gain switched in-page, on / off / off / on twice): +0.13 / +0.06 ms (Redrock), −0.71 / −0.13 ms
+  (Caldera), p25 / p50 — nil, a uniform's value.
+
 ### Local wind field for the dune ripples — 2026-09-23 (round 43)
 
 **Symptom (check 8).** On the desert and Oasis the dune flats printed dark parallel bands of one heading and one
