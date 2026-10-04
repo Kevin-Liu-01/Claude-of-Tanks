@@ -1,9 +1,10 @@
 // src/world/sceneryRocks.ts — the scenery lane's rock formations (2026-10-03): the landmark rock a map's geology
 // makes, built from the ground up instead of scattered boulders. Each form follows the process that made it:
 //
-//   tor      granite: joint-bounded slabs rounded by the weather into woolsacks, stacked in two to four columns parted
-//            by open vertical joints, on a bedrock base that breaks the turf, the clitter that fell from it round its
-//            foot (Dartmoor, the Breton chaos);
+//   tor      granite: cuboidal blocks split by the sheeting joints (every thickness, thin flags over massive sheets)
+//            and the vertical joint sets, their arrises rounded, stacked in two to four columns parted by open vertical
+//            joints, the sheet rock breaking the turf round them, the clitter strewn down the slope (Dartmoor, the
+//            Breton chaos);
 //   outcrop  sandstone or limestone beds: hard beds standing proud over recessed soft ones, each higher bed stepping
 //            back from a scarp that faces downhill, the beds split into blocks by the vertical joints, fallen blocks
 //            at the foot (Buntsandstein ledges, the Dalmatian scars, the Franconian castle rocks);
@@ -427,54 +428,92 @@ function finish(
 // ---------------------------------------------------------------------------------------------- the forms
 
 function graniteTor(spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]): void {
-  // A tor is the jointed core of the granite left standing when the weathered rock round it washed away: stacks of
-  // slabs split by the horizontal sheeting joints, the stacks parted by open vertical joints along the main joint
-  // set, the slabs' edges rounded by the weather, all standing on a low bedrock base that breaks the turf, and the
-  // blocks that fell from it lying round its foot (the clitter).
+  // A tor is the jointed core of the granite left standing when the weathered rock round it washed away (gauntlet wave
+  // 29, Saltmere Bay: "a stack of near-black slabs, all the same thickness and shaped like pillows, on a bald dome";
+  // Dartmoor and the Breton chaos): cuboidal blocks split by the horizontal sheeting joints and the vertical joint
+  // sets, their arrises rounded by the weather but their faces flat; the sheets of every thickness, thin flags over
+  // massive blocks; the stacks parted by open vertical joints along the main set, each sheet split across into two
+  // or three blocks, the upper ones set back or overhanging; the sheet rock breaking the turf round the stacks in low
+  // flat slabs; and the clitter that fell from it strewn down the slope, half sunk in the ground.
   const R = spec.radius, H = spec.height;
   const yaw = THREE.MathUtils.degToRad(spec.yawDeg ?? rng() * 180);
   const ca = Math.cos(yaw), sa = Math.sin(yaw);
   const seg = mobile ? 3 : 4;
-  const { min } = lowestGround(ground, spec.x, spec.z, R);
   const scale = Math.max(0.6, H / 5.5);
-  // the bedrock base, mostly buried
-  const base = roundedBlock(R * 0.92, 0.6 + H * 0.07, R * 0.6, 0.55, seg + 1, noise, rng, { weather: 0.14, cuts: 3, cutDepth: 0.75, seedOffset: 11 });
-  pieces.push({ geometry: place(base, spec.x, min - 0.25, spec.z, yaw + (rng() - 0.5) * 0.2, (rng() - 0.5) * 0.05, (rng() - 0.5) * 0.05), layer: -1, standing: true });
+  const at = (along: number, across: number): [number, number] => [spec.x + ca * along - sa * across, spec.z + sa * along + ca * across];
+  // the sheet rock breaking the turf: low flat slabs along the joint sets round the stacks, their tops a hand to a third
+  // of a metre over the ground, the rest of them in it
+  const sheets = Math.round((mobile ? 4 : 9) * (0.7 + R / 12));
+  for (let i = 0; i < sheets; i++) {
+    const ang = (i / sheets) * Math.PI * 2 + (rng() - 0.5) * 0.6;
+    const rr = R * (0.55 + rng() * 0.75);
+    const [x, z] = at(Math.cos(ang) * rr, Math.sin(ang) * rr * 0.8);
+    const len = (1.0 + rng() * 1.6) * scale, wid = len * (0.45 + rng() * 0.35), rise = 0.08 + rng() * 0.24;
+    const g = roundedBlock(len * 0.5, 0.35 + rise * 0.5, wid * 0.5, 0.3 + rng() * 0.12, seg - 1, noise, rng, { weather: 0.1, cuts: 1, cutDepth: 0.85, seedOffset: 5 + i });
+    const y = ground.getHeightAt(x, z) + rise - (0.35 + rise * 0.5);
+    pieces.push({ geometry: place(g, x, y, z, yaw + (rng() < 0.5 ? 0 : Math.PI / 2) + (rng() - 0.5) * 0.25, (rng() - 0.5) * 0.08, (rng() - 0.5) * 0.08), layer: -1, standing: false });
+  }
   // the stacks along the main joint
   const stacks = R >= 5 ? 3 + (rng() < 0.45 ? 1 : 0) : 2 + (rng() < 0.5 ? 1 : 0);
-  const span = 2 * R * 0.8, pitch = span / stacks;
+  const span = 2 * R * 0.82, pitch = span / stacks;
   const tallest = Math.floor(rng() * stacks);
   for (let k = 0; k < stacks; k++) {
-    const along = (k - (stacks - 1) / 2) * pitch + (rng() - 0.5) * pitch * 0.2;
-    const across = (rng() - 0.5) * R * 0.28;
-    const cx = spec.x + ca * along - sa * across, cz = spec.z + sa * along + ca * across;
+    const along = (k - (stacks - 1) / 2) * pitch + (rng() - 0.5) * pitch * 0.18;
+    const across = (rng() - 0.5) * R * 0.3;
+    const [cx, cz] = at(along, across);
     const local = ground.getHeightAt(cx, cz);
-    const top = local + (k === tallest ? H : H * (0.55 + rng() * 0.35));
-    let hx = pitch * (0.56 + rng() * 0.12), hz = R * (0.4 + rng() * 0.14);
-    let y = local - 0.45;
-    const lean = (rng() - 0.5) * 0.08;
-    for (let layer = 0; layer < 5 && y < top - 0.35; layer++) {
-      const t = Math.min(top - y + 0.15, (1.1 + rng() * 0.8) * scale);
-      const slab = roundedBlock(hx, t * 0.5, hz, 0.4 + rng() * 0.16, seg, noise, rng, { weather: 0.12, cuts: 2, cutDepth: 0.78, seedOffset: 31 + k * 7 + layer });
-      const ox = (rng() - 0.5) * hx * 0.22, oz = (rng() - 0.5) * hz * 0.22;
-      pieces.push({ geometry: place(slab, cx + ca * ox - sa * oz, y + t * 0.5, cz + sa * ox + ca * oz, yaw + (rng() - 0.5) * 0.24, lean + (rng() - 0.5) * 0.06, (rng() - 0.5) * 0.06), layer: -1, standing: true });
-      y += t * 0.92;
-      hx *= 0.8 + rng() * 0.16; hz *= 0.8 + rng() * 0.16;
+    const top = local + (k === tallest ? H : H * (0.5 + rng() * 0.38));
+    // the stack's plan: along the main joint, across it
+    let hx = pitch * (0.42 + rng() * 0.08), hz = R * (0.36 + rng() * 0.12);
+    let y = local - 0.4;
+    const lean = (rng() - 0.5) * 0.06;
+    let shiftX = 0, shiftZ = 0;
+    for (let layer = 0; layer < 8 && y < top - 0.25; layer++) {
+      // every thickness: a thin flag now and then over the massive sheets, the top sheets thinner
+      const thin = rng() < 0.32;
+      const t = Math.min(top - y + 0.1, (thin ? 0.32 + rng() * 0.3 : 0.75 + rng() * 0.95) * scale * (layer > 2 ? 0.8 : 1));
+      // the vertical joints split the sheet across into one to three blocks, an open joint between them
+      // (phones draw each sheet whole)
+      const split = hz > 1.1 * scale && rng() < 0.75 ? (hz > 1.8 * scale && rng() < 0.5 ? 3 : 2) : 1;
+      const pieces3 = mobile ? 1 : split;
+      const gap = (0.07 + rng() * 0.12) * scale;
+      const blockHz = (2 * hz - gap * (pieces3 - 1)) / pieces3 / 2;
+      for (let b = 0; b < pieces3; b++) {
+        const bz = -hz + blockHz + b * (2 * blockHz + gap);
+        // a block's own cut: a little longer or shorter, set in or out from the sheet's line
+        const bhx = hx * (0.9 + rng() * 0.18), bhz = blockHz * (0.92 + rng() * 0.12);
+        // (the thin flags and the narrow blocks on one segment fewer: the tor keeps its budget)
+        const blockSeg = t < 0.7 * scale || bhz < 0.8 * scale ? seg - 1 : seg;
+        const slab = roundedBlock(bhx, t * 0.5, bhz, 0.18 + rng() * 0.12, blockSeg, noise, rng,
+          { weather: 0.07, cuts: 1, cutDepth: 0.86, seedOffset: 31 + k * 13 + layer * 3 + b });
+        const ox = shiftX + (rng() - 0.5) * 0.12 * scale, oz = shiftZ + bz + (rng() - 0.5) * 0.08 * scale;
+        const [px, pz] = [cx + ca * ox - sa * oz, cz + sa * ox + ca * oz];
+        // each sheet sits on the one under it with its joint open a few centimetres at the rounded arrises
+        pieces.push({ geometry: place(slab, px, y + t * 0.5, pz, yaw + (rng() - 0.5) * 0.12, lean + (rng() - 0.5) * 0.04, (rng() - 0.5) * 0.04), layer: -1, standing: true });
+      }
+      y += t * 0.985;
+      // the upper sheets set back (the weather took their edges) or, now and then, overhang the one below
+      const step = rng() < 0.22 ? 1.06 : 0.78 + rng() * 0.14;
+      hx *= step; hz *= 0.8 + rng() * 0.14;
+      shiftX += (rng() - 0.5) * hx * 0.25; shiftZ += (rng() - 0.5) * hz * 0.2;
     }
   }
-  // the clitter: rounded blocks that fell from the stacks, half buried, gathered downslope and against the base
+  // the clitter: cuboidal blocks that fell from the stacks, half sunk, densest at the foot and strewn down the slope
   const shed = spec.shed ?? 1;
-  const count = Math.round((mobile ? 7 : 14) * shed * (0.8 + R / 10));
+  const count = Math.round((mobile ? 8 : 22) * shed * (0.8 + R / 10));
   const [dx, dz] = downhill(ground, spec.x, spec.z, R);
   for (let i = 0; i < count; i++) {
     const a = rng() * Math.PI * 2;
-    const rr = R * (0.85 + Math.pow(rng(), 0.9) * 1.0);
-    let x = spec.x + Math.cos(a) * rr, z = spec.z + Math.sin(a) * rr * 0.75;
-    x += dx * R * 0.7 * rng(); z += dz * R * 0.7 * rng();
-    const size = (0.4 + Math.pow(rng(), 1.6) * 1.3) * Math.min(1.3, scale);
-    const g = roundedBlock(size, size * (0.45 + rng() * 0.25), size * (0.7 + rng() * 0.3), 0.45, mobile || size < 0.8 ? 2 : 3, noise, rng, { weather: 0.1, cuts: 1, cutDepth: 0.8, seedOffset: 80 + i });
-    const y = ground.getHeightAt(x, z) + size * (0.1 - rng() * 0.25);
-    pieces.push({ geometry: place(g, x, y, z, rng() * Math.PI * 2, (rng() - 0.5) * 0.4, (rng() - 0.5) * 0.4), layer: -1, standing: false });
+    const far = Math.pow(rng(), 1.4);
+    const rr = R * (0.8 + far * 2.2);
+    let x = spec.x + Math.cos(a) * rr, z = spec.z + Math.sin(a) * rr * 0.8;
+    // the farther ones lie downhill
+    x += dx * R * 1.2 * far; z += dz * R * 1.2 * far;
+    const size = (0.28 + Math.pow(rng(), 2) * 1.05) * Math.min(1.2, scale) * (1 - far * 0.35);
+    const g = roundedBlock(size, size * (0.42 + rng() * 0.3), size * (0.65 + rng() * 0.3), 0.34 + rng() * 0.14,
+      mobile || size < 0.9 ? 2 : 3, noise, rng, { weather: 0.08, cuts: 1, cutDepth: 0.8, seedOffset: 80 + i });
+    const y = ground.getHeightAt(x, z) + size * (0.05 - rng() * 0.3);
+    pieces.push({ geometry: place(g, x, y, z, rng() * Math.PI * 2, (rng() - 0.5) * 0.35, (rng() - 0.5) * 0.35), layer: -1, standing: false });
   }
 }
 
