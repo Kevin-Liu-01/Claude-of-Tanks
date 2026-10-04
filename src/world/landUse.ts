@@ -145,8 +145,10 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   paddy: [[9, 0.38], [8, 0.22], [14, 0.15], [10, 0.10], [4, 0.07], [0, 0.08], [7, 0.0]],
   // a Japanese caldera floor (Aso): rectangular paddies, green and flooded, vegetable plots, meadow
   terrace: [[9, 0.44], [8, 0.20], [10, 0.10], [7, 0.10], [0, 0.16], [4, 0.0], [5, 0.0]],
-  // the Dalmatian karst: small walled fields of red earth, vines, dry grazing and a little grain
-  karst: [[11, 0.30], [12, 0.26], [0, 0.28], [5, 0.08], [3, 0.08], [1, 0.0], [4, 0.0]],
+  // the Dalmatian karst: small walled fields of red earth, vines, dry grazing and a little grain — the grain ripe in the
+  // dry season (wave 39, Saltwind corner-ne: "a hard-edged, oversaturated bright-green rectangle in the mid-ground" was
+  // a young green crop's plot between the walls, a tone no summer karst field carries)
+  karst: [[11, 0.30], [12, 0.26], [0, 0.28], [5, 0.08], [1, 0.08], [13, 0.0], [4, 0.0]],
   // an ironworks' ground (Völklingen on the Saar): plots of brownfield grass, tipped slag, ballast and hardcore,
   // rank grass and bare earth, between the works' tracks and the birch scrub that seeds itself along them
   brownfield: [[17, 0.40], [15, 0.22], [16, 0.18], [0, 0.12], [4, 0.08], [5, 0.0], [3, 0.0]],
