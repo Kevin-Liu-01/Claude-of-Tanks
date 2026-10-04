@@ -157,9 +157,13 @@ brown battlefield rock); `forestSlope` is where a character's forest gives way o
 Redrock's far jebels (`jebel`, gauntlet wave 50: "flat-coloured, pale-pink, near-rectangular blocks with dead-flat
 tops"): one jebel law (`JEBEL_GLSL` `jebelField`) serves the height pass and the strip, which takes a wall's normal from
 it at 4 m (the grid's rows lie ~35 m apart at 5 km and smoothed a sheer wall into a slope the sun lit from every side),
-paints Wadi Rum's sandstone (dark red-brown walls under pale domes, bedded every ~17 m, split by vertical joints whose
-clefts hold shadow) and keeps every massif past `jebelNearM` (the near band's forms are pressed under the ring's skyline,
-which cut a near massif's top dead flat); Redrock's far `air` is 0.4 (desert air is clear).
+paints Wadi Rum's sandstone, bedded every ~17 m and split by vertical joints whose clefts hold shadow. Its tones come
+from the plain's own sand (v3b; v3's cap stood as "pale grey-white castles" brighter than the sky): the walls
+desert-varnished at about a third of the sand's albedo, the pale Disi only on the domes and the rim, buff, near the sand.
+Every massif's near edge stands past `jebelNearM` (3 km, past the shell) and its height joins the field after the near
+band's press, so a near massif keeps its bossed top. The fill a high camera sees under the ring's skyline never paints
+over a massif's wall, and Redrock's fill is the fill law's (`fillLaw`), its bare lowland's own sand. Redrock's far `air`
+is 0.4 (desert air is clear).
 The ring's own cliffs (the light lane, 2026-10-04: faces turned from the sun read 74-82 % of the sunlit sand): the
 analytic normals of the smoothed heights tipped them up, so `sharpenHorizonCliffNormals` gives a vertex on ground
 steeper than 50-65 degrees its geometry's own normal past the first 20-60 m beyond the square (the seam keeps the

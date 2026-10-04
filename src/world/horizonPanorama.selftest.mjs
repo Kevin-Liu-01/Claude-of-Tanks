@@ -213,14 +213,36 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
     'the strip takes a jebel wall\'s normal from its law at 4 m');
   assert.ok(strip.includes('vec3 stone = mix(lower, upper, contact)') && strip.includes('float cleft = ') && strip.includes('float plane = '),
     'Wadi Rum\'s sandstone: the dark walls under the pale domes, the bedding planes, the joints\' clefts');
-  assert.ok(heightPass.includes('if (length(centre) < uJebel3.w) continue;'), 'no massif nearer than its class\'s limit');
+  // (v3b, the pair of 8248ca70b: the massifs kept past 5 km stood as small pale boxes and the PR head's nearer far country
+  // went with them) — no massif's near edge inside its class's limit, and the massifs join the field after the near band's
+  // press, so a massif from 3 km keeps its bossed top
+  assert.ok(heightPass.includes('if (length(centre) - rad * el < uJebel3.w) continue;'), 'no massif\'s near edge nearer than its class\'s limit');
+  const pressAt = heightPass.indexOf('if (h > nearCap) h = mix(h, nearCap + (h - nearCap) * 0.15, nearW);'), joinAt = heightPass.indexOf('h += hJebel;');
+  assert.ok(pressAt > 0 && joinAt > pressAt, 'the massifs stand whole: their heights join after the near band\'s press');
   for (const [name, c] of [...Object.entries(HORIZON_PANORAMA_CHARACTERS), ...Object.entries(HORIZON_PANORAMA_REGIONAL)]) {
     if (name !== 'jebel') assert.equal(c.jebelNearM, 0, `${name}: no near limit`);
   }
   const jv = resolveHorizonPanoramaCharacter('mesa', { regional: 'jebel' });
-  assert.ok(jv.jebelNearM >= 4800 && jv.jebelM >= 600, 'jebel: the massifs past the near band\'s press, tall enough to stand over the ring');
+  assert.ok(jv.jebelNearM >= HORIZON_PANORAMA.shellM && jv.jebelNearM <= 3500 && jv.jebelM >= 600,
+    'jebel: the massifs from about 3 km, past the shell, tall enough to stand over the ring');
   const redrock = readFileSync(new URL('./maps/badlands.ts', import.meta.url), 'utf8');
-  assert.ok(/panorama: \{ regional: 'jebel', air: 0\.\d+ \}/.test(redrock), 'Redrock\'s far air thinner than the law\'s σ (desert air is clear)');
+  assert.ok(/panorama: \{ regional: 'jebel', air: 0\.\d+, fillLaw: 1 \}/.test(redrock),
+    'Redrock\'s far air thinner than the law\'s σ (desert air is clear), the band under the massifs the plain\'s own sand');
+  // v3b: Wadi Rum's tones from the plain's own sand (the pair of 8248ca70b: "pale grey-white castles", the domes brighter
+  // than the sky above them) — the varnished walls about a third of the sand's albedo, redder-brown; the pale Disi only
+  // on the domes and the rim, buff, near the sand; the walls never painted over with the fill a high camera sees
+  const lum = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  const sand = [0.4225, 0.1854, 0.0648]; // Redrock's battlefield ground mean (setGroundTone; the pair's census)
+  const lower = /vec3 lower = uBase \* vec3\(([\d.]+), ([\d.]+), ([\d.]+)\);/.exec(strip);
+  assert.ok(lower, 'the walls are the plain\'s sand, varnished');
+  const wallShare = lum(sand.map((v, i) => v * Number(lower[i + 1]))) / lum(sand);
+  assert.ok(wallShare >= 0.25 && wallShare <= 0.35, `the varnished walls ${(wallShare * 100).toFixed(0)} % of the sand's albedo`);
+  const cap = /vec3 upper = mix\(uBase, vec3\(dot\(uBase, vec3\(0\.2126, 0\.7152, 0\.0722\)\)\), ([\d.]+)\) \* ([\d.]+);/.exec(strip);
+  assert.ok(cap && Number(cap[2]) >= 1 && Number(cap[2]) <= 1.25 && Number(cap[1]) <= 0.4, 'the Disi cap buff: near the sand, a touch paler and less saturated');
+  const contact = /float contact = smoothstep\(([\d.]+), ([\d.]+), rel/.exec(strip);
+  assert.ok(contact && Number(contact[1]) >= 0.75, 'the contact high on the massif: the pale cap only on the domes and the rim');
+  assert.ok(strip.includes('col = mix(col, fill, hiddenW * 0.95 * (1.0 - gJebelW));'), 'the fill a high camera sees never paints over a massif\'s wall');
+  assert.ok(strip.includes('float wooded = uTrees.z > 0.0 || uChar3.y >= 0.35 ? 1.0 : 0.0;'), 'a bare country\'s fill is its own ground, no woods');
 }
 // the ring hands the bake its map's own overcast (lightModelCore resolveOvercast of its sky and cloudscape), not the light
 // model the battlefield may still publish from the last map

@@ -107,8 +107,9 @@ export interface HorizonPanoramaCharacter {
   jebelFlutes: number; jebelFluteDepth: number; jebelBossM: number; jebelFootVary: number;
   /** desert varnish down the jebels' walls: the darkening of its streaks (0: none) */
   jebelVarnish: number;
-  /** the nearest a jebel's centre stands from the battlefield's (m): the near band's forms are pressed under the ring's
-   * skyline, which cut a near massif's top dead flat (gauntlet wave 50: "near-rectangular blocks with dead-flat tops") */
+  /** the nearest a jebel's near edge stands from the battlefield's centre (m). The massifs stand clear of the near band's
+   * pressing under the ring's skyline (that cut a near massif's top dead flat, gauntlet wave 50: "near-rectangular blocks
+   * with dead-flat tops"), so this keeps them past the shell, where the shell's parallax stays small */
   jebelNearM: number;
 }
 
@@ -321,7 +322,7 @@ export const HORIZON_PANORAMA_REGIONAL: Readonly<Record<HorizonPanoramaRegional,
   // walls" — now sheer massifs standing alone on a flat sand plain, maps lane A's section: bossed caps, fluted walls,
   // short talus aprons; the massifs bare rock, the aprons and the plain sand)
   jebel: { ampM: 45, foot: 0.7, macroL: 2600, sharp: 1.0, midL: 1000, gullyL: 600, gullyM: 0, warpM: 700, valley: 0.15, valleyL: 6000, snowline: 2, treeline: 0, rockSlope: 0.5, bedM: 26, strata: 0.3, tables: false, farRise: 0, layers: 0, plinth: false, ...PANO_EXTRAS,
-    jebelShare: 0.65, jebelM: 720, jebelRadiusM: 700, jebelFoot: 0.66, jebelRim: 0.86, jebelApron: 0.18, jebelFlutes: 20, jebelFluteDepth: 0.8, jebelBossM: 110, jebelFootVary: 0.14, jebelVarnish: 0.55, jebelNearM: 5000 },
+    jebelShare: 0.65, jebelM: 720, jebelRadiusM: 700, jebelFoot: 0.66, jebelRim: 0.86, jebelApron: 0.18, jebelFlutes: 20, jebelFluteDepth: 0.8, jebelBossM: 110, jebelFootVary: 0.14, jebelVarnish: 0.55, jebelNearM: 3000 },
   volcanicField: { ampM: 380, foot: 0.3, macroL: 4800, sharp: 1.0, midL: 1600, gullyL: 420, gullyM: 20, warpM: 800, valley: 0.3, valleyL: 7000, snowline: 2, treeline: 0.35, rockSlope: 0.4, bedM: 40, strata: 0.1, tables: false, farRise: 0, layers: 0.6, plinth: false, ...PANO_EXTRAS, peakShare: 0.35, peakM: 260, peakRadiusM: 800, peakSharp: 1.2 },
   iceSheet: { ampM: 110, foot: 0.5, macroL: 6000, sharp: 1.0, midL: 2200, gullyL: 600, gullyM: 6, warpM: 1000, valley: 0.2, valleyL: 8000, snowline: -0.5, treeline: 0, rockSlope: 0.35, bedM: 80, strata: 0.04, tables: false, farRise: 0, layers: 0.3, plinth: false, ...PANO_EXTRAS, peakShare: 0.2, peakM: 320, peakRadiusM: 380, peakSharp: 2.2 },
 });
@@ -492,11 +493,12 @@ float jebelField(vec2 p) {
     vec2 c = cell + vec2(float(i), float(j));
     if (hash12(c + vec2(31.7, 3.1)) < 1.0 - uJebel.x) continue;
     vec2 centre = (c + 0.2 + 0.6 * vec2(hash12(c + vec2(2.9, 7.3)), hash12(c + vec2(6.1, 1.7)))) * 2600.0;
-    if (length(centre) < uJebel3.w) continue;
     float rad = uJebel.z * (0.7 + 0.6 * hash12(c + vec2(5.3, 8.8)));
+    float el = 1.0 + 0.5 * hash12(c + vec2(0.7, 2.2));
+    // (its near edge past the limit: the massif's long axis is rad * el)
+    if (length(centre) - rad * el < uJebel3.w) continue;
     float ang = 6.2831853 * hash12(c + vec2(9.1, 4.4));
     vec2 ax = vec2(cos(ang), sin(ang)), q2 = p - centre;
-    float el = 1.0 + 0.5 * hash12(c + vec2(0.7, 2.2));
     vec2 lq = vec2(dot(q2, ax) / el, dot(q2, vec2(-ax.y, ax.x))) / rad;
     float q = length(lq);
     if (q >= 1.0) continue;
@@ -699,9 +701,11 @@ float farField(vec2 p) {
     gPeak = foot;
   }
   // sheer jebels (uJebel.x > 0): JEBEL_GLSL jebelField — the footprint inside the walls' feet is written for the strip to
-  // bare to rock, the varnish in the tree-cover channel
+  // bare to rock, the varnish in the tree-cover channel; the massifs' heights join after the near band's pressing (v3b:
+  // pressed, a massif inside 4.8 km lost its bossed top to a level line under the ring's skyline)
+  float hJebel = 0.0;
   if (uJebel.x > 0.0) {
-    h += jebelField(p);
+    hJebel = jebelField(p);
     gPeak = max(gPeak, gJebelBare);
     gVarnish = gJebelVarnish * uJebel3.z;
   }
@@ -777,6 +781,8 @@ float farField(vec2 p) {
   float nearCap = uFrame.w + r * (edge.a - 0.03);
   float nearW = 1.0 - smoothstep(3200.0, 4800.0, r);
   if (h > nearCap) h = mix(h, nearCap + (h - nearCap) * 0.15, nearW);
+  // (the jebels stand whole: their near edges keep past the shell, jebelNearM)
+  h += hJebel;
   // the first kilometre eases out of the ring's outer heights; the sea sectors sink under their level — to the horizon,
   // or on a channel coast (uShore.x > 0, per map) as far as the far shore: the mainland or the islands across the water
   // (Saltwind, gauntlet wave 4: "behind the end of the road the land collapses into a thin flat strip with a pale blue
@@ -1012,12 +1018,15 @@ vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   // Wadi Rum's sandstone (v3): the dark red-brown walls (the Umm Ishrin sandstone) under the pale domes (the Disi), the
   // contact wandering round each massif; bedded every ~17 m (each bed its own tone, the bedding planes dark); split by
   // vertical joints whose clefts hold shadow on the walls
+  // (v3b, the pair of 8248ca70b: the cap uRock x (1.85, 3, 3.6) over the upper half stood as "pale grey-white castles",
+  // the domes brighter than the sky above them. From the plain's own sand now: the walls desert-varnished, about a third
+  // of the sand's albedo and redder-brown; the Disi only on the domes and the rim, buff, a touch paler than the sand)
   if (gJebelW > 0.0) {
     float rel = gJebelRel, th = gJebelTh, salt = gJebelSalt;
     float wallW = smoothstep(0.35, 0.75, slope);
-    float contact = smoothstep(0.5, 0.64, rel + 0.08 * noised(vec2(th * 5.0, salt)).x);
-    vec3 lower = uRock * vec3(0.82, 0.74, 0.72);
-    vec3 upper = clamp(uRock * vec3(1.85, 3.0, 3.6), uRock, vec3(0.8));
+    float contact = smoothstep(0.8, 0.9, rel + 0.05 * noised(vec2(th * 5.0, salt)).x);
+    vec3 lower = uBase * vec3(0.36, 0.3, 0.38);
+    vec3 upper = mix(uBase, vec3(dot(uBase, vec3(0.2126, 0.7152, 0.0722))), 0.25) * 1.15;
     float bt = wp.y / 17.0 + 0.25 * noised(vec2(th * 3.0, wp.y / 70.0) + salt).x;
     float bi = floor(bt), bf = bt - bi;
     float bedT = 0.9 + 0.2 * hash12(vec2(bi, salt));
@@ -1138,7 +1147,10 @@ void main() {
       // the compass, under the air over its own reach — the ground just behind the ring, under a kilometre past the
       // shell, nearer than the far country above it and no hazier — so the band reads as the country between the ring
       // and the range, never paler than the range (the law's air with the battlefield's sky published, else the bake's own)
-      vec3 cover = mix(flatC, flatC * uForest / max(vec3(1e-3), uBase) * 0.95, max(0.5 + 0.4 * smoothstep(0.05, 0.45, patchN), 0.9 * uTrees.z) * (1.0 - fillSnow));
+      // (a bare country's lowland is its own ground: Redrock's sand plain under the jebels, v3b — the fog-tinted fill
+      // stood as a peach band the massifs' feet dissolved into)
+      float wooded = uTrees.z > 0.0 || uChar3.y >= 0.35 ? 1.0 : 0.0;
+      vec3 cover = mix(flatC, flatC * uForest / max(vec3(1e-3), uBase) * 0.95, max(0.5 + 0.4 * smoothstep(0.05, 0.45, patchN), 0.9 * uTrees.z) * (1.0 - fillSnow) * wooded);
       if (uHaze.w > 0.5) {
         float fillLayer = hazeLayerMean(max(uFrame.w - uHaze.z, 0.0) * uHaze.y, max(60.0 - uHaze.z, 0.0) * uHaze.y);
         vec3 TF = hazeTransmittance(uHaze.x * uAir.x, 800.0 * recede, fillLayer, uHazeChroma);
@@ -1149,7 +1161,9 @@ void main() {
     } else {
       fill = mix(fill, uFog * 1.05, 0.25 + 0.35 * recede);
     }
-    col = mix(col, fill, hiddenW * 0.95);
+    // (not over a jebel's wall: the march past the ring meets the massif's own lower wall there, not grazing ground —
+    // painted with the fill, the near massifs stood on a flat band of it from the elevated views, v3b)
+    col = mix(col, fill, hiddenW * 0.95 * (1.0 - gJebelW));
   }
   // the sea sectors: the open water is the game's own (the sea apron, 4 km out, and the sky past it) — the strip leaves
   // it open, as the round-72 far range did (painted, it stood on the shell over the real water as a pale band, a wedge from
