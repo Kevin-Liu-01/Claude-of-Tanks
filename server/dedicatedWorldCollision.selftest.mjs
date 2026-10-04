@@ -84,6 +84,78 @@ const expected = {
   moon: [474, 380, 0], // 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [475, 381, 0]
   cliffbridge: [4661, 4394, 4008], // 2026-10-03 the ground lane's land use over PR head 52616f2db (regional buildings, scenery props, skies); before it [4656, 4389, 4003]: 2026-10-03 the map-borders lane: rim trees past the playable edge stand by the border woods, outer props on its cleared ground; was [5903, 5636, 5243]
 };
+// Footprints in either winding (2026-10-03, world/collision.ts convexWinding; railyard battlePacing seed 28003 ran to
+// the 900 s cap). A captured convex part may wind clockwise, and the shell ray, the route probe and the clearance test
+// read every part as counter-clockwise: a clockwise part held no point and a shell through it passed (urban's roofs let
+// 3086 of 14716 plunging shells aimed through their clockwise strips through the whole building). Every clockwise part
+// of every shard, shell and movement alike, now answers exactly as its counter-clockwise twin, holds its centroid and
+// stops a shell aimed through it, level at its mid-height and plunging; the census counts them per map. A part whose
+// quantised points zigzag a millimetre against its own winding (not convex) fails in either winding: a separate defect,
+// counted, and it must turn against its winding somewhere.
+const windingCensus = [];
+let quantisedFailures = 0;
+const windingRay = new Vector3();
+const windingNormal = new Vector3();
+const LEVEL = new Vector3(1, 0, 0);
+const PLUNGE = new Vector3(0, -1, 0);
+function clockwiseConvexParts(records) {
+  const parts = [];
+  for (const record of records) {
+    const shape = record.shape2;
+    if (!shape) continue;
+    for (const part of shape.kind === 'compound' ? shape.parts : [shape]) {
+      if (part.kind !== 'convex') continue;
+      let area2 = 0;
+      for (let index = 0; index < part.points.length; index += 2) {
+        const next = (index + 2) % part.points.length;
+        area2 += part.points[index] * part.points[next + 1] - part.points[next] * part.points[index + 1];
+      }
+      if (area2 < 0) parts.push({ record, part });
+    }
+  }
+  return parts;
+}
+function turnsAgainstClockwise(points) {
+  for (let index = 0; index < points.length; index += 2) {
+    const next = (index + 2) % points.length, after = (index + 4) % points.length;
+    if ((points[next] - points[index]) * (points[after + 1] - points[next + 1])
+      - (points[next + 1] - points[index + 1]) * (points[after] - points[next]) > 0) return true;
+  }
+  return false;
+}
+function partAnswers(record, part, points, cx, cz) {
+  let minX = Infinity, maxX = -Infinity;
+  for (let index = 0; index < points.length; index += 2) {
+    minX = Math.min(minX, points[index]); maxX = Math.max(maxX, points[index]);
+  }
+  const y0 = part.y0 ?? record.min[1], y1 = part.y1 ?? record.max[1];
+  const alone = { min: [minX, y0, record.min[2]], max: [maxX, y1, record.max[2]], shape2: { ...part, points } };
+  const held = collisionFootprintContainsPoint(alone, cx, cz, 0);
+  windingRay.set(minX - 5, 0.5 * (y0 + y1), cz);
+  const level = y1 - y0 > 1e-6 ? rayCollisionRecord(windingRay, LEVEL, alone, maxX - minX + 10, windingNormal) : 0;
+  windingRay.set(cx, y1 + 20, cz);
+  const plunge = rayCollisionRecord(windingRay, PLUNGE, alone, 40, windingNormal);
+  return { held, level, plunge };
+}
+function assertClockwiseHeld(mapId, kind, parts) {
+  let held = 0;
+  for (const { record, part } of parts) {
+    let cx = 0, cz = 0;
+    for (let index = 0; index < part.points.length; index += 2) { cx += part.points[index]; cz += part.points[index + 1]; }
+    cx /= part.points.length / 2; cz /= part.points.length / 2;
+    const twin = [];
+    for (let index = part.points.length - 2; index >= 0; index -= 2) twin.push(part.points[index], part.points[index + 1]);
+    const answer = partAnswers(record, part, part.points, cx, cz);
+    const twinAnswer = partAnswers(record, part, twin, cx, cz);
+    assert.equal(answer.held, twinAnswer.held, `${mapId} ${kind} ${record.kind}: a clockwise part holds what its twin holds`);
+    assert.ok(Math.abs(answer.level - twinAnswer.level) < 1e-9 && Math.abs(answer.plunge - twinAnswer.plunge) < 1e-9,
+      `${mapId} ${kind} ${record.kind}: a clockwise part stops a shell where its twin does`);
+    if (answer.held && answer.level >= 0 && answer.plunge >= 0) { held++; continue; }
+    assert.ok(turnsAgainstClockwise(part.points), `${mapId} ${kind} ${record.kind}: a clockwise part that fails turns against its winding`);
+    quantisedFailures++;
+  }
+  return held;
+}
 const stats = dedicatedCollisionManifestStats();
 assert.deepEqual(Object.keys(expected), MAP_IDS, 'every registered map has a fixed census expectation');
 assert.deepEqual(Object.keys(stats), MAP_IDS, 'manifest order and map registry stay in lockstep');
@@ -94,6 +166,10 @@ for (const [mapId, counts] of Object.entries(expected)) {
   assert.deepEqual(Object.values(stats[mapId]), counts, `${mapId} manifest census`);
   const mapWorld = createDedicatedWorldCollision(mapId);
   if (mapId === 'reservoir' || mapId === 'longleaf' || mapId in coalCensus) authoredWorlds.set(mapId, mapWorld);
+  const solidShell = clockwiseConvexParts(mapWorld.getColliders()).filter(({ record }) => !record.crushable);
+  const shellHeld = assertClockwiseHeld(mapId, 'shell', solidShell);
+  const movementHeld = assertClockwiseHeld(mapId, 'movement', clockwiseConvexParts(mapWorld.getObstacles()));
+  windingCensus.push(`${mapId} ${shellHeld}/${movementHeld}`);
   const hedgehogObstacles = mapWorld.getObstacles().filter((record) => record.kind === 'hedgehog');
   const hedgehogColliders = mapWorld.getColliders().filter((record) => record.kind === 'hedgehog');
   assert.ok((getMapConfig(mapId).props.hedgehogs === 0 ? hedgehogObstacles.length === 0 : hedgehogObstacles.length >= 3) && hedgehogObstacles.length % 3 === 0,
@@ -421,4 +497,5 @@ assertWaterworks(reservoirRoundTrip);
 const longleaf = authoredWorlds.get('longleaf');
 assertLoggingYard(longleaf, roundTripFeatureWorld('longleaf', longleaf, 'truckflatbed'));
 
+console.log(`dedicatedWorldCollision.selftest: clockwise convex parts holding their centroid and stopping a shell aimed through them (solid shell/movement): ${windingCensus.join(', ')}; ${quantisedFailures} not convex (quantised points), failing in either winding`);
 console.log(`dedicatedWorldCollision.selftest: all ${MAP_IDS.length} exact map manifests passed`);
