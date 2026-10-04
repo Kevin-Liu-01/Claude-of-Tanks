@@ -3121,6 +3121,9 @@ function buildBushCards(rng: RandomSource, pal: VegetationPalette = {}): THREE.B
   return geometry;
 }
 
+/** Trees round 4: the mantle's spacing along a closed wood's outline (m; placeUnderstorey). */
+const UNDERSTOREY_MANTLE_SPACING_M = 6;
+
 // Round 77 (2026-09-26): the understorey — young growth at the forest edges. A smaller, looser shrub than the field
 // bush (ten folded sprays, 40 triangles, 120 vertices: four grounded branches, four interior clusters, two upright
 // shoots) on the bush species' atlas, a touch yellower (young leaves). Its own geometry and its own RNG, so the shrub
@@ -6563,25 +6566,52 @@ function* vegetationBuildSteps(
           if (keepRoll > (1 - smoothstepJs(1.05, 1.6, rr)) * 0.9 + 0.1) continue;
           // trees round 2: a woodlot's understorey follows its own outline (standPoint; a rim block's is its circle)
           const at = standPoint(index, stand, a, rr), x = at[0], z = at[1];
-          if (Math.max(Math.abs(x), Math.abs(z)) > bound || inAvoid(x, z)) continue;
-          // the map-borders lane: past the playable edge a block's undergrowth keeps to the border's woods
-          if (borderWoodsAt && Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M && borderWoodsAt(x, z) < 0.5) continue;
-          if (heightField._roadDist(x, z) < 6 || admission()._roadDist(x, z) < 6) continue;
-          if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) continue;
-          if (admission().getNormalAt(x, z).y < 0.78 || heightField.getNormalAt(x, z).y < 0.78) continue;
-          if (!isClearOfSpawns(x, z, protectedSpawns, 20)) continue;
-          if (x > v.x0 - 12 && x < v.x1 + 12 && z > v.z0 - 12 && z < v.z1 + 12) continue;
-          if (overlapsStructureClearance(structureClearances, x, z, 1.4 * sc)) continue;
-          const y = heightField.getHeightAt(x, z);
-          _q.setFromAxisAngle(_up, yaw);
-          _m4.compose(_pv.set(x, y - 0.04, z), _q, _sv.set(sc, sc * hy, sc));
-          understoreyPlacements.push(_m4.clone());
-          const bj = 0.55 + tj * 0.32;
-          understoreyTints.push(new THREE.Color(bj * (0.96 + tr * 0.14), bj * (1.0 + tg * 0.14), bj * (0.86 + tb * 0.14)));
+          if (!admitted(x, z, sc, bound)) continue;
+          seat(x, z, sc, hy, yaw, tj, tr, tg, tb);
         }
+      };
+      /** The bush admission (roads, soft ground, water, slopes, spawns, the village, structures) inside the bound. */
+      const admitted = (x: number, z: number, sc: number, bound: number): boolean => {
+        if (Math.max(Math.abs(x), Math.abs(z)) > bound || inAvoid(x, z)) return false;
+        // the map-borders lane: past the playable edge a block's undergrowth keeps to the border's woods
+        if (borderWoodsAt && Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M && borderWoodsAt(x, z) < 0.5) return false;
+        if (heightField._roadDist(x, z) < 6 || admission()._roadDist(x, z) < 6) return false;
+        if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
+        if (admission().getNormalAt(x, z).y < 0.78 || heightField.getNormalAt(x, z).y < 0.78) return false;
+        if (!isClearOfSpawns(x, z, protectedSpawns, 20)) return false;
+        if (x > v.x0 - 12 && x < v.x1 + 12 && z > v.z0 - 12 && z < v.z1 + 12) return false;
+        return !overlapsStructureClearance(structureClearances, x, z, 1.4 * sc);
+      };
+      const seat = (x: number, z: number, sc: number, hy: number, yaw: number, tj: number, tr: number, tg: number, tb: number): void => {
+        const y = heightField.getHeightAt(x, z);
+        _q.setFromAxisAngle(_up, yaw);
+        _m4.compose(_pv.set(x, y - 0.04, z), _q, _sv.set(sc, sc * hy, sc));
+        understoreyPlacements.push(_m4.clone());
+        const bj = 0.55 + tj * 0.32;
+        understoreyTints.push(new THREE.Color(bj * (0.96 + tr * 0.14), bj * (1.0 + tg * 0.14), bj * (0.86 + tb * 0.14)));
       };
       clusters.forEach((c, index) => plant(c, 1, 470, index));
       for (const b of rimBlocks) plant(b, RIM_UNDERSTOREY_SCALE, RIM_UNDERSTOREY_BOUND_M);
+      // trees round 4 (2026-10-04, the gauntlet's wave 46 on Frontier's wood edge: "one tree model cloned at the same
+      // height, form and spacing in a straight row, with no shrub mantle"): a closed wood's edge wears a mantle — taller
+      // young growth (1.5 to 2.7 m), a few metres apart along its outline, gaps left — on its own stream (every other
+      // placement keeps its draws). Dressing like the understorey: it conceals and stops nothing (the wood's own
+      // discs conceal); an open grove's place (treeBiomeOpen) keeps its open ground
+      if (!treeBiomeOpen(cfg?.id)) {
+        const mantleRng = mulberry32((seed ^ 0x3a17) >>> 0);
+        clusters.forEach((stand, index) => {
+          const n = Math.round((stand.r * Math.PI * 2) / UNDERSTOREY_MANTLE_SPACING_M);
+          for (let i = 0; i < n; i++) {
+            const a = ((i + mantleRng() * 0.8) / n) * Math.PI * 2, rr = 0.9 + mantleRng() * 0.2;
+            const sc = 1.5 + mantleRng() * 1.2, yaw = mantleRng() * Math.PI * 2, hy = 0.95 + mantleRng() * 0.35;
+            const tj = mantleRng(), tr = mantleRng(), tg = mantleRng(), tb = mantleRng();
+            if (mantleRng() < 0.25) continue; // the mantle's gaps
+            const at = standPoint(index, stand, a, rr), x = at[0], z = at[1];
+            if (!admitted(x, z, sc, 470)) continue;
+            seat(x, z, sc, hy, yaw, tj, tr, tg, tb);
+          }
+        });
+      }
     }
     function createUnderstoreyMesh(): void {
       const n = understoreyPlacements.length;

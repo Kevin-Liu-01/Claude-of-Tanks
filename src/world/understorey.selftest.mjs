@@ -115,7 +115,11 @@ function produce(id, extra = {}) {
     // (world._standOutline), a rim block's against its circle
     const annulus = (discs, x, z, outline = null) => discs.map((c, i) => (outline ? outline(i, x, z) : Math.hypot(x - c.x, z - c.z) / c.r))
       .filter(r => r >= 0.82 - 1e-4 && r <= 1.6 + 1e-4).sort((a, b) => a - b)[0];
-    let minR = Infinity, maxR = 0, standCount = 0, rimCount = 0;
+    // trees round 4 (2026-10-04): and a closed wood's mantle — taller young growth (scale 1.5–2.7) close along a stand's
+    // outline (0.9–1.1 of it), on the stands' bound
+    const ring = (discs, x, z, outline, lo, hi) => discs.map((c, i) => (outline ? outline(i, x, z) : Math.hypot(x - c.x, z - c.z) / c.r))
+      .filter(r => r >= lo - 1e-4 && r <= hi + 1e-4).sort((a, b) => a - b)[0];
+    let minR = Infinity, maxR = 0, standCount = 0, rimCount = 0, mantleCount = 0;
     for (let i = 0; i < mesh.count; i++) {
       mesh.getMatrixAt(i, matrix); const e = matrix.elements;
       const x = e[12], z = e[14], sc = Math.hypot(e[0], e[2]);
@@ -126,9 +130,11 @@ function produce(id, extra = {}) {
       const standNear = annulus(clusters, x, z, world._standOutline), rimNear = annulus(rimBlocks, x, z);
       const standOk = standNear !== undefined && sc >= 0.85 - 1e-4 && sc <= 1.6 + 1e-4 && bound <= 470 + 1e-6;
       const rimOk = rimNear !== undefined && sc >= 0.85 * 1.4 - 1e-4 && sc <= 1.6 * 1.4 + 1e-4 && bound <= 506 + 1e-6;
-      assert.ok(standOk || rimOk, `${id}: a stand's or a rim block's shrub (${x}, ${z}, scale ${sc}, bound ${bound})`); // float32 instance matrices
-      const near = standOk ? standNear : rimNear;
-      if (standOk) standCount++; else rimCount++;
+      const mantleNear = ring(clusters, x, z, world._standOutline, 0.9, 1.1);
+      const mantleOk = mantleNear !== undefined && sc >= 1.5 - 1e-4 && sc <= 2.7 + 1e-4 && bound <= 470 + 1e-6;
+      assert.ok(standOk || rimOk || mantleOk, `${id}: a stand's, a rim block's or a mantle's shrub (${x}, ${z}, scale ${sc}, bound ${bound})`); // float32 instance matrices
+      const near = standOk ? standNear : rimOk ? rimNear : mantleNear;
+      if (standOk) standCount++; else if (rimOk) rimCount++; else mantleCount++;
       minR = Math.min(minR, near); maxR = Math.max(maxR, near);
       assert.ok(field._roadDist(x, z) >= 6, `${id}: off the roads`);
       assert.notEqual(field.getGroundType(x, z), 'soft', `${id}: off soft ground`);
@@ -140,7 +146,7 @@ function produce(id, extra = {}) {
       assert.ok(!world.treeObstacles.some(o => Math.abs((o.min[0] + o.max[0]) / 2 - x) < 1e-3 && Math.abs((o.min[2] + o.max[2]) / 2 - z) < 1e-3), `${id}: no trunk record`);
     }
     if (rimBlocks.length > 0) assert.ok(rimCount > 0, `${id}: the rim blocks carry an understorey (${rimBlocks.length} blocks)`);
-    return { id, tier, instances: mesh.count, stand: standCount, rim: rimCount, clusters: clusters.length, rimBlocks: rimBlocks.length,
+    return { id, tier, instances: mesh.count, stand: standCount, rim: rimCount, mantle: mantleCount, clusters: clusters.length, rimBlocks: rimBlocks.length,
       shape, annulus: [+minR.toFixed(3), +maxR.toFixed(3)],
       bushes: bushes.reduce((n, m) => n + m.count, 0), concealers: world.concealers.length, trunks: world.treeObstacles.length };
   } finally { world.dispose(); disposeObject3DResources(world.group); }
@@ -156,6 +162,8 @@ try {
   assert.ok(verdant.stand >= 200 && verdant.stand <= 2000, `Verdant's stands plant hundreds, not thousands (${verdant.stand})`);
   assert.ok(verdant.rim >= 100 && verdant.rim <= 2500, `Verdant's rim blocks plant hundreds (${verdant.rim})`); // round 77b
   assert.ok(verdant.annulus[0] < 0.95 && verdant.annulus[1] > 1.3, 'the annulus is used from the edge outward');
+  // trees round 4 (the gauntlet's wave 46: Frontier's wood edge "with no shrub mantle"): Verdant's closed woods wear one
+  assert.ok(verdant.mantle >= 500, `Verdant's woods wear a mantle (${verdant.mantle})`);
   const repeat = produce('verdant');
   assert.deepEqual(repeat, verdant, 'deterministic');
   // legacyTrees: the round-77 cards, the same placements
