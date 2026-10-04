@@ -56,6 +56,56 @@ function waterHeightSampler(
  * sea is toward the horizon. The mid field gains 5–10 L*, the water under the camera about one.
  */
 const WATER_ENV_GRAZING = 3.5;
+/**
+ * 2026-10-04 (the gauntlet's wave 59 on the sea: "a uniform saturated navy sheet that stays the same deep colour right up
+ * to a hard sand edge, with no shallow-water shelf", "one fine, uniform ripple pattern with no swell or wave-group
+ * structure"): a coast's shelf and swell, QA knobs read per frame. The shelf: the metres from the shore (a distance field
+ * of the mask's visible edge, below) stand in for the depth the gameplay bed does not carry — the water takes the
+ * turquoise of a sand bed in its first tens of metres and the deep blue past them, and stays clear over the shelf
+ * (SEA_SHELF_*). The swell: three long-crested trains a few tens of metres long, a little apart in length and heading,
+ * beat into wave groups under the FFT chop (SEA_SWELL_*), and the tiled ripple steps back where the FFT ocean runs
+ * (SEA_CLASSIC_NORMAL). A coast with an FFT ocean only; lakes, rivers and marshes keep their own.
+ */
+const SEA_SHELF = Object.freeze({ colourM: 45, alphaM: 15, shallowAlpha: 0.35 });
+const SEA_TINT = Object.freeze({ turquoise: 0.6, deepBlue: 0.5, deepDarken: 0.7 });
+const SEA_SWELL = Object.freeze({ slope: 0.05, lengthM: 55, classicNormal: 0.6 });
+/** Metres from the shore inside the water — the mask's visible edge, chamfered on a grid of at most 512² — R8, one metre a unit. */
+export function shoreDistanceTexture(mask: THREE.Texture, size: number, wetFrom: number): THREE.DataTexture | null {
+  const img = mask.image as { data?: ArrayLike<number> | null; width?: number; height?: number } | undefined;
+  const W = img?.width ?? 0, H = img?.height ?? 0, src = img?.data;
+  if (!src || !W || !H || src.length < W * H * 4) return null;
+  const N = Math.min(512, W, H), cell = size / N, INF = 1e9, d = new Float32Array(N * N);
+  for (let j = 0; j < N; j++) {
+    const sj = Math.min(H - 1, Math.floor((j + 0.5) * H / N));
+    for (let i = 0; i < N; i++) {
+      const si = Math.min(W - 1, Math.floor((i + 0.5) * W / N));
+      d[j * N + i] = src[(sj * W + si) * 4 + 2] / 255 < wetFrom ? 0 : INF;
+    }
+  }
+  const D = Math.SQRT2;
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const k = j * N + i; let v = d[k];
+    if (v === 0) continue;
+    if (i > 0) v = Math.min(v, d[k - 1] + 1);
+    if (j > 0) { v = Math.min(v, d[k - N] + 1); if (i > 0) v = Math.min(v, d[k - N - 1] + D); if (i < N - 1) v = Math.min(v, d[k - N + 1] + D); }
+    d[k] = v;
+  }
+  for (let j = N - 1; j >= 0; j--) for (let i = N - 1; i >= 0; i--) {
+    const k = j * N + i; let v = d[k];
+    if (v === 0) continue;
+    if (i < N - 1) v = Math.min(v, d[k + 1] + 1);
+    if (j < N - 1) { v = Math.min(v, d[k + N] + 1); if (i < N - 1) v = Math.min(v, d[k + N + 1] + D); if (i > 0) v = Math.min(v, d[k + N - 1] + D); }
+    d[k] = v;
+  }
+  const out = new Uint8Array(N * N);
+  for (let k = 0; k < N * N; k++) out[k] = Math.min(255, Math.round(d[k] >= INF ? 255 : d[k] * cell));
+  const tex = new THREE.DataTexture(out, N, N, THREE.RedFormat, THREE.UnsignedByteType);
+  tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.name = 'shallow-water-shore-distance';
+  tex.needsUpdate = true;
+  return tex;
+}
 
 export function* shallowWaterGeometrySteps(
   field: Pick<HeightField, 'size' | 'getHeightAt' | 'getWaterMaskAt' | 'getWaterDepthAt'>,
@@ -216,6 +266,12 @@ export function createShallowWaterSurface(
   // 2026-10-04 (the sea's far band, QA knobs; today's values by default): the sky's reflection at normal / grazing
   // incidence and the specular cap, read per frame through the light model's QA hook
   const waterQa = { value: new THREE.Vector4(0.45, WATER_ENV_GRAZING, 1.15, 0.35) };
+  // 2026-10-04 (the sea's shelf and swell): a coast with an FFT ocean and a readable mask only
+  const shoreDist = profile.kind === 'coast' && ocean ? shoreDistanceTexture(mask, size, ramp[0] + 0.02) : null;
+  const seaShelf = { value: new THREE.Vector4(shoreDist ? 1 : 0, SEA_SHELF.colourM, SEA_SHELF.alphaM, SEA_SHELF.shallowAlpha) };
+  const seaTint = { value: new THREE.Vector4(SEA_TINT.turquoise, SEA_TINT.deepBlue, SEA_TINT.deepDarken, 0) };
+  const swellDirRad = (ocean?.state.swellDirDeg ?? 0) * Math.PI / 180;
+  const swell = { value: new THREE.Vector4(ocean ? SEA_SWELL.slope : 0, SEA_SWELL.lengthM, swellDirRad, ocean ? SEA_SWELL.classicNormal : 1) };
   // Water pass 7: vehicle wakes. Slot A is (x, z, dirX, dirZ) in the map's tank frame,
   // slot B is (speed 0..1, strength 0..1, half length m, half width m).
   const wakeA = Array.from({ length: WATER_DISTURBANCE_CAP }, () => new THREE.Vector4(0, 0, 0, 1));
@@ -271,6 +327,7 @@ export function createShallowWaterSurface(
       uOceanLook: { value: new THREE.Vector4(ocean?.state.foam ?? 0, ocean?.state.breakers ?? 0, ocean?.state.caustics ?? 0, ocean?.hs ?? 0) },
       uOceanDepth: { value: profile.depthM },
       uWaterQa: waterQa,
+      uShoreDist: { value: shoreDist }, uSeaShelf: seaShelf, uSeaTint: seaTint, uSwell: swell,
     });
     material.userData.waterShader = shader;
     shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
@@ -362,6 +419,11 @@ export function createShallowWaterSurface(
       uniform float uOceanDepth;      // the map's wading depth (m): getWaterDepthAt's bed law, evaluated here from the mask
       uniform vec4 uWaterQa;          // 2026-10-04 (QA: WATER_ENV_NORMAL / _GRAZING, WATER_SPEC_CAP, WATER_BODY_GRAZE): the sky's reflection at normal and grazing incidence, the specular cap, the body's darkening at grazing
       float oceanBed;                 // the bed under this fragment (m below the surface) by that law
+      uniform sampler2D uShoreDist;   // 2026-10-04: metres from the shore (R8, one metre a unit; the coast with an FFT ocean)
+      uniform vec4 uSeaShelf;         // (on, the colour's shelf m, the clarity's shelf m, the alpha at the shore)
+      uniform vec4 uSeaTint;          // (the shelf's turquoise share, the deep blue's share, the deep body's darkening)
+      uniform vec4 uSwell;            // (the swell's slope, its length m, its heading rad, the tiled ripple's scale on an FFT sea)
+      float seaShoreM;
       float oceanDebug;
     `);
     shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
@@ -396,18 +458,27 @@ export function createShallowWaterSurface(
       waterGrazing = grazing;
       waterDeep = smoothstep(0.18, 0.86, wet);
       waterBank = smoothstep(0.015, 0.20, wet) * (1.0 - smoothstep(0.32, 0.74, wet));
+      // 2026-10-04 (the sea's shelf): the metres from the shore stand in for the depth — the body's share of the colour
+      // rises over the shelf, not over the mask's few-metre ramp (which painted the bay deep right up to the sand)
+      seaShoreM = uSeaShelf.x > 0.0 ? texture2D(uShoreDist, waterUvC).r * 255.0 + pastEdgeM : 0.0;
+      waterDeep = mix(waterDeep, 1.0 - exp(-seaShoreM / uSeaShelf.y), uSeaShelf.x);
       // Water 2026-09-12: the bed shows through the shallows — the deep colour
       // rises out of a sunlit bank tint instead of one flat sheet.
       // Water pass 5 (2026-09-13): the bank colour reaches further into the body
       // (0.05..0.75 -> 0.02..0.90) so a lake is not one saturated sheet 20 m out.
-      diffuseColor.rgb = mix(uWaterShallow, diffuseColor.rgb, smoothstep(0.02, 0.90, waterDeep));
+      // (2026-10-04: on the shelf a sand bed's turquoise, past it the deep blue — SEA_TINT)
+      vec3 seaShallowCol = mix(uWaterShallow, vec3(0.028, 0.45, 0.42), uSeaTint.x * uSeaShelf.x);
+      vec3 seaDeepCol = mix(diffuseColor.rgb, vec3(0.006, 0.065, 0.195), uSeaTint.y * uSeaShelf.x);
+      diffuseColor.rgb = mix(seaShallowCol, seaDeepCol, smoothstep(0.02, 0.90, waterDeep));
       // Water pass 4 (2026-09-13, owner: "significantly better, more varied,
       // more like real life"): the deep body darkens harder and the surface
       // leans on what the SKY does — mirror-like at grazing angles, bed and
       // body colour when looked into — instead of one saturated sheet.
-      diffuseColor.rgb *= mix(0.90, 0.58, waterDeep);
+      diffuseColor.rgb *= mix(0.90, mix(0.58, uSeaTint.z, uSeaShelf.x), waterDeep);
       diffuseColor.rgb *= 1.0 - uWaterQa.w * grazing;
-      diffuseColor.a = smoothstep(0.0, 0.55, wet) * mix(mix(opacity, 0.86, grazing), 1.0, smoothstep(900.0, 1600.0, pastEdgeM));
+      // (2026-10-04: clear over the shelf — the bed shows through its first metres — opaque past it)
+      float seaOpacity = mix(opacity, mix(uSeaShelf.w, opacity, 1.0 - exp(-seaShoreM / uSeaShelf.z)), uSeaShelf.x);
+      diffuseColor.a = smoothstep(0.0, 0.55, wet) * mix(mix(seaOpacity, 0.86, grazing), 1.0, smoothstep(900.0, 1600.0, pastEdgeM));
       // Blend the last ocean cells into their continuous ground receiver. The
       // finite carrier must never reveal its stair-stepped outer grid edge.
       if (uOutlandOpeningCount > 0.5) diffuseColor.a *= 1.0 - smoothstep(${SEA_APRON_OUTER_RADIUS_M - 192}.0, ${SEA_APRON_OUTER_RADIUS_M}.0, length(vWaterWorld.xz));
@@ -425,6 +496,24 @@ export function createShallowWaterSurface(
       // into sun sparkle instead of a printed texture.
       vec4 waveFine = texture2D(uWaterWave, waveUV * 2.7 + drift * 1.9 + vec2(0.37, 0.11));
       wave += (waveFine.xy * 2.0 - 1.0) * 0.35;
+      // 2026-10-04 (the sea's swell): where the FFT ocean runs the tiled ripple steps back (SEA_CLASSIC_NORMAL), and three
+      // long-crested trains a little apart in length and heading beat into wave groups (SEA_SWELL_*); each fades where the
+      // pixel can no longer hold it, and over the bank band like the FFT's own swell
+      wave *= uOceanGrid.w > 0.5 ? uSwell.w : 1.0;
+      vec2 swellN = vec2(0.0);
+      if (uSwell.x > 0.0) {
+        float swellFoot = length(fwidth(vWaterWorld.xz));
+        for (int si = 0; si < 3; si++) {
+          float lam = uSwell.y * (si == 0 ? 1.0 : si == 1 ? 0.87 : 1.17);
+          float hdg = uSwell.z + (si == 0 ? 0.0 : si == 1 ? 0.14 : -0.10);
+          float share = si == 0 ? 0.45 : si == 1 ? 0.33 : 0.22;
+          float kS = 6.2831853 / lam;
+          vec2 dS = vec2(cos(hdg), sin(hdg));
+          float ph = kS * dot(dS, vWaterWorld.xz) - sqrt(9.81 * kS) * uWaterTime + float(si) * 2.1;
+          swellN += dS * (cos(ph) * share * uSwell.x * (1.0 - smoothstep(lam * 0.12, lam * 0.35, swellFoot)));
+        }
+        swellN *= smoothstep(0.06, 0.55, wet);
+      }
       // Water pass 6 (2026-09-14, owner: "more interactive") pushed concentric rings out
       // of every vehicle. Water pass 7 (2026-09-20, owner: "right now it's just a bunch of
       // radiating circles that follow you"): each vehicle is a hull footprint with a
@@ -566,8 +655,8 @@ export function createShallowWaterSurface(
         wakeFoam += wash * (0.16 + 0.6 * smoothstep(0.35, 0.8, waveFine.x * 0.6 + waveNear.y * 0.4));
       }
       // the simulated surface tilts the normal by its real slope (×1.6: a 5 cm ripple still reads at 20 m)
-      normal = normalize((viewMatrix * vec4(normalize(vec3(wave.x * uWaterWaveStrength - rippleGrad.x * 1.6 - oceanN.x, 1.0,
-        wave.y * uWaterWaveStrength - rippleGrad.y * 1.6 - oceanN.y)), 0.0)).xyz);
+      normal = normalize((viewMatrix * vec4(normalize(vec3(wave.x * uWaterWaveStrength - rippleGrad.x * 1.6 - oceanN.x - swellN.x, 1.0,
+        wave.y * uWaterWaveStrength - rippleGrad.y * 1.6 - oceanN.y - swellN.y)), 0.0)).xyz);
       normal *= faceDirection;
       // Surface colour breakup reuses the same two wave fetches: moving
       // two-scale value variation, a shore tint band and sparse crests.
@@ -656,13 +745,14 @@ export function createShallowWaterSurface(
         if (uWaterDebug > 4.5) oceanDebug = clamp(0.5 + causticFocus * 0.4, 0.0, 1.0);
       }
       #endif
+      if (uWaterDebug > 5.5) oceanDebug = clamp(seaShoreM / 120.0, 0.0, 1.0); // 2026-10-04 QA: the metres from the shore
       if (uWaterDebug > 0.5) { outgoingLight = uWaterDebug > 1.5 ? vec3(oceanDebug) : vec3(waterTurbidity); diffuseColor.a = 1.0; }
       #include <opaque_fragment>`);
     if (outlandWater?.openings?.length) shader.fragmentShader = fadeDistantCoastShadows(shader.fragmentShader, 'vWaterWorld');
   };
   if (setup) setup(material, hook);
   else material.onBeforeCompile = hook;
-  material.customProgramCacheKey = () => `shallow-water-v21-${outlandWater?.openings?.length ? 'coast' : 'land'}`;
+  material.customProgramCacheKey = () => `shallow-water-v22-${outlandWater?.openings?.length ? 'coast' : 'land'}`;
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `shallow_water_${mapId}`;
   mesh.userData.ocean = ocean; // round 66: probes read the field's maps and spectrum through the sheet
@@ -677,6 +767,12 @@ export function createShallowWaterSurface(
     update(dt, anchorX, anchorZ) {
       waterQa.value.set(lightTune('WATER_ENV_NORMAL', 0.45), lightTune('WATER_ENV_GRAZING', WATER_ENV_GRAZING), lightTune('WATER_SPEC_CAP', 1.15),
         lightTune('WATER_BODY_GRAZE', 0.35));
+      seaShelf.value.set(shoreDist ? lightTune('SEA_SHELF', 1) : 0, lightTune('SEA_SHELF_COLOUR_M', SEA_SHELF.colourM),
+        lightTune('SEA_SHELF_ALPHA_M', SEA_SHELF.alphaM), lightTune('SEA_SHALLOW_ALPHA', SEA_SHELF.shallowAlpha));
+      seaTint.value.set(lightTune('SEA_TURQUOISE', SEA_TINT.turquoise), lightTune('SEA_DEEP_BLUE', SEA_TINT.deepBlue),
+        lightTune('SEA_DEEP_DARKEN', SEA_TINT.deepDarken), 0);
+      swell.value.set(ocean ? lightTune('SEA_SWELL_SLOPE', SEA_SWELL.slope) : 0, lightTune('SEA_SWELL_M', SEA_SWELL.lengthM), swellDirRad,
+        ocean ? lightTune('SEA_CLASSIC_NORMAL', SEA_SWELL.classicNormal) : 1);
       if (!(Number.isFinite(dt) && dt > 0)) return;
       clock.value += Math.min(dt, 0.1);
       ocean?.update(dt); // round 66: the transform runs inside the world update, before lighting and post
