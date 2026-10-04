@@ -307,6 +307,16 @@ forty profile-pack clones still re-hook by hand (`rehook`, `'veh-ambient-floor-v
 The field camouflages (`catalogCamoPainter.ts` paintField) are thresholded on a 192-texel raster; above that size
 `paintFieldEdges` draws their boundaries at the tile's own resolution (one anti-aliased texel). Never scale the
 hard stencil up with smoothing again: that was the "soft, blurry camo blobs" (`camoFieldEdges.selftest.mjs`).
+Weathering as a shader film was tried for three rounds and shelved (2026-10-04, gauntlet waves 55, 63 and 67, all
+flat). Round 1 was dust low on the hull, tinted by the map's soil, with grime in cavities, edge wear and snow on
+up-facing faces. Round 2 added a gradient and recesses on the running gear. Round 3 added grain, piles on ledges and
+running-gear tops, wet-map mud and packed snow with bump relief. What the rounds showed:
+- At garage and chase distances a film over the paint reads as a pale wash, not as built-up material ("in no frame
+  do dust, mud or snow build up where they would on a working vehicle").
+- Noise breakup on the tyres reads as a printed pattern.
+
+The work stays unmerged on `visual/vehicle-look` (cced16404). Built-up dirt needs real form (thickness, silhouette,
+occlusion) before another shader round; don't restart from the film. Ruts and a waterline remain a design note.
 The shared checkout often contains active tank-generation WIP. Never stage
 builders, profiles, icons, GLBs, or generated geometry ledgers by directory.
 Chassis closure (FSP-05, 2026-09-25): a mirrored `for s of [-1, 1]` slab, a
