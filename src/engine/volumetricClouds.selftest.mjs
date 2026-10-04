@@ -4,7 +4,8 @@
 // layer (cloudPresets.ts over its authored sky block) is pinned as the identity table of the round, with the
 // shadow policy (cumulus regimes under a day sun only); the 4 × 4 Bayer slot cycle covers every cell once; the
 // trace shader's haze law mirrors the aerial pass's constants in post.ts; the hook in post.ts, the `?clouds=off`
-// gate in sky.ts and the cascade attach in main.ts are present exactly once.
+// gate in sky.ts are present exactly once; the clouds' shadows reach the lit materials by the one shade map
+// (2026-10-03: the cascade gobos are gone — cloudShadeMap.selftest.mjs pins the path).
 // Round 71 (2026-09-25): the cloudscape pass — the multi-scale weather (a vigour channel), the street / anvil /
 // cirrus companion field in the wind frame, the curl volume and the blue-noise tile; every map's `clouds` block
 // resolves through its regime row (cloudscapes.ts) into the pinned 31-map cloudscape table; the layer is the default from round 71c (owner approval on the review sheet).
@@ -18,8 +19,12 @@ import {
 } from './cloudNoise.ts';
 import { CLOUD_LAYER_RULES, cloudLayerKey, deriveCloudLayerPreset, loadCloudscapeLayers } from './cloudPresets.ts';
 import { CLOUDSCAPE_REGIMES, CLOUDSCAPE_REGIME_NAMES, isCloudscapeRegime } from './cloudscapes.ts';
+import { CLOUD_CONTRAILS_ON } from './cloudscapeLayer.ts';
+import { CLOUD_CONTRAIL_MAX } from './cloudWeatherLayers.ts';
+// the count a map authors (what the layer derives with the contrail switch on)
+const authoredContrails = (id) => Math.round(Math.min(1, Math.max(0, getMapConfig(id)?.clouds?.contrails ?? 0)) * CLOUD_CONTRAIL_MAX);
 import {
-  VolumetricCloudLayer, cloudCameraCut, bindCloudShadowCascade, cloudShadowCellOrigin, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
+  VolumetricCloudLayer, cloudCameraCut, CLOUD_AERIAL, CLOUD_BAYER_4, CLOUD_HISTORY_SCALE, CLOUD_NOISE_KINDS, CLOUD_REBUILD_SLOTS, CLOUD_SLOT_ORDER, CLOUD_STEP_SCALE_BY_PRESET, CLOUD_TRACE_DIVISOR, CLOUD_LOW_DECK_BASE_M, cloudDeckMarch,
 } from './volumetricClouds.ts';
 import { DEFAULT_SKY_PRESET } from './sky.ts';
 import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
@@ -249,7 +254,9 @@ for (const id of MAP_IDS) {
   const p = deriveCloudLayerPreset(skyOf(id));
   table[id] = { regime: p.regime, coverage: +p.coverage.toFixed(3), baseM: p.baseM, thicknessM: Math.round(p.thicknessM), shadow: p.shadow, streets: p.streets, cirrus: p.cirrus, farBand: p.farBand,
     // 2026-10-01: the weather beyond the slab (cloudWeatherLayers.ts) — contrails, rain, virga, the fog bank
-    contrails: p.contrails, rain: p.rain, virga: p.virga, fogBank: p.fogBank };
+    // (2026-10-03: contrails are off on every map — cloudscapeLayer.ts CLOUD_CONTRAILS_ON; the table keeps the authored
+    // counts, which come back with the switch)
+    contrails: CLOUD_CONTRAILS_ON ? p.contrails : (p.contrails === 0 ? authoredContrails(id) : -1), rain: p.rain, virga: p.virga, fogBank: p.fogBank };
   assert.ok(p.coverage >= 0 && p.coverage <= CLOUD_LAYER_RULES.coverageMax);
   assert.ok(p.baseM > 0 && p.thicknessM > 0 && p.density > 0);
   assert.ok(p.shadowThreshold >= 0 && p.shadowThreshold <= 1);
@@ -330,13 +337,16 @@ assert.deepEqual(table, {
   // round 76: the deck identities — winter's cells and transmitted lighting, foundry's and railyard's industrial
   // stratocumulus low under a smoggy horizon with a warm / dirty base tint, urban's altocumulus; whiteout keeps
   // round 71's ceiling exactly (the integrator rated it)
-  assert.deepEqual([winter.cells, winter.deckLight, winter.cellM, winter.ambientScale], [0.85, 1, 1100, 2], 'winter: a cellular deck lit through');
+  // (2026-10-03, the gauntlet's wave 27: kilometre-scale relief — fp14's dk3, broad cells and strong rolls, on Frosthollow
+  // and Railyard exactly as shot)
+  assert.deepEqual([winter.cells, winter.deckLight, winter.cellM, winter.ambientScale, winter.undulatus], [1, 1, 2400, 2, 0.7], 'winter: a cellular deck lit through, broad cells and rolls');
   assert.deepEqual([whiteout.cells, whiteout.deckLight, whiteout.undulatus, whiteout.interior], [0, 0, 0, 0], 'whiteout: untouched by the deck pass');
   const foundry = deriveCloudLayerPreset(skyOf('foundry'));
   assert.ok(foundry.regime === 'industrial-stratocumulus' && foundry.baseM === 850 && foundry.cells === 0.9 && foundry.deckLight === 1 && foundry.cirrus === 0, 'foundry: a low cellular industrial deck, no cirrus over it');
   assert.ok(foundry.tint[0] > foundry.tint[2] && foundry.tint[0] > 0.75, 'foundry: the smog rides on the deck\'s base as a warm-grey albedo');
   const railyard = deriveCloudLayerPreset(skyOf('railyard'));
-  assert.ok(railyard.regime === 'industrial-stratocumulus' && railyard.coverage === 0.92 && railyard.cells === 0.9 && railyard.cellM === 1300 && railyard.density === 0.16 && railyard.sunGain === 0.7 && railyard.undulatus === 0.35, 'railyard: a closed dirty deck with subdued wide cells and undulatus bands');
+  // (2026-10-03, the gauntlet's wave 27: fp14's dk3 — broad cells and strong rolls, cells 1, cellM 2400, undulatus 0.7)
+  assert.ok(railyard.regime === 'industrial-stratocumulus' && railyard.coverage === 0.92 && railyard.cells === 1 && railyard.cellM === 2400 && railyard.density === 0.16 && railyard.sunGain === 0.7 && railyard.undulatus === 0.7, 'railyard: a closed dirty deck with broad cells and strong undulatus rolls');
   assert.ok(railyard.tint.every((c) => c < foundry.tint[1]) && railyard.tint[0] - railyard.tint[2] < foundry.tint[0] - foundry.tint[2], 'railyard: a dirtier, less warm base than foundry\'s');
   const urban = deriveCloudLayerPreset(skyOf('urban'));
   assert.ok(urban.regime === 'altocumulus' && urban.cellM === 340 && urban.interior === 0.4 && urban.deckLight === 1, 'urban: an altocumulus layer of small elements');
@@ -413,7 +423,44 @@ assert.deepEqual([...CLOUD_AERIAL.cool], JSON.parse(postSource.match(/const AERI
 // datum the pass computes for the frame (the ground under the camera), and the square's ceilings a third lower
 assert.equal(CLOUD_AERIAL.layerH, postConst('AERIAL_LAYER_H'));
 assert.ok(layerSource.includes('float layer = cloudHazeLayer( dist, dir );') && layerSource.includes('* ${f(CLOUD_AERIAL.hazeDensity)} * layer;'), 'the layer factor scales both haze curves');
-assert.ok(postSource.includes('beforeSceneRender(renderer, camera, dt, sceneTarget.width, sceneTarget.height, aerial.uniforms.uHazeDatum.value)'), 'the pass hands the clouds its datum');
+assert.ok(postSource.includes('beforeSceneRender(renderer, camera, dt, sceneTarget.width, sceneTarget.height, aerial.uniforms.uHazeDatum.value, sceneTarget.depthTexture)'), 'the pass hands the clouds its datum and the scene depth');
+// ---- 2026-10-03 (the mountains lane: "seaFogBank() integrates out to 30 km regardless of scene depth"): every layer the
+// trace sums ends at the scene's surface — the previous frame's resolved depth read through the camera that drew it
+{
+  const trace = layerSource.slice(layerSource.indexOf('const TRACE_FRAGMENT'), layerSource.indexOf('const RESOLVE_FRAGMENT'));
+  for (const u of ['tSceneDepth', 'uSceneDepthOn', 'uSceneNearFar', 'uDepthRight', 'uDepthUp', 'uDepthFwd', 'uDepthTan']) {
+    assert.match(trace, new RegExp(`uniform [a-zA-Z0-9]+ ${u};`), `${u} is declared`);
+    assert.match(layerSource, new RegExp(`${u}: \\{ value: `), `${u} has a uniform object`);
+  }
+  assert.ok(trace.indexOf('float cloudSceneT( vec3 dir )') < trace.indexOf('vec4 slabRain('), 'the helper stands ahead of the layers');
+  assert.match(trace, /if \( uSceneDepthOn < 0\.5 \) return 1e9;/, 'off: no limit');
+  assert.match(trace, /if \( depth >= 0\.999999 \) return 1e9;/, 'the sky (cleared depth): no limit');
+  assert.match(trace, /float sceneT = cloudSceneT\( dir \);\s*t1 = min\( t1, sceneT \);/, 'the slab ends at the surface');
+  assert.match(trace, /float tB = min\( min\( tTop, \$\{f\(CLOUD_FOGBANK_RANGE_M\[1\]\)\} \), sceneT \);/, 'the sea fog bank ends at the surface');
+  assert.match(trace, /tEnd = min\( min\( tEnd, \$\{f\(CLOUD_RAIN_RANGE_M\[1\]\)\} \), sceneT \);/, 'the rain ends at the surface');
+  assert.match(trace, /if \( tb <= 0\.0 \|\| horiz <= fbStart \|\| tb >= sceneT \) return none;/, 'a far band behind a surface is hidden');
+  assert.match(trace, /if \( tc <= 0\.0 \|\| tc >= sceneT \) return none;/, 'the cirrus behind a surface is hidden');
+  // the JS: the previous camera's frame, off for a camera in or over the slab, until the scene has drawn, after a resize
+  assert.match(layerSource, /const depthOn = !!depthTex && this\.sceneDepthReady && this\.hasPrev && C\.pos\.y <= \(t\.uSlabLow\.value as number\);/);
+  assert.match(layerSource, /\(t\.uDepthFwd\.value as THREE\.Vector3\)\.copy\(P\.fwd\);/, 'the camera that drew the depth (the previous frame\'s)');
+  assert.ok(layerSource.indexOf('(t.uSceneNearFar.value as THREE.Vector2).copy(this.depthPlanes);') < layerSource.indexOf('this.depthPlanes.set(camera.near, camera.far);'), 'its planes, before this frame\'s replace them');
+  assert.match(layerSource, /this\.resize\(width, height\); this\.sceneDepthReady = false;/, 'a resize drops the stale depth');
+  assert.match(layerSource, /\/\/ the scene draws next with this camera: its depth is the next frame's cloudSceneT\s*this\.sceneDepthReady = true;/);
+  // the twin of the GLSL's projection and linear depth: a surface 3.8 km out along a ray 20° right of the view, seen by
+  // a camera with near 0.5 / far 4000, comes back at 3.8 km
+  const near = 0.5, far = 4000, tanX = Math.tan(Math.PI / 4) * 16 / 9, tanY = Math.tan(Math.PI / 6);
+  const dir = [Math.sin(0.35), 0.01, -Math.cos(0.35)]; const n = Math.hypot(...dir); dir.forEach((v, i) => { dir[i] = v / n; });
+  const fz = -dir[2], viewZ = -3800 * fz;
+  const depth = (far / (far - near)) * (1 + near / viewZ); // three's perspective depth (OpenGL convention), viewZ < 0
+  const uv = [0.5 + 0.5 * dir[0] / (fz * tanX), 0.5 + 0.5 * dir[1] / (fz * tanY)];
+  assert.ok(uv[0] > 0 && uv[0] < 1 && uv[1] > 0 && uv[1] < 1, 'inside the frame');
+  const back = -((near * far) / ((far - near) * depth - far)) / fz;
+  assert.ok(Math.abs(back - 3800) < 1e-6, `the linear depth round-trips (${back})`);
+  assert.match(trace, /float viewZ = \( uSceneNearFar\.x \* uSceneNearFar\.y \) \/ \( \( uSceneNearFar\.y - uSceneNearFar\.x \) \* depth - uSceneNearFar\.y \);\s*float t = -viewZ \/ fz;/, 'the same linearisation as the aerial pass');
+  // only a surface past the dome limits the layers: inside it the dome's depth test hides them, and a history traced
+  // whole behind a near ridge has nothing missing when a camera turn reveals it
+  assert.match(trace, /return t < \$\{f\(CLOUD_DOME_RADIUS_M\)\} \? 1e9 : t;/, 'a surface inside the dome: the whole sky traced');
+}
 assert.ok(CLOUD_AERIAL.extCeiling <= 0.45 && CLOUD_AERIAL.scatterCeiling <= 0.4, 'the square keeps most of a far range\'s colour');
 // round 71: the far ramp moved out so a deck stays readable at the horizon
 assert.ok(CLOUD_AERIAL.farStartM >= 5000 && CLOUD_AERIAL.farEndM >= 20000 && CLOUD_AERIAL.farScatterCeiling <= 0.85, 'the far scatter ramp keeps a far deck readable');
@@ -427,16 +474,13 @@ assert.match(skySource, /if \(requested === 'baked'\) return false;\s+return tru
 assert.match(skySource, /requested === 'off'\) return false/, 'the ?clouds=off fallback keeps the baked decks');
 assert.match(skySource, /scene\.userData\.volumetricClouds = volumetricClouds;/);
 assert.match(skySource, /CLOUD_NOISE_KINDS\.every\(\(kind\) => cloudNoiseUpload\[kind\]\)/, 'the worker handshake waits for every kind');
-assert.match(mainSource, /sky\.attachShadowCascades\(lighting\.csm\);/, 'the cascades carry the cloud shadows');
+// 2026-10-03: no cascade gobos — the dithered shade under the PCF taps was the gauntlet's stipple, arcs and weave
+assert.ok(!mainSource.includes('attachShadowCascades') && !skySource.includes('attachShadowCascades'), 'nothing attaches the cascades to the clouds');
 assert.match(mainSource, /cloudscape: config\.clouds/, 'the map\'s clouds block rides with its sky block into the rig');
 assert.ok(layerSource.includes('${ATMOSPHERE_SKY_GLSL}') && layerSource.includes('atmoSkyVisible( skyDir )'), 'the trace hazes toward the sky-view LUT');
-assert.ok(layerSource.includes('markShadowOnly(gobo)'), 'the gobos live on the shadow-only layer');
-assert.ok(layerSource.includes('gobo.customDepthMaterial = this.goboMaterial'), 'the gobos discard by the same two weather fields the trace reads');
-// round 78 (the performance lane): each gobo renders into its own cascade only — three rasterised every plane into
-// every cascade's map (sixteen field-shader draws for four planes on the cumulus maps); the mask is forgotten on detach
-assert.ok(layerSource.includes('setShadowCasterCascades(gobo, 1 << i);'), 'gobo i casts into cascade i only (renderLayers.setShadowCasterCascades)');
-assert.equal(layerSource.match(/setShadowCasterCascades\(gobo, null\);/g)?.length, 1, 'the detach forgets the mask');
-assert.ok(layerSource.indexOf('setShadowCasterCascades(gobo, 1 << i);') < layerSource.indexOf('this.scene.add(gobo);'), 'registered before the plane joins the scene');
+for (const gone of ['markShadowOnly', 'setShadowCasterCascades', 'customDepthMaterial', 'GOBO_FRAGMENT', 'uShadowCellOrigin', 'bindCloudShadowCascade']) {
+  assert.ok(!layerSource.includes(gone), `no shadow-map gobo left (${gone})`);
+}
 // round 78: the low-deck march law — a stratus deck under 400 m takes the cellular decks' 10 km cap and far strides
 // (whiteout's 300 m ceiling marched twenty kilometres of sheet at the centre-far view); the cellular decks are
 // unchanged, every cumuliform regime and high sheet stays on the full march
@@ -462,30 +506,8 @@ assert.match(layerSource, /uniform sampler3D tShape;[\s\S]*uniform sampler3D tDe
 for (const term of ['phaseDual( cosT, 0.8 )', 'exp( -tau * 0.25 )', 'float powder = mix( 1.0, 1.0 - exp( -sig * 60.0 ), powderK )', 'texelFetch( tBlue', 'cloudCoverageAt(', 'uAnvil', 'uShearM', 'uWispiness', 'uCirrus', 'uFarBand', 'uScud', 'halo']) {
   assert.ok(layerSource.includes(term), `the trace carries ${term}`);
 }
-assert.ok(layerSource.includes("name: 'VolumetricCloudTrace'") && layerSource.includes("name: 'VolumetricCloudResolve'") && layerSource.includes("name: 'VolumetricCloudDome'") && layerSource.includes("name: 'VolumetricCloudGobo'"));
+assert.ok(layerSource.includes("name: 'VolumetricCloudTrace'") && layerSource.includes("name: 'VolumetricCloudResolve'") && layerSource.includes("name: 'VolumetricCloudDome'") && layerSource.includes("name: 'VolumetricCloudFarShade'"));
 console.log('volumetricClouds.selftest: deterministic noise (six bakes), tiling, equalisation and street anisotropy, the 31-map cloudscape table, the regime rows, the shadow policy, the slot cycle, the haze mirror and the hooks pinned');
 
-// A translucent cloud mask is drawn once per cascade, not repeatedly through
-// the other cascades' overlapping planes. Preserve the shared caster hooks.
-{
-  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial());
-  const own=new THREE.OrthographicCamera(),other=new THREE.OrthographicCamera();
-  let before=0,after=0;
-  mesh.onBeforeShadow=()=>before++;mesh.onAfterShadow=()=>after++;
-  bindCloudShadowCascade(mesh,own,new THREE.Vector2(2048,2048));
-  for(const camera of [own,other,own]) {
-    const args=[null,mesh,null,camera,mesh.geometry,mesh.material,null];
-    mesh.onBeforeShadow(...args);
-    assert.equal(mesh.geometry.drawRange.count,camera===own?6:0);
-    mesh.onAfterShadow(...args);
-    assert.equal(mesh.geometry.drawRange.count,Infinity,'next cascade is not left with a disabled plane');
-  }
-  assert.deepEqual([before,after],[3,3]);mesh.geometry.dispose();mesh.material.dispose();
-  assert.match(layerSource,/smoothstep\( uThreshold - 0\.08, uThreshold \+ 0\.08, cloudField/,'cloud edges have a continuous opacity band');
-  assert.match(layerSource,/floor\( gl_FragCoord\.xy \) \+ uShadowCellOrigin/,'coverage follows absolute light-space cells');
-  for(const pixels of [1024,2048,4096])for(const span of [300,660,1200,2500])for(const shift of [-17,-1,0,1,17,257]) {
-    const step=span/pixels,base=cloudShadowCellOrigin(-span/2,-731,span,pixels);
-    const moved=cloudShadowCellOrigin(-span/2,-731-shift*step,span,pixels);
-    assert.equal((moved-shift+512)%256,base,'an integer cascade shift preserves every absolute dither cell');
-  }
-}
+// The shade map keeps the gobos' soft edge band (a continuous opacity over the cut, never a binary stamp).
+assert.match(layerSource,/smoothstep\( uThreshold - 0\.08, uThreshold \+ 0\.08, cloudField/,'cloud edges have a continuous opacity band');

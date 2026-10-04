@@ -102,6 +102,8 @@ export default {
   },
 
   props: {
+    // regional-buildings lane: the Prokhorovka kolkhoz kit (maps/regional/kolkhoz.ts)
+    architecture: 'kolkhoz',
     // world-dressing r1: farm-theme catalog — farmhouse (L-wing + porch),
     // raised granary, chapel and a tower windmill join the cottage/barn set
     plan: ['farmhouse', 'barn', 'tavern', 'chapel', 'cottage', 'ruin',
@@ -173,10 +175,25 @@ export default {
     },
   },
 
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the black-earth plateau's
+  // marks. A standing stone on each kurgan's crown, as the steppe's stone idols stood; an Orthodox roadside cross at the
+  // village's south and north entries; a 110 kV line across the southern fields below the swell.
+  scenery: {
+    landmarks: [
+      { kind: 'menhir', x: -75, z: -245, scale: 0.8, height: 2.6, name: 'the standing stone on the south kurgan' },
+      { kind: 'menhir', x: 95, z: 285, scale: 0.8, height: 2.6, name: 'the standing stone on the north kurgan' },
+      { kind: 'orthodoxcross', x: 14.4, z: -70, yawDeg: 180, name: 'the cross at the south village entry' },
+      { kind: 'orthodoxcross', x: 13.9, z: 150, yawDeg: 0, name: 'the cross at the north village entry' },
+    ],
+    powerLines: [{ towers: [[-440, -170], [-150, -180], [140, -190], [440, -200]], heightM: 30, name: 'the 110 kV line' }],
+  },
+
   horizon: {
     // Low pastoral watersheds and supported woodland across the slopes.
     // The user chose this newer horizon over the original mountain wall.
-    baseHex: 0x4d6540, amp: 1.0, style: 'rolling', treeline: 0.94, treelineLayers: 2,
+    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): the Prokhorovka forest-steppe
+    // rolls away to a low skyline of shelterbelts and balka woods: the ring's swells at a third, the far country plain
+    baseHex: 0x4d6540, amp: 0.35, style: 'rolling', treeline: 0.94, treelineLayers: 2, panorama: { regional: 'plain' },
     forestHex: 0x33502e, rockHex: 0x77725f, haze: 0.95, grain: 0.7,
   },
 

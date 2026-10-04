@@ -5,9 +5,26 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 // carry a tighter `shape2` footprint for the movement and shell narrow phases:
 //   { kind:'obb', cx,cz, hw,hl,yaw }
 //   { kind:'circle', cx,cz,r }
-//   { kind:'convex', cx,cz, points:[x0,z0,...] }  // CCW world points
+//   { kind:'convex', cx,cz, points:[x0,z0,...] }  // world points, either winding (convexWinding)
 
 const EPS = 1e-9;
+
+/**
+ * The winding of a convex footprint's points: 1 counter-clockwise (inside on the left of every edge), -1 clockwise.
+ * Captured footprints carry either (2026-10-03: 935 clockwise parts in 503 records over the 33 maps' shards, structure
+ * roof strips, cable spools, stooks and wire among them). The route probe, the shell ray's edge clip and the clearance
+ * test read every footprint as counter-clockwise, so a clockwise part's inside was its outside: shells and sight lines
+ * passed through it, it held no point, and the bots' route probe hit it from far off (a 4 m hut on Railyard pulled a
+ * searching T-90A 90 m off its route to the hut's corners until battlePacing's 900 s cap). The SAT push is winding-free.
+ */
+function convexWinding(points: readonly number[]): number {
+  let area2 = 0;
+  for (let index = 0; index < points.length; index += 2) {
+    const next = index + 2 < points.length ? index + 2 : 0;
+    area2 += points[index] * points[next + 1] - points[next] * points[index + 1];
+  }
+  return area2 < 0 ? -1 : 1;
+}
 
 type Bounds3 = [number, number, number];
 
@@ -38,6 +55,131 @@ export function hullPassesObstacleTop(spanBottom: number, top: number, bottom: n
   if (spanBottom > top + OVERPASS_CLEARANCE_M) return true;
   // crushable cover (sandbags, fences, light walls) is pushed and crushed as before, never mounted
   return standable && top - bottom >= HULL_STANDABLE_HEIGHT_M && spanBottom > top - HULL_STEP_UP_M;
+}
+
+/**
+ * The standing rule's span bottom for a tilted hull (physics lane, 2026-10-03): the lowest point of the hull's
+ * underside (its track-bottom plane at its pitch and roll, sampled on a 5 x 3 grid over its rect; the nose and tail
+ * rows rise by the shell's lift there, the glacis and tail plates the tracks run under) that lies over the record's
+ * footprint, or the root when none does. Only the tracks step up onto a top: when no track row lies over the part, a
+ * nose or tail row counts the step-up against itself, so it stands on the part only by clearing it (a level hull
+ * nosing into a 1.2 m boulder read its 0.7 m glacis lift as standing height and was lifted onto the rock 0.9 m in a
+ * tick). Over a deck the hull stands on, its track rows decide (an end row clearing nothing dropped a bridge deck from
+ * under a hull sunk 2 cm into it, and the bot fell 6515 hp into the gorge). The root alone said a hull pivoting off a roof edge (its belly on
+ * the edge, its root dropped below the roof behind it) was inside the building, and the solver shoved it out sideways
+ * at a metre a tick. The highest corner over the footprint (this rule's first form) let a hull tipped nose-up over the
+ * edge sink beside the wall with its belly inside the building, its raised nose still "on the roof", until a 2.9 m
+ * overlap was pushed out three metres in three ticks. A hull driving into a wall at ground level has its underside
+ * over the footprint at ground level: still a push.
+ */
+export function hullUndersideOver(record: CollisionRecord, foot: HullFootprint, rootY: number): number {
+  const { centerX, centerZ, forwardX, forwardZ, rightX, rightZ, halfLength, halfWidth } = foot;
+  // a record the rect's box does not reach has no sample over it (the root, exactly as the grid would find)
+  const reachX = Math.abs(forwardX) * halfLength + Math.abs(rightX) * halfWidth;
+  const reachZ = Math.abs(forwardZ) * halfLength + Math.abs(rightZ) * halfWidth;
+  if (centerX + reachX < record.min[0] || centerX - reachX > record.max[0]
+    || centerZ + reachZ < record.min[2] || centerZ - reachZ > record.max[2]) return rootY;
+  // the track rows decide when any lies over the record (the tracks are what stand on it); only a nose or tail row
+  // alone over it decides by clearing its top
+  const centerY = rootY + foot.centerRise;
+  let tracks = Infinity, ends = Infinity;
+  for (let i = 0; i < 5; i++) {
+    const along = (i * 0.5 - 1) * halfLength;
+    const end = i === 0 || i === 4;
+    const lift = i === 4 ? foot.frontLift - HULL_STEP_UP_M : i === 0 ? foot.rearLift - HULL_STEP_UP_M : 0;
+    for (let j = 0; j < 3; j++) {
+      const across = (j - 1) * halfWidth;
+      const x = centerX + forwardX * along + rightX * across;
+      const z = centerZ + forwardZ * along + rightZ * across;
+      if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
+      if (!footprintHolds(record, x, z)) continue;
+      const y = centerY + along * foot.riseAlong + across * foot.riseAcross + lift;
+      if (end) { if (y < ends) ends = y; } else if (y < tracks) tracks = y;
+    }
+  }
+  return tracks < Infinity ? tracks : ends < Infinity ? ends : rootY;
+}
+
+/**
+ * The hull's footprint over the ground at its attitude (physics lane, 2026-10-03): the contact rect's track plane
+ * projected onto the ground — foreshortened by the pitch and the roll, never longer or wider than the rect — and how
+ * that underside rises across it. The obstacle solver pushes this footprint and the standing rule samples it
+ * (hullUndersideOver). The flat rect at the root kept a hull standing on its tail beside a wall 3.8 m "long", so the
+ * building pushed it a metre a tick while its real footprint was clear of the wall, and its underside samples sat
+ * metres from where the hull's belly was, so the roof it hung on stopped counting as its floor.
+ */
+export interface HullFootprint {
+  /** World centre of the projected rect and its frame. */
+  centerX: number;
+  centerZ: number;
+  forwardX: number;
+  forwardZ: number;
+  rightX: number;
+  rightZ: number;
+  /** Projected half extents. */
+  halfLength: number;
+  halfWidth: number;
+  /** Underside height at the centre above the root, and its rise per horizontal metre forward and to the right. */
+  centerRise: number;
+  riseAlong: number;
+  riseAcross: number;
+  /** Nose and tail lift of the underside above the track plane (the rect's frontLiftM / rearLiftM, upright). */
+  frontLift: number;
+  rearLift: number;
+}
+
+/** The contact rect fields hullFootprint reads (sim/tankContactShape.ts tankContactRect). */
+export interface HullFootprintRect {
+  centerX: number;
+  centerZ: number;
+  halfLength: number;
+  halfWidth: number;
+  frontLiftM: number;
+  rearLiftM: number;
+}
+
+/** Below this the projection is a hull on its end or side: its footprint stops shrinking (and its slope stays finite). */
+const FOOTPRINT_MIN_COS = 0.05;
+
+/** A footprint object for one caller's reuse (allocation-free stepping). */
+export function createHullFootprint(): HullFootprint {
+  return { centerX: 0, centerZ: 0, forwardX: 0, forwardZ: 1, rightX: 1, rightZ: 0, halfLength: 0, halfWidth: 0,
+    centerRise: 0, riseAlong: 0, riseAcross: 0, frontLift: 0, rearLift: 0 };
+}
+
+/** Fill `out` with the footprint of a hull whose root stands at (x, z) with this yaw, pitch and roll. */
+export function hullFootprint(
+  rect: HullFootprintRect, x: number, z: number, yaw: number, pitch: number, roll: number, out: HullFootprint,
+): HullFootprint {
+  const forwardX = Math.sin(yaw), forwardZ = Math.cos(yaw);
+  const sinPitch = Math.sin(pitch), cosPitch = Math.cos(pitch);
+  const sinRoll = Math.sin(roll), cosRoll = Math.cos(roll);
+  const along = cosPitch >= 0 ? Math.max(cosPitch, FOOTPRINT_MIN_COS) : Math.min(cosPitch, -FOOTPRINT_MIN_COS);
+  const across = cosRoll >= 0 ? Math.max(cosRoll, FOOTPRINT_MIN_COS) : Math.min(cosRoll, -FOOTPRINT_MIN_COS);
+  const centerAlong = rect.centerZ * along, centerAcross = rect.centerX * across;
+  out.forwardX = forwardX;
+  out.forwardZ = forwardZ;
+  out.rightX = forwardZ;
+  out.rightZ = -forwardX;
+  out.centerX = x + forwardX * centerAlong + forwardZ * centerAcross;
+  out.centerZ = z + forwardZ * centerAlong - forwardX * centerAcross;
+  out.halfLength = rect.halfLength * Math.abs(along);
+  out.halfWidth = rect.halfWidth * Math.abs(across);
+  out.centerRise = rect.centerZ * sinPitch + rect.centerX * sinRoll;
+  out.riseAlong = sinPitch / along;
+  out.riseAcross = sinRoll / across;
+  out.frontLift = rect.frontLiftM * Math.abs(along);
+  out.rearLift = rect.rearLiftM * Math.abs(along);
+  return out;
+}
+
+/** Allocation-free footprint containment (the compound loop of collisionFootprintContainsPoint, margin 0). */
+function footprintHolds(record: CollisionRecord, x: number, z: number): boolean {
+  const shape = record.shape2;
+  if (!shape) return true; // the caller has tested the AABB
+  if (shape.kind !== 'compound') return simpleFootprintContainsPoint(shape, x, z, 0);
+  for (const part of shape.parts) if (simpleFootprintContainsPoint(part, x, z, 0)) return true;
+  return false;
 }
 
 export type CollisionShape = SimpleCollisionShape | {
@@ -260,12 +402,13 @@ function simpleFootprintContainsPoint(
     return Math.abs(dx * rightX + dz * rightZ) <= shape.hw + margin
       && Math.abs(dx * forwardX + dz * forwardZ) <= shape.hl + margin;
   }
+  const winding = convexWinding(shape.points);
   for (let index = 0; index < shape.points.length; index += 2) {
     const next = (index + 2) % shape.points.length;
     const edgeX = shape.points[next] - shape.points[index];
     const edgeZ = shape.points[next + 1] - shape.points[index + 1];
-    const cross = edgeX * (z - shape.points[index + 1])
-      - edgeZ * (x - shape.points[index]);
+    const cross = winding * (edgeX * (z - shape.points[index + 1])
+      - edgeZ * (x - shape.points[index]));
     if (cross < -margin * Math.hypot(edgeX, edgeZ)) return false;
   }
   return true;
@@ -356,15 +499,16 @@ function rayConvexEntry2(
   maxDistance: number,
   margin: number,
 ) {
+  const winding = convexWinding(shape.points);
   let entry = 0, exit = maxDistance;
   for (let index = 0; index < shape.points.length; index += 2) {
     const next = (index + 2) % shape.points.length;
     const edgeX = shape.points[next] - shape.points[index];
     const edgeZ = shape.points[next + 1] - shape.points[index + 1];
-    const offset = edgeX * (sourceZ - shape.points[index + 1])
-      - edgeZ * (sourceX - shape.points[index])
+    const offset = winding * (edgeX * (sourceZ - shape.points[index + 1])
+      - edgeZ * (sourceX - shape.points[index]))
       + margin * Math.hypot(edgeX, edgeZ);
-    const velocity = edgeX * directionZ - edgeZ * directionX;
+    const velocity = winding * (edgeX * directionZ - edgeZ * directionX);
     if (Math.abs(velocity) < EPS) {
       if (offset < 0) return null;
       continue;
@@ -471,11 +615,16 @@ function testAxis(
   const centerA = pos.x * nx + pos.z * nz;
   const radiusA = halfL * Math.abs(fx * nx + fz * nz) +
     halfW * Math.abs(rx * nx + rz * nz);
-  const ov = Math.min(centerA + radiusA, maxB) - Math.max(centerA - radiusA, minB);
-  if (ov <= 0) return false;
+  // the distance that separates along +n and along -n (physics lane, 2026-10-03): the overlap of the two projections is
+  // that distance only while neither holds the other — a hull inside a wide footprint read its own width, a long hull
+  // across a thin wall the wall's thickness, and the push walked it sideways through the building
+  const outPlus = maxB - (centerA - radiusA);
+  const outMinus = centerA + radiusA - minB;
+  if (outPlus <= 0 || outMinus <= 0) return false;
+  const ov = Math.min(outPlus, outMinus);
   if (ov < best.overlap) {
-    const towardHull = (pos.x - centerBX) * nx + (pos.z - centerBZ) * nz;
-    const sign = towardHull >= 0 ? 1 : -1;
+    const sign = outPlus < outMinus ? 1 : outMinus < outPlus ? -1
+      : (pos.x - centerBX) * nx + (pos.z - centerBZ) * nz >= 0 ? 1 : -1;
     best.overlap = ov; best.nx = nx * sign; best.nz = nz * sign;
   }
   return true;
@@ -949,11 +1098,13 @@ function clipConvexEdge(
   points: number[],
   index: number,
   interval: RayInterval,
+  winding: number,
 ): boolean {
   const next = (index + 2) % points.length;
   const edgeX = points[next] - points[index];
   const edgeZ = points[next + 1] - points[index + 1];
-  const inverseLength = 1 / (Math.hypot(edgeX, edgeZ) || 1);
+  // the inward normal is the edge's left for a counter-clockwise footprint, its right for a clockwise one
+  const inverseLength = winding / (Math.hypot(edgeX, edgeZ) || 1);
   const inwardX = -edgeZ * inverseLength;
   const inwardZ = edgeX * inverseLength;
   const originSide = (origin.x - points[index]) * inwardX
@@ -982,8 +1133,9 @@ function rayConvex(
 ): number {
   const interval = initializeExtrudedInterval(origin, dir, rec, maxDist, true);
   if (!interval) return -1;
+  const winding = convexWinding(shape.points);
   for (let index = 0; index < shape.points.length; index += 2) {
-    if (!clipConvexEdge(origin, dir, shape.points, index, interval)) return -1;
+    if (!clipConvexEdge(origin, dir, shape.points, index, interval, winding)) return -1;
   }
   if (interval.t1 < 0 || interval.t0 > maxDist) return -1;
   outNormal.set(interval.nx, interval.ny, interval.nz);

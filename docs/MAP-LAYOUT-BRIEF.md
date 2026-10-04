@@ -245,3 +245,281 @@ props code shaped every layout, and the next maps should start from them:
 
   Draw calls fell at the fixed overhead pose: −10 %, 0 % and −21 %.
 
+
+## Authoring notes from batches 5–8
+
+Maps lane B rebuilt Aegis Crossing, Ruinspires and Kestrel Airfield (batch 5) on October 2, 2026. These laws came out
+of them:
+
+- **Viaducts.** `terrain.bridges` lays a level deck over dry ground. The brief metrics read the deck
+  (`tools/map-layout-metrics.mjs`): a deck cell passes at the deck's height and joins the ground only beyond the
+  abutments, so the gorge under a viaduct is neither a cliff on the deck nor a link down to the bed. The road
+  constructor levels the stations over a viaduct's span to the deck (`levelViaductSpanNodes` in `src/world/terrain.ts`).
+  Before, they sampled the bed under the span, and the abutment approaches ramped past 18 %. `roadGradeSmoothing`'s
+  brief section grades the deck plane over a span.
+- **Nothing to stand on under a deck.** Bots on a gorge floor under a viaduct and bots on its deck cannot shoot each
+  other, and the planner's 2.5D grid snaps both to the deck. Aegis Crossing closes the floor under the span with a rock
+  rib too steep to drive, so the floor's two reaches meet only over the bridge.
+- **Sheer walls.** A gorge wall that the planner's 25 m grid reads as one cliff must be one. Troughs stacked to the
+  same wall line climb at a 1.0–1.3 grade along their whole length. A terraced wall with a drivable step lets bots
+  onto ledges they cannot leave.
+- **Fences and decks.** A roadside fence run leaves out the modules and gates over a bridge deck's footprint and still
+  takes their draws (`src/world/props.ts`). Aegis Crossing's run used to hang down the gorge wall under the span.
+- **Open squares.** Street rows clear only their centres, so a city square's zone disc seated by luck.
+  `props.streetRowKeepouts` keeps every row building's whole footprint out of a named disc. Author one for each square
+  that seats a zone or the kickoff.
+- **Paired landmarks.** The roadside plan hands out its list in road order, which stacks the tallest structures along
+  the first roads. A symmetric map authors its landmarks as `plannedSites` pairs: Ruinspires rotates them about its
+  central square, and Aegis Crossing mirrors them across the gorge. `mapQuality` counts planned sites with the plan.
+- **Rear seats.** A 1 v 41 field seats its hostiles up to about 45 m behind the enemy pads, and `battleSides` checks
+  this on Ruinspires. Keep a map's pads at least 45 m inside the playable edge.
+- **Bridgehead standoffs.** Before the bots' second pass, Aegis Crossing's capped matches were standoffs between the
+  two abutments, 200 m apart across the deck: over three minutes of one, six bots there fired 30 shells, and the
+  shooters standing beside a deck end put theirs into its parapets. The routes from a deck end down to the gorge floor
+  run 610 m, against 200 m over the deck, so no bot flanked. Removing the rim lips did not help (two of three capped
+  seeds still capped, and bots fell into the gorge). On the second pass no match caps (16 all-bot, 8 standard).
+- **Frozen fixtures.** When a map is rebuilt, a receipt that pinned its ground keeps that ground as a fixture.
+  `botGunLane`'s Airfield crest is now the old height profile along its shot line
+  (`src/sim/fixtures/airfieldCrestProfile.json`).
+- **Apron banks.** Maps lane A's scan counts the points of an apron's bank steeper than 0.6 and 0.25 steeper than the
+  ground without the aprons. A 100 m market square on Aegis Crossing reached 6 m from the end of a rim lip (10
+  points); at 80 m it clears it. Kestrel Airfield's runway ran past its graded core into the plateau's noise (13
+  points at its east end), and a shoulder berm sat inside its blend (68 more); the core now spans the runway, and the
+  berm stands off it. Run the scan on every apron you author.
+- **Ramps.** The bot planner's 25 m grid does not see a 12 m earthwork, so bots drive over it, and a 4.5 m revetment
+  launches them: two to six damaging falls a match on Kestrel Airfield, up to 387 HP. At 3.2 m the revetments still
+  split the lanes and cost about one 50-140 HP fall a match.
+- **Sides.** Alpha's bots seat round the player pad within 25 m, and its rear rank stalls for about 20 s while the
+  front clears; bravo's seven pads stand 40-60 m apart and leave at once. On an open map whose centre the first bots
+  reach in 40 s that decides matches: with alpha in Kestrel Airfield's south half bravo won 13 of 16, with alpha in
+  the north 8 of 16. Test both sides on a rotationally symmetric map and choose by the result.
+- **Slowing a rush.** A boggy valley floor (`terrain.marshes`, soft ground) between each assembly ground and the
+  centre slows every approach but the causeway roads. On Kestrel Airfield it lifted the fastest battlePacing seed from
+  116 s to 171 s.
+- **Sealed blocks.** Street rows on both sides of every street can seal a block's interior; a bot hunting a hull beyond
+  it presses at the gaps until the match times out. Leave one side of a contour street open (`streetRowKeepouts`
+  rectangles: Ruinspires' terrace gardens).
+
+Batches 6–8 (Copper Mesa, Earthrise Basin, Orchard Valley, Longleaf Crossing; Tarkhan Steppe, Amberford,
+Frosthollow, Nordhavn Fjord; Sunscar Oasis, Whiteout Station; October 2–3, 2026) added these:
+
+- **Road-graded greens.** An apron a lane crosses at a fixed level kinks the lane on the terrain seeds whose ground
+  differs: Amberford's greens put 47 % into a lane at seed 2025. Give such an apron `grade: 'road'` with its length
+  along the lane. At a crossroads, turn it along the road that climbs (Frosthollow's moraine crossroads).
+- **Exits beside cuttings.** A road exit graded through the rim cuts a corridor whose shoulders reach about 60 m.
+  Tarkhan Steppe's station road ran 50 m from the rail cutting and lowered the ring's plateau beside the notch; its
+  last node now turns the exit 99 m away.
+- **Scarps.** A road straight up a terrace scarp exceeds 18 % (Nordhavn Fjord's northern roads: 21–26 %). Cross it
+  on a diagonal. A ramp landform near deployment pads does nothing, because the pads' clearing fade (36–90 m) takes
+  it out.
+- **Junctions on the flat.** Where two roads meet on a slope, their elevation grids disagree at the seam, and the 4 m
+  sample reads the step as a grade (a 1.2 m step read as 30 %). Join roads where the ground is level.
+- **Acute corners.** The roadside plan tests a building's centre, 7.5 m off any road, so a long building in the
+  acute corner of a junction reaches the other road. `props.roadBuildingKeepouts` keeps roadside centres out of a disc
+  (Nordhavn Fjord's town crossroads). Deep compounds need a wider `buildingLat` (Sunscar Oasis: 16–18 m).
+- **Strongpoints.** A tactical beat stands inside ±360 m and at least 60 m from each of Verdant's three. Check that
+  its structure stands after a move (`.qa-dev/beats-check.mjs`): on a steep site the structure is dropped.
+- **Skeleton kinds.** The skeleton rule compares landforms of one kind: a ridge with Verdant's ridges, a knoll with
+  its knoll, a basin with its basin. A scree cone (a knoll) within 75 m of Verdant's southern knoll counts.
+- **Screens fade.** A berm near a deployment arc loses height to the pads' clearing fade. Whiteout Station's north
+  berm, moved 79 m off Verdant's ridge, screens the deployments only at 8.4 m.
+- **One-sided slowing.** Slowing ground decides all-bot matches when it lies on one side's approach. Two bogs south
+  of Nordhavn Fjord's western town fixed a fast pacing seed but went 15-1 to the south, and a matching pair to the
+  north still went 29-11 over 40 seeds. Before keeping a pacing fix, play 40 all-bot seeds.
+- **One-sided shelves.** The bots' opening goals (`botOpeningGoal` in `src/sim/authoritativeMatch.ts`) sit in
+  rotational symmetry about the midpoint of the two spawn anchors. A landform under one team's goals with no match
+  under the other team's goals decides all-bot matches. On Copper Mesa an 8.6 m ridge ran north-south down the middle
+  of the north approach (x −58, z 120–400). It lifted the north team's central goals 4–6 m onto a forward slope, in
+  view of the south rim. The south won 29–11 over 40 seeds,
+  whichever team deployed there, and took 15 of 16 first kills. With the ridge removed, the split was 19–21 in each of
+  two 40-seed blocks. A copy of the ridge on the south side did not fix it (30–10). Compare the ground under each
+  team's goals before you move the spawns.
+- **Geology.** `src/world/maps/geology.ts` holds `gully()` (three nested troughs, narrowing toward the head) and
+  `talusFan()` (a steep cone at a gully mouth with a low apron down the fall line). A `gorge` landform with a positive
+  height is a mesa or butte: a level cap with faces steep enough to read as rock. Keep features that change a gorge's
+  walls or floor under 40-seed review: buttresses on Aegis Crossing's walls fixed a fast pacing seed but brought back
+  900 s standoffs between bots on the floor's two reaches.
+- **Seeds re-roll.** Any terrain or prop change re-rolls a few battlePacing seeds. The borders pass's rim trees moved
+  Aegis Crossing's seed 53002 from 217 s to 118 s with no change to the map's own layout. Read the 12-seed distribution
+  and fix a fast or capped seed with a change that reads right on the map, not by trying perturbations until it
+  passes.
+
+## Regional building kits
+
+October 3, 2026 (regional-buildings lane). The settlements of a rebuilt map are built in the architecture of the real
+place the map stands on. Each kit is first-party procedural geometry under `src/world/maps/regional/`, one file per
+region, registered in `index.ts`:
+
+| Kit (`architecture`) | Region | For |
+| --- | --- | --- |
+| `hessian` | Osthessen, Fulda Gap: Fachwerk on Buntsandstein, plain tiles | Frontier Basin |
+| `dalmatian` | Brač, Šibenik hinterland: limestone and render, canal tiles, outside stairs | Saltwind Narrows |
+| `breton` | Finistère: granite and limewash, slate, coped gables, dormers | Saltmere Bay |
+| `kolkhoz` | Prokhorovka: whitewashed khatas, thatch and asbestos sheet, kolkhoz brick | Verdant Fields |
+| `polder` | Zeeland: brick farms, pantiles, tarred barns under thatch, a smock mill | Tidegate Polders |
+| `eifel` | Rur dams: black-and-white Fachwerk on greywacke, slate, the dam company's stone | Highland Reservoir |
+| `mekong` | Cà Mau: stilt houses of plank and palm, nipa and corrugated iron | Mangrove Reach |
+| `bengal` | Jamuna chars: tin homesteads on earthen plinths, a tin bazaar, a mosque | Jade River Delta |
+| `franconian` | Kronach, Meissen: framed and rendered town houses, plain tiles | Steinburg |
+| `ksar` | Dahar plateau: vaulted ghorfa ranges, flat-roofed houses, a minaret | Sirocco Wadi |
+| `wadirum` | Wadi Rum: block houses, rooftop tanks, the Desert Patrol fort | Redrock Divide |
+| `ruhr` | Ruhr and Silesian junctions: soot-dark brick, yellow-brick bands, slate | Cinder Junction |
+| `kohima` | Kohima 1944: bungalows under painted tin, a bazaar, Angami houses | Monsoon Ridge |
+
+**Adopting a kit is one line** in the map's props settings: `architecture: '<kit>'`. The plan builders still run
+first: every draw, the ground fit, the UV jitter and the road frontage see the base geometry, so every building keeps
+its pose, footprint and door side, and every later placement (walls, rocks, crates, trees) stays where it was. Only
+then the kit replaces the building's geometry with the region's version of the same structure, inside the same
+footprint. A structure the kit has no builder for keeps its base geometry. The light destructibles (field huts,
+checkpoints, tents, guard posts) keep theirs too, unless the kit names a variant of the family in
+`REGIONAL_DESTRUCTIBLE_TYPES` (`structureKit.ts`: the Bengal tin homestead, the Angami house, the Mekong long house and
+pond hut): a variant keeps the family's footprint, class, hit points, crush threshold and broken state, and `props.ts`
+swaps it in through `LOCAL_TYPES`.
+
+**What a kit changes, and the receipts that follow:**
+
+- Collision is derived from the regional geometry, so adopting or changing a kit regenerates the map's shard
+  (`node tools/capture-world-collision-manifests.mjs --node --maps <id>`) and re-pins its census in
+  `server/dedicatedWorldCollision.selftest.mjs` (obstacles and concealers do not move; colliders do).
+- The map's roof and masonry textures become the kit's painted surfaces (`src/world/regionalSurfaces.ts`); the
+  plaster and timber photo sets stay when the kit opts in.
+- Walls and roofs render from three to five vertex-coloured buckets (`regionalPlaster`, `regionalPlaster2`,
+  `regionalPlaster3`, `regionalStone`, `regionalRoof`) and painted joinery from `structureWood`: up to six draw calls
+  more than the base map, whatever the number of buildings.
+- `src/world/maps/regional/regionalArchitecture.selftest.mjs` runs the road-building stage with and without the kit
+  for every adopting map and fails if a building, a stream draw or a contact record moves, or if a kit building's
+  collision-bearing parts reach more than 0.8 m past a side of its plot (or past the base geometry's own reach there).
+- Layout metrics do not move with a kit (the cover and sightline bands read the collision manifest: rerun
+  `tools/map-layout-metrics.mjs` for the map after its shard is regenerated, and report any band that moves).
+
+**What a house carries.** The house grammar (`house.ts`) lays out plinth, storeys, jetties, gable, half-hip and hip
+roofs with eaves, verges, ridge caps, gutters and downpipes, chimneys and gable stacks. Every window and door is cut
+into its wall with a reveal as deep as the wall is thick (`HouseSpec.reveal`). `weather.ts` gives each house its own
+tint from the kit's palette, darkens the wall foot with splash and rising damp, shades reveals and soffits, runs rain
+stains under the sills and moss or lichen toward the eaves. A share of houses per kit (`ArchitectureStyle.wear`)
+shows war damage: burnt-out windows with soot up the wall, boarded windows, a stripped roof patch; on its rendered
+storeys the render spalls (a ragged band at the wall foot, a patch under a sill, a scar in a pier) to show the kit's
+masonry under it (`HouseSpec.spall`; none on clay walls), decor from the wear context's own stream. A painted sheet
+roof weathers down its slope: chalky toward the ridge, rust and grime along the eaves. `dressing.ts` adds
+the lived-in parts a kit uses (window boxes, the bench by the door, a woodpile, the roof ladder, an aerial); they are
+dressing (no collision) and the phones leave them out, so the collision a host certifies is tier-independent.
+
+**Adding a builder or a kit.** A builder is `(ctx) => RegionalParts`: build within `ctx.info.w × ctx.info.d`, door
+side +z unless the base builder's frontage says otherwise, draw only from `ctx.rng`, and keep tier-dependent parts to
+dressing. Plots are not all deep: a market row is 12 × 5.2 m, a yard shed 11.7 × 7.2 m, a farmhouse lot 15 × 9 m. A
+long building reads its plot along the long side (`plotAxes` in `geometry.ts`) and builds there (`alongPlot`) instead
+of running across the plot and out of it (the first kits overran 39 plots by up to 4.9 m that way). Which side of a
+plot meets the road differs by kind (farmhouse and market plots mostly meet it at their ±x end), so a porch or a
+canopy is kept inside the plot on every side, not only the front. A look-only choice added later (render or bare stone, a paint) draws from `ctx.variant`, a second stream from
+the same building identity, so it never reshuffles the geometry drawn after it. A new kit exports an `ArchitectureStyle` (region, surfaces, builders, weather palette, wear) and joins the
+registry in `index.ts`; the regional receipt then builds every builder at two seeds and checks determinism, attribute
+sets, night masks, the triangle budget, outward-facing faces and tier-independent collision. Judge a kit on Studio
+captures of its map: an establishing view, two street-level views and each structure kind, by day and by night.
+
+## Scenery
+
+October 3, 2026 (the scenery lane). A battlefield needs features you can name: "the tor on the axis knoll", "the
+calvary at the crossroads", "the windmotor on the retention bay". A map authors them in a top-level `scenery` block;
+the generators and their placement rules live in `src/world/sceneryRocks.ts` (rock), `src/world/maps/sceneryKit.ts`
+(timber, steel and stucco landmarks, pylons), `src/world/sceneryPlan.ts` (the contract and footprints) and
+`src/world/scenery.ts` (the composer that places them). The map file carries only placements and parameters.
+
+```ts
+scenery: {
+  rocks: [{ form: 'tor', geology: 'granite', x: -222, z: 22, radius: 7, height: 5.5, yawDeg: 24, name: 'the axis tor' }],
+  rockFields: [{ geology: 'limestone', x: 40, z: -235, radius: 115, count: 14, slopeBias: 0.6, name: 'the terrace karst' }],
+  landmarks: [{ kind: 'calvary', x: -78, z: -140, yawDeg: 15, name: 'the crossroads calvary' }],
+  powerLines: [{ towers: [[-440, -150], [-147, -50], [147, 50], [440, 150]], heightM: 36, name: 'the 380 kV line' }],
+},
+```
+
+### What there is
+
+| Family | Kinds | Gameplay | Cost |
+| --- | --- | --- | --- |
+| Rock forms (`rocks`) | `tor` (granite: jointed slab stacks on a bedrock base, clitter round the foot), `outcrop` (sandstone or limestone: hard beds stepping back from a scarp that faces downhill, split into joint blocks), `crag` (slate: steeply dipping plates in ranks, scree below), `pavement` (limestone: clints and grikes flush with the turf, a low scar upslope), `scree` (an angular fan, fining up its apex), `hoodoo` (sandstone: a wind-cut pedestal under a broad cap, the mushroom rocks of Wadi Rum) | a standing form is one static convex collider from the ground to its top (hard cover, never crushed); pavement and scree lie under a hull's 0.55 m step and carry none | one welded mesh on the props rock material for the whole map: one draw plus its shadow passes; a tor about 4.5 k triangles (2 k on phones), an outcrop 2 k, a pavement 3.5 k |
+| Rock fields (`rockFields`) | the exposed bedrock of a hillside: forms drawn from the geology's mix (`FIELD_FORMS`), the steeper ground first | as above, per form | into the same mesh |
+| Bedrock (`bedrock`) — parked | Not placed on any map: wave 16's critics read the skin on Redrock's smooth domes as masonry ("a ziggurat"), so a hill's shape has to carry its rock first (the landform's geology). The builder stays for a hill whose walls are sheer: a hill's own beds on its steep flanks, read from the live ground by rays from the entry's centre (lobes, ramps, fans and clefts move the beds with them): thick hard beds parted by thin, recessed soft ones in sandstone, now and then a massive one, from the highest ground a hull climbs (grade 0.9) up to a bare-rock crown. Each hill is bedded its own way (bed thickness, a dip of one to five degrees); every bed boundary swells and pinches along its run, a third of the hard beds stand out as ledges, and no bed rings the whole hill. The ground's own clefts (the rills down a wall, wherever the foot line falls back more than 0.9 m against the line a few metres either side) break the beds and seat the master joints, which open clefts from crown to foot, with tight staggered joints between them | none: a skin a little proud of ground no hull reaches; the hill stays the terrain, and the trees keep off its flanks (`BEDROCK_TREE_CLEAR` of the radius) | into the same mesh; Redrock's twelve domes about 41 k triangles together (a main dome 4-8 k, a lobe 2-3.5 k), phones about four fifths |
+| Stone landmarks (`landmarks`) | `calvary` (granite steps, octagonal shaft, cross), `menhir` (a standing stone), `cairn` (a clearance cairn: the gomila, the rujm) | static colliders | in the rock mesh |
+| Timber, steel and stucco landmarks (`landmarks`) | `bildstock` (a carved shrine on its pillar; breaks to its stump), `waysidecross` and `orthodoxcross` (topple), `windpump` (an American windmotor; topples), `tomb` (a Mekong-delta family tomb; breaks), `strawstack` (rice straw packed round a bamboo pole; breaks) | props destructibles (`SCENERY_DESTRUCTIBLE_TYPES`): crushable, their state synced like every other destructible | one instanced pool per kind a map uses |
+| Field works (`fieldWorks`) | `walls`: the dry stone walls of a karst's walled fields; `banks`: the earth banks (the talus) under a bocage's hedge lines — both laid on the ground lane's land use (`landUse.ts` through the height field's `_landUseAt`): the boundary band the terrain draws, the same field gate (off villages, roads, water and slopes past ~3°), chained along their lines and swept continuously. `wallTone` / `bankTone` (sRGB HSL) set their stone and earth | none: decor, at most 1 m tall (`FIELD_WORKS_MAX_M`), so a low rubble wall or a bank reads as crossed, not as cover; should one ever matter in play it becomes crushable like the fences, never blocking. They keep off the roads' painted core (5.7 m), the spawn pads (24 m), the bridge decks and their approaches, the aprons (`terrain.hardstands`, runways included) and the yards' dressing, the carved trenches and every mode's objective discs where the match placement seats them on that world (zones 30 m, flag bases 12 m, turbo goals 18 m and kickoff 12 m, the extraction 30 m, the Frontline Assault sectors 30 m), each with a 3 m margin | one welded mesh on the props rock material, no shadow of its own, built after the props' solids are final; Saltwind's walls about 16 km and 125 k triangles, Saltmere's banks about 4 km and 30 k; seating the discs runs the match placement for four modes (a few hundred milliseconds of the world build, on those maps only) |
+| Power lines (`powerLines`) | lattice towers (a double-circuit tower scaled to `heightM`) and sagging conductors | four leg colliders per tower; a hull drives between the legs | folded into the props `baked` bucket: no draw of its own; about 2 k triangles a tower |
+
+The rock material is the boulders' (`rockDressing.ts`): the map's moss, dust and soil laws, the triplanar detail tile
+and the cascade setup, so a tor and the boulders round it are one rock. A geology's tone can be overridden with `tone`
+(sRGB HSL), for example to match a map's `rockTone`. A map whose field walls are its own rock tints their rubble print
+with `scenery.masonryTint` (a linear multiplier): Saltwind's dry stone walls and their posts are the pale karst
+limestone of its outcrops, and every other map keeps its tone. The tint never touches the house masonry (the props
+stone print, which a regional kit repaints: its Dalmatian limestone under the tint burned out white).
+
+The field walls (`props.wallRuns`, the `wallstone` module of `maps/inhabitKit.ts`) are dry-stone walls on every map
+whose stone bucket is fieldstone: a battered hearting, face stones in rough courses standing proud of it with their
+corners knocked off, and a coping of cope stones on edge. The module keeps the old one's envelope and its seeded draws,
+so the fitted wall colliders keep their plan and height. The maps whose stone bucket is the sourced brick print
+(`sourcedStoneIsBrick`) keep the coursed module (`COURSED_WALLSTONE`) the print was laid out for.
+
+The dry-stone walls, their run posts, breach stubs and tumbled blocks draw their own material, `fieldStone`: a seamless
+random-rubble print (`fieldStoneSurface.ts`), stones bedded flat in every size with dark dry joints, open pockets at
+the three-stone corners and no course anywhere, painted in the stone print's colour law (its mean within 4 % of that
+print's) under the map's stone tone. They never draw the house masonry: the coursed stone print read as ashlar on the
+rubble (gauntlet wave 20), and a regional kit's brick, block or dressed stone laid those courses over fieldstone. A map
+whose walls are mud or brick paints no field print and keeps the stone print. The receipt is
+`fieldStoneSurface.selftest.mjs` (seamless, no joint runs a third of the tile while the stone print's mortar runs all
+of it, flat stones, dry joints, the palette, the phone print).
+
+The field works' sandbag stacks (`sandbagbig`, `sandbagsmall`, `sandbagwall`, wherever the fortification passes put
+them) are laid bag by bag (`maps/sceneryKit.ts` `buildSandbagStack`): filled sacks thin and narrow at their ends,
+sagging on top, each in its own tone (hessian, weathered hessian, faded olive polypropylene, a few dirty ones) on the
+props canvas weave, in stretcher bond, a battered parapet; every stack also gets its own weathering tint. Each stack
+fills the envelope of the sourced model it replaced, so the cover is where it was; a breached stack is a low course and
+the burst bags round it.
+
+### What the composer checks
+
+Every feature is checked before it is laid, and `props.group.userData.scenery` says what stood and why anything did
+not (`status`, `reason`); nothing is moved silently.
+
+- Inside the square (|x|, |z| + footprint at most 480 m), 22 m plus its footprint from every spawn pad.
+- Out of the road core: the footprint 4 m off every road centreline (2 m for pavement and scree).
+- Dry: no water under the centre or the footprint's rim.
+- Off the hard solids already placed (buildings, walls, bunkers, wrecks). Soft records under a standing footprint
+  (bales, fences, boulders) are allowed and listed in `overlaps`: move the feature if they read badly.
+- Trees: authored rocks, landmarks and towers publish their footprints to the vegetation from the config alone
+  (`sceneryClearances` through `placedStructureClearances`), so the trees and shrubs keep off them; rock fields keep
+  off the trees instead.
+- Every feature draws its own seeded stream (by family and index), so authoring one never moves another, and a map
+  without a `scenery` block builds exactly as before.
+
+### Choosing scenery for a place
+
+Pick what the place's rock and people actually put there, and name it in the map file. What the rebuilt maps use:
+
+| Place | Scenery |
+| --- | --- |
+| Breton bocage (Saltmere Bay) | granite tors on the knolls, granite whalebacks on the downs, calvaries at the crossroads, menhirs on the downs, earth banks under the hedge lines (`fieldWorks.banks`) |
+| The Fulda country (Frontier Basin) | Buntsandstein ledges breaking out of the ridge woods, a Bildstock where a farm lane meets the valley road, a timber field cross below each saddle, a 380 kV line through the basin |
+| The Dalmatian karst (Saltwind Narrows) | limestone pavement on the uplands, bedded scars on the outcrop knolls, rock fields of small pavements and ledges on the terraces, a gomila on each upland, dry stone walls round its little fields (`fieldWorks.walls`) |
+| Zeeland polders (Tidegate Polders) | a steel windmotor on the bank of each low basin, every rotor in the same sea wind; a 150 kV line across the flats |
+| Kursk black earth (Verdant Fields) | a standing stone on each kurgan, Orthodox crosses at the village entries, a 110 kV line across the southern fields |
+| The Eifel (Highland Reservoir) | slate crags and scree on every ridge's flanks, crags above the lake's shores, a timber cross in the angle of the road fork |
+| Wadi Rum (Redrock Divide) | every inselberg's own beds on its flanks, cleft by its joints, with a bare crown; bedded ledges, scree and pedestal rocks round its foot, a mushroom rock in each mouth, a rujm (cairn) at each cross track's ravine |
+| The Dahar (Sirocco Wadi) | ledges and scree on the wadi's cut banks and the North Mesa's flanks, rujms beside the caravan road and the wadi track |
+| The Mekong delta (Mangrove Reach) | family tombs in pairs and threes on the raised ground by the ponds |
+| The Jamuna chars (Jade River Delta) | rice straw stacks at the foot of the homestead mounds |
+| The Naga Hills (Monsoon Ridge) | a memorial monolith on Garrison Hill, a row of Naga memorial stones by the temple |
+| The Franconian Jura (Steinburg) | limestone crags round the castle rock, Bildstocks at the farm crossings |
+| The coalfield (Cinder Junction) | a 220 kV line across the south of the junction |
+
+Area-wide land cover — field patchwork, forest masses, grass, bush forms and hedgerows — belongs to the land-cover
+lane, not to this block. Restraint: no smoke (the owner removed distant plumes and hearth smoke as wrong). A feature that hides a hull or breaks
+a sightline changes the map's cover: agree it with the map's layout owner and run its metrics.
+
+### Procedure
+
+1. Author the block with a name per feature.
+2. `node src/world/scenery.selftest.mjs`: every map's features must place (the receipt fails on any skip), rock fields
+   must lay at least three quarters of their count, and no tree may stand inside a standing mass.
+3. Rebuild the map's collision shard (`node tools/capture-world-collision-manifests.mjs --node --maps <id>`), re-pin its
+   census in `server/dedicatedWorldCollision.selftest.mjs` with the before value, and run
+   `node tools/map-layout-metrics.mjs --maps=<id> --check`.
+4. Capture the features close up by day and by night, and the map's census views, before and after.

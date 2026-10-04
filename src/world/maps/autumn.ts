@@ -12,6 +12,7 @@
 // sky, vegetation species, prop tones, minimap and river material are the
 // round-1 identity and are unchanged.
 
+import { gully } from './geology.ts';
 import { createMarshChannel } from './marshChannel.ts';
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
@@ -29,16 +30,25 @@ const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // surface, the approaches graded to it), the water keeps its level and its
 // wetness under the deck, the bed stays the river bed, and mapKits.ts builds
 // the arched span, the abutments and the parapets from that plane.
+// 2026-10-03 (maps lane B, gauntlet wave 11: "a constant-width, steep-banked dark green channel with no meanders,
+// gravel bars, shallows or bank vegetation… a canal"): the river meanders inside its valley. The stations swing up
+// to 26 m either side of the old line in bends of about 200 m. Each bend's apex is a pool, wide (r 28) and deep (dip
+// 1.7), against the outer bank, so the inner bank stays dry ground: the point bar. Between bends the channel crosses
+// over a riffle, narrow (r 21) and shallow (dip 0.9). The weir reach, the bridge, the ford with the stations beside
+// them, and both ends stay where they were, so the crossings, the mill and the roads' corridors keep their ground.
 const RIVER_STATIONS = [
-  { x: -450, z: -330, dip: 1.4 }, { x: -410, z: -306 }, { x: -370, z: -284 }, { x: -330, z: -266 },
-  { x: -290, z: -246 }, { x: -250, z: -222 }, { x: -212, z: -196 },
+  { x: -450, z: -330, dip: 1.4 }, { x: -415, z: -297, r: 21, dip: 0.9 }, { x: -380, z: -264, r: 28, dip: 1.7 },
+  { x: -336, z: -253, r: 21, dip: 0.9 }, { x: -285, z: -255, r: 21, dip: 0.9 }, { x: -237, z: -242, r: 28, dip: 1.7 },
+  { x: -205, z: -206, r: 23, dip: 1.3 },
   { x: -176, z: -172 }, // the WEIR reach: the mill stands on the north bank here
-  { x: -140, z: -152 }, { x: -104, z: -134 }, { x: -70, z: -114 }, { x: -40, z: -92 },
+  { x: -147, z: -140, r: 23, dip: 1.3 }, { x: -115, z: -113, r: 28, dip: 1.7 }, { x: -75, z: -106, r: 21, dip: 0.9 },
+  { x: -40, z: -92 },
   { x: -20, z: -68, r: 18, dip: 1.0, crossing: 'bridge' as const }, // the BRIDGE narrows (coach road): a true span
-  { x: 14, z: -42 }, { x: 52, z: -20 }, { x: 96, z: -4 }, { x: 140, z: 10 },
+  { x: 14, z: -42 }, { x: 60, z: -36, r: 23, dip: 1.3 }, { x: 103, z: -25, r: 28, dip: 1.7 }, { x: 140, z: 10 },
   { x: 186, z: 24, r: 17, dip: 1.5 }, // the FORD (manor lane): the wade over gravel (dip drops the lane to the water)
-  { x: 230, z: 46 }, { x: 272, z: 78 }, { x: 312, z: 118 }, { x: 348, z: 166 },
-  { x: 378, z: 220 }, { x: 402, z: 276 }, { x: 422, z: 332 }, { x: 440, z: 390, dip: 1.3 },
+  { x: 230, z: 46 }, { x: 281, z: 67, r: 23, dip: 1.3 }, { x: 332, z: 101, r: 28, dip: 1.7 },
+  { x: 356, z: 161, r: 21, dip: 0.9 }, { x: 364, z: 227, r: 21, dip: 0.9 }, { x: 378, z: 286, r: 28, dip: 1.7 },
+  { x: 413, z: 335, r: 21, dip: 0.9 }, { x: 440, z: 390, dip: 1.3 },
 ].map((m) => ({ r: 25, dip: 1.5, ...m }));
 const CROSSINGS = RIVER_STATIONS.filter(station => station.r < 25);
 const RIVER = createMarshChannel(RIVER_STATIONS).map(station => {
@@ -79,6 +89,17 @@ export default {
     microScale: 1.0,
     rimH: 26,
     marshes: RIVER, // the river IS the marsh chain (soft, wadeable)
+    // 2026-10-03 (maps lane B): three greens the zone-control discs seat on, sited for equal drives — the sunken lane's
+    // green in the south-bank orchards near the southern deployment, the ford green on the north bank on the line of
+    // equal drives and the fair green outside the walled town's east side near the northern arc. The two a lane
+    // crosses take its height and grade (the brief's road-graded apron: a fixed level kinked the lane past 18 % at
+    // seeds 2025 and 7719); the fair green stands at its ground's level. Each bank is wide enough to make no wall (maps
+    // lane A's apron bank law).
+    hardstands: [
+      { x: 22, z: -192, width: 56, length: 56, yawDeg: 76, grade: 'road', bankM: 24 },
+      { x: 154, z: 54, width: 56, length: 56, yawDeg: -22, grade: 'road', bankM: 18 },
+      { x: 0, z: 102, width: 56, length: 56, yawDeg: 0, level: 4.5, grade: 0, bankM: 18 },
+    ],
     clearMarshVeg: true, // keep the channel clear of tufts; reeds stay on the banks
     // the manor lake is liquid water like the river (bogged 'soft'), not an ice pan
     softLakes: true,
@@ -107,6 +128,11 @@ export default {
     landforms: [
       // the wooded escarpment along the east (the manor park lies beyond its northern end)
       { kind: 'ridge', x: 420, z: -80, length: 480, width: 92, height: 11.5, yawDeg: 88 },
+      // 2026-10-03 (maps lane B): coombes (geology.ts gullies) — dry chalk valleys cut the escarpment's west face
+      // from the crown down to its foot, each a sheltered lane up the scarp
+      ...gully(346, -232, 404, -226, 3.4, 14, 6),
+      ...gully(344, -128, 404, -122, 3.8, 15, -7),
+      ...gully(344, -22, 406, -16, 3.6, 14, 5),
       // the town rise on the north bank: the settlement keeps the whole knoll
       { kind: 'knoll', x: -110, z: 120, rx: 190, rz: 150, height: 4.2, settlementScale: 1 },
       // the west spur above the mill reach
@@ -352,7 +378,9 @@ export default {
 
   horizon: {
     // fall uplands: rust-brown forest to near the crests, hazed warm
-    baseHex: 0x6d6440, amp: 1.0, style: 'rolling', treeline: 0.94, treelineLayers: 2,
+    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): a Norman / English river town's
+    // downland and bocage: low rounded hills, no range
+    baseHex: 0x6d6440, amp: 0.6, style: 'rolling', treeline: 0.94, treelineLayers: 2, panorama: { regional: 'upland', ampM: 150, trees: 16 },
     forestHex: 0x6a4d28, rockHex: 0x7a7260, haze: 0.95, grain: 0.7,
   },
 

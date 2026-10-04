@@ -18,8 +18,10 @@ import {
 // (bench, tables, valley, escarpment, saddle, summits, shoulder — 30 uploaded rows, outer row 1380 m); Redrock keeps
 // the classic six-row ladder for its analytic canyon (redrockCanyonHorizon.selftest).
 const columns = HORIZON_SEGMENTS + 1;
-const uploadedRows = (config, mapId) => config.horizon.style === 'alpine' ? 36
-  : config.horizon.style === 'mesa' && mapId !== 'badlands' ? 30 : 18;
+// (the ring's own style where a map has one: `horizon.ringStyle` over the border's `style`)
+const ringStyleOf = (config) => config.horizon.ringStyle || config.horizon.style;
+const uploadedRows = (config, mapId) => ringStyleOf(config) === 'alpine' ? 36
+  : ringStyleOf(config) === 'mesa' && mapId !== 'badlands' ? 30 : 18;
 const VISTA_TILES = 6; // round 29: meadow, sand, canopy, rock, scree, snow
 
 function radiusAt(position, index) {
@@ -144,7 +146,7 @@ function classicRangeStats(ring) {
 }
 
 function assertClassicLayeredRanges(ring, config, label) {
-  const style = config.horizon.style ?? 'rolling';
+  const style = ringStyleOf(config) ?? 'rolling';
   const amp = config.horizon.amp ?? 1;
   const stats = classicRangeStats(ring);
   assert.equal(stats.folds, 0, `${label}: no angle folds a radial face`);
@@ -273,12 +275,13 @@ function assertVistaSurfaceShader(shader, normals, label) {
   // fields (horizonCloudShade.ts, inside a branch the layer opens) are the fetches outside the projection macro
   // round 72c (2026-09-26, perf): the projection macro became the far-LOD function vTile — five fetch sites (the
   // horizontal plane, the two vertical planes of the near triplanar, the cylindrical plane of the far pair, and the
-  // same pair inside the 120 m blend); the relief atlas and the two cloud-shade fetches stay: 6 -> 8
-  assert.equal((fragment.match(/texture2D\(/g) ?? []).length, 8,
-    `${label}: the far-LOD tile function's five fetch sites, the relief atlas fetch and the two cloud-shade fetches are the only fetch sites (round 72c)`);
+  // same pair inside the 120 m blend); the relief atlas and the cloud-shade fetch stay: 6 -> 8; 2026-10-03: the cloud shade
+  // samples the one shade map (one fetch where it re-cut two weather fields, horizonCloudShade.ts): 8 -> 7
+  assert.equal((fragment.match(/texture2D\(/g) ?? []).length, 7,
+    `${label}: the far-LOD tile function's five fetch sites, the relief atlas fetch and the cloud-shade map's fetch are the only fetch sites (round 72c; 2026-10-03)`);
   assert.match(fragment, /gLodFar = smoothstep\(880\.0, 1000\.0, vHDist\);/, `${label}: the tiles' far LOD keys on the camera distance past the first ridge (round 72c)`);
   assert.match(fragment, /if \(gLodFar > 0\.999\) return flatTap \* gAw\.y \+ texture2D\(tex, vec2\(gCylU \* cyl, gP\.y \* s\)/, `${label}: past 1 km a tile is two fetches — the horizontal plane and one cylindrical plane (round 72c)`);
-  assert.match(fragment, /if \(uVCShade > 0\.001\) \{/, `${label}: the cloud-shade fetches are skipped while the layer is off (round 72)`);
+  assert.match(fragment, /if \(uVCShade > 0\.001 && uSunDirW\.y > 0\.03\) \{/, `${label}: the cloud-shade fetch is skipped while the layer is off (round 72) or the sun grazes`);
   assert.match(fragment, /texture2D\(uVRelief, vec2\(vMapUv\.x \* 0\.1, \(radius - uVReliefR\.x\) \* uVReliefR\.y\)\)/,
     `${label}: the relief atlas is read by the ring's own angle u and the fragment's radius (round 72)`);
   // round 72b: the occlusion is read deeper (pow(relief.z, 1.4)), the snow edge is a five-degree slope threshold, the crests scour
@@ -529,11 +532,17 @@ try {
 
     const disposed = disposeObject3DResources(mesh);
     assert.equal(disposed.textures, 3 + VISTA_TILES, `${style}: eviction owns the baked textures, the vista tiles and the relief atlas (round 72)`);
-    assert.equal(disposed.materials, 2, `${style}: eviction owns the ring's material and the far range's (round 72)`);
+    // the mountains lane (2026-10-03): the far panorama's shell (horizonPanorama.ts) is the third material — the round-72
+    // far range's successor once its atlas bakes; until then (here: no renderer) the far range draws and the shell waits
+    assert.equal(disposed.materials, 3, `${style}: eviction owns the ring's material, the far range's (round 72) and the panorama shell's`);
     assert.equal(releases, 2, `${style}: final eviction reaches the shader-only texture`);
-    // round 72: the far range (horizonFarRange.ts) is the one child of a bare backdrop — one unlit draw
-    assert.equal(mesh.children.length, 1, `${style}: a bare backdrop carries only its far range`);
-    assert.equal(mesh.children[0].name, 'horizon-far-range', `${style}: the child is the far range`);
+    // round 72: the far range (horizonFarRange.ts) is the first child of a bare backdrop — one unlit draw; the panorama
+    // shell follows it, hidden until baked: one of the two draws at a time
+    assert.equal(mesh.children.length, 2, `${style}: a bare backdrop carries its far range and the far panorama's shell`);
+    assert.equal(mesh.children[0].name, 'horizon-far-range', `${style}: the first child is the far range`);
+    assert.equal(mesh.children[0].userData.horizonPanorama, undefined, `${style}: the first child is the round-72 range`);
+    assert.equal(mesh.children[1].userData.horizonPanorama, true, `${style}: the second is the panorama's shell`);
+    assert.equal(mesh.children[0].visible && !mesh.children[1].visible, true, `${style}: without a bake the far range draws, the shell waits`);
   }
 
   const coastal = buildHorizonRing(null, {
@@ -619,7 +628,8 @@ try {
     assert.ok(forest.userData.horizonForest.near > 100, `${mapId}: the rim band carries the rich near species (${forest.userData.horizonForest.near})`);
     assert.ok(forest.children.some((child) => child.castShadow) && forest.children.every((child) => !child.receiveShadow),
       `${mapId}: near band casts, no crown receives`);
-    assert.equal(mesh.children.length, 3, `${mapId}: the far range, the treeline ranks and the ring forest are the only children (round 72)`);
+    // (the mountains lane, 2026-10-03: and the far panorama's shell, hidden until its atlas bakes — horizonPanorama.ts)
+    assert.equal(mesh.children.length, 4, `${mapId}: the far range, its panorama shell, the treeline ranks and the ring forest are the only children (round 72)`);
     const layers = config.horizon.treelineLayers ?? 1;
     const position = treeline.geometry.attributes.position;
     const indices = treeline.geometry.index;
@@ -661,7 +671,7 @@ try {
       `${mapId}: same-ridge crowns remain continuous forest clusters, not isolated trees`);
     const disposed = disposeObject3DResources(mesh);
     assert.equal(disposed.textures, 4 + VISTA_TILES, `${mapId}: the mountain textures, the vista tiles, the relief atlas and the one treeline atlas dispose`);
-    assert.equal(disposed.materials, 4, `${mapId}: mountain, far-range, treeline and ring-forest materials dispose together (round 72)`);
+    assert.equal(disposed.materials, 5, `${mapId}: mountain, far-range, panorama-shell, treeline and ring-forest materials dispose together (round 72; the mountains lane)`);
   }
 
   // Round 29 (owner 2026-09-20, Redrock Divide: "see where the texture just stops"): the first exposed row is seated

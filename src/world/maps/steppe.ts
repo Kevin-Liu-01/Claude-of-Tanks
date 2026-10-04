@@ -18,14 +18,19 @@
 // of forests. Wide-open sightlines are the point — the wadi banks and the
 // escarpment crest are the cover geometry.
 
+import { gully } from './geology.ts';
+
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The wadi centreline (metres): z per x, a gentle meander from the west edge to
 // the east edge. The basins below, the gravel bed and the ford all follow it.
 const WADI = [[-450, -30], [-300, -8], [-150, 16], [0, 30], [150, 26], [300, 6], [450, -22]] as const;
 
-// The takyr crusts: one shallow pale marsh every 48 m along the wadi
-// centreline across the playable square.
+// The takyr crusts: the silt flats a flood leaves on the wadi's floor when it dries. Each flat is two to four
+// overlapping shallow lobes of unequal size, offset from the centreline, and the flats lie 32-72 m apart with dry
+// gravel between them. 2026-10-03 (maps lane B, gauntlet wave 11): one even 28 m pan every 48 m read from the air as
+// "a bead-chain of opaque, soft-edged white ovals". The lobes are drawn from a fixed-seed generator, so the layout is
+// the same on every build.
 function wadiCrusts(): { x: number; z: number; r: number; dip: number }[] {
   const out: { x: number; z: number; r: number; dip: number }[] = [];
   const zAt = (x: number): number => {
@@ -39,9 +44,33 @@ function wadiCrusts(): { x: number; z: number; r: number; dip: number }[] {
     }
     return 0;
   };
-  // the crusts stop where the border rim begins to lift (|x| > 470); the basins themselves run on past the edge
-  for (let x = -456; x <= 456; x += 48) out.push({ x, z: Math.round(zAt(x)), r: 28, dip: 0.8 });
+  let seed = 0x2f6b9d1;
+  const rnd = (): number => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+  // the crusts stop where the border rim begins to lift (|x| > 470); the basins themselves run on past the edge.
+  // Overlapping lobes add their dips, so each lobe is shallow (0.25-0.55 m): crusts, not bogs.
+  for (let x = -450; x <= 450; x += 32 + rnd() * 40) {
+    const zc = zAt(x) + (rnd() - 0.5) * 16;
+    const lobes = 2 + Math.floor(rnd() * 3);
+    for (let k = 0; k < lobes; k++) {
+      const lx = Math.max(-462, Math.min(462, x + (rnd() - 0.5) * 34));
+      out.push({ x: Math.round(lx), z: Math.round(zc + (rnd() - 0.5) * 22), r: Math.round(12 + rnd() * 18),
+        dip: Math.round((0.25 + rnd() * 0.3) * 100) / 100 });
+    }
+  }
   return out;
+}
+
+// A shelterbelt from (x0, z0) to (x1, z1) as runs [t0, t1, species (null: the lone-tree mix), gap, skip, lateral
+// offset in metres]: each run is a vegetation.ts belt with its own spacing and losses, the gaps between runs are
+// field tracks and dead stretches, and a run may stand a few metres off its neighbour's line.
+type BeltRun = readonly [number, number, 'poplar' | 'oak' | 'pine' | null, number, number, number];
+function shelterbelt(x0: number, z0: number, x1: number, z1: number, runs: readonly BeltRun[]) {
+  const len = Math.hypot(x1 - x0, z1 - z0), nx = -(z1 - z0) / len, nz = (x1 - x0) / len;
+  return runs.map(([t0, t1, species, gap, skip, lateral]) => ({
+    x0: Math.round(x0 + (x1 - x0) * t0 + nx * lateral), z0: Math.round(z0 + (z1 - z0) * t0 + nz * lateral),
+    x1: Math.round(x0 + (x1 - x0) * t1 + nx * lateral), z1: Math.round(z0 + (z1 - z0) * t1 + nz * lateral),
+    gap, jitter: 4.5, skip, ...(species ? { species } : {}),
+  }));
 }
 
 // Stone kerb (kromlech) around a kurgan: a hexagon of low fieldstone walls with
@@ -74,8 +103,10 @@ export default {
     // foot. dip well under the 2.6 m soggy-bowl default — crusts, not bogs.
     marshes: [
       ...wadiCrusts(),
-      { x: -318, z: 128, r: 66, dip: 0.6 },
-      { x: -404, z: 62, r: 40, dip: 0.5 },
+      // the sor: two salt flats of unequal lobes (2026-10-03, gauntlet wave 11: two round pans read as decals)
+      { x: -318, z: 128, r: 48, dip: 0.6 }, { x: -286, z: 150, r: 30, dip: 0.45 }, { x: -350, z: 104, r: 28, dip: 0.5 },
+      { x: -300, z: 96, r: 18, dip: 0.35 }, { x: -340, z: 160, r: 16, dip: 0.3 },
+      { x: -404, z: 62, r: 30, dip: 0.5 }, { x: -420, z: 84, r: 20, dip: 0.4 }, { x: -386, z: 44, r: 16, dip: 0.35 },
     ],
     clearMarshVeg: true, // a dry crust grows no tufts
     // The grain station: one graded rect around the station road / east track
@@ -85,36 +116,41 @@ export default {
       // 0 — the steppe highway: one straight bearing from the south edge across
       // the wadi ford, through the western escarpment ramp and over the plateau.
       // Road 0 also carries the utility-pole line (mapQuality).
-      [[-138, -512], [-118, -330], [-98, -160], [-80, -14], [-62, 130], [-40, 356], [-22, 512]],
+      [[-131, -448], [-118, -330], [-98, -160], [-80, -14], [-62, 130], [-40, 356], [-29, 448]],
       // 1 — the station road: west edge → kolkhoz → highway crossing → grain
       // station → east edge, along the south bank of the wadi.
-      [[-512, -150], [-386, -146], [-300, -142], [-190, -158], [-92, -172], [40, -196], [160, -212], [284, -222], [410, -226], [512, -232]],
+      [[-448, -148], [-386, -146], [-300, -142], [-190, -158], [-92, -172], [40, -196], [160, -212], [284, -222],
+        [410, -226], [448, -246]],
       // 2 — the east track: south edge → station → wadi crossing → the eastern
       // escarpment ramp → plateau → north edge.
-      [[336, -512], [318, -400], [296, -290], [284, -222], [272, -120], [262, 20], [256, 150], [248, 344], [244, 400], [240, 512]],
+      [[326, -448], [318, -400], [296, -290], [284, -222], [272, -120], [262, 20], [256, 150], [248, 344], [244, 400],
+        [242, 448]],
       // 3 — the plateau road: across the plateau behind the kurgan line.
-      [[-512, 368], [-380, 364], [-230, 360], [-40, 356], [110, 350], [248, 344], [400, 338], [512, 334]],
+      [[-448, 366], [-380, 364], [-230, 360], [-40, 356], [110, 350], [248, 344], [400, 338], [448, 336]],
       // 4 — the sor track: from the kolkhoz across the wadi to the salt pan's shore (a dead end).
-      [[-300, -142], [-306, -60], [-302, 20], [-282, 96], [-250, 136]],
+      [[-300, -142], [-306, -60], [-302, 20], [-282, 96], [-270, 112]],
     ] },
-    // Three graded aprons (hardstandSurface.ts): the kolkhoz machine yard south
-    // of the corrals, the caravanserai's beaten forecourt at the foot of its
-    // rise, and the post-road halt beside the east track on the eastern ramp
-    // — firm level ground the objective placement seats its 30 m zones on
-    // (the open folds, the road banks and the seeded props leave no such disc
-    // west of centre or on the ramps).
+    // Graded aprons (hardstandSurface.ts), redrawn 2026-10-03 (maps lane B) — three the zone-control discs seat on,
+    // sited for equal drives (objective symmetry 1.62 -> 1.12, see the hints): the kolkhoz machine yard south of the
+    // corrals near the southern deployment, the station's grain yard by the east track's ford on the line of equal
+    // drives and the post-road halt on the plateau near the northern arc; the two a road crosses take its height and
+    // grade. The fourth is the caravanserai's beaten forecourt at the foot of its rise, tilted down its fall line. Each
+    // stands on its ground with a bank wide enough to make no wall (maps lane A's apron bank law: 115 wall points
+    // before, none now).
     hardstands: [
-      { x: -330, z: -240, width: 64, length: 68, yawDeg: 0, level: -2.0, grade: 0 },
-      { x: 60, z: 90, width: 60, length: 60, yawDeg: 0, level: 2.2, grade: 0 },
-      { x: 292, z: 312, width: 58, length: 58, yawDeg: 0, level: 7.5, grade: 0 },
+      { x: -330, z: -240, width: 64, length: 68, yawDeg: 0, level: 1.5, grade: 0 },
+      { x: 271, z: -64, width: 56, length: 56, yawDeg: 0, grade: 'road', bankM: 18 },
+      { x: 206, z: 360, width: 58, length: 58, yawDeg: 0, grade: 'road', bankM: 18 },
+      { x: 52, z: 82, width: 50, length: 50, yawDeg: -23, level: 1.9, grade: 0.054, bankM: 24 },
     ],
     // Round 57 (2026-09-24): the grain station's rail spur (railSpurs.ts; maps/mapKits.ts lays the track). One
     // siding along the elevator row's loading face — 7 m north of the long store's back wall, past the head
     // tower and the granaries, a level crossing over the east track — from a buffer stop west of the store.
     // Round 63 (2026-09-24): the line leaves the square through a railway cutting in the eastern rim band — the
-    // bed graded at 2.4 % from the portal at x 440 (the ground twists up from x ≈ 446; the station road climbs
-    // the rim at 24 % beside it) to the map edge, an 8 m floor between faces battered 0.7:1, ~18 m deep at the
-    // edge, opening past it into a valley along the radial (the horizon ring seats its near rows on it, terrain.ts).
+    // bed graded at 2.4 % from the portal at x 440 (the ground twists up from x ≈ 446; since 2026-10-03 the station
+    // road leaves through its own graded cut 99 m south of it) to the map edge, an 8 m floor between faces battered
+    // 0.7:1, ~18 m deep at the edge, opening past it into a valley along the radial (the horizon ring seats its near
+    // rows on it, terrain.ts).
     // The height field keeps vegetation and scattered props 3.6 m off the centreline and off the cutting's floor
     // and faces.
     railSpurs: [{ path: [[144, -181], [512, -181]], bufferStop: 'start', cutting: { from: [440, -181] } }],
@@ -161,8 +197,18 @@ export default {
       { kind: 'knoll', x: -150, z: 227, r: 36, height: 8.4 },  // the great kurgan
       { kind: 'knoll', x: 60, z: 224, r: 30, height: 6.6 },
       { kind: 'knoll', x: 170, z: 220, r: 32, height: 7.0 },
+      // 2026-10-03 (maps lane B): balkas (geology.ts gullies) — the escarpment face is cut by dry ravines between
+      // the kurgans, from the crest's shoulder down to the terrace above the wadi (one drains into the salt pan), and
+      // two short side ravines break the wadi's south bank. Each is a covered lane up the face and keeps the face
+      // from reading as a smooth swell.
+      ...gully(-206, 118, -214, 214, 4.2, 15, 8),
+      ...gully(136, 118, 124, 208, 3.8, 14, -7),
+      ...gully(362, 96, 374, 196, 4.0, 15, 9),
+      ...gully(-432, 128, -446, 222, 3.6, 13, -6),
+      ...gully(-372, -62, -380, -116, 2.6, 11, 4),
+      ...gully(124, -42, 114, -100, 2.4, 10, -4),
       // The caravanserai rise between the wadi's north bank and the escarpment foot.
-      // (its forecourt apron below flattens the toe; the mound stands 20 m up-slope of the apron's edge)
+      // (its forecourt apron levels the toe below it)
       { kind: 'knoll', x: 70, z: 142, rx: 56, rz: 46, height: 6.5, yawDeg: 12 },
     ],
   },
@@ -191,8 +237,9 @@ export default {
     // r2: warm sun-bleached outcrop stone — the neutral grey read as cold
     // blue slag wherever a fold crest picked up partial rock
     rockTone: (h: number, s: number, l: number) => [0.082, clamp01(s * 0.30 + 0.10), clamp01(l * 1.05 + 0.05)],
-    // round 48: the marsh layer is the salt pan — a pale, near-white crust
-    mudTone: (h: number, s: number, l: number) => [0.10, 0.10, clamp01(l * 1.45 + 0.22)],
+    // round 48: the marsh layer is the salt pan. 2026-10-03 (maps lane B, gauntlet wave 11): a pale buff silt
+    // crust, not near-white (l * 1.45 + 0.22 clipped to flat white: "flat white decals with no shoreline")
+    mudTone: (h: number, s: number, l: number) => [0.105, 0.16, clamp01(l * 1.18 + 0.1)],
     mudRough: 1.2,
     // straw lift / olive-brown DARKENER / pale hay — the macro range that
     // keeps 300-800 m readable on an open plain (the desert r3 lesson)
@@ -222,16 +269,23 @@ export default {
     // Shelterbelts (vegetation.ts belts): poplar rows along the highway and the
     // station road, oak windbreaks on the kolkhoz and the plateau — the
     // steppe's man-made tree geometry and its concealment corridors.
+    // 2026-10-03 (maps lane B, gauntlet wave 11: "unnaturally straight, evenly spaced rows… copy-pasted windbreak
+    // instancing"): a sixty-year-old belt stands in runs of different ages. Replanted runs are mixed, and a run lies a
+    // few metres off its neighbour's line, with gaps where trees died or a field track crosses. Each run has its own
+    // spacing, lateral jitter and losses. Dead snags come with the map's craters (vegetation.ts battleSnagShare).
     belts: [
-      { x0: -150, z0: -470, x1: -102, z1: -60, species: 'poplar', gap: 9 },   // highway, west verge (south)
-      { x0: -118, z0: -470, x1: -70, z1: -60, species: 'poplar', gap: 9 },    // highway, east verge (south)
-      { x0: -82, z0: 90, x1: -58, z1: 330, species: 'poplar', gap: 9 },       // highway, west verge (north)
-      { x0: -50, z0: 90, x1: -27, z1: 330, species: 'poplar', gap: 9 },       // highway, east verge (north)
-      { x0: -380, z0: -130, x1: -190, z1: -142, species: 'poplar', gap: 8 },  // station road, kolkhoz reach
-      { x0: -190, z0: -142, x1: 150, z1: -196, species: 'poplar', gap: 8 },   // station road, to the station
-      { x0: 300, z0: -470, x1: 266, z1: -240, species: 'poplar', gap: 9 },    // east track approach
-      { x0: -370, z0: -86, x1: -250, z1: -80, species: 'oak', gap: 8 },       // kolkhoz windbreak
-      { x0: -440, z0: 386, x1: -300, z1: 382, species: 'oak', gap: 10 },      // plateau field boundary
+      ...shelterbelt(-150, -470, -102, -60, [[0, 0.3, 'poplar', 9, 0.18, 0], [0.36, 0.62, null, 11, 0.3, 3],
+        [0.68, 1, 'poplar', 8, 0.22, -2]]),                                      // highway, west verge (south)
+      ...shelterbelt(-118, -470, -70, -60, [[0, 0.18, 'oak', 10, 0.25, 0], [0.24, 0.55, 'poplar', 9, 0.2, -3],
+        [0.6, 0.78, null, 12, 0.35, 2], [0.84, 1, 'poplar', 9, 0.2, 0]]),        // highway, east verge (south)
+      ...shelterbelt(-82, 90, -58, 330, [[0, 0.45, 'poplar', 9, 0.2, 0], [0.52, 1, null, 11, 0.3, -3]]),     // highway, west verge (north)
+      ...shelterbelt(-50, 90, -27, 330, [[0, 0.3, null, 12, 0.3, 2], [0.38, 0.86, 'poplar', 9, 0.22, 0]]),  // highway, east verge (north)
+      ...shelterbelt(-380, -130, -190, -142, [[0, 0.4, 'poplar', 8, 0.2, 0], [0.48, 1, null, 10, 0.3, 3]]),  // station road, kolkhoz reach
+      ...shelterbelt(-190, -142, 150, -196, [[0, 0.22, 'poplar', 8, 0.2, 0], [0.28, 0.5, null, 11, 0.32, -3],
+        [0.56, 0.8, 'poplar', 9, 0.22, 2], [0.88, 1, 'oak', 10, 0.3, 0]]),       // station road, to the station
+      ...shelterbelt(300, -470, 266, -240, [[0, 0.55, 'poplar', 9, 0.2, 0], [0.62, 1, null, 12, 0.3, -3]]),  // east track approach
+      ...shelterbelt(-370, -86, -250, -80, [[0, 0.45, 'oak', 8, 0.25, 0], [0.55, 1, null, 10, 0.3, 2]]),     // kolkhoz windbreak
+      ...shelterbelt(-440, 386, -300, 382, [[0, 0.6, 'oak', 10, 0.28, 0], [0.7, 1, null, 12, 0.35, -2]]),    // plateau field boundary
     ],
     grassTexTone: (h: number, s: number, l: number) => [0.118, clamp01(s * 0.75 + 0.05), clamp01(l * 1.05 + 0.07)],
     tuftTone: (h: number, s: number, l: number) => [0.122, 0.30, clamp01(l * 0.85 + 0.14)],
@@ -324,7 +378,9 @@ export default {
   horizon: {
     // low, endless: the ring must whisper, not wall — smallest amp in the
     // roster + heavy dust haze so the plain reads as if it continues forever
-    baseHex: 0x77704a, amp: 0.65, style: 'rolling', treeline: 0.82,
+    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): the Sary-Arka grain steppe: long low
+    // swells and a few shelterbelts
+    baseHex: 0x77704a, amp: 0.3, style: 'rolling', treeline: 0.82, panorama: { regional: 'plain', trees: 9 },
     forestHex: 0x565232, rockHex: 0x7d7663, haze: 1.08, grain: 0.6,
   },
 

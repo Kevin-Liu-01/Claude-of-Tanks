@@ -4,6 +4,7 @@ import {TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS} from './specs.ts';
 import {bindFleetRegistries,cloneFleetVariant,registerFleetSpecs,stripSilhouetteDimensions} from './fleetSpecRegistry.ts';
 import {createT62MV1XArmorZones} from './t62mv1XArmor.ts';
 import {modernArmor,leftSidePlate,rightSidePlate,plate} from './specHelpers.ts';
+import {OPLOT_FLANK_CASSETTE,oplotFlankCassetteSeat} from './oplotFlankLayout.ts';
 import type {FleetTankSpec} from './specContracts.ts';
 
 export const FLEET_RENEWAL_NEW_IDS=['type96_72_long','type96_80_feng','type96_72m_lei','t72_rys'] as const;
@@ -114,11 +115,17 @@ export function synchronizeFleetRenewalMetadata():void{
   const era=oldOplot.armor.turretPlates.find(p=>p.era)?.era;
   if(!era)throw new Error('Oplot modernization requires its existing ERA family');
   const eraOptions={kind:'era',era:{...era}};
+  // Each flank seed runs from the front cassette's outer front edge to the rear cassette's outer rear edge
+  // (oplotFlankLayout.ts), so it passes through all three seated bodies as they follow the tapering bustle.
+  const flankFront=oplotFlankCassetteSeat(0).outerFront,flankRear=oplotFlankCassetteSeat(OPLOT_FLANK_CASSETTE.stations.length-1).outerRear;
+  const flankLow=OPLOT_FLANK_CASSETTE.centerY-OPLOT_FLANK_CASSETTE.heightM/2,flankHigh=OPLOT_FLANK_CASSETTE.centerY+OPLOT_FLANK_CASSETTE.heightM/2;
   frame.turretPlates.push(
     plate('oplot_cheek_era_L',15,[-1.20,.50,1.39],[-.50,.50,1.57],[-1.20,.60,1.20],eraOptions),
     plate('oplot_cheek_era_R',15,[.50,.50,1.57],[1.20,.50,1.39],[.50,.60,1.38],eraOptions),
-    leftSidePlate('oplot_side_era_L',15,1.53,.105,1.53,.535,-1.68,-.405,eraOptions),
-    rightSidePlate('oplot_side_era_R',15,1.53,.105,1.53,.535,-1.68,-.405,eraOptions),
+    plate('oplot_side_era_L',15,[-flankRear[0],flankLow,flankRear[1]],[-flankFront[0],flankLow,flankFront[1]],
+      [-flankRear[0],flankHigh,flankRear[1]],eraOptions),
+    plate('oplot_side_era_R',15,[flankFront[0],flankLow,flankFront[1]],[flankRear[0],flankLow,flankRear[1]],
+      [flankFront[0],flankHigh,flankFront[1]],eraOptions),
   );
   oplot.armor={...frame,hullPlates:structuredClone(chassis.armor.hullPlates)};
   oplot.armor.modules=hybridModules(chassis,{...oplot,armor:frame});

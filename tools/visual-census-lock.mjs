@@ -5,13 +5,15 @@
 // when the session mutex is busy, or the FIFO holder outlasts that wait, give the head away by re-queueing directly
 // behind the next live waiter (its stamp + 1 ms) — so neither lock is ever held while waiting out the other's queue.
 // tools/visual-census.mjs uses it for `capture --probe-lock=<dir>`; without that flag it takes createCaptureLock().
-import { mkdirSync, readdirSync, rmSync, rmdirSync, statSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, rmSync, rmdirSync, statSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const DEFAULT_QUEUE_DIR = '/tmp/cot-shots.queue';
 const DEFAULT_LOCK_DIR = '/tmp/cot-shots.lock';
 const LOCK_STALE_MS = 5 * 60 * 1000;
 const TICKET_STALE_MS = 60 * 60 * 1000;
+/** A session mutex younger than this is never reaped: its holder may sit between its mkdir and its pid write. */
+const PROBE_DEAD_GRACE_MS = 60 * 1000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const ticketPid = (name) => { const m = /-(\d+)\.t$/.exec(name); return m ? parseInt(m[1], 10) : -1; };
@@ -49,6 +51,7 @@ export function createPoliteCaptureLock({
   probeDir, queueDir = DEFAULT_QUEUE_DIR, lockDir = DEFAULT_LOCK_DIR, maxHolderWaitMs = 8 * 60 * 1000,
   requeuePauseMs = 3000, headPollMs = 1000, log = () => {},
   ticketStaleMs = TICKET_STALE_MS, ticketRefreshMs = Math.max(1, Math.min(30_000, ticketStaleMs / 3)),
+  probeDeadGraceMs = PROBE_DEAD_GRACE_MS,
 }) {
   if (!probeDir) throw new Error('createPoliteCaptureLock needs the session mutex directory');
   let fifoHeld = false, probeHeld = false;
@@ -89,6 +92,20 @@ export function createPoliteCaptureLock({
       return true;
     } catch (error) { return error.code === 'ENOENT'; }
   };
+  // 2026-10-03: a session mutex whose holder died without releasing it (a SIGKILL, a crash) stayed busy for good, and
+  // every lane's captures queued behind it until someone deleted it by hand. A mutex past the grace age whose recorded
+  // pid is gone, or that never got its pid, is reaped; a live holder's mutex never is.
+  const reapDeadProbe = () => {
+    let mtimeMs;
+    try { mtimeMs = statSync(probeDir).mtimeMs; } catch (error) { return error.code === 'ENOENT'; }
+    if (Date.now() - mtimeMs <= probeDeadGraceMs) return false;
+    let pid = NaN;
+    try { pid = parseInt(readFileSync(join(probeDir, 'pid'), 'utf8'), 10); } catch { /* no pid: its holder died before writing it */ }
+    if (Number.isFinite(pid) && pidAlive(pid)) return false;
+    try { rmSync(probeDir, { recursive: true, force: true }); } catch { return false; }
+    log(`reaped a dead holder's session mutex (pid ${Number.isFinite(pid) ? pid : 'never written'})`);
+    return true;
+  };
   const dropProbe = () => { if (probeHeld) { probeHeld = false; try { rmSync(probeDir, { recursive: true, force: true }); } catch { /* gone */ } } };
 
   async function acquire(timeoutMs = 10 * 60 * 1000) {
@@ -104,7 +121,7 @@ export function createPoliteCaptureLock({
           if (Date.now() - keptAt >= ticketRefreshMs) { keepTicket(ticket); keptAt = Date.now(); }
           await sleep(headPollMs);
         }
-        if (tryMkdir(probeDir)) {
+        if (tryMkdir(probeDir) || (reapDeadProbe() && tryMkdir(probeDir))) {
           probeHeld = true;
           writeFileSync(join(probeDir, 'pid'), String(process.pid));
           const headSince = Date.now();

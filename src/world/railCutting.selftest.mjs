@@ -177,8 +177,12 @@ for (const lat of [4.7, 5.2, 5.6]) {
   near(field.getHeightAt(500, -181 - lat), portalY + RAIL_CUTTING_GRADE * 60 + (lat - 4) / RAIL_CUTTING_BATTER, 1e-9, `the south face at the batter (lateral ${lat})`);
 }
 assert.equal(field.getHeightAt(500, -191), uncut.getHeightAt(500, -191), 'beyond the daylight line the ground it was');
-near(field.getHeightAt(410, -226), 0.52, 0.02, 'the station road node before the rim (inside 430 m the classic grades, as authored)');
-near(field.getHeightAt(512, -232), 3.44, 0.02, 'and at the edge: graded on the landform\'s rim past 430 m, it comes down with the land (20.4 m on the old plateau)');
+// 2026-10-03 (maps lane B, Tarkhan Steppe to the layout brief, merged over the borders lane's second pass): the station
+// road stops at (448, -246), and the endpoint completion grades its exit on its last bearing, 99 m south of the notch.
+// Inside 430 m the road keeps the classic grades (0.52 m at this node on the borders branch's own road); past 430 m
+// it follows the landform's rim.
+near(field.getHeightAt(410, -226), -0.17, 0.02, 'the station road node before the rim (inside 430 m the classic grades, as authored)');
+near(field.getHeightAt(512, -279.6842105263158), -3.64, 0.02, 'and its exit at the edge: graded on the landform\'s rim past 430 m, it comes down with the land');
 near(field.getHeightAt(424, -181), -1.55, 0.02, 'the plain before the fade');
 // every sample outside the corridor is byte-identical to the map without the cutting; the road nodes to the bit
 let moved = 0, outside = 0, west = 0;
@@ -221,6 +225,10 @@ const n = HORIZON_SEGMENTS;
 assert.equal(ring.heights.length, ringUncut.heights.length);
 let ringMoved = 0, ringOutside = 0, seated = 0;
 for (let i = 0; i < ring.heights.length; i++) {
+  // the mountains lane (2026-10-03): a road exit opens a pass through the ranges (horizon.ts openRoadPasses) unless it
+  // runs inside a cutting's corridor, which is its valley — so without the cutting the station road's exit takes a pass
+  // through the ranges that the cut map does not need; those vertices are the road's, not the cutting's
+  if (ring.roadPass?.[i] || ringUncut.roadPass?.[i]) continue;
   const row = Math.floor(i / n), x = ring.positions[i * 3], z = ring.positions[i * 3 + 2];
   if (ring.heights[i] !== ringUncut.heights[i]) {
     ringMoved++;
@@ -263,7 +271,10 @@ const obstacles = [], colliders = [];
 dressMapExtras({ mapId: 'steppe', extraKits: cfg.props?.extraKits, riverLandings: cfg.props?.riverLandings, L: field._layout,
   heightField: field, rng: mulberry32(1337 ^ 0x5a17), buckets, obstacles, colliders });
 const centre = (g) => { g.computeBoundingBox(); return g.boundingBox.getCenter(new THREE.Vector3()); };
-const allSleepers = buckets.wood.filter((g) => g.parameters?.width === RAIL_SPUR_BALLAST_M - 0.9 && g.parameters.height === 0.09).map(centre);
+// ground lane (2026-10-03): the seeded sleepers carry the spans' grade law; the infill sleepers between them
+// (userData.railInfill, railSpurs.selftest) lie on the same spans and are left out of the census
+const allSleepers = buckets.wood.filter((g) => g.parameters?.width === RAIL_SPUR_BALLAST_M - 0.9 && g.parameters.height === 0.09
+  && !g.userData.railInfill).map(centre);
 const sleepers = allSleepers.filter((c) => c.x > 441 && c.x <= 512).sort((a, b) => a.x - b.x);
 assert.ok(sleepers.length > 45, `sleepers in the cutting (${sleepers.length})`);
 let worstGrade = 0;

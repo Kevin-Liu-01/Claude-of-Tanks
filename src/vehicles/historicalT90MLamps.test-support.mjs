@@ -41,10 +41,15 @@ export function assertCurrentT90MLampSeats(tank){
     assert.equal(exposed.length,0,'No hull stock buries the real emitting aperture');
     const ranges=new T.Raycaster(p,n.clone().negate(),0,.08).intersectObject(double,false).map(h=>h.distance)
       .filter((d,i,a)=>!i||d-a[i-1]>1e-7);
-    assert.ok(ranges.length>=1&&ranges[0]>.005&&ranges[0]<.025,'Aperture physically seats in the unchanged cassette');
-    // The lens has 25 mm axial stock. A housing entry before its rear cap
-    // establishes positive lap rather than an AABB/touching-plane claim.
-    assert.ok(.025-ranges[0]>.004,'Finite rear lens stock enters the actual housing');
+    // The lens was authored with 25 mm axial stock; the owner's 1.05 size and 1.10 hull length
+    // (2026-10-02, main 245aa4e4e) bake it longer, so its rear cap is measured on the installed lens.
+    // A housing entry at least 4 mm before that cap establishes positive lap rather than an
+    // AABB/touching-plane claim.
+    const rear=new T.Raycaster(p.clone().addScaledVector(n,.001),n.clone().negate(),0,.08).intersectObject(lens,false)
+      .map(h=>h.distance-.001).find(d=>d>1e-4);
+    assert.ok(rear!==undefined,'Lens carries finite rear stock behind its emitting cap');
+    assert.ok(ranges.length>=1&&rear-ranges[0]>.004,'Finite rear lens stock enters the actual housing');
+    assert.ok(ranges[0]>.005&&ranges[0]<.025,'Aperture physically seats in the unchanged cassette');
     points.push(p.toArray());
   }}finally{double.material.dispose();}
   return points;

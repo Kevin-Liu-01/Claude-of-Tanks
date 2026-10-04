@@ -159,7 +159,7 @@ assert.ok(GROUND_LITTER.fadeOutM <= GROUND_LITTER.cellM * GROUND_LITTER.ring, 't
 
 // wiring: the world owns one litter tier fed by the sealed footprint query
 assert.match(map, /createGroundLitter\(heightField, \{/, 'the world builds the litter tier on its height field');
-assert.match(map, /blocked: createGroundCoverClearance\(queryObstacles\)/, 'litter keeps out of sealed footprints');
+assert.match(map, /blocked: groundCoverClearance\(\)/, 'litter keeps out of sealed footprints (and the scenery\'s holes)');
 assert.match(map, /litter\.update\(cameraPos\)/, 'the frame update streams litter cells');
 assert.match(map, /litter\.dispose\(\)/, 'litter is released with the world');
 assert.match(map, /config\.vegetation[^\n]*\.litter/, 'maps tune the tier through their vegetation config');

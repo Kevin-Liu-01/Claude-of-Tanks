@@ -113,6 +113,8 @@ export default {
     clusterScrub: 2.2, bushCount: 1.45, bushSpecies: 'oak',
   },
   props: {
+    // regional-buildings lane: the Jamuna char tin-homestead kit (maps/regional/bengal.ts)
+    architecture: 'bengal',
     plan: ['marketRow', 'farmhouse', 'fishery', 'market', 'chapel', 'granary',
       'farmhouse', 'cornershop', 'ruin', 'boatshed', 'farmhouse', 'depot', 'marketRow', 'woodshed',
       'boatshed', 'market', 'cottage', 'farmhouse', 'granary', 'marketRow', 'depot', 'ruin',
@@ -155,8 +157,25 @@ export default {
       roadFence: 'fencewattle', yardFence: 'fencewattle',
     },
   },
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Jamuna homesteads' rice
+  // straw, packed round a bamboo pole into tall stacks at the foot of each homestead mound.
+  scenery: {
+    landmarks: [
+      { kind: 'strawstack', x: -232, z: 74, name: 'the straw stacks at the west homestead' },
+      { kind: 'strawstack', x: -226, z: 66 },
+      { kind: 'strawstack', x: -134, z: 214, name: 'the straw stacks below the homestead mound' },
+      { kind: 'strawstack', x: -142, z: 206 },
+      { kind: 'strawstack', x: -4, z: 224, name: 'the straw stacks at the north homestead' },
+      { kind: 'strawstack', x: 104, z: -284, name: 'the straw stacks at the south homestead' },
+      { kind: 'strawstack', x: 112, z: -292 },
+      { kind: 'strawstack', x: 264, z: 104, name: 'the straw stacks at the east homestead' },
+      { kind: 'strawstack', x: 24, z: -214, name: 'the straw stacks at the levee homestead' },
+    ],
+  },
   horizon: {
-    baseHex: 0x436645, amp: 0.9, style: 'rolling', treeline: 0.96, treelineLayers: 3,
+    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): the Jamuna chars are a dead-flat
+    // floodplain: the ring's swells low, the far country plain (homestead tree lines over the water-braided flats)
+    baseHex: 0x436645, amp: 0.3, style: 'rolling', treeline: 0.96, treelineLayers: 3, panorama: { regional: 'plain' },
     forestHex: 0x244b2b, rockHex: 0x69705d, haze: 0.96, grain: 0.72,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)

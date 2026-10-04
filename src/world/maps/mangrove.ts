@@ -134,6 +134,8 @@ export default {
     ],
   },
   props: {
+    // regional-buildings lane: the Ca Mau stilt-house kit (maps/regional/mekong.ts)
+    architecture: 'mekong',
     riverLandings: [
       { lakeIndex: 20, shoreAngleDeg: 285 }, // village-facing creek landing
       { lakeIndex: 10, shoreAngleDeg: 0 }, // relief-island net yard
@@ -158,7 +160,23 @@ export default {
       ids: ['bmp3', 'm2a2_bradley', 'type99a', 'k1a1', 'm551_sheridan'] },
     inhabit: { stalls: 4, benches: 3, coreClutter: 20, pots: 8, laundry: 4, handcarts: 4, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 3, modernClutter: 18, looseClutter: 20, roadFence: 'fencewattle', yardFence: 'fencewattle' },
   },
-  horizon: { baseHex: 0x56735c, amp: 0.46, style: 'rolling', treeline: 0.82, forestHex: 0x2d533b, rockHex: 0x7a8370, haze: 0.94, grain: 0.54 },
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Mekong delta's family
+  // tombs, rendered stucco under little tiled roofs, standing in pairs and threes on the raised dry ground by the ponds.
+  scenery: {
+    landmarks: [
+      { kind: 'tomb', x: -318, z: -192, yawDeg: 20, name: 'the tombs on the south-west chenier' },
+      { kind: 'tomb', x: -324, z: -184, yawDeg: 26 },
+      { kind: 'tomb', x: -300, z: 102, yawDeg: 200, name: 'the tombs on the west mound' },
+      { kind: 'tomb', x: -294, z: 108, yawDeg: 196 },
+      { kind: 'tomb', x: 322, z: -238, yawDeg: 90, name: 'the tombs on the east chenier' },
+      { kind: 'tomb', x: 330, z: -244, yawDeg: 86 },
+      { kind: 'tomb', x: 338, z: -236, yawDeg: 94 },
+      { kind: 'tomb', x: 300, z: 202, yawDeg: 270, name: 'the tombs on the north-east mound' },
+    ],
+  },
+  // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): the Ca Mau coast is dead flat —
+  // a mangrove tree line, not volcanic mountains: the ring's swells low, the far country plain
+  horizon: { baseHex: 0x56735c, amp: 0.18, style: 'rolling', treeline: 0.82, panorama: { regional: 'plain', trees: 14 }, forestHex: 0x2d533b, rockHex: 0x7a8370, haze: 0.94, grain: 0.54 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'towering-cumulus', coverage: 0.34, windDirDeg: 80, towers: 0.6 },
   sky: { ...delta.sky, sunElevationDeg: 32, sunAzimuthDeg: 94, turbidity: 5.7, fogDensity: 0.00064, fogTintHex: 0x95b0b0, fogMix: 0.52, sunIntensity: 4.0, /* lighting 2026-09-13: was 3.7 */ cloudOpacity: 1.05, cloudOpacity2: 0.72 },

@@ -108,7 +108,10 @@ export default {
       { x: 50, z: 440 }, { x: 110, z: 440 }, { x: 170, z: 440 }, { x: 230, z: 440 },
     ],
   },
-  splat: { sourcedPalette: 'coastal', ...coastal.splat, seaLake: true, seaFoam: 0.2, seaRamp: [0.16, 0.54], iceDrift: 0.02, marshGloss: 0.90, iceSky: [0.23, 0.44, 0.58], tintA: [1.08, 1.04, 0.82], tintB: [0.73, 0.78, 0.62], tintC: [1.14, 1.08, 0.88], roadTint: [0.82, 0.76, 0.63], midRelief: 0.68 },
+  // ground lane (2026-10-03, maps lane A's census: "lush green where Dalmatian karst should be dry scrub", and "blue-grey
+  // slope-rock smears on the terrace risers read as puddles"): on the coast's photo layers, the sward pulled toward a
+  // garrigue's dusty grey-olive and the rock lifted to the weathered limestone's pale warm grey (the boulders' tone)
+  splat: { sourcedPalette: 'coastal', ...coastal.splat, sourcedTint: { G: [1.15, 0.95, 1.35], R: [1.40, 1.30, 1.30] }, seaLake: true, seaFoam: 0.2, seaRamp: [0.16, 0.54], iceDrift: 0.02, marshGloss: 0.90, iceSky: [0.23, 0.44, 0.58], tintA: [1.08, 1.04, 0.82], tintB: [0.73, 0.78, 0.62], tintC: [1.14, 1.08, 0.88], roadTint: [0.82, 0.76, 0.63], midRelief: 0.68 },
   vegetation: {
     species: ['cedar', 'acacia', 'pine'], clusterMix: [['cedar', 0.46], ['acacia', 0.38], ['pine', 0.16]],
     loneMix: [['acacia', 0.50], ['cedar', 0.32], ['pine', 0.18]], rimMix: [['cedar', 0.5], ['pine', 0.3], ['acacia', 0.2]],
@@ -116,8 +119,12 @@ export default {
     // outcrops instead of a green pasture (establishing shot read as generic);
     // tree and rock counts stay at the environmentExpansion first-pass ceilings.
     clusterCount: 34, loneCount: 52, rimCount: 62, grassDensity: 0.68, bushCount: 1.3, bushSpecies: 'acacia', clusterScrub: 1.9,
+    // ground lane: the tufts a garrigue's dry grey-olive, not a meadow's green
+    tuftTone: (_h: number, s: number, l: number) => [0.17, s * 0.55, l * 0.96],
   },
   props: {
+    // regional-buildings lane: the Dalmatian limestone kit (maps/regional/dalmatian.ts)
+    architecture: 'dalmatian',
     sourcedPalette: 'coastal',
     extraKits: ['river'],
     // Two low timber landings face the village and its northern coastal exit.
@@ -152,7 +159,46 @@ export default {
       ids: ['ariete', 'leclerc_xlr', 'm60a3', 'merkava4b', 'm2a2_bradley'] },
     inhabit: { stalls: 4, benches: 4, coreClutter: 22, pots: 8, laundry: 4, handcarts: 4, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 2, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencepicket' },
   },
-  horizon: { baseHex: 0x7f8977, amp: 0.90, style: 'rolling', treeline: 0.42, forestHex: 0x506044, rockHex: 0xa4a391, haze: 0.90, grain: 0.46 },
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the karst. Bare limestone
+  // pavement (clints split by grikes) lies on the open uplands above the bay; the lower slopes' outcrop knolls show
+  // their bedded limestone scars; the terrace flights and the spine break into small pavements and ledges; a gomila,
+  // the clearance cairn of a Dalmatian field, stands on each upland. Mirrored across the bay's axis like the rest of
+  // the map (the rock fields draw their own ground on each side).
+  scenery: {
+    // the karst's small fields are walled in dry stone: the ground lane's land use draws their footing (landUse.ts, boundary
+    // 3) and the walls stand on the same lines (fieldWorks.ts; decor, no collision)
+    fieldWorks: { walls: true, wallTone: [0.11, 0.07, 0.6] },
+    // the masonry is the same pale limestone as the outcrops (the maps lane's boulders, lightness 0.52-0.73): the stone
+    // print (mean sRGB lightness 0.36) lifted to lightness 0.6 at the limestone's hue
+    masonryTint: [2.74, 3.01, 3.2],
+    rocks: [
+      { form: 'pavement', geology: 'limestone', x: -350, z: -262, radius: 15, height: 1.6, yawDeg: 30, name: 'the south karst pavement' },
+      { form: 'pavement', geology: 'limestone', x: -350, z: 282, radius: 15, height: 1.6, yawDeg: -30, name: 'the north karst pavement' },
+      { form: 'outcrop', geology: 'limestone', x: 90, z: -132, radius: 8, height: 3.6, yawDeg: 10, name: 'the south spine scar' },
+      { form: 'outcrop', geology: 'limestone', x: 90, z: 152, radius: 8, height: 3.6, yawDeg: -10, name: 'the north spine scar' },
+      { form: 'outcrop', geology: 'limestone', x: -190, z: -124, radius: 7, height: 3.2, yawDeg: 40, name: 'the south harbour scar' },
+      { form: 'outcrop', geology: 'limestone', x: -190, z: 144, radius: 7, height: 3.2, yawDeg: -40, name: 'the north harbour scar' },
+    ],
+    // the bare limestone of the terrace flights and the spine: small pavements and low bedded ledges on the slopes
+    rockFields: [
+      { geology: 'limestone', x: 40, z: -235, radius: 115, count: 14, slopeBias: 0.6, name: 'the south terrace karst' },
+      { geology: 'limestone', x: 40, z: 255, radius: 115, count: 14, slopeBias: 0.6, name: 'the north terrace karst' },
+      { geology: 'limestone', x: -100, z: -300, radius: 70, count: 7, slopeBias: 0.5, name: 'the south upland karst' },
+      { geology: 'limestone', x: -100, z: 320, radius: 70, count: 7, slopeBias: 0.5, name: 'the north upland karst' },
+      { geology: 'limestone', x: 230, z: 10, radius: 140, count: 12, slopeBias: 0.4, name: 'the karst spine' },
+    ],
+    landmarks: [
+      { kind: 'cairn', x: -330, z: -170, scale: 4.2, height: 2.6, name: 'the south gomila' },
+      { kind: 'cairn', x: -330, z: 190, scale: 4.2, height: 2.6, name: 'the north gomila' },
+    ],
+  },
+  // the mountains lane (2026-10-03, gauntlet wave 24): held at the PR head's far country while the mainland's karst ridge
+  // is rebuilt as pale limestone over scrub under the shared haze law — its establishing view read "a second, taller range
+  // of sharp peaks floats above a flat white haze stripe"
+  horizon: {
+    baseHex: 0x7f8977, amp: 0.90, style: 'rolling', treeline: 0.42, forestHex: 0x506044, rockHex: 0xa4a391, haze: 0.90, grain: 0.46,
+    panorama: false,
+  },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'sea-streets', coverage: 0.30, windDirDeg: 200, farBand: 0.55, fogBank: 0.35, fogBankTopM: 100 },
   sky: { ...coastal.sky, sunElevationDeg: 30, sunAzimuthDeg: 112, turbidity: 3.9, fogDensity: 0.00052, fogTintHex: 0x9cb8c5, fogMix: 0.48, cloudOpacity: 0.86, cloudOpacity2: 0.5, sunIntensity: 3.95, hemiIntensity: 0.42 },

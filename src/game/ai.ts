@@ -475,6 +475,16 @@ const REACT_BACKOFF_HP = 0.42;
 const REACT_ANGLE_RAD = 0.75;
 const REACT_ANGLE_OFFSET_RAD = 0.42;
 const REACT_BACKOFF_M = 32;
+// A casemate lays its gun with the hull (bots lane, 2026-10-03; Aegis Crossing pacing seed 53002, the Strv 103 alone
+// against two T-90Ms): every move that turned the hull turned the gun off its target. Its shoot-and-scoot drove to a
+// spot 94-152 degrees off the bearing, its hit jink turned the bow onto the shooter (a second tank on its flank), its
+// moves into cover drove forward to crests behind it, and a blocked corridor swung it to an escape heading: the gun
+// stood 19-24 degrees off for seconds at a time and it died 12 s into the fight. Engaged, a casemate keeps the bow on
+// its target: it scoots along the line of fire, CASEMATE_SCOOT_M back off its spot and then up to it again (the
+// S-tank's hull-down drill, so the legs do not walk it out of the fight), backs into cover, jinks with the bow on the
+// target, falls back in reverse and stops at a blocked corridor instead of turning.
+const CASEMATE_SCOOT_M = 25;
+const CASEMATE_SCOOT_S = 8;
 const REACT_JINK_PERIOD_S = 0.8;
 const REACT_DURATION_S: Readonly<Record<Reaction, number>> = Object.freeze({
   cover: 7, backoff: 5, angle: 2.5, jink: 3.2,
@@ -899,7 +909,8 @@ function ensureAiInput(entity: AiEntity): void {
 }
 
 function isCasemate(spec: AiSpec): boolean {
-  return spec.gunArcDeg != null && spec.gunArcDeg <= 30;
+  // movement.ts gives a turretless hull a fixed arc even when the spec authors none (gunArcRadFor)
+  return !!spec.armor?.turretless || (spec.gunArcDeg != null && spec.gunArcDeg <= 30);
 }
 
 function findHeShellSlot(spec: AiSpec): number {
@@ -1115,6 +1126,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let shotsFromSpot = 0;
   const scootPoint = { x: 0, z: 0 };
   let scootUntilS = -1;
+  let scootLine = 0;          // a casemate's scoot along its line of fire: -1 back, +1 up, 0 a free leg
+  let lineScootUp = false;    // the casemate's next scoot goes up the line (it last backed off it)
   let relocations = 0;   // probe-visible shoot-and-scoot counter
   let prevReloadT = 0;   // reload-edge watch (a jump up = a shot left the gun)
   // universal retreat-toward-support (tracked/low): time-boxed reverse window
@@ -2854,6 +2867,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     scootPoint.x = bx;
     scootPoint.z = bz;
     scootUntilS = nowS + 6;
+    scootLine = 0;
     routeTimer = 0;
     return true;
   }
@@ -3032,6 +3046,42 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     input.steer = Math.abs(err) > 0.06 ? clamp(err * 2.5, -1, 1) : 0;
     input.throttle = 0;
     input.brake = Math.abs(st.speed) > 0.5;
+  }
+
+  /**
+   * A casemate's leg along its line of fire with the bow on `facing`: back onto (x, z) for a negative throttle, up to
+   * it for a positive one. True once within 4 m of the point or once the hull has passed it.
+   */
+  function driveOnLine(input: AiInput, x: number, z: number, facing: number, throttle: number): boolean {
+    const st = entity.state;
+    const dx = x - st.pos.x, dz = z - st.pos.z;
+    const ahead = dx * Math.sin(facing) + dz * Math.cos(facing);
+    if (dx * dx + dz * dz < 16 || ahead * throttle <= 0) return true;
+    if (throttle < 0) {
+      reverseFacing(input, facing, throttle);
+    } else {
+      faceYaw(input, facing);
+      input.throttle = throttle;
+      input.brake = false;
+    }
+    return false;
+  }
+
+  /** True when (x, z) lies behind the hull's line to its target, within 45 degrees of straight back. */
+  function behindOnLine(x: number, z: number): boolean {
+    const st = entity.state;
+    const bearing = targetBearing();
+    const dx = x - st.pos.x, dz = z - st.pos.z;
+    const length = Math.hypot(dx, dz);
+    return length > 1e-3 && -(dx * Math.sin(bearing) + dz * Math.cos(bearing)) / length > Math.SQRT1_2;
+  }
+
+  /** The bearing to the target (the hull's own heading without one). */
+  function targetBearing(): number {
+    const st = entity.state;
+    return target && target.state
+      ? Math.atan2(target.state.pos.x - st.pos.x, target.state.pos.z - st.pos.z)
+      : st.yaw;
   }
 
   /**
@@ -3364,7 +3414,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       return;
     }
     if (hasMoveTarget) {
-      if (driveToXZ(input, moveTarget.x, moveTarget.z, 0.6)) hasMoveTarget = false;
+      const arrived = casemate && behindOnLine(moveTarget.x, moveTarget.z)
+        ? driveOnLine(input, moveTarget.x, moveTarget.z, targetBearing(), -0.6)
+        : driveToXZ(input, moveTarget.x, moveTarget.z, 0.6);
+      if (arrived) hasMoveTarget = false;
       return;
     }
     if (role === 'scout') {
@@ -3588,6 +3641,29 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (hf.getNormalAt(sx, sz).y < LEG_NORMAL_Y_MIN) return false;
     }
     return true;
+  }
+
+  /**
+   * A casemate's scoot spot on its line of fire: CASEMATE_SCOOT_M back, or up again after a leg back (a shorter leg,
+   * then the other way, when that ground does not serve). Returns the leg's direction (-1 back, +1 up), 0 for none.
+   */
+  function pickLineScoot(): number {
+    const st = entity.state;
+    const bearing = targetBearing();
+    const first = lineScootUp ? 1 : -1;
+    for (const direction of [first, -first]) {
+      for (const distance of [CASEMATE_SCOOT_M, CASEMATE_SCOOT_M * 0.5]) {
+        const cx = st.pos.x + Math.sin(bearing) * distance * direction;
+        const cz = st.pos.z + Math.cos(bearing) * distance * direction;
+        if (Math.max(Math.abs(cx), Math.abs(cz)) > 470) continue;
+        if (!reachableSpot(cx, cz) || !legDrivable(st.pos.x, st.pos.z, cx, cz)) continue;
+        scootPoint.x = cx;
+        scootPoint.z = cz;
+        lineScootUp = direction < 0;
+        return direction;
+      }
+    }
+    return 0;
   }
 
   /**
@@ -4460,8 +4536,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     );
   }
 
-  function beginScoot(durationS: number): void {
+  function beginScoot(durationS: number, line = 0): void {
     scootUntilS = nowS + durationS;
+    scootLine = line;
     hasMoveTarget = false;
     hasCoverPoint = false;
     if (mode === 'seekCover') mode = 'engage';
@@ -4492,7 +4569,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         && shotsFromSpot >= tune.scootAfter
         && timeS >= scootUntilS
         && !targetPassive(timeS); // round 60 pacing: a solution on a passive target is kept, not scooted away from
-      if (shouldScoot && pickScoot()) beginScoot(14);
+      if (shouldScoot && casemate) {
+        const line = pickLineScoot();
+        if (line) beginScoot(CASEMATE_SCOOT_S, line);
+      } else if (shouldScoot && pickScoot()) beginScoot(14);
     }
     prevReloadT = reloadTime;
   }
@@ -4572,7 +4652,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       fallbackPoint.x - position.x,
       fallbackPoint.z - position.z,
     );
-    fallbackReverse = Math.abs(wrapAngle(supportYaw - entity.state.yaw)) > Math.PI * 0.55;
+    fallbackReverse = casemate || Math.abs(wrapAngle(supportYaw - entity.state.yaw)) > Math.PI * 0.55;
   }
 
   function maybeStartFallback(
@@ -5118,7 +5198,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const st = entity.state;
     switch (reaction) {
       case 'cover':
-        if (driveToXZ(input, reactPoint.x, reactPoint.z, 1)) reaction = null;
+        if (casemate ? driveOnLine(input, reactPoint.x, reactPoint.z, threatBearing, -0.85)
+          : driveToXZ(input, reactPoint.x, reactPoint.z, 1)) reaction = null;
         return true;
       case 'backoff': {
         const dx = reactPoint.x - st.pos.x, dz = reactPoint.z - st.pos.z;
@@ -5139,7 +5220,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         // short back-and-forth jinks spoil the shooter's lead while the bow
         // turns onto the shot (movement.ts flips steering in reverse)
         const phase = Math.floor((reactUntilS - timeS) / REACT_JINK_PERIOD_S) % 2 === 0 ? 1 : -1;
-        const err = wrapAngle(threatBearing - st.yaw);
+        const bow = casemate && target && losClear ? targetBearing() : threatBearing;
+        const err = wrapAngle(bow - st.yaw);
         const steerSign = st.speed < -0.15 ? -1 : 1;
         input.steer = Math.abs(err) > 0.06 ? clamp(err * 2.0, -1, 1) * steerSign : 0;
         input.throttle = 0.8 * phase * reactSide;
@@ -5330,7 +5412,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       return;
     }
     if (timeS < scootUntilS) {
-      if (driveToXZ(input, scootPoint.x, scootPoint.z, 0.95)) {
+      const arrived = scootLine !== 0
+        ? driveOnLine(input, scootPoint.x, scootPoint.z, targetBearing(), 0.8 * scootLine)
+        : driveToXZ(input, scootPoint.x, scootPoint.z, 0.95);
+      if (arrived) {
         scootUntilS = -1;
         spotPos.x = entity.state.pos.x;
         spotPos.z = entity.state.pos.z;
@@ -5341,7 +5426,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     if (mode === 'patrol') drivePatrol(input);
     else if (mode === 'engage') driveEngage(input, timeS, targetDistance);
-    else if (mode === 'seekCover') driveToXZ(input, coverPoint.x, coverPoint.z, 0.9);
+    else if (mode === 'seekCover') {
+      if (casemate && behindOnLine(coverPoint.x, coverPoint.z)) {
+        driveOnLine(input, coverPoint.x, coverPoint.z, targetBearing(), -0.9);
+      } else driveToXZ(input, coverPoint.x, coverPoint.z, 0.9);
+    }
     else {
       const flankPoint = flankPoints[Math.min(flankIndex, 2)];
       if (driveToXZ(input, flankPoint.x, flankPoint.z, 1)) flankIndex++;
@@ -5468,7 +5557,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         terrainAvoidUntilS = timeS + 3;
         routeTimer = 0;
       }
-      if (terrainBlocked || timeS < terrainAvoidUntilS) {
+      if ((terrainBlocked || timeS < terrainAvoidUntilS) && casemate && target && losClear) {
+        // an engaged casemate stops at the blocked corridor: the escape turn would swing its gun off the target
+        input.throttle = 0;
+        input.brake = speed > 0.3;
+        input.steer = 0;
+      } else if (terrainBlocked || timeS < terrainAvoidUntilS) {
         // Hold the escape turn long enough to complete it. Handing the hull
         // back to its old waypoint on the first safe sample oscillated along
         // the gorge edge instead of turning away from it.

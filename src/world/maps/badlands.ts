@@ -23,6 +23,10 @@ const pair = <T extends { x: number; z: number }>(form: T): T[] => [form, { ...f
 // a bar's counterpart turns with it, so a tapered ramp's high end still meets its own wall
 const pairBar = <T extends { x: number; z: number; yawDeg: number }>(form: T): T[] =>
   [form, { ...form, x: 16 - form.x, z: -form.z, yawDeg: form.yawDeg + 180 }];
+// The scenery lane (2026-10-03): Redrock's scenery stone in the terrain's own sandstone (sRGB HSL; the terrain's rock
+// reads hue 0.03-0.05, saturation 0.22, lightness 0.5-0.57 lit): the domes' beds, the ledges and the cairns read as one
+// rock with the walls they stand on, not as darker, redder cladding.
+const WADI_RUM_STONE = [0.045, 0.32, 0.52] as const;
 
 export default {
   id: 'badlands',
@@ -100,6 +104,8 @@ export default {
     sandstone: true, rockTone: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.62), clamp01(0.43 + (l - 0.5) * 0.34)],
     tintA: [1.10, 0.88, 0.69], tintB: [0.71, 0.54, 0.45], tintC: [1.06, 0.84, 0.67],
     roadTint: [0.78, 0.61, 0.51], strata: 0.035, sandMacro: 0.9,
+    // ground lane (2026-10-03): Wadi Rum's two formations — the Umm Ishrin's red over the paler Disi
+    formation: { atFrac: 0.30, wobbleM: 3, pale: 0.16, red: 0.12 },
     // An alluvial wash has faint wind-scoured patches, not floor-wide dunes.
     rippleAmp: 0.045, midRelief: 0.65, midReliefFar: 780,
   },
@@ -108,8 +114,14 @@ export default {
     loneMix: [['acacia', 0.54], ['oak', 0.28], ['cedar', 0.14], ['palm', 0.04]], rimMix: [['cedar', 0.45], ['acacia', 0.35], ['oak', 0.20]],
     clusterCount: 24, loneCount: 46, rimCount: 30, grassDensity: 0.38,
     clusterScrub: 1.5, bushCount: 0.74, bushSpecies: 'oak',
+    // ground lane (2026-10-03, the gauntlet's wave 4: "saturated green grass cards" on the red floor): the wadi's tufts
+    // are cured straw, as Sirocco's are
+    grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.95 + 0.10)],
+    tuftTone: (h: number, s: number, l: number) => [0.10, 0.24, clamp01(l * 0.70 + 0.12)],
   },
   props: {
+    // regional-buildings lane: the Wadi Rum outpost kit (maps/regional/wadirum.ts)
+    architecture: 'wadirum',
     plan: ['caravanserai', 'depot', 'warehouse', 'compoundSouk', 'factory', 'minaret',
       'adobe', 'ruin', 'containerRow', 'marketRow', 'watertower', 'depot', 'gantry', 'compound',
       'warehouse', 'adobe', 'compoundSouk', 'depot', 'containerRow', 'ruin', 'factory', 'marketRow',
@@ -149,18 +161,48 @@ export default {
       roadFence: 'fencerail', yardFence: 'fencewattle',
     },
   },
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): Wadi Rum's sandstone. Bedded
+  // ledges, scree and the odd pedestal rock break out round the foot of every inselberg; a mushroom rock (a hoodoo,
+  // its cap on a wind-cut pedestal) stands in the open floor of each mouth; a rujm, the Bedouin cairn, marks each cross
+  // track where it leaves for its ravine. Turned through 180 degrees about the outpost like the rest of the floor.
+  scenery: {
+    // (the bedrock skin on the inselbergs is parked: wave 16's critics read a skin on the jebels' smooth domes as
+    // masonry, "a ziggurat"; the domes' shape is the landform's — world/sceneryRocks.ts buildBedrock stays, unplaced)
+    rocks: [
+      { form: 'hoodoo', geology: 'sandstone', tone: WADI_RUM_STONE, x: 70, z: -330, radius: 3.4, height: 7, yawDeg: 30, name: 'the south mushroom rock' },
+      { form: 'hoodoo', geology: 'sandstone', tone: WADI_RUM_STONE, x: -54, z: 330, radius: 3.4, height: 7, yawDeg: 210, name: 'the north mushroom rock' },
+    ],
+    rockFields: [
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -40, z: -318, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south gate dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 56, z: 318, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north gate dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -118, z: -128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south-west lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 134, z: 128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north-east lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 96, z: -112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south-east lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -80, z: 112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north-west lane dome' },
+    ],
+    landmarks: [
+      { kind: 'cairn', x: -270, z: -228, scale: 1.6, height: 1.6, geology: 'sandstone', tone: WADI_RUM_STONE, name: 'the rujm at the south ravine' },
+      { kind: 'cairn', x: 286, z: 228, scale: 1.6, height: 1.6, geology: 'sandstone', tone: WADI_RUM_STONE, name: 'the rujm at the north ravine' },
+    ],
+  },
   horizon: {
     // Round 29 (owner 2026-09-20, "see where the texture just stops"): treeline 0.06 let the vista paint every
     // outland surface under 8 m — the canyon-mouth floors past both deployment ends — as dark woodland (green
     // before the absolute tints, dark brown after). Redrock's outland is sand and rock; no ring forest.
-    baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0, ground: 'sand', banding: 0.045,
+    // the mountains lane (2026-10-03, gauntlet wave 24): held at the PR head's far country while the far jebels are rebuilt on
+    // maps lane A's inselberg section — the regional 'jebel' read as "low rounded swells, nothing resembles Wadi Rum's walls"
+    baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0, ground: 'sand', banding: 0.045, panorama: false,
+    // (the outland boulders a shade sparser: they follow the ring's drained faces, and the map's horizon draws no more
+    // triangles than before the mountains lane's relief work)
+    outlandRocks: 0.95,
     forestHex: 0x58402f, rockHex: 0x96533b, haze: 0.92, grain: 0.58,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'cumulus-humilis', coverage: 0.18, cirrus: 0.35, virga: 0.9 },
   sky: {
     sunElevationDeg: 30, sunAzimuthDeg: 116, turbidity: 7.2, rayleigh: 1.05,
-    mieCoefficient: 0.0095, mieDirectionalG: 0.86, fogDensity: 0.00058,
+    // 2026-10-03 (the skies lane, agreed with the mountains lane: one haze law from the camera to the far country, the map's fogDensity its one lever): arid air is clear — 0.00025 on the four arid maps (a meteorological range near 37 km; a ridge 300 m up at 7.5 km keeps about 60 % of its contrast) (was 0.00058)
+    mieCoefficient: 0.0095, mieDirectionalG: 0.86, fogDensity: 0.00025,
     fogTintHex: 0xb18b77, fogMix: 0.56, envIntensity: 0.17,
     cloudOpacity: 0.62, cloudOpacity2: 0.26, cloudTintHex: 0xffe4cb,
     sunIntensity: 4.25, sunColorHex: 0xffd4ad, hemiIntensity: 0.25, postExposure: 0.92,

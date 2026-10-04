@@ -31,6 +31,11 @@ null on mobile and in receipts); every terrain chunk vertex carries a `fold` byt
 sea and lake maps, a `shore` byte (metres landward of the waterline from the shoreline contours, inverted so a geometry
 without it reads as far) that the material's strand runs up (round 73b); `wrecks.ts` owns typed,
 deterministic static tank-wreck and zero-extra-draw-call debris baking.
+`maps/regional/` holds the regional architecture kits (2026-10-03): a map's `props.architecture` names one, and after
+each planned building's placement settles the kit replaces its geometry with the region's version inside the same
+footprint (house grammar `house.ts`, openings cut with reveals, `weather.ts` tints and weathering into the vertex-
+coloured `regional*` buckets, war wear, `dressing.ts`); collision follows the new shell, so a kit change regenerates
+the map's shard. The kit guide is in docs/MAP-LAYOUT-BRIEF.md ("Regional building kits").
 `destructibles.ts` is the typed, allocation-free active-world seam between
 shell traffic, break FX, prop destruction events, and cached map handlers.
 `utilityNetwork.ts` owns renderer-free pole adjacency, hinge poses, stable
@@ -78,6 +83,71 @@ runs after its ground hand-over. Both run once per ring at construction as slice
 rings) and an `escarpment` block on another style opts it in (Sunscar Oasis). The
 ring atlas's occlusion and cast shadows take their own share (`RING_RELIEF_SHADE`, horizonAutumnGround.ts) beside the
 gradient's 0.18. `horizonMassif.selftest.mjs` pins the laws and the skyline cone measure.
+The ring atlas's surface (the mountains lane, 2026-10-03, gauntlet wave 0: "a repeating diagonal corduroy ridge
+pattern" on Verdant's and Frontier Basin's flanks, Sirocco Wadi's "blobby" walls, "smooth, evenly lit mountain
+blankets with no forest, rock or gully structure"): `horizonRelief.ts` no longer stretches its fine relief along the
+radius (a flank seen obliquely does not fall along it, so the crests crossed it as combs); every character's
+`drainage` cuts couloirs down the fall line of the ring's own smoothed surface with `horizonMassif.ts erosionOctave`,
+and its `cover` lays the landcover as the light it leaves — forest stands past the ring forest's 880 m (lobed, crisp,
+denser in the hollows, to the treeline, never under the snow; their crowns grain the relief and their 16 m canopy
+stands in the occlusion and sun searches), field parcels on the gentle open ground, and on the arid walls varnish down
+the couloirs and bed tones by height — folded into the occlusion and sun texels the terrain program already reads
+(`encodeCanopyAo` / `encodeCanopySun` against the program's 1.4 power, 0.8 and 0.85 depths and the 0.7 share; no
+shader, sampler or draw). `horizonRelief.selftest.mjs` pins the encoding, the program's constants, the fall-line
+alignment on oblique flanks (the round-72 field fails it) and where the stands may stand. Where the map-borders lane's
+landform is in, the stands follow its woods field (`getBorderWoodsAt`) across the hand-over where the ring's range trees
+stand (`HORIZON_STAND_HANDOVER_M`, 720-880 m) and its parcels replace the baked ones; past it the stands are the
+ranges' own (a woodland parcel's straight edges drawn up a face read as a band, gauntlet wave 6). The polar and alpine
+couloirs are cut at the depth the round-72 field's radial ribs had (30 / 26 m over 280 / 260 m: the faces' ribs).
+`horizon.reliefCover` overrides a map's cover. Road passes (`openRoadPasses`, after the border's hand-over): a road
+exit (terrain.ts `roadExitAt`, ~720 m) that runs on into the authored ranges gets a valley along its line — floor the
+continued ground at its crossing, 30 m either side, ~24° sides to 220 m — instead of a carriageway painted up a face
+(Cinder Junction's edge-n, gauntlet wave 1); an exit inside a railway cutting's fan is the cutting's. `ring.roadPass`
+marks the moved vertices; `horizonMassif.selftest.mjs` pins it. `horizon.roadPasses: false` keeps a map's ranges whole
+(Frosthollow: its north exit runs into the massif, where the pass was a trench ending in a wall).
+The far horizon panorama (the mountains lane, 2026-10-03; `horizonPanorama.ts`): beyond the ring the far country
+(1.5-9 km) is BAKED, not drawn live — a polar height grid on the GPU (the character's far field: a warped ridged
+multifractal, Quilez's eroded octaves, Clay John's gullies, a distance envelope of foothills, ranges and the hill
+countries' low far mountains, valleys between, tablelands' caps, sea sectors, the first kilometre easing out of the
+ring's outer heights, everything under a low cloud deck scaled beneath it), its light (the map's sun with soft cast
+shadows, the sky's occlusion), then a cylindrical strip (8192 x 512, -3..22 degrees from an eye 30 m over the centre)
+shaded by the far surface law (strata, scree, snow and forest at the ring's own altitudes, stands and fields, rock
+patches) and graded toward the fog colour past the shell. One mesh shows it (`horizon-far-range` too, so the night dims
+it): an apron off the ring's outer edge and a wall at 2.6 km, sampling the atlas by direction from the bake eye, the
+scene fog off as on the round-72 range. The world bakes it under the loading cover (`map.ts` warmImpostors) or on the
+first update, again after a GPU suspension disposes the atlas; until then the round-72 far range draws (receipts, no
+float targets). `horizon.panorama: false` keeps the old range; an object overrides the character's far knobs.
+Layers (the panorama lab, the real ring baked in-page on SwiftShader, measured the far country above the ring's own
+skyline from the eye on 14-35 % of bearings): the edge texture's alpha carries that skyline (`horizonRingSkylineTan`,
+compass-smoothed), and past ~3.5 km the far country rises to stand a wandering margin above it (-0.9..+4.3°, never into
+the deck) — the hill countries as three broad ridgelines over a plinth (forest and fields zoned over the plinth, the
+height grid's G channel), the mountain countries by scaling their ranges (≤ 1.8 x), the tablelands by scaling their
+tables (≤ 1.6 x; a third of the far country in tables, none in the first 1.5 km); the near band stays under the ring's
+skyline (a near form mapped onto the shell bent with it from off-centre cameras); the strip below that skyline keeps one
+lit ground tone; the sea weight is softened over ~4°; fine patterns fade with the texel's grazing footprint. Structure
+(gauntlet wave 6, "flat, featureless silhouettes", "box-like flat-topped blocks"): the hill layers' crests carry
+summits and saddles; the tablelands are shaped by their rim distance (the mask's margin over its analytic gradient) —
+a 700 m talus apron to over half the height, a 50 m caprock cliff, an inset upper tier, alcoves and apron gullies,
+broad buttes (narrow tips stay low cones), tops that clear the ring's skyline or stay behind it; the deck follows the
+map's cloud cover (`horizonPanoramaDeckM`: scattered clouds leave the summits standing, a closed deck keeps them under
+it). A sea sector opens on a coastline that recedes with the sector's weight and leaves the water to the game's own sea; the
+far land falls away within ~12° of any sea sector (no monolith on a headland between two openings, Nordhavn Fjord);
+`panorama.shore` raises a far shore well inside its sector (Saltwind's mainland across its channel). The polar and
+alpine faces carry rock bands (the atlas beds at `cover.bedScale` × their thickness). Before its
+bake the panorama takes the battlefield's own ground and rock means (`setGroundTone`, from refreshHorizonGroundTone).
+Regional far country (gauntlet wave 15, every critic: "mountain ranges behind places that have none"): a map's
+`horizon.panorama: { regional }` takes its real place's far vocabulary (`HORIZON_PANORAMA_REGIONAL`) in place of its
+relief character's — `plain` (floodplain, steppe, polders: swells under 70 m, no layers over the ring, the skyline its
+shelterbelts and woods, a canopy the height pass grows and writes in the grid's B channel for the strip to colour as
+forest), `erg`, `upland` (rounded hills, a half layer), `forested`, `karstRidge`, `ridges`, `jebel` (a short apron, a
+sheer fluted wall: `mesaTalusM`/`mesaCliffM`/`mesaFluteM`), `volcanicField` and `iceSheet` (sparse isolated peaks,
+`peakShare`/`peakM`/`peakRadiusM`/`peakSharp`; their footprint in the grid's A channel, bared to rock by the strip —
+nunataks dark through the ice, the sharp ones drawn out into outcrop ridges). The flat maps' rings were lowered with
+them (the crest past 900 m 21-57 m: a flat far country behind a 100 m ring only moved the wall closer).
+`horizon.ringStyle` gives the ring its own style (rows, profile, rock, relief character) while the border's landform
+keeps reading `style` (Eifel Reservoir: the alpine border its villages stand on, a rolling ring).
+`horizonPanorama.selftest.mjs` pins the shell, the atlas mapping and the bake contract; the bake's look is iterated
+offline on SwiftShader (no GPU) before the census.
 p2 trees lane (2026-10-01): the desktop tiers GROW their near trees — `treeGrowth.ts` (a THREE-free skeleton per
 species profile: stem or leader, scaffolds or whorls, side shoots and twigs bent by gravity and clipped by the crown
 envelope; spray seats on the outer branches; `supportSprays` draws every spray-bearing branch the tube budget left
@@ -133,6 +203,30 @@ catalog façade pass (the masonry buckets carry the centred wall envelope).
 legacy displacement's projected hull stays the collision proxy: every cut
 moves a vertex inward), the per-map moss / dust / soil dressing, the triplanar
 rock tile and the hook layered on the grime hook.
+The scenery lane (2026-10-03): a map's named landscape features live in its top-level `scenery` block
+(`sceneryPlan.ts` holds the contract, the config-only footprints the vegetation keeps off and the ground-cover holes);
+`sceneryRocks.ts` builds the rock forms (granite tors, bedded sandstone / limestone outcrops, slate crags, limestone
+pavement, scree, menhirs, cairns, calvaries) as welded vertex-coloured geometry with a convex mass per standing form,
+and a hill's bedrock (`buildBedrock`: jointed beds read off the live ground by rays on the flanks no hull climbs,
+each hill bedded its own way, broken where the ground's clefts cut the wall; a skin with no mass; its `strata` option
+takes the terrain's bed law; parked since wave 16, no map places it: on smooth domes it read as masonry);
+`maps/sceneryKit.ts` holds the timber and steel landmarks (`SCENERY_DESTRUCTIBLE_TYPES`, merged into the props type
+registry after the inhabiting kit's) and the lattice pylons; `scenery.ts` composes them in props after every other
+placement and before the bucket merge (one rock-material mesh for the map, the pylons folded into `baked`, each
+feature on its own seeded stream, every refusal named in `props.group.userData.scenery`). `scenery.selftest.mjs` pins the forms, the kit, the admission and every authoring map's placement;
+docs/MAP-LAYOUT-BRIEF.md "Scenery" is the authoring guide. The field wall module (`maps/inhabitKit.ts` `wallstone`)
+is a dry-stone wall fitted to the old coursed module's envelope after spending its draws; brick-print maps
+(`sourcedTextures.ts` `sourcedStoneIsBrick`) keep the coursed module through props' local types. The sandbag stacks
+(props local types) are `maps/sceneryKit.ts` `buildSandbagStack`, laid bag by bag in the sourced models' envelopes on
+the canvas weave; their remnants spend the old remnant's draws first. `fieldWorks.ts` lays a map's field-boundary
+works (a karst's dry stone walls, a bocage's hedge banks) on the ground lane's land use through the height field's
+`_landUseAt` hook — the same boundary band and field gate the terrain draws — as decor with no collision, at most
+1 m tall; a world without the hook builds none. Props builds them last (`placeFieldBoundaryWorks`, after the pools'
+refit, through `scenery.ts` `composeFieldWorks`), so they keep off every mode's objective discs where the match
+placement seats them on those final solids, as well as the aprons, yards, bridges, trenches, pads and roads; the
+selftest proves it on Saltwind and Saltmere. The dry-stone field walls draw their own rubble print (`fieldStone`,
+`fieldStoneSurface.ts`), never the house masonry a regional kit repaints; a map's `scenery.masonryTint` tints that
+print (Saltwind's limestone).
 A plan builder reads its battlefield through `structureBuildContext(buckets)`
 (`maps/exteriorDetailKit.ts`), never a positional argument; a part new to a
 builder's seeded stream is tagged `userData.uvJitter = 'none'`, a part that

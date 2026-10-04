@@ -127,6 +127,30 @@ export interface CloudscapeConfig {
    * density remap) and a detailed first light tap, so the lit face reads as cauliflower and not only the outline.
    */
   interior?: number;
+  /**
+   * 2026-10-03 (the skies lane): 0..1 a deck's sub-cell lumps — the detail volume's Worley lumps (a few hundred metres)
+   * thicken and lower the column over each lump core, so a stratocumulus base reads as rolls and lumps with lighter lanes
+   * between them instead of an airbrushed plate per cell (Frosthollow, Nordhavn, the yards). 0 = round 76's cells alone.
+   */
+  lumps?: number;
+  /**
+   * 2026-10-03 (the skies lane; the gauntlet's wave 4: "dozens of near-identical, evenly spaced popcorn cumulus ... one
+   * sprite stamped repeatedly"): 0..1 a broad field (a 30 km period) gates the cumuliform cells into fields and streets
+   * with clear gaps between them — the cells merge into large masses inside a field, fray into small ones at its edge
+   * and vanish in the gaps, so the sizes vary and the spacing stops reading as a grid. 0 = the even field.
+   */
+  cluster?: number;
+  /**
+   * 2026-10-03 (the same): 0..1 a cumulus base cut at its condensation level — the base's rise sharpened and the erosion
+   * kept to the flanks and tops (the lumps under the base rounded every cumulus into a cotton ball). 0 = the round base.
+   */
+  baseFlat?: number;
+  /**
+   * 2026-10-03 (the skies lane; the gauntlet's wave 5: "a flat, blurry, low-definition overcast sky asset that recurs on
+   * multiple maps ... reads as a placeholder skybox"): 0..1 a deck's definition — less of the sheet's flattening, the
+   * detail erosion near a cumulus's strength and a crisper outline. 0 = round 76's deck.
+   */
+  deckDetail?: number;
   // ---- 2026-10-01: the weather layers beyond the slab (cloudWeatherLayers.ts) and the time of day
   /** 0..1 contrails (six at 1) over the sky and their spread: 0 fresh lines, 1 old contrail cirrus. */
   contrails?: number;
@@ -182,28 +206,38 @@ interface CloudscapeRegimeRow {
   deckLight: number;
   undulatus: number;
   interior: number;
+  /** 2026-10-03: the deck's sub-cell lumps (0 = none). */
+  lumps: number;
+  /** 2026-10-03: the cumulus fields and gaps (0 = the even field) and the flat condensation base (0 = the round base). */
+  cluster: number;
+  baseFlat: number;
+  /** 2026-10-03: a deck's definition (0 = round 76's deck). */
+  deckDetail: number;
   /** 2026-10-01: the regime's weather beyond the slab (a map authors the rest: contrails, the fog bank, the night glow). */
   rain: number;
   virga: number;
 }
 
 /** A row names the layered sky's weather only where it has some (2026-10-01): the rest is a clear sky's. */
-const CLEAR_WEATHER = Object.freeze({ rain: 0, virga: 0 } as const);
+const CLEAR_WEATHER = Object.freeze({ rain: 0, virga: 0, lumps: 0, cluster: 0, baseFlat: 0, deckDetail: 0 } as const);
 type CloudscapeRegimeRowInput = Omit<CloudscapeRegimeRow, keyof typeof CLEAR_WEATHER> & Partial<Pick<CloudscapeRegimeRow, keyof typeof CLEAR_WEATHER>>;
 const row = (r: CloudscapeRegimeRowInput): CloudscapeRegimeRow => Object.freeze({ ...CLEAR_WEATHER, ...r });
 
 /** The regime table: the meteorology of each named sky as the layer's numbers. */
 export const CLOUDSCAPE_REGIMES: Readonly<Record<CloudscapeRegime, CloudscapeRegimeRow>> = Object.freeze({
-  'fair-weather-cumulus': row({ coverage: 0.34, baseM: null, thicknessM: 820, towers: 0.15, anvil: 0, wispiness: 0.35, windSpeed: 6, shear: 0.15, streets: 0.35, cirrus: 0.12, cirrusAltM: 9500, stratiform: 0.08, fieldMix: 0, density: 0.10, farBand: 0.25, scud: 0, type: [0.3, 0.62], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: true, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0 }),
-  'cloud-streets': row({ coverage: 0.40, baseM: null, thicknessM: 660, towers: 0.1, anvil: 0, wispiness: 0.3, windSpeed: 9, shear: 0.2, streets: 0.85, cirrus: 0.15, cirrusAltM: 10000, stratiform: 0.05, fieldMix: 0, density: 0.10, farBand: 0.35, scud: 0, type: [0.3, 0.6], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: true, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0 }),
-  'sea-streets': row({ coverage: 0.32, baseM: 1100, thicknessM: 600, towers: 0.1, anvil: 0, wispiness: 0.35, windSpeed: 8, shear: 0.15, streets: 0.75, cirrus: 0.08, cirrusAltM: 9500, stratiform: 0.08, fieldMix: 0, density: 0.10, farBand: 0.6, scud: 0, type: [0.3, 0.55], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: true, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0 }),
-  'towering-cumulus': row({ coverage: 0.38, baseM: 1200, thicknessM: 1500, towers: 0.6, anvil: 0.15, wispiness: 0.3, windSpeed: 5, shear: 0.3, streets: 0.15, cirrus: 0.1, cirrusAltM: 11000, stratiform: 0.05, fieldMix: 0.45, density: 0.10, farBand: 0.3, scud: 0, type: [0.45, 0.9], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: true, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0, rain: 0.45, virga: 0.1 }),
+  'fair-weather-cumulus': row({ coverage: 0.34, baseM: null, thicknessM: 820, towers: 0.15, anvil: 0, wispiness: 0.35, windSpeed: 6, shear: 0.15, streets: 0.35, cirrus: 0.12, cirrusAltM: 9500, stratiform: 0.08, fieldMix: 0, density: 0.12, farBand: 0.25, scud: 0, type: [0.3, 0.62], sunGain: 1, ambientScale: 0.9, clearRadiusM: 0, shadow: true, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0, cluster: 0.6, baseFlat: 1 }),
+  'cloud-streets': row({ coverage: 0.40, baseM: null, thicknessM: 660, towers: 0.1, anvil: 0, wispiness: 0.3, windSpeed: 9, shear: 0.2, streets: 0.85, cirrus: 0.15, cirrusAltM: 10000, stratiform: 0.05, fieldMix: 0, density: 0.12, farBand: 0.35, scud: 0, type: [0.3, 0.6], sunGain: 1, ambientScale: 0.9, clearRadiusM: 0, shadow: true, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0, cluster: 0.4, baseFlat: 1 }),
+  'sea-streets': row({ coverage: 0.32, baseM: 1100, thicknessM: 600, towers: 0.1, anvil: 0, wispiness: 0.35, windSpeed: 8, shear: 0.15, streets: 0.75, cirrus: 0.08, cirrusAltM: 9500, stratiform: 0.08, fieldMix: 0, density: 0.12, farBand: 0.6, scud: 0, type: [0.3, 0.55], sunGain: 1, ambientScale: 0.9, clearRadiusM: 0, shadow: true, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0, cluster: 0.4, baseFlat: 1 }),
+  'towering-cumulus': row({ coverage: 0.38, baseM: 1200, thicknessM: 1500, towers: 0.6, anvil: 0.15, wispiness: 0.3, windSpeed: 5, shear: 0.3, streets: 0.15, cirrus: 0.1, cirrusAltM: 11000, stratiform: 0.05, fieldMix: 0.45, density: 0.10, farBand: 0.3, scud: 0, type: [0.45, 0.9], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: true, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0, rain: 0.45, virga: 0.1, cluster: 0.5, baseFlat: 1 }),
   'cumulonimbus-front': row({ coverage: 0.4, baseM: 1000, thicknessM: 3000, towers: 1, anvil: 1, wispiness: 0.3, windSpeed: 11, shear: 0.4, streets: 0.1, cirrus: 0.25, cirrusAltM: 11500, stratiform: 0.1, fieldMix: 0.9, density: 0.11, farBand: 0.4, scud: 0.5, type: [0.65, 1.0], sunGain: 1, ambientScale: 1, clearRadiusM: 2500, shadow: true, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0, rain: 0.85 }),
   'storm-front': row({ coverage: 0.55, baseM: 700, thicknessM: 2800, towers: 1, anvil: 1, wispiness: 0.4, windSpeed: 12, shear: 0.4, streets: 0.1, cirrus: 0.3, cirrusAltM: 11500, stratiform: 0.15, fieldMix: 0.9, density: 0.12, farBand: 0.5, scud: 0.8, type: [0.6, 1.0], sunGain: 0.8, ambientScale: 0.85, clearRadiusM: 1800, shadow: true, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0, rain: 1 }),
-  'cumulus-humilis': row({ coverage: 0.16, baseM: 1700, thicknessM: 380, towers: 0, anvil: 0, wispiness: 0.3, windSpeed: 5, shear: 0.1, streets: 0.3, cirrus: 0.45, cirrusAltM: 10500, stratiform: 0.05, fieldMix: 0, density: 0.10, farBand: 0.15, scud: 0, type: [0.3, 0.5], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: true, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0, rain: 0.3, virga: 0.85 }),
+  'cumulus-humilis': row({ coverage: 0.16, baseM: 1700, thicknessM: 380, towers: 0, anvil: 0, wispiness: 0.3, windSpeed: 5, shear: 0.1, streets: 0.3, cirrus: 0.45, cirrusAltM: 10500, stratiform: 0.05, fieldMix: 0, density: 0.12, farBand: 0.15, scud: 0, type: [0.3, 0.5], sunGain: 1, ambientScale: 0.9, clearRadiusM: 0, shadow: true, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0, rain: 0.3, virga: 0.85, cluster: 0, baseFlat: 1 }),
   'lenticular': row({ coverage: 0.16, baseM: 2400, thicknessM: 450, towers: 0, anvil: 0, wispiness: 0, windSpeed: 0, shear: 0, streets: 0, cirrus: 0.3, cirrusAltM: 10000, stratiform: 0.6, fieldMix: 1, density: 0.09, farBand: 0.45, scud: 0, type: [0.05, 0.3], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: true, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0 }),
   'broken-stratocumulus': row({ coverage: 0.62, baseM: 900, thicknessM: 500, towers: 0, anvil: 0, wispiness: 0.2, windSpeed: 7, shear: 0.1, streets: 0.3, cirrus: 0.1, cirrusAltM: 9000, stratiform: 0.5, fieldMix: 0.35, density: 0.12, farBand: 0.5, scud: 0, type: [0.15, 0.45], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: true, cells: 0.7, cellM: 1000, deckLight: 1, undulatus: 0.2, interior: 0.5, rain: 0.2, virga: 0.2 }),
-  'stratocumulus-deck': row({ coverage: 0.86, baseM: 700, thicknessM: 420, towers: 0, anvil: 0, wispiness: 0.15, windSpeed: 6, shear: 0.05, streets: 0.2, cirrus: 0, cirrusAltM: 9000, stratiform: 0.55, fieldMix: 0.45, density: 0.11, farBand: 0.6, scud: 0, type: [0.1, 0.4], sunGain: 1, ambientScale: 2.0, clearRadiusM: 0, shadow: false, cells: 0.85, cellM: 1100, deckLight: 1, undulatus: 0.25, interior: 0 }),
+  // (2026-10-03, the gauntlet's wave 27 — the decks read "a featureless off-white wash": kilometre-scale relief, broad
+  // cells and strong rolls, exactly as fp14's dk3 shot it on Frosthollow and Railyard: cells 0.85 → 1, cellM 1100 → 2400,
+  // undulatus 0.25 → 0.7; sky +0.25 against the plain after)
+  'stratocumulus-deck': row({ coverage: 0.86, baseM: 700, thicknessM: 420, towers: 0, anvil: 0, wispiness: 0.15, windSpeed: 6, shear: 0.05, streets: 0.2, cirrus: 0, cirrusAltM: 9000, stratiform: 0.55, fieldMix: 0.45, density: 0.11, farBand: 0.6, scud: 0, type: [0.1, 0.4], sunGain: 1, ambientScale: 2.0, clearRadiusM: 0, shadow: false, cells: 1, cellM: 2400, deckLight: 1, undulatus: 0.7, interior: 0 }),
   'overcast-stratus': row({ coverage: 0.94, baseM: null, thicknessM: 330, towers: 0, anvil: 0, wispiness: 0.1, windSpeed: 4, shear: 0, streets: 0, cirrus: 0, cirrusAltM: 9000, stratiform: 0.85, fieldMix: 1, density: 0.06, farBand: 0.5, scud: 0, type: [0, 0.2], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: false, cells: 0.35, cellM: 1600, deckLight: 1, undulatus: 0.3, interior: 0 }),
   'low-stratus': row({ coverage: 0.9, baseM: null, thicknessM: 300, towers: 0, anvil: 0, wispiness: 0.15, windSpeed: 4, shear: 0, streets: 0, cirrus: 0, cirrusAltM: 9000, stratiform: 0.8, fieldMix: 1, density: 0.04, farBand: 0.5, scud: 0.2, type: [0, 0.25], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: false, cells: 0, cellM: 1200, deckLight: 0, undulatus: 0, interior: 0 }),
   'ice-fog-stratus': row({ coverage: 0.92, baseM: 250, thicknessM: 280, towers: 0, anvil: 0, wispiness: 0.2, windSpeed: 3, shear: 0, streets: 0, cirrus: 0, cirrusAltM: 9000, stratiform: 0.9, fieldMix: 1, density: 0.05, farBand: 0.7, scud: 0.4, type: [0, 0.15], sunGain: 1, ambientScale: 1, clearRadiusM: 0, shadow: false, cells: 0.25, cellM: 1400, deckLight: 1, undulatus: 0.2, interior: 0 }),

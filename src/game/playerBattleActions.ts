@@ -54,6 +54,8 @@ interface BattleActionEntity extends Omit<
   input: { shellSlot: number; auxiliaryBits?: number };
   /** Ruleset jump launch stamped by the mode controller (Turbo Ball); null elsewhere. */
   modeJumpMps?: number | null;
+  /** Ruleset gravity stamped by the mode controller: the rocket boost's ceiling reads it. */
+  modeGravityScale?: number;
 }
 
 interface BattleActionGame<TEntity extends BattleActionEntity> {
@@ -376,9 +378,9 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
       bus.emit('ui:click', {});
       return;
     }
-    if (!rules.requestTankSelfRight(player.state)) {
+    if (!rules.requestTankSelfRight(player.state, player.modeGravityScale ?? 1)) {
       // Owner (2026-09-16, Turbo Ball): the same key jumps an upright hull when the ruleset allows it.
-      if (player.modeJumpMps != null && rules.requestTankJump(player.state, player.modeJumpMps)) {
+      if (player.modeJumpMps != null && rules.requestTankJump(player.state, player.modeJumpMps, player.modeGravityScale ?? 1)) {
         bus.emit('tank:jump', { id: player.id });
         bus.emit('ui:click', {});
       }

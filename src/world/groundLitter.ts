@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { getDeviceTier } from '../engine/quality.ts';
 
 // environment density pass (2026-09-12): the ground litter tier. The maps read
@@ -19,6 +20,8 @@ interface GroundLitterField {
   _roadDist?(x: number, z: number): number;
   _noVeg?(x: number, z: number): boolean;
   getWaterMaskAt?(x: number, z: number): number;
+  /** Ground lane (2026-10-03): the canopy's cover (0..1, terrain applyWoodsMask) — fallen wood lies under the stands. */
+  _woodsAt?(x: number, z: number): number;
 }
 
 export interface GroundLitterConfig {
@@ -83,8 +86,10 @@ export const GROUND_LITTER = Object.freeze({
   candidatesPerCell: 210,
   mobileCandidatesPerCell: 150,
   cacheCells: 121,
-  fadeInM: 24,
-  fadeOutM: 32, // == cellM * ring: the ring always covers the fade, wherever the camera sits in its cell
+  // ground lane (2026-10-03, the gauntlet's wave 4: "evenly spaced pebble dots" on three maps): the stones are near
+  // detail — they shrink away from 18 m and are gone by 26 m, inside the ring (cellM * ring = 32 m)
+  fadeInM: 18,
+  fadeOutM: 26,
   minSlopeY: 0.86,
   roadCoreM: 3.2,
   shoulderM: 7.5,
@@ -104,7 +109,9 @@ const DEFAULTS: Required<GroundLitterConfig> = {
   // field stone sits darker than sun-dried dirt. (The first passes rendered
   // white specks at any tint: the material was outside the cascaded-shadow
   // setup, so all four cascade lights struck it at once — see setupMaterial.)
-  stoneTint: [0.20, 0.19, 0.17],
+  // ground lane (2026-10-03, the gauntlet: "evenly sprinkled blue pebbles"): a soil-coated field stone, warm and at the
+  // dirt's own value (was a neutral 0.20/0.19/0.17 the sky's blue fill turned pale blue, a step brighter than the turf)
+  stoneTint: [0.135, 0.122, 0.104],
   soilTint: [0.17, 0.13, 0.09],
 };
 
@@ -114,12 +121,16 @@ const DEFAULTS: Required<GroundLitterConfig> = {
  * rest run the defaults. A map's `vegetation.litter` overrides this table.
  */
 const LITTER_PROFILES: Readonly<Record<string, GroundLitterConfig>> = Object.freeze({
-  winter: { density: 0.3, clods: 0, splinters: 0.25, stoneTint: [0.09, 0.09, 0.10] },
-  whiteout: { density: 0.25, clods: 0, splinters: 0.1, stoneTint: [0.09, 0.09, 0.10] },
-  alpine: { density: 0.7, clods: 0.15, splinters: 0.35, stoneTint: [0.13, 0.13, 0.14] },
-  desert: { density: 1.25, clods: 0.25, splinters: 0, stoneTint: [0.19, 0.16, 0.12] },
+  // ground lane (2026-10-03, the gauntlet: "dark pebble dots" across the winter snow): snow buries the field stones —
+  // a few on the snow maps, not a scatter of dark dots
+  // (wave 4 on Winter: "evenly spaced black pebble dots" — fewer still, and a weathered grey, not black)
+  winter: { density: 0.06, clods: 0, splinters: 0.25, stoneTint: [0.13, 0.13, 0.14] },
+  whiteout: { density: 0.05, clods: 0, splinters: 0.1, stoneTint: [0.13, 0.13, 0.14] },
+  alpine: { density: 0.4, clods: 0.15, splinters: 0.35, stoneTint: [0.13, 0.127, 0.123] },
+  desert: { density: 1.25, clods: 0.25, splinters: 0, stoneTint: [0.20, 0.17, 0.13] },
   oasis: { density: 1.1, clods: 0.2, splinters: 0.05, stoneTint: [0.19, 0.165, 0.125] },
-  badlands: { density: 1.2, clods: 0.3, splinters: 0, stoneTint: [0.18, 0.13, 0.10] },
+  // (wave 4 on Redrock: "grey pebbles on an orange plane" — its own red sandstone, read as the floor's grain)
+  badlands: { density: 1.2, clods: 0.3, splinters: 0, stoneTint: [0.20, 0.115, 0.075] },
   copper_mesa: { density: 1.15, clods: 0.3, splinters: 0.05, stoneTint: [0.17, 0.13, 0.10] },
   titan_gorge: { density: 1.1, clods: 0.2, splinters: 0, stoneTint: [0.15, 0.145, 0.135] },
   caldera: { density: 1.0, clods: 0.2, splinters: 0, stoneTint: [0.09, 0.085, 0.085] },
@@ -137,8 +148,9 @@ const LITTER_PROFILES: Readonly<Record<string, GroundLitterConfig>> = Object.fre
   delta: { density: 0.9, stones: 0.6, clods: 0.7, splinters: 0.7 },
   mangrove: { density: 0.9, stones: 0.6, clods: 0.7, splinters: 0.7 },
   polders: { density: 0.8 },
-  coastal: { stones: 1.1, splinters: 0.3, stoneTint: [0.17, 0.165, 0.155] },
-  saltwind: { stones: 1.1, splinters: 0.3, stoneTint: [0.17, 0.165, 0.155] },
+  // a limestone coast: pale stone, warm rather than grey-blue
+  coastal: { stones: 1.1, splinters: 0.3, stoneTint: [0.165, 0.152, 0.132] },
+  saltwind: { stones: 1.1, splinters: 0.3, stoneTint: [0.165, 0.152, 0.132] },
 });
 
 export function groundLitterProfile(mapId: string): GroundLitterConfig {
@@ -166,6 +178,22 @@ function cellSeed(seed: number, ix: number, iz: number): number {
   return (h ^ (h >>> 16)) >>> 0;
 }
 
+/**
+ * Ground lane (2026-10-03, the gauntlet: "pastel pebble dots", "grey pebble dots" strewn at uniform spacing): stones lie
+ * in patches — a wash, a worn spot, the foot of a bank — with bare stretches between. A value noise on a 7 m lattice
+ * (0..1, smooth) the candidates' admission follows.
+ */
+function litterPatch(x: number, z: number, seed: number): number {
+  const fx = x / 9, fz = z / 9;
+  const ix = Math.floor(fx), iz = Math.floor(fz);
+  const tx = fx - ix, tz = fz - iz;
+  const sx = tx * tx * (3 - 2 * tx), sz = tz * tz * (3 - 2 * tz);
+  const h = (a: number, b: number): number => (cellSeed(seed ^ 0x5BD1E995, a, b) & 0xffff) / 65535;
+  const a = h(ix, iz) + (h(ix + 1, iz) - h(ix, iz)) * sx;
+  const b = h(ix, iz + 1) + (h(ix + 1, iz + 1) - h(ix, iz + 1)) * sx;
+  return a + (b - a) * sz;
+}
+
 export function resolveGroundLitterConfig(config?: GroundLitterConfig | null): Required<GroundLitterConfig> {
   const merged = { ...DEFAULTS, ...(config ?? {}) };
   for (const key of ['density', 'stones', 'clods', 'splinters', 'shoulders'] as const) {
@@ -175,17 +203,48 @@ export function resolveGroundLitterConfig(config?: GroundLitterConfig | null): R
   return merged;
 }
 
+/**
+ * Ground lane (2026-10-03, the gauntlet: "a faceted low-poly boulder", "thin brown stick props"): a field stone is a
+ * rounded, lopsided pebble — the twelve corners of the icosahedron welded, pushed in and out by a fixed hash and
+ * smooth-shaded — and a fallen stick is a crooked branch: a butt, a bend and a side twig, not a straight dowel.
+ */
+function makeStone(): THREE.BufferGeometry {
+  const raw = new THREE.IcosahedronGeometry(0.075, 0);
+  raw.deleteAttribute('normal');
+  raw.deleteAttribute('uv');
+  const stone = mergeVertices(raw);
+  raw.dispose();
+  const position = stone.getAttribute('position') as THREE.BufferAttribute;
+  for (let i = 0; i < position.count; i++) {
+    const h = Math.sin(i * 12.9898 + 4.1) * 43758.5453;
+    const k = 0.80 + 0.36 * (h - Math.floor(h));
+    position.setXYZ(i, position.getX(i) * k, position.getY(i) * k * 0.92, position.getZ(i) * k);
+  }
+  stone.computeVertexNormals();
+  return stone;
+}
+function makeBranch(): THREE.BufferGeometry {
+  // (a cylinder turned onto +X has its radiusTop at -X)
+  const butt = new THREE.CylinderGeometry(0.026, 0.020, 0.30, 5);
+  butt.rotateZ(Math.PI / 2); butt.translate(-0.13, 0, 0);
+  const tip = new THREE.CylinderGeometry(0.020, 0.012, 0.27, 5);
+  tip.rotateZ(Math.PI / 2); tip.translate(0.135, 0, 0); tip.rotateZ(0.05); tip.rotateY(0.30); tip.translate(0.02, 0, 0);
+  const twig = new THREE.CylinderGeometry(0.009, 0.005, 0.15, 4);
+  twig.rotateZ(Math.PI / 2); twig.translate(0.075, 0, 0); twig.rotateY(-0.75); twig.translate(-0.10, 0, 0);
+  const branch = mergeGeometries([butt, tip, twig])!;
+  for (const g of [butt, tip, twig]) g.dispose();
+  branch.computeVertexNormals();
+  return branch;
+}
 function makeGeometries(): [THREE.BufferGeometry, THREE.BufferGeometry, THREE.BufferGeometry] {
-  const stone = new THREE.IcosahedronGeometry(0.075, 0);
   const clod = new THREE.DodecahedronGeometry(0.06, 0);
-  const splinter = new THREE.CylinderGeometry(0.018, 0.026, 0.55, 5);
-  splinter.rotateZ(Math.PI / 2);
-  for (const geometry of [stone, clod, splinter]) geometry.computeVertexNormals();
-  return [stone, clod, splinter];
+  clod.computeVertexNormals();
+  return [makeStone(), clod, makeBranch()];
 }
 
 function makeMaterial(setup?: GroundLitterOptions['setupMaterial']): THREE.MeshStandardMaterial {
-  const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.92, metalness: 0 });
+  // ground lane: fully rough — a soil-coated stone has no sheen to mirror the sky's blue in
+  const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0 });
   const hook: GroundLitterMaterialHook = (shader) => {
     shader.uniforms.uLitterFade = { value: new THREE.Vector2(GROUND_LITTER.fadeInM, GROUND_LITTER.fadeOutM) };
     shader.vertexShader = shader.vertexShader
@@ -287,7 +346,10 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
       // open ground keeps about a third of the candidates (grass hides most
       // small stones anyway); shoulders keep far more, worked yards keep a
       // few stones only so settlements stay swept
-      const keep = worked ? 0.2 : 0.34 + shoulder * 0.5;
+      // ground lane: open ground keeps its stones in patches (litterPatch: thick in a patch, nearly none between)
+      // (wave 4: still "evenly spaced" — the patches now hold every stone: none between them, fuller inside)
+      const clump = Math.min(2.2, Math.max(0, (litterPatch(x, z, seed) - 0.45) * 4.4));
+      const keep = worked ? 0.2 : (0.42 * clump) + shoulder * 0.5;
       if (roll > keep) continue;
       let kind: number;
       if (worked) kind = 0;
@@ -298,14 +360,24 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
         kind = pick < stoneW ? 0 : pick < stoneW + cfg.clods ? 1 : 2;
       }
       if (mixTotal <= 0) continue;
+      if (kind === 2) {
+        // ground lane (2026-10-03, the gauntlet: "thin brown stick props sprinkled uniformly"): fallen wood lies under
+        // the stands (the woods mask), with a stray stick in the open now and then — a quarter keep without the mask
+        const woods = field._woodsAt ? field._woodsAt(x, z) : 0.25;
+        const t = Math.min(1, Math.max(0, (woods - 0.1) / 0.5));
+        const hash = (cellSeed(seed ^ 0x2F1A5, Math.floor(x * 4), Math.floor(z * 4)) & 0xffff) / 65535;
+        if (hash > 0.06 + 0.94 * t * t * (3 - 2 * t)) continue;
+      }
       const y = heightAt(x, z);
       let sx: number;
       let sy: number;
       let sz: number;
       let lift: number;
       if (kind === 0) {
-        sx = 0.6 + jitterA * 1.3; sz = 0.65 + jitterB * 0.8; sy = 0.45 + jitterC * 0.35;
-        lift = 0.075 * sy * 0.35;
+        // a spread of sizes — many small stones, a few big ones (the square of a draw), each its own proportions
+        const size = 0.55 + 1.5 * jitterA * jitterA;
+        sx = size * (0.8 + jitterB * 0.5); sz = size * (0.85 + jitterC * 0.4); sy = 0.45 + jitterC * 0.35;
+        lift = 0.075 * sy * 0.12; // ground lane: bedded in the soil, not set on it (0.35 of its height stood clear)
       } else if (kind === 1) {
         sx = 0.6 + jitterA * 0.9; sz = 0.6 + jitterB * 0.9; sy = 0.5 + jitterC * 0.4;
         lift = 0.06 * sy * 0.3;
@@ -320,10 +392,12 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
       _q.multiply(new THREE.Quaternion().setFromAxisAngle(_up, yaw));
       const tint = kind === 0 ? cfg.stoneTint : cfg.soilTint;
       const shade = kind === 2 ? 0.55 + jitterB * 0.25 : 0.68 + jitterA * 0.5;
-      const warm = kind === 0 ? (jitterB - 0.5) * 0.08 : 0;
+      // ground lane: the warm / cool cast is relative to the tint — the absolute ±0.04 swung a 0.13 stone a third of
+      // its value toward pink or blue (the gauntlet's "pastel" stones)
+      const warm = kind === 0 ? (jitterB - 0.5) * 0.10 : 0;
       const list = scratch[kind];
       list.push(x, y + lift, z, _q.x, _q.y, _q.z, _q.w, sx, sy, sz,
-        Math.min(1, tint[0] * shade + warm), Math.min(1, tint[1] * shade), Math.min(1, tint[2] * shade - warm * 0.5));
+        Math.min(1, tint[0] * shade * (1 + warm)), Math.min(1, tint[1] * shade), Math.min(1, tint[2] * shade * (1 - warm * 0.5)));
     }
     builds++;
     return [Float32Array.from(scratch[0]), Float32Array.from(scratch[1]), Float32Array.from(scratch[2])];

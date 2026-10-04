@@ -2,6 +2,7 @@
 // caravan road and a long dune-back flank. Reuses only the desert materials.
 import desert from './desert.ts';
 import { roundRoadBends } from './roadBends.ts';
+import { talusFan } from './geology.ts';
 export default {
   id: 'oasis', name: 'Sunscar Oasis',
   blurb: 'A palm-ringed spring and caravan compounds lie between broad wind-carved dune arms',
@@ -29,10 +30,16 @@ export default {
     landforms: [
       { kind: 'ridge', x: -334, z: 36, length: 370, width: 82, height: 8.2, yawDeg: 14 },
       { kind: 'ridge', x: 312, z: -8, length: 390, width: 90, height: 8.8, yawDeg: -12 },
-      { kind: 'knoll', x: -120, z: -254, rx: 118, rz: 62, height: 6.8, yawDeg: -22 },
+      // 2026-10-03 (maps lane B): gour (geology.ts) — the two smooth dune knolls south of the cross road become the
+      // flat-topped residual hills of the Saharan hamada, their caprock cut back to steep faces with scree at their
+      // feet: a long mesa and a detached butte where the western knoll was, one butte where the eastern one was
+      { kind: 'gorge', x: -140, z: -246, length: 150, width: 40, height: 7.0, yawDeg: -22 },
+      { kind: 'gorge', x: -38, z: -286, length: 54, width: 22, height: 5.5, yawDeg: -22 },
+      ...talusFan(-112, -214, -100, -186, 30, 1.4), ...talusFan(-176, -232, -186, -204, 28, 1.3),
       { kind: 'ridge', x: -24, z: 280, length: 240, width: 68, height: 6.6, yawDeg: 76 },
       { kind: 'basin', x: -114, z: 46, rx: 132, rz: 172, height: -4.0, wetScale: 0.2 },
-      { kind: 'knoll', x: 246, z: -244, rx: 66, rz: 72, height: 5.0 },
+      { kind: 'gorge', x: 246, z: -244, length: 110, width: 34, height: 6.5, yawDeg: 30 },
+      ...talusFan(262, -272, 276, -298, 28, 1.3),
     ],
   },
   spawns: { player: { x: 60, z: -390 }, enemies: [
@@ -55,10 +62,15 @@ export default {
     sourcedPalette: 'desert',
     plan: ['caravanserai', 'compoundSouk', 'adobe', 'bathhouse', 'marketRow', 'minaret', 'compound', 'adobe', 'market', 'ruin', 'adobe', 'compound', 'tower', 'adobe', 'marketRow', 'ruin', 'adobe', 'compound'],
     destructibleBuildings: ['deserttent', 'commandtent', 'checkpointhut', 'guardpost'],
-    buildingLat: [12, 2], destructibleBuildingLat: [16, 3],
+    // 2026-10-03 (maps lane B): the roadside buildings stand 16-18 m off the road (was 12-14): five walled compounds,
+    // 16-28 m across, reached into the carriageway (the layout brief's solidPropsInRoad)
+    buildingLat: [16, 2], destructibleBuildingLat: [16, 3],
     tacticalBeats: [
-      { id: 'caravan-toll-compound', role: 'brawl', x: 216, z: 48, yawDeg: -90, structure: 'checkpointhut', redoubt: true, outcrop: { count: 5, radius: 10 }, wreck: true },
-      { id: 'western-dune-lookout', role: 'scout', x: -292, z: 50, yawDeg: 90, structure: 'guardpost', outcrop: { count: 5, radius: 9 } },
+      // 2026-10-03 (maps lane B): the toll compound moves from (216, 48), 37 m from Verdant's eastern observer, to the
+      // caravan road's north gate, and the dune lookout from (-292, 50), 40 m from Verdant's western post, west along
+      // the dune arm's crest (the layout brief's skeleton rule: no strongpoint within 60 m of one of Verdant's)
+      { id: 'caravan-toll-compound', role: 'brawl', x: 170, z: 150, yawDeg: -90, structure: 'checkpointhut', redoubt: true, outcrop: { count: 5, radius: 10 }, wreck: true },
+      { id: 'western-dune-lookout', role: 'scout', x: -345, z: 32, yawDeg: 90, structure: 'guardpost', outcrop: { count: 5, radius: 9 } },
       { id: 'spring-supply-camp', role: 'support', x: -72, z: 256, yawDeg: 180, structure: 'deserttent', redoubt: true, outcrop: { count: 4, radius: 8 }, wreck: true },
     ],
     tones: desert.props.tones, wallStyle: 'adobe', wallStoneChance: 0.16, sideSkip: 0.16, spacingPad: 7,
@@ -70,7 +82,9 @@ export default {
     inhabit: { stalls: 5, benches: 3, coreClutter: 22, pots: 10, laundry: 4, handcarts: 3, carts: 4, trucks: 4, jeeps: 3, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencewattle' },
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): dune-ring tone grain 0.46 -> 0.62
-  horizon: { baseHex: 0xaa936b, amp: 0.90, style: 'rolling', ground: 'sand', treeline: 0.12, forestHex: 0x70704b, rockHex: 0xae9471, haze: 0.88, grain: 0.62,
+  // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): a flat erg of low soft dunes
+  // round the spring (the gour stair kept on the ring's own hills)
+  horizon: { baseHex: 0xaa936b, amp: 0.35, style: 'rolling', ground: 'sand', treeline: 0.12, panorama: { regional: 'erg' }, forestHex: 0x70704b, rockHex: 0xae9471, haze: 0.88, grain: 0.62,
     // the mountains lane (2026-10-02): the desert hills round the spring are gour — flat-topped residual hills cut by
     // their beds — not smooth rolling downs: a gentler bed stair than the tableland rings' (horizonEscarpment.ts)
     escarpment: { bedM: [22, 42], cliffShare: [0.24, 0.40], talusRise: 0.30, meanderM: 16 } },
@@ -79,7 +93,7 @@ export default {
   // 0xb3ada3, saturation 0.21 -> 0.09 at the same lightness) and patchier light on the dunes (cloudShadowAmp 0.24)
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'cumulus-humilis', coverage: 0.17, cirrus: 0.4, windDirDeg: 120 },
-  sky: { ...desert.sky, sunElevationDeg: 22, sunAzimuthDeg: 104, turbidity: 5.2, fogDensity: 0.00052, fogTintHex: 0xb3ada3, fogMix: 0.46, cloudOpacity: 0.78, cloudOpacity2: 0.48, cloudAltM: 820, cloudHazeK: 0.00012, cloudUvM: 2900, cloudShadowAmp: 0.24, sunIntensity: 4.0, hemiIntensity: 0.40 },
+  sky: { ...desert.sky, sunElevationDeg: 22, sunAzimuthDeg: 104, turbidity: 5.2, /* 2026-10-03 (the skies lane, agreed with the mountains lane: one haze law from the camera to the far country, the map's fogDensity its one lever): arid air is clear — 0.00025 on the four arid maps (a meteorological range near 37 km; a ridge 300 m up at 7.5 km keeps about 60 % of its contrast) (was 0.00052) */ fogDensity: 0.00025, fogTintHex: 0xb3ada3, fogMix: 0.46, cloudOpacity: 0.78, cloudOpacity2: 0.48, cloudAltM: 820, cloudHazeK: 0.00012, cloudUvM: 2900, cloudShadowAmp: 0.24, sunIntensity: 4.0, hemiIntensity: 0.40 },
   minimap: { ...desert.minimap, water: 'rgba(45,111,108,.86)', waterStroke: 'rgba(23,70,70,.94)' },
   shot: { pos: [-252, 52, -246], look: [86, 1, 80] },
   // round 66 (2026-09-24, the FFT ocean): a still spring pool with a breath of desert wind — clear water over pale

@@ -24,6 +24,7 @@ import {
 } from './vegetation.ts';
 import type { TreeObstacle } from './vegetation.ts';
 import { bindHorizonForestImpostors } from './horizonForestImpostors.ts';
+import type { HorizonPanoramaHandle } from './horizonPanorama.ts';
 import {
   createProps,
   createPropsAsync,
@@ -33,6 +34,7 @@ import { createGroundLitter, groundLitterProfile, type GroundLitterConfig } from
 import type { CrushableRecord } from './props.ts';
 import { getMapConfig, type BattlefieldMapConfig } from './maps/index.ts';
 import { createGroundCoverClearance } from './groundCoverClearance.ts';
+import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import {
@@ -92,6 +94,8 @@ interface TerrainUserData {
   setWaterTime?(timeSeconds: number): void;
   setWaterDisturbances?(sources: readonly WaterDisturbance[]): void;
   warmStreaming?(cameraPosition: THREE.Vector3, maxJobs: number): number;
+  /** Ground lane (2026-10-03): the vegetation's woods mask into the terrain material and onto the height field. */
+  applyWoodsMask?(mask: Float32Array): void;
   [key: string]: RuntimeValue;
 }
 
@@ -345,6 +349,9 @@ function assembleWorld(
   props: PropsRuntime,
 ): WorldRuntime {
   const layout = heightField._layout;
+  // ground lane (2026-10-03): the trees are placed — the terrain draws its forest floor under them and no field there,
+  // and the ground tiers built below (the litter, the tall grass) read the same cover
+  if (vegetation._woodsMask) terrain.userData.applyWoodsMask?.(vegetation._woodsMask);
 
   const group = new THREE.Group();
   group.name = 'world-' + config.id;
@@ -362,6 +369,15 @@ function assembleWorld(
       releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
     });
   }
+  // the mountains lane (2026-10-03): the far horizon panorama bakes where the renderer is — under the loading cover with
+  // the impostors (warmImpostors), else on the first update — and again after a GPU suspension (horizonPanorama.ts)
+  const horizonPanorama = (terrain.getObjectByName('horizon-ring')?.userData.horizonPanorama ?? null) as HorizonPanoramaHandle | null;
+  const panoramaRenderer = (engineCtx as { renderer?: THREE.WebGLRenderer }).renderer ?? null;
+  let panoramaFailed = false;
+  const bakePanorama = (): void => {
+    if (!horizonPanorama || panoramaFailed || horizonPanorama.baked || !panoramaRenderer) return;
+    try { horizonPanorama.ensureBaked(panoramaRenderer); } catch { panoramaFailed = true; }
+  };
   // perf-governor r1 (discoverthreejs "matrixAutoUpdate = false for static
   // objects"): every world dynamic goes through instanceMatrix writes or
   // shader uniforms — no object-level transform under this group ever changes
@@ -388,10 +404,13 @@ function assembleWorld(
   // The narrow phase still uses the authored OBB/circle/convex footprint.
   const queryObstacles = createObstacleGrid(obstacles);
   const queryColliders = createObstacleGrid(colliders);
+  // the scenery lane (2026-10-03): no grass, litter or tall grass grows up through a pavement's clints or a scree fan
+  const groundCoverHoles = (props.group.userData.scenery as { groundCoverHoles?: GroundCoverHole[] } | undefined)?.groundCoverHoles;
+  const groundCoverClearance = () => withGroundCoverHoles(createGroundCoverClearance(queryObstacles), groundCoverHoles);
   // Keep the synchronous seal visible in load diagnostics: it runs after the
   // sliced vegetation builder, so its work is not in that builder's timings.
   const groundCoverSealStarted = performance.now();
-  vegetation.setGroundCoverClearance(createGroundCoverClearance(queryObstacles));
+  vegetation.setGroundCoverClearance(groundCoverClearance());
   group.userData.groundCoverSealMs = performance.now() - groundCoverSealStarted;
   // environment density pass (2026-09-12): the ground litter tier streams
   // stones, clods and splinters under the camera, kept out of the same sealed
@@ -402,7 +421,7 @@ function assembleWorld(
     // `vegetation.litter` (typed per module) overrides it
     config: (config.vegetation as { litter?: GroundLitterConfig | null } | undefined)?.litter
       ?? groundLitterProfile(config.id),
-    blocked: createGroundCoverClearance(queryObstacles),
+    blocked: groundCoverClearance(),
     // every lit world material joins the cascaded-shadow setup (see terrain/vegetation);
     // receipts stub the engine context without the hook, production always has it
     setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
@@ -415,7 +434,7 @@ function assembleWorld(
   const tallGrass = createTallGrass(heightField, {
     seed: 2006,
     mapId: config.id,
-    blocked: createGroundCoverClearance(queryObstacles),
+    blocked: groundCoverClearance(),
     renderer: (engineCtx as { renderer?: THREE.WebGLRenderer }).renderer ?? null,
     splatNoise: sampleSplatNoise,
     setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
@@ -549,6 +568,7 @@ function assembleWorld(
       litter.dispose();
       tallGrass.dispose(); // round 73: the sward, its materials and the pressure field's targets
       terrain.userData.disposeWater?.(); // water pass 8: the reactive field's render targets
+      horizonPanorama?.dispose(); // the mountains lane: the far panorama's atlas
     },
     config,
     heightField,
@@ -668,6 +688,7 @@ function assembleWorld(
       const waterAnchor = focusPos ?? cameraPos;
       terrain.userData.updateWater?.(dt, waterAnchor.x, waterAnchor.z);
       vegetation.update(dt, cameraPos, cameraFwd, focusPos);
+      bakePanorama(); // a no-op once baked
       litter.update(cameraPos);
       tallGrass.update(dt, cameraPos, focusPos, cameraFwd); // round 73: the sward's ring, wind and press
       if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims
@@ -680,7 +701,7 @@ function assembleWorld(
     warmTerrainLookahead(cameraPos: THREE.Vector3, maxJobs = 1) {
       return terrain.userData.warmStreaming?.(cameraPos, maxJobs) || 0;
     },
-    warmImpostors: () => vegetation.warmImpostors(),
+    warmImpostors: () => { bakePanorama(); return vegetation.warmImpostors(); },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); tallGrass.setWindTime(t); },
     setWaterDisturbances(sources) { terrain.userData.setWaterDisturbances?.(sources); },

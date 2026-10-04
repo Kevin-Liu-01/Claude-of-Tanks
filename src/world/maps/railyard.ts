@@ -177,6 +177,8 @@ export default {
   },
 
   props: {
+    // regional-buildings lane: the Ruhr colliery-junction kit (maps/regional/ruhr.ts)
+    architecture: 'ruhr',
     plan: PLAN,
     destructibleBuildings: ['quonsethut', 'transformershed', 'motorpool', 'guardpost'],
     // Rotational pairs about the station square, each at least 180 m from every other: a post covering each level
@@ -280,14 +282,23 @@ export default {
   },
 
 
+  // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the coalfield's grid. A
+  // 220 kV line strides across the south of the junction on lattice towers, past the spoil tips.
+  scenery: {
+    powerLines: [{ towers: [[-445, -140], [-180, -300], [110, -330], [430, -300]], heightM: 34, name: 'the 220 kV line' }],
+  },
   horizon: {
     // industrial hinterland: low escarpment under smoke-grey haze
-    baseHex: 0x4f554a, amp: 0.8, style: 'escarpment', treeline: 0.90,
+    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): Ruhr and Silesian junction country:
+    // low rolling hills under the haze, no range
+    baseHex: 0x4f554a, amp: 0.6, style: 'escarpment', treeline: 0.90, panorama: { regional: 'upland', ampM: 160, trees: 10 },
     forestHex: 0x35402f, rockHex: 0x62655c, haze: 1.06, grain: 0.8,
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 800, thicknessM: 460, cells: 0.9, cellM: 1300, undulatus: 0.35, density: 0.16, sunGain: 0.7, tintHex: 0xbab5ac, nightGlow: 0.85, nightGlowHex: 0xffa050 },
+  // (2026-10-03, the gauntlet's wave 27: the deck's kilometre-scale relief as fp14's dk3 shot it — cells 0.9 → 1, cellM
+  // 1300 → 2400, undulatus 0.35 → 0.7)
+  clouds: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 800, thicknessM: 460, cells: 1, cellM: 2400, undulatus: 0.7, density: 0.16, sunGain: 0.7, tintHex: 0xbab5ac, nightGlow: 0.85, nightGlowHex: 0xffa050 },
   sky: {
     // FLAT OVERCAST (trips the sky.ts overcast deck auto-detect: opacity 1.0
     // + layer2 0.95 + turbidity 9): weak high sun, dirty stratus, lifted fill

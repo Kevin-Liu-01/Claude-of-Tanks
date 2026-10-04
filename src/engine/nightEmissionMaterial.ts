@@ -21,10 +21,11 @@ const RED_EMISSION_GAIN = .2;
  * red. A driven red lens is capped at this level through any exposure (setNightEmissionExposure); a dimmer drive (the
  * windows' obstruction bulbs) stays below it untouched, as does every undriven day radiance.
  */
+// (2026-10-03: .6 while the grounded rig ran AgX's own saturation; .5 again with the 1.4 boost and the 1.5 key back.)
 export const NIGHT_RED_DISPLAY_LEVEL = .5;
 /**
- * The camera the authored red lens floors (a lens's own day glow) were tuned at: the light model's day key and the
- * legacy rig's exposure. An unlit red lens (a wreck, a tank with its lights off) holds its on-screen level there when
+ * The camera the authored red lens floors (a lens's own day glow) were tuned at: the legacy rig's exposure, and the light
+ * model's day key until its 2026-10-03 calibration (1.05, below it: no daylight camera dims a floor). An unlit red lens (a wreck, a tank with its lights off) holds its on-screen level there when
  * the camera opens further (an overcast deck, the night), where it would otherwise glow salmon above its lit neighbours;
  * at the day key and under any brighter sky its authored radiance is exact.
  */
