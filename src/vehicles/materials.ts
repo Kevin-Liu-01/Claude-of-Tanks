@@ -2523,9 +2523,22 @@ function supportsShadowHook(engineCtx: ShadowEngineContext | null | undefined): 
  */
 const VEHICLE_MATERIAL_SETUP = new WeakMap<THREE.Material, <T extends THREE.Material>(material: T) => T>();
 
-/** Clone a vehicle material into its source's cascade registration, readability hook and program key. */
+/**
+ * The vehicle's own shader switches, which three's copy drops with the rest of the defines and a clone keeps: the
+ * optics' clean layer and the track's packed snow (vehicleWeathering.ts), the wheel paint's floor. The cascade's
+ * defines (USE_CSM, CSM_*, COT_CLOUD_SHADE) belong to the registration and come back with it.
+ */
+const VEHICLE_SHADER_SWITCHES = ['COT_VEH_CLEAN', 'COT_VEH_TRACK', 'COT_WHEEL_PAINT_READABILITY'] as const;
+
+/** Clone a vehicle material into its source's cascade registration, readability hook, program key and switches. */
 export function cloneVehicleMaterial<T extends THREE.Material>(source: T): T {
   const clone = source.clone() as T;
+  const sourceDefines = (source as { defines?: Record<string, unknown> }).defines;
+  for (const key of VEHICLE_SHADER_SWITCHES) {
+    if (!sourceDefines || !(key in sourceDefines)) continue;
+    const target = clone as { defines?: Record<string, unknown> };
+    target.defines = { ...target.defines, [key]: sourceDefines[key] };
+  }
   const setup = VEHICLE_MATERIAL_SETUP.get(source);
   if (setup) return setup(clone);
   // a material from outside createTankMaterials (a stub's, a receipt's): it keeps its hooks, which a plain clone drops
@@ -2883,6 +2896,8 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
     map: trackTexL, bumpMap: trackTexL, bumpScale: 0.5, ...trackMatOpts })));
   const trackR = track(setup(new THREE.MeshStandardMaterial({
     map: trackTexR, bumpMap: trackTexR, bumpScale: 0.5, ...trackMatOpts })));
+  // 2026-10-04: the track band packs the snow maps' trodden snow along its bottom run (vehicleWeathering.ts)
+  for (const band of [trackL, trackR]) band.defines = { ...band.defines, COT_VEH_TRACK: 1 };
 
   const marking = vehicleMarkingRecord(spec);
   const decalCache = new Map<string, THREE.MeshStandardMaterial>();

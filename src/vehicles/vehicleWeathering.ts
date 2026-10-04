@@ -11,8 +11,9 @@
  *    bare battlefield (its light model's ground albedo) and the dirt lifted and bleached elsewhere, wet mud the dirt
  *    darkened and damp, never glossy; a film with holes at most (the paint shows through); an all-over film on the
  *    dusty maps;
- *  - snow lodged on the faces turned up (deck, turret roof, fenders, track tops; in lumps down on the running gear) and
- *    packed low into the running gear (the bottom run and the wheels' feet, a ragged band with holes) on the winter maps;
+ *  - snow lodged on the flat faces turned up (deck, turret roof, fenders, track tops; in lumps down on the running gear;
+ *    never on a curved top such as a tyre's or a hub's) and packed along the track's bottom run (a ragged band with
+ *    holes; the track's materials define COT_VEH_TRACK) on the winter maps;
  *  - grime in the panel seams the normal map carries, on the faces not turned up;
  *  - light wear on the raised detail of the walked faces (deck, hatches), toward a paler, smoother paint.
  * The breakup noise is sampled in each part's own frame (the plate, the wheel, each track shoe by its instance), so it
@@ -296,13 +297,16 @@ export const VEHICLE_WEATHER_REACH_WET_M = 0.8;
 export const VEHICLE_WEATHER_SNOW = [0.8, 0.82, 0.85] as const;
 export const VEHICLE_WEATHER_PACKED_SNOW = [0.58, 0.59, 0.61] as const;
 /**
- * Snow in the running gear (the lane's last two pairs, 2026-10-04): a thin veil over every wheel and shoe, or an unbroken
- * band of fresh snow along a tyre's or a hub's curved top, read as polished alloy and its highlight; lumps over the
- * whole gear read as cow-print blotches close up. Trodden snow packs low instead: the bottom run and the wheels' feet,
- * up to SNOW_REACH through a ragged edge, with holes where the breakup is under the cover band (first to second value);
- * fresh snow lies on the gear's faces turned up only in lumps (the breakup band a lump fills).
+ * Snow in the running gear (the lane's last three pairs, 2026-10-04): a thin veil over every wheel and shoe read as
+ * polished alloy; lumps over the whole gear as cow-print blotches close up; snow packed round the wheels' feet, or
+ * lodged on a tyre's or a hub's curved top, sat exactly where a chrome wheel mirrors the snowfield and the sun. Trodden
+ * snow packs along the track's bottom run only (its materials define COT_VEH_TRACK), up to SNOW_REACH through a ragged
+ * edge, with holes where the breakup is under the cover band (first to second value); fresh snow lies only on flat
+ * faces turned up (curvature under SNOW_FLAT_CURVATURE, per metre), and down on the running gear only in lumps (the
+ * breakup band a lump fills).
  */
 export const VEHICLE_WEATHER_SNOW_REACH_M = 0.42;
+export const VEHICLE_WEATHER_SNOW_FLAT_CURVATURE = [1.0, 2.5] as const;
 export const VEHICLE_WEATHER_SNOW_PACK_COVER = [0.25, 0.42] as const;
 export const VEHICLE_WEATHER_SNOW_LUMP = [0.52, 0.66] as const;
 /** The roughness of wet mud (damp, never glossy: a smoother mud read as chrome under the winter sky). */
@@ -358,13 +362,22 @@ export const VEHICLE_WEATHER_FRAGMENT_GLSL = `
 		// matte: dry dust, damp mud only a little smoother
 		roughnessFactor = mix( roughnessFactor, mix( 0.97, ${f(VEHICLE_WEATHER_MUD_ROUGHNESS)}, cvWet ), cvDust );
 		metalnessFactor = mix( metalnessFactor, 0.0, cvDust );
-		// snow lodged on the faces turned up (fresh: a sheet on the deck, lumps down on the running gear) and packed low
-		// into the running gear (trodden, greyer: the bottom run and the wheels' feet, a ragged band with holes)
+		// snow lodged on the flat faces turned up (fresh: a sheet on the deck, lumps down on the running gear; it slides
+		// off a curved top — the surface's curvature is the geometric normal's turn per metre across the pixel) and packed
+		// along the track's bottom run (trodden, greyer: a ragged band with holes)
+		float cvFlat = 1.0;
+		#ifndef FLAT_SHADED
+		cvFlat = 1.0 - smoothstep( ${VEHICLE_WEATHER_SNOW_FLAT_CURVATURE.map(f).join(', ')},
+			length( fwidth( vNormal ) ) / max( length( fwidth( vViewPosition ) ), 1e-4 ) );
+		#endif
 		vec2 cvLump = vec2( ${VEHICLE_WEATHER_SNOW_LUMP.map(f).join(', ')} );
-		float cvSnowTop = smoothstep( 0.55, 0.85, cvUp + ( cvB - 0.5 ) * 0.35 )
+		float cvSnowTop = cvFlat * smoothstep( 0.55, 0.85, cvUp + ( cvB - 0.5 ) * 0.35 )
 			* smoothstep( mix( 0.3, cvLump.x, cvLow ), mix( 0.55, cvLump.y, cvLow ), cvB );
+		float cvSnowPack = 0.0;
+		#ifdef COT_VEH_TRACK
 		float cvSnowLow = 1.0 - smoothstep( 0.1, ${f(VEHICLE_WEATHER_SNOW_REACH_M)}, cvH + ( cvB - 0.5 ) * 0.3 );
-		float cvSnowPack = cvSnowLow * smoothstep( ${VEHICLE_WEATHER_SNOW_PACK_COVER.map(f).join(', ')}, cvB );
+		cvSnowPack = cvSnowLow * smoothstep( ${VEHICLE_WEATHER_SNOW_PACK_COVER.map(f).join(', ')}, cvB );
+		#endif
 		float cvSnow = uVehWeatherA.z * max( cvSnowTop, cvSnowPack );
 		vec3 cvSnowCol = mix( vec3( ${VEHICLE_WEATHER_SNOW.map(f).join(', ')} ), vec3( ${VEHICLE_WEATHER_PACKED_SNOW.map(f).join(', ')} ),
 			cvSnowPack / max( cvSnowPack + cvSnowTop, 1e-4 ) );

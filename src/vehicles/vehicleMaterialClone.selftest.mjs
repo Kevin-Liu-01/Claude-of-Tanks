@@ -69,10 +69,16 @@ function shaderFor(material) {
   assert.deepEqual(plain.defines, { STANDARD: '' }, 'three: a standard material clone resets its defines');
   assert.notEqual(plain.onBeforeCompile, source.onBeforeCompile, 'three: a clone drops onBeforeCompile');
   assert.notEqual(plain.customProgramCacheKey(), 'veh-ambient-floor-v5', 'three: a clone drops its program key');
-  // a material from outside the tank material set (a stub's) keeps its own hooks through cloneVehicleMaterial
+  // a material from outside the tank material set (a stub's) keeps its own hooks through cloneVehicleMaterial, and any
+  // clone keeps the vehicle's own shader switches (the optics' clean layer, the track's packed snow)
+  source.defines = { ...source.defines, COT_VEH_CLEAN: 1, COT_VEH_TRACK: 1, COT_CLOUD_SHADE: '' };
   const kept = cloneVehicleMaterial(source);
   assert.equal(kept.onBeforeCompile, source.onBeforeCompile);
   assert.equal(kept.customProgramCacheKey(), 'veh-ambient-floor-v5');
+  assert.equal(kept.defines.COT_VEH_CLEAN, 1, 'a clone keeps its source\'s switches');
+  assert.equal(kept.defines.COT_VEH_TRACK, 1);
+  assert.equal(kept.defines.USE_CSM, undefined, 'and only those: the registration owns the cascade\'s defines');
+  assert.equal(kept.defines.COT_CLOUD_SHADE, undefined, 'the cloud shade among them');
   source.dispose(); plain.dispose(); kept.dispose();
 }
 
@@ -126,6 +132,7 @@ try {
           assertRegistered(material, `${id}/${object.name}`);
           assert.equal(material.name, 'cot:track-pad');
           assert.equal(material.vertexColors, false, `${id}: the shoes keep their instance palette, not vertex colours`);
+          assert.equal(material.defines.COT_VEH_TRACK, 1, `${id}: the shoes pack the snow maps' snow (vehicleWeathering.ts)`);
           note('trackPad', id);
         }
         if (material.userData?.isolatedFrom) {
@@ -135,7 +142,13 @@ try {
         }
         if (material.userData?.trackBandFinish) {
           assertRegistered(material, `${id}/${object.name} (track-band finish)`);
+          // the clone keeps its source's own switches, which three's copy drops with the rest of the defines
+          assert.equal(material.defines.COT_VEH_TRACK, 1, `${id}/${object.name}: the band finish keeps the track's switch`);
           note('trackBandFinish', id);
+        }
+        if (object.name === 'gearTrackBandL' || object.name === 'gearTrackBandR') {
+          assert.equal(material.defines.COT_VEH_TRACK, 1, `${id}/${object.name}: the band packs the snow maps' snow`);
+          note('trackBand', id);
         }
         // the optics never weather (vehicleWeathering.ts: the layer is compiled out under COT_VEH_CLEAN)
         if (material.userData?.appearanceRole === 'opticGlass') {
@@ -147,7 +160,8 @@ try {
     assert.equal(new Set(pads).size, 1, `${id}: both shoe streams share the one registered shoe material`);
   }
   assert.ok(seenKinds.get('optics')?.size, 'an optic material was covered');
-  for (const [kind, ids] of [['trackPad', ['m1a2', 'm60a1', 't72b3m']], ['trackBandFinish', ['m60a1']], ['isolated', ['t72b3m']]]) {
+  for (const [kind, ids] of [['trackPad', ['m1a2', 'm60a1', 't72b3m']], ['trackBand', ['m1a2', 'm60a1', 't72b3m']],
+    ['trackBandFinish', ['m60a1']], ['isolated', ['t72b3m']]]) {
     for (const id of ids) assert.ok(seenKinds.get(kind)?.has(id), `${id}: a ${kind} clone was covered`);
   }
 } finally {

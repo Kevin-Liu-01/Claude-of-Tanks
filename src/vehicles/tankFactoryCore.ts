@@ -1003,7 +1003,7 @@ function isolatedGearMaterial<M extends THREE.Material>(
   const clone = cloneVehicleMaterial(material);
   clone.userData = { ...(material.userData || {}), appearanceRole: wanted, isolatedFrom: material.name };
   // A fixed rubber/steel role cloned from wheel paint uses the ordinary gear
-  // lighting path: three's copy resets the defines, the registration adds only the cascade's.
+  // lighting path: cloneVehicleMaterial keeps the source's COT_* switches, so drop the wheel paint's floor.
   if ('defines' in clone && clone.defines) {
     delete (clone.defines as Record<string, unknown>).COT_WHEEL_PAINT_READABILITY;
   }
@@ -4467,6 +4467,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     padMat.userData = { ...(padMat.userData || {}), appearanceRole: 'trackPad',
       appearanceColorSource: 'instance-palette' };
     padMat.name = 'cot:track-pad';
+    // 2026-10-04: the shoes pack the snow maps' trodden snow along the bottom run (vehicleWeathering.ts)
+    padMat.defines = { ...padMat.defines, COT_VEH_TRACK: 1 };
     disposables.push(padMat);
   };
   const buildRunningGearRunningGearStage28 = (): void => {
