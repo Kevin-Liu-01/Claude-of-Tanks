@@ -7060,6 +7060,25 @@ The water's knobs ride in this branch at today's values (`WATER_ENV_NORMAL` / `_
 exposure or bloom setting moves it: the flat internal shading is the cloud model's, the item after the sea.
 Frames: `$SP/p2/bloom/pair/<map>/{a,g}-<view>.png`; the sweeps `$SP/p2/bloom/cap{,2,3}`.
 
+### 2026-10-04 — the sea mirrors the sky toward the horizon (the sea's far band)
+
+**The gauntlet (both critics): the sea at grazing angles — "the far band turns teal and darker than the sky instead of
+brightening toward the horizon (Fresnel), with no sun glitter".** The split, in-page on one build (Saltwind's edge-w, the
+sea to the west; desktop high): the sky over the horizon sits at L* 85 and the far band 13–17 under it, teal. The haze law
+is not the cause — without it (σ 0) the band is darker still (L* 70 against 73), and its target at the sky's own level
+moves it 0.8 — the water's own reflection at grazing incidence is: `shallowWater.ts` weighted the sky's reflection
+`mix(0.45, 1.75, grazing)`. `WATER_ENV_GRAZING` 1.75 → 3.5 (the FFT path untouched):
+- *Saltwind edge-w:* the far band L* 67.4 → 78.6 (6.4 under the sky; it was 17.6), a* −6.8 → −5.6, b* −8.5 → −7.0 — the
+  mirror a calm sea is toward the horizon; the mid field +6.5 to +9 L*; the water under the camera +1.2 (no wash-out).
+- *Saltmere's bay (establishing):* the water +4 to +5 L* along its far half, the rest of the frame unchanged (median ΔE
+  0.00); land-only views unchanged.
+- *Sun glitter:* a sun-over-water pose on Saltwind (the camera over the sea, facing the 30° sun) shows the glitter path
+  already, its sparkles held under white by the specular cap (1.15, pre-exposure; max channel 236). The cap at 2.5 lets
+  the sparkles reach white and blooms the path's far end (16 750 white pixels), kept at 1.15 here; a choice for the
+  critics (`WATER_SPEC_CAP`). The edge-w view faces away from the sun, where no glitter belongs.
+- *GPU:* the old weight switched in-page, on / off / off / on: −1.3 and −0.3 ms (p25) — a constant.
+Frames: `$SP/p2/sea/pair/{saltwind,coastal}/{a,g}-<view>.png`, the glint `saltwind/{a,g,g~spec25,g~spec4}-glint.png`.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
