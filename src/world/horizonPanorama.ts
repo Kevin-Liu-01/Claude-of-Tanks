@@ -25,7 +25,7 @@
 // on (the receipts, a renderer without float targets). Desktop tier only: the mobile tier has no far range.
 import * as THREE from 'three';
 import { HAZE_EXT_CHROMA, HAZE_LAW_GLSL, hazeLayerInverseScale, hazeSigma, hazeTargetTerms } from '../engine/hazeLaw.ts';
-import type { SeaOpening } from './edgeWater.ts';
+import { SEA_APRON_OUTER_RADIUS_M, type SeaOpening } from './edgeWater.ts';
 import type { HorizonReliefCharacter } from './horizonRelief.ts';
 
 const DEG = Math.PI / 180;
@@ -80,6 +80,9 @@ export interface HorizonPanoramaCharacter {
   /** sparse isolated peaks over the far field: the share of 2.6 km cells holding one, its height (m), its radius (m) and
    * its profile's sharpness (about 1 a rounded cone, 2 a sharp nunatak); 0 share: none */
   peakShare: number; peakM: number; peakRadiusM: number; peakSharp: number;
+  /** the slope (1 - n.y) where the forest begins to give way to bare ground (gone 0.23 steeper): a temperate hill's
+   * woods stop on the steep faces; a monsoon hill country's forest climbs them */
+  forestSlope: number;
 }
 
 /** The knobs most characters leave at rest: open sea, no tree canopy, the eroded mesa's profile, no isolated peaks. */
@@ -87,6 +90,7 @@ const PANO_EXTRAS = Object.freeze({
   shore: 0, shoreM: 5600, shoreRange: 0, trees: 0,
   mesaTalusM: 700, mesaTalusShare: 0.55, mesaCliffM: 50, mesaFluteM: 45,
   peakShare: 0, peakM: 0, peakRadiusM: 600, peakSharp: 1.5,
+  forestSlope: 0.32,
 });
 
 export const HORIZON_PANORAMA_CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonPanoramaCharacter>> = Object.freeze({
@@ -244,9 +248,12 @@ export const HORIZON_PANORAMA_REGIONAL: Readonly<Record<HorizonPanoramaRegional,
   plain: { ampM: 70, foot: 0.6, macroL: 5000, sharp: 1.0, midL: 1800, gullyL: 600, gullyM: 4, warpM: 900, valley: 0.2, valleyL: 8000, snowline: 2, treeline: 1.2, rockSlope: 0.8, bedM: 60, strata: 0, tables: false, farRise: 0, layers: 0, plinth: false, ...PANO_EXTRAS, trees: 18 },
   erg: { ampM: 40, foot: 0.7, macroL: 2400, sharp: 1.0, midL: 900, gullyL: 600, gullyM: 0, warpM: 700, valley: 0.15, valleyL: 6000, snowline: 2, treeline: 0, rockSlope: 0.9, bedM: 60, strata: 0, tables: false, farRise: 0, layers: 0, plinth: false, ...PANO_EXTRAS },
   upland: { ampM: 260, foot: 0.35, macroL: 5200, sharp: 0.9, midL: 1700, gullyL: 500, gullyM: 18, warpM: 1000, valley: 0.3, valleyL: 8000, snowline: 2, treeline: 0.9, rockSlope: 0.5, bedM: 60, strata: 0.03, tables: false, farRise: 0.25, layers: 0.45, plinth: true, ...PANO_EXTRAS, trees: 14 },
-  forested: { ampM: 900, foot: 0.22, macroL: 4600, sharp: 1.2, midL: 1400, gullyL: 420, gullyM: 45, warpM: 900, valley: 0.4, valleyL: 7000, snowline: 2, treeline: 1.0, rockSlope: 0.62, bedM: 50, strata: 0.02, tables: false, farRise: 0, layers: 1, plinth: false, ...PANO_EXTRAS },
+  forested: { ampM: 900, foot: 0.22, macroL: 4600, sharp: 1.2, midL: 1400, gullyL: 420, gullyM: 45, warpM: 900, valley: 0.4, valleyL: 7000, snowline: 2, treeline: 1.0, rockSlope: 0.62, bedM: 50, strata: 0.02, tables: false, farRise: 0, layers: 1, plinth: false, ...PANO_EXTRAS, forestSlope: 0.5 },
   karstRidge: { ampM: 520, foot: 0.24, macroL: 5400, sharp: 1.3, midL: 1500, gullyL: 450, gullyM: 55, warpM: 1100, valley: 0.35, valleyL: 8500, snowline: 2, treeline: 0.35, rockSlope: 0.22, bedM: 40, strata: 0.08, tables: false, farRise: 0.9, layers: 1, plinth: true, ...PANO_EXTRAS, shoreRange: 0.9 },
-  ridges: { ampM: 1100, foot: 0.25, macroL: 3800, sharp: 1.5, midL: 1200, gullyL: 380, gullyM: 60, warpM: 700, valley: 0.5, valleyL: 6000, snowline: 2, treeline: 1.0, rockSlope: 0.65, bedM: 40, strata: 0.03, tables: false, farRise: 0, layers: 1, plinth: false, ...PANO_EXTRAS },
+  // (gauntlet wave 24, Monsoon Ridge: the steep 'ridges' stood as "a pale, jagged desert rock formation" and a "needle-sharp
+  // mountain spike" — rounded crests, shallower gullies, the forest up the steep faces and over the crests, rock only on
+  // the cliffs, less lift toward the deck)
+  ridges: { ampM: 750, foot: 0.25, macroL: 3800, sharp: 0.95, midL: 1500, gullyL: 380, gullyM: 30, warpM: 700, valley: 0.5, valleyL: 6000, snowline: 2, treeline: 1.6, rockSlope: 0.95, bedM: 40, strata: 0.02, tables: false, farRise: 0, layers: 0.25, plinth: false, ...PANO_EXTRAS, forestSlope: 0.8 },
   jebel: { ampM: 700, foot: 0.24, macroL: 5200, sharp: 1.0, midL: 2000, gullyL: 500, gullyM: 30, warpM: 900, valley: 0.3, valleyL: 7000, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 46, strata: 0.32, tables: true, farRise: 0, layers: 1, plinth: false, ...PANO_EXTRAS, mesaTalusM: 160, mesaTalusShare: 0.12, mesaCliffM: 110, mesaFluteM: 90 },
   volcanicField: { ampM: 380, foot: 0.3, macroL: 4800, sharp: 1.0, midL: 1600, gullyL: 420, gullyM: 20, warpM: 800, valley: 0.3, valleyL: 7000, snowline: 2, treeline: 0.35, rockSlope: 0.4, bedM: 40, strata: 0.1, tables: false, farRise: 0, layers: 0.6, plinth: false, ...PANO_EXTRAS, peakShare: 0.35, peakM: 260, peakRadiusM: 800, peakSharp: 1.2 },
   iceSheet: { ampM: 110, foot: 0.5, macroL: 6000, sharp: 1.0, midL: 2200, gullyL: 600, gullyM: 6, warpM: 1000, valley: 0.2, valleyL: 8000, snowline: -0.5, treeline: 0, rockSlope: 0.35, bedM: 80, strata: 0.04, tables: false, farRise: 0, layers: 0.3, plinth: false, ...PANO_EXTRAS, peakShare: 0.2, peakM: 320, peakRadiusM: 380, peakSharp: 2.2 },
@@ -755,6 +762,8 @@ uniform vec4 uChar3;   // snowline, treeline, rockSlope, bedM
 uniform vec4 uChar4;   // strata, deckM, ampM, farRise
 uniform vec2 uElev;
 uniform sampler2D uEdge;
+uniform vec4 uShore;      // the far shore's height share (0: open sea), the channel's distance (m), its coastal range's share
+uniform vec4 uTrees;      // the far field's canopy (m) and the forest's slope limit
 uniform vec4 uHaze;       // the shared haze law (hazeLaw.ts): σ (1/m), 1 / the layer's scale height, the datum (m), on
 uniform vec3 uHazeChroma; // its per-channel extinction
 uniform vec3 uHazeAnti, uHazeToward; // its in-scatter target at the horizon away from the sun and toward it
@@ -768,7 +777,7 @@ vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   float n1 = noised(wp.xz / 1900.0 + vec2(5.3, 1.7)).x * 0.7 + noised(wp.xz / 700.0 + vec2(-3.1, 8.2)).x * 0.3;
   // the lower flanks: stands of the map's forest (denser on the slopes, broken by clearings and fields on the gentle
   // lowland), the crowns' mottle; the meadows and fields a patchwork of their own tones
-  float vegW = uChar3.y > 0.0 ? (1.0 - smoothstep(uChar3.y * 0.75, uChar3.y * 1.05, hT + 0.05 * n1)) * (1.0 - smoothstep(0.32, 0.55, slope)) : 0.0;
+  float vegW = uChar3.y > 0.0 ? (1.0 - smoothstep(uChar3.y * 0.75, uChar3.y * 1.05, hT + 0.05 * n1)) * (1.0 - smoothstep(uTrees.y, uTrees.y + 0.23, slope)) : 0.0;
   float standN = noised(wp.xz / 170.0 + vec2(3.1, -7.7)).x + (1.0 - apron) * (0.45 * noised(wp.xz / 61.0 + vec2(-9.2, 4.4)).x + 0.25 * noised(wp.xz / 23.0).x);
   float stand = smoothstep(-0.15, 0.2, standN + 1.4 * smoothstep(0.03, 0.18, slope) - 0.55);
   float mottle = 0.72 + 0.4 * mix(noised(wp.xz / 29.0 + vec2(11.3, 5.1)).x * 0.5 + 0.5, 0.5, apron);
@@ -885,8 +894,11 @@ void main() {
     // the compass, receding into the air toward the skyline so it reads as land falling away, not a sheet)
     vec2 sp = vec2(cos(a), sin(a)) * uFrame.z;
     float patchN = noised(sp / 900.0 + vec2(2.3, -7.1)).x * 0.6 + noised(sp / 340.0 + vec2(-4.4, 1.9)).x * 0.4;
-    vec3 flatC = uBase * (uGains.y * 1.05 * max(0.0, uSun.y) * vec3(1.06, 0.98, 0.86) + uGains.x * 0.82 * skyTint);
-    vec3 fill = mix(flatC, flatC * uForest / max(vec3(1e-3), uBase) * 0.95, smoothstep(0.05, 0.45, patchN) * step(0.35, uChar3.y));
+    // (its ground the character's snow where the far country is white to its lowest swale — an ice sheet, a negative
+    // snowline: the fill stood as a band of the battlefield's ground tone over Whiteout's low ring, the follow-up ticket)
+    float fillSnow = uChar3.x < 0.0 ? 1.0 : 0.0;
+    vec3 flatC = mix(uBase, uSnow, fillSnow) * (uGains.y * 1.05 * max(0.0, uSun.y) * vec3(1.06, 0.98, 0.86) + uGains.x * 0.82 * skyTint);
+    vec3 fill = mix(flatC, flatC * uForest / max(vec3(1e-3), uBase) * 0.95, smoothstep(0.05, 0.45, patchN) * step(0.35, uChar3.y) * (1.0 - fillSnow));
     float recede = smoothstep(atan(edge.a) - 0.06, atan(edge.a), e);
     fill = mix(fill, uFog * 1.05, 0.25 + 0.35 * recede);
     col = mix(col, fill, hiddenW * 0.95);
@@ -896,7 +908,13 @@ void main() {
   // a camera off the centre); the ground the ring hides in a sea sector too (from the eye the ring there is the water)
   float sea = edge.g * step(wp.y, edge.b + 0.5);
   col = mix(col, uFog * 0.82, sea);
-  float open = max(smoothstep(0.02, 0.2, sea), hiddenW * smoothstep(0.3, 0.7, edge.g));
+  // a channel coast's far reach (uShore.x > 0): past the sea apron the game draws no water, and the far shore stood over a
+  // flat white stripe of open sky from the elevated views (gauntlet wave 24, Saltwind's establishing "a second, taller range
+  // of sharp peaks floats above a flat white haze stripe"): the strip paints the channel past the apron as water, so the
+  // far ridge sits on it; the near reach stays the game's own sea
+  float farWater = uShore.x > 0.0 ? sea * smoothstep(${(SEA_APRON_OUTER_RADIUS_M - 150).toFixed(1)}, ${(SEA_APRON_OUTER_RADIUS_M + 50).toFixed(1)}, rr) : 0.0;
+  col = mix(col, uFog * vec3(0.55, 0.62, 0.66), farWater);
+  float open = max(smoothstep(0.02, 0.2, sea) * (1.0 - farWater), hiddenW * smoothstep(0.3, 0.7, edge.g));
   // the air past the shell. With the battlefield's sky published, the shared haze law (hazeLaw.ts; the coordinator,
   // 2026-10-03: "read it from hazeLaw rather than your own constants, so near and far stay consistent"): the aerial pass
   // hazes the shell's own depth, the bake the rest of the path to the far country — the same σ, the layer's density
@@ -1081,7 +1099,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
         options.treelineM != null ? options.treelineM / ch.ampM : ch.treeline, ch.rockSlope, ch.bedM) },
       uChar4: { value: new THREE.Vector4(ch.strata, options.deckBaseM, ch.ampM, ch.farRise) },
       uShore: { value: new THREE.Vector4(ch.shore, ch.shoreM, ch.shoreRange, 0) },
-      uTrees: { value: new THREE.Vector4(ch.trees, 0, 0, 0) },
+      uTrees: { value: new THREE.Vector4(ch.trees, ch.forestSlope, 0, 0) },
       uMesa: { value: new THREE.Vector4(ch.mesaTalusM, ch.mesaTalusShare, ch.mesaCliffM, ch.mesaFluteM) },
       uPeaks: { value: new THREE.Vector4(ch.peakShare, ch.peakM, ch.peakRadiusM, ch.peakSharp) },
       uFrame: { value: new THREE.Vector4(P.innerM, P.outerM, P.shellM, P.eyeY) },

@@ -147,7 +147,35 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
   assert.ok(pano.shore > 1 && pano.shoreM > 4000 && pano.shoreM < 7000, 'a channel coast: the land across the water, 4-7 km out');
   assert.ok(pano.shoreRange > 0 && pano.shoreRange <= 1, 'a coastal range along the far shore (no low strip where its own relief is low)');
   assert.ok(pano.treeline < HORIZON_PANORAMA_CHARACTERS.coastal.treeline, 'the karst keeps its woods on the lower flanks');
-  assert.equal(saltwind.horizon.panorama, false, 'Saltwind holds the PR head\'s far country (gauntlet wave 24) until its ridge is rebuilt');
+  // Saltwind's own: the mainland's karst ridge, bare pale limestone (rock from the gentler slopes on) over scrub, its
+  // woods only on the lowest flanks (gauntlet wave 24: "the karst ridge should also read as bare pale limestone, not green")
+  const salt = resolveHorizonPanoramaCharacter('coastal', saltwind.horizon.panorama);
+  assert.ok(salt.shore > 1 && salt.shoreRange > 0, 'Saltwind: the mainland across its channel');
+  assert.ok(salt.rockSlope <= 0.2 && salt.treeline <= 0.25, 'Saltwind: a bare limestone ridge, its woods low');
+  // the channel past the sea apron is painted water on a channel coast, so the far ridge stands on it (wave 24: "floats
+  // above a flat white haze stripe"); an open sea stays the game's own
+  assert.ok(/float farWater = uShore\.x > 0\.0 \? sea \* smoothstep\(/.test(HORIZON_PANORAMA_SHADERS.strip)
+    && HORIZON_PANORAMA_SHADERS.strip.includes('smoothstep(0.02, 0.2, sea) * (1.0 - farWater)'), 'a channel coast\'s far reach is water, not open sky');
+}
+// every uniform a pass reads is declared in that pass (a strip reading uTrees without its declaration compiled to nothing:
+// the SwiftShader lab drew no panorama at all — the receipts compile no GLSL)
+for (const [pass, source] of Object.entries(HORIZON_PANORAMA_SHADERS)) {
+  const declared = new Set([...source.matchAll(/uniform\s+\w+\s+([^;]+);/g)].flatMap((m) => m[1].split(',').map((n) => n.trim().replace(/\[.*\]$/, ''))));
+  for (const used of new Set([...source.matchAll(/\b(u[A-Z]\w*)\b/g)].map((m) => m[1]))) {
+    assert.ok(declared.has(used), `the ${pass} pass declares the ${used} it reads`);
+  }
+}
+// the strip's fill below the ring's skyline takes an ice sheet's snow (the follow-up ticket: over Whiteout's low ring the
+// elevated views saw it as a band of the battlefield's ground tone)
+assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('float fillSnow = uChar3.x < 0.0 ? 1.0 : 0.0;')
+  && HORIZON_PANORAMA_SHADERS.strip.includes('mix(uBase, uSnow, fillSnow)'), 'the fill below the skyline takes the sheet\'s snow');
+// the forest climbs a monsoon hill country's steep faces (gauntlet wave 24, Monsoon Ridge's 'ridges' "a pale, jagged desert
+// rock formation"): the vegetation's slope limit is the character's, the ridges' crests round, rock only on the cliffs
+{
+  const ridges = resolveHorizonPanoramaCharacter('karst', { regional: 'ridges' });
+  assert.ok(ridges.forestSlope >= 0.55 && ridges.rockSlope >= 0.85 && ridges.sharp <= 1.2, 'ridges: forest up the faces, rounded crests');
+  assert.equal(HORIZON_PANORAMA_CHARACTERS.rolling.forestSlope, 0.32, 'a temperate hill keeps the old forest limit');
+  assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('smoothstep(uTrees.y, uTrees.y + 0.23, slope)'), 'the strip reads the forest\'s slope limit');
 }
 // --- the regional classes (gauntlet wave 15, every critic: "mountain ranges behind places that have none"): a map's
 // horizon block picks its real place's far country ------------------------------------------------------------------
