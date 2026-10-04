@@ -307,8 +307,8 @@ export function buildWallDrift(
   const ext = lee ? 0.9 : 0.5, step = opts.mobile ? 0.9 : (opts.step ?? 0.5);
   const along = Math.max(2, Math.ceil((len + 2 * ext) / step));
   const OUT = lee ? [0, 0.05, 0.15, 0.3, 0.5, 0.74, 1] : [0, 0.1, 0.35, 0.7, 1];
-  const h0 = (lee ? 0.55 * (0.45 + 0.55 * square) : 0.22 * (0.55 + 0.45 * square)) * size;
-  const reach0 = (lee ? 3.1 * (0.5 + 0.5 * square) : 0.85) * Math.sqrt(size);
+  const h0 = (lee ? 0.48 * (0.45 + 0.55 * square) : 0.2 * (0.55 + 0.45 * square)) * size;
+  const reach0 = (lee ? 2.7 * (0.5 + 0.5 * square) : 0.8) * Math.sqrt(size);
   const positions: number[] = [], uvs: number[] = [];
   for (let i = 0; i <= along; i++) {
     const s = -ext + (len + 2 * ext) * (i / along);
@@ -316,12 +316,14 @@ export function buildWallDrift(
     const taper = Math.min(1, Math.max(0, (s + ext) / (ext + 0.6)), Math.max(0, (len + ext - s) / (ext + 0.6)));
     const height = h0 * (1 + 0.28 * rise(s * 0.9)) * taper * taper * (3 - 2 * taper);
     // the toe: a long swing and a scallop a metre or so long, so the edge wanders
-    const reach = reach0 * (1 + 0.22 * reachW(s * 0.45) + 0.12 * scallop(s * 2.1)) * (0.55 + 0.45 * taper) + height * 0.5;
+    // (wave 34 re-shoot: a scallop a metre long at a row every half metre read as a jagged, faceted toe — the toe
+    // swings only slowly now, and sinks under the ground over its outer third, so its edge is where the ground meets it)
+    const reach = reach0 * (1 + 0.2 * reachW(s * 0.35) + 0.05 * scallop(s * 0.9)) * (0.55 + 0.45 * taper) + height * 0.5;
     for (const o of OUT) {
       const d = half - 0.06 + reach * o;
       const x = ax + tx * s + nx * d, z = az + tz * s + nz * d;
       // a drift's profile: steepest near the face, a long tail to its toe (the toe sunk a centimetre)
-      const y = ground.getHeightAt(x, z) + height * Math.pow(1 - o, lee ? 1.35 : 1.7) - 0.012 * o;
+      const y = ground.getHeightAt(x, z) + height * Math.pow(1 - o, lee ? 1.35 : 1.7) - 0.06 * o * o;
       positions.push(x, y, z);
       // (on a print with a plain band — the sand ramps on the mud print's — v runs across that band, face to toe)
       uvs.push(opts.plainV ? s * uvPerM : x * uvPerM, opts.plainV ? opts.plainV[0] + (opts.plainV[1] - opts.plainV[0]) * o : z * uvPerM);

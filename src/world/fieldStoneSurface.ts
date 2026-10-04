@@ -41,7 +41,7 @@ const HEARTING_PAINT_V0 = 0.86;
 /** The core's height in tiles over the band's height (a 0.92 m hearting at 1.2 tiles a metre over 0.1 of a tile). */
 const HEARTING_SQUASH = (0.92 * 1.2) / (FIELD_STONE_HEARTING_V[1] - FIELD_STONE_HEARTING_V[0]);
 /** Stone lightness base (HSL): set so the face band's mean is the stone print's (the receipt pins it within 4 %). */
-export const FIELD_STONE_L0 = 0.283;
+export const FIELD_STONE_L0 = 0.262;
 
 function hash(a: number, b: number, seed: number): number {
   let h = Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1) ^ Math.imul(seed | 0, 0x2545f491);
@@ -139,18 +139,18 @@ export function* paintFieldStoneBuffers(size = 512, seed = 0xf1e1d):
         const t = hash(a, 7, seed + 53);
         if (gap < 0.16 + t * 0.12) {
           // a void between the packing stones: deep shadow, a little earth in it
-          hslToRgb(0.075, 0.1, 0.07 + gap * 0.08 + grain * 0.03, rgb);
+          hslToRgb(0.075, 0.1, 0.11 + gap * 0.08 + grain * 0.03, rgb);
           hgt[i] = 0.02 + gap * 0.1;
           joint[i] = 1;
         } else {
           const crown = smooth(0.16, 0.8, gap);
-          hslToRgb(0.08 + t * 0.015, 0.07 + t * 0.04, (0.16 + t * 0.1 + grain * 0.04) * (0.75 + crown * 0.25), rgb);
+          hslToRgb(0.08 + t * 0.015, 0.07 + t * 0.04, (0.21 + t * 0.11 + grain * 0.04) * (0.75 + crown * 0.25), rgb);
           hgt[i] = 0.2 + crown * 0.25 + grain * 0.05;
         }
       } else {
         // the face band: one stone's skin, its tone drifting smoothly about a stone across (no border anywhere: a
         // stone's window lands on a tone of its own and a gentle drift across it)
-        const t = smooth(0.2, 0.8, toneF(u0, v0));
+        const t = smooth(0.25, 0.75, toneF(u0, v0));
         const isCool = smooth(0.62, 0.74, coolF(u0, v0)), isWarm = smooth(0.66, 0.78, warmF(u0, v0));
         const lichenAmt = smooth(0.55, 0.7, lichenPatchF(u0, v0));
         const g = smooth(0.5, 0.95, grime(u0, v0));
@@ -160,7 +160,7 @@ export function* paintFieldStoneBuffers(size = 512, seed = 0xf1e1d):
         const pit = smooth(0.84, 0.9, pitF(u0, v0));
         const speck = hash(x, y, seed + 43);
         const sat = (0.07 + t * 0.055 - g * 0.02) * (1 - isCool * 0.55) + isWarm * 0.07;
-        let light = (FIELD_STONE_L0 + t * 0.14 + grain * 0.06) * (0.92 + mottle * 0.16) - g * 0.06 - bed * 0.04 - pit * 0.03;
+        let light = (FIELD_STONE_L0 + t * 0.2 + grain * 0.06) * (0.92 + mottle * 0.16) - g * 0.06 - bed * 0.04 - pit * 0.03;
         light *= speck > 0.986 ? 0.82 : speck > 0.975 ? 1.1 : 1; // mineral grains, dark and bright
         hslToRgb(0.081 + t * 0.014 + isCool * 0.02 - isWarm * 0.015, sat, light, rgb);
         // (rosettes a few centimetres across, clustered where the stone has lichen, ragged at their edges)

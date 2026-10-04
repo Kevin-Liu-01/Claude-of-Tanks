@@ -1146,11 +1146,17 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
       const hh = topY - base, yc = base + hh / 2, proud = 0.006 + r() * 0.022;
       // (its corners knocked well back along the course, little in its height: the bed joints close, the corners gape)
       const stone = roughStone(proud + 0.07, hh, zb - za, r, keep, 0.3, 0.1);
-      const nrm = stone.attributes.normal;
+      // (wave 34 re-shoot, "flat grey from a distance": each stone's face turned a little its own way — up to a
+      // ninth of a radian — in its shading only, so neighbours catch the light differently and read stone by stone)
+      const nrm = stone.attributes.normal, tiltY = (r() - 0.5) * 0.22, tiltZ = (r() - 0.5) * 0.22;
       for (let i = 0; i < nrm.count; i++) {
-        if (nrm.getY(i) < 0.6) continue;
-        const l = Math.hypot(0.9, 0.42);
-        nrm.setXYZ(i, (face * 0.9) / l, 0.42 / l, 0);
+        if (nrm.getY(i) >= 0.6) {
+          const l = Math.hypot(0.9, 0.42);
+          nrm.setXYZ(i, (face * 0.9) / l, 0.42 / l, 0);
+        } else if (Math.abs(nrm.getX(i)) > 0.5) {
+          const x = nrm.getX(i), y = nrm.getY(i) + tiltY, z = nrm.getZ(i) + tiltZ, l = Math.hypot(x, y, z) || 1;
+          nrm.setXYZ(i, x / l, y / l, z / l);
+        }
       }
       stone.rotateZ(face * ((r() - 0.5) * 0.05 - 0.02)); stone.rotateX((r() - 0.5) * 0.05); stone.rotateY((r() - 0.5) * 0.05);
       parts.push(stone.translate(face * (halfAt(yc) - 0.03 + proud - (proud + 0.07) / 2), yc, (za + zb) / 2));

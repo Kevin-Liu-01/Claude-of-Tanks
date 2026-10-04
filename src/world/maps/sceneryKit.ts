@@ -762,7 +762,9 @@ export function buildSandbagBedding(
     for (const o of OUT) {
       const d = -0.03 + reach * o;
       const [wx, wz] = world(lx + nx * d, lz + nz * d);
-      positions.push(wx, ground.getHeightAt(wx, wz) + h * Math.pow(1 - o, 1.5) - 0.01 * o, wz);
+      // (lumpy spoil, clods and all: each point its own rise; the toe sunk under the ground)
+      const clod = o > 0 && o < 1 ? 1 + (r() - 0.5) * 0.35 : 1;
+      positions.push(wx, ground.getHeightAt(wx, wz) + h * Math.pow(1 - o, 1.5) * clod - 0.03 * o * o, wz);
       shade(o);
     }
   }

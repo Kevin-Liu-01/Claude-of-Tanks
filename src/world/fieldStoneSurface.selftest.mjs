@@ -120,7 +120,8 @@ const voidShare = voids / n;
 heartL /= n; voidL /= nv; stoneL /= ns;
 assert.ok(voidShare > 0.2 && voidShare < 0.65, `the core's voids take a fifth to two thirds of it (${voidShare.toFixed(2)})`);
 assert.ok(voidL < stoneL * 0.6, `its voids are darker than its packing stones (${voidL.toFixed(1)} vs ${stoneL.toFixed(1)})`);
-assert.ok(heartL < median * 0.5, `the core between the stones reads dark (${heartL.toFixed(1)} vs the skin's ${median.toFixed(1)})`);
+assert.ok(heartL < median * 0.6, `the core between the stones reads dark (${heartL.toFixed(1)} vs the skin's ${median.toFixed(1)})`);
+assert.ok(voidL > 12, `but its voids are shadow, not black holes (${voidL.toFixed(1)}; wave 34's re-shoot)`);
 let voidH = 0, stoneH = 0;
 for (let y = hRows[0]; y < hRows[1]; y++) for (let x = 0; x < size; x++) { const i = y * size + x; if (joint[i]) voidH += hgt[i]; else stoneH += hgt[i]; }
 assert.ok(voidH / nv < stoneH / ns - 0.15, 'its voids lie low in the relief');

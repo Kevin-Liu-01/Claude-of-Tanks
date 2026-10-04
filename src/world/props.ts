@@ -4305,10 +4305,12 @@ ${snowCap ? `
   // its place, in the map's soil (its earth on an arid map); drawn as one receive-only mesh of their own
   const sandbagBeds: THREE.BufferGeometry[] = [];
   const bedSoil = ((): readonly [number, number, number] => {
+    // (wave 34 re-shoot: a props surface of the soil's albedo rendered twice as bright as the terrain's dirt beside it —
+    // sRGB 169,119,73 against 118,83,54 on Frontier — so the spoil takes half the soil's linear albedo)
     const earth = mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex);
-    if (!earth) return rockDressingFor(mapId, P.rockSoilTone ?? null).soil;
     const lin = (c: number) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
-    return [lin(earth[0]), lin(earth[1]), lin(earth[2])];
+    const soil = earth ? [lin(earth[0]), lin(earth[1]), lin(earth[2])] : rockDressingFor(mapId, P.rockSoilTone ?? null).soil;
+    return [soil[0] * 0.5, soil[1] * 0.5, soil[2] * 0.5];
   })();
   function bedSandbagNest(kind: string, x: number, z: number, yaw: number, scale: number,
     toward: readonly [number, number] | null = null): void {
