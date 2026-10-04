@@ -2368,9 +2368,11 @@ const GROWN_LEAF_BILLBOARD = 1;
 const CANOPY_NEAR_DISSOLVE = Object.freeze([2.5, 8.0] as const);
 /**
  * Trees round 4: the near dissolve's reach per material (uCotNearReach, over CANOPY_NEAR_DISSOLVE and the crown's size):
- * a crown's whole band, a shrub's a third of it — a 6 m field bush keeps its clusters to about 2 m from the camera.
+ * a crown's whole band, a shrub's half of it — a 6 m field bush keeps its clusters to about 3.5 m from the camera and
+ * thins by whole clusters inside that (the coordinator's 0.5 over the first 0.3: a bush filling half the screen and
+ * hiding the player's own tank at 2 to 3 m played worse than a slightly earlier thinning).
  */
-const FOLIAGE_NEAR_REACH = Object.freeze({ crown: 1, shrub: 0.3 });
+const FOLIAGE_NEAR_REACH = Object.freeze({ crown: 1, shrub: 0.5 });
 
 
 /**

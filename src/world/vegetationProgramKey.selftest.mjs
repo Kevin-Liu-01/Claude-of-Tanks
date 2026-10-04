@@ -372,7 +372,7 @@ function checkIndependentEviction(world, other, species) {
 
 // trees round 4 (the gauntlet's wave 51: 3b's near shrub thinned to "a handful of leaf cutouts"): a grown shrub on a map
 // without a biome shrub form draws with its own clone of its slot's crown material — the crown's defines and program,
-// the shrub's near reach (0.3 of the crowns' band)
+// the shrub's near reach (half the crowns' band)
 function checkShrubMaterial(environment) {
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(55, 1.6, .5, 4000);
   const lighting = createLighting(scene, camera, new THREE.Vector3(1, 1, 1).normalize());
@@ -389,7 +389,7 @@ function checkShrubMaterial(environment) {
     assert.deepEqual(bush.material.defines, crown.defines, 'with the crown material\'s defines (the facing clusters, the edge fade)');
     const shrubProgram = environment.expand(bush.material), crownProgram = environment.expand(crown);
     assert.equal(shrubProgram.key, crownProgram.key, 'the same program as the crowns\'');
-    assert.equal(shrubProgram.parameters.uniforms.uCotNearReach.value, 0.3, 'the shrub\'s near reach');
+    assert.equal(shrubProgram.parameters.uniforms.uCotNearReach.value, 0.5, 'the shrub\'s near reach');
     assert.equal(crownProgram.parameters.uniforms.uCotNearReach.value, 1, 'the crowns keep theirs');
   } finally {
     vegetation.dispose(); disposeObject3DResources(vegetation.group);
