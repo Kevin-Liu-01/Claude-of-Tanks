@@ -184,16 +184,20 @@ assert.match(shader.fragmentShader, /smoothstep\(0\.0, 0\.55, wet\) \* mix\(mix\
 // a mirror toward the horizon, a window into the shallows underfoot.
 assert.match(shader.fragmentShader, /material\.specularF90 = 0\.9/,
   'sun glitter keeps its energy; bloom carries it as sparkle');
-assert.match(shader.fragmentShader, /radiance \*= mix\(0\.45, 1\.75, waterGrazing\)/,
+// (2026-10-04: the reflection's weights, the specular cap and the body's grazing darkening are read per frame through the
+// light model's QA hook — uWaterQa: x / y the sky's reflection at normal / grazing incidence, z the cap, w the darkening)
+assert.match(shader.fragmentShader, /radiance \*= mix\(uWaterQa\.x, uWaterQa\.y, waterGrazing\)/,
   'sky reflection follows the grazing term instead of one flat envMapIntensity');
-assert.match(shader.fragmentShader, /totalSpecular - vec3\(1\.15\)/,
+assert.match(shader.fragmentShader, /totalSpecular - vec3\(uWaterQa\.z\)/,
   'the specular clamp no longer deletes the glints');
+assert.match(shader.fragmentShader, /diffuseColor\.rgb \*= 1\.0 - uWaterQa\.w \* grazing;/, 'the body darkens toward grazing');
+assert.deepEqual(shader.uniforms.uWaterQa.value.toArray(), [0.45, 1.75, 1.15, 0.35], 'the reflection, cap and darkening as tuned');
 // Water pass 4 (2026-09-13): the deep body darkens harder (0.70 -> 0.58) and the
 // whole sheet loses 35 % of its body colour at grazing angles, where the sky
 // reflection takes over.
 assert.match(shader.fragmentShader, /mix\(0\.90, 0\.58, waterDeep\)/,
   'deep water remains darker than its bank, and the bank no longer brightens above the base tint');
-assert.match(shader.fragmentShader, /1\.0 - 0\.35 \* grazing/,
+assert.match(shader.fragmentShader, /1\.0 - uWaterQa\.w \* grazing/,
   'body colour yields to the sky toward the horizon');
 // Water pass 2026-09-12: the bank-side hue rises out of the authored shallow
 // tint (colour only — the alpha ramp above is unchanged, so no pale film over
@@ -266,7 +270,7 @@ assert.match(shader.fragmentShader, /mix\(diffuseColor\.rgb, uWaterShore, waterB
 assert.match(shader.fragmentShader, /uWaterWaveStrength/,
   'body-specific wave energy reaches the actual normal path');
 assert.match(shader.fragmentShader, /material\.specularColor \*= 0\.85/, 'sun glints keep most of their energy (water pass 3: 0.16 -> 0.6; water pass 4: 0.85, the sheet joined the cascade setup)');
-assert.match(shader.fragmentShader, /totalSpecular - vec3\(1\.15\)/, 'liquid highlight energy stays bounded (water pass 3: 0.18 -> 0.55; water pass 4: 1.15 so bloom carries the glints as sparkle)');
+assert.match(shader.fragmentShader, /totalSpecular - vec3\(uWaterQa\.z\)/, 'liquid highlight energy stays bounded (water pass 3: 0.18 -> 0.55; water pass 4: 1.15 so bloom carries the glints as sparkle)');
 water.update(0.016); assert.equal(shader.uniforms.uWaterTime.value, 0.016);
 water.update(0); water.update(-1); water.update(NaN);
 assert.equal(shader.uniforms.uWaterTime.value, 0.016);
