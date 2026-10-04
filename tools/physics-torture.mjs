@@ -1060,14 +1060,23 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
     }
     if (landed) {
       // the landing speed is the hull's own approach: its fall plus the ground rising under its travel (the steepest
-      // grade along its heading under its nose, centre or tail, where it may touch first), never its turning in the
-      // air (Sirocco Wadi seed 57001)
-      const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw), half = rect.halfLength;
+      // grade along its heading at any of its track stations, where it may touch first), never its turning in the air
+      // (Sirocco Wadi seed 57001). (Round 8, ruling 1, measurement only: the stations were the nose, the centre and the
+      // tail. An Object 695 coming down across an assault trench's far wall had them on the trench floor and the bank,
+      // read 1.29 m/s against the 2.81 the sim charged, and was called a landing harder than its approach; the ground
+      // under it rose at 3.7 m/s in the steps before it touched. Every station along both tracks, 0.35 m apart, sees
+      // the wall.)
+      const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw), rx = fz, rz = -fx;
+      const stations = Math.max(2, Math.ceil((2 * rect.halfLength) / 0.35));
       let rise = 0;
-      for (const along of [-half, 0, half]) {
-        const x = pre.x + fx * along, z = pre.z + fz * along;
-        const slope = (world.fn(x + fx * 0.5, z + fz * 0.5) - world.fn(x - fx * 0.5, z - fz * 0.5)) / 1.0;
-        rise = Math.max(rise, pre.speed * slope);
+      for (const side of [-1, 1]) {
+        const across = rect.centerX + side * rect.halfWidth;
+        for (let i = 0; i <= stations; i++) {
+          const along = rect.centerZ - rect.halfLength + (2 * rect.halfLength * i) / stations;
+          const x = pre.x + rx * across + fx * along, z = pre.z + rz * across + fz * along;
+          const slope = (world.fn(x + fx * 0.5, z + fz * 0.5) - world.fn(x - fx * 0.5, z - fz * 0.5)) / 1.0;
+          rise = Math.max(rise, pre.speed * slope);
+        }
       }
       const kinematic = Math.max(0, -(prev?.rideV ?? 0) + gravity * DT) + rise;
       metrics.closingExcessMps = Math.max(metrics.closingExcessMps, state.landingImpactMps - kinematic);
