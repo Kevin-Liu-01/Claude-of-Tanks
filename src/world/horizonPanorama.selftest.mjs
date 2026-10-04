@@ -14,6 +14,7 @@ import { HORIZON_FAR_ROWS } from './horizonFarRange.ts';
 import saltwind from './maps/saltwind.ts';
 import { horizonPanoramaDeckM } from './maps/horizon.ts';
 import { HORIZON_RELIEF_CHARACTERS } from './horizonRelief.ts';
+import { inselbergSection } from './landformGeology.ts';
 import { CLOUD_FOGBANK_RANGE_M } from '../engine/cloudWeatherLayers.ts';
 import { hazeSigma } from '../engine/hazeLaw.ts';
 
@@ -171,6 +172,14 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
     'the bake\'s section is the mirror\'s law');
   assert.ok(/if \(uJebel\.x > 0\.0\) rockW = max\(rockW, smoothstep\(0\.3, 0\.7, texture2D\(uHeight, g\)\.a\)\);/.test(HORIZON_PANORAMA_SHADERS.strip),
     'the strip bares a jebel\'s whole footprint');
+  // the far jebels' section is maps lane A's inselbergSection with a rim (landformGeology.ts), so near and far rock keep one
+  // form: sampled at fixed radii across the walls' spread of feet, aprons and rims on Redrock's bearings (the main
+  // massifs' rim 0.86, the lobes' 0.84, the foot wandering 12-14 % and the flutes setting the wall back), within 1e-9
+  let worst = 0;
+  for (const [f, a, r] of [[0.66, 0.18, 0.86], [0.66 * 0.86, 0.12, 0.86], [0.66 * 1.14, 0.24, 0.86], [0.6, 0.16, 0.84], [0.5, 0.05, 0.84], [0.74, 0.27, 0.88]]) {
+    for (let i = 0; i <= 400; i++) worst = Math.max(worst, Math.abs(horizonJebelSection(i / 400, f, a, r) - inselbergSection(i / 400, f, a, 4, r)));
+  }
+  assert.ok(worst <= 1e-9, `the far jebel's section is the battlefield's inselberg section (worst ${worst})`);
 }
 // the ring hands the bake its map's own overcast (lightModelCore resolveOvercast of its sky and cloudscape), not the light
 // model the battlefield may still publish from the last map
