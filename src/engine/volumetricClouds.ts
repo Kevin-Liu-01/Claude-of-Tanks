@@ -144,6 +144,11 @@ const CLOUD_FARBAND_START_M = 8000;
 export const CLOUD_FARBAND_START_CU_M = 16000;
 export const CLOUD_FARBAND_FADE_CU_M = 9000;
 /**
+ * 2026-10-04: the cover a closed deck (coverage at 1) keeps where its weather field runs at its floor — a thin sheet, not a
+ * hole to the clear sky (Titan Gorge's dense overcast opened one under a light model at overcast 1.00).
+ */
+const CLOUD_CLOSED_COVER_FLOOR = 0.5;
+/**
  * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: "no cloud shadows on the land"): the cloud shade
  * map, the clouds' one shadow path (cloudShadeMap.ts). The cores of the two weather fields at the cloud base, undithered,
  * over a square around the camera, world-anchored (snapped to its texel) and refreshed every few frames (the wind moves
@@ -468,6 +473,10 @@ Weather cloudWeather( vec2 pxz ) {
 	float sheetK = max( smoothstep( 0.5, 0.85, uStratiform ), uCells * 0.85 );
 	float ramp = max( uCoverage * mix( 1.0, 0.35, sheetK ), 0.02 );
 	o.cov = pow( clamp( ( field - ( 1.0 - uCoverage ) ) / ramp, 0.0, 1.0 ), mix( 0.7, 0.4, max( uStratiform, uCells * 0.7 ) ) );
+	// 2026-10-04 (Titan Gorge's dense overcast: a blue hole at coverage 1): the sheet's ramp maps the equalised field's lowest
+	// values to no cover even at full coverage; a closed deck keeps a thin sheet there instead (a real closed deck's thin
+	// patch reads brighter grey, not blue), ramped in over the last hundredths of the coverage
+	o.cov = max( o.cov, ${f(CLOUD_CLOSED_COVER_FLOOR)} * smoothstep( 0.97, 1.0, uCoverage ) );
 	// a front keeps the sky over the camera open: its towers stand off toward the horizon
 	if ( uClearRadius > 0.0 ) o.cov *= smoothstep( uClearRadius * 0.6, uClearRadius * 1.4, length( pxz - uCamPos.xz ) );
 	// the column's type from the vigour channel inside the map's range: 0 stratus, 0.5 cumulus, 1 cumulonimbus
@@ -921,7 +930,9 @@ vec4 farBandLayer( vec3 dir, float cosT, vec3 rayDx, vec3 rayDy, float sceneT, o
 	// (2026-10-03: a deck's band admits the deck's own coverage when that is more — a closed deck's band stays closed to
 	// the horizon instead of opening gaps of the clear horizon's glow under its edge — and reaches down to the horizon)
 	float fbCov = max( uFarBand, uCoverage );
-	float covB = smoothstep( 1.0 - fbCov, 1.0 - fbCov + 0.35, fb ) * smoothstep( fbStart, fbStart + fbFade, horiz );
+	// (2026-10-04: a closed deck's band keeps the same thin-sheet floor as the slab — no clear-sky gaps at its minima)
+	float covB = max( smoothstep( 1.0 - fbCov, 1.0 - fbCov + 0.35, fb ), ${f(CLOUD_CLOSED_COVER_FLOOR)} * smoothstep( 0.97, 1.0, uCoverage ) )
+		* smoothstep( fbStart, fbStart + fbFade, horiz );
 	if ( covB <= 0.0 ) return none;
 	tLayer = tb;
 	// slant depth through a thin lumpy deck: opaque at a grazing angle, a veil overhead
@@ -1998,10 +2009,9 @@ export class VolumetricCloudLayer {
     // (2026-10-03: the aerial pass's overcast target for the deck's far rows — cloudHaze)
     {
       const overcast = (this.scene.userData.lightModel as { overcast?: number } | undefined)?.overcast ?? 0;
-      const terms = hazeTargetTerms(overcast, this.hazeTerms);
       const a = this.atmosphere;
-      (t.uOvercastHaze.value as THREE.Vector4).set(
-        Math.min(1, Math.max(0, (a.fogMix ?? 0) * terms.x)), terms.y, 0, smoothstep01(overcast / 0.3));
+      const terms = hazeTargetTerms(overcast, a.fogMix ?? 0, this.hazeTerms);
+      (t.uOvercastHaze.value as THREE.Vector4).set(terms.x, terms.y, 0, smoothstep01(overcast / 0.3));
       const tint = a.fogTint;
       if (tint) (t.uOvercastTint.value as THREE.Vector3).set(tint.r, tint.g, tint.b);
     }
