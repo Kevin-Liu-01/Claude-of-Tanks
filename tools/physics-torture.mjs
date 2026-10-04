@@ -488,9 +488,20 @@ function structureTop(obstacles, x, z, ceiling = Infinity, floors = null) {
   for (let i = 0; i < obstacles.length; i++) {
     const record = obstacles[i];
     const limit = floors ? floors[i] + 0.55 : ceiling;
-    if (record.crushed || record.max[1] - record.min[1] < 0.9 || record.max[1] > limit) continue;
+    if (record.crushed) continue;
     if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
-    if (pointInsideCollisionRecord(record, record.shape2 ?? null, x, z) && record.max[1] > best) best = record.max[1];
+    const shape = record.shape2 ?? null;
+    if (shape?.kind === 'compound') {
+      // a compound record part by part, each at its own vertical extent (a viaduct span's slab, parapets and pier)
+      for (const part of shape.parts) {
+        const top = part.y1 ?? record.max[1], bottom = part.y0 ?? record.min[1];
+        if (top - bottom < 0.9 || top > limit) continue;
+        if (pointInsideCollisionRecord(record, part, x, z) && top > best) best = top;
+      }
+      continue;
+    }
+    if (record.max[1] - record.min[1] < 0.9 || record.max[1] > limit) continue;
+    if (pointInsideCollisionRecord(record, shape, x, z) && record.max[1] > best) best = record.max[1];
   }
   return best;
 }
