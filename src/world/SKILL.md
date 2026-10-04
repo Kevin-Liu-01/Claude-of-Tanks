@@ -256,9 +256,15 @@ works (a karst's dry stone walls, a bocage's hedge banks) on the ground lane's l
 1 m tall; a world without the hook builds none. Props builds them last (`placeFieldBoundaryWorks`, after the pools'
 refit, through `scenery.ts` `composeFieldWorks`), so they keep off every mode's objective discs where the match
 placement seats them on those final solids, as well as the aprons, yards, bridges, trenches, pads and roads; the
-selftest proves it on Saltwind and Saltmere. The dry-stone field walls draw their own rubble print (`fieldStone`,
-`fieldStoneSurface.ts`), never the house masonry a regional kit repaints; a map's `scenery.masonryTint` tints that
-print (Saltwind's limestone).
+selftest proves it on Saltwind and Saltmere. The dry-stone field walls draw their own print (`fieldStone`,
+`fieldStoneSurface.ts`: one stone's skin over its face band, the hearting's packing stones over its hearting band;
+every piece's window inside its band), never the house masonry a regional kit repaints; a map's `scenery.masonryTint`
+tints that print (Saltwind's limestone) and `liftFieldStoneMean` keeps a dark tone from blacking it out. Mud walls draw
+their own worn render (`fieldMud`, `fieldMudSurface.ts`), taken toward the map's earth on an arid map. A wall module is
+sheared to follow its slope (`wallSpanPlacement.ts` `fitWallSpan`). Every wall run's islands are dressed at their feet,
+its heads tumble out past them (and on snow maps lee and windward drifts and snow loads) by `maps/fieldWallDressing.ts`,
+through one owner (`createWallDressing`) on streams of their own; the sandbag nests are bedded in their spoil
+(`maps/sceneryKit.ts` `buildSandbagBedding`, the `props-sandbag-beds` mesh).
 A plan builder reads its battlefield through `structureBuildContext(buckets)`
 (`maps/exteriorDetailKit.ts`), never a positional argument; a part new to a
 builder's seeded stream is tagged `userData.uvJitter = 'none'`, a part that

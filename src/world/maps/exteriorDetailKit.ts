@@ -65,6 +65,9 @@ export interface StructureBuildContext {
   seed: number;
   /** The map's industrial wall cladding (props.industrialCladding): brick / stone halls or corrugated sheet. */
   cladding: 'brick' | 'steel';
+  /** Maps lane B (2026-10-03): an authored plot (props.plannedSites[].plot), metres across (x) and deep (z); a builder
+   * that honours it (the warehouse) builds to that footprint instead of its own drawn size, the draws kept. */
+  plot?: { w: number; d: number };
 }
 
 /**

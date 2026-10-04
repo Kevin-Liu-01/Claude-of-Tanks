@@ -119,6 +119,13 @@ export interface GroundBounceUniforms {
    * rig dims neutrally at the same luminance — its shade takes its hue from the sky light itself.
    */
   uCotShadowDim: THREE.IUniform<THREE.Vector3>;
+  /**
+   * 2026-10-03 (the shade-fill lane): 1 where the shadow's ambient dim keeps to the faces turned toward the sun. The
+   * occluder that shades a face hides the sun's side of its sky — the circumsolar light, the brightest part of a clear
+   * sky — so a face in a cast shadow keeps the dim; a face turned from the sun sees none of that side (its own
+   * environment light already leaves it out), so its sky stays whole. 0 = the legacy rig's dim on every shadowed face.
+   */
+  uCotShadowFacing: THREE.IUniform<number>;
 }
 
 export function createGroundBounceUniforms(): GroundBounceUniforms {
@@ -129,6 +136,7 @@ export function createGroundBounceUniforms(): GroundBounceUniforms {
     uCotSkyDiffuse: { value: 1 },
     uCotSkyChroma: { value: 1 },
     uCotShadowDim: { value: new THREE.Vector3(1, 1, 1) },
+    uCotShadowFacing: { value: 0 },
   };
 }
 
@@ -142,6 +150,7 @@ export function attachGroundBounceUniforms(
   shader.uniforms.uCotSkyDiffuse = uniforms.uCotSkyDiffuse;
   shader.uniforms.uCotSkyChroma = uniforms.uCotSkyChroma;
   shader.uniforms.uCotShadowDim = uniforms.uCotShadowDim;
+  shader.uniforms.uCotShadowFacing = uniforms.uCotShadowFacing;
 }
 
 export interface GroundBounceRigInput {
@@ -180,6 +189,7 @@ uniform vec3 uCotBounceSun;
 uniform float uCotSkyDiffuse;
 uniform float uCotSkyChroma;
 uniform vec3 uCotShadowDim;
+uniform float uCotShadowFacing;
 `;
 
 /**

@@ -1,15 +1,22 @@
 // src/world/fieldStoneSurface.ts — the dry-stone field walls' own stone print (the scenery lane, 2026-10-03).
 //
-// A field wall is random rubble: unshaped fieldstones of every size bedded roughly flat, touching here and gaping
-// there, no mortar and no courses. The props stone print (props.ts makeStone) is coursed blocks between mortar lines,
-// and the regional kits' house prints are brick, concrete block or dressed stone (regionalSurfaces.ts). On the walls'
-// rubble geometry (maps/inhabitKit.ts dryStoneModule) any of them reads as ashlar (gauntlet wave 20: "block walls laid
-// out like a grid"), and a kit's brick lays brick courses over a fieldstone wall. So the walls get this print instead:
-// a seamless power diagram of stones bedded flat (sites jittered on a wrapped lattice wider than it is tall, weights
-// mixing pins with big stones, the joints warped by periodic noise), knocked round at the corners, where the joints
-// are shadowed voids, three-stone corners open into dark pockets, some stones touch and some gape. Its palette is the
-// stone print's own law (hue, saturation and lightness per stone, its mean pinned to the print's by the receipt), so a
-// map's stone tone and masonry tint keep giving its walls the colour they had.
+// The field walls' stones are geometry: maps/inhabitKit.ts dryStoneModule lays face stones in rough courses on a
+// hearting, each stone with its corners knocked back and a window of this print of its own. The wave-20 print painted
+// rubble (a power diagram of stones between dark dry joints) and on those stones it read as a second wall: wave 34 saw
+// "stamped flagstone with dark outlines", four or five printed stones on every stone. So the print is now two bands:
+//
+//   - the face band (v in FIELD_STONE_FACE_V): one stone's skin and nothing else — no joint anywhere. A fieldstone's
+//     colour drifting in soft patches about a stone across (so each stone's window reads as a stone of its own: the
+//     stone print's colour law per patch), its grain and mineral specks, a mottle, the rain's faint streaks down it,
+//     the odd pit, crustose lichen on some patches; a low relief (the normal map's roughness, not domes);
+//   - the hearting band (v in FIELD_STONE_HEARTING_V): the wall's core where it shows between the face stones — small
+//     packing stones and dark voids. The core maps the band once over its whole height (maps/inhabitKit.ts), so the
+//     band is painted squashed: HEARTING_SQUASH times shorter than it shows.
+//
+// Every piece in the field walls' bucket samples the face band in a window that fits inside it (inhabitKit roughStone,
+// fieldWallDressing fieldStone and the snow load, props.ts jitterFieldStoneUV); only the core reads the hearting band.
+// The face band's mean colour stays the stone print's (the receipt pins it within 4 %), so a map's stone tone and
+// masonry tint keep giving its walls their colour; liftFieldStoneMean keeps a dark tone from blacking them out.
 //
 // Pure: no DOM and no three.js. Buffers out; props.ts makes the textures, the receipt reads the buffers.
 
@@ -17,21 +24,24 @@ export interface FieldStoneBuffers {
   size: number;
   /** sRGB albedo, RGBA8. */
   px: Uint8ClampedArray;
-  /** Relief 0..1 (stone crowns high, joints low) for the normal map and the packed AO/roughness map. */
+  /** Relief 0..1 for the normal map and the packed AO/roughness map. */
   hgt: Float32Array;
-  /** 1 on a joint pixel (a void between stones), 0 on a stone face: the receipt's evidence. */
+  /** 1 on a void of the hearting band (between its packing stones), 0 elsewhere: the receipt's evidence. */
   joint: Uint8Array;
 }
 
 export interface FieldStoneSlice { fine: true; stage: string }
 
-/** The site lattice of one tile: a tile is 0.83 m of wall at the kit's 1.2 repeats a metre, so a lattice cell is about
- * 17 cm along and 10 cm up, and most stones span one or two cells: a hand to a forearm long, the print's old block
- * sizes. Distances count the height 1.6 times (BED): each stone's share runs along the wall, so the stones lie flat. */
-const COLS = 5, ROWS = 8, BED = 1.6;
-const SITES = COLS * ROWS;
-/** Stone lightness base: the stone print's 0.305, set so the darker dry joints leave the print's mean where it was. */
-export const FIELD_STONE_L0 = 0.28;
+/** The face band's usable windows (v): a stone's window lies inside it, clear of the hearting band and its mips. */
+export const FIELD_STONE_FACE_V: readonly [number, number] = [0.03, 0.81];
+/** The hearting band (v) the core maps over its height, with a margin inside the painted band [0.86, 1). */
+export const FIELD_STONE_HEARTING_V: readonly [number, number] = [0.885, 0.985];
+/** Where the painted hearting band starts (v); the face band's skin is painted below it. */
+const HEARTING_PAINT_V0 = 0.86;
+/** The core's height in tiles over the band's height (a 0.92 m hearting at 1.2 tiles a metre over 0.1 of a tile). */
+const HEARTING_SQUASH = (0.92 * 1.2) / (FIELD_STONE_HEARTING_V[1] - FIELD_STONE_HEARTING_V[0]);
+/** Stone lightness base (HSL): set so the face band's mean is the stone print's (the receipt pins it within 4 %). */
+export const FIELD_STONE_L0 = 0.29;
 
 function hash(a: number, b: number, seed: number): number {
   let h = Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1) ^ Math.imul(seed | 0, 0x2545f491);
@@ -40,26 +50,26 @@ function hash(a: number, b: number, seed: number): number {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-/** Periodic value noise in [0, 1] over the unit tile, `cells` lattice cells a tile. */
-function pnoise(u: number, v: number, cells: number, seed: number): number {
-  const fx = u * cells, fy = v * cells;
+/** Periodic value noise in [0, 1] over the unit tile, `cells` lattice cells a tile along u (`cellsV` along v). */
+function pnoise(u: number, v: number, cells: number, seed: number, cellsV = cells): number {
+  const fx = u * cells, fy = v * cellsV;
   const x0 = Math.floor(fx), y0 = Math.floor(fy);
   const tx = fx - x0, ty = fy - y0;
   const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
-  const i0 = ((x0 % cells) + cells) % cells, j0 = ((y0 % cells) + cells) % cells;
-  const i1 = (i0 + 1) % cells, j1 = (j0 + 1) % cells;
+  const i0 = ((x0 % cells) + cells) % cells, j0 = ((y0 % cellsV) + cellsV) % cellsV;
+  const i1 = (i0 + 1) % cells, j1 = (j0 + 1) % cellsV;
   const a = hash(i0, j0, seed), b = hash(i1, j0, seed), c = hash(i0, j1, seed), d = hash(i1, j1, seed);
   const top = a + (b - a) * sx;
   return top + (c + (d - c) * sx - top) * sy;
 }
 
-/** A periodic fractal field precomputed on a res x res grid and read bilinearly (wrapped). */
-function periodicField(res: number, cells: number, octaves: number, seed: number): (u: number, v: number) => number {
+/** A periodic fractal field precomputed on a res x res grid and read bilinearly (wrapped); `aspect` stretches it along v. */
+function periodicField(res: number, cells: number, octaves: number, seed: number, aspect = 1): (u: number, v: number) => number {
   const grid = new Float32Array(res * res);
   for (let j = 0; j < res; j++) for (let i = 0; i < res; i++) {
     let value = 0, amp = 1, total = 0, c = cells;
     for (let o = 0; o < octaves; o++) {
-      value += pnoise(i / res, j / res, c, seed + o * 31) * amp;
+      value += pnoise(i / res, j / res, c, seed + o * 31, Math.max(1, Math.round(c / aspect))) * amp;
       total += amp; amp *= 0.5; c *= 2;
     }
     grid[j * res + i] = value / total;
@@ -90,89 +100,78 @@ function hslToRgb(h: number, s: number, l: number, out: Float32Array): void {
 }
 
 /**
- * Paint the rubble print (`size` px square; 512 on desktop, 256 on phones: the same stones at half the texels).
- * Deterministic for a seed; sixteen rows per slice.
+ * Paint the print (`size` px square; 512 on desktop, 256 on phones: the same stones at half the texels). Deterministic
+ * for a seed; sixteen rows per slice.
  */
 export function* paintFieldStoneBuffers(size = 512, seed = 0xf1e1d):
   Generator<FieldStoneSlice, FieldStoneBuffers, void> {
   const px = new Uint8ClampedArray(size * size * 4), hgt = new Float32Array(size * size), joint = new Uint8Array(size * size);
-  const k = size / 512; // the joint, chip and bevel widths below are 512-px texels
-  // the sites: one a lattice cell, jittered; a weight for its share (one in five big, one in six a pin)
-  const sx = new Float32Array(SITES), sy = new Float32Array(SITES), sw = new Float32Array(SITES);
-  const tone = new Float32Array(SITES), cool = new Float32Array(SITES), lichenOf = new Float32Array(SITES);
-  const cellW = 1 / COLS, cellH = 1 / ROWS, share = cellW * cellH * BED;
-  for (let j = 0; j < ROWS; j++) for (let i = 0; i < COLS; i++) {
-    const s = j * COLS + i;
-    sx[s] = (i + 0.5 + (hash(i, j, seed) - 0.5) * 0.9) * cellW;
-    sy[s] = (j + 0.5 + (hash(i, j, seed + 1) - 0.5) * 0.7) * cellH;
-    const r = hash(i, j, seed + 2), r2 = hash(i, j, seed + 3);
-    sw[s] = r < 0.2 ? share * (0.55 + r2 * 0.6) : r < 0.36 ? -share * (0.25 + r2 * 0.3) : share * r2 * 0.25;
-    tone[s] = hash(i, j, seed + 4);
-    cool[s] = hash(i, j, seed + 5) < 0.18 ? 1 : 0; // the odd stone of another kind: greyer
-    lichenOf[s] = hash(i, j, seed + 6) < 0.22 ? 0.5 + hash(i, j, seed + 7) * 0.5 : 0;
-  }
-  const warpX = periodicField(128, 7, 2, seed + 11), warpY = periodicField(128, 7, 2, seed + 13);
-  const chipF = periodicField(256, 72, 1, seed + 15);
-  const grime = periodicField(64, 3, 3, seed + 17), lichenF = periodicField(128, 14, 2, seed + 19);
-  const grainF = periodicField(256, 48, 2, seed + 23), mottleF = periodicField(128, 18, 2, seed + 25);
+  // the tone fields: a stone's tone, the odd greyer stone of another kind, the odd iron-stained one, lichen's patches
+  const toneF = periodicField(64, 4, 2, seed + 11), coolF = periodicField(64, 3, 2, seed + 13);
+  const warmF = periodicField(64, 3, 2, seed + 14), lichenPatchF = periodicField(64, 4, 1, seed + 15);
+  const grime = periodicField(64, 3, 3, seed + 17), lichenF = periodicField(128, 16, 2, seed + 19);
+  const grainF = periodicField(256, 64, 2, seed + 23), mottleF = periodicField(128, 14, 2, seed + 25);
+  const bedF = periodicField(256, 6, 1, seed + 27, 1 / 14), pitF = periodicField(256, 90, 1, seed + 29);
+  const crustF = periodicField(256, 44, 2, seed + 31);
+  // the hearting's packing stones: a wrapped lattice in the core's true (unsquashed) space, about 5 cm stones
+  const HC = 16, HR = Math.round(16 * (0.92 * 1.2)); // cells along u, cells up the core's 1.1 tiles
   const rgb = new Float32Array(3);
-  const WARP = 0.2 * cellH; // the joints wander about a fifth of a course
   for (let y = 0; y < size; y++) {
+    const v0 = (y + 0.5) / size;
     for (let x = 0; x < size; x++) {
       const i = y * size + x, j4 = i * 4;
-      const u0 = (x + 0.5) / size, v0 = (y + 0.5) / size;
-      const u = u0 + (warpX(u0, v0) - 0.5) * 2 * WARP, v = v0 + (warpY(u0, v0) - 0.5) * 2 * WARP;
-      // the three nearest sites by power distance on the wrapped tile (the height counted BED times)
-      const ci = Math.floor(u * COLS), cj = Math.floor(v * ROWS);
-      let d1 = Infinity, d2 = Infinity, d3 = Infinity, a = 0, b = 0, c = 0;
-      let ax = 0, ay = 0, bx = 0, by = 0, cx = 0, cy = 0;
-      for (let dj = -2; dj <= 2; dj++) {
-        const jj = cj + dj, wj = ((jj % ROWS) + ROWS) % ROWS, oy = Math.floor(jj / ROWS);
-        for (let di = -2; di <= 2; di++) {
-          const ii = ci + di, wi = ((ii % COLS) + COLS) % COLS, ox = Math.floor(ii / COLS);
-          const s = wj * COLS + wi;
-          const qx = sx[s] + ox, qy = sy[s] + oy;
-          const ddx = u - qx, ddy = (v - qy) * BED;
-          const d = ddx * ddx + ddy * ddy - sw[s];
-          if (d < d1) { d3 = d2; c = b; cx = bx; cy = by; d2 = d1; b = a; bx = ax; by = ay; d1 = d; a = s; ax = qx; ay = qy; }
-          else if (d < d2) { d3 = d2; c = b; cx = bx; cy = by; d2 = d; b = s; bx = qx; by = qy; }
-          else if (d < d3) { d3 = d; c = s; cx = qx; cy = qy; }
+      const u0 = (x + 0.5) / size;
+      const grain = grainF(u0, v0) * 0.7 + hash(x, y, seed + 41) * 0.3;
+      if (v0 >= HEARTING_PAINT_V0) {
+        // the hearting band: packing stones and voids in the core's true space (v up the core, HEARTING_SQUASH taller)
+        const vt = (v0 - FIELD_STONE_HEARTING_V[0]) * HEARTING_SQUASH;
+        const cu = u0 * HC, cv = vt * (HR / (0.92 * 1.2));
+        const ci = Math.floor(cu), cj = Math.floor(cv);
+        let d1 = Infinity, d2 = Infinity, a = 0;
+        for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+          const ii = ci + di, jj = cj + dj, wi = ((ii % HC) + HC) % HC;
+          const qx = ii + 0.5 + (hash(wi, jj, seed + 51) - 0.5) * 0.8, qy = jj + 0.5 + (hash(wi, jj, seed + 52) - 0.5) * 0.7;
+          const ddx = cu - qx, ddy = (cv - qy) * 1.4;
+          const d = ddx * ddx + ddy * ddy;
+          if (d < d1) { d2 = d1; d1 = d; a = wi * 4096 + (jj & 4095); } else if (d < d2) d2 = d;
         }
-      }
-      // texel distance to the a|b and a|c boundaries: the metric distance over the boundary normal's stretch
-      const eb = boundaryTexels(d2 - d1, ax - bx, ay - by, size);
-      const ec = boundaryTexels(d3 - d1, ax - cx, ay - cy, size);
-      // each pair of stones its own joint: a third of them touching, half a tight line, the rest gaping; the stones'
-      // arrises chipped
-      const lo = Math.min(a, b), hi = Math.max(a, b), pr = hash(lo, hi, seed + 29), pw = hash(lo, hi, seed + 31);
-      const jw = (pr < 0.35 ? 0.6 : pr > 0.85 ? 3 + pw * 2.8 : 1.1 + pw * 1.3) * k;
-      const e = eb + (chipF(u0, v0) - 0.5) * 3.2 * k;
-      // three-stone corners knocked round into a dark pocket
-      const pocket = eb + ec < (2 * jw + 3 * k) * (0.6 + hash(Math.min(a, c), Math.max(a, c), seed + 37) * 0.6);
-      const grain = grainF(u0, v0) * 0.75 + hash(x, y, seed + 41) * 0.25;
-      const g = smooth(0.5, 0.95, grime(u0, v0));
-      if (e < jw || pocket) {
-        // a dry joint is a void: shadow, a little earth toward its lips
-        const lip = pocket ? 0.15 : clamp01(e / Math.max(0.5, jw));
-        hslToRgb(0.075, 0.08, 0.14 + lip * 0.09 + grain * 0.04, rgb);
-        joint[i] = 1;
-        hgt[i] = 0.02 + lip * 0.06 + grain * 0.03;
+        const gap = Math.sqrt(d2) - Math.sqrt(d1); // about twice the distance to the cell's border, in cells
+        const t = hash(a, 7, seed + 53);
+        if (gap < 0.16 + t * 0.12) {
+          // a void between the packing stones: deep shadow, a little earth in it
+          hslToRgb(0.075, 0.1, 0.11 + gap * 0.08 + grain * 0.03, rgb);
+          hgt[i] = 0.02 + gap * 0.1;
+          joint[i] = 1;
+        } else {
+          const crown = smooth(0.16, 0.8, gap);
+          hslToRgb(0.08 + t * 0.015, 0.07 + t * 0.04, (0.21 + t * 0.11 + grain * 0.04) * (0.75 + crown * 0.25), rgb);
+          hgt[i] = 0.2 + crown * 0.25 + grain * 0.05;
+        }
       } else {
-        const t = tone[a];
-        const edge = Math.min(e - jw, (eb + ec) * 0.5 - jw - 1.5 * k);
-        const bevel = smooth(0, 9 * k, edge);
-        const lichen = lichenOf[a] * smooth(0.6, 0.78, lichenF(u0, v0));
+        // the face band: one stone's skin, its tone drifting smoothly about a stone across (no border anywhere: a
+        // stone's window lands on a tone of its own and a gentle drift across it)
+        const t = smooth(0.25, 0.75, toneF(u0, v0));
+        const isCool = smooth(0.62, 0.74, coolF(u0, v0)), isWarm = smooth(0.66, 0.78, warmF(u0, v0));
+        const lichenAmt = smooth(0.55, 0.7, lichenPatchF(u0, v0));
+        const g = smooth(0.5, 0.95, grime(u0, v0));
         const mottle = mottleF(u0, v0);
+        // the bedding of a sedimentary stone: faint laminae along its bed (along u), on the stones that have them
+        const bed = smooth(0.6, 0.9, bedF(u0, v0)) * smooth(0.45, 0.7, toneF(u0 + 0.37, v0 + 0.21));
+        const pit = smooth(0.84, 0.9, pitF(u0, v0));
         const speck = hash(x, y, seed + 43);
-        const sat = (0.06 + t * 0.055 - g * 0.02) * (cool[a] ? 0.45 : 1);
-        let light = (FIELD_STONE_L0 + t * 0.14 + grain * 0.05) * (0.8 + bevel * 0.2) * (0.93 + mottle * 0.14) - g * 0.07;
-        light *= speck > 0.985 ? 0.8 : speck > 0.978 ? 1.08 : 1; // pits and the odd bright grain
-        hslToRgb(0.081 + t * 0.014 + (cool[a] ? 0.02 : 0), sat, light, rgb);
+        const sat = (0.07 + t * 0.055 - g * 0.02) * (1 - isCool * 0.55) + isWarm * 0.07;
+        let light = (FIELD_STONE_L0 + t * 0.2 + (grain - 0.5) * 0.11) * (0.92 + mottle * 0.16) - g * 0.06 - bed * 0.04 - pit * 0.03;
+        light *= speck > 0.986 ? 0.82 : speck > 0.975 ? 1.1 : 1; // mineral grains, dark and bright
+        hslToRgb(0.081 + t * 0.014 + isCool * 0.02 - isWarm * 0.015, sat, light, rgb);
+        // (rosettes a few centimetres across, clustered where the stone has lichen, ragged at their edges)
+        const lichen = lichenAmt * smooth(0.6, 0.7, lichenF(u0, v0) * 0.75 + crustF(u0, v0) * 0.25);
         if (lichen > 0) {
-          // crustose lichen: a pale grey-green bloom over the stone, never on a joint
-          rgb[0] += (0.56 - rgb[0]) * lichen * 0.55; rgb[1] += (0.58 - rgb[1]) * lichen * 0.55; rgb[2] += (0.48 - rgb[2]) * lichen * 0.55;
+          // crustose lichen: pale grey-green blooms over the stone (the odd one orange on an iron-stained stone)
+          const lr = isWarm > 0.5 ? 0.62 : 0.57, lg = isWarm > 0.5 ? 0.47 : 0.59, lb = isWarm > 0.5 ? 0.27 : 0.49;
+          rgb[0] += (lr - rgb[0]) * lichen * 0.5; rgb[1] += (lg - rgb[1]) * lichen * 0.5; rgb[2] += (lb - rgb[2]) * lichen * 0.5;
         }
-        hgt[i] = clamp01((0.5 + t * 0.2 + grain * 0.12 + mottle * 0.06) * (0.4 + 0.6 * Math.pow(bevel, 0.7)));
+        // a stone's skin: a gentle relief, its pits low, its lichen a little proud
+        hgt[i] = clamp01(0.55 + (mottle - 0.5) * 0.3 + (grain - 0.5) * 0.25 - pit * 0.18 + lichen * 0.04);
       }
       px[j4] = clamp01(rgb[0]) * 255; px[j4 + 1] = clamp01(rgb[1]) * 255; px[j4 + 2] = clamp01(rgb[2]) * 255; px[j4 + 3] = 255;
     }
@@ -182,12 +181,23 @@ export function* paintFieldStoneBuffers(size = 512, seed = 0xf1e1d):
 }
 
 /**
- * Texel distance from a point to the boundary between its stone and a neighbour's, from the power-distance gap: the
- * gap over twice the sites' metric separation is the metric distance; a boundary whose normal leans toward the bed
- * (vertical in the tile) is stretched BED times in the metric, so it comes back divided by that stretch.
+ * Wave 34 (Verdant's village wall: "a flat, textureless matte-black mass"): a map's stone tone can darken the print
+ * past any fieldstone (Verdant's x0.76 left the face band's mean at sRGB lightness 0.27, and a face in shade at a
+ * fortieth of white). Lift the toned print, every texel by one factor in linear light (its hues and its contrast kept),
+ * until the face band's mean luminance is at least `floor` (sRGB); a lighter print is left as it is. Returns the factor.
  */
-function boundaryTexels(gap: number, dx: number, dy: number, size: number): number {
-  const mx = dx, my = dy * BED, m = Math.max(1e-6, Math.hypot(mx, my));
-  const nx = mx / m, ny = my / m;
-  return gap / (2 * m) / Math.hypot(nx, ny * BED) * size;
+export function liftFieldStoneMean(px: Uint8ClampedArray, size: number, floor = 0.36): number {
+  const lin = (c: number) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const enc = (c: number) => (c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055);
+  const rows = Math.floor(HEARTING_PAINT_V0 * size);
+  let y = 0;
+  for (let i = 0; i < rows * size * 4; i += 4) y += 0.2126 * lin(px[i] / 255) + 0.7152 * lin(px[i + 1] / 255) + 0.0722 * lin(px[i + 2] / 255);
+  y /= rows * size;
+  const want = lin(floor);
+  if (!(y > 0) || y >= want) return 1;
+  const k = want / y;
+  for (let i = 0; i < px.length; i += 4) {
+    for (let c = 0; c < 3; c++) px[i + c] = Math.min(255, enc(Math.min(1, lin(px[i + c] / 255) * k)) * 255);
+  }
+  return k;
 }

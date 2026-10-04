@@ -6488,6 +6488,108 @@ artifacts in the after frames.
   worst 10 m, Cinder Junction's north-west road on a rise at the edge), the median 0.4 m; the in-square ground moves
   only past 400 m, the bounds push already keeping play inside 470 m.
 
+#### Wave 3 — 2026-10-03: the middle distance at tank eye height; each map its own country; roads end at the ranges' foot
+
+Gauntlet wave 9 (the coordinator): the next bar is "field structure that reads at tank eye height, meaning hedgerow and
+woodland belts with height, farm clusters and roofs, and roads that visibly continue", plus the remaining raised exits.
+
+- **Belts and avenues** (`maps/horizon.ts` `borderTreeRows`, placed by `horizonVista.ts` as deterministic rows ahead of
+  the forest's budget thinning). About a third of the hedged boundaries past the edge carry a belt of standards — one
+  row, or two 5 m apart, every ~9 m, at 1.0–1.5× scale, a fifth of them conifers — faded in 120–220 m past the edge so
+  the first fields stay open; each exit road carries an avenue where its carriageway shows (rows 8.5 m either side every
+  ~12 m, in runs of four points of which 70 % are planted, faded in 30–60 m past the edge). The rows are seated on the
+  ring's surface and keep out of the farmyards; 420–746 instances per map in the forest's existing draws.
+- **Villages** (`borderFarmsteads.ts` `selectVillageSites`): up to three per map, one per side — four to six yards along an
+  exit road 260–560 m out, ~28 m off it on alternating sides ~62 m apart, each house fronting the road with its shelter
+  trees behind it. The scattered farms fill the remaining count and keep 140 m off a village.
+- **The patchwork reads.** More of the field boundaries are hedged (temperate 0.32/0.25 of the two families, was
+  0.24/0.18; steppe 0.13/0.10), pasture takes half the crop weight (was 0.35) and varies 0.78–1.22 from field to field
+  (lush, grazed, cut for hay), the temperate rotation has less grass (pasture 0.22, was 0.30), and Cinder Junction and
+  Ironworks carry farmland at the other farmed maps' level (hedgerows 0.55, fields 0.6/0.55; Ironworks eight farms).
+- **The raised exits** (`terrain.ts` `buildRoadElevationGrid`): the landform pass's portal tails carried the authored
+  grade over the landform's own ground to the edge. A tail past 430 m now comes down to at most 1.5 m over the land
+  under it, and comes back up wherever that would drop it faster than 15 %; a cut is kept. Exits standing more than 5 m
+  over the land 30–40 m beside them: 8 → 2 (Olympus Basin's north road on a ridge just past the edge, 6.1 m; Nordhavn's
+  north road 80 m out, 6.3 m).
+- **The track's bed.** The kit's open-line track lies on a ballast bed with shoulders (`mapKits.ts` `layRailSpan`), and
+  the ring's ballast is a darker stone grey.
+- **Each map its own country** (`borderLandform.ts` `borderLandformSeed`). Every battle builds at the one terrain seed
+  1337, so the landform — its hills, fields, woods and the farms on them — was the same past every map's edge: Verdant
+  Fields, Amberford, Ironworks and Saltmere Bay showed one hillside from their north edges. The outland's seed now mixes
+  in the map id (FNV-1a), as the horizon ring's always has: the woods, fields and foothills are the map's own, and its
+  hills take over from the shared ones 8–188 m past the edge. The playable band's rim (the enclosure) keeps the shared
+  seed, so the ground of the square's mesh is what it was: the dressing stream reads it, and a first cut that let the
+  map's own hills into the square's last 40 m moved the props across Amberford (its zone-control circles 300 m, the
+  placement search past its 65,536-read bound). Only the rim trees change, standing by the map's own woods. The exits
+  over 5 m stay 2.
+- **Roads end at the foot of the ranges** (`terrain.ts` `roadExitOnRing`; the mountains lane, Frosthollow: with its pass
+  turned off at the north exit the carriageway was painted ~300 m up the massif's face). The exit's carriageway faded
+  with the hand-over to the ranges (0.45–0.9) and the run (0.55–0.95 of 720 m), and 209 of the 220 exits were still
+  drawn over ring standing 4 m or more off its continued ground (Glacier Pass up to 114 m). Once the ring is built
+  (after the ranges are carved and any passes opened), each exit now ends at its foot — the nearest point along it where
+  a ring vertex within 12 m of the line stands off its continued ground (`horizonSurface.ts` `continuedGroundAt`, the
+  ring's own law) by more than 1.5 m — fading over the 100 m before it while the carriageway narrows to 45 % of its
+  width, so it runs out as a lane at the foot of the slope (the vertices are compared, not the surface between them,
+  which cannot follow the corridor's cut and fill across the line). Now no exit is drawn over ring 4 m off its ground;
+  the carriageways end at a median 340 m (was 530), Redrock Divide's at 60–90 m where the canyon's beds rise. Where the ranges
+  open a pass for a road (the mountains lane's `openRoadPasses`, as at Cinder Junction) the ring lies on the road's
+  ground and the road runs on through it. The villages and avenues stand along the cut lines, and the ring forest and
+  the hedges keep a 6.5 m ride either side of a carriageway (trees had stood on it at 9–142 spots per map).
+
+#### Wave 4 — 2026-10-03: gauntlet wave 30's six drops, each at its cause
+
+Gauntlet wave 30 (wave 3 against PR head 6309d167d: mean 3.37 → 3.48, Cinder Junction's north view +2.7, Ironworks'
+east +2.6, Ruin Spires' east +2.1) dropped six views by more than 0.5. Fixed on maps lane B's rebuilt maps (PR head
+4b20975bb), one commit a cause:
+
+- **The land past the edge is the terrain seed's again** (Frosthollow edge-n and edge-n-up −1.0 each, Glacier Pass
+  edge-s −1.2, Sirocco Wadi corner-ne −2.3, Amberford edge-n −0.6). Wave 3's `borderLandformSeed` seeded the landform
+  by the map id. Every ring and far country was authored over the landform's relief at the one seed, and the reseeded
+  hand-over, hills and foothills moved the ranges' foot by up to 136 m: Frosthollow's north rose as a towering wall
+  with smeared faces, Glacier Pass's southern range folded into a spike, a pale flat-topped slab stood in Sirocco's far
+  range. The reseeded cover moved the woods and fields the views were composed of: a wood over Frosthollow's north
+  hamlet, a stubble field across the middle of Amberford's north view (read as a bare sand patch). The landform is the
+  terrain seed's alone (relief and cover); the ring matches the PR head's to the bit on every map but along the road
+  exits, where wave 3's portal tails bring the road down to the land, and every ring's maximum height is the PR head's.
+  Receipt `borderLandform.selftest.mjs`: six maps' landforms, rebuilt from the seed, rim, settings and exit valleys
+  alone, answer the same relief, hand-over, woods and crops at 1872 points past each edge; Amberford's north view has
+  no straw in the middle of its middle distance.
+- **Villages from 110 m, each with its church** (Frosthollow's north views: the hamlet and church spire left them).
+  Wave 3 strung its villages from 260 m out, but the same wave ended each road at the foot of the ranges, ~300–450 m
+  out on a mountain map, so no village found room there and the map's one church was a chance hamlet's. A village
+  starts at the first flat stretch from 110 m, as far out as its road reaches; it has its church across the road from
+  one of its yards, the nave along the road and the tower facing the square. Frosthollow's north road runs into a
+  village with its church 220 m out. Receipt `borderFarmsteads.selftest.mjs` (a village on a 330 m road, its church
+  and spire; Frosthollow's north spire in the census's edge-n view).
+- **The region's own buildings** (Ironworks edge-e-up −0.9: "the new hamlets read as American red barns"). A map with
+  a regional building kit builds its hamlets from it — its square's kit, or for Ironworks (on the Saar) the coalfield
+  kit's workers' cottage pairs — at the kit's mobile detail in the farmsteads' one vertex-coloured mesh: farmhouse,
+  barn and shed, the kit's church or chapel (else the generic church in the kit's stone and roof: Ironworks' is brick
+  under slate), decor kept within 170 m of the edge. 8k–51k triangles a kit map, one draw and its far-cascade shadow.
+  The villages take one place a side (four a map) and the farms keep their own count, two fewer a village — with three
+  a map they had taken the farms' whole budget and left Ironworks' east, where the red barns stood, with no hamlet; a
+  village's shelter trees are thinner and narrower so it is not hidden in a wood.
+- **No farm past a ruined city** (gauntlet wave 40, Ruin Spires: "a red-roofed farm on that horizon reads wrong past a
+  destroyed megacity"). The border settings' `farmBuildings: false` raises no farm building past the edges of the
+  ruined cities (Ruin Spires, Blackglass, Skybridge) and of the countries without farmland (Titan Gorge, Obsidian
+  Caldera, Copper Mesa); their sites keep their shelter copses, so the ring forest — whose stream is drawn as its
+  stands are accepted — stays the same tree for tree. Checked by a pixel diff of Ruin Spires' and Blackglass's twelve
+  border views against a mask of the farm meshes: 1773 pixels changed, every one a farm pixel. A kit that builds no
+  dwelling (Kestrel Airfield's Hostomel hangars) leaves the hamlets wholly to the generic set.
+- **The frame cost** (gauntlet wave 40's merge bar: at most +1 ms a view against the PR head on Ironworks, Cinder
+  Junction and Frontier; chase, centre-far and bird-n at 1600×900). Ironworks and Frontier passed in whole-build A B B
+  A pairs (PR head 4b20975bb against this branch, GPU ms: Ironworks −0.71 / −0.51 / −0.03, Frontier −0.12 / −0.22 /
+  −0.65). Cinder Junction's pairs moved by more than the bar in the post passes, which the lane cannot touch. They did
+  so twice: an eight-run re-run under 115–280 % foreign GPU load had per-page chase frames from 14 to 30 ms. So the
+  frame-budget probe's `--toggle=border-additions` measured the additions inside one page on the merged build
+  (03147bef3). It hides the farmsteads and hedgerows, and draws every ring forest pool without its 932 row trees
+  (including the 210 shadow casters among them). At each pose it runs off / on / on / off blocks, over four pages, and
+  both sides run without the static shadow cache, so every cascade redraws every caster every frame, as when the camera
+  moves. Hiding also removes the PR head's own farms and hedges, so the result is an upper bound. Whole frame with the
+  additions, median of eight block pairs: chase −0.03 ms, centre-far −0.51, bird-n +0.67. The scene pass moved
+  +0.16 / −0.21 / +0.38 and the shadow passes −0.02 / +0.02 / 0.00. The near class casts 55k more triangles than the
+  PR head's (231k against 176k: the rows' 210 trees and 144 more stands) at no measurable cost, so it keeps them.
+
 ### 2026-10-03 — skies, light and colour: one haze law, the shade's own colour, a calibrated camera (the skies-and-atmosphere lane)
 
 **Owner (2026-10-02): "dude genuinely maps need to look so much better esp the horizons and transitions around map
@@ -6583,9 +6685,26 @@ only with an albedo-aware key that keeps snow and bright sand high-key.
   16 km and fades in over 9 km — under 4–5° at a 1.4 km band, the distant field's crowding on the horizon; the decks keep
   8 km.
 - Scene-wide GTAO stays off (the owner, 2026-09-28). The ground around the four hulls the shadow router already selects
-  loses the sky each hull hides (`vehicleGroundOcclusion.ts`): an oriented box per hull (its armour-derived shadow proxy
-  carried down over the running gear), ½ sin²(atan(h/d)) · (2/π) atan(L/d) beside it (a wall's cosine-weighted share over
-  the azimuth a finite hull covers), 0.85 under the footprint, on the pixel's ambient share only; analytic, no noise.
+  loses the sky each hull hides (`vehicleGroundOcclusion.ts`), on the pixel's ambient share only; analytic, no noise.
+  Since the vehicle-ground lane (2026-10-03, wave 13's "strip of fully-lit snow under the belly") each hull is one convex
+  solid measured from the built visual — the shadow proxy's width, length and deck over its lower profile, the measured
+  pan along the belly rising under the sloped end plates (a least-squares hinge on the proxy's underside) — and it hides
+  its exact projected solid angle (Lambert's edge integral over its silhouette edges, clipped at the receiver's horizon).
+  The track runs are not summed in as separate boxes: from beside or beyond a hull every ray through a run goes on into
+  the belly, and the sum over-counted (0.65 of the sky 0.3 m beside a T-90M's track where the union hides 0.44). They
+  close only the side gaps a receiver between them sees under the hull's edges, along their ground run. The receipt holds
+  the law within 0.015 of a brute-force union of the hull and both runs (4096 stratified rays) at eleven ground points
+  beside, ahead of, behind, off the corner of and under the T-90M, and the GLSL to its CPU twin on the GPU
+  (`tools/vehicle-ground-occlusion.browser.selftest.mjs`). The track shoes' cloned material writes no vehicle tag and no
+  sun state, so a shoe is a pixel without one in the shoes' measured lane over the track's lower edge (a 4 cm floor
+  along the ground run, the wraps' measured ramp past it); a lit pixel, the terrain, is never one (lab4–lab6's lit snow
+  under the track ends and along a sunk track's foot), grass under a ramp stays a receiver, and the ground the ground
+  run covers (seen through the shoes' gaps and at their foot) keeps no sky. The contact plane is the shoes' own foot and the belly the measured pan
+  only where it stands over it: a battle visual's published contact geometry sat 12 cm under its tracks with a pan 30 cm
+  under them (the rest scan's float, 2026-10-03), which lab5's solids had inherited. A blocked direction keeps its occluder's own light (first-order
+  interreflection with a 0.25 hull albedo): the belly lit by the open ground it glimpses, a wall by half sky and half
+  ground. The ground-albedo multi-bounce it replaced (Jimenez's fit, which assumes the cavity has the receiver's albedo)
+  kept 0.37 of the sky under a snow belly and 0.81 at its rear edge; snow's belly now keeps 0.13, sunny sand's 0.21.
 
 **The first A/B on the PR head (fp6: 3ed03998a against the lane, the 24 wave-0 shots, the census views).** CIELAB over
 the 24 frames, PR head → lane (the 35 photographs): p5 / p50 lightness 32.5 / 60.6 → 26.7 / 52.7 (22.5 / 54.4), mean
@@ -6642,7 +6761,8 @@ PR head → lane (the photographs): p5 / p50 lightness 30.3 / 58.7 → 23.8 / 49
   where photographs of hulls on sand run about 0.07–0.16. The light balance itself is right (open shade / sun 0.155
   scene-linear: the sky's cosine-weighted irradiance × 1.45 against the sun on the ground); the hull's sky occlusion,
   the shadowed ambient's dim and the tone curve's toe stack on it. Next: the hull occlusion's multi-bounce term
-  (Jimenez's polynomial on the map's ground albedo: bright sand returns some of the light the hull hides).
+  (Jimenez's polynomial on the map's ground albedo: bright sand returns some of the light the hull hides). (Superseded
+  the same day by the first-order interreflection above: the polynomial lifted snow's belly to a lit strip.)
 - The far cloud shade waits for its capture (above).
 - The humilis maps' horizon puffs (above) and the arid fogDensity (above).
 - Saltwind's sky-w pale band is the sea's horizon (the view looks along open water); the Frontier contrail reads as a
@@ -6682,7 +6802,8 @@ dithers alias alike: dithered depth coverage itself was the fault). Now:
 - *Arid air:* fogDensity 0.00025 on Sirocco, Badlands, Copper Mesa and Oasis (Badlands' far ridge contrast 0.165 against
   the PR head's 0.114); the mountains lane's panorama bake takes the same law past its shell once hazeLaw.ts is merged.
 - *The hull's multi-bounce* (vehicleGroundOcclusion.ts): the occlusion keeps Jimenez et al.'s multi-bounce visibility on
-  the map's ground albedo (Sirocco's hull shade / sun 0.071 → 0.081; snow lifts most).
+  the map's ground albedo (Sirocco's hull shade / sun 0.071 → 0.081; snow lifts most). Replaced by the vehicle-ground
+  lane's exact hull solid and first-order interreflection (above): on snow it was the lit strip under the belly.
 - *No contrails* (cloudscapeLayer.ts `CLOUD_CONTRAILS_ON`): fp10's segmented, thinner trails still read as straight lines
   and the critics called every one a render glitch; the reference tank games carry none.
 - *No cumuliform far band:* edge-on, its broad coverage turned into one opaque pale ribbon a few degrees over the hills
@@ -6779,6 +6900,184 @@ it. Getting all three needs a different density formulation: a base-height clamp
 level as a hard plane the density is cut at, independent of the noise that shapes the body), and a separate noise basis
 for the tops (larger-scale billows that grow with height, with their own lit-edge sharpening), with the cells sized by
 a size distribution rather than a coverage cut, so the overhead cells are the large ones.
+
+### 2026-10-04 — shade kept off black: the grade's toe and the shadow dim's facing rule (the shade-fill lane)
+
+**The gauntlet's waves 29, 34 and 36: "deep shade crushes toward black on dark materials".** A tank's shadow on Verdant's
+grass read about RGB (12, 40, 8); a shaded Verdant village wall 40 against 130 sunlit ("a flat, textureless matte-black
+mass"); Saltmere's granite tor's shaded sides near-black against the bright sky. Branch `visual/shade-fill` of the PR #9
+program, from the PR head 24d0a3131. Three causes were open: (a) no sunlit-ground bounce, (b) AgX's toe or an exposure
+floor crushing the low end, (c) the cascades darkening more than the sky's direct share should.
+
+**What the light held (the probe).** Five shaded / sunlit pairs at fixed poses (the skies lab's `--poses`, desktop high,
+1600 × 900; each box on one material), their display medians inverted through the output chain to the light the scene
+held (`agxgrade.py`, the full-colour twin of the output pass): the scene put 11–22 % of the sunlit light in the shade —
+the grass beside the hull 16.3 %, the wall's shaded run 13.7 %, the tor's faces against the sunlit dry grass 10.8 %,
+open shade on Saltmere's dry grass 22.3 %, Sirocco's sand 10.1 % — and the screen showed 3.5–14.5 %: in deep shade under
+two fifths of the scene's share. (a) was not it: the environment's lower hemisphere carries the sunlit ground and the
+ground-bounce excess (`groundBounce.ts`) lights sun-facing receivers; a receiver in shadow has shaded ground about it.
+
+**(b) The grade crushed the shade.** The output pass's scene-referred contrast is a constant log-space slope about the 18 %
+card (1.28), set for the sunlit range where AgX's own slope is 0.79 (a composite of 1.0). AgX's slope rises below the
+card — 0.98 one stop under it, 1.31 at 2.5, 1.67 at 4 — so the composite climbed to 2.0 where a dark material's shade
+sits and to 4.8 four stops under, the black point under it; a camera's holds about 1.0–1.2. `GRADE_TOE_SLOPE` /
+`GRADE_TOE_STOPS` (`post.ts`): under the card the slope eases from 1.28 to 0.70 over 2.5 stops (the smoothstep of the
+slope, integrated: C1, monotonic, the pivot fixed), so the composite stays 0.97–1.19 from the card down to 4 stops under
+it; nothing at or above the card moves. The grounded rig by day only: the slope returns to the constant one with the
+night, and the legacy rig (phones, the Garage, the galaxy skies) keeps it.
+
+**Which level the toe reads.** The first build read each channel. A sunlit saturated colour's weak channel — the blue of
+a sunlit grass sits three stops under the card while its luminance sits at it — was lifted, and the colour lost chroma
+though its luminance held (GPU, the first capture: Verdant's sunlit grass −4 %, Saltmere's dry grass −10 % at ΔE 3.5 and
+its pasture −15 % at ΔE 4.5, Railyard's overcast grass −23 % at ΔE 8). The toe is now the constant slope plus a log-space
+lift, and the lift reads the pixel's luminance near the card (every channel lifted alike: the colour the constant slope
+gives it) and hands over to each channel's own level from 1.0 to 2.5 stops under it (`GRADE_TOE_CHANNEL_FROM` / `_TO`):
+deep shade takes a camera's per-channel chroma rather than the constant slope's saturated hole. A grey reads the same
+either way, so the shade ratios do not move.
+
+**(c) The shadow's ambient dim on faces turned from the sun.** The cascades dimmed the ambient 13 % (the specular 45 %) on
+every shadowed fragment: the occluder that shades a face hides that face's sun-side sky, the circumsolar light. A
+sun-facing face in a cast shadow keeps the dim; a solid face turned from the sun stands in its own shade — no occluder
+hides any of its sky — and keeps it (`SHADOW_DIM_FACING`, lighting.ts: ×1.147 on that shade; opaque materials only, the
+foliage cards keep the dim; the ground-bounce receiver still reads the shadow).
+
+**Measured (GPU, the same poses and boxes, before → after; `$SP/p2/shade/cap2`).**
+- *Shade (the probe pairs as the screen shows them):* the grass beside the hull 6.1 → 14.0 % of the sunlit grass (the
+  shade ×2.29); the wall's shaded run against its sunlit run 3.5 → 14.7 % (×4.21); the tor's shaded faces ×2.92
+  (display-linear 0.0106 → 0.0310), 3.8 → 11.2 % of the sunlit dry grass beside them (no sunlit granite in the pose: the
+  sun stands behind the tor); open shade on Saltmere's dry grass 14.5 → 18.9 %; Sirocco's sand, the control (bright,
+  barely crushed), 9.1 → 11.3 %. The screen now shows 0.85–1.12 of the scene's share; it showed under 0.4 of it in deep
+  shade.
+- *Why 14–15 % and not a clear day's 18–25 % for the first two:* beside a hull the hull hides about a fifth of the sky
+  (`vehicleGroundOcclusion.ts`) on top of the circumsolar sky the cast shadow takes; a vertical face turned from the sun
+  sees half the sky, its circumsolar part behind it, against a run that faces the sun — about three stops (12.5 %) in a
+  photograph, 15.7 % in the scene with the facing rule. Open shade on the ground clear of the hull reads 18.9 %. (The
+  first estimate's 22 % for the wall came from a box that took in the sunlit grass blades in front of it.)
+- *The shade's colour (CIELAB C*/L*, the shade box against the sunlit box):* the grass in the hull's shadow 1.93 → 1.01
+  against the sunlit grass's 1.05 (the old chain's saturated hole); the wall's shaded stone 0.71 → 0.21 against its sunlit
+  run's 0.29; the tor's faces 0.56 → 0.22; open shade on the dry grass 1.28 → 1.07 (lit by the bluer sky: the sunlit
+  grass 0.69).
+- *At and above the card (one sunlit box per view on one material: median per-pixel ΔE76, luminance):* Verdant's grass
+  0.00 (+0.03 %), meadow 0.00 (+0.01 %), the wall's sunlit stone 0.00 (+0.15 %); Saltmere's dry grass 0.00 (−0.04 %),
+  pasture 0.43 (+0.60 %: it sits 0.85 stops under the card, where the lift begins), the dry grass by the tor 0.00
+  (+0.00 %); Frosthollow's snow 0.00 and 0.00; Sirocco's sand 0.00 and 0.00. The sky band (the frames' top 108 rows):
+  +0.00 %, ΔE 0.00 on all twelve views. Pixels at or above the card's display level +0.0 % on every view; the band just
+  under it (display 0.10–0.21) +0.0–1.7 %; the shade (0.01–0.04) +40–81 %.
+- *Railyard's overcast grass (Cinder Junction under its deck):* +13.1 % (chase) and +4.6 % (establishing), ΔE 2.29 and
+  0.93, chroma 39.3 → 40.3 and 33.9 → 34.0 — the step is lightness. Under the deck the grass takes its light from the
+  whole sky and the exposure keys the card, so this dark material sits 0.9–1.35 stops under the card: in the toe, where
+  the old chain's composite slope (about 1.3) pressed it toward black and steepened its texture; the toe's slope there
+  (about 1.0) is the same correction the shade takes. Its colour holds because the lift reads its luminance there (the
+  per-channel first build took 23 % of its chroma).
+- *Perf (desktop high, 1600 × 900; EXT_disjoint_timer_query GPU frame time over 90 frames; the toe and the facing rule
+  toggled in-page, on / off / off / on per view):* the mean on − off over the twelve views +0.19 ms (p25) and +0.14 ms
+  (p50) on the final build (+0.07 / +0.12 on the first); the worst view, Sirocco's establishing, +2.39 / +1.28 (−0.85 at
+  p50 on the first build at the same view), inside a run-to-run spread where identical-setting passes differ by a median
+  0.39 ms and up to 1.62 ms. The change is arithmetic — about a hundred ALU operations on each of the output pass's five
+  samples a pixel, a few dozen a lit fragment for the facing rule — and the means agree with that count. Phones keep
+  their path: the legacy rig never takes the toe or the facing rule.
+- Frames: `$SP/p2/shade/cap2/<map>/{a,g}-<view>.png` (a: 24d0a3131, g: the fix), the gauntlet's list
+  `cap2/shots.json`, the sheet `cap2/sheet-before-after.jpg`; the tools (`probe.py`, `report.py`, `refmoves.py`,
+  `gpu-ab.py`, `agxgrade.py`, `toetwin.py`) in `$SP/p2/shade/tools`.
+
+**Receipts.** `shadeFill.selftest` (the CPU twin of the grey chain and of the toe on a colour: the old chain's crush, which
+fails the receipt; the composite slope 0.9–1.25 to four stops under the card; nothing at or above the card; a sunlit
+colour's channels lifted alike and deep shade per channel; the facing rule; the five probe pairs' shares) — and
+`groundBounce`, `cloudShadeMap`, `lightModel` and `nightEmissionMaterial` follow the new code.
+
+### 2026-10-04 — the deck's grey at the horizon, closed decks closed, and the sky's blue in clear shade (the skies lane's follow-ups)
+
+**Whiteout's beige band (the mountains lane's trace; Titan Gorge and Frosthollow show the same).** From an elevated eye a
+band of warm cream (L* 85, b* +16.6 against the deck's −5.8 in Whiteout's bird view) lay between the deck and the far
+ridges. The first fix followed the trace to the aerial pass: under a closed deck the haze law's in-scatter target kept
+1 − fogMix of the clear sky's LUT (44 % on Whiteout, whose anti-sun horizon at the 13° sun is warm), and `hazeTargetTerms`
+now returns the hue's whole weight — fogMix × HAZE_TINT_SHARE under an open sky, the whole authored tint under a closed
+deck, linear in the light model's overcast — read as it is by the aerial pass, the cloud trace's deck rows and the far
+bake's port (`hazeLaw.ts`). The pair left the band pixel for pixel, though, through neutral-extinction and target-level
+variants too: the band is sky, which the aerial pass never touches. The dome drew the clear sky's LUT, and from 300 m —
+the deck's own base — the strip under the deck shows it. `sky.ts` now takes the deck's grey there: the tint's hue at the
+sky's own luminance, by the overcast, over the horizon's first seven degrees (`uDeckHorizon`; the environment bake keeps
+the raw sky; the grounded rig only). Whiteout's band b* +16.6 → −2.2, Frosthollow's +4.0 → −2.7; the in-page switch
+(`SKY_DECK_HORIZON` 0) restores both exactly; the far ice takes the tint (b* −2.9 → −4.1).
+
+**Closed decks (Titan Gorge, overcast 1.00 under its dense-overcast regime, showed a large blue hole).** The hole is the
+cloud field's, not the dome's: the sheet's coverage ramp (a third of the range for a stratiform deck) maps the equalised
+weather field's lowest values to no cover even at full coverage. Titan's deck is now closed at the map (coverage 1, as
+Whiteout's stratus; the regime rows keep the round-71 bound), a closed deck keeps a thin sheet at its field's floor
+(`CLOUD_CLOSED_COVER_FLOOR` 0.5, slab and far band, from coverage 0.97), and under a closed deck the dome takes the
+deck's grey at every elevation (smoothstep 0.9–1.0 of the overcast: the 0.8 decks keep the blue in their breaks) at the
+horizon's luminance, so a residual gap reads as bright as the deck's horizon. Titan's hole shrank to a soft pale patch in
+the tint (with the switch off, a small blue gap: the floor at 0.5 does not close the field's deepest minimum; a floor of
+0.7–0.8 is the next step if the patch reads). GPU, the dome switch in-page, ABBA over six views: on − off −0.04 ms (p25)
+— a few operations and one sky-view sample a sky pixel, inside the pass noise.
+
+**The sky's blue in clear shade (the gauntlet's wave 46: on Sirocco's sand the cast shadows read warmer than the sunlit
+sand; wave 47: "no blue in the shade" on clear Saltwind).** The shade's light was already bluer than the sun's (1.8× in
+B/R on the sand), but warm sand keeps a warm shade, and the shade-fill toe's per-channel lift in deep shade took the
+margin. `SKY_DIFFUSE_CHROMA` (lightModel.ts) 0.4 → 0.5 — the smallest of a GPU sweep (0.40, 0.45, 0.50, 0.55, 0.65) at
+which the tank's shadow on the sand reads cooler than the sand in the sun; the measure is CIELAB b* per L*, shade minus
+sun: +0.03, −0.01, −0.04, −0.08, −0.15 (0.45 reaches parity only). The pair (e675ad400 against the branch): the tank's
+shadow on sand +0.03 → −0.04, the palms' shadow −0.05 → −0.11; the grass under Verdant's hull stays green (hue 132° →
+134°; the early waves' teal was 180–200°), its woodland shade 109° → 112°; sunlit sand and grass ΔE 0.42–0.55 (b* −0.2
+to −0.4: the same sky lights them); Whiteout ΔE 0.00 (a closed deck takes none of the sky's hue). No shader change.
+Frames and tables: `$SP/p2/haze/cap3`, `$SP/p2/shadehue/cap` (the sweep) and `cap2` (the pair).
+
+### 2026-10-04 — the sun's glow a gradient toward a visible disc; Titan Gorge's deck closed (the sun-bloom lane)
+
+**The gauntlet's waves 46 and 50: on sun-facing views a quarter of the frame read flat white with no sun disc** (Redrock's
+edge-e, "an exposure/tone-mapping miss rather than a deliberate flare"). At the census pose (cam (432, 91.5, 0) toward +x,
+fov 55; desktop high, 1600 × 900; the lab's frame matches the wave's to 2.1 levels in 255) no pixel was display white: the
+near-sun sky sat at L* 88 with chroma 5.5, 6.6 % of the top-left near white (every channel ≥ 235) — a pale plateau, not a
+clip. Facing the sun, a white blob covered 37 % of the sun's region and no disc showed. A sweep of in-page knobs on one
+build (bloom, the dome's knee, its compact glow, a highlight shoulder in the output pass, an exposure-aware knee) found two
+causes: the bloom swallowed the disc in a halo fed by the compact glow and by 0.5–0.9° of aureole kept HDR around the
+disc (bloom off: a distinct disc in a natural glow), and the dome's knee — a plateau at 1.45 raw, which a camera at
+exposure 1.6 shows near white — flattened the aureole. A highlight shoulder in the grade cleared the white but greyed the
+disc and reached snow; the cap the coordinator chose is the sky's own.
+
+**The fix (sky.ts; sunGlare.selftest).** Only the disc stays HDR (the knee's exemption at the disc's own edge), and the
+compact glow is part of the sky under the knee: the disc alone reaches the bloom's threshold, so its halo is the disc's.
+On the grounded rig the knee is set as the camera shows the dome (`SKY_KNEE_EV`): it eases from 1.8 stops over the card
+toward 1.2 stops more, the aureole from once to ten times the start spread across that range — a gradient toward the disc,
+not a plateau. The sky only; the bloom (muzzle flash, fire, tracers) and the grade are unchanged.
+- *The pair* (dec034617 against the branch): Redrock edge-e near white 6.6 % → 3.0 %, the glow L* 88.1 → 85.9 with
+  chroma 5.5 → 6.0; facing Redrock's sun 36.6 % → 17.0 %, the disc visible in a falloff; facing Verdant's sun 1.2 % →
+  0.3 %. No harm: away from the sun (Redrock hz-w), Frosthollow's snow and Saltwind's clouds ΔE 0.00.
+- *GPU* (the old dome switched in-page, on / off / off / on): −1.5 and +1.6 ms on the two views, inside a run-to-run spread
+  of ±1.5 ms — the change is a few operations a sky pixel.
+
+**Titan Gorge's deck** (`CLOUD_CLOSED_COVER_FLOOR` 0.5 → 0.7, volumetricClouds.ts): the closed deck's floor at 0.7 closes
+the residual gap at establishing and bird — the old hole reads as a thin, slightly brighter patch of the deck (ΔE 4.1 from
+the deck beside it; 0.5 left a cream patch at ΔE 11.5).
+
+**The sea's far band (next).** The split on Saltwind's edge-w: the sky over the horizon L* 85; the far band 13–17 under
+it and teal. Without the haze law the band is darker still (L* 70 against 73): the aerial target is not the cause; the
+water's own reflection at grazing incidence is (the sky's reflection × 3.5 / 1.75 at grazing: 4–5 under the sky, bluer).
+The water's knobs ride in this branch at today's values (`WATER_ENV_NORMAL` / `_GRAZING`, `WATER_SPEC_CAP`,
+`WATER_BODY_GRAZE`).
+
+**Not this lane's:** Saltwind's cumulus (wave 46's "blown out") is not clipped (L* 72, no near-white pixel) and no
+exposure or bloom setting moves it: the flat internal shading is the cloud model's, the item after the sea.
+Frames: `$SP/p2/bloom/pair/<map>/{a,g}-<view>.png`; the sweeps `$SP/p2/bloom/cap{,2,3}`.
+
+### 2026-10-04 — the sea mirrors the sky toward the horizon (the sea's far band)
+
+**The gauntlet (both critics): the sea at grazing angles — "the far band turns teal and darker than the sky instead of
+brightening toward the horizon (Fresnel), with no sun glitter".** The split, in-page on one build (Saltwind's edge-w, the
+sea to the west; desktop high): the sky over the horizon sits at L* 85 and the far band 13–17 under it, teal. The haze law
+is not the cause — without it (σ 0) the band is darker still (L* 70 against 73), and its target at the sky's own level
+moves it 0.8 — the water's own reflection at grazing incidence is: `shallowWater.ts` weighted the sky's reflection
+`mix(0.45, 1.75, grazing)`. `WATER_ENV_GRAZING` 1.75 → 3.5 (the FFT path untouched):
+- *Saltwind edge-w:* the far band L* 67.4 → 78.6 (6.4 under the sky; it was 17.6), a* −6.8 → −5.6, b* −8.5 → −7.0 — the
+  mirror a calm sea is toward the horizon; the mid field +6.5 to +9 L*; the water under the camera +1.2 (no wash-out).
+- *Saltmere's bay (establishing):* the water +4 to +5 L* along its far half, the rest of the frame unchanged (median ΔE
+  0.00); land-only views unchanged.
+- *Sun glitter:* a sun-over-water pose on Saltwind (the camera over the sea, facing the 30° sun) shows the glitter path
+  already, its sparkles held under white by the specular cap (1.15, pre-exposure; max channel 236). The cap at 2.5 lets
+  the sparkles reach white and blooms the path's far end (16 750 white pixels), kept at 1.15 here; a choice for the
+  critics (`WATER_SPEC_CAP`). The edge-w view faces away from the sun, where no glitter belongs.
+- *GPU:* the old weight switched in-page, on / off / off / on: −1.3 and −0.3 ms (p25) — a constant.
+Frames: `$SP/p2/sea/pair/{saltwind,coastal}/{a,g}-<view>.png`, the glint `saltwind/{a,g,g~spec25,g~spec4}-glint.png`.
 
 ## Acceptance is visual and measured
 

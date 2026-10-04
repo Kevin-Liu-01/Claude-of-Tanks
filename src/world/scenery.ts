@@ -81,6 +81,8 @@ interface SceneryBuildContext {
   obstacles: CollisionRecord[];
   /** The trees (the vegetation's obstacles): a rock field keeps off them. */
   trees?: readonly CollisionRecord[];
+  /** The trees' crown tops (world y): a pylon line stands its towers over them. */
+  treeTops?: ReadonlyArray<{ x: number; z: number; top: number }>;
   colliders: CollisionRecord[];
   /** The props `baked` bucket (the pylons fold in). */
   baked: THREE.BufferGeometry[];
@@ -108,6 +110,9 @@ interface SceneryFeatureReceipt {
   overlaps?: string[];
   /** A rock field: the formations it placed of the count it was asked for. */
   placedOf?: [number, number];
+  /** A pylon: the height its line stands at over the crowns, and the height it was authored at (m). */
+  heightM?: number;
+  authoredHeightM?: number;
 }
 
 interface SceneryReceipt {
@@ -118,6 +123,8 @@ interface SceneryReceipt {
   skipped: number;
   rockTriangles: number;
   bakedTriangles: number;
+  /** The power lines' conductor ribbons (their own mesh, the wire material). */
+  wireTriangles: number;
   colliders: number;
   /** The field boundaries' works, when the map asks for them. */
   fieldWorks?: FieldWorksReceipt;
@@ -126,6 +133,9 @@ interface SceneryReceipt {
 interface SceneryBuild {
   /** One geometry per rock formation (the props owner merges them into one mesh on the rock material). */
   rockPieces: THREE.BufferGeometry[];
+  /** The power lines' conductors (maps/sceneryKit.ts buildConductor ribbons): the props owner draws them as one mesh on
+   * the wire material, never in the baked bucket (wave 48: a sub-pixel tube there broke into dashes). */
+  wires: THREE.BufferGeometry[];
   receipt: SceneryReceipt;
 }
 
@@ -134,6 +144,13 @@ type FieldWorksBuildContext = Pick<SceneryBuildContext,
   'mapId' | 'scenery' | 'heightField' | 'spawns' | 'obstacles' | 'trees' | 'seed' | 'mobile' | 'hardstands' | 'yards'>;
 
 type SceneryBuildSlice = { fine: true; progress: false; stage: string };
+
+/**
+ * The conductors' sag as a share of the span, and the tallest a tower stands (m). Wave 20 read the 2 % sag as "straight
+ * hairlines" at a battle's range: a real line's 3-5 % hangs a visible curve between towers (the towers rise to keep the
+ * crowns clear under it: 57-65 m on the 200-320 m spans the maps author).
+ */
+const PYLON_SAG = 0.04, PYLON_TALLEST_M = 70;
 
 const SQUARE = 480;
 const SPAWN_CLEAR = 22;
@@ -259,10 +276,10 @@ function* fieldWorksKeepOut(ctx: FieldWorksBuildContext): Generator<SceneryBuild
 
 /** Build the map's scenery. A generator: one slice per feature, so a loading frame never carries more than one. */
 export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuildSlice, SceneryBuild, void> {
-  const receipt: SceneryReceipt = { features: [], groundCoverHoles: [], placed: 0, skipped: 0, rockTriangles: 0, bakedTriangles: 0, colliders: 0 };
-  const rockPieces: THREE.BufferGeometry[] = [];
+  const receipt: SceneryReceipt = { features: [], groundCoverHoles: [], placed: 0, skipped: 0, rockTriangles: 0, bakedTriangles: 0, wireTriangles: 0, colliders: 0 };
+  const rockPieces: THREE.BufferGeometry[] = [], wires: THREE.BufferGeometry[] = [];
   const scenery = ctx.scenery;
-  if (!scenery) return { rockPieces, receipt };
+  if (!scenery) return { rockPieces, wires, receipt };
   const noise = new SimplexNoise({ random: mulberry32(ctx.seed + 9299) });
   const ground = ctx.heightField;
   const skip = (feature: SceneryFeatureReceipt, reason: string) => {
@@ -413,13 +430,36 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
 
   // ---- power lines: towers into the baked bucket, legs as colliders, conductors between consecutive towers
   for (const [li, line] of (scenery.powerLines ?? []).entries()) {
-    const H = line.heightM ?? 34;
+    // wave 16 ("the conductors run through the crowns"): real lines span woods on tall towers. The line's towers stand
+    // tall enough that the lowest conductor, hanging in its sag, clears every crown under the span by 3 m and the
+    // ground by 12 m; they keep the authored tower's breadth, footing and leg colliders, so the trees and the solids
+    // stay as they were. (The lower arms hang their strings at 62 % of the tower, the strings 2.2 m below them.)
+    const H0 = line.heightM ?? 34;
+    const reach = 11.5 * (H0 / 34) + 6; // the outer phase and a crown's radius
+    let H = H0;
+    for (let t = 0; t + 1 < line.towers.length; t++) {
+      const [ax, az] = line.towers[t], [bx, bz] = line.towers[t + 1];
+      const span = Math.hypot(bx - ax, bz - az);
+      if (span < 1) continue;
+      const ux = (bx - ax) / span, uz = (bz - az) / span, sag = span * PYLON_SAG;
+      const footA = ground.getHeightAt(ax, az), footB = ground.getHeightAt(bx, bz);
+      const need = (f: number, top: number) => (top + 2.2 + 4 * sag * f * (1 - f) - (footA + (footB - footA) * f)) / 0.62;
+      for (let k = 0, n = Math.max(2, Math.ceil(span / 8)); k <= n; k++) {
+        H = Math.max(H, need(k / n, ground.getHeightAt(ax + (bx - ax) * k / n, az + (bz - az) * k / n) + 12));
+      }
+      for (const tree of ctx.treeTops ?? []) {
+        const dx = tree.x - ax, dz = tree.z - az, along = dx * ux + dz * uz;
+        if (along < 0 || along > span || Math.abs(dz * ux - dx * uz) > reach) continue;
+        H = Math.max(H, need(along / span, tree.top + 3));
+      }
+    }
+    H = Math.min(H, PYLON_TALLEST_M);
     const rng = mulberry32(ctx.seed + 13901 + 131 * li);
-    const tower = buildPylon(rng, H, ctx.mobile);
+    const tower = buildPylon(rng, H, ctx.mobile, H0);
     const standing: Array<{ x: number; y: number; z: number; yaw: number }> = [];
     for (let t = 0; t < line.towers.length; t++) {
       const [x, z] = line.towers[t];
-      const feature: SceneryFeatureReceipt = { family: 'powerLine', kind: 'pylon', name: line.name ?? null, x, z, status: 'placed' };
+      const feature: SceneryFeatureReceipt = { family: 'powerLine', kind: 'pylon', name: line.name ?? null, x, z, status: 'placed', heightM: H, authoredHeightM: H0 };
       const refused = admission(ctx, x, z, tower.legHalf * 1.42 + 0.6, 4);
       if (refused) { skip(feature, refused); continue; }
       const { hard } = solidConflicts(ctx.obstacles, x, z, tower.legHalf * 1.42);
@@ -433,7 +473,7 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
         const lx = sx * tower.legHalf, lz = sz * tower.legHalf;
         const wx = x + lx * Math.cos(yaw) + lz * Math.sin(yaw), wz = z - lx * Math.sin(yaw) + lz * Math.cos(yaw);
         y = Math.min(y, ground.getHeightAt(wx, wz));
-        const leg = setCircleShape({ min: [wx - 0.5, y - 1, wz - 0.5], max: [wx + 0.5, y + H * 0.6, wz + 0.5] } as CollisionRecord, wx, wz, 0.45);
+        const leg = setCircleShape({ min: [wx - 0.5, y - 1, wz - 0.5], max: [wx + 0.5, y + H0 * 0.6, wz + 0.5] } as CollisionRecord, wx, wz, 0.45);
         ctx.obstacles.push(leg); ctx.colliders.push(cloneCollisionRecord(leg)); receipt.colliders++;
       }
       const piece = tower.geometry.clone();
@@ -454,17 +494,16 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
         const pa = new THREE.Vector3(ax, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), a.yaw);
         const pb = new THREE.Vector3(ax, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), b.yaw);
         const wire = buildConductor(a.x + pa.x, a.y + ay, a.z + pa.z, b.x + pb.x, b.y + ay, b.z + pb.z,
-          span * (ay >= H - 0.01 ? 0.022 : 0.03), segments, ay >= H - 0.01 ? 0.03 : 0.045);
-        ctx.conform(wire, ctx.baked);
-        ctx.baked.push(wire);
-        receipt.bakedTriangles += wire.attributes.position.count / 3;
+          span * (ay >= H - 0.01 ? PYLON_SAG * 0.8 : PYLON_SAG), segments, ay >= H - 0.01 ? 0.03 : 0.055);
+        wires.push(wire);
+        receipt.wireTriangles += wire.index!.count / 3;
       }
     }
     tower.geometry.dispose();
     yield { fine: true, progress: false, stage: 'scenery' };
   }
 
-  return { rockPieces, receipt };
+  return { rockPieces, wires, receipt };
 }
 
 /**

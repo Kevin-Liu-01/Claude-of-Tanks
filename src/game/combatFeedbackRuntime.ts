@@ -2,6 +2,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import type { MovementShellSpec, MovementSpec } from '../sim/movement.ts';
 import type { EventBus } from './stateCore.ts';
+import { pulseJuggernautImpact } from './juggernautVisual.ts';
 import { stripActivatedEra, type EraVisual } from './eraActivation.ts';
 
 interface FeedbackShellSpec extends MovementShellSpec {
@@ -17,6 +18,7 @@ interface FeedbackTankSpec extends MovementSpec {
 }
 
 interface FeedbackTankVisual extends EraVisual {
+  root?: THREE.Object3D;
   hitFlinch?(normalX: number, normalZ: number, strength: number, yaw?: number): void;
 }
 
@@ -42,6 +44,8 @@ interface FeedbackFx {
 }
 
 interface ShellHitEvent {
+  pos?: readonly number[];
+  impactFrame?: string;
   targetId?: string;
   attackerId?: string;
   normal?: readonly number[];
@@ -113,6 +117,7 @@ export function createCombatFeedbackRuntime({
     const event = payload as ShellHitEvent;
     const target = event.targetId ? game.tankById.get(event.targetId) : null;
     if (target?.visual) stripActivatedEra(event, target.visual);
+    if(target?.visual?.root && event.pos) pulseJuggernautImpact(target.visual.root,event.pos,event.impactFrame);
     if (target?.visual && event.normal) {
       const penetrated = event.kind === 'pen' || event.kind === 'he_pen';
       target.visual.hitFlinch?.(

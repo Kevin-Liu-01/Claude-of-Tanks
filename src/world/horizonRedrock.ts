@@ -28,11 +28,19 @@ export interface CanyonGround {
   /** The map-borders lane: the border's hedgerows (0 … 1 on a field boundary's tree line). */
   getBorderHedgeAt?(x: number, z: number): number;
   /** The map-borders lane: the farmsteads past the edge — how many, their build, the field system they square to. */
-  _borderFarmsteads?: { count: number; style: FarmsteadStyle; fieldAngle: number };
+  _borderFarmsteads?: { count: number; style: FarmsteadStyle; fieldAngle: number; buildings?: boolean };
   /** The map-borders lane: the hedged stretches of the field boundaries past the edge (borderHedgerows.ts). */
   _borderHedgeLines?(maxOut: number, keep?: (x: number, z: number) => boolean): { xs: number[]; zs: number[]; w: number[] }[];
   /** The road exits past the edge: [metres off the nearest exit road, its presence 0..1] (terrain.ts roadExitAt). */
   _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
+  /** The roads that leave the square, as their exit lines past the edge (terrain.ts roadExits). */
+  _roadExitLines?(): readonly { xs: ArrayLike<number>; zs: ArrayLike<number>; length: number }[];
+  /** The exits as they lie on a built ring, given its vertices: the carriageway attribute there and the lines cut where
+   * each runs out (terrain.ts roadExitOnRing). */
+  _roadExitOnRing?(ring: { positions: ArrayLike<number>; heights: ArrayLike<number> }): {
+    at(x: number, z: number, out: [number, number]): [number, number];
+    lines: readonly { xs: ArrayLike<number>; zs: ArrayLike<number>; length: number }[];
+  };
 }
 
 interface SeamPoint { angle: number; x: number; z: number; height: number }

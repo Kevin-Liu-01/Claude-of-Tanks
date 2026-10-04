@@ -183,8 +183,10 @@ const weak = { ...spec, enginePowerHp: 180 };
 const strong = { ...spec, enginePowerHp: 950 };
 assert.deepEqual(plan(lip, { x: -75, z: 0 }, { x: 12, z: 0 }, { spec: weak }).at(-1), [-25, 0]);
 assert.deepEqual(plan(lip, { x: -75, z: 0 }, { x: 12, z: 0 }, { spec: strong }).at(-1), [0, 0]);
-assert.deepEqual(plan(lip, { x: 0, z: 0 }, { x: -75, z: 0 }, { spec: weak }), [[0, 0]]);
-assert.deepEqual(plan(lip, { x: 0, z: 0 }, { x: -75, z: 0 }, { spec: strong }).at(-1), [-75, 0]);
+assert.deepEqual(plan(lip, { x: 0, z: 0 }, { x: -75, z: 0 }, { spec: weak }), [[0, 0]],
+  'the weak tank does not descend a lip it could not climb back');
+assert.deepEqual(plan(lip, { x: 0, z: 0 }, { x: -75, z: 0 }, { spec: strong }).at(-1), [-75, 0],
+  'the strong tank, which can climb it, takes the lip both ways');
 
 // Diagonal corner rules remain authoritative even if the diagonal water
 // samples themselves are clear.

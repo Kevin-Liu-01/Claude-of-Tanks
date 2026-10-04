@@ -227,6 +227,63 @@ export function readS16File(file) {
  * 2 s of energy in 0–10, 10–50, 50–200 and 200–600 ms after onset; crestDb =
  * peak over the loudest 400 ms RMS; lowBody = share below 100 Hz in 50–600 ms.
  */
+/** Two-pole RBJ low/high-pass, for analysis only. */
+function biquad(samples, sampleRate, type, hz, q = Math.SQRT1_2) {
+  const w = (2 * Math.PI * hz) / sampleRate;
+  const c = Math.cos(w);
+  const alpha = Math.sin(w) / (2 * q);
+  const a0 = 1 + alpha, a1 = -2 * c, a2 = 1 - alpha;
+  const [b0, b1, b2] = type === 'lowpass' ? [(1 - c) / 2, 1 - c, (1 - c) / 2] : [(1 + c) / 2, -(1 + c), (1 + c) / 2];
+  const out = new Float32Array(samples.length);
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const y = (b0 * samples[i] + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2) / a0;
+    x2 = x1; x1 = samples[i]; y2 = y1; y1 = y;
+    out[i] = y;
+  }
+  return out;
+}
+
+/**
+ * The longest pitched tone in the low band (25–250 Hz) and how far its pitch moves: a falling sine under a boom
+ * is a cartoon boing, a rumble is not. Per 50 ms frame (hop 10 ms, within 20 dB of the loudest), the upward zero
+ * crossings of the band-passed signal: a tone, even a fast sweep, crosses at regular intervals (spread < 10 %);
+ * rumble does not. Returns { ms, ratio } of the longest run of regular frames (ratio = highest/lowest pitch).
+ */
+export function lowToneGlide(samples, sampleRate) {
+  const band = biquad(biquad(biquad(samples, sampleRate, 'lowpass', 250), sampleRate, 'lowpass', 250), sampleRate, 'highpass', 25);
+  const ups = [];
+  for (let i = 1; i < band.length; i++) if (band[i - 1] < 0 && band[i] >= 0) ups.push(i);
+  const win = Math.round(0.05 * sampleRate);
+  const hop = Math.round(0.01 * sampleRate);
+  const energy = [];
+  let top = 0;
+  for (let s = 0; s + win <= band.length; s += hop) {
+    let e = 0;
+    for (let i = s; i < s + win; i++) e += band[i] * band[i];
+    energy.push(e);
+    top = Math.max(top, e);
+  }
+  let run = [];
+  let best = [];
+  let u = 0;
+  for (let s = 0, k = 0; s + win <= band.length; s += hop, k++) {
+    while (u < ups.length && ups[u] < s) u++;
+    const inside = [];
+    for (let j = u; j < ups.length && ups[j] < s + win; j++) inside.push(ups[j]);
+    let hz = 0;
+    if (energy[k] >= top * 1e-2 && inside.length >= 3) {
+      const iv = [];
+      for (let j = 1; j < inside.length; j++) iv.push(inside[j] - inside[j - 1]);
+      const mean = iv.reduce((a, v) => a + v, 0) / iv.length;
+      const sd = Math.sqrt(iv.reduce((a, v) => a + (v - mean) ** 2, 0) / iv.length);
+      if (sd / mean < 0.1) hz = sampleRate / mean;
+    }
+    if (hz) { run.push(hz); if (run.length > best.length) best = run.slice(); } else run = [];
+  }
+  return { ms: best.length * 10, ratio: best.length ? Math.max(...best) / Math.min(...best) : 1 };
+}
+
 export function transientAnatomy(samples, sampleRate) {
   const w1 = Math.max(1, Math.round(0.001 * sampleRate));
   const windows = Math.floor(samples.length / w1);

@@ -461,6 +461,7 @@ region, registered in `index.ts`:
 | `wadirum` | Wadi Rum: block houses, rooftop tanks, the Desert Patrol fort | Redrock Divide |
 | `ruhr` | Ruhr and Silesian junctions: soot-dark brick, yellow-brick bands, slate | Cinder Junction |
 | `kohima` | Kohima 1944: bungalows under painted tin, a bazaar, Angami houses | Monsoon Ridge |
+| `hostomel` | Hostomel (Antonov) airport: a barrel-vaulted cargo hangar, sheet-steel maintenance hangars, a control tower's glazed cab, 1970s terminal and office blocks | Kestrel Airfield |
 
 **Adopting a kit is one line** in the map's props settings: `architecture: '<kit>'`. The plan builders still run
 first: every draw, the ground fit, the UV jitter and the road frontage see the base geometry, so every building keeps
@@ -481,7 +482,8 @@ swaps it in through `LOCAL_TYPES`.
   plaster and timber photo sets stay when the kit opts in.
 - Walls and roofs render from three to five vertex-coloured buckets (`regionalPlaster`, `regionalPlaster2`,
   `regionalPlaster3`, `regionalStone`, `regionalRoof`) and painted joinery from `structureWood`: up to six draw calls
-  more than the base map, whatever the number of buildings.
+  more than the base map, whatever the number of buildings, and one multi-draw batch each for the fine timber and
+  stone joinery (below).
 - `src/world/maps/regional/regionalArchitecture.selftest.mjs` runs the road-building stage with and without the kit
   for every adopting map and fails if a building, a stream draw or a contact record moves, or if a kit building's
   collision-bearing parts reach more than 0.8 m past a side of its plot (or past the base geometry's own reach there).
@@ -499,6 +501,36 @@ masonry under it (`HouseSpec.spall`; none on clay walls), decor from the wear co
 roof weathers down its slope: chalky toward the ridge, rust and grime along the eaves. `dressing.ts` adds
 the lived-in parts a kit uses (window boxes, the bench by the door, a woodpile, the roof ladder, an aerial); they are
 dressing (no collision) and the phones leave them out, so the collision a host certifies is tier-independent.
+
+**Fine joinery and its draw distance.** What a long view cannot resolve is fine joinery (`EmitOptions.fine` in
+`geometry.ts`): window frames and glazing bars, shutter rails, door panels and battens, downpipes, and the sides and
+caps of every framing member, shutter leaf, jetty joist, dressed surround, sill, door frame, quoin and string course
+(`fineSides`, `span(..., coarse)`, `quoin`, `band`: the faces that read at range stay, the few centimetres of side and
+ledge do not). `props.ts` merges the timber and stone dressing's fine joinery by 120 m cell into one receive-only
+multi-draw batch per bucket (`THREE.BatchedMesh`, culled by the frustum per cell; the always-drawn timber dressing is
+one more instance), so a bucket costs one draw call whatever the number of cells, and shows a cell only while the
+camera stands within the quality preset's fine-detail distance of it (Ultra 180 m, High 120, Medium 90, Low 70),
+hiding it 15 m past that; at High a 7 cm frame is half a pixel at 120 m. Steinburg's always-drawn timber and metal
+dressing falls from 0.31 M to 0.08 M triangles and its shadow-casting stone from 0.19 M to 0.10 M; its establishing
+view draws two of 14 cells per batch, a street view three or four. A phone builds no fine joinery and culls the rest
+of its timber dressing by the same cells (70, 60 and 45 m on its three presets); `?fx=off` changes the post effects
+only, so a desktop with it culls as above. Mark a new part fine when it is under about 10 cm across, or when only its
+face reads from the street; `fineDetailLod.selftest.mjs` holds the batches, their cells and the hysteresis, and the
+regional receipt holds that fine joinery is receive-only dressing a phone never builds.
+
+**The yards round the houses.** A kit that names `yard` in its `ArchitectureStyle` (`kinds`, `fence`, `gate`, `shed`,
+`shedSize`, `garden`) gets yards on its houses of those kinds (`src/world/maps/regional/yards.ts`). The stage runs after
+the wrecks on its own stream, so nothing placed before it moves. Each house's yard goes on its freest side: up to 8 m
+deep and as long as that side of the plot, its ground clear of the road frontage (`ROAD_FRONTAGE_CLEARANCE`), every other
+plot, the hard solids and the larger destructibles, the authored objective targets with a 3 m margin, the aprons, the
+bridge decks and the spawn pads, dry and level. Fence or wall modules (the kit's destructible kind) close its three open
+sides with a gate (or an open gap), the kit's own outbuilding stands in a far corner at `shedSize`, and kitchen-garden
+beds (dressing, raised on a slope, left out on phones) take the other. The yard's ground grows no grass carpet,
+tall-grass crop or litter (discs over the enclosure join the scenery's ground-cover holes in `map.ts`), and a field's
+sown crop rows stop at its fence. Every element is checked on its own and skipped
+where it does not fit. No house body or plot moves. The props group carries the counts (`userData.regionalYards`),
+`yards.selftest.mjs` holds the planner's clearances, and a kit that adopts yards regenerates its map's shard and re-pins
+its census (obstacles rise by the modules, gates and sheds).
 
 **Adding a builder or a kit.** A builder is `(ctx) => RegionalParts`: build within `ctx.info.w × ctx.info.d`, door
 side +z unless the base builder's frontage says otherwise, draw only from `ctx.rng`, and keep tier-dependent parts to
@@ -533,42 +565,116 @@ scenery: {
 
 | Family | Kinds | Gameplay | Cost |
 | --- | --- | --- | --- |
-| Rock forms (`rocks`) | `tor` (granite: jointed slab stacks on a bedrock base, clitter round the foot), `outcrop` (sandstone or limestone: hard beds stepping back from a scarp that faces downhill, split into joint blocks), `crag` (slate: steeply dipping plates in ranks, scree below), `pavement` (limestone: clints and grikes flush with the turf, a low scar upslope), `scree` (an angular fan, fining up its apex), `hoodoo` (sandstone: a wind-cut pedestal under a broad cap, the mushroom rocks of Wadi Rum) | a standing form is one static convex collider from the ground to its top (hard cover, never crushed); pavement and scree lie under a hull's 0.55 m step and carry none | one welded mesh on the props rock material for the whole map: one draw plus its shadow passes; a tor about 4.5 k triangles (2 k on phones), an outcrop 2 k, a pavement 3.5 k |
+| Rock forms (`rocks`) | `tor` (granite: cuboidal blocks split by the sheeting and vertical joints, sheets of every thickness in two to four stacks, set back or overhanging, the sheet rock breaking the turf round them, clitter strewn down the slope; wave 29 read the old pillow slabs as "near-black slabs, all the same thickness"), `outcrop` (sandstone or limestone: hard beds stepping back from a scarp that faces downhill, split into joint blocks), `crag` (slate: steeply dipping plates in ranks, scree below), `pavement` (limestone: clints and grikes flush with the turf, a low scar upslope), `scree` (an angular fan, fining up its apex), `hoodoo` (sandstone: a wind-cut pedestal under a broad cap, the mushroom rocks of Wadi Rum) | a standing form is one static convex collider from the ground to its top (hard cover, never crushed); pavement and scree lie under a hull's 0.55 m step and carry none | one welded mesh on the props rock material for the whole map: one draw plus its shadow passes; a tor about 8.5 k triangles (2 k on phones), an outcrop 2 k, a pavement 3.5 k |
 | Rock fields (`rockFields`) | the exposed bedrock of a hillside: forms drawn from the geology's mix (`FIELD_FORMS`), the steeper ground first | as above, per form | into the same mesh |
 | Bedrock (`bedrock`) — parked | Not placed on any map: wave 16's critics read the skin on Redrock's smooth domes as masonry ("a ziggurat"), so a hill's shape has to carry its rock first (the landform's geology). The builder stays for a hill whose walls are sheer: a hill's own beds on its steep flanks, read from the live ground by rays from the entry's centre (lobes, ramps, fans and clefts move the beds with them): thick hard beds parted by thin, recessed soft ones in sandstone, now and then a massive one, from the highest ground a hull climbs (grade 0.9) up to a bare-rock crown. Each hill is bedded its own way (bed thickness, a dip of one to five degrees); every bed boundary swells and pinches along its run, a third of the hard beds stand out as ledges, and no bed rings the whole hill. The ground's own clefts (the rills down a wall, wherever the foot line falls back more than 0.9 m against the line a few metres either side) break the beds and seat the master joints, which open clefts from crown to foot, with tight staggered joints between them | none: a skin a little proud of ground no hull reaches; the hill stays the terrain, and the trees keep off its flanks (`BEDROCK_TREE_CLEAR` of the radius) | into the same mesh; Redrock's twelve domes about 41 k triangles together (a main dome 4-8 k, a lobe 2-3.5 k), phones about four fifths |
 | Stone landmarks (`landmarks`) | `calvary` (granite steps, octagonal shaft, cross), `menhir` (a standing stone), `cairn` (a clearance cairn: the gomila, the rujm) | static colliders | in the rock mesh |
 | Timber, steel and stucco landmarks (`landmarks`) | `bildstock` (a carved shrine on its pillar; breaks to its stump), `waysidecross` and `orthodoxcross` (topple), `windpump` (an American windmotor; topples), `tomb` (a Mekong-delta family tomb; breaks), `strawstack` (rice straw packed round a bamboo pole; breaks) | props destructibles (`SCENERY_DESTRUCTIBLE_TYPES`): crushable, their state synced like every other destructible | one instanced pool per kind a map uses |
 | Field works (`fieldWorks`) | `walls`: the dry stone walls of a karst's walled fields; `banks`: the earth banks (the talus) under a bocage's hedge lines — both laid on the ground lane's land use (`landUse.ts` through the height field's `_landUseAt`): the boundary band the terrain draws, the same field gate (off villages, roads, water and slopes past ~3°), chained along their lines and swept continuously. `wallTone` / `bankTone` (sRGB HSL) set their stone and earth | none: decor, at most 1 m tall (`FIELD_WORKS_MAX_M`), so a low rubble wall or a bank reads as crossed, not as cover; should one ever matter in play it becomes crushable like the fences, never blocking. They keep off the roads' painted core (5.7 m), the spawn pads (24 m), the bridge decks and their approaches, the aprons (`terrain.hardstands`, runways included) and the yards' dressing, the carved trenches and every mode's objective discs where the match placement seats them on that world (zones 30 m, flag bases 12 m, turbo goals 18 m and kickoff 12 m, the extraction 30 m, the Frontline Assault sectors 30 m), each with a 3 m margin | one welded mesh on the props rock material, no shadow of its own, built after the props' solids are final; Saltwind's walls about 16 km and 125 k triangles, Saltmere's banks about 4 km and 30 k; seating the discs runs the match placement for four modes (a few hundred milliseconds of the world build, on those maps only) |
-| Power lines (`powerLines`) | lattice towers (a double-circuit tower scaled to `heightM`) and sagging conductors | four leg colliders per tower; a hull drives between the legs | folded into the props `baked` bucket: no draw of its own; about 2 k triangles a tower |
+| Power lines (`powerLines`) | lattice towers (a double-circuit tower scaled to `heightM`) and conductors hanging a 4 % sag (wave 20: a 2 % sag read as straight hairlines); the towers rise until the lowest conductor clears every crown under its span by 3 m and the ground by 12 m (at most 70 m) | four leg colliders per tower; a hull drives between the legs | the towers fold into the props `baked` bucket (no draw of their own; about 2 k triangles a tower); the conductors are ribbons on the wire material (`wireMaterial.ts`, wave 48: "the power cables break into dashes"): turned to the eye and half a pixel either side at the least, their alpha the share the true wire covers, one blended mesh (`props-pylon-wires`), unlit, fogged, no shadow, two triangles a segment |
 
 The rock material is the boulders' (`rockDressing.ts`): the map's moss, dust and soil laws, the triplanar detail tile
-and the cascade setup, so a tor and the boulders round it are one rock. A geology's tone can be overridden with `tone`
+and the cascade setup, so a tor and the boulders round it are one rock. Each map's rock is named (`ROCK_CLIMATE`: granite,
+gneiss, sandstone, limestone, slate or basalt) and draws the detail tile (granite's mica and feldspar speckle, gneiss
+foliation, sandstone laminae, limestone solution pits, slate cleavage, basalt vesicles). The boulders themselves (wave 52:
+"low-poly frustums, chamfered boxes or polyhedra … all under one even noise texture and none sunk into the ground") are
+blocks their joints cut and the weather rounded (`buildBoulderForm`: the smooth maximum of a kind's joint planes, lumped,
+meshed by casting a cube-sphere grid at it, its normals the surface's own, every quad split along the diagonal whose ends
+shade alike), fitted inside the legacy rocks' hulls (the collision proxies the shards carry, unchanged), keeping their
+girth under the ground line so a slope bares a buried flank and not an undercut; bedded and cleaved rock breaks into
+blocks and slabs, granite and basalt weather round as well (`boulderKindFor`). On the instanced boulders only: their beds
+in each rock's own frame and tilt, desert varnish, the climate's lichen in two species (sparse, kept to the tops and upper
+flanks, a coverage-ranked colony tile), a snow map's snow laid after their tone, and contact darkening where the stone
+meets the ground. 384 triangles a variant (176 on phones). The moss keeps to the damp ground a metre or two
+up: a tall rock's tops dry in the wind and show the lichen its own tone paints (wave 29: "near-black slabs"). A geology's tone can be overridden with `tone`
 (sRGB HSL), for example to match a map's `rockTone`. A map whose field walls are its own rock tints their rubble print
-with `scenery.masonryTint` (a linear multiplier): Saltwind's dry stone walls and their posts are the pale karst
-limestone of its outcrops, and every other map keeps its tone. The tint never touches the house masonry (the props
-stone print, which a regional kit repaints: its Dalmatian limestone under the tint burned out white).
+with `scenery.masonryTint` (a linear multiplier): Saltwind's dry stone walls and their heads are the weathered grey
+karst limestone of its outcrops, and every other map keeps its tone. The tint never touches the house masonry (the
+props stone print, which a regional kit repaints: its Dalmatian limestone under the tint burned out white).
 
 The field walls (`props.wallRuns`, the `wallstone` module of `maps/inhabitKit.ts`) are dry-stone walls on every map
-whose stone bucket is fieldstone: a battered hearting, face stones in rough courses standing proud of it with their
-corners knocked off, and a coping of cope stones on edge. The module keeps the old one's envelope and its seeded draws,
-so the fitted wall colliders keep their plan and height. The maps whose stone bucket is the sourced brick print
-(`sourcedStoneIsBrick`) keep the coursed module (`COURSED_WALLSTONE`) the print was laid out for.
+whose stone bucket is fieldstone: a battered hearting, face stones laid in rough courses on it and flattish top stones
+laid across (wave 34, "coursed rubble relief"): four courses the module's own, the biggest at the foot, every stone
+sitting on what is under it, now and then a jumper two courses high, two thin stones in one course or a pin, each
+stone one to three centimetres proud with its corners knocked back so the hearting shows in the gaps, its face shaded
+as a rounded stone (its corners' normals leaning out from its middle: wave 48 read flat-shaded rectangles as "stacked
+crates or voxels") and turned a little its own way. The module keeps
+the old one's envelope and its seeded draws, so the fitted wall colliders keep their plan and height. Where two runs'
+ends meet, the first head there is a corner pier (wave 52, Verdant's village wall: "abruptly changes from tan stone to
+dark … with a hard vertical seam" — one face in the sun and one in shade, with nothing between them): bonded like a
+quoin, a stone's breadth proud of both faces and a course over the tallest module; the other heads at that corner are
+spent unbuilt. The field print's occlusion is 0.5 (it was 0.82, and took the skylight out of a shaded face's joints until
+the face read near-black). The maps whose
+stone bucket is the sourced brick print (`sourcedStoneIsBrick`) keep the coursed module (`COURSED_WALLSTONE`) the print
+was laid out for.
 
-The dry-stone walls, their run posts, breach stubs and tumbled blocks draw their own material, `fieldStone`: a seamless
-random-rubble print (`fieldStoneSurface.ts`), stones bedded flat in every size with dark dry joints, open pockets at
-the three-stone corners and no course anywhere, painted in the stone print's colour law (its mean within 4 % of that
-print's) under the map's stone tone. They never draw the house masonry: the coursed stone print read as ashlar on the
-rubble (gauntlet wave 20), and a regional kit's brick, block or dressed stone laid those courses over fieldstone. A map
-whose walls are mud or brick paints no field print and keeps the stone print. The receipt is
-`fieldStoneSurface.selftest.mjs` (seamless, no joint runs a third of the tile while the stone print's mortar runs all
-of it, flat stones, dry joints, the palette, the phone print).
+A wall follows its slope (`wallSpanPlacement.ts` `fitWallSpan`, wave 34: "walls on slopes step like battlements"): each
+module is sheared along the run to a least-squares line through the ground under its centre (at most a 0.45 fall), so
+its courses and its top follow the slope and its end faces stay upright, two neighbours meeting in one vertical plane
+at a crest or a valley. Only the ground's departure from that line still stretches a module's foundation. Its collider
+is the sheared module's box, as before: the high end's cover is kept, and over the low end of a steep module the box
+stands a little above the stones.
+
+The dry-stone walls, their run heads, breach stubs and tumbled blocks draw their own material, `fieldStone`
+(`fieldStoneSurface.ts`). The stones are geometry, each with a window of the print of its own, so the print is one
+stone's skin over its face band (`FIELD_STONE_FACE_V`): a fieldstone's colour drifting in patches about a stone
+across, its grain, mineral specks and bedding, the odd pit and crustose lichen, and no joint anywhere (wave 34 read a
+printed rubble on the stones as "stamped flagstone with dark outlines"). Its hearting band (`FIELD_STONE_HEARTING_V`)
+is the core between the face stones, packing stones in dark voids, painted squashed because the core maps it once over
+its height. Every piece's window lies inside its band: `roughStone`, the foot and tumbled stones, the snow load and
+`jitterFieldStoneUV` (the props stream's four `jitterUV` draws) for the heads and breach pieces. The skin's mean colour
+is the stone print's (within 4 %) under the map's stone tone, and each instanced module shifts its window along the
+wall by a hash of its place (the field print's own program, u only: wave 48, "the coursing visibly repeats"), so a
+run's one repeated module takes tones of its own; `liftFieldStoneMean` lifts a tone darker than an sRGB
+0.36 mean in linear light (Verdant's x0.76 blacked its village walls out in shade). A map whose walls are mud or brick
+paints no field print and keeps the stone print. The receipt is `fieldStoneSurface.selftest.mjs` (seamless, no void or
+dark line in the skin, windows differing stone to stone, a dark core, the palette, the lift, the phone print).
+
+How the walls meet the ground and the weather (waves 20 and 34: "shape, construction type and how things meet the
+ground"; "nothing bedded"): a stone's top ledge carries a normal leaning out, so the snow cap leaves the face's ledges
+alone (wave 34: "thin white slivers"); a run turns some of its modules round (a hash of the module's place) with
+neighbours 4 mm apart across it, so the kit's one module does not show the same face and crown every three metres.
+Each built island of a run is dressed by `maps/fieldWallDressing.ts` on its own streams: a dry-stone wall gets the
+stones settled at its foot, sunk a third to a half in the ground on both faces; every run head gets the stones it lost
+tumbled out past the end and along its feet (a mud wall's pier its fallen lumps; on a snow map none: the snow covers
+what fell, and wave 48 read stones on it as "loose slabs strewn on the snow"). On a snow map (Winter, Alpine,
+Whiteout) the module and the run heads carry a snow load along their tops, 6-24 cm in lumps a stone or two long with a
+cornice here and a thin edge there (its normals leaning up so the snow cap whitens it to the lips), and the wind banks
+two drifts: the bigger in the wall's lee (under half the wall: about 36 cm on the face, out two metres and more) and
+a small ramp on the windward face, both smaller where the wind runs along the wall, each a rounded shoulder rolling off
+to a toe sunk under the ground, a row every 30 cm, stopping 35 cm inside its island's ends (wave 48: "a smooth wedge
+that rides over its top … loose slabs strewn on the snow at its end"). A mud wall is an eroded slab
+(`adobeModule`): faces battered in to a crown worn round, the foot cut back by the splash, a slump up to a third of a
+metre in its crown and a couple of small losses, rain gullies from the crown; it draws its own worn render (`fieldMud`,
+`fieldMudSurface.ts`: a mud coat with straw, the rain's streaks and a damp, splashed foot, the render thinning out in
+broad patches over sun-dried bricks a shade darker than it, most at the feet and the crown, no dark outline), one tile
+a module, under the map's plaster tone. On a map whose ground is an earth (`mudEarthOfGround`: the light model's ground
+albedo orange to yellow-brown) the render goes most of the way to that earth and its foot's mud all the way, so a wall
+is built of the ground it stands on and the apron washed off it (with the spalled lumps on it, on the print's plain
+band) is the ground's colour, not a pale strip. Receipts: `fieldMudSurface.selftest.mjs`,
+`maps/fieldWallDressing.selftest.mjs`.
 
 The field works' sandbag stacks (`sandbagbig`, `sandbagsmall`, `sandbagwall`, wherever the fortification passes put
-them) are laid bag by bag (`maps/sceneryKit.ts` `buildSandbagStack`): filled sacks thin and narrow at their ends,
-sagging on top, each in its own tone (hessian, weathered hessian, faded olive polypropylene, a few dirty ones) on the
-props canvas weave, in stretcher bond, a battered parapet; every stack also gets its own weathering tint. Each stack
-fills the envelope of the sourced model it replaced, so the cover is where it was; a breached stack is a low course and
-the burst bags round it.
+them) are laid bag by bag (`maps/sceneryKit.ts` `buildSandbagStack`): pillows pressed flat by the courses on them (wave
+52: "compressed pillow bags … header ends as squashed, seamed pillow ends rather than round log ends"), a flat top and
+bed, their sides bulging, both ends drawn in — the sewn bottom straight across with its ears at the corners, the mouth
+folded under — so a bag end on is a squashed lens; sagging over the joint below, one in five slack (thinner, wider, more
+sagged), each in its own tone (hessian, weathered hessian, faded olive polypropylene, a few dirty ones), the lowest
+courses smeared with earth, on the hessian (`paintBurlap`: a plain weave, a jute thread every 2.5 mm at the bags' weave
+uv, its own material on the canvas program), in 15 cm courses each pressed a third into the one under it: every third
+course below the top in headers (two bags across, seams out on the faces) between stretcher courses in a wandering half
+bond, a battered parapet that has settled (wave 34, "tidy tubes"): its middle sunk up to 4 cm, the more the higher the
+course, the top course's bags askew and the odd one gone; the bottom course sunk in the ground and a fillet of earth
+banked against the foot; every stack also gets its own weathering tint. A laid bag draws only the faces its stack shows
+(the top course is closed), and a battered core of dark spoil fills the stack behind them, so no joint shows the sky
+(wave 52: "daylight between courses"; the scenery receipt casts sight lines square through every stack). Each stack fills the envelope of the sourced model it replaced, so the cover is where it was; a breached
+stack is a low course and the burst bags round it. A road nest, a redoubt's stacks and a breastwork's modules are
+bedded (`buildSandbagBedding`, wave 34: "a stacked prop on a bare mound, no berm or spilled sand"): the spoil banked two
+fifths up the face toward the threat and out the better part of a metre, lower round the rest, a spill of fill heaped
+at one end with the emptied bag by it, in the map's soil (its earth on an arid map); one receive-only mesh of their own
+on the props rock material, as the bocage banks are (`props-sandbag-beds`; its detail print, the grime, the wet maps'
+moss; its ground given half a metre down so the rocks' soil skirt does not paint a second soil at its foot), colliding
+with nothing, a few hundred triangles a stack.
 
 ### What the composer checks
 

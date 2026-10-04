@@ -37,16 +37,28 @@ const radio = readFileSync(new URL('./crewRadio.ts', import.meta.url), 'utf8');
 const literal = /(?:\bplay|library\.has|library\.pick)\('([a-z0-9_]+)'/g;
 const referenced = new Set();
 for (const source of [engine, rig, radio]) for (const m of source.matchAll(literal)) referenced.add(m[1]);
-for (const block of engine.matchAll(/const (?:CORE_BATTLE|PLAYER_HULL|UI_SET|MODE_SET) = \[([\s\S]*?)\];/g)) {
+for (const block of engine.matchAll(/const (?:CORE_BATTLE|PLAYER_HULL|UI_SET|MODE_SET|RADIO_SET) = \[([\s\S]*?)\];/g)) {
   for (const m of block[1].matchAll(/'([a-z0-9_]+)'/g)) referenced.add(m[1]);
 }
 for (const block of engine.matchAll(/const WEAPON_(?:CLOSE|FAR)[^=]*= Object\.freeze\(\{([\s\S]*?)\}\);/g)) {
   for (const m of block[1].matchAll(/: '([a-z0-9_]+)'/g)) referenced.add(m[1]);
 }
-for (const m of rig.matchAll(/'((?:track|water|engine|turret|elevation|interior|fire)_[a-z0-9_]+_loop)'/g)) referenced.add(m[1]);
-// Cues rendered in procedural.ts rather than shipped as files.
-const PROCEDURAL = new Set(['muzzle_blast']);
-for (const id of referenced) assert.ok(SFX_ASSETS[id] || PROCEDURAL.has(id), `engine references a shipped asset: ${id}`);
+for (const m of rig.matchAll(/'((?:track|water|engine|turret|elevation|interior|fire|gear|electric|turbo)_[a-z0-9_]+_loop)'/g)) referenced.add(m[1]);
+for (const id of ['blast_punch_light', 'blast_punch_medium', 'blast_punch_heavy', 'blast_sub', 'hull_thud_sub', 'gear_whine_loop',
+  'electric_drive_loop', 'turbo_whistle_loop', 'alarm_fire_loop', 'alarm_ammo', 'heartbeat_loop', 'loading_bed_loop',
+  'radio_key_in', 'radio_key_out', 'radio_static_loop']) assert.ok(referenced.has(id), `the scan sees ${id}`);
+for (const id of referenced) assert.ok(SFX_ASSETS[id], `engine references a shipped asset: ${id}`);
+// Every sound is a recording (2026-10-03): no oscillator, synthesized fallback or rendered buffer anywhere in the
+// sound engine or the interface, so a missing asset is silent rather than replaced by a tone.
+{
+  const { readdirSync } = await import('node:fs');
+  const sources = readdirSync(new URL('.', import.meta.url)).filter((f) => f.endsWith('.ts')).map((f) => `src/audio/${f}`).concat(['src/ui/hud.ts']);
+  for (const file of sources) {
+    const text = readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
+    assert.ok(!/createOscillator\s*\(/.test(text), `${file} synthesizes no tone`);
+  }
+  assert.ok(!SFX_ASSETS.muzzle_blast, 'no rendered muzzle blast id');
+}
 assert.ok(referenced.size > 120, `engine reference scan found ${referenced.size} assets`);
 for (const tail of ['open', 'forest', 'urban', 'mountain']) assert.ok(SFX_ASSETS[`tail_${tail}`], `tail_${tail}`);
 for (const kind of ['interior_medium', 'interior_large', 'interior_heavy']) assert.ok(SFX_ASSETS[`gun_${kind}`]);

@@ -14,10 +14,16 @@ function compileConsumer(source) {
   const code = active(source);
   unique(code, /vec2\s+mUV\s*=\s*wp\.xz\s*\/\s*uMaskSize\s*\+\s*0\.5\s*;/g, 'world mask coordinates include the extended coastal atlas');
   const size = unique(code, /shader\.uniforms\.uMaskSize\s*=\s*\{\s*value:\s*([^}]+)\}/g, 'mask atlas extent')[1];
-  unique(code, /vec4\s+mk\s*=\s*texture2D\(uMask,\s*mUV\)\s*;/g, 'RGBA mask sampler');
+  // ground lane (2026-10-03, the land-use bake): the mask is read through maskAt (half a texel inside the mask's rows of
+  // the stack that carries the bake under it), and uMask binds the stack (stackLandUseBake: the ground mask itself on a
+  // map without a field system)
+  unique(code, /vec4\s+mk\s*=\s*maskAt\(mUV\)\s*;/g, 'RGBA mask sampler');
+  unique(code, /return texture2D\(uMask, vec2\(clamp\(uv\.x, uMaskStack\.y, uMaskStack\.z\), clamp\(uv\.y, uMaskStack\.y, uMaskStack\.z\) \* uMaskStack\.x\)\);/g,
+    'the mask read keeps half a texel inside the mask\'s rows of the stack');
+  assert.equal((code.match(/texture2D\(uMask\b/g) ?? []).length, 1, 'every mask read goes through maskAt');
   const binding = unique(code, /shader\.uniforms\.uMask\s*=\s*\{\s*value:\s*([^}]+)\}/g, 'mask uniform')[1];
   const mask = {}, noiseTex = {};
-  assert.equal(new Function('groundMask', 'noiseTex', `return ${binding};`)(mask, noiseTex), mask);
+  assert.equal(new Function('maskStack', 'noiseTex', `return ${binding};`)({ texture: mask }, noiseTex), mask);
   const atlasSize = new Function('groundMask','mask','MAP_SIZE','OUTLAND_WATER_MASK_SIZE_M',`return ${size};`);
   assert.equal(atlasSize(mask,mask,1024,3072),1024,'inland mask retains its extent');
   assert.equal(atlasSize({},mask,1024,3072),3072,'coastal mask includes the extended shore');
@@ -58,9 +64,9 @@ export function assertTerrainMaskShaderContract(source) {
   for (const [from, to] of [
     ['mk.a * uTownWear', 'mk.g * uTownWear'],
     ['mk.a * uTownWear', '0.0 * uTownWear'],
-    ['shader.uniforms.uMask = { value: groundMask }', 'shader.uniforms.uMask = { value: noiseTex }'],
+    ['shader.uniforms.uMask = { value: maskStack.texture }', 'shader.uniforms.uMask = { value: noiseTex }'],
     ['groundMask === mask ? MAP_SIZE : OUTLAND_WATER_MASK_SIZE_M', 'MAP_SIZE'],
-    ['vec4 mk = texture2D(uMask, mUV);', 'vec4 mk = texture2D(uNoise, mUV);'],
+    ['vec4 mk = maskAt(mUV);', 'vec4 mk = texture2D(uNoise, mUV);'],
     ['n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), fD);', 'n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), 0.0);'],
   ]) {
     assert.ok(source.includes(from), 'mutation must edit an actual source statement');
@@ -100,6 +106,9 @@ export function assertTerrainFetchExpressionCensus(source) {
   // expressions above stay exactly once each. Lexical census only.
   // ground lane (2026-10-03): +2 — the far turf's second read of the grass normal and tone, turned 42° at an
   // incommensurate scale (the far band only), so the coarse turf no longer repeats on one 48 m / 73 m grid.
-  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3 + 4 + 2 + 7 + 6 - 61 + 2, // round 47: the outland bay contour is evaluated analytically — no new sampler (16-unit budget)
-    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps plus four jointed-strata taps plus two crag phase taps plus seven ground-redux taps plus six round-73b taps, minus the terrain-v2 cost pass, plus the ground lane\'s two far-turf taps; lexical census only');
+  // ground lane (2026-10-03, the land-use bake): −8 — the nine mask reads (the mask itself, the road distance's four
+  // gradient taps, the ice ridges' four) become maskAt calls, whose body is the one read left (+1); the bake's own two
+  // reads live in landUse.ts LAND_USE_GLSL (a texelFetch and one filtered read), outside this lexical census.
+  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3 + 4 + 2 + 7 + 6 - 61 + 2 - 8, // round 47: the outland bay contour is evaluated analytically — no new sampler (16-unit budget)
+    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps plus four jointed-strata taps plus two crag phase taps plus seven ground-redux taps plus six round-73b taps, minus the terrain-v2 cost pass, plus the ground lane\'s two far-turf taps, minus the eight mask reads maskAt folds into one; lexical census only');
 }

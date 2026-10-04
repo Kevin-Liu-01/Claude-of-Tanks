@@ -6,8 +6,10 @@ import {
   FRAME_PASS_ORDER, MID_RANGE_PROXIES, installFramePassTimer, pairDeltas, projectFrameMs, proxyRatios, stats,
   summarizePassFrames,
 } from './frame-pass-timer.mjs';
+import * as THREE from 'three';
 import {
-  acquireProbeLocks, buildFrameReport, buildProfileReport, chunkOfUrl, parseFrameProbeArgs, pinnedOpponents, profileSelfByChunk,
+  acquireProbeLocks, borderAdditionsToggle, buildFrameReport, buildProfileReport, chunkOfUrl, parseFrameProbeArgs, pinnedOpponents,
+  profileSelfByChunk,
 } from './frame-budget-probe.mjs';
 import { compareCaptureSet, crc32, decodeLum, encodeLum, encodeRgbPng, interiorChanges } from './frame-capture-compare.mjs';
 
@@ -285,4 +287,50 @@ assert.equal(stats([]).med, null);
   assert.equal(profiles.verdant.new.audio, 0.2, 'the lower median of two');
 }
 
-console.log('frame-budget probe: per-pass timer label algebra, whole-frame check, restore, pair deltas, roster pin, lock order, projection PASS');
+{
+  // the border-additions toggle: the farmsteads and hedgerows hidden, each ring forest pool drawn without its row trees
+  // (placements keyed below zero, matched by position), every instanced attribute moved with its instance, once
+  const scene = new THREE.Scene();
+  const forest = new THREE.Group();
+  const spots = [[600, 10], [610, -40], [-620, 5], [5, 640], [-30, -700]], keys = [0.4, -1.2, 0.1, -1.7, 0.9];
+  const placements = new Float32Array(spots.length * 10);
+  spots.forEach(([x, z], i) => { placements[i * 10] = x + 0.37; placements[i * 10 + 2] = z - 0.11; placements[i * 10 + 8] = keys[i]; });
+  forest.userData.horizonForest = { placements };
+  const geometry = new THREE.PlaneGeometry(1, 1);
+  const tags = new THREE.InstancedBufferAttribute(new Float32Array([10, 11, 12, 13, 14]), 1);
+  geometry.setAttribute('aImpRow', tags);
+  const pool = new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial(), spots.length);
+  const matrix = new THREE.Matrix4();
+  spots.forEach((_, i) => {
+    pool.setMatrixAt(i, matrix.makeTranslation(placements[i * 10], 3, placements[i * 10 + 2]));
+    pool.setColorAt(i, new THREE.Color(i / 10, 0, 0));
+  });
+  forest.add(pool);
+  const farms = new THREE.Mesh(), hedges = new THREE.Mesh();
+  farms.name = 'border-farmsteads'; hedges.name = 'border-hedgerows';
+  scene.add(forest, farms, hedges);
+  const saved = globalThis.window;
+  globalThis.window = { __DEBUG: { scene } };
+  try {
+    const xAt = (j) => pool.instanceMatrix.array[j * 16 + 12];
+    const off = (0, eval)(borderAdditionsToggle(false));
+    assert.deepEqual(off, { farms: 1, hedges: 1, rows: 2, pools: 1, hidden: 2, impostors: 0 });
+    assert.equal(pool.count, 3, 'the two row trees drop out of the draw');
+    assert.deepEqual([0, 1, 2].map(xAt), [0, 2, 4].map((i) => placements[i * 10]), 'the stands first, in their order');
+    assert.deepEqual([...tags.array], [10, 12, 14, 11, 13], 'an instanced attribute moves with its instance');
+    assert.equal(pool.instanceColor.array[3], Math.fround(0.2), 'and the instance colour (the stand that was third)');
+    assert.equal(farms.visible || hedges.visible, false);
+    assert.equal(globalThis.window.__SHADOW_DEBUG.noStaticCache, true, 'both sides redraw every caster');
+    const on = (0, eval)(borderAdditionsToggle(true));
+    assert.equal(on.hidden, 0);
+    assert.equal(pool.count, 5);
+    assert.equal(farms.visible && hedges.visible, true);
+    (0, eval)(borderAdditionsToggle(false));
+    assert.deepEqual([...tags.array], [10, 12, 14, 11, 13], 'the order is set once');
+    assert.equal(pool.count, 3);
+  } finally {
+    globalThis.window = saved;
+  }
+}
+
+console.log('frame-budget probe: per-pass timer label algebra, whole-frame check, restore, pair deltas, roster pin, lock order, projection, border-additions toggle PASS');

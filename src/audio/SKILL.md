@@ -23,9 +23,9 @@ LOD), `soundCues.ts` (per-asset bus/space/jitter/caps), `weaponAudio.ts`
 `vehicleAudioModel.ts` (powertrain identity, RPM/gear/track model),
 `environmentScenes.ts` (per-map scenes), `voiceLines.ts` (radio discipline,
 crew language). Web Audio owners: `mixer.ts`, `assetLibrary.ts`,
-`voicePool.ts`, `vehicleRig.ts`, `ambienceDirector.ts`, `crewRadio.ts`,
-`procedural.ts`. `lazyAudio.ts` owns gesture-time context creation, mixer
-transfer and the oscillator-only loading tone; `listenerPoseRuntime.ts` owns
+`voicePool.ts`, `vehicleRig.ts`, `ambienceDirector.ts`, `crewRadio.ts`.
+`lazyAudio.ts` owns gesture-time context creation and mixer transfer (it makes
+no sound of its own); `listenerPoseRuntime.ts` owns
 the hybrid camera/vehicle listener. The two `*.generated.ts` manifests are
 written by `tools/audio/build-sfx.mjs` and `tools/audio/build-voices.mjs`.
 
@@ -37,9 +37,15 @@ phase or entity teardown. Every asset id the engine names must exist in the
 SFX manifest (`soundAssets.selftest.mjs` scans `play('…')` calls). New sounds
 come from the offline pipeline (`tools/audio/sfx-catalog.mjs` →
 `generate-sfx.mjs` → `build-sfx.mjs`), never hand-dropped files; voice lines
-from `crew-lines.json` → `build-voices.mjs`. The ElevenLabs key is read from
-`ELEVENLABS_API_KEY` or `ELEVENLABS_API_KEY_FILE` and never written to the
-repo.
+from `crew-lines.json` → `build-voices.mjs`. Never synthesize a sound or add a
+fallback: every cue is a recorded asset, one still decoding stays silent
+(`soundAssets.selftest.mjs` rejects any `createOscillator`), no cue is chained in
+when another fails (`if (!play(a)) play(b)`) and no crew speaks another's take
+(`voiceTriggers.selftest.mjs` rejects both). A new crew line needs its game
+moment in that matrix, and a sound a moment depends on is pinned in the battle
+set rather than covered. The ElevenLabs key
+is read from `ELEVENLABS_API_KEY` or `ELEVENLABS_API_KEY_FILE` and never
+written to the repo.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

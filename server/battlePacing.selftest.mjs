@@ -63,97 +63,26 @@ const p10S = durations[Math.floor(durations.length * 0.1)];
 const subTwoMinute = durations.filter((duration) => duration < 120).length;
 const timeouts = resultReasons.filter((reason) => reason === 'time_limit').length;
 
-// Active route recovery removes idle deployment time; preserve a 4–8 minute
-// median and the existing two-minute floor instead of rewarding stationary bots.
-//
-// Pending owner ruling (2026-10-02, PR #9): the owner's 2026-09-30 bot work (bots clear traffic and advance;
-// objective, closest, weakest targeting) shortened the default bot median to about 3.6 minutes (218.9 s) against
-// the 4–8 minute target. Until the owner rules (accept a 3–8 minute band, or slow the bots), a median in
-// [180, 240) passes as this pending ruling; anything faster still fails.
-//
-// The fast tail is a proportional design rule (the PR #9 coordinator's rulings, 2026-10-02). The receipt guards
-// against bots converging and deciding matches in about two minutes. That is a property of the distribution, not of
-// any one seed: the 132 matches are deterministic, but each outcome is chaotic in its inputs, so every correct routing
-// or placement change flips a few seeds either way. Two such changes showed it:
-// - The maps lane's road footprint fix left out a boulder that stood in Redrock Divide's road at (-200, 21). Alpha's
-//   bot then drove straight up the road and won seed 32002's 1v2 in 105 s, where it had lost at 269 s. (Redrock's
-//   rebuild to the layout brief, 2026-10-02, reseeded that ground; its four seeds now run 165-279 s.)
-// - The bots lane's clearance-aware navigation grid stopped 28-65 % of each map's planned routes from passing through
-//   cover or sub-hull gaps. On the maps tree with that fix, three matches end inside 120 s (Fjord 30001 110 s,
-//   Redrock 32003 102 s, Mangrove 48001 117 s), each one alpha's lone bot winning its 1v2 with no pile-on.
-// A fixed match count would turn red on each such fix, so the tail is held as a share:
-// - p10 >= 120 s;
-// - at most 3 % of the matches (rounded to the nearest whole match: 4 of the fleet's 132, none of one map's 4) end
-//   inside 120 s;
-// - none ends inside 90 s, save the named exceptions (FLOOR_EXCEPTIONS: that seed only, on the roster it was measured
-//   on, and still not inside its own floor);
-// - each fast match is printed by map, seed and seconds, with its cause where one is known (FAST_MATCH_CAUSES).
-// History: the original rule allowed no match inside 120 s. The pending ruling of 614323cc7 named four (Verdant 98 s,
-// Frontier 104 s, Saltwind 104 s and Saltmere 113 s, all older than the maps lane); the maps lane's batch 1 rebuilt
-// those maps, and d98a997c9 restored the strict rule until the footprint fix (753f228d0 allowed 2, at most 1.5 %).
-// On 2026-10-03 the gate began registering the fleet as the game's authorities do (server/pacingRoster.test-support.ts):
-// its rosters had been drawn from five ids, four specs in every seat, and are now drawn from the production catalog.
-// Every roster changed, so the causes named above for Fjord 30001, Redrock 32003 and Mangrove 48001 describe the old
-// rosters and no longer stand; Polders 41002 became the first floor exception. Mars 51000 became the second when the
-// hull came to lie on the plane its tracks touch (the physics lane's round 3, 2026-10-03): each hull's attitude on a
-// grade changed (by a degree on 25 degrees), the run parted from the old one within seconds, and its one duel changed
-// order.
-const TARGET_MEDIAN_S = { min: 240, max: 480 };
-const PENDING_RULING_MEDIAN_FLOOR_S = 180;
-assert.ok(medianS >= PENDING_RULING_MEDIAN_FLOOR_S && medianS <= TARGET_MEDIAN_S.max,
-  `default bot match median must stay in the 4-8 minute band, or at least ${PENDING_RULING_MEDIAN_FLOOR_S} s ` +
-  `under the pending owner ruling (got ${medianS.toFixed(1)} s)`);
-if (medianS < TARGET_MEDIAN_S.min) {
-  console.log(`battlePacing.selftest: median ${medianS.toFixed(1)} s is under the 4-8 minute target ` +
-    `(${TARGET_MEDIAN_S.min} s): target not met, passing as the pending owner ruling of 2026-10-02`);
-}
+// Active route recovery removes idle deployment time, and no-contact bots search from 25 s (fc966a16d). The owner
+// accepted the faster battles that gives (ruling 2026-10-03): a 3–8 minute median (209 s measured; searching after
+// the old 120–165 s deployment windows gave 342 s). The fast tail still guards against bots converging and deciding
+// matches in about two minutes. Each outcome is chaotic in its inputs, so the tail is a share, not a count: p10 at
+// least 120 s, at most 5 % of the matches inside 120 s (5 of 132 measured, 98–119 s), none inside 90 s.
+// PR #9 (2026-10-04): the ruling replaces the pending-ruling band and the two named floor exceptions the PR carried
+// (Polders 41002, Mars 51000); neither seed ends inside 120 s on the merged tree. Each fast match is still printed by
+// map, seed and seconds, so a seed that crosses into the tail is named in the log.
+const MEDIAN_BAND_S = { min: 180, max: 480 };
+assert.ok(medianS >= MEDIAN_BAND_S.min && medianS <= MEDIAN_BAND_S.max,
+  `default bot match median must stay in the 3-8 minute band (got ${medianS.toFixed(1)} s)`);
 assert.ok(p10S >= 120,
   `even the fast tail must retain a tactical opening (p10 ${p10S.toFixed(1)} s)`);
-const FAST_TAIL = { maxShare: 0.03, floorS: 90 };
-/** One-line causes of known fast matches, keyed `${mapId} ${seed}`. */
-const FAST_MATCH_CAUSES = {};
-/**
- * Named exceptions to the 90 s floor, keyed `${mapId} ${seed}` (the PR #9 coordinator, 2026-10-03). Each holds for
- * that seed only, on the roster it was measured on: when the roster draw for the seed changes the receipt fails until
- * the exception is re-checked, and the match still may not end inside the exception's own floor. They stand pending
- * the owner's ruling on the default bot pace (2026-10-02; see PENDING_RULING_MEDIAN_FLOOR_S above).
- */
-const FLOOR_EXCEPTIONS = {
-  'polders 41002': {
-    roster: ['m1a2', 'm3a3_bradley', 'ua_m1a1', 'bmp3_rok'],
-    floorS: 60,
-    cause: 'alpha\'s lone M3A3 Bradley kills a UA M1A1 and a BMP-3 ROK in the open with TOW-2B and 25 mm',
-  },
-  'mars 51000': {
-    roster: ['m1a2', 'spz_puma_s1_x', 'aft10_x', 'amx56'],
-    floorS: 75,
-    cause: 'alpha\'s lone SPz Puma S1 X reaches the ridge first and fires first, and the AMX-56 arrives alone 12 s '
-      + 'after its partner dies',
-  },
-};
-const keyOf = (entry) => `${entry.mapId} ${entry.seed}`;
-for (const [key, exception] of Object.entries(FLOOR_EXCEPTIONS)) {
-  const entry = matches.find((match) => keyOf(match) === key);
-  if (!entry) continue; // a COT_PACING_MAPS subset plays other seeds
-  assert.deepEqual(entry.roster, exception.roster,
-    `${key}: the roster draw changed (${entry.roster.join(', ')}); re-check this floor exception`);
+const maxSubTwoMinute = Math.round(durations.length * 0.05);
+assert.ok(subTwoMinute <= maxSubTwoMinute,
+  `at most ${maxSubTwoMinute} default bot matches may end inside two minutes (got ${subTwoMinute})`);
+assert.ok(durations[0] >= 90, `no default bot match collapses inside 90 s (fastest ${durations[0].toFixed(1)} s)`);
+for (const entry of matches.filter((match) => match.timeS < 120)) {
+  console.log(`battlePacing.selftest: fast match ${entry.mapId} seed ${entry.seed} ${entry.timeS.toFixed(0)} s`);
 }
-const fastAllowed = Math.round(matches.length * FAST_TAIL.maxShare);
-const fastMatches = matches.filter((entry) => entry.timeS < 120);
-const fastName = (entry) => {
-  const exception = FLOOR_EXCEPTIONS[keyOf(entry)];
-  const note = exception ? `floor exception: ${exception.cause}` : FAST_MATCH_CAUSES[keyOf(entry)];
-  return `${entry.mapId} seed ${entry.seed} ${entry.timeS.toFixed(0)} s` + (note ? ` (${note})` : '');
-};
-const floorOf = (entry) => FLOOR_EXCEPTIONS[keyOf(entry)]?.floorS ?? FAST_TAIL.floorS;
-assert.equal(subTwoMinute, fastMatches.length, 'every sub-two-minute match is named');
-assert.ok(matches.every((entry) => entry.timeS >= floorOf(entry)),
-  `no default bot match may end inside ${FAST_TAIL.floorS} s (got ${matches
-    .filter((entry) => entry.timeS < floorOf(entry)).map(fastName).join('; ')})`);
-assert.ok(fastMatches.length <= fastAllowed,
-  `default bot matches no longer collapse inside two minutes: at most ${fastAllowed} of ${matches.length} may ` +
-  `(got ${fastMatches.length}: ${fastMatches.map(fastName).join('; ')})`);
-for (const entry of fastMatches) console.log(`battlePacing.selftest: fast match ${fastName(entry)}`);
 const maxTimeouts = Math.floor(durations.length * 0.125);
 assert.ok(timeouts <= maxTimeouts,
   `no more than 12.5% may reach the safety cap (got ${timeouts}/${durations.length})`);
