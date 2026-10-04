@@ -934,8 +934,12 @@ contact constraints and cannot be crossed by residual uphill speed.
   centre to 0.4 m ahead of it, 0.22 m aft at the median. A landing met level (on the tracks, the hull within
   3 degrees of the ground's pitch and roll) turns the hull about it by the closing speed times that offset over the
   hull's pitch radius of gyration squared (`(L² + H²)/12`), into the dive and at the rendered rate (the rock's
-  amplification taken out). Off a 2 m drop the T-90M nods 1.2 degrees tail down and rocks back 0.35 degree, the
-  BMP-2 0.8 degree nose down, a Merkava 4 1.3 degrees nose down; from 8 m the stops' travel holds it to 0.9 degree.
+  amplification taken out). Through the landing's stroke the dive is damped at ζ 0.6 (`LANDING_DIVE_ZETA`; round 8,
+  wave 42: the nod "rebounds past level into a brief nose-up ... more like a loose spring than a damped torsion-bar
+  system"): a damper's force rises faster than its speed, and the small pitch rides on a heave of metres a second.
+  Off a 2 m drop the T-90M nods 0.85 degree tail down and comes back 0.07 degree past level, still within half a
+  second (at the stop's ζ 0.35 it was 1.15 degrees, back 0.35, rocking for 1.1 s); the BMP-2 0.6 degree nose down, a
+  Merkava 4 1.0 degree nose down; from 8 m the T-90M 1.1 degrees, the excess over its travel drawn on the bump stops.
   A landing on a grade, or a hull met tilted, already turns at its contact (the landing turn) and takes none. The
   fall's damage and its stroke are unchanged.
 - *The tracks' springs carry the hull over rough ground.* Every track-contact station (the outer pair and the wheel-run

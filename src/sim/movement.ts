@@ -1114,6 +1114,15 @@ const SUSP_K_GAIN = 0.76;
  * (about a third of the dip) before it settles. */
 const DIVE_ZETA = 0.35;
 /**
+ * The dive's damping ratio through a landing's stroke (RideState.stroke, from the touchdown until the hull is back down
+ * at its seat; physics lane round 8, wave 42 item 3: the landing nod "rebounds past level into a brief nose-up", "more
+ * like a loose spring than a damped torsion-bar system"). The dampers stroke at metres a second there, and a damper's
+ * force rises faster than its speed, so the small pitch riding on that heave meets several times the damping it meets
+ * under a stop's slow weight transfer. At DIVE_ZETA the nod off a 2 m drop came back past level by 30 % of itself and
+ * rocked for 1.1 s; at this ratio it comes back 8 % and is still in half a second. A hard stop still rocks back as before.
+ */
+const LANDING_DIVE_ZETA = 0.6;
+/**
  * The bump stops' rate (rad/s, critically damped): what they took from a dive the travel no longer held
  * (SuspensionRockState.c) returns at 4.8 Hz (physics lane round 8, the far lip). The travel limit used to take it from
  * the drawn hull in one step: a hull climbing a trench's far wall, its springs bottoming as the wall lifted it, dropped
@@ -3138,7 +3147,8 @@ function updateSuspensionRock(
   // the dive rides its spring without the stops' share, which their own spring returns (implicit: they are stiff)
   let dive = suspension.d - suspension.c;
   let diveV = suspension.dv - suspension.cv;
-  diveV += (SUSP_W * SUSP_W * (diveTarget - dive) - 2 * DIVE_ZETA * SUSP_W * diveV) * dt;
+  const diveZeta = state._ride.stroke > 0 ? LANDING_DIVE_ZETA : DIVE_ZETA;
+  diveV += (SUSP_W * SUSP_W * (diveTarget - dive) - 2 * diveZeta * SUSP_W * diveV) * dt;
   dive += diveV * dt;
   if (suspension.c !== 0 || suspension.cv !== 0) {
     suspension.cv = (suspension.cv - STOP_OMEGA * STOP_OMEGA * suspension.c * dt) /

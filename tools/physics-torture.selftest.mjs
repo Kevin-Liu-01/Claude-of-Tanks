@@ -347,6 +347,9 @@ for (const [hull, way] of [['medium', 'upDeg'], ['merkava4b', 'downDeg']]) {
     g(`level landing's nod ${way === 'upDeg' ? 'nose up' : 'nose down'} short of 0.6 degree`, (m) => 0.6 - (m.landingNod?.[way] ?? 0), 0,
       'before: 0.0 (a level piston)'),
     g('the nod (degrees)', (m) => Math.max(m.landingNod?.upDeg ?? 0, m.landingNod?.downDeg ?? 0), 2.5, 'guard: a nod, not a lurch'),
+    // round 8 (wave 42 item 3: "rebounds past level into a brief nose-up"): the landing's stroke damps the dive harder
+    g('the nod back past level (degrees)', (m) => Math.min(m.landingNod?.upDeg ?? 9, m.landingNod?.downDeg ?? 9), 0.15,
+      'before: 0.35 (T-90M) / 0.40 (Merkava 4)'),
   ]);
 }
 
