@@ -65,7 +65,7 @@ const [rows, legacy] = await Promise.all([Promise.all(names.map(digestOf)), lega
 const digests = Object.fromEntries(names.map((name, index) => [name, rows[index]]));
 const { player, authority, tools } = digests;
 const ids = Object.keys(player.specs);
-assert.equal(ids.length, 219, 'the saved fleet');
+assert.equal(ids.length, 220, 'the saved fleet');
 
 assert.ok(Object.keys(legacy).includes('type99a') && Object.keys(legacy).includes('leo2a6'));
 for (const [id, row] of Object.entries(legacy)) {
