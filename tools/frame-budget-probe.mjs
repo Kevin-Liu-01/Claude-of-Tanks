@@ -71,7 +71,63 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   // ripple field falls asleep only after 20 s of quiet, so an 'on' block that follows an 'off' one waits that long
   'sim-sleep': Object.freeze({ on: 'window.__WORLD_SIM_DEBUG = Object.assign(window.__WORLD_SIM_DEBUG || {}, { noSleep: false })',
     off: 'window.__WORLD_SIM_DEBUG = Object.assign(window.__WORLD_SIM_DEBUG || {}, { noSleep: true })', onSettleMs: 21000 }),
+  // the map-borders lane's additions past the edge (gauntlet wave 40): the farmsteads (hamlets, villages, churches, the
+  // regional kits' buildings), the hedgerows and the ring forest's rows (shelter belts, road avenues: the placements
+  // keyed below zero), drawn and cast; off hides them all, so the delta is their whole frame cost (an upper bound on
+  // what the lane added: the head's own farms and hedges go too). Both sides run without the static shadow cache, so
+  // every cascade redraws every caster every frame, as it does while the camera moves.
+  'border-additions': Object.freeze({ on: borderAdditionsToggle(true), off: borderAdditionsToggle(false) }),
 });
+
+/**
+ * The in-page switch for the border additions: shows or hides the farmsteads and the hedgerows, and draws each ring
+ * forest pool (impostors, shadow proxies, lobes) with or without its row trees. The first call moves each pool's row
+ * instances behind the rest (every instanced attribute alike, matched by the instance's position to the row
+ * placements); after that the switch only sets the pool's draw count.
+ */
+export function borderAdditionsToggle(show) {
+  return `(() => {
+    const show = ${show ? 'true' : 'false'};
+    window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true });
+    const out = { farms: 0, hedges: 0, rows: 0, pools: 0, hidden: 0, impostors: 0 };
+    window.__DEBUG.scene.traverse((o) => {
+      if (o.name === 'border-farmsteads') { o.visible = show; out.farms++; }
+      if (o.name === 'border-hedgerows') { o.visible = show; out.hedges++; }
+      const record = o.userData && o.userData.horizonForest;
+      if (!record || !record.placements) return;
+      const P = record.placements, rows = new Set();
+      for (let o2 = 0; o2 + 9 < P.length; o2 += 10) if (P[o2 + 8] < 0) rows.add(P[o2] + ',' + P[o2 + 2]);
+      out.rows += rows.size;
+      if (o.userData.horizonForestImpostors) out.impostors++;
+      for (const mesh of o.children) {
+        if (!mesh.isInstancedMesh) continue;
+        let split = mesh.userData.borderRowSplit;
+        if (!split) {
+          const full = mesh.count, m = mesh.instanceMatrix.array, keep = [], drop = [];
+          for (let j = 0; j < full; j++) (rows.has(m[j * 16 + 12] + ',' + m[j * 16 + 14]) ? drop : keep).push(j);
+          const order = keep.concat(drop);
+          const permute = (attr) => {
+            if (!attr) return;
+            const size = attr.itemSize, src = attr.array.slice();
+            for (let k = 0; k < order.length; k++) for (let c = 0; c < size; c++) attr.array[k * size + c] = src[order[k] * size + c];
+            attr.needsUpdate = true;
+          };
+          permute(mesh.instanceMatrix);
+          permute(mesh.instanceColor);
+          for (const name of Object.keys(mesh.geometry.attributes)) {
+            const attr = mesh.geometry.attributes[name];
+            if (attr.isInstancedBufferAttribute && attr.count === full) permute(attr);
+          }
+          split = mesh.userData.borderRowSplit = { full, kept: keep.length };
+        }
+        mesh.count = show ? split.full : split.kept;
+        out.pools++;
+        out.hidden += split.full - mesh.count;
+      }
+    });
+    return out;
+  })()`;
+}
 
 // ---------------------------------------------------------------------------------------------- arguments
 
@@ -530,7 +586,8 @@ async function sampleView(page, options, { moving = false } = {}) {
   const blocks = [];
   let previous = 'on';
   for (const side of ['off', 'on', 'on', 'off']) {
-    await page.evaluate(t[side]);
+    // (what the switch reports it did, kept with the block: a toggle that finds nothing to switch shows it here)
+    const switched = await page.evaluate(t[side]);
     await sleep(side === 'on' && previous === 'off' && t.onSettleMs ? t.onSettleMs : 700);
     const state = await page.evaluate(() => {
       const w = window.__DEBUG.world; const g = w?._tallGrass?.pressure; const r = w?.group?.getObjectByName?.('terrain')?.userData?.waterRipples ?? null;
@@ -540,7 +597,7 @@ async function sampleView(page, options, { moving = false } = {}) {
     });
     // a toggle block's frames rotate through a few prefix checkpoints: the simulations' step, the shadow maps' step,
     // the scene's and the whole frame (the last checkpoint), each from the same block of one pose
-    blocks.push({ side, state, result: await sample(half, ['prefix'], TOGGLE_CHECKPOINTS) });
+    blocks.push({ side, state, switched: switched ?? null, result: await sample(half, ['prefix'], TOGGLE_CHECKPOINTS) });
     previous = side;
   }
   await page.evaluate(t.on);
