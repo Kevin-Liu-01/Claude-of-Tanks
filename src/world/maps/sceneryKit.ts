@@ -847,13 +847,15 @@ export function buildSandbagBedding(
   g.dispose(); bag.dispose();
   if (!out) throw new Error('sceneryKit: the sandbag bedding merge produced no geometry');
   // (wave 34 re-shoot, "a smooth clay mound up close": the bedding draws on the props rock material, as the bocage's
-  // earth banks do — its detail print and relief, the grime, the wet maps' moss greening the spoil like a bank, and the
-  // rocks' soil skirt at its foot, at the half albedo its body takes (rockDressing.ts ROCK_SKIRT_ALBEDO). A world-
-  // planar uv as the banks have.)
+  // earth banks do — its detail print and relief, the grime, the wet maps' moss greening the spoil like a bank. Its
+  // ground is given half a metre under the true ground, so the rocks' soil skirt, which would paint the spoil's foot
+  // a second, brighter soil, never applies: the spoil is the soil, at half its linear albedo. The b5 hold measured the
+  // skirt beside three boulders each on Verdant and Frontier: on a rock's shaded foot it is no brighter than the dirt
+  // beside it, so the rocks keep it. A world-planar uv as the banks have.)
   const op = out.attributes.position, gr = new Float32Array(op.count), uv = new Float32Array(op.count * 2);
   for (let i = 0; i < op.count; i++) {
     const px = op.getX(i), py = op.getY(i), pz = op.getZ(i);
-    gr[i] = ground.getHeightAt(px, pz);
+    gr[i] = ground.getHeightAt(px, pz) - 0.5;
     uv[i * 2] = px * 0.37 + py * 0.21; uv[i * 2 + 1] = pz * 0.37 - py * 0.17;
   }
   out.setAttribute('aRockGround', new THREE.BufferAttribute(gr, 1));
