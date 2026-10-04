@@ -202,8 +202,9 @@ const wallClean = [
 check('wall-foot-wedged', 'medium', 'earth', [...wallHeld({ falls: 3, hp: 236, top: 9.6 }), ...wallClean]);
 check('wall-foot-side', 'heavy', 'earth', [...wallHeld({ falls: 4, hp: 3598, top: 14.0 }), ...wallClean]);
 check('wall-foot-side', 'medium', 'moon', [...wallHeld({ falls: 0, hp: 0, top: 57.7 }), ...wallClean]);
-// across the terrain's triangle grid a face's foot is smeared over a cell: the hull still hops there as it pivots
-// (known limit), but it is never carried up the face or hurt
+// across the terrain's triangle grid a face's foot is smeared over a cell: the hull's support drops out for a tick there
+// as it pivots (known limit: a one-tick airborne flag, its vertical speed continuous, under every consumer's threshold),
+// but it is never carried up the face or hurt
 check('wall-foot-side-t135', 'medium', 'earth', [
   g('falls', (m) => m.falls.length, 0, 'before: 5'),
   g('fall damage (hp)', (m) => m.fallDamageHp, 0, 'before: 614 hp'),

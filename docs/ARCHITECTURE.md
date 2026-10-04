@@ -915,7 +915,13 @@ contact constraints and cannot be crossed by residual uphill speed.
   landing settles about its centre, so it can hop a few times on a sharp kicker); a hull balanced exactly on a 4 m
   edge hangs nose-up near 80° before it slides off (its tail cannot reach the ground sooner); the drivetrain reads the grade over the hull's run (1° flatter than a 25° face,
   7° on 45° — the felt grade is its calibration); casemate barrels can dig in; a hull pivoting
-  against a face that runs across the terrain's triangle grid hops on the face's smeared foot (1-2 m/s, never a fall).
+  against a face that runs across the terrain's triangle grid loses its support for one tick where a corner leaves the
+  face's smeared foot: the ride is flagged airborne for that tick and its landing reads its own descent (0.8-1.6 m/s),
+  its vertical speed continuous through it and under every consumer's threshold (the landing thump's 2.2 m/s, any
+  damage), so nothing hops on screen; and a hull spawned overlapping such a turned face holds its upper rear corner up
+  to 0.9 m (vertically; 10-16 cm into an 80° face) inside the triangulated face for its first second while the wall
+  push clears it, where faces along the grid read 0. Spawn pads never overlap a face; a drive-in case that shows the
+  penetration reopens it.
 
 ### 3.5 combat — `src/sim/` (pure logic)
 
