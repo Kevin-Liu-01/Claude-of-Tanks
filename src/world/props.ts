@@ -7906,7 +7906,7 @@ ${snowCap ? `
     for (const g of sandbagBeds) g.dispose();
     sandbagBeds.length = 0;
     if (beds) {
-      const mesh = new THREE.Mesh(beds, mats.baked);
+      const mesh = new THREE.Mesh(beds, mats.rock); // (the bocage banks' material: detail, grime and the wet maps' moss)
       mesh.name = 'props-sandbag-beds';
       mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = false;
