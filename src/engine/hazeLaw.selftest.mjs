@@ -116,9 +116,10 @@ assert.doesNotMatch(clouds, /HAZE_LAW_GLSL|hazeSigma/, 'the clouds keep their ow
     'the dome: the deck\'s grey at the horizon (a closed deck\'s everywhere, at the horizon\'s level), after the environment bake\'s early return and before the knee');
   assert.ok(sky.indexOf('float deckW') > sky.indexOf('if ( uEnvBake > 0.5 ) {'), 'the environment bake keeps the raw sky');
   // the hole itself was the cloud field's: a closed deck keeps a thin sheet where its weather field runs at its floor
-  assert.match(clouds, /o\.cov = max\( o\.cov, \$\{f\(CLOUD_CLOSED_COVER_FLOOR\)\} \* smoothstep\( 0\.97, 1\.0, uCoverage \) \);/, 'the slab\'s closed-deck floor');
-  assert.match(clouds, /float covB = max\( smoothstep\( 1\.0 - fbCov, 1\.0 - fbCov \+ 0\.35, fb \), \$\{f\(CLOUD_CLOSED_COVER_FLOOR\)\} \* smoothstep\( 0\.97, 1\.0, uCoverage \) \)/, 'the far band\'s');
-  assert.match(clouds, /const CLOUD_CLOSED_COVER_FLOOR = 0\.5;/);
+  assert.match(clouds, /o\.cov = max\( o\.cov, uClosedFloor \* smoothstep\( 0\.97, 1\.0, uCoverage \) \);/, 'the slab\'s closed-deck floor');
+  assert.match(clouds, /float covB = max\( smoothstep\( 1\.0 - fbCov, 1\.0 - fbCov \+ 0\.35, fb \), uClosedFloor \* smoothstep\( 0\.97, 1\.0, uCoverage \) \)/, 'the far band\'s');
+  assert.match(clouds, /t\.uClosedFloor\.value = lightTune\('CLOUD_CLOSED_COVER_FLOOR', CLOUD_CLOSED_COVER_FLOOR\);/, 'the floor per frame (QA-tunable)');
+  assert.match(clouds, /const CLOUD_CLOSED_COVER_FLOOR = 0\.7;/, 'Titan Gorge closed at establishing and bird (0.5 left a cream patch, ΔE 11.5 from the deck; 0.7 a thin brighter patch, ΔE 4.1)');
   assert.match(sky, /deckOvercast = model\.mode === 'physical' \? Math\.min\(1, Math\.max\(0, model\.overcast\)\) : 0;\s*const deckKnob = lightTune\('SKY_DECK_HORIZON', 1\);\s*\(u\.uDeckHorizon\.value as THREE\.Vector4\)\.set\(tint\.r, tint\.g, tint\.b, deckOvercast \* deckKnob\);/,
     'by the light model\'s overcast, on the grounded rig only');
   // a closed deck (Titan Gorge's dense overcast, Whiteout's stratus) greys the whole dome, ramped in over the last tenth of

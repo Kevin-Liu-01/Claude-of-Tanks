@@ -45,12 +45,12 @@ import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // co
 import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNeeded, type SteelAtlasTextures } from './propsSteelAtlas.ts'; // round 75
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
-import { applyRockShaderHook, fractureRockGeometry, makeRockDetail, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
+import { applyRockShaderHook, boulderKindFor, buildBoulderForm, makeRockDetail, paintBoulder, rockDressingFor, rockLithologyFor } from './rockDressing.ts'; // round 75 item 6
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
-import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
+import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
 import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
@@ -299,6 +299,8 @@ interface TankWreckSettings {
 }
 
 type WallRun = readonly [number, number, number, number, number?];
+/** Two wall runs whose ends lie this close meet at a corner (one corner pier for both). */
+const WALL_CORNER_M = 1.2;
 
 // environment density pass 2 (2026-09-12): per-map dressing caps that used to be
 // hard-coded (26 logs + stumps, 5 dressed yards everywhere). Kept here rather
@@ -1112,6 +1114,24 @@ export function makeStructureDetail(
     // sideways, creating black-white stripes on otherwise flat walls.
     normal: normalFromHeight(hgt, s, kind === 'wood' ? 0.16 : kind === 'steel' ? 0.30 : 0.09, anisotropy),
     surface,
+  };
+}
+
+/**
+ * The sandbags' hessian (the scenery lane, gauntlet wave 52: "burlap that reads as fabric at its real weave scale"):
+ * maps/sceneryKit.ts paintBurlap's plain weave, a jute thread every 2.5 mm at the bags' weave uv, its relief gentle so
+ * it reads as cloth up close and averages to it farther off.
+ */
+function makeBurlapDetail(anisotropy: number): GeneratedSurfaceTextures {
+  const s = 128, { lum, height } = paintBurlap(s), px = new Uint8ClampedArray(s * s * 4);
+  for (let i = 0; i < s * s; i++) {
+    const v = clamp(lum[i], 0, 1) * 255;
+    px[i * 4] = v; px[i * 4 + 1] = v; px[i * 4 + 2] = v; px[i * 4 + 3] = 255;
+  }
+  return {
+    albedo: toTexture(px, s, { srgb: true, anisotropy }),
+    normal: normalFromHeight(height, s, 0.1, anisotropy),
+    surface: surfaceFromHeight(height, s, anisotropy, { roughMin: 0.92, roughMax: 1.0, aoMin: 0.84 }),
   };
 }
 
@@ -2975,6 +2995,7 @@ function* propsBuildSteps(
   const structureWood = makeStructureDetail(noi, aniso, 'wood');
   yield { fine: true };
   const structureCanvas = makeStructureDetail(noi, aniso, 'canvas');
+  const burlap = makeBurlapDetail(aniso); // the sandbags' hessian (the scenery lane, wave 52)
   yield { fine: true };
   const structureMetal = makeStructureDetail(noi, aniso, 'steel');
   yield { fine: true };
@@ -3012,8 +3033,9 @@ function* propsBuildSteps(
     steelAtlas.painted = true;
     steelAtlas.size = steelAtlasSize;
   }
-  // Round 75 item 6: the boulders' triplanar detail tile (rockDressing.ts), sixteen rows per checkpoint.
-  const rockDetail = yield* makeRockDetail(noi, aniso);
+  // Round 75 item 6: the boulders' triplanar detail tile (rockDressing.ts), sixteen rows per checkpoint; the map's
+  // lithology draws it, and its lichen colonies come with it (the scenery lane, 2026-10-04).
+  const rockDetail = yield* makeRockDetail(noi, aniso, rockLithologyFor(mapId));
   // The scenery lane (2026-10-03): the dry-stone field walls draw their own rubble print, never the house masonry (the
   // coursed stone print, or a regional kit's brick, block or dressed stone, which laid brick courses over fieldstone);
   // a map whose walls are mud or brick keeps them on the stone print and paints nothing.
@@ -3114,6 +3136,12 @@ function* propsBuildSteps(
       roughnessMap: structureCanvas.surface, aoMap: structureCanvas.surface,
       vertexColors: true, roughness: 1, metalness: 0,
     }),
+    // the scenery lane (wave 52): the sandbags' hessian, the canvas material's program on its own weave
+    burlap: new THREE.MeshStandardMaterial({
+      map: burlap.albedo, normalMap: burlap.normal,
+      roughnessMap: burlap.surface, aoMap: burlap.surface,
+      vertexColors: true, roughness: 1, metalness: 0,
+    }),
     structureMetal: new THREE.MeshStandardMaterial({
       map: structureMetal.albedo, normalMap: structureMetal.normal,
       roughnessMap: structureMetal.surface, aoMap: structureMetal.surface,
@@ -3136,15 +3164,23 @@ function* propsBuildSteps(
   };
   function configureSurfaceMaterials(): void {
     for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'fieldMud', 'wood',
-      'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
+      'straw', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
       if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
+    // the scenery lane (wave 52, Verdant's village wall: its face in shade "a flat extruded slab with a near-black blocky
+    // texture"): the field print's occlusion takes half the skylight in a joint, not four fifths, so a wall's shaded face
+    // keeps its stones (the sunlit face, lit directly, hardly changes)
+    if (mats.fieldStone) mats.fieldStone.aoMapIntensity = 0.5;
+    // (measured, b6c: the environment's share of a shaded face's light is small — 1.6 of it moved the Verdant corner's
+    // shaded face from luma 64 to 65, its contrast unchanged — so the field print keeps the default; the shade is the
+    // hemisphere's)
     mats.steel.envMapIntensity = 0.42; // round 75: painted sheet, a little sky on the crests
     mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance
     mats.baked.envMapIntensity = 0.5; // flat-shaded sourced models: no spec sparkle
     mats.vehicle.envMapIntensity = 0.58;
     mats.structureWood.envMapIntensity = 0.34;
     mats.structureCanvas.envMapIntensity = 0.22;
+    mats.burlap.envMapIntensity = 0.18;
     mats.structureMetal.envMapIntensity = 0.48;
     mats.glass.envMapIntensity = 1.0; // capped (AA glass spec 4eccce8 — glints
   }
@@ -3158,7 +3194,7 @@ function* propsBuildSteps(
   // and texture, while GPU suspension retains the same reusable CPU objects.
   const retainedSurfaceMaterials = Object.values(mats);
   registerRetainedObject3DResources(group, {
-    materials: retainedSurfaceMaterials, textures: [grimeTex],
+    materials: retainedSurfaceMaterials, textures: [grimeTex, rockDetail.lichen],
   });
   yield { fine: true, stage: 'grime-texture' };
   // r5 terrain_environment: WINTER SNOW-CAP — on the winter map every prop
@@ -3229,9 +3265,10 @@ ${snowCap ? `
   }` : ''}
 }`);
   };
-  // Round 75 item 6: the boulders' dressing (moss on wet maps, dust on arid ones, the soil skirt everywhere)
-  const rockDressing = rockDressingFor(mapId, P.rockSoilTone ?? null);
-  const rockHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRockShaderHook(shader, rockDressing); };
+  // Round 75 item 6: the boulders' dressing (moss on wet maps, dust on arid ones, the soil skirt everywhere; the scenery
+  // lane, 2026-10-04: the map's beds, lichen and varnish, the contact darkening)
+  const rockDressing = rockDressingFor(mapId, P.rockSoilTone ?? null, snowCap);
+  const rockHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRockShaderHook(shader, rockDressing, rockDetail.lichen); };
   // the scenery lane (wave 48, "the same stone pattern clearly tiles going right"): a run repeats the kit's one wall
   // module, so the field print's window shifts along the wall by a hash of each module's place (sixteen steps of seven
   // sixteenths of a tile, u only: the print's bands lie in v) — every module's stones take tones of their own. Only the
@@ -3262,9 +3299,9 @@ ${snowCap ? `
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
           : materialKind === 'fieldStone' ? fieldStoneHook : grimeHook);
-      // (the mud print is the plaster material's shader with another map: they share their program; the field print
-      // has its own, for the modules' shifted windows)
-      const programKind = materialKind === 'fieldMud' ? 'plaster' : materialKind;
+      // (the mud print is the plaster material's shader with another map, the hessian the canvas's: they share their
+      // programs; the field print has its own, for the modules' shifted windows)
+      const programKind = materialKind === 'fieldMud' ? 'plaster' : materialKind === 'burlap' ? 'structureCanvas' : materialKind;
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
@@ -3355,20 +3392,20 @@ ${snowCap ? `
   // there). Same meta shape; the shared broken state is the burst-bag heap.
   // keep 0.97: driving a sandbag line barely registers on the speedo.
   // the scenery lane (2026-10-03): the stacks are laid bag by bag in the sourced models' envelopes (maps/sceneryKit.ts
-  // buildSandbagStack) on the canvas weave; a breached stack still spends the old remnant's draws
+  // buildSandbagStack) on the hessian (wave 52); a breached stack still spends the old remnant's draws
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
     sandbagbig: {
-      cls: 'break', mat: 'structureCanvas', contact: 'ob', r: 2.0, h: 1.35, keep: 0.97,
+      cls: 'break', mat: 'burlap', contact: 'ob', r: 2.0, h: 1.35, keep: 0.97,
       build: () => buildSandbagStack('sandbagbig'),
       broken: (rng) => buildSandbagHeap('sandbagbig', () => bSandbagBroken(rng).dispose()),
     },
     sandbagsmall: {
-      cls: 'break', mat: 'structureCanvas', contact: 'ob', r: 1.7, h: 1.05, keep: 0.975,
+      cls: 'break', mat: 'burlap', contact: 'ob', r: 1.7, h: 1.05, keep: 0.975,
       build: () => buildSandbagStack('sandbagsmall'),
       broken: (rng) => buildSandbagHeap('sandbagsmall', () => bSandbagBroken(rng).dispose()),
     },
     sandbagwall: {
-      cls: 'break', mat: 'structureCanvas', contact: 'ob', r: 1.5, h: 1.0, keep: 0.975,
+      cls: 'break', mat: 'burlap', contact: 'ob', r: 1.5, h: 1.0, keep: 0.975,
       build: () => buildSandbagStack('sandbagwall'),
       broken: (rng) => buildSandbagHeap('sandbagwall', () => bSandbagBroken(rng).dispose()),
     },
@@ -4728,11 +4765,24 @@ ${snowCap ? `
       // brick-print walls. The props stream spends the same draws either way (jitterUV's four).
       if (style === 'adobe' || !sourcedStoneIsBrick(mapId)) {
         const seedAt = (Math.round(px * 73.1) * 92821) ^ Math.round(pz * 41.7) * 68917;
-        let head = style === 'adobe' ? buildAdobePilaster(seedAt, thick, ph - 0.15) : buildDryStoneWallHead(seedAt, thick, runH * 0.98 + 0.12);
+        // (gauntlet wave 52, Verdant's village walls: "the field wall abruptly changes from tan stone to dark … with a hard
+        // vertical seam" — two runs meeting at a corner, one face in the sun and one in shade, and nothing between them):
+        // where runs meet, the first head there is a corner pier, broader and taller than either wall and bonded like a
+        // quoin, and the others are spent unbuilt (the props stream draws the same either way)
+        const corner = wallCorners.find((c) => Math.hypot(c.x - px, c.z - pz) < WALL_CORNER_M);
+        const pier = !!corner && !corner.built;
+        // (a pier stands a stone's breadth proud of both faces and a course over the tallest module: the module is 1.15 m
+        // at its family height, scaled up to 6 % more)
+        let head = style === 'adobe'
+          ? buildAdobePilaster(seedAt, pier ? thick * 1.9 : thick, (ph - 0.15) * (pier ? 1.12 : 1))
+          : buildDryStoneWallHead(seedAt, pier ? thick * 2.1 : thick, pier ? runH * 1.15 * 1.06 + 0.24 : runH * 0.98 + 0.12);
         if (wallB === 'fieldStone') wallDressing.stoneUv(head, rng); else jitterUV(head, rng);
+        if (corner && !pier) { head.dispose(); return; }
+        if (corner) corner.built = true;
         if (wallDressing.snow && style !== 'adobe') head = wallDressing.loadHead(head, seedAt); // its snow, like its module's
         head.rotateY(yaw);
-        buckets[wallB].push(head.translate(px, py, pz));
+        buckets[wallB].push(head.translate(corner ? corner.x : px, py, corner ? corner.z : pz));
+        if (corner) return; // (a corner sheds no stones past an end it does not have)
         // (wave 34, "nothing bedded": the stones the head lost tumbled out past the end; a stream named by its place)
         const fallen = wallDressing.tumble(style === 'adobe', px, pz, tx * out, tz * out, thick * 0.5);
         if (fallen) buckets[wallB].push(fallen);
@@ -4824,6 +4874,7 @@ ${snowCap ? `
     }
     if (prevBuilt) { endPost(x1, z1, 1); dressIsland(islandFrom, along); } // closing post
   }
+  const wallCorners: Array<{ x: number; z: number; built: boolean }> = [];
   const wallRuns: WallRun[] = P.wallRuns || [
     [town.x0 + 4, 8, town.x0 + 4, 64, 2],
     [town.x0 + 4, 8, town.x0 + 40, 8, 3],
@@ -4841,6 +4892,12 @@ ${snowCap ? `
     [96, -320, 158, -320, 3],
   ];
   function placeBoundaryWalls(): void {
+    // the corners: where two runs' ends meet
+    const ends = wallRuns.flatMap((run) => [[run[0], run[1]], [run[2], run[3]]] as Array<[number, number]>);
+    for (const [x, z] of ends) {
+      if (wallCorners.some((c) => Math.hypot(c.x - x, c.z - z) < WALL_CORNER_M)) continue;
+      if (ends.filter(([ex, ez]) => Math.hypot(ex - x, ez - z) < WALL_CORNER_M).length >= 2) wallCorners.push({ x, z, built: false });
+    }
     for (const wallRun of wallRuns) {
       addWallRun(wallRun[0], wallRun[1], wallRun[2], wallRun[3], wallRun[4] ?? -1);
     }
@@ -5493,37 +5550,24 @@ ${snowCap ? `
 
   yield { fine: true, stage: 'roadside-utilities' };
 
-  // --- rocks (instanced, 3 displaced-icosahedron variants) ---
-  // r3 terrain_environment: REBUILT. The old detail-1 icospheres with one
-  // low-frequency displacement octave kept their geodesic facet pattern and
-  // flat (unwelded) normals — a raw white faceted primitive sat in the
-  // winter establishing foreground. Now: welded vertices (smooth normals),
-  // higher subdivision, THREE displacement octaves for real lumpy boulder
-  // silhouettes, and a slope/height-keyed albedo blend (pale weathered top
-  // vs darker base) so the tops read snow/lichen-capped per map tone.
+  // --- rocks (instanced, 3 variants) ---
+  // The r3/r7 displaced icosahedra (three noise octaves and a ridged crease octave) no longer draw: they are the legacy
+  // rocks whose projected hulls the collision shards carry and whose height their colliders stand for, so they are
+  // still built for both. The visual rock is rockDressing.ts buildBoulderForm, fitted inside them (the scenery lane,
+  // 2026-10-04).
   const rockClutter = new Map<THREE.Matrix4, CrushableClutter>();
   const rockGeos: THREE.BufferGeometry[] = [];
   const rockHulls: number[][] = [];
-  // r7 terrain_environment: RIDGED FRACTURE displacement + crease shading —
-  // the r3 boulders still read as "smooth grey blobs with no fracture
-  // planes" (critique). A ridged octave (1-|noise|) carves crease valleys
-  // into the surface; crease proximity darkens the albedo (fracture shadow
-  // lines) and the same field keys a partial normal HARDENING (lerp toward
-  // the local radial facet direction) so crease shoulders shade as broken
-  // faces instead of one continuous smooth ball.
   function buildRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
     const g = mergeVertices(new THREE.IcosahedronGeometry(1, vi === 2 ? 3 : 2));
     const p = g.attributes.position;
-    const vr = mulberry32(seed + 30 + vi);
     const tmpv = new THREE.Vector3();
-    const creaseA = new Float32Array(p.count); // 1 at crease line, 0 elsewhere
     for (let i = 0; i < p.count; i++) {
       tmpv.set(p.getX(i), p.getY(i), p.getZ(i));
       const ridge = 1 - Math.abs(noi.noise3d(
         tmpv.x * 2.2 + vi * 31, tmpv.y * 2.2 - 7, tmpv.z * 2.2 + 13));
       const crease = Math.pow(ridge, 5); // sharp valley lines
-      creaseA[i] = crease;
       const f = 1
         + noi.noise3d(tmpv.x * 1.4 + vi * 9, tmpv.y * 1.4, tmpv.z * 1.4) * 0.30
         + noi.noise3d(tmpv.x * 3.1 - vi * 17, tmpv.y * 3.1 + 40, tmpv.z * 3.1) * 0.13
@@ -5533,40 +5577,19 @@ ${snowCap ? `
       tmpv.y = Math.max(tmpv.y, -0.55);
       p.setXYZ(i, tmpv.x, tmpv.y * 0.82, tmpv.z);
     }
-    g.computeVertexNormals();
-    const nrm = g.attributes.normal;
-    // partial facet hardening: pull normals toward the radial direction on
-    // crease shoulders — the smooth-welded shading breaks into planes there
-    const nv = new THREE.Vector3();
-    for (let i = 0; i < p.count; i++) {
-      const cw = creaseA[i] * 0.55;
-      if (cw < 0.03) continue;
-      nv.set(nrm.getX(i), nrm.getY(i), nrm.getZ(i));
-      tmpv.set(p.getX(i), p.getY(i) * 0.6, p.getZ(i)).normalize();
-      nv.lerp(tmpv, cw).normalize();
-      nrm.setXYZ(i, nv.x, nv.y, nv.z);
-    }
-    const col = new Float32Array(p.count * 3);
-    for (let i = 0; i < p.count; i++) {
-      // darker, mossier boulders — the old light-gray tone flashed white at
-      // distance under the sun/env light and read as pixel errors
-      const upW = clamp(nrm.getY(i), 0, 1);
-      const l = 0.26 + vr() * 0.08 + p.getY(i) * 0.04 + upW * upW * 0.10;
-      let rh = 0.09 + vr() * 0.02, rs = 0.07, rl = clamp(l, 0.15, 0.48);
-      if (P.rockTone) { const t = P.rockTone(rh, rs, rl); rh = t[0]; rs = t[1]; rl = clamp(t[2], 0, 1); }
-      // upward faces take the map cap tone harder (snow/dust), sides darker;
-      // crease valleys darken like fracture shadow lines
-      _col.setHSL(rh, rs,
-        clamp(rl * (0.86 + upW * 0.22) * (1 - creaseA[i] * 0.34), 0, 1), THREE.SRGBColorSpace);
-      col[i * 3] = _col.r; col[i * 3 + 1] = _col.g; col[i * 3 + 2] = _col.b;
-    }
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     const projected: Array<[number, number]> = [];
     for (let i = 0; i < p.count; i++) projected.push([p.getX(i), p.getZ(i)]);
-    rockHulls.push(convexHull2(projected)); // the collision proxy: the legacy hull, unchanged (the shards carry it)
-    // Round 75 item 6: the visual rock is the legacy displacement cut by fracture planes with a ridged detail
-    // octave, every vertex moved inward, its normals split at the cleavage angle — inside the hull above.
-    rockGeos.push(fractureRockGeometry(g, vi, noi, mulberry32(seed + 60 + vi)));
+    const hull = convexHull2(projected);
+    rockHulls.push(hull); // the collision proxy: the legacy hull, unchanged (the shards carry it)
+    // the scenery lane (wave 52, "low-poly polyhedra … a hard diagonal shading seam … none sunk into the ground"): the
+    // visual rock is a block its joints cut and the weather rounded (rockDressing.ts buildBoulderForm: the smooth maximum
+    // of its joint planes, lumped, its foot flared under the ground line, the surface's own normals), fitted inside the
+    // legacy hull above the ground line and as tall as the legacy rock; its tone by face, fracture and arris (paintBoulder)
+    let legacyTop = 0;
+    for (let i = 0; i < p.count; i++) legacyTop = Math.max(legacyTop, p.getY(i));
+    const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(rockLithologyFor(mapId), vi));
+    paintBoulder(form, P.rockTone);
+    rockGeos.push(form.geometry);
     g.dispose();
   }
   }

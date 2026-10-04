@@ -234,7 +234,7 @@ assert.match(lighting, /scene\.userData\.lightModel = model;/, 'the rig publishe
 assert.match(lighting, /scene\.userData\.lightEnclosed = farCascadeDormant;/, 'the rig publishes the enclosed presentation');
 assert.match(lighting, /const physical = physicalRig && !farCascadeDormant/, 'the Garage keeps the authored rig');
 const post = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
-assert.match(post, /outputColor\.rgb \*= uExposure \* uWhiteBalance;[\s\S]{0,200}mix\( vec3\( sceneLuma \), outputColor\.rgb, uSatLinear \)[\s\S]{0,2000}outputColor\.rgb = 0\.18 \* pow\( max\( outputColor\.rgb, vec3\( 1e-6 \) \) \* \( 1\.0 \/ 0\.18 \), vec3\( uContrast \) \);\s*\}\s*#ifdef LINEAR_TONE_MAPPING/,
+assert.match(post, /outputColor\.rgb \*= uExposure \* uWhiteBalance;[\s\S]{0,200}mix\( vec3\( sceneLuma \), outputColor\.rgb, uSatLinear \)[\s\S]{0,2000}outputColor\.rgb = 0\.18 \* pow\( max\( outputColor\.rgb, vec3\( 1e-6 \) \) \* \( 1\.0 \/ 0\.18 \), vec3\( uContrast \) \);\s*\}[\s\S]{0,800}?#ifdef LINEAR_TONE_MAPPING/,
   'exposure, white balance, the scene-referred saturation and contrast are linear, before the tone curve');
 assert.doesNotMatch(post, /GRADE_PIVOT|GRADE_BLACK_LIFT|GRADE_SHADOW_TINT|GRADE_GREEN_DESAT|GRADE_KNEE/, 'the ACES-era grade stack is retired');
 // 2026-10-02: the enclosed Garage keeps its authored rig, tuned under ACES's steep shoulder. 2026-10-04 (the vehicle-look

@@ -98,6 +98,8 @@ export interface MovementSpec extends TerrainMobilitySpec {
     rateDegS?: number;
     compressionM?: number;
   };
+  /** The running gear's track width (m): the springs bear on the track's centre line, half of it in from its outer edge. */
+  visual?: { trackWidthM?: number };
 }
 
 interface MovementModuleState {
@@ -145,10 +147,16 @@ interface RockState {
   rv: number;
 }
 
-/** The suspension rock, and the share of its pitch that is weight transfer (`d`, the dive or squat, with its rate). */
+/**
+ * The suspension rock, and the share of its pitch that is weight transfer (`d`, the dive or squat, with its rate). Of
+ * that share, `c` (with its rate) is what the bump stops took when the travel ran out under the dive (limitDiveToTravel):
+ * drawn, as the stops' compression, and returned over their spring, but no part of the dive the travel holds.
+ */
 interface SuspensionRockState extends RockState {
   d: number;
   dv: number;
+  c: number;
+  cv: number;
 }
 
 interface RideState {
@@ -267,6 +275,8 @@ interface SupportSamples {
   /** Innermost |x| of a loaded wheel-run fan sample per side (Infinity when that side's fan lines all hang). */
   fanTouchLeftX: number;
   fanTouchRightX: number;
+  /** The outer lines' track-bottom height over the root at the rendered attitude (sampleOuterTrackLines). */
+  bottomLift: number;
 }
 
 interface DriveStep {
@@ -689,6 +699,17 @@ let _rotationDrop = 0;
 let _wholeTrackOnGround = true;
 /** The support's own rise rate this step, unsmoothed (updateRideSupportVelocity; the floor clamp carries the ride at it). */
 let _supportRate = 0;
+/**
+ * The outer track station the support rests on this step, when the tracks carry it rather than the belly, the fan or the
+ * shell (writeSupportCache; physics lane round 7): its hull-local z and world position, the centre of mass's z and the
+ * hull's pitch radius of gyration squared (facePushGrade, the floor's turn at a leading station).
+ */
+const _supportStation = { valid: false, localZ: 0, worldX: 0, worldZ: 0, comZ: 0, k2: 1 };
+/**
+ * The floor's correction at the leading station of a partial contact (constrainLoadedRide): the root's share of a lift
+ * there, the turn per metre of the rest and the station's z; out, the turn rate it leaves the hull with (rad/s).
+ */
+const _stationTurn = { rootShare: 1, turnPerM: 0, stationZ: 0, rate: 0 };
 /** World-space grade along the travel under an airborne hull this step (worldGradeAlong). */
 let _airGrade = 0;
 /** Half the run the world grade is read over. */
@@ -885,6 +906,12 @@ const WALL_PUSH_MAX_M_PER_STEP = 0.1;
 /** The ground lifts a ride at most this far in one step: a solver's correction (a support that jumped under the hull,
  * a top found under it) is spread over steps, never a teleport. */
 const FLOOR_LIFT_MAX_M_PER_STEP = 0.25;
+/** The most a floor's lift at a partial contact's leading station adds to the hull's pitch rate in one step (rad/s):
+ * the turn is eased in, its angular acceleration bounded (15 rad/s^2), not thrown at once. */
+const STATION_TURN_STEP = 0.25;
+/** The lift a floor gives a leading station at once, as the bump stops do everywhere (m): under the pop receipt's 0.12,
+ * and the track's travel envelope holds on rough ground (movement.selftest's egg crate). Only a deeper strike turns. */
+const STATION_TURN_FROM_M = 0.08;
 /** How fast the fall ledger forgets a lift once the ride rides its springs again (RideState.solverLift). */
 const SOLVER_LIFT_FORGET_S = 1;
 /** The lever of a hull's turn on the spot over the ground (its corners sweep the terrain at yawRate times this). */
@@ -1086,6 +1113,22 @@ const SUSP_K_GAIN = 0.76;
 /** The dive's damping ratio (SuspensionRockState.d): a hard stop dips the hull 2-4 degrees, then rocks it back past level
  * (about a third of the dip) before it settles. */
 const DIVE_ZETA = 0.35;
+/**
+ * The dive's damping ratio through a landing's stroke (RideState.stroke, from the touchdown until the hull is back down
+ * at its seat; physics lane round 8, wave 42 item 3: the landing nod "rebounds past level into a brief nose-up", "more
+ * like a loose spring than a damped torsion-bar system"). The dampers stroke at metres a second there, and a damper's
+ * force rises faster than its speed, so the small pitch riding on that heave meets several times the damping it meets
+ * under a stop's slow weight transfer. At DIVE_ZETA the nod off a 2 m drop came back past level by 30 % of itself and
+ * rocked for 1.1 s; at this ratio it comes back 8 % and is still in half a second. A hard stop still rocks back as before.
+ */
+const LANDING_DIVE_ZETA = 0.6;
+/**
+ * The bump stops' rate (rad/s, critically damped): what they took from a dive the travel no longer held
+ * (SuspensionRockState.c) returns at 4.8 Hz (physics lane round 8, the far lip). The travel limit used to take it from
+ * the drawn hull in one step: a hull climbing a trench's far wall, its springs bottoming as the wall lifted it, dropped
+ * its drawn squat by up to a degree in a frame, the largest share of the trenches' rendered jerk.
+ */
+const STOP_OMEGA = 30;
 // Mirror of tankFactory's r6 VISIBLE-dynamics amplification: syncFromState
 // renders the hull at susp.p × SUSP_VIS_P / susp.r × SUSP_VIS_R and sway =
 // _swayEst × SWAY_VIS (readable squat/dive/turn-lean at gameplay camera
@@ -1297,6 +1340,7 @@ const _supportSamples: SupportSamples = {
   wrapMax: -Infinity,
   fanTouchLeftX: Infinity,
   fanTouchRightX: Infinity,
+  bottomLift: 0,
 };
 // Physics lane (2026-10-03): the outer-line samples of one support solve (hull-local centred z, x, ground height and
 // rendered deficit), kept so the attitude fit can use only the samples that actually carry load.
@@ -1615,7 +1659,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     _gunLimitHoldS: 0,             // continuous-pin dwell for the GUN LIMIT label
     _autoTraverse: 0,              // ±1 while a fixed-mount hull traverse is engaged toward the sight (round 32)
     _swayEst: 0,                   // predicted visual turn-lean sway (rad)
-    _susp: { p: 0, r: 0, pv: 0, rv: 0, d: 0, dv: 0 }, // mirror of the visual susp rock layer
+    _susp: { p: 0, r: 0, pv: 0, rv: 0, d: 0, dv: 0, c: 0, cv: 0 }, // mirror of the visual susp rock layer
     _hold: { p: 0, r: 0, pv: 0, rv: 0 }, // the posture held over the tracks on a grade (part of the attitude)
     _holdSeat: { p: 0, r: 0, pv: 0, rv: 0 }, // that posture seated with the tracks off a whole-track seat
     _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
@@ -1720,16 +1764,17 @@ function updateRideSupportVelocity(ride: RideState, supportY: number, dt: number
  * Ballistic flight and the landing. The contact is SWEPT inside the step: the fraction of the step at which the
  * ride crossed the contact line gives the true closing speed (not the post-step value a 40 m/s fall would read
  * 0.67 m past the ground), and the remainder of the step is integrated after the contact — so a rebound is the
- * same at any step size and the ride never ends a step below the contact line. Impact physics (2026-09-25): the
- * closing speed rebounds by the ruleset's restitution; a rebound under bounceMin settles and the loaded
- * suspension takes over (the old contact killed every landing's vertical speed on touch, so nothing ever bounced,
- * not even at 0.17 g).
+ * same at any step size, and a landing on the tracks spends the rest of its step on the springs (never past the
+ * floor). Impact physics (2026-09-25): the closing speed rebounds by the ruleset's restitution; a rebound under
+ * bounceMin settles and the loaded suspension takes over (the old contact killed every landing's vertical speed on
+ * touch, so nothing ever bounced, not even at 0.17 g).
  */
 function advanceAirborneRide(
   state: TankState,
   ride: RideState,
   dt: number,
   contactY: number,
+  seatY: number,
   floorY: number,
   gravityScale: number,
   restitution: number,
@@ -1792,6 +1837,23 @@ function advanceAirborneRide(
   // restitution owes is paid when the springs have stopped the fall and extend again (constrainLoadedRide): the hull
   // dips onto its suspension and rises off it.
   ride.y = seat;
+  // The rest of the step after the contact is the springs' (physics lane round 8, wave 42 item 1: "the hull loses a whole
+  // step of fall at touchdown", 5 mm while falling at 5.9 m/s on a contact early in its step). It used to be dropped: the
+  // ride stood on the contact line, the stroke a step late. It moves on the loaded law the stroke runs at, damped against
+  // the ground's own rate under the travel (the bounded rules hold their ground still for the bounce, not for the
+  // dampers: against still ground a hull grazing a falling flank was slowed off it and fell further). A remainder that
+  // would pass the floor keeps the contact line, as before, so a fast hull cannot tunnel.
+  if (crossed && seat === contactY) {
+    const rest = (1 - fraction) * dt;
+    const groundRate = clamp(state.speed * _airGrade, -RIDE_SUPPORT_V_FALL_CAP, RIDE_SUPPORT_V_CAP);
+    const accel = RIDE_OMEGA * RIDE_OMEGA * (seatY - contactY) + 2 * LANDING_ZETA * RIDE_OMEGA * (groundRate - vAtContact);
+    const vRest = vAtContact + Math.max(accel, -gravity) * rest;
+    const yRest = contactY + vRest * rest;
+    if (yRest >= floorY) {
+      ride.y = yRest;
+      ride.v = vRest;
+    }
+  }
   ride.rebound = rebound > bounceMin ? rebound : 0;
   ride.stroke = closing > LANDING_STROKE_MIN_MPS ? 1 : 0;
   if (ride.rebound === 0) ride.bounces = 0;
@@ -1806,6 +1868,7 @@ function constrainLoadedRide(
   dt: number,
   gravity: number,
   slopeFollowMps: number,
+  pitchV: number,
 ): boolean {
   let hang = ride.y - contactY;
   // A hull running down a grade keeps its tracks on it: the ground falls away under it at its own travel's rate over
@@ -1923,14 +1986,30 @@ function constrainLoadedRide(
   ride.v += accel * dt;
   ride.y += ride.v * dt;
   if (ride.y < floorY) {
-    // the floor moves the ride at most FLOOR_LIFT_MAX_M_PER_STEP above where it began the step: a solver's correction is
-    // spread over steps
-    ride.y += Math.max(0, Math.min(floorY - ride.y, yStart + FLOOR_LIFT_MAX_M_PER_STEP - ride.y));
     // a floor that stops falling stops the ride's fall with it this step (the smoothed ground rate lags it: a hull
     // bottoming out at the foot of a 32-degree flank at 22 m/s was lifted by the floor 9 cm a tick while its velocity
     // still read the fall); a rising floor carries it at the smoothed rate, as before (a face struck by the nose pushes
     // the nose, not the whole hull, at its own rate)
     const floorV = Math.max(ride.groundV, Math.min(_supportRate, Math.max(ride.groundV, 0)));
+    if (_stationTurn.rootShare < 1) {
+      // A partial contact's leading station (round 7): a floor that rises past it further than the bump stops take
+      // (STATION_TURN_FROM_M) turns the hull about its centre of mass as well as lifting it, as a rigid body struck at
+      // that point moves. The root takes the stops' share at once and its share of the rest (its centre's
+      // k^2 / (k^2 + a^2), less the turn's lowering of a root behind the centre), and the turn the rest as a rate, eased
+      // in no faster than STATION_TURN_STEP a step. The whole lift on the root threw a heavy hull's centre up an assault
+      // trench's far wall at 5 m/s, then turned it nose-up as well: off the wall, 38 degrees nose-up.
+      const share = _stationTurn.rootShare;
+      const station = Math.min(floorY - ride.y, (yStart + FLOOR_LIFT_MAX_M_PER_STEP - ride.y) / Math.max(share, 0.25));
+      const deficit = floorV - (ride.v + _stationTurn.stationZ * pitchV);
+      if (station > 0) ride.y += Math.min(station, STATION_TURN_FROM_M) + share * Math.max(0, station - STATION_TURN_FROM_M);
+      if (deficit > 0) ride.v += share * deficit;
+      _stationTurn.rate = clamp(_stationTurn.turnPerM * (Math.max(0, station - STATION_TURN_FROM_M) / dt + Math.max(0, deficit)),
+        -STATION_TURN_STEP, STATION_TURN_STEP);
+      return true;
+    }
+    // the floor moves the ride at most FLOOR_LIFT_MAX_M_PER_STEP above where it began the step: a solver's correction is
+    // spread over steps
+    ride.y += Math.max(0, Math.min(floorY - ride.y, yStart + FLOOR_LIFT_MAX_M_PER_STEP - ride.y));
     if (ride.v < floorV) ride.v = floorV;
     return true;
   }
@@ -2005,11 +2084,38 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
       ? 0
       : clamp(state.speed * _airGrade, -RIDE_SUPPORT_V_FALL_CAP, RIDE_SUPPORT_V_CAP);
   }
+  // A partial contact's leading station (round 7, ruling 2: the trench fix): the face it is driven into pushes along its
+  // normal, and the floor lifts it by turning the hull as well as lifting it
+  _stationTurn.rootShare = 1;
+  _stationTurn.rate = 0;
+  let faceGrade = 0;
+  if (groundedAtStart && !_wholeTrackOnGround && _supportStation.valid && !Number.isFinite(rest) && !state._body.tumbling &&
+      !drive.gripLost) {
+    const lever = _supportStation.localZ - _supportStation.comZ;
+    if (lever * state.speed > 0 && Math.abs(state.speed) > TIP_TRAVEL_MPS) {
+      if (Math.abs(state.speed) >= GRADE_PUSH_MIN_TRAVEL_MPS) faceGrade = facePushGrade(state);
+      const comShare = _supportStation.k2 / (_supportStation.k2 + lever * lever);
+      const turnPerM = (1 - comShare) / lever;
+      _stationTurn.rootShare = Math.max(0, comShare - _supportStation.comZ * turnPerM);
+      _stationTurn.turnPerM = turnPerM;
+      _stationTurn.stationZ = _supportStation.localZ;
+    }
+  }
   const contactY = supportY + RIDE_DROOP_M;
+  const rideVBefore = ride.v;
   const grounded = groundedAtStart
     ? constrainLoadedRide(ride, seatY, contactY, floorY, dt, GRAVITY * drive.gravityScale,
-      _wholeTrackOnGround ? Math.max(0, -state.speed * Math.tan(state._terr.pitch)) : 0)
-    : advanceAirborneRide(state, ride, dt, contactY, floorY, drive.gravityScale, drive.restitution, drive.bounceMin, drive.bounceMaxHeight);
+      _wholeTrackOnGround ? Math.max(0, -state.speed * Math.tan(state._terr.pitch)) : 0, state._spring.pitchV)
+    : advanceAirborneRide(state, ride, dt, contactY, seatY, floorY, drive.gravityScale, drive.restitution, drive.bounceMin,
+      drive.bounceMaxHeight);
+  if (faceGrade > 0 && grounded && ride.v > rideVBefore) {
+    // the lift the face gave the hull this step costs the travel its grade times that (turnAlongGrade's rule, at the face)
+    const travel = Math.abs(state.speed);
+    const kept = Math.sign(state.speed) * Math.max(0, travel - faceGrade * (ride.v - rideVBefore));
+    state._prevSpeed += kept - state.speed;
+    state.speed = kept;
+  }
+  if (_stationTurn.rate !== 0) state._spring.pitchV += _stationTurn.rate;
   if (groundedAtStart) {
     // a hull turning about its own axes (settling from a tumble, righting) moves its support by geometry, not by travel
     // over a grade, and a hull sliding on a face its tracks cannot hold moves along it under the slide law
@@ -2074,6 +2180,37 @@ function landAlongGrade(state: TankState, ride: RideState): void {
   shiftTravelAlongGrade(state, push / (1 + grade * grade));
   // the springs close to the ground's rise under the travel it kept
   ride.groundV = state.speed * grade;
+}
+
+/** Half the run the face under a leading station is read over (m), and the bend over its two halves past which the
+ * ground there is an edge, not a face (m). */
+const FACE_PROBE_M = 0.3;
+const FACE_EDGE_BEND_M = 0.3;
+/** The shallowest face a leading station is pushed back by (tan 26.6 degrees): a ramp the hull drives up is the
+ * drivetrain's grade, not a face it strikes. */
+const FACE_PUSH_GRADE_MIN = 0.5;
+/**
+ * The grade, rising along the travel, of the face under a partial contact's leading station (physics lane round 7; ruling
+ * 2, the trench fix), or 0 where the ground there is an edge or shallower than FACE_PUSH_GRADE_MIN. Only a hull whose
+ * whole track is on the ground turned its travel along a grade (turnAlongGrade): a hull crossing an assault trench rests
+ * on the end of its tracks that meets the far wall, and the wall lifted it at 13 m/s with all its travel kept, a quarter
+ * metre a step. The wall pushes along its normal: the lift it gives the hull costs the travel the wall's grade times
+ * that, which brings the travel to the plastic share of a face met at once (travel x cos^2 theta) once the springs carry
+ * the hull at the face's rate. A step's lip or a box trench's far edge is no face: the track's flat run slides over it.
+ */
+function facePushGrade(state: TankState): number {
+  const groundAt = _reachBaseH;
+  if (!groundAt) return 0;
+  const dir = state.speed > 0 ? 1 : -1;
+  const fx = Math.sin(state.yaw) * dir;
+  const fz = Math.cos(state.yaw) * dir;
+  const x = _supportStation.worldX, z = _supportStation.worldZ;
+  const here = groundAt(x, z);
+  const ahead = groundAt(x + fx * FACE_PROBE_M, z + fz * FACE_PROBE_M);
+  const behind = groundAt(x - fx * FACE_PROBE_M, z - fz * FACE_PROBE_M);
+  if (!(Math.abs(ahead + behind - 2 * here) <= FACE_EDGE_BEND_M)) return 0;
+  const grade = (ahead - behind) / (2 * FACE_PROBE_M);
+  return grade >= FACE_PUSH_GRADE_MIN ? Math.min(grade, GRADE_PUSH_MAX) : 0;
 }
 
 function shiftTravelAlongGrade(state: TankState, rise: number): void {
@@ -2853,11 +2990,25 @@ function reachableCorner(ground: number, plane: number): number {
  * the stations along each track (a track's stations spread evenly over its contact: their mean square lever is a third of
  * the half-length squared) and over the two tracks either side. The hull pitches and rolls toward its downhill end and
  * track by that angle (rad; the hold takes it at the rock's visible scale, SUSP_VIS_P / SUSP_VIS_R). The centre of mass
- * stands HOLD_CG_HEIGHT_FRAC of the hull's height over its tracks. Parked facing up a 25-degree grade the medium hull
- * pitches 1.1 degrees further onto its downhill tail, its stations 17 cm apart end to end; on a 20-degree cross slope it
- * rolls 0.8 degree onto its downhill track, 6 cm under the uphill one.
+ * stands HOLD_CG_HEIGHT_FRAC of the hull's height over its tracks. Across, the springs bear on the tracks' centre lines
+ * (trackCentreHalfGauge, round 8; wave 42: "side-load transfer is about half its physical size"): read at the tracks'
+ * outer edges, the roll stiffness was 22 % to 71 % too high (42 % at the fleet's median). Parked facing up a 25-degree
+ * grade the medium hull pitches 1.1 degrees further onto its downhill tail, its stations 17 cm apart end to end; on a
+ * 20-degree cross slope it rolls 1.1 degrees onto its downhill track, 8.2 cm under the uphill one (0.8 and 5.9 on the
+ * outer edges).
  */
 const HOLD_CG_HEIGHT_FRAC = 0.45;
+/** A track's width as a share of the hull's, for a spec without one (the fleet's median: 13 % to 18 % across it). */
+const TRACK_WIDTH_FRAC = 0.16;
+/**
+ * Half the gauge between the tracks' centre lines (m), where their springs bear: the contact's outer track edge (or half
+ * the hull's width) less half the track's width.
+ */
+function trackCentreHalfGauge(entity: MovementEntity, spec: MovementSpec): number {
+  const outer = entity.contactGeom ? entity.contactGeom.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
+  const width = spec.visual?.trackWidthM;
+  return Math.max(outer - 0.5 * (width !== undefined && width > 0 ? width : TRACK_WIDTH_FRAC * spec.dims.widthM), 0.5);
+}
 const _holdTransfer = { dive: 0, roll: 0 };
 function holdTransferAngles(
   entity: MovementEntity, spec: MovementSpec, along: number, across: number, out: { dive: number; roll: number },
@@ -2867,11 +3018,11 @@ function holdTransferAngles(
   if (along === 0 && across === 0) return;
   const contact = entity.contactGeom;
   const halfLength = contact ? contact.halfLenM : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
-  const halfWidth = contact ? contact.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
+  const halfGauge = trackCentreHalfGauge(entity, spec);
   const height = HOLD_CG_HEIGHT_FRAC * spec.dims.heightM;
   const stiffness = RIDE_OMEGA * RIDE_OMEGA;
   out.dive = along * height / (stiffness * Math.max(halfLength * halfLength / 3, 0.25));
-  out.roll = across * height / (stiffness * Math.max(halfWidth * halfWidth, 0.25));
+  out.roll = across * height / (stiffness * halfGauge * halfGauge);
 }
 
 /**
@@ -3012,8 +3163,23 @@ function updateSuspensionRock(
   let rockV = suspension.pv - suspension.dv;
   rockV += (SUSP_W * SUSP_W * (pitchTarget - diveTarget - rock) - 2 * SUSP_Z * SUSP_W * rockV) * dt;
   rock += rockV * dt;
-  suspension.dv += (SUSP_W * SUSP_W * (diveTarget - suspension.d) - 2 * DIVE_ZETA * SUSP_W * suspension.dv) * dt;
-  suspension.d += suspension.dv * dt;
+  // the dive rides its spring without the stops' share, which their own spring returns (implicit: they are stiff)
+  let dive = suspension.d - suspension.c;
+  let diveV = suspension.dv - suspension.cv;
+  const diveZeta = state._ride.stroke > 0 ? LANDING_DIVE_ZETA : DIVE_ZETA;
+  diveV += (SUSP_W * SUSP_W * (diveTarget - dive) - 2 * diveZeta * SUSP_W * diveV) * dt;
+  dive += diveV * dt;
+  if (suspension.c !== 0 || suspension.cv !== 0) {
+    suspension.cv = (suspension.cv - STOP_OMEGA * STOP_OMEGA * suspension.c * dt) /
+      (1 + 2 * STOP_OMEGA * dt + STOP_OMEGA * STOP_OMEGA * dt * dt);
+    suspension.c += suspension.cv * dt;
+    if (Math.abs(suspension.c) < 1e-7 && Math.abs(suspension.cv) < 1e-6) {
+      suspension.c = 0;
+      suspension.cv = 0;
+    }
+  }
+  suspension.d = dive + suspension.c;
+  suspension.dv = diveV + suspension.cv;
   suspension.p = rock + suspension.d;
   suspension.pv = rockV + suspension.dv;
   suspension.rv += (SUSP_W * SUSP_W * (rollTarget - suspension.r) -
@@ -3027,15 +3193,19 @@ function updateSuspensionRock(
   suspension.rv *= bleed;
   suspension.d *= bleed;
   suspension.dv *= bleed;
+  suspension.c *= bleed;
+  suspension.cv *= bleed;
 }
 
 /**
  * The dive pitches the hull over its tracks only as far as its suspension travels (physics lane, 2026-10-03): the
  * lifting end's wheels droop to keep its track on the ground and the sinking end's compress, each within its stop. A
  * hull already hanging on drooped tracks over a crest, or bottomed on a landing, has no travel left to pitch into, so
- * the dive saturates there (the rendered rock gives up the excess with it; the support solve never saw the dive). With
- * the whole dive riding over the support the rigid track ran 6 cm past its droop over an egg-crate field. The posture
- * held on a grade (state._hold) is limited the same way, first, and the dive takes the travel it leaves.
+ * the dive saturates there (the support solve never saw the dive). With the whole dive riding over the support the
+ * rigid track ran 6 cm past its droop over an egg-crate field. The posture held on a grade (state._hold) is limited the
+ * same way, first, and the dive takes the travel it leaves. What the travel no longer holds the bump stops take
+ * (SuspensionRockState.c, round 8): the dive is cut to the travel at once, as before, and the drawn hull gives the
+ * excess up over the stops' spring (STOP_OMEGA) instead of in the same frame.
  */
 function limitDiveToTravel(entity: MovementEntity, spec: MovementSpec, state: TankState): void {
   const suspension = state._susp;
@@ -3049,10 +3219,9 @@ function limitDiveToTravel(entity: MovementEntity, spec: MovementSpec, state: Ta
     : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
   const travel = Math.max(0, Math.min(RIDE_DROOP_M - hang, RIDE_COMPRESSION_M + hang));
   // the posture held on a grade (physics lane round 5) pitches and rolls the hull over its tracks the same way, about
-  // their length and about half their width, as drawn
+  // their length and about half the gauge between their centre lines, where the road wheels ride (round 8)
   const pitchLimit = Math.asin(Math.min(1, travel / lever));
-  const rollLimit = Math.asin(Math.min(1, travel / Math.max(contact ? contact.halfWidM : HALF_WID_FRAC * spec.dims.widthM,
-    0.5)));
+  const rollLimit = Math.asin(Math.min(1, travel / trackCentreHalfGauge(entity, spec)));
   if (hold.p > pitchLimit || hold.p < -pitchLimit) {
     hold.p = clamp(hold.p, -pitchLimit, pitchLimit);
     if (hold.pv * hold.p > 0) hold.pv = 0;
@@ -3061,18 +3230,16 @@ function limitDiveToTravel(entity: MovementEntity, spec: MovementSpec, state: Ta
     hold.r = clamp(hold.r, -rollLimit, rollLimit);
     if (hold.rv * hold.r > 0) hold.rv = 0;
   }
-  if (suspension.d === 0) return;
+  const dive = suspension.d - suspension.c;
+  if (dive === 0) return;
   const upper = (pitchLimit - hold.p) / SUSP_VIS_P;
   const lower = (-pitchLimit - hold.p) / SUSP_VIS_P;
-  const excess = suspension.d > upper ? suspension.d - upper : suspension.d < lower ? suspension.d - lower : 0;
+  const excess = dive > upper ? dive - upper : dive < lower ? dive - lower : 0;
   if (excess === 0) return;
-  suspension.d -= excess;
-  suspension.p -= excess;
-  // the stop takes the dive's rate into it
-  if (suspension.dv * excess > 0) {
-    suspension.pv -= suspension.dv;
-    suspension.dv = 0;
-  }
+  // the stops take the excess, and the dive's rate into them, from the dive: the drawn rock keeps both as their share
+  suspension.c += excess;
+  const diveV = suspension.dv - suspension.cv;
+  if (diveV * excess > 0) suspension.cv += diveV;
 }
 
 function resetSupportSamples(
@@ -3135,6 +3302,7 @@ function resetSupportSamples(
   samples.wrapMax = -Infinity;
   samples.fanTouchLeftX = Infinity;
   samples.fanTouchRightX = Infinity;
+  samples.bottomLift = 0;
   return samples;
 }
 
@@ -3183,6 +3351,7 @@ function sampleOuterTrackLines(
 ): void {
   const renderedBottomLift = gearBottomY * samples.cosRoll * samples.cosPitch;
   const fittedBottomLift = gearBottomY * samples.fitCosRoll * samples.fitCosPitch;
+  samples.bottomLift = renderedBottomLift;
   for (let side = -1; side <= 1; side += 2) {
     const localX = side * halfWidth;
     const rolledX = localX * samples.cosRoll - gearBottomY * samples.sinRoll;
@@ -3449,6 +3618,42 @@ function gradeRise(state: TankState): number {
   return Math.sin(state._terr.fitPitch);
 }
 
+/** How far past the end of its tracks a hull looks for the ground coming back up from a drop it drives toward (m), and
+ * the step it looks at: an assault trench's top width, 8 m, and a metre. */
+const DROP_RETURN_M = 9;
+const DROP_RETURN_STEP_M = 1.5;
+/**
+ * A drop ahead that the ground comes back up from within the hull's reach of its track line, inside DROP_RETURN_M of the
+ * end it drives toward (a trench, a ditch: physics lane round 7, ruling 2). The plane fit keeps a dropped sample's full
+ * weight down to DROP_NEAR_M below the loaded line, so a hull nosing over a trench's near wall pitched toward ground its
+ * tracks did not touch (14-16 degrees at 9-11 m/s, three times the 5 degrees gravity tips it by before its tail leaves
+ * the lip), reached the far wall with its nose low and was lifted up it a quarter metre a step. A face that falls away
+ * and does not come back (a flank, a cliff, a kicker's back) keeps that lean: a hull running over a crest onto one
+ * follows it, as the fall-damage receipts measure.
+ */
+function dropReturns(state: TankState, samples: SupportSamples, top: number, loadedFront: number, loadedRear: number): boolean {
+  const travel = state.speed > TIP_TRAVEL_MPS ? 1 : state.speed < -TIP_TRAVEL_MPS ? -1 : 0;
+  if (travel === 0) return false;
+  let dropFront = -Infinity, dropRear = Infinity;
+  for (let i = 0; i < samples.fitCount; i++) {
+    if (top - _fitD[i] < DROP_FAR_M) continue;
+    if (_fitZ[i] > dropFront) dropFront = _fitZ[i];
+    if (_fitZ[i] < dropRear) dropRear = _fitZ[i];
+  }
+  // only a drop at the end the hull drives toward: one behind it, or under its middle, it has crossed or spans
+  if (travel > 0 ? !(dropFront > loadedFront) : !(dropRear < loadedRear)) return false;
+  const groundAt = _reachBaseH;
+  if (!groundAt) return false;
+  const reach = top - TOUCH_REACH_M;
+  for (let step = DROP_RETURN_STEP_M; step <= DROP_RETURN_M; step += DROP_RETURN_STEP_M) {
+    const localZ = samples.centerZ + travel * (samples.halfLength + step);
+    const pitchedZ = localZ * samples.cosNegPitch;
+    const ground = groundAt(samples.worldX + pitchedZ * samples.sinYaw, samples.worldZ + pitchedZ * samples.cosYaw);
+    if (ground - (samples.bottomLift + localZ * samples.sinPitch) >= reach) return true;
+  }
+  return false;
+}
+
 function contactAwareFit(
   spec: MovementSpec,
   state: TankState,
@@ -3483,6 +3688,24 @@ function contactAwareFit(
   // plane it settles on, not an edge to tip over: a hull set level on a 48-degree face read the face's far end as a drop
   // and tipped onto it for a second instead of lying on it (impactPhysics' slide).
   if (groundIsPlanar(samples.fitCount)) return FIT_ALL_LOADED;
+  if (dropReturns(state, samples, top, zMax, zMin)) {
+    // a drop the ground comes back up from (round 7): the plane lies on the samples the tracks can carry, within
+    // their reach of the loaded line and fading to nothing at twice it, and the hull goes over the drop level until its
+    // centre of mass overhangs the edge (the tip below)
+    n = 0; wsum = 0; sz = 0; sx = 0; sh = 0; szz = 0; sxx = 0; szx = 0; szh = 0; sxh = 0; left = 0; right = 0; faded = 0;
+    for (let i = 0; i < samples.fitCount; i++) {
+      const gap = top - _fitD[i];
+      if (gap >= 2 * TOUCH_REACH_M) continue;
+      const w = gap <= TOUCH_REACH_M ? 1 : (2 * TOUCH_REACH_M - gap) / TOUCH_REACH_M;
+      if (w < 1) faded++;
+      const z = _fitZ[i], x = _fitX[i], h = _fitH[i];
+      n++; wsum += w; sz += w * z; sx += w * x; sh += w * h; szz += w * z * z; sxx += w * x * x;
+      szx += w * z * x; szh += w * z * h; sxh += w * x * h;
+      if (w >= 0.5) {
+        if (x < 0) left++; else right++;
+      }
+    }
+  }
   if (n === 0 || wsum < 1e-6) return FIT_NONE_LOADED;
   const mz = sz / wsum, mx = sx / wsum, mh = sh / wsum;
   const czz = szz / wsum - mz * mz, cxx = sxx / wsum - mx * mx, czx = szx / wsum - mz * mx;
@@ -3752,6 +3975,16 @@ function writeSupportCache(
   cache.floorY = Math.max(normalFloor, rigidFloor);
   cache.rigid = rigidGear;
   cache.cg = contact;
+  _supportStation.valid = !rigidGear && samples.outerMax - hydraulicYield >= supportY - 1e-9 && rigidFloor < normalFloor;
+  if (_supportStation.valid) {
+    const rolledX = samples.outerX * samples.cosRoll;
+    const pitchedZ = samples.outerZ * samples.cosNegPitch;
+    _supportStation.localZ = samples.outerZ;
+    _supportStation.worldX = samples.worldX + rolledX * samples.cosYaw + pitchedZ * samples.sinYaw;
+    _supportStation.worldZ = samples.worldZ - rolledX * samples.sinYaw + pitchedZ * samples.cosYaw;
+    _supportStation.comZ = tankContactRect(spec).centerZ + tankMassCenterOffsetM(spec);
+    _supportStation.k2 = (spec.dims.hullLengthM * spec.dims.hullLengthM + spec.dims.heightM * spec.dims.heightM) / 12;
+  }
 }
 
 function supportCacheIsFresh(
@@ -4276,6 +4509,7 @@ export function updateTank(
   _supportRate = 0;
   _tippedThisTick = false;
   _wholeTrackOnGround = true;
+  _supportStation.valid = false;
 
   const drive = prepareDriveStep(entity, heightField, debuff, body);
   updateHullTraverse(entity, debuff, drive, dt);
@@ -4453,8 +4687,9 @@ export function updateTank(
   // the tracks: it joins the rock, which the support solve seats the tracks at (physics lane, 2026-10-03). Held apart,
   // a heavy hull nosing into an assault trench's far wall was thrown out of it and stalled nose-up on the wall.
   if (groundedAtStart && !_wholeTrackOnGround) {
-    state._susp.d = 0;
-    state._susp.dv = 0;
+    // (the bump stops' share stays drawn: it was never the dive's, nor the rock's the tracks are seated at)
+    state._susp.d = state._susp.c;
+    state._susp.dv = state._susp.cv;
     // the posture held over the tracks joins the attitude they are seated at, the hull's attitude unchanged
     holdSeat.p += hold.p;
     holdSeat.pv += hold.pv;
