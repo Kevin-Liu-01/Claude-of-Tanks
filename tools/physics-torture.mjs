@@ -802,7 +802,7 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
         predictionWorld.anchor?.(replayState);
         const sim = { spec: subject.spec, state: replayState, combat: { destroyed: false, modules: {}, crew: {}, equipMults: {} },
           contactGeom: null, modeSpeedMultiplier: subject.modeSpeedMultiplier ?? 1, modeGravityScale: subject.modeGravityScale ?? 1,
-          modePhysics: predictionWorld.physics ?? null, rigidGear: false,
+          modePhysics: predictionWorld.physicsAt?.(subject.modeGravityScale ?? 1) ?? predictionWorld.physics ?? null, rigidGear: false,
           input: { throttle: 0, steer: 0, brake: false, aimLocked: true, aimPoint: replayState.aimPoint.clone() } };
         for (let k = 0; k < REPLAY_TICKS; k++) {
           const c = controlAt(tick + k);
