@@ -108,7 +108,10 @@ export default {
       { x: 50, z: 440 }, { x: 110, z: 440 }, { x: 170, z: 440 }, { x: 230, z: 440 },
     ],
   },
-  splat: { sourcedPalette: 'coastal', ...coastal.splat, seaLake: true, seaFoam: 0.2, seaRamp: [0.16, 0.54], iceDrift: 0.02, marshGloss: 0.90, iceSky: [0.23, 0.44, 0.58], tintA: [1.08, 1.04, 0.82], tintB: [0.73, 0.78, 0.62], tintC: [1.14, 1.08, 0.88], roadTint: [0.82, 0.76, 0.63], midRelief: 0.68 },
+  // ground lane (2026-10-03, maps lane A's census: "lush green where Dalmatian karst should be dry scrub", and "blue-grey
+  // slope-rock smears on the terrace risers read as puddles"): on the coast's photo layers, the sward pulled toward a
+  // garrigue's dusty grey-olive and the rock lifted to the weathered limestone's pale warm grey (the boulders' tone)
+  splat: { sourcedPalette: 'coastal', ...coastal.splat, sourcedTint: { G: [1.15, 0.95, 1.35], R: [1.40, 1.30, 1.30] }, seaLake: true, seaFoam: 0.2, seaRamp: [0.16, 0.54], iceDrift: 0.02, marshGloss: 0.90, iceSky: [0.23, 0.44, 0.58], tintA: [1.08, 1.04, 0.82], tintB: [0.73, 0.78, 0.62], tintC: [1.14, 1.08, 0.88], roadTint: [0.82, 0.76, 0.63], midRelief: 0.68 },
   vegetation: {
     species: ['cedar', 'acacia', 'pine'], clusterMix: [['cedar', 0.46], ['acacia', 0.38], ['pine', 0.16]],
     loneMix: [['acacia', 0.50], ['cedar', 0.32], ['pine', 0.18]], rimMix: [['cedar', 0.5], ['pine', 0.3], ['acacia', 0.2]],
@@ -116,6 +119,8 @@ export default {
     // outcrops instead of a green pasture (establishing shot read as generic);
     // tree and rock counts stay at the environmentExpansion first-pass ceilings.
     clusterCount: 34, loneCount: 52, rimCount: 62, grassDensity: 0.68, bushCount: 1.3, bushSpecies: 'acacia', clusterScrub: 1.9,
+    // ground lane: the tufts a garrigue's dry grey-olive, not a meadow's green
+    tuftTone: (_h: number, s: number, l: number) => [0.17, s * 0.55, l * 0.96],
   },
   props: {
     // regional-buildings lane: the Dalmatian limestone kit (maps/regional/dalmatian.ts)

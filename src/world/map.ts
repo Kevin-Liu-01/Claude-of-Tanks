@@ -94,6 +94,8 @@ interface TerrainUserData {
   setWaterTime?(timeSeconds: number): void;
   setWaterDisturbances?(sources: readonly WaterDisturbance[]): void;
   warmStreaming?(cameraPosition: THREE.Vector3, maxJobs: number): number;
+  /** Ground lane (2026-10-03): the vegetation's woods mask into the terrain material and onto the height field. */
+  applyWoodsMask?(mask: Float32Array): void;
   [key: string]: RuntimeValue;
 }
 
@@ -347,6 +349,9 @@ function assembleWorld(
   props: PropsRuntime,
 ): WorldRuntime {
   const layout = heightField._layout;
+  // ground lane (2026-10-03): the trees are placed — the terrain draws its forest floor under them and no field there,
+  // and the ground tiers built below (the litter, the tall grass) read the same cover
+  if (vegetation._woodsMask) terrain.userData.applyWoodsMask?.(vegetation._woodsMask);
 
   const group = new THREE.Group();
   group.name = 'world-' + config.id;

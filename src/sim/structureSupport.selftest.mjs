@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createStructureSupportField, structureTopAt, SUPPORT_MIN_HEIGHT_M, SUPPORT_STEP_UP_M } from './structureSupport.ts';
+import {
+  createHullSupportPose, createStructureSupportField, hullSupportPose, structureTopAt, SUPPORT_MIN_HEIGHT_M, SUPPORT_STEP_UP_M,
+} from './structureSupport.ts';
 import { pointInsideCollisionRecord } from '../world/collision.ts';
 
 // Round 30 (owner 2026-09-20): a hull above a building's roof stands on it instead of falling through the footprint
@@ -64,12 +66,36 @@ const field2 = createStructureSupportField(terrain, { getObstacles: () => record
 field2.beginHull(72, 20, 12.2);
 assert.equal(field2.getHeightAt(72, 20), 12);
 
+// --- the pose rule (physics lane, 2026-10-03): a part is a floor by the hull's underside over it, the ground OBB
+// solver's standing rule (collision.ts hullUndersideOver), not by its origin. A hull tipped nose-up off the 6 m roof's
+// -x edge (x = 10) with its belly on the edge and its origin behind and 1.3 m below the roof keeps the roof as its floor
+// (its origin alone dropped the roof and the hull fell into the building, which the solver then thought it stood on);
+// the same hull lying level 1.4 m below the roof is beside the box, and the box is no floor.
+{
+  const box = rec([10, 0, 10], [20, 6, 20], undefined);
+  const spec = { dims: { hullLengthM: 7, widthM: 3.4, heightM: 2.4 } };
+  const pitch = 0.7;
+  const pivotX = 10, edgeY = 6; // the hull faces +x, its belly on the edge 2 m ahead of its origin
+  const origin = { x: pivotX - Math.cos(pitch) * 2, z: 15 };
+  const rootY = edgeY - Math.sin(pitch) * 2;
+  const tipped = { pos: origin, yaw: Math.PI / 2, visualPitch: pitch, visualRoll: 0 };
+  const support = createStructureSupportField(terrain, { getObstacles: () => [box] });
+  const pose = createHullSupportPose();
+  support.beginHull(origin.x, origin.z, rootY, hullSupportPose(spec, tipped, pose));
+  assert.equal(support.getHeightAt(12, 15), 6, 'a hull pivoting on the roof edge keeps the roof under its raised nose');
+  support.beginHull(origin.x, origin.z, rootY);
+  assert.equal(support.getHeightAt(12, 15), terrain.getHeightAt(12, 15), 'by its origin alone the roof was no floor (the old rule)');
+  const level = { pos: origin, yaw: Math.PI / 2, visualPitch: 0, visualRoll: 0 };
+  support.beginHull(origin.x, origin.z, edgeY - 1.4, hullSupportPose(spec, level, pose));
+  assert.equal(support.getHeightAt(12, 15), terrain.getHeightAt(12, 15), 'a level hull 1.4 m below the roof is beside the box');
+}
+
 // --- wiring: both sims ride the support field
 const state = readFileSync(new URL('../game/state.ts', import.meta.url), 'utf8');
 // (the Drone mode parks a pilot's hull between the two, 2026-10-02: the order and arguments are what matter)
-assert.match(state, /support\.beginHull\(entity\.state\.pos\.x, entity\.state\.pos\.z,\n\s*entity\.state\.pos\.y \+ \(entity\.contactGeom\?\.bottomYM \?\? 0\)\);[\s\S]{0,700}?updateTank\(entity, support, SIM_DT, collider\.collide\);/,
+assert.match(state, /support\.beginHull\(entity\.state\.pos\.x, entity\.state\.pos\.z,\n\s*entity\.state\.pos\.y \+ \(entity\.contactGeom\?\.bottomYM \?\? 0\), hullSupportPose\(entity\.spec, entity\.state, _supportPose\)\);[\s\S]{0,700}?updateTank\(entity, support, SIM_DT, collider\.collide\);/,
   'the solo step selects the hull and rides the support field');
 const authority = readFileSync(new URL('./authoritativeMatch.ts', import.meta.url), 'utf8');
-assert.match(authority, /structureSupport\.beginHull\(entity\.state\.pos\.x, entity\.state\.pos\.z, entity\.state\.pos\.y\);[\s\S]{0,700}?updateTank\(entity, structureSupport, dt, collideMovingEntity\);/,
+assert.match(authority, /structureSupport\.beginHull\(entity\.state\.pos\.x, entity\.state\.pos\.z, entity\.state\.pos\.y,\n\s*hullSupportPose\(entity\.spec, entity\.state, _supportPose\)\);[\s\S]{0,700}?updateTank\(entity, structureSupport, dt, collideMovingEntity\);/,
   'the authority rides the same field');
 console.log('structureSupport.selftest: containment per primitive, standable tops, field composition and sim wiring');

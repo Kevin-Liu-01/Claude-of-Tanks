@@ -267,7 +267,10 @@ const obstacles = [], colliders = [];
 dressMapExtras({ mapId: 'steppe', extraKits: cfg.props?.extraKits, riverLandings: cfg.props?.riverLandings, L: field._layout,
   heightField: field, rng: mulberry32(1337 ^ 0x5a17), buckets, obstacles, colliders });
 const centre = (g) => { g.computeBoundingBox(); return g.boundingBox.getCenter(new THREE.Vector3()); };
-const allSleepers = buckets.wood.filter((g) => g.parameters?.width === RAIL_SPUR_BALLAST_M - 0.9 && g.parameters.height === 0.09).map(centre);
+// ground lane (2026-10-03): the seeded sleepers carry the spans' grade law; the infill sleepers between them
+// (userData.railInfill, railSpurs.selftest) lie on the same spans and are left out of the census
+const allSleepers = buckets.wood.filter((g) => g.parameters?.width === RAIL_SPUR_BALLAST_M - 0.9 && g.parameters.height === 0.09
+  && !g.userData.railInfill).map(centre);
 const sleepers = allSleepers.filter((c) => c.x > 441 && c.x <= 512).sort((a, b) => a.x - b.x);
 assert.ok(sleepers.length > 45, `sleepers in the cutting (${sleepers.length})`);
 let worstGrade = 0;
