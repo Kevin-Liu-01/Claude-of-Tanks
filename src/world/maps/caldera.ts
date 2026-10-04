@@ -60,6 +60,9 @@ export default {
     ],
     village: { x0: -178, x1: 188, z0: -174, z1: 190, cx: 4, cz: 14, feather: 44, flatten: 0.72, relief: 0.24 },
     landforms: [
+      // a small negative knoll on the bump the hill noise raises 2.5 m by the north-east loading road at (100, 247): bravo's
+      // block routes cross it at speed, and a hull launched off it took the map's worst fall (2026-10-03, 108 hp)
+      { kind: 'knoll', x: 101, z: 246.5, rx: 9, rz: 9, height: -2.2 },
       // Three cinder cones, each with its summit crater, rills cut deep into its scree, talus fans spreading below the
       // rills' mouths onto the floor and a knobbly surface (landformGeology.ts). The Cinder Cone is the youngest, its
       // flanks near the scree's angle of repose (its steepest flank 1.14 x height / (radius x (1 - rim))) and its crater
