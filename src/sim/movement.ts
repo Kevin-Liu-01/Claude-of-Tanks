@@ -34,7 +34,7 @@ import { CLIFF_GRADE,
 } from './terrainMobility.ts';
 import type { TerrainMobilitySpec } from './terrainMobility.ts';
 import { STANDARD_PHYSICS, type RulesetPhysics } from './matchRuleset.ts';
-import { tankContactRect } from './tankContactShape.ts';
+import { tankContactRect, tankMassCenterOffsetM } from './tankContactShape.ts';
 
 type Vec3Tuple = readonly [number, number, number];
 type HeightSampler = (x: number, z: number) => number;
@@ -355,6 +355,14 @@ export interface TankState {
   _autoTraverse: number;
   _swayEst: number;
   _susp: SuspensionRockState;
+  /** The posture a hull holds over its planted tracks on a grade (physics lane round 5, holdTransferAngles): its pitch and
+   * roll as drawn (rad) and their rates. It is part of the hull's attitude (visualPitch and visualRoll are the attitude
+   * spring plus it and `_holdSeat`), so the armour, the bores and launch mouths, the aim solves and the renderer all read
+   * one attitude; the support solve seats the tracks without it. */
+  _hold: RockState;
+  /** The held posture off a whole-track seat (an edge, a crest, a trench): the tracks are seated at it, and it relaxes at
+   * the rock's rate while the hold builds again over planted tracks. Part of the hull's attitude like the hold. */
+  _holdSeat: RockState;
   _flinch: RockState;
   _ride: RideState;
   _body: RigidBodyState;
@@ -692,6 +700,33 @@ function worldGradeAlong(hAt: HeightSampler, x: number, z: number, forwardX: num
   const ahead = hAt(x + forwardX * AIR_GRADE_PROBE_M, z + forwardZ * AIR_GRADE_PROBE_M);
   const behind = hAt(x - forwardX * AIR_GRADE_PROBE_M, z - forwardZ * AIR_GRADE_PROBE_M);
   return (ahead - behind) / (2 * AIR_GRADE_PROBE_M);
+}
+/**
+ * The share of a landing's vertical closing that meets the face it lands on along its normal (physics lane round 6;
+ * Skybridge fall census, 2026-10-04: a hull climbing a 46-degree bank at 6.5 m/s hopped off its convexity and met the
+ * face 0.4 s later at a 9.4 m/s closing, 75.6 hp, and another 160.5 hp on the same bank). The closing is vertical: the
+ * ground rising under the travel (its grade G along it) and the hull's fall, u·G − w. The face meets the hull along its
+ * normal at that times the cosine of its slope, 1/√(1 + G² + S²) with S its grade across the travel: on a 46-degree
+ * bank 0.69 of it, the climb's travel into the face counted at its sine, not its tangent. Level ground keeps all of it.
+ * Only a face the ground under the hull's middle holds is projected on: the ground there runs on at one grade along
+ * the travel (bending less than FACE_BEND_M over the probe's two halves), the grade the closing read
+ * (FACE_AGREE_GRADE), and a cross slope that bends more than that across it counts none. An edge or a step under the
+ * hull, or one the track samples straddle, is no face: a roof's edge landed on keeps its vertical closing.
+ */
+const FACE_AGREE_GRADE = 0.35;
+const FACE_BEND_M = 0.4;
+function landingFaceShare(hAt: HeightSampler, x: number, z: number, forwardX: number, forwardZ: number): number {
+  const probe = AIR_GRADE_PROBE_M;
+  const middle = hAt(x, z);
+  const ahead = hAt(x + forwardX * probe, z + forwardZ * probe);
+  const behind = hAt(x - forwardX * probe, z - forwardZ * probe);
+  if (!(Math.abs(ahead + behind - 2 * middle) <= FACE_BEND_M)) return 1;
+  const along = _airGrade;
+  if (!(Math.abs(along - (ahead - behind) / (2 * probe)) <= FACE_AGREE_GRADE)) return 1;
+  const right = hAt(x + forwardZ * probe, z - forwardX * probe);
+  const left = hAt(x - forwardZ * probe, z + forwardX * probe);
+  const across = Math.abs(right + left - 2 * middle) <= FACE_BEND_M ? (right - left) / (2 * probe) : 0;
+  return 1 / Math.sqrt(1 + along * along + across * across);
 }
 let _tippedThisTick = false;
 const RIDE_SUPPORT_V_CAP = 12;         // m/s; bounds extreme launch ramps
@@ -1581,6 +1616,8 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     _autoTraverse: 0,              // ±1 while a fixed-mount hull traverse is engaged toward the sight (round 32)
     _swayEst: 0,                   // predicted visual turn-lean sway (rad)
     _susp: { p: 0, r: 0, pv: 0, rv: 0, d: 0, dv: 0 }, // mirror of the visual susp rock layer
+    _hold: { p: 0, r: 0, pv: 0, rv: 0 }, // the posture held over the tracks on a grade (part of the attitude)
+    _holdSeat: { p: 0, r: 0, pv: 0, rv: 0 }, // that posture seated with the tracks off a whole-track seat
     _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
     _ride: { // sprung vertical chassis motion + deterministic airborne phase
       y: pos.y, v: 0, supportY: NaN, groundV: 0, grounded: true, airTime: 0, bounces: 0, rebound: 0, stroke: 0,
@@ -2806,19 +2843,116 @@ function reachableCorner(ground: number, plane: number): number {
   return plane - TOUCH_REACH_M * Math.max(0, 1 - (gap - TOUCH_REACH_M) / TOUCH_REACH_M);
 }
 
+/**
+ * The static weight transfer of a hull holding still on a grade (physics lane round 5; gauntlet wave 38: "on a
+ * 17.9-degree grade the front and rear stations carry about the same travel ... a real tank shows a clear rear-heavy
+ * gradient on a slope, with a slight extra squat downhill"; and after the side-slope landing "the hull still leans on the
+ * uphill track"). The tracks hold the hull against gravity's component along and across the ground, `along` and
+ * `across` (m/s², in the hull's frame), at the ground, under its centre of mass: the moment that leaves (the component
+ * times the centre of mass's height) is taken by the springs' pitch and roll stiffness, the heave rate RIDE_OMEGA over
+ * the stations along each track (a track's stations spread evenly over its contact: their mean square lever is a third of
+ * the half-length squared) and over the two tracks either side. The hull pitches and rolls toward its downhill end and
+ * track by that angle (rad; the hold takes it at the rock's visible scale, SUSP_VIS_P / SUSP_VIS_R). The centre of mass
+ * stands HOLD_CG_HEIGHT_FRAC of the hull's height over its tracks. Parked facing up a 25-degree grade the medium hull
+ * pitches 1.1 degrees further onto its downhill tail, its stations 17 cm apart end to end; on a 20-degree cross slope it
+ * rolls 0.8 degree onto its downhill track, 6 cm under the uphill one.
+ */
+const HOLD_CG_HEIGHT_FRAC = 0.45;
+const _holdTransfer = { dive: 0, roll: 0 };
+function holdTransferAngles(
+  entity: MovementEntity, spec: MovementSpec, along: number, across: number, out: { dive: number; roll: number },
+): void {
+  out.dive = 0;
+  out.roll = 0;
+  if (along === 0 && across === 0) return;
+  const contact = entity.contactGeom;
+  const halfLength = contact ? contact.halfLenM : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
+  const halfWidth = contact ? contact.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
+  const height = HOLD_CG_HEIGHT_FRAC * spec.dims.heightM;
+  const stiffness = RIDE_OMEGA * RIDE_OMEGA;
+  out.dive = along * height / (stiffness * Math.max(halfLength * halfLength / 3, 0.25));
+  out.roll = across * height / (stiffness * Math.max(halfWidth * halfWidth, 0.25));
+}
+
+/**
+ * The hold (state._hold, physics lane round 5): the posture the transfer leaves the hull in over its planted tracks, drawn
+ * at the rock's visible scale and reached critically damped (HOLD_OMEGA, HOLD_ZETA): it follows the ground's grade, it
+ * is no impulse, so a parked hull's attitude is still within a second and a half (rocking at the dive's damping it moved
+ * for three, and every snapshot re-sent its row), and the terrain fit's steps on a trench's walls reach it smoothed. It
+ * is part of the hull's attitude, not of the rendered rock: the rock is
+ * the renderer's (the gun's stabiliser takes it back out of the bore), and a posture held at rest in it put the drawn
+ * hull, a fixed bore and every launch mouth off the attitude the authority fires and aims from (a UDES 03 laid 0.69
+ * degree off its sight; a ZTZ-100's launch mouth 1 cm off the server's). Off a whole-track seat it joins the seated share
+ * (`_holdSeat`), which relaxes at the rock's rate and damping (SUSP_W, SUSP_Z), as the dive joins the rock. Both bleed
+ * with the rock on a perch.
+ */
+const HOLD_OMEGA = 4;
+const HOLD_ZETA = 1;
+function updateHullHold(state: TankState, pitchTarget: number, rollTarget: number, perch: number, dt: number): void {
+  const hold = state._hold;
+  hold.pv += (HOLD_OMEGA * HOLD_OMEGA * (pitchTarget - hold.p) - 2 * HOLD_ZETA * HOLD_OMEGA * hold.pv) * dt;
+  hold.p += hold.pv * dt;
+  hold.rv += (HOLD_OMEGA * HOLD_OMEGA * (rollTarget - hold.r) - 2 * HOLD_ZETA * HOLD_OMEGA * hold.rv) * dt;
+  hold.r += hold.rv * dt;
+  const seat = state._holdSeat;
+  seat.pv += (-SUSP_W * SUSP_W * seat.p - 2 * SUSP_Z * SUSP_W * seat.pv) * dt;
+  seat.p += seat.pv * dt;
+  seat.rv += (-SUSP_W * SUSP_W * seat.r - 2 * SUSP_Z * SUSP_W * seat.rv) * dt;
+  seat.r += seat.rv * dt;
+  if (perch <= 0) return;
+  const bleed = Math.exp(-dt * perch * PERCH_SUSP_BLEED);
+  hold.p *= bleed;
+  hold.pv *= bleed;
+  hold.r *= bleed;
+  hold.rv *= bleed;
+  seat.p *= bleed;
+  seat.pv *= bleed;
+  seat.r *= bleed;
+  seat.rv *= bleed;
+}
+
+/**
+ * A level landing nods the hull about its centre of mass (physics lane round 5; gauntlet wave 38: "flat landings are
+ * perfectly level pistons ... a 55 t hull's centre of mass isn't at its geometric centre (engine aft, turret amidships),
+ * so a level drop should nod a little"). The springs stop the fall where they stand, around the middle of the track
+ * contact, while the centre of mass (tankMassCenterOffsetM) is a quarter metre aft of it on a rear-engined tank: the
+ * landing's impulse turns the hull about its centre of mass by the closing times that offset over the square of its
+ * pitch radius of gyration (a box of its length and height), tail down on a rear-engined hull and nose down on a
+ * front-engined one. The turn enters the dive (rad/s, before the renderer's amplification, so the rendered nod is the
+ * physical one), which carries it on the springs and rocks back past level as it settles: about a degree off a 2 m drop.
+ * Only a landing that meets the ground level (within LANDING_NOD_LEVEL_RAD in pitch and roll) and on its stroke nods:
+ * one that meets it tilted turns onto it about its first contact (landingTurnRate), which is the larger turn there.
+ */
+const LANDING_NOD_LEVEL_RAD = 0.05;
+function landingNodRate(spec: MovementSpec, closing: number): number {
+  if (!(closing > LANDING_STROKE_MIN_MPS)) return 0;
+  const offset = tankMassCenterOffsetM(spec);
+  if (offset === 0) return 0;
+  const rect = tankContactRect(spec);
+  const length = 2 * rect.halfLength, height = spec.dims.heightM;
+  return -closing * offset / ((length * length + height * height) / 12) / SUSP_VIS_P;
+}
+
 function updateSuspensionRock(
   spec: MovementSpec,
   state: TankState,
   hAt: HeightSampler,
   groundedAtStart: boolean,
   poseAcceleration: number,
+  landingNod: number,
   perch: number,
   dt: number,
 ): void {
   const suspension = state._susp;
+  // the nod is the dive's (its rate and the rock's total rate alike: the terrain rock does not take it back)
+  if (landingNod !== 0) {
+    suspension.dv += landingNod;
+    suspension.pv += landingNod;
+  }
   const acceleration = groundedAtStart
     ? clamp(poseAcceleration, -SUSP_ACCEL_CLAMP, SUSP_ACCEL_CLAMP)
     : 0;
+  // (the gravity the tracks hold on a grade is the hull's posture, state._hold, not the rock's: updateHullHold)
   let pitchTarget = acceleration * SUSP_ACCEL_GAIN;
   let rollTarget = 0;
   if (groundedAtStart) {
@@ -2834,8 +2968,10 @@ function updateSuspensionRock(
     // drop, a trench) hangs free; it does not pitch the sprung hull toward ground it cannot touch. The rock chased the
     // 4 m drop past a launch ramp's lip down to its clamp, the support followed that rendered pitch, and the hull left
     // the lip falling instead of rising at the ramp's rate (the base hid it under a nose-dive that lifted the root).
-    const sinPitch = Math.sin(state.visualPitch), sinRoll = Math.sin(state.visualRoll);
-    // (the root is the hull's seat on its tracks: the dive, which once lifted it, is not part of the support solve)
+    // (the root is the hull's seat on its tracks: the dive, which once lifted it, is not part of the support solve, nor is
+    // the posture the hull holds over them, state._hold: the rock conforms the seat's attitude, the attitude spring's)
+    const seatPitch = state._spring.pitch, seatRoll = state._spring.roll;
+    const sinPitch = Math.sin(seatPitch), sinRoll = Math.sin(seatRoll);
     const y = state.pos.y;
     const frontLeft = reachableCorner(hAt(x + forwardX * halfLength - rightX * halfWidth,
       z + forwardZ * halfLength - rightZ * halfWidth), y + halfLength * sinPitch - halfWidth * sinRoll);
@@ -2856,12 +2992,12 @@ function updateSuspensionRock(
     const conformance = Math.min(1, Math.abs(state.speed) / SUSP_K_SPEED) *
       SUSP_K_GAIN * (1 - perch);
     pitchTarget += clamp(
-      (terrainPitch - state.visualPitch) * conformance,
+      (terrainPitch - seatPitch) * conformance,
       -SUSP_P_CLAMP,
       SUSP_P_CLAMP,
     );
     rollTarget += clamp(
-      (terrainRoll - state.visualRoll) * conformance,
+      (terrainRoll - seatRoll) * conformance,
       -SUSP_R_CLAMP,
       SUSP_R_CLAMP,
     );
@@ -2898,11 +3034,13 @@ function updateSuspensionRock(
  * lifting end's wheels droop to keep its track on the ground and the sinking end's compress, each within its stop. A
  * hull already hanging on drooped tracks over a crest, or bottomed on a landing, has no travel left to pitch into, so
  * the dive saturates there (the rendered rock gives up the excess with it; the support solve never saw the dive). With
- * the whole dive riding over the support the rigid track ran 6 cm past its droop over an egg-crate field.
+ * the whole dive riding over the support the rigid track ran 6 cm past its droop over an egg-crate field. The posture
+ * held on a grade (state._hold) is limited the same way, first, and the dive takes the travel it leaves.
  */
 function limitDiveToTravel(entity: MovementEntity, spec: MovementSpec, state: TankState): void {
   const suspension = state._susp;
-  if (suspension.d === 0) return;
+  const hold = state._hold;
+  if (suspension.d === 0 && hold.p === 0 && hold.r === 0) return;
   const ride = state._ride;
   const hang = Number.isFinite(ride.supportY) ? ride.y - ride.supportY : RIDE_DROOP_M;
   const contact = entity.contactGeom;
@@ -2910,8 +3048,23 @@ function limitDiveToTravel(entity: MovementEntity, spec: MovementSpec, state: Ta
     ? contact.halfLenM + Math.abs(contact.zCenterM || 0)
     : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
   const travel = Math.max(0, Math.min(RIDE_DROOP_M - hang, RIDE_COMPRESSION_M + hang));
-  const limit = Math.asin(Math.min(1, travel / lever)) / SUSP_VIS_P;
-  const excess = suspension.d > limit ? suspension.d - limit : suspension.d < -limit ? suspension.d + limit : 0;
+  // the posture held on a grade (physics lane round 5) pitches and rolls the hull over its tracks the same way, about
+  // their length and about half their width, as drawn
+  const pitchLimit = Math.asin(Math.min(1, travel / lever));
+  const rollLimit = Math.asin(Math.min(1, travel / Math.max(contact ? contact.halfWidM : HALF_WID_FRAC * spec.dims.widthM,
+    0.5)));
+  if (hold.p > pitchLimit || hold.p < -pitchLimit) {
+    hold.p = clamp(hold.p, -pitchLimit, pitchLimit);
+    if (hold.pv * hold.p > 0) hold.pv = 0;
+  }
+  if (hold.r > rollLimit || hold.r < -rollLimit) {
+    hold.r = clamp(hold.r, -rollLimit, rollLimit);
+    if (hold.rv * hold.r > 0) hold.rv = 0;
+  }
+  if (suspension.d === 0) return;
+  const upper = (pitchLimit - hold.p) / SUSP_VIS_P;
+  const lower = (-pitchLimit - hold.p) / SUSP_VIS_P;
+  const excess = suspension.d > upper ? suspension.d - upper : suspension.d < lower ? suspension.d - lower : 0;
   if (excess === 0) return;
   suspension.d -= excess;
   suspension.p -= excess;
@@ -4221,7 +4374,28 @@ export function updateTank(
   // rotation.set(-(visualPitch + suspP), yaw, visualRoll + suspR + sway) —
   // replicate its spring tick-for-tick so the support solve below clears the
   // terrain at the pose that actually reaches the screen.
-  updateSuspensionRock(spec, state, hAt, groundedAtStart, poseDvdt, perch, dt);
+  // the gravity the tracks hold the hull against on a grade (physics lane round 5), in the hull's frame: along the hull it
+  // loads the downhill end, across it the downhill track; a slide, or a hull on its shell, holds none. The grade is the
+  // ground's under the tracks, the terrain fit's: not the hull's own attitude, which carries the posture a hydraulic
+  // suspension aims it with (a UDES 03 laying 9 degrees nose-up on flat ground holds no gravity along it) and a shot's
+  // recoil (an IFV firing on a level range held a posture after every shot).
+  const heldGravity = groundedAtStart && !drive.gripLost && !body.tumbling ? GRAVITY * drive.gravityScale : 0;
+  holdTransferAngles(entity, spec, heldGravity * Math.sin(state._terr.pitch), heldGravity * Math.sin(state._terr.roll),
+    _holdTransfer);
+  // the posture is the hull's attitude over its planted tracks: the spring's attitude plus the hold, one attitude for the
+  // armour, the bores and launch mouths, the aim solves, the snapshot and the renderer
+  const hold = state._hold ?? (state._hold = { p: 0, r: 0, pv: 0, rv: 0 });
+  const holdSeat = state._holdSeat ?? (state._holdSeat = { p: 0, r: 0, pv: 0, rv: 0 });
+  updateHullHold(state, _holdTransfer.dive * SUSP_VIS_P, _holdTransfer.roll * SUSP_VIS_R, perch, dt);
+  const heldPitch = hold.p + holdSeat.p, heldRoll = hold.r + holdSeat.r;
+  state.visualPitch = spr.pitch + heldPitch;
+  state.visualRoll = spr.roll + heldRoll;
+  // a level landing on the tracks nods the hull about its centre of mass (not one on its shell, nor one met tilted)
+  const levelLanding = landingImpactAtStart > 0 && !body.tumbling && upYAtStart >= TUMBLE_ENTER_UP_Y
+    && Math.abs(wrapAngle(state._terr.pitch - spr.pitch)) < LANDING_NOD_LEVEL_RAD
+    && Math.abs(wrapAngle(state._terr.roll - spr.roll)) < LANDING_NOD_LEVEL_RAD;
+  updateSuspensionRock(spec, state, hAt, groundedAtStart, poseDvdt,
+    levelLanding ? landingNodRate(spec, landingImpactAtStart) : 0, perch, dt);
 
   // ---- support solve: no contact sample below ground at the rendered pose ----
   // Effective RENDERED attitude (movement space): rotation.x = -(pitch +
@@ -4233,9 +4407,10 @@ export function updateTank(
   // track burial on rough ground (r3 drive gate). The fit lands in state._terr
   // for the NEXT tick's spring targets/slope logic (one-tick-old plane —
   // imperceptible at 60 Hz, and exactly the pre-existing contract).
-  // the tracks are seated at the attitude without the dive (SuspensionRockState.d): the hull pitches over them
-  const pitchEff = spr.pitch + (susp.p - susp.d) * SUSP_VIS_P - flP;
-  const rollEff = spr.roll + susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + flR;
+  // the tracks are seated at the attitude without the dive (SuspensionRockState.d) or the posture held over them
+  // (state._hold): the hull pitches and rolls over them; off a whole-track seat that posture is seated with them
+  const pitchEff = spr.pitch + holdSeat.p + (susp.p - susp.d) * SUSP_VIS_P - flP;
+  const rollEff = spr.roll + holdSeat.r + susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + flR;
   // Static-pose cache: a parked, settled tank re-uses the solved height instead
   // of re-sampling the (static) heightfield every tick. The rigid-gear flag is
   // part of the key: a GLB swap landing on a PARKED tank (deferred stream-in)
@@ -4254,19 +4429,25 @@ export function updateTank(
   );
 
   // The ground's grade along the travel under a hull in flight, per horizontal metre (physics lane, 2026-10-03). The
-  // track samples just taken lie at z·cos(pitch) along the travel, so their fit reads the grade times that cosine; past
-  // 72 degrees of pitch they stack over one point and two world samples read it instead. A hull that left a 45-degree
-  // flank nose-down read the flank as level, landed on it at 18.7 m/s "closing" against ground that was falling away at
-  // 14.4 m/s under its travel, and took 4632 hp.
+  // track samples just taken lie at z·cos(pitch) along the travel, so their fit's rise per hull-local metre (the sine of
+  // the plane pitch it reads) is the grade times that cosine; past 72 degrees of pitch they stack over one point and two
+  // world samples read it instead. A hull that left a 45-degree flank nose-down read the flank as level, landed on it at
+  // 18.7 m/s "closing" against ground that was falling away at 14.4 m/s under its travel, and took 4632 hp. (Round 6:
+  // the rise is the sine of the fit's pitch since the fit takes the arcsine, 4549734b3; its tangent read a 46-degree
+  // face under a hull pitched 45 degrees as 57, the ground rising 47 % faster under the travel than it does.)
   if (!groundedAtStart) {
     const cosPitch = Math.cos(pitchEff);
     _airGrade = Math.abs(cosPitch) > AIR_GRADE_MIN_COS
-      ? Math.tan(state._terr.fitPitch) / cosPitch
+      ? Math.sin(state._terr.fitPitch) / cosPitch
       : worldGradeAlong(hAt, state.pos.x, state.pos.z, drive.forwardX, drive.forwardZ);
   }
   // Loaded suspension follows the support envelope; once the droop limit is
   // exceeded, the chassis uses an independent ballistic phase until landing.
   updateVerticalContact(state, groundedAtStart, dt, drive);
+  // a landing in flight is charged its closing along the normal of the face it meets (bounded rules keep their own)
+  if (!groundedAtStart && state.fallImpactMps > 0 && !Number.isFinite(drive.bounceMaxHeight)) {
+    state.fallImpactMps *= landingFaceShare(hAt, state.pos.x, state.pos.z, drive.forwardX, drive.forwardZ);
+  }
   limitDiveToTravel(entity, spec, state);
   // Off a whole-track seat (a trench crossed, a crest, an edge) the dive is no longer the suspension's to keep apart from
   // the tracks: it joins the rock, which the support solve seats the tracks at (physics lane, 2026-10-03). Held apart,
@@ -4274,7 +4455,20 @@ export function updateTank(
   if (groundedAtStart && !_wholeTrackOnGround) {
     state._susp.d = 0;
     state._susp.dv = 0;
+    // the posture held over the tracks joins the attitude they are seated at, the hull's attitude unchanged
+    holdSeat.p += hold.p;
+    holdSeat.pv += hold.pv;
+    holdSeat.r += hold.r;
+    holdSeat.rv += hold.rv;
+    hold.p = 0;
+    hold.pv = 0;
+    hold.r = 0;
+    hold.rv = 0;
   }
+  // the attitude this step ends at carries the posture as its travel left it (the gun lays, the armour and the shot read
+  // it): a stop that took part of it takes it from the attitude in the same step, as it takes the dive from the rock
+  state.visualPitch += hold.p + holdSeat.p - heldPitch;
+  state.visualRoll += hold.r + holdSeat.r - heldRoll;
 
   updateGunLay(entity, debuff, hAt, drive.gunArc, drive.steer, dt);
   updateTrackScrollAndBloom(spec, state, debuff, dt);

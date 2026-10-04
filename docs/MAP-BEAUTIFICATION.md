@@ -6685,9 +6685,26 @@ only with an albedo-aware key that keeps snow and bright sand high-key.
   16 km and fades in over 9 km — under 4–5° at a 1.4 km band, the distant field's crowding on the horizon; the decks keep
   8 km.
 - Scene-wide GTAO stays off (the owner, 2026-09-28). The ground around the four hulls the shadow router already selects
-  loses the sky each hull hides (`vehicleGroundOcclusion.ts`): an oriented box per hull (its armour-derived shadow proxy
-  carried down over the running gear), ½ sin²(atan(h/d)) · (2/π) atan(L/d) beside it (a wall's cosine-weighted share over
-  the azimuth a finite hull covers), 0.85 under the footprint, on the pixel's ambient share only; analytic, no noise.
+  loses the sky each hull hides (`vehicleGroundOcclusion.ts`), on the pixel's ambient share only; analytic, no noise.
+  Since the vehicle-ground lane (2026-10-03, wave 13's "strip of fully-lit snow under the belly") each hull is one convex
+  solid measured from the built visual — the shadow proxy's width, length and deck over its lower profile, the measured
+  pan along the belly rising under the sloped end plates (a least-squares hinge on the proxy's underside) — and it hides
+  its exact projected solid angle (Lambert's edge integral over its silhouette edges, clipped at the receiver's horizon).
+  The track runs are not summed in as separate boxes: from beside or beyond a hull every ray through a run goes on into
+  the belly, and the sum over-counted (0.65 of the sky 0.3 m beside a T-90M's track where the union hides 0.44). They
+  close only the side gaps a receiver between them sees under the hull's edges, along their ground run. The receipt holds
+  the law within 0.015 of a brute-force union of the hull and both runs (4096 stratified rays) at eleven ground points
+  beside, ahead of, behind, off the corner of and under the T-90M, and the GLSL to its CPU twin on the GPU
+  (`tools/vehicle-ground-occlusion.browser.selftest.mjs`). The track shoes' cloned material writes no vehicle tag and no
+  sun state, so a shoe is a pixel without one in the shoes' measured lane over the track's lower edge (a 4 cm floor
+  along the ground run, the wraps' measured ramp past it); a lit pixel, the terrain, is never one (lab4–lab6's lit snow
+  under the track ends and along a sunk track's foot), grass under a ramp stays a receiver, and the ground the ground
+  run covers (seen through the shoes' gaps and at their foot) keeps no sky. The contact plane is the shoes' own foot and the belly the measured pan
+  only where it stands over it: a battle visual's published contact geometry sat 12 cm under its tracks with a pan 30 cm
+  under them (the rest scan's float, 2026-10-03), which lab5's solids had inherited. A blocked direction keeps its occluder's own light (first-order
+  interreflection with a 0.25 hull albedo): the belly lit by the open ground it glimpses, a wall by half sky and half
+  ground. The ground-albedo multi-bounce it replaced (Jimenez's fit, which assumes the cavity has the receiver's albedo)
+  kept 0.37 of the sky under a snow belly and 0.81 at its rear edge; snow's belly now keeps 0.13, sunny sand's 0.21.
 
 **The first A/B on the PR head (fp6: 3ed03998a against the lane, the 24 wave-0 shots, the census views).** CIELAB over
 the 24 frames, PR head → lane (the 35 photographs): p5 / p50 lightness 32.5 / 60.6 → 26.7 / 52.7 (22.5 / 54.4), mean
@@ -6744,7 +6761,8 @@ PR head → lane (the photographs): p5 / p50 lightness 30.3 / 58.7 → 23.8 / 49
   where photographs of hulls on sand run about 0.07–0.16. The light balance itself is right (open shade / sun 0.155
   scene-linear: the sky's cosine-weighted irradiance × 1.45 against the sun on the ground); the hull's sky occlusion,
   the shadowed ambient's dim and the tone curve's toe stack on it. Next: the hull occlusion's multi-bounce term
-  (Jimenez's polynomial on the map's ground albedo: bright sand returns some of the light the hull hides).
+  (Jimenez's polynomial on the map's ground albedo: bright sand returns some of the light the hull hides). (Superseded
+  the same day by the first-order interreflection above: the polynomial lifted snow's belly to a lit strip.)
 - The far cloud shade waits for its capture (above).
 - The humilis maps' horizon puffs (above) and the arid fogDensity (above).
 - Saltwind's sky-w pale band is the sea's horizon (the view looks along open water); the Frontier contrail reads as a
@@ -6784,7 +6802,8 @@ dithers alias alike: dithered depth coverage itself was the fault). Now:
 - *Arid air:* fogDensity 0.00025 on Sirocco, Badlands, Copper Mesa and Oasis (Badlands' far ridge contrast 0.165 against
   the PR head's 0.114); the mountains lane's panorama bake takes the same law past its shell once hazeLaw.ts is merged.
 - *The hull's multi-bounce* (vehicleGroundOcclusion.ts): the occlusion keeps Jimenez et al.'s multi-bounce visibility on
-  the map's ground albedo (Sirocco's hull shade / sun 0.071 → 0.081; snow lifts most).
+  the map's ground albedo (Sirocco's hull shade / sun 0.071 → 0.081; snow lifts most). Replaced by the vehicle-ground
+  lane's exact hull solid and first-order interreflection (above): on snow it was the lit strip under the belly.
 - *No contrails* (cloudscapeLayer.ts `CLOUD_CONTRAILS_ON`): fp10's segmented, thinner trails still read as straight lines
   and the critics called every one a render glitch; the reference tank games carry none.
 - *No cumuliform far band:* edge-on, its broad coverage turned into one opaque pale ribbon a few degrees over the hills

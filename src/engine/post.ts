@@ -2816,8 +2816,8 @@ export function createPost(
 
   /** Round 69: per-frame state of the light effects (the sun on screen, the rig, the levers). */
   function updatePostLightFx(): void {
-    // (2026-10-03: the ground's albedo for the multi-bounce term — the grounded light model's ground, the legacy rig the
-    // default; QA: __LIGHT_TUNE.GROUND_AO_MULTIBOUNCE 0 turns it off)
+    // (2026-10-03: the ground's albedo for the interreflection under and beside the hulls — the grounded light model's
+    // ground, the legacy rig the default; QA: __LIGHT_TUNE.GROUND_AO_MULTIBOUNCE scales it, 0 drops the ground's bounce)
     const groundModel = scene.userData.lightModel as LightModel | undefined;
     const groundRho = groundModel?.mode === 'physical'
       ? 0.2126 * groundModel.groundAlbedo[0] + 0.7152 * groundModel.groundAlbedo[1] + 0.0722 * groundModel.groundAlbedo[2]

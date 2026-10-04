@@ -850,7 +850,10 @@ contact constraints and cannot be crossed by residual uphill speed.
 - *Landing speed is the hull's own approach.* An airborne hull's ground moves only with its own travel over the
   slope beneath it (its grade along the travel, read from two world samples once the hull is pitched past 72
   degrees and its track samples stack over one point), never with the support envelope's swing as the hull turns.
-  Falling support is followed uncapped; only a rising one is bounded (12 m/s) as a launch.
+  Falling support is followed uncapped; only a rising one is bounded (12 m/s) as a launch. The grade is the track
+  samples' rise per hull-local metre (the sine of the plane pitch the fit reads) over the cosine of the hull's pitch
+  (physics lane round 6: once the fit took the arcsine, the tangent read there made a 46-degree bank under a hull
+  pitched 45 degrees a 57-degree one, rising 47 % faster under the travel than it does).
 - *The landing stroke.* A landing on the tracks carries its closing into the springs: from the touchdown on the
   drooped tracks' line until the hull has come back up through its seat they work at the landing damping (ζ 0.45,
   `LANDING_ZETA`; driving keeps the critical damping), so a hard landing bottoms on the stops and a soft one dips,
@@ -877,6 +880,40 @@ contact constraints and cannot be crossed by residual uphill speed.
   limited by the suspension travel left at each end, and off a whole-track seat (a trench crossed, a crest, an edge)
   it joins the rock the tracks are seated at. A hard stop dips the hull 2.5-3.5 degrees with its tracks planted and
   rocks it back past level (about 0.9 degree) when the tracks stop pulling.
+- *A hull holds a posture over its tracks on a grade, and it is the hull's attitude.* The gravity the tracks hold the
+  hull against on a grade (physics lane round 5; gauntlet wave 38: "on a 17.9-degree grade the front and rear stations
+  carry about the same travel ... a real tank shows a clear rear-heavy gradient") loads the downhill end along the hull
+  and the downhill track across it: the moment it leaves under the centre of mass (45 % of the hull's height over its
+  tracks) is taken by the springs' pitch and roll stiffness, the ride's rate over the stations along each track and over
+  the two tracks (`holdTransferAngles`). The grade is the ground's under the tracks, the terrain fit's, not the hull's
+  own attitude, which carries the posture a hydraulic suspension aims it with and a shot's recoil. The posture (`_hold`,
+  drawn at the rock's visible scale and reached critically damped: a parked hull's attitude is still within a second
+  and a half, and the fit's steps on a trench's walls reach it smoothed) is part of the hull's attitude: visualPitch
+  and visualRoll are the attitude spring plus it, so the armour, the bores and launch mouths, the aim solves (a
+  fixed-bore casemate's hydraulic lay included), the snapshot and the renderer read one attitude, and at rest the
+  rendered rock adds nothing to it. The support solve seats the tracks at the spring's attitude, without it, so the
+  hull pitches and rolls over planted tracks and the road wheels conform under it. Off a whole-track seat it joins the
+  share the tracks are seated at (`_holdSeat`, relaxing at the rock's rate), as the dive joins the rock; the suspension
+  travel limits it with the dive; the movement checkpoint carries both from version 7. Parked facing up a 25° grade the
+  medium hull pitches 1.1° further onto its downhill tail, its stations 17 cm apart end to end; on a 20° cross slope it
+  rolls 0.8° onto its downhill track, 6 cm under the uphill one. A slide, or a hull on its shell, holds nothing and
+  transfers nothing. A landing is judged by its tracks' attitude, the spring's, not the posture. (Held in the rendered
+  rock, as first built, the posture put the drawn hull off the authority's at rest: a UDES 03 laid its fixed bore 0.69
+  degree off its sight on flat ground, where its own hydraulic nose-up posture read as a grade, and 1.08 degrees off on
+  a 14-degree grade; a ZTZ-100's launch mouth sat 1 cm off the server's on its first shot and 8 mm once settled on a
+  6-degree side slope.)
+- *A level landing nods about the centre of mass.* The springs stop a fall at the middle of the tracks' contact, and
+  the hull's centre of mass lies off that point along the hull (physics lane round 5; gauntlet wave 38: "flat
+  landings are perfectly level pistons"). Its anatomy places it: the turret's share (30 %) at the turret's pivot, the
+  power pack's (10 %) at the middle of its engine and transmission modules, the rest at the contact's centre
+  (`tankMassCenterOffsetM`; a spec without modules has none). Across the fleet it lies from 0.5 m aft of the contact's
+  centre to 0.4 m ahead of it, 0.22 m aft at the median. A landing met level (on the tracks, the hull within
+  3 degrees of the ground's pitch and roll) turns the hull about it by the closing speed times that offset over the
+  hull's pitch radius of gyration squared (`(L² + H²)/12`), into the dive and at the rendered rate (the rock's
+  amplification taken out). Off a 2 m drop the T-90M nods 1.2 degrees tail down and rocks back 0.35 degree, the
+  BMP-2 0.8 degree nose down, a Merkava 4 1.3 degrees nose down; from 8 m the stops' travel holds it to 0.9 degree.
+  A landing on a grade, or a hull met tilted, already turns at its contact (the landing turn) and takes none. The
+  fall's damage and its stroke are unchanged.
 - *The tracks' springs carry the hull over rough ground.* Every track-contact station (the outer pair and the wheel-run
   fan lines) is a spring loaded to the ride's static sag (`g/ω²`), and the seat the ride rests at is where the stations
   that reach the ground carry the hull's weight, read over the stations' own plane (that plane is the attitude's): on
@@ -930,6 +967,14 @@ contact constraints and cannot be crossed by residual uphill speed.
 - *A fall is the hull's own.* Fall damage prices the closing less, by energy, the height the support rose under the
   ride beyond what its own travel (and its turn on the spot) over a climbable grade explains (`fallImpactMps`; the
   ledger forgets over a second of riding the springs): a drop caused by the solver correcting itself is never a fall.
+  It is charged along the face's normal (physics lane round 6; Skybridge fall census: hulls climbing a 46-degree bank
+  hopped off its convexity and met the face 0.4 s later for 75.6 and 160.5 hp). The closing is vertical: the ground's
+  rise under the travel and the hull's fall. The face meets the hull at that times the cosine of its slope along and
+  across the travel (`landingFaceShare`), where the ground under the hull's middle holds a face at the grade the
+  closing read; an edge or a step under the hull (a roof's edge) keeps the vertical closing. A hull leaving a bank's
+  lip at 6.5 m/s and meeting the 50-degree face 0.4 s later lands at 5.7 m/s vertical (8.8 with the grade misread)
+  and is charged 3.6, nothing, where it lost 61 hp; an 8 m drop onto a 25-degree grade is charged 9.9 m/s, not 10.9.
+  The bounded rules (the gravity modes, Turbo Ball) keep their own vertical law.
 - *Known limits.* Rigid rotation is still about the root, though the tip lever reads the box centre (a nose-first
   landing settles about its centre, so it can hop a few times on a sharp kicker); a hull balanced exactly on a 4 m
   edge hangs nose-up near 80° before it slides off (its tail cannot reach the ground sooner); the drivetrain feels a
@@ -1509,13 +1554,15 @@ space, level, pitch jitter, caps); `environmentScenes.ts` +
 `ambienceDirector.ts` (per-map beds, layers, positioned spot sounds, gun
 tails, reverb; the garage is an indoor scene whose room tone and workshop
 sounds come from a few metres away); `voiceLines.ts` + `crewRadio.ts` (crew
-radio); `procedural.ts` (synthesized fallbacks and alarms); `mixPolicy.ts`
-(every level, snapshot, HDR, budget and LOD constant).
+radio); `mixPolicy.ts` (every level, snapshot, HDR, budget and LOD
+constant). Nothing is synthesized or stood in for: every sound is a recorded
+asset, one still decoding is silent, and no cue or crew covers for another
+(`voiceTriggers.selftest.mjs` fails on a sound chained in for another).
 
-**Assets.** 386 sound assets (627 variant files, 18 MB WebM/Opus) under
+**Assets.** 398 sound assets (649 variant files, 18.6 MB WebM/Opus) under
 `public/audio/sfx/<group>/`, described by `sfxManifest.generated.ts`
 (duration, channels, rate, loop points, size). Crew radio: 13 language packs
-× 97 lines (one to four takes each, mostly two; ~1.5 MB per pack) under
+× 107 lines (one to four takes each, mostly two; ~1.6 MB per pack) under
 `public/audio/voice/<lang>/`, described by `voiceManifest.generated.ts`. Both
 are generated offline with ElevenLabs (sound generation `eleven_text_to_sound_v2`;
 speech `eleven_v4` with Voice Library voices), verified (speech-to-text
@@ -1626,15 +1673,21 @@ or any one nation's pack for every tank. The persisted choice and legacy
 migration live in `audio/crewVoice.ts`, shared by input and the lazy engine;
 live changes, new battles and same-entity nation changes all use that resolver.
 Changing language stops old speech and clears pending calls; cold packs wait
-for decoding before considering the existing missing-take fallback.
+for decoding, and a crew never speaks another nation's take (every pack
+carries every line).
 Radio discipline: priority 0–4 with
-interrupts for survival calls, per-line and per-group cooldowns, stale
+interrupts (survival cuts anything below it, decisive events cut situational
+calls, reports cut flavour), per-line and per-group cooldowns, stale
 drops, a 0.8 s gap between calls, a two-line queue, probability gates on
-routine chatter (reloads, allies' kills, autocannon results) and at most one
-spot call per five seconds unless several contacts appear at once. Our
-main-gun results, misses included ("short" by the line's second take when the
-round fell before the enemy it was laid on), are called almost every time,
-half a second after the round lands. Every line goes through an intercom
+flavour only (firing, reload done, allies' kills, near misses, autocannon
+results) and at most one spot call per five seconds unless several contacts
+appear at once. Every main-gun result, misses included ("short" by the line's
+second take when the round fell before the enemy it was laid on), is called
+half a second after the round lands, and the crew confirms the tank's own
+systems (smoke, roof gun, suspension, drone launch and loss, the gunship's
+weapons and supply drops) and a held point under attack. A network battle
+feeds the same handlers (the presentation maps spots, autoflips and the
+viewer's reload to solo's events). Every line goes through an intercom
 chain (a 24 dB/oct 320 Hz–3.4 kHz band, a 1.9 kHz presence peak,
 compression, drive, a headset speaker roll-off, a static bed and squelch); a
 damaged radio module narrows the band and adds drive, dropouts and

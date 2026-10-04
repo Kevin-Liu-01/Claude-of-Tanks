@@ -112,6 +112,8 @@ const FLAG_CAPTURE_RADIUS_M = 12;
 const FLAG_RETURN_S = 18;
 const ZONE_RADIUS_M = 30;
 const ZONE_CAPTURE_S = 8;
+/** An owned point's incursion alert repeats at most this often (a tank idling on the rim is one alert, not a stream). */
+const ZONE_CONTEST_REPEAT_S = 20;
 const ZONE_POINTS_PER_SECOND = 2;
 export const ZONE_DESTRUCTION_POINTS = 25;
 const BALL_RADIUS_M = 2.2;
@@ -931,7 +933,22 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     return alpha * 16 + bravo;
   };
 
+  // An owned point the other side has driven onto, its holders inside or not: announced once per incursion
+  // (mode_zone_contested, with the holding team), before the intruders start turning it.
+  const zoneIncursions = new Map<ZoneState['id'], { inside: boolean; sinceS: number }>();
+  const noteZoneIncursion = (zone: ZoneState, intruders: number, dt: number): void => {
+    let incursion = zoneIncursions.get(zone.id);
+    if (!incursion) { incursion = { inside: false, sinceS: ZONE_CONTEST_REPEAT_S }; zoneIncursions.set(zone.id, incursion); }
+    incursion.sinceS += dt;
+    if (intruders > 0 && !incursion.inside && incursion.sinceS >= ZONE_CONTEST_REPEAT_S) {
+      incursion.sinceS = 0;
+      emit('mode_zone_contested', { zoneId: zone.id, team: zone.owner });
+    }
+    incursion.inside = intruders > 0;
+  };
+
   const advanceZoneControl = (zone: ZoneState, alpha: number, bravo: number, dt: number): void => {
+    noteZoneIncursion(zone, zone.owner === 'alpha' ? bravo : zone.owner === 'bravo' ? alpha : 0, dt);
     zone.contested = alpha > 0 && bravo > 0;
     if (zone.contested || (alpha === 0 && bravo === 0)) return;
     const direction = alpha > 0 ? 1 : -1;
@@ -1102,7 +1119,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const pickup:PickupState={id:`airdrop-${++pickupSequence}`,kind,x:safe.x,z:safe.z,y:Math.max(groundY,entity.aerial.y),active:true,spawnedWave:0,airDrop:true,groundY,startY:Math.max(groundY,entity.aerial.y),landAtS:timeS+6,expiresAtS:timeS+70};
     if(free)Object.assign(free,pickup);else pickups.push(pickup);
     if(kind==='ammo')ammoAt=timeS+22;else healAt=timeS+30;
-    emit('mode_pickup_spawned',{...pickup});return true;
+    emit('mode_pickup_spawned',{...pickup,by:entityId});return true;
   };
   const needsSupply=(entity:Entity,pickup:PickupState):boolean=>pickup.kind==='heal'
     ?entity.combat.hp<entity.combat.maxHp*.95

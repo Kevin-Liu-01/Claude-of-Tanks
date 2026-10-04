@@ -26,6 +26,11 @@ export const PRESETS = {
   // Gun reports keep their crest: normalised on the true peak with the limiter left above it. Normalising a
   // crack to a loudness target drives its peak far past full scale, and limiting it back squares it into a blast.
   gunshot: { mono: true, peakNorm: -1.5, peak: -1, maxS: 3.5, tailDb: -50, fadeOutS: 0.12, highpass: 28, opusKbps: 96 },
+  // The punch layer under a close report: peak-normalised like the crack it sits under, and short.
+  punch: { mono: true, peakNorm: -1.5, peak: -1, maxS: 1.2, tailDb: -48, fadeOutS: 0.05, highpass: 28, opusKbps: 80 },
+  // Low-end layers under blasts and hull hits: only the bass survives a steep low-pass (two stages), and they
+  // are peak-normalised because loudness weighting barely registers sub-bass.
+  sub: { mono: true, peakNorm: -2, peak: -1, maxS: 3, tailDb: -48, fadeOutS: 0.2, highpass: 24, lowpass: 190, opusKbps: 48 },
   'weapon-far': { mono: true, mMax: -14, peak: -1, maxS: 5.5, tailDb: -50, fadeOutS: 0.25, highpass: 30, opusKbps: 56 },
   tail: { mono: true, mMax: -16, peak: -2, maxS: 4.5, tailDb: -50, fadeOutS: 0.4, fadeInS: 0.03, highpass: 35, opusKbps: 56 },
   impact: { mono: true, mMax: -10, peak: -1, maxS: 6, tailDb: -54, fadeOutS: 0.15, highpass: 25, opusKbps: 80 },
@@ -246,7 +251,7 @@ export function masterTake({ channels, sr, preset, outBase, aac = false, shape =
   try {
     const raw = join(tmp, 'raw.wav');
     writeF32Wav(raw, work, sr);
-    const filt = `highpass=f=${p.highpass}:p=2`;
+    const filt = `highpass=f=${p.highpass}:p=2${p.lowpass ? `,lowpass=f=${p.lowpass}:p=2,lowpass=f=${p.lowpass}:p=2` : ''}`;
     const pre = join(tmp, 'pre.wav');
     run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', raw, '-af', filt, '-c:a', 'pcm_f32le', pre]);
     const before = measureLoudness(pre);
@@ -268,8 +273,8 @@ export function masterTake({ channels, sr, preset, outBase, aac = false, shape =
     mkdirSync(dirname(outBase), { recursive: true });
     run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', fin, '-c:a', 'libopus', '-b:a', `${p.opusKbps}k`, '-vbr', 'on',
       '-application', preset === 'voice' ? 'voip' : 'audio', '-frame_duration', '20', '-map_metadata', '-1', `${outBase}.webm`]);
-    // AAC fallback only on request: Safari decodes Opus-in-WebM from 17.4, and
-    // older engines keep the procedural fallback rather than double the payload.
+    // AAC only on request: Safari decodes Opus-in-WebM from 17.4, and the
+    // engine has no synthesized stand-ins, so an older engine stays silent.
     if (aac) {
       run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', fin, '-c:a', 'aac', '-b:a', `${Math.round(p.opusKbps * 1.25)}k`,
         '-movflags', '+faststart', '-map_metadata', '-1', `${outBase}.m4a`]);

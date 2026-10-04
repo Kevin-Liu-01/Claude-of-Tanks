@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { createTankState } from '../../sim/movement.ts';
 import { getSpec } from '../../vehicles/specs.ts';
-import { ENTITY_FLAGS, NO_ENTITY, PHASE, TEAM, VERDICT, eraPlateNames, quantizePosition, zeroEntityRow } from '../wire/index.ts';
+import { ENTITY_FLAGS, NO_ENTITY, PHASE, TEAM, VERDICT, eraPlateNames, quantizePosition, quantizeReloadS, zeroEntityRow } from '../wire/index.ts';
 import { createEntitySample } from '../match/interpolation.ts';
 import { RecordingPresentation, createBattlePresentation } from './index.ts';
 
@@ -213,6 +213,42 @@ assert.equal(expired.payload.hitKind, 'prop');
 assert.deepEqual(expired.payload.normal, [0, 0.2, -0.98]);
 presentation.applyEvent({ kind: 'module_state', payload: { id: 'foe', module: 'gun', state: 'red', source: 'hit' } }, { own: false, feedbackPredicted: false });
 assert.equal(busEvents.at(-1).type, 'module:state');
+
+// Spotting, rolling back onto the tracks and our reload reach the bus in solo play's shapes (2026-10-04): the crew's
+// spot calls, the sixth sense, the self-right and the loading machinery work in a network battle too.
+{
+  const since = busEvents.length;
+  presentation.applyEvent({ kind: 'tank_spotted', payload: { id: 'foe', team: 'alpha', timeS: 12.4, spotterId: 'me' } }, { own: false, feedbackPredicted: false });
+  presentation.applyEvent({ kind: 'tank_spotted', payload: { id: 'me', team: 'bravo', timeS: 12.5, spotterId: 'foe' } }, { own: false, feedbackPredicted: false });
+  presentation.applyEvent({ kind: 'tank_spotted', payload: { id: 'bot-3', team: 'bravo', timeS: 12.5, spotterId: 'foe' } }, { own: false, feedbackPredicted: false });
+  presentation.applyEvent({ kind: 'tank_autoflip', payload: { id: 'bot-3' } }, { own: false, feedbackPredicted: false });
+  const out = busEvents.slice(since).map(({ type, payload }) => [type, payload]);
+  assert.deepEqual(out, [
+    ['tank:spotted', { id: 'foe', team: 'player', timeS: 12.4, spotterId: 'me' }],
+    ['tank:spotted', { id: 'me', team: 'enemy', timeS: 12.5, spotterId: 'foe' }],
+    ['player:spotted', { timeS: game.timeS }],
+    ['tank:spotted', { id: 'bot-3', team: 'enemy', timeS: 12.5, spotterId: 'foe' }],
+    ['tank:autoflip', { id: 'bot-3', specId: 'm1a2' }],
+  ], 'spots read as the viewer\'s side, our own exposure lights the sixth sense once, and an autoflip passes through');
+  // (the event object is reused per step, as in solo play: read it when it is emitted)
+  const steps = [];
+  const row = (reloadS) => ownRow({ reload: quantizeReloadS(reloadS), reloadTotal: quantizeReloadS(6), reloadKind: 1 });
+  const step = (tick, viewerRow) => {
+    const mark = busEvents.length;
+    presentation.applyFrame(frame({ tick, viewer: { ...frame().viewer, row: viewerRow } }));
+    for (const event of busEvents.slice(mark)) if (event.type === 'player:reload') steps.push({ ...event.payload });
+  };
+  step(135, row(4));
+  step(135, row(4));
+  step(136, row(1.5));
+  step(137, ownRow({ reload: 0, reloadTotal: 0, reloadKind: 0 }));
+  step(138, ownRow({ reload: 0, reloadTotal: 0, reloadKind: 0 }));
+  assert.equal(steps.length, 3, `one event per new reload step, none for a repeated row or a gun at rest (${JSON.stringify(steps)})`);
+  assert.deepEqual(steps.map((e) => [e.done, e.kind, e.total]), [[false, 'shell', 6], [false, 'shell', 6], [true, 'shell', 6]],
+    'the finished step keeps the reload\'s own kind and length');
+  assert.ok(Math.abs(steps[0].progress - 1 / 3) < 0.02 && Math.abs(steps[1].progress - 0.75) < 0.02 && steps[2].progress === 1, 'progress runs to 1');
+  assert.ok(steps.every((e) => e.caliberMm === spec.gun.shells[0].caliberMm), 'with the loaded round\'s bore');
+}
 // a prop this viewer's world does not have (lane mp/ui-sync-check, 2026-09-30): nothing crushed, nothing emitted, no throw —
 // a `pos: null` prop:crushed threw in the feedback runtime inside the frame pump on the mobile tier's lighter world
 {

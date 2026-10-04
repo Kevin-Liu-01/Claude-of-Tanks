@@ -8,9 +8,13 @@
  *   running gear – slow/fast track loops for the surface under the hull,
  *                  rate-locked to track speed, crossfaded across surfaces;
  *                  pivot scrub, brake skid, fording wash
- *   machinery    – turret drive and gun servo (occupied hull), procedural
- *                  gear-mesh / turbo / electric-drive whines, cabin hum and
- *                  rattle in the gunner's sight, fire on the engine deck
+ *   machinery    – turret drive and gun servo (occupied hull), recorded
+ *                  gear-mesh / turbo / electric-drive whine loops pitched by
+ *                  speed or rpm, cabin hum and rattle in the gunner's sight,
+ *                  fire on the engine deck
+ *
+ * Every layer is a recorded loop: a bank still decoding is silent (there is
+ * no synthesized stand-in).
  *
  * Level of detail: the occupied hull gets everything; near tanks get three
  * engine bands, both track loops and the scrub; far tanks one engine band.
@@ -25,9 +29,6 @@ import type { AssetLibrary } from './assetLibrary.ts';
 import type { Mixer } from './mixer.ts';
 import type { VoicePool } from './voicePool.ts';
 import {
-  engineFallback, whine, type EngineFallback, type NoiseBank, type WhineRig,
-} from './procedural.ts';
-import {
   createVehicleAudioEvents, createVehicleAudioState, stepVehicleAudio,
   type ModuleHealth, type SurfaceId, type VehicleAudioInput, type VehicleAudioState,
 } from './vehicleAudioModel.ts';
@@ -35,11 +36,16 @@ import { ENGINE_FAMILIES, type VehicleAudioIdentity } from './vehicleAudioProfil
 
 export type RigLod = 'own' | 'near' | 'far';
 
+type WhineKind = 'gear' | 'turbo' | 'electric' | 'turbine';
+const WHINE_KINDS: readonly WhineKind[] = ['gear', 'turbo', 'electric', 'turbine'];
+const WHINE_ASSET: Readonly<Record<WhineKind, string>> = Object.freeze({
+  gear: 'gear_whine_loop', turbo: 'turbo_whistle_loop', electric: 'electric_drive_loop', turbine: 'turbo_whistle_loop',
+});
+
 interface RigDeps {
   readonly mixer: Mixer;
   readonly library: AssetLibrary;
   readonly pool: VoicePool;
-  readonly noise: NoiseBank;
   readonly random: () => number;
   readonly reverb: boolean;
 }
@@ -108,7 +114,7 @@ export interface VehicleRig {
 }
 
 export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAudioIdentity, initialLod: RigLod): VehicleRig {
-  const { mixer, library, pool, noise, random } = deps;
+  const { mixer, library, pool, random } = deps;
   const ctx = mixer.ctx;
   const family = ENGINE_FAMILIES[identity.engine];
   const state = createVehicleAudioState(family);
@@ -158,8 +164,9 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
   // Engine band assets of the current LOD and their RPM centres (rebuilt on LOD change).
   let bandAssets: string[] = [];
   let bandCentresNow: number[] = [];
-  let fallback: EngineFallback | null = null;
-  const whines: { gear?: WhineRig; turbo?: WhineRig; electric?: WhineRig; turbine?: WhineRig } = {};
+  // Drivetrain whines: gear mesh on every hull near enough to hear it, a turbo whistle or a turbine on the engines
+  // that have one, the electric drive on hybrids. The turbine shares the turbo's whistle, pitched higher.
+  const whines = new Map<WhineKind, Layer>();
 
   function makeLayer(asset: string, dest: AudioNode): Layer {
     // A live loop's buffer must outlive the library's idle eviction.
@@ -283,18 +290,19 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
   }
 
   function syncWhines(): void {
-    const wantGear = lod !== 'far';
-    if (wantGear && !whines.gear) whines.gear = whine(ctx, gearSum, 'gear');
-    if (!wantGear && whines.gear) { whines.gear.stop(); delete whines.gear; }
-    const wantTurbo = lod !== 'far' && identity.turboWhistle > 0.3;
-    if (wantTurbo && !whines.turbo) whines.turbo = whine(ctx, engineSum, 'turbo');
-    if (!wantTurbo && whines.turbo) { whines.turbo.stop(); delete whines.turbo; }
-    const wantElectric = lod !== 'far' && identity.electricDrive > 0;
-    if (wantElectric && !whines.electric) whines.electric = whine(ctx, gearSum, 'electric');
-    if (!wantElectric && whines.electric) { whines.electric.stop(); delete whines.electric; }
-    const wantTurbine = lod !== 'far' && identity.turbineAux > 0;
-    if (wantTurbine && !whines.turbine) whines.turbine = whine(ctx, engineSum, 'turbo');
-    if (!wantTurbine && whines.turbine) { whines.turbine.stop(); delete whines.turbine; }
+    const near = lod !== 'far';
+    const want: Record<WhineKind, boolean> = {
+      gear: near,
+      turbo: near && identity.turboWhistle > 0.3,
+      electric: near && identity.electricDrive > 0,
+      turbine: near && identity.turbineAux > 0,
+    };
+    for (const kind of WHINE_KINDS) {
+      const layer = whines.get(kind);
+      if (want[kind] && !layer) whines.set(kind, makeLayer(WHINE_ASSET[kind], kind === 'gear' || kind === 'electric' ? gearSum : engineSum));
+      else if (!want[kind] && layer) { dropLayer(layer, 0.2); whines.delete(kind); }
+    }
+    if (whines.size) library.load([...whines.values()].map((layer) => layer.asset));
   }
 
   function applyLod(next: RigLod): void {
@@ -340,8 +348,9 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
           break;
         case 'stall':
           // The powertrain's own wind-down (a turbine spools down, a diesel
-          // coughs out); the generic stall covers an undecoded family.
-          if (!pool.play(`engine_${identity.engine}_stop`, { ...at, gainDb: -2 })) pool.play('engine_stall', { ...at, gainDb: -2 });
+          // coughs out), pinned with the battle's roster: never a generic
+          // stall standing in for it (owner 2026-10-04, no fallbacks).
+          pool.play(`engine_${identity.engine}_stop`, { ...at, gainDb: -2 });
           break;
         case 'restart':
           pool.play(`engine_${identity.engine}_start`, { ...at, gainDb: -3 });
@@ -387,23 +396,14 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
     const running = state.running ? 1 : 0;
     const engineLevel = running * startFade * (0.3 + 0.7 * state.load) * (lod === 'far' ? 0.9 : 1);
     const rpm = Math.max(family.idleRpm * 0.5, state.rpm);
-    let anyReady = false;
     for (let i = 0; i < bandAssets.length; i++) {
       const layer = engineLayers.get(bandAssets[i]);
       if (!layer) continue;
       const weight = bandAssets.length === 1 ? 1 : bandWeight(rpm, bandCentresNow, i);
       const rate = clamp(rpm / bandCentresNow[i], 0.78, 1.32) * identity.enginePitch * frame.doppler;
       setLayer(layer, weight * engineLevel, rate);
-      if (layer.source) anyReady = true;
     }
     engineTone.frequency.setTargetAtTime(2600 + 14000 * Math.max(state.load, frame.own ? 0.35 : 0.6), t, 0.12);
-    if (!anyReady && running) {
-      if (!fallback) fallback = engineFallback(ctx, engineSum, noise, random);
-      fallback.set(rpm, state.load, family.turbine);
-    } else if (fallback) {
-      fallback.stop(0.4);
-      fallback = null;
-    }
 
     // ---- running gear.
     const speed = state.trackMps;
@@ -436,11 +436,17 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
       if (rattle) setLayer(rattle, frame.cabin * clamp(speed / 6, 0, 1), 0.85 + speed * 0.025);
     }
 
-    // ---- procedural whines.
-    whines.gear?.set(28 + speed * 36, clamp(speed / 12, 0, 1) * (0.06 + 0.12 * state.load) * (0.6 + family.whine));
-    whines.turbo?.set(2400 + 2600 * state.rpm, identity.turboWhistle * state.load * state.rpm * 0.12 * running);
-    whines.electric?.set(160 + speed * 92, identity.electricDrive * clamp(speed / 5, 0, 1) * 0.16);
-    whines.turbine?.set(3800 + 2400 * state.rpm, identity.turbineAux * 0.07 * running);
+    // ---- drivetrain whines. Rates are re each loop's recorded pitch (gear ≈ 1.65 kHz, electric ≈ 445 Hz, turbo
+    // ≈ 740 Hz); levels match the oscillator whines they replaced (2026-10-03), the gear mesh 5 dB under them
+    // because its recording sits four times higher, where the ear is more sensitive.
+    const gearWhine = whines.get('gear');
+    if (gearWhine) setLayer(gearWhine, clamp(speed / 12, 0, 1) * (0.22 + 0.45 * state.load) * (0.6 + family.whine), (0.5 + speed / 16) * frame.doppler);
+    const turbo = whines.get('turbo');
+    if (turbo) setLayer(turbo, identity.turboWhistle * state.load * state.rpm * 0.29 * running, (0.7 + 0.6 * state.rpm) * frame.doppler);
+    const electric = whines.get('electric');
+    if (electric) setLayer(electric, identity.electricDrive * clamp(speed / 5, 0, 1) * 0.6, (0.6 + speed / 14) * frame.doppler);
+    const turbine = whines.get('turbine');
+    if (turbine) setLayer(turbine, identity.turbineAux * 0.11 * running, (1.2 + 0.5 * state.rpm) * frame.doppler);
 
     // ---- engine-deck fire rides the rig, so it follows a tank that keeps driving.
     const fire = gearLayers.get('fire_small_loop');
@@ -483,10 +489,10 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
       dead = true;
       for (const layer of engineLayers.values()) dropLayer(layer, fadeS);
       for (const layer of gearLayers.values()) dropLayer(layer, fadeS);
+      for (const layer of whines.values()) dropLayer(layer, fadeS);
       engineLayers.clear();
       gearLayers.clear();
-      fallback?.stop(fadeS);
-      for (const rig of Object.values(whines)) rig?.stop(fadeS);
+      whines.clear();
       const t = ctx.currentTime;
       output.gain.cancelScheduledValues(t);
       output.gain.setValueAtTime(output.gain.value, t);

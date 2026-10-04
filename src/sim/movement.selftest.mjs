@@ -123,12 +123,18 @@ const SUSP_VIS_R = 2.1;
 // MOVEMENT r1: 2.3 was a stale mirror — movement.ts/tankFactory lock SWAY_VIS
 // at 3.2 (effects_combat r1), so floats during hard turns were under-measured.
 const SWAY_VIS = 3.2;
+// The tracks are seated without the dive (`_susp.d`) or the posture the hull holds over them on a grade (`_hold`, part of
+// visualPitch / visualRoll): with them the hull pitches and rolls over planted tracks, its wheels compressing at the
+// loaded end and drooping at the other (movement.ts pitchEff / rollEff). A hull parked facing up a grade squats on its
+// tail that way (physics lane round 5), so the track line is measured at the seat: the attitude spring's, with the
+// posture's share seated off a whole-track seat (`_holdSeat`).
 function contactStats(state, field) {
   const hw = 0.5 * SPEC.dims.widthM;
   const sl = 0.45 * SPEC.dims.hullLengthM;
   const fl = state._flinch || { p: 0, r: 0 };
-  const pitch = state.visualPitch + state._susp.p * SUSP_VIS_P - fl.p;
-  const roll = state.visualRoll + state._susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + fl.r;
+  const seat = state._holdSeat || { p: 0, r: 0 };
+  const pitch = state._spring.pitch + seat.p + (state._susp.p - (state._susp.d ?? 0)) * SUSP_VIS_P - fl.p;
+  const roll = state._spring.roll + seat.r + state._susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + fl.r;
   const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
   const ca = Math.cos(-pitch), sa = Math.sin(-pitch);
   const cr = Math.cos(roll), sr = Math.sin(roll);
@@ -203,7 +209,14 @@ function gunPoseWorld(state) {
   const field = makeField((x) => 0.25 * x);
   const ent = makeEntity(field, 0, 0, 0);
   run(ent, field, 600);
-  near(ent.state.visualRoll, Math.atan(0.25), 0.02, 'side slope: roll conforms (sign + magnitude)');
+  // the tracks lie on the slope (the attitude spring); the hull holds a posture over them onto its downhill (left) track
+  // (physics lane round 5: state._hold, part of visualRoll)
+  near(ent.state._spring.roll, Math.atan(0.25), 0.02, 'side slope: roll conforms (sign + magnitude)');
+  const leanDeg = (ent.state.visualRoll - ent.state._spring.roll) * 180 / Math.PI;
+  assert(leanDeg > 0.3 && leanDeg < 2.5, `side slope: the hull leans onto its downhill track over them (${leanDeg.toFixed(2)} deg)`);
+  // the posture is the hull's attitude, not the rendered rock: at rest the drawn hull is the authority's (a bore or a launch
+  // mouth drawn on the rock sat off the one the server fires from)
+  near(ent.state._susp.r * SUSP_VIS_R, 0, 1e-4, 'side slope: the rock rests at zero');
   const { penetration, minGap } = contactStats(ent.state, field);
   assert(penetration < 0.03, `side slope: no track buried (pen ${penetration.toFixed(3)} m)`);
   assert(minGap < 0.03, `side slope: no track floating (min gap ${minGap.toFixed(3)} m)`);
@@ -214,7 +227,11 @@ function gunPoseWorld(state) {
   const field = makeField((x, z) => 0.3 * z);
   const ent = makeEntity(field, 0, 0, 0);
   run(ent, field, 600);
-  near(ent.state.visualPitch, Math.atan(0.3), 0.02, 'uphill: nose-up pitch conforms');
+  // the tracks lie on the grade (the attitude spring); the hull squats over them onto its downhill tail (state._hold)
+  near(ent.state._spring.pitch, Math.atan(0.3), 0.02, 'uphill: nose-up pitch conforms');
+  const squatDeg = (ent.state.visualPitch - ent.state._spring.pitch) * 180 / Math.PI;
+  assert(squatDeg > 0.3 && squatDeg < 2.5, `uphill: the hull squats onto its tail over them (${squatDeg.toFixed(2)} deg)`);
+  near(ent.state._susp.p * SUSP_VIS_P, 0, 1e-4, 'uphill: the rock rests at zero');
   const { penetration, minGap } = contactStats(ent.state, field);
   assert(penetration < 0.03, `uphill: no penetration (pen ${penetration.toFixed(3)} m)`);
   assert(minGap < 0.03, `uphill: contact held (min gap ${minGap.toFixed(3)} m)`);

@@ -3,7 +3,7 @@
 // the gauntlet loop for all visual verification ... especially in comparison to world of tanks and war thunder and
 // realistic"). Frame strips of the player hull in a real solo battle — the real map, lighting, tank visual, running
 // gear and physics — for the visual gauntlet's critics: rough ground at speed, a hard stop, a landing in every gravity
-// world, a rest on a slope.
+// world, level drops onto flat ground, a rest on a slope and across one.
 //
 // Deterministic: the countdown is frozen (game.preBattleS = Infinity) so the frame loop never steps the battle, and
 // every tick between captures is a __DEBUG.fastForward step of the solo simulation. Each case runs twice on the same
@@ -39,9 +39,9 @@ const ACCEPTS = ['root', 'out', 'tag', 'spec', 'ids', 'cache-dir', 'dist'];
 const VIEWPORT = Object.freeze({ width: 1280, height: 720 });
 
 /**
- * The cases. `map`/`mode`/`gravity` pick the battle; `find` the stage (searched on the live height field, clear of
- * obstacles); `kind` how the capture window is anchored: `landing` (touchdown), `stop` (brake and stop), `drive`
- * (steady travel), `rest`.
+ * The cases. `map`/`mode`/`gravity` pick the battle and `spec` its hull (the --spec option's otherwise); `find` the
+ * stage (searched on the live height field, clear of obstacles); `kind` how the capture window is anchored: `landing`
+ * (touchdown), `stop` (brake and stop), `drive` (steady travel), `rest`.
  */
 export const STRIP_CASES = Object.freeze({
   rough: { map: 'badlands', mode: 'standard', find: 'rough', kind: 'drive', speed: 11, throttle: 1, view: 'side',
@@ -62,7 +62,20 @@ export const STRIP_CASES = Object.freeze({
   // round 4 (wave 33: "landings are pure vertical drops: hull pitch and roll never move, even when one side touches
   // first"): every landing above fell in the attitude it had settled in on that ground; here a level hull falls 3 m onto
   // a 9-10 degree cross slope, so one track lands first and the landing turns the hull onto the slope
-  'land-cross': { map: 'badlands', mode: 'standard', find: 'cross', kind: 'landing', drop: 3, level: true, view: 'quarter' },
+  // round 5 (wave 38: "after the side-slope landing the hull still leans on the uphill track"): that stage's cross slope
+  // twisted under the hull, so the stage search now holds it even (pageFindStage), and the frames after touchdown run
+  // twice as long, to the settled lean onto the downhill track
+  'land-cross': { map: 'badlands', mode: 'standard', find: 'cross', kind: 'landing', drop: 3, level: true, stretch: 2,
+    view: 'quarter' },
+  // round 5: parked across a 15-20-degree slope, the hull leans onto its downhill track (watched from ahead)
+  'rest-cross': { map: 'badlands', mode: 'standard', find: 'cross-steep', kind: 'rest', speed: 0, throttle: 0, view: 'front',
+    frames: [0.5, 2, 4] },
+  // round 5 (wave 38: "flat landings are perfectly level pistons"): a level 2 m drop onto flat ground nods the hull about
+  // its centre of mass, a rear-engined T-90M tail down and a front-engined Merkava 4 nose down, and rocks it back; the
+  // frames after touchdown run twice as long, through the rock back
+  'land-flat': { map: 'mars', mode: 'standard', find: 'flat', kind: 'landing', drop: 2, stretch: 2, view: 'side' },
+  'land-flat-fwd': { map: 'mars', mode: 'standard', spec: 'merkava4b', find: 'flat', kind: 'landing', drop: 2, stretch: 2,
+    view: 'side' },
   // round 4 (wave 33: "peak compression barely scales with impact"): a 1 m drop (3.9 m/s) beside the 3 m one (7.3 m/s)
   'land-1m': { map: 'mars', mode: 'standard', find: 'flat', kind: 'landing', drop: 1, view: 'quarter' },
   // round 3 (wave 23: "the turbo landings read 0.0 m/s forward speed"): Turbo Ball jumps at speed, a running jump. Its
@@ -132,13 +145,14 @@ function pageFindStage(world, kind, landing) {
   const obstacles = typeof world.getObstacles === 'function' ? world.getObstacles() : [];
   const blocked = (x, z, margin) => obstacles.some((o) => !o.crushed
     && x > o.min[0] - margin && x < o.max[0] + margin && z > o.min[2] - margin && z < o.max[2] + margin);
+  const crossKind = kind === 'cross' || kind === 'cross-steep';
   let best = null;
   for (let gx = -280; gx <= 280; gx += 20) {
     for (let gz = -280; gz <= 280; gz += 20) {
       for (let k = 0; k < 8; k++) {
         const yaw = (k * Math.PI) / 4;
         const fx = Math.sin(yaw), fz = Math.cos(yaw);
-        const len = kind === 'rough' ? 40 : kind === 'flat' ? 70 : kind === 'uneven' || kind === 'cross' ? 12 : 10;
+        const len = kind === 'rough' ? 40 : kind === 'flat' ? 70 : kind === 'uneven' || crossKind ? 12 : 10;
         let ok = true, rough = 0, maxGrade = 0, maxSide = 0, prev = null, prev2 = null, wetAny = false;
         for (let s = -6; s <= len; s += 1) {
           const x = gx + fx * s, z = gz + fz * s;
@@ -175,12 +189,18 @@ function pageFindStage(world, kind, landing) {
           score = -Math.abs(rough - 0.5) - maxSide;
         }
         else if (kind === 'flat') { if (maxGrade > 0.06 || side > 0.05) continue; score = -rough - maxGrade * 10; }
-        else if (kind === 'cross') {
-          // round 4: a cross slope of about 10 degrees, even along the heading, so a level hull lands on one track first
-          const minSide = Math.min(side, ...[3, 6, 9].map((s) => Math.abs(h(gx + fx * s + fz * 2, gz + fz * s - fx * 2)
-            - h(gx + fx * s - fz * 2, gz + fz * s + fx * 2)) / 4));
-          if (maxGrade > 0.08 || minSide < 0.14 || maxSide > 0.22 || rough > 0.3) continue;
-          score = -Math.abs(Math.atan(side) - 0.175) * 10 - rough - maxGrade;
+        else if (crossKind) {
+          // round 4: a cross slope of about 10 degrees, even along the heading, so a level hull lands on one track first.
+          // Round 5: even under the hull too, within about a degree from 4 m behind it to 9 m ahead (wave 38's stage
+          // twisted 3 degrees over that, and the twist read as a lean the wrong way); 'cross-steep' is a 15-20-degree one
+          // to park across
+          const sides = [-4, -2, 0, 2, 4, 6, 9].map((s) => (h(gx + fx * s + fz * 2, gz + fz * s - fx * 2)
+            - h(gx + fx * s - fz * 2, gz + fz * s + fx * 2)) / 4);
+          const minSide = Math.min(...sides.map(Math.abs));
+          const twist = Math.max(...sides) - Math.min(...sides);
+          const [low, high, target] = kind === 'cross' ? [0.14, 0.22, 0.175] : [0.26, 0.38, 0.31];
+          if (maxGrade > 0.08 || minSide < low || maxSide > high || twist > 0.021 || rough > 0.3) continue;
+          score = -Math.abs(Math.atan(side) - target) * 10 - twist * 20 - rough - maxGrade;
         }
         else {
           const grade = (h(gx + fx * 4, gz + fz * 4) - h(gx - fx * 4, gz - fz * 4)) / 8;
@@ -391,6 +411,10 @@ async function placeCamera(page, view, follow, fixed) {
     if (view === 'quarter') {
       cam = [x + rx * 9.5 + fx * 5, ground + 2.4, z + rz * 9.5 + fz * 5];
       at = [x, ground + 1.4, z];
+    } else if (view === 'front') {
+      // ahead of the hull, looking back along it: a cross slope's roll reads face on (round 5)
+      cam = [x + fx * 12, ground + 1.8, z + fz * 12];
+      at = [x, ground + 1.2, z];
     } else {
       // the side the ground is lower on (round 3: on a cross slope the camera 13 m up the slope sat under the ground and
       // the rough strips looked up through the terrain, upside down, the tank never in view)
@@ -588,7 +612,8 @@ async function runCase(page, caseId, caseDef, options, build) {
   }
   const worstRender = frames.reduce((w, f) => Math.max(w, Math.abs(f.renderError?.y ?? 0),
     Math.abs(f.renderError?.pitch ?? 0), Math.abs(f.renderError?.roll ?? 0)), 0);
-  const record = { caseId, map: caseDef.map, mode: caseDef.mode, gravity: caseDef.gravity ?? null, build, stage, anchors, meta,
+  const record = { caseId, spec: caseDef.spec ?? options.spec, map: caseDef.map, mode: caseDef.mode, gravity: caseDef.gravity ?? null,
+    build, stage, anchors, meta,
     renderCheck: { worst: +worstRender.toFixed(4), ok: worstRender < 0.01 }, frames };
   writeFileSync(path.join(options.out, `${caseId}-${options.tag}.json`), `${JSON.stringify(record, null, 1)}\n`);
   return record;
@@ -619,7 +644,7 @@ async function runStripProbe(options) {
         ({ page, errors } = await openGamePage(browser, { port, viewport: VIEWPORT }));
         await page.evaluate((value) => { localStorage.setItem('cot.game.teams.v1', value); }, arrangement);
         await page.evaluate((request) => { setTimeout(() => window.__DEBUG.beginSoloBattle(request), 0); },
-          { specId: options.spec, mapId: caseDef.map, gameMode: caseDef.mode });
+          { specId: caseDef.spec ?? options.spec, mapId: caseDef.map, gameMode: caseDef.mode });
         await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0', { timeout: 300000, polling: 250 });
         await sleep(1500);
         cases[caseId] = await runCase(page, caseId, caseDef, options, build);

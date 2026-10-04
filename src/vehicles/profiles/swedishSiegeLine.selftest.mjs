@@ -116,6 +116,38 @@ for (const spec of specs) {
     `${spec.id}: hydraulic aim reaches a pronounced nose-down posture`);
 }
 
+// Physics lane round 5: on a grade the hull holds a posture over its tracks (movement.ts state._hold, the weight its tracks
+// hold), and that posture is part of the attitude the hydraulic aim lays the hull with, the server fires along and the
+// renderer draws: the visible fixed bore still converges on the sight. A posture held in the rendered rock alone laid the
+// bore a degree off it, and on flat ground the aim's own nose-up posture read as a grade (0.69 degree).
+{
+  const spec = getSpec('udes03');
+  const grade = 0.25;
+  const slope = { getHeightAt: (_x, z) => grade * z, getGroundType: () => 'hard' };
+  const state = createTankState(spec, new THREE.Vector3(), 0);
+  const aim = new THREE.Vector3(0, grade * 180 + 4, 180);
+  const entity = {
+    spec, state,
+    input: { throttle: 0, steer: 0, brake: true, fire: false, shellSlot: 0, aimPoint: aim },
+  };
+  state.suspensionAim = true;
+  for (let frame = 0; frame < 480; frame++) updateTank(entity, slope, SIM_DT);
+  const visual = createTank(spec.id, null, { proceduralOnly: true, geometryReceipt: true });
+  visual.setGroundSampler((_x, z) => grade * z);
+  for (let frame = 0; frame < 48; frame++) visual.syncFromState(state, SIM_DT);
+  visual.root.updateMatrixWorld(true);
+  const muzzle = visual.root.getObjectByName('rig_muzzle');
+  const muzzlePos = muzzle.getWorldPosition(new THREE.Vector3());
+  const boreDir = new THREE.Vector3(0, 0, 1).transformDirection(muzzle.matrixWorld);
+  const aimDir = aim.clone().sub(muzzlePos).normalize();
+  const boreErrorDeg = THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp(boreDir.dot(aimDir), -1, 1)));
+  assert.ok(boreErrorDeg <= 0.25,
+    `udes03: on a grade the visible fixed bore tracks the requested aim (${boreErrorDeg.toFixed(3)} deg error)`);
+  const holdDeg = THREE.MathUtils.radToDeg(state._hold?.p ?? 0);
+  assert.ok(holdDeg > 0.3, `udes03: squats onto its tail up a 14-degree grade (${holdDeg.toFixed(2)} deg)`);
+  visual.dispose();
+}
+
 const udes = createTank('udes03', null, { proceduralOnly: true, geometryReceipt: true });
 const udesHull = udes.root.getObjectByName('rig_hull');
 const udesWheels = udes.root.getObjectByName('gearRoadWheelTires');
