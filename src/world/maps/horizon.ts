@@ -49,7 +49,7 @@ import { type EscarpmentSettings, carveEscarpmentRingSteps, createEscarpmentFiel
 import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloudShadeUniforms } from '../horizonCloudShade.ts';
 import { continuedGroundAt } from '../horizonSurface.ts';
 import { resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
-import { buildBorderFarmsteads, farmsteadTreesAt, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
+import { buildBorderFarmsteads, farmsteadTreesAt, resolveBorderArchitecture, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
 import { buildBorderHedgerows } from '../borderHedgerows.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
@@ -3799,6 +3799,9 @@ export function* buildHorizonRingSteps(
         seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01 ? 1 : 0),
       ...(roadExitAt ? { roadDistanceAt: (x: number, z: number) => (roadExitAt(x, z, exit)[1] > 0.05 ? Math.abs(exit[0]) : Infinity) } : {}),
       ...(ringExits ? { roadLines: ringExits.lines } : ground._roadExitLines ? { roadLines: ground._roadExitLines() } : {}),
+      // the region's buildings (the square's kit, or its region's): gauntlet wave 30's "American red barns" at Ironworks
+      architecture: resolveBorderArchitecture(mapId, (cfg as { props?: { architecture?: string } } | null | undefined)?.props?.architecture,
+        mapId === 'winter' || !!(cfg as { props?: { snowCap?: boolean } } | null | undefined)?.props?.snowCap),
     };
   })() : null;
   const farmSites = farmOptions ? selectFarmsteadSites(farmOptions) : [];

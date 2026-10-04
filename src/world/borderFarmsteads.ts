@@ -7,6 +7,8 @@
 // mesh: a single draw (and one far-cascade shadow draw), a few thousand triangles, built once with the ring.
 import * as THREE from 'three';
 import { SHADOW_CASTER_LAST_CASCADE, setShadowCasterCascades } from '../engine/renderLayers.ts';
+import { buildRegionalParts, resolveRegionalArchitecture, type ArchitectureStyle } from './maps/regional/index.ts';
+import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
 
 export type FarmsteadStyle = 'temperate' | 'steppe' | 'polder' | 'winter' | 'arid' | 'nordic' | 'tropical' | 'alpine';
 
@@ -33,6 +35,23 @@ export interface BorderFarmsteadOptions {
   /** The roads that leave the square, as their exit lines past the edge (terrain.ts roadExits): villages string along a
    * few of them. */
   roadLines?: readonly { xs: ArrayLike<number>; zs: ArrayLike<number>; length: number }[];
+  /** The region's building kit (maps/regional): the yards and churches are its buildings rather than the generic farm
+   * set (resolveBorderArchitecture). */
+  architecture?: BorderArchitecture | null;
+}
+
+/** A regional building kit as the border's hamlets use it: the kit, and what its builders read about the map. */
+export interface BorderArchitecture { style: ArchitectureStyle; mapId: string; snowCap: boolean }
+
+/** The kit for a map with none in its square, where its region has one: Ironworks (the Völklingen ironworks on the
+ * Saar) builds its hamlets as the coalfield's workers' cottage pairs. */
+const BORDER_ARCHITECTURE_FALLBACK: Readonly<Record<string, string>> = { foundry: 'ruhr' };
+/** The kit of a map's hamlets past the edge: its square's own (`props.architecture`), else its region's; null keeps the
+ * generic farm set. */
+export function resolveBorderArchitecture(mapId: string, authored: string | null | undefined, snowCap: boolean): BorderArchitecture | null {
+  const id = authored ?? BORDER_ARCHITECTURE_FALLBACK[mapId] ?? null;
+  const style = resolveRegionalArchitecture(id);
+  return style ? { style, mapId, snowCap } : null;
 }
 
 export interface FarmsteadSite {
@@ -82,7 +101,9 @@ export function selectFarmsteadSites(options: BorderFarmsteadOptions): Farmstead
   const cos = Math.cos(options.fieldAngle), sin = Math.sin(options.fieldAngle);
   type Candidate = FarmsteadSite & { score: number; side: number };
   const candidates: Candidate[] = [];
-  const village = selectVillageSites(options);
+  const { sites: village, villages } = selectVillageSites(options);
+  // the farms besides the villages: the map's count, one fewer for each village (at least two)
+  const farmBudget = Math.max(2, options.count - villages);
   for (let d = near; d <= far; d += 55) {
     const h = HALF + d, perimeter = 8 * h;
     for (let s = rng() * 90; s < perimeter; s += 90) {
@@ -115,7 +136,7 @@ export function selectFarmsteadSites(options: BorderFarmsteadOptions): Farmstead
   const picked: Candidate[] = [];
   const perSide = [0, 0, 0, 0], sideCap = Math.max(2, Math.ceil(options.count / 3));
   for (const c of candidates) {
-    if (picked.length + village.length >= options.count + village.length * 0.5) break;
+    if (picked.length >= farmBudget) break;
     if (perSide[c.side] >= sideCap) continue;
     let ok = true, hamlet = 0;
     for (const v of village) if (Math.hypot(v.x - c.x, v.z - c.z) < 140) { ok = false; break; }
@@ -133,17 +154,17 @@ export function selectFarmsteadSites(options: BorderFarmsteadOptions): Farmstead
 
 /**
  * The map-borders lane (wave 3, 2026-10-03, gauntlet wave 9: "no ... villages"): a village strung along a road that
- * leaves the square — four to six yards facing the road ~28 m off it on alternate sides, ~55 m apart along it, from the
+ * leaves the square — three to five yards facing the road ~28 m off it on alternate sides, ~55 m apart along it, from the
  * first flat stretch VILLAGE_START_M out — so a road leaving the square runs on between roofs and gardens, with its
- * church across the road from one of its yards. One village a side, three a map, each on the first of that side's roads
- * that has room; the farms elsewhere keep their own search. (Gauntlet wave 30, Frosthollow's north: the roads now end at
+ * church across the road from one of its yards. One village a side, on the first of that side's roads that has room;
+ * the farms elsewhere keep their own search (one fewer for each village). (Gauntlet wave 30, Frosthollow's north: the roads now end at
  * the foot of the ranges, ~300-450 m out on a mountain map, so a village searched from 260 m found no room on them and
  * the hamlet and church spire left the view; a village starts at 110 m, within the reach of every road.)
  */
 const VILLAGE_START_M = 110, VILLAGE_END_SPARE_M = 25;
-function selectVillageSites(options: BorderFarmsteadOptions): FarmsteadSite[] {
+function selectVillageSites(options: BorderFarmsteadOptions): { sites: FarmsteadSite[]; villages: number } {
   const lines = options.roadLines ?? [];
-  if (!lines.length || options.count < 4) return [];
+  if (!lines.length || options.count < 4) return { sites: [], villages: 0 };
   const rng = mulberry32((options.seed ^ 0x7111A6E) >>> 0);
   const sites: FarmsteadSite[] = [];
   const sides = new Set<number>();
@@ -169,12 +190,12 @@ function selectVillageSites(options: BorderFarmsteadOptions): FarmsteadSite[] {
     return hi - lo < 5 && options.woodsAt(x, z) < 0.3 && options.blockedAt(x, z) < 0.02 && (options.roadDistanceAt?.(x, z) ?? Infinity) >= 16;
   };
   for (const line of lines) {
-    if (sites.length >= 18 || sides.size >= 3) break;
+    if (sites.length >= 20 || sides.size >= 4) break;
     const ex = line.xs[0], ez = line.zs[0];
     const side = Math.abs(ex) > Math.abs(ez) ? (ex > 0 ? 1 : 3) : (ez > 0 ? 0 : 2);
     if (sides.has(side)) continue;
     const spacing = 52 + rng() * 8, reach = Math.min(560, line.length - VILLAGE_END_SPARE_M);
-    const homes = Math.min(4 + Math.floor(rng() * 3), Math.floor((reach - VILLAGE_START_M) / spacing) + 1);
+    const homes = Math.min(3 + Math.floor(rng() * 3), Math.floor((reach - VILLAGE_START_M) / spacing) + 1);
     if (homes < 3) continue;
     for (let start = VILLAGE_START_M; start + (homes - 1) * spacing <= reach; start += 30) {
       const placed: FarmsteadSite[] = [];
@@ -206,7 +227,7 @@ function selectVillageSites(options: BorderFarmsteadOptions): FarmsteadSite[] {
       break;
     }
   }
-  return sites;
+  return { sites, villages: sides.size };
 }
 
 /**
@@ -222,8 +243,11 @@ export function farmsteadTreesAt(sites: readonly FarmsteadSite[], x: number, z: 
     const d = Math.hypot(dx, dz);
     const ring = smoothstep(24, 32, d) * (1 - smoothstep(44, 58, d));
     if (ring <= 0) continue;
-    const arc = smoothstep(-0.35, 0.25, Math.cos(Math.atan2(dz, dx) - site.shelter));
-    w = Math.max(w, ring * arc * 0.95);
+    // (a village's yards keep a narrower, thinner arc behind the house: their arcs, 55 m apart along the road, closed
+    // round a village as one wood and hid its houses from the square)
+    const arc = site.village ? smoothstep(0.25, 0.7, Math.cos(Math.atan2(dz, dx) - site.shelter))
+      : smoothstep(-0.35, 0.25, Math.cos(Math.atan2(dz, dx) - site.shelter));
+    w = Math.max(w, ring * arc * (site.village ? 0.6 : 0.95));
   }
   return w;
 }
@@ -412,8 +436,101 @@ function footprint(groundAt: (x: number, z: number) => number, f: Frame, L: numb
 
 function pick<T>(list: readonly T[], rng: () => number): T { return list[Math.floor(rng() * list.length) % list.length]; }
 
-/** A church at `frame` (its centre; the nave's ridge along `yaw`): a nave with its tower at the near end and a spire. */
-function addChurch(s: Soup, options: BorderFarmsteadOptions, frame: { x: number; z: number; yaw: number }, pal: Palette): void {
+/**
+ * The map-borders lane (2026-10-03, gauntlet wave 30, Ironworks' edge-e-up: "the new hamlets read as American red barns"):
+ * on a map with a regional building kit the hamlets past the edge are the kit's own buildings — the same farmhouses,
+ * barns, cottage pairs and churches as the square's, the region's construction in its colours — at the kit's mobile
+ * detail, one merged vertex-coloured mesh with the generic yards. The kits' textured buckets are carried as their
+ * mean albedo (sRGB), the roof and the stone in the kit's own tints; each part's vertex colour (the building's tint and
+ * weathering, weather.ts) multiplies it.
+ */
+const KIT_ALBEDO: Readonly<Record<string, RGB>> = {
+  plaster: [0.86, 0.83, 0.76], plaster2: [0.80, 0.70, 0.52], plaster3: [0.88, 0.86, 0.82],
+  wood: [0.30, 0.22, 0.15], structureWood: [0.30, 0.22, 0.15], structureCanvas: [0.62, 0.58, 0.50],
+  dark: [0.10, 0.11, 0.12], glass: [0.16, 0.19, 0.22], straw: [0.70, 0.60, 0.38], structureMetal: [0.40, 0.41, 0.42],
+};
+/** Decor a hamlet past the edge does without (sub-pixel there): gutters and metalwork, curtains, panes, sills and plinth
+ * dressing. Its windows (the dark openings) stay, and within KIT_DETAIL_M of the edge its timber framing and brick bands. */
+const KIT_DECOR_DROPPED = new Set(['structureMetal', 'curtain', 'glass', 'regionalStone', 'stone']);
+const KIT_DETAIL_M = 170;
+/** The plots the kit builders read (their base builders' footprints, m): [across, along, height]. */
+const KIT_PLOTS: Readonly<Record<string, readonly [number, number, number]>> = {
+  farmhouse: [11, 8.5, 7], cottage: [9, 7.5, 6.5], rowhouse: [12, 8, 9], adobe: [10, 8, 5],
+  barn: [18, 10, 8], granary: [8, 6, 6], woodshed: [7, 4.5, 3.5], church: [24, 11, 22], chapel: [10, 7, 9],
+};
+/** A kit's buildings for a yard: its house, barn and shed, and its church (first of each list the kit has). */
+function kitRoles(style: ArchitectureStyle): { house: string | null; barn: string | null; shed: string | null; church: string | null; pair: boolean } {
+  const first = (ids: readonly string[]): string | null => ids.find((id) => !!style.builders[id]) ?? null;
+  // a workers' colony (the coalfield kits): its cottage pairs in a row, no barn
+  const pair = !style.builders.farmhouse && !style.builders.cottage && !!style.builders.rowhouse;
+  const house = first(['farmhouse', 'cottage', 'adobe', 'rowhouse']);
+  const barn = pair ? null : first(['barn', 'granary']);
+  const shed = barn && barn !== 'granary' ? first(['woodshed', 'granary']) : null;
+  return { house, barn, shed, church: first(['church', 'chapel']), pair };
+}
+
+/** Emit one kit building centred on (x, z), its local x along `yaw`, seated on the lowest ground under it. */
+function addKitBuilding(s: Soup, options: BorderFarmsteadOptions, arch: BorderArchitecture, structureId: string,
+  x: number, z: number, yaw: number, detailed: boolean): boolean {
+  const [w, d, h] = KIT_PLOTS[structureId] ?? [10, 8, 7];
+  const key = `${arch.style.id}:border:${structureId}`;
+  let parts;
+  try {
+    parts = buildRegionalParts(arch.style, {
+      structureId, info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
+      wallBucket: 'plaster', rng: streamFrom(hashSeed(key, options.seed, x, z, yaw)),
+      variant: streamFrom(hashSeed(`${key}:variant`, options.seed, x, z, yaw)), mapId: arch.mapId, snowCap: arch.snowCap, tier: 'mobile',
+    }, streamFrom(hashSeed(`${key}:weather`, options.seed, x, z, yaw)));
+  } catch {
+    return false;
+  }
+  const kept: { bucket: string; geometry: THREE.BufferGeometry }[] = [];
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const [bucket, list] of Object.entries(parts)) {
+    for (const geometry of list) {
+      const decor = !!geometry.userData.noCollision;
+      const base = bucket.replace(/^regional(.)/, (_, c: string) => c.toLowerCase());
+      if (decor && (KIT_DECOR_DROPPED.has(bucket) || KIT_DECOR_DROPPED.has(base) || (!detailed && base !== 'dark'))) { geometry.dispose(); continue; }
+      kept.push({ bucket: base, geometry });
+      if (decor) continue;
+      geometry.computeBoundingBox();
+      const box = geometry.boundingBox!;
+      minX = Math.min(minX, box.min.x); maxX = Math.max(maxX, box.max.x); minZ = Math.min(minZ, box.min.z); maxZ = Math.max(maxZ, box.max.z);
+    }
+  }
+  if (!kept.length || !Number.isFinite(minX)) { for (const k of kept) k.geometry.dispose(); return false; }
+  const cos = Math.cos(yaw), sin = Math.sin(yaw), cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
+  // the lowest ground under the building's corners and centre (its plinth goes down into a slope)
+  let lo = Infinity;
+  for (const [u, v] of [[0, 0], [minX - cx, minZ - cz], [maxX - cx, minZ - cz], [maxX - cx, maxZ - cz], [minX - cx, maxZ - cz]]) {
+    const g = options.groundAt(x + u * cos - v * sin, z + u * sin + v * cos);
+    if (Number.isFinite(g)) lo = Math.min(lo, g);
+  }
+  if (!Number.isFinite(lo)) { for (const k of kept) k.geometry.dispose(); return false; }
+  const y0 = lo - 0.05, roof = arch.style.surfaces.roof.tint, stone = arch.style.surfaces.stone.tint;
+  for (const { bucket, geometry } of kept) {
+    const albedo: RGB = bucket === 'roof' ? roof : bucket === 'stone' ? stone : KIT_ALBEDO[bucket] ?? KIT_ALBEDO.plaster;
+    const lin = [0, 1, 2].map((k) => Math.pow(albedo[k] * 0.8, 2.2) * BUILDING_ALBEDO);
+    const pos = geometry.getAttribute('position'), nor = geometry.getAttribute('normal'), col = geometry.getAttribute('color');
+    const index = geometry.getIndex();
+    const count = index ? index.count : pos.count;
+    for (let t = 0; t < count; t++) {
+      const i = index ? index.getX(t) : t;
+      const lx = pos.getX(i) - cx, lz = pos.getZ(i) - cz;
+      s.positions.push(x + lx * cos - lz * sin, y0 + pos.getY(i), z + lx * sin + lz * cos);
+      const nx = nor ? nor.getX(i) : 0, ny = nor ? nor.getY(i) : 1, nz = nor ? nor.getZ(i) : 0;
+      s.normals.push(nx * cos - nz * sin, ny, nx * sin + nz * cos);
+      s.colors.push(lin[0] * (col ? col.getX(i) : 1), lin[1] * (col ? col.getY(i) : 1), lin[2] * (col ? col.getZ(i) : 1));
+    }
+    geometry.dispose();
+  }
+  return true;
+}
+
+/** A church at `frame` (its centre; the nave's ridge along `yaw`): a nave with its tower at the near end and a spire —
+ * in the region's stone and roof where a kit without a church of its own builds the hamlets (the coalfield's brick). */
+function addChurch(s: Soup, options: BorderFarmsteadOptions, frame: { x: number; z: number; yaw: number }, pal: Palette,
+  kit?: { wall: RGB; roof: RGB }): void {
   const rng = mulberry32(((options.seed ^ 0xC4C4) + Math.round(frame.x * 7 + frame.z * 13)) >>> 0);
   const cos = Math.cos(frame.yaw), sin = Math.sin(frame.yaw);
   const cx = frame.x, cz = frame.z;
@@ -421,8 +538,8 @@ function addChurch(s: Soup, options: BorderFarmsteadOptions, frame: { x: number;
   const L = 17 + rng() * 5, W = 8.5 + rng() * 1.5;
   const [lo, hi] = footprint(options.groundAt, nave, L + 6, W);
   if (!Number.isFinite(lo)) return;
-  const wall: RGB = options.style === 'polder' ? [0.52, 0.30, 0.24] : options.style === 'nordic' ? [0.88, 0.87, 0.82] : [0.80, 0.77, 0.70];
-  const roof: RGB = options.style === 'winter' ? [0.90, 0.91, 0.93] : options.style === 'polder' ? [0.22, 0.22, 0.24] : pick(pal.roofs, rng);
+  const wall: RGB = kit?.wall ?? (options.style === 'polder' ? [0.52, 0.30, 0.24] : options.style === 'nordic' ? [0.88, 0.87, 0.82] : [0.80, 0.77, 0.70]);
+  const roof: RGB = kit?.roof ?? (options.style === 'winter' ? [0.90, 0.91, 0.93] : options.style === 'polder' ? [0.22, 0.22, 0.24] : pick(pal.roofs, rng));
   const y0 = lo - 0.4, eave = hi + 0.3 + 7.5;
   addWalls(s, nave, L, W, y0, eave, wall, rng, 1, true);
   addGableRoof(s, nave, L, W, eave, 48 * Math.PI / 180, wall, roof, rng);
@@ -447,6 +564,8 @@ export function buildBorderFarmsteads(options: BorderFarmsteadOptions): THREE.Me
   if (sites.length === 0) return null;
   const pal = PALETTES[options.style] ?? PALETTES.temperate;
   const s = new Soup();
+  const arch = options.architecture ?? null;
+  const kit = arch ? kitRoles(arch.style) : null;
   for (let i = 0; i < sites.length; i++) {
     const site = sites[i];
     const rng = mulberry32(((options.seed ^ 0x5EED) + i * 7919) >>> 0);
@@ -457,6 +576,28 @@ export function buildBorderFarmsteads(options: BorderFarmsteadOptions): THREE.Me
     });
     const wall = pick(pal.walls, rng), roof = pick(pal.roofs, rng);
     const storeys = pal.storeys[0] + Math.floor(rng() * (pal.storeys[1] - pal.storeys[0] + 1));
+    if (kit && arch && kit.house) {
+      // the region's yard: its house (a coalfield colony's cottage pairs in a short row), its barn and its shed — the
+      // generic yard's places, each building centred on its own; past KIT_DETAIL_M only the walls, roofs and windows
+      const detailed = Math.max(Math.abs(site.x), Math.abs(site.z)) - HALF < KIT_DETAIL_M;
+      const yawOf = (f: Frame): number => Math.atan2(f.sin, f.cos);
+      const house = local(-9 + rng() * 2, -6 + rng() * 2, false);
+      addKitBuilding(s, options, arch, kit.house, house.x, house.z, yawOf(house), detailed);
+      if (kit.pair && site.village) {
+        // (a village's row: a second pair beside the first)
+        const next = local(8 + rng() * 2, -6 + rng() * 2, false);
+        addKitBuilding(s, options, arch, kit.house, next.x, next.z, yawOf(next), detailed);
+      }
+      if (kit.barn) {
+        const barn = local(10 + rng() * 2, 9 + rng() * 2, rng() < 0.4);
+        addKitBuilding(s, options, arch, kit.barn, barn.x, barn.z, yawOf(barn), detailed);
+      }
+      if (kit.shed && rng() < 0.8) {
+        const shed = local(-12 + rng() * 2, 13 + rng() * 2, rng() < 0.5);
+        addKitBuilding(s, options, arch, kit.shed, shed.x, shed.z, yawOf(shed), detailed);
+      }
+      continue;
+    }
     // the house
     {
       const L = 9.5 + rng() * 3.5, W = 7.2 + rng() * 1.4, f = local(-9 + rng() * 2, -6 + rng() * 2, false);
@@ -506,10 +647,15 @@ export function buildBorderFarmsteads(options: BorderFarmsteadOptions): THREE.Me
   const churchStyles: readonly FarmsteadStyle[] = ['temperate', 'polder', 'winter', 'alpine', 'nordic'];
   if (churchStyles.includes(options.style)) {
     const villageChurches = sites.filter((site) => site.church);
-    for (const site of villageChurches) addChurch(s, options, site.church!, pal);
     const hamlet = villageChurches.length ? undefined
       : sites.find((a) => a.road && sites.some((b) => b !== a && b.road && Math.hypot(a.x - b.x, a.z - b.z) < 150));
-    if (hamlet) addChurch(s, options, { x: hamlet.x - 40 * Math.sin(hamlet.yaw), z: hamlet.z + 40 * Math.cos(hamlet.yaw), yaw: hamlet.yaw }, pal);
+    const frames = villageChurches.map((site) => site.church!);
+    if (hamlet) frames.push({ x: hamlet.x - 40 * Math.sin(hamlet.yaw), z: hamlet.z + 40 * Math.cos(hamlet.yaw), yaw: hamlet.yaw });
+    // (the kit's church when it has one, its nave along the frame's heading; else the generic one)
+    for (const frame of frames) {
+      if (kit?.church && arch && addKitBuilding(s, options, arch, kit.church, frame.x, frame.z, frame.yaw, true)) continue;
+      addChurch(s, options, frame, pal, arch ? { wall: arch.style.surfaces.stone.tint, roof: arch.style.surfaces.roof.tint } : undefined);
+    }
   }
   if (s.positions.length === 0) return null;
   const geometry = new THREE.BufferGeometry();

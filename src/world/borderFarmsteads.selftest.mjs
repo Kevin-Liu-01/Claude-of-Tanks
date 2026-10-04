@@ -4,7 +4,7 @@
 // room, and Frosthollow's north lost its hamlet and church spire.
 import assert from 'node:assert/strict';
 import { createCanvas } from '@napi-rs/canvas';
-import { buildBorderFarmsteads, selectFarmsteadSites } from './borderFarmsteads.ts';
+import { buildBorderFarmsteads, resolveBorderArchitecture, selectFarmsteadSites } from './borderFarmsteads.ts';
 
 // a road leaving the square north for 330 m over a flat, open country
 const xs = [], zs = [];
@@ -58,4 +58,25 @@ for (let i = 0; i < fp.count; i++) {
 }
 assert.ok(tower, 'a church spire stands in Frosthollow\'s north view');
 assert.ok(tower.z - 512 < 420, `before the ranges' foot (${(tower.z - 512).toFixed(0)} m out)`);
-console.log(`borderFarmsteads.selftest: a ${village.length}-yard village from 110 m with its church; Frosthollow's north spire at (${tower.x.toFixed(0)}, ${tower.z.toFixed(0)}), ${tower.rise.toFixed(1)} m`);
+
+// gauntlet wave 30, Ironworks' edge-e-up ("the new hamlets read as American red barns"): a map with a regional building
+// kit builds its hamlets from it — the square's own kit, or its region's where the square has none (Ironworks, on the
+// Saar: the coalfield's workers' cottage pairs) — and a map with neither keeps the generic farm set
+assert.equal(resolveBorderArchitecture('foundry', undefined, false)?.style.id, 'ruhr', 'Ironworks: the coalfield workers\' houses');
+assert.equal(resolveBorderArchitecture('frontier', 'hessian', false)?.style.id, 'hessian', 'a square\'s own kit');
+assert.equal(resolveBorderArchitecture('winter', undefined, true), null, 'no kit: the generic farm set');
+const foundry = getMapConfig('foundry');
+const foundryFarms = buildHorizonRing(null, foundry, 1337, createHeightField(1337, foundry)).getObjectByName('border-farmsteads');
+assert.ok(foundryFarms, 'Ironworks has hamlets past its edge');
+const tris = foundryFarms.geometry.getAttribute('position').count / 3;
+assert.ok(tris <= 70000, `the hamlets stay a background (${tris} triangles in one draw)`);
+assert.ok(tris > 10000, `the kit's buildings, not the generic boxes (~650 triangles a map): ${tris}`);
+// no generic barn walls left (colours as the mesh carries them: sRGB x 0.8, linear, x 0.9)
+const lin = (c) => c.map((v) => Math.pow(v * 0.8, 2.2) * 0.9);
+const near = (col, i, c) => Math.abs(col.getX(i) - c[0]) < 2e-3 && Math.abs(col.getY(i) - c[1]) < 2e-3 && Math.abs(col.getZ(i) - c[2]) < 2e-3;
+const genericBarn = [[0.46, 0.20, 0.15], [0.37, 0.30, 0.23], [0.62, 0.55, 0.45]].map(lin);
+const fc = foundryFarms.geometry.getAttribute('color');
+let generic = 0;
+for (let i = 0; i < fc.count; i++) if (genericBarn.some((c) => near(fc, i, c))) generic++;
+assert.equal(generic, 0, 'no generic barn left at Ironworks');
+console.log(`borderFarmsteads.selftest: a ${village.length}-yard village from 110 m with its church; Frosthollow's north spire at (${tower.x.toFixed(0)}, ${tower.z.toFixed(0)}), ${tower.rise.toFixed(1)} m; Ironworks' hamlets from the coalfield kit, ${tris} triangles`);
