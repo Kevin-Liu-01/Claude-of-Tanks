@@ -163,7 +163,8 @@ interface RideState {
   /** The rebound a landing's springs owe the hull, returned as they extend (m/s over the ground's rate; 0: none). */
   rebound: number;
   /** 1 while the springs absorb a landing on the tracks (the landing stroke: compression and the return to the seat), at
-   * the landing damping; 0 otherwise. */
+   * the landing damping; 2 while the hull overshoots its seat after it (past its static sag the springs are unloaded,
+   * so the overshoot rises and falls at its own gravity); 0 otherwise. */
   stroke: number;
   /** Height the solver gave the ride (support that rose under it faster than the hull's own travel over a climbable
    * grade explains) that it has not yet come down from: a fall from it is not a fall the hull made (the fall-damage
@@ -201,7 +202,10 @@ interface SupportCache {
   yaw: number;
   pitch: number;
   roll: number;
+  /** The seat: where the track's springs carry the hull (trackSpringSeat), at most TRACK_SEAT_SINK_M under `top`. */
   y: number;
+  /** The highest track contact: the hull's ground for launches, landings and the drooped-track line. */
+  top: number;
   floorY: number;
   rigid: boolean;
   cg: MovementContactGeometry | null | undefined;
@@ -256,6 +260,10 @@ interface SupportSamples {
   panY: number | null;
   /** Outer-line samples recorded for the contact-aware fit (_fitZ/_fitX/_fitH/_fitD). */
   fitCount: number;
+  /** Track-contact stations the springs carry (_bedD/_bedX/_bedZ: the outer pair and the wheel-run fan lines). */
+  bedCount: number;
+  /** The highest track-end (idler and sprocket wrap) deficit: hull-fixed, never carried by a spring. */
+  wrapMax: number;
   /** Innermost |x| of a loaded wheel-run fan sample per side (Infinity when that side's fan lines all hang). */
   fanTouchLeftX: number;
   fanTouchRightX: number;
@@ -699,11 +707,35 @@ const REBOUND_TURN_MPS = 0.25;
  * settles it. Driving keeps the critical damping (no heave bob over every bump).
  */
 const LANDING_ZETA = 0.45;
+/** The landing's overshoot (`_ride.stroke` 2) is the hull's own flight over ground that holds still under it; ground
+ * moving under it faster than this (a face it drives onto, a crest it runs over) hands it back to the ordinary ride. */
+const OVERSHOOT_GROUND_MPS = 0.5;
 /** A closing under this is a settle onto the tracks, not a landing stroke (a hop off a kerb, the small re-landing after
  * a rebound): the ordinary ride takes it without the overshoot. */
 const LANDING_STROKE_MIN_MPS = 2;
 /** The bump stops never read less travel than this above the floor (bounds the stopping deceleration). */
 const BUMP_STOP_MIN_ROOM_M = 0.01;
+/**
+ * Progressive bump stops on the landing stroke (physics lane round 4; gauntlet wave 33: "peak compression barely scales
+ * with impact, +3 to +5 cm whether 5.6 or 12.5 m/s"). The springs alone bottomed out every landing from 7 m/s up at the
+ * same 19 cm, the last of the travel taken at one constant deceleration. Past BUMP_STOP_ONSET_M under the seat the stops
+ * take work growing with the cube of their own travel (a force with its square), sized so that with the springs they
+ * would take a landing of BUMP_STOP_FULL_MPS just at the floor: a harder landing goes deeper into them. They only take:
+ * they push while the hull closes on the floor, never back (the rebound is the ruleset's restitution, as before), and
+ * each step they take the work of the step's own travel into them (an average, not the force at the step's start: the
+ * stiffest of it is 280 g, which one 1/60 s step of a force read at a point would turn into a launch).
+ */
+const BUMP_STOP_ONSET_M = 0.08;
+const BUMP_STOP_FULL_MPS = 15;
+
+/** Work (per unit mass) the landing stroke's stops take from their onset down to `depth` under the seat. */
+function bumpStopWork(depth: number, travel: number): number {
+  const zone = travel - BUMP_STOP_ONSET_M;
+  if (!(zone > 1e-3) || !(depth > BUMP_STOP_ONSET_M)) return 0;
+  const capacity = Math.max(0, 0.5 * BUMP_STOP_FULL_MPS * BUMP_STOP_FULL_MPS - 0.5 * RIDE_OMEGA * RIDE_OMEGA * travel * travel);
+  const u = Math.min(1, (depth - BUMP_STOP_ONSET_M) / zone);
+  return capacity * u * u * u;
+}
 /** Ground falling away under a hull is followed as fast as it falls (physics lane, 2026-10-03): the launch bound held
  * the support's descent to 12 m/s too, so a hull sliding down a 48-degree face past 12 m/s fell behind its own
  * support, went airborne on the face and "landed" on it at 9 m/s. Only a rising support launches a hull. */
@@ -932,8 +964,58 @@ function reachableGroundAt(x: number, z: number): number {
 }
 const LANDING_CONTACT_BLEND_S = 0.34;
 const LANDING_SPRING_MIN_SCALE = 0.28;
+/**
+ * A landing's first contact turns the hull about the side or end it comes down on (physics lane round 4; gauntlet wave
+ * 33: "landings are pure vertical drops: hull pitch and roll never move, even when one side touches first"). A hull
+ * meeting ground tilted under it lands on one track or one end first; the fall's momentum about that contact turns it
+ * toward the ground at v·r/(k² + r²) (the contact's lever r from the centre, the hull's radius of gyration k about the
+ * axis), until the other side lands and stops the turn — never faster than lands it in LANDING_ALIGN_MIN_S. The old
+ * impulse was the mismatch times the closing times 0.22 (15 deg/s for a 7 m/s landing on a 10-degree cross slope), and
+ * the attitude spring did the turning at the same rate for every landing.
+ */
+const LANDING_ALIGN_MIN_S = 0.08;
+/** The fastest a landing turns a hull onto the ground (rad/s, about 100 deg/s), and the most its root follows the turn
+ * down in one step (m): the lever of the hull's longest axis bounds the rate below that (1.5 rad/s for a 7 m hull). */
+const LANDING_TURN_MAX = 1.7;
+const LANDING_FOLLOW_MAX_M = 0.09;
+/** Above this travel a landing's pitch is the tracks running onto the ground, not a pivot on the end that landed. */
+const LANDING_TURN_PITCH_MAX_MPS = 3;
+/** The fastest a landing turns the hull about an axis whose contacts stand `lever` from its centre. */
+function landingTurnCap(lever: number): number {
+  return Math.min(LANDING_TURN_MAX, LANDING_FOLLOW_MAX_M / (Math.max(lever, 0.5) * SIM_DT));
+}
+/** A hull coming down on its shell (tumbling) takes the old turn: the mismatch times the closing times this, capped. */
 const LANDING_TORQUE_GAIN = 0.22;
 const LANDING_TORQUE_MAX = 1.7;
+/** The hull's contact levers and height for the landing turn (set by the step before the attitude update). */
+const _landingTurn = { halfLength: 3, halfWidth: 1.6, height: 2.2 };
+/** While a landing settles, the turn toward the ground plane is held to the landing's own cap (landingTurnCap). */
+function clampTurn(rate: number, error: number, lever: number): number {
+  const cap = landingTurnCap(lever);
+  return rate * error > 0 && Math.abs(rate) > cap ? Math.sign(rate) * cap : rate;
+}
+/** Within this of the ground plane a hull that has just landed on it is on it (the plane moves a little a step). */
+const LANDED_ON_PLANE_RAD = 0.01;
+/** A turn this step would carry past the ground plane stops at it (the side that lands stops it), and a hull just landed
+ * on it stays: one a hair past it and still turning on stops turning. The spring closes what is left of the step; the
+ * plane's own motion (a hull driving across a trench) is never handed to the hull as a turn it carries into the air. */
+function landOnPlane(rate: number, error: number, dt: number): number {
+  if (!(Math.abs(rate * dt) > Math.abs(error))) return rate;
+  return rate * error > 0 || Math.abs(error) < LANDED_ON_PLANE_RAD ? 0 : rate;
+}
+/** The rate a landing leaves the hull turning at about one axis (see LANDING_ALIGN_MIN_S). */
+function landingTurnRate(rate: number, error: number, closing: number, lever: number, height: number): number {
+  if (!(Math.abs(error) > 1e-6) || !(closing > 0) || !(lever > 0)) return rate;
+  const gyration2 = (4 * lever * lever + height * height) / 12;
+  const pivot = closing * lever / (gyration2 + lever * lever);
+  const sign = Math.sign(error);
+  const align = Math.abs(error) / LANDING_ALIGN_MIN_S;
+  let next = rate + sign * Math.min(pivot, align);
+  // the other side's contact bounds the turn toward the ground: what lands it in the minimum time (or the rate it had)
+  if (sign * next > Math.max(align, sign * rate)) next = sign * Math.max(align, sign * rate);
+  const cap = landingTurnCap(lever);
+  return clamp(next, -cap, cap);
+}
 const TUMBLE_ENTER_UP_Y = 0.55;    // ~57° from upright
 const TUMBLE_EXIT_UP_Y = 0.88;     // hysteresis: settle close to upright only
 const OVERTURN_ENTER_UP_Y = -0.08; // center of mass has crossed past the side
@@ -1176,6 +1258,8 @@ const _supportSamples: SupportSamples = {
   bellyMax: -Infinity,
   panY: null,
   fitCount: 0,
+  bedCount: 0,
+  wrapMax: -Infinity,
   fanTouchLeftX: Infinity,
   fanTouchRightX: Infinity,
 };
@@ -1185,6 +1269,13 @@ const _fitZ = new Float64Array(2 * SUPPORT_MAX_N);
 const _fitX = new Float64Array(2 * SUPPORT_MAX_N);
 const _fitH = new Float64Array(2 * SUPPORT_MAX_N);
 const _fitD = new Float64Array(2 * SUPPORT_MAX_N);
+// Physics lane round 3: the track-contact stations of one support solve (hull-local x, z and deficit) and their
+// residuals over the stations' own plane (trackSpringSeat).
+const BED_MAX = 4 * SUPPORT_MAX_N + 8;
+const _bedD = new Float64Array(BED_MAX);
+const _bedX = new Float64Array(BED_MAX);
+const _bedZ = new Float64Array(BED_MAX);
+const _bedR = new Float64Array(BED_MAX);
 const _driveStep: DriveStep = {
   grounded: true,
   throttle: 0,
@@ -1513,7 +1604,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     },
     _sup: {                        // static-pose support cache (skip resampling)
       x: NaN, z: NaN, yaw: 0, pitch: 0, roll: 0,
-      y: pos.y, floorY: pos.y, rigid: false, cg: null,
+      y: pos.y, top: pos.y, floorY: pos.y, rigid: false, cg: null,
     },
   };
 }
@@ -1700,8 +1791,15 @@ function constrainLoadedRide(
   // the ground lifts (a trench's far wall under its nose carried a hull up at 5 m/s, and the rebound added on top of
   // that threw it a metre out of the trench).
   if (ride.rebound > 0 && Math.abs(ride.groundV) > ride.rebound) ride.rebound = 0;
-  // the landing stroke ends once the springs have carried the hull back up through its seat
-  if (ride.stroke > 0 && ride.y >= supportY && ride.v >= ride.groundV) ride.stroke = 0;
+  // The landing stroke (physics lane round 3; gauntlet wave 23: "the 0.17 g Moon drop settles like an Earth landing"):
+  // the springs take the fall (1) and return it; once they have carried the hull up through its seat (2) and past its
+  // static sag over it they are unloaded, so the overshoot is the hull's own, as high and as long as its gravity makes
+  // it, until it is back down at its seat and the ordinary ride settles it (over still ground: ground moving under it
+  // hands it back to the ordinary ride at once). They used to pull it down at their own rate, seven times the
+  // Moon's gravity after a 12.5 m/s landing: every gravity's landing settled on Earth's timeline.
+  if (ride.stroke === 1 && ride.y >= supportY && ride.v >= ride.groundV) ride.stroke = 2;
+  else if (ride.stroke === 2 && ((ride.y <= supportY && ride.v <= ride.groundV) ||
+    Math.abs(ride.groundV) > OVERSHOOT_GROUND_MPS)) ride.stroke = 0;
   const extending = ride.rebound > 0 && ride.v - ride.groundV >= -REBOUND_TURN_MPS;
   const separating = ride.v - ride.groundV > RIDE_DETACH_REL_V_MPS;
   // A ride still closing on ground that sinks away slower than it falls is in contact: it meets that ground within the
@@ -1738,9 +1836,12 @@ function constrainLoadedRide(
       accel = 0;
     }
   } else {
-    const zeta = ride.stroke > 0 ? LANDING_ZETA : RIDE_ZETA;
+    const zeta = ride.stroke === 1 ? LANDING_ZETA : RIDE_ZETA;
     accel = RIDE_OMEGA * RIDE_OMEGA * (supportY - ride.y) + 2 * zeta * RIDE_OMEGA * (ride.groundV - ride.v);
-    if (hang > 0 && accel < -gravity) accel = -gravity;
+    // past its static sag over the seat the springs are unloaded (the wheels hang): on a landing's overshoot nothing
+    // but gravity brings the hull down
+    const unloaded = ride.stroke === 2 && ride.y - supportY > gravity / (RIDE_OMEGA * RIDE_OMEGA);
+    if ((hang > 0 || unloaded) && accel < -gravity) accel = -gravity;
     // The bump stops are progressive (physics lane, 2026-10-03): a fall the springs would not stop in the travel left
     // above the floor is stopped across that travel, not at the floor in one step (a hull bottoming at 9 m/s used to
     // halt dead there, a velocity step the size of the fall). The springs' own work over that travel (linear from here
@@ -1748,8 +1849,33 @@ function constrainLoadedRide(
     // little behind its sinking support, was held up by the stops and floated off the face every few steps).
     const closingOnFloor = ride.groundV - ride.v;
     const room = ride.y - floorY;
+    // the landing stroke's progressive stops (BUMP_STOP_ONSET_M): the work of this step's travel into them, and what they
+    // have left between here and the floor
+    let stopWorkLeft = 0;
+    if (ride.stroke === 1 && closingOnFloor > 0) {
+      const travel = supportY - floorY;
+      const depth = supportY - ride.y;
+      const here = bumpStopWork(depth, travel);
+      if (bumpStopWork(Math.min(travel, depth + closingOnFloor * dt), travel) > here) {
+        // in the stops this step: the closing it leaves the step with is the one whose step into the stops (and the
+        // springs) takes the energy the step loses — the step moves at the speed it leaves with, as the ride integrates
+        const springAt = (x: number): number => 0.5 * RIDE_OMEGA * RIDE_OMEGA * x * Math.abs(x);
+        const from = springAt(depth) + here;
+        const energy = 0.5 * closingOnFloor * closingOnFloor;
+        let lo = 0, hi = closingOnFloor;
+        for (let index = 0; index < 24; index++) {
+          const mid = 0.5 * (lo + hi);
+          const into = Math.min(travel, depth + mid * dt);
+          if (energy - 0.5 * mid * mid > springAt(into) + bumpStopWork(into, travel) - from) lo = mid;
+          else hi = mid;
+        }
+        const taken = (closingOnFloor - 0.5 * (lo + hi)) / dt;
+        if (accel < taken) accel = taken;
+      }
+      stopWorkLeft = bumpStopWork(travel, travel) - here;
+    }
     if (closingOnFloor > 0 && room > 0) {
-      const springWork = RIDE_OMEGA * RIDE_OMEGA * ((supportY - ride.y) * room + 0.5 * room * room);
+      const springWork = RIDE_OMEGA * RIDE_OMEGA * ((supportY - ride.y) * room + 0.5 * room * room) + stopWorkLeft;
       if (0.5 * closingOnFloor * closingOnFloor > springWork) {
         const stop = closingOnFloor * closingOnFloor / (2 * Math.max(room, BUMP_STOP_MIN_ROOM_M));
         if (accel < stop) accel = Math.min(stop, closingOnFloor / dt);
@@ -1790,8 +1916,12 @@ function constrainLoadedRide(
 function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: number, drive: DriveStep): void {
   // a hull resting on another hull's roof stands on it: that roof is its ground until it drives off the edge
   const rest = state._body.restSupportY;
-  const terrainSupportY = state._sup.y;
+  // the highest track contact: the hull's ground for launches, landings, the floor and the drooped-track line
+  const terrainSupportY = Number.isFinite(state._sup.top) ? state._sup.top : state._sup.y;
   const supportY = Number.isFinite(rest) ? Math.max(terrainSupportY, rest) : terrainSupportY;
+  // the seat the springs carry the hull at, under the top contact on uneven ground (trackSpringSeat)
+  const terrainSeatY = Number.isFinite(state._sup.y) ? Math.min(state._sup.y, terrainSupportY) : terrainSupportY;
+  const seatY = Number.isFinite(rest) ? Math.max(terrainSeatY, rest) : terrainSeatY;
   const terrainFloorY = Number.isFinite(state._sup.floorY) ? state._sup.floorY : terrainSupportY;
   const floorY = Number.isFinite(rest) ? Math.max(terrainFloorY, rest) : terrainFloorY;
   const ride = initializeRideState(state, supportY);
@@ -1840,7 +1970,7 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   }
   const contactY = supportY + RIDE_DROOP_M;
   const grounded = groundedAtStart
-    ? constrainLoadedRide(ride, supportY, contactY, floorY, dt, GRAVITY * drive.gravityScale,
+    ? constrainLoadedRide(ride, seatY, contactY, floorY, dt, GRAVITY * drive.gravityScale,
       _wholeTrackOnGround ? Math.max(0, -state.speed * Math.tan(state._terr.pitch)) : 0)
     : advanceAirborneRide(state, ride, dt, contactY, floorY, drive.gravityScale, drive.restitution, drive.bounceMin, drive.bounceMaxHeight);
   if (groundedAtStart) {
@@ -1902,7 +2032,7 @@ function landAlongGrade(state: TankState, ride: RideState): void {
   // the vertical change the landing law owes: the closing the springs take to the ground's rate, and the rebound
   const push = state.landingImpactMps + ride.rebound;
   if (!(push > 0) || Math.abs(state.speed) < GRADE_PUSH_MIN_TRAVEL_MPS) return;
-  const grade = clamp(Math.tan(state._terr.fitPitch), -GRADE_PUSH_MAX, GRADE_PUSH_MAX);
+  const grade = clamp(gradeRise(state), -GRADE_PUSH_MAX, GRADE_PUSH_MAX);
   if (!(grade * state.speed > 0) || Math.abs(grade) < GRADE_TURN_MIN) return;
   shiftTravelAlongGrade(state, push / (1 + grade * grade));
   // the springs close to the ground's rise under the travel it kept
@@ -1911,7 +2041,7 @@ function landAlongGrade(state: TankState, ride: RideState): void {
 
 function shiftTravelAlongGrade(state: TankState, rise: number): void {
   if (Math.abs(state.speed) < GRADE_PUSH_MIN_TRAVEL_MPS) return;
-  const grade = clamp(Math.tan(state._terr.fitPitch), -GRADE_PUSH_MAX, GRADE_PUSH_MAX);
+  const grade = clamp(gradeRise(state), -GRADE_PUSH_MAX, GRADE_PUSH_MAX);
   if (Math.abs(grade) < GRADE_TURN_MIN) return;
   const next = state.speed - grade * rise;
   const kept = state.speed > 0 ? Math.max(0, next) : Math.min(0, next);
@@ -2501,16 +2631,25 @@ function applyLandingAttitudeImpulse(
 ): void {
   if (landingImpact <= 0) return;
   const spring = state._spring;
-  spring.pitchV += clamp(
-    wrapAngle(targetPitch - spring.pitch) * landingImpact * LANDING_TORQUE_GAIN,
-    -LANDING_TORQUE_MAX,
-    LANDING_TORQUE_MAX,
-  );
-  spring.rollV += clamp(
-    wrapAngle(targetRoll - spring.roll) * landingImpact * LANDING_TORQUE_GAIN,
-    -LANDING_TORQUE_MAX,
-    LANDING_TORQUE_MAX,
-  );
+  if (upYAtStart < TUMBLE_ENTER_UP_Y || body.tumbling) {
+    // on its shell, not its tracks: no track takes the first contact, and the shell's corners turn about the root
+    spring.pitchV += clamp(wrapAngle(targetPitch - spring.pitch) * landingImpact * LANDING_TORQUE_GAIN,
+      -LANDING_TORQUE_MAX, LANDING_TORQUE_MAX);
+    spring.rollV += clamp(wrapAngle(targetRoll - spring.roll) * landingImpact * LANDING_TORQUE_GAIN,
+      -LANDING_TORQUE_MAX, LANDING_TORQUE_MAX);
+  } else {
+    // a hull running onto ground at speed meets it with the front of its tracks and rolls onto it along the travel (the
+    // terrain fit carries that pitch); only a fall onto it (little travel) pivots on the end it lands on
+    if (Math.abs(state.speed) < LANDING_TURN_PITCH_MAX_MPS) {
+      spring.pitchV = landingTurnRate(spring.pitchV, wrapAngle(targetPitch - spring.pitch), landingImpact,
+        _landingTurn.halfLength, _landingTurn.height);
+    } else {
+      spring.pitchV += clamp(wrapAngle(targetPitch - spring.pitch) * landingImpact * LANDING_TORQUE_GAIN,
+        -LANDING_TORQUE_MAX, LANDING_TORQUE_MAX);
+    }
+    spring.rollV = landingTurnRate(spring.rollV, wrapAngle(targetRoll - spring.roll), landingImpact,
+      _landingTurn.halfWidth, _landingTurn.height);
+  }
   body.landingBlendS = LANDING_CONTACT_BLEND_S;
   if (upYAtStart < TUMBLE_ENTER_UP_Y) body.tumbling = true;
 }
@@ -2600,6 +2739,12 @@ function updateSupportedAttitude(
     const pitchZeta = SPRING_ZETA + (1 - SPRING_ZETA) * perch;
     spring.pitchV += (pitchOmega * pitchOmega * (targetPitch - spring.pitch) -
       2 * pitchZeta * pitchOmega * spring.pitchV) * dt;
+    // the other side's contact (physics lane round 4, LANDING_ALIGN_MIN_S): while a landing settles, a turn that would
+    // carry the hull past the ground plane ends on it this step — the end that lands stops it
+    if (body.landingBlendS > 0) {
+      spring.pitchV = landOnPlane(clampTurn(spring.pitchV, targetPitch - spring.pitch, _landingTurn.halfLength),
+        targetPitch - spring.pitch, dt);
+    }
   }
   spring.pitch += spring.pitchV * dt;
   if (tipRoll !== 0) {
@@ -2608,6 +2753,10 @@ function updateSupportedAttitude(
     const rollOmega = SPRING_OMEGA * springScale;
     spring.rollV += (rollOmega * rollOmega * (targetRoll - spring.roll) -
       2 * SPRING_ZETA * rollOmega * spring.rollV) * dt;
+    if (body.landingBlendS > 0) {
+      spring.rollV = landOnPlane(clampTurn(spring.rollV, targetRoll - spring.roll, _landingTurn.halfWidth),
+        targetRoll - spring.roll, dt);
+    }
   }
   spring.roll += spring.rollV * dt;
 }
@@ -2829,6 +2978,8 @@ function resetSupportSamples(
   samples.bellyMax = -Infinity;
   samples.panY = contact?.panYM ? contact.panYM - 0.015 : null;
   samples.fitCount = 0;
+  samples.bedCount = 0;
+  samples.wrapMax = -Infinity;
   samples.fanTouchLeftX = Infinity;
   samples.fanTouchRightX = Infinity;
   return samples;
@@ -2858,7 +3009,16 @@ function sampleTrackWrapEnds(
     const deficit = terrainY - ((localX * samples.sinRoll +
       localY * samples.cosRoll) * samples.cosPitch + localZ * samples.sinPitch);
     if (deficit > samples.outerMax) samples.outerMax = deficit;
+    if (deficit > samples.wrapMax) samples.wrapMax = deficit;
   }
+}
+
+/** Record a track-contact station for the springs' seat (trackSpringSeat). */
+function recordBedStation(samples: SupportSamples, localX: number, localZ: number, deficit: number): void {
+  if (samples.bedCount >= BED_MAX) return;
+  _bedX[samples.bedCount] = localX;
+  _bedZ[samples.bedCount] = localZ;
+  _bedD[samples.bedCount++] = deficit;
 }
 
 function sampleOuterTrackLines(
@@ -2895,6 +3055,7 @@ function sampleOuterTrackLines(
         samples.outerX = localX;
         samples.outerZ = localZ;
       }
+      recordBedStation(samples, localX, localZ, deficit);
       const record = samples.fitCount++;
       _fitZ[record] = centeredZ;
       _fitX[record] = localX;
@@ -2952,6 +3113,7 @@ function sampleSupportFanSide(
     const deficit = terrainY - (renderedLift + localZ * samples.sinPitch);
     if (line.yOff === 0) {
       if (deficit > samples.fanMax) samples.fanMax = deficit;
+      recordBedStation(samples, localX, localZ, deficit);
       if (deficit >= samples.outerMax - TOUCH_REACH_M) {
         const reach = Math.abs(localX);
         if (side < 0) { if (reach < samples.fanTouchLeftX) samples.fanTouchLeftX = reach; }
@@ -3106,6 +3268,34 @@ const _contactFit = { pitch: 0, roll: 0, tipPitch: 0, tipRoll: 0, edge: false };
  * bit), FIT_NONE_LOADED when none does (the hull is leaving the ground: the previous plane stands), else FIT_PARTIAL
  * with _contactFit filled. Hull-local: z forward from the contact centre (the centre of mass), x right.
  */
+/**
+ * The attitude that lays the hull's track plane on the ground its samples read (physics lane round 3; gauntlet wave 23,
+ * the slope strip: "the downhill rear stations are the most extended ... and the uphill front ones the most compressed").
+ * The samples sit at hull-local stations, so the ground rises sin(pitch) per local metre under a hull lying on it (the
+ * support solve's plane: z sin(pitch) + x sin(roll) cos(pitch)); the arctangent of that rise read tan(grade) cos(pitch),
+ * and the hull lay flatter than its ground: 0.2 degree on a 15-degree face, 1 on 25, 5 on 45, its downhill end hanging
+ * up to 12 cm over a 25-degree face.
+ */
+function planePitch(risePerZ: number): number {
+  return Math.asin(clamp(risePerZ, -1, 1));
+}
+function planeRoll(risePerX: number, pitch: number): number {
+  return Math.asin(clamp(risePerX / Math.max(Math.cos(pitch), 0.1), -1, 1));
+}
+/**
+ * The grade the drivetrain feels on ground the hull lies on at `pitch`. Its climb, grip and slide were calibrated while
+ * the attitude fit read the arctangent of the rise per hull-local metre and the two-point settle carried it half way back
+ * to the grade, and the drivetrain keeps that reading now that the hull lies on its plane (within 0.2 degree of it up to
+ * 45 degrees): 24.0 degrees on a 25-degree face, 28.3 on 30, 40.1 on 45. The grade's turn of the travel keeps its reading
+ * likewise, the rise per hull-local metre (`gradeRise`).
+ */
+export function feltGrade(pitch: number): number {
+  return 0.5 * (pitch + Math.atan(Math.sin(pitch)));
+}
+function gradeRise(state: TankState): number {
+  return Math.sin(state._terr.fitPitch);
+}
+
 function contactAwareFit(
   spec: MovementSpec,
   state: TankState,
@@ -3154,12 +3344,12 @@ function contactAwareFit(
   // the grade rule stopped it dead in the trench, and it see-sawed there at 40 degrees for three seconds.
   const spansPitch = czz > FIT_MIN_SPAN_ZZ;
   if (left > 0 && right > 0 && det > 1e-6) {
-    pitch = spansPitch ? Math.atan((czh * cxx - cxh * czx) / det) : Math.atan2(samples.sumHeightZ, samples.sumZZ);
-    roll = Math.atan((cxh * czz - czh * czx) / det);
+    pitch = planePitch(spansPitch ? (czh * cxx - cxh * czx) / det : samples.sumHeightZ / Math.max(samples.sumZZ, 1e-9));
+    roll = planeRoll((cxh * czz - czh * czx) / det, pitch);
   } else if (spansPitch) {
-    pitch = Math.atan(czh / czz);
+    pitch = planePitch(czh / czz);
   } else if (czz > 1e-4) {
-    pitch = Math.atan2(samples.sumHeightZ, samples.sumZZ);
+    pitch = planePitch(samples.sumHeightZ / Math.max(samples.sumZZ, 1e-9));
   }
   _contactFit.pitch = pitch;
   _contactFit.roll = roll;
@@ -3231,13 +3421,10 @@ function updateTerrainFitAndPerch(
       return;
     }
   }
-  const fitPitch = Math.atan2(samples.sumHeightZ, samples.sumZZ);
+  const fitPitch = planePitch(samples.sumHeightZ / Math.max(samples.sumZZ, 1e-9));
   terr.fitPitch = fitPitch;
   terr.pitch = fitPitch;
-  terr.roll = Math.atan2(
-    (samples.sumRight - samples.sumLeft) / (samples.sideCount / 2),
-    2 * halfWidth,
-  );
+  terr.roll = planeRoll((samples.sumRight - samples.sumLeft) / (samples.sideCount / 2) / (2 * halfWidth), fitPitch);
   let tip = 0;
   if (samples.deepestZ > samples.zHalf && samples.rearMax > -Infinity) {
     tip = (samples.settleOuterMax - samples.rearMax) /
@@ -3273,6 +3460,71 @@ function updateFanYield(
   return next;
 }
 
+/**
+ * The seat the track's springs carry the hull at over uneven ground (physics lane round 3, gauntlet wave 23: on rough
+ * ground the hull perched on its single highest contact, every other road wheel hanging 20-60 cm over the ground, "no
+ * wheels down in several frames"). Each track-contact station (_bedD: the height of the root at which it touches) is a
+ * spring loaded to the ride's static sag s = g / omega^2 at rest, and the hull sits where the stations that reach the
+ * ground carry its weight: sum(max(0, r_i - y + s)) = n s, over the stations' residuals r_i above their own plane (a tilt
+ * of the whole set against the hull, or the hull-long grade of a face it slides on, is the attitude's to take, not the
+ * springs'). On flat ground that is the common contact; on a bump the bump's wheels are pushed up into the hull and the
+ * rest reach down. A station hanging DROP_FAR_M under the highest (past an edge, over a trench, off a ramp's lip) is no
+ * part of the bed, nor one the wheels cannot reach from the seat, as neither was part of the rigid support. Returns the
+ * seat under the highest contact, at most TRACK_SEAT_SINK_M under it.
+ */
+function trackSpringSeat(count: number, sag: number): number {
+  let top = -Infinity;
+  for (let index = 0; index < count; index++) if (_bedD[index] > top) top = _bedD[index];
+  if (!(count > 2) || !(sag > 0)) return top;
+  const near = top - DROP_FAR_M;
+  let mx = 0, mz = 0, md = 0, n = 0;
+  for (let index = 0; index < count; index++) {
+    if (_bedD[index] < near) continue;
+    mx += _bedX[index]; mz += _bedZ[index]; md += _bedD[index]; n++;
+  }
+  if (n < 3) return top;
+  mx /= n; mz /= n; md /= n;
+  let sxx = 0, szz = 0, sxz = 0, sxd = 0, szd = 0;
+  for (let index = 0; index < count; index++) {
+    if (_bedD[index] < near) continue;
+    const x = _bedX[index] - mx, z = _bedZ[index] - mz, d = _bedD[index] - md;
+    sxx += x * x; szz += z * z; sxz += x * z; sxd += x * d; szd += z * d;
+  }
+  const det = sxx * szz - sxz * sxz;
+  const slopeX = Math.abs(det) > 1e-9 ? (sxd * szz - szd * sxz) / det : 0;
+  const slopeZ = Math.abs(det) > 1e-9 ? (szd * sxx - sxd * sxz) / det : 0;
+  let rtop = -Infinity;
+  for (let index = 0; index < count; index++) {
+    const r = _bedD[index] < near ? -Infinity : _bedD[index] - slopeX * (_bedX[index] - mx) - slopeZ * (_bedZ[index] - mz);
+    _bedR[index] = r;
+    if (r > rtop) rtop = r;
+  }
+  const reach = rtop - TRACK_SEAT_SINK_M - RIDE_DROOP_M;
+  let inBed = 0;
+  for (let index = 0; index < count; index++) if (_bedR[index] >= reach) inBed++;
+  const load = inBed * sag;
+  // the carried force sum(max(0, r_i - y + s)) is piecewise linear, convex and falling in y, so Newton's step from the
+  // deepest seat never passes the root and lands on it within a few knots (each step lands or drops a station)
+  let y = rtop - TRACK_SEAT_SINK_M;
+  for (let iteration = 0; iteration < TRACK_SEAT_ITERATIONS; iteration++) {
+    let force = 0;
+    let active = 0;
+    for (let index = 0; index < count; index++) {
+      const compression = _bedR[index] - y + sag;
+      if (compression > 0 && _bedR[index] >= reach) { force += compression; active++; }
+    }
+    const excess = force - load;
+    if (!(excess > 1e-9) || active === 0) break;
+    y += excess / active;
+    if (y >= rtop) return top;
+  }
+  return top - (rtop - y);
+}
+/** Newton steps of the seat (a step lands on the root or drops at least one station from the carried set). */
+const TRACK_SEAT_ITERATIONS = 12;
+/** The deepest the springs seat the hull under its highest track contact; the rest of the travel is the ride's. */
+const TRACK_SEAT_SINK_M = 0.1;
+
 function writeSupportCache(
   entity: MovementEntity,
   samples: SupportSamples,
@@ -3301,9 +3553,20 @@ function writeSupportCache(
     samples.outerMax - hydraulicYield,
     samples.fanMax - fanYield - hydraulicYield,
   );
+  // the seat the track's springs carry the hull at (trackSpringSeat), at most TRACK_SEAT_SINK_M under the highest
+  // contact, never under a track end (hull-fixed) or the belly; rigid running gear has no springs to sink on
+  const gravityScale = clamp(Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1, 0.1, 3);
+  let seatY = rigidGear || rigidUndercut
+    ? supportY
+    : Math.min(supportY, Math.max(
+      trackSpringSeat(samples.bedCount, GRAVITY * gravityScale / (RIDE_OMEGA * RIDE_OMEGA)) - hydraulicYield,
+      samples.wrapMax - hydraulicYield,
+      supportY - TRACK_SEAT_SINK_M,
+    ));
   const bellyYield = samples.panY !== null ? 0 : fanYield;
   const bellySupportY = samples.bellyMax - bellyYield;
   if (bellySupportY > supportY) supportY = bellySupportY;
+  if (bellySupportY > seatY) seatY = bellySupportY;
   updateTerrainFitAndPerch(
     entity,
     samples,
@@ -3331,7 +3594,8 @@ function writeSupportCache(
   cache.yaw = state.yaw;
   cache.pitch = pitch;
   cache.roll = roll;
-  cache.y = Math.max(supportY + margin, rigidFloor);
+  cache.top = Math.max(supportY + margin, rigidFloor);
+  cache.y = Math.max(seatY + margin, rigidFloor);
   cache.floorY = Math.max(normalFloor, rigidFloor);
   cache.rigid = rigidGear;
   cache.cg = contact;
@@ -3454,7 +3718,7 @@ function prepareDriveStep(
   drive.forwardZ = Math.cos(state.yaw);
   drive.rightX = Math.cos(state.yaw);
   drive.rightZ = -Math.sin(state.yaw);
-  drive.terrainPitch = state._terr.pitch;
+  drive.terrainPitch = feltGrade(state._terr.pitch);
   drive.speedMultiplier = clamp(
     Number.isFinite(entity.modeSpeedMultiplier) ? entity.modeSpeedMultiplier! : 1,
     0.25,
@@ -3932,6 +4196,10 @@ export function updateTank(
     ? state._terr.pitch + suspensionAimPitch
     : spr.pitch;
   const targetRoll = groundedAtStart ? state._terr.roll : spr.roll;
+  const turnContact = entity.contactGeom;
+  _landingTurn.halfLength = turnContact ? turnContact.halfLenM : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
+  _landingTurn.halfWidth = turnContact ? turnContact.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
+  _landingTurn.height = spec.dims.heightM;
   updateHullAttitude(
     state,
     body,

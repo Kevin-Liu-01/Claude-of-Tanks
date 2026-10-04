@@ -28,6 +28,7 @@ import { KSAR_STYLE } from './ksar.ts';
 import { WADIRUM_STYLE } from './wadirum.ts';
 import { RUHR_STYLE } from './ruhr.ts';
 import { KOHIMA_STYLE } from './kohima.ts';
+import { HOSTOMEL_STYLE } from './hostomel.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
@@ -46,6 +47,7 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   wadirum: WADIRUM_STYLE,
   ruhr: RUHR_STYLE,
   kohima: KOHIMA_STYLE,
+  hostomel: HOSTOMEL_STYLE,
 });
 
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));
@@ -93,7 +95,18 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
   const wearSeed = Math.floor(weatherRng() * 4294967296);
   const wear = { amount: style.wear ?? 0.2, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0) };
   const tints = pickWeatherTints(palette, weatherRng);
-  return weatherRegionalParts(withWear(wear, () => builder(ctx)), tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
+  const parts = weatherRegionalParts(withWear(wear, () => builder(ctx)), tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
+  // a phone never builds the fine joinery (geometry.ts EmitOptions.fine: frames, glazing bars, rails, door panels);
+  // it is dressing, so the collision stays the desktop's
+  if (ctx.tier === 'mobile') {
+    for (const name of REGIONAL_BUCKETS) {
+      const list = parts[name];
+      if (!list?.some((g) => g.userData.fine)) continue;
+      for (const g of list) if (g.userData.fine) g.dispose();
+      parts[name] = list.filter((g) => !g.userData.fine);
+    }
+  }
+  return parts;
 }
 
 interface RebuildContext {

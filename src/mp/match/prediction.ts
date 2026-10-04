@@ -37,6 +37,8 @@ export interface PredictionWorld {
   contactGeom?: MovementContactGeometry | null;
   /** The room's ruleset impact physics (landing rebound); absent = the whole-game block. */
   physics?: RulesetPhysics | null;
+  /** The room's impact physics at the gravity the authority sends (Gravity mode's Earth rewrites the rebound). */
+  physicsAt?: ((gravityScale: number) => RulesetPhysics) | null;
   /**
    * Called with the authority's own pose after every rewind, before the replay. The authority resolved every contact
    * at that tick, so a disclosed hull this pose already penetrates is presented where it used to be (the interpolation
@@ -503,6 +505,7 @@ export class LocalPredictor {
     });
     this.sim.modeSpeedMultiplier = dequantizeMultiplier(viewer.modeSpeedMultiplier);
     this.sim.modeGravityScale = dequantizeMultiplier(viewer.modeGravityScale);
+    this.sim.modePhysics = this.world.physicsAt?.(this.sim.modeGravityScale) ?? this.world.physics ?? null;
   }
 
   private recordError(errorM: number): void {

@@ -334,9 +334,11 @@ export const SCENERY_DESTRUCTIBLE_TYPES = {
 // ---------------------------------------------------------------------------------------------- the pylon line
 
 /** One lattice tower's geometry (baked, world-oriented later): a 400 kV double-circuit "Donau" tower, scaled. */
-export function buildPylon(rng: Rng, height = 34, mobile = false): { geometry: THREE.BufferGeometry; legHalf: number; arms: Array<[number, number]> } {
+export function buildPylon(rng: Rng, height = 34, mobile = false, breadthOf = height): { geometry: THREE.BufferGeometry; legHalf: number; arms: Array<[number, number]> } {
   const parts: THREE.BufferGeometry[] = [];
-  const H = height, base = 4.2 * (height / 34), waist = 1.1 * (height / 34), waistY = H * 0.62;
+  // (a tower stood taller over the woods keeps the breadth of the tower it was authored as: its footing, its waist and
+  // its arms, so its legs and its conductors' spread stay where they were; only its body rises)
+  const H = height, wide = breadthOf / 34, base = 4.2 * wide, waist = 1.1 * wide, waistY = H * 0.62;
   const strut = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, t: number, pal: Palette) => {
     const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
     const len = Math.hypot(dx, dy, dz);
@@ -351,7 +353,7 @@ export function buildPylon(rng: Rng, height = 34, mobile = false): { geometry: T
   const levels: number[] = [];
   for (let i = 0; i <= sections; i++) levels.push((i / sections) * H * 0.97);
   for (let i = 0; i < sections; i++) {
-    const y0 = levels[i], y1 = levels[i + 1], h0 = halfAt(y0), h1 = halfAt(y1);
+    const y0 = levels[i], y1 = levels[i + 1], h0 = halfAt(y0), h1 = halfAt(y1), ym = (y0 + y1) / 2, hm = halfAt(ym);
     for (let k = 0; k < 4; k++) {
       const [ax, az] = corners[k], [bx, bz] = corners[(k + 1) % 4];
       strut(ax * h0, y0, az * h0, ax * h1, y1, az * h1, 0.16, GALV);
@@ -360,19 +362,45 @@ export function buildPylon(rng: Rng, height = 34, mobile = false): { geometry: T
         strut(ax * h0, y0, az * h0, bx * h1, y1, bz * h1, 0.06, GALV_DARK);
         strut(bx * h0, y0, bz * h0, ax * h1, y1, az * h1, 0.06, GALV_DARK);
       }
+      if (!mobile) {
+        // the secondary members: a redundant strut across each panel's middle and the short ties from it to the legs
+        // (the lattice's fine print, which reads from the field as a tower and not as a sketch of one)
+        const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+        strut(ax * hm, ym, az * hm, bx * hm, ym, bz * hm, 0.045, GALV_DARK);
+        strut(mx * h0, y0, mz * h0, mx * hm, ym, mz * hm, 0.04, GALV_DARK);
+      }
+    }
+    // a plan brace across the body every other section (the tower's diaphragms)
+    if (!mobile && i % 2 === 1) {
+      strut(-h1, y1, -h1, h1, y1, h1, 0.05, GALV_DARK);
+      strut(h1, y1, -h1, -h1, y1, h1, 0.05, GALV_DARK);
     }
   }
   // the crossarms: a lower wide pair and an upper narrower pair, each a lattice triangle; insulator strings hang off
   const arms: Array<[number, number]> = [];
-  for (const [y, span] of [[waistY + 0.4, 11.5 * (height / 34)], [waistY + (H - waistY) * 0.55, 8.2 * (height / 34)]] as Array<[number, number]>) {
+  for (const [y, span] of [[waistY + 0.4, 11.5 * wide], [waistY + (H - waistY) * 0.55, 8.2 * wide]] as Array<[number, number]>) {
     const h = halfAt(y);
     for (const side of [-1, 1]) {
       strut(side * h, y, -h, side * span, y, 0, 0.1, GALV);
       strut(side * h, y, h, side * span, y, 0, 0.1, GALV);
       strut(side * h, y + 1.6, 0, side * span, y, 0, 0.08, GALV_DARK);
-      const ins = new THREE.CylinderGeometry(0.11, 0.11, 2.6, 6, 1);
-      parts.push(paint(ins.translate(side * (span - 0.3), y - 1.3, 0), INSULATOR, 0.04, rng));
-      arms.push([side * (span - 0.3), y - 2.6]);
+      // the arm's own lattice: two ties from its top chord down to the bottom chords, the far end braced across
+      for (const f of [0.38, 0.7]) {
+        const ax = side * (h + (span - h) * f), topY = y + 1.6 * (1 - f);
+        strut(ax, topY, 0, ax, y, -h * (1 - f), 0.045, GALV_DARK);
+        strut(ax, topY, 0, ax, y, h * (1 - f), 0.045, GALV_DARK);
+      }
+      // the insulator string: a rod of glass discs under the arm's tip, a yoke at the bottom (a pylon reads by them)
+      const ix = side * (span - 0.3);
+      const rod = new THREE.CylinderGeometry(0.025, 0.025, 2.6, 4, 1);
+      parts.push(paint(rod.translate(ix, y - 1.3, 0), INSULATOR, 0.04, rng));
+      const discs = mobile ? 4 : 7;
+      for (let d = 0; d < discs; d++) {
+        const disc = new THREE.CylinderGeometry(0.15, 0.13, 0.07, 6, 1);
+        parts.push(paint(disc.translate(ix, y - 0.35 - (d / Math.max(1, discs - 1)) * 2.0, 0), INSULATOR, 0.04, rng));
+      }
+      parts.push(paint(box(0.42, 0.06, 0.12).translate(ix, y - 2.55, 0), GALV, 0.04, rng));
+      arms.push([ix, y - 2.6]);
     }
   }
   // the earth-wire peak
@@ -424,12 +452,12 @@ const SANDBAG_STACKS = {
 } as const;
 type SandbagStackKind = keyof typeof SANDBAG_STACKS;
 
-/** The bags' tones (sRGB HSL) and their shares. */
+/** The bags' tones (sRGB HSL) and their shares (wave 20: darker and dirtier; a bag in the field is never clean). */
 const SANDBAG_TONES: ReadonlyArray<readonly [Palette, number]> = [
-  [[0.092, 0.26, 0.42], 0.42], // sun-bleached hessian
-  [[0.086, 0.2, 0.36], 0.33],  // weathered hessian
-  [[0.15, 0.17, 0.31], 0.12],  // olive polypropylene, faded
-  [[0.078, 0.22, 0.29], 0.13], // dirty
+  [[0.092, 0.24, 0.36], 0.42], // sun-bleached hessian
+  [[0.086, 0.2, 0.3], 0.33],   // weathered hessian
+  [[0.15, 0.16, 0.26], 0.12],  // olive polypropylene, faded
+  [[0.078, 0.22, 0.23], 0.13], // dirty
 ];
 
 function sandbagRng(seed: number): Rng {
@@ -443,29 +471,61 @@ function sandbagRng(seed: number): Rng {
 }
 
 /**
- * One filled bag along +X (length), Y (thickness), Z (width), centred: a box of 3 x 1 x 2 segments shaped to a pillow
- * (thin and narrow at the ends, sagging on top), welded so it shades soft, with a planar weave UV, its tone and a
- * grime toward its bed. About 44 triangles.
+ * A bag's shaping: its fill (1 full, 0.75 slack), its course's dirt (0 clean, 1 earth-smeared); a laid bag leaves out
+ * its bed and its inner side, and an end that abuts its neighbour in the course (`hideEnds`: local -x, +x).
  */
-function sandbagBag(len: number, thick: number, wid: number, r: Rng): THREE.BufferGeometry {
-  const box3 = new THREE.BoxGeometry(1, 1, 1, 3, 1, 2);
+interface BagShape { fill?: number; dirt?: number; laid?: boolean; hideEnds?: readonly [boolean, boolean] }
+
+/**
+ * One filled bag along +X (length), Y (thickness), Z (width), centred (wave 20: "inflated toy capsules"). A box of
+ * 3 x 2 x 3 segments shaped as a sack squashed under the courses above: a flat top and a flat bed, the arrises rounded,
+ * the sides bulging at mid height where the fill pushed out; the folded end tucked square, the tied end gathered to a
+ * neck with its two ears; the top sagging where it bridges the joint under it and the whole bag drooping into that
+ * joint. A slack bag (fill under 1) lies thinner, wider and more sagged. Welded so it shades soft, a planar weave UV,
+ * its tone and the earth toward its bed. A laid bag leaves out the faces a stack hides (its bed, its inner side, the
+ * ends against its neighbours): about 30 triangles inside a course, 54 at its ends.
+ */
+function sandbagBag(len: number, thick: number, wid: number, r: Rng, shape: BagShape = {}): THREE.BufferGeometry {
+  const fill = shape.fill ?? 1, dirt = shape.dirt ?? 0;
+  const box3 = new THREE.BoxGeometry(1, 1, 1, 3, 2, 3);
   box3.deleteAttribute('uv');
   box3.deleteAttribute('normal');
+  if (shape.laid) {
+    // leave out the bed (-y), the inner side (-z) and the abutted ends (+x, -x) before welding
+    const hide = new Set([3, 5]);
+    if (shape.hideEnds?.[0]) hide.add(1);
+    if (shape.hideEnds?.[1]) hide.add(0);
+    const index = box3.index!.array, kept: number[] = [];
+    for (const group of box3.groups) {
+      if (hide.has(group.materialIndex ?? 0)) continue;
+      for (let i = group.start; i < group.start + group.count; i++) kept.push(index[i]);
+    }
+    box3.setIndex(kept);
+    box3.clearGroups();
+  }
   const p = box3.attributes.position;
-  const sag = 0.06 + r() * 0.1, twist = (r() - 0.5) * 0.12, tie = r() < 0.5 ? 1 : -1;
+  const T = thick * fill, Wd = wid * (1 + (1 - fill) * 0.3);
+  const sag = (0.05 + r() * 0.07) * (1 + (1 - fill) * 2.5), droop = 0.008 + r() * 0.012;
+  const twist = (r() - 0.5) * 0.1, tie = r() < 0.5 ? 1 : -1, ear = 0.03 + r() * 0.03;
   for (let i = 0; i < p.count; i++) {
     const u = p.getX(i) * 2, v = p.getY(i) * 2, w = p.getZ(i) * 2; // -1..1
-    const endT = Math.pow(Math.abs(u), 4);
-    // the tied end pinches harder than the folded one
-    const pinch = u * tie > 0 ? 0.36 : 0.24;
-    const y = v * 0.5 * thick * (1 - pinch * endT) * (1 - 0.32 * w * w) - (v > 0 ? sag * thick * (1 - u * u) * (1 - 0.5 * w * w) : 0);
-    const z = w * 0.5 * wid * (1 - 0.1 * Math.pow(Math.abs(u), 6) * (u * tie > 0 ? 1.4 : 1));
-    const x = u * 0.5 * len * (1 - 0.06 * w * w);
-    p.setXYZ(i, x, y + twist * u * w * thick * 0.5, z);
+    const end = Math.abs(u) > 0.99, edge = Math.abs(w) > 0.99, tied = u * tie > 0, top = v > 0.5, mid = Math.abs(v) < 0.5;
+    // the section: a flat top and bed, the arrises rounded, the sides bulging at mid height under the load
+    const yScale = end ? (tied ? 0.7 : 0.88) : 1;
+    let y = v * 0.5 * T * yScale * (edge && !mid ? (top ? 0.78 : 0.9) : 1);
+    if (top && !end && !edge) y -= sag * T; // the top sags where the course above bears on it and over the joint below
+    y -= droop * (1 - u * u * 0.9);
+    const spread = edge ? (mid ? 1.02 : top ? 0.9 : 0.95) : 1;
+    const gather = end ? (tied ? 0.72 : 0.96) : 1;
+    const z = w * 0.5 * Wd * spread * gather;
+    // the ears: the tied end's corners pulled out along the bag and up a little
+    const earPull = tied && end && edge ? ear : 0;
+    const x = u * 0.5 * len * (end && !tied ? 0.97 : 1) + Math.sign(u) * earPull * len;
+    p.setXYZ(i, x, y + twist * u * w * T * 0.5 + (earPull > 0 ? T * 0.08 : 0), z);
   }
   const g = mergeVerticesKeepIndex(box3);
   g.computeVertexNormals();
-  // the tone, and a grime band toward the bed
+  // the tone, and the earth toward its bed (more on a bag low in the stack)
   const [tone] = (() => { let pick = r(), at = SANDBAG_TONES[0]; for (const t of SANDBAG_TONES) { if ((pick -= t[1]) <= 0) { at = t; break; } } return at; })();
   const lift = (r() - 0.5) * 0.05, hue = (r() - 0.5) * 0.01;
   const gp = g.attributes.position, n = gp.count;
@@ -473,8 +533,9 @@ function sandbagBag(len: number, thick: number, wid: number, r: Rng): THREE.Buff
   const du = r() * 7, dv = r() * 7;
   for (let i = 0; i < n; i++) {
     const x = gp.getX(i), y = gp.getY(i), z = gp.getZ(i);
-    const bed = Math.max(0, Math.min(1, (-y / (thick * 0.5) + 0.2) / 1.2));
-    _c.setHSL(tone[0] + hue, tone[1] * (1 - bed * 0.25), Math.max(0.05, (tone[2] + lift) * (1 - bed * 0.32)), THREE.SRGBColorSpace);
+    const bed = Math.max(0, Math.min(1, (-y / (T * 0.5) + 0.2) / 1.2));
+    const earth = Math.min(1, bed * (0.32 + dirt * 0.3) + dirt * 0.18);
+    _c.setHSL(tone[0] + hue - earth * 0.01, tone[1] * (1 - earth * 0.3), Math.max(0.05, (tone[2] + lift) * (1 - earth)), THREE.SRGBColorSpace);
     col[i * 3] = _c.r; col[i * 3 + 1] = _c.g; col[i * 3 + 2] = _c.b;
     // the weave runs along the bag and round it (a planar wrap: x along, z and y around)
     uv[i * 2] = du + x * 4.2;
@@ -503,38 +564,94 @@ function mergeVerticesKeepIndex(g: THREE.BufferGeometry): THREE.BufferGeometry {
   return welded;
 }
 
-/** The stack along local +X (base on y = 0 before the sink), front and back rows, stretcher bond, a battered parapet. */
+/**
+ * The stack along local +X (base on y = 0 before the sink), front and back rows, stretcher bond, a battered parapet.
+ * Wave 20: courses of 15 cm squashed bags (each a little thicker than its course, pressed into the one under it), one
+ * bag in five slack, the lowest courses smeared with earth, and a fillet of earth banked against the foot.
+ */
 function sandbagCourses(half: number, depth: number, height: number, r: Rng): THREE.BufferGeometry[] {
   const parts: THREE.BufferGeometry[] = [];
-  const courses = Math.max(2, Math.round(height / 0.17));
+  const courses = Math.max(2, Math.round(height / 0.15));
   const thick = height / courses;
   for (let c = 0; c < courses; c++) {
-    const inset = c * 0.022 + (c === courses - 1 ? 0.02 : 0);
+    const inset = c * 0.02 + (c === courses - 1 ? 0.02 : 0);
     const rowHalf = depth - inset;
+    const dirt = Math.max(0, 1 - c / 2.5);
     // two rows across (each a stretcher) meeting in the middle, their bags as long as the wall's length allows; odd
     // courses shifted half a bag
     for (const side of [-1, 1]) {
       const wid = Math.max(0.2, rowHalf - 0.005);
       const n = Math.max(2, Math.round((half * 2) / 0.6));
       const len = (half * 2) / n;
-      const shift = c % 2 ? len * 0.5 : 0;
-      for (let k = -1; k < n; k++) {
-        let x0 = -half + shift + k * len, x1 = x0 + len;
+      // a staggered bond, as hands lay it: each course shifted its own way (about half a bag), every bag a little
+      // longer or shorter than the last, so the joints wander instead of lining up
+      const shift = (c % 2 ? len * 0.5 : 0) + (r() - 0.5) * len * 0.3;
+      let x = -half + shift - len;
+      const top = c === courses - 1;
+      while (x < half) {
+        const bagLenNominal = len * (0.85 + r() * 0.3);
+        let x0 = x, x1 = x + bagLenNominal;
+        x = x1;
         x0 = Math.max(-half, x0); x1 = Math.min(half, x1);
         if (x1 - x0 < len * 0.3) continue;
-        // the top course: the odd bag missing or slumped
-        if (c === courses - 1 && r() < 0.12) continue;
+        // the top course: the odd bag missing, the rest standing at their own heights (an uneven line)
+        if (top && r() < 0.16) continue;
         const bagLen = (x1 - x0) * (0.97 + r() * 0.05);
-        const bag = sandbagBag(bagLen, thick * (1.12 + r() * 0.14), wid * (0.95 + r() * 0.08), r);
-        bag.rotateY((r() - 0.5) * 0.05 + (side < 0 ? Math.PI : 0));
-        bag.rotateZ((r() - 0.5) * 0.05);
-        bag.rotateX((r() - 0.5) * 0.06 - side * 0.04);
-        bag.translate((x0 + x1) / 2 + (r() - 0.5) * 0.03, c * thick + thick * 0.5 + (r() - 0.5) * 0.015, side * (rowHalf - wid * 0.5) + (r() - 0.5) * 0.03);
+        const fill = r() < 0.2 ? 0.76 + r() * 0.12 : 0.94 + r() * 0.1;
+        // a course's inner ends abut their neighbours (the top course's do not: it has gaps); in the bag's own frame a
+        // back-row bag (turned round) has its -x end toward the stack's +x
+        const leftHidden = !top && x0 > -half + len * 0.35, rightHidden = !top && x1 < half - len * 0.35;
+        const hideEnds: [boolean, boolean] = side > 0 ? [leftHidden, rightHidden] : [rightHidden, leftHidden];
+        const bag = sandbagBag(bagLen, thick * (1.12 + r() * 0.12), wid * (0.95 + r() * 0.08), r, { fill, dirt, laid: true, hideEnds });
+        bag.rotateY((r() - 0.5) * 0.07 + (side < 0 ? Math.PI : 0));
+        bag.rotateZ((r() - 0.5) * 0.06);
+        bag.rotateX((r() - 0.5) * 0.06 - side * 0.035);
+        const rise = top ? (r() - 0.5) * thick * 0.3 : (r() - 0.5) * 0.012;
+        // a slack bag lies lower in its course (it settled into the joint below)
+        bag.translate((x0 + x1) / 2 + (r() - 0.5) * 0.03, c * thick + thick * 0.5 * fill + rise, side * (rowHalf - wid * 0.5) + (r() - 0.5) * 0.03);
         parts.push(bag);
       }
     }
   }
   return parts;
+}
+
+/**
+ * The earth banked against a stack's foot on all four sides (in the stack's final frame, the ground at y = 0): from
+ * 3 cm under the ground 3-4 cm out of the bags up to 5-8 cm on their faces, lumpy; one flat earth tone (a fixed weave
+ * texel), so the bottom course reads as sunk in the ground.
+ */
+function sandbagEarthFillet(half: number, depth: number, r: Rng): THREE.BufferGeometry {
+  const positions: number[] = [], index: number[] = [];
+  const ring = 28, pts: Array<[number, number, number, number]> = []; // x, z, outward x, outward z round the plan
+  const per = (2 * half + 2 * depth) * 2;
+  for (let k = 0; k < ring; k++) {
+    const t = (k / ring) * per;
+    let x: number, z: number, ox: number, oz: number;
+    if (t < 2 * half) { x = -half + t; z = depth; ox = 0; oz = 1; }
+    else if (t < 2 * half + 2 * depth) { x = half; z = depth - (t - 2 * half); ox = 1; oz = 0; }
+    else if (t < 4 * half + 2 * depth) { x = half - (t - 2 * half - 2 * depth); z = -depth; ox = 0; oz = -1; }
+    else { x = -half; z = -depth + (t - 4 * half - 2 * depth); ox = -1; oz = 0; }
+    pts.push([x, z, ox, oz]);
+  }
+  for (const [x, z, ox, oz] of pts) {
+    const h = 0.045 + r() * 0.035, out = 0.025 + r() * 0.02;
+    positions.push(x - ox * 0.02, h, z - oz * 0.02, x + ox * out, -0.03, z + oz * out);
+  }
+  for (let k = 0; k < ring; k++) {
+    const a = k * 2, b = ((k + 1) % ring) * 2;
+    index.push(a, a + 1, b, b, a + 1, b + 1);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  g.setIndex(index);
+  g.computeVertexNormals();
+  const n = positions.length / 3, col = new Float32Array(n * 3), uv = new Float32Array(n * 2).fill(0.5);
+  _c.setHSL(0.075, 0.24, 0.21, THREE.SRGBColorSpace);
+  for (let i = 0; i < n; i++) { col[i * 3] = _c.r; col[i * 3 + 1] = _c.g; col[i * 3 + 2] = _c.b; }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return g;
 }
 
 function sandbagMerge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
@@ -548,8 +665,9 @@ function sandbagMerge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
 export function buildSandbagStack(kind: SandbagStackKind): THREE.BufferGeometry {
   const s = SANDBAG_STACKS[kind];
   const r = sandbagRng(s.seed);
-  const g = sandbagMerge(sandbagCourses(s.half, s.depth, s.top + s.sink, r));
-  g.translate(0, -s.sink, 0);
+  const parts = sandbagCourses(s.half, s.depth, s.top + s.sink, r).map((bag) => bag.translate(0, -s.sink, 0));
+  parts.push(sandbagEarthFillet(s.half, s.depth, r));
+  const g = sandbagMerge(parts);
   if (s.along === 'z') g.rotateY(Math.PI / 2);
   return g;
 }

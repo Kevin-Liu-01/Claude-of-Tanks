@@ -1659,7 +1659,8 @@ function resolveObstacleCollisions(
     foot.centerZ = centerZ + outPush.z - startZ;
     _obstacleCenter.set(foot.centerX, positionY, foot.centerZ);
     const spanBottom = hullUndersideOver(obstacle, foot, positionY);
-    if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+    const clearBottom = foot.clearBottom;
+    if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, clearBottom)) continue;
     const closestX = Math.max(obstacle.min[0], Math.min(foot.centerX, obstacle.max[0]));
     const closestZ = Math.max(obstacle.min[2], Math.min(foot.centerZ, obstacle.max[2]));
     const deltaX = foot.centerX - closestX;
@@ -1679,6 +1680,7 @@ function resolveObstacleCollisions(
       outPush,
       spanBottom,
       spanTop,
+      clearBottom,
     )) continue;
     if (obstacle.crushable && self &&
         shouldCrushObstacle(game, self, obstacle, selfSpeed)) {
@@ -1697,9 +1699,9 @@ function resolveObstacleCollisions(
     foot.centerZ = centerZ + outPush.z - startZ;
     _obstacleCenter.set(foot.centerX, positionY, foot.centerZ);
     const spanBottom = hullUndersideOver(obstacle, foot, positionY);
-    if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+    if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, foot.clearBottom)) continue;
     pushHullFromObstacle(_obstacleCenter, forwardX, forwardZ, rightX, rightZ, halfLength, halfWidth, obstacle, outPush,
-      spanBottom, spanTop);
+      spanBottom, spanTop, foot.clearBottom);
   }
   _hardObstacles.length = 0;
   return pushed;

@@ -60,6 +60,9 @@ export default {
     ],
     village: { x0: -178, x1: 188, z0: -174, z1: 190, cx: 4, cz: 14, feather: 44, flatten: 0.72, relief: 0.24 },
     landforms: [
+      // a small negative knoll on the bump the hill noise raises 2.5 m by the north-east loading road at (100, 247): bravo's
+      // block routes cross it at speed, and a hull launched off it took the map's worst fall (2026-10-03, 108 hp)
+      { kind: 'knoll', x: 101, z: 246.5, rx: 9, rz: 9, height: -2.2 },
       // Three cinder cones, each with its summit crater, rills cut deep into its scree, talus fans spreading below the
       // rills' mouths onto the floor and a knobbly surface (landformGeology.ts). The Cinder Cone is the youngest, its
       // flanks near the scree's angle of repose (its steepest flank 1.14 x height / (radius x (1 - rim))) and its crater
@@ -91,10 +94,9 @@ export default {
   },
   spawns: {
     player: { x: -302, z: -380 },
-    enemies: [
-      { x: -212, z: 382 }, { x: -138, z: 418 }, { x: -60, z: 370 },
-      { x: 20, z: 414 }, { x: 102, z: 368 }, { x: 184, z: 405 }, { x: 260, z: 358 },
-    ],
+    // Bravo deploys in a 4 x 2 block like alpha's, centred where its old line of pads had its centroid, so every
+    // objective keeps its reach (the bots lane, 2026-10-03: a corner block against a 500 m line of pads leans the battle).
+    enemies: [{ x: 32.3, z: 383.7 }, { x: 24.3, z: 383.7 }, { x: 16.3, z: 383.7 }, { x: 8.3, z: 383.7 }, { x: 32.3, z: 393.7 }, { x: 24.3, z: 393.7 }, { x: 16.3, z: 393.7 }],
   },
   splat: {
     grassTone: (h: number, s: number, l: number) => [0.14, clamp01(s * 0.55), clamp01(l * 0.48 + 0.08)],
@@ -109,8 +111,11 @@ export default {
     // caldera). The pine, cypress and acacia archetypes stand in for the Canary pine, juniper and broom.
     species: ['pine', 'cypress', 'acacia'], clusterMix: [['pine', 0.82], ['cypress', 0.1], ['acacia', 0.08]],
     loneMix: [['pine', 0.72], ['cypress', 0.12], ['acacia', 0.16]], rimMix: [['pine', 0.86], ['cypress', 0.08], ['acacia', 0.06]],
-    clusterCount: 16, loneCount: 38, rimCount: 40, grassDensity: 0.03,
-    bushCount: 0.55, bushSpecies: 'acacia',
+    // Trees round 2b (2026-10-03, wave 26: "evenly spaced, grid-like" pine stands; the caldera floor is nearly treeless
+    // but for the broom): a few open groves (treeBiomes.ts open), scattered pines and a thin rim (its blocks stand
+    // inside the square's corners), the broom carrying the floor. Was 16 / 38 / 40 trees and 0.55 broom.
+    clusterCount: 5, loneCount: 22, rimCount: 14, grassDensity: 0.03,
+    bushCount: 1.0, bushSpecies: 'acacia',
   },
   props: {
     plan: ['factory', 'foundryoffice', 'stack', 'depot', 'gantry', 'firestation',

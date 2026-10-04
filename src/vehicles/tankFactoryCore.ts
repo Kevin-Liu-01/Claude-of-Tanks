@@ -54,7 +54,7 @@ import { replaceMeasuredWheelSolids, measuredWheelBackDepth, type MeasuredTireBa
 import { radialRibs, wheelGeo, STANDARD_WHEEL_AXIAL_ENVELOPE, TRACK_WIDTH_WHEEL_CAP, type WheelDetail, type WheelGeometrySet } from './roadWheelGeometry.ts';
 import { resolveNationWheel, type NationWheelResolution } from './nationWheelSets.ts';
 import { buildNationWheel, type NationWheelLayer } from './nationWheelConstructions.ts';
-import { isVehicleInstancedMesh, isVehicleMesh, type VehicleMesh } from './vehicleMesh.ts';
+import { isVehicleBatchedMesh, isVehicleInstancedMesh, isVehicleMesh, type VehicleMesh } from './vehicleMesh.ts';
 import { collectEraSurfaces, createEraSurfaceFrame, fitEraPointCloud } from './eraSurfaceFrame.ts';
 import {
   axisGeometryCapProfile, axisGeometryMouthEdgeProfile, objectRadialRadiusInFrame,
@@ -1245,10 +1245,6 @@ interface LodMidLevel {
   object: THREE.Object3D;
   distance: number;
   hysteresis?: number;
-}
-
-function isVehicleBatchedMesh(object: THREE.Object3D): object is THREE.BatchedMesh {
-  return 'isBatchedMesh' in object && object.isBatchedMesh === true;
 }
 
 function isVehicleGroup(object: THREE.Object3D): object is THREE.Group {

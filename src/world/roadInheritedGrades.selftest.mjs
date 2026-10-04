@@ -8,7 +8,9 @@ import { ROAD_ENDPOINT_INTENTS, completeRoadsWithIntents, usesInheritedRoadGrade
   alignAddedRoadJunctionGradesWithIntents } from './maps/roadEndpoints.ts';
 import { usesPhysicalRoadStations, buildRoadStationOrigins, authoredRoadStationIndex } from './maps/roadStations.ts';
 
-const selected = ['blackglass', 'titan_gorge', 'skybridge'];
+// 2026-10-03: Titan Gorge's and Skybridge Chasm's redesigns grade their roads over their own floors with the default
+// junction blend (their cross roads share their junction nodes), not the inherited rim-anchored node grades
+const selected = ['blackglass'];
 for (const id of [...MAP_IDS, undefined, 'fixture']) {
   assert.equal(usesInheritedRoadGrades(id), selected.includes(id), `${id}: explicit inherited-grade ownership`);
   if (!usesInheritedRoadGrades(id)) continue;

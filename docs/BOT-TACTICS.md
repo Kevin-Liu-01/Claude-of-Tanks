@@ -119,6 +119,11 @@ passing path instead of alternating steering back toward the blocked route.
 No-contact bots begin seeking a new approach after 25 seconds, independently
 of the opening long-range fire restriction. Combat destinations crossing a
 bridge use the same navigation grid and abutments as mission destinations.
+When nothing plans from where the hull stands (a pocket the grid cannot leave),
+the local router drives on toward the destination and the wedge watchdogs judge
+it. A hold there carries no drive intent, so nothing ever re-planned it: on the
+physics lane's plane attitude, a Type 96 that slid into a gorge pocket on Aegis
+Crossing (pacing seed 53001) sat at rest for 798 s.
 
 Right-of-way waits for traffic, not for a hull that never moves:
 
