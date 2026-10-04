@@ -38,19 +38,23 @@ import { createTreeImpostorLibrary, type TreeImpostorLibrary, type TreeImpostorR
 // p2 trees lane (2026-10-01): the grown near trees — skeleton, wood, spray cards and crown shadow hull — and their
 // branch-spray atlases
 import {
-  canopySkyOcclusion, emitBranchGeometry, emitCrownShadowHull, emitLeafCards, growShrubSkeleton, GROWTH_SHRUB_VALUE, growthCardRows, GROWTH_CROWN_STEM_WIDTH, growthCrownAttachments,
-  growTreeSkeleton, GROWTH_CANOPY_AO, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type GrowthSpecies,
+  canopySkyOcclusion, crownLobes, crownSurfaceNormal, emitBranchGeometry, GROWTH_CROWN_SHADING, emitCrownShadowHull, emitLeafCards, growShrubSkeleton, GROWTH_SHRUB_VALUE, growthCardRows, GROWTH_CROWN_STEM_WIDTH, growthCrownAttachments,
+  growTreeSkeleton, GROWTH_CANOPY_AO, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type CrownShadowMass, type GrowthSpecies,
 } from './treeGrowth.ts';
-import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
+import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
 import type { LandFieldSample } from './landUse.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeSlot, type TreeBiomeSlot } from './treeBiomes.ts';
+import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import type { PropsMapConfig } from './props.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../engine/quality.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
+// trees round 2 (2026-10-03): the grown crowns' dappled shadow
+import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from './crownShadowDapple.ts';
 import { markShadowOnly, setShadowCasterCascades, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { advanceGrassChunkWork, createGrassChunkWork,
@@ -93,6 +97,8 @@ interface CanopyPalette {
 interface VegetationPalette {
   /** Leaf-bearing birch/aspen; omitted for the existing bare winter crowns. */
   birchLeaves?: boolean;
+  /** Trees round 2: the regional form the slot grows as on the desktop tiers (treeBiomes.ts; the map's word wins). */
+  form?: GrowthSpecies;
   canopy?: CanopyPalette;
   cardHue?: number;
   cardSat?: number;
@@ -179,6 +185,12 @@ interface VegetationConfig {
   palettes: Partial<Record<Species, VegetationPalette>>;
   avoid: VegetationDisc[] | null;
   belts?: VegetationBelt[];
+  /**
+   * Trees round 2b: where the map's palms grow (a spring, a wadi bed, an oasis): a palm drawn anywhere else grows as
+   * `palmFallback` (default: the map's first other species), so no draw moves.
+   */
+  palmSites?: readonly VegetationDisc[];
+  palmFallback?: Species;
   clusterScrub?: number;
   authoredTrees?: AuthoredTreeFeature[];
   stubblePatches?: readonly GrassStubblePatch[];
@@ -287,6 +299,8 @@ export interface VegetationRuntime {
   crushTree(record: TreeObstacle, dx: number, dz: number, settled?: boolean): boolean;
   resetToppled(): void;
   _clusters: VegetationDisc[];
+  /** Trees round 2: the fraction of a stand's own outline a point stands at (the receipts' woodlot law). */
+  _standOutline(index: number, x: number, z: number): number;
   /** Round 77b: the rim-forest blocks as discs (their understorey's stands) and the impostor library (null: lobes). */
   _rimBlocks: VegetationDisc[];
   _treeImpostors: TreeImpostorLibrary | null;
@@ -404,25 +418,11 @@ function treePositionNoise(x: number, z: number, salt: number): number {
   return raw - Math.floor(raw);
 }
 
-/**
- * Ground lane (2026-10-03, the gauntlet's wave 3: "stamped circular tree-clump placement from altitude"): a stand's edge
- * at a bearing, as a share of its disc radius — lobes and bays, the stand drawn out along one bearing (up to ~1.6:1),
- * hashed from the stand's centre. Every reader of a stand shares it: its trees, the groves at its edge, its saplings,
- * its understorey and its fringe scrub; the stand's own disc record (its separation, its audits) stays as it was.
- */
-function standLobeAt(cx: number, cz: number, a: number): number {
-  const p1 = treePositionNoise(cx, cz, 151) * 6.2832, p2 = treePositionNoise(cx, cz, 157) * 6.2832;
-  const p3 = treePositionNoise(cx, cz, 163) * 6.2832, e = 0.10 + 0.22 * treePositionNoise(cx, cz, 167);
-  return Math.max(0.5, 1 + e * Math.cos(2 * (a - p1)) + 0.16 * Math.sin(3 * a + p2) + 0.09 * Math.sin(5 * a + p3));
-}
-
 function _mustReplace(src: string, anchor: string, replacement: string): string {
   const out = src.replace(anchor, replacement);
   if (out === src) throw new Error(`world/vegetation: shader anchor missing: ${anchor}`);
   return out;
 }
-// (exported apart from its declaration: the placement harnesses compile the declaration inside a function body)
-export { standLobeAt };
 
 // aa-r1 ANTI-SHIMMER (owner: "vegetation is still anti aliasing a lot"):
 // mip-aware alpha-coverage rescale on every alpha-tested foliage/grass card.
@@ -687,37 +687,52 @@ function paintBarkStyles(ctx: CanvasRenderingContext2D, rng: RandomSource, s: nu
     for (const offset of [-B, 0, B]) draw(offset);
     ctx.restore();
   };
-  // 1 — scaly plates: tall irregular plates in vertical runs, split by dark fissures (pine, spruce; the vertex tint
-  // warms a pine's upper stem). No inner highlight: the normal map's relief lights the plates' edges
+  // 1 — scaly plates: irregular plates in staggered, overlapping runs, split by dark fissures (pine, spruce; the vertex
+  // tint warms a pine's upper stem). Trees round 2 (2026-10-03): round 1 laid fourteen columns of flat four-cornered
+  // plates end to end, which a close view of a pine read as stacked bricks; now each plate is a jagged six-cornered scale
+  // of its own size, its seat jittered off any column, lit along its top edge and shaded under it, with a flake or two
+  // down its face, and the smaller scales lie over the larger. No inner highlight: the normal map's relief lights the
+  // plates' edges
   ctx.save(); ctx.translate(s, 0); ctx.fillStyle = '#3e3530'; ctx.fillRect(0, 0, B, s); ctx.restore();
-  const plates: Array<[number, number, number, number, number, number, number, number, number]> = [];
-  for (let column = 0; column < 14; column++) {
-    const cx = (column + rng() * 0.6) * (B / 14);
-    let y = rng() * 30;
-    while (y < s + 30) {
-      const h = 18 + rng() * 34, w = 11 + rng() * 9;
-      plates.push([cx + (rng() - 0.5) * 6, y, w, h, 0.50 + rng() * 0.22, (rng() - 0.5) * 0.12, rng(), rng() - 0.5, rng() - 0.5]);
-      y += h + 2 + rng() * 3;
+  const plates: Array<{ x: number; y: number; w: number; h: number; l: number; sat: number; pts: number[]; flakes: number[] }> = [];
+  for (let k = 0; k < 340; k++) {
+    const w = 10 + rng() * 16, h = 18 + rng() * 32;
+    const pts: number[] = [];
+    for (let v = 0; v < 6; v++) {
+      const a = (v / 6) * Math.PI * 2 + (rng() - 0.5) * 0.5;
+      pts.push(Math.cos(a) * w * (0.42 + rng() * 0.14), Math.sin(a) * h * (0.42 + rng() * 0.12));
     }
+    const flakes: number[] = [];
+    for (let f = 0, n = rng() < 0.6 ? 1 : 2; f < n; f++) flakes.push((rng() - 0.5) * w * 0.6, (rng() - 0.5) * 0.5, rng() * 0.6 + 0.3);
+    plates.push({ x: rng() * B, y: rng() * s, w, h, l: 0.46 + rng() * 0.26, sat: rng(), pts, flakes });
   }
+  plates.sort((a, b) => b.w * b.h - a.w * a.h);
   wrapped(1, (offset) => {
-    for (const [x, y, w, h, l, skew, sat, crackA, crackB] of plates) {
-      _cc.setHSL(0.065 + l * 0.02, 0.15 + sat * 0.06, l * 0.6);
-      ctx.fillStyle = _cc.getStyle();
-      ctx.beginPath();
-      ctx.moveTo(x - w * 0.5 + offset, y + h * skew);
-      ctx.lineTo(x + w * 0.45 + offset, y);
-      ctx.lineTo(x + w * 0.5 + offset, y + h * (0.95 - skew));
-      ctx.lineTo(x - w * 0.42 + offset, y + h);
-      ctx.closePath();
-      ctx.fill();
-      // a hairline crack down the plate
-      ctx.strokeStyle = 'rgba(40,32,28,0.55)';
-      ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      ctx.moveTo(x + offset + crackA * w * 0.4, y + 2);
-      ctx.lineTo(x + offset + crackB * w * 0.4, y + h - 2);
-      ctx.stroke();
+    for (const plate of plates) {
+      for (const dy of [-s, 0, s]) {
+        if (plate.y + dy < -plate.h || plate.y + dy > s + plate.h) continue;
+        const cx = plate.x + offset, cy = plate.y + dy;
+        ctx.beginPath();
+        for (let v = 0; v < 6; v++) {
+          const px = cx + plate.pts[v * 2], py = cy + plate.pts[v * 2 + 1];
+          if (v === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        const grad = ctx.createLinearGradient(cx, cy - plate.h * 0.5, cx, cy + plate.h * 0.5);
+        _cc.setHSL(0.065 + plate.l * 0.02, 0.15 + plate.sat * 0.06, plate.l * 0.66);
+        grad.addColorStop(0, _cc.getStyle());
+        _cc.setHSL(0.065 + plate.l * 0.02, 0.15 + plate.sat * 0.06, plate.l * 0.48);
+        grad.addColorStop(1, _cc.getStyle());
+        ctx.fillStyle = grad;
+        ctx.fill();
+        // a flake or two down the scale's face
+        ctx.strokeStyle = 'rgba(40,32,28,0.5)';
+        ctx.lineWidth = 0.8;
+        for (let f = 0; f < plate.flakes.length; f += 3) {
+          const fx = cx + plate.flakes[f], lean = plate.flakes[f + 1], len = plate.h * plate.flakes[f + 2];
+          ctx.beginPath(); ctx.moveTo(fx, cy - len * 0.5); ctx.lineTo(fx + lean * len * 0.3, cy + len * 0.5); ctx.stroke();
+        }
+      }
     }
   });
   // 2 — smooth: pale grey-buff with soft peeling patches and fine horizontal lenticels (eucalyptus, fir)
@@ -2202,8 +2217,14 @@ function buildBirchGeometry(
 
 /** The spray atlas a species paints on a map: birches and aspens carry leaves only where the palette says so. */
 export function grownSprayKind(species: Species, palette: VegetationPalette = {}): SprayKind {
-  if (species === 'birch' || species === 'aspen') return palette.birchLeaves === true ? species : 'birch-bare';
-  return species as SprayKind;
+  return grownFormSprayKind(species as GrowthSpecies, palette);
+}
+
+/** Trees round 2: the spray atlas a grown form paints (treeBiomes.ts) — a birch-family form leafy only where the palette
+ * says so (a slot's biome entry can say so too, through palOf). */
+export function grownFormSprayKind(growth: GrowthSpecies, palette: VegetationPalette = {}): SprayKind {
+  if (growth === 'birch' || growth === 'aspen') return palette.birchLeaves === true ? growth : 'birch-bare';
+  return growth as SprayKind;
 }
 
 /**
@@ -2225,10 +2246,24 @@ const GROWN_CROWN_TRANSMISSION = 1.6;
  */
 const LEAF_TRANSMISSION = 0.45;
 
-/** The grown crowns' card tint law per family: the legacy HSL multiplier's hue and saturation, and its gain. */
-function grownTintLaw(family: string): readonly [number, number, number] {
+/**
+ * Trees round 2 (2026-10-03): the share of the turn a grown crown's leaf cluster makes about its own axis toward the
+ * camera (foliageWindHook COT_LEAF_BILLBOARD): all of it — a cluster is leaves all round its twig, and its edge is the
+ * flat card the gauntlet named.
+ */
+const GROWN_LEAF_BILLBOARD = 1;
+
+
+/**
+ * The grown crowns' card tint law per family: the legacy HSL multiplier's hue and saturation, and its gain. A birch's
+ * law is its bare twigs' warm grey; a birch crown in leaf (the palette's birchLeaves) takes the leaves' hue and
+ * saturation at the twigs' gain. Trees round 2 (2026-10-03): the biome table's leafy birches on palettes that name no
+ * card colour (Prokhorovka's pine and willow slots, the Fulda Gap's aspens, the junction's birches) fell back to the
+ * twigs' law and grew olive-brown crowns among the green ones (the round-2 hand-over's Verdant and Frontier frames).
+ */
+export function grownTintLaw(family: string, leafy = false): readonly [number, number, number] {
   if (family === 'conifer') return [0.30, 0.18, 1.95];
-  if (family === 'birch') return [0.08, 0.06, 1.8];
+  if (family === 'birch') return leafy ? [0.228, 0.19, 1.8] : [0.08, 0.06, 1.8];
   if (family === 'dead') return [0.08, 0.05, 1.7];
   if (family === 'palm') return [0.215, 0.28, 1.75];
   return [0.228, 0.19, 1.85];
@@ -2253,17 +2288,22 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
     const laden = new Set(order.slice(0, Math.round(skeleton.leaves.length * 0.12 * Math.min(1, snow * 1.1))));
     for (const site of skeleton.leaves) site.tile = (laden.has(site) ? 0 : SPRAY_ATLAS_TILES) + (site.tile % SPRAY_ATLAS_TILES);
   }
-  const [hueBase, satBase, gain] = grownTintLaw(profile.family);
+  const [hueBase, satBase, gain] = grownTintLaw(profile.family, pal.birchLeaves === true);
   const hue0 = (pal.cardHue ?? hueBase) + (kind === 'understorey' ? 0.015 : 0), sat0 = pal.cardSat ?? satBase;
   const shrubValue = GROWTH_SHRUB_VALUE[growth] ?? 1;
+  // trees round 2 (2026-10-03, gauntlet wave 4: the "green balls", the "papercraft" foreground bush): a shrub shades as
+  // its own few masses — its sprays' lobes, the union's normals and a lighter depth shade than a crown's (a shrub is
+  // open to the sky around it), its lit shell given back by the shrub gain (GROWTH_CROWN_SHADING)
+  skeleton.lobes = crownLobes(skeleton, kind === 'bush' ? 3 : 2);
   const cards = emitLeafCards(skeleton, {
-    tiles: SPRAY_ATLAS_TILES, rng, rows: 2,
+    tiles: SPRAY_ATLAS_TILES, rng, rows: 2, depthShade: GROWTH_CROWN_SHADING.shrubDepthShade,
     tint(shade, site, r) {
       const jitter = r();
       const sk = snow > 0.05 && site.tile < SPRAY_ATLAS_TILES ? 0.85 + jitter * 0.15 : 0;
       _c.setHSL(hue0 + (r() - 0.5) * 0.06 + (0.585 - hue0) * sk, (sat0 + r() * 0.06) * (1 - sk * 0.85) + 0.02 * sk, 0.5,
         THREE.SRGBColorSpace);
-      const value = (0.55 + 0.45 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1) * (sk > 0 ? 1 : shrubValue);
+      const value = (0.55 + 0.45 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1) * (sk > 0 ? 1 : shrubValue)
+        * GROWTH_CROWN_SHADING.shrubGain;
       return [_c.r * gain * value, _c.g * gain * value, _c.b * gain * value];
     },
   });
@@ -2320,9 +2360,11 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   // snow caps showed (six or seven pads a tree at Frosthollow's 0.75–0.9, each a bough wide, spread down the crown,
   // the leader capped), a broadleaf's or a birch's a lighter load riding its limbs
   const snow = pal.snow ?? 0;
-  if (snow > 0.25 || (profile.family === 'birch' && snow > 0.01)) {
-    const conifer = profile.family === 'conifer';
-    const maxPads = Math.round(2 + (conifer ? 6 : 3) * snow);
+  // trees round 2 (2026-10-03, gauntlet wave 4: "white cotton-ball discs perched on the branch tips"): a conifer's load
+  // is the laden spray tiles over its upper crown (below), not lumps on its boughs; a broadleaf's and a birch's light
+  // load still rides their limbs as flat pads
+  if ((snow > 0.25 && profile.family !== 'conifer') || (profile.family === 'birch' && snow > 0.01)) {
+    const maxPads = Math.round(2 + 3 * snow);
     // the highest upward sprays first (a weeping crown's sprays hang: its pads ride the tops of its limbs instead): the
     // top two always carry a pad, the rest by the load and the height
     const upward = profile.habit === 'hanging'
@@ -2350,36 +2392,19 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
       const heightT = clamp(site.y / skeleton.height, 0, 1);
       if (k >= 2 && rng() > snow * (0.6 + 0.4 * heightT)) continue;
       // out along the bough, where the load shows past the sprays above it
-      const along = site.length * (conifer ? 0.58 : 0.45);
+      const along = site.length * 0.45;
       const cx = site.x + site.ax * along, cy = site.y + site.ay * along, cz = site.z + site.az * along;
-      // a conifer's pad is a bough's load, wider low in the crown — a mounded clump and a smaller one heaped beside it
-      // along the bough (a squashed single lobe read as a plate); a limb's load follows its spray
-      const lr = conifer ? (0.26 + rng() * 0.14) * (0.8 + 0.5 * (1 - heightT)) : site.length * 0.15 * (0.8 + rng() * 0.4);
+      // a limb's load follows its spray: one flat pad lying along it, a little out from its seat
+      const lr = site.length * 0.15 * (0.8 + rng() * 0.4);
       const yaw = Math.atan2(site.ax, site.az) + Math.PI / 2;
-      const clumps = conifer ? 2 : 1;
-      for (let c = 0; c < clumps; c++) {
-        const r = c === 0 ? lr : lr * (0.55 + rng() * 0.15);
-        const lobe = new THREE.IcosahedronGeometry(r, 0);
-        shapeTreeSnowLobe(lobe, rng);
-        lobe.scale(conifer ? 1.35 + rng() * 0.35 : 1.7, conifer ? 0.62 + rng() * 0.14 : 0.26, conifer ? 0.95 + rng() * 0.25 : 1.0);
-        // along the spray, a little out from its seat, lying on its face; the second clump heaped beside the first
-        lobe.rotateY(yaw + (rng() - 0.5) * 0.5);
-        const side = c === 0 ? 0 : (rng() < 0.5 ? -1 : 1) * lr * 0.95;
-        lobe.translate(cx + site.nx * 0.05 + site.ax * side, cy + site.ny * 0.05 + r * 0.12 * c, cz + site.nz * 0.05 + site.az * side);
-        _c.setHSL(0.585, 0.04, 0.62, THREE.SRGBColorSpace).multiplyScalar(1.55);
-        parts.push(paintFlat(lobe, _c.clone(), 0.12));
-      }
-      lastAz = Math.atan2(site.z, site.x);
-    }
-    if (conifer) {
-      // the leader's cap: the topmost load every snowbound conifer carries
-      const top = stem.nodes[stem.nodes.length - 1];
-      const cap = new THREE.IcosahedronGeometry(0.2 + 0.12 * snow, 0);
-      shapeTreeSnowLobe(cap, rng);
-      cap.scale(1.1, 0.7, 1.1);
-      cap.translate(top.x, top.y - 0.32, top.z);
+      const lobe = new THREE.IcosahedronGeometry(lr, 0);
+      shapeTreeSnowLobe(lobe, rng);
+      lobe.scale(1.7, 0.26, 1.0);
+      lobe.rotateY(yaw + (rng() - 0.5) * 0.5);
+      lobe.translate(cx + site.nx * 0.05, cy + site.ny * 0.05, cz + site.nz * 0.05);
       _c.setHSL(0.585, 0.04, 0.62, THREE.SRGBColorSpace).multiplyScalar(1.55);
-      parts.push(paintFlat(cap, _c.clone(), 0.18));
+      parts.push(paintFlat(lobe, _c.clone(), 0.12));
+      lastAz = Math.atan2(site.z, site.x);
     }
   }
   // the grown wood and cards are emitted as flat triangle lists; welded (identical vertices shared, an index) they draw
@@ -2422,7 +2447,12 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   if (snow > 0.05) {
     for (const site of skeleton.leaves) {
       const heightT = clamp(site.y / skeleton.height, 0, 1);
-      const up = clamp((site.ny - 0.3) / 0.45, 0, 1);
+      // trees round 2: a spray takes the load where the crown's surface faces the sky (the lobes' union at the card's
+      // centre), so the snow lies over the upper crown and along the tiers' tops instead of wherever a spray's own face
+      // happens to turn up
+      const hull = crownSurfaceNormal(skeleton, site.x + site.ax * site.length * 0.45, site.y + site.ay * site.length * 0.45,
+        site.z + site.az * site.length * 0.45);
+      const up = Math.max(clamp((site.ny - 0.3) / 0.45, 0, 1) * 0.5, clamp((hull[1] - 0.05) / 0.55, 0, 1));
       const hash = Math.sin(site.x * 12.9898 + site.y * 78.233 + site.z * 37.719) * 43758.5453;
       const laden = hash - Math.floor(hash) < up * (0.45 + 0.55 * heightT) * Math.min(1, snow * 1.1);
       site.tile = (laden ? 0 : SPRAY_ATLAS_TILES) + (site.tile % SPRAY_ATLAS_TILES);
@@ -2433,7 +2463,7 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   // a snow-laden spray takes the snow's neutral, lifted tint (its painted snow stays white, its needles frosted) and a
   // bare one none. The gain sits a little over the legacy 1.7: the spray atlases paint a touch darker than the round-8
   // ones.
-  const [hueBase, satBase, gain] = grownTintLaw(profile.family);
+  const [hueBase, satBase, gain] = grownTintLaw(profile.family, pal.birchLeaves === true);
   const hue0 = pal.cardHue ?? hueBase, sat0 = pal.cardSat ?? satBase;
   // a palm's frond atlas holds one frond (makePalmFrondAtlas); its dead fronds (shade 0) are straw-brown
   const palm = profile.family === 'palm';
@@ -2447,14 +2477,23 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
       _c.setHSL(dead ? 0.085 + (r() - 0.5) * 0.02 : hue0 + (r() - 0.5) * 0.06 + (0.585 - hue0) * sk,
         dead ? 0.34 + r() * 0.06 : (sat0 + r() * 0.06) * (1 - sk * 0.85) + 0.02 * sk, 0.5, THREE.SRGBColorSpace);
       // a laden spray's lift brightens its painted snow far more than its dark needles (the tint multiplies the
-      // texel): the snow reads as snow beside the snowfield, the needles under it stay dark
-      const value = (0.52 + 0.48 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1);
+      // texel): the snow reads as snow beside the snowfield, the needles under it stay dark. Trees round 2: a crown
+      // with lobes darkens its cards by their depth in it (treeGrowth.ts emitLeafCards); the crown gain gives the lit
+      // shell back what that darkening takes
+      const value = (0.52 + 0.48 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1)
+        * (skeleton.lobes ? GROWTH_CROWN_SHADING.crownGain : 1);
       return [_c.r * gain * value, _c.g * gain * value, _c.b * gain * value];
     },
   }));
+  // trees round 2: a palm's fronds keep their authored arch — no billboard frame (foliageWindHook COT_LEAF_BILLBOARD)
+  if (palm) { cards.deleteAttribute('aAxis'); cards.deleteAttribute('aLeaf'); }
   // the crown's own shadow hull rides on the trunk (createTreeMeshPools builds the pool's proxy from it); a mangrove's
   // stilt arches cast with it
-  let hull = emitCrownShadowHull(skeleton);
+  // trees round 2: the hull's wood, then its crown masses, each with the share of the sun its sprays let through (the
+  // tree's own atlas share of opaque leaf: crownShadowDapple.ts opens each mass that far)
+  const crownHull = emitCrownShadowHull(skeleton, 8, SPRAY_ATLAS_COVERAGE[grownFormSprayKind(species, pal)] ?? undefined);
+  let hull: Float32Array = crownHull;
+  trunk.userData.shadowHullMasses = crownHull.masses;
   if (tidal) {
     const arches = parts.slice(rootFirst, rootEnd).map((g) => (g.index ? g.toNonIndexed() : g).getAttribute('position').array as Float32Array);
     const joined = new Float32Array(hull.length + arches.reduce((n, a) => n + a.length, 0));
@@ -3295,6 +3334,24 @@ export function buildGrassTuftGeometry(
 // the authored counts. Read at build time, after the device tier is resolved.
 export function treeRichness(): number { return getDeviceTier() === 'mobile' ? 1 : 1.1; }
 
+/**
+ * Trees round 2 (2026-10-03; Glacier Pass's census, gauntlet wave 4's "lone needle-like grass stalks" on Frosthollow):
+ * on a snowbound battlefield (its ground profile's snow climate, groundRedux.ts) the classic grass tufts are dead winter
+ * grass — the rimed straw tone on the card wherever the map names none (Frosthollow's own), a sixth of a meadow's density
+ * at most (the sparse law then gathers them into clumps, resolveTuftScale), and short: stalks that barely clear the snow
+ * (a field-wide stubble patch at 45 %, the stubble law's own height scale) — instead of a spring-green sward pushed
+ * through the snowfield. The tall-grass tier's sedge is the ground profile's (tundra). A config, not a code path: the
+ * tufts' draws and their placement law stay what they were.
+ */
+export const SNOW_GRASS_LAW = Object.freeze({ maxDensity: 0.12, heightScale: 0.45 });
+function applySnowGrassLaw(veg: VegetationConfig, mapId: string | null): void {
+  if (resolveGroundReduxProfile(mapId).climate !== 'snow') return;
+  veg.grassTexTone ??= (_h, _s, l) => [0.105, 0.10, clamp(l + 0.36, 0, 1)];
+  veg.grassDensity = Math.min(veg.grassDensity, SNOW_GRASS_LAW.maxDensity);
+  veg.stubblePatches = [...(veg.stubblePatches ?? []),
+    { x0: -700, x1: 700, z0: -700, z1: 700, feather: 1, heightScale: SNOW_GRASS_LAW.heightScale }];
+}
+
 /** p2 trees lane (2026-10-01): the desktop tiers grow their near trees (treeGrowth.ts); the mobile tier keeps the
  * legacy card trees. Read at build time, after the device tier is resolved. */
 export function vegetationGrowsTrees(): boolean {
@@ -3419,6 +3476,8 @@ function* vegetationBuildSteps(
   const v = L.village;
   const noVeg = heightField._noVeg || (() => false);
   let groundCoverBlocked: GroundCoverBlocked | null = null;
+  // trees round 2 (2026-10-03): a snowbound map's classic tufts are dead winter grass (applySnowGrassLaw)
+  applySnowGrassLaw(veg, cfg?.id ?? null);
   const grassPerChunk = Math.round(GRASS_PER_CHUNK * veg.grassDensity
     * (mobileTier ? 0.62 : 1));
   const carpetPerCell = Math.round(CARPET_PER_CELL * veg.grassDensity
@@ -4207,7 +4266,7 @@ function* vegetationBuildSteps(
         // <<< gameplay_feel r4 / controls_gunnery r5
       }`);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nuniform float uScopeHard;\nuniform float uSniperFade;\nuniform float uScopeDist;\nvarying float vLodF;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;\nvarying float vWindLift;');
+      '#include <common>\nuniform float uScopeHard;\nuniform float uSniperFade;\nuniform float uScopeDist;\nvarying float vLodF;\nvarying float vFadeI;\nvarying float vScopeKeep;\nvarying float vTDRay;\nvarying float vTAlong;\nvarying float vDSeg;\nvarying float vWindLift;\n#ifdef COT_LEAF_BILLBOARD\nvarying float vCotNearScale;\n#endif');
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <alphatest_fragment>', /* glsl */`
       #include <alphatest_fragment>
       {
@@ -4219,7 +4278,13 @@ function* vegetationBuildSteps(
         // corridor — the old 0.12 keep-floor stippled a haze over the tank);
         // trunks keep the 12% ghost so the forest still reads.
         float fadeKeep = 1.0 - ${fullFade ? '1.0' : '0.88'} * vFadeI;
+        #ifdef COT_LEAF_BILLBOARD
+        // trees round 2: a small crown (a bush at the chase camera's side) dissolves only where the camera would be
+        // inside it — the canopy band read as a dithered core on Saltmere's foreground shrub (gauntlet wave 4)
+        fadeKeep *= smoothstep(${nearD0.toFixed(2)} * vCotNearScale, ${nearD1.toFixed(2)} * vCotNearScale, length(vViewPosition));
+        #else
         fadeKeep *= smoothstep(${nearD0.toFixed(2)}, ${nearD1.toFixed(2)}, length(vViewPosition));
+        #endif
         // aa-r1 LOD cross-fade share (repartition transition, see update()):
         // rides the same IGN dissolve below — stable per-pixel pattern, no
         // per-frame reseeding, exactly the killcam/scope-corridor grammar.
@@ -4303,6 +4368,33 @@ function* vegetationBuildSteps(
   };
   const foliageWindHook = (shader: MaterialShader): void => {
     canopyWindHook(shader);
+    // Trees round 2 (2026-10-03): the grown crowns' leaf clusters turn about their own axes to face the camera
+    // (COT_LEAF_BILLBOARD, the share of the turn; the desktop grown builds). A cluster keeps its seat, its axis (a
+    // hanging spray still hangs, a level one still reaches out) and its sag, and shows the viewer its face instead of
+    // its edge, so a crown reads as a mass of leaves from every side (the gauntlet: "flat-card broadleaf", "drooping
+    // card foliage"). The turn is in instance space, ahead of the wind block: the camera is carried into the instance's
+    // frame through the inverse of its rotation × scale (the transpose with each row over its squared length) and the
+    // model-view's rigid inverse; the lighting keeps the crown hull's normals, which never turned with the card. A
+    // geometry without the frame (the round-8 bush cards) reads aAxis as zero and stays as authored.
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
+      '#include <common>\n#ifdef COT_LEAF_BILLBOARD\nattribute vec3 aAxis;\nattribute vec3 aLeaf;\nvarying float vCotNearScale;\n#endif');
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`#include <begin_vertex>
+      #ifdef COT_LEAF_BILLBOARD
+      // the near-camera dissolve's reach by the crown's size: a shrub's (crown ~1.5–3 m across) under half a tree's
+      vCotNearScale = mix( 0.45, 1.0, smoothstep( 1.6, 3.6, aCard.w * length( instanceMatrix[ 0 ].xyz ) ) );
+      if ( dot( aAxis, aAxis ) > 0.5 ) {
+        mat3 cotIm = mat3( instanceMatrix );
+        vec3 cotCam = - ( transpose( mat3( modelViewMatrix ) ) * modelViewMatrix[ 3 ].xyz ) - instanceMatrix[ 3 ].xyz;
+        cotCam = vec3( dot( cotIm[ 0 ], cotCam ) / dot( cotIm[ 0 ], cotIm[ 0 ] ), dot( cotIm[ 1 ], cotCam ) / dot( cotIm[ 1 ], cotIm[ 1 ] ),
+          dot( cotIm[ 2 ], cotCam ) / dot( cotIm[ 2 ], cotIm[ 2 ] ) );
+        vec3 cotRight = cross( aAxis, cotCam - aCard.xyz );
+        float cotRightL = length( cotRight );
+        if ( cotRightL > 1e-4 ) {
+          vec3 cotFacing = aCard.xyz + cotRight * ( aLeaf.x / cotRightL ) + aAxis * aLeaf.y - vec3( 0.0, aLeaf.z, 0.0 );
+          transformed = mix( transformed, cotFacing, COT_LEAF_BILLBOARD );
+        }
+      }
+      #endif`);
     useAttributeNormal(shader);
     // aa-r1: mip-aware alpha BEFORE the built-in alpha test / A2C smoothstep
     // (the canopyWindHook dissolve above keeps the <alphatest_fragment>
@@ -4614,6 +4706,8 @@ function* vegetationBuildSteps(
     far(rng: RandomSource, palette: VegetationPalette, index: number): FarTreeGeometryPair;
     /** p2 trees lane: the near trees grow (treeGrowth.ts): their cards take the grown crowns' edge-on fade. */
     grown?: boolean;
+    /** Trees round 2: the species whose leaf-detail class the material takes (a regional form's family). */
+    detailSpecies?: Species;
   }
   function scaleNear(
     pair: TreeGeometryPair,
@@ -4678,6 +4772,13 @@ function* vegetationBuildSteps(
       },
     };
   }
+  // trees round 2 (2026-10-03): a slot's regional form — the map palette's `form`, else the map's biome (treeBiomes.ts)
+  const formOf = (sp: Species): { form: GrowthSpecies; leaves: boolean; colour?: TreeBiomeSlot['colour'] } | null => {
+    const explicit = veg.palettes[sp]?.form;
+    if (explicit) return { form: explicit, leaves: veg.palettes[sp]?.birchLeaves === true };
+    const slot = treeBiomeSlot(cfg?.id, sp);
+    return slot ? { form: slot.form, leaves: slot.leaves === true, ...(slot.colour ? { colour: slot.colour } : {}) } : null;
+  };
   // p2 trees lane (2026-10-01): the desktop tiers grow their near trees (treeGrowth.ts) and paint branch-spray atlases
   // (treeSprayAtlas.ts); the far tier is the bake of those trees (treeImpostors.ts). The mobile tier keeps the
   // legacy card trees, atlases and lobe tier exactly — the phones' cheaper path — and so do the palms and the
@@ -4687,14 +4788,29 @@ function* vegetationBuildSteps(
   // the species whose foliage material paints a spray atlas (the grown crowns' 2 × 2 tiles): the shrubs of such a
   // species grow from its sprays too (buildGrownShrub); any other bush species keeps the round-8 bush cards
   const sprayAtlasSpecies = new Set<Species>();
-  function grownDefinition(species: Exclude<GrowthSpecies, 'snag' | 'palm' | 'mangrove'>, legacy: SpeciesDefinition): SpeciesDefinition {
+  function grownDefinition(species: Exclude<Species, 'palm'>, legacy: SpeciesDefinition): SpeciesDefinition {
     if (!grownTrees) return legacy;
     sprayAtlasSpecies.add(species);
+    // trees round 2: the slot grows as its regional form (treeBiomes.ts); its seeds, its far stand-ins and its records
+    // stay the slot's. Its palette is the map's through the form (treeBiomePalette): a form of another family drops the
+    // card hue and saturation tuned for the slot's family, a leafy form on a palette tuned for bare twigs drops the
+    // twigs' colours, and a leafy form takes its leaves (a birch form on a pine slot is leafy); the place's foliage
+    // colour fills what the map palette leaves unnamed (Wadi Rum's dust-dulled acacias).
+    const form = formOf(species), growth: GrowthSpecies = form?.form ?? species;
+    const family = TREE_GROWTH_PROFILES[growth].family;
+    const crossFamily = !!form && family !== (TREE_ARCHETYPES[species]?.family ?? 'broadleaf');
+    const placeColour = treeBiomeColour(cfg?.id);
+    const formPal = (pal: VegetationPalette): VegetationPalette => treeBiomePalette(pal, form, crossFamily, placeColour);
     return {
       texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed, grown: true,
+      // the leaf-scale detail of the form's family (a holm oak on a cedar slot is leaves, not needles)
+      detailSpecies: !form ? species : family === 'conifer' ? 'pine' : family === 'birch' ? 'birch' : 'oak',
       // a snowy palette's texTone is the round-8 cards' hoar-frost wash (their snow); the spray atlas paints its snow
-      tex: (r, pal) => makeSprayAtlas(grownSprayKind(species, pal), r, texSize(512), (pal.snow ?? 0) > 0.05 ? null : pal.texTone || null, pal.snow ?? 0),
-      near: (k, pal) => buildGrownTree(species, seed + legacy.nearSeed + k * 7, k, pal),
+      tex: (r, pal) => {
+        const fp = formPal(pal);
+        return makeSprayAtlas(grownFormSprayKind(growth, fp), r, texSize(512), (fp.snow ?? 0) > 0.05 ? null : fp.texTone || null, fp.snow ?? 0);
+      },
+      near: (k, pal) => buildGrownTree(growth, seed + legacy.nearSeed + k * 7, k, formPal(pal)),
       far: legacy.far,
     };
   }
@@ -4760,7 +4876,9 @@ function* vegetationBuildSteps(
   if (snagShare > 0) {
     (SPECIES as Record<string, SpeciesDefinition>).snag = {
       texSeed: 65, nearSeed: 361, farSeed: 381, grown: true,
-      tex: (r) => makeSprayAtlas('birch-bare', r, texSize(256), (_h, sat, l) => [0.07, sat * 0.35, l * 0.42]),
+      // trees round 2: weathered grey-brown dead twigs (the charred 0.42 value read as a pitch-black card on Frosthollow's
+      // snow, gauntlet wave 4)
+      tex: (r) => makeSprayAtlas('birch-bare', r, texSize(256), (_h, sat, l) => [0.07, sat * 0.3, l * 0.86]),
       near: (k) => buildGrownTree('snag', seed + 361 + k * 7, k, {}),
       far: (r, _pal, k) => buildSnagFarGeometry(r, k),
     };
@@ -4792,16 +4910,21 @@ function* vegetationBuildSteps(
       fm.envMapIntensity = 0.75; // keep ambient on shaded leaves — no black cards (round 77: 0.85 → 0.75, the cascades now shade the crowns)
       // Round 77b: the class's detail tile as the card's normal map (desktop; the mobile library returns null and the
       // phones keep the flat card program). The tile is a material property, so every species shares one program.
-      const leafTile = leafDetail.texture(leafDetail.classOf(sp, palOf(sp)));
+      // trees round 2: a slot grown as a form of another family takes that family's detail (grownDefinition)
+      const leafTile = leafDetail.texture(leafDetail.classOf(SPECIES[sp].detailSpecies ?? sp, palOf(sp)));
       if (leafTile) { fm.normalMap = leafTile; fm.normalScale.set(LEAF_DETAIL_NORMAL_SCALE, LEAF_DETAIL_NORMAL_SCALE); }
       // p2 trees lane: the grown crowns' edge-on fade (foliageWindHook) and their back-lit transmission gain
       // (canopyLighting.ts COT_GROWN_CROWN: the dark Saltmere and Frontier crowns against a low sun)
-      if (SPECIES[sp].grown) fm.defines = { ...(fm.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2) };
+      // trees round 2: and their clusters turn to face the camera (COT_LEAF_BILLBOARD; the palms' fronds carry no frame)
+      if (SPECIES[sp].grown) {
+        fm.defines = { ...(fm.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2),
+          COT_LEAF_BILLBOARD: GROWN_LEAF_BILLBOARD.toFixed(2) };
+      }
       engineCtx.setupShadowMaterial(fm, foliageWindHook);
       // Species vary textures/uniforms, not this shared shader hook. Three
       // already keys material/geometry defines; a species suffix needlessly
       // recompiles identical programs when the last world using it is evicted.
-      fm.customProgramCacheKey = () => 'world-tree-foliage-v19'; // p2: the edge-on fade (round 77b: the leaf-scale detail; round 77: wind, cluster shadows, translucency)
+      fm.customProgramCacheKey = () => 'world-tree-foliage-v20'; // trees round 2: the facing clusters (p2: the edge-on fade; round 77b: the leaf-scale detail; round 77: wind, cluster shadows, translucency)
       foliageMats[sp] = fm;
       // alpha-tested shadow casting: without this every card shadows as a quad.
       // r6: palm gets a HIGHER shadow alphaTest — its frond texture covers most
@@ -5004,9 +5127,14 @@ function* vegetationBuildSteps(
     scMin: number,
     scMax: number,
     withObstacle: boolean,
+    // trees round 2: the stream the tree's own draws come from (the woodlots draw from theirs, placeTreeClusters)
+    r: RandomSource = rng,
   ): void {
+    // trees round 2b: a palm outside the map's palm sites grows as its fallback species (every path: stands, lone trees,
+    // belts, the rim); no draw moves
+    if (species === 'palm' && palmElsewhere && !palmSiteOk(x, z)) species = palmElsewhere;
     const y = heightField.getHeightAt(x, z);
-    const sc = scMin + rng() * (scMax - scMin);
+    const sc = scMin + r() * (scMax - scMin);
     const archetype = TREE_ARCHETYPES[species];
     // Independent, position-keyed width/depth/height variation changes the
     // silhouette without consuming the placement RNG stream. Stands retain
@@ -5014,11 +5142,11 @@ function* vegetationBuildSteps(
     const sx = sc * (0.86 + treePositionNoise(x, z, 1) * 0.28);
     const sy = sc * (0.88 + treePositionNoise(x, z, 2) * 0.24);
     const sz = sc * (0.86 + treePositionNoise(x, z, 3) * 0.28);
-    _q.setFromAxisAngle(_up, rng() * Math.PI * 2);
+    _q.setFromAxisAngle(_up, r() * Math.PI * 2);
     // r3 terrain_environment: per-instance LEAN jitter — every trunk used to
     // stand bolt vertical, a loud repetition tell in stands; a few degrees of
     // random tilt (more for palms) reads as natural growth
-    const leanA = rng() * Math.PI * 2;
+    const leanA = r() * Math.PI * 2;
     const leanM = treePositionNoise(x, z, 4) * archetype.leanMaxRad;
     _qLean.setFromAxisAngle(_axLean.set(Math.cos(leanA), 0, Math.sin(leanA)), leanM);
     _q.multiply(_qLean);
@@ -5027,15 +5155,15 @@ function* vegetationBuildSteps(
     // per-tree hue/value jitter, WIDE: identical-sibling canopies are the
     // loudest mid-distance tell, so value swings ~2x and hue drifts between
     // yellow-green and blue-green per instance
-    const vj = 0.58 + rng() * 0.42;
+    const vj = 0.58 + r() * 0.42;
     // content_breadth r3: the wide hue jitter is authored for verdant
     // variety — on the winter map a g-heavy roll re-saturated a frosted pine
     // back to summer green (the critique's lone green tree). pal.jitterHue
     // (0..1, default 1) scales the per-channel spread around the neutral
     // value jitter; winter runs ~0.22 = near value-only.
     const pj = palOf(species).jitterHue ?? 1;
-    _c.setRGB(vj * (1 + (rng() * 0.26 - 0.12) * pj), vj * (1 + (rng() * 0.22 - 0.04) * pj),
-      vj * (1 + (rng() * 0.24 - 0.16) * pj));
+    _c.setRGB(vj * (1 + (r() * 0.26 - 0.12) * pj), vj * (1 + (r() * 0.22 - 0.04) * pj),
+      vj * (1 + (r() * 0.24 - 0.16) * pj));
     // r7 terrain_environment: ~10% DRY/YELLOWED individuals (critique: "no
     // dry/dead mix-ins... monoculture"). A strong per-instance tint pull
     // toward sun-scorched straw/amber — broadleafs go autumn-gold, conifers
@@ -5044,15 +5172,18 @@ function* vegetationBuildSteps(
     // range. Rolled from a POSITION HASH, not the shared rng stream — one
     // extra rng() here would shift every subsequent placement and re-break
     // the authored establishing-shot compositions (see sapRng note above).
+    // Trees round 2 (2026-10-03, the gauntlet's wave 6: "multiple trees in the treeline show dead/brown foliage
+    // scattered randomly among healthy green trees, reading as a widespread asset bug", Cinder Junction and Frontier
+    // Basin): the amber and browned-off tenth read as broken assets beside the grown crowns. A summer wood keeps a few
+    // trees a shade drier and yellower, no more (the battle zones' snags carry the dead).
     const dryRoll = treePositionNoise(x, z, 0);
-    if (pj >= 0.5 && dryRoll < 0.10) {
-      const deep = dryRoll < 0.03; // a few fully browned-off trees
-      _c.r *= deep ? 1.30 : 1.26;
-      _c.g *= deep ? 0.82 : 0.96;
-      _c.b *= deep ? 0.38 : 0.48;
+    if (pj >= 0.5 && dryRoll < 0.04) {
+      _c.r *= 1.1;
+      _c.g *= 0.98;
+      _c.b *= 0.8;
     }
     trees.push({
-      x, z, species, variant: (rng() * 3) | 0, fv: (rng() * 2) | 0,
+      x, z, species, variant: (r() * 3) | 0, fv: (r() * 2) | 0,
       mat: _m4.clone(), tint: _c.clone(), near: false,
       // occlusion-fade bookkeeping: canopy proxy sphere (world center/radius,
       // generous enough for every species' card spread), eased fade 0..1 and
@@ -5083,28 +5214,31 @@ function* vegetationBuildSteps(
       // MAX_BUSH_BONUS 0.6 -> 0.5 in src/sim/spotting.ts (already applied).
     }
   }
-  function addTree(x: number, z: number, species: Species): boolean {
+  // trees round 2b (the gauntlet's wave 15: "palms included, whatever the place"): a map that names its palms' sites
+  // grows them there only, any other palm as its fallback species (veg.palmSites; no draw moves)
+  const palmElsewhere: Species | null = veg.palmSites
+    ? (veg.palmFallback ?? (veg.species.find((sp) => sp !== 'palm') ?? null)) : null;
+  function palmSiteOk(x: number, z: number): boolean {
+    for (const site of veg.palmSites ?? []) if (Math.hypot(x - site.x, z - site.z) < site.r) return true;
+    return false;
+  }
+  function addTree(x: number, z: number, species: Species, r: RandomSource = rng): boolean {
     if (!siteOk(x, z, 0)) return false;
-    pushTree(x, z, species, 0.95, 1.7, true); // wide size spread per stand
+    pushTree(x, z, species, 0.95, 1.7, true, r); // wide size spread per stand
     return true;
   }
-  /** ground lane: a stand's tree — admitted where the stream drew it (ox, oz), standing at its lobed site when that is a
-   * site too (the draws and the admissions stay what they were) */
-  function addStandTree(ox: number, oz: number, lx: number, lz: number, species: Species): boolean {
-    if (!siteOk(ox, oz, 0)) return false;
-    const lobed = siteOk(lx, lz, 0);
-    pushTree(lobed ? lx : ox, lobed ? lz : oz, species, 0.95, 1.7, true);
-    return true;
-  }
-  function isSeparatedTreeCluster(x: number, z: number): boolean {
+  function isSeparatedTreeCluster(x: number, z: number, r = 0): boolean {
+    // trees round 2: a woodlot keeps clear of the others by a little of its own reach too (the round-1 stands by the
+    // others' only). Round 2b: a tenth of it, not half — at half, the round-1-sized woodlots fitted a third fewer stands
+    // on the crowded maps (Nordhavn Fjord 81 -> 49, Monsoon Ridge 120 -> 75) and their corridors lost their cover
     for (const c of clusters) {
-      if (Math.hypot(x - c.x, z - c.z) < c.r + 26) return false;
+      if (Math.hypot(x - c.x, z - c.z) < c.r + 26 + r * 0.1) return false;
     }
     return true;
   }
-  function tintTreeStand(startIndex: number): void {
-    const toneBias = rng();
-    const lightness = 0.95 + (rng() - 0.5) * 0.12;
+  function tintTreeStand(startIndex: number, r: RandomSource = rng): void {
+    const toneBias = r();
+    const lightness = 0.95 + (r() - 0.5) * 0.12;
     for (let i = startIndex; i < trees.length; i++) {
       trees[i].tint.multiplyScalar(lightness);
       trees[i].tint.r *= 0.90 + toneBias * 0.20;
@@ -5115,46 +5249,162 @@ function* vegetationBuildSteps(
     if (!authoredTreeDonors) return;
     for (let i = start; i < start + count; i++) authoredTreeDonors.add(trees[i]);
   }
-  function placeTreeClusters(): void {
+  // Trees round 2 (2026-10-03, the gauntlet: "uniform circular stamped tree-clump placement visible from altitude"): the
+  // stands are woodlots — an irregular, often elongated outline (a few harmonics of a radius, stretched along an axis),
+  // a denser edge (the trees crowd toward the light at a wood's margin, so its outline reads from the air), a clearing in
+  // a large one and patches where the stand thins. Each woodlot's shape is kept (woodlotShapes) so its edge growth —
+  // the saplings, the fringe scrub, the understorey — follows the real outline (standPoint), not a circle round it.
+  interface WoodlotShape { cos: number; sin: number; stretch: number; h: readonly [number, number, number]; p: readonly [number, number, number] }
+  const woodlotShapes: WoodlotShape[] = [];
+  /** The outline's radius at polar angle a in the woodlot's frame (its harmonics), as a fraction of the base radius. */
+  function woodlotRim(shape: WoodlotShape, a: number): number {
+    return 1 + shape.h[0] * Math.cos(2 * a + shape.p[0]) + shape.h[1] * Math.cos(3 * a + shape.p[1]) + shape.h[2] * Math.cos(5 * a + shape.p[2]);
+  }
+  const _standPoint = [0, 0];
+  /**
+   * The world point at polar angle a and fraction k of a stand's outline (k = 1 on the rim): a woodlot's own shape, a
+   * round stand (no shape: a rim block) its circle. The stand disc's r is the woodlot's base radius times its stretch.
+   */
+  function standPoint(index: number, stand: VegetationDisc, a: number, k: number): number[] {
+    const shape = woodlotShapes[index];
+    if (!shape) { _standPoint[0] = stand.x + Math.cos(a) * stand.r * k; _standPoint[1] = stand.z + Math.sin(a) * stand.r * k; return _standPoint; }
+    const base = stand.r / shape.stretch, f = k * woodlotRim(shape, a) * base;
+    const u = Math.cos(a) * f * shape.stretch, w = Math.sin(a) * f / shape.stretch;
+    _standPoint[0] = stand.x + u * shape.cos - w * shape.sin;
+    _standPoint[1] = stand.z + u * shape.sin + w * shape.cos;
+    return _standPoint;
+  }
+  /** A smooth hashed field over the battlefield (0..1, ~22 m cells): where a woodlot's stand thins. */
+  /** The fraction of its outline a point stands at from a stand's centre (1 on the rim; the circle's for a rim block). */
+  function standOutlineFraction(index: number, x: number, z: number): number {
+    const stand = clusters[index], shape = woodlotShapes[index];
+    if (!stand) return Infinity;
+    const dx = x - stand.x, dz = z - stand.z;
+    if (!shape) return Math.hypot(dx, dz) / stand.r;
+    const u = (dx * shape.cos + dz * shape.sin) / shape.stretch, w = (dz * shape.cos - dx * shape.sin) * shape.stretch;
+    return Math.hypot(u, w) / ((stand.r / shape.stretch) * woodlotRim(shape, Math.atan2(w, u)));
+  }
+  function woodlotDensity(x: number, z: number): number {
+    const gx = x / 22, gz = z / 22, ix = Math.floor(gx), iz = Math.floor(gz), fx = gx - ix, fz = gz - iz;
+    const ux = fx * fx * (3 - 2 * fx), uz = fz * fz * (3 - 2 * fz);
+    const h = (i: number, j: number): number => treePositionNoise(i * 7.31, j * 7.31, 23);
+    return (h(ix, iz) * (1 - ux) + h(ix + 1, iz) * ux) * (1 - uz) + (h(ix, iz + 1) * (1 - ux) + h(ix + 1, iz + 1) * ux) * uz;
+  }
+  /**
+   * The round-1 stands' draws on the shared stream: the loop runs as it always did — its trees placed, then popped with
+   * the trunk records and the concealment discs they registered (dropRimTreeOutsideWoods' rule) — so every placement
+   * after it (the lone trees, the belts, the rim, the bushes) keeps its seat; the woodlots then grow on their own stream.
+   */
+  function replayRoundOneStandDraws(): void {
+    const t0 = trees.length, o0 = treeObstacles.length, c0 = concealers.length;
+    const scratch: VegetationDisc[] = [];
     let attempts = 0;
     const clusterTarget = Math.round(veg.clusterCount * treeRichness());
-    while (clusters.length < clusterTarget && attempts++ < 2600) {
+    while (scratch.length < clusterTarget && attempts++ < 2600) {
       const x = (rng() * 2 - 1) * 430, z = (rng() * 2 - 1) * 430;
       if (!siteOk(x, z, 6)) continue;
-      if (!isSeparatedTreeCluster(x, z)) continue;
+      if (scratch.some((c) => Math.hypot(x - c.x, z - c.z) < c.r + 26)) continue;
       const r = 16 + rng() * 26;
       const species = pickSpecies(veg.clusterMix, rng());
-      // r5: ~1.7x trees per stand — designated forest strips must read DENSE
-      // (closed canopy) next to WoT tree lines, not as loose orchards
       const n = 24 + (rng() * 34) | 0;
       let placed = 0;
       const cb0 = trees.length;
       for (let i = 0; i < n * 3 && placed < n; i++) {
         const a = rng() * Math.PI * 2, rr = r * Math.sqrt(rng());
         const sp = rng() < 0.8 ? species : pickSpecies(veg.loneMix, rng());
-        const lobe = standLobeAt(x, z, a);
-        if (addStandTree(x + Math.cos(a) * rr, z + Math.sin(a) * rr, x + Math.cos(a) * rr * lobe, z + Math.sin(a) * rr * lobe, sp)) placed++;
+        if (addTree(x + Math.cos(a) * rr, z + Math.sin(a) * rr, sp)) placed++;
       }
-      // r6 (content_breadth): coherent PER-STAND tint bias — per-tree jitter
-      // alone averages every distant stand toward the same mid-green; a whole-
-      // cluster lean (warm vs cool, small value drift) is what makes
-      // mid-distance forest blocks read as distinct species stands instead of
-      // "uniform leaf-card blobs" (critique).
       tintTreeStand(cb0);
-      // Keep at least three quarters of every existing stand in place. The
-      // map-authored rows consume records, never add trees or change RNG.
-      rememberAuthoredDonors(cb0, Math.floor(placed / 4));
-      if (placed > 2) clusters.push({ x, z, r });
+      if (placed > 2) scratch.push({ x, z, r });
+    }
+    trees.length = t0; treeObstacles.length = o0; concealers.length = c0;
+  }
+  function placeTreeClusters(): void {
+    replayRoundOneStandDraws();
+    const wr = mulberry32((seed ^ 0x30d1a7) >>> 0);
+    // trees round 2b: a hyper-arid place's stands are open groves in the low ground (a third of a wood's trees over
+    // three and a half times the ground each, seated in a wadi bed or a hollow); Las Cañadas' are open groves anywhere
+    const arid = treeBiomeArid(cfg?.id), open = treeBiomeOpen(cfg?.id);
+    let attempts = 0;
+    const clusterTarget = Math.round(veg.clusterCount * treeRichness());
+    // round 2b: more tries than the round-1 2600 — a woodlot of the round-1 footprint fits fewer ways on a crowded map
+    while (clusters.length < clusterTarget && attempts++ < 6000) {
+      // the stand's leading species first: a palm stand on a map that names its palm sites stands in one (the oasis,
+      // the wadi, the spring), any other anywhere on the field
+      const species = pickSpecies(veg.clusterMix, wr());
+      const palmStand = species === 'palm' && !!veg.palmSites?.length;
+      let x = (wr() * 2 - 1) * 430, z = (wr() * 2 - 1) * 430;
+      if (palmStand) {
+        const site = veg.palmSites![Math.min(veg.palmSites!.length - 1, Math.floor(wr() * veg.palmSites!.length))];
+        const a = wr() * Math.PI * 2, rr = site.r * Math.sqrt(wr());
+        x = site.x + Math.cos(a) * rr; z = site.z + Math.sin(a) * rr;
+      }
+      if (!siteOk(x, z, 6)) continue;
+      if (arid && !palmStand && hollowDepthAt(x, z) < 0.8) continue;
+      // the stand's trees and the ground each takes, so its area follows its count — a round-1 stand drew its radius
+      // apart from its count and many read as thin orchards; then a stretch along a heading (area kept) and three
+      // harmonics of the outline. Trees round 2b: 48-84 m² a tree (the round-1 stands' mean footprint, ~66 m²): at the
+      // closed wood's 26-42 m² the woods covered half the ground they did, and the deployments' corridors lost a quarter
+      // of their tree cover (Fjord 14.6 -> 11.1 %, Monsoon 23.2 -> 16.6 %, Verdant 20.6 -> 15.2 %) — the fast-match
+      // tail battlePacing guards grew from three to six
+      // r5: ~1.7x trees per stand — designated forest strips must read DENSE (closed canopy) next to WoT tree lines
+      const n0 = 24 + (wr() * 34) | 0, n = open ? Math.max(5, Math.round(n0 * 0.35)) : n0;
+      const base = Math.sqrt(n * (48 + wr() * 36) * (open ? 2 : 1) / Math.PI);
+      const stretch = Math.sqrt(1 + wr() * wr() * 1.6);
+      const heading = wr() * Math.PI;
+      const shape: WoodlotShape = {
+        cos: Math.cos(heading), sin: Math.sin(heading), stretch,
+        h: [0.06 + wr() * 0.12, 0.04 + wr() * 0.1, 0.02 + wr() * 0.07],
+        p: [wr() * Math.PI * 2, wr() * Math.PI * 2, wr() * Math.PI * 2],
+      };
+      const r = base * stretch;
+      if (!isSeparatedTreeCluster(x, z, r)) continue;
+      // a large wood holds a clearing (a glade, a felled patch) off its centre
+      const clearing = base > 21 && !open ? { a: wr() * Math.PI * 2, k: 0.3 + wr() * 0.3, r: base * (0.2 + wr() * 0.12) } : null;
+      let placed = 0;
+      const cb0 = trees.length, ob0 = treeObstacles.length, cc0 = concealers.length;
+      const index = clusters.length;
+      woodlotShapes[index] = shape;
+      const disc: VegetationDisc = { x, z, r };
+      let cx = 0, cz = 0;
+      if (clearing) { const p = standPoint(index, disc, clearing.a, clearing.k); cx = p[0]; cz = p[1]; }
+      for (let i = 0; i < n * 4 && placed < n; i++) {
+        // the margin is denser than the heart (k ~ u^0.42), the stand thins in patches, a clearing stays open
+        const a = wr() * Math.PI * 2, k = Math.pow(wr(), 0.42), keep = wr();
+        const sp = wr() < 0.8 ? species : pickSpecies(veg.loneMix, wr());
+        const p = standPoint(index, disc, a, k);
+        const px = p[0], pz = p[1];
+        if (clearing && Math.hypot(px - cx, pz - cz) < clearing.r) continue;
+        if (k < 0.85 && keep > 0.5 + 0.8 * woodlotDensity(px, pz)) continue;
+        // a palm grove keeps to its water (wave 26: a palm stand's trees past the site grew as acacias round it, three
+        // to each palm on Sirocco Wadi)
+        if (palmStand && !palmSiteOk(px, pz)) continue;
+        if (addTree(px, pz, sp, wr)) placed++;
+      }
+      // r6 (content_breadth): coherent PER-STAND tint bias — a whole-stand lean (warm vs cool, small value drift) is
+      // what makes mid-distance forest blocks read as distinct species stands
+      tintTreeStand(cb0, wr);
+      if (placed > 2) {
+        // Keep at least three quarters of every existing stand in place. The map-authored rows consume records, never
+        // add trees or change RNG.
+        rememberAuthoredDonors(cb0, Math.floor(placed / 4));
+        clusters.push(disc);
+      } else {
+        // a stand that could not stand leaves no stray trees in the open (wave 26: the Caldera floor's attempts on its
+        // steep cinder left a scatter of strays over it); its draws are spent as they were
+        woodlotShapes.length = index;
+        trees.length = cb0; treeObstacles.length = ob0; concealers.length = cc0;
+      }
     }
   }
   placeTreeClusters();
   yield { stage: 'treeClusters' };
   // Ground lane (2026-10-03, the gauntlet: trees "scattered evenly instead of growing in clumps, groves and forest
-  // masses"): on a map with a field system (the height field's landUse.ts hook) a lone tree is a hedgerow tree — it
-  // stands on the nearest field boundary within 45 m (in the boundary's grass margin, 1–2.5 m off the line, beside a
-  // track rather than on it) and its companion stands along the same line, so the field trees draw the boundaries as
-  // broken shelterbelts. The admission is decided where the seeded stream drew the candidate (the same draws, the same
-  // trees); the tree moves only where the boundary site is a site too. Without a field system nothing moves.
+  // masses"): on a map with a field system (the height field's landUse.ts hook) the nearest hedged field boundary within
+  // 45 m of a point, a seat in its grass margin (1–2.5 m off the line, beside a track rather than on it) and the line's
+  // heading — the lone trees' field-boundary share and field clumps grow there as hedgerow trees and remnants
+  // (placeLoneTrees), the field bushes in the margins (addBush). Position-hashed, no draw: the seat moves only where
+  // it is a site too. Without a field system nothing moves.
   const _hedgeSite = [0, 0, 0, 0]; // x, z, tangent x, tangent z
   // the field system read here from the height field itself (this section runs in the placement harnesses too)
   const hedgeLandAt = heightField._landUseAt ?? null;
@@ -5175,7 +5425,7 @@ function* vegetationBuildSteps(
     if (at.edgeM > 3.5) return _hedgeSite;
     // only a hedged boundary takes its trees (the layout's hedge lines, landUse.ts hedgeShare): the field trees then draw
     // a few boundaries as unbroken shelterbelts and hedgerows instead of dotting every one of them evenly (the round-2
-    // lab frames); a tree near an open boundary stays for the groves below
+    // lab frames); a point near an open boundary keeps its own seat
     // (the flag read half a metre off the line on the tree's own side: each field carries its own boundary's hedge)
     if (hedgeLandAt(x - ux * (e0 - 0.5), z - uz * (e0 - 0.5), _hedgeLand).hedge < 0.5) return _hedgeSite;
     hedgeLandAt(tx, tz, _hedgeLand);
@@ -5184,63 +5434,100 @@ function* vegetationBuildSteps(
     _hedgeSite[0] = tx; _hedgeSite[1] = tz; _hedgeSite[2] = -uz; _hedgeSite[3] = ux;
     return _hedgeSite;
   }
-  // Ground lane (2026-10-03, the same verdict, on every map): a lone tree that falls near a stand grows at the stand's
-  // edge — the wood's outliers, its advancing scrub — so the trees gather into groves and wood edges with open ground
-  // between instead of an even scatter; one in four stays where it fell (a pasture's true lone trees), and one
-  // already inside a stand stays in it. Hashed by the candidate's own position (no draws; admitted where the stream drew
-  // it) and moved only where the edge site is a site, at least 3 m from every other tree moved there.
-  const _groveSite = [0, 0];
-  const _groveMoved: number[] = [];
-  function groveSite(x: number, z: number): number[] {
-    _groveSite[0] = x; _groveSite[1] = z;
-    if (treePositionNoise(x, z, 83) > 0.75) return _groveSite;
-    let best = -1, bestD = 120;
-    for (let i = 0; i < clusters.length; i++) {
-      const c = clusters[i];
-      const d = Math.hypot(x - c.x, z - c.z) - c.r * standLobeAt(c.x, c.z, Math.atan2(z - c.z, x - c.x));
-      if (d < bestD) { bestD = d; best = i; }
-    }
-    if (best < 0 || bestD < 0) return _groveSite;
-    const c = clusters[best];
-    const dl = Math.hypot(x - c.x, z - c.z) || 1;
-    const rr = c.r * standLobeAt(c.x, c.z, Math.atan2(z - c.z, x - c.x)) + 1.5 + 9 * treePositionNoise(x, z, 89);
-    const tx = c.x + (x - c.x) / dl * rr, tz = c.z + (z - c.z) / dl * rr;
-    if (!siteOk(tx, tz, 0)) return _groveSite;
-    for (let i = 0; i < _groveMoved.length; i += 2) if (Math.hypot(tx - _groveMoved[i], tz - _groveMoved[i + 1]) < 3) return _groveSite;
-    _groveMoved.push(tx, tz);
-    _groveSite[0] = tx; _groveSite[1] = tz;
-    return _groveSite;
-  }
-  function placeLoneTrees(): void {
-    for (let i = 0, placed = 0, loneTarget = Math.round(veg.loneCount * treeRichness()); i < 800 && placed < loneTarget; i++) { // lone trees + pairs
+  /**
+   * The round-1 lone trees' draws on the shared stream: the scatter runs as it always did, its trees placed and then
+   * popped with their trunk records and concealment discs, so every placement after it (the belts, the rim, the bushes)
+   * keeps its seat (the woodlots' rule, replayRoundOneStandDraws).
+   */
+  function replayRoundOneLoneDraws(): void {
+    const t0 = trees.length, o0 = treeObstacles.length, c0 = concealers.length;
+    for (let i = 0, placed = 0, loneTarget = Math.round(veg.loneCount * treeRichness()); i < 800 && placed < loneTarget; i++) {
       const x = (rng() * 2 - 1) * 460, z = (rng() * 2 - 1) * 460;
-      const species = pickSpecies(veg.loneMix, rng());
-      if (siteOk(x, z, 0)) {
-        const site = hedgeSite(x, z, 61);
-        let hx = site[0], hz = site[1];
-        const hux = site[2], huz = site[3];
-        if (hux === 0 && huz === 0) { const g = groveSite(x, z); hx = g[0]; hz = g[1]; }
-        pushTree(hx, hz, species, 0.95, 1.7, true);
+      if (addTree(x, z, pickSpecies(veg.loneMix, rng()))) {
         placed++;
-        if (rng() < 0.4) { // companion tree — lone lollipops read fake
+        if (rng() < 0.4) {
           const a2 = rng() * Math.PI * 2, r2 = 4 + rng() * 7;
-          const cx = x + Math.cos(a2) * r2, cz = z + Math.sin(a2) * r2;
-          const companion = pickSpecies(veg.loneMix, rng());
-          if (siteOk(cx, cz, 0)) {
-            // along the hedgerow when the lone tree moved onto one (the same distance, either way along the line);
-            // beside it at the stand's edge when it moved there
-            let px = cx, pz = cz;
-            if (hux !== 0 || huz !== 0) {
-              const side = Math.cos(a2) * hux + Math.sin(a2) * huz >= 0 ? 1 : -1;
-              const lx = hx + hux * r2 * side, lz = hz + huz * r2 * side;
-              if (siteOk(lx, lz, 0)) { px = lx; pz = lz; }
-            } else if (hx !== x || hz !== z) {
-              const gx = hx + Math.cos(a2) * r2, gz = hz + Math.sin(a2) * r2;
-              if (siteOk(gx, gz, 0)) { px = gx; pz = gz; }
-            }
-            pushTree(px, pz, companion, 0.95, 1.7, true);
-            placed++;
-          }
+          if (addTree(x + Math.cos(a2) * r2, z + Math.sin(a2) * r2, pickSpecies(veg.loneMix, rng()))) placed++;
+        }
+      }
+    }
+    trees.length = t0; treeObstacles.length = o0; concealers.length = c0;
+  }
+  /** How far a point lies under the ground 30 m round it (m; a wadi bed or a hollow is positive). */
+  function hollowDepthAt(x: number, z: number): number {
+    let mean = 0;
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      mean += heightField.getHeightAt(x + Math.cos(a) * 30, z + Math.sin(a) * 30);
+    }
+    return mean / 8 - heightField.getHeightAt(x, z);
+  }
+  /**
+   * Trees round 2b (2026-10-03, the gauntlet's wave 15: "trees scattered at even, savanna-like spacing, whatever the
+   * place"): a lone tree stands where field trees stand. Over half at a woodlot's edge, just outside its outline where
+   * the wood's seedlings reach into the field; a fifth along a field boundary (a hedged one where the map has a field
+   * system, hedgeSite, the companion along its line; else a road's verge); a quarter as field clumps (a tree and two or
+   * three companions, a hedgerow's remnant: on the nearest hedged boundary within 45 m where there is one, strung along
+   * it) in the open ground between the deployments, where the round-1 scatter gave the fights their cover
+   * (battlePacing's fast tail grew without it). In a hyper-arid place (treeBiomes.ts arid) every one keeps to the low
+   * ground, the wadi beds and hollows where the water table lies. The lone trees draw from their own stream; the
+   * round-1 scatter's draws replay on the shared one; the hedge seats are position-hashed (no draw moves).
+   */
+  function placeLoneTrees(): void {
+    replayRoundOneLoneDraws();
+    const lr = mulberry32((seed ^ 0x1a0e5) >>> 0);
+    const arid = treeBiomeArid(cfg?.id);
+    const loneTarget = Math.round(veg.loneCount * treeRichness());
+    let reach = 0;
+    for (const stand of clusters) reach += stand.r;
+    const standByReach = (u: number): number => {
+      let acc = 0;
+      for (let k = 0; k < clusters.length; k++) { acc += clusters[k].r; if (u * reach <= acc) return k; }
+      return clusters.length - 1;
+    };
+    // the deployments' axis (the player's anchor to the enemies' centroid) for the field clumps
+    const anchorB = L.spawns.enemies.reduce((acc, e) => { acc.x += e.x / L.spawns.enemies.length; acc.z += e.z / L.spawns.enemies.length; return acc; }, { x: 0, z: 0 });
+    const axisX = anchorB.x - L.spawns.player.x, axisZ = anchorB.z - L.spawns.player.z, axisL = Math.hypot(axisX, axisZ) || 1;
+    let placed = 0;
+    for (let i = 0; i < 2400 && placed < loneTarget; i++) {
+      const roll = lr();
+      let x = (lr() * 2 - 1) * 460, z = (lr() * 2 - 1) * 460, companions = lr() < 0.4 ? 1 : 0;
+      // a hedgerow's heading when the tree takes a hedged boundary's seat (its companions string along the line)
+      let lineX = 0, lineZ = 0;
+      if (arid) {
+        // a wadi bed or a hollow, or nothing (try again)
+        if (hollowDepthAt(x, z) < 1.2) continue;
+      } else if (roll < 0.55 && clusters.length) {
+        // a woodlot's edge: a stand by its reach, a point a little outside its outline
+        const index = standByReach(lr()), a = lr() * Math.PI * 2, k = 1.08 + lr() * 0.45;
+        const point = standPoint(index, clusters[index], a, k);
+        x = point[0]; z = point[1];
+      } else if (roll < 0.75) {
+        // a field boundary: the nearest hedged one, else a road's verge just outside the trees' road clearance
+        const site = hedgeSite(x, z, 61);
+        if (site[2] !== 0 || site[3] !== 0) { x = site[0]; z = site[1]; lineX = site[2]; lineZ = site[3]; }
+        else {
+          const d = admission()._roadDist(x, z);
+          if (d < 10 || d > 17) continue;
+        }
+      } else {
+        // a field clump in the open ground between the deployments (along the axis, its middle seven tenths, within
+        // 220 m of it), on the nearest hedged boundary where there is one
+        const t = 0.15 + lr() * 0.7, w = (lr() * 2 - 1) * 220;
+        x = L.spawns.player.x + axisX * t - (axisZ / axisL) * w;
+        z = L.spawns.player.z + axisZ * t + (axisX / axisL) * w;
+        companions = 2 + (lr() < 0.4 ? 1 : 0);
+        const site = hedgeSite(x, z, 61);
+        if (site[2] !== 0 || site[3] !== 0) { x = site[0]; z = site[1]; lineX = site[2]; lineZ = site[3]; }
+      }
+      if (addTree(x, z, pickSpecies(veg.loneMix, lr()), lr)) {
+        placed++;
+        for (let c = 0; c < companions; c++) {
+          const a2 = lr() * Math.PI * 2, r2 = 4 + lr() * 7;
+          // along the hedgerow (either way, the same distance), else round the tree
+          const along = lineX !== 0 || lineZ !== 0, side = Math.cos(a2) * lineX + Math.sin(a2) * lineZ >= 0 ? 1 : -1;
+          const cx = along ? x + lineX * r2 * side : x + Math.cos(a2) * r2, cz = along ? z + lineZ * r2 * side : z + Math.sin(a2) * r2;
+          if (addTree(cx, cz, pickSpecies(veg.loneMix, lr()), lr)) placed++;
         }
       }
     }
@@ -5295,10 +5582,15 @@ function* vegetationBuildSteps(
   // with clearings between. The placement stream is consumed exactly as before — a dropped tree is placed, then popped
   // with the trunk record and the concealment disc it registered — and a block's understorey still counts it.
   const borderWoodsAt = heightField.getBorderWoodsAt;
+  // trees round 2b (2026-10-03, wave 26 at Sirocco's east edge: "a lone lollipop broadleaf ... on the foreground dune"):
+  // a hyper-arid place's rim keeps its trees where its floor's do — a wadi bed or a hollow, or its palm sites
+  const aridRim = treeBiomeArid(cfg?.id);
   function dropRimTreeOutsideWoods(x: number, z: number): boolean {
-    if (!borderWoodsAt) return false;
     const inside = Math.max(Math.abs(x), Math.abs(z)) <= PLAYABLE_HALF_EXTENT_M;
-    if (treePositionNoise(x, z, 9) < Math.max(inside ? 0.34 : 0.04, borderWoodsAt(x, z))) return false;
+    if (!(aridRim && hollowDepthAt(x, z) < 1.2 && !palmSiteOk(x, z))) {
+      if (!borderWoodsAt) return false;
+      if (treePositionNoise(x, z, 9) < Math.max(inside ? 0.34 : 0.04, borderWoodsAt(x, z))) return false;
+    }
     const tree = trees.pop()!;
     roadBlockedRimTrees.delete(tree);
     if (inside && treeObstacles.length && treeObstacles[treeObstacles.length - 1].treeIdx === trees.length) {
@@ -5374,12 +5666,14 @@ function* vegetationBuildSteps(
   // untouched. These young trees still register a proportionally small trunk
   // so shells and hulls topple them through the same path as mature trees.
   function placeSaplings(): void {
-    for (const c of clusters) {
+    for (let ci = 0; ci < clusters.length; ci++) {
+      const c = clusters[ci];
       const nSap = 3 + (sapRng() * 4) | 0;
       for (let sIt = 0; sIt < nSap; sIt++) {
         const sa = sapRng() * Math.PI * 2;
-        const sr = c.r * standLobeAt(c.x, c.z, sa) * (1.02 + sapRng() * 0.35);
-        const sx = c.x + Math.cos(sa) * sr, sz = c.z + Math.sin(sa) * sr;
+        // trees round 2: just past the woodlot's own outline (standPoint)
+        const edge = standPoint(ci, c, sa, 1.02 + sapRng() * 0.35);
+        const sx = edge[0], sz = edge[1];
         const roll = sapRng(), sc = 0.42 + sapRng() * 0.26;
         const yawS = sapRng() * Math.PI * 2;
         const vjS = 0.60 + sapRng() * 0.40;
@@ -5387,7 +5681,8 @@ function* vegetationBuildSteps(
         const jr = sapRng(), jg = sapRng(), jb = sapRng();
         if (!siteOk(sx, sz, 0)) continue;
         const sy = heightField.getHeightAt(sx, sz);
-        const spS = pickSpecies(veg.clusterMix, roll);
+        let spS = pickSpecies(veg.clusterMix, roll);
+        if (spS === 'palm' && palmElsewhere && !palmSiteOk(sx, sz)) spS = palmElsewhere;
         const archetypeS = TREE_ARCHETYPES[spS];
         const sapScaleX = sc * (0.86 + treePositionNoise(sx, sz, 11) * 0.28);
         const sapScaleY = sc * (0.90 + treePositionNoise(sx, sz, 12) * 0.20);
@@ -5642,7 +5937,10 @@ function* vegetationBuildSteps(
     markShadowOnly(proxy);
     proxy.castShadow = true;
     proxy.receiveShadow = false;
-    applyLodShadowFadeDepth(proxy);
+    // trees round 2: a grown crown's hull lets the sun through its leaf gaps (crownShadowDapple.ts; it keeps the LOD
+    // dissolve); a lobe proxy stays solid
+    if (geometry.getAttribute(CROWN_DAPPLE_ATTRIBUTE)) applyCrownDappleDepth(proxy);
+    else applyLodShadowFadeDepth(proxy);
     proxy.userData.treeCanopyShadowProxy = true;
     proxy.name = name;
     return proxy;
@@ -5713,6 +6011,11 @@ function* vegetationBuildSteps(
           if (hull) {
             proxyGeometry = new THREE.BufferGeometry();
             proxyGeometry.setAttribute('position', new THREE.BufferAttribute(hull.slice(), 3));
+            // trees round 2: the crown masses' tags, each its own pattern and porosity (the wood never dapples)
+            const masses = g.trunk.userData.shadowHullMasses as readonly CrownShadowMass[] | undefined;
+            if (masses) {
+              proxyGeometry.setAttribute(CROWN_DAPPLE_ATTRIBUTE, new THREE.BufferAttribute(crownDappleTags(hull.length / 3, masses), 1));
+            }
             // position-only: the welded hull shares every corner (its shadow passes run a fraction of the vertices)
             proxyGeometry = weldGrownGeometry(proxyGeometry);
             proxyGeometry.computeBoundingSphere();
@@ -5870,11 +6173,39 @@ function* vegetationBuildSteps(
 
   yield { stage: 'treeRootDecals' };
   // ---- bushes (hedgerow / field-edge cover, purely visual) ----
+  /**
+   * Trees round 2: a map's own shrub form (treeBiomes.ts `shrub`: Las Cañadas' broom) — its spray atlas on a foliage
+   * material of its own, set up exactly as a grown species' (the hooks, the defines, the leaf detail, the cascades),
+   * with its alpha-tested shadow material; null without one (the shrubs take the bush slot's material).
+   */
+  function shrubMaterials(form: GrowthSpecies | null, pal: VegetationPalette): [THREE.MeshStandardMaterial, THREE.MeshDepthMaterial] | null {
+    if (!form) return null;
+    const map = makeSprayAtlas(grownFormSprayKind(form, pal), mulberry32(seed + 77), texSize(512), pal.texTone || null, 0);
+    const material = new THREE.MeshStandardMaterial({
+      map, alphaTest: 0.38, alphaToCoverage: true, side: THREE.DoubleSide, vertexColors: true, roughness: 1.0, metalness: 0.0,
+    });
+    material.envMapIntensity = 0.75;
+    const tile = leafDetail.texture(leafDetail.classOf('oak', pal));
+    if (tile) { material.normalMap = tile; material.normalScale.set(LEAF_DETAIL_NORMAL_SCALE, LEAF_DETAIL_NORMAL_SCALE); }
+    material.defines = { ...(material.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2),
+      COT_LEAF_BILLBOARD: GROWN_LEAF_BILLBOARD.toFixed(2) };
+    engineCtx.setupShadowMaterial(material, foliageWindHook);
+    material.customProgramCacheKey = () => 'world-tree-foliage-v20';
+    const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map, alphaTest: 0.38 });
+    retainedMaterials.push(material, depth);
+    retainedTextures.push(map);
+    return [material, depth];
+  }
   function createBushes(): void {
-    const bushPal = palOf(bushSpecies);
+    // trees round 2: the desktop shrubs take the place's foliage colour where the map palette names none (the phones
+    // keep the palette as it is)
+    const bushPal = grownTrees ? treeBiomePalette(palOf(bushSpecies), null, false, treeBiomeColour(cfg?.id)) : palOf(bushSpecies);
     // p2 trees lane: the desktop shrubs grow from the bush species' sprays (buildGrownShrub); the phones keep the cards
     // the shrub grows from the sprays its material paints: the Mangrove map's willow form is the mangrove
-    const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove' : bushSpecies;
+    // trees round 2: the shrubs grow as the map's shrub form (their own material: shrubMaterials) or the bush slot's form
+    const shrubForm = grownTrees ? treeBiomeShrub(cfg?.id) : null, shrubMats = shrubMaterials(shrubForm, bushPal);
+    const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove'
+      : shrubForm ?? (grownTrees ? formOf(bushSpecies)?.form : null) ?? bushSpecies;
     const bushGeos = sprayAtlasSpecies.has(bushSpecies)
       ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, shrubGrowth), buildGrownShrub('bush', mulberry32(seed + 32), bushPal, shrubGrowth)]
       : [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
@@ -5955,13 +6286,15 @@ function* vegetationBuildSteps(
       // the cluster as understory at the trunk bases, grounding the palm
       // clusters that used to stand as bare sticks on clean sand.
       const scrubMul = (veg.clusterScrub ?? 1) * bushRichness;
-      for (const c of clusters) {
+      for (let ci = 0; ci < clusters.length; ci++) {
+        const c = clusters[ci];
         const n = Math.round((5 + (rng() * 6) | 0) * scrubMul);
         for (let i = 0; i < n; i++) {
           const a = rng() * Math.PI * 2;
           const inside = scrubMul > 1 && rng() < 0.55;
-          const rr = c.r * (inside ? 0.25 + rng() * 0.6 : 1.05 + rng() * 0.5);
-          addBush(c.x + Math.cos(a) * rr, c.z + Math.sin(a) * rr);
+          // trees round 2: round the woodlot's own outline (standPoint)
+          const p = standPoint(ci, c, a, inside ? 0.25 + rng() * 0.6 : 1.05 + rng() * 0.5);
+          addBush(p[0], p[1]);
         }
       }
     }
@@ -5998,7 +6331,7 @@ function* vegetationBuildSteps(
         bushGeos[bv].setAttribute('aLodF',
           new THREE.InstancedBufferAttribute(new Float32Array(bushPlacements[bv].length), 1));
         const bAttr = attribute(bushGeos[bv], 'aFadeI');
-        const m = new THREE.InstancedMesh(bushGeos[bv], foliageMats[bushSpecies], bushPlacements[bv].length);
+        const m = new THREE.InstancedMesh(bushGeos[bv], shrubMats?.[0] ?? foliageMats[bushSpecies], bushPlacements[bv].length);
         let kept=0;
         for (let i = 0; i < bushPlacements[bv].length; i++) {
           // darker, near-neutral multipliers: the old 0.8-1.1 range let lit
@@ -6027,7 +6360,7 @@ function* vegetationBuildSteps(
         // toward the sun (foliageWindHook), so a bush under a crown sits in the crown's shadow, one state per shrub
         m.receiveShadow = canopyShadowReceive;
         m.matrixAutoUpdate = false;
-        m.customDepthMaterial = foliageDepthMats[bushSpecies];
+        m.customDepthMaterial = shrubMats?.[1] ?? foliageDepthMats[bushSpecies];
         m.userData.aoExclude = true; // GTAO override prepass ignores alphaTest
         m.userData.bush = true;
         m.computeBoundingSphere();
@@ -6048,7 +6381,7 @@ function* vegetationBuildSteps(
       // draws in the same order for the stands (their placements stay byte-identical), then the blocks from the
       // stream's continuation, with the rim trees' own scale (1.35–2.2 × the interior stands' 0.95–1.7) and the
       // rim's own bound (the blocks stand at 442–506 m, past the field bushes' 470).
-      const plant = (stand: VegetationDisc, scaleMul: number, bound: number): void => {
+      const plant = (stand: VegetationDisc, scaleMul: number, bound: number, index = -1): void => {
         const n = Math.round((7 + understoreyRng() * 9) * bushRichness);
         for (let i = 0; i < n; i++) {
           const a = understoreyRng() * Math.PI * 2;
@@ -6057,8 +6390,8 @@ function* vegetationBuildSteps(
           const tj = understoreyRng(), tr = understoreyRng(), tg = understoreyRng(), tb = understoreyRng();
           const keepRoll = understoreyRng();
           if (keepRoll > (1 - smoothstepJs(1.05, 1.6, rr)) * 0.9 + 0.1) continue;
-          const lobe = standLobeAt(stand.x, stand.z, a);
-          const x = stand.x + Math.cos(a) * stand.r * rr * lobe, z = stand.z + Math.sin(a) * stand.r * rr * lobe;
+          // trees round 2: a woodlot's understorey follows its own outline (standPoint; a rim block's is its circle)
+          const at = standPoint(index, stand, a, rr), x = at[0], z = at[1];
           if (Math.max(Math.abs(x), Math.abs(z)) > bound || inAvoid(x, z)) continue;
           // the map-borders lane: past the playable edge a block's undergrowth keeps to the border's woods
           if (borderWoodsAt && Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M && borderWoodsAt(x, z) < 0.5) continue;
@@ -6076,7 +6409,7 @@ function* vegetationBuildSteps(
           understoreyTints.push(new THREE.Color(bj * (0.96 + tr * 0.14), bj * (1.0 + tg * 0.14), bj * (0.86 + tb * 0.14)));
         }
       };
-      for (const c of clusters) plant(c, 1, 470);
+      clusters.forEach((c, index) => plant(c, 1, 470, index));
       for (const b of rimBlocks) plant(b, RIM_UNDERSTOREY_SCALE, RIM_UNDERSTOREY_BOUND_M);
     }
     function createUnderstoreyMesh(): void {
@@ -6088,7 +6421,7 @@ function* vegetationBuildSteps(
       geometry.setAttribute('aFadeI', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
       geometry.setAttribute('aLodF', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
       const fadeAttr = attribute(geometry, 'aFadeI');
-      const m = new THREE.InstancedMesh(geometry, foliageMats[bushSpecies], n);
+      const m = new THREE.InstancedMesh(geometry, shrubMats?.[0] ?? foliageMats[bushSpecies], n);
       for (let i = 0; i < n; i++) {
         const e = understoreyPlacements[i].elements;
         m.setMatrixAt(i, understoreyPlacements[i]);
@@ -6099,7 +6432,7 @@ function* vegetationBuildSteps(
       setShadowCasterCascades(m, UNDERSTOREY_SHADOW_CASCADES); // round 78: the two nearest cascades only
       m.receiveShadow = canopyShadowReceive;
       m.matrixAutoUpdate = false;
-      m.customDepthMaterial = foliageDepthMats[bushSpecies];
+      m.customDepthMaterial = shrubMats?.[1] ?? foliageDepthMats[bushSpecies];
       m.userData.aoExclude = true;
       m.userData.understorey = true;
       m.name = 'understorey';
@@ -6899,7 +7232,7 @@ function* vegetationBuildSteps(
   }
   rimTrees.length = 0;
   return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
-    crushTree, resetToppled, _clusters: clusters, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
+    crushTree, resetToppled, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
     _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,
     warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false) };
