@@ -51,7 +51,8 @@ import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSp
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
-import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts'; // the field walls' rubble print (the scenery lane)
+import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
+import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
 import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
@@ -1033,7 +1034,7 @@ function* makeFieldMud(
 // readable material response that flat vertex colors could not provide.
 function sampleStructureDetail(
   noi: SimplexNoise,
-  kind: 'wood' | 'canvas' | 'steel',
+  kind: 'wood' | 'canvas' | 'steel' | 'burlap',
   x: number,
   y: number,
   sample: Float32Array,
@@ -1051,6 +1052,18 @@ function sampleStructureDetail(
     const weft = Math.sin(y * Math.PI * 0.52) * 0.5 + 0.5;
     sample[0] = warp * 0.45 + weft * 0.45 + grain * 0.10;
     sample[1] = 0.88 + sample[0] * 0.10;
+  } else if (kind === 'burlap') {
+    // the scenery lane (wave 48, "no burlap weave"): sandbag hessian — a coarse plain weave, its jute threads a few
+    // millimetres apart (a 128 px tile is 24 cm of bag at the stacks' 4.2 uv a metre: a thread every 4 px), over and
+    // under, each thread its own thickness, the gaps between them dark, slubs and the odd loose fibre
+    const tx = x / 4 + noi.noise(y * 0.09 + 5, x * 0.02) * 0.35, ty = y / 4 + noi.noise(x * 0.09 - 7, y * 0.02) * 0.35;
+    const fx = tx - Math.floor(tx), fy = ty - Math.floor(ty);
+    const over = (Math.floor(tx) + Math.floor(ty)) % 2 === 0;
+    const warpT = Math.sin(fx * Math.PI), weftT = Math.sin(fy * Math.PI);
+    const thread = over ? Math.max(warpT * 0.9, weftT * 0.55) : Math.max(weftT * 0.9, warpT * 0.55);
+    const slub = Math.max(0, noi.noise(x * 0.31 + 41, y * 0.05 - 3)) * 0.25;
+    sample[0] = Math.min(1, thread * 0.85 + slub + grain * 0.08);
+    sample[1] = 0.6 + sample[0] * 0.38 + grain * 0.04;
   } else {
     // Round 75: the light kit's sheet steel is a trapezoidal corrugation (the 256 px tile is 1.82 m of sheet at the
     // kit's 0.55 uv/m, so a 27 px period is the 0.19 m pitch of profiled cladding) with a panel seam every 0.91 m,
@@ -1075,7 +1088,7 @@ function sampleStructureDetail(
 export function makeStructureDetail(
   noi: SimplexNoise,
   anisotropy: number,
-  kind: 'wood' | 'canvas' | 'steel',
+  kind: 'wood' | 'canvas' | 'steel' | 'burlap',
 ): GeneratedSurfaceTextures {
   const s = kind === 'steel' ? 256 : 128, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   const rust = kind === 'steel' ? new Float32Array(s * s) : null;
@@ -1094,13 +1107,14 @@ export function makeStructureDetail(
     ? surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.50, roughMax: 0.86, aoMin: 0.76, rust })
     : surfaceFromHeight(hgt, s, anisotropy, kind === 'canvas'
       ? { roughMin: 0.90, roughMax: 1.0, aoMin: 0.84 }
+      : kind === 'burlap' ? { roughMin: 0.92, roughMax: 1.0, aoMin: 0.62 }
       : { roughMin: 0.68, roughMax: 0.95, aoMin: 0.74 });
   return {
     albedo: toTexture(px, s, { srgb: true, anisotropy }),
     // The Sobel derivative already sums four neighboring height samples.
     // The former 1.45 gain bent shallow timber grain/corrugation almost
     // sideways, creating black-white stripes on otherwise flat walls.
-    normal: normalFromHeight(hgt, s, kind === 'wood' ? 0.16 : kind === 'steel' ? 0.30 : 0.09, anisotropy),
+    normal: normalFromHeight(hgt, s, kind === 'wood' ? 0.16 : kind === 'steel' ? 0.30 : kind === 'burlap' ? 0.28 : 0.09, anisotropy),
     surface,
   };
 }
@@ -2962,6 +2976,7 @@ function* propsBuildSteps(
   const structureWood = makeStructureDetail(noi, aniso, 'wood');
   yield { fine: true };
   const structureCanvas = makeStructureDetail(noi, aniso, 'canvas');
+  const burlap = makeStructureDetail(noi, aniso, 'burlap'); // the sandbags' hessian (the scenery lane, wave 48)
   yield { fine: true };
   const structureMetal = makeStructureDetail(noi, aniso, 'steel');
   yield { fine: true };
@@ -3101,6 +3116,13 @@ function* propsBuildSteps(
       roughnessMap: structureCanvas.surface, aoMap: structureCanvas.surface,
       vertexColors: true, roughness: 1, metalness: 0,
     }),
+    // the scenery lane (wave 48, "smooth plasticky sausages, no burlap weave"): the sandbags' hessian, the canvas
+    // material's program on its own coarse weave
+    burlap: new THREE.MeshStandardMaterial({
+      map: burlap.albedo, normalMap: burlap.normal,
+      roughnessMap: burlap.surface, aoMap: burlap.surface,
+      vertexColors: true, roughness: 1, metalness: 0,
+    }),
     structureMetal: new THREE.MeshStandardMaterial({
       map: structureMetal.albedo, normalMap: structureMetal.normal,
       roughnessMap: structureMetal.surface, aoMap: structureMetal.surface,
@@ -3123,7 +3145,7 @@ function* propsBuildSteps(
   };
   function configureSurfaceMaterials(): void {
     for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'fieldMud', 'wood',
-      'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
+      'straw', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
       if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
     mats.steel.envMapIntensity = 0.42; // round 75: painted sheet, a little sky on the crests
@@ -3132,6 +3154,7 @@ function* propsBuildSteps(
     mats.vehicle.envMapIntensity = 0.58;
     mats.structureWood.envMapIntensity = 0.34;
     mats.structureCanvas.envMapIntensity = 0.22;
+    mats.burlap.envMapIntensity = 0.18;
     mats.structureMetal.envMapIntensity = 0.48;
     mats.glass.envMapIntensity = 1.0; // capped (AA glass spec 4eccce8 — glints
   }
@@ -3219,12 +3242,39 @@ ${snowCap ? `
   // Round 75 item 6: the boulders' dressing (moss on wet maps, dust on arid ones, the soil skirt everywhere)
   const rockDressing = rockDressingFor(mapId, P.rockSoilTone ?? null);
   const rockHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRockShaderHook(shader, rockDressing); };
+  // the scenery lane (wave 48, "the same stone pattern clearly tiles going right"): a run repeats the kit's one wall
+  // module, so the field print's window shifts along the wall by a hash of each module's place (sixteen steps of seven
+  // sixteenths of a tile, u only: the print's bands lie in v) — every module's stones take tones of their own. Only the
+  // instanced modules shift; the merged heads and foot stones keep their windows.
+  const fieldStoneHook: MaterialShaderHook = (shader) => {
+    grimeHook(shader);
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <uv_vertex>', /* glsl */`#include <uv_vertex>
+#ifdef USE_INSTANCING
+{
+  vec2 cotStoneShift = vec2(floor(fract(dot(instanceMatrix[3].xz, vec2(0.0731, 0.1193))) * 16.0) * 0.4375, 0.0);
+  #ifdef USE_MAP
+  vMapUv += cotStoneShift;
+  #endif
+  #ifdef USE_NORMALMAP
+  vNormalMapUv += cotStoneShift;
+  #endif
+  #ifdef USE_ROUGHNESSMAP
+  vRoughnessMapUv += cotStoneShift;
+  #endif
+  #ifdef USE_AOMAP
+  vAoMapUv += cotStoneShift;
+  #endif
+}
+#endif`);
+  };
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
-        materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook : grimeHook);
-      // (the field walls' prints are the stone and plaster materials' shaders with other maps: they share their programs)
-      const programKind = materialKind === 'fieldStone' ? 'stone' : materialKind === 'fieldMud' ? 'plaster' : materialKind;
+        materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
+          : materialKind === 'fieldStone' ? fieldStoneHook : grimeHook);
+      // (the mud print is the plaster material's shader with another map, the hessian the canvas's: they share their
+      // programs; the field print has its own, for the modules' shifted windows)
+      const programKind = materialKind === 'fieldMud' ? 'plaster' : materialKind === 'burlap' ? 'structureCanvas' : materialKind;
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
@@ -3318,17 +3368,17 @@ ${snowCap ? `
   // buildSandbagStack) on the canvas weave; a breached stack still spends the old remnant's draws
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
     sandbagbig: {
-      cls: 'break', mat: 'structureCanvas', contact: 'ob', r: 2.0, h: 1.35, keep: 0.97,
+      cls: 'break', mat: 'burlap', contact: 'ob', r: 2.0, h: 1.35, keep: 0.97,
       build: () => buildSandbagStack('sandbagbig'),
       broken: (rng) => buildSandbagHeap('sandbagbig', () => bSandbagBroken(rng).dispose()),
     },
     sandbagsmall: {
-      cls: 'break', mat: 'structureCanvas', contact: 'ob', r: 1.7, h: 1.05, keep: 0.975,
+      cls: 'break', mat: 'burlap', contact: 'ob', r: 1.7, h: 1.05, keep: 0.975,
       build: () => buildSandbagStack('sandbagsmall'),
       broken: (rng) => buildSandbagHeap('sandbagsmall', () => bSandbagBroken(rng).dispose()),
     },
     sandbagwall: {
-      cls: 'break', mat: 'structureCanvas', contact: 'ob', r: 1.5, h: 1.0, keep: 0.975,
+      cls: 'break', mat: 'burlap', contact: 'ob', r: 1.5, h: 1.0, keep: 0.975,
       build: () => buildSandbagStack('sandbagwall'),
       broken: (rng) => buildSandbagHeap('sandbagwall', () => bSandbagBroken(rng).dispose()),
     },
@@ -7781,6 +7831,18 @@ ${snowCap ? `
       mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = false;
       group.add(mesh);
+    }
+    // the scenery lane (wave 48, "the power cables break into dashes"): the power lines' conductors as one mesh on the
+    // wire material (wireMaterial.ts: a pixel wide at the least, its alpha the share the true wire covers)
+    if (built.wires.length) {
+      const merged = mergeGeometries(built.wires, false);
+      for (const piece of built.wires) piece.dispose();
+      if (merged) {
+        const wires = createWireMesh(merged);
+        wires.name = 'props-pylon-wires';
+        wires.matrixAutoUpdate = false;
+        group.add(wires);
+      }
     }
     group.userData.scenery = built.receipt;
   }

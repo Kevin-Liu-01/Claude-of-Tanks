@@ -114,8 +114,16 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
     assert.ok(d.up > 0.85, `the ${name} drift looks up`);
     assert.ok(d.wander > 0.06, `the ${name} drift's toe wanders, never a straight edge (${(d.wander * 100).toFixed(0)} %)`);
   }
-  assert.ok(windward.maxY > 0.12 && windward.maxY < 0.4 && windward.maxX < 2, `the windward drift is a small ramp (${windward.maxY.toFixed(2)} m, out to ${windward.maxX.toFixed(2)} m)`);
-  assert.ok(lee.maxY > 0.4 && lee.maxY < 0.8 && lee.maxX > 3 && lee.maxX < 5.5, `the lee drift is the big one (${lee.maxY.toFixed(2)} m, out to ${lee.maxX.toFixed(2)} m)`);
+  assert.ok(windward.maxY > 0.08 && windward.maxY < 0.25 && windward.maxX < 1.6, `the windward drift is a small ramp (${windward.maxY.toFixed(2)} m, out to ${windward.maxX.toFixed(2)} m)`);
+  // (wave 48: the lee drift under half a field wall's metre, so it never rides over the top)
+  assert.ok(lee.maxY > 0.25 && lee.maxY < 0.48 && lee.maxX > 2 && lee.maxX < 4, `the lee drift is the big one, under half the wall (${lee.maxY.toFixed(2)} m, out to ${lee.maxX.toFixed(2)} m)`);
+  // (and clear of its island's ends: a breach, a head)
+  for (const g of [buildWallDrift(flat, 0, 0, 0, 9, 0.27, 1, 0xd71f), buildWallDrift(flat, 0, 0, 0, 9, 0.27, 1, 0x1ee5, { lee: true })]) {
+    const p = g.attributes.position;
+    let z0 = Infinity, z1 = -Infinity;
+    for (let i = 0; i < p.count; i++) { z0 = Math.min(z0, p.getZ(i)); z1 = Math.max(z1, p.getZ(i)); }
+    assert.ok(z0 >= 0.3 && z1 <= 8.7, `a drift stops inside its island's ends (${z0.toFixed(2)}..${z1.toFixed(2)} of 0..9)`);
+  }
   const along = measure(buildWallDrift(flat, 0, 0, 0, 9, 0.27, 1, 0x1ee5, { lee: true, across: 0 }));
   assert.ok(along.maxY < lee.maxY * 0.7 && along.maxX < lee.maxX * 0.8, 'a wind along the wall banks less snow in its lee');
 }

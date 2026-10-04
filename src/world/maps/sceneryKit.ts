@@ -415,23 +415,32 @@ export function buildPylon(rng: Rng, height = 34, mobile = false, breadthOf = he
 export function buildConductor(
   ax: number, ay: number, az: number, bx: number, by: number, bz: number, sag: number, segments: number, radius: number,
 ): THREE.BufferGeometry {
-  const parts: THREE.BufferGeometry[] = [];
-  const pts: THREE.Vector3[] = [];
-  for (let i = 0; i <= segments; i++) {
-    const t = i / segments;
-    const y = ay + (by - ay) * t - sag * 4 * t * (1 - t);
-    pts.push(new THREE.Vector3(ax + (bx - ax) * t, y, az + (bz - az) * t));
+  // (wave 48, "the power cables break into dashes": a conductor is a ribbon along its catenary — its centre line twice
+  // over, a side each — that the wire material (props.ts) turns to face the camera and widens to at least a pixel, its
+  // alpha the share of that pixel the true wire covers, so a far wire fades instead of breaking up. Position is the
+  // centre line; aWireTangent the catenary's direction there, aWireSide -1 or +1, aWireRadius the true radius.)
+  const n = segments + 1, positions = new Float32Array(n * 2 * 3), tangents = new Float32Array(n * 2 * 3);
+  const sides = new Float32Array(n * 2), radii = new Float32Array(n * 2).fill(radius), index: number[] = [];
+  const pt = (t: number) => [ax + (bx - ax) * t, ay + (by - ay) * t - sag * 4 * t * (1 - t), az + (bz - az) * t];
+  for (let i = 0; i < n; i++) {
+    const t = i / segments, p = pt(t);
+    const t0 = Math.max(0, t - 1 / segments), t1 = Math.min(1, t + 1 / segments), p0 = pt(t0), p1 = pt(t1);
+    const dx = p1[0] - p0[0], dy = p1[1] - p0[1], dz = p1[2] - p0[2], l = Math.hypot(dx, dy, dz) || 1;
+    for (let k = 0; k < 2; k++) {
+      const v = i * 2 + k;
+      positions.set(p, v * 3);
+      tangents.set([dx / l, dy / l, dz / l], v * 3);
+      sides[v] = k ? 1 : -1;
+    }
+    if (i + 1 < n) { const a = i * 2, b = a + 2; index.push(a, a + 1, b, b, a + 1, b + 1); }
   }
-  const up = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3();
-  for (let i = 0; i < segments; i++) {
-    dir.subVectors(pts[i + 1], pts[i]);
-    const len = dir.length();
-    const g = new THREE.CylinderGeometry(radius, radius, len, 4, 1, true);
-    g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up, dir.normalize()));
-    g.translate((pts[i].x + pts[i + 1].x) / 2, (pts[i].y + pts[i + 1].y) / 2, (pts[i].z + pts[i + 1].z) / 2);
-    parts.push(paint(g, [0.6, 0.05, 0.16], 0, () => 0.5));
-  }
-  return merge(parts, true, false);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  g.setAttribute('aWireTangent', new THREE.BufferAttribute(tangents, 3));
+  g.setAttribute('aWireSide', new THREE.BufferAttribute(sides, 1));
+  g.setAttribute('aWireRadius', new THREE.BufferAttribute(radii, 1));
+  g.setIndex(index);
+  return g;
 }
 
 // ---------------------------------------------------------------------------------------------- sandbag stacks
@@ -474,7 +483,7 @@ function sandbagRng(seed: number): Rng {
  * A bag's shaping: its fill (1 full, 0.75 slack), its course's dirt (0 clean, 1 earth-smeared); a laid bag leaves out
  * its bed and its inner side, and an end that abuts its neighbour in the course (`hideEnds`: local -x, +x).
  */
-interface BagShape { fill?: number; dirt?: number; laid?: boolean; hideEnds?: readonly [boolean, boolean] }
+interface BagShape { fill?: number; dirt?: number; laid?: boolean; hideEnds?: readonly [boolean, boolean]; header?: boolean }
 
 /**
  * One filled bag along +X (length), Y (thickness), Z (width), centred (wave 20: "inflated toy capsules"). A box of
@@ -490,11 +499,12 @@ function sandbagBag(len: number, thick: number, wid: number, r: Rng, shape: BagS
   const box3 = new THREE.BoxGeometry(1, 1, 1, 3, 2, 3);
   box3.deleteAttribute('uv');
   box3.deleteAttribute('normal');
-  if (shape.laid) {
-    // leave out the bed (-y), the inner side (-z) and the abutted ends (+x, -x) before welding
-    const hide = new Set([3, 5]);
-    if (shape.hideEnds?.[0]) hide.add(1);
-    if (shape.hideEnds?.[1]) hide.add(0);
+  if (shape.laid || shape.header) {
+    // leave out the bed (-y), the inner side (-z) and the abutted ends (+x, -x) before welding; a header (laid across
+    // the stack, its ends on its two faces) leaves out its bed and both long sides, which press on its neighbours
+    const hide = new Set(shape.header ? [3, 4, 5] : [3, 5]);
+    if (!shape.header && shape.hideEnds?.[0]) hide.add(1);
+    if (!shape.header && shape.hideEnds?.[1]) hide.add(0);
     const index = box3.index!.array, kept: number[] = [];
     for (const group of box3.groups) {
       if (hide.has(group.materialIndex ?? 0)) continue;
@@ -581,6 +591,26 @@ function sandbagCourses(half: number, depth: number, height: number, r: Rng): TH
     const inset = c * 0.02 + (c === courses - 1 ? 0.02 : 0);
     const rowHalf = depth - inset;
     const dirt = Math.max(0, 1 - c / 2.5);
+    // (wave 48, "rolled carpets": every other course below the top is laid in headers — bags across the stack, their
+    // tied and folded ends on its faces — so the faces show bag ends between the stretchers' long sides, as a revetment
+    // is bonded)
+    if (c % 2 === 1 && c < courses - 1) {
+      const settleC = settleMid * (c / Math.max(1, courses - 1));
+      let x = -half + (r() - 0.5) * 0.08;
+      while (x < half - 0.12) {
+        const wid = 0.32 + r() * 0.08, x0 = Math.max(-half, x), x1 = Math.min(half, x + wid);
+        x += wid * (0.97 + r() * 0.04);
+        if (x1 - x0 < 0.16) continue;
+        const fill = r() < 0.2 ? 0.78 + r() * 0.1 : 0.94 + r() * 0.08;
+        const bag = sandbagBag(2 * rowHalf * 0.94, thick * (1.12 + r() * 0.12), (x1 - x0) * 0.98, r, { fill, dirt, header: true });
+        bag.rotateY(Math.PI / 2 + (r() - 0.5) * 0.12 + (r() < 0.5 ? Math.PI : 0));
+        bag.rotateX((r() - 0.5) * 0.06);
+        const mid = (x0 + x1) / (2 * half);
+        bag.translate((x0 + x1) / 2, c * thick + thick * 0.5 * fill + (r() - 0.5) * 0.02 - settleC * (1 - mid * mid), (r() - 0.5) * 0.03);
+        parts.push(bag);
+      }
+      continue;
+    }
     // two rows across (each a stretcher) meeting in the middle, their bags as long as the wall's length allows; odd
     // courses shifted half a bag
     for (const side of [-1, 1]) {

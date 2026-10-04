@@ -347,8 +347,11 @@ function compose(scenery, solids = [], mobile = false) {
   assert.equal(built.receipt.colliders, 2 + 8);
   assert.equal(built.obstacles.length, 1 + 10); assert.equal(built.colliders.length, 10);
   assert.ok(built.obstacles.slice(1).every((r) => !r.crushable && r.shape2), 'static shaped masses');
-  assert.ok(built.baked.length > 3, 'the towers and their conductors fold into the baked bucket');
+  assert.ok(built.baked.length >= 3, 'the towers fold into the baked bucket');
   assert.ok(built.baked.slice(1).every((g) => !g.attributes.uv && g.attributes.color), 'baked pieces conformed to the bucket');
+  // (wave 48: the conductors are their own ribbons, for the wire material — never a sub-pixel tube in the baked bucket)
+  assert.ok(built.wires.length >= 5 && built.wires.every((g) => g.attributes.aWireTangent && g.attributes.aWireRadius),
+    `the conductors hand over as wire ribbons (${built.wires.length})`);
   // deterministic and independent of any outer stream: the same config builds the same bytes
   const again = compose({ rocks: [{ form: 'tor', geology: 'granite', x: -100, z: 0, radius: 6, height: 5, name: 'free' }] });
   assert.deepEqual(Array.from(again.rockPieces[0].attributes.position.array), Array.from(built.rockPieces[0].attributes.position.array),
@@ -617,6 +620,9 @@ assert.match(propsSource, /if \(prevBuilt\) \{ endPost\(x1, z1, 1\); dressIsland
 assert.match(propsSource, /const fallen = wallDressing\.tumble\(style === 'adobe', px, pz, tx \* out, tz \* out, thick \* 0\.5\);/, 'a run\'s ends tumble out past its heads (wave 34)');
 assert.match(propsSource, /if \(wallB === 'fieldStone'\) wallDressing\.stoneUv\(head, rng\); else jitterUV\(head, rng\);/, 'a head\'s print window stays in the field print\'s face band');
 assert.match(propsSource, /mesh\.name = 'props-sandbag-beds';/, 'the nests\' bedding draws as one mesh of its own');
+assert.match(propsSource, /materialKind === 'fieldStone' \? fieldStoneHook : grimeHook/, 'the field print has its own hook (wave 48)');
+assert.match(propsSource, /vMapUv \+= cotStoneShift;/, 'each wall module shifts its print window along the wall (wave 48: "the coursing visibly repeats")');
+assert.match(propsSource, /cls: 'break', mat: 'burlap', contact: 'ob'/, 'the sandbags draw the hessian (wave 48: "no burlap weave")');
 assert.match(propsSource, /bedSandbagNest\(kind, sx, sz, yaw \+ sideIndex \* 0\.12, 1\.18, \[fwdX, fwdZ\]\);/, 'a redoubt\'s stacks are bedded, their spoil thrown forward');
 assert.match(propsSource, /bedSandbagNest\(kind, bx, bz, moduleYaw, moduleScale, \[fx, fz\]\);/, 'a breastwork\'s modules are bedded toward the threat');
 assert.match(propsSource, /bedSandbagNest\(kind, sx, sz, yaw, scale\);/, 'a road nest is bedded');
