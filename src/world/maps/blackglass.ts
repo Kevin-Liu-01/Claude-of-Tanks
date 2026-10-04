@@ -35,10 +35,9 @@ export default {
   },
   spawns: {
     player: { x: -248, z: -392 },
-    enemies: [
-      { x: -222, z: 384 }, { x: -146, z: 422 }, { x: -68, z: 378 },
-      { x: 12, z: 420 }, { x: 94, z: 378 }, { x: 176, z: 416 }, { x: 254, z: 374 },
-    ],
+    // Bravo deploys in a 4 x 2 block like alpha's, centred where its old line of pads had its centroid, so every
+    // objective keeps its reach (the bots lane, 2026-10-03: a corner block against a 500 m line of pads leans the battle).
+    enemies: [{ x: 24.3, z: 391.7 }, { x: 16.3, z: 391.7 }, { x: 8.3, z: 391.7 }, { x: 0.3, z: 391.7 }, { x: 24.3, z: 401.7 }, { x: 16.3, z: 401.7 }, { x: 8.3, z: 401.7 }],
   },
   splat: {
     grassTone: (h: number, s: number, l: number) => [0.37, clamp01(s * 0.18), clamp01(l * 0.44 + 0.03)],
@@ -78,6 +77,13 @@ export default {
         structure: 'transformershed', redoubt: true, wreck: true, wreckOffsetZ: 16 },
     ],
     blockFill: true, streetRows: true, streetRowsAfterLandmarks: true,
+    // the district's massive blocks keep their footprints off every carriageway, not only their own street's
+    roadBuildingClearance: true,
+    // The civic hall stood across road 3 at the district's crossroads and against road 1's edge, on the line between the
+    // deployments, with no clear place within 30 m. Its nearest clear place (36 m south, beside alpha's approach) let
+    // the south deployment win 28 of the swap test's 40 games (with the hall in the road: 22). On the avenue's north-west
+    // side, 59 m north, it stands on that line again, off every carriageway, and the south wins 22.
+    roadClearanceTargets: [{ from: [-101.8, -85.7], to: [-111.9, -27.8] }],
     streetRowRoadStride: 2, ruinChance: 0.54, curbs: true, lampposts: true,
     tones: makeRealisticCityBuildingTones({
       value: 0.73, saturation: 0.82, soot: 0.035, roofValue: 0.72, coolAccent: 0.015,

@@ -68,7 +68,8 @@ export const LAYOUT_DRIVETRAIN = Object.freeze({ enginePowerHp: 900, weightTons:
 /**
  * Brief targets (docs/MAP-LAYOUT-BRIEF.md "Measurable checks"). Each is [min, max] (null = unbounded); a map may name
  * a deliberate exception in its config (`layoutBrief: { exceptions: { <key>: 'reason' } }`) — the check then reports
- * the reason instead of failing.
+ * the reason instead of failing — or hold a band of its own (`layoutBrief: { bands: { <key>: { band: [min, max],
+ * reason } } }`, see briefTargets), which is enforced like the shared one.
  */
 export const TARGETS = Object.freeze({
   spawnSeparationM: [600, 860],
@@ -888,7 +889,8 @@ export async function computeLayoutMetrics(mapId, { objectives = true } = {}) {
     objectiveSymmetry,
     elapsedS: round((performance.now() - t0) / 1000, 1),
   };
-  metrics.checks = evaluateTargets(metrics, config.layoutBrief?.exceptions ?? {});
+  metrics.checks = evaluateTargets(metrics, config.layoutBrief?.exceptions ?? {}, briefTargets(config.layoutBrief),
+    config.layoutBrief?.bands ?? {});
   return metrics;
 }
 
@@ -931,14 +933,34 @@ export function targetValues(m) {
   };
 }
 
-export function evaluateTargets(m, exceptions = {}, targets = TARGETS) {
+/**
+ * The bands a map is held to: TARGETS, with each band the map replaces in `layoutBrief.bands` ({ band: [min, max],
+ * reason }). A map band is enforced like a shared one (a miss fails), and its row names the band and the reason, so a
+ * map at a scale of its own (Olympus Basin's compact low-gravity arena) is measured against bands that fit it rather
+ * than excused from them. An unknown key or a malformed band fails closed.
+ */
+export function briefTargets(layoutBrief) {
+  const bands = layoutBrief?.bands ?? {};
+  const targets = { ...TARGETS };
+  for (const [key, entry] of Object.entries(bands)) {
+    if (!(key in TARGETS)) throw new Error(`layoutBrief.bands: no brief band named ${key}`);
+    const band = entry?.band;
+    if (!Array.isArray(band) || band.length !== 2 || !band.every((v) => v === null || Number.isFinite(v))
+      || (band[0] !== null && band[1] !== null && band[0] > band[1])) throw new Error(`layoutBrief.bands.${key}: band must be [min, max]`);
+    targets[key] = band;
+  }
+  return targets;
+}
+
+export function evaluateTargets(m, exceptions = {}, targets = TARGETS, bands = {}) {
   const values = targetValues(m);
   const rows = [];
   for (const [key, [min, max]] of Object.entries(targets)) {
     const value = values[key];
-    if (value == null) { rows.push({ key, value, ok: null }); continue; }
+    const own = bands[key] ? { band: [min, max], bandReason: bands[key].reason } : {};
+    if (value == null) { rows.push({ key, value, ok: null, ...own }); continue; }
     const ok = (min == null || value >= min) && (max == null || value <= max);
-    rows.push({ key, value, ok: ok ? true : exceptions[key] ? 'exception' : false, ...(exceptions[key] && !ok ? { reason: exceptions[key] } : {}) });
+    rows.push({ key, value, ok: ok ? true : exceptions[key] ? 'exception' : false, ...own, ...(exceptions[key] && !ok ? { reason: exceptions[key] } : {}) });
   }
   return rows;
 }

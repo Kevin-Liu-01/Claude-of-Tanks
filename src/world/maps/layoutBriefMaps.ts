@@ -8,7 +8,7 @@ export const LAYOUT_BRIEF_MAPS = Object.freeze([
   'desert', 'urban', 'railyard', 'frontier', 'saltwind', 'coastal', 'verdant', 'mangrove', 'badlands', 'polders', 'delta',
   'reservoir', 'monsoon',
   // maps lane A (2026-10-03)
-  'caldera', 'alpine', 'foundry',
+  'caldera', 'alpine', 'foundry', 'titan_gorge', 'mars', 'skybridge',
   // maps lane B, batch 5 (2026-10-02)
   'cliffbridge', 'ruinspires', 'airfield',
   // maps lane B, batch 6
