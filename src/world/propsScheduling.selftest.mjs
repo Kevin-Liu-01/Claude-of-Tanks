@@ -4,7 +4,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { box, jitterUV } from './propGeometry.ts';
-import { boxClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
+import { boxClearOfPoints, boxClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
 
 // Execute the actual public scheduling wrapper with an owned generator fixture.
 // Geometry/output equivalence is separately checked by the whole-world profile;
@@ -403,6 +403,8 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
       min: 0, max: 0, spread: 0, maxEmbed: state.maxEmbed, maxFloat: 0 }),
     // the road footprint law (roadFootprint.ts): far from every road unless a case puts the wreck on one
     heightField: { _roadDist: () => roadDistance }, shiftClearOfRoadCore, boxClearOfRoadCore, placedB: [],
+    // the sharp-bend law (roadFootprint.ts): no bend near the fixture's seats
+    boxClearOfPoints, sharpBends: [],
     _quat: { setFromUnitVectors() {} }, _upAxis: {},
     _posv: { set() { return this; } },
     setObbShape: record => record, cloneCollisionRecord: record => structuredClone(record),

@@ -64,7 +64,9 @@ import {
   type DestructiblePropType,
 } from './maps/inhabitKit.ts';
 import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
-import { boxClearOfRoadCore, discClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
+import {
+  boxClearOfPoints, boxClearOfRoadCore, discClearOfRoadCore, sharpRoadBends, shiftClearOfRoadCore,
+} from './roadFootprint.ts';
 import { FISHERY_WHARF_LAKE_INDEX } from './fisheryWharfSite.ts';
 import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } from './loggingYard.ts';
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
@@ -6089,6 +6091,10 @@ ${snowCap ? `
       const pool = resolveWreckRoster(era, wCfg?.ids);
       if (pool.length === 0) return;
       const bakeCache = new Map<string, WreckBake | null>(); // specId|pop -> bake result
+      // maps lane B (2026-10-03, the physics lane's road-crossing sweep): a hulk keeps 10 m off a road's sharp bends
+      // (turns over 40 degrees), the ground a hull that misses the turn runs straight on to. Copper Mesa's haul road
+      // met a BMP-3 4.8 m past its 73-degree corner on the causeway; no other map had a hulk within 10 m of one.
+      const sharpBends = sharpRoadBends(roads);
       const wreckGeos: THREE.BufferGeometry[] = [];
       const wreckShadowGeos: THREE.BufferGeometry[] = []; // factory shadow proxies, wreck-posed
       let bakedTris = 0;
@@ -6146,6 +6152,7 @@ ${snowCap ? `
           if (Math.max(Math.abs(x), Math.abs(z)) > 440
             || placedB.some((building) => Math.hypot(x - building.x, z - building.z) < building.rr + 2)) return false;
         }
+        if (!boxClearOfPoints(sharpBends, x, z, baked.hx + 0.2, baked.hz + 0.2, yaw, 10)) return false;
         const support = planGroundedObbPose(
           heightField, x, z, baked.hx, baked.hz, yaw, 0.14,
         );

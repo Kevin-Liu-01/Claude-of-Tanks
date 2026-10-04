@@ -153,7 +153,7 @@
     },
     "copper_mesa": {
       "bytes": 780950,
-      "sha256": "c8a2e3bd539a6bfba5cf8c9d74ff77b0836b05130057fb4a04713527012c0482",
+      "sha256": "376c6a3364a858587aa2d31a6f2e901b9a7e3568770c75b318ad9b7baa0fd40d",
       "obstacles": 2194,
       "colliders": 2058,
       "concealers": 1491
