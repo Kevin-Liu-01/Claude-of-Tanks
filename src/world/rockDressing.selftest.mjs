@@ -291,7 +291,8 @@ assert.match(source, /paintBoulder\(form, P\.rockTone, lithology\);\n\s*rockGeos
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockGround', new THREE\.InstancedBufferAttribute\(ground, 1\)\)/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockSlope', new THREE\.InstancedBufferAttribute\(slope, 2\)\)/, 'every boulder the slope of its ground');
 assert.match(source, /const rockContact = !snowCap && rockDressing\.dust < 0\.5;/, 'a contact patch round every boulder, but on snow and sand');
-assert.match(source, /for \(const \[k, spot\] of rockSpots\.entries\(\)\) \{\n\s*dirtDiscs\.push\(conformedDisc\(spot\.x, spot\.z, spot\.r,/, 'the contact patches go to the ground decals');
+assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(conformedDisc\(spot\.x, spot\.z, spot\.r, [^\n]*\n\s*yield \{ fine: true, progress: false, stage: 'ground-foundation-instances' \};/,
+  'the contact patches go to the ground decals, one private input and checkpoint each');
 assert.match(source, /heightM: \(box\.max\.y - Math\.max\(box\.min\.y, -0\.6\)\) \* maxScale/, 'the shadow height is what can show, not the buried skirt');
 assert.match(source, /materialKind === 'rock' \? rockHook\s*:/); // (the field print's own hook follows: the scenery lane, wave 48)
 assert.match(source, /rock: new THREE\.MeshStandardMaterial\(\{\n\s*map: rockDetail\.albedo, normalMap: rockDetail\.normal/);
