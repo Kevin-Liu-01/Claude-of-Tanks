@@ -13,7 +13,7 @@ import { createHash } from 'node:crypto';
 import { createCanvas, ImageData } from '@napi-rs/canvas';
 import * as THREE from 'three';
 import {
-  emitBranchGeometry, emitCrownShadowHull, emitLeafCards, envelopeFraction, growTreeSkeleton, GROWTH_LEAF_BUDGET,
+  emitBranchGeometry, emitCrownShadowHull, emitLeafCards, envelopeFraction, growTreeSkeleton, GROWTH_LEAF_BUDGET, growthLeafBudget,
   GROWTH_LOWEST_WOOD_M, GROWTH_SIDE_TUBE_BUDGET, GROWTH_SPECIES, GROWTH_SPRAY_CLEARANCE_M, TREE_GROWTH_PROFILES,
   weldGrownGeometry, canopySkyOcclusion, GROWTH_CANOPY_AO, growthCrownAttachments, growShrubSkeleton, GROWTH_SHRUB_SPRAYS,
   GROWTH_SHRUB_VALUE, GROWTH_CONIFER_LEAF_SHARE, growthCardRows,
@@ -57,7 +57,7 @@ for (const species of GROWTH_SPECIES) {
     assert.equal(sha(a.hull), sha(b.hull), `${species}/${variant}: hull deterministic`);
     const { skeleton, wood, cards, hull, profile } = a;
     // budgets (desktop)
-    const leafBudget = Math.round(GROWTH_LEAF_BUDGET.desktop * (profile.family === 'conifer' ? GROWTH_CONIFER_LEAF_SHARE : 1));
+    const leafBudget = growthLeafBudget(profile.family, 'desktop');
     assert.ok(skeleton.leaves.length <= leafBudget, `${species}/${variant}: ${skeleton.leaves.length} sprays within ${leafBudget}`);
     assert.equal(tris(cards), skeleton.leaves.length * 4, 'four triangles per spray card');
     const sideTubes = skeleton.branches.filter((br) => br.mesh && br.order >= 2 && !br.support).length;
@@ -65,7 +65,9 @@ for (const species of GROWTH_SPECIES) {
     // the supporting twigs (supportSprays): one straight three-sided segment each — six triangles
     const supports = skeleton.branches.filter((br) => br.support);
     for (const br of supports) assert.equal(br.nodes.length, 2, `${species}: a supporting twig is one straight segment`);
-    assert.ok(tris(wood) <= 1800, `${species}/${variant}: wood ${tris(wood)} triangles (${supports.length} supporting twigs)`);
+    // trees round 4: a denser crown's extra sprays bring a few more of their twigs under them (the oak's and the
+    // mangrove's heaviest wood 1726 and 1698 to 1828 and 1842 triangles)
+    assert.ok(tris(wood) <= 1900, `${species}/${variant}: wood ${tris(wood)} triangles (${supports.length} supporting twigs)`);
     assert.ok(hull.length / 9 <= 700, `${species}/${variant}: shadow hull ${hull.length / 9} triangles`);
     if (profile.family === 'palm') assert.ok(skeleton.leaves.length >= 12, `${species}/${variant}: a palm head of ${skeleton.leaves.length} fronds`);
     else if (profile.family !== 'dead') assert.ok(skeleton.leaves.length >= 40, `${species}/${variant}: a crown of ${skeleton.leaves.length} sprays`);
@@ -137,7 +139,9 @@ for (const species of GROWTH_SPECIES) {
       woodTris: tris(wood), cardTris: tris(cards), hullTris: hull.length / 9, crownR: +cardMaxR.toFixed(2), wood: sha(wp.array) });
     // the mobile budgets
     const m = grow(species, variant, 'mobile');
-    assert.ok(m.skeleton.leaves.length <= Math.round(GROWTH_LEAF_BUDGET.mobile * (profile.family === 'conifer' ? GROWTH_CONIFER_LEAF_SHARE : 1)), `${species}: mobile sprays`);
+    assert.ok(m.skeleton.leaves.length <= growthLeafBudget(profile.family, 'mobile'), `${species}: mobile sprays`);
+    assert.equal(growthLeafBudget(profile.family, 'mobile'), Math.round(GROWTH_LEAF_BUDGET.mobile * (profile.family === 'conifer' ? GROWTH_CONIFER_LEAF_SHARE : 1)),
+      `${species}: the phones keep their budget`);
     assert.ok(tris(m.wood) <= tris(wood) + 1, `${species}/${variant}: the mobile wood is no heavier`);
   }
 }
@@ -159,6 +163,27 @@ assert.ok(shape.acacia.aspect > 1.6 && shape.cedar.aspect > shape.spruce.aspect,
 assert.ok(shape.spruce.crownBase < 0.2 && shape.fir.crownBase < 0.2, 'the spruce and fir crowns reach down to the ground');
 assert.ok(shape.pine.crownBase > 0.4 && shape.eucalyptus.crownBase > 0.3, 'the pine and the eucalyptus stand on long clear boles');
 assert.ok(shape.oak.aspect > shape.poplar.aspect * 1.6, 'the oak spreads where the poplar rises');
+// trees round 4 (2026-10-04, the gauntlet's wave 39: the near crowns' "oversized flat cards ... up close"): a broadleaf's
+// or a birch's desktop crown keeps up to 1.3 × the base budget's sprays, the base crown's leaf area shared out over them
+// (within 3 %), so its clusters are smaller — the same seeds grown at the base share are the crowns as they were; the
+// conifers, the palms and the phones keep the base
+{
+  const area = (sk) => sk.leaves.reduce((sum, l) => sum + l.length * l.width, 0);
+  for (const species of GROWTH_SPECIES) {
+    const profile = TREE_GROWTH_PROFILES[species];
+    const dense = profile.family === 'broadleaf' || profile.family === 'birch';
+    assert.equal(growthLeafBudget(profile.family, 'desktop'), dense ? 299 : Math.round(GROWTH_LEAF_BUDGET.desktop * (profile.family === 'conifer' ? GROWTH_CONIFER_LEAF_SHARE : 1)),
+      `${species}: the desktop budget`);
+    for (let variant = 0; variant < 3; variant++) {
+      const a = growTreeSkeleton(species, mulberry32(7300 + variant), { variant, tier: 'desktop' });
+      const b = growTreeSkeleton(species, mulberry32(7300 + variant), { variant, tier: 'desktop', leafShare: 1 });
+      if (!dense || b.leaves.length < 230) { if (!dense) assert.equal(a.leaves.length, b.leaves.length, `${species}: no denser`); continue; }
+      assert.ok(a.leaves.length > b.leaves.length, `${species}/${variant}: ${a.leaves.length} sprays over the base's ${b.leaves.length}`);
+      // the same leaf area over more sprays: each cluster smaller by the counts' ratio
+      assert.ok(Math.abs(area(a) / area(b) - 1) < 0.03, `${species}/${variant}: the leaf area ${area(a).toFixed(1)} against ${area(b).toFixed(1)} m²`);
+    }
+  }
+}
 // trees round 4 (2026-10-04, the gauntlet's wave 39: the desert acacia "a grey-green dome" where Acacia raddiana is a
 // flat umbrella): a parasol crown's sprays lie in one thin layer under its top, over bare limbs, and no limb stands bare
 // over the layer — every seed, every variant; the Canary pine's crown narrows to a spire (wave 39's round midground
