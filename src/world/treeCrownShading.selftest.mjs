@@ -103,7 +103,9 @@ for (const species of GROWTH_SPECIES) {
     depth.sort((x, y) => x[0] - y[0]);
     const k = Math.max(1, Math.floor(depth.length / 5));
     const shell = depth.slice(0, k).reduce((s, x) => s + x[1], 0) / k, heart = depth.slice(-k).reduce((s, x) => s + x[1], 0) / k;
-    const floor = lum(0.5, 0.6, 0.4) * (1 - GROWTH_CROWN_SHADING.depthShade) * (1 - GROWTH_CROWN_SHADING.underside) - 1e-6;
+    // trees round 4: the floor takes the card's own ramp at its stem row
+    const floor = lum(0.5, 0.6, 0.4) * (1 - GROWTH_CROWN_SHADING.depthShade) * (1 - GROWTH_CROWN_SHADING.underside)
+      * GROWTH_CROWN_SHADING.cardRamp[0] - 1e-6;
     assert.ok(heart < shell * 0.9, `${species}/${variant}: the heart (${heart.toFixed(3)}) sits in shade under the shell (${shell.toFixed(3)})`);
     assert.ok(depth.every((x) => x[1] >= floor), `${species}: no card darker than the shade law's floor`);
     if (variant === 1) report.species[species] = { lobes: lobes.length, sprays: skeleton.leaves.length, facing: +facing.toFixed(2), authored: +authored.toFixed(2), shell: +shell.toFixed(3), heart: +heart.toFixed(3) };
@@ -192,6 +194,20 @@ for (const species of GROWTH_SPECIES) {
   const c = cards.getAttribute('color');
   for (let i = 0; i < c.count; i++) assert.deepEqual([c.getX(i), c.getY(i), c.getZ(i)].map((v) => +v.toFixed(5)), [0.5, 0.6, 0.4], 'no depth shade without lobes');
   assert.ok(cards.getAttribute('aAxis') && cards.getAttribute('aLeaf'), 'a shrub card carries the billboard frame');
+  // trees round 4 (the gauntlet's wave 39: "oversized flat cards with little interior shading up close"): a crown's card
+  // darkens toward its seat — a lone lobe far off (no depth) over a crown centre below (no underside) leaves the ramp alone: the stem row at the
+  // ramp's foot, the tip row at its head, so a cluster reads as leaves round its twig, the twig in their shade
+  const crowned = { ...skeleton, crown: { x: 0, y: -5, z: 0, r: 1 }, lobes: [{ x: 40, y: 40, z: 40, rx: 1, ry: 1, rz: 1 }] };
+  const ramped = emitLeafCards(crowned, { tint: () => [0.5, 0.6, 0.4], tiles: 2, rng: mulberry32(1), rows: 2 });
+  const rc = ramped.getAttribute('color'), rleaf = ramped.getAttribute('aLeaf');
+  const [stemK, tipK] = GROWTH_CROWN_SHADING.cardRamp;
+  assert.ok(stemK < 0.85 && tipK > 1 && (stemK + tipK) / 2 > 0.9, `the ramp darkens the seat and lifts the tip (${stemK}, ${tipK})`);
+  for (let i = 0; i < rc.count; i++) {
+    const stem = rleaf.getY(i) < 0; // along the card from its centre: the stem row behind it, the tip row ahead
+    const k = stem ? stemK : tipK;
+    assert.deepEqual([rc.getX(i), rc.getY(i), rc.getZ(i)].map((x) => +x.toFixed(4)), [0.5 * k, 0.6 * k, 0.4 * k].map((x) => +x.toFixed(4)),
+      `a crown card's ${stem ? 'stem' : 'tip'} row takes the ramp`);
+  }
 }
 
 // the dappled crown shadow

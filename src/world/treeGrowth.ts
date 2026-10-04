@@ -1622,6 +1622,8 @@ export const GROWTH_CROWN_SHADING = Object.freeze({
   crownGain: 1.1,
   /** A grown shrub's lighter depth shade (a shrub is open to the sky round it) and the gain that gives its shell back. */
   shrubDepthShade: 0.3, shrubGain: 1.04,
+  /** Trees round 4: a crown card's value from its stem row to its tip row (the cluster's own shade toward its twig). */
+  cardRamp: Object.freeze([0.75, 1.13]) as readonly [number, number],
 });
 
 /**
@@ -1690,6 +1692,9 @@ export function emitLeafCards(skeleton: TreeSkeleton, options: CardEmitOptions):
         const depth = smooth01((field[3] - 0.42) / 0.63);
         const under = smooth01((-(has ? field[1] : sy / sl) - 0.1) / 0.8);
         shade = (1 - depthShade * depth) * (1 - GROWTH_CROWN_SHADING.underside * under);
+        // trees round 4: a cluster in its own shade toward its seat — the stem end of a card sits in the leaves round
+        // its twig, its tip out in the light (the card reads as leaves in depth, not a flat sticker)
+        shade *= GROWTH_CROWN_SHADING.cardRamp[0] + (GROWTH_CROWN_SHADING.cardRamp[1] - GROWTH_CROWN_SHADING.cardRamp[0]) * v;
       }
       const nl = Math.hypot(nx, ny, nz) || 1;
       nx /= nl; ny /= nl; nz /= nl;
