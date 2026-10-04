@@ -159,9 +159,27 @@ assert.ok(shape.acacia.aspect > 1.6 && shape.cedar.aspect > shape.spruce.aspect,
 assert.ok(shape.spruce.crownBase < 0.2 && shape.fir.crownBase < 0.2, 'the spruce and fir crowns reach down to the ground');
 assert.ok(shape.pine.crownBase > 0.4 && shape.eucalyptus.crownBase > 0.3, 'the pine and the eucalyptus stand on long clear boles');
 assert.ok(shape.oak.aspect > shape.poplar.aspect * 1.6, 'the oak spreads where the poplar rises');
-// trees round 4 (2026-10-04, the gauntlet's wave 39: Caldera's midground pines read as round broadleaf crowns): the
-// Canary pine's crown narrows to a spire, its top seventh under 0.6 of its widest (0.63–0.78 on the round crown before)
+// trees round 4 (2026-10-04, the gauntlet's wave 39: the desert acacia "a grey-green dome" where Acacia raddiana is a
+// flat umbrella): a parasol crown's sprays lie in one thin layer under its top, over bare limbs, and no limb stands bare
+// over the layer — every seed, every variant; the Canary pine's crown narrows to a spire (wave 39's round midground
+// crowns): its top seventh under 0.6 of its widest (0.63–0.78 on the round crown before)
 {
+  const profile = TREE_GROWTH_PROFILES.acacia;
+  for (let variant = 0; variant < 3; variant++) for (let seed = 0; seed < 8; seed++) {
+    const skeleton = growTreeSkeleton('acacia', mulberry32(9100 + seed * 37), { variant, tier: 'desktop' });
+    const band = profile.foliageBand * skeleton.height / profile.height;
+    let minY = Infinity, maxY = -Infinity, maxR = 0, tipY = -Infinity;
+    for (const l of skeleton.leaves) {
+      minY = Math.min(minY, l.y); maxY = Math.max(maxY, l.y); maxR = Math.max(maxR, Math.hypot(l.x, l.z));
+      tipY = Math.max(tipY, l.y + l.ay * l.length);
+    }
+    assert.ok(skeleton.leaves.length >= 150, `acacia/${variant}/${seed}: a full layer (${skeleton.leaves.length} sprays)`);
+    // (a support twig's rigid move may carry a seat a few centimetres: supportSprays)
+    assert.ok(maxY - minY <= band + 0.1, `acacia/${variant}/${seed}: the layer ${(maxY - minY).toFixed(2)} m deep within its ${band.toFixed(2)} m band`);
+    assert.ok(2 * maxR > 3.2 * (maxY - minY), `acacia/${variant}/${seed}: the layer spreads (${(2 * maxR).toFixed(2)} m across)`);
+    const woodTop = Math.max(...skeleton.branches.flatMap((b) => b.nodes.map((n) => n.y)));
+    assert.ok(woodTop <= Math.max(maxY, tipY) + 0.25, `acacia/${variant}/${seed}: no bare limb over the layer (${woodTop.toFixed(2)} m)`);
+  }
   for (let variant = 0; variant < 3; variant++) {
     const { skeleton } = grow('canaryPine', variant);
     const top = skeleton.height, widest = Math.max(...skeleton.leaves.map((l) => Math.hypot(l.x, l.z)));

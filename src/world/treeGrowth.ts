@@ -89,6 +89,12 @@ interface GrowthProfile {
    * fir's and a cedar's lie flat. Also the droop of the spray axis below its limb (radians). */
   flatRoll: number;
   flatDroop: number;
+  /**
+   * Trees round 4: the foliage's band under the crown's top (m at the profile's height; scales with the tree): a
+   * parasol crown's sprays sit only this far below its top (the acacia's flat layer over bare limbs). 0 or unset: the
+   * whole crown.
+   */
+  foliageBand?: number;
   /** Bark style column of the bark atlas (vegetation.ts): 0 furrowed, 1 plated, 2 smooth/banded, 3 papery. */
   bark: number;
   /** Bark tint (linear-ish multiplier around the neutral sheet) and its upper-stem shift (pine's orange top). */
@@ -144,11 +150,11 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
   }),
   acacia: P({
     family: 'broadleaf', height: 6.2, heightSpread: 0.10, trunkR: 0.28, form: 'decurrent',
-    forkAt: [0.26, 0.36], scaffolds: [3, 5], scaffoldAngle: [0.70, 1.05], crownBase: 0.6, crownR: 3.2,
+    forkAt: [0.26, 0.36], scaffolds: [3, 5], scaffoldAngle: [0.45, 0.75], crownBase: 0.6, crownR: 3.2,
     envelope: 'umbrella', whorled: false, perWhorl: [1, 1], spacing: 0.6, angleLow: 1.3, angleHigh: 1.1,
-    droop: 0.12, upturn: 0.55, sidePerM: 1.8, sideAngle: 1.0, sideRatio: 0.6, sideDroop: 0.0, twigPerM: 2.2,
+    droop: 0.12, upturn: 0.2, sidePerM: 1.8, sideAngle: 1.0, sideRatio: 0.6, sideDroop: 0.0, twigPerM: 2.2,
     leafOrder: 2, leafPerM: 4.4, leafFrom: 0.3, spray: [0.7, 1.05], aspect: 0.95, habit: 'flat', tipSprays: 2,
-    cardBend: 0.04, flatRoll: 0.45, flatDroop: 0.0, bark: 0, barkTint: [0.42, 0.36, 0.30], barkTopTint: null,
+    cardBend: 0.04, flatRoll: 0.45, flatDroop: 0.0, foliageBand: 1.2, bark: 0, barkTint: [0.42, 0.36, 0.30], barkTopTint: null,
     foliageValue: 1.55,
   }),
   eucalyptus: P({
@@ -451,7 +457,8 @@ export function envelopeFraction(shape: EnvelopeShape, t: number): number {
     case 'ellipsoid': return Math.sqrt(Math.max(0, 1 - (2 * u - 1) ** 2));
     case 'dome': return Math.sqrt(Math.max(0, 1 - ((u - 0.38) / 0.62) ** 2));
     case 'column': return Math.sin(Math.PI * Math.min(1, 0.12 + u * 0.88)) ** 0.45;
-    case 'umbrella': return u < 0.55 ? 0.35 + u * 1.1 : Math.sqrt(Math.max(0, 1 - ((u - 0.55) / 0.45) ** 2)) * 0.95 + 0.05;
+    // trees round 4: the acacia's parasol — widest over its top third, the top flat to a quick rounded shoulder
+    case 'umbrella': return u < 0.7 ? 0.3 + u : 1 - ((u - 0.7) / 0.3) ** 4 * 0.95;
     case 'flame': return Math.sin(Math.PI * Math.min(1, 0.08 + u * 0.92)) ** 0.7 * (1 - u * 0.35);
     case 'tuft': return Math.sqrt(Math.max(0, 1 - (2 * u - 1) ** 2));
     default: return 1;
@@ -469,6 +476,8 @@ interface GrowContext {
   crownR: number;
   branches: GrowthBranch[];
   mobile: boolean;
+  /** Trees round 4: a parasol crown's top — its limbs' highest reach (growScaffolds); the foliage band hangs from it. */
+  bandTop?: number;
 }
 
 /** The envelope radius at a world height y (0 outside the crown band below the base). */
@@ -635,6 +644,8 @@ function growScaffolds(ctx: GrowContext, stemIndex: number, variant: number): vo
   const fork = stem.nodes[stem.nodes.length - 1];
   const n = Math.round(range(rng, profile.scaffolds));
   const phase = rng() * Math.PI * 2;
+  /** Trees round 4: a parasol crown's limbs and where their side shoots may start, grown once every limb has its reach. */
+  const parasol: Array<[number, number]> = [];
   for (let s = 0; s < n; s++) {
     const az = phase + (s / n) * Math.PI * 2 + (rng() - 0.5) * 0.7;
     const a = range(rng, profile.scaffoldAngle) * (variant === 1 ? 0.92 : variant === 2 ? 1.08 : 1);
@@ -656,10 +667,52 @@ function growScaffolds(ctx: GrowContext, stemIndex: number, variant: number): vo
       const n2 = growPolyline(ctx, at.p, d2, len * (0.45 + rng() * 0.2), 3, at.r * 0.7, 0.018,
         profile.droop * 0.6, profile.upturn, 0.2, at.flex, at.flex + 0.2, true);
       ctx.branches.push({ order: 1, parent: limb, nodes: n2, mesh: true, broken: false });
-      growSides(ctx, ctx.branches.length - 1, 2, profile.sidePerM, profile.sideAngle, profile.sideRatio, profile.sideDroop, 0.15, true);
+      if (profile.foliageBand) parasol.push([ctx.branches.length - 1, 0.15]);
+      else growSides(ctx, ctx.branches.length - 1, 2, profile.sidePerM, profile.sideAngle, profile.sideRatio, profile.sideDroop, 0.15, true);
     }
-    growSides(ctx, limb, 2, profile.sidePerM, profile.sideAngle, profile.sideRatio, profile.sideDroop, 0.18, true);
+    if (profile.foliageBand) parasol.push([limb, 0.18]);
+    else growSides(ctx, limb, 2, profile.sidePerM, profile.sideAngle, profile.sideRatio, profile.sideDroop, 0.18, true);
   }
+  // trees round 4: a parasol crown's layer lies over its limbs' highest reach (a young tree's limbs may fall short of
+  // the profile's height), and the limbs' side shoots crowd into it
+  if (parasol.length) {
+    let top = -Infinity;
+    for (const [b] of parasol) for (const node of ctx.branches[b].nodes) top = Math.max(top, node.y);
+    ctx.bandTop = Math.min(ctx.crownTopY, top);
+    for (const [b, from0] of parasol) {
+      const [perM, from] = parasolSides(ctx, ctx.branches[b].nodes, from0);
+      growSides(ctx, b, 2, perM, profile.sideAngle, profile.sideRatio, profile.sideDroop, from, true);
+    }
+    // the layer's top is the shoots' own (a shoot may climb a little over its limb's tip): the band hangs from it
+    let shootTop = top;
+    for (const branch of ctx.branches) for (const node of branch.nodes) shootTop = Math.max(shootTop, node.y);
+    ctx.bandTop = Math.min(ctx.crownTopY + 0.15, shootTop);
+  }
+}
+
+/**
+ * Trees round 4: where a scaffold of a parasol crown (the profile's foliageBand) carries its side shoots — only where
+ * it has climbed into the band, crowded there (the acacia's flat layer of twigs over bare limbs); elsewhere `from` at
+ * the profile's own density.
+ */
+function parasolSides(ctx: GrowContext, nodes: GrowthNode[], from: number): [number, number] {
+  const { profile } = ctx;
+  if (!profile.foliageBand) return [profile.sidePerM, from];
+  const floor = (ctx.bandTop ?? ctx.crownTopY) - profile.foliageBand * ctx.height / profile.height * 1.15;
+  const total = polylineLength(nodes);
+  let along = 0;
+  for (let i = 1; i < nodes.length; i++) {
+    const l = Math.hypot(nodes[i].x - nodes[i - 1].x, nodes[i].y - nodes[i - 1].y, nodes[i].z - nodes[i - 1].z);
+    if (nodes[i].y >= floor) {
+      const f = nodes[i].y > nodes[i - 1].y ? clamp01((floor - nodes[i - 1].y) / (nodes[i].y - nodes[i - 1].y)) : 0;
+      along += l * f;
+      break;
+    }
+    along += l;
+  }
+  const t = Math.max(from, Math.min(0.9, along / Math.max(1e-3, total)));
+  // the shoots the whole limb would carry, crowded onto its part in the band
+  return [profile.sidePerM / Math.max(0.25, 1 - t) * (1 - from), t];
 }
 
 /** Primaries along an excurrent leader: whorls (conifers) or a spiral (poplar, birch, eucalyptus, cypress). */
@@ -710,6 +763,8 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
   const crownMid = (ctx.crownBaseY + ctx.crownTopY) * 0.5;
   const crownSpan = Math.max(0.5, ctx.crownTopY - ctx.crownBaseY);
   const perM = profile.leafPerM * (ctx.mobile ? 0.62 : 1);
+  // trees round 4: a parasol crown's foliage band (the acacia's flat layer), scaled with the tree
+  const band = (profile.foliageBand ?? 0) * ctx.height / profile.height;
   if (profile.family === 'conifer' && profile.form === 'excurrent' && ctx.branches.length) {
     const stem = ctx.branches[0];
     const tip = stem.nodes[stem.nodes.length - 1];
@@ -734,9 +789,10 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
   for (let branchIndex = 0; branchIndex < ctx.branches.length; branchIndex++) {
     const branch = ctx.branches[branchIndex];
     if (branch.broken) continue;
-    // a weeping crown's scaffold tips carry curtains too (the limb would otherwise end bare above them)
+    // a weeping crown's scaffold tips carry curtains too (the limb would otherwise end bare above them); trees round 4:
+    // and a parasol's limb tips their sprays (a bare limb end stood over the acacia's flat layer)
     const tipOnly = branch.order < profile.leafOrder;
-    if (tipOnly && !(profile.habit === 'hanging' && branch.order === 1)) continue;
+    if (tipOnly && !((profile.habit === 'hanging' || profile.foliageBand) && branch.order === 1)) continue;
     const length = polylineLength(branch.nodes);
     if (length < 0.15) continue;
     const count = tipOnly ? 0 : Math.max(1, Math.round(length * (1 - profile.leafFrom) * perM));
@@ -747,6 +803,7 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
     for (let k = 0; k < tips; k++) seats.push(0.97 + rng() * 0.03);
     for (const t of seats) {
       const at = sampleAlong(branch.nodes, Math.min(1, t));
+      if (band > 0 && at.p.y < (ctx.bandTop ?? ctx.crownTopY) - band) continue;
       const outward = norm(v3(at.p.x + 1e-4, 0, at.p.z));
       const tipSeat = t >= 0.97;
       let axis: V3, face: V3;
