@@ -25,7 +25,7 @@ export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
   'tools/battle-geometry-sharing.browser.selftest.mjs',
   'tools/track-texture-source.browser.selftest.mjs',
   'tools/sourced-building-source.browser.selftest.mjs',
-  // 2026-10-03: the far panorama's bake on a real WebGL context (Saltwind's ridge against its sky, gauntlet wave 32)
+  // 2026-10-04: the drift receipt on the far panorama's bake (Saltwind's far country as gauntlet wave 47 passed it)
   'tools/horizon-panorama-bake.browser.selftest.mjs',
   // 2026-09-26: part 2 of the Garage switch probe takes the capture lock itself (createCaptureLock in the receipt) —
   // under the runner's lease it deadlocked for 80 min (the runner refreshing its lease every 30 s while the child queued
