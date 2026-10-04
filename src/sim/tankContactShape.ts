@@ -25,6 +25,7 @@ interface ContactSpec {
   armor?: {
     bodyContactPoints?: { hull?: readonly number[]; turret?: readonly number[] };
     turretPivot?: readonly number[];
+    modules?: readonly { module: string; min: readonly number[]; max: readonly number[] }[];
   };
 }
 
@@ -144,4 +145,42 @@ export function tankContactRect(spec: ContactSpec): TankContactRect {
   const rect = contactRectFromBounds(bounds, exact, exact ? points : null);
   cache.set(spec, { source, rect });
   return rect;
+}
+
+/**
+ * The hull's centre of mass along its length, from the centre of its track contact (m, + toward the nose; physics lane
+ * round 5). The anatomy places the masses that move it: the turret at its pivot (TURRET_MASS_SHARE of the vehicle) and
+ * the power pack, the engine and transmission modules, at their middle (POWER_PACK_MASS_SHARE); the hull, its armour
+ * and its running gear stand on the track contact's centre. A rear-engined tank's centre of mass sits a quarter to a
+ * third of a metre behind its tracks' middle (T-90M 0.24 m, M1A2 0.35 m), a Merkava's, its engine forward, a quarter to
+ * two fifths of a metre ahead; an IFV with its engine forward and its turret aft (Bradley, CV90) keeps it near the
+ * middle. 0 for a hull without an anatomy (a synthetic fixture).
+ */
+const TURRET_MASS_SHARE = 0.3;
+const POWER_PACK_MASS_SHARE = 0.1;
+const massCache = new WeakMap<ContactSpec, {
+  modules: unknown; pivot: unknown; rect: TankContactRect; offset: number;
+}>();
+export function tankMassCenterOffsetM(spec: ContactSpec): number {
+  const armor = spec?.armor;
+  const modules = armor?.modules;
+  const pivot = armor?.turretPivot;
+  const rect = tankContactRect(spec);
+  const cached = massCache.get(spec);
+  if (cached && cached.modules === modules && cached.pivot === pivot && cached.rect === rect) return cached.offset;
+  let offset = 0;
+  if (Array.isArray(modules)) {
+    let low = Infinity, high = -Infinity;
+    for (const volume of modules) {
+      if (volume.module !== 'engine' && volume.module !== 'transmission') continue;
+      low = Math.min(low, volume.min[2]);
+      high = Math.max(high, volume.max[2]);
+    }
+    if (Number.isFinite(low) && Number.isFinite(high)) offset += POWER_PACK_MASS_SHARE * ((low + high) / 2 - rect.centerZ);
+    if (offset !== 0 && Array.isArray(pivot) && Number.isFinite(pivot[2])) {
+      offset += TURRET_MASS_SHARE * (pivot[2] - rect.centerZ);
+    }
+  }
+  massCache.set(spec, { modules, pivot, rect, offset });
+  return offset;
 }

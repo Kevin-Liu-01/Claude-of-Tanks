@@ -587,6 +587,11 @@ the prefix decomposition through `tools/frame-pass-timer.mjs`:
   includes other work rather than the frame's occupancy — so the tables lead with p25 and the paired deltas.
 - Toggles (`--toggle=shadow-cache|sim-sleep`): A B B A blocks of a runtime switch inside one page and pose, with
   moving views (`chase@7`, the pose gliding over the ground at 7 m/s) where the cascades' snapped poses change.
+- Light presets (the ground lane's holds 14–16, 2026-10-04): a control toggle — a uniform the shader never reads —
+  swung −0.82 to +0.76 ms between quartets under other sessions' GPU load. The land-use block read 2.7–3.2 ms at Low
+  in two holds and 0.4–1.1 ms in the next, and a fixed GPU ballast drawn every frame did not lower it. On this
+  machine a light frame does not inflate a toggle's cost through an idle-clocked GPU; foreign GPU load does. Report a
+  control beside any toggle under a millisecond, and take at least four quartets an arm.
 - Unchanged pictures: `tools/shadow-cache-truth.mjs` renders every scenario through the cache and without it inside
   one page task (temporal AA and the cloud history held, so a frame is a function of the scene state) and runs the
   2026-09-12 consecutive-frame flicker meter on live frames; `tools/frame-capture-compare.mjs` compares the probe's

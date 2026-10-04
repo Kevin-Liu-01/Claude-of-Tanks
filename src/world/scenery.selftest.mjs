@@ -23,7 +23,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildBedrock, buildRockFormation } from './sceneryRocks.ts';
-import { SCENERY_DESTRUCTIBLE_TYPES, buildConductor, buildPylon, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
+import { SCENERY_DESTRUCTIBLE_TYPES, buildConductor, buildPylon, buildSandbagBedding, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
 import {
   BEDROCK_TREE_CLEAR, LANDMARK_RADIUS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, pylonLegHalf, rockReach,
   sceneryClearances, withGroundCoverHoles,
@@ -162,6 +162,31 @@ for (const kind of Object.keys(STONE_LANDMARKS)) assert.ok(isStoneLandmark(kind)
     assert.equal(spent, 1, `${kind}: the remnant spends the old remnant's draws first`);
     assert.ok(heap.attributes.position.count > 0 && heap.attributes.uv && heap.attributes.color, `${kind}: a breached heap`);
     for (const geometry of [g, again, heap, ...buckets.baked]) geometry.dispose();
+  }
+}
+// the nests' bedding (wave 34, "a stacked prop on a bare mound — no berm, trench or spilled sand"): the spoil banked on
+// the face toward the threat, two fifths of the stack's height, lower on its inner face; its toe on the ground; a spill
+// heaped at an end and the emptied bag by it; in the soil it was given; deterministic, and a few hundred triangles
+{
+  const flatGround = { getHeightAt: () => 0 }, soil = [0.12, 0.08, 0.05];
+  for (const [kind, toward, axis] of [['sandbagbig', [0, 1], 2], ['sandbagsmall', [0, -1], 2], ['sandbagwall', [1, 0], 0]]) {
+    const g = buildSandbagBedding(kind, flatGround, 0, 0, 0, 1.2, 0x5bed, soil, false, toward);
+    const again = buildSandbagBedding(kind, flatGround, 0, 0, 0, 1.2, 0x5bed, soil, false, toward);
+    assert.deepEqual(Array.from(again.attributes.position.array), Array.from(g.attributes.position.array), `${kind}: its bedding is deterministic`);
+    for (const name of ['position', 'normal', 'color']) assert.ok(g.attributes[name], `${kind}: its bedding carries ${name}`);
+    const p = g.attributes.position, sign = toward[axis === 2 ? 1 : 0];
+    let front = 0, back = 0, lowest = Infinity;
+    for (let i = 0; i < p.count; i++) {
+      const side = (axis === 2 ? p.getZ(i) : p.getX(i)) * sign, y = p.getY(i);
+      if (side > 0.3) front = Math.max(front, y); else if (side < -0.3) back = Math.max(back, y);
+      lowest = Math.min(lowest, y);
+    }
+    const H = { sandbagbig: 1.23, sandbagsmall: 0.95, sandbagwall: 0.9 }[kind] * 1.2;
+    assert.ok(front > H * 0.3 && front < H * 0.6, `${kind}: the spoil stands a third to three fifths up its outer face (${(front / H).toFixed(2)})`);
+    assert.ok(back < front * 0.75, `${kind}: its inner face's bank is lower (${back.toFixed(2)} vs ${front.toFixed(2)})`);
+    assert.ok(lowest < 0 && lowest > -0.05, `${kind}: its toes sink into the ground`);
+    assert.ok(p.count / 3 < 600, `${kind}: its bedding stays a few hundred triangles (${p.count / 3})`);
+    g.dispose(); again.dispose();
   }
 }
 {
@@ -322,8 +347,11 @@ function compose(scenery, solids = [], mobile = false) {
   assert.equal(built.receipt.colliders, 2 + 8);
   assert.equal(built.obstacles.length, 1 + 10); assert.equal(built.colliders.length, 10);
   assert.ok(built.obstacles.slice(1).every((r) => !r.crushable && r.shape2), 'static shaped masses');
-  assert.ok(built.baked.length > 3, 'the towers and their conductors fold into the baked bucket');
+  assert.ok(built.baked.length >= 3, 'the towers fold into the baked bucket');
   assert.ok(built.baked.slice(1).every((g) => !g.attributes.uv && g.attributes.color), 'baked pieces conformed to the bucket');
+  // (wave 48: the conductors are their own ribbons, for the wire material — never a sub-pixel tube in the baked bucket)
+  assert.ok(built.wires.length >= 5 && built.wires.every((g) => g.attributes.aWireTangent && g.attributes.aWireRadius),
+    `the conductors hand over as wire ribbons (${built.wires.length})`);
   // deterministic and independent of any outer stream: the same config builds the same bytes
   const again = compose({ rocks: [{ form: 'tor', geology: 'granite', x: -100, z: 0, radius: 6, height: 5, name: 'free' }] });
   assert.deepEqual(Array.from(again.rockPieces[0].attributes.position.array), Array.from(built.rockPieces[0].attributes.position.array),
@@ -588,7 +616,15 @@ assert.match(propsSource, /fieldMud: new THREE\.MeshStandardMaterial\(\{ map: fi
 assert.match(propsSource, /\.\.\.\(snowCap \? \{ build: snowLoadedWallstone \} : \{\}\)/, 'a snow map\'s module carries its snow load');
 assert.match(propsSource, /const wallDressing = createWallDressing\(\{/, 'the wall runs dress their islands through one owner');
 assert.match(propsSource, /mesh\.name = 'props-snow-drifts';/, 'the snow drifts draw as one mesh of their own (the frame-budget probe\'s field-walls toggle hides them)');
-assert.match(propsSource, /if \(prevBuilt\) \{ endPost\(x1, z1\); dressIsland\(islandFrom, along\); \}/, 'a run\'s last island is dressed');
+assert.match(propsSource, /if \(prevBuilt\) \{ endPost\(x1, z1, 1\); dressIsland\(islandFrom, along\); \}/, 'a run\'s last island is dressed');
+assert.match(propsSource, /const fallen = wallDressing\.tumble\(style === 'adobe', px, pz, tx \* out, tz \* out, thick \* 0\.5\);/, 'a run\'s ends tumble out past its heads (wave 34)');
+assert.match(propsSource, /if \(wallB === 'fieldStone'\) wallDressing\.stoneUv\(head, rng\); else jitterUV\(head, rng\);/, 'a head\'s print window stays in the field print\'s face band');
+assert.match(propsSource, /mesh\.name = 'props-sandbag-beds';/, 'the nests\' bedding draws as one mesh of its own');
+assert.match(propsSource, /materialKind === 'fieldStone' \? fieldStoneHook : grimeHook/, 'the field print has its own hook (wave 48)');
+assert.match(propsSource, /vMapUv \+= cotStoneShift;/, 'each wall module shifts its print window along the wall (wave 48: "the coursing visibly repeats")');
+assert.match(propsSource, /bedSandbagNest\(kind, sx, sz, yaw \+ sideIndex \* 0\.12, 1\.18, \[fwdX, fwdZ\]\);/, 'a redoubt\'s stacks are bedded, their spoil thrown forward');
+assert.match(propsSource, /bedSandbagNest\(kind, bx, bz, moduleYaw, moduleScale, \[fx, fz\]\);/, 'a breastwork\'s modules are bedded toward the threat');
+assert.match(propsSource, /bedSandbagNest\(kind, sx, sz, yaw, scale\);/, 'a road nest is bedded');
 assert.match(propsSource, /cx \+ tz \* nudge, cy - 0\.13, cz - tx \* nudge, yaw \+ turn,/, 'a run turns its modules round by place, neighbours apart');
 const vegetationSource = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
 assert.match(vegetationSource, /placedStructureClearances\([^;]*\(cfg as SceneryMapConfig \| null\)\?\.scenery\)/s, 'the trees keep off the scenery');

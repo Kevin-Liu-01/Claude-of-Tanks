@@ -134,6 +134,29 @@ for (const seed of [1, 177, 991]) {
   geometry.dispose();
 }
 assert.ok(legacyMisses > 0, 'regression test reproduces the old reversed-pitch seam holes');
+// the scenery lane (wave 34, "walls on slopes step like battlements — courses must follow slope"): on a uniform grade a
+// fitted module is sheared to the slope: its top stands the same height over the ground at both ends (the terraced fit
+// stood it level at its high end, half a metre over the ground at the low end of a 0.3 grade), and it is not stretched
+{
+  const geometry = DESTRUCTIBLE_TYPES.wallstone.build(seeded(7));
+  geometry.computeBoundingBox();
+  const nominal = geometry.boundingBox.max.y - geometry.boundingBox.min.y;
+  for (const grade of [0.12, -0.3, 0.3]) {
+    const field = { getHeightAt: (x, z) => z * grade + 3 };
+    const span = { x0: 0, z0: 0, x1: 0, z1: WALL_SEG };
+    const { record, mesh } = wall(geometry, field, span, 1);
+    const attr = geometry.attributes.position, top = { lo: -Infinity, hi: -Infinity };
+    for (let i = 0; i < attr.count; i++) {
+      point.fromBufferAttribute(attr, i).applyMatrix4(mesh.matrix);
+      const over = point.y - field.getHeightAt(point.x, point.z);
+      if (point.z < 0.6) top.lo = Math.max(top.lo, over); else if (point.z > WALL_SEG - 0.6) top.hi = Math.max(top.hi, over);
+    }
+    assert.ok(Math.abs(top.hi - top.lo) < 0.12, `grade ${grade}: the module's top follows the slope (${top.lo.toFixed(2)} m over the ground at one end, ${top.hi.toFixed(2)} at the other)`);
+    assert.ok(mesh.matrix.elements[5] < 1.06, `grade ${grade}: the module is sheared, not stretched (y scale ${mesh.matrix.elements[5].toFixed(3)})`);
+    assert.ok(record.h < nominal + Math.abs(grade) * WALL_SEG * 1.06 + 0.02, `grade ${grade}: its cover box spans the sheared module`);
+  }
+  geometry.dispose();
+}
 for (const seed of [1337, 2049, 7719]) {
   const config = getMapConfig('reservoir'), field = createHeightField(seed, config);
   const geometry = DESTRUCTIBLE_TYPES.wallstone.build(seeded(seed));

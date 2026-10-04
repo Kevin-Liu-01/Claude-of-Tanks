@@ -88,8 +88,15 @@ export const SKY_DIFFUSE_GAIN = 1.45;
  * shade under a clear sky, with the aerosol and whitened horizon the gain above stands for, runs 9 000–15 000 K
  * (B/R about 1.6–2.2): 0.4 lands Verdant at 1.8 and Sirocco at 1.6. The luminance — the shade's level, the exposure's
  * illuminance — is unchanged; the specular share keeps the dome's own colour (a mirror reflects the sky the eye sees).
+ * 2026-10-04 (the gauntlet's wave 46: on Sirocco's sand the cast shadows read warmer than the sunlit sand in every
+ * desert shot; wave 47: "no blue in the shade" on clear Saltwind): 0.4 → 0.5, the smallest of a GPU sweep (0.40 / 0.45 /
+ * 0.50 / 0.55 / 0.65) at which the tank's shadow on the sand reads cooler than the sand in the sun (its yellowness about
+ * its lightness, b* per L*: +0.03 over the sunlit sand at 0.40, −0.01 at 0.45, −0.04 at 0.50; the palms' shadow −0.11), with
+ * the grass under Verdant's hull still green (hue 132° → 134°, never the waves' teal) and Verdant at B/R about 2.0. The
+ * shade-fill toe (post.ts) lifts deep shade per channel, which took the old 0.4's margin; a closed deck keeps its shade
+ * neutral (× 1 − the overcast: Whiteout's frames unchanged).
  */
-export const SKY_DIFFUSE_CHROMA = 0.4;
+export const SKY_DIFFUSE_CHROMA = 0.5;
 /** Share of the direct sun an overcast deck removes at overcast 1. */
 export const OVERCAST_DIRECT_CUT = 0.9;
 /** Share of the clear sky's light an overcast deck replaces at overcast 1. */

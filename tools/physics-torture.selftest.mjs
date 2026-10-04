@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { CASES, HULLS, WORLDS, runCase } from './physics-torture.mjs';
 import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
 
-await ensureAuthorityFleet([...new Set([...Object.values(HULLS), 't90m', 'm1a2', 'm551_sheridan'])]);
+await ensureAuthorityFleet([...new Set([...Object.values(HULLS), 't90m', 'm1a2', 'm551_sheridan', 'merkava4b'])]);
 
 const failures = [];
 let runs = 0;
@@ -118,6 +118,16 @@ check('flank-down', 'medium', 'earth', [
 ]);
 check('flank-steep', 'medium', 'earth', [
   g('fall damage (hp)', (m) => m.fallDamageHp, 300, 'before: 4564 hp (the flank read as level under a nose-down hull)'),
+]);
+
+// Round 6 (Skybridge fall census: 75.6 hp and 160.5 hp landings on one 46-degree bank): a hull climbing at 6.5 m/s hops
+// off a bank's lip and meets the 50-degree face beyond it 0.4 s later. The face rises under its travel at the face's
+// grade (the fit's rise per hull-local metre, not the tangent of its arcsine), and the landing is charged along the
+// face's normal: no fall damage.
+check('bank-hop', 'medium', 'earth', [
+  g('the face landing\'s vertical closing (m/s)', (m) => m.landings?.[0] ?? 0, 7, 'before: 8.84 m/s (the face read as 59 degrees)'),
+  g('its charged closing (m/s)', (m) => Math.max(0, ...(m.falls ?? [])), 6, 'before: 8.8 m/s (vertical)'),
+  g('fall damage (hp)', (m) => m.fallDamageHp, 0, 'before: 61.3 hp'),
 ]);
 
 // An assault trench under a heavy hull (its 45-degree far wall under the nose, its tail over the trench): the wall is not
@@ -278,6 +288,46 @@ check('air-spin', 'tall', 'gearth', [g('prediction replay error (m)', (m) => m.r
   if (!(Math.max(hard?.overshootDeg ?? 9, soft?.overshootDeg ?? 9) <= 0.5)) {
     failures.push(`land-cross earth medium: turned ${hard?.overshootDeg} / ${soft?.overshootDeg} deg past the slope — guard`);
   }
+}
+
+// Round 5 (gauntlet wave 38: "on a 17.9-degree grade the front and rear stations carry about the same travel ... a real
+// tank shows a clear rear-heavy gradient on a slope"; and after the side-slope landing "the hull still leans on the
+// uphill track"): the tracks' hold on the hull against gravity on a grade transfers its weight like the drive's own
+// acceleration, onto the downhill end and the downhill track, which squat while the uphill wheels droop. Measured at the
+// track line under the rendered hull, the downhill end against the uphill end (cm).
+{
+  const mean = (values) => values.reduce((sum, v) => sum + v, 0) / values.length;
+  const endsGap = (gaps) => {
+    const rear = mean([gaps.left[0], gaps.right[0]]), front = mean([gaps.left[6], gaps.right[6]]);
+    return { rear, front };
+  };
+  const rest = (caseId) => runCase(HULLS.medium, 'earth', CASES.find((c) => c.id === caseId)).finalGapsCm;
+  runs += 3;
+  const up = endsGap(rest('rest-slope25'));
+  if (!(up.front - up.rear >= 8)) {
+    failures.push(`rest-slope25 earth medium: the downhill tail sits ${(up.front - up.rear).toFixed(1)} cm under the uphill nose < 8 — before: 0.0`);
+  }
+  const down = endsGap(rest('rest-slope25-down'));
+  if (!(down.rear - down.front >= 8)) {
+    failures.push(`rest-slope25-down earth medium: the downhill nose sits ${(down.rear - down.front).toFixed(1)} cm under the uphill tail < 8 — before: 0.0`);
+  }
+  const across = rest('rest-cross20');
+  // the 20-degree cross slope rises to the right: the left track is the downhill one
+  if (!(mean(across.right) - mean(across.left) >= 3)) {
+    failures.push(`rest-cross20 earth medium: the downhill track sits ${(mean(across.right) - mean(across.left)).toFixed(1)} cm under the uphill one < 3 — before: 0.1`);
+  }
+}
+
+// Round 5 (wave 38: "flat landings are perfectly level pistons ... a 55 t hull's centre of mass isn't at its geometric
+// centre (engine aft, turret amidships), so a level drop should nod a little"): the springs stop the fall around the
+// middle of the track contact, behind which a rear-engined T-90M's centre of mass sits, so a level 2 m drop turns it
+// tail down; a front-engined Merkava 4 nose down. A nod, never a lurch.
+for (const [hull, way] of [['medium', 'upDeg'], ['merkava4b', 'downDeg']]) {
+  check('drop-2', hull, 'earth', [
+    g(`level landing's nod ${way === 'upDeg' ? 'nose up' : 'nose down'} short of 0.6 degree`, (m) => 0.6 - (m.landingNod?.[way] ?? 0), 0,
+      'before: 0.0 (a level piston)'),
+    g('the nod (degrees)', (m) => Math.max(m.landingNod?.upDeg ?? 0, m.landingNod?.downDeg ?? 0), 2.5, 'guard: a nod, not a lurch'),
+  ]);
 }
 
 // Rest stays rest: no jitter, no creep on a 25-degree grade on the brake.

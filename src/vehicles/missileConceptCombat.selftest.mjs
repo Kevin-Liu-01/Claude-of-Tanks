@@ -48,6 +48,13 @@ for (const [id, expected] of Object.entries(definitions)) {
   ] });
   match.onMatchReady();
   const entity = match.entityById.get('launcher');
+  // the launcher settles first on its spawn's 6-degree cross slope (physics lane round 5): the posture it holds over its
+  // tracks there is part of the attitude the server fires from and the renderer draws (a posture drawn on the rendered
+  // rock alone left the launch mouth 8 mm off the server's)
+  const SETTLE_TICKS = 120;
+  for (let tick = 0; tick < SETTLE_TICKS; tick++) {
+    match.step({ dt: SIM_DT, inputs: new Map([['launcher', input(0)], ['target', input(0)]]) });
+  }
   const visual = createTank(id, null, { proceduralOnly: true, quality: 'low', camoSeed: 4242, geometryReceipt: true });
   visual.prepareForSimulation();
   try {
@@ -59,7 +66,8 @@ for (const [id, expected] of Object.entries(definitions)) {
       entity.combat.reload = entity.combat.reloadChannels[slot];
       for (const channel of new Set(entity.combat.reloadChannels)) { channel.t = 0; channel.kind = 'ready'; }
       match.step({ dt: SIM_DT, inputs: new Map([['launcher', input(slot, true)], ['target', input(0)]]) });
-      const snapshot = match.snapshot({ tick: shot + 1, serverTimeMs: 17 * (shot + 1), viewerId: 'launcher', ackInputSeq: shot + 1 });
+      const tick = SETTLE_TICKS + shot + 1;
+      const snapshot = match.snapshot({ tick, serverTimeMs: 17 * tick, viewerId: 'launcher', ackInputSeq: shot + 1 });
       const event = snapshot.events.findLast(e => e.type === 'shell_fired' && e.shooterId === 'launcher');
       assert(event, `${id}: authoritative shot ${shot}`);
       assert.equal(event.shellName, spec.gun.shells[slot].name);

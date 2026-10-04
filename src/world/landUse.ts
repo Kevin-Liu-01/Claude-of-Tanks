@@ -258,6 +258,19 @@ export function landUseBoundary(profile: LandUseProfile | null): LandBoundary {
   return profile ? BOUNDARIES[profile.region] : 'margin';
 }
 
+/**
+ * The land use's quality tier (2026-10-04, the GPU bar: the coordinator's rule that Low must not pay more than High —
+ * the block cost 2.7 ms at Low against 1.1–1.7 at High, the weakest GPUs paying the most). The material reads it as
+ * uLandTier, kept current across preset changes:
+ * 0 — the bake's crop on its exact edges only, one round of reads (Low and the phones' two lower tiers);
+ * 1 — + the field's wet and dry (one noise read), its rows and tramlines, and the boundary features — headlands,
+ *     margins, hedge banks, bunds, walls, tracks — at their means: no soil read, no edge noise (Medium, the phones' high);
+ * 2 — the full block (High, Ultra).
+ */
+export function landUseTierOf(preset: string): 0 | 1 | 2 {
+  return preset === 'high' || preset === 'ultra' ? 2 : preset === 'medium' || preset === 'mobile-high' ? 1 : 0;
+}
+
 /** The material's packing: five vec4 uniforms, no sampler (the program sits at the 16-unit budget). */
 export function landUseUniformValues(profile: LandUseProfile | null): {
   landA: [number, number, number, number];
@@ -540,6 +553,7 @@ uniform vec4 uLandC;
 uniform vec4 uLandD;
 uniform vec4 uLandE;
 uniform vec4 uLandBake;
+uniform float uLandTier; // landUseTierOf: 0 the bake's crop on its edges, 1 + the cheap reads, 2 the full block
 // the warped grid's (qu, qv) at a world point — landUse.ts warpX / warpZ and the heading, as the twin's own
 vec2 lu_grid(vec2 p) {
   vec2 w = vec2(sin(p.x * 0.00523 + p.y * 0.00311 + 1.3) + 0.5 * sin(p.x * -0.00197 + p.y * 0.00877 + 4.1),
