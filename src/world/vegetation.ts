@@ -5700,7 +5700,8 @@ function* vegetationBuildSteps(
         // Fjord and Alpine spawns; 20 m still clears the tank and the camera
         // (which sits ~12 m behind the spawn) and keeps the stand in view.
         if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M)) continue;
-        pushTree(x, z, rng() < 0.85 ? species : pickSpecies(veg.rimMix, rng()), 1.35, 2.2, false);
+        // (a hyper-arid border's trees are field trees in its hollows, not a forest ring's giants: round 3)
+        pushTree(x, z, rng() < 0.85 ? species : pickSpecies(veg.rimMix, rng()), aridRim ? 0.95 : 1.35, aridRim ? 1.5 : 2.2, false);
         placed++;
         if (dropRimTreeOutsideWoods(x, z)) continue;
         rimTrees.push(trees[trees.length - 1]);
@@ -5720,7 +5721,7 @@ function* vegetationBuildSteps(
       if (Math.max(Math.abs(x), Math.abs(z)) > 506) continue;
       if (noVeg(x, z)) continue; // maps r1: see the rim-block note (sea rim)
       if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M)) continue;
-      pushTree(x, z, pickSpecies(veg.rimMix, rng()), 1.2, 1.9, false);
+      pushTree(x, z, pickSpecies(veg.rimMix, rng()), aridRim ? 0.9 : 1.2, aridRim ? 1.4 : 1.9, false);
       if (dropRimTreeOutsideWoods(x, z)) continue;
       rimTrees.push(trees[trees.length - 1]);
     }

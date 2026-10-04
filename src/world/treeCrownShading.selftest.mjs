@@ -308,8 +308,9 @@ assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alo
   const arid = treeBiomeColour('badlands');
   assert.ok(arid && arid.cardSat < 0.2 && typeof arid.texTone === 'function', 'Wadi Rum carries a dust-dulled foliage colour');
   const [h, sat, l] = arid.texTone(0.22, 0.4, 0.2);
-  // wave 26: the round-2b khaki-olive (hue 0.17, half the saturation) still read "lime-green" in the Sirocco sun
-  assert.ok(Math.abs(h - 0.2) < 1e-9 && sat <= 0.16 + 1e-9 && l >= 0.2, 'the tone pulls the leaves toward a grey green at two fifths the saturation');
+  // wave 26: the round-2b khaki-olive (hue 0.17, half the saturation) still read "lime-green" in the Sirocco sun; wave
+  // 31: round 3's yellow-green (0.2) lit golden-olive — Acacia raddiana is a grey-green
+  assert.ok(Math.abs(h - 0.26) < 1e-9 && sat <= 0.128 + 1e-9 && l >= 0.2, 'the tone pulls the leaves toward a grey green at a third the saturation');
   const filled = treeBiomePalette({}, null, false, arid);
   assert.ok(filled.cardHue === arid.cardHue && filled.cardSat === arid.cardSat && filled.texTone === arid.texTone, 'an unnamed palette takes the place\'s colour');
   const named = { cardHue: 0.3, cardSat: 0.4, texTone: (x, y, z) => [x, y, z] };

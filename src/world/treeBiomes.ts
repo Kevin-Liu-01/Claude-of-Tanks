@@ -59,12 +59,13 @@ export interface TreeBiomeColour {
 
 /**
  * Hyper-arid foliage: an acacia of Wadi Rum or the Sahara is a grey, dust-dulled green, not a lawn's (the gauntlet's
- * wave 15: "lush green groves on Wadi Rum"). The texture keeps two fifths of its saturation at a grey-green hue and the
- * card tint is nearly neutral; wave 26 still read the round-2b khaki-olive (hue 0.17) as "lime-green" in the sun.
+ * wave 15: "lush green groves on Wadi Rum"). The texture keeps a third of its saturation at a grey-green hue and the
+ * card tint is nearly neutral; wave 26 still read the round-2b khaki-olive (hue 0.17) as "lime-green" in the sun, and
+ * round 3's yellow-green (0.2) lit golden-olive (wave 31 asks for Acacia raddiana's grey-green).
  */
 const ARID_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
-  cardHue: 0.2, cardSat: 0.1,
-  texTone: (_h: number, s: number, l: number): [number, number, number] => [0.2, Math.min(1, s * 0.4), Math.min(1, l * 1.04)],
+  cardHue: 0.26, cardSat: 0.07,
+  texTone: (_h: number, s: number, l: number): [number, number, number] => [0.26, Math.min(1, s * 0.32), Math.min(1, l * 1.04)],
 });
 
 /**

@@ -205,7 +205,8 @@ closed wood holds half again the trees on two thirds of the ground each and spre
 round-1 draws replayed) stand in groups and lines, never alone: fringe groups along a woodlot's outline, hedgerows on
 hedged field boundaries (the ground lane's `hedgeSite`) or avenues on road verges, shelterbelts between the
 deployments; the border's open trees are kept by the 36 m patch; a hyper-arid place
-(`treeBiomeArid`) seats its groves, lone trees and border trees in the wadi beds and hollows; a map's `palmSites` keep
+(`treeBiomeArid`) seats its groves, lone trees and border trees in the wadi beds and hollows (its border trees at a
+field tree's scale, not the forest ring's); a map's `palmSites` keep
 its palms and its palm groves at the water (any other palm grows as `palmFallback`, no draw moved). `treeCrownShading.selftest.mjs` pins the laws,
 `treeSpacing.selftest.mjs` where the trees stand; battlePacing guards the fights' cover.
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
