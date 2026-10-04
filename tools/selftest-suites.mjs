@@ -269,6 +269,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/abramsSepv3RoofStation.selftest.mjs',
     'src/vehicles/profiles/abramsRoofSeating.selftest.mjs',
     'src/vehicles/profiles/abramsCwsRoofSeating.selftest.mjs',
+    'src/vehicles/profiles/m1a1Mantlet.selftest.mjs',
     'src/vehicles/profiles/abramsXRoofSeating.selftest.mjs',
     'src/vehicles/profiles/abramsXTurretPivot.selftest.mjs',
     'src/vehicles/profiles/m1a3Concept.selftest.mjs',
