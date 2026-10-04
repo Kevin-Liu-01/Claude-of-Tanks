@@ -646,6 +646,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/camoWorldScale.selftest.mjs',
     'src/vehicles/brandCamo.selftest.mjs',
     'src/vehicles/catalogCamoPainter.selftest.mjs',
+    // 2026-10-04 (the vehicle-look lane): the field camouflages' boundaries at the tile's own resolution
+    'src/vehicles/camoFieldEdges.selftest.mjs',
     'src/vehicles/vehicleMarkingsCanvas.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
@@ -787,6 +789,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/night-fixture-census.selftest.mjs',
     'src/vehicles/equipmentDamage.selftest.mjs',
     'src/vehicles/vehicleReadability.selftest.mjs',
+    // 2026-10-04 (the vehicle-look lane): a cloned vehicle material (the track shoes) joins its source's cascade registration
+    'src/vehicles/vehicleMaterialClone.selftest.mjs',
     'src/engine/skyCloudBake.selftest.mjs',
     'src/engine/skyHorizonCache.selftest.mjs',
     'src/engine/skyEnvironmentCache.selftest.mjs',
