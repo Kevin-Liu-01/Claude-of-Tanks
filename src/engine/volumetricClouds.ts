@@ -418,6 +418,12 @@ uniform float uFarThin;
 // 2026-10-03: the cumulus knobs (CLOUD_BASE_SHARP, CLOUD_BASE_DARK, CLOUD_FAR_FLAT; 0 = off)
 uniform float uBaseSharp;
 uniform float uBaseDark;
+// 2026-10-04 (the cumulus item; QA knobs, today's values by default): the self-shadowing (the second and third scattering
+// octaves' weights, the diffusion's decay per optical depth, the cumulus' ambient floor), the outline's softness (the
+// density's saturation edge) and the size variety (the broad field's share of the coverage cut and its period in tiles)
+uniform vec4 uCuShade;
+uniform float uCuEdge;
+uniform vec2 uCuSize;
 uniform float uFarFlat;
 // 2026-10-03: the crisp cumulus outline and the billowed tops (CLOUD_EDGE_CRISP, CLOUD_TOP_BILLOW; 0 = off)
 uniform float uEdgeCrisp;
@@ -452,6 +458,9 @@ struct Weather { float cov; float top; float breakup; float type; float anvil; f
 Weather cloudWeather( vec2 pxz ) {
 	vec4 w, st;
 	float field = cloudField( pxz, w, st );
+	// (2026-10-04, QA: CLOUD_SIZE_VAR / _PERIOD) a broad field shifts the coverage cut region by region, so the masses merge
+	// into large ones in some and stand small and scattered in others: a spread of sizes, no lattice rhythm
+	if ( uCuSize.x > 0.0 ) field += uCuSize.x * ( textureLod( tWeather, ( pxz + uWeatherShift * 0.3 ) / ( ${f(CLOUD_WEATHER_TILE_M)} * uCuSize.y ) + vec2( 0.17, 0.71 ), 0.0 ).b - 0.5 ) * ( 1.0 - uStratiform );
 	Weather o;
 	// round 76: the wind-frame rolls band a deck's thickness (undulatus); the fetch is the street field's own
 	o.roll = st.r;
@@ -684,7 +693,7 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 		}
 		// a sharper threshold: the density saturates a short way in from the outline (crisper edges, no
 		// semi-transparent halo around every mass; a defined deck's crisper still; a crisp cumulus a shorter way in)
-		d = smoothstep( 0.03 + 0.09 * deckK + 0.05 * edgeC, 0.6 - 0.25 * deckK - 0.25 * edgeC, d );
+		d = smoothstep( 0.03 + 0.09 * deckK + 0.05 * edgeC, mix( 0.6, uCuEdge, 1.0 - uStratiform ) - 0.25 * deckK - 0.25 * edgeC, d );
 		// round 76: the interior octave — the coarse detail lumps (25–100 m) modulate the density inside the mass
 		// instead of vanishing in the remap, so the light march shades the lit face bulge by bulge
 		if ( uInterior > 0.0 ) d *= mix( 1.0, 0.5 + 0.5 * hfCoarse, uInterior );
@@ -1091,7 +1100,8 @@ void main() {
 					lit++;
 					float tau = lastLight + sig * 2.0;
 					// multiple-scattering octaves: contribution, attenuation and eccentricity halved per octave
-					float sun = phase.x * exp( -tau ) + phase.y * 0.5 * exp( -tau * 0.5 ) + phase.z * 0.25 * exp( -tau * 0.25 );
+					float sun = phase.x * exp( -tau ) + phase.y * mix( uCuShade.x, 0.5, uStratiform ) * exp( -tau * 0.5 )
+						+ phase.z * mix( uCuShade.y, 0.25, uStratiform ) * exp( -tau * 0.25 );
 					// Beer–powder: light builds up inside the mass, so the sunlit face's crevices and thin edges
 					// read darker than its body
 					float powder = mix( 1.0, 1.0 - exp( -sig * 60.0 ), powderK );
@@ -1110,7 +1120,7 @@ void main() {
 					float msV = mix( 0.35 - 0.15 * bd, 1.0, smoothstep( 0.0, 0.5, hN ) );
 					// (71b: 0.2 read as a grey cloud — a lit face is a near-white diffuser under the sun's irradiance,
 					// E · albedo / π at its skin, decaying into the mass with the diffusion law)
-					float diffusion = mix( 0.7, 0.45, uStratiform ) / ( 1.0 + 0.15 * tau ) * msV / ( 4.0 * CL_PI ) * 4.0;
+					float diffusion = mix( 0.7, 0.45, uStratiform ) / ( 1.0 + mix( uCuShade.z, 0.15, uStratiform ) * tau ) * msV / ( 4.0 * CL_PI ) * 4.0;
 					// darker bases: their direct light is scattered away by the cloud above
 					float baseShadow = mix( 0.35 - 0.17 * bd, 1.0, smoothstep( -0.1, 0.45, hN ) );
 					// ambient: the sky's irradiance lights the tops, the bases see the horizon band and the ground; a
@@ -1135,7 +1145,7 @@ void main() {
 					// (the cumulus floor sits at a third of the sky mean — 0.85 lifted every base to the lit level and
 					// flattened the masses to white — and a cumulonimbus base deck takes half of that: its wall is dark)
 					float deckFloor = smoothstep( 0.3, 0.9, uStratiform );
-					float floorK = mix( 0.34 - 0.14 * bd, 1.25, deckFloor ) * mix( 1.0, 0.35, cb * ( 1.0 - deckFloor ) );
+					float floorK = mix( uCuShade.w - 0.14 * bd, 1.25, deckFloor ) * mix( 1.0, 0.35, cb * ( 1.0 - deckFloor ) );
 					float floorDecay = mix( 0.04, 0.08, deckFloor );
 					amb = max( amb, uSkyMean * floorK * ( 0.5 + 0.5 * exp( -tauUp * floorDecay ) ) );
 					amb *= uAmbientScale;
@@ -1598,6 +1608,7 @@ export class VolumetricCloudLayer {
         uStepScale: { value: 1 }, uDebug: { value: 0 },
         uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 }, uBaseFlat: { value: 0 }, uDeckDetail: { value: 0 }, uFarThin: { value: 0 },
         uBaseSharp: { value: 0 }, uBaseDark: { value: 0 }, uFarFlat: { value: 0 }, uEdgeCrisp: { value: 0 }, uTopBillow: { value: 0 },
+        uCuShade: { value: new THREE.Vector4(0.5, 0.25, 0.15, 0.34) }, uCuEdge: { value: 0.6 }, uCuSize: { value: new THREE.Vector2(0, 3) },
         uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
         // 2026-10-03: the deck's far rows on the aerial pass's overcast target (cloudHaze; hazeLaw.ts hazeTargetTerms)
         uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
@@ -2000,6 +2011,10 @@ export class VolumetricCloudLayer {
     // (2026-10-03: the cumulus knobs, read per frame so a lab can sweep them)
     t.uBaseSharp.value = lightTune('CLOUD_BASE_SHARP', CLOUD_BASE_SHARP);
     t.uBaseDark.value = lightTune('CLOUD_BASE_DARK', CLOUD_BASE_DARK);
+    (t.uCuShade.value as THREE.Vector4).set(lightTune('CLOUD_MS2', 0.5), lightTune('CLOUD_MS3', 0.25), lightTune('CLOUD_DIFF_DECAY', 0.15),
+      lightTune('CLOUD_CU_FLOOR', 0.34));
+    t.uCuEdge.value = lightTune('CLOUD_CU_EDGE', 0.6);
+    (t.uCuSize.value as THREE.Vector2).set(lightTune('CLOUD_SIZE_VAR', 0), lightTune('CLOUD_SIZE_PERIOD', 3));
     t.uFarFlat.value = lightTune('CLOUD_FAR_FLAT', CLOUD_FAR_FLAT);
     t.uEdgeCrisp.value = lightTune('CLOUD_EDGE_CRISP', CLOUD_EDGE_CRISP);
     t.uTopBillow.value = lightTune('CLOUD_TOP_BILLOW', CLOUD_TOP_BILLOW);

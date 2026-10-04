@@ -79,7 +79,7 @@ assert.match(clouds, /float bk = uBaseSharp \* uBaseFlat \* \( 1\.0 - uStratifor
 }
 assert.match(clouds, /float bd = uBaseDark \* \( 1\.0 - uStratiform \);\s*float msV = mix\( 0\.35 - 0\.15 \* bd, 1\.0,/, 'the base\'s diffused light');
 assert.match(clouds, /float baseShadow = mix\( 0\.35 - 0\.17 \* bd, 1\.0,/, 'its direct light');
-assert.match(clouds, /float floorK = mix\( 0\.34 - 0\.14 \* bd, 1\.25, deckFloor \)/, 'its sky floor (a deck\'s untouched)');
+assert.match(clouds, /float floorK = mix\( uCuShade\.w - 0\.14 \* bd, 1\.25, deckFloor \)/, 'its sky floor (a deck\'s untouched)');
 assert.match(clouds, /if \( uFarFlat > 0\.0 \) o\.top \*= 1\.0 - 0\.4 \* uFarFlat \* \( 1\.0 - uStratiform \) \* smoothstep\( 6000\.0, 18000\.0, farD \);/, 'the far field flattens');
 
 // ---- the far band (2026-10-03; waves 13-14: "a ruler-flat pale band at one constant height"): decks only — a cumuliform
@@ -96,7 +96,7 @@ assert.match(layer, /out\.contrails = CLOUD_CONTRAILS_ON \? Math\.round\(clamp\(
 assert.match(clouds, /float deckK = uDeckDetail \* max\( smoothstep\( 0\.3, 0\.6, uStratiform \), uCells \* 0\.8 \);/, 'decks only');
 assert.match(clouds, /uStratiform \* 0\.8 \* \( 1\.0 - 0\.3 \* uCells \) \* \( 1\.0 - 0\.5 \* deckK \)/, 'less of the sheet\'s flattening');
 assert.match(clouds, /amount \*= 1\.0 \+ 1\.8 \* deckK;/, 'the erosion near a cumulus\'s strength');
-assert.match(clouds, /d = smoothstep\( 0\.03 \+ 0\.09 \* deckK \+ 0\.05 \* edgeC, 0\.6 - 0\.25 \* deckK - 0\.25 \* edgeC, d \);/, 'a crisper outline (a deck\'s, a crisp cumulus\'s)');
+assert.match(clouds, /d = smoothstep\( 0\.03 \+ 0\.09 \* deckK \+ 0\.05 \* edgeC, mix\( 0\.6, uCuEdge, 1\.0 - uStratiform \) - 0\.25 \* deckK - 0\.25 \* edgeC, d \);/, 'a crisper outline (a deck\'s, a crisp cumulus\'s)');
 assert.match(clouds, /t\.uDeckDetail\.value = preset\.deckDetail \?\? 0;/);
 assert.match(layer, /deckDetail: clamp\(pick\('deckDetail'\), 0, 1\),/);
 assert.match(presets, /p\.cluster \?\? 0, p\.deckDetail \?\? 0,/, 'in the layer\'s key');
