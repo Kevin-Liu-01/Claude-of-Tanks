@@ -52,7 +52,8 @@ import { createTerrainContactSampler } from '../src/world/terrainContactSurface.
 import * as collisionModule from '../src/world/collision.ts';
 import { createPredictionWorld } from '../src/mp/presentation/predictionWorld.ts';
 
-const { hullPassesObstacleTop, pointInsideCollisionRecord, pushHullFromHull, pushHullFromObstacle, setObbShape, setCircleShape } = collisionModule;
+const { hullPassesObstacleTop, pointInsideCollisionRecord, pushHullFromHull, pushHullFromObstacle, setObbShape, setCircleShape,
+  setCompoundShape } = collisionModule;
 // The standing rule's underside and the footprint the obstacle solver pushes, as the tree under test has them: the
 // hull's footprint at its attitude (world/collision.ts hullFootprint), the flat rect with the earlier underside grid, or
 // (the A/B base, without either) the flat rect and the root.
@@ -244,6 +245,25 @@ export function box(cx, cz, halfWidth, halfLength, bottom, top, { yaw = 0, crush
   const record = { min: [0, bottom, 0], max: [0, top, 0], kind, crushable };
   return setObbShape(record, cx, cz, halfWidth, halfLength, yaw);
 }
+/**
+ * A viaduct over a gorge, built as the maps capture one (Aegis Crossing's stone viaduct): one deck record the hull drives
+ * on, and a record per span below it whose parts each keep their own height: the span's sub-deck slab `slabDepth` under
+ * the deck top, its pier, and the parapets standing on the deck's edges (which lift the span record's top over the deck).
+ */
+export function viaduct(z0, spans, spanLength, { halfWidth = 6, slabDepth = 0.55, gorge = 15 } = {}) {
+  const records = [box(0, z0 + (spans * spanLength) / 2, halfWidth, (spans * spanLength) / 2 + 2, -1, 0, { kind: 'bridge' })];
+  for (let index = 0; index < spans; index++) {
+    const start = z0 + index * spanLength, center = start + spanLength / 2;
+    const part = (cx, cz, hw, hl, y0, y1) => ({ kind: 'obb', cx, cz, hw, hl, yaw: 0, y0, y1 });
+    records.push(setCompoundShape({ min: [0, -gorge, 0], max: [0, 1.1, 0], kind: 'bridge', crushable: false }, [
+      part(0, center, halfWidth, spanLength / 2, -slabDepth - 0.15, -slabDepth),
+      part(0, start + 0.9, halfWidth, 0.9, -gorge, -slabDepth),
+      part(-(halfWidth - 0.2), center, 0.2, spanLength / 2, 0, 1.1),
+      part(halfWidth - 0.2, center, 0.2, spanLength / 2, 0, 1.1),
+    ]));
+  }
+  return records;
+}
 /** A boulder: a vertical cylinder footprint (the rocks the maps scatter). */
 export function boulder(cx, cz, radius, top) {
   return setCircleShape({ min: [0, 0, 0], max: [0, top, 0], kind: 'rock', crushable: false }, cx, cz, radius);
@@ -284,6 +304,9 @@ export const CASES = [
   { id: 'drive-washboard', group: 'drive', seconds: 6, terrain: TERRAIN.washboard(0.12, 2.6), spawn: { speed: 'top' }, input: hold(1), drive: [0, 6] },
   { id: 'drive-block60', group: 'drive', seconds: 6, terrain: TERRAIN.flat(), obstacles: [box(0, 14, 6, 0.6, 0, 0.6, { kind: 'block' })],
     input: hold(1), drive: [0, 6], allowBlocked: true },
+  // a viaduct's span joints at road speed (Aegis Crossing, round 3): the deck runs on over each span's record
+  { id: 'drive-viaduct', group: 'drive', seconds: 8, terrain: TERRAIN.valley(0, 96, 15), obstacles: viaduct(0, 3, 32),
+    spawn: { z: -30, speed: 'top' }, input: hold(1), drive: [0, 8] },
   { id: 'drive-bridge', group: 'drive', seconds: 7, terrain: TERRAIN.valley(10, 38, 6),
     obstacles: [box(0, 24, 4.5, 16, -1.1, 0, { kind: 'bridge' })], input: hold(1), drive: [0, 7] },
   { id: 'drive-lake', group: 'drive', seconds: 10, terrain: TERRAIN.lake(8, 40),
@@ -516,7 +539,7 @@ function newMetrics() {
     overturnedS: 0, tumblingS: 0, finalUpY: 1, finalOverturned: false,
     settleOscillations: null,
     replay: { samples: 0, maxErrM: 0, sumErrM: 0, maxAttErrRad: 0 },
-    impacts: [], falls: [], fallDamageHp: 0, landingTravel: [], airTiltMaxRad: 0,
+    impacts: [], falls: [], fallDamageHp: 0, impactDamageHp: 0, landingTravel: [], airTiltMaxRad: 0,
   };
 }
 
@@ -605,7 +628,23 @@ function replayStateFrom(entity) {
 const REPLAY_EVERY = 15;
 const REPLAY_TICKS = 12;
 
-export function runCase(hullId, worldId, caseDef, { replay = true, trace = null } = {}) {
+/**
+ * Run one case. `publishedContact` runs the hull on its published box, as a Node context that never finalized its combat
+ * anatomy does (fleetFactory without its builders: botObjectives), its nose and tail lifts zero.
+ */
+export function runCase(hullId, worldId, caseDef, options = {}) {
+  if (!options.publishedContact) return runCaseOn(hullId, worldId, caseDef, options);
+  const armor = getSpec(hullId).armor;
+  const points = armor?.bodyContactPoints;
+  if (armor) armor.bodyContactPoints = undefined;
+  try {
+    return runCaseOn(hullId, worldId, caseDef, options);
+  } finally {
+    if (armor) armor.bodyContactPoints = points;
+  }
+}
+
+function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {}) {
   const world = makeWorld(caseDef);
   const worldDef = WORLDS[worldId];
   const ruleset = worldDef.ruleset();
@@ -688,6 +727,8 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
   const footCenter = { x: 0, y: 0, z: 0 };
   const footScratch = { centerX: 0, centerZ: 0, forwardX: 0, forwardZ: 1, rightX: 1, rightZ: 0, halfLength: 0, halfWidth: 0 };
   const floors = new Float64Array(Math.max(1, world.obstacles.length));
+  // the underside as it is over each record, which clears a top or not (world/collision.ts hullPassesObstacleTop)
+  const clears = new Float64Array(Math.max(1, world.obstacles.length));
   const att = { pitch: 0, roll: 0 };
   const renderedHistory = [];
   const restSamples = [];
@@ -841,7 +882,10 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
     center.y = state.pos.y;
     const foot = obstacleFootprint(rect, state, footprintScratch ?? footScratch);
     footCenter.x = foot.centerX; footCenter.y = state.pos.y; footCenter.z = foot.centerZ;
-    for (let i = 0; i < world.obstacles.length; i++) floors[i] = undersideOver(world.obstacles[i], foot, rect, state);
+    for (let i = 0; i < world.obstacles.length; i++) {
+      floors[i] = undersideOver(world.obstacles[i], foot, rect, state);
+      clears[i] = Number.isFinite(foot.clearBottom) ? foot.clearBottom : floors[i];
+    }
     const ground = (x, z) => Math.max(world.contact(x, z), structureTop(world.obstacles, x, z, Infinity, floors));
     const shellDepth = (cloud, frameCos, frameSin, px, py, pz) => {
       let worst = 0, worstZ = 0, worstY = 0;
@@ -868,7 +912,7 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
     for (let i = 0; i < world.obstacles.length; i++) {
       const record = world.obstacles[i];
       if (record.crushed) continue;
-      if (hullPassesObstacleTop(floors[i], record.max[1], record.min[1], !record.crushable)) {
+      if (hullPassesObstacleTop(floors[i], record.max[1], record.min[1], !record.crushable, clears[i])) {
         // standing on it: the hull's underside over it must not sink below its top
         if (record.max[1] - record.min[1] >= 0.9 && (floors[i] !== state.pos.y
           || pointInsideCollisionRecord(record, record.shape2 ?? null, state.pos.x, state.pos.z))) {
@@ -878,7 +922,7 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
       }
       push.x = 0; push.z = 0;
       if (pushHullFromObstacle(footCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth,
-        record, push, floors[i], state.pos.y + bodyTop)) {
+        record, push, floors[i], state.pos.y + bodyTop, clears[i])) {
         metrics.obstaclePenMaxM = Math.max(metrics.obstaclePenMaxM, Math.hypot(push.x, push.z));
       }
     }
@@ -1007,6 +1051,7 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
     if (event.type !== 'tank_impact' || event.id !== 'subject') continue;
     (event.cause === 'fall' ? metrics.falls : metrics.impacts).push(+event.closingMps.toFixed(1));
     if (event.cause === 'fall') metrics.fallDamageHp += event.damage ?? 0;
+    else metrics.impactDamageHp += event.damage ?? 0;
   }
   if (restSamples.length > 2) metrics.rest = restStats(restSamples);
   metrics.final = { x: +subject.state.pos.x.toFixed(2), y: +subject.state.pos.y.toFixed(3), z: +subject.state.pos.z.toFixed(2),
