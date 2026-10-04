@@ -22,7 +22,7 @@ try{
   if(process.env.COT_DESKTOP_ONLY&&mobile)continue;
   const suffix=mobile?(initialViewport.width<500?'touch-small':'touch'):'desktop';
   const {page,errors}=remote?await openPublishedPage(browser,remote,initialViewport):await openGamePage(browser,{port,viewport:initialViewport});
-  page.on('console',message=>{if(message.type()==='error')console.error('browser:',message.text().slice(0,500));});
+  page.on('console',message=>{if(message.type()==='error'){console.error('browser:',message.text().slice(0,500));if(/THREE.WebGLProgram|VALIDATE_STATUS|Shader Error/.test(message.text()))errors.push(message.text());}});
   await page.click('.cot-battle-mode');
   for(const mode of ['juggernaut','infected','realistic','gun_game','drone','ac130']){
    const choice=await page.waitForSelector(`.cot-battle-menu [data-game-mode="${mode}"]`,{visible:true});
@@ -114,6 +114,11 @@ try{
     assert.equal(await page.$eval('.cot-scope-vision',e=>{const a=e.getBoundingClientRect();return ['.cot-mode-status','.cot-touch .fire:not(.alt)','.cot-touch .scope','.cot-touch .autoaim'].every(selector=>{const other=document.querySelector(selector);if(!other||getComputedStyle(other).display==='none')return true;const b=other.getBoundingClientRect();return !b.width||a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom;});}),true,'scope sensor clears objective and touch controls');
     for(const [view,code] of [['daylight',0],['infrared',1],['thermal',2],['night',3]]){
      await page.waitForFunction(code=>window.__DEBUG.post.composer.passes.find(p=>p.isOutputGradePass).uniforms.uThermal.value===code,{},code);
+     assert.deepEqual(await page.$eval('.cot-scope-vision',el=>{
+      const r=el.getBoundingClientRect();return{view:el.dataset.view,active:el.querySelectorAll('.scope-vision-step.active').length,
+       inside:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,touch:r.width>=44&&r.height>=44,
+       shaped:getComputedStyle(el,'::before').clipPath.startsWith('polygon('),accessible:!!el.getAttribute('aria-label')};
+     }),{view,active:1,inside:true,touch:true,shaped:true,accessible:true},'hexagonal scope control identifies the active view and stays usable');
      await page.screenshot({path:resolve(out,`tank-scope-${view}-${suffix}.png`)});
      if(mobile)await page.tap('.cot-scope-vision');else await page.keyboard.press('KeyI');
     }
@@ -124,6 +129,32 @@ try{
     root.traverse(o=>{if(o.isMesh&&(Array.isArray(o.material)?o.material:[o.material]).some(m=>m.name==='Juggernaut surface highlight'))surfaces++;});
     return surfaces>0&&!root.getObjectByName('Juggernaut energy shield');
    }),'boss highlight follows real vehicle surfaces without a bubble');
+   if(mode==='juggernaut'&&!remote){
+    await page.screenshot({path:resolve(out,`juggernaut-waves-a-${suffix}.png`)});
+    await new Promise(r=>setTimeout(r,450));
+    await page.screenshot({path:resolve(out,`juggernaut-waves-b-${suffix}.png`)});
+    for(const side of [-1,1]){
+     const contact=await page.evaluate(async side=>{
+      const T=await import('/node_modules/three/build/three.module.js');const {player}=window.__DEBUG.game,root=player.visual.root;
+      root.updateWorldMatrix(true,true);
+      const start=root.localToWorld(new T.Vector3(side*.95,7,-1.8));
+      const ray=new T.Raycaster(start,new T.Vector3(0,-1,0));
+      const hit=ray.intersectObject(root,true).find(h=>{
+       const m=h.object.material;if(!m||Array.isArray(m)||!m.colorWrite||m.transparent)return false;
+       for(let p=h.object;p;p=p.parent)if(!p.visible)return false;
+       return true;
+      });
+      if(!hit)return null;
+      let frame='hull';for(let p=hit.object;p&&p!==root;p=p.parent){if(p.name==='rig_gun'){frame='gun';break;}if(p.name==='rig_turret')frame='turret';}
+      window.__DEBUG.bus.emit('shell:hit',{targetId:player.id,kind:'ricochet',damage:0,caliberMm:120,pos:hit.point.toArray(),normal:[0,1,0],impactFrame:frame});
+      return hit.point.toArray();
+     },side);
+     assert.ok(contact,'probe hits actual visible tank skin');
+     await new Promise(r=>setTimeout(r,120));
+     await page.screenshot({path:resolve(out,`juggernaut-hit-${side}-${suffix}.png`)});
+     await new Promise(r=>setTimeout(r,1400));
+    }
+   }
    if(mode==='juggernaut')assert.match(await page.$eval('.cot-mode-status',el=>el.textContent),/SURVIVE/,'the boss receives its own survival objective');
    await page.screenshot({path:resolve(out,`${mode}-${suffix}.png`)});
    await page.evaluate(()=>document.exitPointerLock());
@@ -132,8 +163,16 @@ try{
    await page.screenshot({path:resolve(out,`${mode}-landscape-${suffix}.png`)});
    const objective=await page.$eval('.cot-mode-status',el=>{const r=el.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom};}).catch(()=>null);
    if(objective)assert.ok(objective.left>=-1&&objective.right<=569&&objective.bottom<=320,`${mode} objective fits landscape`);
+   if(mode==='juggernaut')await page.evaluate(()=>{window.__juggernautReturnRoot=window.__DEBUG.game.player.visual.root;});
    await page.evaluate(()=>window.__DEBUG.leaveBattleToGarage());
    await page.waitForFunction(()=>window.__DEBUG.game.phase==='garage',{timeout:180000});
+   if(mode==='juggernaut'){
+    assert.equal(await page.evaluate(()=>{
+     let leaked=false;window.__juggernautReturnRoot.traverse(o=>{if(o.isMesh&&(Array.isArray(o.material)?o.material:[o.material]).some(m=>m.name==='Juggernaut surface highlight'))leaked=true;});
+     return leaked;
+    }),false,'retained battle visual has no shield after Garage return');
+    await page.screenshot({path:resolve(out,`juggernaut-garage-clean-${suffix}.png`)});
+   }
    await page.setViewport(initialViewport);
   }
   assert.deepEqual(errors,[],'no page errors');

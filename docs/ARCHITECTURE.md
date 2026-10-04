@@ -1363,13 +1363,14 @@ space, level, pitch jitter, caps); `environmentScenes.ts` +
 `ambienceDirector.ts` (per-map beds, layers, positioned spot sounds, gun
 tails, reverb; the garage is an indoor scene whose room tone and workshop
 sounds come from a few metres away); `voiceLines.ts` + `crewRadio.ts` (crew
-radio); `procedural.ts` (synthesized fallbacks and alarms); `mixPolicy.ts`
-(every level, snapshot, HDR, budget and LOD constant).
+radio); `mixPolicy.ts` (every level, snapshot, HDR, budget and LOD
+constant). Nothing is synthesized: every sound is a recorded asset, and one
+still decoding is silent (no fallback).
 
-**Assets.** 386 sound assets (627 variant files, 18 MB WebM/Opus) under
+**Assets.** 398 sound assets (649 variant files, 18.6 MB WebM/Opus) under
 `public/audio/sfx/<group>/`, described by `sfxManifest.generated.ts`
 (duration, channels, rate, loop points, size). Crew radio: 13 language packs
-× 97 lines (one to four takes each, mostly two; ~1.5 MB per pack) under
+× 98 lines (one to four takes each, mostly two; ~1.5 MB per pack) under
 `public/audio/voice/<lang>/`, described by `voiceManifest.generated.ts`. Both
 are generated offline with ElevenLabs (sound generation `eleven_text_to_sound_v2`;
 speech `eleven_v4` with Voice Library voices), verified (speech-to-text

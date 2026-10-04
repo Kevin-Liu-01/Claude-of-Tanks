@@ -158,6 +158,7 @@ interface GarageOptions {
   readonly specs: GarageTankSpec[];
   readonly bus?: { emit(event: string, payload: RuntimeValue): void };
   readonly onSelect?: (specId: string) => void;
+  readonly onGameModeSelect?: (mode: GameModeId) => void;
   readonly onBattle?: (
     specId: string,
     mapId: string,
@@ -628,30 +629,30 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<span class="choice-description">${t('garage.battle.regularDescription')}</span></span></button>` +
     `<div class="cot-battle-menu-label" id="cot-special-modes">${t('garage.battle.soloRules')}</div>` +
     `<div class="cot-battle-choice-grid" role="group" aria-labelledby="cot-special-modes">` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="capture_the_flag" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeFlag', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeFlag')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="zone_control" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeZones', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeZones')}</span></button>` +
     `<button class="cot-battle-choice" type="button" data-game-mode="turbo_ball" aria-pressed="false">` +
     `<span class="choice-icon">${uiIconSVG('modeTurbo', 17)}</span>` +
     `<span class="choice-name">${t('garage.battle.modeTurbo')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="mars" aria-pressed="false">` +
+    `<span class="choice-icon">${uiIconSVG('modeMars', 17)}</span>` +
+    `<span class="choice-name">${t('garage.battle.modeMars')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="drone" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeDrone', 17)}</span><span class="choice-name">${t('playMenu.matchMode.drone.label')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="ac130" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeAc130', 17)}</span><span class="choice-name">${t('playMenu.matchMode.ac130.label')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="realistic" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeRealistic', 17)}</span><span class="choice-name">${t('playMenu.matchMode.realistic.label')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="zone_control" aria-pressed="false">` +
+    `<span class="choice-icon">${uiIconSVG('modeZones', 17)}</span>` +
+    `<span class="choice-name">${t('garage.battle.modeZones')}</span></button>` +
+    `<button class="cot-battle-choice" type="button" data-game-mode="capture_the_flag" aria-pressed="false">` +
+    `<span class="choice-icon">${uiIconSVG('modeFlag', 17)}</span>` +
+    `<span class="choice-name">${t('garage.battle.modeFlag')}</span></button>` +
     `<button class="cot-battle-choice" type="button" data-game-mode="endless_horde" aria-pressed="false">` +
     `<span class="choice-icon">${uiIconSVG('modeHorde', 17)}</span>` +
     `<span class="choice-name">${t('garage.battle.modeHorde')}</span></button>` +
     `<button class="cot-battle-choice" type="button" data-game-mode="frontline_assault" aria-pressed="false">` +
     `<span class="choice-icon">${uiIconSVG('modeZones', 17)}</span>` +
     `<span class="choice-name">${t('garage.battle.modeFront')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="mars" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeMars', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeMars')}</span></button>` +
     `<button class="cot-battle-choice" type="button" data-game-mode="juggernaut" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeJuggernaut', 17)}</span><span class="choice-name">${t('playMenu.matchMode.juggernaut.label')}</span></button>` +
     `<button class="cot-battle-choice" type="button" data-game-mode="infected" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeInfected', 17)}</span><span class="choice-name">${t('playMenu.matchMode.infected.label')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="realistic" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeRealistic', 17)}</span><span class="choice-name">${t('playMenu.matchMode.realistic.label')}</span></button>` +
     `<button class="cot-battle-choice" type="button" data-game-mode="gun_game" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeGunGame', 17)}</span><span class="choice-name">${t('playMenu.matchMode.gun_game.label')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="drone" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeDrone', 17)}</span><span class="choice-name">${t('playMenu.matchMode.drone.label')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="ac130" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeAc130', 17)}</span><span class="choice-name">${t('playMenu.matchMode.ac130.label')}</span></button>` +
     `</div><div class="cot-battle-menu-label" id="cot-multiplayer-modes">${t('garage.battle.multiplayer')}</div>` +
     `<div class="cot-battle-choice-grid" role="group" aria-labelledby="cot-multiplayer-modes">` +
     `<button class="cot-battle-choice" type="button" data-mode="private" aria-pressed="false">` +
@@ -2930,6 +2931,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     for (const choice of battleRuleChoices) choice.setAttribute('aria-pressed', 'false');
     renderBattleOptions();
+    opts.onGameModeSelect?.(battleGameMode);
   }
   let renderBattleOptions: () => void = () => {};
   function setBattleGameMode(nextMode: RuntimeValue): void {
@@ -2938,6 +2940,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!meta) return;
     battleMode = 'solo';
     battleGameMode = id;
+    opts.onGameModeSelect?.(id);
     try { localStorage.setItem('cot.game.mode.v1', id); } catch (_) { /* session-only */ }
     requiredElement<HTMLElement>(battleModeBtn, 'span').textContent = meta.short;
     requiredElement<HTMLElement>(battleBtn, '.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
@@ -3319,6 +3322,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
      * @param {string} [selectedId] - initially highlighted tank id.
      */
     show(selected = selectedId) {
+      // The full play menu also owns mode selection; reconcile it on return.
+      try {
+        const remembered = localStorage.getItem('cot.game.mode.v1');
+        if (remembered && normalizeGameMode(remembered) !== battleGameMode) setBattleGameMode(remembered);
+      } catch (_) { /* session-only mode choice */ }
       refreshServiceRecord();
       closeGarageVariantMenu();
       setGaragePanel('');

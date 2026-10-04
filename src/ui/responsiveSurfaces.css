@@ -197,6 +197,11 @@ body[data-cot-width='phone'] .cot-set-tab{
   flex:1 1 0;min-width:0;padding-inline:2px;font-size:8px;letter-spacing:.07em;
 }
 body[data-cot-width='phone'] .cot-set-tab .ct{margin-left:3px;font-size:8px}
+/* The crew-voice picker stacks under its label once the panel is full-screen. */
+body[data-cot-width='compact'] .cot-set-crew-row,
+body[data-cot-width='phone'] .cot-set-crew-row{flex-direction:column;align-items:stretch;gap:10px}
+body[data-cot-width='compact'] .cot-set-crew-field,
+body[data-cot-width='phone'] .cot-set-crew-field{width:100%}
 body[data-cot-width='compact'] .cot-set-body,
 body[data-cot-width='phone'] .cot-set-body{min-height:0;flex:1 1 auto;padding:0 var(--cot-edge) 14px}
 body[data-cot-width='compact'] .cot-set-ftr,

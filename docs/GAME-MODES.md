@@ -94,7 +94,7 @@ Four allied ground vehicles accompany the gunship by default. They have 90% of t
 **Juggernaut** offers a role setting. As boss, you face the hunting team; as a
 hunter, you join allies against one bot boss. In hosted rooms the boss role belongs
 to the first participating human when that role is selected; other humans hunt it.
-The boss is 12% larger, including its armor and module hit geometry, and carries a subtle blue surface highlight that follows the hull, turret, barrel, and running gear and briefly brightens on damage. There is no enclosing bubble, and the glow does not reveal the tank through cover. It never respawns. Its survival clock and health are shown in the objective.
+The boss is 12% larger, including its armor and module hit geometry, and carries a subtle blue surface highlight that follows the hull, turret, barrel, and running gear with traveling energy bands. Shell contacts, including ricochets, create short, undulating blue-white ripples at the actual impact location; turret and gun contacts follow those moving parts. There is no enclosing bubble, and the glow does not reveal the tank through cover. Battle impact ripples and enlargement are cleared on Garage return. If Juggernaut remains selected, the Garage applies a fresh animated energy preview to the selected tank; switching modes removes it. It never respawns. Its survival clock and health are shown in the objective.
 
 **Infected** begins with four infected opponents (at least three in a custom setup). Survivors have 30% of their normal HP; infected have 125%, 40% more speed and 30% faster reloads. A survivor's destruction changes
 that player's team before their next spawn, including their allied/enemy roster
@@ -122,6 +122,18 @@ progression, respawn timers and drone/orbit state across a host change.
 `src/sim/sixModes.selftest.mjs` and `sixModesAuthority.selftest.mjs` cover rules,
 rosters, progression, shared flight and authority. `tools/six-modes.browser.mjs`
 exercises garage entry, real flight input, the orbit and narrow-screen HUDs.
+`tools/drone-hud.browser.mjs` drives the actual compact flight HUD and touch
+controls with deterministic drone telemetry (no WebGL): every sensor view, the
+infrared and thermal switches and a single return. Four native regressions run
+under the shared GPU queue beside it:
+`tools/aerial-tracers.browser.mjs` fires the AC-130's real weapons, holds a
+mid-flight frame of each tracer (one head, a bounded ribbon) and checks the
+cleanup when live flight resumes; `tools/drone-details.browser.mjs` renders the
+drone's dock and flight airframe kit (merged materials, full detail);
+`tools/garage-mode-preview.browser.mjs` selects modes in the Garage, swaps
+tanks, runs the idle animation and returns cleanly from battle; and
+`tools/vehicle-special-action.browser.mjs` checks that the HUD's special
+controls follow a mode loadout change on the same vehicle.
 
 Horde (owner 2026-09-15: "the horde is not endless, there's only 3 tanks every time and
 they're the same tanks each round") fields `waveSize + (wave − 1) × waveStep +
@@ -452,3 +464,7 @@ Aim near the convoy and press **J** for ammunition or **K** for medical supplies
 Drones have fictional national service variants with different frames and colors: exposed X/H arms, folding-arm hardware or protective rotor ducts. Their camera gimbal, motor bells, landing feet, wiring, battery straps and payload are modeled on both the launch rail and in flight. Large turrets carry the rail; compact turret footprints and turretless vehicles use supported hull positions. The launch origin follows the chosen parent, including turret rotation and hull attitude.
 
 The drone minimap shows its actual flight position, view wedge, carrier and link tether. The gunship uses an aircraft marker, orbit path and ground aiming marker. Extraction and supply markers remain visible.
+
+### Garage mode previews
+
+The Garage previews the selected battle mode on the currently selected vehicle. Juggernaut adds its animated energy skin; Drone displays the national drone on the same turret or hull mount used in battle; Capture the Flag displays a waving team banner on that supported payload rail, with marching chevron energy on the armor. The carrier aura follows the carried flag’s ally/enemy color and disappears as soon as the flag is dropped or captured. Infected tanks have green, uneven vein pulses; survivors do not. The Infected Garage preview demonstrates that green effect. Changing tanks transfers the preview to the new vehicle. Changing modes removes the previous preview immediately. Returning from battle clears transient damage and impact ripples, then recreates the clean preview if its mode is still selected. The ordinary Garage remains still; only the energy and cloth previews request continuous animation.

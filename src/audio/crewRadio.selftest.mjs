@@ -1,26 +1,31 @@
 import assert from 'node:assert/strict';
 import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.mjs';
 import { createMixer } from './mixer.ts';
-import { createNoiseBank } from './procedural.ts';
 import { createCrewRadio } from './crewRadio.ts';
 import { mulberry32 } from './audioMath.ts';
 
-function harness({ languages = ['en-US', 'de'], missing = [], loading = [] } = {}) {
+function harness({ languages = ['en-US', 'de'], missing = [], loading = [], radioAssets = true } = {}) {
   const ctx = createFakeContext();
   const mixer = createMixer({ context: ctx, reverb: false, channelVolumes: { engine: 1, combat: 1, ambience: 1, ui: 1, voice: 1 }, masterVolume: 0.8, muted: false });
   const loaded = [];
+  // The net's recorded elements, tagged so a test can tell them from speech.
+  const tagged = (tag, duration) => Object.assign(fakeBuffer(duration, 24000), { tag });
+  const net = { radio_key_in: tagged('radio_key_in', 0.12), radio_key_out: tagged('radio_key_out', 0.55), radio_static_loop: tagged('radio_static_loop', 4.2) };
   const library = {
     voice(lang, line) {
       if (!languages.includes(lang) || missing.includes(`${lang}/${line}`)) return null;
       return fakeBuffer(1.0, 24000);
     },
     has: () => false,
-    pick: () => null,
+    pick: (id) => (radioAssets ? net[id] ?? null : null),
+    variant: (id) => (radioAssets ? net[id] ?? null : null),
+    record: (id) => (id === 'radio_static_loop' ? { g: 'radio', n: 1, d: [4.2], c: 1, r: 24000, l: [0.085, 4.085], kb: 25 } : undefined),
+    load: () => Promise.resolve(),
     loadVoice(lang) { loaded.push(lang); return Promise.resolve(); },
     voiceReady(lang) { return !loading.includes(lang); },
   };
   const random = mulberry32(7);
-  const radio = createCrewRadio({ mixer, library, noise: createNoiseBank(ctx, random), random });
+  const radio = createCrewRadio({ mixer, library, random });
   return { ctx, mixer, radio, loaded };
 }
 
@@ -34,6 +39,34 @@ function harness({ languages = ['en-US', 'de'], missing = [], loading = [] } = {
   radio.update();
   assert.equal(radio.say('enemy_spotted'), false, 'per-line cooldown');
   assert.equal(radio.log.length, 1);
+}
+
+// Every transmission is keyed with the recorded elements over the recorded net static (2026-10-03): the
+// synthesized squelch, whose falling release tone read as a little boing after every line, is gone.
+{
+  const { ctx, radio } = harness();
+  radio.say('enemy_spotted');
+  const started = ctx.started.map((node) => node.buffer?.tag).filter(Boolean);
+  assert.ok(started.includes('radio_key_in') && started.includes('radio_key_out'), `keyed in and out (${started})`);
+  assert.ok(started.includes('radio_static_loop'), 'over the net static');
+  assert.equal(ctx.nodes.filter((node) => node.kind === 'oscillator').length, 0, 'no synthesized tone');
+  const keyIn = ctx.started.find((node) => node.buffer?.tag === 'radio_key_in');
+  const keyOut = ctx.started.find((node) => node.buffer?.tag === 'radio_key_out');
+  const speech = ctx.started.find((node) => node.buffer && !node.buffer.tag);
+  assert.ok(speech.started.at > keyIn.started.at && keyOut.started.at > speech.started.at + 0.9, 'key-up, speech, release');
+  const bed = ctx.started.find((node) => node.buffer?.tag === 'radio_static_loop');
+  assert.ok(bed.loop && bed.loopStart === 0.085, 'the static loops between its manifest loop points');
+  radio.silence();
+  ctx.advance(8);
+  radio.say('reloading');
+  assert.equal(ctx.started.filter((node) => node.buffer?.tag === 'radio_static_loop').length, 1, 'one static bed for the net');
+}
+// A net whose recordings are still decoding still speaks: silently keyed, never with a stand-in tone.
+{
+  const { ctx, radio } = harness({ radioAssets: false });
+  assert.equal(radio.say('enemy_spotted'), true);
+  assert.equal(ctx.nodes.filter((node) => node.kind === 'oscillator').length, 0);
+  assert.equal(ctx.started.filter((node) => node.buffer).length, 1, 'only the speech starts');
 }
 
 // Survival calls cut chatter; stale queued calls are dropped, not played late.

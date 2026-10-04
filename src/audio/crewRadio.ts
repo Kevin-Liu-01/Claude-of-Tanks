@@ -6,9 +6,11 @@
  * a short queue whose stale calls are dropped rather than played late, and
  * no immediate repeat of a take.
  *
- * Every transmission is keyed: squelch chirp in, the take through a
- * band-limited (24 dB/oct, 320 Hz–3.4 kHz), compressed and driven intercom
- * chain into a headset speaker roll-off, over a static bed, squelch tail out.
+ * Every transmission is keyed: the recorded key-up click in, the take
+ * through a band-limited (24 dB/oct, 320 Hz–3.4 kHz), compressed and driven
+ * intercom chain into a headset speaker roll-off, over the recorded net
+ * static, the recorded release out. Nothing here is synthesized: a keyed
+ * element still decoding is silent rather than replaced by a tone.
  * A damaged radio narrows the band, adds drive, drops syllables and crackles.
  * The beds duck under speech.
  */
@@ -16,7 +18,6 @@
 import { clamp } from './audioMath.ts';
 import type { AssetLibrary } from './assetLibrary.ts';
 import type { Mixer } from './mixer.ts';
-import { radioSquelch, type NoiseBank } from './procedural.ts';
 import { RADIO_DISCIPLINE, VOICE_LINES, type VoiceLineMeta } from './voiceLines.ts';
 
 interface SayOptions {
@@ -62,7 +63,6 @@ export interface CrewRadio {
 interface CrewRadioOptions {
   mixer: Mixer;
   library: AssetLibrary;
-  noise: NoiseBank;
   random: () => number;
   fallbackLanguage?: string;
 }
@@ -78,7 +78,7 @@ function driveCurve(amount: number): Float32Array<ArrayBuffer> {
   return curve;
 }
 
-export function createCrewRadio({ mixer, library, noise, random, fallbackLanguage = 'en-US' }: CrewRadioOptions): CrewRadio {
+export function createCrewRadio({ mixer, library, random, fallbackLanguage = 'en-US' }: CrewRadioOptions): CrewRadio {
   const ctx = mixer.ctx;
   const voiceBus = mixer.input('voice');
   let language = fallbackLanguage;
@@ -122,20 +122,48 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
   speaker.connect(level);
   level.connect(voiceBus);
 
-  // Static bed under an open channel (gated with the transmission).
-  const bed = ctx.createBufferSource();
-  bed.buffer = noise.white;
-  bed.loop = true;
-  const bedFilter = ctx.createBiquadFilter();
-  bedFilter.type = 'bandpass';
-  bedFilter.frequency.value = 1900;
-  bedFilter.Q.value = 0.6;
+  // Static bed under an open channel (gated with the transmission): the recorded net static, looping from the
+  // first transmission after it has decoded.
+  const bedFilter = filter('bandpass', 1900, 0.6);
   const bedGain = ctx.createGain();
   bedGain.gain.value = 0;
-  bed.connect(bedFilter);
   bedFilter.connect(bedGain);
   bedGain.connect(speaker);
-  bed.start(ctx.currentTime, random() * 1.5);
+  let bed: AudioBufferSourceNode | null = null;
+
+  function ensureBed(): void {
+    if (bed) return;
+    const buffer = library.variant('radio_static_loop', 0);
+    if (!buffer) { void library.load(['radio_static_loop']); return; }
+    const loop = library.record('radio_static_loop')?.l;
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    if (loop) {
+      source.loopStart = loop[0];
+      source.loopEnd = Math.min(loop[1], buffer.duration);
+    }
+    source.connect(bedFilter);
+    const from = loop ? loop[0] : 0;
+    const span = (loop ? Math.min(loop[1], buffer.duration) : buffer.duration) - from;
+    source.start(ctx.currentTime, from + random() * Math.max(0.01, span));
+    bed = source;
+  }
+
+  /** A keyed element of the net (key-up, release) into the headset speaker; its length, or 0 while it decodes. */
+  function key(id: 'radio_key_in' | 'radio_key_out', when: number, gain: number): number {
+    const buffer = library.pick(id, random);
+    if (!buffer) return 0;
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const g = ctx.createGain();
+    g.gain.value = gain;
+    src.connect(g);
+    g.connect(speaker);
+    src.start(when);
+    src.onended = () => { try { g.disconnect(); } catch { /* detached */ } };
+    return buffer.duration;
+  }
 
   const lastPlay = new Map<string, number>();
   const lastGroupPlay = new Map<string, { t: number; pri: number }>();
@@ -190,8 +218,10 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
     const chosen = line ? bufferFor(id, take) : null;
     if (!line || !chosen) return false;
     const now = ctx.currentTime;
-    const keyS = radioSquelch(ctx, speaker, noise, now + 0.005, false, damage === 2 ? 0.55 : 0.4, random);
-    const startAt = now + 0.005 + keyS * 0.7;
+    ensureBed();
+    // Levels re the synthesized squelch they replaced (2026-10-03), matched on RMS.
+    const keyS = key('radio_key_in', now + 0.005, damage === 2 ? 0.14 : 0.1);
+    const startAt = now + 0.005 + Math.max(0.04, keyS * 0.7);
     const src = ctx.createBufferSource();
     src.buffer = chosen.buffer;
     src.playbackRate.value = 0.99 + random() * 0.02;
@@ -213,10 +243,10 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
         gate.gain.linearRampToValueAtTime(1, at + len + 0.01);
       }
     }
-    const bedLevel = damage === 2 ? 0.07 : damage === 1 ? 0.045 : 0.028;
+    const bedLevel = damage === 2 ? 0.175 : damage === 1 ? 0.112 : 0.07;
     bedGain.gain.setTargetAtTime(bedLevel, startAt - 0.02, 0.02);
     bedGain.gain.setTargetAtTime(0, startAt + dur + 0.05, 0.04);
-    radioSquelch(ctx, speaker, noise, startAt + dur + 0.02, true, damage === 2 ? 0.6 : 0.45, random);
+    const outS = key('radio_key_out', startAt + dur + 0.02, damage === 2 ? 0.2 : 0.15);
     if (damage >= 1 && library.has('radio_interference') && random() < 0.6) {
       const crackle = library.pick('radio_interference', random);
       if (crackle) {
@@ -242,7 +272,7 @@ export function createCrewRadio({ mixer, library, noise, random, fallbackLanguag
     };
     currentSrc = src;
     currentGate = gate;
-    currentEnd = startAt + dur + 0.14;
+    currentEnd = startAt + dur + 0.02 + Math.max(0.12, Math.min(0.35, outS));
     currentPri = line.pri;
     currentGroup = line.group || id;
     lastPlay.set(id, now);
