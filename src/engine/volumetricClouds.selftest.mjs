@@ -512,3 +512,35 @@ console.log('volumetricClouds.selftest: deterministic noise (six bakes), tiling,
 
 // The shade map keeps the gobos' soft edge band (a continuous opacity over the cut, never a binary stamp).
 assert.match(layerSource,/smoothstep\( uThreshold - 0\.08, uThreshold \+ 0\.08, cloudField/,'cloud edges have a continuous opacity band');
+
+// 2026-10-04 (the gauntlet's wave 62 on Titan Gorge: the sun "a flat, hard-edged white disc pasted on a featureless
+// grey-white sky"): a ray the march ends under the 0.03 cut is opaque, its in-scatter renormalised for the remainder —
+// the 3 % the cut left let the sun's disc (tens of thousands of times the sky) burn through a closed deck or a core.
+assert.match(layerSource, /if \( t > t1 \|\| T < 0\.03 \) break;[\s\S]*?if \( T < 0\.03 && uOpaqueCut > 0\.0 \) \{ L \/= max\( 1\.0 - T, 0\.5 \); T = 0\.0; \}\s*if \( wAcc > 1e-4 \) \{/,
+  'the cut ray opaque, before the haze reads its cover');
+assert.match(layerSource, /uOpaqueCut: \{ value: 1 \},/);
+assert.match(layerSource, /t\.uOpaqueCut\.value = lightTune\('CLOUD_OPAQUE_CUT', 1\);/, 'on by default (QA knob)');
+{
+  // the renormalisation keeps a uniform mass's radiance: a ray cut at T over a mass of radiance S carries S (1 − T);
+  // over (1 − T) it is S again, and nothing of the background (the disc) comes through
+  for (const T of [0.001, 0.01, 0.0299]) {
+    const S = 0.8, L = S * (1 - T);
+    assert.ok(Math.abs(L / Math.max(1 - T, 0.5) - S) < 1e-12, `cut at T ${T}: the mass's radiance whole`);
+  }
+}
+// and the sun's light diffused through a deck keeps a broad forward lobe (its mean over the sky unchanged): a readable
+// sun direction under a closed deck without a disc
+assert.match(layerSource, /float deckLobe = 1\.0 \+ uDeckLobe \* \( phaseDual\( cosT, 0\.6 \) \* 4\.0 \* CL_PI - 1\.0 \);\s*vec3 Etop = sunTop \* \$\{f\(CLOUD_DECK_SUN_SHARE\)\} \/ CL_PI \* deckLobe \+ uSkyIrradiance;/,
+  'the lobe on the sun\'s diffused share only, the sky\'s untouched');
+assert.match(layerSource, /export const CLOUD_DECK_SUN_LOBE = 0\.2;/);
+assert.match(layerSource, /t\.uDeckLobe\.value = lightTune\('CLOUD_DECK_SUN_LOBE', CLOUD_DECK_SUN_LOBE\);/);
+{
+  // the lobe's mean over the sphere is 1 (phaseDual integrates to one): the deck's mean light is unchanged
+  const hg = (c, g) => (1 - g * g) / (4 * Math.PI * Math.pow(1 + g * g - 2 * g * c, 1.5));
+  const dual = (c, g) => hg(c, g) * 0.7 + hg(c, -0.375 * g) * 0.3;
+  let mean = 0; const n = 20000;
+  for (let i = 0; i < n; i++) { const c = -1 + 2 * (i + 0.5) / n; mean += (1 + 0.2 * (dual(c, 0.6) * 4 * Math.PI - 1)) / n; }
+  assert.ok(Math.abs(mean - 1) < 1e-3, `the lobe's mean over the sky ${mean.toFixed(4)}`);
+  assert.ok(1 + 0.2 * (dual(1, 0.6) * 4 * Math.PI - 1) > 2, 'toward the sun the diffused sun more than doubles');
+}
+console.log('volumetricClouds.selftest: the cut ray opaque (no disc through a closed deck), the forward lobe of a deck PASS');

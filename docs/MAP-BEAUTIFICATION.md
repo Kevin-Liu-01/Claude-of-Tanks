@@ -7122,6 +7122,29 @@ clouds. Contrast alone does not read as volume: the gap is the density field's s
 level with cauliflower towers above it — not its light. If the clouds come back: the shape first, measured against
 photographs; the light knobs are on the branch.
 
+### 2026-10-04 — no hard sun disc through a closed deck; the deck brightens toward the sun (the skies lane)
+
+**The gauntlet's wave 62 on Titan Gorge (dense overcast, a closed deck):** "the sun is a flat, hard-edged white disc
+pasted on a featureless grey-white sky with no bloom, corona, or gradient" (Sonnet); "no readable sun direction" (Opus).
+
+**Cause.** The cloud march ends a ray once its transmittance falls under 0.03, and the composite let that 3 % of the dome
+through. The dome's sun disc is tens of thousands of times the sky's radiance, so it burned through the deck as a white
+disc: 264 near-white pixels facing Titan's sun, 216 on Whiteout's, where a closed overcast leaves no direct sun.
+
+**The fix** (`volumetricClouds.ts`, `sky.ts`):
+- a ray the march ends under the cut is opaque — its in-scatter renormalised for the remainder, nothing behind it showing
+  through (`CLOUD_OPAQUE_CUT`); a clear sky does not move (Saltwind facing the sun: ±1 level, run-to-run);
+- under a closed deck (`uDeckClosed`, the overcast's last tenth) the dome draws no disc and no clear-air glow
+  (`SKY_DISC_DECK_FADE`); either alone removed the disc;
+- the sun's share of the light a deck transmits keeps a broad forward lobe — a dual Henyey–Greenstein of g 0.6 over its
+  isotropic share, the mean over the sky unchanged (`CLOUD_DECK_SUN_LOBE` 0.2): facing Titan's sun the deck brightens
+  200 → 219 display levels near the sun and 190 → 201 300–600 px out, a readable sun direction without a disc. The
+  deck path only: Whiteout's low stratus (lit as a sheet) and every cumulus are unchanged.
+
+**Measured** (desktop high, in-page toggles on one build; `$SP/p2/decksun`): the disc gone on Titan Gorge and Whiteout
+(near-white pixels 264 → 0 and 216 → 0), Redrock and Saltwind's clear-sky suns as they were; GPU on / off / off / on
+twice: +0.73 / +0.06 ms (p25 / p50) for the cut and the fade, +0.12 / +0.01 ms for the lobe — nil.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

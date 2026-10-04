@@ -105,6 +105,13 @@ export const CLOUD_CELLS_PER_TILE = 4;
  * cores in the mid-tones under the clear sky's level, the thin borders and the lit walls white.
  */
 export const CLOUD_DECK_SUN_SHARE = 0.35;
+/**
+ * 2026-10-04 (the gauntlet's wave 62 on Titan Gorge: "no readable sun direction" under its closed deck): the broad forward
+ * lobe the sun's light keeps diffused through a deck (a dual Henyey–Greenstein of g 0.6 over the isotropic share, its
+ * mean over the sky unchanged): Titan's deck facing the sun brightens 200 → 219 display levels near the sun and 190 → 201
+ * 300–600 px out, a readable gradient without a disc; a cumulus sky does not take it (the deck path only).
+ */
+export const CLOUD_DECK_SUN_LOBE = 0.2;
 /** 2026-10-01: a lightning stroke's peak glow on the cloud around it (the composite's units, after the night dimming). */
 const CLOUD_FLASH_STRENGTH = 0.9;
 /** 2026-10-01: the cirrus streak frame's warp (m): the jet's eddies bend the streaks over tens of kilometres. */
@@ -418,6 +425,10 @@ uniform float uFarThin;
 // 2026-10-03: the cumulus knobs (CLOUD_BASE_SHARP, CLOUD_BASE_DARK, CLOUD_FAR_FLAT; 0 = off)
 uniform float uBaseSharp;
 uniform float uBaseDark;
+// 2026-10-04 (the deck's sun): 1 = a ray the march ends as nearly opaque is opaque (QA: CLOUD_OPAQUE_CUT; 0 = the old 3 %)
+uniform float uOpaqueCut;
+// 2026-10-04 (the deck's sun): the broad forward lobe of the sun's light diffused through a deck (QA: CLOUD_DECK_SUN_LOBE)
+uniform float uDeckLobe;
 uniform float uFarFlat;
 // 2026-10-03: the crisp cumulus outline and the billowed tops (CLOUD_EDGE_CRISP, CLOUD_TOP_BILLOW; 0 = off)
 uniform float uEdgeCrisp;
@@ -1173,7 +1184,11 @@ void main() {
 						// ground with the horizon band near white, and a physically lit base — a third to a half of a lit
 						// top — landed in the tonemap's clipped shoulder as the same white sheet; the sky's share whole)
 						vec3 sunTop = mix( uSunRadiance, vec3( luma( uSunRadiance ) ), 0.5 ) * max( uSunDir.y, 0.03 ) * uSunGain;
-						vec3 Etop = sunTop * ${f(CLOUD_DECK_SUN_SHARE)} / CL_PI + uSkyIrradiance;
+						// 2026-10-04 (the gauntlet's wave 62 on Titan Gorge: "no readable sun direction"): the sun's light diffused
+						// through a deck keeps a broad forward lobe — the underside brightens toward the sun, most where the deck
+						// thins, and dims a little away from it; its mean over the sky is unchanged (CLOUD_DECK_SUN_LOBE)
+						float deckLobe = 1.0 + uDeckLobe * ( phaseDual( cosT, 0.6 ) * 4.0 * CL_PI - 1.0 );
+						vec3 Etop = sunTop * ${f(CLOUD_DECK_SUN_SHARE)} / CL_PI * deckLobe + uSkyIrradiance;
 						vec3 Lbase = Etop * Tdiff;
 						// the directional term keeps the light march's depth (a lump's flank lit from the side), extended
 						// to the plane-parallel slant depth only where the near taps are already inside cloud (a sheet's
@@ -1208,6 +1223,11 @@ void main() {
 					t += ds * ( uDebug == 8.0 ? 1.0 : 1.5 );
 				}
 			}
+			// 2026-10-04 (the gauntlet's wave 62 on Titan Gorge: the sun "a flat, hard-edged white disc" through a closed deck):
+			// a ray the march ends as nearly opaque (under the 0.03 cut) is opaque — its in-scatter stands for the whole mass
+			// (the remainder at its mean) and nothing behind shows through. The 3 % the cut left let the sun's disc, tens of
+			// thousands of times the sky's radiance, burn through a deck or a cumulus core as a white disc.
+			if ( T < 0.03 && uOpaqueCut > 0.0 ) { L /= max( 1.0 - T, 0.5 ); T = 0.0; }
 			if ( wAcc > 1e-4 ) {
 				float dist = tAcc / wAcc;
 				float hAtt = exp( -max( dir.y * dist - ${f(CLOUD_AERIAL.heightRef)}, 0.0 ) / ${f(CLOUD_AERIAL.heightScale)} );
@@ -1598,6 +1618,7 @@ export class VolumetricCloudLayer {
         uStepScale: { value: 1 }, uDebug: { value: 0 },
         uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 }, uBaseFlat: { value: 0 }, uDeckDetail: { value: 0 }, uFarThin: { value: 0 },
         uBaseSharp: { value: 0 }, uBaseDark: { value: 0 }, uFarFlat: { value: 0 }, uEdgeCrisp: { value: 0 }, uTopBillow: { value: 0 },
+        uOpaqueCut: { value: 1 }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE },
         uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
         // 2026-10-03: the deck's far rows on the aerial pass's overcast target (cloudHaze; hazeLaw.ts hazeTargetTerms)
         uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
@@ -2000,6 +2021,8 @@ export class VolumetricCloudLayer {
     // (2026-10-03: the cumulus knobs, read per frame so a lab can sweep them)
     t.uBaseSharp.value = lightTune('CLOUD_BASE_SHARP', CLOUD_BASE_SHARP);
     t.uBaseDark.value = lightTune('CLOUD_BASE_DARK', CLOUD_BASE_DARK);
+    t.uOpaqueCut.value = lightTune('CLOUD_OPAQUE_CUT', 1);
+    t.uDeckLobe.value = lightTune('CLOUD_DECK_SUN_LOBE', CLOUD_DECK_SUN_LOBE);
     t.uFarFlat.value = lightTune('CLOUD_FAR_FLAT', CLOUD_FAR_FLAT);
     t.uEdgeCrisp.value = lightTune('CLOUD_EDGE_CRISP', CLOUD_EDGE_CRISP);
     t.uTopBillow.value = lightTune('CLOUD_TOP_BILLOW', CLOUD_TOP_BILLOW);
