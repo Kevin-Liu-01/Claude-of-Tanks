@@ -7,9 +7,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  CLOUD_BASE_DARK, CLOUD_BASE_SHARP, CLOUD_CLUSTER_GAP, CLOUD_CLUSTER_PERIOD_K, CLOUD_CU_ATTEN, CLOUD_CU_DIFF_DECAY, CLOUD_CU_EDGE,
-  CLOUD_CU_FLOOR, CLOUD_CU_OCTAVES, CLOUD_EDGE_CRISP, CLOUD_FAR_FLAT, CLOUD_FAR_THIN, CLOUD_LUMP_GATE, CLOUD_LUMP_GATE_PERIOD_K,
-  CLOUD_NEAR_FIELD, CLOUD_SIZE_VAR, CLOUD_TOP_BILLOW,
+  CLOUD_BASE_DARK, CLOUD_BASE_SHARP, CLOUD_CLUSTER_GAP, CLOUD_CLUSTER_PERIOD_K, CLOUD_CU_EDGE, CLOUD_CU_FLOOR, CLOUD_CU_SUN_GAIN,
+  CLOUD_EDGE_CRISP, CLOUD_FAR_FLAT, CLOUD_FAR_THIN, CLOUD_LUMP_GATE, CLOUD_LUMP_GATE_PERIOD_K, CLOUD_NEAR_FIELD, CLOUD_SIZE_VAR,
+  CLOUD_TOP_BILLOW,
 } from './volumetricClouds.ts';
 import { CLOUDSCAPE_REGIMES } from './cloudscapes.ts';
 
@@ -54,7 +54,8 @@ assert.match(clouds, /t\.uFarThin\.value = lightTune\('CLOUD_FAR_THIN', CLOUD_FA
 // ---- the cumulus knobs (2026-10-03; the gauntlet's wave 17, Opus: "soft, low-contrast cotton puffs at random heights, no
 // shared flat base, undersides barely shaded, hardly flattening toward the horizon"): off until a capture shows them,
 // read per frame for a sweep
-assert.deepEqual([CLOUD_BASE_SHARP, CLOUD_BASE_DARK, CLOUD_FAR_FLAT], [0, 0, 0], 'the candidate\'s cumulus by default');
+assert.deepEqual([CLOUD_BASE_SHARP, CLOUD_FAR_FLAT], [0, 0], 'the candidate\'s cumulus by default');
+assert.equal(CLOUD_BASE_DARK, 0.8, '2026-10-04 (the cumulus item): the base dark on');
 // (wave 22's knobs: the crisp outline, the billowed tops, the battlefield's field floor — off until a capture shows them)
 assert.deepEqual([CLOUD_EDGE_CRISP, CLOUD_TOP_BILLOW, CLOUD_NEAR_FIELD], [0, 0, 0], 'off by default');
 for (const [u, k] of [['uEdgeCrisp', 'CLOUD_EDGE_CRISP'], ['uTopBillow', 'CLOUD_TOP_BILLOW'], ['uNearField', 'CLOUD_NEAR_FIELD']]) {
@@ -78,9 +79,9 @@ assert.match(clouds, /float bk = uBaseSharp \* uBaseFlat \* \( 1\.0 - uStratifor
   assert.ok(fill(0.06, 0.8) > 0.3, `a body's thin edge fills (${fill(0.06, 0.8).toFixed(2)})`);
   assert.equal(fill(0.9, 0.8), 0.9, 'a dense core is untouched');
 }
-assert.match(clouds, /float bd = uBaseDark \* \( 1\.0 - uStratiform \);\s*float msV = mix\( 0\.35 - 0\.15 \* bd, 1\.0,/, 'the base\'s diffused light');
+assert.match(clouds, /float cuW = cloudCumulusW\(\);\s*float bd = uBaseDark \* cuW;\s*float msV = mix\( 0\.35 - 0\.15 \* bd, 1\.0,/, 'the base\'s diffused light (a cumulus only)');
 assert.match(clouds, /float baseShadow = mix\( 0\.35 - 0\.17 \* bd, 1\.0,/, 'its direct light');
-assert.match(clouds, /float floorK = mix\( uCuShade\.w - 0\.14 \* bd, 1\.25, deckFloor \)/, 'its sky floor (a deck\'s untouched)');
+assert.match(clouds, /float floorK = mix\( mix\( 0\.34, uCuLight\.x, cuW \) - 0\.14 \* bd, 1\.25, deckFloor \)/, 'its sky floor (a deck\'s untouched)');
 assert.match(clouds, /if \( uFarFlat > 0\.0 \) o\.top \*= 1\.0 - 0\.4 \* uFarFlat \* \( 1\.0 - uStratiform \) \* smoothstep\( 6000\.0, 18000\.0, farD \);/, 'the far field flattens');
 
 // ---- the far band (2026-10-03; waves 13-14: "a ruler-flat pale band at one constant height"): decks only — a cumuliform
@@ -97,7 +98,7 @@ assert.match(layer, /out\.contrails = CLOUD_CONTRAILS_ON \? Math\.round\(clamp\(
 assert.match(clouds, /float deckK = uDeckDetail \* max\( smoothstep\( 0\.3, 0\.6, uStratiform \), uCells \* 0\.8 \);/, 'decks only');
 assert.match(clouds, /uStratiform \* 0\.8 \* \( 1\.0 - 0\.3 \* uCells \) \* \( 1\.0 - 0\.5 \* deckK \)/, 'less of the sheet\'s flattening');
 assert.match(clouds, /amount \*= 1\.0 \+ 1\.8 \* deckK;/, 'the erosion near a cumulus\'s strength');
-assert.match(clouds, /d = smoothstep\( 0\.03 \+ 0\.09 \* deckK \+ 0\.05 \* edgeC, mix\( 0\.6, uCuEdge, 1\.0 - uStratiform \) - 0\.25 \* deckK - 0\.25 \* edgeC, d \);/, 'a crisper outline (a deck\'s, a crisp cumulus\'s)');
+assert.match(clouds, /d = smoothstep\( 0\.03 \+ 0\.09 \* deckK \+ 0\.05 \* edgeC, mix\( 0\.6, uCuLight\.z, cloudCumulusW\(\) \) - 0\.25 \* deckK - 0\.25 \* edgeC, d \);/, 'a crisper outline (a deck\'s, a crisp cumulus\'s; a cumulus saturating further in)');
 assert.match(clouds, /t\.uDeckDetail\.value = preset\.deckDetail \?\? 0;/);
 assert.match(layer, /deckDetail: clamp\(pick\('deckDetail'\), 0, 1\),/);
 assert.match(presets, /p\.cluster \?\? 0, p\.deckDetail \?\? 0,/, 'in the layer\'s key');
@@ -149,30 +150,28 @@ assert.ok(CLOUDSCAPE_REGIMES['fair-weather-cumulus'].density > 0.1, 'a fair-weat
 assert.ok(CLOUDSCAPE_REGIMES['fair-weather-cumulus'].ambientScale < 1, 'and its shaded base not lifted back by the fill');
 
 // ---- the cumulus' light (2026-10-04, the cumulus item; the gauntlet's waves 46-50: "the darkest part of each cloud is
-// only about a fifth darker than the brightest", "a grid-like rhythm", "hard cel outlines"): the octaves' attenuation with
-// depth, the diffusion's decay, the sky floor, the outline's saturation and the size spread; a deck keeps the old values
-assert.deepEqual([...CLOUD_CU_OCTAVES], [0.5, 0.25], 'the octaves\' weights (Wrenninge\'s a, a²) unchanged');
-assert.deepEqual([...CLOUD_CU_ATTEN], [1.0, 0.8], 'their attenuation toward the first order\'s (it was b, b²: 0.5, 0.25)');
-assert.deepEqual([CLOUD_CU_DIFF_DECAY, CLOUD_CU_FLOOR, CLOUD_CU_EDGE], [0.6, 0.18, 0.85], 'the diffusion\'s decay, the sky floor, the outline');
+// only about a fifth darker than the brightest", "a grid-like rhythm", "hard cel outlines"): the sky floor in a cumulus'
+// shade, its base dark and its sun gain, the outline's saturation and the size spread, on the cumulus regimes only
+assert.deepEqual([CLOUD_CU_FLOOR, CLOUD_CU_SUN_GAIN, CLOUD_CU_EDGE], [0.12, 1.15, 0.85], 'the floor, the sun gain, the outline');
 assert.deepEqual([...CLOUD_SIZE_VAR], [0.25, 3], 'the size spread: a quarter of the cut, over three weather tiles');
-assert.match(clouds, /float sun = phase\.x \* exp\( -tau \) \+ phase\.y \* mix\( uCuShade\.x, 0\.5, uStratiform \) \* exp\( -tau \* mix\( uCuAtt\.x, 0\.5, uStratiform \) \)\s*\+ phase\.z \* mix\( uCuShade\.y, 0\.25, uStratiform \) \* exp\( -tau \* mix\( uCuAtt\.y, 0\.25, uStratiform \) \);/,
-  'the octaves: a deck (uStratiform 1) keeps a, a² and b, b²');
-assert.match(clouds, /float diffusion = mix\( 0\.7, 0\.45, uStratiform \) \/ \( 1\.0 \+ mix\( uCuShade\.z, 0\.15, uStratiform \) \* tau \)/, 'the diffusion law (a deck\'s 0.15)');
-assert.match(clouds, /if \( uCuSize\.x > 0\.0 \) field \+= uCuSize\.x \* \( textureLod\( tWeather, \( pxz \+ uWeatherShift \* 0\.3 \) \/ \( \$\{f\(CLOUD_WEATHER_TILE_M\)\} \* uCuSize\.y \) \+ vec2\( 0\.17, 0\.71 \), 0\.0 \)\.b - 0\.5 \) \* \( 1\.0 - uStratiform \);/,
-  'the size spread: a shift of the cut about zero (the map\'s coverage holds on average), a cumulus only, one fetch');
-assert.match(clouds, /uCuShade: \{ value: new THREE\.Vector4\(CLOUD_CU_OCTAVES\[0\], CLOUD_CU_OCTAVES\[1\], CLOUD_CU_DIFF_DECAY, CLOUD_CU_FLOOR\) \},\s*uCuEdge: \{ value: CLOUD_CU_EDGE \}, uCuSize: \{ value: new THREE\.Vector2\(\.\.\.CLOUD_SIZE_VAR\) \},\s*uCuAtt: \{ value: new THREE\.Vector2\(\.\.\.CLOUD_CU_ATTEN\) \},/);
-assert.match(clouds, /lightTune\('CLOUD_MS2_ATT', CLOUD_CU_ATTEN\[0\]\), lightTune\('CLOUD_MS3_ATT', CLOUD_CU_ATTEN\[1\]\)/, 'the QA reads default to the shipped values');
-assert.match(clouds, /lightTune\('CLOUD_SIZE_VAR', CLOUD_SIZE_VAR\[0\]\), lightTune\('CLOUD_SIZE_PERIOD', CLOUD_SIZE_VAR\[1\]\)/);
+assert.match(clouds, /float cloudCumulusW\(\) \{ return 1\.0 - smoothstep\( 0\.15, 0\.3, uStratiform \); \}/, 'the cumulus law\'s gate');
 {
-  // the direct term, modelled (the trace's sum, the phases alike): the lit skin keeps its energy, the shade side darkens
-  const sunTerm = (tau, w, att) => Math.exp(-tau) + w[0] * Math.exp(-tau * att[0]) + w[1] * Math.exp(-tau * att[1]);
-  const now = (tau) => sunTerm(tau, CLOUD_CU_OCTAVES, CLOUD_CU_ATTEN), was = (tau) => sunTerm(tau, [0.5, 0.25], [0.5, 0.25]);
-  near(now(0), was(0), 1e-12, 'at the skin the octaves\' sum is unchanged');
-  assert.ok(now(0.2) / was(0.2) > 0.93, `a lit crown (tau 0.2) keeps ${(100 * now(0.2) / was(0.2)).toFixed(0)} % of its direct light`);
-  assert.ok(now(3) / was(3) < 0.4, `the shade side (tau 3) keeps ${(100 * now(3) / was(3)).toFixed(0)} % (the octaves carried it through the mass)`);
-  assert.ok(now(0.2) / now(3) > 12 && was(0.2) / was(3) < 6, `crown over shade, direct: ${(now(0.2) / now(3)).toFixed(1)}x (it was ${(was(0.2) / was(3)).toFixed(1)}x)`);
-  const diff = (tau, k) => 1 / (1 + k * tau);
-  assert.ok(diff(3, CLOUD_CU_DIFF_DECAY) / diff(3, 0.15) < 0.6, 'the diffused light at the shade side about halves');
+  const sm = (a, b, x) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+  const cuW = (s) => 1 - sm(0.15, 0.3, s);
+  for (const [name, r] of Object.entries(CLOUDSCAPE_REGIMES)) {
+    const cumuliform = ['fair-weather-cumulus', 'cloud-streets', 'sea-streets', 'towering-cumulus', 'cumulonimbus-front', 'storm-front', 'cumulus-humilis'].includes(name);
+    if (cumuliform) assert.equal(cuW(r.stratiform), 1, `${name}: the cumulus law whole`);
+    else if (r.stratiform >= 0.3) assert.equal(cuW(r.stratiform), 0, `${name}: its own light and outline (a deck, a lens, a sheet)`);
+  }
 }
+assert.match(clouds, /float sun = phase\.x \* exp\( -tau \) \+ phase\.y \* 0\.5 \* exp\( -tau \* 0\.5 \) \+ phase\.z \* 0\.25 \* exp\( -tau \* 0\.25 \);/,
+  'the octaves as they were (their attenuation with depth moved the clouds by a single L*)');
+assert.match(clouds, /float diffusion = mix\( 0\.7, 0\.45, uStratiform \) \/ \( 1\.0 \+ 0\.15 \* tau \)/, 'the diffusion law as it was');
+assert.match(clouds, /\* powder \* baseShadow \* uSunGain \* mix\( 1\.0, uCuLight\.y, cuW \) \+ amb \) \* uTint;/, 'the sun gain on the direct and diffused light, not the sky\'s');
+assert.match(clouds, /if \( uCuSize\.x > 0\.0 \) field \+= uCuSize\.x \* \( textureLod\( tWeather, \( pxz \+ uWeatherShift \* 0\.3 \) \/ \( \$\{f\(CLOUD_WEATHER_TILE_M\)\} \* uCuSize\.y \) \+ vec2\( 0\.17, 0\.71 \), 0\.0 \)\.b - 0\.5 \) \* cloudCumulusW\(\);/,
+  'the size spread: a shift of the cut about zero (the map\'s coverage holds on average), a cumulus only, one fetch');
+assert.match(clouds, /uCuLight: \{ value: new THREE\.Vector3\(CLOUD_CU_FLOOR, CLOUD_CU_SUN_GAIN, CLOUD_CU_EDGE\) \}, uCuSize: \{ value: new THREE\.Vector2\(\.\.\.CLOUD_SIZE_VAR\) \},/);
+assert.match(clouds, /\(t\.uCuLight\.value as THREE\.Vector3\)\.set\(lightTune\('CLOUD_CU_FLOOR', CLOUD_CU_FLOOR\), lightTune\('CLOUD_CU_SUN_GAIN', CLOUD_CU_SUN_GAIN\),\s*lightTune\('CLOUD_CU_EDGE', CLOUD_CU_EDGE\)\);/, 'the QA reads default to the shipped values');
+assert.match(clouds, /lightTune\('CLOUD_SIZE_VAR', CLOUD_SIZE_VAR\[0\]\), lightTune\('CLOUD_SIZE_PERIOD', CLOUD_SIZE_VAR\[1\]\)/);
 
-console.log(`cumulusFields.selftest: the cumulus fields' gate (gap ${CLOUD_CLUSTER_GAP}, mean 1, ${CLOUD_CLUSTER_PERIOD_K}x the tile), the deck lumps' broad gate, the flat base, the plumbing, the cumuliform regimes and the cumulus' light (octave attenuation ${CLOUD_CU_ATTEN.join(' / ')}, floor ${CLOUD_CU_FLOOR}, outline ${CLOUD_CU_EDGE}, size spread ${CLOUD_SIZE_VAR[0]}) PASS`);
+console.log(`cumulusFields.selftest: the cumulus fields' gate (gap ${CLOUD_CLUSTER_GAP}, mean 1, ${CLOUD_CLUSTER_PERIOD_K}x the tile), the deck lumps' broad gate, the flat base, the plumbing, the cumuliform regimes and the cumulus' light (floor ${CLOUD_CU_FLOOR}, base dark ${CLOUD_BASE_DARK}, sun gain ${CLOUD_CU_SUN_GAIN}, outline ${CLOUD_CU_EDGE}, size spread ${CLOUD_SIZE_VAR[0]}) PASS`);

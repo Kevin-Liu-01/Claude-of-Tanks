@@ -152,19 +152,19 @@ const CLOUD_CLOSED_COVER_FLOOR = 0.7;
 /**
  * 2026-10-04 (the cumulus item; the gauntlet's waves 46–50: "the darkest part of each cloud is only about a fifth darker
  * than the brightest", "a grid-like rhythm", "hard cel outlines", "stamped popcorn"; facing the sun, dark cores and
- * silver linings). The multiple-scattering octaves keep their weights (Wrenninge's a, a²: 0.5 / 0.25), but their
- * attenuation of the optical depth toward the sun rises from b, b² (0.5 / 0.25) to 1.0 / 0.8, the diffused light decays
- * faster with depth (0.15 → 0.6) and the cumulus' sky floor drops (0.34 → 0.18 of the sky mean): the lit skin keeps its
- * energy (the octaves' sum at zero depth is unchanged), the interior and the shade side darken (weaker octaves instead
- * greyed the whole cloud, its crown with it). The density saturates further in from the outline (0.6 → 0.85: no cel
- * edge), and a broad field shifts the coverage cut region by region (0.25 at three tiles): masses merge large in some
- * regions and stand small in others. A cumulus only: a deck (uStratiform) keeps the old values, so an overcast sky does
- * not move.
+ * silver linings). Measured one knob at a time on each cloud's opaque interior (L*, desktop high, a cloudless frame of
+ * the same pose as the mask): the sky floor in a cumulus' shade sets its shade side — 0.34 → 0.12 of the sky mean takes
+ * the shade 9–10 L* down and the crown 1.5–4 — where the multiple-scattering octaves' attenuation with depth (1.0 / 0.8
+ * for b, b²) moved either by 1 L* and a faster decay of the diffused light (0.6 for 0.15) took the crown down more than
+ * the shade (both stay as they were). So: the floor at 0.12 (CLOUD_CU_FLOOR); the base dark (CLOUD_BASE_DARK: the
+ * underside in the shade of the mass over it, flatter and darker); the cumulus' sun gain (CLOUD_CU_SUN_GAIN) holds the lit
+ * crowns at L* 88–90; the density saturating further in from the outline (CLOUD_CU_EDGE 0.6 → 0.85: no cel edge); a broad
+ * field shifting the coverage cut region by region (CLOUD_SIZE_VAR 0.25 at three tiles): masses merge large in some regions
+ * and stand small in others. The cumulus regimes only (stratiform 0.15 or less; cloudCumulusW): a deck, a lens and an
+ * altocumulus sheet keep their light and their outline.
  */
-export const CLOUD_CU_OCTAVES: readonly [number, number] = [0.5, 0.25];
-export const CLOUD_CU_ATTEN: readonly [number, number] = [1.0, 0.8];
-export const CLOUD_CU_DIFF_DECAY = 0.6;
-export const CLOUD_CU_FLOOR = 0.18;
+export const CLOUD_CU_FLOOR = 0.12;
+export const CLOUD_CU_SUN_GAIN = 1.15;
 export const CLOUD_CU_EDGE = 0.85;
 export const CLOUD_SIZE_VAR: readonly [number, number] = [0.25, 3];
 /**
@@ -201,7 +201,8 @@ export const CLOUD_LUMP_GATE_PERIOD_K = 1.5;
  *   CLOUD_FAR_FLAT    the distant field flattens: past ~6 km a cumuliform column's top lowers, up to two fifths at 18 km.
  */
 export const CLOUD_BASE_SHARP = 0;
-export const CLOUD_BASE_DARK = 0;
+/** 2026-10-04 (the cumulus item): on — a cumulus' underside in the shade of the mass over it, flat and darker. */
+export const CLOUD_BASE_DARK = 0.8;
 export const CLOUD_FAR_FLAT = 0;
 /**
  * 2026-10-03 (the gauntlet's wave 22 — the cumulus still read as "soft, airbrushed cotton balls… blurry edges", "the
@@ -436,15 +437,12 @@ uniform float uFarThin;
 // 2026-10-03: the cumulus knobs (CLOUD_BASE_SHARP, CLOUD_BASE_DARK, CLOUD_FAR_FLAT; 0 = off)
 uniform float uBaseSharp;
 uniform float uBaseDark;
-// 2026-10-04 (the cumulus item; QA knobs, today's values by default): the self-shadowing (the second and third scattering
-// octaves' weights, the diffusion's decay per optical depth, the cumulus' ambient floor), the outline's softness (the
-// density's saturation edge) and the size variety (the broad field's share of the coverage cut and its period in tiles)
-uniform vec4 uCuShade;
-uniform float uCuEdge;
+// 2026-10-04 (the cumulus item): the cumulus' sky floor, its sun gain and its outline (CLOUD_CU_FLOOR, CLOUD_CU_SUN_GAIN,
+// CLOUD_CU_EDGE), and the size spread (CLOUD_SIZE_VAR: the broad field's share of the coverage cut, its period in tiles)
+uniform vec3 uCuLight;
 uniform vec2 uCuSize;
-// (2026-10-04, QA: CLOUD_MS2_ATT / CLOUD_MS3_ATT) the second and third octaves' attenuation of the sun-ward optical depth
-// (Wrenninge's a, a²: 0.5 / 0.25 today) — slower halving darkens the interior and the shade side, the lit skin unchanged
-uniform vec2 uCuAtt;
+// the cumulus law's weight: 1 on the cumulus regimes (stratiform 0.15 or less), 0 on a deck, a lens, an altocumulus sheet
+float cloudCumulusW() { return 1.0 - smoothstep( 0.15, 0.3, uStratiform ); }
 uniform float uFarFlat;
 // 2026-10-03: the crisp cumulus outline and the billowed tops (CLOUD_EDGE_CRISP, CLOUD_TOP_BILLOW; 0 = off)
 uniform float uEdgeCrisp;
@@ -479,9 +477,9 @@ struct Weather { float cov; float top; float breakup; float type; float anvil; f
 Weather cloudWeather( vec2 pxz ) {
 	vec4 w, st;
 	float field = cloudField( pxz, w, st );
-	// (2026-10-04, QA: CLOUD_SIZE_VAR / _PERIOD) a broad field shifts the coverage cut region by region, so the masses merge
-	// into large ones in some and stand small and scattered in others: a spread of sizes, no lattice rhythm
-	if ( uCuSize.x > 0.0 ) field += uCuSize.x * ( textureLod( tWeather, ( pxz + uWeatherShift * 0.3 ) / ( ${f(CLOUD_WEATHER_TILE_M)} * uCuSize.y ) + vec2( 0.17, 0.71 ), 0.0 ).b - 0.5 ) * ( 1.0 - uStratiform );
+	// (2026-10-04, CLOUD_SIZE_VAR) a broad field shifts the coverage cut region by region, so the masses merge into large
+	// ones in some and stand small and scattered in others: a spread of sizes, no lattice rhythm (a cumulus only)
+	if ( uCuSize.x > 0.0 ) field += uCuSize.x * ( textureLod( tWeather, ( pxz + uWeatherShift * 0.3 ) / ( ${f(CLOUD_WEATHER_TILE_M)} * uCuSize.y ) + vec2( 0.17, 0.71 ), 0.0 ).b - 0.5 ) * cloudCumulusW();
 	Weather o;
 	// round 76: the wind-frame rolls band a deck's thickness (undulatus); the fetch is the street field's own
 	o.roll = st.r;
@@ -714,7 +712,8 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 		}
 		// a sharper threshold: the density saturates a short way in from the outline (crisper edges, no
 		// semi-transparent halo around every mass; a defined deck's crisper still; a crisp cumulus a shorter way in)
-		d = smoothstep( 0.03 + 0.09 * deckK + 0.05 * edgeC, mix( 0.6, uCuEdge, 1.0 - uStratiform ) - 0.25 * deckK - 0.25 * edgeC, d );
+		// (2026-10-04, CLOUD_CU_EDGE: a cumulus saturates further in — its outline a soft rim, not a cel edge)
+		d = smoothstep( 0.03 + 0.09 * deckK + 0.05 * edgeC, mix( 0.6, uCuLight.z, cloudCumulusW() ) - 0.25 * deckK - 0.25 * edgeC, d );
 		// round 76: the interior octave — the coarse detail lumps (25–100 m) modulate the density inside the mass
 		// instead of vanishing in the remap, so the light march shades the lit face bulge by bulge
 		if ( uInterior > 0.0 ) d *= mix( 1.0, 0.5 + 0.5 * hfCoarse, uInterior );
@@ -1120,11 +1119,8 @@ void main() {
 					else if ( lastLight < 0.0 || ( ( lit & 1 ) == 0 && T > 0.15 ) ) lastLight = uDebug == 3.0 ? 0.0 : cloudLightDepth( p, w, lightScale, shortLadder, cellK );
 					lit++;
 					float tau = lastLight + sig * 2.0;
-					// multiple-scattering octaves: contribution and eccentricity halved per octave; the attenuation halved
-					// on a deck, near the first order's on a cumulus (CLOUD_CU_ATTEN: its shade side and core darken, its
-					// lit skin does not)
-					float sun = phase.x * exp( -tau ) + phase.y * mix( uCuShade.x, 0.5, uStratiform ) * exp( -tau * mix( uCuAtt.x, 0.5, uStratiform ) )
-						+ phase.z * mix( uCuShade.y, 0.25, uStratiform ) * exp( -tau * mix( uCuAtt.y, 0.25, uStratiform ) );
+					// multiple-scattering octaves: contribution, attenuation and eccentricity halved per octave
+					float sun = phase.x * exp( -tau ) + phase.y * 0.5 * exp( -tau * 0.5 ) + phase.z * 0.25 * exp( -tau * 0.25 );
 					// Beer–powder: light builds up inside the mass, so the sunlit face's crevices and thin edges
 					// read darker than its body
 					float powder = mix( 1.0, 1.0 - exp( -sig * 60.0 ), powderK );
@@ -1139,11 +1135,12 @@ void main() {
 					// 1 / (1 + 0.75 (1 - g) tau), so the base of an overcast sheet is bright and the shaded side of a
 					// cumulus stays grey, not black; it builds with height in the cloud (the lower parts are darker)
 					// (2026-10-03: a cumulus's underside in the shade of the mass above it — CLOUD_BASE_DARK)
-					float bd = uBaseDark * ( 1.0 - uStratiform );
+					float cuW = cloudCumulusW();
+					float bd = uBaseDark * cuW;
 					float msV = mix( 0.35 - 0.15 * bd, 1.0, smoothstep( 0.0, 0.5, hN ) );
 					// (71b: 0.2 read as a grey cloud — a lit face is a near-white diffuser under the sun's irradiance,
 					// E · albedo / π at its skin, decaying into the mass with the diffusion law)
-					float diffusion = mix( 0.7, 0.45, uStratiform ) / ( 1.0 + mix( uCuShade.z, 0.15, uStratiform ) * tau ) * msV / ( 4.0 * CL_PI ) * 4.0;
+					float diffusion = mix( 0.7, 0.45, uStratiform ) / ( 1.0 + 0.15 * tau ) * msV / ( 4.0 * CL_PI ) * 4.0;
 					// darker bases: their direct light is scattered away by the cloud above
 					float baseShadow = mix( 0.35 - 0.17 * bd, 1.0, smoothstep( -0.1, 0.45, hN ) );
 					// ambient: the sky's irradiance lights the tops, the bases see the horizon band and the ground; a
@@ -1165,15 +1162,16 @@ void main() {
 					// stands against — a sheet takes the floor whole, a deck or a cumulus by its share, the thick cores
 					// a little darker than the thin parts so the mass keeps its relief; the floor carries the sky's
 					// cool hue (uSkyMean), so a base reads luminous blue-grey
-					// (the cumulus floor sits at a fifth of the sky mean, CLOUD_CU_FLOOR — 0.85 lifted every base to the lit
-					// level and flattened the masses to white, a third left the shade side a fifth under the crown — and a
-					// cumulonimbus base deck takes a third of that: its wall is dark)
+					// (the cumulus floor: 0.85 of the sky mean lifted every base to the lit level and flattened the masses to
+					// white; a third left the shade side a fifth under the crown; 2026-10-04: an eighth, CLOUD_CU_FLOOR — the
+					// shade side under half the crown — and a cumulonimbus base deck takes a third of that: its wall is dark)
 					float deckFloor = smoothstep( 0.3, 0.9, uStratiform );
-					float floorK = mix( uCuShade.w - 0.14 * bd, 1.25, deckFloor ) * mix( 1.0, 0.35, cb * ( 1.0 - deckFloor ) );
+					float floorK = mix( mix( 0.34, uCuLight.x, cuW ) - 0.14 * bd, 1.25, deckFloor ) * mix( 1.0, 0.35, cb * ( 1.0 - deckFloor ) );
 					float floorDecay = mix( 0.04, 0.08, deckFloor );
 					amb = max( amb, uSkyMean * floorK * ( 0.5 + 0.5 * exp( -tauUp * floorDecay ) ) );
 					amb *= uAmbientScale;
-					S = ( ( uSunRadiance * sun * ( 1.0 - 0.7 * uStratiform ) + sunDiff * diffusion ) * powder * baseShadow * uSunGain + amb ) * uTint;
+					// (2026-10-04, CLOUD_CU_SUN_GAIN: a cumulus' sunlit crown held at its brightness over the lower floor)
+					S = ( ( uSunRadiance * sun * ( 1.0 - 0.7 * uStratiform ) + sunDiff * diffusion ) * powder * baseShadow * uSunGain * mix( 1.0, uCuLight.y, cuW ) + amb ) * uTint;
 					}
 					if ( uDeckLight > 0.0 ) {
 						// round 76: the deck lighting. A deck's underside is lit by what the column above it transmits:
@@ -1632,9 +1630,7 @@ export class VolumetricCloudLayer {
         uStepScale: { value: 1 }, uDebug: { value: 0 },
         uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 }, uBaseFlat: { value: 0 }, uDeckDetail: { value: 0 }, uFarThin: { value: 0 },
         uBaseSharp: { value: 0 }, uBaseDark: { value: 0 }, uFarFlat: { value: 0 }, uEdgeCrisp: { value: 0 }, uTopBillow: { value: 0 },
-        uCuShade: { value: new THREE.Vector4(CLOUD_CU_OCTAVES[0], CLOUD_CU_OCTAVES[1], CLOUD_CU_DIFF_DECAY, CLOUD_CU_FLOOR) },
-        uCuEdge: { value: CLOUD_CU_EDGE }, uCuSize: { value: new THREE.Vector2(...CLOUD_SIZE_VAR) },
-        uCuAtt: { value: new THREE.Vector2(...CLOUD_CU_ATTEN) },
+        uCuLight: { value: new THREE.Vector3(CLOUD_CU_FLOOR, CLOUD_CU_SUN_GAIN, CLOUD_CU_EDGE) }, uCuSize: { value: new THREE.Vector2(...CLOUD_SIZE_VAR) },
         uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
         // 2026-10-03: the deck's far rows on the aerial pass's overcast target (cloudHaze; hazeLaw.ts hazeTargetTerms)
         uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
@@ -2037,11 +2033,9 @@ export class VolumetricCloudLayer {
     // (2026-10-03: the cumulus knobs, read per frame so a lab can sweep them)
     t.uBaseSharp.value = lightTune('CLOUD_BASE_SHARP', CLOUD_BASE_SHARP);
     t.uBaseDark.value = lightTune('CLOUD_BASE_DARK', CLOUD_BASE_DARK);
-    (t.uCuShade.value as THREE.Vector4).set(lightTune('CLOUD_MS2', CLOUD_CU_OCTAVES[0]), lightTune('CLOUD_MS3', CLOUD_CU_OCTAVES[1]),
-      lightTune('CLOUD_DIFF_DECAY', CLOUD_CU_DIFF_DECAY), lightTune('CLOUD_CU_FLOOR', CLOUD_CU_FLOOR));
-    t.uCuEdge.value = lightTune('CLOUD_CU_EDGE', CLOUD_CU_EDGE);
+    (t.uCuLight.value as THREE.Vector3).set(lightTune('CLOUD_CU_FLOOR', CLOUD_CU_FLOOR), lightTune('CLOUD_CU_SUN_GAIN', CLOUD_CU_SUN_GAIN),
+      lightTune('CLOUD_CU_EDGE', CLOUD_CU_EDGE));
     (t.uCuSize.value as THREE.Vector2).set(lightTune('CLOUD_SIZE_VAR', CLOUD_SIZE_VAR[0]), lightTune('CLOUD_SIZE_PERIOD', CLOUD_SIZE_VAR[1]));
-    (t.uCuAtt.value as THREE.Vector2).set(lightTune('CLOUD_MS2_ATT', CLOUD_CU_ATTEN[0]), lightTune('CLOUD_MS3_ATT', CLOUD_CU_ATTEN[1]));
     t.uFarFlat.value = lightTune('CLOUD_FAR_FLAT', CLOUD_FAR_FLAT);
     t.uEdgeCrisp.value = lightTune('CLOUD_EDGE_CRISP', CLOUD_EDGE_CRISP);
     t.uTopBillow.value = lightTune('CLOUD_TOP_BILLOW', CLOUD_TOP_BILLOW);
