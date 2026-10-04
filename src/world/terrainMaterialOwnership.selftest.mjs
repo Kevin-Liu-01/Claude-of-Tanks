@@ -91,12 +91,13 @@ function checkFractional(sample) {
   }
 }
 // ground lane (2026-10-03): the land use owns its share of the meadow's detail as the layers do — a turned field
-// (gSoilW) draws no near blades and keeps 15 % of the far turf, a sown crop (gCropW) keeps 40 % of the near grass
-// detail and 15 % of the far turf; with neither (every map without a field system) the response above is unchanged
+// (gSoilW) draws no near blades and none of the far turf (farmland: its relief is its furrows and clods), a sown crop
+// (gCropW) keeps 40 % of the near grass detail and 15 % of the far turf; with neither (every map without a field system)
+// the response above is unchanged
 function checkLandCover(sample) {
   const base = sample(ports()), soil = sample(ports({ gSoilW: 1 })), crop = sample(ports({ gCropW: 1 }));
   assert.equal(soil.nearG, 0, 'a turned field draws no near blades');
-  close(soil.farG, base.farG * 0.15, 'a turned field keeps 15 % of the far turf');
+  close(soil.farG, 0, 'a turned field keeps none of the far turf');
   close(crop.nearG, base.nearG * 0.4, 'a sown field keeps 40 % of the near grass detail');
   close(crop.farG, base.farG * 0.15, 'a sown field keeps 15 % of the far turf');
   for (const key of ['gCropW', 'gSoilW']) for (let v = 0; v < 1; v += 0.125) {
@@ -206,9 +207,11 @@ function checkLandUseCut(text) {
   }
   const block = text.slice(start, end).replace(/\/\/[^\n]*/g, '');
   const reads = [...block.matchAll(/\b(nzq|nz|groundSamp|splatSamp|texture2D|textureLod|texelFetch)\(/g)].map((m) => m[1]).sort();
-  assert.deepEqual(reads, ['groundSamp', ...Array(8).fill('nzq')], 'the block reads eight noise fields and the soil (the bake is lu_field\'s)');
+  // (farmland: the rows' bend is one coarse level of the noise — a textureLod, where it was a two-read nzq)
+  assert.deepEqual(reads, ['groundSamp', ...Array(7).fill('nzq'), 'textureLod'],
+    'the block reads seven noise fields, the bend\'s coarse level and the soil (the bake is lu_field\'s)');
   for (const [gate, read] of [
-    ['float nBend = bendW > 0.001 && uLandTier > 1.5 ? ', 'nzq(uvW, 0.013, vec2(0.47, 0.13))'],
+    ['float nBend = bendW > 0.001 && uLandTier > 1.5 ? ', 'textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0)'],
     ['vec2 fieldN = uLandTier > 0.5 ? ', 'nzq(uvW, 0.023, vec2(0.61, 0.17))'],
     ['if (luEdge && luNear > 0.001 && uLandTier > 1.5) nEdge = mix(vec3(0.5), vec3(', 'nzq(uvW, 0.045, vec2(0.21, 0.83))'],
     ['if (soilRead && luNear > 0.001 && uLandTier > 1.5) soil = mix(uMeanD, ', 'groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB)'],
@@ -227,7 +230,9 @@ function checkLandUseCut(text) {
   const [m0, m1] = num(/float marginM = uLandB\.y \* \(([\d.]+) \+ ([\d.]+) \* n1h\);/, 'the margin');
   const [n1hAmp] = num(/float edgeW = edgeM \+ \(n1h - 0\.5\) \* ([\d.]+) \+ \(nEdge\.x - 0\.5\) \* ([\d.]+);/, 'the edge breaker');
   const [, wanderAmp] = num(/float edgeW = edgeM \+ \(n1h - 0\.5\) \* ([\d.]+) \+ \(nEdge\.x - 0\.5\) \* ([\d.]+);/, 'the wander');
-  const [fade] = num(/smoothstep\(marginM, marginM \+ ([\d.]+), edgeW\)/, 'the crop\'s fade into the margin');
+  // (farmland: the fade narrows with the footprint, never past the near field's width — the proof takes that cap)
+  assert.ok(/smoothstep\(marginM, marginM \+ fadeM, edgeW\)/.test(block), 'the crop fades into the margin over fadeM');
+  const [fade] = num(/float fadeM = min\(([\d.]+), /, 'the crop\'s fade into the margin, at its widest');
   const [h0, h1] = num(/float headW = ([\d.]+) \+ ([\d.]+) \* nEdge\.y;/, 'the headland');
   for (let margin = 0.5; margin <= 4; margin += 0.125) {
     const edgeW = t0 + t1 * margin - n1hAmp / 2 - wanderAmp / 2, marginM = margin * (m0 + m1);
