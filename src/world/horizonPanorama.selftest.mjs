@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
-  HORIZON_PANORAMA, HORIZON_PANORAMA_CHARACTERS, HORIZON_PANORAMA_SHADERS, buildHorizonPanoramaShellGeometry, horizonPanoramaHaze,
+  HORIZON_PANORAMA, HORIZON_PANORAMA_CHARACTERS, HORIZON_PANORAMA_SHADERS, buildHorizonPanoramaShellGeometry, horizonPanoramaHaze, horizonJebelSection, HORIZON_JEBEL_CAP_DROP,
   createHorizonPanorama, horizonPanoramaUv, horizonRingSkylineTan, resolveHorizonPanoramaCharacter,
 } from './horizonPanorama.ts';
 import { HORIZON_FAR_ROWS } from './horizonFarRange.ts';
@@ -157,6 +157,24 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
   assert.ok(/float farWater = uShore\.x > 0\.0 \? sea \* smoothstep\(/.test(HORIZON_PANORAMA_SHADERS.strip)
     && HORIZON_PANORAMA_SHADERS.strip.includes('smoothstep(0.02, 0.2, sea) * (1.0 - farWater)'), 'a channel coast\'s far reach is water, not open sky');
 }
+// the jebel section (maps lane A's inselbergSection with a rim, ported): the JS mirror is continuous at the cap's rim
+// and the wall's foot, falls monotonically from the crown to the plain, and its GLSL twin carries the same constants
+{
+  const foot = 0.66, rim = 0.86, apron = 0.18, top = foot * rim;
+  assert.equal(horizonJebelSection(0, foot, apron, rim), 1, 'the crown stands at the full height');
+  assert.ok(Math.abs(horizonJebelSection(top - 1e-6, foot, apron, rim) - horizonJebelSection(top + 1e-6, foot, apron, rim)) < 1e-4, 'continuous at the cap\'s rim');
+  assert.ok(Math.abs(horizonJebelSection(foot - 1e-6, foot, apron, rim) - horizonJebelSection(foot + 1e-6, foot, apron, rim)) < 1e-4, 'continuous at the wall\'s foot');
+  assert.ok(Math.abs(horizonJebelSection(foot, foot, apron, rim) - apron) < 1e-9 && horizonJebelSection(1, foot, apron, rim) === 0, 'the apron at the foot, the plain at the toe');
+  let last = 2;
+  for (let i = 0; i <= 100; i++) { const v = horizonJebelSection(i / 100, foot, apron, rim); assert.ok(v <= last + 1e-12, 'it never rises toward the plain'); last = v; }
+  // a sheer wall: most of the height falls within the wall's band (from the rim to the foot)
+  assert.ok(horizonJebelSection(top, foot, apron, rim) - horizonJebelSection(foot, foot, apron, rim) > 0.6, 'the wall carries most of the height');
+  const glsl = HORIZON_PANORAMA_SHADERS.height;
+  assert.ok(glsl.includes(`1.0 - ${HORIZON_JEBEL_CAP_DROP.toFixed(4)} * (q / top) * (q / top)`) && glsl.includes(`(${(1 - HORIZON_JEBEL_CAP_DROP).toFixed(4)} - apron)`),
+    'the bake\'s section is the mirror\'s law');
+  assert.ok(/if \(uJebel\.x > 0\.0\) rockW = max\(rockW, smoothstep\(0\.3, 0\.7, texture2D\(uHeight, g\)\.a\)\);/.test(HORIZON_PANORAMA_SHADERS.strip),
+    'the strip bares a jebel\'s whole footprint');
+}
 // every uniform a pass reads is declared in that pass (a strip reading uTrees without its declaration compiled to nothing:
 // the SwiftShader lab drew no panorama at all — the receipts compile no GLSL)
 for (const [pass, source] of Object.entries(HORIZON_PANORAMA_SHADERS)) {
@@ -187,7 +205,8 @@ assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('float fillSnow = uChar3.x < 0
   assert.ok(upland.ampM <= 300 && upland.snowline > 1 && upland.layers < 1, 'upland: rounded hills under 300 m, no snow, a half layer');
   assert.ok(resolveHorizonPanoramaCharacter('rolling', { regional: 'erg' }).trees === 0, 'erg: no trees');
   const jebel = resolveHorizonPanoramaCharacter('mesa', { regional: 'jebel' });
-  assert.ok(jebel.tables && jebel.mesaTalusM < 300 && jebel.mesaCliffM > 80, 'jebel: a short apron and a sheer wall');
+  assert.ok(!jebel.tables && jebel.jebelShare > 0 && jebel.jebelRim >= 0.8 && jebel.jebelApron <= 0.25 && jebel.jebelFlutes >= 8,
+    'jebel: sheer fluted massifs alone on a sand plain (gauntlet wave 24: the tables read as "low rounded swells")');
   assert.ok(resolveHorizonPanoramaCharacter('polar', { regional: 'iceSheet' }).peakShare > 0, 'iceSheet: nunataks through the ice');
   assert.ok(resolveHorizonPanoramaCharacter('volcanic', { regional: 'volcanicField' }).ampM < 600, 'volcanicField: no 1300 m spikes');
   assert.equal(resolveHorizonPanoramaCharacter('rolling', { regional: 'plain', ampM: 50 }).ampM, 50, 'a map overrides its class\'s knobs');
