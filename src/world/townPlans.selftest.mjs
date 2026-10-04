@@ -57,8 +57,9 @@ const PR_HEAD = {
     [19.36, 203.78, 6.89, 8.61], [19.38, 233.95, 16.6, 25.86], [-20.92, 232.94, 12.85, 20.08],
     [276.71, -231.11, 10.85, 6.89],
   ] },
-  // Blackglass generates its district (no recorded plan) with the clearance: nine of its blocks stood in a carriageway;
-  // eight moved off it, and the civic hall at (-101.9, -85.8), with no clear place within 30 m, stays where it stood
+  // Blackglass generates its district (no recorded plan) with the clearance: nine of its blocks stood in a carriageway and
+  // all nine move off it, eight within 10 m and the civic hall at (-101.9, -85.8), with no clear place within 30 m, 36 m
+  // across road 3 to the open ground south of it
   blackglass: { carriageway: 9, structures: [
     [-254.16, -252.85, 37.15, 37.18], [-281.08, -227.61, 27.81, 28.03], [-263.82, -203.71, 34.76, 34.49],
     [-241.99, -183.91, 38.16, 37.03], [-197.23, -186.09, 11.01, 11.06], [-176.85, -167.41, 33.18, 33.27],
@@ -139,9 +140,9 @@ for (const [mapId, { carriageway, structures }] of Object.entries(PR_HEAD)) {
     const same = now.findIndex((s, i) => !taken.has(i) && Math.abs(s.cx - cx) <= 0.1 && Math.abs(s.cz - cz) <= 0.1
       && Math.abs(s.w - w) <= 0.1 && Math.abs(s.d - d) <= 0.1);
     if (same >= 0) { taken.add(same); exact++; continue; }
-    // moved off a carriageway: the same footprint, translated a short way
+    // moved off a carriageway: the same footprint, translated no further than the clearance's rings reach (60 m)
     const off = now.findIndex((s, i) => !taken.has(i) && Math.abs(s.w - w) <= 0.1 && Math.abs(s.d - d) <= 0.1
-      && Math.hypot(s.cx - cx, s.cz - cz) <= 30);
+      && Math.hypot(s.cx - cx, s.cz - cz) <= 60);
     assert.ok(off >= 0, `${mapId}: the structure at (${cx}, ${cz}) stands where the PR head has it or a short move off a carriageway`);
     taken.add(off); moved++;
     worstMove = Math.max(worstMove, Math.hypot(now[off].cx - cx, now[off].cz - cz));

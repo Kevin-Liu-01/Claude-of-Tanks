@@ -924,6 +924,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/botModes.selftest.mjs',
     'server/botObjectives.selftest.mjs',
     'server/battlePacing.selftest.mjs',
+    'server/roadCrossingSweep.selftest.mjs', // 2026-10-03: the maps lane's road crossings, driven both ways (nothing standing in a carriageway)
     'src/sim/poseHistory.selftest.mjs',
     'src/sim/movement.selftest.mjs',
     'src/sim/impact.selftest.mjs',

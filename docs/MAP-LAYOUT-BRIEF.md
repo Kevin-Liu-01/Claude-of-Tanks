@@ -284,11 +284,15 @@ props code shaped every layout, and the next maps should start from them:
   `src/world/townPlans.selftest.mjs` holds every recorded town against the footprints PR #9's head's shards carried.
 - **Buildings in a carriageway.** `props.roadBuildingClearance` runs once every settlement building stands. It moves a
   building whose footprint stands within the 3.5 m road core by the least distance that clears it: rings of 0.5 m out
-  to 30 m, on 15-degree bearings starting away from the road. The building keeps its ground fit and stays clear of
+  to 60 m, on 15-degree bearings starting away from the road. The building keeps its ground fit and stays clear of
   every other footprint and strongpoint. Nothing draws, so every other building stays exactly where it stood.
-  Blackglass: 8 of its 150 blocks moved 1–9.5 m. One civic hall at (-101.9, -85.8) has no clear place within 30 m and
-  still stands in road 3. The fix is to bend that road round it, which needs the district replayed first so the bend
-  re-seats nothing.
+  Blackglass: 8 of its 150 blocks moved 1–9.5 m. Its civic hall at (-101.9, -85.8) stood across road 3 at the
+  district's crossroads, against road 1's edge, with no clear place inside 30 m: the rings go on to 60 m for it, and it
+  crosses road 3 to the open ground south of it (36 m). Bending the roads round it was not open: the district is
+  generated from them, and road 1 ran through a 5 m gap between the hall and the next block. `server/roadCrossingSweep.selftest.mjs` drives
+  every bridge, deck and causeway on the lane's maps both ways at road speed (after the physics lane's crossing
+  sweep, which found hulls stopped by buildings and rocks 0.4–2 m from a road's centreline). A run must reach its end
+  without a hard contact or a stall.
 - **Equivalent deployments.** Both teams deploy in the same shape: bravo's seven pads are alpha's 4 x 2 block mirrored.
   Then run the bots lane's swap test (`fair-swap`: the same 20 seeds with the deployments exchanged). If one deployment
   wins two thirds or more of the paired games (24 of 36), the positions differ as well. Turn the layout about its

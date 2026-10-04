@@ -4141,9 +4141,11 @@ ${snowCap ? `
   yield* placeTownBlockFill();
 
   // Once every settlement building stands, each one packed as standing in a carriageway moves by the least distance
-  // that clears it: rings of 0.5 m out to 30 m, the bearing away from the nearest road first, then turning by 15
+  // that clears it: rings of 0.5 m out to 60 m, the bearing away from the nearest road first, then turning by 15
   // degrees at a time to either side; the new place keeps its ground fit and stays clear of every other building and
-  // strongpoint. Its geometry, collision bands, footprint record and chimney tops move with it.
+  // strongpoint. Its geometry, collision bands, footprint record and chimney tops move with it. Nearly every building
+  // clears within 30 m; the rings run on to 60 m for one that cannot (Blackglass's civic hall, which stood across road
+  // 3 at the district's crossroads with no clear place inside 30 m, crosses to the open ground south of it, 36 m).
   /** Whether two footprints (centre, size, yaw) come within `gap` metres of each other: separating axes of the two
    * rectangles, each grown by half the gap. */
   function footprintsMeet(a: { x: number; z: number; w: number; d: number; rot: number },
@@ -4178,7 +4180,7 @@ ${snowCap ? `
       let target: { x: number; z: number } | null = null;
       const turns = [0];
       for (let k = 1; k <= 12; k++) turns.push(k * Math.PI / 12, -k * Math.PI / 12);
-      for (let step = 1; step <= 60 && !target; step++) {
+      for (let step = 1; step <= 120 && !target; step++) {
         const dist = step * 0.5;
         for (const turn of turns) {
           const c = Math.cos(turn), sn = Math.sin(turn);
