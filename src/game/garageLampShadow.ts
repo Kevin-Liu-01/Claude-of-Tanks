@@ -25,8 +25,8 @@
  * The bake gives the share of the podium's light the hull hides, s ∈ [0, 1]. A decal on the podium multiplies the
  * colour by 1 − s: multiply blending, premultiplied, which keeps the scene target's alpha (the sun visibility and
  * vehicle tag the post chain reads). Outside the podium deck, and over a margin at the bake's border, it is exactly 1.
- * A bake costs a few milliseconds on the main thread and runs only when the hull, its pose or the lamps change. The
- * decal is one transparent draw, in the Garage only.
+ * A bake (about 20–30 ms) runs in a task of its own, never in a hull switch's frame, and only when the hull, its pose
+ * or the lamps change. The decal is one transparent draw, in the Garage only.
  */
 import * as THREE from 'three';
 import { measureVehicleGroundHull } from '../engine/vehicleGroundOcclusion.ts';
@@ -43,7 +43,7 @@ export interface LampShadowSample { readonly x: number; readonly y: number; read
 export interface LampShadowGrid { readonly x0: number; readonly z0: number; readonly cell: number; readonly nx: number; readonly nz: number; }
 
 /** Bake texel size in metres. */
-export const LAMP_SHADOW_CELL_M = 0.06;
+export const LAMP_SHADOW_CELL_M = 0.07;
 /** How far past the hull and its runs the bake reaches (m): the longest umbra, the turret top under a 34° fill. */
 export const LAMP_SHADOW_MARGIN_M = 3.6;
 /** The bake fades to exactly 1 over this border (m), so no umbra is ever cut at the decal's edge. */
@@ -60,6 +60,8 @@ export const LAMP_SHADOW_BLUR = Object.freeze({ radius: 1, passes: 2 });
 export const LAMP_SHADOW_SURFACE = Object.freeze({ roughness: 0.64, f0: 0.04, albedo: 0.04 });
 /** The decal stands this far (m) over the podium plane. */
 export const LAMP_SHADOW_LIFT_M = 0.004;
+/** A gun box wider than this (m) is a traversed barrel's diagonal, not the barrel: it is left out. */
+const GUN_BOX_MAX_WIDTH_M = 0.7;
 
 /** Lamp emitter radius (m) by light kind: the highbay's glowing disc, a flood's or spot's lens, a bare bulb. */
 function emitterRadius(light: THREE.Light): number {
@@ -67,13 +69,20 @@ function emitterRadius(light: THREE.Light): number {
   return light.intensity >= 20 ? 0.6 : 0.3;
 }
 
-/** The hull's occluder boxes in its root frame: the hull solid, both runs and (when measured) the turret. */
-export function lampShadowBoxes(h: GroundHull, turret: THREE.Box3 | null): LampShadowBox[] {
+/**
+ * The hull's occluder boxes in its root frame: the hull solid, both runs and (when measured) the turret and the gun.
+ * The gun's bounds are its barrel only while it lies along the hull's axis (narrower than GUN_BOX_MAX_WIDTH_M): a
+ * traversed barrel's box would shade a whole quadrant.
+ */
+export function lampShadowBoxes(h: GroundHull, turret: THREE.Box3 | null, gun: THREE.Box3 | null = null): LampShadowBox[] {
   const boxes: LampShadowBox[] = [[-h.hx, h.yb, h.fz0, h.hx, h.yt, h.fz1]];
   const runTop = Math.max(h.yb, h.y0 + 0.05);
   boxes.push([h.xi, h.y0, h.tz0, h.xo, runTop, h.tz1], [-h.xo, h.y0, h.tz0, -h.xi, runTop, h.tz1]);
   if (turret && !turret.isEmpty()) {
     boxes.push([turret.min.x, Math.max(turret.min.y, h.yt), turret.min.z, turret.max.x, turret.max.y, turret.max.z]);
+  }
+  if (gun && !gun.isEmpty() && gun.max.x - gun.min.x < GUN_BOX_MAX_WIDTH_M) {
+    boxes.push([gun.min.x, gun.min.y, gun.min.z, gun.max.x, gun.max.y, gun.max.z]);
   }
   return boxes;
 }
@@ -123,10 +132,16 @@ export function projectedShadow(boxes: readonly LampShadowBox[], lamp: { x: numb
   return convexHull2D(pts);
 }
 
-/** Set every texel of `mask` whose centre lies inside the convex counter-clockwise polygon `poly`. */
-export function rasterizeConvex(poly: readonly number[], grid: LampShadowGrid, mask: Uint8Array): void {
+/**
+ * Add `weight` to every texel whose centre lies inside the convex counter-clockwise polygon `poly`, once per `mark`:
+ * a texel `stamp` already holds `mark` for is skipped, so one emitter sample's polygons (the hull, the turret, the gun)
+ * count a texel once. Returns the texels added.
+ */
+export function rasterizeConvex(poly: readonly number[], grid: LampShadowGrid, field: Float32Array, weight: number,
+  stamp: Int32Array, mark: number): number {
   const n = poly.length / 2;
-  if (n < 3) return;
+  if (n < 3) return 0;
+  let added = 0;
   let zMin = Infinity, zMax = -Infinity;
   for (let k = 0; k < n; k++) { zMin = Math.min(zMin, poly[2 * k + 1]); zMax = Math.max(zMax, poly[2 * k + 1]); }
   const j0 = Math.max(0, Math.ceil((zMin - grid.z0) / grid.cell - 0.5));
@@ -145,28 +160,37 @@ export function rasterizeConvex(poly: readonly number[], grid: LampShadowGrid, m
     if (!(xr >= xl)) continue;
     const i0 = Math.max(0, Math.ceil((xl - grid.x0) / grid.cell - 0.5));
     const i1 = Math.min(grid.nx - 1, Math.floor((xr - grid.x0) / grid.cell - 0.5));
-    for (let i = i0; i <= i1; i++) mask[j * grid.nx + i] = 1;
+    for (let k = j * grid.nx + i0, end = j * grid.nx + i1; k <= end; k++) {
+      if (stamp[k] === mark) continue;
+      stamp[k] = mark;
+      field[k] += weight;
+      added++;
+    }
   }
+  return added;
 }
 
-/** Separable box blur in place (edges clamp). */
+/** Separable box blur in place (edges clamp): running sums, `passes` times. */
 export function boxBlur(field: Float32Array, nx: number, nz: number, radius: number, passes: number): void {
   if (radius < 1) return;
   const tmp = new Float32Array(field.length);
-  const span = 2 * radius + 1;
+  const inv = 1 / (2 * radius + 1);
   for (let p = 0; p < passes; p++) {
     for (let j = 0; j < nz; j++) {
+      const row = j * nx;
+      let sum = field[row] * radius;
+      for (let d = 0; d <= radius; d++) sum += field[row + Math.min(nx - 1, d)];
       for (let i = 0; i < nx; i++) {
-        let s = 0;
-        for (let d = -radius; d <= radius; d++) s += field[j * nx + Math.min(nx - 1, Math.max(0, i + d))];
-        tmp[j * nx + i] = s / span;
+        tmp[row + i] = sum * inv;
+        sum += field[row + Math.min(nx - 1, i + radius + 1)] - field[row + Math.max(0, i - radius)];
       }
     }
-    for (let j = 0; j < nz; j++) {
-      for (let i = 0; i < nx; i++) {
-        let s = 0;
-        for (let d = -radius; d <= radius; d++) s += tmp[Math.min(nz - 1, Math.max(0, j + d)) * nx + i];
-        field[j * nx + i] = s / span;
+    for (let i = 0; i < nx; i++) {
+      let sum = tmp[i] * radius;
+      for (let d = 0; d <= radius; d++) sum += tmp[Math.min(nz - 1, d) * nx + i];
+      for (let j = 0; j < nz; j++) {
+        field[j * nx + i] = sum * inv;
+        sum += tmp[Math.min(nz - 1, j + radius + 1) * nx + i] - tmp[Math.max(0, j - radius) * nx + i];
       }
     }
   }
@@ -306,7 +330,7 @@ export function bakeLampShadow(options: {
   const strength = lampSum > 0
     ? THREE.MathUtils.clamp(lampSum / (lampSum + other), LAMP_SHADOW_STRENGTH_RANGE[0], LAMP_SHADOW_STRENGTH_RANGE[1]) : 0;
   const field = new Float32Array(nx * nz);
-  const mask = new Uint8Array(nx * nz);
+  const stamp = new Int32Array(nx * nz);
   const hullBoxes = boxes.slice(0, 3), extraBoxes = boxes.slice(3);
   let lamps = 0, samples = 0;
   const lampRoot = new THREE.Vector3();
@@ -325,31 +349,30 @@ export function bakeLampShadow(options: {
       const main = projectedShadow(hullBoxes, sample, floorY);
       if (!main) continue;
       samples++;
-      mask.fill(0);
-      rasterizeConvex(main, grid, mask);
+      const w = share / LAMP_SHADOW_SAMPLES;
+      rasterizeConvex(main, grid, field, w, stamp, samples);
       for (const box of extraBoxes) {
         const poly = projectedShadow([box], sample, floorY);
-        if (poly) rasterizeConvex(poly, grid, mask);
+        if (poly) rasterizeConvex(poly, grid, field, w, stamp, samples);
       }
-      const w = share / LAMP_SHADOW_SAMPLES;
-      for (let k = 0; k < mask.length; k++) if (mask[k]) field[k] += w;
     }
   }
   boxBlur(field, nx, nz, LAMP_SHADOW_BLUR.radius, LAMP_SHADOW_BLUR.passes);
   // the colour multiplier; 1 off the podium deck and over the border ramp
   const factor = new Float32Array(nx * nz);
   const border = LAMP_SHADOW_BORDER_M / unit;
-  const world = new THREE.Vector3();
+  const deckIn = (podium.radius - 0.12) / unit, deckOut = (podium.radius - 0.02) / unit;
   for (let j = 0; j < nz; j++) {
     const z = grid.z0 + (j + 0.5) * cell;
     const ej = Math.min(j + 0.5, nz - j - 0.5) * cell;
     for (let i = 0; i < nx; i++) {
+      const k = j * nx + i;
+      if (field[k] <= 0) { factor[k] = 1; continue; }
       const x = grid.x0 + (i + 0.5) * cell;
       const edge = Math.min(ej, Math.min(i + 0.5, nx - i - 0.5) * cell);
-      world.set(x, floorY, z).applyMatrix4(rootMatrixWorld);
-      const radial = Math.hypot(world.x - podium.centre.x, world.z - podium.centre.z);
-      const fade = THREE.MathUtils.smoothstep(edge, 0, border) * (1 - THREE.MathUtils.smoothstep(radial, podium.radius - 0.12, podium.radius - 0.02));
-      factor[j * nx + i] = 1 - strength * Math.min(1, field[j * nx + i]) * fade;
+      const radial = Math.hypot(x - floorRoot.x, z - floorRoot.z);
+      const fade = THREE.MathUtils.smoothstep(edge, 0, border) * (1 - THREE.MathUtils.smoothstep(radial, deckIn, deckOut));
+      factor[k] = 1 - strength * Math.min(1, field[k]) * fade;
     }
   }
   return { grid, factor, strength, lamps, samples };
@@ -414,6 +437,7 @@ export function createGarageLampShadow(options: {
   mesh.castShadow = false;
   mesh.receiveShadow = false;
   let texture: THREE.DataTexture | null = null;
+  let bakedRoot = '';
   let bake: LampShadowBake | null = null;
   let key = '';
   const eye = new THREE.Vector3();
@@ -460,14 +484,14 @@ export function createGarageLampShadow(options: {
     }
     return null;
   };
-  const turretBounds = (root: THREE.Object3D): THREE.Box3 | null => {
+  const partBounds = (root: THREE.Object3D, pattern: RegExp): THREE.Box3 | null => {
     const box = new THREE.Box3();
     const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
     const part = new THREE.Box3();
     const relative = new THREE.Matrix4();
     root.traverse((o) => {
       const meshObject = o as THREE.Mesh;
-      if (!meshObject.isMesh || !/^turret/.test(meshObject.name) || !meshObject.geometry) return;
+      if (!meshObject.isMesh || !pattern.test(meshObject.name) || !meshObject.geometry) return;
       if (!meshObject.geometry.boundingBox) meshObject.geometry.computeBoundingBox();
       const bb = meshObject.geometry.boundingBox;
       if (!bb || bb.isEmpty()) return;
@@ -479,25 +503,43 @@ export function createGarageLampShadow(options: {
   const setIdentity = (): void => {
     if (material.map !== white) { material.map = white; material.needsUpdate = true; }
     key = '';
+    bakedRoot = '';
   };
 
-  const syncBake = (root: THREE.Object3D | null): void => {
-    const shape = root ? measure(root) : null;
-    if (!root || !shape) { setIdentity(); return; }
-    const lighting = collectLighting();
+  const signatureOf = (root: THREE.Object3D, lighting: LampShadowLighting): string => {
     const e = root.matrixWorld.elements;
     let signature = `${root.uuid}|${e.map((v) => v.toFixed(3)).join(',')}`;
     for (const lamp of lighting.lamps) {
       lamp.getWorldPosition(_lightPos);
       signature += `|${lamp.intensity.toFixed(2)}@${_lightPos.x.toFixed(2)},${_lightPos.y.toFixed(2)},${_lightPos.z.toFixed(2)}`;
     }
-    if (signature === key && bake) return;
-    const boxes = lampShadowBoxes(shape, turretBounds(root));
+    return signature;
+  };
+  let pending: ReturnType<typeof setTimeout> | null = null;
+  let pendingSignature = '';
+  const cancelPending = (): void => {
+    if (pending !== null) clearTimeout(pending);
+    pending = null;
+    pendingSignature = '';
+  };
+  /** The bake itself, in a task of its own: a hull switch's frame never carries it. */
+  const runBake = (): void => {
+    pending = null;
+    pendingSignature = '';
+    const root = pedestalRoot();
+    const shape = root ? measure(root) : null;
+    if (!root || !shape) { setIdentity(); return; }
+    const lighting = collectLighting();
+    const signature = signatureOf(root, lighting);
+    const boxes = lampShadowBoxes(shape, partBounds(root, /^turret/), partBounds(root, /^gun(Dark)?$/));
     centre.set(garagePosition.x, garagePosition.y + podiumTopY, garagePosition.z);
     eye.set(garagePosition.x + cameraOffset[0], garagePosition.y + cameraOffset[1], garagePosition.z + cameraOffset[2]);
     bake = bakeLampShadow({ boxes, rootMatrixWorld: root.matrixWorld, lighting, eye, podium: { centre, radius: podiumRadius } });
     key = signature;
+    bakedRoot = root.uuid;
     const { grid } = bake;
+    // (QA: what the decal carries — the probes read it off the scene's 'garageLampShadow')
+    mesh.userData.lampShadow = { strength: bake.strength, lamps: bake.lamps, samples: bake.samples, nx: grid.nx, nz: grid.nz };
     toRoot.copy(root.matrixWorld).invert();
     const floorY = floorPoint.copy(centre).applyMatrix4(toRoot).y;
     const lift = LAMP_SHADOW_LIFT_M / Math.max(1e-6, rootScale.setFromMatrixScale(root.matrixWorld).y);
@@ -517,6 +559,17 @@ export function createGarageLampShadow(options: {
     material.map = texture;
     material.needsUpdate = true;
   };
+  const syncBake = (root: THREE.Object3D | null): void => {
+    if (!root || !measure(root)) { cancelPending(); setIdentity(); return; }
+    const signature = signatureOf(root, collectLighting());
+    if (signature === key) return;
+    // another hull's umbra never shows under this one while its own bake is pending
+    if (bakedRoot !== root.uuid && material.map !== white) { material.map = white; material.needsUpdate = true; }
+    if (pending !== null && pendingSignature === signature) return;
+    cancelPending();
+    pendingSignature = signature;
+    pending = setTimeout(runBake, 0);
+  };
 
   // asked every Garage frame (frustum culling is off); the decal rides the hull's matrix, which three has already
   // updated, and three computes the decal's model-view matrix after this hook
@@ -533,6 +586,7 @@ export function createGarageLampShadow(options: {
     mesh,
     get bake() { return bake; },
     dispose() {
+      cancelPending();
       texture?.dispose();
       white.dispose();
       material.dispose();

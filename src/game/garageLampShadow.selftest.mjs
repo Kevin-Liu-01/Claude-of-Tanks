@@ -31,9 +31,12 @@ assert.equal(projectedShadow([box], { x: 0, y: 1.5, z: 3 }, 0), null, 'a lamp un
 
 // the raster marks exactly the texels whose centres the polygon holds
 const grid = { x0: 0, z0: 0, cell: 1, nx: 10, nz: 10 };
-const mask = new Uint8Array(100);
-rasterizeConvex([2, 2, 6, 2, 6, 5, 2, 5], grid, mask);
-assert.equal(mask.reduce((s, v) => s + v, 0), 4 * 3, 'a 4 x 3 m rectangle on a 1 m grid covers 12 texel centres');
+const field = new Float32Array(100), stamp = new Int32Array(100);
+assert.equal(rasterizeConvex([2, 2, 6, 2, 6, 5, 2, 5], grid, field, 0.5, stamp, 1), 4 * 3,
+  'a 4 x 3 m rectangle on a 1 m grid covers 12 texel centres');
+assert.equal(rasterizeConvex([3, 3, 8, 3, 8, 4, 3, 4], grid, field, 0.5, stamp, 1), 5 - 3,
+  'a second polygon of the same sample adds only the texels the first did not cover');
+assert.equal(field.reduce((s, v) => s + v, 0), 0.5 * 14, 'each covered texel counts the sample once');
 
 // the podium response: a lamp behind the hull, opposite a low viewer, reaches the viewer as a specular sheen
 const p = new THREE.Vector3(2, 0, 2), eye = new THREE.Vector3(7.4, 2.75, 8);
@@ -48,6 +51,10 @@ const shape = { hx: 1.6, yb: 0.45, yt: 1.9, fz0: -3.9, fz1: 3.9, pz0: -3, pz1: 3
   y0: 0, xi: 1.0, xo: 1.6, tz0: -3.6, tz1: 3.6, cz0: -2.8, cz1: 2.8, sr: 0, sf: 0 };
 const boxes = lampShadowBoxes(shape, null);
 assert.equal(boxes.length, 3, 'the hull and its two runs');
+const barrel = new THREE.Box3(new THREE.Vector3(-0.08, 2.1, 1), new THREE.Vector3(0.08, 2.3, 6.5));
+assert.equal(lampShadowBoxes(shape, null, barrel).length, 4, 'a barrel along the hull\'s axis casts');
+const traversed = new THREE.Box3(new THREE.Vector3(-0.1, 2.1, 1), new THREE.Vector3(3.8, 2.3, 4.6));
+assert.equal(lampShadowBoxes(shape, null, traversed).length, 3, 'a traversed barrel\'s diagonal box is left out');
 const lamp = new THREE.PointLight(0xffffff, 40, 0, 2);
 lamp.position.set(-10, 10, 0);
 lamp.updateMatrixWorld(true);
@@ -116,15 +123,23 @@ assert.equal(decal.mesh.frustumCulled, false, 'asked every Garage frame');
 decal.mesh.onBeforeRender();
 assert.equal(decal.bake, null, 'no hull on the podium: no bake');
 assert.equal(decal.mesh.material.map.image.width, 1, 'and the decal multiplies by one');
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 scene.userData.nearVehicles = [{ root }];
 decal.mesh.onBeforeRender();
-assert.ok(decal.bake && decal.bake.lamps === 1, 'the hull on the podium is baked against the stage lamps');
+assert.equal(decal.bake, null, 'the bake never runs inside the frame that found the hull');
+await tick();
+decal.mesh.onBeforeRender();
+assert.ok(decal.bake && decal.bake.lamps === 1, 'the hull on the podium is baked against the stage lamps, a task later');
 assert.equal(decal.mesh.material.map.image.width, decal.bake.grid.nx);
 assert.deepEqual(decal.mesh.matrixWorld.elements, root.matrixWorld.elements, 'the decal rides the hull\'s frame');
 const first = decal.bake;
 decal.mesh.onBeforeRender();
 assert.equal(decal.bake, first, 'an unchanged hull and rig is not baked again');
 highbay.intensity = 30;
+decal.mesh.onBeforeRender();
+assert.equal(decal.bake, first, 'a lamp change keeps the hull\'s umbra until the new bake lands');
+assert.equal(decal.mesh.material.map.image.width, first.grid.nx, 'the same hull keeps its texture meanwhile');
+await tick();
 decal.mesh.onBeforeRender();
 assert.notEqual(decal.bake, first, 'a lamp change bakes again');
 root.position.x += 10;
