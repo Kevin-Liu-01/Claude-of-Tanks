@@ -392,6 +392,7 @@ test('real intent, Garage teardown and network activation invalidate old same-wo
   for (const body of bodies) {
     const invoke = new Function('value', `let sceneWatchdogEntryGeneration = 1, battleWarmGeneration = 1, coveredBattleWatchdog = () => {};
       const playSurface = { hideForBattle() {} }, networkSession = { setSpectator() {} };
+      const garageModePreview = { current: null }; // battle entry also clears the Garage mode preview (f94f3ebe5)
       ${body}
       return sceneWatchdogEntryGeneration;`);
     assert.equal(invoke(true), 2, 'deleting an actual adapter invalidation must fail even when the generic guard is intact');
@@ -463,6 +464,7 @@ for (const kind of ['sync', 'async', 'schedule', 'reporter']) {
     'scheduleSceneWatchdog', 'runSceneBlackWatchdogAsync', `
       let sceneWatchdogEntryGeneration = 0, coveredBattleWatchdog = null;
       const studio = { active: false }, renderer = {}, scene = {}, camera = {}, playSurface = { hideForBattle() {} };
+      const garageModePreview = { current: null };
       const currentSceneWatchdogOptions = () => ({});
       return { arm: covered => { ${armBody} }, consume: async assertCurrent => { ${consumeBody} },
         pending: () => coveredBattleWatchdog, invalidate: () => { ${invalidateBody} } };

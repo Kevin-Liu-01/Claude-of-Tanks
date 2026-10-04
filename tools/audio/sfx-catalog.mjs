@@ -67,6 +67,15 @@ const weapons = [
   ].map(([id, bore, crack, shape]) => sfx(id, 'weapons',
     `Gunshot sound effect: one single shot of a ${bore} tank gun heard from the commander's open hatch beside it: instantaneous, ${crack} and a concussive pressure slap, the steel turret ringing briefly, the clank of the recoiling breech, then a short outdoor echo. ${REAL}`,
     4, { inf: 0.6, variants: 3, takes: 6, proc: 'gunshot', shape })),
+  // The punch under a close report (2026-10-03, replacing the rendered pressure pulse): the air slam a crack
+  // alone lacks, felt as much as heard, and the suck of air behind it. Layered under the report by bore.
+  ...[
+    ['blast_punch_light', 'a heavy machine gun firing a single round', 'one instant, tight, dry punch of air, a short thump with a quick suck-back', 0.6, [4, 32, -26]],
+    ['blast_punch_medium', 'a 30 mm autocannon firing a single round', 'one instant, hard, punchy thump of air, a tight low whump with a quick suck-back', 0.8, [5, 48, -25]],
+    ['blast_punch_heavy', 'a large tank cannon firing', 'one enormous, instant, chest-thumping punch of air, a deep low whump with the air sucked back after it', 1.2, [8, 75, -24]],
+  ].map(([id, gun, punch, dur, shape]) => sfx(id, 'weapons',
+    `Sound effect: the concussive pressure wave of ${gun}, felt from right beside it: ${punch}, over in a fraction of a second. Only the pressure punch: no crack, no echo, no explosion, no debris, no ringing, no metallic clank. Very loud, with an immediate hard attack. ${NO_MUSIC}.`,
+    dur, { inf: 0.7, variants: 3, takes: 12, proc: 'punch', shape })),
   sfx('tail_open', 'weapons', `One-shot echo tail only of a distant gunshot over open fields: no initial blast, a soft diffuse rolling reverberation decaying over four seconds. ${NO_MUSIC}.`, 4, { variants: 2, takes: 2, proc: 'tail' }),
   sfx('tail_urban', 'weapons', `One-shot echo tail only of a gunshot between concrete buildings in a ruined town: no initial blast, sharp slap-back echoes then a long low reverberant tail. ${NO_MUSIC}.`, 4, { variants: 2, takes: 2, proc: 'tail' }),
   sfx('tail_mountain', 'weapons', `One-shot echo tail only of a gunshot in a mountain valley: no initial blast, distinct delayed echoes bouncing off cliffs, long decay. ${NO_MUSIC}.`, 4.5, { variants: 2, takes: 2, proc: 'tail' }),
@@ -180,6 +189,10 @@ const impacts = [
   sfx('expl_he_medium', 'impacts', `One-shot of a tank high-explosive shell exploding on the ground nearby: powerful blast, dirt and debris raining down. ${FIELD}, ${NO_MUSIC}.`, 3.5, { variants: 3, takes: 4, proc: 'impact' }),
   sfx('expl_he_large', 'impacts', `One-shot of a heavy artillery-size explosion: enormous blast, deep rumble, heavy debris falling. ${FIELD}, ${NO_MUSIC}.`, 5, { variants: 2, takes: 3, proc: 'impact' }),
   sfx('expl_far', 'impacts', `One-shot of an explosion far in the distance, about a kilometre: deep muffled boom with a rolling echo. ${FIELD}, ${NO_MUSIC}.`, 4, { variants: 2, takes: 3, proc: 'weapon-far' }),
+  // Generated recordings are thin below ~80 Hz: these low-passed layers (the 'sub' preset) carry the weight
+  // under a blast or a hit on our own hull (2026-10-03, replacing a synthesized falling sine).
+  sfx('blast_sub', 'impacts', `Sound effect: the deep sub-bass shock of a large explosion felt through the ground from a hundred metres away: one massive low thump and a short deep rumble rolling away. Only deep bass: no crack, no debris, no crackle, no high frequencies, no echo. ${NO_MUSIC}.`, 2.5, { inf: 0.6, variants: 3, takes: 5, proc: 'sub' }),
+  sfx('hull_thud_sub', 'impacts', `Sound effect: a heavy shell slamming into a tank's thick steel armour, heard and felt from inside the crew compartment: one deep, dull, heavy thud through the hull, felt in the chest. Only the low thud: no ringing, no clang, no debris, no high frequencies. ${NO_MUSIC}.`, 1.2, { inf: 0.6, variants: 3, takes: 5, proc: 'sub' }),
   sfx('debris_dirt', 'impacts', `One-shot of dirt, gravel and small stones raining down onto the ground after an explosion. ${NO_MUSIC}.`, 3, { variants: 2, takes: 2, proc: 'impact', punch: false }),
 ];
 
@@ -248,6 +261,11 @@ const foley = [
   sfx('turret_hydraulic_loop', 'vehicle', `Seamless loop of a heavy tank turret traversing on a hydraulic drive: a strained hydraulic pump whine over a deep grinding gear rumble. ${NO_MUSIC}.`, 5, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
   sfx('turret_stop', 'vehicle', `One-shot of a heavy tank turret braking to a stop: the drive winding down and a solid, weighty gear clunk. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 4, proc: 'foley' }),
   sfx('elevation_servo_loop', 'vehicle', `Seamless loop of a tank's gun elevation drive moving the heavy gun: a low electric servo hum with a faint gear whine. ${NO_MUSIC}.`, 3, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
+  // Drivetrain whines, pitched by the rig with speed or rpm (2026-10-03, replacing oscillator whines).
+  // "A whine over a hum" came back as all hum (2026-10-03): the whine alone, and the rumble left to the tracks.
+  sfx('gear_whine_loop', 'vehicle', `Seamless loop of the high mechanical whine of a heavy military vehicle's transmission gears at a steady speed, recorded beside the gearbox: a clear, steady, high-pitched gear whine like a straight-cut gearbox, constant pitch. No engine, no rumble, no road noise. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 4, proc: 'loop' }),
+  sfx('electric_drive_loop', 'vehicle', `Seamless loop of a large electric traction motor driving a heavy vehicle at a steady speed: a smooth, constant electric motor whine with a faint inverter hum, constant pitch. No engine, no tracks. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
+  sfx('turbo_whistle_loop', 'vehicle', `Seamless loop of a big diesel engine's turbocharger spinning at high speed, recorded close to the intake: a steady high-pitched turbo whistle over an airy rush, constant pitch. No engine knock. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
   sfx('hatch', 'vehicle', `One-shot of a heavy steel tank hatch closing: hinge creak and a solid clank. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 2, proc: 'foley' }),
   sfx('switch_toggle', 'vehicle', `One-shot of a heavy military toggle switch flipped, with a relay click. ${NO_MUSIC}.`, 0.8, { variants: 2, takes: 3, proc: 'foley' }),
 ];
@@ -512,16 +530,22 @@ const edgeCases = [
   sfx('spectate_switch', 'edge', `One-shot of a military camera feed switching: a short low static thump. ${NO_MUSIC}.`, 1, { variants: 1, takes: 2, proc: 'ui' }),
   sfx('interior_hum_loop', 'edge', `Seamless loop of the inside of a running tank: electrical hum, ventilation fans, muffled engine throb through the hull. ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('interior_rattle_loop', 'edge', `Seamless loop inside a moving tank: equipment rattling, steel creaking and vibrating as it drives over rough ground. ${NO_MUSIC}.`, 5, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
+  // Cabin alarms and the critical-damage heartbeat (2026-10-03, replacing a square-wave klaxon, square beeps
+  // and sine pulses).
+  sfx('alarm_fire_loop', 'edge', `Seamless loop of a tank's interior fire alarm sounding inside the steel crew compartment: a harsh, urgent electric horn pulsing on and off about twice a second, muffled by the hull, steady and constant. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
+  sfx('alarm_ammo', 'edge', `One-shot of a tank's ammunition compartment warning inside the steel crew compartment: three short, harsh electric buzzer pulses, urgent and muffled by the hull. ${NO_MUSIC}.`, 1.2, { variants: 1, takes: 4, proc: 'ui' }),
+  sfx('heartbeat_loop', 'edge', `Seamless loop of a slow, heavy human heartbeat heard from inside the body: deep muffled thumps in a steady lub-dub rhythm, nothing else. ${NO_MUSIC}.`, 6, { loop: true, variants: 1, takes: 3, proc: 'loop' }),
   sfx('tinnitus', 'edge', `One-shot of ears ringing after a close explosion: a thin high-pitched ringing tone fading slowly, everything else muffled. ${NO_MUSIC}.`, 6, { variants: 1, takes: 2, proc: 'foley' }),
 ];
 
 // ----------------------------------------------------------- radio net ---
-// The intercom chain itself is real-time DSP (band-limit, drive, noise bed);
-// these are the keyed elements that make it read as a radio.
+// The intercom chain itself is real-time DSP (band-limit, compression, drive);
+// these are the keyed elements and the static bed that make it read as a radio.
 const radio = [
   sfx('radio_key_in', 'radio', `One-shot of a military radio push-to-talk key: a short click followed by a brief burst of static. ${NO_MUSIC}.`, 0.6, { inf: 0.6, variants: 3, takes: 4, proc: 'radio' }),
-  sfx('radio_key_out', 'radio', `One-shot of a military radio transmission ending: squelch tail, a soft chirp and a static hiss cutting off. ${NO_MUSIC}.`, 0.6, { inf: 0.6, variants: 3, takes: 4, proc: 'radio' }),
-  sfx('radio_static_loop', 'radio', `Seamless loop of low military radio static and faint crackle under an open channel. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 2, proc: 'radio' }),
+  // No chirp (2026-10-03): a tone falling away after every crew line reads as a little boing.
+  sfx('radio_key_out', 'radio', `One-shot of a military radio transmission ending: the push-to-talk key released with a soft click and a short burst of squelch static that cuts off abruptly. No beep, no chirp, no tone. ${NO_MUSIC}.`, 0.6, { inf: 0.6, variants: 3, takes: 5, proc: 'radio' }),
+  sfx('radio_static_loop', 'radio', `Seamless loop of low military radio static and faint crackle under an open channel. ${NO_MUSIC}.`, 4, { loop: true, variants: 1, takes: 2, proc: 'loop' }),
   sfx('radio_interference', 'radio', `One-shot of a damaged radio: harsh crackling interference bursts and dropouts. ${NO_MUSIC}.`, 1.2, { variants: 2, takes: 3, proc: 'radio' }),
 ];
 
@@ -606,6 +630,8 @@ const stingers = [
   sfx('mode_infected_outbreak', 'stingers', `Sound effect: a burst of harsh radio interference and garbled static breaking up over a low unsettling electrical drone. ${NO_MUSIC}.`, 4, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
   sfx('mode_turbo_horn', 'stingers', `Sound effect: one long blast of a deep ship's foghorn echoing across open ground. ${NO_MUSIC}.`, 3.5, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
   sfx('mode_gungame_armory', 'stingers', `Sound effect: heavy steel weapon racks rattling and a large gun breech being worked open and slammed shut in an armory. ${NO_MUSIC}.`, 3, { variants: 1, takes: 4, proc: 'sting', ch: 'stereo' }),
+  // The bed under the battle-loading screen (2026-10-03, replacing an oscillator rumble).
+  sfx('loading_bed_loop', 'stingers', `Seamless loop of the low, tense rumble of a tank depot at night before a battle: distant diesel engines idling, a deep machinery hum and a slow throb, dark and steady, no melody. ${NO_MUSIC}.`, 8, { loop: true, variants: 1, takes: 3, proc: 'ambience', ch: 'stereo' }),
   sfx('cache_drop', 'props', `One-shot of a heavy supply crate dropped by parachute landing hard on the ground: a deep thud, a crunch and the canopy rustling down. ${FIELD}, ${NO_MUSIC}.`, 2.5, { variants: 2, takes: 4, proc: 'impact', punch: false }),
 ];
 

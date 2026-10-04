@@ -94,9 +94,9 @@ assert.ok(names.includes('tail_urban'), 'the shot rings into the urban tail');
 assert.ok(names.includes('shell_flyby_sabot'), 'the sabot cracks past the listener');
 const close = logSince(since).find((e) => e.n === 'gun_120_close');
 assert.ok(close.t > ctx.currentTime + 0.3, 'the report arrives at the speed of sound (126 m ≈ 0.37 s)');
-// The muzzle blast: the instant crack ahead of the recorded report, arriving with it, under it; no sub sweep.
-const muzzle = logSince(since).find((e) => e.n === 'muzzle_blast');
-assert.ok(muzzle && Math.abs(muzzle.t - close.t) < 0.005, `the muzzle blast arrives with the report (${muzzle?.t} vs ${close.t})`);
+// The punch: the recorded air slam under the report, arriving with it, under it; no sub sweep.
+const muzzle = logSince(since).find((e) => e.n === 'blast_punch_heavy');
+assert.ok(muzzle && Math.abs(muzzle.t - close.t) < 0.005, `the punch arrives with the report (${muzzle?.t} vs ${close.t})`);
 assert.ok(muzzle.g < close.g && muzzle.g > close.g * 0.3, `and sits just under it (${muzzle.g} vs ${close.g})`);
 assert.equal(oscillatorsAfter, oscillatorsBefore, 'no synthesized sub sweep under the cannon');
 const quietSince = probe.sfxLog.at(-1).seq;
@@ -159,6 +159,7 @@ ctx.advance(0.25);
 audio.update(1 / 60, listener, tanks);
 assert.equal(probe.voiceLog.at(-1)?.id, 'were_hit');
 assert.equal(probe.voiceLog.at(-1)?.lang, 'ru');
+assert.ok(names.includes('hull_thud_sub'), `the hit thuds through our hull, a recording and not a sine (${names})`);
 
 // Edge cases: dry fire on an empty rack, ammo switch call, smoke, friendly ram.
 since = mark();
@@ -202,7 +203,7 @@ since = mark();
 ctx.advance(10);
 bus.emit('tank:destroyed', { id: 'foe', killerId: 'me', pos: [-40, 0, 120], cause: 'ammorack' });
 names = logSince(since).map((e) => e.n);
-for (const id of ['tank_explode_ammo', 'debris_metal', 'turret_land', 'cookoff_loop']) assert.ok(names.includes(id), `${id} on an ammo-rack kill (${names})`);
+for (const id of ['tank_explode_ammo', 'debris_metal', 'turret_land', 'cookoff_loop', 'blast_sub']) assert.ok(names.includes(id), `${id} on an ammo-rack kill (${names})`);
 assert.ok(!logSince(since).some((e) => e.b === 'ui'), 'the target going up confirms the kill, not an interface sound');
 // The crew calls it once they have seen it go up, about half a second later.
 for (let i = 0; i < 4; i++) { ctx.advance(0.25); audio.update(1 / 60, listener, tanks.filter((t) => t.id !== 'foe')); }
@@ -304,6 +305,8 @@ for (let i = 0; i < 3; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener
 air = probe.aerialState();
 assert.equal(air.drones.length, 1, 'an enemy drone buzzes');
 assert.ok(air.drones[0].gain > 0.05 && air.drones[0].rate > 1, `close and closing in (${JSON.stringify(air.drones[0])})`);
+for (let i = 0; i < 30; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks, [drone]); }
+assert.ok(probe.voiceLog.some((e) => e.id === 'drone_incoming'), `the commander calls the drone, not a missile (${probe.voiceLog.slice(-4).map((e) => e.id)})`);
 drone.dead = true;
 ctx.advance(1 / 60);
 audio.update(1 / 60, listener, tanks, [drone]);
@@ -360,7 +363,7 @@ for (const [weaponSound, caliberMm, report] of [['gunship-autocannon', 30, 'guns
   assert.ok(names.includes(report), `the gunship's ${caliberMm} mm plays its cabin report (${names})`);
   if (caliberMm === 152) {
     assert.ok(names.includes('gunship_casing_drop') && !names.includes('gun_recoil_mech'), `and throws its case onto the deck (${names})`);
-    assert.ok(names.includes('muzzle_blast'), 'with its muzzle blast');
+    assert.ok(names.includes('blast_punch_heavy'), 'with its punch');
   }
   ctx.advance(0.6);
 }
@@ -418,6 +421,20 @@ bus.emit('shell:fired', { shellId: volleyId++, shooterId: 'boss', muzzlePos: [-3
 const bossShot = logSince(since).find((e) => e.n === 'gun_120_close');
 assert.ok(hunterShot && bossShot && bossShot.g > hunterShot.g * 1.2, `the juggernaut's gun carries further (${hunterShot?.g} → ${bossShot?.g})`);
 gameMode = 'standard';
+// The battle has rolled out. Throttle held while our drone flies steers the drone, so the still tank is not
+// "stuck"; the same throttle on a tank that cannot move is.
+const voicesBefore = probe.voiceLog.length;
+me.aerial = { kind: 'drone', active: true, x: 0, y: 30, z: 40, batteryS: 30 };
+me.input.throttle = 1;
+for (let i = 0; i < 200; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks, []); }
+assert.ok(!probe.voiceLog.slice(voicesBefore).some((e) => e.id === 'stuck'), 'flying the drone, the still tank is not stuck');
+delete me.aerial;
+ctx.advance(1);
+audio.update(1 / 60, listener, tanks, []);
+const voicesGrounded = probe.voiceLog.length;
+for (let i = 0; i < 260; i++) { ctx.advance(1 / 60); audio.update(1 / 60, listener, tanks, []); }
+assert.ok(probe.voiceLog.slice(voicesGrounded).some((e) => e.id === 'stuck'), 'a tank at full throttle that cannot move is');
+me.input.throttle = 0;
 
 // Gun Game: the crew changes over to the next weapon and calls the load; Infected: a grave sting.
 settle(4);
@@ -477,6 +494,26 @@ since = mark();
 bus.emit('battle:rollout', {});
 assert.ok(!logSince(since).some((e) => e.b === 'music'), `Realistic opens without a stinger (${logSince(since).map((e) => e.n)})`);
 gameMode = 'standard';
+
+// Cabin alarms, the sixth-sense lamp and the loading bed are recordings (2026-10-03): the square-wave klaxon and
+// beeps, the HUD's two-tone sting and the oscillator loading rumble are gone.
+audio.update(1 / 60, listener, tanks);
+since = mark();
+bus.emit('tank:fire', { id: 'me', burning: true });
+bus.emit('module:state', { id: 'me', module: 'ammoRack', state: 'yellow', source: 'hit' });
+bus.emit('player:spotted', { timeS: 0 });
+names = logSince(since).map((e) => e.n);
+for (const id of ['alarm_fire_loop', 'alarm_ammo', 'ui_alert']) assert.ok(names.includes(id), `${id} (${names})`);
+bus.emit('tank:fire', { id: 'me', burning: false });
+ctx.advance(13);
+since = mark();
+bus.emit('player:spotted', { timeS: 13 });
+assert.ok(logSince(since).some((e) => e.n === 'ui_alert'), 'the lamp sounds each time it lights');
+since = mark();
+audio.loadingOn(true);
+assert.ok(logSince(since).some((e) => e.n === 'loading_bed_loop'), 'the loading screen has its recorded bed');
+audio.loadingOn(false);
+assert.equal(ctx.nodes.filter((n) => n.kind === 'oscillator').length, 0, 'a whole session synthesizes nothing');
 
 // The real settings event reaches every radio call, across every shipped pack.
 for (const language of Object.keys(CREW_VOICE_NATIONS)) {

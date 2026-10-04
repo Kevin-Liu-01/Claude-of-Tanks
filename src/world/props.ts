@@ -71,7 +71,9 @@ import {
   buildDryStoneWallHead,
 } from './maps/inhabitKit.ts';
 import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
-import { boxClearOfRoadCore, discClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
+import {
+  boxClearOfPoints, boxClearOfRoadCore, discClearOfRoadCore, sharpRoadBends, shiftClearOfRoadCore,
+} from './roadFootprint.ts';
 import { FISHERY_WHARF_LAKE_INDEX } from './fisheryWharfSite.ts';
 import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } from './loggingYard.ts';
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
@@ -322,7 +324,14 @@ interface PropsSettings {
   reservoirWaterworks?: ReservoirWaterworksConfig;
   foundryServiceCourt?: FoundryServiceCourtConfig;
   plan: string[];
-  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number }[];
+  /** Maps lane B (2026-10-03): `plot` sizes the site — metres across (x) and deep (z) before the yaw — for a builder
+   * that honours one (the warehouse; the Hostomel kit raises its barrel-vault cargo hangar on a warehouse plot 21 m
+   * wide or more). */
+  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number } }[];
+  /** Maps lane B (2026-10-03, Nordhavn Fjord): the settlement the props dress — its roadside and block-fill buildings,
+   * its plaza (the road crossing nearest cx, cz), street furniture and clutter — when it is not the whole ground the
+   * terrain's village rect grades (a harbour town on the quay of a graded valley floor). Default: the village rect. */
+  town?: { x0: number; x1: number; z0: number; z1: number; cx: number; cz: number };
   /** The maps-and-layouts lane (2026-10-03; the owner's town-plan ruling): a settlement that stands exactly as an earlier
    * build seated it (maps/townPlans.generated.ts). Each entry is one planned building as that build placed it: its
    * structure, plan index, wall and the props stream's state after the wall pick, and its final pose. The replay
@@ -2930,6 +2939,9 @@ function* propsBuildSteps(
   group.name = 'props';
   const decorationGroundingReceipts: DecorationGroundingReceipt[] = [];
   const v = L.village;
+  // maps lane B (2026-10-03): the settlement the props dress (P.town, default the village rect); the scatter below keeps
+  // off the whole graded village ground (v) as before
+  const town = P.town ? { ...v, ...P.town } : v;
 
   // regional-buildings lane: the map's architecture kit (maps/regional/index.ts) — its default tones sit under the map's
   const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
@@ -3604,7 +3616,7 @@ ${snowCap ? `
   // junction/plaza: the road crossing nearest the village/town center
   function resolveVillageJunction(): { x: number; z: number } {
     if (mapId === 'verdant') return { x: 20, z: 73 };
-    return roadSettlementJunction(roads, { x: v.cx, z: v.cz });
+    return roadSettlementJunction(roads, { x: town.cx, z: town.cz });
   }
   const junction = resolveVillageJunction();
   // point-to-segment distance (local twin of terrain.js segDist)
@@ -3659,7 +3671,7 @@ ${snowCap ? `
       const nodes = roads[road];
       for (const i of buildingRoadStationIndices(L, road)) {
         const [nx, nz] = nodes[i];
-        if (nx < v.x0 + 6 || nx > v.x1 - 6 || nz < v.z0 + 6 || nz > v.z1 - 6) continue;
+        if (nx < town.x0 + 6 || nx > town.x1 - 6 || nz < town.z0 + 6 || nz > town.z1 - 6) continue;
         if (Math.hypot(nx - junction.x, nz - junction.z) < 22) continue; // keep the plaza open
         const tx = nodes[i + 1][0] - nodes[i - 1][0], tz = nodes[i + 1][1] - nodes[i - 1][1];
         const tl = Math.hypot(tx, tz);
@@ -3752,13 +3764,13 @@ ${snowCap ? `
   const roadClearanceMoves: { kind: string; from: [number, number]; to: [number, number] | null }[] = [];
   if (P.roadBuildingClearance) group.userData.roadClearanceMoves = roadClearanceMoves;
   function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
-    fromRoad = false): boolean {
+    fromRoad = false, plot?: { w: number; d: number }): boolean {
     let tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
     };
     const structureId = explicitStructure ?? P.plan[bi] ?? 'cottage';
-    attachStructureBuildContext(tmp, structureContext);
+    attachStructureBuildContext(tmp, plot ? { ...structureContext, plot } : structureContext);
     const builder = explicitStructure ? BUILDER_BY_NAME[explicitStructure] : builders[bi];
     if (!builder) throw new Error(`Unknown planned structure ${structureId}`);
     const wallBucket = pickWall(rng);
@@ -3792,7 +3804,7 @@ ${snowCap ? `
         const cornersDry = [-1, 1].every(sx => [-1, 1].every(sz => {
           const x = proposed.x + sx * w / 2 * c + sz * d / 2 * s;
           const z = proposed.z - sx * w / 2 * s + sz * d / 2 * c;
-          return x >= v.x0 && x <= v.x1 && z >= v.z0 && z <= v.z1 && !noVeg(x, z);
+          return x >= town.x0 && x <= town.x1 && z >= town.z0 && z <= town.z1 && !noVeg(x, z);
         }));
         const revisedFit = groundFit(proposed.x, proposed.z, w, d, proposed.rot);
         const radius = Math.hypot(w, d) / 2;
@@ -3883,7 +3895,7 @@ ${snowCap ? `
     const lat = P.buildingLat[0] + rng() * P.buildingLat[1];
     const px = cand.x - cand.tz * side * lat;
     const pz = cand.z + cand.tx * side * lat;
-    if (px < v.x0 || px > v.x1 || pz < v.z0 || pz > v.z1) return;
+    if (px < town.x0 || px > town.x1 || pz < town.z0 || pz > town.z1) return;
     if (heightField._roadDist(px, pz) < 7.5 || noVeg(px, pz)) return;
     if (P.roadBuildingKeepouts?.some((keep) => Math.hypot(px - keep.x, pz - keep.z) < keep.r)) return;
     if (conflictsTacticalReservation(px, pz) || !isRoadBuildingSiteClear(px, pz)) return;
@@ -3961,7 +3973,7 @@ ${snowCap ? `
   for (const site of P.townPlan?.length ? [] : P.plannedSites ?? []) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!isRoadBuildingSiteClear(site.x, site.z)) continue;
-    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure);
+    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot);
     yield { fine: true };
   }
   yield* placeRoadBuildings();
@@ -4066,7 +4078,7 @@ ${snowCap ? `
       return { total, pointAt };
     };
     const outsideStreetRowArea = (x: number, z: number): boolean =>
-      x < v.x0 + 8 || x > v.x1 - 8 || z < v.z0 + 8 || z > v.z1 - 8;
+      x < town.x0 + 8 || x > town.x1 - 8 || z < town.z0 + 8 || z > town.z1 - 8;
     const blockedStreetRowSite = (
       x: number,
       z: number,
@@ -4199,7 +4211,7 @@ ${snowCap ? `
           const txn = (bx - ax) / tl, tzn = (bz - az) / tl;
           const side = (i % 2) ? 1 : -1; // alternate pavements
           const lx = ax - tzn * side * 5.9, lz = az + txn * side * 5.9;
-          if (lx < v.x0 + 4 || lx > v.x1 - 4 || lz < v.z0 + 4 || lz > v.z1 - 4) continue;
+          if (lx < town.x0 + 4 || lx > town.x1 - 4 || lz < town.z0 + 4 || lz > town.z1 - 4) continue;
           if (distToOtherRoads(lx, lz, ri) < 7 || noVeg(lx, lz)) continue;
           const ly = heightField.getHeightAt(lx, lz);
           if (frng() < 0.18) { // toppled post lying across the pavement
@@ -4222,8 +4234,8 @@ ${snowCap ? `
       // kerb-line battle litter: masonry chips + slate shards along frontages
       const placeStreetLitter = (): void => {
         for (let i = 0, placed = 0; i < 900 && placed < 150; i++) {
-          const x = v.x0 + frng() * (v.x1 - v.x0);
-          const z = v.z0 + frng() * (v.z1 - v.z0);
+          const x = town.x0 + frng() * (town.x1 - town.x0);
+          const z = town.z0 + frng() * (town.z1 - town.z0);
           const rd = heightField._roadDist(x, z);
           if (rd < 3.2 || rd > 7.5) continue; // hugs the kerb/pavement band
           if (noVeg(x, z)) continue;
@@ -4263,8 +4275,8 @@ ${snowCap ? `
       const rot = (brng() < 0.5 ? 0 : Math.PI / 2) + (brng() - 0.5) * 0.06;
       placePlannedBuilding(px, pz, rot, undefined, undefined, true);
     };
-    for (let gz = v.z0 + 14; gz < v.z1 - 14 && bi < builders.length; gz += step) {
-      for (let gx = v.x0 + 14; gx < v.x1 - 14 && bi < builders.length; gx += step) {
+    for (let gz = town.z0 + 14; gz < town.z1 - 14 && bi < builders.length; gz += step) {
+      for (let gx = town.x0 + 14; gx < town.x1 - 14 && bi < builders.length; gx += step) {
         tryPlaceTownBuilding(gx, gz);
         yield { fine: true };
       }
@@ -4458,8 +4470,8 @@ ${snowCap ? `
           rot: Math.atan2(cand.tx, cand.tz) + (srng() - 0.5) * 0.16,
         };
       }
-      const x = v.x0 + 10 + srng() * Math.max(1, v.x1 - v.x0 - 20);
-      const z = v.z0 + 10 + srng() * Math.max(1, v.z1 - v.z0 - 20);
+      const x = town.x0 + 10 + srng() * Math.max(1, town.x1 - town.x0 - 20);
+      const z = town.z0 + 10 + srng() * Math.max(1, town.z1 - town.z0 - 20);
       const rot = (srng() < 0.5 ? 0 : Math.PI / 2) + (srng() - 0.5) * 0.14;
       const roadDistance = heightField._roadDist(x, z);
       return roadDistance < 7.5 || roadDistance > 48 ? null : { x, z, rot };
@@ -4473,8 +4485,8 @@ ${snowCap ? `
         if (!site) continue;
         const { x, z, rot } = site;
         const margin = Math.max(meta.hw, meta.hl) + 2;
-        const outsideVillage = x < v.x0 + margin || x > v.x1 - margin
-          || z < v.z0 + margin || z > v.z1 - margin;
+        const outsideVillage = x < town.x0 + margin || x > town.x1 - margin
+          || z < town.z0 + margin || z > town.z1 - margin;
         if (outsideVillage || Math.hypot(x - junction.x, z - junction.z) < 18 || noVeg(x, z)) continue;
         const fit = groundFit(x, z, meta.hw * 2, meta.hl * 2, rot);
         if (fit.spread > Math.max(P.maxSpread, 1.9)) continue;
@@ -4835,11 +4847,11 @@ ${snowCap ? `
     if (prevBuilt) { endPost(x1, z1, 1); dressIsland(islandFrom, along); } // closing post
   }
   const wallRuns: WallRun[] = P.wallRuns || [
-    [v.x0 + 4, 8, v.x0 + 4, 64, 2],
-    [v.x0 + 4, 8, v.x0 + 40, 8, 3],
-    [v.x1 - 6, 30, v.x1 - 6, 96, 4],
-    [-8, v.z1 - 10, 52, v.z1 - 10, 2],
-    [38, v.z0 + 6, 74, v.z0 + 6, 1],
+    [town.x0 + 4, 8, town.x0 + 4, 64, 2],
+    [town.x0 + 4, 8, town.x0 + 40, 8, 3],
+    [town.x1 - 6, 30, town.x1 - 6, 96, 4],
+    [-8, town.z1 - 10, 52, town.z1 - 10, 2],
+    [38, town.z0 + 6, 74, town.z0 + 6, 1],
     [-44, 108, -10, 108, 0],
     // midfield field-boundary walls: hull-down/cover lines in the open ground
     [-186, -62, -118, -62, 3],
@@ -4949,8 +4961,8 @@ ${snowCap ? `
       const coreClutter = richCount(inh.coreClutter);
       if (coreClutter <= 0) return;
       for (let k = 0; k < coreClutter; k++) {
-        const x = v.x0 + drng() * (v.x1 - v.x0);
-        const z = v.z0 + drng() * (v.z1 - v.z0);
+        const x = town.x0 + drng() * (town.x1 - town.x0);
+        const z = town.z0 + drng() * (town.z1 - town.z0);
         if (heightField._roadDist(x, z) < 4.0 || noVeg(x, z)) continue;
         if (heightField.getNormalAt(x, z).y < 0.90) continue;
         if (overlapsBuilding(x, z, 0.3)) continue;
@@ -4987,8 +4999,8 @@ ${snowCap ? `
       const drumCount = richCount(inh.drums);
       if (drumCount <= 0) return;
       for (let t = 0, placed = 0; t < drumCount * 16 && placed < drumCount; t++) {
-        const x = v.x0 + drng() * (v.x1 - v.x0);
-        const z = v.z0 + drng() * (v.z1 - v.z0);
+        const x = town.x0 + drng() * (town.x1 - town.x0);
+        const z = town.z0 + drng() * (town.z1 - town.z0);
         const rd = heightField._roadDist(x, z);
         if (rd < 3.4 || rd > 14 || noVeg(x, z)) continue;
         if (overlapsBuilding(x, z, 0.3)) continue;
@@ -6150,8 +6162,8 @@ ${snowCap ? `
       const side = ((nodeIndex >> 1) % 2) ? 1 : -1;
       const lx = ax - ((bz - az) / tl) * 6.3 * side;
       const lz = az + ((bx - ax) / tl) * 6.3 * side;
-      const outsideTown = lx < v.x0 - 12 || lx > v.x1 + 12
-        || lz < v.z0 - 12 || lz > v.z1 + 12;
+      const outsideTown = lx < town.x0 - 12 || lx > town.x1 + 12
+        || lz < town.z0 - 12 || lz > town.z1 + 12;
       if (outsideTown || heightField._roadDist(lx, lz) < 4.6) return false;
       const blocked = placedB.some((building) =>
         Math.hypot(lx - building.x, lz - building.z) < building.rr + 1.2);
@@ -6179,8 +6191,8 @@ ${snowCap ? `
     const hrng = mulberry32(seed + 613);
     const placeHedgehog = (hedgehogId: number): boolean => {
       const inTown = hrng() < 0.7;
-      const hx = inTown ? v.x0 + hrng() * (v.x1 - v.x0) : (hrng() * 2 - 1) * 320;
-      const hz = inTown ? v.z0 + hrng() * (v.z1 - v.z0) : (hrng() * 2 - 1) * 320;
+      const hx = inTown ? town.x0 + hrng() * (town.x1 - town.x0) : (hrng() * 2 - 1) * 320;
+      const hz = inTown ? town.z0 + hrng() * (town.z1 - town.z0) : (hrng() * 2 - 1) * 320;
       const roadDistance = heightField._roadDist(hx, hz);
       if (roadDistance > 8.5 || (roadDistance < 2.2 && hrng() < 0.5)) return false;
       const blocked = placedB.some((building) =>
@@ -6486,6 +6498,10 @@ ${snowCap ? `
       const pool = resolveWreckRoster(era, wCfg?.ids);
       if (pool.length === 0) return;
       const bakeCache = new Map<string, WreckBake | null>(); // specId|pop -> bake result
+      // maps lane B (2026-10-03, the physics lane's road-crossing sweep): a hulk keeps 10 m off a road's sharp bends
+      // (turns over 40 degrees), the ground a hull that misses the turn runs straight on to. Copper Mesa's haul road
+      // met a BMP-3 4.8 m past its 73-degree corner on the causeway; no other map had a hulk within 10 m of one.
+      const sharpBends = sharpRoadBends(roads);
       const wreckGeos: THREE.BufferGeometry[] = [];
       const wreckShadowGeos: THREE.BufferGeometry[] = []; // factory shadow proxies, wreck-posed
       let bakedTris = 0;
@@ -6543,6 +6559,7 @@ ${snowCap ? `
           if (Math.max(Math.abs(x), Math.abs(z)) > 440
             || placedB.some((building) => Math.hypot(x - building.x, z - building.z) < building.rr + 2)) return false;
         }
+        if (!boxClearOfPoints(sharpBends, x, z, baked.hx + 0.2, baked.hz + 0.2, yaw, 10)) return false;
         const support = planGroundedObbPose(
           heightField, x, z, baked.hx, baked.hz, yaw, 0.14,
         );
@@ -6895,9 +6912,9 @@ ${snowCap ? `
     const rrng = mulberry32(seed + 403);
     const placeRubbleCandidate = (candidateIndex: number): boolean => {
       const extension = candidateIndex % 4 === 0 ? 90 : 0;
-      const x = v.x0 - extension + rrng() * (v.x1 - v.x0 + extension * 2);
-      const z = v.z0 - extension + rrng() * (v.z1 - v.z0 + extension * 2);
-      const outskirt = x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1;
+      const x = town.x0 - extension + rrng() * (town.x1 - town.x0 + extension * 2);
+      const z = town.z0 - extension + rrng() * (town.z1 - town.z0 + extension * 2);
+      const outskirt = x < town.x0 || x > town.x1 || z < town.z0 || z > town.z1;
       const roadDistance = heightField._roadDist(x, z);
       if (roadDistance < 4.5 || roadDistance > (outskirt ? 70 : 16)) return false;
       const blocked = placedB.some((building) =>
@@ -6946,7 +6963,7 @@ ${snowCap ? `
       for (let i = 0; i < nodes.length - 1; i++) {
         const [ax, az] = nodes[i], [bx, bz] = nodes[i + 1];
         const mx = (ax + bx) / 2, mz = (az + bz) / 2;
-        if (mx < v.x0 - 6 || mx > v.x1 + 6 || mz < v.z0 - 6 || mz > v.z1 + 6) continue;
+        if (mx < town.x0 - 6 || mx > town.x1 + 6 || mz < town.z0 - 6 || mz > town.z1 + 6) continue;
         const dx = bx - ax, dz = bz - az;
         const len = Math.hypot(dx, dz);
         const tx = dx / len, tz = dz / len;
@@ -7237,8 +7254,8 @@ ${snowCap ? `
       if (!P.streetRows) return;
       const crng2 = mulberry32(seed + 771);
       for (let i = 0, placed = 0; i < 700 && placed < 84; i++) {
-        const x = v.x0 + crng2() * (v.x1 - v.x0);
-        const z = v.z0 + crng2() * (v.z1 - v.z0);
+        const x = town.x0 + crng2() * (town.x1 - town.x0);
+        const z = town.z0 + crng2() * (town.z1 - town.z0);
         if (!courtyardDecalIsClear(x, z)) continue;
         apronGeos.push(conformedDisc(x, z,
           4.5 + crng2() * 7.0, [0.04, 0.04, 0.04, 0.03]));
@@ -7428,7 +7445,7 @@ ${snowCap ? `
       addDecalMesh(tearGeos, makeChurnTexture(), { decalKind: 'churn' });
     }
     const corridors: DriveCorridor[] = [L.spawns.player, ...L.spawns.enemies]
-      .map((spawn) => [spawn.x, spawn.z, v.cx ?? 10, v.cz ?? 40]);
+      .map((spawn) => [spawn.x, spawn.z, town.cx ?? 10, town.cz ?? 40]);
     yield* placeFoundationDecals();
     // Yield only after a complete family transfers its meshes to the props
     // group. Foundation inputs above stay private until collection completes.

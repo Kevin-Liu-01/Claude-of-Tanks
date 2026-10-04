@@ -38,6 +38,33 @@ export function boxClearOfRoadCore(field: RoadDistanceField, x: number, z: numbe
   return true;
 }
 
+/** A road network's sharp bends: every interior vertex where a route turns by more than `minTurnDeg`. */
+export function sharpRoadBends(roads: readonly (readonly (readonly [number, number])[])[],
+  minTurnDeg = 40): [number, number][] {
+  const out: [number, number][] = [];
+  const min = (minTurnDeg * Math.PI) / 180;
+  for (const route of roads) {
+    for (let i = 1; i + 1 < route.length; i++) {
+      const [ax, az] = route[i - 1], [bx, bz] = route[i], [cx, cz] = route[i + 1];
+      const turn = Math.atan2(cx - bx, cz - bz) - Math.atan2(bx - ax, bz - az);
+      if (Math.abs(Math.atan2(Math.sin(turn), Math.cos(turn))) > min) out.push([bx, bz]);
+    }
+  }
+  return out;
+}
+
+/** Whether an oriented rectangle (boxClearOfRoadCore's convention) keeps at least `clearM` from every point. */
+export function boxClearOfPoints(points: readonly (readonly [number, number])[], x: number, z: number, hw: number,
+  hl: number, yaw: number, clearM: number): boolean {
+  const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = fz, rz = -fx;
+  for (const [px, pz] of points) {
+    const dx = px - x, dz = pz - z;
+    const across = Math.max(0, Math.abs(dx * rx + dz * rz) - hw), along = Math.max(0, Math.abs(dx * fx + dz * fz) - hl);
+    if (across * across + along * along < clearM * clearM) return false;
+  }
+  return true;
+}
+
 /**
  * The nearest seat for a footprint that keeps out of the road core: (x, z) itself when it already does, else the
  * point straight away from the nearest road (the road distance's gradient at (x, z)), whole metres out up to

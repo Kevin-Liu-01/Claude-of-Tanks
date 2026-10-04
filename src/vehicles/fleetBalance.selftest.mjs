@@ -110,19 +110,9 @@ for (const id of SAVED_TANK_IDS) {
   }
 }
 
-// Pending owner ruling (2026-10-02, PR #9): the owner's 2026-09-30 rebuild gave t62mv1_x the T-72B 1987 turret and
-// with it T-72B gun handling (fire control 1.121 against the cold-war Tier VII median 1.816: ratio 0.617, under the
-// 0.65 floor). Options: keep the 125 mm gun with Tier VII handling, move it to Tier VIII, or keep this exemption.
-// The exemption names the live outlier and must keep matching one, so the fix retires it.
-const PENDING_OWNER_RULINGS = Object.freeze([{ id: 't62mv1_x', metric: 'fireControl', direction: 'low' }]);
-const balanceOutliers = auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier);
-const pendingRuling = (outlier) => PENDING_OWNER_RULINGS.some((ruling) => ruling.id === outlier.id
-  && ruling.metric === outlier.metric && ruling.direction === outlier.direction);
-for (const ruling of PENDING_OWNER_RULINGS) {
-  assert.ok(balanceOutliers.some((outlier) => pendingRuling(outlier) && outlier.id === ruling.id),
-    `${ruling.id}: the pending ${ruling.metric} ruling must still name a live outlier; remove it once resolved`);
-}
-assert.deepEqual(balanceOutliers.filter((outlier) => !pendingRuling(outlier)), [],
+// Owner ruling 2026-10-03: the T-62MV-1 X keeps the transplanted 125 mm gun with its balance peer's Tier VII fire
+// control (fleetRenewalSpecs), which retired the PR's pending-ruling exemption for its fire-control floor.
+assert.deepEqual(auditFleetBalance(PRODUCTION_TANK_IDS, TANK_SPECS, tankTier), [],
   'production peers have no severe survivability, firepower, mobility, or fire-control floor/ceiling outliers');
 // 2026-09-23: 54 -> 50 when the m26_pershing / m45_patton / is7 / object279 notes retired with their hulls.
 assert.equal(Object.keys(FLEET_BALANCE_REVISION).length, 50,
