@@ -175,6 +175,44 @@ assert.equal(createGroundCoverSolidProfile(solidSource.solids, solidSource.conta
 assert.equal(geometryHash(guardGeometry), guardBits, 'admission leaves normals, colors, UVs and triangles untouched');
 solidBox.dispose(); guardGeometry.dispose(); material.dispose();
 
+// 2026-10-03 (the physics lane's winding fix, 14c43cca5, found the same counter-clockwise assumption here): footprints
+// reach this module in either winding, and a clockwise one used to hold no upper solid and to face its packed planes
+// outward. A cabin raised on four posts and a solid two-storey block, each built once with counter-clockwise footprints
+// and once with the same squares clockwise, answer alike.
+{
+  const square = (cx, cz, half, clockwise) => {
+    const ccw = [cx - half, cz - half, cx + half, cz - half, cx + half, cz + half, cx - half, cz + half]; // positive area
+    if (!clockwise) return ccw;
+    const cw = [];
+    for (let i = ccw.length - 2; i >= 0; i -= 2) cw.push(ccw[i], ccw[i + 1]);
+    return cw;
+  };
+  for (const clockwise of [false, true]) {
+    const label = clockwise ? 'clockwise' : 'counter-clockwise';
+    const cabin = [
+      ...[[-1.2, -1.2], [1.2, -1.2], [1.2, 1.2], [-1.2, 1.2]].map(([x, z]) =>
+        ({ bucket: 'wall', minY: 0, maxY: 1.2, points: square(x, z, 0.15, clockwise) })),
+      { bucket: 'wall', minY: 1.2, maxY: 3, points: square(0, 0, 1.5, clockwise) },
+    ];
+    const profile = createGroundCoverSolidProfile(cabin, 1.2);
+    assert.ok(profile, `${label}: a cabin raised on posts takes its cosmetic profile`);
+    const record = setObbShape({ min: [-1.5, 0, -1.5], max: [1.5, 3, 1.5], kind: 'guardpost' }, 0, 0, 1.5, 1.5, 0);
+    const blockedHere = createGroundCoverClearance(createObstacleGrid([record]));
+    assert.equal(attachGroundCoverSolidProfile(record, profile, new Matrix4().elements), true);
+    assert.equal(blockedHere(0, -0.03, 0, 0.7, 0.3), false, `${label}: short grass grows under the raised cabin`);
+    assert.equal(blockedHere(1.2, -0.03, 1.2, 0.7, 0.1), true, `${label}: a post clears the ground cover under itself`);
+    assert.equal(blockedHere(-1.2, -0.03, 1.2, 0.7, 0.1), true, `${label}: every post does`);
+    assert.equal(blockedHere(0, -0.03, 0, 1.4, 0.3), true, `${label}: a tall tuft meets the cabin's floor`);
+    assert.equal(blockedHere(0.55, -0.03, 1.2, 0.7, 0.1), false, `${label}: the ground between two posts stays`);
+    const block = [
+      { bucket: 'wall', minY: 0, maxY: 3, points: square(0, 0, 2, clockwise) },
+      { bucket: 'wall', minY: 3, maxY: 6, points: square(0, 0, 1.8, clockwise) },
+    ];
+    assert.equal(createGroundCoverSolidProfile(block, 3), null,
+      `${label}: a solid block's upper floor stands on its base (no cosmetic profile, the footprint clears it all)`);
+  }
+}
+
 const vegetation = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
 const makeTuft = vegetation.slice(vegetation.indexOf('  function makeTuft('), vegetation.indexOf('  // write a tuft stored'));
 assert.ok(makeTuft.indexOf('groundCoverBlocked?.') > makeTuft.lastIndexOf('crng()'), 'clearance cannot shift RNG draws');
@@ -252,5 +290,5 @@ for (const [first, second] of [
 assert.throws(() => assertFinalPlacementOrder(props.replace(publicationSteps[0],
   'prepareDestructiblePoolGeometry(kind, pool)')), /missing/,
 'calling a generator without yield* cannot stand in for completed preparation');
-console.log('groundCoverClearance.selftest: actual raised guardpost, source/collision parity, final instance transforms, unsupported fallbacks, solid/bridge/crate contact, stable compaction and streaming pass');
+console.log('groundCoverClearance.selftest: actual raised guardpost, source/collision parity, final instance transforms, unsupported fallbacks, solid/bridge/crate contact, either footprint winding, stable compaction and streaming pass');
 console.log(JSON.stringify({ guardpost: detail, placementBytes: GROUND_COVER_PLACEMENT_BYTES }));
