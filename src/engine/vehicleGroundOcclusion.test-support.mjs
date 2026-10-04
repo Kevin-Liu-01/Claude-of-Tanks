@@ -30,7 +30,8 @@ export const UNION_POINTS = Object.freeze([
 const EXTRA_POINTS = Object.freeze([
   ['under a rear wrap', [1.5, 0, h.cz0 - 0.5], [0, 1, 0]],
   ['just past the shoes', [h.xo + 0.01, 0, 0], [0, 1, 0]],
-  ['a shoe on the ground run', [1.5, 0.06, 0], [0, 1, 0]],
+  ['a shoe on the ground run', [1.5, 0.06, 0], [1, 0.1, 0]],
+  ['the terrain under a pitched track end', [1.5, 0.09, h.cz0 - 0.5], [0, 1, 0.05]],
   ['the ground under the ground run', [1.5, 0, 0], [0, 1, 0]],
   ['under a hull riding high', [0.4, -0.13, 1.0], [0, 1, 0]],
   ['inside the gap fade', [h.xi - 0.05, 0, 0.5], [0, 1, 0]],
