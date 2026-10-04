@@ -1297,6 +1297,16 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     const model = resolveLightModel(preset, params, { irradianceRaw: [summary.irradianceRaw.r, summary.irradianceRaw.g, summary.irradianceRaw.b] },
       authoredSunOf(preset as LightModelPreset)); // the night's moon, as lighting.ts resolves it
     physicalEnvIntensity = model.mode === 'physical' ? model.envIntensity : null;
+    // 2026-10-04 (the sun-bloom lane; QA: SKY_KNEE_EV_*): an exposure-aware knee on the grounded rig — the dome eases from
+    // SKY_KNEE_EV_START stops over the card as the camera shows it toward SKY_KNEE_EV_RANGE stops more, the aureole from
+    // once to ten times the start spread over that range (off at a start of 0: the raw knee above)
+    const kneeEv = lightTune('SKY_KNEE_EV_START', 0);
+    if (kneeEv > 0 && model.mode === 'physical' && model.exposure > 0) {
+      const scale = 0.18 / (model.exposure * Math.max(preset.skyIntensity, 1e-3));
+      const start = scale * 2 ** kneeEv, range = scale * (2 ** (kneeEv + lightTune('SKY_KNEE_EV_RANGE', 1.5)) - 2 ** kneeEv);
+      (u.uAtmoKnee.value as THREE.Vector3).set(start, range, lightTune('SKY_KNEE_EV_RATE', 0.5) / start);
+      atmosphereState.knee.copy(u.uAtmoKnee.value as THREE.Vector3);
+    }
     (u.uEnvGround.value as THREE.Color).setRGB(model.groundRadiance[0], model.groundRadiance[1], model.groundRadiance[2]);
     // 2026-10-04: the deck's grey at the horizon (the dome's uDeckHorizon note), by the overcast; QA: SKY_DECK_HORIZON
     const tint = atmosphereState.fogTint, deckOvercast = model.mode === 'physical' ? Math.min(1, Math.max(0, model.overcast)) : 0;

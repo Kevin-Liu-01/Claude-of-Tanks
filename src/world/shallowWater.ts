@@ -1,4 +1,5 @@
 import { fadeDistantCoastShadows } from './coastShadow.ts';
+import { lightTune } from '../engine/lightModelCore.ts';
 import * as THREE from 'three';
 import { SEA_APRON_OUTER_RADIUS_M, SEA_COAST_GLSL, seaOpeningUniforms, seaBankUniforms, type SeaOpening } from './edgeWater.ts';
 import type { HeightField } from './terrain.ts';
@@ -203,6 +204,9 @@ export function createShallowWaterSurface(
 ): ShallowWaterSurface {
   const profile = waterContactProfile(mapId);
   const clock = { value: 0 };
+  // 2026-10-04 (the sea's far band, QA knobs; today's values by default): the sky's reflection at normal / grazing
+  // incidence and the specular cap, read per frame through the light model's QA hook
+  const waterQa = { value: new THREE.Vector4(0.45, 1.75, 1.15, 0) };
   // Water pass 7: vehicle wakes. Slot A is (x, z, dirX, dirZ) in the map's tank frame,
   // slot B is (speed 0..1, strength 0..1, half length m, half width m).
   const wakeA = Array.from({ length: WATER_DISTURBANCE_CAP }, () => new THREE.Vector4(0, 0, 0, 1));
@@ -257,6 +261,7 @@ export function createShallowWaterSurface(
       uOceanGrid: { value: ocean?.grid ?? new THREE.Vector4(128, 129, 3, 0) },
       uOceanLook: { value: new THREE.Vector4(ocean?.state.foam ?? 0, ocean?.state.breakers ?? 0, ocean?.state.caustics ?? 0, ocean?.hs ?? 0) },
       uOceanDepth: { value: profile.depthM },
+      uWaterQa: waterQa,
     });
     material.userData.waterShader = shader;
     shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
@@ -346,6 +351,7 @@ export function createShallowWaterSurface(
       float waterTurbidity;
       ${OCEAN_SAMPLING_GLSL}
       uniform float uOceanDepth;      // the map's wading depth (m): getWaterDepthAt's bed law, evaluated here from the mask
+      uniform vec4 uWaterQa;          // 2026-10-04 (QA: WATER_ENV_NORMAL / _GRAZING, WATER_SPEC_CAP): the sky's reflection at normal and grazing incidence, the specular cap
       float oceanBed;                 // the bed under this fragment (m below the surface) by that law
       float oceanDebug;
     `);
@@ -605,7 +611,7 @@ export function createShallowWaterSurface(
     shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_maps>',
       // Water pass 5: wind-ruffled, sediment-laden patches mirror less sky, so the
       // sheet reads as water of varying depth and colour instead of one reflection.
-      '#include <lights_fragment_maps>\nradiance *= mix(0.45, 1.75, waterGrazing);\nradiance *= 1.15 - 0.55 * smoothstep(0.35, 0.85, waterTurbidity);');
+      '#include <lights_fragment_maps>\nradiance *= mix(uWaterQa.x, uWaterQa.y, waterGrazing);\nradiance *= 1.15 - 0.55 * smoothstep(0.35, 0.85, waterTurbidity);');
     // Round 66: caustics on the shelf bed. The sun ray refracts at the flat surface and lands `bed` metres down; the
     // finest cascade's curvature at that entry point focuses or spreads the light there (a thin lens of index
     // 1.333: concentration 1 / (1 + 0.25·d·∇²h), the one-bounce form of Wallace's photon splatting) and the sheet
@@ -613,7 +619,7 @@ export function createShallowWaterSurface(
     // Strongest in the first half metre, gone where the body colour hides the bed and where the pixel can no longer
     // resolve the fine tile.
     shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', `
-      outgoingLight -= max(vec3(0.0), totalSpecular - vec3(1.15));
+      outgoingLight -= max(vec3(0.0), totalSpecular - vec3(uWaterQa.z));
       #if NUM_DIR_LIGHTS > 0
       // the whole body is the shelf: the bed lies the wading depth (≤ 0.8 m) under every fragment, so the network runs
       // wherever the bed shows through the sheet — its share (1 − α) scales the term — and fades with the fine tile
@@ -660,6 +666,7 @@ export function createShallowWaterSurface(
     ripples,
     ocean,
     update(dt, anchorX, anchorZ) {
+      waterQa.value.set(lightTune('WATER_ENV_NORMAL', 0.45), lightTune('WATER_ENV_GRAZING', 1.75), lightTune('WATER_SPEC_CAP', 1.15), 0);
       if (!(Number.isFinite(dt) && dt > 0)) return;
       clock.value += Math.min(dt, 0.1);
       ocean?.update(dt); // round 66: the transform runs inside the world update, before lighting and post
