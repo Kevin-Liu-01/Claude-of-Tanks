@@ -836,7 +836,11 @@ contact constraints and cannot be crossed by residual uphill speed.
   own belly (the grade the slope pull reads is its pitch); the spring that takes over when the tip ends starts from
   the landing blend's soft end. Faces (one plane under the hull) and bridged dips (nothing past 1.2 m) keep the full
   fit, and so does a pitch the supporting samples do not span (a cluster under 1.5 m long: a trench's far wall under
-  the nose of a hull whose tail hangs over the trench is not its grade).
+  the nose of a hull whose tail hangs over the trench is not its grade). A drop the ground comes back up from within
+  9 m of the end the hull drives toward (a trench, a ditch) leans the hull only on samples its tracks can carry
+  (within their reach of the loaded line, fading out at twice it): it goes over level until its centre of mass
+  overhangs the near lip (physics lane round 7; leaning into the trench, a hull met the far wall 14-16 degrees nose-down
+  at 9-11 m/s). A face that falls away and does not come back keeps the lean, so a hull over a crest follows it.
 - *A stop takes the climb with it.* A blow that removes the hull's travel (the grade rule, the cliff probe, a
   collider) removes the same share of the vertical motion that travel carried; it prices nothing by itself.
 - *A grade turns the travel.* The vertical speed the ground gives a hull on a grade comes out of its travel by the
@@ -846,7 +850,18 @@ contact constraints and cannot be crossed by residual uphill speed.
   travel's direction is a normal impulse (its vertical part `cos²θ` of the vertical closing law's, its horizontal part
   out of the travel). Downhill landings, grades under 14 degrees (`GRADE_TURN_MIN`: a turn of under 6 % of the
   travel, left to the rolling ground every battle crosses) and a crawl under 1 m/s are left alone; the travel never
-  passes through zero.
+  passes through zero. A partial contact's leading station driven into a face (smooth, at least 0.5 grade: a trench's
+  far wall) is pushed along that face's normal too: the lift it gives the hull costs the travel the face's grade times
+  it (physics lane round 7, the trench ruling of 2026-10-04: an assault trench's far wall lifted a hull at 13 m/s with
+  all its travel kept). A floor that rises past that station further than the bump stops take (8 cm a step) turns the
+  hull about its centre of mass as well as lifting it, as a rigid body struck there moves: the root takes its share,
+  `k²/(k²+a²)` of the rest, and the turn the remainder as a pitch rate eased in at 0.25 rad/s a step. Trenches crossed
+  at speed slow at the far wall: entering an assault trench at 11 m/s, the median hull's slowest is 7.9 m/s where it
+  kept 9.0. A strike on the hull's own body (an end guard, not a track station) is still resolved by position, the
+  floor lifting the root: a UDES 03 landing 13 degrees nose-down in an assault trench at 11 m/s in the Earth-gravity
+  mode has its nose guard meet the far wall and is lifted 0.135 m in a step (a known glitch run of the torture matrix).
+  Splitting it like a station's strike leaves the guard 6.5 cm in the wall, since a guard has no stops to take the
+  first 8 cm; the fix is a body strike taken as a velocity impact.
 - *Landing speed is the hull's own approach.* An airborne hull's ground moves only with its own travel over the
   slope beneath it (its grade along the travel, read from two world samples once the hull is pitched past 72
   degrees and its track samples stack over one point), never with the support envelope's swing as the hull turns.
@@ -879,7 +894,13 @@ contact constraints and cannot be crossed by residual uphill speed.
   solve seats the tracks without it, and the road wheels conform under it (front compressed, rear drooped). It is
   limited by the suspension travel left at each end, and off a whole-track seat (a trench crossed, a crest, an edge)
   it joins the rock the tracks are seated at. A hard stop dips the hull 2.5-3.5 degrees with its tracks planted and
-  rocks it back past level (about 0.9 degree) when the tracks stop pulling.
+  rocks it back past level (about 0.9 degree) when the tracks stop pulling. What the travel takes from the dive when it
+  runs out (the springs bottoming as a trench's far wall lifts the hull) the bump stops take (`_susp.c`, round 8): the
+  dive is cut to the travel at once, and the drawn hull gives the excess up over the stops' spring (4.8 Hz, critically
+  damped) instead of in the same frame. That share is drawn and is no part of the dive the travel holds, nor of what
+  joins the rock off a whole-track seat; the movement checkpoint carries it from version 8. That layout is 63 values,
+  and the wire carries at most 64 (`MAX_MOVEMENT_VALUES`, `src/mp/wire/constants.ts`; the codec rejects more): a lane
+  adding more than one value of integrator state widens that limit first.
 - *A hull holds a posture over its tracks on a grade, and it is the hull's attitude.* The gravity the tracks hold the
   hull against on a grade (physics lane round 5; gauntlet wave 38: "on a 17.9-degree grade the front and rear stations
   carry about the same travel ... a real tank shows a clear rear-heavy gradient") loads the downhill end along the hull
@@ -896,7 +917,10 @@ contact constraints and cannot be crossed by residual uphill speed.
   share the tracks are seated at (`_holdSeat`, relaxing at the rock's rate), as the dive joins the rock; the suspension
   travel limits it with the dive; the movement checkpoint carries both from version 7. Parked facing up a 25° grade the
   medium hull pitches 1.1° further onto its downhill tail, its stations 17 cm apart end to end; on a 20° cross slope it
-  rolls 0.8° onto its downhill track, 6 cm under the uphill one. A slide, or a hull on its shell, holds nothing and
+  rolls 1.1° onto its downhill track, 8.2 cm under the uphill one. Across, the springs bear on the tracks' centre lines,
+  half the track's width in from its outer edge (`trackCentreHalfGauge`; round 8, wave 42: "side-load transfer is about
+  half its physical size"): read at the outer edges, the roll stiffness was 22-71 % high (42 % at the fleet's median)
+  and the hull rolled 0.8°, 5.9 cm. A slide, or a hull on its shell, holds nothing and
   transfers nothing. A landing is judged by its tracks' attitude, the spring's, not the posture. (Held in the rendered
   rock, as first built, the posture put the drawn hull off the authority's at rest: a UDES 03 laid its fixed bore 0.69
   degree off its sight on flat ground, where its own hydraulic nose-up posture read as a grade, and 1.08 degrees off on
@@ -910,8 +934,12 @@ contact constraints and cannot be crossed by residual uphill speed.
   centre to 0.4 m ahead of it, 0.22 m aft at the median. A landing met level (on the tracks, the hull within
   3 degrees of the ground's pitch and roll) turns the hull about it by the closing speed times that offset over the
   hull's pitch radius of gyration squared (`(L² + H²)/12`), into the dive and at the rendered rate (the rock's
-  amplification taken out). Off a 2 m drop the T-90M nods 1.2 degrees tail down and rocks back 0.35 degree, the
-  BMP-2 0.8 degree nose down, a Merkava 4 1.3 degrees nose down; from 8 m the stops' travel holds it to 0.9 degree.
+  amplification taken out). Through the landing's stroke the dive is damped at ζ 0.6 (`LANDING_DIVE_ZETA`; round 8,
+  wave 42: the nod "rebounds past level into a brief nose-up ... more like a loose spring than a damped torsion-bar
+  system"): a damper's force rises faster than its speed, and the small pitch rides on a heave of metres a second.
+  Off a 2 m drop the T-90M nods 0.85 degree tail down and comes back 0.07 degree past level, still within half a
+  second (at the stop's ζ 0.35 it was 1.15 degrees, back 0.35, rocking for 1.1 s); the BMP-2 0.6 degree nose down, a
+  Merkava 4 1.0 degree nose down; from 8 m the T-90M 1.1 degrees, the excess over its travel drawn on the bump stops.
   A landing on a grade, or a hull met tilted, already turns at its contact (the landing turn) and takes none. The
   fall's damage and its stroke are unchanged.
 - *The tracks' springs carry the hull over rough ground.* Every track-contact station (the outer pair and the wheel-run
