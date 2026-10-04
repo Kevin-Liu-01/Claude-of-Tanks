@@ -185,6 +185,21 @@ const SKY_KNEE_RANGE = 0.45;
 // radial gradient again, while the asymptote (1.45) stays under the bloom
 // threshold and the true sun disc still tops the range.
 const SKY_KNEE_FALLOFF = 0.11; // 1/e width of the shoulder in luminance units
+/** The legacy compact warm forward-scatter glow's strength on the physically based dome (~5° about the disc). */
+const SKY_SUN_GLOW = 0.5;
+/**
+ * 2026-10-04 (the gauntlet's waves 46 and 50: on sun-facing views a quarter of the frame read flat white with no sun disc;
+ * Redrock's edge-e at the census pose, measured: the near-sun sky at L* 88 and chroma 5.5, 6.6 % of the top-left near
+ * white; facing the sun a white blob over 37 % of the sun's region, no disc). The bloom swallowed the disc in a halo fed by
+ * the compact glow and 0.5–0.9° of aureole kept HDR; and the knee's plateau (1.45 raw, a camera at exposure 1.6 shows it
+ * near white) flattened the aureole. Now only the disc stays HDR (SKY_SUN_SPOT: the disc's own edge), the glow is part of
+ * the sky under the knee (SKY_GLOW_IN_KNEE), and on the grounded rig the knee is set as the camera shows the dome
+ * (SKY_KNEE_EV): it eases from 1.8 stops over the card toward 1.2 stops more, the aureole from once to ten times the start
+ * spread over that range — a gradient toward the disc, not a plateau. The sky only: snow and ground untouched.
+ */
+const SKY_SUN_SPOT: readonly [number, number] = [ATMO_SUN_DISC_COS - 0.00002, ATMO_SUN_DISC_COS];
+const SKY_GLOW_IN_KNEE = 1;
+const SKY_KNEE_EV: readonly [number, number, number] = [1.8, 1.2, 0.5];
 // Horizon haze treatment (r3 critique: "horizon band blows out to near pure
 // white with no hue — reads as fog-card overexposure"). Inside the low-
 // elevation band the dome's luminance is soft-compressed to sit ~10-15% below
@@ -649,6 +664,10 @@ const ATMOSPHERE_DOME_FRAGMENT = /* glsl */`
 uniform vec3 uSunDirection;
 uniform vec3 uSunTransmittance;
 uniform float uSunDiscRadiance;
+// 2026-10-04: the legacy compact glow's strength (SKY_SUN_GLOW)
+uniform float uSunGlow;
+// 2026-10-04: the knee exemption spot's cos range (x, y) and the glow's share under the knee (z)
+uniform vec3 uSunSpot;
 uniform float uEnvBake;
 uniform vec3 uEnvGround;
 // 2026-10-04: the authored fog tint (linear) and the deck's share at the horizon (the light model's overcast); a closed
@@ -696,16 +715,18 @@ void main() {
 		skyCol = mix( skyCol, uDeckHorizon.rgb * ( deckL / deckTintL ), deckW );
 	}
 	float cosSun = dot( direction, uSunDirection );
-	// the legacy knee exemption spot around the sun keeps the disc and its immediate aureole HDR
-	float sunSpot = smoothstep( 0.99988, 0.99996, cosSun );
+	// the legacy compact warm forward-scatter glow (~5°) so the disc keeps its tight golden halo; 2026-10-04 (QA:
+	// SKY_GLOW_IN_KNEE) a share of it under the knee with the sky, so only the disc can reach the bloom's threshold
+	vec3 sunGlowCol = vec3( 1.30, 1.02, 0.68 ) * ( pow( max( cosSun, 0.0 ), 240.0 ) * uSunGlow );
+	skyCol += sunGlowCol * uSunSpot.z;
+	// the legacy knee exemption spot around the sun keeps the disc and its immediate aureole HDR (QA: SKY_SUN_SPOT_*)
+	float sunSpot = smoothstep( uSunSpot.x, uSunSpot.y, cosSun );
 	skyCol = mix( atmoKnee( skyCol ), skyCol, sunSpot );
 	// the sun disc: the legacy disc's angular size and radiance law (see legacySunDiscRadiance) through the
 	// atmosphere's transmittance toward the sun
 	float disc = smoothstep( ${ATMO_SUN_DISC_COS.toFixed(15)}, ${ATMO_SUN_DISC_COS.toFixed(15)} + 0.00002, cosSun );
 	skyCol += uSunTransmittance * ( disc * uSunDiscRadiance );
-	// the legacy compact warm forward-scatter glow (~5°) so the disc keeps its tight golden halo
-	float sunGlow = pow( max( cosSun, 0.0 ), 240.0 );
-	skyCol += vec3( 1.30, 1.02, 0.68 ) * sunGlow * 0.50;
+	skyCol += sunGlowCol * ( 1.0 - uSunSpot.z );
 	skyCol += ( fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5 ) * ${SKY_DITHER.toFixed(4)};
 	vec3 nightCol = vec3( 0.0 );
 	if ( uNight > 0.001 ) nightCol = cotNightSky( direction, uSunDirection, uGalaxy, uNebula, uPlanetR, uPlanetTint, uEarth ) * uNight;
@@ -1197,6 +1218,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       uSunDirection: { value: new THREE.Vector3(0, 1, 0) },
       uSunTransmittance: { value: new THREE.Color(1, 1, 1) },
       uSunDiscRadiance: { value: legacySunDiscRadiance(sunDir.y) },
+      uSunGlow: { value: SKY_SUN_GLOW },
+      uSunSpot: { value: new THREE.Vector3(SKY_SUN_SPOT[0], SKY_SUN_SPOT[1], SKY_GLOW_IN_KNEE) },
       uEnvBake: { value: 0 },
       uEnvGround: { value: new THREE.Color(0, 0, 0) },
       uDeckHorizon: { value: new THREE.Vector4(1, 1, 1, 0) },
@@ -1256,6 +1279,14 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     }
     const summary = atmosphereLuts.summary;
     const u = atmosphereMaterial.uniforms;
+    // 2026-10-04 (the sun-bloom lane): the dome's knee and its compact sun glow through the light model's QA hook — the
+    // dome, the aerial pass's target and the cloud trace read the same knee (atmosphereState.knee)
+    (u.uAtmoKnee.value as THREE.Vector3).set(lightTune('SKY_KNEE', SKY_KNEE), lightTune('SKY_KNEE_RANGE', SKY_KNEE_RANGE),
+      lightTune('SKY_KNEE_FALLOFF', SKY_KNEE_FALLOFF));
+    atmosphereState.knee.copy(u.uAtmoKnee.value as THREE.Vector3);
+    u.uSunGlow.value = lightTune('SKY_SUN_GLOW', SKY_SUN_GLOW);
+    (u.uSunSpot.value as THREE.Vector3).set(lightTune('SKY_SUN_SPOT_FROM', SKY_SUN_SPOT[0]), lightTune('SKY_SUN_SPOT_TO', SKY_SUN_SPOT[1]),
+      lightTune('SKY_GLOW_IN_KNEE', SKY_GLOW_IN_KNEE));
     (u.uAtmoSun.value as THREE.Vector3).copy(sunDir);
     u.uAtmoViewH.value = ATMO_GROUND_KM + params.viewHeightKm;
     u.uAtmoIntensity.value = preset.skyIntensity;
@@ -1279,6 +1310,16 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     const model = resolveLightModel(preset, params, { irradianceRaw: [summary.irradianceRaw.r, summary.irradianceRaw.g, summary.irradianceRaw.b] },
       authoredSunOf(preset as LightModelPreset)); // the night's moon, as lighting.ts resolves it
     physicalEnvIntensity = model.mode === 'physical' ? model.envIntensity : null;
+    // 2026-10-04 (the sun-bloom lane; QA: SKY_KNEE_EV_*): an exposure-aware knee on the grounded rig — the dome eases from
+    // SKY_KNEE_EV_START stops over the card as the camera shows it toward SKY_KNEE_EV_RANGE stops more, the aureole from
+    // once to ten times the start spread over that range (off at a start of 0: the raw knee above)
+    const kneeEv = lightTune('SKY_KNEE_EV_START', SKY_KNEE_EV[0]);
+    if (kneeEv > 0 && model.mode === 'physical' && model.exposure > 0) {
+      const scale = 0.18 / (model.exposure * Math.max(preset.skyIntensity, 1e-3));
+      const start = scale * 2 ** kneeEv, range = scale * (2 ** (kneeEv + lightTune('SKY_KNEE_EV_RANGE', SKY_KNEE_EV[1])) - 2 ** kneeEv);
+      (u.uAtmoKnee.value as THREE.Vector3).set(start, range, lightTune('SKY_KNEE_EV_RATE', SKY_KNEE_EV[2]) / start);
+      atmosphereState.knee.copy(u.uAtmoKnee.value as THREE.Vector3);
+    }
     (u.uEnvGround.value as THREE.Color).setRGB(model.groundRadiance[0], model.groundRadiance[1], model.groundRadiance[2]);
     // 2026-10-04: the deck's grey at the horizon (the dome's uDeckHorizon note), by the overcast; QA: SKY_DECK_HORIZON
     const tint = atmosphereState.fogTint, deckOvercast = model.mode === 'physical' ? Math.min(1, Math.max(0, model.overcast)) : 0;
