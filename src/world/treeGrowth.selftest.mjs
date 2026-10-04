@@ -401,7 +401,8 @@ const shrubRows = [];
       // Nordhavn's spruce, fir and birch take the two-row card (growthCardRows): two triangles to four welded vertices
       assert.equal(cards.geometry.index.count / 3 * 2, cards.geometry.getAttribute('position').count, 'two-row conifer and birch cards');
     }
-    assert.deepEqual(['oak', 'spruce', 'birch', 'palm', 'snag'].map((sp) => growthCardRows(TREE_GROWTH_PROFILES[sp].family)), [3, 2, 2, 3, 2]);
+    // trees round 2: every grown crown but the palm's long fronds takes the two-row card
+    assert.deepEqual(['oak', 'spruce', 'birch', 'palm', 'snag'].map((sp) => growthCardRows(TREE_GROWTH_PROFILES[sp].family)), [2, 2, 2, 3, 2]);
     // the shrubs grow from the bush species' sprays: welded two-triangle cards with the cascade sample
     const shrubs = desktop.group.children.filter((m) => m.userData.bush || m.userData.understorey);
     assert.equal(shrubs.length, 3, 'two bush shapes and the understorey');
@@ -444,19 +445,29 @@ const shrubRows = [];
       }
     }
     assert.ok(laden > 0.08 * (laden + bare) && bare > 0.2 * (laden + bare), `the snow load splits the sprays (laden ${laden}, bare ${bare})`);
-    // the boughs' pads (2026-10-02): a conifer trunk carries the round-8 snow caps' load — its bright neutral pad
-    // vertices (the snow tint, before the bark sheet) span the crown's height, not only its top
+    // trees round 2 (2026-10-03, gauntlet wave 4: "white cotton-ball discs perched on the branch tips"): a conifer's
+    // load is its laden sprays, where its crown faces the sky — no pads on its boughs (no bright neutral vertex on its
+    // wood), and the upper half of a crown is laden more than its lower half
     for (const trunk of pools(winter).filter((m) => m.userData.treeTrunk && m.geometry.userData.trunkQuality?.family === 'conifer')) {
-      const p = trunk.geometry.attributes.position, col = trunk.geometry.attributes.color;
-      let n = 0, lo = Infinity, hi = -Infinity, top = 0;
-      for (let i = 0; i < p.count; i++) {
-        top = Math.max(top, p.getY(i));
+      const col = trunk.geometry.attributes.color;
+      let n = 0;
+      for (let i = 0; i < col.count; i++) {
         const r = col.getX(i), g = col.getY(i), b = col.getZ(i);
-        if (Math.min(r, g, b) > 0.45 && Math.max(r, g, b) - Math.min(r, g, b) < 0.08) { n++; lo = Math.min(lo, p.getY(i)); hi = Math.max(hi, p.getY(i)); }
+        if (Math.min(r, g, b) > 0.45 && Math.max(r, g, b) - Math.min(r, g, b) < 0.08) n++;
       }
-      assert.ok(n >= 60, `a snowbound conifer's boughs carry their pads (${n} pad vertices)`);
-      assert.ok(hi - lo > 0.35 * top, `the pads spread down the crown (${(hi - lo).toFixed(2)} of ${top.toFixed(2)} m)`);
+      assert.equal(n, 0, 'a snowbound conifer carries no lumps on its boughs');
     }
+    let upperLaden = 0, upper = 0, lowerLaden = 0, lower = 0;
+    for (const g of conifer) {
+      const idx = g.index.array, uv = g.attributes.uv, card = g.attributes.aCard;
+      let top = 0;
+      for (let i = 0; i < card.count; i++) top = Math.max(top, card.getY(i));
+      for (let c = 0; c < idx.length; c += 6) {
+        const v = idx[c], isLaden = uv.getY(v) >= 0.5 - 1e-6;
+        if (card.getY(v) > top * 0.55) { upper++; if (isLaden) upperLaden++; } else { lower++; if (isLaden) lowerLaden++; }
+      }
+    }
+    assert.ok(upperLaden / upper > 1.3 * (lowerLaden / lower), `the load lies on the upper crown (${(upperLaden / upper).toFixed(2)} above, ${(lowerLaden / lower).toFixed(2)} below)`);
     assert.ok(ladenY / laden > 1.3 * (bareY / bare), 'a laden spray is lifted');
     assert.ok(ladenSat / laden < bareSat / bare, 'a laden spray is neutral, a bare one keeps its green');
   } finally { winter.dispose(); disposeObject3DResources(winter.group); }

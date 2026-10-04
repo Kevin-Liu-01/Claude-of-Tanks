@@ -112,8 +112,14 @@ export default {
   vegetation: {
     species: ['acacia', 'cedar', 'oak', 'palm'], clusterMix: [['acacia', 0.48], ['oak', 0.30], ['cedar', 0.17], ['palm', 0.05]],
     loneMix: [['acacia', 0.54], ['oak', 0.28], ['cedar', 0.14], ['palm', 0.04]], rimMix: [['cedar', 0.45], ['acacia', 0.35], ['oak', 0.20]],
-    clusterCount: 24, loneCount: 46, rimCount: 30, grassDensity: 0.38,
+    // Trees round 2b (2026-10-03, the gauntlet's wave 15: "lush green groves on Wadi Rum"): Wadi Rum's floor carries a
+    // few wide-spaced acacias in the wadi beds and hollows, not groves; six open groves (vegetation.ts treeBiomeArid
+    // seats them in the low ground), twenty lone trees in the beds, a thin sward on the sand. Was 24 / 46 / 0.38.
+    clusterCount: 6, loneCount: 20, rimCount: 30, grassDensity: 0.08,
     clusterScrub: 1.5, bushCount: 0.74, bushSpecies: 'oak',
+    // the palms grow at the springs under the lane inselbergs' west and east feet only (the pair turns about the
+    // outpost); a palm drawn anywhere else grows as an acacia
+    palmSites: pair({ x: -166, z: -148, r: 24 }), palmFallback: 'acacia',
     // ground lane (2026-10-03, the gauntlet's wave 4: "saturated green grass cards" on the red floor): the wadi's tufts
     // are cured straw, as Sirocco's are
     grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.95 + 0.10)],
