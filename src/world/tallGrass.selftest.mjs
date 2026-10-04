@@ -227,11 +227,12 @@ assert.ok(blades(grass.far).every(([, , w]) => w > meadow.widthM * TALL_GRASS.fa
 // 7b. Tundra sedge keeps to the hollows and the lee sides in clumps (round 73b): the open windward snowfield is
 //     nearly bare, the hollow carries the clumps; the whole ring is sparse beside a meadow's.
 {
-  const wind = resolveGroundReduxProfile('whiteout').grass.windDir; // [0.95, 0.3]
+  // (the winter map's sedge: Whiteout Station's ice grows none since trees round 2b)
+  const wind = resolveGroundReduxProfile('winter').grass.windDir;
   // the lee slope (its downhill direction along the wind) south of z −20, the windward slope north of z 20, flat between
   const snowField = { ...field, getNormalAt: (x, z) => (z > 20 ? { x: -wind[0] * 0.3, y: 0.95, z: -wind[1] * 0.3 } : z < -20 ? { x: wind[0] * 0.3, y: 0.95, z: wind[1] * 0.3 } : { x: 0, y: 1, z: 0 }),
     getWaterMaskAt: () => 0, _villageMask: () => 0, _foldAt: (x, z) => (Math.hypot(x + 8, z - 8) < 7 ? 0.9 : 0) };
-  const sedge = createTallGrass(snowField, { seed: 9, tier: 'desktop', biome: resolveGroundReduxProfile('whiteout').grass, blocked, qualityScale: () => 1 });
+  const sedge = createTallGrass(snowField, { seed: 9, tier: 'desktop', biome: resolveGroundReduxProfile('winter').grass, blocked, qualityScale: () => 1 });
   settle(sedge, cam);
   const sr = roots(sedge.near);
   const hollowD = perM2(sr, -8, 8, 6), openD = perM2(sr, 12, -20, 8);

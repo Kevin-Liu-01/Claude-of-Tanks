@@ -10,7 +10,8 @@
 // - Las Cañadas (Obsidian Caldera): a floor nearly bare of trees — a few open groves and scattered pines (wave 26:
 //   "evenly spaced, grid-like" stands);
 // - Copper Mesa (the Arizona uplands, wave 28: "green broadleaf and fir clumps on sand"): juniper and pinyon on the
-//   higher ground only, mesquite in the low ground only, few of either.
+//   higher ground only, mesquite in the low ground only, few of either;
+// - Whiteout Station (an ice sheet, wave 28): no tree, no shrub.
 // And the woods those stands make keep their summer colour: Verdant's leafy birches (its pine and willow slots) tint
 // their crowns as leaves, not as the bare twigs' warm grey (vegetation.ts grownTintLaw; the round-2 hand-over's frames).
 // A construction receipt: no GPU, no art claim.
@@ -143,6 +144,15 @@ try {
       assert.ok(zoned.conifer >= 20 && zoned.broadleaf >= 20, `both zones grow (${JSON.stringify(zoned)})`);
       assert.ok(world._trees.filter(inside).length < 300, `the mine's uplands carry few trees (${world._trees.filter(inside).length})`);
       report.copper_mesa = zoned;
+    } finally { world.dispose(); }
+  }
+  // Whiteout Station: the ice sheet grows nothing
+  {
+    const { world } = produce('whiteout');
+    try {
+      assert.equal(world._trees.length, 0, 'no tree on the ice');
+      assert.equal(world.concealers.length, 0, 'no shrub on the ice (no foliage concealment at all)');
+      report.whiteout = { trees: 0 };
     } finally { world.dispose(); }
   }
   console.log(`treeSpacing.selftest: ${JSON.stringify(report)} PASS`);
