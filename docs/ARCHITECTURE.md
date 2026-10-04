@@ -841,7 +841,11 @@ contact constraints and cannot be crossed by residual uphill speed.
 - *The landing stroke.* A landing on the tracks carries its closing into the springs: from the touchdown on the
   drooped tracks' line until the hull has come back up through its seat they work at the landing damping (ζ 0.45,
   `LANDING_ZETA`; driving keeps the critical damping), so a hard landing bottoms on the stops and a soft one dips,
-  then rises through the seat and settles. The bump stops are progressive: a fall the springs would not stop in the
+  then rises through the seat and settles. Past its static sag over the seat (`g/ω²`) on that overshoot the springs
+  are unloaded and only gravity brings the hull down (`_ride.stroke` 2, while the ground under it holds still): the
+  Moon's overshoot rises and falls at the Moon's gravity. The springs used to pull it down at their own rate, seven
+  times the Moon's gravity after a 12.5 m/s landing, and every gravity's landing settled on Earth's timeline
+  (gauntlet wave 23); that landing now settles in about a second, where it took 0.6 s. The bump stops are progressive: a fall the springs would not stop in the
   travel left above the floor is stopped across that travel, never in one step at the floor. The rebound the
   ruleset owes is returned by the springs once they have stopped the fall (`_ride.rebound`): they extend and the hull
   leaves the drooped line at that speed. Ground moving faster than the rebound (a face the hull then runs down, or a
@@ -854,6 +858,15 @@ contact constraints and cannot be crossed by residual uphill speed.
   limited by the suspension travel left at each end, and off a whole-track seat (a trench crossed, a crest, an edge)
   it joins the rock the tracks are seated at. A hard stop dips the hull 2.5-3.5 degrees with its tracks planted and
   rocks it back past level (about 0.9 degree) when the tracks stop pulling.
+- *The tracks' springs carry the hull over rough ground.* Every track-contact station (the outer pair and the wheel-run
+  fan lines) is a spring loaded to the ride's static sag (`g/ω²`), and the seat the ride rests at is where the stations
+  that reach the ground carry the hull's weight, read over the stations' own plane (that plane is the attitude's): on
+  flat ground the common contact, on a bump the bump's road wheels pushed up into the hull and the rest reaching down.
+  The seat sinks at most 0.1 m (`TRACK_SEAT_SINK_M`) under the highest contact (`_sup.top`, still the ground for
+  launches, landings, the floor and the drooped tracks' line), never under a track end or the belly; a station hanging
+  1.2 m under the highest, or out of the springs' reach, is no part of it, and rigid running gear has none. A heavy hull
+  on rubble used to perch on its highest contact with half its road wheels hanging (gauntlet wave 23, "no wheels down
+  in several frames"): 1.48 s of 6 on two stations or fewer and 6.8 of 12 in reach, now 0.13 s and 9.9.
 - *The step that leaves the ground moves.* A loaded ride that detaches integrates that step on gravity alone; it
   used to stand still for it, a 13 cm stall in the motion of a hull leaving a face at 8 m/s.
 - *Structures are floors by the underside.* A part is a floor for a hull when its top is within the 0.55 m
@@ -902,7 +915,13 @@ contact constraints and cannot be crossed by residual uphill speed.
   landing settles about its centre, so it can hop a few times on a sharp kicker); a hull balanced exactly on a 4 m
   edge hangs nose-up near 80° before it slides off (its tail cannot reach the ground sooner); the drivetrain reads the grade over the hull's run (1° flatter than a 25° face,
   7° on 45° — the felt grade is its calibration); casemate barrels can dig in; a hull pivoting
-  against a face that runs across the terrain's triangle grid hops on the face's smeared foot (1-2 m/s, never a fall).
+  against a face that runs across the terrain's triangle grid loses its support for one tick where a corner leaves the
+  face's smeared foot: the ride is flagged airborne for that tick and its landing reads its own descent (0.8-1.6 m/s),
+  its vertical speed continuous through it and under every consumer's threshold (the landing thump's 2.2 m/s, any
+  damage), so nothing hops on screen; and a hull spawned overlapping such a turned face holds its upper rear corner up
+  to 0.9 m (vertically; 10-16 cm into an 80° face) inside the triangulated face for its first second while the wall
+  push clears it, where faces along the grid read 0. Spawn pads never overlap a face; a drive-in case that shows the
+  penetration reopens it.
 
 ### 3.5 combat — `src/sim/` (pure logic)
 

@@ -97,7 +97,9 @@ check('land-roof-edge', 'low', 'earth', [
 // Slopes that turn speed into a launch (Titan Gorge; Caldera CTF seed 0): the ground's vertical push on a grade turns
 // the hull's travel (movement.ts turnAlongGrade / landAlongGrade).
 check('climb-crest', 'medium', 'earth', [
-  g('lift off the crest (m)', (m) => m.liftM, 0.6, 'before: 1.88 m (rose at 8.4 m/s up a 38-degree face, travel kept)'),
+  // (round 3: the springs seat the climb under its top contact; the flight off the crest reads 0.61 m over the contact
+  // under it, peaking lower over the ground, 0.78 m at the root where it was 0.86, and landing at 2.5 m/s, was 3.1)
+  g('lift off the crest (m)', (m) => m.liftM, 0.65, 'before: 1.88 m (rose at 8.4 m/s up a 38-degree face, travel kept)'),
 ]);
 check('land-upslope', 'medium', 'earth', [
   g('travel kept landing on a 36 % upslope (m/s)', (m) => m.landingTravel[0]?.[1] ?? 0, 12.5, 'before: 15.0 of 15.0'),
@@ -151,6 +153,18 @@ for (const world of ['mars', 'moon', 'turbo']) {
     g('hop above the drooped line (m)', (m) => Math.max(0, (m.apexes[1] ?? 0) - 0.18), 0.3, 'before: 1.10 m at Mars, 1.54 m at the Moon'),
   ]);
 }
+// Gauntlet wave 23 ("the 0.17 g Moon drop settles like an Earth landing"; the rebound fell back "at about 2.6x lunar
+// gravity"): past its static sag over the seat the hull's springs are unloaded, so a landing's overshoot rises and falls
+// at the world's own gravity, never pulled down at Earth's spring rate.
+check('jump-flat', 'medium', 'moon', [
+  g('overshoot pulled down past the Moon\'s gravity (g)', (m) => m.overshootPullG, 1.02, 'before: 7.0 g'),
+  g('settle short of 0.85 s (s)', (m) => 0.85 - m.landingSettleS, 0, 'before: 0.60 s, an Earth landing\'s timeline'),
+]);
+// Gauntlet wave 23 ("an Earth-gravity drop hops clear of the ground"): Gravity mode's Earth lands with the whole game's
+// bounce (matchRuleset.ts); the basin's 30 % threw the 5.6 m/s landing of a 1 g jump back 0.35 m off the ground.
+check('jump-flat', 'medium', 'gearth', [
+  g('flights after the jump', (m) => m.hops - 1, 0, 'before: 1 (0.35 m off the ground, back down at 1.7 m/s)'),
+]);
 // Gauntlet wave 2 (the motion strips scored 4.70 and held the merge): the suspension takes the stop.
 // A hard stop dips the hull on its suspension over planted tracks and rocks it back past level; it no longer tips the
 // whole hull, tracks and all, up off flat ground (movement.ts SuspensionRockState.d).
@@ -188,12 +202,20 @@ const wallClean = [
 check('wall-foot-wedged', 'medium', 'earth', [...wallHeld({ falls: 3, hp: 236, top: 9.6 }), ...wallClean]);
 check('wall-foot-side', 'heavy', 'earth', [...wallHeld({ falls: 4, hp: 3598, top: 14.0 }), ...wallClean]);
 check('wall-foot-side', 'medium', 'moon', [...wallHeld({ falls: 0, hp: 0, top: 57.7 }), ...wallClean]);
-// across the terrain's triangle grid a face's foot is smeared over a cell: the hull still hops there as it pivots
-// (known limit), but it is never carried up the face or hurt
+// across the terrain's triangle grid a face's foot is smeared over a cell: the hull's support drops out for a tick there
+// as it pivots (known limit: a one-tick airborne flag, its vertical speed continuous, under every consumer's threshold),
+// but it is never carried up the face or hurt
 check('wall-foot-side-t135', 'medium', 'earth', [
   g('falls', (m) => m.falls.length, 0, 'before: 5'),
   g('fall damage (hp)', (m) => m.fallDamageHp, 0, 'before: 614 hp'),
   g('height over the ground (m)', (m) => m.maxHeightM, 2, 'before: 12.8 m'),
+]);
+
+// Rough ground at speed (gauntlet wave 23, "skipping over the bumps with no wheels down in several frames"): the track's
+// springs carry the hull over uneven ground; it no longer perches on its single highest contact with the rest hanging.
+check('drive-rubble', 'heavy', 'earth', [
+  g('perched on two stations or fewer (s)', (m) => m.perchedS, 0.5, 'before: 1.48 s of 6 s'),
+  g('stations short of 9 of 12 within reach (mean)', (m) => 9 - m.trackContactMean, 0, 'before: 6.8 of 12'),
 ]);
 
 // A viaduct at road speed (round 3; the trees lane's botObjectives seeds on Aegis Crossing): at each span joint the hull's

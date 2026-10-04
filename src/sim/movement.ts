@@ -163,7 +163,8 @@ interface RideState {
   /** The rebound a landing's springs owe the hull, returned as they extend (m/s over the ground's rate; 0: none). */
   rebound: number;
   /** 1 while the springs absorb a landing on the tracks (the landing stroke: compression and the return to the seat), at
-   * the landing damping; 0 otherwise. */
+   * the landing damping; 2 while the hull overshoots its seat after it (past its static sag the springs are unloaded,
+   * so the overshoot rises and falls at its own gravity); 0 otherwise. */
   stroke: number;
   /** Height the solver gave the ride (support that rose under it faster than the hull's own travel over a climbable
    * grade explains) that it has not yet come down from: a fall from it is not a fall the hull made (the fall-damage
@@ -201,7 +202,10 @@ interface SupportCache {
   yaw: number;
   pitch: number;
   roll: number;
+  /** The seat: where the track's springs carry the hull (trackSpringSeat), at most TRACK_SEAT_SINK_M under `top`. */
   y: number;
+  /** The highest track contact: the hull's ground for launches, landings and the drooped-track line. */
+  top: number;
   floorY: number;
   rigid: boolean;
   cg: MovementContactGeometry | null | undefined;
@@ -256,6 +260,10 @@ interface SupportSamples {
   panY: number | null;
   /** Outer-line samples recorded for the contact-aware fit (_fitZ/_fitX/_fitH/_fitD). */
   fitCount: number;
+  /** Track-contact stations the springs carry (_bedD/_bedX/_bedZ: the outer pair and the wheel-run fan lines). */
+  bedCount: number;
+  /** The highest track-end (idler and sprocket wrap) deficit: hull-fixed, never carried by a spring. */
+  wrapMax: number;
   /** Innermost |x| of a loaded wheel-run fan sample per side (Infinity when that side's fan lines all hang). */
   fanTouchLeftX: number;
   fanTouchRightX: number;
@@ -699,6 +707,9 @@ const REBOUND_TURN_MPS = 0.25;
  * settles it. Driving keeps the critical damping (no heave bob over every bump).
  */
 const LANDING_ZETA = 0.45;
+/** The landing's overshoot (`_ride.stroke` 2) is the hull's own flight over ground that holds still under it; ground
+ * moving under it faster than this (a face it drives onto, a crest it runs over) hands it back to the ordinary ride. */
+const OVERSHOOT_GROUND_MPS = 0.5;
 /** A closing under this is a settle onto the tracks, not a landing stroke (a hop off a kerb, the small re-landing after
  * a rebound): the ordinary ride takes it without the overshoot. */
 const LANDING_STROKE_MIN_MPS = 2;
@@ -1176,6 +1187,8 @@ const _supportSamples: SupportSamples = {
   bellyMax: -Infinity,
   panY: null,
   fitCount: 0,
+  bedCount: 0,
+  wrapMax: -Infinity,
   fanTouchLeftX: Infinity,
   fanTouchRightX: Infinity,
 };
@@ -1185,6 +1198,13 @@ const _fitZ = new Float64Array(2 * SUPPORT_MAX_N);
 const _fitX = new Float64Array(2 * SUPPORT_MAX_N);
 const _fitH = new Float64Array(2 * SUPPORT_MAX_N);
 const _fitD = new Float64Array(2 * SUPPORT_MAX_N);
+// Physics lane round 3: the track-contact stations of one support solve (hull-local x, z and deficit) and their
+// residuals over the stations' own plane (trackSpringSeat).
+const BED_MAX = 4 * SUPPORT_MAX_N + 8;
+const _bedD = new Float64Array(BED_MAX);
+const _bedX = new Float64Array(BED_MAX);
+const _bedZ = new Float64Array(BED_MAX);
+const _bedR = new Float64Array(BED_MAX);
 const _driveStep: DriveStep = {
   grounded: true,
   throttle: 0,
@@ -1513,7 +1533,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     },
     _sup: {                        // static-pose support cache (skip resampling)
       x: NaN, z: NaN, yaw: 0, pitch: 0, roll: 0,
-      y: pos.y, floorY: pos.y, rigid: false, cg: null,
+      y: pos.y, top: pos.y, floorY: pos.y, rigid: false, cg: null,
     },
   };
 }
@@ -1700,8 +1720,15 @@ function constrainLoadedRide(
   // the ground lifts (a trench's far wall under its nose carried a hull up at 5 m/s, and the rebound added on top of
   // that threw it a metre out of the trench).
   if (ride.rebound > 0 && Math.abs(ride.groundV) > ride.rebound) ride.rebound = 0;
-  // the landing stroke ends once the springs have carried the hull back up through its seat
-  if (ride.stroke > 0 && ride.y >= supportY && ride.v >= ride.groundV) ride.stroke = 0;
+  // The landing stroke (physics lane round 3; gauntlet wave 23: "the 0.17 g Moon drop settles like an Earth landing"):
+  // the springs take the fall (1) and return it; once they have carried the hull up through its seat (2) and past its
+  // static sag over it they are unloaded, so the overshoot is the hull's own, as high and as long as its gravity makes
+  // it, until it is back down at its seat and the ordinary ride settles it (over still ground: ground moving under it
+  // hands it back to the ordinary ride at once). They used to pull it down at their own rate, seven times the
+  // Moon's gravity after a 12.5 m/s landing: every gravity's landing settled on Earth's timeline.
+  if (ride.stroke === 1 && ride.y >= supportY && ride.v >= ride.groundV) ride.stroke = 2;
+  else if (ride.stroke === 2 && ((ride.y <= supportY && ride.v <= ride.groundV) ||
+    Math.abs(ride.groundV) > OVERSHOOT_GROUND_MPS)) ride.stroke = 0;
   const extending = ride.rebound > 0 && ride.v - ride.groundV >= -REBOUND_TURN_MPS;
   const separating = ride.v - ride.groundV > RIDE_DETACH_REL_V_MPS;
   // A ride still closing on ground that sinks away slower than it falls is in contact: it meets that ground within the
@@ -1738,9 +1765,12 @@ function constrainLoadedRide(
       accel = 0;
     }
   } else {
-    const zeta = ride.stroke > 0 ? LANDING_ZETA : RIDE_ZETA;
+    const zeta = ride.stroke === 1 ? LANDING_ZETA : RIDE_ZETA;
     accel = RIDE_OMEGA * RIDE_OMEGA * (supportY - ride.y) + 2 * zeta * RIDE_OMEGA * (ride.groundV - ride.v);
-    if (hang > 0 && accel < -gravity) accel = -gravity;
+    // past its static sag over the seat the springs are unloaded (the wheels hang): on a landing's overshoot nothing
+    // but gravity brings the hull down
+    const unloaded = ride.stroke === 2 && ride.y - supportY > gravity / (RIDE_OMEGA * RIDE_OMEGA);
+    if ((hang > 0 || unloaded) && accel < -gravity) accel = -gravity;
     // The bump stops are progressive (physics lane, 2026-10-03): a fall the springs would not stop in the travel left
     // above the floor is stopped across that travel, not at the floor in one step (a hull bottoming at 9 m/s used to
     // halt dead there, a velocity step the size of the fall). The springs' own work over that travel (linear from here
@@ -1790,8 +1820,12 @@ function constrainLoadedRide(
 function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: number, drive: DriveStep): void {
   // a hull resting on another hull's roof stands on it: that roof is its ground until it drives off the edge
   const rest = state._body.restSupportY;
-  const terrainSupportY = state._sup.y;
+  // the highest track contact: the hull's ground for launches, landings, the floor and the drooped-track line
+  const terrainSupportY = Number.isFinite(state._sup.top) ? state._sup.top : state._sup.y;
   const supportY = Number.isFinite(rest) ? Math.max(terrainSupportY, rest) : terrainSupportY;
+  // the seat the springs carry the hull at, under the top contact on uneven ground (trackSpringSeat)
+  const terrainSeatY = Number.isFinite(state._sup.y) ? Math.min(state._sup.y, terrainSupportY) : terrainSupportY;
+  const seatY = Number.isFinite(rest) ? Math.max(terrainSeatY, rest) : terrainSeatY;
   const terrainFloorY = Number.isFinite(state._sup.floorY) ? state._sup.floorY : terrainSupportY;
   const floorY = Number.isFinite(rest) ? Math.max(terrainFloorY, rest) : terrainFloorY;
   const ride = initializeRideState(state, supportY);
@@ -1840,7 +1874,7 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   }
   const contactY = supportY + RIDE_DROOP_M;
   const grounded = groundedAtStart
-    ? constrainLoadedRide(ride, supportY, contactY, floorY, dt, GRAVITY * drive.gravityScale,
+    ? constrainLoadedRide(ride, seatY, contactY, floorY, dt, GRAVITY * drive.gravityScale,
       _wholeTrackOnGround ? Math.max(0, -state.speed * Math.tan(state._terr.pitch)) : 0)
     : advanceAirborneRide(state, ride, dt, contactY, floorY, drive.gravityScale, drive.restitution, drive.bounceMin, drive.bounceMaxHeight);
   if (groundedAtStart) {
@@ -2829,6 +2863,8 @@ function resetSupportSamples(
   samples.bellyMax = -Infinity;
   samples.panY = contact?.panYM ? contact.panYM - 0.015 : null;
   samples.fitCount = 0;
+  samples.bedCount = 0;
+  samples.wrapMax = -Infinity;
   samples.fanTouchLeftX = Infinity;
   samples.fanTouchRightX = Infinity;
   return samples;
@@ -2858,7 +2894,16 @@ function sampleTrackWrapEnds(
     const deficit = terrainY - ((localX * samples.sinRoll +
       localY * samples.cosRoll) * samples.cosPitch + localZ * samples.sinPitch);
     if (deficit > samples.outerMax) samples.outerMax = deficit;
+    if (deficit > samples.wrapMax) samples.wrapMax = deficit;
   }
+}
+
+/** Record a track-contact station for the springs' seat (trackSpringSeat). */
+function recordBedStation(samples: SupportSamples, localX: number, localZ: number, deficit: number): void {
+  if (samples.bedCount >= BED_MAX) return;
+  _bedX[samples.bedCount] = localX;
+  _bedZ[samples.bedCount] = localZ;
+  _bedD[samples.bedCount++] = deficit;
 }
 
 function sampleOuterTrackLines(
@@ -2895,6 +2940,7 @@ function sampleOuterTrackLines(
         samples.outerX = localX;
         samples.outerZ = localZ;
       }
+      recordBedStation(samples, localX, localZ, deficit);
       const record = samples.fitCount++;
       _fitZ[record] = centeredZ;
       _fitX[record] = localX;
@@ -2952,6 +2998,7 @@ function sampleSupportFanSide(
     const deficit = terrainY - (renderedLift + localZ * samples.sinPitch);
     if (line.yOff === 0) {
       if (deficit > samples.fanMax) samples.fanMax = deficit;
+      recordBedStation(samples, localX, localZ, deficit);
       if (deficit >= samples.outerMax - TOUCH_REACH_M) {
         const reach = Math.abs(localX);
         if (side < 0) { if (reach < samples.fanTouchLeftX) samples.fanTouchLeftX = reach; }
@@ -3273,6 +3320,71 @@ function updateFanYield(
   return next;
 }
 
+/**
+ * The seat the track's springs carry the hull at over uneven ground (physics lane round 3, gauntlet wave 23: on rough
+ * ground the hull perched on its single highest contact, every other road wheel hanging 20-60 cm over the ground, "no
+ * wheels down in several frames"). Each track-contact station (_bedD: the height of the root at which it touches) is a
+ * spring loaded to the ride's static sag s = g / omega^2 at rest, and the hull sits where the stations that reach the
+ * ground carry its weight: sum(max(0, r_i - y + s)) = n s, over the stations' residuals r_i above their own plane (a tilt
+ * of the whole set against the hull, or the hull-long grade of a face it slides on, is the attitude's to take, not the
+ * springs'). On flat ground that is the common contact; on a bump the bump's wheels are pushed up into the hull and the
+ * rest reach down. A station hanging DROP_FAR_M under the highest (past an edge, over a trench, off a ramp's lip) is no
+ * part of the bed, nor one the wheels cannot reach from the seat, as neither was part of the rigid support. Returns the
+ * seat under the highest contact, at most TRACK_SEAT_SINK_M under it.
+ */
+function trackSpringSeat(count: number, sag: number): number {
+  let top = -Infinity;
+  for (let index = 0; index < count; index++) if (_bedD[index] > top) top = _bedD[index];
+  if (!(count > 2) || !(sag > 0)) return top;
+  const near = top - DROP_FAR_M;
+  let mx = 0, mz = 0, md = 0, n = 0;
+  for (let index = 0; index < count; index++) {
+    if (_bedD[index] < near) continue;
+    mx += _bedX[index]; mz += _bedZ[index]; md += _bedD[index]; n++;
+  }
+  if (n < 3) return top;
+  mx /= n; mz /= n; md /= n;
+  let sxx = 0, szz = 0, sxz = 0, sxd = 0, szd = 0;
+  for (let index = 0; index < count; index++) {
+    if (_bedD[index] < near) continue;
+    const x = _bedX[index] - mx, z = _bedZ[index] - mz, d = _bedD[index] - md;
+    sxx += x * x; szz += z * z; sxz += x * z; sxd += x * d; szd += z * d;
+  }
+  const det = sxx * szz - sxz * sxz;
+  const slopeX = Math.abs(det) > 1e-9 ? (sxd * szz - szd * sxz) / det : 0;
+  const slopeZ = Math.abs(det) > 1e-9 ? (szd * sxx - sxd * sxz) / det : 0;
+  let rtop = -Infinity;
+  for (let index = 0; index < count; index++) {
+    const r = _bedD[index] < near ? -Infinity : _bedD[index] - slopeX * (_bedX[index] - mx) - slopeZ * (_bedZ[index] - mz);
+    _bedR[index] = r;
+    if (r > rtop) rtop = r;
+  }
+  const reach = rtop - TRACK_SEAT_SINK_M - RIDE_DROOP_M;
+  let inBed = 0;
+  for (let index = 0; index < count; index++) if (_bedR[index] >= reach) inBed++;
+  const load = inBed * sag;
+  // the carried force sum(max(0, r_i - y + s)) is piecewise linear, convex and falling in y, so Newton's step from the
+  // deepest seat never passes the root and lands on it within a few knots (each step lands or drops a station)
+  let y = rtop - TRACK_SEAT_SINK_M;
+  for (let iteration = 0; iteration < TRACK_SEAT_ITERATIONS; iteration++) {
+    let force = 0;
+    let active = 0;
+    for (let index = 0; index < count; index++) {
+      const compression = _bedR[index] - y + sag;
+      if (compression > 0 && _bedR[index] >= reach) { force += compression; active++; }
+    }
+    const excess = force - load;
+    if (!(excess > 1e-9) || active === 0) break;
+    y += excess / active;
+    if (y >= rtop) return top;
+  }
+  return top - (rtop - y);
+}
+/** Newton steps of the seat (a step lands on the root or drops at least one station from the carried set). */
+const TRACK_SEAT_ITERATIONS = 12;
+/** The deepest the springs seat the hull under its highest track contact; the rest of the travel is the ride's. */
+const TRACK_SEAT_SINK_M = 0.1;
+
 function writeSupportCache(
   entity: MovementEntity,
   samples: SupportSamples,
@@ -3301,9 +3413,20 @@ function writeSupportCache(
     samples.outerMax - hydraulicYield,
     samples.fanMax - fanYield - hydraulicYield,
   );
+  // the seat the track's springs carry the hull at (trackSpringSeat), at most TRACK_SEAT_SINK_M under the highest
+  // contact, never under a track end (hull-fixed) or the belly; rigid running gear has no springs to sink on
+  const gravityScale = clamp(Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1, 0.1, 3);
+  let seatY = rigidGear || rigidUndercut
+    ? supportY
+    : Math.min(supportY, Math.max(
+      trackSpringSeat(samples.bedCount, GRAVITY * gravityScale / (RIDE_OMEGA * RIDE_OMEGA)) - hydraulicYield,
+      samples.wrapMax - hydraulicYield,
+      supportY - TRACK_SEAT_SINK_M,
+    ));
   const bellyYield = samples.panY !== null ? 0 : fanYield;
   const bellySupportY = samples.bellyMax - bellyYield;
   if (bellySupportY > supportY) supportY = bellySupportY;
+  if (bellySupportY > seatY) seatY = bellySupportY;
   updateTerrainFitAndPerch(
     entity,
     samples,
@@ -3331,7 +3454,8 @@ function writeSupportCache(
   cache.yaw = state.yaw;
   cache.pitch = pitch;
   cache.roll = roll;
-  cache.y = Math.max(supportY + margin, rigidFloor);
+  cache.top = Math.max(supportY + margin, rigidFloor);
+  cache.y = Math.max(seatY + margin, rigidFloor);
   cache.floorY = Math.max(normalFloor, rigidFloor);
   cache.rigid = rigidGear;
   cache.cg = contact;

@@ -25,9 +25,9 @@ function drive(ticks) {
   return state;
 }
 
-assert.equal(MOVEMENT_CHECKPOINT_VERSION, 5,
-  'bots lane (2026-10-02): the roof a hull rests on rides with the integrator; physics lane (2026-10-03): and its gravity tip, then the landing stroke and the dive');
-assert.equal(MOVEMENT_CHECKPOINT_VALUES, 52, 'version 4 (48 values) + rebound, stroke, dive, dive rate');
+assert.equal(MOVEMENT_CHECKPOINT_VERSION, 6,
+  'bots lane (2026-10-02): the roof a hull rests on rides with the integrator; physics lane (2026-10-03): and its gravity tip, then the landing stroke and the dive, then the top track contact');
+assert.equal(MOVEMENT_CHECKPOINT_VALUES, 53, 'version 4 (48 values) + rebound, stroke, dive, dive rate + top contact');
 
 const driven = drive(180);
 const ours = captureMovementCheckpoint(driven);
@@ -63,22 +63,37 @@ assert.ok(Math.abs(f32._ride.y - driven._ride.y) < 1e-4);
 const midStop = drive(150);
 midStop._susp.d = -0.02; midStop._susp.dv = 0.1; midStop._ride.rebound = 1.2; midStop._ride.stroke = 1;
 const v5 = captureMovementCheckpoint(midStop);
-assert.deepEqual(v5.values.slice(48), [1.2, 1, -0.02, 0.1], 'the tail is rebound, stroke, dive, dive rate');
+assert.deepEqual(v5.values.slice(48, 52), [1.2, 1, -0.02, 0.1], 'the version-5 tail is rebound, stroke, dive, dive rate');
 const fromV4 = createTankState(SPEC, midStop.pos, midStop.yaw);
 fromV4._susp.d = 0.5; fromV4._ride.rebound = 3;
 assert.equal(applyMovementCheckpoint(fromV4, { version: 4, values: v5.values.slice(0, 48), flags: v5.flags }), true);
 assert.equal(fromV4._ride.y, midStop._ride.y, 'the version-4 prefix restores as before');
 assert.deepEqual([fromV4._ride.rebound, fromV4._ride.stroke, fromV4._susp.d, fromV4._susp.dv], [0, 0, 0, 0]);
+assert.equal(fromV4._sup.top, fromV4._sup.y, 'and its top contact at its seat');
+
+// Version 6 appends the top track contact after the version-5 layout: a version-5 checkpoint still decodes, its top
+// contact at its seat.
+midStop._sup.top = midStop._sup.y + 0.07;
+const v6 = captureMovementCheckpoint(midStop);
+assert.equal(v6.values[52], midStop._sup.top, 'the tail is the top contact');
+const fromV6 = createTankState(SPEC, midStop.pos, midStop.yaw);
+assert.equal(applyMovementCheckpoint(fromV6, v6), true);
+assert.equal(fromV6._sup.top, midStop._sup.top, 'the replay starts with the authority top contact');
+const fromV5 = createTankState(SPEC, midStop.pos, midStop.yaw);
+assert.equal(applyMovementCheckpoint(fromV5, { version: 5, values: v6.values.slice(0, 52), flags: v6.flags }), true);
+assert.deepEqual([fromV5._ride.rebound, fromV5._ride.stroke, fromV5._susp.d, fromV5._susp.dv], [1.2, 1, -0.02, 0.1], 'the version-5 tail restores');
+assert.equal(fromV5._sup.top, fromV5._sup.y, 'and its top contact at its seat');
 
 // Rejections leave the state untouched.
 const untouched = createTankState(SPEC, new Vector3(), 0);
 const before = JSON.stringify(captureMovementCheckpoint(untouched));
 assert.equal(applyMovementCheckpoint(untouched, { version: 3, values: ours.values.slice(0, 46), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 4, values: ours.values, flags: ours.flags }), false, 'a version-4 tag on 52 values');
-assert.equal(applyMovementCheckpoint(untouched, { version: 6, values: ours.values, flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 5, values: ours.values.slice(1), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 5, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 5, values: ours.values, flags: 4096 }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 4, values: ours.values, flags: ours.flags }), false, 'a version-4 tag on 53 values');
+assert.equal(applyMovementCheckpoint(untouched, { version: 5, values: ours.values, flags: ours.flags }), false, 'a version-5 tag on 53 values');
+assert.equal(applyMovementCheckpoint(untouched, { version: 7, values: ours.values, flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 6, values: ours.values.slice(1), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 6, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 6, values: ours.values, flags: 4096 }), false);
 assert.equal(JSON.stringify(captureMovementCheckpoint(untouched)), before);
 
 // Version 3: a hull resting on another hull's roof carries that roof; a free hull carries none (flag bit 10 clear).
@@ -94,4 +109,4 @@ assert.equal(seated._body.restSupportY, resting._body.restSupportY, 'the replay 
 assert.equal(applyMovementCheckpoint(seated, ours), true);
 assert.ok(Number.isNaN(seated._body.restSupportY), 'a checkpoint without a roof clears it');
 
-console.log('mp movement checkpoint: 52-value version-5 layout identical to the authority encoder, version 4 still decodes, the roof a hull rests on carried and cleared, identity after apply, f32 tolerant, typed rejections pass');
+console.log('mp movement checkpoint: 53-value version-6 layout identical to the authority encoder, versions 5 and 4 still decode, the roof a hull rests on carried and cleared, identity after apply, f32 tolerant, typed rejections pass');
