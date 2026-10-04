@@ -14,6 +14,7 @@ import { createStructureClearances, excludeStructureVegetation, overlapsStructur
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { authoredTreeStations, redistributeAuthoredTrees } from './authoredTreePlacement.ts';
 import { SHORELINE_SEGMENTS, shorelineDistance, shorelineRadiusAt } from './shoreline.ts';
+import { treeBiomeArid, treeBiomeOpen } from './treeBiomes.ts';
 import polders from './maps/polders.ts';
 import mangrove from './maps/mangrove.ts';
 import orchard from './maps/orchard.ts';
@@ -29,7 +30,9 @@ const noiseEnd = source.indexOf('function _mustReplace(', noiseStart);
 assert.ok(start > 0 && end > start && noiseEnd > noiseStart);
 const dependencies = { THREE, mulberry32, treeRichness, TREE_ARCHETYPES, treeTrunkCollisionRadiusM, setCircleShape,
   PLAYABLE_HALF_EXTENT_M, isClearOfSpawns, createStructureClearances, excludeStructureVegetation,
-  DESTRUCTIBLE_BUILDING_TYPES, redistributeAuthoredTrees, placedStructureClearances };
+  DESTRUCTIBLE_BUILDING_TYPES, redistributeAuthoredTrees, placedStructureClearances,
+  // trees round 2b (2026-10-03): the hyper-arid places' groves (vegetation.ts placeTreeClusters)
+  treeBiomeArid, treeBiomeOpen };
 const builder = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* placement(heightField, cfg) {
   const seed = 2001, rng = mulberry32(seed), group = new THREE.Group();
   const veg = { parks: null, palettes: {}, avoid: null, ...cfg.vegetation };

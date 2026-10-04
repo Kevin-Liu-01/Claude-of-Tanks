@@ -28,7 +28,7 @@ import {
   createHullFootprint, hullFootprint, hullPassesObstacleTop, hullUndersideOver, pushHullFromHull, pushHullFromObstacle,
 } from '../../world/collision.ts';
 import type { CollisionRecord } from '../../world/collision.ts';
-import { matchRulesetFor } from '../../sim/matchRuleset.ts';
+import { matchRulesetFor, rulesetPhysicsAt, type RulesetPhysics } from '../../sim/matchRuleset.ts';
 import { createHullSupportPose, createStructureSupportField, hullSupportPose } from '../../sim/structureSupport.ts';
 import { prefersVerticalTankContact, tanksVerticallyClear } from '../../sim/tankBodyContacts.ts';
 import { normalizeGameMode } from '../../sim/matchModes.ts';
@@ -204,7 +204,8 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
       foot.centerZ = baseZ + outPush.z - startZ;
       footCenter.x = foot.centerX; footCenter.y = position.y; footCenter.z = foot.centerZ;
       const spanBottom = hullUndersideOver(obstacle, foot, position.y);
-      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+      const clearBottom = foot.clearBottom;
+      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, clearBottom)) continue;
       if (obstacle.crushable && speed > (obstacle.crushMin ?? 2.8)) continue;
       const closestX = Math.max(obstacle.min[0], Math.min(foot.centerX, obstacle.max[0]));
       const closestZ = Math.max(obstacle.min[2], Math.min(foot.centerZ, obstacle.max[2]));
@@ -213,7 +214,7 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
       if (dx * dx + dz * dz >= footRadius * footRadius) continue;
       if (pushHullFromObstacle(
         footCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth, obstacle, outPush,
-        spanBottom, spanTop,
+        spanBottom, spanTop, clearBottom,
       )) hardObstacles[hardCount++] = obstacle;
     }
     // the authority's second sweep over the contacts that pushed
@@ -223,10 +224,10 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
       foot.centerZ = baseZ + outPush.z - startZ;
       footCenter.x = foot.centerX; footCenter.y = position.y; footCenter.z = foot.centerZ;
       const spanBottom = hullUndersideOver(obstacle, foot, position.y);
-      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, foot.clearBottom)) continue;
       pushHullFromObstacle(
         footCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth, obstacle, outPush,
-        spanBottom, spanTop,
+        spanBottom, spanTop, foot.clearBottom,
       );
     }
     hardObstacles.length = 0;
@@ -246,5 +247,7 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
   const beginStep = (state: TankState): void => {
     support.beginHull(state.pos.x, state.pos.z, state.pos.y, hullSupportPose(ownSpec, state, supportPose));
   };
-  return { heightField: support, collide, contactGeom: null, physics, anchor, beginStep };
+  const gameMode = normalizeGameMode(mode || 'standard');
+  const physicsAt = (gravityScale: number): RulesetPhysics => rulesetPhysicsAt(gameMode, gravityScale);
+  return { heightField: support, collide, contactGeom: null, physics, physicsAt, anchor, beginStep };
 }

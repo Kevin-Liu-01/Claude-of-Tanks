@@ -34,6 +34,7 @@ import { SimplexNoise } from '../../engine/simplexFast.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../../engine/quality.ts';
 import { CLOUDSCAPE_REGIMES } from '../../engine/cloudscapes.ts';
+import { resolveOvercast, type LightModelPreset } from '../../engine/lightModelCore.ts';
 import { registerRetainedObject3DResources } from '../../engine/resourceLifetime.ts';
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
 import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
@@ -3763,6 +3764,10 @@ export function* buildHorizonRingSteps(
         treelineM: style === 'alpine' && treeline > 0 && treeline < 1.5 ? Math.max(120, treeline * maxH * 1.4) : null,
         // the shared haze law's σ past the shell (hazeLaw.ts): the map's own air
         fogDensity: (cfg?.sky as { fogDensity?: number } | undefined)?.fogDensity ?? null,
+        // and its deck's overcast, as the light model will resolve it for this map (the pair ticket of 5ea057f45: the bake
+        // read the light model the battlefield still published from the last map, overcast 0 under Whiteout's closed
+        // deck, and hazed its far ice sheet toward the clear sky's warm horizon — a beige band)
+        overcast: resolveOvercast({ ...((cfg?.sky ?? {}) as LightModelPreset), cloudscape: (cfg as { clouds?: LightModelPreset['cloudscape'] } | null | undefined)?.clouds ?? null }),
       }, farRange);
       mesh.add(panorama.mesh);
       mesh.userData.horizonPanorama = panorama;

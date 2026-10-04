@@ -22,10 +22,13 @@
  * `_susp.dv`), 52 values: the springs now take a landing at the stroke's damping and return its rebound as they extend,
  * and the tracks are seated without the dive, so a replay mid-landing or mid-stop needs them. A version-4 checkpoint (an
  * older authority) still decodes, as a hull with no landing or dive in progress.
+ * Version 6 (physics lane round 3, 2026-10-03) appends the hull's highest track contact beside the seat (`_sup.top`,
+ * 53 values): the springs carry a hull on uneven ground under its highest contact, and the ride reads both, so a replay
+ * needs the pair. A version-5 or version-4 checkpoint (an older authority) still decodes, its top contact at its seat.
  */
 import type { MovementContactGeometry, TankState } from '../../sim/movement.ts';
 
-export const MOVEMENT_CHECKPOINT_VERSION = 5;
+export const MOVEMENT_CHECKPOINT_VERSION = 6;
 
 const SCALARS = ['yawRate', 'turretYawRate', 'suspensionAimPitch', 'bloomF',
   '_prevSpeed', '_spool', '_fanYield', '_perch', '_gunLimitHoldS', '_swayEst',
@@ -41,7 +44,9 @@ const VERSION_4_VALUES = SCALARS.length + SPRING.length + TERRAIN.length + ROCK.
   RIDE.length + TRACK.length + SUPPORT.length + EXTRA_VALUES;
 const RIDE_V5 = ['rebound', 'stroke'] as const;
 const DIVE_V5 = ['d', 'dv'] as const;
-export const MOVEMENT_CHECKPOINT_VALUES = VERSION_4_VALUES + RIDE_V5.length + DIVE_V5.length;
+const VERSION_5_VALUES = VERSION_4_VALUES + RIDE_V5.length + DIVE_V5.length;
+const SUPPORT_V6 = ['top'] as const;
+export const MOVEMENT_CHECKPOINT_VALUES = VERSION_5_VALUES + SUPPORT_V6.length;
 const MAX_ABS_VALUE = 1_000_000;
 const MAX_FLAGS = 2047;
 
@@ -88,6 +93,7 @@ export function captureMovementCheckpoint(state: TankState): MovementCheckpoint 
     restInitialized ? state._body.restSupportY : 0);
   append(values, state._ride, RIDE_V5);
   append(values, state._susp, DIVE_V5);
+  append(values, state._sup, SUPPORT_V6);
   if (!validMovementValues(values)) return null;
   const flags = Number(supportInitialized) | Number(state._ride.grounded) << 1 |
     Number(state._body.tumbling) << 2 | Number(state._body.dynamicSupport) << 3 |
@@ -98,14 +104,14 @@ export function captureMovementCheckpoint(state: TankState): MovementCheckpoint 
 }
 
 /**
- * Restore a checkpoint onto a state; false (and no change) when the layout is neither the current version nor version 4
- * (decoded as a hull with no landing stroke or dive in progress) or a value is unsafe.
+ * Restore a checkpoint onto a state; false (and no change) when the layout is not the current version, version 5 (decoded
+ * with its top contact at its seat) or version 4 (also with no landing stroke or dive in progress), or a value is unsafe.
  */
 export function applyMovementCheckpoint(
   state: TankState, checkpoint: MovementCheckpoint, contact: MovementContactGeometry | null = null,
 ): boolean {
   const count = checkpoint.version === MOVEMENT_CHECKPOINT_VERSION ? MOVEMENT_CHECKPOINT_VALUES
-    : checkpoint.version === 4 ? VERSION_4_VALUES : 0;
+    : checkpoint.version === 5 ? VERSION_5_VALUES : checkpoint.version === 4 ? VERSION_4_VALUES : 0;
   if (!count || !validMovementValues(checkpoint.values, count) ||
       !Number.isInteger(checkpoint.flags) || checkpoint.flags < 0 || checkpoint.flags > MAX_FLAGS) return false;
   const { values, flags } = checkpoint;
@@ -135,14 +141,17 @@ export function applyMovementCheckpoint(
   state._sup.cg = contact;
   // the roof the hull rests on: no contact pass runs in the replay, so it holds until the next checkpoint clears it
   state._body.restSupportY = flags & 1024 ? values[offset + 5]! : NaN;
-  if (count === MOVEMENT_CHECKPOINT_VALUES) {
+  if (count >= VERSION_5_VALUES) {
     offset = restore(state._ride, RIDE_V5, values, offset + 6);
-    restore(state._susp, DIVE_V5, values, offset);
+    offset = restore(state._susp, DIVE_V5, values, offset);
   } else {
     state._ride.rebound = 0;
     state._ride.stroke = 0;
     state._susp.d = 0;
     state._susp.dv = 0;
   }
+  // a checkpoint before version 6 has the top contact at the seat (the springs did not seat a hull under it)
+  if (count === MOVEMENT_CHECKPOINT_VALUES) restore(state._sup, SUPPORT_V6, values, offset);
+  else state._sup.top = state._sup.y;
   return true;
 }

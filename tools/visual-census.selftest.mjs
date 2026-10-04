@@ -25,7 +25,9 @@ import {
 } from './visual-census-report.mjs';
 import {
   CENSUS_HELP, CLOUDSCAPE_WAIT_MS, censusShotView, censusWarmupMap, cloudscapeVerdict, parseCensusArgs, pickCaptureMaps,
+  viewsForMap,
 } from './visual-census.mjs';
+import { CENSUS_MAP_POSES } from './visual-census-map-poses.mjs';
 import { MAP_IDS, getMapConfig } from '../src/world/maps/index.ts';
 import { CLOUDSCAPE_REGIMES } from '../src/engine/cloudscapes.ts';
 import { createPoliteCaptureLock, stepBehindStamp, ticketName } from './visual-census-lock.mjs';
@@ -395,6 +397,16 @@ try {
   assert.deepEqual(posed.views.map((v) => [v.name, v.kind, v.cam, v.at, v.authored]),
     [['cone-nw', 'table', [-120, 30, 180], [-185, 10, 266], true], ['cone-se', 'table', [120, 25, -200], [205, 8, -300], true]]);
   assert.equal(parseCensusArgs(['capture', '--out=o', '--pose=a:1,2,3:4,5,6']).options.views.length, CENSUS_VIEWS.length + 1);
+  // --pose=maps (maps lane, 2026-10-03): each map's own views from tools/visual-census-map-poses.mjs, shot on that map
+  // only; every entry names a registered map and parses; an explicit --pose view still rides on every map
+  const mapPosed = parseCensusArgs(['capture', '--out=o', '--views=none', '--pose=maps']).options.views;
+  assert.ok(Object.keys(CENSUS_MAP_POSES).every((id) => MAP_IDS.includes(id)), 'every map-pose entry is a registered map');
+  assert.ok(mapPosed.length >= Object.keys(CENSUS_MAP_POSES).length && mapPosed.every((v) => v.authored && v.map));
+  assert.deepEqual(viewsForMap(mapPosed, 'badlands').map((v) => v.name), ['redrock-jebel-close', 'redrock-jebel-60']);
+  assert.deepEqual(viewsForMap(mapPosed, 'verdant'), [], 'a map without an entry shoots none of them');
+  assert.deepEqual(viewsForMap(posed.views, 'verdant').map((v) => v.name), ['cone-nw', 'cone-se'], 'explicit poses ride on every map');
+  // wave 35: the old Blackglass town camera stood against a tower's wall at (-187, -171); the census keeps it off there
+  assert.notDeepEqual(viewsForMap(mapPosed, 'blackglass')[0].cam, [-187, 30, -171]);
   for (const [argv, message] of [[['capture', '--out=o', '--views=none'], /needs at least one --pose/],
     [['capture', '--out=o', '--pose=bad'], /--pose needs/], [['capture', '--out=o', '--pose=chase:1,2,3:4,5,6'], /Duplicate census view name/]]) {
     assert.throws(() => parseCensusArgs(argv), message, argv.join(' '));

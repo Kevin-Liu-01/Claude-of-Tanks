@@ -889,6 +889,17 @@ interface ForestPlacement {
 }
 
 /**
+ * The seed of one ring-forest shape's own stream: the ring's seed and the class it builds (conifer or broadleaf, the
+ * detail class, the near variant; -1 for the band and range classes), independent of every placement draw.
+ */
+function horizonForestShapeSeed(seed: number, conifer: boolean, detail: number, variant: number): number {
+  let h = Math.imul((seed ^ 0x5F3A9C2D) >>> 0, 0x9E3779B1);
+  h = Math.imul(h ^ (h >>> 16) ^ (conifer ? 0x85EBCA6B : 0xC2B2AE35), 0x27D4EB2F);
+  h = Math.imul(h ^ (h >>> 15) ^ Math.imul(detail + 3, 0x165667B1) ^ Math.imul(variant + 2, 0xD3A2646C), 0x9E3779B1);
+  return (h ^ (h >>> 13)) >>> 0;
+}
+
+/**
  * Scatter real trees over the ring faces where the painted stands are dense, one InstancedMesh per species and
  * detail class. The rim band (below the first ridge) keeps up to three quarters of the budget, thinned uniformly so
  * the whole perimeter stays covered, and its trees nearest the edge form the rich shadow-casting near class; the
@@ -1165,15 +1176,23 @@ export function buildHorizonForest(options: HorizonForestOptions): THREE.Group |
   for (const conifer of [true, false]) {
     const kind = conifer ? 'conifer' : 'broadleaf';
     const pal = conifer ? coniferPal : broadleafPal;
-    const build = (detail: number): TreeGeometry => (conifer ? buildRingConifer(rng, pal, detail) : buildRingBroadleaf(rng, pal, detail));
+    // Trees round 2 (2026-10-03, the mountains lane): each class's shape draws from its own stream, seeded by the ring's
+    // seed and the class it builds. On the placement stream a shape followed every placement draw, so any change to the
+    // ring's heights re-rolled the shapes as well as moving the trees: the near class's lobe trees (shadow-only once
+    // the impostors draw the visible ring) swung by up to ±44k triangles a map (Railyard +29.6k, Steppe −44k). Now a
+    // terrain change moves and re-thins the trees and keeps every shape.
+    const build = (detail: number, variant: number): TreeGeometry => {
+      const shapeRng = tileRng(horizonForestShapeSeed(seed, conifer, detail, variant));
+      return conifer ? buildRingConifer(shapeRng, pal, detail) : buildRingBroadleaf(shapeRng, pal, detail);
+    };
     for (const variant of [0, 1]) {
       species.push({
-        name: `horizon-forest-${kind}-near-${variant}`, shadow: true, tree: build(2),
+        name: `horizon-forest-${kind}-near-${variant}`, shadow: true, tree: build(2, variant),
         own: placements.filter((p) => p.conifer === conifer && p.detail === 2 && p.variant === variant),
       });
     }
-    species.push({ name: `horizon-forest-${kind}-band`, shadow: false, tree: build(1), own: placements.filter((p) => p.conifer === conifer && p.detail === 1) });
-    species.push({ name: `horizon-forest-${kind}-range`, shadow: false, tree: build(0), own: placements.filter((p) => p.conifer === conifer && p.detail === 0) });
+    species.push({ name: `horizon-forest-${kind}-band`, shadow: false, tree: build(1, -1), own: placements.filter((p) => p.conifer === conifer && p.detail === 1) });
+    species.push({ name: `horizon-forest-${kind}-range`, shadow: false, tree: build(0, -1), own: placements.filter((p) => p.conifer === conifer && p.detail === 0) });
   }
   const matrix = new THREE.Matrix4(), quaternion = new THREE.Quaternion(), scaleV = new THREE.Vector3(), positionV = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0);

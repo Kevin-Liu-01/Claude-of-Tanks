@@ -52,7 +52,8 @@ import { createTerrainContactSampler } from '../src/world/terrainContactSurface.
 import * as collisionModule from '../src/world/collision.ts';
 import { createPredictionWorld } from '../src/mp/presentation/predictionWorld.ts';
 
-const { hullPassesObstacleTop, pointInsideCollisionRecord, pushHullFromHull, pushHullFromObstacle, setObbShape, setCircleShape } = collisionModule;
+const { hullPassesObstacleTop, pointInsideCollisionRecord, pushHullFromHull, pushHullFromObstacle, setObbShape, setCircleShape,
+  setCompoundShape } = collisionModule;
 // The standing rule's underside and the footprint the obstacle solver pushes, as the tree under test has them: the
 // hull's footprint at its attitude (world/collision.ts hullFootprint), the flat rect with the earlier underside grid, or
 // (the A/B base, without either) the flat rect and the root.
@@ -244,6 +245,25 @@ export function box(cx, cz, halfWidth, halfLength, bottom, top, { yaw = 0, crush
   const record = { min: [0, bottom, 0], max: [0, top, 0], kind, crushable };
   return setObbShape(record, cx, cz, halfWidth, halfLength, yaw);
 }
+/**
+ * A viaduct over a gorge, built as the maps capture one (Aegis Crossing's stone viaduct): one deck record the hull drives
+ * on, and a record per span below it whose parts each keep their own height: the span's sub-deck slab `slabDepth` under
+ * the deck top, its pier, and the parapets standing on the deck's edges (which lift the span record's top over the deck).
+ */
+export function viaduct(z0, spans, spanLength, { halfWidth = 6, slabDepth = 0.55, gorge = 15 } = {}) {
+  const records = [box(0, z0 + (spans * spanLength) / 2, halfWidth, (spans * spanLength) / 2 + 2, -1, 0, { kind: 'bridge' })];
+  for (let index = 0; index < spans; index++) {
+    const start = z0 + index * spanLength, center = start + spanLength / 2;
+    const part = (cx, cz, hw, hl, y0, y1) => ({ kind: 'obb', cx, cz, hw, hl, yaw: 0, y0, y1 });
+    records.push(setCompoundShape({ min: [0, -gorge, 0], max: [0, 1.1, 0], kind: 'bridge', crushable: false }, [
+      part(0, center, halfWidth, spanLength / 2, -slabDepth - 0.15, -slabDepth),
+      part(0, start + 0.9, halfWidth, 0.9, -gorge, -slabDepth),
+      part(-(halfWidth - 0.2), center, 0.2, spanLength / 2, 0, 1.1),
+      part(halfWidth - 0.2, center, 0.2, spanLength / 2, 0, 1.1),
+    ]));
+  }
+  return records;
+}
 /** A boulder: a vertical cylinder footprint (the rocks the maps scatter). */
 export function boulder(cx, cz, radius, top) {
   return setCircleShape({ min: [0, 0, 0], max: [0, top, 0], kind: 'rock', crushable: false }, cx, cz, radius);
@@ -284,6 +304,9 @@ export const CASES = [
   { id: 'drive-washboard', group: 'drive', seconds: 6, terrain: TERRAIN.washboard(0.12, 2.6), spawn: { speed: 'top' }, input: hold(1), drive: [0, 6] },
   { id: 'drive-block60', group: 'drive', seconds: 6, terrain: TERRAIN.flat(), obstacles: [box(0, 14, 6, 0.6, 0, 0.6, { kind: 'block' })],
     input: hold(1), drive: [0, 6], allowBlocked: true },
+  // a viaduct's span joints at road speed (Aegis Crossing, round 3): the deck runs on over each span's record
+  { id: 'drive-viaduct', group: 'drive', seconds: 8, terrain: TERRAIN.valley(0, 96, 15), obstacles: viaduct(0, 3, 32),
+    spawn: { z: -30, speed: 'top' }, input: hold(1), drive: [0, 8] },
   { id: 'drive-bridge', group: 'drive', seconds: 7, terrain: TERRAIN.valley(10, 38, 6),
     obstacles: [box(0, 24, 4.5, 16, -1.1, 0, { kind: 'bridge' })], input: hold(1), drive: [0, 7] },
   { id: 'drive-lake', group: 'drive', seconds: 10, terrain: TERRAIN.lake(8, 40),
@@ -344,6 +367,15 @@ export const CASES = [
     modes: 'jump' },
   { id: 'kicker', group: 'air', seconds: (w) => 2 + w.dropS(8) * 2 + 3, terrain: TERRAIN.kicker(22, 7, 14), spawn: { speed: 'top' }, input: hold(1) },
   { id: 'land-slope', group: 'air', seconds: (w) => w.dropS(8) + 6, terrain: TERRAIN.slopeAlong(25), spawn: { dropTo: 8 }, input: hold(0, 0, true), rest: 'tail' },
+  // Round 4 (gauntlet wave 33): a level hull dropped onto a 10-degree cross slope lands on its uphill track first and
+  // turns onto the slope (landingTurn), from 1.5 m (4.2 m/s) and 3 m (7 m/s)
+  { id: 'land-cross', group: 'air', seconds: (w) => w.dropS(3) + 3, terrain: TERRAIN.slopeAcross(10), spawn: { dropTo: 3 },
+    input: hold(0, 0, true) },
+  { id: 'land-cross-soft', group: 'air', seconds: (w) => w.dropS(1.5) + 3, terrain: TERRAIN.slopeAcross(10), spawn: { dropTo: 1.5 },
+    input: hold(0, 0, true) },
+  // Round 4: flat drops from 2 m (5.9 m/s) and 8 m (12.3 m/s) read how far the landing stroke goes (gearCompMaxM)
+  { id: 'drop-2', group: 'air', seconds: (w) => w.dropS(2) + 3, terrain: TERRAIN.flat(), spawn: { dropTo: 2 }, input: hold(0, 0, true) },
+  { id: 'drop-8', group: 'air', seconds: (w) => w.dropS(8) + 3, terrain: TERRAIN.flat(), spawn: { dropTo: 8 }, input: hold(0, 0, true) },
   { id: 'land-tank', group: 'air', seconds: (w) => w.dropS(7) + 6, terrain: TERRAIN.flat(), extras: [{ id: 'lower', specId: 'm1a2', x: 0, z: 0 }],
     spawn: { x: 0.4, z: 0.6, dropTo: 7 }, input: hold(), rest: 'tail' },
   { id: 'land-wreck', group: 'air', seconds: (w) => w.dropS(7) + 6, terrain: TERRAIN.flat(), extras: [{ id: 'wreck', specId: 't90m', x: 0, z: 0, wreck: true }],
@@ -465,9 +497,20 @@ function structureTop(obstacles, x, z, ceiling = Infinity, floors = null) {
   for (let i = 0; i < obstacles.length; i++) {
     const record = obstacles[i];
     const limit = floors ? floors[i] + 0.55 : ceiling;
-    if (record.crushed || record.max[1] - record.min[1] < 0.9 || record.max[1] > limit) continue;
+    if (record.crushed) continue;
     if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
-    if (pointInsideCollisionRecord(record, record.shape2 ?? null, x, z) && record.max[1] > best) best = record.max[1];
+    const shape = record.shape2 ?? null;
+    if (shape?.kind === 'compound') {
+      // a compound record part by part, each at its own vertical extent (a viaduct span's slab, parapets and pier)
+      for (const part of shape.parts) {
+        const top = part.y1 ?? record.max[1], bottom = part.y0 ?? record.min[1];
+        if (top - bottom < 0.9 || top > limit) continue;
+        if (pointInsideCollisionRecord(record, part, x, z) && top > best) best = top;
+      }
+      continue;
+    }
+    if (record.max[1] - record.min[1] < 0.9 || record.max[1] > limit) continue;
+    if (pointInsideCollisionRecord(record, shape, x, z) && record.max[1] > best) best = record.max[1];
   }
   return best;
 }
@@ -507,6 +550,12 @@ function newMetrics() {
     snapMaxRad: 0, snaps: 0, angRateMaxRadS: 0,
     jerkSamples: [], jerkMaxRadS3: 0,
     bodyPenMaxM: 0, obstaclePenMaxM: 0, hullPenMaxM: 0, stackPenMaxM: 0, roofSinkMaxM: 0, gearCompMaxM: 0,
+    trackTicks: 0, trackReachSum: 0, perchedS: 0, trackContactMean: 12,
+    overshootPullG: 0, landingSettleS: 0, restAttitudeErrDeg: 0,
+    // the first landing that meets ground tilted under the hull (round 4): the attitude's error to the ground plane at
+    // touchdown, the fastest turn toward it in the next 0.1 s, the time to within a degree of it, and the most it turned
+    // past it (degrees)
+    landingTurn: null,
     tunnelled: false, maxHeightM: 0,
     airS: 0, longestAirS: 0, hops: 0, landings: [], contactLandings: [], maxLandingMps: 0, reboundExcessMps: 0, closingExcessMps: 0,
     liftM: 0,
@@ -516,7 +565,7 @@ function newMetrics() {
     overturnedS: 0, tumblingS: 0, finalUpY: 1, finalOverturned: false,
     settleOscillations: null,
     replay: { samples: 0, maxErrM: 0, sumErrM: 0, maxAttErrRad: 0 },
-    impacts: [], falls: [], fallDamageHp: 0, landingTravel: [], airTiltMaxRad: 0,
+    impacts: [], falls: [], fallDamageHp: 0, impactDamageHp: 0, landingTravel: [], airTiltMaxRad: 0,
   };
 }
 
@@ -605,7 +654,23 @@ function replayStateFrom(entity) {
 const REPLAY_EVERY = 15;
 const REPLAY_TICKS = 12;
 
-export function runCase(hullId, worldId, caseDef, { replay = true, trace = null } = {}) {
+/**
+ * Run one case. `publishedContact` runs the hull on its published box, as a Node context that never finalized its combat
+ * anatomy does (fleetFactory without its builders: botObjectives), its nose and tail lifts zero.
+ */
+export function runCase(hullId, worldId, caseDef, options = {}) {
+  if (!options.publishedContact) return runCaseOn(hullId, worldId, caseDef, options);
+  const armor = getSpec(hullId).armor;
+  const points = armor?.bodyContactPoints;
+  if (armor) armor.bodyContactPoints = undefined;
+  try {
+    return runCaseOn(hullId, worldId, caseDef, options);
+  } finally {
+    if (armor) armor.bodyContactPoints = points;
+  }
+}
+
+function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {}) {
   const world = makeWorld(caseDef);
   const worldDef = WORLDS[worldId];
   const ruleset = worldDef.ruleset();
@@ -688,6 +753,8 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
   const footCenter = { x: 0, y: 0, z: 0 };
   const footScratch = { centerX: 0, centerZ: 0, forwardX: 0, forwardZ: 1, rightX: 1, rightZ: 0, halfLength: 0, halfWidth: 0 };
   const floors = new Float64Array(Math.max(1, world.obstacles.length));
+  // the underside as it is over each record, which clears a top or not (world/collision.ts hullPassesObstacleTop)
+  const clears = new Float64Array(Math.max(1, world.obstacles.length));
   const att = { pitch: 0, roll: 0 };
   const renderedHistory = [];
   const restSamples = [];
@@ -698,6 +765,12 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
   let lastAirborne = false;
   // the last landing: its closing (the rebound law's input) and the ticks its springs take to return a rebound
   let lastLanding = null;
+  // a landing's overshoot past the springs' static sag over the seat: the ride's hardest pull down there (in the world's
+  // gravity), and the ride's height over its seat after the last hard landing (its settle)
+  const staticSag = gravity / ((2 * Math.PI * 1.8) ** 2);
+  let overshootPrev = null;
+  let settleTrace = null;
+  let turnTrace = null;
   let wallSide = 0;
   let stuckRun = 0;
   // the prediction world over the same collision, seeing every other hull where the authority has it now
@@ -743,7 +816,7 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
         predictionWorld.anchor?.(replayState);
         const sim = { spec: subject.spec, state: replayState, combat: { destroyed: false, modules: {}, crew: {}, equipMults: {} },
           contactGeom: null, modeSpeedMultiplier: subject.modeSpeedMultiplier ?? 1, modeGravityScale: subject.modeGravityScale ?? 1,
-          modePhysics: predictionWorld.physics ?? null, rigidGear: false,
+          modePhysics: predictionWorld.physicsAt?.(subject.modeGravityScale ?? 1) ?? predictionWorld.physics ?? null, rigidGear: false,
           input: { throttle: 0, steer: 0, brake: false, aimLocked: true, aimPoint: replayState.aimPoint.clone() } };
         for (let k = 0; k < REPLAY_TICKS; k++) {
           const c = controlAt(tick + k);
@@ -841,7 +914,10 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
     center.y = state.pos.y;
     const foot = obstacleFootprint(rect, state, footprintScratch ?? footScratch);
     footCenter.x = foot.centerX; footCenter.y = state.pos.y; footCenter.z = foot.centerZ;
-    for (let i = 0; i < world.obstacles.length; i++) floors[i] = undersideOver(world.obstacles[i], foot, rect, state);
+    for (let i = 0; i < world.obstacles.length; i++) {
+      floors[i] = undersideOver(world.obstacles[i], foot, rect, state);
+      clears[i] = Number.isFinite(foot.clearBottom) ? foot.clearBottom : floors[i];
+    }
     const ground = (x, z) => Math.max(world.contact(x, z), structureTop(world.obstacles, x, z, Infinity, floors));
     const shellDepth = (cloud, frameCos, frameSin, px, py, pz) => {
       let worst = 0, worstZ = 0, worstY = 0;
@@ -865,10 +941,33 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
     const tc = Math.cos(state.turretYaw || 0), ts = Math.sin(state.turretYaw || 0);
     const bodyPen = Math.max(shellDepth(hullCloud, 1, 0, 0, 0, 0), shellDepth(turretCloud, tc, ts, pivot[0], pivot[1], pivot[2]));
     if (bodyPen > metrics.bodyPenMaxM) metrics.bodyPenMaxM = bodyPen;
+    // road-wheel stations within reach of the ground (round 3, gauntlet wave 23: "no wheels down in several frames"): six
+    // stations along each outer track line at the pose the support seats the tracks at, a station reaching the ground
+    // when the ground under it lies between the wheels' full droop and their full conform travel (the renderer's -0.22 /
+    // +0.30 m); perched is time grounded with two stations or fewer
+    if (state.grounded && t >= 1) {
+      const sp = state._spring, su = state._susp;
+      const tp = sp.pitch + (su.p - su.d) * 2.2 - (state._flinch?.p ?? 0);
+      const tr = sp.roll + su.r * 1.9 + (state._swayEst ?? 0) * 2.4 + (state._flinch?.r ?? 0);
+      const halfLen = 0.45 * subject.spec.dims.hullLengthM, halfW = 0.5 * subject.spec.dims.widthM;
+      const tcp = Math.cos(-tp), tsp = Math.sin(-tp), tcr = Math.cos(tr), tsr = Math.sin(tr);
+      let reach = 0;
+      for (const lx of [-halfW, halfW]) {
+        for (let i = 0; i < 6; i++) {
+          const lz = -halfLen + (2 * halfLen * i) / 5;
+          const rx = lx * tcr, ry = lx * tsr, pz = ry * tsp + lz * tcp;
+          const gap = state.pos.y + ry * tcp - lz * tsp - world.contact(state.pos.x + rx * cy + pz * sy, state.pos.z - rx * sy + pz * cy);
+          if (gap <= 0.22 && gap >= -0.30) reach++;
+        }
+      }
+      metrics.trackTicks++;
+      metrics.trackReachSum += reach;
+      if (reach <= 2) metrics.perchedS += DT;
+    }
     for (let i = 0; i < world.obstacles.length; i++) {
       const record = world.obstacles[i];
       if (record.crushed) continue;
-      if (hullPassesObstacleTop(floors[i], record.max[1], record.min[1], !record.crushable)) {
+      if (hullPassesObstacleTop(floors[i], record.max[1], record.min[1], !record.crushable, clears[i])) {
         // standing on it: the hull's underside over it must not sink below its top
         if (record.max[1] - record.min[1] >= 0.9 && (floors[i] !== state.pos.y
           || pointInsideCollisionRecord(record, record.shape2 ?? null, state.pos.x, state.pos.z))) {
@@ -878,7 +977,7 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
       }
       push.x = 0; push.z = 0;
       if (pushHullFromObstacle(footCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth,
-        record, push, floors[i], state.pos.y + bodyTop)) {
+        record, push, floors[i], state.pos.y + bodyTop, clears[i])) {
         metrics.obstaclePenMaxM = Math.max(metrics.obstaclePenMaxM, Math.hypot(push.x, push.z));
       }
     }
@@ -897,7 +996,17 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
       if (prefersVerticalTankContact(subject, other)) metrics.stackPenMaxM = Math.max(metrics.stackPenMaxM, 0);
       else metrics.hullPenMaxM = Math.max(metrics.hullPenMaxM, overlap);
     }
-    if (state.grounded) metrics.gearCompMaxM = Math.max(metrics.gearCompMaxM, state._sup.y - state._ride.y);
+    if (state.grounded) metrics.gearCompMaxM = Math.max(metrics.gearCompMaxM, state._sup.top - state._ride.y);
+    {
+      const ride = state._ride;
+      const over = ride.y - state._sup.y;
+      const still = Math.abs(ride.groundV ?? 0) < 0.5;
+      if (overshootPrev && state.grounded && overshootPrev.grounded && still && over > staticSag && overshootPrev.over > staticSag) {
+        metrics.overshootPullG = Math.max(metrics.overshootPullG, -(ride.v - overshootPrev.v) / DT / gravity);
+      }
+      overshootPrev = { grounded: state.grounded, v: ride.v, over };
+      if (settleTrace) settleTrace.push(over);
+    }
 
     // 5. tunnelling through a thin wall: the hull centre may never cross the wall line
     if (caseDef.wall) {
@@ -911,7 +1020,7 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
     if (!state.grounded) {
       metrics.airS += DT;
       airRun += DT;
-      metrics.liftM = Math.max(metrics.liftM, state.pos.y - state._sup.y);
+      metrics.liftM = Math.max(metrics.liftM, state.pos.y - state._sup.top);
       metrics.airTiltMaxRad = Math.max(metrics.airTiltMaxRad, Math.acos(Math.max(-1, Math.min(1, Math.cos(state.visualPitch) * Math.cos(state.visualRoll)))));
       metrics.longestAirS = Math.max(metrics.longestAirS, airRun);
       apex = Math.max(apex, state.pos.y);
@@ -934,9 +1043,28 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
       // rise off the landing while its springs return it (updated below for a second)
       metrics.landingTravel.push([+Math.abs(pre.speed).toFixed(2), +Math.abs(state.speed).toFixed(2), +state._ride.v.toFixed(2)]);
       lastLanding = { closing: state.landingImpactMps, tick, travel: metrics.landingTravel.at(-1) };
+      if (state.landingImpactMps > 2) settleTrace = [];
+      // the landing turn: about the axis the hull is furthest from the ground plane it lands on
+      if (!metrics.landingTurn) {
+        const errorPitch = state._terr.pitch - state._spring.pitch, errorRoll = state._terr.roll - state._spring.roll;
+        if (Math.max(Math.abs(errorPitch), Math.abs(errorRoll)) > 0.035) {
+          const axis = Math.abs(errorRoll) >= Math.abs(errorPitch) ? 'roll' : 'pitch';
+          metrics.landingTurn = { axis, closingMps: +state.landingImpactMps.toFixed(2),
+            errorDeg: +((axis === 'roll' ? errorRoll : errorPitch) * 57.2958).toFixed(2), turnRateDegS: 0, alignS: null, overshootDeg: 0 };
+          turnTrace = { tick, sign: Math.sign(axis === 'roll' ? errorRoll : errorPitch) };
+        }
+      }
       metrics.maxLandingMps = Math.max(metrics.maxLandingMps, state.landingImpactMps);
       metrics.apexes.push(+(apex - world.fn(state.pos.x, state.pos.z)).toFixed(2));
       apex = -Infinity;
+    }
+    if (turnTrace && tick > turnTrace.tick && tick - turnTrace.tick <= 120) {
+      const turn = metrics.landingTurn, roll = turn.axis === 'roll';
+      const error = (roll ? state._terr.roll - state._spring.roll : state._terr.pitch - state._spring.pitch) * 57.2958;
+      const rate = (roll ? state._spring.rollV : state._spring.pitchV) * 57.2958 * turnTrace.sign;
+      if (tick - turnTrace.tick <= 6) turn.turnRateDegS = Math.max(turn.turnRateDegS, +rate.toFixed(1));
+      if (turn.alignS === null && Math.abs(error) < 1) turn.alignS = +((tick - turnTrace.tick) * DT).toFixed(3);
+      turn.overshootDeg = Math.max(turn.overshootDeg, +(-error * turnTrace.sign).toFixed(2));
     }
     if (lastLanding && !landed && tick - lastLanding.tick <= 60) {
       lastLanding.travel[2] = Math.max(lastLanding.travel[2], +state._ride.v.toFixed(2));
@@ -1007,8 +1135,26 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
     if (event.type !== 'tank_impact' || event.id !== 'subject') continue;
     (event.cause === 'fall' ? metrics.falls : metrics.impacts).push(+event.closingMps.toFixed(1));
     if (event.cause === 'fall') metrics.fallDamageHp += event.damage ?? 0;
+    else metrics.impactDamageHp += event.damage ?? 0;
   }
   if (restSamples.length > 2) metrics.rest = restStats(restSamples);
+  if (restSamples.length > 2) {
+    // at rest the hull lies on the ground it stands on: its pitch and roll against the ground's grade along and across it
+    const state = subject.state;
+    const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw), rx = Math.cos(state.yaw), rz = -Math.sin(state.yaw);
+    const { x, z } = state.pos;
+    const along = Math.atan((world.fn(x + fx, z + fz) - world.fn(x - fx, z - fz)) / 2);
+    const across = Math.atan((world.fn(x + rx, z + rz) - world.fn(x - rx, z - rz)) / 2);
+    metrics.restAttitudeErrDeg = Math.max(Math.abs(state.visualPitch - along), Math.abs(state.visualRoll - across)) * 180 / Math.PI;
+  }
+  if (metrics.trackTicks) metrics.trackContactMean = metrics.trackReachSum / metrics.trackTicks;
+  if (settleTrace?.length) {
+    // the settle: the last tick the ride was more than 5 mm from where it came to rest after the last hard landing
+    const restOver = settleTrace.at(-1);
+    let last = 0;
+    for (let index = 0; index < settleTrace.length; index++) if (Math.abs(settleTrace[index] - restOver) > 0.005) last = index;
+    metrics.landingSettleS = last * DT;
+  }
   metrics.final = { x: +subject.state.pos.x.toFixed(2), y: +subject.state.pos.y.toFixed(3), z: +subject.state.pos.z.toFixed(2),
     pitch: +subject.state.visualPitch.toFixed(3), roll: +subject.state.visualRoll.toFixed(3), grounded: subject.state.grounded,
     speed: +subject.state.speed.toFixed(2) };

@@ -11,3 +11,9 @@ export function isVehicleMesh(object: THREE.Object3D): object is VehicleMesh {
 export function isVehicleInstancedMesh(object: THREE.Object3D): object is VehicleInstancedMesh {
   return 'isInstancedMesh' in object && object.isInstancedMesh === true;
 }
+
+/** A BatchedMesh is also isMesh, but its shared buffer is origin-local: each instance draws one geometry range
+ * through its own matrix, so it must never be read as a plain mesh. */
+export function isVehicleBatchedMesh(object: THREE.Object3D): object is THREE.BatchedMesh {
+  return 'isBatchedMesh' in object && object.isBatchedMesh === true;
+}

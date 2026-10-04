@@ -53,6 +53,7 @@ const INFO = {
   adobe: [6.6, 7.6, 4.2], caravanserai: [21.4, 19.4, 7.4], compound: [23, 14.5, 5.6], compoundSouk: [22, 16, 6],
   minaret: [4, 4, 13], bathhouse: [11, 10, 7], factory: [16, 26, 15], watertower: [5.6, 5.6, 14],
   shed: [8, 14, 6], stack: [3.4, 3.4, 26], market: [6.6, 5.2, 3.0], containerRow: [15, 6.4, 3.4], gantry: [21, 5.4, 12],
+  firestation: [11.8, 15.4, 14.1],
 };
 // triangles per building, the three-storey tavern included (its forty windows cut into the wall with reveals, sills,
 // frames, bars and shutters, its window boxes, bench, woodpile, roof ladder and aerial, and a stripped roof patch when
@@ -72,7 +73,7 @@ function positions(parts) {
   return Object.entries(parts).map(([bucket, list]) => [bucket, list.map((g) => Array.from(g.getAttribute('position').array))]);
 }
 
-let builders = 0, triangles = 0, worst = 0;
+let builders = 0, triangles = 0, worst = 0, fine = 0;
 for (const style of STYLES) {
   assert.ok(style.region.length > 20, `${style.id}: the kit names its region`);
   for (const id of Object.keys(style.builders)) {
@@ -112,6 +113,15 @@ for (const style of STYLES) {
       assert.deepEqual(JSON.stringify(deriveRuntimeStructureCollisionProfile(mobile)), JSON.stringify(profile),
         `${style.id}/${id}: mobile collision equals desktop`);
       assert.ok(all(mobile).reduce((n, g) => n + g.getAttribute('position').count / 3, 0) <= tris, `${style.id}/${id}: mobile builds no more`);
+      // the fine joinery (geometry.ts EmitOptions.fine: frames, bars, rails, panels, the sides of timbers and leaves) is
+      // receive-only dressing props.ts draws near the camera only, and a phone never builds it
+      let pieces = 0;
+      for (const g of all(parts)) if (g.userData.fine) {
+        assert.ok(g.userData.noCollision && !g.userData.castsShadow, `${style.id}/${id}: fine joinery is receive-only dressing`);
+        pieces++;
+      }
+      if (pieces) fine++;
+      assert.ok(all(mobile).every((g) => !g.userData.fine), `${style.id}/${id}: a phone builds no fine joinery`);
       // inverted faces: rays from outside must first hit a face that looks back at them
       const meshes = [];
       for (const [bucket, list] of Object.entries(parts)) for (const g of list) {
@@ -136,7 +146,9 @@ for (const style of STYLES) {
     }
   }
 }
-console.log(`regional builders: ${builders} builds sound, ${Math.round(triangles / builders)} triangles mean, ${worst} worst`);
+// most builders have windows, doors or timbers (172 of 286 on 2026-10-03; the rest: stalls, sheds, ruins, bare towers)
+assert.ok(fine >= builders / 2, `most builds carry fine joinery (${fine} of ${builders})`);
+console.log(`regional builders: ${builders} builds sound, ${Math.round(triangles / builders)} triangles mean, ${worst} worst, ${fine} with fine joinery`);
 
 // Surfaces: deterministic, in range, cached.
 for (const [target, kind] of [['roof', 'beavertail'], ['roof', 'canal'], ['roof', 'slate'], ['stone', 'sandstone'], ['stone', 'limestone'], ['stone', 'granite']]) {
