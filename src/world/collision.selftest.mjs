@@ -214,4 +214,44 @@ assert.deepEqual(sharedOut, [], 'cell candidates still obey exact AABB rejection
     'cloning keeps every part extent');
 }
 
+// Footprints in either winding (2026-10-03; railyard battlePacing seed 28003 ran to the 900 s cap). Captured convex
+// parts arrive clockwise as well as counter-clockwise (935 parts in 503 records over the 33 maps' shards: structure roof
+// strips, cable spools, stooks, wire), and the route probe, the shell ray and the clearance test read every footprint
+// as counter-clockwise, so a clockwise part's inside was its outside: a shell through it passed, its centre was not in
+// it, and a route probe "hit" it from far off — railyard's 4 m hut at x 194-198 pulled a T-90A searching west of it
+// 90 m east to its corners, again and again, until the time limit.
+{
+  const area2 = (points) => points.reduce((sum, _, index) => (index % 2 ? sum : sum
+    + points[index] * points[(index + 3) % points.length] - points[(index + 2) % points.length] * points[index + 1]), 0);
+  // the railyard hut's clockwise wall sliver, as captured, and the route probe the T-90A cast from (102.3, 9.3)
+  const sliverPoints = [195.158, -21.968, 196.545, -22.006, 195.174, -22.006];
+  assert.ok(area2(sliverPoints) < 0, 'the captured sliver winds clockwise');
+  const sliver = setConvexShape(rec(0.9), sliverPoints);
+  const probeX = 75 - 102.3, probeZ = -25 - 9.3, probeLength = Math.hypot(probeX, probeZ);
+  assert.equal(rayCollisionFootprintEntry2(sliver, 102.3, 9.3, probeX / probeLength, probeZ / probeLength, 85, 3.2), null,
+    'a route probe passing 95 m clear of a clockwise sliver misses it (it read a hit at 35.9 m)');
+  const n = new Vector3();
+  for (const [winding, points] of [
+    ['clockwise', [-2, -1, -2, 1, 2, 1, 2, -1]],
+    ['counter-clockwise', [2, -1, 2, 1, -2, 1, -2, -1]],
+  ]) {
+    assert.equal(Math.sign(area2(points)), winding === 'clockwise' ? -1 : 1, `the ${winding} block winds ${winding}`);
+    const block = setConvexShape(rec(3), points);
+    const hit = rayCollisionRecord(new Vector3(-10, 1, 0.3), new Vector3(1, 0, 0), block, 20, n);
+    assert.ok(Math.abs(hit - 8) < 1e-9 && Math.abs(n.x + 1) < 1e-9 && Math.abs(n.z) < 1e-9,
+      `a shell through the ${winding} block hits its near face at 8 m, normal outward (${hit}, ${n.x}, ${n.z})`);
+    assert.equal(rayCollisionRecord(new Vector3(-10, 1, 4), new Vector3(1, 0, 0), block, 20, n), -1,
+      `a shell passing 3 m clear of the ${winding} block misses it`);
+    assert.ok(Math.abs(rayCollisionRecord(new Vector3(0, 10, 0), new Vector3(0, -1, 0), block, 20, n) - 7) < 1e-9,
+      `a plunging shell meets the ${winding} block's roof`);
+    assert.equal(collisionFootprintContainsPoint(block, 0, 0, 0), true, `the ${winding} block holds its centre`);
+    assert.equal(collisionFootprintContainsPoint(block, 0, 1.4, 0), false, `a point 0.4 m off the ${winding} block's side is outside it`);
+    assert.equal(collisionFootprintContainsPoint(block, 0, 1.4, 0.5), true, `a 0.5 m clearance reaches past the ${winding} block's side`);
+    assert.ok(Math.abs(rayCollisionFootprintEntry2(block, -10, 0, 1, 0, 20, 1) - 7) < 1e-9,
+      `a route probe through the ${winding} block meets its 1 m clearance at 7 m`);
+    assert.equal(rayCollisionFootprintEntry2(block, -10, 3, 1, 0, 20, 1), null,
+      `a route probe 2 m clear of the ${winding} block passes its 1 m clearance`);
+  }
+}
+
 console.log('collision.selftest: exact environment shapes and spatial broad phase passed');

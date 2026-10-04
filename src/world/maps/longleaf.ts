@@ -6,7 +6,7 @@ export default {
   id: 'longleaf', name: 'Longleaf Crossing',
   blurb: 'Pine clearcuts, timber yards and a winding logging spur around a wooded creek hollow',
   terrain: {
-    hillScale: 1.05, microScale: 0.86, rimH: 30,
+    hillScale: 0.88, microScale: 0.76, rimH: 30,
     village: { x0: -142, x1: 92, z0: -54, z1: 158, cx: -26, cz: 54, feather: 42, flatten: 0.84, relief: 0.16 },
     roads: { paths: roundRoadBends([
       // The timber loading lane hooks around the garage yard. The diagonal
@@ -35,6 +35,9 @@ export default {
       { kind: 'knoll', x: -102, z: 286, rx: 90, rz: 72, height: 6.8 },
       { kind: 'basin', x: -338, z: 0, rx: 74, rz: 192, height: -3.4, wetScale: 0.4 },
       { kind: 'knoll', x: 344, z: -222, rx: 60, rz: 76, height: 5.2 },
+      // 2026-10-02 (maps lane B): the pine swell south of the northern landing, which screens it from the southern
+      // assembly height across the hollow.
+      { kind: 'ridge', x: -10, z: 304, length: 300, width: 60, height: 7.5, yawDeg: 2, corridorScale: 1 },
     ],
   },
   spawns: { player: { x: -118, z: -390 }, enemies: [
@@ -81,7 +84,7 @@ export default {
     buildingLat: [13, 2], destructibleBuildingLat: [17, 3], sideSkip: 0.18, spacingPad: 8,
     tacticalBeats: [
       { id: 'crossing-timber-yard', role: 'brawl', x: -64, z: 74, yawDeg: 90, structure: 'servicegarage', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
-      { id: 'eastern-cut-fire-watch', role: 'scout', x: 264, z: 52, yawDeg: -90, structure: 'huntingblind', outcrop: { count: 4, radius: 9 } },
+      { id: 'eastern-cut-fire-watch', role: 'scout', x: 310, z: -60, yawDeg: -90, structure: 'huntingblind', outcrop: { count: 4, radius: 9 } },
       { id: 'western-creek-camp', role: 'support', x: -268, z: 238, yawDeg: 90, structure: 'leanto', redoubt: true, outcrop: { count: 5, radius: 10 }, wreck: true },
     ],
     wallStyle: 'fieldstone', wallStoneChance: 0.62,
@@ -92,7 +95,9 @@ export default {
       ids: ['m1a1', 'm2a2_bradley', 'm551_sheridan', 'm60a3', 'm1a2_sepv3'] },
     inhabit: { stalls: 1, benches: 3, coreClutter: 18, bales: 6, troughs: 2, laundry: 2, handcarts: 3, carts: 4, trucks: 6, jeeps: 4, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 22, roadFence: 'fenceplank', yardFence: 'fenceplank' },
   },
-  horizon: { baseHex: 0x52674a, amp: 1.0, style: 'rolling', treeline: 0.92, forestHex: 0x2c4b33, rockHex: 0x747664, haze: 0.92, grain: 0.58 },
+  // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): longleaf pine flatwoods: flat, the
+  // skyline its pine woods
+  horizon: { baseHex: 0x52674a, amp: 0.4, style: 'rolling', treeline: 0.92, panorama: { regional: 'plain', trees: 22 }, forestHex: 0x2c4b33, rockHex: 0x747664, haze: 0.92, grain: 0.58 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'fair-weather-cumulus', coverage: 0.32, streets: 0.5, towers: 0.2, rain: 0.3 },
   sky: { ...frontier.sky, sunElevationDeg: 24, sunAzimuthDeg: 108, fogDensity: 0.00062, fogTintHex: 0x8f9f9c, fogMix: 0.52, cloudOpacity: 1.05, cloudOpacity2: 0.72, sunIntensity: 3.7 },

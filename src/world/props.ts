@@ -368,6 +368,15 @@ interface PropsSettings {
    * building that clears the carriageway stands where it always did. Opt-in: a map without it keeps every building. */
   roadBuildingClearance?: boolean;
   streetRowRoadStride?: number;
+  /** Junction corners the roadside buildings keep out of (maps lane B, 2026-10-03): a roadside building's centre stands
+   * outside each disc ({ x, z, r }). The centre test (7.5 m off any road) lets a long building reach into the other road
+   * of an acute junction; Nordhavn Fjord's town crossroads is one. Default none. */
+  roadBuildingKeepouts?: readonly { x: number; z: number; r: number }[];
+  /** Open ground the street rows keep out of (maps lane B, 2026-10-02): a street-row building stands only where its
+   * whole footprint clears each disc ({ x, z, r }: a square whose zone-control disc must stay open) and each rectangle
+   * ({ x0, z0, x1, z1 }: say, gardens along one side of a street). Default none. */
+  streetRowKeepouts?: readonly (
+    { x: number; z: number; r: number } | { x0: number; z0: number; x1: number; z1: number })[];
   ruinChance?: number;
   blockFill?: boolean;
   destructibleBuildingLat?: readonly [number, number];
@@ -3352,6 +3361,17 @@ ${snowCap ? `
   ): void {
     const curved = path ? fencePathSampler(path) : null;
     const along = curved?.length ?? Math.hypot(x1 - x0, z1 - z0);
+    // A module or gate never stands where a bridge deck spans (maps lane B, 2026-10-02): the ground there is the bed or
+    // the wall under the span, so a roadside run along a viaduct hung down its gorge. The run still takes the module's
+    // draws, so every other placement keeps its seat. (Declared inside the run: roadStations executes this function.)
+    function underBridgeDeck(x: number, z: number): boolean {
+      for (const deck of heightField.bridgeDecks ?? []) {
+        const dx = x - deck.x, dz = z - deck.z;
+        if (Math.abs(dx * deck.ux + dz * deck.uz) <= deck.halfLength + 2
+          && Math.abs(dx * deck.uz - dz * deck.ux) <= deck.halfWidth + 2) return true;
+      }
+      return false;
+    }
     const n = Math.max(1, Math.round(along / FENCE_SEG));
     const tx = (x1 - x0) / along, tz = (z1 - z0) / along;
     const straightYaw = Math.atan2(tx, tz); // module runs along local +z
@@ -3368,7 +3388,7 @@ ${snowCap ? `
         if (openRun && !gated && drng() < gateChance) {
           // hang an open gate at the field entrance the road cuts
           const gy = heightField.getHeightAt(ax, az);
-          addDestructible('gate', ax, gy - 0.06, az, yaw, 1);
+          if (!underBridgeDeck(ax, az)) addDestructible('gate', ax, gy - 0.06, az, yaw, 1);
           gated = true;
         }
         openRun = false;
@@ -3378,7 +3398,8 @@ ${snowCap ? `
       const ya = heightField.getHeightAt(ax, az), yb = heightField.getHeightAt(bx, bz);
       const cy = Math.min(ya, yb);
       const tiltX = Math.atan2(yb - ya, FENCE_SEG) * 0.85;
-      addDestructible(kind, cx, cy - 0.06, cz, yaw, 0.96 + drng() * 0.10, tiltX, (drng() - 0.5) * 0.03);
+      const scale = 0.96 + drng() * 0.10, tiltZ = (drng() - 0.5) * 0.03;
+      if (!underBridgeDeck(cx, cz)) addDestructible(kind, cx, cy - 0.06, cz, yaw, scale, tiltX, tiltZ);
       openRun = true;
     }
   }
@@ -3732,6 +3753,7 @@ ${snowCap ? `
     const pz = cand.z + cand.tx * side * lat;
     if (px < v.x0 || px > v.x1 || pz < v.z0 || pz > v.z1) return;
     if (heightField._roadDist(px, pz) < 7.5 || noVeg(px, pz)) return;
+    if (P.roadBuildingKeepouts?.some((keep) => Math.hypot(px - keep.x, pz - keep.z) < keep.r)) return;
     if (conflictsTacticalReservation(px, pz) || !isRoadBuildingSiteClear(px, pz)) return;
     const rot = Math.atan2(cand.tx, cand.tz) + (rng() - 0.5) * 0.10;
     // 2026-10-02: Mangrove Reach, rebuilt to the layout brief, takes the frontage law as well
@@ -3922,7 +3944,12 @@ ${snowCap ? `
     ): boolean => distToOtherRoads(x, z, roadIndex) < 9.5
       || Math.hypot(x - junction.x, z - junction.z) < 26
       || noVeg(x, z)
-      || conflictsTacticalReservation(x, z, Math.hypot(width, depth) * 0.5);
+      || conflictsTacticalReservation(x, z, Math.hypot(width, depth) * 0.5)
+      || (P.streetRowKeepouts?.some((keep) => {
+        const reach = Math.hypot(width, depth) * 0.5;
+        return 'r' in keep ? Math.hypot(x - keep.x, z - keep.z) < keep.r + reach
+          : x > keep.x0 - reach && x < keep.x1 + reach && z > keep.z0 - reach && z < keep.z1 + reach;
+      }) ?? false);
     const conflictsFrontage = (x: number, z: number, width: number, depth: number): boolean =>
       frontageReservations.some((site) =>
         Math.hypot(x - site.x, z - site.z) < site.rr + Math.hypot(width, depth) * 0.34);
@@ -7453,22 +7480,35 @@ ${snowCap ? `
   yield* placeScenery();
 
   function* mergeMaterialBuckets(): Generator<PropsBuildSlice, void, void> {
+    // regional-buildings lane (2026-10-03, the urban GPU A B B A: +5 ms at the town's establishing view): a kit's
+    // joinery and metalwork dressing (window frames and bars, shutters, timbers, boards, gutters and downpipes; a few
+    // centimetres proud of a wall) receives shadows but casts none. It merges into its own receive-only mesh, so the
+    // shadow cascades skip ~0.3 M of Steinburg's triangles; dressing whose shadow reads (a slatted mat) keeps casting
+    // (geometry.ts EmitOptions.shadow).
+    const RECEIVE_ONLY_DETAIL = new Set(['structureWood', 'structureMetal']);
+    const castsNoShadow = (g: THREE.BufferGeometry) => g.userData.regional === true && g.userData.noCollision === true && g.userData.castsShadow !== true;
     for (const key of Object.keys(buckets)) {
       if (buckets[key].length === 0) continue;
       if (key === 'curtain') for (const geometry of buckets[key]) ensureWorldNightEmissionMask(geometry);
       if (key === 'glass') prepareWorldStaticNightFixture(buckets[key], mats[key]);
-      // mergeGeometries requires uniform indexing (ExtrudeGeometry is non-indexed)
-      const profile = bucketShadowProfile(buckets[key]); // round 79: the pieces' cells, before the merge owns them
-      const merged = yield* mergePropsMaterialGeometrySteps(buckets[key], key);
-      bindClutterBatch(buckets[key], merged);
-      const mesh = new THREE.Mesh(merged, mats[key]);
-      mesh.name = 'props-bucket-' + key; // round 75: the perf inventories attribute the merged buckets by name
-      setShadowCasterProfile(mesh, profile);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      mesh.matrixAutoUpdate = false;
-      group.add(mesh);
-      yield { fine: true }; // loading-speed r1: merge one material family per idle slice
+      const lists: Array<[THREE.BufferGeometry[], boolean, string]> = RECEIVE_ONLY_DETAIL.has(key)
+        ? [[buckets[key].filter((g) => !castsNoShadow(g)), true, ''], [buckets[key].filter(castsNoShadow), false, '-detail']]
+        : [[buckets[key], true, '']];
+      for (const [list, casts, suffix] of lists) {
+        if (!list.length) continue;
+        // mergeGeometries requires uniform indexing (ExtrudeGeometry is non-indexed)
+        const profile = bucketShadowProfile(list); // round 79: the pieces' cells, before the merge owns them
+        const merged = yield* mergePropsMaterialGeometrySteps(list, key);
+        bindClutterBatch(list, merged);
+        const mesh = new THREE.Mesh(merged, mats[key]);
+        mesh.name = 'props-bucket-' + key + suffix; // round 75: the perf inventories attribute the merged buckets by name
+        setShadowCasterProfile(mesh, profile);
+        mesh.castShadow = casts;
+        mesh.receiveShadow = true;
+        mesh.matrixAutoUpdate = false;
+        group.add(mesh);
+        yield { fine: true }; // loading-speed r1: merge one material family per idle slice
+      }
     }
   }
   yield* mergeMaterialBuckets();

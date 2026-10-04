@@ -161,6 +161,9 @@ export default {
     // walls (banding 0.18 over the 0.16 default), a second skyline rank of the dark conifers and more tone grain on
     // the flattest-reading ring of the mesa family (0.48 -> 0.60)
     banding: 0.18, treelineLayers: 2,
+    // the mountains lane (2026-10-03): the outland boulders a shade sparser — they follow the ring's drained faces, and
+    // the map's horizon draws no more triangles than the PR head's
+    outlandRocks: 0.9,
     forestHex: 0x292d27, rockHex: 0x4a4743, haze: 0.94, grain: 0.60,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)

@@ -1,11 +1,13 @@
 // Receipt for tools/map-layout-metrics.mjs: the viewshed, cover, lane, route, choke and balance laws on synthetic
 // rasters (each law driven by a scene whose answer is known), then one real battlefield through the whole pipeline.
 import assert from 'node:assert/strict';
-import { terrainSlopeMargin } from '../src/sim/terrainMobility.ts';
+import * as mobility from '../src/sim/terrainMobility.ts';
 import {
-  axisSlices, briefTargets, coverClass, distanceMap, evaluateTargets, LAYOUT_DRIVETRAIN, maximumTwoWayGrade, objectiveBalance,
-  rasterSpec, seesPoint, sightHistogram, sliceLanes, spawnFrame, sweepRay, computeLayoutMetrics, SIGHT_MAX_M,
+  axisSlices, briefTargets, buildLayoutRasters, coverClass, distanceMap, evaluateTargets, LAYOUT_DRIVETRAIN,
+  maximumTwoWayGrade, objectiveBalance, rasterSpec, seesPoint, sightHistogram, sliceLanes, spawnFrame, sweepRay,
+  computeLayoutMetrics, SIGHT_MAX_M,
 } from './map-layout-metrics.mjs';
+const { terrainSlopeMargin } = mobility;
 
 // ---- viewshed: flat ground sees to the range; a wall breaks the line just past it; a low bump does not
 {
@@ -113,6 +115,30 @@ import {
 {
   const grade = maximumTwoWayGrade(terrainSlopeMargin, LAYOUT_DRIVETRAIN, 'medium');
   assert.ok(grade > 0.3 && grade < 1.28, `a 900 hp / 60 t hull holds a sensible two-way grade (got ${grade.toFixed(3)})`);
+}
+
+// ---- a bridge deck over a gorge (2026-10-02): the rasters carry the deck over the span, its own record is its floor,
+// the abutments join it to the ground, and the gorge floor beside the span is no neighbour of the deck
+{
+  const deck = { x: 0, z: 0, ux: 0, uz: 1, halfLength: 50, halfWidth: 6, deckY: 0.1, approachM: 20 };
+  const heightField = {
+    getHeightAt: (x, z) => (Math.abs(z) < 40 ? -30 : 0), getWaterMaskAt: () => 0, getGroundType: () => 'medium',
+    bridgeDecks: [deck],
+  };
+  const bridge = { kind: 'bridge', min: [-6, -30, -51], max: [6, 1.2, 51], crushable: false };
+  const world = { getColliders: () => [bridge], getObstacles: () => [bridge] };
+  const contains = (r, x, z, inflate) => x >= r.min[0] - inflate && x <= r.max[0] + inflate
+    && z >= r.min[2] - inflate && z <= r.max[2] + inflate;
+  const R = buildLayoutRasters({ heightField, world, footprintContains: contains, mobility });
+  const { pass } = R;
+  const onDeck = pass.index(0, 0), besideDeck = pass.index(20, 0);
+  assert.equal(R.passable[onDeck], 1, 'the deck over the span is drivable');
+  assert.ok(Math.abs(R.height5[onDeck] - deck.deckY) < 1e-6, 'the deck cell carries the deck height, not the gorge bed');
+  assert.ok(Math.abs(R.ground[R.sight.index(0, 0)] - deck.deckY) < 1e-6, 'the sight raster stands an observer on the deck');
+  const dist = distanceMap(pass, R.passable, R.cellCost, R.edgeOk, pass.index(0, -200));
+  assert.ok(Math.abs(dist[pass.index(0, 200)] - 400) < 1, `the route crosses the deck straight (got ${dist[pass.index(0, 200)]})`);
+  assert.equal(Number.isFinite(dist[besideDeck]), false, 'the gorge floor beside the span is not reached over the parapet');
+  assert.equal(R.edgeOk(onDeck, pass.index(10, 0), 1), false, 'a step off the deck across the parapet is no edge');
 }
 
 // ---- one real battlefield end to end (no objectives: the placement search is covered by its own receipts)

@@ -225,10 +225,12 @@ assert.equal(resolveSourcedTerrainPalette('no_such_map'), 'verdant', 'only an un
 const freshLayer = () => ({ albedo: texture(), normal: texture() });
 const volcanicLayers = { G: freshLayer(), D: freshLayer(), R: freshLayer() };
 await applySourcedTerrain('caldera', volcanicLayers);
+// 2026-10-03 the ground lane: Caldera's ash and cinder (the sand set, desaturated, a warm dark grey) and its basalt (the
+// rock set desaturated) replace the dirt set's twig litter (its fibres tiled into the "wind ripple" the critics read)
 const volcanicPixels = {
-  G: [30, 38, 43, 134, 23, 16, 13, 107, 138, 70, 37, 255, 11, 11, 12, 27],
-  D: [26, 33, 39, 140, 20, 15, 13, 112, 112, 59, 34, 255, 11, 11, 11, 28],
-  R: [31, 40, 49, 120, 23, 16, 13, 96, 143, 74, 42, 255, 11, 11, 12, 24],
+  G: [25, 26, 27, 130, 12, 11, 11, 104, 73, 65, 61, 255, 6, 6, 6, 26],
+  D: [20, 21, 22, 135, 10, 10, 9, 108, 59, 50, 47, 255, 6, 6, 6, 27],
+  R: [38, 42, 45, 120, 19, 17, 15, 96, 123, 98, 87, 255, 9, 9, 9, 24],
 };
 for (const [key, expected] of Object.entries(volcanicPixels)) {
   assert.deepEqual([...volcanicLayers[key].albedo.image.pixels], expected,
