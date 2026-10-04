@@ -381,7 +381,7 @@ const CHUNKS = 8, CHUNK_SIZE = 128;
 // field look noisy and consumed most of the battle's triangle/overdraw budget.
 // Keep readable tufts around the vehicle, then hand off gradually to terrain.
 const GRASS_PER_CHUNK = 12000;         // sparse, map-wide midfield scatter
-const GRASS_FADE_END = 180;            // scale-out ends before cards become sub-pixel
+const GRASS_FADE_END = 320;            // broad, gradual handoff to the terrain meadow
 const CARPET_CELL = 16;
 const CARPET_RING = 3;                 // 49 cached cells, coverage to ±56 m
 const CARPET_PER_CELL = 420;           // filters thin this to a natural sward
@@ -3448,8 +3448,8 @@ function* vegetationBuildSteps(
   // vertices. Hand off earlier to the terrain meadow and the opaque far-tree
   // silhouettes. Both transitions already use continuous density/LOD fades,
   // so this removes sub-pixel noise without introducing a distance pop.
-  const grassFadeEnd = mobileTier ? 132 : GRASS_FADE_END;
-  const grassTaperEnd = mobileTier ? 112 : 155;
+  const grassFadeEnd = mobileTier ? 224 : GRASS_FADE_END;
+  const grassTaperEnd = mobileTier ? 196 : 280;
   const treeNearIn = mobileTier ? 200 : (() => {
     // Round 78 (the performance lane): `?treeNear=<m>` (desktop tiers; the probes' same-build A/B of the near-tier
     // distance) overrides the band's inner radius; the outer keeps the hysteresis width. The shipped band is
@@ -3679,7 +3679,7 @@ function* vegetationBuildSteps(
   const _splatScratch = { n1: 0, n2: 0, mA: 0 };
   // ground lane (2026-10-03): the field the terrain draws under a tuft (the height field's landUse.ts hook; absent on a
   // map without fields and in the sandboxed harnesses) — a reused record, inline so the section needs no import
-  const _landScratch: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
+  const _landScratch: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
     boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
   const landUseAt = heightField._landUseAt ?? null;
   // ground lane: the canopy's cover (set once the trees are placed; null before — a tuft built earlier ignores it)
@@ -5408,7 +5408,7 @@ function* vegetationBuildSteps(
   const _hedgeSite = [0, 0, 0, 0]; // x, z, tangent x, tangent z
   // the field system read here from the height field itself (this section runs in the placement harnesses too)
   const hedgeLandAt = heightField._landUseAt ?? null;
-  const _hedgeLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
+  const _hedgeLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
     boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
   function hedgeSite(x: number, z: number, salt: number): number[] {
     _hedgeSite[0] = x; _hedgeSite[1] = z; _hedgeSite[2] = 0; _hedgeSite[3] = 0;

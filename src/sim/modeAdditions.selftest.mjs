@@ -21,6 +21,11 @@ const tank=(id,team='alpha',bot=false)=>({id,team,bot,spec,state:{pos:new Vector
  ally.combat.ammo.fill(0);other.combat.ammo.fill(0);
  assert.equal(mode.requestSupply('enemy','ammo',0),false);
  assert.equal(mode.requestSupply('pilot','ammo',0),true);assert.equal(mode.requestSupply('pilot','ammo',1),false);
+ // The drop names its gunship, so only that crew calls it away (2026-10-04).
+ const crew=tank('crew');crew.aerial={kind:'gunship',active:true,y:240};
+ const dropped=[];const named=createMatchModeController({mode:'ac130',entities:[crew,tank('wing','alpha',true),tank('foe','bravo',true)],revive(){},emit(type,payload){if(type==='mode_pickup_spawned')dropped.push(payload);}});
+ assert.equal(named.requestSupply('crew','heal',0),true);
+ assert.equal(dropped.length,1);assert.equal(dropped[0].by,'crew');assert.equal(dropped[0].airDrop,true);assert.equal(dropped[0].kind,'heal');
  let pickup=mode.state.pickups[0];assert.equal(pickup.y,240);
  assert.equal(mode.botObjective(ally).mission,'recover');assert.equal(mode.botObjective(ally).radiusM,3);
  assert.equal(mode.botObjective(other).mission,'carrier','one nearby ally collects each cache');

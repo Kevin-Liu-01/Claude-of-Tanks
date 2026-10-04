@@ -24,13 +24,31 @@ interface GroundCoverPlacement {
 const profileData = new WeakMap<GroundCoverSolidProfile, Float64Array>();
 const placementData = new WeakMap<CollisionRecord, GroundCoverPlacement>();
 
+/**
+ * A footprint's winding from its signed area: 1 counter-clockwise (inside on the left of every edge), -1 clockwise —
+ * the law collision.ts reads (convexWinding). The connected-solid extraction hands footprints over in either winding
+ * (26,968 clockwise convex parts over the 33 maps' shards, most of them the roof and wall strips of the structures'
+ * bands), and this module read every one as counter-clockwise: a clockwise base held no upper solid (so a solid house
+ * took a cosmetic profile it does not need) and a clockwise solid's packed planes faced outward (so it cleared no
+ * ground cover under itself, and its edges' strips outside it instead).
+ */
+function polygonWinding(points: readonly number[]): number {
+  let area2 = 0;
+  for (let index = 0; index < points.length; index += 2) {
+    const next = index + 2 < points.length ? index + 2 : 0;
+    area2 += points[index] * points[next + 1] - points[next] * points[index + 1];
+  }
+  return area2 < 0 ? -1 : 1;
+}
+
 function polygonContains(outer: readonly number[], inner: readonly number[]): boolean {
+  const winding = polygonWinding(outer);
   for (let corner = 0; corner < inner.length; corner += 2) {
     for (let edge = 0; edge < outer.length; edge += 2) {
       const next = (edge + 2) % outer.length;
       const ex = outer[next] - outer[edge], ez = outer[next + 1] - outer[edge + 1];
-      if (ex * (inner[corner + 1] - outer[edge + 1])
-        - ez * (inner[corner] - outer[edge]) < -1e-8) return false;
+      if (winding * (ex * (inner[corner + 1] - outer[edge + 1])
+        - ez * (inner[corner] - outer[edge])) < -1e-8) return false;
     }
   }
   return true;
@@ -61,11 +79,13 @@ export function createGroundCoverSolidProfile(
     packed[offset++] = solid.minY;
     packed[offset++] = solid.maxY;
     packed[offset++] = solid.points.length / 2;
+    // every edge's plane faces inward whichever way the footprint winds
+    const winding = polygonWinding(solid.points);
     for (let edge = 0; edge < solid.points.length; edge += 2) {
       const next = (edge + 2) % solid.points.length;
       const ex = solid.points[next] - solid.points[edge];
       const ez = solid.points[next + 1] - solid.points[edge + 1];
-      const inverseLength = 1 / Math.hypot(ex, ez);
+      const inverseLength = winding / Math.hypot(ex, ez);
       const nx = -ez * inverseLength, nz = ex * inverseLength;
       packed[offset++] = nx;
       packed[offset++] = nz;

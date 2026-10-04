@@ -79,11 +79,12 @@ assert.equal(alphaFlag.visible, true);
 assert.equal(bravoFlag.visible, true);
 assertVector(alphaFlag.position, [10, 4, -80], 'home flag uses its base height');
 assertVector(bravoFlag.position, [-8, 7.5, 85], 'carried flag follows world height');
-close(alphaFlag.rotation.y, 0.22, 'alpha flag rotation');
-close(bravoFlag.rotation.y, 0.22 + Math.PI, 'bravo flag rotation');
+close(alphaFlag.rotation.y, 0, 'mast stays fixed while cloth waves');
+close(bravoFlag.rotation.y, Math.PI, 'opposing mast orientation');
 for (const [marker, color] of [[alphaFlag, ALLY], [bravoFlag, ENEMY]]) {
-  assert.equal(marker.children.length, 4, 'pole, banner, home ring and the floating pennant icon');
-  const [pole, banner, ring, icon] = marker.children;
+  assert.equal(marker.children.length, 2, 'physical banner and floating pennant icon');
+  const [assembly, icon] = marker.children;
+  const [pole, fittings, banner] = assembly.children;
   assert.equal(icon.isSprite, true, 'the flag icon is a sprite');
   assert.equal(icon.material.type, 'SpriteMaterial');
   assert.equal(icon.material.depthTest, false, 'objective icons read through terrain and walls');
@@ -92,23 +93,12 @@ for (const [marker, color] of [[alphaFlag, ALLY], [bravoFlag, ENEMY]]) {
   assert.equal(icon.renderOrder, 6);
   close(icon.position.y, 7.2, 'flag icon floats above the pennant');
   assert.equal(pole.geometry.type, 'CylinderGeometry');
-  assert.deepEqual(pole.geometry.parameters,
-    { radiusTop: 0.11, radiusBottom: 0.15, height: 4.5, radialSegments: 8,
-      heightSegments: 1, openEnded: false, thetaStart: 0, thetaLength: Math.PI * 2 });
-  assertVector(pole.position, [0, 2.25, 0], 'flag pole placement');
-  assertBasicMaterial(pole.material, 0xd6dde2, 1, 'flag pole material');
-  assert.equal(banner.geometry.type, 'PlaneGeometry');
-  assert.equal(banner.geometry.parameters.width, 2.8);
-  assert.equal(banner.geometry.parameters.height, 1.35);
-  assertVector(banner.position, [1.45, 3.7, 0], 'flag banner placement');
-  assertBasicMaterial(banner.material, color, 0.93, 'flag banner material');
-  assert.equal(ring.geometry.type, 'RingGeometry');
-  close(ring.rotation.x, -Math.PI / 2, 'flag ring lays on terrain');
-  close(ring.position.y, 0.08, 'flag ring terrain offset');
-  assertBasicMaterial(ring.material, color, 0.38, 'flag ring material');
+  assert.equal(fittings.material.isMeshStandardMaterial, true, 'mast hardware responds to scene lighting');
+  assert.equal(banner.material.isMeshStandardMaterial, true);
+  assert.equal(banner.material.color.getHex(), color, 'cloth follows viewer-relative team color');
+  assert.ok(banner.geometry.getAttribute('position').count > 100, 'cloth has enough vertices to wave');
+  assert.equal(marker.children.some(child => child.geometry?.type === 'RingGeometry'), false, 'carried flags never drag a ground ring');
 }
-assert.equal(alphaFlag.children[2].visible, false, 'only the stationary terrain-fitted home halo marks the ground');
-assert.equal(bravoFlag.children[2].visible, false);
 // the home bases stay at the base while the carried flag travels
 const alphaBase = view.root.getObjectByName('alpha-flag-base');
 const bravoBase = view.root.getObjectByName('bravo-flag-base');
@@ -122,7 +112,7 @@ assert.equal(bravoColumn.geometry.type, 'CylinderGeometry');
 assert.equal(bravoColumn.material.blending, 2, 'the light column is additive'); // THREE.AdditiveBlending
 assert.equal(bravoColumn.material.color.getHex(), ENEMY);
 assert.equal(bravoColumn.material.depthWrite, false);
-assert.notEqual(alphaFlag.children[3].material.map, bravoFlag.children[3].material.map,
+assert.notEqual(alphaFlag.children[1].material.map, bravoFlag.children[1].material.map,
   'own and enemy pennant icons are different rasters');
 
 view.update({
@@ -137,8 +127,7 @@ view.update({
 assert.equal(view.root.children.length, 4, 'flag markers and bases are retained');
 assert.equal(view.root.getObjectByName('alpha-flag'), alphaFlag);
 assertVector(alphaFlag.position, [3, 6.5, -96], 'dropped flag placement');
-close(alphaFlag.rotation.y, 0.33, 'retained flag rotation');
-assert.equal(alphaFlag.children[2].visible, false);
+close(alphaFlag.rotation.y, 0, 'retained mast remains fixed');
 assert.equal(bravoFlag.visible, false, 'unused retained flag is hidden');
 
 view.update({

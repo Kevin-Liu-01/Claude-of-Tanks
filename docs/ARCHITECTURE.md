@@ -790,8 +790,16 @@ contact constraints and cannot be crossed by residual uphill speed.
   `bounceMinMps` settles onto the loaded suspension. A landing on the tracks is the suspension's (physics
   lane, 2026-10-03; see *The landing stroke* below): the springs take the closing and return the rebound as
   they extend. A hull coming down on its shell (tumbling, on its side or roof) rebounds rigidly at once.
-  `state._ride.bounces` counts the hops of one flight. The landing torque turns the hull toward the
-  ground plane it struck (`_terr`), so a nose-first landing pitches even while it rebounds.
+  `state._ride.bounces` counts the hops of one flight. A landing turns the hull toward the ground plane it struck
+  (`_terr`), so a nose-first landing pitches even while it rebounds. On its tracks the hull pivots on the side or end
+  that landed first (physics lane round 4; gauntlet wave 33: "landings are pure vertical drops, hull pitch and roll never
+  move, even when one side touches first"): the fall's momentum about that contact turns it at v·r/(k² + r²) (the
+  contact's lever r, the hull's radius of gyration k about the axis), never faster than aligns it in 0.08 s nor than
+  its root can follow down (1.7 rad/s, 0.09 m a step), and while the landing settles a turn that would carry the hull
+  past the plane stops on it, the other side's landing. A level hull dropped onto a 10° cross slope turns onto it in
+  0.13 s at 6.9 m/s and 0.15 s at 4.2 m/s, where the attitude spring took 0.25 s for both. A hull running onto ground
+  above 3 m/s meets it with the front of its tracks and rolls onto it along its travel, and one coming down on its shell
+  takes the old impulse (the mismatch × the closing × 0.22).
 - *Blocked drive.* `state.impactMps` is the closing speed the tracks lost this step; `impactSource` says
   what absorbed it (`IMPACT_SOURCE_CLIFF` — the terrain wall probe — or `IMPACT_SOURCE_COLLIDER` — the
   integration's pushback, whose bundle knows whether that was a hard surface or another hull) and
@@ -851,7 +859,13 @@ contact constraints and cannot be crossed by residual uphill speed.
   Moon's overshoot rises and falls at the Moon's gravity. The springs used to pull it down at their own rate, seven
   times the Moon's gravity after a 12.5 m/s landing, and every gravity's landing settled on Earth's timeline
   (gauntlet wave 23); that landing now settles in about a second, where it took 0.6 s. The bump stops are progressive: a fall the springs would not stop in the
-  travel left above the floor is stopped across that travel, never in one step at the floor. The rebound the
+  travel left above the floor is stopped across that travel, never in one step at the floor. On the landing stroke
+  they start 8 cm under the seat and take work growing with the cube of their own travel, sized so that with the
+  springs they would take a 15 m/s landing just at the floor (physics lane round 4; gauntlet wave 33: "peak
+  compression barely scales with impact"): a 3.9 m/s landing strokes 10 cm, 5.9 m/s 12 cm, 7.3 m/s 13 cm, 9.6 m/s
+  15 cm and 12.3 m/s 17.5 cm, where every landing from 7 m/s used to bottom at the same 19 cm. Each step they take
+  the work of the step's own travel into them, never push back (the rebound stays the ruleset's), and stop the stroke
+  inside the step where that work meets the fall's energy. The rebound the
   ruleset owes is returned by the springs once they have stopped the fall (`_ride.rebound`): they extend and the hull
   leaves the drooped line at that speed. Ground moving faster than the rebound (a face the hull then runs down, or a
   wall lifting it) leaves none to return. A hull coming down on its shell rebounds rigidly at once, or stops its
@@ -1495,13 +1509,15 @@ space, level, pitch jitter, caps); `environmentScenes.ts` +
 `ambienceDirector.ts` (per-map beds, layers, positioned spot sounds, gun
 tails, reverb; the garage is an indoor scene whose room tone and workshop
 sounds come from a few metres away); `voiceLines.ts` + `crewRadio.ts` (crew
-radio); `procedural.ts` (synthesized fallbacks and alarms); `mixPolicy.ts`
-(every level, snapshot, HDR, budget and LOD constant).
+radio); `mixPolicy.ts` (every level, snapshot, HDR, budget and LOD
+constant). Nothing is synthesized or stood in for: every sound is a recorded
+asset, one still decoding is silent, and no cue or crew covers for another
+(`voiceTriggers.selftest.mjs` fails on a sound chained in for another).
 
-**Assets.** 386 sound assets (627 variant files, 18 MB WebM/Opus) under
+**Assets.** 398 sound assets (649 variant files, 18.6 MB WebM/Opus) under
 `public/audio/sfx/<group>/`, described by `sfxManifest.generated.ts`
 (duration, channels, rate, loop points, size). Crew radio: 13 language packs
-× 97 lines (one to four takes each, mostly two; ~1.5 MB per pack) under
+× 107 lines (one to four takes each, mostly two; ~1.6 MB per pack) under
 `public/audio/voice/<lang>/`, described by `voiceManifest.generated.ts`. Both
 are generated offline with ElevenLabs (sound generation `eleven_text_to_sound_v2`;
 speech `eleven_v4` with Voice Library voices), verified (speech-to-text
@@ -1612,15 +1628,21 @@ or any one nation's pack for every tank. The persisted choice and legacy
 migration live in `audio/crewVoice.ts`, shared by input and the lazy engine;
 live changes, new battles and same-entity nation changes all use that resolver.
 Changing language stops old speech and clears pending calls; cold packs wait
-for decoding before considering the existing missing-take fallback.
+for decoding, and a crew never speaks another nation's take (every pack
+carries every line).
 Radio discipline: priority 0–4 with
-interrupts for survival calls, per-line and per-group cooldowns, stale
+interrupts (survival cuts anything below it, decisive events cut situational
+calls, reports cut flavour), per-line and per-group cooldowns, stale
 drops, a 0.8 s gap between calls, a two-line queue, probability gates on
-routine chatter (reloads, allies' kills, autocannon results) and at most one
-spot call per five seconds unless several contacts appear at once. Our
-main-gun results, misses included ("short" by the line's second take when the
-round fell before the enemy it was laid on), are called almost every time,
-half a second after the round lands. Every line goes through an intercom
+flavour only (firing, reload done, allies' kills, near misses, autocannon
+results) and at most one spot call per five seconds unless several contacts
+appear at once. Every main-gun result, misses included ("short" by the line's
+second take when the round fell before the enemy it was laid on), is called
+half a second after the round lands, and the crew confirms the tank's own
+systems (smoke, roof gun, suspension, drone launch and loss, the gunship's
+weapons and supply drops) and a held point under attack. A network battle
+feeds the same handlers (the presentation maps spots, autoflips and the
+viewer's reload to solo's events). Every line goes through an intercom
 chain (a 24 dB/oct 320 Hz–3.4 kHz band, a 1.9 kHz presence peak,
 compression, drive, a headset speaker roll-off, a static bed and squelch); a
 damaged radio module narrows the band and adds drive, dropouts and

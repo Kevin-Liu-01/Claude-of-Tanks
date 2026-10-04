@@ -64,8 +64,11 @@ const MONSOON: Readonly<WaterContactProfile> = Object.freeze({
   ...RIVER, color: 0x414132, opacity: 0.75, roughness: 0.43,
   shoreColor: 0x73664d, flowX: 0.013, flowZ: 0.007, waveScale: 0.063, waveStrength: 0.52,
 });
+// maps lane B (2026-10-03, gauntlet wave 28: Amberford's waterline had "a pale cyan rim"): the river's thin edge film
+// took the sage RIVER shallows (0x6b8a58) and the sky's sheen at a low aerial view; a lowland river's shallows are
+// silt over a muddy bed
 const AUTUMN: Readonly<WaterContactProfile> = Object.freeze({
-  ...RIVER, color: 0x383520, opacity: 0.73, roughness: 0.42,
+  ...RIVER, color: 0x383520, opacity: 0.73, roughness: 0.42, shallowColor: 0x5b5236,
   shoreColor: 0x6a593d, flowX: 0.010, flowZ: 0.004, waveScale: 0.052, waveStrength: 0.44,
 });
 

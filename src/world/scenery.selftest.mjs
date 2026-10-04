@@ -16,7 +16,8 @@
 //      objective disc (every mode's, as the match placement places them on this world, and the authored targets), a
 //      spawn pad, a road or a bridge with its approaches, and none stands taller than 1.05 m;
 //   5. props.ts and vegetation.ts carry the pass, the late field works, the field walls' own rubble print (pool, posts
-//      and masonry tint on it, never on the house masonry) and the keep-out (source pins).
+//      and masonry tint on it, never on the house masonry), the mud walls' own worn render, the walls' feet, drifts
+//      and snow loads, the turned modules, and the keep-out (source pins).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
@@ -166,7 +167,8 @@ for (const kind of Object.keys(STONE_LANDMARKS)) assert.ok(isStoneLandmark(kind)
 {
   const pylon = buildPylon(mulberry32(5), 34);
   assert.equal(pylon.legHalf, pylonLegHalf(34), 'the pylon footprint the vegetation reserves is the tower\'s');
-  assert.ok(pylon.geometry.attributes.position.count / 3 < 4000, 'a pylon stays under 4000 triangles');
+  // (the lattice's secondary members and the disc insulator strings, wave 16, cost about a thousand more)
+  assert.ok(pylon.geometry.attributes.position.count / 3 < 4600, `a pylon stays under 4600 triangles (${pylon.geometry.attributes.position.count / 3})`);
   assert.ok(pylon.arms.length >= 5, 'the pylon carries its phases and its earth wire');
   const wire = buildConductor(0, 20, 0, 300, 22, 0, 9, 18, 0.045);
   const ys = wire.attributes.position.array.filter((_, i) => i % 3 === 1);
@@ -346,7 +348,7 @@ function compose(scenery, solids = [], mobile = false) {
     landmarks: [{ kind: 'calvary', x: 50, z: 0 }, { kind: 'windpump', x: -50, z: 0, scale: 1.2 }],
     powerLines: [{ towers: [[100, 100], [300, 100]] }],
   });
-  assert.equal(clear.length, 2 + 2 + 2);
+  assert.equal(clear.length, 2 + 2 + 2, 'two rocks, two landmarks, two towers (the spans keep their trees: the towers stand over them)');
   const hill = sceneryClearances({ bedrock: [{ geology: 'sandstone', x: 5, z: 6, radius: 40 }] });
   assert.deepEqual(hill.map((c) => [c.x, c.z, c.halfWidth]), [[5, 6, 40 * BEDROCK_TREE_CLEAR]], 'a bedrock hill keeps the trees off its flanks');
   assert.equal(clear[0].halfWidth, rockReach({ form: 'tor', radius: 6 }) + 1.5);
@@ -556,7 +558,11 @@ for (const mapId of maps.MAP_IDS) {
       }
     }
   }
-  console.log(`scenery.selftest: ${mapId} — ${receipt.placed} features, ${receipt.rockTriangles} rock + ${receipt.bakedTriangles} baked triangles, ${receipt.colliders} colliders${worksLine}`);
+  // a pylon line stands its towers over the crowns under its spans (wave 16): its conductors clear them in their sag
+  const pylons = receipt.features.filter((f) => f.family === 'powerLine' && f.status === 'placed');
+  for (const p of pylons) assert.ok(p.heightM >= p.authoredHeightM && p.heightM <= 70, `${mapId}: a pylon stands ${p.heightM} m (authored ${p.authoredHeightM} m)`);
+  const pylonLine = pylons.length ? `; pylons ${pylons[0].authoredHeightM} -> ${pylons[0].heightM.toFixed(1)} m` : '';
+  console.log(`scenery.selftest: ${mapId} — ${receipt.placed} features, ${receipt.rockTriangles} rock + ${receipt.bakedTriangles} baked triangles, ${receipt.colliders} colliders${worksLine}${pylonLine}`);
 }
 
 // ---------------------------------------------------------------------------------------------- 5. the wiring
@@ -573,9 +579,17 @@ assert.match(propsSource, /mats\.fieldStone\.color\.setRGB\(masonryTint\[0\], ma
 assert.doesNotMatch(propsSource, /mats\.stone\.color\.setRGB\(masonryTint/, 'the masonry tint never multiplies the house masonry (a regional kit\'s print under it burns out)');
 // the dry-stone walls draw the field print, never the house masonry (a regional kit's brick, block or dressed stone)
 assert.match(propsSource, /const fieldWallBucket = P\.wallStyle === 'adobe' \|\| sourcedStoneIsBrick\(mapId\) \? 'stone' : 'fieldStone';/, 'the field print is the dry-stone walls\'');
-assert.match(propsSource, /wallstone: \{ \.\.\.DESTRUCTIBLE_TYPES\.wallstone, mat: fieldWallBucket \}/, 'the wall pool draws the field print');
-assert.match(propsSource, /const wallB = style === 'adobe' \? 'plaster' : fieldWallBucket;/, 'the run posts, breach stubs and tumbled blocks draw the field print');
+assert.match(propsSource, /wallstone: \{ \.\.\.DESTRUCTIBLE_TYPES\.wallstone, mat: fieldWallBucket[,} ]/, 'the wall pool draws the field print');
+assert.match(propsSource, /const wallB = style === 'adobe' \? wallDressing\.adobeBucket : fieldWallBucket;/, 'the run posts, breach stubs and tumbled blocks draw the field print (or the mud print)');
 assert.match(propsSource, /fieldStone: new THREE\.MeshStandardMaterial\(\{ map: fieldStone\.albedo,/, 'the field print has its own material');
+// wave 20: the mud walls' own worn render; the walls' feet, drifts and snow loads; the modules turned round by place
+assert.match(propsSource, /walladobe: \{ \.\.\.DESTRUCTIBLE_TYPES\.walladobe, mat: adobeWallBucket \}/, 'the mud wall pool draws the mud print');
+assert.match(propsSource, /fieldMud: new THREE\.MeshStandardMaterial\(\{ map: fieldMud\.albedo,/, 'the mud print has its own material');
+assert.match(propsSource, /\.\.\.\(snowCap \? \{ build: snowLoadedWallstone \} : \{\}\)/, 'a snow map\'s module carries its snow load');
+assert.match(propsSource, /const wallDressing = createWallDressing\(\{/, 'the wall runs dress their islands through one owner');
+assert.match(propsSource, /mesh\.name = 'props-snow-drifts';/, 'the snow drifts draw as one mesh of their own (the frame-budget probe\'s field-walls toggle hides them)');
+assert.match(propsSource, /if \(prevBuilt\) \{ endPost\(x1, z1\); dressIsland\(islandFrom, along\); \}/, 'a run\'s last island is dressed');
+assert.match(propsSource, /cx \+ tz \* nudge, cy - 0\.13, cz - tx \* nudge, yaw \+ turn,/, 'a run turns its modules round by place, neighbours apart');
 const vegetationSource = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
 assert.match(vegetationSource, /placedStructureClearances\([^;]*\(cfg as SceneryMapConfig \| null\)\?\.scenery\)/s, 'the trees keep off the scenery');
 const clearanceSource = readFileSync(new URL('./vegetationClearance.ts', import.meta.url), 'utf8');

@@ -26,39 +26,17 @@ const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // the east edge. The basins below, the gravel bed and the ford all follow it.
 const WADI = [[-450, -30], [-300, -8], [-150, 16], [0, 30], [150, 26], [300, 6], [450, -22]] as const;
 
-// The takyr crusts: the silt flats a flood leaves on the wadi's floor when it dries. Each flat is two to four
-// overlapping shallow lobes of unequal size, offset from the centreline, and the flats lie 32-72 m apart with dry
-// gravel between them. 2026-10-03 (maps lane B, gauntlet wave 11): one even 28 m pan every 48 m read from the air as
-// "a bead-chain of opaque, soft-edged white ovals". The lobes are drawn from a fixed-seed generator, so the layout is
-// the same on every build.
-function wadiCrusts(): { x: number; z: number; r: number; dip: number }[] {
-  const out: { x: number; z: number; r: number; dip: number }[] = [];
-  const zAt = (x: number): number => {
-    if (x <= WADI[0][0]) return WADI[0][1] + (x - WADI[0][0]) * 0.14;
-    if (x >= WADI[WADI.length - 1][0]) return WADI[WADI.length - 1][1] - (x - WADI[WADI.length - 1][0]) * 0.18;
-    for (let i = 1; i < WADI.length; i++) {
-      if (x <= WADI[i][0]) {
-        const t = (x - WADI[i - 1][0]) / (WADI[i][0] - WADI[i - 1][0]);
-        return WADI[i - 1][1] + (WADI[i][1] - WADI[i - 1][1]) * t;
-      }
-    }
-    return 0;
-  };
-  let seed = 0x2f6b9d1;
-  const rnd = (): number => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
-  // the crusts stop where the border rim begins to lift (|x| > 470); the basins themselves run on past the edge.
-  // Overlapping lobes add their dips, so each lobe is shallow (0.25-0.55 m): crusts, not bogs.
-  for (let x = -450; x <= 450; x += 32 + rnd() * 40) {
-    const zc = zAt(x) + (rnd() - 0.5) * 16;
-    const lobes = 2 + Math.floor(rnd() * 3);
-    for (let k = 0; k < lobes; k++) {
-      const lx = Math.max(-462, Math.min(462, x + (rnd() - 0.5) * 34));
-      out.push({ x: Math.round(lx), z: Math.round(zc + (rnd() - 0.5) * 22), r: Math.round(12 + rnd() * 18),
-        dip: Math.round((0.25 + rnd() * 0.3) * 100) / 100 });
-    }
-  }
-  return out;
-}
+// The sors: the salt flats the wadi's last floods left in the bottoms of its basins. Each is a closed basin: a pan dug
+// `dig` metres into the bed and filled dead flat, with salt-crusted silt, to a level a short sink (0.35 m) under the
+// lowest point of its rim, so the rim stands over the floor all round and the shore is the contour where the dug ground
+// meets the floor, crisp where the pan's bank is steepest (terrain.ts sorFlat; the crust, its cracks and the damp
+// margin in splat.saltCrust). A flat is two to five overlapping stations of unequal size round its basin's lowest
+// ground, so its shore is a lobed outline, not a circle. 2026-10-03 (maps lane B, gauntlet waves 11 and 28): an even
+// 28 m pan every 48 m read as "a bead-chain of opaque, soft-edged white ovals"; the next pass's irregular dips as "snow
+// patches or grey mud".
+type SorStation = { x: number; z: number; r: number; dip: number; sorFlat: number };
+const sor = (flat: number, dig: number, ...stations: readonly (readonly [number, number, number])[]): SorStation[] =>
+  stations.map(([x, z, r]) => ({ x, z, r, dip: dig, sorFlat: flat }));
 
 // A shelterbelt from (x0, z0) to (x1, z1) as runs [t0, t1, species (null: the lone-tree mix), gap, skip, lateral
 // offset in metres]: each run is a vegetation.ts belt with its own spacing and losses, the gaps between runs are
@@ -95,18 +73,21 @@ export default {
     hillScale: 0.36,   // a flat steppe: the authored wadi, scarp and kurgans carry the relief (was 0.85)
     microScale: 1.2,   // still hull-down folds on the open plain, softer than r2's 1.35
     rimH: 18,
-    // The wadi's takyr floor: a chain of shallow pale crusts (the M layer with
-    // the salt-pan tone below) 48 m apart along WADI inside the basin chain —
-    // a dry silt bed that slows a crossing hull, banked by firm gravel
-    // shoulders — plus the salt pan (sor): two pale dry basins in the
-    // north-western lowland between the wadi's north bank and the escarpment
-    // foot. dip well under the 2.6 m soggy-bowl default — crusts, not bogs.
+    // The sors (see `sor` above): four salt flats in the bottoms of the wadi's basins and two in the north-western
+    // lowland between the wadi's north bank and the escarpment's foot. Each pan is dug 0.8-1.0 m (`dip`) and filled
+    // dead flat to its level, so a flat is a shallow closed basin, not a bog; its crust is soft ground that slows a
+    // crossing hull, and the gravel round it is firm.
     marshes: [
-      ...wadiCrusts(),
-      // the sor: two salt flats of unequal lobes (2026-10-03, gauntlet wave 11: two round pans read as decals)
-      { x: -318, z: 128, r: 48, dip: 0.6 }, { x: -286, z: 150, r: 30, dip: 0.45 }, { x: -350, z: 104, r: 28, dip: 0.5 },
-      { x: -300, z: 96, r: 18, dip: 0.35 }, { x: -340, z: 160, r: 16, dip: 0.3 },
-      { x: -404, z: 62, r: 30, dip: 0.5 }, { x: -420, z: 84, r: 20, dip: 0.4 }, { x: -386, z: 44, r: 16, dip: 0.35 },
+      // the wadi's flats, west to east, in the bottoms of its basins and clear of the three fords (the sor track at
+      // x ≈ -303, the highway at x ≈ -78, the east track at x ≈ 263) and of the aprons by 15 m or more
+      ...sor(1, 1.0, [-430, -16, 18], [-410, -12, 22], [-392, -18, 14], [-418, 2, 10]),
+      ...sor(3, 1.0, [-190, 30, 18], [-168, 33, 22], [-146, 30, 16], [-176, 50, 10]),
+      ...sor(5, 1.0, [130, 12, 16], [148, 10, 20], [166, 14, 16], [146, 28, 12], [150, -6, 10]),
+      ...sor(6, 1.0, [300, 24, 14], [318, 26, 20], [336, 22, 16], [316, 8, 10], [322, 42, 10]),
+      // the north-western lowland, below the escarpment's foot: one flat each side of the sor track's last leg
+      // (2026-10-03, gauntlet waves 11 and 28: two round pans read as decals; the first flat stood up the rise)
+      ...sor(900, 0.8, [-350, 66, 18], [-332, 76, 16], [-318, 68, 10], [-344, 50, 10]),
+      ...sor(902, 0.8, [-256, 58, 14], [-242, 64, 10]),
     ],
     clearMarshVeg: true, // a dry crust grows no tufts
     // The grain station: one graded rect around the station road / east track
@@ -240,6 +221,9 @@ export default {
     // round 48: the marsh layer is the salt pan. 2026-10-03 (maps lane B, gauntlet wave 11): a pale buff silt
     // crust, not near-white (l * 1.45 + 0.22 clipped to flat white: "flat white decals with no shoreline")
     mudTone: (h: number, s: number, l: number) => [0.105, 0.16, clamp01(l * 1.18 + 0.1)],
+    // 2026-10-03 (maps lane B, gauntlet wave 28): the floors of the sors are salt crust with faint desiccation polygons
+    // (1.8 m across) and their margins damp silt (terrain.ts uSaltCrust); the M layer above shows only in that margin
+    saltCrust: { crackM: 1.8, damp: 1 },
     mudRough: 1.2,
     // straw lift / olive-brown DARKENER / pale hay — the macro range that
     // keeps 300-800 m readable on an open plain (the desert r3 lesson)

@@ -180,8 +180,13 @@ the empty rack's probe does not scoot the run away. Runs that cannot finish the
 target alone keep the full-speed judgement.
 
 The traffic regressions run actual movement for both teams: parked hulls,
-oncoming pairs, and a three-bot queue. The pacing target is 4–8 minutes with
-no default match under two minutes; prolonged idle deployment is not a tactic.
+oncoming pairs, and a three-bot queue. Prolonged idle deployment is not a
+tactic. The owner accepted the faster battles this produces (2026-10-03): the
+default bot match median sits in a 3–8 minute band (209 s measured), and the
+fast tail is held as a share. At most 5 % of matches end inside two minutes
+and none inside 90 s (5 of 132 run 98–119 s). The original target was 4–8
+minutes with none under two; searching only after the old 120–165 s
+deployment windows gave a 5.7-minute median.
 
 ## Terrain and bridges
 

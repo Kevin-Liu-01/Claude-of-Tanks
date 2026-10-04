@@ -67,8 +67,9 @@ assert.match(terrainSource, /float edgeOut = max\(abs\(wp\.x\), abs\(wp\.z\)\) -
 assert.match(terrainSource, /float outsideRoadW = smoothstep\(0\.0, 10\.0, edgeOut\);/, 'the clamped road texel fades within 10 m past the edge');
 assert.match(terrainSource, /mk = vec4\(mk\.r \* \(1\.0 - outsideRoadW\), mk\.g \* \(1\.0 - outsideRoadW\), mk\.b, mk\.a \* \(1\.0 - outsideW\)\);/,
   'only the road channels take the clamped-texel fade; wear keeps the 36 m ramp and the landform/marsh channel its edge value');
-assert.match(terrainSource, /if \(vRoadExit\.y > 0\.002\) \{\s*float dE = abs\(vRoadExit\.x\);\s*mk\.g = max\(mk\.g, max\(0\.0, 1\.0 - dE \/ 12\.0\) \* vRoadExit\.y\);/,
-  'past the edge the road exit attribute writes the centreline distance (mk.g, 12 m to byte 0) the road law reads');
+// (the map-borders lane, wave 3: a road running out narrows to a track as it fades — its widths times mix(0.45, 1, presence))
+assert.match(terrainSource, /if \(vRoadExit\.y > 0\.002\) \{\s*float dE = abs\(vRoadExit\.x\);[\s\S]{0,260}?float wE = mix\(0\.45, 1\.0, vRoadExit\.y\);\s*mk\.g = max\(mk\.g, max\(0\.0, 1\.0 - dE \/ \(12\.0 \* wE\)\) \* vRoadExit\.y\);\s*mk\.r = max\(mk\.r, \(1\.0 - smoothstep\(3\.2 \* wE, 4\.6 \* wE, dE\)\) \* vRoadExit\.y\);/,
+  'past the edge the road exit attribute writes the centreline distance (mk.g, 12 m to byte 0 at full presence) the road law reads, narrowing as it fades');
 assert.match(terrainSource, /attribute vec2 roadExit;\\nvarying vec2 vRoadExit;/, 'the exit attribute is a vertex attribute (a geometry without it reads no road)');
 assert.doesNotMatch(terrainSource, /mk = mix\(mk, vec4\(0\.0, 0\.0, mk\.b, 0\.0\), outsideW\);/, 'the old all-channel 36 m fade is gone');
 

@@ -266,7 +266,9 @@ refit, through `scenery.ts` `composeFieldWorks`), so they keep off every mode's 
 placement seats them on those final solids, as well as the aprons, yards, bridges, trenches, pads and roads; the
 selftest proves it on Saltwind and Saltmere. The dry-stone field walls draw their own rubble print (`fieldStone`,
 `fieldStoneSurface.ts`), never the house masonry a regional kit repaints; a map's `scenery.masonryTint` tints that
-print (Saltwind's limestone).
+print (Saltwind's limestone). Mud walls draw their own worn render (`fieldMud`, `fieldMudSurface.ts`); every wall run's
+islands are dressed at their feet (and on snow maps with drifts and snow loads) by `maps/fieldWallDressing.ts`, through
+one owner (`createWallDressing`) on streams of their own.
 A plan builder reads its battlefield through `structureBuildContext(buckets)`
 (`maps/exteriorDetailKit.ts`), never a positional argument; a part new to a
 builder's seeded stream is tagged `userData.uvJitter = 'none'`, a part that

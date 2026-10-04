@@ -247,6 +247,39 @@ for (const [caseId, why] of [['rest-slope25', 'before: 0.97 degree flatter than 
 // landed it at the basin's 30 % where the authority took 15 %, and a spinning hull's replay parted from the authority's.
 check('air-spin', 'tall', 'gearth', [g('prediction replay error (m)', (m) => m.replay.maxErrM, 0.001, 'before: 0.041 m', true)]);
 
+// Round 4 (gauntlet wave 33: "peak compression barely scales with impact, +3 to +5 cm whether 5.6 or 12.5 m/s"): a
+// harder landing goes deeper into the landing stroke's progressive stops. The springs alone bottomed out every landing
+// from 7 m/s up at the same 19 cm, the floor's last centimetre.
+{
+  const stroke = (caseId) => runCase(HULLS.medium, 'earth', CASES.find((c) => c.id === caseId)).gearCompMaxM;
+  const soft = stroke('drop-2'), hard = stroke('drop-8');
+  runs += 2;
+  if (!(hard - soft >= 0.04)) {
+    failures.push(`drop-2/drop-8 earth medium: the stroke deepens ${((hard - soft) * 100).toFixed(1)} cm from 5.9 to 12.3 m/s`
+      + ' < 4 cm — before: 1.2 cm (17.8 and 19.1 cm)');
+  }
+  if (!(hard <= 0.185)) {
+    failures.push(`drop-8 earth medium: a 12.3 m/s landing strokes ${(hard * 100).toFixed(1)} cm > 18.5 cm — before: 19.1 cm`);
+  }
+}
+
+// Round 4 (wave 33: "landings are pure vertical drops: hull pitch and roll never move, even when one side touches
+// first"): a level hull dropped onto a 10-degree cross slope lands on its uphill track and turns onto the slope about it,
+// faster for the harder landing, and the other track's landing stops the turn on the slope.
+{
+  const turn = (caseId) => runCase(HULLS.medium, 'earth', CASES.find((c) => c.id === caseId)).landingTurn;
+  const hard = turn('land-cross'), soft = turn('land-cross-soft');
+  runs += 2;
+  if (!(hard?.alignS <= 0.15)) failures.push(`land-cross earth medium: on the slope in ${hard?.alignS} s > 0.15 s — before: 0.25 s`);
+  if (!(hard?.turnRateDegS >= 1.1 * soft?.turnRateDegS)) {
+    failures.push(`land-cross earth medium: the 6.9 m/s landing turns at ${hard?.turnRateDegS} deg/s, the 4.2 m/s one at `
+      + `${soft?.turnRateDegS}: not sized by the landing — before: 42.2 and 41.0`);
+  }
+  if (!(Math.max(hard?.overshootDeg ?? 9, soft?.overshootDeg ?? 9) <= 0.5)) {
+    failures.push(`land-cross earth medium: turned ${hard?.overshootDeg} / ${soft?.overshootDeg} deg past the slope — guard`);
+  }
+}
+
 // Rest stays rest: no jitter, no creep on a 25-degree grade on the brake.
 check('rest-slope25', 'medium', 'earth', [
   g('rest jitter (mm rms)', (m) => m.rest?.jitterYRmsMm ?? 0, 0.5, 'guard: a parked hull does not shimmer'),

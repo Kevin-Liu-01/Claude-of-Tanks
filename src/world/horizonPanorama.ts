@@ -1046,7 +1046,9 @@ export interface HorizonPanoramaHandle {
    * means coloured the bake ('ground') or the authored palette did ('authored') */
   readonly stats: { bakes: number; ms: number; unsupported: string | null; tone: 'authored' | 'ground';
     /** the battlefield's ground and rock means the bake took (linear), for the probes and the bake's receipt */
-    groundTone: number[] | null; rockTone: number[] | null };
+    groundTone: number[] | null; rockTone: number[] | null;
+    /** the haze law's terms the bake took (the overcast it read, the published light model's, σ, the targets), for the probes */
+    hazeTerms: { overcast: number; published: number; sigma: number; anti: number[]; toward: number[] } | null };
   /**
    * The battlefield's own ground and rock albedo means (linear), so the far country continues the ring's terrain
    * material instead of the authored hill palette (Sirocco Wadi's far tables were saturated orange behind a pale
@@ -1081,7 +1083,8 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   let atlas: THREE.WebGLRenderTarget | null = null;
   let baked = false;
   const stats = { bakes: 0, ms: 0, unsupported: null as string | null, tone: 'authored' as 'authored' | 'ground', haze: 'own' as 'own' | 'law',
-    groundTone: null as number[] | null, rockTone: null as number[] | null };
+    groundTone: null as number[] | null, rockTone: null as number[] | null,
+    hazeTerms: null as { overcast: number; published: number; sigma: number; anti: number[]; toward: number[] } | null };
   let skyWaits = 0;
   const publishedSky = (): { atmosphere?: PanoramaAtmosphere; overcast: number } => {
     let root: THREE.Object3D = mesh;
@@ -1153,6 +1156,9 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     const published = publishedSky();
     const haze = horizonPanoramaHaze(published.atmosphere, options.sun, options.fogDensity, options.overcast ?? published.overcast);
     stats.haze = haze ? 'law' : 'own';
+    const r4 = (v: number) => Math.round(v * 1e4) / 1e4;
+    stats.hazeTerms = haze ? { overcast: r4(options.overcast ?? published.overcast), published: r4(published.overcast), sigma: haze.sigma,
+      anti: [haze.anti.x, haze.anti.y, haze.anti.z].map(r4), toward: [haze.toward.x, haze.toward.y, haze.toward.z].map(r4) } : null;
     const rng = mulberry32((options.seed ^ 0x9A70) >>> 0);
     const off = Array.from({ length: 16 }, () => rng() * 200 - 100);
     const linear = (c: THREE.Color): THREE.Vector3 => new THREE.Vector3(c.r, c.g, c.b);

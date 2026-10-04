@@ -14,7 +14,9 @@ import { assertTerrainMaskShaderContract } from './terrainMaskShaderTestOracle.m
 // water-only change count were change detectors of past outputs. What stays is live: the transform's metric and
 // border math, the bank pass on the opted-in maps against the same terrain with the pass disabled (protected roads,
 // spawns, landmarks, landings and the exact nearest-seed oracle), and the pass byte-inert on every other battlefield.
-const SHORE_DIRT_MAPS = ['polders', 'mangrove']; // registry order
+// 2026-10-03 (maps lane B, gauntlet wave 28): Amberford's river takes the earthy bank too ("a jagged band with a pale
+// cyan rim": mud and gravel along its waterline)
+const SHORE_DIRT_MAPS = ['autumn', 'polders', 'mangrove']; // registry order
 const bytes = texture => texture.image.data;
 function coverage(distance) {
   const t = Math.max(0, Math.min(1, (distance - 3) / 7));
@@ -107,9 +109,14 @@ function checkProtected(field, control, texture, original, cfg) {
       assert.equal(bytes(texture)[at + 3], bytes(original)[at + 3], 'spawn soil unchanged');
     }
   }
+  // (a road on a bridge deck crosses over the river's own water: Amberford's coach road at its stone bridge)
+  const onDeck = (x, z) => (field.bridgeDecks ?? []).some((deck) => {
+    const dx = x - deck.x, dz = z - deck.z;
+    return Math.abs(dx * deck.ux + dz * deck.uz) <= deck.halfLength && Math.abs(dx * deck.uz - dz * deck.ux) <= 18;
+  });
   for (const road of field._layout.roads) for (const [x, z] of road) {
     assert.deepEqual(fieldValues(field, x, z), fieldValues(control, x, z));
-    assert.equal(field.getWaterMaskAt(x, z), 0, 'causeway/road centre stays dry');
+    if (!onDeck(x, z)) assert.equal(field.getWaterMaskAt(x, z), 0, 'causeway/road centre stays dry');
   }
   for (const beat of cfg.props.tacticalBeats) {
     assert.deepEqual(fieldValues(field, beat.x, beat.z), fieldValues(control, beat.x, beat.z), 'landmark support/physics unchanged');
@@ -120,17 +127,18 @@ function checkProtected(field, control, texture, original, cfg) {
     assert.deepEqual(landing, planRiverLanding(control, control._layout.lakes, anchor), 'working-bank support remains exact');
   }
 }
-function exactSeedDistance(before, size, x, z) {
+function exactSeedDistance(before, size, x, z, threshold) {
   const step = 1024 / size, radius = Math.ceil(10 / step);
   let exact = Infinity;
   for (let dz = -radius; dz <= radius; dz++) for (let dx = -radius; dx <= radius; dx++) {
     const xx = x + dx, zz = z + dz;
     if (xx < 0 || zz < 0 || xx >= size || zz >= size) continue;
-    if (before[(zz * size + xx) * 4 + 2] >= 31) exact = Math.min(exact, Math.hypot(dx, dz) * step);
+    if (before[(zz * size + xx) * 4 + 2] >= threshold) exact = Math.min(exact, Math.hypot(dx, dz) * step);
   }
   return exact;
 }
-function checkRealMaskOracle(before, after, size) {
+// threshold: the stamp's seed byte, ceil(waterStart * 255) — 31 for the 0.12 water onset, 26 for Amberford's 0.10
+function checkRealMaskOracle(before, after, size, threshold) {
   const step = 1024 / size;
   let changedDry = 0, checked = 0;
   for (let i = 0; i < before.length; i += 4) {
@@ -138,7 +146,7 @@ function checkRealMaskOracle(before, after, size) {
     changedDry++;
     if (changedDry % 19 !== 0) continue;
     const x = (i / 4) % size, z = Math.floor(i / 4 / size);
-    const exact = exactSeedDistance(before, size, x, z);
+    const exact = exactSeedDistance(before, size, x, z, threshold);
     assert.ok(exact < 10, 'every changed dry-bank pixel has actual protected water within10m');
     const lo = Math.max(before[i + 3], coverage(exact * 1.0824));
     const hi = Math.max(before[i + 3], coverage(exact));
@@ -168,8 +176,9 @@ function checkShoreMap(id, seed, size) {
     checkTexture(current, size); checkTexture(old, size);
     verifyPreserved(bytes(old), bytes(current));
     checkProtected(field, control, current, old, cfg);
-    const dryAreaM2 = checkRealMaskOracle(bytes(old), bytes(current), size);
-    assert.throws(() => checkRealMaskOracle(bytes(old), bytes(old), size), /materially wider/,
+    const threshold = Math.ceil(cfg.splat.seaRamp[0] * 255);
+    const dryAreaM2 = checkRealMaskOracle(bytes(old), bytes(current), size, threshold);
+    assert.throws(() => checkRealMaskOracle(bytes(old), bytes(old), size, threshold), /materially wider/,
       'omitting the bank pass must fail the same real-mask coverage oracle');
     console.log(JSON.stringify({ id, seed, size, dryAreaM2, addedConstructionMedianMs: +benchmark(bytes(old), size).toFixed(3) }));
   } finally { old.dispose(); current.dispose(); }
@@ -191,7 +200,7 @@ for (const step of [2, 4]) {
   for (let angle = 0; angle < 180; angle += 15) checkContinuousBorder(step, angle * Math.PI / 180);
 }
 assert.deepEqual(MAP_IDS.filter(id => getMapConfig(id).splat?.shoreDirt), SHORE_DIRT_MAPS,
-  'bank soil stays opt-in: only the published Mangrove and Polders opt in');
+  'bank soil stays opt-in: only the published Amberford, Mangrove and Polders opt in');
 const unrequestedMaps = MAP_IDS.filter(id => !SHORE_DIRT_MAPS.includes(id));
 for (const id of unrequestedMaps) checkCurrentUnrequestedShore(id, 512);
 for (const id of SHORE_DIRT_MAPS) for (const seed of [1337, 2049, 4093]) checkShoreMap(id, seed, 512);
@@ -208,4 +217,4 @@ const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 assertTerrainMaskShaderContract(source);
 assert.match(source, /S\.shoreDirt \? \(S\.seaRamp\?\.\[0\] \?\? 0\.40\) : null/);
 assert.match(source, /stampShoreDirtMask\(px, dist, s, MAP_SIZE, shoreDirtStart\)/, 'production passes the original road scratch, not a new buffer');
-console.log(`shoreDirtMask.selftest: ${unrequestedMaps.length} battlefields byte-inert without an opt-in, twelve current Mangrove/Polders masks, RGB/physics/roads/landings and metric budget checks passed`);
+console.log(`shoreDirtMask.selftest: ${unrequestedMaps.length} battlefields byte-inert without an opt-in, eighteen current Amberford/Mangrove/Polders masks, RGB/physics/roads/landings and metric budget checks passed`);

@@ -262,6 +262,7 @@ assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, [
   'tools/resolved-depth-copy.browser.selftest.mjs',
   'tools/cloud-history.browser.selftest.mjs',
   'tools/late-fx-matrix.browser.selftest.mjs',
+  'tools/vehicle-ground-occlusion.browser.selftest.mjs',
   'tools/articulated-shadow-batch.browser.selftest.mjs',
   'tools/battle-geometry-sharing.browser.selftest.mjs',
   'tools/track-texture-source.browser.selftest.mjs',
@@ -288,7 +289,7 @@ function actualRegistryFixture(ownedLeaseFiles = SELFTEST_OWNED_LEASE_FILES) {
 }
 const registered = actualRegistryFixture();
 assert.equal(await runSelftestSuite('actual-registry', ['cpu', ...SELFTEST_OWNED_LEASE_FILES, cpuBrowserGuard], registered.options), 0);
-assert.deepEqual(registered.events, ['[selftests] actual-registry: 12 files', 'acquire', 'cpu', 'release',
+assert.deepEqual(registered.events, ['[selftests] actual-registry: 13 files', 'acquire', 'cpu', 'release',
   ...SELFTEST_OWNED_LEASE_FILES, 'acquire', cpuBrowserGuard, '[selftests] PASS actual-registry', 'release']);
 const oldRegistry = actualRegistryFixture(['tools/source-dimension-frame.browser.selftest.mjs']);
 await assert.rejects(runSelftestSuite('old-nested-registry', ['cpu', 'tools/resolved-depth-copy.browser.selftest.mjs'], oldRegistry.options),

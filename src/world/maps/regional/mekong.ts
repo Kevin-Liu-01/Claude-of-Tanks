@@ -262,4 +262,6 @@ export const MEKONG_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     },
   },
   builders: MEKONG_BUILDERS,
+  // the yards: a woven-bamboo fence round raised vegetable beds, an open gap for a gate (yards.ts)
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencewattle', gate: null, shed: null, garden: true },
 });
