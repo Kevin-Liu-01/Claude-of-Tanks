@@ -140,31 +140,32 @@ window.__timelines["${id}"] = tl;
     files['compositions/flashes.html'] = sub('flashes', D, `.flash{mix-blend-mode:screen}`, els.join('\n'), js.join('\n'));
   }
 
-  // ------------------------------------------------------------- end card: crest, dial, wordmark, the address
+  // ------------------------------------------------------------- end card: crest, shield trace, wordmark, the address
   if (edl.endcard) {
     const e = edl.endcard, du = D - e.start, js = [];
     const word = (id, text) => `<div id="${id}">${[...text].map(ch => `<span>${ch === ' ' ? '&nbsp;' : esc(ch)}</span>`).join('')}</div>`;
     js.push(`tl.fromTo('#end-bg', {opacity:0}, {opacity:1, duration:0.5, ease:'power2.inOut'}, 0);`);
     js.push(`tl.fromTo('#end-glow', {opacity:0, scale:0.8}, {opacity:1, scale:1, duration:2.4, ease:'power2.out'}, 0.2);`);
     js.push(`tl.fromTo('#crest', {opacity:0, scale:1.18, filter:'blur(14px)'}, {opacity:1, scale:1, filter:'blur(0px)', duration:0.9, ease:'expo.out'}, 0.25);`);
-    js.push(`tl.fromTo('#dial .ring', {strokeDashoffset:1282}, {strokeDashoffset:0, duration:1.4, ease:'power3.inOut'}, 0.15);`);
-    js.push(`tl.fromTo('#dial .tk', {opacity:0}, {opacity:1, duration:0.2, ease:'none', stagger:0.03}, 0.25);`);
+    js.push(`tl.fromTo('#trace .tr', {strokeDashoffset:1000}, {strokeDashoffset:0, duration:1.5, ease:'power3.inOut'}, 0.15);`);
     js.push(`tl.fromTo('#w1 span', {opacity:0, x:(i,el,all)=>(i-(all.length-1)/2)*${Math.round(46 * S)}}, {opacity:1, x:0, duration:1.0, ease:'expo.out', stagger:{each:0.025, from:'center'}}, 0.6);`);
     js.push(`tl.fromTo('#w2 span', {opacity:0, x:(i,el,all)=>(i-(all.length-1)/2)*${Math.round(30 * S)}}, {opacity:1, x:0, duration:1.0, ease:'expo.out', stagger:{each:0.025, from:'center'}}, 0.75);`);
     js.push(`tl.fromTo('#url', {opacity:0, y:14}, {opacity:1, y:0, duration:0.6, ease:'power3.out'}, 1.6);`);
-    const ticks = Array.from({ length: 24 }, (_, i) => { const a = i / 24 * Math.PI * 2, r1 = i % 6 ? 196 : 186, r2 = 206; return `<line x1="${(220 + Math.sin(a) * r1).toFixed(1)}" y1="${(220 - Math.cos(a) * r1).toFixed(1)}" x2="${(220 + Math.sin(a) * r2).toFixed(1)}" y2="${(220 - Math.cos(a) * r2).toFixed(1)}" class="${i % 6 ? 'tk' : 'tk major'}"/>`; }).join('');
+    // The trace follows the crest's own shield (owner 2026-10-04: "not a circle around a shield but a thing that traces
+    // the shield"): logo-mark-metal.svg's outline (256-unit box), scaled 1.16 about its centre so the line runs ~17
+    // units out — the bevelled band reaches 9 — and drawn from the bottom point up both flanks to meet at the top.
+    const sx = x => r3(128 + (x - 128) * 1.16), sy = y => r3(132 + (y - 132) * 1.16);
+    const flank = m => `M${sx(128)} ${sy(238)} C${sx(m(196))} ${sy(214)} ${sx(m(236))} ${sy(174)} ${sx(m(236))} ${sy(112)} V${sy(40)} L${sx(m(222))} ${sy(26)} H${sx(128)}`;
     const markup = `<div id="end-bg"></div><div id="end-glow"></div>
-<svg id="dial" viewBox="0 0 440 440"><circle class="ring" cx="220" cy="220" r="204"/>${ticks}</svg>
+<svg id="trace" viewBox="-16 -16 288 288"><path class="tr" pathLength="1000" d="${flank(x => x)}"/><path class="tr" pathLength="1000" d="${flank(x => 256 - x)}"/></svg>
 <img id="crest" src="assets/brand/logo-mark-metal.svg" alt="">
 <div id="wordmark">${word('w1', 'CLAUDE')}${word('w2', 'OF TANKS')}</div>
 <div id="url">${esc(e.url ?? SITE_URL)}</div>`;
     const css = `#end-bg{position:absolute;inset:0;background:#0b0e11}
 #end-glow{position:absolute;left:50%;top:44%;width:${px(1400)};height:${px(900)};margin:${px(-450)} 0 0 ${px(-700)};background:radial-gradient(closest-side,rgba(240,161,46,.22),rgba(240,161,46,0))}
 #crest{position:absolute;left:50%;top:${Math.round(H * 0.12)}px;width:${px(300)};height:${px(300)};margin-left:${px(-150)}}
-#dial{position:absolute;left:50%;top:${Math.round(H * 0.12 - 50 * S)}px;width:${px(400)};height:${px(400)};margin-left:${px(-200)}}
-#dial .ring{fill:none;stroke:rgba(240,161,46,.85);stroke-width:3;stroke-dasharray:1282}
-#dial .tk{stroke:#9fb0bf;stroke-width:2}
-#dial .tk.major{stroke:#ffd27a;stroke-width:3}
+#trace{position:absolute;left:50%;top:${Math.round(H * 0.12 - 18.75 * S)}px;width:${px(337.5)};height:${px(337.5)};margin-left:${px(-168.75)};overflow:visible}
+#trace .tr{fill:none;stroke:rgba(240,161,46,.9);stroke-width:2.6;stroke-linejoin:miter;stroke-linecap:round;stroke-dasharray:1000;filter:drop-shadow(0 0 ${px(6)} rgba(240,161,46,.6))}
 #wordmark{position:absolute;left:0;right:0;top:${Math.round(H * 0.47)}px;display:flex;flex-direction:column;align-items:center;gap:${px(12)}}
 #wordmark span{display:inline-block}
 #w1{font-weight:700;font-size:${px(132)};line-height:1;letter-spacing:.06em}

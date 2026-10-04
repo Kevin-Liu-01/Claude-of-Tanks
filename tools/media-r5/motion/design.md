@@ -29,7 +29,8 @@ large, confident words laid over it, until the brand lands with weight at the cl
 - Title kinds: `section` (one word), `stat` (a count and its noun), `line` (one short
   statement), `tank` (a tank's name), `logo` (the lockup). Lower-left statement zone;
   center only for the logo and the lineup title. One statement on screen at a time.
-- End card: crest, dial, wordmark and the site address — nothing else.
+- End card: crest, the shield trace (a line that follows the crest's own outline, drawn up both flanks from the bottom
+  point; owner 2026-10-04 replaced the circular dial), wordmark and the site address — nothing else.
 
 ## Motion language
 
