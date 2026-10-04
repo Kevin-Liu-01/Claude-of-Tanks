@@ -748,7 +748,10 @@ export function createPlayMenu({
   const ruleLineCopy = (id: GameModeId, arrangement: TeamArrangement | null = readTeamArrangement(id)): string =>
     rulesetLines(matchRulesetFor(id, null, arrangement))
       .map((line) => t(`rules.line.${line.key}`, ruleLineValues(line))).join(' · ');
-  const ruleCards = Object.values(GAME_MODE_DEFINITIONS).map((rule) =>
+  const leadingModes: readonly GameModeId[] = ['standard', 'turbo_ball', 'mars', 'drone', 'ac130', 'realistic', 'zone_control'];
+  const modeRank = (id: GameModeId): number => { const rank = leadingModes.indexOf(id); return rank < 0 ? leadingModes.length : rank; };
+  const ruleCards = Object.values(GAME_MODE_DEFINITIONS)
+    .sort((a, b) => modeRank(a.id) - modeRank(b.id)).map((rule) =>
     `<button class="rule" data-game-mode="${rule.id}" type="button" title="${t(`playMenu.matchMode.${rule.id}.desc`)}">
       ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${t(`playMenu.matchMode.${rule.id}.label`)}</b><small>${t(`playMenu.matchMode.${rule.id}.short`)}</small>${
         ruleLineCopy(rule.id) ? `<small class="rule-lines" data-rule-lines>${ruleLineCopy(rule.id)}</small>` : ''}${

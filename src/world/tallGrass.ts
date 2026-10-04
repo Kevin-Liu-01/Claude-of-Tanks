@@ -7,7 +7,7 @@ import { createLandFieldSample, LAND_CROP, type LandFieldSample } from './landUs
 // Round 73 (2026-09-25, the ground redux; owner: "add tall grass that interacts with tanks"): the tall-grass tier.
 // The meadows carried a knee-high tuft carpet of alpha cards that nothing in the battle ever touched; this tier
 // grows blades of grass — opaque, textureless, vertex-shaded strips in clumps of three — on a camera-centred ring of
-// deterministic cells, with a second ring of single wide blades out to 120 m, and bends every blade by the
+// deterministic cells, with a second ring of single wide blades out to 240 m, and bends every blade by the
 // world-anchored pressure field the hulls stamp (groundPressure.ts): a tank pushes the sward flat under its belly
 // and tracks, leaves two rolled lanes behind it that stand up again over twenty seconds, and sits hull-deep in the
 // grass while it does. Nothing here touches the simulation — spotting is authoritative and unchanged; the
@@ -115,10 +115,10 @@ export const TALL_GRASS = Object.freeze({
   }),
   far: Object.freeze({
     cellM: 24,
-    ring: 6,          // 13 × 13 cells: covers 120 m
+    ring: 11,         // 23 × 23 cells: covers the 240 m fade even at a camera-cell corner
     perM2: 0.20,      // single wide blades per square metre (0.30 on the first sheet massed into a dark carpet at 30–120 m)
-    fade: Object.freeze([34, 46, 104, 120] as const),
-    cap: 28000,
+    fade: Object.freeze([34, 46, 192, 240] as const),
+    cap: 84000,       // covers all 529 cells at the maximum 1.3 density without dropping the outer ring
     programKey: 'world-tall-grass-far-v4', // v4 (ground lane): the shaded sward's light neutralised after the chunk
   }),
   /** Blade width multiplier of the far ring (one strip carries the read), the root-to-tip gradient exponents and the
@@ -130,7 +130,7 @@ export const TALL_GRASS = Object.freeze({
   bladeLift: Object.freeze({ near: 1.0, far: 1.3 } as const),
   /** How much darker a crushed blade stays while the bruise lasts (the lane behind the tracks). */
   crushDarken: 0.28,
-  cacheCells: 480,
+  cacheCells: 720,  // the 529-cell far ring plus recently visited columns; bounded and larger than the active ring
   // a 12 m column of near cells (~4.7 k candidates at density 1) refills in ~40 frames at this budget — ahead of a
   // hull at road speed — for a fraction of the frame's CPU; a cold ring (the first frames) takes the larger one
   candidatesPerUpdate: 120,

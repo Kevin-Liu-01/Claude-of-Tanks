@@ -381,7 +381,7 @@ const CHUNKS = 8, CHUNK_SIZE = 128;
 // field look noisy and consumed most of the battle's triangle/overdraw budget.
 // Keep readable tufts around the vehicle, then hand off gradually to terrain.
 const GRASS_PER_CHUNK = 12000;         // sparse, map-wide midfield scatter
-const GRASS_FADE_END = 180;            // scale-out ends before cards become sub-pixel
+const GRASS_FADE_END = 320;            // broad, gradual handoff to the terrain meadow
 const CARPET_CELL = 16;
 const CARPET_RING = 3;                 // 49 cached cells, coverage to ±56 m
 const CARPET_PER_CELL = 420;           // filters thin this to a natural sward
@@ -3448,8 +3448,8 @@ function* vegetationBuildSteps(
   // vertices. Hand off earlier to the terrain meadow and the opaque far-tree
   // silhouettes. Both transitions already use continuous density/LOD fades,
   // so this removes sub-pixel noise without introducing a distance pop.
-  const grassFadeEnd = mobileTier ? 132 : GRASS_FADE_END;
-  const grassTaperEnd = mobileTier ? 112 : 155;
+  const grassFadeEnd = mobileTier ? 224 : GRASS_FADE_END;
+  const grassTaperEnd = mobileTier ? 196 : 280;
   const treeNearIn = mobileTier ? 200 : (() => {
     // Round 78 (the performance lane): `?treeNear=<m>` (desktop tiers; the probes' same-build A/B of the near-tier
     // distance) overrides the band's inner radius; the outer keeps the hysteresis width. The shipped band is

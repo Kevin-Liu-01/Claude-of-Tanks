@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import {syncJuggernautVisual} from './juggernautVisual.ts';
 import { createCombatFeedbackRuntime } from './combatFeedbackRuntime.ts';
 import { createBus } from './stateCore.ts';
 
@@ -46,6 +48,20 @@ const runtime = createCombatFeedbackRuntime({
   trimGarageTanks: (capacity) => calls.push(['trim', capacity]),
   getDeviceTier: () => 'mobile',
 });
+
+// Actual shared shell event routes world-space contacts to a boss's shader.
+const root=new THREE.Group(),mesh=new THREE.Mesh(new THREE.BoxGeometry(),new THREE.MeshStandardMaterial());root.add(mesh);
+target.visual.root=root;
+syncJuggernautVisual(root,{widthM:3,hullLengthM:7,heightM:3},1.12,100,100,0);
+const shieldShader={uniforms:{},vertexShader:THREE.ShaderLib.standard.vertexShader,fragmentShader:THREE.ShaderLib.standard.fragmentShader};
+mesh.material.onBeforeCompile(shieldShader,{});
+bus.emit('shell:hit',{targetId:'target',kind:'ricochet',damage:0,pos:[1,2,3]});
+assert.equal(shieldShader.uniforms.juggernautHits.value[0].w,0,'deflected hits trigger a local contact ripple');
+assert.ok(Math.abs(shieldShader.uniforms.juggernautHits.value[0].x-1/1.12)<1e-6,'event contact converts into the scaled boss frame');
+bus.emit('shell:hit',{targetId:'unknown',kind:'pen',pos:[0,0,0]});
+assert.equal(shieldShader.uniforms.juggernautHits.value[1].w,-1,'other targets never pulse this boss');
+syncJuggernautVisual(root,{widthM:3,hullLengthM:7,heightM:3},1,100,100,0);
+mesh.geometry.dispose();mesh.material.dispose();
 
 bus.emit('shell:hit', {
   targetId: 'target', attackerId: 'player', normal: [1, 0, -1],
