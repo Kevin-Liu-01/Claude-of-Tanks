@@ -79,6 +79,11 @@ export default {
     blockFill: true, streetRows: true, streetRowsAfterLandmarks: true,
     // the district's massive blocks keep their footprints off every carriageway, not only their own street's
     roadBuildingClearance: true,
+    // The civic hall stood across road 3 at the district's crossroads and against road 1's edge, on the line between the
+    // deployments, with no clear place within 30 m. Its nearest clear place (36 m south, beside alpha's approach) let
+    // the south deployment win 28 of the swap test's 40 games (with the hall in the road: 22). On the avenue's north-west
+    // side, 59 m north, it stands on that line again, off every carriageway, and the south wins 22.
+    roadClearanceTargets: [{ from: [-101.8, -85.7], to: [-111.9, -27.8] }],
     streetRowRoadStride: 2, ruinChance: 0.54, curbs: true, lampposts: true,
     tones: makeRealisticCityBuildingTones({
       value: 0.73, saturation: 0.82, soot: 0.035, roofValue: 0.72, coolAccent: 0.015,

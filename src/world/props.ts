@@ -367,6 +367,12 @@ interface PropsSettings {
    * such a place it stays. The plan places every building exactly as before (no draw or eligibility changes), so a
    * building that clears the carriageway stands where it always did. Opt-in: a map without it keeps every building. */
   roadBuildingClearance?: boolean;
+  /** Authored places for carriageway buildings (with `roadBuildingClearance`): a building packed as standing in a
+   * carriageway whose recorded centre lies within 1.5 m of `from` moves to `to` instead of the nearest clear place,
+   * when `to` passes the same checks (the road clearance, its ground fit, every other building and strongpoint); else
+   * the ring search runs as for any other. For a building with no clear place nearby, or whose nearest one changes the
+   * battle (Blackglass's civic hall, settled by the bots lane's swap test). Default none. */
+  roadClearanceTargets?: readonly { from: readonly [number, number]; to: readonly [number, number] }[];
   streetRowRoadStride?: number;
   /** Junction corners the roadside buildings keep out of (maps lane B, 2026-10-03): a roadside building's centre stands
    * outside each disc ({ x, z, r }). The centre test (7.5 m off any road) lets a long building reach into the other road
@@ -4141,11 +4147,10 @@ ${snowCap ? `
   yield* placeTownBlockFill();
 
   // Once every settlement building stands, each one packed as standing in a carriageway moves by the least distance
-  // that clears it: rings of 0.5 m out to 60 m, the bearing away from the nearest road first, then turning by 15
+  // that clears it: rings of 0.5 m out to 30 m, the bearing away from the nearest road first, then turning by 15
   // degrees at a time to either side; the new place keeps its ground fit and stays clear of every other building and
-  // strongpoint. Its geometry, collision bands, footprint record and chimney tops move with it. Nearly every building
-  // clears within 30 m; the rings run on to 60 m for one that cannot (Blackglass's civic hall, which stood across road
-  // 3 at the district's crossroads with no clear place inside 30 m, crosses to the open ground south of it, 36 m).
+  // strongpoint. A map can author the place instead (props.roadClearanceTargets), checked alike. Its geometry,
+  // collision bands, footprint record and chimney tops move with it.
   /** Whether two footprints (centre, size, yaw) come within `gap` metres of each other: separating axes of the two
    * rectangles, each grown by half the gap. */
   function footprintsMeet(a: { x: number; z: number; w: number; d: number; rot: number },
@@ -4178,18 +4183,24 @@ ${snowCap ? `
         }
       }
       let target: { x: number; z: number } | null = null;
+      const clearsAt = (x: number, z: number): boolean => {
+        if (x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1 || noVeg(x, z)) return false;
+        if (!buildingFootprintClearsRoads({ x, z, rot: source.rot }, w, d, roads, CARRIAGEWAY_CLEARANCE)) return false;
+        if (groundFit(x, z, w, d, source.rot).spread > P.maxSpread || conflictsTacticalReservation(x, z)) return false;
+        const footprint = { x, z, w, d, rot: source.rot };
+        return !buildingFeatures.some((other) => other !== packet.feature && footprintsMeet(footprint, other, 1));
+      };
+      const authored = P.roadClearanceTargets?.find((entry) =>
+        Math.hypot(entry.from[0] - source.x, entry.from[1] - source.z) <= 1.5);
+      if (authored && clearsAt(authored.to[0], authored.to[1])) target = { x: authored.to[0], z: authored.to[1] };
       const turns = [0];
       for (let k = 1; k <= 12; k++) turns.push(k * Math.PI / 12, -k * Math.PI / 12);
-      for (let step = 1; step <= 120 && !target; step++) {
+      for (let step = 1; step <= 60 && !target; step++) {
         const dist = step * 0.5;
         for (const turn of turns) {
           const c = Math.cos(turn), sn = Math.sin(turn);
           const x = source.x + (ax * c - az * sn) * dist, z = source.z + (ax * sn + az * c) * dist;
-          if (x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1 || noVeg(x, z)) continue;
-          if (!buildingFootprintClearsRoads({ x, z, rot: source.rot }, w, d, roads, CARRIAGEWAY_CLEARANCE)) continue;
-          if (groundFit(x, z, w, d, source.rot).spread > P.maxSpread || conflictsTacticalReservation(x, z)) continue;
-          const footprint = { x, z, w, d, rot: source.rot };
-          if (buildingFeatures.some((other) => other !== packet.feature && footprintsMeet(footprint, other, 1))) continue;
+          if (!clearsAt(x, z)) continue;
           target = { x, z };
           break;
         }

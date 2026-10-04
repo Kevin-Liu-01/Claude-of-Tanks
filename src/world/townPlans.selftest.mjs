@@ -58,8 +58,8 @@ const PR_HEAD = {
     [276.71, -231.11, 10.85, 6.89],
   ] },
   // Blackglass generates its district (no recorded plan) with the clearance: nine of its blocks stood in a carriageway and
-  // all nine move off it, eight within 10 m and the civic hall at (-101.9, -85.8), with no clear place within 30 m, 36 m
-  // across road 3 to the open ground south of it
+  // all nine move off it, eight within 10 m and the civic hall at (-101.9, -85.8), with no clear place within 30 m, to
+  // its authored place on the avenue's north-west side (props roadClearanceTargets, 59 m)
   blackglass: { carriageway: 9, structures: [
     [-254.16, -252.85, 37.15, 37.18], [-281.08, -227.61, 27.81, 28.03], [-263.82, -203.71, 34.76, 34.49],
     [-241.99, -183.91, 38.16, 37.03], [-197.23, -186.09, 11.01, 11.06], [-176.85, -167.41, 33.18, 33.27],
@@ -140,9 +140,11 @@ for (const [mapId, { carriageway, structures }] of Object.entries(PR_HEAD)) {
     const same = now.findIndex((s, i) => !taken.has(i) && Math.abs(s.cx - cx) <= 0.1 && Math.abs(s.cz - cz) <= 0.1
       && Math.abs(s.w - w) <= 0.1 && Math.abs(s.d - d) <= 0.1);
     if (same >= 0) { taken.add(same); exact++; continue; }
-    // moved off a carriageway: the same footprint, translated no further than the clearance's rings reach (60 m)
+    // moved off a carriageway: the same footprint, translated no further than the clearance's rings reach (30 m), or
+    // to the place the map authors for it (props roadClearanceTargets: from its centre, to the new one)
+    const authored = (config.props.roadClearanceTargets ?? []).find((t) => Math.hypot(t.from[0] - cx, t.from[1] - cz) <= 1.5);
     const off = now.findIndex((s, i) => !taken.has(i) && Math.abs(s.w - w) <= 0.1 && Math.abs(s.d - d) <= 0.1
-      && Math.hypot(s.cx - cx, s.cz - cz) <= 60);
+      && (authored ? Math.hypot(s.cx - authored.to[0], s.cz - authored.to[1]) <= 1.5 : Math.hypot(s.cx - cx, s.cz - cz) <= 30));
     assert.ok(off >= 0, `${mapId}: the structure at (${cx}, ${cz}) stands where the PR head has it or a short move off a carriageway`);
     taken.add(off); moved++;
     worstMove = Math.max(worstMove, Math.hypot(now[off].cx - cx, now[off].cz - cz));
