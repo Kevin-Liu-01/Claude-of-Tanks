@@ -312,8 +312,10 @@ float cotVehNoise( vec3 x ) {
 export const VEHICLE_WEATHER_PATCH_FREQ = 2.3;
 export const VEHICLE_WEATHER_FINE_FREQ = 9.0;
 /** The film's reach up the hull (m): dry dust climbs to the first, wet mud stays under the second. */
-export const VEHICLE_WEATHER_REACH_DRY_M = 1.5;
-export const VEHICLE_WEATHER_REACH_WET_M = 0.9;
+export const VEHICLE_WEATHER_REACH_DRY_M = 1.6;
+export const VEHICLE_WEATHER_REACH_WET_M = 1.0;
+/** The hull's film is whole up to this height (m) before it fades to its reach (the running gear's fades from 0.1 m). */
+export const VEHICLE_WEATHER_HULL_FOOT_M = 0.3;
 /** The film's cap (a film never seals a material) and the track recesses' packing. */
 export const VEHICLE_WEATHER_FILM_MAX = 0.88;
 /** Snow: linear albedo of fresh snow (the winter maps' ground, 0xe5e7ec, is 0.78), and of the snow trodden into the gear. */
@@ -388,23 +390,31 @@ export const VEHICLE_WEATHER_FRAGMENT_GLSL = `
 		#endif
 		#endif
 		// dust or mud: a film with holes that keeps each material's own contrast (cotVehFilm: the rubber stays darker than
-		// the wheel face, the steel darker than the paint), whole at the ground and gone by its reach up the hull through
-		// a ragged edge, heaviest at the bow and on the faces turned to it; the fenders' and the decks' flat tops collect
-		// it; the dusty maps' film over everything; packed into the track's recesses, never on its scraped faces
+		// the wheel face, the steel darker than the paint). The running gear (its materials define COT_VEH_GEAR,
+		// COT_VEH_TRACK or COT_WHEEL_PAINT_READABILITY) takes a patchy film that fades up from the ground; the hull a
+		// gradient whole at its foot that breaks into patches and is gone by its reach (wave 55: "no dust film on the
+		// hull"), both heaviest at the bow and on the faces turned to it; the fenders' and the decks' flat tops collect it;
+		// the dusty maps' film over everything; packed into the track's recesses, never on its scraped faces
+		float cvGear = 0.0;
+		#if defined( COT_VEH_GEAR ) || defined( COT_VEH_TRACK ) || defined( COT_WHEEL_PAINT_READABILITY )
+		cvGear = 1.0;
+		#endif
 		float cvReach = mix( ${f(VEHICLE_WEATHER_REACH_DRY_M)}, ${f(VEHICLE_WEATHER_REACH_WET_M)}, uVehWeatherA.w );
 		float cvLow = clamp( 1.0 - ( cvH - 0.1 + ( cvB - 0.5 ) * 0.5 ) / ( cvReach - 0.1 ), 0.0, 1.0 );
+		float cvGrad = 1.0 - smoothstep( ${f(VEHICLE_WEATHER_HULL_FOOT_M)}, cvReach, cvH + ( cvB - 0.5 ) * 0.45 );
 		float cvBow = max( smoothstep( 0.5, 3.0, dot( cvP - uVehGround.xyz, uVehFwd ) ),
 			0.75 * smoothstep( 0.3, 0.8, dot( cvNW, uVehFwd ) ) );
-		float cvPatch = smoothstep( 0.6 - 0.28 * cvLow, 0.78 - 0.18 * cvLow, cvB );
-		float cvDust = uVehWeatherA.x * ( cvLow * ( 0.6 + 0.4 * cvBow ) * cvPatch
-				+ 0.55 * cvTop * ( 1.0 - smoothstep( 1.3, 2.4, cvH ) ) * smoothstep( 0.42, 0.7, cvB ) )
+		float cvGearFilm = cvLow * ( 0.6 + 0.4 * cvBow ) * smoothstep( 0.6 - 0.28 * cvLow, 0.78 - 0.18 * cvLow, cvB );
+		float cvHullFilm = 1.15 * cvGrad * ( 0.55 + 0.45 * cvBow ) * smoothstep( 0.72 - 0.6 * cvGrad, 0.88 - 0.45 * cvGrad, cvB );
+		float cvDust = uVehWeatherA.x * ( mix( cvHullFilm, cvGearFilm, cvGear )
+				+ 0.7 * cvTop * ( 1.0 - smoothstep( 1.4, 2.4, cvH ) ) * smoothstep( 0.38, 0.65, cvB ) )
 			+ uVehWeatherA.y * smoothstep( 0.3, 0.75, cvB );
 		cvDust = max( cvDust * ( 1.0 - 0.85 * cvScraped ),
 			cvRecess * smoothstep( 0.22, 0.48, cvB ) * min( 1.0, 1.3 * uVehWeatherA.x ) );
 		cvDust = min( cvDust, ${f(VEHICLE_WEATHER_FILM_MAX)} );
-		float cvWet = uVehWeatherA.w * cvLow;
+		float cvWet = uVehWeatherA.w * mix( cvGrad, cvLow, cvGear );
 		// a dry film reads paler and chalkier than the ground it rose from; wet mud is the dirt darkened
-		vec3 cvFilmCol = mix( mix( uVehDust, vec3( dot( uVehDust, vec3( 0.2126, 0.7152, 0.0722 ) ) ), 0.25 ) * 1.1, uVehMud, cvWet );
+		vec3 cvFilmCol = mix( mix( uVehDust, vec3( dot( uVehDust, vec3( 0.2126, 0.7152, 0.0722 ) ) ), 0.35 ) * 1.18, uVehMud, cvWet );
 		diffuseColor.rgb = cotVehFilm( diffuseColor.rgb, cvFilmCol, cvDust );
 		// matte: dry dust, damp mud only a little smoother
 		roughnessFactor = mix( roughnessFactor, mix( 0.97, ${f(VEHICLE_WEATHER_MUD_ROUGHNESS)}, cvWet ), cvDust );

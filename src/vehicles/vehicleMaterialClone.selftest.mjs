@@ -138,6 +138,7 @@ try {
         if (material.userData?.isolatedFrom) {
           assertRegistered(material, `${id}/${object.name} (${material.userData.appearanceRole} from ${material.userData.isolatedFrom})`);
           assert.ok(!material.defines.COT_WHEEL_PAINT_READABILITY, `${id}/${object.name}: an isolated role takes the ordinary gear path`);
+          assert.equal(material.defines.COT_VEH_GEAR, 1, `${id}/${object.name}: and weathers as running gear (vehicleWeathering.ts)`);
           note('isolated', id);
         }
         if (material.userData?.trackBandFinish) {

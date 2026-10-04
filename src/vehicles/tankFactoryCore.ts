@@ -1003,9 +1003,11 @@ function isolatedGearMaterial<M extends THREE.Material>(
   const clone = cloneVehicleMaterial(material);
   clone.userData = { ...(material.userData || {}), appearanceRole: wanted, isolatedFrom: material.name };
   // A fixed rubber/steel role cloned from wheel paint uses the ordinary gear
-  // lighting path: cloneVehicleMaterial keeps the source's COT_* switches, so drop the wheel paint's floor.
+  // lighting path: cloneVehicleMaterial keeps the source's COT_* switches, so drop the wheel paint's floor; it is
+  // running gear for the weathering whatever it was cut from (vehicleWeathering.ts COT_VEH_GEAR).
   if ('defines' in clone && clone.defines) {
     delete (clone.defines as Record<string, unknown>).COT_WHEEL_PAINT_READABILITY;
+    (clone as { defines?: Record<string, unknown> }).defines = { ...(clone.defines as Record<string, unknown>), COT_VEH_GEAR: 1 };
   }
   disposables.push(clone);
   return clone;

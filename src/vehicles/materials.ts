@@ -2533,10 +2533,10 @@ const VEHICLE_MATERIAL_SETUP = new WeakMap<THREE.Material, <T extends THREE.Mate
 
 /**
  * The vehicle's own shader switches, which three's copy drops with the rest of the defines and a clone keeps: the
- * optics' clean layer and the track's packed snow (vehicleWeathering.ts), the wheel paint's floor. The cascade's
+ * optics' clean layer, the running gear's and the track's weathering (vehicleWeathering.ts), the wheel paint's floor. The cascade's
  * defines (USE_CSM, CSM_*, COT_CLOUD_SHADE) belong to the registration and come back with it.
  */
-const VEHICLE_SHADER_SWITCHES = ['COT_VEH_CLEAN', 'COT_VEH_TRACK', 'COT_WHEEL_PAINT_READABILITY'] as const;
+const VEHICLE_SHADER_SWITCHES = ['COT_VEH_CLEAN', 'COT_VEH_GEAR', 'COT_VEH_TRACK', 'COT_WHEEL_PAINT_READABILITY'] as const;
 
 /** Clone a vehicle material into its source's cascade registration, readability hook, program key and switches. */
 export function cloneVehicleMaterial<T extends THREE.Material>(source: T): T {
@@ -2670,6 +2670,8 @@ export function createTankMaterials(
   const rubber = track(setup(new THREE.MeshStandardMaterial({
     color: 0x292a28, roughness: 0.96, metalness: 0.0,
   })));
+  // 2026-10-04: running gear for the weathering (a patchy film that keeps the rubber darker than the wheel faces)
+  rubber.defines = { ...rubber.defines, COT_VEH_GEAR: 1 };
   // Accessories must never read as raw #000 blockout: scheme-tinted fittings
   // and gunmetal hardware, both with roughness variation.
   // r9 (camo white-deck major): the old 0.66-roughness/0.28-metalness combo

@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import {
   CLEAN_VEHICLE_WEATHER, VEHICLE_WEATHER_BY_MAP, VEHICLE_WEATHER_FRAGMENT_GLSL, VEHICLE_WEATHER_LEVEL, VEHICLE_WEATHER_REACH_DRY_M,
   VEHICLE_WEATHER_REACH_WET_M, VEHICLE_WEATHER_SNOW, VEHICLE_WEATHER_PACKED_SNOW, VEHICLE_WEATHER_SNOW_LUMP, VEHICLE_WEATHER_SLUSH,
-  VEHICLE_WEATHER_SNOW_PACK_COVER, VEHICLE_WEATHER_SNOW_FLAT_CURVATURE, VEHICLE_WEATHER_FILM_MAX,
+  VEHICLE_WEATHER_SNOW_PACK_COVER, VEHICLE_WEATHER_SNOW_FLAT_CURVATURE, VEHICLE_WEATHER_FILM_MAX, VEHICLE_WEATHER_HULL_FOOT_M,
   VEHICLE_WEATHER_MUD_ROUGHNESS, applyVehicleWeather,
   bindVehicleWeatherUniforms, garageVehicleWeather, liftedDustHex, mudColorOf, setVehicleWeatherLevel, syncVehicleWeather,
   vehicleWeatherForMap, vehicleWeatherLevelFor, vehicleWeatherState,
@@ -149,16 +149,23 @@ assert.ok(shader.vertexShader.indexOf('#include <beginnormal_vertex>') < shader.
   'after objectNormal is declared');
 material.dispose();
 
-// 6. the height law (the GLSL's cvLow, noise at its mean): the film is whole at the ground, holds on the running gear
-// and the hull's foot, and is gone by its reach; wet mud stays lower than dry dust
+// 6. the height laws (the GLSL's cvLow and cvGrad, noise at its mean): the running gear's film fades up from the ground;
+// the hull's is whole at its foot and fades to its reach, so the lower plates carry a visible gradient (wave 55: "no
+// dust film on the hull"); both are gone by their reach, and wet mud stays lower than dry dust
 const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
-const low = (h, wet) => clamp01(1 - (h - 0.1) / (VEHICLE_WEATHER_REACH_DRY_M + (VEHICLE_WEATHER_REACH_WET_M - VEHICLE_WEATHER_REACH_DRY_M) * wet - 0.1));
+const reach = (wet) => VEHICLE_WEATHER_REACH_DRY_M + (VEHICLE_WEATHER_REACH_WET_M - VEHICLE_WEATHER_REACH_DRY_M) * wet;
+const low = (h, wet) => clamp01(1 - (h - 0.1) / (reach(wet) - 0.1));
+const grad = (h, wet) => 1 - smoothstep(VEHICLE_WEATHER_HULL_FOOT_M, reach(wet), h);
 assert.ok(low(0.3, 0) > 0.8 && low(0.3, 1) > 0.7, 'the running gear (0.3 m) is under the film');
-assert.ok(low(0.9, 0) > 0.4, 'and the hull\'s lower plates (0.9 m) carry a visible share of it (wave 55: "no dust film on the hull")');
-assert.ok(low(1.6, 0) === 0 && low(1.0, 1) === 0, 'the upper hull is past its reach');
-assert.ok(low(0.6, 1) < low(0.6, 0), 'mud stays lower than dust');
+assert.ok(grad(0.5, 0) > 0.9, 'the hull\'s foot (0.5 m) carries nearly all of it');
+assert.ok(grad(0.9, 0) > 0.5 && grad(0.9, 0) < 0.8, 'its lower plates (0.9 m) a visible share of it');
+assert.ok(low(1.7, 0) === 0 && grad(1.7, 0) === 0 && grad(1.1, 1) === 0, 'the upper hull is past its reach');
+assert.ok(low(0.6, 1) < low(0.6, 0) && grad(0.8, 1) < grad(0.8, 0), 'mud stays lower than dust');
 assert.ok(VEHICLE_WEATHER_SNOW.every((v) => v > 0.75 && v < 0.9), 'snow is snow-white, not clipped white');
+assert.match(VEHICLE_WEATHER_FRAGMENT_GLSL, /#if defined\( COT_VEH_GEAR \) \|\| defined\( COT_VEH_TRACK \) \|\| defined\( COT_WHEEL_PAINT_READABILITY \)\s+cvGear = 1\.0;/,
+  'the running gear is its materials\' switch: rubber, track, wheel paint');
+assert.match(VEHICLE_WEATHER_FRAGMENT_GLSL, /mix\( cvHullFilm, cvGearFilm, cvGear \)/, 'and takes the gear\'s film; everything else the hull\'s');
 
 // 7. the film keeps each material's own contrast (the GLSL's cotVehFilm, a log-space mix): under one desert film a black
 // tyre stays well darker than the painted wheel face and a dark camouflage patch lightens more than a pale one, where a
