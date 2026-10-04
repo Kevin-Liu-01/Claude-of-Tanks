@@ -1254,6 +1254,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/railCutting.selftest.mjs',
     // the map-borders lane (gauntlet wave 30): the land past the edge is the terrain seed's, never the map id's
     'src/world/borderLandform.selftest.mjs',
+    // ... and its villages string along the exit roads from 110 m, each with its church (Frosthollow's north)
+    'src/world/borderFarmsteads.selftest.mjs',
     'src/world/maps/snowDrift.selftest.mjs',
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',

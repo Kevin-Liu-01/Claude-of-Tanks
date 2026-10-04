@@ -39,6 +39,10 @@ export interface FarmsteadSite {
   x: number; z: number; yaw: number; road: boolean;
   /** The side its shelter trees stand on (rad): the farm's windbreak arc. */
   shelter: number;
+  /** A yard of a village strung along an exit road (selectVillageSites). */
+  village?: boolean;
+  /** The village's church, carried by one of its yards: its centre and the nave's heading (along the road). */
+  church?: { x: number; z: number; yaw: number };
 }
 
 const HALF = 512;
@@ -128,11 +132,15 @@ export function selectFarmsteadSites(options: BorderFarmsteadOptions): Farmstead
 }
 
 /**
- * The map-borders lane (wave 3, 2026-10-03, gauntlet wave 9: "no ... villages"): a village strung along a few of the
- * roads that leave the square — from the first flat stretch 260-560 m out, four to six yards facing the road ~28 m off
- * it on alternate sides, ~62 m apart along it — so a road leaving the square runs on between roofs and gardens. At most
- * one village a side and three a map; the farms elsewhere keep their own search.
+ * The map-borders lane (wave 3, 2026-10-03, gauntlet wave 9: "no ... villages"): a village strung along a road that
+ * leaves the square — four to six yards facing the road ~28 m off it on alternate sides, ~55 m apart along it, from the
+ * first flat stretch VILLAGE_START_M out — so a road leaving the square runs on between roofs and gardens, with its
+ * church across the road from one of its yards. One village a side, three a map, each on the first of that side's roads
+ * that has room; the farms elsewhere keep their own search. (Gauntlet wave 30, Frosthollow's north: the roads now end at
+ * the foot of the ranges, ~300-450 m out on a mountain map, so a village searched from 260 m found no room on them and
+ * the hamlet and church spire left the view; a village starts at 110 m, within the reach of every road.)
  */
+const VILLAGE_START_M = 110, VILLAGE_END_SPARE_M = 25;
 function selectVillageSites(options: BorderFarmsteadOptions): FarmsteadSite[] {
   const lines = options.roadLines ?? [];
   if (!lines.length || options.count < 4) return [];
@@ -149,11 +157,11 @@ function selectVillageSites(options: BorderFarmsteadOptions): FarmsteadSite[] {
     }
     return null;
   };
-  const yardOk = (x: number, z: number): boolean => {
+  const flatAt = (x: number, z: number, half: number): boolean => {
     const g = options.groundAt(x, z);
     if (!Number.isFinite(g)) return false;
     let lo = g, hi = g;
-    for (const [du, dv] of [[16, 16], [16, -16], [-16, 16], [-16, -16]]) {
+    for (const [du, dv] of [[half, half], [half, -half], [-half, half], [-half, -half]]) {
       const gh = options.groundAt(x + du, z + dv);
       if (!Number.isFinite(gh)) return false;
       lo = Math.min(lo, gh); hi = Math.max(hi, gh);
@@ -162,24 +170,40 @@ function selectVillageSites(options: BorderFarmsteadOptions): FarmsteadSite[] {
   };
   for (const line of lines) {
     if (sites.length >= 18 || sides.size >= 3) break;
-    if (rng() > 0.62) continue;
     const ex = line.xs[0], ez = line.zs[0];
     const side = Math.abs(ex) > Math.abs(ez) ? (ex > 0 ? 1 : 3) : (ez > 0 ? 0 : 2);
     if (sides.has(side)) continue;
-    const homes = 4 + Math.floor(rng() * 3), spacing = 58 + rng() * 10;
-    for (let start = 260; start <= 560 - homes * spacing * 0.5; start += 40) {
+    const spacing = 52 + rng() * 8, reach = Math.min(560, line.length - VILLAGE_END_SPARE_M);
+    const homes = Math.min(4 + Math.floor(rng() * 3), Math.floor((reach - VILLAGE_START_M) / spacing) + 1);
+    if (homes < 3) continue;
+    for (let start = VILLAGE_START_M; start + (homes - 1) * spacing <= reach; start += 30) {
       const placed: FarmsteadSite[] = [];
       for (let k = 0; k < homes; k++) {
         const at = pointAt(line, start + k * spacing);
         if (!at) break;
         const [px, pz, hx, hz] = at, sideSign = k % 2 === 0 ? 1 : -1, off = 26 + rng() * 6;
         const x = px - hz * off * sideSign, z = pz + hx * off * sideSign;
-        if (!yardOk(x, z)) continue;
+        if (!flatAt(x, z, 16)) continue;
         // the house fronts the road: its yaw turns the yard's long side along the road
         const yaw = Math.atan2(hz, hx) + (sideSign > 0 ? Math.PI / 2 : -Math.PI / 2) + (rng() - 0.5) * 0.08;
-        placed.push({ x, z, yaw, road: true, shelter: Math.atan2(hx * sideSign, -hz * sideSign) + (rng() - 0.5) }); // the trees behind the house
+        placed.push({ x, z, yaw, road: true, village: true, shelter: Math.atan2(hx * sideSign, -hz * sideSign) + (rng() - 0.5) }); // the trees behind the house
       }
-      if (placed.length >= 3) { sites.push(...placed); sides.add(side); break; }
+      if (placed.length < 3) continue;
+      // the church: across the road from a yard (between the two beside it on the other side), its nave along the road
+      // and its tower at the end that faces the square — the first flat place from the second yard on
+      church: for (let k = 1; k < homes; k++) {
+        const at = pointAt(line, start + k * spacing);
+        if (!at) break;
+        const [px, pz, hx, hz] = at, sideSign = k % 2 === 0 ? -1 : 1;
+        for (const off of [30, 38]) {
+          const x = px - hz * off * sideSign, z = pz + hx * off * sideSign;
+          if (!flatAt(x, z, 18)) continue;
+          placed[0].church = { x, z, yaw: Math.atan2(hz, hx) };
+          break church;
+        }
+      }
+      sites.push(...placed); sides.add(side);
+      break;
     }
   }
   return sites;
@@ -388,11 +412,11 @@ function footprint(groundAt: (x: number, z: number) => number, f: Frame, L: numb
 
 function pick<T>(list: readonly T[], rng: () => number): T { return list[Math.floor(rng() * list.length) % list.length]; }
 
-/** The hamlet's church: a nave with its tower at the west end and a spire, 40 m off the farm on the road side. */
-function addChurch(s: Soup, options: BorderFarmsteadOptions, site: FarmsteadSite, pal: Palette): void {
-  const rng = mulberry32(((options.seed ^ 0xC4C4) + Math.round(site.x * 7 + site.z * 13)) >>> 0);
-  const cos = Math.cos(site.yaw), sin = Math.sin(site.yaw);
-  const cx = site.x + 40 * -sin, cz = site.z + 40 * cos;
+/** A church at `frame` (its centre; the nave's ridge along `yaw`): a nave with its tower at the near end and a spire. */
+function addChurch(s: Soup, options: BorderFarmsteadOptions, frame: { x: number; z: number; yaw: number }, pal: Palette): void {
+  const rng = mulberry32(((options.seed ^ 0xC4C4) + Math.round(frame.x * 7 + frame.z * 13)) >>> 0);
+  const cos = Math.cos(frame.yaw), sin = Math.sin(frame.yaw);
+  const cx = frame.x, cz = frame.z;
   const nave: Frame = { x: cx, z: cz, cos, sin };
   const L = 17 + rng() * 5, W = 8.5 + rng() * 1.5;
   const [lo, hi] = footprint(options.groundAt, nave, L + 6, W);
@@ -478,10 +502,15 @@ export function buildBorderFarmsteads(options: BorderFarmsteadOptions): THREE.Me
       if (Number.isFinite(g)) addSilo(s, p[0], p[2], g - 0.3, 2.4 + rng() * 0.6, 9 + rng() * 4, [0.72, 0.72, 0.70], [0.55, 0.55, 0.54]);
     }
   }
+  // a village's church; else the hamlet's — 40 m off the first road farm with another within 150 m, on the road side
   const churchStyles: readonly FarmsteadStyle[] = ['temperate', 'polder', 'winter', 'alpine', 'nordic'];
-  const hamlet = churchStyles.includes(options.style)
-    ? sites.find((a) => a.road && sites.some((b) => b !== a && b.road && Math.hypot(a.x - b.x, a.z - b.z) < 150)) : undefined;
-  if (hamlet) addChurch(s, options, hamlet, pal);
+  if (churchStyles.includes(options.style)) {
+    const villageChurches = sites.filter((site) => site.church);
+    for (const site of villageChurches) addChurch(s, options, site.church!, pal);
+    const hamlet = villageChurches.length ? undefined
+      : sites.find((a) => a.road && sites.some((b) => b !== a && b.road && Math.hypot(a.x - b.x, a.z - b.z) < 150));
+    if (hamlet) addChurch(s, options, { x: hamlet.x - 40 * Math.sin(hamlet.yaw), z: hamlet.z + 40 * Math.cos(hamlet.yaw), yaw: hamlet.yaw }, pal);
+  }
   if (s.positions.length === 0) return null;
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(s.positions, 3));

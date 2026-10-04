@@ -3813,7 +3813,10 @@ export function* buildHorizonRingSteps(
     ringExits?.lines ?? ground._roadExitLines?.() ?? [], ringExits?.at ?? ground._roadExitAt ?? null) : [];
   const rowSurface = treeRows.length ? ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs) : null;
   const rowGroundAt = rowSurface ? (x: number, z: number): number => {
-    for (const site of farmSites) if (Math.abs(x - site.x) < 20 && Math.abs(z - site.z) < 20) return Number.NaN; // the yards
+    for (const site of farmSites) {
+      if (Math.abs(x - site.x) < 20 && Math.abs(z - site.z) < 20) return Number.NaN; // the yards
+      if (site.church && Math.abs(x - site.church.x) < 22 && Math.abs(z - site.church.z) < 22) return Number.NaN; // a village's church
+    }
     return rowSurface(x, z);
   } : undefined;
   const forestGroup = buildHorizonForest({
