@@ -574,7 +574,18 @@ scenery: {
 | Power lines (`powerLines`) | lattice towers (a double-circuit tower scaled to `heightM`) and conductors hanging a 4 % sag (wave 20: a 2 % sag read as straight hairlines); the towers rise until the lowest conductor clears every crown under its span by 3 m and the ground by 12 m (at most 70 m) | four leg colliders per tower; a hull drives between the legs | the towers fold into the props `baked` bucket (no draw of their own; about 2 k triangles a tower); the conductors are ribbons on the wire material (`wireMaterial.ts`, wave 48: "the power cables break into dashes"): turned to the eye and half a pixel either side at the least, their alpha the share the true wire covers, one blended mesh (`props-pylon-wires`), unlit, fogged, no shadow, two triangles a segment |
 
 The rock material is the boulders' (`rockDressing.ts`): the map's moss, dust and soil laws, the triplanar detail tile
-and the cascade setup, so a tor and the boulders round it are one rock. The moss keeps to the damp ground a metre or two
+and the cascade setup, so a tor and the boulders round it are one rock. Each map's rock is named (`ROCK_CLIMATE`: granite,
+gneiss, sandstone, limestone, slate or basalt) and draws the detail tile (granite's mica and feldspar speckle, gneiss
+foliation, sandstone laminae, limestone solution pits, slate cleavage, basalt vesicles). The boulders themselves (wave 52:
+"low-poly frustums, chamfered boxes or polyhedra … all under one even noise texture and none sunk into the ground") are
+blocks their joints cut and the weather rounded (`buildBoulderForm`: the smooth maximum of a kind's joint planes, lumped,
+meshed by casting a cube-sphere grid at it, its normals the surface's own, every quad split along the diagonal whose ends
+shade alike), fitted inside the legacy rocks' hulls (the collision proxies the shards carry, unchanged), keeping their
+girth under the ground line so a slope bares a buried flank and not an undercut; bedded and cleaved rock breaks into
+blocks and slabs, granite and basalt weather round as well (`boulderKindFor`). On the instanced boulders only: their beds
+in each rock's own frame and tilt, desert varnish, the climate's lichen in two species (sparse, kept to the tops and upper
+flanks, a coverage-ranked colony tile), a snow map's snow laid after their tone, and contact darkening where the stone
+meets the ground. 384 triangles a variant (176 on phones). The moss keeps to the damp ground a metre or two
 up: a tall rock's tops dry in the wind and show the lichen its own tone paints (wave 29: "near-black slabs"). A geology's tone can be overridden with `tone`
 (sRGB HSL), for example to match a map's `rockTone`. A map whose field walls are its own rock tints their rubble print
 with `scenery.masonryTint` (a linear multiplier): Saltwind's dry stone walls and their heads are the weathered grey
@@ -588,7 +599,12 @@ sitting on what is under it, now and then a jumper two courses high, two thin st
 stone one to three centimetres proud with its corners knocked back so the hearting shows in the gaps, its face shaded
 as a rounded stone (its corners' normals leaning out from its middle: wave 48 read flat-shaded rectangles as "stacked
 crates or voxels") and turned a little its own way. The module keeps
-the old one's envelope and its seeded draws, so the fitted wall colliders keep their plan and height. The maps whose
+the old one's envelope and its seeded draws, so the fitted wall colliders keep their plan and height. Where two runs'
+ends meet, the first head there is a corner pier (wave 52, Verdant's village wall: "abruptly changes from tan stone to
+dark … with a hard vertical seam" — one face in the sun and one in shade, with nothing between them): bonded like a
+quoin, a stone's breadth proud of both faces and a course over the tallest module; the other heads at that corner are
+spent unbuilt. The field print's occlusion is 0.5 (it was 0.82, and took the skylight out of a shaded face's joints until
+the face read near-black). The maps whose
 stone bucket is the sourced brick print (`sourcedStoneIsBrick`) keep the coursed module (`COURSED_WALLSTONE`) the print
 was laid out for.
 
@@ -639,15 +655,19 @@ band) is the ground's colour, not a pale strip. Receipts: `fieldMudSurface.selft
 `maps/fieldWallDressing.selftest.mjs`.
 
 The field works' sandbag stacks (`sandbagbig`, `sandbagsmall`, `sandbagwall`, wherever the fortification passes put
-them) are laid bag by bag (`maps/sceneryKit.ts` `buildSandbagStack`): sacks squashed under the courses above (wave 20:
-"inflated toy capsules"), a flat top and bed, their sides bulging, the folded end square and the tied end gathered to a
-darker neck (the cord), sagging over the joint below, one in five slack (thinner, wider, more sagged), each in its own
-tone (hessian, weathered hessian, faded olive polypropylene, a few dirty ones), the lowest courses smeared with earth,
-on the props canvas weave, in stretcher bond of 15 cm courses, a battered parapet that has settled (wave 34, "tidy
-tubes"): its middle sunk up to 4 cm, the more the higher the course, the top course's bags askew and the odd one gone;
-the bottom course sunk in the ground and a fillet of earth banked against the foot; every stack also gets its own
-weathering tint. A laid bag leaves out the faces a stack hides (its bed, its inner side, its ends against its
-neighbours). Each stack fills the envelope of the sourced model it replaced, so the cover is where it was; a breached
+them) are laid bag by bag (`maps/sceneryKit.ts` `buildSandbagStack`): pillows pressed flat by the courses on them (wave
+52: "compressed pillow bags … header ends as squashed, seamed pillow ends rather than round log ends"), a flat top and
+bed, their sides bulging, both ends drawn in — the sewn bottom straight across with its ears at the corners, the mouth
+folded under — so a bag end on is a squashed lens; sagging over the joint below, one in five slack (thinner, wider, more
+sagged), each in its own tone (hessian, weathered hessian, faded olive polypropylene, a few dirty ones), the lowest
+courses smeared with earth, on the hessian (`paintBurlap`: a plain weave, a jute thread every 2.5 mm at the bags' weave
+uv, its own material on the canvas program), in 15 cm courses each pressed a third into the one under it: every third
+course below the top in headers (two bags across, seams out on the faces) between stretcher courses in a wandering half
+bond, a battered parapet that has settled (wave 34, "tidy tubes"): its middle sunk up to 4 cm, the more the higher the
+course, the top course's bags askew and the odd one gone; the bottom course sunk in the ground and a fillet of earth
+banked against the foot; every stack also gets its own weathering tint. A laid bag draws only the faces its stack shows
+(the top course is closed), and a battered core of dark spoil fills the stack behind them, so no joint shows the sky
+(wave 52: "daylight between courses"; the scenery receipt casts sight lines square through every stack). Each stack fills the envelope of the sourced model it replaced, so the cover is where it was; a breached
 stack is a low course and the burst bags round it. A road nest, a redoubt's stacks and a breastwork's modules are
 bedded (`buildSandbagBedding`, wave 34: "a stacked prop on a bare mound, no berm or spilled sand"): the spoil banked two
 fifths up the face toward the threat and out the better part of a metre, lower round the rest, a spill of fill heaped
