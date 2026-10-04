@@ -857,7 +857,11 @@ contact constraints and cannot be crossed by residual uphill speed.
   hull about its centre of mass as well as lifting it, as a rigid body struck there moves: the root takes its share,
   `k²/(k²+a²)` of the rest, and the turn the remainder as a pitch rate eased in at 0.25 rad/s a step. Trenches crossed
   at speed slow at the far wall: entering an assault trench at 11 m/s, the median hull's slowest is 7.9 m/s where it
-  kept 9.0.
+  kept 9.0. A strike on the hull's own body (an end guard, not a track station) is still resolved by position, the
+  floor lifting the root: a UDES 03 landing 13 degrees nose-down in an assault trench at 11 m/s in the Earth-gravity
+  mode has its nose guard meet the far wall and is lifted 0.135 m in a step (a known glitch run of the torture matrix).
+  Splitting it like a station's strike leaves the guard 6.5 cm in the wall, since a guard has no stops to take the
+  first 8 cm; the fix is a body strike taken as a velocity impact.
 - *Landing speed is the hull's own approach.* An airborne hull's ground moves only with its own travel over the
   slope beneath it (its grade along the travel, read from two world samples once the hull is pitched past 72
   degrees and its track samples stack over one point), never with the support envelope's swing as the hull turns.
@@ -894,7 +898,9 @@ contact constraints and cannot be crossed by residual uphill speed.
   runs out (the springs bottoming as a trench's far wall lifts the hull) the bump stops take (`_susp.c`, round 8): the
   dive is cut to the travel at once, and the drawn hull gives the excess up over the stops' spring (4.8 Hz, critically
   damped) instead of in the same frame. That share is drawn and is no part of the dive the travel holds, nor of what
-  joins the rock off a whole-track seat; the movement checkpoint carries it from version 8.
+  joins the rock off a whole-track seat; the movement checkpoint carries it from version 8. That layout is 63 values,
+  and the wire carries at most 64 (`MAX_MOVEMENT_VALUES`, `src/mp/wire/constants.ts`; the codec rejects more): a lane
+  adding more than one value of integrator state widens that limit first.
 - *A hull holds a posture over its tracks on a grade, and it is the hull's attitude.* The gravity the tracks hold the
   hull against on a grade (physics lane round 5; gauntlet wave 38: "on a 17.9-degree grade the front and rear stations
   carry about the same travel ... a real tank shows a clear rear-heavy gradient") loads the downhill end along the hull

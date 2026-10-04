@@ -33,6 +33,8 @@
  * under it (`_susp.c`, `_susp.cv`, 63 values): it is part of the dive's stored value but no part of the dive the travel
  * holds, nor of what joins the rock off a whole-track seat, so a replay needs it to split the two as the authority does.
  * An older checkpoint still decodes, the stops holding nothing.
+ * The wire carries at most 64 values (`MAX_MOVEMENT_VALUES`; the codec rejects more): version 8 uses 63, so a version
+ * adding more than one value widens that limit first.
  */
 import type { MovementContactGeometry, TankState } from '../../sim/movement.ts';
 
