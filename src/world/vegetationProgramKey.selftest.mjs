@@ -78,8 +78,9 @@ function library(species, fade, environment) {
   const { group } = vegetation;
   // round 77b (2026-09-26): v17 — the leaf-scale detail tile as the cards' normal map (round 77: v16 — the wind
   // law, the per-cluster cascade sample and the leaf translucency); and the far tier's one impostor material
-  // trees round 2 (2026-10-03): v20 — the facing clusters (COT_LEAF_BILLBOARD) and the near-dissolve's crown scale
-  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v20'));
+  // trees round 2 (2026-10-03): v20 — the facing clusters (COT_LEAF_BILLBOARD) and the near-dissolve's crown scale;
+  // trees round 3b (2026-10-04): v21 — the clusters' near dissolve by whole clusters
+  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v21'));
   assert.equal(foliage.length, species.length, 'the complete production species material library exists');
   const impostor = registered.filter(material => material.customProgramCacheKey() === 'world-tree-impostor-v3'); // round 77c: the elevated ring; p2 trees lane: the gust lift
   assert.equal(impostor.length, 1, 'one impostor material per world, registered with the cascades');
@@ -226,7 +227,19 @@ function checkEdgeFade(material, parameters) {
   assert.match(vertex, /vec3 cotRight = cross\( aAxis, cotCam - aCard\.xyz \);/, 'the card turns about its own axis toward the camera');
   const turn = vertex.indexOf('transformed = mix( transformed, cotFacing, COT_LEAF_BILLBOARD );');
   assert.ok(turn > 0 && turn < vertex.indexOf('float lean = uWind.x'), 'the turn comes before the wind law');
-  assert.match(fragment, /smoothstep\(2\.50 \* vCotNearScale, 8\.00 \* vCotNearScale, length\(vViewPosition\)\)/, 'the near dissolve by the crown\'s size');
+  // trees round 3b (2026-10-04, the gauntlet's wave 46: the chase camera's foreground bush "a screen-door mesh"): a grown
+  // cluster's near dissolve is geometric — each card's centre against the band by the crown's size, the card shrinking
+  // to its centre at a threshold hashed from where it sits — and its fragment takes no near dither (the pixel dissolve
+  // stays for a card without the frame: the palms' fronds)
+  assert.match(vertex, /float cotNear = length\( cotCam - aCard\.xyz \) \* length\( cotIm\[ 0 \] \);/, 'the card centre\'s distance in world metres');
+  assert.match(vertex, /float cotKeep = smoothstep\( 2\.50 \* vCotNearScale, 8\.00 \* vCotNearScale, cotNear \);/, 'the near band by the crown\'s size');
+  assert.match(vertex, /transformed = aCard\.xyz \+ \( transformed - aCard\.xyz \) \* smoothstep\( cotGate - 0\.1, cotGate \+ 0\.1, cotKeep \);/,
+    'the card shrinks to its centre at its own threshold');
+  const shrink = vertex.indexOf('transformed = aCard.xyz + ( transformed - aCard.xyz )');
+  assert.ok(turn < shrink && shrink < vertex.indexOf('float lean = uWind.x'), 'after the turn, before the wind');
+  assert.match(vertex, /vCotGeoNear = 0\.0;[\s\S]*vCotGeoNear = 1\.0;/, 'only a framed card leaves geometrically');
+  assert.match(fragment, /fadeKeep \*= mix\(smoothstep\(2\.50 \* vCotNearScale, 8\.00 \* vCotNearScale, length\(vViewPosition\)\), 1\.0, vCotGeoNear\);/,
+    'a framed card\'s fragment takes no near dither; the rest keep the near dissolve by the crown\'s size');
 }
 function checkGustLift(cards, impostor) {
   for (const [name, parameters] of [['cards', cards], ['impostor', impostor]]) {
@@ -244,7 +257,7 @@ function checkMobileFoliage(species, environment) {
     const engine = { setupShadowMaterial(material, hook) { registered.push(material); return lighting.setupShadowMaterial(material, hook); } };
     const cfg = { vegetation: { species, clusterCount: 0, loneCount: 0, rimCount: 0, grassDensity: 0, bushCount: 0, belts: [], authoredTrees: [] } };
     const vegetation = createVegetation(createHeightField(1337), engine, 1337, cfg);
-    const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v20'));
+    const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v21'));
     assert.equal(foliage.length, species.length, 'the mobile species library exists');
     const fragment = environment.expand(foliage[0]).parameters.fragmentShader;
     assert.doesNotMatch(fragment, /vWindLift \*/, 'the phones keep their foliage fragment: no gust lift');
