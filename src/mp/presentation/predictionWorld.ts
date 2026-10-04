@@ -28,7 +28,7 @@ import {
   createHullFootprint, hullFootprint, hullPassesObstacleTop, hullUndersideOver, pushHullFromHull, pushHullFromObstacle,
 } from '../../world/collision.ts';
 import type { CollisionRecord } from '../../world/collision.ts';
-import { matchRulesetFor } from '../../sim/matchRuleset.ts';
+import { matchRulesetFor, rulesetPhysicsAt, type RulesetPhysics } from '../../sim/matchRuleset.ts';
 import { createHullSupportPose, createStructureSupportField, hullSupportPose } from '../../sim/structureSupport.ts';
 import { prefersVerticalTankContact, tanksVerticallyClear } from '../../sim/tankBodyContacts.ts';
 import { normalizeGameMode } from '../../sim/matchModes.ts';
@@ -247,5 +247,7 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
   const beginStep = (state: TankState): void => {
     support.beginHull(state.pos.x, state.pos.z, state.pos.y, hullSupportPose(ownSpec, state, supportPose));
   };
-  return { heightField: support, collide, contactGeom: null, physics, anchor, beginStep };
+  const gameMode = normalizeGameMode(mode || 'standard');
+  const physicsAt = (gravityScale: number): RulesetPhysics => rulesetPhysicsAt(gameMode, gravityScale);
+  return { heightField: support, collide, contactGeom: null, physics, physicsAt, anchor, beginStep };
 }

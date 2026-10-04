@@ -243,6 +243,10 @@ for (const [caseId, why] of [['rest-slope25', 'before: 0.97 degree flatter than 
   check(caseId, 'medium', 'earth', [g('attitude off the ground it rests on (deg)', (m) => m.restAttitudeErrDeg, 0.1, why)]);
 }
 
+// Gravity mode's Earth (physics lane round 4): the prediction lands a 1 g basin hull at the authority's rebound. It
+// landed it at the basin's 30 % where the authority took 15 %, and a spinning hull's replay parted from the authority's.
+check('air-spin', 'tall', 'gearth', [g('prediction replay error (m)', (m) => m.replay.maxErrM, 0.001, 'before: 0.041 m', true)]);
+
 // Rest stays rest: no jitter, no creep on a 25-degree grade on the brake.
 check('rest-slope25', 'medium', 'earth', [
   g('rest jitter (mm rms)', (m) => m.rest?.jitterYRmsMm ?? 0, 0.5, 'guard: a parked hull does not shimmer'),
