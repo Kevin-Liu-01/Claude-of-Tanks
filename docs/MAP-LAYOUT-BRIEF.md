@@ -643,9 +643,7 @@ them) are laid bag by bag (`maps/sceneryKit.ts` `buildSandbagStack`): sacks squa
 "inflated toy capsules"), a flat top and bed, their sides bulging, the folded end square and the tied end gathered to a
 darker neck (the cord), sagging over the joint below, one in five slack (thinner, wider, more sagged), each in its own
 tone (hessian, weathered hessian, faded olive polypropylene, a few dirty ones), the lowest courses smeared with earth,
-on their own hessian (`burlap`: a coarse plain weave on the canvas program, wave 48: "no burlap weave"), in 15 cm
-courses of stretchers with every other course below the top laid in headers — bags across the stack, their tied and
-folded ends on its faces, as a revetment is bonded (wave 48: "rolled carpets") — a battered parapet that has settled (wave 34, "tidy
+on the props canvas weave, in stretcher bond of 15 cm courses, a battered parapet that has settled (wave 34, "tidy
 tubes"): its middle sunk up to 4 cm, the more the higher the course, the top course's bags askew and the odd one gone;
 the bottom course sunk in the ground and a fillet of earth banked against the foot; every stack also gets its own
 weathering tint. A laid bag leaves out the faces a stack hides (its bed, its inner side, its ends against its

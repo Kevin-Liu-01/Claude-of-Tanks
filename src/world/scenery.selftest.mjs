@@ -622,7 +622,6 @@ assert.match(propsSource, /if \(wallB === 'fieldStone'\) wallDressing\.stoneUv\(
 assert.match(propsSource, /mesh\.name = 'props-sandbag-beds';/, 'the nests\' bedding draws as one mesh of its own');
 assert.match(propsSource, /materialKind === 'fieldStone' \? fieldStoneHook : grimeHook/, 'the field print has its own hook (wave 48)');
 assert.match(propsSource, /vMapUv \+= cotStoneShift;/, 'each wall module shifts its print window along the wall (wave 48: "the coursing visibly repeats")');
-assert.match(propsSource, /cls: 'break', mat: 'burlap', contact: 'ob'/, 'the sandbags draw the hessian (wave 48: "no burlap weave")');
 assert.match(propsSource, /bedSandbagNest\(kind, sx, sz, yaw \+ sideIndex \* 0\.12, 1\.18, \[fwdX, fwdZ\]\);/, 'a redoubt\'s stacks are bedded, their spoil thrown forward');
 assert.match(propsSource, /bedSandbagNest\(kind, bx, bz, moduleYaw, moduleScale, \[fx, fz\]\);/, 'a breastwork\'s modules are bedded toward the threat');
 assert.match(propsSource, /bedSandbagNest\(kind, sx, sz, yaw, scale\);/, 'a road nest is bedded');
