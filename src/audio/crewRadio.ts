@@ -9,8 +9,10 @@
  * Every transmission is keyed: the recorded key-up click in, the take
  * through a band-limited (24 dB/oct, 320 Hz–3.4 kHz), compressed and driven
  * intercom chain into a headset speaker roll-off, over the recorded net
- * static, the recorded release out. Nothing here is synthesized: a keyed
- * element still decoding is silent rather than replaced by a tone.
+ * static, the recorded release out. Nothing here is synthesized or stood in
+ * for: a keyed element still decoding is silent rather than replaced by a
+ * tone, and a line the crew's pack lacks is silent rather than spoken by
+ * another nation's crew.
  * A damaged radio narrows the band, adds drive, drops syllables and crackles.
  * The beds duck under speech.
  */
@@ -64,7 +66,8 @@ interface CrewRadioOptions {
   mixer: Mixer;
   library: AssetLibrary;
   random: () => number;
-  fallbackLanguage?: string;
+  /** The crew pack before the battle picks one (the engine sets the nation's at once). */
+  initialLanguage?: string;
 }
 
 function driveCurve(amount: number): Float32Array<ArrayBuffer> {
@@ -78,10 +81,10 @@ function driveCurve(amount: number): Float32Array<ArrayBuffer> {
   return curve;
 }
 
-export function createCrewRadio({ mixer, library, random, fallbackLanguage = 'en-US' }: CrewRadioOptions): CrewRadio {
+export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-US' }: CrewRadioOptions): CrewRadio {
   const ctx = mixer.ctx;
   const voiceBus = mixer.input('voice');
-  let language = fallbackLanguage;
+  let language = initialLanguage;
   let damage: 0 | 1 | 2 = 0;
 
   // ---- intercom chain (shared by every transmission): a 24 dB/oct telephone
@@ -183,17 +186,10 @@ export function createCrewRadio({ mixer, library, random, fallbackLanguage = 'en
     drive.curve = driveCurve(damage === 2 ? 0.75 : damage === 1 ? 0.45 : 0.25);
   }
 
+  /** The crew's own take, or nothing: every pack carries every line (crewRadio selftest), and one still decoding waits. */
   function bufferFor(id: string, take?: number): { buffer: AudioBuffer; lang: string } | null {
     const own = library.voice(language, id, random, take);
-    if (own) return { buffer: own, lang: language };
-    // A newly chosen pack is still decoding, not missing a take. Do not
-    // briefly speak another nation's lines while switching crews.
-    if (!library.voiceReady(language)) return null;
-    if (language === fallbackLanguage) return null;
-    const fallback = library.voice(fallbackLanguage, id, random, take);
-    // The fallback crew loads only when a national take is actually missing.
-    if (!fallback) void library.loadVoice(fallbackLanguage);
-    return fallback ? { buffer: fallback, lang: fallbackLanguage } : null;
+    return own ? { buffer: own, lang: language } : null;
   }
 
   function stopCurrent(): void {
@@ -313,8 +309,10 @@ export function createCrewRadio({ mixer, library, random, fallbackLanguage = 'en
     return true;
   }
 
+  /** Survival cuts anything below it, a decisive event cuts situational calls, and a report cuts flavour. */
   function canInterrupt(pri: number, now: number): boolean {
-    return !!currentSrc && currentEnd - now > 0.12 && ((pri >= 4 && currentPri < 4) || (pri >= 3 && currentPri <= 1));
+    return !!currentSrc && currentEnd - now > 0.12
+      && ((pri >= 4 && currentPri < 4) || (pri >= 3 && currentPri <= 1) || (pri >= 2 && currentPri === 0));
   }
 
   function enqueue(id: string, line: VoiceLineMeta, now: number, delayS: number, staleS: number | undefined, take: number | undefined): boolean {

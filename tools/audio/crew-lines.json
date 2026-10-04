@@ -1609,6 +1609,180 @@
       ]
     },
     {
+      "id": "gunship_cannon",
+      "role": "gunner",
+      "delivery": "crisp, steady",
+      "context": "In the AC-130 we select the 30 mm autocannon.",
+      "en-US": [
+        "Thirty mike-mike.",
+        "Thirty mil, up."
+      ],
+      "en-GB": [
+        "Thirty mil.",
+        "Thirty mil, ready."
+      ],
+      "de": [
+        "Dreißig Millimeter.",
+        "Maschinenkanone bereit."
+      ],
+      "ru": [
+        "Тридцатимиллиметровая.",
+        "Пушка тридцать, готова."
+      ],
+      "uk": [
+        "Тридцятиміліметрова.",
+        "Гармата тридцять, готова."
+      ],
+      "zh": [
+        "三十毫米炮。",
+        "三十毫米机炮就绪。"
+      ],
+      "fr": [
+        "Canon de trente.",
+        "Trente millimètres, prêt."
+      ],
+      "sv": [
+        "Trettio millimeter.",
+        "Automatkanonen klar."
+      ],
+      "ja": [
+        "三十ミリ。",
+        "三十ミリ機関砲、用意よし。"
+      ],
+      "ko": [
+        "30밀리.",
+        "30밀리 기관포 준비."
+      ],
+      "it": [
+        "Trenta millimetri.",
+        "Cannoncino da trenta, pronto."
+      ],
+      "pl": [
+        "Trzydziestka.",
+        "Działko trzydzieści, gotowe."
+      ],
+      "he": [
+        "שלושים מילימטר.",
+        "תותח שלושים, מוכן."
+      ]
+    },
+    {
+      "id": "gunship_howitzer",
+      "role": "gunner",
+      "delivery": "crisp, steady",
+      "context": "In the AC-130 we select the 152 mm howitzer.",
+      "en-US": [
+        "Howitzer.",
+        "One-five-two, up."
+      ],
+      "en-GB": [
+        "Howitzer.",
+        "One-five-two, ready."
+      ],
+      "de": [
+        "Haubitze.",
+        "Haubitze bereit."
+      ],
+      "ru": [
+        "Гаубица.",
+        "Гаубица, готова."
+      ],
+      "uk": [
+        "Гаубиця.",
+        "Гаубиця, готова."
+      ],
+      "zh": [
+        "榴弹炮。",
+        "一五二榴弹炮就绪。"
+      ],
+      "fr": [
+        "Obusier.",
+        "Obusier, prêt."
+      ],
+      "sv": [
+        "Haubits.",
+        "Haubitsen klar."
+      ],
+      "ja": [
+        "榴弾砲。",
+        "百五十二ミリ、用意よし。"
+      ],
+      "ko": [
+        "곡사포.",
+        "152밀리 곡사포 준비."
+      ],
+      "it": [
+        "Obice.",
+        "Obice, pronto."
+      ],
+      "pl": [
+        "Haubica.",
+        "Haubica gotowa."
+      ],
+      "he": [
+        "הוביצר.",
+        "הוביצר, מוכן."
+      ]
+    },
+    {
+      "id": "gunship_missile",
+      "role": "gunner",
+      "delivery": "crisp, steady",
+      "context": "In the AC-130 we select the guided missiles.",
+      "en-US": [
+        "Missile selected.",
+        "Missiles, up."
+      ],
+      "en-GB": [
+        "Missile selected.",
+        "Missiles ready."
+      ],
+      "de": [
+        "Flugkörper gewählt.",
+        "Flugkörper bereit."
+      ],
+      "ru": [
+        "Ракеты.",
+        "Ракеты, готовы."
+      ],
+      "uk": [
+        "Ракети.",
+        "Ракети, готові."
+      ],
+      "zh": [
+        "导弹。",
+        "导弹就绪。"
+      ],
+      "fr": [
+        "Missile sélectionné.",
+        "Missiles prêts."
+      ],
+      "sv": [
+        "Robot vald.",
+        "Robotar klara."
+      ],
+      "ja": [
+        "誘導弾、選択。",
+        "誘導弾、用意よし。"
+      ],
+      "ko": [
+        "유도탄 선택.",
+        "유도탄 준비."
+      ],
+      "it": [
+        "Missile selezionato.",
+        "Missili pronti."
+      ],
+      "pl": [
+        "Rakiety.",
+        "Rakiety gotowe."
+      ],
+      "he": [
+        "טילים.",
+        "טילים, מוכן."
+      ]
+    },
+    {
       "id": "ammo_low",
       "role": "loader",
       "delivery": "steady, concerned",
@@ -3406,6 +3580,122 @@
       ]
     },
     {
+      "id": "roof_gun_on",
+      "role": "gunner",
+      "delivery": "clipped, steady",
+      "context": "We switch on our roof / remote machine gun.",
+      "en-US": [
+        "Roof gun active.",
+        "Remote gun's up."
+      ],
+      "en-GB": [
+        "Roof gun active.",
+        "Remote weapon on."
+      ],
+      "de": [
+        "Dachwaffe aktiv.",
+        "Waffenstation an."
+      ],
+      "ru": [
+        "Зенитный пулемёт к бою.",
+        "Дистанционный модуль включён."
+      ],
+      "uk": [
+        "Зенітний кулемет до бою.",
+        "Дистанційний модуль увімкнено."
+      ],
+      "zh": [
+        "顶部机枪启用。",
+        "遥控武器站开启。"
+      ],
+      "fr": [
+        "Mitrailleuse de tourelleau active.",
+        "Tourelleau téléopéré en marche."
+      ],
+      "sv": [
+        "Takkulspruta aktiv.",
+        "Vapenstation på."
+      ],
+      "ja": [
+        "上部機銃、作動。",
+        "遠隔銃塔、作動。"
+      ],
+      "ko": [
+        "상부 기관총 작동.",
+        "원격 무장 작동."
+      ],
+      "it": [
+        "Mitragliatrice in torretta attiva.",
+        "Stazione d'arma attiva."
+      ],
+      "pl": [
+        "Karabin na wieży aktywny.",
+        "Moduł zdalny włączony."
+      ],
+      "he": [
+        "מקלע גג פעיל.",
+        "עמדת נשק מרחוק פעילה."
+      ]
+    },
+    {
+      "id": "suspension_set",
+      "role": "driver",
+      "delivery": "steady, controlled",
+      "context": "The hydropneumatic suspension lowers and tilts the hull to lay the fixed gun.",
+      "en-US": [
+        "Suspension set.",
+        "Hull lowered, set."
+      ],
+      "en-GB": [
+        "Suspension set.",
+        "Hull lowered, set."
+      ],
+      "de": [
+        "Fahrwerk eingestellt.",
+        "Wanne abgesenkt."
+      ],
+      "ru": [
+        "Подвеска выставлена.",
+        "Корпус опущен."
+      ],
+      "uk": [
+        "Підвіску виставлено.",
+        "Корпус опущено."
+      ],
+      "zh": [
+        "悬挂调整完毕。",
+        "车体已降低。"
+      ],
+      "fr": [
+        "Suspension réglée.",
+        "Caisse abaissée."
+      ],
+      "sv": [
+        "Fjädringen inställd.",
+        "Chassit sänkt."
+      ],
+      "ja": [
+        "懸架、調整よし。",
+        "車体、姿勢変換よし。"
+      ],
+      "ko": [
+        "현수장치 조정 완료.",
+        "차체 자세 조정 완료."
+      ],
+      "it": [
+        "Sospensioni regolate.",
+        "Scafo abbassato."
+      ],
+      "pl": [
+        "Zawieszenie ustawione.",
+        "Kadłub opuszczony."
+      ],
+      "he": [
+        "מתלים מכוונים.",
+        "הגוף הונמך."
+      ]
+    },
+    {
       "id": "ally_destroyed",
       "role": "commander",
       "delivery": "low, grim",
@@ -4101,6 +4391,122 @@
       ]
     },
     {
+      "id": "supply_ammo",
+      "role": "commander",
+      "delivery": "steady, clear",
+      "context": "Our AC-130 crew drops an ammunition crate for the tanks below.",
+      "en-US": [
+        "Ammo crate away.",
+        "Ammunition drop away."
+      ],
+      "en-GB": [
+        "Ammo crate away.",
+        "Ammunition drop released."
+      ],
+      "de": [
+        "Munitionskiste abgeworfen.",
+        "Munitionsabwurf raus."
+      ],
+      "ru": [
+        "Ящик с боеприпасами сброшен.",
+        "Сброс боеприпасов."
+      ],
+      "uk": [
+        "Ящик з боєприпасами скинуто.",
+        "Скидаю боєприпаси."
+      ],
+      "zh": [
+        "弹药箱已投放。",
+        "投放弹药。"
+      ],
+      "fr": [
+        "Caisse de munitions larguée.",
+        "Largage de munitions."
+      ],
+      "sv": [
+        "Ammunitionslåda släppt.",
+        "Ammunitionsfällning ute."
+      ],
+      "ja": [
+        "弾薬コンテナ、投下。",
+        "弾薬投下。"
+      ],
+      "ko": [
+        "탄약 상자 투하.",
+        "탄약 투하."
+      ],
+      "it": [
+        "Cassa munizioni sganciata.",
+        "Lancio munizioni."
+      ],
+      "pl": [
+        "Skrzynia z amunicją zrzucona.",
+        "Zrzut amunicji."
+      ],
+      "he": [
+        "ארגז תחמושת הוצנח.",
+        "מצניח תחמושת."
+      ]
+    },
+    {
+      "id": "supply_repair",
+      "role": "commander",
+      "delivery": "steady, clear",
+      "context": "Our AC-130 crew drops a repair crate for the tanks below.",
+      "en-US": [
+        "Repair crate away.",
+        "Repair kit drop away."
+      ],
+      "en-GB": [
+        "Repair crate away.",
+        "Repair drop released."
+      ],
+      "de": [
+        "Instandsetzungskiste abgeworfen.",
+        "Reparaturabwurf raus."
+      ],
+      "ru": [
+        "Ремкомплект сброшен.",
+        "Сброс ремкомплекта."
+      ],
+      "uk": [
+        "Ремкомплект скинуто.",
+        "Скидаю ремкомплект."
+      ],
+      "zh": [
+        "维修箱已投放。",
+        "投放维修物资。"
+      ],
+      "fr": [
+        "Caisse de réparation larguée.",
+        "Largage de réparation."
+      ],
+      "sv": [
+        "Reparationslåda släppt.",
+        "Reparationsfällning ute."
+      ],
+      "ja": [
+        "修理キット、投下。",
+        "修理資材投下。"
+      ],
+      "ko": [
+        "수리 상자 투하.",
+        "수리 키트 투하."
+      ],
+      "it": [
+        "Cassa riparazioni sganciata.",
+        "Lancio kit riparazione."
+      ],
+      "pl": [
+        "Skrzynia naprawcza zrzucona.",
+        "Zrzut zestawu naprawczego."
+      ],
+      "he": [
+        "ארגז תיקונים הוצנח.",
+        "מצניח ערכת תיקון."
+      ]
+    },
+    {
       "id": "friendly_fire",
       "role": "gunner",
       "delivery": "urgent, firm",
@@ -4684,6 +5090,122 @@
       "he": [
         "רחפן נכנס!",
         "רחפן מעלינו, להיאחז!"
+      ]
+    },
+    {
+      "id": "drone_launch",
+      "role": "commander",
+      "delivery": "clipped, focused",
+      "context": "We launch our own FPV drone from the tank.",
+      "en-US": [
+        "Drone up.",
+        "Launching drone."
+      ],
+      "en-GB": [
+        "Drone up.",
+        "Launching the drone."
+      ],
+      "de": [
+        "Drohne startet.",
+        "Drohne gestartet."
+      ],
+      "ru": [
+        "Дрон в воздухе.",
+        "Запускаю дрон."
+      ],
+      "uk": [
+        "Дрон у повітрі.",
+        "Запускаю дрон."
+      ],
+      "zh": [
+        "无人机起飞。",
+        "放出无人机。"
+      ],
+      "fr": [
+        "Drone en l'air.",
+        "Lancement du drone."
+      ],
+      "sv": [
+        "Drönaren i luften.",
+        "Skickar upp drönaren."
+      ],
+      "ja": [
+        "ドローン、発進。",
+        "ドローン射出。"
+      ],
+      "ko": [
+        "드론 이륙.",
+        "드론 띄운다."
+      ],
+      "it": [
+        "Drone in volo.",
+        "Lancio il drone."
+      ],
+      "pl": [
+        "Dron w powietrzu.",
+        "Wypuszczam drona."
+      ],
+      "he": [
+        "רחפן באוויר.",
+        "משגר רחפן."
+      ]
+    },
+    {
+      "id": "drone_lost",
+      "role": "commander",
+      "delivery": "flat, controlled",
+      "context": "We lost our own drone: battery empty, out of range or crashed.",
+      "en-US": [
+        "Lost the drone.",
+        "Drone's down, no feed."
+      ],
+      "en-GB": [
+        "Lost the drone.",
+        "Drone down, feed lost."
+      ],
+      "de": [
+        "Drohne verloren.",
+        "Drohne weg, kein Bild."
+      ],
+      "ru": [
+        "Дрон потерян.",
+        "Дрон упал, связи нет."
+      ],
+      "uk": [
+        "Дрон втрачено.",
+        "Дрон упав, зв'язку немає."
+      ],
+      "zh": [
+        "无人机失联。",
+        "无人机坠毁，没有画面。"
+      ],
+      "fr": [
+        "Drone perdu.",
+        "Drone abattu, plus d'image."
+      ],
+      "sv": [
+        "Drönaren förlorad.",
+        "Drönaren nere, ingen bild."
+      ],
+      "ja": [
+        "ドローン、喪失。",
+        "ドローン墜落、映像途絶。"
+      ],
+      "ko": [
+        "드론 손실.",
+        "드론 추락, 영상 끊김."
+      ],
+      "it": [
+        "Drone perso.",
+        "Drone abbattuto, niente video."
+      ],
+      "pl": [
+        "Dron stracony.",
+        "Dron spadł, brak obrazu."
+      ],
+      "he": [
+        "איבדנו את הרחפן.",
+        "הרחפן נפל, אין תמונה."
       ]
     },
     {

@@ -38,8 +38,12 @@ SFX manifest (`soundAssets.selftest.mjs` scans `play('…')` calls). New sounds
 come from the offline pipeline (`tools/audio/sfx-catalog.mjs` →
 `generate-sfx.mjs` → `build-sfx.mjs`), never hand-dropped files; voice lines
 from `crew-lines.json` → `build-voices.mjs`. Never synthesize a sound or add a
-fallback: every cue is a recorded asset, and one still decoding stays silent
-(`soundAssets.selftest.mjs` rejects any `createOscillator`). The ElevenLabs key
+fallback: every cue is a recorded asset, one still decoding stays silent
+(`soundAssets.selftest.mjs` rejects any `createOscillator`), no cue is chained in
+when another fails (`if (!play(a)) play(b)`) and no crew speaks another's take
+(`voiceTriggers.selftest.mjs` rejects both). A new crew line needs its game
+moment in that matrix, and a sound a moment depends on is pinned in the battle
+set rather than covered. The ElevenLabs key
 is read from `ELEVENLABS_API_KEY` or `ELEVENLABS_API_KEY_FILE` and never
 written to the repo.
 

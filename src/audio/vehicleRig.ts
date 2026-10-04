@@ -348,8 +348,9 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
           break;
         case 'stall':
           // The powertrain's own wind-down (a turbine spools down, a diesel
-          // coughs out); the generic stall covers an undecoded family.
-          if (!pool.play(`engine_${identity.engine}_stop`, { ...at, gainDb: -2 })) pool.play('engine_stall', { ...at, gainDb: -2 });
+          // coughs out), pinned with the battle's roster: never a generic
+          // stall standing in for it (owner 2026-10-04, no fallbacks).
+          pool.play(`engine_${identity.engine}_stop`, { ...at, gainDb: -2 });
           break;
         case 'restart':
           pool.play(`engine_${identity.engine}_start`, { ...at, gainDb: -3 });
