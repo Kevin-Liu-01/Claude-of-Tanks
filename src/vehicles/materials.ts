@@ -2296,10 +2296,14 @@ const VEHICLE_GROUND_DARK = 0.66;
 const VEHICLE_GROUND_H0 = 0.12;
 const VEHICLE_GROUND_H1 = 1.75;
 const VEHICLE_GROUND_IDLE_Y = -1e5;
-/** The ground reference every vehicle material's ground occlusion reads; set per draw by the drawn mesh. */
+/**
+ * The ground reference every vehicle material's ground occlusion reads; set per draw by the drawn mesh. Its forward
+ * axis (the root's +Z, the tank's forward) places the weathering's bow (vehicleWeathering.ts).
+ */
 const VEHICLE_GROUND = Object.freeze({
   uVehGround: { value: new THREE.Vector4(0, VEHICLE_GROUND_IDLE_Y, 0, 0) },
   uVehUp: { value: new THREE.Vector3(0, 1, 0) },
+  uVehFwd: { value: new THREE.Vector3(0, 0, 1) },
 });
 /** Point the ground occlusion at a vehicle root (its origin is the ground contact; its +Y the hull's up axis). */
 export function setVehicleGroundFromRoot(root: THREE.Object3D): void {
@@ -2307,11 +2311,14 @@ export function setVehicleGroundFromRoot(root: THREE.Object3D): void {
   VEHICLE_GROUND.uVehGround.value.set(e[12], e[13], e[14], 1);
   const n = Math.hypot(e[4], e[5], e[6]) || 1;
   VEHICLE_GROUND.uVehUp.value.set(e[4] / n, e[5] / n, e[6] / n);
+  const f = Math.hypot(e[8], e[9], e[10]) || 1;
+  VEHICLE_GROUND.uVehFwd.value.set(e[8] / f, e[9] / f, e[10] / f);
 }
 /** Release it: anything drawn without a vehicle root sees a far-below ground (no darkening). */
 export function resetVehicleGround(): void {
   VEHICLE_GROUND.uVehGround.value.set(0, VEHICLE_GROUND_IDLE_Y, 0, 0);
   VEHICLE_GROUND.uVehUp.value.set(0, 1, 0);
+  VEHICLE_GROUND.uVehFwd.value.set(0, 0, 1);
 }
 
 /**
@@ -2329,6 +2336,7 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   // 2026-10-04 (the vehicle-look lane, vehicleWeathering.ts): the battlefield's dust, mud, snow, seam grime and walked
   // wear, laid over the albedo, roughness and metalness before the light is gathered (the optics opt out: COT_VEH_CLEAN)
   bindVehicleWeatherUniforms(shader.uniforms);
+  shader.uniforms.uVehFwd = VEHICLE_GROUND.uVehFwd;
   shader.vertexShader = `${VEHICLE_WEATHER_VERTEX_PARS_GLSL}${shader.vertexShader}`.replace(
     '#include <begin_vertex>', `#include <begin_vertex>${VEHICLE_WEATHER_VERTEX_GLSL}`);
   shader.fragmentShader = shader.fragmentShader.replace('uniform vec3 uVehUp;\n', `uniform vec3 uVehUp;\n${VEHICLE_WEATHER_FRAGMENT_PARS_GLSL}`)

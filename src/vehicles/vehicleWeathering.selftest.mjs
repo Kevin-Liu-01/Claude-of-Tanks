@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import {
   CLEAN_VEHICLE_WEATHER, VEHICLE_WEATHER_BY_MAP, VEHICLE_WEATHER_FRAGMENT_GLSL, VEHICLE_WEATHER_LEVEL, VEHICLE_WEATHER_REACH_DRY_M,
   VEHICLE_WEATHER_REACH_WET_M, VEHICLE_WEATHER_SNOW, VEHICLE_WEATHER_PACKED_SNOW, VEHICLE_WEATHER_SNOW_LUMP, VEHICLE_WEATHER_SLUSH,
-  VEHICLE_WEATHER_SNOW_PACK_COVER, VEHICLE_WEATHER_SNOW_REACH_M, VEHICLE_WEATHER_SNOW_FLAT_CURVATURE,
+  VEHICLE_WEATHER_SNOW_PACK_COVER, VEHICLE_WEATHER_SNOW_FLAT_CURVATURE, VEHICLE_WEATHER_FILM_MAX,
   VEHICLE_WEATHER_MUD_ROUGHNESS, applyVehicleWeather,
   bindVehicleWeatherUniforms, garageVehicleWeather, liftedDustHex, mudColorOf, setVehicleWeatherLevel, syncVehicleWeather,
   vehicleWeatherForMap, vehicleWeatherLevelFor, vehicleWeatherState,
@@ -140,50 +140,88 @@ assert.match(VEHICLE_WEATHER_FRAGMENT_GLSL, /if \( uVehWeatherB\.z > 0\.5 && uVe
 assert.equal(shader.vertexShader.split('vCotVehObj = transformed;').length, 2, 'each part\'s own frame, once');
 assert.ok(shader.vertexShader.indexOf('#include <begin_vertex>') < shader.vertexShader.indexOf('vCotVehObj = transformed;'));
 for (const key of ['uVehWeatherA', 'uVehWeatherB', 'uVehDust', 'uVehMud']) assert.strictEqual(shader.uniforms[key], uniforms[key], `${key} bound`);
+// the bow: the drawn vehicle's forward axis rides the per-draw ground reference (materials.ts VEHICLE_GROUND)
+assert.deepEqual(shader.uniforms.uVehFwd?.value?.toArray(), [0, 0, 1], 'the forward axis is bound, +Z with no vehicle root');
+assert.equal(fragment.split('uniform vec3 uVehFwd;').length, 2, 'and declared once');
+// the track's recesses read the shoe's own normal: the vertex stage writes it on the track alone
+assert.match(shader.vertexShader, /#ifdef COT_VEH_TRACK\s+vCotVehObjN = objectNormal;\s+#endif/, 'the shoe\'s own normal, on the track');
+assert.ok(shader.vertexShader.indexOf('#include <beginnormal_vertex>') < shader.vertexShader.indexOf('vCotVehObjN = objectNormal;'),
+  'after objectNormal is declared');
 material.dispose();
 
-// 6. the height law (the GLSL's cvLow, noise at its mean): dust holds on the running gear and is gone well up the hull,
-// and wet mud stays lower than dry dust
+// 6. the height law (the GLSL's cvLow, noise at its mean): the film is whole at the ground, holds on the running gear
+// and the hull's foot, and is gone by its reach; wet mud stays lower than dry dust
 const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-const low = (h, wet) => 1 - smoothstep(0.12, VEHICLE_WEATHER_REACH_DRY_M + (VEHICLE_WEATHER_REACH_WET_M - VEHICLE_WEATHER_REACH_DRY_M) * wet, h);
-assert.ok(low(0.3, 0) > 0.85 && low(0.3, 1) > 0.7, 'the running gear (0.3 m) is under the dust');
+const clamp01 = (x) => Math.min(1, Math.max(0, x));
+const low = (h, wet) => clamp01(1 - (h - 0.1) / (VEHICLE_WEATHER_REACH_DRY_M + (VEHICLE_WEATHER_REACH_WET_M - VEHICLE_WEATHER_REACH_DRY_M) * wet - 0.1));
+assert.ok(low(0.3, 0) > 0.8 && low(0.3, 1) > 0.7, 'the running gear (0.3 m) is under the film');
+assert.ok(low(0.9, 0) > 0.4, 'and the hull\'s lower plates (0.9 m) carry a visible share of it (wave 55: "no dust film on the hull")');
 assert.ok(low(1.6, 0) === 0 && low(1.0, 1) === 0, 'the upper hull is past its reach');
 assert.ok(low(0.6, 1) < low(0.6, 0), 'mud stays lower than dust');
 assert.ok(VEHICLE_WEATHER_SNOW.every((v) => v > 0.75 && v < 0.9), 'snow is snow-white, not clipped white');
 
-// 7. the snow law (the GLSL's cvSnowTop and cvSnowPack at the breakup's quantiles, one octave: 10th percentile 0.24,
-// median 0.49, 90th percentile 0.74): a sheet of fresh snow on the deck, none on a curved top (a tyre's, a hub's), lumps
-// only on the running gear's flat tops; trodden snow packed along the track's bottom run with holes, and on nothing
-// else — never a veil over a whole wheel or shoe, never blotches over the whole gear, never snow where a chrome wheel
-// would mirror the snowfield or the sun
+// 7. the film keeps each material's own contrast (the GLSL's cotVehFilm, a log-space mix): under one desert film a black
+// tyre stays well darker than the painted wheel face and a dark camouflage patch lightens more than a pale one, where a
+// plain mix turned rubber, aluminium and steel into one tan (wave 55: "the same painted cardboard"); the film never seals
+const film = (base, dust, a) => Math.exp((1 - a) * Math.log(Math.max(base, 1e-3)) + a * Math.log(Math.max(dust, 1e-3)));
+const plain = (base, dust, a) => base + (dust - base) * a;
+const desertDust = new THREE.Color().setHex(VEHICLE_WEATHER_BY_MAP.desert.dustHex, THREE.SRGBColorSpace).g;
+const [tyre, wheel, darkPatch, palePatch] = [0.03, 0.3, 0.07, 0.42];
+assert.ok(film(wheel, desertDust, 0.6) / film(tyre, desertDust, 0.6) > 2.5, 'the dusty tyre stays well darker than the dusty wheel face');
+assert.ok(plain(wheel, desertDust, 0.6) / plain(tyre, desertDust, 0.6) < 1.6, '(where a plain mix all but equalled them)');
+assert.ok(film(darkPatch, desertDust, 0.4) / darkPatch > film(palePatch, desertDust, 0.4) / palePatch,
+  'a dark camouflage patch lightens more than a pale one: the camouflage fades into the dust toward the ground');
+assert.ok(VEHICLE_WEATHER_FILM_MAX < 0.9, 'the film never seals a material');
+assert.match(VEHICLE_WEATHER_FRAGMENT_GLSL, /diffuseColor\.rgb = cotVehFilm\( diffuseColor\.rgb, cvFilmCol, cvDust \);/, 'the GLSL blends the film so');
+assert.doesNotMatch(VEHICLE_WEATHER_FRAGMENT_GLSL, /mix\( diffuseColor\.rgb, mix\( uVehDust, uVehMud/, 'no plain replacing mix is left');
+
+// 8. the track (COT_VEH_TRACK), in a shoe's own frame (tankFactoryCore trackShoeGeometry: +Y the ground side, Z along the
+// run): its ground faces and grouser tops stay scraped steel; its recesses (the gaps between links and the grouser walls
+// along the run, the wheel side) pack dust and snow with holes; the shoe's ends take only the patchy film. A white or tan
+// bottom run read as "a bright white, plastic-looking chain that blends into the snow" (wave 55).
+const recess = (n) => Math.max(smoothstep(0.55, 0.85, Math.abs(n[2])), smoothstep(0.55, 0.85, -n[1]));
+const scraped = (n) => smoothstep(0.55, 0.85, n[1]);
+assert.equal(scraped([0, 1, 0]), 1, 'a pad or grouser top is scraped');
+assert.equal(recess([0, 1, 0]), 0, 'and no recess');
+assert.equal(recess([0, 0, 1]), 1, 'a face along the run (a grouser wall, the gap to the next link) is a recess');
+assert.equal(recess([0, -1, 0]), 1, 'and so is the wheel side');
+assert.equal(recess([1, 0, 0]) + scraped([1, 0, 0]), 0, 'the shoe\'s end is neither: the patchy film alone');
 const [lumpLo, lumpHi] = VEHICLE_WEATHER_SNOW_LUMP;
 const [coverLo, coverHi] = VEHICLE_WEATHER_SNOW_PACK_COVER;
 const [flatLo, flatHi] = VEHICLE_WEATHER_SNOW_FLAT_CURVATURE;
 const lerp = (a, b, t) => a + (b - a) * t;
 const flat = (curvaturePerM) => 1 - smoothstep(flatLo, flatHi, curvaturePerM);
-const snowTop = (up, b, lowness, curvaturePerM = 0) => flat(curvaturePerM) * smoothstep(0.55, 0.85, up + (b - 0.5) * 0.35)
-  * smoothstep(lerp(0.3, lumpLo, lowness), lerp(0.55, lumpHi, lowness), b);
-const trackPack = (h, b) => (1 - smoothstep(0.1, VEHICLE_WEATHER_SNOW_REACH_M, h + (b - 0.5) * 0.3)) * smoothstep(coverLo, coverHi, b);
+const snowTop = (up, b, lowness, curvaturePerM = 0, scrape = 0) => flat(curvaturePerM) * (1 - scrape)
+  * smoothstep(0.55, 0.85, up + (b - 0.5) * 0.35) * smoothstep(lerp(0.3, lumpLo, lowness), lerp(0.55, lumpHi, lowness), b);
+const snowPack = (n, b) => recess(n) * smoothstep(coverLo, coverHi, b);
+assert.equal(snowPack([0, 0, 1], 0.49), 1, 'snow packs a recess at the breakup\'s median');
+assert.equal(snowPack([0, 0, 1], 0.24), 0, 'with holes where the breakup is low');
+assert.equal(snowPack([0, 1, 0], 0.74) + snowTop(1, 0.74, 1, 0, scraped([0, 1, 0])), 0, 'a scraped face takes none, whatever the breakup');
+assert.equal(snowPack([1, 0, 0], 0.74), 0, 'nor the shoe\'s end');
+
+// 9. the snow law elsewhere (the GLSL's cvSnowTop at the breakup's quantiles, one octave: 10th percentile 0.24, median
+// 0.49, 90th percentile 0.74): a sheet of fresh snow on the deck, none on a curved top (a tyre's, a hub's), lumps only on
+// the running gear's flat tops — never a veil over a whole wheel, never blotches over the whole gear, never snow where a
+// chrome wheel would mirror the snowfield or the sun
 assert.ok(snowTop(1, 0.49, 0) > 0.75, 'the deck takes a sheet of fresh snow');
 assert.ok(snowTop(1, 0.49, 0, 1 / 1.5) > 0.75, 'and so does a broad turret curve (1.5 m radius)');
 assert.equal(snowTop(1, 0.74, 1, 1 / 0.35), 0, 'a tyre\'s top (0.35 m radius) sheds it, whatever the breakup');
 assert.equal(snowTop(1, 0.74, 1, 1 / 0.12), 0, 'and a hub\'s');
 assert.ok(snowTop(1, 0.49, 1) < 0.05, 'a flat running-gear top at the breakup\'s median shows its steel');
 assert.equal(snowTop(1, 0.74, 1), 1, 'fresh snow on a gear top only where a lump is');
-assert.equal(trackPack(0.05, 0.49), 1, 'the track\'s bottom run is packed');
-assert.equal(trackPack(0.05, 0.24), 0, 'with holes where the breakup is low');
-assert.equal(trackPack(0.6, 0.74), 0, 'nothing packs up the wraps, whatever the breakup');
-assert.ok(VEHICLE_WEATHER_SNOW_REACH_M < 0.5, 'the packed band stays on the bottom run and the wraps\' foot');
 const glsl = VEHICLE_WEATHER_FRAGMENT_GLSL;
 assert.doesNotMatch(glsl, /cvSnowPack > cvSnowTop \?/, 'fresh and trodden snow blend, no seam inside a lump');
 assert.match(glsl, /cvFlat = 1\.0 - smoothstep\( [0-9.]+, [0-9.]+,\s+length\( fwidth\( vNormal \) \) \/ max\( length\( fwidth\( vViewPosition \) \), 1e-4 \) \);/,
   'the curvature gate is the law above (the geometric normal\'s turn per metre)');
 assert.ok(glsl.indexOf('#ifndef FLAT_SHADED') < glsl.indexOf('fwidth( vNormal )'), 'a flat-shaded program has no vNormal');
-assert.match(glsl, /float cvSnowTop = cvFlat \* smoothstep/);
-const packAt = glsl.indexOf('#ifdef COT_VEH_TRACK');
-assert.ok(packAt > 0 && packAt < glsl.indexOf('cvSnowPack = cvSnowLow * smoothstep(') && glsl.indexOf('cvSnowPack = cvSnowLow * smoothstep(') < glsl.indexOf('#endif', packAt),
-  'the pack is the track\'s alone');
-assert.match(glsl, /float cvSnowLow = 1\.0 - smoothstep\( 0\.1, [0-9.]+, cvH \+ \( cvB - 0\.5 \) \* 0\.3 \);/, 'the GLSL is the law above');
+assert.match(glsl, /float cvSnowTop = cvFlat \* \( 1\.0 - cvScraped \) \* smoothstep/);
+assert.match(glsl, /float cvSnowPack = cvRecess \* smoothstep\( [0-9.]+, [0-9.]+, cvB \);/, 'the pack is the recesses\' alone');
+const trackAt = glsl.indexOf('#ifdef COT_VEH_TRACK');
+assert.ok(trackAt > 0 && glsl.indexOf('cvScraped = smoothstep( 0.55, 0.85, cvSN.y );') > trackAt
+  && glsl.indexOf('cvRecess = max( smoothstep( 0.55, 0.85, abs( cvSN.z ) ), smoothstep( 0.55, 0.85, -cvSN.y ) );') > trackAt,
+  'the GLSL classifies the shoe\'s faces as the law above, on the track alone');
+assert.match(glsl, /#elif defined\( USE_BUMPMAP \)\s+cvRecess = 1\.0 - smoothstep\( 0\.2, 0\.5, texture2D\( bumpMap, vBumpMapUv \)\.x \);/,
+  'the band reads its bump map\'s low ground');
 
 console.log(`vehicleWeathering.selftest: ${MAP_IDS.length} battlefield rows on their own dirt, climates in range, shared uniforms, `
   + 'change-only sync, Garage wear, QA switch, the layer once before the light, optics clean PASS');
