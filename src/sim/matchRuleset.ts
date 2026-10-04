@@ -436,6 +436,27 @@ export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangemen
   });
 }
 
+/**
+ * Earth's gravity lands with the whole game's bounce (physics lane round 3; gauntlet wave 23: "an Earth-gravity drop
+ * hops clear of the ground"): the basin's 30 % threw a 5.6 m/s landing at 1 g back off the ground.
+ */
+function gravityPhysics(physics: RulesetPhysics, gravity: MarsGravityId): RulesetPhysics {
+  return gravity === 'earth' ? Object.freeze({ ...physics, restitution: STANDARD_PHYSICS.restitution }) : physics;
+}
+
+/**
+ * The impact physics a hull of this mode lands by at this gravity. The client's prediction knows the room's mode and the
+ * gravity the authority sends it (viewer.modeGravityScale), not the Mars settings, and Gravity mode's Earth rewrites the
+ * mode's rebound (physics lane round 4: the prediction landed a 1 g hull at the basin's 30 % where the authority took
+ * 15 %, so a landing the authority settled bounced on the client and was corrected).
+ */
+export function rulesetPhysicsAt(mode: GameModeId, gravityScale: number): RulesetPhysics {
+  const physics = matchRulesetFor(mode).physics;
+  if (mode !== 'mars') return physics;
+  const gravity = MARS_GRAVITY_IDS.find((id) => Math.abs(MARS_GRAVITY_OPTIONS[id].gravityScale - gravityScale) < 1e-3);
+  return gravity ? gravityPhysics(physics, gravity) : physics;
+}
+
 export function matchRulesetFor(
   mode: GameModeId,
   campaign: CampaignRulesetInput | null = null,
@@ -481,6 +502,7 @@ export function matchRulesetFor(
     const world = MARS_GRAVITY_OPTIONS[gravity];
     ruleset = {
       ...ruleset, gravityScale: world.gravityScale, jumpMps: world.jumpMps, recoilLaunchScale: world.recoilLaunchScale,
+      physics: gravityPhysics(ruleset.physics, gravity),
       mars: marsRulesFor(gravity, caches),
     };
   }

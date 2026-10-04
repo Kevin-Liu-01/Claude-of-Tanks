@@ -5,6 +5,7 @@ import {
   pushHullFromObstacle, pushHullFromHull, rayCollisionFootprintEntry2,
   rayCollisionRecord, setCircleShape, setCompoundShape, setConvexShape, setObbShape,
   shellPassesThroughCollisionRecord, cloneCollisionRecord,
+  createHullFootprint, hullFootprint, hullPassesObstacleTop, hullUndersideOver,
 } from './collision.ts';
 
 const rec = (y1 = 3) => ({ min: [0, 0, 0], max: [0, y1, 0] });
@@ -212,6 +213,84 @@ assert.deepEqual(sharedOut, [], 'cell candidates still obey exact AABB rejection
   const cloned = cloneCollisionRecord(wingAndTower);
   assert.deepEqual(cloned.shape2.parts.map((part) => [part.y0, part.y1]), [[0, 2.5], [0, 9]],
     'cloning keeps every part extent');
+}
+
+// Footprints in either winding (2026-10-03; railyard battlePacing seed 28003 ran to the 900 s cap). Captured convex
+// parts arrive clockwise as well as counter-clockwise (935 parts in 503 records over the 33 maps' shards: structure roof
+// strips, cable spools, stooks, wire), and the route probe, the shell ray and the clearance test read every footprint
+// as counter-clockwise, so a clockwise part's inside was its outside: a shell through it passed, its centre was not in
+// it, and a route probe "hit" it from far off — railyard's 4 m hut at x 194-198 pulled a T-90A searching west of it
+// 90 m east to its corners, again and again, until the time limit.
+{
+  const area2 = (points) => points.reduce((sum, _, index) => (index % 2 ? sum : sum
+    + points[index] * points[(index + 3) % points.length] - points[(index + 2) % points.length] * points[index + 1]), 0);
+  // the railyard hut's clockwise wall sliver, as captured, and the route probe the T-90A cast from (102.3, 9.3)
+  const sliverPoints = [195.158, -21.968, 196.545, -22.006, 195.174, -22.006];
+  assert.ok(area2(sliverPoints) < 0, 'the captured sliver winds clockwise');
+  const sliver = setConvexShape(rec(0.9), sliverPoints);
+  const probeX = 75 - 102.3, probeZ = -25 - 9.3, probeLength = Math.hypot(probeX, probeZ);
+  assert.equal(rayCollisionFootprintEntry2(sliver, 102.3, 9.3, probeX / probeLength, probeZ / probeLength, 85, 3.2), null,
+    'a route probe passing 95 m clear of a clockwise sliver misses it (it read a hit at 35.9 m)');
+  const n = new Vector3();
+  for (const [winding, points] of [
+    ['clockwise', [-2, -1, -2, 1, 2, 1, 2, -1]],
+    ['counter-clockwise', [2, -1, 2, 1, -2, 1, -2, -1]],
+  ]) {
+    assert.equal(Math.sign(area2(points)), winding === 'clockwise' ? -1 : 1, `the ${winding} block winds ${winding}`);
+    const block = setConvexShape(rec(3), points);
+    const hit = rayCollisionRecord(new Vector3(-10, 1, 0.3), new Vector3(1, 0, 0), block, 20, n);
+    assert.ok(Math.abs(hit - 8) < 1e-9 && Math.abs(n.x + 1) < 1e-9 && Math.abs(n.z) < 1e-9,
+      `a shell through the ${winding} block hits its near face at 8 m, normal outward (${hit}, ${n.x}, ${n.z})`);
+    assert.equal(rayCollisionRecord(new Vector3(-10, 1, 4), new Vector3(1, 0, 0), block, 20, n), -1,
+      `a shell passing 3 m clear of the ${winding} block misses it`);
+    assert.ok(Math.abs(rayCollisionRecord(new Vector3(0, 10, 0), new Vector3(0, -1, 0), block, 20, n) - 7) < 1e-9,
+      `a plunging shell meets the ${winding} block's roof`);
+    assert.equal(collisionFootprintContainsPoint(block, 0, 0, 0), true, `the ${winding} block holds its centre`);
+    assert.equal(collisionFootprintContainsPoint(block, 0, 1.4, 0), false, `a point 0.4 m off the ${winding} block's side is outside it`);
+    assert.equal(collisionFootprintContainsPoint(block, 0, 1.4, 0.5), true, `a 0.5 m clearance reaches past the ${winding} block's side`);
+    assert.ok(Math.abs(rayCollisionFootprintEntry2(block, -10, 0, 1, 0, 20, 1) - 7) < 1e-9,
+      `a route probe through the ${winding} block meets its 1 m clearance at 7 m`);
+    assert.equal(rayCollisionFootprintEntry2(block, -10, 3, 1, 0, 20, 1), null,
+      `a route probe 2 m clear of the ${winding} block passes its 1 m clearance`);
+  }
+}
+
+// A nose or tail row alone over a record clears its parts as the track plane under it does, the tracks that meet them
+// next; only standing on a top counts the step-up against it (round 3, Aegis Crossing: a viaduct span's 15 cm sub-deck
+// slab a metre under the deck stopped a hull with no nose lift dead at every span joint, its nose read 0.55 m under its
+// tracks). The boulder rule stands: a nose at 0.7 m does not step a level hull onto a 1.2 m rock; and a high glacis
+// does not carry the hull over a low wall its tracks then meet.
+{
+  const rect = { centerX: 0, centerZ: 0, halfLength: 3.2, halfWidth: 1.6, frontLiftM: 0, rearLiftM: 0 };
+  const foot = hullFootprint(rect, 0, 0, 0, 0, 0, createHullFootprint());
+  // the next span: its slab 1 m under the deck the hull drives on (root at the deck top, y 2), its parapets over it
+  const span = setCompoundShape({ min: [0, -38, 0], max: [0, 3.1, 0], kind: 'bridge' }, [
+    { kind: 'obb', cx: 0, cz: 3 + 7.5, hw: 9, hl: 7.5, yaw: 0, y0: 0.83, y1: 0.98 },
+    { kind: 'obb', cx: 8.8, cz: 3 + 7.5, hw: 0.2, hl: 7.5, yaw: 0, y0: 2, y1: 3.1 },
+  ]);
+  const stand = hullUndersideOver(span, foot, 2);
+  assert.ok(Math.abs(stand - 1.45) < 1e-9 && Math.abs(foot.clearBottom - 2) < 1e-9,
+    `only the nose is over the next span: it stands as 1.45, clears as 2 (${stand}, ${foot.clearBottom})`);
+  const out = { x: 0, z: 0 };
+  assert.equal(pushHullFromObstacle({ x: 0, z: 0 }, 0, 1, 1, 0, 3.2, 1.6, span, out, stand, 4.5, foot.clearBottom), false,
+    'a nose a metre over the span\'s sub-deck slab passes over it (it was pushed back 0.31 m a step)');
+  assert.equal(hullPassesObstacleTop(stand, 0.98, 0.83, true, foot.clearBottom), true, 'the slab is cleared');
+  assert.equal(hullPassesObstacleTop(stand, 0.98, 0.83, true), false, 'read by the standing underside, it was not');
+  // a level hull nosing into a 1.2 m rock, its nose 0.7 m up: the rock is a wall, not a step
+  const lifted = hullFootprint({ ...rect, frontLiftM: 0.7 }, 0, 0, 0, 0, 0, createHullFootprint());
+  const rock = setObbShape({ min: [0, 0, 0], max: [0, 1.2, 0] }, 0, 3.4, 1.5, 0.3, 0);
+  const rockStand = hullUndersideOver(rock, lifted, 0);
+  assert.equal(hullPassesObstacleTop(rockStand, 1.2, 0, true, lifted.clearBottom), false, 'the nose does not step onto the rock');
+  // a glacis 1.2 m up over a 0.5 m wall clears it by its own height, never by its tracks: the wall stays a wall
+  const glacis = hullFootprint({ ...rect, frontLiftM: 1.2 }, 0, 0, 0, 0, 0, createHullFootprint());
+  const wall = setCompoundShape({ min: [0, 0, 0], max: [0, 0.5, 0] }, [
+    { kind: 'obb', cx: 0, cz: 3.4, hw: 2, hl: 0.2, yaw: 0, y0: 0, y1: 0.5 },
+  ]);
+  const wallStand = hullUndersideOver(wall, glacis, 0);
+  assert.ok(Math.abs(wallStand - 0.65) < 1e-9 && Math.abs(glacis.clearBottom) < 1e-9,
+    `the glacis stands as 0.65, clears as its tracks, 0 (${wallStand}, ${glacis.clearBottom})`);
+  assert.equal(pushHullFromObstacle({ x: 0, z: 0 }, 0, 1, 1, 0, 3.2, 1.6, wall, { x: 0, z: 0 }, wallStand, 4.5,
+    glacis.clearBottom), true, 'the low wall pushes the hull whose glacis is over it');
 }
 
 console.log('collision.selftest: exact environment shapes and spatial broad phase passed');

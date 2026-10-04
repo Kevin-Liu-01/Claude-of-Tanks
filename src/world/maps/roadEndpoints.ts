@@ -77,13 +77,19 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   // carries it on to the east road; a second crossing of the loop compressed its grade between two junction plateaus.
   caldera: [['loop', 'loop'], through, through, join(1, 0), join(1, 2)],
   foundry: [...Array.from({ length: 6 }, () => through), join(0, 2), join(0, 2), join(0, 2)],
-  ruinspires: Array.from({ length: 12 }, () => through),
+  // Ruinspires redesign (2026-10-02): the boulevard runs edge to edge; each trunk road leaves it for its edge; each
+  // terrace street's halves run from a boulevard crossing to the trunk and on to the other crossing; each cross street
+  // links the boulevard to its terrace street.
+  ruinspires: [through, [{ junction: 0 }, 'boundary'], [{ junction: 0 }, 'boundary'], join(0, 1), join(1, 0), join(0, 2),
+    join(2, 0), join(0, 4), join(0, 6), join(0, 3), join(0, 5)],
   blackglass: Array.from({ length: 6 }, () => through),
   titan_gorge: [through, through, through, join(0, 2), join(0, 1)],
   skybridge: [through, through, through, join(0, 2), join(0, 1)],
   polders: [join(1, 3), through, through, through, join(1, 3)],
   copper_mesa: [through, through, through, through, join(1, 3)],
-  airfield: [through, through, through, through, join(2, 3), join(2, 3)],
+  // Kestrel Airfield redesign (2026-10-02): the runway road runs edge to edge; each access road climbs from its edge to
+  // the runway road; each taxiway half runs from the runway road at the runway's end to the runway road at its centre.
+  airfield: [through, ['boundary', { junction: 0 }], ['boundary', { junction: 0 }], join(0, 0), join(0, 0)],
   oasis: [through, through, through, join(1, 2), join(1, 2)],
   whiteout: [join(1, 3), through, through, through, join(1, 3)],
   orchard: [through, through, through, join(1, 2), join(1, 2)],
@@ -96,8 +102,12 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   reservoir: [['boundary', { junction: 4 }], join(0, 4), join(0, 1), join(0, 1), through],
   // Mars (round 23): the default two-road grid, both routes leaving the basin
   mars: [through, through],
-  moon: [through, through, join(0, 1)],
-  cliffbridge: [through, through, join(0, 1), join(0, 1)],
+  // Earthrise Basin redesign (2026-10-02): the saddle track and the valley track run edge to edge; each survey loop
+  // leaves the valley track and returns to it.
+  moon: [through, through, join(1, 1), join(1, 1)],
+  // Aegis Crossing redesign (2026-10-02): the main road runs edge to edge over the viaduct; each ford road leaves the
+  // main road at a town's edge for its ford, where its other half starts and returns to the main road.
+  cliffbridge: [through, join(0, 2), join(1, 0), join(0, 4), join(3, 0)],
 };
 
 /** Segment intersection, including touching and collinear overlap. The
@@ -237,7 +247,7 @@ export function gradeRoadPortals(mapId: string | undefined, roads: readonly (rea
 /** Preserve the existing road bake before adding exits on three reviewed maps.
  * All other maps retain their previous construction order exactly. */
 export function usesInheritedRoadGrades(mapId: string | undefined): boolean {
-  return mapId === 'blackglass' || mapId === 'titan_gorge' || mapId === 'skybridge';
+  return mapId === 'blackglass';
 }
 
 function sampleRoadGrade(point: RoadPoint, road: readonly RoadPoint[], elevations: readonly number[]): number {

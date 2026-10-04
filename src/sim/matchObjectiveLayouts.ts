@@ -14,8 +14,36 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // yard — three graded aprons in the map file — a
   // south-west / centre / north-east diagonal. Both authorities revalidate each disc against the current terrain
   // and manifest and relocate any hint the ground no longer clears.
-  cliffbridge: { kickoff: { x: 0, z: -155 }, zones: [{ x: 0, z: -155 }, { x: 0, z: 155 }, { x: 360, z: 0 }] },
-  steppe: { zones: [{ x: 60, z: 90 }, { x: 292, z: 312 }, { x: -330, z: -240 }] },
+  // Aegis Crossing (redesign 2026-10-02): mirror-symmetric across the gorge's axis — the two bridgehead market squares
+  // (level aprons in the map file) and the gorge floor west of the viaduct, where the mills stood; the turbo-ball
+  // kickoff on the gorge floor east of it. Both teams reach the floor from the fords at the gorge's two ends.
+  cliffbridge: { kickoff: { x: 130, z: 0 }, zones: [{ x: 0, z: -172 }, { x: 0, z: 172 }, { x: -130, z: 0 }] },
+  // Amberford (layout brief, 2026-10-03): the three greens — the sunken lane's green in the south-bank orchards near the
+  // southern deployment, the ford green on the line of equal drives and the fair green near the northern arc; the
+  // kickoff on the north-bank meadow between the bridge and the ford (2026-10-03: 8 m north, where the bounded search
+  // seats it beside the meandering river).
+  autumn: { kickoff: { x: 119, z: 42 }, zones: [{ x: 22, z: -192 }, { x: 154, z: 54 }, { x: 0, z: 102 }] },
+  // Frosthollow (layout brief, 2026-10-03): three zones across the valley's waist — the terrace hay meadow behind the
+  // sawmill, the Bystra crossing's east-bank landing and the moraine crossroads (the last two graded aprons in the map
+  // file); the kickoff on the Bystra crossing itself.
+  winter: { kickoff: { x: 10, z: 0 }, zones: [{ x: -175, z: 65 }, { x: 95, z: -5 }, { x: 190, z: -40 }] },
+  // Nordhavn Fjord (layout brief, 2026-10-03): three zones on the line of equal drives from the upper town under the
+  // western cliff, through the harbour road in the lower town (also the turbo-ball kickoff), to the curing yards above
+  // the harbour; each team's nearest, middle and farthest zone lie within 1 % of the other's.
+  fjord: { kickoff: { x: 40, z: -65 }, zones: [{ x: -200, z: 35 }, { x: 40, z: -65 }, { x: 150, z: -110 }] },
+  // Sunscar Oasis (layout brief, 2026-10-03): three zones across the spring's waist — the palm grove on the spring's
+  // east shore, the palm belt west of the town (also the turbo-ball kickoff) and the souk; the bounded search's seats,
+  // each team's nearest, middle and farthest zone within 2 % of the other's.
+  oasis: { kickoff: { x: 29.1, z: 4.4 }, zones: [{ x: -72.5, z: -11.2 }, { x: 29.1, z: 4.4 }, { x: 157.8, z: 12.6 }] },
+  // Whiteout Station (layout brief, 2026-10-03): three zones across the station — the motor pool yard, the service
+  // court (also the turbo-ball kickoff, beside it) and the melt pan's frozen west shore; the bounded search's seats,
+  // each team's nearest, middle and farthest zone within 3 % of the other's.
+  whiteout: { kickoff: { x: -53.7, z: 5 }, zones: [{ x: -154.9, z: 25.1 }, { x: -48.1, z: 10.7 }, { x: 50.5, z: -7.7 }] },
+  // Tarkhan Steppe (layout brief, 2026-10-02): the three aprons — the station's grain yard by the ford on the line of
+  // equal drives, the post-road halt on the plateau near the northern arc and the kolkhoz yard near the southern
+  // deployment, each team's home zone as far from it as the other's; the kickoff on the wadi's north bank (the bounded
+  // search's seat, 420 / 375 m: the bed between them is the crusts' soft ground).
+  steppe: { kickoff: { x: -77.1, z: 76.4 }, zones: [{ x: 271, z: -64 }, { x: 206, z: 360 }, { x: -330, z: -240 }] },
   // Glacier Pass (redesign 2026-10-03): three discs on the line of equal driven distance — the col yard east of the
   // west pass road (a level apron in the map file), the lake ice off the village (also the turbo-ball kickoff) and the
   // lake ice by the east shore. The frozen lake is firm, level ground, so the two ice discs seat as they lie.
@@ -24,10 +52,15 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // file — the west street's yard, the casting yard below the blast furnace block (also the turbo-ball kickoff) and the
   // slag road's yard in the south-east.
   foundry: { kickoff: { x: 0, z: -72 }, zones: [{ x: -258, z: 50 }, { x: 0, z: -72 }, { x: 200, z: -176 }] },
+  // Titan Gorge (redesign 2026-10-03, the deployments at the gorge's two ends): three discs on the line of equal driven
+  // distance across the canyon floor — the western switchback's yard (a tilted apron in the map file), the crossroads
+  // below the old town on the deployments' bisector (a validated seat on the floor, also the turbo-ball kickoff) and
+  // the eastern shelf road's yard, the western yard's rotation about the centre (a level apron). Driven reach
+  // 549 / 454 m, 417 / 398 m and 449 / 554 m.
+  titan_gorge: { kickoff: { x: 0, z: 10 }, zones: [{ x: -250, z: 50 }, { x: 0, z: 10 }, { x: 250, z: -50 }] },
   // Validated full-disc results of the bounded search on these constrained
   // maps. Start with the known clearings; changed terrain still revalidates
   // every footprint and both-team connection before using the ordinary search.
-  titan_gorge: { zones: [{ x: -42.91761885802029, z: 130.9474125982917 }, { x: 10, z: 50 }, { x: 70, z: 250 }] },
   // Sirocco Wadi (redesign 2026-10-01): three gravel bars in the wadi bed, rotationally symmetric about the ford — the
   // gap between the mesas, the souk ground at the ford (also the turbo-ball kickoff), the eastern fan. Each is a graded
   // apron in the map file, so the discs seat where they are authored and both teams drive the same distances.
@@ -73,15 +106,49 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // Jade River Delta (redesign 2026-10-02): the market square on the char (also the turbo-ball kickoff) and a
   // rice-drying yard on each bank, rotationally symmetric about the char's centre.
   delta: { kickoff: { x: -4, z: 14 }, zones: [{ x: -151, z: 43 }, { x: -4, z: 14 }, { x: 143, z: -15 }] },
-  // Highland Reservoir (redesign 2026-10-02): the waterworks' three gravel yards on the line of equal driven distance
-  // between the deployments — the north bank's timber landing, the shore yard (also the turbo-ball kickoff), the
-  // south yard.
+  // Monsoon Ridge (redesign 2026-10-02): three discs on the line of equal driven distance between the deployments — the
+  // temple forecourt astride the west road and the tea estate's drying yard (aprons in the map file) and the hill
+  // town's square (also the turbo-ball kickoff).
   monsoon: { kickoff: { x: -60, z: 24 }, zones: [{ x: -306, z: 16 }, { x: -60, z: 24 }, { x: 400, z: 8 }] },
   // Obsidian Caldera (redesign 2026-10-03): three discs on the line of equal driven distance — the Sulphur Works' yard
   // by the west road, the settlement's west end on the basin floor (also the turbo-ball kickoff), the eastern Loading
   // Yard. The two yards are graded aprons in the map file; the settlement's floor seats its disc as it lies.
   caldera: { kickoff: { x: -120, z: 0 }, zones: [{ x: -332, z: 96 }, { x: -120, z: 0 }, { x: 340, z: -200 }] },
+  // Highland Reservoir (redesign 2026-10-02): the waterworks' three gravel yards on the line of equal driven distance
+  // between the deployments — the north bank's timber landing, the shore yard (also the turbo-ball kickoff), the
+  // south yard.
   reservoir: { kickoff: { x: 88, z: 8 }, zones: [{ x: -8, z: 154 }, { x: 88, z: 8 }, { x: 12, z: -170 }] },
-  skybridge: { zones: [{ x: -176.06506695110778, z: 137.3917255616368 }, { x: 89.52728122683749, z: -163.28455235885394 }, { x: 110, z: -30 }] },
-  copper_mesa: { zones: [{ x: 95.75601429460295, z: 25.16493186989846 }, { x: 103.52551824388397, z: -48.38643546884091 }, { x: 159.75453586673763, z: -8.089799185507083 }] },
+  // Ruinspires (redesign 2026-10-02): the boulevard's three squares, level aprons in the map file, rotationally
+  // symmetric about the Square of the Republic (also the turbo-ball kickoff).
+  ruinspires: { kickoff: { x: 0, z: 0 }, zones: [{ x: -225, z: 0 }, { x: 0, z: 0 }, { x: 225, z: 0 }] },
+  // Kestrel Airfield (redesign 2026-10-02): the cargo apron, the runway's centre (also the turbo-ball kickoff) and the
+  // terminal apron, rotationally symmetric about the runway's centre; the two aprons and the holding apron at the
+  // runway's centre are level aprons in the map file.
+  airfield: { kickoff: { x: 0, z: 0 }, zones: [{ x: -225, z: -150 }, { x: 0, z: 0 }, { x: 225, z: 150 }] },
+  // Earthrise Basin (redesign 2026-10-02): the outpost's landing field (also the turbo-ball kickoff) and the open
+  // floor either side of it on the valley track, rotationally symmetric about the landing field.
+  moon: { kickoff: { x: 0, z: 0 }, zones: [{ x: -102, z: 30 }, { x: 0, z: 0 }, { x: 102, z: -30 }] },
+  // Orchard Valley (layout brief, 2026-10-02): the bounded search's validated seats, west of the bathhouse village, in
+  // its square and east of it on the valley road; the kickoff beside the square.
+  orchard: { kickoff: { x: -36.4, z: 3.9 }, zones: [{ x: -98.7, z: 60.1 }, { x: -36.4, z: -4.1 }, { x: 68.2, z: -4.5 }] },
+  // Longleaf Crossing (layout brief, 2026-10-02): the western loading bays (nearer the northern landing), the crossing
+  // south of the timber yard (nearer the southern height) and the eastern cut on the line of equal drives, so each
+  // team's nearest, middle and farthest zones lie within 6 % of the other's; the kickoff on that line.
+  longleaf: { kickoff: { x: 25, z: -20 }, zones: [{ x: -147.5, z: 83.2 }, { x: -10, z: -45 }, { x: 95, z: -20 }] },
+  // Skybridge Chasm (redesign 2026-10-03, the layout turned about the shoulder system's middle (5, 60)): three discs on
+  // the line of equal driven distance, each on an apron in the map file — the west lane's yard, the gorge's west shore
+  // between the lake and the west middle segment (also the turbo-ball kickoff) and the east lane's yard. Driven reach
+  // 495 / 484 m, 407 / 428 m and 465 / 508 m.
+  skybridge: { kickoff: { x: -139, z: 49 }, zones: [{ x: -300, z: 62 }, { x: -139, z: 49 }, { x: 310, z: 42 }] },
+  // Olympus Basin (layout 2026-10-03, turned about the station): three discs on yards of equal driven reach — the
+  // north-west yard (bravo's near zone) and the south-east yard (alpha's near zone), each the other's rotation about the
+  // station and each an apron in the map file, and the station's west yard on the deployments' bisector (a validated seat
+  // on its floor, also the turbo-ball kickoff). Driven reach (the blocks 257 m out) 417 / 274 m, 278 / 273 m and
+  // 269 / 415 m.
+  mars: { kickoff: { x: -40, z: 36 }, zones: [{ x: -170, z: 120 }, { x: -40, z: 36 }, { x: 185, z: -80 }] },
+  // Copper Mesa (layout brief, 2026-10-02): the zones keep their validated seats on the loading shelf; the turbo-ball
+  // kickoff is the bounded search's validated seat by the pit's rim, which both teams reach over near-equal drives.
+  copper_mesa: { kickoff: { x: -42.48600289336476, z: -3.085425678063796 }, zones: [
+    { x: 95.75601429460295, z: 25.16493186989846 }, { x: 103.52551824388397, z: -48.38643546884091 },
+    { x: 159.75453586673763, z: -8.089799185507083 }] },
 };

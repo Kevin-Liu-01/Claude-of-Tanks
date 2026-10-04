@@ -164,7 +164,12 @@ for (const config of maps) {
   assert.ok(config.vegetation.clusterCount <= 66 && config.vegetation.loneCount <= 98
     && config.vegetation.rimCount <= 108, `${label}: foliage stays below existing moderate maps`);
   assert.ok(config.vegetation.grassDensity <= 1.06, `${label}: no grass-density escalation`);
-  assert.ok(config.props.plan.length >= 16 && config.props.plan.length <= 18, `${label}: bounded settlement plan`);
+  // A settlement authored as planned sites (Kestrel Airfield, 2026-10-02: thirteen rotation pairs, where the roadside
+  // plan had stacked its buildings along the first roads) counts them with the plan, within the old airfield's 16 plan
+  // buildings and 6 sites plus two pairs.
+  const plannedSites = config.props.plannedSites?.length ?? 0;
+  const settlement = config.props.plan.length + plannedSites;
+  assert.ok(settlement >= 16 && settlement <= (plannedSites ? 26 : 18), `${label}: bounded settlement plan`);
   assert.ok(config.props.rocks <= 224 && config.props.outcrops <= 42, `${label}: bounded geological dressing`);
   assert.equal(config.props.tankWrecks.count, 5, `${label}: fixed five-wreck authoring budget`);
   assert.ok(config.props.inhabit.looseClutter <= 22 && config.props.inhabit.modernClutter <= 22,

@@ -82,10 +82,9 @@ export default {
   },
   spawns: {
     player: { x: -214, z: -385 },
-    enemies: [
-      { x: -220, z: 384 }, { x: -146, z: 418 }, { x: -70, z: 374 },
-      { x: 12, z: 414 }, { x: 94, z: 370 }, { x: 176, z: 405 }, { x: 248, z: 354 },
-    ],
+    // Bravo deploys in a 4 x 2 block like alpha's, centred where its old line of pads had its centroid, so every
+    // objective keeps its reach (the bots lane, 2026-10-03: a corner block against a 500 m line of pads leans the battle).
+    enemies: [{ x: 23.3, z: 383.7 }, { x: 15.3, z: 383.7 }, { x: 7.3, z: 383.7 }, { x: -0.7, z: 383.7 }, { x: 23.3, z: 393.7 }, { x: 15.3, z: 393.7 }, { x: 7.3, z: 393.7 }],
   },
   splat: {
     grassTone: (h: number, s: number, l: number) => [0.575, 0.025, clamp01(0.64 + l * 0.36)],
