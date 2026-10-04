@@ -59,7 +59,7 @@ import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
 import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
-import { LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
+import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -3215,8 +3215,8 @@ const MASK_STACK_GUTTER = 64;
 /**
  * The ground mask with the land-use bake stacked under it (2026-10-03, the GPU fix): one RGBA8 texture, so the material
  * reads the bake through the mask's own sampler (it sits at the 16-unit limit). Rows [0, W) the mask, then 64 rows
- * repeating its last row, 64 repeating the bake's first, then the bake's two layers of n rows each (landUse.ts
- * bakeLandUseSteps; every row padded to W with its last texel). The mask and the bake start and end on 64-row
+ * repeating its last row, 64 repeating the bake's first, then the bake's layers of n rows each (landUse.ts
+ * bakeLandUseSteps: the field, its edge offsets, the warp's Jacobian; every row padded to W with its last texel). The mask and the bake start and end on 64-row
  * boundaries, so the mip chain's box filter never mixes them below level 6 and the mask keeps its own mips; its reads
  * clamp half a texel inside its rows (maskAt) and the bake is fetched exactly at level 0 (lu_field). Without a bake the
  * mask goes through unchanged (the stack's uniforms then address it whole).
@@ -3228,8 +3228,9 @@ export function stackLandUseBake(ground: THREE.DataTexture, bake: Uint8Array | n
   if (!bake) {
     return { texture: ground, stack: new THREE.Vector4(1, 0.5 / W, 1 - 0.5 / W, 1 / rows), bake: new THREE.Vector4(1, MAP_SIZE, 0, 1 / W) };
   }
-  if (n > W || bake.length !== n * n * 8) throw new Error('stackLandUseBake: the bake must be two n × n RGBA8 layers with n ≤ the mask width');
-  const row0 = rows + 2 * MASK_STACK_GUTTER, H = row0 + 2 * n;
+  const layers = bake.length / (n * n * 4);
+  if (n > W || !Number.isInteger(layers) || layers < 1) throw new Error('stackLandUseBake: the bake must be whole n × n RGBA8 layers with n ≤ the mask width');
+  const row0 = rows + 2 * MASK_STACK_GUTTER, H = row0 + layers * n;
   const data = new Uint8Array(W * H * 4);
   const src = ground.image.data as Uint8Array;
   data.set(src.subarray(0, W * rows * 4));
@@ -3244,7 +3245,7 @@ export function stackLandUseBake(ground: THREE.DataTexture, bake: Uint8Array | n
   };
   bakeRow(0);
   for (let r = 0; r < MASK_STACK_GUTTER; r++) data.set(padded, (rows + MASK_STACK_GUTTER + r) * W * 4);
-  for (let j = 0; j < 2 * n; j++) data.set(bakeRow(j), (row0 + j) * W * 4);
+  for (let j = 0; j < layers * n; j++) data.set(bakeRow(j), (row0 + j) * W * 4);
   const texture = new THREE.DataTexture(data, W, H, THREE.RGBAFormat);
   texture.flipY = false;
   texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
@@ -3613,6 +3614,9 @@ void splatCompute() {
   vec3 wn = normalize(vWNormal);
   vec2 mUV = wp.xz / uMaskSize + 0.5;
   vec4 mk = maskAt(mUV);
+  // ground lane (the GPU cut, hold 16): the land use's bake goes out with the ground mask's own read
+  vec4 luA = vec4(0.0), luB = vec4(0.0), luK = vec4(0.5); ivec2 luT = ivec2(0);
+  if (uLandA.x > 0.001) lu_fetch(wp.xz, luA, luB, luK, luT);
   // vista pass (2026-09-19): the horizon ring's rim bands render with this material past the playable square,
   // where the clamped mask edge would drag any rim road, shoulder or town wear outward as a radial streak;
   // fade those channels to open ground there (the landform/marsh channel keeps its edge value)
@@ -4175,7 +4179,7 @@ void splatCompute() {
       float nBend = bendW > 0.001 && uLandTier > 1.5 ? nzq(uvW, 0.013, vec2(0.47, 0.13)).x : 0.5;
       vec2 fieldN = uLandTier > 0.5 ? nzq(uvW, 0.023, vec2(0.61, 0.17)) : vec2(0.5);
       float crop, edgeM, track, jit, hedgeL; vec2 rowDir;
-      lu_field(wp.xz, crop, edgeM, track, rowDir, jit, hedgeL);
+      lu_decode(wp.xz, luA, luB, luK, luT, crop, edgeM, track, rowDir, jit, hedgeL);
       // the region's boundary (landUse.ts BOUNDARIES): 0 a grass margin with tracks, 1 a polder's water ditches on the
       // long lines, 2 a paddy's earth bund, 3 a karst field's dry stone wall
       float bnd = uLandE.z;
@@ -5626,7 +5630,7 @@ function* createSplatMaterialSteps(
   // ground lane (2026-10-04): the land use's tier (landUseTierOf) from the live preset, kept current across changes
   const landTier = { value: landUseTierOf(resolvePresetName()) };
   const offLandTier = onPresetChange(() => { landTier.value = landUseTierOf(resolvePresetName()); });
-  const landBake = landUse.landA[0] > 0 ? new Uint8Array(landBakeN * landBakeN * 8) : null;
+  const landBake = landUse.landA[0] > 0 ? new Uint8Array(landBakeN * landBakeN * 4 * LAND_BAKE_LAYERS) : null;
   if (landBake) yield* bakeLandUseSteps(landUseProfile, landBakeN, MAP_SIZE, landBake, 64);
   const groundClock = { value: 0 };
   // the live uniform objects (a probe zeroes a term to isolate its cost or its look)
@@ -5674,6 +5678,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uMaskStack = { value: maskStack.stack };
     shader.uniforms.uLandBake = { value: maskStack.bake };
     shader.uniforms.uLandTier = landTier;
+    shader.uniforms.uLandRot = { value: new THREE.Vector2(Math.cos(landUse.landA[1]), Math.sin(landUse.landA[1])) };
     shader.uniforms.uMaskSize = { value: groundMask === mask ? MAP_SIZE : OUTLAND_WATER_MASK_SIZE_M };
     shader.uniforms.uNoise = { value: noiseTex };
     // terrain v2: the layers' measured means (the same vectors measureLayerMeans refreshes after the sourced swap)

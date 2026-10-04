@@ -156,6 +156,8 @@ function checkSourceContract(text) {
     'uLandBake', 'uMaskStack',
     // ground lane (2026-10-04, the tier gate): the land use's tier from the live preset (landUseTierOf; scalar, no sampler)
     'uLandTier',
+    // ground lane (2026-10-04): the field grid's heading as (cos, sin), once on the CPU (vec2, no sampler)
+    'uLandRot',
     // ground lane (2026-10-03): the two-formation bedrock's boundary (vec4, no sampler)
     'uFormation',
     // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving — natural steep faces take the D layer (scalar, no sampler)
@@ -228,6 +230,12 @@ function checkLandUseCut(text) {
     assert.ok(edgeW >= marginM + fade, `margin ${margin} m: the crop is whole past the threshold whatever the wander`);
     assert.ok(edgeW - marginM >= h0 + h1, `margin ${margin} m: the headland is gone past the threshold whatever its width`);
   }
+  // the bake's read goes out with the ground mask's own, at the top of the splat; the block decodes it
+  assert.ok(compact(text).includes(compact(`vec4 mk = maskAt(mUV);
+  // ground lane (the GPU cut, hold 16): the land use's bake goes out with the ground mask's own read
+  vec4 luA = vec4(0.0), luB = vec4(0.0), luK = vec4(0.5); ivec2 luT = ivec2(0);
+  if (uLandA.x > 0.001) lu_fetch(wp.xz, luA, luB, luK, luT);`)), 'the bake is read with the ground mask');
+  assert.ok(block.includes('lu_decode(wp.xz, luA, luB, luK, luT, crop, edgeM, track, rowDir, jit, hedgeL);'), 'the block decodes the early read');
   // the tier follows the live preset and lets go with the material
   assert.deepEqual(['ultra', 'high', 'medium', 'mobile-high', 'low', 'mobile', 'mobile-low'].map(landUseTierOf), [2, 2, 1, 1, 0, 0, 0],
     'High and Ultra draw the full block, Medium and the phones\' high tier the cheap reads, Low and the phones\' lower tiers the bake alone');
