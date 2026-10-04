@@ -17,7 +17,7 @@
 //     and the foot of a crest darken), A the sun's visibility across the ranges at the map's fixed sun (the ridges'
 //     own cast shadows). The fragment (horizonVista.ts) reads it by the ring's own u (the angle) and its radius.
 import { SimplexNoise } from '../engine/simplexFast.ts';
-import type { MassifSettings } from './horizonMassif.ts';
+import { erosionOctave, type MassifSettings } from './horizonMassif.ts';
 
 export type HorizonReliefCharacter = 'polar' | 'alpine' | 'rolling' | 'mesa' | 'volcanic' | 'coastal' | 'martian' | 'karst';
 
@@ -79,6 +79,64 @@ export interface HorizonReliefSettings {
   far: HorizonFarRangeSettings | null;
   /** The mountains lane (2026-10-02): the erosion pass over the ranged relief (horizonMassif.ts), or null for none. */
   massif: MassifSettings | null;
+  /** The mountains lane (2026-10-03): the bake's fine relief cut along the ring's own fall line, or null for the round-72
+   * field (the tablelands keep it: their ledges run along the strike). */
+  drainage: HorizonReliefDrainage | null;
+  /** The mountains lane (2026-10-03): the landcover the bake lays on the faces past the ring forest, or null for none. */
+  cover: HorizonReliefCover | null;
+}
+
+/**
+ * The mountains lane (2026-10-03, gauntlet wave 0: "both flanks of the background mountain range show an obviously
+ * repeating diagonal corduroy ridge pattern — a tiled displacement/normal-map tell"). The round-72 fine relief ran its
+ * octaves and its gullies in the ring's own (arc, radius) frame, stretched along the RADIUS: on a face the viewer sees
+ * obliquely — every flank of a range that runs across the view — the radius is not the fall line, so the stretched
+ * crests crossed the slope as parallel diagonal combs, the same spacing over the whole flank. The drainage is cut along
+ * the fall line of the ring's own (smoothed) surface instead, Clay John's erosion filter as the massifs use it
+ * (horizonMassif.ts erosionOctave): couloirs whose spacing and depth follow the slope, each finer octave turned by the
+ * coarser ones, so they branch, bend round the spurs and stop on the floors.
+ */
+export interface HorizonReliefDrainage {
+  /** Couloir spacing (m) of the coarsest octave; each further octave halves it. */
+  wavelengthM: number;
+  octaves: number;
+  /** Couloir depth (m) of the coarsest octave on a full-weight slope (the floors carry none). */
+  depthM: number;
+  /** Depth ratio between successive octaves. */
+  gain: number;
+  /** Couloirs per cell per unit of slope (a steeper face carries more). */
+  slopeStrength: number;
+  /** How strongly the coarser octaves' own slope turns the finer ones (the branching). */
+  branch: number;
+  /** Metres of isotropic grain under the couloirs (no direction, so no comb). */
+  grainM: number;
+}
+
+/**
+ * The mountains lane (2026-10-03, gauntlet wave 0: "smooth, evenly lit mountain blankets with no forest, rock or gully
+ * structure"): the ring's faces render with the battlefield's terrain material, one ground everywhere, and its range
+ * trees stop at 880 m (horizonVista.ts buildHorizonForest: past it a dark crown floated over a pale face), so the
+ * ranges behind were bare turf. The bake lays the landcover a real wooded range shows at one to two kilometres — forest
+ * stands (denser in the hollows and on the steeper lower faces, thinning to the map's treeline, never on the snow) and,
+ * on the gentle open ground, field parcels — as the light they leave: a stand's canopy takes `canopy` of the light
+ * (the occlusion and the sun terms the terrain program already reads, so no shader, sampler or draw is added) and its
+ * crowns grain the fine relief.
+ */
+export interface HorizonReliefCover {
+  /** Stands' share of the faces below the treeline (0..1). */
+  forest: number;
+  /** How much of the ground's light a stand's canopy takes (0..1). */
+  canopy: number;
+  /** Parcel tone spread on the gentle open ground (0 = no fields). */
+  fields: number;
+  /** The walls' rock (gauntlet wave 0, Sirocco Wadi: "untextured lavender-white clay with soft, blobby shading and no
+   * rock, strata or depth layering"): how much darker a wall's rock reads than the ground (desert varnish, streaked
+   * down the couloirs), and the tone spread of its beds (strata 3–14 m thick, by world height). 0 = none. */
+  varnish?: number;
+  beds?: number;
+  /** The beds' thickness scale (1: 3–14 m, the tablelands' laminae; the mountain characters' rock bands, read at one to
+   * three kilometres, are several times thicker). */
+  bedScale?: number;
 }
 
 // round 72b: the far range's own haze is a fifth to a third (was half to two thirds) — the post pass's ring distance law
@@ -104,6 +162,13 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     crestSharpness: 1.35, footSharpness: 0.85, billow: 0.15, gullyM: 6.0, gullyWavelengthM: 46, gullyElongation: 4, fineElongation: 1.9, rangeBoost: 1.35, rangeCount: 3, rangeElongation: 3.6,
     talusFloor: 0.28, driftM: 0.9, aoReachM: 170, aoStrength: 0.75, shadowSoft: 0.06, far: FAR_POLAR,
     massif: { baseWavelengthM: 900, gullyWavelengthM: 300, gullyOctaves: 3, gullyGain: 0.5, slopeStrength: 2.5, branch: 3, erosion: 0.45, concavity: 1.15, contrast: 0.42, smoothM: 140 },
+    // (gauntlet wave 6, Frosthollow's faces "a smooth curtain ... a wall rather than an alpine face of ribs, couloirs":
+    // the round-72 field's 48 m low ribs, radial, had carried the inward faces' ribs; the couloirs now carry them, down
+    // the fall line, at their depth — 30 m over 280 m first gullies)
+    drainage: { wavelengthM: 280, octaves: 3, depthM: 30, gain: 0.55, slopeStrength: 2.6, branch: 1.8, grainM: 0.5 },
+    // (gauntlet wave 18, Frosthollow's massif "wrapped in evenly spaced horizontal bands that read as stair-stepped
+    // heightmap contours": no beds on the polar faces — their rock is the varnish down the couloirs)
+    cover: { forest: 0, canopy: 0, fields: 0, varnish: 0.14, beds: 0, bedScale: 4 },
   },
   // spires and glaciers: sharp multifractal crests, short warps, chutes on the faces
   alpine: {
@@ -111,6 +176,10 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     crestSharpness: 1.5, footSharpness: 0.95, billow: 0.05, gullyM: 6.5, gullyWavelengthM: 40, gullyElongation: 4, fineElongation: 1.4, rangeBoost: 1.30, rangeCount: 4, rangeElongation: 3.2,
     talusFloor: 0.30, driftM: 0, aoReachM: 160, aoStrength: 0.80, shadowSoft: 0.05, far: FAR_ALPINE,
     massif: { baseWavelengthM: 850, gullyWavelengthM: 290, gullyOctaves: 3, gullyGain: 0.5, slopeStrength: 2.5, branch: 3, erosion: 0.45, concavity: 1.15, contrast: 0.42, smoothM: 140 },
+    drainage: { wavelengthM: 260, octaves: 3, depthM: 26, gain: 0.55, slopeStrength: 3.0, branch: 1.6, grainM: 0.6 },
+    // (gauntlet wave 18: the mountain characters' bands read as contours where they lay level and even — fainter, and
+    // dipping and wandering with their thickness below)
+    cover: { forest: 0.62, canopy: 0.5, fields: 0, varnish: 0.06, beds: 0.12, bedScale: 3.5 },
   },
   // wooded hills: rounded billows with spurs, shallow drainage
   rolling: {
@@ -118,12 +187,18 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     crestSharpness: 0.9, footSharpness: 0.7, billow: 0.45, gullyM: 2.6, gullyWavelengthM: 60, gullyElongation: 4, fineElongation: 1.5, rangeBoost: 1.10, rangeCount: 3, rangeElongation: 2.8,
     talusFloor: 0.5, driftM: 0, aoReachM: 140, aoStrength: 0.6, shadowSoft: 0.08, far: FAR_ROLLING,
     massif: { baseWavelengthM: 1100, gullyWavelengthM: 420, gullyOctaves: 3, gullyGain: 0.5, slopeStrength: 2.5, branch: 2.5, erosion: 0.42, concavity: 1.1, contrast: 0.36, smoothM: 160 },
+    drainage: { wavelengthM: 200, octaves: 3, depthM: 3.5, gain: 0.55, slopeStrength: 2.6, branch: 1.4, grainM: 0.5 }, cover: { forest: 0.42, canopy: 0.5, fields: 0.36 },
   },
   // tablelands: the caps stay flat (small coarse share), the cliffs carry ledges and talus, dry washes below
   mesa: {
     character: 'mesa', lowAmpM: 5, highAmpM: 6, warpM: 40, warpWavelengthM: 520, wavelengthM: 220,
     crestSharpness: 1.1, footSharpness: 0.8, billow: 0.30, gullyM: 3.8, gullyWavelengthM: 34, gullyElongation: 7, fineElongation: 0.5, rangeBoost: 1.0, rangeCount: 0, rangeElongation: 3.4, // tables are not ridges: the isotropic field alone
     talusFloor: 0.35, driftM: 0, aoReachM: 120, aoStrength: 0.7, shadowSoft: 0.05, far: FAR_MESA, massif: null,
+    // the mountains lane (2026-10-03): the round-72 field's ledges and radial washes printed dimples on the walls once the
+    // occlusion carried its share (Sirocco Wadi's "soft, blobby shading"); the walls' ledges are the escarpment's beds
+    // (horizonEscarpment.ts), the drainage cuts the washes down the fall line, the cover darkens the walls' rock
+    drainage: { wavelengthM: 150, octaves: 3, depthM: 5, gain: 0.55, slopeStrength: 3.0, branch: 1.4, grainM: 0.4 },
+    cover: { forest: 0, canopy: 0, fields: 0, varnish: 0.46, beds: 0.38 },
   },
   // volcanic country: smooth-sided cones cut by radial barrancos, lava benches
   volcanic: {
@@ -131,6 +206,7 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     crestSharpness: 1.0, footSharpness: 0.75, billow: 0.35, gullyM: 5.5, gullyWavelengthM: 30, gullyElongation: 6, fineElongation: 2.0, rangeBoost: 1.15, rangeCount: 3, rangeElongation: 2.6,
     talusFloor: 0.40, driftM: 0, aoReachM: 130, aoStrength: 0.7, shadowSoft: 0.06, far: FAR_VOLCANIC,
     massif: { baseWavelengthM: 950, gullyWavelengthM: 280, gullyOctaves: 3, gullyGain: 0.5, slopeStrength: 2.5, branch: 2, erosion: 0.42, concavity: 1.05, contrast: 0.32, smoothM: 160 },
+    drainage: { wavelengthM: 140, octaves: 3, depthM: 9, gain: 0.55, slopeStrength: 3.0, branch: 1.4, grainM: 0.5 }, cover: { forest: 0.2, canopy: 0.42, fields: 0, varnish: 0.28, beds: 0.08 },
   },
   // headlands and cliffs into the sea: rounded uplands, cliffed fronts
   coastal: {
@@ -138,6 +214,7 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     crestSharpness: 0.95, footSharpness: 0.7, billow: 0.40, gullyM: 2.8, gullyWavelengthM: 52, gullyElongation: 4.5, fineElongation: 1.4, rangeBoost: 1.08, rangeCount: 3, rangeElongation: 3.0,
     talusFloor: 0.5, driftM: 0, aoReachM: 130, aoStrength: 0.6, shadowSoft: 0.08, far: FAR_COASTAL,
     massif: { baseWavelengthM: 1100, gullyWavelengthM: 400, gullyOctaves: 3, gullyGain: 0.5, slopeStrength: 2.5, branch: 2.5, erosion: 0.42, concavity: 1.1, contrast: 0.36, smoothM: 160 },
+    drainage: { wavelengthM: 200, octaves: 3, depthM: 3.0, gain: 0.55, slopeStrength: 2.6, branch: 1.4, grainM: 0.5 }, cover: { forest: 0.32, canopy: 0.46, fields: 0.36 },
   },
   // Olympus-scale shield slopes: very long wavelengths, low relief, lobate flows
   martian: {
@@ -145,6 +222,7 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     crestSharpness: 0.8, footSharpness: 0.7, billow: 0.55, gullyM: 2.0, gullyWavelengthM: 70, gullyElongation: 4.5, fineElongation: 1.3, rangeBoost: 1.15, rangeCount: 2, rangeElongation: 4.2,
     talusFloor: 0.6, driftM: 0, aoReachM: 160, aoStrength: 0.55, shadowSoft: 0.07, far: FAR_MARTIAN,
     massif: { baseWavelengthM: 1400, gullyWavelengthM: 520, gullyOctaves: 3, gullyGain: 0.5, slopeStrength: 2, branch: 2, erosion: 0.35, concavity: 1.05, contrast: 0.30, smoothM: 200 },
+    drainage: { wavelengthM: 240, octaves: 3, depthM: 3.0, gain: 0.55, slopeStrength: 2.4, branch: 1.2, grainM: 0.4 }, cover: { forest: 0, canopy: 0, fields: 0, varnish: 0.34, beds: 0.3 },
   },
   // jungle karst: steep isolated towers, rounded tops, sharp bases
   karst: {
@@ -152,12 +230,13 @@ const CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonReliefSettings>
     crestSharpness: 1.4, footSharpness: 1.2, billow: 0.25, gullyM: 3.0, gullyWavelengthM: 36, gullyElongation: 5, fineElongation: 1.6, rangeBoost: 1.25, rangeCount: 4, rangeElongation: 2.4,
     talusFloor: 0.35, driftM: 0, aoReachM: 120, aoStrength: 0.75, shadowSoft: 0.06, far: FAR_KARST,
     massif: { baseWavelengthM: 650, gullyWavelengthM: 230, gullyOctaves: 3, gullyGain: 0.5, slopeStrength: 2.5, branch: 2.5, erosion: 0.45, concavity: 0.95, contrast: 0.42, smoothM: 120 },
+    drainage: { wavelengthM: 130, octaves: 3, depthM: 7, gain: 0.55, slopeStrength: 3.0, branch: 1.5, grainM: 0.5 }, cover: { forest: 0.74, canopy: 0.5, fields: 0.1 },
   },
 };
 
 /** A map's character: authored (`horizon.relief`), else by map identity, else by the ring style. */
 export function resolveHorizonReliefCharacter(
-  horizon: { relief?: HorizonReliefCharacter; style?: string } | null | undefined, mapId: string,
+  horizon: { relief?: HorizonReliefCharacter; style?: string; ringStyle?: string } | null | undefined, mapId: string,
 ): HorizonReliefCharacter {
   if (horizon?.relief && CHARACTERS[horizon.relief]) return horizon.relief;
   if (mapId === 'winter' || mapId === 'whiteout') return 'polar';
@@ -165,7 +244,8 @@ export function resolveHorizonReliefCharacter(
   if (mapId === 'mars') return 'martian';
   if (mapId === 'monsoon' || mapId === 'mangrove') return 'karst';
   if (mapId === 'coastal' || mapId === 'saltwind' || mapId === 'fjord' || mapId === 'polders') return mapId === 'fjord' ? 'alpine' : 'coastal';
-  const style = horizon?.style;
+  // (the ring's own style where it has one: the border's landform keeps `style`)
+  const style = horizon?.ringStyle || horizon?.style;
   if (style === 'alpine') return 'alpine';
   if (style === 'mesa') return 'mesa';
   return 'rolling';
@@ -463,6 +543,19 @@ interface HorizonReliefBakeInput {
   maxHeight: number;
   /** Per-vertex marine weight (0..1), optional: the sea apron bakes flat and unshadowed. */
   marine?: Float32Array | null;
+  /** The mountains lane (2026-10-03): the drainage's and the landcover's seed (the map's relief seed). */
+  seed?: number;
+  /** The landcover's ceilings (m): the forest thins out to the map's treeline and stops under the snow; null for none. */
+  treelineM?: number | null;
+  snowlineM?: number | null;
+  /** A map's own landcover (maps/horizon.ts `horizon.reliefCover`) in place of its character's; null for none. */
+  cover?: HorizonReliefCover | null;
+  /** The map-borders lane's woods field (0 open … 1 wooded; terrain.ts getBorderWoodsAt where that lane's landform is
+   * in): the baked stands follow it past the ring forest, so its trees and the stands beyond them are one woods. Absent:
+   * the cover's own stand field. */
+  woodsAt?: ((x: number, z: number) => number) | null;
+  /** false where the border's own farmland parcels tint the ring (terrain.ts _borderParcelAt): no baked parcels. */
+  fields?: boolean;
 }
 
 export interface HorizonReliefBake {
@@ -488,6 +581,267 @@ const AO_STEPS_M = [5, 10, 20, 40, 80, 160];
 const SUN_STEPS_M = [4, 8, 14, 22, 34, 50, 72, 100, 140, 190, 260, 340, 440, 560];
 
 /**
+ * The shading share the terrain program gives the atlas's occlusion and sun terms (horizonAutumnGround.ts
+ * RING_RELIEF_SHADE reads it) and the program's own constants for them (terrain.ts, the ring branch of splatCompute:
+ * `gRingAo = 1 - (1 - pow(rel.z, 1.4)) * 0.8 * ringW`, `gRingSun = 1 - (1 - rel.w) * 0.85 * ringW`, ringW at most the
+ * share). The landcover is encoded against them, so a stand's factor arrives as the light it leaves.
+ */
+export const HORIZON_RELIEF_SHADE = 0.7;
+export const HORIZON_RELIEF_AO_POWER = 1.4;
+export const HORIZON_RELIEF_AO_DEPTH = 0.8;
+export const HORIZON_RELIEF_SUN_DEPTH = 0.85;
+
+/** The occlusion texel whose program factor is `ao`'s times `light` (clamped where the program's range ends). */
+export function encodeCanopyAo(ao: number, light: number): number {
+  const k = HORIZON_RELIEF_AO_DEPTH * HORIZON_RELIEF_SHADE;
+  const factor = (1 - (1 - Math.pow(clamp(ao, 0, 1), HORIZON_RELIEF_AO_POWER)) * k) * light;
+  return Math.pow(1 - clamp((1 - factor) / k, 0, 1), 1 / HORIZON_RELIEF_AO_POWER);
+}
+
+/** The sun-visibility texel whose program factor is `sun`'s times `light`. */
+export function encodeCanopySun(sun: number, light: number): number {
+  const k = HORIZON_RELIEF_SUN_DEPTH * HORIZON_RELIEF_SHADE;
+  const factor = (1 - (1 - clamp(sun, 0, 1)) * k) * light;
+  return 1 - clamp((1 - factor) / k, 0, 1);
+}
+
+/** Integer hash to 0..1 (the field parcels). */
+function hashCell(ix: number, iz: number, seed: number): number {
+  let h = Math.imul(ix, 0x27d4eb2d) ^ Math.imul(iz, 0x165667b1) ^ seed;
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/** Where the ring's range trees stop (horizonVista.ts buildHorizonForest: no range-class tree past 880 m); the baked
+ * stands fade in under their outer edge so the two meet without a band. */
+export const HORIZON_COVER_RADIUS_M: readonly [number, number] = [720, 900];
+/** The radii (m) over which the stands hand over from the border's woods to the ranges' own stand field: where the ring's
+ * range trees (which stand in the border's woods) thin out and stop, so no woodland parcel climbs a face past the trees. */
+export const HORIZON_STAND_HANDOVER_M: readonly [number, number] = [720, 880];
+
+interface DrainageInput {
+  W: number; H: number; r0: number; dr: number;
+  macro: Float32Array; marine: Float32Array;
+  settings: HorizonReliefSettings; seed: number;
+  treelineM: number | null; snowlineM: number | null;
+  woodsAt: ((x: number, z: number) => number) | null; fields: boolean;
+}
+
+/**
+ * The mountains lane (2026-10-03): the fine relief and the landcover of the atlas (see HorizonReliefDrainage and
+ * HorizonReliefCover). Writes the fine relief (m) into `fine`; returns the landcover's light factor per texel, or null.
+ *  - the fall line: the macro height smoothed over about 40 m (the rows' kinks would turn the couloirs at every row),
+ *    its world gradient;
+ *  - the couloirs: the erosion octaves on a half-resolution grid (their finest spacing is 25–35 m, three half-texels
+ *    at 1.5 km), bilinear to the texels, weighted by the slope (a floor carries none);
+ *  - the grain: two isotropic octaves, no direction;
+ *  - the cover: stand masses (three octaves) biased toward the steeper lower faces and the hollows, off the cliffs,
+ *    thinning to the treeline and stopped under the snow, beyond the ring forest; their crowns grain the relief; field
+ *    parcels (a rotated grid, a tone per parcel) on the gentle open ground.
+ */
+function* drainageAndCoverSteps(input: DrainageInput, fine: Float32Array): Generator<void, { canopyLight: Float32Array | null; canopyH: Float32Array | null }, void> {
+  const { W, H, r0, dr, macro, marine, settings: s, seed } = input;
+  const d = s.drainage as HorizonReliefDrainage;
+  const TAU = Math.PI * 2;
+  const arcAt = (r: number): number => r * TAU / W;
+  const noise = new SimplexNoise({ random: mulberry32((seed ^ 0xD2A1) >>> 0) });
+  // the fall line: two box passes over about 40 m (radius 20 m each way per pass)
+  const smooth = new Float32Array(macro);
+  const tmp = new Float32Array(W * H);
+  const rj = Math.max(1, Math.round(20 / dr));
+  for (let pass = 0; pass < 2; pass++) {
+    for (let j = 0; j < H; j++) {
+      const ri = Math.max(1, Math.round(20 / arcAt(r0 + (j + 0.5) * dr)));
+      let acc = 0;
+      for (let k = -ri; k <= ri; k++) acc += smooth[j * W + ((k % W) + W) % W];
+      for (let i = 0; i < W; i++) {
+        tmp[j * W + i] = acc / (2 * ri + 1);
+        acc += smooth[j * W + (i + ri + 1) % W] - smooth[j * W + ((i - ri) % W + W) % W];
+      }
+    }
+    for (let i = 0; i < W; i++) {
+      for (let j = 0; j < H; j++) {
+        let acc = 0, cnt = 0;
+        for (let k = Math.max(0, j - rj); k <= Math.min(H - 1, j + rj); k++) { acc += tmp[k * W + i]; cnt++; }
+        smooth[j * W + i] = acc / cnt;
+      }
+    }
+    yield;
+  }
+  const gradAt = (i: number, j: number, out: Float64Array): void => {
+    const r = r0 + (j + 0.5) * dr, arc = arcAt(r);
+    const im = (i - 1 + W) % W, ip = (i + 1) % W, jm = Math.max(0, j - 1), jp = Math.min(H - 1, j + 1);
+    const gθ = (smooth[j * W + ip] - smooth[j * W + im]) / (2 * arc);
+    const gr = (smooth[jp * W + i] - smooth[jm * W + i]) / ((jp - jm) * dr);
+    const theta = (i / W) * TAU, ct = Math.cos(theta), st = Math.sin(theta);
+    out[0] = gr * ct - gθ * st; out[1] = gr * st + gθ * ct;
+  };
+  // the couloirs on the half grid: sample q sits at full-resolution index 2q + 0.5 (the bake's half-grid convention)
+  const Wq = W >> 1, Hq = H >> 1;
+  const ero = new Float32Array(Wq * Hq);
+  const g = new Float64Array(2), e = new Float64Array(3);
+  const erosionSeed = (Math.imul(seed, 0x9E3779B1) ^ 0x51ED27) >>> 0;
+  for (let jq = 0; jq < Hq; jq++) {
+    const r = r0 + (jq * 2 + 1) * dr;
+    for (let iq = 0; iq < Wq; iq++) {
+      const theta = ((iq * 2 + 0.5) / W) * TAU;
+      const x = Math.cos(theta) * r, z = Math.sin(theta) * r;
+      gradAt(iq * 2, jq * 2, g);
+      const slope = Math.hypot(g[0], g[1]);
+      // a floor carries none, a face its full depth, a wall (past 0.3) up to 1.4 x: the couloirs deepen with the slope
+      const weight = smoothstep(0.03, 0.30, slope) * (0.6 + 0.8 * smoothstep(0.3, 1.0, slope));
+      if (weight < 1e-3) { ero[jq * Wq + iq] = 0; continue; }
+      let eh = 0, ehx = 0, ehz = 0, depth = d.depthM, cell = d.wavelengthM;
+      for (let o = 0; o < d.octaves; o++) {
+        // the phase runs across the fall line (the slope turned 90 degrees, not normalised: a steeper face, more couloirs)
+        const dirx = (g[1] + ehz * d.branch) * d.slopeStrength;
+        const dirz = -(g[0] + ehx * d.branch) * d.slopeStrength;
+        erosionOctave(x / cell, z / cell, dirx, dirz, (erosionSeed + Math.imul(o, 0x9E3779B9)) >>> 0, e);
+        eh += e[0] * depth;
+        ehx += e[1] * depth / cell; ehz += e[2] * depth / cell;
+        depth *= d.gain; cell *= 0.5;
+      }
+      // the couloirs come and go across a face (census border views, Frosthollow: one depth over a whole face read as
+      // regular fluting): a ~600 m field sets where they cut deep and where the face stays smooth between ribs
+      const patch = smoothstep(-0.35, 0.55, noise.noise(x / 600 + 61.7, z / 600 - 23.9) + 0.35 * noise.noise(x / 230 - 5.3, z / 230 + 8.8));
+      ero[jq * Wq + iq] = eh * weight * (0.3 + 0.7 * patch);
+    }
+    if ((jq & 7) === 7) yield;
+  }
+  const eroAt = (i: number, j: number): number => {
+    const fx = (i - 0.5) * 0.5, fy = (j - 0.5) * 0.5;
+    let x0 = Math.floor(fx), y0 = Math.floor(fy);
+    const tx = fx - x0, ty = fy - y0;
+    x0 = ((x0 % Wq) + Wq) % Wq; const x1 = (x0 + 1) % Wq;
+    y0 = y0 < 0 ? 0 : y0 >= Hq ? Hq - 1 : y0; const y1 = y0 + 1 >= Hq ? Hq - 1 : y0 + 1;
+    const top = ero[y0 * Wq + x0] + (ero[y0 * Wq + x1] - ero[y0 * Wq + x0]) * tx;
+    const bottom = ero[y1 * Wq + x0] + (ero[y1 * Wq + x1] - ero[y1 * Wq + x0]) * tx;
+    return top + (bottom - top) * ty;
+  };
+  const top = input.treelineM, snow = input.snowlineM;
+  // a map without a treeline (badlands, the moon: treeline 0) bakes no stands and no fields; the walls' rock needs none
+  const woods = s.cover && (s.cover.forest > 0 || s.cover.fields > 0) && (top === null || top > 1) ? s.cover : null;
+  const rock = s.cover && ((s.cover.varnish ?? 0) > 0 || (s.cover.beds ?? 0) > 0) ? s.cover : null;
+  const c = woods;
+  const canopyLight = woods || rock ? new Float32Array(W * H).fill(1) : null;
+  const canopyH = woods ? new Float32Array(W * H) : null;
+  // the beds: a thickness and a tone per bed, by world height (the escarpment's own stair is 120–200 m; these are its
+  // laminae), warped a few metres so a bed wanders along the wall
+  const bedTone = new Float32Array(512), bedTop = new Float32Array(513);
+  {
+    let h = -400;
+    const scale = s.cover?.bedScale ?? 1;
+    for (let b = 0; b < 512; b++) { bedTop[b] = h; h += (3 + hashCell(b, 17, seed) * 11) * scale; bedTone[b] = hashCell(b, 23, seed); }
+    bedTop[512] = h;
+  }
+  const bedAt = (h: number): number => {
+    let lo = 0, hi = 512;
+    if (h <= bedTop[0]) return 0;
+    if (h >= bedTop[512]) return 511;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (bedTop[mid] <= h) lo = mid; else hi = mid; }
+    return lo;
+  };
+  // the parcels' grid: a bearing per map, strips 140–200 m deep, parcels 160–320 m long, the strips offset
+  const bearing = hashCell(7, 11, seed) * Math.PI, cb = Math.cos(bearing), sb = Math.sin(bearing);
+  const lapM = 60;
+  for (let j = 0; j < H; j++) {
+    const r = r0 + (j + 0.5) * dr, arc = arcAt(r);
+    const li = Math.max(1, Math.round(lapM / arc)), lj = Math.max(1, Math.round(lapM / dr));
+    const nearW = c ? smoothstep(HORIZON_COVER_RADIUS_M[0], HORIZON_COVER_RADIUS_M[1], r) : 0;
+    const fieldNear = smoothstep(560, 700, r);
+    for (let i = 0; i < W; i++) {
+      const idx = j * W + i;
+      const theta = (i / W) * TAU, ct = Math.cos(theta), st = Math.sin(theta);
+      const x = ct * r, z = st * r;
+      // the seam (round 29 / 35 laws, as the round-72 pass): nil at the square's edge, full 60 m out; the sea flat
+      const seamW = smoothstep(0, 60, Math.max(Math.abs(x), Math.abs(z)) - 511.5);
+      const land = (1 - marine[idx]) * seamW;
+      if (land <= 0.001) { fine[idx] = 0; continue; }
+      const grain = (noise.noise(x / 26 + 17.3, z / 26 - 5.1) * 0.65 + noise.noise(x / 11 - 3.7, z / 11 + 29.9) * 0.35) * d.grainM;
+      const couloir = eroAt(i, j);
+      let v = couloir + grain;
+      if (canopyLight && rock) {
+        gradAt(i, j, g);
+        const slope = Math.hypot(g[0], g[1]);
+        // a wall from about 24 degrees, full by 42: varnish darker down the couloirs (where the water runs), the beds' tones
+        // (from about 14 degrees, full by 35: the escarpments' talus and benches carry rock too — Sirocco Wadi's walls
+        // read as pale clay with the band at 24-42 degrees)
+        const wall = smoothstep(0.25, 0.70, slope + noise.noise(x / 70 - 3.1, z / 70 + 8.3) * 0.12) * land;
+        if (wall > 0.001) {
+          const streak = clamp(-couloir / Math.max(0.5, d.depthM), 0, 1);
+          const varnish = (rock.varnish ?? 0) * (0.65 + 0.35 * streak);
+          // (a bed wanders and dips with its thickness: a few metres on the tablelands' laminae, tens on a mountain's bands —
+          // level, even bands read as heightmap contours, gauntlet wave 18)
+          const bedWarp = 6 * Math.max(1, s.cover?.bedScale ?? 1);
+          const hBed = macro[idx] + noise.noise(x / 160 + 5.7, z / 160 - 1.9) * bedWarp + (noise.noise(x / 900 - 2.3, z / 900 + 7.1) * 0.5 + (x * 0.6 + z * 0.8) * 0.012) * (bedWarp - 6);
+          const beds = (rock.beds ?? 0) * (bedTone[bedAt(hBed)] - 0.35);
+          canopyLight[idx] *= clamp(1 - wall * (varnish + beds), 0.3, 1);
+        }
+      }
+      if (canopyLight && c) {
+        gradAt(i, j, g);
+        const slope = Math.hypot(g[0], g[1]);
+        const h0 = smooth[idx];
+        const lap = (smooth[j * W + (i + li) % W] + smooth[j * W + (i - li + W) % W] - 2 * h0) / ((li * arc) * (li * arc))
+          + (smooth[Math.min(H - 1, j + lj) * W + i] + smooth[Math.max(0, j - lj) * W + i] - 2 * h0) / ((lj * dr) * (lj * dr));
+        const hollow = clamp(lap * lapM * lapM / 12, -1, 1); // + a hollow, - a crest or a shoulder
+        // the stand field, domain-warped (stands are lobed, not round): masses of about 400 m, clearings of 150 m, ragged
+        // 45 m edges; crisp (a few metres of transition), as a canopy edge is at a kilometre
+        const wx = x + noise.noise(x / 380 + 9.1, z / 380 - 2.3) * 120, wz = z + noise.noise(x / 380 - 6.7, z / 380 + 5.5) * 120;
+        const nA = noise.noise(wx / 420 + 3.3, wz / 420 - 8.1), nB = noise.noise(wx / 160 - 11.7, wz / 160 + 4.9), nC = noise.noise(wx / 45 + 21.1, wz / 45 + 13.3);
+        const field = nA * 0.55 + nB * 0.30 + nC * 0.15;
+        const bias = (c.forest - 0.5) * 1.0 + 0.20 * smoothstep(0.08, 0.40, slope) + 0.25 * hollow;
+        // the border's woods (its parcels between the hedgerows) carry the stands across the borders band; past it, on the
+        // ranges' faces, the stands are the field's own (gauntlet wave 6, Verdant's edge-n: a woodland parcel's straight
+        // edges drawn up the mountain read as "a translucent blue-grey band smeared diagonally across the mountain")
+        const natural = smoothstep(-0.05, 0.05, field + bias);
+        const borderW = input.woodsAt ? 1 - smoothstep(HORIZON_STAND_HANDOVER_M[0], HORIZON_STAND_HANDOVER_M[1], r) : 0;
+        let stand = borderW > 0.001 ? natural + (input.woodsAt!(x, z) - natural) * borderW : natural;
+        stand *= 1 - smoothstep(0.80, 1.10, slope); // no stand on a cliff
+        if (top !== null) stand *= 1 - smoothstep(top * 0.86, top * 1.02, h0 + nC * 0.06 * top);
+        if (snow !== null) stand *= 1 - smoothstep(snow - 60, snow - 10, h0 + nB * 20);
+        const forestW = stand * nearW * land;
+        // the crowns: a 9–16 m grain in the relief and a mottle in the light where the canopy stands (no finer: the atlas
+        // is read at its top level, three to five metres a texel, and a finer grain would shimmer); the canopy's own
+        // height (16 m, its crowns 3 m either way) stands in the occlusion and the sun searches, so a stand's edge
+        // shades the clearing beside it and casts its shadow down-sun
+        let mottle = 0;
+        if (forestW > 0.001) {
+          const crown = noise.noise(x / 16 + 41.3, z / 16 - 7.7) * 0.7 + noise.noise(x / 9 - 2.9, z / 9 + 17.1) * 0.3;
+          v += forestW * crown * 1.3;
+          mottle = crown;
+          if (canopyH) canopyH[idx] = forestW * (16 + crown * 3);
+        }
+        // the canopy's own texture in the light (census border views, 2026-10-03: a smooth stand read as a blue-grey
+        // sheet draped on the hill, not a wood): crowns and their shaded gaps at 9-16 m, clumps at ~40 m, so the stand
+        // carries the grain a forest shows at one to two kilometres
+        const clump = noise.noise(x / 38 + 13.7, z / 38 - 29.1);
+        let light = 1 - forestW * c.canopy * (0.92 + mottle * 0.42 + clump * 0.16);
+        if (c.fields > 0 && input.fields) {
+          const open = (1 - forestW) * (1 - smoothstep(0.10, 0.22, slope)) * fieldNear * land;
+          if (open > 0.001) {
+            const u = x * cb + z * sb, w = -x * sb + z * cb;
+            const strip = Math.floor(w / 170);
+            const off = hashCell(strip, 3, seed) * 300;
+            const len = 160 + hashCell(strip, 5, seed) * 160;
+            const parcel = Math.floor((u + off) / len);
+            const tone = hashCell(parcel, strip, seed ^ 0x2F1);
+            // most parcels near the turf's own tone, a few darker (ploughed, stubble), one in eight markedly so
+            const dark = tone < 0.125 ? 0.62 : 0.06 + tone * 0.30;
+            light *= 1 - open * c.fields * dark;
+          }
+        }
+        canopyLight[idx] *= light;
+      }
+      fine[idx] = v * land;
+    }
+    if ((j & 7) === 7) yield;
+  }
+  return { canopyLight, canopyH };
+}
+
+/**
  * Bake the (angle x radius) surface atlas for a finished ring (after the seating, the caps and the sea). The macro
  * height at any (angle, radius) is the ring's own rows interpolated (per column the rows are monotone in radius, so
  * a binary search finds the span); the fine relief comes from the field; the occlusion and the sun visibility are
@@ -501,7 +855,7 @@ export function* bakeHorizonReliefSteps(
   const W = size.width, H = size.height;
   const r0 = HORIZON_RELIEF_BAKE_R0, r1 = HORIZON_RELIEF_BAKE_R1;
   const dr = (r1 - r0) / H;
-  const s = field.settings;
+  const s = input.cover !== undefined ? { ...field.settings, cover: input.cover } : field.settings;
   // per-column monotone radius / height tables
   const colR = new Float32Array(n * rowCount), colH = new Float32Array(n * rowCount), colM = new Float32Array(n * rowCount);
   for (let row = 0; row < rowCount; row++) {
@@ -544,66 +898,78 @@ export function* bakeHorizonReliefSteps(
     if ((j & 15) === 15) yield;
   }
   const t1 = now();
-  // pass 2: the fine relief over the macro (concavity and steepness from the macro's radial second and first
-  // differences). The warp and the coarse octaves — smooth terms — run on a half-resolution grid and are interpolated
-  // to each texel (their offsets and the multifractal weight they leave); only the fine octaves and the gullies run
-  // per texel, so the field costs four noise samples a texel instead of nine.
   const fine = new Float32Array(W * H);
-  const dj = Math.max(2, Math.round(40 / dr));
-  const arcAt = (r: number): number => r * TAU / W;
-  const Wq = W >> 1, Hq = H >> 1;
-  const stageDx = new Float32Array(Wq * Hq), stageDz = new Float32Array(Wq * Hq), stageW = new Float32Array(Wq * Hq);
-  const stage = { dx: 0, dz: 0, weight: 1 };
-  const sharpAt = (hT: number): number => s.footSharpness + (s.crestSharpness - s.footSharpness) * clamp(hT, 0, 1);
-  for (let jq = 0; jq < Hq; jq++) {
-    const r = r0 + (jq * 2 + 1) * dr;
-    for (let iq = 0; iq < Wq; iq++) {
-      const theta = ((iq * 2 + 0.5) / W) * TAU;
-      const x = Math.cos(theta) * r, z = Math.sin(theta) * r;
-      const h = macro[(jq * 2) * W + iq * 2];
-      field.prepare(x, z, sharpAt(h / Math.max(1, maxHeight)), stage);
-      const q = jq * Wq + iq;
-      stageDx[q] = stage.dx; stageDz[q] = stage.dz; stageW[q] = stage.weight;
-    }
-    if ((jq & 7) === 7) yield;
-  }
-  const stageAt = (grid: Float32Array, i: number, j: number): number => {
-    const fx = (i - 0.5) * 0.5, fy = (j - 0.5) * 0.5;
-    let x0 = Math.floor(fx), y0 = Math.floor(fy);
-    const tx = fx - x0, ty = fy - y0;
-    x0 = ((x0 % Wq) + Wq) % Wq; const x1 = (x0 + 1) % Wq;
-    y0 = y0 < 0 ? 0 : y0 >= Hq ? Hq - 1 : y0; const y1 = y0 + 1 >= Hq ? Hq - 1 : y0 + 1;
-    const top = grid[y0 * Wq + x0] + (grid[y0 * Wq + x1] - grid[y0 * Wq + x0]) * tx;
-    const bottom = grid[y1 * Wq + x0] + (grid[y1 * Wq + x1] - grid[y1 * Wq + x0]) * tx;
-    return top + (bottom - top) * ty;
-  };
   let fineMin = Infinity, fineMax = -Infinity;
-  for (let j = 0; j < H; j++) {
-    const r = r0 + (j + 0.5) * dr;
-    const jm = Math.max(0, j - dj), jp = Math.min(H - 1, j + dj);
-    const arc = arcAt(r);
-    for (let i = 0; i < W; i++) {
-      const idx = j * W + i;
-      const hm = macro[jm * W + i], hp = macro[jp * W + i], h = macro[idx];
-      const concavity = clamp((hm + hp - 2 * h) / (40 * 1.0), -1, 1);
-      const im = (i - 1 + W) % W, ip = (i + 1) % W;
-      const gθ = (macro[j * W + ip] - macro[j * W + im]) / (2 * arc);
-      const gr = (macro[Math.min(H - 1, j + 1) * W + i] - macro[Math.max(0, j - 1) * W + i]) / (2 * dr);
-      const steep = smoothstep(0.22, 0.65, Math.hypot(gθ, gr));
-      const theta = (i / W) * TAU;
-      // the seam (round 29 / 35 laws): the fine relief is nil at the square's edge and full 90 m out, so the seam row
-      // continues the terrain's own edge and the terrain-material bands read the same atlas from there (round 72b)
-      const seamW = smoothstep(0, 60, Math.max(Math.abs(Math.cos(theta) * r), Math.abs(Math.sin(theta) * r)) - 511.5); // round 72b: 60 m (a 90 m fade read as a smooth belt under the first ridge)
-      // round 72b (integrator: "faces read as one flat tone"): the striations and gully shading run at three times
-      // their amplitude on the steep faces, so they survive the aerial pass at range
-      const land = (1 - marine[idx]) * seamW * (1 + 2.2 * steep);
-      const v = land > 0.001
-        ? field.finish(stageAt(stageDx, i, j), stageAt(stageDz, i, j), stageAt(stageW, i, j), sharpAt(h / Math.max(1, maxHeight)), concavity, steep, r, theta) * land
-        : 0;
-      fine[idx] = v;
-      if (v < fineMin) fineMin = v; if (v > fineMax) fineMax = v;
+  // the mountains lane (2026-10-03): the landcover's light factor per texel (1 = open ground), or null without cover
+  let canopyLight: Float32Array | null = null, canopyH: Float32Array | null = null;
+  const arcAt = (r: number): number => r * TAU / W;
+  if (s.drainage) {
+    const surface = yield* drainageAndCoverSteps({
+      W, H, r0, dr, macro, marine, settings: s, seed: (input.seed ?? 0x5eed) >>> 0,
+      treelineM: input.treelineM ?? null, snowlineM: input.snowlineM ?? null,
+      woodsAt: input.woodsAt ?? null, fields: input.fields !== false,
+    }, fine);
+    canopyLight = surface.canopyLight; canopyH = surface.canopyH;
+    for (let idx = 0; idx < W * H; idx++) { const v = fine[idx]; if (v < fineMin) fineMin = v; if (v > fineMax) fineMax = v; }
+  } else {
+    // pass 2: the fine relief over the macro (concavity and steepness from the macro's radial second and first
+    // differences). The warp and the coarse octaves — smooth terms — run on a half-resolution grid and are interpolated
+    // to each texel (their offsets and the multifractal weight they leave); only the fine octaves and the gullies run
+    // per texel, so the field costs four noise samples a texel instead of nine.
+    const dj = Math.max(2, Math.round(40 / dr));
+    const Wq = W >> 1, Hq = H >> 1;
+    const stageDx = new Float32Array(Wq * Hq), stageDz = new Float32Array(Wq * Hq), stageW = new Float32Array(Wq * Hq);
+    const stage = { dx: 0, dz: 0, weight: 1 };
+    const sharpAt = (hT: number): number => s.footSharpness + (s.crestSharpness - s.footSharpness) * clamp(hT, 0, 1);
+    for (let jq = 0; jq < Hq; jq++) {
+      const r = r0 + (jq * 2 + 1) * dr;
+      for (let iq = 0; iq < Wq; iq++) {
+        const theta = ((iq * 2 + 0.5) / W) * TAU;
+        const x = Math.cos(theta) * r, z = Math.sin(theta) * r;
+        const h = macro[(jq * 2) * W + iq * 2];
+        field.prepare(x, z, sharpAt(h / Math.max(1, maxHeight)), stage);
+        const q = jq * Wq + iq;
+        stageDx[q] = stage.dx; stageDz[q] = stage.dz; stageW[q] = stage.weight;
+      }
+      if ((jq & 7) === 7) yield;
     }
-    if ((j & 7) === 7) yield;
+    const stageAt = (grid: Float32Array, i: number, j: number): number => {
+      const fx = (i - 0.5) * 0.5, fy = (j - 0.5) * 0.5;
+      let x0 = Math.floor(fx), y0 = Math.floor(fy);
+      const tx = fx - x0, ty = fy - y0;
+      x0 = ((x0 % Wq) + Wq) % Wq; const x1 = (x0 + 1) % Wq;
+      y0 = y0 < 0 ? 0 : y0 >= Hq ? Hq - 1 : y0; const y1 = y0 + 1 >= Hq ? Hq - 1 : y0 + 1;
+      const top = grid[y0 * Wq + x0] + (grid[y0 * Wq + x1] - grid[y0 * Wq + x0]) * tx;
+      const bottom = grid[y1 * Wq + x0] + (grid[y1 * Wq + x1] - grid[y1 * Wq + x0]) * tx;
+      return top + (bottom - top) * ty;
+    };
+    for (let j = 0; j < H; j++) {
+      const r = r0 + (j + 0.5) * dr;
+      const jm = Math.max(0, j - dj), jp = Math.min(H - 1, j + dj);
+      const arc = arcAt(r);
+      for (let i = 0; i < W; i++) {
+        const idx = j * W + i;
+        const hm = macro[jm * W + i], hp = macro[jp * W + i], h = macro[idx];
+        const concavity = clamp((hm + hp - 2 * h) / (40 * 1.0), -1, 1);
+        const im = (i - 1 + W) % W, ip = (i + 1) % W;
+        const gθ = (macro[j * W + ip] - macro[j * W + im]) / (2 * arc);
+        const gr = (macro[Math.min(H - 1, j + 1) * W + i] - macro[Math.max(0, j - 1) * W + i]) / (2 * dr);
+        const steep = smoothstep(0.22, 0.65, Math.hypot(gθ, gr));
+        const theta = (i / W) * TAU;
+        // the seam (round 29 / 35 laws): the fine relief is nil at the square's edge and full 90 m out, so the seam row
+        // continues the terrain's own edge and the terrain-material bands read the same atlas from there (round 72b)
+        const seamW = smoothstep(0, 60, Math.max(Math.abs(Math.cos(theta) * r), Math.abs(Math.sin(theta) * r)) - 511.5); // round 72b: 60 m (a 90 m fade read as a smooth belt under the first ridge)
+        // round 72b (integrator: "faces read as one flat tone"): the striations and gully shading run at three times
+        // their amplitude on the steep faces, so they survive the aerial pass at range
+        const land = (1 - marine[idx]) * seamW * (1 + 2.2 * steep);
+        const v = land > 0.001
+          ? field.finish(stageAt(stageDx, i, j), stageAt(stageDz, i, j), stageAt(stageW, i, j), sharpAt(h / Math.max(1, maxHeight)), concavity, steep, r, theta) * land
+          : 0;
+        fine[idx] = v;
+        if (v < fineMin) fineMin = v; if (v > fineMax) fineMax = v;
+      }
+      if ((j & 7) === 7) yield;
+    }
   }
   // pass 3: the combined height, its fine gradient in world xz, the occlusion and the sun visibility. The horizon
   // searches walk the (angle x radius) grid itself at HALF resolution (occlusion and shadow are smooth terms with a
@@ -612,7 +978,7 @@ export function* bakeHorizonReliefSteps(
   // and the sun's grid direction is fixed per column (it turns with the angle), so no trigonometry runs per sample.
   const t2 = now();
   const total = new Float32Array(W * H);
-  for (let idx = 0; idx < W * H; idx++) total[idx] = macro[idx] + fine[idx];
+  for (let idx = 0; idx < W * H; idx++) total[idx] = macro[idx] + fine[idx] + (canopyH ? canopyH[idx] : 0);
   const data = new Uint8Array(W * H * 4);
   const sunHoriz = Math.hypot(sun[0], sun[2]);
   const tanEl = sun[1] / Math.max(1e-3, sunHoriz);
@@ -715,8 +1081,13 @@ export function* bakeHorizonReliefSteps(
       if ((idx & 1023) === 0) grads.push(Math.hypot(gx, gz));
       data[idx * 4] = clamp(Math.round((gx / gradScale * 0.5 + 0.5) * 255), 0, 255);
       data[idx * 4 + 1] = clamp(Math.round((gz / gradScale * 0.5 + 0.5) * 255), 0, 255);
-      data[idx * 4 + 2] = clamp(Math.round(half(aoGrid, i, j) * 255), 0, 255);
-      data[idx * 4 + 3] = clamp(Math.round(half(sunGrid, i, j) * 255), 0, 255);
+      let aoOut = half(aoGrid, i, j), sunOut = half(sunGrid, i, j);
+      if (canopyLight && canopyLight[idx] < 0.999) {
+        aoOut = encodeCanopyAo(aoOut, canopyLight[idx]);
+        sunOut = encodeCanopySun(sunOut, canopyLight[idx]);
+      }
+      data[idx * 4 + 2] = clamp(Math.round(aoOut * 255), 0, 255);
+      data[idx * 4 + 3] = clamp(Math.round(sunOut * 255), 0, 255);
     }
     if ((j & 15) === 15) yield;
   }

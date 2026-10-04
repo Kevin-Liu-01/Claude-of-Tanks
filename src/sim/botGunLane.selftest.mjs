@@ -5,8 +5,7 @@ import { createTankState, updateTank, SIM_DT } from './movement.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { createAI, mulberry32 } from '../game/ai.ts';
 import { createHeadlessCollisionWorld } from '../world/headlessCollisionWorld.ts';
-import { createHeightField } from '../world/terrain.ts';
-import { getMapConfig } from '../world/maps/index.ts';
+import { readFileSync } from 'node:fs';
 
 function entity(id, specId, pos, yaw = 0) {
   const spec = getSpec(specId);
@@ -34,7 +33,21 @@ Object.assign(shooter.state, {
   yaw: -0.456, turretYaw: -0.05402412152841264, gunPitch: -0.15111017893973777,
   visualPitch: 0.1411400156117864, visualRoll: -0.05186608651551163,
 });
-const field = createHeightField(1337, getMapConfig('airfield'));
+// The crest is frozen (maps lane B, 2026-10-02): Kestrel Airfield's redesign moved its ground, so the old map's height
+// field (seed 1337) is kept as its profile along this shooter -> target line at 1 m stations
+// (fixtures/airfieldCrestProfile.json), level across the line, which the probe's rays follow.
+const crest = JSON.parse(readFileSync(new URL('./fixtures/airfieldCrestProfile.json', import.meta.url), 'utf8'));
+const crestDx = crest.to[0] - crest.from[0], crestDz = crest.to[1] - crest.from[1];
+const crestLength = Math.hypot(crestDx, crestDz);
+const crestHeightAt = (x, z) => {
+  const along = Math.max(0, Math.min(crestLength,
+    ((x - crest.from[0]) * crestDx + (z - crest.from[1]) * crestDz) / crestLength));
+  const i = Math.min(crest.heights.length - 2, Math.floor(along / crest.stepM)), f = along / crest.stepM - i;
+  return crest.heights[i] + (crest.heights[i + 1] - crest.heights[i]) * Math.min(1, f);
+};
+const field = { getHeightAt: crestHeightAt, getGroundType: () => 'hard', maxY: 12,
+  getNormalAt: (x, z) => new Vector3(crestHeightAt(x - 0.5, z) - crestHeightAt(x + 0.5, z), 1,
+    crestHeightAt(x, z - 0.5) - crestHeightAt(x, z + 0.5)).normalize() };
 const world = createHeadlessCollisionWorld({ heightField: field, manifest: empty });
 let queries = 0;
 const raycast = (a, b, d) => { queries++; return world.raycast(a, b, d); };

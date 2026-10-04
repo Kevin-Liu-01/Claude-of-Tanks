@@ -7,7 +7,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  CLOUD_BASE_DARK, CLOUD_BASE_SHARP, CLOUD_CLUSTER_GAP, CLOUD_CLUSTER_PERIOD_K, CLOUD_FAR_FLAT, CLOUD_FAR_THIN, CLOUD_LUMP_GATE, CLOUD_LUMP_GATE_PERIOD_K,
+  CLOUD_BASE_DARK, CLOUD_BASE_SHARP, CLOUD_CLUSTER_GAP, CLOUD_CLUSTER_PERIOD_K, CLOUD_EDGE_CRISP, CLOUD_FAR_FLAT, CLOUD_FAR_THIN, CLOUD_LUMP_GATE,
+  CLOUD_LUMP_GATE_PERIOD_K, CLOUD_NEAR_FIELD, CLOUD_TOP_BILLOW,
 } from './volumetricClouds.ts';
 import { CLOUDSCAPE_REGIMES } from './cloudscapes.ts';
 
@@ -32,10 +33,13 @@ assert.ok(0.9 * gate(0, 1) < cut, 'even a strong cell in a gap stays under the c
 assert.ok(0.5 * gate(1, 1) > cut * 0.9, 'an average cell at a field\'s heart rises to the cut (cells merge into masses)');
 
 // ---- the GLSL: one field for the trace, the gobos and the far shade
-assert.match(clouds, /uniform float uCluster;\n\/\/ the last cloudField call's cumulus-field gate/, 'declared with the shared field');
+assert.match(clouds, /uniform float uCluster;\n\/\/ 2026-10-03: the cumulus fields' floor over the battlefield \(CLOUD_NEAR_FIELD; 0 = off\)\nuniform float uNearField;\n\/\/ the last cloudField call's cumulus-field gate/, 'declared with the shared field');
 assert.match(clouds, /float g = textureLod\( tWeather, \( pxz \+ uWeatherShift \* 0\.5 \) \/ \$\{f\(CLOUD_WEATHER_TILE_M \* CLOUD_CLUSTER_PERIOD_K\)\} \+ vec2\( 0\.37, 0\.61 \), 0\.0 \)\.b;/,
   'the broad channel at the fields\' period, drifting at half the cells\' speed');
-assert.match(clouds, /cloudGate = mix\( 1\.0, \$\{f\(CLOUD_CLUSTER_GAP\)\} \+ \$\{f\(2 \* \(1 - CLOUD_CLUSTER_GAP\)\)\} \* smoothstep\( 0\.3, 0\.7, g \), uCluster \);\s*field \*= cloudGate;/, 'the gate');
+assert.match(clouds, /cloudGate = mix\( 1\.0, \$\{f\(CLOUD_CLUSTER_GAP\)\} \+ \$\{f\(2 \* \(1 - CLOUD_CLUSTER_GAP\)\)\} \* smoothstep\( 0\.3, 0\.7, g \), uCluster \);[\s\S]{0,240}field \*= cloudGate;/, 'the gate');
+// (2026-10-03, wave 22: "tiny grey dabs high in the frame smaller than the clouds near the horizon") the floor over the
+// battlefield: never under the mean within 2.8 km of the map's centre, fading by 8 km; off until a capture shows it
+assert.match(clouds, /if \( uNearField > 0\.0 \) cloudGate = max\( cloudGate, uNearField \* \( 1\.0 - smoothstep\( 2800\.0, 8000\.0, length\( pxz \) \) \) \);/, 'the floor');
 // (2026-10-03) the trace's far-field re-mix toward the cells takes the same gate (a street regime's far half was ungated)
 assert.match(clouds, /field = mix\( field, mix\( w\.r, w\.b, uFieldMix \) \* cloudGate, uStreets \* 0\.55 \* farK \);/, 'the far cells gated alike');
 assert.match(clouds, /float cloudGate = 1\.0;/); assert.match(clouds, /\tcloudGate = 1\.0;\n\tif \( uCluster > 0\.0 \) \{/, 'reset per call');
@@ -50,6 +54,14 @@ assert.match(clouds, /t\.uFarThin\.value = lightTune\('CLOUD_FAR_THIN', CLOUD_FA
 // shared flat base, undersides barely shaded, hardly flattening toward the horizon"): off until a capture shows them,
 // read per frame for a sweep
 assert.deepEqual([CLOUD_BASE_SHARP, CLOUD_BASE_DARK, CLOUD_FAR_FLAT], [0, 0, 0], 'the candidate\'s cumulus by default');
+// (wave 22's knobs: the crisp outline, the billowed tops, the battlefield's field floor — off until a capture shows them)
+assert.deepEqual([CLOUD_EDGE_CRISP, CLOUD_TOP_BILLOW, CLOUD_NEAR_FIELD], [0, 0, 0], 'off by default');
+for (const [u, k] of [['uEdgeCrisp', 'CLOUD_EDGE_CRISP'], ['uTopBillow', 'CLOUD_TOP_BILLOW'], ['uNearField', 'CLOUD_NEAR_FIELD']]) {
+  assert.match(clouds, new RegExp(`t\\.${u}\\.value = lightTune\\('${k}', ${k}\\);`), `${u} per frame`);
+}
+assert.match(clouds, /\(this\.goboMaterial\.uniforms as \{ uNearField: \{ value: number \} \}\)\.uNearField\.value = t\.uNearField\.value as number;/, 'the shade map\'s field takes the floor too');
+assert.match(clouds, /float wispy = clamp\( mix\( hN \* 1\.4 - 0\.15, 1\.0, uWispiness \), 0\.0, 1\.0 \) \* \( 1\.0 - uTopBillow \* \( 1\.0 - uStratiform \) \);/, 'billows, not wisps, on a cumulus top');
+assert.match(clouds, /float baseW = edgeC \* uBaseFlat \* \( 1\.0 - smoothstep\( 0\.0, 0\.22, hN \) \);[\s\S]{0,200}vec3 db = texture\( tDetail, vec3\( ps\.x, 17\.0, ps\.z \)/, 'the base outline crinkles in plan (one height through the bottom layer)');
 for (const [u, k] of [['uBaseSharp', 'CLOUD_BASE_SHARP'], ['uBaseDark', 'CLOUD_BASE_DARK'], ['uFarFlat', 'CLOUD_FAR_FLAT']]) {
   assert.match(clouds, new RegExp(`uniform float ${u};`), `${u} is declared`);
   assert.match(clouds, new RegExp(`t\\.${u}\\.value = lightTune\\('${k}', ${k}\\);`), `${u} per frame`);
@@ -84,7 +96,7 @@ assert.match(layer, /out\.contrails = CLOUD_CONTRAILS_ON \? Math\.round\(clamp\(
 assert.match(clouds, /float deckK = uDeckDetail \* max\( smoothstep\( 0\.3, 0\.6, uStratiform \), uCells \* 0\.8 \);/, 'decks only');
 assert.match(clouds, /uStratiform \* 0\.8 \* \( 1\.0 - 0\.3 \* uCells \) \* \( 1\.0 - 0\.5 \* deckK \)/, 'less of the sheet\'s flattening');
 assert.match(clouds, /amount \*= 1\.0 \+ 1\.8 \* deckK;/, 'the erosion near a cumulus\'s strength');
-assert.match(clouds, /d = smoothstep\( 0\.03 \+ 0\.09 \* deckK, 0\.6 - 0\.25 \* deckK, d \);/, 'a crisper outline');
+assert.match(clouds, /d = smoothstep\( 0\.03 \+ 0\.09 \* deckK \+ 0\.05 \* edgeC, 0\.6 - 0\.25 \* deckK - 0\.25 \* edgeC, d \);/, 'a crisper outline (a deck\'s, a crisp cumulus\'s)');
 assert.match(clouds, /t\.uDeckDetail\.value = preset\.deckDetail \?\? 0;/);
 assert.match(layer, /deckDetail: clamp\(pick\('deckDetail'\), 0, 1\),/);
 assert.match(presets, /p\.cluster \?\? 0, p\.deckDetail \?\? 0,/, 'in the layer\'s key');

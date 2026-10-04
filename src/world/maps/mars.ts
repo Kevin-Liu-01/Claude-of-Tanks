@@ -141,6 +141,9 @@ export default {
   horizon: {
     baseHex: 0x6a3a2b, amp: 1.2, style: 'mesa', banding: 0.22,
     rockHex: 0x8a4a34, haze: 0.38, grain: 0.85,
+    // the mountains lane (2026-10-03): the outland boulders a shade sparser — they follow the ring's tilted beds, and
+    // the map's horizon draws no more triangles than the PR head's
+    outlandRocks: 0.97,
   },
 
   sky: MARS_SKY_PRESET,

@@ -102,7 +102,9 @@ export default {
     },
   },
   horizon: {
-    baseHex: 0x333e46, amp: 1.05, style: 'escarpment', treeline: 0.24,
+    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): the volcanic-glass district keeps
+    // a volcanic horizon, as a weathered volcanic field — rounded cones on low lava plateaus, not 1300 m spikes
+    baseHex: 0x333e46, amp: 1.05, style: 'escarpment', treeline: 0.24, panorama: { regional: 'volcanicField' },
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): faint concrete-grey beds on the
     // escarpment faces (the escarpment style authored none), boulder outcrops on the outland (treeline 0.24 fell in the
     // rockfield's dead zone: neither forest impostors nor rocks) and more tone grain (0.50 -> 0.60)

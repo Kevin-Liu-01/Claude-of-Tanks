@@ -9,6 +9,9 @@ import { tileableTorusNoise } from './proceduralTexture.ts';
 // round 73 (2026-09-25): the material resolves its ground-redux profile from the map id (groundRedux.ts, THREE-free);
 // the sandboxed material steps take the real functions
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
+// ground lane (2026-10-03): and its land use (landUse.ts, THREE-free) — the real functions too; the build wrappers'
+// height-field hook (attachTerrainLandUse) is a no-op here (the fixture's height field grows nothing)
+import { landUseUniformValues, resolveLandUseProfile } from './landUse.ts';
 
 // 2026-10-01 (frozen pins retired): the control used to be a copy of the b1c6629a3 pre-pacing splatFields, with sha256
 // pins of it and of three consumer bodies, so any intended change to the splat noise failed here. The control is now
@@ -73,7 +76,8 @@ function fixture({ closeThrows = false } = {}) {
     ...['buildTerrainMeshes', 'buildTerrainMeshesAsync', 'terrainBuildSteps'].map(declaration),
   ].join('\n').replace(/^export /gm, '');
   const compile = new Function('THREE', 'SimplexNoise', 'torusNoise', 'canvasToTexture',
-    'layer', 'own', 'state', 'closeThrows', 'groundReduxUniformValues', 'resolveGroundReduxProfile', stripTypeScriptTypes(`
+    'layer', 'own', 'state', 'closeThrows', 'groundReduxUniformValues', 'resolveGroundReduxProfile', 'landUseUniformValues', 'resolveLandUseProfile', stripTypeScriptTypes(`
+    const attachTerrainLandUse = () => {};
     const SPLAT_FIELD_S = 256, CHUNKS = 8, CHUNK_SIZE = 128, HALF = 512;
     const LOD_SEGS = [96,48,24], SPLAT_COMMON_FRAG = '', SPLAT_NORMAL_FRAG = '';
     let _splatFields = null;
@@ -112,7 +116,7 @@ function fixture({ closeThrows = false } = {}) {
     texture.image = { pixels: pixels.slice(), width: size, height: size };
     state.uploads.push({ pixels: texture.image.pixels, size, options });
     return texture;
-  }, layer, own, state, closeThrows, groundReduxUniformValues, resolveGroundReduxProfile);
+  }, layer, own, state, closeThrows, groundReduxUniformValues, resolveGroundReduxProfile, landUseUniformValues, resolveLandUseProfile);
   const engine = { anisotropy: 4, setupShadowMaterial() { state.materials++; } };
   const height = { _layout: { spawns: { player: { x: 0, z: 0 } }, terrain: {} } };
   return { api, state, engine, height, dispose(group) {

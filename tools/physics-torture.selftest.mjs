@@ -7,15 +7,15 @@ import assert from 'node:assert/strict';
 import { CASES, HULLS, WORLDS, runCase } from './physics-torture.mjs';
 import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
 
-await ensureAuthorityFleet([...new Set([...Object.values(HULLS), 't90m', 'm1a2'])]);
+await ensureAuthorityFleet([...new Set([...Object.values(HULLS), 't90m', 'm1a2', 'm551_sheridan'])]);
 
 const failures = [];
 let runs = 0;
-function check(caseId, hull, world, gates) {
+function check(caseId, hull, world, gates, { publishedContact = false } = {}) {
   const caseDef = CASES.find((c) => c.id === caseId);
   assert.ok(caseDef, `unknown torture case ${caseId}`);
   assert.ok(WORLDS[world], `unknown world ${world}`);
-  const metrics = runCase(HULLS[hull] ?? hull, world, caseDef, { replay: gates.some((g) => g.replay) });
+  const metrics = runCase(HULLS[hull] ?? hull, world, caseDef, { replay: gates.some((g) => g.replay), publishedContact });
   runs++;
   if (metrics.nan) failures.push(`${caseId} ${world} ${hull}: NaN in ${metrics.nanField}`);
   for (const gate of gates) {
@@ -195,6 +195,19 @@ check('wall-foot-side-t135', 'medium', 'earth', [
   g('fall damage (hp)', (m) => m.fallDamageHp, 0, 'before: 614 hp'),
   g('height over the ground (m)', (m) => m.maxHeightM, 2, 'before: 12.8 m'),
 ]);
+
+// A viaduct at road speed (round 3; the trees lane's botObjectives seeds on Aegis Crossing): at each span joint the hull's
+// nose is alone over the next span's record, and the standing rule's step-up, counted against a nose row's height, also
+// decided whether the nose cleared the span's sub-deck slab a metre under the deck. The slab stopped a Sheridan dead on
+// the deck at 18.6 m/s for 248 hp at every joint and the bot crawled the viaduct in stuck-recovery cycles.
+// Hulls on their real contact shells (the long and tall hulls' noses rise 0.42-0.44 m) and the Sheridan on its published
+// box (a context that never finalized its combat anatomy, botObjectives' own: no nose lift at all).
+for (const [hull, publishedContact] of [['long', false], ['tall', false], ['m551_sheridan', true]]) {
+  check('drive-viaduct', hull, 'earth', [
+    g('impact damage on the deck (hp)', (m) => m.impactDamageHp, 5, 'before: span joints taken as walls'),
+    g('progress short of 110 m (m)', (m) => 110 - m.progressM, 0, 'before: stopped at the first joint'),
+  ], { publishedContact });
+}
 
 // Rest stays rest: no jitter, no creep on a 25-degree grade on the brake.
 check('rest-slope25', 'medium', 'earth', [
