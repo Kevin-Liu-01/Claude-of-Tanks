@@ -6,7 +6,7 @@ export default {
   id: 'longleaf', name: 'Longleaf Crossing',
   blurb: 'Pine clearcuts, timber yards and a winding logging spur around a wooded creek hollow',
   terrain: {
-    hillScale: 1.05, microScale: 0.86, rimH: 30,
+    hillScale: 0.88, microScale: 0.76, rimH: 30,
     village: { x0: -142, x1: 92, z0: -54, z1: 158, cx: -26, cz: 54, feather: 42, flatten: 0.84, relief: 0.16 },
     roads: { paths: roundRoadBends([
       // The timber loading lane hooks around the garage yard. The diagonal
@@ -35,6 +35,9 @@ export default {
       { kind: 'knoll', x: -102, z: 286, rx: 90, rz: 72, height: 6.8 },
       { kind: 'basin', x: -338, z: 0, rx: 74, rz: 192, height: -3.4, wetScale: 0.4 },
       { kind: 'knoll', x: 344, z: -222, rx: 60, rz: 76, height: 5.2 },
+      // 2026-10-02 (maps lane B): the pine swell south of the northern landing, which screens it from the southern
+      // assembly height across the hollow.
+      { kind: 'ridge', x: -10, z: 304, length: 300, width: 60, height: 7.5, yawDeg: 2, corridorScale: 1 },
     ],
   },
   spawns: { player: { x: -118, z: -390 }, enemies: [
@@ -81,7 +84,7 @@ export default {
     buildingLat: [13, 2], destructibleBuildingLat: [17, 3], sideSkip: 0.18, spacingPad: 8,
     tacticalBeats: [
       { id: 'crossing-timber-yard', role: 'brawl', x: -64, z: 74, yawDeg: 90, structure: 'servicegarage', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
-      { id: 'eastern-cut-fire-watch', role: 'scout', x: 264, z: 52, yawDeg: -90, structure: 'huntingblind', outcrop: { count: 4, radius: 9 } },
+      { id: 'eastern-cut-fire-watch', role: 'scout', x: 310, z: -60, yawDeg: -90, structure: 'huntingblind', outcrop: { count: 4, radius: 9 } },
       { id: 'western-creek-camp', role: 'support', x: -268, z: 238, yawDeg: 90, structure: 'leanto', redoubt: true, outcrop: { count: 5, radius: 10 }, wreck: true },
     ],
     wallStyle: 'fieldstone', wallStoneChance: 0.62,

@@ -354,6 +354,15 @@ interface PropsSettings {
   snowCap?: boolean;
   streetRowsAfterLandmarks?: boolean;
   streetRowRoadStride?: number;
+  /** Junction corners the roadside buildings keep out of (maps lane B, 2026-10-03): a roadside building's centre stands
+   * outside each disc ({ x, z, r }). The centre test (7.5 m off any road) lets a long building reach into the other road
+   * of an acute junction; Nordhavn Fjord's town crossroads is one. Default none. */
+  roadBuildingKeepouts?: readonly { x: number; z: number; r: number }[];
+  /** Open ground the street rows keep out of (maps lane B, 2026-10-02): a street-row building stands only where its
+   * whole footprint clears each disc ({ x, z, r }: a square whose zone-control disc must stay open) and each rectangle
+   * ({ x0, z0, x1, z1 }: say, gardens along one side of a street). Default none. */
+  streetRowKeepouts?: readonly (
+    { x: number; z: number; r: number } | { x0: number; z0: number; x1: number; z1: number })[];
   ruinChance?: number;
   blockFill?: boolean;
   destructibleBuildingLat?: readonly [number, number];
@@ -3329,6 +3338,17 @@ ${snowCap ? `
   ): void {
     const curved = path ? fencePathSampler(path) : null;
     const along = curved?.length ?? Math.hypot(x1 - x0, z1 - z0);
+    // A module or gate never stands where a bridge deck spans (maps lane B, 2026-10-02): the ground there is the bed or
+    // the wall under the span, so a roadside run along a viaduct hung down its gorge. The run still takes the module's
+    // draws, so every other placement keeps its seat. (Declared inside the run: roadStations executes this function.)
+    function underBridgeDeck(x: number, z: number): boolean {
+      for (const deck of heightField.bridgeDecks ?? []) {
+        const dx = x - deck.x, dz = z - deck.z;
+        if (Math.abs(dx * deck.ux + dz * deck.uz) <= deck.halfLength + 2
+          && Math.abs(dx * deck.uz - dz * deck.ux) <= deck.halfWidth + 2) return true;
+      }
+      return false;
+    }
     const n = Math.max(1, Math.round(along / FENCE_SEG));
     const tx = (x1 - x0) / along, tz = (z1 - z0) / along;
     const straightYaw = Math.atan2(tx, tz); // module runs along local +z
@@ -3345,7 +3365,7 @@ ${snowCap ? `
         if (openRun && !gated && drng() < gateChance) {
           // hang an open gate at the field entrance the road cuts
           const gy = heightField.getHeightAt(ax, az);
-          addDestructible('gate', ax, gy - 0.06, az, yaw, 1);
+          if (!underBridgeDeck(ax, az)) addDestructible('gate', ax, gy - 0.06, az, yaw, 1);
           gated = true;
         }
         openRun = false;
@@ -3355,7 +3375,8 @@ ${snowCap ? `
       const ya = heightField.getHeightAt(ax, az), yb = heightField.getHeightAt(bx, bz);
       const cy = Math.min(ya, yb);
       const tiltX = Math.atan2(yb - ya, FENCE_SEG) * 0.85;
-      addDestructible(kind, cx, cy - 0.06, cz, yaw, 0.96 + drng() * 0.10, tiltX, (drng() - 0.5) * 0.03);
+      const scale = 0.96 + drng() * 0.10, tiltZ = (drng() - 0.5) * 0.03;
+      if (!underBridgeDeck(cx, cz)) addDestructible(kind, cx, cy - 0.06, cz, yaw, scale, tiltX, tiltZ);
       openRun = true;
     }
   }
@@ -3692,6 +3713,7 @@ ${snowCap ? `
     const pz = cand.z + cand.tx * side * lat;
     if (px < v.x0 || px > v.x1 || pz < v.z0 || pz > v.z1) return;
     if (heightField._roadDist(px, pz) < 7.5 || noVeg(px, pz)) return;
+    if (P.roadBuildingKeepouts?.some((keep) => Math.hypot(px - keep.x, pz - keep.z) < keep.r)) return;
     if (conflictsTacticalReservation(px, pz) || !isRoadBuildingSiteClear(px, pz)) return;
     const rot = Math.atan2(cand.tx, cand.tz) + (rng() - 0.5) * 0.10;
     // 2026-10-02: Mangrove Reach, rebuilt to the layout brief, takes the frontage law as well
@@ -3830,7 +3852,12 @@ ${snowCap ? `
     ): boolean => distToOtherRoads(x, z, roadIndex) < 9.5
       || Math.hypot(x - junction.x, z - junction.z) < 26
       || noVeg(x, z)
-      || conflictsTacticalReservation(x, z, Math.hypot(width, depth) * 0.5);
+      || conflictsTacticalReservation(x, z, Math.hypot(width, depth) * 0.5)
+      || (P.streetRowKeepouts?.some((keep) => {
+        const reach = Math.hypot(width, depth) * 0.5;
+        return 'r' in keep ? Math.hypot(x - keep.x, z - keep.z) < keep.r + reach
+          : x > keep.x0 - reach && x < keep.x1 + reach && z > keep.z0 - reach && z < keep.z1 + reach;
+      }) ?? false);
     const conflictsFrontage = (x: number, z: number, width: number, depth: number): boolean =>
       frontageReservations.some((site) =>
         Math.hypot(x - site.x, z - site.z) < site.rr + Math.hypot(width, depth) * 0.34);
