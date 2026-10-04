@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import {
   createTankState, updateTank, SIM_DT, requestTankJump, resetTankVerticalState,
-  IMPACT_SOURCE_CLIFF, IMPACT_SOURCE_COLLIDER, IMPACT_SOURCE_NONE,
+  IMPACT_SOURCE_CLIFF, IMPACT_SOURCE_COLLIDER, IMPACT_SOURCE_NONE, feltGrade,
 } from './movement.ts';
 import { matchRulesetFor, STANDARD_PHYSICS } from './matchRuleset.ts';
 import { createStructureSupportField } from './structureSupport.ts';
@@ -409,10 +409,11 @@ for (const mode of ['mars', 'turbo_ball']) for (const gravityScale of [.17, .38,
   assert.ok(blocked, 'the face is reported blocked (the bots run their recovery)');
   assert.ok(slider.state.speed < -3, `full throttle up a 48° face still slides down (${slider.state.speed.toFixed(2)} m/s)`);
   assert.ok(speeds[90] < speeds[60] && speeds[60] < speeds[30], 'the slide accelerates');
-  // gravity's pull along the plane the hull fits, against sliding friction μ·g·cos θ (μ = 0.24 / 1.2 on medium
-  // ground), measured before the top-speed cap (1.2 × 42 km/h = 14 m/s) can bite
-  const g = 9.81, theta = pitches[60];
-  assert.ok(theta > 0.7, `the hull sits on the face (fitted pitch ${(theta * 180 / Math.PI).toFixed(1)}°)`);
+  // gravity's pull along the grade the drivetrain feels on the plane the hull lies on (movement.ts feltGrade), against
+  // sliding friction μ·g·cos θ (μ = 0.24 / 1.2 on medium ground), measured before the top-speed cap (1.2 × 42 km/h =
+  // 14 m/s) can bite
+  const g = 9.81, theta = feltGrade(pitches[60]);
+  assert.ok(pitches[60] > 0.7, `the hull sits on the face (fitted pitch ${(pitches[60] * 180 / Math.PI).toFixed(1)}°)`);
   const expectedAccel = g * Math.sin(theta) - (0.24 / 1.2) * g * Math.cos(theta);
   const measuredAccel = -(speeds[90] - speeds[30]) / (60 * SIM_DT);
   near(measuredAccel, expectedAccel, 0.4, `the slide is gravity minus friction (pull ${(g * Math.sin(theta)).toFixed(2)} m/s²)`);

@@ -481,6 +481,9 @@ export function matchRulesetFor(
     const world = MARS_GRAVITY_OPTIONS[gravity];
     ruleset = {
       ...ruleset, gravityScale: world.gravityScale, jumpMps: world.jumpMps, recoilLaunchScale: world.recoilLaunchScale,
+      // Earth's gravity lands with the whole game's bounce (physics lane round 3; gauntlet wave 23: "an Earth-gravity drop
+      // hops clear of the ground"): the basin's 30 % threw a 5.6 m/s landing at 1 g back off the ground
+      ...(gravity === 'earth' ? { physics: Object.freeze({ ...ruleset.physics, restitution: STANDARD_PHYSICS.restitution }) } : {}),
       mars: marsRulesFor(gravity, caches),
     };
   }
