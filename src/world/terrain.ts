@@ -383,7 +383,7 @@ export interface HeightField {
   /** The map-borders lane: the hedged stretches of the field boundaries past the edge (borderHedgerows.ts). */
   _borderHedgeLines?(maxOut: number, keep?: (x: number, z: number) => boolean): { xs: number[]; zs: number[]; w: number[] }[];
   /** The map-borders lane: the farmsteads past the edge (borderFarmsteads.ts), built with the ring. */
-  _borderFarmsteads?: { count: number; style: FarmsteadStyle; fieldAngle: number };
+  _borderFarmsteads?: { count: number; style: FarmsteadStyle; fieldAngle: number; buildings?: boolean };
   /** The map-borders lane: the farm tracks past the edge (the ring's borderTrack attribute, borderLandform.ts trackAt). */
   _borderTrackAt?(x: number, z: number, out: [number, number, number, number]): [number, number, number, number];
   getHeightAtFast(x: number, z: number): number;
@@ -2449,7 +2449,8 @@ function* heightFieldBuildSteps(
     ...(border.settings.classic ? {} : { getBorderWoodsAt: border.woodsAt, getBorderHedgeAt: border.hedgeAt, _borderParcelAt: border.parcelTintAt,
       _borderTrackAt: border.trackAt,
       _borderHedgeLines: border.traceHedgeLines,
-      _borderFarmsteads: { count: border.settings.farms, style: border.settings.buildings, fieldAngle: border.fieldAngle } }),
+      _borderFarmsteads: { count: border.settings.farms, style: border.settings.buildings, fieldAngle: border.fieldAngle,
+        buildings: border.settings.farmBuildings !== false } }),
     _roadExitAt: roadExitAt,
     _roadExitLines: () => roadExits().map((exit) => ({ xs: exit.xs, zs: exit.zs, length: exit.length })),
     _roadExitOnRing: roadExitOnRing,

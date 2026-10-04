@@ -3888,7 +3888,8 @@ export function* buildHorizonRingSteps(
       mesh.add(hedges);
     }
   }
-  if (farmOptions && farmSites.length) {
+  // (a ruined city or a country without farmland raises no farm building: its sites stay the copses round them)
+  if (farmOptions && farmSites.length && farmSpec?.buildings !== false) {
     const farms = buildBorderFarmsteads({ ...farmOptions, sites: farmSites });
     if (farms) {
       const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;

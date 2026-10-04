@@ -79,4 +79,24 @@ const fc = foundryFarms.geometry.getAttribute('color');
 let generic = 0;
 for (let i = 0; i < fc.count; i++) if (genericBarn.some((c) => near(fc, i, c))) generic++;
 assert.equal(generic, 0, 'no generic barn left at Ironworks');
-console.log(`borderFarmsteads.selftest: a ${village.length}-yard village from 110 m with its church; Frosthollow's north spire at (${tower.x.toFixed(0)}, ${tower.z.toFixed(0)}), ${tower.rise.toFixed(1)} m; Ironworks' hamlets from the coalfield kit, ${tris} triangles`);
+
+// gauntlet wave 40 (Ruin Spires: "a red-roofed farm on that horizon reads wrong past a destroyed megacity"): no farm
+// building stands past the edge of a ruined city or a country without farmland; the farms' sites keep their shelter
+// copses, so nothing else on the ring moves (its forest is the same tree for tree)
+const { resolveBorderLandform } = await import('./borderLandform.ts');
+for (const id of ['ruinspires', 'blackglass', 'skybridge', 'titan_gorge', 'caldera', 'copper_mesa']) {
+  const config = getMapConfig(id);
+  assert.equal(resolveBorderLandform(config.horizon?.style, config.terrain?.border, id).farmBuildings, false, `${id}: no farm buildings`);
+}
+const forestOf = (group) => {
+  const forest = group.getObjectByName('horizon-forest');
+  return Object.values(forest?.userData ?? {}).find((v) => v && v.placements instanceof Float32Array)?.placements;
+};
+const ruins = getMapConfig('ruinspires');
+const ruinsRing = buildHorizonRing(null, ruins, 1337, createHeightField(1337, ruins));
+assert.equal(ruinsRing.getObjectByName('border-farmsteads'), undefined, 'Ruin Spires: no farm past the edge');
+const withFarms = { ...ruins, terrain: { ...ruins.terrain, border: { ...(ruins.terrain.border ?? {}), farmBuildings: true } } };
+const farmRing = buildHorizonRing(null, withFarms, 1337, createHeightField(1337, withFarms));
+assert.ok(farmRing.getObjectByName('border-farmsteads'), 'the farms\' sites are still chosen (a twin with buildings raises them)');
+assert.deepEqual(Array.from(forestOf(ruinsRing)), Array.from(forestOf(farmRing)), 'the ring forest is the same tree for tree');
+console.log(`borderFarmsteads.selftest: a ${village.length}-yard village from 110 m with its church; Frosthollow's north spire at (${tower.x.toFixed(0)}, ${tower.z.toFixed(0)}), ${tower.rise.toFixed(1)} m; Ironworks' hamlets from the coalfield kit, ${tris} triangles; no farm past Ruin Spires, its forest unchanged`);
