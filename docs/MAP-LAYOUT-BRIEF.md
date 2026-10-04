@@ -645,7 +645,9 @@ stack is a low course and the burst bags round it. A road nest, a redoubt's stac
 bedded (`buildSandbagBedding`, wave 34: "a stacked prop on a bare mound, no berm or spilled sand"): the spoil banked two
 fifths up the face toward the threat and out the better part of a metre, lower round the rest, a spill of fill heaped
 at one end with the emptied bag by it, in the map's soil (its earth on an arid map); one receive-only mesh of their own
-on the baked material (`props-sandbag-beds`), colliding with nothing, a few hundred triangles a stack.
+on the props rock material, as the bocage banks are (`props-sandbag-beds`; its detail print, the grime, the wet maps'
+moss; its ground given half a metre down so the rocks' soil skirt does not paint a second soil at its foot), colliding
+with nothing, a few hundred triangles a stack.
 
 ### What the composer checks
 
