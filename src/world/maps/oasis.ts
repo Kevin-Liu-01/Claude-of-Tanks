@@ -79,7 +79,9 @@ export default {
     inhabit: { stalls: 5, benches: 3, coreClutter: 22, pots: 10, laundry: 4, handcarts: 3, carts: 4, trucks: 4, jeeps: 3, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 18, roadFence: 'fencewattle', yardFence: 'fencewattle' },
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): dune-ring tone grain 0.46 -> 0.62
-  horizon: { baseHex: 0xaa936b, amp: 0.90, style: 'rolling', ground: 'sand', treeline: 0.12, forestHex: 0x70704b, rockHex: 0xae9471, haze: 0.88, grain: 0.62,
+  // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): a flat erg of low soft dunes
+  // round the spring (the gour stair kept on the ring's own hills)
+  horizon: { baseHex: 0xaa936b, amp: 0.35, style: 'rolling', ground: 'sand', treeline: 0.12, panorama: { regional: 'erg' }, forestHex: 0x70704b, rockHex: 0xae9471, haze: 0.88, grain: 0.62,
     // the mountains lane (2026-10-02): the desert hills round the spring are gour — flat-topped residual hills cut by
     // their beds — not smooth rolling downs: a gentler bed stair than the tableland rings' (horizonEscarpment.ts)
     escarpment: { bedM: [22, 42], cliffShare: [0.24, 0.40], talusRise: 0.30, meanderM: 16 } },

@@ -191,7 +191,9 @@ export default {
   horizon: {
     // Low pastoral watersheds and supported woodland across the slopes.
     // The user chose this newer horizon over the original mountain wall.
-    baseHex: 0x4d6540, amp: 1.0, style: 'rolling', treeline: 0.94, treelineLayers: 2,
+    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): the Prokhorovka forest-steppe
+    // rolls away to a low skyline of shelterbelts and balka woods: the ring's swells at a third, the far country plain
+    baseHex: 0x4d6540, amp: 0.35, style: 'rolling', treeline: 0.94, treelineLayers: 2, panorama: { regional: 'plain' },
     forestHex: 0x33502e, rockHex: 0x77725f, haze: 0.95, grain: 0.7,
   },
 
