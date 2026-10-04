@@ -1148,13 +1148,17 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
       const stone = roughStone(proud + 0.07, hh, zb - za, r, keep, 0.3, 0.1);
       // (wave 34 re-shoot, "flat grey from a distance": each stone's face turned a little its own way — up to a
       // ninth of a radian — in its shading only, so neighbours catch the light differently and read stone by stone)
-      const nrm = stone.attributes.normal, tiltY = (r() - 0.5) * 0.22, tiltZ = (r() - 0.5) * 0.22;
+      // (wave 48, "crisp rectangular blocks … stacked crates or voxels": and its face shaded as a rounded stone — each
+      // corner's normal leaning out from the face's middle, so the light rolls off toward its edges)
+      const nrm = stone.attributes.normal, spos = stone.attributes.position, tiltY = (r() - 0.5) * 0.22, tiltZ = (r() - 0.5) * 0.22;
+      const halfH = Math.max(0.02, hh / 2), halfL = Math.max(0.02, (zb - za) / 2);
       for (let i = 0; i < nrm.count; i++) {
         if (nrm.getY(i) >= 0.6) {
           const l = Math.hypot(0.9, 0.42);
           nrm.setXYZ(i, (face * 0.9) / l, 0.42 / l, 0);
         } else if (Math.abs(nrm.getX(i)) > 0.5) {
-          const x = nrm.getX(i), y = nrm.getY(i) + tiltY, z = nrm.getZ(i) + tiltZ, l = Math.hypot(x, y, z) || 1;
+          const roundY = Math.max(-1, Math.min(1, spos.getY(i) / halfH)) * 0.38, roundZ = Math.max(-1, Math.min(1, spos.getZ(i) / halfL)) * 0.3;
+          const x = nrm.getX(i), y = nrm.getY(i) + tiltY + roundY, z = nrm.getZ(i) + tiltZ + roundZ, l = Math.hypot(x, y, z) || 1;
           nrm.setXYZ(i, x / l, y / l, z / l);
         }
       }

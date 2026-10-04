@@ -571,7 +571,7 @@ scenery: {
 | Stone landmarks (`landmarks`) | `calvary` (granite steps, octagonal shaft, cross), `menhir` (a standing stone), `cairn` (a clearance cairn: the gomila, the rujm) | static colliders | in the rock mesh |
 | Timber, steel and stucco landmarks (`landmarks`) | `bildstock` (a carved shrine on its pillar; breaks to its stump), `waysidecross` and `orthodoxcross` (topple), `windpump` (an American windmotor; topples), `tomb` (a Mekong-delta family tomb; breaks), `strawstack` (rice straw packed round a bamboo pole; breaks) | props destructibles (`SCENERY_DESTRUCTIBLE_TYPES`): crushable, their state synced like every other destructible | one instanced pool per kind a map uses |
 | Field works (`fieldWorks`) | `walls`: the dry stone walls of a karst's walled fields; `banks`: the earth banks (the talus) under a bocage's hedge lines — both laid on the ground lane's land use (`landUse.ts` through the height field's `_landUseAt`): the boundary band the terrain draws, the same field gate (off villages, roads, water and slopes past ~3°), chained along their lines and swept continuously. `wallTone` / `bankTone` (sRGB HSL) set their stone and earth | none: decor, at most 1 m tall (`FIELD_WORKS_MAX_M`), so a low rubble wall or a bank reads as crossed, not as cover; should one ever matter in play it becomes crushable like the fences, never blocking. They keep off the roads' painted core (5.7 m), the spawn pads (24 m), the bridge decks and their approaches, the aprons (`terrain.hardstands`, runways included) and the yards' dressing, the carved trenches and every mode's objective discs where the match placement seats them on that world (zones 30 m, flag bases 12 m, turbo goals 18 m and kickoff 12 m, the extraction 30 m, the Frontline Assault sectors 30 m), each with a 3 m margin | one welded mesh on the props rock material, no shadow of its own, built after the props' solids are final; Saltwind's walls about 16 km and 125 k triangles, Saltmere's banks about 4 km and 30 k; seating the discs runs the match placement for four modes (a few hundred milliseconds of the world build, on those maps only) |
-| Power lines (`powerLines`) | lattice towers (a double-circuit tower scaled to `heightM`) and conductors hanging a 4 % sag (wave 20: a 2 % sag read as straight hairlines); the towers rise until the lowest conductor clears every crown under its span by 3 m and the ground by 12 m (at most 70 m) | four leg colliders per tower; a hull drives between the legs | folded into the props `baked` bucket: no draw of its own; about 2 k triangles a tower |
+| Power lines (`powerLines`) | lattice towers (a double-circuit tower scaled to `heightM`) and conductors hanging a 4 % sag (wave 20: a 2 % sag read as straight hairlines); the towers rise until the lowest conductor clears every crown under its span by 3 m and the ground by 12 m (at most 70 m) | four leg colliders per tower; a hull drives between the legs | the towers fold into the props `baked` bucket (no draw of their own; about 2 k triangles a tower); the conductors are ribbons on the wire material (`wireMaterial.ts`, wave 48: "the power cables break into dashes"): turned to the eye and half a pixel either side at the least, their alpha the share the true wire covers, one blended mesh (`props-pylon-wires`), unlit, fogged, no shadow, two triangles a segment |
 
 The rock material is the boulders' (`rockDressing.ts`): the map's moss, dust and soil laws, the triplanar detail tile
 and the cascade setup, so a tor and the boulders round it are one rock. The moss keeps to the damp ground a metre or two
@@ -585,7 +585,9 @@ The field walls (`props.wallRuns`, the `wallstone` module of `maps/inhabitKit.ts
 whose stone bucket is fieldstone: a battered hearting, face stones laid in rough courses on it and flattish top stones
 laid across (wave 34, "coursed rubble relief"): four courses the module's own, the biggest at the foot, every stone
 sitting on what is under it, now and then a jumper two courses high, two thin stones in one course or a pin, each
-stone one to three centimetres proud with its corners knocked back so the hearting shows in the gaps. The module keeps
+stone one to three centimetres proud with its corners knocked back so the hearting shows in the gaps, its face shaded
+as a rounded stone (its corners' normals leaning out from its middle: wave 48 read flat-shaded rectangles as "stacked
+crates or voxels") and turned a little its own way. The module keeps
 the old one's envelope and its seeded draws, so the fitted wall colliders keep their plan and height. The maps whose
 stone bucket is the sourced brick print (`sourcedStoneIsBrick`) keep the coursed module (`COURSED_WALLSTONE`) the print
 was laid out for.
@@ -605,7 +607,9 @@ printed rubble on the stones as "stamped flagstone with dark outlines"). Its hea
 is the core between the face stones, packing stones in dark voids, painted squashed because the core maps it once over
 its height. Every piece's window lies inside its band: `roughStone`, the foot and tumbled stones, the snow load and
 `jitterFieldStoneUV` (the props stream's four `jitterUV` draws) for the heads and breach pieces. The skin's mean colour
-is the stone print's (within 4 %) under the map's stone tone; `liftFieldStoneMean` lifts a tone darker than an sRGB
+is the stone print's (within 4 %) under the map's stone tone, and each instanced module shifts its window along the
+wall by a hash of its place (the field print's own program, u only: wave 48, "the coursing visibly repeats"), so a
+run's one repeated module takes tones of its own; `liftFieldStoneMean` lifts a tone darker than an sRGB
 0.36 mean in linear light (Verdant's x0.76 blacked its village walls out in shade). A map whose walls are mud or brick
 paints no field print and keeps the stone print. The receipt is `fieldStoneSurface.selftest.mjs` (seamless, no void or
 dark line in the skin, windows differing stone to stone, a dark core, the palette, the lift, the phone print).
@@ -616,11 +620,14 @@ alone (wave 34: "thin white slivers"); a run turns some of its modules round (a 
 neighbours 4 mm apart across it, so the kit's one module does not show the same face and crown every three metres.
 Each built island of a run is dressed by `maps/fieldWallDressing.ts` on its own streams: a dry-stone wall gets the
 stones settled at its foot, sunk a third to a half in the ground on both faces; every run head gets the stones it lost
-tumbled out past the end and along its feet (a mud wall's pier its fallen lumps). On a snow map (Winter, Alpine,
+tumbled out past the end and along its feet (a mud wall's pier its fallen lumps; on a snow map none: the snow covers
+what fell, and wave 48 read stones on it as "loose slabs strewn on the snow"). On a snow map (Winter, Alpine,
 Whiteout) the module and the run heads carry a snow load along their tops, 6-24 cm in lumps a stone or two long with a
 cornice here and a thin edge there (its normals leaning up so the snow cap whitens it to the lips), and the wind banks
-two drifts: the big one in the wall's lee (40-80 cm on the face, out three to four metres) and a small ramp on the
-windward face, both smaller where the wind runs along the wall, their toes scalloped. A mud wall is an eroded slab
+two drifts: the bigger in the wall's lee (under half the wall: about 36 cm on the face, out two metres and more) and
+a small ramp on the windward face, both smaller where the wind runs along the wall, each a rounded shoulder rolling off
+to a toe sunk under the ground, a row every 30 cm, stopping 35 cm inside its island's ends (wave 48: "a smooth wedge
+that rides over its top … loose slabs strewn on the snow at its end"). A mud wall is an eroded slab
 (`adobeModule`): faces battered in to a crown worn round, the foot cut back by the splash, a slump up to a third of a
 metre in its crown and a couple of small losses, rain gullies from the crown; it draws its own worn render (`fieldMud`,
 `fieldMudSurface.ts`: a mud coat with straw, the rain's streaks and a damp, splashed foot, the render thinning out in

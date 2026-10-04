@@ -51,7 +51,8 @@ import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSp
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
-import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts'; // the field walls' rubble print (the scenery lane)
+import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
+import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
 import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
@@ -3231,12 +3232,39 @@ ${snowCap ? `
   // Round 75 item 6: the boulders' dressing (moss on wet maps, dust on arid ones, the soil skirt everywhere)
   const rockDressing = rockDressingFor(mapId, P.rockSoilTone ?? null);
   const rockHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRockShaderHook(shader, rockDressing); };
+  // the scenery lane (wave 48, "the same stone pattern clearly tiles going right"): a run repeats the kit's one wall
+  // module, so the field print's window shifts along the wall by a hash of each module's place (sixteen steps of seven
+  // sixteenths of a tile, u only: the print's bands lie in v) — every module's stones take tones of their own. Only the
+  // instanced modules shift; the merged heads and foot stones keep their windows.
+  const fieldStoneHook: MaterialShaderHook = (shader) => {
+    grimeHook(shader);
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <uv_vertex>', /* glsl */`#include <uv_vertex>
+#ifdef USE_INSTANCING
+{
+  vec2 cotStoneShift = vec2(floor(fract(dot(instanceMatrix[3].xz, vec2(0.0731, 0.1193))) * 16.0) * 0.4375, 0.0);
+  #ifdef USE_MAP
+  vMapUv += cotStoneShift;
+  #endif
+  #ifdef USE_NORMALMAP
+  vNormalMapUv += cotStoneShift;
+  #endif
+  #ifdef USE_ROUGHNESSMAP
+  vRoughnessMapUv += cotStoneShift;
+  #endif
+  #ifdef USE_AOMAP
+  vAoMapUv += cotStoneShift;
+  #endif
+}
+#endif`);
+  };
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
-        materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook : grimeHook);
-      // (the field walls' prints are the stone and plaster materials' shaders with other maps: they share their programs)
-      const programKind = materialKind === 'fieldStone' ? 'stone' : materialKind === 'fieldMud' ? 'plaster' : materialKind;
+        materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
+          : materialKind === 'fieldStone' ? fieldStoneHook : grimeHook);
+      // (the mud print is the plaster material's shader with another map: they share their program; the field print
+      // has its own, for the modules' shifted windows)
+      const programKind = materialKind === 'fieldMud' ? 'plaster' : materialKind;
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
@@ -7798,6 +7826,18 @@ ${snowCap ? `
       mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = false;
       group.add(mesh);
+    }
+    // the scenery lane (wave 48, "the power cables break into dashes"): the power lines' conductors as one mesh on the
+    // wire material (wireMaterial.ts: a pixel wide at the least, its alpha the share the true wire covers)
+    if (built.wires.length) {
+      const merged = mergeGeometries(built.wires, false);
+      for (const piece of built.wires) piece.dispose();
+      if (merged) {
+        const wires = createWireMesh(merged);
+        wires.name = 'props-pylon-wires';
+        wires.matrixAutoUpdate = false;
+        group.add(wires);
+      }
     }
     group.userData.scenery = built.receipt;
   }

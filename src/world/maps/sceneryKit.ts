@@ -415,23 +415,32 @@ export function buildPylon(rng: Rng, height = 34, mobile = false, breadthOf = he
 export function buildConductor(
   ax: number, ay: number, az: number, bx: number, by: number, bz: number, sag: number, segments: number, radius: number,
 ): THREE.BufferGeometry {
-  const parts: THREE.BufferGeometry[] = [];
-  const pts: THREE.Vector3[] = [];
-  for (let i = 0; i <= segments; i++) {
-    const t = i / segments;
-    const y = ay + (by - ay) * t - sag * 4 * t * (1 - t);
-    pts.push(new THREE.Vector3(ax + (bx - ax) * t, y, az + (bz - az) * t));
+  // (wave 48, "the power cables break into dashes": a conductor is a ribbon along its catenary — its centre line twice
+  // over, a side each — that the wire material (props.ts) turns to face the camera and widens to at least a pixel, its
+  // alpha the share of that pixel the true wire covers, so a far wire fades instead of breaking up. Position is the
+  // centre line; aWireTangent the catenary's direction there, aWireSide -1 or +1, aWireRadius the true radius.)
+  const n = segments + 1, positions = new Float32Array(n * 2 * 3), tangents = new Float32Array(n * 2 * 3);
+  const sides = new Float32Array(n * 2), radii = new Float32Array(n * 2).fill(radius), index: number[] = [];
+  const pt = (t: number) => [ax + (bx - ax) * t, ay + (by - ay) * t - sag * 4 * t * (1 - t), az + (bz - az) * t];
+  for (let i = 0; i < n; i++) {
+    const t = i / segments, p = pt(t);
+    const t0 = Math.max(0, t - 1 / segments), t1 = Math.min(1, t + 1 / segments), p0 = pt(t0), p1 = pt(t1);
+    const dx = p1[0] - p0[0], dy = p1[1] - p0[1], dz = p1[2] - p0[2], l = Math.hypot(dx, dy, dz) || 1;
+    for (let k = 0; k < 2; k++) {
+      const v = i * 2 + k;
+      positions.set(p, v * 3);
+      tangents.set([dx / l, dy / l, dz / l], v * 3);
+      sides[v] = k ? 1 : -1;
+    }
+    if (i + 1 < n) { const a = i * 2, b = a + 2; index.push(a, a + 1, b, b, a + 1, b + 1); }
   }
-  const up = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3();
-  for (let i = 0; i < segments; i++) {
-    dir.subVectors(pts[i + 1], pts[i]);
-    const len = dir.length();
-    const g = new THREE.CylinderGeometry(radius, radius, len, 4, 1, true);
-    g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up, dir.normalize()));
-    g.translate((pts[i].x + pts[i + 1].x) / 2, (pts[i].y + pts[i + 1].y) / 2, (pts[i].z + pts[i + 1].z) / 2);
-    parts.push(paint(g, [0.6, 0.05, 0.16], 0, () => 0.5));
-  }
-  return merge(parts, true, false);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  g.setAttribute('aWireTangent', new THREE.BufferAttribute(tangents, 3));
+  g.setAttribute('aWireSide', new THREE.BufferAttribute(sides, 1));
+  g.setAttribute('aWireRadius', new THREE.BufferAttribute(radii, 1));
+  g.setIndex(index);
+  return g;
 }
 
 // ---------------------------------------------------------------------------------------------- sandbag stacks
@@ -819,7 +828,9 @@ export function buildSandbagBedding(
   // (wave 34 re-shoot, "a smooth clay mound up close": the bedding draws on the props rock material, as the bocage's
   // earth banks do — its detail print and relief, the grime, the wet maps' moss greening the spoil like a bank. Its
   // ground is given half a metre under the true ground, so the rocks' soil skirt, which would paint the spoil's foot
-  // a second soil, never applies: the spoil is the soil. A world-planar uv as the banks have.)
+  // a second, brighter soil, never applies: the spoil is the soil, at half its linear albedo. The b5 hold measured the
+  // skirt beside three boulders each on Verdant and Frontier: on a rock's shaded foot it is no brighter than the dirt
+  // beside it, so the rocks keep it. A world-planar uv as the banks have.)
   const op = out.attributes.position, gr = new Float32Array(op.count), uv = new Float32Array(op.count * 2);
   for (let i = 0; i < op.count; i++) {
     const px = op.getX(i), py = op.getY(i), pz = op.getZ(i);
