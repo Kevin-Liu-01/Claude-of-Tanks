@@ -140,7 +140,9 @@ for (const radius of [0.25, 0.34, 0.70]) {
   snow.dispose();
 }
 
-for (const species of ['pine', 'birch']) {
+// trees round 2 (2026-10-03): a conifer carries its snow as laden sprays, not pads on its boughs — the pads' fixture
+// is the oak's and the birch's limbs
+for (const species of ['oak', 'birch']) {
   for (const seed of [0x71ee, 0x8b3d, 0xc041]) {
     const tree = buildTreeTrunkAuditGeometry(species, seed, { snow: 0.9 });
     const uv = tree.getAttribute('uv');

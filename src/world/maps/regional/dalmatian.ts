@@ -543,7 +543,7 @@ const customsHouse: RegionalBuilder = (ctx) => {
   const b0 = frame.bodies[0];
   // the string course at the floor and the cornice under the eaves, run round the four faces
   for (const [y, h, o] of [[frame.floors[1], 0.2, 0.08], [frame.eaveY - 0.26, 0.26, 0.14]] as const) {
-    sink.span('stone', b0.x0 - o, y - h / 2, b0.z0 - o, b0.x1 + o, y + h / 2, b0.z1 + o, { decor: true });
+    sink.band('stone', b0.x0 - o, y - h / 2, b0.z0 - o, b0.x1 + o, y + h / 2, b0.z1 + o, { decor: true });
   }
   // quoins: long and short dressed blocks up the four corners
   for (const [cx, cz] of [[b0.x0, b0.z0], [b0.x1, b0.z0], [b0.x0, b0.z1], [b0.x1, b0.z1]] as const) {
@@ -551,7 +551,7 @@ const customsHouse: RegionalBuilder = (ctx) => {
     const sx = cx > 0 ? 1 : -1, sz = cz > 0 ? 1 : -1;
     for (let y = 0.5, k = 0; y < frame.eaveY - 0.5; y += 0.42, k++) {
       const lx = k % 2 ? 0.55 : 0.3, lz = k % 2 ? 0.3 : 0.55;
-      sink.span('stone', cx - sx * lx, y, cz - sz * lz, cx + sx * 0.03, y + 0.36, cz + sz * 0.03, { decor: true });
+      sink.quoin('stone', cx - sx * lx, y, cz - sz * lz, cx + sx * 0.03, y + 0.36, cz + sz * 0.03, sx, sz, { decor: true });
     }
   }
   // the balcony over the door: a stone slab on two consoles, an iron railing
@@ -597,4 +597,6 @@ export const DALMATIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyl
     damp: 0.45, moss: 0.25, mossTint: [0.9, 0.88, 0.76],
   },
   wear: 0.3,
+  // the yards: dry-stone walls round a kitchen garden and the stone hut (kazun), a gate (yards.ts)
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gate', shed: 'woodshed', shedSize: [3.8, 3.4], garden: true },
 });

@@ -19,6 +19,8 @@ export const FRANCONIAN_PALETTE: FachwerkPalette = Object.freeze({
   doors: [0x426b49, 0x7a3024, 0x6a4b33, 0x4f6274].map(rgb),
   shutters: [0x4a7451, 0x7a3a2a, 0x667a86].map(rgb),
   shutterShare: 0.4, hungGable: 0.08, stoneGround: 0.7, halfHip: 0.15,
+  // the upper storeys' casements two-light, a single mullion (the town's 160 houses carry ~3,000 windows)
+  upperBars: 'two',
 });
 
 /** The town house: a street front three or four storeys high, framed or rendered, gable- or eaves-fronted. */
@@ -75,7 +77,7 @@ const townHouse: RegionalBuilder = (ctx) => {
         const x = sx > 0 ? b.x1 : b.x0, z = sz > 0 ? b.z1 : b.z0;
         for (let y = 0.4, k = 0; y < frame.eaveY - 0.3; y += 0.42, k++) {
           const lx = k % 2 ? 0.32 : 0.56, lz = k % 2 ? 0.56 : 0.32;
-          sink.span('stone', sx > 0 ? x - lx : x - 0.035, y, sz > 0 ? z - lz : z - 0.035, sx > 0 ? x + 0.035 : x + lx, y + 0.4, sz > 0 ? z + 0.035 : z + lz, { decor: true });
+          sink.quoin('stone', sx > 0 ? x - lx : x - 0.035, y, sz > 0 ? z - lz : z - 0.035, sx > 0 ? x + 0.035 : x + lx, y + 0.4, sz > 0 ? z + 0.035 : z + lz, sx, sz, { decor: true });
         }
       }
     }
@@ -124,6 +126,8 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     damp: 0.8, moss: 0.5,
   },
   wear: 0.25,
+  // the yards of the outlying farms: sandstone walls round a kitchen garden, a gate (yards.ts)
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gate', shed: null, garden: true },
 });
 
 export type { RegionalParts, RegionalBuildContext };

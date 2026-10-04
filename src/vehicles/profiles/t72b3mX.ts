@@ -9,7 +9,7 @@ import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import {T72B3M_X_SOURCE_DATUMS} from '../t72b3mXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
-import {addT72B3MSideMounts} from './t72b3mXSideMounts.ts';
+import {addT72B3MSideMounts,T72B3M_DECK_FRONT_Z} from './t72b3mXSideMounts.ts';
 
 const T72B3M_X_DATUMS=T72B3M_X_SOURCE_DATUMS;
 const YAW=T72B3M_X_DATUMS.turretPivot,GUN=T72B3M_X_DATUMS.trunnion;
@@ -42,7 +42,7 @@ function fenders(P:TankBuilderPort,side:number):void {
   const a=Math.min(side*1.128,side*1.764),b=Math.max(side*1.128,side*1.764);
   P.addMudguard('t72b3m-x-deck','hull',roofSheet([
     [-3.47,a,b,1.20,1.20],[-3.15,a,b,1.3324,1.3324],[-2.80,a,b,1.526,1.526],
-    [1.65,a,b,1.509,1.509],[2.7,a,b,1.446,1.446],[3.08,a,b,1.42328,1.42328],
+    [1.65,a,b,1.509,1.509],[2.7,a,b,1.446,1.446],[T72B3M_DECK_FRONT_Z,a,b,1.42328,1.42328],
   ],.019));
   const ringRows:readonly(readonly[number,number,number,number])[]=[
     [3.06,1.02,1.897,1.42328],[3.23,1.006,1.933,1.42328],[3.43,1.026,1.955,1.399],

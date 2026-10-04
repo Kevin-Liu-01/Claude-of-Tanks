@@ -22,7 +22,7 @@ import { roadSettlementJunction } from './roadSettlementJunction.ts';
 import { roadFencePath, fencePathSampler } from './roadFencePath.ts';
 import { buildingFootprintClearsRoads, roadBuildingFrontage, roadBuildingDoorAxis, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion,
   type RoadFrontageSite } from './roadBuildingFrontage.ts';
-import { getDeviceTier } from '../engine/quality.ts';
+import { getDeviceTier, resolvePresetName } from '../engine/quality.ts';
 
 // Environment richness (2026-09-14, owner: "add back so much environmental details — they
 // feel much barer now"): desktop tiers place 35 % more settlement and roadside clutter than
@@ -131,7 +131,10 @@ import type { UtilityNetwork } from './utilityNetwork.ts';
 import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildContext, type StructureDimensions } from './maps/exteriorDetailKit.ts';
 // regional-buildings lane (2026-10-03): the map's regional architecture kit replaces each placed building's geometry
 // after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
-import { rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
+import { buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
+import { YARD_SHED, gardenParts, planYard, yardKeepOut, type YardWorld } from './maps/regional/yards.ts';
+import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
+import type { RegionalBuildContext } from './maps/regional/types.ts';
 import { makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
 import { geologyBoulderSite } from './landformGeology.ts';
@@ -322,6 +325,17 @@ interface PropsSettings {
    * its plaza (the road crossing nearest cx, cz), street furniture and clutter — when it is not the whole ground the
    * terrain's village rect grades (a harbour town on the quay of a graded valley floor). Default: the village rect. */
   town?: { x0: number; x1: number; z0: number; z1: number; cx: number; cz: number };
+  /** The maps-and-layouts lane (2026-10-03; the owner's town-plan ruling): a settlement that stands exactly as an earlier
+   * build seated it (maps/townPlans.generated.ts). Each entry is one planned building as that build placed it: its
+   * structure, plan index, wall and the props stream's state after the wall pick, and its final pose. The replay
+   * builds each one from its own stream at its pose, so its geometry, footprint and place are the recorded build's
+   * whatever the ground, roads or aprons under the town have become; the generated road, row and block-fill passes then
+   * place nothing more. */
+  townPlan?: readonly TownPlanEntry[];
+  /** The light buildings of a recorded settlement (maps/townPlans.generated.ts TOWN_LIGHT_PLANS): each destructible
+   * building's kind and final pose as that build placed it. They stand there whatever the ground has become, and the
+   * light-building pass draws nothing. */
+  townLightPlan?: readonly TownLightEntry[];
   tones: Record<string, ToneFunction | null | undefined>;
   rockTone: ToneFunction | null;
   wallStoneChance: number;
@@ -359,6 +373,18 @@ interface PropsSettings {
   townCraters: boolean;
   snowCap?: boolean;
   streetRowsAfterLandmarks?: boolean;
+  /** The maps-and-layouts lane (2026-10-03): a roadside or block-fill building whose footprint stands in a carriageway
+   * (within the layout brief's 3.5 m road core of a road's line) moves, once every settlement building stands, by the
+   * least distance that clears it, keeping its ground fit and clear of every other building and strongpoint; without
+   * such a place it stays. The plan places every building exactly as before (no draw or eligibility changes), so a
+   * building that clears the carriageway stands where it always did. Opt-in: a map without it keeps every building. */
+  roadBuildingClearance?: boolean;
+  /** Authored places for carriageway buildings (with `roadBuildingClearance`): a building packed as standing in a
+   * carriageway whose recorded centre lies within 1.5 m of `from` moves to `to` instead of the nearest clear place,
+   * when `to` passes the same checks (the road clearance, its ground fit, every other building and strongpoint); else
+   * the ring search runs as for any other. For a building with no clear place nearby, or whose nearest one changes the
+   * battle (Blackglass's civic hall, settled by the bots lane's swap test). Default none. */
+  roadClearanceTargets?: readonly { from: readonly [number, number]; to: readonly [number, number] }[];
   streetRowRoadStride?: number;
   /** Junction corners the roadside buildings keep out of (maps lane B, 2026-10-03): a roadside building's centre stands
    * outside each disc ({ x, z, r }). The centre test (7.5 m off any road) lets a long building reach into the other road
@@ -389,6 +415,15 @@ interface PropsSettings {
   extraKits?: readonly string[] | null;
   riverLandings?: readonly RiverLandingAnchor[];
 }
+
+/** One planned building as a recorded build seated it (PropsMapConfig.townPlan; maps/townPlans.generated.ts): its
+ * structure, its plan index, its wall, the props stream's state after the wall pick, and its final pose. */
+export interface TownPlanEntry {
+  structure: string; planIndex: number; wall: string; rng: number; x: number; z: number; rot: number;
+}
+
+/** One light (destructible) building as a recorded build seated it (PropsMapConfig.townLightPlan): its kind and pose. */
+export interface TownLightEntry { kind: string; x: number; z: number; rot: number; }
 
 export interface PropsMapConfig {
   id: string;
@@ -3470,6 +3505,9 @@ ${snowCap ? `
   yield { stage: 'yard-clutter' };
   // --- village buildings along the roads ---
   const roads = L.roads;
+  // regional-buildings lane: each kit-built house's solid body (plot-local), for its yard to start at its walls
+  // (maps/regional/yards.ts; keyed by the building's feature, which stays as the base placed it)
+  const regionalBodies = new Map<PlacedBuilding, { minX: number; maxX: number; minZ: number; maxZ: number }>();
   // junction/plaza: the road crossing nearest the village/town center
   function resolveVillageJunction(): { x: number; z: number } {
     if (mapId === 'verdant') return { x: 20, z: 73 };
@@ -3577,13 +3615,13 @@ ${snowCap ? `
   function isRoadBuildingSiteClear(x: number, z: number): boolean {
     return !placedB.some((placed) => Math.hypot(x - placed.x, z - placed.z) < placed.rr + P.spacingPad);
   }
-  function jitterBuildingUvs(tmp: PropsBuckets): void {
+  function jitterBuildingUvs(tmp: PropsBuckets, stream: Rng = rng): void {
     for (const bucketName of Object.keys(tmp)) {
       for (const geometry of tmp[bucketName]) {
         // Round 75: atlas-mapped parts (propsSteelAtlas.ts) keep their UVs. A part that stood in the seeded stream
         // before the atlas (a container body) still takes its four draws so every later placement keeps its seat;
         // parts new to the stream take none.
-        const source = geometry.userData?.detailUv ? detailUvRng : rng;
+        const source = geometry.userData?.detailUv ? detailUvRng : stream;
         const atlas = geometry.userData?.uvJitter;
         if (atlas === 'consume') { source(); source(); source(); source(); continue; }
         if (atlas === 'none' || geometry.userData?.atlasUv) continue;
@@ -3595,8 +3633,33 @@ ${snowCap ? `
   const structureContext: StructureBuildContext = {
     mapId, snowCap: mapId === 'winter' || !!P.snowCap, seed, cladding: P.industrialCladding ?? 'brick',
   };
+  /** A building stands in a carriageway when its footprint comes within the road core (the layout brief's 3.5 m,
+   * tools/map-layout-metrics.mjs ROAD_CORE_M) of a road's line; a move clears it by a further 0.75 m. */
+  const CARRIAGEWAY_CORE = 3.5, CARRIAGEWAY_CLEARANCE = 4.25;
+  type CarriagewayPacket = {
+    kind: string; buckets: PropsBuckets; profile: ReturnType<typeof addStructureCollision>; records: CollisionRecord[];
+    feature: (typeof buildingFeatures)[number]; placement: PlacedRadius; source: { x: number; y: number; z: number; rot: number };
+    w: number; d: number; chimneys: [number, number, number][];
+  };
+  const carriagewayPackets: CarriagewayPacket[] = [];
+  /** A building's footprint as its geometry stands (wings and porches reach past the kit's nominal size) when it stands
+   * in a carriageway, else null. */
+  function carriagewayFootprint(tmp: PropsBuckets, info: { w: number; d: number }, x: number, z: number,
+    rot: number): { w: number; d: number } | null {
+    let w = info.w, d = info.d;
+    for (const geometry of Object.values(tmp).flat()) {
+      if (!geometry.boundingBox) geometry.computeBoundingBox();
+      const bounds = geometry.boundingBox;
+      if (!bounds) continue;
+      w = Math.max(w, 2 * Math.max(Math.abs(bounds.min.x), Math.abs(bounds.max.x)));
+      d = Math.max(d, 2 * Math.max(Math.abs(bounds.min.z), Math.abs(bounds.max.z)));
+    }
+    return buildingFootprintClearsRoads({ x, z, rot }, w, d, roads, CARRIAGEWAY_CORE) ? null : { w, d };
+  }
+  const roadClearanceMoves: { kind: string; from: [number, number]; to: [number, number] | null }[] = [];
+  if (P.roadBuildingClearance) group.userData.roadClearanceMoves = roadClearanceMoves;
   function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
-    plot?: { w: number; d: number }): boolean {
+    fromRoad = false, plot?: { w: number; d: number }): boolean {
     let tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
@@ -3673,22 +3736,46 @@ ${snowCap ? `
     // court donors keep theirs: later passes re-seat those exact parts)
     const regionalDonor = (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery)
       || (!!foundryDonors && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId));
+    let body: { minX: number; maxX: number; minZ: number; maxZ: number } | null = null;
     if (regionalArchitecture && !regionalDonor) {
-      tmp = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
-        { mapId, snowCap: structureContext.snowCap, seed }, px, pz, rot) ?? tmp;
+      const rebuilt = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
+        { mapId, snowCap: structureContext.snowCap, seed }, px, pz, rot);
+      if (rebuilt) {
+        tmp = rebuilt;
+        const b = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
+        for (const list of Object.values(tmp)) for (const g of list as THREE.BufferGeometry[]) {
+          if (g.userData.noCollision) continue;
+          g.computeBoundingBox();
+          const bb = g.boundingBox;
+          if (!bb || bb.isEmpty()) continue;
+          b.minX = Math.min(b.minX, bb.min.x); b.maxX = Math.max(b.maxX, bb.max.x);
+          b.minZ = Math.min(b.minZ, bb.min.z); b.maxZ = Math.max(b.maxZ, bb.max.z);
+        }
+        if (Number.isFinite(b.minX)) body = b;
+      }
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
+    // a building that stands in a carriageway is packed for the move after every settlement building stands
+    const carriageway = fromRoad && P.roadBuildingClearance ? carriagewayFootprint(tmp, info, px, pz, rot) : null;
+    const chimneysBefore = carriageway ? exteriorChimneyTops(buckets).length : 0;
     _quat.setFromAxisAngle(_upAxis, rot);
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
     mergeInto(buckets, tmp, _mat4);
     buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot, kind: structureId });
+    if (body) regionalBodies.set(buildingFeatures[buildingFeatures.length - 1], body);
     if (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery) {
       wharfFishery = { buckets: tmp, source: { x: px, y: fit.y + 0.05, z: pz, yaw: rot },
         records: [...obstacles.slice(obstacleStart), ...colliders.slice(colliderStart)],
         feature: buildingFeatures[buildingFeatures.length - 1] };
     }
     placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
+    if (carriageway) {
+      carriagewayPackets.push({ kind: structureId, buckets: tmp, profile,
+        records: [obstacles[obstacleStart], ...colliders.slice(colliderStart)], feature: buildingFeatures[buildingFeatures.length - 1],
+        placement: placedB[placedB.length - 1], source: { x: px, y: fit.y + 0.05, z: pz, rot }, w: carriageway.w, d: carriageway.d,
+        chimneys: exteriorChimneyTops(buckets).slice(chimneysBefore) as [number, number, number][] });
+    }
     if (foundryDonors && P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId)) {
       foundryDonors.push({ planIndex: bi, kind: structureId, buckets: tmp, profile,
         source: { x: px, y: fit.y + 0.05, z: pz, yaw: rot },
@@ -3711,7 +3798,7 @@ ${snowCap ? `
     // 2026-10-02: Mangrove Reach, rebuilt to the layout brief, takes the frontage law as well
     const roadSite = mapId !== 'verdant' && mapId !== 'foundry'
       && !P.streetRows && !P.orbitalSettlement ? { ...cand, side } : undefined;
-    placePlannedBuilding(px, pz, rot, roadSite);
+    placePlannedBuilding(px, pz, rot, roadSite, undefined, true);
   }
   function* placeRoadBuildings(): Generator<PropsBuildSlice, void, void> {
     // Monumental-city maps place their landmark plan first, then let the
@@ -3726,10 +3813,62 @@ ${snowCap ? `
       }
     }
   }
-  for (const site of P.plannedSites ?? []) {
+  // A recorded town plan: every building from its own stream at its recorded pose, and nothing generated after it.
+  function placeRecordedBuilding(entry: TownPlanEntry): void {
+    const stream = mulberry32(entry.rng);
+    let tmp: PropsBuckets = {
+      plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
+      glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
+    };
+    attachStructureBuildContext(tmp, structureContext);
+    const builder = BUILDER_BY_NAME[entry.structure] || makeCottage;
+    const info = builder(stream, tmp, entry.wall);
+    if (tmp.steel?.length) ensureSteelAtlas('plan:' + entry.structure);
+    addCatalogExterior(tmp, { id: entry.structure, info, variant: entry.planIndex,
+      bathhouseStyle: entry.structure === 'bathhouse' ? P.bathhouseStyle : undefined });
+    jitterBuildingUvs(tmp, stream);
+    const fit = groundFit(entry.x, entry.z, info.w, info.d, entry.rot);
+    // a replayed building takes the map's regional kit as a generated one does (the foundry court's donors keep theirs)
+    const regionalDonor = !!foundryDonors
+      && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === entry.planIndex && site.kind === entry.structure);
+    if (regionalArchitecture && !regionalDonor) {
+      tmp = rebuildRegionalStructure(regionalArchitecture, entry.structure, tmp, info, entry.wall,
+        { mapId, snowCap: structureContext.snowCap, seed }, entry.x, entry.z, entry.rot) ?? tmp;
+    }
+    const obstacleStart = obstacles.length, colliderStart = colliders.length;
+    const profile = addStructureCollision(entry.structure, tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
+    const carriageway = P.roadBuildingClearance ? carriagewayFootprint(tmp, info, entry.x, entry.z, entry.rot) : null;
+    const chimneysBefore = carriageway ? exteriorChimneyTops(buckets).length : 0;
+    _quat.setFromAxisAngle(_upAxis, entry.rot);
+    _mat4.compose(_posv.set(entry.x, fit.y + 0.05, entry.z), _quat, _one);
+    mergeInto(buckets, tmp, _mat4);
+    buildingFeatures.push({ x: entry.x, z: entry.z, w: info.w, d: info.d, rot: entry.rot, kind: entry.structure });
+    placedB.push({ x: entry.x, z: entry.z, rr: Math.max(info.w, info.d) * 0.75 });
+    if (carriageway) {
+      carriagewayPackets.push({ kind: entry.structure, buckets: tmp, profile,
+        records: [obstacles[obstacleStart], ...colliders.slice(colliderStart)], feature: buildingFeatures[buildingFeatures.length - 1],
+        placement: placedB[placedB.length - 1], source: { x: entry.x, y: fit.y + 0.05, z: entry.z, rot: entry.rot },
+        w: carriageway.w, d: carriageway.d, chimneys: exteriorChimneyTops(buckets).slice(chimneysBefore) as [number, number, number][] });
+    }
+    // Ironworks' service court relocates its donors after the plan stands, as it does for a generated plan
+    if (foundryDonors && P.foundryServiceCourt?.sites.some(site => site.planIndex === entry.planIndex && site.kind === entry.structure)) {
+      foundryDonors.push({ planIndex: entry.planIndex, kind: entry.structure, buckets: tmp, profile,
+        source: { x: entry.x, y: fit.y + 0.05, z: entry.z, yaw: entry.rot },
+        records: [...obstacles.slice(obstacleStart), ...colliders.slice(colliderStart)],
+        feature: buildingFeatures[buildingFeatures.length - 1], placement: placedB[placedB.length - 1] });
+    }
+  }
+  if (P.townPlan?.length) {
+    for (const entry of P.townPlan) {
+      placeRecordedBuilding(entry);
+      yield { fine: true };
+    }
+    bi = builders.length;
+  }
+  for (const site of P.townPlan?.length ? [] : P.plannedSites ?? []) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!isRoadBuildingSiteClear(site.x, site.z)) continue;
-    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, site.plot);
+    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot);
     yield { fine: true };
   }
   yield* placeRoadBuildings();
@@ -4029,7 +4168,7 @@ ${snowCap ? `
       if (Math.hypot(px - junction.x, pz - junction.z) < 24) return;
       if (!isRoadBuildingSiteClear(px, pz)) return;
       const rot = (brng() < 0.5 ? 0 : Math.PI / 2) + (brng() - 0.5) * 0.06;
-      placePlannedBuilding(px, pz, rot);
+      placePlannedBuilding(px, pz, rot, undefined, undefined, true);
     };
     for (let gz = town.z0 + 14; gz < town.z1 - 14 && bi < builders.length; gz += step) {
       for (let gx = town.x0 + 14; gx < town.x1 - 14 && bi < builders.length; gx += step) {
@@ -4039,6 +4178,84 @@ ${snowCap ? `
     }
   }
   yield* placeTownBlockFill();
+
+  // Once every settlement building stands, each one packed as standing in a carriageway moves by the least distance
+  // that clears it: rings of 0.5 m out to 30 m, the bearing away from the nearest road first, then turning by 15
+  // degrees at a time to either side; the new place keeps its ground fit and stays clear of every other building and
+  // strongpoint. A map can author the place instead (props.roadClearanceTargets), checked alike. Its geometry,
+  // collision bands, footprint record and chimney tops move with it.
+  /** Whether two footprints (centre, size, yaw) come within `gap` metres of each other: separating axes of the two
+   * rectangles, each grown by half the gap. */
+  function footprintsMeet(a: { x: number; z: number; w: number; d: number; rot: number },
+    b: { x: number; z: number; w: number; d: number; rot: number }, gap: number): boolean {
+    const axes = [a.rot, a.rot + Math.PI / 2, b.rot, b.rot + Math.PI / 2];
+    for (const angle of axes) {
+      const ux = Math.cos(angle), uz = -Math.sin(angle);
+      const reach = (f: typeof a) => {
+        const c = Math.cos(f.rot), sn = Math.sin(f.rot);
+        // the footprint's half extents projected on the axis (its local x along (cos, -sin), local z along (sin, cos))
+        return Math.abs((f.w / 2 + gap / 2) * (c * ux - sn * uz)) + Math.abs((f.d / 2 + gap / 2) * (sn * ux + c * uz));
+      };
+      const separation = Math.abs((b.x - a.x) * ux + (b.z - a.z) * uz);
+      if (separation > reach(a) + reach(b)) return false;
+    }
+    return true;
+  }
+  function moveBuildingsOffCarriageways(): void {
+    for (const packet of carriagewayPackets) {
+      const { source, w, d } = packet;
+      let best = Infinity, ax = 0, az = 1;
+      for (const road of roads) for (let i = 1; i < road.length; i++) {
+        const [x0, z0] = road[i - 1], [x1, z1] = road[i];
+        const dx = x1 - x0, dz = z1 - z0, l2 = dx * dx + dz * dz;
+        const t = l2 > 0 ? clamp(((source.x - x0) * dx + (source.z - z0) * dz) / l2, 0, 1) : 0;
+        const cx = x0 + dx * t, cz = z0 + dz * t, dd = Math.hypot(source.x - cx, source.z - cz);
+        if (dd < best) {
+          best = dd;
+          if (dd > 1e-6) { ax = (source.x - cx) / dd; az = (source.z - cz) / dd; } else { const l = Math.sqrt(l2) || 1; ax = -dz / l; az = dx / l; }
+        }
+      }
+      let target: { x: number; z: number } | null = null;
+      const clearsAt = (x: number, z: number): boolean => {
+        if (x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1 || noVeg(x, z)) return false;
+        if (!buildingFootprintClearsRoads({ x, z, rot: source.rot }, w, d, roads, CARRIAGEWAY_CLEARANCE)) return false;
+        if (groundFit(x, z, w, d, source.rot).spread > P.maxSpread || conflictsTacticalReservation(x, z)) return false;
+        const footprint = { x, z, w, d, rot: source.rot };
+        return !buildingFeatures.some((other) => other !== packet.feature && footprintsMeet(footprint, other, 1));
+      };
+      const authored = P.roadClearanceTargets?.find((entry) =>
+        Math.hypot(entry.from[0] - source.x, entry.from[1] - source.z) <= 1.5);
+      if (authored && clearsAt(authored.to[0], authored.to[1])) target = { x: authored.to[0], z: authored.to[1] };
+      const turns = [0];
+      for (let k = 1; k <= 12; k++) turns.push(k * Math.PI / 12, -k * Math.PI / 12);
+      for (let step = 1; step <= 60 && !target; step++) {
+        const dist = step * 0.5;
+        for (const turn of turns) {
+          const c = Math.cos(turn), sn = Math.sin(turn);
+          const x = source.x + (ax * c - az * sn) * dist, z = source.z + (ax * sn + az * c) * dist;
+          if (!clearsAt(x, z)) continue;
+          target = { x, z };
+          break;
+        }
+      }
+      roadClearanceMoves.push({ kind: packet.kind, from: [source.x, source.z], to: target ? [target.x, target.z] : null });
+      if (!target) continue;
+      const y = groundFit(target.x, target.z, w, d, source.rot).y + 0.05;
+      const dx = target.x - source.x, dy = y - source.y, dz = target.z - source.z;
+      const transform = new THREE.Matrix4().makeTranslation(dx, dy, dz);
+      for (const geometries of Object.values(packet.buckets)) for (const geometry of geometries) geometry.applyMatrix4(transform);
+      [packet.profile.contact, ...packet.profile.shell].forEach((band, i) => {
+        const record = packet.records[i];
+        record.min[1] = y + band.minY; record.max[1] = y + band.maxY;
+        applyStructureCollisionBand(record, band, target.x, target.z, source.rot, y);
+      });
+      Object.assign(packet.feature, { x: target.x, z: target.z });
+      Object.assign(packet.placement, { x: target.x, z: target.z });
+      for (const top of packet.chimneys) { top[0] += dx; top[1] += dy; top[2] += dz; }
+    }
+    carriagewayPackets.length = 0;
+  }
+  moveBuildingsOffCarriageways();
 
   // Map-specific strongpoints. Random dressing is still valuable between
   // lanes, but critical cover cannot be left to a scatter pass: these beats
@@ -4101,6 +4318,19 @@ ${snowCap ? `
   // Each type becomes one intact InstancedMesh plus an empty broken-state
   // pool, bounded to the handful of families authored by the active map.
   function* placeDestructibleBuildings(): Generator<PropsBuildSlice, void, void> {
+    // a recorded settlement's light buildings stand at their recorded poses, and the pass draws nothing
+    if (P.townLightPlan) {
+      for (const entry of P.townLightPlan) {
+        const meta = DESTRUCTIBLE_BUILDING_TYPES[entry.kind];
+        if (!meta) continue;
+        const fit = groundFit(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot);
+        addDestructible(entry.kind, entry.x, fit.y + 0.04, entry.z, entry.rot);
+        buildingFeatures.push({ x: entry.x, z: entry.z, w: meta.hw * 2, d: meta.hl * 2, rot: entry.rot });
+        placedB.push({ x: entry.x, z: entry.z, rr: Math.hypot(meta.hw, meta.hl) * 0.72 });
+        yield { fine: true };
+      }
+      return;
+    }
     if (!P.destructibleBuildings?.length) return;
     const srng = mulberry32(seed + 17041);
     const lateral = P.destructibleBuildingLat || [9.5, 9.0];
@@ -5290,10 +5520,21 @@ ${snowCap ? `
   // (its geology.boulders; landformGeology.ts geologyBoulderSite crowds them towards the wall's foot). A map without
   // them draws nothing here, so its scatter keeps every seat.
   function placeLandformBoulders(): void {
-    for (const form of L.terrain.landforms) {
-      const count = form.kind === 'ridge' ? 0 : form.geology?.boulders ?? 0;
+    // The blocks keep off the trees the vegetation pass planted before them (the scenery lane, 2026-10-03: six trunks
+    // stood inside Redrock's blocks): a site within a trunk's reach plus the largest block's is skipped, its draws taken.
+    const forms = L.terrain.landforms.filter((form) => form.kind !== 'ridge' && (form.geology?.boulders ?? 0) > 0);
+    if (!forms.length) return;
+    const trunks = (vegetation?.treeObstacles ?? []).map((tree) => ({
+      x: (tree.min[0] + tree.max[0]) / 2, z: (tree.min[2] + tree.max[2]) / 2,
+      reach: Math.max(tree.max[0] - tree.min[0], tree.max[2] - tree.min[2]) / 2 + 3.2,
+    }));
+    const onTree = (x: number, z: number): boolean => trunks.some((t) => Math.abs(x - t.x) < t.reach
+      && Math.abs(z - t.z) < t.reach && Math.hypot(x - t.x, z - t.z) < t.reach);
+    for (const form of forms) {
+      const count = form.geology?.boulders ?? 0;
       for (let i = 0, placed = 0; i < count * 6 && placed < count; i++) {
         const [x, z] = geologyBoulderSite(form, rng(), rng());
+        if (onTree(x, z)) continue;
         if (tryRock(x, z, 0.9, 3.0, false, 0.3)) placed++;
       }
     }
@@ -6350,6 +6591,148 @@ ${snowCap ? `
   yield* placeTankWrecks();
   yield { fine: true, stage: 'wrecks-finalized' };
 
+  // regional-buildings lane (2026-10-03): the yards round a kit's houses (maps/regional/yards.ts), once every building,
+  // wall, rock and wreck stands: a yard on each house's freest side, its fence or wall modules (destructibles) with a
+  // gate, an outbuilding the kit builds and kitchen-garden beds, each placed only where it clears the road frontage,
+  // the other plots, the solids, the objective discs and the spawn pads. Its own stream: nothing placed earlier moves.
+  function placeRegionalYards(): void {
+    const yard = regionalArchitecture?.yard;
+    if (!yard || !regionalArchitecture) return;
+    const style = regionalArchitecture;
+    const kinds = new Set(yard.kinds);
+    const houses = buildingFeatures.filter((b) => b.kind && kinds.has(b.kind));
+    if (!houses.length) return;
+    const yrngYard = mulberry32(seed + 1307);
+    const keepOut = yardKeepOut(mapId, L.spawns,
+      (cfg as { terrain?: { hardstands?: SceneryHardstand[] } } | null)?.terrain?.hardstands ?? [],
+      heightField.bridgeDecks ?? []);
+    const world: YardWorld = {
+      ground: {
+        roadDist: (x, z) => heightField._roadDist(x, z),
+        water: (x, z) => heightField.getWaterMaskAt(x, z),
+        normalY: (x, z) => heightField.getNormalAt(x, z).y,
+      },
+      plots: buildingFeatures, solids: obstacles, destructibles, keepOut,
+    };
+    const fenceMeta = resolveDestructibleMeta(destructibleContext, yard.fence);
+    const seg = fenceMeta.wall ? WALL_SEG : FENCE_SEG, sink = fenceMeta.wall ? 0.1 : 0.06;
+    // the stage's counts on the props group (receipts and captures read them)
+    const stats = { houses: houses.length, yards: 0, streetYards: 0, modules: 0, gates: 0, sheds: 0, gardens: 0 };
+    group.userData.regionalYards = stats;
+    // a yard's ground grows no crop, tall grass or litter (map.ts holds these holes with the scenery's): discs over the
+    // enclosure, from the house wall to its outer run (the close yard pairs of 2026-10-03: a Hessian farmyard full of
+    // the field's wheat, its beds hidden in it)
+    const holes: Array<{ x: number; z: number; r: number }> = [];
+    group.userData.regionalYardHoles = holes;
+    /** each yard's enclosure in its house's frame (the sown rows stop at it, trimCropRowsInYards) */
+    const rects: Array<{ x: number; z: number; c: number; s: number; x0: number; x1: number; z0: number; z1: number }> = [];
+    for (const house of houses) {
+      const plan = planYard(house, world, yard, yrngYard, seg, regionalBodies.get(house));
+      if (!plan) continue;
+      stats.yards++;
+      {
+        const c = Math.cos(house.rot), s = Math.sin(house.rot);
+        let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+        for (const p of [...plan.modules, ...(plan.gate ? [plan.gate] : []), ...(plan.shed ? [plan.shed] : []), ...(plan.garden ? [plan.garden] : [])]) {
+          const dx = p.x - house.x, dz = p.z - house.z, lx = dx * c - dz * s, lz = dx * s + dz * c;
+          x0 = Math.min(x0, lx); x1 = Math.max(x1, lx); z0 = Math.min(z0, lz); z1 = Math.max(z1, lz);
+        }
+        rects.push({ x: house.x, z: house.z, c, s, x0: x0 - 0.3, x1: x1 + 0.3, z0: z0 - 0.3, z1: z1 + 0.3 });
+        const along = x1 - x0 >= z1 - z0, long = Math.max(x1 - x0, z1 - z0), short = Math.max(1, Math.min(x1 - x0, z1 - z0));
+        const n = Math.max(1, Math.ceil(long / (short * 0.9)));
+        const r = Math.hypot(short / 2, long / (2 * n)) + 0.3;
+        for (let k = 0; k < n; k++) {
+          const t = (k + 0.5) / n;
+          const lx = along ? x0 + (x1 - x0) * t : (x0 + x1) / 2, lz = along ? (z0 + z1) / 2 : z0 + (z1 - z0) * t;
+          holes.push({ x: house.x + lx * c + lz * s, z: house.z - lx * s + lz * c, r });
+        }
+      }
+      if (plan.street) stats.streetYards++;
+      stats.modules += plan.modules.length;
+      if (plan.gate && yard.gate) stats.gates++;
+      for (const m of plan.modules) {
+        const ya = heightField.getHeightAt(m.x - Math.sin(m.yaw) * seg / 2, m.z - Math.cos(m.yaw) * seg / 2);
+        const yb = heightField.getHeightAt(m.x + Math.sin(m.yaw) * seg / 2, m.z + Math.cos(m.yaw) * seg / 2);
+        addDestructible(yard.fence, m.x, Math.min(ya, yb) - sink, m.z, m.yaw, 0.96 + yrngYard() * 0.08, Math.atan2(yb - ya, seg) * 0.85);
+      }
+      if (plan.gate && yard.gate) addDestructible(yard.gate, plan.gate.x, heightField.getHeightAt(plan.gate.x, plan.gate.z) - 0.06, plan.gate.z, plan.gate.yaw, 1);
+      if (plan.shed && yard.shed && style.builders[yard.shed]) {
+        const { x, z, yaw, w: sw, d: sd } = plan.shed;
+        const fit = groundFit(x, z, sw, sd, yaw);
+        if (fit.spread <= 1.0) {
+          const ctx: RegionalBuildContext = {
+            structureId: yard.shed, info: { w: sw, d: sd, h: YARD_SHED.h }, wallBucket: 'plaster',
+            bounds: { minX: -sw / 2, maxX: sw / 2, minZ: -sd / 2, maxZ: sd / 2, maxY: YARD_SHED.h },
+            rng: streamFrom(hashSeed(`${style.id}:yardshed:${mapId}`, seed, x, z, yaw)),
+            variant: streamFrom(hashSeed(`${style.id}:yardshed-variant:${mapId}`, seed, x, z, yaw)),
+            mapId, snowCap: structureContext.snowCap, tier: mobileProps ? 'mobile' : 'desktop',
+          };
+          const parts = buildRegionalParts(style, ctx, streamFrom(hashSeed(`${style.id}:yardshed-weather:${mapId}`, seed, x, z, yaw)));
+          const solid = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
+          for (const list of Object.values(parts)) for (const g of list) {
+            if (g.userData.noCollision) continue;
+            g.computeBoundingBox();
+            const b = g.boundingBox;
+            if (!b) continue;
+            solid.minX = Math.min(solid.minX, b.min.x); solid.maxX = Math.max(solid.maxX, b.max.x);
+            solid.minZ = Math.min(solid.minZ, b.min.z); solid.maxZ = Math.max(solid.maxZ, b.max.z);
+          }
+          // the kit's shed must keep to the shed's plot (its corner was cleared for that plot, not for more)
+          if (Math.max(-solid.minX, solid.maxX) <= sw / 2 + 0.35 && Math.max(-solid.minZ, solid.maxZ) <= sd / 2 + 0.35) {
+            const tmp = parts as unknown as PropsBuckets;
+            addStructureCollision(yard.shed, tmp, x, fit.y + 0.05, z, yaw);
+            _quat.setFromAxisAngle(_upAxis, yaw);
+            _mat4.compose(_posv.set(x, fit.y + 0.05, z), _quat, _one);
+            mergeInto(buckets, tmp, _mat4);
+            buildingFeatures.push({ x, z, w: sw, d: sd, rot: yaw });
+            stats.sheds++;
+          } else {
+            for (const list of Object.values(parts)) for (const g of list) g.dispose();
+          }
+        }
+      }
+      if (plan.garden && !mobileProps) {
+        const { x, z, yaw, w, d } = plan.garden;
+        const fit = groundFit(x, z, w, d, yaw);
+        if (fit.spread <= 0.5) {
+          const parts = gardenParts(w, d, mulberry32(hashSeed(`${style.id}:garden:${mapId}`, seed, x, z)), fit.spread);
+          _quat.setFromAxisAngle(_upAxis, yaw);
+          _mat4.compose(_posv.set(x, fit.y + fit.spread, z), _quat, _one);
+          mergeInto(buckets, parts as unknown as PropsBuckets, _mat4);
+          stats.gardens++;
+        }
+      }
+    }
+    trimCropRowsInYards(rects);
+  }
+  /**
+   * A field's sown rows stop at a yard's fence (the close yard pairs of 2026-10-03: a Hessian farmyard standing in a
+   * wheat plot, its beds hidden in the crop): every crop row span with a corner inside an enclosure leaves the merged
+   * rows' index. The rows' vertices and their seeded draws stay as they were.
+   */
+  function trimCropRowsInYards(rects: ReadonlyArray<{ x: number; z: number; c: number; s: number; x0: number; x1: number; z0: number; z1: number }>): void {
+    const crop = group.children.find((o) => o.name === 'crop-fields') as THREE.Mesh | undefined;
+    const index = crop?.geometry.index;
+    if (!crop || !index || !rects.length) return;
+    const position = crop.geometry.getAttribute('position');
+    const inYard = (v: number) => {
+      const x = position.getX(v), z = position.getZ(v);
+      for (const r of rects) {
+        const dx = x - r.x, dz = z - r.z, lx = dx * r.c - dz * r.s, lz = dx * r.s + dz * r.c;
+        if (lx > r.x0 && lx < r.x1 && lz > r.z0 && lz < r.z1) return true;
+      }
+      return false;
+    };
+    const kept: number[] = [];
+    for (let t = 0; t + 2 < index.count; t += 3) {
+      const a = index.getX(t), b = index.getX(t + 1), c = index.getX(t + 2);
+      if (!inYard(a) && !inYard(b) && !inYard(c)) kept.push(a, b, c);
+    }
+    if (kept.length < index.count) crop.geometry.setIndex(kept);
+  }
+  placeRegionalYards();
+  yield { fine: true, progress: false, stage: 'regional-yards' };
+
   // --- street rubble piles (urban): heaped masonry chunks + broken beams ---
   // r6: every 4th candidate may land in a 90 m OUTSKIRT band around the town
   // rect — shelled approaches carry debris too; the establishing camera used
@@ -7297,14 +7680,51 @@ ${snowCap ? `
     // (geometry.ts EmitOptions.shadow).
     const RECEIVE_ONLY_DETAIL = new Set(['structureWood', 'structureMetal']);
     const castsNoShadow = (g: THREE.BufferGeometry) => g.userData.regional === true && g.userData.noCollision === true && g.userData.castsShadow !== true;
+    // regional-buildings lane (2026-10-03, the urban perf blocker): the fine joinery (geometry.ts EmitOptions.fine:
+    // frames, glazing bars, rails, door panels, downpipes, and the sides and caps of timbers, shutter leaves, surrounds,
+    // sills and quoins) is drawn only within the quality preset's fine-detail distance of the camera (updateFineDetail):
+    // at the town's establishing range it is sub-pixel, and ~0.3 M of Steinburg's triangles went to it. It merges by
+    // 120 m cell (60 m cells drew as many fine triangles at Steinburg's establishing view, and 9-10 cells stood in a
+    // street view's frustum), and each bucket's cells are the instances of one multi-draw batch (THREE.BatchedMesh,
+    // culled by the frustum per instance), the bucket's always-drawn receive-only dressing one more: one draw call
+    // whatever the number of cells. A phone builds no fine joinery (regional/index.ts) and culls the rest of its timber dressing by
+    // the same cells, at its own shorter distances.
+    const CELLED = new Set(['structureWood', 'regionalStone']);
+    const FINE_CELL_M = 120;
+    const culled = (g: THREE.BufferGeometry, key: string) => CELLED.has(key) && castsNoShadow(g)
+      && (g.userData.fine === true || (mobileProps && RECEIVE_ONLY_DETAIL.has(key)));
+    type Cell = { list: THREE.BufferGeometry[]; minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
+    const fineCells = (list: THREE.BufferGeometry[]): Cell[] => {
+      const cells = new Map<number, Cell>();
+      for (const g of list) {
+        if (!g.boundingBox) g.computeBoundingBox();
+        const b = g.boundingBox;
+        if (!b || b.isEmpty()) continue;
+        const key = (Math.floor((b.min.x + b.max.x) * 0.5 / FINE_CELL_M) + 4096) * 8192 + Math.floor((b.min.z + b.max.z) * 0.5 / FINE_CELL_M) + 4096;
+        let cell = cells.get(key);
+        if (!cell) { cell = { list: [], minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity, minZ: Infinity, maxZ: -Infinity }; cells.set(key, cell); }
+        cell.list.push(g);
+        cell.minX = Math.min(cell.minX, b.min.x); cell.maxX = Math.max(cell.maxX, b.max.x);
+        cell.minY = Math.min(cell.minY, b.min.y); cell.maxY = Math.max(cell.maxY, b.max.y);
+        cell.minZ = Math.min(cell.minZ, b.min.z); cell.maxZ = Math.max(cell.maxZ, b.max.z);
+      }
+      return [...cells.values()];
+    };
+    /** the batches and their cells' instances (updateFineDetail shows a cell's instance by its box) */
+    const fineDetail: Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: Omit<Cell, 'list'> }> }> = [];
+    group.userData.fineDetail = fineDetail;
     for (const key of Object.keys(buckets)) {
       if (buckets[key].length === 0) continue;
       if (key === 'curtain') for (const geometry of buckets[key]) ensureWorldNightEmissionMask(geometry);
       if (key === 'glass') prepareWorldStaticNightFixture(buckets[key], mats[key]);
-      const lists: Array<[THREE.BufferGeometry[], boolean, string]> = RECEIVE_ONLY_DETAIL.has(key)
-        ? [[buckets[key].filter((g) => !castsNoShadow(g)), true, ''], [buckets[key].filter(castsNoShadow), false, '-detail']]
-        : [[buckets[key], true, '']];
-      for (const [list, casts, suffix] of lists) {
+      const all = buckets[key];
+      const fine = all.filter((g) => culled(g, key));
+      const receiveOnly = RECEIVE_ONLY_DETAIL.has(key);
+      const cast = receiveOnly ? all.filter((g) => !castsNoShadow(g)) : all.filter((g) => !culled(g, key));
+      const coarse = receiveOnly ? all.filter((g) => castsNoShadow(g) && !culled(g, key)) : [];
+      const meshes: Array<[THREE.BufferGeometry[], boolean, string]> = [[cast, true, '']];
+      if (!fine.length) meshes.push([coarse, false, '-detail']);
+      for (const [list, casts, suffix] of meshes) {
         if (!list.length) continue;
         // mergeGeometries requires uniform indexing (ExtrudeGeometry is non-indexed)
         const profile = bucketShadowProfile(list); // round 79: the pieces' cells, before the merge owns them
@@ -7319,6 +7739,37 @@ ${snowCap ? `
         group.add(mesh);
         yield { fine: true }; // loading-speed r1: merge one material family per idle slice
       }
+      if (!fine.length) continue;
+      // the batch: the always-drawn receive-only dressing (instance 0, when there is any) and one instance per cell of
+      // fine joinery; every instance starts visible, so the deployment warm uploads and links it with the rest
+      const cells = fineCells(fine);
+      const parts: THREE.BufferGeometry[] = [];
+      if (coarse.length) parts.push(yield* mergePropsMaterialGeometrySteps(coarse, key));
+      for (const cell of cells) parts.push(yield* mergePropsMaterialGeometrySteps(cell.list, key));
+      const vertices = parts.reduce((n, g) => n + g.getAttribute('position').count, 0);
+      const indices = parts.reduce((n, g) => n + (g.index ? g.index.count : 0), 0);
+      // the batch draws through its own copy of the bucket's material: one material shared by a batched and a plain
+      // mesh re-resolves its program at every switch between them (three's batching parameter), several times a frame
+      const batchMaterial = mats[key].clone();
+      engineCtx.setupShadowMaterial(batchMaterial, grimeHook);
+      batchMaterial.customProgramCacheKey = () => 'world-props-' + key + '-v7' + (snowCap ? 's' : '') + '-batch';
+      retainedSurfaceMaterials.push(batchMaterial);
+      const batch = new THREE.BatchedMesh(parts.length, vertices, Math.max(indices, 1), batchMaterial);
+      batch.name = 'props-bucket-' + key + '-batch';
+      // no per-instance culling or sorting: three would walk and re-upload the draw list every frame. The batch is
+      // culled whole by its own sphere; its cells by the fine-detail distance (updateFineDetail), so the list is
+      // rebuilt only on the frames a cell shows or hides
+      batch.sortObjects = false;
+      batch.perObjectFrustumCulled = false;
+      batch.castShadow = false;
+      batch.receiveShadow = true;
+      batch.matrixAutoUpdate = false;
+      const ids = parts.map((g) => batch.addInstance(batch.addGeometry(g)));
+      for (const g of parts) g.dispose();
+      fineDetail.push({ mesh: batch, cells: cells.map((cell, i) => ({ id: ids[i + (coarse.length ? 1 : 0)],
+        box: { minX: cell.minX, maxX: cell.maxX, minY: cell.minY, maxY: cell.maxY, minZ: cell.minZ, maxZ: cell.maxZ } })) });
+      group.add(batch);
+      yield { fine: true };
     }
   }
   yield* mergeMaterialBuckets();
@@ -8056,8 +8507,29 @@ ${snowCap ? `
 
   let animatedTimeS = 0; // round 67: the world clock the moored hulls ride
   const _hullPose: MooredHullPose = { heave: 0, roll: 0, pitch: 0 };
+  // regional-buildings lane (2026-10-03): the fine joinery's cells shown within the quality preset's fine-detail distance
+  // of the camera (3D, to the cell's box), hidden 15 m past it (hysteresis); the preset re-read once a second. At High
+  // (900-1080 rows) a 7 cm frame is half a pixel at ~120 m.
+  const FINE_DETAIL_M: Readonly<Record<string, number>> = {
+    ultra: 180, high: 120, medium: 90, low: 70, 'mobile-high': 70, mobile: 60, 'mobile-low': 45,
+  };
+  let fineFar = 120, fineFrames = 0;
+  function updateFineDetail(cameraPos: THREE.Vector3 | null): void {
+    const batches = group.userData.fineDetail as Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number } }> }> | undefined;
+    if (!batches?.length || !cameraPos) return;
+    if (fineFrames-- <= 0) { fineFar = FINE_DETAIL_M[resolvePresetName()] ?? 90; fineFrames = 60; }
+    for (const { mesh, cells } of batches) for (const { id, box: b } of cells) {
+      const dx = Math.max(b.minX - cameraPos.x, 0, cameraPos.x - b.maxX);
+      const dy = Math.max(b.minY - cameraPos.y, 0, cameraPos.y - b.maxY);
+      const dz = Math.max(b.minZ - cameraPos.z, 0, cameraPos.z - b.maxZ);
+      const d = Math.hypot(dx, dy, dz), shown = mesh.getVisibleAt(id);
+      if (shown ? d > fineFar + 15 : d < fineFar) mesh.setVisibleAt(id, !shown);
+    }
+  }
+
   function updateProps(dt: number, cameraPos: THREE.Vector3 | null = null): void {
     updatePoleLod(cameraPos);
+    updateFineDetail(cameraPos);
     if (mooredHulls.length) {
       animatedTimeS += dt;
       for (let i = 0; i < mooredHulls.length; i++) {

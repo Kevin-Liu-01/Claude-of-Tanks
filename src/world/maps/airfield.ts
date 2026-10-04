@@ -151,6 +151,10 @@ export default {
       { id: 'eastern-radar-berm', role: 'scout', x: 340, z: -44, yawDeg: -90, structure: 'relaystation', outcrop: { count: 4, radius: 8 } },
     ],
     plannedSites: [...CARGO_SIDE, ...CARGO_SIDE.map(rotateSite)],
+    // 2026-10-03 (regional-buildings lane): the Antonov airport's own buildings (maps/regional/hostomel.ts): the cargo
+    // hangar under its barrel vault, sheet-steel maintenance hangars, the control tower's glazed cab, the terminal and
+    // office blocks, the fire station, the water tower, the war's damage
+    architecture: 'hostomel',
     // 2026-10-03 (maps lane B, gauntlet wave 11): an airfield's hangars and stores are corrugated sheet, not brick
     // (round 75's industrial cladding, as on Whiteout Station)
     industrialCladding: 'steel',

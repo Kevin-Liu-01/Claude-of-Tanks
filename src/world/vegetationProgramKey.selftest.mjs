@@ -78,7 +78,8 @@ function library(species, fade, environment) {
   const { group } = vegetation;
   // round 77b (2026-09-26): v17 — the leaf-scale detail tile as the cards' normal map (round 77: v16 — the wind
   // law, the per-cluster cascade sample and the leaf translucency); and the far tier's one impostor material
-  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v19'));
+  // trees round 2 (2026-10-03): v20 — the facing clusters (COT_LEAF_BILLBOARD) and the near-dissolve's crown scale
+  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v20'));
   assert.equal(foliage.length, species.length, 'the complete production species material library exists');
   const impostor = registered.filter(material => material.customProgramCacheKey() === 'world-tree-impostor-v3'); // round 77c: the elevated ring; p2 trees lane: the gust lift
   assert.equal(impostor.length, 1, 'one impostor material per world, registered with the cascades');
@@ -217,6 +218,15 @@ function checkEdgeFade(material, parameters) {
   assert.match(fragment, /float cotUp = smoothstep\( 0\.35, 0\.75, dot\( cotRay, viewMatrix\[ 1 \]\.xyz \) \);\s*if \( cotUp > 0\.0 \) \{/, 'only a view looking up into the crown fades its edge-on cards (and pays for the face)');
   const fade = fragment.indexOf('#ifdef COT_CARD_EDGE_FADE');
   assert.ok(fragment.indexOf('aaMip') < fade && fade < fragment.indexOf('#include <alphatest_fragment>'), 'after the mip give-back, before the alpha test');
+  // trees round 2 (2026-10-03): the facing clusters — each card turns about its own axis toward the camera in instance
+  // space, ahead of the wind (which then moves the turned card), and a small crown's near dissolve keeps to its size
+  assert.equal(material.defines.COT_LEAF_BILLBOARD, '1.00', 'the grown clusters turn all the way to the camera');
+  const vertex = parameters.vertexShader;
+  assert.match(vertex, /attribute vec3 aAxis;\nattribute vec3 aLeaf;/, 'the billboard frame reaches the vertex stage');
+  assert.match(vertex, /vec3 cotRight = cross\( aAxis, cotCam - aCard\.xyz \);/, 'the card turns about its own axis toward the camera');
+  const turn = vertex.indexOf('transformed = mix( transformed, cotFacing, COT_LEAF_BILLBOARD );');
+  assert.ok(turn > 0 && turn < vertex.indexOf('float lean = uWind.x'), 'the turn comes before the wind law');
+  assert.match(fragment, /smoothstep\(2\.50 \* vCotNearScale, 8\.00 \* vCotNearScale, length\(vViewPosition\)\)/, 'the near dissolve by the crown\'s size');
 }
 function checkGustLift(cards, impostor) {
   for (const [name, parameters] of [['cards', cards], ['impostor', impostor]]) {
@@ -234,12 +244,13 @@ function checkMobileFoliage(species, environment) {
     const engine = { setupShadowMaterial(material, hook) { registered.push(material); return lighting.setupShadowMaterial(material, hook); } };
     const cfg = { vegetation: { species, clusterCount: 0, loneCount: 0, rimCount: 0, grassDensity: 0, bushCount: 0, belts: [], authoredTrees: [] } };
     const vegetation = createVegetation(createHeightField(1337), engine, 1337, cfg);
-    const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v19'));
+    const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v20'));
     assert.equal(foliage.length, species.length, 'the mobile species library exists');
     const fragment = environment.expand(foliage[0]).parameters.fragmentShader;
     assert.doesNotMatch(fragment, /vWindLift \*/, 'the phones keep their foliage fragment: no gust lift');
     assert.ok(!('COT_CARD_EDGE_FADE' in (foliage[0].defines ?? {})), 'the phones keep their cards: no edge-on fade');
     assert.ok(!('COT_GROWN_CROWN' in (foliage[0].defines ?? {})), 'and no transmission gain');
+    assert.ok(!('COT_LEAF_BILLBOARD' in (foliage[0].defines ?? {})), 'and no facing clusters');
     assert.doesNotMatch(fragment, /uCotLeafTransmission/, 'and no leaf transmission: their fragment is the one they had');
     vegetation.dispose(); disposeObject3DResources(vegetation.group);
     for (const material of registered) releaseCsmShaderMaterial(lighting.csm, material);

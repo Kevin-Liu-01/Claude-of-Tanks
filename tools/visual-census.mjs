@@ -44,6 +44,7 @@ import {
   terrainSiteCandidates,
 } from './visual-census-views.mjs';
 import { buildSheets, censusViewsOf, compareCensus, loadCensus, measureCensus, openCensus, saveCensus, writeIndex } from './visual-census-report.mjs';
+import { CENSUS_MAP_POSES } from './visual-census-map-poses.mjs';
 
 const TOOL = 'visual-census';
 const PORT_SPAN = 20;
@@ -71,7 +72,8 @@ export const CENSUS_HELP = `node tools/${TOOL}.mjs <command> [--flag=value ...]
            resume where the last stopped. --probe-lock waits in the cot-shots FIFO without that session mutex and
            takes it only at the FIFO head (tools/visual-census-lock.mjs); without it the caller holds any session mutex.
            --pose adds authored table views (camera and look point, each height over the ground beneath it) after the
-           set's views, for a landform no fixed view frames; --views=none shoots only those.
+           set's views, for a landform no fixed view frames; --views=none shoots only those. --pose=maps shoots each
+           map's own views (tools/visual-census-map-poses.mjs) on that map only.
   metrics  --out=<dir> [--force]      per-frame metrics into census.json (only frames without them unless --force)
   sheets   --out=<dir>                contact sheets: one per view (every map), one per map (every view)
   index    --out=<dir>                <out>/index.md (keeps the hand-written visual read between its markers)
@@ -89,6 +91,11 @@ Run capture under nice -n 19; it takes the cot-shots capture lock itself (with -
  */
 export function parseCensusPoses(raw) {
   if (raw === undefined) return [];
+  // --pose=maps: each map's own views from tools/visual-census-map-poses.mjs, each shot on its map only
+  if (raw === 'maps') {
+    return Object.entries(CENSUS_MAP_POSES).flatMap(([map, specs]) =>
+      parseCensusPoses(specs).map((view) => Object.freeze({ ...view, map })));
+  }
   return raw.split('+').map((spec) => {
     const parts = spec.split(':');
     const name = parts[0], cam = (parts[1] ?? '').split(',').map(Number), at = (parts[2] ?? '').split(',').map(Number);
@@ -99,6 +106,11 @@ export function parseCensusPoses(raw) {
     return Object.freeze({ name, kind: 'table', label: `${name} (authored pose)`, cam: Object.freeze(cam),
       at: Object.freeze(at), fov: CENSUS_FOV, authored: true });
   });
+}
+
+/** The views one map shoots: every fixed and explicit --pose view, and of --pose=maps only that map's own. */
+export function viewsForMap(views, mapId) {
+  return views.filter((view) => !view.map || view.map === mapId);
 }
 
 /** Parse argv (command first, then --name=value flags; booleans bare). Fails closed before anything starts. */
@@ -598,6 +610,7 @@ async function runCapture(options) {
 async function captureMap({ census, mapId, name, options, boot, getBooted, sessionIndex }) {
   const prior = census.maps[mapId];
   const record = { name, status: 'running', session: sessionIndex, capturedAt: new Date().toISOString(), failures: prior?.failures ?? 0, views: {}, pageErrors: [] };
+  const mapViews = viewsForMap(options.views, mapId);
   census.maps[mapId] = record;
   const t0 = Date.now();
   let rebooted = false;
@@ -608,9 +621,9 @@ async function captureMap({ census, mapId, name, options, boot, getBooted, sessi
       record.stage = await stageMap(page, mapId, env, 900000);
       record.stage.attempts = attempt;
       record.authoredSky = record.stage.authoredSky; record.player = record.stage.player; record.timeOfDay = record.stage.timeOfDay;
-      const { plans, layout } = await planViews(page, options.views, record.player);
+      const { plans, layout } = await planViews(page, mapViews, record.player);
       record.layout = layout;
-      for (const view of options.views) {
+      for (const view of mapViews) {
         const plan = plans[view.name];
         if (plan.skipped) { record.views[view.name] = { status: 'skipped', reason: plan.skipped }; continue; }
         if (record.views[view.name]?.status === 'ok') continue;
@@ -630,11 +643,11 @@ async function captureMap({ census, mapId, name, options, boot, getBooted, sessi
     }
   }
   const views = Object.values(record.views);
-  const allOk = options.views.every((v) => ['ok', 'skipped'].includes(record.views[v.name]?.status));
+  const allOk = mapViews.every((v) => ['ok', 'skipped'].includes(record.views[v.name]?.status));
   record.status = allOk ? 'ok' : views.some((v) => v.status === 'ok') ? 'partial' : 'failed';
   if (record.status !== 'ok') { record.failures += 1; record.error = record.lastError || 'views failed'; }
   record.ms = Date.now() - t0;
-  console.log(`[${TOOL}] ${stamp()} ${mapId}: ${record.status} in ${Math.round(record.ms / 1000)} s (${options.views.map((v) => `${v.name}:${record.views[v.name]?.status || '-'}`).join(' ')})`);
+  console.log(`[${TOOL}] ${stamp()} ${mapId}: ${record.status} in ${Math.round(record.ms / 1000)} s (${mapViews.map((v) => `${v.name}:${record.views[v.name]?.status || '-'}`).join(' ')})`);
   return record;
 }
 
