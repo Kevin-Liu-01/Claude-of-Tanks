@@ -29,8 +29,10 @@ export const UNION_POINTS = Object.freeze([
 /** [label, receiver, normal] past the union's points: the wraps, the shoes, the gap fade, tilted receivers, a fading one */
 const EXTRA_POINTS = Object.freeze([
   ['under a rear wrap', [1.5, 0, h.cz0 - 0.5], [0, 1, 0]],
-  ['just past the shoes', [h.xo + 0.005, 0, 0], [0, 1, 0]],
-  ['a shoe on the ground run', [1.5, 0.03, 0], [0, 1, 0]],
+  ['just past the shoes', [h.xo + 0.01, 0, 0], [0, 1, 0]],
+  ['a shoe on the ground run', [1.5, 0.06, 0], [0, 1, 0]],
+  ['the ground under the ground run', [1.5, 0, 0], [0, 1, 0]],
+  ['under a hull riding high', [0.4, -0.13, 1.0], [0, 1, 0]],
   ['inside the gap fade', [h.xi - 0.05, 0, 0.5], [0, 1, 0]],
   ['under the rear plate', [0.3, 0, -3.5], [0, 1, 0]],
   ['a slope facing the hull', [2.6, 0.3, -2.0], [-0.4, 0.9, 0.17]],

@@ -6594,8 +6594,11 @@ only with an albedo-aware key that keeps snow and bright sand high-key.
   the law within 0.015 of a brute-force union of the hull and both runs (4096 stratified rays) at eleven ground points
   beside, ahead of, behind, off the corner of and under the T-90M, and the GLSL to its CPU twin on the GPU
   (`tools/vehicle-ground-occlusion.browser.selftest.mjs`). The track shoes (their cloned material writes no vehicle tag)
-  are skipped in their own measured lane, along their ground run and on the wraps off the ground; the ground under a wrap
-  stays a receiver (lab4's bright trapezoids). A blocked direction keeps its occluder's own light (first-order
+  are skipped in their own measured lane over a 4 cm floor, along their ground run and on the wraps off the ground; the
+  ground under a wrap stays a receiver (lab4's bright trapezoids), and the ground the ground run covers (seen through the
+  shoes' gaps and at their foot) keeps no sky. The contact plane is the shoes' own foot and the belly the measured pan
+  only where it stands over it: a battle visual's published contact geometry sat 12 cm under its tracks with a pan 30 cm
+  under them (the rest scan's float, 2026-10-03), which lab5's solids had inherited. A blocked direction keeps its occluder's own light (first-order
   interreflection with a 0.25 hull albedo): the belly lit by the open ground it glimpses, a wall by half sky and half
   ground. The ground-albedo multi-bounce it replaced (Jimenez's fit, which assumes the cavity has the receiver's albedo)
   kept 0.37 of the sky under a snow belly and 0.81 at its rear edge; snow's belly now keeps 0.13, sunny sand's 0.21.
