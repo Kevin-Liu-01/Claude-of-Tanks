@@ -5,9 +5,26 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 // carry a tighter `shape2` footprint for the movement and shell narrow phases:
 //   { kind:'obb', cx,cz, hw,hl,yaw }
 //   { kind:'circle', cx,cz,r }
-//   { kind:'convex', cx,cz, points:[x0,z0,...] }  // CCW world points
+//   { kind:'convex', cx,cz, points:[x0,z0,...] }  // world points, either winding (convexWinding)
 
 const EPS = 1e-9;
+
+/**
+ * The winding of a convex footprint's points: 1 counter-clockwise (inside on the left of every edge), -1 clockwise.
+ * Captured footprints carry either (2026-10-03: 935 clockwise parts in 503 records over the 33 maps' shards, structure
+ * roof strips, cable spools, stooks and wire among them). The route probe, the shell ray's edge clip and the clearance
+ * test read every footprint as counter-clockwise, so a clockwise part's inside was its outside: shells and sight lines
+ * passed through it, it held no point, and the bots' route probe hit it from far off (a 4 m hut on Railyard pulled a
+ * searching T-90A 90 m off its route to the hut's corners until battlePacing's 900 s cap). The SAT push is winding-free.
+ */
+function convexWinding(points: readonly number[]): number {
+  let area2 = 0;
+  for (let index = 0; index < points.length; index += 2) {
+    const next = index + 2 < points.length ? index + 2 : 0;
+    area2 += points[index] * points[next + 1] - points[next] * points[index + 1];
+  }
+  return area2 < 0 ? -1 : 1;
+}
 
 type Bounds3 = [number, number, number];
 
@@ -385,12 +402,13 @@ function simpleFootprintContainsPoint(
     return Math.abs(dx * rightX + dz * rightZ) <= shape.hw + margin
       && Math.abs(dx * forwardX + dz * forwardZ) <= shape.hl + margin;
   }
+  const winding = convexWinding(shape.points);
   for (let index = 0; index < shape.points.length; index += 2) {
     const next = (index + 2) % shape.points.length;
     const edgeX = shape.points[next] - shape.points[index];
     const edgeZ = shape.points[next + 1] - shape.points[index + 1];
-    const cross = edgeX * (z - shape.points[index + 1])
-      - edgeZ * (x - shape.points[index]);
+    const cross = winding * (edgeX * (z - shape.points[index + 1])
+      - edgeZ * (x - shape.points[index]));
     if (cross < -margin * Math.hypot(edgeX, edgeZ)) return false;
   }
   return true;
@@ -481,15 +499,16 @@ function rayConvexEntry2(
   maxDistance: number,
   margin: number,
 ) {
+  const winding = convexWinding(shape.points);
   let entry = 0, exit = maxDistance;
   for (let index = 0; index < shape.points.length; index += 2) {
     const next = (index + 2) % shape.points.length;
     const edgeX = shape.points[next] - shape.points[index];
     const edgeZ = shape.points[next + 1] - shape.points[index + 1];
-    const offset = edgeX * (sourceZ - shape.points[index + 1])
-      - edgeZ * (sourceX - shape.points[index])
+    const offset = winding * (edgeX * (sourceZ - shape.points[index + 1])
+      - edgeZ * (sourceX - shape.points[index]))
       + margin * Math.hypot(edgeX, edgeZ);
-    const velocity = edgeX * directionZ - edgeZ * directionX;
+    const velocity = winding * (edgeX * directionZ - edgeZ * directionX);
     if (Math.abs(velocity) < EPS) {
       if (offset < 0) return null;
       continue;
@@ -1079,11 +1098,13 @@ function clipConvexEdge(
   points: number[],
   index: number,
   interval: RayInterval,
+  winding: number,
 ): boolean {
   const next = (index + 2) % points.length;
   const edgeX = points[next] - points[index];
   const edgeZ = points[next + 1] - points[index + 1];
-  const inverseLength = 1 / (Math.hypot(edgeX, edgeZ) || 1);
+  // the inward normal is the edge's left for a counter-clockwise footprint, its right for a clockwise one
+  const inverseLength = winding / (Math.hypot(edgeX, edgeZ) || 1);
   const inwardX = -edgeZ * inverseLength;
   const inwardZ = edgeX * inverseLength;
   const originSide = (origin.x - points[index]) * inwardX
@@ -1112,8 +1133,9 @@ function rayConvex(
 ): number {
   const interval = initializeExtrudedInterval(origin, dir, rec, maxDist, true);
   if (!interval) return -1;
+  const winding = convexWinding(shape.points);
   for (let index = 0; index < shape.points.length; index += 2) {
-    if (!clipConvexEdge(origin, dir, shape.points, index, interval)) return -1;
+    if (!clipConvexEdge(origin, dir, shape.points, index, interval, winding)) return -1;
   }
   if (interval.t1 < 0 || interval.t0 > maxDist) return -1;
   outNormal.set(interval.nx, interval.ny, interval.nz);

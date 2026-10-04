@@ -167,9 +167,9 @@ for (const mapId of MAP_IDS) {
   // Layout-brief maps (2026-10-01, docs/MAP-LAYOUT-BRIEF.md) author their strongpoints in symmetric pairs, with
   // optional posts on the symmetry line: at least three, every role present.
   if (isLayoutBriefMap(mapId)) assert.ok(beats.length >= 3, `${mapId}: at least three deliberate lane strongpoints`);
-  else assert.equal(beats.length, mapId === 'moon' ? 0 : mapId === 'cliffbridge' ? 2 : 3, `${mapId}: three deliberate lane strongpoints`);
+  else assert.equal(beats.length, mapId === 'moon' ? 0 : 3, `${mapId}: three deliberate lane strongpoints`);
   assert.deepEqual([...new Set(beats.map((beat) => beat.role))].sort(),
-    mapId === 'moon' ? [] : mapId === 'cliffbridge' ? ['brawl','support'] : ['brawl', 'scout', 'support'], `${mapId}: distinct vehicle-role decisions`);
+    !isLayoutBriefMap(mapId) && mapId === 'moon' ? [] : ['brawl', 'scout', 'support'], `${mapId}: distinct vehicle-role decisions`);
   assert.equal(new Set(beats.map((beat) => beat.id)).size, beats.length,
     `${mapId}: memorable strongpoint identities are unique`);
   const structureFamilies = new Set(config.props.destructibleBuildings);
@@ -184,7 +184,7 @@ for (const mapId of MAP_IDS) {
   for (const beat of beats) {
     assert.ok(Math.max(Math.abs(beat.x), Math.abs(beat.z)) <= 360,
       `${mapId}/${beat.id}: strongpoint stays in the playable interior`);
-    assert.ok(structureFamilies.has(beat.structure) || (mapId === 'cliffbridge' && beat.structure === 'guardpost'),
+    assert.ok(structureFamilies.has(beat.structure),
       `${mapId}/${beat.id}: strongpoint uses the map's textured structure family`);
     const components = [beat.structure, beat.redoubt, beat.outcrop, beat.wreck].filter(Boolean);
     assert.ok(components.length >= 2,
@@ -223,7 +223,8 @@ for (const mapId of cityMaterialMaps) {
     `${mapId}: plaster, masonry, weathered accent, and roof families remain visually distinct`);
 }
 for (const family of repairedHeavyFamilies) {
-  const maps = cityMaterialMaps.filter((mapId) => getMapConfig(mapId).props.plan.includes(family));
+  const maps = cityMaterialMaps.filter((mapId) => [...getMapConfig(mapId).props.plan,
+    ...(getMapConfig(mapId).props.plannedSites ?? []).map((site) => site.structure)].includes(family));
   assert.ok(maps.length >= 5,
     `${family}: repaired heavyweight family is exercised across at least five city/industrial maps`);
 }
@@ -253,7 +254,10 @@ assert.deepEqual(polePolicyByMap.get('delta'), { pairs: 0, singles: 0, maxReject
 
 for (const mapId of [...EXPANSION, ...EXTREME]) {
   const config = getMapConfig(mapId);
-  assert.ok(config.props.plan.length >= 14, `${mapId}: authored landmark plan is dense`);
+  // a layout-brief map may author its landmarks as sites (Ruinspires, 2026-10-02: rotation pairs) instead of the
+  // roadside plan
+  const landmarks = [...config.props.plan, ...(config.props.plannedSites ?? []).map((site) => site.structure)];
+  assert.ok(landmarks.length >= 14, `${mapId}: authored landmark plan is dense`);
   assert.equal(config.props.tankWrecks.era, 'modern', `${mapId}: modern wreck fleet`);
   assert.ok(config.props.tankWrecks.count >= 5, `${mapId}: multiple wreck story beats`);
   assert.equal(config.props.tankWrecks.debris, true, `${mapId}: detached debris enabled`);
@@ -283,9 +287,9 @@ for (const mapId of [...EXPANSION, ...EXTREME]) {
   // Layout-brief maps (2026-10-01, docs/MAP-LAYOUT-BRIEF.md) author their strongpoints in symmetric pairs, with
   // optional posts on the symmetry line: at least three, every role present.
   if (isLayoutBriefMap(mapId)) assert.ok(beats.length >= 3, `${mapId}: at least three deliberate lane strongpoints`);
-  else assert.equal(beats.length, mapId === 'moon' ? 0 : mapId === 'cliffbridge' ? 2 : 3, `${mapId}: three deliberate lane strongpoints`);
+  else assert.equal(beats.length, mapId === 'moon' ? 0 : 3, `${mapId}: three deliberate lane strongpoints`);
   assert.deepEqual([...new Set(beats.map((beat) => beat.role))].sort(),
-    mapId === 'moon' ? [] : mapId === 'cliffbridge' ? ['brawl','support'] : ['brawl', 'scout', 'support'], `${mapId}: distinct vehicle-role decisions`);
+    !isLayoutBriefMap(mapId) && mapId === 'moon' ? [] : ['brawl', 'scout', 'support'], `${mapId}: distinct vehicle-role decisions`);
   assert.equal(new Set(beats.map((beat) => beat.id)).size, beats.length,
     `${mapId}: memorable strongpoint identities are unique`);
   const destructibleBuildingFamilies = new Set(config.props.destructibleBuildings);
@@ -323,7 +327,7 @@ for (const mapId of [...EXPANSION, ...EXTREME]) {
 
 for (const mapId of ['ruinspires', 'blackglass']) {
   const config = getMapConfig(mapId);
-  const monumental = config.props.plan.filter((kind) =>
+  const monumental = [...config.props.plan, ...(config.props.plannedSites ?? []).map((site) => site.structure)].filter((kind) =>
     ['megatower', 'arcology', 'needletower', 'broadcasttower', 'terracetower',
       'parkingdeck', 'civichall'].includes(kind));
   assert.ok(monumental.length >= 18,

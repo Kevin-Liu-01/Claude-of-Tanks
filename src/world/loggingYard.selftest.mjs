@@ -203,9 +203,12 @@ for (const seed of [1337, 2025]) {
 // origins and scales. Capture rounds the two vertical endpoints separately;
 // the stable height below is their measured native difference, not a looser
 // scale tolerance. The corpus is composition's output, never its input.
+// 2026-10-02 (maps lane B): Longleaf Crossing's gentler relief (hillScale 0.88, microScale 0.76) and its new swell
+// move the same two donors: the replay without the logging yard puts them at the origins below, and the canonical
+// shard's packed heights at the bays are 2.0045 and 1.9812 (was (-149.2308, -173.9215) and (-80.6038, 239.7031), 1.9813).
 const preLayoutTraffic = [
-  { x: -149.2308419066663, z: -173.92149064282697, height: 2.0045 },
-  { x: -80.60376542456797, z: 239.70308177010833, height: 1.9813 },
+  { x: -149.2563437955792, z: -173.84073125534042, height: 2.0045 },
+  { x: -80.53000567837782, z: 239.67939683819532, height: 1.9812 },
 ];
 const flatbedBays = longleaf.props.loggingYard.flatbeds;
 const currentTraffic = canonical.filter(ob => ob.kind === 'truckflatbed' && flatbedBays.some(point =>

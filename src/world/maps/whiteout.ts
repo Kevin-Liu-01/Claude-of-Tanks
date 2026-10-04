@@ -24,10 +24,32 @@ export default {
     landforms: [
       { kind: 'ridge', x: -186, z: -52, length: 180, width: 44, height: 5.6, yawDeg: 8 },
       { kind: 'ridge', x: 196, z: 84, length: 190, width: 48, height: 6.0, yawDeg: -6 },
-      { kind: 'ridge', x: -20, z: 268, length: 220, width: 62, height: 6.4, yawDeg: 88 },
+      // 2026-10-03 (maps lane B): the north berm turns across the approach and moves north (it ran north-south at x -20
+      // from z 158 to 378), off Verdant's northern ridge (the layout brief's skeleton rule: at most one of Verdant's
+      // landforms with one of this map's within 75 m), 2 m higher so that, faded by the arc's pad clearings, it still
+      // screens the two deployments from each other
+      { kind: 'ridge', x: -14, z: 300, length: 170, width: 50, height: 8.4, yawDeg: 4 },
       { kind: 'ridge', x: -10, z: -270, length: 200, width: 56, height: 5.8, yawDeg: 88 },
+      // 2026-10-03 (maps lane B): two snow berms the station banked against the drift. One crosses the service street's
+      // northern approach, where the street runs out through a cut. The other lies across the open ground south-east of
+      // the station, its rotation about the midpoint of the two deployments. Both stand more than 75 m from Verdant's
+      // ridges (the layout brief's skeleton rule). With the PR head's bot fixes, both teams drove the street straight into
+      // the court. battlePacing's seed 45003 ended there in 77 s, under the 90 s floor. Now the four receipt seeds take
+      // 134 / 128 / 163 / 260 s, and none of twelve takes under 128 s. Over 40 all-bot seeds the split is 17-23 (14-26
+      // without them). The berms stand 3.6 m: at 4.2 m a hull crossing a berm's end at speed took a 163 HP fall.
+      { kind: 'ridge', x: -124, z: 186, length: 130, width: 40, height: 3.6, yawDeg: 0 },
+      { kind: 'ridge', x: 22, z: -173, length: 130, width: 40, height: 3.6, yawDeg: 0 },
       { kind: 'basin', x: 98, z: 12, rx: 108, rz: 128, height: -2.2, wetScale: 0.2 },
       { kind: 'knoll', x: -346, z: 24, rx: 84, rz: 102, height: 7.0 },
+      // 2026-10-03 (maps lane B): periglacial geology — an esker, the sinuous gravel ridge a meltwater tunnel left under
+      // the ice, winds across the south-west tundra in three linked reaches; three pingos, the ice-cored frost mounds
+      // of a polar plain, stand in the open south-east, north-east and south-west.
+      { kind: 'ridge', x: -392, z: -268, length: 90, width: 16, height: 3.2, yawDeg: 62 },
+      { kind: 'ridge', x: -352, z: -198, length: 80, width: 15, height: 3.6, yawDeg: 48 },
+      { kind: 'ridge', x: -300, z: -146, length: 76, width: 14, height: 3.0, yawDeg: 30 },
+      { kind: 'knoll', x: 318, z: -262, r: 20, height: 4.2 },
+      { kind: 'knoll', x: 360, z: 330, r: 18, height: 3.8 },
+      { kind: 'knoll', x: -250, z: -320, r: 17, height: 3.4 },
     ],
   },
   spawns: { player: { x: -102, z: -390 }, enemies: [
@@ -43,7 +65,10 @@ export default {
   splat: { sourcedPalette: 'winter', ...winter.splat,
     sourcedTint: { G: [0.88, 0.885, 0.895] },
     grassTone: (h: number, s: number, l: number) => [0.575, 0.03, clamp01(0.46 + l * 0.28)], // snowpack fallback
-    iceDrift: 0.3, tintA: [1.02, 1.04, 1.08], tintB: [0.82, 0.88, 0.96], tintC: [1.05, 1.06, 1.08], roadTint: [0.67, 0.70, 0.72], midRelief: 0.45 },
+    // 2026-10-03 (maps lane B, the gauntlet's "dull blue-grey plaster"): snow is near neutral, and under overcast its
+    // blue comes only from open sky (the skies lane's lighting side). The macro tints go from B/R 1.06 (A) and
+    // 1.17 (B) to 1.04, at the same luminance (Rec. 709: A 1.039, B 0.873). C was already 1.03.
+    iceDrift: 0.3, tintA: [1.021, 1.041, 1.062], tintB: [0.858, 0.875, 0.893], tintC: [1.05, 1.06, 1.08], roadTint: [0.67, 0.70, 0.72], midRelief: 0.45 },
   vegetation: {
     grassTexTone: winter.vegetation.grassTexTone, tuftTone: winter.vegetation.tuftTone,
     // A few sheltered firs break up the spruce/birch silhouette without
@@ -60,8 +85,11 @@ export default {
     buildingLat: [14, 2], destructibleBuildingLat: [18, 3], sideSkip: 0.18, spacingPad: 8,
     tacticalBeats: [
       { id: 'station-motor-pool', role: 'brawl', x: -196, z: 26, yawDeg: 90, structure: 'motorpool', redoubt: true, outcrop: { count: 5, radius: 10 }, wreck: true },
-      { id: 'eastern-weather-relay', role: 'scout', x: 288, z: 38, yawDeg: -90, structure: 'relaystation', outcrop: { count: 4, radius: 8 } },
-      { id: 'north-fuel-shelter', role: 'support', x: 12, z: 266, yawDeg: 180, structure: 'quonsethut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true },
+      // 2026-10-03 (maps lane B): the weather relay moves from (288, 38), 52 m from Verdant's eastern observer, and the
+      // fuel shelter from (12, 266), 13 m from Verdant's northern command fold, behind the moved north berm (the layout
+      // brief's skeleton rule: no strongpoint within 60 m of one of Verdant's)
+      { id: 'eastern-weather-relay', role: 'scout', x: 320, z: -10, yawDeg: -90, structure: 'relaystation', outcrop: { count: 4, radius: 8 } },
+      { id: 'north-fuel-shelter', role: 'support', x: -70, z: 270, yawDeg: 180, structure: 'quonsethut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true },
     ],
     tones: makeRealisticCityBuildingTones({ value: 1.04, saturation: 1.02, soot: 0.01, roofValue: 0.94 }),
     industrialCladding: 'steel', // round 75: a polar station's halls are corrugated sheet, not brick
