@@ -20,13 +20,15 @@ export type GrowthSpecies = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus
   | 'pine' | 'spruce' | 'fir' | 'cedar' | 'cypress' | 'birch' | 'aspen' | 'palm' | 'snag' | 'mangrove'
   // trees round 2 (2026-10-03): the regional forms a battlefield's species slots grow as (treeBiomes.ts)
   | 'beech' | 'chestnut' | 'holmOak' | 'olive' | 'canaryPine' | 'aleppoPine' | 'larch'
+  // the Arizona uplands' juniper and pinyon (Copper Mesa: the Sonoran/Chihuahuan upland cover, gauntlet wave 28)
+  | 'juniper' | 'pinyon'
   // a shrub-only form (treeBiomes.ts `shrub`): the broom scrub of a volcanic upland — never a tree slot
   | 'broom';
 type Rng = () => number;
 
 export const GROWTH_SPECIES: readonly GrowthSpecies[] = Object.freeze([
   'oak', 'poplar', 'willow', 'acacia', 'eucalyptus', 'pine', 'spruce', 'fir', 'cedar', 'cypress', 'birch', 'aspen', 'palm', 'snag',
-  'mangrove', 'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch',
+  'mangrove', 'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'juniper', 'pinyon',
 ]);
 
 /** How a crown envelope narrows from its base (t = 0) to its top (t = 1): the radius fraction at t. */
@@ -330,6 +332,28 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     leafOrder: 1, leafPerM: 4.4, leafFrom: 0.05, spray: [0.72, 1.02], aspect: 0.74, habit: 'spray', tipSprays: 2,
     cardBend: 0.32, flatRoll: 0.6, flatDroop: 0.0, bark: 1, barkTint: [0.46, 0.34, 0.28], barkTopTint: null,
     foliageValue: 1.3,
+  }),
+  // the one-seed and Utah junipers of the Arizona uplands: a short shaggy grey bole forking near the ground into a few
+  // leaning stems under a low, irregular, rounded crown of grey-green scale-leaf sprays, as wide as it is tall
+  juniper: P({
+    family: 'conifer', height: 4.4, heightSpread: 0.16, trunkR: 0.24, form: 'decurrent',
+    forkAt: [0.1, 0.2], scaffolds: [3, 5], scaffoldAngle: [0.5, 1.0], crownBase: 0.12, crownR: 2.1,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.4, angleLow: 1.2, angleHigh: 0.65,
+    droop: 0.22, upturn: 0.35, sidePerM: 2.6, sideAngle: 0.8, sideRatio: 0.55, sideDroop: 0.2, twigPerM: 1.4,
+    leafOrder: 1, leafPerM: 5.2, leafFrom: 0.05, spray: [0.6, 0.86], aspect: 0.82, habit: 'spray', tipSprays: 2,
+    cardBend: 0.1, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.46, 0.42, 0.38], barkTopTint: null,
+    foliageValue: 1.2,
+  }),
+  // the pinyon (Pinus edulis): a short pine, its crown low, round and dense, its needles short and stiff in tufts at
+  // the shoot ends; a grey, furrowed bole
+  pinyon: P({
+    family: 'conifer', height: 5.6, heightSpread: 0.14, trunkR: 0.24, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.22, crownR: 2.2,
+    envelope: 'dome', whorled: true, perWhorl: [3, 4], spacing: 0.55, angleLow: 1.4, angleHigh: 0.85,
+    droop: 0.18, upturn: 0.45, sidePerM: 1.8, sideAngle: 0.75, sideRatio: 0.5, sideDroop: 0.1, twigPerM: 0,
+    leafOrder: 1, leafPerM: 3.0, leafFrom: 0.35, spray: [0.62, 0.88], aspect: 0.92, habit: 'tuft', tipSprays: 3,
+    cardBend: 0.06, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.42, 0.38, 0.34], barkTopTint: null,
+    foliageValue: 1.15,
   }),
 });
 

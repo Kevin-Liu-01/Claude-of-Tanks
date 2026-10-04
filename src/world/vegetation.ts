@@ -45,7 +45,7 @@ import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_T
 import type { GroundLitterConfig } from './groundLitter.ts';
 import type { LandFieldSample } from './landUse.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeSlot, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeSlot, treeBiomeUpland, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -5222,6 +5222,22 @@ function* vegetationBuildSteps(
     for (const site of veg.palmSites ?? []) if (Math.hypot(x - site.x, z - site.z) < site.r) return true;
     return false;
   }
+  // trees round 2b (2026-10-03, gauntlet wave 28 on Copper Mesa: "green broadleaf and fir clumps on sand"): an upland
+  // place (treeBiomes.ts upland) zones its forms by height — its conifer forms (juniper, pinyon) on the higher ground,
+  // the top two fifths of the square's heights; its broadleaf forms (mesquite) in the low washes, the bottom two fifths;
+  // nothing on the slopes between. A test on a seat, no draw.
+  const uplandBand: readonly [number, number] | null = treeBiomeUpland(cfg?.id) ? (() => {
+    const heights: number[] = [];
+    for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) heights.push(heightField.getHeightAt(x, z));
+    heights.sort((a, b) => a - b);
+    return [heights[Math.floor(heights.length * 0.4)], heights[Math.floor(heights.length * 0.6)]] as const;
+  })() : null;
+  function uplandZoneOk(x: number, z: number, sp: Species): boolean {
+    if (!uplandBand) return true;
+    const form = formOf(sp)?.form ?? sp;
+    const h = heightField.getHeightAt(x, z);
+    return TREE_GROWTH_PROFILES[form as GrowthSpecies]?.family === 'conifer' ? h >= uplandBand[1] : h <= uplandBand[0];
+  }
   function addTree(x: number, z: number, species: Species, r: RandomSource = rng): boolean {
     if (!siteOk(x, z, 0)) return false;
     pushTree(x, z, species, 0.95, 1.7, true, r); // wide size spread per stand
@@ -5341,6 +5357,7 @@ function* vegetationBuildSteps(
       }
       if (!siteOk(x, z, 6)) continue;
       if (arid && !palmStand && hollowDepthAt(x, z) < 0.8) continue;
+      if (!uplandZoneOk(x, z, species)) continue;
       // the stand's trees and the ground each takes, so its area follows its count — a round-1 stand drew its radius
       // apart from its count and many read as thin orchards; then a stretch along a heading (area kept) and three
       // harmonics of the outline. Trees round 2b: 48-84 m² a tree (the round-1 stands' mean footprint, ~66 m²): at the
@@ -5379,6 +5396,7 @@ function* vegetationBuildSteps(
         // a palm grove keeps to its water (wave 26: a palm stand's trees past the site grew as acacias round it, three
         // to each palm on Sirocco Wadi)
         if (palmStand && !palmSiteOk(px, pz)) continue;
+        if (!uplandZoneOk(px, pz, sp)) continue;
         if (addTree(px, pz, sp, wr)) placed++;
       }
       // r6 (content_breadth): coherent PER-STAND tint bias — a whole-stand lean (warm vs cool, small value drift) is
@@ -5520,14 +5538,18 @@ function* vegetationBuildSteps(
         const site = hedgeSite(x, z, 61);
         if (site[2] !== 0 || site[3] !== 0) { x = site[0]; z = site[1]; lineX = site[2]; lineZ = site[3]; }
       }
-      if (addTree(x, z, pickSpecies(veg.loneMix, lr()), lr)) {
+      const species = pickSpecies(veg.loneMix, lr());
+      // an upland place's lone tree stands in its form's zone (uplandZoneOk; true everywhere else)
+      if (!uplandZoneOk(x, z, species)) continue;
+      if (addTree(x, z, species, lr)) {
         placed++;
         for (let c = 0; c < companions; c++) {
           const a2 = lr() * Math.PI * 2, r2 = 4 + lr() * 7;
           // along the hedgerow (either way, the same distance), else round the tree
           const along = lineX !== 0 || lineZ !== 0, side = Math.cos(a2) * lineX + Math.sin(a2) * lineZ >= 0 ? 1 : -1;
           const cx = along ? x + lineX * r2 * side : x + Math.cos(a2) * r2, cz = along ? z + lineZ * r2 * side : z + Math.sin(a2) * r2;
-          if (addTree(cx, cz, pickSpecies(veg.loneMix, lr()), lr)) placed++;
+          const companion = pickSpecies(veg.loneMix, lr());
+          if (uplandZoneOk(cx, cz, companion) && addTree(cx, cz, companion, lr)) placed++;
         }
       }
     }
@@ -5587,7 +5609,8 @@ function* vegetationBuildSteps(
   const aridRim = treeBiomeArid(cfg?.id);
   function dropRimTreeOutsideWoods(x: number, z: number): boolean {
     const inside = Math.max(Math.abs(x), Math.abs(z)) <= PLAYABLE_HALF_EXTENT_M;
-    if (!(aridRim && hollowDepthAt(x, z) < 1.2 && !palmSiteOk(x, z))) {
+    // (and an upland place's keeps each form to its zone, uplandZoneOk)
+    if (!(aridRim && hollowDepthAt(x, z) < 1.2 && !palmSiteOk(x, z)) && uplandZoneOk(x, z, trees[trees.length - 1].species)) {
       if (!borderWoodsAt) return false;
       if (treePositionNoise(x, z, 9) < Math.max(inside ? 0.34 : 0.04, borderWoodsAt(x, z))) return false;
     }
@@ -5683,6 +5706,8 @@ function* vegetationBuildSteps(
         const sy = heightField.getHeightAt(sx, sz);
         let spS = pickSpecies(veg.clusterMix, roll);
         if (spS === 'palm' && palmElsewhere && !palmSiteOk(sx, sz)) spS = palmElsewhere;
+        // an upland place's sapling grows in its form's zone too (its draws already made)
+        if (!uplandZoneOk(sx, sz, spS)) continue;
         const archetypeS = TREE_ARCHETYPES[spS];
         const sapScaleX = sc * (0.86 + treePositionNoise(sx, sz, 11) * 0.28);
         const sapScaleY = sc * (0.90 + treePositionNoise(sx, sz, 12) * 0.20);

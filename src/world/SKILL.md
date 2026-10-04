@@ -185,7 +185,8 @@ crown hull's depth pass: each crown mass as far as its sprays leave it open (`GR
 the tree's atlas share of opaque leaf, `SPRAY_ATLAS_COVERAGE`) with its own pattern, so a crown's heart casts darker than
 its fringe (world-anchored, the wood never opens, closing where a cascade's texel outgrows them).
 `treeBiomes.ts` (THREE-free) routes a map's species SLOTS to the regional FORMS of its real place on the desktop tiers
-(new profiles and tiles: beech, chestnut, holmOak, olive, canaryPine, aleppoPine, larch; summer birches in leaf; a map's
+(new profiles and tiles: beech, chestnut, holmOak, olive, canaryPine, aleppoPine, larch, the Arizona uplands' juniper and
+pinyon; summer birches in leaf; a map's
 shrub form, Las Cañadas' and Wadi Rum's broom; a place's foliage colour where the map palette names none, the hyper-arid
 places' dust-dulled acacias; a form's own colour over the slot's palette, Dalmatia's silver olives and grey holm oaks)
 — records, seeds and the mobile look stay the slot's; a birch crown in leaf on a palette
@@ -195,7 +196,8 @@ sparse, short). Stands are woodlots (`placeTreeClusters`: the round-1 draws repl
 placement keeps its seat, then irregular outlines with denser margins, clearings and thin patches on their own stream, at
 the round-1 stands' mean footprint so the deployments' corridors keep their cover; `standPoint` puts the saplings,
 fringe scrub and understorey on the real outline; a stand that cannot stand leaves no strays; `treeBiomeOpen` places'
-stands are open groves, Las Cañadas' and the arid places'). Lone trees (`placeLoneTrees`, own stream, round-1 draws
+stands are open groves, Las Cañadas' and the arid places'; a `treeBiomeUpland` place zones its forms by height, the
+conifers on the high ground and the broadleaf forms in the low, Copper Mesa's juniper, pinyon and mesquite). Lone trees (`placeLoneTrees`, own stream, round-1 draws
 replayed) stand at woodlot edges, on field boundaries (a hedged one, the ground lane's `hedgeSite`, else a road's verge)
 and as field clumps between the deployments (strung along a hedge where one is near); a hyper-arid place
 (`treeBiomeArid`) seats its groves, lone trees and border trees in the wadi beds and hollows; a map's `palmSites` keep

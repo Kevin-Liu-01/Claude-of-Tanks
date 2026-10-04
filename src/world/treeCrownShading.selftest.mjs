@@ -18,7 +18,7 @@ import {
 import { makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_KINDS } from './treeSprayAtlas.ts';
 import { LOD_SHADOW_FADE_ATTRIBUTE } from '../engine/lodShadowFade.ts';
 import { growShrubSkeleton } from './treeGrowth.ts';
-import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
+import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeSlot, treeBiomeUpland } from './treeBiomes.ts';
 import { grownTintLaw } from './vegetation.ts';
 import { TREE_SPECIES } from './treeSpecies.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
@@ -157,7 +157,7 @@ for (const species of GROWTH_SPECIES) {
       // a pine's brush and an acacia's leaflets keep their gaps under the alpha test (wave 26: the pines' shaded hearts and
       // the acacia's body filled each tile's core, "flat broadleaf leaf-card clusters", "lime-green blob foliage"): under
       // 5 % of the 8 × 8 windows wholly opaque (14.5 %, 6.8 %, 10 % and 28 % before; an oak's leaf mass 23 %)
-      if (kind === 'canaryPine' || kind === 'aleppoPine' || kind === 'pine' || kind === 'acacia') {
+      if (kind === 'canaryPine' || kind === 'aleppoPine' || kind === 'pine' || kind === 'pinyon' || kind === 'acacia') {
         let solid = 0, windows = 0;
         for (let y = 0; y + 8 <= 256; y += 2) for (let x = 0; x + 8 <= 256; x += 2) {
           let opaque = true;
@@ -310,6 +310,16 @@ assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alo
   // Las Cañadas' stands are open groves, as the arid places' are, but not seated in the low ground (wave 26)
   assert.ok(treeBiomeOpen('caldera') && !treeBiomeArid('caldera') && treeBiomeOpen('desert') && !treeBiomeOpen('verdant'),
     'open groves on the caldera and the arid places only');
+  // the Arizona uplands (wave 28): juniper and pinyon for the cedar and pine slots, the mesquite in the acacia slot's own
+  // form, creosote as the broom's switches, zoned by height in open groves under a dusty place colour
+  assert.equal(treeBiomeSlot('copper_mesa', 'cedar')?.form, 'juniper');
+  assert.equal(treeBiomeSlot('copper_mesa', 'pine')?.form, 'pinyon');
+  assert.equal(treeBiomeSlot('copper_mesa', 'acacia'), null, 'the mesquite grows in the acacia slot\'s own bipinnate form');
+  assert.ok(treeBiomeUpland('copper_mesa') && treeBiomeOpen('copper_mesa') && !treeBiomeUpland('caldera'), 'Copper Mesa zoned by height');
+  assert.equal(treeBiomeShrub('copper_mesa'), 'broom');
+  const sonoran = treeBiomeColour('copper_mesa');
+  assert.ok(sonoran && sonoran.cardSat < 0.12 && sonoran.texTone(0.36, 0.2, 0.2)[0] === 0.36, 'a dusty colour that keeps each form\'s hue');
+  for (const form of ['juniper', 'pinyon']) assert.equal(TREE_GROWTH_PROFILES[form].family, 'conifer', `${form}: a conifer (the high zone)`);
 }
 {
   // a form's own colour wins over the map palette's (tuned for the slot's species): Dalmatia's olives silver-grey, its

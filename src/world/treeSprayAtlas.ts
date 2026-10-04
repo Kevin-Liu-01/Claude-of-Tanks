@@ -20,10 +20,12 @@ type ToneFunction = (hue: number, saturation: number, lightness: number) => read
 export type SprayKind = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus' | 'birch' | 'aspen' | 'birch-bare'
   | 'spruce' | 'fir' | 'pine' | 'cedar' | 'cypress' | 'mangrove'
   // trees round 2 (2026-10-03): the regional forms (treeBiomes.ts)
-  | 'beech' | 'chestnut' | 'holmOak' | 'olive' | 'canaryPine' | 'aleppoPine' | 'larch' | 'broom';
+  | 'beech' | 'chestnut' | 'holmOak' | 'olive' | 'canaryPine' | 'aleppoPine' | 'larch' | 'broom'
+  // the Arizona uplands (Copper Mesa)
+  | 'juniper' | 'pinyon';
 export const SPRAY_KINDS: readonly SprayKind[] = Object.freeze(['oak', 'poplar', 'willow', 'acacia', 'eucalyptus',
   'birch', 'aspen', 'birch-bare', 'spruce', 'fir', 'pine', 'cedar', 'cypress', 'mangrove',
-  'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'broom']);
+  'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'broom', 'juniper', 'pinyon']);
 /** Tiles per side of every spray atlas. */
 export const SPRAY_ATLAS_TILES = 2;
 /**
@@ -35,6 +37,7 @@ export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.
   oak: 0.318, poplar: 0.285, willow: 0.17, acacia: 0.175, eucalyptus: 0.239, birch: 0.219, aspen: 0.274, 'birch-bare': 0.13,
   spruce: 0.269, fir: 0.329, pine: 0.128, cedar: 0.188, cypress: 0.291, mangrove: 0.264, beech: 0.313, chestnut: 0.396,
   holmOak: 0.213, olive: 0.225, canaryPine: 0.161, aleppoPine: 0.087, larch: 0.157, broom: 0.131,
+  juniper: 0.256, pinyon: 0.085,
 });
 
 interface LeafColor { hue: number; sat: number; light: number }
@@ -67,6 +70,9 @@ const LEAF_COLOR: Readonly<Record<SprayKind, LeafColor>> = Object.freeze({
   larch: { hue: 0.255, sat: 0.40, light: 0.25 },
   // the broom's green-grey switches
   broom: { hue: 0.22, sat: 0.16, light: 0.26 },
+  // the juniper's grey, faintly blue scale leaves; the pinyon's dark grey-green needles
+  juniper: { hue: 0.36, sat: 0.16, light: 0.2 },
+  pinyon: { hue: 0.29, sat: 0.24, light: 0.16 },
 });
 
 const _cc = new THREE.Color();
@@ -433,7 +439,7 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
   const base = LEAF_COLOR[kind];
   const wood = css(0.06, 0.25, 0.09);
   const p0 = { x: S * 0.5, y: S * 0.95 };
-  if (kind === 'pine' || kind === 'canaryPine' || kind === 'aleppoPine') {
+  if (kind === 'pine' || kind === 'canaryPine' || kind === 'aleppoPine' || kind === 'pinyon') {
     // Trees round 2 (2026-10-03): a pine shoot is a brush, not a star. The needle fascicles stand all along each shoot's
     // last half, every one pointing forward and out from it (the tip's more forward), so a tile reads as the fox-tail
     // tufts a pine crown is made of; round 1's tuft radiating from one point read as a palm frond or a maple leaf at
@@ -441,9 +447,10 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
     // needles long and hanging, the Aleppo pine's fine and sparse. The tile's alpha is the needles' alone (the shaded
     // heart darkens them, never fills between them): wave 26 read the Caldera pines' alpha-tested tiles, whose hearts
     // filled each brush's core into one opaque rounded mass, as "flat broadleaf leaf-card clusters".
-    const canary = kind === 'canaryPine', aleppo = kind === 'aleppoPine';
-    const needleL = canary ? 0.25 : aleppo ? 0.16 : 0.19, droopN = canary ? 0.34 : aleppo ? 0.1 : 0.08;
-    const perShoot = canary ? 175 : aleppo ? 95 : 140;
+    const canary = kind === 'canaryPine', aleppo = kind === 'aleppoPine', pinyon = kind === 'pinyon';
+    // the pinyon's needles short, stiff and crowded at the shoot ends
+    const needleL = canary ? 0.25 : aleppo ? 0.16 : pinyon ? 0.11 : 0.19, droopN = canary ? 0.34 : aleppo ? 0.1 : pinyon ? 0.02 : 0.08;
+    const perShoot = canary ? 175 : aleppo ? 95 : pinyon ? 210 : 140;
     const main = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * 0.56, (rng() - 0.5) * 0.35, 8);
     const shoots: Pt[][] = [main];
     for (const side of [-1, 1]) {
@@ -486,6 +493,25 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
     }
     ctx.globalCompositeOperation = composite;
     return shoots;
+  }
+  if (kind === 'juniper') {
+    // a juniper's spray: a few forking twigs of scale-leaf cords, open between them (the shrubby upland juniper, not the
+    // cypress' dense column); no shaded body under them
+    const frond = (p: Pt, a: number, len: number, depth: number): void => {
+      const pts = twigPoints(p, a, len, (rng() - 0.5) * 0.4, 4);
+      const light = base.light * (0.7 + 0.14 * depth + rng() * 0.3);
+      taperStroke(ctx, pts, S * 0.032 * (depth + 1) / 3, S * 0.02, css(base.hue + (rng() - 0.5) * 0.04, base.sat, light));
+      if (depth <= 0) return;
+      const forks = 4 + ((rng() * 2) | 0);
+      for (let k = 0; k < forks; k++) {
+        const at = pointAt(pts, 0.25 + (k / forks) * 0.7);
+        frond(at.p, at.a + (k % 2 ? 0.7 : -0.7) + (rng() - 0.5) * 0.45, len * 0.6, depth - 1);
+      }
+    };
+    const spine = twigPoints(p0, -Math.PI / 2, S * 0.6, 0, 6);
+    taperStroke(ctx, spine, S * 0.012, S * 0.006, wood);
+    frond(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * 0.6, 3);
+    return [spine];
   }
   if (kind === 'cypress') {
     // scale-leaf fronds: a flattened spray that forks again and again, thick and dense

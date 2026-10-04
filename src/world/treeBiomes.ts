@@ -43,6 +43,11 @@ export interface TreeBiome {
    * clearing): Las Cañadas' pines on the cinder (an arid place's are open too, and seated in the low ground).
    */
   open?: true;
+  /**
+   * An upland place zoned by height: its conifer forms (juniper, pinyon) on the higher ground, its broadleaf forms
+   * (mesquite) in the low washes, nothing on the slopes between (vegetation.ts uplandZoneOk).
+   */
+  upland?: true;
 }
 
 /** A biome's foliage colour defaults (vegetation.ts VegetationPalette's colour fields). */
@@ -71,6 +76,16 @@ const OLIVE_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   texTone: (_h: number, s: number, l: number): [number, number, number] => [0.28, Math.min(1, s * 0.5), Math.min(1, l * 1.12)],
 });
 
+/**
+ * The Arizona uplands' dusty greens: every form keeps its own hue (the juniper's grey-blue, the pinyon's dark green, the
+ * mesquite's olive) at three fifths of its saturation, a little lighter, under a nearly neutral card tint (gauntlet
+ * wave 28: "green broadleaf and fir clumps on sand").
+ */
+const SONORAN_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.24, cardSat: 0.09,
+  texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.6), Math.min(1, l * 1.05)],
+});
+
 /** The holm oak's dull dark grey-green (its leaves' felted grey undersides): two thirds of a leaf's saturation. */
 const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   cardHue: 0.25, cardSat: 0.09,
@@ -78,9 +93,9 @@ const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
 });
 
 const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies, palette?: Readonly<TreeBiomeColour>, arid?: true,
-  open?: true): Readonly<TreeBiome> =>
+  open?: true, upland?: true): Readonly<TreeBiome> =>
   Object.freeze({ place, slots: Object.freeze(slots), ...(shrub ? { shrub } : {}), ...(palette ? { palette } : {}), ...(arid ? { arid } : {}),
-    ...(open ? { open } : {}) });
+    ...(open ? { open } : {}), ...(upland ? { upland } : {}) });
 
 /**
  * Per map id. Slots a map does not plant are harmless (the table is read per planted slot). Maps that are absent keep
@@ -120,6 +135,11 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   alpine: B('an Alpine pass', { fir: { form: 'larch' }, pine: { form: 'larch' } }),
   // the Scheldt polders: poplar and willow rows (the map's own slots already)
   polders: B('the Scheldt polders, Zeeland', {}),
+  // an abandoned open-pit copper mine in the Arizona uplands (gauntlet wave 28): sparse juniper and pinyon on the higher
+  // benches, mesquite (the acacia slot's umbrella, the same bipinnate crown) in the low washes, creosote (the broom
+  // form's switches) between them, in open groves
+  copper_mesa: B('an open-pit copper mine, the Arizona uplands', { cedar: { form: 'juniper' }, pine: { form: 'pinyon' } }, 'broom',
+    SONORAN_FOLIAGE, undefined, true, true),
 });
 
 /** The form a map's shrubs grow as (their own atlas), or none (the bush slot's). */
@@ -180,6 +200,11 @@ export function treeBiomePalette<P extends TreeBiomePaletteTerms>(pal: P,
 /** Whether a map's place is hyper-arid (open groves in the low ground, lone trees in the wadi beds). */
 export function treeBiomeArid(mapId: string | null | undefined): boolean {
   return !!(mapId && TREE_BIOMES[mapId]?.arid);
+}
+
+/** Whether a map's place is zoned by height (conifer forms high, broadleaf forms low). */
+export function treeBiomeUpland(mapId: string | null | undefined): boolean {
+  return !!(mapId && TREE_BIOMES[mapId]?.upland);
 }
 
 /** Whether a map's stands are open groves (an arid place's, Las Cañadas'). */
