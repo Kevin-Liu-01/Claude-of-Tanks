@@ -119,7 +119,7 @@ function produce(id, extra = {}) {
     // outline (0.9–1.1 of it), on the stands' bound
     const ring = (discs, x, z, outline, lo, hi) => discs.map((c, i) => (outline ? outline(i, x, z) : Math.hypot(x - c.x, z - c.z) / c.r))
       .filter(r => r >= lo - 1e-4 && r <= hi + 1e-4).sort((a, b) => a - b)[0];
-    let minR = Infinity, maxR = 0, standCount = 0, rimCount = 0, mantleCount = 0;
+    let minR = Infinity, maxR = 0, standCount = 0, rimCount = 0, mantleCount = 0, screening = 0;
     for (let i = 0; i < mesh.count; i++) {
       mesh.getMatrixAt(i, matrix); const e = matrix.elements;
       const x = e[12], z = e[14], sc = Math.hypot(e[0], e[2]);
@@ -134,12 +134,17 @@ function produce(id, extra = {}) {
       const mantleOk = mantleNear !== undefined && sc >= 1.5 - 1e-4 && sc <= 2.7 + 1e-4 && bound <= 470 + 1e-6;
       assert.ok(standOk || rimOk || mantleOk, `${id}: a stand's, a rim block's or a mantle's shrub (${x}, ${z}, scale ${sc}, bound ${bound})`); // float32 instance matrices
       const near = standOk ? standNear : rimOk ? rimNear : mantleNear;
-      if (standOk) standCount++; else if (rimOk) rimCount++; else {
-        mantleCount++;
-        // the mantle stands in the wood's own cover: within a metre of a tree's concealment disc (it conceals nothing
-        // itself, so a player who sees it between himself and an enemy must be in the wood's cover there)
+      if (standOk) standCount++; else if (rimOk) rimCount++; else mantleCount++;
+      // trees round 4 (one law for every shrub a player can drive up to): the understorey conceals nothing, so inside
+      // the playable square a shrub tall enough to screen a hull (its height scale over 1.2: vegetation.ts
+      // UNDERSTOREY_SCREEN_M) — every mantle shrub, the tall growth of a stand's edge, a rim block's reaching in —
+      // stands within a metre of a tree's concealment disc; the low growth may feather out of a stand
+      // (the playable square: battlefieldBounds.ts PLAYABLE_HALF_EXTENT_M, 470 m, a millimetre in for the float32 matrix)
+      const screens = e[5] > 1.2 + 1e-4 || (!standOk && !rimOk);
+      if (bound <= 470 - 1e-3 && screens) {
         assert.ok(world.concealers.some((d) => d.add <= 0.1 && Math.hypot(x - d.x, z - d.z) <= d.r + 1 + 1e-4),
-          `${id}: a mantle shrub within a metre of the wood's cover (${x}, ${z})`);
+          `${id}: a screening shrub within a metre of the wood's cover (${x}, ${z}, height scale ${e[5]})`);
+        screening++;
       }
       minR = Math.min(minR, near); maxR = Math.max(maxR, near);
       assert.ok(field._roadDist(x, z) >= 6, `${id}: off the roads`);
@@ -152,7 +157,7 @@ function produce(id, extra = {}) {
       assert.ok(!world.treeObstacles.some(o => Math.abs((o.min[0] + o.max[0]) / 2 - x) < 1e-3 && Math.abs((o.min[2] + o.max[2]) / 2 - z) < 1e-3), `${id}: no trunk record`);
     }
     if (rimBlocks.length > 0) assert.ok(rimCount > 0, `${id}: the rim blocks carry an understorey (${rimBlocks.length} blocks)`);
-    return { id, tier, instances: mesh.count, stand: standCount, rim: rimCount, mantle: mantleCount, clusters: clusters.length, rimBlocks: rimBlocks.length,
+    return { id, tier, instances: mesh.count, stand: standCount, rim: rimCount, mantle: mantleCount, screening, clusters: clusters.length, rimBlocks: rimBlocks.length,
       shape, annulus: [+minR.toFixed(3), +maxR.toFixed(3)],
       bushes: bushes.reduce((n, m) => n + m.count, 0), concealers: world.concealers.length, trunks: world.treeObstacles.length };
   } finally { world.dispose(); disposeObject3DResources(world.group); }

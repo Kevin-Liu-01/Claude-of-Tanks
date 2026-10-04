@@ -3123,8 +3123,14 @@ function buildBushCards(rng: RandomSource, pal: VegetationPalette = {}): THREE.B
 
 /** Trees round 4: the mantle's spacing along a closed wood's outline (m; placeUnderstorey). */
 const UNDERSTOREY_MANTLE_SPACING_M = 6;
-/** Trees round 4: the concealment a tree's disc adds (0.08) and under: the discs the mantle keeps to (a bush's is 0.35). */
+/** Trees round 4: the concealment a tree's disc adds (0.08) and under: the discs the understorey keeps to (a bush's is 0.35). */
 const MANTLE_TREE_COVER_MAX = 0.1;
+/**
+ * Trees round 4: the understorey shrub's height (its scale × its height jitter: the mound about a metre tall at unit
+ * scale) over which it screens a hull — a shrub that tall stands in the wood's cover inside the playable square
+ * (placeUnderstorey).
+ */
+const UNDERSTOREY_SCREEN_M = 1.2;
 
 // Round 77 (2026-09-26): the understorey — young growth at the forest edges. A smaller, looser shrub than the field
 // bush (ten folded sprays, 40 triangles, 120 vertices: four grounded branches, four interior clusters, two upright
@@ -6553,6 +6559,30 @@ function* vegetationBuildSteps(
     const understoreyTints: THREE.Color[] = [];
     function placeUnderstorey(): void {
       if (mobileTier) return;
+      // trees round 4 (2026-10-04, the coordinator's law for every shrub a player can drive up to): the understorey
+      // conceals nothing, so a shrub inside the playable square tall enough to screen a hull (UNDERSTOREY_SCREEN_M) stands
+      // in the wood's own cover — within a metre of a tree's concealment disc (a field bush's own 0.35 disc does not
+      // count) — and a player who sees it between himself and an enemy is in cover there, never behind a hide that
+      // hides nothing. Looked up through a 16 m grid of the discs; every check falls after its shrub's draws, so the
+      // streams stay. The low growth feathering out of a stand stays where it was; past the square the rim keeps its own
+      const COVER_CELL_M = 16, coverGrid = new Map<number, ConcealmentDisc[]>();
+      const cellKey = (i: number, j: number): number => (i + 4096) * 8192 + (j + 4096);
+      for (const disc of concealers) {
+        if (disc.add > MANTLE_TREE_COVER_MAX) continue;
+        const i0 = Math.floor((disc.x - disc.r - 1) / COVER_CELL_M), i1 = Math.floor((disc.x + disc.r + 1) / COVER_CELL_M);
+        const j0 = Math.floor((disc.z - disc.r - 1) / COVER_CELL_M), j1 = Math.floor((disc.z + disc.r + 1) / COVER_CELL_M);
+        for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
+          const k = cellKey(i, j), list = coverGrid.get(k);
+          if (list) list.push(disc); else coverGrid.set(k, [disc]);
+        }
+      }
+      const inWoodCover = (x: number, z: number): boolean => {
+        const list = coverGrid.get(cellKey(Math.floor(x / COVER_CELL_M), Math.floor(z / COVER_CELL_M)));
+        return !!list && list.some((disc) => Math.hypot(x - disc.x, z - disc.z) <= disc.r + 1);
+      };
+      /** A shrub in the playable square that screens a hull and stands out of the wood's cover. */
+      const screensInTheOpen = (x: number, z: number, sc: number, hy: number): boolean =>
+        Math.max(Math.abs(x), Math.abs(z)) <= PLAYABLE_HALF_EXTENT_M && sc * hy > UNDERSTOREY_SCREEN_M && !inWoodCover(x, z);
       // The stand law (round 77), shared by the interior stands and — round 77b — the rim-forest blocks: the same
       // draws in the same order for the stands (their placements stay byte-identical), then the blocks from the
       // stream's continuation, with the rim trees' own scale (1.35–2.2 × the interior stands' 0.95–1.7) and the
@@ -6568,7 +6598,7 @@ function* vegetationBuildSteps(
           if (keepRoll > (1 - smoothstepJs(1.05, 1.6, rr)) * 0.9 + 0.1) continue;
           // trees round 2: a woodlot's understorey follows its own outline (standPoint; a rim block's is its circle)
           const at = standPoint(index, stand, a, rr), x = at[0], z = at[1];
-          if (!admitted(x, z, sc, bound)) continue;
+          if (!admitted(x, z, sc, bound) || screensInTheOpen(x, z, sc, hy)) continue;
           seat(x, z, sc, hy, yaw, tj, tr, tg, tb);
         }
       };
@@ -6600,24 +6630,6 @@ function* vegetationBuildSteps(
       // placement keeps its draws). Dressing like the understorey: it conceals and stops nothing (the wood's own
       // discs conceal); an open grove's place (treeBiomeOpen) keeps its open ground
       if (!treeBiomeOpen(cfg?.id)) {
-        // the wood's own cover: a mantle shrub stands within a metre of a tree's concealment disc — a player who sees
-        // it between himself and an enemy is in the wood's cover there, never behind a hide that hides nothing (the
-        // field bushes' discs, which conceal by themselves, do not count)
-        const MANTLE_COVER_CELL_M = 16, coverGrid = new Map<number, ConcealmentDisc[]>();
-        const cellKey = (i: number, j: number): number => (i + 4096) * 8192 + (j + 4096);
-        for (const disc of concealers) {
-          if (disc.add > MANTLE_TREE_COVER_MAX) continue;
-          const i0 = Math.floor((disc.x - disc.r - 1) / MANTLE_COVER_CELL_M), i1 = Math.floor((disc.x + disc.r + 1) / MANTLE_COVER_CELL_M);
-          const j0 = Math.floor((disc.z - disc.r - 1) / MANTLE_COVER_CELL_M), j1 = Math.floor((disc.z + disc.r + 1) / MANTLE_COVER_CELL_M);
-          for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
-            const k = cellKey(i, j), list = coverGrid.get(k);
-            if (list) list.push(disc); else coverGrid.set(k, [disc]);
-          }
-        }
-        const inWoodCover = (x: number, z: number): boolean => {
-          const list = coverGrid.get(cellKey(Math.floor(x / MANTLE_COVER_CELL_M), Math.floor(z / MANTLE_COVER_CELL_M)));
-          return !!list && list.some((disc) => Math.hypot(x - disc.x, z - disc.z) <= disc.r + 1);
-        };
         const mantleRng = mulberry32((seed ^ 0x3a17) >>> 0);
         clusters.forEach((stand, index) => {
           const n = Math.round((stand.r * Math.PI * 2) / UNDERSTOREY_MANTLE_SPACING_M);
@@ -6627,7 +6639,7 @@ function* vegetationBuildSteps(
             const tj = mantleRng(), tr = mantleRng(), tg = mantleRng(), tb = mantleRng();
             if (mantleRng() < 0.25) continue; // the mantle's gaps
             const at = standPoint(index, stand, a, rr), x = at[0], z = at[1];
-            if (!admitted(x, z, sc, 470) || !inWoodCover(x, z)) continue;
+            if (!admitted(x, z, sc, 470) || !inWoodCover(x, z)) continue; // every mantle shrub screens a hull
             seat(x, z, sc, hy, yaw, tj, tr, tg, tb);
           }
         });
