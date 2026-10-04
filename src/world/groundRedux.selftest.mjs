@@ -25,7 +25,7 @@ assert.deepEqual(resolveGroundReduxProfile(undefined), fallback);
 const ARID = ['desert', 'badlands', 'caldera', 'titan_gorge', 'skybridge', 'copper_mesa', 'mars', 'moon']; // moon (2026-10-01): airless regolith grows no sward
 const SNOW = ['winter', 'whiteout', 'alpine'];
 const COAST = ['coastal', 'saltwind', 'fjord', 'mangrove'];
-const STILL = ['delta', 'polders', 'reservoir', 'monsoon', 'oasis', 'skybridge'];
+const STILL = ['delta', 'polders', 'reservoir', 'monsoon', 'oasis', 'skybridge', 'autumn'];
 for (const id of MAP_IDS) {
   const p = resolveGroundReduxProfile(id);
   for (const key of ['heightBlend', 'midDetail', 'scree', 'glint', 'snowRipple', 'snowMacro', 'foldMoist', 'foldAO', 'foldCrest']) {

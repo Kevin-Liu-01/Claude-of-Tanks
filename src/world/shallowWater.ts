@@ -1,4 +1,5 @@
 import { fadeDistantCoastShadows } from './coastShadow.ts';
+import { lightTune } from '../engine/lightModelCore.ts';
 import * as THREE from 'three';
 import { SEA_APRON_OUTER_RADIUS_M, SEA_COAST_GLSL, seaOpeningUniforms, seaBankUniforms, type SeaOpening } from './edgeWater.ts';
 import type { HeightField } from './terrain.ts';
@@ -47,6 +48,15 @@ function waterHeightSampler(
 }
 
 /** One bounded, static surface, not a fluid solver or another scene/reflection pass. */
+/**
+ * 2026-10-04 (the gauntlet: the sea's far band "turns teal and darker than the sky instead of brightening toward the
+ * horizon"): the sky's reflection at grazing incidence, over its weight at normal incidence (0.45). Measured on
+ * Saltwind's edge-w (the sky over the horizon at L* 85): at 1.75 the far band sat 13–17 under it and teal, and the haze was
+ * not the cause (without it the band was darker still); at 3.5 it sits 4–5 under the sky and bluer — the mirror a calm
+ * sea is toward the horizon. The mid field gains 5–10 L*, the water under the camera about one.
+ */
+const WATER_ENV_GRAZING = 3.5;
+
 export function* shallowWaterGeometrySteps(
   field: Pick<HeightField, 'size' | 'getHeightAt' | 'getWaterMaskAt' | 'getWaterDepthAt'>,
 ): Generator<void, ShallowWaterGeometry | null, void> {
@@ -203,6 +213,9 @@ export function createShallowWaterSurface(
 ): ShallowWaterSurface {
   const profile = waterContactProfile(mapId);
   const clock = { value: 0 };
+  // 2026-10-04 (the sea's far band, QA knobs; today's values by default): the sky's reflection at normal / grazing
+  // incidence and the specular cap, read per frame through the light model's QA hook
+  const waterQa = { value: new THREE.Vector4(0.45, WATER_ENV_GRAZING, 1.15, 0.35) };
   // Water pass 7: vehicle wakes. Slot A is (x, z, dirX, dirZ) in the map's tank frame,
   // slot B is (speed 0..1, strength 0..1, half length m, half width m).
   const wakeA = Array.from({ length: WATER_DISTURBANCE_CAP }, () => new THREE.Vector4(0, 0, 0, 1));
@@ -257,6 +270,7 @@ export function createShallowWaterSurface(
       uOceanGrid: { value: ocean?.grid ?? new THREE.Vector4(128, 129, 3, 0) },
       uOceanLook: { value: new THREE.Vector4(ocean?.state.foam ?? 0, ocean?.state.breakers ?? 0, ocean?.state.caustics ?? 0, ocean?.hs ?? 0) },
       uOceanDepth: { value: profile.depthM },
+      uWaterQa: waterQa,
     });
     material.userData.waterShader = shader;
     shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
@@ -346,6 +360,7 @@ export function createShallowWaterSurface(
       float waterTurbidity;
       ${OCEAN_SAMPLING_GLSL}
       uniform float uOceanDepth;      // the map's wading depth (m): getWaterDepthAt's bed law, evaluated here from the mask
+      uniform vec4 uWaterQa;          // 2026-10-04 (QA: WATER_ENV_NORMAL / _GRAZING, WATER_SPEC_CAP, WATER_BODY_GRAZE): the sky's reflection at normal and grazing incidence, the specular cap, the body's darkening at grazing
       float oceanBed;                 // the bed under this fragment (m below the surface) by that law
       float oceanDebug;
     `);
@@ -391,7 +406,7 @@ export function createShallowWaterSurface(
       // leans on what the SKY does — mirror-like at grazing angles, bed and
       // body colour when looked into — instead of one saturated sheet.
       diffuseColor.rgb *= mix(0.90, 0.58, waterDeep);
-      diffuseColor.rgb *= 1.0 - 0.35 * grazing;
+      diffuseColor.rgb *= 1.0 - uWaterQa.w * grazing;
       diffuseColor.a = smoothstep(0.0, 0.55, wet) * mix(mix(opacity, 0.86, grazing), 1.0, smoothstep(900.0, 1600.0, pastEdgeM));
       // Blend the last ocean cells into their continuous ground receiver. The
       // finite carrier must never reveal its stair-stepped outer grid edge.
@@ -605,7 +620,7 @@ export function createShallowWaterSurface(
     shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_maps>',
       // Water pass 5: wind-ruffled, sediment-laden patches mirror less sky, so the
       // sheet reads as water of varying depth and colour instead of one reflection.
-      '#include <lights_fragment_maps>\nradiance *= mix(0.45, 1.75, waterGrazing);\nradiance *= 1.15 - 0.55 * smoothstep(0.35, 0.85, waterTurbidity);');
+      '#include <lights_fragment_maps>\nradiance *= mix(uWaterQa.x, uWaterQa.y, waterGrazing);\nradiance *= 1.15 - 0.55 * smoothstep(0.35, 0.85, waterTurbidity);');
     // Round 66: caustics on the shelf bed. The sun ray refracts at the flat surface and lands `bed` metres down; the
     // finest cascade's curvature at that entry point focuses or spreads the light there (a thin lens of index
     // 1.333: concentration 1 / (1 + 0.25·d·∇²h), the one-bounce form of Wallace's photon splatting) and the sheet
@@ -613,7 +628,7 @@ export function createShallowWaterSurface(
     // Strongest in the first half metre, gone where the body colour hides the bed and where the pixel can no longer
     // resolve the fine tile.
     shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', `
-      outgoingLight -= max(vec3(0.0), totalSpecular - vec3(1.15));
+      outgoingLight -= max(vec3(0.0), totalSpecular - vec3(uWaterQa.z));
       #if NUM_DIR_LIGHTS > 0
       // the whole body is the shelf: the bed lies the wading depth (≤ 0.8 m) under every fragment, so the network runs
       // wherever the bed shows through the sheet — its share (1 − α) scales the term — and fades with the fine tile
@@ -660,6 +675,8 @@ export function createShallowWaterSurface(
     ripples,
     ocean,
     update(dt, anchorX, anchorZ) {
+      waterQa.value.set(lightTune('WATER_ENV_NORMAL', 0.45), lightTune('WATER_ENV_GRAZING', WATER_ENV_GRAZING), lightTune('WATER_SPEC_CAP', 1.15),
+        lightTune('WATER_BODY_GRAZE', 0.35));
       if (!(Number.isFinite(dt) && dt > 0)) return;
       clock.value += Math.min(dt, 0.1);
       ocean?.update(dt); // round 66: the transform runs inside the world update, before lighting and post

@@ -18,8 +18,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/aerialMinimap.selftest.mjs',
     'src/sim/droneRecon.selftest.mjs',
     'src/game/missionAttachmentVisual.selftest.mjs',
+    'src/game/garageModePreview.selftest.mjs',
     'src/engine/aerialVision.selftest.mjs',
     'src/engine/thermalVehicles.selftest.mjs',
+    'src/game/juggernautVisual.selftest.mjs',
     'src/fx/aerialTracers.selftest.mjs',
     'src/sim/gunshipEscort.selftest.mjs',
     'src/sim/gunshipSupplyDrive.selftest.mjs',
@@ -40,6 +42,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/smokeBallistics.selftest.mjs',
     'src/fx/auxiliaryPresentation.selftest.mjs',
     'src/ui/vehicleControlCooldown.selftest.mjs',
+    'src/ui/vehicleSpecialAction.selftest.mjs',
     'src/vehicles/vehicleAuxiliaryGeometry.selftest.mjs',
     'src/vehicles/smokeLauncherFleet.selftest.mjs',
     'src/vehicles/internalLayoutRegistry.selftest.mjs',
@@ -643,6 +646,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/camoWorldScale.selftest.mjs',
     'src/vehicles/brandCamo.selftest.mjs',
     'src/vehicles/catalogCamoPainter.selftest.mjs',
+    // 2026-10-04 (the vehicle-look lane): the field camouflages' boundaries at the tile's own resolution
+    'src/vehicles/camoFieldEdges.selftest.mjs',
     'src/vehicles/vehicleMarkingsCanvas.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
@@ -784,6 +789,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/night-fixture-census.selftest.mjs',
     'src/vehicles/equipmentDamage.selftest.mjs',
     'src/vehicles/vehicleReadability.selftest.mjs',
+    // 2026-10-04 (the vehicle-look lane): a cloned vehicle material (the track shoes) joins its source's cascade registration
+    'src/vehicles/vehicleMaterialClone.selftest.mjs',
     'src/engine/skyCloudBake.selftest.mjs',
     'src/engine/skyHorizonCache.selftest.mjs',
     'src/engine/skyEnvironmentCache.selftest.mjs',
@@ -801,6 +808,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/vehicleGroundOcclusion.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the cumulus fields and the flat condensation base
     'src/engine/cumulusFields.selftest.mjs',
+    // 2026-10-03 (the shade-fill lane): shade on dark materials kept off black — the photographic toe, the dim's facing rule
+    'src/engine/shadeFill.selftest.mjs',
+    // 2026-10-04 (the sun-bloom lane): the sun's glow a gradient toward a visible disc — only the disc HDR, the glow under the
+    // knee, the knee as the camera shows the dome
+    'src/engine/sunGlare.selftest.mjs',
     // 2026-10-01 (the clouds-and-skyboxes lane): the layered sky — mid layers, contrails, storm cells, rain, fog banks, lightning, the time of day
     'src/engine/cloudWeatherLayers.selftest.mjs',
     'src/engine/rendererContextRecovery.selftest.mjs',
@@ -830,6 +842,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/audio/crewRadio.selftest.mjs',
     'src/audio/crewVoice.selftest.mjs',
     'src/audio/audioEngine.selftest.mjs',
+    'src/audio/voiceTriggers.selftest.mjs',
     'src/audio/interfaceSounds.selftest.mjs',
     'src/audio/listenerPoseRuntime.selftest.mjs',
     'src/mp/wire/wire.selftest.mjs',
@@ -1180,6 +1193,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/fieldStoneSurface.selftest.mjs',
     // the scenery lane (wave 20): the mud walls' worn render; the walls' feet, drifts and snow loads
     'src/world/fieldMudSurface.selftest.mjs',
+    'src/world/wireMaterial.selftest.mjs',
     'src/world/maps/fieldWallDressing.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
     'src/world/loggingYard.selftest.mjs',
@@ -1267,6 +1281,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/archedBridgeCollision.selftest.mjs',
     'src/world/railSpurs.selftest.mjs',
     'src/world/railCutting.selftest.mjs',
+    // the map-borders lane (gauntlet wave 30): the land past the edge is the terrain seed's, never the map id's
+    'src/world/borderLandform.selftest.mjs',
+    // ... and its villages string along the exit roads from 110 m, each with its church (Frosthollow's north)
+    'src/world/borderFarmsteads.selftest.mjs',
     'src/world/maps/snowDrift.selftest.mjs',
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',
@@ -1381,6 +1399,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/resolved-depth-copy.browser.selftest.mjs',
     'tools/cloud-history.browser.selftest.mjs',
     'tools/late-fx-matrix.browser.selftest.mjs',
+    'tools/vehicle-ground-occlusion.browser.selftest.mjs',
     'tools/articulated-shadow-batch.browser.selftest.mjs',
     'tools/battle-geometry-sharing.browser.selftest.mjs',
     'tools/track-texture-source.browser.selftest.mjs',

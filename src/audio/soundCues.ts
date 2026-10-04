@@ -68,8 +68,10 @@ const o = (value: Partial<ProfileSeed>): Partial<CueProfile> => Object.freeze(va
 
 /** Assets that differ from their group default. */
 const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.freeze({
-  // The procedural muzzle blast (procedural.ts) travels like gunfire, and air takes its crack first.
-  muzzle_blast: { bus: 'weapons', space: 'world', priority: 86, maxInstances: 16, cooldownS: 0, refM: 35, rolloff: 0.55, maxM: 2400, absorb: 1.1, send: 0.1, loudDb: 145, gainDb: 0, pitch: [0.98, 1.02] },
+  // The punch under a close report keeps the report's own distance law, and the air takes the slam's top first.
+  blast_punch_light: o({ priority: 84, maxInstances: 16, refM: 15, rolloff: 0.69, maxM: 700, absorb: 1.1, loudDb: 124, pitch: [0.97, 1.03] }),
+  blast_punch_medium: o({ priority: 85, maxInstances: 12, absorb: 1.1, pitch: [0.97, 1.03] }),
+  blast_punch_heavy: o({ priority: 86, maxInstances: 10, maxM: 2400, absorb: 1.1, pitch: [0.98, 1.02] }),
   // Main guns carry across the whole battlefield as distant thunder.
   gun_far_light: o({ refM: 80, rolloff: 0.62, maxM: 2600, absorb: 0.5, send: 0.3, loudDb: 140 }),
   gun_far_medium: o({ refM: 90, rolloff: 0.62, maxM: 2800, absorb: 0.45, send: 0.3, loudDb: 144 }),
@@ -106,6 +108,10 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   expl_he_medium: o({ refM: 22, rolloff: 0.68, maxM: 2200, absorb: 0.75, send: 0.24, loudDb: 148 }),
   expl_he_large: o({ refM: 28, rolloff: 0.62, maxM: 3000, absorb: 0.6, send: 0.28, loudDb: 154 }),
   expl_far: o({ refM: 120, rolloff: 0.8, maxM: 3500, absorb: 0.4, send: 0.3, loudDb: 150 }),
+  // The ground shock under a blast: the low end barely loses to the air, on the compressed law of the synthesized
+  // sweep it replaced (level matched to it); the shock of a hit on our own hull is felt inside it.
+  blast_sub: o({ priority: 72, maxInstances: 6, refM: 22, rolloff: 0.7, maxM: 1800, absorb: 0.2, send: 0.12, loudDb: 146, gainDb: -8, pitch: [0.96, 1.04] }),
+  hull_thud_sub: o({ bus: 'ownCombat', space: 'hull', priority: 91, loudDb: 136 }),
   debris_dirt: o({ priority: 40, maxM: 250, loudDb: 112, gainDb: -5 }),
   ground_dirt: o({ loudDb: 130 }),
   water_small: o({ priority: 35, maxM: 300, loudDb: 112 }),
@@ -136,10 +142,15 @@ const CUE_OVERRIDES: Readonly<Record<string, Partial<CueProfile>>> = Object.free
   killcam_out: o({ bus: 'cinematic', space: 'flat', priority: 80, gainDb: -8 }),
   spectate_switch: o({ bus: 'ui', space: 'flat', gainDb: -8 }),
   tinnitus: o({ bus: 'alarm', space: 'flat', priority: 96, gainDb: -14 }),
+  // Cabin alarms and the heartbeat sound in the crew's ears, matched in level to the synthesized ones they replaced.
+  alarm_fire_loop: o({ bus: 'alarm', space: 'flat', priority: 93, maxInstances: 2, gainDb: -3 }),
+  alarm_ammo: o({ bus: 'alarm', space: 'flat', priority: 93, gainDb: -9 }),
+  heartbeat_loop: o({ bus: 'alarm', space: 'flat', priority: 90, maxInstances: 2, gainDb: -17 }),
   interior_hum_loop: o({ bus: 'interior', gainDb: -10 }),
   interior_rattle_loop: o({ bus: 'interior', gainDb: -8 }),
   bubbles_loop: o({ bus: 'own', gainDb: -6 }),
   ui_hover: o({ gainDb: -14, cooldownS: 0.07 }),
+  loading_bed_loop: o({ maxInstances: 2, gainDb: -13 }),
   ui_slider: o({ gainDb: -12, cooldownS: 0.04 }),
   ui_ball_hit: o({ bus: 'impacts', space: 'world', refM: 10, rolloff: 1, maxM: 600, absorb: 1, send: 0.2, loudDb: 128, gainDb: -2 }),
   // Distant war beyond the map edge carries much further than combat.

@@ -63,9 +63,20 @@ for (const text of [historicalDetailExit, historicalDetailReturn]) {
   assert.equal(referenceSource.split(text).length, 2, 'one historical road-detail exit');
 }
 const dryDeckClamp = '(T.bridges?.length ? Math.min(h, bridgeDeckOver(x, z)?.deckY ?? Infinity) : h)';
+// maps lane B (2026-10-03, Tarkhan Steppe's sors): a sor's pan — the near-field micro relief calmed over its stations
+// and their apron, the pan dug and filled dead flat to its flat's level — is a relief law of the same kind (the
+// constructor fixture reverts its slice to the pre-sor text; the stations' calm and dig in the marsh loop above it are
+// current in both); the relief-law constructor restores the current slice
+const historicalNearField = '      h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - marshW * 0.7) * T.microScale;\n    }\n';
+assert.equal(referenceSource.split(historicalNearField).length, 2, 'one historical near-field micro relief');
+const sorNearFieldStart = '      h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - Math.max(marshW * 0.7, sorCalmW)) * T.microScale;\n';
+const sorPanEnd = '      if (h < level) h = level;\n    }\n';
+for (const text of [sorNearFieldStart, sorPanEnd]) assert.equal(source.split(text).length, 2, 'one current sor pan slice');
+const sorNearField = source.slice(source.indexOf(sorNearFieldStart), source.indexOf(sorPanEnd) + sorPanEnd.length);
 // 2026-10-01: Sirocco Wadi's bank bake, mesa routing and crossing grades left with its old country roads
 // (docs/MAP-LAYOUT-BRIEF.md), so the relief-law constructor no longer restores them.
 const reliefLawSource = referenceSource
+  .replace(historicalNearField, sorNearField)
   .replace(historicalDeckResolve, historicalDeckResolve + authoredDecks)
   .replace(historicalDetailExit, historicalDetailExit.replace('return h;', `return ${dryDeckClamp};`))
   .replace(historicalDetailReturn, historicalDetailReturn.replace('    return h;\n', `    return ${dryDeckClamp};\n`))

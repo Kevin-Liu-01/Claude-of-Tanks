@@ -101,6 +101,7 @@ function build(config, enable) {
   const body = `function* place(config, heightField) {
     const P = { sideSkip: 0.25, spacingPad: 9, buildingLat: [10, 4], maxSpread: 1.7, wallStoneChance: 0.25, ...config.props };
     const L = heightField._layout, v = L.village, mapId = config.id, noVeg = heightField._noVeg;
+    const town = P.town ? { ...v, ...P.town } : v; // the settlement the props dress (props.ts)
     const seed = 2002, rng = mulberry32(seed), detailUvRng = () => 0.5;
     const buckets = Object.fromEntries(${JSON.stringify(names)}.map(name => [name, []]));
     const group = new THREE.Group(), obstacles = [], colliders = [], buildingFeatures = [];

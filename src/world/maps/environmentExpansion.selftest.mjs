@@ -248,8 +248,10 @@ for (const config of [delta, monsoon, autumn]) {
       `${config.id}: a branch leaves and rejoins the main course`);
   }
   // Amberford redesign (owner 2026-09-23): the diagonal SW->NE river is longer than the round-1 W->E chain (59 stations)
+  // 2026-10-03 (maps lane B, gauntlet wave 28): its cells lie half a radius apart so the bank line reads smooth (63 -> 129)
   assert.ok(trails.every((trail) => trail.length >= (trail === trails[0] ? 20 : 8))
-    && trails[0].length <= (config.id === 'autumn' ? 64 : 36) && channel.length <= (config.id === 'delta' ? 56 : 64),
+    && trails[0].length <= (config.id === 'autumn' ? 140 : 36)
+    && channel.length <= (config.id === 'delta' ? 56 : config.id === 'autumn' ? 140 : 64),
     `${config.id}: continuous river uses a bounded authoring sample count`);
   for (const trail of trails) for (let index = 1; index < trail.length; index++) {
     const a = trail[index - 1], b = trail[index];

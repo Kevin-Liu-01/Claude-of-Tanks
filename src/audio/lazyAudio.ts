@@ -2,25 +2,20 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * Boot-light audio facade.
  *
- * The full synthesized/spatial mixer is intentionally loaded only after
- * explicit sound intent. Ready/accepted boot entry may silently prepare the shared AudioContext
- * inside its gesture. Battle gives its opaque loader a rendering opportunity
- * before device startup when sticky activation is available, then starts this module's
- * tiny oscillator-only loading bed immediately. The dynamically imported
- * mixer adopts that exact context and replaces the fallback without an
- * autoplay-policy gap.
+ * The full spatial mixer is intentionally loaded only after explicit sound
+ * intent. Ready/accepted boot entry may silently prepare the shared
+ * AudioContext inside its gesture. Battle gives its opaque loader a rendering
+ * opportunity before device startup when sticky activation is available, then
+ * unlocks that context and requests the mixer, which adopts the exact context
+ * (no autoplay-policy gap) and plays the recorded loading bed. This facade
+ * makes no sound of its own: until 2026-10-03 it bridged the transfer with an
+ * oscillator rumble, and every sound in the game is now a recording.
  */
 
 import type { AudioListenerPose } from './listenerPoseRuntime.ts';
 import type { AudioMixer, AudioTerrainProbe } from './audioEngine.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { nextPaintFrame } from '../engine/frameScheduler.ts';
-
-interface FallbackLoadingTone {
-  context: AudioContext;
-  gain: GainNode;
-  nodes: OscillatorNode[];
-}
 
 interface AudioMixerModule {
   /** Optional cooperative preparation the mixer may want before adoption. */
@@ -46,7 +41,7 @@ interface LazyAudioOptions {
 
 export interface LazyAudio {
   preload(): Promise<AudioMixerModule | null>;
-  /** Unmuted gesture-only device preparation; no mixer, tone, or dependency transfer. */
+  /** Unmuted gesture-only device preparation; no mixer, sound, or dependency transfer. */
   prepare(): void;
   resume(): void;
   /** Explicit Battle intent only; preserves legacy gesture-time unlocking. */
@@ -62,65 +57,6 @@ export interface LazyAudio {
   ambientOn(active: boolean): void;
   readonly ready: boolean;
   readonly loadingActive: boolean;
-}
-
-function stopFallback(record: FallbackLoadingTone | null, fadeS = 0.08): void {
-  if (!record) return;
-  const { context, gain, nodes } = record;
-  const now = context.currentTime;
-  try {
-    gain.gain.cancelScheduledValues(now);
-    gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + fadeS);
-  } catch (_) { /* context may have been reclaimed */ }
-  for (const node of nodes) {
-    try { node.stop(now + fadeS + 0.02); } catch (_) { /* already stopped */ }
-  }
-  nodes[0].onended = () => {
-    try { gain.disconnect(); } catch (_) { /* detached */ }
-  };
-}
-
-/** Immediate loading sound: no fetch, decode, timer, or frame-loop work. */
-export function startFallbackLoadingTone(
-  context: AudioContext | null, destination?: AudioNode,
-): FallbackLoadingTone | null {
-  if (!context) return null;
-  const now = context.currentTime;
-  const gain = context.createGain();
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(0.055, now + 0.08);
-  gain.connect(destination ?? context.destination);
-
-  const rumble = context.createOscillator();
-  rumble.type = 'sine';
-  rumble.frequency.value = 54;
-  const machinery = context.createOscillator();
-  machinery.type = 'triangle';
-  machinery.frequency.value = 108;
-  const rumbleGain = context.createGain();
-  const machineryGain = context.createGain();
-  rumbleGain.gain.value = 0.72;
-  machineryGain.gain.value = 0.14;
-  rumble.connect(rumbleGain); rumbleGain.connect(gain);
-  machinery.connect(machineryGain); machineryGain.connect(gain);
-
-  // An unmistakable one-shot mechanical engage cue confirms the Battle click
-  // even when the full mixer chunk has not arrived yet. Oscillator-only means
-  // it starts in the gesture-created context with no fetch/decode dependency.
-  const engage = context.createOscillator();
-  engage.type = 'sawtooth';
-  engage.frequency.setValueAtTime?.(148, now);
-  engage.frequency.exponentialRampToValueAtTime?.(62, now + 0.24);
-  const engageGain = context.createGain();
-  engageGain.gain.setValueAtTime(0.0001, now);
-  engageGain.gain.exponentialRampToValueAtTime(0.19, now + 0.008);
-  engageGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
-  engage.connect(engageGain); engageGain.connect(gain);
-
-  rumble.start(now); machinery.start(now); engage.start(now);
-  engage.stop(now + 0.36);
-  return { context, gain, nodes: [rumble, machinery, engage] };
 }
 
 function storedMasterVolume(): number {
@@ -156,10 +92,6 @@ export function createLazyAudio({
   let stopPhaseTracking: (() => void) | null = null;
   let stopVolumeTracking: (() => void) | null = null;
   let latestPhase = 'garage';
-  let fallback: FallbackLoadingTone | null = null;
-  // One output owner also controls fading fallback nodes after handoff. Their
-  // envelope automation can never ramp past an exact-zero master/mute gain.
-  let fallbackOutput: GainNode | null = null;
   let loadingRequested = false;
   let ambientRequested = false;
   let muted = false;
@@ -184,14 +116,9 @@ export function createLazyAudio({
     try { unlockContext(); } catch { /* optional device preparation */ }
   };
 
-  const applyFallbackVolume = (): void => {
-    if (fallbackOutput) fallbackOutput.gain.value = muted ? 0 : masterVolume;
-  };
-
   const latchMasterVolume = (value: number): void => {
     if (!Number.isFinite(value)) return;
     masterVolume = Math.max(0, Math.min(1, value));
-    applyFallbackVolume();
   };
 
   const settleReal = (created: AudioMixer): AudioMixer => {
@@ -202,10 +129,6 @@ export function createLazyAudio({
     real.mute(muted);
     real.setMasterVolume(masterVolume);
     if (context) real.resume();
-    if (fallback) {
-      stopFallback(fallback);
-      fallback = null;
-    }
     real.loadingOn(loadingRequested);
     real.ambientOn(ambientRequested);
     if (garageStingPending) {
@@ -232,8 +155,8 @@ export function createLazyAudio({
       realPromise = preload().then(async (module) => {
         if (!module) return null;
         // Keep the full graph, bus subscriptions and shared sound RNG private
-        // while its exact buffers are synthesized. The oscillator-only loading
-        // cue remains active, and phase/intent are read again at handoff.
+        // while its exact buffers are prepared; phase and intent are read
+        // again at handoff.
         const preparedBuffers = context && module.prepareAudioBuffers
           ? await module.prepareAudioBuffers(context) : null;
         return settleReal(module.createAudio({ context, preparedBuffers, getMapId, getGameMode, getTerrain, initialPhase: latestPhase }));
@@ -264,19 +187,9 @@ export function createLazyAudio({
       return;
     }
     if (loadingRequested) {
-      const unlocked = unlockContext();
-      if (unlocked && !fallback) {
-        if (!fallbackOutput) {
-          fallbackOutput = unlocked.createGain();
-          applyFallbackVolume();
-          fallbackOutput.connect(unlocked.destination);
-        }
-        fallback = startFallbackLoadingTone(unlocked, fallbackOutput);
-      }
+      // Unlock inside the gesture; the mixer adopts this context and plays the loading bed when it arrives.
+      unlockContext();
       requestReal();
-    } else if (fallback) {
-      stopFallback(fallback, 0.16);
-      fallback = null;
     }
   };
 
@@ -340,7 +253,6 @@ export function createLazyAudio({
     },
     mute(on: boolean) {
       muted = !!on;
-      applyFallbackVolume();
       real?.mute(muted);
     },
     playGarageSting() {
@@ -356,6 +268,6 @@ export function createLazyAudio({
       real?.ambientOn(ambientRequested);
     },
     get ready() { return !!real; },
-    get loadingActive() { return !!fallback || loadingRequested; },
+    get loadingActive() { return loadingRequested; },
   };
 }

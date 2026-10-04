@@ -38,7 +38,7 @@ export const BUS_LEVELS: Readonly<Record<BusId, number>> = Object.freeze({
   // and the radio under a near cannon. Gun reports are cracks now (2026-10-02),
   // their energy in tens of milliseconds, so the gun bus runs hotter and the
   // master's limiter takes the crack's peak.
-  weapons: 1.3,
+  weapons: 1.5,
   impacts: 1.3,
   environment: 0.85,
   cinematic: 1,
@@ -46,12 +46,12 @@ export const BUS_LEVELS: Readonly<Record<BusId, number>> = Object.freeze({
   // Our own tank leads: its engine and running gear, its gun, and the loading
   // and turret machinery inside it sit above everyone else's.
   own: 0.36,
-  ownCombat: 1.3,
+  ownCombat: 1.6,
   interior: 0.95,
   ambience: 0.18,
   ui: 0.6,
   music: 0.6,
-  voice: 0.09,
+  voice: 0.24,
   alarm: 0.55,
 });
 
@@ -86,7 +86,8 @@ export const HDR = Object.freeze({
 export const OWN_HIT_FOCUS = Object.freeze({ refScale: 3, maxRolloff: 0.55, minRangeM: 2600, priority: 90 });
 
 /** Crew speech ducks the beds so it stays intelligible; gunfire barely moves. */
-export const VOICE_DUCK = Object.freeze({ ambienceDb: -6, worldDb: -1, attackS: 0.04, releaseS: 0.45 });
+// The crew is heard over the battle (2026-10-03): while a line plays the beds drop 10 dB and the world 4.
+export const VOICE_DUCK = Object.freeze({ ambienceDb: -10, worldDb: -4, attackS: 0.04, releaseS: 0.45 });
 
 export interface MixSnapshot {
   /** World (HDR buses) lowpass and level. */
@@ -108,7 +109,8 @@ export const SNAPSHOTS = Object.freeze({
   battle: S({ worldHz: 20000, worldDb: 0, ownHz: 20000, ownDb: 0, interiorDb: 0, ambienceDb: 0, reverbDb: 0, cabinDb: -120 }),
   // Gunner's sight: inside the turret. The world is muffled through armour,
   // the hull's own machinery and the crew compartment come forward.
-  scoped: S({ worldHz: 1700, worldDb: -4, ownHz: 900, ownDb: 1.5, interiorDb: 3, ambienceDb: -10, reverbDb: -8, cabinDb: -4 }),
+  // In the sight everything hits harder (2026-10-03): our own gun no longer through a 900 Hz headset filter.
+  scoped: S({ worldHz: 4500, worldDb: 1, ownHz: 3200, ownDb: 4, interiorDb: 5, ambienceDb: -8, reverbDb: -6, cabinDb: -2 }),
   paused: S({ worldHz: 900, worldDb: -28, ownHz: 900, ownDb: -28, interiorDb: -28, ambienceDb: -14, reverbDb: -20, cabinDb: -120 }),
   killcam: S({ worldHz: 9000, worldDb: -9, ownHz: 9000, ownDb: -9, interiorDb: -12, ambienceDb: -6, reverbDb: 0, cabinDb: -120 }),
   // A close blast: deafened, then hearing returns over the recovery time.

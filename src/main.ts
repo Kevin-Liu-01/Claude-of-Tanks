@@ -1,3 +1,4 @@
+import { createLazyRuntimeOwner } from './app/lazyRuntimeOwner.ts';
 import { structureTopAt, SUPPORT_STEP_UP_M } from './sim/structureSupport.ts';
 import type { CollisionRecord } from './world/collision.ts';
 import './ui/battleUiVisibility.css';
@@ -1176,13 +1177,29 @@ const playSurface = createPlaySurfaceRuntime({
 // and solo all dismiss the operation picker before the next painted frame.
 bus.on('ui:battleStart', () => {
   sceneWatchdogEntryGeneration++;
+  garageModePreview.current?.clear();
   coveredBattleWatchdog = null;
   playSurface.hideForBattle();
 });
 
+let garagePreviewMode = 'standard';
+const garageModePreview = createLazyRuntimeOwner(
+  () => import('./game/garageModePreview.ts'), module => module.createGarageModePreview(),
+);
+const garagePreviewAnimated = () => garagePreviewMode === 'juggernaut' || garagePreviewMode === 'capture_the_flag' || garagePreviewMode === 'infected';
+
 const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   specs: VISIBLE_TANK_IDS.map(getSpec),
   bus,
+  onGameModeSelect: mode => {
+    garagePreviewMode = mode;
+    garageModePreview.current?.clear();
+    if (['juggernaut', 'drone', 'capture_the_flag', 'infected'].includes(mode)) {
+      void garageModePreview.preload().then(() => invalidateGaragePresentation())
+        .catch(error => console.error('[garage mode preview]', error));
+    }
+    invalidateGaragePresentation();
+  },
   onSelect: (specId: string) => {
     battleIntent.invalidateMapPlan();
     selectedVehicle.select(specId);
@@ -1386,8 +1403,12 @@ const showroom = createGarageShowroomRuntime({
   heroYawRad: GARAGE_CAMERA_AZIMUTH_RAD,
   heroPitchRad: GARAGE_CAMERA_PITCH_RAD,
   fixedFrame: () => ({
-    x: GARAGE_POS.x, y: GARAGE_POS.y + GARAGE_CAMERA_LOOK_HEIGHT_M, z: GARAGE_POS.z,
-    hw: GARAGE_FRAME_BOX.hw, hh: GARAGE_FRAME_BOX.hh, hd: GARAGE_FRAME_BOX.hd,
+    x: GARAGE_POS.x,
+    y: GARAGE_POS.y + GARAGE_CAMERA_LOOK_HEIGHT_M + (garagePreviewMode === 'capture_the_flag' ? 1.3 : garagePreviewMode === 'drone' ? .35 : 0),
+    z: GARAGE_POS.z,
+    hw: GARAGE_FRAME_BOX.hw,
+    hh: GARAGE_FRAME_BOX.hh + (garagePreviewMode === 'capture_the_flag' ? 1.3 : garagePreviewMode === 'drone' ? .35 : 0),
+    hd: GARAGE_FRAME_BOX.hd,
   }),
   floorY: () => GARAGE_POS.y,
 });
@@ -2942,6 +2963,14 @@ const mainFrame = createMainFrameRuntime({
   post,
   showroom,
   pedestal,
+  garageModePreview: {
+    get animated() { return garagePreviewAnimated(); },
+    clear: () => garageModePreview.current?.clear(),
+    update: dt => {
+      const visual = pedestal.current;
+      garageModePreview.current?.update(visual?.root ?? null, visual ? getSpec(visual.specId) : null, garagePreviewMode, dt);
+    },
+  },
   networkSession: networkPump,
   garageFramePacer,
   battleFrame,
@@ -2994,7 +3023,7 @@ const frameLoop = createFrameLoopScheduler({
   shouldUseIdleCadence: () => bootComplete && battlePhase.isGarage() &&
     !battleEntryLifecycle.renderingCovered && !transition.active &&
     !studio.active && !shotMode && !showroom.moving &&
-    !pedestal.switchPending,
+    !pedestal.switchPending && !garagePreviewAnimated(),
   idleIntervalMs: 5000,
 });
 rearmRafAfterContext = frameLoop.restart;

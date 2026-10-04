@@ -203,6 +203,7 @@ assert.match(shotInfo,
   'outgoing and incoming shot records must both classify through the shared hit-outcome registry');
 assert.match(shotInfo, /uiIconSVG\(cls\.icon, 11\)[\s\S]*cls\.label/,
   'combat-result surfaces must use the shared result label and icon vocabulary');
+// Consecutive hits from one attacker share a toast (54372f83d): the treatment follows the group's damage.
 assert.match(shotInfo, /const damaging = group\.damage > 0;[\s\S]{0,600}toast\.classList\.toggle\('deflected', !damaging\)/,
   'zero-damage incoming results must use the neutral deflection treatment instead of damage red');
 assert.match(hud,

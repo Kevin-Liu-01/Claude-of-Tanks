@@ -36,7 +36,8 @@ const factory = new Function('deps', `
   // parity checked here runs at the authored counts (the mobile tier's production value).
   const environmentRichness = () => 1;
   const roads = L.roads, roadsL = roads, roadFence = fixtureRoadFence;
-  const noVeg = heightField._noVeg, v = L.village, placedB = [], seed = fixtureSeed;
+  // (town: the settlement the props dress, props.ts — the village rect unless P.town names another)
+  const noVeg = heightField._noVeg, v = L.village, town = P?.town ? { ...v, ...P.town } : v, placedB = [], seed = fixtureSeed;
   const frng = mulberry32(seed + 606);
   const junction = { x: 0, z: 0 };
   const SOURCED = { sandbags: true }, wreckCount = 5, bakedTris = 0;
@@ -44,6 +45,8 @@ const factory = new Function('deps', `
   function* placeWreck(...args) { wreckRecords.push(args); return true; }
   function* placePairedWreck() {}
   const wreckSpotIsClear = () => true;
+  // (a nest's bedding draws its own stream and places nothing: the scenery lane's buildSandbagBedding, wave 34)
+  const bedSandbagNest = () => {};
   ${stripTypeScriptTypes(definitions)}
   const emitFence = placeFenceRun;
   placeFenceRun = (...args) => { fenceRuns.push(args); emitFence(...args); };

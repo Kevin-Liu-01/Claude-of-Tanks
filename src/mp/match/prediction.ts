@@ -234,8 +234,10 @@ function applyAuthorityRow(state: TankState, row: EntityRow): void {
   state._body.autoRighting = !!(row.flags & ENTITY_FLAGS.AUTO_RIGHTING);
   state._body.tumbling = state.overturned || state._body.autoRighting;
   state._prevSpeed = state.speed;
-  state._spring.pitch = state.visualPitch;
-  state._spring.roll = state.visualRoll;
+  // the row's attitude is the spring's plus the posture held over the tracks (movement.ts state._hold, _holdSeat), which
+  // the checkpoint restores with the spring; without one, the posture the replay holds now stands in for the authority's
+  state._spring.pitch = state.visualPitch - (state._hold?.p ?? 0) - (state._holdSeat?.p ?? 0);
+  state._spring.roll = state.visualRoll - (state._hold?.r ?? 0) - (state._holdSeat?.r ?? 0);
   state._ride.y = state.pos.y;
   state._ride.v = state.verticalSpeed;
   state._ride.grounded = state.grounded;

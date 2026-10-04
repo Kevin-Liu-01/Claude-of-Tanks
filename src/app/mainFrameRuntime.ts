@@ -62,6 +62,7 @@ interface MainFrameRuntimeOptions {
   post: PostRuntime;
   showroom: GarageShowroomRuntime;
   pedestal: GaragePedestalRuntime;
+  garageModePreview?: { readonly animated: boolean; update(dt: number): void; clear(): void };
   /** The one network pump every phase shares (the multiplayer composition's session owner). */
   networkSession: { pump(dtSeconds: number, nowMs: number): void };
   garageFramePacer: GarageFramePacer;
@@ -115,6 +116,7 @@ export function createMainFrameRuntime({
   post,
   showroom,
   pedestal,
+  garageModePreview,
   networkSession,
   garageFramePacer,
   battleFrame,
@@ -195,11 +197,12 @@ export function createMainFrameRuntime({
   };
 
   const prepareGarageFrame = (nowMs: number, dtSeconds: number): boolean => {
-    if (game.phase !== 'garage') return true;
+    if (game.phase !== 'garage') { garageModePreview?.clear(); return true; }
     networkSession.pump(dtSeconds, nowMs);
-    garageFrameRequest.animate = showroom.moving || pedestal.switchPending;
+    garageFrameRequest.animate = showroom.moving || pedestal.switchPending || !!garageModePreview?.animated;
     if (!garageFramePacer.shouldRender(nowMs, garageFrameRequest)) return false;
     showroom.update(dtSeconds);
+    garageModePreview?.update(dtSeconds);
     return true;
   };
 

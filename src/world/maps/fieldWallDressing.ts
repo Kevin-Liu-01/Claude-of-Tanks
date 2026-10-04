@@ -10,6 +10,7 @@
 // World-free builders on a height field. Each draws its own stream, named by its place, never the props stream. Every
 // geometry carries position, normal and uv only (the props buckets merge them with the kit's own parts).
 import * as THREE from 'three';
+import { FIELD_STONE_FACE_V } from '../fieldStoneSurface.ts';
 
 export interface DressingGround { getHeightAt(x: number, z: number): number }
 
@@ -127,12 +128,14 @@ export function buildSnowLoad(g: THREE.BufferGeometry, seed: number, opts: SnowL
     }
     crest[k] = m; lo[k] = Number.isFinite(a) ? a : -0.2; hi[k] = Number.isFinite(b) ? b : 0.2;
   }
-  const smooth = (src: Float32Array) => Float32Array.from(src, (_, k) => {
+  // (wave 34, "uniform frosting": the crest is smoothed over a stone's length only, so the load mounds over each top
+  // stone and dips between them; its outline is smoothed more)
+  const smooth = (src: Float32Array, reach: number) => Float32Array.from(src, (_, k) => {
     let s = 0, w = 0;
-    for (let j = Math.max(0, k - 2); j <= Math.min(n, k + 2); j++) { const q = 3 - Math.abs(j - k); s += src[j] * q; w += q; }
+    for (let j = Math.max(0, k - reach); j <= Math.min(n, k + reach); j++) { const q = reach + 1 - Math.abs(j - k); s += src[j] * q; w += q; }
     return s / w;
   });
-  const cs = smooth(crest), ls = smooth(lo), hs = smooth(hi);
+  const cs = smooth(crest, 1), ls = smooth(lo, 2), hs = smooth(hi, 2);
   if (opts.seamless) {
     // a repeating module: both ends at the mean of its two ends (the next module's cushion meets it there)
     const ends = (cs[0] + cs[n]) / 2, lend = (ls[0] + ls[n]) / 2, hend = (hs[0] + hs[n]) / 2;
@@ -144,26 +147,34 @@ export function buildSnowLoad(g: THREE.BufferGeometry, seed: number, opts: SnowL
       hs[k] += (hend - hs[k]) * t; hs[n - k] += (hend - hs[n - k]) * t;
     }
   }
-  const r = dressingRng(seed), depth = wobble(r), lip = wobble(r);
+  const r = dressingRng(seed), depth = wobble(r), lip = wobble(r), lip2 = wobble(r);
+  const ph = [r() * 6.3, r() * 6.3, r() * 6.3, r() * 6.3, r() * 6.3];
   // (five points across, a row every 20 cm along: about 130 triangles a module; wave 34 counted the triangles)
   const ACROSS = [0, 0.14, 0.5, 0.86, 1];
-  const RISE = [-0.012, 0.62, 1, 0.62, -0.012];
+  const RISE = [-0.03, 0.7, 1, 0.7, -0.03];
   const endTaper = Math.max(1, Math.round(0.14 / bin)); // the cushion thins out over its last 14 cm at either end
   const positions: number[] = [], uvs: number[] = [];
   for (let k = 0; k <= n; k++) {
     const z = z0 + (z1 - z0) * (k / n);
     const zz = opts.seamless ? (k / n) * Math.PI * 2 : z;
-    // the depth: 6-14 cm, periodic along a repeating module so its ends agree
-    const full = opts.seamless ? 0.07 + 0.02 * Math.sin(zz + seed % 7) + 0.008 * Math.sin(3 * zz + seed % 5) : 0.07 + 0.025 * depth(z * 2.1);
+    // the depth (wave 34: "uniform frosting"): 3-20 cm in lumps a stone or two long, thin where the wind scoured it,
+    // periodic along a repeating module so its ends agree
+    const full = Math.max(0.03, opts.seamless
+      ? 0.115 + 0.04 * Math.sin(2 * zz + ph[0]) + 0.028 * Math.sin(5 * zz + ph[1]) + 0.016 * Math.sin(9 * zz + ph[2])
+      : 0.115 + 0.045 * depth(z * 2.1) + 0.02 * depth(z * 5.3 + 1.7));
     const end = Math.min(1, Math.min(k, n - k) / endTaper);
     // (a module's ends keep most of the load, so a run's snow line does not dip at every joint; a lone top thins out)
     const t = full * ((opts.seamless ? 0.65 : 0.25) + (opts.seamless ? 0.35 : 0.75) * end * end * (3 - 2 * end));
-    const overhang = (0.02 + 0.01 * (opts.seamless ? Math.sin(2 * zz + seed % 3) : lip(z * 1.3))) * (0.4 + 0.6 * end);
+    // the lips: each its own overhang along the wall, a cornice here, a thin edge there, drooping where it overhangs
+    const wave = (a: number, b: number) => (opts.seamless ? Math.sin(3 * zz + ph[a]) * 0.6 + Math.sin(7 * zz + ph[b]) * 0.4 : (a === 3 ? lip : lip2)(z * 1.3));
+    const ohA = (0.03 + 0.022 * wave(3, 4)) * (0.4 + 0.6 * end), ohB = (0.03 - 0.022 * wave(4, 3)) * (0.4 + 0.6 * end);
     for (let j = 0; j < ACROSS.length; j++) {
-      const x = ls[k] - overhang + (hs[k] - ls[k] + 2 * overhang) * ACROSS[j];
-      const y = cs[k] + (RISE[j] < 0 ? RISE[j] - 0.015 : RISE[j] * t);
+      const x = ls[k] - ohA + (hs[k] - ls[k] + ohA + ohB) * ACROSS[j];
+      const droop = j === 0 ? ohA * 0.7 : j === ACROSS.length - 1 ? ohB * 0.7 : 0;
+      const y = cs[k] + (RISE[j] < 0 ? RISE[j] - 0.01 - droop : RISE[j] * t);
       positions.push(x, y, z);
-      uvs.push(x * uvPerM + 3.1, z * uvPerM);
+      // (u along the wall, v across it inside the field print's face band: the load is the stone's under the snow cap)
+      uvs.push(z * uvPerM, (FIELD_STONE_FACE_V[0] + FIELD_STONE_FACE_V[1]) / 2 + x * uvPerM);
     }
   }
   const cushion = gridGeometry(positions, uvs, n + 1, ACROSS.length);
@@ -193,8 +204,11 @@ function fieldStone(w: number, h: number, d: number, r: () => number, knock: num
     if (!c) corners.set(key, c = [1 - r() * knock, 1 - r() * knock * (p.getY(i) > 0 ? 1.4 : 0.6), 1 - r() * knock]);
     p.setXYZ(i, p.getX(i) * c[0], p.getY(i) * c[1], p.getZ(i) * c[2]);
   }
-  // (a print window of its own; `vAt` pins its v, for a print with a band of its own such as the mud's plain render)
-  const du = r() * 8, dv = r() * 8, v0 = vAt ?? dv;
+  // (a print window of its own inside the field print's face band (wave 34: the print's hearting band is the core's);
+  // `vAt` pins its v instead, for a print with a band of its own such as the mud's plain render)
+  const du = r() * 8, place = r();
+  const extent = Math.max(h, d) * uvPerM, room = FIELD_STONE_FACE_V[1] - FIELD_STONE_FACE_V[0];
+  const v0 = vAt ?? FIELD_STONE_FACE_V[0] + place * Math.max(0, room - extent) + Math.min(extent, room) / 2;
   for (let i = 0; i < p.count; i++) {
     const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i));
     const [a, b] = ax > 0.5 ? [p.getZ(i), p.getY(i)] : ay > 0.5 ? [p.getX(i), p.getZ(i)] : [p.getX(i), p.getY(i)];
@@ -242,39 +256,81 @@ export function buildWallFootStones(
   return parts.length ? mergeParts(parts) : null;
 }
 
-// ------------------------------------------------------------------------------------------------ the windward drift
+// ------------------------------------------------------------------------------------------------ the tumbled end
 
 /**
- * The drift a winter wind banks against one face of a wall along a-b (`side` +1 or -1 of the run's left normal,
- * `half` the wall's half width): from its toe, 0.9-1.7 m out, up to 22-45 cm on the face, lumpy along its length, its
- * ends tapering out a little past the run's. Seven rows out from a line just inside the face, every 40 cm along.
+ * Where a field wall ends (wave 34: "nothing bedded — no tumbled ends"): the stones its head lost, tumbled out past
+ * the end and along both feet — a spill a metre or so out, thickest at the head, every stone lying flat or canted and
+ * half sunk; on a mud wall the fallen lumps of its pier (`mudV`: the mud print's plain band). (x, z) is the head's foot,
+ * (ox, oz) the run's direction out of the wall there.
+ */
+export function buildWallTumble(
+  ground: DressingGround, x: number, z: number, ox: number, oz: number, half: number, seed: number,
+  opts: { uvPerM?: number; mobile?: boolean; mudV?: number } = {},
+): THREE.BufferGeometry | null {
+  const r = dressingRng(seed), uvPerM = opts.uvPerM ?? 1.2;
+  const parts: THREE.BufferGeometry[] = [];
+  const count = (opts.mobile ? 4 : 9) + Math.floor(r() * 4);
+  for (let k = 0; k < count; k++) {
+    // out past the end, the nearer the more of them; some along either foot
+    const out = -0.2 + Math.pow(r(), 1.6) * 1.4, across = (r() - 0.5) * 2 * (half + 0.25 + out * 0.4);
+    const px = x + ox * out - oz * across, pz = z + oz * out + ox * across;
+    const size = (opts.mudV != null ? 0.07 : 0.1) + r() * (opts.mudV != null ? 0.14 : 0.2) * (1 - Math.min(0.6, Math.max(0, out) * 0.4));
+    const stone = fieldStone(size * (1.2 + r() * 0.7), size * (0.45 + r() * 0.3), size * (0.8 + r() * 0.3), r, 0.32, uvPerM, opts.mudV);
+    stone.rotateZ((r() - 0.5) * 0.7); stone.rotateX((r() - 0.5) * 0.5); stone.rotateY(r() * Math.PI);
+    parts.push(stone.translate(px, ground.getHeightAt(px, pz) + size * (0.05 + r() * 0.12), pz));
+  }
+  return parts.length ? mergeParts(parts) : null;
+}
+
+// ------------------------------------------------------------------------------------------------ the drifts
+
+/**
+ * A drift a winter wind banks against one face of a wall along a-b (`side` +1 or -1 of the run's left normal, `half`
+ * the wall's half width), `lee` or windward (wave 34: "nothing bedded — no lee drifts"; "a flat white drift sheet with
+ * a hard, straight edge"). The lee drift is the big one — the wind drops its snow in the wall's shelter — 40-70 cm on
+ * the face falling away over two and a half to four metres; the windward one a small ramp, 15-30 cm over a metre. Both
+ * are scaled by how square the wind meets the wall (`across`, 0 along it, 1 square), lumpy along the wall, their toes
+ * scalloped (never a straight edge) and sunk a centimetre, their ends tapering out a little past the run's. A row
+ * every half metre, seven points out for the lee (five windward), from a line just inside the face.
  */
 export function buildWallDrift(
   ground: DressingGround, ax: number, az: number, bx: number, bz: number, half: number, side: 1 | -1, seed: number,
-  opts: { uvPerM?: number; mobile?: boolean } = {},
+  opts: { uvPerM?: number; mobile?: boolean; lee?: boolean; across?: number; plainV?: readonly [number, number]; scale?: number; step?: number } = {},
 ): THREE.BufferGeometry | null {
   const len = Math.hypot(bx - ax, bz - az);
   if (len < 0.5) return null;
   const tx = (bx - ax) / len, tz = (bz - az) / len, nx = tz * side, nz = -tx * side;
-  const r = dressingRng(seed), uvPerM = opts.uvPerM ?? 0.3;
-  const rise = wobble(r), reachW = wobble(r);
-  const ext = 0.5, step = opts.mobile ? 0.8 : 0.4;
+  const r = dressingRng(seed), uvPerM = opts.uvPerM ?? 0.3, lee = opts.lee ?? false, size = opts.scale ?? 1;
+  const square = Math.max(0, Math.min(1, opts.across ?? 1));
+  const rise = wobble(r), reachW = wobble(r), scallop = wobble(r);
+  // (wave 48: "a smooth wedge of snow that rides over its top and back, with loose slabs strewn on the snow at its end"
+  // — so a drift stops 35 cm inside its island's ends, clear of a breach and a head; it stays under half the wall's
+  // height; its rows are 30 cm apart; and its profile rolls off from a rounded shoulder, a mound, not a ramp)
+  const ext = -0.35, step = opts.mobile ? 0.75 : (opts.step ?? 0.3);
+  if (len + 2 * ext < 0.8) return null;
   const along = Math.max(2, Math.ceil((len + 2 * ext) / step));
-  const OUT = [0, 0.06, 0.18, 0.36, 0.58, 0.8, 1];
+  const OUT = lee ? [0, 0.12, 0.28, 0.46, 0.66, 0.84, 1] : [0, 0.2, 0.45, 0.72, 1];
+  const h0 = (lee ? 0.36 * (0.45 + 0.55 * square) : 0.15 * (0.55 + 0.45 * square)) * size;
+  const reach0 = (lee ? 2.2 * (0.5 + 0.5 * square) : 0.7) * Math.sqrt(size);
   const positions: number[] = [], uvs: number[] = [];
   for (let i = 0; i <= along; i++) {
     const s = -ext + (len + 2 * ext) * (i / along);
-    // the ends taper: full depth from 0.6 m inside each end, nothing 0.5 m past it
-    const taper = Math.min(1, Math.max(0, (s + ext) / 1.1), Math.max(0, (len + ext - s) / 1.1));
-    const height = (0.33 + 0.12 * rise(s * 0.9)) * taper * taper * (3 - 2 * taper);
-    const reach = 0.9 + 0.4 * (reachW(s * 0.6) * 0.5 + 0.5) + height * 0.8;
+    // the ends taper over 0.8 m inside the drift's own ends
+    const taper = Math.min(1, Math.max(0, (s + ext) / 0.8), Math.max(0, (len + ext - s) / 0.8));
+    const height = h0 * (1 + 0.2 * rise(s * 0.9)) * taper * taper * (3 - 2 * taper);
+    // the toe: a long swing and a scallop a metre or so long, so the edge wanders
+    // (wave 34 re-shoot: a scallop a metre long at a row every half metre read as a jagged, faceted toe — the toe
+    // swings only slowly now, and sinks under the ground over its outer third, so its edge is where the ground meets it)
+    const reach = reach0 * (1 + 0.2 * reachW(s * 0.35) + 0.05 * scallop(s * 0.9)) * (0.55 + 0.45 * taper) + height * 0.5;
     for (const o of OUT) {
       const d = half - 0.06 + reach * o;
       const x = ax + tx * s + nx * d, z = az + tz * s + nz * d;
-      // a drift's profile: steep near the face, a long tail to its toe (the toe sunk a centimetre)
-      const y = ground.getHeightAt(x, z) + height * Math.pow(1 - o, 1.7) - 0.012 * o;
+      // a drift's profile: a rounded shoulder by the face rolling off to a long, soft toe sunk under the ground
+      const y = ground.getHeightAt(x, z) + height * 0.5 * (1 + Math.cos(Math.PI * o)) - 0.06 * o * o;
       positions.push(x, y, z);
-      uvs.push(x * uvPerM, z * uvPerM);
+      // (on a print with a plain band — the sand ramps on the mud print's — v runs across that band, face to toe)
+      uvs.push(opts.plainV ? s * uvPerM : x * uvPerM, opts.plainV ? opts.plainV[0] + (opts.plainV[1] - opts.plainV[0]) * o : z * uvPerM);
     }
   }
   return mergeParts([gridGeometry(positions, uvs, along + 1, OUT.length, side < 0)]);
@@ -338,6 +394,8 @@ export interface WallDressingOptions {
   ground: DressingGround;
   /** A snow map: the drift against the windward face, the snow load on the heads. */
   snow: boolean;
+  /** An arid map whose mud walls are its earth: the wind's sand banked against them (wave 34: "no sand ramps"). */
+  sand?: boolean;
   mobile: boolean;
   /** The mud walls' bucket ('fieldMud' on their own print, else 'plaster') and that print's density and plain band. */
   adobeBucket: string;
@@ -356,6 +414,28 @@ export interface WallDressing {
   island(adobe: boolean, ax: number, az: number, bx: number, bz: number, half: number): { wall: THREE.BufferGeometry[] };
   /** A run head with the winter's load on its top (one geometry; the head is consumed). */
   loadHead(head: THREE.BufferGeometry, seed: number): THREE.BufferGeometry;
+  /** The tumbled stones (or a mud wall's fallen lumps) at a run's end (x, z), (ox, oz) out of the wall; null if none. */
+  tumble(adobe: boolean, x: number, z: number, ox: number, oz: number, half: number): THREE.BufferGeometry | null;
+  /**
+   * A piece of the field walls' bucket (a head, a breach stub, a tumbled block): props' jitterUV and its four draws on
+   * the props stream, its v window placed inside the field print's face band (wave 34: the hearting band is the core's).
+   */
+  stoneUv<T extends THREE.BufferGeometry>(g: T, rng: () => number): T;
+}
+
+/** jitterUV's draws (offset u, offset v, scale u, scale v), the v window fitted inside the field print's face band. */
+export function jitterFieldStoneUV<T extends THREE.BufferGeometry>(g: T, rng: () => number): T {
+  const uv = g.attributes.uv;
+  if (!uv) return g;
+  const offsetU = rng() * 7.31, offsetV = rng() * 5.17, scaleU = 0.86 + rng() * 0.3;
+  rng(); // (jitterUV's v scale: the window keeps the piece's own density)
+  let v0 = Infinity, v1 = -Infinity;
+  for (let i = 0; i < uv.count; i++) { const v = uv.getY(i); if (v < v0) v0 = v; if (v > v1) v1 = v; }
+  const room = FIELD_STONE_FACE_V[1] - FIELD_STONE_FACE_V[0], extent = Math.max(1e-6, v1 - v0);
+  const squash = Math.min(1, room / extent);
+  const start = FIELD_STONE_FACE_V[0] + (offsetV / 5.17) * Math.max(0, room - extent * squash);
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * scaleU + offsetU, start + (uv.getY(i) - v0) * squash);
+  return g;
 }
 
 /** The owner the props wall runs call (props.ts addWallRun): one name in the run's scope. */
@@ -369,17 +449,34 @@ export function createWallDressing(o: WallDressingOptions): WallDressing {
         const apron = buildMudApron(o.ground, ax, az, bx, bz, half, placeSeed(ax, az, 0xad0a),
           { mobile: o.mobile, uvPerM: o.mudUv, plainV: o.plainV });
         if (apron) out.wall.push(apron);
+        if (o.sand && o.plainV) {
+          // the sand ramps: the wind's sand banked a third of the way up the wall in its lee, a low ramp on the
+          // windward face (the snow drifts' law at sand's angle of repose, on the mud print's plain band)
+          const len = Math.hypot(bx - ax, bz - az) || 1, tx = (bx - ax) / len, tz = (bz - az) / len;
+          const dx = Math.cos(SNOW_WIND_YAW), dz = -Math.sin(SNOW_WIND_YAW);
+          const cross = dx * tz - dz * tx, side = cross > 0 ? -1 : 1, across = Math.abs(cross);
+          for (const lee of [false, true]) {
+            const ramp = buildWallDrift(o.ground, ax, az, bx, bz, half + 0.03, (lee ? -side : side) as 1 | -1,
+              placeSeed(ax, az, lee ? 0x5a1d : 0x5a1e), { mobile: o.mobile, across, lee, plainV: o.plainV, uvPerM: o.mudUv, scale: lee ? 0.6 : 0.9, step: 0.85 });
+            if (ramp) out.wall.push(ramp);
+          }
+        }
         return out;
       }
       const foot = buildWallFootStones(o.ground, ax, az, bx, bz, half + 0.05, placeSeed(ax, az, 0xf007), { mobile: o.mobile });
       if (foot) out.wall.push(foot);
       if (o.snow) {
-        // windward: the face whose outward normal meets the wind (downwind is (cos, -sin) of the wind's yaw)
+        // windward: the face whose outward normal meets the wind (downwind is (cos, -sin) of the wind's yaw); the lee
+        // drift on the other face, the big one (wave 34)
         const len = Math.hypot(bx - ax, bz - az) || 1, tx = (bx - ax) / len, tz = (bz - az) / len;
         const dx = Math.cos(SNOW_WIND_YAW), dz = -Math.sin(SNOW_WIND_YAW);
-        const side = dx * tz - dz * tx > 0 ? -1 : 1;
-        const drift = buildWallDrift(o.ground, ax, az, bx, bz, half + 0.04, side, placeSeed(ax, az, 0xd71f), { mobile: o.mobile });
-        if (drift) drifts.push(drift);
+        const cross = dx * tz - dz * tx, side = cross > 0 ? -1 : 1, across = Math.abs(cross);
+        const windward = buildWallDrift(o.ground, ax, az, bx, bz, half + 0.04, side, placeSeed(ax, az, 0xd71f),
+          { mobile: o.mobile, across });
+        if (windward) drifts.push(windward);
+        const lee = buildWallDrift(o.ground, ax, az, bx, bz, half + 0.04, side > 0 ? -1 : 1, placeSeed(ax, az, 0x1ee5),
+          { mobile: o.mobile, across, lee: true });
+        if (lee) drifts.push(lee);
       }
       return out;
     },
@@ -387,6 +484,12 @@ export function createWallDressing(o: WallDressingOptions): WallDressing {
       const snow = buildSnowLoad(head, seed ^ 0x5a0c, { bin: 0.08 });
       const loaded = mergeParts([head, snow]);
       return loaded;
+    },
+    stoneUv: jitterFieldStoneUV,
+    tumble(adobe, x, z, ox, oz, half) {
+      if (o.snow && !adobe) return null; // (wave 48: on the snow the fallen stones read as "loose slabs strewn on it")
+      return buildWallTumble(o.ground, x, z, ox, oz, half, placeSeed(x, z, adobe ? 0x7a3b : 0x7b1e),
+        adobe ? { mobile: o.mobile, uvPerM: o.mudUv, mudV: o.plainV ? (o.plainV[0] + o.plainV[1]) / 2 : undefined } : { mobile: o.mobile });
     },
   };
 }

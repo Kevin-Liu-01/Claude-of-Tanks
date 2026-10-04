@@ -35,7 +35,7 @@ export interface PlayOptions {
   lowpassHz?: number;
   send?: number;
   offsetS?: number;
-  /** Cut the voice after this long (with a short fade). */
+  /** Cut the voice after this long (with a short fade; a loop fades over its last 0.4 s). */
   maxDurS?: number;
   pan?: number;
   /** Whether this voice may raise the HDR window (default: world buses + own). */
@@ -248,6 +248,14 @@ export function createVoicePool({ mixer, library, random, budget, reverb }: Voic
       output.gain.linearRampToValueAtTime(1, when + 0.25);
       source.start(when, offset);
       end = Infinity;
+      // A loop with a length (the critical-damage heartbeat) fades out at its end instead of waiting for a stop.
+      if (options.maxDurS != null) {
+        const dur = Math.max(0.5, options.maxDurS);
+        output.gain.setValueAtTime(1, when + dur - 0.4);
+        output.gain.linearRampToValueAtTime(0, when + dur);
+        source.stop(when + dur + 0.02);
+        end = when + dur + 0.05;
+      }
     } else {
       const playable = (buffer.duration - offset) / rate;
       const dur = options.maxDurS != null ? Math.min(playable, options.maxDurS) : playable;

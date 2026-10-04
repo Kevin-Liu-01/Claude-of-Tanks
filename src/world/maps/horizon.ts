@@ -50,7 +50,7 @@ import { type EscarpmentSettings, carveEscarpmentRingSteps, createEscarpmentFiel
 import { type HorizonCloudShadeSource, bindHorizonCloudShade, createHorizonCloudShadeUniforms } from '../horizonCloudShade.ts';
 import { continuedGroundAt } from '../horizonSurface.ts';
 import { resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
-import { buildBorderFarmsteads, farmsteadTreesAt, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
+import { buildBorderFarmsteads, farmsteadTreesAt, resolveBorderArchitecture, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
 import { buildBorderHedgerows } from '../borderHedgerows.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
 import {
@@ -59,6 +59,7 @@ import {
   createVistaCanopyTile,
   type VistaGround,
   type HorizonForestSpeciesPalette,
+  type HorizonTreeRow,
 } from '../horizonVista.ts';
 
 type HorizonStyle = 'rolling' | 'alpine' | 'mesa' | 'escarpment';
@@ -199,6 +200,45 @@ function require2DContext(
   const context = canvas.getContext('2d', options);
   if (!context) throw new Error('Horizon texture canvas requires a 2D context');
   return context;
+}
+
+/**
+ * The map-borders lane (wave 3, 2026-10-03, gauntlet wave 9: "no forest belts, field patchwork, villages"; "several views
+ * still stop at a treeline, an earth bank, a grass crest or a road that ends at the skyline"): rows of trees that read at
+ * tank eye height. A third of the hedged stretches of the field boundaries carry a shelter belt from ~150 m past the
+ * edge (a tree every ~9 m, a double row on a third of them, standing over the bush line), and the roads that leave the
+ * square run between avenue trees 8.5 m either side in runs from ~40 m out, so a road's line carries on over a crest.
+ */
+function borderTreeRows(
+  seed: number, hedgeLines: readonly { xs: number[]; zs: number[]; w: number[] }[],
+  exits: readonly { xs: ArrayLike<number>; zs: ArrayLike<number>; length: number }[],
+  exitAt: ((x: number, z: number, out: [number, number]) => [number, number]) | null,
+): HorizonTreeRow[] {
+  const rows: HorizonTreeRow[] = [];
+  const rng = mulberry32((seed ^ 0xB37A) >>> 0);
+  const edgeOut = (x: number, z: number): number => Math.max(Math.abs(x), Math.abs(z)) - 512;
+  for (const line of hedgeLines) {
+    const belt = rng() < 0.34, double = rng() < 0.33;
+    if (!belt) continue;
+    const w = line.w.map((v, i) => v * smoothstep(120, 220, edgeOut(line.xs[i], line.zs[i])));
+    if (!w.some((v) => v > 0.3)) continue;
+    rows.push({ xs: line.xs, zs: line.zs, w, spacing: 9, offsets: double ? [-2.6, 2.6] : [0], scale: [1.0, 1.5], conifer: 0.2 });
+  }
+  if (exitAt) {
+    const hit: [number, number] = [0, 0];
+    for (const exit of exits) {
+      const n = exit.xs.length, w: number[] = [];
+      let run = rng() < 0.7;
+      for (let i = 0; i < n; i++) {
+        if (i % 4 === 0) run = rng() < 0.7; // runs of ~160 m, most of them planted
+        const x = exit.xs[i], z = exit.zs[i];
+        w.push(run ? exitAt(x, z, hit)[1] * smoothstep(30, 60, edgeOut(x, z)) : 0);
+      }
+      if (!w.some((v) => v > 0.3)) continue;
+      rows.push({ xs: exit.xs, zs: exit.zs, w, spacing: 12, offsets: [-8.5, 8.5], scale: [0.9, 1.3], conifer: 0.1 });
+    }
+  }
+  return rows;
 }
 
 function mulberry32(a: number): () => number {
@@ -3538,6 +3578,15 @@ export function* buildHorizonRingSteps(
   if (H.roadPasses !== false) openRoadPasses(ring, ground);
   const sea = openHorizonToSea(ring, seaOpenings, ground);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
+  // the map-borders lane: the road exits as they lie on the finished ring (terrain.ts roadExitOnRing) — each runs out at
+  // the foot of the ranges unless they opened a pass for it; the farms, villages, avenues and the carriageway attribute
+  // (terrain.ts) all read these
+  const ringExits = ground?._roadExitOnRing ? ground._roadExitOnRing({ positions: pos, heights: hs }) : null;
+  // ... and their right of way: no ring tree or hedge bush stands on a carriageway (the woods open a ride for the road,
+  // a hedge a gap where it crosses), ~6.5 m either side of the line wherever the road shows
+  const exitClear: [number, number] = [0, 0];
+  const roadClearAt = ringExits
+    ? (x: number, z: number): number => (ringExits.at(x, z, exitClear)[1] > 0.1 && Math.abs(exitClear[0]) < 6.5 ? 1 : 0) : null;
   const uvA = buildHorizonUvs(hs, maxH, sea);
   yield;
   // Baked, unlit: sun-facing ridge flanks lighter (real azimuth from cfg.sky),
@@ -3673,6 +3722,8 @@ export function* buildHorizonRingSteps(
     columns: HORIZON_SEGMENTS, ridgeRow,
     // round 72: the character and the bake's measurements, for the probes and the receipts
     relief: reliefCharacter, reliefBake: reliefBake ? { width: reliefBake.width, height: reliefBake.height, ...reliefBake.stats } : null,
+    // the map-borders lane: the road exits on this ring, for the carriageway attribute (terrain.ts)
+    roadExits: ringExits,
   };
   // Round 72: the far range — the peaks behind the ring (1.9–3.3 km, inside the cloud dome and the camera's far
   // plane), one unlit vertex-shaded draw with its own aerial perspective; capped under a map's low cloud deck
@@ -3744,7 +3795,7 @@ export function* buildHorizonRingSteps(
   const farmSpec = ground?._borderFarmsteads;
   const farmOptions: BorderFarmsteadOptions | null = vista && ground && farmSpec && farmSpec.count > 0 ? (() => {
     const exit: [number, number] = [0, 0];
-    const roadExitAt = ground._roadExitAt;
+    const roadExitAt = ringExits ? ringExits.at : ground._roadExitAt;
     return {
       seed: ((seed ^ 0xFA4D) ^ idHash(mapId)) >>> 0, style: farmSpec.style, count: farmSpec.count, fieldAngle: farmSpec.fieldAngle,
       groundAt: ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs),
@@ -3752,10 +3803,30 @@ export function* buildHorizonRingSteps(
       blockedAt: (x: number, z: number) => Math.max(ground.getOutlandSeatWeightAt?.(x, z) ?? 0, ground.getOutlandWaterAt?.(x, z)?.wetness ?? 0,
         seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01 ? 1 : 0),
       ...(roadExitAt ? { roadDistanceAt: (x: number, z: number) => (roadExitAt(x, z, exit)[1] > 0.05 ? Math.abs(exit[0]) : Infinity) } : {}),
+      ...(ringExits ? { roadLines: ringExits.lines } : ground._roadExitLines ? { roadLines: ground._roadExitLines() } : {}),
+      // the region's buildings (the square's kit, or its region's): gauntlet wave 30's "American red barns" at Ironworks
+      architecture: resolveBorderArchitecture(mapId, (cfg as { props?: { architecture?: string } } | null | undefined)?.props?.architecture,
+        mapId === 'winter' || !!(cfg as { props?: { snowCap?: boolean } } | null | undefined)?.props?.snowCap),
     };
   })() : null;
   const farmSites = farmOptions ? selectFarmsteadSites(farmOptions) : [];
   const borderWoodsAt = ground?.getBorderWoodsAt;
+  // the hedged stretches of the field boundaries past the edge, on the ring's continued ground (not on the ranges, the sea,
+  // the water or a railway's right of way)
+  const hedgeLines = vista && ground?._borderHedgeLines ? ground._borderHedgeLines(900, (x, z) =>
+    (ground.getBorderHandOverAt?.(x, z) ?? 1) > 0.5 && !(seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01)
+    && (ground.getOutlandWaterAt?.(x, z)?.wetness ?? 0) < 0.05 && (ground.getOutlandSeatWeightAt?.(x, z) ?? 0) < 0.05
+    && !(roadClearAt && roadClearAt(x, z) > 0.5)) : [];
+  const treeRows = vista && ground ? borderTreeRows(((seed ^ 0x7E55) ^ idHash(mapId)) >>> 0, hedgeLines,
+    ringExits?.lines ?? ground._roadExitLines?.() ?? [], ringExits?.at ?? ground._roadExitAt ?? null) : [];
+  const rowSurface = treeRows.length ? ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs) : null;
+  const rowGroundAt = rowSurface ? (x: number, z: number): number => {
+    for (const site of farmSites) {
+      if (Math.abs(x - site.x) < 20 && Math.abs(z - site.z) < 20) return Number.NaN; // the yards
+      if (site.church && Math.abs(x - site.church.x) < 22 && Math.abs(z - site.church.z) < 22) return Number.NaN; // a village's church
+    }
+    return rowSurface(x, z);
+  } : undefined;
   const forestGroup = buildHorizonForest({
     columns: HORIZON_SEGMENTS, rows, positions: pos, heights: hs, forestCover, maxHeight: maxH, treeline, snowline,
     forest: forestC, fog: fogC, seed: ((seed ^ 0x51F0) ^ idHash(mapId)) >>> 0,
@@ -3778,10 +3849,13 @@ export function* buildHorizonRingSteps(
     outcrops, // round 55: and off the knobs below the treeline
     canopyMean: horizonVista?.canopyMean, // round 55: the crown mottle centred on the canopy tile's mean
     canopyDetail: vistaUniforms?.uVCanopy?.value as THREE.Texture | undefined,
-    // round 63: no ring trees on a railway cutting's outland corridor (the line's right-of-way through the mouth)
-    ...(ground?.getOutlandSeatWeightAt || seaOpenings.length ? { clearAt: (x: number, z: number): number =>
+    // round 63: no ring trees on a railway cutting's outland corridor (the line's right-of-way through the mouth); the
+    // map-borders lane: nor on an exit road's carriageway
+    ...(ground?.getOutlandSeatWeightAt || seaOpenings.length || roadClearAt ? { clearAt: (x: number, z: number): number =>
       Math.max(ground?.getOutlandSeatWeightAt?.(x, z) ?? 0,
-        seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.03 ? 1 : 0) } : {}),
+        seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.03 ? 1 : 0,
+        roadClearAt ? roadClearAt(x, z) : 0) } : {}),
+    ...(treeRows.length && rowGroundAt ? { treeRows, rowGroundAt } : {}),
     haze: (vistaUniforms?.uVHaze?.value as number | undefined) ?? haze,
     palettes: {
       conifer: rimConiferLead ? vegetation?.palettes?.[rimConiferLead]?.canopy : undefined,
@@ -3806,10 +3880,8 @@ export function* buildHorizonRingSteps(
   // past the edge (borderFarmsteads.ts) — off the woods, the sea, a railway's right of way and the exit roads'
   // carriageways, gathered along those roads. One merged mesh, one draw, its shadow in the far cascade only.
   // The map-borders lane (2026-10-03, gauntlet wave 1: "the empty middle distance"): the hedges as bush lines along the
-  // hedged stretches of the field boundaries past the edge, on the ring's continued ground (not on the ranges or the sea)
-  const hedgeLines = vista && ground?._borderHedgeLines ? ground._borderHedgeLines(900, (x, z) =>
-    (ground.getBorderHandOverAt?.(x, z) ?? 1) > 0.5 && !(seaOpenings.length && ringSeaWeight(x, z, Math.atan2(z, x), seaOpenings, ground).weight > 0.01)
-    && (ground.getOutlandWaterAt?.(x, z)?.wetness ?? 0) < 0.05 && (ground.getOutlandSeatWeightAt?.(x, z) ?? 0) < 0.05) : [];
+  // hedged stretches of the field boundaries past the edge (hedgeLines, traced before the forest, which stands their
+  // belts and the roads' avenues)
   if (hedgeLines.length) {
     const hedges = buildBorderHedgerows({
       seed: ((seed ^ 0x4ED9) ^ idHash(mapId)) >>> 0, lines: hedgeLines, groundAt: ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs),
@@ -3821,7 +3893,8 @@ export function* buildHorizonRingSteps(
       mesh.add(hedges);
     }
   }
-  if (farmOptions && farmSites.length) {
+  // (a ruined city or a country without farmland raises no farm building: its sites stay the copses round them)
+  if (farmOptions && farmSites.length && farmSpec?.buildings !== false) {
     const farms = buildBorderFarmsteads({ ...farmOptions, sites: farmSites });
     if (farms) {
       const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;
