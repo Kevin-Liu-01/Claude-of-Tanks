@@ -6985,6 +6985,43 @@ fails the receipt; the composite slope 0.9–1.25 to four stops under the card; 
 colour's channels lifted alike and deep shade per channel; the facing rule; the five probe pairs' shares) — and
 `groundBounce`, `cloudShadeMap`, `lightModel` and `nightEmissionMaterial` follow the new code.
 
+### 2026-10-04 — the deck's grey at the horizon, closed decks closed, and the sky's blue in clear shade (the skies lane's follow-ups)
+
+**Whiteout's beige band (the mountains lane's trace; Titan Gorge and Frosthollow show the same).** From an elevated eye a
+band of warm cream (L* 85, b* +16.6 against the deck's −5.8 in Whiteout's bird view) lay between the deck and the far
+ridges. The first fix followed the trace to the aerial pass: under a closed deck the haze law's in-scatter target kept
+1 − fogMix of the clear sky's LUT (44 % on Whiteout, whose anti-sun horizon at the 13° sun is warm), and `hazeTargetTerms`
+now returns the hue's whole weight — fogMix × HAZE_TINT_SHARE under an open sky, the whole authored tint under a closed
+deck, linear in the light model's overcast — read as it is by the aerial pass, the cloud trace's deck rows and the far
+bake's port (`hazeLaw.ts`). The pair left the band pixel for pixel, though, through neutral-extinction and target-level
+variants too: the band is sky, which the aerial pass never touches. The dome drew the clear sky's LUT, and from 300 m —
+the deck's own base — the strip under the deck shows it. `sky.ts` now takes the deck's grey there: the tint's hue at the
+sky's own luminance, by the overcast, over the horizon's first seven degrees (`uDeckHorizon`; the environment bake keeps
+the raw sky; the grounded rig only). Whiteout's band b* +16.6 → −2.2, Frosthollow's +4.0 → −2.7; the in-page switch
+(`SKY_DECK_HORIZON` 0) restores both exactly; the far ice takes the tint (b* −2.9 → −4.1).
+
+**Closed decks (Titan Gorge, overcast 1.00 under its dense-overcast regime, showed a large blue hole).** The hole is the
+cloud field's, not the dome's: the sheet's coverage ramp (a third of the range for a stratiform deck) maps the equalised
+weather field's lowest values to no cover even at full coverage. Titan's deck is now closed at the map (coverage 1, as
+Whiteout's stratus; the regime rows keep the round-71 bound), a closed deck keeps a thin sheet at its field's floor
+(`CLOUD_CLOSED_COVER_FLOOR` 0.5, slab and far band, from coverage 0.97), and under a closed deck the dome takes the
+deck's grey at every elevation (smoothstep 0.9–1.0 of the overcast: the 0.8 decks keep the blue in their breaks) at the
+horizon's luminance, so a residual gap reads as bright as the deck's horizon. Titan's hole shrank to a soft pale patch in
+the tint (with the switch off, a small blue gap: the floor at 0.5 does not close the field's deepest minimum; a floor of
+0.7–0.8 is the next step if the patch reads). GPU, the dome switch in-page, ABBA over six views: on − off −0.04 ms (p25)
+— a few operations and one sky-view sample a sky pixel, inside the pass noise.
+
+**The sky's blue in clear shade (the gauntlet's wave 46: on Sirocco's sand the cast shadows read warmer than the sunlit
+sand; wave 47: "no blue in the shade" on clear Saltwind).** The shade's light was already bluer than the sun's (1.8× in
+B/R on the sand), but warm sand keeps a warm shade, and the shade-fill toe's per-channel lift in deep shade took the
+margin. `SKY_DIFFUSE_CHROMA` (lightModel.ts) 0.4 → 0.5 — the smallest of a GPU sweep (0.40, 0.45, 0.50, 0.55, 0.65) at
+which the tank's shadow on the sand reads cooler than the sand in the sun; the measure is CIELAB b* per L*, shade minus
+sun: +0.03, −0.01, −0.04, −0.08, −0.15 (0.45 reaches parity only). The pair (e675ad400 against the branch): the tank's
+shadow on sand +0.03 → −0.04, the palms' shadow −0.05 → −0.11; the grass under Verdant's hull stays green (hue 132° →
+134°; the early waves' teal was 180–200°), its woodland shade 109° → 112°; sunlit sand and grass ΔE 0.42–0.55 (b* −0.2
+to −0.4: the same sky lights them); Whiteout ΔE 0.00 (a closed deck takes none of the sky's hue). No shader change.
+Frames and tables: `$SP/p2/haze/cap3`, `$SP/p2/shadehue/cap` (the sweep) and `cap2` (the pair).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

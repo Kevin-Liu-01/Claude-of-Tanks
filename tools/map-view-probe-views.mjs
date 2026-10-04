@@ -104,6 +104,8 @@ export const MAP_VIEW_PROBE_VIEWS = Object.freeze([
   // bedding, on the props rock material)
   view('frontier-sandbags', 48, [-302, 1.7, -60], [-311.5, 0.6, -60]),
   view('frontier-sandbags-close', 48, [-306.5, 1.3, -58.2], [-311, 0.45, -60.5]),
+  // (the pylon line over Verdant's village wall, for the pylon-wires toggle)
+  view('verdant-village-wall', 48, [-48, 1.9, 74], [-56, 0.8, 30]),
 ]);
 
 /** The views a capture run shoots: every view, or the named subset in table order. Unknown names fail closed. */

@@ -122,6 +122,8 @@ interface SceneryReceipt {
   skipped: number;
   rockTriangles: number;
   bakedTriangles: number;
+  /** The power lines' conductor ribbons (their own mesh, the wire material). */
+  wireTriangles: number;
   colliders: number;
   /** The field boundaries' works, when the map asks for them. */
   fieldWorks?: FieldWorksReceipt;
@@ -130,6 +132,9 @@ interface SceneryReceipt {
 interface SceneryBuild {
   /** One geometry per rock formation (the props owner merges them into one mesh on the rock material). */
   rockPieces: THREE.BufferGeometry[];
+  /** The power lines' conductors (maps/sceneryKit.ts buildConductor ribbons): the props owner draws them as one mesh on
+   * the wire material, never in the baked bucket (wave 48: a sub-pixel tube there broke into dashes). */
+  wires: THREE.BufferGeometry[];
   receipt: SceneryReceipt;
 }
 
@@ -270,10 +275,10 @@ function* fieldWorksKeepOut(ctx: FieldWorksBuildContext): Generator<SceneryBuild
 
 /** Build the map's scenery. A generator: one slice per feature, so a loading frame never carries more than one. */
 export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuildSlice, SceneryBuild, void> {
-  const receipt: SceneryReceipt = { features: [], groundCoverHoles: [], placed: 0, skipped: 0, rockTriangles: 0, bakedTriangles: 0, colliders: 0 };
-  const rockPieces: THREE.BufferGeometry[] = [];
+  const receipt: SceneryReceipt = { features: [], groundCoverHoles: [], placed: 0, skipped: 0, rockTriangles: 0, bakedTriangles: 0, wireTriangles: 0, colliders: 0 };
+  const rockPieces: THREE.BufferGeometry[] = [], wires: THREE.BufferGeometry[] = [];
   const scenery = ctx.scenery;
-  if (!scenery) return { rockPieces, receipt };
+  if (!scenery) return { rockPieces, wires, receipt };
   const noise = new SimplexNoise({ random: mulberry32(ctx.seed + 9299) });
   const ground = ctx.heightField;
   const skip = (feature: SceneryFeatureReceipt, reason: string) => {
@@ -485,16 +490,15 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
         const pb = new THREE.Vector3(ax, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), b.yaw);
         const wire = buildConductor(a.x + pa.x, a.y + ay, a.z + pa.z, b.x + pb.x, b.y + ay, b.z + pb.z,
           span * (ay >= H - 0.01 ? PYLON_SAG * 0.8 : PYLON_SAG), segments, ay >= H - 0.01 ? 0.03 : 0.055);
-        ctx.conform(wire, ctx.baked);
-        ctx.baked.push(wire);
-        receipt.bakedTriangles += wire.attributes.position.count / 3;
+        wires.push(wire);
+        receipt.wireTriangles += wire.index!.count / 3;
       }
     }
     tower.geometry.dispose();
     yield { fine: true, progress: false, stage: 'scenery' };
   }
 
-  return { rockPieces, receipt };
+  return { rockPieces, wires, receipt };
 }
 
 /**

@@ -304,17 +304,21 @@ export function buildWallDrift(
   const r = dressingRng(seed), uvPerM = opts.uvPerM ?? 0.3, lee = opts.lee ?? false, size = opts.scale ?? 1;
   const square = Math.max(0, Math.min(1, opts.across ?? 1));
   const rise = wobble(r), reachW = wobble(r), scallop = wobble(r);
-  const ext = lee ? 0.9 : 0.5, step = opts.mobile ? 0.9 : (opts.step ?? 0.5);
+  // (wave 48: "a smooth wedge of snow that rides over its top and back, with loose slabs strewn on the snow at its end"
+  // — so a drift stops 35 cm inside its island's ends, clear of a breach and a head; it stays under half the wall's
+  // height; its rows are 30 cm apart; and its profile rolls off from a rounded shoulder, a mound, not a ramp)
+  const ext = -0.35, step = opts.mobile ? 0.75 : (opts.step ?? 0.3);
+  if (len + 2 * ext < 0.8) return null;
   const along = Math.max(2, Math.ceil((len + 2 * ext) / step));
-  const OUT = lee ? [0, 0.05, 0.15, 0.3, 0.5, 0.74, 1] : [0, 0.1, 0.35, 0.7, 1];
-  const h0 = (lee ? 0.48 * (0.45 + 0.55 * square) : 0.2 * (0.55 + 0.45 * square)) * size;
-  const reach0 = (lee ? 2.7 * (0.5 + 0.5 * square) : 0.8) * Math.sqrt(size);
+  const OUT = lee ? [0, 0.12, 0.28, 0.46, 0.66, 0.84, 1] : [0, 0.2, 0.45, 0.72, 1];
+  const h0 = (lee ? 0.36 * (0.45 + 0.55 * square) : 0.15 * (0.55 + 0.45 * square)) * size;
+  const reach0 = (lee ? 2.2 * (0.5 + 0.5 * square) : 0.7) * Math.sqrt(size);
   const positions: number[] = [], uvs: number[] = [];
   for (let i = 0; i <= along; i++) {
     const s = -ext + (len + 2 * ext) * (i / along);
-    // the ends taper: full depth from 0.6 m inside each end, nothing `ext` past it
-    const taper = Math.min(1, Math.max(0, (s + ext) / (ext + 0.6)), Math.max(0, (len + ext - s) / (ext + 0.6)));
-    const height = h0 * (1 + 0.28 * rise(s * 0.9)) * taper * taper * (3 - 2 * taper);
+    // the ends taper over 0.8 m inside the drift's own ends
+    const taper = Math.min(1, Math.max(0, (s + ext) / 0.8), Math.max(0, (len + ext - s) / 0.8));
+    const height = h0 * (1 + 0.2 * rise(s * 0.9)) * taper * taper * (3 - 2 * taper);
     // the toe: a long swing and a scallop a metre or so long, so the edge wanders
     // (wave 34 re-shoot: a scallop a metre long at a row every half metre read as a jagged, faceted toe — the toe
     // swings only slowly now, and sinks under the ground over its outer third, so its edge is where the ground meets it)
@@ -322,8 +326,8 @@ export function buildWallDrift(
     for (const o of OUT) {
       const d = half - 0.06 + reach * o;
       const x = ax + tx * s + nx * d, z = az + tz * s + nz * d;
-      // a drift's profile: steepest near the face, a long tail to its toe (the toe sunk a centimetre)
-      const y = ground.getHeightAt(x, z) + height * Math.pow(1 - o, lee ? 1.35 : 1.7) - 0.06 * o * o;
+      // a drift's profile: a rounded shoulder by the face rolling off to a long, soft toe sunk under the ground
+      const y = ground.getHeightAt(x, z) + height * 0.5 * (1 + Math.cos(Math.PI * o)) - 0.06 * o * o;
       positions.push(x, y, z);
       // (on a print with a plain band — the sand ramps on the mud print's — v runs across that band, face to toe)
       uvs.push(opts.plainV ? s * uvPerM : x * uvPerM, opts.plainV ? opts.plainV[0] + (opts.plainV[1] - opts.plainV[0]) * o : z * uvPerM);
@@ -483,6 +487,7 @@ export function createWallDressing(o: WallDressingOptions): WallDressing {
     },
     stoneUv: jitterFieldStoneUV,
     tumble(adobe, x, z, ox, oz, half) {
+      if (o.snow && !adobe) return null; // (wave 48: on the snow the fallen stones read as "loose slabs strewn on it")
       return buildWallTumble(o.ground, x, z, ox, oz, half, placeSeed(x, z, adobe ? 0x7a3b : 0x7b1e),
         adobe ? { mobile: o.mobile, uvPerM: o.mudUv, mudV: o.plainV ? (o.plainV[0] + o.plainV[1]) / 2 : undefined } : { mobile: o.mobile });
     },

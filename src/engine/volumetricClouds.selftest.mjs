@@ -287,7 +287,8 @@ assert.deepEqual(table, {
   foundry: { regime: 'industrial-stratocumulus', coverage: 0.88, baseM: 850, thicknessM: 520, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   ruinspires: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1100, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0.25, virga: 0.6, fogBank: 0 },
   blackglass: { regime: 'ash-veil', coverage: 0.55, baseM: 800, thicknessM: 450, shadow: false, streets: 0.2, cirrus: 0.5, farBand: 0.4, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
-  titan_gorge: { regime: 'dense-overcast', coverage: 0.96, baseM: 450, thicknessM: 500, shadow: false, streets: 0, cirrus: 0, farBand: 0.6, contrails: 0, rain: 0.25, virga: 0.55, fogBank: 0 },
+  // (2026-10-04: a dense overcast is closed — Titan Gorge's deck opened a blue hole at 0.96 under a light model at overcast 1)
+  titan_gorge: { regime: 'dense-overcast', coverage: 1, baseM: 450, thicknessM: 500, shadow: false, streets: 0, cirrus: 0, farBand: 0.6, contrails: 0, rain: 0.25, virga: 0.55, fogBank: 0 },
   skybridge: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 700, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.5, contrails: 0, rain: 0.2, virga: 0.5, fogBank: 0 },
   polders: { regime: 'broken-stratocumulus', coverage: 0.68, baseM: 600, thicknessM: 500, shadow: true, streets: 0.4, cirrus: 0.1, farBand: 0.5, contrails: 3, rain: 0.2, virga: 0.2, fogBank: 0.35 },
   copper_mesa: { regime: 'cumulus-humilis', coverage: 0.2, baseM: 1900, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.4, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.85, fogBank: 0 },

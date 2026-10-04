@@ -122,6 +122,6 @@ assert.throws(() => applyRockShaderHook({ uniforms: {}, vertexShader: '#include 
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 assert.ok(source.indexOf('rockHulls.push(convexHull2(projected)); // the collision proxy') < source.indexOf('rockGeos.push(fractureRockGeometry(g, vi, noi, mulberry32(seed + 60 + vi)));'), 'the legacy hull is taken before the cut');
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockGround', new THREE\.InstancedBufferAttribute\(ground, 1\)\)/);
-assert.match(source, /materialKind === 'rock' \? rockHook : grimeHook/);
+assert.match(source, /materialKind === 'rock' \? rockHook\s*:/); // (the field print's own hook follows: the scenery lane, wave 48)
 assert.match(source, /rock: new THREE\.MeshStandardMaterial\(\{\n\s*map: rockDetail\.albedo, normalMap: rockDetail\.normal/);
 console.log('rockDressing self-test passed: three variants cut inside their hulls with split normals, every map dressed, the tile bounded, the hook anchored');

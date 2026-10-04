@@ -101,7 +101,7 @@ import { LEGACY_EXPOSURE, lightTune, type LightModel } from './lightModelCore.ts
 import { FOG_LAYER, FOG_LAYER_MIN_M } from './fogLayer.ts';
 import {
   HAZE_EXT_CHROMA, HAZE_LAW_GLSL, HAZE_TARGET_SKY_K, HAZE_TINT_SHARE, HAZE_LAYER_SCALE_M, hazeLayerInverseScale,
-  hazeSigma, hazeTargetTerms,
+  hazeExtinctionChroma, hazeSigma, hazeTargetTerms,
 } from './hazeLaw.ts';
 import { setNightEmissionExposure } from './nightEmissionMaterial.ts';
 import {
@@ -1110,14 +1110,14 @@ const AerialShader = {
         if ( hazeLaw ) {
           // 2026-10-03 (hazeLaw.ts): the in-scatter target is the sky behind the surface (the
           // sky-view LUT along the ray, the horizon for rays below it) a step under its own luminance, its hue drawn
-          // toward the map's authored fog tint by the tint's share (all of it under a closed deck, whose grey the
-          // clear sky's LUT does not know) — never the clear sky's luminance cap of the legacy target below, which
-          // pulled every far range toward one grey
+          // toward the map's authored fog tint by the tint's share (hazeLaw.ts hazeTargetTerms: fogMix × the share
+          // under an open sky, the whole tint under a closed deck, whose grey the clear sky's LUT does not know) —
+          // never the clear sky's luminance cap of the legacy target below, which pulled every far range toward one grey
           vec3 skyDir = normalize( vec3( ray.x, max( ray.y, 0.02 ), ray.z ) );
           vec3 skyT = atmoSkyVisible( skyDir );
           float skyL = dot( skyT, vec3( 0.2126, 0.7152, 0.0722 ) );
           float tintL = max( dot( uAtmoFogTint, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 );
-          vec3 target = mix( skyT, uAtmoFogTint * ( skyL / tintL ), clamp( uAtmoFogMix * uHazeLaw.z, 0.0, 1.0 ) );
+          vec3 target = mix( skyT, uAtmoFogTint * ( skyL / tintL ), uHazeLaw.z );
           if ( target.g > target.b ) {
             float tl = dot( target, vec3( 0.2126, 0.7152, 0.0722 ) );
             target = mix( target, vec3( tl * 0.92, tl * 0.99, tl * 1.12 ), 0.6 );
@@ -2770,8 +2770,9 @@ export function createPost(
       const overcast = (scene.userData.lightModel as LightModel | undefined)?.overcast ?? 0;
       const law = u.uHazeLaw.value as THREE.Vector4;
       // (the target's tint share and level: hazeLaw.ts hazeTargetTerms, the cloud trace's deck rows read the same)
-      const terms = hazeTargetTerms(overcast, hazeTermsScratch);
+      const terms = hazeTargetTerms(overcast, atmosphere.fogMix, hazeTermsScratch);
       law.set(hazeSigma(atmosphere.fogDensity), hazeLayerInverseScale(), terms.x, terms.y);
+      hazeExtinctionChroma(u.uHazeChroma.value as THREE.Vector3);
     } else {
       (u.uHazeLaw.value as THREE.Vector4).x = 0;
     }

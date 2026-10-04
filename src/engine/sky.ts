@@ -651,6 +651,10 @@ uniform vec3 uSunTransmittance;
 uniform float uSunDiscRadiance;
 uniform float uEnvBake;
 uniform vec3 uEnvGround;
+// 2026-10-04: the authored fog tint (linear) and the deck's share at the horizon (the light model's overcast); a closed
+// deck's share at every elevation
+uniform vec4 uDeckHorizon;
+uniform float uDeckClosed;
 uniform float uSkyIntensity;
 uniform float uNight;
 uniform float uGalaxy;
@@ -672,6 +676,24 @@ void main() {
 		float below = 1.0 - smoothstep( -0.035, 0.0, direction.y );
 		gl_FragColor = vec4( mix( max( skyCol, vec3( 0.0 ) ) * uSkyIntensity, uEnvGround, below ), 1.0 );
 		return;
+	}
+	// 2026-10-04 (Whiteout's beige band over its far ice sheet; Titan Gorge, Frosthollow): under a deck the horizon is the
+	// deck's grey — the deck seen at grazing angles through the haze under it — not the clear sky's LUT, whose anti-sun
+	// horizon at a low sun is warm: from an elevated eye the dome showed in the band between the deck and the far
+	// ridges. The hue goes to the authored tint at the sky's own luminance (the haze law's target under a closed deck,
+	// hazeLaw.ts), by the overcast, over the horizon's first seven degrees (gaps higher in a broken deck keep their sky);
+	// under a closed deck at every elevation (uDeckClosed: a dense overcast shows no blue anywhere)
+	float deckW = max( uDeckHorizon.w * ( 1.0 - smoothstep( 0.0, 0.12, direction.y ) ), uDeckClosed );
+	if ( deckW > 0.0 ) {
+		float deckTintL = max( dot( uDeckHorizon.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 );
+		// the level: the sky's own luminance; under a closed deck the horizon's along this azimuth at every elevation (a
+		// thin patch in a closed deck reads as bright as the deck's horizon, never as the clear zenith's dark)
+		float deckL = dot( skyCol, vec3( 0.2126, 0.7152, 0.0722 ) );
+		if ( uDeckClosed > 0.0 ) {
+			vec2 hzXZ = length( direction.xz ) > 1e-4 ? normalize( direction.xz ) : vec2( 1.0, 0.0 );
+			deckL = mix( deckL, dot( atmoSky( vec3( hzXZ.x, 0.0, hzXZ.y ) ), vec3( 0.2126, 0.7152, 0.0722 ) ), uDeckClosed );
+		}
+		skyCol = mix( skyCol, uDeckHorizon.rgb * ( deckL / deckTintL ), deckW );
 	}
 	float cosSun = dot( direction, uSunDirection );
 	// the legacy knee exemption spot around the sun keeps the disc and its immediate aureole HDR
@@ -1177,6 +1199,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       uSunDiscRadiance: { value: legacySunDiscRadiance(sunDir.y) },
       uEnvBake: { value: 0 },
       uEnvGround: { value: new THREE.Color(0, 0, 0) },
+      uDeckHorizon: { value: new THREE.Vector4(1, 1, 1, 0) },
+      uDeckClosed: { value: 0 },
       // shared by reference with the Preetham dome: configureSkyUniforms refreshes both at once
       uSkyIntensity: skyUniforms.uSkyIntensity, uNight: skyUniforms.uNight, uGalaxy: skyUniforms.uGalaxy,
       uNebula: skyUniforms.uNebula, uEarth: skyUniforms.uEarth, uPlanetR: skyUniforms.uPlanetR, uPlanetTint: skyUniforms.uPlanetTint,
@@ -1256,6 +1280,13 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       authoredSunOf(preset as LightModelPreset)); // the night's moon, as lighting.ts resolves it
     physicalEnvIntensity = model.mode === 'physical' ? model.envIntensity : null;
     (u.uEnvGround.value as THREE.Color).setRGB(model.groundRadiance[0], model.groundRadiance[1], model.groundRadiance[2]);
+    // 2026-10-04: the deck's grey at the horizon (the dome's uDeckHorizon note), by the overcast; QA: SKY_DECK_HORIZON
+    const tint = atmosphereState.fogTint, deckOvercast = model.mode === 'physical' ? Math.min(1, Math.max(0, model.overcast)) : 0;
+    const deckKnob = lightTune('SKY_DECK_HORIZON', 1);
+    (u.uDeckHorizon.value as THREE.Vector4).set(tint.r, tint.g, tint.b, deckOvercast * deckKnob);
+    // a closed deck greys the whole dome, ramped in over the last tenth of the overcast (the 0.8 decks keep their breaks)
+    const closedT = Math.min(1, Math.max(0, (deckOvercast - 0.9) / 0.1));
+    u.uDeckClosed.value = closedT * closedT * (3 - 2 * closedT) * deckKnob;
     atmosphereKeySuffixLive = model.mode === 'physical'
       ? `${atmosphereKey(params, preset.skyIntensity)}|g:${model.groundRadiance.map((v) => v.toPrecision(6)).join(',')}`
       : atmosphereKey(params, preset.skyIntensity);
