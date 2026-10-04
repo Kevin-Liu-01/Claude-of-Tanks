@@ -872,7 +872,10 @@ contact constraints and cannot be crossed by residual uphill speed.
 - *The landing stroke.* A landing on the tracks carries its closing into the springs: from the touchdown on the
   drooped tracks' line until the hull has come back up through its seat they work at the landing damping (ζ 0.45,
   `LANDING_ZETA`; driving keeps the critical damping), so a hard landing bottoms on the stops and a soft one dips,
-  then rises through the seat and settles. Past its static sag over the seat (`g/ω²`) on that overshoot the springs
+  then rises through the seat and settles. The touchdown's step goes on after the contact on that law, damped against
+  the ground's own rate under the travel (round 8; wave 42: "the hull loses a whole step of fall at touchdown"): the
+  ride used to stand on the contact line for the rest of the step, so a 2 m drop touching early in its step moved
+  3 cm in it where its fall carried 9.5. A remainder that would pass the floor keeps the line. Past its static sag over the seat (`g/ω²`) on that overshoot the springs
   are unloaded and only gravity brings the hull down (`_ride.stroke` 2, while the ground under it holds still): the
   Moon's overshoot rises and falls at the Moon's gravity. The springs used to pull it down at their own rate, seven
   times the Moon's gravity after a 12.5 m/s landing, and every gravity's landing settled on Earth's timeline
