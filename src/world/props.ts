@@ -47,21 +47,27 @@ import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructu
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import { applyRockShaderHook, fractureRockGeometry, makeRockDetail, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
+import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
 import { paintFieldStoneBuffers } from './fieldStoneSurface.ts'; // the field walls' rubble print (the scenery lane)
+import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
+import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 // world-dressing r1: building-catalog extension + destructible small props
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import {
+  ADOBE_UV_PER_M,
   COURSED_WALLSTONE,
   DESTRUCTIBLE_TYPES,
   FENCE_SEG,
   WALL_SEG,
   bSandbagBroken,
   type DestructiblePropType,
+  buildAdobePilaster,
+  buildDryStoneWallHead,
 } from './maps/inhabitKit.ts';
 import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import { boxClearOfRoadCore, discClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
@@ -992,6 +998,26 @@ function* makeFieldStone(
     albedo: toTexture(px, size, { srgb: true, anisotropy }),
     normal: normalFromHeight(hgt, size, 3.0 * size / 512, anisotropy),
     surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.8, roughMax: 0.98, aoMin: 0.6 }),
+  };
+}
+
+/**
+ * The scenery lane (2026-10-03; wave 20, "smooth pillow- and pipe-shaped walls instead of eroded mud brick"): the mud
+ * walls' print (fieldMudSurface.ts) under the map's plaster tone — a worn mud render over the courses of sun-dried
+ * bricks it shows in patches, one tile a wall module. Phones paint it at half size.
+ */
+function* makeFieldMud(
+  anisotropy: number,
+  tone: ToneFunction | null,
+  size: number,
+): Generator<PropsBuildSlice, GeneratedSurfaceTextures, void> {
+  const { px, hgt } = yield* paintFieldMudBuffers(size);
+  applyTone(px, tone);
+  yield { fine: true, stage: 'field-mud-tone' };
+  return {
+    albedo: toTexture(px, size, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, size, 2.4 * size / 512, anisotropy),
+    surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.84, roughMax: 0.98, aoMin: 0.7 }),
   };
 }
 
@@ -2976,6 +3002,11 @@ function* propsBuildSteps(
   const fieldStone = fieldWallBucket === 'fieldStone'
     ? yield* makeFieldStone(aniso, T.stone || null, mobileProps ? 256 : 512)
     : stone;
+  // (and a mud-walled map's walls their own worn render over their courses, not the house plaster)
+  const adobeWallBucket = P.wallStyle === 'adobe' ? 'fieldMud' : 'plaster';
+  const fieldMud = adobeWallBucket === 'fieldMud'
+    ? yield* makeFieldMud(aniso, T.plaster || null, mobileProps ? 256 : 512)
+    : plaster;
 
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
@@ -3005,6 +3036,9 @@ function* propsBuildSteps(
     // the scenery lane (2026-10-03): the dry-stone field walls' rubble print (fieldStoneSurface.ts)
     fieldStone: new THREE.MeshStandardMaterial({ map: fieldStone.albedo, normalMap: fieldStone.normal,
       roughnessMap: fieldStone.surface, aoMap: fieldStone.surface, roughness: 1, metalness: 0 }),
+    // the scenery lane (2026-10-03): the mud walls' worn render over their courses (fieldMudSurface.ts)
+    fieldMud: new THREE.MeshStandardMaterial({ map: fieldMud.albedo, normalMap: fieldMud.normal,
+      roughnessMap: fieldMud.surface, aoMap: fieldMud.surface, roughness: 1, metalness: 0 }),
     wood: new THREE.MeshStandardMaterial({ map: wood.albedo, normalMap: wood.normal,
       roughnessMap: wood.surface, aoMap: wood.surface, roughness: 1, metalness: 0 }),
     dark: new THREE.MeshStandardMaterial({ color: 0x161a1d, roughness: 0.35, metalness: 0.15 }),
@@ -3081,7 +3115,7 @@ function* propsBuildSteps(
     } : {}),
   };
   function configureSurfaceMaterials(): void {
-    for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'wood',
+    for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'fieldMud', 'wood',
       'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
       if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
@@ -3182,8 +3216,8 @@ ${snowCap ? `
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook : grimeHook);
-      // (the field walls' print is the stone material's shader with other maps: it shares the stone program)
-      const programKind = materialKind === 'fieldStone' ? 'stone' : materialKind;
+      // (the field walls' prints are the stone and plaster materials' shaders with other maps: they share their programs)
+      const programKind = materialKind === 'fieldStone' ? 'stone' : materialKind === 'fieldMud' ? 'plaster' : materialKind;
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
@@ -3191,7 +3225,7 @@ ${snowCap ? `
   installSurfaceShaderHooks();
 
   const buckets: CompletePropsBuckets = {
-    plaster: [], plaster2: [], plaster3: [], stone: [], fieldStone: [], roof: [], wood: [], dark: [],
+    plaster: [], plaster2: [], plaster3: [], stone: [], fieldStone: [], fieldMud: [], roof: [], wood: [], dark: [],
     glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [], structureWood: [],
     regionalPlaster: [], regionalPlaster2: [], regionalPlaster3: [], regionalStone: [], regionalRoof: [],
   };
@@ -3222,6 +3256,7 @@ ${snowCap ? `
   const obstacles: PropsCollisionRecord[] = [];
   // the scenery pass (2026-10-03) keeps its rock fields off the trees; the vegetation is released before it runs
   const sceneryTrees = vegetation?.treeObstacles ?? [];
+  const sceneryTreeKinds = (vegetation as { _trees?: ReadonlyArray<{ species: TreeSpecies }> } | null)?._trees ?? null;
   const colliders: CollisionRecord[] = [];
   // crushables — the main.ts hull-radius contact loop (effects_combat r1).
   // Entries are telegraph poles ({index} into the pole InstancedMesh) OR
@@ -3292,12 +3327,25 @@ ${snowCap ? `
     },
     // the field wall is dry stone (inhabitKit.ts) on its own rubble print, except under a brick print, which keeps the
     // coursed module on the stone print
+    // (wave 20, "no snow on top in a snow-buried valley": a snow map's dry-stone module carries the snow load along its
+    // top, so a breached module loses it with its stones)
     ...(sourcedStoneIsBrick(mapId) ? { wallstone: COURSED_WALLSTONE }
-      : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket } }),
+      : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket, ...(snowCap ? { build: snowLoadedWallstone } : {}) } }),
+    // the mud wall on its own worn render (fieldMudSurface.ts), never the house plaster
+    walladobe: { ...DESTRUCTIBLE_TYPES.walladobe, mat: adobeWallBucket },
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
   };
+  /** The dry-stone module with the winter's snow load along its top (fieldWallDressing.ts; one stream of its own). */
+  function snowLoadedWallstone(buildRng: () => number): THREE.BufferGeometry {
+    const wall = DESTRUCTIBLE_TYPES.wallstone.build(buildRng);
+    const snow = buildSnowLoad(wall, 0x5a0c1, { seamless: true });
+    const loaded = mergeGeometries([wall.index ? wall.toNonIndexed() : wall, snow], false);
+    wall.dispose(); snow.dispose();
+    if (!loaded) throw new Error('props: the snow-loaded wall merge produced no geometry');
+    return loaded;
+  }
   const destructibleContext: DestructibleBuildContext = {
     heightField,
     seed,
@@ -4568,6 +4616,11 @@ ${snowCap ? `
   // blocks shells/LOS until it dies with the module. Square END/CORNER POSTS
   // stay static dressing (they anchor breach lips visually), as does the
   // authored gapAt breach (crumbled courses + tumbled blocks).
+  // the scenery lane (wave 20, "how things meet the ground"): the walls' feet, drifts and snow loads (fieldWallDressing.ts)
+  const wallDressing = createWallDressing({
+    ground: heightField, snow: snowCap, mobile: mobileProps, adobeBucket: adobeWallBucket, mudUv: ADOBE_UV_PER_M,
+    plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
+  });
   function addWallRun(
     x0: number,
     z0: number,
@@ -4576,8 +4629,9 @@ ${snowCap ? `
     gapAt = -1,
   ): void {
     const style = P.wallStyle || 'fieldstone';
-    // the posts, the breach stubs and the tumbled blocks are the wall's own stone (the field walls' rubble print)
-    const wallB = style === 'adobe' ? 'plaster' : fieldWallBucket;
+    // the posts, the breach stubs and the tumbled blocks are the wall's own stone (the field walls' rubble print) or mud
+    const wallB = style === 'adobe' ? wallDressing.adobeBucket : fieldWallBucket;
+    const breachUv = style === 'adobe' ? wallDressing.mudUv : 0.7; // (the mud print is one tile a module)
     // brick-style maps route to the stone module (urban's 'stone' texture IS
     // the brick print); adobe keeps its own thicker mud module
     const wallKind = style === 'adobe' ? 'walladobe' : 'wallstone';
@@ -4589,9 +4643,31 @@ ${snowCap ? `
     const thick = style === 'adobe' ? 0.52 : 0.46;
     const runH = 1.0 + rng() * 0.15; // family height scale
     let prevBuilt = false;
+    // the scenery lane (wave 20, "how things meet the ground"): each built island of the run gets its foot — the
+    // stones settled at a dry-stone wall's foot, half sunk on both faces, or the mud apron and spalled lumps round an
+    // adobe wall — and on a snow map the drift the wind banks against the windward face. Streams of their own, named by
+    // the island's place; the props stream draws exactly what it drew.
+    let islandFrom = 0;
+    function dressIsland(ta: number, tb: number): void {
+      if (style !== 'adobe' && sourcedStoneIsBrick(mapId)) return;
+      const dressed = wallDressing.island(style === 'adobe', x0 + tx * ta, z0 + tz * ta, x0 + tx * tb, z0 + tz * tb, style === 'adobe' ? thick * 0.5 : 0.23);
+      for (const part of dressed.wall) buckets[wallB].push(part);
+    }
     function endPost(px: number, pz: number): void {
       const py = heightField.getHeightAt(px, pz) - 0.15;
       const ph = runH * 1.05 + 0.3;
+      // the scenery lane (wave 16, "a miniature castle battlement"): a dry-stone run ends in a rubble wall head and a mud
+      // wall in an eroded pier, each from a stream named by its place; a square post capped with a slab stays for the
+      // brick-print walls. The props stream spends the same draws either way (jitterUV's four).
+      if (style === 'adobe' || !sourcedStoneIsBrick(mapId)) {
+        const seedAt = (Math.round(px * 73.1) * 92821) ^ Math.round(pz * 41.7) * 68917;
+        let head = style === 'adobe' ? buildAdobePilaster(seedAt, thick, ph - 0.15) : buildDryStoneWallHead(seedAt, thick, runH * 0.98 + 0.12);
+        jitterUV(head, rng);
+        if (wallDressing.snow && style !== 'adobe') head = wallDressing.loadHead(head, seedAt); // its snow, like its module's
+        head.rotateY(yaw);
+        buckets[wallB].push(head.translate(px, py, pz));
+        return;
+      }
       const post = box(thick + 0.22, ph, thick + 0.22, 0.7);
       jitterUV(post, rng);
       buckets[wallB].push(post.translate(px, py + ph / 2, pz));
@@ -4604,7 +4680,7 @@ ${snowCap ? `
         const z = z0 + tz * (t0 + breachT * (t1 - t0));
         const y = heightField.getHeightAt(x, z) - 0.15;
         const height = 0.30 + rng() * 0.25;
-        const stub = box(thick, height, WALL_SEG * 0.4, 0.7);
+        const stub = box(thick, height, WALL_SEG * 0.4, breachUv);
         jitterUV(stub, rng);
         stub.rotateY(yaw);
         buckets[wallB].push(stub.translate(x, y + height / 2, z));
@@ -4615,7 +4691,7 @@ ${snowCap ? `
         const z = z0 + tz * (t0 + breachT * (t1 - t0)) + (rng() - 0.5) * 1.6;
         const size = 0.16 + rng() * 0.22;
         const block = roughenChunk(
-          box(size * 1.5, size * 0.8, size, 1.2), rng, size * 0.4,
+          box(size * 1.5, size * 0.8, size, style === 'adobe' ? wallDressing.mudUv * 1.6 : 1.2), rng, size * 0.4,
         );
         jitterUV(block, rng);
         block.rotateY(rng() * Math.PI);
@@ -4654,16 +4730,21 @@ ${snowCap ? `
       const cx = x0 + tx * tc, cz = z0 + tz * tc;
       if (inGap || skip) {
         if (!skip && inGap && beginsGap(k, decisionT)) addBrokenBreach(t0, t1);
-        if (prevBuilt) endPost(x0 + tx * t0, z0 + tz * t0); // post at the lip
+        if (prevBuilt) { endPost(x0 + tx * t0, z0 + tz * t0); dressIsland(islandFrom, t0); } // post at the lip
         prevBuilt = false;
         continue;
       }
-      if (!prevBuilt) endPost(x0 + tx * t0, z0 + tz * t0); // run (re)start
+      if (!prevBuilt) { endPost(x0 + tx * t0, z0 + tz * t0); islandFrom = t0; } // run (re)start
       const ya = heightField.getHeightAt(x0 + tx * t0, z0 + tz * t0);
       const yb = heightField.getHeightAt(x0 + tx * t1, z0 + tz * t1);
       const cy = Math.min(ya, yb);
       const tiltX = Math.atan2(yb - ya, t1 - t0) * 0.85;
-      const record = addDestructible(wallKind, cx, cy - 0.13, cz, yaw,
+      // (wave 20: a run turns some of its modules round — a hash of the module's place, never the props stream — so the
+      // kit's one module does not show the same crown and face every three metres; neighbours stand 4 mm apart across
+      // the run, so two turned ends never share a face where they overlap)
+      const turn = (Math.imul(k + 1, 0x9e3779b1) ^ Math.imul(Math.round(x0 * 8 + z0 * 5), 0x85ebca6b)) >>> 31 ? Math.PI : 0;
+      const nudge = k % 2 ? 0.004 : -0.004;
+      const record = addDestructible(wallKind, cx + tz * nudge, cy - 0.13, cz - tx * nudge, yaw + turn,
         runH * (0.94 + rng() * 0.12), tiltX, (rng() - 0.5) * 0.02);
       // Preserve seeded placement/breaches. Once the shared kit is built,
       // fit this same slot to a continuous, grounded masonry span.
@@ -4671,7 +4752,7 @@ ${snowCap ? `
         x1: x0 + tx * t1, z1: z0 + tz * t1 });
       prevBuilt = true;
     }
-    if (prevBuilt) endPost(x1, z1); // closing post
+    if (prevBuilt) { endPost(x1, z1); dressIsland(islandFrom, along); } // closing post
   }
   const wallRuns: WallRun[] = P.wallRuns || [
     [v.x0 + 4, 8, v.x0 + 4, 64, 2],
@@ -7633,9 +7714,24 @@ ${snowCap ? `
   function* placeScenery(): Generator<PropsBuildSlice, void, void> {
     const scenery = (cfg as (PropsMapConfig & SceneryMapConfig) | null)?.scenery;
     if (!scenery) return;
+    // the trees' crown tops, for the pylon lines' towers to stand over (a crown's height from its trunk's, by species)
+    const treeKinds = sceneryTreeKinds;
+    const treeTops: Array<{ x: number; z: number; top: number }> = [];
+    if (treeKinds && scenery.powerLines?.length) {
+      for (const ob of sceneryTrees) {
+        const kind = ob.treeIdx == null ? undefined : treeKinds[ob.treeIdx];
+        const a = kind && TREE_ARCHETYPES[kind.species];
+        if (!a) continue;
+        // (the instance's scale from its trunk's collider; the crown's height from the archetype under the species'
+        // geometry scale, and a sixth more for the tallest card of the crown)
+        const scaleY = (ob.max[1] - ob.min[1]) / a.trunkHeightM;
+        const crown = Math.max(a.fallHeightM, a.canopyCenterM + a.canopyRadiusM) * TREE_GEOMETRY_SCALE[kind.species][1] * 1.16;
+        treeTops.push({ x: (ob.min[0] + ob.max[0]) / 2, z: (ob.min[2] + ob.max[2]) / 2, top: ob.min[1] + crown * scaleY });
+      }
+    }
     const built = yield* composeScenery({
       mapId, scenery, heightField, spawns: [L.spawns.player, ...L.spawns.enemies],
-      obstacles, colliders, trees: sceneryTrees, baked: buckets.baked, conform: conformYardPiece,
+      obstacles, colliders, trees: sceneryTrees, treeTops, baked: buckets.baked, conform: conformYardPiece,
       addDestructible: (kind, x, y, z, yaw, scale) => addDestructible(kind, x, y, z, yaw, scale),
       seed, mobile: mobileProps,
     });
@@ -7756,6 +7852,20 @@ ${snowCap ? `
     }
   }
   yield* mergeMaterialBuckets();
+  // the scenery lane (wave 34): the snow drifts banked against the walls draw as one mesh of their own on the plaster
+  // (a drift is a low ramp: it receives the cascades and casts none), so a frame can show and hide them
+  if (wallDressing.drifts.length) {
+    const drifts = mergeGeometries(wallDressing.drifts.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+    for (const g of wallDressing.drifts) g.dispose();
+    wallDressing.drifts.length = 0;
+    if (drifts) {
+      const mesh = new THREE.Mesh(drifts, mats.plaster);
+      mesh.name = 'props-snow-drifts';
+      mesh.receiveShadow = true;
+      mesh.matrixAutoUpdate = false;
+      group.add(mesh);
+    }
+  }
   // Append after every ordinary prop so existing network prop identities stay stable.
   for (const clutter of pendingClutter) {
     if (!clutter.activate(destructibles.length)) continue;
