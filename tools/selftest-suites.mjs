@@ -168,6 +168,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/efficientReturnRoller.selftest.mjs',
     'src/vehicles/pairedRunningGearStock.selftest.mjs',
     'src/vehicles/loadedTrackContact.selftest.mjs',
+    'src/vehicles/restPoseBatchedGear.selftest.mjs',
     'src/vehicles/trackCarrierSections.selftest.mjs',
     'src/vehicles/profiles/type10XRunningGear.selftest.mjs',
     'src/vehicles/returnRollerGeometry.selftest.mjs',
@@ -248,6 +249,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t90RoadWheelSpacing.selftest.mjs',
     'src/vehicles/profiles/t90RearCageEraFit.selftest.mjs',
     'src/vehicles/profiles/t90BurlakFenderClosure.selftest.mjs',
+    'src/vehicles/profiles/t90ARearFenderSeat.selftest.mjs',
     'src/vehicles/profiles/t90BurlakRearScale.selftest.mjs',
     'src/vehicles/profiles/t90AVladimirProportions.selftest.mjs',
     'src/vehicles/profiles/t90MSTurretArmorSeat.selftest.mjs',
@@ -924,6 +926,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/botModes.selftest.mjs',
     'server/botObjectives.selftest.mjs',
     'server/battlePacing.selftest.mjs',
+    'server/roadCrossingSweep.selftest.mjs', // 2026-10-03: the maps lane's road crossings, driven both ways (nothing standing in a carriageway)
     'src/sim/poseHistory.selftest.mjs',
     'src/sim/movement.selftest.mjs',
     'src/sim/impact.selftest.mjs',
@@ -1122,6 +1125,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/hardstandBanks.selftest.mjs', // 2026-10-02: the apron bank law, every map, with its pending list
     'src/world/landformGeology.selftest.mjs', // 2026-10-03: landform geology, and every smooth landform unchanged
     'src/world/verdantTownPlan.selftest.mjs', // 2026-10-03: Verdant's classic town plan (every planned building on main's plot, the village walls)
+    'src/world/townPlans.selftest.mjs', // 2026-10-03: recorded town plans and the carriageway post-pass (each settlement where PR #9's head seated it)
     'src/world/terrainSurfaceDetail.selftest.mjs',
     'src/world/terrainMaterialOwnership.selftest.mjs',
     'src/world/terrainProjection.selftest.mjs',
@@ -1270,6 +1274,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/orchardBathhouse.selftest.mjs',
     // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap
     'src/world/maps/regional/regionalArchitecture.selftest.mjs',
+    'src/world/maps/regional/yards.selftest.mjs', // 2026-10-03: the yards round a kit's houses, clear of roads, plots, objectives and pads
+    'src/world/maps/regional/fineDetailLod.selftest.mjs', // 2026-10-03: a kit's fine joinery drawn near the camera only
     'src/world/mangroveFisheryWharf.selftest.mjs',
     'src/world/structureConnectivity.selftest.mjs',
     'src/world/structureCollision.selftest.mjs',

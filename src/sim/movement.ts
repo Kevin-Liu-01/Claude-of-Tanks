@@ -715,6 +715,27 @@ const OVERSHOOT_GROUND_MPS = 0.5;
 const LANDING_STROKE_MIN_MPS = 2;
 /** The bump stops never read less travel than this above the floor (bounds the stopping deceleration). */
 const BUMP_STOP_MIN_ROOM_M = 0.01;
+/**
+ * Progressive bump stops on the landing stroke (physics lane round 4; gauntlet wave 33: "peak compression barely scales
+ * with impact, +3 to +5 cm whether 5.6 or 12.5 m/s"). The springs alone bottomed out every landing from 7 m/s up at the
+ * same 19 cm, the last of the travel taken at one constant deceleration. Past BUMP_STOP_ONSET_M under the seat the stops
+ * take work growing with the cube of their own travel (a force with its square), sized so that with the springs they
+ * would take a landing of BUMP_STOP_FULL_MPS just at the floor: a harder landing goes deeper into them. They only take:
+ * they push while the hull closes on the floor, never back (the rebound is the ruleset's restitution, as before), and
+ * each step they take the work of the step's own travel into them (an average, not the force at the step's start: the
+ * stiffest of it is 280 g, which one 1/60 s step of a force read at a point would turn into a launch).
+ */
+const BUMP_STOP_ONSET_M = 0.08;
+const BUMP_STOP_FULL_MPS = 15;
+
+/** Work (per unit mass) the landing stroke's stops take from their onset down to `depth` under the seat. */
+function bumpStopWork(depth: number, travel: number): number {
+  const zone = travel - BUMP_STOP_ONSET_M;
+  if (!(zone > 1e-3) || !(depth > BUMP_STOP_ONSET_M)) return 0;
+  const capacity = Math.max(0, 0.5 * BUMP_STOP_FULL_MPS * BUMP_STOP_FULL_MPS - 0.5 * RIDE_OMEGA * RIDE_OMEGA * travel * travel);
+  const u = Math.min(1, (depth - BUMP_STOP_ONSET_M) / zone);
+  return capacity * u * u * u;
+}
 /** Ground falling away under a hull is followed as fast as it falls (physics lane, 2026-10-03): the launch bound held
  * the support's descent to 12 m/s too, so a hull sliding down a 48-degree face past 12 m/s fell behind its own
  * support, went airborne on the face and "landed" on it at 9 m/s. Only a rising support launches a hull. */
@@ -943,8 +964,58 @@ function reachableGroundAt(x: number, z: number): number {
 }
 const LANDING_CONTACT_BLEND_S = 0.34;
 const LANDING_SPRING_MIN_SCALE = 0.28;
+/**
+ * A landing's first contact turns the hull about the side or end it comes down on (physics lane round 4; gauntlet wave
+ * 33: "landings are pure vertical drops: hull pitch and roll never move, even when one side touches first"). A hull
+ * meeting ground tilted under it lands on one track or one end first; the fall's momentum about that contact turns it
+ * toward the ground at v·r/(k² + r²) (the contact's lever r from the centre, the hull's radius of gyration k about the
+ * axis), until the other side lands and stops the turn — never faster than lands it in LANDING_ALIGN_MIN_S. The old
+ * impulse was the mismatch times the closing times 0.22 (15 deg/s for a 7 m/s landing on a 10-degree cross slope), and
+ * the attitude spring did the turning at the same rate for every landing.
+ */
+const LANDING_ALIGN_MIN_S = 0.08;
+/** The fastest a landing turns a hull onto the ground (rad/s, about 100 deg/s), and the most its root follows the turn
+ * down in one step (m): the lever of the hull's longest axis bounds the rate below that (1.5 rad/s for a 7 m hull). */
+const LANDING_TURN_MAX = 1.7;
+const LANDING_FOLLOW_MAX_M = 0.09;
+/** Above this travel a landing's pitch is the tracks running onto the ground, not a pivot on the end that landed. */
+const LANDING_TURN_PITCH_MAX_MPS = 3;
+/** The fastest a landing turns the hull about an axis whose contacts stand `lever` from its centre. */
+function landingTurnCap(lever: number): number {
+  return Math.min(LANDING_TURN_MAX, LANDING_FOLLOW_MAX_M / (Math.max(lever, 0.5) * SIM_DT));
+}
+/** A hull coming down on its shell (tumbling) takes the old turn: the mismatch times the closing times this, capped. */
 const LANDING_TORQUE_GAIN = 0.22;
 const LANDING_TORQUE_MAX = 1.7;
+/** The hull's contact levers and height for the landing turn (set by the step before the attitude update). */
+const _landingTurn = { halfLength: 3, halfWidth: 1.6, height: 2.2 };
+/** While a landing settles, the turn toward the ground plane is held to the landing's own cap (landingTurnCap). */
+function clampTurn(rate: number, error: number, lever: number): number {
+  const cap = landingTurnCap(lever);
+  return rate * error > 0 && Math.abs(rate) > cap ? Math.sign(rate) * cap : rate;
+}
+/** Within this of the ground plane a hull that has just landed on it is on it (the plane moves a little a step). */
+const LANDED_ON_PLANE_RAD = 0.01;
+/** A turn this step would carry past the ground plane stops at it (the side that lands stops it), and a hull just landed
+ * on it stays: one a hair past it and still turning on stops turning. The spring closes what is left of the step; the
+ * plane's own motion (a hull driving across a trench) is never handed to the hull as a turn it carries into the air. */
+function landOnPlane(rate: number, error: number, dt: number): number {
+  if (!(Math.abs(rate * dt) > Math.abs(error))) return rate;
+  return rate * error > 0 || Math.abs(error) < LANDED_ON_PLANE_RAD ? 0 : rate;
+}
+/** The rate a landing leaves the hull turning at about one axis (see LANDING_ALIGN_MIN_S). */
+function landingTurnRate(rate: number, error: number, closing: number, lever: number, height: number): number {
+  if (!(Math.abs(error) > 1e-6) || !(closing > 0) || !(lever > 0)) return rate;
+  const gyration2 = (4 * lever * lever + height * height) / 12;
+  const pivot = closing * lever / (gyration2 + lever * lever);
+  const sign = Math.sign(error);
+  const align = Math.abs(error) / LANDING_ALIGN_MIN_S;
+  let next = rate + sign * Math.min(pivot, align);
+  // the other side's contact bounds the turn toward the ground: what lands it in the minimum time (or the rate it had)
+  if (sign * next > Math.max(align, sign * rate)) next = sign * Math.max(align, sign * rate);
+  const cap = landingTurnCap(lever);
+  return clamp(next, -cap, cap);
+}
 const TUMBLE_ENTER_UP_Y = 0.55;    // ~57° from upright
 const TUMBLE_EXIT_UP_Y = 0.88;     // hysteresis: settle close to upright only
 const OVERTURN_ENTER_UP_Y = -0.08; // center of mass has crossed past the side
@@ -1778,8 +1849,33 @@ function constrainLoadedRide(
     // little behind its sinking support, was held up by the stops and floated off the face every few steps).
     const closingOnFloor = ride.groundV - ride.v;
     const room = ride.y - floorY;
+    // the landing stroke's progressive stops (BUMP_STOP_ONSET_M): the work of this step's travel into them, and what they
+    // have left between here and the floor
+    let stopWorkLeft = 0;
+    if (ride.stroke === 1 && closingOnFloor > 0) {
+      const travel = supportY - floorY;
+      const depth = supportY - ride.y;
+      const here = bumpStopWork(depth, travel);
+      if (bumpStopWork(Math.min(travel, depth + closingOnFloor * dt), travel) > here) {
+        // in the stops this step: the closing it leaves the step with is the one whose step into the stops (and the
+        // springs) takes the energy the step loses — the step moves at the speed it leaves with, as the ride integrates
+        const springAt = (x: number): number => 0.5 * RIDE_OMEGA * RIDE_OMEGA * x * Math.abs(x);
+        const from = springAt(depth) + here;
+        const energy = 0.5 * closingOnFloor * closingOnFloor;
+        let lo = 0, hi = closingOnFloor;
+        for (let index = 0; index < 24; index++) {
+          const mid = 0.5 * (lo + hi);
+          const into = Math.min(travel, depth + mid * dt);
+          if (energy - 0.5 * mid * mid > springAt(into) + bumpStopWork(into, travel) - from) lo = mid;
+          else hi = mid;
+        }
+        const taken = (closingOnFloor - 0.5 * (lo + hi)) / dt;
+        if (accel < taken) accel = taken;
+      }
+      stopWorkLeft = bumpStopWork(travel, travel) - here;
+    }
     if (closingOnFloor > 0 && room > 0) {
-      const springWork = RIDE_OMEGA * RIDE_OMEGA * ((supportY - ride.y) * room + 0.5 * room * room);
+      const springWork = RIDE_OMEGA * RIDE_OMEGA * ((supportY - ride.y) * room + 0.5 * room * room) + stopWorkLeft;
       if (0.5 * closingOnFloor * closingOnFloor > springWork) {
         const stop = closingOnFloor * closingOnFloor / (2 * Math.max(room, BUMP_STOP_MIN_ROOM_M));
         if (accel < stop) accel = Math.min(stop, closingOnFloor / dt);
@@ -2535,16 +2631,25 @@ function applyLandingAttitudeImpulse(
 ): void {
   if (landingImpact <= 0) return;
   const spring = state._spring;
-  spring.pitchV += clamp(
-    wrapAngle(targetPitch - spring.pitch) * landingImpact * LANDING_TORQUE_GAIN,
-    -LANDING_TORQUE_MAX,
-    LANDING_TORQUE_MAX,
-  );
-  spring.rollV += clamp(
-    wrapAngle(targetRoll - spring.roll) * landingImpact * LANDING_TORQUE_GAIN,
-    -LANDING_TORQUE_MAX,
-    LANDING_TORQUE_MAX,
-  );
+  if (upYAtStart < TUMBLE_ENTER_UP_Y || body.tumbling) {
+    // on its shell, not its tracks: no track takes the first contact, and the shell's corners turn about the root
+    spring.pitchV += clamp(wrapAngle(targetPitch - spring.pitch) * landingImpact * LANDING_TORQUE_GAIN,
+      -LANDING_TORQUE_MAX, LANDING_TORQUE_MAX);
+    spring.rollV += clamp(wrapAngle(targetRoll - spring.roll) * landingImpact * LANDING_TORQUE_GAIN,
+      -LANDING_TORQUE_MAX, LANDING_TORQUE_MAX);
+  } else {
+    // a hull running onto ground at speed meets it with the front of its tracks and rolls onto it along the travel (the
+    // terrain fit carries that pitch); only a fall onto it (little travel) pivots on the end it lands on
+    if (Math.abs(state.speed) < LANDING_TURN_PITCH_MAX_MPS) {
+      spring.pitchV = landingTurnRate(spring.pitchV, wrapAngle(targetPitch - spring.pitch), landingImpact,
+        _landingTurn.halfLength, _landingTurn.height);
+    } else {
+      spring.pitchV += clamp(wrapAngle(targetPitch - spring.pitch) * landingImpact * LANDING_TORQUE_GAIN,
+        -LANDING_TORQUE_MAX, LANDING_TORQUE_MAX);
+    }
+    spring.rollV = landingTurnRate(spring.rollV, wrapAngle(targetRoll - spring.roll), landingImpact,
+      _landingTurn.halfWidth, _landingTurn.height);
+  }
   body.landingBlendS = LANDING_CONTACT_BLEND_S;
   if (upYAtStart < TUMBLE_ENTER_UP_Y) body.tumbling = true;
 }
@@ -2634,6 +2739,12 @@ function updateSupportedAttitude(
     const pitchZeta = SPRING_ZETA + (1 - SPRING_ZETA) * perch;
     spring.pitchV += (pitchOmega * pitchOmega * (targetPitch - spring.pitch) -
       2 * pitchZeta * pitchOmega * spring.pitchV) * dt;
+    // the other side's contact (physics lane round 4, LANDING_ALIGN_MIN_S): while a landing settles, a turn that would
+    // carry the hull past the ground plane ends on it this step — the end that lands stops it
+    if (body.landingBlendS > 0) {
+      spring.pitchV = landOnPlane(clampTurn(spring.pitchV, targetPitch - spring.pitch, _landingTurn.halfLength),
+        targetPitch - spring.pitch, dt);
+    }
   }
   spring.pitch += spring.pitchV * dt;
   if (tipRoll !== 0) {
@@ -2642,6 +2753,10 @@ function updateSupportedAttitude(
     const rollOmega = SPRING_OMEGA * springScale;
     spring.rollV += (rollOmega * rollOmega * (targetRoll - spring.roll) -
       2 * SPRING_ZETA * rollOmega * spring.rollV) * dt;
+    if (body.landingBlendS > 0) {
+      spring.rollV = landOnPlane(clampTurn(spring.rollV, targetRoll - spring.roll, _landingTurn.halfWidth),
+        targetRoll - spring.roll, dt);
+    }
   }
   spring.roll += spring.rollV * dt;
 }
@@ -4081,6 +4196,10 @@ export function updateTank(
     ? state._terr.pitch + suspensionAimPitch
     : spr.pitch;
   const targetRoll = groundedAtStart ? state._terr.roll : spr.roll;
+  const turnContact = entity.contactGeom;
+  _landingTurn.halfLength = turnContact ? turnContact.halfLenM : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
+  _landingTurn.halfWidth = turnContact ? turnContact.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
+  _landingTurn.height = spec.dims.heightM;
   updateHullAttitude(
     state,
     body,
