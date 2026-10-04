@@ -301,10 +301,13 @@ Vehicle material clones (2026-10-04, the vehicle-look lane): `Material.clone()` 
 cascade registration — three resets a standard material's `defines` and never copies `onBeforeCompile` or
 `customProgramCacheKey` — so a plain clone lights with every cascade's sun at once (about four times the sun) and writes
 no sun state or vehicle tag for the aerial pass. Clone through `cloneVehicleMaterial(source)` (materials.ts), which
-re-registers the clone exactly as its source; `vehicleMaterialClone.selftest.mjs` pins the running-gear clones (shoes,
-isolated gear roles, band finishes). About forty profile-pack clones still re-hook by hand (`rehook`,
-`'veh-ambient-floor-v2'`) and predate it. The battlefield weathering (`vehicleWeathering.ts`) rides the readability
-hook on every vehicle material: an optic or glass material defines `COT_VEH_CLEAN` to stay clean.
+re-registers the clone exactly as its source and keeps its shader switches (`COT_VEH_CLEAN`, `COT_VEH_TRACK`,
+`COT_WHEEL_PAINT_READABILITY`); `vehicleMaterialClone.selftest.mjs` pins the running-gear clones (shoes, isolated gear
+roles, band finishes). About forty profile-pack clones still re-hook by hand (`rehook`, `'veh-ambient-floor-v2'`) and
+predate it. The battlefield weathering (`vehicleWeathering.ts`) rides the readability hook on every vehicle material:
+an optic or glass material defines `COT_VEH_CLEAN` to stay clean, the track's shoes and band define `COT_VEH_TRACK`
+(trodden snow packs only there). On running gear, any even mid-grey veil, white round a wheel's foot or a band of snow
+on a tyre's or a hub's curved top reads as chrome: keep slush dark, fresh snow on flat tops, packed snow on the track.
 The field camouflages (`catalogCamoPainter.ts` paintField) are thresholded on a 192-texel raster; above that size
 `paintFieldEdges` draws their boundaries at the tile's own resolution (one anti-aliased texel). Never scale the
 hard stencil up with smoothing again: that was the "soft, blurry camo blobs" (`camoFieldEdges.selftest.mjs`).
