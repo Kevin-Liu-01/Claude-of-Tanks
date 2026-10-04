@@ -7100,6 +7100,28 @@ moves it 0.8 — the water's own reflection at grazing incidence is: `shallowWat
 - *GPU:* the old weight switched in-page, on / off / off / on: −1.3 and −0.3 ms (p25) — a constant.
 Frames: `$SP/p2/sea/pair/{saltwind,coastal}/{a,g}-<view>.png`, the glint `saltwind/{a,g,g~spec25,g~spec4}-glint.png`.
 
+### 2026-10-04 — the cumulus item, shelved: what it learned (the skies lane)
+
+**The gauntlet's waves 46–50 on the cumulus:** "the darkest part of each cloud is only about a fifth darker than the
+brightest", "a grid-like rhythm", "hard cel outlines". Branch `visual/cumulus` (on origin, not merged).
+
+**Measured.** One knob at a time on each cloud's opaque interior (L*, desktop high; a cloudless frame of the same pose
+gives the cloud mask, the interior keeps 8+ pixels inside the outline; `$SP/p2/cumulus/tools/cloudrange.py`):
+- the sky floor in a cumulus' shade is the lever for its shade side — 0.34 → 0.12 of the sky mean took the shade 9–10 L*
+  down and the crown 1.5–4; below about 0.06 the sky light itself sits above the floor;
+- the multiple-scattering octaves' attenuation with depth (1.0 / 0.8 for b, b²) moved the clouds by one L*; a faster
+  decay of the diffused light took the crown down more than the shade; a first pick judged by eye on a sheet greyed
+  whole clouds (crowns 10 L* down with the shade) — measure the interior, not the sheet;
+- with the base dark (0.8) and a cumulus sun gain (1.15) the branch reached dark / lit 0.35–0.44 (it was 0.61–0.80) with
+  the crowns held at L* 88–90 and, toward the sun, rims brighter than cores; a coverage field over 36 km held one value
+  over the whole battlefield and only thinned its clouds — a size spread needs a period of a few kilometres (6 km).
+
+**Held by the gauntlet (wave 64):** the mean 4.25 → 4.19, the sky criterion down a point on four views, nothing up. Both
+critics still saw "airbrushed cotton balls … no flat bases or backlit edges" and "soft, flatly shaded, blurred-edge"
+clouds. Contrast alone does not read as volume: the gap is the density field's shape — one flat base at the condensation
+level with cauliflower towers above it — not its light. If the clouds come back: the shape first, measured against
+photographs; the light knobs are on the branch.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
