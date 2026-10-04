@@ -159,8 +159,8 @@
       "concealers": 1453
     },
     "airfield": {
-      "bytes": 883035,
-      "sha256": "f0a503a6c27248a50ba675a8b058212f88153371aea208d71574fabae76a54df",
+      "bytes": 883115,
+      "sha256": "3e55c814690f70a90e5bba1e0f8045c4caeda934a758cb61020ec763f9cba462",
       "obstacles": 2481,
       "colliders": 2487,
       "concealers": 1967

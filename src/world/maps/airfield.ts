@@ -41,9 +41,9 @@ const CARGO_SIDE = [
   // the hangar line, the fire station and the stores along the taxiway
   { structure: 'warehouse', x: -207, z: -82, yawDeg: 90 },
   { structure: 'depot', x: -160, z: -115, yawDeg: 90 },
-  // (the terminal turns its front to the open ground west of it: facing +x its glazed hall and canopy stood 3 m from
-  // the end wall of the hangar at (-137, -80) — the buildings lane's Hostomel kit, 2026-10-03)
-  { structure: 'foundryoffice', x: -160, z: -81, yawDeg: 270 },
+  // (the terminal faces the taxiway, 10 m of open ground in front of its glazed hall and canopy: facing +x they stood
+  // 4 m from the end wall of the hangar at (-137, -80) — the buildings lane's Hostomel kit, 2026-10-03)
+  { structure: 'foundryoffice', x: -160, z: -81, yawDeg: 180 },
   { structure: 'watertower', x: -136, z: -113, yawDeg: 90 },
   { structure: 'warehouse', x: -137, z: -80, yawDeg: 90 },
   { structure: 'containerRow', x: -113, z: -113, yawDeg: 90 },
