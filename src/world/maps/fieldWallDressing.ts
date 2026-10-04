@@ -296,7 +296,7 @@ export function buildWallTumble(
  */
 export function buildWallDrift(
   ground: DressingGround, ax: number, az: number, bx: number, bz: number, half: number, side: 1 | -1, seed: number,
-  opts: { uvPerM?: number; mobile?: boolean; lee?: boolean; across?: number; plainV?: readonly [number, number]; scale?: number } = {},
+  opts: { uvPerM?: number; mobile?: boolean; lee?: boolean; across?: number; plainV?: readonly [number, number]; scale?: number; step?: number } = {},
 ): THREE.BufferGeometry | null {
   const len = Math.hypot(bx - ax, bz - az);
   if (len < 0.5) return null;
@@ -304,7 +304,7 @@ export function buildWallDrift(
   const r = dressingRng(seed), uvPerM = opts.uvPerM ?? 0.3, lee = opts.lee ?? false, size = opts.scale ?? 1;
   const square = Math.max(0, Math.min(1, opts.across ?? 1));
   const rise = wobble(r), reachW = wobble(r), scallop = wobble(r);
-  const ext = lee ? 0.9 : 0.5, step = opts.mobile ? 0.9 : 0.5;
+  const ext = lee ? 0.9 : 0.5, step = opts.mobile ? 0.9 : (opts.step ?? 0.5);
   const along = Math.max(2, Math.ceil((len + 2 * ext) / step));
   const OUT = lee ? [0, 0.05, 0.15, 0.3, 0.5, 0.74, 1] : [0, 0.1, 0.35, 0.7, 1];
   const h0 = (lee ? 0.55 * (0.45 + 0.55 * square) : 0.22 * (0.55 + 0.45 * square)) * size;
@@ -451,7 +451,7 @@ export function createWallDressing(o: WallDressingOptions): WallDressing {
           const cross = dx * tz - dz * tx, side = cross > 0 ? -1 : 1, across = Math.abs(cross);
           for (const lee of [false, true]) {
             const ramp = buildWallDrift(o.ground, ax, az, bx, bz, half + 0.03, (lee ? -side : side) as 1 | -1,
-              placeSeed(ax, az, lee ? 0x5a1d : 0x5a1e), { mobile: o.mobile, across, lee, plainV: o.plainV, uvPerM: o.mudUv, scale: lee ? 0.6 : 0.9 });
+              placeSeed(ax, az, lee ? 0x5a1d : 0x5a1e), { mobile: o.mobile, across, lee, plainV: o.plainV, uvPerM: o.mudUv, scale: lee ? 0.6 : 0.9, step: 0.85 });
             if (ramp) out.wall.push(ramp);
           }
         }
