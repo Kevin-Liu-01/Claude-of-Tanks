@@ -48,6 +48,15 @@ function waterHeightSampler(
 }
 
 /** One bounded, static surface, not a fluid solver or another scene/reflection pass. */
+/**
+ * 2026-10-04 (the gauntlet: the sea's far band "turns teal and darker than the sky instead of brightening toward the
+ * horizon"): the sky's reflection at grazing incidence, over its weight at normal incidence (0.45). Measured on
+ * Saltwind's edge-w (the sky over the horizon at L* 85): at 1.75 the far band sat 13–17 under it and teal, and the haze was
+ * not the cause (without it the band was darker still); at 3.5 it sits 4–5 under the sky and bluer — the mirror a calm
+ * sea is toward the horizon. The mid field gains 5–10 L*, the water under the camera about one.
+ */
+const WATER_ENV_GRAZING = 3.5;
+
 export function* shallowWaterGeometrySteps(
   field: Pick<HeightField, 'size' | 'getHeightAt' | 'getWaterMaskAt' | 'getWaterDepthAt'>,
 ): Generator<void, ShallowWaterGeometry | null, void> {
@@ -206,7 +215,7 @@ export function createShallowWaterSurface(
   const clock = { value: 0 };
   // 2026-10-04 (the sea's far band, QA knobs; today's values by default): the sky's reflection at normal / grazing
   // incidence and the specular cap, read per frame through the light model's QA hook
-  const waterQa = { value: new THREE.Vector4(0.45, 1.75, 1.15, 0.35) };
+  const waterQa = { value: new THREE.Vector4(0.45, WATER_ENV_GRAZING, 1.15, 0.35) };
   // Water pass 7: vehicle wakes. Slot A is (x, z, dirX, dirZ) in the map's tank frame,
   // slot B is (speed 0..1, strength 0..1, half length m, half width m).
   const wakeA = Array.from({ length: WATER_DISTURBANCE_CAP }, () => new THREE.Vector4(0, 0, 0, 1));
@@ -666,7 +675,7 @@ export function createShallowWaterSurface(
     ripples,
     ocean,
     update(dt, anchorX, anchorZ) {
-      waterQa.value.set(lightTune('WATER_ENV_NORMAL', 0.45), lightTune('WATER_ENV_GRAZING', 1.75), lightTune('WATER_SPEC_CAP', 1.15),
+      waterQa.value.set(lightTune('WATER_ENV_NORMAL', 0.45), lightTune('WATER_ENV_GRAZING', WATER_ENV_GRAZING), lightTune('WATER_SPEC_CAP', 1.15),
         lightTune('WATER_BODY_GRAZE', 0.35));
       if (!(Number.isFinite(dt) && dt > 0)) return;
       clock.value += Math.min(dt, 0.1);

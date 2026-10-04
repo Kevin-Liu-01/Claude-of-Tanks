@@ -191,7 +191,7 @@ assert.match(shader.fragmentShader, /radiance \*= mix\(uWaterQa\.x, uWaterQa\.y,
 assert.match(shader.fragmentShader, /totalSpecular - vec3\(uWaterQa\.z\)/,
   'the specular clamp no longer deletes the glints');
 assert.match(shader.fragmentShader, /diffuseColor\.rgb \*= 1\.0 - uWaterQa\.w \* grazing;/, 'the body darkens toward grazing');
-assert.deepEqual(shader.uniforms.uWaterQa.value.toArray(), [0.45, 1.75, 1.15, 0.35], 'the reflection, cap and darkening as tuned');
+assert.deepEqual(shader.uniforms.uWaterQa.value.toArray(), [0.45, 3.5, 1.15, 0.35], 'the reflection, cap and darkening as tuned (2026-10-04: the grazing reflection 1.75 → 3.5, the far band of the sea)');
 // Water pass 4 (2026-09-13): the deep body darkens harder (0.70 -> 0.58) and the
 // whole sheet loses 35 % of its body colour at grazing angles, where the sky
 // reflection takes over.
