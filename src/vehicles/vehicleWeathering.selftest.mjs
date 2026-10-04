@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import {
   CLEAN_VEHICLE_WEATHER, VEHICLE_WEATHER_BY_MAP, VEHICLE_WEATHER_FRAGMENT_GLSL, VEHICLE_WEATHER_LEVEL, VEHICLE_WEATHER_REACH_DRY_M,
   VEHICLE_WEATHER_REACH_WET_M, VEHICLE_WEATHER_SNOW, VEHICLE_WEATHER_PACKED_SNOW, VEHICLE_WEATHER_SNOW_LUMP, VEHICLE_WEATHER_SLUSH,
+  VEHICLE_WEATHER_SNOW_PACK_COVER, VEHICLE_WEATHER_SNOW_REACH_M,
   VEHICLE_WEATHER_MUD_ROUGHNESS, applyVehicleWeather,
   bindVehicleWeatherUniforms, garageVehicleWeather, liftedDustHex, mudColorOf, setVehicleWeatherLevel, syncVehicleWeather,
   vehicleWeatherForMap, vehicleWeatherLevelFor, vehicleWeatherState,
@@ -73,7 +74,7 @@ for (const id of ['verdant', 'coastal', 'fjord', 'mars']) {
 assert.ok(VEHICLE_WEATHER_MUD_ROUGHNESS >= 0.6, 'damp mud never turns glossy (chrome-silver slush on the first pair)');
 assert.ok(VEHICLE_WEATHER_PACKED_SNOW.every((v, i) => v < VEHICLE_WEATHER_SNOW[i] * 0.75), 'trodden snow is greyer than fresh');
 // the slush is the dark wet dirt (a pale grey slush under a grey snow veil turned the dark wheels and shoes one even mid
-// grey, read as polished alloy on the lane's final pair); the white is the lumps'
+// grey, read as polished alloy on the lane's final pair); the white is the snow's
 assert.ok(luma(new THREE.Color().setHex(VEHICLE_WEATHER_SLUSH, THREE.SRGBColorSpace)) < 0.18, 'the slush is dark wet dirt, not a pale veil');
 assert.ok(Math.min(...VEHICLE_WEATHER_PACKED_SNOW) > 0.5, 'and the trodden snow is still snow, well above it');
 
@@ -150,19 +151,26 @@ assert.ok(low(1.6, 0) === 0 && low(1.0, 1) === 0, 'the upper hull is past its re
 assert.ok(low(0.6, 1) < low(0.6, 0), 'mud stays lower than dust');
 assert.ok(VEHICLE_WEATHER_SNOW.every((v) => v > 0.75 && v < 0.9), 'snow is snow-white, not clipped white');
 
-// 7. the snow law (the GLSL's cvSnowTop and cvSnowPack at the breakup's quantiles, one octave: median 0.49, 90th
-// percentile 0.74): a sheet of fresh snow on the deck, lumps on the running gear with the steel showing between them —
-// never a veil over a whole wheel or shoe, never an unbroken band along a curved top
+// 7. the snow law (the GLSL's cvSnowTop and cvSnowPack at the breakup's quantiles, one octave: 10th percentile 0.24,
+// median 0.49, 90th percentile 0.74): a sheet of fresh snow on the deck; trodden snow packed low in the running gear (the
+// bottom run, the wheels' feet) with holes, nothing up the wheels; fresh snow on the gear's tops only in lumps — never a
+// veil over a whole wheel or shoe, never an unbroken band along a curved top, never blotches over the whole gear
 const [lumpLo, lumpHi] = VEHICLE_WEATHER_SNOW_LUMP;
+const [coverLo, coverHi] = VEHICLE_WEATHER_SNOW_PACK_COVER;
 const lerp = (a, b, t) => a + (b - a) * t;
 const snowTop = (up, b, lowness) => smoothstep(0.55, 0.85, up + (b - 0.5) * 0.35) * smoothstep(lerp(0.3, lumpLo, lowness), lerp(0.55, lumpHi, lowness), b);
-const snowPack = (b, lowness) => lowness * smoothstep(lumpLo, lumpHi, b);
+const snowPack = (h, b) => (1 - smoothstep(0.1, VEHICLE_WEATHER_SNOW_REACH_M, h + (b - 0.5) * 0.3)) * smoothstep(coverLo, coverHi, b);
 assert.ok(snowTop(1, 0.49, 0) > 0.75, 'the deck takes a sheet of fresh snow');
-assert.ok(snowTop(1, 0.49, 1) < 0.05 && snowPack(0.49, 1) < 0.05, 'the running gear at the breakup\'s median shows its steel');
-assert.equal(snowPack(0.74, 1), 1, 'and a lump there is whole');
+assert.ok(snowTop(1, 0.49, 1) < 0.05, 'a running-gear top at the breakup\'s median shows its steel');
 assert.equal(snowTop(1, 0.74, 1), 1, 'fresh snow on a gear top only where a lump is');
+assert.equal(snowPack(0.05, 0.49), 1, 'the bottom run is packed');
+assert.ok(snowPack(0.2, 0.49) > 0.6, 'and the wheels\' feet');
+assert.equal(snowPack(0.05, 0.24), 0, 'with holes where the breakup is low');
+assert.equal(snowPack(0.6, 0.74), 0, 'nothing packs up the wheels, whatever the breakup');
+assert.ok(VEHICLE_WEATHER_SNOW_REACH_M < 0.5, 'the packed band stays under the road wheels\' hubs');
 assert.doesNotMatch(VEHICLE_WEATHER_FRAGMENT_GLSL, /cvSnowPack > cvSnowTop \?/, 'fresh and trodden snow blend, no seam inside a lump');
-assert.match(VEHICLE_WEATHER_FRAGMENT_GLSL, /float cvSnowPack = cvLow \* smoothstep\( cvLump\.x, cvLump\.y, cvB \);/, 'the GLSL is the law above');
+assert.match(VEHICLE_WEATHER_FRAGMENT_GLSL, /float cvSnowLow = 1\.0 - smoothstep\( 0\.1, [0-9.]+, cvH \+ \( cvB - 0\.5 \) \* 0\.3 \);/, 'the GLSL is the law above');
+assert.match(VEHICLE_WEATHER_FRAGMENT_GLSL, /float cvSnowPack = cvSnowLow \* smoothstep\( [0-9.]+, [0-9.]+, cvB \);/);
 
 console.log(`vehicleWeathering.selftest: ${MAP_IDS.length} battlefield rows on their own dirt, climates in range, shared uniforms, `
   + 'change-only sync, Garage wear, QA switch, the layer once before the light, optics clean PASS');
