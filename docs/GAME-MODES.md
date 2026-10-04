@@ -122,7 +122,10 @@ progression, respawn timers and drone/orbit state across a host change.
 `src/sim/sixModes.selftest.mjs` and `sixModesAuthority.selftest.mjs` cover rules,
 rosters, progression, shared flight and authority. `tools/six-modes.browser.mjs`
 exercises garage entry, real flight input, the orbit and narrow-screen HUDs.
-Four native regressions run under the shared GPU queue beside it:
+`tools/drone-hud.browser.mjs` drives the actual compact flight HUD and touch
+controls with deterministic drone telemetry (no WebGL): every sensor view, the
+infrared and thermal switches and a single return. Four native regressions run
+under the shared GPU queue beside it:
 `tools/aerial-tracers.browser.mjs` fires the AC-130's real weapons, holds a
 mid-flight frame of each tracer (one head, a bounded ribbon) and checks the
 cleanup when live flight resumes; `tools/drone-details.browser.mjs` renders the
