@@ -1265,17 +1265,17 @@ function adobeEnvelope(rng: Rng): THREE.BufferGeometry {
  * shoulders rubbed round; its crown bitten by the rain in scalloped losses (one broad loss a module, up to a quarter
  * metre deep, and a couple of small ones, each cut steeper on one side; none at the module's ends so a run's crown
  * meets itself, and no row of even teeth along a run), rain gullies
- * down the faces from the crown, deepest at the top. One extrusion of a seventeen-point section every 12.5 cm (about
- * 800 triangles) on the field-mud print, one tile a module (u along the wall, v round the section). Like the stone
+ * down the faces from the crown, deepest at the top. One extrusion of a thirteen-point section every 19 cm (about
+ * 410 triangles, the old module's count) on the field-mud print, one tile a module (u along the wall, v round the section). Like the stone
  * wall, the original builder still runs first (its draws, its envelope) and the mass is fitted to that envelope, so the
  * fitted wall collider keeps its plan and height.
  */
 function adobeModule(r: Rng): THREE.BufferGeometry {
   const L = WALL_SEG, H = 1.0, half = 0.26;
-  const segs = 24, phase = r() * 10, bow = (r() < 0.5 ? -1 : 1) * 0.01;
+  const segs = 16, phase = r() * 10, bow = (r() < 0.5 ? -1 : 1) * 0.01;
   // the gullies: a few each face, narrow, from the crown down, fading toward the foot
   // (clear of the module's ends, so a turned neighbour's face meets this one's where neither is cut)
-  const gullies = Array.from({ length: 3 + Math.floor(r() * 4) }, () => [(r() - 0.5) * (L - 0.8), r() < 0.5 ? -1 : 1, 0.012 + r() * 0.016, 0.07 + r() * 0.07]);
+  const gullies = Array.from({ length: 3 + Math.floor(r() * 4) }, () => [(r() - 0.5) * (L - 0.8), r() < 0.5 ? -1 : 1, 0.012 + r() * 0.016, 0.14 + r() * 0.08]);
   // the crown's losses: [centre along, half width, depth, lean]; one broad loss and a couple of small ones, each
   // steeper on one side (the rain cuts back into the wall), clear of the module's ends; a run repeats the module, so
   // no row of even teeth
@@ -1287,8 +1287,9 @@ function adobeModule(r: Rng): THREE.BufferGeometry {
     bites.push([c, w, d, (r() - 0.5) * 1.2]);
   }
   // the section, one foot over the crown to the other: [across (x / half), height (y / H)]
-  const section: Array<[number, number]> = [[-1.03, 0], [-0.98, 0.06], [-1.02, 0.18], [-1.0, 0.45], [-0.97, 0.72], [-0.94, 0.88],
-    [-0.82, 0.97], [-0.45, 1.0], [0, 1.0], [0.45, 1.0], [0.82, 0.97], [0.94, 0.88], [0.97, 0.72], [1.0, 0.45], [1.02, 0.18], [0.98, 0.06], [1.03, 0]];
+  // (thirteen points, a row every 19 cm: about the old module's 410 triangles; wave 34 counted the triangles)
+  const section: Array<[number, number]> = [[-1.03, 0], [-0.98, 0.06], [-1.02, 0.2], [-0.98, 0.6], [-0.93, 0.88],
+    [-0.62, 0.99], [0, 1.0], [0.62, 0.99], [0.93, 0.88], [0.98, 0.6], [1.02, 0.2], [0.98, 0.06], [1.03, 0]];
   const positions: number[] = [], uvs: number[] = [], index: number[] = [];
   const rowLength = section.length, y0 = 0.55;
   const arc = [0];

@@ -587,6 +587,7 @@ assert.match(propsSource, /walladobe: \{ \.\.\.DESTRUCTIBLE_TYPES\.walladobe, ma
 assert.match(propsSource, /fieldMud: new THREE\.MeshStandardMaterial\(\{ map: fieldMud\.albedo,/, 'the mud print has its own material');
 assert.match(propsSource, /\.\.\.\(snowCap \? \{ build: snowLoadedWallstone \} : \{\}\)/, 'a snow map\'s module carries its snow load');
 assert.match(propsSource, /const wallDressing = createWallDressing\(\{/, 'the wall runs dress their islands through one owner');
+assert.match(propsSource, /mesh\.name = 'props-snow-drifts';/, 'the snow drifts draw as one mesh of their own (the frame-budget probe\'s field-walls toggle hides them)');
 assert.match(propsSource, /if \(prevBuilt\) \{ endPost\(x1, z1\); dressIsland\(islandFrom, along\); \}/, 'a run\'s last island is dressed');
 assert.match(propsSource, /cx \+ tz \* nudge, cy - 0\.13, cz - tx \* nudge, yaw \+ turn,/, 'a run turns its modules round by place, neighbours apart');
 const vegetationSource = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');

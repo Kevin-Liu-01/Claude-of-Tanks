@@ -96,6 +96,10 @@ export const MAP_VIEW_PROBE_VIEWS = Object.freeze([
   // headwall 125 m out on the radial (its centre (632, −218), 5 m to screen-left of the axis where the approach curve
   // lands), the bore at the vanishing point of the rails
   view('cutting-portal-low', 67, [508, 2.4, -181], [632, 4, -218]),
+  // gauntlet wave 34 (the scenery lane's dressing bench): Frosthollow's (winter) heaviest wall views — the coping run
+  // with its snow load, and the windward face with its drift (the frame-budget probe's field-walls toggle)
+  view('winter-wall-coping', 34, [-61, 2.1, -214], [-66, 0.9, -228]),
+  view('winter-wall-windward', 34, [-71, 1.7, -239], [-65, 0.4, -231]),
 ]);
 
 /** The views a capture run shoots: every view, or the named subset in table order. Unknown names fail closed. */

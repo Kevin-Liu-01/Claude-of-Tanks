@@ -109,12 +109,12 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
 {
   const snowy = createWallDressing({ ground: slope, snow: true, mobile: false, adobeBucket: 'fieldMud', mudUv: 1 / 3 });
   const stone = snowy.island(false, 0, 0, 0, 9, 0.23);
-  assert.ok(stone.wall.length === 1 && stone.snow.length === 1, 'a snow map\'s stone island: its foot stones and its drift');
+  assert.ok(stone.wall.length === 1 && snowy.drifts.length === 1, 'a snow map\'s stone island: its foot stones, and its drift kept for its own mesh');
   const mild = createWallDressing({ ground: slope, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: 1 / 3 });
   const plain = mild.island(false, 0, 0, 0, 9, 0.23);
-  assert.ok(plain.wall.length === 1 && plain.snow.length === 0, 'a mild map\'s stone island: its foot stones only');
+  assert.ok(plain.wall.length === 1 && mild.drifts.length === 0, 'a mild map\'s stone island: its foot stones only');
   const mud = mild.island(true, 0, 0, 0, 9, 0.26);
-  assert.ok(mud.wall.length === 1 && mud.snow.length === 0, 'a mud island: its apron');
+  assert.ok(mud.wall.length === 1 && mild.drifts.length === 0, 'a mud island: its apron');
   assert.deepEqual(Array.from(mild.island(false, 0, 0, 0, 9, 0.23).wall[0].attributes.position.array),
     Array.from(plain.wall[0].attributes.position.array), 'the same island, the same dressing');
 }

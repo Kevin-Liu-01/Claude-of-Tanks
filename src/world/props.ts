@@ -4421,7 +4421,6 @@ ${snowCap ? `
       if (style !== 'adobe' && sourcedStoneIsBrick(mapId)) return;
       const dressed = wallDressing.island(style === 'adobe', x0 + tx * ta, z0 + tz * ta, x0 + tx * tb, z0 + tz * tb, style === 'adobe' ? thick * 0.5 : 0.23);
       for (const part of dressed.wall) buckets[wallB].push(part);
-      for (const part of dressed.snow) buckets.plaster.push(part);
     }
     function endPost(px: number, pz: number): void {
       const py = heightField.getHeightAt(px, pz) - 0.15;
@@ -7401,6 +7400,20 @@ ${snowCap ? `
     }
   }
   yield* mergeMaterialBuckets();
+  // the scenery lane (wave 34): the snow drifts banked against the walls draw as one mesh of their own on the plaster
+  // (a drift is a low ramp: it receives the cascades and casts none), so a frame can show and hide them
+  if (wallDressing.drifts.length) {
+    const drifts = mergeGeometries(wallDressing.drifts.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+    for (const g of wallDressing.drifts) g.dispose();
+    wallDressing.drifts.length = 0;
+    if (drifts) {
+      const mesh = new THREE.Mesh(drifts, mats.plaster);
+      mesh.name = 'props-snow-drifts';
+      mesh.receiveShadow = true;
+      mesh.matrixAutoUpdate = false;
+      group.add(mesh);
+    }
+  }
   // Append after every ordinary prop so existing network prop identities stay stable.
   for (const clutter of pendingClutter) {
     if (!clutter.activate(destructibles.length)) continue;

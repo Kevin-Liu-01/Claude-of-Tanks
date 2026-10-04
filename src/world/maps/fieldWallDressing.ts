@@ -91,13 +91,13 @@ export interface SnowLoadOptions {
 }
 
 /**
- * The snow lying along the top of a wall-like geometry that runs along z (x across, y up): a cushion seven points
+ * The snow lying along the top of a wall-like geometry that runs along z (x across, y up): a cushion five points
  * across, 5-10 cm deep over the highest stones under it, its crest following them but bridging their gaps, its lips
  * draped a few centimetres over both faces; closed at both ends. The faces look up, so the props' winter snow cap
  * paints it white.
  */
 export function buildSnowLoad(g: THREE.BufferGeometry, seed: number, opts: SnowLoadOptions = {}): THREE.BufferGeometry {
-  const bin = opts.bin ?? 0.1, uvPerM = opts.uvPerM ?? 1.2;
+  const bin = opts.bin ?? 0.2, uvPerM = opts.uvPerM ?? 1.2;
   const p = g.attributes.position;
   let z0 = Infinity, z1 = -Infinity;
   for (let i = 0; i < p.count; i++) { const z = p.getZ(i); if (z < z0) z0 = z; if (z > z1) z1 = z; }
@@ -118,9 +118,10 @@ export function buildSnowLoad(g: THREE.BufferGeometry, seed: number, opts: SnowL
   }
   // the snow bridges the gaps: a running max over a stone's length, then a running mean
   const crest = new Float32Array(n + 1), lo = new Float32Array(n + 1), hi = new Float32Array(n + 1);
+  const reachBins = Math.max(1, Math.round(0.2 / bin));
   for (let k = 0; k <= n; k++) {
     let m = -Infinity, a = Infinity, b = -Infinity;
-    for (let j = Math.max(0, k - 2); j <= Math.min(n, k + 2); j++) {
+    for (let j = Math.max(0, k - reachBins); j <= Math.min(n, k + reachBins); j++) {
       m = Math.max(m, top[j]);
       if (Number.isFinite(xlo[j])) { a = Math.min(a, xlo[j]); b = Math.max(b, xhi[j]); }
     }
@@ -144,8 +145,9 @@ export function buildSnowLoad(g: THREE.BufferGeometry, seed: number, opts: SnowL
     }
   }
   const r = dressingRng(seed), depth = wobble(r), lip = wobble(r);
-  const ACROSS = [0, 0.08, 0.25, 0.5, 0.75, 0.92, 1];
-  const RISE = [-0.012, 0.45, 0.86, 1, 0.86, 0.45, -0.012];
+  // (five points across, a row every 20 cm along: about 130 triangles a module; wave 34 counted the triangles)
+  const ACROSS = [0, 0.14, 0.5, 0.86, 1];
+  const RISE = [-0.012, 0.62, 1, 0.62, -0.012];
   const endTaper = Math.max(1, Math.round(0.14 / bin)); // the cushion thins out over its last 14 cm at either end
   const positions: number[] = [], uvs: number[] = [];
   for (let k = 0; k <= n; k++) {
@@ -347,19 +349,22 @@ export interface WallDressing {
   readonly snow: boolean;
   readonly adobeBucket: string;
   readonly mudUv: number;
-  /** The foot of one built island a-b of a run (and its drift on a snow map): `wall` parts go to the wall's bucket,
-   * `snow` parts to the plaster bucket (the snow cap whitens them). Streams named by the island's place. */
-  island(adobe: boolean, ax: number, az: number, bx: number, bz: number, half: number): { wall: THREE.BufferGeometry[]; snow: THREE.BufferGeometry[] };
+  /** The snow drifts the islands banked so far (the props owner draws them as one mesh of their own on the plaster). */
+  readonly drifts: THREE.BufferGeometry[];
+  /** The foot of one built island a-b of a run, for the wall's bucket; on a snow map its drift joins `drifts`. Streams
+   * named by the island's place. */
+  island(adobe: boolean, ax: number, az: number, bx: number, bz: number, half: number): { wall: THREE.BufferGeometry[] };
   /** A run head with the winter's load on its top (one geometry; the head is consumed). */
   loadHead(head: THREE.BufferGeometry, seed: number): THREE.BufferGeometry;
 }
 
 /** The owner the props wall runs call (props.ts addWallRun): one name in the run's scope. */
 export function createWallDressing(o: WallDressingOptions): WallDressing {
+  const drifts: THREE.BufferGeometry[] = [];
   return {
-    snow: o.snow, adobeBucket: o.adobeBucket, mudUv: o.mudUv,
+    snow: o.snow, adobeBucket: o.adobeBucket, mudUv: o.mudUv, drifts,
     island(adobe, ax, az, bx, bz, half) {
-      const out = { wall: [] as THREE.BufferGeometry[], snow: [] as THREE.BufferGeometry[] };
+      const out = { wall: [] as THREE.BufferGeometry[] };
       if (adobe) {
         const apron = buildMudApron(o.ground, ax, az, bx, bz, half, placeSeed(ax, az, 0xad0a),
           { mobile: o.mobile, uvPerM: o.mudUv, plainV: o.plainV });
@@ -374,7 +379,7 @@ export function createWallDressing(o: WallDressingOptions): WallDressing {
         const dx = Math.cos(SNOW_WIND_YAW), dz = -Math.sin(SNOW_WIND_YAW);
         const side = dx * tz - dz * tx > 0 ? -1 : 1;
         const drift = buildWallDrift(o.ground, ax, az, bx, bz, half + 0.04, side, placeSeed(ax, az, 0xd71f), { mobile: o.mobile });
-        if (drift) out.snow.push(drift);
+        if (drift) drifts.push(drift);
       }
       return out;
     },
