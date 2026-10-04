@@ -208,10 +208,12 @@ function pageFindStage(world, kind, landing) {
   }
   const crossKind = kind === 'cross' || kind === 'cross-steep';
   let best = null;
-  for (let gx = -280; gx <= 280; gx += 20) {
-    for (let gz = -280; gz <= 280; gz += 20) {
-      for (let k = 0; k < 8; k++) {
-        const yaw = (k * Math.PI) / 4;
+  // round 7: the slope stage is searched on a finer grid and heading set (a fall line with no cross slope is rare)
+  const gridStep = kind === 'slope' ? 10 : 20, headings = kind === 'slope' ? 16 : 8;
+  for (let gx = -280; gx <= 280; gx += gridStep) {
+    for (let gz = -280; gz <= 280; gz += gridStep) {
+      for (let k = 0; k < headings; k++) {
+        const yaw = (k * 2 * Math.PI) / headings;
         const fx = Math.sin(yaw), fz = Math.cos(yaw);
         const len = kind === 'rough' ? 40 : kind === 'flat' ? 70 : kind === 'uneven' || crossKind ? 12 : 10;
         let ok = true, rough = 0, maxGrade = 0, maxSide = 0, prev = null, prev2 = null, wetAny = false;
@@ -264,9 +266,12 @@ function pageFindStage(world, kind, landing) {
           score = -Math.abs(Math.atan(side) - target) * 10 - twist * 20 - rough - maxGrade;
         }
         else {
+          // round 7 (wave 42: "1.3 degrees of roll pointed straight up the 18-degree slope"): the stage's own cross
+          // slope ran 0.4-1.9 degrees under the hull; a hull parked up the fall line has the cross slope held within
+          // 0.7 degree along its whole line
           const grade = (h(gx + fx * 4, gz + fz * 4) - h(gx - fx * 4, gz - fz * 4)) / 8;
-          if (side > 0.06 || rough > 0.6) continue;
-          score = -Math.abs(Math.atan(grade) - 0.31) * 10 - rough;
+          if (maxSide > 0.013 || rough > 0.6 || Math.abs(Math.atan(grade) - 0.31) > 0.05) continue;
+          score = -Math.abs(Math.atan(grade) - 0.31) * 10 - rough - maxSide * 20;
         }
         if (!best || score > best.score) best = { x: gx, z: gz, yaw, score: +score.toFixed(4), maxGrade: +maxGrade.toFixed(3) };
       }
@@ -310,23 +315,38 @@ function pageJump(state, jumpMps) {
   state.grounded = false;
 }
 
-/** The player's road wheels as rendered: hull-local stations and travel (`off`, + up into the hull) per side. */
+/** The player's road wheels as rendered: hull-local stations and travel (`off`, + up into the hull) per side. L and R
+ * are the tank's own left and right (round 7; wave 42: "R is the tank's left in the side views"): the running gear's
+ * side +1 sits at hull-local +x, which for a hull facing +z in this right-handed, y-up world is its left. */
 function pageRoadWheels(root) {
   let wheels = null;
   root.traverse((object) => {
     if (!wheels && typeof object.userData?.runningGearRoadWheels === 'function') {
-      wheels = { L: object.userData.runningGearRoadWheels(-1), R: object.userData.runningGearRoadWheels(1), owner: object };
+      wheels = { L: object.userData.runningGearRoadWheels(1), R: object.userData.runningGearRoadWheels(-1), owner: object };
     }
   });
   return wheels;
 }
 
+/** A road wheel's tyre bottom over the ground under its footprint (round 7; wave 42, "GROUND TOUCHDOWN with 0 of 6
+ * wheels"): the least gap over the centre, the rim edges across the axle and half a radius fore and aft, as the
+ * renderer rests a wheel on the highest ground under it. Read at the centre alone, a level tyre touching a 9-degree
+ * cross slope with its uphill rim read 5 cm clear. */
+function pageWheelGap(owner, w, hf, V) {
+  let gap = Infinity;
+  for (const [dx, dz] of [[0, 0], [0.15, 0], [-0.15, 0], [0, 0.55 * w.r], [0, -0.55 * w.r]]) {
+    const at = owner.localToWorld(new V(w.x + dx, w.y + w.off - w.r, w.z + dz));
+    gap = Math.min(gap, at.y - hf.getHeightAt(at.x, at.z));
+  }
+  return gap;
+}
 
-const PAGE_HELPERS = [pageFindStage, pageResetVertical, pageLevel, pageJump, pageRoadWheels].map((fn) => fn.toString()).join('\n');
+const PAGE_HELPERS = [pageFindStage, pageResetVertical, pageLevel, pageJump, pageRoadWheels, pageWheelGap]
+  .map((fn) => fn.toString()).join('\n');
 
 async function installHelpers(page) {
   await page.evaluate(`window.__strip = (() => { ${PAGE_HELPERS}
-    return { pageFindStage, pageResetVertical, pageLevel, pageJump, pageRoadWheels }; })(); true`);
+    return { pageFindStage, pageResetVertical, pageLevel, pageJump, pageRoadWheels, pageWheelGap }; })(); true`);
 }
 
 async function stageCase(page, stage) {
@@ -367,10 +387,7 @@ async function stageCase(page, stage) {
     if (wheels) {
       wheels.owner.updateWorldMatrix(true, false);
       for (const side of ['L', 'R']) {
-        for (const w of wheels[side]) {
-          const at = wheels.owner.localToWorld(new V(w.x, w.y + w.off - w.r, w.z));
-          restGap[side].push(at.y - hf.getHeightAt(at.x, at.z));
-        }
+        for (const w of wheels[side]) restGap[side].push(H.pageWheelGap(wheels.owner, w, hf, V));
       }
     }
     window.__stripRestGap = restGap;
@@ -526,8 +543,7 @@ async function stampAndRead(page, stamp) {
         const travelCm = [], gapCm = [];
         let contact = 0;
         wheels[side].forEach((w, i) => {
-          const at = wheels.owner.localToWorld(new V(w.x, w.y + w.off - w.r, w.z));
-          const gap = at.y - hf.getHeightAt(at.x, at.z) - (restGap[side][i] ?? 0);
+          const gap = H.pageWheelGap(wheels.owner, w, hf, V) - (restGap[side][i] ?? 0);
           if (gap < 0.03) contact++;
           travelCm.push(Math.round(w.off * 100));
           gapCm.push(Math.round(gap * 100));
