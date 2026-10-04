@@ -2366,6 +2366,11 @@ const GROWN_LEAF_BILLBOARD = 1;
  * the palms' fronds, the trunks and the phones' cards keep the pixel dissolve.
  */
 const CANOPY_NEAR_DISSOLVE = Object.freeze([2.5, 8.0] as const);
+/**
+ * Trees round 4: the near dissolve's reach per material (uCotNearReach, over CANOPY_NEAR_DISSOLVE and the crown's size):
+ * a crown's whole band, a shrub's a third of it — a 6 m field bush keeps its clusters to about 2 m from the camera.
+ */
+const FOLIAGE_NEAR_REACH = Object.freeze({ crown: 1, shrub: 0.3 });
 
 
 /**
@@ -4503,8 +4508,20 @@ function* vegetationBuildSteps(
       }
       #endif`);
   };
+  /**
+   * Trees round 4: a shrub's foliage hook — the crowns' with a shorter near-dissolve reach (uCotNearReach, a uniform of
+   * each material over the one program): a crown thins away from 8 m as the camera comes up to it, but a shrub keeps
+   * its clusters to about 2 m (the gauntlet's wave 51 on 3b: the near shrub read as "a handful of identical, flat,
+   * hard-outlined leaf cutouts" — the dissolve had taken most of a 6 m bush's clusters at 3 to 6 m and left the rest
+   * floating).
+   */
+  const shrubFoliageHook = (shader: MaterialShader): void => {
+    foliageWindHook(shader);
+    shader.uniforms.uCotNearReach = { value: FOLIAGE_NEAR_REACH.shrub };
+  };
   const foliageWindHook = (shader: MaterialShader): void => {
     canopyWindHook(shader);
+    shader.uniforms.uCotNearReach = { value: FOLIAGE_NEAR_REACH.crown };
     // Trees round 2 (2026-10-03): the grown crowns' leaf clusters turn about their own axes to face the camera
     // (COT_LEAF_BILLBOARD, the share of the turn; the desktop grown builds). A cluster keeps its seat, its axis (a
     // hanging spray still hangs, a level one still reaches out) and its sag, and shows the viewer its face instead of
@@ -4514,11 +4531,12 @@ function* vegetationBuildSteps(
     // model-view's rigid inverse; the lighting keeps the crown hull's normals, which never turned with the card. A
     // geometry without the frame (the round-8 bush cards) reads aAxis as zero and stays as authored.
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\n#ifdef COT_LEAF_BILLBOARD\nattribute vec3 aAxis;\nattribute vec3 aLeaf;\nvarying float vCotNearScale;\nvarying float vCotGeoNear;\n#endif');
+      '#include <common>\n#ifdef COT_LEAF_BILLBOARD\nattribute vec3 aAxis;\nattribute vec3 aLeaf;\nuniform float uCotNearReach;\nvarying float vCotNearScale;\nvarying float vCotGeoNear;\n#endif');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`#include <begin_vertex>
       #ifdef COT_LEAF_BILLBOARD
-      // the near-camera dissolve's reach by the crown's size: a shrub's (crown ~1.5–3 m across) under half a tree's
-      vCotNearScale = mix( 0.45, 1.0, smoothstep( 1.6, 3.6, aCard.w * length( instanceMatrix[ 0 ].xyz ) ) );
+      // the near-camera dissolve's reach by the crown's size: a shrub's (crown ~1.5–3 m across) under half a tree's;
+      // trees round 4: times the material's own reach (uCotNearReach: a crown's 1, a shrub's FOLIAGE_NEAR_REACH.shrub)
+      vCotNearScale = mix( 0.45, 1.0, smoothstep( 1.6, 3.6, aCard.w * length( instanceMatrix[ 0 ].xyz ) ) ) * uCotNearReach;
       vCotGeoNear = 0.0;
       if ( dot( aAxis, aAxis ) > 0.5 ) {
         mat3 cotIm = mat3( instanceMatrix );
@@ -5069,7 +5087,7 @@ function* vegetationBuildSteps(
       // Species vary textures/uniforms, not this shared shader hook. Three
       // already keys material/geometry defines; a species suffix needlessly
       // recompiles identical programs when the last world using it is evicted.
-      fm.customProgramCacheKey = () => 'world-tree-foliage-v21'; // trees round 3b: the clusters' near dissolve (round 2: the facing clusters; p2: the edge-on fade; round 77b: the leaf-scale detail; round 77: wind, cluster shadows, translucency)
+      fm.customProgramCacheKey = () => 'world-tree-foliage-v22'; // trees round 4: each material's near reach (round 3b: the clusters' near dissolve; round 2: the facing clusters; p2: the edge-on fade; round 77b: the leaf-scale detail; round 77: wind, cluster shadows, translucency)
       foliageMats[sp] = fm;
       // alpha-tested shadow casting: without this every card shadows as a quad.
       // r6: palm gets a HIGHER shadow alphaTest — its frond texture covers most
@@ -6407,8 +6425,8 @@ function* vegetationBuildSteps(
     if (tile) { material.normalMap = tile; material.normalScale.set(LEAF_DETAIL_NORMAL_SCALE, LEAF_DETAIL_NORMAL_SCALE); }
     material.defines = { ...(material.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2),
       COT_LEAF_BILLBOARD: GROWN_LEAF_BILLBOARD.toFixed(2) };
-    engineCtx.setupShadowMaterial(material, foliageWindHook);
-    material.customProgramCacheKey = () => 'world-tree-foliage-v21';
+    engineCtx.setupShadowMaterial(material, shrubFoliageHook);
+    material.customProgramCacheKey = () => 'world-tree-foliage-v22';
     const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map, alphaTest: 0.38 });
     retainedMaterials.push(material, depth);
     retainedTextures.push(map);
