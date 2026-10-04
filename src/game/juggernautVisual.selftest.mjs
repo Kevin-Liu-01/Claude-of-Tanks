@@ -70,13 +70,6 @@ assert.notEqual(hull.material,source,'material-only repair is discovered by the 
 const detailGroup=new T.Group();detailGroup.add(new T.Mesh(geometry,source));turret.add(detailGroup);
 update(100,1.12,.3);
 assert.equal(detailGroup.children[0].material,hull.material,'streamed subtrees acquire energy');
-const optimized={uniforms:{},vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader};
-hull.material.onBeforeCompile(optimized,{});
-assert.equal(optimized.uniforms.energyHitCount.value,0,'idle tanks skip the complete impact loop');
-pulseJuggernautImpact(root,[0,1,0]);assert.equal(optimized.uniforms.energyHitCount.value,1);
-update(100,1.12,1.3);assert.equal(optimized.uniforms.energyHitCount.value,0);
-const effectCode=optimized.fragmentShader.split('float juggernautRim')[1];
-assert.doesNotMatch(effectCode,/\b(?:exp|pow)\(/,'energy waves do not evaluate exponentials per pixel');
 clearJuggernautVisual(root);
 assert.equal(root._listeners.childadded.length,0,'effect cleanup releases hierarchy observers');
 

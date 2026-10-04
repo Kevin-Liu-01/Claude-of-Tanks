@@ -39,7 +39,7 @@ try{
    for(const count of [1,14]){
     for(let i=0;i<count;i++){roots[i].position.set(count===1?0:(i%7-3)*9,0,count===1?0:Math.floor(i/7)*12-6);scene.add(roots[i]);}
     camera.position.set(count===1?11:40,count===1?8:45,count===1?15:60);camera.lookAt(0,1,0);
-    for(const [version,energy] of versions)for(const styleName of ['juggernaut','infected'])for(const hit of [false,true]){
+    for(const styleName of ['juggernaut','infected'])for(const hit of [false,true])for(const pass of [0,1])for(const [version,energy] of (pass?[...versions].reverse():versions)){
      const style=energy.TANK_ENERGY[styleName];
      for(let i=0;i<count;i++)energy.syncTankEnergyVisual(roots[i],{},1.01,100,100,0,false,style);
      await renderer.compileAsync(scene,camera);
@@ -53,8 +53,8 @@ try{
       const ms=await timedRender();if(ms!==null)samples.push(ms);
      }
      samples.sort((a,b)=>a-b);
-     results.push({version,count,style:styleName,hit,timing:timer?'GPU query ms':'render + flush ms',samples:samples.length,medianMs:samples[Math.floor(samples.length/2)],drawCalls:renderer.info.render.calls});
-     await window.energyCapture(`${version}-${count}-${styleName}-${hit?'hits':'idle'}`);
+     results.push({version,pass,count,style:styleName,hit,timing:timer?'GPU query ms':'render + flush ms',samples:samples.length,medianMs:samples[Math.floor(samples.length/2)],drawCalls:renderer.info.render.calls});
+     await window.energyCapture(`${version}-${count}-${styleName}-${hit?'hits':'idle'}-${pass}`);
      for(let i=0;i<count;i++)energy.clearJuggernautVisual(roots[i]);
     }
     for(const root of roots)root.removeFromParent();

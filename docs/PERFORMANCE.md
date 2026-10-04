@@ -61,9 +61,9 @@ Tank energy highlights stay on the existing vehicle surfaces and add no geometry
 or draw calls. Stable models no longer undergo periodic recursive scans: hierarchy
 change listeners discover streamed parts, while a flat binding check catches repaired
 materials. The listeners are released with the effect. Each style evaluates only its
-own wave pattern. Idle tanks skip the contact-ripple loop; active contacts reject
-pixels outside their reach before computing the wavy ring, and age/fade terms are
-prepared once per contact rather than per pixel. The six-contact pool remains bounded.
+own wave pattern instead of computing the Juggernaut pattern before replacing it.
+The original localized hit-ripple calculation and bounded six-contact pool are
+preserved; the rim uses a simple squared falloff.
 
 `node tools/tank-energy.browser.mjs` renders the real M1A2 with one and fourteen
 vehicles, quiet and impact-active effects, and saves screenshots and timing receipts
