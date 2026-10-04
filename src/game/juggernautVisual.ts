@@ -15,7 +15,7 @@ interface Shield {
   surfaces:Surface[];materials:Map<THREE.Material,THREE.Material>;
   style:TankEnergyStyle;color:{value:THREE.Color};pattern:{value:number};
   strength:{value:number};time:{value:number};rootInverse:{value:THREE.Matrix4};
-  impacts:Impact[];hitPositions:{value:THREE.Vector4[]};nextImpact:number;
+  impacts:Impact[];hitPositions:{value:THREE.Vector4[]};hitShapes:{value:THREE.Vector4[]};hitCount:{value:number};nextImpact:number;
   dispose:()=>void;refresh:()=>void;refreshIn:number;
 }
 const scales=new WeakMap<THREE.Object3D,number>();
@@ -61,11 +61,27 @@ export function syncTankEnergyVisual(root:THREE.Object3D,_dims:{widthM:number;hu
       // Existing vehicle shader hooks include CSM registrations keyed by the
       // source material. Recompile the restored source to rebind those hooks.
       for(const [source,material] of materials){source.needsUpdate=true;material.dispose();}
-      materials.clear();surfaces.length=0;shields.delete(root);
+      for(const object of watched){
+        object.removeEventListener('childadded',markDirty);
+        object.removeEventListener('childremoved',markDirty);
+      }
+      watched.clear();materials.clear();surfaces.length=0;shields.delete(root);
       root.removeEventListener('removed',dispose);
     };
     const bindings=new WeakMap<THREE.Mesh,Surface>();
+    // Topology changes are rare. Track them rather than rescanning every part
+    // of every glowing tank four times per second.
+    const watched=new Set<THREE.Object3D>();
+    let topologyDirty=true;
+    const markDirty=()=>{topologyDirty=true;};
+    const watch=(object:THREE.Object3D)=>{
+      if(watched.has(object))return;
+      watched.add(object);
+      object.addEventListener('childadded',markDirty);
+      object.addEventListener('childremoved',markDirty);
+    };
     const inspect=(object:THREE.Object3D)=>{
+      watch(object);
       if(!(object instanceof THREE.Mesh))return;
       for(let part:THREE.Object3D|null=object;part&&part!==root;part=part.parent)if(part.userData.excludeModeEnergy)return;
       const bound=bindings.get(object);
@@ -78,13 +94,17 @@ export function syncTankEnergyVisual(root:THREE.Object3D,_dims:{widthM:number;hu
       else {const surface={mesh:object,original,highlight};surfaces.push(surface);bindings.set(object,surface);}
       object.material=highlight;
     };
-    shield={surfaces,materials,strength,time,rootInverse,style,color:{value:new THREE.Color(style.color)},pattern:{value:style.pattern},impacts,hitPositions:{value:impacts.map(i=>i.sample)},nextImpact:0,dispose,refresh:()=>root.traverse(inspect),refreshIn:0};
+    shield={surfaces,materials,strength,time,rootInverse,style,color:{value:new THREE.Color(style.color)},pattern:{value:style.pattern},impacts,hitPositions:{value:impacts.map(i=>i.sample)},hitShapes:{value:impacts.map(()=>new THREE.Vector4())},hitCount:{value:0},nextImpact:0,dispose,refresh:()=>{
+      if(topologyDirty){root.traverse(inspect);topologyDirty=false;}
+      else for(const surface of surfaces)if(surface.mesh.material!==surface.highlight)inspect(surface.mesh);
+    },refreshIn:0};
     shields.set(root,shield);root.addEventListener('removed',dispose);
   }
   if(shield.style!==style){
     shield.style=style;shield.color.value.setHex(style.color);shield.pattern.value=style.pattern;
     for(const material of shield.materials.values())material.name=style.name;
     for(const impact of shield.impacts){impact.anchor=null;impact.sample.w=-1;}
+    shield.hitCount.value=0;
   }
   // Detail groups reattach as tanks approach. Discover those real surfaces at
   // a bounded cadence, without traversing the whole vehicle every frame.
@@ -94,7 +114,9 @@ export function syncTankEnergyVisual(root:THREE.Object3D,_dims:{widthM:number;hu
   shield.time.value+=elapsed;
   root.updateWorldMatrix(true,false);
   shield.rootInverse.value.copy(root.matrixWorld).invert();
-  for(const impact of shield.impacts){
+  shield.hitCount.value=0;
+  for(let index=0;index<shield.impacts.length;index++){
+    const impact=shield.impacts[index]!;
     if(!impact.anchor)continue;
     impact.sample.w+=elapsed;
     if(impact.sample.w>=IMPACT_DURATION){impact.anchor=null;impact.sample.w=-1;continue;}
@@ -102,8 +124,17 @@ export function syncTankEnergyVisual(root:THREE.Object3D,_dims:{widthM:number;hu
     impact.anchor.updateWorldMatrix(true,false);
     impactPoint.copy(impact.local).applyMatrix4(impact.anchor.matrixWorld).applyMatrix4(shield.rootInverse.value);
     impact.sample.set(impactPoint.x,impactPoint.y,impactPoint.z,impact.sample.w);
+    updateHitShape(shield,index);
   }
   shield.strength.value=.55+.08*Math.sin(shield.time.value*1.8)+.3*Math.max(0,hp/Math.max(1,maxHp));
+}
+
+function updateHitShape(shield:Shield,index:number):void {
+  const age=shield.impacts[index]!.sample.w;
+  shield.hitShapes.value[index]!.set(age*2.4,
+    1-THREE.MathUtils.smoothstep(age,.25,IMPACT_DURATION),
+    THREE.MathUtils.smoothstep(age,0,.28),Math.exp(-age*7));
+  shield.hitCount.value=Math.max(shield.hitCount.value,index+1);
 }
 
 const impactPoint=new THREE.Vector3();
@@ -120,6 +151,7 @@ export function pulseJuggernautImpact(root:THREE.Object3D,pos:readonly number[],
   impact.local.set(pos[0]!,pos[1]!,pos[2]!);anchor.worldToLocal(impact.local);impact.anchor=anchor;
   impactPoint.set(pos[0]!,pos[1]!,pos[2]!);root.worldToLocal(impactPoint);
   impact.sample.set(impactPoint.x,impactPoint.y,impactPoint.z,0);
+  updateHitShape(shield,(shield.nextImpact+IMPACT_COUNT-1)%IMPACT_COUNT);
   return true;
 }
 
@@ -138,6 +170,7 @@ function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
     shader.uniforms.juggernautStrength=shield.strength;shader.uniforms.juggernautTime=shield.time;
     shader.uniforms.energyColor=shield.color;shader.uniforms.energyPattern=shield.pattern;
     shader.uniforms.juggernautRootInverse=shield.rootInverse;shader.uniforms.juggernautHits=shield.hitPositions;
+    shader.uniforms.energyHitShapes=shield.hitShapes;shader.uniforms.energyHitCount=shield.hitCount;
     shader.vertexShader=shader.vertexShader
       .replace('#include <common>','#include <common>\nuniform mat4 juggernautRootInverse;\nvarying vec3 vJuggernautPosition;')
       .replace('#include <project_vertex>',`#include <project_vertex>
@@ -151,38 +184,45 @@ function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
         vJuggernautPosition = (juggernautRootInverse * modelMatrix * shieldPoint).xyz;
       `);
     shader.fragmentShader=shader.fragmentShader
-      .replace('#include <common>',`#include <common>\nuniform float juggernautStrength;\nuniform float juggernautTime;\nuniform vec3 energyColor;\nuniform float energyPattern;\nuniform vec4 juggernautHits[${IMPACT_COUNT}];\nvarying vec3 vJuggernautPosition;`)
+      .replace('#include <common>',`#include <common>\nuniform float juggernautStrength;\nuniform float juggernautTime;\nuniform vec3 energyColor;\nuniform float energyPattern;\nuniform vec4 juggernautHits[${IMPACT_COUNT}];\nuniform vec4 energyHitShapes[${IMPACT_COUNT}];\nuniform int energyHitCount;\nvarying vec3 vJuggernautPosition;`)
       .replace('#include <opaque_fragment>',`
-        float juggernautRim = pow(1.0 - abs(dot(normalize(normal), normalize(vViewPosition))), 2.4);
+        float juggernautRim = 1.0 - abs(dot(normal, normalize(vViewPosition)));
+        juggernautRim *= juggernautRim;
         vec3 shieldSurface = vJuggernautPosition;
-        float wave = smoothstep(0.78, 1.0, sin(shieldSurface.z * 1.65 + shieldSurface.y * 2.6 - juggernautTime * 2.8
-          + sin(shieldSurface.x * 2.4 + juggernautTime * 1.3) * 1.0
-          + sin(shieldSurface.z * 2.1 - juggernautTime * 0.8) * 0.4));
-        if(energyPattern > 0.5 && energyPattern < 1.5) {
-          // Carrier chevrons travel up the skin like the banner's woven emblem.
+        float wave;
+        if(energyPattern < 0.5) {
+          wave = smoothstep(0.78, 1.0, sin(shieldSurface.z * 1.65 + shieldSurface.y * 2.6 - juggernautTime * 2.8
+            + sin(shieldSurface.x * 2.4 + juggernautTime * 1.3)
+            + sin(shieldSurface.z * 2.1 - juggernautTime * 0.8) * 0.4));
+        } else if(energyPattern < 1.5) {
           wave = smoothstep(0.78,1.0,sin(shieldSurface.y*6.0-abs(shieldSurface.x)*3.5-juggernautTime*3.2));
           wave *= 0.7+0.3*sin(shieldSurface.z*3.0+juggernautTime);
-        } else if(energyPattern > 1.5) {
-          // Uneven green veins breathe across infected armor.
+        } else {
           float veins = sin(shieldSurface.x*4.2+sin(shieldSurface.z*3.5+juggernautTime))
             + sin(shieldSurface.y*5.6-shieldSurface.z*2.8-juggernautTime*1.6);
           wave = smoothstep(0.8,1.65,veins)*(0.7+0.3*sin(juggernautTime*2.2));
         }
         float hitGlow = 0.0;
         for(int i = 0; i < ${IMPACT_COUNT}; i++) {
+          if(i >= energyHitCount) break;
           float age = juggernautHits[i].w;
           if(age >= 0.0 && age < ${IMPACT_DURATION}) {
             vec3 offset = shieldSurface - juggernautHits[i].xyz;
-            float d = length(offset);
-            vec3 direction = offset / max(d, 0.0001);
-            // Smooth 3-D lobes avoid a circular stamp or an angular seam.
-            float rippleWarp = (sin(direction.x * 7.0 + direction.y * 5.0 + age * 10.0) * 0.15
-              + sin(direction.z * 9.0 - direction.y * 6.0 - age * 7.0) * 0.10)
-              * smoothstep(0.0, 0.28, age);
-            float ring = exp(-pow((d - max(0.0, age * 2.4 + rippleWarp)) / 0.16, 2.0));
-            float core = exp(-d * d * 8.0 - age * 7.0);
-            float fade = 1.0 - smoothstep(0.25, ${IMPACT_DURATION}, age);
-            hitGlow += (ring + core) * fade;
+            vec4 shape = energyHitShapes[i];
+            float d2 = dot(offset, offset);
+            // Reject pixels outside the ring before square roots or sines.
+            float reach = max(0.72, shape.x + 0.55);
+            if(d2 > reach * reach) continue;
+            float d = sqrt(d2);
+            float ring = 0.0;
+            if(abs(d - shape.x) < 0.55) {
+              vec3 direction = offset / max(d, 0.0001);
+              float rippleWarp = (sin(direction.x * 7.0 + direction.y * 5.0 + age * 10.0) * 0.15
+                + sin(direction.z * 9.0 - direction.y * 6.0 - age * 7.0) * 0.10) * shape.z;
+              ring = 1.0 - smoothstep(0.03, 0.26, abs(d - max(0.0, shape.x + rippleWarp)));
+            }
+            float core = (1.0 - smoothstep(0.0, 0.52, d2)) * shape.w;
+            hitGlow += (ring + core) * shape.y;
           }
         }
         hitGlow = min(hitGlow, 2.0);
@@ -190,7 +230,7 @@ function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
           + mix(energyColor,vec3(1.0),0.4) * hitGlow * 2.0;
         #include <opaque_fragment>`);
   };
-  material.customProgramCacheKey=()=>cacheKey+'|tank-mode-energy-v4';
+  material.customProgramCacheKey=()=>cacheKey+'|tank-mode-energy-v5';
   highlightSources.set(material,source);
   shield.materials.set(source,material);return material;
 }

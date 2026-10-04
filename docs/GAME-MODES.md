@@ -24,7 +24,7 @@ rule the battle does not keep.
 | Frontline Assault | Take three trench sectors in turn, then hold the last one | three allied bots, a ten-strong same-nation formation (the operation's, or the arranged nation), 12:00 clock that loses the sortie when it expires; defenders escalate per sector and per campaign operation | No | The last sector held for 20 s, the human attacker destroyed, or the clock |
 | Mars Mode | Hold the three station sectors of Olympus Basin | 0.38 g, +25 % speed, +20 % hull, −10 % damage, +11 % reload rate, rocket jump 9.5 m/s (F, boosts again in the air), ×3 recoil launch, ×0.9 impact knock; boost caches every 22 s | 6 s | First team to 750 points, or the 12:00 clock (score) |
 | Juggernaut | Defeat the boss, or survive as the boss | Choose the boss or hunter role; boss has 8× hull, half reload time and 90% speed | Hunters: 6 s; boss: none | Boss destroyed, or boss survives 10:00 |
-| Infected | Survive the outbreak, or convert every survivor | One initial infected; destroyed survivors join the infected, who move 30% faster | 4 s | No survivors remain, or survivors reach 7:00 |
+| Infected | Survive the outbreak, or convert every survivor | Four initial infected; destroyed survivors join them with 125% HP, 40% more speed and 30% faster reload | 3 s | No survivors remain, or survivors reach 7:00 |
 | Realistic | Destroy the opposing force through critical damage | Normal spotting; no hull HP attrition, automatic module repair or consumables | No | Crew eliminated or ammunition destruction eliminates a team; 15:00 draw |
 | Gun Game | Complete a five-weapon ladder | Two confirmed kills per stage; unlimited ammunition | 4 s | First player to complete the ladder; 15:00 score decision |
 | Drone | Destroy opponents with tanks and directly piloted drones | Launch a physical FPV quadcopter; its shaped charge interacts with cages, ERA and spaced armor at the impact point | 6 s | First team to 20 kills (configurable), or 10:00 score decision |
@@ -120,7 +120,8 @@ The boss is 12% larger, including its armor and module hit geometry, and carries
 
 **Infected** begins with four infected opponents (at least three in a custom setup). Survivors have 30% of their normal HP; infected have 125%, 40% more speed and 30% faster reloads. A survivor's destruction changes
 that player's team before their next spawn, including their allied/enemy roster
-and bot targeting. The remaining survivors win by lasting seven minutes; infected
+and bot targeting. Bots discard a cached enemy as soon as either tank changes sides;
+the converted player’s spotting readout follows their new team. The remaining survivors win by lasting seven minutes; infected
 win when nobody remains unconverted.
 
 **Gun Game** keeps the selected chassis, armor and crew, but replaces its main

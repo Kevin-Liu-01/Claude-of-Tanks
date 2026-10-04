@@ -273,7 +273,10 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
  .gunship-solution{width:190px}.gunship-solution .flight-instrument{font-size:10px}
  .gunship-solution-label{font-size:9px;bottom:calc(100% + 18px)}
 }
-@media(pointer:coarse) and (orientation:portrait){.cot-flight-hud[data-kind=gunship] .flight-console{width:calc(100% - 24px);bottom:max(128px,calc(env(safe-area-inset-bottom) + 118px))}}
+@media(pointer:coarse) and (orientation:portrait){
+ .cot-flight-hud[data-kind=gunship] .flight-console{width:calc(100% - 24px);bottom:max(128px,calc(env(safe-area-inset-bottom) + 118px))}
+ html[data-flight=gunship] .cot-touch .scope{bottom:max(34px,env(safe-area-inset-bottom))!important}
+}
 @media(max-height:290px){
  .cot-flight-hud[data-kind=gunship] :is(.flight-designation,.gunship-solution-label){display:none}
  .cot-flight-hud[data-kind=gunship] .flight-weapons{grid-row:1}

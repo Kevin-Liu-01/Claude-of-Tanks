@@ -2238,7 +2238,7 @@ function stepSpotting(game: SoloGameState, bus: EventBus): void {
   if (!game.spotting) return;
   for (const event of game.spotting.update(SIM_DT, game.timeS)) {
     bus.emit('tank:spotted', event);
-    if (game.player && event.id === game.player.id && event.team === 'enemy') {
+    if (game.player && event.id === game.player.id && event.team !== game.player.team) {
       bus.emit('player:spotted', { timeS: game.timeS });
     }
   }
