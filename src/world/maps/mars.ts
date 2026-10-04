@@ -12,7 +12,7 @@ import { MARS_SKY_PRESET } from '../../engine/marsAtmosphere.ts';
 // sites under a seed-random noise mesa field, whose walls stood under the country roads at two of three terrain seeds
 // (30 % grades); alpha deployed at the station's south edge and bravo on the open northern floor, and the south won 34
 // of 40 swap-test games. Now the layout turns about the station (7.5, 20): the teams come in on the north-south road,
-// each block 235 m from the station; four authored mesas (flat-topped buttes of layered rock with talus aprons, every end
+// each block 257 m from the station; four authored mesas (flat-topped buttes of layered rock with talus aprons, every end
 // a nose) stand in pairs north-west and south-east, south-west and north-east of it, off the roads; Arsia Crater west of
 // the station has its twin to the east; the strongpoints pair about it too (the habitat ring and the relay station in
 // the lanes, a fuel depot in front of each deployment); and the zone-control discs stand on paired yards of equal reach
@@ -49,6 +49,16 @@ export default {
       ...[[-300, 130], [315, -90]].map(([x, z]) => ({ kind: 'knoll', x, z, rx: 74, rz: 68, height: 7, yawDeg: 12,
         geology: { profile: 'cone' as const, crater: { rim: 0.72, depthM: 6 }, outline: 0.12, rough: 0.6,
           gullies: { count: 14, depthM: 1.2, width: 0.5 } } })),
+      // the gate buttes: one beside the road in front of each deployment, each the other's rotation about the station, so
+      // a block's bots leave round it and the deployments stay screened (the pacing receipt, 2026-10-03: with the blocks
+      // 235 m out on the open road a 2v2 ended in 81 s)
+      ...[[-52, -182], [67, 222]].map(([x, z]) => ({ kind: 'knoll', x, z, rx: 20, rz: 24, height: 14, yawDeg: 8,
+        corridorScale: 1, settlementScale: 1,
+        // sheer walls with the talus only at the foot (landformGeology inselbergSection's rim, Redrock's jebels), so a hull
+        // cannot climb onto one and fall off it
+        geology: { profile: 'inselberg' as const, outline: 0.18, foot: 0.66, footVary: 0.12, apron: 0.18, rim: 0.86,
+          bosses: { count: 3, heightM: 2 }, flutes: { count: 10, depth: 0.5 }, rough: 1.0,
+          gullies: { count: 5, depthM: 3, width: 0.35 } } })),
       // the mesas: flat-topped buttes of layered rock with talus aprons, a long pair north-west and south-east of the
       // station and a shorter pair south-west and north-east of it, each off the roads and the deployment corridors,
       // every end a nose (no taper ramps onto a cap)
@@ -64,18 +74,18 @@ export default {
   // its deployments stand 470 m apart where the brief's fields stand 600-860 m, so the distance bands take the map's
   // own scale (about 0.64 of the brief's) and stay enforced (docs/MAP-LAYOUT-BRIEF.md "Bands of a map's own").
   layoutBrief: { bands: {
-    spawnSeparationM: { band: [420, 520], reason: 'the compact low-gravity arena keeps its 470 m between the deployments; the band is centred on that scale' },
+    spawnSeparationM: { band: [420, 520], reason: 'the compact low-gravity arena stands its deployments about 500 m apart (518 m: each block 257 m from the station on its road)' },
     sightMedianM: { band: [55, 100], reason: 'the brief\'s 80-150 m median scaled to a 470 m field (x 0.64): crater rims, dunes and mesas break lines shorter here' },
     sightLongShare: { band: [0.01, 0.15], reason: 'a 300 m line is 64 % of the separation here (35-50 % on the brief\'s fields), so fewer rays reach it' },
     sightCloseShare: { band: [0.25, 0.68], reason: 'on a 470 m field more of the blocked rays end inside 100 m; the ceiling rises with the scale' },
   } },
 
   spawns: {
-    // The teams come in from the basin's two ends on the north-south road, each block 235 m from the station, bravo's
+    // The teams come in from the basin's two ends on the north-south road, each block 257 m from the station, bravo's
     // seven pads the rotation of alpha's block about the station (the swap test, 2026-10-03: alpha's block at the
     // station's south edge won 34 of 40 games against bravo's on the northern floor, the deployments exchanged or not).
-    player: { x: -20.3, z: -210.7 },
-    enemies: [{ x: 47.3, z: 250.7 }, { x: 39.3, z: 250.7 }, { x: 31.3, z: 250.7 }, { x: 23.3, z: 250.7 }, { x: 47.3, z: 260.7 }, { x: 39.3, z: 260.7 }, { x: 31.3, z: 260.7 }],
+    player: { x: -20.9, z: -232.7 },
+    enemies: [{ x: 47.9, z: 272.7 }, { x: 39.9, z: 272.7 }, { x: 31.9, z: 272.7 }, { x: 23.9, z: 272.7 }, { x: 47.9, z: 282.7 }, { x: 39.9, z: 282.7 }, { x: 31.9, z: 282.7 }],
   },
 
   splat: {
