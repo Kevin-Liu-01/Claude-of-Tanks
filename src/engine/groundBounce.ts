@@ -49,6 +49,19 @@ export const GROUND_BOUNCE_SELF_SHADE = 0.6;
 export const GROUND_BOUNCE_UNDERSIDE_LIT = 0.5;
 /** Ground-lit floor for a receiver inside a cast shadow (its ground is shaded too). */
 export const GROUND_BOUNCE_SHADOWED_RECEIVER = 0.4;
+/**
+ * 2026-10-04 (the skies lane; Redrock's backlit inselbergs read 0.84–1.00 of the sunlit sand on the into-sun frame):
+ * the terrain's round-42 wall sky lift (terrain.ts uWallSkyLift: the fog colour × this gain × the slope and
+ * turned-from-the-sun weight, added to a steep face's indirect diffuse) as the light rig resolves it. Round 42 rescued
+ * slopes the legacy rig's fixed hemisphere left black; the grounded rig's environment lights a steep face's open sky
+ * itself, so there the lift counted that light twice — 0.54–0.71 of the sunlit sand on those faces, which sit at
+ * 0.28–0.33 of it without the lift (a backlit wall under a clear sky: about half the dome plus the bounce). The legacy
+ * rig (phones, the Preetham tier, the galaxy skies) keeps round 42's gain; the grounded rig takes none
+ * (WALL_SKY_LIFT_GROUNDED, a QA knob). One uniform object every terrain program binds; applyGroundBounce (lighting.ts)
+ * sets it with the rig's other terms.
+ */
+export const WALL_SKY_LIFT_LEGACY = 7.0;
+export const terrainWallSkyLift: { value: number } = { value: WALL_SKY_LIFT_LEGACY };
 
 export interface Vec3Like { x: number; y: number; z: number; }
 
