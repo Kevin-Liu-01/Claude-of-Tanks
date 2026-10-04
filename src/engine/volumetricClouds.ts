@@ -179,6 +179,24 @@ export const CLOUD_LUMP_GATE_PERIOD_K = 1.5;
 export const CLOUD_BASE_SHARP = 0;
 export const CLOUD_BASE_DARK = 0;
 export const CLOUD_FAR_FLAT = 0;
+/**
+ * 2026-10-03 (the gauntlet's wave 22 — the cumulus still read as "soft, airbrushed cotton balls… blurry edges", "the
+ * same soft, symmetric, melted-edge lens silhouette rather than the flat common-height base and fractal cauliflower
+ * top", "tiny grey dabs high in the frame that are smaller than the clouds near the horizon, which reverses
+ * perspective"): three more cumulus knobs, 0 = off, read per frame until a capture shows them —
+ *   CLOUD_EDGE_CRISP  the outline. A flat base held its erosion off, so its edge was the weather field's smooth coverage
+ *                     ramp (a 40-60 m fade, 25 px on a cloud 1.5 km out — the melted lens): the base's outline now
+ *                     crinkles in plan (the detail volume on the base plane, constant through the bottom layer, so the
+ *                     underside stays flat), and the density saturates a shorter way in from every cumulus outline;
+ *   CLOUD_TOP_BILLOW  the tops. The erosion turned to wisps (the inverted cells) with height and the map's wispiness,
+ *                     so every fair-weather top read feathered; the billows (the cells themselves) carve the tops;
+ *   CLOUD_NEAR_FIELD  perspective. A battlefield in a cumulus field's gap saw fragments overhead and the next field's
+ *                     heart kilometres out (Verdant: the gate 0.64-0.69 over the first 2 km west, 1.35 at 5 km): over
+ *                     the battlefield (2.8 km from the map's centre, fading by 8 km) the gate never falls under the mean.
+ */
+export const CLOUD_EDGE_CRISP = 0;
+export const CLOUD_TOP_BILLOW = 0;
+export const CLOUD_NEAR_FIELD = 0;
 /** The share of the sun a cloud core takes (the map's darkest texel). */
 export const CLOUD_SHADOW_CORE = 0.62;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
@@ -300,6 +318,8 @@ uniform vec2 uWindDir;
 uniform float uStreets;
 uniform float uFieldMix;
 uniform float uCluster;
+// 2026-10-03: the cumulus fields' floor over the battlefield (CLOUD_NEAR_FIELD; 0 = off)
+uniform float uNearField;
 // the last cloudField call's cumulus-field gate (1 without fields): the trace's far-field re-mix gates its cells alike
 float cloudGate = 1.0;
 // the equalised field the coverage cuts at a world xz: the cell-carried cumuliform one blended toward the
@@ -317,6 +337,8 @@ float cloudField( vec2 pxz, out vec4 w, out vec4 st ) {
 	if ( uCluster > 0.0 ) {
 		float g = textureLod( tWeather, ( pxz + uWeatherShift * 0.5 ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_CLUSTER_PERIOD_K)} + vec2( 0.37, 0.61 ), 0.0 ).b;
 		cloudGate = mix( 1.0, ${f(CLOUD_CLUSTER_GAP)} + ${f(2 * (1 - CLOUD_CLUSTER_GAP))} * smoothstep( 0.3, 0.7, g ), uCluster );
+		// (2026-10-03: over the battlefield the gate never falls under the mean — CLOUD_NEAR_FIELD)
+		if ( uNearField > 0.0 ) cloudGate = max( cloudGate, uNearField * ( 1.0 - smoothstep( 2800.0, 8000.0, length( pxz ) ) ) );
 		field *= cloudGate;
 	}
 	return field;
@@ -389,6 +411,9 @@ uniform float uFarThin;
 uniform float uBaseSharp;
 uniform float uBaseDark;
 uniform float uFarFlat;
+// 2026-10-03: the crisp cumulus outline and the billowed tops (CLOUD_EDGE_CRISP, CLOUD_TOP_BILLOW; 0 = off)
+uniform float uEdgeCrisp;
+uniform float uTopBillow;
 uniform vec3 uSkyIrradiance;
 uniform float uHang;
 // QA: 1 = no depth-above term, 2 = no detail erosion, 3 = no light march, 4 = flat white density (structure only),
@@ -627,7 +652,7 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 		// billowy lumps (the Worley cells) under the base and on the flanks, wisps (the inverted cells) on the
 		// tops — the wispy share grows with height and with the map's wispiness; the erosion grows with height
 		// too (a crisp dense base, wispy tops), a front's base is ragged, a stratus erodes little
-		float wispy = clamp( mix( hN * 1.4 - 0.15, 1.0, uWispiness ), 0.0, 1.0 );
+		float wispy = clamp( mix( hN * 1.4 - 0.15, 1.0, uWispiness ), 0.0, 1.0 ) * ( 1.0 - uTopBillow * ( 1.0 - uStratiform ) );
 		float erode = mix( hf, 1.0 - hf, wispy );
 		float amount = ( mix( 0.3, 0.85, smoothstep( 0.05, 0.6, hN ) ) + uTowers * 0.35 * ( 1.0 - smoothstep( 0.0, 0.12, hN ) ) )
 			* ( 1.0 - uStratiform * 0.8 ) * mix( 0.8, 1.25, uWispiness ) * mix( 0.35, 1.0, smoothstep( 0.0, 0.2, uWispiness ) )
@@ -637,9 +662,17 @@ float cloudDensityK( vec3 p, Weather w, bool detail, float foot, float cellK ) {
 		amount *= mix( 1.0, smoothstep( 0.0, 0.18, hN ), uBaseFlat * ( 1.0 - uStratiform ) );
 		amount *= 1.0 + 1.8 * deckK;
 		d = remap( d, erode * amount, 1.0, 0.0, 1.0 );
+		// (2026-10-03: a flat base's outline crinkles in plan — CLOUD_EDGE_CRISP: the detail volume on the base plane, the
+		// same through the bottom layer, so the underside stays flat while its edge breaks into lobes)
+		float edgeC = uEdgeCrisp * ( 1.0 - uStratiform );
+		float baseW = edgeC * uBaseFlat * ( 1.0 - smoothstep( 0.0, 0.22, hN ) );
+		if ( baseW > 0.0 ) {
+			vec3 db = texture( tDetail, vec3( ps.x, 17.0, ps.z ) / ${f(CLOUD_DETAIL_TILE_M * 2)} ).rgb;
+			d = remap( d, ( 1.0 - ( db.r * 0.5 + db.g * 0.3 + db.b * 0.2 ) ) * 0.6 * baseW, 1.0, 0.0, 1.0 );
+		}
 		// a sharper threshold: the density saturates a short way in from the outline (crisper edges, no
-		// semi-transparent halo around every mass; a defined deck's crisper still)
-		d = smoothstep( 0.03 + 0.09 * deckK, 0.6 - 0.25 * deckK, d );
+		// semi-transparent halo around every mass; a defined deck's crisper still; a crisp cumulus a shorter way in)
+		d = smoothstep( 0.03 + 0.09 * deckK + 0.05 * edgeC, 0.6 - 0.25 * deckK - 0.25 * edgeC, d );
 		// round 76: the interior octave — the coarse detail lumps (25–100 m) modulate the density inside the mass
 		// instead of vanishing in the remap, so the light march shades the lit face bulge by bulge
 		if ( uInterior > 0.0 ) d *= mix( 1.0, 0.5 + 0.5 * hfCoarse, uInterior );
@@ -1527,6 +1560,7 @@ export class VolumetricCloudLayer {
     const field = () => ({
       tWeather: { value: null }, tStreets: { value: null }, uWeatherShift: { value: new THREE.Vector2() }, uStreetShift: { value: new THREE.Vector2() },
       uWindDir: { value: new THREE.Vector2(1, 0) }, uStreets: { value: 0 }, uFieldMix: { value: 0 }, uCluster: { value: 0 },
+      uNearField: { value: 0 },
     });
     this.traceMaterial = new THREE.ShaderMaterial({
       name: 'VolumetricCloudTrace', vertexShader: QUAD_VERTEX, fragmentShader: TRACE_FRAGMENT, depthTest: false, depthWrite: false, blending: THREE.NoBlending,
@@ -1549,7 +1583,7 @@ export class VolumetricCloudLayer {
         uFarBand: { value: 0 }, uFarBandAlt: { value: 2000 }, uFarBandShift: { value: new THREE.Vector2() },
         uStepScale: { value: 1 }, uDebug: { value: 0 },
         uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 }, uBaseFlat: { value: 0 }, uDeckDetail: { value: 0 }, uFarThin: { value: 0 },
-        uBaseSharp: { value: 0 }, uBaseDark: { value: 0 }, uFarFlat: { value: 0 },
+        uBaseSharp: { value: 0 }, uBaseDark: { value: 0 }, uFarFlat: { value: 0 }, uEdgeCrisp: { value: 0 }, uTopBillow: { value: 0 },
         uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
         // 2026-10-03: the deck's far rows on the aerial pass's overcast target (cloudHaze; hazeLaw.ts hazeTargetTerms)
         uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
@@ -1580,7 +1614,7 @@ export class VolumetricCloudLayer {
       depthTest: false, depthWrite: false, blending: THREE.NoBlending,
       uniforms: {
         tWeather: gu.tWeather, tStreets: gu.tStreets, uWeatherShift: gu.uWeatherShift, uStreetShift: gu.uStreetShift,
-        uWindDir: gu.uWindDir, uStreets: gu.uStreets, uFieldMix: gu.uFieldMix, uCluster: gu.uCluster, uThreshold: gu.uThreshold, uClear: gu.uClear,
+        uWindDir: gu.uWindDir, uStreets: gu.uStreets, uFieldMix: gu.uFieldMix, uCluster: gu.uCluster, uNearField: gu.uNearField, uThreshold: gu.uThreshold, uClear: gu.uClear,
         uFarShadeRect: { value: new THREE.Vector3(0, 0, CLOUD_FAR_SHADE_SPAN_M) },
       },
     });
@@ -1952,6 +1986,11 @@ export class VolumetricCloudLayer {
     t.uBaseSharp.value = lightTune('CLOUD_BASE_SHARP', CLOUD_BASE_SHARP);
     t.uBaseDark.value = lightTune('CLOUD_BASE_DARK', CLOUD_BASE_DARK);
     t.uFarFlat.value = lightTune('CLOUD_FAR_FLAT', CLOUD_FAR_FLAT);
+    t.uEdgeCrisp.value = lightTune('CLOUD_EDGE_CRISP', CLOUD_EDGE_CRISP);
+    t.uTopBillow.value = lightTune('CLOUD_TOP_BILLOW', CLOUD_TOP_BILLOW);
+    // (the floor reaches the shade map too: its field is the trace's)
+    t.uNearField.value = lightTune('CLOUD_NEAR_FIELD', CLOUD_NEAR_FIELD);
+    (this.goboMaterial.uniforms as { uNearField: { value: number } }).uNearField.value = t.uNearField.value as number;
     // (no datum yet: the camera stands on the layer's base, the haze law of a camera on the ground)
     t.uHazeDatum.value = Number.isFinite(this.hazeDatum) ? this.hazeDatum : camera.position.y;
     this.applyPresetUniforms(preset);
