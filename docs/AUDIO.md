@@ -16,7 +16,7 @@ and the voice cast are in [ATTRIBUTION.md](ATTRIBUTION.md#audio-publicaudio--gen
 | Payload | Where | Size | Loaded |
 |---|---|---|---|
 | 398 sound-effect assets, 649 variant files | `public/audio/sfx/<group>/<id>_<n>.webm` | 18.6 MB | per battle: the battle set at the battle phase edge, the aircraft set on first sight of an aircraft, everything else on first use |
-| 13 crew radio packs × 98 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.5 MB per language | only the crew's pack (and English if a national take is missing) |
+| 13 crew radio packs × 107 lines × 1–4 takes | `public/audio/voice/<lang>/<line>_<n>.webm` | ~1.6 MB per language | only the crew's pack (every pack carries every line; nothing stands in for a missing take) |
 | SFX manifest | `src/audio/sfxManifest.generated.ts` | | bundled in the lazy audio chunk |
 | Voice manifest | `src/audio/voiceManifest.generated.ts` | | bundled in the lazy audio chunk |
 
@@ -351,13 +351,42 @@ Atmosphere events (artillery, flak, AA, flyovers) and destructible props
 
 ### Crew radio
 
-`voiceLines.ts` defines 98 lines with priority (0–4), per-line and per-group
+`voiceLines.ts` defines 107 lines with priority (0–4), per-line and per-group
 cooldowns and staleness; `crewRadio.ts` schedules them with radio discipline:
-one transmission at a time, survival calls interrupt chatter, a 0.8 s gap, a
-two-line queue, stale calls dropped rather than played late. Routine chatter
-(reload done, allies' kills, autocannon results) is probability-gated, our
-main-gun results are called almost every time, and spot calls are throttled to
-one per five seconds unless several contacts appear at once.
+one transmission at a time, a 0.8 s gap, a two-line queue, stale calls dropped
+rather than played late. Survival calls cut anything below them, decisive
+events cut situational calls, and reports (what our round did, what our
+equipment just did) cut the loader's flavour, so "Penetration" never goes stale
+behind "Firing". Every main-gun result is called; only flavour (firing, reload
+done, allies' kills, near misses, autocannon and machine-gun results) is
+probability-gated, and spot calls are throttled to one per five seconds unless
+several contacts appear at once. The team's count (last tank, last enemy,
+outnumbered) waits out the kill call that usually comes with it.
+
+What the crew says for the tank's own systems and the modes (2026-10-04):
+
+| Moment | Heard | Crew |
+|---|---|---|
+| Smoke volley (`auxiliary:smokeScreens`, ours within 4 m) | launcher, burst | "Smoke out" |
+| Roof gun on / off (the sim's auxiliary state) | weapon-station servo / switch | "Roof gun active" (on) |
+| Lights on / off | headlight relay / switch | — |
+| Hydropneumatic aim engaged | suspension | "Suspension set" |
+| Our drone lifts off / its battery or link gives out | spin-up / feed cut | "Drone up" / "Lost the drone" (not on a recall, a hit or our death) |
+| Drone pressed while recharging | refusal | — |
+| Magazine reload accepted / refused | magazine swap / refusal | "Reloading" (only when it happens) |
+| Special action or an empty round refused | refusal | "Out of that type" (empty round) |
+| Sensor view changed (tank sight, drone, gunship) | sight ratchet | — |
+| Our gunship's weapon selected | selector | "Thirty mike-mike" / "Howitzer" / "Missile selected" |
+| Our gunship's supply drop (`mode_pickup_spawned` with `by`) | cache | "Ammo crate away" / "Repair crate away" |
+| Enemy on a point we hold (`mode_zone_contested`) | — | "They're contesting the point" |
+| Respawn | respawn | "Back in the fight" (and the one-per-life calls re-armed) |
+| Rollout | mode opener, hatch | "All crews, advance" |
+
+A network battle reaches the same handlers: the presentation maps the
+authority's `tank_spotted` and `tank_autoflip` to solo's `tank:spotted` (the
+spotting side as the viewer sees it), `player:spotted` and `tank:autoflip`, and
+emits `player:reload` from the viewer's row, so spot calls, the sixth sense,
+the self-right and the loading machinery work there too.
 
 A hull's crew speaks its operating nation's language by default (en-US,
 en-GB, de, ru, uk, zh, fr, sv, ja, ko, it, pl, he). **Settings → Sound →
@@ -374,8 +403,8 @@ The engine resolves the choice at first audio initialization, on live
 `ui:volumes` changes, and when the player's entity or operating nation changes
 (including vehicle replacement on the same entity). Switching language stops
 the old transmission and clears queued calls. While a chosen pack decodes,
-the radio waits instead of speaking an already-loaded fallback crew. A missing
-take in a finished pack retains the existing US-crew fallback.
+the radio waits. No crew stands in for another: a take a pack lacked would be
+silent, and the radio selftest fails unless every pack carries every line.
 Every line runs through a live intercom chain — a 24 dB/oct 320 Hz–3.4 kHz
 band, a 1.9 kHz presence peak, compression, a tanh drive, a 4.6 kHz headset
 speaker roll-off, and the recorded net static (`radio_static_loop`) gated
@@ -393,8 +422,10 @@ voices (National crews / one nation's pack), the concussion toggle and the
 critical-damage heartbeat. After resume, `window.__COT_AUDIO` exposes the
 context, a master PCM tap (`startTap` / `stopTap` / `readTapB64`), the sound-route
 log, the sfx log (asset, start, gain, rate, distance, bus), the voice log,
-library stats, listener, rig and aircraft state, effective bus levels, and test hooks
-(`play`, `preload`, `sayVoice`, `setEngineProbeSolo`, `forceCrewLanguage`).
+the crew request log (`sayLog`: every line asked for and whether the net took
+it, beside `voiceLog`, the lines actually spoken), library stats, listener, rig
+and aircraft state, effective bus levels, and test hooks (`play`, `preload`,
+`sayVoice`, `setEngineProbeSolo`, `forceCrewLanguage`).
 
 ## How generation worked
 
@@ -507,7 +538,7 @@ squaring the peak. Now:
 
 ```
 crew-lines.json ─┐                    crew-voices.json
- 98 lines,       ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
+ 107 lines,      ├──→ build-voices.mjs ──→ eleven_v4 TTS ──→ scribe_v2 STT check ──→ master 'voice' ──→ public/audio/voice + manifest
  13 languages,   │    (per language,       [delivery] text,     best of up to 3        −18 LUFS, 24 kHz
  deliveries ─────┘     per line, per take) stability 0.6        attempts               mono Opus
 ```
@@ -629,6 +660,28 @@ crew-lines.json ─┐                    crew-voices.json
   13 new assets and a release regenerated without its chirp (1,806 credits). The
   same round put the crew over the battle, added the incoming-drone call,
   silenced calls that were wrong while standing still and opened up the sight.
+- **2026-10-04, the crew on top of the tank, and no stand-ins.** The owner asked
+  for lines when launching smoke, drones and the rest, every line playing when
+  it should, and then: "I still hear audio fallbacks." Nine lines in 13
+  languages (1,202 credits): the drone's launch and loss, the roof gun, the
+  suspension, the gunship's three weapons and its two supply drops. Wired with
+  them: the contested point (a new `mode_zone_contested`), the gunship drop's
+  requester (`by`), the lights, the sensor switch, the hatch at rollout, and the
+  network battle's spots, autoflips and reloads. Fixed on the way: smoke went
+  silent after the first battle (its clock outlived the battle), the low-hull
+  and last-enemy calls went stale behind the call before them, the respawn call
+  was swallowed as "dead", our results queued behind "Firing", feature calls
+  were coin-flipped, and the reload key said "Reloading" with a magazine swap
+  even when the reload was refused (refusals now sound as refusals). The stand-ins went: the external report covering our
+  own gun, the generic stall covering a tank's own engine stop (each roster
+  powertrain's stop is now pinned), the battle horn covering a mode's opener
+  (now pinned), a switch click standing in for the drone launch, a tank
+  loader's lines in the gunship, the US crew covering a missing national
+  take, and a coin toss between wood and concrete for every round into a prop
+  (it now sounds of what it struck: steel, timber, earthworks, stone or
+  masonry, with the steel clang that had shipped unused).
+  `voiceTriggers.selftest.mjs` drives all 107 lines from their game moments and
+  fails on any sound chained in for another.
 
 ### Cost
 
@@ -638,9 +691,9 @@ rounds:
 | Kind | First round | Feedback rounds | Total |
 |---|---|---|---|
 | Sound generation | 26,625 | 35,309 | 61,934 |
-| Text-to-speech (casts, auditions, builds, re-rolls) | 9,029 | 10,673 | 19,702 |
-| Speech-to-text verification | 1,718 | 1,928 | 3,646 |
-| **All** | **37,372** | **47,910** | **85,282** |
+| Text-to-speech (casts, auditions, builds, re-rolls) | 9,029 | 11,688 | 20,717 |
+| Speech-to-text verification | 1,718 | 2,115 | 3,833 |
+| **All** | **37,372** | **49,112** | **86,484** |
 
 The feedback rounds' sound generation is the regenerated interface, stingers
 and foley, the distant armour hits (400), the aircraft and Infected sounds
@@ -650,7 +703,8 @@ takes, the hangar), the drone's hover and wind (528), the regenerated gun
 reports (3,044), the AC-130 and mode packs (2,996) and the recordings that
 replaced every synthesized sound (1,806); nearly all of their speech is the
 serious recast and rebuild of all 13 packs (10,873), the re-rolls of doubled
-calls (634) and the incoming-drone call (172).
+calls (634), the incoming-drone call (172) and the nine lines for the tank's own
+systems, the gunship and its drops (1,202).
 
 ## Changing or extending it
 
@@ -684,7 +738,8 @@ Headless selftests (all in `npm test`):
 | `src/audio/soundAssets.selftest.mjs` | manifests against files, every engine reference, families, tracks, scenes, packs, payload budgets, and no oscillator anywhere in the sound engine or the HUD |
 | `src/audio/assetLibrary.selftest.mjs` | pinning, eviction and reload, voice bytes, the mobile variant cap |
 | `src/audio/crewVoice.selftest.mjs` | all 13 selectable packs, national/fixed resolution, flags and localized labels, legacy migration, invalid stored values |
-| `src/audio/crewRadio.selftest.mjs` | radio discipline, interrupts, stale drops, missing-take fallback, damage, live switching and cold-pack behavior, the recorded key-up, release and net static (and silence, never a tone, while they decode) |
+| `src/audio/crewRadio.selftest.mjs` | radio discipline, interrupts (a report cuts flavour), stale drops, every pack carrying every line and a missing take staying silent, damage, live switching and cold-pack behavior, the recorded key-up, release and net static (and silence, never a tone, while they decode) |
+| `src/audio/voiceTriggers.selftest.mjs` | all 107 crew lines from their game moments through the real engine (shot results back to back, our systems, the drone, the gunship, supply drops, objectives, hits, mobility, the count, results), a second battle's smoke, and no sound or crew chained in for another |
 | `src/audio/audioEngine.selftest.mjs` | the engine against the shipped manifests: rigs, crews, scenes, weapon layering and delay, HDR trim, the punch and low layers, reloads, hits, edge cases, destruction, concussion, our hits (distant bank, own-hit law, no marker), the gunner's calls and misses, our own report and recoil, the drum refill, the turret start, kill-cam, panning, scope, aircraft (gunship, enemy and own drones), mode events, interface sounds and their dedupe, the cabin alarms, the sixth-sense lamp and the loading bed, no oscillator in a whole session, rig ownership near our hull, late adoption, pause, garage |
 | `src/audio/lazyAudio.selftest.mjs` | deferred engine; the facade makes no sound of its own |
 | `src/audio/interfaceSounds.selftest.mjs` | the control classifier (tabs, tank cards, options, toggles, back, primary, sliders, opt-outs, menus) and the delegated listeners |

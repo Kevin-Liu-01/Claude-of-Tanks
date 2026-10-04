@@ -106,6 +106,35 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   assert.equal(match.state.target, 750);
 }
 
+// A held point the other side drives onto is announced to its holders (mode_zone_contested, the crew's "they're
+// contesting the point"): once per incursion, never a stream from a tank idling on the rim.
+{
+  const alpha = entity('alpha', 'alpha', 0, -100);
+  const bravo = entity('bravo', 'bravo', 0, 300);
+  const { match, events } = controller('zone_control', [alpha, bravo]);
+  const zone = match.state.zones[0];
+  alpha.state.pos.x = zone.x;
+  alpha.state.pos.z = zone.z;
+  let tick = 0;
+  const run = (seconds) => { for (const end = tick + Math.round(seconds * 60); tick < end;) { tick++; match.step(1 / 60, tick / 60); } };
+  run(12);
+  assert.equal(zone.owner, 'alpha', 'one tank turns the point in 8 s');
+  const contested = () => events.filter((event) => event.type === 'mode_zone_contested').map((event) => event.payload);
+  assert.deepEqual(contested(), [], 'a point nobody challenges is not announced');
+  bravo.state.pos.x = zone.x + 5;
+  bravo.state.pos.z = zone.z;
+  run(1);
+  assert.deepEqual(contested(), [{ zoneId: zone.id, team: 'alpha' }], 'the holders hear it once, with their own team');
+  for (let i = 0; i < 6; i++) { bravo.state.pos.z = zone.z + (i % 2 ? 0 : 200); run(1); }
+  assert.equal(contested().length, 1, 'in and out on the rim is one alert');
+  bravo.state.pos.z = zone.z + 200;
+  run(20);
+  bravo.state.pos.z = zone.z;
+  run(1);
+  assert.equal(contested().length, 2, 'a fresh incursion after a quiet spell is announced again');
+  assert.equal(zone.owner, 'alpha', 'a contested point does not change hands while its holder stays');
+}
+
 {
   const alpha = entity('alpha', 'alpha', 0, -180);
   const bravo = entity('bravo', 'bravo', 0, 180);

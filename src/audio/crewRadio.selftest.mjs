@@ -3,6 +3,9 @@ import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.m
 import { createMixer } from './mixer.ts';
 import { createCrewRadio } from './crewRadio.ts';
 import { mulberry32 } from './audioMath.ts';
+import { VOICE_LINES } from './voiceLines.ts';
+import { VOICE_PACKS } from './voiceManifest.generated.ts';
+import { CREW_LANGUAGES } from './vehicleAudioProfiles.ts';
 
 function harness({ languages = ['en-US', 'de'], missing = [], loading = [], radioAssets = true } = {}) {
   const ctx = createFakeContext();
@@ -73,7 +76,7 @@ function harness({ languages = ['en-US', 'de'], missing = [], loading = [], radi
 {
   const { ctx, radio } = harness();
   radio.say('penetration');
-  assert.equal(radio.say('fire'), true, 'priority 4 interrupts priority 1');
+  assert.equal(radio.say('fire'), true, 'priority 4 interrupts a report');
   assert.equal(radio.log.at(-1).id, 'fire');
   assert.equal(radio.say('repairs', { delayS: 0.2 }), true, 'a lower call queues behind the fire call');
   ctx.advance(5);
@@ -82,7 +85,29 @@ function harness({ languages = ['en-US', 'de'], missing = [], loading = [], radi
   assert.notEqual(radio.log.at(-1).id, 'repairs');
 }
 
-// The national pack speaks; a line missing from it falls back to the US crew.
+// A report cuts the loader's flavour: the gunner's call on our round never waits behind "Firing" (2026-10-04, owner:
+// the crew must be on top of penetrations), while flavour still never cuts or queues behind anything.
+{
+  const { ctx, radio } = harness();
+  assert.equal(radio.say('firing'), true);
+  ctx.advance(0.2);
+  assert.equal(radio.say('penetration'), true, 'a report interrupts flavour');
+  assert.equal(radio.log.at(-1).id, 'penetration');
+  ctx.advance(0.2);
+  radio.say('enemy_spotted');
+  assert.equal(radio.log.at(-1).id, 'penetration', 'a situational call waits instead of cutting a report');
+  ctx.advance(4);
+  radio.update();
+  assert.equal(radio.say('reloading'), true);
+  ctx.advance(0.2);
+  assert.equal(radio.say('nonpen', { delayS: 0.4 }), true, 'a delayed report queues');
+  ctx.advance(0.45);
+  radio.update();
+  assert.equal(radio.log.at(-1).id, 'nonpen', 'and cuts the flavour when it is due instead of going stale behind it');
+}
+
+// The national pack speaks, and only it (owner 2026-10-04, no fallbacks): a line missing from it is silent,
+// never another nation's crew standing in.
 {
   const { radio, loaded } = harness({ languages: ['en-US', 'de'], missing: ['de/fire'] });
   radio.setLanguage('de');
@@ -90,8 +115,19 @@ function harness({ languages = ['en-US', 'de'], missing = [], loading = [], radi
   radio.say('were_hit');
   assert.equal(radio.log.at(-1).lang, 'de');
   radio.silence();
-  radio.say('fire', { force: true });
-  assert.equal(radio.log.at(-1).lang, 'en-US', 'a missing national take falls back');
+  assert.equal(radio.say('fire', { force: true }), false, 'a missing national take stays silent');
+  assert.notEqual(radio.log.at(-1).id, 'fire');
+  assert.deepEqual(loaded, ['de'], 'and never loads the US crew to cover it');
+}
+
+// So every shipped pack carries every line in the catalog (and nothing the catalog lacks).
+for (const lang of CREW_LANGUAGES) {
+  const pack = VOICE_PACKS[lang];
+  assert.ok(pack, `${lang} ships a pack`);
+  const missing = Object.keys(VOICE_LINES).filter((id) => !(pack[id]?.length > 0));
+  assert.deepEqual(missing, [], `${lang} carries every crew line`);
+  const unknown = Object.keys(pack).filter((id) => !VOICE_LINES[id]);
+  assert.deepEqual(unknown, [], `${lang} ships no line the catalog lacks`);
 }
 
 // Radio damage narrows the band and grows the static bed.
@@ -129,4 +165,4 @@ function harness({ languages = ['en-US', 'de'], missing = [], loading = [], radi
   assert.equal(radio.speaking, true, 'reapplying the same choice does not interrupt speech');
 }
 
-console.log('crewRadio.selftest: radio discipline, interrupts, stale drops, fallback, damage and live crew switching passed');
+console.log('crewRadio.selftest: radio discipline, interrupts, stale drops, complete packs without fallback, damage and live crew switching passed');

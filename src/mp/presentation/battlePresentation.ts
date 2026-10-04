@@ -499,6 +499,36 @@ export function createBattlePresentation({
     reveal(actor);
   }
 
+  // The viewer's reload as solo play emits it (state.ts emitReloadProgress): `player:reload` on every step of a reload
+  // and `done` on its last, from the authoritative row, so the crew's loading machinery and calls follow a network
+  // battle too. The finished step keeps the reload's own length and kind (a row back at rest reads 0 and 'ready').
+  let ownReloadT = 0;
+  let ownReloadTotal = 0;
+  let ownReloadKind = 'shell';
+  const ownReloadEvent = { t: 0, total: 0, progress: 0, kind: 'shell', caliberMm: 0, magazineRounds: 0, magazineCapacity: 0, done: false };
+  function emitOwnReload(actor: MatchActor): void {
+    const { combat } = actor;
+    const t = combat.destroyed ? 0 : Math.max(0, combat.reload.t || 0);
+    const previous = ownReloadT;
+    ownReloadT = t;
+    if (t === previous || (t <= 0 && previous <= 0) || combat.destroyed) return;
+    if (t > 0) {
+      ownReloadTotal = Math.max(combat.reload.totalS || 0, t);
+      ownReloadKind = String(combat.reload.kind || 'shell');
+    }
+    const shell = actor.spec.gun.shells[combat.shellSlot] || actor.spec.gun.shells[0];
+    const event = ownReloadEvent;
+    event.t = t;
+    event.total = ownReloadTotal;
+    event.progress = ownReloadTotal > 0 ? Math.max(0, Math.min(1, 1 - t / ownReloadTotal)) : 1;
+    event.kind = ownReloadKind;
+    event.caliberMm = shell?.caliberMm || actor.spec.gun.caliberMm || 100;
+    event.magazineRounds = combat.magazineIndicator?.rounds || 0;
+    event.magazineCapacity = combat.magazineIndicator?.capacity || 0;
+    event.done = t <= 0;
+    bus.emit('player:reload', event);
+  }
+
   function updateOwn(actor: MatchActor, frame: MatchFrame): void {
     const viewer = frame.viewer;
     classify(actor);
@@ -515,6 +545,7 @@ export function createBattlePresentation({
       updateEra(actor, viewer.row.eraSpent);
       updateDestruction(actor, destroyed);
       if (!viewer.state) applySamplePose(actor, sample, false);
+      emitOwnReload(actor);
     }
     const state = viewer.viewer;
     if (state) {
@@ -859,6 +890,25 @@ export function createBattlePresentation({
       case 'tank_fire':
         bus.emit('tank:fire', { id: payload.id, burning: payload.burning });
         return;
+      case 'tank_spotted': {
+        // Solo's shape (state.ts stepSpotting): the spotting side as this seat sees it, and our own exposure.
+        const reference = spectator ? perspectiveTeam : viewerTeam;
+        const spotting = payload.team === 'alpha' ? TEAM.ALPHA : payload.team === 'bravo' ? TEAM.BRAVO : null;
+        if (reference == null || spotting == null) return;
+        const id = String(payload.id ?? '');
+        const team = spotting === reference ? 'player' : 'enemy';
+        bus.emit('tank:spotted', {
+          id, team, timeS: typeof payload.timeS === 'number' ? payload.timeS : game.timeS,
+          spotterId: payload.spotterId == null ? null : String(payload.spotterId),
+        });
+        if (own && id === own.id && team === 'enemy') bus.emit('player:spotted', { timeS: game.timeS });
+        return;
+      }
+      case 'tank_autoflip': {
+        const id = String(payload.id ?? '');
+        bus.emit('tank:autoflip', { id, specId: actors.get(id)?.specId });
+        return;
+      }
       case 'tank_ram':
         bus.emit('tank:ram', {
           aId: payload.aId, bId: payload.bId, dmgA: payload.damageA, dmgB: payload.damageB, closingMps: payload.closingMps,
