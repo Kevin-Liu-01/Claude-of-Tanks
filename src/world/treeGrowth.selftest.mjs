@@ -163,6 +163,34 @@ assert.ok(shape.acacia.aspect > 1.6 && shape.cedar.aspect > shape.spruce.aspect,
 assert.ok(shape.spruce.crownBase < 0.2 && shape.fir.crownBase < 0.2, 'the spruce and fir crowns reach down to the ground');
 assert.ok(shape.pine.crownBase > 0.4 && shape.eucalyptus.crownBase > 0.3, 'the pine and the eucalyptus stand on long clear boles');
 assert.ok(shape.oak.aspect > shape.poplar.aspect * 1.6, 'the oak spreads where the poplar rises');
+// trees round 4 (2026-10-04, the gauntlet's wave 46 on Saltwind's olive: "a fan of straight cylinder limbs sprouting
+// from a single fork"): a gnarled profile's scaffolds meander — they turn three times as far per metre as an oak's
+// (the olive's 0.21 rad/m to the oak's 0.06 on the lab's seeds) and still keep their way out (the chord over half the
+// path)
+{
+  const meander = (species) => {
+    let turn = 0, length = 0, chord = 0;
+    for (let variant = 0; variant < 3; variant++) {
+      const { skeleton } = grow(species, variant);
+      for (const b of skeleton.branches.filter((br) => br.order === 1 && br.nodes.length >= 4)) {
+        const n = b.nodes;
+        for (let i = 1; i < n.length; i++) length += Math.hypot(n[i].x - n[i - 1].x, n[i].y - n[i - 1].y, n[i].z - n[i - 1].z);
+        for (let i = 1; i + 1 < n.length; i++) {
+          const ax = n[i].x - n[i - 1].x, ay = n[i].y - n[i - 1].y, az = n[i].z - n[i - 1].z;
+          const bx = n[i + 1].x - n[i].x, by = n[i + 1].y - n[i].y, bz = n[i + 1].z - n[i].z;
+          const c = (ax * bx + ay * by + az * bz) / (Math.hypot(ax, ay, az) * Math.hypot(bx, by, bz) || 1);
+          turn += Math.acos(Math.max(-1, Math.min(1, c)));
+        }
+        chord += Math.hypot(n.at(-1).x - n[0].x, n.at(-1).y - n[0].y, n.at(-1).z - n[0].z);
+      }
+    }
+    return { perM: turn / Math.max(1e-6, length), straight: chord / Math.max(1e-6, length) };
+  };
+  const olive = meander('olive'), oak = meander('oak');
+  assert.ok(TREE_GROWTH_PROFILES.olive.gnarl > 0 && !TREE_GROWTH_PROFILES.oak.gnarl, 'the olive is the gnarled profile');
+  assert.ok(olive.perM > 0.15 && olive.perM > oak.perM * 2.5, `the olive's limbs meander (${olive.perM.toFixed(3)} rad/m against the oak's ${oak.perM.toFixed(3)})`);
+  assert.ok(olive.straight > 0.5, `and keep their way out (chord ${olive.straight.toFixed(2)} of the path)`);
+}
 // trees round 4 (2026-10-04, the gauntlet's wave 39: the near crowns' "oversized flat cards ... up close"): a broadleaf's
 // or a birch's desktop crown keeps up to 1.3 × the base budget's sprays, the base crown's leaf area shared out over them
 // (within 3 %), so its clusters are smaller — the same seeds grown at the base share are the crowns as they were; the

@@ -96,6 +96,11 @@ interface GrowthProfile {
    */
   foliageBand?: number;
   /**
+   * Trees round 4: how gnarled the wood grows, 0..1 (unset 0): its limbs meander in a wandering plane with more
+   * segments and its bole crooks further (the olive's twisting limbs, where straight cylinders fanned from one fork).
+   */
+  gnarl?: number;
+  /**
    * Bark style column of the bark atlas (vegetation.ts): 0 furrowed (the legacy sheet), 1 plated, 2 smooth/banded,
    * 3 papery, 4 the grown trees' furrowed bark (trees round 4: meandering ridges and furrows, where style 0's parallel
    * zigzag fissures read as a tyre tread).
@@ -299,7 +304,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.55, angleLow: 1.2, angleHigh: 0.7,
     droop: 0.4, upturn: 0.25, sidePerM: 2.6, sideAngle: 0.85, sideRatio: 0.6, sideDroop: 0.35, twigPerM: 2.0,
     leafOrder: 1, leafPerM: 4.0, leafFrom: 0.2, spray: [0.66, 0.98], aspect: 0.8, habit: 'spray', tipSprays: 2,
-    cardBend: 0.2, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.50, 0.48, 0.44], barkTopTint: null,
+    cardBend: 0.2, flatRoll: 0.6, flatDroop: 0.0, gnarl: 0.85, bark: 4, barkTint: [0.50, 0.48, 0.44], barkTopTint: null,
     foliageValue: 1.25,
   }),
   // the Canary Island pine (Las Cañadas): a straight, thick, plated, red-brown bole and an open, irregular, layered
@@ -520,8 +525,17 @@ function growPolyline(
   let d = norm(dir);
   let p = v3(start.x, start.y, start.z);
   const step = length / segments;
+  // trees round 4: a gnarled profile's limb meanders — each step bends it in a plane that wanders about it, and
+  // leans it back toward its heading (it twists on its way out, never wanders off it)
+  const gnarl = ctx.profile.gnarl ?? 0, heading = d;
+  let plane = gnarl > 0 ? ctx.rng() * Math.PI * 2 : 0;
   for (let i = 1; i <= segments; i++) {
     const t = i / segments;
+    if (gnarl > 0) {
+      plane += (ctx.rng() - 0.5) * 1.8;
+      d = norm(rotate(d, norm(rotate(perpendicular(d), d, plane)), gnarl * 0.3 * (0.55 + 0.9 * ctx.rng())));
+      d = norm(v3(d.x + (heading.x - d.x) * 0.35, d.y + (heading.y - d.y) * 0.35, d.z + (heading.z - d.z) * 0.35));
+    }
     // gravity: rotate toward -Y about the horizontal axis perpendicular to d, by the share of the run that is level
     const horiz = Math.hypot(d.x, d.z);
     if (horiz > 1e-3 && droop !== 0) {
@@ -592,7 +606,8 @@ function polylineLength(nodes: GrowthNode[]): number {
 /** The leader / bole: from the ground to its top (or the fork), gently crooked. */
 function growStem(ctx: GrowContext, topY: number, r0: number, r1: number, segments: number): number {
   const { rng } = ctx;
-  const crookA = rng() * Math.PI * 2, crook = 0.04 + rng() * 0.05;
+  // trees round 4: a gnarled bole crooks further
+  const crookA = rng() * Math.PI * 2, crook = (0.04 + rng() * 0.05) * (1 + 2.5 * (ctx.profile.gnarl ?? 0));
   const nodes: GrowthNode[] = [];
   for (let i = 0; i <= segments; i++) {
     const t = i / segments;
@@ -661,7 +676,7 @@ function growScaffolds(ctx: GrowContext, stemIndex: number, variant: number): vo
     const rise = ctx.crownTopY - fork.y;
     const len = Math.min(Math.hypot(reach, rise * 0.85), reach / Math.max(0.35, Math.sin(a)) * 1.05);
     const r0 = fork.r * (0.62 + rng() * 0.12) * (n > 3 ? 0.9 : 1);
-    const nodes = growPolyline(ctx, v3(fork.x, fork.y - 0.12, fork.z), dir, len, 4, r0, 0.025,
+    const nodes = growPolyline(ctx, v3(fork.x, fork.y - 0.12, fork.z), dir, len, 4 + Math.round(3 * (profile.gnarl ?? 0)), r0, 0.025,
       profile.droop * 0.7, profile.upturn, 0.22, 0.05, 0.28, true);
     ctx.branches.push({ order: 1, parent: stemIndex, nodes, mesh: true, broken: false });
     const limb = ctx.branches.length - 1;
@@ -670,7 +685,7 @@ function growScaffolds(ctx: GrowContext, stemIndex: number, variant: number): vo
       const at = sampleAlong(nodes, 0.55 + rng() * 0.15);
       const side = rotate(perpendicular(at.d), at.d, rng() * Math.PI * 2);
       const d2 = norm(rotate(at.d, norm(cross(at.d, side)), 0.45 + rng() * 0.25));
-      const n2 = growPolyline(ctx, at.p, d2, len * (0.45 + rng() * 0.2), 3, at.r * 0.7, 0.018,
+      const n2 = growPolyline(ctx, at.p, d2, len * (0.45 + rng() * 0.2), 3 + Math.round(2 * (profile.gnarl ?? 0)), at.r * 0.7, 0.018,
         profile.droop * 0.6, profile.upturn, 0.2, at.flex, at.flex + 0.2, true);
       ctx.branches.push({ order: 1, parent: limb, nodes: n2, mesh: true, broken: false });
       if (profile.foliageBand) parasol.push([ctx.branches.length - 1, 0.15]);
