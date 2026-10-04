@@ -95,6 +95,10 @@ export interface HorizonPanoramaCharacter {
   /** a dry coast's scrub (the maquis): its share of the vegetated ground (rather than the temperate mosaic of woods,
    * meadows and fields), and its cover in the gullies up the bare faces, so the limestone stands on the spurs */
   scrub: number;
+  /** 1: the far country keeps the map's authored rock instead of the battlefield's rock mean (setGroundTone) — Saltwind's
+   * mainland is pale limestone, its battlefield rock a dark brown (gauntlet wave 32: "pale bare limestone on the upper
+   * faces"; with the battlefield's rock its ridge held 17 levels of shading) */
+  ownRock: number;
 }
 
 /** The knobs most characters leave at rest: open sea, no tree canopy, the eroded mesa's profile, no isolated peaks. */
@@ -103,7 +107,7 @@ const PANO_EXTRAS = Object.freeze({
   mesaTalusM: 700, mesaTalusShare: 0.55, mesaCliffM: 50, mesaFluteM: 45,
   peakShare: 0, peakM: 0, peakRadiusM: 600, peakSharp: 1.5,
   forestSlope: 0.32,
-  air: 1, fillLaw: 0, rockFloor: -1, scrub: 0,
+  air: 1, fillLaw: 0, rockFloor: -1, scrub: 0, ownRock: 0,
 });
 
 export const HORIZON_PANORAMA_CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonPanoramaCharacter>> = Object.freeze({
@@ -1269,7 +1273,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       if (baked || stats.bakes > 0) return false;
       const means = (c: THREE.Color) => [c.r, c.g, c.b].map((v) => Math.round(v * 1e4) / 1e4);
       if (ground) { palette.base = ground.clone(); stats.groundTone = means(ground); }
-      if (rock) { palette.rock = rock.clone(); stats.rockTone = means(rock); }
+      if (rock && !(ch.ownRock > 0)) { palette.rock = rock.clone(); stats.rockTone = means(rock); }
       if (ground || rock) stats.tone = 'ground';
       return !!(ground || rock);
     },

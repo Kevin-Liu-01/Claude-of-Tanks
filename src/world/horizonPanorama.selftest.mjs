@@ -155,6 +155,7 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
   assert.ok(salt.shore > 1 && salt.shoreRange > 0 && salt.shoreM <= 5000, 'Saltwind: the mainland across a channel under 5 km');
   assert.ok(salt.air < 0.5 && salt.fillLaw === 1, 'Saltwind: clean air, the band under the ridge the lowland\'s own cover');
   assert.ok(salt.scrub > 0.5 && salt.rockFloor > 0.3 && salt.treeline > salt.rockFloor, 'Saltwind: maquis up the lower slopes, bare limestone above');
+  assert.equal(salt.ownRock, 1, 'Saltwind: its far limestone the authored pale rock, not the battlefield\'s dark brown');
   // the channel past the sea apron is painted water on a channel coast, so the far ridge stands on it (wave 24: "floats
   // above a flat white haze stripe"); an open sea stays the game's own
   assert.ok(/float farWater = uShore\.x > 0\.0 \? sea \* smoothstep\(/.test(HORIZON_PANORAMA_SHADERS.strip)
@@ -179,7 +180,7 @@ for (const [pass, source] of Object.entries(HORIZON_PANORAMA_SHADERS)) {
 // the dry coast's knobs rest at no effect on every class (only a map's block sets them): the law's full σ on the far
 // path, the old fill, rock on every steep face, no scrub
 for (const [name, c] of [...Object.entries(HORIZON_PANORAMA_CHARACTERS), ...Object.entries(HORIZON_PANORAMA_REGIONAL)]) {
-  assert.ok(c.air === 1 && c.fillLaw === 0 && c.rockFloor < 0 && c.scrub === 0, `${name}: the dry coast's knobs at rest`);
+  assert.ok(c.air === 1 && c.fillLaw === 0 && c.rockFloor < 0 && c.scrub === 0 && c.ownRock === 0, `${name}: the dry coast's knobs at rest`);
 }
 {
   const strip = HORIZON_PANORAMA_SHADERS.strip, height = HORIZON_PANORAMA_SHADERS.height;

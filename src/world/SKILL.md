@@ -150,7 +150,8 @@ haze stripe" under it): `air` thins the bake's own air (a share of the law's σ;
 the lowland's own cover under the law's air over its reach instead of the lit ground pushed toward the fog colour,
 `rockFloor` keeps bare rock to the upper faces, and `scrub` lays the maquis over the vegetated ground and up the
 gullies (the height pass writes it in the grid's B channel) and fall-line streaks, so no contour runs level across a
-face; `forestSlope` is where a character's forest gives way on the steep faces (a monsoon hill country's climbs them).
+face; `ownRock` keeps the authored rock in place of the battlefield's rock mean (Saltwind's pale limestone over a dark
+brown battlefield rock); `forestSlope` is where a character's forest gives way on the steep faces (a monsoon hill country's climbs them).
 `horizon.ringStyle` gives the ring its own style (rows, profile, rock, relief character) while the border's landform
 keeps reading `style` (Eifel Reservoir: the alpine border its villages stand on, a rolling ring).
 `horizonPanorama.selftest.mjs` pins the shell, the atlas mapping and the bake contract; the bake's look is iterated
