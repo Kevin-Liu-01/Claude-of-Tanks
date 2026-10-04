@@ -68,8 +68,45 @@ const ringEdge = (() => {
     assert.ok(Math.abs(u - uWrapped) < 1e-4 || Math.abs(u + 1 - uWrapped) < 1e-4 || (k === 0 && Math.abs(u - 1) < 1e-4) || (k === n && Math.abs(u) < 1e-4),
       `a wall vertex's azimuth is its u (${u.toFixed(5)} vs ${uWrapped.toFixed(5)})`);
     assert.ok(Math.abs(v - 1) < 1e-6, 'the wall\'s top row is the strip\'s top');
+    // the ground rows (the edge and the apron) carry v = 1, the wall's 0: the apron is ground and never reads sky
+    for (let row = 0; row < rows; row++) {
+      assert.equal(uv.getY(row * stride + k), row <= P.apronM.length ? 1 : 0, `row ${row}: ${row <= P.apronM.length ? 'ground' : 'wall'}`);
+    }
   }
   geometry.dispose();
+}
+// --- over its column's skyline the shell is ground for a camera where the land goes on (the mountains lane, 2026-10-04):
+// the apron (the ring's outer edge stands above the bake eye's horizon, +0.76 to +2.54 degrees, where a low far country's
+// atlas is sky; discarded, it let the sky dome through between the ring and the shell, Whiteout's bird view) and the far
+// earth (gauntlet waves 53-54's bird views, "the world simply ends ... a ruler-straight hard top edge": the sky dome under
+// the camera's own horizontal). Both take the column's skyline (a bake pass: its highest opaque texel), the far earth
+// hazed by the map's law toward its target; a hole under the skyline stays open, and so does the wall's sky for any
+// camera whose ray to it points above its own horizontal (the ground and tank-height views)
+{
+  const handle = createHorizonPanorama({ ringEdge, sun: [0.3, 0.6, 0.2], gains: { ambient: 0.8, sunGain: 1.4 }, fogDensity: 0.0003 });
+  const material = handle.mesh.material;
+  const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.basic.vertexShader, fragmentShader: THREE.ShaderLib.basic.fragmentShader };
+  material.onBeforeCompile(shader);
+  const frag = shader.fragmentShader;
+  assert.ok(shader.vertexShader.includes('vPanoApron = uv.y;'), 'the vertex passes the ground rows on');
+  for (const name of ['uPanoSkyline', 'uPanoHaze', 'uPanoHazeAnti', 'uPanoHazeToward', 'uPanoSunH', 'uPanoHazeChroma']) {
+    assert.ok(name in shader.uniforms && new RegExp(`uniform [^;]*\\b${name}\\b`).test(frag), `the shell declares and binds ${name}`);
+  }
+  assert.ok(frag.includes('if (skyline.a < 0.0 || panoUv.y <= skyline.a) discard;'), 'a hole under the skyline, or a column with no land, stays open');
+  assert.ok(frag.includes('bool apron = vPanoApron > 0.5 && e > 0.0;') && frag.includes('if (vd.y >= 0.0 || !(apron || uPanoHaze.w > 0.5)) discard;'),
+    'only a ray under the camera\'s own horizontal takes ground (the apron over the eye\'s horizon, else the far earth under the law); a camera looking up at the shell\'s sky sees it open');
+  assert.ok(frag.includes('vec3 T = hazeTransmittance(uPanoHaze.x, reach, layer, uPanoHazeChroma);')
+    && frag.includes('ground = ground * T + mix(uPanoHazeAnti, uPanoHazeToward, toward * toward) * (1.0 - T);'),
+    'the far earth takes the map\'s law toward its own target, the strip\'s per column');
+  const skyline = HORIZON_PANORAMA_SHADERS.skyline;
+  assert.ok(skyline && skyline.includes('if (c.a >= 0.5) { found = vec4(c.rgb / c.a, v); break; }') && skyline.includes('vec4 found = vec4(0.0, 0.0, 0.0, -1.0);'),
+    'the skyline pass: per column the highest opaque texel, out of the premultiplication, or -1 where no land');
+  assert.ok(HORIZON_PANORAMA_SHADERS.skylineBlur?.includes('for (int k = -64; k <= 64; k++)') && HORIZON_PANORAMA_SHADERS.skylineBlur.includes('if (c.a >= 0.0) { sum += c.rgb; n += 1.0; }'),
+    'its colour averaged over 2.8 degrees either side among the columns with land, so no one column stands as a bar');
+  const src = readFileSync(new URL('./horizonPanorama.ts', import.meta.url), 'utf8');
+  assert.ok(src.includes('air.uPanoHaze.value.set(haze.sigma * ch.air, haze.invScale, hazeDatumM, 1);'), 'the bake hands the shell the far path\'s σ (the map\'s air share), the layer and the datum');
+  assert.ok(src.includes('air.uPanoHaze.value.set(0, 0, 0, 0);'), 'no law (its own air): no far earth');
+  handle.dispose();
 }
 
 // --- a sea opening (the ring's marine faces out to 4.35 km over 40 columns, Saltwind's channel): the shell's edge row
@@ -422,13 +459,14 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   assert.equal(handle.ensureBaked(renderer), true, 'a capable renderer bakes');
   assert.equal(handle.setGroundTone(new THREE.Color(0.5, 0.5, 0.5), null), false, 'a tone after the bake is not taken (a re-bake would hitch a frame)');
   const renders = renderer.calls.filter((c) => c[0] === 'render');
-  assert.deepEqual(renders.map((c) => c[1]), [`${P.gridA}x${P.gridR}`, `${P.gridA}x${P.gridR}`, `${P.width}x${P.height}`], 'three passes: the heights, their light, the strip');
+  assert.deepEqual(renders.map((c) => c[1]), [`${P.gridA}x${P.gridR}`, `${P.gridA}x${P.gridR}`, `${P.width}x${P.height}`, `${P.width}x1`, `${P.width}x1`],
+    'five passes: the heights, their light, the strip, its skyline per column and that skyline\'s colour averaged round the compass');
   assert.deepEqual(renderer.state(), before, 'the renderer\'s target, clear colour and alpha and auto-clear are restored');
   assert.equal(handle.mesh.visible, true, 'the shell shows once baked');
   assert.equal(fallback.visible, false, 'and takes the round-72 far range\'s place: one far draw');
   assert.ok(handle.mesh.material.map?.isTexture, 'the atlas is the shell\'s map (resource tracking sees it)');
   assert.equal(handle.ensureBaked(renderer), true, 'baked: a no-op');
-  assert.equal(renderer.calls.filter((c) => c[0] === 'render').length, 3, 'no second bake while the atlas lives');
+  assert.equal(renderer.calls.filter((c) => c[0] === 'render').length, 5, 'no second bake while the atlas lives');
   // a GPU suspension disposes the atlas texture: the fallback comes back and the next request bakes again
   handle.mesh.material.map.dispose();
   assert.equal(handle.baked, false, 'a disposed atlas is not baked');

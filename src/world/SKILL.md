@@ -170,6 +170,15 @@ steeper than 50-65 degrees its geometry's own normal past the first 20-60 m beyo
 playable ground's); `horizonCliffNormals.selftest.mjs` pins it on three cliff rings.
 `horizon.ringStyle` gives the ring its own style (rows, profile, rock, relief character) while the border's landform
 keeps reading `style` (Eifel Reservoir: the alpine border its villages stand on, a rolling ring).
+The shell over its column's skyline (the mountains lane, 2026-10-04, gauntlet waves 53-54's bird views: "the world simply
+ends ... a ruler-straight hard top edge", the sky dome under a high camera's own horizontal): two bake passes write each
+strip column's highest opaque texel (`SKYLINE_FRAGMENT`) and its colour averaged over 2.8 degrees either side
+(`SKYLINE_BLUR_FRAGMENT`). A texel over that skyline stays open except on a ray under the camera's own horizontal, where
+the shell is ground: the apron over the bake eye's horizon (its inner rows on the ring's outer edge, +0.8 to +2.5
+degrees, read sky over a low far country) takes the skyline's colour, and the far earth takes it hazed by the map's law
+over the reach past the strip at which the ray meets the ground, converging to the law's target toward the horizontal.
+A hole under the skyline (the game's open water) stays open; ground and tank-height cameras look up at the shell's sky,
+so their frames are bit-identical. The frame-budget probe's `--toggle=far-earth` switches it in place.
 `horizonPanorama.selftest.mjs` pins the shell, the atlas mapping and the bake contract; the bake's look is iterated
 offline on SwiftShader (no GPU) before the census.
 p2 trees lane (2026-10-01): the desktop tiers GROW their near trees — `treeGrowth.ts` (a THREE-free skeleton per

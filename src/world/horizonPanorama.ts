@@ -339,7 +339,8 @@ export function resolveHorizonPanoramaCharacter(character: HorizonReliefCharacte
 /**
  * The shell: row 0 on the ring's outer edge (its own positions and heights, so the apron leaves the ring without a
  * seam), the apron's rows easing down to the shell's foot, the wall at the shell radius up its elevations. Every
- * vertex carries its azimuth fraction (u, continuous across the seam: column n repeats column 0 at u = 1).
+ * vertex carries its azimuth fraction (u, continuous across the seam: column n repeats column 0 at u = 1), and v marks
+ * the ground rows (1 on the edge and the apron, 0 on the wall): the apron is ground and never reads sky.
  */
 export function buildHorizonPanoramaShellGeometry(ringEdge: HorizonPanoramaOptions['ringEdge']): THREE.BufferGeometry {
   const n = ringEdge.columns, stride = n + 1;
@@ -369,7 +370,7 @@ export function buildHorizonPanoramaShellGeometry(ringEdge: HorizonPanoramaOptio
     const put = (x: number, y: number, z: number): void => {
       const o = row * stride + k;
       positions[o * 3] = x; positions[o * 3 + 1] = y; positions[o * 3 + 2] = z;
-      uvs[o * 2] = k / n; uvs[o * 2 + 1] = 0;
+      uvs[o * 2] = k / n; uvs[o * 2 + 1] = row <= P.apronM.length ? 1 : 0;
       row++;
     };
     put(ex, eh - 0.05, ez);
@@ -404,21 +405,54 @@ export function buildHorizonPanoramaShellGeometry(ringEdge: HorizonPanoramaOptio
   return geometry;
 }
 
+/** The shell's uniforms the bake fills: the strip's skyline per column (SKYLINE_FRAGMENT) and the far path's haze law
+ *  (σ times the map's air share, the layer's inverse scale, the datum, on; the targets away from and toward the sun; the
+ *  sun's bearing; the per-channel extinction) */
+interface ShellAir {
+  uPanoSkyline: THREE.IUniform<THREE.Texture | null>;
+  uPanoHaze: THREE.IUniform<THREE.Vector4>;
+  uPanoHazeAnti: THREE.IUniform<THREE.Vector3>;
+  uPanoHazeToward: THREE.IUniform<THREE.Vector3>;
+  uPanoSunH: THREE.IUniform<THREE.Vector2>;
+  uPanoHazeChroma: THREE.IUniform<THREE.Vector3>;
+}
+
 /** The shell's material: the atlas by direction from the bake eye (an unlit backdrop; the post pass hazes it by depth),
  * transparent texels discarded (the sky and the clouds behind). The scene fog is off, as it was on the round-72 far
- * range: the strip carries its own air past the shell (the bake's distance grading). */
-function buildShellMaterial(): THREE.MeshBasicMaterial {
+ * range: the strip carries its own air past the shell (the bake's distance grading).
+ * Over its column's skyline (the mountains lane, 2026-10-04) a texel the shell reads as sky stays open, except where the
+ * shell is ground for the camera: the apron (its inner rows stand on the ring's outer edge above the bake eye's horizon,
+ * where a low far country's atlas is sky; discarded, they let the sky dome through between the ring and the shell from a
+ * high camera) and the far earth (gauntlet waves 53-54's bird views, "the world simply ends ... a ruler-straight hard top
+ * edge": the sky dome under the camera's own horizontal, where the land goes on to a horizon 0.56 degrees under it from
+ * 300 m). Both take the column's skyline, its farthest ground; the far earth hazed by the map's law over the reach past
+ * the strip at which the camera's ray meets the ground, so it converges to the law's target toward the horizontal. A
+ * ground or tank-height camera's rays to the wall's sky point above its own horizontal, so its view is unchanged. */
+function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAir } {
   const material = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, side: THREE.DoubleSide });
   material.name = 'horizon-panorama';
   const P = HORIZON_PANORAMA;
+  const air: ShellAir = {
+    uPanoSkyline: { value: null },
+    uPanoHaze: { value: new THREE.Vector4(0, 0, 0, 0) },
+    uPanoHazeAnti: { value: new THREE.Vector3() },
+    uPanoHazeToward: { value: new THREE.Vector3() },
+    uPanoSunH: { value: new THREE.Vector2(1, 0) },
+    uPanoHazeChroma: { value: new THREE.Vector3(...HAZE_EXT_CHROMA) },
+  };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uPanoEye = { value: new THREE.Vector3(0, P.eyeY, 0) };
     shader.uniforms.uPanoElev = { value: new THREE.Vector2(P.elevMin, P.elevMax) };
+    Object.assign(shader.uniforms, air);
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vPanoWorld; varying float vPanoU;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPanoWorld = (modelMatrix * vec4(position, 1.0)).xyz; vPanoU = uv.x;');
+      .replace('#include <common>', '#include <common>\nvarying vec3 vPanoWorld; varying float vPanoU; varying float vPanoApron;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPanoWorld = (modelMatrix * vec4(position, 1.0)).xyz; vPanoU = uv.x; vPanoApron = uv.y;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uPanoEye; uniform vec2 uPanoElev; varying vec3 vPanoWorld; varying float vPanoU;')
+      .replace('#include <common>', `#include <common>
+uniform vec3 uPanoEye; uniform vec2 uPanoElev; varying vec3 vPanoWorld; varying float vPanoU; varying float vPanoApron;
+uniform sampler2D uPanoSkyline; uniform vec4 uPanoHaze; uniform vec3 uPanoHazeAnti, uPanoHazeToward, uPanoHazeChroma;
+uniform vec2 uPanoSunH;
+${HAZE_LAW_GLSL}`)
       .replace('#include <map_fragment>', /* glsl */`
       #ifndef USE_MAP
         discard;
@@ -431,16 +465,44 @@ function buildShellMaterial(): THREE.MeshBasicMaterial {
         if (fl > 1e-6 && fh > 0.5 * fl && abs(dot(fn.xz / fh, normalize(vPanoWorld.xz - uPanoEye.xz + vec2(1e-3)))) < 0.45) discard;
         vec3 d = vPanoWorld - uPanoEye;
         float e = atan(d.y, length(d.xz));
-        vec4 pano = texture2D(map, vec2(vPanoU, clamp((e - uPanoElev.x) / (uPanoElev.y - uPanoElev.x), 0.002, 0.998)));
-        if (pano.a < 0.5) discard;
-        // the atlas holds display-encoded colour (more precision in the shadows), premultiplied so its filtered edge
-        // samples carry no black from the sky texels: divided back out, then back to linear
-        diffuseColor.rgb *= pow(pano.rgb / pano.a, vec3(2.2));
+        vec2 panoUv = vec2(vPanoU, clamp((e - uPanoElev.x) / (uPanoElev.y - uPanoElev.x), 0.002, 0.998));
+        vec4 pano = texture2D(map, panoUv);
+        if (pano.a < 0.5) {
+          // over its column's skyline: open (the sky), unless the shell is ground for this camera, on a ray under the
+          // camera's own horizontal — the apron over the bake eye's horizon, or the far earth. A hole under the skyline
+          // (the open water the game draws, the band over a sea's ring) stays open, as does a column with no land; a
+          // camera looking up at the shell's sky (every ground and tank-height view) sees it open as before
+          vec4 skyline = texture2D(uPanoSkyline, vec2(vPanoU, 0.5));
+          if (skyline.a < 0.0 || panoUv.y <= skyline.a) discard;
+          vec3 vd = vPanoWorld - cameraPosition;
+          bool apron = vPanoApron > 0.5 && e > 0.0;
+          if (vd.y >= 0.0 || !(apron || uPanoHaze.w > 0.5)) discard;
+          vec3 ground = pow(max(skyline.rgb, vec3(0.0)), vec3(2.2));
+          if (!apron) {
+            // the far earth: the law over the reach past the strip (its far country already carries the air to 9 km)
+            // at which the camera's ray meets the ground, the layer's density between there and the ray's height at
+            // the strip's end, toward the column's own target
+            vec3 rd = vd / length(vd);
+            float meet = (cameraPosition.y - uPanoHaze.z) / max(-rd.y, 1e-5);
+            float stripEnd = min(meet, ${P.outerM.toFixed(1)});
+            float reach = max(0.0, meet - ${P.outerM.toFixed(1)});
+            float layer = hazeLayerMean(max(cameraPosition.y + rd.y * stripEnd - uPanoHaze.z, 0.0) * uPanoHaze.y, 0.0);
+            vec3 T = hazeTransmittance(uPanoHaze.x, reach, layer, uPanoHazeChroma);
+            float a = vPanoU * 6.2831853;
+            float toward = 0.5 + 0.5 * (cos(a) * uPanoSunH.x + sin(a) * uPanoSunH.y);
+            ground = ground * T + mix(uPanoHazeAnti, uPanoHazeToward, toward * toward) * (1.0 - T);
+          }
+          diffuseColor.rgb *= ground;
+        } else {
+          // the atlas holds display-encoded colour (more precision in the shadows), premultiplied so its filtered edge
+          // samples carry no black from the sky texels: divided back out, then back to linear
+          diffuseColor.rgb *= pow(pano.rgb / pano.a, vec3(2.2));
+        }
       }
       #endif`);
   };
-  material.customProgramCacheKey = () => 'horizon-panorama-v3';
-  return material;
+  material.customProgramCacheKey = () => 'horizon-panorama-v4';
+  return { material, air };
 }
 
 // --------------------------------------------------------------------------------------------------- the bake shaders
@@ -831,6 +893,45 @@ float farField(vec2 p) {
     h *= landKeep;
   }
   return h;
+}
+`;
+
+/** pass 4: per strip column, its highest opaque texel — its colour (display-encoded, out of the premultiplication) and
+ *  its v; v -1 where the column holds no land */
+const SKYLINE_FRAGMENT = /* glsl */`
+precision highp float;
+varying vec2 vUv;
+uniform sampler2D uStrip;
+uniform float uRows;
+void main() {
+  vec4 found = vec4(0.0, 0.0, 0.0, -1.0);
+  for (int j = 0; j < 4096; j++) {
+    if (float(j) >= uRows) break;
+    float v = (uRows - float(j) - 0.5) / uRows;
+    vec4 c = textureLod(uStrip, vec2(vUv.x, v), 0.0);
+    if (c.a >= 0.5) { found = vec4(c.rgb / c.a, v); break; }
+  }
+  gl_FragColor = found;
+}
+`;
+
+/** pass 5: the skyline's colour averaged over 2.8 degrees either side among the columns that hold land (one bright peak's
+ *  column would stand as a bar up the far earth), each column keeping its own v: the ground the shell shows over the far
+ *  country's skyline */
+const SKYLINE_BLUR_FRAGMENT = /* glsl */`
+precision highp float;
+varying vec2 vUv;
+uniform sampler2D uSkyline;
+uniform float uColumns;
+void main() {
+  vec4 own = textureLod(uSkyline, vec2(vUv.x, 0.5), 0.0);
+  vec3 sum = vec3(0.0);
+  float n = 0.0;
+  for (int k = -64; k <= 64; k++) {
+    vec4 c = textureLod(uSkyline, vec2(vUv.x + float(k) / uColumns, 0.5), 0.0);
+    if (c.a >= 0.0) { sum += c.rgb; n += 1.0; }
+  }
+  gl_FragColor = vec4(n > 0.0 ? sum / n : own.rgb, own.a);
 }
 `;
 
@@ -1250,13 +1351,15 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   const P = HORIZON_PANORAMA;
   const ch = resolveHorizonPanoramaCharacter(options.character, options.overrides);
   const geometry = buildHorizonPanoramaShellGeometry(options.ringEdge);
-  const material = buildShellMaterial();
+  const { material, air } = buildShellMaterial();
   const mesh = new THREE.Mesh(geometry, material);
   // the far range's name: the battle atmosphere dims every 'horizon-far-range' mesh's colour at night
   // (battleAtmosphereRuntime.ts), and the panorama is that range now; lookups by name still find the round-72 mesh, the
   // ring's first child of the name
   mesh.name = 'horizon-far-range';
   mesh.userData.horizonPanorama = true;
+  // (the shell's air: the frame-budget probe's far-earth toggle switches the law's flag in place)
+  mesh.userData.panoAir = air;
   mesh.visible = false;
   mesh.castShadow = false;
   mesh.receiveShadow = false;
@@ -1264,6 +1367,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   mesh.frustumCulled = false;
   mesh.userData.aoExclude = true;
   let atlas: THREE.WebGLRenderTarget | null = null;
+  let skyline: THREE.WebGLRenderTarget | null = null;
   let baked = false;
   const stats = { bakes: 0, ms: 0, unsupported: null as string | null, tone: 'authored' as 'authored' | 'ground', haze: 'own' as 'own' | 'law',
     groundTone: null as number[] | null, rockTone: null as number[] | null,
@@ -1404,6 +1508,10 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     stripRT.texture.colorSpace = THREE.NoColorSpace;
     stripRT.texture.anisotropy = 4;
     stripRT.texture.name = 'horizon-panorama-atlas';
+    const skylineRawRT = target(res.width, 1, THREE.HalfFloatType, false);
+    skylineRawRT.texture.minFilter = skylineRawRT.texture.magFilter = THREE.NearestFilter;
+    const skylineRT = target(res.width, 1, THREE.HalfFloatType, false);
+    skylineRT.texture.name = 'horizon-panorama-skyline';
     const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
     quad.frustumCulled = false;
     const scene = new THREE.Scene(); scene.add(quad);
@@ -1414,6 +1522,8 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     const heightMat = pass(HEIGHT_FRAGMENT, {});
     const lightMat = pass(LIGHT_FRAGMENT, { uHeight: { value: heightRT.texture } });
     const stripMat = pass(STRIP_FRAGMENT, { uHeight: { value: heightRT.texture }, uLight: { value: lightRT.texture } });
+    const skylineMat = pass(SKYLINE_FRAGMENT, { uStrip: { value: stripRT.texture }, uRows: { value: res.height } });
+    const skylineBlurMat = pass(SKYLINE_BLUR_FRAGMENT, { uSkyline: { value: skylineRawRT.texture }, uColumns: { value: res.width } });
     const previousTarget = renderer.getRenderTarget();
     const previousColor = renderer.getClearColor(_clear).clone();
     const previousAlpha = renderer.getClearAlpha();
@@ -1423,7 +1533,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       renderer.autoClear = false;
       if (renderer.xr) renderer.xr.enabled = false;
       renderer.setClearColor(_clear.setRGB(0, 0, 0), 0);
-      for (const [mat, rt] of [[heightMat, heightRT], [lightMat, lightRT], [stripMat, stripRT]] as const) {
+      for (const [mat, rt] of [[heightMat, heightRT], [lightMat, lightRT], [stripMat, stripRT], [skylineMat, skylineRawRT], [skylineBlurMat, skylineRT]] as const) {
         quad.material = mat;
         renderer.setRenderTarget(rt);
         renderer.clear(true, false, false);
@@ -1434,22 +1544,36 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       renderer.setClearColor(previousColor, previousAlpha);
       renderer.autoClear = previousAutoClear;
       if (renderer.xr && previousXr !== undefined) renderer.xr.enabled = previousXr;
-      for (const m of [heightMat, lightMat, stripMat]) m.dispose();
+      for (const m of [heightMat, lightMat, stripMat, skylineMat, skylineBlurMat]) m.dispose();
       quad.geometry.dispose();
-      heightRT.dispose(); lightRT.dispose(); edgeTex.dispose();
+      heightRT.dispose(); lightRT.dispose(); skylineRawRT.dispose(); edgeTex.dispose();
     }
     if (atlas) atlas.dispose();
+    if (skyline) skyline.dispose();
     atlas = stripRT;
+    skyline = skylineRT;
     // a GPU suspension (resourceLifetime) disposes the atlas texture: free its framebuffer, show the fallback again and
     // bake once more on the next request
     stripRT.texture.addEventListener('dispose', () => {
       if (atlas !== stripRT) return;
       baked = false; atlas = null; stripRT.dispose();
+      if (skyline === skylineRT) { skyline = null; skylineRT.dispose(); air.uPanoSkyline.value = null; }
       mesh.visible = false;
       if (fallback) fallback.visible = true;
     });
     material.map = stripRT.texture;
     material.needsUpdate = true;
+    // the shell's ground over the skyline: the column's skyline, the far path's law (σ times the map's air share)
+    air.uPanoSkyline.value = skylineRT.texture;
+    if (haze) {
+      air.uPanoHaze.value.set(haze.sigma * ch.air, haze.invScale, hazeDatumM, 1);
+      air.uPanoHazeAnti.value.copy(haze.anti);
+      air.uPanoHazeToward.value.copy(haze.toward);
+      air.uPanoSunH.value.set(options.sun[0], options.sun[2]);
+      if (air.uPanoSunH.value.lengthSq() > 1e-8) air.uPanoSunH.value.normalize(); else air.uPanoSunH.value.set(1, 0);
+    } else {
+      air.uPanoHaze.value.set(0, 0, 0, 0);
+    }
     mesh.visible = true;
     if (fallback) fallback.visible = false;
     baked = true;
@@ -1484,6 +1608,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     },
     dispose() {
       if (atlas) { const a = atlas; atlas = null; baked = false; a.dispose(); }
+      if (skyline) { const k = skyline; skyline = null; air.uPanoSkyline.value = null; k.dispose(); }
       geometry.dispose();
       material.dispose();
     },
@@ -1500,4 +1625,4 @@ function mulberry32(a: number): () => number {
 }
 
 /** The bake's shader sources, for the receipts (a structural check: the passes compile against the same uniforms). */
-export const HORIZON_PANORAMA_SHADERS = Object.freeze({ vertex: QUAD_VERTEX, height: HEIGHT_FRAGMENT, light: LIGHT_FRAGMENT, strip: STRIP_FRAGMENT });
+export const HORIZON_PANORAMA_SHADERS = Object.freeze({ vertex: QUAD_VERTEX, height: HEIGHT_FRAGMENT, light: LIGHT_FRAGMENT, strip: STRIP_FRAGMENT, skyline: SKYLINE_FRAGMENT, skylineBlur: SKYLINE_BLUR_FRAGMENT });
