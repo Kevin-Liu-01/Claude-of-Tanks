@@ -3171,9 +3171,9 @@ function* propsBuildSteps(
     // texture"): the field print's occlusion takes half the skylight in a joint, not four fifths, so a wall's shaded face
     // keeps its stones (the sunlit face, lit directly, hardly changes)
     if (mats.fieldStone) mats.fieldStone.aoMapIntensity = 0.5;
-    // (the b6b shots: the occlusion alone lifted the shaded face from sRGB 67 to 69 against 163 in the sun; the sky's
-    // own light on the stone is what a shaded face lacked — rough stone, so no sparkle comes with it)
-    if (mats.fieldStone) mats.fieldStone.envMapIntensity = 1.6;
+    // (measured, b6c: the environment's share of a shaded face's light is small — 1.6 of it moved the Verdant corner's
+    // shaded face from luma 64 to 65, its contrast unchanged — so the field print keeps the default; the shade is the
+    // hemisphere's)
     mats.steel.envMapIntensity = 0.42; // round 75: painted sheet, a little sky on the crests
     mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance
     mats.baked.envMapIntensity = 0.5; // flat-shaded sourced models: no spec sparkle
