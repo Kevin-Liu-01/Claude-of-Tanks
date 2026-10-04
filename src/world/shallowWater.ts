@@ -460,7 +460,7 @@ export function createShallowWaterSurface(
       waterBank = smoothstep(0.015, 0.20, wet) * (1.0 - smoothstep(0.32, 0.74, wet));
       // 2026-10-04 (the sea's shelf): the metres from the shore stand in for the depth — the body's share of the colour
       // rises over the shelf, not over the mask's few-metre ramp (which painted the bay deep right up to the sand)
-      seaShoreM = uSeaShelf.x > 0.0 ? texture2D(uShoreDist, waterUvC).r * 255.0 + pastEdgeM : 0.0;
+      seaShoreM = uSeaShelf.x > 0.0 ? texture2D(uShoreDist, waterUvC).r * 255.0 + max(pastEdgeM, 0.0) : 0.0;
       waterDeep = mix(waterDeep, 1.0 - exp(-seaShoreM / uSeaShelf.y), uSeaShelf.x);
       // Water 2026-09-12: the bed shows through the shallows — the deep colour
       // rises out of a sunlit bank tint instead of one flat sheet.

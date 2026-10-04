@@ -335,8 +335,8 @@ assert.match(fx, /printCenters\.fill\(1e9\)/, 'rematch reset clears wake admissi
   assert.equal(at(63), 192, 'and on to the far edge');
   assert.equal(shoreDistanceTexture({ image: { width: 8, height: 8 } }, 256, 0.3), null, 'no CPU data, no field (the law stays off)');
 }
-assert.match(shader.fragmentShader, /seaShoreM = uSeaShelf\.x > 0\.0 \? texture2D\(uShoreDist, waterUvC\)\.r \* 255\.0 \+ pastEdgeM : 0\.0;\s*waterDeep = mix\(waterDeep, 1\.0 - exp\(-seaShoreM \/ uSeaShelf\.y\), uSeaShelf\.x\);/,
-  'the body\'s share rises over the shelf, metres from the shore (past the edge, plus the metres out)');
+assert.match(shader.fragmentShader, /seaShoreM = uSeaShelf\.x > 0\.0 \? texture2D\(uShoreDist, waterUvC\)\.r \* 255\.0 \+ max\(pastEdgeM, 0\.0\) : 0\.0;\s*waterDeep = mix\(waterDeep, 1\.0 - exp\(-seaShoreM \/ uSeaShelf\.y\), uSeaShelf\.x\);/,
+  'the body\'s share rises over the shelf, metres from the shore (past the edge, plus the metres out — never minus inside the square)');
 assert.match(shader.fragmentShader, /float seaOpacity = mix\(opacity, mix\(uSeaShelf\.w, opacity, 1\.0 - exp\(-seaShoreM \/ uSeaShelf\.z\)\), uSeaShelf\.x\);/, 'clear over the shelf');
 assert.match(shader.fragmentShader, /wave \*= uOceanGrid\.w > 0\.5 \? uSwell\.w : 1\.0;/, 'the tiled ripple steps back on an FFT sea');
 assert.match(shader.fragmentShader, /- oceanN\.x - swellN\.x, 1\.0,/, 'the swell joins the normal');
