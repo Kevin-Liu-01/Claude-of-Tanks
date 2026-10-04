@@ -520,7 +520,7 @@ export function paintBurlap(size = 128): { lum: Float32Array; height: Float32Arr
       const h = Math.max(hw, hf);
       const shade = hw >= hf ? burlapHash(wi, 0, 37) : burlapHash(fi, 1, 41);
       const fuzz = burlapHash(x, y, 53);
-      lum[y * size + x] = Math.min(1, 0.7 + h * 0.28 + (shade - 0.5) * 0.12 + (fuzz - 0.5) * 0.06);
+      lum[y * size + x] = Math.min(1, 0.75 + h * 0.25 + (shade - 0.5) * 0.12 + (fuzz - 0.5) * 0.06);
       height[y * size + x] = h;
     }
   }
@@ -607,7 +607,7 @@ export function sandbagBag(len: number, thick: number, wid: number, r: Rng, shap
     const bed = Math.max(0, Math.min(1, (-p[1] / (T * 0.5) + 0.2) / 1.2));
     const earth = Math.min(1, bed * (0.32 + dirt * 0.3) + dirt * 0.18);
     // the cloth bunched into the seam and the fold reads darker; the seam's stitched hem darkest
-    const end = Math.abs(s) > body ? 0.86 : 1, hem = Math.abs(s) >= 1 ? (s > 0 ? 0.72 : 0.8) : 1;
+    const end = Math.abs(s) > body ? 0.9 : 1, hem = Math.abs(s) >= 1 ? (s > 0 ? 0.8 : 0.86) : 1;
     _c.setHSL(tone[0] + hue - earth * 0.01, tone[1] * (1 - earth * 0.3), Math.max(0.05, (tone[2] + lift) * (1 - earth) * end * hem), THREE.SRGBColorSpace);
     colors[o * 3] = _c.r; colors[o * 3 + 1] = _c.g; colors[o * 3 + 2] = _c.b;
   };

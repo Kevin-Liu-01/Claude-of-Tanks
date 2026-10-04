@@ -1131,7 +1131,7 @@ function makeBurlapDetail(anisotropy: number): GeneratedSurfaceTextures {
   return {
     albedo: toTexture(px, s, { srgb: true, anisotropy }),
     normal: normalFromHeight(height, s, 0.1, anisotropy),
-    surface: surfaceFromHeight(height, s, anisotropy, { roughMin: 0.92, roughMax: 1.0, aoMin: 0.72 }),
+    surface: surfaceFromHeight(height, s, anisotropy, { roughMin: 0.92, roughMax: 1.0, aoMin: 0.84 }),
   };
 }
 
@@ -3171,6 +3171,9 @@ function* propsBuildSteps(
     // texture"): the field print's occlusion takes half the skylight in a joint, not four fifths, so a wall's shaded face
     // keeps its stones (the sunlit face, lit directly, hardly changes)
     if (mats.fieldStone) mats.fieldStone.aoMapIntensity = 0.5;
+    // (the b6b shots: the occlusion alone lifted the shaded face from sRGB 67 to 69 against 163 in the sun; the sky's
+    // own light on the stone is what a shaded face lacked — rough stone, so no sparkle comes with it)
+    if (mats.fieldStone) mats.fieldStone.envMapIntensity = 1.6;
     mats.steel.envMapIntensity = 0.42; // round 75: painted sheet, a little sky on the crests
     mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance
     mats.baked.envMapIntensity = 0.5; // flat-shaded sourced models: no spec sparkle
