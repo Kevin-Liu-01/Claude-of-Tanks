@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { createCanvas, ImageData } from '@napi-rs/canvas';
 import {
   crownLobes, emitCrownShadowHull, emitLeafCards, GROWTH_CROWN_POROSITY, GROWTH_CROWN_SHADING, GROWTH_SPECIES, growTreeSkeleton,
-  TREE_GROWTH_PROFILES,
+  TREE_GROWTH_PROFILES, tuftLobes,
 } from './treeGrowth.ts';
 import {
   applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, CROWN_DAPPLE_LAW, CROWN_DAPPLE_PROGRAM_KEY, crownDappleTags, crownDappleThreshold,
@@ -45,6 +45,24 @@ for (const species of GROWTH_SPECIES) {
     }
     assert.ok(covered >= 0.95 * skeleton.leaves.length, `${species}/${variant}: the lobes hold ${covered}/${skeleton.leaves.length} card centres`);
     assert.deepEqual(crownLobes(skeleton, lobes.length), lobes, `${species}: the lobes are deterministic from the sprays`);
+    // trees round 4 (the gauntlet's wave 39: Caldera's midground Canary pines read as "round broadleaf crowns", the crown's
+    // few lobes lighting each pine as a handful of lit round masses): a tufted pine's cards shade by its tufts — a mass
+    // for about every four sprays, each a fist of needles, every card centre in its own tuft — and no other crown has any
+    const tufts = skeleton.tufts;
+    if (profile.habit === 'tuft') {
+      assert.ok(tufts && tufts.length === Math.max(2, Math.round(skeleton.leaves.length / 4)) && tufts.length > lobes.length * 2,
+        `${species}/${variant}: ${tufts?.length} tufts for ${skeleton.leaves.length} sprays (${lobes.length} lobes)`);
+      for (const l of tufts) assert.ok(Math.max(l.rx, l.ry, l.rz) < 1.6 && Math.min(l.rx, l.ry, l.rz) >= 0.15, `${species}: a tuft is a fist of needles`);
+      let held = 0;
+      for (const s of skeleton.leaves) {
+        const cx = s.x + s.ax * s.length * 0.45, cy = s.y + s.ay * s.length * 0.45, cz = s.z + s.az * s.length * 0.45;
+        // a tuft's ellipsoid is its members' box with a hand's margin: a centre in the box's corner sits within √2 of it
+        if (tufts.some((l) => ((cx - l.x) / l.rx) ** 2 + ((cy - l.y) / l.ry) ** 2 + ((cz - l.z) / l.rz) ** 2 <= 2)) held++;
+      }
+      assert.ok(held >= 0.98 * skeleton.leaves.length, `${species}/${variant}: the tufts hold ${held}/${skeleton.leaves.length} card centres`);
+      assert.deepEqual(tuftLobes(skeleton), tufts, `${species}: the tufts are deterministic from the sprays`);
+    } else assert.equal(tufts, undefined, `${species}: only a tufted pine shades by tufts`);
+    const shadeLobes = tufts ?? lobes;
 
     const tint = () => [0.5, 0.6, 0.4];
     const cards = emitLeafCards(skeleton, { tint, tiles: 2, rng: mulberry32(7), rows: 2 });
@@ -85,7 +103,7 @@ for (const species of GROWTH_SPECIES) {
     assert.ok(facing > authored + 0.15 && facing > 0.6, `${species}/${variant}: the facing clusters show their face (|n·v| ${facing.toFixed(2)} against ${authored.toFixed(2)})`);
     // the lobe-union normals turn out of the crown: a step along a vertex's normal leaves the lobes' union (the field
     // Σ e^{−|q|²} falls along it)
-    const field = (x, y, z) => lobes.reduce((f, l) => f + Math.exp(-(((x - l.x) / l.rx) ** 2 + ((y - l.y) / l.ry) ** 2 + ((z - l.z) / l.rz) ** 2)), 0);
+    const field = (x, y, z) => shadeLobes.reduce((f, l) => f + Math.exp(-(((x - l.x) / l.rx) ** 2 + ((y - l.y) / l.ry) ** 2 + ((z - l.z) / l.rz) ** 2)), 0);
     let outward = 0;
     for (let i = 0; i < p.count; i++) {
       const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
@@ -97,18 +115,18 @@ for (const species of GROWTH_SPECIES) {
     const depth = [];
     for (let i = 0; i < p.count; i++) {
       let f = 0;
-      for (const l of lobes) f += Math.exp(-(((p.getX(i) - l.x) / l.rx) ** 2 + ((p.getY(i) - l.y) / l.ry) ** 2 + ((p.getZ(i) - l.z) / l.rz) ** 2));
+      for (const l of shadeLobes) f += Math.exp(-(((p.getX(i) - l.x) / l.rx) ** 2 + ((p.getY(i) - l.y) / l.ry) ** 2 + ((p.getZ(i) - l.z) / l.rz) ** 2));
       depth.push([f, lum(c.getX(i), c.getY(i), c.getZ(i))]);
     }
     depth.sort((x, y) => x[0] - y[0]);
     const k = Math.max(1, Math.floor(depth.length / 5));
     const shell = depth.slice(0, k).reduce((s, x) => s + x[1], 0) / k, heart = depth.slice(-k).reduce((s, x) => s + x[1], 0) / k;
-    // trees round 4: the floor takes the card's own ramp at its stem row
+    // trees round 4: the floor takes the card's own ramp at its stem row, and a tufted pine's tuft by its stem
     const floor = lum(0.5, 0.6, 0.4) * (1 - GROWTH_CROWN_SHADING.depthShade) * (1 - GROWTH_CROWN_SHADING.underside)
-      * GROWTH_CROWN_SHADING.cardRamp[0] - 1e-6;
+      * GROWTH_CROWN_SHADING.cardRamp[0] * (tufts ? 1 - GROWTH_CROWN_SHADING.tuftCrownDepth : 1) - 1e-6;
     assert.ok(heart < shell * 0.9, `${species}/${variant}: the heart (${heart.toFixed(3)}) sits in shade under the shell (${shell.toFixed(3)})`);
     assert.ok(depth.every((x) => x[1] >= floor), `${species}: no card darker than the shade law's floor`);
-    if (variant === 1) report.species[species] = { lobes: lobes.length, sprays: skeleton.leaves.length, facing: +facing.toFixed(2), authored: +authored.toFixed(2), shell: +shell.toFixed(3), heart: +heart.toFixed(3) };
+    if (variant === 1) report.species[species] = { lobes: lobes.length, tufts: tufts?.length ?? 0, sprays: skeleton.leaves.length, facing: +facing.toFixed(2), authored: +authored.toFixed(2), shell: +shell.toFixed(3), heart: +heart.toFixed(3) };
     // a conifer's apex: no bare leader — the top tenth of the tree carries sprays, and the highest spray tip reaches
     // within a hand's breadth of the stem's top
     if (profile.family === 'conifer' && profile.form === 'excurrent') {

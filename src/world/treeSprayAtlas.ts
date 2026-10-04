@@ -35,9 +35,9 @@ export const SPRAY_ATLAS_TILES = 2;
  */
 export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.freeze({
   oak: 0.318, poplar: 0.285, willow: 0.17, acacia: 0.175, eucalyptus: 0.239, birch: 0.219, aspen: 0.274, 'birch-bare': 0.13,
-  spruce: 0.241, fir: 0.287, pine: 0.128, cedar: 0.188, cypress: 0.291, mangrove: 0.264, beech: 0.313, chestnut: 0.396,
-  holmOak: 0.213, olive: 0.225, canaryPine: 0.107, aleppoPine: 0.087, larch: 0.157, broom: 0.131,
-  juniper: 0.256, pinyon: 0.085,
+  spruce: 0.241, fir: 0.287, pine: 0.092, cedar: 0.188, cypress: 0.291, mangrove: 0.264, beech: 0.313, chestnut: 0.396,
+  holmOak: 0.213, olive: 0.225, canaryPine: 0.098, aleppoPine: 0.071, larch: 0.157, broom: 0.131,
+  juniper: 0.256, pinyon: 0.074,
 });
 
 interface LeafColor { hue: number; sat: number; light: number }
@@ -435,6 +435,12 @@ function paintNeedleTwig(
   }
 }
 
+/** A pine needle as the tile draws it: its seat, its end, the bend's control point, its side of the shoot, its tone. */
+interface Needle {
+  x: number; y: number; ex: number; ey: number; cx: number; cy: number;
+  near: boolean; light: number; hue: number;
+}
+
 function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, kind: SprayKind): Pt[][] {
   const base = LEAF_COLOR[kind];
   const wood = css(0.06, 0.25, 0.09);
@@ -443,52 +449,82 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
     // Trees round 2 (2026-10-03): a pine shoot is a brush, not a star. The needle fascicles stand all along each shoot's
     // last half, every one pointing forward and out from it (the tip's more forward), so a tile reads as the fox-tail
     // tufts a pine crown is made of; round 1's tuft radiating from one point read as a palm frond or a maple leaf at
-    // the chase camera (the lab's Caldera pairs). A main shoot and two side shoots off its lower half; the Canary pine's
-    // needles long and hanging, the Aleppo pine's fine and sparse. The tile's alpha is the needles' alone (the shaded
+    // the chase camera (the lab's Caldera pairs). The Canary pine's needles long and hanging, the Aleppo pine's fine
+    // and sparse. The tile's alpha is the needles' alone (the shaded
     // heart darkens them, never fills between them): wave 26 read the Caldera pines' alpha-tested tiles, whose hearts
     // filled each brush's core into one opaque rounded mass, as "flat broadleaf leaf-card clusters".
     const canary = kind === 'canaryPine', aleppo = kind === 'aleppoPine', pinyon = kind === 'pinyon';
-    // the pinyon's needles short, stiff and crowded at the shoot ends
-    const needleL = canary ? 0.27 : aleppo ? 0.16 : pinyon ? 0.11 : 0.19, droopN = canary ? 0.3 : aleppo ? 0.1 : pinyon ? 0.02 : 0.08;
-    const perShoot = canary ? 300 : aleppo ? 95 : pinyon ? 210 : 140;
-    // trees round 3 (2026-10-03, the gauntlet's wave 31: "the Canary pines still read as broadleaf at mid distance"):
-    // a Canary pine's tile is one long fox-tail, its needles splayed wide round it — a three-shoot fan read as a leaf
-    // at range; the other pines keep a main shoot and two side shoots
-    const mainLen = canary ? 0.74 : 0.56;
+    // trees round 4 (2026-10-04, the gauntlet's wave 39 and the lab's mid-range portraits): a tile of one to three long
+    // brushes minified into one leaf-shaped blade on a stalk — a pine read as a broadleaf from 15 m out. The Canary
+    // pine keeps one long drooping fox-tail (its crown's own cone carries the read); the Scots and Aleppo pines and the
+    // pinyon paint a branchlet's end instead: a main shoot and four or five short side shoots, each clothed in a small
+    // brush of its own, gaps between them, so a card minifies into a lumpy clump of tufts, never one outline.
+    const needleL = canary ? 0.28 : aleppo ? 0.115 : pinyon ? 0.075 : 0.12;
+    const droopN = canary ? 0.45 : aleppo ? 0.12 : pinyon ? 0.02 : 0.08;
+    /** Needles per tile-length of brushed shoot, and the share of each shoot (from its tip) the brush clothes. */
+    const density = canary ? 830 : aleppo ? 400 : pinyon ? 820 : 470, reach = canary ? 0.5 : 0.48;
+    const mainLen = canary ? 0.7 : 0.78;
     const main = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * mainLen, (rng() - 0.5) * 0.35, 8);
     const shoots: Pt[][] = [main];
-    for (const side of canary ? [] : [-1, 1]) {
-      const at = pointAt(main, 0.3 + rng() * 0.12);
-      shoots.push(twigPoints(at.p, at.a + side * (0.55 + rng() * 0.25), S * (0.27 + rng() * 0.07), side * (0.15 + rng() * 0.2), 6));
+    const sideCount = canary ? 0 : aleppo ? 4 : 5;
+    for (let k = 0; k < sideCount; k++) {
+      const t = 0.2 + (k + rng() * 0.6) / sideCount * 0.62, side = k % 2 === 0 ? -1 : 1;
+      const at = pointAt(main, t);
+      shoots.push(twigPoints(at.p, at.a + side * (0.55 + rng() * 0.35), S * (0.2 + rng() * 0.1) * (1.15 - t * 0.6),
+        side * (0.1 + rng() * 0.2), 5));
     }
-    for (const shoot of shoots) taperStroke(ctx, shoot, S * 0.014, S * 0.008, wood);
+    // the fascicles stand round each shoot in three dimensions, each at an azimuth about it and a splay out of it,
+    // drawn as the tile sees it — the needles turned toward or away from the viewer foreshortened into the brush's
+    // dense core, the ones in the tile's plane its fringe — the far side's first (darker, in the brush's shade), then
+    // the wood, then the near side's
+    const needleW = Math.max(0.7, S / 256 * (aleppo ? 1.0 : 1.2));
+    const splay = canary ? 1.6 : pinyon ? 1.15 : 1.3;
+    const needles: Needle[] = [];
     for (let si = 0; si < shoots.length; si++) {
-      const shoot = shoots[si], n = Math.round(perShoot * (si === 0 ? 1 : 0.7));
+      const shoot = shoots[si];
+      const seat0 = 1 - (si === 0 && !canary ? reach * 0.75 : reach);
+      let len = 0;
+      for (let i = 1; i < shoot.length; i++) len += Math.hypot(shoot[i].x - shoot[i - 1].x, shoot[i].y - shoot[i - 1].y);
+      const n = Math.max(12, Math.round(density * len * (1 - seat0) / S));
       for (let k = 0; k < n; k++) {
-        // the fascicles stand round the shoot, not in two rows: a seat anywhere on its last 58 %, a side and an angle
-        // out of it at random (seen from the side, a brush is needles at every angle over each other, never a fishbone)
-        const t = 0.42 + Math.sqrt(rng()) * 0.58;
-        const at = pointAt(shoot, t), side = rng() < 0.5 ? 1 : -1;
-        const out = (0.12 + rng() * 1.05) * (1 - 0.35 * (t - 0.42) / 0.58);
-        const a = at.a + side * out;
+        // a seat on the brushed part (crowded toward the tip), an azimuth round the shoot, a splay forward of it
+        const t = seat0 + Math.sqrt(rng()) * (1 - seat0);
+        const at = pointAt(shoot, t);
+        const phi = rng() * Math.PI * 2, alpha = (0.22 + rng() * splay) * (1 - 0.3 * (t - seat0) / (1 - seat0));
+        const sx = Math.cos(at.a), sy = Math.sin(at.a), px = -sy, py = sx;
+        const along = Math.cos(alpha), across = Math.sin(alpha) * Math.cos(phi);
         const nl = S * needleL * (0.75 + rng() * 0.45) * (0.8 + 0.2 * (1 - t));
-        const light = base.light * (0.72 + rng() * 0.5) * (si === 0 ? 1.04 : 0.92);
-        ctx.strokeStyle = css(base.hue + (rng() - 0.5) * 0.03, base.sat, light);
-        ctx.lineWidth = Math.max(0.7, S / 256 * (aleppo ? 1.0 : 1.25));
-        ctx.beginPath();
-        ctx.moveTo(at.p.x, at.p.y);
-        ctx.quadraticCurveTo(at.p.x + Math.cos(a) * nl * 0.5, at.p.y + Math.sin(a) * nl * 0.5 + nl * droopN * 0.3,
-          at.p.x + Math.cos(a) * nl, at.p.y + Math.sin(a) * nl + nl * droopN);
-        ctx.stroke();
+        const dx = sx * along + px * across, dy = sy * along + py * across;
+        // the long needles hang (a Canary pine's tassel); a foreshortened one hangs as far as its own length shows
+        const show = Math.hypot(along, across), hang = nl * droopN * (0.4 + 0.6 * show);
+        const ex = at.p.x + dx * nl, ey = at.p.y + dy * nl + hang;
+        // the light: the near side and the upward needles lighter, the far side in the brush's own shade
+        const near = Math.sin(phi) >= 0;
+        const light = base.light * (0.7 + rng() * 0.45) * (near ? 1.06 : 0.74) * (1 - 0.12 * dy) * (si === 0 ? 1.04 : 0.96);
+        needles.push({ x: at.p.x, y: at.p.y, ex, ey, cx: at.p.x + dx * nl * 0.5, cy: at.p.y + dy * nl * 0.5 + hang * 0.3,
+          near, light, hue: base.hue + (rng() - 0.5) * 0.03 });
       }
     }
+    const strokeNeedle = (q: Needle): void => {
+      ctx.strokeStyle = css(q.hue, base.sat, q.light);
+      ctx.lineWidth = needleW;
+      ctx.beginPath();
+      ctx.moveTo(q.x, q.y);
+      ctx.quadraticCurveTo(q.cx, q.cy, q.ex, q.ey);
+      ctx.stroke();
+    };
+    ctx.lineCap = 'round';
+    for (const q of needles) if (!q.near) strokeNeedle(q);
+    for (const shoot of shoots) taperStroke(ctx, shoot, S * 0.014, S * 0.008, wood);
+    ctx.lineCap = 'round';
+    for (const q of needles) if (q.near) strokeNeedle(q);
     // each brush's shaded heart: a soft dark band along the needled half of its shoot, laid over the needles already
     // painted (source-atop: it darkens them and adds no alpha between them)
     const composite = ctx.globalCompositeOperation;
     ctx.globalCompositeOperation = 'source-atop';
     for (const shoot of shoots) {
       for (let k = 0; k < 4; k++) {
-        const at = pointAt(shoot, 0.55 + k * 0.13), r = S * needleL * 0.72;
+        const at = pointAt(shoot, 1 - reach * 0.9 + k * reach * 0.26), r = S * needleL * 0.72;
         const gr = ctx.createRadialGradient(at.p.x, at.p.y, 0, at.p.x, at.p.y, r);
         gr.addColorStop(0, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0.7));
         gr.addColorStop(1, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0));

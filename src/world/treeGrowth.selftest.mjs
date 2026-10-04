@@ -159,6 +159,16 @@ assert.ok(shape.acacia.aspect > 1.6 && shape.cedar.aspect > shape.spruce.aspect,
 assert.ok(shape.spruce.crownBase < 0.2 && shape.fir.crownBase < 0.2, 'the spruce and fir crowns reach down to the ground');
 assert.ok(shape.pine.crownBase > 0.4 && shape.eucalyptus.crownBase > 0.3, 'the pine and the eucalyptus stand on long clear boles');
 assert.ok(shape.oak.aspect > shape.poplar.aspect * 1.6, 'the oak spreads where the poplar rises');
+// trees round 4 (2026-10-04, the gauntlet's wave 39: Caldera's midground pines read as round broadleaf crowns): the
+// Canary pine's crown narrows to a spire, its top seventh under 0.6 of its widest (0.63–0.78 on the round crown before)
+{
+  for (let variant = 0; variant < 3; variant++) {
+    const { skeleton } = grow('canaryPine', variant);
+    const top = skeleton.height, widest = Math.max(...skeleton.leaves.map((l) => Math.hypot(l.x, l.z)));
+    const upper = Math.max(...skeleton.leaves.filter((l) => l.y > top * 0.86).map((l) => Math.hypot(l.x, l.z)));
+    assert.ok(upper < widest * 0.6, `canaryPine/${variant}: the crown narrows to a spire (${upper.toFixed(2)} of ${widest.toFixed(2)} m)`);
+  }
+}
 // the envelopes narrow the way the species do
 assert.ok(envelopeFraction('cone', 0.9) < envelopeFraction('cone', 0.2) && envelopeFraction('column', 0.5) > 0.9);
 // the snag: a broken stem, dead limbs (some snapped), a few dead twig sprays and no sprays on a snapped limb.

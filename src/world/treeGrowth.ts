@@ -293,11 +293,13 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     foliageValue: 1.25,
   }),
   // the Canary Island pine (Las Cañadas): a straight, thick, plated, red-brown bole and an open, irregular, layered
-  // crown of drooping limbs that end in long pendulous needle tufts
+  // crown of drooping limbs that end in long pendulous needle tufts. Trees round 4 (the gauntlet's wave 39: Caldera's
+  // midground pines "still round broadleaf crowns"): the crown a spire from lower down — narrower, its lower limbs
+  // nearer level — where the ellipsoid stood as a broadleaf's dome on a bole
   canaryPine: P({
     family: 'conifer', height: 8.6, heightSpread: 0.12, trunkR: 0.30, form: 'excurrent',
-    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.36, crownR: 2.5,
-    envelope: 'ellipsoid', whorled: true, perWhorl: [3, 4], spacing: 0.78, angleLow: 1.6, angleHigh: 1.05,
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.3, crownR: 2.0,
+    envelope: 'flame', whorled: true, perWhorl: [3, 4], spacing: 0.78, angleLow: 1.75, angleHigh: 1.05,
     droop: 0.42, upturn: 0.3, sidePerM: 1.5, sideAngle: 0.75, sideRatio: 0.5, sideDroop: 0.35, twigPerM: 0,
     leafOrder: 1, leafPerM: 2.6, leafFrom: 0.45, spray: [0.8, 1.15], aspect: 0.95, habit: 'tuft', tipSprays: 3,
     cardBend: 0.22, flatRoll: 0.6, flatDroop: 0.0, bark: 1, barkTint: [0.50, 0.32, 0.24], barkTopTint: [0.60, 0.40, 0.28],
@@ -401,6 +403,11 @@ interface TreeSkeleton {
   crown: { x: number; y: number; z: number; r: number };
   /** Trees round 2: the crown's masses (growTreeSkeleton; absent on a shrub or a crown without sprays). */
   lobes?: CrownLobe[];
+  /**
+   * Trees round 4: a tufted pine's needle tufts, each its own small mass (tuftLobes) — the cards' normals and depth
+   * shade read them instead of the crown's few masses, so every tuft lights as itself (absent on other crowns).
+   */
+  tufts?: CrownLobe[];
 }
 
 interface GrowthOptions {
@@ -1210,7 +1217,22 @@ export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: Grow
   const skeleton: TreeSkeleton = { species, height, branches: ctx.branches, leaves, crown: { x: cx, y: cy, z: cz, r: Math.max(0.8, r) } };
   // the living crowns' masses (a palm's head is fronds round one point, a snag's few dead twigs shade nothing)
   if (leaves.length >= 8 && profile.family !== 'palm' && profile.family !== 'dead') skeleton.lobes = crownLobes(skeleton, crownLobeCount(profile, leaves.length));
+  if (skeleton.lobes && profile.habit === 'tuft') skeleton.tufts = tuftLobes(skeleton);
   return skeleton;
+}
+
+/** Trees round 4: the sprays a tufted pine's tuft gathers (tuftLobes' k: about this many sprays a tuft). */
+const GROWTH_TUFT_SPRAYS = 4;
+
+/**
+ * Trees round 4 (2026-10-04, the gauntlet's wave 39: Caldera's midground Canary pines "still round broadleaf crowns";
+ * the lab's portraits: the crown's few lobes shade each pine as four to ten lit round masses): a tufted pine's tufts as
+ * masses of their own — k-means over its spray centres at about GROWTH_TUFT_SPRAYS sprays a tuft (crownLobes' fit, a
+ * tighter margin: a tuft is a fist of needles, not a limb's worth of crown).
+ */
+export function tuftLobes(skeleton: Pick<TreeSkeleton, 'leaves'>): CrownLobe[] {
+  const count = Math.max(2, Math.round(skeleton.leaves.length / GROWTH_TUFT_SPRAYS));
+  return crownLobes(skeleton, count, 0.12, 0.2);
 }
 
 /** Trees round 2: how many masses a crown is read as — a broadleaf dome's lobes, a conifer's tiers. */
@@ -1262,7 +1284,7 @@ function thinEvenly(leaves: LeafSite[], budget: number, scale: readonly number[]
  * Trees round 2 (2026-10-03): the crown's masses — k-means over the spray card centres (seeded by the farthest-point
  * spread, four refinements), each mass an axis-aligned ellipsoid reaching a little past its members' card centres.
  */
-export function crownLobes(skeleton: Pick<TreeSkeleton, 'leaves'>, count: number): CrownLobe[] {
+export function crownLobes(skeleton: Pick<TreeSkeleton, 'leaves'>, count: number, margin = 0.3, least = 0.45): CrownLobe[] {
   const sites = skeleton.leaves.map(sprayCentre);
   if (!sites.length) return [];
   const k = Math.max(1, Math.min(count, sites.length));
@@ -1303,7 +1325,8 @@ export function crownLobes(skeleton: Pick<TreeSkeleton, 'leaves'>, count: number
       ez = Math.max(ez, Math.abs(sites[j].z - centres[i].z));
     }
     if (!n) continue;
-    lobes.push({ x: centres[i].x, y: centres[i].y, z: centres[i].z, rx: Math.max(0.45, ex + 0.3), ry: Math.max(0.4, ey + 0.25), rz: Math.max(0.45, ez + 0.3) });
+    lobes.push({ x: centres[i].x, y: centres[i].y, z: centres[i].z, rx: Math.max(least, ex + margin),
+      ry: Math.max(least - 0.05, ey + margin - 0.05), rz: Math.max(least, ez + margin) });
   }
   return lobes;
 }
@@ -1622,6 +1645,8 @@ export const GROWTH_CROWN_SHADING = Object.freeze({
   crownGain: 1.1,
   /** A grown shrub's lighter depth shade (a shrub is open to the sky round it) and the gain that gives its shell back. */
   shrubDepthShade: 0.3, shrubGain: 1.04,
+  /** Trees round 4: a tufted pine's tuft by its stem darkens by up to this share (its depth in the crown's ellipsoid). */
+  tuftCrownDepth: 0.35,
   /** Trees round 4: a crown card's value from its stem row to its tip row (the cluster's own shade toward its twig). */
   cardRamp: Object.freeze([0.75, 1.13]) as readonly [number, number],
 });
@@ -1639,7 +1664,10 @@ export const GROWTH_CROWN_SHADING = Object.freeze({
  */
 export function emitLeafCards(skeleton: TreeSkeleton, options: CardEmitOptions): THREE.BufferGeometry {
   const tiles = Math.max(1, options.tiles | 0);
-  const lobes = skeleton.lobes && skeleton.lobes.length ? skeleton.lobes : null;
+  // trees round 4: a tufted pine's cards shade by its tufts (each tuft its own lit mass), and by the tuft's depth in
+  // the crown besides (a tuft by the stem in the crown's shade, one at a limb's end in the light)
+  const tufted = !!(skeleton.tufts && skeleton.tufts.length && skeleton.lobes && skeleton.lobes.length);
+  const lobes = tufted ? skeleton.tufts! : skeleton.lobes && skeleton.lobes.length ? skeleton.lobes : null;
   const lobeShare = lobes ? (options.lobeShare ?? GROWTH_CROWN_SHADING.lobeShare) : 0;
   const volume = options.volume ?? (lobes ? GROWTH_CROWN_SHADING.volume : 0.62);
   const upBias = options.upBias ?? (lobes ? GROWTH_CROWN_SHADING.upBias : 0.32);
@@ -1692,6 +1720,7 @@ export function emitLeafCards(skeleton: TreeSkeleton, options: CardEmitOptions):
         const depth = smooth01((field[3] - 0.42) / 0.63);
         const under = smooth01((-(has ? field[1] : sy / sl) - 0.1) / 0.8);
         shade = (1 - depthShade * depth) * (1 - GROWTH_CROWN_SHADING.underside * under);
+        if (tufted) shade *= 1 - GROWTH_CROWN_SHADING.tuftCrownDepth * smooth01(1 - sl / Math.max(0.5, crown.r * 0.8));
         // trees round 4: a cluster in its own shade toward its seat — the stem end of a card sits in the leaves round
         // its twig, its tip out in the light (the card reads as leaves in depth, not a flat sticker)
         shade *= GROWTH_CROWN_SHADING.cardRamp[0] + (GROWTH_CROWN_SHADING.cardRamp[1] - GROWTH_CROWN_SHADING.cardRamp[0]) * v;
