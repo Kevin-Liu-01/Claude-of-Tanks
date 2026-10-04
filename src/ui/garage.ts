@@ -159,6 +159,7 @@ interface GarageOptions {
   readonly bus?: { emit(event: string, payload: RuntimeValue): void };
   readonly onSelect?: (specId: string) => void;
   readonly onGameModeSelect?: (mode: GameModeId) => void;
+  readonly onGameModeIntent?: () => void;
   readonly onBattle?: (
     specId: string,
     mapId: string,
@@ -2980,15 +2981,23 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       }
     } catch (_) { /* optional warm path */ }
   };
-  battleControl.addEventListener('pointerenter', signalBattleIntent, { passive: true });
-  battleControl.addEventListener('focusin', signalBattleIntent);
-  battleControl.addEventListener('touchstart', signalBattleIntent, { passive: true });
+  // Choosing rules is not deployment intent. Preparing an entire battlefield
+  // here competed with the selected mode's Garage preview and tank shaders.
+  for (const launch of [battleBtn, requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-launch]')]) {
+    launch.addEventListener('pointerenter', signalBattleIntent, { passive: true });
+    launch.addEventListener('focusin', signalBattleIntent);
+    launch.addEventListener('touchstart', signalBattleIntent, { passive: true });
+  }
   roomReminder.addEventListener('click', () => emit('ui:roomOpen', {}));
   roomReady.addEventListener('click', () => {
     if (!roomStatus?.canSetReady) return;
     emit('ui:click', {});
     emit('ui:roomReady', { ready: !roomStatus.ready });
   });
+  // Transfer only the optional preview code on selector intent, never the fleet.
+  for (const event of ['pointerenter', 'focus', 'touchstart']) {
+    battleModeBtn.addEventListener(event, () => opts.onGameModeIntent?.(), { passive: true });
+  }
   battleModeBtn.addEventListener('click', () => {
     emit('ui:click', {});
     if (battleMenu.classList.contains('open')) closeBattleMenu();

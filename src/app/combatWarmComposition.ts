@@ -53,6 +53,7 @@ interface CombatWarmCompositionOptions {
   setPending(pending: boolean): void;
   prepareNextOpeningRoute(): boolean;
   ensureStagedVisuals(count: number): boolean;
+  prepareModeVisuals?(): void;
   prebakeBurntSteps: CombatWarmRuntimeContext['prebakeBurntSteps'];
   warmWreckTextures: CombatWarmRuntimeContext['warmWreckTextures'];
   createIsolatedForwardWarmBatches: IsolatedForwardWarmFactory;
@@ -104,6 +105,7 @@ export function createCombatWarmComposition({
   setPending,
   prepareNextOpeningRoute,
   ensureStagedVisuals,
+  prepareModeVisuals,
   prebakeBurntSteps,
   warmWreckTextures,
   createIsolatedForwardWarmBatches,
@@ -147,6 +149,7 @@ export function createCombatWarmComposition({
     scratch3,
     anisotropy,
     ensureStagedVisuals,
+    prepareModeVisuals,
     prebakeBurntSteps,
     warmWreckTextures,
     createIsolatedForwardWarmBatches,

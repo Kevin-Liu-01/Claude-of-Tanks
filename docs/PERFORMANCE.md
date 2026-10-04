@@ -57,6 +57,23 @@ pedestal now prepares links before reveal and builds the two adjacent cards in
 the quiet window (desktop residency six); `tools/garage-switch-probe.selftest.mjs`
 gates warm switches in the post group.
 
+Mode previews use the same readiness principle. Opening the mode selector
+transfers the optional preview code; it does not start preparing a battlefield.
+Only the actual launch controls signal deployment intent. Juggernaut, CTF and
+Infected share their compiled energy materials and change pattern/color uniforms.
+The selected preview prepares new equipment and shader links before its first
+visible frame, retaining the previous complete canvas while menus and the network
+pump remain active. Tank or mode changes cancel superseded preparation, and battle
+entry cancels all pending Garage work. Mobile tank switches also wait for bounded
+shader preparation instead of deferring that cost to the reveal frame.
+
+Solo and multiplayer loading install the initial vehicle mode effects before
+shader preparation. `garageModePreviewRuntime.selftest.mjs` covers cancellation,
+readiness and retry; `tools/garage-mode-preview.browser.mjs` records mode timing,
+checks material reuse and rapid selections, and captures desktop, phone landscape
+and battle-return views. Timing receipts include menu interaction, so they are
+end-to-end readiness measurements, not isolated GPU compile durations.
+
 ## Build-local procedural plaster relief
 
 The second and third procedural plaster palettes retain independent albedo

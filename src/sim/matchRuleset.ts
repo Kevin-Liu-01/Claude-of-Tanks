@@ -27,7 +27,9 @@ export const GUNSHIP_WEAPONS = Object.freeze([
   shell('152 mm Howitzer', 'HE', 152, 110, 110, 1500, 800, { reloadS: 3.5, reloadGroup: 'gunship-howitzer', blastRadiusM: 22, soundProfile: 'gunship-howitzer' }),
   shell('Guided Missile', 'HE', 180, 320, 320, 1600, 400, { guided: true, reloadS: 7, reloadGroup: 'gunship-missile', blastRadiusM: 18, soundProfile: 'gunship-missile' }),
 ]);
-export const DRONE_WARHEAD = shell('FPV warhead', 'HE', 152, 95, 95, 1400, 42, { tracer: 'DRONE', gravityScale: 0, maxLifetimeS: AERIAL_RULES.drone.batteryS });
+// Fictional single-charge anti-armor payload: uses the same ERA, spaced armor
+// and penetration rules as other shaped charges, rather than an artillery blast.
+export const DRONE_WARHEAD = shell('FPV shaped charge', 'HEAT', 90, 350, 350, 1400, 42, { tracer: 'DRONE', gravityScale: 0, maxLifetimeS: AERIAL_RULES.drone.batteryS });
 
 type RulesetAmmo = 'spec' | 'he_only' | 'unlimited';
 type RulesetTimeout = 'draw' | 'defeat';

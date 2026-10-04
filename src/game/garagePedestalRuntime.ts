@@ -549,7 +549,6 @@ export function createGaragePedestalRuntime({
     stillCurrent: () => boolean = () => true,
     record: GarageSwitchRecord | null = null,
   ) => {
-    if (getDeviceTier() === 'mobile') return;
     try {
       if (!prepareProgramSteps) {
         // Submit-only fallback: two frames give the linker a head start and

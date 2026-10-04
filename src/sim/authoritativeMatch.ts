@@ -686,7 +686,7 @@ function firstTankTrace(
     if (centerDistance > segmentLength + radius + 2) continue;
     const pose = tankPoseFromState(target.state);
     const hits = traceTank(shell.prevPos, shell.pos, pose, target.spec.armor,
-      target.combat.eraSpent);
+      target.combat.eraSpent, shell.spec.tracer === 'DRONE');
     if (!hits.length) continue;
     const distance = shell.prevPos.distanceTo(hits[0]!.point);
     if (distance < bestDistance) {

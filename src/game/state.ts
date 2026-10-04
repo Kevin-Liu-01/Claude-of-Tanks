@@ -1997,6 +1997,7 @@ function traceNearestTank(
       pose,
       entity.spec.armor,
       entity.combat.eraSpent,
+      shell.spec.tracer === 'DRONE',
     );
     if (!intersections.length) continue;
     const distance = intersections[0].t * segmentLength;

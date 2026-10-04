@@ -27,7 +27,7 @@ rule the battle does not keep.
 | Infected | Survive the outbreak, or convert every survivor | One initial infected; destroyed survivors join the infected, who move 30% faster | 4 s | No survivors remain, or survivors reach 7:00 |
 | Realistic | Destroy the opposing force through critical damage | Normal spotting; no hull HP attrition, automatic module repair or consumables | No | Crew eliminated or ammunition destruction eliminates a team; 15:00 draw |
 | Gun Game | Complete a five-weapon ladder | Two confirmed kills per stage; unlimited ammunition | 4 s | First player to complete the ladder; 15:00 score decision |
-| Drone | Destroy opponents with tanks and directly piloted drones | Launch a physical FPV quadcopter from the tank; contact uses normal explosive collision and damage | 6 s | First team to 20 kills (configurable), or 10:00 score decision |
+| Drone | Destroy opponents with tanks and directly piloted drones | Launch a physical FPV quadcopter; its shaped charge interacts with cages, ERA and spaced armor at the impact point | 6 s | First team to 20 kills (configurable), or 10:00 score decision |
 | AC-130 | Protect ground allies until at least half reach extraction | Fragile escorts, a marked exit, overhead scope, three independent weapon channels and unlimited ammunition | No | Half extracted; defeat if too few survive or 8:00 expires |
 
 ## Aerial sensor views
@@ -62,8 +62,8 @@ flight inputs, with a dedicated **Climb** button. The flight console shows batte
 time, carrier-link distance, speed, and **Return to tank**. Tank ammunition and
 vehicle controls are hidden while flying.
 
-The drone has a 40-second battery and an 850 m operating radius. Its impact is a
-real explosive projectile: terrain, structures and vehicle armor matter. It does
+The drone has a 40-second battery and an 850 m operating radius. Its payload is a
+single shaped charge: terrain, structures and vehicle armor matter. It does
 not award a kill merely for reaching an enemy. **V** returns to the tank, ending
 that flight. Impact, cancellation or battery/range exhaustion starts a 25-second
 cooldown. The parked tank remains vulnerable; destroying it ends its drone flight.
@@ -73,6 +73,28 @@ reconnaissance out to 350 m, reduced by target camouflage. Buildings, terrain an
 smoke still block its line of sight, including at close range; the infrared
 picture is not permission to see through cover. Destroying the carrier removes
 the drone observer, and contacts use the normal spotting linger and radio sharing.
+
+### Armor against drones
+
+Protection applies where the drone hits. Purpose-built roof cages and mesh screens
+on both Ukrainian Abrams variants can intercept the airframe before the charge
+reaches the armor. Their coverage follows the actual roof, side and rear panels
+as the turret turns; open gun corridors and uncovered surfaces remain vulnerable.
+M1A3's authored slat screens also have interception behavior. Other existing
+spaced-armor screens retain their normal reduction of shaped-charge penetration.
+These are gameplay probabilities, not guaranteed protection or real-world ratings.
+
+If a screen fails to intercept, the shaped-charge jet continues across the air gap
+and resolves against the armor behind it. Side skirts and spaced armor reduce its
+remaining penetration; ERA uses the same chemical-energy protection as other
+shaped-charge hits and consumes the struck tile. A spent tile cannot protect that
+location again. Thin skirts alone may be insufficient, and hitting an exposed
+area bypasses protection elsewhere. Drone-contact mesh envelopes do not become
+solid plates against bullets or ordinary shells.
+
+This layered approach follows the general role of screens and added armor described
+by [RUSI](https://www.rusi.org/explore-our-research/publications/rusi-defence-systems/nato-should-not-replace-traditional-firepower-drones);
+the game's penetration values and interception chances are fictional balance settings.
 
 ## AC-130 controls and weapons
 

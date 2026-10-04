@@ -18,6 +18,8 @@ import { SEPV3_SIDE_ARMOR_WIDTH_M } from './abramsUpgradeDatums.ts';
 import { applyAbramsSourceXSkirtArmor } from './abramsSourceXSkirtArmor.ts';
 import { applyAbramsSourceXRackArmor } from './abramsSourceXRackArmor.ts';
 import { applyAbramsSourceXUkraineEraArmor } from './abramsSourceXUkraineEraArmor.ts';
+import { ukrainianSourceCage } from './ukrainianDroneCage.ts';
+import { turretSideX } from './profiles/abramsSourceXKitBase.ts';
 
 export const ABRAMS_SOURCE_X_ENTRIES = Object.freeze([
   // 2026-09-15 owner roster pass: the X studies carry the canonical names (their donors moved
@@ -65,7 +67,10 @@ function provisionalArmor(donor: FleetTankSpec, donorId: string): FleetTankSpec[
   });
   applyAbramsSourceXRackArmor(armor, { extended: donorId === 'm1a2_sepv2' });
   // The Ukrainian study alone wears the field kit's reactive cassettes (owner 2026-09-15).
-  if (donorId === 'ua_m1a1') applyAbramsSourceXUkraineEraArmor(armor);
+  if (donorId === 'ua_m1a1') {
+    applyAbramsSourceXUkraineEraArmor(armor);
+    armor.droneScreens = ukrainianSourceCage(armor.turretPivot, turretSideX);
+  }
   return armor;
 }
 
@@ -124,4 +129,3 @@ export function synchronizeAbramsSourceXCombatMetadata(
     target.armor = provisionalArmor(donor, donorId);
   }
 }
-

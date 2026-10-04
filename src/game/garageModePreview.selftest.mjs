@@ -18,6 +18,12 @@ for(const id of ['m1a2','kf41_lynx_x','strv103']){
  preview.update(b.root,b.spec,'juggernaut',.016);
  assert.equal(a.mesh.material,paint,'cached previous tank loses its preview');
  assert.notEqual(b.mesh.material,paint,'new selection gets energy');
+ const compiled=b.mesh.material;
+ preview.update(b.root,b.spec,'capture_the_flag',.016);
+ assert.equal(b.mesh.material,compiled,'flag uses the existing compiled energy material');
+ assert.equal(preview.update(b.root,b.spec,'infected',.016),false,'uniform-only mode changes need no shader warm');
+ assert.equal(b.mesh.material,compiled,'infection changes uniforms, not shader programs');
+ assert.equal(b.root.getObjectByName('Capture flag assembly'),undefined);
  preview.update(b.root,b.spec,'drone',.016);
  assert.equal(b.mesh.material,paint);
  const rail=b.root.getObjectByName('Reusable mission payload rail');

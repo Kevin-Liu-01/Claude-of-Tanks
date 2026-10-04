@@ -10,7 +10,7 @@ function deferred() {
 
 function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayedFrames = [],
   delayedBuilds = [], buildCheckpoints = 0, failBudget = false, programSlices = 0,
-  programOutcome = null, speculativeIds = [] } = {}) {
+  programOutcome = null, speculativeIds = [], deviceTier = 'desktop' } = {}) {
   const scene = new THREE.Scene();
   const garagePosition = new THREE.Vector3(10, 5, -12);
   const debugTarget = {};
@@ -140,7 +140,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
       nowMs += 11;
     },
     nextFrame: async () => { frameCalls += 1; await delayedFrames.shift()?.promise; },
-    getDeviceTier: () => 'desktop',
+    getDeviceTier: () => deviceTier,
     getPhase: () => phase,
     isBootComplete: () => bootComplete,
     getSelectedId: () => selectedId,
@@ -740,3 +740,12 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
 }
 
 console.log('garagePedestalRuntime.selftest: private sliced construction, cancellation, timing, program link preparation, speculative neighbors, detached warm LRU, resource preservation and battle handoff passed');
+
+{
+ const h=createHarness({deviceTier:'mobile',programSlices:2,programOutcome:{status:'complete',pending:0}});
+ await h.runtime.set('alpha');h.setBootComplete(true);
+ await h.runtime.set('bravo');
+ assert.equal(h.programPrepared,1,'mobile also prepares links before revealing a new tank');
+ assert.equal(h.debugTarget.__GARAGE_SWITCH.at(-1).link.status,'complete');
+ h.runtime.dispose();
+}
