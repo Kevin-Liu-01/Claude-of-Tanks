@@ -1362,6 +1362,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/resolved-depth-copy.browser.selftest.mjs',
     'tools/cloud-history.browser.selftest.mjs',
     'tools/late-fx-matrix.browser.selftest.mjs',
+    'tools/vehicle-ground-occlusion.browser.selftest.mjs',
     'tools/articulated-shadow-batch.browser.selftest.mjs',
     'tools/battle-geometry-sharing.browser.selftest.mjs',
     'tools/track-texture-source.browser.selftest.mjs',

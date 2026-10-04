@@ -6584,14 +6584,21 @@ only with an albedo-aware key that keeps snow and bright sand high-key.
   8 km.
 - Scene-wide GTAO stays off (the owner, 2026-09-28). The ground around the four hulls the shadow router already selects
   loses the sky each hull hides (`vehicleGroundOcclusion.ts`), on the pixel's ambient share only; analytic, no noise.
-  Since the vehicle-ground lane (2026-10-03, wave 13's "strip of fully-lit snow under the belly") each hull is three boxes
-  measured from the built visual — the hull over its measured belly, the two track runs under it — and a box hides its
-  exact projected solid angle (Lambert's edge integral over the silhouette hexagon, clipped at the receiver's horizon):
-  0.97 of the sky under a 0.31 m belly, half at the footprint's edge, continuous on both sides. A blocked direction keeps
-  its occluder's own light (first-order interreflection with a 0.25 hull albedo): the belly lit by the open ground it
-  glimpses, a wall by half sky and half ground. The ground-albedo multi-bounce it replaced (Jimenez's fit, which assumes
-  the cavity has the receiver's albedo) kept 0.37 of the sky under a snow belly and 0.81 at its rear edge; snow's belly
-  now keeps 0.13, sunny sand's 0.21.
+  Since the vehicle-ground lane (2026-10-03, wave 13's "strip of fully-lit snow under the belly") each hull is one convex
+  solid measured from the built visual — the shadow proxy's width, length and deck over its lower profile, the measured
+  pan along the belly rising under the sloped end plates (a least-squares hinge on the proxy's underside) — and it hides
+  its exact projected solid angle (Lambert's edge integral over its silhouette edges, clipped at the receiver's horizon).
+  The track runs are not summed in as separate boxes: from beside or beyond a hull every ray through a run goes on into
+  the belly, and the sum over-counted (0.65 of the sky 0.3 m beside a T-90M's track where the union hides 0.44). They
+  close only the side gaps a receiver between them sees under the hull's edges, along their ground run. The receipt holds
+  the law within 0.015 of a brute-force union of the hull and both runs (4096 stratified rays) at eleven ground points
+  beside, ahead of, behind, off the corner of and under the T-90M, and the GLSL to its CPU twin on the GPU
+  (`tools/vehicle-ground-occlusion.browser.selftest.mjs`). The track shoes (their cloned material writes no vehicle tag)
+  are skipped in their own measured lane, along their ground run and on the wraps off the ground; the ground under a wrap
+  stays a receiver (lab4's bright trapezoids). A blocked direction keeps its occluder's own light (first-order
+  interreflection with a 0.25 hull albedo): the belly lit by the open ground it glimpses, a wall by half sky and half
+  ground. The ground-albedo multi-bounce it replaced (Jimenez's fit, which assumes the cavity has the receiver's albedo)
+  kept 0.37 of the sky under a snow belly and 0.81 at its rear edge; snow's belly now keeps 0.13, sunny sand's 0.21.
 
 **The first A/B on the PR head (fp6: 3ed03998a against the lane, the 24 wave-0 shots, the census views).** CIELAB over
 the 24 frames, PR head → lane (the 35 photographs): p5 / p50 lightness 32.5 / 60.6 → 26.7 / 52.7 (22.5 / 54.4), mean
@@ -6690,7 +6697,7 @@ dithers alias alike: dithered depth coverage itself was the fault). Now:
   the PR head's 0.114); the mountains lane's panorama bake takes the same law past its shell once hazeLaw.ts is merged.
 - *The hull's multi-bounce* (vehicleGroundOcclusion.ts): the occlusion keeps Jimenez et al.'s multi-bounce visibility on
   the map's ground albedo (Sirocco's hull shade / sun 0.071 → 0.081; snow lifts most). Replaced by the vehicle-ground
-  lane's exact boxes and first-order interreflection (above): on snow it was the lit strip under the belly.
+  lane's exact hull solid and first-order interreflection (above): on snow it was the lit strip under the belly.
 - *No contrails* (cloudscapeLayer.ts `CLOUD_CONTRAILS_ON`): fp10's segmented, thinner trails still read as straight lines
   and the critics called every one a render glitch; the reference tank games carry none.
 - *No cumuliform far band:* edge-on, its broad coverage turned into one opaque pale ribbon a few degrees over the hills
