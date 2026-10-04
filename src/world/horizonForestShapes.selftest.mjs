@@ -53,8 +53,12 @@ try {
     compared++;
   }
   assert.ok(compared >= 3, `the near, band and range pools compared (${compared})`);
-  // the near class's count is set by the depth rank and its cap, so its shadow geometry holds exactly here
-  assert.equal(shadowB, shadowA, `the near class's shadow triangles hold (${shadowA} -> ${shadowB})`);
+  // the near class's count is set by the depth rank and its cap, so its shadow geometry holds — to within a tree or two
+  // (2026-10-04, the map-borders lane: the road exits now end at the ranges' foot, terrain.ts roadExitOnRing, so a
+  // taller ring moves their avenues, rides and villages and with them the near class's mix of conifers and broadleaves:
+  // Railyard 231312 -> 231240 triangles; a re-rolled shape swung it by up to 44k)
+  assert.equal(b.forest.userData.horizonForest.near, a.forest.userData.horizonForest.near, 'the near class\'s count holds at its cap');
+  assert.ok(Math.abs(shadowB - shadowA) <= shadowA * 0.01, `the near class's shadow triangles hold (${shadowA} -> ${shadowB})`);
   console.log(`horizonForestShapes.selftest: Railyard's ring 3 % taller: ${compared} pool templates identical, shadow ${shadowA} -> ${shadowB} triangles, ` +
     `${a.forest.userData.horizonForest.instances} -> ${b.forest.userData.horizonForest.instances} trees`);
 } finally {

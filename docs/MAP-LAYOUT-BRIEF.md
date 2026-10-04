@@ -582,45 +582,72 @@ karst limestone of its outcrops, and every other map keeps its tone. The tint ne
 props stone print, which a regional kit repaints: its Dalmatian limestone under the tint burned out white).
 
 The field walls (`props.wallRuns`, the `wallstone` module of `maps/inhabitKit.ts`) are dry-stone walls on every map
-whose stone bucket is fieldstone: a battered hearting, face stones in rough courses standing proud of it with their
-corners knocked off, and a coping of cope stones on edge. The module keeps the old one's envelope and its seeded draws,
-so the fitted wall colliders keep their plan and height. The maps whose stone bucket is the sourced brick print
-(`sourcedStoneIsBrick`) keep the coursed module (`COURSED_WALLSTONE`) the print was laid out for.
+whose stone bucket is fieldstone: a battered hearting, face stones laid in rough courses on it and flattish top stones
+laid across (wave 34, "coursed rubble relief"): four courses the module's own, the biggest at the foot, every stone
+sitting on what is under it, now and then a jumper two courses high, two thin stones in one course or a pin, each
+stone one to three centimetres proud with its corners knocked back so the hearting shows in the gaps. The module keeps
+the old one's envelope and its seeded draws, so the fitted wall colliders keep their plan and height. The maps whose
+stone bucket is the sourced brick print (`sourcedStoneIsBrick`) keep the coursed module (`COURSED_WALLSTONE`) the print
+was laid out for.
 
-The dry-stone walls, their run heads, breach stubs and tumbled blocks draw their own material, `fieldStone`: a seamless
-random-rubble print (`fieldStoneSurface.ts`), stones bedded flat in every size with dark dry joints, open pockets at
-the three-stone corners and no course anywhere, painted in the stone print's colour law (its mean within 4 % of that
-print's) under the map's stone tone. They never draw the house masonry: the coursed stone print read as ashlar on the
-rubble (gauntlet wave 20), and a regional kit's brick, block or dressed stone laid those courses over fieldstone. A map
-whose walls are mud or brick paints no field print and keeps the stone print. The receipt is
-`fieldStoneSurface.selftest.mjs` (seamless, no joint runs a third of the tile while the stone print's mortar runs all
-of it, flat stones, dry joints, the palette, the phone print).
+A wall follows its slope (`wallSpanPlacement.ts` `fitWallSpan`, wave 34: "walls on slopes step like battlements"): each
+module is sheared along the run to a least-squares line through the ground under its centre (at most a 0.45 fall), so
+its courses and its top follow the slope and its end faces stay upright, two neighbours meeting in one vertical plane
+at a crest or a valley. Only the ground's departure from that line still stretches a module's foundation. Its collider
+is the sheared module's box, as before: the high end's cover is kept, and over the low end of a steep module the box
+stands a little above the stones.
 
-How the walls meet the ground and the weather (wave 20: "shape, construction type and how things meet the ground"):
-the face stones stand one to three centimetres proud of the hearting, their tops leaning out, the top stones rounder
-and steadier, so the face is a rubble face and not a row of ledges; a run turns some of its modules round (a hash of the
-module's place) with neighbours 4 mm apart across it, so the kit's one module does not show the same face and crown
-every three metres. Each built island of a run is dressed by `maps/fieldWallDressing.ts` on its own streams: a
-dry-stone wall gets the stones settled at its foot, sunk a third to a half in the ground on both faces; on a snow map
-(Winter, Alpine, Whiteout) the module and the run heads carry a snow load along their tops (a cushion over the top
-stones, bridging their gaps, its lips draped over the faces, its normals leaning up so the snow cap whitens it to the
-lips) and the wind banks a drift against the windward face (the winter wind of the lake drifts). A mud wall is an
-eroded slab (`adobeModule`): near-upright faces, the foot cut back by the splash, one broad scalloped loss in its crown
-and a couple of small ones, rain gullies from the crown; it draws its own worn render (`fieldMud`,
-`fieldMudSurface.ts`: a warm mud coat with straw and rain streaks, lost in patches over the sun-dried brick courses,
-most at the feet and the crown), one tile a module, under the map's plaster tone, and its islands stand on a mud apron
-washed off the wall with the spalled lumps on it (the apron reads the print's plain band). Receipts:
-`fieldMudSurface.selftest.mjs`, `maps/fieldWallDressing.selftest.mjs`.
+The dry-stone walls, their run heads, breach stubs and tumbled blocks draw their own material, `fieldStone`
+(`fieldStoneSurface.ts`). The stones are geometry, each with a window of the print of its own, so the print is one
+stone's skin over its face band (`FIELD_STONE_FACE_V`): a fieldstone's colour drifting in patches about a stone
+across, its grain, mineral specks and bedding, the odd pit and crustose lichen, and no joint anywhere (wave 34 read a
+printed rubble on the stones as "stamped flagstone with dark outlines"). Its hearting band (`FIELD_STONE_HEARTING_V`)
+is the core between the face stones, packing stones in dark voids, painted squashed because the core maps it once over
+its height. Every piece's window lies inside its band: `roughStone`, the foot and tumbled stones, the snow load and
+`jitterFieldStoneUV` (the props stream's four `jitterUV` draws) for the heads and breach pieces. The skin's mean colour
+is the stone print's (within 4 %) under the map's stone tone; `liftFieldStoneMean` lifts a tone darker than an sRGB
+0.36 mean in linear light (Verdant's x0.76 blacked its village walls out in shade). A map whose walls are mud or brick
+paints no field print and keeps the stone print. The receipt is `fieldStoneSurface.selftest.mjs` (seamless, no void or
+dark line in the skin, windows differing stone to stone, a dark core, the palette, the lift, the phone print).
+
+How the walls meet the ground and the weather (waves 20 and 34: "shape, construction type and how things meet the
+ground"; "nothing bedded"): a stone's top ledge carries a normal leaning out, so the snow cap leaves the face's ledges
+alone (wave 34: "thin white slivers"); a run turns some of its modules round (a hash of the module's place) with
+neighbours 4 mm apart across it, so the kit's one module does not show the same face and crown every three metres.
+Each built island of a run is dressed by `maps/fieldWallDressing.ts` on its own streams: a dry-stone wall gets the
+stones settled at its foot, sunk a third to a half in the ground on both faces; every run head gets the stones it lost
+tumbled out past the end and along its feet (a mud wall's pier its fallen lumps). On a snow map (Winter, Alpine,
+Whiteout) the module and the run heads carry a snow load along their tops, 6-24 cm in lumps a stone or two long with a
+cornice here and a thin edge there (its normals leaning up so the snow cap whitens it to the lips), and the wind banks
+two drifts: the big one in the wall's lee (40-80 cm on the face, out three to four metres) and a small ramp on the
+windward face, both smaller where the wind runs along the wall, their toes scalloped. A mud wall is an eroded slab
+(`adobeModule`): faces battered in to a crown worn round, the foot cut back by the splash, a slump up to a third of a
+metre in its crown and a couple of small losses, rain gullies from the crown; it draws its own worn render (`fieldMud`,
+`fieldMudSurface.ts`: a mud coat with straw, the rain's streaks and a damp, splashed foot, the render thinning out in
+broad patches over sun-dried bricks a shade darker than it, most at the feet and the crown, no dark outline), one tile
+a module, under the map's plaster tone. On a map whose ground is an earth (`mudEarthOfGround`: the light model's ground
+albedo orange to yellow-brown) the render goes most of the way to that earth and its foot's mud all the way, so a wall
+is built of the ground it stands on and the apron washed off it (with the spalled lumps on it, on the print's plain
+band) is the ground's colour, not a pale strip. Receipts: `fieldMudSurface.selftest.mjs`,
+`maps/fieldWallDressing.selftest.mjs`.
 
 The field works' sandbag stacks (`sandbagbig`, `sandbagsmall`, `sandbagwall`, wherever the fortification passes put
 them) are laid bag by bag (`maps/sceneryKit.ts` `buildSandbagStack`): sacks squashed under the courses above (wave 20:
-"inflated toy capsules"), a flat top and bed, their sides bulging, the folded end square and the tied end gathered,
-sagging over the joint below, one in five slack (thinner, wider, more sagged), each in its own tone (hessian, weathered
-hessian, faded olive polypropylene, a few dirty ones), the lowest courses smeared with earth, on the props canvas
-weave, in stretcher bond of 15 cm courses, a battered parapet; the bottom course sunk in the ground and a fillet of
-earth banked against the foot; every stack also gets its own weathering tint. A laid bag leaves out the faces a stack
-hides (its bed, its inner side, its ends against its neighbours). Each stack fills the envelope of the sourced model it
-replaced, so the cover is where it was; a breached stack is a low course and the burst bags round it.
+"inflated toy capsules"), a flat top and bed, their sides bulging, the folded end square and the tied end gathered to a
+darker neck (the cord), sagging over the joint below, one in five slack (thinner, wider, more sagged), each in its own
+tone (hessian, weathered hessian, faded olive polypropylene, a few dirty ones), the lowest courses smeared with earth,
+on the props canvas weave, in stretcher bond of 15 cm courses, a battered parapet that has settled (wave 34, "tidy
+tubes"): its middle sunk up to 4 cm, the more the higher the course, the top course's bags askew and the odd one gone;
+the bottom course sunk in the ground and a fillet of earth banked against the foot; every stack also gets its own
+weathering tint. A laid bag leaves out the faces a stack hides (its bed, its inner side, its ends against its
+neighbours). Each stack fills the envelope of the sourced model it replaced, so the cover is where it was; a breached
+stack is a low course and the burst bags round it. A road nest, a redoubt's stacks and a breastwork's modules are
+bedded (`buildSandbagBedding`, wave 34: "a stacked prop on a bare mound, no berm or spilled sand"): the spoil banked two
+fifths up the face toward the threat and out the better part of a metre, lower round the rest, a spill of fill heaped
+at one end with the emptied bag by it, in the map's soil (its earth on an arid map); one receive-only mesh of their own
+on the props rock material, as the bocage banks are (`props-sandbag-beds`; its detail print, the grime, the wet maps'
+moss; its ground given half a metre down so the rocks' soil skirt does not paint a second soil at its foot), colliding
+with nothing, a few hundred triangles a stack.
 
 ### What the composer checks
 

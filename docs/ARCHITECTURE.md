@@ -1554,13 +1554,15 @@ space, level, pitch jitter, caps); `environmentScenes.ts` +
 `ambienceDirector.ts` (per-map beds, layers, positioned spot sounds, gun
 tails, reverb; the garage is an indoor scene whose room tone and workshop
 sounds come from a few metres away); `voiceLines.ts` + `crewRadio.ts` (crew
-radio); `procedural.ts` (synthesized fallbacks and alarms); `mixPolicy.ts`
-(every level, snapshot, HDR, budget and LOD constant).
+radio); `mixPolicy.ts` (every level, snapshot, HDR, budget and LOD
+constant). Nothing is synthesized or stood in for: every sound is a recorded
+asset, one still decoding is silent, and no cue or crew covers for another
+(`voiceTriggers.selftest.mjs` fails on a sound chained in for another).
 
-**Assets.** 386 sound assets (627 variant files, 18 MB WebM/Opus) under
+**Assets.** 398 sound assets (649 variant files, 18.6 MB WebM/Opus) under
 `public/audio/sfx/<group>/`, described by `sfxManifest.generated.ts`
 (duration, channels, rate, loop points, size). Crew radio: 13 language packs
-× 97 lines (one to four takes each, mostly two; ~1.5 MB per pack) under
+× 107 lines (one to four takes each, mostly two; ~1.6 MB per pack) under
 `public/audio/voice/<lang>/`, described by `voiceManifest.generated.ts`. Both
 are generated offline with ElevenLabs (sound generation `eleven_text_to_sound_v2`;
 speech `eleven_v4` with Voice Library voices), verified (speech-to-text
@@ -1671,15 +1673,21 @@ or any one nation's pack for every tank. The persisted choice and legacy
 migration live in `audio/crewVoice.ts`, shared by input and the lazy engine;
 live changes, new battles and same-entity nation changes all use that resolver.
 Changing language stops old speech and clears pending calls; cold packs wait
-for decoding before considering the existing missing-take fallback.
+for decoding, and a crew never speaks another nation's take (every pack
+carries every line).
 Radio discipline: priority 0–4 with
-interrupts for survival calls, per-line and per-group cooldowns, stale
+interrupts (survival cuts anything below it, decisive events cut situational
+calls, reports cut flavour), per-line and per-group cooldowns, stale
 drops, a 0.8 s gap between calls, a two-line queue, probability gates on
-routine chatter (reloads, allies' kills, autocannon results) and at most one
-spot call per five seconds unless several contacts appear at once. Our
-main-gun results, misses included ("short" by the line's second take when the
-round fell before the enemy it was laid on), are called almost every time,
-half a second after the round lands. Every line goes through an intercom
+flavour only (firing, reload done, allies' kills, near misses, autocannon
+results) and at most one spot call per five seconds unless several contacts
+appear at once. Every main-gun result, misses included ("short" by the line's
+second take when the round fell before the enemy it was laid on), is called
+half a second after the round lands, and the crew confirms the tank's own
+systems (smoke, roof gun, suspension, drone launch and loss, the gunship's
+weapons and supply drops) and a held point under attack. A network battle
+feeds the same handlers (the presentation maps spots, autoflips and the
+viewer's reload to solo's events). Every line goes through an intercom
 chain (a 24 dB/oct 320 Hz–3.4 kHz band, a 1.9 kHz presence peak,
 compression, drive, a headset speaker roll-off, a static bed and squelch); a
 damaged radio module narrows the band and adds drive, dropouts and

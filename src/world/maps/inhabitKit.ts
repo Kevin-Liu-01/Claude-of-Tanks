@@ -19,6 +19,7 @@ import {
 } from '../structureConnectivity.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS } from './civilianVehicleKit.ts';
 import { setNightEmissionMask } from '../../engine/nightEmissionMaterial.ts';
+import { FIELD_STONE_FACE_V, FIELD_STONE_HEARTING_V } from '../fieldStoneSurface.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -1041,29 +1042,35 @@ function keepFaces<T extends THREE.BufferGeometry>(g: T, keep: readonly number[]
   return g;
 }
 
-/** The wall's texture density: the fieldstone print's stones come out a hand to a forearm long (0.15-0.4 m). */
+/** The wall's texture density (tiles a metre): a face stone's window of the field print. */
 const DRY_UV = 1.2;
 
 /**
- * A stone: a box with its corners knocked back a little (each corner moves inward by up to a tenth), only its listed
- * faces kept, and a texture window of its own projected on each face at the wall's density (a random offset), so the
- * print runs across it the right way and no two stones show one patch.
+ * A stone: a box with its corners knocked back a little (each corner moves inward by up to `knockBack` of its half
+ * extents), only its listed faces kept, and a window of the field print of its own projected on each face at the wall's
+ * density (wave 34: the print is one stone's skin over its face band — fieldStoneSurface.ts — and every face's window
+ * lies inside that band: u along the stone, v up its sides and across its top).
  */
-function roughStone(w: number, h: number, d: number, r: Rng, keep: readonly number[], knockBack = 0.1): THREE.BufferGeometry {
+function roughStone(
+  w: number, h: number, d: number, r: Rng, keep: readonly number[], knockBack = 0.1, knockY = knockBack,
+): THREE.BufferGeometry {
   const g = new THREE.BoxGeometry(w, h, d);
   const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
   const knock = new Map<string, [number, number, number]>();
   for (let i = 0; i < p.count; i++) {
     const key = `${Math.sign(p.getX(i))},${Math.sign(p.getY(i))},${Math.sign(p.getZ(i))}`;
     let k = knock.get(key);
-    if (!k) knock.set(key, k = [1 - r() * knockBack, 1 - r() * knockBack, 1 - r() * knockBack]);
+    if (!k) knock.set(key, k = [1 - r() * knockBack, 1 - r() * knockY, 1 - r() * knockBack]);
     p.setXYZ(i, p.getX(i) * k[0], p.getY(i) * k[1], p.getZ(i) * k[2]);
   }
-  const du = r() * 8, dv = r() * 8;
+  const du = r() * 8, place = r();
+  const extent = Math.max(h, w) * DRY_UV, room = FIELD_STONE_FACE_V[1] - FIELD_STONE_FACE_V[0];
+  const squash = extent > room ? room / extent : 1;
+  const v0 = FIELD_STONE_FACE_V[0] + place * Math.max(0, room - extent * squash) + (extent * squash) / 2;
   for (let i = 0; i < p.count; i++) {
     const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i));
-    const [a, b] = ax > 0.5 ? [p.getZ(i), p.getY(i)] : ay > 0.5 ? [p.getX(i), p.getZ(i)] : [p.getX(i), p.getY(i)];
-    uv.setXY(i, du + a * DRY_UV, dv + b * DRY_UV);
+    const [a, b] = ax > 0.5 ? [p.getZ(i), p.getY(i)] : ay > 0.5 ? [p.getZ(i), p.getX(i)] : [p.getX(i), p.getY(i)];
+    uv.setXY(i, du + a * DRY_UV, v0 + b * DRY_UV * squash);
   }
   g.computeVertexNormals();
   return keepFaces(g, keep);
@@ -1071,16 +1078,16 @@ function roughStone(w: number, h: number, d: number, r: Rng, keep: readonly numb
 
 /**
  * The dry-stone module along +Z (local X across, base at y = 0), before it is fitted to the original envelope: a
- * battered hearting carrying the fieldstone print at a dry-stone wall's scale, flat face stones standing a few
- * centimetres proud of it in rough courses (their tops catch the light), and a comb of cope stones set on edge, packed
- * tight and leaning together. About 360 triangles: the faces no one sees are left out.
+ * battered hearting (the field print's hearting band: packing stones and dark voids where it shows), face stones laid
+ * in rough courses standing a little proud of it, and flattish top stones laid across. About 300 triangles: the faces
+ * no one sees are left out.
  */
 function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   const L = WALL_SEG, H = broken ? 0.32 + r() * 0.16 : 0.92, bottom = 0.26, top = broken ? 0.22 : 0.18;
   const halfAt = (y: number) => bottom + (top - bottom) * Math.min(1, y / 0.92);
   // the hearting: a battered core, its faces a little uneven; its bottom sits in the ground and is left out
-  const core = new THREE.BoxGeometry(2, 1, 2, 1, 2, 4);
+  const core = new THREE.BoxGeometry(2, 1, 2, 1, 1, 2);
   const cp = core.attributes.position;
   // the unevenness is a function of the corner's place (the box's faces share their corners: no crack opens); the
   // bow is nil at both ends, where the next module meets it, and the +z end steps a centimetre and a half inside the
@@ -1093,62 +1100,122 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
     cp.setXYZ(i, side * half + Math.sin(Math.PI * u) * bow, y + (y > 0.01 ? lift(side, z) * 0.015 : 0), z);
   }
   core.computeVertexNormals();
-  parts.push(keepFaces(scaleUV(core, L * DRY_UV, H * DRY_UV), [0, 1, 2, 4, 5]));
-  // the face stones: random rubble, laid bottom-up on a skyline along each face (each stone rests on the highest stone
-  // under it) — middling stones, now and then a big one or a pin — so no course runs along the wall, the odd gap left
-  // between stones where the hearting shows; every stone a few centimetres proud of the hearting, following the batter
+  // (wave 34: the core reads the print's hearting band — u along the wall, v up its height across the band once)
+  {
+    const cn = core.attributes.normal, cuv = core.attributes.uv;
+    const [h0, h1] = FIELD_STONE_HEARTING_V;
+    for (let i = 0; i < cp.count; i++) {
+      const up = Math.abs(cn.getY(i)) > 0.5, across = Math.abs(cn.getX(i)) > 0.5;
+      const t = up ? 0.5 + cp.getX(i) / (2 * bottom) : Math.min(1, Math.max(0, cp.getY(i) / H));
+      cuv.setXY(i, (across || up ? cp.getZ(i) : cp.getX(i)) * DRY_UV, h0 + (h1 - h0) * t);
+    }
+  }
+  parts.push(keepFaces(core, [0, 1, 2, 4, 5]));
+  // the face stones (wave 34, "coursed rubble relief"): laid in rough courses, the biggest at the foot as a waller lays
+  // them, each course's line the module's own (a run repeats the module, so its courses meet the next one's) and every
+  // stone sitting on what is under it, a little high or low; now and then a jumper standing two courses high, a pair
+  // of thin stones in one course, a pin; a few millimetres between neighbours, the odd gap where the hearting shows;
+  // each stone one to three centimetres proud of the hearting, leaning out a little as a face settles. A stone's top
+  // ledge carries a normal leaning out (wave 34: the snow cap whitened every ledge into "thin white slivers")
   const CELL = 0.02, cells = Math.round(L / CELL);
-  const zOf = (i: number) => -L / 2 + i * CELL;
+  const iOf = (z: number) => Math.max(0, Math.min(cells, Math.round((z + L / 2) / CELL)));
+  const limit = broken ? H : H - 0.12; // the top stones finish the wall
+  const nCourses = broken ? (H > 0.4 ? 3 : 2) : 4;
+  const heights: number[] = [];
+  for (let c = 0; c < nCourses; c++) heights.push((1.25 - c * 0.12) * (0.88 + r() * 0.24));
+  const sumH = heights.reduce((a, b) => a + b, 0);
+  const lines = [0];
+  for (const h of heights) lines.push(lines[lines.length - 1] + (h / sumH) * limit);
   const skylines: Float32Array[] = [];
   for (const face of [-1, 1]) {
     const keep = face > 0 ? [0, 2] : [1, 2];
     const sky = new Float32Array(cells + 1);
-    const limit = broken ? H : H - 0.12; // the top stones finish the wall
-    for (let guard = 0; guard < 420; guard++) {
-      let i0 = 0;
-      for (let i = 1; i <= cells; i++) if (sky[i] < sky[i0] - 0.004) i0 = i;
-      if (sky[i0] >= limit) break;
-      const big = r() < 0.18, pin = !big && r() < 0.18;
-      const len = big ? 0.48 + r() * 0.34 : pin ? 0.07 + r() * 0.07 : 0.2 + r() * 0.3;
-      const h = big ? 0.2 + r() * 0.12 : pin ? 0.05 + r() * 0.04 : 0.1 + r() * 0.11;
-      const gap = r() < 0.12 ? 0.02 + r() * 0.03 : 0.004;
-      let a = Math.max(0, i0 - Math.floor(r() * len * 0.3 / CELL)), b = Math.min(cells, a + Math.round(len / CELL));
-      if (b - a < 3) { b = Math.min(cells, a + 3); a = Math.max(0, b - 3); }
-      let base = 0;
-      for (let i = a; i <= b; i++) base = Math.max(base, sky[i]);
-      const top = Math.min(base + h, limit + 0.05);
-      for (let i = a; i <= b; i++) sky[i] = top;
-      const hh = top - base;
-      if (hh < 0.04) continue;
-      // (wave 20, "jagged like voxels": the face stones stand one to three centimetres proud of the hearting, not seven to eleven, and lean
-      // their tops out a little, as a face settles, so no row of flat ledges catches the light)
-      const yc = base + hh / 2, proud = 0.008 + r() * 0.02;
-      const za = zOf(a) + gap / 2, zb = zOf(b) - gap / 2;
-      // (a field stone, not a dressed block: its corners knocked well back, set at a tilt of its own)
-      const stone = roughStone(proud + 0.07, hh * 0.97, Math.max(0.05, zb - za), r, keep, 0.32);
-      stone.rotateZ(face * ((r() - 0.5) * 0.12 - 0.09)); stone.rotateX((r() - 0.5) * 0.14); stone.rotateY((r() - 0.5) * 0.08);
-      // (its face `proud` outside the hearting's face, which stands 3 cm inside the batter line; the rest of it in the core)
+    const taken: Array<Array<[number, number]>> = lines.map(() => []); // jumpers' spans, per course they reach into
+    const layStone = (z0: number, z1: number, y0: number, y1: number): void => {
+      const za = Math.max(-L / 2, z0), zb = Math.min(L / 2, z1);
+      if (zb - za < 0.06) return;
+      // (it sits on what is under it — the stones below, or the ground — bedded a centimetre into the middle of their
+      // tops (a higher one under its end hides inside it), so no bed joint gapes along the course; its knocked corners
+      // leave the voids)
+      const under: number[] = [];
+      for (let i = iOf(za); i <= iOf(zb); i++) under.push(sky[i]);
+      under.sort((p, q) => p - q);
+      const bed = under[Math.floor(under.length * 0.5)];
+      const base = bed > 0 ? bed - 0.01 : y0;
+      const topY = Math.max(base + 0.05, y1);
+      const hh = topY - base, yc = base + hh / 2, proud = 0.006 + r() * 0.022;
+      // (its corners knocked well back along the course, little in its height: the bed joints close, the corners gape)
+      const stone = roughStone(proud + 0.07, hh, zb - za, r, keep, 0.3, 0.1);
+      // (wave 34 re-shoot, "flat grey from a distance": each stone's face turned a little its own way — up to a
+      // ninth of a radian — in its shading only, so neighbours catch the light differently and read stone by stone)
+      const nrm = stone.attributes.normal, tiltY = (r() - 0.5) * 0.22, tiltZ = (r() - 0.5) * 0.22;
+      for (let i = 0; i < nrm.count; i++) {
+        if (nrm.getY(i) >= 0.6) {
+          const l = Math.hypot(0.9, 0.42);
+          nrm.setXYZ(i, (face * 0.9) / l, 0.42 / l, 0);
+        } else if (Math.abs(nrm.getX(i)) > 0.5) {
+          const x = nrm.getX(i), y = nrm.getY(i) + tiltY, z = nrm.getZ(i) + tiltZ, l = Math.hypot(x, y, z) || 1;
+          nrm.setXYZ(i, x / l, y / l, z / l);
+        }
+      }
+      stone.rotateZ(face * ((r() - 0.5) * 0.05 - 0.02)); stone.rotateX((r() - 0.5) * 0.05); stone.rotateY((r() - 0.5) * 0.05);
       parts.push(stone.translate(face * (halfAt(yc) - 0.03 + proud - (proud + 0.07) / 2), yc, (za + zb) / 2));
+      for (let i = iOf(za); i <= iOf(zb); i++) sky[i] = Math.max(sky[i], topY);
+    };
+    for (let c = 0; c < nCourses; c++) {
+      const y0 = lines[c], y1 = lines[c + 1], ch = y1 - y0;
+      let z = -L / 2 - r() * 0.35;
+      while (z < L / 2) {
+        // a jumper from the course below already stands here: lay on past it
+        const jump = taken[c].find(([a, b]) => z >= a - 0.01 && z < b);
+        if (jump) { z = jump[1] + 0.004; continue; }
+        const pick = r();
+        const len = (c === 0 ? 0.46 : 0.38) + r() * (c === 0 ? 0.44 : 0.36);
+        const gap = r() < 0.14 ? 0.012 + r() * 0.025 : 0.004;
+        const settle = (r() - 0.5) * 0.024;
+        if (pick < 0.08 && c + 1 < nCourses) {
+          // a jumper: one stone two courses high
+          const jl = Math.min(len, 0.55);
+          layStone(z, z + jl, y0 + settle * 0.5, lines[c + 2] + settle);
+          taken[c + 1].push([z, z + jl]);
+          z += jl + gap;
+        } else if (pick < 0.2) {
+          // two thin stones in the course, one on the other
+          const split = 0.38 + r() * 0.24, pl = len * (0.75 + r() * 0.2);
+          layStone(z, z + pl, y0, y0 + ch * split);
+          layStone(z + (r() - 0.5) * 0.06, z + pl * (0.85 + r() * 0.2), y0 + ch * split, y1 + settle);
+          z += pl + gap;
+        } else if (pick < 0.27) {
+          // a pin wedged before the next stone
+          const pl = 0.08 + r() * 0.07;
+          layStone(z, z + pl, y0 + ch * (0.15 + r() * 0.3), y0 + ch * (0.55 + r() * 0.3));
+          z += pl + 0.004;
+        } else {
+          layStone(z, z + len, y0 + settle * 0.3, y1 + settle);
+          z += len + gap;
+        }
+      }
     }
     skylines.push(sky);
   }
   if (!broken) {
-    // a through-stone or two, long enough to show its ends on both faces
+    // a through-stone or two, long enough to show its ends on both faces, laid at a course line
     for (let k = 0, n = 1 + (r() < 0.5 ? 1 : 0); k < n; k++) {
-      const y = H * (0.35 + r() * 0.25), len = 0.18 + r() * 0.12, th = 0.09 + r() * 0.05;
+      const y = lines[1 + Math.floor(r() * 2)] + 0.04, len = 0.18 + r() * 0.12, th = 0.09 + r() * 0.05;
       const ts = roughStone(halfAt(y) * 2 + 0.12, th, len, r, [0, 1, 2, 4, 5]);
       parts.push(ts.translate((r() - 0.5) * 0.03, y, (r() - 0.5) * (L - 0.6)));
     }
     // the top: flattish stones laid across the wall on the uneven rubble under them (an uneven, unbroken top line —
-    // no comb, no crenels), each a little different in height and tilt; their tops catch the snow on a winter map
+    // no comb, no crenels), each a little different in height and tilt; their tops carry the winter's snow load
     let z = -L / 2 + 0.005;
     while (z < L / 2 - 0.04) {
       const len = Math.min(L / 2 - z, 0.24 + r() * 0.3), th = 0.09 + r() * 0.1;
       const a = Math.max(0, Math.floor((z + L / 2) / CELL)), b = Math.min(cells, Math.ceil((z + len + L / 2) / CELL));
       let base = 0;
       for (const sky of skylines) for (let i = a; i <= b; i++) base = Math.max(base, sky[i]);
-      // (wave 20: rounder, and steadier in their tilt, so the top line is a row of stones, not a staircase)
-      const cap = roughStone(top * 2 + 0.05 + r() * 0.06, th, len * 0.97, r, [0, 1, 2, 4, 5], 0.34);
+      // (their ends meet the next top stone's: only the module's two end stones' ends ever show, and the next module's
+      // first and last stones cover them)
+      const cap = roughStone(top * 2 + 0.05 + r() * 0.06, th, len * 0.97, r, [0, 1, 2], 0.34);
       cap.rotateX((r() - 0.5) * 0.08); cap.rotateZ((r() - 0.5) * 0.07);
       parts.push(cap.translate((r() - 0.5) * 0.03, base + th * 0.45, z + len / 2));
       z += len * (0.96 + r() * 0.03);
@@ -1272,7 +1339,7 @@ function adobeEnvelope(rng: Rng): THREE.BufferGeometry {
  */
 function adobeModule(r: Rng): THREE.BufferGeometry {
   const L = WALL_SEG, H = 1.0, half = 0.26;
-  const segs = 16, phase = r() * 10, bow = (r() < 0.5 ? -1 : 1) * 0.01;
+  const segs = 16, phase = r() * 10, bow = (r() < 0.5 ? -1 : 1) * (0.012 + r() * 0.012);
   // the gullies: a few each face, narrow, from the crown down, fading toward the foot
   // (clear of the module's ends, so a turned neighbour's face meets this one's where neither is cut)
   const gullies = Array.from({ length: 3 + Math.floor(r() * 4) }, () => [(r() - 0.5) * (L - 0.8), r() < 0.5 ? -1 : 1, 0.012 + r() * 0.016, 0.14 + r() * 0.08]);
@@ -1282,14 +1349,16 @@ function adobeModule(r: Rng): THREE.BufferGeometry {
   const bites: Array<[number, number, number, number]> = [];
   for (let k = 0, n = 2 + Math.floor(r() * 2); k < n; k++) {
     const broad = k === 0;
-    const w = broad ? 0.45 + r() * 0.3 : 0.1 + r() * 0.14, d = broad ? 0.12 + r() * 0.12 : 0.03 + r() * 0.06;
+    // (wave 34, "laser-straight tops": the broad loss is a slump a metre or so long, up to a third of a metre deep)
+    const w = broad ? 0.55 + r() * 0.4 : 0.1 + r() * 0.14, d = broad ? 0.16 + r() * 0.16 : 0.03 + r() * 0.06;
     const c = (r() - 0.5) * (L - 2 * w - 0.3);
     bites.push([c, w, d, (r() - 0.5) * 1.2]);
   }
   // the section, one foot over the crown to the other: [across (x / half), height (y / H)]
   // (thirteen points, a row every 19 cm: about the old module's 410 triangles; wave 34 counted the triangles)
-  const section: Array<[number, number]> = [[-1.03, 0], [-0.98, 0.06], [-1.02, 0.2], [-0.98, 0.6], [-0.93, 0.88],
-    [-0.62, 0.99], [0, 1.0], [0.62, 0.99], [0.93, 0.88], [0.98, 0.6], [1.02, 0.2], [0.98, 0.06], [1.03, 0]];
+  // (wave 34: "rounded slumped tops" — the faces battered in toward a crown worn round, not squared shoulders)
+  const section: Array<[number, number]> = [[-1.05, 0], [-0.99, 0.06], [-1.03, 0.22], [-0.95, 0.64], [-0.82, 0.86],
+    [-0.48, 0.975], [0, 1.0], [0.48, 0.975], [0.82, 0.86], [0.95, 0.64], [1.03, 0.22], [0.99, 0.06], [1.05, 0]];
   const positions: number[] = [], uvs: number[] = [], index: number[] = [];
   const rowLength = section.length, y0 = 0.55;
   const arc = [0];
@@ -1306,7 +1375,7 @@ function adobeModule(r: Rng): THREE.BufferGeometry {
       loss = Math.max(loss, d * Math.max(0, 1 - tt * tt) * Math.max(0, 1 - tt * tt));
     }
     // the crown's own unevenness: two harmonics of the module and a finer ripple
-    loss += (Math.sin(2 * Math.PI * u + phase) * 0.5 + 0.5) * 0.03 + (Math.sin(6 * Math.PI * u + phase * 2.1) * 0.5 + 0.5) * 0.012
+    loss += (Math.sin(2 * Math.PI * u + phase) * 0.5 + 0.5) * 0.06 + (Math.sin(6 * Math.PI * u + phase * 2.1) * 0.5 + 0.5) * 0.018
       + (Math.sin(14 * Math.PI * u + phase * 0.7) * 0.5 + 0.5) * 0.006;
     const tuck = 1 - Math.max(0, u - 0.9) * 0.3; // the +z end steps inside the next module's start
     for (let k = 0; k < rowLength; k++) {
@@ -1337,20 +1406,27 @@ function adobeModule(r: Rng): THREE.BufferGeometry {
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   g.setIndex(index);
   g.computeVertexNormals();
-  // the end faces: a flat fan over each end's section, their own corners (so the sides keep their soft normals)
-  const capPositions: number[] = [], capUvs: number[] = [];
+  // the end faces: a flat fan over each end's section, their own corners (so the sides keep their soft normals). Wave
+  // 34: where two modules meet a few millimetres apart a sliver of an end face shows, a dark line down the wall at every
+  // joint — so an end face is shaded as the section's own faces at its rim (their normals), and its sliver reads as wall
+  const capPositions: number[] = [], capUvs: number[] = [], capNormals: number[] = [];
+  const sideNormal = g.attributes.normal;
   for (const [i, last] of [[0, false], [segs, true]] as const) {
     const base = i * rowLength;
     const at = (k: number) => [positions[(base + k) * 3], positions[(base + k) * 3 + 1], positions[(base + k) * 3 + 2]];
     for (let k = 1; k + 1 < rowLength; k++) {
       const tri = last ? [0, k, k + 1] : [0, k + 1, k];
-      for (const q of tri) { const p = at(q); capPositions.push(...p); capUvs.push(p[0] * ADOBE_UV_PER_M, p[1] * ADOBE_UV_PER_M); }
+      for (const q of tri) {
+        const p = at(q);
+        capPositions.push(...p); capUvs.push(p[0] * ADOBE_UV_PER_M, p[1] * ADOBE_UV_PER_M);
+        capNormals.push(sideNormal.getX(base + q), sideNormal.getY(base + q), sideNormal.getZ(base + q));
+      }
     }
   }
   const caps = new THREE.BufferGeometry();
   caps.setAttribute('position', new THREE.Float32BufferAttribute(capPositions, 3));
   caps.setAttribute('uv', new THREE.Float32BufferAttribute(capUvs, 2));
-  caps.computeVertexNormals();
+  caps.setAttribute('normal', new THREE.Float32BufferAttribute(capNormals, 3));
   return merge([g, caps]);
 }
 

@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+import {syncJuggernautVisual,pulseJuggernautImpact} from './juggernautVisual.ts';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
@@ -135,3 +137,43 @@ assert.ok(adapterAt >= 0 && preserveAt > adapterAt && poolAt > preserveAt,
   'battle teardown preserves only the adopted hero and hands bot visuals to the bounded pool');
 
 console.log('garageTankLifecycle.selftest: FX and tank state end at the garage boundary');
+
+// A victorious boss is adopted in-place: it need not emit Object3D.removed.
+{
+ const scene=new THREE.Scene(),root=new THREE.Group();scene.add(root);
+ const source=new THREE.MeshStandardMaterial(),mesh=new THREE.Mesh(new THREE.BoxGeometry(),source);root.add(mesh);
+ const dims={widthM:3,hullLengthM:7,heightM:3};
+ syncJuggernautVisual(root,dims,1.12,100,100,.016);pulseJuggernautImpact(root,[0,1,0]);
+ const visual={root,resetForGaragePresentation(){
+  assert.equal(mesh.material,source,'aura cleared before the showroom resets or adopts the hero');
+  assert.equal(root.scale.x,1,'battle enlargement removed before showroom posing');
+ }};
+ resetBattleTankForGarage({fx:{resetAll(){}},visual});
+ assert.equal(root.parent,scene,'no removal/reparent was required to clean the retained hero');
+ assert.equal(pulseJuggernautImpact(root,[0,1,0]),false);
+ syncJuggernautVisual(root,dims,1.12,100,100,.016);
+ const game={allTanks:[{visual,team:'ally',isPlayer:true}],tanks:[],shells:[]};
+ clearBattleAfterExit({game,preservedVisual:visual});
+ assert.equal(mesh.material,source,'preserved and pooled actors are also cleared by roster teardown');assert.equal(root.scale.x,1);
+ mesh.geometry.dispose();source.dispose();
+}
+
+// A wreck can save a live shield material, then restore it after death has
+// disposed the effect. Repair also reattaches distance-hidden fittings.
+{
+ const root=new THREE.Group(),source=new THREE.MeshStandardMaterial();
+ const geometry=new THREE.BoxGeometry(),mesh=new THREE.Mesh(geometry,source);
+ root.add(mesh);
+ const dims={widthM:3,hullLengthM:7,heightM:2.6};
+ syncJuggernautVisual(root,dims,1.12,100,100,.016);
+ const captured=mesh.material;
+ const fitting=new THREE.Mesh(geometry,[captured,source]);
+ syncJuggernautVisual(root,dims,1.12,0,100,.016);
+ resetBattleTankForGarage({fx:{resetAll(){}},visual:{root,resetForGaragePresentation(){
+   mesh.material=captured;root.add(fitting);
+ }}});
+ assert.equal(mesh.material,source,'repair cannot resurrect a disposed boss highlight');
+ assert.deepEqual(fitting.material,[source,source],'reattached multi-material fittings are clean');
+ assert.equal(root.scale.x,1);
+ geometry.dispose();source.dispose();
+}

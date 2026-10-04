@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { createLazyAudio, startFallbackLoadingTone } from './lazyAudio.ts';
+import * as lazyModule from './lazyAudio.ts';
 import { createAudio } from './audioEngine.ts';
 import { createBus } from '../game/stateCore.ts';
 
@@ -29,17 +29,15 @@ class FakeNode {
   stop() { this.stopped = true; }
 }
 
+const { createLazyAudio } = lazyModule;
 const fakeContext = {
   currentTime: 0,
   destination: new FakeNode(),
   createGain: () => new FakeNode(),
   createOscillator: () => new FakeNode(),
 };
-const tone = startFallbackLoadingTone(fakeContext);
-assert.ok(tone, 'a gesture-unlocked context creates the immediate loading bed');
-assert.equal(tone.nodes.length, 3,
-  'the fallback stays to three inexpensive oscillators including the entry cue');
-assert.ok(tone.nodes.every((node) => node.started), 'both fallback voices start immediately');
+// Every sound is a recording (2026-10-03): the facade's oscillator loading tone is gone.
+assert.equal('startFallbackLoadingTone' in lazyModule, false, 'the facade exports no synthesized loading tone');
 
 const lazy = createLazyAudio();
 await lazy.preload();
@@ -160,8 +158,8 @@ for (const sticky of [true, false]) {
   releasePaint(); await startup;
   await audio.preload(); await Promise.resolve();
   assert.equal(calls.filter((call) => call === 'context').length, 1);
-  assert.equal(calls.filter((call) => call === 'oscillator').length, 3,
-    'the unchanged oscillator loading cue remains present after startup');
+  assert.equal(calls.filter((call) => call === 'oscillator').length, 0,
+    'the facade synthesizes nothing: the mixer plays the recorded loading bed');
   assert.equal(calls.filter((call) => call === 'mixer').length, 1);
   assert.ok(calls.includes('loading:true'), 'the full mixer inherits loading sound intent');
 }
@@ -238,7 +236,7 @@ try {
   await failedMixer.startLoadingAfterPaint(async () => {});
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(failedMixer.ready, false, 'failed pre-graph construction cannot publish a ready mixer');
-  assert.equal(failedMixer.loadingActive, true, 'the fallback loading tone survives failed pre-graph construction');
+  assert.equal(failedMixer.loadingActive, true, 'loading intent survives failed pre-graph construction');
   assert.ok(mixerWarnings.length > 0, 'fire-and-forget initialization rejection is observed');
   failedMixer.resume();
   await failedMixer.warmBattleEvents();
@@ -350,7 +348,7 @@ for (const abandonedDuringPreparation of [false, true]) {
   await flushMicrotasks();
   assert.deepEqual(calls, ['context', 'prepare'], 'concurrent facade calls join one private preparation');
   assert.equal(audio.ready, false);
-  assert.equal(audio.loadingActive, true, 'the immediate oscillator fallback remains during preparation');
+  assert.equal(audio.loadingActive, true, 'loading intent stays active during preparation');
   bus.emit('phase:change', { phase: 'battle' }); audio.ambientOn(true);
   if (abandonedDuringPreparation) {
     audio.loadingOn(false);
@@ -454,9 +452,12 @@ function volumeHarness() {
       assert.equal(h.transfers, 0);
       assert.equal(h.gains.length, 0, 'silent preparation has no output graph or sources');
       h.audio.loadingOn(true);
-      assert.equal(h.gains[0].gain.value, saved.includes(':0}') ? 0 : saved.includes('0.25') ? 0.25 : 0.8);
+      assert.equal(h.gains.length + h.oscillators.length, 0, 'loading intent builds no sound of its own');
       h.audio.loadingOn(false);
       await h.finish();
+      assert.ok(h.events.some(([kind, value]) => kind === 'master'
+        && value === (saved.includes(':0}') ? 0 : saved.includes('0.25') ? 0.25 : 0.8)),
+        'the adopted mixer starts at the persisted master');
     }
   } finally {
     if (descriptor) Object.defineProperty(globalThis, 'localStorage', descriptor);
@@ -473,13 +474,8 @@ for (const silence of ['mute', 'master', 'bus']) {
   assert.equal(h.contexts, 0, `${silence} suppresses optional device preparation`);
   assert.equal(h.transfers, 0);
   h.audio.loadingOn(true);
-  assert.equal(h.contexts, 1, 'explicit Battle retains its single-context fallback');
-  const output = h.gains[0], envelope = h.gains[1];
-  assert.equal(output.destination, h.context.destination);
-  assert.equal(envelope.destination, output);
-  assert.equal(output.gain.value, 0, 'output is exactly silent before any fallback source starts');
-  assert.ok(envelope.gain.events.some(([value]) => value === 0.055), 'authored envelope is unchanged');
-  assert.deepEqual(output.gain.events, [], 'envelope ramps never schedule a later master unmute');
+  assert.equal(h.contexts, 1, 'explicit Battle unlocks its single context even when silenced');
+  assert.equal(h.gains.length + h.oscillators.length, 0, 'and starts no sound of its own');
   h.bus.emit('phase:change', { phase: 'battle' });
   h.audio.ambientOn(true);
   h.bus.emit('ui:volumes', { master: 0.35 });
@@ -490,11 +486,9 @@ for (const silence of ['mute', 'master', 'bus']) {
   assert.deepEqual(h.events.slice(0, 4), [['phase', 'garage'], ['mute', true], ['master', 0.35], ['resume']]);
   assert.ok(h.events.some(([kind, value]) => kind === 'loading' && value === false));
   assert.ok(h.events.some(([kind, value]) => kind === 'ambient' && value === false));
-  assert.equal(output.gain.value, 0, 'a stopped/fading fallback remains muted through handoff');
   h.audio.mute(false);
-  assert.equal(output.gain.value, 0.35, 'unmute restores latest volume, never a hardcoded fallback gain');
   h.audio.setMasterVolume(0);
-  assert.equal(output.gain.value, 0, 'master zero also silences fading fallback nodes');
+  assert.deepEqual(h.events.slice(-2), [['mute', false], ['master', 0]], 'live mute and master reach the mixer');
   assert.equal(h.contexts, 1);
 }
 
@@ -507,13 +501,13 @@ for (const silence of ['mute', 'master', 'bus']) {
   assert.equal(h.contexts, 1, 'rebinding removes the retired bus volume listener');
   nextBus.emit('ui:volumes', { master: 0.2 });
   h.audio.loadingOn(true);
-  assert.equal(h.gains[0].gain.value, 0.2);
-  h.audio.setMasterVolume(2);
-  assert.equal(h.gains[0].gain.value, 1);
-  h.audio.setMasterVolume(NaN);
-  assert.equal(h.gains[0].gain.value, 1, 'invalid live levels cannot create a NaN output gain');
   h.audio.loadingOn(false);
   await h.finish();
+  assert.ok(h.events.some(([kind, value]) => kind === 'master' && value === 0.2), 'the live bus level is latched');
+  h.audio.setMasterVolume(2);
+  h.audio.setMasterVolume(NaN);
+  assert.deepEqual(h.events.filter(([kind]) => kind === 'master').slice(-2), [['master', 1], ['master', 1]],
+    'levels clamp, and an invalid level cannot reach the mixer as NaN');
 }
 
 // Execute the actual full mixer. The destination is inspected at every source
@@ -522,7 +516,9 @@ for (const silence of ['mute', 'master', 'bus']) {
   const saved = new Map(['fetch', 'window', 'document', 'setInterval', 'clearInterval']
     .map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
   try {
-    globalThis.fetch = () => new Promise(() => {});
+    // Assets fetch and decode (silent one-second buffers), so recorded cues really start: nothing in the engine
+    // is synthesized any more, and only a decoded asset can start a source.
+    globalThis.fetch = async () => ({ ok: true, status: 200, arrayBuffer: async () => new ArrayBuffer(16) });
     globalThis.window = undefined; globalThis.document = undefined;
     globalThis.setInterval = () => 1; globalThis.clearInterval = () => {};
     for (const muteFirst of [false, true]) {
@@ -547,14 +543,15 @@ for (const silence of ['mute', 'master', 'bus']) {
         const data = Array.from({ length: channels }, () => new Float32Array(length));
         return { numberOfChannels: channels, length, sampleRate, duration: length / sampleRate, getChannelData: (c) => data[c] };
       };
-      // The format probe fails in this fake: every cue stays on its procedural path.
-      context.decodeAudioData = () => Promise.reject(new Error('no codec in the fake context'));
+      context.decodeAudioData = () => Promise.resolve(context.createBuffer(1, 1000, 1000));
       const mixer = createAudio({ context, tier: 'desktop' });
       if (muteFirst) { mixer.mute(true); mixer.setMasterVolume(0.45); }
       else mixer.setMasterVolume(0);
       assert.equal(nodes.length, 0, 'pre-resume setters only latch, even with an adopted context');
       mixer.resume();
-      assert.ok(nodes.some(node => node.started), 'negative witness actually exercises Garage source starts');
+      for (let i = 0; i < 40; i++) await new Promise((resolve) => setImmediate(resolve));
+      mixer.loadingOn(true);
+      assert.ok(nodes.some(node => node.started), 'negative witness actually exercises source starts (the loading bed)');
       const master = nodes.find(node => node.destination === context.destination);
       assert.equal(master.gain.value, 0);
       if (muteFirst) { mixer.mute(false); assert.equal(master.gain.value, 0.45); }
@@ -584,4 +581,4 @@ assert.match(intentSource, /const preload = \([\s\S]{0,500}ignoreFailure\(preloa
 assert.match(mainSource, /const entryReady = boot\.ready\(\(\) => audio\.prepare\(\)\);/,
   'only the accepted boot gate delegates to silent, mute-aware device preparation');
 
-console.log('lazyAudio.selftest: deferred mixer and immediate loading tone passed');
+console.log('lazyAudio.selftest: deferred mixer and silent facade passed');

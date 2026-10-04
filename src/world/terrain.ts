@@ -2,6 +2,7 @@ import { smoothRoadGradesByDistance, blendRoadNetworkGrades } from './maps/roadG
 import { fadeDistantCoastShadows } from './coastShadow.ts';
 import { bindAutumnHorizonGround, refreshHorizonGroundTone } from './horizonAutumnGround.ts';
 import { continueHorizonFold } from './horizonSeam.ts';
+import { continuedGroundAt } from './horizonSurface.ts';
 import { planAssaultTrenchLines, planFieldTrenchLines, assaultTeamCenters, assaultTrenchCarveDepth, FIELD_TRENCH, type AssaultTrenchPlan } from '../sim/assaultLines.ts';
 import type { NavigationWaterPolicy } from '../sim/botRoutePlanner.ts';
 // src/world/terrain.ts — 1 km simplex heightfield + chunked LOD meshes + splat-blended
@@ -22,7 +23,7 @@ import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalett
   type TerrainPaletteId, type TerrainSourcePreparation } from './sourcedTextures.ts';
 import { HORIZON_SEGMENTS, buildHorizonRingSteps, type HorizonMapConfig } from './maps/horizon.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
-import { resolvePresetName, texSize } from '../engine/quality.ts';
+import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { shorelineDistance, shorelineRadiusAt, shorelineWetness, sampleShorelineMask } from './shoreline.ts';
 import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, LIQUID_MARSH_CORE, LIQUID_MARSH_STRIDE } from './liquidMarshSurface.ts';
@@ -59,7 +60,7 @@ import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
 import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
-import { LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
+import { LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -375,6 +376,13 @@ export interface TerrainWarmPoint {
   radiusM?: number;
 }
 
+/** The map-borders lane: the road exits on a built ring (terrain.ts roadExitOnRing) — the carriageway attribute there and
+ * the exit lines cut at their ends. */
+interface RoadExitsOnRing {
+  at(x: number, z: number, out: [number, number]): [number, number];
+  lines: readonly { xs: ArrayLike<number>; zs: ArrayLike<number>; length: number }[];
+}
+
 export interface HeightField {
   readonly navigationWaterPolicy?: NavigationWaterPolicy;
   getHeightAt(x: number, z: number): number;
@@ -396,7 +404,7 @@ export interface HeightField {
   /** The map-borders lane: the hedged stretches of the field boundaries past the edge (borderHedgerows.ts). */
   _borderHedgeLines?(maxOut: number, keep?: (x: number, z: number) => boolean): { xs: number[]; zs: number[]; w: number[] }[];
   /** The map-borders lane: the farmsteads past the edge (borderFarmsteads.ts), built with the ring. */
-  _borderFarmsteads?: { count: number; style: FarmsteadStyle; fieldAngle: number };
+  _borderFarmsteads?: { count: number; style: FarmsteadStyle; fieldAngle: number; buildings?: boolean };
   /** The map-borders lane: the farm tracks past the edge (the ring's borderTrack attribute, borderLandform.ts trackAt). */
   _borderTrackAt?(x: number, z: number, out: [number, number, number, number]): [number, number, number, number];
   getHeightAtFast(x: number, z: number): number;
@@ -447,6 +455,11 @@ export interface HeightField {
   _geologyZoneAt?(x: number, z: number, out: GeologyZones): GeologyZones;
   /** The map-borders lane (2026-10-03): the ring's carriageway attribute — [signed offset from a road exit line (m), presence]. */
   _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
+  /** The map-borders lane: the roads that leave the square, as their exit lines past the edge (40 m steps, ~720 m). */
+  _roadExitLines?(): readonly { xs: ArrayLike<number>; zs: ArrayLike<number>; length: number }[];
+  /** The map-borders lane: the exits as they lie on a built ring (its vertices) — each ending at the foot of the ranges
+   * unless they open a pass for it (terrain.ts roadExitOnRing). */
+  _roadExitOnRing?(ring: { positions: ArrayLike<number>; heights: ArrayLike<number> }): RoadExitsOnRing;
   /** The map-borders lane: a railway's open line past the edge on the ring — [signed offset (m), presence], faded where
    * the ring's own height there (`surfaceY`) leaves the line's bed. */
   _railExitAt?(x: number, z: number, out: [number, number], surfaceY?: number): [number, number];
@@ -1645,6 +1658,51 @@ function* heightFieldBuildSteps(
   }
 
   /**
+   * The exits as they lie on a built ring (its vertices' `positions` and `heights`). Each ends at the foot of the ranges —
+   * the nearest point along it where a ring vertex within ROAD_EXIT_FOOT_REACH_M of its line stands off its continued
+   * ground (horizonSurface.ts continuedGroundAt, the ring's own law) by more than ROAD_EXIT_FOOT_M — narrowing and fading
+   * over the ROAD_EXIT_TAPER_M before it, so a road runs out where the ground starts to rise instead of being painted up
+   * a face (the mountains lane, 2026-10-03: with the ranges' pass turned off at Frosthollow's north exit the carriageway
+   * climbed ~300 m of the massif). The vertices themselves are compared, not the surface between them, which cannot
+   * follow the corridor's cut and fill across the line. Where the ranges open a pass for an exit (horizon.ts) the ring
+   * lies on the road's ground and the exit runs on. `at` is the carriageway attribute (roadExitAt's) on that ring; `lines`
+   * the exit lines cut at their ends, for what stands along a road (the villages, the avenues).
+   */
+  const ROAD_EXIT_FOOT_M = 1.5, ROAD_EXIT_FOOT_REACH_M = 12, ROAD_EXIT_TAPER_M = 100;
+  function roadExitOnRing(ring: { positions: ArrayLike<number>; heights: ArrayLike<number> }): RoadExitsOnRing {
+    const exits = roadExits();
+    const ground = { getHeightAt, getOutlandHeightAt: publicOutlandHeightAt };
+    const feet = new Float64Array(exits.length).fill(Infinity);
+    if (exits.length) {
+      for (let i = 0; i < ring.heights.length; i++) {
+        const x = ring.positions[i * 3], z = ring.positions[i * 3 + 2];
+        if (Math.max(Math.abs(x), Math.abs(z)) < HALF + 2) continue;
+        const hit = nearestRoadExit(x, z, ROAD_EXIT_FOOT_REACH_M);
+        if (hit.exit < 0 || hit.along >= feet[hit.exit]) continue;
+        if (Math.abs(ring.heights[i] - continuedGroundAt(ground, x, z)) > ROAD_EXIT_FOOT_M) feet[hit.exit] = hit.along;
+      }
+    }
+    const lines = exits.map((exit, e) => {
+      const foot = feet[e];
+      if (!Number.isFinite(foot)) return { xs: exit.xs, zs: exit.zs, length: exit.length };
+      // the line as far as its end (with the 40 m step the end falls in)
+      const keep = Math.min(ROAD_EXIT_STEPS, Math.ceil(foot / ROAD_EXIT_STEP_M)) + 1;
+      return { xs: exit.xs.slice(0, keep), zs: exit.zs.slice(0, keep), length: Math.min(exit.length, foot) };
+    });
+    return {
+      at(x: number, z: number, out: [number, number]): [number, number] {
+        roadExitAt(x, z, out);
+        if (out[1] <= 0) return out;
+        // (roadExitAt leaves its nearest exit in _exitHit)
+        const foot = feet[_exitHit.exit];
+        if (Number.isFinite(foot)) out[1] *= 1 - smoothstep(foot - ROAD_EXIT_TAPER_M, foot, _exitHit.along);
+        return out;
+      },
+      lines,
+    };
+  }
+
+  /**
    * The ring's ballast attribute at (x, z): [signed offset from a railway's open line (m), presence 0..1]. The offset is
    * kept 40 m either side of the line (and 40 m before and past it) even where the presence is 0, so a ring triangle
    * that straddles the line interpolates the true offset (the ring's faces are 8-20 m across). Given the ring's own
@@ -1940,10 +1998,36 @@ function* heightFieldBuildSteps(
     const rimElev = placementOnly ? null : authoringRoads.map((nodes) => nodes.map(([rx, rz]) => heightAt(rx, rz, false, false)));
     authoringOnLandform = false;
     if (rimElev) levelViaductSpanNodes(authoringRoads, rimElev);
+    // (the landform pass's portal tails continue the authored grade to the edge — gradeRoadPortals' shallow cut through
+    // the classic rim's berm — and where that grade climbs over the landform's own ground the tail comes down to it, at
+    // most 1.5 m over it: the road leaves the square on the land, not on a causeway; a cut is kept. A classic border is
+    // the rim the grades were authored on, so its tails stand as authored.)
+    const capPortalTails = (elev: number[][], lines: readonly (readonly RoadPoint[])[]): void => {
+      if (border.settings.classic) return;
+      authoringOnLandform = true;
+      for (let r = 0; r < lines.length; r++) {
+        const row = elev[r], nodes = lines[r];
+        let capped = false;
+        for (let i = 0; i < nodes.length; i++) {
+          const [tx, tz] = nodes[i];
+          if (Math.max(Math.abs(tx), Math.abs(tz)) < 430) continue;
+          const land = heightAt(tx, tz, false, false) + 1.5;
+          if (row[i] > land) { row[i] = land; capped = true; }
+        }
+        // ... at a grade a tank can drive: where the cap drops the tail faster than 15 %, the nodes come back up to it
+        if (!capped) continue;
+        for (let pass = 0; pass < 2; pass++) for (let k = 1; k < nodes.length; k++) {
+          const i = pass ? nodes.length - 1 - k : k, j = pass ? i + 1 : i - 1;
+          const run = Math.hypot(nodes[i][0] - nodes[j][0], nodes[i][1] - nodes[j][1]);
+          row[i] = Math.max(row[i], row[j] - 0.15 * run);
+        }
+      }
+      authoringOnLandform = false;
+    };
     if (!placementOnly && !inheritedRoads && T.roads !== 'country' && T.roads.paths) {
       const offset = T.roads.grid ? T.roads.grid.xs.length + T.roads.grid.zs.length : 0;
       gradeRoadPortals(cfg?.id, roads, nodeElev, T.roads.paths, offset);
-      if (rimElev) gradeRoadPortals(cfg?.id, roads, rimElev, T.roads.paths, offset);
+      if (rimElev) { gradeRoadPortals(cfg?.id, roads, rimElev, T.roads.paths, offset); capPortalTails(rimElev, roads); }
     }
     smoothRoadElevations(nodeElev);
     if (rimElev) smoothRoadElevations(rimElev);
@@ -1957,7 +2041,7 @@ function* heightFieldBuildSteps(
       if (T.roads !== 'country' && T.roads.paths) {
         const offset = T.roads.grid ? T.roads.grid.xs.length + T.roads.grid.zs.length : 0;
         gradeRoadPortals(cfg?.id, roads, nodeElev, T.roads.paths, offset);
-        if (rimElev) gradeRoadPortals(cfg?.id, roads, rimElev, T.roads.paths, offset);
+        if (rimElev) { gradeRoadPortals(cfg?.id, roads, rimElev, T.roads.paths, offset); capPortalTails(rimElev, roads); }
       }
       alignAddedRoadJunctionGrades(cfg?.id, inheritedRoads, roads, nodeElev);
       if (rimElev) alignAddedRoadJunctionGrades(cfg?.id, inheritedRoads, roads, rimElev);
@@ -2460,12 +2544,14 @@ function* heightFieldBuildSteps(
   const landUseProfile = resolveLandUseProfile(cfg?.id); // ground lane
   const legacyGroundLanes = typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '');
 
+  // round 63: the rail cutting continues past the red line — the ring's near rows seat on the same notch (and the road
+  // exits read the outland as the ring does: roadExitOnRing)
+  const publicOutlandHeightAt = railCuttings !== null
+    ? (x: number, z: number): number => railCuttingHeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt(x, z), railOpenLines)
+    : outlandHeightAt;
   return {
     getHeightAt, getHeightAtFast, getContactHeightAt, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,
-    // round 63: the rail cutting continues past the red line — the ring's near rows seat on the same notch
-    getOutlandHeightAt: railCuttings !== null
-      ? (x: number, z: number): number => railCuttingHeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt(x, z), railOpenLines)
-      : outlandHeightAt,
+    getOutlandHeightAt: publicOutlandHeightAt,
     ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
       railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt, railOpenLines) } : {}),
     getWaterMaskAt, getWaterDepthAt, getTrackSurfaceAt,
@@ -2475,8 +2561,11 @@ function* heightFieldBuildSteps(
     ...(border.settings.classic ? {} : { getBorderWoodsAt: border.woodsAt, getBorderHedgeAt: border.hedgeAt, _borderParcelAt: border.parcelTintAt,
       _borderTrackAt: border.trackAt,
       _borderHedgeLines: border.traceHedgeLines,
-      _borderFarmsteads: { count: border.settings.farms, style: border.settings.buildings, fieldAngle: border.fieldAngle } }),
+      _borderFarmsteads: { count: border.settings.farms, style: border.settings.buildings, fieldAngle: border.fieldAngle,
+        buildings: border.settings.farmBuildings !== false } }),
     _roadExitAt: roadExitAt,
+    _roadExitLines: () => roadExits().map((exit) => ({ xs: exit.xs, zs: exit.zs, length: exit.length })),
+    _roadExitOnRing: roadExitOnRing,
     ...(railCuttings !== null ? { _railExitAt: railExitAt } : {}),
     // the maps-and-layouts lane (2026-10-03): the authored landforms' geological zones, on a map that authors them
     ...(geologyZones ? { _geologyZoneAt: geologyZones } : {}),
@@ -3763,8 +3852,11 @@ void splatCompute() {
   mk = vec4(mk.r * (1.0 - outsideRoadW), mk.g * (1.0 - outsideRoadW), mk.b, mk.a * (1.0 - outsideW));
   if (vRoadExit.y > 0.002) {
     float dE = abs(vRoadExit.x);
-    mk.g = max(mk.g, max(0.0, 1.0 - dE / 12.0) * vRoadExit.y);
-    mk.r = max(mk.r, (1.0 - smoothstep(3.2, 4.6, dE)) * vRoadExit.y);
+    // a road running out narrows to a track as it fades (to 45 % of its width), so it ends as a lane petering out at the
+    // foot of the ranges or in the fields rather than as a full-width carriageway dimming away
+    float wE = mix(0.45, 1.0, vRoadExit.y);
+    mk.g = max(mk.g, max(0.0, 1.0 - dE / (12.0 * wE)) * vRoadExit.y);
+    mk.r = max(mk.r, (1.0 - smoothstep(3.2 * wE, 4.6 * wE, dE)) * vRoadExit.y);
   }
   // round 40: past the square, inside a sea opening, the ring face is this map's water. It starts with the wetness
   // the square carries at its edge (the clamped texel — the bay may still be a turquoise shoal there) and deepens to
@@ -4324,6 +4416,15 @@ void splatCompute() {
       * (1.0 - shoulder) * (1.0 - smoothstep(0.020, 0.060, slope)) * (1.0 - smoothstep(0.02, 0.10, fM))
       * (1.0 - smoothstep(0.10, 0.45, woods));
     if (landW > 0.003) {
+      // (the GPU cut, hold 13: the block was bound by its rounds of reads — a read that waited on another's answer cost a
+      // whole fetch latency at this material's occupancy, its ALU next to nothing. Two rounds now: the field-wide reads
+      // go out with the bake's own — the rows' bend (past a 1.5 m footprint only the faint 13 m passes and the tramlines'
+      // lines are left of the rows, so it stands down and skips its read) and the field's wet and dry — and what the
+      // texel decides, the edge zone's three reads and the soil, go out together after it)
+      float bendW = 1.0 - smoothstep(1.0, 1.5, gFootM);
+      // (the tier, landUseTierOf: Low reads the bake alone, Medium adds the field's wet and dry, High everything)
+      float nBend = bendW > 0.001 && uLandTier > 1.5 ? nzq(uvW, 0.013, vec2(0.47, 0.13)).x : 0.5;
+      vec2 fieldN = uLandTier > 0.5 ? nzq(uvW, 0.023, vec2(0.61, 0.17)) : vec2(0.5);
       float crop, edgeM, track, jit, hedgeL; vec2 rowDir;
       lu_field(wp.xz, crop, edgeM, track, rowDir, jit, hedgeL);
       // the region's boundary (landUse.ts BOUNDARIES): 0 a grass margin with tracks, 1 a polder's water ditches on the
@@ -4334,19 +4435,35 @@ void splatCompute() {
       // field edge wanders ±2–3 m along its boundary and the crop thins raggedly into the margin over 4 m, by a field of no
       // period — the boundary is a strip of rank grass between two worked fields, never a line between two colours. A
       // bund's or a wall's footing keeps its own straight line.
-      float edgeW = edgeM + (nzq(uvW, 0.045, vec2(0.21, 0.83)).y - 0.5) * 4.4 + (n1h - 0.5) * 1.6;
+      // (the wander, the headland and the hedge bank reach at most 9 m + 1.3 margins into a field — past that the crop is
+      // whole, the headland gone and the hedge far whatever the noise reads, and a bund's or a wall's field never reads
+      // them — so the field's interior skips the three reads, exactly; and the wander, the headland's width and the
+      // hedge bank's break are a pixel's detail: past a 1–2 m footprint they stand at their means and skip them too)
+      bool luEdge = bnd < 1.5 && edgeM < 9.0 + 1.3 * uLandB.y;
+      float luNear = 1.0 - smoothstep(1.0, 2.0, gFootM);
+      vec3 nEdge = vec3(0.5); // the wander, the headland's width, the hedge bank's break
+      if (luEdge && luNear > 0.001 && uLandTier > 1.5) nEdge = mix(vec3(0.5), vec3(nzq(uvW, 0.045, vec2(0.21, 0.83)).y,
+        nzq(uvW, 0.031, vec2(0.11, 0.59)).y, nzq(uvW, 0.17, vec2(0.83, 0.37)).x), luNear);
+      bool soilCrop = (crop > 3.5 && crop < 4.5) || (crop > 6.5 && crop < 8.5) || (crop > 10.5 && crop < 12.5) || crop > 16.5;
+      // (the soil is read where it is drawn — a soil crop but the flooded paddy's water, a track's ruts (not a polder's
+      // ditch), a bund's half metre; a wall's field and a paddy's water never read it, exactly — and its photo's grain
+      // is the layer's mean past a 1–2 m footprint, a turned field's own lines carrying it from there)
+      bool soilRead = (soilCrop && (crop < 7.5 || crop > 8.5)) || (track > 0.01 && (bnd < 0.5 || bnd > 1.5))
+        || (bnd > 1.5 && bnd < 2.5 && edgeM < 0.56);
+      vec4 soil = uMeanD;
+      if (soilRead && luNear > 0.001 && uLandTier > 1.5) soil = mix(uMeanD, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), luNear);
+      float edgeW = edgeM + (n1h - 0.5) * 1.6 + (nEdge.x - 0.5) * 4.4;
       float inField = bnd > 1.5 ? smoothstep(bnd > 2.5 ? 0.95 : 0.50, bnd > 2.5 ? 1.45 : 0.85, edgeM)
                                 : smoothstep(marginM, marginM + 4.0, edgeW);
       inField *= 1.0 - track;
       // one row direction a field (landUse.ts: its long side's axis turned by its own hash), its lines bent a little
       // over tens of metres — never ruled stripes repeating field to field (wave 14's "regular crosshatch weave")
-      float across = dot(wp.xz, vec2(-rowDir.y, rowDir.x)) + (nzq(uvW, 0.013, vec2(0.47, 0.13)).x - 0.5) * 5.0;
+      float across = dot(wp.xz, vec2(-rowDir.y, rowDir.x)) + (nBend - 0.5) * 5.0 * bendW;
       // (wave 8, saltwind chase: "an unnaturally regular striped banding pattern"; the verdant plough "a low-resolution
       // repeating texture"): every ruled period a field drew — furrows, the tractor's passes, tramlines, swaths, mown
       // stripes — read as synthetic at full strength. They stand down to a breath of themselves, and where they show
       // at all they come and go by a field of no period (a wet pass, a dry one, the light across them)
-      vec2 fieldN = nzq(uvW, 0.023, vec2(0.61, 0.17));
-      float rowsShow = 0.22 * smoothstep(0.30, 0.80, fieldN.x);
+      float rowsShow = uLandTier > 0.5 ? 0.22 * smoothstep(0.30, 0.80, fieldN.x) : 0.0;
       // (wave 8: "flat tinted patches … a painted map") a field is never one tone: its wetter and drier ground, thinner
       // and thicker stands, ±10 % over tens of metres by the same field of no period
       float fieldVar = 0.90 + 0.20 * fieldN.y;
@@ -4355,9 +4472,6 @@ void splatCompute() {
       float bright = 0.90 + 0.20 * jit;
       vec3 cropCol = a.rgb;
       float rows = 0.0; // the crop's row tone, signed
-      vec4 soil = vec4(0.0);
-      bool soilCrop = (crop > 3.5 && crop < 4.5) || (crop > 6.5 && crop < 8.5) || (crop > 10.5 && crop < 12.5) || crop > 16.5;
-      if (soilCrop || track > 0.01 || bnd > 1.5) soil = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
       // the soil photo's own mottle (pebbles, clods, dry crust) halved toward its mean and a third of its hue taken out:
       // a turned field reads as one dark, even soil with its lines, not a sandy blotch (Amberford) or red clay (Frontier)
       vec3 soilF = mix(soil.rgb, uMeanD.rgb, 0.5);
@@ -4414,7 +4528,7 @@ void splatCompute() {
         // stony red earth: a little less red, and strewn with the limestone the plough brings up (grey, 0.3–1 m
         // stones in drifts, a field of no period, faded as they near the pixel)
         cropCol = soilF / max(reduxLuma(soilF), 1e-3) * vec3(1.30, 0.90, 0.72) * 0.115 * bright;
-        float karstStone = smoothstep(0.62, 0.80, nzq(uvW, 0.61, vec2(0.37, 0.71)).x) * smoothstep(0.35, 0.70, nzq(uvW, 0.043, vec2(0.13, 0.29)).y);
+        float karstStone = uLandTier > 0.5 ? smoothstep(0.62, 0.80, nzq(uvW, 0.61, vec2(0.37, 0.71)).x) * smoothstep(0.35, 0.70, nzq(uvW, 0.043, vec2(0.13, 0.29)).y) : 0.0;
         cropCol = mix(cropCol, vec3(0.17, 0.165, 0.155) * bright, karstStone * 0.65 * tileVis(0.8));
         cropCol = mix(cropCol, mix(cropCol, vec3(reduxLuma(cropCol)), 0.25), 1.0 - tileVis(0.8)); // the stones' grey in the far average
         rows = sin(across * 7.854) * 0.10 * tileVis(0.8) + sin(across * 0.483 + jit * 6.0) * 0.06 * tileVis(13.0);
@@ -4446,10 +4560,10 @@ void splatCompute() {
         cropCol = vec3(0.16, 0.155, 0.15) * (0.88 + 0.24 * n1h) * bright; // ballast and hardcore: grey crushed stone
       } else {
         // brownfield grass: a patchy, cured sward with bare ground between its clumps
-        float bare = smoothstep(0.52, 0.72, nzq(uvW, 0.11, vec2(0.71, 0.23)).x);
+        float bare = uLandTier > 0.5 ? smoothstep(0.52, 0.72, nzq(uvW, 0.11, vec2(0.71, 0.23)).x) : 0.0;
         cropCol = mix(a.rgb * vec3(1.35, 1.15, 0.72), soilF * 0.95, bare);
       }
-      if (crop > 0.5 && crop < 3.5) {
+      if (crop > 0.5 && crop < 3.5 && uLandTier > 0.5) {
         // tramlines: the sprayer's wheel tracks, a pair every 18–24 m, a darker crushed line each (a line 0.5 m wide
         // fades as the footprint outgrows it)
         float period = 18.0 + floor(jit * 4.0) * 2.0;
@@ -4464,8 +4578,8 @@ void splatCompute() {
       // golden wheat field") a worked field's edge is a feature: inside its grass margin lies the headland, 3–5.5 m where
       // the drill turned — the crop pressed flat and thinner with the soil showing in it, and the turning wheels' two arcs
       // along the edge (the tall-grass tier flattens and weeds the same strip; the margin itself grows rank and tall)
-      if (bnd < 0.5 && crop > 0.5 && water < 0.5) {
-        float headW = 3.0 + 2.5 * nzq(uvW, 0.031, vec2(0.11, 0.59)).y;
+      if (bnd < 0.5 && crop > 0.5 && water < 0.5 && luEdge && uLandTier > 0.5) {
+        float headW = 3.0 + 2.5 * nEdge.y;
         float into = edgeW - marginM;
         float headL = inField * (1.0 - smoothstep(headW - 1.2, headW, into)) * (1.0 - track);
         vec3 soilM = mix(uMeanD.rgb, vec3(reduxLuma(uMeanD.rgb)), 0.35);
@@ -4480,13 +4594,15 @@ void splatCompute() {
       gSoilW = ((crop > 3.5 && crop < 4.5) || (crop > 10.5 && crop < 12.5) || (crop > 14.5 && crop < 16.5)) ? inField * landW : 0.0;
       gFieldWater = water * inField * landW;
       if (water > 0.5 && nrmOn) n = mix(n, NRM_MEAN, gFieldWater);
-      if (bnd < 1.5) {
+      if (uLandTier < 0.5) {
+        // (Low draws no boundary feature: the field's crop meets the sward of its margin and nothing else)
+      } else if (bnd < 1.5) {
         // the margin: an uncultivated strip of rank grass, a shade darker and greener than the fields either side, lumpy
         // with its tussocks; a hedged boundary carries its hedge bank — the shrubs' dark base and their shade, broken
         // along its run, under the hedge's own trees and bushes (the vegetation tier seats them on the same line)
         a.rgb = mix(a.rgb, a.rgb * vec3(0.90, 0.98, 0.84) * (0.86 + 0.28 * n1h), (1.0 - inField) * (1.0 - track) * landW * 0.75);
         if (hedgeL > 0.01) {
-          float hb = hedgeL * (0.55 + 0.45 * smoothstep(0.30, 0.70, nzq(uvW, 0.17, vec2(0.83, 0.37)).x));
+          float hb = hedgeL * (0.55 + 0.45 * smoothstep(0.30, 0.70, nEdge.z));
           a.rgb = mix(a.rgb, a.rgb * vec3(0.52, 0.60, 0.46), hb * (1.0 - track) * landW * 0.85);
         }
       } else if (bnd < 2.5) {
@@ -4503,7 +4619,7 @@ void splatCompute() {
         a.rgb = mix(a.rgb, stone, wall * landW);
         a.rgb *= 1.0 - 0.22 * (smoothstep(0.55, 0.75, edgeM) * (1.0 - smoothstep(0.85, 1.35, edgeM))) * landW;
       }
-      if (track > 0.01) {
+      if (track > 0.01 && uLandTier > 0.5) {
         if (bnd > 0.5 && bnd < 1.5) {
           // a polder's ditch along the long boundary: a metre and a half of still water between wet, rank banks
           float ditch = 1.0 - smoothstep(0.55, 0.85, edgeM);
@@ -5438,10 +5554,10 @@ void splatCompute() {
     // the map-borders lane (2026-10-03): the farmland past the edge in parcels between the hedgerows (stubble, plough,
     // pasture, fallow — the ring's borderTint attribute; zero on the battlefield's own chunks)
     // (calibrated with the ground lane's fields, landUse.ts: the crop's colour as a multiple of the sward's own luminance;
-    // the interpolated colour is premultiplied, so two fields blend along their boundary; none on slopes past ~25 degrees)
+    // the interpolated colour is premultiplied, so two fields blend along their boundary; none on slopes past ~30 degrees)
     float cropWeight = 1.0 - vBorderTint.w;
     if (cropWeight > 0.002) {
-      float cropW = cropWeight * (1.0 - fR) * (1.0 - roadCore) * (1.0 - fMs) * (1.0 - projW) * (1.0 - smoothstep(0.04, 0.10, slope));
+      float cropW = cropWeight * (1.0 - fR) * (1.0 - roadCore) * (1.0 - fMs) * (1.0 - projW) * (1.0 - smoothstep(0.07, 0.15, slope));
       a.rgb = mix(a.rgb, vBorderTint.rgb / cropWeight * reduxLuma(a.rgb), cropW);
     }
     // ... and the farm tracks down some of the field boundaries (borderLandform.ts trackAt): 3 m of packed dirt beside the
@@ -5460,7 +5576,7 @@ void splatCompute() {
       float dR = abs(vRailExit.x);
       float ballastW = (1.0 - smoothstep(1.5, 2.1, dR)) * vRailExit.y * (1.0 - fMs);
       float cessW = (smoothstep(1.5, 2.1, dR) - smoothstep(2.6, 3.8, dR)) * vRailExit.y * (1.0 - fMs);
-      a.rgb = mix(a.rgb, vec3(0.105, 0.098, 0.090) * (0.88 + 0.24 * n1hs), ballastW);
+      a.rgb = mix(a.rgb, vec3(0.125, 0.121, 0.115) * (0.88 + 0.24 * n1hs), ballastW);
       a.rgb = mix(a.rgb, uMeanD.rgb * vec3(0.92, 0.88, 0.82), cessW * 0.55);
       float railAa = fwidth(dR) + 0.02;
       float rail = (1.0 - smoothstep(0.035, 0.035 + railAa, abs(dR - 0.72))) * vRailExit.y * (1.0 - smoothstep(60.0, 220.0, camDist));
@@ -5787,6 +5903,9 @@ function* createSplatMaterialSteps(
   // ground lane (2026-10-03, the GPU fix): the land use baked once from its CPU twin at the interior mask's texel scale
   // (landUse.ts bakeLandUseSteps), stacked under the ground mask below (stackLandUseBake) — 64 rows a build step
   const landBakeN = mask.image.width;
+  // ground lane (2026-10-04): the land use's tier (landUseTierOf) from the live preset, kept current across changes
+  const landTier = { value: landUseTierOf(resolvePresetName()) };
+  const offLandTier = onPresetChange(() => { landTier.value = landUseTierOf(resolvePresetName()); });
   const landBake = landUse.landA[0] > 0 ? new Uint8Array(landBakeN * landBakeN * 8) : null;
   if (landBake) yield* bakeLandUseSteps(landUseProfile, landBakeN, MAP_SIZE, landBake, 64);
   const groundClock = { value: 0 };
@@ -5802,6 +5921,7 @@ function* createSplatMaterialSteps(
   };
 
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0, metalness: 0.0 });
+  mat.addEventListener('dispose', () => { offLandTier(); });
   // round 72b: the ring's surface atlas uniforms — off (amplitude 0, uRingDraw 0) until the ring binds its bake
   // (horizonAutumnGround.bindAutumnHorizonGround). The program has no unit to spare for the atlas (see the fragment's
   // uRingDraw note): the M normal's uniform object is shared here so the ring bands' draw can point that unit at the
@@ -5833,6 +5953,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uMask = { value: maskStack.texture };
     shader.uniforms.uMaskStack = { value: maskStack.stack };
     shader.uniforms.uLandBake = { value: maskStack.bake };
+    shader.uniforms.uLandTier = landTier;
     shader.uniforms.uMaskSize = { value: groundMask === mask ? MAP_SIZE : OUTLAND_WATER_MASK_SIZE_M };
     shader.uniforms.uNoise = { value: noiseTex };
     // terrain v2: the layers' measured means (the same vectors measureLayerMeans refreshes after the sourced swap)
@@ -6506,9 +6627,12 @@ function* terrainBuildSteps(
     const position = geometry.getAttribute('position');
     const exitAttr = new Float32Array(position.count * 2);
     const hit: [number, number] = [0, 0];
+    // the exits as they lie on this ring (horizon.ts: each runs out at the foot of the ranges unless they open a pass)
+    const ringExits = (horizonStep.value.userData.horizonRing as { roadExits?: RoadExitsOnRing | null }).roadExits;
+    const exitAt = ringExits ? ringExits.at : heightField._roadExitAt;
     let any = false;
     for (let i = 0; i < position.count; i++) {
-      heightField._roadExitAt(position.getX(i), position.getZ(i), hit);
+      exitAt(position.getX(i), position.getZ(i), hit);
       exitAttr[i * 2] = hit[0]; exitAttr[i * 2 + 1] = hit[1];
       if (hit[1] > 0) any = true;
     }

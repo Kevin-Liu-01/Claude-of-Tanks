@@ -45,6 +45,8 @@ const factory = new Function('deps', `
   function* placeWreck(...args) { wreckRecords.push(args); return true; }
   function* placePairedWreck() {}
   const wreckSpotIsClear = () => true;
+  // (a nest's bedding draws its own stream and places nothing: the scenery lane's buildSandbagBedding, wave 34)
+  const bedSandbagNest = () => {};
   ${stripTypeScriptTypes(definitions)}
   const emitFence = placeFenceRun;
   placeFenceRun = (...args) => { fenceRuns.push(args); emitFence(...args); };

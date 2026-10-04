@@ -99,58 +99,124 @@ export function* paintFieldMudBuffers(size = 512, seed = 0xad0b3):
   Generator<FieldMudSlice, FieldMudBuffers, void> {
   const px = new Uint8ClampedArray(size * size * 4), hgt = new Float32Array(size * size), loss = new Uint8Array(size * size);
   const k = size / 512;
-  const patchF = periodicField(128, 7, 3, seed + 3), edgeF = periodicField(256, 40, 1, seed + 5);
+  // (wave 34: the losses read as "dark-outlined exposed-brick patches stamped onto a smooth beige box" — so they are
+  // broader and fewer, softly edged where the render thins out over the bricks, the bricks nearly the render's own
+  // earth, their mortar the same mud a shade darker; and the render itself is weathered: a damp, splashed foot and
+  // the rain's streaks down from the crown)
+  const patchF = periodicField(128, 5, 3, seed + 3), edgeF = periodicField(256, 30, 1, seed + 5);
   const n1F = periodicField(128, 22, 2, seed + 7), n2F = periodicField(256, 70, 1, seed + 11);
   const stainF = periodicField(64, 4, 2, seed + 13), streakF = periodicField(256, 34, 1, seed + 17, 8);
-  const brickF = periodicField(256, 60, 1, seed + 23);
-  const rgb = new Float32Array(3);
+  const brickF = periodicField(256, 60, 1, seed + 23), dampF = periodicField(128, 12, 2, seed + 19);
+  const rgb = new Float32Array(3), brickRgb = new Float32Array(3);
   const courseH = size / COURSES, brickW = size / BRICKS, mortar = 1.6 * k;
+  const THRESH = 0.7, SOFT = 0.07; // the render is off past THRESH, thinning over the SOFT before it
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const i = y * size + x, j4 = i * 4;
       const u = (x + 0.5) / size, v = (y + 0.5) / size;
-      // the render's loss: irregular patches, most where the wall wears most
-      const patch = patchF(u, v) + (edgeF(u, v) - 0.5) * 0.08 + wearAt(v) * 0.22;
       const plain = v > FIELD_MUD_PLAIN_V[0] - 0.005 && v < FIELD_MUD_PLAIN_V[1] + 0.005;
-      const off = !plain && patch > 0.66;
-      const lipD = patch - 0.66; // signed distance-ish to the render's broken edge
+      // the render's loss: broad patches, most where the wall wears most (its feet and its crown)
+      const patch = plain ? 0 : patchF(u, v) + (edgeF(u, v) - 0.5) * 0.04 + wearAt(v) * 0.26;
+      const off = patch > THRESH;
+      const thin = smooth(THRESH - SOFT, THRESH, patch); // 0 full render .. 1 the render gone
       const n1 = n1F(u, v), n2 = n2F(u, v), grain = hash(x, y, seed + 29);
-      if (off) {
-        // the bricks: half bond, worn round, their mortar recessed
+      // the render: a warm mud, trowel-smoothed, stained, streaked down from the crown, flecked with straw
+      const stain = smooth(0.55, 0.9, stainF(u, v));
+      const below = Math.min(Math.abs(v - CROWN), 1); // the streaks run away from the crown down both faces
+      const streak = smooth(0.62, 0.9, streakF(u, v)) * smooth(0.3, 0.02, below);
+      // the foot: damp and splashed a hand or two up from the ground on both faces
+      const footD = Math.min(Math.abs(v - FOOT_A), Math.abs(v - 1 - FOOT_A), Math.abs(v - FOOT_B));
+      const damp = plain ? 0 : smooth(0.09, 0.02, footD + (dampF(u, v) - 0.5) * 0.04);
+      const straw = grain > 0.994 ? 1 : 0;
+      let l = 0.5 + n1 * 0.07 + n2 * 0.03 - stain * 0.08 - streak * 0.06 - damp * 0.09 + straw * 0.1;
+      // the render's broken lip stands a little proud and catches the light just before it breaks
+      const lip = plain ? 0 : smooth(THRESH - SOFT, THRESH - SOFT * 0.4, patch) * (1 - thin);
+      l += lip * 0.025;
+      hslToRgb(0.074 + n1 * 0.008, 0.3 - stain * 0.05 - straw * 0.1 + damp * 0.04, l, rgb);
+      let h = clamp01(0.62 + n1 * 0.1 + n2 * 0.05 + lip * 0.04);
+      if (thin > 0) {
+        // the bricks: half bond, worn round, their mud mortar a shade darker and recessed
         const course = Math.floor(y / courseH), inY = y - course * courseH;
         const shift = (course % 2) * brickW * 0.5;
         const bx = ((x + shift) % size + size) % size, brick = Math.floor(bx / brickW), inX = bx - brick * brickW;
-        const edge = Math.min(inY, courseH - inY, inX, brickW - inX) + (brickF(u, v) - 0.5) * 2.2 * k;
-        const joint = edge < mortar;
-        const tone = hash(brick, course, seed + 31);
-        if (joint) {
-          hslToRgb(0.076, 0.22, 0.33 + grain * 0.04, rgb);
-          hgt[i] = 0.12 + grain * 0.04;
-        } else {
-          const bevel = smooth(mortar, mortar + 3.5 * k, edge);
-          // sun-dried mud bricks: the render's own earth a little darker and browner, each brick its own batch
-          hslToRgb(0.07 + tone * 0.01, 0.24 + tone * 0.05, (0.41 + tone * 0.08 + n2 * 0.05) * (0.88 + bevel * 0.12), rgb);
-          hgt[i] = 0.32 + bevel * 0.14 + n2 * 0.06;
-        }
-        // just inside the lip, the render's broken edge casts a little shadow onto the bricks
-        if (lipD < 0.025) { const s = 1 - lipD / 0.025; rgb[0] *= 1 - s * 0.18; rgb[1] *= 1 - s * 0.18; rgb[2] *= 1 - s * 0.18; }
-        loss[i] = 1;
-      } else {
-        // the render: a warm mud, trowel-smoothed, stained, streaked down from the crown, flecked with straw
-        const stain = smooth(0.55, 0.9, stainF(u, v));
-        const below = Math.min(Math.abs(v - CROWN), 1) ; // the streaks run away from the crown down both faces
-        const streak = smooth(0.62, 0.9, streakF(u, v)) * smooth(0.3, 0.02, below);
-        const straw = grain > 0.994 ? 1 : 0;
-        let l = 0.5 + n1 * 0.07 + n2 * 0.03 - stain * 0.09 - streak * 0.07 + straw * 0.12;
-        // the render's broken lip catches the light just outside a patch (never in the plain band)
-        const lip = !plain && lipD > -0.02 ? 1 + lipD / 0.02 : 0;
-        l += lip * 0.04;
-        hslToRgb(0.074 + n1 * 0.008, 0.3 - stain * 0.06 - straw * 0.1, l, rgb);
-        hgt[i] = clamp01(0.62 + n1 * 0.1 + n2 * 0.05 + lip * 0.05);
+        // (the bricks are worn: their arrises rubbed round and ragged, the odd joint filled with the render's mud)
+        const edge = Math.min(inY, courseH - inY, inX, brickW - inX) + (brickF(u, v) - 0.5) * 4.5 * k;
+        const tone = hash(brick, course, seed + 31), filled = hash(brick, course, seed + 37) < 0.3 ? 1 : 0;
+        const bevel = filled ? 1 : smooth(mortar * 0.3, mortar + 5 * k, edge);
+        // sun-dried mud bricks: the render's own earth a shade darker and rougher, each brick its own batch; the
+        // mortar the same mud, only a little darker in its recess
+        hslToRgb(0.07 + tone * 0.008, 0.25 + tone * 0.04, (0.44 + tone * 0.05 + n2 * 0.04 - damp * 0.06) * (0.92 + bevel * 0.08), brickRgb);
+        const bh = 0.3 + bevel * 0.21 + n2 * 0.05;
+        // under a thinning render the bricks show through softly; where it is gone, the bricks alone
+        const t = thin * thin * (3 - 2 * thin);
+        for (let c = 0; c < 3; c++) rgb[c] += (brickRgb[c] - rgb[c]) * t;
+        h += (bh - h) * t;
       }
+      if (off) loss[i] = 1;
+      hgt[i] = clamp01(h);
       px[j4] = clamp01(rgb[0]) * 255; px[j4 + 1] = clamp01(rgb[1]) * 255; px[j4 + 2] = clamp01(rgb[2]) * 255; px[j4 + 3] = 255;
     }
     if ((y & 15) === 15) yield { fine: true, stage: `field-mud-rows-${y + 1}` };
   }
   return { size, px, hgt, loss };
 }
+
+/**
+ * Wave 34 ("clean beige boxes" standing on "a paler base strip"): a mud wall is built of the ground it stands on. On a
+ * map whose ground is an earth (its light model's ground albedo an orange to yellow-brown, not a green), the map's
+ * earth in sRGB 0..1; null elsewhere (the plaster tone alone colours the mud). The earth is the albedo a third more
+ * saturated and a shade darker: the terrain renders its sand that much richer than a props surface of the same
+ * albedo (the props' sun fade bleaches every up-facing face; the wave-34 shot measured sand 211,143,90 against the
+ * apron's 200,144,102 from near-equal albedos).
+ */
+export function mudEarthOfGround(hex: number | null | undefined): readonly [number, number, number] | null {
+  if (hex == null) return null;
+  const r = ((hex >> 16) & 255) / 255, g = ((hex >> 8) & 255) / 255, b = (hex & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
+  if (d < 1e-6) return null;
+  const s = d / (1 - Math.abs(2 * l - 1));
+  let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  h = ((h / 6) % 1 + 1) % 1;
+  if (!(h >= 0.02 && h <= 0.14 && s >= 0.15)) return null;
+  const s2 = Math.min(0.6, s * 1.35), l2 = l * 0.95;
+  const q = l2 < 0.5 ? l2 * (1 + s2) : l2 + s2 - l2 * s2, p = 2 * l2 - q;
+  const channel = (t: number) => {
+    t = ((t % 1) + 1) % 1;
+    return t < 1 / 6 ? p + (q - p) * 6 * t : t < 0.5 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p;
+  };
+  return [channel(h + 1 / 3), channel(h), channel(h - 1 / 3)];
+}
+
+/**
+ * Take the toned mud print toward the map's earth (`earth`, sRGB 0..1), in linear light, its texture kept: the wall's
+ * rows most of the way (EARTH_WALL), the plain band — the mud and sand fallen at its foot, the apron's — all the way.
+ */
+export function tintFieldMudToEarth(px: Uint8ClampedArray, size: number, earth: readonly [number, number, number]): void {
+  const lin = (c: number) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const enc = (c: number) => (c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055);
+  const target = earth.map(lin);
+  const p0 = Math.floor((FIELD_MUD_PLAIN_V[0] - 0.005) * size), p1 = Math.ceil((FIELD_MUD_PLAIN_V[1] + 0.005) * size);
+  const plainRow = (y: number) => y >= p0 && y < p1;
+  const mean = (plain: boolean) => {
+    const m = [0, 0, 0];
+    let n = 0;
+    for (let y = 0; y < size; y++) {
+      if (plainRow(y) !== plain) continue;
+      for (let x = 0; x < size; x++) { const i = (y * size + x) * 4; for (let c = 0; c < 3; c++) m[c] += lin(px[i + c] / 255); n++; }
+    }
+    return m.map((v) => v / Math.max(1, n));
+  };
+  const wall = mean(false), band = mean(true);
+  const kWall = wall.map((m, c) => 1 + (target[c] / Math.max(1e-4, m) - 1) * EARTH_WALL);
+  const kBand = band.map((m, c) => target[c] / Math.max(1e-4, m));
+  for (let y = 0; y < size; y++) {
+    const k = plainRow(y) ? kBand : kWall;
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      for (let c = 0; c < 3; c++) px[i + c] = Math.min(255, enc(Math.min(1, lin(px[i + c] / 255) * k[c])) * 255);
+    }
+  }
+}
+
+/** How far a wall's render goes toward its earth (the render's straw and its drying keep it a little its own). */
+export const EARTH_WALL = 0.7;

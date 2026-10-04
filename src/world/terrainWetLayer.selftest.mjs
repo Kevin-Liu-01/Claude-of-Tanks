@@ -15,7 +15,7 @@ import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } fr
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 // ground lane (2026-10-03): and its land use (landUse.ts, THREE-free) — the real functions too; the build wrappers'
 // height-field hook (attachTerrainLandUse) is a no-op here (the fixture's height field grows nothing)
-import { bakeLandUseSteps, landUseUniformValues, resolveLandUseProfile } from './landUse.ts';
+import { bakeLandUseSteps, landUseTierOf, landUseUniformValues, resolveLandUseProfile } from './landUse.ts';
 
 // 2026-10-01 (frozen pins retired): the control used to be a copy of the 465a68f7c synchronous ground painter and the
 // noise observer pinned its exact frequencies/offsets, so any intended repaint of mud or rock failed here. The control
@@ -55,7 +55,7 @@ function fixture({ text = source, observe = null } = {}) {
   // consumer run together. Unrelated horizon/geometry/source I/O is peripheral;
   // real Three objects retain the material/texture identity boundary.
   const create = new Function('THREE', 'SimplexNoise', 'texSize', 'torusNoise',
-    'canvasToTexture', 'normalFromHeight', 'layer', 'own', 'state', 'groundReduxUniformValues', 'resolveGroundReduxProfile', 'landUseUniformValues', 'resolveLandUseProfile', 'bakeLandUseSteps', stripTypeScriptTypes(`
+    'canvasToTexture', 'normalFromHeight', 'layer', 'own', 'state', 'groundReduxUniformValues', 'resolveGroundReduxProfile', 'landUseUniformValues', 'resolveLandUseProfile', 'bakeLandUseSteps', 'landUseTierOf', stripTypeScriptTypes(`
     const attachTerrainLandUse = () => {};
     const _col = new THREE.Color(), _toneCol = new THREE.Color();
     const _toneHsl = { h: 0, s: 0, l: 0 };
@@ -68,6 +68,8 @@ function fixture({ text = source, observe = null } = {}) {
     // step) and its stack (stackLandUseBake) run as they do in the game
     const makeMaskTexture = () => own(new THREE.DataTexture(new Uint8Array(64 * 64 * 4), 64, 64, THREE.RGBAFormat));
     const MASK_STACK_GUTTER = 64, MAP_SIZE = 1024;
+    // (2026-10-04, the tier gate: the material reads the live preset — High here, its change listener a no-op)
+    const resolvePresetName = () => 'high', onPresetChange = () => () => true;
     const makeShaderNoiseTexture = () => own(new THREE.Texture());
     const applySourcedTerrain = () => Promise.resolve([]);
     const registerRetainedObject3DResources = () => {};
@@ -91,7 +93,7 @@ function fixture({ text = source, observe = null } = {}) {
   }, (...args) => own(textureFromRgbaPixels(...args)), (height, ...args) => {
     state.heights.push(height.slice());
     return own(normalTextureFromHeight(height, ...args));
-  }, layer, own, state, groundReduxUniformValues, resolveGroundReduxProfile, landUseUniformValues, resolveLandUseProfile, bakeLandUseSteps);
+  }, layer, own, state, groundReduxUniformValues, resolveGroundReduxProfile, landUseUniformValues, resolveLandUseProfile, bakeLandUseSteps, landUseTierOf);
   const sourcePreparation = { tryCreateLayer: layer, apply: () => Promise.resolve([]),
     cancel() { state.sourceCancels++; } };
   const engine = { anisotropy: 4, setupShadowMaterial() { state.materials++; } };

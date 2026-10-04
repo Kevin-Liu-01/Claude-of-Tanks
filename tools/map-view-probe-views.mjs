@@ -100,6 +100,10 @@ export const MAP_VIEW_PROBE_VIEWS = Object.freeze([
   // with its snow load, and the windward face with its drift (the frame-budget probe's field-walls toggle)
   view('winter-wall-coping', 34, [-61, 2.1, -214], [-66, 0.9, -228]),
   view('winter-wall-windward', 34, [-71, 1.7, -239], [-65, 0.4, -231]),
+  // the scenery lane (wave 48): Frontier's redoubt west of the road, for the sandbag-nests toggle (the stacks and their
+  // bedding, on the props rock material)
+  view('frontier-sandbags', 48, [-302, 1.7, -60], [-311.5, 0.6, -60]),
+  view('frontier-sandbags-close', 48, [-306.5, 1.3, -58.2], [-311, 0.45, -60.5]),
 ]);
 
 /** The views a capture run shoots: every view, or the named subset in table order. Unknown names fail closed. */
