@@ -45,7 +45,7 @@ import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // co
 import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNeeded, type SteelAtlasTextures } from './propsSteelAtlas.ts'; // round 75
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
-import { applyRockShaderHook, fractureRockGeometry, makeRockDetail, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
+import { applyRockShaderHook, buildBoulderForm, makeRockDetail, paintBoulder, rockDressingFor, rockLithologyFor } from './rockDressing.ts'; // round 75 item 6
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
@@ -3012,8 +3012,9 @@ function* propsBuildSteps(
     steelAtlas.painted = true;
     steelAtlas.size = steelAtlasSize;
   }
-  // Round 75 item 6: the boulders' triplanar detail tile (rockDressing.ts), sixteen rows per checkpoint.
-  const rockDetail = yield* makeRockDetail(noi, aniso);
+  // Round 75 item 6: the boulders' triplanar detail tile (rockDressing.ts), sixteen rows per checkpoint; the map's
+  // lithology draws it, and its lichen colonies come with it (the scenery lane, 2026-10-04).
+  const rockDetail = yield* makeRockDetail(noi, aniso, rockLithologyFor(mapId));
   // The scenery lane (2026-10-03): the dry-stone field walls draw their own rubble print, never the house masonry (the
   // coursed stone print, or a regional kit's brick, block or dressed stone, which laid brick courses over fieldstone);
   // a map whose walls are mud or brick keeps them on the stone print and paints nothing.
@@ -3158,7 +3159,7 @@ function* propsBuildSteps(
   // and texture, while GPU suspension retains the same reusable CPU objects.
   const retainedSurfaceMaterials = Object.values(mats);
   registerRetainedObject3DResources(group, {
-    materials: retainedSurfaceMaterials, textures: [grimeTex],
+    materials: retainedSurfaceMaterials, textures: [grimeTex, rockDetail.lichen],
   });
   yield { fine: true, stage: 'grime-texture' };
   // r5 terrain_environment: WINTER SNOW-CAP — on the winter map every prop
@@ -3229,9 +3230,10 @@ ${snowCap ? `
   }` : ''}
 }`);
   };
-  // Round 75 item 6: the boulders' dressing (moss on wet maps, dust on arid ones, the soil skirt everywhere)
-  const rockDressing = rockDressingFor(mapId, P.rockSoilTone ?? null);
-  const rockHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRockShaderHook(shader, rockDressing); };
+  // Round 75 item 6: the boulders' dressing (moss on wet maps, dust on arid ones, the soil skirt everywhere; the scenery
+  // lane, 2026-10-04: the map's beds, lichen and varnish, the contact darkening)
+  const rockDressing = rockDressingFor(mapId, P.rockSoilTone ?? null, snowCap);
+  const rockHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRockShaderHook(shader, rockDressing, rockDetail.lichen); };
   // the scenery lane (wave 48, "the same stone pattern clearly tiles going right"): a run repeats the kit's one wall
   // module, so the field print's window shifts along the wall by a hash of each module's place (sixteen steps of seven
   // sixteenths of a tile, u only: the print's bands lie in v) — every module's stones take tones of their own. Only the
@@ -5493,37 +5495,24 @@ ${snowCap ? `
 
   yield { fine: true, stage: 'roadside-utilities' };
 
-  // --- rocks (instanced, 3 displaced-icosahedron variants) ---
-  // r3 terrain_environment: REBUILT. The old detail-1 icospheres with one
-  // low-frequency displacement octave kept their geodesic facet pattern and
-  // flat (unwelded) normals — a raw white faceted primitive sat in the
-  // winter establishing foreground. Now: welded vertices (smooth normals),
-  // higher subdivision, THREE displacement octaves for real lumpy boulder
-  // silhouettes, and a slope/height-keyed albedo blend (pale weathered top
-  // vs darker base) so the tops read snow/lichen-capped per map tone.
+  // --- rocks (instanced, 3 variants) ---
+  // The r3/r7 displaced icosahedra (three noise octaves and a ridged crease octave) no longer draw: they are the legacy
+  // rocks whose projected hulls the collision shards carry and whose height their colliders stand for, so they are
+  // still built for both. The visual rock is rockDressing.ts buildBoulderForm, fitted inside them (the scenery lane,
+  // 2026-10-04).
   const rockClutter = new Map<THREE.Matrix4, CrushableClutter>();
   const rockGeos: THREE.BufferGeometry[] = [];
   const rockHulls: number[][] = [];
-  // r7 terrain_environment: RIDGED FRACTURE displacement + crease shading —
-  // the r3 boulders still read as "smooth grey blobs with no fracture
-  // planes" (critique). A ridged octave (1-|noise|) carves crease valleys
-  // into the surface; crease proximity darkens the albedo (fracture shadow
-  // lines) and the same field keys a partial normal HARDENING (lerp toward
-  // the local radial facet direction) so crease shoulders shade as broken
-  // faces instead of one continuous smooth ball.
   function buildRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
     const g = mergeVertices(new THREE.IcosahedronGeometry(1, vi === 2 ? 3 : 2));
     const p = g.attributes.position;
-    const vr = mulberry32(seed + 30 + vi);
     const tmpv = new THREE.Vector3();
-    const creaseA = new Float32Array(p.count); // 1 at crease line, 0 elsewhere
     for (let i = 0; i < p.count; i++) {
       tmpv.set(p.getX(i), p.getY(i), p.getZ(i));
       const ridge = 1 - Math.abs(noi.noise3d(
         tmpv.x * 2.2 + vi * 31, tmpv.y * 2.2 - 7, tmpv.z * 2.2 + 13));
       const crease = Math.pow(ridge, 5); // sharp valley lines
-      creaseA[i] = crease;
       const f = 1
         + noi.noise3d(tmpv.x * 1.4 + vi * 9, tmpv.y * 1.4, tmpv.z * 1.4) * 0.30
         + noi.noise3d(tmpv.x * 3.1 - vi * 17, tmpv.y * 3.1 + 40, tmpv.z * 3.1) * 0.13
@@ -5533,40 +5522,19 @@ ${snowCap ? `
       tmpv.y = Math.max(tmpv.y, -0.55);
       p.setXYZ(i, tmpv.x, tmpv.y * 0.82, tmpv.z);
     }
-    g.computeVertexNormals();
-    const nrm = g.attributes.normal;
-    // partial facet hardening: pull normals toward the radial direction on
-    // crease shoulders — the smooth-welded shading breaks into planes there
-    const nv = new THREE.Vector3();
-    for (let i = 0; i < p.count; i++) {
-      const cw = creaseA[i] * 0.55;
-      if (cw < 0.03) continue;
-      nv.set(nrm.getX(i), nrm.getY(i), nrm.getZ(i));
-      tmpv.set(p.getX(i), p.getY(i) * 0.6, p.getZ(i)).normalize();
-      nv.lerp(tmpv, cw).normalize();
-      nrm.setXYZ(i, nv.x, nv.y, nv.z);
-    }
-    const col = new Float32Array(p.count * 3);
-    for (let i = 0; i < p.count; i++) {
-      // darker, mossier boulders — the old light-gray tone flashed white at
-      // distance under the sun/env light and read as pixel errors
-      const upW = clamp(nrm.getY(i), 0, 1);
-      const l = 0.26 + vr() * 0.08 + p.getY(i) * 0.04 + upW * upW * 0.10;
-      let rh = 0.09 + vr() * 0.02, rs = 0.07, rl = clamp(l, 0.15, 0.48);
-      if (P.rockTone) { const t = P.rockTone(rh, rs, rl); rh = t[0]; rs = t[1]; rl = clamp(t[2], 0, 1); }
-      // upward faces take the map cap tone harder (snow/dust), sides darker;
-      // crease valleys darken like fracture shadow lines
-      _col.setHSL(rh, rs,
-        clamp(rl * (0.86 + upW * 0.22) * (1 - creaseA[i] * 0.34), 0, 1), THREE.SRGBColorSpace);
-      col[i * 3] = _col.r; col[i * 3 + 1] = _col.g; col[i * 3 + 2] = _col.b;
-    }
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     const projected: Array<[number, number]> = [];
     for (let i = 0; i < p.count; i++) projected.push([p.getX(i), p.getZ(i)]);
-    rockHulls.push(convexHull2(projected)); // the collision proxy: the legacy hull, unchanged (the shards carry it)
-    // Round 75 item 6: the visual rock is the legacy displacement cut by fracture planes with a ridged detail
-    // octave, every vertex moved inward, its normals split at the cleavage angle — inside the hull above.
-    rockGeos.push(fractureRockGeometry(g, vi, noi, mulberry32(seed + 60 + vi)));
+    const hull = convexHull2(projected);
+    rockHulls.push(hull); // the collision proxy: the legacy hull, unchanged (the shards carry it)
+    // the scenery lane (wave 52, "low-poly polyhedra … a hard diagonal shading seam … none sunk into the ground"): the
+    // visual rock is a block its joints cut and the weather rounded (rockDressing.ts buildBoulderForm: the smooth maximum
+    // of its joint planes, lumped, its foot flared under the ground line, the surface's own normals), fitted inside the
+    // legacy hull above the ground line and as tall as the legacy rock; its tone by face, fracture and arris (paintBoulder)
+    let legacyTop = 0;
+    for (let i = 0; i < p.count; i++) legacyTop = Math.max(legacyTop, p.getY(i));
+    const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop);
+    paintBoulder(form, P.rockTone);
+    rockGeos.push(form.geometry);
     g.dispose();
   }
   }
