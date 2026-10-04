@@ -10,6 +10,7 @@ import {
   CLEAN_VEHICLE_WEATHER, VEHICLE_WEATHER_BY_MAP, VEHICLE_WEATHER_FRAGMENT_GLSL, VEHICLE_WEATHER_LEVEL, VEHICLE_WEATHER_REACH_DRY_M,
   VEHICLE_WEATHER_REACH_WET_M, VEHICLE_WEATHER_SNOW, VEHICLE_WEATHER_PACKED_SNOW, VEHICLE_WEATHER_SNOW_LUMP, VEHICLE_WEATHER_SLUSH,
   VEHICLE_WEATHER_SNOW_PACK_COVER, VEHICLE_WEATHER_SNOW_FLAT_CURVATURE, VEHICLE_WEATHER_FILM_MAX, VEHICLE_WEATHER_HULL_FOOT_M,
+  VEHICLE_WEATHER_TRACK_FILM_MAX,
   VEHICLE_WEATHER_MUD_ROUGHNESS, applyVehicleWeather,
   bindVehicleWeatherUniforms, garageVehicleWeather, liftedDustHex, mudColorOf, setVehicleWeatherLevel, syncVehicleWeather,
   vehicleWeatherForMap, vehicleWeatherLevelFor, vehicleWeatherState,
@@ -156,11 +157,13 @@ const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
 const reach = (wet) => VEHICLE_WEATHER_REACH_DRY_M + (VEHICLE_WEATHER_REACH_WET_M - VEHICLE_WEATHER_REACH_DRY_M) * wet;
 const low = (h, wet) => clamp01(1 - (h - 0.1) / (reach(wet) - 0.1));
-const grad = (h, wet) => 1 - smoothstep(VEHICLE_WEATHER_HULL_FOOT_M, reach(wet), h);
+const foot = (wet) => VEHICLE_WEATHER_HULL_FOOT_M[0] + (VEHICLE_WEATHER_HULL_FOOT_M[1] - VEHICLE_WEATHER_HULL_FOOT_M[0]) * wet;
+const grad = (h, wet) => 1 - smoothstep(foot(wet), reach(wet), h);
 assert.ok(low(0.3, 0) > 0.8 && low(0.3, 1) > 0.7, 'the running gear (0.3 m) is under the film');
-assert.ok(grad(0.5, 0) > 0.9, 'the hull\'s foot (0.5 m) carries nearly all of it');
-assert.ok(grad(0.9, 0) > 0.5 && grad(0.9, 0) < 0.8, 'its lower plates (0.9 m) a visible share of it');
-assert.ok(low(1.7, 0) === 0 && grad(1.7, 0) === 0 && grad(1.1, 1) === 0, 'the upper hull is past its reach');
+assert.equal(grad(0.7, 0), 1, 'the skirts\' and lower plates\' foot (0.7 m) carries it whole');
+assert.ok(grad(1.0, 0) > 0.8, 'the plates above it (1.0 m) nearly so');
+assert.ok(grad(1.4, 0) > 0.3 && grad(1.4, 0) < 0.7, 'the fender line (1.4 m) a visible share of it');
+assert.ok(low(2.0, 0) === 0 && grad(2.0, 0) === 0 && grad(1.4, 1) === 0, 'the upper hull and turret are past its reach');
 assert.ok(low(0.6, 1) < low(0.6, 0) && grad(0.8, 1) < grad(0.8, 0), 'mud stays lower than dust');
 assert.ok(VEHICLE_WEATHER_SNOW.every((v) => v > 0.75 && v < 0.9), 'snow is snow-white, not clipped white');
 assert.match(VEHICLE_WEATHER_FRAGMENT_GLSL, /#if defined\( COT_VEH_GEAR \) \|\| defined\( COT_VEH_TRACK \) \|\| defined\( COT_WHEEL_PAINT_READABILITY \)\s+cvGear = 1\.0;/,
@@ -186,12 +189,12 @@ assert.doesNotMatch(VEHICLE_WEATHER_FRAGMENT_GLSL, /mix\( diffuseColor\.rgb, mix
 // run): its ground faces and grouser tops stay scraped steel; its recesses (the gaps between links and the grouser walls
 // along the run, the wheel side) pack dust and snow with holes; the shoe's ends take only the patchy film. A white or tan
 // bottom run read as "a bright white, plastic-looking chain that blends into the snow" (wave 55).
-const recess = (n) => Math.max(smoothstep(0.55, 0.85, Math.abs(n[2])), smoothstep(0.55, 0.85, -n[1]));
+const recess = (n) => Math.max(smoothstep(0.55, 0.85, Math.abs(n[2])), 0.5 * smoothstep(0.55, 0.85, -n[1]));
 const scraped = (n) => smoothstep(0.55, 0.85, n[1]);
 assert.equal(scraped([0, 1, 0]), 1, 'a pad or grouser top is scraped');
 assert.equal(recess([0, 1, 0]), 0, 'and no recess');
 assert.equal(recess([0, 0, 1]), 1, 'a face along the run (a grouser wall, the gap to the next link) is a recess');
-assert.equal(recess([0, -1, 0]), 1, 'and so is the wheel side');
+assert.equal(recess([0, -1, 0]), 0.5, 'the wheel side half one (the road wheels keep their paths clean)');
 assert.equal(recess([1, 0, 0]) + scraped([1, 0, 0]), 0, 'the shoe\'s end is neither: the patchy film alone');
 const [lumpLo, lumpHi] = VEHICLE_WEATHER_SNOW_LUMP;
 const [coverLo, coverHi] = VEHICLE_WEATHER_SNOW_PACK_COVER;
@@ -225,8 +228,10 @@ assert.match(glsl, /float cvSnowTop = cvFlat \* \( 1\.0 - cvScraped \) \* smooth
 assert.match(glsl, /float cvSnowPack = cvRecess \* smoothstep\( [0-9.]+, [0-9.]+, cvB \);/, 'the pack is the recesses\' alone');
 const trackAt = glsl.indexOf('#ifdef COT_VEH_TRACK');
 assert.ok(trackAt > 0 && glsl.indexOf('cvScraped = smoothstep( 0.55, 0.85, cvSN.y );') > trackAt
-  && glsl.indexOf('cvRecess = max( smoothstep( 0.55, 0.85, abs( cvSN.z ) ), smoothstep( 0.55, 0.85, -cvSN.y ) );') > trackAt,
+  && glsl.indexOf('cvRecess = max( smoothstep( 0.55, 0.85, abs( cvSN.z ) ), 0.5 * smoothstep( 0.55, 0.85, -cvSN.y ) );') > trackAt,
   'the GLSL classifies the shoe\'s faces as the law above, on the track alone');
+assert.ok(VEHICLE_WEATHER_TRACK_FILM_MAX <= 0.4, 'off its recesses the track keeps a thin film: dark steel');
+assert.match(glsl, /#ifdef COT_VEH_TRACK\s+cvDust = min\( cvDust, [0-9.]+ \);\s+#endif/, 'the GLSL caps it so');
 assert.match(glsl, /#elif defined\( USE_BUMPMAP \)\s+cvRecess = 1\.0 - smoothstep\( 0\.2, 0\.5, texture2D\( bumpMap, vBumpMapUv \)\.x \);/,
   'the band reads its bump map\'s low ground');
 

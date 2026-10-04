@@ -312,10 +312,16 @@ float cotVehNoise( vec3 x ) {
 export const VEHICLE_WEATHER_PATCH_FREQ = 2.3;
 export const VEHICLE_WEATHER_FINE_FREQ = 9.0;
 /** The film's reach up the hull (m): dry dust climbs to the first, wet mud stays under the second. */
-export const VEHICLE_WEATHER_REACH_DRY_M = 1.6;
-export const VEHICLE_WEATHER_REACH_WET_M = 1.0;
-/** The hull's film is whole up to this height (m) before it fades to its reach (the running gear's fades from 0.1 m). */
-export const VEHICLE_WEATHER_HULL_FOOT_M = 0.3;
+export const VEHICLE_WEATHER_REACH_DRY_M = 1.9;
+export const VEHICLE_WEATHER_REACH_WET_M = 1.3;
+/**
+ * The hull's film is whole up to its foot (m: dry, wet) before it fades to its reach — the skirts' and lower plates'
+ * bottom edge, where the tracks throw it (the running gear's film fades from 0.1 m). A foot at the ground left the
+ * plates themselves, which start 0.6-0.7 m up behind the wheels, under a fifth of it (the wave 55 rework's first pair).
+ */
+export const VEHICLE_WEATHER_HULL_FOOT_M = [0.75, 0.55] as const;
+/** On the track, the film off its recesses stays thin: the run reads as dark steel with dusty and snowy recesses. */
+export const VEHICLE_WEATHER_TRACK_FILM_MAX = 0.35;
 /** The film's cap (a film never seals a material) and the track recesses' packing. */
 export const VEHICLE_WEATHER_FILM_MAX = 0.88;
 /** Snow: linear albedo of fresh snow (the winter maps' ground, 0xe5e7ec, is 0.78), and of the snow trodden into the gear. */
@@ -384,7 +390,7 @@ export const VEHICLE_WEATHER_FRAGMENT_GLSL = `
 		#ifdef USE_INSTANCING
 		vec3 cvSN = normalize( vCotVehObjN );
 		cvScraped = smoothstep( 0.55, 0.85, cvSN.y );
-		cvRecess = max( smoothstep( 0.55, 0.85, abs( cvSN.z ) ), smoothstep( 0.55, 0.85, -cvSN.y ) );
+		cvRecess = max( smoothstep( 0.55, 0.85, abs( cvSN.z ) ), 0.5 * smoothstep( 0.55, 0.85, -cvSN.y ) );
 		#elif defined( USE_BUMPMAP )
 		cvRecess = 1.0 - smoothstep( 0.2, 0.5, texture2D( bumpMap, vBumpMapUv ).x );
 		#endif
@@ -401,7 +407,8 @@ export const VEHICLE_WEATHER_FRAGMENT_GLSL = `
 		#endif
 		float cvReach = mix( ${f(VEHICLE_WEATHER_REACH_DRY_M)}, ${f(VEHICLE_WEATHER_REACH_WET_M)}, uVehWeatherA.w );
 		float cvLow = clamp( 1.0 - ( cvH - 0.1 + ( cvB - 0.5 ) * 0.5 ) / ( cvReach - 0.1 ), 0.0, 1.0 );
-		float cvGrad = 1.0 - smoothstep( ${f(VEHICLE_WEATHER_HULL_FOOT_M)}, cvReach, cvH + ( cvB - 0.5 ) * 0.45 );
+		float cvFoot = mix( ${f(VEHICLE_WEATHER_HULL_FOOT_M[0])}, ${f(VEHICLE_WEATHER_HULL_FOOT_M[1])}, uVehWeatherA.w );
+		float cvGrad = 1.0 - smoothstep( cvFoot, cvReach, cvH + ( cvB - 0.5 ) * 0.45 );
 		float cvBow = max( smoothstep( 0.5, 3.0, dot( cvP - uVehGround.xyz, uVehFwd ) ),
 			0.75 * smoothstep( 0.3, 0.8, dot( cvNW, uVehFwd ) ) );
 		float cvGearFilm = cvLow * ( 0.6 + 0.4 * cvBow ) * smoothstep( 0.6 - 0.28 * cvLow, 0.78 - 0.18 * cvLow, cvB );
@@ -409,6 +416,9 @@ export const VEHICLE_WEATHER_FRAGMENT_GLSL = `
 		float cvDust = uVehWeatherA.x * ( mix( cvHullFilm, cvGearFilm, cvGear )
 				+ 0.7 * cvTop * ( 1.0 - smoothstep( 1.4, 2.4, cvH ) ) * smoothstep( 0.38, 0.65, cvB ) )
 			+ uVehWeatherA.y * smoothstep( 0.3, 0.75, cvB );
+		#ifdef COT_VEH_TRACK
+		cvDust = min( cvDust, ${f(VEHICLE_WEATHER_TRACK_FILM_MAX)} );
+		#endif
 		cvDust = max( cvDust * ( 1.0 - 0.85 * cvScraped ),
 			cvRecess * smoothstep( 0.22, 0.48, cvB ) * min( 1.0, 1.3 * uVehWeatherA.x ) );
 		cvDust = min( cvDust, ${f(VEHICLE_WEATHER_FILM_MAX)} );
