@@ -204,7 +204,8 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
       foot.centerZ = baseZ + outPush.z - startZ;
       footCenter.x = foot.centerX; footCenter.y = position.y; footCenter.z = foot.centerZ;
       const spanBottom = hullUndersideOver(obstacle, foot, position.y);
-      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+      const clearBottom = foot.clearBottom;
+      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, clearBottom)) continue;
       if (obstacle.crushable && speed > (obstacle.crushMin ?? 2.8)) continue;
       const closestX = Math.max(obstacle.min[0], Math.min(foot.centerX, obstacle.max[0]));
       const closestZ = Math.max(obstacle.min[2], Math.min(foot.centerZ, obstacle.max[2]));
@@ -213,7 +214,7 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
       if (dx * dx + dz * dz >= footRadius * footRadius) continue;
       if (pushHullFromObstacle(
         footCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth, obstacle, outPush,
-        spanBottom, spanTop,
+        spanBottom, spanTop, clearBottom,
       )) hardObstacles[hardCount++] = obstacle;
     }
     // the authority's second sweep over the contacts that pushed
@@ -223,10 +224,10 @@ export function createPredictionWorld({ worldCollision, ownSpec, ownState, other
       foot.centerZ = baseZ + outPush.z - startZ;
       footCenter.x = foot.centerX; footCenter.y = position.y; footCenter.z = foot.centerZ;
       const spanBottom = hullUndersideOver(obstacle, foot, position.y);
-      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, foot.clearBottom)) continue;
       pushHullFromObstacle(
         footCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth, obstacle, outPush,
-        spanBottom, spanTop,
+        spanBottom, spanTop, foot.clearBottom,
       );
     }
     hardObstacles.length = 0;
