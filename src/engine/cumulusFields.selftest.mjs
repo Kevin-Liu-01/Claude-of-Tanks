@@ -153,7 +153,7 @@ assert.ok(CLOUDSCAPE_REGIMES['fair-weather-cumulus'].ambientScale < 1, 'and its 
 // only about a fifth darker than the brightest", "a grid-like rhythm", "hard cel outlines"): the sky floor in a cumulus'
 // shade, its base dark and its sun gain, the outline's saturation and the size spread, on the cumulus regimes only
 assert.deepEqual([CLOUD_CU_FLOOR, CLOUD_CU_SUN_GAIN, CLOUD_CU_EDGE], [0.12, 1.15, 0.85], 'the floor, the sun gain, the outline');
-assert.deepEqual([...CLOUD_SIZE_VAR], [0.25, 3], 'the size spread: a quarter of the cut, over three weather tiles');
+assert.deepEqual([...CLOUD_SIZE_VAR], [0.35, 0.5], 'the size spread: ±0.175 of the cut over half a weather tile (6 km: it varies within one view)');
 assert.match(clouds, /float cloudCumulusW\(\) \{ return 1\.0 - smoothstep\( 0\.15, 0\.3, uStratiform \); \}/, 'the cumulus law\'s gate');
 {
   const sm = (a, b, x) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };

@@ -158,15 +158,17 @@ const CLOUD_CLOSED_COVER_FLOOR = 0.7;
  * for b, b²) moved either by 1 L* and a faster decay of the diffused light (0.6 for 0.15) took the crown down more than
  * the shade (both stay as they were). So: the floor at 0.12 (CLOUD_CU_FLOOR); the base dark (CLOUD_BASE_DARK: the
  * underside in the shade of the mass over it, flatter and darker); the cumulus' sun gain (CLOUD_CU_SUN_GAIN) holds the lit
- * crowns at L* 88–90; the density saturating further in from the outline (CLOUD_CU_EDGE 0.6 → 0.85: no cel edge); a broad
- * field shifting the coverage cut region by region (CLOUD_SIZE_VAR 0.25 at three tiles): masses merge large in some regions
- * and stand small in others. The cumulus regimes only (stratiform 0.15 or less; cloudCumulusW): a deck, a lens and an
- * altocumulus sheet keep their light and their outline.
+ * crowns at L* 88–90; the density saturating further in from the outline (CLOUD_CU_EDGE 0.6 → 0.85: no cel edge); a field
+ * shifting the coverage cut region by region (CLOUD_SIZE_VAR: ±0.175 over half a weather tile, six kilometres): within one
+ * view masses merge large in some regions and stand small in others (the spread of the clouds' areas in a frame up on
+ * all seven wide views measured, the cover within two points; at three tiles the field held about one value over the
+ * whole battlefield and only thinned it, the cover 1–11 points down). The cumulus regimes only (stratiform 0.15 or less;
+ * cloudCumulusW): a deck, a lens and an altocumulus sheet keep their light and their outline.
  */
 export const CLOUD_CU_FLOOR = 0.12;
 export const CLOUD_CU_SUN_GAIN = 1.15;
 export const CLOUD_CU_EDGE = 0.85;
-export const CLOUD_SIZE_VAR: readonly [number, number] = [0.25, 3];
+export const CLOUD_SIZE_VAR: readonly [number, number] = [0.35, 0.5];
 /**
  * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: "no cloud shadows on the land"): the cloud shade
  * map, the clouds' one shadow path (cloudShadeMap.ts). The cores of the two weather fields at the cloud base, undithered,
