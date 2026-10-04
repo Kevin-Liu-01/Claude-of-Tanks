@@ -429,7 +429,9 @@ deep and as long as that side of the plot, its ground clear of the road frontage
 plot, the hard solids and the larger destructibles, the authored objective targets with a 3 m margin, the aprons, the
 bridge decks and the spawn pads, dry and level. Fence or wall modules (the kit's destructible kind) close its three open
 sides with a gate (or an open gap), the kit's own outbuilding stands in a far corner at `shedSize`, and kitchen-garden
-beds (dressing, raised on a slope, left out on phones) take the other. Every element is checked on its own and skipped
+beds (dressing, raised on a slope, left out on phones) take the other. The yard's ground grows no grass carpet,
+tall-grass crop or litter (discs over the enclosure join the scenery's ground-cover holes in `map.ts`), and a field's
+sown crop rows stop at its fence. Every element is checked on its own and skipped
 where it does not fit. No house body or plot moves. The props group carries the counts (`userData.regionalYards`),
 `yards.selftest.mjs` holds the planner's clearances, and a kit that adopts yards regenerates its map's shard and re-pins
 its census (obstacles rise by the modules, gates and sheds).

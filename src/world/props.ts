@@ -6381,10 +6381,34 @@ ${snowCap ? `
     // the stage's counts on the props group (receipts and captures read them)
     const stats = { houses: houses.length, yards: 0, streetYards: 0, modules: 0, gates: 0, sheds: 0, gardens: 0 };
     group.userData.regionalYards = stats;
+    // a yard's ground grows no crop, tall grass or litter (map.ts holds these holes with the scenery's): discs over the
+    // enclosure, from the house wall to its outer run (the close yard pairs of 2026-10-03: a Hessian farmyard full of
+    // the field's wheat, its beds hidden in it)
+    const holes: Array<{ x: number; z: number; r: number }> = [];
+    group.userData.regionalYardHoles = holes;
+    /** each yard's enclosure in its house's frame (the sown rows stop at it, trimCropRowsInYards) */
+    const rects: Array<{ x: number; z: number; c: number; s: number; x0: number; x1: number; z0: number; z1: number }> = [];
     for (const house of houses) {
       const plan = planYard(house, world, yard, yrngYard, seg, regionalBodies.get(house));
       if (!plan) continue;
       stats.yards++;
+      {
+        const c = Math.cos(house.rot), s = Math.sin(house.rot);
+        let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+        for (const p of [...plan.modules, ...(plan.gate ? [plan.gate] : []), ...(plan.shed ? [plan.shed] : []), ...(plan.garden ? [plan.garden] : [])]) {
+          const dx = p.x - house.x, dz = p.z - house.z, lx = dx * c - dz * s, lz = dx * s + dz * c;
+          x0 = Math.min(x0, lx); x1 = Math.max(x1, lx); z0 = Math.min(z0, lz); z1 = Math.max(z1, lz);
+        }
+        rects.push({ x: house.x, z: house.z, c, s, x0: x0 - 0.3, x1: x1 + 0.3, z0: z0 - 0.3, z1: z1 + 0.3 });
+        const along = x1 - x0 >= z1 - z0, long = Math.max(x1 - x0, z1 - z0), short = Math.max(1, Math.min(x1 - x0, z1 - z0));
+        const n = Math.max(1, Math.ceil(long / (short * 0.9)));
+        const r = Math.hypot(short / 2, long / (2 * n)) + 0.3;
+        for (let k = 0; k < n; k++) {
+          const t = (k + 0.5) / n;
+          const lx = along ? x0 + (x1 - x0) * t : (x0 + x1) / 2, lz = along ? (z0 + z1) / 2 : z0 + (z1 - z0) * t;
+          holes.push({ x: house.x + lx * c + lz * s, z: house.z - lx * s + lz * c, r });
+        }
+      }
       if (plan.street) stats.streetYards++;
       stats.modules += plan.modules.length;
       if (plan.gate && yard.gate) stats.gates++;
@@ -6441,6 +6465,32 @@ ${snowCap ? `
         }
       }
     }
+    trimCropRowsInYards(rects);
+  }
+  /**
+   * A field's sown rows stop at a yard's fence (the close yard pairs of 2026-10-03: a Hessian farmyard standing in a
+   * wheat plot, its beds hidden in the crop): every crop row span with a corner inside an enclosure leaves the merged
+   * rows' index. The rows' vertices and their seeded draws stay as they were.
+   */
+  function trimCropRowsInYards(rects: ReadonlyArray<{ x: number; z: number; c: number; s: number; x0: number; x1: number; z0: number; z1: number }>): void {
+    const crop = group.children.find((o) => o.name === 'crop-fields') as THREE.Mesh | undefined;
+    const index = crop?.geometry.index;
+    if (!crop || !index || !rects.length) return;
+    const position = crop.geometry.getAttribute('position');
+    const inYard = (v: number) => {
+      const x = position.getX(v), z = position.getZ(v);
+      for (const r of rects) {
+        const dx = x - r.x, dz = z - r.z, lx = dx * r.c - dz * r.s, lz = dx * r.s + dz * r.c;
+        if (lx > r.x0 && lx < r.x1 && lz > r.z0 && lz < r.z1) return true;
+      }
+      return false;
+    };
+    const kept: number[] = [];
+    for (let t = 0; t + 2 < index.count; t += 3) {
+      const a = index.getX(t), b = index.getX(t + 1), c = index.getX(t + 2);
+      if (!inYard(a) && !inYard(b) && !inYard(c)) kept.push(a, b, c);
+    }
+    if (kept.length < index.count) crop.geometry.setIndex(kept);
   }
   placeRegionalYards();
   yield { fine: true, progress: false, stage: 'regional-yards' };
