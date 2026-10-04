@@ -715,6 +715,27 @@ const OVERSHOOT_GROUND_MPS = 0.5;
 const LANDING_STROKE_MIN_MPS = 2;
 /** The bump stops never read less travel than this above the floor (bounds the stopping deceleration). */
 const BUMP_STOP_MIN_ROOM_M = 0.01;
+/**
+ * Progressive bump stops on the landing stroke (physics lane round 4; gauntlet wave 33: "peak compression barely scales
+ * with impact, +3 to +5 cm whether 5.6 or 12.5 m/s"). The springs alone bottomed out every landing from 7 m/s up at the
+ * same 19 cm, the last of the travel taken at one constant deceleration. Past BUMP_STOP_ONSET_M under the seat the stops
+ * take work growing with the cube of their own travel (a force with its square), sized so that with the springs they
+ * would take a landing of BUMP_STOP_FULL_MPS just at the floor: a harder landing goes deeper into them. They only take:
+ * they push while the hull closes on the floor, never back (the rebound is the ruleset's restitution, as before), and
+ * each step they take the work of the step's own travel into them (an average, not the force at the step's start: the
+ * stiffest of it is 280 g, which one 1/60 s step of a force read at a point would turn into a launch).
+ */
+const BUMP_STOP_ONSET_M = 0.08;
+const BUMP_STOP_FULL_MPS = 15;
+
+/** Work (per unit mass) the landing stroke's stops take from their onset down to `depth` under the seat. */
+function bumpStopWork(depth: number, travel: number): number {
+  const zone = travel - BUMP_STOP_ONSET_M;
+  if (!(zone > 1e-3) || !(depth > BUMP_STOP_ONSET_M)) return 0;
+  const capacity = Math.max(0, 0.5 * BUMP_STOP_FULL_MPS * BUMP_STOP_FULL_MPS - 0.5 * RIDE_OMEGA * RIDE_OMEGA * travel * travel);
+  const u = Math.min(1, (depth - BUMP_STOP_ONSET_M) / zone);
+  return capacity * u * u * u;
+}
 /** Ground falling away under a hull is followed as fast as it falls (physics lane, 2026-10-03): the launch bound held
  * the support's descent to 12 m/s too, so a hull sliding down a 48-degree face past 12 m/s fell behind its own
  * support, went airborne on the face and "landed" on it at 9 m/s. Only a rising support launches a hull. */
@@ -1828,8 +1849,33 @@ function constrainLoadedRide(
     // little behind its sinking support, was held up by the stops and floated off the face every few steps).
     const closingOnFloor = ride.groundV - ride.v;
     const room = ride.y - floorY;
+    // the landing stroke's progressive stops (BUMP_STOP_ONSET_M): the work of this step's travel into them, and what they
+    // have left between here and the floor
+    let stopWorkLeft = 0;
+    if (ride.stroke === 1 && closingOnFloor > 0) {
+      const travel = supportY - floorY;
+      const depth = supportY - ride.y;
+      const here = bumpStopWork(depth, travel);
+      if (bumpStopWork(Math.min(travel, depth + closingOnFloor * dt), travel) > here) {
+        // in the stops this step: the closing it leaves the step with is the one whose step into the stops (and the
+        // springs) takes the energy the step loses — the step moves at the speed it leaves with, as the ride integrates
+        const springAt = (x: number): number => 0.5 * RIDE_OMEGA * RIDE_OMEGA * x * Math.abs(x);
+        const from = springAt(depth) + here;
+        const energy = 0.5 * closingOnFloor * closingOnFloor;
+        let lo = 0, hi = closingOnFloor;
+        for (let index = 0; index < 24; index++) {
+          const mid = 0.5 * (lo + hi);
+          const into = Math.min(travel, depth + mid * dt);
+          if (energy - 0.5 * mid * mid > springAt(into) + bumpStopWork(into, travel) - from) lo = mid;
+          else hi = mid;
+        }
+        const taken = (closingOnFloor - 0.5 * (lo + hi)) / dt;
+        if (accel < taken) accel = taken;
+      }
+      stopWorkLeft = bumpStopWork(travel, travel) - here;
+    }
     if (closingOnFloor > 0 && room > 0) {
-      const springWork = RIDE_OMEGA * RIDE_OMEGA * ((supportY - ride.y) * room + 0.5 * room * room);
+      const springWork = RIDE_OMEGA * RIDE_OMEGA * ((supportY - ride.y) * room + 0.5 * room * room) + stopWorkLeft;
       if (0.5 * closingOnFloor * closingOnFloor > springWork) {
         const stop = closingOnFloor * closingOnFloor / (2 * Math.max(room, BUMP_STOP_MIN_ROOM_M));
         if (accel < stop) accel = Math.min(stop, closingOnFloor / dt);

@@ -859,7 +859,13 @@ contact constraints and cannot be crossed by residual uphill speed.
   Moon's overshoot rises and falls at the Moon's gravity. The springs used to pull it down at their own rate, seven
   times the Moon's gravity after a 12.5 m/s landing, and every gravity's landing settled on Earth's timeline
   (gauntlet wave 23); that landing now settles in about a second, where it took 0.6 s. The bump stops are progressive: a fall the springs would not stop in the
-  travel left above the floor is stopped across that travel, never in one step at the floor. The rebound the
+  travel left above the floor is stopped across that travel, never in one step at the floor. On the landing stroke
+  they start 8 cm under the seat and take work growing with the cube of their own travel, sized so that with the
+  springs they would take a 15 m/s landing just at the floor (physics lane round 4; gauntlet wave 33: "peak
+  compression barely scales with impact"): a 3.9 m/s landing strokes 10 cm, 5.9 m/s 12 cm, 7.3 m/s 13 cm, 9.6 m/s
+  15 cm and 12.3 m/s 17.5 cm, where every landing from 7 m/s used to bottom at the same 19 cm. Each step they take
+  the work of the step's own travel into them, never push back (the rebound stays the ruleset's), and stop the stroke
+  inside the step where that work meets the fall's energy. The rebound the
   ruleset owes is returned by the springs once they have stopped the fall (`_ride.rebound`): they extend and the hull
   leaves the drooped line at that speed. Ground moving faster than the rebound (a face the hull then runs down, or a
   wall lifting it) leaves none to return. A hull coming down on its shell rebounds rigidly at once, or stops its

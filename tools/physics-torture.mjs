@@ -373,6 +373,9 @@ export const CASES = [
     input: hold(0, 0, true) },
   { id: 'land-cross-soft', group: 'air', seconds: (w) => w.dropS(1.5) + 3, terrain: TERRAIN.slopeAcross(10), spawn: { dropTo: 1.5 },
     input: hold(0, 0, true) },
+  // Round 4: flat drops from 2 m (5.9 m/s) and 8 m (12.3 m/s) read how far the landing stroke goes (gearCompMaxM)
+  { id: 'drop-2', group: 'air', seconds: (w) => w.dropS(2) + 3, terrain: TERRAIN.flat(), spawn: { dropTo: 2 }, input: hold(0, 0, true) },
+  { id: 'drop-8', group: 'air', seconds: (w) => w.dropS(8) + 3, terrain: TERRAIN.flat(), spawn: { dropTo: 8 }, input: hold(0, 0, true) },
   { id: 'land-tank', group: 'air', seconds: (w) => w.dropS(7) + 6, terrain: TERRAIN.flat(), extras: [{ id: 'lower', specId: 'm1a2', x: 0, z: 0 }],
     spawn: { x: 0.4, z: 0.6, dropTo: 7 }, input: hold(), rest: 'tail' },
   { id: 'land-wreck', group: 'air', seconds: (w) => w.dropS(7) + 6, terrain: TERRAIN.flat(), extras: [{ id: 'wreck', specId: 't90m', x: 0, z: 0, wreck: true }],
