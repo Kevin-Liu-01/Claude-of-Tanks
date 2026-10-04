@@ -107,6 +107,9 @@ export interface HorizonPanoramaCharacter {
   jebelFlutes: number; jebelFluteDepth: number; jebelBossM: number; jebelFootVary: number;
   /** desert varnish down the jebels' walls: the darkening of its streaks (0: none) */
   jebelVarnish: number;
+  /** the nearest a jebel's centre stands from the battlefield's (m): the near band's forms are pressed under the ring's
+   * skyline, which cut a near massif's top dead flat (gauntlet wave 50: "near-rectangular blocks with dead-flat tops") */
+  jebelNearM: number;
 }
 
 /** The knobs most characters leave at rest: open sea, no tree canopy, the eroded mesa's profile, no isolated peaks. */
@@ -117,7 +120,7 @@ const PANO_EXTRAS = Object.freeze({
   forestSlope: 0.32,
   air: 1, fillLaw: 0, rockFloor: -1, scrub: 0, ownRock: 0,
   jebelShare: 0, jebelM: 0, jebelRadiusM: 900, jebelFoot: 0.66, jebelRim: 0.86, jebelApron: 0.18,
-  jebelFlutes: 16, jebelFluteDepth: 0.5, jebelBossM: 0, jebelFootVary: 0.14, jebelVarnish: 0,
+  jebelFlutes: 16, jebelFluteDepth: 0.5, jebelBossM: 0, jebelFootVary: 0.14, jebelVarnish: 0, jebelNearM: 0,
 });
 
 /** Maps lane A's sheer jebel (landformGeology.ts inselbergSection with a rim, origin/visual/maps-layouts ca018e38e):
@@ -318,7 +321,7 @@ export const HORIZON_PANORAMA_REGIONAL: Readonly<Record<HorizonPanoramaRegional,
   // walls" — now sheer massifs standing alone on a flat sand plain, maps lane A's section: bossed caps, fluted walls,
   // short talus aprons; the massifs bare rock, the aprons and the plain sand)
   jebel: { ampM: 45, foot: 0.7, macroL: 2600, sharp: 1.0, midL: 1000, gullyL: 600, gullyM: 0, warpM: 700, valley: 0.15, valleyL: 6000, snowline: 2, treeline: 0, rockSlope: 0.5, bedM: 26, strata: 0.3, tables: false, farRise: 0, layers: 0, plinth: false, ...PANO_EXTRAS,
-    jebelShare: 0.65, jebelM: 480, jebelRadiusM: 650, jebelFoot: 0.66, jebelRim: 0.86, jebelApron: 0.18, jebelFlutes: 20, jebelFluteDepth: 0.8, jebelBossM: 90, jebelFootVary: 0.14, jebelVarnish: 0.55 },
+    jebelShare: 0.65, jebelM: 720, jebelRadiusM: 700, jebelFoot: 0.66, jebelRim: 0.86, jebelApron: 0.18, jebelFlutes: 20, jebelFluteDepth: 0.8, jebelBossM: 110, jebelFootVary: 0.14, jebelVarnish: 0.55, jebelNearM: 5000 },
   volcanicField: { ampM: 380, foot: 0.3, macroL: 4800, sharp: 1.0, midL: 1600, gullyL: 420, gullyM: 20, warpM: 800, valley: 0.3, valleyL: 7000, snowline: 2, treeline: 0.35, rockSlope: 0.4, bedM: 40, strata: 0.1, tables: false, farRise: 0, layers: 0.6, plinth: false, ...PANO_EXTRAS, peakShare: 0.35, peakM: 260, peakRadiusM: 800, peakSharp: 1.2 },
   iceSheet: { ampM: 110, foot: 0.5, macroL: 6000, sharp: 1.0, midL: 2200, gullyL: 600, gullyM: 6, warpM: 1000, valley: 0.2, valleyL: 8000, snowline: -0.5, treeline: 0, rockSlope: 0.35, bedM: 80, strata: 0.04, tables: false, farRise: 0, layers: 0.3, plinth: false, ...PANO_EXTRAS, peakShare: 0.2, peakM: 320, peakRadiusM: 380, peakSharp: 2.2 },
 });
@@ -459,6 +462,81 @@ vec3 noised(vec2 x) {
 const mat2 ROT = mat2(1.6, 1.2, -1.2, 1.6);
 `;
 
+/** The far jebels' law, shared by the height pass and the strip (which takes the walls' normals from it). */
+const JEBEL_GLSL = /* glsl */`
+uniform vec4 uJebel;   // sheer jebels: share of 2.6 km cells, height (m), radius (m), the cap's bosses (m)
+uniform vec4 uJebel2;  // the wall's foot, the cap's rim, the apron's share, the flutes round the wall
+uniform vec4 uJebel3;  // the flutes' depth, the foot's wander, the varnish, the nearest centre (m)
+${HORIZON_JEBEL_SECTION_GLSL}
+// a smooth wander round a massif in its bearing, in [-1, 1] (maps lane A's lobe: four harmonics, falling amplitude)
+float jebelLobe(float th, float salt) {
+  float sum = 0.0;
+  for (int k = 2; k <= 5; k++) {
+    float fk = float(k);
+    sum += sin(fk * th + 6.2831853 * hash12(vec2(fk, salt))) / (fk - 1.0);
+  }
+  return sum / 2.0833333;
+}
+
+// the jebels at a point (uJebel.x > 0): the tallest massif's height over the plain (one in a share of 2.6 km cells,
+// standing alone on the plain — maps lane A's section, horizonJebelSection: a bossed cap, a sheer wall fluted in vertical
+// grooves whose foot wanders round the massif, a short concave talus apron; drawn out along a turned axis). Beside it the
+// footprint inside the walls' feet (the height pass writes it for the strip to bare), the varnish down the walls, and for
+// the strip the massif the point belongs to: its share of its own height there, its bearing round its centre, its salt
+float gJebelBare = 0.0, gJebelVarnish = 0.0, gJebelRel = 0.0, gJebelTh = 0.0, gJebelSalt = 0.0;
+float jebelField(vec2 p) {
+  gJebelBare = 0.0; gJebelVarnish = 0.0; gJebelRel = 0.0; gJebelTh = 0.0; gJebelSalt = 0.0;
+  vec2 cell = floor(p / 2600.0);
+  float best = 0.0;
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    vec2 c = cell + vec2(float(i), float(j));
+    if (hash12(c + vec2(31.7, 3.1)) < 1.0 - uJebel.x) continue;
+    vec2 centre = (c + 0.2 + 0.6 * vec2(hash12(c + vec2(2.9, 7.3)), hash12(c + vec2(6.1, 1.7)))) * 2600.0;
+    if (length(centre) < uJebel3.w) continue;
+    float rad = uJebel.z * (0.7 + 0.6 * hash12(c + vec2(5.3, 8.8)));
+    float ang = 6.2831853 * hash12(c + vec2(9.1, 4.4));
+    vec2 ax = vec2(cos(ang), sin(ang)), q2 = p - centre;
+    float el = 1.0 + 0.5 * hash12(c + vec2(0.7, 2.2));
+    vec2 lq = vec2(dot(q2, ax) / el, dot(q2, vec2(-ax.y, ax.x))) / rad;
+    float q = length(lq);
+    if (q >= 1.0) continue;
+    float th = atan(lq.y, lq.x), salt = hash12(c + vec2(4.8, 5.9)) * 97.0;
+    float rim = uJebel2.y;
+    float wall = clamp(uJebel2.x * (1.0 + uJebel3.y * jebelLobe(th, salt + 29.0)), 0.25, 0.92);
+    // the flutes: a rounded notch where the cosine peaks, setting the wall back between its spurs
+    float notch = pow(max(0.0, cos(6.2831853 * (th / 6.2831853 * uJebel2.w + hash12(c + vec2(3.7, 0.3))))), 2.0);
+    wall -= notch * uJebel3.x * (1.0 - rim) * wall;
+    float apron = uJebel2.z * (1.0 + 0.5 * jebelLobe(th, salt + 31.0));
+    float hgt = uJebel.y * (0.7 + 0.3 * hash12(c + vec2(8.2, 6.6)));
+    float hj = hgt * jebelSection(q, wall, apron, rim);
+    // the cap's bosses: rounded domes inside the rim (their union), as maps lane A sets them
+    float top = wall * rim;
+    if (q < top && uJebel.w > 0.0) {
+      float boss = 0.0;
+      for (int k = 0; k < 4; k++) {
+        float fk = float(k);
+        float ba = 6.2831853 * hash12(vec2(fk, salt + 41.0)), br = sqrt(hash12(vec2(fk + 7.0, salt + 41.0))) * top * 0.62;
+        float bradius = top * (0.3 + 0.16 * hash12(vec2(fk + 13.0, salt + 41.0)));
+        float bd = length(lq - vec2(cos(ba), sin(ba)) * br) / bradius;
+        if (bd < 1.0) boss = max(boss, (1.0 - bd * bd) * (1.0 - bd * bd) * (0.6 + 0.4 * hash12(vec2(fk + 19.0, salt + 41.0))));
+      }
+      hj += uJebel.w * boss;
+    }
+    if (hj > best) { best = hj; gJebelRel = hj / hgt; gJebelTh = th; gJebelSalt = salt; }
+    gJebelBare = max(gJebelBare, smoothstep(wall + 0.04, wall - 0.01, q));
+    // desert varnish: dark streaks down the wall from under the rim (seepage from the cap), round the massif on the
+    // circle (no seam), drawn out down the wall, fading over the talus
+    if (uJebel3.z > 0.0 && q > top * 0.9 && q < wall + 0.05) {
+      vec2 ring = vec2(cos(th), sin(th));
+      float sv = noised(ring * 16.0 + vec2(q * 2.0, salt)).x * 0.65 + noised(ring * 41.0 + vec2(q * 4.0, salt + 5.0)).x * 0.35;
+      float down = 1.0 - smoothstep(wall - 0.2 * (wall - top), wall + 0.05, q);
+      gJebelVarnish = max(gJebelVarnish, smoothstep(0.08, 0.38, sv) * down);
+    }
+  }
+  return best;
+}
+`;
+
 const FIELD_GLSL = /* glsl */`
 uniform vec4 uOff0, uOff1, uOff2, uOff3;  // the seed's offsets
 uniform vec4 uChar0;   // ampM, foot, macroL, sharp
@@ -472,20 +550,7 @@ uniform vec4 uShore;   // the far shore's height share (0: open sea), the channe
 uniform vec4 uTrees;   // the tree lines' and woods' canopy (m; 0: none)
 uniform vec4 uMesa;    // a table's talus apron (m) and its share of the height, its caprock cliff (m), its rim's alcoves (m)
 uniform vec4 uPeaks;   // isolated peaks: share of 2.6 km cells, height (m), radius (m), sharpness
-uniform vec4 uJebel;   // sheer jebels: share of 2.6 km cells, height (m), radius (m), the cap's bosses (m)
-uniform vec4 uJebel2;  // the wall's foot, the cap's rim, the apron's share, the flutes round the wall
-uniform vec4 uJebel3;  // the flutes' depth, the foot's wander
-${HORIZON_JEBEL_SECTION_GLSL}
-// a smooth wander round a massif in its bearing, in [-1, 1] (maps lane A's lobe: four harmonics, falling amplitude)
-float jebelLobe(float th, float salt) {
-  float sum = 0.0;
-  for (int k = 2; k <= 5; k++) {
-    float fk = float(k);
-    sum += sin(fk * th + 6.2831853 * hash12(vec2(fk, salt))) / (fk - 1.0);
-  }
-  return sum / 2.0833333;
-}
-
+${JEBEL_GLSL}
 float macroField(vec2 q) {
   float sum = 0.0, amp = 1.0, weight = 1.0, norm = 0.0;
   for (int o = 0; o < 7; o++) {
@@ -633,60 +698,12 @@ float farField(vec2 p) {
     h += uPeaks.y * best;
     gPeak = foot;
   }
-  // sheer jebels (uJebel.x > 0): one in a share of 2.6 km cells, standing alone on the plain — maps lane A's section
-  // (horizonJebelSection): a bossed cap, a sheer wall fluted in vertical grooves whose foot wanders round the massif, a
-  // short concave talus apron; drawn out along a turned axis. The footprint inside the wall's foot is written for the
-  // strip to bare to rock; the aprons and the plain stay sand
+  // sheer jebels (uJebel.x > 0): JEBEL_GLSL jebelField — the footprint inside the walls' feet is written for the strip to
+  // bare to rock, the varnish in the tree-cover channel
   if (uJebel.x > 0.0) {
-    vec2 cell = floor(p / 2600.0);
-    float best = 0.0, bare = 0.0, varnish = 0.0;
-    for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
-      vec2 c = cell + vec2(float(i), float(j));
-      if (hash12(c + vec2(31.7, 3.1)) < 1.0 - uJebel.x) continue;
-      vec2 centre = (c + 0.2 + 0.6 * vec2(hash12(c + vec2(2.9, 7.3)), hash12(c + vec2(6.1, 1.7)))) * 2600.0;
-      float rad = uJebel.z * (0.7 + 0.6 * hash12(c + vec2(5.3, 8.8)));
-      float ang = 6.2831853 * hash12(c + vec2(9.1, 4.4));
-      vec2 ax = vec2(cos(ang), sin(ang)), q2 = p - centre;
-      float el = 1.0 + 0.5 * hash12(c + vec2(0.7, 2.2));
-      vec2 lq = vec2(dot(q2, ax) / el, dot(q2, vec2(-ax.y, ax.x))) / rad;
-      float q = length(lq);
-      if (q >= 1.0) continue;
-      float th = atan(lq.y, lq.x), salt = hash12(c + vec2(4.8, 5.9)) * 97.0;
-      float rim = uJebel2.y;
-      float wall = clamp(uJebel2.x * (1.0 + uJebel3.y * jebelLobe(th, salt + 29.0)), 0.25, 0.92);
-      // the flutes: a rounded notch where the cosine peaks, setting the wall back between its spurs
-      float notch = pow(max(0.0, cos(6.2831853 * (th / 6.2831853 * uJebel2.w + hash12(c + vec2(3.7, 0.3))))), 2.0);
-      wall -= notch * uJebel3.x * (1.0 - rim) * wall;
-      float apron = uJebel2.z * (1.0 + 0.5 * jebelLobe(th, salt + 31.0));
-      float hgt = uJebel.y * (0.7 + 0.3 * hash12(c + vec2(8.2, 6.6)));
-      float hj = hgt * jebelSection(q, wall, apron, rim);
-      // the cap's bosses: rounded domes inside the rim (their union), as maps lane A sets them
-      float top = wall * rim;
-      if (q < top && uJebel.w > 0.0) {
-        float boss = 0.0;
-        for (int k = 0; k < 4; k++) {
-          float fk = float(k);
-          float ba = 6.2831853 * hash12(vec2(fk, salt + 41.0)), br = sqrt(hash12(vec2(fk + 7.0, salt + 41.0))) * top * 0.62;
-          float bradius = top * (0.3 + 0.16 * hash12(vec2(fk + 13.0, salt + 41.0)));
-          float bd = length(lq - vec2(cos(ba), sin(ba)) * br) / bradius;
-          if (bd < 1.0) boss = max(boss, (1.0 - bd * bd) * (1.0 - bd * bd) * (0.6 + 0.4 * hash12(vec2(fk + 19.0, salt + 41.0))));
-        }
-        hj += uJebel.w * boss;
-      }
-      best = max(best, hj);
-      bare = max(bare, smoothstep(wall + 0.04, wall - 0.01, q));
-      // desert varnish: dark streaks down the wall from under the rim (seepage from the cap), round the massif on the
-      // circle (no seam), drawn out down the wall, fading over the talus
-      if (uJebel3.z > 0.0 && q > top * 0.9 && q < wall + 0.05) {
-        vec2 ring = vec2(cos(th), sin(th));
-        float sv = noised(ring * 16.0 + vec2(q * 2.0, salt)).x * 0.65 + noised(ring * 41.0 + vec2(q * 4.0, salt + 5.0)).x * 0.35;
-        float down = 1.0 - smoothstep(wall - 0.2 * (wall - top), wall + 0.05, q);
-        varnish = max(varnish, smoothstep(0.08, 0.38, sv) * down);
-      }
-    }
-    h += best;
-    gPeak = max(gPeak, bare);
-    gVarnish = varnish * uJebel3.z;
+    h += jebelField(p);
+    gPeak = max(gPeak, gJebelBare);
+    gVarnish = gJebelVarnish * uJebel3.z;
   }
   gTree = 0.0;
   if (uTrees.x > 0.0) {
@@ -913,7 +930,6 @@ uniform sampler2D uEdge;
 uniform vec4 uShore;      // the far shore's height share (0: open sea), the channel's distance (m), its coastal range's share
 uniform vec4 uTrees;      // the far field's canopy (m), the forest's slope limit, a dry coast's scrub
 uniform vec4 uAir;        // the far path's share of the law's σ, the fill's law (0 / 1), the bare rock's floor (a share of the relief)
-uniform vec4 uJebel;      // sheer jebels: share of 2.6 km cells, height (m), radius (m), the cap's bosses (m)
 uniform vec4 uHaze;       // the shared haze law (hazeLaw.ts): σ (1/m), 1 / the layer's scale height, the datum (m), on
 uniform vec3 uHazeChroma; // its per-channel extinction
 uniform vec3 uHazeAnti, uHazeToward; // its in-scatter target at the horizon away from the sun and toward it
@@ -937,6 +953,8 @@ float fallStreak(vec2 xz) {
   }
   return acc;
 }
+${JEBEL_GLSL}
+float gJebelW = 0.0; // how much of a jebel's own law this texel's surface takes (0 off the massifs)
 vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   float slope = 1.0 - n.y;
   // the zones (forest, fields, snow, scree) by the height over the upland's plinth where it has one
@@ -991,6 +1009,25 @@ vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   col = mix(col, uForest * mottle * 0.85, uTrees.z * rockW * streak * 0.5);
   // (a jebel's desert varnish, the tree-cover channel of a treeless country: dark streaks down its walls)
   if (uJebel.x > 0.0) col *= 1.0 - texture2D(uHeight, g).b;
+  // Wadi Rum's sandstone (v3): the dark red-brown walls (the Umm Ishrin sandstone) under the pale domes (the Disi), the
+  // contact wandering round each massif; bedded every ~17 m (each bed its own tone, the bedding planes dark); split by
+  // vertical joints whose clefts hold shadow on the walls
+  if (gJebelW > 0.0) {
+    float rel = gJebelRel, th = gJebelTh, salt = gJebelSalt;
+    float wallW = smoothstep(0.35, 0.75, slope);
+    float contact = smoothstep(0.5, 0.64, rel + 0.08 * noised(vec2(th * 5.0, salt)).x);
+    vec3 lower = uRock * vec3(0.82, 0.74, 0.72);
+    vec3 upper = clamp(uRock * vec3(1.85, 3.0, 3.6), uRock, vec3(0.8));
+    float bt = wp.y / 17.0 + 0.25 * noised(vec2(th * 3.0, wp.y / 70.0) + salt).x;
+    float bi = floor(bt), bf = bt - bi;
+    float bedT = 0.9 + 0.2 * hash12(vec2(bi, salt));
+    float plane = 1.0 - smoothstep(0.0, 0.07, bf) * smoothstep(0.0, 0.07, 1.0 - bf);
+    float joints = 30.0 + 24.0 * fract(salt * 0.618);
+    float jv = fract(th / 6.2831853 * joints + 0.18 * noised(vec2(rel * 3.0, th * 2.0 + salt)).x + fract(salt * 0.37));
+    float cleft = 1.0 - smoothstep(0.0, 0.045, min(jv, 1.0 - jv));
+    vec3 stone = mix(lower, upper, contact) * bedT * (1.0 - 0.22 * plane * wallW) * (1.0 - 0.5 * cleft * wallW);
+    col = mix(col, stone * (1.0 - texture2D(uHeight, g).b), gJebelW * rockW);
+  }
   // scree on the moderate slopes below the rock
   col = mix(col, uScree, smoothstep(0.12, 0.24, slope) * (1.0 - rockW) * (1.0 - vegW) * 0.7);
   // snow above the snowline on the slopes that hold it
@@ -1047,6 +1084,18 @@ void main() {
     // the apron is seen at a grazing angle: one texel row spans hundreds of metres there, so its parcels, stands and
     // fine tones would stand as one streak per column (where a low ring shows it) — it keeps the broad tones only
     apron = 1.0;
+  }
+  // a jebel's walls (v3, gauntlet wave 50: "flat-coloured, near-rectangular blocks", the walls "one even pale tone with no
+  // lit or shaded faces"): the grid's rows lie ~35 m apart at 5 km, and its normal across two of them smoothed a 60 m sheer
+  // wall into a slope that took the sun from every side. The massif's own law gives the wall's normal at 4 m, so the face
+  // toward the sun is lit and the face away from it in shade.
+  gJebelW = 0.0;
+  if (uJebel.x > 0.0 && apron < 0.5 && texture2D(uHeight, g).a > 0.01) {
+    float e4 = 4.0;
+    float hx = jebelField(wp.xz + vec2(e4, 0.0)), hz = jebelField(wp.xz + vec2(0.0, e4));
+    float h0 = jebelField(wp.xz); // (last: the massif's globals are this point's own)
+    gJebelW = smoothstep(2.0, 14.0, h0);
+    n = normalize(mix(n, normalize(vec3(-(hx - h0) / e4, 1.0, -(hz - h0) / e4)), gJebelW));
   }
   // the texel's footprint on the ground along the ray (one strip row is 25/512 degrees): at a grazing angle it spans
   // hundreds of metres, and the parcels and the fine tones would alias into one streak per column (Saltmere's coast
@@ -1314,7 +1363,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       uPeaks: { value: new THREE.Vector4(ch.peakShare, ch.peakM, ch.peakRadiusM, ch.peakSharp) },
       uJebel: { value: new THREE.Vector4(ch.jebelShare, ch.jebelM, ch.jebelRadiusM, ch.jebelBossM) },
       uJebel2: { value: new THREE.Vector4(ch.jebelFoot, ch.jebelRim, ch.jebelApron, ch.jebelFlutes) },
-      uJebel3: { value: new THREE.Vector4(ch.jebelFluteDepth, ch.jebelFootVary, ch.jebelVarnish, 0) },
+      uJebel3: { value: new THREE.Vector4(ch.jebelFluteDepth, ch.jebelFootVary, ch.jebelVarnish, ch.jebelNearM) },
       uFrame: { value: new THREE.Vector4(P.innerM, P.outerM, P.shellM, P.eyeY) },
       uHaze: { value: new THREE.Vector4(haze?.sigma ?? 0, haze?.invScale ?? 0, hazeDatumM, haze ? 1 : 0) },
       uHazeChroma: { value: new THREE.Vector3(...HAZE_EXT_CHROMA) },

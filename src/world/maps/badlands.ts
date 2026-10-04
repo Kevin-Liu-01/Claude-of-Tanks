@@ -206,7 +206,7 @@ export default {
     // the mountains lane (2026-10-03, gauntlet waves 15 and 24): Wadi Rum's far country — sheer jebels standing alone on
     // the sand plain, each maps lane A's inselberg section with a rim (a bossed cap, a fluted wall over most of the height,
     // a short talus apron), where the regional 'jebel' of mesa tables read as "low rounded swells"
-    baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0, ground: 'sand', banding: 0.045, panorama: { regional: 'jebel' },
+    baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0, ground: 'sand', banding: 0.045, panorama: { regional: 'jebel', air: 0.4 },
     // (the outland boulders a shade sparser: they follow the ring's drained faces, and the map's horizon draws no more
     // triangles than before the mountains lane's relief work)
     outlandRocks: 0.95,

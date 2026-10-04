@@ -191,7 +191,7 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
   // desert varnish down the walls (the edge-e pair of e8350e7bb: one smooth pale slab where the PR head's far range had
   // streaked mesas): streaks in the tree-cover channel of a treeless jebel country, darkening the rock, never painting forest
   const strip = HORIZON_PANORAMA_SHADERS.strip, heightPass = HORIZON_PANORAMA_SHADERS.height;
-  assert.ok(heightPass.includes('gTree = max(gTree, gVarnish);') && heightPass.includes('gVarnish = varnish * uJebel3.z;'), 'the jebels write their varnish after the tree cover');
+  assert.ok(heightPass.includes('gTree = max(gTree, gVarnish);') && heightPass.includes('gVarnish = gJebelVarnish * uJebel3.z;'), 'the jebels write their varnish after the tree cover');
   assert.ok(strip.includes('uJebel.x > 0.0 ? 0.0 : texture2D(uHeight, g).b') && strip.includes('if (uJebel.x > 0.0) col *= 1.0 - texture2D(uHeight, g).b;'),
     'a jebel country darkens its rock by the channel and paints no forest from it');
   for (const [name, c] of [...Object.entries(HORIZON_PANORAMA_CHARACTERS), ...Object.entries(HORIZON_PANORAMA_REGIONAL)]) {
@@ -199,6 +199,28 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
   }
   const jv = resolveHorizonPanoramaCharacter('mesa', { regional: 'jebel' });
   assert.ok(jv.jebelVarnish > 0 && jv.jebelBossM >= 60 && jv.jebelRadiusM <= 800, 'jebel: several bossed, varnished massifs rather than one wide slab');
+}
+// the far jebels v3 (gauntlet wave 50: "flat-coloured, pale-pink, near-rectangular blocks with dead-flat tops", the walls
+// "one even pale tone with no lit or shaded faces"): the strip takes a wall's normal from the massif's own law at 4 m (the
+// grid's rows lie ~35 m apart at 5 km and smoothed a sheer wall into a slope the sun lit from every side), paints Wadi
+// Rum's sandstone on it (dark walls under pale domes, bedded, split by vertical joints), and no massif stands in the near
+// band, whose forms are pressed under the ring's skyline (the dead-flat tops)
+{
+  const strip = HORIZON_PANORAMA_SHADERS.strip, heightPass = HORIZON_PANORAMA_SHADERS.height;
+  assert.ok(strip.includes('float jebelField(vec2 p)') && heightPass.includes('float jebelField(vec2 p)'), 'one jebel law in the height pass and the strip');
+  assert.ok(strip.includes('jebelField(wp.xz + vec2(e4, 0.0))') && strip.includes('jebelField(wp.xz + vec2(0.0, e4))')
+    && /n = normalize\(mix\(n, normalize\(vec3\(-\(hx - h0\) \/ e4, 1\.0, -\(hz - h0\) \/ e4\)\), gJebelW\)\);/.test(strip),
+    'the strip takes a jebel wall\'s normal from its law at 4 m');
+  assert.ok(strip.includes('vec3 stone = mix(lower, upper, contact)') && strip.includes('float cleft = ') && strip.includes('float plane = '),
+    'Wadi Rum\'s sandstone: the dark walls under the pale domes, the bedding planes, the joints\' clefts');
+  assert.ok(heightPass.includes('if (length(centre) < uJebel3.w) continue;'), 'no massif nearer than its class\'s limit');
+  for (const [name, c] of [...Object.entries(HORIZON_PANORAMA_CHARACTERS), ...Object.entries(HORIZON_PANORAMA_REGIONAL)]) {
+    if (name !== 'jebel') assert.equal(c.jebelNearM, 0, `${name}: no near limit`);
+  }
+  const jv = resolveHorizonPanoramaCharacter('mesa', { regional: 'jebel' });
+  assert.ok(jv.jebelNearM >= 4800 && jv.jebelM >= 600, 'jebel: the massifs past the near band\'s press, tall enough to stand over the ring');
+  const redrock = readFileSync(new URL('./maps/badlands.ts', import.meta.url), 'utf8');
+  assert.ok(/panorama: \{ regional: 'jebel', air: 0\.\d+ \}/.test(redrock), 'Redrock\'s far air thinner than the law\'s σ (desert air is clear)');
 }
 // the ring hands the bake its map's own overcast (lightModelCore resolveOvercast of its sky and cloudscape), not the light
 // model the battlefield may still publish from the last map
