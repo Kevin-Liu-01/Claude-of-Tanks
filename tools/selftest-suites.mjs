@@ -249,6 +249,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t90RoadWheelSpacing.selftest.mjs',
     'src/vehicles/profiles/t90RearCageEraFit.selftest.mjs',
     'src/vehicles/profiles/t90BurlakFenderClosure.selftest.mjs',
+    'src/vehicles/profiles/t90ARearFenderSeat.selftest.mjs',
     'src/vehicles/profiles/t90BurlakRearScale.selftest.mjs',
     'src/vehicles/profiles/t90AVladimirProportions.selftest.mjs',
     'src/vehicles/profiles/t90MSTurretArmorSeat.selftest.mjs',
@@ -1176,6 +1177,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/scenery.selftest.mjs',
     // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
     'src/world/fieldStoneSurface.selftest.mjs',
+    // the scenery lane (wave 20): the mud walls' worn render; the walls' feet, drifts and snow loads
+    'src/world/fieldMudSurface.selftest.mjs',
+    'src/world/maps/fieldWallDressing.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
     'src/world/loggingYard.selftest.mjs',
     'src/world/foundryServiceCourt.selftest.mjs',
@@ -1270,6 +1274,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/orchardBathhouse.selftest.mjs',
     // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap
     'src/world/maps/regional/regionalArchitecture.selftest.mjs',
+    'src/world/maps/regional/yards.selftest.mjs', // 2026-10-03: the yards round a kit's houses, clear of roads, plots, objectives and pads
+    'src/world/maps/regional/fineDetailLod.selftest.mjs', // 2026-10-03: a kit's fine joinery drawn near the camera only
     'src/world/mangroveFisheryWharf.selftest.mjs',
     'src/world/structureConnectivity.selftest.mjs',
     'src/world/structureCollision.selftest.mjs',

@@ -51,10 +51,25 @@ export const STRIP_CASES = Object.freeze({
   // round 3 (gauntlet wave 23: "the 'uneven ground' landing is flat"): the Earth drop lands on an uneven patch
   'land-earth': { map: 'mars', mode: 'standard', find: 'uneven', kind: 'landing', drop: 3, view: 'quarter' },
   'land-gearth': { map: 'mars', mode: 'mars', gravity: 'earth', find: 'flat', kind: 'landing', jump: true, view: 'quarter' },
-  'land-mars': { map: 'mars', mode: 'mars', gravity: 'mars', find: 'flat', kind: 'landing', jump: true, view: 'quarter' },
-  'land-moon': { map: 'mars', mode: 'mars', gravity: 'moon', find: 'flat', kind: 'landing', jump: true, view: 'quarter' },
-  // round 3 (wave 23: "the turbo landings read 0.0 m/s forward speed"): Turbo Ball jumps at speed, a running jump
-  'land-turbo': { map: 'mars', mode: 'turbo_ball', find: 'flat', kind: 'landing', jump: true, speed: 'top', throttle: 1,
+  'land-mars': { map: 'mars', mode: 'mars', gravity: 'mars', find: 'flat', kind: 'landing', jump: true, stretch: 2, view: 'quarter' },
+  // round 4 (wave 33, the Moon strips: "reach the ground fastest and stop almost dead, no float"): the Moon's 12.5 m/s
+  // rocket jump is its hardest landing, so a 3 m drop beside it lands at 3.2 m/s; at a sixth of a g a landing's settle
+  // runs on a sixth of the speed, so the Moon's frames after touchdown run four times as long (Mars's twice: its capped
+  // hop lands again at 0.7 s)
+  'land-moon': { map: 'mars', mode: 'mars', gravity: 'moon', find: 'flat', kind: 'landing', jump: true, stretch: 4, view: 'quarter' },
+  'land-moon-drop': { map: 'mars', mode: 'mars', gravity: 'moon', find: 'flat', kind: 'landing', drop: 3, stretch: 4,
+    view: 'quarter' },
+  // round 4 (wave 33: "landings are pure vertical drops: hull pitch and roll never move, even when one side touches
+  // first"): every landing above fell in the attitude it had settled in on that ground; here a level hull falls 3 m onto
+  // a 9-10 degree cross slope, so one track lands first and the landing turns the hull onto the slope
+  'land-cross': { map: 'badlands', mode: 'standard', find: 'cross', kind: 'landing', drop: 3, level: true, view: 'quarter' },
+  // round 4 (wave 33: "peak compression barely scales with impact"): a 1 m drop (3.9 m/s) beside the 3 m one (7.3 m/s)
+  'land-1m': { map: 'mars', mode: 'standard', find: 'flat', kind: 'landing', drop: 1, view: 'quarter' },
+  // round 3 (wave 23: "the turbo landings read 0.0 m/s forward speed"): Turbo Ball jumps at speed, a running jump. Its
+  // flight carries it some 160 m, so the stage search grades the landing zone too (landingZone), and the case runs on
+  // Kestrel Airfield's runway: Olympus Basin has no flat zone that far from a flat stage (wave 33's frames came down on
+  // a 27-degree upslope there)
+  'land-turbo': { map: 'airfield', mode: 'turbo_ball', find: 'flat', kind: 'landing', jump: true, speed: 'top', throttle: 1,
     view: 'quarter' },
 });
 
@@ -106,8 +121,11 @@ function buildLabel(options) {
 
 // ------------------------------------------------------------------------------------------------- in-page helpers
 // Self-contained: stringified into the page, so they run on a built dist as on the dev server. `world` is the live
-// world (its height field and obstacles).
-function pageFindStage(world, kind) {
+// world (its height field and obstacles). `landing` ({ fromM, toM }, along the heading) is a landing zone a running
+// jump's flight carries the hull to, graded as flat ground too (round 3, gauntlet wave 33: Turbo Ball's 33 m/s jump
+// flew 150 m past its flat stage and came down on a 27-degree upslope, on its track fronts 2.3 m over the ground under
+// its root, and the frames read as a tank floating).
+function pageFindStage(world, kind, landing) {
   const hf = world.heightField;
   const h = (x, z) => hf.getHeightAt(x, z);
   const wet = (x, z) => (hf.getWaterMaskAt ? hf.getWaterMaskAt(x, z) : 0) > 0.02;
@@ -120,7 +138,7 @@ function pageFindStage(world, kind) {
       for (let k = 0; k < 8; k++) {
         const yaw = (k * Math.PI) / 4;
         const fx = Math.sin(yaw), fz = Math.cos(yaw);
-        const len = kind === 'rough' ? 40 : kind === 'flat' ? 70 : kind === 'uneven' ? 12 : 10;
+        const len = kind === 'rough' ? 40 : kind === 'flat' ? 70 : kind === 'uneven' || kind === 'cross' ? 12 : 10;
         let ok = true, rough = 0, maxGrade = 0, maxSide = 0, prev = null, prev2 = null, wetAny = false;
         for (let s = -6; s <= len; s += 1) {
           const x = gx + fx * s, z = gz + fz * s;
@@ -135,6 +153,19 @@ function pageFindStage(world, kind) {
           prev2 = prev; prev = y;
         }
         if (!ok || wetAny) continue;
+        if (landing) {
+          // the landing zone: flat, dry, clear and well inside the border; the flight over the ground between is free
+          let lprev = null, lGrade = 0, lSide = 0, lOk = true;
+          for (let s = landing.fromM; s <= landing.toM; s += 1) {
+            const x = gx + fx * s, z = gz + fz * s;
+            if (Math.max(Math.abs(x), Math.abs(z)) > 430 || wet(x, z) || blocked(x, z, 6)) { lOk = false; break; }
+            const y = h(x, z);
+            if (lprev !== null) lGrade = Math.max(lGrade, Math.abs(y - lprev));
+            lSide = Math.max(lSide, Math.abs(h(x + fz * 2, z - fx * 2) - h(x - fz * 2, z + fx * 2)) / 4);
+            lprev = y;
+          }
+          if (!lOk || lGrade > 0.06 || lSide > 0.05) continue;
+        }
         const side = Math.abs(h(gx + fz * 2, gz - fx * 2) - h(gx - fz * 2, gz + fx * 2)) / 4;
         let score;
         if (kind === 'rough') { if (maxGrade > 0.3 || maxSide > 0.12) continue; score = rough; }
@@ -144,6 +175,13 @@ function pageFindStage(world, kind) {
           score = -Math.abs(rough - 0.5) - maxSide;
         }
         else if (kind === 'flat') { if (maxGrade > 0.06 || side > 0.05) continue; score = -rough - maxGrade * 10; }
+        else if (kind === 'cross') {
+          // round 4: a cross slope of about 10 degrees, even along the heading, so a level hull lands on one track first
+          const minSide = Math.min(side, ...[3, 6, 9].map((s) => Math.abs(h(gx + fx * s + fz * 2, gz + fz * s - fx * 2)
+            - h(gx + fx * s - fz * 2, gz + fz * s + fx * 2)) / 4));
+          if (maxGrade > 0.08 || minSide < 0.14 || maxSide > 0.22 || rough > 0.3) continue;
+          score = -Math.abs(Math.atan(side) - 0.175) * 10 - rough - maxGrade;
+        }
         else {
           const grade = (h(gx + fx * 4, gz + fz * 4) - h(gx - fx * 4, gz - fz * 4)) / 8;
           if (side > 0.06 || rough > 0.6) continue;
@@ -173,6 +211,13 @@ function pageResetVertical(state, y, verticalSpeed, grounded) {
   if (grounded !== false && !state.overturned) state._body.tumbling = false;
 }
 
+/** A hull falling level whatever it stood on (round 4's cross-slope drop): its attitude and its turn rates zeroed. */
+function pageLevel(state) {
+  const spring = state._spring;
+  spring.pitch = spring.roll = spring.pitchV = spring.rollV = 0;
+  state.visualPitch = state.visualRoll = 0;
+}
+
 /** movement.ts requestTankJump from the ground (liftTankRide): the jump's speed and the detach clearance. */
 function pageJump(state, jumpMps) {
   state.verticalSpeed = Math.max(state.verticalSpeed || 0, 0) + jumpMps;
@@ -195,11 +240,11 @@ function pageRoadWheels(root) {
   return wheels;
 }
 
-const PAGE_HELPERS = [pageFindStage, pageResetVertical, pageJump, pageRoadWheels].map((fn) => fn.toString()).join('\n');
+const PAGE_HELPERS = [pageFindStage, pageResetVertical, pageLevel, pageJump, pageRoadWheels].map((fn) => fn.toString()).join('\n');
 
 async function installHelpers(page) {
   await page.evaluate(`window.__strip = (() => { ${PAGE_HELPERS}
-    return { pageFindStage, pageResetVertical, pageJump, pageRoadWheels }; })(); true`);
+    return { pageFindStage, pageResetVertical, pageLevel, pageJump, pageRoadWheels }; })(); true`);
 }
 
 async function stageCase(page, stage) {
@@ -317,7 +362,10 @@ async function advance(page, ticks, plan) {
       p.input.steer = 0;
       p.input.aimLocked = true;
       if (plan.jumpTick === tick) H.pageJump(st, p.modeJumpMps);
-      if (plan.dropTick === tick) H.pageResetVertical(st, st.pos.y + plan.drop, 0, false);
+      if (plan.dropTick === tick) {
+        H.pageResetVertical(st, st.pos.y + plan.drop, 0, false);
+        if (plan.level) H.pageLevel(st);
+      }
       const wasAirborne = !st.grounded;
       D.fastForward(1 / 60);
       if (landedAt < 0 && tick > (plan.jumpTick ?? plan.dropTick ?? -1) && st.landingImpactMps > 0 && wasAirborne) {
@@ -432,7 +480,11 @@ async function stampAndRead(page, stamp) {
 }
 
 function captureTicks(caseDef, anchors) {
-  if (caseDef.kind === 'landing') return LANDING_STEPS.map((s) => ({ tick: anchors.landing + s, step: s, t: s / 60 }));
+  if (caseDef.kind === 'landing') {
+    // the frames after touchdown spread by the case's stretch (a low-gravity settle runs that much slower)
+    const stretch = caseDef.stretch ?? 1;
+    return LANDING_STEPS.map((s) => (s > 0 ? s * stretch : s)).map((s) => ({ tick: anchors.landing + s, step: s, t: s / 60 }));
+  }
   if (caseDef.kind === 'stop') {
     return [
       ...STOP_STEPS.map((s) => ({ tick: anchors.brake + s, step: s, t: s / 60 })),
@@ -442,14 +494,34 @@ function captureTicks(caseDef, anchors) {
   return caseDef.frames.map((sec) => ({ tick: Math.round(sec * 60), step: Math.round(sec * 60), t: sec }));
 }
 
+/**
+ * Where a running jump comes down, along its heading from the stage: the run to the jump's tick at the case's speed,
+ * then the flight at that speed for the time the mode's jump stays up (the ruleset's jump speed and gravity), with a
+ * margin either side. Null for a case that does not jump at speed.
+ */
+async function landingZone(page, caseDef, jumpTick) {
+  if (!caseDef.jump || !caseDef.speed) return null;
+  return page.evaluate(({ speed, jumpTick }) => {
+    const p = window.__DEBUG.game.player;
+    const v = speed === 'top' ? p.spec.topSpeedKmh / 3.6 * (p.modeSpeedMultiplier ?? 1) : speed;
+    const g = 9.81 * (p.modeGravityScale ?? 1);
+    const flightS = (2 * (p.modeJumpMps ?? 0)) / g;
+    const reach = v * (jumpTick / 60 + flightS);
+    return { fromM: Math.round(reach - 30), toM: Math.round(reach + 35), reachM: Math.round(reach) };
+  }, { speed: caseDef.speed, jumpTick });
+}
+
 async function runCase(page, caseId, caseDef, options, build) {
   await installHelpers(page);
-  const stage = await page.evaluate(`window.__strip.pageFindStage(window.__DEBUG.world, ${JSON.stringify(caseDef.find)})`);
-  if (!stage) throw new Error(`${caseId}: no ${caseDef.find} stage found on ${caseDef.map}`);
   const startTick = 30;
+  const zone = await landingZone(page, caseDef, startTick);
+  const stage = await page.evaluate(`window.__strip.pageFindStage(window.__DEBUG.world, ${JSON.stringify(caseDef.find)}, ${
+    JSON.stringify(zone)})`);
+  if (stage && zone) stage.landingZone = zone;
+  if (!stage) throw new Error(`${caseId}: no ${caseDef.find} stage found on ${caseDef.map}${zone ? ` with a flat landing zone ${zone.fromM}-${zone.toM} m on` : ''}`);
   const plan = {
     tick: 0, throttle: caseDef.throttle ?? 0, drop: caseDef.drop ?? 0,
-    jumpTick: caseDef.jump ? startTick : null, dropTick: caseDef.drop ? startTick : null,
+    jumpTick: caseDef.jump ? startTick : null, dropTick: caseDef.drop ? startTick : null, level: caseDef.level === true,
     brakeTick: caseDef.brakeAtS != null ? Math.round(caseDef.brakeAtS * 60) : null,
   };
   // dry run: find the anchors (the touchdown, the stop) on the same deterministic stage
@@ -465,6 +537,15 @@ async function runCase(page, caseId, caseDef, options, build) {
       if (caseDef.kind === 'landing' && found.landedAt >= 0) {
         anchors.landing = found.landedAt + 1;
         anchors.landedPos = found.landedPos;
+        // the ground it came down on: its steepest grade and cross slope over 8 m about the touchdown
+        anchors.landingSite = await page.evaluate(({ x, z }) => {
+          const hf = window.__DEBUG.world.heightField;
+          let grade = 0;
+          for (const [a, b] of [[1, 0], [0, 1], [0.7071, 0.7071], [0.7071, -0.7071]]) {
+            grade = Math.max(grade, Math.abs(hf.getHeightAt(x + a * 4, z + b * 4) - hf.getHeightAt(x - a * 4, z - b * 4)) / 8);
+          }
+          return { gradeDeg: +(Math.atan(grade) * 57.2958).toFixed(1) };
+        }, found.landedPos);
         break;
       }
       if (caseDef.kind === 'stop' && found.stoppedAt >= 0) { anchors.stop = found.stoppedAt + 1; break; }

@@ -879,6 +879,8 @@ const T90A_CHEVRON_FORWARD_M = 0.24;
 const T90A_NSVT_RAISE_M = 0.08;
 const T90A_GUN_RADIUS_SCALE = 1.08;
 const T90A_GUN_ASSEMBLY_RAISE_M = 0.08;
+/** Front face of the rear fender seat over the sprocket, where the shoe-clearance notch begins (source frame). */
+export const T90A_REAR_SEAT_FRONT_Z_M = -2.735;
 
 interface T90ALegacyOptions {
   turretSeatZ?: number;
@@ -992,8 +994,13 @@ function addT90ALegacyHull(P: T90BuilderPort): void {
       // The sprocket lives under the forward half of this shelf.  Preserve
       // the source's outer face and full rear seat, but notch only that inner
       // half for real shoe clearance instead of moving the visible fender.
-      P.add('hull', box(0.16, 0.05, 0.18), s * 1.70, 1.17, -2.91);
-      P.add('hull', box(0.056, 0.05, 0.32), s * 1.752, 1.17, -2.66);
+      // 2026-10-03: the notch begins where the shoes need it. The shoes on the sprocket wrap (sprocket z -2.42) reach
+      // back to z -2.712, and the full seat now runs to T90A_REAR_SEAT_FRONT_Z_M, 2.3 cm short of that. Notching from
+      // z -2.82 left open air between the seat and the track, a pocket enclosed in plan: 2 hole cells on the T-90A and
+      // 8 on the BMPT T-90 at its 1.05 size in the standard check's top-down scan.
+      const seatFront = T90A_REAR_SEAT_FRONT_Z_M;
+      P.add('hull', box(0.16, 0.05, seatFront + 3.00), s * 1.70, 1.17, (seatFront - 3.00) / 2);
+      P.add('hull', box(0.056, 0.05, -2.50 - seatFront), s * 1.752, 1.17, (seatFront - 2.50) / 2);
     } else if (i === 1) {
       // The rear climb passes under this segment. Keep the original plan
       // footprint, but seat the shelf on the deck/fender datum instead of

@@ -22,7 +22,7 @@ import { roadSettlementJunction } from './roadSettlementJunction.ts';
 import { roadFencePath, fencePathSampler } from './roadFencePath.ts';
 import { buildingFootprintClearsRoads, roadBuildingFrontage, roadBuildingDoorAxis, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion,
   type RoadFrontageSite } from './roadBuildingFrontage.ts';
-import { getDeviceTier } from '../engine/quality.ts';
+import { getDeviceTier, resolvePresetName } from '../engine/quality.ts';
 
 // Environment richness (2026-09-14, owner: "add back so much environmental details — they
 // feel much barer now"): desktop tiers place 35 % more settlement and roadside clutter than
@@ -47,21 +47,27 @@ import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructu
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import { applyRockShaderHook, fractureRockGeometry, makeRockDetail, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
+import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
 import { paintFieldStoneBuffers } from './fieldStoneSurface.ts'; // the field walls' rubble print (the scenery lane)
+import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
+import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 // world-dressing r1: building-catalog extension + destructible small props
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import {
+  ADOBE_UV_PER_M,
   COURSED_WALLSTONE,
   DESTRUCTIBLE_TYPES,
   FENCE_SEG,
   WALL_SEG,
   bSandbagBroken,
   type DestructiblePropType,
+  buildAdobePilaster,
+  buildDryStoneWallHead,
 } from './maps/inhabitKit.ts';
 import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import { boxClearOfRoadCore, discClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
@@ -129,7 +135,10 @@ import type { UtilityNetwork } from './utilityNetwork.ts';
 import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildContext, type StructureDimensions } from './maps/exteriorDetailKit.ts';
 // regional-buildings lane (2026-10-03): the map's regional architecture kit replaces each placed building's geometry
 // after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
-import { rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
+import { buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
+import { YARD_SHED, gardenParts, planYard, yardKeepOut, type YardWorld } from './maps/regional/yards.ts';
+import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
+import type { RegionalBuildContext } from './maps/regional/types.ts';
 import { makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
 import { geologyBoulderSite } from './landformGeology.ts';
@@ -989,6 +998,26 @@ function* makeFieldStone(
     albedo: toTexture(px, size, { srgb: true, anisotropy }),
     normal: normalFromHeight(hgt, size, 3.0 * size / 512, anisotropy),
     surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.8, roughMax: 0.98, aoMin: 0.6 }),
+  };
+}
+
+/**
+ * The scenery lane (2026-10-03; wave 20, "smooth pillow- and pipe-shaped walls instead of eroded mud brick"): the mud
+ * walls' print (fieldMudSurface.ts) under the map's plaster tone — a worn mud render over the courses of sun-dried
+ * bricks it shows in patches, one tile a wall module. Phones paint it at half size.
+ */
+function* makeFieldMud(
+  anisotropy: number,
+  tone: ToneFunction | null,
+  size: number,
+): Generator<PropsBuildSlice, GeneratedSurfaceTextures, void> {
+  const { px, hgt } = yield* paintFieldMudBuffers(size);
+  applyTone(px, tone);
+  yield { fine: true, stage: 'field-mud-tone' };
+  return {
+    albedo: toTexture(px, size, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, size, 2.4 * size / 512, anisotropy),
+    surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.84, roughMax: 0.98, aoMin: 0.7 }),
   };
 }
 
@@ -2973,6 +3002,11 @@ function* propsBuildSteps(
   const fieldStone = fieldWallBucket === 'fieldStone'
     ? yield* makeFieldStone(aniso, T.stone || null, mobileProps ? 256 : 512)
     : stone;
+  // (and a mud-walled map's walls their own worn render over their courses, not the house plaster)
+  const adobeWallBucket = P.wallStyle === 'adobe' ? 'fieldMud' : 'plaster';
+  const fieldMud = adobeWallBucket === 'fieldMud'
+    ? yield* makeFieldMud(aniso, T.plaster || null, mobileProps ? 256 : 512)
+    : plaster;
 
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
@@ -3002,6 +3036,9 @@ function* propsBuildSteps(
     // the scenery lane (2026-10-03): the dry-stone field walls' rubble print (fieldStoneSurface.ts)
     fieldStone: new THREE.MeshStandardMaterial({ map: fieldStone.albedo, normalMap: fieldStone.normal,
       roughnessMap: fieldStone.surface, aoMap: fieldStone.surface, roughness: 1, metalness: 0 }),
+    // the scenery lane (2026-10-03): the mud walls' worn render over their courses (fieldMudSurface.ts)
+    fieldMud: new THREE.MeshStandardMaterial({ map: fieldMud.albedo, normalMap: fieldMud.normal,
+      roughnessMap: fieldMud.surface, aoMap: fieldMud.surface, roughness: 1, metalness: 0 }),
     wood: new THREE.MeshStandardMaterial({ map: wood.albedo, normalMap: wood.normal,
       roughnessMap: wood.surface, aoMap: wood.surface, roughness: 1, metalness: 0 }),
     dark: new THREE.MeshStandardMaterial({ color: 0x161a1d, roughness: 0.35, metalness: 0.15 }),
@@ -3078,7 +3115,7 @@ function* propsBuildSteps(
     } : {}),
   };
   function configureSurfaceMaterials(): void {
-    for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'wood',
+    for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'fieldMud', 'wood',
       'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
       if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
@@ -3179,8 +3216,8 @@ ${snowCap ? `
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook : grimeHook);
-      // (the field walls' print is the stone material's shader with other maps: it shares the stone program)
-      const programKind = materialKind === 'fieldStone' ? 'stone' : materialKind;
+      // (the field walls' prints are the stone and plaster materials' shaders with other maps: they share their programs)
+      const programKind = materialKind === 'fieldStone' ? 'stone' : materialKind === 'fieldMud' ? 'plaster' : materialKind;
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
@@ -3188,7 +3225,7 @@ ${snowCap ? `
   installSurfaceShaderHooks();
 
   const buckets: CompletePropsBuckets = {
-    plaster: [], plaster2: [], plaster3: [], stone: [], fieldStone: [], roof: [], wood: [], dark: [],
+    plaster: [], plaster2: [], plaster3: [], stone: [], fieldStone: [], fieldMud: [], roof: [], wood: [], dark: [],
     glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [], structureWood: [],
     regionalPlaster: [], regionalPlaster2: [], regionalPlaster3: [], regionalStone: [], regionalRoof: [],
   };
@@ -3219,6 +3256,7 @@ ${snowCap ? `
   const obstacles: PropsCollisionRecord[] = [];
   // the scenery pass (2026-10-03) keeps its rock fields off the trees; the vegetation is released before it runs
   const sceneryTrees = vegetation?.treeObstacles ?? [];
+  const sceneryTreeKinds = (vegetation as { _trees?: ReadonlyArray<{ species: TreeSpecies }> } | null)?._trees ?? null;
   const colliders: CollisionRecord[] = [];
   // crushables — the main.ts hull-radius contact loop (effects_combat r1).
   // Entries are telegraph poles ({index} into the pole InstancedMesh) OR
@@ -3289,12 +3327,25 @@ ${snowCap ? `
     },
     // the field wall is dry stone (inhabitKit.ts) on its own rubble print, except under a brick print, which keeps the
     // coursed module on the stone print
+    // (wave 20, "no snow on top in a snow-buried valley": a snow map's dry-stone module carries the snow load along its
+    // top, so a breached module loses it with its stones)
     ...(sourcedStoneIsBrick(mapId) ? { wallstone: COURSED_WALLSTONE }
-      : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket } }),
+      : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket, ...(snowCap ? { build: snowLoadedWallstone } : {}) } }),
+    // the mud wall on its own worn render (fieldMudSurface.ts), never the house plaster
+    walladobe: { ...DESTRUCTIBLE_TYPES.walladobe, mat: adobeWallBucket },
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
   };
+  /** The dry-stone module with the winter's snow load along its top (fieldWallDressing.ts; one stream of its own). */
+  function snowLoadedWallstone(buildRng: () => number): THREE.BufferGeometry {
+    const wall = DESTRUCTIBLE_TYPES.wallstone.build(buildRng);
+    const snow = buildSnowLoad(wall, 0x5a0c1, { seamless: true });
+    const loaded = mergeGeometries([wall.index ? wall.toNonIndexed() : wall, snow], false);
+    wall.dispose(); snow.dispose();
+    if (!loaded) throw new Error('props: the snow-loaded wall merge produced no geometry');
+    return loaded;
+  }
   const destructibleContext: DestructibleBuildContext = {
     heightField,
     seed,
@@ -3490,6 +3541,9 @@ ${snowCap ? `
   yield { stage: 'yard-clutter' };
   // --- village buildings along the roads ---
   const roads = L.roads;
+  // regional-buildings lane: each kit-built house's solid body (plot-local), for its yard to start at its walls
+  // (maps/regional/yards.ts; keyed by the building's feature, which stays as the base placed it)
+  const regionalBodies = new Map<PlacedBuilding, { minX: number; maxX: number; minZ: number; maxZ: number }>();
   // junction/plaza: the road crossing nearest the village/town center
   function resolveVillageJunction(): { x: number; z: number } {
     if (mapId === 'verdant') return { x: 20, z: 73 };
@@ -3718,9 +3772,23 @@ ${snowCap ? `
     // court donors keep theirs: later passes re-seat those exact parts)
     const regionalDonor = (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery)
       || (!!foundryDonors && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId));
+    let body: { minX: number; maxX: number; minZ: number; maxZ: number } | null = null;
     if (regionalArchitecture && !regionalDonor) {
-      tmp = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
-        { mapId, snowCap: structureContext.snowCap, seed }, px, pz, rot) ?? tmp;
+      const rebuilt = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
+        { mapId, snowCap: structureContext.snowCap, seed }, px, pz, rot);
+      if (rebuilt) {
+        tmp = rebuilt;
+        const b = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
+        for (const list of Object.values(tmp)) for (const g of list as THREE.BufferGeometry[]) {
+          if (g.userData.noCollision) continue;
+          g.computeBoundingBox();
+          const bb = g.boundingBox;
+          if (!bb || bb.isEmpty()) continue;
+          b.minX = Math.min(b.minX, bb.min.x); b.maxX = Math.max(b.maxX, bb.max.x);
+          b.minZ = Math.min(b.minZ, bb.min.z); b.maxZ = Math.max(b.maxZ, bb.max.z);
+        }
+        if (Number.isFinite(b.minX)) body = b;
+      }
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
@@ -3731,6 +3799,7 @@ ${snowCap ? `
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
     mergeInto(buckets, tmp, _mat4);
     buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot, kind: structureId });
+    if (body) regionalBodies.set(buildingFeatures[buildingFeatures.length - 1], body);
     if (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery) {
       wharfFishery = { buckets: tmp, source: { x: px, y: fit.y + 0.05, z: pz, yaw: rot },
         records: [...obstacles.slice(obstacleStart), ...colliders.slice(colliderStart)],
@@ -4547,6 +4616,11 @@ ${snowCap ? `
   // blocks shells/LOS until it dies with the module. Square END/CORNER POSTS
   // stay static dressing (they anchor breach lips visually), as does the
   // authored gapAt breach (crumbled courses + tumbled blocks).
+  // the scenery lane (wave 20, "how things meet the ground"): the walls' feet, drifts and snow loads (fieldWallDressing.ts)
+  const wallDressing = createWallDressing({
+    ground: heightField, snow: snowCap, mobile: mobileProps, adobeBucket: adobeWallBucket, mudUv: ADOBE_UV_PER_M,
+    plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
+  });
   function addWallRun(
     x0: number,
     z0: number,
@@ -4555,8 +4629,9 @@ ${snowCap ? `
     gapAt = -1,
   ): void {
     const style = P.wallStyle || 'fieldstone';
-    // the posts, the breach stubs and the tumbled blocks are the wall's own stone (the field walls' rubble print)
-    const wallB = style === 'adobe' ? 'plaster' : fieldWallBucket;
+    // the posts, the breach stubs and the tumbled blocks are the wall's own stone (the field walls' rubble print) or mud
+    const wallB = style === 'adobe' ? wallDressing.adobeBucket : fieldWallBucket;
+    const breachUv = style === 'adobe' ? wallDressing.mudUv : 0.7; // (the mud print is one tile a module)
     // brick-style maps route to the stone module (urban's 'stone' texture IS
     // the brick print); adobe keeps its own thicker mud module
     const wallKind = style === 'adobe' ? 'walladobe' : 'wallstone';
@@ -4568,9 +4643,31 @@ ${snowCap ? `
     const thick = style === 'adobe' ? 0.52 : 0.46;
     const runH = 1.0 + rng() * 0.15; // family height scale
     let prevBuilt = false;
+    // the scenery lane (wave 20, "how things meet the ground"): each built island of the run gets its foot — the
+    // stones settled at a dry-stone wall's foot, half sunk on both faces, or the mud apron and spalled lumps round an
+    // adobe wall — and on a snow map the drift the wind banks against the windward face. Streams of their own, named by
+    // the island's place; the props stream draws exactly what it drew.
+    let islandFrom = 0;
+    function dressIsland(ta: number, tb: number): void {
+      if (style !== 'adobe' && sourcedStoneIsBrick(mapId)) return;
+      const dressed = wallDressing.island(style === 'adobe', x0 + tx * ta, z0 + tz * ta, x0 + tx * tb, z0 + tz * tb, style === 'adobe' ? thick * 0.5 : 0.23);
+      for (const part of dressed.wall) buckets[wallB].push(part);
+    }
     function endPost(px: number, pz: number): void {
       const py = heightField.getHeightAt(px, pz) - 0.15;
       const ph = runH * 1.05 + 0.3;
+      // the scenery lane (wave 16, "a miniature castle battlement"): a dry-stone run ends in a rubble wall head and a mud
+      // wall in an eroded pier, each from a stream named by its place; a square post capped with a slab stays for the
+      // brick-print walls. The props stream spends the same draws either way (jitterUV's four).
+      if (style === 'adobe' || !sourcedStoneIsBrick(mapId)) {
+        const seedAt = (Math.round(px * 73.1) * 92821) ^ Math.round(pz * 41.7) * 68917;
+        let head = style === 'adobe' ? buildAdobePilaster(seedAt, thick, ph - 0.15) : buildDryStoneWallHead(seedAt, thick, runH * 0.98 + 0.12);
+        jitterUV(head, rng);
+        if (wallDressing.snow && style !== 'adobe') head = wallDressing.loadHead(head, seedAt); // its snow, like its module's
+        head.rotateY(yaw);
+        buckets[wallB].push(head.translate(px, py, pz));
+        return;
+      }
       const post = box(thick + 0.22, ph, thick + 0.22, 0.7);
       jitterUV(post, rng);
       buckets[wallB].push(post.translate(px, py + ph / 2, pz));
@@ -4583,7 +4680,7 @@ ${snowCap ? `
         const z = z0 + tz * (t0 + breachT * (t1 - t0));
         const y = heightField.getHeightAt(x, z) - 0.15;
         const height = 0.30 + rng() * 0.25;
-        const stub = box(thick, height, WALL_SEG * 0.4, 0.7);
+        const stub = box(thick, height, WALL_SEG * 0.4, breachUv);
         jitterUV(stub, rng);
         stub.rotateY(yaw);
         buckets[wallB].push(stub.translate(x, y + height / 2, z));
@@ -4594,7 +4691,7 @@ ${snowCap ? `
         const z = z0 + tz * (t0 + breachT * (t1 - t0)) + (rng() - 0.5) * 1.6;
         const size = 0.16 + rng() * 0.22;
         const block = roughenChunk(
-          box(size * 1.5, size * 0.8, size, 1.2), rng, size * 0.4,
+          box(size * 1.5, size * 0.8, size, style === 'adobe' ? wallDressing.mudUv * 1.6 : 1.2), rng, size * 0.4,
         );
         jitterUV(block, rng);
         block.rotateY(rng() * Math.PI);
@@ -4633,16 +4730,21 @@ ${snowCap ? `
       const cx = x0 + tx * tc, cz = z0 + tz * tc;
       if (inGap || skip) {
         if (!skip && inGap && beginsGap(k, decisionT)) addBrokenBreach(t0, t1);
-        if (prevBuilt) endPost(x0 + tx * t0, z0 + tz * t0); // post at the lip
+        if (prevBuilt) { endPost(x0 + tx * t0, z0 + tz * t0); dressIsland(islandFrom, t0); } // post at the lip
         prevBuilt = false;
         continue;
       }
-      if (!prevBuilt) endPost(x0 + tx * t0, z0 + tz * t0); // run (re)start
+      if (!prevBuilt) { endPost(x0 + tx * t0, z0 + tz * t0); islandFrom = t0; } // run (re)start
       const ya = heightField.getHeightAt(x0 + tx * t0, z0 + tz * t0);
       const yb = heightField.getHeightAt(x0 + tx * t1, z0 + tz * t1);
       const cy = Math.min(ya, yb);
       const tiltX = Math.atan2(yb - ya, t1 - t0) * 0.85;
-      const record = addDestructible(wallKind, cx, cy - 0.13, cz, yaw,
+      // (wave 20: a run turns some of its modules round — a hash of the module's place, never the props stream — so the
+      // kit's one module does not show the same crown and face every three metres; neighbours stand 4 mm apart across
+      // the run, so two turned ends never share a face where they overlap)
+      const turn = (Math.imul(k + 1, 0x9e3779b1) ^ Math.imul(Math.round(x0 * 8 + z0 * 5), 0x85ebca6b)) >>> 31 ? Math.PI : 0;
+      const nudge = k % 2 ? 0.004 : -0.004;
+      const record = addDestructible(wallKind, cx + tz * nudge, cy - 0.13, cz - tx * nudge, yaw + turn,
         runH * (0.94 + rng() * 0.12), tiltX, (rng() - 0.5) * 0.02);
       // Preserve seeded placement/breaches. Once the shared kit is built,
       // fit this same slot to a continuous, grounded masonry span.
@@ -4650,7 +4752,7 @@ ${snowCap ? `
         x1: x0 + tx * t1, z1: z0 + tz * t1 });
       prevBuilt = true;
     }
-    if (prevBuilt) endPost(x1, z1); // closing post
+    if (prevBuilt) { endPost(x1, z1); dressIsland(islandFrom, along); } // closing post
   }
   const wallRuns: WallRun[] = P.wallRuns || [
     [v.x0 + 4, 8, v.x0 + 4, 64, 2],
@@ -6553,6 +6655,148 @@ ${snowCap ? `
   yield* placeTankWrecks();
   yield { fine: true, stage: 'wrecks-finalized' };
 
+  // regional-buildings lane (2026-10-03): the yards round a kit's houses (maps/regional/yards.ts), once every building,
+  // wall, rock and wreck stands: a yard on each house's freest side, its fence or wall modules (destructibles) with a
+  // gate, an outbuilding the kit builds and kitchen-garden beds, each placed only where it clears the road frontage,
+  // the other plots, the solids, the objective discs and the spawn pads. Its own stream: nothing placed earlier moves.
+  function placeRegionalYards(): void {
+    const yard = regionalArchitecture?.yard;
+    if (!yard || !regionalArchitecture) return;
+    const style = regionalArchitecture;
+    const kinds = new Set(yard.kinds);
+    const houses = buildingFeatures.filter((b) => b.kind && kinds.has(b.kind));
+    if (!houses.length) return;
+    const yrngYard = mulberry32(seed + 1307);
+    const keepOut = yardKeepOut(mapId, L.spawns,
+      (cfg as { terrain?: { hardstands?: SceneryHardstand[] } } | null)?.terrain?.hardstands ?? [],
+      heightField.bridgeDecks ?? []);
+    const world: YardWorld = {
+      ground: {
+        roadDist: (x, z) => heightField._roadDist(x, z),
+        water: (x, z) => heightField.getWaterMaskAt(x, z),
+        normalY: (x, z) => heightField.getNormalAt(x, z).y,
+      },
+      plots: buildingFeatures, solids: obstacles, destructibles, keepOut,
+    };
+    const fenceMeta = resolveDestructibleMeta(destructibleContext, yard.fence);
+    const seg = fenceMeta.wall ? WALL_SEG : FENCE_SEG, sink = fenceMeta.wall ? 0.1 : 0.06;
+    // the stage's counts on the props group (receipts and captures read them)
+    const stats = { houses: houses.length, yards: 0, streetYards: 0, modules: 0, gates: 0, sheds: 0, gardens: 0 };
+    group.userData.regionalYards = stats;
+    // a yard's ground grows no crop, tall grass or litter (map.ts holds these holes with the scenery's): discs over the
+    // enclosure, from the house wall to its outer run (the close yard pairs of 2026-10-03: a Hessian farmyard full of
+    // the field's wheat, its beds hidden in it)
+    const holes: Array<{ x: number; z: number; r: number }> = [];
+    group.userData.regionalYardHoles = holes;
+    /** each yard's enclosure in its house's frame (the sown rows stop at it, trimCropRowsInYards) */
+    const rects: Array<{ x: number; z: number; c: number; s: number; x0: number; x1: number; z0: number; z1: number }> = [];
+    for (const house of houses) {
+      const plan = planYard(house, world, yard, yrngYard, seg, regionalBodies.get(house));
+      if (!plan) continue;
+      stats.yards++;
+      {
+        const c = Math.cos(house.rot), s = Math.sin(house.rot);
+        let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+        for (const p of [...plan.modules, ...(plan.gate ? [plan.gate] : []), ...(plan.shed ? [plan.shed] : []), ...(plan.garden ? [plan.garden] : [])]) {
+          const dx = p.x - house.x, dz = p.z - house.z, lx = dx * c - dz * s, lz = dx * s + dz * c;
+          x0 = Math.min(x0, lx); x1 = Math.max(x1, lx); z0 = Math.min(z0, lz); z1 = Math.max(z1, lz);
+        }
+        rects.push({ x: house.x, z: house.z, c, s, x0: x0 - 0.3, x1: x1 + 0.3, z0: z0 - 0.3, z1: z1 + 0.3 });
+        const along = x1 - x0 >= z1 - z0, long = Math.max(x1 - x0, z1 - z0), short = Math.max(1, Math.min(x1 - x0, z1 - z0));
+        const n = Math.max(1, Math.ceil(long / (short * 0.9)));
+        const r = Math.hypot(short / 2, long / (2 * n)) + 0.3;
+        for (let k = 0; k < n; k++) {
+          const t = (k + 0.5) / n;
+          const lx = along ? x0 + (x1 - x0) * t : (x0 + x1) / 2, lz = along ? (z0 + z1) / 2 : z0 + (z1 - z0) * t;
+          holes.push({ x: house.x + lx * c + lz * s, z: house.z - lx * s + lz * c, r });
+        }
+      }
+      if (plan.street) stats.streetYards++;
+      stats.modules += plan.modules.length;
+      if (plan.gate && yard.gate) stats.gates++;
+      for (const m of plan.modules) {
+        const ya = heightField.getHeightAt(m.x - Math.sin(m.yaw) * seg / 2, m.z - Math.cos(m.yaw) * seg / 2);
+        const yb = heightField.getHeightAt(m.x + Math.sin(m.yaw) * seg / 2, m.z + Math.cos(m.yaw) * seg / 2);
+        addDestructible(yard.fence, m.x, Math.min(ya, yb) - sink, m.z, m.yaw, 0.96 + yrngYard() * 0.08, Math.atan2(yb - ya, seg) * 0.85);
+      }
+      if (plan.gate && yard.gate) addDestructible(yard.gate, plan.gate.x, heightField.getHeightAt(plan.gate.x, plan.gate.z) - 0.06, plan.gate.z, plan.gate.yaw, 1);
+      if (plan.shed && yard.shed && style.builders[yard.shed]) {
+        const { x, z, yaw, w: sw, d: sd } = plan.shed;
+        const fit = groundFit(x, z, sw, sd, yaw);
+        if (fit.spread <= 1.0) {
+          const ctx: RegionalBuildContext = {
+            structureId: yard.shed, info: { w: sw, d: sd, h: YARD_SHED.h }, wallBucket: 'plaster',
+            bounds: { minX: -sw / 2, maxX: sw / 2, minZ: -sd / 2, maxZ: sd / 2, maxY: YARD_SHED.h },
+            rng: streamFrom(hashSeed(`${style.id}:yardshed:${mapId}`, seed, x, z, yaw)),
+            variant: streamFrom(hashSeed(`${style.id}:yardshed-variant:${mapId}`, seed, x, z, yaw)),
+            mapId, snowCap: structureContext.snowCap, tier: mobileProps ? 'mobile' : 'desktop',
+          };
+          const parts = buildRegionalParts(style, ctx, streamFrom(hashSeed(`${style.id}:yardshed-weather:${mapId}`, seed, x, z, yaw)));
+          const solid = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
+          for (const list of Object.values(parts)) for (const g of list) {
+            if (g.userData.noCollision) continue;
+            g.computeBoundingBox();
+            const b = g.boundingBox;
+            if (!b) continue;
+            solid.minX = Math.min(solid.minX, b.min.x); solid.maxX = Math.max(solid.maxX, b.max.x);
+            solid.minZ = Math.min(solid.minZ, b.min.z); solid.maxZ = Math.max(solid.maxZ, b.max.z);
+          }
+          // the kit's shed must keep to the shed's plot (its corner was cleared for that plot, not for more)
+          if (Math.max(-solid.minX, solid.maxX) <= sw / 2 + 0.35 && Math.max(-solid.minZ, solid.maxZ) <= sd / 2 + 0.35) {
+            const tmp = parts as unknown as PropsBuckets;
+            addStructureCollision(yard.shed, tmp, x, fit.y + 0.05, z, yaw);
+            _quat.setFromAxisAngle(_upAxis, yaw);
+            _mat4.compose(_posv.set(x, fit.y + 0.05, z), _quat, _one);
+            mergeInto(buckets, tmp, _mat4);
+            buildingFeatures.push({ x, z, w: sw, d: sd, rot: yaw });
+            stats.sheds++;
+          } else {
+            for (const list of Object.values(parts)) for (const g of list) g.dispose();
+          }
+        }
+      }
+      if (plan.garden && !mobileProps) {
+        const { x, z, yaw, w, d } = plan.garden;
+        const fit = groundFit(x, z, w, d, yaw);
+        if (fit.spread <= 0.5) {
+          const parts = gardenParts(w, d, mulberry32(hashSeed(`${style.id}:garden:${mapId}`, seed, x, z)), fit.spread);
+          _quat.setFromAxisAngle(_upAxis, yaw);
+          _mat4.compose(_posv.set(x, fit.y + fit.spread, z), _quat, _one);
+          mergeInto(buckets, parts as unknown as PropsBuckets, _mat4);
+          stats.gardens++;
+        }
+      }
+    }
+    trimCropRowsInYards(rects);
+  }
+  /**
+   * A field's sown rows stop at a yard's fence (the close yard pairs of 2026-10-03: a Hessian farmyard standing in a
+   * wheat plot, its beds hidden in the crop): every crop row span with a corner inside an enclosure leaves the merged
+   * rows' index. The rows' vertices and their seeded draws stay as they were.
+   */
+  function trimCropRowsInYards(rects: ReadonlyArray<{ x: number; z: number; c: number; s: number; x0: number; x1: number; z0: number; z1: number }>): void {
+    const crop = group.children.find((o) => o.name === 'crop-fields') as THREE.Mesh | undefined;
+    const index = crop?.geometry.index;
+    if (!crop || !index || !rects.length) return;
+    const position = crop.geometry.getAttribute('position');
+    const inYard = (v: number) => {
+      const x = position.getX(v), z = position.getZ(v);
+      for (const r of rects) {
+        const dx = x - r.x, dz = z - r.z, lx = dx * r.c - dz * r.s, lz = dx * r.s + dz * r.c;
+        if (lx > r.x0 && lx < r.x1 && lz > r.z0 && lz < r.z1) return true;
+      }
+      return false;
+    };
+    const kept: number[] = [];
+    for (let t = 0; t + 2 < index.count; t += 3) {
+      const a = index.getX(t), b = index.getX(t + 1), c = index.getX(t + 2);
+      if (!inYard(a) && !inYard(b) && !inYard(c)) kept.push(a, b, c);
+    }
+    if (kept.length < index.count) crop.geometry.setIndex(kept);
+  }
+  placeRegionalYards();
+  yield { fine: true, progress: false, stage: 'regional-yards' };
+
   // --- street rubble piles (urban): heaped masonry chunks + broken beams ---
   // r6: every 4th candidate may land in a 90 m OUTSKIRT band around the town
   // rect — shelled approaches carry debris too; the establishing camera used
@@ -7470,9 +7714,24 @@ ${snowCap ? `
   function* placeScenery(): Generator<PropsBuildSlice, void, void> {
     const scenery = (cfg as (PropsMapConfig & SceneryMapConfig) | null)?.scenery;
     if (!scenery) return;
+    // the trees' crown tops, for the pylon lines' towers to stand over (a crown's height from its trunk's, by species)
+    const treeKinds = sceneryTreeKinds;
+    const treeTops: Array<{ x: number; z: number; top: number }> = [];
+    if (treeKinds && scenery.powerLines?.length) {
+      for (const ob of sceneryTrees) {
+        const kind = ob.treeIdx == null ? undefined : treeKinds[ob.treeIdx];
+        const a = kind && TREE_ARCHETYPES[kind.species];
+        if (!a) continue;
+        // (the instance's scale from its trunk's collider; the crown's height from the archetype under the species'
+        // geometry scale, and a sixth more for the tallest card of the crown)
+        const scaleY = (ob.max[1] - ob.min[1]) / a.trunkHeightM;
+        const crown = Math.max(a.fallHeightM, a.canopyCenterM + a.canopyRadiusM) * TREE_GEOMETRY_SCALE[kind.species][1] * 1.16;
+        treeTops.push({ x: (ob.min[0] + ob.max[0]) / 2, z: (ob.min[2] + ob.max[2]) / 2, top: ob.min[1] + crown * scaleY });
+      }
+    }
     const built = yield* composeScenery({
       mapId, scenery, heightField, spawns: [L.spawns.player, ...L.spawns.enemies],
-      obstacles, colliders, trees: sceneryTrees, baked: buckets.baked, conform: conformYardPiece,
+      obstacles, colliders, trees: sceneryTrees, treeTops, baked: buckets.baked, conform: conformYardPiece,
       addDestructible: (kind, x, y, z, yaw, scale) => addDestructible(kind, x, y, z, yaw, scale),
       seed, mobile: mobileProps,
     });
@@ -7500,14 +7759,51 @@ ${snowCap ? `
     // (geometry.ts EmitOptions.shadow).
     const RECEIVE_ONLY_DETAIL = new Set(['structureWood', 'structureMetal']);
     const castsNoShadow = (g: THREE.BufferGeometry) => g.userData.regional === true && g.userData.noCollision === true && g.userData.castsShadow !== true;
+    // regional-buildings lane (2026-10-03, the urban perf blocker): the fine joinery (geometry.ts EmitOptions.fine:
+    // frames, glazing bars, rails, door panels, downpipes, and the sides and caps of timbers, shutter leaves, surrounds,
+    // sills and quoins) is drawn only within the quality preset's fine-detail distance of the camera (updateFineDetail):
+    // at the town's establishing range it is sub-pixel, and ~0.3 M of Steinburg's triangles went to it. It merges by
+    // 120 m cell (60 m cells drew as many fine triangles at Steinburg's establishing view, and 9-10 cells stood in a
+    // street view's frustum), and each bucket's cells are the instances of one multi-draw batch (THREE.BatchedMesh,
+    // culled by the frustum per instance), the bucket's always-drawn receive-only dressing one more: one draw call
+    // whatever the number of cells. A phone builds no fine joinery (regional/index.ts) and culls the rest of its timber dressing by
+    // the same cells, at its own shorter distances.
+    const CELLED = new Set(['structureWood', 'regionalStone']);
+    const FINE_CELL_M = 120;
+    const culled = (g: THREE.BufferGeometry, key: string) => CELLED.has(key) && castsNoShadow(g)
+      && (g.userData.fine === true || (mobileProps && RECEIVE_ONLY_DETAIL.has(key)));
+    type Cell = { list: THREE.BufferGeometry[]; minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
+    const fineCells = (list: THREE.BufferGeometry[]): Cell[] => {
+      const cells = new Map<number, Cell>();
+      for (const g of list) {
+        if (!g.boundingBox) g.computeBoundingBox();
+        const b = g.boundingBox;
+        if (!b || b.isEmpty()) continue;
+        const key = (Math.floor((b.min.x + b.max.x) * 0.5 / FINE_CELL_M) + 4096) * 8192 + Math.floor((b.min.z + b.max.z) * 0.5 / FINE_CELL_M) + 4096;
+        let cell = cells.get(key);
+        if (!cell) { cell = { list: [], minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity, minZ: Infinity, maxZ: -Infinity }; cells.set(key, cell); }
+        cell.list.push(g);
+        cell.minX = Math.min(cell.minX, b.min.x); cell.maxX = Math.max(cell.maxX, b.max.x);
+        cell.minY = Math.min(cell.minY, b.min.y); cell.maxY = Math.max(cell.maxY, b.max.y);
+        cell.minZ = Math.min(cell.minZ, b.min.z); cell.maxZ = Math.max(cell.maxZ, b.max.z);
+      }
+      return [...cells.values()];
+    };
+    /** the batches and their cells' instances (updateFineDetail shows a cell's instance by its box) */
+    const fineDetail: Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: Omit<Cell, 'list'> }> }> = [];
+    group.userData.fineDetail = fineDetail;
     for (const key of Object.keys(buckets)) {
       if (buckets[key].length === 0) continue;
       if (key === 'curtain') for (const geometry of buckets[key]) ensureWorldNightEmissionMask(geometry);
       if (key === 'glass') prepareWorldStaticNightFixture(buckets[key], mats[key]);
-      const lists: Array<[THREE.BufferGeometry[], boolean, string]> = RECEIVE_ONLY_DETAIL.has(key)
-        ? [[buckets[key].filter((g) => !castsNoShadow(g)), true, ''], [buckets[key].filter(castsNoShadow), false, '-detail']]
-        : [[buckets[key], true, '']];
-      for (const [list, casts, suffix] of lists) {
+      const all = buckets[key];
+      const fine = all.filter((g) => culled(g, key));
+      const receiveOnly = RECEIVE_ONLY_DETAIL.has(key);
+      const cast = receiveOnly ? all.filter((g) => !castsNoShadow(g)) : all.filter((g) => !culled(g, key));
+      const coarse = receiveOnly ? all.filter((g) => castsNoShadow(g) && !culled(g, key)) : [];
+      const meshes: Array<[THREE.BufferGeometry[], boolean, string]> = [[cast, true, '']];
+      if (!fine.length) meshes.push([coarse, false, '-detail']);
+      for (const [list, casts, suffix] of meshes) {
         if (!list.length) continue;
         // mergeGeometries requires uniform indexing (ExtrudeGeometry is non-indexed)
         const profile = bucketShadowProfile(list); // round 79: the pieces' cells, before the merge owns them
@@ -7522,9 +7818,54 @@ ${snowCap ? `
         group.add(mesh);
         yield { fine: true }; // loading-speed r1: merge one material family per idle slice
       }
+      if (!fine.length) continue;
+      // the batch: the always-drawn receive-only dressing (instance 0, when there is any) and one instance per cell of
+      // fine joinery; every instance starts visible, so the deployment warm uploads and links it with the rest
+      const cells = fineCells(fine);
+      const parts: THREE.BufferGeometry[] = [];
+      if (coarse.length) parts.push(yield* mergePropsMaterialGeometrySteps(coarse, key));
+      for (const cell of cells) parts.push(yield* mergePropsMaterialGeometrySteps(cell.list, key));
+      const vertices = parts.reduce((n, g) => n + g.getAttribute('position').count, 0);
+      const indices = parts.reduce((n, g) => n + (g.index ? g.index.count : 0), 0);
+      // the batch draws through its own copy of the bucket's material: one material shared by a batched and a plain
+      // mesh re-resolves its program at every switch between them (three's batching parameter), several times a frame
+      const batchMaterial = mats[key].clone();
+      engineCtx.setupShadowMaterial(batchMaterial, grimeHook);
+      batchMaterial.customProgramCacheKey = () => 'world-props-' + key + '-v7' + (snowCap ? 's' : '') + '-batch';
+      retainedSurfaceMaterials.push(batchMaterial);
+      const batch = new THREE.BatchedMesh(parts.length, vertices, Math.max(indices, 1), batchMaterial);
+      batch.name = 'props-bucket-' + key + '-batch';
+      // no per-instance culling or sorting: three would walk and re-upload the draw list every frame. The batch is
+      // culled whole by its own sphere; its cells by the fine-detail distance (updateFineDetail), so the list is
+      // rebuilt only on the frames a cell shows or hides
+      batch.sortObjects = false;
+      batch.perObjectFrustumCulled = false;
+      batch.castShadow = false;
+      batch.receiveShadow = true;
+      batch.matrixAutoUpdate = false;
+      const ids = parts.map((g) => batch.addInstance(batch.addGeometry(g)));
+      for (const g of parts) g.dispose();
+      fineDetail.push({ mesh: batch, cells: cells.map((cell, i) => ({ id: ids[i + (coarse.length ? 1 : 0)],
+        box: { minX: cell.minX, maxX: cell.maxX, minY: cell.minY, maxY: cell.maxY, minZ: cell.minZ, maxZ: cell.maxZ } })) });
+      group.add(batch);
+      yield { fine: true };
     }
   }
   yield* mergeMaterialBuckets();
+  // the scenery lane (wave 34): the snow drifts banked against the walls draw as one mesh of their own on the plaster
+  // (a drift is a low ramp: it receives the cascades and casts none), so a frame can show and hide them
+  if (wallDressing.drifts.length) {
+    const drifts = mergeGeometries(wallDressing.drifts.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+    for (const g of wallDressing.drifts) g.dispose();
+    wallDressing.drifts.length = 0;
+    if (drifts) {
+      const mesh = new THREE.Mesh(drifts, mats.plaster);
+      mesh.name = 'props-snow-drifts';
+      mesh.receiveShadow = true;
+      mesh.matrixAutoUpdate = false;
+      group.add(mesh);
+    }
+  }
   // Append after every ordinary prop so existing network prop identities stay stable.
   for (const clutter of pendingClutter) {
     if (!clutter.activate(destructibles.length)) continue;
@@ -8259,8 +8600,29 @@ ${snowCap ? `
 
   let animatedTimeS = 0; // round 67: the world clock the moored hulls ride
   const _hullPose: MooredHullPose = { heave: 0, roll: 0, pitch: 0 };
+  // regional-buildings lane (2026-10-03): the fine joinery's cells shown within the quality preset's fine-detail distance
+  // of the camera (3D, to the cell's box), hidden 15 m past it (hysteresis); the preset re-read once a second. At High
+  // (900-1080 rows) a 7 cm frame is half a pixel at ~120 m.
+  const FINE_DETAIL_M: Readonly<Record<string, number>> = {
+    ultra: 180, high: 120, medium: 90, low: 70, 'mobile-high': 70, mobile: 60, 'mobile-low': 45,
+  };
+  let fineFar = 120, fineFrames = 0;
+  function updateFineDetail(cameraPos: THREE.Vector3 | null): void {
+    const batches = group.userData.fineDetail as Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number } }> }> | undefined;
+    if (!batches?.length || !cameraPos) return;
+    if (fineFrames-- <= 0) { fineFar = FINE_DETAIL_M[resolvePresetName()] ?? 90; fineFrames = 60; }
+    for (const { mesh, cells } of batches) for (const { id, box: b } of cells) {
+      const dx = Math.max(b.minX - cameraPos.x, 0, cameraPos.x - b.maxX);
+      const dy = Math.max(b.minY - cameraPos.y, 0, cameraPos.y - b.maxY);
+      const dz = Math.max(b.minZ - cameraPos.z, 0, cameraPos.z - b.maxZ);
+      const d = Math.hypot(dx, dy, dz), shown = mesh.getVisibleAt(id);
+      if (shown ? d > fineFar + 15 : d < fineFar) mesh.setVisibleAt(id, !shown);
+    }
+  }
+
   function updateProps(dt: number, cameraPos: THREE.Vector3 | null = null): void {
     updatePoleLod(cameraPos);
+    updateFineDetail(cameraPos);
     if (mooredHulls.length) {
       animatedTimeS += dt;
       for (let i = 0; i < mooredHulls.length; i++) {

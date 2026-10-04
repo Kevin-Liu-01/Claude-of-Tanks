@@ -285,4 +285,6 @@ export const POLDER_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     sourced: { plaster: true, wood: true },
   },
   builders: POLDER_BUILDERS,
+  // the yards: a plank fence round the kitchen garden and the shed, a gate (yards.ts)
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fenceplank', gate: 'gate', shed: 'woodshed', shedSize: [4.1, 4.9], garden: true },
 });

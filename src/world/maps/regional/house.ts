@@ -646,9 +646,10 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
       const pz = end > 0 ? g0.z1 - 0.2 : g0.z0 + 0.2;
       const px = side > 0 ? g0.x1 + 0.08 : g0.x0 - 0.08;
       const gx = roofCx + side * ex;
-      sink.span('structureMetal', Math.min(px, gx) - 0.04, gy - 0.13, pz - 0.04, Math.max(px, gx) + 0.04, gy - 0.05, pz + 0.04, { colour, decor: true });
+      // the swan neck and the pipe (9 cm) are fine joinery (EmitOptions.fine); the gutter keeps the eave line at range
+      sink.span('structureMetal', Math.min(px, gx) - 0.04, gy - 0.13, pz - 0.04, Math.max(px, gx) + 0.04, gy - 0.05, pz + 0.04, { colour, decor: true, fine: true });
       const baseY = spec.plinth ? spec.plinth.h * 0.5 : 0.15;
-      sink.span('structureMetal', px - 0.045, baseY, pz - 0.045, px + 0.045, gy - 0.07, pz + 0.045, { colour, decor: true });
+      sink.span('structureMetal', px - 0.045, baseY, pz - 0.045, px + 0.045, gy - 0.07, pz + 0.045, { colour, decor: true, fine: true });
     }
   }
   return frame;
