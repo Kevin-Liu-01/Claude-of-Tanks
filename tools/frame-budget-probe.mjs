@@ -67,6 +67,11 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   'field-walls': Object.freeze({
     on: `window.__DEBUG.scene.traverse((o) => { if (/^(destructible-wall(stone|adobe)(-broken)?|props-bucket-field(Stone|Mud)|props-snow-drifts)$/.test(o.name)) o.visible = true; })`,
     off: `window.__DEBUG.scene.traverse((o) => { if (/^(destructible-wall(stone|adobe)(-broken)?|props-bucket-field(Stone|Mud)|props-snow-drifts)$/.test(o.name)) o.visible = false; })` }),
+  // the scenery lane (wave 34): the sandbag stacks and the nests' bedding (sceneryKit.ts buildSandbagStack and
+  // buildSandbagBedding: the spoil, the spill and the emptied bag); off hides them, so the delta is their whole cost
+  'sandbag-nests': Object.freeze({
+    on: `window.__DEBUG.scene.traverse((o) => { if (/^(destructible-sandbag(big|small|wall)(-broken)?|props-sandbag-beds)$/.test(o.name)) o.visible = true; })`,
+    off: `window.__DEBUG.scene.traverse((o) => { if (/^(destructible-sandbag(big|small|wall)(-broken)?|props-sandbag-beds)$/.test(o.name)) o.visible = false; })` }),
   // the water / grass simulations' idle sleep (waterRipples.ts, groundPressure.ts): off steps them every frame; the
   // ripple field falls asleep only after 20 s of quiet, so an 'on' block that follows an 'off' one waits that long
   'sim-sleep': Object.freeze({ on: 'window.__WORLD_SIM_DEBUG = Object.assign(window.__WORLD_SIM_DEBUG || {}, { noSleep: false })',
