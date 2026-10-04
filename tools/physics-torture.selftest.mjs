@@ -153,6 +153,13 @@ for (const world of ['mars', 'moon', 'turbo']) {
     g('hop above the drooped line (m)', (m) => Math.max(0, (m.apexes[1] ?? 0) - 0.18), 0.3, 'before: 1.10 m at Mars, 1.54 m at the Moon'),
   ]);
 }
+// Gauntlet wave 23 ("the 0.17 g Moon drop settles like an Earth landing"; the rebound fell back "at about 2.6x lunar
+// gravity"): past its static sag over the seat the hull's springs are unloaded, so a landing's overshoot rises and falls
+// at the world's own gravity, never pulled down at Earth's spring rate.
+check('jump-flat', 'medium', 'moon', [
+  g('overshoot pulled down past the Moon\'s gravity (g)', (m) => m.overshootPullG, 1.02, 'before: 7.0 g'),
+  g('settle short of 0.85 s (s)', (m) => 0.85 - m.landingSettleS, 0, 'before: 0.60 s, an Earth landing\'s timeline'),
+]);
 // Gauntlet wave 2 (the motion strips scored 4.70 and held the merge): the suspension takes the stop.
 // A hard stop dips the hull on its suspension over planted tracks and rocks it back past level; it no longer tips the
 // whole hull, tracks and all, up off flat ground (movement.ts SuspensionRockState.d).

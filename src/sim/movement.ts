@@ -163,7 +163,8 @@ interface RideState {
   /** The rebound a landing's springs owe the hull, returned as they extend (m/s over the ground's rate; 0: none). */
   rebound: number;
   /** 1 while the springs absorb a landing on the tracks (the landing stroke: compression and the return to the seat), at
-   * the landing damping; 0 otherwise. */
+   * the landing damping; 2 while the hull overshoots its seat after it (past its static sag the springs are unloaded,
+   * so the overshoot rises and falls at its own gravity); 0 otherwise. */
   stroke: number;
   /** Height the solver gave the ride (support that rose under it faster than the hull's own travel over a climbable
    * grade explains) that it has not yet come down from: a fall from it is not a fall the hull made (the fall-damage
@@ -706,6 +707,9 @@ const REBOUND_TURN_MPS = 0.25;
  * settles it. Driving keeps the critical damping (no heave bob over every bump).
  */
 const LANDING_ZETA = 0.45;
+/** The landing's overshoot (`_ride.stroke` 2) is the hull's own flight over ground that holds still under it; ground
+ * moving under it faster than this (a face it drives onto, a crest it runs over) hands it back to the ordinary ride. */
+const OVERSHOOT_GROUND_MPS = 0.5;
 /** A closing under this is a settle onto the tracks, not a landing stroke (a hop off a kerb, the small re-landing after
  * a rebound): the ordinary ride takes it without the overshoot. */
 const LANDING_STROKE_MIN_MPS = 2;
@@ -1716,8 +1720,15 @@ function constrainLoadedRide(
   // the ground lifts (a trench's far wall under its nose carried a hull up at 5 m/s, and the rebound added on top of
   // that threw it a metre out of the trench).
   if (ride.rebound > 0 && Math.abs(ride.groundV) > ride.rebound) ride.rebound = 0;
-  // the landing stroke ends once the springs have carried the hull back up through its seat
-  if (ride.stroke > 0 && ride.y >= supportY && ride.v >= ride.groundV) ride.stroke = 0;
+  // The landing stroke (physics lane round 3; gauntlet wave 23: "the 0.17 g Moon drop settles like an Earth landing"):
+  // the springs take the fall (1) and return it; once they have carried the hull up through its seat (2) and past its
+  // static sag over it they are unloaded, so the overshoot is the hull's own, as high and as long as its gravity makes
+  // it, until it is back down at its seat and the ordinary ride settles it (over still ground: ground moving under it
+  // hands it back to the ordinary ride at once). They used to pull it down at their own rate, seven times the
+  // Moon's gravity after a 12.5 m/s landing: every gravity's landing settled on Earth's timeline.
+  if (ride.stroke === 1 && ride.y >= supportY && ride.v >= ride.groundV) ride.stroke = 2;
+  else if (ride.stroke === 2 && ((ride.y <= supportY && ride.v <= ride.groundV) ||
+    Math.abs(ride.groundV) > OVERSHOOT_GROUND_MPS)) ride.stroke = 0;
   const extending = ride.rebound > 0 && ride.v - ride.groundV >= -REBOUND_TURN_MPS;
   const separating = ride.v - ride.groundV > RIDE_DETACH_REL_V_MPS;
   // A ride still closing on ground that sinks away slower than it falls is in contact: it meets that ground within the
@@ -1754,9 +1765,12 @@ function constrainLoadedRide(
       accel = 0;
     }
   } else {
-    const zeta = ride.stroke > 0 ? LANDING_ZETA : RIDE_ZETA;
+    const zeta = ride.stroke === 1 ? LANDING_ZETA : RIDE_ZETA;
     accel = RIDE_OMEGA * RIDE_OMEGA * (supportY - ride.y) + 2 * zeta * RIDE_OMEGA * (ride.groundV - ride.v);
-    if (hang > 0 && accel < -gravity) accel = -gravity;
+    // past its static sag over the seat the springs are unloaded (the wheels hang): on a landing's overshoot nothing
+    // but gravity brings the hull down
+    const unloaded = ride.stroke === 2 && ride.y - supportY > gravity / (RIDE_OMEGA * RIDE_OMEGA);
+    if ((hang > 0 || unloaded) && accel < -gravity) accel = -gravity;
     // The bump stops are progressive (physics lane, 2026-10-03): a fall the springs would not stop in the travel left
     // above the floor is stopped across that travel, not at the floor in one step (a hull bottoming at 9 m/s used to
     // halt dead there, a velocity step the size of the fall). The springs' own work over that travel (linear from here

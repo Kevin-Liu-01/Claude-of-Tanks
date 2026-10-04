@@ -508,6 +508,7 @@ function newMetrics() {
     jerkSamples: [], jerkMaxRadS3: 0,
     bodyPenMaxM: 0, obstaclePenMaxM: 0, hullPenMaxM: 0, stackPenMaxM: 0, roofSinkMaxM: 0, gearCompMaxM: 0,
     trackTicks: 0, trackReachSum: 0, perchedS: 0, trackContactMean: 12,
+    overshootPullG: 0, landingSettleS: 0,
     tunnelled: false, maxHeightM: 0,
     airS: 0, longestAirS: 0, hops: 0, landings: [], contactLandings: [], maxLandingMps: 0, reboundExcessMps: 0, closingExcessMps: 0,
     liftM: 0,
@@ -699,6 +700,11 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
   let lastAirborne = false;
   // the last landing: its closing (the rebound law's input) and the ticks its springs take to return a rebound
   let lastLanding = null;
+  // a landing's overshoot past the springs' static sag over the seat: the ride's hardest pull down there (in the world's
+  // gravity), and the ride's height over its seat after the last hard landing (its settle)
+  const staticSag = gravity / ((2 * Math.PI * 1.8) ** 2);
+  let overshootPrev = null;
+  let settleTrace = null;
   let wallSide = 0;
   let stuckRun = 0;
   // the prediction world over the same collision, seeing every other hull where the authority has it now
@@ -922,6 +928,16 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
       else metrics.hullPenMaxM = Math.max(metrics.hullPenMaxM, overlap);
     }
     if (state.grounded) metrics.gearCompMaxM = Math.max(metrics.gearCompMaxM, state._sup.top - state._ride.y);
+    {
+      const ride = state._ride;
+      const over = ride.y - state._sup.y;
+      const still = Math.abs(ride.groundV ?? 0) < 0.5;
+      if (overshootPrev && state.grounded && overshootPrev.grounded && still && over > staticSag && overshootPrev.over > staticSag) {
+        metrics.overshootPullG = Math.max(metrics.overshootPullG, -(ride.v - overshootPrev.v) / DT / gravity);
+      }
+      overshootPrev = { grounded: state.grounded, v: ride.v, over };
+      if (settleTrace) settleTrace.push(over);
+    }
 
     // 5. tunnelling through a thin wall: the hull centre may never cross the wall line
     if (caseDef.wall) {
@@ -958,6 +974,7 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
       // rise off the landing while its springs return it (updated below for a second)
       metrics.landingTravel.push([+Math.abs(pre.speed).toFixed(2), +Math.abs(state.speed).toFixed(2), +state._ride.v.toFixed(2)]);
       lastLanding = { closing: state.landingImpactMps, tick, travel: metrics.landingTravel.at(-1) };
+      if (state.landingImpactMps > 2) settleTrace = [];
       metrics.maxLandingMps = Math.max(metrics.maxLandingMps, state.landingImpactMps);
       metrics.apexes.push(+(apex - world.fn(state.pos.x, state.pos.z)).toFixed(2));
       apex = -Infinity;
@@ -1034,6 +1051,13 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
   }
   if (restSamples.length > 2) metrics.rest = restStats(restSamples);
   if (metrics.trackTicks) metrics.trackContactMean = metrics.trackReachSum / metrics.trackTicks;
+  if (settleTrace?.length) {
+    // the settle: the last tick the ride was more than 5 mm from where it came to rest after the last hard landing
+    const restOver = settleTrace.at(-1);
+    let last = 0;
+    for (let index = 0; index < settleTrace.length; index++) if (Math.abs(settleTrace[index] - restOver) > 0.005) last = index;
+    metrics.landingSettleS = last * DT;
+  }
   metrics.final = { x: +subject.state.pos.x.toFixed(2), y: +subject.state.pos.y.toFixed(3), z: +subject.state.pos.z.toFixed(2),
     pitch: +subject.state.visualPitch.toFixed(3), roll: +subject.state.visualRoll.toFixed(3), grounded: subject.state.grounded,
     speed: +subject.state.speed.toFixed(2) };
