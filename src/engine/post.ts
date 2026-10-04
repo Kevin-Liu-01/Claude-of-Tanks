@@ -1449,6 +1449,8 @@ const GradeShader = {
     // 2026-10-03: the photographic toe (GRADE_TOE_SLOPE note): x the slope it eases to, y the stops it eases over (0 = off),
     // z / w the stops under the card over which its lift hands over from the pixel's luminance to each channel's own level
     uToe: { value: new THREE.Vector4(0, 0, 0, 0) },
+    // 2026-10-04: a luminance shoulder (QA: GRADE_SHOULDER_SLOPE / _STOPS / _START; off at stops 0)
+    uShoulder: { value: new THREE.Vector4(0, 0, 0, 0) },
     uBlackPoint: { value: GRADE_BLACK_POINT },
     uThermal: { value: 0 },
     uThermalPixel: { value: new THREE.Vector2(1/1280,1/720) },
@@ -1622,6 +1624,7 @@ function createOutputGradePass(): OutputGradePass {
     uniform float uSatLinear;
     uniform float uContrast;
     uniform vec4 uToe;
+    uniform vec4 uShoulder;
     #include <tonemapping_pars_fragment>
     #include <colorspace_pars_fragment>
 
@@ -1654,6 +1657,13 @@ function createOutputGradePass(): OutputGradePass {
         outputColor.rgb = 0.18 * exp2( uContrast * cotU + cotLift );
       } else {
         outputColor.rgb = 0.18 * pow( max( outputColor.rgb, vec3( 1e-6 ) ) * ( 1.0 / 0.18 ), vec3( uContrast ) );
+      }
+      // 2026-10-04 (the sun-bloom lane; QA: GRADE_SHOULDER_*): a shoulder on the pixel's luminance above uShoulder.z stops
+      // over the card — the slope eases from uContrast to uShoulder.x over uShoulder.y stops, every channel alike (off at 0)
+      if ( uShoulder.y > 0.0 ) {
+        float cotShT = max( ( log2( max( sceneLuma, 1e-6 ) * ( 1.0 / 0.18 ) ) - uShoulder.z ) / uShoulder.y, 0.0 );
+        float cotShG = cotShT < 1.0 ? cotShT * cotShT * cotShT * ( 1.0 - 0.5 * cotShT ) : cotShT - 0.5;
+        outputColor.rgb *= exp2( -( uContrast - uShoulder.x ) * uShoulder.y * cotShG );
       }
       #ifdef LINEAR_TONE_MAPPING
         outputColor.rgb = LinearToneMapping( outputColor.rgb );
@@ -2724,7 +2734,12 @@ export function createPost(
       * 0.95
       * Math.min(1, Math.max(0, (16 - camera.fov) / 10));
     const scopeWeight = grade.uniforms.uScope.value;
-    bloom.strength = BLOOM_STRENGTH * (1 - 0.5 * scopeWeight);
+    // 2026-10-04 (the sun-bloom lane): the bloom's strength, threshold and radius through the light model's QA hook
+    bloom.strength = lightTune('BLOOM_STRENGTH', BLOOM_STRENGTH) * (1 - 0.5 * scopeWeight);
+    bloom.threshold = lightTune('BLOOM_THRESHOLD', BLOOM_THRESHOLD);
+    bloom.radius = lightTune('BLOOM_RADIUS', BLOOM_RADIUS);
+    (grade.uniforms.uShoulder.value as THREE.Vector4).set(lightTune('GRADE_SHOULDER_SLOPE', 0.6), lightTune('GRADE_SHOULDER_STOPS', 0),
+      lightTune('GRADE_SHOULDER_START', 2), 0);
     aerial.uniforms.uDensity.value *= 1 - 0.22 * scopeWeight;
     aerial.uniforms.uHazeDensity.value *= 1 - 0.30 * scopeWeight;
     aerial.uniforms.uHazeZoom.value *= 1 - 0.30 * scopeWeight;

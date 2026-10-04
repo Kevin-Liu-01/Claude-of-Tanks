@@ -369,6 +369,8 @@ uniform vec3 uAmbientTop;
 uniform vec3 uAmbientBottom;
 uniform vec3 uSkyMean;
 uniform float uCoverage;
+// 2026-10-04: a closed deck's cover floor (CLOUD_CLOSED_COVER_FLOOR, QA-tunable)
+uniform float uClosedFloor;
 uniform float uTowers;
 uniform float uStratiform;
 uniform float uDensity;
@@ -476,7 +478,7 @@ Weather cloudWeather( vec2 pxz ) {
 	// 2026-10-04 (Titan Gorge's dense overcast: a blue hole at coverage 1): the sheet's ramp maps the equalised field's lowest
 	// values to no cover even at full coverage; a closed deck keeps a thin sheet there instead (a real closed deck's thin
 	// patch reads brighter grey, not blue), ramped in over the last hundredths of the coverage
-	o.cov = max( o.cov, ${f(CLOUD_CLOSED_COVER_FLOOR)} * smoothstep( 0.97, 1.0, uCoverage ) );
+	o.cov = max( o.cov, uClosedFloor * smoothstep( 0.97, 1.0, uCoverage ) );
 	// a front keeps the sky over the camera open: its towers stand off toward the horizon
 	if ( uClearRadius > 0.0 ) o.cov *= smoothstep( uClearRadius * 0.6, uClearRadius * 1.4, length( pxz - uCamPos.xz ) );
 	// the column's type from the vigour channel inside the map's range: 0 stratus, 0.5 cumulus, 1 cumulonimbus
@@ -931,7 +933,7 @@ vec4 farBandLayer( vec3 dir, float cosT, vec3 rayDx, vec3 rayDy, float sceneT, o
 	// the horizon instead of opening gaps of the clear horizon's glow under its edge — and reaches down to the horizon)
 	float fbCov = max( uFarBand, uCoverage );
 	// (2026-10-04: a closed deck's band keeps the same thin-sheet floor as the slab — no clear-sky gaps at its minima)
-	float covB = max( smoothstep( 1.0 - fbCov, 1.0 - fbCov + 0.35, fb ), ${f(CLOUD_CLOSED_COVER_FLOOR)} * smoothstep( 0.97, 1.0, uCoverage ) )
+	float covB = max( smoothstep( 1.0 - fbCov, 1.0 - fbCov + 0.35, fb ), uClosedFloor * smoothstep( 0.97, 1.0, uCoverage ) )
 		* smoothstep( fbStart, fbStart + fbFade, horiz );
 	if ( covB <= 0.0 ) return none;
 	tLayer = tb;
@@ -1598,6 +1600,7 @@ export class VolumetricCloudLayer {
         uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
         // 2026-10-03: the deck's far rows on the aerial pass's overcast target (cloudHaze; hazeLaw.ts hazeTargetTerms)
         uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
+        uClosedFloor: { value: CLOUD_CLOSED_COVER_FLOOR },
         // 2026-10-03: the previous frame's scene depth and the camera that drew it (cloudSceneT)
         tSceneDepth: { value: null }, uSceneDepthOn: { value: 0 }, uSceneNearFar: { value: new THREE.Vector2(0.5, 4000) },
         uDepthRight: { value: new THREE.Vector3(1, 0, 0) }, uDepthUp: { value: new THREE.Vector3(0, 1, 0) },
@@ -2012,6 +2015,7 @@ export class VolumetricCloudLayer {
       const a = this.atmosphere;
       const terms = hazeTargetTerms(overcast, a.fogMix ?? 0, this.hazeTerms);
       (t.uOvercastHaze.value as THREE.Vector4).set(terms.x, terms.y, 0, smoothstep01(overcast / 0.3));
+      t.uClosedFloor.value = lightTune('CLOUD_CLOSED_COVER_FLOOR', CLOUD_CLOSED_COVER_FLOOR);
       const tint = a.fogTint;
       if (tint) (t.uOvercastTint.value as THREE.Vector3).set(tint.r, tint.g, tint.b);
     }

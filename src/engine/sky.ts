@@ -185,6 +185,8 @@ const SKY_KNEE_RANGE = 0.45;
 // radial gradient again, while the asymptote (1.45) stays under the bloom
 // threshold and the true sun disc still tops the range.
 const SKY_KNEE_FALLOFF = 0.11; // 1/e width of the shoulder in luminance units
+/** The legacy compact warm forward-scatter glow's strength on the physically based dome (~5° about the disc). */
+const SKY_SUN_GLOW = 0.5;
 // Horizon haze treatment (r3 critique: "horizon band blows out to near pure
 // white with no hue — reads as fog-card overexposure"). Inside the low-
 // elevation band the dome's luminance is soft-compressed to sit ~10-15% below
@@ -649,6 +651,8 @@ const ATMOSPHERE_DOME_FRAGMENT = /* glsl */`
 uniform vec3 uSunDirection;
 uniform vec3 uSunTransmittance;
 uniform float uSunDiscRadiance;
+// 2026-10-04: the legacy compact glow's strength (SKY_SUN_GLOW)
+uniform float uSunGlow;
 uniform float uEnvBake;
 uniform vec3 uEnvGround;
 // 2026-10-04: the authored fog tint (linear) and the deck's share at the horizon (the light model's overcast); a closed
@@ -705,7 +709,7 @@ void main() {
 	skyCol += uSunTransmittance * ( disc * uSunDiscRadiance );
 	// the legacy compact warm forward-scatter glow (~5°) so the disc keeps its tight golden halo
 	float sunGlow = pow( max( cosSun, 0.0 ), 240.0 );
-	skyCol += vec3( 1.30, 1.02, 0.68 ) * sunGlow * 0.50;
+	skyCol += vec3( 1.30, 1.02, 0.68 ) * sunGlow * uSunGlow;
 	skyCol += ( fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5 ) * ${SKY_DITHER.toFixed(4)};
 	vec3 nightCol = vec3( 0.0 );
 	if ( uNight > 0.001 ) nightCol = cotNightSky( direction, uSunDirection, uGalaxy, uNebula, uPlanetR, uPlanetTint, uEarth ) * uNight;
@@ -1197,6 +1201,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       uSunDirection: { value: new THREE.Vector3(0, 1, 0) },
       uSunTransmittance: { value: new THREE.Color(1, 1, 1) },
       uSunDiscRadiance: { value: legacySunDiscRadiance(sunDir.y) },
+      uSunGlow: { value: SKY_SUN_GLOW },
       uEnvBake: { value: 0 },
       uEnvGround: { value: new THREE.Color(0, 0, 0) },
       uDeckHorizon: { value: new THREE.Vector4(1, 1, 1, 0) },
@@ -1256,6 +1261,12 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     }
     const summary = atmosphereLuts.summary;
     const u = atmosphereMaterial.uniforms;
+    // 2026-10-04 (the sun-bloom lane): the dome's knee and its compact sun glow through the light model's QA hook — the
+    // dome, the aerial pass's target and the cloud trace read the same knee (atmosphereState.knee)
+    (u.uAtmoKnee.value as THREE.Vector3).set(lightTune('SKY_KNEE', SKY_KNEE), lightTune('SKY_KNEE_RANGE', SKY_KNEE_RANGE),
+      lightTune('SKY_KNEE_FALLOFF', SKY_KNEE_FALLOFF));
+    atmosphereState.knee.copy(u.uAtmoKnee.value as THREE.Vector3);
+    u.uSunGlow.value = lightTune('SKY_SUN_GLOW', SKY_SUN_GLOW);
     (u.uAtmoSun.value as THREE.Vector3).copy(sunDir);
     u.uAtmoViewH.value = ATMO_GROUND_KM + params.viewHeightKm;
     u.uAtmoIntensity.value = preset.skyIntensity;
