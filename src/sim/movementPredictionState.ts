@@ -33,10 +33,9 @@ const VERSION_5_COUNT = VERSION_4_COUNT + RIDE_V5.length + DIVE_V5.length;
 const SUPPORT_V6 = ['top'] as const;
 const VERSION_6_COUNT = VERSION_5_COUNT + SUPPORT_V6.length;
 // version 7 (physics lane round 5, 2026-10-04), appended after the version-6 layout so an older checkpoint still decodes
-// (no side-to-side transfer in progress): the weight-transfer share of the rock's roll (`_susp.l`, `_susp.lv`), the
-// dive's side-to-side counterpart, which the support solve seats the tracks without
-const LATERAL_V7 = ['l', 'lv'] as const;
-const VALUE_COUNT = VERSION_6_COUNT + LATERAL_V7.length;
+// (holding no posture): the posture a hull holds over its planted tracks on a grade (`_hold`), which the support solve
+// seats the tracks without, and its share seated with them off a whole-track seat (`_holdSeat`), both part of its attitude
+const VALUE_COUNT = VERSION_6_COUNT + ROCK.length * 2;
 const MAX_ABS_VALUE = 1_000_000;
 const MAX_FLAGS = 2047;
 
@@ -87,7 +86,8 @@ export function captureMovementPredictionState(state: TankState): MovementPredic
   append(values, state._ride, RIDE_V5);
   append(values, state._susp, DIVE_V5);
   append(values, state._sup, SUPPORT_V6);
-  append(values, state._susp, LATERAL_V7);
+  append(values, state._hold, ROCK);
+  append(values, state._holdSeat, ROCK);
   if (!finiteValues(values)) return null;
   const flags = Number(supportInitialized) | Number(state._ride.grounded) << 1 |
     Number(state._body.tumbling) << 2 | Number(state._body.dynamicSupport) << 3 |
@@ -149,11 +149,17 @@ export function applyMovementPredictionState(
   // a checkpoint before version 6 has the top contact at the seat
   if (count >= VERSION_6_COUNT) offset = restore(state._sup, SUPPORT_V6, values, offset);
   else state._sup.top = state._sup.y;
-  // a checkpoint before version 7 has no side-to-side weight transfer in progress
-  if (count === VALUE_COUNT) restore(state._susp, LATERAL_V7, values, offset);
-  else {
-    state._susp.l = 0;
-    state._susp.lv = 0;
+  // a checkpoint before version 7 holds no posture over its tracks
+  if (count === VALUE_COUNT) {
+    offset = restore(state._hold, ROCK, values, offset);
+    restore(state._holdSeat, ROCK, values, offset);
+  } else {
+    for (const held of [state._hold, state._holdSeat]) {
+      held.p = 0;
+      held.r = 0;
+      held.pv = 0;
+      held.rv = 0;
+    }
   }
   return true;
 }

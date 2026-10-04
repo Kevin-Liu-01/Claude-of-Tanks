@@ -25,9 +25,10 @@
  * Version 6 (physics lane round 3, 2026-10-03) appends the hull's highest track contact beside the seat (`_sup.top`,
  * 53 values): the springs carry a hull on uneven ground under its highest contact, and the ride reads both, so a replay
  * needs the pair. A version-5 or version-4 checkpoint (an older authority) still decodes, its top contact at its seat.
- * Version 7 (physics lane round 5, 2026-10-04) appends the weight-transfer share of the suspension rock's roll (`_susp.l`,
- * `_susp.lv`, 55 values), the side-to-side counterpart of the dive: the tracks are seated without it, so a replay on a
- * side slope or mid-landing needs it. An older checkpoint still decodes, with no side-to-side transfer in progress.
+ * Version 7 (physics lane round 5, 2026-10-04) appends the posture a hull holds over its planted tracks on a grade and
+ * its share seated with them off a whole-track seat (`_hold`, `_holdSeat`: pitch, roll and their rates, 61 values):
+ * they are part of the hull's attitude beside the attitude spring, so a replay on a grade needs them. An older checkpoint
+ * still decodes, holding none.
  */
 import type { MovementContactGeometry, TankState } from '../../sim/movement.ts';
 
@@ -50,8 +51,7 @@ const DIVE_V5 = ['d', 'dv'] as const;
 const VERSION_5_VALUES = VERSION_4_VALUES + RIDE_V5.length + DIVE_V5.length;
 const SUPPORT_V6 = ['top'] as const;
 const VERSION_6_VALUES = VERSION_5_VALUES + SUPPORT_V6.length;
-const LATERAL_V7 = ['l', 'lv'] as const;
-export const MOVEMENT_CHECKPOINT_VALUES = VERSION_6_VALUES + LATERAL_V7.length;
+export const MOVEMENT_CHECKPOINT_VALUES = VERSION_6_VALUES + ROCK.length * 2;
 const MAX_ABS_VALUE = 1_000_000;
 const MAX_FLAGS = 2047;
 
@@ -99,7 +99,8 @@ export function captureMovementCheckpoint(state: TankState): MovementCheckpoint 
   append(values, state._ride, RIDE_V5);
   append(values, state._susp, DIVE_V5);
   append(values, state._sup, SUPPORT_V6);
-  append(values, state._susp, LATERAL_V7);
+  append(values, state._hold, ROCK);
+  append(values, state._holdSeat, ROCK);
   if (!validMovementValues(values)) return null;
   const flags = Number(supportInitialized) | Number(state._ride.grounded) << 1 |
     Number(state._body.tumbling) << 2 | Number(state._body.dynamicSupport) << 3 |
@@ -111,8 +112,8 @@ export function captureMovementCheckpoint(state: TankState): MovementCheckpoint 
 
 /**
  * Restore a checkpoint onto a state; false (and no change) when the layout is not the current version, version 6 (decoded
- * with no side-to-side transfer in progress), version 5 (also with its top contact at its seat) or version 4 (also with
- * no landing stroke or dive in progress), or a value is unsafe.
+ * holding no posture over its tracks), version 5 (also with its top contact at its seat) or version 4 (also with no
+ * landing stroke or dive in progress), or a value is unsafe.
  */
 export function applyMovementCheckpoint(
   state: TankState, checkpoint: MovementCheckpoint, contact: MovementContactGeometry | null = null,
@@ -161,11 +162,17 @@ export function applyMovementCheckpoint(
   // a checkpoint before version 6 has the top contact at the seat (the springs did not seat a hull under it)
   if (count >= VERSION_6_VALUES) offset = restore(state._sup, SUPPORT_V6, values, offset);
   else state._sup.top = state._sup.y;
-  // a checkpoint before version 7 has no side-to-side weight transfer in progress
-  if (count === MOVEMENT_CHECKPOINT_VALUES) restore(state._susp, LATERAL_V7, values, offset);
-  else {
-    state._susp.l = 0;
-    state._susp.lv = 0;
+  // a checkpoint before version 7 holds no posture over its tracks
+  if (count === MOVEMENT_CHECKPOINT_VALUES) {
+    offset = restore(state._hold, ROCK, values, offset);
+    restore(state._holdSeat, ROCK, values, offset);
+  } else {
+    for (const held of [state._hold, state._holdSeat]) {
+      held.p = 0;
+      held.r = 0;
+      held.pv = 0;
+      held.rv = 0;
+    }
   }
   return true;
 }

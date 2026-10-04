@@ -879,16 +879,29 @@ contact constraints and cannot be crossed by residual uphill speed.
   solve seats the tracks without it, and the road wheels conform under it (front compressed, rear drooped). It is
   limited by the suspension travel left at each end, and off a whole-track seat (a trench crossed, a crest, an edge)
   it joins the rock the tracks are seated at. A hard stop dips the hull 2.5-3.5 degrees with its tracks planted and
-  rocks it back past level (about 0.9 degree) when the tracks stop pulling. So does the gravity the tracks hold the
+  rocks it back past level (about 0.9 degree) when the tracks stop pulling.
+- *A hull holds a posture over its tracks on a grade, and it is the hull's attitude.* The gravity the tracks hold the
   hull against on a grade (physics lane round 5; gauntlet wave 38: "on a 17.9-degree grade the front and rear stations
-  carry about the same travel ... a real tank shows a clear rear-heavy gradient"): along the hull it loads the downhill
-  end and across it the downhill track, the moment it leaves under the centre of mass (45 % of the hull's height over
-  its tracks) taken by the springs' pitch and roll stiffness, the ride's rate over the stations along each track and
-  over the two tracks (`holdTransferAngles`). Along the hull it joins the dive; across it, the dive's side-to-side
-  counterpart (`_susp.l`, which the movement checkpoint carries from version 7) rolls the hull over its planted tracks
-  the same way. Parked facing up a 25° grade the medium hull pitches 1.1° (rendered) further onto its downhill tail, its
-  stations 17 cm apart end to end; on a 20° cross slope it rolls 0.8° onto its downhill track, 6 cm under the uphill
-  one. A slide, or a hull on its shell, holds nothing and transfers nothing.
+  carry about the same travel ... a real tank shows a clear rear-heavy gradient") loads the downhill end along the hull
+  and the downhill track across it: the moment it leaves under the centre of mass (45 % of the hull's height over its
+  tracks) is taken by the springs' pitch and roll stiffness, the ride's rate over the stations along each track and over
+  the two tracks (`holdTransferAngles`). The grade is the ground's under the tracks, the terrain fit's, not the hull's
+  own attitude, which carries the posture a hydraulic suspension aims it with and a shot's recoil. The posture (`_hold`,
+  drawn at the rock's visible scale and reached critically damped: a parked hull's attitude is still within a second
+  and a half, and the fit's steps on a trench's walls reach it smoothed) is part of the hull's attitude: visualPitch
+  and visualRoll are the attitude spring plus it, so the armour, the bores and launch mouths, the aim solves (a
+  fixed-bore casemate's hydraulic lay included), the snapshot and the renderer read one attitude, and at rest the
+  rendered rock adds nothing to it. The support solve seats the tracks at the spring's attitude, without it, so the
+  hull pitches and rolls over planted tracks and the road wheels conform under it. Off a whole-track seat it joins the
+  share the tracks are seated at (`_holdSeat`, relaxing at the rock's rate), as the dive joins the rock; the suspension
+  travel limits it with the dive; the movement checkpoint carries both from version 7. Parked facing up a 25° grade the
+  medium hull pitches 1.1° further onto its downhill tail, its stations 17 cm apart end to end; on a 20° cross slope it
+  rolls 0.8° onto its downhill track, 6 cm under the uphill one. A slide, or a hull on its shell, holds nothing and
+  transfers nothing. A landing is judged by its tracks' attitude, the spring's, not the posture. (Held in the rendered
+  rock, as first built, the posture put the drawn hull off the authority's at rest: a UDES 03 laid its fixed bore 0.69
+  degree off its sight on flat ground, where its own hydraulic nose-up posture read as a grade, and 1.08 degrees off on
+  a 14-degree grade; a ZTZ-100's launch mouth sat 1 cm off the server's on its first shot and 8 mm once settled on a
+  6-degree side slope.)
 - *A level landing nods about the centre of mass.* The springs stop a fall at the middle of the tracks' contact, and
   the hull's centre of mass lies off that point along the hull (physics lane round 5; gauntlet wave 38: "flat
   landings are perfectly level pistons"). Its anatomy places it: the turret's share (30 %) at the turret's pivot, the
