@@ -46,6 +46,7 @@ import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNe
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import { applyRockShaderHook, boulderKindFor, buildBoulderForm, makeRockDetail, paintBoulder, rockDressingFor, rockLithologyFor } from './rockDressing.ts'; // round 75 item 6
+import { applyPoleTimberHook, markPoleTimber } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
@@ -3112,6 +3113,8 @@ function* propsBuildSteps(
       vertexColors: true, roughness: 0.95, metalness: 0,
     }),
     baked: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }),
+    // the scenery lane (after wave 57): the telegraph poles' weathered timber, painted by its hook (poleTimber.ts)
+    pole: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }),
     // Round 75: painted corrugated steel — the atlas luminance under a vertex-colour livery, its ORM blue channel
     // the rust mask the weathering hook below mixes toward rust.
     steel: new THREE.MeshStandardMaterial({
@@ -3177,6 +3180,7 @@ function* propsBuildSteps(
     mats.steel.envMapIntensity = 0.42; // round 75: painted sheet, a little sky on the crests
     mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance
     mats.baked.envMapIntensity = 0.5; // flat-shaded sourced models: no spec sparkle
+    mats.pole.envMapIntensity = 0.4; // dry, checked timber
     mats.vehicle.envMapIntensity = 0.58;
     mats.structureWood.envMapIntensity = 0.34;
     mats.structureCanvas.envMapIntensity = 0.22;
@@ -3269,6 +3273,9 @@ ${snowCap ? `
   // lane, 2026-10-04: the map's beds, lichen and varnish, the contact darkening)
   const rockDressing = rockDressingFor(mapId, P.rockSoilTone ?? null, snowCap);
   const rockHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRockShaderHook(shader, rockDressing, rockDetail.lichen); };
+  // the telegraph poles (the scenery lane, after wave 57): creosote-dark to silvered timber, grain, checks, a stained foot;
+  // the dusty maps' sun-bleached
+  const poleHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyPoleTimberHook(shader, rockDressing.dust >= 0.5); };
   // the scenery lane (wave 48, "the same stone pattern clearly tiles going right"): a run repeats the kit's one wall
   // module, so the field print's window shifts along the wall by a hash of each module's place (sixteen steps of seven
   // sixteenths of a tile, u only: the print's bands lie in v) — every module's stones take tones of their own. Only the
@@ -3298,7 +3305,7 @@ ${snowCap ? `
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
-          : materialKind === 'fieldStone' ? fieldStoneHook : grimeHook);
+          : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook : grimeHook);
       // (the mud print is the plaster material's shader with another map, the hessian the canvas's: they share their
       // programs; the field print has its own, for the modules' shifted windows)
       const programKind = materialKind === 'fieldMud' ? 'plaster' : materialKind === 'burlap' ? 'structureCanvas' : materialKind;
@@ -5380,12 +5387,14 @@ ${snowCap ? `
     // 9.5 source metres apart plus conductor faces between them. Use its
     // near-post slice as the physical primitive, then let terrain policy and
     // the live utility network decide whether a station has one or two posts.
+    // the scenery lane (after wave 57, Frosthollow's "beige column"): its wood is marked for the poles' timber material
+    // (poleTimber.ts) on a clone — the baked source stays cached unmarked
     const poleGeo = SOURCED.poles && P.telegraph
-      ? bakedGeometry('telephone_pole_polygoogle',
+      ? markPoleTimber(bakedGeometry('telephone_pole_polygoogle',
         {
           targetH: 7.4, sink: 0.15, sourceZMin: -1,
           whiteCap: [0.14, 0.21, 0.16],
-        }) : null;
+        }).clone()) : null;
     // r4 terrain_environment: record pole stations — catenary WIRES are strung
     // between consecutive poles below (the bare pole line was a critique item:
     // "telephone poles have no visible wires, they read as bare sticks")
@@ -7552,9 +7561,9 @@ ${snowCap ? `
       poleMatrices = matrixStore;
       poleHigh = new Uint8Array(e.list.length);
       poleHigh.fill(1);
-      poleFullIM = new THREE.InstancedMesh(e.geo, mats.baked, e.list.length);
+      poleFullIM = new THREE.InstancedMesh(e.geo, mats.pole, e.list.length);
       poleDistanceIM = new THREE.InstancedMesh(
-        makeTelephonePoleDistanceGeometry(), mats.baked, e.list.length);
+        markPoleTimber(makeTelephonePoleDistanceGeometry()), mats.pole, e.list.length);
       for (const mesh of [poleFullIM, poleDistanceIM]) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;

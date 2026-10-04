@@ -1184,6 +1184,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
     'src/world/rockDressing.selftest.mjs',
+    // the scenery lane (after wave 57): the telegraph poles' weathered timber
+    'src/world/poleTimber.selftest.mjs',
     'src/world/scenery.selftest.mjs',
     // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
     'src/world/fieldStoneSurface.selftest.mjs',
