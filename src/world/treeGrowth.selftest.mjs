@@ -412,7 +412,8 @@ const shrubRows = [];
     } finally { restore(); }
   };
   const pools = (world) => world.group.children.filter((m) => m.isInstancedMesh && (m.userData.treeTrunk || m.userData.treeFoliage || m.userData.treeCanopyShadowProxy) && m.userData.treeLod !== 'far');
-  // the bark sheet: four 256-column styles for the grown trees, the legacy single sheet everywhere else
+  // the bark sheet: five 256-column styles for the grown trees (trees round 4: the fifth their furrowed bark), the legacy
+  // single sheet everywhere else
   const barkWidth = (world) => pools(world).find((m) => m.userData.treeTrunk).material.map.image.width;
   // the bark sheet's first 256-column block (the furrowed sheet the legacy trunks read), as pixels
   const barkBlock0 = (world) => { const img = pools(world).find((m) => m.userData.treeTrunk).material.map.image;
@@ -433,8 +434,27 @@ const shrubRows = [];
     assert.ok(desktop.group.userData.battleSnags.converted < desktop._trees.length * 0.025,
       `a few snags (${desktop.group.userData.battleSnags.converted} of ${desktop._trees.length})`);
     assert.equal(V.vegetationGrowsTrees(), true);
-    assert.equal(barkWidth(desktop), 1024, 'the grown trees read the four-style bark sheet');
+    assert.equal(barkWidth(desktop), 1280, 'the grown trees read the five-style bark sheet');
     desktopBlock0 = barkBlock0(desktop);
+    // trees round 4 (2026-10-04, the gauntlet's wave 46 on Saltwind's olive: "a repeating tyre-tread chevron bark
+    // texture"): the grown trees' furrowed bark (style 4) — about nine wandering furrows round the stem in every row,
+    // its mean reflectance within 3 % of the legacy furrowed sheet's (style 0), so a grown trunk keeps its tint's value
+    {
+      const img = pools(desktop).find((m) => m.userData.treeTrunk).material.map.image;
+      const data = img.getContext('2d').getImageData(0, 0, img.width, 256).data, W = img.width;
+      const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+      const luma = (x, y) => { const i = (y * W + x) * 4; return 0.2126 * lin(data[i]) + 0.7152 * lin(data[i + 1]) + 0.0722 * lin(data[i + 2]); };
+      const mean = (x0) => { let sum = 0; for (let y = 0; y < 256; y++) for (let x = 0; x < 240; x++) sum += luma(x0 + x, y); return sum / (240 * 256); };
+      const m0 = mean(0), m4 = mean(4 * 256);
+      assert.ok(Math.abs(m4 / m0 - 1) < 0.03, `the grown furrowed bark keeps the sheet's reflectance (${m4.toFixed(4)} against ${m0.toFixed(4)})`);
+      let furrows = 0;
+      for (let y = 0; y < 256; y += 4) {
+        const row = Array.from({ length: 240 }, (_, x) => { let sum = 0; for (let k = -2; k <= 2; k++) sum += luma(4 * 256 + ((x + k + 240) % 240), y); return sum / 5; });
+        const rowMean = row.reduce((a, b) => a + b, 0) / 240;
+        for (let x = 0; x < 240; x++) if (row[x] < row[(x + 239) % 240] && row[x] <= row[(x + 1) % 240] && row[x] < rowMean * 0.92) furrows++;
+      }
+      assert.ok(furrows / 64 >= 7.5 && furrows / 64 <= 11.5, `about nine furrows round the stem (${(furrows / 64).toFixed(1)} a row)`);
+    }
     const meshes = pools(desktop);
     const trunks = meshes.filter((m) => m.userData.treeTrunk), proxies = meshes.filter((m) => m.userData.treeCanopyShadowProxy);
     assert.equal(proxies.length, trunks.length, 'one shadow proxy per near pool');
@@ -472,7 +492,7 @@ const shrubRows = [];
       assert.equal(m.geometry.index.count / 3, m.geometry.getAttribute('position').count / 2, 'two triangles to four vertices');
     }
   } finally { desktop.dispose(); disposeObject3DResources(desktop.group); }
-  // the Garage groves (2026-10-02): the desktop kit grows its tree — welded wood on the four-style bark sheet (its
+  // the Garage groves (2026-10-02): the desktop kit grows its tree — welded wood on the five-style bark sheet (its
   // styled UVs prepared into the sheet), the species' spray atlas or the palm's frond atlas
   {
     const restore = canvas();
@@ -482,7 +502,7 @@ const shrubRows = [];
         try {
           assert.equal(kit.detailTier, 'battlefield-near');
           assert.ok(kit.trunk.index && kit.foliage.index, `${species}: a grown garage tree`);
-          assert.equal(kit.trunkMaterial.map?.image.width, 1024, `${species}: the four-style bark sheet`);
+          assert.equal(kit.trunkMaterial.map?.image.width, 1280, `${species}: the five-style bark sheet`);
           assert.ok(kit.trunkMaterial.normalMap && kit.foliageMaterial.map, `${species}: bark normals and the foliage atlas`);
           const uv = kit.trunk.getAttribute('uv');
           for (let i = 0; i < uv.count; i++) assert.ok(uv.getX(i) >= 0 && uv.getX(i) <= 1, `${species}: bark UVs inside the sheet`);
@@ -606,7 +626,7 @@ const shrubRows = [];
   try {
     for (const trunk of pools(legacy).filter((m) => m.userData.treeTrunk)) assert.equal(trunk.geometry.userData.shadowHull, undefined, 'legacy trunks carry no hull');
     assert.equal(barkWidth(legacy), 256, 'a legacy build keeps its single bark sheet');
-    assert.equal(barkBlock0(legacy), desktopBlock0, 'the four-style sheet opens with the single sheet, pixel for pixel');
+    assert.equal(barkBlock0(legacy), desktopBlock0, 'the five-style sheet opens with the single sheet, pixel for pixel');
     assert.equal(records(legacy), desktopRecords, 'collision and concealment records are tier-independent (snags are a look)');
     for (const m of legacy.group.children.filter((c) => c.userData.bush || c.userData.understorey)) {
       assert.ok(!m.geometry.index && !m.geometry.getAttribute('aCard'), 'a legacy build keeps the round-8 shrub cards');

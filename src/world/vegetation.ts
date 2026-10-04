@@ -539,7 +539,9 @@ const TREE_BARK_COLUMNS = 240;
 // 1 the scaly plates of a pine or spruce, 2 the smooth mottled bark of a eucalyptus or fir, 3 the papery lenticelled
 // white of a birch or aspen. The grown trees (treeGrowth.ts) select a style through their u (2 + 2 × style + the
 // fraction round the stem); every legacy builder's u in [0, 1] stays on style 0 and the snow's -1 on the strip.
-const TREE_BARK_STYLES = 4;
+// Trees round 4 (2026-10-04): 4 the grown trees' furrowed bark (paintMeanderingFurrows; style 0 keeps the legacy
+// sheet's pixels for the phones and the legacy builders).
+const TREE_BARK_STYLES = 5;
 const TREE_BARK_ATLAS_WIDTH = TREE_SURFACE_SIZE * TREE_BARK_STYLES;
 function _nrmFromHeight(h: Float32Array, s: number, strength: number, w = s): THREE.CanvasTexture {
   const px = new Uint8ClampedArray(w * s * 4);
@@ -778,10 +780,79 @@ function paintBarkStyles(ctx: CanvasRenderingContext2D, rng: RandomSource, s: nu
     }
     ctx.globalAlpha = 1;
   });
-  // the gutters of styles 1–3 continue their first columns (filtering across the stem's seam stays continuous)
+  paintMeanderingFurrows(ctx, rng, s);
+  // the gutters of styles 1–4 continue their first columns (filtering across the stem's seam stays continuous)
   for (let style = 1; style < TREE_BARK_STYLES; style++) {
     ctx.drawImage(ctx.canvas, style * s, 0, s - B, s, style * s + B, 0, s - B, s);
   }
+}
+
+/**
+ * Trees round 4 (2026-10-04, the gauntlet's wave 46 on Saltwind's olive: "a repeating tyre-tread chevron bark
+ * texture"): style 4, the grown trees' furrowed bark. Style 0 laid thirty fissures down the sheet, each jittered point
+ * by point (a fresh phase every 12 px), so the furrows ran as parallel zigzags: a tread. Here the ridges wander as one
+ * field — nine ridges round the stem, their courses warped by a few smooth waves of whole periods (so the sheet tiles
+ * both ways) that vary across the stem as well as down it, so no two furrows run parallel; a second, finer ridge set
+ * interferes with the first where the ridges merge and split, and each ridge breaks across at its own cracks into
+ * plates. Painted texel by texel into its 240 columns; its mean reflectance is held to style 0's, so a grown trunk's
+ * tint keeps its calibration.
+ */
+function paintMeanderingFurrows(ctx: CanvasRenderingContext2D, rng: RandomSource, s: number): void {
+  const B = TREE_BARK_COLUMNS, style = 4, ridges = 9;
+  // a periodic value noise (a lattice of n × n cells over the sheet, smoothly interpolated): the sheet tiles both ways
+  const lattice = (n: number): ((u: number, v: number) => number) => {
+    const g = Array.from({ length: n * n }, () => rng());
+    return (u: number, v: number): number => {
+      const x = (((u % 1) + 1) % 1) * n, y = (((v % 1) + 1) % 1) * n;
+      const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
+      const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+      const at = (i: number, j: number): number => g[((j + n) % n) * n + ((i + n) % n)];
+      const a = at(x0, y0), b = at(x0 + 1, y0), c = at(x0, y0 + 1), d = at(x0 + 1, y0 + 1);
+      return (a + (b - a) * sx) * (1 - sy) + (c + (d - c) * sx) * sy;
+    };
+  };
+  const wander1 = lattice(3), wander2 = lattice(6), wander3 = lattice(12), widthN = lattice(5), plateN = lattice(9);
+  // each ridge's cracks: two to five across it at their own heights, each crossing part of it
+  const cracks = Array.from({ length: ridges }, () => Array.from({ length: 2 + ((rng() * 4) | 0) },
+    () => ({ v: rng(), a: rng() * 0.35, b: 0.55 + rng() * 0.45, w: 0.008 + rng() * 0.014 })));
+  const height = new Float32Array(B * s);
+  let sum = 0;
+  for (let y = 0; y < s; y++) for (let x = 0; x < B; x++) {
+    const u = x / B, v = y / s;
+    // the courses wander as one field, its waves as varied across the stem as down it: no two furrows parallel
+    const warp = 0.075 * (wander1(u, v) - 0.5) + 0.045 * (wander2(u, v * 2) - 0.5) + 0.02 * (wander3(u * 2, v * 3) - 0.5);
+    const f = (u + warp) * ridges, i = ((Math.floor(f) % ridges) + ridges) % ridges, q = f - Math.floor(f);
+    // a ridge's breadth wanders too (where two furrows close, the ridges between them merge)
+    const sharp = 0.35 + 0.6 * widthN(u * 2 + warp, v);
+    let h = Math.pow(Math.sin(Math.PI * q), sharp);
+    // plates: the ridge's face rises and falls along it
+    h *= 0.78 + 0.22 * plateN(u + warp * 0.5, v * 2);
+    for (const c of cracks[i]) {
+      let dv = Math.abs(v - c.v); dv = Math.min(dv, 1 - dv);
+      if (dv < c.w && q > c.a && q < c.b) h *= 0.3 + 0.7 * (dv / c.w);
+    }
+    height[y * B + x] = h;
+    sum += h;
+  }
+  // the furrows dark, the ridges' tops pale, in linear light about style 0's own mean reflectance (its 240 columns as
+  // painted above), so a grown trunk's tint, authored against the furrowed sheet, keeps its value
+  const mean = sum / (B * s);
+  const toLinear = (c: number): number => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const toSrgb = (c: number): number => (c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055);
+  const sheet = ctx.getImageData(0, 0, B, s).data;
+  let target = 0;
+  for (let i = 0; i < B * s; i++) {
+    target += toLinear(sheet[i * 4] / 255) * 0.2126 + toLinear(sheet[i * 4 + 1] / 255) * 0.7152 + toLinear(sheet[i * 4 + 2] / 255) * 0.0722;
+  }
+  target /= B * s;
+  const image = ctx.createImageData(B, s);
+  for (let y = 0; y < s; y++) for (let x = 0; x < B; x++) {
+    const L = target * (0.35 + 0.65 * height[y * B + x] / Math.max(1e-3, mean));
+    const i = (y * B + x) * 4;
+    image.data[i] = toSrgb(Math.min(1, L * 1.04)) * 255; image.data[i + 1] = toSrgb(Math.min(1, L)) * 255;
+    image.data[i + 2] = toSrgb(Math.min(1, L * 0.93)) * 255; image.data[i + 3] = 255;
+  }
+  ctx.putImageData(image, style * s, 0);
 }
 
 // Two tuft variants: 0 = lush meadow tuft, 1 = drier mixed tuft. Dense at the

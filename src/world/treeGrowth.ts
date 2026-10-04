@@ -95,7 +95,11 @@ interface GrowthProfile {
    * whole crown.
    */
   foliageBand?: number;
-  /** Bark style column of the bark atlas (vegetation.ts): 0 furrowed, 1 plated, 2 smooth/banded, 3 papery. */
+  /**
+   * Bark style column of the bark atlas (vegetation.ts): 0 furrowed (the legacy sheet), 1 plated, 2 smooth/banded,
+   * 3 papery, 4 the grown trees' furrowed bark (trees round 4: meandering ridges and furrows, where style 0's parallel
+   * zigzag fissures read as a tyre tread).
+   */
   bark: number;
   /** Bark tint (linear-ish multiplier around the neutral sheet) and its upper-stem shift (pine's orange top). */
   barkTint: readonly [number, number, number];
@@ -129,7 +133,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.55, angleLow: 1.15, angleHigh: 0.6,
     droop: 0.42, upturn: 0.38, sidePerM: 2.3, sideAngle: 0.75, sideRatio: 0.62, sideDroop: 0.35, twigPerM: 1.8,
     leafOrder: 1, leafPerM: 3.6, leafFrom: 0.3, spray: [0.62, 0.92], aspect: 0.86, habit: 'spray', tipSprays: 2,
-    cardBend: 0.16, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.46, 0.41, 0.36], barkTopTint: null,
+    cardBend: 0.16, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.46, 0.41, 0.36], barkTopTint: null,
     foliageValue: 1.25,
   }),
   poplar: P({
@@ -138,7 +142,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'column', whorled: false, perWhorl: [1, 1], spacing: 0.42, angleLow: 0.42, angleHigh: 0.22,
     droop: 0.05, upturn: 0.30, sidePerM: 2.2, sideAngle: 0.45, sideRatio: 0.55, sideDroop: 0.05, twigPerM: 0,
     leafOrder: 1, leafPerM: 3.8, leafFrom: 0.15, spray: [0.55, 0.82], aspect: 0.78, habit: 'upright', tipSprays: 2,
-    cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.56, 0.54, 0.50], barkTopTint: [0.66, 0.64, 0.60],
+    cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.56, 0.54, 0.50], barkTopTint: [0.66, 0.64, 0.60],
   }),
   willow: P({
     family: 'broadleaf', height: 6.4, heightSpread: 0.10, trunkR: 0.38, form: 'decurrent',
@@ -146,7 +150,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.5, angleLow: 1.2, angleHigh: 0.7,
     droop: 0.22, upturn: 0.0, sidePerM: 2.8, sideAngle: 1.15, sideRatio: 0.95, sideDroop: 2.4, twigPerM: 0,
     leafOrder: 2, leafPerM: 4.6, leafFrom: 0.25, spray: [1.05, 1.6], aspect: 0.46, habit: 'hanging', tipSprays: 1,
-    cardBend: 0.05, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.44, 0.40, 0.34], barkTopTint: null,
+    cardBend: 0.05, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.44, 0.40, 0.34], barkTopTint: null,
   }),
   acacia: P({
     family: 'broadleaf', height: 6.2, heightSpread: 0.10, trunkR: 0.28, form: 'decurrent',
@@ -154,7 +158,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'umbrella', whorled: false, perWhorl: [1, 1], spacing: 0.6, angleLow: 1.3, angleHigh: 1.1,
     droop: 0.12, upturn: 0.2, sidePerM: 1.8, sideAngle: 1.0, sideRatio: 0.6, sideDroop: 0.0, twigPerM: 2.2,
     leafOrder: 2, leafPerM: 4.4, leafFrom: 0.3, spray: [0.7, 1.05], aspect: 0.95, habit: 'flat', tipSprays: 2,
-    cardBend: 0.04, flatRoll: 0.45, flatDroop: 0.0, foliageBand: 1.2, bark: 0, barkTint: [0.42, 0.36, 0.30], barkTopTint: null,
+    cardBend: 0.04, flatRoll: 0.45, flatDroop: 0.0, foliageBand: 1.2, bark: 4, barkTint: [0.42, 0.36, 0.30], barkTopTint: null,
     foliageValue: 1.55,
   }),
   eucalyptus: P({
@@ -197,7 +201,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'tiered', whorled: true, perWhorl: [4, 5], spacing: 0.8, angleLow: 1.62, angleHigh: 1.15,
     droop: 0.0, upturn: 0.08, sidePerM: 2.8, sideAngle: 1.1, sideRatio: 0.5, sideDroop: 0.0, twigPerM: 0,
     leafOrder: 1, leafPerM: 4.4, leafFrom: 0.1, spray: [0.7, 1.05], aspect: 0.9, habit: 'flat', tipSprays: 1,
-    cardBend: 0.03, flatRoll: 0.38, flatDroop: 0.04, bark: 0, barkTint: [0.40, 0.34, 0.30], barkTopTint: null, foliageValue: 1.27,
+    cardBend: 0.03, flatRoll: 0.38, flatDroop: 0.04, bark: 4, barkTint: [0.40, 0.34, 0.30], barkTopTint: null, foliageValue: 1.27,
   }),
   cypress: P({
     family: 'conifer', height: 7.8, heightSpread: 0.10, trunkR: 0.14, form: 'excurrent',
@@ -205,7 +209,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'flame', whorled: false, perWhorl: [1, 1], spacing: 0.22, angleLow: 0.38, angleHigh: 0.2,
     droop: 0.0, upturn: 0.2, sidePerM: 0, sideAngle: 0.4, sideRatio: 0.5, sideDroop: 0, twigPerM: 0,
     leafOrder: 1, leafPerM: 5.4, leafFrom: 0.0, spray: [0.8, 1.15], aspect: 0.6, habit: 'upright', tipSprays: 1,
-    cardBend: 0.04, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.40, 0.34, 0.30], barkTopTint: null, foliageValue: 1.5,
+    cardBend: 0.04, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.40, 0.34, 0.30], barkTopTint: null, foliageValue: 1.5,
   }),
   birch: P({
     family: 'birch', height: 7.0, heightSpread: 0.14, trunkR: 0.16, form: 'excurrent',
@@ -240,7 +244,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'ellipsoid', whorled: false, perWhorl: [1, 1], spacing: 0.9, angleLow: 1.1, angleHigh: 0.65,
     droop: 0.15, upturn: 0.15, sidePerM: 0.6, sideAngle: 0.7, sideRatio: 0.45, sideDroop: 0.1, twigPerM: 0,
     leafOrder: 1, leafPerM: 0, leafFrom: 0.55, spray: [0.7, 1.05], aspect: 0.9, habit: 'spray', tipSprays: 0,
-    cardBend: 0.05, flatRoll: 0.0, flatDroop: 0.0, bark: 0, barkTint: [0.36, 0.33, 0.30], barkTopTint: [0.20, 0.18, 0.17],
+    cardBend: 0.05, flatRoll: 0.0, flatDroop: 0.0, bark: 4, barkTint: [0.36, 0.33, 0.30], barkTopTint: [0.20, 0.18, 0.17],
   }),
   // the tidal mangrove (the Mangrove map's willow form, vegetation.ts): a short bole forking low into spreading
   // scaffolds under a broad, dense, rounded crown of leathery sprays; smooth grey-brown bark; the stilt roots are
@@ -274,7 +278,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.55, angleLow: 1.15, angleHigh: 0.6,
     droop: 0.38, upturn: 0.35, sidePerM: 2.1, sideAngle: 0.75, sideRatio: 0.62, sideDroop: 0.3, twigPerM: 0.9,
     leafOrder: 1, leafPerM: 3.6, leafFrom: 0.3, spray: [0.68, 1.0], aspect: 0.86, habit: 'spray', tipSprays: 2,
-    cardBend: 0.18, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.44, 0.38, 0.32], barkTopTint: null,
+    cardBend: 0.18, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.44, 0.38, 0.32], barkTopTint: null,
     foliageValue: 1.2,
   }),
   // the holm oak (Dalmatia): a short dark bole and a dense, rounded, evergreen dome of small dark leathery leaves
@@ -284,7 +288,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'ellipsoid', whorled: false, perWhorl: [1, 1], spacing: 0.5, angleLow: 1.15, angleHigh: 0.6,
     droop: 0.32, upturn: 0.3, sidePerM: 2.4, sideAngle: 0.8, sideRatio: 0.6, sideDroop: 0.25, twigPerM: 1.1,
     leafOrder: 1, leafPerM: 5.0, leafFrom: 0.15, spray: [0.66, 0.96], aspect: 0.92, habit: 'spray', tipSprays: 2,
-    cardBend: 0.12, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.32, 0.30, 0.28], barkTopTint: null,
+    cardBend: 0.12, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.32, 0.30, 0.28], barkTopTint: null,
     foliageValue: 1.12,
   }),
   // the olive (Dalmatia): a short, gnarled, leaning bole forking low into a few twisting limbs under a wide, open,
@@ -295,7 +299,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.55, angleLow: 1.2, angleHigh: 0.7,
     droop: 0.4, upturn: 0.25, sidePerM: 2.6, sideAngle: 0.85, sideRatio: 0.6, sideDroop: 0.35, twigPerM: 2.0,
     leafOrder: 1, leafPerM: 4.0, leafFrom: 0.2, spray: [0.66, 0.98], aspect: 0.8, habit: 'spray', tipSprays: 2,
-    cardBend: 0.2, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.50, 0.48, 0.44], barkTopTint: null,
+    cardBend: 0.2, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.50, 0.48, 0.44], barkTopTint: null,
     foliageValue: 1.25,
   }),
   // the Canary Island pine (Las Cañadas): a straight, thick, plated, red-brown bole and an open, irregular, layered
@@ -318,7 +322,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'dome', whorled: true, perWhorl: [2, 4], spacing: 0.7, angleLow: 1.35, angleHigh: 0.8,
     droop: 0.22, upturn: 0.5, sidePerM: 1.4, sideAngle: 0.75, sideRatio: 0.5, sideDroop: 0.1, twigPerM: 0,
     leafOrder: 1, leafPerM: 2.2, leafFrom: 0.5, spray: [0.72, 1.0], aspect: 0.92, habit: 'tuft', tipSprays: 3,
-    cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.46, 0.40, 0.36], barkTopTint: [0.58, 0.46, 0.38],
+    cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.46, 0.40, 0.36], barkTopTint: [0.58, 0.46, 0.38],
     foliageValue: 1.18,
   }),
   // the broom scrub of Las Cañadas (retama del Teide, codeso): a shrub of leafless-looking green-grey switches, only ever
@@ -350,7 +354,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.4, angleLow: 1.2, angleHigh: 0.65,
     droop: 0.22, upturn: 0.35, sidePerM: 2.6, sideAngle: 0.8, sideRatio: 0.55, sideDroop: 0.2, twigPerM: 1.4,
     leafOrder: 1, leafPerM: 5.2, leafFrom: 0.05, spray: [0.6, 0.86], aspect: 0.82, habit: 'spray', tipSprays: 2,
-    cardBend: 0.1, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.46, 0.42, 0.38], barkTopTint: null,
+    cardBend: 0.1, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.46, 0.42, 0.38], barkTopTint: null,
     foliageValue: 1.2,
   }),
   // the pinyon (Pinus edulis): a short pine, its crown low, round and dense, its needles short and stiff in tufts at
@@ -361,7 +365,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     envelope: 'dome', whorled: true, perWhorl: [3, 4], spacing: 0.55, angleLow: 1.4, angleHigh: 0.85,
     droop: 0.18, upturn: 0.45, sidePerM: 1.8, sideAngle: 0.75, sideRatio: 0.5, sideDroop: 0.1, twigPerM: 0,
     leafOrder: 1, leafPerM: 3.0, leafFrom: 0.35, spray: [0.62, 0.88], aspect: 0.92, habit: 'tuft', tipSprays: 3,
-    cardBend: 0.06, flatRoll: 0.6, flatDroop: 0.0, bark: 0, barkTint: [0.42, 0.38, 0.34], barkTopTint: null,
+    cardBend: 0.06, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.42, 0.38, 0.34], barkTopTint: null,
     foliageValue: 1.15,
   }),
 });
