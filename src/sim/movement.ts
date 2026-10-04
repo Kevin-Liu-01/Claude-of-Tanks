@@ -201,7 +201,10 @@ interface SupportCache {
   yaw: number;
   pitch: number;
   roll: number;
+  /** The seat: the height the hull's ride rests at over its support. */
   y: number;
+  /** The highest track contact: the hull's ground for launches, landings and the drooped-track line. */
+  top: number;
   floorY: number;
   rigid: boolean;
   cg: MovementContactGeometry | null | undefined;
@@ -1513,7 +1516,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     },
     _sup: {                        // static-pose support cache (skip resampling)
       x: NaN, z: NaN, yaw: 0, pitch: 0, roll: 0,
-      y: pos.y, floorY: pos.y, rigid: false, cg: null,
+      y: pos.y, top: pos.y, floorY: pos.y, rigid: false, cg: null,
     },
   };
 }
@@ -3332,6 +3335,7 @@ function writeSupportCache(
   cache.pitch = pitch;
   cache.roll = roll;
   cache.y = Math.max(supportY + margin, rigidFloor);
+  cache.top = cache.y;
   cache.floorY = Math.max(normalFloor, rigidFloor);
   cache.rigid = rigidGear;
   cache.cg = contact;
