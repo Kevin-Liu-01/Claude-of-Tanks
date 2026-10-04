@@ -816,6 +816,11 @@ contact constraints and cannot be crossed by residual uphill speed.
   kinematic, not pulls: a hull running down a grade keeps its tracks on it at its own travel's rate over the slope
   (only when every track sample carries it, and never while the ride still rises: over a crest it flies), and a hull
   tipping about an edge has its root follow the turn.
+- *The hull lies on its plane.* The attitude fit reads the ground's rise per hull-local metre under the track lines,
+  sin(pitch) for a hull lying on it (`planePitch`, `planeRoll`); its arctangent laid the hull flatter than its ground
+  (0.2° on a 15° face, 1° on 25°, 5° on 45°), the downhill end of a parked hull hanging up to 12 cm (gauntlet wave 23's
+  slope strip read it as the uphill stations loaded). The drivetrain keeps the grade it was calibrated on
+  (`feltGrade`), and the grade's turn of the travel its rise per hull-local metre.
 - *Edges are tipped over, not chased.* Track samples hanging past 1.2 m over ground that is not one plane do not
   steer the attitude; a centre of mass beyond the samples still touching (the droop's reach) tips the hull about
   that edge under gravity, `α = g·d·cosθ/(r²+d²)` with `d` measured from the hull box's centre (the centre of
@@ -913,8 +918,9 @@ contact constraints and cannot be crossed by residual uphill speed.
   ledger forgets over a second of riding the springs): a drop caused by the solver correcting itself is never a fall.
 - *Known limits.* Rigid rotation is still about the root, though the tip lever reads the box centre (a nose-first
   landing settles about its centre, so it can hop a few times on a sharp kicker); a hull balanced exactly on a 4 m
-  edge hangs nose-up near 80° before it slides off (its tail cannot reach the ground sooner); the drivetrain reads the grade over the hull's run (1° flatter than a 25° face,
-  7° on 45° — the felt grade is its calibration); casemate barrels can dig in; a hull pivoting
+  edge hangs nose-up near 80° before it slides off (its tail cannot reach the ground sooner); the drivetrain feels a
+  grade flatter than the face (24.0° on 25°, 40.1° on 45°: `feltGrade`, the reading its climb and grip were calibrated
+  on before the hull lay on its plane); casemate barrels can dig in; a hull pivoting
   against a face that runs across the terrain's triangle grid loses its support for one tick where a corner leaves the
   face's smeared foot: the ride is flagged airborne for that tick and its landing reads its own descent (0.8-1.6 m/s),
   its vertical speed continuous through it and under every consumer's threshold (the landing thump's 2.2 m/s, any

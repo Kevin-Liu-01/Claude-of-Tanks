@@ -1936,7 +1936,7 @@ function landAlongGrade(state: TankState, ride: RideState): void {
   // the vertical change the landing law owes: the closing the springs take to the ground's rate, and the rebound
   const push = state.landingImpactMps + ride.rebound;
   if (!(push > 0) || Math.abs(state.speed) < GRADE_PUSH_MIN_TRAVEL_MPS) return;
-  const grade = clamp(Math.tan(state._terr.fitPitch), -GRADE_PUSH_MAX, GRADE_PUSH_MAX);
+  const grade = clamp(gradeRise(state), -GRADE_PUSH_MAX, GRADE_PUSH_MAX);
   if (!(grade * state.speed > 0) || Math.abs(grade) < GRADE_TURN_MIN) return;
   shiftTravelAlongGrade(state, push / (1 + grade * grade));
   // the springs close to the ground's rise under the travel it kept
@@ -1945,7 +1945,7 @@ function landAlongGrade(state: TankState, ride: RideState): void {
 
 function shiftTravelAlongGrade(state: TankState, rise: number): void {
   if (Math.abs(state.speed) < GRADE_PUSH_MIN_TRAVEL_MPS) return;
-  const grade = clamp(Math.tan(state._terr.fitPitch), -GRADE_PUSH_MAX, GRADE_PUSH_MAX);
+  const grade = clamp(gradeRise(state), -GRADE_PUSH_MAX, GRADE_PUSH_MAX);
   if (Math.abs(grade) < GRADE_TURN_MIN) return;
   const next = state.speed - grade * rise;
   const kept = state.speed > 0 ? Math.max(0, next) : Math.min(0, next);
@@ -3153,6 +3153,34 @@ const _contactFit = { pitch: 0, roll: 0, tipPitch: 0, tipRoll: 0, edge: false };
  * bit), FIT_NONE_LOADED when none does (the hull is leaving the ground: the previous plane stands), else FIT_PARTIAL
  * with _contactFit filled. Hull-local: z forward from the contact centre (the centre of mass), x right.
  */
+/**
+ * The attitude that lays the hull's track plane on the ground its samples read (physics lane round 3; gauntlet wave 23,
+ * the slope strip: "the downhill rear stations are the most extended ... and the uphill front ones the most compressed").
+ * The samples sit at hull-local stations, so the ground rises sin(pitch) per local metre under a hull lying on it (the
+ * support solve's plane: z sin(pitch) + x sin(roll) cos(pitch)); the arctangent of that rise read tan(grade) cos(pitch),
+ * and the hull lay flatter than its ground: 0.2 degree on a 15-degree face, 1 on 25, 5 on 45, its downhill end hanging
+ * up to 12 cm over a 25-degree face.
+ */
+function planePitch(risePerZ: number): number {
+  return Math.asin(clamp(risePerZ, -1, 1));
+}
+function planeRoll(risePerX: number, pitch: number): number {
+  return Math.asin(clamp(risePerX / Math.max(Math.cos(pitch), 0.1), -1, 1));
+}
+/**
+ * The grade the drivetrain feels on ground the hull lies on at `pitch`. Its climb, grip and slide were calibrated while
+ * the attitude fit read the arctangent of the rise per hull-local metre and the two-point settle carried it half way back
+ * to the grade, and the drivetrain keeps that reading now that the hull lies on its plane (within 0.2 degree of it up to
+ * 45 degrees): 24.0 degrees on a 25-degree face, 28.3 on 30, 40.1 on 45. The grade's turn of the travel keeps its reading
+ * likewise, the rise per hull-local metre (`gradeRise`).
+ */
+export function feltGrade(pitch: number): number {
+  return 0.5 * (pitch + Math.atan(Math.sin(pitch)));
+}
+function gradeRise(state: TankState): number {
+  return Math.sin(state._terr.fitPitch);
+}
+
 function contactAwareFit(
   spec: MovementSpec,
   state: TankState,
@@ -3201,12 +3229,12 @@ function contactAwareFit(
   // the grade rule stopped it dead in the trench, and it see-sawed there at 40 degrees for three seconds.
   const spansPitch = czz > FIT_MIN_SPAN_ZZ;
   if (left > 0 && right > 0 && det > 1e-6) {
-    pitch = spansPitch ? Math.atan((czh * cxx - cxh * czx) / det) : Math.atan2(samples.sumHeightZ, samples.sumZZ);
-    roll = Math.atan((cxh * czz - czh * czx) / det);
+    pitch = planePitch(spansPitch ? (czh * cxx - cxh * czx) / det : samples.sumHeightZ / Math.max(samples.sumZZ, 1e-9));
+    roll = planeRoll((cxh * czz - czh * czx) / det, pitch);
   } else if (spansPitch) {
-    pitch = Math.atan(czh / czz);
+    pitch = planePitch(czh / czz);
   } else if (czz > 1e-4) {
-    pitch = Math.atan2(samples.sumHeightZ, samples.sumZZ);
+    pitch = planePitch(samples.sumHeightZ / Math.max(samples.sumZZ, 1e-9));
   }
   _contactFit.pitch = pitch;
   _contactFit.roll = roll;
@@ -3278,13 +3306,10 @@ function updateTerrainFitAndPerch(
       return;
     }
   }
-  const fitPitch = Math.atan2(samples.sumHeightZ, samples.sumZZ);
+  const fitPitch = planePitch(samples.sumHeightZ / Math.max(samples.sumZZ, 1e-9));
   terr.fitPitch = fitPitch;
   terr.pitch = fitPitch;
-  terr.roll = Math.atan2(
-    (samples.sumRight - samples.sumLeft) / (samples.sideCount / 2),
-    2 * halfWidth,
-  );
+  terr.roll = planeRoll((samples.sumRight - samples.sumLeft) / (samples.sideCount / 2) / (2 * halfWidth), fitPitch);
   let tip = 0;
   if (samples.deepestZ > samples.zHalf && samples.rearMax > -Infinity) {
     tip = (samples.settleOuterMax - samples.rearMax) /
@@ -3578,7 +3603,7 @@ function prepareDriveStep(
   drive.forwardZ = Math.cos(state.yaw);
   drive.rightX = Math.cos(state.yaw);
   drive.rightZ = -Math.sin(state.yaw);
-  drive.terrainPitch = state._terr.pitch;
+  drive.terrainPitch = feltGrade(state._terr.pitch);
   drive.speedMultiplier = clamp(
     Number.isFinite(entity.modeSpeedMultiplier) ? entity.modeSpeedMultiplier! : 1,
     0.25,
