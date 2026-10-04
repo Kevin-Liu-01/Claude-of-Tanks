@@ -83,6 +83,18 @@ export interface HorizonPanoramaCharacter {
   /** the slope (1 - n.y) where the forest begins to give way to bare ground (gone 0.23 steeper): a temperate hill's
    * woods stop on the steep faces; a monsoon hill country's forest climbs them */
   forestSlope: number;
+  /** the bake's own air over the far path as a share of the haze law's σ (1: the map's fogDensity; a clean coast's air
+   * less) — the same law, layer, chroma and target */
+  air: number;
+  /** the fill below the ring's skyline from the eye (what a camera above it sees over the ring's crest): 0, the lit
+   * ground pushed toward the fog colour; 1, the lowland's own cover under the law's air over its reach */
+  fillLaw: number;
+  /** bare rock only above this share of the relief's height (the scrub holds the steep lower slopes); below 0: rock on
+   * every steep face */
+  rockFloor: number;
+  /** a dry coast's scrub (the maquis): its share of the vegetated ground (rather than the temperate mosaic of woods,
+   * meadows and fields), and its cover in the gullies up the bare faces, so the limestone stands on the spurs */
+  scrub: number;
 }
 
 /** The knobs most characters leave at rest: open sea, no tree canopy, the eroded mesa's profile, no isolated peaks. */
@@ -91,6 +103,7 @@ const PANO_EXTRAS = Object.freeze({
   mesaTalusM: 700, mesaTalusShare: 0.55, mesaCliffM: 50, mesaFluteM: 45,
   peakShare: 0, peakM: 0, peakRadiusM: 600, peakSharp: 1.5,
   forestSlope: 0.32,
+  air: 1, fillLaw: 0, rockFloor: -1, scrub: 0,
 });
 
 export const HORIZON_PANORAMA_CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonPanoramaCharacter>> = Object.freeze({
@@ -508,8 +521,10 @@ float mesaField(vec2 p, float A) {
 float gPlinth = 0.0; // farField's plinth at its last point (the height pass writes it beside the height)
 float gTree = 0.0;   // and its tree cover (the strip colours it as the forest)
 float gPeak = 0.0;   // and its isolated peaks' weight (the strip bares them: a nunatak's rock, a cone's scoria)
+float gGully = 0.0;  // and its erosion octaves' troughs on the steeper ground (a dry coast's scrub holds them)
 float farField(vec2 p) {
   gPlinth = 0.0;
+  gGully = 0.0;
   float r = length(p);
   float A = envelopeAt(p, r);
   float h = uChar2.z > 0.5 ? mesaField(p, A) : A * baseField(p);
@@ -523,6 +538,7 @@ float farField(vec2 p) {
     vec2 dir = vec2(sd.y, -sd.x) * k;
     float gs = gullyOctave(p / uChar1.y + uOff3.xy, dir, 17.0) + 0.5 * gullyOctave(p / (uChar1.y * 0.5) + uOff3.zw, dir, 48.0);
     h += uChar1.z * smoothstep(0.05, 0.35, s) * gs * (0.4 + 0.6 * smoothstep(0.0, A * 0.5, h));
+    gGully = smoothstep(0.1, 0.8, -gs) * smoothstep(0.08, 0.3, s) * (1.0 - smoothstep(1.0, 1.5, h / max(A, 1.0)));
   }
   h = max(0.0, h);
   // the country's trees (uTrees.x > 0): shelterbelts along a slightly turned field grid (one direction dominant, the
@@ -566,6 +582,8 @@ float farField(vec2 p) {
     gTree = max(belt, woods);
     h += uTrees.x * gTree * (0.85 + 0.3 * noised(p / 60.0).x);
   }
+  // a dry coast's scrub (uTrees.z, the maquis): it holds the gullies up the bare faces, the limestone the spurs between
+  if (uTrees.z > 0.0) gTree = max(gTree, uTrees.z * gGully);
   float a = atan(p.y, p.x) * 0.15915494309;
   vec4 edge = texture2D(uEdge, vec2(fract(a), 0.5));
   // the layers behind the ring (the mountains lane, 2026-10-03: from the battlefield the far country hid behind the
@@ -653,6 +671,14 @@ float farField(vec2 p) {
       float rs = uShore.y + 1100.0 * noised(su * 5.0 + uOff2.zw).x;
       float rc = rs + 2400.0, crest = 0.7 + 0.3 * noised(su * 23.0 + uOff3.xy).x;
       float range = uShore.z * A * crest * exp(-((r - rc) * (r - rc)) / (1600.0 * 1600.0));
+      // the coastal range carries the far country's own relief (gauntlet wave 32, Saltwind's edge-w: "a flat, nearly
+      // textureless white cutout"): its summits and saddles from the base field, the erosion octaves down its flanks,
+      // a dry coast's scrub in their troughs
+      float rangeS = range * 2.0 * abs(r - rc) / (1600.0 * 1600.0);
+      vec2 rdir = vec2(su.y, -su.x) * clamp(rangeS * 2.2, 0.4, 2.2);
+      float rgs = gullyOctave(p / uChar1.y + uOff3.xy, rdir, 17.0) + 0.5 * gullyOctave(p / (uChar1.y * 0.5) + uOff3.zw, rdir, 48.0);
+      range = range * (0.8 + 0.5 * baseField(p)) * (1.0 + 0.15 * rgs * smoothstep(0.05, 0.3, rangeS));
+      if (uTrees.z > 0.0) gTree = max(gTree, uTrees.z * smoothstep(0.1, 0.8, -rgs) * smoothstep(0.05, 0.3, rangeS) * smoothstep(rs, rs + 1800.0, r));
       // (well inside the sector only: at its flanks the far shore meets the tapered land, not a wall beside it)
       float back = smoothstep(rs, rs + 1800.0, r) * smoothstep(0.0, 0.6, sink);
       land = mix(land, h * uShore.x + range, back);
@@ -766,7 +792,8 @@ uniform vec4 uChar4;   // strata, deckM, ampM, farRise
 uniform vec2 uElev;
 uniform sampler2D uEdge;
 uniform vec4 uShore;      // the far shore's height share (0: open sea), the channel's distance (m), its coastal range's share
-uniform vec4 uTrees;      // the far field's canopy (m) and the forest's slope limit
+uniform vec4 uTrees;      // the far field's canopy (m), the forest's slope limit, a dry coast's scrub
+uniform vec4 uAir;        // the far path's share of the law's σ, the fill's law (0 / 1), the bare rock's floor (a share of the relief)
 uniform vec4 uHaze;       // the shared haze law (hazeLaw.ts): σ (1/m), 1 / the layer's scale height, the datum (m), on
 uniform vec3 uHazeChroma; // its per-channel extinction
 uniform vec3 uHazeAnti, uHazeToward; // its in-scatter target at the horizon away from the sun and toward it
@@ -780,9 +807,23 @@ vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   float n1 = noised(wp.xz / 1900.0 + vec2(5.3, 1.7)).x * 0.7 + noised(wp.xz / 700.0 + vec2(-3.1, 8.2)).x * 0.3;
   // the lower flanks: stands of the map's forest (denser on the slopes, broken by clearings and fields on the gentle
   // lowland), the crowns' mottle; the meadows and fields a patchwork of their own tones
-  float vegW = uChar3.y > 0.0 ? (1.0 - smoothstep(uChar3.y * 0.75, uChar3.y * 1.05, hT + 0.05 * n1)) * (1.0 - smoothstep(uTrees.y, uTrees.y + 0.23, slope)) : 0.0;
+  // a dry coast's scrub (uTrees.z, the maquis; gauntlet wave 32, Saltwind: "dark maquis on the lower slopes, pale bare
+  // limestone only on the upper faces"): its edge and the bare rock's floor climb the gullies (the height pass's scrub in
+  // their troughs) and fall-line streaks, so no contour runs level across a face. The streaks run radially (the faces seen
+  // from the battlefield face it, so their fall lines run toward it; a frame from each texel's own normal wound them into
+  // loops over the curved faces), in two azimuth frames each away from its own seam (atan turns at the west, its mirror
+  // at the east)
+  float streak = 0.0;
+  if (uTrees.z > 0.0) {
+    float wr = length(wp.xz);
+    float streakE = noised(vec2(atan(wp.z, wp.x) * wr / 70.0, wr / 300.0) + vec2(1.7, 3.1)).x;
+    float streakW = noised(vec2(atan(-wp.z, -wp.x) * wr / 70.0, wr / 300.0) + vec2(-6.2, 8.4)).x;
+    streak = smoothstep(-0.2, 0.6, mix(streakW, streakE, smoothstep(-0.35, 0.35, wp.x / max(wr, 1.0))));
+  }
+  float climb = uTrees.z * (0.3 * texture2D(uHeight, g).b + 0.25 * streak + 0.1 * n1);
+  float vegW = uChar3.y > 0.0 ? (1.0 - smoothstep(uChar3.y * 0.75, uChar3.y * 1.05, hT + 0.05 * n1 - climb)) * (1.0 - smoothstep(uTrees.y, uTrees.y + 0.23, slope)) : 0.0;
   float standN = noised(wp.xz / 170.0 + vec2(3.1, -7.7)).x + (1.0 - apron) * (0.45 * noised(wp.xz / 61.0 + vec2(-9.2, 4.4)).x + 0.25 * noised(wp.xz / 23.0).x);
-  float stand = smoothstep(-0.15, 0.2, standN + 1.4 * smoothstep(0.03, 0.18, slope) - 0.55);
+  float stand = mix(smoothstep(-0.15, 0.2, standN + 1.4 * smoothstep(0.03, 0.18, slope) - 0.55), 1.0, 0.85 * uTrees.z);
   float mottle = 0.72 + 0.4 * mix(noised(wp.xz / 29.0 + vec2(11.3, 5.1)).x * 0.5 + 0.5, 0.5, apron);
   // the lowland's fields: parcels on a slightly rotated grid (each its own crop: green, straw, tilled earth), on the
   // gentle ground only — distant farmland reads as bands of colour along the hills' feet
@@ -790,7 +831,7 @@ vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   vec2 fc = floor(fq + 0.3 * vec2(noised(fq * 0.21).x, noised(fq * 0.19 + 7.1).x));
   float crop = hash12(fc + 17.3);
   vec3 cropC = crop < 0.45 ? uBase * vec3(0.95, 1.08, 0.88) : crop < 0.75 ? uBase * vec3(1.32, 1.18, 0.78) : uBase * vec3(1.05, 0.88, 0.7);
-  float fieldW = (1.0 - smoothstep(0.04, 0.1, slope)) * (1.0 - smoothstep(0.25, 0.45, hT)) * step(0.35, uChar3.y) * (1.0 - apron);
+  float fieldW = (1.0 - smoothstep(0.04, 0.1, slope)) * (1.0 - smoothstep(0.25, 0.45, hT)) * step(0.35, uChar3.y) * (1.0 - apron) * (1.0 - uTrees.z);
   float field = noised(floor(wp.xz / 210.0) * 1.7 + vec2(0.5)).x;
   field *= 1.0 - apron;
   vec3 meadow = uBase * (1.0 + 0.16 * field + 0.08 * (1.0 - apron) * noised(wp.xz / 90.0 + vec2(-2.2, 9.4)).x) * vec3(1.0 + 0.06 * field, 1.0, 1.0 - 0.05 * field);
@@ -809,12 +850,14 @@ vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   // the rock's own patches: warmer and cooler outcrops over a few hundred metres, weathered paler on the crests
   float rockN = noised(wp.xz / 420.0 + vec2(-6.1, 2.3)).x;
   rockC *= vec3(1.0 + 0.07 * rockN, 1.0 + 0.02 * rockN, 1.0 - 0.06 * rockN) * (1.0 + 0.12 * smoothstep(0.55, 0.95, hT));
-  float rockW = smoothstep(uChar3.z, uChar3.z + 0.16, slope + 0.04 * n1);
+  float rockW = smoothstep(uChar3.z, uChar3.z + 0.16, slope + 0.04 * n1) * smoothstep(uAir.z - 0.12, uAir.z + 0.12, hT + 0.05 * n1 - climb);
   // the isolated peaks bare (the ice sheet's nunataks dark rock through the white, the field's cones their scoria): rock
   // on all but their gentlest ground
   float peak = smoothstep(0.08, 0.3, texture2D(uHeight, g).a);
   rockW = max(rockW, peak * smoothstep(0.03, 0.14, slope + 0.03 * n1));
   col = mix(col, rockC, rockW);
+  // (and in the fissures down the bare faces, fainter: the limestone between them)
+  col = mix(col, uForest * mottle * 0.85, uTrees.z * rockW * streak * 0.3);
   // scree on the moderate slopes below the rock
   col = mix(col, uScree, smoothstep(0.12, 0.24, slope) * (1.0 - rockW) * (1.0 - vegW) * 0.7);
   // snow above the snowline on the slopes that hold it
@@ -891,6 +934,10 @@ void main() {
   // the square's centre sees a band of it over the ring's outer rows, and there the strip grazes the near country, one
   // ground point per column (a band of vertical streaks over Saltmere's coast): it keeps one lit ground tone instead
   float hiddenW = 1.0 - smoothstep(atan(edge.a) - 0.012, atan(edge.a) - 0.002, e);
+  // the law's in-scatter target for the column: the sky at the horizon, warm toward the sun, cool away from it
+  vec2 sunH = uSun.xz / max(length(uSun.xz), 1e-4);
+  float toward = 0.5 + 0.5 * (cos(a) * sunH.x + sin(a) * sunH.y);
+  vec3 lawTarget = mix(uHazeAnti, uHazeToward, toward * toward);
   if (hiddenW > 0.001) {
     // (a re-march from a higher eye was tried — the country behind the shell point seen from 300 m — and banded column
     // by column on the ridges it grazed: the fill stays a lit ground tone, its woods and fields as broad patches round
@@ -903,7 +950,19 @@ void main() {
     vec3 flatC = mix(uBase, uSnow, fillSnow) * (uGains.y * 1.05 * max(0.0, uSun.y) * vec3(1.06, 0.98, 0.86) + uGains.x * 0.82 * skyTint);
     vec3 fill = mix(flatC, flatC * uForest / max(vec3(1e-3), uBase) * 0.95, smoothstep(0.05, 0.45, patchN) * step(0.35, uChar3.y) * (1.0 - fillSnow));
     float recede = smoothstep(atan(edge.a) - 0.06, atan(edge.a), e);
-    fill = mix(fill, uFog * 1.05, 0.25 + 0.35 * recede);
+    if (uAir.y > 0.5 && uHaze.w > 0.5) {
+      // (the fill law, a map's opt-in — Saltwind, gauntlet wave 32: "a second range rests on a uniform bright haze
+      // stripe, lighter than the range above it"): the lowland's own cover, its scrub and woods in broad patches round
+      // the compass, under the law's air over its own reach — the ground just behind the ring, under a kilometre past
+      // the shell, nearer than the far country above it and no hazier — so the band reads as the country between the
+      // ring and the range, never paler than the range
+      vec3 cover = mix(flatC, flatC * uForest / max(vec3(1e-3), uBase) * 0.95, max(0.5 + 0.4 * smoothstep(0.05, 0.45, patchN), 0.9 * uTrees.z) * (1.0 - fillSnow));
+      float fillLayer = hazeLayerMean(max(uFrame.w - uHaze.z, 0.0) * uHaze.y, max(60.0 - uHaze.z, 0.0) * uHaze.y);
+      vec3 TF = hazeTransmittance(uHaze.x * uAir.x, 800.0 * recede, fillLayer, uHazeChroma);
+      fill = cover * TF + lawTarget * (1.0 - TF);
+    } else {
+      fill = mix(fill, uFog * 1.05, 0.25 + 0.35 * recede);
+    }
     col = mix(col, fill, hiddenW * 0.95);
   }
   // the sea sectors: the open water is the game's own (the sea apron, 4 km out, and the sky past it) — the strip leaves
@@ -916,7 +975,10 @@ void main() {
   // of sharp peaks floats above a flat white haze stripe"): the strip paints the channel past the apron as water, so the
   // far ridge sits on it; the near reach stays the game's own sea
   float farWater = uShore.x > 0.0 ? sea * smoothstep(${(SEA_APRON_OUTER_RADIUS_M - 150).toFixed(1)}, ${(SEA_APRON_OUTER_RADIUS_M + 50).toFixed(1)}, rr) : 0.0;
-  col = mix(col, uFog * vec3(0.55, 0.62, 0.66), farWater);
+  // (toward the far shore the channel takes the mountains' reflection, darker — wave 32: "the water darker toward the
+  // shore rather than haze-bright": the grid 600 m further out along the column is the far shore's land)
+  float shoreAhead = smoothstep(0.0, 25.0, texture2D(uHeight, vec2(u, log((rr + 600.0) / uFrame.x) / log(uFrame.y / uFrame.x))).r - edge.b);
+  col = mix(col, uFog * vec3(0.55, 0.62, 0.66) * (1.0 - 0.45 * shoreAhead), farWater);
   float open = max(smoothstep(0.02, 0.2, sea) * (1.0 - farWater), hiddenW * smoothstep(0.3, 0.7, edge.g));
   // the air past the shell. With the battlefield's sky published, the shared haze law (hazeLaw.ts; the coordinator,
   // 2026-10-03: "read it from hazeLaw rather than your own constants, so near and far stay consistent"): the aerial pass
@@ -924,11 +986,9 @@ void main() {
   // between the eye and the point, the per-channel extinction, the same target. Without it the bake's own air (gauntlet
   // wave 6, "a flat, hazy, nearly featureless silhouette": a 13 km e-fold, a step under the fog's tone).
   if (uHaze.w > 0.5) {
-    vec2 sunH = uSun.xz / max(length(uSun.xz), 1e-4);
-    float toward = 0.5 + 0.5 * (cos(a) * sunH.x + sin(a) * sunH.y);
-    vec3 target = mix(uHazeAnti, uHazeToward, toward * toward);
+    vec3 target = lawTarget;
     float layer = hazeLayerMean(max(uFrame.w - uHaze.z, 0.0) * uHaze.y, max(wp.y - uHaze.z, 0.0) * uHaze.y);
-    vec3 T = hazeTransmittance(uHaze.x, max(0.0, rr - uFrame.z), layer, uHazeChroma);
+    vec3 T = hazeTransmittance(uHaze.x * uAir.x, max(0.0, rr - uFrame.z), layer, uHazeChroma);
     col = col * T + target * (1.0 - T);
   } else {
     col = mix(col, uFog * 0.95, 1.0 - exp(-max(0.0, rr - uFrame.z) / 13000.0));
@@ -967,7 +1027,9 @@ export interface HorizonPanoramaHandle {
   dispose(): void;
   /** the last bake's duration (ms) and count, for the probes; `tone`: whether the battlefield's own ground and rock
    * means coloured the bake ('ground') or the authored palette did ('authored') */
-  readonly stats: { bakes: number; ms: number; unsupported: string | null; tone: 'authored' | 'ground' };
+  readonly stats: { bakes: number; ms: number; unsupported: string | null; tone: 'authored' | 'ground';
+    /** the battlefield's ground and rock means the bake took (linear), for the probes and the bake's receipt */
+    groundTone: number[] | null; rockTone: number[] | null };
   /**
    * The battlefield's own ground and rock albedo means (linear), so the far country continues the ring's terrain
    * material instead of the authored hill palette (Sirocco Wadi's far tables were saturated orange behind a pale
@@ -1001,7 +1063,8 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   mesh.userData.aoExclude = true;
   let atlas: THREE.WebGLRenderTarget | null = null;
   let baked = false;
-  const stats = { bakes: 0, ms: 0, unsupported: null as string | null, tone: 'authored' as 'authored' | 'ground', haze: 'own' as 'own' | 'law' };
+  const stats = { bakes: 0, ms: 0, unsupported: null as string | null, tone: 'authored' as 'authored' | 'ground', haze: 'own' as 'own' | 'law',
+    groundTone: null as number[] | null, rockTone: null as number[] | null };
   let skyWaits = 0;
   const publishedSky = (): { atmosphere?: PanoramaAtmosphere; overcast: number } => {
     let root: THREE.Object3D = mesh;
@@ -1102,7 +1165,8 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
         options.treelineM != null ? options.treelineM / ch.ampM : ch.treeline, ch.rockSlope, ch.bedM) },
       uChar4: { value: new THREE.Vector4(ch.strata, options.deckBaseM, ch.ampM, ch.farRise) },
       uShore: { value: new THREE.Vector4(ch.shore, ch.shoreM, ch.shoreRange, 0) },
-      uTrees: { value: new THREE.Vector4(ch.trees, ch.forestSlope, 0, 0) },
+      uTrees: { value: new THREE.Vector4(ch.trees, ch.forestSlope, ch.scrub, 0) },
+      uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, 0) },
       uMesa: { value: new THREE.Vector4(ch.mesaTalusM, ch.mesaTalusShare, ch.mesaCliffM, ch.mesaFluteM) },
       uPeaks: { value: new THREE.Vector4(ch.peakShare, ch.peakM, ch.peakRadiusM, ch.peakSharp) },
       uFrame: { value: new THREE.Vector4(P.innerM, P.outerM, P.shellM, P.eyeY) },
@@ -1190,8 +1254,9 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     stats,
     setGroundTone(ground, rock) {
       if (baked || stats.bakes > 0) return false;
-      if (ground) palette.base = ground.clone();
-      if (rock) palette.rock = rock.clone();
+      const means = (c: THREE.Color) => [c.r, c.g, c.b].map((v) => Math.round(v * 1e4) / 1e4);
+      if (ground) { palette.base = ground.clone(); stats.groundTone = means(ground); }
+      if (rock) { palette.rock = rock.clone(); stats.rockTone = means(rock); }
       if (ground || rock) stats.tone = 'ground';
       return !!(ground || rock);
     },

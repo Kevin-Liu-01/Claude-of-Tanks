@@ -147,7 +147,14 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
   assert.ok(pano.shore > 1 && pano.shoreM > 4000 && pano.shoreM < 7000, 'a channel coast: the land across the water, 4-7 km out');
   assert.ok(pano.shoreRange > 0 && pano.shoreRange <= 1, 'a coastal range along the far shore (no low strip where its own relief is low)');
   assert.ok(pano.treeline < HORIZON_PANORAMA_CHARACTERS.coastal.treeline, 'the karst keeps its woods on the lower flanks');
-  assert.equal(saltwind.horizon.panorama, false, 'Saltwind holds the PR head\'s far country (gauntlet waves 24 and 32) until its ridge is rebuilt');
+  // Saltwind's own (gauntlet wave 32: "a nearly shadeless silhouette at almost the sky's value", "a second range rests on
+  // a uniform bright haze stripe, lighter than the range above it", "a flat, nearly textureless white cutout"): clean
+  // Adriatic air, the lowland's own fill, the maquis up the gullies and bare limestone only on the upper faces, a channel
+  // under 5 km
+  const salt = resolveHorizonPanoramaCharacter('rolling', saltwind.horizon.panorama);
+  assert.ok(salt.shore > 1 && salt.shoreRange > 0 && salt.shoreM <= 5000, 'Saltwind: the mainland across a channel under 5 km');
+  assert.ok(salt.air < 0.5 && salt.fillLaw === 1, 'Saltwind: clean air, the band under the ridge the lowland\'s own cover');
+  assert.ok(salt.scrub > 0.5 && salt.rockFloor > 0.3 && salt.treeline > salt.rockFloor, 'Saltwind: maquis up the lower slopes, bare limestone above');
   // the channel past the sea apron is painted water on a channel coast, so the far ridge stands on it (wave 24: "floats
   // above a flat white haze stripe"); an open sea stays the game's own
   assert.ok(/float farWater = uShore\.x > 0\.0 \? sea \* smoothstep\(/.test(HORIZON_PANORAMA_SHADERS.strip)
@@ -168,6 +175,21 @@ for (const [pass, source] of Object.entries(HORIZON_PANORAMA_SHADERS)) {
   for (const used of new Set([...source.matchAll(/\b(u[A-Z]\w*)\b/g)].map((m) => m[1]))) {
     assert.ok(declared.has(used), `the ${pass} pass declares the ${used} it reads`);
   }
+}
+// the dry coast's knobs rest at no effect on every class (only a map's block sets them): the law's full σ on the far
+// path, the old fill, rock on every steep face, no scrub
+for (const [name, c] of [...Object.entries(HORIZON_PANORAMA_CHARACTERS), ...Object.entries(HORIZON_PANORAMA_REGIONAL)]) {
+  assert.ok(c.air === 1 && c.fillLaw === 0 && c.rockFloor < 0 && c.scrub === 0, `${name}: the dry coast's knobs at rest`);
+}
+{
+  const strip = HORIZON_PANORAMA_SHADERS.strip, height = HORIZON_PANORAMA_SHADERS.height;
+  assert.ok(strip.includes('hazeTransmittance(uHaze.x * uAir.x, max(0.0, rr - uFrame.z), layer, uHazeChroma)'), 'the far path takes the map\'s share of the law\'s σ');
+  assert.ok(/if \(uAir\.y > 0\.5 && uHaze\.w > 0\.5\) \{[\s\S]*?fill = cover \* TF \+ lawTarget \* \(1\.0 - TF\);/.test(strip),
+    'the fill law: the lowland\'s own cover under the law\'s air, toward the same target as the range above it');
+  assert.ok(height.includes('if (uTrees.z > 0.0) gTree = max(gTree, uTrees.z * gGully);'), 'the scrub holds the gullies (the grid\'s tree cover)');
+  assert.ok(strip.includes('smoothstep(uAir.z - 0.12, uAir.z + 0.12, hT + 0.05 * n1 - climb)'), 'bare rock above its floor, the floor climbing with the scrub');
+  // (toward the far shore the channel is darker, never haze-bright)
+  assert.ok(strip.includes('uFog * vec3(0.55, 0.62, 0.66) * (1.0 - 0.45 * shoreAhead)'), 'the channel darkens toward the far shore');
 }
 // the strip's fill below the ring's skyline takes an ice sheet's snow (the follow-up ticket: over Whiteout's low ring the
 // elevated views saw it as a band of the battlefield's ground tone)
@@ -234,7 +256,7 @@ assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('texture2D(uHeight, g).g'), 't
   // horizon stood as a band of the battlefield's ground tone under the ring's snowline)
   assert.ok(resolveHorizonPanoramaCharacter('polar', { regional: 'iceSheet' }).snowline < 0
     && source.includes('options.snowlineM != null && ch.snowline >= 0 ? options.snowlineM / ch.ampM : ch.snowline'), 'the ice sheet keeps its own snowline');
-  assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('hazeTransmittance(uHaze.x, max(0.0, rr - uFrame.z), layer, uHazeChroma)')
+  assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('hazeTransmittance(uHaze.x * uAir.x, max(0.0, rr - uFrame.z), layer, uHazeChroma)')
     && HORIZON_PANORAMA_SHADERS.strip.includes('hazeLayerMean('), 'the strip hazes the path past the shell by the shared law');
 }
 // the atlas is premultiplied (paired capture d6: a dark dotted outline on every skyline, the shell's filtered samples
