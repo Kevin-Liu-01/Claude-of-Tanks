@@ -157,6 +157,14 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
   assert.ok(/float farWater = uShore\.x > 0\.0 \? sea \* smoothstep\(/.test(HORIZON_PANORAMA_SHADERS.strip)
     && HORIZON_PANORAMA_SHADERS.strip.includes('smoothstep(0.02, 0.2, sea) * (1.0 - farWater)'), 'a channel coast\'s far reach is water, not open sky');
 }
+// the ring hands the bake its map's own overcast (lightModelCore resolveOvercast of its sky and cloudscape), not the light
+// model the battlefield may still publish from the last map
+{
+  const src = readFileSync(new URL('./maps/horizon.ts', import.meta.url), 'utf8');
+  assert.ok(/overcast: resolveOvercast\(/.test(src), 'the ring passes the map\'s own overcast to the bake');
+  const hp = readFileSync(new URL('./horizonPanorama.ts', import.meta.url), 'utf8');
+  assert.ok(hp.includes('options.overcast ?? published.overcast'), 'the bake prefers the map\'s own overcast');
+}
 // every uniform a pass reads is declared in that pass (a strip reading uTrees without its declaration compiled to nothing:
 // the SwiftShader lab drew no panorama at all — the receipts compile no GLSL)
 for (const [pass, source] of Object.entries(HORIZON_PANORAMA_SHADERS)) {
@@ -212,6 +220,10 @@ assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('texture2D(uHeight, g).g'), 't
   assert.ok(haze.toward.x > haze.anti.x && haze.anti.z > haze.anti.x, 'the target: the sky at the horizon, warm toward the sun, cool away from it');
   assert.ok(haze.anti.y < 0.8, 'a step under the sky (a range never pales past it)');
   assert.equal(horizonPanoramaHaze(null, sun, 0.00074), null, 'no published sky: the bake\'s own air');
+  // under a closed deck the target is the authored tint at the deck's level, never the clear sky's warm horizon (the pair
+  // ticket of 5ea057f45: Whiteout's far ice sheet baked beige under a stale light model's overcast 0)
+  const deck = horizonPanoramaHaze(atmosphere, sun, 0.00074, 1);
+  assert.ok(deck.toward.x / deck.toward.z < haze.toward.x / haze.toward.z && deck.anti.y < haze.anti.y, 'a closed deck: the tint, dimmer, no warm band');
   assert.equal(horizonPanoramaHaze({ ...atmosphere, sunDir: { x: -0.5, y: 0.6, z: 0.6 } }, sun, 0.00074), null, 'another map\'s or hour\'s sky: the bake\'s own air');
   // a bake waits (a couple of seconds of frames) while the battlefield still publishes another map's sky (the shots' flow
   // baked every map after the first before its own sky was applied), and bakes at once where no sky is published

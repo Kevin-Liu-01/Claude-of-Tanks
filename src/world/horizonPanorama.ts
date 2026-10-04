@@ -131,6 +131,9 @@ export interface HorizonPanoramaOptions {
   resolution?: { width: number; height: number; gridA: number; gridR: number };
   /** the map's authored fogDensity: the shared haze law's σ (hazeLaw.ts) for the far country past the shell */
   fogDensity?: number | null;
+  /** the map's own overcast fraction (lightModelCore resolveOvercast of its sky and cloudscape): the haze target's terms
+   * under its deck — the light model the battlefield publishes can still be the last map's when the bake runs */
+  overcast?: number | null;
 }
 
 /** How many frames a bake waits for the battlefield to publish this map's own sky before it keeps its own air. */
@@ -1068,7 +1071,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     const started = performance.now();
     // the battlefield's published sky, where the shell already hangs in the scene (the world's warm-up)
     const published = publishedSky();
-    const haze = horizonPanoramaHaze(published.atmosphere, options.sun, options.fogDensity, published.overcast);
+    const haze = horizonPanoramaHaze(published.atmosphere, options.sun, options.fogDensity, options.overcast ?? published.overcast);
     stats.haze = haze ? 'law' : 'own';
     const rng = mulberry32((options.seed ^ 0x9A70) >>> 0);
     const off = Array.from({ length: 16 }, () => rng() * 200 - 100);
