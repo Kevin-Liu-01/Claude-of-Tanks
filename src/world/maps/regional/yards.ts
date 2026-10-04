@@ -44,6 +44,8 @@ export interface YardWorld {
 export interface YardPlacement { x: number; z: number; yaw: number }
 export interface YardPlan {
   side: '+x' | '-x' | '+z' | '-z';
+  /** a side yard along the street (a flank of the plot), its gate onto the street; false: a back yard */
+  street: boolean;
   depth: number;
   length: number;
   /** the enclosure's modules (the gate's gap left out) */
@@ -169,35 +171,62 @@ function rectClear(world: YardWorld, house: YardPlot, cx: number, cz: number, ax
  * Plan one house's yard (null when no side has the free ground for one). `rng` is the yards' own stream; `seg` is the
  * enclosure module's length (props: a wall's or a fence's).
  */
-export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rng: () => number, seg: number): YardPlan | null {
+export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rng: () => number, seg: number,
+  body?: { minX: number; maxX: number; minZ: number; maxZ: number }): YardPlan | null {
   const c = Math.cos(house.rot), s = Math.sin(house.rot);
   const dirW = (l: readonly [number, number]): [number, number] => [l[0] * c + l[1] * s, -l[0] * s + l[1] * c];
-  // the freest side: the deepest clear yard, ties to the side farther from the road
-  let best: { k: number; depth: number; road: number } | null = null;
+  // a side's run along the house: its length, its wall's distance from the plot centre and the shift of its middle
+  // (the kit's solid body where the plot carries one, so the yard starts at the walls; the plot's edges otherwise)
+  const b = body ?? { minX: -house.w / 2, maxX: house.w / 2, minZ: -house.d / 2, maxZ: house.d / 2 };
+  const sideOf = (sd: typeof SIDES[number]) => ({
+    length: sd.wide ? b.maxX - b.minX : b.maxZ - b.minZ,
+    offset: (sd.wide ? (sd.n[1] > 0 ? b.maxZ : -b.minZ) : (sd.n[0] > 0 ? b.maxX : -b.minX)) + YARD_GAP,
+    shift: sd.wide ? [(b.minX + b.maxX) / 2, 0] as const : [0, (b.minZ + b.maxZ) / 2] as const,
+  });
+  // each side's deepest clear yard
+  const options: Array<{ k: number; depth: number }> = [];
   SIDES.forEach((sd, k) => {
-    const length = sd.wide ? house.w : house.d, offset = (sd.wide ? house.d : house.w) / 2 + YARD_GAP;
+    const { length, offset, shift } = sideOf(sd);
     const n = dirW(sd.n), t = dirW(sd.t);
     for (let depth = YARD_MAX; depth >= YARD_MIN; depth -= 1) {
-      const [ox, oz] = toWorld(house, sd.n[0] * (offset + depth / 2), sd.n[1] * (offset + depth / 2));
+      const [ox, oz] = toWorld(house, shift[0] + sd.n[0] * (offset + depth / 2), shift[1] + sd.n[1] * (offset + depth / 2));
       if (!rectClear(world, house, ox, oz, t, n, length / 2, depth / 2, ROAD_FRONTAGE_CLEARANCE, BLOCKING_R)) continue;
-      const road = world.ground.roadDist(ox, oz);
-      if (!best || depth > best.depth || (depth === best.depth && road > best.road)) best = { k, depth, road };
+      options.push({ k, depth });
       break;
     }
   });
-  if (!best) return null;
-  const { k, depth } = best as { k: number; depth: number };
+  if (!options.length) return null;
+  // the side that faces the road (its ground 2 m out comes nearest a carriageway), the back opposite it, and the two
+  // flanks: a yard on a flank stands along the street between the house and its neighbour and shows from the road,
+  // so it wins where it has room (4 m), then the back, then whatever side is clear
+  const near = SIDES.map((sd) => {
+    const { offset, shift } = sideOf(sd);
+    const [x, z] = toWorld(house, shift[0] + sd.n[0] * (offset + 2), shift[1] + sd.n[1] * (offset + 2));
+    return world.ground.roadDist(x, z);
+  });
+  const front = near.indexOf(Math.min(...near)), back = front ^ 1;
+  const flank = (k: number) => k !== front && k !== back;
+  const deepest = (list: typeof options) => list.reduce((a, b) => (b.depth > a.depth ? b : a));
+  const flanks = options.filter((o) => flank(o.k) && o.depth >= 4);
+  const backs = options.filter((o) => o.k === back);
+  const { k, depth } = flanks.length ? deepest(flanks) : backs.length ? backs[0] : deepest(options);
+  const onFlank = flank(k);
   const sd = SIDES[k];
-  const length = sd.wide ? house.w : house.d, offset = (sd.wide ? house.d : house.w) / 2 + YARD_GAP;
+  const { length, offset, shift } = sideOf(sd);
   const n = dirW(sd.n), t = dirW(sd.t);
-  const at = (a: number, b: number): [number, number] => toWorld(house, sd.t[0] * a + sd.n[0] * (offset + b), sd.t[1] * a + sd.n[1] * (offset + b));
+  const at = (a: number, d: number): [number, number] => toWorld(house, shift[0] + sd.t[0] * a + sd.n[0] * (offset + d),
+    shift[1] + sd.t[1] * a + sd.n[1] * (offset + d));
   const yawAlong = (d: readonly [number, number]) => Math.atan2(d[0], d[1]);
-  const plan: YardPlan = { side: sd.side, depth, length, modules: [], gate: null, shed: null, garden: null };
+  const plan: YardPlan = { side: sd.side, street: onFlank, depth, length, modules: [], gate: null, shed: null, garden: null };
   // the enclosure: the outer run along the yard's far edge, the two end runs back to the house wall; the gate takes the
   // outer run's middle module (or the one beside it)
   const outerN = Math.max(1, Math.round(length / seg)), endN = Math.max(1, Math.round(depth / seg));
-  // every yard has its way in: the outer run's middle module, or on a short run one of its end modules
-  const gateAt = outerN >= 3 ? Math.floor(outerN / 2) + (rng() < 0.5 ? 0 : outerN % 2 === 0 ? -1 : 0) : rng() < 0.5 ? 0 : outerN - 1;
+  // every yard has its way in: a flank yard's gate opens onto the street (the middle of the end run nearer the road);
+  // a back yard's in its outer run's middle module, or on a short run one of its end modules
+  const streetEnd = onFlank
+    ? (world.ground.roadDist(...at(-length / 2, depth / 2)) < world.ground.roadDist(...at(length / 2, depth / 2)) ? -1 : 1) : 0;
+  const gateAt = onFlank ? -1 : outerN >= 3 ? Math.floor(outerN / 2) + (rng() < 0.5 ? 0 : outerN % 2 === 0 ? -1 : 0) : rng() < 0.5 ? 0 : outerN - 1;
+  const endGateAt = onFlank ? Math.floor(endN / 2) : -1;
   const free = (x: number, z: number) => pointClear(world, house, x, z, ROAD_FRONTAGE_CLEARANCE, 0.15, 0);
   for (let i = 0; i < outerN; i++) {
     const a = -length / 2 + (i + 0.5) * length / outerN;
@@ -209,7 +238,9 @@ export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rn
   for (const end of [-1, 1]) for (let i = 0; i < endN; i++) {
     const b = (i + 0.5) * depth / endN;
     const [x, z] = at(end * length / 2, b);
-    if (free(x, z)) plan.modules.push({ x, z, yaw: yawAlong(n) });
+    if (!free(x, z)) continue;
+    if (end === streetEnd && i === endGateAt) { if (style.gate) plan.gate = { x, z, yaw: yawAlong(n) }; continue; }
+    plan.modules.push({ x, z, yaw: yawAlong(n) });
   }
   // the outbuilding in one far corner, its door to the yard; the beds toward the other end
   const corner = rng() < 0.5 ? -1 : 1;

@@ -3440,6 +3440,9 @@ ${snowCap ? `
   yield { stage: 'yard-clutter' };
   // --- village buildings along the roads ---
   const roads = L.roads;
+  // regional-buildings lane: each kit-built house's solid body (plot-local), for its yard to start at its walls
+  // (maps/regional/yards.ts; keyed by the building's feature, which stays as the base placed it)
+  const regionalBodies = new Map<PlacedBuilding, { minX: number; maxX: number; minZ: number; maxZ: number }>();
   // junction/plaza: the road crossing nearest the village/town center
   function resolveVillageJunction(): { x: number; z: number } {
     if (mapId === 'verdant') return { x: 20, z: 73 };
@@ -3642,9 +3645,23 @@ ${snowCap ? `
     // court donors keep theirs: later passes re-seat those exact parts)
     const regionalDonor = (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery)
       || (!!foundryDonors && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId));
+    let body: { minX: number; maxX: number; minZ: number; maxZ: number } | null = null;
     if (regionalArchitecture && !regionalDonor) {
-      tmp = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
-        { mapId, snowCap: structureContext.snowCap, seed }, px, pz, rot) ?? tmp;
+      const rebuilt = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
+        { mapId, snowCap: structureContext.snowCap, seed }, px, pz, rot);
+      if (rebuilt) {
+        tmp = rebuilt;
+        const b = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
+        for (const list of Object.values(tmp)) for (const g of list as THREE.BufferGeometry[]) {
+          if (g.userData.noCollision) continue;
+          g.computeBoundingBox();
+          const bb = g.boundingBox;
+          if (!bb || bb.isEmpty()) continue;
+          b.minX = Math.min(b.minX, bb.min.x); b.maxX = Math.max(b.maxX, bb.max.x);
+          b.minZ = Math.min(b.minZ, bb.min.z); b.maxZ = Math.max(b.maxZ, bb.max.z);
+        }
+        if (Number.isFinite(b.minX)) body = b;
+      }
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
@@ -3652,6 +3669,7 @@ ${snowCap ? `
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
     mergeInto(buckets, tmp, _mat4);
     buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot, kind: structureId });
+    if (body) regionalBodies.set(buildingFeatures[buildingFeatures.length - 1], body);
     if (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery) {
       wharfFishery = { buckets: tmp, source: { x: px, y: fit.y + 0.05, z: pz, yaw: rot },
         records: [...obstacles.slice(obstacleStart), ...colliders.slice(colliderStart)],
@@ -6334,12 +6352,13 @@ ${snowCap ? `
     const fenceMeta = resolveDestructibleMeta(destructibleContext, yard.fence);
     const seg = fenceMeta.wall ? WALL_SEG : FENCE_SEG, sink = fenceMeta.wall ? 0.1 : 0.06;
     // the stage's counts on the props group (receipts and captures read them)
-    const stats = { houses: houses.length, yards: 0, modules: 0, gates: 0, sheds: 0, gardens: 0 };
+    const stats = { houses: houses.length, yards: 0, streetYards: 0, modules: 0, gates: 0, sheds: 0, gardens: 0 };
     group.userData.regionalYards = stats;
     for (const house of houses) {
-      const plan = planYard(house, world, yard, yrngYard, seg);
+      const plan = planYard(house, world, yard, yrngYard, seg, regionalBodies.get(house));
       if (!plan) continue;
       stats.yards++;
+      if (plan.street) stats.streetYards++;
       stats.modules += plan.modules.length;
       if (plan.gate && yard.gate) stats.gates++;
       for (const m of plan.modules) {
