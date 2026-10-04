@@ -44,6 +44,25 @@ const hashOf = (g) => {
   return h.join('|');
 };
 
+/** Closed: every edge between exactly two triangles once coincident points are welded (a fresh fracture's crisp arris
+ * doubles its points: the face keeps the plane's normal, the weathered surface its own). */
+function closedWelded(position, index) {
+  const ids = new Map(), canon = new Int32Array(position.count);
+  for (let i = 0; i < position.count; i++) {
+    const key = `${Math.round(position.getX(i) * 1e5)},${Math.round(position.getY(i) * 1e5)},${Math.round(position.getZ(i) * 1e5)}`;
+    if (!ids.has(key)) ids.set(key, ids.size);
+    canon[i] = ids.get(key);
+  }
+  const edges = new Map();
+  for (let t = 0; t < index.length; t += 3) for (const [i, j] of [[0, 1], [1, 2], [2, 0]]) {
+    const a = canon[index[t + i]], b = canon[index[t + j]];
+    if (a === b) continue;
+    const key = a < b ? a * 1048576 + b : b * 1048576 + a;
+    edges.set(key, (edges.get(key) ?? 0) + 1);
+  }
+  return [...edges.values()].every((c) => c === 2);
+}
+
 // --- the forms
 assert.deepEqual([...BOULDER_KINDS], ['jointed block', 'corestone', 'bedded block', 'slab']);
 const LITHOLOGIES = ['granite', 'gneiss', 'sandstone', 'limestone', 'slate', 'basalt', 'chalk'];
@@ -60,13 +79,8 @@ for (const lithology of LITHOLOGIES) {
         const g = form.geometry, p = g.attributes.position, n = g.attributes.normal, index = g.index.array;
         assert.ok(form.edge.length === p.count && form.fresh.length === p.count && form.facet.length === p.count, `${label}: per-vertex facts`);
         assert.ok(index.length / 3 <= (subdiv === 6 ? 900 : 320), `${label}: within its budget (${index.length / 3} triangles)`);
-        // closed: every block's every edge between exactly two triangles
-        const edges = new Map();
-        for (let t = 0; t < index.length; t += 3) for (const [i, j] of [[0, 1], [1, 2], [2, 0]]) {
-          const a = index[t + i], b = index[t + j], key = a < b ? a * 65536 + b : b * 65536 + a;
-          edges.set(key, (edges.get(key) ?? 0) + 1);
-        }
-        assert.ok([...edges.values()].every((c) => c === 2), `${label}: closed`);
+        // closed: every block's every edge between exactly two triangles (coincident points welded)
+        assert.ok(closedWelded(p, index), `${label}: closed`);
         let top = -Infinity, floor = Infinity;
         for (let i = 0; i < p.count; i++) {
           top = Math.max(top, p.getY(i)); floor = Math.min(floor, p.getY(i));
@@ -156,12 +170,7 @@ for (const lithology of LITHOLOGIES) {
       const label = `the props build's ${lithology} variant ${vi}, ${subdiv === 6 ? 'desktop' : 'phone'}`;
       const form = buildBoulderForm(vi, propsNoise, mulberry32(2002 + 60 + vi), hull, subdiv, legacyTop, boulderKindFor(lithology, vi), lithology);
       const fp = form.geometry.attributes.position, fn = form.geometry.attributes.normal, index = form.geometry.index.array;
-      const edges = new Map();
-      for (let t = 0; t < index.length; t += 3) for (const [i, j] of [[0, 1], [1, 2], [2, 0]]) {
-        const a = index[t + i], b = index[t + j], key = a < b ? a * 65536 + b : b * 65536 + a;
-        edges.set(key, (edges.get(key) ?? 0) + 1);
-      }
-      assert.ok([...edges.values()].every((c) => c === 2), `${label}: closed`);
+      assert.ok(closedWelded(fp, index), `${label}: closed`);
       for (let t = 0; t < index.length; t += 3) {
         const [a, b, c] = [index[t], index[t + 1], index[t + 2]];
         if ((fp.getY(a) + fp.getY(b) + fp.getY(c)) / 3 < BOULDER_SEAT_Y) continue;
