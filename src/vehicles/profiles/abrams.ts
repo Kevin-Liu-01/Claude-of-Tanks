@@ -213,6 +213,8 @@ interface AbramsTurretConfig {
   readonly throatChinBevel?: Vec2Tuple;
   readonly joinedCheekRoof?: boolean;
   readonly articulatedThroat?: boolean;
+  /** A family-authored mantlet occupies the open pitching bay. */
+  readonly separateMantlet?: boolean;
   readonly faceRake?: number;
   readonly yBotKnees?: readonly Vec2Tuple[];
   readonly inset: number;
@@ -1664,6 +1666,7 @@ function addAbramsShellThroat(
   t: AbramsShellConfig,
   layout: AbramsShellLayout,
 ): void {
+  if (t.separateMantlet) return;
   const { thr, faceRake, roofThroatRearY } = layout;
   // Throat block between the cheeks: recessed face carries the embrasure.
   // t.yBotFace chamfers the block's front bottom edge with the cheeks;
@@ -4140,14 +4143,11 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
   const t = {
     ...TEJAS_TURRET,
     ...(dufMul ? { rackDufMul: dufMul } : {}),
+    // The owner's photographs replace the earlier plan-skewed throat cover.
+    // Cheeks bound a real bay; the broad M256 shield is authored in gun space.
     articulatedThroat: true,
-    throatChinBevel: [.075,.05] as const,
-    // Short rear heel remains inside the receiver throughout the pitch sweep.
-    // The old full-depth throat would lever its rear through the fixed roof.
-    throatDepth: .65,
-    throatRearBottomY: .06,
-    roofThroatRearY: .55,
-    zFaceSkew: TEJAS_TURRET.zTip - (TEJAS_TURRET.zTipR ?? TEJAS_TURRET.zTip),
+    separateMantlet: true,
+    throat: .39,
     yBot: M1A1_TURRET_FLOOR_Y,
     yBotKnees: TEJAS_TURRET.yBotKnees.map(([z, y]): Vec2Tuple =>
       [z, Math.max(y, M1A1_TURRET_FLOOR_Y)]),
@@ -4380,7 +4380,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
       0, (bearingTop + bearingBottom) / 2, 0);
     abramsBustleRack(P, t, 1);
     tejasRoofKit(P, t, p.station ?? 'crows', p.abramsKit);
-    // The raked throat now pitches as one fitted shield between the cheeks.
+    // The photo-based armored face and round cradle pitch as one assembly.
     buildM1A1GunMount(P, P.spec.id === 'm1a1ha');
     if (P.spec.id === 'm1a1ha') {
       // HA gun-rig searchlight: its rear shell overlaps the left mantlet edge,
@@ -4426,7 +4426,9 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     // carrier and the 1.714/2.046 side lines are byte-equal), short 0.138
     // step rings hugging the drum ends (<= the old cone outline at every z,
     // so no new silhouette pixel), recessed dark cinch/step seams.
-    buildGun(P, { len: t.gunLen, r: t.gunR, sleeve: false, collar: false, baseR: 0.14 });
+    // The recoiling hidden root must fit inside the fixed cradle, including
+    // its 1.15× rear taper. The visible thermal sleeves keep their own radii.
+    buildGun(P, { len: t.gunLen, r: t.gunR, sleeve: false, collar: false, baseR: 0.11 });
     P.add('gun', cylZ(0.166, 0.341, 20), 0, 0, 1.634);
     P.add('gun', cylZ(0.138, 0.06, 18), 0, 0, 1.444);
     P.add('gun', cylZ(0.138, 0.06, 18), 0, 0, 1.824);
