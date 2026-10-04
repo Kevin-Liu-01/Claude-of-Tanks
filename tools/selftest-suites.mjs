@@ -1220,6 +1220,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/horizonRelief.selftest.mjs',
     // the mountains lane (2026-10-02): the eroded landform, the bed stair and the skyline cone measure
     'src/world/horizonMassif.selftest.mjs',
+    'src/world/horizonPanorama.selftest.mjs',
     'src/world/horizonCloudShade.selftest.mjs',
     'src/world/horizonRockfield.selftest.mjs',
   'src/world/horizonAutumnGround.selftest.mjs',

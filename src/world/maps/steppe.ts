@@ -324,7 +324,9 @@ export default {
   horizon: {
     // low, endless: the ring must whisper, not wall — smallest amp in the
     // roster + heavy dust haze so the plain reads as if it continues forever
-    baseHex: 0x77704a, amp: 0.65, style: 'rolling', treeline: 0.82,
+    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): the Sary-Arka grain steppe: long low
+    // swells and a few shelterbelts
+    baseHex: 0x77704a, amp: 0.3, style: 'rolling', treeline: 0.82, panorama: { regional: 'plain', trees: 9 },
     forestHex: 0x565232, rockHex: 0x7d7663, haze: 1.08, grain: 0.6,
   },
 

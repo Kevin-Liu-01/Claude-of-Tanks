@@ -289,7 +289,9 @@ export default {
   },
   horizon: {
     // industrial hinterland: low escarpment under smoke-grey haze
-    baseHex: 0x4f554a, amp: 0.8, style: 'escarpment', treeline: 0.90,
+    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): Ruhr and Silesian junction country:
+    // low rolling hills under the haze, no range
+    baseHex: 0x4f554a, amp: 0.6, style: 'escarpment', treeline: 0.90, panorama: { regional: 'upland', ampM: 160, trees: 10 },
     forestHex: 0x35402f, rockHex: 0x62655c, haze: 1.06, grain: 0.8,
   },
 

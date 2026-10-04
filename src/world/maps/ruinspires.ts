@@ -99,7 +99,8 @@ export default {
     },
   },
   horizon: {
-    baseHex: 0x434a4d, amp: 0.92, style: 'escarpment', treeline: 0.18,
+    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): a ruined city's low rolling country
+    baseHex: 0x434a4d, amp: 0.75, style: 'escarpment', treeline: 0.18, panorama: { regional: 'upland', ampM: 180, trees: 4 },
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): thin grey beds on the escarpment faces
     // (the escarpment style authored none), boulder outcrops on the outland (treeline 0.18 fell in the rockfield's
     // dead zone) and more tone grain on the flattest escarpment ring (0.42 -> 0.60)

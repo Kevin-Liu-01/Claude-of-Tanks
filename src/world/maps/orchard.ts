@@ -75,7 +75,9 @@ export default {
       ids: ['marder1a3', 'ua_t84_oplot_m', 'm551_sheridan', 'pt91m', 'm1a1'] },
     inhabit: { stalls: 4, benches: 4, coreClutter: 22, bales: 8, stooks: 8, pots: 8, laundry: 4, troughs: 2, handcarts: 4, carts: 4, trucks: 4, jeeps: 3, drumClusters: 3, camps: 2, modernClutter: 18, looseClutter: 20, roadFence: 'fencewattle', yardFence: 'fencepicket' },
   },
-  horizon: { baseHex: 0x5c7154, amp: 1.05, style: 'alpine', treeline: 0.84, snowline: 2, forestHex: 0x2e513c, rockHex: 0x7a8270, haze: 0.9, grain: 0.55 },
+  // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): a cultivated Japanese valley's
+  // forested mountains: steep and rounded, wooded to the crests, no snow or alpine rock
+  horizon: { baseHex: 0x5c7154, amp: 1.05, style: 'alpine', treeline: 0.84, snowline: 2, panorama: { regional: 'forested' }, forestHex: 0x2e513c, rockHex: 0x7a8270, haze: 0.9, grain: 0.55 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'fair-weather-cumulus', coverage: 0.28, streets: 0.4, contrails: 0.3 },
   sky: { ...verdant.sky, sunElevationDeg: 28, sunAzimuthDeg: 132, turbidity: 4.5, fogDensity: 0.00058, fogTintHex: 0x99aaac, fogMix: 0.5, cloudOpacity: 0.95, cloudOpacity2: 0.62, sunIntensity: 3.9, hemiIntensity: 0.42 },

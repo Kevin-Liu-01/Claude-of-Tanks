@@ -352,7 +352,9 @@ export default {
 
   horizon: {
     // fall uplands: rust-brown forest to near the crests, hazed warm
-    baseHex: 0x6d6440, amp: 1.0, style: 'rolling', treeline: 0.94, treelineLayers: 2,
+    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): a Norman / English river town's
+    // downland and bocage: low rounded hills, no range
+    baseHex: 0x6d6440, amp: 0.6, style: 'rolling', treeline: 0.94, treelineLayers: 2, panorama: { regional: 'upland', ampM: 150, trees: 16 },
     forestHex: 0x6a4d28, rockHex: 0x7a7260, haze: 0.95, grain: 0.7,
   },
 

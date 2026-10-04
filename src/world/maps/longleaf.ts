@@ -92,7 +92,9 @@ export default {
       ids: ['m1a1', 'm2a2_bradley', 'm551_sheridan', 'm60a3', 'm1a2_sepv3'] },
     inhabit: { stalls: 1, benches: 3, coreClutter: 18, bales: 6, troughs: 2, laundry: 2, handcarts: 3, carts: 4, trucks: 6, jeeps: 4, drumClusters: 4, camps: 4, modernClutter: 18, looseClutter: 22, roadFence: 'fenceplank', yardFence: 'fenceplank' },
   },
-  horizon: { baseHex: 0x52674a, amp: 1.0, style: 'rolling', treeline: 0.92, forestHex: 0x2c4b33, rockHex: 0x747664, haze: 0.92, grain: 0.58 },
+  // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): longleaf pine flatwoods: flat, the
+  // skyline its pine woods
+  horizon: { baseHex: 0x52674a, amp: 0.4, style: 'rolling', treeline: 0.92, panorama: { regional: 'plain', trees: 22 }, forestHex: 0x2c4b33, rockHex: 0x747664, haze: 0.92, grain: 0.58 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'fair-weather-cumulus', coverage: 0.32, streets: 0.5, towers: 0.2, rain: 0.3 },
   sky: { ...frontier.sky, sunElevationDeg: 24, sunAzimuthDeg: 108, fogDensity: 0.00062, fogTintHex: 0x8f9f9c, fogMix: 0.52, cloudOpacity: 1.05, cloudOpacity2: 0.72, sunIntensity: 3.7 },

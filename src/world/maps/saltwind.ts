@@ -192,7 +192,13 @@ export default {
       { kind: 'cairn', x: -330, z: 190, scale: 4.2, height: 2.6, name: 'the north gomila' },
     ],
   },
-  horizon: { baseHex: 0x7f8977, amp: 0.90, style: 'rolling', treeline: 0.42, forestHex: 0x506044, rockHex: 0xa4a391, haze: 0.90, grain: 0.46 },
+  // the mountains lane (2026-10-03, gauntlet wave 24): held at the PR head's far country while the mainland's karst ridge
+  // is rebuilt as pale limestone over scrub under the shared haze law — its establishing view read "a second, taller range
+  // of sharp peaks floats above a flat white haze stripe"
+  horizon: {
+    baseHex: 0x7f8977, amp: 0.90, style: 'rolling', treeline: 0.42, forestHex: 0x506044, rockHex: 0xa4a391, haze: 0.90, grain: 0.46,
+    panorama: false,
+  },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'sea-streets', coverage: 0.30, windDirDeg: 200, farBand: 0.55, fogBank: 0.35, fogBankTopM: 100 },
   sky: { ...coastal.sky, sunElevationDeg: 30, sunAzimuthDeg: 112, turbidity: 3.9, fogDensity: 0.00052, fogTintHex: 0x9cb8c5, fogMix: 0.48, cloudOpacity: 0.86, cloudOpacity2: 0.5, sunIntensity: 3.95, hemiIntensity: 0.42 },

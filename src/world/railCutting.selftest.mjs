@@ -221,6 +221,10 @@ const n = HORIZON_SEGMENTS;
 assert.equal(ring.heights.length, ringUncut.heights.length);
 let ringMoved = 0, ringOutside = 0, seated = 0;
 for (let i = 0; i < ring.heights.length; i++) {
+  // the mountains lane (2026-10-03): a road exit opens a pass through the ranges (horizon.ts openRoadPasses) unless it
+  // runs inside a cutting's corridor, which is its valley — so without the cutting the station road's exit takes a pass
+  // through the ranges that the cut map does not need; those vertices are the road's, not the cutting's
+  if (ring.roadPass?.[i] || ringUncut.roadPass?.[i]) continue;
   const row = Math.floor(i / n), x = ring.positions[i * 3], z = ring.positions[i * 3 + 2];
   if (ring.heights[i] !== ringUncut.heights[i]) {
     ringMoved++;
