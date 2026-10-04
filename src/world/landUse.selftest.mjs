@@ -1,11 +1,9 @@
 // Ground lane (2026-10-03): the land use (landUse.ts) — the per-map field system the terrain material draws and the
 // tiers that grow on the ground stand on. Pins: every row names a real map and packs into the material's three vec4
 // uniforms; the CPU twin is deterministic, lays fields of one crop each in the region's rotation, rings them with a
-// margin and agrees on a track from both sides of its boundary; and the GLSL (LAND_USE_GLSL) carries the same
-// rotation, warp and hash constants as the twin (the SwiftShader parity run of `.qa-dev/landuse-parity.mjs` measured
-// 0.05 % crop disagreement — boundary hairlines — on Amberford). No GPU or art claim.
+// margin and agrees on a track from both sides of its boundary; and the GLSL no longer derives the parcels itself —
+// the terrain reads this twin baked (landUseBake.selftest pins the bake, its stack and its decode). No GPU or art claim.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import {
   createLandFieldSample, LAND_CROP, LAND_CROP_ALBEDO, LAND_CROP_GROWTH, LAND_USE_GLSL, landUseAt, landUseBoundary,
   landUseProfileIds, landUseUniformValues, resolveLandUseProfile,
@@ -115,26 +113,18 @@ assert.ok(marginPts / n > 0.01 && marginPts / n < 0.15, `margins ring the fields
   assert.ok(checked > 20 && agree / checked > 0.95, `both sides of a track agree (${agree}/${checked})`);
 }
 
-// the GLSL carries the twin's constants: the rotation through the uniforms, the warp, the hash
+// the rotation's packed shares climb (the twin's packing receipt; the border lane reads them), and the GLSL holds no
+// second derivation: the terrain reads this twin's bake (landUseBake.selftest), so there is one field system
 {
-  const src = readFileSync(new URL('./landUse.ts', import.meta.url), 'utf8');
-  assert.ok(/return roll < uLandD\.x \? 0\.0 : roll < uLandD\.y \? 1\.0 : roll < uLandD\.z \? 2\.0 : roll < uLandD\.w \? 3\.0\s*: roll < uLandC\.z \? 4\.0 : roll < uLandC\.w \? 5\.0 : 6\.0;/.test(LAND_USE_GLSL),
-    'lu_crop walks the packed cumulative shares in crop order');
   for (const id of landUseProfileIds()) {
     const v = landUseUniformValues(resolveLandUseProfile(id));
     const cum = [...v.landD, v.landC[2], v.landC[3]];
     for (let i = 1; i < cum.length; i++) assert.ok(cum[i] >= cum[i - 1] - 1e-12, `${id}: the cumulative shares climb`);
     assert.ok(cum[5] <= 1 + 1e-9 && cum[0] >= 0, `${id}: shares within [0, 1]`);
   }
-  for (const k of ['0.00523', '0.00311', '-0.00197', '0.00877', '0.00409', '0.00587', '0.00913', '0.00241']) {
-    assert.ok(src.split(k).length >= 3, `warp coefficient ${k} appears in both the twin and the GLSL`);
-  }
-  assert.ok(/float lu_kind\(float slot\)/.test(LAND_USE_GLSL) && /crop = lu_kind\(lu_crop\(/.test(LAND_USE_GLSL),
-    'the GLSL maps the rolled slot to its crop kind (uLandE), as the twin does');
-  for (const k of ['0x7feb352d', '0x846ca68b', '0x9e3779b1', '0x85ebca6b']) {
-    assert.ok(src.split(k).length >= 3, `hash constant ${k} appears in both the twin and the GLSL`);
-  }
+  assert.ok(!/lu_hash|lu_rand|lu_crop|lu_kind/.test(LAND_USE_GLSL), 'the GLSL no longer derives the parcels per pixel (the bake is the one source)');
+  assert.ok(/void lu_field\(vec2 p,/.test(LAND_USE_GLSL) && /texelFetch\(uMask,/.test(LAND_USE_GLSL), 'lu_field reads the bake');
   assert.ok(!/sampler2D/.test(LAND_USE_GLSL), 'the field layout takes no sampler (the material sits at 16 units)');
 }
 
-console.log(`landUse: ${landUseProfileIds().length} map row(s), ${fields.size} Amberford fields, crops ${[...hist.entries()].sort().map(([c, k]) => `${c}:${(k / n * 100).toFixed(0)}%`).join(' ')}, tracks agree across their boundary, GLSL constants match the twin PASS; no GPU/art claim`);
+console.log(`landUse: ${landUseProfileIds().length} map row(s), ${fields.size} Amberford fields, crops ${[...hist.entries()].sort().map(([c, k]) => `${c}:${(k / n * 100).toFixed(0)}%`).join(' ')}, tracks agree across their boundary, the GLSL reads the bake PASS; no GPU/art claim`);

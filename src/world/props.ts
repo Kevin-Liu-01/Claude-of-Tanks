@@ -47,24 +47,32 @@ import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructu
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import { applyRockShaderHook, fractureRockGeometry, makeRockDetail, rockDressingFor } from './rockDressing.ts'; // round 75 item 6
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
+import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
 import { paintFieldStoneBuffers } from './fieldStoneSurface.ts'; // the field walls' rubble print (the scenery lane)
+import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
+import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 // world-dressing r1: building-catalog extension + destructible small props
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import {
+  ADOBE_UV_PER_M,
   COURSED_WALLSTONE,
   DESTRUCTIBLE_TYPES,
   FENCE_SEG,
   WALL_SEG,
   bSandbagBroken,
   type DestructiblePropType,
+  buildAdobePilaster,
+  buildDryStoneWallHead,
 } from './maps/inhabitKit.ts';
 import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
-import { boxClearOfRoadCore, discClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
+import {
+  boxClearOfPoints, boxClearOfRoadCore, discClearOfRoadCore, sharpRoadBends, shiftClearOfRoadCore,
+} from './roadFootprint.ts';
 import { FISHERY_WHARF_LAKE_INDEX } from './fisheryWharfSite.ts';
 import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } from './loggingYard.ts';
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
@@ -315,7 +323,14 @@ interface PropsSettings {
   reservoirWaterworks?: ReservoirWaterworksConfig;
   foundryServiceCourt?: FoundryServiceCourtConfig;
   plan: string[];
-  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number }[];
+  /** Maps lane B (2026-10-03): `plot` sizes the site — metres across (x) and deep (z) before the yaw — for a builder
+   * that honours one (the warehouse; the Hostomel kit raises its barrel-vault cargo hangar on a warehouse plot 21 m
+   * wide or more). */
+  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number } }[];
+  /** Maps lane B (2026-10-03, Nordhavn Fjord): the settlement the props dress — its roadside and block-fill buildings,
+   * its plaza (the road crossing nearest cx, cz), street furniture and clutter — when it is not the whole ground the
+   * terrain's village rect grades (a harbour town on the quay of a graded valley floor). Default: the village rect. */
+  town?: { x0: number; x1: number; z0: number; z1: number; cx: number; cz: number };
   /** The maps-and-layouts lane (2026-10-03; the owner's town-plan ruling): a settlement that stands exactly as an earlier
    * build seated it (maps/townPlans.generated.ts). Each entry is one planned building as that build placed it: its
    * structure, plan index, wall and the props stream's state after the wall pick, and its final pose. The replay
@@ -992,6 +1007,26 @@ function* makeFieldStone(
     albedo: toTexture(px, size, { srgb: true, anisotropy }),
     normal: normalFromHeight(hgt, size, 3.0 * size / 512, anisotropy),
     surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.8, roughMax: 0.98, aoMin: 0.6 }),
+  };
+}
+
+/**
+ * The scenery lane (2026-10-03; wave 20, "smooth pillow- and pipe-shaped walls instead of eroded mud brick"): the mud
+ * walls' print (fieldMudSurface.ts) under the map's plaster tone — a worn mud render over the courses of sun-dried
+ * bricks it shows in patches, one tile a wall module. Phones paint it at half size.
+ */
+function* makeFieldMud(
+  anisotropy: number,
+  tone: ToneFunction | null,
+  size: number,
+): Generator<PropsBuildSlice, GeneratedSurfaceTextures, void> {
+  const { px, hgt } = yield* paintFieldMudBuffers(size);
+  applyTone(px, tone);
+  yield { fine: true, stage: 'field-mud-tone' };
+  return {
+    albedo: toTexture(px, size, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, size, 2.4 * size / 512, anisotropy),
+    surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.84, roughMax: 0.98, aoMin: 0.7 }),
   };
 }
 
@@ -2884,6 +2919,9 @@ function* propsBuildSteps(
   group.name = 'props';
   const decorationGroundingReceipts: DecorationGroundingReceipt[] = [];
   const v = L.village;
+  // maps lane B (2026-10-03): the settlement the props dress (P.town, default the village rect); the scatter below keeps
+  // off the whole graded village ground (v) as before
+  const town = P.town ? { ...v, ...P.town } : v;
 
   // regional-buildings lane: the map's architecture kit (maps/regional/index.ts) — its default tones sit under the map's
   const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
@@ -2976,6 +3014,11 @@ function* propsBuildSteps(
   const fieldStone = fieldWallBucket === 'fieldStone'
     ? yield* makeFieldStone(aniso, T.stone || null, mobileProps ? 256 : 512)
     : stone;
+  // (and a mud-walled map's walls their own worn render over their courses, not the house plaster)
+  const adobeWallBucket = P.wallStyle === 'adobe' ? 'fieldMud' : 'plaster';
+  const fieldMud = adobeWallBucket === 'fieldMud'
+    ? yield* makeFieldMud(aniso, T.plaster || null, mobileProps ? 256 : 512)
+    : plaster;
 
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
@@ -3005,6 +3048,9 @@ function* propsBuildSteps(
     // the scenery lane (2026-10-03): the dry-stone field walls' rubble print (fieldStoneSurface.ts)
     fieldStone: new THREE.MeshStandardMaterial({ map: fieldStone.albedo, normalMap: fieldStone.normal,
       roughnessMap: fieldStone.surface, aoMap: fieldStone.surface, roughness: 1, metalness: 0 }),
+    // the scenery lane (2026-10-03): the mud walls' worn render over their courses (fieldMudSurface.ts)
+    fieldMud: new THREE.MeshStandardMaterial({ map: fieldMud.albedo, normalMap: fieldMud.normal,
+      roughnessMap: fieldMud.surface, aoMap: fieldMud.surface, roughness: 1, metalness: 0 }),
     wood: new THREE.MeshStandardMaterial({ map: wood.albedo, normalMap: wood.normal,
       roughnessMap: wood.surface, aoMap: wood.surface, roughness: 1, metalness: 0 }),
     dark: new THREE.MeshStandardMaterial({ color: 0x161a1d, roughness: 0.35, metalness: 0.15 }),
@@ -3081,7 +3127,7 @@ function* propsBuildSteps(
     } : {}),
   };
   function configureSurfaceMaterials(): void {
-    for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'wood',
+    for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'fieldMud', 'wood',
       'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
       if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
@@ -3182,8 +3228,8 @@ ${snowCap ? `
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook : grimeHook);
-      // (the field walls' print is the stone material's shader with other maps: it shares the stone program)
-      const programKind = materialKind === 'fieldStone' ? 'stone' : materialKind;
+      // (the field walls' prints are the stone and plaster materials' shaders with other maps: they share their programs)
+      const programKind = materialKind === 'fieldStone' ? 'stone' : materialKind === 'fieldMud' ? 'plaster' : materialKind;
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
@@ -3191,7 +3237,7 @@ ${snowCap ? `
   installSurfaceShaderHooks();
 
   const buckets: CompletePropsBuckets = {
-    plaster: [], plaster2: [], plaster3: [], stone: [], fieldStone: [], roof: [], wood: [], dark: [],
+    plaster: [], plaster2: [], plaster3: [], stone: [], fieldStone: [], fieldMud: [], roof: [], wood: [], dark: [],
     glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [], structureWood: [],
     regionalPlaster: [], regionalPlaster2: [], regionalPlaster3: [], regionalStone: [], regionalRoof: [],
   };
@@ -3222,6 +3268,7 @@ ${snowCap ? `
   const obstacles: PropsCollisionRecord[] = [];
   // the scenery pass (2026-10-03) keeps its rock fields off the trees; the vegetation is released before it runs
   const sceneryTrees = vegetation?.treeObstacles ?? [];
+  const sceneryTreeKinds = (vegetation as { _trees?: ReadonlyArray<{ species: TreeSpecies }> } | null)?._trees ?? null;
   const colliders: CollisionRecord[] = [];
   // crushables — the main.ts hull-radius contact loop (effects_combat r1).
   // Entries are telegraph poles ({index} into the pole InstancedMesh) OR
@@ -3292,12 +3339,25 @@ ${snowCap ? `
     },
     // the field wall is dry stone (inhabitKit.ts) on its own rubble print, except under a brick print, which keeps the
     // coursed module on the stone print
+    // (wave 20, "no snow on top in a snow-buried valley": a snow map's dry-stone module carries the snow load along its
+    // top, so a breached module loses it with its stones)
     ...(sourcedStoneIsBrick(mapId) ? { wallstone: COURSED_WALLSTONE }
-      : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket } }),
+      : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket, ...(snowCap ? { build: snowLoadedWallstone } : {}) } }),
+    // the mud wall on its own worn render (fieldMudSurface.ts), never the house plaster
+    walladobe: { ...DESTRUCTIBLE_TYPES.walladobe, mat: adobeWallBucket },
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
   };
+  /** The dry-stone module with the winter's snow load along its top (fieldWallDressing.ts; one stream of its own). */
+  function snowLoadedWallstone(buildRng: () => number): THREE.BufferGeometry {
+    const wall = DESTRUCTIBLE_TYPES.wallstone.build(buildRng);
+    const snow = buildSnowLoad(wall, 0x5a0c1, { seamless: true });
+    const loaded = mergeGeometries([wall.index ? wall.toNonIndexed() : wall, snow], false);
+    wall.dispose(); snow.dispose();
+    if (!loaded) throw new Error('props: the snow-loaded wall merge produced no geometry');
+    return loaded;
+  }
   const destructibleContext: DestructibleBuildContext = {
     heightField,
     seed,
@@ -3499,7 +3559,7 @@ ${snowCap ? `
   // junction/plaza: the road crossing nearest the village/town center
   function resolveVillageJunction(): { x: number; z: number } {
     if (mapId === 'verdant') return { x: 20, z: 73 };
-    return roadSettlementJunction(roads, { x: v.cx, z: v.cz });
+    return roadSettlementJunction(roads, { x: town.cx, z: town.cz });
   }
   const junction = resolveVillageJunction();
   // point-to-segment distance (local twin of terrain.js segDist)
@@ -3554,7 +3614,7 @@ ${snowCap ? `
       const nodes = roads[road];
       for (const i of buildingRoadStationIndices(L, road)) {
         const [nx, nz] = nodes[i];
-        if (nx < v.x0 + 6 || nx > v.x1 - 6 || nz < v.z0 + 6 || nz > v.z1 - 6) continue;
+        if (nx < town.x0 + 6 || nx > town.x1 - 6 || nz < town.z0 + 6 || nz > town.z1 - 6) continue;
         if (Math.hypot(nx - junction.x, nz - junction.z) < 22) continue; // keep the plaza open
         const tx = nodes[i + 1][0] - nodes[i - 1][0], tz = nodes[i + 1][1] - nodes[i - 1][1];
         const tl = Math.hypot(tx, tz);
@@ -3647,13 +3707,13 @@ ${snowCap ? `
   const roadClearanceMoves: { kind: string; from: [number, number]; to: [number, number] | null }[] = [];
   if (P.roadBuildingClearance) group.userData.roadClearanceMoves = roadClearanceMoves;
   function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
-    fromRoad = false): boolean {
+    fromRoad = false, plot?: { w: number; d: number }): boolean {
     let tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
     };
     const structureId = explicitStructure ?? P.plan[bi] ?? 'cottage';
-    attachStructureBuildContext(tmp, structureContext);
+    attachStructureBuildContext(tmp, plot ? { ...structureContext, plot } : structureContext);
     const builder = explicitStructure ? BUILDER_BY_NAME[explicitStructure] : builders[bi];
     if (!builder) throw new Error(`Unknown planned structure ${structureId}`);
     const wallBucket = pickWall(rng);
@@ -3687,7 +3747,7 @@ ${snowCap ? `
         const cornersDry = [-1, 1].every(sx => [-1, 1].every(sz => {
           const x = proposed.x + sx * w / 2 * c + sz * d / 2 * s;
           const z = proposed.z - sx * w / 2 * s + sz * d / 2 * c;
-          return x >= v.x0 && x <= v.x1 && z >= v.z0 && z <= v.z1 && !noVeg(x, z);
+          return x >= town.x0 && x <= town.x1 && z >= town.z0 && z <= town.z1 && !noVeg(x, z);
         }));
         const revisedFit = groundFit(proposed.x, proposed.z, w, d, proposed.rot);
         const radius = Math.hypot(w, d) / 2;
@@ -3778,7 +3838,7 @@ ${snowCap ? `
     const lat = P.buildingLat[0] + rng() * P.buildingLat[1];
     const px = cand.x - cand.tz * side * lat;
     const pz = cand.z + cand.tx * side * lat;
-    if (px < v.x0 || px > v.x1 || pz < v.z0 || pz > v.z1) return;
+    if (px < town.x0 || px > town.x1 || pz < town.z0 || pz > town.z1) return;
     if (heightField._roadDist(px, pz) < 7.5 || noVeg(px, pz)) return;
     if (P.roadBuildingKeepouts?.some((keep) => Math.hypot(px - keep.x, pz - keep.z) < keep.r)) return;
     if (conflictsTacticalReservation(px, pz) || !isRoadBuildingSiteClear(px, pz)) return;
@@ -3856,7 +3916,7 @@ ${snowCap ? `
   for (const site of P.townPlan?.length ? [] : P.plannedSites ?? []) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!isRoadBuildingSiteClear(site.x, site.z)) continue;
-    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure);
+    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot);
     yield { fine: true };
   }
   yield* placeRoadBuildings();
@@ -3961,7 +4021,7 @@ ${snowCap ? `
       return { total, pointAt };
     };
     const outsideStreetRowArea = (x: number, z: number): boolean =>
-      x < v.x0 + 8 || x > v.x1 - 8 || z < v.z0 + 8 || z > v.z1 - 8;
+      x < town.x0 + 8 || x > town.x1 - 8 || z < town.z0 + 8 || z > town.z1 - 8;
     const blockedStreetRowSite = (
       x: number,
       z: number,
@@ -4094,7 +4154,7 @@ ${snowCap ? `
           const txn = (bx - ax) / tl, tzn = (bz - az) / tl;
           const side = (i % 2) ? 1 : -1; // alternate pavements
           const lx = ax - tzn * side * 5.9, lz = az + txn * side * 5.9;
-          if (lx < v.x0 + 4 || lx > v.x1 - 4 || lz < v.z0 + 4 || lz > v.z1 - 4) continue;
+          if (lx < town.x0 + 4 || lx > town.x1 - 4 || lz < town.z0 + 4 || lz > town.z1 - 4) continue;
           if (distToOtherRoads(lx, lz, ri) < 7 || noVeg(lx, lz)) continue;
           const ly = heightField.getHeightAt(lx, lz);
           if (frng() < 0.18) { // toppled post lying across the pavement
@@ -4117,8 +4177,8 @@ ${snowCap ? `
       // kerb-line battle litter: masonry chips + slate shards along frontages
       const placeStreetLitter = (): void => {
         for (let i = 0, placed = 0; i < 900 && placed < 150; i++) {
-          const x = v.x0 + frng() * (v.x1 - v.x0);
-          const z = v.z0 + frng() * (v.z1 - v.z0);
+          const x = town.x0 + frng() * (town.x1 - town.x0);
+          const z = town.z0 + frng() * (town.z1 - town.z0);
           const rd = heightField._roadDist(x, z);
           if (rd < 3.2 || rd > 7.5) continue; // hugs the kerb/pavement band
           if (noVeg(x, z)) continue;
@@ -4158,8 +4218,8 @@ ${snowCap ? `
       const rot = (brng() < 0.5 ? 0 : Math.PI / 2) + (brng() - 0.5) * 0.06;
       placePlannedBuilding(px, pz, rot, undefined, undefined, true);
     };
-    for (let gz = v.z0 + 14; gz < v.z1 - 14 && bi < builders.length; gz += step) {
-      for (let gx = v.x0 + 14; gx < v.x1 - 14 && bi < builders.length; gx += step) {
+    for (let gz = town.z0 + 14; gz < town.z1 - 14 && bi < builders.length; gz += step) {
+      for (let gx = town.x0 + 14; gx < town.x1 - 14 && bi < builders.length; gx += step) {
         tryPlaceTownBuilding(gx, gz);
         yield { fine: true };
       }
@@ -4334,8 +4394,8 @@ ${snowCap ? `
           rot: Math.atan2(cand.tx, cand.tz) + (srng() - 0.5) * 0.16,
         };
       }
-      const x = v.x0 + 10 + srng() * Math.max(1, v.x1 - v.x0 - 20);
-      const z = v.z0 + 10 + srng() * Math.max(1, v.z1 - v.z0 - 20);
+      const x = town.x0 + 10 + srng() * Math.max(1, town.x1 - town.x0 - 20);
+      const z = town.z0 + 10 + srng() * Math.max(1, town.z1 - town.z0 - 20);
       const rot = (srng() < 0.5 ? 0 : Math.PI / 2) + (srng() - 0.5) * 0.14;
       const roadDistance = heightField._roadDist(x, z);
       return roadDistance < 7.5 || roadDistance > 48 ? null : { x, z, rot };
@@ -4349,8 +4409,8 @@ ${snowCap ? `
         if (!site) continue;
         const { x, z, rot } = site;
         const margin = Math.max(meta.hw, meta.hl) + 2;
-        const outsideVillage = x < v.x0 + margin || x > v.x1 - margin
-          || z < v.z0 + margin || z > v.z1 - margin;
+        const outsideVillage = x < town.x0 + margin || x > town.x1 - margin
+          || z < town.z0 + margin || z > town.z1 - margin;
         if (outsideVillage || Math.hypot(x - junction.x, z - junction.z) < 18 || noVeg(x, z)) continue;
         const fit = groundFit(x, z, meta.hw * 2, meta.hl * 2, rot);
         if (fit.spread > Math.max(P.maxSpread, 1.9)) continue;
@@ -4568,6 +4628,11 @@ ${snowCap ? `
   // blocks shells/LOS until it dies with the module. Square END/CORNER POSTS
   // stay static dressing (they anchor breach lips visually), as does the
   // authored gapAt breach (crumbled courses + tumbled blocks).
+  // the scenery lane (wave 20, "how things meet the ground"): the walls' feet, drifts and snow loads (fieldWallDressing.ts)
+  const wallDressing = createWallDressing({
+    ground: heightField, snow: snowCap, mobile: mobileProps, adobeBucket: adobeWallBucket, mudUv: ADOBE_UV_PER_M,
+    plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
+  });
   function addWallRun(
     x0: number,
     z0: number,
@@ -4576,8 +4641,9 @@ ${snowCap ? `
     gapAt = -1,
   ): void {
     const style = P.wallStyle || 'fieldstone';
-    // the posts, the breach stubs and the tumbled blocks are the wall's own stone (the field walls' rubble print)
-    const wallB = style === 'adobe' ? 'plaster' : fieldWallBucket;
+    // the posts, the breach stubs and the tumbled blocks are the wall's own stone (the field walls' rubble print) or mud
+    const wallB = style === 'adobe' ? wallDressing.adobeBucket : fieldWallBucket;
+    const breachUv = style === 'adobe' ? wallDressing.mudUv : 0.7; // (the mud print is one tile a module)
     // brick-style maps route to the stone module (urban's 'stone' texture IS
     // the brick print); adobe keeps its own thicker mud module
     const wallKind = style === 'adobe' ? 'walladobe' : 'wallstone';
@@ -4589,9 +4655,31 @@ ${snowCap ? `
     const thick = style === 'adobe' ? 0.52 : 0.46;
     const runH = 1.0 + rng() * 0.15; // family height scale
     let prevBuilt = false;
+    // the scenery lane (wave 20, "how things meet the ground"): each built island of the run gets its foot — the
+    // stones settled at a dry-stone wall's foot, half sunk on both faces, or the mud apron and spalled lumps round an
+    // adobe wall — and on a snow map the drift the wind banks against the windward face. Streams of their own, named by
+    // the island's place; the props stream draws exactly what it drew.
+    let islandFrom = 0;
+    function dressIsland(ta: number, tb: number): void {
+      if (style !== 'adobe' && sourcedStoneIsBrick(mapId)) return;
+      const dressed = wallDressing.island(style === 'adobe', x0 + tx * ta, z0 + tz * ta, x0 + tx * tb, z0 + tz * tb, style === 'adobe' ? thick * 0.5 : 0.23);
+      for (const part of dressed.wall) buckets[wallB].push(part);
+    }
     function endPost(px: number, pz: number): void {
       const py = heightField.getHeightAt(px, pz) - 0.15;
       const ph = runH * 1.05 + 0.3;
+      // the scenery lane (wave 16, "a miniature castle battlement"): a dry-stone run ends in a rubble wall head and a mud
+      // wall in an eroded pier, each from a stream named by its place; a square post capped with a slab stays for the
+      // brick-print walls. The props stream spends the same draws either way (jitterUV's four).
+      if (style === 'adobe' || !sourcedStoneIsBrick(mapId)) {
+        const seedAt = (Math.round(px * 73.1) * 92821) ^ Math.round(pz * 41.7) * 68917;
+        let head = style === 'adobe' ? buildAdobePilaster(seedAt, thick, ph - 0.15) : buildDryStoneWallHead(seedAt, thick, runH * 0.98 + 0.12);
+        jitterUV(head, rng);
+        if (wallDressing.snow && style !== 'adobe') head = wallDressing.loadHead(head, seedAt); // its snow, like its module's
+        head.rotateY(yaw);
+        buckets[wallB].push(head.translate(px, py, pz));
+        return;
+      }
       const post = box(thick + 0.22, ph, thick + 0.22, 0.7);
       jitterUV(post, rng);
       buckets[wallB].push(post.translate(px, py + ph / 2, pz));
@@ -4604,7 +4692,7 @@ ${snowCap ? `
         const z = z0 + tz * (t0 + breachT * (t1 - t0));
         const y = heightField.getHeightAt(x, z) - 0.15;
         const height = 0.30 + rng() * 0.25;
-        const stub = box(thick, height, WALL_SEG * 0.4, 0.7);
+        const stub = box(thick, height, WALL_SEG * 0.4, breachUv);
         jitterUV(stub, rng);
         stub.rotateY(yaw);
         buckets[wallB].push(stub.translate(x, y + height / 2, z));
@@ -4615,7 +4703,7 @@ ${snowCap ? `
         const z = z0 + tz * (t0 + breachT * (t1 - t0)) + (rng() - 0.5) * 1.6;
         const size = 0.16 + rng() * 0.22;
         const block = roughenChunk(
-          box(size * 1.5, size * 0.8, size, 1.2), rng, size * 0.4,
+          box(size * 1.5, size * 0.8, size, style === 'adobe' ? wallDressing.mudUv * 1.6 : 1.2), rng, size * 0.4,
         );
         jitterUV(block, rng);
         block.rotateY(rng() * Math.PI);
@@ -4654,16 +4742,21 @@ ${snowCap ? `
       const cx = x0 + tx * tc, cz = z0 + tz * tc;
       if (inGap || skip) {
         if (!skip && inGap && beginsGap(k, decisionT)) addBrokenBreach(t0, t1);
-        if (prevBuilt) endPost(x0 + tx * t0, z0 + tz * t0); // post at the lip
+        if (prevBuilt) { endPost(x0 + tx * t0, z0 + tz * t0); dressIsland(islandFrom, t0); } // post at the lip
         prevBuilt = false;
         continue;
       }
-      if (!prevBuilt) endPost(x0 + tx * t0, z0 + tz * t0); // run (re)start
+      if (!prevBuilt) { endPost(x0 + tx * t0, z0 + tz * t0); islandFrom = t0; } // run (re)start
       const ya = heightField.getHeightAt(x0 + tx * t0, z0 + tz * t0);
       const yb = heightField.getHeightAt(x0 + tx * t1, z0 + tz * t1);
       const cy = Math.min(ya, yb);
       const tiltX = Math.atan2(yb - ya, t1 - t0) * 0.85;
-      const record = addDestructible(wallKind, cx, cy - 0.13, cz, yaw,
+      // (wave 20: a run turns some of its modules round — a hash of the module's place, never the props stream — so the
+      // kit's one module does not show the same crown and face every three metres; neighbours stand 4 mm apart across
+      // the run, so two turned ends never share a face where they overlap)
+      const turn = (Math.imul(k + 1, 0x9e3779b1) ^ Math.imul(Math.round(x0 * 8 + z0 * 5), 0x85ebca6b)) >>> 31 ? Math.PI : 0;
+      const nudge = k % 2 ? 0.004 : -0.004;
+      const record = addDestructible(wallKind, cx + tz * nudge, cy - 0.13, cz - tx * nudge, yaw + turn,
         runH * (0.94 + rng() * 0.12), tiltX, (rng() - 0.5) * 0.02);
       // Preserve seeded placement/breaches. Once the shared kit is built,
       // fit this same slot to a continuous, grounded masonry span.
@@ -4671,14 +4764,14 @@ ${snowCap ? `
         x1: x0 + tx * t1, z1: z0 + tz * t1 });
       prevBuilt = true;
     }
-    if (prevBuilt) endPost(x1, z1); // closing post
+    if (prevBuilt) { endPost(x1, z1); dressIsland(islandFrom, along); } // closing post
   }
   const wallRuns: WallRun[] = P.wallRuns || [
-    [v.x0 + 4, 8, v.x0 + 4, 64, 2],
-    [v.x0 + 4, 8, v.x0 + 40, 8, 3],
-    [v.x1 - 6, 30, v.x1 - 6, 96, 4],
-    [-8, v.z1 - 10, 52, v.z1 - 10, 2],
-    [38, v.z0 + 6, 74, v.z0 + 6, 1],
+    [town.x0 + 4, 8, town.x0 + 4, 64, 2],
+    [town.x0 + 4, 8, town.x0 + 40, 8, 3],
+    [town.x1 - 6, 30, town.x1 - 6, 96, 4],
+    [-8, town.z1 - 10, 52, town.z1 - 10, 2],
+    [38, town.z0 + 6, 74, town.z0 + 6, 1],
     [-44, 108, -10, 108, 0],
     // midfield field-boundary walls: hull-down/cover lines in the open ground
     [-186, -62, -118, -62, 3],
@@ -4788,8 +4881,8 @@ ${snowCap ? `
       const coreClutter = richCount(inh.coreClutter);
       if (coreClutter <= 0) return;
       for (let k = 0; k < coreClutter; k++) {
-        const x = v.x0 + drng() * (v.x1 - v.x0);
-        const z = v.z0 + drng() * (v.z1 - v.z0);
+        const x = town.x0 + drng() * (town.x1 - town.x0);
+        const z = town.z0 + drng() * (town.z1 - town.z0);
         if (heightField._roadDist(x, z) < 4.0 || noVeg(x, z)) continue;
         if (heightField.getNormalAt(x, z).y < 0.90) continue;
         if (overlapsBuilding(x, z, 0.3)) continue;
@@ -4826,8 +4919,8 @@ ${snowCap ? `
       const drumCount = richCount(inh.drums);
       if (drumCount <= 0) return;
       for (let t = 0, placed = 0; t < drumCount * 16 && placed < drumCount; t++) {
-        const x = v.x0 + drng() * (v.x1 - v.x0);
-        const z = v.z0 + drng() * (v.z1 - v.z0);
+        const x = town.x0 + drng() * (town.x1 - town.x0);
+        const z = town.z0 + drng() * (town.z1 - town.z0);
         const rd = heightField._roadDist(x, z);
         if (rd < 3.4 || rd > 14 || noVeg(x, z)) continue;
         if (overlapsBuilding(x, z, 0.3)) continue;
@@ -5989,8 +6082,8 @@ ${snowCap ? `
       const side = ((nodeIndex >> 1) % 2) ? 1 : -1;
       const lx = ax - ((bz - az) / tl) * 6.3 * side;
       const lz = az + ((bx - ax) / tl) * 6.3 * side;
-      const outsideTown = lx < v.x0 - 12 || lx > v.x1 + 12
-        || lz < v.z0 - 12 || lz > v.z1 + 12;
+      const outsideTown = lx < town.x0 - 12 || lx > town.x1 + 12
+        || lz < town.z0 - 12 || lz > town.z1 + 12;
       if (outsideTown || heightField._roadDist(lx, lz) < 4.6) return false;
       const blocked = placedB.some((building) =>
         Math.hypot(lx - building.x, lz - building.z) < building.rr + 1.2);
@@ -6018,8 +6111,8 @@ ${snowCap ? `
     const hrng = mulberry32(seed + 613);
     const placeHedgehog = (hedgehogId: number): boolean => {
       const inTown = hrng() < 0.7;
-      const hx = inTown ? v.x0 + hrng() * (v.x1 - v.x0) : (hrng() * 2 - 1) * 320;
-      const hz = inTown ? v.z0 + hrng() * (v.z1 - v.z0) : (hrng() * 2 - 1) * 320;
+      const hx = inTown ? town.x0 + hrng() * (town.x1 - town.x0) : (hrng() * 2 - 1) * 320;
+      const hz = inTown ? town.z0 + hrng() * (town.z1 - town.z0) : (hrng() * 2 - 1) * 320;
       const roadDistance = heightField._roadDist(hx, hz);
       if (roadDistance > 8.5 || (roadDistance < 2.2 && hrng() < 0.5)) return false;
       const blocked = placedB.some((building) =>
@@ -6320,6 +6413,10 @@ ${snowCap ? `
       const pool = resolveWreckRoster(era, wCfg?.ids);
       if (pool.length === 0) return;
       const bakeCache = new Map<string, WreckBake | null>(); // specId|pop -> bake result
+      // maps lane B (2026-10-03, the physics lane's road-crossing sweep): a hulk keeps 10 m off a road's sharp bends
+      // (turns over 40 degrees), the ground a hull that misses the turn runs straight on to. Copper Mesa's haul road
+      // met a BMP-3 4.8 m past its 73-degree corner on the causeway; no other map had a hulk within 10 m of one.
+      const sharpBends = sharpRoadBends(roads);
       const wreckGeos: THREE.BufferGeometry[] = [];
       const wreckShadowGeos: THREE.BufferGeometry[] = []; // factory shadow proxies, wreck-posed
       let bakedTris = 0;
@@ -6377,6 +6474,7 @@ ${snowCap ? `
           if (Math.max(Math.abs(x), Math.abs(z)) > 440
             || placedB.some((building) => Math.hypot(x - building.x, z - building.z) < building.rr + 2)) return false;
         }
+        if (!boxClearOfPoints(sharpBends, x, z, baked.hx + 0.2, baked.hz + 0.2, yaw, 10)) return false;
         const support = planGroundedObbPose(
           heightField, x, z, baked.hx, baked.hz, yaw, 0.14,
         );
@@ -6729,9 +6827,9 @@ ${snowCap ? `
     const rrng = mulberry32(seed + 403);
     const placeRubbleCandidate = (candidateIndex: number): boolean => {
       const extension = candidateIndex % 4 === 0 ? 90 : 0;
-      const x = v.x0 - extension + rrng() * (v.x1 - v.x0 + extension * 2);
-      const z = v.z0 - extension + rrng() * (v.z1 - v.z0 + extension * 2);
-      const outskirt = x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1;
+      const x = town.x0 - extension + rrng() * (town.x1 - town.x0 + extension * 2);
+      const z = town.z0 - extension + rrng() * (town.z1 - town.z0 + extension * 2);
+      const outskirt = x < town.x0 || x > town.x1 || z < town.z0 || z > town.z1;
       const roadDistance = heightField._roadDist(x, z);
       if (roadDistance < 4.5 || roadDistance > (outskirt ? 70 : 16)) return false;
       const blocked = placedB.some((building) =>
@@ -6780,7 +6878,7 @@ ${snowCap ? `
       for (let i = 0; i < nodes.length - 1; i++) {
         const [ax, az] = nodes[i], [bx, bz] = nodes[i + 1];
         const mx = (ax + bx) / 2, mz = (az + bz) / 2;
-        if (mx < v.x0 - 6 || mx > v.x1 + 6 || mz < v.z0 - 6 || mz > v.z1 + 6) continue;
+        if (mx < town.x0 - 6 || mx > town.x1 + 6 || mz < town.z0 - 6 || mz > town.z1 + 6) continue;
         const dx = bx - ax, dz = bz - az;
         const len = Math.hypot(dx, dz);
         const tx = dx / len, tz = dz / len;
@@ -7071,8 +7169,8 @@ ${snowCap ? `
       if (!P.streetRows) return;
       const crng2 = mulberry32(seed + 771);
       for (let i = 0, placed = 0; i < 700 && placed < 84; i++) {
-        const x = v.x0 + crng2() * (v.x1 - v.x0);
-        const z = v.z0 + crng2() * (v.z1 - v.z0);
+        const x = town.x0 + crng2() * (town.x1 - town.x0);
+        const z = town.z0 + crng2() * (town.z1 - town.z0);
         if (!courtyardDecalIsClear(x, z)) continue;
         apronGeos.push(conformedDisc(x, z,
           4.5 + crng2() * 7.0, [0.04, 0.04, 0.04, 0.03]));
@@ -7262,7 +7360,7 @@ ${snowCap ? `
       addDecalMesh(tearGeos, makeChurnTexture(), { decalKind: 'churn' });
     }
     const corridors: DriveCorridor[] = [L.spawns.player, ...L.spawns.enemies]
-      .map((spawn) => [spawn.x, spawn.z, v.cx ?? 10, v.cz ?? 40]);
+      .map((spawn) => [spawn.x, spawn.z, town.cx ?? 10, town.cz ?? 40]);
     yield* placeFoundationDecals();
     // Yield only after a complete family transfers its meshes to the props
     // group. Foundation inputs above stay private until collection completes.
@@ -7633,9 +7731,24 @@ ${snowCap ? `
   function* placeScenery(): Generator<PropsBuildSlice, void, void> {
     const scenery = (cfg as (PropsMapConfig & SceneryMapConfig) | null)?.scenery;
     if (!scenery) return;
+    // the trees' crown tops, for the pylon lines' towers to stand over (a crown's height from its trunk's, by species)
+    const treeKinds = sceneryTreeKinds;
+    const treeTops: Array<{ x: number; z: number; top: number }> = [];
+    if (treeKinds && scenery.powerLines?.length) {
+      for (const ob of sceneryTrees) {
+        const kind = ob.treeIdx == null ? undefined : treeKinds[ob.treeIdx];
+        const a = kind && TREE_ARCHETYPES[kind.species];
+        if (!a) continue;
+        // (the instance's scale from its trunk's collider; the crown's height from the archetype under the species'
+        // geometry scale, and a sixth more for the tallest card of the crown)
+        const scaleY = (ob.max[1] - ob.min[1]) / a.trunkHeightM;
+        const crown = Math.max(a.fallHeightM, a.canopyCenterM + a.canopyRadiusM) * TREE_GEOMETRY_SCALE[kind.species][1] * 1.16;
+        treeTops.push({ x: (ob.min[0] + ob.max[0]) / 2, z: (ob.min[2] + ob.max[2]) / 2, top: ob.min[1] + crown * scaleY });
+      }
+    }
     const built = yield* composeScenery({
       mapId, scenery, heightField, spawns: [L.spawns.player, ...L.spawns.enemies],
-      obstacles, colliders, trees: sceneryTrees, baked: buckets.baked, conform: conformYardPiece,
+      obstacles, colliders, trees: sceneryTrees, treeTops, baked: buckets.baked, conform: conformYardPiece,
       addDestructible: (kind, x, y, z, yaw, scale) => addDestructible(kind, x, y, z, yaw, scale),
       seed, mobile: mobileProps,
     });
@@ -7756,6 +7869,20 @@ ${snowCap ? `
     }
   }
   yield* mergeMaterialBuckets();
+  // the scenery lane (wave 34): the snow drifts banked against the walls draw as one mesh of their own on the plaster
+  // (a drift is a low ramp: it receives the cascades and casts none), so a frame can show and hide them
+  if (wallDressing.drifts.length) {
+    const drifts = mergeGeometries(wallDressing.drifts.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+    for (const g of wallDressing.drifts) g.dispose();
+    wallDressing.drifts.length = 0;
+    if (drifts) {
+      const mesh = new THREE.Mesh(drifts, mats.plaster);
+      mesh.name = 'props-snow-drifts';
+      mesh.receiveShadow = true;
+      mesh.matrixAutoUpdate = false;
+      group.add(mesh);
+    }
+  }
   // Append after every ordinary prop so existing network prop identities stay stable.
   for (const clutter of pendingClutter) {
     if (!clutter.activate(destructibles.length)) continue;

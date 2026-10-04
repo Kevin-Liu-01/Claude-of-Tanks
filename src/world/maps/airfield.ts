@@ -30,12 +30,20 @@ const CARGO_SIDE = [
   // crowned by a dome with spidery legs, a placeholder". A second gabled hangar stands in its place, with roller
   // doors toward the apron and the sheet cladding below.
   { structure: 'tower', x: -282, z: -128, yawDeg: 0 },
-  { structure: 'warehouse', x: -256, z: -206, yawDeg: 0 },
+  // 2026-10-03 (maps lane B, gauntlet wave 28: "a cobbled plaza … a single barn-sized shed", where Hostomel has the
+  // Antonov hangars): the hangar plot at the back of the cargo apron, 56 m across (x -253..-197) by 36 m deep
+  // (z -230..-194), its doors on the north face toward the apron, which it meets 2 m past the apron's south edge, its
+  // ground the plateau's graded level, 12 m clear of the access road behind it. The plot is authored at its size, so
+  // the regional kit raises its barrel-vault cargo hangar across it (a warehouse plot 21 m wide or more); without the
+  // kit the gabled hangar builds to it.
+  { structure: 'warehouse', x: -225, z: -212, yawDeg: 0, plot: { w: 56, d: 36 } },
   { structure: 'warehouse', x: -160, z: -208, yawDeg: 90 },
   // the hangar line, the fire station and the stores along the taxiway
   { structure: 'warehouse', x: -207, z: -82, yawDeg: 90 },
   { structure: 'depot', x: -160, z: -115, yawDeg: 90 },
-  { structure: 'foundryoffice', x: -160, z: -81, yawDeg: 90 },
+  // (the terminal faces the taxiway, 10 m of open ground in front of its glazed hall and canopy: facing +x they stood
+  // 4 m from the end wall of the hangar at (-137, -80) — the buildings lane's Hostomel kit, 2026-10-03)
+  { structure: 'foundryoffice', x: -160, z: -81, yawDeg: 180 },
   { structure: 'watertower', x: -136, z: -113, yawDeg: 90 },
   { structure: 'warehouse', x: -137, z: -80, yawDeg: 90 },
   { structure: 'containerRow', x: -113, z: -113, yawDeg: 90 },
@@ -44,7 +52,7 @@ const CARGO_SIDE = [
   { structure: 'warehouse', x: -41, z: -62, yawDeg: 47 },
   { structure: 'ruin', x: -6, z: -70, yawDeg: 32 },
 ];
-const rotateSite = (site: { structure: string; x: number; z: number; yawDeg: number }) =>
+const rotateSite = (site: { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number } }) =>
   ({ ...site, x: -site.x, z: -site.z, yawDeg: site.yawDeg + 180 });
 export default {
   id: 'airfield', name: 'Kestrel Airfield',
@@ -119,7 +127,11 @@ export default {
       { x: 0, z: -403 }, { x: -60, z: -434 }, { x: -120, z: -401 },
     ],
   },
-  splat: { sourcedPalette: 'railyard', pavedRoads: true, roadTexMix: 0.12, townWear: 0.8, fieldPatch: 1, midRelief: 0.55, tintA: [0.94, 1.00, 0.76], tintB: [0.67, 0.76, 0.60], tintC: [1.06, 1.08, 0.86], roadTint: [0.55, 0.56, 0.54] },
+  splat: { sourcedPalette: 'railyard', pavedRoads: true, roadTexMix: 0.12, townWear: 0.8, fieldPatch: 1, midRelief: 0.55, tintA: [0.94, 1.00, 0.76], tintB: [0.67, 0.76, 0.60], tintC: [1.06, 1.08, 0.86], roadTint: [0.55, 0.56, 0.54],
+    // 2026-10-03 (maps lane B, gauntlet wave 28: the cargo apron "reads as a cobbled plaza"): the runway, taxiways,
+    // aprons and the access roads are airfield concrete — 6 m slabs with sealed expansion joints, a tone per pour, oil
+    // and fuel stains and tyre rubber along the runway's axis (terrain.ts uPaveSlab) — in place of the sett print
+    pavement: { slabM: 6, jointM: 0.04, stains: 1, tyres: 1 } },
   vegetation: {
     species: ['pine', 'birch', 'poplar'], clusterMix: [['pine', 0.6], ['birch', 0.25], ['poplar', 0.15]],
     loneMix: [['birch', 0.4], ['pine', 0.4], ['poplar', 0.2]], rimMix: [['pine', 0.65], ['birch', 0.2], ['poplar', 0.15]],
@@ -149,7 +161,8 @@ export default {
     tones: makeRealisticCityBuildingTones({ value: 1, saturation: 0.92, soot: 0.01, roofValue: 0.94 }),
     wallStyle: 'fieldstone', wallStoneChance: 0.6,
     // Blast walls along the hangar line and the terminal forecourt (rotation pairs).
-    wallRuns: [[-300, -205, -220, -205, 2], [300, 205, 220, 205, 2], [-160, -118, -100, -118, 3], [160, 118, 100, 118, 3],
+    // (the hangar line's wall ends west of the hangar plot)
+    wallRuns: [[-300, -205, -262, -205, 2], [300, 205, 262, 205, 2], [-160, -118, -100, -118, 3], [160, 118, 100, 118, 3],
       [-60, -150, -60, -110, 1], [60, 150, 60, 110, 1]],
     well: false, hayCrates: false, fences: true, telegraph: false, carts: false, logs: false,
     rocks: 98, outcrops: 12, craters: 58, rubblePiles: 14, sandbagLines: 18, hedgehogs: 18,

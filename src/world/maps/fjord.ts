@@ -105,7 +105,7 @@ export default {
     bushCount: 1.15, bushSpecies: 'spruce',
   },
   props: {
-    plan: ['lighthouse', 'fishery', 'netyard', 'depot', 'logcabin', 'alpine',
+    plan: ['fishery', 'netyard', 'depot', 'logcabin', 'alpine',
       'warehouse', 'boatshed', 'chapel', 'cornershop', 'ruin', 'netyard', 'depot', 'logcabin',
       'warehouse', 'boatshed', 'netyard', 'logcabin', 'alpine', 'depot', 'woodshed', 'chapel',
       'boatshed', 'warehouse', 'logcabin', 'ruin', 'netyard', 'depot'],
@@ -120,6 +120,15 @@ export default {
       { id: 'northern-service-yard', role: 'support', x: -252, z: 286, yawDeg: 28,
         structure: 'quonsethut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: 15 },
     ],
+    // 2026-10-03 (maps lane B, gauntlet wave 28: "the town and an inland lighthouse sit on a wide, flat meadow … an
+    // Atlantic coastal plain rather than a fjord harbour"): the town is the harbour's — its buildings, plaza and street
+    // dressing stand on the strip between the terraces' lower slopes and the quay at the heads of the south and middle
+    // arms, along the harbour road (the east road), not across the middle of the map, and clear of the harbour zone's
+    // disc (150, -110); the terrain keeps its graded village ground and the scatter keeps off all of it, so the lanes,
+    // sight lines and objectives keep their bands. The lighthouse stands on the south
+    // headland's crest, 21 m over the water 20 m below it, where the roadside plan had put it 300 m inland.
+    town: { x0: 170, x1: 254, z0: -236, z1: 166, cx: 214, cz: -40 },
+    plannedSites: [{ structure: 'lighthouse', x: 392, z: -32, yawDeg: 270 }],
     blockFill: true,
     extraKits: ['coastal'], wallStyle: 'fieldstone', wallStoneChance: 0.72,
     wallRuns: [

@@ -1149,6 +1149,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundPressure.selftest.mjs',
     'src/world/tallGrass.selftest.mjs',
     'src/world/landUse.selftest.mjs', // ground lane (2026-10-03): the field system and its CPU twin
+    'src/world/landUseBake.selftest.mjs', // ground lane (2026-10-03): the land use baked under the ground mask
     'src/world/roadLookupGrid.selftest.mjs',
     'src/world/roadAuthoredExits.selftest.mjs',
     'src/world/roadBankComposition.selftest.mjs',
@@ -1177,6 +1178,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/scenery.selftest.mjs',
     // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
     'src/world/fieldStoneSurface.selftest.mjs',
+    // the scenery lane (wave 20): the mud walls' worn render; the walls' feet, drifts and snow loads
+    'src/world/fieldMudSurface.selftest.mjs',
+    'src/world/maps/fieldWallDressing.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
     'src/world/loggingYard.selftest.mjs',
     'src/world/foundryServiceCourt.selftest.mjs',

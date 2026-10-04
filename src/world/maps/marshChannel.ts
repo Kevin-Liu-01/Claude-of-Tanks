@@ -14,7 +14,11 @@ export function createLakeChannel(
     .map(({ x, z, r }) => ({ x, z, r, level }));
 }
 
-export function createMarshChannel(stations: readonly MarshChannelStation[]): MarshChannelStation[] {
+/** `spacing` is the largest gap between cells as a share of the smaller radius (1.15 by default). A river whose bank
+ * line must read smooth from the air lays its cells closer (maps lane B, 2026-10-03, Amberford: 0.5): a union of
+ * circles is scalloped between its cells, 0.21 of the radius deep at 1.15 and 0.03 at 0.5, and the closer cells are
+ * proportionally shallower, so the summed bed keeps its depth. */
+export function createMarshChannel(stations: readonly MarshChannelStation[], spacing = 1.15): MarshChannelStation[] {
   const channel: MarshChannelStation[] = [];
   for (let index = 0; index < stations.length; index++) {
     const current = stations[index];
@@ -25,7 +29,7 @@ export function createMarshChannel(stations: readonly MarshChannelStation[]): Ma
     // neighboring wet cores still meet; a mere bounding-circle overlap
     // leaves disconnected pools after the rendered water ramp is applied.
     const count = Math.ceil(Math.hypot(next.x - current.x, next.z - current.z)
-      / (Math.min(current.r, next.r) * 1.15));
+      / (Math.min(current.r, next.r) * spacing));
     for (let step = 1; step < count; step++) {
       const t = step / count;
       channel.push({
@@ -34,7 +38,7 @@ export function createMarshChannel(stations: readonly MarshChannelStation[]): Ma
         r: current.r + (next.r - current.r) * t,
         // Keep added overlaps shallow rather than summing several full
         // authored bowl depths into a trench at every interpolated point.
-        dip: Math.min(0.65, current.dip + (next.dip - current.dip) * t),
+        dip: Math.min(0.65, current.dip + (next.dip - current.dip) * t) * Math.min(1, spacing / 1.15),
       });
     }
   }

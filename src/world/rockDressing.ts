@@ -246,8 +246,11 @@ diffuseColor.rgb *= 0.42 + 0.66 * rockDetail;
   // moss on the shaded side and the tops of wet maps, in the tile's grain
   vec2 flank = normalize(vGrimeN.xz + vec2(1e-4, 0.0));
   float shaded = 0.5 - 0.5 * dot(flank, vec2(0.55, -0.83));
+  // (gauntlet wave 29, Saltmere Bay's tor: "near-black slabs": the moss keeps to the damp ground a metre or two up; a
+  // tall rock's tops dry in the wind and carry the lichen its own tone paints, not moss)
   float mossMask = uRockMoss * smoothstep(0.15, 0.85, shaded * 0.6 + max(0.0, vGrimeN.y) * 0.7)
-    * smoothstep(0.32, 0.72, texture2D(uGrime, vGrimeW.xz * 0.55 + vGrimeW.y * 0.31).g);
+    * smoothstep(0.32, 0.72, texture2D(uGrime, vGrimeW.xz * 0.55 + vGrimeW.y * 0.31).g)
+    * (1.0 - 0.75 * smoothstep(0.9, 2.6, vRockAbove));
   diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.17, 0.23, 0.09) * (0.6 + 0.7 * rockDetail), mossMask * 0.85);
   // dust: a pale cap on the upward faces and a skirt at the base of arid maps
   float dustMask = uRockDust * (0.4 * smoothstep(0.35, 0.9, vGrimeN.y) + 0.6 * (1.0 - smoothstep(0.0, 1.1, vRockAbove)));
