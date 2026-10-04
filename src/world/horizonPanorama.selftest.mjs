@@ -180,6 +180,17 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
     for (let i = 0; i <= 400; i++) worst = Math.max(worst, Math.abs(horizonJebelSection(i / 400, f, a, r) - inselbergSection(i / 400, f, a, 4, r)));
   }
   assert.ok(worst <= 1e-9, `the far jebel's section is the battlefield's inselberg section (worst ${worst})`);
+  // desert varnish down the walls (the edge-e pair of e8350e7bb: one smooth pale slab where the PR head's far range had
+  // streaked mesas): streaks in the tree-cover channel of a treeless jebel country, darkening the rock, never painting forest
+  const strip = HORIZON_PANORAMA_SHADERS.strip, heightPass = HORIZON_PANORAMA_SHADERS.height;
+  assert.ok(heightPass.includes('gTree = max(gTree, gVarnish);') && heightPass.includes('gVarnish = varnish * uJebel3.z;'), 'the jebels write their varnish after the tree cover');
+  assert.ok(strip.includes('uJebel.x > 0.0 ? 0.0 : texture2D(uHeight, g).b') && strip.includes('if (uJebel.x > 0.0) col *= 1.0 - texture2D(uHeight, g).b;'),
+    'a jebel country darkens its rock by the channel and paints no forest from it');
+  for (const [name, c] of [...Object.entries(HORIZON_PANORAMA_CHARACTERS), ...Object.entries(HORIZON_PANORAMA_REGIONAL)]) {
+    if (name !== 'jebel') assert.equal(c.jebelVarnish, 0, `${name}: no varnish`);
+  }
+  const jv = resolveHorizonPanoramaCharacter('mesa', { regional: 'jebel' });
+  assert.ok(jv.jebelVarnish > 0 && jv.jebelBossM >= 60 && jv.jebelRadiusM <= 800, 'jebel: several bossed, varnished massifs rather than one wide slab');
 }
 // the ring hands the bake its map's own overcast (lightModelCore resolveOvercast of its sky and cloudscape), not the light
 // model the battlefield may still publish from the last map
