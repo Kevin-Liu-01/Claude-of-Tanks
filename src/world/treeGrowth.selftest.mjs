@@ -404,6 +404,11 @@ const shrubRows = [];
     const p = cards.getAttribute('position');
     let reach = 0; for (let i = 0; i < p.count; i++) reach = Math.max(reach, Math.hypot(p.getX(i), p.getZ(i)));
     assert.ok(reach <= (kind === 'bush' ? 2 : 1.4), `${species} ${kind}: inside the cover disc / the understorey's reach (${reach})`);
+    // trees round 4 (the gauntlet's wave 46: the shrubs "lettuce heads", "topiary"): a shrub's leaves at a shrub's size
+    // — sixty sprays to a bush (thirty-six to the understorey) at under 0.6 m (round 2's 32 at 0.72)
+    const meanLength = a.leaves.reduce((sum, l) => sum + l.length, 0) / a.leaves.length;
+    assert.ok(a.leaves.length >= (kind === 'bush' ? 60 : 36) && meanLength < (kind === 'bush' ? 0.6 : 0.46),
+      `${species} ${kind}: a shrub of small sprays (${a.leaves.length} at ${meanLength.toFixed(2)} m)`);
     shrubRows.push([species, kind, a.leaves.length, +size.x.toFixed(2), +size.y.toFixed(2), +reach.toFixed(2)]);
   }
   // the default emitter keeps the crowns' three-row card

@@ -1050,11 +1050,15 @@ function supportSprays(ctx: GrowContext, leaves: LeafSite[]): boolean[] {
 }
 
 /**
- * The grown shrubs (bushes and understorey): sprays per shrub, each a two-triangle card (emitLeafCards rows 2) — the
- * round-8 cards' triangle budget (the bush's 64, the understorey's 40) at a spray per card. A species of narrow sprays
- * (aspect under 0.8: birch, willow) carries more of them, up to a third more.
+ * The grown shrubs (bushes and understorey): sprays per shrub, each a two-triangle card (emitLeafCards rows 2). Round
+ * 2 kept the round-8 cards' triangle budget (32 and 20 sprays: the bush's 64 triangles, the understorey's 40); trees
+ * round 4 (the gauntlet's wave 46: the shrubs read as "lettuce heads", "topiary", "a sphere with a leaf texture") grows
+ * them from nearly twice as many sprays at 0.72 of the length (GROWTH_SHRUB_SPRAY_SCALE): a shrub's leaves at a shrub's
+ * size, a finer, lumpier mound. A species of narrow sprays (aspect under 0.8: birch, willow) carries up to a third more.
  */
-export const GROWTH_SHRUB_SPRAYS: Readonly<Record<'bush' | 'understorey', number>> = Object.freeze({ bush: 32, understorey: 20 });
+export const GROWTH_SHRUB_SPRAYS: Readonly<Record<'bush' | 'understorey', number>> = Object.freeze({ bush: 60, understorey: 36 });
+/** Trees round 4: a shrub's spray length against round 2's (the shrub's leaves at a shrub's size, not a crown's). */
+const GROWTH_SHRUB_SPRAY_SCALE = 0.72;
 
 /**
  * The grown shrub's value in light per bush species, on top of the crown's foliageValue: the round-8 bush cards carried
@@ -1100,10 +1104,12 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
   interface Clump { x: number; z: number; R: number; c0: number; Hc: number; lobe1: number; lobe2: number; az0: number; n: number }
   const clumps: Clump[] = [{ x: 0, z: 0, R: R * (under ? 1 : 0.86), c0, Hc, lobe1: rng() * Math.PI * 2, lobe2: rng() * Math.PI * 2, az0: rng() * Math.PI * 2, n: 0 }];
   if (!under) {
-    const stools = 2 + (rng() < 0.5 ? 1 : 0), a0 = rng() * Math.PI * 2;
+    // trees round 4 (the gauntlet's wave 46: "lettuce heads", "topiary"): three to five stools of their own sizes and
+    // heights, further out — a lumpier, lopsided thicket
+    const stools = 3 + ((rng() * 3) | 0), a0 = rng() * Math.PI * 2;
     for (let i = 0; i < stools; i++) {
       const a = a0 + i * (Math.PI * 2 / stools) + (rng() - 0.5) * 1.1;
-      const d = R * (0.46 + rng() * 0.2), r = R * (0.5 + rng() * 0.16), h = H * (0.52 + rng() * 0.3);
+      const d = R * (0.46 + rng() * 0.36), r = R * (0.36 + rng() * 0.3), h = H * (0.42 + rng() * 0.5);
       const cc0 = conifer ? h * 0.22 : h * 0.32;
       clumps.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, R: r, c0: cc0, Hc: h - cc0, lobe1: rng() * Math.PI * 2,
         lobe2: rng() * Math.PI * 2, az0: rng() * Math.PI * 2, n: 0 });
@@ -1170,7 +1176,7 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
         tUp.z * Math.cos(beta) + nOut.z * Math.sin(beta));
       if (conifer) axis = v3(axis.x, axis.y * 0.45 - 0.12, axis.z);
       axis = norm(axis);
-      const length = (under ? 0.55 : 0.72) * (0.85 + rng() * 0.3) * (elev > 1.1 ? 0.86 : 1);
+      const length = (under ? 0.55 : 0.72) * GROWTH_SHRUB_SPRAY_SCALE * (0.75 + rng() * 0.5) * (elev > 1.1 ? 0.86 : 1);
       const seat = v3(P.x - axis.x * length * 0.42 - nOut.x * 0.04, Math.max(-0.02, P.y - axis.y * length * 0.42 - nOut.y * 0.04),
         P.z - axis.z * length * 0.42 - nOut.z * 0.04);
       let face = v3(nOut.x - axis.x * dot(nOut, axis), nOut.y - axis.y * dot(nOut, axis), nOut.z - axis.z * dot(nOut, axis));

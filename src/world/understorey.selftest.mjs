@@ -57,14 +57,16 @@ function legacyShapeContract(geometry) {
   return { size: size.toArray().map(v => +v.toFixed(3)), minY: +box.min.y.toFixed(3) };
 }
 
-// the grown understorey: twenty two-triangle spray cards (the round-77 shrub's forty triangles; a species of narrow
-// sprays carries up to a third more), welded to four vertices a spray, the six streams of the grown crowns' cards
+// the grown understorey: thirty-six two-triangle spray cards (trees round 4: more and smaller than round 2's twenty;
+// a species of narrow sprays carries up to a third more), welded to four vertices a spray, the six streams of the grown
+// crowns' cards
 function grownShapeContract(geometry) {
   assert.ok(geometry.index, 'welded: indexed');
   // trees round 2 (2026-10-03): and the billboard frame its cards turn about (aAxis, aLeaf: vegetation.ts COT_LEAF_BILLBOARD)
   assert.deepEqual(Object.keys(geometry.attributes).filter(k => k !== 'aFadeI' && k !== 'aLodF').sort(), ['aAxis', 'aCard', 'aFlex', 'aLeaf', 'color', 'normal', 'position', 'uv']);
   const p = geometry.attributes.position, sprays = geometry.index.count / 6;
-  assert.ok(Number.isInteger(sprays) && sprays >= 20 && sprays <= 27, `twenty to twenty-seven two-triangle sprays (${sprays})`);
+  // trees round 4: the understorey's 36 smaller sprays (GROWTH_SHRUB_SPRAYS; a narrow spray's species a third more)
+  assert.ok(Number.isInteger(sprays) && sprays >= 36 && sprays <= 48, `thirty-six to forty-eight two-triangle sprays (${sprays})`);
   assert.equal(p.count, sprays * 4, 'four vertices a spray');
   for (const name of ['position', 'normal', 'uv', 'color', 'aFlex', 'aCard']) {
     const a = geometry.attributes[name];
