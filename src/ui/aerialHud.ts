@@ -35,7 +35,8 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
   const scopeKey=node('kbd','flight-key',scopeView);scopeKey.setAttribute('aria-hidden','true');
   icon(scopeView,'undo','scope-vision-cycle');
   let priorScope:AerialVision|null=null,priorScopeKey='',priorScopeLocale='';
-  const switchScope=()=>{if(!scopeView.hidden)cycleScopeVision();};scopeView.addEventListener('click',switchScope);bus.on('ui:aerialVision',switchScope);
+  // A sensor change the optics actually made (click or key) is announced once, for its sound.
+  const switchScope=()=>{if(!scopeView.hidden){cycleScopeVision();bus.emit('ui:visionChanged',{});}};scopeView.addEventListener('click',switchScope);bus.on('ui:aerialVision',switchScope);
   const root=node('section' ,'cot-flight-hud',parent);root.hidden=true;
   const sight=node('div','flight-sight',root);sight.setAttribute('aria-hidden','true');
   const panel=node('div','flight-console',root);
@@ -50,7 +51,7 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
   const flightTrack=node('span','scope-vision-track flight-view-track',identity);flightTrack.setAttribute('aria-hidden','true');
   const flightSteps=scopeViews.map(view=>{const step=node('span','scope-vision-step',flightTrack);step.dataset.view=view;return step;});
   let priorFlightVision:AerialVision|null=null;
-  const switchView=()=>{if(!root.hidden&&!identity.disabled)setAerialVision(nextAerialVision());};
+  const switchView=()=>{if(!root.hidden&&!identity.disabled){setAerialVision(nextAerialVision());bus.emit('ui:visionChanged',{});}};
   identity.addEventListener('click',switchView);bus.on('ui:aerialVision',switchView);
   const telemetry=node('div','flight-telemetry',heading);
   const timer=instrument(telemetry,'reload',t('flight.battery'));

@@ -5,8 +5,9 @@
  *
  * Priority ladder (radio discipline): 4 = result and critical survival, may
  * cut anything below; 3 = actionable damage and decisive events, may cut
- * flavour; 2 = important reports; 1 = situational; 0 = flavour that never
- * waits in the queue.
+ * situational calls; 2 = important reports (what our round did, what our
+ * equipment just did), may cut flavour; 1 = situational; 0 = flavour that
+ * never waits in the queue.
  */
 
 export interface VoiceLineMeta {
@@ -38,19 +39,21 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   // our gunnery
   firing: V(0, 12, 'gun_cycle', 0.35),
   missile_away: V(1, 8, 'gun_cycle', 0.5),
-  penetration: V(1, 6, 'shot_result', 0.8, 3.5),
-  nonpen: V(1, 6, 'shot_result', 0.8, 3.5),
-  ricochet: V(1, 5, 'shot_result', 0.8, 3.5),
-  enemy_crit: V(1, 8, 'shot_result', 0.8, 3.5),
-  enemy_fire: V(2, 10, 'shot_result', 1.0, 3),
-  enemy_ammo_rack: V(2, 12, 'shot_result', 1.0),
-  enemy_immobilized: V(1, 10, 'shot_result', 0.9, 3),
-  enemy_gun_damaged: V(1, 10, 'shot_result', 0.9, 3),
-  enemy_crew_hit: V(1, 10, 'shot_result', 0.9, 3),
-  enemy_engine_hit: V(1, 10, 'shot_result', 0.9, 3),
+  // What our round did: called on every main-gun shot (2026-10-04), so a report that cuts the loader's chatter and
+  // waits out a busy net, spaced only by the group's breath between results.
+  penetration: V(2, 3, 'shot_result', 1.4, 2.5),
+  nonpen: V(2, 3, 'shot_result', 1.4, 2.5),
+  ricochet: V(2, 3, 'shot_result', 1.4, 2.5),
+  enemy_crit: V(2, 4, 'shot_result', 1.4, 2.5),
+  enemy_fire: V(2, 8, 'shot_result', 1.4, 2.5),
+  enemy_ammo_rack: V(2, 10, 'shot_result', 1.4),
+  enemy_immobilized: V(2, 6, 'shot_result', 1.4, 2.5),
+  enemy_gun_damaged: V(2, 6, 'shot_result', 1.4, 2.5),
+  enemy_crew_hit: V(2, 6, 'shot_result', 1.4, 2.5),
+  enemy_engine_hit: V(2, 6, 'shot_result', 1.4, 2.5),
   target_destroyed: V(3, 3.5, 'shot_result', 2.0),
   double_kill: V(3, 20, 'shot_result', 2.0),
-  miss: V(1, 8, 'shot_result', 0.8, 3.5),
+  miss: V(1, 6, 'shot_result', 1.0, 2.5),
   friendly_fire: V(2, 6, 'team', 1.0),
   // loading
   reloading: V(0, 9, 'gun_cycle', 0.45),
@@ -59,6 +62,10 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   load_heat: V(1, 2.5, 'ammo', 0.6),
   load_he: V(1, 2.5, 'ammo', 0.6),
   load_missile: V(1, 2.5, 'ammo', 0.6),
+  // the AC-130's weapons, called as the gunner selects them
+  gunship_cannon: V(1, 2.5, 'ammo', 0.6),
+  gunship_howitzer: V(1, 2.5, 'ammo', 0.6),
+  gunship_missile: V(1, 2.5, 'ammo', 0.6),
   ammo_low: V(1, 45, 'ammo', 1.2),
   ammo_empty: V(1, 6, 'ammo', 1.0),
   ammo_out_all: V(3, 30, 'ammo', 1.2),
@@ -108,12 +115,20 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   engine_repaired: V(1, 8, 'recovery', 1.2),
   extinguishing: V(2, 8, 'recovery', 0.8),
   smoke_out: V(2, 10, 'recovery', 0.8),
+  // our own systems: the crew confirms what the commander's switch just did
+  roof_gun_on: V(1, 8, 'equipment', 1.0),
+  suspension_set: V(1, 6, 'equipment', 1.0),
+  drone_launch: V(2, 6, 'equipment', 1.2),
+  drone_lost: V(2, 8, 'equipment', 1.4),
+  supply_ammo: V(2, 6, 'equipment', 1.4),
+  supply_repair: V(2, 6, 'equipment', 1.4),
   // team and objectives
   ally_destroyed: V(1, 12, 'team', 1.2),
   ally_kill: V(1, 10, 'team', 1.2),
-  last_tank: V(3, 60, 'team', 2.0),
-  last_enemy: V(3, 60, 'team', 2.0),
-  outnumbered: V(2, 60, 'team', 1.5),
+  // The count is still news a few seconds on: it waits out the kill call that usually comes with it.
+  last_tank: V(3, 60, 'team', 4.0),
+  last_enemy: V(3, 60, 'team', 4.0),
+  outnumbered: V(2, 60, 'team', 4.0),
   objective_captured: V(2, 10, 'mode', 1.5),
   objective_lost: V(3, 10, 'mode', 1.5),
   objective_contested: V(2, 15, 'mode', 1.2),
@@ -129,6 +144,5 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   pickup_collected: V(0, 10, 'mode', 0.8),
 });
 
-/** One radio net: a dead-air gap between transmissions and a short queue. */
 /** A disciplined net: one transmission at a time with a breath between calls, two waiting at most. */
 export const RADIO_DISCIPLINE = Object.freeze({ gapS: 0.8, queueMax: 2, defaultStaleS: 1.2 });
