@@ -653,6 +653,8 @@ uniform vec3 uSunTransmittance;
 uniform float uSunDiscRadiance;
 // 2026-10-04: the legacy compact glow's strength (SKY_SUN_GLOW)
 uniform float uSunGlow;
+// 2026-10-04: the knee exemption spot's cos range (x, y) and the glow's share under the knee (z)
+uniform vec3 uSunSpot;
 uniform float uEnvBake;
 uniform vec3 uEnvGround;
 // 2026-10-04: the authored fog tint (linear) and the deck's share at the horizon (the light model's overcast); a closed
@@ -700,16 +702,18 @@ void main() {
 		skyCol = mix( skyCol, uDeckHorizon.rgb * ( deckL / deckTintL ), deckW );
 	}
 	float cosSun = dot( direction, uSunDirection );
-	// the legacy knee exemption spot around the sun keeps the disc and its immediate aureole HDR
-	float sunSpot = smoothstep( 0.99988, 0.99996, cosSun );
+	// the legacy compact warm forward-scatter glow (~5°) so the disc keeps its tight golden halo; 2026-10-04 (QA:
+	// SKY_GLOW_IN_KNEE) a share of it under the knee with the sky, so only the disc can reach the bloom's threshold
+	vec3 sunGlowCol = vec3( 1.30, 1.02, 0.68 ) * ( pow( max( cosSun, 0.0 ), 240.0 ) * uSunGlow );
+	skyCol += sunGlowCol * uSunSpot.z;
+	// the legacy knee exemption spot around the sun keeps the disc and its immediate aureole HDR (QA: SKY_SUN_SPOT_*)
+	float sunSpot = smoothstep( uSunSpot.x, uSunSpot.y, cosSun );
 	skyCol = mix( atmoKnee( skyCol ), skyCol, sunSpot );
 	// the sun disc: the legacy disc's angular size and radiance law (see legacySunDiscRadiance) through the
 	// atmosphere's transmittance toward the sun
 	float disc = smoothstep( ${ATMO_SUN_DISC_COS.toFixed(15)}, ${ATMO_SUN_DISC_COS.toFixed(15)} + 0.00002, cosSun );
 	skyCol += uSunTransmittance * ( disc * uSunDiscRadiance );
-	// the legacy compact warm forward-scatter glow (~5°) so the disc keeps its tight golden halo
-	float sunGlow = pow( max( cosSun, 0.0 ), 240.0 );
-	skyCol += vec3( 1.30, 1.02, 0.68 ) * sunGlow * uSunGlow;
+	skyCol += sunGlowCol * ( 1.0 - uSunSpot.z );
 	skyCol += ( fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5 ) * ${SKY_DITHER.toFixed(4)};
 	vec3 nightCol = vec3( 0.0 );
 	if ( uNight > 0.001 ) nightCol = cotNightSky( direction, uSunDirection, uGalaxy, uNebula, uPlanetR, uPlanetTint, uEarth ) * uNight;
@@ -1202,6 +1206,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       uSunTransmittance: { value: new THREE.Color(1, 1, 1) },
       uSunDiscRadiance: { value: legacySunDiscRadiance(sunDir.y) },
       uSunGlow: { value: SKY_SUN_GLOW },
+      uSunSpot: { value: new THREE.Vector3(0.99988, 0.99996, 0) },
       uEnvBake: { value: 0 },
       uEnvGround: { value: new THREE.Color(0, 0, 0) },
       uDeckHorizon: { value: new THREE.Vector4(1, 1, 1, 0) },
@@ -1267,6 +1272,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       lightTune('SKY_KNEE_FALLOFF', SKY_KNEE_FALLOFF));
     atmosphereState.knee.copy(u.uAtmoKnee.value as THREE.Vector3);
     u.uSunGlow.value = lightTune('SKY_SUN_GLOW', SKY_SUN_GLOW);
+    (u.uSunSpot.value as THREE.Vector3).set(lightTune('SKY_SUN_SPOT_FROM', 0.99988), lightTune('SKY_SUN_SPOT_TO', 0.99996),
+      lightTune('SKY_GLOW_IN_KNEE', 0));
     (u.uAtmoSun.value as THREE.Vector3).copy(sunDir);
     u.uAtmoViewH.value = ATMO_GROUND_KM + params.viewHeightKm;
     u.uAtmoIntensity.value = preset.skyIntensity;
