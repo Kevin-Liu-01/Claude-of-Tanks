@@ -70,6 +70,7 @@ import {
 } from './engine/quality.ts';
 import { createSky } from './engine/sky.ts';
 import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
+import { setVehicleWeatherLevel, syncVehicleWeather, vehicleWeatherLevelFor } from './vehicles/vehicleWeathering.ts';
 import { loadGroundedLightModel } from './engine/lightModelCore.ts';
 import { loadCloudscapeLayers } from './engine/cloudPresets.ts';
 import { battlePreferences } from './game/battlePreferences.ts';
@@ -2951,6 +2952,12 @@ const mainFrame = createMainFrameRuntime({
   getStudio: () => studio,
   getShotMode: () => shotMode,
   getShotHudFrame: () => shotHudFrame,
+  // 2026-10-04 (the vehicle-look lane): the Garage keeps its workshop's light motor-pool wear; every other phase wears
+  // its world's battlefield (vehicles/vehicleWeathering.ts)
+  syncVehicleWeather: (world) => {
+    if (game.phase === 'garage') syncVehicleWeather(true, getGarageVariant(selectedGarageVariantId).mapId);
+    else syncVehicleWeather(false, world?.mapId ?? null);
+  },
   sniperFill,
   updateNightLighting: () => {
     nightLighting.update();
@@ -3038,6 +3045,9 @@ invalidateGaragePresentation = () => {
 };
 // Quality changes mutate shadow projections and post targets even in a sleeping Garage.
 onPresetChange(() => invalidateGaragePresentation());
+// 2026-10-04: the vehicles' weathering detail follows the graphics preset (vehicles/vehicleWeathering.ts)
+setVehicleWeatherLevel(vehicleWeatherLevelFor(resolvePresetName()));
+onPresetChange(() => setVehicleWeatherLevel(vehicleWeatherLevelFor(resolvePresetName())));
 bus.on('phase:change', () => {
   if (game.phase === 'garage') {
     pendingTerrainVariant = null;

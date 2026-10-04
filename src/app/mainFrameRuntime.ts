@@ -56,6 +56,8 @@ interface MainFrameRuntimeOptions {
   getShotHudFrame(): boolean;
   sniperFill: SniperFillRuntime;
   updateNightLighting?(): void;
+  /** 2026-10-04 (vehicles/vehicleWeathering.ts): point the vehicles' weathering at this frame's phase and world. */
+  syncVehicleWeather?(world: MainWorld | null): void;
   resolveFxSubject(id: string): RuntimeValue;
   battleHudFrame: BattleHudFrameRuntime;
   lighting: MainLightingRuntime;
@@ -110,6 +112,7 @@ export function createMainFrameRuntime({
   getShotHudFrame,
   sniperFill,
   updateNightLighting,
+  syncVehicleWeather,
   resolveFxSubject,
   battleHudFrame,
   lighting,
@@ -341,6 +344,8 @@ export function createMainFrameRuntime({
 
     const fx = getFx();
     const world = getWorld();
+    // every rendered frame (Studio, shot and live alike) sees the weathering of its own phase and world
+    syncVehicleWeather?.(world);
 
     // At high zoom, reduce exponential fog so the scoped picture retains
     // distant contrast. Shot captures use the identical presentation rule.

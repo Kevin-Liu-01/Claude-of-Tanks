@@ -77,6 +77,10 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   // what the lane added: the head's own farms and hedges go too). Both sides run without the static shadow cache, so
   // every cascade redraws every caster every frame, as it does while the camera moves.
   'border-additions': Object.freeze({ on: borderAdditionsToggle(true), off: borderAdditionsToggle(false) }),
+  // the vehicle-look lane's weathering layer (vehicles/vehicleWeathering.ts): off draws every vehicle clean (the layer's
+  // uniform gate), on restores the preset's detail level; the per-frame sync reads the switch, so no program relinks
+  'vehicle-weather': Object.freeze({ on: 'window.__VEHICLE_WEATHER_DEBUG = { off: false }',
+    off: 'window.__VEHICLE_WEATHER_DEBUG = { off: true }' }),
 });
 
 /**

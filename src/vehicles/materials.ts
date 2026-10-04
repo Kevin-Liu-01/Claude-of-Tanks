@@ -32,6 +32,10 @@ export {
   CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK, fillHeightNormalRows, applyPatchRoughnessPixels,
 } from './materialPainter.ts';
 import { bindVehicleReadabilityUniform } from './vehicleReadability.ts';
+import {
+  VEHICLE_WEATHER_FRAGMENT_GLSL, VEHICLE_WEATHER_FRAGMENT_PARS_GLSL, VEHICLE_WEATHER_VERTEX_GLSL,
+  VEHICLE_WEATHER_VERTEX_PARS_GLSL, bindVehicleWeatherUniforms,
+} from './vehicleWeathering.ts';
 import { VEHICLE_ALPHA_TAG } from '../engine/vehicleOcclusion.ts';
 
 export {
@@ -2322,6 +2326,13 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   shader.uniforms.uVehGround = VEHICLE_GROUND.uVehGround;
   shader.uniforms.uVehUp = VEHICLE_GROUND.uVehUp;
   shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\n${shader.fragmentShader}`;
+  // 2026-10-04 (the vehicle-look lane, vehicleWeathering.ts): the battlefield's dust, mud, snow, seam grime and walked
+  // wear, laid over the albedo, roughness and metalness before the light is gathered (the optics opt out: COT_VEH_CLEAN)
+  bindVehicleWeatherUniforms(shader.uniforms);
+  shader.vertexShader = `${VEHICLE_WEATHER_VERTEX_PARS_GLSL}${shader.vertexShader}`.replace(
+    '#include <begin_vertex>', `#include <begin_vertex>${VEHICLE_WEATHER_VERTEX_GLSL}`);
+  shader.fragmentShader = shader.fragmentShader.replace('uniform vec3 uVehUp;\n', `uniform vec3 uVehUp;\n${VEHICLE_WEATHER_FRAGMENT_PARS_GLSL}`)
+    .replace('#include <lights_physical_fragment>', `${VEHICLE_WEATHER_FRAGMENT_GLSL}\n\t#include <lights_physical_fragment>`);
   // Owner 2026-10-02 ("shadows on tanks make them look a lil flat"): vehicle pixels add VEHICLE_ALPHA_TAG to the lit
   // materials' 2 + sun visibility in the scene target's alpha, so the aerial pass can give vehicles alone their
   // cavity occlusion (engine/vehicleOcclusion.ts). Same guard as the lighting.ts write it extends.
@@ -2500,6 +2511,30 @@ function supportsShadowHook(engineCtx: ShadowEngineContext | null | undefined): 
 }
 
 /**
+ * The registration each vehicle material was built with (createTankMaterials' `setup`): the cascade setup with the
+ * readability hook through the engine context, or the hook alone in a renderer stub, and the shared program key.
+ * 2026-10-04 (the vehicle-look lane): Material.clone() keeps none of it — three's MeshStandardMaterial.copy resets
+ * `defines` to { STANDARD } (USE_CSM, CSM_CASCADES and CSM_FADE go) and Material.copy never copies onBeforeCompile or
+ * customProgramCacheKey — so a cloned vehicle material (the track shoes, the thrown track, a profile's band finish, an
+ * isolated gear role) fell back to three's plain directional loop: all four cascade suns at full intensity, each
+ * unshadowed outside its own cascade (about four times the sun on a lit face), with neither the sun state nor the
+ * vehicle tag the aerial pass reads (lighting.ts, vehicleOcclusion.ts). cloneVehicleMaterial joins a clone to exactly
+ * the registration its source has; the clone is disposed and released like any vehicle material.
+ */
+const VEHICLE_MATERIAL_SETUP = new WeakMap<THREE.Material, <T extends THREE.Material>(material: T) => T>();
+
+/** Clone a vehicle material into its source's cascade registration, readability hook and program key. */
+export function cloneVehicleMaterial<T extends THREE.Material>(source: T): T {
+  const clone = source.clone() as T;
+  const setup = VEHICLE_MATERIAL_SETUP.get(source);
+  if (setup) return setup(clone);
+  // a material from outside createTankMaterials (a stub's, a receipt's): it keeps its hooks, which a plain clone drops
+  clone.onBeforeCompile = source.onBeforeCompile;
+  clone.customProgramCacheKey = source.customProgramCacheKey;
+  return clone;
+}
+
+/**
  * Build the full material set for one tank.
  * @param {object} spec TankSpec (reads spec.visual palette hints)
  * @param {object} engineCtx EngineCtx (§2.8) — setupShadowMaterial + anisotropy
@@ -2520,6 +2555,7 @@ export function createTankMaterials(
     if (shadowHookSupported && shadowSetup) shadowSetup(material, vehicleAmbientFloorHook);
     else material.onBeforeCompile = vehicleAmbientFloorHook;
     material.customProgramCacheKey = () => 'veh-ambient-floor-v5';
+    VEHICLE_MATERIAL_SETUP.set(material, setup); // cloneVehicleMaterial re-registers its clones the same way
     return material;
   };
   const aniso = engineCtx?.anisotropy || 8;
@@ -2698,6 +2734,7 @@ export function createTankMaterials(
   const glass = track(setup(new THREE.MeshStandardMaterial({
     color: 0x2a3540, roughness: 0.12, metalness: 0.85,
   })));
+  glass.defines = { ...glass.defines, COT_VEH_CLEAN: 1 }; // 2026-10-04: the optics never weather (vehicleWeathering.ts)
   // Gun tube: painted in the vehicle scheme like the hull — crews paint the
   // tube, only the muzzle brake stays bare steel (routed to the dark bucket).
   // Uses the same box-projected camo map as the shell so it never reads as an
