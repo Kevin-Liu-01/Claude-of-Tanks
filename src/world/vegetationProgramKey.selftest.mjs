@@ -370,6 +370,34 @@ function checkIndependentEviction(world, other, species) {
   other.csm.remove(); other.csm.dispose();
 }
 
+// trees round 4 (the gauntlet's wave 51: 3b's near shrub thinned to "a handful of leaf cutouts"): a grown shrub on a map
+// without a biome shrub form draws with its own clone of its slot's crown material — the crown's defines and program,
+// the shrub's near reach (0.3 of the crowns' band)
+function checkShrubMaterial(environment) {
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(55, 1.6, .5, 4000);
+  const lighting = createLighting(scene, camera, new THREE.Vector3(1, 1, 1).normalize());
+  const registered = [];
+  const engine = { renderer: stubRenderer(), scene, setupShadowMaterial(material, hook) { registered.push(material); return lighting.setupShadowMaterial(material, hook); } };
+  const cfg = { vegetation: { species: ['oak'], clusterCount: 0, loneCount: 0, rimCount: 0, grassDensity: 0, bushCount: 40, belts: [], authoredTrees: [] } };
+  const vegetation = createVegetation(createHeightField(1337), engine, 1337, cfg);
+  try {
+    const bush = vegetation.group.children.find(m => m.userData.bush === true && m.count > 0);
+    assert.ok(bush, 'the shrubs are planted');
+    const crown = registered.find(m => m !== bush.material && m.customProgramCacheKey?.() === 'world-tree-foliage-v22' && m.map === bush.material.map);
+    assert.ok(crown && bush.material !== crown, 'the shrubs draw with their own material, beside their slot\'s crowns\'');
+    assert.equal(bush.material.customProgramCacheKey(), 'world-tree-foliage-v22', 'on the one foliage program');
+    assert.deepEqual(bush.material.defines, crown.defines, 'with the crown material\'s defines (the facing clusters, the edge fade)');
+    const shrubProgram = environment.expand(bush.material), crownProgram = environment.expand(crown);
+    assert.equal(shrubProgram.key, crownProgram.key, 'the same program as the crowns\'');
+    assert.equal(shrubProgram.parameters.uniforms.uCotNearReach.value, 0.3, 'the shrub\'s near reach');
+    assert.equal(crownProgram.parameters.uniforms.uCotNearReach.value, 1, 'the crowns keep theirs');
+  } finally {
+    vegetation.dispose(); disposeObject3DResources(vegetation.group);
+    for (const material of registered) releaseCsmShaderMaterial(lighting.csm, material);
+    lighting.csm.remove(); lighting.csm.dispose();
+  }
+}
+
 const species = [...new Set(MAP_IDS.flatMap(id => getMapConfig(id).vegetation.species))];
 assert.equal(species.length, 13, 'all 13 authored foliage species remain covered');
 assert.ok(species.includes('palm') && species.includes('birch') && species.includes('pine'));
@@ -405,6 +433,7 @@ try {
     }
     checkIndependentEviction(world, other, species);
   }
+  checkShrubMaterial(environment);
   // the mobile tier, resolved once and last (the device tier is process state)
   checkMobileFoliage(species, environment);
 } finally {

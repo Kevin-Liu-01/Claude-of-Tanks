@@ -6440,6 +6440,27 @@ function* vegetationBuildSteps(
     // the shrub grows from the sprays its material paints: the Mangrove map's willow form is the mangrove
     // trees round 2: the shrubs grow as the map's shrub form (their own material: shrubMaterials) or the bush slot's form
     const shrubForm = grownTrees ? treeBiomeShrub(cfg?.id) : null, shrubMats = shrubMaterials(shrubForm, bushPal);
+    // trees round 4: a shrub grown from its slot's sprays shares that slot's crowns' texture and program but not their
+    // near reach (FOLIAGE_NEAR_REACH): its own material over the one program, with the shrub hook's uniform — made when
+    // the first shrub is planted (a world without shrubs registers none)
+    let bushMatCache: THREE.MeshStandardMaterial | null = null;
+    const bushMaterial = (): THREE.MeshStandardMaterial => {
+      if (bushMatCache) return bushMatCache;
+      const crown = foliageMats[bushSpecies];
+      if (shrubMats) bushMatCache = shrubMats[0];
+      else if (!crown.defines || !('COT_LEAF_BILLBOARD' in crown.defines)) bushMatCache = crown;
+      else {
+        // (three's MeshStandardMaterial.copy resets the defines to STANDARD alone: the crown's must come across, or the
+        // clone compiles another program without the facing clusters and dissolves by the pixel dither)
+        const shrub = crown.clone();
+        shrub.defines = { ...(crown.defines ?? {}) };
+        engineCtx.setupShadowMaterial(shrub, shrubFoliageHook);
+        shrub.customProgramCacheKey = () => 'world-tree-foliage-v22';
+        retainedMaterials.push(shrub);
+        bushMatCache = shrub;
+      }
+      return bushMatCache;
+    };
     const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove'
       : shrubForm ?? (grownTrees ? formOf(bushSpecies)?.form : null) ?? bushSpecies;
     const bushGeos = sprayAtlasSpecies.has(bushSpecies)
@@ -6567,7 +6588,7 @@ function* vegetationBuildSteps(
         bushGeos[bv].setAttribute('aLodF',
           new THREE.InstancedBufferAttribute(new Float32Array(bushPlacements[bv].length), 1));
         const bAttr = attribute(bushGeos[bv], 'aFadeI');
-        const m = new THREE.InstancedMesh(bushGeos[bv], shrubMats?.[0] ?? foliageMats[bushSpecies], bushPlacements[bv].length);
+        const m = new THREE.InstancedMesh(bushGeos[bv], bushMaterial(), bushPlacements[bv].length);
         let kept=0;
         for (let i = 0; i < bushPlacements[bv].length; i++) {
           // darker, near-neutral multipliers: the old 0.8-1.1 range let lit
@@ -6719,7 +6740,7 @@ function* vegetationBuildSteps(
       geometry.setAttribute('aFadeI', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
       geometry.setAttribute('aLodF', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
       const fadeAttr = attribute(geometry, 'aFadeI');
-      const m = new THREE.InstancedMesh(geometry, shrubMats?.[0] ?? foliageMats[bushSpecies], n);
+      const m = new THREE.InstancedMesh(geometry, bushMaterial(), n);
       for (let i = 0; i < n; i++) {
         const e = understoreyPlacements[i].elements;
         m.setMatrixAt(i, understoreyPlacements[i]);
