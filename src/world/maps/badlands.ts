@@ -161,6 +161,11 @@ export default {
     ],
     well: true, hayCrates: false, fences: true, telegraph: true, carts: false, logs: false,
     rocks: 264, outcrops: 58, craters: 74, rubblePiles: 22,
+    // the mountains lane (2026-10-04, gauntlet wave 48: "two low-poly orange boulders hanging on its face" in all four of
+    // its Redrock frames): no boulder on ground steeper than a talus slope — the walls of the jebels shed blocks to their
+    // foot, they do not hold them (landformGeology.ts restsOnTalus): 278 of the map's 931 boulders hung on a wall, a ledge's
+    // lip or a narrow bench and are left out (every other boulder keeps its seat)
+    rockTalusDeg: 35,
     hedgehogs: 22, sandbagLines: 24,
     tankWrecks: { era: 'modern', count: 7, debris: true,
       ids: ['merkava3d', 'k2', 'merkava4b', 'm60a3', 'ariete', 't72b3m', 'm1a2_sepv3'] },
@@ -175,6 +180,8 @@ export default {
   // its cap on a wind-cut pedestal) stands in the open floor of each mouth; a rujm, the Bedouin cairn, marks each cross
   // track where it leaves for its ravine. Turned through 180 degrees about the outpost like the rest of the floor.
   scenery: {
+    // (the ledges keep to the talus round each dome, talusDeg 35: eight of their 30 formations stood on a wall or its lip
+    // and each field draws its next candidate instead; the mountains lane, 2026-10-04, gauntlet wave 48)
     // (the bedrock skin on the inselbergs is parked: wave 16's critics read a skin on the jebels' smooth domes as
     // masonry, "a ziggurat"; the domes' shape is the landform's — world/sceneryRocks.ts buildBedrock stays, unplaced)
     rocks: [
@@ -182,12 +189,12 @@ export default {
       { form: 'hoodoo', geology: 'sandstone', tone: WADI_RUM_STONE, x: -54, z: 330, radius: 3.4, height: 7, yawDeg: 210, name: 'the north mushroom rock' },
     ],
     rockFields: [
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -40, z: -318, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south gate dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 56, z: 318, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north gate dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -118, z: -128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south-west lane dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 134, z: 128, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north-east lane dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 96, z: -112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south-east lane dome' },
-      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -80, z: 112, radius: 58, count: 5, slopeBias: 0.85, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north-west lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -40, z: -318, radius: 58, count: 5, slopeBias: 0.85, talusDeg: 35, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south gate dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 56, z: 318, radius: 58, count: 5, slopeBias: 0.85, talusDeg: 35, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north gate dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -118, z: -128, radius: 58, count: 5, slopeBias: 0.85, talusDeg: 35, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south-west lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 134, z: 128, radius: 58, count: 5, slopeBias: 0.85, talusDeg: 35, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north-east lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: 96, z: -112, radius: 58, count: 5, slopeBias: 0.85, talusDeg: 35, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the south-east lane dome' },
+      { geology: 'sandstone', tone: WADI_RUM_STONE, x: -80, z: 112, radius: 58, count: 5, slopeBias: 0.85, talusDeg: 35, size: [2.5, 5.5], forms: [['outcrop', 0.6], ['scree', 0.3], ['hoodoo', 0.1]], name: 'the ledges round the north-west lane dome' },
     ],
     landmarks: [
       { kind: 'cairn', x: -270, z: -228, scale: 1.6, height: 1.6, geology: 'sandstone', tone: WADI_RUM_STONE, name: 'the rujm at the south ravine' },

@@ -652,6 +652,26 @@ export function geologyBoulderSite(form: GeologicForm, u: number, v: number): [n
   return [form.x + lx * c - lz * s, form.z + lx * s + lz * c];
 }
 
+/**
+ * Whether a block of footprint radius r rests at (x, z) on ground no steeper than a talus slope of talusDeg (the
+ * mountains lane, 2026-10-04, gauntlet wave 48 on Redrock: "two low-poly orange boulders hanging on its face"): the
+ * ground under it and below it, out to 3.2 r (eight directions at 0.8, 1.6, 2.4 and 3.2 r), never falls away from its
+ * centre more steeply than the talus. A block on a wall, astride a ledge's lip or on a narrow bench above a wall hangs;
+ * ground rising steeper is allowed, so a block against the foot of a wall is talus.
+ */
+export function restsOnTalus(ground: { getHeightAt(x: number, z: number): number }, x: number, z: number, r: number,
+  talusDeg: number): boolean {
+  const y = ground.getHeightAt(x, z), slope = Math.tan(talusDeg * Math.PI / 180);
+  for (let ring = 1; ring <= 4; ring++) {
+    const d = 0.8 * ring * r;
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4;
+      if (y - ground.getHeightAt(x + Math.cos(a) * d, z + Math.sin(a) * d) > slope * d) return false;
+    }
+  }
+  return true;
+}
+
 /** Whether a landform is bare rock by its geology: a butte or mesa (knoll or ridge), an inselberg, a lava flow, or a
  * landform made of slag. */
 export function isRockLandform(form: GeologicForm): boolean {

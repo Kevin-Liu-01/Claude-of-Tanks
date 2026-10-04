@@ -132,7 +132,7 @@ import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildC
 import { rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
 import { makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
-import { geologyBoulderSite } from './landformGeology.ts';
+import { geologyBoulderSite, restsOnTalus } from './landformGeology.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). The exact float/index streams live in a gzip-packed
 // binary archive; createMapAsync starts it while terrain is being constructed.
@@ -400,6 +400,9 @@ interface PropsSettings {
   fieldWorks?: number;
   tankWrecks?: TankWreckSettings;
   rockSink?: number;
+  /** The steepest ground a boulder rests on, degrees (landformGeology.ts restsOnTalus; the mountains lane, 2026-10-04,
+   *  gauntlet wave 48 on Redrock: boulders hanging on the jebels' walls). Unset: no limit. */
+  rockTalusDeg?: number;
   extraKits?: readonly string[] | null;
   riverLandings?: readonly RiverLandingAnchor[];
 }
@@ -5435,6 +5438,9 @@ ${snowCap ? `
     let hullReach = 0;
     for (let i = 0; i < hull.length; i += 2) hullReach = Math.max(hullReach, Math.hypot(hull[i], hull[i + 1]));
     if (!discClearOfRoadCore(heightField, x, z, hullReach * sc)) return true;
+    // The talus law (rockTalusDeg): a boulder whose footprint falls away more steeply than a talus slope — on a wall, or
+    // astride a ledge's lip — hangs there; it is left out the same way, so every later placement keeps its seat.
+    if (P.rockTalusDeg !== undefined && !restsOnTalus(heightField, x, z, hullReach * sc, P.rockTalusDeg)) return true;
     const placement = _mat4.clone();
     rockPlacements[vv].push(placement);
     // sink <= 0.5: half-drifted surface rocks keep their cover role; only the
