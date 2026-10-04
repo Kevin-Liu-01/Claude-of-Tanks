@@ -250,6 +250,11 @@ interface TreeRecord {
   lodT: boolean;
   crushed?: boolean;
   uprightMat?: THREE.Matrix4;
+  /**
+   * Trees round 3: a closed wood's interior tree takes the far tier nearer (this share of the full-detail radius): the
+   * wood's edge stands in front of it, and round 3's closed woods doubled the near tier's trees in a wooded view.
+   */
+  nearScale?: number;
 }
 
 export interface TreeObstacle extends CollisionRecord {
@@ -5411,7 +5416,11 @@ function* vegetationBuildSteps(
         // to each palm on Sirocco Wadi)
         if (palmStand && !palmSiteOk(px, pz)) continue;
         if (!uplandZoneOk(px, pz, sp)) continue;
-        if (addTree(px, pz, sp, wr, woodSpread)) placed++;
+        if (addTree(px, pz, sp, wr, woodSpread)) {
+          placed++;
+          // a closed wood's interior (inside seven tenths of its outline) meets the far tier sooner (TreeRecord.nearScale)
+          if (woodSpread > 1 && k < 0.7) trees[trees.length - 1].nearScale = 0.55;
+        }
       }
       // r6 (content_breadth): coherent PER-STAND tint bias — a whole-stand lean (warm vs cool, small value drift) is
       // what makes mid-distance forest blocks read as distinct species stands
@@ -6820,17 +6829,17 @@ function* vegetationBuildSteps(
     if (!_partitionBuilt) { rebuildPartitionFull(camPos); return; }
     for (const t of trees) {
       if (t.lodT) continue; // mid cross-fade — settle before re-deciding
-      const d = Math.hypot(t.x - camPos.x, t.z - camPos.z);
+      const d = Math.hypot(t.x - camPos.x, t.z - camPos.z), reach = t.nearScale ?? 1;
       const promo = scopePromoted(t, camPos); // scope corridor mesh promotion
       if (t.near) {
-        if (d > treeNearOut && !promo) {
+        if (d > treeNearOut * reach && !promo) {
           t.near = false;
           t.lodT = true;
           t.lodF = 0; // near side starts solid, dissolves out
           addToGroup(farMeshes[t.species][t.fv], farSlots[t.species][t.fv], t, 'fslot', false);
           lodTransitions.push({ t, dir: 1 });
         }
-      } else if (d < treeNearIn || promo) {
+      } else if (d < treeNearIn * reach || promo) {
         t.near = true;
         t.lodT = true;
         t.lodF = 1; // near side arrives fully dissolved, fades in
@@ -6850,8 +6859,8 @@ function* vegetationBuildSteps(
   function seedTreePartition(tree: TreeRecord, camPos: THREE.Vector3): void {
     tree.lodT = false;
     tree.lodF = 0;
-    const distance = Math.hypot(tree.x - camPos.x, tree.z - camPos.z);
-    tree.near = distance < treeNearIn || (tree.near && distance <= treeNearOut)
+    const distance = Math.hypot(tree.x - camPos.x, tree.z - camPos.z), reach = tree.nearScale ?? 1;
+    tree.near = distance < treeNearIn * reach || (tree.near && distance <= treeNearOut * reach)
       || scopePromoted(tree, camPos);
     if (tree.near) {
       const slots = nearSlots[tree.species][tree.variant];

@@ -92,6 +92,14 @@ try {
         return true;
       });
       assert.ok(alone.length / open.length < 0.06, `the field trees stand in groups (${alone.length} of ${open.length} alone)`);
+      // round 3b: a closed wood's interior meets the far tier sooner (the wood's edge in front of it): its trees carry a
+      // near scale, none outside its heart
+      const interior = world._trees.filter((t) => t.nearScale !== undefined);
+      assert.ok(interior.length > trees.length * 0.25, `the woods' interiors take the far tier sooner (${interior.length} of ${trees.length})`);
+      for (const t of interior) {
+        assert.ok(t.nearScale > 0.4 && t.nearScale < 1, 'a share of the full-detail radius');
+        assert.ok(clusters.some((_, i) => world._standOutline(i, t.x, t.z) < 0.75), 'only a wood\'s interior');
+      }
       report.verdant = { trees: trees.length, open: open.length, alone: alone.length, closure: +(shaded / ground).toFixed(2), birchPools: birchTints.length };
     } finally { world.dispose(); }
   }
