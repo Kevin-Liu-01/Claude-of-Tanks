@@ -918,10 +918,11 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
     if (snap > 0.03) metrics.snaps++;
     metrics.angRateMaxRadS = Math.max(metrics.angRateMaxRadS, Math.abs(dPitch) / DT, Math.abs(dRoll) / DT);
     renderedAttitude(state, att);
-    // the rendered pitch's extremes and the dive's share of it (the suspension's weight transfer, rendered x2.2)
+    // the rendered pitch's extremes and the dive's share of it (the suspension's weight transfer, rendered x2.2; not what
+    // the bump stops took from it when the travel ran out, round 8)
     if (att.pitch > metrics.renderPitchMaxRad) metrics.renderPitchMaxRad = att.pitch;
     if (att.pitch < metrics.renderPitchMinRad) metrics.renderPitchMinRad = att.pitch;
-    metrics.diveMaxRad = Math.max(metrics.diveMaxRad, Math.abs((state._susp?.d ?? 0) * 2.2));
+    metrics.diveMaxRad = Math.max(metrics.diveMaxRad, Math.abs(((state._susp?.d ?? 0) - (state._susp?.c ?? 0)) * 2.2));
     renderedHistory.push(att.pitch, att.roll);
     if (renderedHistory.length > 8) renderedHistory.splice(0, 2);
     if (renderedHistory.length === 8) {

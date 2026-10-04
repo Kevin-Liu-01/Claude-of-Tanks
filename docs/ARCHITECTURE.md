@@ -890,7 +890,11 @@ contact constraints and cannot be crossed by residual uphill speed.
   solve seats the tracks without it, and the road wheels conform under it (front compressed, rear drooped). It is
   limited by the suspension travel left at each end, and off a whole-track seat (a trench crossed, a crest, an edge)
   it joins the rock the tracks are seated at. A hard stop dips the hull 2.5-3.5 degrees with its tracks planted and
-  rocks it back past level (about 0.9 degree) when the tracks stop pulling.
+  rocks it back past level (about 0.9 degree) when the tracks stop pulling. What the travel takes from the dive when it
+  runs out (the springs bottoming as a trench's far wall lifts the hull) the bump stops take (`_susp.c`, round 8): the
+  dive is cut to the travel at once, and the drawn hull gives the excess up over the stops' spring (4.8 Hz, critically
+  damped) instead of in the same frame. That share is drawn and is no part of the dive the travel holds, nor of what
+  joins the rock off a whole-track seat; the movement checkpoint carries it from version 8.
 - *A hull holds a posture over its tracks on a grade, and it is the hull's attitude.* The gravity the tracks hold the
   hull against on a grade (physics lane round 5; gauntlet wave 38: "on a 17.9-degree grade the front and rear stations
   carry about the same travel ... a real tank shows a clear rear-heavy gradient") loads the downhill end along the hull

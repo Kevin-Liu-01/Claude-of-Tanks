@@ -145,10 +145,16 @@ interface RockState {
   rv: number;
 }
 
-/** The suspension rock, and the share of its pitch that is weight transfer (`d`, the dive or squat, with its rate). */
+/**
+ * The suspension rock, and the share of its pitch that is weight transfer (`d`, the dive or squat, with its rate). Of
+ * that share, `c` (with its rate) is what the bump stops took when the travel ran out under the dive (limitDiveToTravel):
+ * drawn, as the stops' compression, and returned over their spring, but no part of the dive the travel holds.
+ */
 interface SuspensionRockState extends RockState {
   d: number;
   dv: number;
+  c: number;
+  cv: number;
 }
 
 interface RideState {
@@ -1105,6 +1111,13 @@ const SUSP_K_GAIN = 0.76;
 /** The dive's damping ratio (SuspensionRockState.d): a hard stop dips the hull 2-4 degrees, then rocks it back past level
  * (about a third of the dip) before it settles. */
 const DIVE_ZETA = 0.35;
+/**
+ * The bump stops' rate (rad/s, critically damped): what they took from a dive the travel no longer held
+ * (SuspensionRockState.c) returns at 4.8 Hz (physics lane round 8, the far lip). The travel limit used to take it from
+ * the drawn hull in one step: a hull climbing a trench's far wall, its springs bottoming as the wall lifted it, dropped
+ * its drawn squat by up to a degree in a frame, the largest share of the trenches' rendered jerk.
+ */
+const STOP_OMEGA = 30;
 // Mirror of tankFactory's r6 VISIBLE-dynamics amplification: syncFromState
 // renders the hull at susp.p × SUSP_VIS_P / susp.r × SUSP_VIS_R and sway =
 // _swayEst × SWAY_VIS (readable squat/dive/turn-lean at gameplay camera
@@ -1635,7 +1648,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     _gunLimitHoldS: 0,             // continuous-pin dwell for the GUN LIMIT label
     _autoTraverse: 0,              // ±1 while a fixed-mount hull traverse is engaged toward the sight (round 32)
     _swayEst: 0,                   // predicted visual turn-lean sway (rad)
-    _susp: { p: 0, r: 0, pv: 0, rv: 0, d: 0, dv: 0 }, // mirror of the visual susp rock layer
+    _susp: { p: 0, r: 0, pv: 0, rv: 0, d: 0, dv: 0, c: 0, cv: 0 }, // mirror of the visual susp rock layer
     _hold: { p: 0, r: 0, pv: 0, rv: 0 }, // the posture held over the tracks on a grade (part of the attitude)
     _holdSeat: { p: 0, r: 0, pv: 0, rv: 0 }, // that posture seated with the tracks off a whole-track seat
     _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
@@ -3106,8 +3119,22 @@ function updateSuspensionRock(
   let rockV = suspension.pv - suspension.dv;
   rockV += (SUSP_W * SUSP_W * (pitchTarget - diveTarget - rock) - 2 * SUSP_Z * SUSP_W * rockV) * dt;
   rock += rockV * dt;
-  suspension.dv += (SUSP_W * SUSP_W * (diveTarget - suspension.d) - 2 * DIVE_ZETA * SUSP_W * suspension.dv) * dt;
-  suspension.d += suspension.dv * dt;
+  // the dive rides its spring without the stops' share, which their own spring returns (implicit: they are stiff)
+  let dive = suspension.d - suspension.c;
+  let diveV = suspension.dv - suspension.cv;
+  diveV += (SUSP_W * SUSP_W * (diveTarget - dive) - 2 * DIVE_ZETA * SUSP_W * diveV) * dt;
+  dive += diveV * dt;
+  if (suspension.c !== 0 || suspension.cv !== 0) {
+    suspension.cv = (suspension.cv - STOP_OMEGA * STOP_OMEGA * suspension.c * dt) /
+      (1 + 2 * STOP_OMEGA * dt + STOP_OMEGA * STOP_OMEGA * dt * dt);
+    suspension.c += suspension.cv * dt;
+    if (Math.abs(suspension.c) < 1e-7 && Math.abs(suspension.cv) < 1e-6) {
+      suspension.c = 0;
+      suspension.cv = 0;
+    }
+  }
+  suspension.d = dive + suspension.c;
+  suspension.dv = diveV + suspension.cv;
   suspension.p = rock + suspension.d;
   suspension.pv = rockV + suspension.dv;
   suspension.rv += (SUSP_W * SUSP_W * (rollTarget - suspension.r) -
@@ -3121,15 +3148,19 @@ function updateSuspensionRock(
   suspension.rv *= bleed;
   suspension.d *= bleed;
   suspension.dv *= bleed;
+  suspension.c *= bleed;
+  suspension.cv *= bleed;
 }
 
 /**
  * The dive pitches the hull over its tracks only as far as its suspension travels (physics lane, 2026-10-03): the
  * lifting end's wheels droop to keep its track on the ground and the sinking end's compress, each within its stop. A
  * hull already hanging on drooped tracks over a crest, or bottomed on a landing, has no travel left to pitch into, so
- * the dive saturates there (the rendered rock gives up the excess with it; the support solve never saw the dive). With
- * the whole dive riding over the support the rigid track ran 6 cm past its droop over an egg-crate field. The posture
- * held on a grade (state._hold) is limited the same way, first, and the dive takes the travel it leaves.
+ * the dive saturates there (the support solve never saw the dive). With the whole dive riding over the support the
+ * rigid track ran 6 cm past its droop over an egg-crate field. The posture held on a grade (state._hold) is limited the
+ * same way, first, and the dive takes the travel it leaves. What the travel no longer holds the bump stops take
+ * (SuspensionRockState.c, round 8): the dive is cut to the travel at once, as before, and the drawn hull gives the
+ * excess up over the stops' spring (STOP_OMEGA) instead of in the same frame.
  */
 function limitDiveToTravel(entity: MovementEntity, spec: MovementSpec, state: TankState): void {
   const suspension = state._susp;
@@ -3155,18 +3186,16 @@ function limitDiveToTravel(entity: MovementEntity, spec: MovementSpec, state: Ta
     hold.r = clamp(hold.r, -rollLimit, rollLimit);
     if (hold.rv * hold.r > 0) hold.rv = 0;
   }
-  if (suspension.d === 0) return;
+  const dive = suspension.d - suspension.c;
+  if (dive === 0) return;
   const upper = (pitchLimit - hold.p) / SUSP_VIS_P;
   const lower = (-pitchLimit - hold.p) / SUSP_VIS_P;
-  const excess = suspension.d > upper ? suspension.d - upper : suspension.d < lower ? suspension.d - lower : 0;
+  const excess = dive > upper ? dive - upper : dive < lower ? dive - lower : 0;
   if (excess === 0) return;
-  suspension.d -= excess;
-  suspension.p -= excess;
-  // the stop takes the dive's rate into it
-  if (suspension.dv * excess > 0) {
-    suspension.pv -= suspension.dv;
-    suspension.dv = 0;
-  }
+  // the stops take the excess, and the dive's rate into them, from the dive: the drawn rock keeps both as their share
+  suspension.c += excess;
+  const diveV = suspension.dv - suspension.cv;
+  if (diveV * excess > 0) suspension.cv += diveV;
 }
 
 function resetSupportSamples(
@@ -4614,8 +4643,9 @@ export function updateTank(
   // the tracks: it joins the rock, which the support solve seats the tracks at (physics lane, 2026-10-03). Held apart,
   // a heavy hull nosing into an assault trench's far wall was thrown out of it and stalled nose-up on the wall.
   if (groundedAtStart && !_wholeTrackOnGround) {
-    state._susp.d = 0;
-    state._susp.dv = 0;
+    // (the bump stops' share stays drawn: it was never the dive's, nor the rock's the tracks are seated at)
+    state._susp.d = state._susp.c;
+    state._susp.dv = state._susp.cv;
     // the posture held over the tracks joins the attitude they are seated at, the hull's attitude unchanged
     holdSeat.p += hold.p;
     holdSeat.pv += hold.pv;

@@ -151,6 +151,12 @@ check('drive-trench', 'low', 'earth', [
   g('vertical step (m)', (m) => m.popYMaxM, 0.12, 'before: 0.194 m, the ditch\'s far lip under the UDES 03\'s nose'),
   g('flights', (m) => m.falls.length, 0, 'before: 1 (off the far lip)'),
 ]);
+// Round 8 (the far lip): what the suspension travel no longer holds of the dive the bump stops take, and the drawn hull
+// gives it up over their spring. The far wall bottoming the M3 Bradley's springs cut its drawn squat by a degree in one
+// frame as it climbed out, and by 0.2-0.4 degree in ten more.
+check('drive-assault-trench', 'tall', 'earth', [
+  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 1300, 'before: 1856'),
+]);
 
 // Firing in flight (Mars gravity field audit): the shot turns an airborne hull by its rigid-body share, not the
 // suspension's rock (movement.ts fireRecoil). Six shots through a Moon boost flight tipped the heavy hull 112 degrees.
