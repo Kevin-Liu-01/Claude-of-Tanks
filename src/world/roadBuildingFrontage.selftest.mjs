@@ -8,7 +8,7 @@ import { roadBuildingFrontage, roadBuildingDoorAxis, buildingFootprintClearsRoad
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES, makeTimberBathhouse } from './maps/structureKit.ts';
-import { addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops } from './maps/exteriorDetailKit.ts';
+import { addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, exteriorChimneyTops } from './maps/exteriorDetailKit.ts';
 import { jitterUV } from './propGeometry.ts';
 import { sampleObbGround } from './propPlacement.ts';
 import { deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand } from './structureCollision.ts';
@@ -88,7 +88,8 @@ function section(start, end) {
   assert.ok(a >= 0 && b > a, start); return source.slice(a, b);
 }
 const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE, VILLAGE_BUILDERS, URBAN_BUILDERS, STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES,
-  makeTimberBathhouse, addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, jitterUV,
+  // the carriageway post-pass packs a building's chimney tops with it (props.ts roadBuildingClearance, 2026-10-03)
+  makeTimberBathhouse, addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, exteriorChimneyTops, jitterUV,
   sampleObbGround, deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand,
   // regional-buildings lane: the map's architecture kit swaps a placed building's geometry before its collision
   rebuildRegionalStructure, resolveRegionalArchitecture,

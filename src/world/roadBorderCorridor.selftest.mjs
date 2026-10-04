@@ -103,8 +103,37 @@ assert.equal(unchangedStampMaps, MAP_IDS.filter(id => id !== 'skybridge').length
 // The map-borders lane (2026-10-03): the retained failure is a bank on the CLASSIC rim (the S-curve the stamp was
 // written against); the border landform lowers that rim at the road's exit, so both the predecessor and the current
 // stamp are replayed on the classic border (terrain.border.classic) and the gate is checked on the landform as well.
+// The maps-and-layouts lane (2026-10-03): the retained failure is also the OLD Skybridge's ground, its north ridge's end
+// where the north road leaves the map; the redesign's shoulders stand elsewhere, so the predecessor and the current stamp
+// are replayed on PR #9's head's (0bbb0cddc) Skybridge ground and deployments, frozen here.
+const SKYBRIDGE_PR9 = {
+  terrain: {
+    hillScale: 0.80, microScale: 0.82, rimH: 58, softLakes: true,
+    mesas: { amp: 18, thr0: 0.76, thr1: 0.82, wallWidth: 0.64, corridorFloor: 0.34 },
+    marshes: [],
+    lakes: [{ x: -34, z: 62, r: 92, depth: 2.2 }, { x: 36, z: 146, r: 88, depth: 2.2 }],
+    village: { x0: -176, x1: 186, z0: -170, z1: 196, cx: 8, cz: 16, feather: 54, flatten: 0.72, relief: 0.28 },
+    roads: { paths: [
+      [[-430, -450], [-350, -314], [-278, -172], [-208, -30], [-132, 118], [-58, 268], [24, 454]],
+      [[-116, -458], [-72, -318], [-18, -178], [42, -42], [116, 92], [198, 230], [292, 354], [380, 456]],
+      [[356, -454], [294, -310], [236, -166], [170, -22], [92, 116], [16, 252], [-78, 376], [-164, 466]],
+      [[-382, -126], [-246, -92], [-116, -118], [18, -80], [148, -112], [282, -82], [394, -104]],
+      [[-326, 252], [-204, 210], [-82, 238], [42, 204], [168, 238], [292, 208]],
+    ] },
+    landforms: [
+      { kind: 'ridge', x: -286, z: 24, length: 770, width: 126, height: 18.8, yawDeg: -3, corridorScale: 0.40 },
+      { kind: 'ridge', x: 294, z: 18, length: 770, width: 128, height: 19.2, yawDeg: 4, corridorScale: 0.40 },
+      { kind: 'ridge', x: -10, z: 318, length: 360, width: 100, height: 12.5, yawDeg: 86, corridorScale: 0.44 },
+      { kind: 'knoll', x: -132, z: -246, rx: 118, rz: 76, height: 8.8, yawDeg: 20, corridorScale: 0.46 },
+      { kind: 'basin', x: 10, z: 84, rx: 170, rz: 144, height: -7.8, yawDeg: -8, corridorScale: 0.72 },
+      { kind: 'knoll', x: 174, z: -230, rx: 104, rz: 68, height: 8.0, yawDeg: -20, corridorScale: 0.46 },
+    ],
+  },
+  spawns: { player: { x: -332, z: -396 }, enemies: [{ x: -242, z: 392 }, { x: -164, z: 428 }, { x: -84, z: 384 },
+    { x: -2, z: 424 }, { x: 82, z: 382 }, { x: 166, z: 418 }, { x: 252, z: 376 }] },
+};
 const skyLandform = getMapConfig('skybridge');
-const skyConfig = { ...skyLandform, terrain: { ...skyLandform.terrain, border: { classic: true } } };
+const skyConfig = { ...skyLandform, spawns: SKYBRIDGE_PR9.spawns, terrain: { ...SKYBRIDGE_PR9.terrain, border: { classic: true } } };
 const oldSky = oldCreateHeightField(1337, skyConfig), newSky = createHeightField(1337, skyConfig);
 assert.deepEqual(newSky._layout, oldSky._layout, 'profile does not change road/layout/station ownership');
 assert.deepEqual(Object.keys(newSky), Object.keys(oldSky), 'no retained owner or grid field');
@@ -114,7 +143,10 @@ function peakSlope(field) {
     - field.getHeightAt(peak.x - peak.nx, peak.z - peak.nz)) / 2;
 }
 const oldPeak = peakSlope(oldSky), newPeak = peakSlope(newSky);
-assert.equal(oldPeak, 2.008386024307697, 'actual predecessor reproduces the retained48m failure');
+// negative control: the frozen predecessor still fails at the retained peak. Re-measured on the frozen ground (was
+// 2.008386024307697 while Skybridge still took the inherited rim-anchored node grades, roadEndpoints.ts; the redesign
+// grades its roads with the default junction blend, and the replay runs the code it ships with).
+assert.equal(oldPeak, 2.109824824520782, 'actual predecessor reproduces the retained48m failure');
 assert.ok(oldPeak > 2, 'old constant core fails the unchanged bank gate');
 assert.ok(newPeak <= 2, 'fixed retained peak must pass; whole-bank gates remain separate');
 assert.ok(peakSlope(createHeightField(1337, skyLandform)) <= 2, 'the retained peak passes on the border landform too');

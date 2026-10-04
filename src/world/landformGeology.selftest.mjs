@@ -4,7 +4,8 @@
 import assert from 'node:assert/strict';
 import { createHeightField, sampleLandformHeight } from './terrain.ts';
 import {
-  createGeologyZoneSampler, geologyBoulderSite, geologyZoneWeights, knollGeologyHeight, ridgeGeologyHeight,
+  createGeologyRockSampler, createGeologyZoneSampler, geologyBoulderSite, geologyRockWeight, geologyZoneWeights,
+  inselbergSection, isRockLandform, knollGeologyHeight, ridgeGeologyHeight,
 } from './landformGeology.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 
@@ -160,7 +161,8 @@ assert.equal(ridgeGeologyHeight({ kind: 'ridge', x: 0, z: 0, height: 5 }, 0, 0, 
 // 9. Continuous everywhere: no seam where one rill's ground hands over to the next, none round a knoll's back bearing
 // (where the bearing wraps) and none at a breached crater's centre, where every bearing meets. A 1 cm step moves the
 // ground at most 3 cm on these forms (no strata here, whose risers are walls by design), except on an inselberg's wall
-// (steeper than 3:1 by design), where the rise is still spread over the step, as a seam's is not.
+// (steeper than 3:1 by design; a sheer jebel's up to 30:1 where its lobes pinch the wall), where the rise is still spread over the step, as a seam's is
+// not.
 const seamTests = [
   frame({ kind: 'knoll', x: 0, z: 0, rx: 48, rz: 60, height: 24, yawDeg: 0, geology: { profile: 'cone',
     crater: { rim: 0.16, depthM: 4, breachDeg: 200 }, outline: 0.1, gullies: { count: 11, depthM: 3.2, width: 0.6 },
@@ -174,6 +176,9 @@ const seamTests = [
   frame({ kind: 'knoll', x: 0, z: 0, rx: 34, rz: 40, height: 24, yawDeg: 0, geology: { profile: 'inselberg', outline: 0.18,
     foot: 0.66, footVary: 0.14, apron: 0.18, crown: 3.2, rough: 1.3, gullies: { count: 12, depthM: 4, width: 0.4 },
     fans: { reach: 0.35, heightM: 2.6 } } }),
+  frame({ kind: 'knoll', x: 0, z: 0, rx: 36, rz: 30, height: 26, yawDeg: 0, geology: { profile: 'inselberg', outline: 0.18,
+    foot: 0.66, footVary: 0.14, apron: 0.18, rim: 0.86, bosses: { count: 5, heightM: 5 }, flutes: { count: 18, depth: 0.5 },
+    rough: 1.3, gullies: { count: 10, depthM: 7, width: 0.35 }, fans: { reach: 0.35, heightM: 2.6 } } }),
   frame({ kind: 'ridge', x: 0, z: 0, length: 220, width: 50, height: 7, yawDeg: 0, geology: { profile: 'flow', front: 1,
     outline: 0.25, rough: 0.7, gullies: { count: 3, depthM: 1.2, width: 0.4 } } }),
   frame({ kind: 'ridge', x: 0, z: 0, length: 200, width: 60, height: 7, yawDeg: 0, geology: { profile: 'butte',
@@ -190,7 +195,7 @@ for (const form of seamTests) {
       if (jump <= 0.03) continue;
       const mid = sampleLandformHeight(form, x + dx / 2, z + dz / 2);
       const split = Math.max(Math.abs(mid - h), Math.abs(next - mid)) / jump;
-      assert.ok(form.geology.profile === 'inselberg' && jump <= 0.06 && split < 0.8,
+      assert.ok(form.geology.profile === 'inselberg' && jump <= (form.geology.rim ? 0.3 : 0.06) && split < 0.8,
         `${form.kind} geology is continuous at (${x.toFixed(2)}, ${z.toFixed(2)}): ${jump.toFixed(3)} m in 1 cm, ${(split * 100).toFixed(0)} % of it in one half`);
       wallSamples++;
     }
@@ -363,7 +368,150 @@ for (let i = 0; i < 400; i++) {
 }
 assert.ok(nearFoot > boulderSites * 0.35, `boulders crowd towards the wall's foot (${nearFoot} of ${boulderSites} inside q 0.9)`);
 
+// 15. Rock landforms and cliff ends (Titan Gorge's redesign, 2026-10-03). A map without a mesa field can gate its rock
+// on its authored rock landforms instead (terrain `landformRock`): butte, inselberg and lava-flow profiles, and anything
+// made of slag. A ridge's cliff end keeps the full section out to 94 % of the half-length and then drops to nothing in a
+// wall; an end without one keeps the smooth taper.
+const rockCases = [
+  [{ kind: 'knoll', x: 0, z: 0, rx: 40, height: 20, geology: { profile: 'butte' } }, true, 'a butte'],
+  [{ kind: 'ridge', x: 0, z: 0, length: 200, width: 40, height: 20, geology: { profile: 'butte' } }, true, 'a mesa shelf'],
+  [{ kind: 'knoll', x: 0, z: 0, rx: 40, height: 20, geology: { profile: 'inselberg' } }, true, 'an inselberg'],
+  [{ kind: 'ridge', x: 0, z: 0, length: 200, width: 40, height: 6, geology: { profile: 'flow' } }, true, 'a lava flow'],
+  [{ kind: 'knoll', x: 0, z: 0, rx: 40, height: 20, geology: { profile: 'cone' } }, false, 'a cinder cone'],
+  [{ kind: 'knoll', x: 0, z: 0, rx: 40, height: 20, geology: { outline: 0.2 } }, false, 'a lobed dome'],
+  [{ kind: 'knoll', x: 0, z: 0, rx: 40, height: 20 }, false, 'a smooth knoll'],
+  [{ kind: 'knoll', x: 0, z: 0, rx: 40, height: 9, geology: { outline: 0.1, material: 'slag' } }, true, 'a slag tip'],
+];
+for (const [form, rock, label] of rockCases) assert.equal(isRockLandform(form), rock, `${label} is${rock ? '' : ' not'} rock`);
+const shelf = frame({ kind: 'ridge', x: 30, z: -20, length: 200, width: 40, height: 20, yawDeg: 90,
+  geology: { profile: 'butte', cliffEnd: 'both' } });
+const tip = frame({ kind: 'knoll', x: -150, z: 60, rx: 40, rz: 30, height: 9, yawDeg: 20, geology: { material: 'slag' } });
+const atLocal = (form, lx, lz) => [form.x + lx * form._c - lz * form._s, form.z + lx * form._s + lz * form._c];
+assert.equal(geologyRockWeight(shelf, ...atLocal(shelf, 95, 38)), 1, 'a shelf is rock to its margin and its end');
+assert.equal(geologyRockWeight(shelf, ...atLocal(shelf, 0, 44.5)), 0, 'and nothing 4 m past its margin');
+assert.equal(geologyRockWeight(shelf, ...atLocal(shelf, 104.5, 0)), 0, 'or 4 m past its end');
+assert.equal(geologyRockWeight(tip, ...atLocal(tip, 39, 0)), 1, 'a tip is rock out to its base');
+assert.equal(geologyRockWeight(tip, ...atLocal(tip, 44.5, 0)), 0, 'and nothing 4 m past it');
+assert.equal(createGeologyRockSampler(rockCases.filter(([, rock]) => !rock).map(([form]) => form)), null,
+  'no rock landform: no sampler');
+const rockSampler = createGeologyRockSampler([shelf, tip, cone]);
+let rockPoints = 0, onRock = 0;
+for (let z = -200; z <= 200; z += 3.7) for (let x = -250; x <= 200; x += 3.7) {
+  const w = rockSampler(x, z);
+  assert.equal(w, Math.max(geologyRockWeight(shelf, x, z), geologyRockWeight(tip, x, z)),
+    `the sampler is the strongest rock footprint at (${x}, ${z})`);
+  rockPoints++;
+  if (w === 1) onRock++;
+}
+// a cliff end: the full section out to 94 % of the half-length, a wall to nothing by the end; the other end tapers
+const plainShelf = frame({ ...shelf, geology: { profile: 'butte' } });
+const southCliff = frame({ ...shelf, geology: { profile: 'butte', cliffEnd: 1 } });
+const crestAt = (form, lx) => sampleLandformHeight(form, ...atLocal(form, lx, 0));
+assert.equal(crestAt(shelf, 0.93 * 100), crestAt(shelf, 0), 'a cliff end keeps the full section to 94 % of the half-length');
+assert.equal(crestAt(shelf, 100), 0, 'and is gone at the end');
+const cliffDrop = (crestAt(shelf, 94) - crestAt(shelf, 100)) / 6;
+assert.ok(cliffDrop > 2, `the end is a wall (${cliffDrop.toFixed(2)} m per m)`);
+assert.ok(crestAt(plainShelf, 90) < crestAt(plainShelf, 0) * 0.5, 'without a cliff end the crest tapers away');
+assert.equal(crestAt(southCliff, 90), crestAt(shelf, 90), 'a +1 cliff end walls the +x end');
+assert.equal(crestAt(southCliff, -90), crestAt(plainShelf, -90), 'and leaves the -x end its taper');
+// the height field's rock gate: on a map that opts in, inside the rim band the landform mask is the rock footprint
+const verdantConfig = getMapConfig('verdant');
+const rockMap = createHeightField(1337, { ...verdantConfig, id: undefined,
+  terrain: { ...verdantConfig.terrain, mesas: null, landformRock: true, landforms: [shelf, tip, cone].map(({ _c, _s, ...form }) => form) } });
+assert.equal(typeof rockMap._mesaW, 'function', 'a map that gates on its rock landforms keeps a landform mask');
+let gatePoints = 0;
+for (let z = -200; z <= 200; z += 9.1) for (let x = -250; x <= 200; x += 9.1) {
+  assert.ok(Math.abs(rockMap._mesaW(x, z) - rockSampler(x, z)) < 1e-9, `the mask is the rock footprint at (${x}, ${z})`);
+  gatePoints++;
+}
+
+// 16. A sheer jebel (gauntlet wave 16 read Redrock's jebels as "rounded loaf-shaped mounds"; Wadi Rum's are sheer fluted
+// sandstone walls rising from flat sand): with a rim the cap stays nearly level, the wall drops most of the height
+// near-vertically, flutes set the wall back in grooves, clefts bite back into the cap's edge, bosses break the cap, and
+// the talus apron stays at the foot. inselbergSection is the one section the horizon's far jebels share; without a rim
+// it is the bornhardt's formula unchanged.
+for (let q = 0; q <= 1.0001; q += 0.01) {
+  const bornhardt = q >= 1 ? 0 : q <= 0.66 ? 1 - (1 - 0.18) * (q / 0.66) ** 3.2 : 0.18 * ((1 - q) / (1 - 0.66)) ** 2;
+  assert.ok(Math.abs(inselbergSection(Math.min(q, 1), 0.66, 0.18, 3.2) - (q >= 1 ? 0 : bornhardt)) < 1e-12,
+    `a bornhardt's section is unchanged at q ${q.toFixed(2)}`);
+}
+const capTop = 0.66 * 0.86;
+assert.ok(Math.abs(inselbergSection(0, 0.66, 0.18, 4, 0.86) - inselbergSection(capTop, 0.66, 0.18, 4, 0.86) - 0.08) < 1e-12,
+  'the cap falls 8 % of the height to its edge');
+assert.ok(Math.abs(inselbergSection(capTop, 0.66, 0.18, 4, 0.86) - inselbergSection(0.66, 0.66, 0.18, 4, 0.86) - 0.74) < 1e-12,
+  'the wall drops the rest down to the apron: 74 % of the height');
+const bareSheer = { kind: 'knoll', x: 0, z: 0, rx: 40, rz: 40, height: 24,
+  geology: { profile: 'inselberg', foot: 0.66, footVary: 0, apron: 0.18, rim: 0.86 } };
+let sheerWall = Infinity;
+for (let k = 0; k < 24; k++) {
+  const a = k / 24 * Math.PI * 2;
+  let steepestHere = 0;
+  for (let r = 1; r < 40; r += 0.1) steepestHere = Math.max(steepestHere, slopeAlong(bareSheer, a, r));
+  sheerWall = Math.min(sheerWall, steepestHere);
+  assert.ok(slopeAlong(bareSheer, a, 4) < 0.1, 'the cap is nearly level');
+  assert.ok(slopeAlong(bareSheer, a, 0.66 * 40 + 3) < steepestHere * 0.2 && slopeAlong(bareSheer, a, 38) < slopeAlong(bareSheer, a, 0.66 * 40 + 3),
+    'below the wall the apron is far gentler, and concave');
+}
+assert.ok(sheerWall > 6, `the wall is near-vertical on every bearing (${sheerWall.toFixed(1)} m per m, ${(Math.atan(sheerWall) * 180 / Math.PI).toFixed(0)} degrees)`);
+// flutes: the wall's foot (where the height falls through the apron's top) wanders round the bearings in grooves
+const fluted = { ...bareSheer, geology: { ...bareSheer.geology, flutes: { count: 24, depth: 0.5 } } };
+const wallAt = (form, a) => { let r = 0; while (r < 40 && knollGeologyHeight(form, Math.cos(a) * r, Math.sin(a) * r) > 24 * 0.5) r += 0.05; return r; };
+const fluteRadii = [];
+for (let k = 0; k < 240; k++) fluteRadii.push(wallAt(fluted, k / 240 * Math.PI * 2));
+const wallWidth = (0.66 - capTop) * 40;
+assert.ok(Math.max(...fluteRadii) - Math.min(...fluteRadii) > 0.3 * wallWidth,
+  `flutes set the wall back in grooves (${(Math.max(...fluteRadii) - Math.min(...fluteRadii)).toFixed(2)} m of a ${wallWidth.toFixed(2)} m wall)`);
+// bosses break the cap, and never reach past the cap's edge
+const bossed = { ...bareSheer, geology: { ...bareSheer.geology, bosses: { count: 5, heightM: 5 } } };
+let bossRise = 0;
+for (let i = 0; i < 2000; i++) {
+  const a = (i * 2.39996) % (Math.PI * 2), r = Math.sqrt((i % 997) / 997) * 40;
+  const x = Math.cos(a) * r, z = Math.sin(a) * r;
+  const rise = knollGeologyHeight(bossed, x, z) - knollGeologyHeight(bareSheer, x, z);
+  if (r >= capTop * 40) assert.equal(rise, 0, `no boss past the cap's edge (${x.toFixed(1)}, ${z.toFixed(1)})`);
+  bossRise = Math.max(bossRise, rise);
+}
+assert.ok(bossRise > 2.5, `bosses rise on the cap (${bossRise.toFixed(2)} m)`);
+// clefts bite back into the cap's edge
+const clefted = { ...bareSheer, geology: { ...bareSheer.geology, gullies: { count: 10, depthM: 7, width: 0.35 } } };
+let cleftBite = 0;
+for (let k = 0; k < 360; k++) {
+  const a = k / 360 * Math.PI * 2, r = capTop * 40 - 0.5;
+  cleftBite = Math.max(cleftBite, knollGeologyHeight(bareSheer, Math.cos(a) * r, Math.sin(a) * r) - knollGeologyHeight(clefted, Math.cos(a) * r, Math.sin(a) * r));
+}
+assert.ok(cleftBite > 2, `clefts cut back into the cap's edge (${cleftBite.toFixed(2)} m)`);
+
+// 17. Ridge noses (Skybridge's shoulders, 2026-10-03): with `cliffEnd: 'nose'` a ridge's whole section turns round each
+// end on a half-disc as wide as the ridge, wall and apron alike. The end's section is the side's; the apron runs on
+// round the end where a cliff end cuts it; the margin lobes and rills blend by bearing, so nothing steps at the tip; the
+// nose stays inside the ridge's length; and its rock footprint turns round with it.
+const noseRidge = frame({ kind: 'ridge', x: 0, z: 0, length: 270, width: 34, height: 18, yawDeg: 90,
+  geology: { profile: 'butte', wall: [0.35, 0.6], apron: 0.28, cliffEnd: 'nose' } });
+const noseFull = frame({ ...noseRidge, geology: { ...noseRidge.geology, strata: { stepM: 4.5, riser: 0.35 }, outline: 0.25,
+  rough: 0.8, gullies: { count: 3, depthM: 2, width: 0.5 } } });
+const cutRidge = frame({ ...noseRidge, geology: { ...noseRidge.geology, cliffEnd: 'both' } });
+const noseAt = (form, lx, lz) => sampleLandformHeight(form, ...atLocal(form, lx, lz));
+let noseWorst = 0;
+for (let d = 0; d <= 34; d += 0.5) noseWorst = Math.max(noseWorst, Math.abs(noseAt(noseRidge, 135 - 34 + d, 0) - noseAt(noseRidge, 0, d)));
+assert.ok(noseWorst < 1e-9, `a nose's end section is its side section (${noseWorst})`);
+let tipStep = 0;
+for (let lx = 135 - 34 * 1.25; lx <= 135; lx += 0.25) {
+  tipStep = Math.max(tipStep, Math.abs(noseAt(noseFull, lx, 0.01) - noseAt(noseFull, lx, -0.01)));
+}
+assert.ok(tipStep < 0.01, `nothing steps at the nose's tip (${tipStep.toFixed(4)} m across 2 cm)`);
+for (let lz = -45; lz <= 45; lz += 1.5) assert.equal(noseAt(noseFull, 135.5, lz), 0, 'the nose stays inside the ridge\'s length');
+// along the apron (22 m off the axis) the nose's ground falls away gently, under half the cliff end's steepest drop
+let noseApronDrop = 0, cutApronDrop = 0;
+for (let lx = 100; lx < 135; lx += 0.5) {
+  noseApronDrop = Math.max(noseApronDrop, (noseAt(noseRidge, lx, 22) - noseAt(noseRidge, lx + 0.5, 22)) / 0.5);
+  cutApronDrop = Math.max(cutApronDrop, (noseAt(cutRidge, lx, 22) - noseAt(cutRidge, lx + 0.5, 22)) / 0.5);
+}
+assert.ok(noseApronDrop < cutApronDrop * 0.5,
+  `the apron runs on round a nose (${noseApronDrop.toFixed(2)} m per m) where a cliff end cuts it (${cutApronDrop.toFixed(2)})`);
+assert.equal(geologyRockWeight(noseRidge, ...atLocal(noseRidge, 133, 33)), 0, 'a nose\'s rock footprint turns round its end');
+assert.equal(geologyRockWeight(cutRidge, ...atLocal(cutRidge, 133, 33)), 1, 'a cut end\'s footprint runs square');
+
 console.log(`landformGeology.selftest: ${smoothForms} smooth landforms unchanged; cone flank ${steepest.toFixed(3)} `
   + `(predicted ${predicted.toFixed(3)}), ${notches} rills, lobed reach ${Math.min(...reach)}-${Math.max(...reach)} m, `
   + `${benches} benches on ${benchedBearings} of 12 bearings, `
-  + `flow margin ${Math.min(...edges)}-${Math.max(...edges)} m, ${seamSamples} seam samples continuous (${wallSamples} on an inselberg's wall), ${fanPeaks} talus fans, flow levee ${(levee - channel).toFixed(2)} m front ${frontSlope.toFixed(2)} vent ${ventSlope.toFixed(2)}; zones: flow ${flowInside} inside, ${flowFaded} faded, cone ${coneInside} inside, fans ${fanPositive} of ${fanSamples} toe samples, sampler ${samplerPoints} points; Caldera's mask = its flow zone at ${maskPoints} points (${onFlows} on flows); inselberg wall ${steepestWall.toFixed(2)}, foot ${Math.min(...breaks)}-${Math.max(...breaks)} m, ${nearFoot} of ${boulderSites} boulder sites near the foot`);
+  + `flow margin ${Math.min(...edges)}-${Math.max(...edges)} m, ${seamSamples} seam samples continuous (${wallSamples} on an inselberg's wall), ${fanPeaks} talus fans, flow levee ${(levee - channel).toFixed(2)} m front ${frontSlope.toFixed(2)} vent ${ventSlope.toFixed(2)}; zones: flow ${flowInside} inside, ${flowFaded} faded, cone ${coneInside} inside, fans ${fanPositive} of ${fanSamples} toe samples, sampler ${samplerPoints} points; Caldera's mask = its flow zone at ${maskPoints} points (${onFlows} on flows); inselberg wall ${steepestWall.toFixed(2)}, foot ${Math.min(...breaks)}-${Math.max(...breaks)} m, ${nearFoot} of ${boulderSites} boulder sites near the foot; rock: ${onRock} of ${rockPoints} sampler points on rock, cliff end ${cliffDrop.toFixed(2)} m per m, the rock gate matches at ${gatePoints} points; sheer jebel wall ${sheerWall.toFixed(1)} m per m, flutes ${(Math.max(...fluteRadii) - Math.min(...fluteRadii)).toFixed(2)} m, bosses ${bossRise.toFixed(2)} m, clefts ${cleftBite.toFixed(2)} m; nose apron ${noseApronDrop.toFixed(2)} m per m (a cut end ${cutApronDrop.toFixed(2)})`);

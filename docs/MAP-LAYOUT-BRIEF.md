@@ -73,7 +73,7 @@ lane's scratch output):
 (terrain seed from the collision manifest index) and the committed collision manifest. It runs without a browser;
 the whole fleet takes about a minute. `--check` exits 1 when a map misses a band. A map may name a deliberate
 exception in `layoutBrief: { exceptions: { <key>: '<reason>' } }`; the check then reports the reason instead of a
-failure.
+failure. A map at a scale of its own may instead hold its own enforced bands (below, "Bands of a map's own").
 
 | Key | What it measures | Band |
 | --- | --- | --- |
@@ -107,6 +107,26 @@ whose sampled grade stays at or under 18 % at three terrain seeds) and `src/worl
 least three strongpoints, every role present, each at least 180 m from the others).
 `server/collisionManifestDrift.selftest.mjs` rebuilds every shard in Node and fails on any that no longer matches
 the tree.
+
+### Bands of a map's own
+
+A map built at a scale of its own holds its own bands instead of an exception:
+`layoutBrief: { bands: { <key>: { band: [min, max], reason: '<why>' } } }`. A map band replaces the shared band for
+that key and is enforced like it: a miss fails, and the check names the band and the reason. Use one only when the
+scale itself is the design, and derive the band from that scale, not from the value the map happens to reach.
+
+Olympus Basin (`mars`) is the first: the compact arena of the Mars mode (the owner, 2026-09-18), played at 0.38 g, with
+its deployments about 500 m apart where the brief's fields stand 600–860 m. Its distance bands take its scale, about
+0.64 of the brief's:
+
+| Key | Shared band | Olympus Basin | Why |
+| --- | --- | --- | --- |
+| `spawnSeparationM` | 600–860 m | 420–520 m | centred on the arena's first 470 m; the pacing fix stands the blocks 513 m apart, inside it |
+| `sightMedianM` | 80–150 m | 55–100 m | the shared band scaled by 0.64 |
+| `sightLongShare` | 0.03–0.15 | 0.01–0.15 | a 300 m line is 64 % of the separation (35–50 % on the brief's fields) |
+| `sightCloseShare` | 0.25–0.62 | 0.25–0.68 | more blocked rays end inside 100 m on a field this size |
+
+Every other band (lanes, chokes, cover, hull-down, relief, dressing, objective symmetry) holds at the shared value.
 
 ### Apron banks
 
@@ -161,6 +181,12 @@ Siting an apron:
 5. Run the map's receipts. Re-pin the receipts it moves, with before/after evidence in the commit.
 6. Bots: run seeded matches on every supported mode. The map's median standard match must fall inside 240–480 s,
    with no stalemate and no stuck bot.
+   Falls: count the damaging falls (`tank_impact` events with cause `fall`) in seeded 7v7 Standard and Endless Horde
+   matches, four seeds each, on the old layout and the new one. None of three numbers may rise: the total fall
+   damage, the worst single fall, and the count of falls of 50 hp or more. A drop under 50 hp is a kerb or a bank
+   taken at speed and does not count; moving a road or a bank moves where such drops happen without making the map
+   more dangerous. A bare count of falls is too crude: on Titan Gorge it rose 9 → 24 in Endless Horde while the total
+   fell 1134 → 637 hp and the worst fall 457 → 88 hp.
 7. Multiplayer: the host loads the new shard, and a headless peer-to-peer run plays the map
    (`node tools/mp-p2p-headless.mjs --map=<id> --world=dedicated`).
 8. Capture chase, bird and tactical-overhead views before and after; measure draw calls, triangles and frame time
@@ -223,6 +249,14 @@ props code shaped every layout, and the next maps should start from them:
   `src/world/props.ts`.
 - **Marine structures.** A wharf seated on its landing stands over the water by design; the map names it as a
   `solidPropsInWater` exception.
+- **Shelves end in cliffs.** A long shelf whose ends taper is a ramp onto its cap, and bots drive up it and fall off
+  the walls. End a shelf in cliffs (`cliffEnd` on a ridge's geology) short of the deployments. On Titan Gorge, four
+  seeded standard matches took 15 damaging falls on the old mesa field (4259 hp, the worst 1274 hp) and 4 on the
+  660 m shelves with cliff ends (61 hp, the worst 25 hp). Its first shelves, with tapered ends, took 29 falls in
+  Endless Horde (3383 hp, the worst 1442 hp).
+- **Rock without a mesa field.** A map that drops its noise mesas for authored shelves and buttes sets
+  `landformRock`, so the terrain's rock gate reads its rock landforms (butte, inselberg and lava-flow profiles, and
+  slag) instead (`src/world/landformGeology.ts`).
 - **Canyon maps.** On Redrock Divide the canyon (`src/world/redrockCanyon.ts`) stays the regional terrain, and the
   authored landforms are floor features: inselbergs, dune ridges and sand ramps. `mapQuality` checks that each one
   stands on the canyon floor. An inselberg is a steep dome with `corridorScale: 1`, so a deployment corridor that
@@ -233,6 +267,68 @@ props code shaped every layout, and the next maps should start from them:
   ends join the main course. environmentExpansion checks each trail's continuity and the joins (Jade River Delta).
 - **Cross-road ends.** Start a cross road on a node of the road it meets, as Delta's cross road starts on the west
   road's node. Left to the endpoint completion, the extension met the other road 1.7 m lower and climbed to it at 29 %.
+- **Settlements stay where they stand.** The owner's ruling (October 3, 2026): no layout change moves a settlement
+  building that PR #9's head has. A town is fragile. On Titan Gorge each of these re-seated it on its own: the noise
+  mesas' removal, the aprons, the shared road nodes, the landforms, alpha's spawn and the road setback (18, 1, 6, 1, 20
+  and 3 of 28 houses kept their places). On Ironworks, bravo's new deployment corridors did it (33 of 46). A rebuilt map
+  keeps its town in one of two ways:
+  - Where the inputs the town is built from can stay as they were, keep them. Verdant keeps the country road
+    generator, whose 32 m nodes are its frontage lots.
+  - Otherwise record the town from the build that has it and replay it:
+    `node tools/record-town-plan.mjs --root=<checkout> --write=src/world/maps/townPlans.generated.ts <maps>`, then set
+    `props.townPlan` and `props.townLightPlan`. Each planned building is rebuilt from its own recorded stream at its
+    recorded pose, whatever the ground, roads or aprons under it have become. Each light building (the huts, tents
+    and sheds of `placeDestructibleBuildings`) stands at its recorded pose. The generated road, row and block-fill
+    passes place nothing more.
+
+  `src/world/townPlans.selftest.mjs` holds every recorded town against the footprints PR #9's head's shards carried.
+- **Buildings in a carriageway.** `props.roadBuildingClearance` runs once every settlement building stands. It moves a
+  building whose footprint stands within the 3.5 m road core by the least distance that clears it: rings of 0.5 m out
+  to 30 m, on 15-degree bearings starting away from the road. The building keeps its ground fit and stays clear of
+  every other footprint and strongpoint. Nothing draws, so every other building stays exactly where it stood. A map
+  can author the place instead (`props.roadClearanceTargets`, checked alike).
+  Blackglass: 8 of its 150 blocks moved 1–9.5 m. Its civic hall at (-101.9, -85.8) stood across road 3 at the
+  district's crossroads, against road 1's edge, on the line between the deployments, with no clear place inside 30 m.
+  Bending the roads round it was not open: the district is generated from them, and road 1 ran through a 5 m gap
+  between the hall and the next block. Its nearest clear place, 36 m south beside alpha's approach, let the south
+  deployment win 28 of the swap test's 40 games (22 with the hall in the road). The authored place, on the avenue's
+  north-west side 59 m north, stands on that line again: the south wins 22. Weigh a big building's move like a
+  layout change, with the swap test. `server/roadCrossingSweep.selftest.mjs` drives
+  every bridge, deck and causeway on the lane's maps both ways at road speed (after the physics lane's crossing
+  sweep, which found hulls stopped by buildings and rocks 0.4–2 m from a road's centreline). A run must reach its end
+  without a hard contact or a stall.
+- **Equivalent deployments.** Both teams deploy in the same shape: bravo's seven pads are alpha's 4 x 2 block mirrored.
+  Then run the bots lane's swap test (`fair-swap`: the same 20 seeds with the deployments exchanged). If one deployment
+  wins two thirds or more of the paired games (24 of 36), the positions differ as well. Turn the layout about its
+  centre: each block, its screening feature, its near objective and its strongpoints become the other's rotation, and
+  the middle disc stands on the deployments' bisector. Turn the rock with them: turning the deployments alone does not
+  help when the walls around them differ. The north deployment's share of the 40 swap games, before and after the turn:
+  - Titan Gorge: 27 → 24.
+  - Skybridge Chasm: 27. Its deployments alone were turned three times (23, 30 and 28): its 300 m south segments
+    against 160 m north ones kept the north ahead (81 of 120). With the segments turned about the shoulder system's
+    middle as well: 21, and 22 once the pacing fix stood the deployments 721 m apart.
+  - Olympus Basin: 34 → 22, with its rock authored in pairs about the station; 15 once the pacing fix stood its
+    blocks 257 m out (the south deployment 25 of 40, binomial p 0.15).
+
+  Glacier Pass, Obsidian Caldera, Ironworks and Blackglass were already even with blocks alone (20–24 of 40).
+- **Noise mesas and roads.** A noise mesa field stands its walls wherever the noise crosses its threshold, so at some
+  terrain seeds a road runs along a wall's foot or over it. Olympus Basin's country roads reached 30 % at two of the
+  road-grade law's three seeds. Author the rock instead, off the roads: Olympus Basin's four mesas and two craters are
+  paired about the station, and its roads stay under 14 % at all three seeds.
+- **Shoulders and noses.** Where a deployment corridor or a settlement's feather crosses a narrow rock wall, it lowers
+  the wall into a ramp onto its cap. Bots that climb it fall off the walls. Keep such walls whole (`corridorScale: 1`,
+  `settlementScale: 1`), and the bots drive round them. End a wall segment in a nose (`cliffEnd: 'nose'`), whose wall
+  and talus turn round the end, not in a cut. A cut end drops its talus apron in a step that bots drive off. Skybridge
+  v6 lost 1556 hp in four standard matches at the cut ends; with noses and whole walls it lost 170 hp in twelve.
+- **Separation and pacing.** `server/battlePacing.selftest.mjs` plays four 2v2 bot matches a map at its own seeds
+  (21000 + the map's index x 1000 + 0..3, an idle human on alpha). No match may end inside 90 s, and at most 4 of the
+  fleet's 132 inside 120 s. A layout that brings the deployments nearer, or opens the road between them, brings contact
+  sooner: Skybridge's rotation stood alpha 120 m nearer and one match ended in 102 s; Olympus Basin's blocks on its
+  open north–south road ended one in 81 s. Fix the layout, not the receipt. Lengthen the separation inside the map's
+  band (Skybridge 677 → 717 m, Olympus Basin 469 → 513 m) and stand a gate butte beside each road approach, so a
+  block's bots leave round it. Give a gate butte a sheer section with a rim (talus only at its foot): Olympus Basin's
+  first pair, with the butte profile's climbable apron, cost a 235 hp fall in horde. After the fix, Skybridge played
+  270 / 153 / 132 / 269 s and Olympus Basin 184 / 243 / 201 / 90 s at their seeds.
 - **Budget.** All three pilots exceed point 10's 10 % triangle budget. The coordinator approved this for PR #9 on
   October 2, 2026, pending the owner. The extra triangles are content the brief wants. Trimming goes to frame-time
   work, such as shadow caching and LOD for parapets and wire, rather than to removing content. Whole-map prop

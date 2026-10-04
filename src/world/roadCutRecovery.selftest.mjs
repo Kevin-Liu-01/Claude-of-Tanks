@@ -133,8 +133,11 @@ const failures = [
   // road 1's south exit moved from x = -112 to x = -160, so the two north witnesses are re-measured on the new ground
   // (were 2.2056770037931983 and 1.5010676125114628) and the south one retires: the predecessor program no longer
   // fails within 70 m of any alpine gate at seed 1337 (0.625 at (-142, -510), under the limit 2).
-  { id: 'alpine', seed: 2025, x: -50, z: 510, nx: 1, nz: 0, span: 2, limit: 2, old: 2.15548358326841 },
-  { id: 'alpine', seed: 2025, x: -28, z: 472, nx: 1, nz: 0, span: 2, limit: 1.4, old: 1.4196802831775939 },
+  // 2026-10-03 (bravo's block, docs/MAP-LAYOUT-BRIEF.md "Equivalent deployments"): the block's pads and corridor move
+  // the ground at both north witnesses by a hair, so they are re-measured (were 2.15548358326841 and 1.4196802831775939);
+  // the predecessor still fails both gates.
+  { id: 'alpine', seed: 2025, x: -50, z: 510, nx: 1, nz: 0, span: 2, limit: 2, old: 2.15548238855496 },
+  { id: 'alpine', seed: 2025, x: -28, z: 472, nx: 1, nz: 0, span: 2, limit: 1.4, old: 1.419265858748627 },
   // 2026-10-02 (the apron bank law): Highland Reservoir's western apron now rises 5 % to the west with its hillside
   // (docs/MAP-LAYOUT-BRIEF.md, "Apron banks"), so the plane its west gate continues is the hill's own. The predecessor
   // program no longer fails there: 0.080 and 0.050 at (-446, -72), and at most 0.092 and 0.120 anywhere on the road
