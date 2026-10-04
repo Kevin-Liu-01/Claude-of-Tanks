@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
-  HORIZON_PANORAMA, HORIZON_PANORAMA_CHARACTERS, HORIZON_PANORAMA_SHADERS, buildHorizonPanoramaShellGeometry, horizonPanoramaHaze,
+  HORIZON_PANORAMA, HORIZON_PANORAMA_CHARACTERS, HORIZON_PANORAMA_REGIONAL, HORIZON_PANORAMA_SHADERS, buildHorizonPanoramaShellGeometry, horizonPanoramaHaze,
   createHorizonPanorama, horizonPanoramaUv, horizonRingSkylineTan, resolveHorizonPanoramaCharacter,
 } from './horizonPanorama.ts';
 import { HORIZON_FAR_ROWS } from './horizonFarRange.ts';
@@ -147,11 +147,7 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
   assert.ok(pano.shore > 1 && pano.shoreM > 4000 && pano.shoreM < 7000, 'a channel coast: the land across the water, 4-7 km out');
   assert.ok(pano.shoreRange > 0 && pano.shoreRange <= 1, 'a coastal range along the far shore (no low strip where its own relief is low)');
   assert.ok(pano.treeline < HORIZON_PANORAMA_CHARACTERS.coastal.treeline, 'the karst keeps its woods on the lower flanks');
-  // Saltwind's own: the mainland's karst ridge, bare pale limestone (rock from the gentler slopes on) over scrub, its
-  // woods only on the lowest flanks (gauntlet wave 24: "the karst ridge should also read as bare pale limestone, not green")
-  const salt = resolveHorizonPanoramaCharacter('coastal', saltwind.horizon.panorama);
-  assert.ok(salt.shore > 1 && salt.shoreRange > 0, 'Saltwind: the mainland across its channel');
-  assert.ok(salt.rockSlope <= 0.2 && salt.treeline <= 0.25, 'Saltwind: a bare limestone ridge, its woods low');
+  assert.equal(saltwind.horizon.panorama, false, 'Saltwind holds the PR head\'s far country (gauntlet waves 24 and 32) until its ridge is rebuilt');
   // the channel past the sea apron is painted water on a channel coast, so the far ridge stands on it (wave 24: "floats
   // above a flat white haze stripe"); an open sea stays the game's own
   assert.ok(/float farWater = uShore\.x > 0\.0 \? sea \* smoothstep\(/.test(HORIZON_PANORAMA_SHADERS.strip)
@@ -183,6 +179,10 @@ assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('float fillSnow = uChar3.x < 0
   const ridges = resolveHorizonPanoramaCharacter('karst', { regional: 'ridges' });
   assert.ok(ridges.forestSlope >= 0.55 && ridges.rockSlope >= 0.85 && ridges.sharp <= 1.2, 'ridges: forest up the faces, rounded crests');
   assert.equal(HORIZON_PANORAMA_CHARACTERS.rolling.forestSlope, 0.32, 'a temperate hill keeps the old forest limit');
+  // (and every other regional class: Orchard's forested far country stays the PR head's until its own views say otherwise)
+  for (const [regional, c] of Object.entries(HORIZON_PANORAMA_REGIONAL)) {
+    if (regional !== 'ridges') assert.equal(c.forestSlope, 0.32, `${regional}: the old forest limit`);
+  }
   assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('smoothstep(uTrees.y, uTrees.y + 0.23, slope)'), 'the strip reads the forest\'s slope limit');
 }
 // --- the regional classes (gauntlet wave 15, every critic: "mountain ranges behind places that have none"): a map's
