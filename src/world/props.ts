@@ -50,9 +50,9 @@ import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
-import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
-import { paintFieldStoneBuffers } from './fieldStoneSurface.ts'; // the field walls' rubble print (the scenery lane)
-import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
+import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
+import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts'; // the field walls' rubble print (the scenery lane)
+import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
 import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
@@ -991,9 +991,11 @@ function makeStraw(
 }
 
 /**
- * The scenery lane (2026-10-03): the dry-stone field walls' rubble print (fieldStoneSurface.ts) under the map's stone
- * tone. Its palette is the stone print's law, so the tone and a masonry tint give the walls the colour they had; its
- * joints are dark dry voids and no course runs through it. Phones paint it at half size (the same stones).
+ * The scenery lane (2026-10-03): the dry-stone field walls' print (fieldStoneSurface.ts) under the map's stone tone —
+ * one stone's skin over its face band (the module's face stones are geometry, each a window of it; wave 34 read a
+ * printed rubble on them as "stamped flagstone with dark outlines") and the hearting's packing stones and voids over a
+ * band the core maps. Its palette is the stone print's law, so the tone and a masonry tint give the walls the colour
+ * they had, lifted where a dark tone would black them out. Phones paint it at half size (the same stones).
  */
 function* makeFieldStone(
   anisotropy: number,
@@ -1002,11 +1004,13 @@ function* makeFieldStone(
 ): Generator<PropsBuildSlice, GeneratedSurfaceTextures, void> {
   const { px, hgt } = yield* paintFieldStoneBuffers(size);
   applyTone(px, tone);
+  liftFieldStoneMean(px, size); // (wave 34: never darker than a fieldstone, whatever the map's stone tone)
   yield { fine: true, stage: 'field-stone-tone' };
   return {
     albedo: toTexture(px, size, { srgb: true, anisotropy }),
-    normal: normalFromHeight(hgt, size, 3.0 * size / 512, anisotropy),
-    surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.8, roughMax: 0.98, aoMin: 0.6 }),
+    // (a stone's skin, not stones: a gentle relief, and the occlusion the geometry's own gaps give)
+    normal: normalFromHeight(hgt, size, 2.2 * size / 512, anisotropy),
+    surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.8, roughMax: 0.98, aoMin: 0.72 }),
   };
 }
 
@@ -1019,9 +1023,11 @@ function* makeFieldMud(
   anisotropy: number,
   tone: ToneFunction | null,
   size: number,
+  earth: readonly [number, number, number] | null,
 ): Generator<PropsBuildSlice, GeneratedSurfaceTextures, void> {
   const { px, hgt } = yield* paintFieldMudBuffers(size);
   applyTone(px, tone);
+  if (earth) tintFieldMudToEarth(px, size, earth); // (wave 34: the walls and the mud at their feet are the map's earth)
   yield { fine: true, stage: 'field-mud-tone' };
   return {
     albedo: toTexture(px, size, { srgb: true, anisotropy }),
@@ -3017,7 +3023,8 @@ function* propsBuildSteps(
   // (and a mud-walled map's walls their own worn render over their courses, not the house plaster)
   const adobeWallBucket = P.wallStyle === 'adobe' ? 'fieldMud' : 'plaster';
   const fieldMud = adobeWallBucket === 'fieldMud'
-    ? yield* makeFieldMud(aniso, T.plaster || null, mobileProps ? 256 : 512)
+    ? yield* makeFieldMud(aniso, T.plaster || null, mobileProps ? 256 : 512,
+      mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex))
     : plaster;
 
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
@@ -4305,6 +4312,24 @@ ${snowCap ? `
   }
   moveBuildingsOffCarriageways();
 
+  // the scenery lane (wave 34, "a stacked prop on a bare mound — no berm, trench or spilled sand"): each nest's spoil
+  // banked against it and the spill of a burst bag (sceneryKit.ts buildSandbagBedding), a stream of its own named by
+  // its place, in the map's soil (its earth on an arid map); drawn as one receive-only mesh of their own
+  const sandbagBeds: THREE.BufferGeometry[] = [];
+  const bedSoil = ((): readonly [number, number, number] => {
+    // (wave 34 re-shoot: a props surface of the soil's albedo rendered twice as bright as the terrain's dirt beside it —
+    // sRGB 169,119,73 against 118,83,54 on Frontier — so the spoil takes half the soil's linear albedo)
+    const earth = mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex);
+    const lin = (c: number) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+    const soil = earth ? [lin(earth[0]), lin(earth[1]), lin(earth[2])] : rockDressingFor(mapId, P.rockSoilTone ?? null).soil;
+    return [soil[0] * 0.5, soil[1] * 0.5, soil[2] * 0.5];
+  })();
+  function bedSandbagNest(kind: string, x: number, z: number, yaw: number, scale: number,
+    toward: readonly [number, number] | null = null): void {
+    if (kind !== 'sandbagbig' && kind !== 'sandbagsmall' && kind !== 'sandbagwall') return;
+    sandbagBeds.push(buildSandbagBedding(kind, heightField, x, z, yaw, scale,
+      (Math.round(x * 100) * 73856093) ^ (Math.round(z * 100) * 19349663) ^ 0x5bed, bedSoil, mobileProps, toward));
+  }
   // Map-specific strongpoints. Random dressing is still valuable between
   // lanes, but critical cover cannot be left to a scatter pass: these beats
   // deliberately anchor the brawl, scout and support routes authored by each
@@ -4339,6 +4364,7 @@ ${snowCap ? `
         const sy = heightField.getHeightAt(sx, sz);
         const kind = sideIndex === 0 ? 'sandbagbig' : 'sandbagsmall';
         addDestructible(kind, sx, sy - 0.04, sz, yaw + sideIndex * 0.12, 1.18);
+        bedSandbagNest(kind, sx, sz, yaw + sideIndex * 0.12, 1.18, [fwdX, fwdZ]); // (its spoil thrown forward)
       }
       scatterDestructibles('ammobox', cx - fwdX * 2.2, cz - fwdZ * 2.2, 2, 0.8, 2.2, 0);
       scatterDestructibles('crate', cx - fwdX * 3.0, cz - fwdZ * 3.0, 1, 0.5, 1.5, 0);
@@ -4632,6 +4658,7 @@ ${snowCap ? `
   const wallDressing = createWallDressing({
     ground: heightField, snow: snowCap, mobile: mobileProps, adobeBucket: adobeWallBucket, mudUv: ADOBE_UV_PER_M,
     plainV: adobeWallBucket === 'fieldMud' ? FIELD_MUD_PLAIN_V : undefined,
+    sand: adobeWallBucket === 'fieldMud' && !!mudEarthOfGround((cfg as { sky?: { lighting?: { groundAlbedoHex?: number } } } | null)?.sky?.lighting?.groundAlbedoHex),
   });
   function addWallRun(
     x0: number,
@@ -4665,7 +4692,7 @@ ${snowCap ? `
       const dressed = wallDressing.island(style === 'adobe', x0 + tx * ta, z0 + tz * ta, x0 + tx * tb, z0 + tz * tb, style === 'adobe' ? thick * 0.5 : 0.23);
       for (const part of dressed.wall) buckets[wallB].push(part);
     }
-    function endPost(px: number, pz: number): void {
+    function endPost(px: number, pz: number, out: 1 | -1): void {
       const py = heightField.getHeightAt(px, pz) - 0.15;
       const ph = runH * 1.05 + 0.3;
       // the scenery lane (wave 16, "a miniature castle battlement"): a dry-stone run ends in a rubble wall head and a mud
@@ -4674,10 +4701,13 @@ ${snowCap ? `
       if (style === 'adobe' || !sourcedStoneIsBrick(mapId)) {
         const seedAt = (Math.round(px * 73.1) * 92821) ^ Math.round(pz * 41.7) * 68917;
         let head = style === 'adobe' ? buildAdobePilaster(seedAt, thick, ph - 0.15) : buildDryStoneWallHead(seedAt, thick, runH * 0.98 + 0.12);
-        jitterUV(head, rng);
+        if (wallB === 'fieldStone') wallDressing.stoneUv(head, rng); else jitterUV(head, rng);
         if (wallDressing.snow && style !== 'adobe') head = wallDressing.loadHead(head, seedAt); // its snow, like its module's
         head.rotateY(yaw);
         buckets[wallB].push(head.translate(px, py, pz));
+        // (wave 34, "nothing bedded": the stones the head lost tumbled out past the end; a stream named by its place)
+        const fallen = wallDressing.tumble(style === 'adobe', px, pz, tx * out, tz * out, thick * 0.5);
+        if (fallen) buckets[wallB].push(fallen);
         return;
       }
       const post = box(thick + 0.22, ph, thick + 0.22, 0.7);
@@ -4693,7 +4723,7 @@ ${snowCap ? `
         const y = heightField.getHeightAt(x, z) - 0.15;
         const height = 0.30 + rng() * 0.25;
         const stub = box(thick, height, WALL_SEG * 0.4, breachUv);
-        jitterUV(stub, rng);
+        if (wallB === 'fieldStone') wallDressing.stoneUv(stub, rng); else jitterUV(stub, rng);
         stub.rotateY(yaw);
         buckets[wallB].push(stub.translate(x, y + height / 2, z));
       }
@@ -4705,7 +4735,7 @@ ${snowCap ? `
         const block = roughenChunk(
           box(size * 1.5, size * 0.8, size, style === 'adobe' ? wallDressing.mudUv * 1.6 : 1.2), rng, size * 0.4,
         );
-        jitterUV(block, rng);
+        if (wallB === 'fieldStone') wallDressing.stoneUv(block, rng); else jitterUV(block, rng);
         block.rotateY(rng() * Math.PI);
         block.translate(x, heightField.getHeightAt(x, z) + size * 0.3, z);
         buckets[wallB].push(block);
@@ -4742,11 +4772,11 @@ ${snowCap ? `
       const cx = x0 + tx * tc, cz = z0 + tz * tc;
       if (inGap || skip) {
         if (!skip && inGap && beginsGap(k, decisionT)) addBrokenBreach(t0, t1);
-        if (prevBuilt) { endPost(x0 + tx * t0, z0 + tz * t0); dressIsland(islandFrom, t0); } // post at the lip
+        if (prevBuilt) { endPost(x0 + tx * t0, z0 + tz * t0, 1); dressIsland(islandFrom, t0); } // post at the lip
         prevBuilt = false;
         continue;
       }
-      if (!prevBuilt) { endPost(x0 + tx * t0, z0 + tz * t0); islandFrom = t0; } // run (re)start
+      if (!prevBuilt) { endPost(x0 + tx * t0, z0 + tz * t0, -1); islandFrom = t0; } // run (re)start
       const ya = heightField.getHeightAt(x0 + tx * t0, z0 + tz * t0);
       const yb = heightField.getHeightAt(x0 + tx * t1, z0 + tz * t1);
       const cy = Math.min(ya, yb);
@@ -4764,7 +4794,7 @@ ${snowCap ? `
         x1: x0 + tx * t1, z1: z0 + tz * t1 });
       prevBuilt = true;
     }
-    if (prevBuilt) { endPost(x1, z1); dressIsland(islandFrom, along); } // closing post
+    if (prevBuilt) { endPost(x1, z1, 1); dressIsland(islandFrom, along); } // closing post
   }
   const wallRuns: WallRun[] = P.wallRuns || [
     [town.x0 + 4, 8, town.x0 + 4, 64, 2],
@@ -6212,7 +6242,9 @@ ${snowCap ? `
       if (blocked) return false;
       const y = heightField.getHeightAt(sx, sz);
       const yaw = Math.atan2(bx - ax, bz - az) + (srng() - 0.5) * 0.3;
-      addDestructible(sbKind(srng()), sx, y - 0.04, sz, yaw, 1.25 + srng() * 0.3);
+      const kind = sbKind(srng()), scale = 1.25 + srng() * 0.3;
+      addDestructible(kind, sx, y - 0.04, sz, yaw, scale);
+      bedSandbagNest(kind, sx, sz, yaw, scale);
       if (srng() < 0.55) scatterDestructibles('ammobox', sx, sz, 1, 1.8, 3.2);
       if (srng() < 0.3) scatterDestructibles('crate', sx, sz, 1, 1.8, 3.0);
       return true;
@@ -6227,6 +6259,8 @@ ${snowCap ? `
       addDestructible('sandbagbig', nx, y - 0.04, nz, Math.PI * 0.7, 1.4);
       addDestructible('sandbagsmall', nx + 3.4,
         heightField.getHeightAt(nx + 3.4, nz + 1.6) - 0.04, nz + 1.6, Math.PI * 0.25, 1.3);
+      bedSandbagNest('sandbagbig', nx, nz, Math.PI * 0.7, 1.4);
+      bedSandbagNest('sandbagsmall', nx + 3.4, nz + 1.6, Math.PI * 0.25, 1.3);
       scatterDestructibles('ammobox', nx + 1.5, nz + 1, 2, 1.2, 2.6);
     }
   }
@@ -6354,6 +6388,7 @@ ${snowCap ? `
         const moduleYaw = yaw + (wrng() - 0.5) * 0.1, moduleScale = SOURCED.sandbags ? 1.15 + wrng() * 0.2 : 1;
         if (!destructibleClearOfRoad(kind, bx, bz, moduleYaw, moduleScale)) continue;
         addDestructible(kind, bx, heightField.getHeightAt(bx, bz) - 0.04, bz, moduleYaw, moduleScale);
+        bedSandbagNest(kind, bx, bz, moduleYaw, moduleScale, [fx, fz]); // (its spoil thrown toward the threat)
       }
       // wire belt 14–18 m toward the threat, one module wider than the breastwork on each side
       const wireDist = 14 + wrng() * 4;
@@ -7878,6 +7913,18 @@ ${snowCap ? `
     if (drifts) {
       const mesh = new THREE.Mesh(drifts, mats.plaster);
       mesh.name = 'props-snow-drifts';
+      mesh.receiveShadow = true;
+      mesh.matrixAutoUpdate = false;
+      group.add(mesh);
+    }
+  }
+  if (sandbagBeds.length) {
+    const beds = mergeGeometries(sandbagBeds, false);
+    for (const g of sandbagBeds) g.dispose();
+    sandbagBeds.length = 0;
+    if (beds) {
+      const mesh = new THREE.Mesh(beds, mats.rock); // (the bocage banks' material: detail, grime and the wet maps' moss)
+      mesh.name = 'props-sandbag-beds';
       mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = false;
       group.add(mesh);
