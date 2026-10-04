@@ -119,7 +119,7 @@ function produce(id, extra = {}) {
     // outline (0.9–1.1 of it), on the stands' bound
     const ring = (discs, x, z, outline, lo, hi) => discs.map((c, i) => (outline ? outline(i, x, z) : Math.hypot(x - c.x, z - c.z) / c.r))
       .filter(r => r >= lo - 1e-4 && r <= hi + 1e-4).sort((a, b) => a - b)[0];
-    let minR = Infinity, maxR = 0, standCount = 0, rimCount = 0, mantleCount = 0, screening = 0;
+    let minR = Infinity, maxR = 0, standCount = 0, rimCount = 0, mantleCount = 0, cappedCount = 0, screening = 0;
     for (let i = 0; i < mesh.count; i++) {
       mesh.getMatrixAt(i, matrix); const e = matrix.elements;
       const x = e[12], z = e[14], sc = Math.hypot(e[0], e[2]);
@@ -132,15 +132,21 @@ function produce(id, extra = {}) {
       const rimOk = rimNear !== undefined && sc >= 0.85 * 1.4 - 1e-4 && sc <= 1.6 * 1.4 + 1e-4 && bound <= 506 + 1e-6;
       const mantleNear = ring(clusters, x, z, world._standOutline, 0.9, 1.1);
       const mantleOk = mantleNear !== undefined && sc >= 1.5 - 1e-4 && sc <= 2.7 + 1e-4 && bound <= 470 + 1e-6;
-      assert.ok(standOk || rimOk || mantleOk, `${id}: a stand's, a rim block's or a mantle's shrub (${x}, ${z}, scale ${sc}, bound ${bound})`); // float32 instance matrices
-      const near = standOk ? standNear : rimOk ? rimNear : mantleNear;
-      if (standOk) standCount++; else if (rimOk) rimCount++; else mantleCount++;
+      // trees round 4: or a capped shrub — a stand's or a rim block's that the cover law below took the height of out of
+      // the wood's cover, its whole form scaled down to young growth of 0.6–1.2 m (vegetation.ts UNDERSTOREY_CAP_M) at
+      // its own proportions (the height jitter 0.9–1.3), inside the square
+      const hyOf = e[5] / sc;
+      const cappedOk = (standNear !== undefined || rimNear !== undefined) && bound <= 470 + 1e-6
+        && e[5] >= 0.6 - 1e-4 && e[5] <= 1.2 + 1e-4 && hyOf >= 0.9 - 1e-4 && hyOf <= 1.3 + 1e-4;
+      assert.ok(standOk || rimOk || mantleOk || cappedOk, `${id}: a stand's, a rim block's, a mantle's or a capped shrub (${x}, ${z}, scale ${sc}, height ${e[5]}, bound ${bound})`); // float32 instance matrices
+      const near = standOk ? standNear : rimOk ? rimNear : cappedOk ? (standNear ?? rimNear) : mantleNear;
+      if (standOk) standCount++; else if (rimOk) rimCount++; else if (cappedOk) cappedCount++; else mantleCount++;
       // trees round 4 (one law for every shrub a player can drive up to): the understorey conceals nothing, so inside
       // the playable square a shrub tall enough to screen a hull (its height scale over 1.2: vegetation.ts
       // UNDERSTOREY_SCREEN_M) — every mantle shrub, the tall growth of a stand's edge, a rim block's reaching in —
       // stands within a metre of a tree's concealment disc; the low growth may feather out of a stand
       // (the playable square: battlefieldBounds.ts PLAYABLE_HALF_EXTENT_M, 470 m, a millimetre in for the float32 matrix)
-      const screens = e[5] > 1.2 + 1e-4 || (!standOk && !rimOk);
+      const screens = e[5] > 1.2 + 1e-4 || (!standOk && !rimOk && !cappedOk);
       if (bound <= 470 - 1e-3 && screens) {
         assert.ok(world.concealers.some((d) => d.add <= 0.1 && Math.hypot(x - d.x, z - d.z) <= d.r + 1 + 1e-4),
           `${id}: a screening shrub within a metre of the wood's cover (${x}, ${z}, height scale ${e[5]})`);
@@ -157,7 +163,9 @@ function produce(id, extra = {}) {
       assert.ok(!world.treeObstacles.some(o => Math.abs((o.min[0] + o.max[0]) / 2 - x) < 1e-3 && Math.abs((o.min[2] + o.max[2]) / 2 - z) < 1e-3), `${id}: no trunk record`);
     }
     if (rimBlocks.length > 0) assert.ok(rimCount > 0, `${id}: the rim blocks carry an understorey (${rimBlocks.length} blocks)`);
-    return { id, tier, instances: mesh.count, stand: standCount, rim: rimCount, mantle: mantleCount, screening, clusters: clusters.length, rimBlocks: rimBlocks.length,
+    // the cover law caps rather than clears: the woods these maps grow leave tall growth out of their cover to cap
+    assert.ok(cappedCount > 0, `${id}: capped shrubs below the stands' and the rim's scale`);
+    return { id, tier, instances: mesh.count, stand: standCount, rim: rimCount, mantle: mantleCount, capped: cappedCount, screening, clusters: clusters.length, rimBlocks: rimBlocks.length,
       shape, annulus: [+minR.toFixed(3), +maxR.toFixed(3)],
       bushes: bushes.reduce((n, m) => n + m.count, 0), concealers: world.concealers.length, trunks: world.treeObstacles.length };
   } finally { world.dispose(); disposeObject3DResources(world.group); }

@@ -3131,6 +3131,12 @@ const MANTLE_TREE_COVER_MAX = 0.1;
  * (placeUnderstorey).
  */
 const UNDERSTOREY_SCREEN_M = 1.2;
+/**
+ * Trees round 4: the height range (m, the same measure) a refused shrub is capped to — a shrub out of the wood's cover
+ * that would screen a hull keeps its place as young growth, its whole form scaled down to a height jittered over this
+ * range by a hash of its place (placeUnderstorey).
+ */
+const UNDERSTOREY_CAP_M = Object.freeze([0.6, 1.2] as const);
 
 // Round 77 (2026-09-26): the understorey — young growth at the forest edges. A smaller, looser shrub than the field
 // bush (ten folded sprays, 40 triangles, 120 vertices: four grounded branches, four interior clusters, two upright
@@ -6563,8 +6569,11 @@ function* vegetationBuildSteps(
       // conceals nothing, so a shrub inside the playable square tall enough to screen a hull (UNDERSTOREY_SCREEN_M) stands
       // in the wood's own cover — within a metre of a tree's concealment disc (a field bush's own 0.35 disc does not
       // count) — and a player who sees it between himself and an enemy is in cover there, never behind a hide that
-      // hides nothing. Looked up through a 16 m grid of the discs; every check falls after its shrub's draws, so the
-      // streams stay. The low growth feathering out of a stand stays where it was; past the square the rim keeps its own
+      // hides nothing. Out of that cover such a shrub keeps its place but not its height: its form is scaled down whole
+      // to young growth of 0.6–1.2 m (UNDERSTOREY_CAP_M), so the law takes the tall ones and leaves the layer as thick
+      // as it was. Looked up through a 16 m grid of the discs; every check falls after its shrub's draws and the capped
+      // heights come from a hash of the shrub's place, so every stream keeps its draws. The low growth feathering out of
+      // a stand stays as it was; past the square the rim keeps its own
       const COVER_CELL_M = 16, coverGrid = new Map<number, ConcealmentDisc[]>();
       const cellKey = (i: number, j: number): number => (i + 4096) * 8192 + (j + 4096);
       for (const disc of concealers) {
@@ -6583,6 +6592,12 @@ function* vegetationBuildSteps(
       /** A shrub in the playable square that screens a hull and stands out of the wood's cover. */
       const screensInTheOpen = (x: number, z: number, sc: number, hy: number): boolean =>
         Math.max(Math.abs(x), Math.abs(z)) <= PLAYABLE_HALF_EXTENT_M && sc * hy > UNDERSTOREY_SCREEN_M && !inWoodCover(x, z);
+      /**
+       * The scale that brings such a shrub, at its own proportions, down to a young growth's height jittered by a hash of
+       * its place: no stream, so every production stream keeps its draws and its count (tidalMangrove pins them).
+       */
+      const cappedScale = (x: number, z: number, hy: number): number =>
+        (UNDERSTOREY_CAP_M[0] + canopyJitterNoise(canopyCornerKey(x, 0, z, seed ^ 0x6b2d)) * (UNDERSTOREY_CAP_M[1] - UNDERSTOREY_CAP_M[0])) / hy;
       // The stand law (round 77), shared by the interior stands and — round 77b — the rim-forest blocks: the same
       // draws in the same order for the stands (their placements stay byte-identical), then the blocks from the
       // stream's continuation, with the rim trees' own scale (1.35–2.2 × the interior stands' 0.95–1.7) and the
@@ -6598,8 +6613,8 @@ function* vegetationBuildSteps(
           if (keepRoll > (1 - smoothstepJs(1.05, 1.6, rr)) * 0.9 + 0.1) continue;
           // trees round 2: a woodlot's understorey follows its own outline (standPoint; a rim block's is its circle)
           const at = standPoint(index, stand, a, rr), x = at[0], z = at[1];
-          if (!admitted(x, z, sc, bound) || screensInTheOpen(x, z, sc, hy)) continue;
-          seat(x, z, sc, hy, yaw, tj, tr, tg, tb);
+          if (!admitted(x, z, sc, bound)) continue;
+          seat(x, z, screensInTheOpen(x, z, sc, hy) ? cappedScale(x, z, hy) : sc, hy, yaw, tj, tr, tg, tb);
         }
       };
       /** The bush admission (roads, soft ground, water, slopes, spawns, the village, structures) inside the bound. */
@@ -6639,8 +6654,10 @@ function* vegetationBuildSteps(
             const tj = mantleRng(), tr = mantleRng(), tg = mantleRng(), tb = mantleRng();
             if (mantleRng() < 0.25) continue; // the mantle's gaps
             const at = standPoint(index, stand, a, rr), x = at[0], z = at[1];
-            if (!admitted(x, z, sc, 470) || !inWoodCover(x, z)) continue; // every mantle shrub screens a hull
-            seat(x, z, sc, hy, yaw, tj, tr, tg, tb);
+            if (!admitted(x, z, sc, 470)) continue;
+            // every mantle shrub screens a hull: out of the wood's cover it keeps its place as capped young growth (the
+            // count then never reads the trees' cover, so a wood's other form leaves every pool as it was)
+            seat(x, z, screensInTheOpen(x, z, sc, hy) ? cappedScale(x, z, hy) : sc, hy, yaw, tj, tr, tg, tb);
           }
         });
       }
