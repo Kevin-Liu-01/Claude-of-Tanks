@@ -206,7 +206,7 @@ export function createShallowWaterSurface(
   const clock = { value: 0 };
   // 2026-10-04 (the sea's far band, QA knobs; today's values by default): the sky's reflection at normal / grazing
   // incidence and the specular cap, read per frame through the light model's QA hook
-  const waterQa = { value: new THREE.Vector4(0.45, 1.75, 1.15, 0) };
+  const waterQa = { value: new THREE.Vector4(0.45, 1.75, 1.15, 0.35) };
   // Water pass 7: vehicle wakes. Slot A is (x, z, dirX, dirZ) in the map's tank frame,
   // slot B is (speed 0..1, strength 0..1, half length m, half width m).
   const wakeA = Array.from({ length: WATER_DISTURBANCE_CAP }, () => new THREE.Vector4(0, 0, 0, 1));
@@ -351,7 +351,7 @@ export function createShallowWaterSurface(
       float waterTurbidity;
       ${OCEAN_SAMPLING_GLSL}
       uniform float uOceanDepth;      // the map's wading depth (m): getWaterDepthAt's bed law, evaluated here from the mask
-      uniform vec4 uWaterQa;          // 2026-10-04 (QA: WATER_ENV_NORMAL / _GRAZING, WATER_SPEC_CAP): the sky's reflection at normal and grazing incidence, the specular cap
+      uniform vec4 uWaterQa;          // 2026-10-04 (QA: WATER_ENV_NORMAL / _GRAZING, WATER_SPEC_CAP, WATER_BODY_GRAZE): the sky's reflection at normal and grazing incidence, the specular cap, the body's darkening at grazing
       float oceanBed;                 // the bed under this fragment (m below the surface) by that law
       float oceanDebug;
     `);
@@ -397,7 +397,7 @@ export function createShallowWaterSurface(
       // leans on what the SKY does — mirror-like at grazing angles, bed and
       // body colour when looked into — instead of one saturated sheet.
       diffuseColor.rgb *= mix(0.90, 0.58, waterDeep);
-      diffuseColor.rgb *= 1.0 - 0.35 * grazing;
+      diffuseColor.rgb *= 1.0 - uWaterQa.w * grazing;
       diffuseColor.a = smoothstep(0.0, 0.55, wet) * mix(mix(opacity, 0.86, grazing), 1.0, smoothstep(900.0, 1600.0, pastEdgeM));
       // Blend the last ocean cells into their continuous ground receiver. The
       // finite carrier must never reveal its stair-stepped outer grid edge.
@@ -666,7 +666,8 @@ export function createShallowWaterSurface(
     ripples,
     ocean,
     update(dt, anchorX, anchorZ) {
-      waterQa.value.set(lightTune('WATER_ENV_NORMAL', 0.45), lightTune('WATER_ENV_GRAZING', 1.75), lightTune('WATER_SPEC_CAP', 1.15), 0);
+      waterQa.value.set(lightTune('WATER_ENV_NORMAL', 0.45), lightTune('WATER_ENV_GRAZING', 1.75), lightTune('WATER_SPEC_CAP', 1.15),
+        lightTune('WATER_BODY_GRAZE', 0.35));
       if (!(Number.isFinite(dt) && dt > 0)) return;
       clock.value += Math.min(dt, 0.1);
       ocean?.update(dt); // round 66: the transform runs inside the world update, before lighting and post
