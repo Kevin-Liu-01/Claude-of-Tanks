@@ -39,7 +39,7 @@ export interface RockDressing {
 
 // lichen species (sRGB): the grey-green foliose and crustose, the yellow-green map lichen, the orange Xanthoria of
 // sea-spray, farm and wall tops, the pale grey-white crusts, the black of the high and the dry
-const GREY_GREEN = 0xa3ab90, YELLOW_GREEN = 0xb4b25a, ORANGE = 0xc47f30, PALE = 0xc2c3b6, BLACK = 0x34332f;
+const GREY_GREEN = 0x9ea48d, YELLOW_GREEN = 0xa6a466, ORANGE = 0xa8794a, PALE = 0xb4b5aa, BLACK = 0x3a3934;
 
 interface RockClimate {
   moss: number;
@@ -52,41 +52,41 @@ interface RockClimate {
 
 /** The battlefields' rock; a map absent here is dry temperate granite (a little moss, grey lichen, no dust). */
 const ROCK_CLIMATE: Readonly<Record<string, RockClimate>> = Object.freeze({
-  verdant: { moss: 0.75, dust: 0, lith: 'granite', lichen: [0.34, GREY_GREEN, YELLOW_GREEN, 0.7] },
-  autumn: { moss: 0.7, dust: 0, lith: 'granite', lichen: [0.32, GREY_GREEN, ORANGE, 0.75] },
-  coastal: { moss: 0.6, dust: 0, lith: 'granite', lichen: [0.44, ORANGE, PALE, 0.55] },
-  fjord: { moss: 0.8, dust: 0, lith: 'gneiss', lichen: [0.32, GREY_GREEN, BLACK, 0.65] },
-  monsoon: { moss: 0.85, dust: 0, lith: 'granite', lichen: [0.3, PALE, GREY_GREEN, 0.6] },
-  mangrove: { moss: 0.85, dust: 0, lith: 'limestone', lichen: [0.3, PALE, ORANGE, 0.7] },
-  delta: { moss: 0.7, dust: 0, lith: 'limestone', lichen: [0.28, PALE, GREY_GREEN, 0.6] },
-  polders: { moss: 0.65, dust: 0, lith: 'granite', lichen: [0.36, GREY_GREEN, ORANGE, 0.6] },
-  orchard: { moss: 0.7, dust: 0, lith: 'granite', lichen: [0.32, GREY_GREEN, PALE, 0.65] },
-  longleaf: { moss: 0.75, dust: 0, lith: 'sandstone', lichen: [0.3, GREY_GREEN, PALE, 0.7] },
-  reservoir: { moss: 0.7, dust: 0, lith: 'slate', lichen: [0.34, GREY_GREEN, YELLOW_GREEN, 0.6] },
-  saltwind: { moss: 0.55, dust: 0, lith: 'limestone', lichen: [0.42, ORANGE, PALE, 0.5] },
-  frontier: { moss: 0.5, dust: 0, lith: 'sandstone', lichen: [0.24, ORANGE, GREY_GREEN, 0.55], varnish: 0.12 },
-  alpine: { moss: 0.45, dust: 0, lith: 'gneiss', lichen: [0.3, YELLOW_GREEN, BLACK, 0.55] },
-  urban: { moss: 0.3, dust: 0.1, lith: 'granite', lichen: [0.12, PALE, ORANGE, 0.7] },
-  railyard: { moss: 0.25, dust: 0.15, lith: 'granite', lichen: [0.1, PALE, ORANGE, 0.7] },
-  foundry: { moss: 0.25, dust: 0.15, lith: 'granite', lichen: [0.08, PALE, ORANGE, 0.7] },
-  ruinspires: { moss: 0.25, dust: 0.1, lith: 'sandstone', lichen: [0.14, PALE, ORANGE, 0.6] },
-  skybridge: { moss: 0.2, dust: 0.1, lith: 'sandstone', lichen: [0.16, ORANGE, PALE, 0.5] },
-  caldera: { moss: 0.05, dust: 0.35, lith: 'basalt', lichen: [0.1, PALE, ORANGE, 0.6] },
-  blackglass: { moss: 0, dust: 0.25, lith: 'basalt', lichen: [0.06, PALE, ORANGE, 0.7] },
-  steppe: { moss: 0.15, dust: 0.4, lith: 'granite', lichen: [0.24, ORANGE, GREY_GREEN, 0.5], varnish: 0.1 },
-  airfield: { moss: 0.2, dust: 0.4, lith: 'granite', lichen: [0.2, GREY_GREEN, ORANGE, 0.6], varnish: 0.08 },
-  desert: { moss: 0, dust: 0.8, lith: 'sandstone', lichen: [0.05, BLACK, ORANGE, 0.6], varnish: 0.55 },
-  badlands: { moss: 0, dust: 0.8, lith: 'sandstone', lichen: [0.05, BLACK, ORANGE, 0.6], varnish: 0.5 },
-  copper_mesa: { moss: 0, dust: 0.75, lith: 'sandstone', lichen: [0.06, ORANGE, BLACK, 0.5], varnish: 0.5 },
-  titan_gorge: { moss: 0, dust: 0.7, lith: 'sandstone', lichen: [0.06, BLACK, ORANGE, 0.6], varnish: 0.45 },
-  oasis: { moss: 0, dust: 0.7, lith: 'sandstone', lichen: [0.06, ORANGE, BLACK, 0.5], varnish: 0.4 },
+  verdant: { moss: 0.75, dust: 0, lith: 'granite', lichen: [0.21, GREY_GREEN, YELLOW_GREEN, 0.7] },
+  autumn: { moss: 0.7, dust: 0, lith: 'granite', lichen: [0.2, GREY_GREEN, ORANGE, 0.75] },
+  coastal: { moss: 0.6, dust: 0, lith: 'granite', lichen: [0.27, ORANGE, PALE, 0.55] },
+  fjord: { moss: 0.8, dust: 0, lith: 'gneiss', lichen: [0.2, GREY_GREEN, BLACK, 0.65] },
+  monsoon: { moss: 0.85, dust: 0, lith: 'granite', lichen: [0.19, PALE, GREY_GREEN, 0.6] },
+  mangrove: { moss: 0.85, dust: 0, lith: 'limestone', lichen: [0.19, PALE, ORANGE, 0.7] },
+  delta: { moss: 0.7, dust: 0, lith: 'limestone', lichen: [0.17, PALE, GREY_GREEN, 0.6] },
+  polders: { moss: 0.65, dust: 0, lith: 'granite', lichen: [0.22, GREY_GREEN, ORANGE, 0.6] },
+  orchard: { moss: 0.7, dust: 0, lith: 'granite', lichen: [0.2, GREY_GREEN, PALE, 0.65] },
+  longleaf: { moss: 0.75, dust: 0, lith: 'sandstone', lichen: [0.19, GREY_GREEN, PALE, 0.7] },
+  reservoir: { moss: 0.7, dust: 0, lith: 'slate', lichen: [0.21, GREY_GREEN, YELLOW_GREEN, 0.6] },
+  saltwind: { moss: 0.55, dust: 0, lith: 'limestone', lichen: [0.26, ORANGE, PALE, 0.5] },
+  frontier: { moss: 0.5, dust: 0, lith: 'sandstone', lichen: [0.15, ORANGE, GREY_GREEN, 0.55], varnish: 0.07 },
+  alpine: { moss: 0.45, dust: 0, lith: 'gneiss', lichen: [0.19, YELLOW_GREEN, BLACK, 0.55] },
+  urban: { moss: 0.3, dust: 0.1, lith: 'granite', lichen: [0.07, PALE, ORANGE, 0.7] },
+  railyard: { moss: 0.25, dust: 0.15, lith: 'granite', lichen: [0.06, PALE, ORANGE, 0.7] },
+  foundry: { moss: 0.25, dust: 0.15, lith: 'granite', lichen: [0.05, PALE, ORANGE, 0.7] },
+  ruinspires: { moss: 0.25, dust: 0.1, lith: 'sandstone', lichen: [0.09, PALE, ORANGE, 0.6] },
+  skybridge: { moss: 0.2, dust: 0.1, lith: 'sandstone', lichen: [0.1, ORANGE, PALE, 0.5] },
+  caldera: { moss: 0.05, dust: 0.35, lith: 'basalt', lichen: [0.06, PALE, ORANGE, 0.6] },
+  blackglass: { moss: 0, dust: 0.25, lith: 'basalt', lichen: [0.04, PALE, ORANGE, 0.7] },
+  steppe: { moss: 0.15, dust: 0.4, lith: 'granite', lichen: [0.15, ORANGE, GREY_GREEN, 0.5], varnish: 0.06 },
+  airfield: { moss: 0.2, dust: 0.4, lith: 'granite', lichen: [0.12, GREY_GREEN, ORANGE, 0.6], varnish: 0.05 },
+  desert: { moss: 0, dust: 0.8, lith: 'sandstone', lichen: [0.03, BLACK, ORANGE, 0.6], varnish: 0.33 },
+  badlands: { moss: 0, dust: 0.8, lith: 'sandstone', lichen: [0.03, BLACK, ORANGE, 0.6], varnish: 0.3 },
+  copper_mesa: { moss: 0, dust: 0.75, lith: 'sandstone', lichen: [0.04, ORANGE, BLACK, 0.5], varnish: 0.3 },
+  titan_gorge: { moss: 0, dust: 0.7, lith: 'sandstone', lichen: [0.04, BLACK, ORANGE, 0.6], varnish: 0.27 },
+  oasis: { moss: 0, dust: 0.7, lith: 'sandstone', lichen: [0.04, ORANGE, BLACK, 0.5], varnish: 0.24 },
   mars: { moss: 0, dust: 0.9, lith: 'basalt', lichen: [0, PALE, PALE, 1] },
   moon: { moss: 0, dust: 0.7, lith: 'basalt', lichen: [0, PALE, PALE, 1] },
-  cliffbridge: { moss: 0.6, dust: 0.6, lith: 'limestone', lichen: [0.3, ORANGE, PALE, 0.5] },
-  winter: { moss: 0, dust: 0, lith: 'granite', lichen: [0.26, BLACK, YELLOW_GREEN, 0.6] },
-  whiteout: { moss: 0, dust: 0, lith: 'granite', lichen: [0.2, BLACK, YELLOW_GREEN, 0.7] },
+  cliffbridge: { moss: 0.6, dust: 0.6, lith: 'limestone', lichen: [0.19, ORANGE, PALE, 0.5] },
+  winter: { moss: 0, dust: 0, lith: 'granite', lichen: [0.16, BLACK, YELLOW_GREEN, 0.6] },
+  whiteout: { moss: 0, dust: 0, lith: 'granite', lichen: [0.12, BLACK, YELLOW_GREEN, 0.7] },
 });
-const DEFAULT_CLIMATE: RockClimate = { moss: 0.35, dust: 0, lith: 'granite', lichen: [0.24, GREY_GREEN, PALE, 0.6] };
+const DEFAULT_CLIMATE: RockClimate = { moss: 0.35, dust: 0, lith: 'granite', lichen: [0.15, GREY_GREEN, PALE, 0.6] };
 
 /** The lithologies' beds: strength, spacing (m), the largest tilt from level (radians), the partings' depth. */
 const BEDS: Readonly<Record<BoulderLithology, readonly [number, number, number, number]>> = Object.freeze({
@@ -169,6 +169,21 @@ export const BOULDER_KINDS: readonly BoulderKind[] = Object.freeze([
   Object.freeze({ name: 'rounded boulder', size: [0.98, 0.84, 0.9] as const, frame: 'facets' as const, chips: 1, round: 0.1, lumps: [0.035, 0.012] as const }),
   Object.freeze({ name: 'bedded slab', size: [1.05, 0.7, 0.92] as const, frame: 'slab' as const, chips: 2, round: 0.07, lumps: [0.025, 0.01] as const }),
 ]);
+
+/**
+ * The kinds a lithology's boulders take, one to each of the three variants: the bedded and cleaved rocks break into
+ * blocks and slabs along their joints; granite, gneiss and basalt weather round as well (wave-52 shots: Desert's
+ * sandstone as smooth eggs).
+ */
+const BOULDER_KINDS_OF: Readonly<Record<BoulderLithology, readonly [number, number, number]>> = Object.freeze({
+  granite: [0, 1, 2], gneiss: [0, 1, 2], basalt: [0, 1, 0],
+  sandstone: [0, 2, 0], limestone: [0, 2, 1], slate: [2, 0, 2],
+});
+
+/** The kind (an index into BOULDER_KINDS) a map's variant is built as. */
+export function boulderKindFor(lithology: BoulderLithology, variant: number): number {
+  return BOULDER_KINDS_OF[lithology][variant % 3];
+}
 
 /** A joint plane: outward unit normal, offset from the centre, and 1 for a later (fresh) fracture. */
 type JointPlane = [nx: number, ny: number, nz: number, d: number, fresh: number];
@@ -321,8 +336,9 @@ export const BOULDER_SEAT_Y = 0;
 
 export function buildBoulderForm(
   variant: number, noise: SimplexNoise, rng: () => number, hull: readonly number[], subdiv = 6, topY = 0,
+  kindIndex = variant % BOULDER_KINDS.length,
 ): BoulderForm {
-  const kind = BOULDER_KINDS[variant % BOULDER_KINDS.length];
+  const kind = BOULDER_KINDS[kindIndex];
   const [sx, sy, sz] = kind.size;
   const planes = jointPlanes(kind, rng);
   const tones = planes.map(() => rng() * 2 - 1);
@@ -371,10 +387,36 @@ export function buildBoulderForm(
     if (r > 1e-6) kx = Math.min(kx, (hullRadiusAt(hull, x / r, z / r) * 0.985) / r);
   }
   if (!Number.isFinite(kx)) kx = 1;
-  /** The fitted surface: scaled into the hull; under the ground line the stone is held softly to the hull (a few per
-   * cent over it where a slope's downhill side can bare it, more deeper down), so a hull never meets a rock it can't see. */
+  // the girth at the ground line, round the rock: under it the sides go straight down (or a little out), never curving
+  // back under, so a slope's downhill side bares a buried flank and not an undercut a boulder seems to float on
+  const GIRTH = 72, girth = new Float64Array(GIRTH);
+  for (let j = 0; j < GIRTH; j++) {
+    const theta = (j / GIRTH) * Math.PI * 2, c = Math.cos(theta), sn = Math.sin(theta);
+    let lo = -1.3, hi = 1.3;
+    for (let it = 0; it < 26; it++) {
+      const e = (lo + hi) / 2, q = surface(Math.cos(e) * c, Math.sin(e), Math.cos(e) * sn, null);
+      if (q[1] > 0) hi = e; else lo = e;
+    }
+    const e = (lo + hi) / 2, q = surface(Math.cos(e) * c, Math.sin(e), Math.cos(e) * sn, null);
+    girth[j] = Math.hypot(q[0], q[2]);
+  }
+  const girthAt = (x: number, z: number): number => {
+    const t = ((Math.atan2(z, x) / (Math.PI * 2) + 1) % 1) * GIRTH, j = Math.floor(t) % GIRTH, f = t - Math.floor(t);
+    return girth[j] + (girth[(j + 1) % GIRTH] - girth[j]) * f;
+  };
+  /** The fitted surface: scaled into the hull; under the ground line the stone keeps its girth and is held softly to
+   * the hull (a few per cent over it where a slope's downhill side can bare it, more deeper down), so a hull never meets
+   * a rock it can't see. */
   const fitted = (ux: number, uy: number, uz: number): number[] => {
     const p = surface(ux, uy, uz, null);
+    if (p[1] < 0) {
+      const r0 = Math.hypot(p[0], p[2]);
+      if (r0 > 1e-6) {
+        const q = clamp(-p[1] / (0.12 * sy), 0, 1), w = q * q * (3 - 2 * q);
+        const k = (r0 + (Math.max(r0, girthAt(p[0], p[2])) - r0) * w) / r0;
+        p[0] *= k; p[2] *= k;
+      }
+    }
     const x = p[0] * kx, y = p[1] * ky, z = p[2] * kx;
     out[1] = y;
     const r = Math.hypot(x, z);
@@ -720,16 +762,23 @@ diffuseColor.rgb *= 0.42 + 0.66 * rockDetail;
     // the lichen: colonies of the climate's two species on the tops and the upper faces, clear of the soil (on a snowy
     // map only the steep faces the snow leaves bare); a colony finer than the pixel keeps its share as a tint
     if (uRockLichen.x > 0.0) {
-      vec3 lPw = vGrimeW * 0.45 + vRockSeed * 3.7;
+      vec3 lPw = vGrimeW * 0.7 + vRockSeed * 3.7;
       vec2 lc = texture2D(uRockLichenTile, lPw.yz).rg * rockTw.x + texture2D(uRockLichenTile, lPw.xz).rg * rockTw.y + texture2D(uRockLichenTile, lPw.xy).rg * rockTw.z;
-      float exposed = smoothstep(-0.25, 0.65, vGrimeN.y) * smoothstep(0.22, 0.6, vRockAbove) * (1.0 - uRockLichen.z * smoothstep(0.4, 0.72, vGrimeN.y));
+      float exposed = smoothstep(-0.1, 0.75, vGrimeN.y) * smoothstep(0.22, 0.6, vRockAbove) * (1.0 - uRockLichen.z * smoothstep(0.4, 0.72, vGrimeN.y));
       float clump = smoothstep(0.3, 0.72, texture2D(uGrime, vGrimeW.xz * 0.33 + vGrimeW.y * 0.21 + vRockSeed).r);
       float cover = uRockLichen.x * exposed * (0.3 + 1.2 * fract(vRockSeed * 3.31)) * (0.25 + 1.5 * clump);
       float edge = 0.03 + length(fwidth(lPw)) * 2.0;
       float lichen = smoothstep(1.0 - cover - edge, 1.0 - cover + edge, lc.x);
-      vec3 lichenColor = mix(uRockLichenB, uRockLichenA, step(lc.y, uRockLichen.y)) * (0.8 + 0.35 * rockDetail);
-      diffuseColor.rgb = mix(diffuseColor.rgb, lichenColor, lichen * (0.6 + 0.3 * fract(lc.y * 7.0)));
+      vec3 lichenColor = mix(uRockLichenB, uRockLichenA, step(lc.y, uRockLichen.y)) * (0.72 + 0.3 * rockDetail);
+      diffuseColor.rgb = mix(diffuseColor.rgb, lichenColor, lichen * (0.38 + 0.3 * fract(lc.y * 7.0)));
     }
+  }
+  // a snow map's boulders carry the snow on their tops and shelves, laid after their tone (the grime hook's snow lies
+  // under the vertex tone, which a dark stone would darken away)
+  if (vRockSeed >= 0.0 && uRockLichen.z > 0.5) {
+    float rockSnowN = texture2D(uGrime, vGrimeW.xz * 0.23 + vec2(0.41, 0.17)).r;
+    float rockSnow = smoothstep(0.5, 0.78, vGrimeN.y + (rockSnowN - 0.5) * 0.3) * (0.75 + 0.25 * texture2D(uGrime, vGrimeW.xz * 0.05).g);
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.795, 0.835, 0.90), rockSnow * 0.9);
   }
   // moss on the shaded side and the tops of wet maps, in the tile's grain
   vec2 flank = normalize(vGrimeN.xz + vec2(1e-4, 0.0));

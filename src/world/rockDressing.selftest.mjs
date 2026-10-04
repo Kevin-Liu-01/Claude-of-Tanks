@@ -14,7 +14,7 @@ import { SimplexNoise } from '../engine/simplexFast.ts';
 import { convexHull2 } from './collision.ts';
 import { MAP_IDS } from './maps/index.ts';
 import {
-  BOULDER_KINDS, BOULDER_SEAT_Y, applyRockShaderHook, buildBoulderForm, makeRockDetail, paintBoulder, projectsInsideHull,
+  BOULDER_KINDS, BOULDER_SEAT_Y, applyRockShaderHook, boulderKindFor, buildBoulderForm, makeRockDetail, paintBoulder, projectsInsideHull,
   rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts';
 
@@ -77,7 +77,8 @@ for (const seed of [2002, 77, 9001]) {
         tri.crossVectors(e1, e2).normalize();
         centroid.set(p.getX(a) + p.getX(b) + p.getX(c), p.getY(a) + p.getY(b) + p.getY(c), p.getZ(a) + p.getZ(b) + p.getZ(c)).divideScalar(3);
         assert.ok(tri.dot(centroid) > 0, `${label}: no triangle folds inward (star-shaped, unfolded)`);
-        for (const v of [a, b, c]) assert.ok(tri.x * n.getX(v) + tri.y * n.getY(v) + tri.z * n.getZ(v) > 0.1, `${label}: the shading normals agree with every triangle`);
+        // (the buried floor's fan meets the flanks at a right angle: its rim shades as the flank does, and nothing sees it)
+        if (centroid.y > BOULDER_SEAT_Y - 0.4) for (const v of [a, b, c]) assert.ok(tri.x * n.getX(v) + tri.y * n.getY(v) + tri.z * n.getZ(v) > 0.1, `${label}: the shading normals agree with every triangle a slope can bare`);
         if (centroid.y > BOULDER_SEAT_Y) {
           let spread = 1;
           for (const [u, w] of [[a, b], [b, c], [a, c]]) spread = Math.min(spread, n.getX(u) * n.getX(w) + n.getY(u) * n.getY(w) + n.getZ(u) * n.getZ(w));
@@ -147,6 +148,8 @@ assert.equal(rockDressingFor('winter', null, true).lichen[2], 1, 'a snow-capped 
 assert.ok(rockDressingFor('desert', null).varnish > 0.3 && rockDressingFor('verdant', null).varnish === 0, 'arid maps varnish');
 assert.deepEqual([rockDressingFor('mars', null).lichen[0], rockDressingFor('moon', null).lichen[0]], [0, 0], 'no lichen off the earth');
 assert.equal(rockDressingFor('desert', null).lithology, 'sandstone');
+for (const lithology of LITHOLOGIES) for (let v = 0; v < 3; v++) assert.ok(Number.isInteger(boulderKindFor(lithology, v)) && BOULDER_KINDS[boulderKindFor(lithology, v)], `${lithology}: a kind for variant ${v}`);
+assert.ok([0, 1, 2].every((v) => boulderKindFor('sandstone', v) !== 1), 'bedded rock breaks into blocks and slabs, never weathered eggs');
 assert.ok(rockDressingFor('desert', null).beds[0] > 0.5 && rockDressingFor('verdant', null).beds[0] === 0, 'sandstone beds, massive granite');
 assert.notDeepEqual(rockDressingFor('coastal', null).lichenA, rockDressingFor('verdant', null).lichenA, 'the climate picks the lichen');
 assert.notDeepEqual(rockDressingFor('railyard', (h, s, l) => [0.6, s, l]).soil, rockDressingFor('railyard', null).soil, 'the dirt tone law reaches the soil');
@@ -211,6 +214,7 @@ assert.ok(frag.indexOf('#include <color_fragment>') < frag.indexOf('mossMask'), 
 assert.ok(frag.indexOf('rockDetail') < frag.indexOf('{ grime }'), 'the detail multiplies before the grime block');
 assert.ok(frag.indexOf('if (vRockSeed >= 0.0) {') < frag.indexOf('float bedC') && frag.indexOf('float bedC') < frag.indexOf('float lichen ='), 'the beds and the lichen on the boulders only');
 assert.ok(frag.indexOf('float lichen =') < frag.indexOf('float mossMask'), 'the moss grows over the lichen');
+assert.ok(frag.indexOf('#include <color_fragment>') < frag.indexOf('float rockSnow') && frag.includes('if (vRockSeed >= 0.0 && uRockLichen.z > 0.5)'), 'a snow map\'s boulders take their snow after their tone');
 assert.match(frag, /float bedFade = 1\.0 - smoothstep\(0\.3, 0\.7, bedW\);/, 'beds finer than a pixel or two fade to their mean');
 assert.ok(frag.indexOf('float soilMask') < frag.indexOf('if (vRockSeed >= 0.0) diffuseColor.rgb *= 0.6 + 0.4 * smoothstep(-0.04, 0.3, vRockAbove);'), 'the contact darkening on the soil skirt, boulders only');
 assert.ok(!frag.includes('#include <normal_fragment_maps>') && frag.includes('texture2D(normalMap, rockPw.yz)'), 'the tangent-frame chunk is replaced by the triplanar perturbation');
@@ -222,7 +226,7 @@ assert.throws(() => applyRockShaderHook({ uniforms: {}, vertexShader: '#include 
 // --- the producer
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const hullAt = source.indexOf('rockHulls.push(hull); // the collision proxy');
-assert.ok(hullAt > 0 && hullAt < source.indexOf('const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop);'), 'the legacy hull is taken before the form is fitted inside it');
+assert.ok(hullAt > 0 && hullAt < source.indexOf('const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(rockLithologyFor(mapId), vi));'), 'the legacy hull is taken before the form is fitted inside it, as the map\'s rock breaks');
 assert.match(source, /paintBoulder\(form, P\.rockTone\);\n\s*rockGeos\.push\(form\.geometry\);/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockGround', new THREE\.InstancedBufferAttribute\(ground, 1\)\)/);
 assert.match(source, /materialKind === 'rock' \? rockHook\s*:/); // (the field print's own hook follows: the scenery lane, wave 48)

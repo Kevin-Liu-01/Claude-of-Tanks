@@ -45,12 +45,12 @@ import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // co
 import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNeeded, type SteelAtlasTextures } from './propsSteelAtlas.ts'; // round 75
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
-import { applyRockShaderHook, buildBoulderForm, makeRockDetail, paintBoulder, rockDressingFor, rockLithologyFor } from './rockDressing.ts'; // round 75 item 6
+import { applyRockShaderHook, boulderKindFor, buildBoulderForm, makeRockDetail, paintBoulder, rockDressingFor, rockLithologyFor } from './rockDressing.ts'; // round 75 item 6
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
-import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
+import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
 import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
@@ -299,6 +299,8 @@ interface TankWreckSettings {
 }
 
 type WallRun = readonly [number, number, number, number, number?];
+/** Two wall runs whose ends lie this close meet at a corner (one corner pier for both). */
+const WALL_CORNER_M = 1.2;
 
 // environment density pass 2 (2026-09-12): per-map dressing caps that used to be
 // hard-coded (26 logs + stumps, 5 dressed yards everywhere). Kept here rather
@@ -1112,6 +1114,24 @@ export function makeStructureDetail(
     // sideways, creating black-white stripes on otherwise flat walls.
     normal: normalFromHeight(hgt, s, kind === 'wood' ? 0.16 : kind === 'steel' ? 0.30 : 0.09, anisotropy),
     surface,
+  };
+}
+
+/**
+ * The sandbags' hessian (the scenery lane, gauntlet wave 52: "burlap that reads as fabric at its real weave scale"):
+ * maps/sceneryKit.ts paintBurlap's plain weave, a jute thread every 2.5 mm at the bags' weave uv, its relief gentle so
+ * it reads as cloth up close and averages to it farther off.
+ */
+function makeBurlapDetail(anisotropy: number): GeneratedSurfaceTextures {
+  const s = 128, { lum, height } = paintBurlap(s), px = new Uint8ClampedArray(s * s * 4);
+  for (let i = 0; i < s * s; i++) {
+    const v = clamp(lum[i], 0, 1) * 255;
+    px[i * 4] = v; px[i * 4 + 1] = v; px[i * 4 + 2] = v; px[i * 4 + 3] = 255;
+  }
+  return {
+    albedo: toTexture(px, s, { srgb: true, anisotropy }),
+    normal: normalFromHeight(height, s, 0.1, anisotropy),
+    surface: surfaceFromHeight(height, s, anisotropy, { roughMin: 0.92, roughMax: 1.0, aoMin: 0.72 }),
   };
 }
 
@@ -2975,6 +2995,7 @@ function* propsBuildSteps(
   const structureWood = makeStructureDetail(noi, aniso, 'wood');
   yield { fine: true };
   const structureCanvas = makeStructureDetail(noi, aniso, 'canvas');
+  const burlap = makeBurlapDetail(aniso); // the sandbags' hessian (the scenery lane, wave 52)
   yield { fine: true };
   const structureMetal = makeStructureDetail(noi, aniso, 'steel');
   yield { fine: true };
@@ -3115,6 +3136,12 @@ function* propsBuildSteps(
       roughnessMap: structureCanvas.surface, aoMap: structureCanvas.surface,
       vertexColors: true, roughness: 1, metalness: 0,
     }),
+    // the scenery lane (wave 52): the sandbags' hessian, the canvas material's program on its own weave
+    burlap: new THREE.MeshStandardMaterial({
+      map: burlap.albedo, normalMap: burlap.normal,
+      roughnessMap: burlap.surface, aoMap: burlap.surface,
+      vertexColors: true, roughness: 1, metalness: 0,
+    }),
     structureMetal: new THREE.MeshStandardMaterial({
       map: structureMetal.albedo, normalMap: structureMetal.normal,
       roughnessMap: structureMetal.surface, aoMap: structureMetal.surface,
@@ -3137,15 +3164,20 @@ function* propsBuildSteps(
   };
   function configureSurfaceMaterials(): void {
     for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'fieldMud', 'wood',
-      'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
+      'straw', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
       if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
+    // the scenery lane (wave 52, Verdant's village wall: its face in shade "a flat extruded slab with a near-black blocky
+    // texture"): the field print's occlusion takes half the skylight in a joint, not four fifths, so a wall's shaded face
+    // keeps its stones (the sunlit face, lit directly, hardly changes)
+    if (mats.fieldStone) mats.fieldStone.aoMapIntensity = 0.5;
     mats.steel.envMapIntensity = 0.42; // round 75: painted sheet, a little sky on the crests
     mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance
     mats.baked.envMapIntensity = 0.5; // flat-shaded sourced models: no spec sparkle
     mats.vehicle.envMapIntensity = 0.58;
     mats.structureWood.envMapIntensity = 0.34;
     mats.structureCanvas.envMapIntensity = 0.22;
+    mats.burlap.envMapIntensity = 0.18;
     mats.structureMetal.envMapIntensity = 0.48;
     mats.glass.envMapIntensity = 1.0; // capped (AA glass spec 4eccce8 — glints
   }
@@ -3264,9 +3296,9 @@ ${snowCap ? `
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
           : materialKind === 'fieldStone' ? fieldStoneHook : grimeHook);
-      // (the mud print is the plaster material's shader with another map: they share their program; the field print
-      // has its own, for the modules' shifted windows)
-      const programKind = materialKind === 'fieldMud' ? 'plaster' : materialKind;
+      // (the mud print is the plaster material's shader with another map, the hessian the canvas's: they share their
+      // programs; the field print has its own, for the modules' shifted windows)
+      const programKind = materialKind === 'fieldMud' ? 'plaster' : materialKind === 'burlap' ? 'structureCanvas' : materialKind;
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
@@ -3357,20 +3389,20 @@ ${snowCap ? `
   // there). Same meta shape; the shared broken state is the burst-bag heap.
   // keep 0.97: driving a sandbag line barely registers on the speedo.
   // the scenery lane (2026-10-03): the stacks are laid bag by bag in the sourced models' envelopes (maps/sceneryKit.ts
-  // buildSandbagStack) on the canvas weave; a breached stack still spends the old remnant's draws
+  // buildSandbagStack) on the hessian (wave 52); a breached stack still spends the old remnant's draws
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
     sandbagbig: {
-      cls: 'break', mat: 'structureCanvas', contact: 'ob', r: 2.0, h: 1.35, keep: 0.97,
+      cls: 'break', mat: 'burlap', contact: 'ob', r: 2.0, h: 1.35, keep: 0.97,
       build: () => buildSandbagStack('sandbagbig'),
       broken: (rng) => buildSandbagHeap('sandbagbig', () => bSandbagBroken(rng).dispose()),
     },
     sandbagsmall: {
-      cls: 'break', mat: 'structureCanvas', contact: 'ob', r: 1.7, h: 1.05, keep: 0.975,
+      cls: 'break', mat: 'burlap', contact: 'ob', r: 1.7, h: 1.05, keep: 0.975,
       build: () => buildSandbagStack('sandbagsmall'),
       broken: (rng) => buildSandbagHeap('sandbagsmall', () => bSandbagBroken(rng).dispose()),
     },
     sandbagwall: {
-      cls: 'break', mat: 'structureCanvas', contact: 'ob', r: 1.5, h: 1.0, keep: 0.975,
+      cls: 'break', mat: 'burlap', contact: 'ob', r: 1.5, h: 1.0, keep: 0.975,
       build: () => buildSandbagStack('sandbagwall'),
       broken: (rng) => buildSandbagHeap('sandbagwall', () => bSandbagBroken(rng).dispose()),
     },
@@ -4730,11 +4762,24 @@ ${snowCap ? `
       // brick-print walls. The props stream spends the same draws either way (jitterUV's four).
       if (style === 'adobe' || !sourcedStoneIsBrick(mapId)) {
         const seedAt = (Math.round(px * 73.1) * 92821) ^ Math.round(pz * 41.7) * 68917;
-        let head = style === 'adobe' ? buildAdobePilaster(seedAt, thick, ph - 0.15) : buildDryStoneWallHead(seedAt, thick, runH * 0.98 + 0.12);
+        // (gauntlet wave 52, Verdant's village walls: "the field wall abruptly changes from tan stone to dark … with a hard
+        // vertical seam" — two runs meeting at a corner, one face in the sun and one in shade, and nothing between them):
+        // where runs meet, the first head there is a corner pier, broader and taller than either wall and bonded like a
+        // quoin, and the others are spent unbuilt (the props stream draws the same either way)
+        const corner = wallCorners.find((c) => Math.hypot(c.x - px, c.z - pz) < WALL_CORNER_M);
+        const pier = !!corner && !corner.built;
+        // (a pier stands a stone's breadth proud of both faces and a course over the tallest module: the module is 1.15 m
+        // at its family height, scaled up to 6 % more)
+        let head = style === 'adobe'
+          ? buildAdobePilaster(seedAt, pier ? thick * 1.9 : thick, (ph - 0.15) * (pier ? 1.12 : 1))
+          : buildDryStoneWallHead(seedAt, pier ? thick * 2.1 : thick, pier ? runH * 1.15 * 1.06 + 0.24 : runH * 0.98 + 0.12);
         if (wallB === 'fieldStone') wallDressing.stoneUv(head, rng); else jitterUV(head, rng);
+        if (corner && !pier) { head.dispose(); return; }
+        if (corner) corner.built = true;
         if (wallDressing.snow && style !== 'adobe') head = wallDressing.loadHead(head, seedAt); // its snow, like its module's
         head.rotateY(yaw);
-        buckets[wallB].push(head.translate(px, py, pz));
+        buckets[wallB].push(head.translate(corner ? corner.x : px, py, corner ? corner.z : pz));
+        if (corner) return; // (a corner sheds no stones past an end it does not have)
         // (wave 34, "nothing bedded": the stones the head lost tumbled out past the end; a stream named by its place)
         const fallen = wallDressing.tumble(style === 'adobe', px, pz, tx * out, tz * out, thick * 0.5);
         if (fallen) buckets[wallB].push(fallen);
@@ -4826,6 +4871,7 @@ ${snowCap ? `
     }
     if (prevBuilt) { endPost(x1, z1, 1); dressIsland(islandFrom, along); } // closing post
   }
+  const wallCorners: Array<{ x: number; z: number; built: boolean }> = [];
   const wallRuns: WallRun[] = P.wallRuns || [
     [town.x0 + 4, 8, town.x0 + 4, 64, 2],
     [town.x0 + 4, 8, town.x0 + 40, 8, 3],
@@ -4843,6 +4889,12 @@ ${snowCap ? `
     [96, -320, 158, -320, 3],
   ];
   function placeBoundaryWalls(): void {
+    // the corners: where two runs' ends meet
+    const ends = wallRuns.flatMap((run) => [[run[0], run[1]], [run[2], run[3]]] as Array<[number, number]>);
+    for (const [x, z] of ends) {
+      if (wallCorners.some((c) => Math.hypot(c.x - x, c.z - z) < WALL_CORNER_M)) continue;
+      if (ends.filter(([ex, ez]) => Math.hypot(ex - x, ez - z) < WALL_CORNER_M).length >= 2) wallCorners.push({ x, z, built: false });
+    }
     for (const wallRun of wallRuns) {
       addWallRun(wallRun[0], wallRun[1], wallRun[2], wallRun[3], wallRun[4] ?? -1);
     }
@@ -5532,7 +5584,7 @@ ${snowCap ? `
     // legacy hull above the ground line and as tall as the legacy rock; its tone by face, fracture and arris (paintBoulder)
     let legacyTop = 0;
     for (let i = 0; i < p.count; i++) legacyTop = Math.max(legacyTop, p.getY(i));
-    const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop);
+    const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(rockLithologyFor(mapId), vi));
     paintBoulder(form, P.rockTone);
     rockGeos.push(form.geometry);
     g.dispose();
