@@ -134,7 +134,13 @@ function produce(id, extra = {}) {
       const mantleOk = mantleNear !== undefined && sc >= 1.5 - 1e-4 && sc <= 2.7 + 1e-4 && bound <= 470 + 1e-6;
       assert.ok(standOk || rimOk || mantleOk, `${id}: a stand's, a rim block's or a mantle's shrub (${x}, ${z}, scale ${sc}, bound ${bound})`); // float32 instance matrices
       const near = standOk ? standNear : rimOk ? rimNear : mantleNear;
-      if (standOk) standCount++; else if (rimOk) rimCount++; else mantleCount++;
+      if (standOk) standCount++; else if (rimOk) rimCount++; else {
+        mantleCount++;
+        // the mantle stands in the wood's own cover: within a metre of a tree's concealment disc (it conceals nothing
+        // itself, so a player who sees it between himself and an enemy must be in the wood's cover there)
+        assert.ok(world.concealers.some((d) => d.add <= 0.1 && Math.hypot(x - d.x, z - d.z) <= d.r + 1 + 1e-4),
+          `${id}: a mantle shrub within a metre of the wood's cover (${x}, ${z})`);
+      }
       minR = Math.min(minR, near); maxR = Math.max(maxR, near);
       assert.ok(field._roadDist(x, z) >= 6, `${id}: off the roads`);
       assert.notEqual(field.getGroundType(x, z), 'soft', `${id}: off soft ground`);

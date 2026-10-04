@@ -3123,6 +3123,8 @@ function buildBushCards(rng: RandomSource, pal: VegetationPalette = {}): THREE.B
 
 /** Trees round 4: the mantle's spacing along a closed wood's outline (m; placeUnderstorey). */
 const UNDERSTOREY_MANTLE_SPACING_M = 6;
+/** Trees round 4: the concealment a tree's disc adds (0.08) and under: the discs the mantle keeps to (a bush's is 0.35). */
+const MANTLE_TREE_COVER_MAX = 0.1;
 
 // Round 77 (2026-09-26): the understorey — young growth at the forest edges. A smaller, looser shrub than the field
 // bush (ten folded sprays, 40 triangles, 120 vertices: four grounded branches, four interior clusters, two upright
@@ -6598,6 +6600,24 @@ function* vegetationBuildSteps(
       // placement keeps its draws). Dressing like the understorey: it conceals and stops nothing (the wood's own
       // discs conceal); an open grove's place (treeBiomeOpen) keeps its open ground
       if (!treeBiomeOpen(cfg?.id)) {
+        // the wood's own cover: a mantle shrub stands within a metre of a tree's concealment disc — a player who sees
+        // it between himself and an enemy is in the wood's cover there, never behind a hide that hides nothing (the
+        // field bushes' discs, which conceal by themselves, do not count)
+        const MANTLE_COVER_CELL_M = 16, coverGrid = new Map<number, ConcealmentDisc[]>();
+        const cellKey = (i: number, j: number): number => (i + 4096) * 8192 + (j + 4096);
+        for (const disc of concealers) {
+          if (disc.add > MANTLE_TREE_COVER_MAX) continue;
+          const i0 = Math.floor((disc.x - disc.r - 1) / MANTLE_COVER_CELL_M), i1 = Math.floor((disc.x + disc.r + 1) / MANTLE_COVER_CELL_M);
+          const j0 = Math.floor((disc.z - disc.r - 1) / MANTLE_COVER_CELL_M), j1 = Math.floor((disc.z + disc.r + 1) / MANTLE_COVER_CELL_M);
+          for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
+            const k = cellKey(i, j), list = coverGrid.get(k);
+            if (list) list.push(disc); else coverGrid.set(k, [disc]);
+          }
+        }
+        const inWoodCover = (x: number, z: number): boolean => {
+          const list = coverGrid.get(cellKey(Math.floor(x / MANTLE_COVER_CELL_M), Math.floor(z / MANTLE_COVER_CELL_M)));
+          return !!list && list.some((disc) => Math.hypot(x - disc.x, z - disc.z) <= disc.r + 1);
+        };
         const mantleRng = mulberry32((seed ^ 0x3a17) >>> 0);
         clusters.forEach((stand, index) => {
           const n = Math.round((stand.r * Math.PI * 2) / UNDERSTOREY_MANTLE_SPACING_M);
@@ -6607,7 +6627,7 @@ function* vegetationBuildSteps(
             const tj = mantleRng(), tr = mantleRng(), tg = mantleRng(), tb = mantleRng();
             if (mantleRng() < 0.25) continue; // the mantle's gaps
             const at = standPoint(index, stand, a, rr), x = at[0], z = at[1];
-            if (!admitted(x, z, sc, 470)) continue;
+            if (!admitted(x, z, sc, 470) || !inWoodCover(x, z)) continue;
             seat(x, z, sc, hy, yaw, tj, tr, tg, tb);
           }
         });
