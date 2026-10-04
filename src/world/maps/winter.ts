@@ -21,6 +21,8 @@
 //     the Bystra crossing, the moraine track, the sawmill lateral, a village
 //     back lane and the yard loop (roadEndpoints.ts owns their endpoints).
 
+import { gully, talusFan } from './geology.ts';
+
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 export default {
@@ -61,6 +63,14 @@ export default {
     // valley road on the west bank, the sawmill yard at its north end. The
     // rect keeps clear of the river sheets (x1 -54) and of the ridge toe.
     village: { x0: -206, x1: -54, z0: -150, z1: 150, cx: -110, cz: -40, feather: 42, flatten: 0.85, relief: 0.12 },
+    // 2026-10-03 (maps lane B): two graded aprons the zone-control discs seat on east of the river, where the
+    // moraine leaves no level 30 m disc: the Bystra crossing's east-bank landing and the moraine crossroads, each at
+    // its road's height and grade, with a bank that makes no wall (maps lane A's apron bank law). With the terrace
+    // hay meadow behind the sawmill they put the three zones across the valley's waist at equal drives.
+    hardstands: [
+      { x: 95, z: -5, width: 56, length: 56, yawDeg: 107, grade: 'road', bankM: 18 },
+      { x: 190, z: -40, width: 56, length: 56, yawDeg: 95, grade: 'road', bankM: 18 },
+    ],
     roads: { paths: [
       // 0 — the valley road on the west terrace (the utility line, the
       //     village street, the sawmill yard frontage), south edge to north edge
@@ -97,6 +107,27 @@ export default {
       { kind: 'ridge', x: 330, z: 40, length: 220, width: 80, height: 4.4, yawDeg: 60 },
       // the north-west shoulder under the enemy deployment's west pads
       { kind: 'knoll', x: -170, z: 350, rx: 100, rz: 70, height: 4.2, yawDeg: 20 },
+      // 2026-10-03 (maps lane B): the geology of a Tatra-side valley (geology.ts). Avalanche couloirs score the ridge
+      // arms' valley faces from the crest's shoulder to the terrace, each shedding a scree cone at its mouth where
+      // the terrace keeps it (the village flattens the two that reach its lanes); the moraine on the east flank is
+      // hummocky — ice-dumped mounds and the kettle hollows of buried ice between the two great knolls and the bar.
+      ...gully(-214, -256, -288, -262, 3.6, 12, 6), ...talusFan(-214, -256, -170, -258, 40, 1.8),
+      ...gully(-212, -104, -287, -110, 3.4, 12, -5),
+      ...gully(-222, 156, -298, 150, 3.4, 12, 5), ...talusFan(-222, 156, -182, 158, 36, 1.6),
+      ...gully(-220, 218, -296, 212, 3.8, 13, -6), ...talusFan(-220, 218, -180, 222, 40, 1.8),
+      { kind: 'knoll', x: 330, z: -260, rx: 22, rz: 17, height: 2.8, yawDeg: 25 },
+      { kind: 'knoll', x: 360, z: -170, rx: 20, rz: 16, height: 2.4, yawDeg: -40 },
+      { kind: 'knoll', x: 300, z: -128, rx: 18, rz: 14, height: 2.2, yawDeg: 10 },
+      { kind: 'knoll', x: 384, z: -330, rx: 24, rz: 18, height: 3.0, yawDeg: 60 },
+      { kind: 'basin', x: 300, z: -300, rx: 18, rz: 15, height: -2.4, yawDeg: 30 },
+      { kind: 'basin', x: 352, z: -222, rx: 16, rz: 13, height: -2.0, yawDeg: -20 },
+      { kind: 'knoll', x: 370, z: 140, rx: 22, rz: 17, height: 2.6, yawDeg: -30 },
+      { kind: 'knoll', x: 352, z: 290, rx: 20, rz: 16, height: 2.4, yawDeg: 45 },
+      { kind: 'knoll', x: 392, z: 248, rx: 18, rz: 15, height: 2.2, yawDeg: 0 },
+      { kind: 'knoll', x: 420, z: 92, rx: 24, rz: 18, height: 3.0, yawDeg: 70 },
+      { kind: 'basin', x: 332, z: 172, rx: 18, rz: 14, height: -2.6, yawDeg: 15 },
+      { kind: 'basin', x: 400, z: -62, rx: 17, rz: 14, height: -2.2, yawDeg: -35 },
+      { kind: 'basin', x: 404, z: 194, rx: 15, rz: 12, height: -2.0, yawDeg: 50 },
     ],
   },
 
@@ -145,7 +176,10 @@ export default {
     // at grazing view angles (terrain.js uIceSky)
     iceSky: [0.76, 0.82, 0.92],
     // lighting_post r5: tintB desaturated toward neutral (was [0.90,0.93,1.00])
-    tintA: [1.03, 1.04, 1.09], tintB: [0.95, 0.965, 1.005], tintC: [1.04, 1.04, 1.07],
+    // 2026-10-03 (maps lane B, the gauntlet's "dull blue-grey plaster"): snow is near neutral, and under overcast its
+    // blue comes only from open sky. A and B go from B/R 1.06 to 1.04, at the same luminance (Rec. 709: A 1.041,
+    // B 0.965). C was already 1.03.
+    tintA: [1.031, 1.041, 1.072], tintB: [0.952, 0.966, 0.990], tintC: [1.04, 1.04, 1.07],
     roadTint: [0.74, 0.68, 0.62], // worn dark slush tracks through the snow
   },
 
@@ -225,7 +259,10 @@ export default {
         structure: 'alpinerefuge', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: 16 },
       { id: 'moraine-knoll-blind', role: 'scout', x: 288, z: 226, yawDeg: -70,
         structure: 'huntingblind', outcrop: { count: 5, radius: 9, scaleMax: 2.8 } },
-      { id: 'saddle-aid-station', role: 'support', x: -296, z: 94, yawDeg: 20,
+      // 2026-10-03 (maps lane B): the aid station moves from (-296, 94), 52 m from Verdant's western post, to the
+      // pass's north shoulder beside the summit (the layout brief's skeleton rule: no strongpoint within 60 m of one
+      // of Verdant's), as far from either deployment as before
+      { id: 'saddle-aid-station', role: 'support', x: -350, z: 100, yawDeg: 20,
         structure: 'fieldhospital', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetZ: -15 },
     ],
     // round 48: the sawmill yard — two flatbeds load beside grounded timber
@@ -313,6 +350,17 @@ export default {
     // rib texture compressed to nothing)
     baseHex: 0x76839a, amp: 1.04, style: 'alpine', snowline: 0.24,
     rockHex: 0x424c66, snowHex: 0xdfe7f1, haze: 0.60,
+    // the mountains lane (2026-10-03, the coordinator's review: "the right-hand massif face is a smooth sheared slab with
+    // vertical striations"): the eroded landform carved the cone into a massif but left its face one steep plane at the
+    // ledger's bound. Shoulders — the bed stair at an alpine scale (beds 120-200 m, mostly wall, benches rising a fifth
+    // of a bed, tilted 30 m/km, the faces wandering 50 m in plan over 220 m: spurs and recesses), blended at 0.7 so
+    // the beds soften into shoulders, on the ring alone (not a tableland: its summits and its far peaks stand) — and
+    // couloirs: the landform's drainage deeper and broader (erosion 0.8 over 420 m first gullies)
+    escarpment: { bedM: [120, 200], cliffShare: [0.5, 0.75], talusRise: 0.22, talusCurve: 1.6, dipPerKm: 30, meanderM: 50, meanderWavelengthM: 220, strength: 0.7 },
+    tableland: false,
+    massif: { erosion: 0.8, gullyWavelengthM: 420 },
+    // no pass along the north exit: it runs 480 m into the massif, and the pass was a 190 m trench ending in a wall
+    roadPasses: false,
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)

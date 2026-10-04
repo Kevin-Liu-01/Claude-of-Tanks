@@ -71,8 +71,10 @@ export function assertRoadNetwork(mapId, roads) {
       else if (intent === 'loop') assert.deepEqual(road[0], road.at(-1), 'closed loop has no naked terminal');
       else if (intent === 'shore') {
         if (mapId === 'steppe') {
-          // round 48 (2026-09-23, Tarkhan Steppe redesign): the sor track is a farm dead end on the salt pan's shore
-          assert.deepEqual(p, [-250, 136], 'steppe sor track ends at the authored pan shore');
+          // round 48 (2026-09-23, Tarkhan Steppe redesign): the sor track is a farm dead end on the salt pan's shore;
+          // 2026-10-03 (maps lane B): it stops 31 m short of the old end, where the shore's dip took the last
+          // stretch to 21 % (the brief's 18 % road-grade receipt)
+          assert.deepEqual(p, [-270, 112], 'steppe sor track ends at the authored pan shore');
         } else {
           assert.equal(mapId, 'coastal', 'no undocumented yard/shore terminal exemption');
           assert.equal(p[0], 262, 'shore road reaches exact authored strand limit, not the previous256m sample');
@@ -324,7 +326,10 @@ for (const mapId of ['fjord', 'delta', 'reservoir']) {
     assert.equal(a.getWaterMaskAt(x, z), b.getWaterMaskAt(x, z));
   }
 }
-assert.ok(completedNodeCount <= originalNodeCount * 1.07, 'all30 shared road polyline nodes grow by less than7%');
+// 2026-10-03 (maps lane B): the layout brief's road ends (authored paths stop near ±448 m and the completion grades each
+// exit, one sample per 32 m) add two or three nodes per exit; with Tarkhan Steppe's eight the fleet passed 7 % (5191 ->
+// 5564 nodes, 7.2 %). The budget is 10 %, about the whole fleet at the brief's rule.
+assert.ok(completedNodeCount <= originalNodeCount * 1.10, 'all shared road polyline nodes grow by less than 10%');
 console.log(JSON.stringify({ test: 'roadContinuity', maps: MAP_IDS.length, originalNodeCount, completedNodeCount,
   changed, safety, physicalFailures }));
 assert.deepEqual(physicalFailures, [], 'all map physical gates retain their original limits');
