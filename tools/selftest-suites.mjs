@@ -168,6 +168,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/efficientReturnRoller.selftest.mjs',
     'src/vehicles/pairedRunningGearStock.selftest.mjs',
     'src/vehicles/loadedTrackContact.selftest.mjs',
+    'src/vehicles/restPoseBatchedGear.selftest.mjs',
     'src/vehicles/trackCarrierSections.selftest.mjs',
     'src/vehicles/profiles/type10XRunningGear.selftest.mjs',
     'src/vehicles/returnRollerGeometry.selftest.mjs',
