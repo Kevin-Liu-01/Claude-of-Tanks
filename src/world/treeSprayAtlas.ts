@@ -36,7 +36,7 @@ export const SPRAY_ATLAS_TILES = 2;
 export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.freeze({
   oak: 0.318, poplar: 0.285, willow: 0.17, acacia: 0.175, eucalyptus: 0.239, birch: 0.219, aspen: 0.274, 'birch-bare': 0.13,
   spruce: 0.241, fir: 0.287, pine: 0.092, cedar: 0.188, cypress: 0.291, mangrove: 0.264, beech: 0.313, chestnut: 0.396,
-  holmOak: 0.213, olive: 0.225, canaryPine: 0.098, aleppoPine: 0.071, larch: 0.157, broom: 0.131,
+  holmOak: 0.213, olive: 0.225, canaryPine: 0.098, aleppoPine: 0.071, larch: 0.157, broom: 0.125,
   juniper: 0.256, pinyon: 0.074,
 });
 
@@ -636,18 +636,23 @@ function paintBroomTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[
   const base = LEAF_COLOR.broom;
   const p0 = { x: S * 0.5, y: S * 0.95 };
   const rods: Pt[][] = [];
-  const n = 26 + ((rng() * 8) | 0);
+  // trees round 4 (2026-10-04, the gauntlet's wave 50 on Redrock: the broom read as "agave-like clumps"): a retama's
+  // switches are slender and flexible — they rise from the stool, arch outward and hang at their tips, a fountain,
+  // where round 2's straight rods fanned from one point into a spiky rosette
+  const n = 34 + ((rng() * 10) | 0);
   for (let k = 0; k < n; k++) {
-    const a = -Math.PI / 2 + (rng() - 0.5) * 1.3;
-    const len = S * (0.48 + rng() * 0.36);
+    const lean = (rng() - 0.5) * 1.5, a = -Math.PI / 2 + lean;
+    const len = S * (0.5 + rng() * 0.38);
     const start = { x: p0.x + (rng() - 0.5) * S * 0.06, y: p0.y - rng() * S * 0.08 };
-    rods.push(twigPoints(start, a, len, (rng() - 0.5) * 0.5 + (a + Math.PI / 2) * 0.35, 8));
+    // the arch: away from upright, the further the more the switch leans (and a little either way for the upright ones)
+    const arch = (lean >= 0 ? 1 : -1) * (0.7 + rng() * 0.9) * (0.35 + Math.abs(lean)) + (rng() - 0.5) * 0.3;
+    rods.push(twigPoints(start, a, len, arch, 10));
   }
   // the sheaf's soft shaded heart, then the rods back to front, lighter toward their tips
   paintSprayBody(ctx, rods.slice(0, 10), S * 0.028, base, 0.35, 0.15);
   for (const rod of rods) {
     const light = base.light * (0.75 + rng() * 0.5);
-    taperStroke(ctx, rod, S * 0.011, S * 0.005, css(base.hue + (rng() - 0.5) * 0.03, base.sat * (0.8 + rng() * 0.4), light));
+    taperStroke(ctx, rod, S * 0.009, S * 0.0035, css(base.hue + (rng() - 0.5) * 0.03, base.sat * (0.8 + rng() * 0.4), light));
     for (let t = 0.45; t < 0.95; t += 0.09 + rng() * 0.08) {
       if (rng() < 0.55) continue;
       const at = pointAt(rod, t), side = rng() < 0.5 ? -1 : 1;
@@ -655,8 +660,8 @@ function paintBroomTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[
       ctx.save(); ctx.translate(at.p.x, at.p.y); ctx.rotate(at.a + side * 0.6);
       leafPath(ctx, 'lance', S * 0.03, S * 0.006, rng); ctx.fill(); ctx.restore();
     }
-    if (rng() < 0.4) {
-      const tip = pointAt(rod, 0.82 + rng() * 0.15);
+    if (rng() < 0.18) {
+      const tip = pointAt(rod, 0.7 + rng() * 0.25);
       ctx.fillStyle = css(0.95, 0.18, 0.78, 0.85);
       ctx.beginPath(); ctx.arc(tip.p.x, tip.p.y, S * (0.006 + rng() * 0.005), 0, Math.PI * 2); ctx.fill();
     }
