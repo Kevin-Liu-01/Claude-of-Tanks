@@ -7,8 +7,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  CLOUD_BASE_DARK, CLOUD_BASE_SHARP, CLOUD_CLUSTER_GAP, CLOUD_CLUSTER_PERIOD_K, CLOUD_EDGE_CRISP, CLOUD_FAR_FLAT, CLOUD_FAR_THIN, CLOUD_LUMP_GATE,
-  CLOUD_LUMP_GATE_PERIOD_K, CLOUD_NEAR_FIELD, CLOUD_TOP_BILLOW,
+  CLOUD_BASE_DARK, CLOUD_BASE_SHARP, CLOUD_CLUSTER_GAP, CLOUD_CLUSTER_PERIOD_K, CLOUD_CU_ATTEN, CLOUD_CU_DIFF_DECAY, CLOUD_CU_EDGE,
+  CLOUD_CU_FLOOR, CLOUD_CU_OCTAVES, CLOUD_EDGE_CRISP, CLOUD_FAR_FLAT, CLOUD_FAR_THIN, CLOUD_LUMP_GATE, CLOUD_LUMP_GATE_PERIOD_K,
+  CLOUD_NEAR_FIELD, CLOUD_SIZE_VAR, CLOUD_TOP_BILLOW,
 } from './volumetricClouds.ts';
 import { CLOUDSCAPE_REGIMES } from './cloudscapes.ts';
 
@@ -147,4 +148,31 @@ for (const regime of ['stratocumulus-deck', 'overcast-stratus', 'low-stratus', '
 assert.ok(CLOUDSCAPE_REGIMES['fair-weather-cumulus'].density > 0.1, 'a fair-weather cumulus dense enough to shade its own base');
 assert.ok(CLOUDSCAPE_REGIMES['fair-weather-cumulus'].ambientScale < 1, 'and its shaded base not lifted back by the fill');
 
-console.log(`cumulusFields.selftest: the cumulus fields' gate (gap ${CLOUD_CLUSTER_GAP}, mean 1, ${CLOUD_CLUSTER_PERIOD_K}x the tile), the deck lumps' broad gate, the flat base, the plumbing and the cumuliform regimes PASS`);
+// ---- the cumulus' light (2026-10-04, the cumulus item; the gauntlet's waves 46-50: "the darkest part of each cloud is
+// only about a fifth darker than the brightest", "a grid-like rhythm", "hard cel outlines"): the octaves' attenuation with
+// depth, the diffusion's decay, the sky floor, the outline's saturation and the size spread; a deck keeps the old values
+assert.deepEqual([...CLOUD_CU_OCTAVES], [0.5, 0.25], 'the octaves\' weights (Wrenninge\'s a, a²) unchanged');
+assert.deepEqual([...CLOUD_CU_ATTEN], [1.0, 0.8], 'their attenuation toward the first order\'s (it was b, b²: 0.5, 0.25)');
+assert.deepEqual([CLOUD_CU_DIFF_DECAY, CLOUD_CU_FLOOR, CLOUD_CU_EDGE], [0.6, 0.18, 0.85], 'the diffusion\'s decay, the sky floor, the outline');
+assert.deepEqual([...CLOUD_SIZE_VAR], [0.25, 3], 'the size spread: a quarter of the cut, over three weather tiles');
+assert.match(clouds, /float sun = phase\.x \* exp\( -tau \) \+ phase\.y \* mix\( uCuShade\.x, 0\.5, uStratiform \) \* exp\( -tau \* mix\( uCuAtt\.x, 0\.5, uStratiform \) \)\s*\+ phase\.z \* mix\( uCuShade\.y, 0\.25, uStratiform \) \* exp\( -tau \* mix\( uCuAtt\.y, 0\.25, uStratiform \) \);/,
+  'the octaves: a deck (uStratiform 1) keeps a, a² and b, b²');
+assert.match(clouds, /float diffusion = mix\( 0\.7, 0\.45, uStratiform \) \/ \( 1\.0 \+ mix\( uCuShade\.z, 0\.15, uStratiform \) \* tau \)/, 'the diffusion law (a deck\'s 0.15)');
+assert.match(clouds, /if \( uCuSize\.x > 0\.0 \) field \+= uCuSize\.x \* \( textureLod\( tWeather, \( pxz \+ uWeatherShift \* 0\.3 \) \/ \( \$\{f\(CLOUD_WEATHER_TILE_M\)\} \* uCuSize\.y \) \+ vec2\( 0\.17, 0\.71 \), 0\.0 \)\.b - 0\.5 \) \* \( 1\.0 - uStratiform \);/,
+  'the size spread: a shift of the cut about zero (the map\'s coverage holds on average), a cumulus only, one fetch');
+assert.match(clouds, /uCuShade: \{ value: new THREE\.Vector4\(CLOUD_CU_OCTAVES\[0\], CLOUD_CU_OCTAVES\[1\], CLOUD_CU_DIFF_DECAY, CLOUD_CU_FLOOR\) \},\s*uCuEdge: \{ value: CLOUD_CU_EDGE \}, uCuSize: \{ value: new THREE\.Vector2\(\.\.\.CLOUD_SIZE_VAR\) \},\s*uCuAtt: \{ value: new THREE\.Vector2\(\.\.\.CLOUD_CU_ATTEN\) \},/);
+assert.match(clouds, /lightTune\('CLOUD_MS2_ATT', CLOUD_CU_ATTEN\[0\]\), lightTune\('CLOUD_MS3_ATT', CLOUD_CU_ATTEN\[1\]\)/, 'the QA reads default to the shipped values');
+assert.match(clouds, /lightTune\('CLOUD_SIZE_VAR', CLOUD_SIZE_VAR\[0\]\), lightTune\('CLOUD_SIZE_PERIOD', CLOUD_SIZE_VAR\[1\]\)/);
+{
+  // the direct term, modelled (the trace's sum, the phases alike): the lit skin keeps its energy, the shade side darkens
+  const sunTerm = (tau, w, att) => Math.exp(-tau) + w[0] * Math.exp(-tau * att[0]) + w[1] * Math.exp(-tau * att[1]);
+  const now = (tau) => sunTerm(tau, CLOUD_CU_OCTAVES, CLOUD_CU_ATTEN), was = (tau) => sunTerm(tau, [0.5, 0.25], [0.5, 0.25]);
+  near(now(0), was(0), 1e-12, 'at the skin the octaves\' sum is unchanged');
+  assert.ok(now(0.2) / was(0.2) > 0.93, `a lit crown (tau 0.2) keeps ${(100 * now(0.2) / was(0.2)).toFixed(0)} % of its direct light`);
+  assert.ok(now(3) / was(3) < 0.4, `the shade side (tau 3) keeps ${(100 * now(3) / was(3)).toFixed(0)} % (the octaves carried it through the mass)`);
+  assert.ok(now(0.2) / now(3) > 12 && was(0.2) / was(3) < 6, `crown over shade, direct: ${(now(0.2) / now(3)).toFixed(1)}x (it was ${(was(0.2) / was(3)).toFixed(1)}x)`);
+  const diff = (tau, k) => 1 / (1 + k * tau);
+  assert.ok(diff(3, CLOUD_CU_DIFF_DECAY) / diff(3, 0.15) < 0.6, 'the diffused light at the shade side about halves');
+}
+
+console.log(`cumulusFields.selftest: the cumulus fields' gate (gap ${CLOUD_CLUSTER_GAP}, mean 1, ${CLOUD_CLUSTER_PERIOD_K}x the tile), the deck lumps' broad gate, the flat base, the plumbing, the cumuliform regimes and the cumulus' light (octave attenuation ${CLOUD_CU_ATTEN.join(' / ')}, floor ${CLOUD_CU_FLOOR}, outline ${CLOUD_CU_EDGE}, size spread ${CLOUD_SIZE_VAR[0]}) PASS`);
