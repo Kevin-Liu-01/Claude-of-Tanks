@@ -1371,14 +1371,22 @@ const GRADE_TOE_SLOPE = 0.7;
 const GRADE_TOE_STOPS = 2.5;
 const GRADE_TOE_CHANNEL_FROM = 1.0;
 const GRADE_TOE_CHANNEL_TO = 2.5;
-// 2026-10-02 (the Garage under AgX): the showroom keeps its authored rig (lighting.ts, an enclosed presentation), tuned
-// under ACES's steep shoulder; AgX's gentler path to white compressed its spot-lit highlights (garage boot p95 182 →
-// 161, the showroom's own p90/p95/p99 197/207/215 → 162/179/194) while the dark bay and the midtones held (frame
-// median 24, showroom median 87). A display shoulder for the enclosed presentation only: luma
-// L + k·L·(1 − L)^1.5·smoothstep(0.36, 0.66, L), each pixel's hue kept. The lift peaks where AgX compressed most (a
-// display level of 0.6–0.7) and eases toward white; nothing below the showroom's median moves, white stays white
-// (the boot frame: p95 182, p99 211, the showroom's p90/p95/p99 195/206/216, both medians held).
-const GARAGE_HIGHLIGHT_LIFT = 0.95;
+// The enclosed Garage's own trims (2026-10-04, the vehicle-look lane; gauntlet wave 49: the desert-camo hull "washed to
+// near-white" on the turntable, lighting 2 in every build). The showroom keeps its authored rig (lighting.ts, an enclosed
+// presentation) under the legacy exposure; the 2026-10-02 display shoulder that restored its frame percentiles under AgX
+// (GARAGE_HIGHLIGHT_LIFT 0.95) pushed the hull's lit paint up with them. Measured on one pose (m1a2, the camo-difference
+// mask of its paint, display luma median / p95 / saturation): main's ACES grade 158 / 211 / 0.49, the shoulder 185 / 223 /
+// 0.37, without it 152 / 207 / 0.37 — the shoulder put about 32 levels on every lit plate and the light camos lost their
+// pattern to white; the shared bloom changed 0.7 % of the frame on main and on the PR alike (not the halo). The shoulder
+// is retired; the Garage takes a steeper slope and more scene-referred saturation than the open sky's rig (multipliers on
+// the model branch's, after its toe: the grounded rig never sees them), and its exposure trim lives with its own lights
+// (garagePhasePresentationRuntime.ts GARAGE_EXPOSURE_SCALE).
+// (chosen on a variant matrix of one capture hold, three camos: lift off, exposure 1.2, slope 1.5, saturation 1.7 put the
+// hull at median / p95 / saturation 141 / 207 / 0.51 on desert tan, 81 / 140 / 0.35 on summer green and 170 / 211 on the
+// winter wash — main's 158 / 211 / 0.49, 72 / 155 / 0.32, 188 / 213 — and the bay at median 61, p90 134, against main's
+// 50 / 142 and the shoulder's 77 / 167; no hull texel clips)
+const GARAGE_CONTRAST = 1.172;
+const GARAGE_SAT_LINEAR = 1.214;
 // r4 LP2 ("vignette stacks to a ~30-35% corner luminance falloff on bright daylight wides"): the shader keys
 // the vignette to the PIXEL's own luma — bright sky/haze corners keep most of their level — and
 // terrain_environment r4 eased it to 0.14; 2026-10-01: 0.10, a lens's natural falloff.
@@ -1453,7 +1461,6 @@ const GradeShader = {
     uThermal: { value: 0 },
     uThermalPixel: { value: new THREE.Vector2(1/1280,1/720) },
     uSaturation: { value: GRADE_SATURATION },
-    uHighlightLift: { value: 0 },
     uVignette: { value: GRADE_VIGNETTE },
     // 2026-10-01: the light model's linear exposure (lightModel.ts exposureFor, scene.userData.lightModel),
     // applied before the tone curve with its white balance — never a display-space trim again
@@ -1485,7 +1492,6 @@ const GradeShader = {
     uniform float uThermal;
     uniform vec2 uThermalPixel;
     uniform float uSaturation;
-    uniform float uHighlightLift;
     uniform float uBlackPoint;
     uniform float uVignette;
     uniform float uNight;
@@ -1541,13 +1547,6 @@ const GradeShader = {
       // saturation around the pixel's own luma
       float luma = dot( col, vec3( 0.2126, 0.7152, 0.0722 ) );
       col = clamp( mix( vec3( luma ), col, uSaturation ), 0.0, 1.0 );
-      // the enclosed Garage's highlight shoulder (GARAGE_HIGHLIGHT_LIFT note)
-      if ( uHighlightLift > 0.001 ) {
-        float hlL = max( dot( col, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 );
-        float hlD = max( 1.0 - hlL, 0.0 );
-        float hlLift = hlL + uHighlightLift * hlL * hlD * sqrt( hlD ) * smoothstep( 0.36, 0.66, hlL );
-        col = clamp( col * ( hlLift / hlL ), 0.0, 1.0 );
-      }
       // night (2026-10-01): low light reads through the rods — colour drains from the shadows and dim midtones
       // toward a cool blue (the Purkinje shift); highlights (lamps, the moon, muzzle flashes) keep their colour
       if ( uNight > 0.001 ) {
@@ -2686,7 +2685,6 @@ export function createPost(
     const satLinear = model?.mode === 'physical'
       ? lightTune('GRADE_SAT_LINEAR', GRADE_SAT_LINEAR) : lightTune('GRADE_SAT_LINEAR_LEGACY', GRADE_SAT_LINEAR_LEGACY);
     u.uSaturation.value = lightTune('GRADE_SATURATION', GRADE_SATURATION);
-    u.uHighlightLift.value = scene.userData.lightEnclosed ? lightTune('GARAGE_HIGHLIGHT_LIFT', GARAGE_HIGHLIGHT_LIFT) : 0;
     u.uBlackPoint.value = lightTune('GRADE_BLACK_POINT', GRADE_BLACK_POINT);
     u.uVignette.value = lightTune('GRADE_VIGNETTE', GRADE_VIGNETTE);
     u.uNight.value = model?.night ?? 0;
@@ -2702,6 +2700,11 @@ export function createPost(
         THREE.MathUtils.clamp(model.night, 0, 1));
       u.uToe.value.set(toeSlope, toeOn ? lightTune('GRADE_TOE_STOPS', GRADE_TOE_STOPS) : 0,
         lightTune('GRADE_TOE_CHANNEL_FROM', GRADE_TOE_CHANNEL_FROM), lightTune('GRADE_TOE_CHANNEL_TO', GRADE_TOE_CHANNEL_TO));
+      // 2026-10-04: the enclosed Garage's own slope and saturation (GARAGE_CONTRAST note); an open sky never takes them
+      if (scene.userData.lightEnclosed) {
+        u.uContrast.value = (u.uContrast.value as number) * lightTune('GARAGE_CONTRAST', GARAGE_CONTRAST);
+        u.uSatLinear.value = (u.uSatLinear.value as number) * lightTune('GARAGE_SAT_LINEAR', GARAGE_SAT_LINEAR);
+      }
     } else {
       u.uToe.value.set(0, 0, 0, 0);
       u.uExposure.value = lightTune('LEGACY_EXPOSURE', LEGACY_EXPOSURE) * (scene.userData.postExposure || 1);

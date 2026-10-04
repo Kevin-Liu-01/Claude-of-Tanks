@@ -237,32 +237,20 @@ const post = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
 assert.match(post, /outputColor\.rgb \*= uExposure \* uWhiteBalance;[\s\S]{0,200}mix\( vec3\( sceneLuma \), outputColor\.rgb, uSatLinear \)[\s\S]{0,2000}outputColor\.rgb = 0\.18 \* pow\( max\( outputColor\.rgb, vec3\( 1e-6 \) \) \* \( 1\.0 \/ 0\.18 \), vec3\( uContrast \) \);\s*\}\s*#ifdef LINEAR_TONE_MAPPING/,
   'exposure, white balance, the scene-referred saturation and contrast are linear, before the tone curve');
 assert.doesNotMatch(post, /GRADE_PIVOT|GRADE_BLACK_LIFT|GRADE_SHADOW_TINT|GRADE_GREEN_DESAT|GRADE_KNEE/, 'the ACES-era grade stack is retired');
-// 2026-10-02: the enclosed Garage keeps its authored rig, tuned under ACES's steep shoulder; under AgX its spot-lit
-// highlights compressed (the boot frame's p95 182 → 161; the showroom region's p90/p95/p99 197/207/215 → 162/179/194,
-// its median 87 against ACES's 82). A display shoulder for the enclosed presentation only restores the highlight range
-// and keeps the look below it
-assert.match(post, /u\.uHighlightLift\.value = scene\.userData\.lightEnclosed \? lightTune\('GARAGE_HIGHLIGHT_LIFT', GARAGE_HIGHLIGHT_LIFT\) : 0;/,
-  'the shoulder belongs to the enclosed presentation (a battle frame never takes it)');
-assert.match(post, /float hlL = max\( dot\( col, vec3\( 0\.2126, 0\.7152, 0\.0722 \) \), 1e-4 \);\s*float hlD = max\( 1\.0 - hlL, 0\.0 \);\s*float hlLift = hlL \+ uHighlightLift \* hlL \* hlD \* sqrt\( hlD \) \* smoothstep\( 0\.36, 0\.66, hlL \);\s*col = clamp\( col \* \( hlLift \/ hlL \), 0\.0, 1\.0 \);/,
-  'a luma shoulder that keeps each pixel\'s hue');
+// 2026-10-02: the enclosed Garage keeps its authored rig, tuned under ACES's steep shoulder. 2026-10-04 (the vehicle-look
+// lane, gauntlet wave 49): the display shoulder that restored its highlight percentiles under AgX also put ~32 levels on
+// every lit plate of the turntable hull (the light camos washed to white), so it is retired; the enclosed presentation
+// takes its own slope and saturation as multipliers on the model branch's, after the toe, and its own exposure trim with
+// its lights (garagePhasePresentationRuntime.ts)
+assert.doesNotMatch(post, /uHighlightLift|GARAGE_HIGHLIGHT_LIFT = /, 'the Garage highlight shoulder is retired');
 {
-  const lift = Number(post.match(/const GARAGE_HIGHLIGHT_LIFT = ([0-9.]+);/)?.[1]);
-  assert.ok(lift > 0 && lift < 1.2, `a bounded shoulder (${lift})`);
-  const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-  const shoulder = (l) => l + lift * l * Math.pow(Math.max(1 - l, 0), 1.5) * ss(0.36, 0.66, l);
-  for (const l of [0, 24 / 255, 0.2, 87 / 255, 0.36]) near(shoulder(l), l, 1e-12, `the dark bay and the midtones up to the showroom's median keep their level (${(l * 255).toFixed(0)})`);
-  near(shoulder(1), 1, 1e-12, 'white stays white');
-  let previous = -1;
-  for (let l = 0; l <= 1.0000001; l += 0.001) {
-    const v = shoulder(Math.min(l, 1));
-    assert.ok(v > previous && v <= 1, `monotonic and never past white (${l.toFixed(3)})`);
-    previous = v;
-  }
-  // a monotonic map moves each percentile of the showroom (canvas pixels only) to the mapped value: the AgX boot's
-  // p90/p95/p99 reach the ACES showroom's
-  near(shoulder(162 / 255) * 255, 197, 3, 'the showroom p90 (162 → the ACES 197)');
-  near(shoulder(179 / 255) * 255, 207, 3, 'its p95 (179 → 207)');
-  near(shoulder(194 / 255) * 255, 215, 3, 'its p99 (194 → 215)');
+  const trims = post.match(/\/\/ 2026-10-04: the enclosed Garage's own slope and saturation[^\n]*\n\s*if \(scene\.userData\.lightEnclosed\) \{\s*u\.uContrast\.value = \(u\.uContrast\.value as number\) \* lightTune\('GARAGE_CONTRAST', GARAGE_CONTRAST\);\s*u\.uSatLinear\.value = \(u\.uSatLinear\.value as number\) \* lightTune\('GARAGE_SAT_LINEAR', GARAGE_SAT_LINEAR\);\s*\}\s*\} else \{/);
+  assert.ok(trims, 'the trims belong to the enclosed presentation, last in the model branch (a battle frame never takes them)');
+  assert.ok(post.indexOf("lightTune('GRADE_TOE_CHANNEL_TO', GRADE_TOE_CHANNEL_TO));") < trims.index, 'after the toe');
+  const contrastK = Number(post.match(/const GARAGE_CONTRAST = ([0-9.]+);/)?.[1]);
+  const satK = Number(post.match(/const GARAGE_SAT_LINEAR = ([0-9.]+);/)?.[1]);
+  assert.ok(contrastK >= 1 && contrastK <= 1.3, `a steeper slope, bounded (${contrastK})`);
+  assert.ok(satK >= 1 && satK <= 1.4, `more scene-referred saturation, bounded (${satK})`);
 }
 // the aerial haze is a layer over the ground: a high camera looks down through less of it (the census bird view)
 assert.match(post, /float x = -viewZ \* uDensity \* hzLayer;/, 'the extinction curve takes the layer factor');
