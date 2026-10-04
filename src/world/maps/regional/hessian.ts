@@ -36,6 +36,8 @@ export interface FachwerkPalette {
   stoneGround: number;
   /** share of half-hipped roofs */
   halfHip: number;
+  /** the glazing bars of the windows above the ground storey (a town's upper casements), when they differ */
+  upperBars?: WindowStyle['bars'];
 }
 
 export const HESSIAN_PALETTE: FachwerkPalette = Object.freeze({
@@ -226,7 +228,9 @@ function fachwerkGable(sink: PartSink, face: Face, poly: Array<[number, number]>
 export function hessianDialect(st: HessianState): HouseDialect {
   return {
     window: (sink, face, o, y0) => windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h,
-      o.kind === 'loft' ? { ...st.window, shutters: null, bars: 'none' } : st.window, st.rng, o.kind === 'loft' ? 0 : st.litShare),
+      o.kind === 'loft' ? { ...st.window, shutters: null, bars: 'none' }
+        : o.storey > 0 && palette.upperBars ? { ...st.window, bars: palette.upperBars } : st.window,
+      st.rng, o.kind === 'loft' ? 0 : st.litShare),
     door: (sink, face, o, y0, frame) => {
       if (o.kind === 'gate') {
         gateUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, GATE, { bucket: 'stone', width: 0.28, out: 0.12 });
@@ -247,7 +251,7 @@ export function hessianDialect(st: HessianState): HouseDialect {
     dressJetty: (sink, face, u0, u1, y, depth) => {
       if (st.mobile) return;
       for (let u = u0 + 0.35; u < u1 - 0.2; u += 0.62) {
-        faceBox(sink, SW, face, u, y - 0.08, (0.06 - depth) / 2, 0.14, 0.16, depth + 0.06, { colour: st.timber, decor: true, uv: UV_MEMBER });
+        faceBox(sink, SW, face, u, y - 0.08, (0.06 - depth) / 2, 0.14, 0.16, depth + 0.06, { colour: st.timber, decor: true, uv: UV_MEMBER, fineSides: true });
       }
     },
   };
@@ -634,7 +638,7 @@ const church: RegionalBuilder = (ctx) => {
         const xIn = long ? 0.62 : 0.32, zIn = long ? 0.32 : 0.62;
         const xa = sx > 0 ? naveW / 2 - xIn : -naveW / 2 - 0.04, xb = sx > 0 ? naveW / 2 + 0.04 : -naveW / 2 + xIn;
         const za = sz > 0 ? naveD / 2 - zIn : -naveD / 2 - 0.04, zb = sz > 0 ? naveD / 2 + 0.04 : -naveD / 2 + zIn;
-        sink.span('stone', xa, y, za, xb, y + 0.4, zb, { decor: true });
+        sink.quoin('stone', xa, y, za, xb, y + 0.4, zb, sx, sz, { decor: true });
       }
     }
   });
@@ -769,6 +773,8 @@ export const HESSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     damp: 0.85, moss: 0.55,
   },
   wear: 0.22,
+  // the farmyards: a picket fence round a kitchen garden and the woodshed, a gate to the lane (yards.ts)
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencepicket', gate: 'gate', shed: 'woodshed', shedSize: [4.2, 5.1], garden: true },
 });
 
 export { hashSeed };

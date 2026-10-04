@@ -73,6 +73,16 @@ export interface EmitOptions {
    * joinery and metalwork dressing casts none (props.ts merges that into a receive-only mesh)
    */
   shadow?: boolean;
+  /**
+   * fine joinery a long view cannot resolve (window frames and glazing bars, shutter rails, door panels): props.ts
+   * draws it only within the quality preset's fine-detail distance of the camera, and a phone never builds it
+   */
+  fine?: boolean;
+  /**
+   * a box seated on a wall (a timber, a shutter leaf): its outward face reads at any range, its sides and caps are
+   * fine joinery (`fine`). Honoured by `box` for non-casting dressing; `member` sets it on every framing member
+   */
+  fineSides?: boolean;
   uv?: UvMode;
   /** night window: the faces whose normal matches this unit vector glow (curtain bucket only) */
   window?: Vec3;
@@ -118,8 +128,8 @@ export class PartSink {
     try { body(); } finally { this.place = prior; }
   }
 
-  private acc(bucket: RegionalBucket, decor: boolean, shadow = false): Accumulator {
-    const key = `${bucket}|${decor ? (shadow ? 'c' : 'd') : 's'}`;
+  private acc(bucket: RegionalBucket, decor: boolean, shadow = false, fine = false): Accumulator {
+    const key = `${bucket}|${decor ? (fine ? 'f' : shadow ? 'c' : 'd') : 's'}`;
     let group = this.groups.get(key);
     if (!group) {
       group = { pos: [], nor: [], uv: [], col: COLOURED.has(bucket) ? [] : null, mask: bucket === 'curtain' ? [] : null,
@@ -149,7 +159,7 @@ export class PartSink {
     }
     normal.normalize();
     const n: Vec3 = [normal.x, normal.y, normal.z];
-    const g = this.acc(bucket, !!opts.decor, !!opts.shadow);
+    const g = this.acc(bucket, !!opts.decor, !!opts.shadow, !!opts.fine);
     const colour = g.col ? (opts.colour ?? [0.6, 0.6, 0.6]) : null;
     const glow = g.mask && opts.window ? (n[0] * opts.window[0] + n[1] * opts.window[1] + n[2] * opts.window[2] > 0.999 ? 1 : 0) : 0;
     const density = opts.density ?? BUCKET_UV_DENSITY[bucket];
@@ -201,27 +211,48 @@ export class PartSink {
    * A box: centre, half sizes along the frame's axes (x across / y up-or-along / z out), optional rotation frame.
    * Without a frame the box is axis aligned in the building's local space.
    */
-  box(bucket: RegionalBucket, centre: Vec3, half: Vec3, opts: EmitOptions = {}, frame?: LocalFrame, skip?: FaceSkip): void {
+  box(bucket: RegionalBucket, centre: Vec3, half: Vec3, opts: EmitOptions = {}, frame?: LocalFrame, skip?: FaceSkip, coarse?: FaceSkip): void {
     const f = frame ?? IDENTITY;
     const c = (sx: number, sy: number, sz: number): Vec3 => f.toWorld(centre, sx * half[0], sy * half[1], sz * half[2]);
     const local = frame ? new LocalFrame(f.ax, f.ay, f.az, centre) : undefined;
     const o = { ...opts, uv: opts.uv ?? (frame ? MEMBER : WORLD) };
     const lf = o.uv.kind === 'member' ? (local ?? new LocalFrame(IDENTITY.ax, IDENTITY.ay, IDENTITY.az, centre)) : undefined;
+    // the faces that stay coarse (a long view reads them) while every other face is fine joinery: `coarse`, or under
+    // fineSides the +z face (a face frame's outward axis); non-casting dressing only
+    const keep = opts.decor && !opts.shadow ? coarse ?? (opts.fineSides ? { pz: true } : null) : null;
+    const fine = { ...o, fine: true };
+    const at = (face: keyof FaceSkip) => (keep && !keep[face] ? fine : o);
     // +x, -x, +y, -y, +z, -z faces (corners ccw from outside)
-    if (!skip?.px) this.quad(bucket, c(1, -1, 1), c(1, -1, -1), c(1, 1, -1), c(1, 1, 1), o, lf);
-    if (!skip?.nx) this.quad(bucket, c(-1, -1, -1), c(-1, -1, 1), c(-1, 1, 1), c(-1, 1, -1), o, lf);
-    if (!skip?.py) this.quad(bucket, c(-1, 1, 1), c(1, 1, 1), c(1, 1, -1), c(-1, 1, -1), o, lf);
-    if (!skip?.ny) this.quad(bucket, c(-1, -1, -1), c(1, -1, -1), c(1, -1, 1), c(-1, -1, 1), o, lf);
-    if (!skip?.pz) this.quad(bucket, c(-1, -1, 1), c(1, -1, 1), c(1, 1, 1), c(-1, 1, 1), o, lf);
-    if (!skip?.nz) this.quad(bucket, c(1, -1, -1), c(-1, -1, -1), c(-1, 1, -1), c(1, 1, -1), o, lf);
+    if (!skip?.px) this.quad(bucket, c(1, -1, 1), c(1, -1, -1), c(1, 1, -1), c(1, 1, 1), at('px'), lf);
+    if (!skip?.nx) this.quad(bucket, c(-1, -1, -1), c(-1, -1, 1), c(-1, 1, 1), c(-1, 1, -1), at('nx'), lf);
+    if (!skip?.py) this.quad(bucket, c(-1, 1, 1), c(1, 1, 1), c(1, 1, -1), c(-1, 1, -1), at('py'), lf);
+    if (!skip?.ny) this.quad(bucket, c(-1, -1, -1), c(1, -1, -1), c(1, -1, 1), c(-1, -1, 1), at('ny'), lf);
+    if (!skip?.pz) this.quad(bucket, c(-1, -1, 1), c(1, -1, 1), c(1, 1, 1), c(-1, 1, 1), at('pz'), lf);
+    if (!skip?.nz) this.quad(bucket, c(1, -1, -1), c(-1, -1, -1), c(-1, 1, -1), c(1, 1, -1), at('nz'), lf);
   }
 
   /** Axis-aligned box from two opposite corners. */
-  span(bucket: RegionalBucket, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, opts: EmitOptions = {}): void {
+  span(bucket: RegionalBucket, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, opts: EmitOptions = {}, coarse?: FaceSkip): void {
     const lo = [Math.min(x0, x1), Math.min(y0, y1), Math.min(z0, z1)], hi = [Math.max(x0, x1), Math.max(y0, y1), Math.max(z0, z1)];
     if (hi[0] - lo[0] < 1e-4 || hi[1] - lo[1] < 1e-4 || hi[2] - lo[2] < 1e-4) return;
     this.box(bucket, [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2],
-      [(hi[0] - lo[0]) / 2, (hi[1] - lo[1]) / 2, (hi[2] - lo[2]) / 2], opts);
+      [(hi[0] - lo[0]) / 2, (hi[1] - lo[1]) / 2, (hi[2] - lo[2]) / 2], opts, undefined, undefined, coarse);
+  }
+
+  /**
+   * A dressed block on a body corner (a quoin): its two outward faces stay coarse, its caps and the faces in the wall
+   * are fine joinery (a long view sees two faces of a block 3 cm proud). `sx`, `sz` are the corner's signs.
+   */
+  /**
+   * A moulding run round a body (a string course, a cornice, a band): its four faces stay coarse, its top and underside
+   * (a few centimetres of ledge proud of the wall) are fine joinery.
+   */
+  band(bucket: RegionalBucket, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, opts: EmitOptions = {}): void {
+    this.span(bucket, x0, y0, z0, x1, y1, z1, opts, { px: true, nx: true, pz: true, nz: true });
+  }
+
+  quoin(bucket: RegionalBucket, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, sx: number, sz: number, opts: EmitOptions = {}): void {
+    this.span(bucket, x0, y0, z0, x1, y1, z1, opts, { px: sx > 0, nx: sx < 0, pz: sz > 0, nz: sz < 0 });
   }
 
   /**
@@ -239,8 +270,9 @@ export class PartSink {
     const mid = depth / 2 - embed;
     const centre: Vec3 = [(a[0] + b[0]) / 2 + out[0] * mid, (a[1] + b[1]) / 2 + out[1] * mid, (a[2] + b[2]) / 2 + out[2] * mid];
     // a framing member abuts its neighbours at both ends: only its face and two sides show (ends: true keeps the caps)
-    // exposed: a free member (debris, a wheel spoke, a hip cap) keeps every face
-    this.box(bucket, centre, [width / 2, length / 2, depth / 2], opts, frame,
+    // exposed: a free member (debris, a wheel spoke, a hip cap) keeps every face. A framing member's sides and caps
+    // are fine joinery (EmitOptions.fineSides): a few centimetres deep, they are sub-pixel at a long view
+    this.box(bucket, centre, [width / 2, length / 2, depth / 2], opts.exposed ? opts : { ...opts, fineSides: true }, frame,
       opts.exposed ? undefined : opts.ends ? { nz: true } : { nz: true, py: true, ny: true });
   }
 
@@ -307,7 +339,7 @@ export class PartSink {
     const parts = newRegionalParts();
     for (const [key, g] of this.groups) {
       if (!g.pos.length) continue;
-      const [bucket, role] = key.split('|') as [RegionalBucket, 'd' | 'c' | 's'];
+      const [bucket, role] = key.split('|') as [RegionalBucket, 'd' | 'c' | 'f' | 's'];
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(g.pos, 3));
       geometry.setAttribute('normal', new THREE.Float32BufferAttribute(g.nor, 3));
@@ -318,6 +350,7 @@ export class PartSink {
       if (g.shade && g.shade.some((v) => v !== 1)) geometry.setAttribute('shade', new THREE.Float32BufferAttribute(g.shade, 1));
       if (role !== 's') geometry.userData.noCollision = true;
       if (role === 'c') geometry.userData.castsShadow = true;
+      if (role === 'f') geometry.userData.fine = true;
       geometry.userData.uvJitter = 'none';
       geometry.userData.regional = true;
       parts[bucket].push(geometry);
@@ -382,15 +415,19 @@ export function facePoint(face: Face, u: number, y: number, o = 0): Vec3 {
   return [face.origin[0] + face.u[0] * u + face.out[0] * o, y + face.origin[1], face.origin[2] + face.u[2] * u + face.out[2] * o];
 }
 
+/** Faces of a face-aligned box that something else covers: its ends (u faces), top, bottom or back. */
+export interface FaceBoxHidden { ends?: boolean; top?: boolean; bottom?: boolean; back?: boolean }
+
 /** A face-aligned box: centre (u, y, out), size (along u, up, out). */
 export function faceBox(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y: number, o: number,
-  su: number, sy: number, so: number, opts: EmitOptions = {}, hidden?: 'ends' | 'caps'): void {
+  su: number, sy: number, so: number, opts: EmitOptions = {}, hidden?: 'ends' | 'caps' | FaceBoxHidden): void {
   const centre = facePoint(face, u, y, o);
   const frame = new LocalFrame(face.u, [0, 1, 0], face.out, [0, 0, 0]);
   // a part seated on (or into) the wall never shows its back face: leave it out; 'ends' (u faces) and 'caps'
-  // (top and bottom) abut neighbouring parts
+  // (top and bottom) abut neighbouring parts; a part mounted on another names what that part covers
+  const h: FaceBoxHidden = hidden === 'ends' ? { ends: true } : hidden === 'caps' ? { top: true, bottom: true } : hidden ?? {};
   const seated = o - so / 2 <= 0.002;
-  const skip: FaceSkip = { nz: seated, px: hidden === 'ends', nx: hidden === 'ends', py: hidden === 'caps', ny: hidden === 'caps' };
+  const skip: FaceSkip = { nz: seated || !!h.back, px: !!h.ends, nx: !!h.ends, py: !!h.top, ny: !!h.bottom };
   sink.box(bucket, centre, [su / 2, sy / 2, so / 2], { ...opts, uv: opts.uv ?? WORLD }, frame, skip);
 }
 

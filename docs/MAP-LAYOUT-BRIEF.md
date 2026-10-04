@@ -461,6 +461,7 @@ region, registered in `index.ts`:
 | `wadirum` | Wadi Rum: block houses, rooftop tanks, the Desert Patrol fort | Redrock Divide |
 | `ruhr` | Ruhr and Silesian junctions: soot-dark brick, yellow-brick bands, slate | Cinder Junction |
 | `kohima` | Kohima 1944: bungalows under painted tin, a bazaar, Angami houses | Monsoon Ridge |
+| `hostomel` | Hostomel (Antonov) airport: a barrel-vaulted cargo hangar, sheet-steel maintenance hangars, a control tower's glazed cab, 1970s terminal and office blocks | Kestrel Airfield |
 
 **Adopting a kit is one line** in the map's props settings: `architecture: '<kit>'`. The plan builders still run
 first: every draw, the ground fit, the UV jitter and the road frontage see the base geometry, so every building keeps
@@ -481,7 +482,8 @@ swaps it in through `LOCAL_TYPES`.
   plaster and timber photo sets stay when the kit opts in.
 - Walls and roofs render from three to five vertex-coloured buckets (`regionalPlaster`, `regionalPlaster2`,
   `regionalPlaster3`, `regionalStone`, `regionalRoof`) and painted joinery from `structureWood`: up to six draw calls
-  more than the base map, whatever the number of buildings.
+  more than the base map, whatever the number of buildings, and one multi-draw batch each for the fine timber and
+  stone joinery (below).
 - `src/world/maps/regional/regionalArchitecture.selftest.mjs` runs the road-building stage with and without the kit
   for every adopting map and fails if a building, a stream draw or a contact record moves, or if a kit building's
   collision-bearing parts reach more than 0.8 m past a side of its plot (or past the base geometry's own reach there).
@@ -499,6 +501,36 @@ masonry under it (`HouseSpec.spall`; none on clay walls), decor from the wear co
 roof weathers down its slope: chalky toward the ridge, rust and grime along the eaves. `dressing.ts` adds
 the lived-in parts a kit uses (window boxes, the bench by the door, a woodpile, the roof ladder, an aerial); they are
 dressing (no collision) and the phones leave them out, so the collision a host certifies is tier-independent.
+
+**Fine joinery and its draw distance.** What a long view cannot resolve is fine joinery (`EmitOptions.fine` in
+`geometry.ts`): window frames and glazing bars, shutter rails, door panels and battens, downpipes, and the sides and
+caps of every framing member, shutter leaf, jetty joist, dressed surround, sill, door frame, quoin and string course
+(`fineSides`, `span(..., coarse)`, `quoin`, `band`: the faces that read at range stay, the few centimetres of side and
+ledge do not). `props.ts` merges the timber and stone dressing's fine joinery by 120 m cell into one receive-only
+multi-draw batch per bucket (`THREE.BatchedMesh`, culled by the frustum per cell; the always-drawn timber dressing is
+one more instance), so a bucket costs one draw call whatever the number of cells, and shows a cell only while the
+camera stands within the quality preset's fine-detail distance of it (Ultra 180 m, High 120, Medium 90, Low 70),
+hiding it 15 m past that; at High a 7 cm frame is half a pixel at 120 m. Steinburg's always-drawn timber and metal
+dressing falls from 0.31 M to 0.08 M triangles and its shadow-casting stone from 0.19 M to 0.10 M; its establishing
+view draws two of 14 cells per batch, a street view three or four. A phone builds no fine joinery and culls the rest
+of its timber dressing by the same cells (70, 60 and 45 m on its three presets); `?fx=off` changes the post effects
+only, so a desktop with it culls as above. Mark a new part fine when it is under about 10 cm across, or when only its
+face reads from the street; `fineDetailLod.selftest.mjs` holds the batches, their cells and the hysteresis, and the
+regional receipt holds that fine joinery is receive-only dressing a phone never builds.
+
+**The yards round the houses.** A kit that names `yard` in its `ArchitectureStyle` (`kinds`, `fence`, `gate`, `shed`,
+`shedSize`, `garden`) gets yards on its houses of those kinds (`src/world/maps/regional/yards.ts`). The stage runs after
+the wrecks on its own stream, so nothing placed before it moves. Each house's yard goes on its freest side: up to 8 m
+deep and as long as that side of the plot, its ground clear of the road frontage (`ROAD_FRONTAGE_CLEARANCE`), every other
+plot, the hard solids and the larger destructibles, the authored objective targets with a 3 m margin, the aprons, the
+bridge decks and the spawn pads, dry and level. Fence or wall modules (the kit's destructible kind) close its three open
+sides with a gate (or an open gap), the kit's own outbuilding stands in a far corner at `shedSize`, and kitchen-garden
+beds (dressing, raised on a slope, left out on phones) take the other. The yard's ground grows no grass carpet,
+tall-grass crop or litter (discs over the enclosure join the scenery's ground-cover holes in `map.ts`), and a field's
+sown crop rows stop at its fence. Every element is checked on its own and skipped
+where it does not fit. No house body or plot moves. The props group carries the counts (`userData.regionalYards`),
+`yards.selftest.mjs` holds the planner's clearances, and a kit that adopts yards regenerates its map's shard and re-pins
+its census (obstacles rise by the modules, gates and sheds).
 
 **Adding a builder or a kit.** A builder is `(ctx) => RegionalParts`: build within `ctx.info.w × ctx.info.d`, door
 side +z unless the base builder's frontage says otherwise, draw only from `ctx.rng`, and keep tier-dependent parts to
