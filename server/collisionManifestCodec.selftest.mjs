@@ -202,6 +202,9 @@ const previousShardBytes = {
   saltwind: 1484765, reservoir: 1769572,
   // 2026-09-19: Mars (Olympus Basin) joins at its first captured size.
   mars: 669259,
+  // 2026-09-29 (0e5fc79e2): Earthrise Basin and Aegis Crossing join at their shipped sizes (as last captured in
+  // 2e19224a2); the map commit published their shards but left this budget behind.
+  moon: 391971, cliffbridge: 1723422,
 };
 assert.deepEqual(Object.keys(previousShardBytes), MAP_IDS, 'storage budget covers every canonical map');
 let rawBytes = 0, encodedBytes = 0, publishedBytes = 0;

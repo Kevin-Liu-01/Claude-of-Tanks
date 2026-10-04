@@ -69,6 +69,10 @@ export function synchronizeFleetRenewalMetadata():void{
   transplant('t72b3m','t90sm_x',[.008,1.545,.114315]);
   transplant('t62mv1_x','t72b_1987_x',[0,1.4804,.676]);
   // The T-62 chassis now carries the complete 125 mm T-72B 1987 upper assembly.
+  // It keeps its balance peer's fire control: the copied 1987 dispersion and aim
+  // time (a modern-era floor, 0.62x its cold-war tier-7 peers) were a side effect
+  // of copying the gun, not part of the transplant (fleetBalance.selftest).
+  Object.assign(TANK_SPECS.t62mv1_x.gun,{baseAccuracy:donors.t62mv1.gun.baseAccuracy,aimTimeS:donors.t62mv1.gun.aimTimeS});
   TANK_SPECS.t62mv1_x.armor.turretPivot=[0,1.4804,.676];
   const t62Era=createT62MV1XArmorZones();
   // The 1975 chassis has an exposed five-wheel course: the donor record's

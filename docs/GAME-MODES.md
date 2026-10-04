@@ -122,6 +122,15 @@ progression, respawn timers and drone/orbit state across a host change.
 `src/sim/sixModes.selftest.mjs` and `sixModesAuthority.selftest.mjs` cover rules,
 rosters, progression, shared flight and authority. `tools/six-modes.browser.mjs`
 exercises garage entry, real flight input, the orbit and narrow-screen HUDs.
+Four native regressions run under the shared GPU queue beside it:
+`tools/aerial-tracers.browser.mjs` fires the AC-130's real weapons, holds a
+mid-flight frame of each tracer (one head, a bounded ribbon) and checks the
+cleanup when live flight resumes; `tools/drone-details.browser.mjs` renders the
+drone's dock and flight airframe kit (merged materials, full detail);
+`tools/garage-mode-preview.browser.mjs` selects modes in the Garage, swaps
+tanks, runs the idle animation and returns cleanly from battle; and
+`tools/vehicle-special-action.browser.mjs` checks that the HUD's special
+controls follow a mode loadout change on the same vehicle.
 
 Horde (owner 2026-09-15: "the horde is not endless, there's only 3 tanks every time and
 they're the same tanks each round") fields `waveSize + (wave − 1) × waveStep +

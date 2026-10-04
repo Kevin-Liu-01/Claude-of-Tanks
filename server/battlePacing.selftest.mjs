@@ -60,13 +60,20 @@ const p10S = durations[Math.floor(durations.length * 0.1)];
 const subTwoMinute = durations.filter((duration) => duration < 120).length;
 const timeouts = resultReasons.filter((reason) => reason === 'time_limit').length;
 
-// Active route recovery removes idle deployment time; preserve a 4–8 minute
-// median and the existing two-minute floor instead of rewarding stationary bots.
-assert.ok(medianS >= 240 && medianS <= 480,
-  `default bot match median must stay in the 4-8 minute band (got ${medianS.toFixed(1)} s)`);
+// Active route recovery removes idle deployment time, and no-contact bots search from 25 s (fc966a16d). The owner
+// accepted the faster battles that gives (ruling 2026-10-03): a 3–8 minute median (209 s measured; searching after
+// the old 120–165 s deployment windows gave 342 s). The fast tail still guards against bots converging and deciding
+// matches in about two minutes. Each outcome is chaotic in its inputs, so the tail is a share, not a count: p10 at
+// least 120 s, at most 5 % of the matches inside 120 s (5 of 132 measured, 98–119 s), none inside 90 s.
+const MEDIAN_BAND_S = { min: 180, max: 480 };
+assert.ok(medianS >= MEDIAN_BAND_S.min && medianS <= MEDIAN_BAND_S.max,
+  `default bot match median must stay in the 3-8 minute band (got ${medianS.toFixed(1)} s)`);
 assert.ok(p10S >= 120,
   `even the fast tail must retain a tactical opening (p10 ${p10S.toFixed(1)} s)`);
-assert.equal(subTwoMinute, 0, 'default bot matches no longer collapse inside two minutes');
+const maxSubTwoMinute = Math.round(durations.length * 0.05);
+assert.ok(subTwoMinute <= maxSubTwoMinute,
+  `at most ${maxSubTwoMinute} default bot matches may end inside two minutes (got ${subTwoMinute})`);
+assert.ok(durations[0] >= 90, `no default bot match collapses inside 90 s (fastest ${durations[0].toFixed(1)} s)`);
 const maxTimeouts = Math.floor(durations.length * 0.125);
 assert.ok(timeouts <= maxTimeouts,
   `no more than 12.5% may reach the safety cap (got ${timeouts}/${durations.length})`);

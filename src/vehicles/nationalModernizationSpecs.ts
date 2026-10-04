@@ -9,6 +9,10 @@ const entries:Record<string,FleetTankSpec>={};
 for(const c of NATIONAL_MODERNIZATION_CONFIG){
   const s=cloneFleetVariant(TANK_SPECS,c.id,'t90sm_x',{name:c.name,nation:c.nation,era:'next-generation'});
   delete s.label;delete s.roster;delete s.publicVisualFallback;delete s.balancePeerOf;
+  // Audit metadata, not a stat change: twelve modernized legacy hulls with the
+  // T-90SM fire control would otherwise outvote the clean-sheet Tier X MBTs and
+  // move their median (the preserved Hetman II / Zubr II designs inherit it).
+  s.balanceCohort='national-modernization';
   s.variantOf=c.donor;entries[c.id]=s;
 }
 registerFleetSpecs(bindFleetRegistries(TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS),NATIONAL_MODERNIZATION_IDS,entries);
