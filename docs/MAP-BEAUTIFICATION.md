@@ -6488,6 +6488,108 @@ artifacts in the after frames.
   worst 10 m, Cinder Junction's north-west road on a rise at the edge), the median 0.4 m; the in-square ground moves
   only past 400 m, the bounds push already keeping play inside 470 m.
 
+#### Wave 3 — 2026-10-03: the middle distance at tank eye height; each map its own country; roads end at the ranges' foot
+
+Gauntlet wave 9 (the coordinator): the next bar is "field structure that reads at tank eye height, meaning hedgerow and
+woodland belts with height, farm clusters and roofs, and roads that visibly continue", plus the remaining raised exits.
+
+- **Belts and avenues** (`maps/horizon.ts` `borderTreeRows`, placed by `horizonVista.ts` as deterministic rows ahead of
+  the forest's budget thinning). About a third of the hedged boundaries past the edge carry a belt of standards — one
+  row, or two 5 m apart, every ~9 m, at 1.0–1.5× scale, a fifth of them conifers — faded in 120–220 m past the edge so
+  the first fields stay open; each exit road carries an avenue where its carriageway shows (rows 8.5 m either side every
+  ~12 m, in runs of four points of which 70 % are planted, faded in 30–60 m past the edge). The rows are seated on the
+  ring's surface and keep out of the farmyards; 420–746 instances per map in the forest's existing draws.
+- **Villages** (`borderFarmsteads.ts` `selectVillageSites`): up to three per map, one per side — four to six yards along an
+  exit road 260–560 m out, ~28 m off it on alternating sides ~62 m apart, each house fronting the road with its shelter
+  trees behind it. The scattered farms fill the remaining count and keep 140 m off a village.
+- **The patchwork reads.** More of the field boundaries are hedged (temperate 0.32/0.25 of the two families, was
+  0.24/0.18; steppe 0.13/0.10), pasture takes half the crop weight (was 0.35) and varies 0.78–1.22 from field to field
+  (lush, grazed, cut for hay), the temperate rotation has less grass (pasture 0.22, was 0.30), and Cinder Junction and
+  Ironworks carry farmland at the other farmed maps' level (hedgerows 0.55, fields 0.6/0.55; Ironworks eight farms).
+- **The raised exits** (`terrain.ts` `buildRoadElevationGrid`): the landform pass's portal tails carried the authored
+  grade over the landform's own ground to the edge. A tail past 430 m now comes down to at most 1.5 m over the land
+  under it, and comes back up wherever that would drop it faster than 15 %; a cut is kept. Exits standing more than 5 m
+  over the land 30–40 m beside them: 8 → 2 (Olympus Basin's north road on a ridge just past the edge, 6.1 m; Nordhavn's
+  north road 80 m out, 6.3 m).
+- **The track's bed.** The kit's open-line track lies on a ballast bed with shoulders (`mapKits.ts` `layRailSpan`), and
+  the ring's ballast is a darker stone grey.
+- **Each map its own country** (`borderLandform.ts` `borderLandformSeed`). Every battle builds at the one terrain seed
+  1337, so the landform — its hills, fields, woods and the farms on them — was the same past every map's edge: Verdant
+  Fields, Amberford, Ironworks and Saltmere Bay showed one hillside from their north edges. The outland's seed now mixes
+  in the map id (FNV-1a), as the horizon ring's always has: the woods, fields and foothills are the map's own, and its
+  hills take over from the shared ones 8–188 m past the edge. The playable band's rim (the enclosure) keeps the shared
+  seed, so the ground of the square's mesh is what it was: the dressing stream reads it, and a first cut that let the
+  map's own hills into the square's last 40 m moved the props across Amberford (its zone-control circles 300 m, the
+  placement search past its 65,536-read bound). Only the rim trees change, standing by the map's own woods. The exits
+  over 5 m stay 2.
+- **Roads end at the foot of the ranges** (`terrain.ts` `roadExitOnRing`; the mountains lane, Frosthollow: with its pass
+  turned off at the north exit the carriageway was painted ~300 m up the massif's face). The exit's carriageway faded
+  with the hand-over to the ranges (0.45–0.9) and the run (0.55–0.95 of 720 m), and 209 of the 220 exits were still
+  drawn over ring standing 4 m or more off its continued ground (Glacier Pass up to 114 m). Once the ring is built
+  (after the ranges are carved and any passes opened), each exit now ends at its foot — the nearest point along it where
+  a ring vertex within 12 m of the line stands off its continued ground (`horizonSurface.ts` `continuedGroundAt`, the
+  ring's own law) by more than 1.5 m — fading over the 100 m before it while the carriageway narrows to 45 % of its
+  width, so it runs out as a lane at the foot of the slope (the vertices are compared, not the surface between them,
+  which cannot follow the corridor's cut and fill across the line). Now no exit is drawn over ring 4 m off its ground;
+  the carriageways end at a median 340 m (was 530), Redrock Divide's at 60–90 m where the canyon's beds rise. Where the ranges
+  open a pass for a road (the mountains lane's `openRoadPasses`, as at Cinder Junction) the ring lies on the road's
+  ground and the road runs on through it. The villages and avenues stand along the cut lines, and the ring forest and
+  the hedges keep a 6.5 m ride either side of a carriageway (trees had stood on it at 9–142 spots per map).
+
+#### Wave 4 — 2026-10-03: gauntlet wave 30's six drops, each at its cause
+
+Gauntlet wave 30 (wave 3 against PR head 6309d167d: mean 3.37 → 3.48, Cinder Junction's north view +2.7, Ironworks'
+east +2.6, Ruin Spires' east +2.1) dropped six views by more than 0.5. Fixed on maps lane B's rebuilt maps (PR head
+4b20975bb), one commit a cause:
+
+- **The land past the edge is the terrain seed's again** (Frosthollow edge-n and edge-n-up −1.0 each, Glacier Pass
+  edge-s −1.2, Sirocco Wadi corner-ne −2.3, Amberford edge-n −0.6). Wave 3's `borderLandformSeed` seeded the landform
+  by the map id. Every ring and far country was authored over the landform's relief at the one seed, and the reseeded
+  hand-over, hills and foothills moved the ranges' foot by up to 136 m: Frosthollow's north rose as a towering wall
+  with smeared faces, Glacier Pass's southern range folded into a spike, a pale flat-topped slab stood in Sirocco's far
+  range. The reseeded cover moved the woods and fields the views were composed of: a wood over Frosthollow's north
+  hamlet, a stubble field across the middle of Amberford's north view (read as a bare sand patch). The landform is the
+  terrain seed's alone (relief and cover); the ring matches the PR head's to the bit on every map but along the road
+  exits, where wave 3's portal tails bring the road down to the land, and every ring's maximum height is the PR head's.
+  Receipt `borderLandform.selftest.mjs`: six maps' landforms, rebuilt from the seed, rim, settings and exit valleys
+  alone, answer the same relief, hand-over, woods and crops at 1872 points past each edge; Amberford's north view has
+  no straw in the middle of its middle distance.
+- **Villages from 110 m, each with its church** (Frosthollow's north views: the hamlet and church spire left them).
+  Wave 3 strung its villages from 260 m out, but the same wave ended each road at the foot of the ranges, ~300–450 m
+  out on a mountain map, so no village found room there and the map's one church was a chance hamlet's. A village
+  starts at the first flat stretch from 110 m, as far out as its road reaches; it has its church across the road from
+  one of its yards, the nave along the road and the tower facing the square. Frosthollow's north road runs into a
+  village with its church 220 m out. Receipt `borderFarmsteads.selftest.mjs` (a village on a 330 m road, its church
+  and spire; Frosthollow's north spire in the census's edge-n view).
+- **The region's own buildings** (Ironworks edge-e-up −0.9: "the new hamlets read as American red barns"). A map with
+  a regional building kit builds its hamlets from it — its square's kit, or for Ironworks (on the Saar) the coalfield
+  kit's workers' cottage pairs — at the kit's mobile detail in the farmsteads' one vertex-coloured mesh: farmhouse,
+  barn and shed, the kit's church or chapel (else the generic church in the kit's stone and roof: Ironworks' is brick
+  under slate), decor kept within 170 m of the edge. 8k–51k triangles a kit map, one draw and its far-cascade shadow.
+  The villages take one place a side (four a map) and the farms keep their own count, two fewer a village — with three
+  a map they had taken the farms' whole budget and left Ironworks' east, where the red barns stood, with no hamlet; a
+  village's shelter trees are thinner and narrower so it is not hidden in a wood.
+- **No farm past a ruined city** (gauntlet wave 40, Ruin Spires: "a red-roofed farm on that horizon reads wrong past a
+  destroyed megacity"). The border settings' `farmBuildings: false` raises no farm building past the edges of the
+  ruined cities (Ruin Spires, Blackglass, Skybridge) and of the countries without farmland (Titan Gorge, Obsidian
+  Caldera, Copper Mesa); their sites keep their shelter copses, so the ring forest — whose stream is drawn as its
+  stands are accepted — stays the same tree for tree. Checked by a pixel diff of Ruin Spires' and Blackglass's twelve
+  border views against a mask of the farm meshes: 1773 pixels changed, every one a farm pixel. A kit that builds no
+  dwelling (Kestrel Airfield's Hostomel hangars) leaves the hamlets wholly to the generic set.
+- **The frame cost** (gauntlet wave 40's merge bar: at most +1 ms a view against the PR head on Ironworks, Cinder
+  Junction and Frontier; chase, centre-far and bird-n at 1600×900). Ironworks and Frontier passed in whole-build A B B
+  A pairs (PR head 4b20975bb against this branch, GPU ms: Ironworks −0.71 / −0.51 / −0.03, Frontier −0.12 / −0.22 /
+  −0.65). Cinder Junction's pairs moved by more than the bar in the post passes, which the lane cannot touch. They did
+  so twice: an eight-run re-run under 115–280 % foreign GPU load had per-page chase frames from 14 to 30 ms. So the
+  frame-budget probe's `--toggle=border-additions` measured the additions inside one page on the merged build
+  (03147bef3). It hides the farmsteads and hedgerows, and draws every ring forest pool without its 932 row trees
+  (including the 210 shadow casters among them). At each pose it runs off / on / on / off blocks, over four pages, and
+  both sides run without the static shadow cache, so every cascade redraws every caster every frame, as when the camera
+  moves. Hiding also removes the PR head's own farms and hedges, so the result is an upper bound. Whole frame with the
+  additions, median of eight block pairs: chase −0.03 ms, centre-far −0.51, bird-n +0.67. The scene pass moved
+  +0.16 / −0.21 / +0.38 and the shadow passes −0.02 / +0.02 / 0.00. The near class casts 55k more triangles than the
+  PR head's (231k against 176k: the rows' 210 trees and 144 more stands) at no measurable cost, so it keeps them.
+
 ### 2026-10-03 — skies, light and colour: one haze law, the shade's own colour, a calibrated camera (the skies-and-atmosphere lane)
 
 **Owner (2026-10-02): "dude genuinely maps need to look so much better esp the horizons and transitions around map

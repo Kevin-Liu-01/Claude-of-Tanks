@@ -2,6 +2,7 @@ import { smoothRoadGradesByDistance, blendRoadNetworkGrades } from './maps/roadG
 import { fadeDistantCoastShadows } from './coastShadow.ts';
 import { bindAutumnHorizonGround, refreshHorizonGroundTone } from './horizonAutumnGround.ts';
 import { continueHorizonFold } from './horizonSeam.ts';
+import { continuedGroundAt } from './horizonSurface.ts';
 import { planAssaultTrenchLines, planFieldTrenchLines, assaultTeamCenters, assaultTrenchCarveDepth, FIELD_TRENCH, type AssaultTrenchPlan } from '../sim/assaultLines.ts';
 import type { NavigationWaterPolicy } from '../sim/botRoutePlanner.ts';
 // src/world/terrain.ts — 1 km simplex heightfield + chunked LOD meshes + splat-blended
@@ -375,6 +376,13 @@ export interface TerrainWarmPoint {
   radiusM?: number;
 }
 
+/** The map-borders lane: the road exits on a built ring (terrain.ts roadExitOnRing) — the carriageway attribute there and
+ * the exit lines cut at their ends. */
+interface RoadExitsOnRing {
+  at(x: number, z: number, out: [number, number]): [number, number];
+  lines: readonly { xs: ArrayLike<number>; zs: ArrayLike<number>; length: number }[];
+}
+
 export interface HeightField {
   readonly navigationWaterPolicy?: NavigationWaterPolicy;
   getHeightAt(x: number, z: number): number;
@@ -396,7 +404,7 @@ export interface HeightField {
   /** The map-borders lane: the hedged stretches of the field boundaries past the edge (borderHedgerows.ts). */
   _borderHedgeLines?(maxOut: number, keep?: (x: number, z: number) => boolean): { xs: number[]; zs: number[]; w: number[] }[];
   /** The map-borders lane: the farmsteads past the edge (borderFarmsteads.ts), built with the ring. */
-  _borderFarmsteads?: { count: number; style: FarmsteadStyle; fieldAngle: number };
+  _borderFarmsteads?: { count: number; style: FarmsteadStyle; fieldAngle: number; buildings?: boolean };
   /** The map-borders lane: the farm tracks past the edge (the ring's borderTrack attribute, borderLandform.ts trackAt). */
   _borderTrackAt?(x: number, z: number, out: [number, number, number, number]): [number, number, number, number];
   getHeightAtFast(x: number, z: number): number;
@@ -447,6 +455,11 @@ export interface HeightField {
   _geologyZoneAt?(x: number, z: number, out: GeologyZones): GeologyZones;
   /** The map-borders lane (2026-10-03): the ring's carriageway attribute — [signed offset from a road exit line (m), presence]. */
   _roadExitAt?(x: number, z: number, out: [number, number]): [number, number];
+  /** The map-borders lane: the roads that leave the square, as their exit lines past the edge (40 m steps, ~720 m). */
+  _roadExitLines?(): readonly { xs: ArrayLike<number>; zs: ArrayLike<number>; length: number }[];
+  /** The map-borders lane: the exits as they lie on a built ring (its vertices) — each ending at the foot of the ranges
+   * unless they open a pass for it (terrain.ts roadExitOnRing). */
+  _roadExitOnRing?(ring: { positions: ArrayLike<number>; heights: ArrayLike<number> }): RoadExitsOnRing;
   /** The map-borders lane: a railway's open line past the edge on the ring — [signed offset (m), presence], faded where
    * the ring's own height there (`surfaceY`) leaves the line's bed. */
   _railExitAt?(x: number, z: number, out: [number, number], surfaceY?: number): [number, number];
@@ -1645,6 +1658,51 @@ function* heightFieldBuildSteps(
   }
 
   /**
+   * The exits as they lie on a built ring (its vertices' `positions` and `heights`). Each ends at the foot of the ranges —
+   * the nearest point along it where a ring vertex within ROAD_EXIT_FOOT_REACH_M of its line stands off its continued
+   * ground (horizonSurface.ts continuedGroundAt, the ring's own law) by more than ROAD_EXIT_FOOT_M — narrowing and fading
+   * over the ROAD_EXIT_TAPER_M before it, so a road runs out where the ground starts to rise instead of being painted up
+   * a face (the mountains lane, 2026-10-03: with the ranges' pass turned off at Frosthollow's north exit the carriageway
+   * climbed ~300 m of the massif). The vertices themselves are compared, not the surface between them, which cannot
+   * follow the corridor's cut and fill across the line. Where the ranges open a pass for an exit (horizon.ts) the ring
+   * lies on the road's ground and the exit runs on. `at` is the carriageway attribute (roadExitAt's) on that ring; `lines`
+   * the exit lines cut at their ends, for what stands along a road (the villages, the avenues).
+   */
+  const ROAD_EXIT_FOOT_M = 1.5, ROAD_EXIT_FOOT_REACH_M = 12, ROAD_EXIT_TAPER_M = 100;
+  function roadExitOnRing(ring: { positions: ArrayLike<number>; heights: ArrayLike<number> }): RoadExitsOnRing {
+    const exits = roadExits();
+    const ground = { getHeightAt, getOutlandHeightAt: publicOutlandHeightAt };
+    const feet = new Float64Array(exits.length).fill(Infinity);
+    if (exits.length) {
+      for (let i = 0; i < ring.heights.length; i++) {
+        const x = ring.positions[i * 3], z = ring.positions[i * 3 + 2];
+        if (Math.max(Math.abs(x), Math.abs(z)) < HALF + 2) continue;
+        const hit = nearestRoadExit(x, z, ROAD_EXIT_FOOT_REACH_M);
+        if (hit.exit < 0 || hit.along >= feet[hit.exit]) continue;
+        if (Math.abs(ring.heights[i] - continuedGroundAt(ground, x, z)) > ROAD_EXIT_FOOT_M) feet[hit.exit] = hit.along;
+      }
+    }
+    const lines = exits.map((exit, e) => {
+      const foot = feet[e];
+      if (!Number.isFinite(foot)) return { xs: exit.xs, zs: exit.zs, length: exit.length };
+      // the line as far as its end (with the 40 m step the end falls in)
+      const keep = Math.min(ROAD_EXIT_STEPS, Math.ceil(foot / ROAD_EXIT_STEP_M)) + 1;
+      return { xs: exit.xs.slice(0, keep), zs: exit.zs.slice(0, keep), length: Math.min(exit.length, foot) };
+    });
+    return {
+      at(x: number, z: number, out: [number, number]): [number, number] {
+        roadExitAt(x, z, out);
+        if (out[1] <= 0) return out;
+        // (roadExitAt leaves its nearest exit in _exitHit)
+        const foot = feet[_exitHit.exit];
+        if (Number.isFinite(foot)) out[1] *= 1 - smoothstep(foot - ROAD_EXIT_TAPER_M, foot, _exitHit.along);
+        return out;
+      },
+      lines,
+    };
+  }
+
+  /**
    * The ring's ballast attribute at (x, z): [signed offset from a railway's open line (m), presence 0..1]. The offset is
    * kept 40 m either side of the line (and 40 m before and past it) even where the presence is 0, so a ring triangle
    * that straddles the line interpolates the true offset (the ring's faces are 8-20 m across). Given the ring's own
@@ -1940,10 +1998,36 @@ function* heightFieldBuildSteps(
     const rimElev = placementOnly ? null : authoringRoads.map((nodes) => nodes.map(([rx, rz]) => heightAt(rx, rz, false, false)));
     authoringOnLandform = false;
     if (rimElev) levelViaductSpanNodes(authoringRoads, rimElev);
+    // (the landform pass's portal tails continue the authored grade to the edge — gradeRoadPortals' shallow cut through
+    // the classic rim's berm — and where that grade climbs over the landform's own ground the tail comes down to it, at
+    // most 1.5 m over it: the road leaves the square on the land, not on a causeway; a cut is kept. A classic border is
+    // the rim the grades were authored on, so its tails stand as authored.)
+    const capPortalTails = (elev: number[][], lines: readonly (readonly RoadPoint[])[]): void => {
+      if (border.settings.classic) return;
+      authoringOnLandform = true;
+      for (let r = 0; r < lines.length; r++) {
+        const row = elev[r], nodes = lines[r];
+        let capped = false;
+        for (let i = 0; i < nodes.length; i++) {
+          const [tx, tz] = nodes[i];
+          if (Math.max(Math.abs(tx), Math.abs(tz)) < 430) continue;
+          const land = heightAt(tx, tz, false, false) + 1.5;
+          if (row[i] > land) { row[i] = land; capped = true; }
+        }
+        // ... at a grade a tank can drive: where the cap drops the tail faster than 15 %, the nodes come back up to it
+        if (!capped) continue;
+        for (let pass = 0; pass < 2; pass++) for (let k = 1; k < nodes.length; k++) {
+          const i = pass ? nodes.length - 1 - k : k, j = pass ? i + 1 : i - 1;
+          const run = Math.hypot(nodes[i][0] - nodes[j][0], nodes[i][1] - nodes[j][1]);
+          row[i] = Math.max(row[i], row[j] - 0.15 * run);
+        }
+      }
+      authoringOnLandform = false;
+    };
     if (!placementOnly && !inheritedRoads && T.roads !== 'country' && T.roads.paths) {
       const offset = T.roads.grid ? T.roads.grid.xs.length + T.roads.grid.zs.length : 0;
       gradeRoadPortals(cfg?.id, roads, nodeElev, T.roads.paths, offset);
-      if (rimElev) gradeRoadPortals(cfg?.id, roads, rimElev, T.roads.paths, offset);
+      if (rimElev) { gradeRoadPortals(cfg?.id, roads, rimElev, T.roads.paths, offset); capPortalTails(rimElev, roads); }
     }
     smoothRoadElevations(nodeElev);
     if (rimElev) smoothRoadElevations(rimElev);
@@ -1957,7 +2041,7 @@ function* heightFieldBuildSteps(
       if (T.roads !== 'country' && T.roads.paths) {
         const offset = T.roads.grid ? T.roads.grid.xs.length + T.roads.grid.zs.length : 0;
         gradeRoadPortals(cfg?.id, roads, nodeElev, T.roads.paths, offset);
-        if (rimElev) gradeRoadPortals(cfg?.id, roads, rimElev, T.roads.paths, offset);
+        if (rimElev) { gradeRoadPortals(cfg?.id, roads, rimElev, T.roads.paths, offset); capPortalTails(rimElev, roads); }
       }
       alignAddedRoadJunctionGrades(cfg?.id, inheritedRoads, roads, nodeElev);
       if (rimElev) alignAddedRoadJunctionGrades(cfg?.id, inheritedRoads, roads, rimElev);
@@ -2460,12 +2544,14 @@ function* heightFieldBuildSteps(
   const landUseProfile = resolveLandUseProfile(cfg?.id); // ground lane
   const legacyGroundLanes = typeof location !== 'undefined' && /[?&]ground=legacy(&|$)/.test(location.search ?? '');
 
+  // round 63: the rail cutting continues past the red line — the ring's near rows seat on the same notch (and the road
+  // exits read the outland as the ring does: roadExitOnRing)
+  const publicOutlandHeightAt = railCuttings !== null
+    ? (x: number, z: number): number => railCuttingHeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt(x, z), railOpenLines)
+    : outlandHeightAt;
   return {
     getHeightAt, getHeightAtFast, getContactHeightAt, warmFastTilesAround, getNormalAt, getGroundType, getDriveGroundType,
-    // round 63: the rail cutting continues past the red line — the ring's near rows seat on the same notch
-    getOutlandHeightAt: railCuttings !== null
-      ? (x: number, z: number): number => railCuttingHeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt(x, z), railOpenLines)
-      : outlandHeightAt,
+    getOutlandHeightAt: publicOutlandHeightAt,
     ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
       railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt, railOpenLines) } : {}),
     getWaterMaskAt, getWaterDepthAt, getTrackSurfaceAt,
@@ -2475,8 +2561,11 @@ function* heightFieldBuildSteps(
     ...(border.settings.classic ? {} : { getBorderWoodsAt: border.woodsAt, getBorderHedgeAt: border.hedgeAt, _borderParcelAt: border.parcelTintAt,
       _borderTrackAt: border.trackAt,
       _borderHedgeLines: border.traceHedgeLines,
-      _borderFarmsteads: { count: border.settings.farms, style: border.settings.buildings, fieldAngle: border.fieldAngle } }),
+      _borderFarmsteads: { count: border.settings.farms, style: border.settings.buildings, fieldAngle: border.fieldAngle,
+        buildings: border.settings.farmBuildings !== false } }),
     _roadExitAt: roadExitAt,
+    _roadExitLines: () => roadExits().map((exit) => ({ xs: exit.xs, zs: exit.zs, length: exit.length })),
+    _roadExitOnRing: roadExitOnRing,
     ...(railCuttings !== null ? { _railExitAt: railExitAt } : {}),
     // the maps-and-layouts lane (2026-10-03): the authored landforms' geological zones, on a map that authors them
     ...(geologyZones ? { _geologyZoneAt: geologyZones } : {}),
@@ -3763,8 +3852,11 @@ void splatCompute() {
   mk = vec4(mk.r * (1.0 - outsideRoadW), mk.g * (1.0 - outsideRoadW), mk.b, mk.a * (1.0 - outsideW));
   if (vRoadExit.y > 0.002) {
     float dE = abs(vRoadExit.x);
-    mk.g = max(mk.g, max(0.0, 1.0 - dE / 12.0) * vRoadExit.y);
-    mk.r = max(mk.r, (1.0 - smoothstep(3.2, 4.6, dE)) * vRoadExit.y);
+    // a road running out narrows to a track as it fades (to 45 % of its width), so it ends as a lane petering out at the
+    // foot of the ranges or in the fields rather than as a full-width carriageway dimming away
+    float wE = mix(0.45, 1.0, vRoadExit.y);
+    mk.g = max(mk.g, max(0.0, 1.0 - dE / (12.0 * wE)) * vRoadExit.y);
+    mk.r = max(mk.r, (1.0 - smoothstep(3.2 * wE, 4.6 * wE, dE)) * vRoadExit.y);
   }
   // round 40: past the square, inside a sea opening, the ring face is this map's water. It starts with the wetness
   // the square carries at its edge (the clamped texel — the bay may still be a turquoise shoal there) and deepens to
@@ -5438,10 +5530,10 @@ void splatCompute() {
     // the map-borders lane (2026-10-03): the farmland past the edge in parcels between the hedgerows (stubble, plough,
     // pasture, fallow — the ring's borderTint attribute; zero on the battlefield's own chunks)
     // (calibrated with the ground lane's fields, landUse.ts: the crop's colour as a multiple of the sward's own luminance;
-    // the interpolated colour is premultiplied, so two fields blend along their boundary; none on slopes past ~25 degrees)
+    // the interpolated colour is premultiplied, so two fields blend along their boundary; none on slopes past ~30 degrees)
     float cropWeight = 1.0 - vBorderTint.w;
     if (cropWeight > 0.002) {
-      float cropW = cropWeight * (1.0 - fR) * (1.0 - roadCore) * (1.0 - fMs) * (1.0 - projW) * (1.0 - smoothstep(0.04, 0.10, slope));
+      float cropW = cropWeight * (1.0 - fR) * (1.0 - roadCore) * (1.0 - fMs) * (1.0 - projW) * (1.0 - smoothstep(0.07, 0.15, slope));
       a.rgb = mix(a.rgb, vBorderTint.rgb / cropWeight * reduxLuma(a.rgb), cropW);
     }
     // ... and the farm tracks down some of the field boundaries (borderLandform.ts trackAt): 3 m of packed dirt beside the
@@ -5460,7 +5552,7 @@ void splatCompute() {
       float dR = abs(vRailExit.x);
       float ballastW = (1.0 - smoothstep(1.5, 2.1, dR)) * vRailExit.y * (1.0 - fMs);
       float cessW = (smoothstep(1.5, 2.1, dR) - smoothstep(2.6, 3.8, dR)) * vRailExit.y * (1.0 - fMs);
-      a.rgb = mix(a.rgb, vec3(0.105, 0.098, 0.090) * (0.88 + 0.24 * n1hs), ballastW);
+      a.rgb = mix(a.rgb, vec3(0.125, 0.121, 0.115) * (0.88 + 0.24 * n1hs), ballastW);
       a.rgb = mix(a.rgb, uMeanD.rgb * vec3(0.92, 0.88, 0.82), cessW * 0.55);
       float railAa = fwidth(dR) + 0.02;
       float rail = (1.0 - smoothstep(0.035, 0.035 + railAa, abs(dR - 0.72))) * vRailExit.y * (1.0 - smoothstep(60.0, 220.0, camDist));
@@ -6506,9 +6598,12 @@ function* terrainBuildSteps(
     const position = geometry.getAttribute('position');
     const exitAttr = new Float32Array(position.count * 2);
     const hit: [number, number] = [0, 0];
+    // the exits as they lie on this ring (horizon.ts: each runs out at the foot of the ranges unless they open a pass)
+    const ringExits = (horizonStep.value.userData.horizonRing as { roadExits?: RoadExitsOnRing | null }).roadExits;
+    const exitAt = ringExits ? ringExits.at : heightField._roadExitAt;
     let any = false;
     for (let i = 0; i < position.count; i++) {
-      heightField._roadExitAt(position.getX(i), position.getZ(i), hit);
+      exitAt(position.getX(i), position.getZ(i), hit);
       exitAttr[i * 2] = hit[0]; exitAttr[i * 2 + 1] = hit[1];
       if (hit[1] > 0) any = true;
     }
