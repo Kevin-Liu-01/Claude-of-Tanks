@@ -564,8 +564,10 @@ export function buildBorderFarmsteads(options: BorderFarmsteadOptions): THREE.Me
   if (sites.length === 0) return null;
   const pal = PALETTES[options.style] ?? PALETTES.temperate;
   const s = new Soup();
-  const arch = options.architecture ?? null;
-  const kit = arch ? kitRoles(arch.style) : null;
+  // (a kit that builds no dwelling — Kestrel Airfield's Hostomel hangars and terminal — leaves the hamlets the generic set)
+  const roles = options.architecture ? kitRoles(options.architecture.style) : null;
+  const kit = roles?.house ? roles : null;
+  const arch = kit ? options.architecture! : null;
   for (let i = 0; i < sites.length; i++) {
     const site = sites[i];
     const rng = mulberry32(((options.seed ^ 0x5EED) + i * 7919) >>> 0);

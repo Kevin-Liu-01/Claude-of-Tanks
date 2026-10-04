@@ -65,6 +65,19 @@ assert.ok(tower.z - 512 < 420, `before the ranges' foot (${(tower.z - 512).toFix
 assert.equal(resolveBorderArchitecture('foundry', undefined, false)?.style.id, 'ruhr', 'Ironworks: the coalfield workers\' houses');
 assert.equal(resolveBorderArchitecture('frontier', 'hessian', false)?.style.id, 'hessian', 'a square\'s own kit');
 assert.equal(resolveBorderArchitecture('winter', undefined, true), null, 'no kit: the generic farm set');
+// ... and a kit that builds no dwelling (Kestrel Airfield's Hostomel hangars) leaves the generic set, its church in the
+// generic stone
+{
+  const airfield = getMapConfig('airfield');
+  const arch = resolveBorderArchitecture('airfield', airfield.props?.architecture, false);
+  assert.equal(arch?.style.id, 'hostomel', 'Kestrel Airfield resolves its hangar kit');
+  const plain = buildBorderFarmsteads({ ...options, sites });
+  const hangars = buildBorderFarmsteads({ ...options, sites, architecture: arch });
+  assert.deepEqual(Array.from(hangars.geometry.getAttribute('position').array), Array.from(plain.geometry.getAttribute('position').array),
+    'the hangar kit builds the generic yards');
+  assert.deepEqual(Array.from(hangars.geometry.getAttribute('color').array), Array.from(plain.geometry.getAttribute('color').array),
+    'in the generic colours');
+}
 const foundry = getMapConfig('foundry');
 const foundryFarms = buildHorizonRing(null, foundry, 1337, createHeightField(1337, foundry)).getObjectByName('border-farmsteads');
 assert.ok(foundryFarms, 'Ironworks has hamlets past its edge');
