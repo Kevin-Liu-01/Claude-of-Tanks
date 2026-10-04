@@ -5,6 +5,7 @@ import {
   pushHullFromObstacle, pushHullFromHull, rayCollisionFootprintEntry2,
   rayCollisionRecord, setCircleShape, setCompoundShape, setConvexShape, setObbShape,
   shellPassesThroughCollisionRecord, cloneCollisionRecord,
+  createHullFootprint, hullFootprint, hullPassesObstacleTop, hullUndersideOver,
 } from './collision.ts';
 
 const rec = (y1 = 3) => ({ min: [0, 0, 0], max: [0, y1, 0] });
@@ -252,6 +253,44 @@ assert.deepEqual(sharedOut, [], 'cell candidates still obey exact AABB rejection
     assert.equal(rayCollisionFootprintEntry2(block, -10, 3, 1, 0, 20, 1), null,
       `a route probe 2 m clear of the ${winding} block passes its 1 m clearance`);
   }
+}
+
+// A nose or tail row alone over a record clears its parts as the track plane under it does, the tracks that meet them
+// next; only standing on a top counts the step-up against it (round 3, Aegis Crossing: a viaduct span's 15 cm sub-deck
+// slab a metre under the deck stopped a hull with no nose lift dead at every span joint, its nose read 0.55 m under its
+// tracks). The boulder rule stands: a nose at 0.7 m does not step a level hull onto a 1.2 m rock; and a high glacis
+// does not carry the hull over a low wall its tracks then meet.
+{
+  const rect = { centerX: 0, centerZ: 0, halfLength: 3.2, halfWidth: 1.6, frontLiftM: 0, rearLiftM: 0 };
+  const foot = hullFootprint(rect, 0, 0, 0, 0, 0, createHullFootprint());
+  // the next span: its slab 1 m under the deck the hull drives on (root at the deck top, y 2), its parapets over it
+  const span = setCompoundShape({ min: [0, -38, 0], max: [0, 3.1, 0], kind: 'bridge' }, [
+    { kind: 'obb', cx: 0, cz: 3 + 7.5, hw: 9, hl: 7.5, yaw: 0, y0: 0.83, y1: 0.98 },
+    { kind: 'obb', cx: 8.8, cz: 3 + 7.5, hw: 0.2, hl: 7.5, yaw: 0, y0: 2, y1: 3.1 },
+  ]);
+  const stand = hullUndersideOver(span, foot, 2);
+  assert.ok(Math.abs(stand - 1.45) < 1e-9 && Math.abs(foot.clearBottom - 2) < 1e-9,
+    `only the nose is over the next span: it stands as 1.45, clears as 2 (${stand}, ${foot.clearBottom})`);
+  const out = { x: 0, z: 0 };
+  assert.equal(pushHullFromObstacle({ x: 0, z: 0 }, 0, 1, 1, 0, 3.2, 1.6, span, out, stand, 4.5, foot.clearBottom), false,
+    'a nose a metre over the span\'s sub-deck slab passes over it (it was pushed back 0.31 m a step)');
+  assert.equal(hullPassesObstacleTop(stand, 0.98, 0.83, true, foot.clearBottom), true, 'the slab is cleared');
+  assert.equal(hullPassesObstacleTop(stand, 0.98, 0.83, true), false, 'read by the standing underside, it was not');
+  // a level hull nosing into a 1.2 m rock, its nose 0.7 m up: the rock is a wall, not a step
+  const lifted = hullFootprint({ ...rect, frontLiftM: 0.7 }, 0, 0, 0, 0, 0, createHullFootprint());
+  const rock = setObbShape({ min: [0, 0, 0], max: [0, 1.2, 0] }, 0, 3.4, 1.5, 0.3, 0);
+  const rockStand = hullUndersideOver(rock, lifted, 0);
+  assert.equal(hullPassesObstacleTop(rockStand, 1.2, 0, true, lifted.clearBottom), false, 'the nose does not step onto the rock');
+  // a glacis 1.2 m up over a 0.5 m wall clears it by its own height, never by its tracks: the wall stays a wall
+  const glacis = hullFootprint({ ...rect, frontLiftM: 1.2 }, 0, 0, 0, 0, 0, createHullFootprint());
+  const wall = setCompoundShape({ min: [0, 0, 0], max: [0, 0.5, 0] }, [
+    { kind: 'obb', cx: 0, cz: 3.4, hw: 2, hl: 0.2, yaw: 0, y0: 0, y1: 0.5 },
+  ]);
+  const wallStand = hullUndersideOver(wall, glacis, 0);
+  assert.ok(Math.abs(wallStand - 0.65) < 1e-9 && Math.abs(glacis.clearBottom) < 1e-9,
+    `the glacis stands as 0.65, clears as its tracks, 0 (${wallStand}, ${glacis.clearBottom})`);
+  assert.equal(pushHullFromObstacle({ x: 0, z: 0 }, 0, 1, 1, 0, 3.2, 1.6, wall, { x: 0, z: 0 }, wallStand, 4.5,
+    glacis.clearBottom), true, 'the low wall pushes the hull whose glacis is over it');
 }
 
 console.log('collision.selftest: exact environment shapes and spatial broad phase passed');
