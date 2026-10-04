@@ -99,6 +99,14 @@ export interface HorizonPanoramaCharacter {
    * mainland is pale limestone, its battlefield rock a dark brown (gauntlet wave 32: "pale bare limestone on the upper
    * faces"; with the battlefield's rock its ridge held 17 levels of shading) */
   ownRock: number;
+  /** sheer jebels standing alone on the plain (maps lane A's inselberg section, horizonJebelSection): the share of
+   * 2.6 km cells holding one, its height (m), its radius (m), the wall's foot and the cap's rim (fractions of the radius
+   * and of the foot), the talus apron's share of the height, the flutes round the wall and their depth, the cap's
+   * bosses (m) and the foot's wander; 0 share: none */
+  jebelShare: number; jebelM: number; jebelRadiusM: number; jebelFoot: number; jebelRim: number; jebelApron: number;
+  jebelFlutes: number; jebelFluteDepth: number; jebelBossM: number; jebelFootVary: number;
+  /** desert varnish down the jebels' walls: the darkening of its streaks (0: none) */
+  jebelVarnish: number;
 }
 
 /** The knobs most characters leave at rest: open sea, no tree canopy, the eroded mesa's profile, no isolated peaks. */
@@ -108,7 +116,40 @@ const PANO_EXTRAS = Object.freeze({
   peakShare: 0, peakM: 0, peakRadiusM: 600, peakSharp: 1.5,
   forestSlope: 0.32,
   air: 1, fillLaw: 0, rockFloor: -1, scrub: 0, ownRock: 0,
+  jebelShare: 0, jebelM: 0, jebelRadiusM: 900, jebelFoot: 0.66, jebelRim: 0.86, jebelApron: 0.18,
+  jebelFlutes: 16, jebelFluteDepth: 0.5, jebelBossM: 0, jebelFootVary: 0.14, jebelVarnish: 0,
 });
+
+/** Maps lane A's sheer jebel (landformGeology.ts inselbergSection with a rim, origin/visual/maps-layouts ca018e38e):
+ * the cap's fall from its crown to its rim, as a share of the height. */
+export const HORIZON_JEBEL_CAP_DROP = 0.08;
+/**
+ * A sheer jebel's section, ported from maps lane A's inselbergSection (with a rim) for the far bake: a gently domed cap
+ * out to `rim` of the wall's foot, a sheer wall (a smoothstep fall) down to the foot `foot` (fractions of the radius),
+ * then a concave talus apron `apron` (a share of the height) high at the foot and thinning to the plain at q = 1. The
+ * bake's GLSL (HORIZON_JEBEL_SECTION_GLSL) is the same law; receipts check the two against each other.
+ */
+export function horizonJebelSection(q: number, foot: number, apron: number, rim: number): number {
+  if (q >= 1) return 0;
+  const top = foot * rim;
+  if (q <= top) return 1 - HORIZON_JEBEL_CAP_DROP * (q / top) ** 2;
+  if (q <= foot) {
+    const t = (q - top) / (foot - top);
+    return apron + (1 - HORIZON_JEBEL_CAP_DROP - apron) * (1 - t * t * (3 - 2 * t));
+  }
+  const t = (1 - q) / (1 - foot);
+  return apron * t * t;
+}
+const HORIZON_JEBEL_SECTION_GLSL = /* glsl */`
+float jebelSection(float q, float foot, float apron, float rim) {
+  if (q >= 1.0) return 0.0;
+  float top = foot * rim;
+  if (q <= top) return 1.0 - ${HORIZON_JEBEL_CAP_DROP.toFixed(4)} * (q / top) * (q / top);
+  if (q <= foot) { float t = (q - top) / (foot - top); return apron + (${(1 - HORIZON_JEBEL_CAP_DROP).toFixed(4)} - apron) * (1.0 - t * t * (3.0 - 2.0 * t)); }
+  float t = (1.0 - q) / (1.0 - foot);
+  return apron * t * t;
+}
+`;
 
 export const HORIZON_PANORAMA_CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonPanoramaCharacter>> = Object.freeze({
   alpine: { ampM: 1700, foot: 0.16, macroL: 5200, sharp: 1.45, midL: 1500, gullyL: 520, gullyM: 55, warpM: 900, valley: 0.4, valleyL: 7500, snowline: 0.40, treeline: 0.22, rockSlope: 0.30, bedM: 70, strata: 0.10, tables: false, farRise: 0, layers: 1, plinth: false, ...PANO_EXTRAS },
@@ -273,7 +314,11 @@ export const HORIZON_PANORAMA_REGIONAL: Readonly<Record<HorizonPanoramaRegional,
   // mountain spike" — rounded crests, shallower gullies, the forest up the steep faces and over the crests, rock only on
   // the cliffs, less lift toward the deck)
   ridges: { ampM: 750, foot: 0.25, macroL: 3800, sharp: 0.95, midL: 1500, gullyL: 380, gullyM: 30, warpM: 700, valley: 0.5, valleyL: 6000, snowline: 2, treeline: 1.6, rockSlope: 0.95, bedM: 40, strata: 0.02, tables: false, farRise: 0, layers: 0.25, plinth: false, ...PANO_EXTRAS, forestSlope: 0.8 },
-  jebel: { ampM: 700, foot: 0.24, macroL: 5200, sharp: 1.0, midL: 2000, gullyL: 500, gullyM: 30, warpM: 900, valley: 0.3, valleyL: 7000, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 46, strata: 0.32, tables: true, farRise: 0, layers: 1, plinth: false, ...PANO_EXTRAS, mesaTalusM: 160, mesaTalusShare: 0.12, mesaCliffM: 110, mesaFluteM: 90 },
+  // (gauntlet wave 24, Redrock corner-ne: the tabled 'jebel' read as "low rounded swells, nothing resembles Wadi Rum's
+  // walls" — now sheer massifs standing alone on a flat sand plain, maps lane A's section: bossed caps, fluted walls,
+  // short talus aprons; the massifs bare rock, the aprons and the plain sand)
+  jebel: { ampM: 45, foot: 0.7, macroL: 2600, sharp: 1.0, midL: 1000, gullyL: 600, gullyM: 0, warpM: 700, valley: 0.15, valleyL: 6000, snowline: 2, treeline: 0, rockSlope: 0.5, bedM: 26, strata: 0.3, tables: false, farRise: 0, layers: 0, plinth: false, ...PANO_EXTRAS,
+    jebelShare: 0.65, jebelM: 480, jebelRadiusM: 650, jebelFoot: 0.66, jebelRim: 0.86, jebelApron: 0.18, jebelFlutes: 20, jebelFluteDepth: 0.8, jebelBossM: 90, jebelFootVary: 0.14, jebelVarnish: 0.55 },
   volcanicField: { ampM: 380, foot: 0.3, macroL: 4800, sharp: 1.0, midL: 1600, gullyL: 420, gullyM: 20, warpM: 800, valley: 0.3, valleyL: 7000, snowline: 2, treeline: 0.35, rockSlope: 0.4, bedM: 40, strata: 0.1, tables: false, farRise: 0, layers: 0.6, plinth: false, ...PANO_EXTRAS, peakShare: 0.35, peakM: 260, peakRadiusM: 800, peakSharp: 1.2 },
   iceSheet: { ampM: 110, foot: 0.5, macroL: 6000, sharp: 1.0, midL: 2200, gullyL: 600, gullyM: 6, warpM: 1000, valley: 0.2, valleyL: 8000, snowline: -0.5, treeline: 0, rockSlope: 0.35, bedM: 80, strata: 0.04, tables: false, farRise: 0, layers: 0.3, plinth: false, ...PANO_EXTRAS, peakShare: 0.2, peakM: 320, peakRadiusM: 380, peakSharp: 2.2 },
 });
@@ -427,6 +472,19 @@ uniform vec4 uShore;   // the far shore's height share (0: open sea), the channe
 uniform vec4 uTrees;   // the tree lines' and woods' canopy (m; 0: none)
 uniform vec4 uMesa;    // a table's talus apron (m) and its share of the height, its caprock cliff (m), its rim's alcoves (m)
 uniform vec4 uPeaks;   // isolated peaks: share of 2.6 km cells, height (m), radius (m), sharpness
+uniform vec4 uJebel;   // sheer jebels: share of 2.6 km cells, height (m), radius (m), the cap's bosses (m)
+uniform vec4 uJebel2;  // the wall's foot, the cap's rim, the apron's share, the flutes round the wall
+uniform vec4 uJebel3;  // the flutes' depth, the foot's wander
+${HORIZON_JEBEL_SECTION_GLSL}
+// a smooth wander round a massif in its bearing, in [-1, 1] (maps lane A's lobe: four harmonics, falling amplitude)
+float jebelLobe(float th, float salt) {
+  float sum = 0.0;
+  for (int k = 2; k <= 5; k++) {
+    float fk = float(k);
+    sum += sin(fk * th + 6.2831853 * hash12(vec2(fk, salt))) / (fk - 1.0);
+  }
+  return sum / 2.0833333;
+}
 
 float macroField(vec2 q) {
   float sum = 0.0, amp = 1.0, weight = 1.0, norm = 0.0;
@@ -525,9 +583,11 @@ float gPlinth = 0.0; // farField's plinth at its last point (the height pass wri
 float gTree = 0.0;   // and its tree cover (the strip colours it as the forest)
 float gPeak = 0.0;   // and its isolated peaks' weight (the strip bares them: a nunatak's rock, a cone's scoria)
 float gGully = 0.0;  // and its erosion octaves' troughs on the steeper ground (a dry coast's scrub holds them)
+float gVarnish = 0.0; // and a jebel country's desert varnish down its walls (written in the tree-cover channel)
 float farField(vec2 p) {
   gPlinth = 0.0;
   gGully = 0.0;
+  gVarnish = 0.0;
   float r = length(p);
   float A = envelopeAt(p, r);
   float h = uChar2.z > 0.5 ? mesaField(p, A) : A * baseField(p);
@@ -573,6 +633,61 @@ float farField(vec2 p) {
     h += uPeaks.y * best;
     gPeak = foot;
   }
+  // sheer jebels (uJebel.x > 0): one in a share of 2.6 km cells, standing alone on the plain — maps lane A's section
+  // (horizonJebelSection): a bossed cap, a sheer wall fluted in vertical grooves whose foot wanders round the massif, a
+  // short concave talus apron; drawn out along a turned axis. The footprint inside the wall's foot is written for the
+  // strip to bare to rock; the aprons and the plain stay sand
+  if (uJebel.x > 0.0) {
+    vec2 cell = floor(p / 2600.0);
+    float best = 0.0, bare = 0.0, varnish = 0.0;
+    for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+      vec2 c = cell + vec2(float(i), float(j));
+      if (hash12(c + vec2(31.7, 3.1)) < 1.0 - uJebel.x) continue;
+      vec2 centre = (c + 0.2 + 0.6 * vec2(hash12(c + vec2(2.9, 7.3)), hash12(c + vec2(6.1, 1.7)))) * 2600.0;
+      float rad = uJebel.z * (0.7 + 0.6 * hash12(c + vec2(5.3, 8.8)));
+      float ang = 6.2831853 * hash12(c + vec2(9.1, 4.4));
+      vec2 ax = vec2(cos(ang), sin(ang)), q2 = p - centre;
+      float el = 1.0 + 0.5 * hash12(c + vec2(0.7, 2.2));
+      vec2 lq = vec2(dot(q2, ax) / el, dot(q2, vec2(-ax.y, ax.x))) / rad;
+      float q = length(lq);
+      if (q >= 1.0) continue;
+      float th = atan(lq.y, lq.x), salt = hash12(c + vec2(4.8, 5.9)) * 97.0;
+      float rim = uJebel2.y;
+      float wall = clamp(uJebel2.x * (1.0 + uJebel3.y * jebelLobe(th, salt + 29.0)), 0.25, 0.92);
+      // the flutes: a rounded notch where the cosine peaks, setting the wall back between its spurs
+      float notch = pow(max(0.0, cos(6.2831853 * (th / 6.2831853 * uJebel2.w + hash12(c + vec2(3.7, 0.3))))), 2.0);
+      wall -= notch * uJebel3.x * (1.0 - rim) * wall;
+      float apron = uJebel2.z * (1.0 + 0.5 * jebelLobe(th, salt + 31.0));
+      float hgt = uJebel.y * (0.7 + 0.3 * hash12(c + vec2(8.2, 6.6)));
+      float hj = hgt * jebelSection(q, wall, apron, rim);
+      // the cap's bosses: rounded domes inside the rim (their union), as maps lane A sets them
+      float top = wall * rim;
+      if (q < top && uJebel.w > 0.0) {
+        float boss = 0.0;
+        for (int k = 0; k < 4; k++) {
+          float fk = float(k);
+          float ba = 6.2831853 * hash12(vec2(fk, salt + 41.0)), br = sqrt(hash12(vec2(fk + 7.0, salt + 41.0))) * top * 0.62;
+          float bradius = top * (0.3 + 0.16 * hash12(vec2(fk + 13.0, salt + 41.0)));
+          float bd = length(lq - vec2(cos(ba), sin(ba)) * br) / bradius;
+          if (bd < 1.0) boss = max(boss, (1.0 - bd * bd) * (1.0 - bd * bd) * (0.6 + 0.4 * hash12(vec2(fk + 19.0, salt + 41.0))));
+        }
+        hj += uJebel.w * boss;
+      }
+      best = max(best, hj);
+      bare = max(bare, smoothstep(wall + 0.04, wall - 0.01, q));
+      // desert varnish: dark streaks down the wall from under the rim (seepage from the cap), round the massif on the
+      // circle (no seam), drawn out down the wall, fading over the talus
+      if (uJebel3.z > 0.0 && q > top * 0.9 && q < wall + 0.05) {
+        vec2 ring = vec2(cos(th), sin(th));
+        float sv = noised(ring * 16.0 + vec2(q * 2.0, salt)).x * 0.65 + noised(ring * 41.0 + vec2(q * 4.0, salt + 5.0)).x * 0.35;
+        float down = 1.0 - smoothstep(wall - 0.2 * (wall - top), wall + 0.05, q);
+        varnish = max(varnish, smoothstep(0.08, 0.38, sv) * down);
+      }
+    }
+    h += best;
+    gPeak = max(gPeak, bare);
+    gVarnish = varnish * uJebel3.z;
+  }
   gTree = 0.0;
   if (uTrees.x > 0.0) {
     float tu = p.x * 0.913 + p.y * 0.408, tv = -p.x * 0.408 + p.y * 0.913;
@@ -587,6 +702,7 @@ float farField(vec2 p) {
   }
   // a dry coast's scrub (uTrees.z, the maquis): it holds the gullies up the bare faces, the limestone the spurs between
   if (uTrees.z > 0.0) gTree = max(gTree, uTrees.z * gGully);
+  gTree = max(gTree, gVarnish);
   float a = atan(p.y, p.x) * 0.15915494309;
   vec4 edge = texture2D(uEdge, vec2(fract(a), 0.5));
   // the layers behind the ring (the mountains lane, 2026-10-03: from the battlefield the far country hid behind the
@@ -797,6 +913,7 @@ uniform sampler2D uEdge;
 uniform vec4 uShore;      // the far shore's height share (0: open sea), the channel's distance (m), its coastal range's share
 uniform vec4 uTrees;      // the far field's canopy (m), the forest's slope limit, a dry coast's scrub
 uniform vec4 uAir;        // the far path's share of the law's σ, the fill's law (0 / 1), the bare rock's floor (a share of the relief)
+uniform vec4 uJebel;      // sheer jebels: share of 2.6 km cells, height (m), radius (m), the cap's bosses (m)
 uniform vec4 uHaze;       // the shared haze law (hazeLaw.ts): σ (1/m), 1 / the layer's scale height, the datum (m), on
 uniform vec3 uHazeChroma; // its per-channel extinction
 uniform vec3 uHazeAnti, uHazeToward; // its in-scatter target at the horizon away from the sun and toward it
@@ -851,7 +968,7 @@ vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   vec3 ground = uBase * (0.92 + 0.16 * (noised(wp.xz / 120.0 + vec2(7.7, -1.3)).x * 0.5 + 0.5));
   vec3 col = mix(ground, mix(meadow, uForest * mottle, stand), vegW);
   // the far field's own tree lines and woods (its height pass's tree cover)
-  col = mix(col, uForest * mottle * 0.9, texture2D(uHeight, g).b);
+  col = mix(col, uForest * mottle * 0.9, uJebel.x > 0.0 ? 0.0 : texture2D(uHeight, g).b);
   // rock on the steep faces, its beds: a tone per bed, the bedding planes darker
   float bt = (wp.y + (wp.x * 0.6 + wp.z * 0.8) * 0.004) / uChar3.w;
   float bi = floor(bt), bf = bt - bi;
@@ -867,9 +984,13 @@ vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   // on all but their gentlest ground
   float peak = smoothstep(0.08, 0.3, texture2D(uHeight, g).a);
   rockW = max(rockW, peak * smoothstep(0.03, 0.14, slope + 0.03 * n1));
+  // (a jebel is bare rock over its whole footprint, its gently domed cap too: Wadi Rum's massifs carry no sand on top)
+  if (uJebel.x > 0.0) rockW = max(rockW, smoothstep(0.3, 0.7, texture2D(uHeight, g).a));
   col = mix(col, rockC, rockW);
   // (and in the fissures down the bare faces, fainter: the limestone between them)
   col = mix(col, uForest * mottle * 0.85, uTrees.z * rockW * streak * 0.5);
+  // (a jebel's desert varnish, the tree-cover channel of a treeless country: dark streaks down its walls)
+  if (uJebel.x > 0.0) col *= 1.0 - texture2D(uHeight, g).b;
   // scree on the moderate slopes below the rock
   col = mix(col, uScree, smoothstep(0.12, 0.24, slope) * (1.0 - rockW) * (1.0 - vegW) * 0.7);
   // snow above the snowline on the slopes that hold it
@@ -1191,6 +1312,9 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, 0) },
       uMesa: { value: new THREE.Vector4(ch.mesaTalusM, ch.mesaTalusShare, ch.mesaCliffM, ch.mesaFluteM) },
       uPeaks: { value: new THREE.Vector4(ch.peakShare, ch.peakM, ch.peakRadiusM, ch.peakSharp) },
+      uJebel: { value: new THREE.Vector4(ch.jebelShare, ch.jebelM, ch.jebelRadiusM, ch.jebelBossM) },
+      uJebel2: { value: new THREE.Vector4(ch.jebelFoot, ch.jebelRim, ch.jebelApron, ch.jebelFlutes) },
+      uJebel3: { value: new THREE.Vector4(ch.jebelFluteDepth, ch.jebelFootVary, ch.jebelVarnish, 0) },
       uFrame: { value: new THREE.Vector4(P.innerM, P.outerM, P.shellM, P.eyeY) },
       uHaze: { value: new THREE.Vector4(haze?.sigma ?? 0, haze?.invScale ?? 0, hazeDatumM, haze ? 1 : 0) },
       uHazeChroma: { value: new THREE.Vector3(...HAZE_EXT_CHROMA) },

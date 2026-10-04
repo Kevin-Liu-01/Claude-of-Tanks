@@ -7,12 +7,14 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
   HORIZON_PANORAMA, HORIZON_PANORAMA_CHARACTERS, HORIZON_PANORAMA_REGIONAL, HORIZON_PANORAMA_SHADERS, buildHorizonPanoramaShellGeometry, horizonPanoramaHaze,
+  horizonJebelSection, HORIZON_JEBEL_CAP_DROP,
   createHorizonPanorama, horizonPanoramaUv, horizonRingSkylineTan, resolveHorizonPanoramaCharacter,
 } from './horizonPanorama.ts';
 import { HORIZON_FAR_ROWS } from './horizonFarRange.ts';
 import saltwind from './maps/saltwind.ts';
 import { horizonPanoramaDeckM } from './maps/horizon.ts';
 import { HORIZON_RELIEF_CHARACTERS } from './horizonRelief.ts';
+import { inselbergSection } from './landformGeology.ts';
 import { CLOUD_FOGBANK_RANGE_M } from '../engine/cloudWeatherLayers.ts';
 import { hazeSigma } from '../engine/hazeLaw.ts';
 
@@ -161,6 +163,43 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
   assert.ok(/float farWater = uShore\.x > 0\.0 \? sea \* smoothstep\(/.test(HORIZON_PANORAMA_SHADERS.strip)
     && HORIZON_PANORAMA_SHADERS.strip.includes('smoothstep(0.02, 0.2, sea) * (1.0 - farWater)'), 'a channel coast\'s far reach is water, not open sky');
 }
+// the jebel section (maps lane A's inselbergSection with a rim, ported): the JS mirror is continuous at the cap's rim
+// and the wall's foot, falls monotonically from the crown to the plain, and its GLSL twin carries the same constants
+{
+  const foot = 0.66, rim = 0.86, apron = 0.18, top = foot * rim;
+  assert.equal(horizonJebelSection(0, foot, apron, rim), 1, 'the crown stands at the full height');
+  assert.ok(Math.abs(horizonJebelSection(top - 1e-6, foot, apron, rim) - horizonJebelSection(top + 1e-6, foot, apron, rim)) < 1e-4, 'continuous at the cap\'s rim');
+  assert.ok(Math.abs(horizonJebelSection(foot - 1e-6, foot, apron, rim) - horizonJebelSection(foot + 1e-6, foot, apron, rim)) < 1e-4, 'continuous at the wall\'s foot');
+  assert.ok(Math.abs(horizonJebelSection(foot, foot, apron, rim) - apron) < 1e-9 && horizonJebelSection(1, foot, apron, rim) === 0, 'the apron at the foot, the plain at the toe');
+  let last = 2;
+  for (let i = 0; i <= 100; i++) { const v = horizonJebelSection(i / 100, foot, apron, rim); assert.ok(v <= last + 1e-12, 'it never rises toward the plain'); last = v; }
+  // a sheer wall: most of the height falls within the wall's band (from the rim to the foot)
+  assert.ok(horizonJebelSection(top, foot, apron, rim) - horizonJebelSection(foot, foot, apron, rim) > 0.6, 'the wall carries most of the height');
+  const glsl = HORIZON_PANORAMA_SHADERS.height;
+  assert.ok(glsl.includes(`1.0 - ${HORIZON_JEBEL_CAP_DROP.toFixed(4)} * (q / top) * (q / top)`) && glsl.includes(`(${(1 - HORIZON_JEBEL_CAP_DROP).toFixed(4)} - apron)`),
+    'the bake\'s section is the mirror\'s law');
+  assert.ok(/if \(uJebel\.x > 0\.0\) rockW = max\(rockW, smoothstep\(0\.3, 0\.7, texture2D\(uHeight, g\)\.a\)\);/.test(HORIZON_PANORAMA_SHADERS.strip),
+    'the strip bares a jebel\'s whole footprint');
+  // the far jebels' section is maps lane A's inselbergSection with a rim (landformGeology.ts), so near and far rock keep one
+  // form: sampled at fixed radii across the walls' spread of feet, aprons and rims on Redrock's bearings (the main
+  // massifs' rim 0.86, the lobes' 0.84, the foot wandering 12-14 % and the flutes setting the wall back), within 1e-9
+  let worst = 0;
+  for (const [f, a, r] of [[0.66, 0.18, 0.86], [0.66 * 0.86, 0.12, 0.86], [0.66 * 1.14, 0.24, 0.86], [0.6, 0.16, 0.84], [0.5, 0.05, 0.84], [0.74, 0.27, 0.88]]) {
+    for (let i = 0; i <= 400; i++) worst = Math.max(worst, Math.abs(horizonJebelSection(i / 400, f, a, r) - inselbergSection(i / 400, f, a, 4, r)));
+  }
+  assert.ok(worst <= 1e-9, `the far jebel's section is the battlefield's inselberg section (worst ${worst})`);
+  // desert varnish down the walls (the edge-e pair of e8350e7bb: one smooth pale slab where the PR head's far range had
+  // streaked mesas): streaks in the tree-cover channel of a treeless jebel country, darkening the rock, never painting forest
+  const strip = HORIZON_PANORAMA_SHADERS.strip, heightPass = HORIZON_PANORAMA_SHADERS.height;
+  assert.ok(heightPass.includes('gTree = max(gTree, gVarnish);') && heightPass.includes('gVarnish = varnish * uJebel3.z;'), 'the jebels write their varnish after the tree cover');
+  assert.ok(strip.includes('uJebel.x > 0.0 ? 0.0 : texture2D(uHeight, g).b') && strip.includes('if (uJebel.x > 0.0) col *= 1.0 - texture2D(uHeight, g).b;'),
+    'a jebel country darkens its rock by the channel and paints no forest from it');
+  for (const [name, c] of [...Object.entries(HORIZON_PANORAMA_CHARACTERS), ...Object.entries(HORIZON_PANORAMA_REGIONAL)]) {
+    if (name !== 'jebel') assert.equal(c.jebelVarnish, 0, `${name}: no varnish`);
+  }
+  const jv = resolveHorizonPanoramaCharacter('mesa', { regional: 'jebel' });
+  assert.ok(jv.jebelVarnish > 0 && jv.jebelBossM >= 60 && jv.jebelRadiusM <= 800, 'jebel: several bossed, varnished massifs rather than one wide slab');
+}
 // the ring hands the bake its map's own overcast (lightModelCore resolveOvercast of its sky and cloudscape), not the light
 // model the battlefield may still publish from the last map
 {
@@ -220,7 +259,8 @@ assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('float fillSnow = uChar3.x < 0
   assert.ok(upland.ampM <= 300 && upland.snowline > 1 && upland.layers < 1, 'upland: rounded hills under 300 m, no snow, a half layer');
   assert.ok(resolveHorizonPanoramaCharacter('rolling', { regional: 'erg' }).trees === 0, 'erg: no trees');
   const jebel = resolveHorizonPanoramaCharacter('mesa', { regional: 'jebel' });
-  assert.ok(jebel.tables && jebel.mesaTalusM < 300 && jebel.mesaCliffM > 80, 'jebel: a short apron and a sheer wall');
+  assert.ok(!jebel.tables && jebel.jebelShare > 0 && jebel.jebelRim >= 0.8 && jebel.jebelApron <= 0.25 && jebel.jebelFlutes >= 8,
+    'jebel: sheer fluted massifs alone on a sand plain (gauntlet wave 24: the tables read as "low rounded swells")');
   assert.ok(resolveHorizonPanoramaCharacter('polar', { regional: 'iceSheet' }).peakShare > 0, 'iceSheet: nunataks through the ice');
   assert.ok(resolveHorizonPanoramaCharacter('volcanic', { regional: 'volcanicField' }).ampM < 600, 'volcanicField: no 1300 m spikes');
   assert.equal(resolveHorizonPanoramaCharacter('rolling', { regional: 'plain', ampM: 50 }).ampM, 50, 'a map overrides its class\'s knobs');
