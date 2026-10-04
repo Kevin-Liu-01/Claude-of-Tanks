@@ -33,8 +33,8 @@
       "concealers": 2475
     },
     "coastal": {
-      "bytes": 1226540,
-      "sha256": "29b580622ffba8ae9c59652096f81f66dd2662303b8e68eda2f66028149701c3",
+      "bytes": 1226682,
+      "sha256": "15040fa1975e07dc537cac5374b63ed06ff347ca5f168327dbdede1f92b92a16",
       "obstacles": 3405,
       "colliders": 3300,
       "concealers": 3402
