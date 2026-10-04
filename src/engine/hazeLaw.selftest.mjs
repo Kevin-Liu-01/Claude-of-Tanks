@@ -112,9 +112,13 @@ assert.doesNotMatch(clouds, /HAZE_LAW_GLSL|hazeSigma/, 'the clouds keep their ow
 // (the haze target's hue under a closed deck) by the overcast, over its first seven degrees.
 {
   const sky = here('./sky.ts');
-  assert.match(sky, /float deckW = max\( uDeckHorizon\.w \* \( 1\.0 - smoothstep\( 0\.0, 0\.12, direction\.y \) \), uDeckClosed \);\s*if \( deckW > 0\.0 \) \{\s*float deckTintL = max\( dot\( uDeckHorizon\.rgb, vec3\( 0\.2126, 0\.7152, 0\.0722 \) \), 1e-4 \);\s*skyCol = mix\( skyCol, uDeckHorizon\.rgb \* \( dot\( skyCol, vec3\( 0\.2126, 0\.7152, 0\.0722 \) \) \/ deckTintL \), deckW \);\s*\}\s*float cosSun = dot\( direction, uSunDirection \);/,
-    'the dome: the deck\'s grey at the horizon, after the environment bake\'s early return and before the knee');
+  assert.match(sky, /float deckW = max\( uDeckHorizon\.w \* \( 1\.0 - smoothstep\( 0\.0, 0\.12, direction\.y \) \), uDeckClosed \);\s*if \( deckW > 0\.0 \) \{\s*float deckTintL = max\( dot\( uDeckHorizon\.rgb, vec3\( 0\.2126, 0\.7152, 0\.0722 \) \), 1e-4 \);[\s\S]{0,300}float deckL = dot\( skyCol, vec3\( 0\.2126, 0\.7152, 0\.0722 \) \);\s*if \( uDeckClosed > 0\.0 \) \{\s*vec2 hzXZ = length\( direction\.xz \) > 1e-4 \? normalize\( direction\.xz \) : vec2\( 1\.0, 0\.0 \);\s*deckL = mix\( deckL, dot\( atmoSky\( vec3\( hzXZ\.x, 0\.0, hzXZ\.y \) \), vec3\( 0\.2126, 0\.7152, 0\.0722 \) \), uDeckClosed \);\s*\}\s*skyCol = mix\( skyCol, uDeckHorizon\.rgb \* \( deckL \/ deckTintL \), deckW \);\s*\}\s*float cosSun = dot\( direction, uSunDirection \);/,
+    'the dome: the deck\'s grey at the horizon (a closed deck\'s everywhere, at the horizon\'s level), after the environment bake\'s early return and before the knee');
   assert.ok(sky.indexOf('float deckW') > sky.indexOf('if ( uEnvBake > 0.5 ) {'), 'the environment bake keeps the raw sky');
+  // the hole itself was the cloud field's: a closed deck keeps a thin sheet where its weather field runs at its floor
+  assert.match(clouds, /o\.cov = max\( o\.cov, \$\{f\(CLOUD_CLOSED_COVER_FLOOR\)\} \* smoothstep\( 0\.97, 1\.0, uCoverage \) \);/, 'the slab\'s closed-deck floor');
+  assert.match(clouds, /float covB = max\( smoothstep\( 1\.0 - fbCov, 1\.0 - fbCov \+ 0\.35, fb \), \$\{f\(CLOUD_CLOSED_COVER_FLOOR\)\} \* smoothstep\( 0\.97, 1\.0, uCoverage \) \)/, 'the far band\'s');
+  assert.match(clouds, /const CLOUD_CLOSED_COVER_FLOOR = 0\.5;/);
   assert.match(sky, /deckOvercast = model\.mode === 'physical' \? Math\.min\(1, Math\.max\(0, model\.overcast\)\) : 0;\s*const deckKnob = lightTune\('SKY_DECK_HORIZON', 1\);\s*\(u\.uDeckHorizon\.value as THREE\.Vector4\)\.set\(tint\.r, tint\.g, tint\.b, deckOvercast \* deckKnob\);/,
     'by the light model\'s overcast, on the grounded rig only');
   // a closed deck (Titan Gorge's dense overcast, Whiteout's stratus) greys the whole dome, ramped in over the last tenth of
@@ -123,8 +127,9 @@ assert.doesNotMatch(clouds, /HAZE_LAW_GLSL|hazeSigma/, 'the clouds keep their ow
   // the twin: Whiteout's anti-sun horizon at the 13° sun under its own tint and closed deck
   const Y = [0.2126, 0.7152, 0.0722], lum = (c) => c[0] * Y[0] + c[1] * Y[1] + c[2] * Y[2];
   const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-  const dome = (sky, tint, overcast, dirY) => {
-    const w = Math.max(overcast * (1 - smooth(0, 0.12, dirY)), smooth(0.9, 1, overcast)), k = lum(sky) / Math.max(lum(tint), 1e-4);
+  const dome = (sky, tint, overcast, dirY, horizon = sky) => {
+    const closedW = smooth(0.9, 1, overcast), w = Math.max(overcast * (1 - smooth(0, 0.12, dirY)), closedW);
+    const k = (lum(sky) + (lum(horizon) - lum(sky)) * closedW) / Math.max(lum(tint), 1e-4);
     return sky.map((v, i) => v + (tint[i] * k - v) * w);
   };
   const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -134,8 +139,9 @@ assert.doesNotMatch(clouds, /HAZE_LAW_GLSL|hazeSigma/, 'the clouds keep their ow
   near(closed[2] / closed[0], tint[2] / tint[0], 1e-12, 'a closed deck: the tint\'s hue at the horizon');
   assert.deepEqual(dome(warm, tint, 0, 0), warm, 'an open sky: the LUT');
   assert.deepEqual(dome(warm, tint, 0.8, 0.13), warm, 'seven degrees up under a broken deck: the sky its gaps show');
-  const zenith = dome([0.2, 0.35, 0.8], tint, 1, 0.9);
+  const zenith = dome([0.2, 0.35, 0.8], tint, 1, 0.9, warm);
   near(zenith[2] / zenith[0], tint[2] / tint[0], 1e-12, 'a closed deck: no blue anywhere, its gaps the deck\'s grey');
+  near(lum(zenith), lum(warm), 1e-12, '... as bright as its horizon (a thin patch reads brighter grey, never the clear zenith\'s dark)');
 }
 
 

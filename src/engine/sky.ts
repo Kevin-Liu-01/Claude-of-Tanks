@@ -686,7 +686,14 @@ void main() {
 	float deckW = max( uDeckHorizon.w * ( 1.0 - smoothstep( 0.0, 0.12, direction.y ) ), uDeckClosed );
 	if ( deckW > 0.0 ) {
 		float deckTintL = max( dot( uDeckHorizon.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 );
-		skyCol = mix( skyCol, uDeckHorizon.rgb * ( dot( skyCol, vec3( 0.2126, 0.7152, 0.0722 ) ) / deckTintL ), deckW );
+		// the level: the sky's own luminance; under a closed deck the horizon's along this azimuth at every elevation (a
+		// thin patch in a closed deck reads as bright as the deck's horizon, never as the clear zenith's dark)
+		float deckL = dot( skyCol, vec3( 0.2126, 0.7152, 0.0722 ) );
+		if ( uDeckClosed > 0.0 ) {
+			vec2 hzXZ = length( direction.xz ) > 1e-4 ? normalize( direction.xz ) : vec2( 1.0, 0.0 );
+			deckL = mix( deckL, dot( atmoSky( vec3( hzXZ.x, 0.0, hzXZ.y ) ), vec3( 0.2126, 0.7152, 0.0722 ) ), uDeckClosed );
+		}
+		skyCol = mix( skyCol, uDeckHorizon.rgb * ( deckL / deckTintL ), deckW );
 	}
 	float cosSun = dot( direction, uSunDirection );
 	// the legacy knee exemption spot around the sun keeps the disc and its immediate aureole HDR
