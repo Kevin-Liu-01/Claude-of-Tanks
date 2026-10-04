@@ -1371,22 +1371,17 @@ const GRADE_TOE_SLOPE = 0.7;
 const GRADE_TOE_STOPS = 2.5;
 const GRADE_TOE_CHANNEL_FROM = 1.0;
 const GRADE_TOE_CHANNEL_TO = 2.5;
-// The enclosed Garage's own trims (2026-10-04, the vehicle-look lane; gauntlet wave 49: the desert-camo hull "washed to
-// near-white" on the turntable, lighting 2 in every build). The showroom keeps its authored rig (lighting.ts, an enclosed
-// presentation) under the legacy exposure; the 2026-10-02 display shoulder that restored its frame percentiles under AgX
-// (GARAGE_HIGHLIGHT_LIFT 0.95) pushed the hull's lit paint up with them. Measured on one pose (m1a2, the camo-difference
-// mask of its paint, display luma median / p95 / saturation): main's ACES grade 158 / 211 / 0.49, the shoulder 185 / 223 /
-// 0.37, without it 152 / 207 / 0.37 — the shoulder put about 32 levels on every lit plate and the light camos lost their
-// pattern to white; the shared bloom changed 0.7 % of the frame on main and on the PR alike (not the halo). The shoulder
-// is retired; the Garage takes a steeper slope and more scene-referred saturation than the open sky's rig (multipliers on
-// the model branch's, after its toe: the grounded rig never sees them), and its exposure trim lives with its own lights
-// (garagePhasePresentationRuntime.ts GARAGE_EXPOSURE_SCALE).
-// (chosen on a variant matrix of one capture hold, three camos: lift off, exposure 1.2, slope 1.5, saturation 1.7 put the
-// hull at median / p95 / saturation 141 / 207 / 0.51 on desert tan, 81 / 140 / 0.35 on summer green and 170 / 211 on the
-// winter wash — main's 158 / 211 / 0.49, 72 / 155 / 0.32, 188 / 213 — and the bay at median 61, p90 134, against main's
-// 50 / 142 and the shoulder's 77 / 167; no hull texel clips)
-const GARAGE_CONTRAST = 1.172;
-const GARAGE_SAT_LINEAR = 1.214;
+// The enclosed Garage (2026-10-04, the vehicle-look lane; gauntlet wave 49: the desert-camo hull "washed to near-white" on
+// the turntable). The showroom keeps its authored rig (lighting.ts, an enclosed presentation) under the legacy exposure;
+// the 2026-10-02 display shoulder that restored its frame percentiles under AgX (GARAGE_HIGHLIGHT_LIFT 0.95) pushed the
+// hull's lit paint up with them. Measured on one pose (m1a2, the camo-difference mask of its paint, display luma median /
+// p95 / saturation): main's ACES grade 158 / 211 / 0.49, the shoulder 185 / 223 / 0.37, without it 152 / 207 / 0.37 — the
+// shoulder put about 32 levels on every lit plate and the light camos lost their pattern to white; the shared bloom
+// changed 0.7 % of the frame on main and on the PR alike (not the halo). The shoulder is retired and the Garage takes the
+// same grade as every legacy frame. (Wave 55 re-pair, one capture hold, three camos: a garage-only steeper slope and
+// saturation with a 0.8 exposure trim dimmed the bay to median 71 against the shoulder's 90 — "the hangar is dim, cold
+// and thinly dressed" — and the slope alone, at full exposure, pushed the winter wash's p95 back to 222; the shoulder's
+// retirement alone keeps the bay at 88 and the winter wash at p95 211, desert tan 152 / 207, summer green 101 / 152.)
 // r4 LP2 ("vignette stacks to a ~30-35% corner luminance falloff on bright daylight wides"): the shader keys
 // the vignette to the PIXEL's own luma — bright sky/haze corners keep most of their level — and
 // terrain_environment r4 eased it to 0.14; 2026-10-01: 0.10, a lens's natural falloff.
@@ -2700,11 +2695,6 @@ export function createPost(
         THREE.MathUtils.clamp(model.night, 0, 1));
       u.uToe.value.set(toeSlope, toeOn ? lightTune('GRADE_TOE_STOPS', GRADE_TOE_STOPS) : 0,
         lightTune('GRADE_TOE_CHANNEL_FROM', GRADE_TOE_CHANNEL_FROM), lightTune('GRADE_TOE_CHANNEL_TO', GRADE_TOE_CHANNEL_TO));
-      // 2026-10-04: the enclosed Garage's own slope and saturation (GARAGE_CONTRAST note); an open sky never takes them
-      if (scene.userData.lightEnclosed) {
-        u.uContrast.value = (u.uContrast.value as number) * lightTune('GARAGE_CONTRAST', GARAGE_CONTRAST);
-        u.uSatLinear.value = (u.uSatLinear.value as number) * lightTune('GARAGE_SAT_LINEAR', GARAGE_SAT_LINEAR);
-      }
     } else {
       u.uToe.value.set(0, 0, 0, 0);
       u.uExposure.value = lightTune('LEGACY_EXPOSURE', LEGACY_EXPOSURE) * (scene.userData.postExposure || 1);

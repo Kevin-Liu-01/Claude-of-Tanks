@@ -62,14 +62,6 @@ export interface GaragePhasePresentationRuntime {
 
 const GARAGE_SUN_COLOR = 0xf2f0ea;
 const GARAGE_SUN_INTENSITY_SCALE = 0.55;
-/**
- * 2026-10-04 (the vehicle-look lane; gauntlet wave 49: the hull "washed to near-white"): the showroom's own camera.
- * Under the legacy rig the light model exposes the bay at its legacy exposure times the preset's trim (lightModelCore.ts
- * LEGACY_EXPOSURE × postExposure); AgX lifts that bay's shadows and midtones above the ACES showroom it was lit for
- * (bay median 86 against 56 on main), so the Garage trims its own exposure here, with its own lights, and post.ts gives
- * it a steeper slope (GARAGE_CONTRAST). An open sky's exposure is untouched.
- */
-const GARAGE_EXPOSURE_SCALE = 0.8; // the legacy 1.5 to 1.2 (post.ts GARAGE_CONTRAST note: the variant matrix)
 
 /**
  * Owns the phase-exclusive Garage scene roots, authored key lights, neutral
@@ -184,7 +176,6 @@ export function createGaragePhasePresentationRuntime({
           ...skyConfig,
           sunColorHex: GARAGE_SUN_COLOR,
           sunIntensity: (skyConfig.sunIntensity ?? 4.5) * GARAGE_SUN_INTENSITY_SCALE,
-          postExposure: (skyConfig.postExposure ?? 1) * GARAGE_EXPOSURE_SCALE,
         }
       : skyConfig);
   };

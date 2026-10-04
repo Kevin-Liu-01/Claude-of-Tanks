@@ -81,8 +81,6 @@ assert.deepEqual(trimmed[2], {
   sunColorHex: 0xf2f0ea,
   sunIntensity: 4.8 * 0.55,
   haze: 0.2,
-  // 2026-10-04 (the vehicle-look lane): the showroom's own exposure trim rides its neutral key (GARAGE_EXPOSURE_SCALE)
-  postExposure: 0.8,
 });
 assert.deepEqual(authoredSky, { sunColorHex: 0xffe0c0, sunIntensity: 4.8, haze: 0.2 },
   'showroom trim must not mutate the authored Garage preset');

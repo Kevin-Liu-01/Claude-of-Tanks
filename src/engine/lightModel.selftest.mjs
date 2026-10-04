@@ -238,20 +238,12 @@ assert.match(post, /outputColor\.rgb \*= uExposure \* uWhiteBalance;[\s\S]{0,200
   'exposure, white balance, the scene-referred saturation and contrast are linear, before the tone curve');
 assert.doesNotMatch(post, /GRADE_PIVOT|GRADE_BLACK_LIFT|GRADE_SHADOW_TINT|GRADE_GREEN_DESAT|GRADE_KNEE/, 'the ACES-era grade stack is retired');
 // 2026-10-02: the enclosed Garage keeps its authored rig, tuned under ACES's steep shoulder. 2026-10-04 (the vehicle-look
-// lane, gauntlet wave 49): the display shoulder that restored its highlight percentiles under AgX also put ~32 levels on
-// every lit plate of the turntable hull (the light camos washed to white), so it is retired; the enclosed presentation
-// takes its own slope and saturation as multipliers on the model branch's, after the toe, and its own exposure trim with
-// its lights (garagePhasePresentationRuntime.ts)
+// lane, gauntlet waves 49 and 55): the display shoulder that restored its highlight percentiles under AgX also put ~32
+// levels on every lit plate of the turntable hull (the light camos washed to white), so it is retired, and the Garage
+// takes the same grade and exposure as every legacy frame (a garage-only slope, saturation and exposure trim dimmed the
+// bay on the re-pair)
 assert.doesNotMatch(post, /uHighlightLift|GARAGE_HIGHLIGHT_LIFT = /, 'the Garage highlight shoulder is retired');
-{
-  const trims = post.match(/\/\/ 2026-10-04: the enclosed Garage's own slope and saturation[^\n]*\n\s*if \(scene\.userData\.lightEnclosed\) \{\s*u\.uContrast\.value = \(u\.uContrast\.value as number\) \* lightTune\('GARAGE_CONTRAST', GARAGE_CONTRAST\);\s*u\.uSatLinear\.value = \(u\.uSatLinear\.value as number\) \* lightTune\('GARAGE_SAT_LINEAR', GARAGE_SAT_LINEAR\);\s*\}\s*\} else \{/);
-  assert.ok(trims, 'the trims belong to the enclosed presentation, last in the model branch (a battle frame never takes them)');
-  assert.ok(post.indexOf("lightTune('GRADE_TOE_CHANNEL_TO', GRADE_TOE_CHANNEL_TO));") < trims.index, 'after the toe');
-  const contrastK = Number(post.match(/const GARAGE_CONTRAST = ([0-9.]+);/)?.[1]);
-  const satK = Number(post.match(/const GARAGE_SAT_LINEAR = ([0-9.]+);/)?.[1]);
-  assert.ok(contrastK >= 1 && contrastK <= 1.3, `a steeper slope, bounded (${contrastK})`);
-  assert.ok(satK >= 1 && satK <= 1.4, `more scene-referred saturation, bounded (${satK})`);
-}
+assert.doesNotMatch(post, /GARAGE_CONTRAST|GARAGE_SAT_LINEAR|lightEnclosed\) \{\s*u\.uContrast/, 'no garage-only grade either');
 // the aerial haze is a layer over the ground: a high camera looks down through less of it (the census bird view)
 assert.match(post, /float x = -viewZ \* uDensity \* hzLayer;/, 'the extinction curve takes the layer factor');
 assert.match(post, /float x2 = hzD \* dHaze \* hzLayer;/, 'and the scatter-in curve');
