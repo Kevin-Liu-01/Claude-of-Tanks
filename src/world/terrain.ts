@@ -128,6 +128,15 @@ interface MarshSourceConfig {
   /** Round 61 (2026-09-24, Amberford's bridge): the road that crosses this station does so on a BRIDGE — a level deck
    * over the water (resolveBridgeDecks below) instead of the 14–18 m dry band every other crossing is graded through. */
   crossing?: 'bridge';
+  /** Maps lane B (2026-10-03): a sor station — part of the flat `sorFlat` (stations with one id are one flat). A sor is
+   * a closed basin its last water filled with silt and salt. Each station digs a flat-bottomed pan `dip` deep (its
+   * bank over the outer SOR_BANK of the radius; overlapping stations take the deepest, not the sum), and inside the
+   * stations every point under the flat's level is filled to it: one level, dead flat, `sorSinkM` (default 0.35 m)
+   * under the lowest point of the flat's rim (the ground on the stations' outer edge), so the rim stands over the floor
+   * all round and the shore is the contour where the dug ground meets the level. The micro relief stands down over
+   * the stations and an apron round them. */
+  sorFlat?: number;
+  sorSinkM?: number;
   /** Round 61: the deck's clearance over the water surface (m, default 2.4), its width between the parapets (m,
    * default 12.4) and the approach length beyond each abutment over which the road plane grades to the deck (m;
    * by default the length a 7 % grade needs from the road plane past the abutment, 8–60 m). */
@@ -293,6 +302,10 @@ interface SplatConfig {
   microAmp?: number;
   strata?: number;
   pavedRoads?: boolean;
+  /** Maps lane B (2026-10-03, the gauntlet: Tarkhan Steppe's pans "read as snow patches or grey mud"): the dry marsh
+   * layer drawn as a sor's salt crust — white-grey salt with faint desiccation polygons (`crackM` across) over the
+   * floor, the damp darker silt of its margin (`damp`, 0..1) outside the crust. */
+  saltCrust?: { crackM?: number; damp?: number };
   roadTexMix?: number;
   townWear?: number;
   iceDrift?: number;
@@ -436,6 +449,8 @@ export interface HeightField {
   fieldTrenchLines?: AssaultTrenchPlan | null;
   _mesaW: ((x: number, z: number) => number) | null;
   _waterWetnessAt?: (x: number, z: number) => number;
+  /** Maps lane B (2026-10-03): the sors' crust / damp-margin wetness for the splat mask (maps with sor stations). */
+  _sorWetnessAt?: (x: number, z: number) => number;
   /** Construction-only seed admission; never used for gameplay or seating. */
   _createRoadPlacementSampler?: () => Generator<number, TerrainPlacementSampler, void>;
 }
@@ -928,6 +943,66 @@ function* heightFieldBuildSteps(
   let railCuttingsOn = false, railCuttingsSuspended = false;
   const _VILLAGE = layout.village;
   const _MARSHES = layout.marshes;
+  // maps lane B (2026-10-03): a sor pan's bank — the outer share of each station's radius over which its dig deepens to
+  // `dip`, as (t / SOR_BANK)² (t = 1 − distance in radii): no slope at the rim, so the bank leaves the ground smoothly,
+  // and its steepest where the floor's level meets it, so the shoreline is crisp.
+  const SOR_BANK = 0.3;
+  // the apron round a sor (in radii past its stations' edges) over which the micro relief returns: the flat lies in a
+  // smooth sediment apron, so its rim is the gentle macro ground and its bank one even height, not a berm's crest
+  const SOR_APRON = 0.6;
+  // a sor flat's level: the lowest ground on its rim (the stations' shorelines, every 2 m, where no other sor station
+  // covers them: the field's base and landforms under the pipeline's own corridor and village weights; the micro relief
+  // is calm there, and roads and pads keep away) less the flat's sink, so every point of the rim stands over the floor
+  // and the basin is closed. Computed on first use and kept.
+  const _sorLevels = new Map<number, number>();
+  function sorLevel(mi: number): number {
+    const key = _MARSHES[mi].sorFlat as number;
+    const known = _sorLevels.get(key);
+    if (known !== undefined) return known;
+    let lowest = Infinity, sink = 0;
+    for (const station of _MARSHES) {
+      if (station.sorFlat !== key) continue;
+      sink = Math.max(sink, station.sorSinkM ?? 0.35);
+      const samples = Math.max(12, Math.ceil(Math.PI * station.r));
+      for (let k = 0; k < samples; k++) {
+        const angle = (k / samples) * Math.PI * 2, reach = shorelineRadiusAt(station, angle);
+        const x = station.x + Math.cos(angle) * reach, z = station.z + Math.sin(angle) * reach;
+        if (_MARSHES.some((other) => other !== station && other.sorFlat !== undefined
+          && shorelineDistance(other, x, z, 1) < 0.999)) continue;
+        const cw = gridSample(gCorridor, x, z), vm = villageMask(x, z);
+        lowest = Math.min(lowest, applyMacroTerrain(x, z, baseTerrainHeight(x, z, cw, vm), cw, vm, 0));
+      }
+    }
+    const level = lowest - sink;
+    _sorLevels.set(key, level);
+    return level;
+  }
+  // the floor's weight at (x, z) over a flat's stations, and the station that gives it (the height field and the crust
+  // mask share it)
+  let _sorPanStation = -1;
+  function sorPanAt(x: number, z: number): number {
+    let pan = 0;
+    _sorPanStation = -1;
+    for (let mi = 0; mi < _MARSHES.length; mi++) {
+      const m = _MARSHES[mi];
+      if (m.sorFlat === undefined) continue;
+      const md = shorelineDistance(m, x, z, 1);
+      if (md >= 1) continue;
+      const u = Math.min(1, (1 - md) / SOR_BANK), w = u * u;
+      if (w > pan) { pan = w; _sorPanStation = mi; }
+    }
+    return pan;
+  }
+  // maps lane B: the sors' wetness for the splat mask — the salt crust (0.36..1) where the ground stands at the flat's
+  // level (the floor), a damp margin (0.26 → 0) up the first 0.35 m of its banks, nothing beyond the stations
+  const _sorStations = _MARSHES.some((m) => m.sorFlat !== undefined);
+  function sorWetnessAt(x: number, z: number): number {
+    const pan = sorPanAt(x, z);
+    if (_sorPanStation < 0) return 0;
+    const above = getHeightAt(x, z) - sorLevel(_sorPanStation);
+    const reach = Math.sqrt(pan); // 0 at the rim, 1 from the bank's foot in
+    return above <= 0.02 ? 0.36 + 0.64 * reach : 0.26 * Math.min(1, reach * 3) * (1 - smoothstep(0.02, 0.35, above));
+  }
   const _LAKES = layout.lakes;
   const _SPAWN_PLAYER = layout.spawns.player;
   const _SPAWN_ENEMIES = layout.spawns.enemies;
@@ -1618,6 +1693,7 @@ function* heightFieldBuildSteps(
     let word = 0, bits = index ? index[bucket] : 0;
     let h = surfaces ? 0 : baseTerrainHeight(x, z, cw, vm);
     let liquidDip = 0;
+    let sorDig = 0, sorPanW = 0, sorCalmW = 0, sorStation = -1;
     let marshW = 0;
     let waterWeight = 0, waterLevelSum = 0, waterWeightSum = 0;
     let waterCoreSum = 0, waterCoreCount = 0;
@@ -1633,7 +1709,17 @@ function* heightFieldBuildSteps(
       const surfaceOffset = mi * LIQUID_MARSH_STRIDE;
       const bankBand = surfaces ? surfaces[surfaceOffset + 3] : 1;
       const md = shorelineDistance(m, x, z, bankBand);
-      if (md < 1) {
+      if (m.sorFlat !== undefined) {
+        // maps lane B (2026-10-03): a sor station — its pan's dig (applied with the fill after the micro relief, below)
+        // and the micro relief's calm over the station and its apron; no marsh dip, no hold on the landforms
+        const sd = md < 1 ? md : shorelineDistance(m, x, z, 1 + SOR_APRON);
+        if (sd < 1) {
+          const u = Math.min(1, (1 - sd) / SOR_BANK), pan = u * u;
+          sorDig = Math.max(sorDig, m.dip * pan);
+          if (pan > sorPanW || sorStation < 0) { sorPanW = pan; sorStation = mi; }
+        }
+        if (sd < 1 + SOR_APRON) sorCalmW = Math.max(sorCalmW, 1 - smoothstep(1, 1 + SOR_APRON, sd));
+      } else if (md < 1) {
         const t = 1 - md;
         const dip = m.dip * t * t * (3 - 2 * t);
         if (surfaces) liquidDip += dip;
@@ -1679,7 +1765,7 @@ function* heightFieldBuildSteps(
       crest *= crest;
       let micro = smoothstep(0.42, 0.92, crest) * (2.1 + f2 * 0.8) // berms/ridgelines
         - smoothstep(0.55, 0.92, f2) * 1.5;                        // shallow depressions
-      micro *= (1 - cw * 0.55) * (1 - vm) * (1 - marshW) * T.microScale;
+      micro *= (1 - cw * 0.55) * (1 - vm) * (1 - Math.max(marshW, sorCalmW)) * T.microScale;
       h += micro;
     }
     // r3 terrain_environment: near-field micro-relief — 3-8 m humps, scrapes
@@ -1690,7 +1776,13 @@ function* heightFieldBuildSteps(
     {
       const m1 = noi.noise(x * 0.143 + 88, z * 0.143 - 141);
       const m2 = noi.noise(x * 0.317 - 260, z * 0.317 + 33);
-      h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - marshW * 0.7) * T.microScale;
+      h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - Math.max(marshW * 0.7, sorCalmW)) * T.microScale;
+    }
+    // maps lane B (2026-10-03): a sor — its pan dug, and everything under its flat's level filled dead flat to it
+    if (sorStation >= 0) {
+      h -= sorDig;
+      const level = sorLevel(sorStation);
+      if (h < level) h = level;
     }
     const borderRadius = Math.max(Math.abs(x), Math.abs(z));
     // the map-borders lane (2026-10-03): the rim lift is the border landform's (borderLandform.ts) — inside the playable
@@ -2276,6 +2368,8 @@ function* heightFieldBuildSteps(
       if (dx * dx + dz * dz < (lk.r * 1.04) ** 2) return true;
     }
     for (const m of _MARSHES) {
+      // maps lane B (2026-10-03): a sor station clears its crust (below), not a share of its radius
+      if (m.sorFlat !== undefined) continue;
       const dx = x - m.x, dz = z - m.z;
       const distanceSquared = dx * dx + dz * dz;
       if (T.frozenMarshes && distanceSquared < m.r * m.r) return true;
@@ -2284,6 +2378,13 @@ function* heightFieldBuildSteps(
       // sparse bank reeds. Default off => pre-existing maps unchanged.
       const clearRadius = m.r * (liquidWater ? 1 : 0.55);
       if ((T.clearMarshVeg || liquidWater) && distanceSquared < clearRadius * clearRadius) return true;
+    }
+    // maps lane B (2026-10-03, the capture: tall grass stood in the salt): nothing grows on a sor's crust — the floor at
+    // its flat's level (read on the 1 m fast grid: the tall-grass tier asks per blade) — while its damp margin keeps the
+    // sward
+    if (_sorStations) {
+      sorPanAt(x, z);
+      if (_sorPanStation >= 0 && getHeightAtFast(x, z) - sorLevel(_sorPanStation) <= 0.03) return true;
     }
     return false;
   }
@@ -2394,6 +2495,7 @@ function* heightFieldBuildSteps(
     }} : {}),
     _mesaW: mesaWeight,
     ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt } : {}),
+    ...(_sorStations ? { _sorWetnessAt: sorWetnessAt } : {}),
   };
 }
 
@@ -3075,6 +3177,7 @@ export function makeMaskTexture(
   landformW: HeightField['_mesaW'] = null,
   waterWetnessAt: HeightField['_waterWetnessAt'] | null = null,
   shoreDirtStart: number | null = null,
+  sorWetnessAt: HeightField['_sorWetnessAt'] | null = null,
 ): THREE.DataTexture {
   const _VILLAGE = layout.village;
   const activityWear = layout.terrain.villageWear === 'activity-patches';
@@ -3147,9 +3250,12 @@ export function makeMaskTexture(
     // survive 2 m texels: they read as beads along every straight road.
     px[j + 1] = Math.max(0, 1 - d / 12) * 255;
   }
+  // maps lane B (2026-10-03): a sor's crust follows its fill (sorWetnessAt), not its stations' circles
+  const discMarshes = sorWetnessAt ? layout.marshes.filter((m) => m.sorFlat === undefined) : layout.marshes;
   function sampleMarshMask(x: number, z: number): number {
-    return waterWetnessAt ? waterWetnessAt(x, z)
-      : sampleShorelineMask(layout.marshes, layout.lakes, x, z);
+    const wet = waterWetnessAt ? waterWetnessAt(x, z)
+      : sampleShorelineMask(discMarshes, layout.lakes, x, z);
+    return sorWetnessAt ? Math.max(wet, sorWetnessAt(x, z)) : wet;
   }
   function paintVillageMask(x: number, z: number, j: number): void {
     const dx = Math.max(_VILLAGE.x0 - x, x - _VILLAGE.x1, 0);
@@ -3257,6 +3363,7 @@ uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoul
 // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving (a cobble set: Cinder Junction, Steinburg,
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
 uniform float uPavedRock;
+uniform vec4 uSaltCrust;  // maps lane B (2026-10-03): a sor's salt crust (on, polygon cell m, damp margin, unused)
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
 uniform vec3 uIceSky;     // r3: fresnel sky tint reflected by clear lake ice
@@ -3356,6 +3463,10 @@ vec2 nzq(vec2 p, float s, vec2 o) {
   vec2 a = nz(p, s, o).rg;
   vec2 b = nz(vec2(0.7431 * p.x - 0.6691 * p.y, 0.6691 * p.x + 0.7431 * p.y), s * 0.7243, o.yx + vec2(0.37, 0.19)).gr;
   return clamp((a + b - 1.0) * 0.72 + 0.5, 0.0, 1.0);
+}
+// maps lane B (2026-10-03): two hash values in [0, 1) per integer cell, for the salt crust's desiccation polygons
+vec2 cellHash2(vec2 p) {
+  return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
 }
 // the flat normal a layer's normal tile averages to (x, z perturbation 0; the packed third channel is unused)
 const vec4 NRM_MEAN = vec4(0.5, 0.5, 0.5, 1.0);
@@ -3963,6 +4074,48 @@ void splatCompute() {
   if (fMs > 0.002 && keepR > 0.002) {
     a = mix(a, groundSamp(uAlbM, uMeanM, uv * 0.190, df, mipB), fMs);
     if (nrmOn && uRingDraw < 0.5) n = mix(n, groundNrm(uNrmM, uv * 0.190, df, mipB), fMs);
+  }
+  // maps lane B (2026-10-03, the gauntlet: Tarkhan Steppe's pans "read as snow patches or grey mud"): a sor's floor is
+  // crusted with salt — white-grey, thinner where the silt shows through, broken into faint desiccation polygons —
+  // and its margin is damp silt, darker and smoother than the steppe around it. The crust's edge sits on the floor's
+  // shore (the fill in the height field), so the white ends where the hollow's own ground meets the floor.
+  if (uSaltCrust.x > 0.5 && fM > 0.002) {
+    float crustW = smoothstep(0.26, 0.36, fM);
+    float dampW = smoothstep(0.015, 0.09, fM) * (1.0 - crustW) * uSaltCrust.z;
+    if (crustW > 0.002) {
+      vec3 crustC = vec3(0.44, 0.43, 0.40);
+      crustC *= 0.82 + nzq(uv, 0.083, vec2(0.23, 0.59)).x * 0.30;
+      crustC = mix(crustC, crustC * vec3(0.78, 0.75, 0.70), smoothstep(0.62, 0.82, nz(uv, 0.031, vec2(0.67, 0.21)).g) * 0.7);
+      vec2 cp = wp.xz / uSaltCrust.y;
+      vec2 ci = floor(cp);
+      vec2 cf = fract(cp);
+      float d1 = 8.0;
+      float d2 = 8.0;
+      for (int j = -1; j <= 1; j++) {
+        for (int i = -1; i <= 1; i++) {
+          vec2 g = vec2(float(i), float(j));
+          vec2 r = g + cellHash2(ci + g) * 0.8 + 0.1 - cf;
+          float d = dot(r, r);
+          if (d < d1) {
+            d2 = d1;
+            d1 = d;
+          } else if (d < d2) {
+            d2 = d;
+          }
+        }
+      }
+      float edgeM = (sqrt(d2) - sqrt(d1)) * uSaltCrust.y;
+      float crackFw = max(length(fwidth(wp.xz)), 1e-4);
+      float crack = (1.0 - smoothstep(0.03, 0.03 + crackFw * 1.5, edgeM)) * tileVis(uSaltCrust.y);
+      // faint and uneven: a crack shows where the crust has curled (a 5 m patchwork), barely where it has not
+      crustC *= 1.0 - crack * (0.06 + 0.14 * nzq(uv, 0.19, vec2(0.61, 0.13)).x);
+      a.rgb = mix(a.rgb, crustC, crustW);
+      a.a = mix(a.a, 0.93, crustW);
+      if (nrmOn) n = mix(n, NRM_MEAN, crustW * 0.75);
+    }
+    a.rgb *= 1.0 - dampW * 0.40;
+    a.rgb = mix(a.rgb, a.rgb * vec3(0.93, 0.89, 0.81), dampW);
+    a.a = mix(a.a, a.a * 0.72, dampW);
   }
   // rock layer: pre-blend planar/wall by triW so the partial-fR band (24-45
   // deg) never lays stretched planar rock over the triplanar sand
@@ -5097,7 +5250,7 @@ void splatCompute() {
   float shoreW = uSea > 0.5
     ? smoothstep(0.16, 0.36, fM) * (1.0 - smoothstep(0.48, 0.78, fM))
     : smoothstep(0.04, 0.30, fM) * (1.0 - smoothstep(0.55, 0.95, fM));
-  a.rgb *= 1.0 - shoreW * 0.30 * (1.0 - driftW);
+  a.rgb *= 1.0 - shoreW * 0.30 * (1.0 - driftW) * (1.0 - uSaltCrust.x);
   // Round 73 (2026-09-25, the ground redux; round 66's open note "run-up whitens the sheet but does not wet the
   // sand"): the wet strand. Below the sheet's waterline the sand apron is dark and glossy where the swash just ran
   // (a film whose reach breathes on the world clock with the map's swell period, arriving at a different phase along
@@ -5418,6 +5571,7 @@ function* createSplatMaterialSteps(
   seaOpenings: readonly SeaOpening[] = [],
   sky: { sunAzimuthDeg?: number; sunElevationDeg?: number } | null = null,
   outlandWaterAt: HeightField['getOutlandWaterAt'] | null = null,
+  sorWetnessAt: HeightField['_sorWetnessAt'] | null = null,
 ): Generator<void | TerrainSourceCheckpoint, {
   material: THREE.MeshStandardMaterial; textures: THREE.Texture[];
   waterMask: THREE.Texture; waterNormal: THREE.Texture;
@@ -5505,7 +5659,7 @@ function* createSplatMaterialSteps(
   sourcedTexturesReady.then(measureLayerMeans, measureLayerMeans);
   const maskNoi = new SimplexNoise({ random: mulberry32(3010) });
   const mask = makeMaskTexture(maskNoi, layout, rockMask, waterWetnessAt,
-    S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null);
+    S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null, sorWetnessAt);
   yield;
   if (!_splatFields) yield* splatFieldSteps();
   const noiseTex = makeShaderNoiseTexture(3011);
@@ -5663,6 +5817,9 @@ function* createSplatMaterialSteps(
     // round 55: the bedded sandstone R (no sourced R in the map's plan) carries the noise wall crag, not the tile's beds
     shader.uniforms.uBeddedR = { value: S.sandstone && !sourcedTerrainLayerPlanned(mapId, S, 'R') ? 1 : 0 };
     shader.uniforms.uPavedRock = { value: sourcedTerrainLayerSet(mapId, S, 'R') === 'cobble' ? 1 : 0 }; // the map-borders lane
+    // maps lane B (2026-10-03): a sor's salt crust (off unless the map authors it)
+    shader.uniforms.uSaltCrust = { value: new THREE.Vector4(S.saltCrust ? 1 : 0, S.saltCrust?.crackM ?? 1.8,
+      S.saltCrust?.damp ?? 1, 0) };
     // r2: agrarian field patchwork — only sensible on temperate farmland maps
     // ground lane (2026-10-03): a map with a land-use row (landUse.ts) draws its real fields instead
     shader.uniforms.uFieldPatch = { value: landUseProfile ? 0 : S.fieldPatch ?? 0 };
@@ -6095,6 +6252,7 @@ function* terrainBuildSteps(
     seaOpenings,
     cfg?.sky ?? null,
     heightField.getOutlandWaterAt ?? null,
+    heightField._sorWetnessAt ?? null,
   );
   let materialStep = materialSteps.next();
   try {
