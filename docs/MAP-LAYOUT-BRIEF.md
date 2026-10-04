@@ -116,12 +116,12 @@ that key and is enforced like it: a miss fails, and the check names the band and
 scale itself is the design, and derive the band from that scale, not from the value the map happens to reach.
 
 Olympus Basin (`mars`) is the first: the compact arena of the Mars mode (the owner, 2026-09-18), played at 0.38 g, with
-its deployments 470 m apart where the brief's fields stand 600–860 m. Its distance bands take its scale, about 0.64 of
-the brief's:
+its deployments about 500 m apart where the brief's fields stand 600–860 m. Its distance bands take its scale, about
+0.64 of the brief's:
 
 | Key | Shared band | Olympus Basin | Why |
 | --- | --- | --- | --- |
-| `spawnSeparationM` | 600–860 m | 420–520 m | the arena keeps its 470 m; the band is centred on it |
+| `spawnSeparationM` | 600–860 m | 420–520 m | centred on the arena's first 470 m; the pacing fix stands the blocks 513 m apart, inside it |
 | `sightMedianM` | 80–150 m | 55–100 m | the shared band scaled by 0.64 |
 | `sightLongShare` | 0.03–0.15 | 0.01–0.15 | a 300 m line is 64 % of the separation (35–50 % on the brief's fields) |
 | `sightCloseShare` | 0.25–0.62 | 0.25–0.68 | more blocked rays end inside 100 m on a field this size |
@@ -298,8 +298,9 @@ props code shaped every layout, and the next maps should start from them:
   - Titan Gorge: 27 → 24.
   - Skybridge Chasm: 27. Its deployments alone were turned three times (23, 30 and 28): its 300 m south segments
     against 160 m north ones kept the north ahead (81 of 120). With the segments turned about the shoulder system's
-    middle as well: 21.
-  - Olympus Basin: 34 → 22, with its rock authored in pairs about the station.
+    middle as well: 21, and 22 once the pacing fix stood the deployments 721 m apart.
+  - Olympus Basin: 34 → 22, with its rock authored in pairs about the station; 15 once the pacing fix stood its
+    blocks 257 m out (the south deployment 25 of 40, binomial p 0.15).
 
   Glacier Pass, Obsidian Caldera, Ironworks and Blackglass were already even with blocks alone (20–24 of 40).
 - **Noise mesas and roads.** A noise mesa field stands its walls wherever the noise crosses its threshold, so at some
@@ -311,6 +312,15 @@ props code shaped every layout, and the next maps should start from them:
   `settlementScale: 1`), and the bots drive round them. End a wall segment in a nose (`cliffEnd: 'nose'`), whose wall
   and talus turn round the end, not in a cut. A cut end drops its talus apron in a step that bots drive off. Skybridge
   v6 lost 1556 hp in four standard matches at the cut ends; with noses and whole walls it lost 170 hp in twelve.
+- **Separation and pacing.** `server/battlePacing.selftest.mjs` plays four 2v2 bot matches a map at its own seeds
+  (21000 + the map's index x 1000 + 0..3, an idle human on alpha). No match may end inside 90 s, and at most 4 of the
+  fleet's 132 inside 120 s. A layout that brings the deployments nearer, or opens the road between them, brings contact
+  sooner: Skybridge's rotation stood alpha 120 m nearer and one match ended in 102 s; Olympus Basin's blocks on its
+  open north–south road ended one in 81 s. Fix the layout, not the receipt. Lengthen the separation inside the map's
+  band (Skybridge 677 → 717 m, Olympus Basin 469 → 513 m) and stand a gate butte beside each road approach, so a
+  block's bots leave round it. Give a gate butte a sheer section with a rim (talus only at its foot): Olympus Basin's
+  first pair, with the butte profile's climbable apron, cost a 235 hp fall in horde. After the fix, Skybridge played
+  270 / 153 / 132 / 269 s and Olympus Basin 184 / 243 / 201 / 90 s at their seeds.
 - **Budget.** All three pilots exceed point 10's 10 % triangle budget. The coordinator approved this for PR #9 on
   October 2, 2026, pending the owner. The extra triangles are content the brief wants. Trimming goes to frame-time
   work, such as shadow caching and LOD for parapets and wire, rather than to removing content. Whole-map prop
