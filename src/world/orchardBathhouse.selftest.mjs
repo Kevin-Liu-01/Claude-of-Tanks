@@ -17,6 +17,7 @@ import { deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand } 
 import { certifyGroundedStructureParts, measureBoundsJoint } from './structureConnectivity.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
+import { rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
 
 const names = ['plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked'];
 const emptyBuckets = () => Object.fromEntries(names.map(name => [name, []]));
@@ -336,6 +337,8 @@ const dependencies = { roadBuildingDoorAxis, roadSettlementJunction, buildingRoa
   addCatalogExterior, jitterUV, mulberry32, sampleObbGround, deriveRuntimeStructureCollisionProfile,
   appendStructureCollisionBand,
   attachStructureBuildContext, // round 75: the placement stage hands every builder its battlefield context
+  // regional-buildings lane: the map's architecture kit swaps a placed building's geometry before its collision
+  rebuildRegionalStructure, resolveRegionalArchitecture,
 };
 const makePlacement = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* build(config, heightField, seed) {
   const P = { maxSpread: 1.7, ...config.props, plan: ['bathhouse'] };
@@ -350,6 +353,7 @@ const makePlacement = new Function(...Object.keys(dependencies), `return ${strip
   const unexpected = () => { throw new Error('First-bathhouse fixture reached a different house'); };
   const makeCottage = unexpected, makeBarn = unexpected, makeTower = unexpected, makeRuin = unexpected;
   const makeAdobe = unexpected, makeRowhouse = unexpected, URBAN_BUILDERS = {}, VILLAGE_BUILDERS = {};
+  const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
   ${section('function mergeInto(', 'type GroundDecalKind')}
   ${section('  function groundFit(', "  yield { stage: 'yard-clutter' };")}
   ${section('  const roads = L.roads;', '  // heaped masonry chunks')}

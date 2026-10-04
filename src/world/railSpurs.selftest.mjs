@@ -135,7 +135,13 @@ try {
   const centreX = (g) => { g.computeBoundingBox(); return g.boundingBox.getCenter(new THREE.Vector3()).x; };
   const inSquare = (list) => list.filter((g) => centreX(g) <= 512);
   const approach = { slab: built.parts.slab.filter((g) => centreX(g) > 512), sleeper: built.parts.sleeper.filter((g) => centreX(g) > 512), rail: built.parts.rail.filter((g) => centreX(g) > 512) };
-  const slab = inSquare(built.parts.slab), rail = inSquare(built.parts.rail), sleeper = inSquare(built.parts.sleeper), { strut, beam } = built.parts;
+  // ground lane (2026-10-03): an infill sleeper (userData.railInfill, a hashed jitter, no seeded draw) lies midway before
+  // every seeded one — sleepers every ~0.7 m; the seeded ones keep the old count and the old draws
+  const seededOnly = (list) => list.filter((g) => !g.userData.railInfill);
+  const infillAll = built.parts.sleeper.filter((g) => g.userData.railInfill);
+  assert.equal(infillAll.length, seededOnly(built.parts.sleeper).length, 'one infill sleeper for every seeded one');
+  approach.sleeper = seededOnly(approach.sleeper);
+  const slab = inSquare(built.parts.slab), rail = inSquare(built.parts.rail), sleeper = seededOnly(inSquare(built.parts.sleeper)), { strut, beam } = built.parts;
   assert.equal(slab.length, 92); assert.equal(rail.length, 184); assert.equal(strut.length, 2); assert.equal(beam.length, 1, 'one stop: the west stub');
   assert.equal(sleeper.length, spurSpans.reduce((n, s) => n + Math.round(railRunLength(s.bx - s.ax, s.bz - s.az) / 1.4), 0) + 0,
     'one sleeper every ~1.4 m of every span (the fitted rise of a 4 m span never changes the count)');

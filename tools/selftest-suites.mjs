@@ -101,6 +101,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/dragunForwardRoofStock.selftest.mjs',
     'tools/interior-fill-body-policy.selftest.mjs',
     'tools/track-lane-boxes.selftest.mjs',
+    // 2026-10-03: declared physical bore air is open, never filled and reported apart from leaks
+    'tools/physical-bore-air.selftest.mjs',
     // 2026-10-02: the fleet watertight gate's own controls (the gate itself runs in fleetPassDefault)
     'src/vehicles/watertightAudit.selftest.mjs',
     'tools/barak-rear-bay-fill-policy.selftest.mjs',
@@ -931,6 +933,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/rollover.selftest.mjs',
     'src/sim/tankBodyContacts.selftest.mjs',
     'src/sim/tankBodyRest.selftest.mjs',
+    'tools/physics-torture.selftest.mjs',
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
     'src/sim/spotting.selftest.mjs',
@@ -1116,7 +1119,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/hardstandSurface.selftest.mjs',
     'src/world/hardstandBanks.selftest.mjs', // 2026-10-02: the apron bank law, every map, with its pending list
     'src/world/landformGeology.selftest.mjs', // 2026-10-03: landform geology, and every smooth landform unchanged
-    'src/world/verdantTownPlan.selftest.mjs', // 2026-10-03: Verdant's classic town plan (every house and village wall where main has it)
+    'src/world/verdantTownPlan.selftest.mjs', // 2026-10-03: Verdant's classic town plan (every planned building on main's plot, the village walls)
     'src/world/terrainSurfaceDetail.selftest.mjs',
     'src/world/terrainMaterialOwnership.selftest.mjs',
     'src/world/terrainProjection.selftest.mjs',
@@ -1139,6 +1142,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainMaterialV2.selftest.mjs',
     'src/world/groundPressure.selftest.mjs',
     'src/world/tallGrass.selftest.mjs',
+    'src/world/landUse.selftest.mjs', // ground lane (2026-10-03): the field system and its CPU twin
     'src/world/roadLookupGrid.selftest.mjs',
     'src/world/roadAuthoredExits.selftest.mjs',
     'src/world/roadBankComposition.selftest.mjs',
@@ -1165,6 +1169,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/yardDressing.selftest.mjs',
     'src/world/rockDressing.selftest.mjs',
     'src/world/scenery.selftest.mjs',
+    // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
+    'src/world/fieldStoneSurface.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
     'src/world/loggingYard.selftest.mjs',
     'src/world/foundryServiceCourt.selftest.mjs',
@@ -1256,6 +1262,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/structureKit.selftest.mjs',
     'src/world/maps/marsSettlement.selftest.mjs',
     'src/world/orchardBathhouse.selftest.mjs',
+    // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap
+    'src/world/maps/regional/regionalArchitecture.selftest.mjs',
     'src/world/mangroveFisheryWharf.selftest.mjs',
     'src/world/structureConnectivity.selftest.mjs',
     'src/world/structureCollision.selftest.mjs',

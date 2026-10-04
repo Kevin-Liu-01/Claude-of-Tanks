@@ -4,12 +4,13 @@
 // voxelises the same body as tools/tank-watertight-check.mjs and tools/gen-interior-fills.mjs. The pass builds without
 // the fill registry, so the audit attaches each tank's generated fills itself through the factory's own
 // applyInteriorFills (the same meshes, frames and float32 boxes), measures through the CLI's shared measurement
-// (tools/tank-watertight-measure.mjs: fill-policy body, track lanes and retained air reported apart) and removes the
-// fills again before the next audit sees the build.
+// (tools/tank-watertight-measure.mjs: fill-policy body, track lanes, retained air and declared bore air reported apart)
+// and removes the fills again before the next audit sees the build.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { collectTriangles } from '../../tools/tank-surface-collect.mjs';
 import { trackLaneBoxesForVoxel } from '../../tools/track-lane-boxes.mjs';
+import { physicalBoreAir } from '../../tools/physical-bore-air.mjs';
 import {
   WATERTIGHT_MAX_LEAK_L, WATERTIGHT_VOXEL, measureWatertight, retainedSourceAir, watertightBody,
 } from '../../tools/tank-watertight-measure.mjs';
@@ -25,7 +26,7 @@ export async function createWatertightAudit({ records: replaced = null } = {}) {
   else for (const load of Object.values(INTERIOR_FILL_GROUP_LOADERS)) Object.assign(records, (await load()).INTERIOR_FILLS);
   const material = new THREE.MeshBasicMaterial();
   const leaks = [];
-  let measured = 0, laneL = 0, retainedL = 0, fillPolicyHulls = 0;
+  let measured = 0, laneL = 0, retainedL = 0, boreL = 0, boreHulls = 0, fillPolicyHulls = 0;
   return {
     check(id, visual) {
       const root = visual.root;
@@ -39,9 +40,10 @@ export async function createWatertightAudit({ records: replaced = null } = {}) {
         const { tris, meshes } = collectTriangles(root);
         const body = watertightBody(id, tris, meshes);
         if (body !== tris) fillPolicyHulls++;
+        const boreAir = physicalBoreAir(root);
         const r = measureWatertight(body, meshes, trackLaneBoxesForVoxel(root, WATERTIGHT_VOXEL),
-          { retainedAir: retainedSourceAir(id) });
-        measured++; laneL += r.trackLaneL; retainedL += r.retainedL;
+          { retainedAir: retainedSourceAir(id), boreAir });
+        measured++; laneL += r.trackLaneL; retainedL += r.retainedL; boreL += r.boreAirL; if (boreAir) boreHulls++;
         if (!r.watertight) {
           leaks.push(`${id}: ${r.leakL} L reaches the deep interior in ${r.clusters.length} gap(s); largest `
             + r.clusters.slice(0, 3).map((c) => `${c.litres} L at (${c.centre.join(', ')}) near ${c.groups.join(' ')}`).join('; '));
@@ -55,7 +57,8 @@ export async function createWatertightAudit({ records: replaced = null } = {}) {
       assert.equal(leaks.length, 0, `${leaks.length} hull(s) leak past the ${WATERTIGHT_MAX_LEAK_L} L watertight gate `
         + `(regenerate: node tools/gen-interior-fills.mjs --ids=<id> --rounds=8 --min-fine=1):\n  ${leaks.join('\n  ')}`);
       console.log(`watertight: ${measured} hulls hold water with their shipped fills (${fillPolicyHulls} on their fill-policy `
-        + `boundary); ${laneL.toFixed(2)} L of track-lane air and ${retainedL.toFixed(2)} L of retained source air reported apart`);
+        + `boundary); ${laneL.toFixed(2)} L of track-lane air, ${retainedL.toFixed(2)} L of retained source air and `
+        + `${boreL.toFixed(2)} L of declared bore air (${boreHulls} physical bores) reported apart`);
     },
   };
 }

@@ -50,6 +50,7 @@ import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
+import { paintFieldStoneBuffers } from './fieldStoneSurface.ts'; // the field walls' rubble print (the scenery lane)
 import { mooredHullPose, type MooredHullPose } from './maps/mooredHullMotion.ts'; // round 67
 import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 // world-dressing r1: building-catalog extension + destructible small props
@@ -74,7 +75,7 @@ import {
   type AutumnCropRow, type AutumnHeadlandSite,
 } from './autumnHeadlands.ts';
 import {
-  DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
+  DESTRUCTIBLE_BUILDING_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
 } from './maps/structureKit.ts';
 import {
   addCatalogExterior, addConnectedExterior, carryExteriorChimneyTops, exteriorChimneyTops,
@@ -126,6 +127,10 @@ import type { CollisionRecord } from './collision.ts';
 import type { LoosePropBody, LoosePropKickCause } from './loosePropPhysics.ts';
 import type { UtilityNetwork } from './utilityNetwork.ts';
 import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildContext, type StructureDimensions } from './maps/exteriorDetailKit.ts';
+// regional-buildings lane (2026-10-03): the map's regional architecture kit replaces each placed building's geometry
+// after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
+import { rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
+import { makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
 import { geologyBoulderSite } from './landformGeology.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
@@ -167,6 +172,15 @@ interface CompletePropsBuckets extends GeometryBuckets {
   baked: THREE.BufferGeometry[];
   steel: THREE.BufferGeometry[];
   structureMetal: THREE.BufferGeometry[];
+  /** regional kits: painted joinery and timber framing (the light kit's vertex-coloured wood material) */
+  structureWood: THREE.BufferGeometry[];
+  /** regional kits: weathered render, masonry and roofs (maps/regional/weather.ts) — the plaster, stone and roof
+   * surfaces under a per-vertex tint (each house its own shade, damp at the wall foot, moss toward the eaves) */
+  regionalPlaster: THREE.BufferGeometry[];
+  regionalPlaster2: THREE.BufferGeometry[];
+  regionalPlaster3: THREE.BufferGeometry[];
+  regionalStone: THREE.BufferGeometry[];
+  regionalRoof: THREE.BufferGeometry[];
   [name: string]: THREE.BufferGeometry[];
 }
 type PropsStructureBuilder = (
@@ -291,6 +305,8 @@ export const HAY_CRATE_SITES: Readonly<Record<string, number>> = Object.freeze({
 
 interface PropsSettings {
   sourcedPalette?: BuildingPaletteId;
+  /** regional-buildings lane: the regional architecture kit of this map's settlements (maps/regional/index.ts). */
+  architecture?: string;
   bathhouseStyle?: 'timber';
   loggingYard?: LoggingYardConfig;
   reservoirWaterworks?: ReservoirWaterworksConfig;
@@ -912,6 +928,26 @@ function makeStraw(
     albedo: toTexture(px, s, { srgb: true, anisotropy }),
     normal: normalFromHeight(hgt, s, 2.4, anisotropy),
     surface: surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.88, roughMax: 1.0, aoMin: 0.74 }),
+  };
+}
+
+/**
+ * The scenery lane (2026-10-03): the dry-stone field walls' rubble print (fieldStoneSurface.ts) under the map's stone
+ * tone. Its palette is the stone print's law, so the tone and a masonry tint give the walls the colour they had; its
+ * joints are dark dry voids and no course runs through it. Phones paint it at half size (the same stones).
+ */
+function* makeFieldStone(
+  anisotropy: number,
+  tone: ToneFunction | null,
+  size: number,
+): Generator<PropsBuildSlice, GeneratedSurfaceTextures, void> {
+  const { px, hgt } = yield* paintFieldStoneBuffers(size);
+  applyTone(px, tone);
+  yield { fine: true, stage: 'field-stone-tone' };
+  return {
+    albedo: toTexture(px, size, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, size, 3.0 * size / 512, anisotropy),
+    surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.8, roughMax: 0.98, aoMin: 0.6 }),
   };
 }
 
@@ -2805,6 +2841,9 @@ function* propsBuildSteps(
   const decorationGroundingReceipts: DecorationGroundingReceipt[] = [];
   const v = L.village;
 
+  // regional-buildings lane: the map's architecture kit (maps/regional/index.ts) — its default tones sit under the map's
+  const regionalArchitecture = resolveRegionalArchitecture(P.architecture);
+  if (regionalArchitecture?.surfaces.tones) P.tones = { ...regionalArchitecture.surfaces.tones, ...(P.tones || {}) };
   const T = P.tones || {};
   const plaster = makePlaster(noi, aniso, T.plaster || null);
   yield { fine: true };
@@ -2832,9 +2871,13 @@ function* propsBuildSteps(
   const plaster3 = makePlaster(noi, aniso,
     T.plaster3 || _tShift(T.plaster, -0.035, 0.72, 0.84), plaster2);
   yield { fine: true };
-  const roofT = makeRoofTiles(noi, aniso, T.roof || null);
+  const roofT = regionalArchitecture
+    ? yield* makeRegionalRoof(regionalArchitecture.surfaces.roof.kind, regionalArchitecture.surfaces.roof.tint, aniso)
+    : makeRoofTiles(noi, aniso, T.roof || null);
   yield { fine: true };
-  const stone = yield* makeStone(noi, aniso, T.stone || null);
+  const stone = regionalArchitecture
+    ? yield* makeRegionalStone(regionalArchitecture.surfaces.stone.kind, regionalArchitecture.surfaces.stone.tint, aniso)
+    : yield* makeStone(noi, aniso, T.stone || null);
   yield { fine: true, stage: 'stone-maps' };
   const wood = makeWood(noi, aniso, T.wood || null);
   yield { fine: true };
@@ -2882,12 +2925,26 @@ function* propsBuildSteps(
   }
   // Round 75 item 6: the boulders' triplanar detail tile (rockDressing.ts), sixteen rows per checkpoint.
   const rockDetail = yield* makeRockDetail(noi, aniso);
+  // The scenery lane (2026-10-03): the dry-stone field walls draw their own rubble print, never the house masonry (the
+  // coursed stone print, or a regional kit's brick, block or dressed stone, which laid brick courses over fieldstone);
+  // a map whose walls are mud or brick keeps them on the stone print and paints nothing.
+  const fieldWallBucket = P.wallStyle === 'adobe' || sourcedStoneIsBrick(mapId) ? 'stone' : 'fieldStone';
+  const fieldStone = fieldWallBucket === 'fieldStone'
+    ? yield* makeFieldStone(aniso, T.stone || null, mobileProps ? 256 : 512)
+    : stone;
 
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
   // urban) in place when they load; procedural stays the fallback of record.
+  // A regional kit keeps its own roof and masonry painters; it opts into the plaster and timber photo sets.
   const sourcedTexturesReady = applySourcedBuildings(
-    { plaster, roof: roofT, wood, stone }, mapId, P, sourceApplication,
+    regionalArchitecture
+      ? {
+        ...(regionalArchitecture.surfaces.sourced.plaster ? { plaster } : {}),
+        ...(regionalArchitecture.surfaces.sourced.wood ? { wood } : {}),
+      }
+      : { plaster, roof: roofT, wood, stone },
+    mapId, P, sourceApplication,
   );
 
   const windowStyle = resolveStructureWindowStyle(mapId);
@@ -2901,6 +2958,9 @@ function* propsBuildSteps(
     roof: makeRoofMaterial(roofT, mapId),
     stone: new THREE.MeshStandardMaterial({ map: stone.albedo, normalMap: stone.normal,
       roughnessMap: stone.surface, aoMap: stone.surface, roughness: 1, metalness: 0 }),
+    // the scenery lane (2026-10-03): the dry-stone field walls' rubble print (fieldStoneSurface.ts)
+    fieldStone: new THREE.MeshStandardMaterial({ map: fieldStone.albedo, normalMap: fieldStone.normal,
+      roughnessMap: fieldStone.surface, aoMap: fieldStone.surface, roughness: 1, metalness: 0 }),
     wood: new THREE.MeshStandardMaterial({ map: wood.albedo, normalMap: wood.normal,
       roughnessMap: wood.surface, aoMap: wood.surface, roughness: 1, metalness: 0 }),
     dark: new THREE.MeshStandardMaterial({ color: 0x161a1d, roughness: 0.35, metalness: 0.15 }),
@@ -2961,11 +3021,25 @@ function* propsBuildSteps(
       roughnessMap: structureMetal.surface, aoMap: structureMetal.surface,
       vertexColors: true, roughness: 1, metalness: 0.08,
     }),
+    // regional kits (maps/regional/weather.ts), on a map that adopted one: the same plaster, stone and roof textures
+    // (a sourced swap replaces the shared Texture's source in place, so these follow it) under each building's
+    // per-vertex tint and weathering. A map without a kit owns none of them.
+    ...(regionalArchitecture ? {
+      regionalPlaster: new THREE.MeshStandardMaterial({ map: plaster.albedo, normalMap: plaster.normal,
+        roughnessMap: plaster.surface, aoMap: plaster.surface, vertexColors: true, roughness: 1, metalness: 0 }),
+      regionalPlaster2: new THREE.MeshStandardMaterial({ map: plaster2.albedo, normalMap: plaster2.normal,
+        roughnessMap: plaster2.surface, aoMap: plaster2.surface, vertexColors: true, roughness: 1, metalness: 0 }),
+      regionalPlaster3: new THREE.MeshStandardMaterial({ map: plaster3.albedo, normalMap: plaster3.normal,
+        roughnessMap: plaster3.surface, aoMap: plaster3.surface, vertexColors: true, roughness: 1, metalness: 0 }),
+      regionalStone: new THREE.MeshStandardMaterial({ map: stone.albedo, normalMap: stone.normal,
+        roughnessMap: stone.surface, aoMap: stone.surface, vertexColors: true, roughness: 1, metalness: 0 }),
+      regionalRoof: Object.assign(makeRoofMaterial(roofT, mapId), { vertexColors: true }),
+    } : {}),
   };
   function configureSurfaceMaterials(): void {
-    for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'wood',
-      'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'steel']) {
-      mats[key].aoMapIntensity = 0.82;
+    for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'wood',
+      'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
+      if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
     mats.steel.envMapIntensity = 0.42; // round 75: painted sheet, a little sky on the crests
     mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance
@@ -3064,20 +3138,24 @@ ${snowCap ? `
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook : grimeHook);
+      // (the field walls' print is the stone material's shader with other maps: it shares the stone program)
+      const programKind = materialKind === 'fieldStone' ? 'stone' : materialKind;
       material.customProgramCacheKey = () =>
-        'world-props-' + materialKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
+        'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
   }
   installSurfaceShaderHooks();
 
   const buckets: CompletePropsBuckets = {
-    plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
-    glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
+    plaster: [], plaster2: [], plaster3: [], stone: [], fieldStone: [], roof: [], wood: [], dark: [],
+    glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [], structureWood: [],
+    regionalPlaster: [], regionalPlaster2: [], regionalPlaster3: [], regionalStone: [], regionalRoof: [],
   };
-  // the scenery lane (2026-10-03): a map whose masonry is its own rock tints the stone print (Saltwind: the karst
-  // limestone of its outcrops, for its dry-stone walls, their posts and its stone-built houses alike)
+  // the scenery lane (2026-10-03): a map whose field walls are its own rock tints their rubble print (Saltwind: the
+  // karst limestone of its outcrops, for its dry-stone walls and their posts). Never the stone print: a regional kit
+  // paints its own masonry there (the Dalmatian limestone under the tint burned out white)
   const masonryTint = (cfg as SceneryMapConfig | null)?.scenery?.masonryTint;
-  if (masonryTint) mats.stone.color.setRGB(masonryTint[0], masonryTint[1], masonryTint[2]);
+  if (masonryTint) mats.fieldStone.color.setRGB(masonryTint[0], masonryTint[1], masonryTint[2]);
   group.userData.steelAtlas = steelAtlas;
   /** A steel part on a map the plan-time predicate did not foresee: paint the atlas now, in one slice, and say so. */
   function ensureSteelAtlas(reason: string): void {
@@ -3168,8 +3246,13 @@ ${snowCap ? `
       build: () => buildSandbagStack('sandbagwall'),
       broken: (rng) => buildSandbagHeap('sandbagwall', () => bSandbagBroken(rng).dispose()),
     },
-    // the field wall is dry stone (inhabitKit.ts) except under a brick print, which keeps the coursed module
-    ...(sourcedStoneIsBrick(mapId) ? { wallstone: COURSED_WALLSTONE } : {}),
+    // the field wall is dry stone (inhabitKit.ts) on its own rubble print, except under a brick print, which keeps the
+    // coursed module on the stone print
+    ...(sourcedStoneIsBrick(mapId) ? { wallstone: COURSED_WALLSTONE }
+      : { wallstone: { ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket } }),
+    // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
+    // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
+    ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
   };
   const destructibleContext: DestructibleBuildContext = {
     heightField,
@@ -3480,7 +3563,7 @@ ${snowCap ? `
     mapId, snowCap: mapId === 'winter' || !!P.snowCap, seed, cladding: P.industrialCladding ?? 'brick',
   };
   function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string): boolean {
-    const tmp: PropsBuckets = {
+    let tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
     };
@@ -3488,7 +3571,8 @@ ${snowCap ? `
     attachStructureBuildContext(tmp, structureContext);
     const builder = explicitStructure ? BUILDER_BY_NAME[explicitStructure] : builders[bi];
     if (!builder) throw new Error(`Unknown planned structure ${structureId}`);
-    const info = builder(rng, tmp, pickWall(rng));
+    const wallBucket = pickWall(rng);
+    const info = builder(rng, tmp, wallBucket);
     if (tmp.steel?.length) ensureSteelAtlas('plan:' + structureId);
     addCatalogExterior(tmp, { id: structureId, info, variant: bi,
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
@@ -3549,6 +3633,15 @@ ${snowCap ? `
       const receipt = group.userData.roadBuildingFrontage ??= [];
       receipt.push({ kind: structureId, before, after: { x: px, z: pz, rot },
         w, d, status });
+    }
+    // regional-buildings lane: every draw, the ground fit and the frontage above saw the base geometry, so the pose is
+    // settled; the map's kit now swaps in the region's version of this structure (the wharf fishery and the foundry
+    // court donors keep theirs: later passes re-seat those exact parts)
+    const regionalDonor = (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery)
+      || (!!foundryDonors && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId));
+    if (regionalArchitecture && !regionalDonor) {
+      tmp = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
+        { mapId, snowCap: structureContext.snowCap, seed }, px, pz, rot) ?? tmp;
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
@@ -3764,18 +3857,25 @@ ${snowCap ? `
       const hx = (width * cs + depth * sn) / 2, hz = (width * sn + depth * cs) / 2;
       if (intersectsStreetRow(x, z, hx, hz)) return distance + width * 0.6;
       const ruined = roll < (P.ruinChance ?? 0.24);
-      const tmp: PropsBuckets = {
+      let tmp: PropsBuckets = {
         plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
         glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
       };
+      // the wall draw stays where the rowhouse call evaluated it (a ruin draws none)
+      const rowWall = ruined ? 'stone' : pickWall(srng);
       const info = ruined
         ? makeRuin(rng, tmp)
-        : makeRowhouse(rng, tmp, pickWall(srng), {
+        : makeRowhouse(rng, tmp, rowWall, {
           w: width, d: depth, lowContrastTrim: mapId === 'ruinspires',
         });
       const fit = groundFit(x, z, info.w, info.d, rot);
       if (fit.spread > 3.2) return distance + width;
       jitterBuildingUvs(tmp);
+      // regional-buildings lane: the street row's draws and pose are settled; the map's kit swaps in its row house
+      if (regionalArchitecture) {
+        tmp = rebuildRegionalStructure(regionalArchitecture, ruined ? 'ruin' : 'rowhouse', tmp, info, rowWall,
+          { mapId, snowCap: structureContext.snowCap, seed }, x, z, rot) ?? tmp;
+      }
       addStructureCollision(ruined ? 'ruin' : 'rowhouse', tmp, x, fit.y + 0.05, z, rot);
       _quat.setFromAxisAngle(_upAxis, rot);
       _mat4.compose(_posv.set(x, fit.y + 0.05, z), _quat, _one);
@@ -4218,7 +4318,8 @@ ${snowCap ? `
     gapAt = -1,
   ): void {
     const style = P.wallStyle || 'fieldstone';
-    const wallB = style === 'adobe' ? 'plaster' : 'stone';
+    // the posts, the breach stubs and the tumbled blocks are the wall's own stone (the field walls' rubble print)
+    const wallB = style === 'adobe' ? 'plaster' : fieldWallBucket;
     // brick-style maps route to the stone module (urban's 'stone' texture IS
     // the brick print); adobe keeps its own thicker mud module
     const wallKind = style === 'adobe' ? 'walladobe' : 'wallstone';

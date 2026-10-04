@@ -104,6 +104,8 @@ export default {
     sandstone: true, rockTone: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.62), clamp01(0.43 + (l - 0.5) * 0.34)],
     tintA: [1.10, 0.88, 0.69], tintB: [0.71, 0.54, 0.45], tintC: [1.06, 0.84, 0.67],
     roadTint: [0.78, 0.61, 0.51], strata: 0.035, sandMacro: 0.9,
+    // ground lane (2026-10-03): Wadi Rum's two formations — the Umm Ishrin's red over the paler Disi
+    formation: { atFrac: 0.30, wobbleM: 3, pale: 0.16, red: 0.12 },
     // An alluvial wash has faint wind-scoured patches, not floor-wide dunes.
     rippleAmp: 0.045, midRelief: 0.65, midReliefFar: 780,
   },
@@ -118,8 +120,14 @@ export default {
     // the palms grow at the springs under the lane inselbergs' west and east feet only (the pair turns about the
     // outpost); a palm drawn anywhere else grows as an acacia
     palmSites: pair({ x: -166, z: -148, r: 24 }), palmFallback: 'acacia',
+    // ground lane (2026-10-03, the gauntlet's wave 4: "saturated green grass cards" on the red floor): the wadi's tufts
+    // are cured straw, as Sirocco's are
+    grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.95 + 0.10)],
+    tuftTone: (h: number, s: number, l: number) => [0.10, 0.24, clamp01(l * 0.70 + 0.12)],
   },
   props: {
+    // regional-buildings lane: the Wadi Rum outpost kit (maps/regional/wadirum.ts)
+    architecture: 'wadirum',
     plan: ['caravanserai', 'depot', 'warehouse', 'compoundSouk', 'factory', 'minaret',
       'adobe', 'ruin', 'containerRow', 'marketRow', 'watertower', 'depot', 'gantry', 'compound',
       'warehouse', 'adobe', 'compoundSouk', 'depot', 'containerRow', 'ruin', 'factory', 'marketRow',

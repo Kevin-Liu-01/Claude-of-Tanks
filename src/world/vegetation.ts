@@ -43,6 +43,7 @@ import {
 } from './treeGrowth.ts';
 import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
+import type { LandFieldSample } from './landUse.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
 import { treeBiomeArid, treeBiomeColour, treeBiomePalette, treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
@@ -318,6 +319,10 @@ export interface VegetationRuntime {
   /** Round 77b: the placed tree records, read-only, for the receipts' slot audits. */
   _trees: ReadonlyArray<Readonly<{ x: number; z: number; species: Species; variant: number; fv: number; near: boolean; slot: number; fslot: number }>>;
   _buildDetail?: VegetationBuildDetail;
+  /** Ground lane (2026-10-03): the canopy's cover over the square (0..1, a 256² grid of 4 m texels, row-major z then
+   * x, texel centres at -512 + (i + 0.5) × 4) — the terrain draws a forest floor under it and no field, the ground
+   * tiers thin under it. Built once from the final tree records. */
+  _woodsMask: Float32Array;
 }
 
 interface GarageTreeKit {
@@ -361,6 +366,14 @@ function attribute(geometry: THREE.BufferGeometry, name: string): THREE.BufferAt
 export function mulberry32(a: number): RandomSource {return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
+// the shaded sward's light (a copy of tallGrass.ts SHADED_SWARD_GLSL; tallGrass.selftest pins them equal)
+const SHADED_SWARD_GLSL = /* glsl */ `{ vec3 cotAlb = max( material.diffuseColor, vec3( 1e-4 ) ); vec3 cotIrr = reflectedLight.indirectDiffuse / cotAlb; float cotL = dot( cotIrr, vec3( 0.2126, 0.7152, 0.0722 ) );
+#ifdef COT_SUN_VIS_CAPTURED
+float cotShade = 1.0 - clamp( cotSunVis, 0.0, 1.0 );
+#else
+float cotShade = 1.0;
+#endif
+reflectedLight.indirectDiffuse = mix( cotIrr, vec3( cotL ) * vec3( 1.05, 1.0, 0.86 ), 0.75 * cotShade ) * cotAlb; }`;
 const HALF = 512;
 const CHUNKS = 8, CHUNK_SIZE = 128;
 // Performance pass: terrain splat/detail already carries the meadow at range;
@@ -3569,6 +3582,20 @@ function* vegetationBuildSteps(
       }
       #endif
       #include <shadowmap_vertex>`);
+    // ground lane (2026-10-03): a crop tuft carries its crop's albedo negated in the instance colour (makeTuft) — the
+    // card's own luminance (its dark roots, its lit tips) over the crop's colour, normalised by the card's mean green
+    // blade (≈ 0.22/0.32/0.05 linear, luminance 0.28); every other tuft multiplies its tint as before
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <color_fragment>', /* glsl */`
+      #if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA )
+        if (vColor.r < 0.0) diffuseColor.rgb = -vColor.rgb * (dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) / 0.28);
+        else diffuseColor *= vColor;
+      #endif`);
+    // ground lane (2026-10-03, waves 13/14: "grass in shadow turns a saturated teal or indigo"): the shaded sward's light
+    // as the tall grass takes it — the same text as tallGrass.ts SHADED_SWARD_GLSL (tallGrass.selftest compares them; a
+    // copy keeps the carpet's module free of the tall-grass tier): after the chunk, as far as the blade is in shadow
+    if (shader.fragmentShader.includes('#include <lights_fragment_end>')) {
+      shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>', `#include <lights_fragment_end>\n${SHADED_SWARD_GLSL}`);
+    }
     useAttributeNormal(shader);
     mipAlphaGuard(shader); // aa-r1: distance-stable blade coverage
   };
@@ -3621,8 +3648,9 @@ function* vegetationBuildSteps(
         // thin blades survive their deep mips and the far fields keep the dark
         // tuft cover the 1049e4e pastures showed to ~300 m; the near carpet
         // keeps the crisp 0.44 edge beside the tracks.
-        matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v8', 0.34), // v8: root-anchored shadow lookup
-        matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v7'), // v7: root-anchored shadow lookup
+        // v8/v7: root-anchored shadow lookup; v9/v8 (ground lane): the crop tuft's colour branch; v10/v9: the shaded sky light desaturated
+        matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v11', 0.34),
+        matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v10'),
       });
       yield { stage: 'grassPrep', fine: true };
     }
@@ -3632,6 +3660,7 @@ function* vegetationBuildSteps(
   const _m4 = new THREE.Matrix4();
   const _q = new THREE.Quaternion();
   const _qLean = new THREE.Quaternion();
+  const _bushCast = new THREE.Color(); // ground lane: a shrub's own cast
   const _axLean = new THREE.Vector3();
   const _pv = new THREE.Vector3();
   const _sv = new THREE.Vector3();
@@ -3648,6 +3677,13 @@ function* vegetationBuildSteps(
   // Map-wide scatter evaluates this field hundreds of thousands of times.
   // Reuse the result record so those reads stay allocation-free.
   const _splatScratch = { n1: 0, n2: 0, mA: 0 };
+  // ground lane (2026-10-03): the field the terrain draws under a tuft (the height field's landUse.ts hook; absent on a
+  // map without fields and in the sandboxed harnesses) — a reused record, inline so the section needs no import
+  const _landScratch: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
+  const landUseAt = heightField._landUseAt ?? null;
+  // ground lane: the canopy's cover (set once the trees are placed; null before — a tuft built earlier ignores it)
+  let woodsCoverAt: ((x: number, z: number) => number) | null = null;
   // r5 terrain_environment: map-authored no-vegetation discs (desert uses one
   // to keep the establishing camera's foreground frame edge clear — a squat
   // palm sat clipped at the bottom-left of battlefield_desert.png)
@@ -3676,7 +3712,11 @@ function* vegetationBuildSteps(
   ): number {
     if (noVeg(x, z) && !batterAdmits(x, z)) return -1;
     const groundType = heightField.getGroundType(x, z);
-    if (groundType === 'hard' || heightField._roadDist(x, z) < 4.2) return -1;
+    // ground lane (2026-10-03): the turf's edge along a road dissolves over a metre and a half (a position hash, inline:
+    // the grass harnesses compile this filter without the module's helpers), not one ruled line at 4.2 m from the
+    // centreline — it never comes nearer than that line
+    const edgeHash = Math.sin(x * 12.9898 + z * 78.233 + 2678.049) * 43758.5453;
+    if (groundType === 'hard' || heightField._roadDist(x, z) < 4.2 + (edgeHash - Math.floor(edgeHash)) * 1.6) return -1;
     if (groundType === 'soft' && roll > 0.3) return -1;
     if (heightField._villageMask(x, z) > 0.35
       && roll > (carpet ? 0.35 : 0.15)) return -1;
@@ -3741,6 +3781,11 @@ function* vegetationBuildSteps(
     let dry = terrainDryness(x, z, roll, carpet);
     if (dry < 0) return null;
     if (dry > 0) sy *= 1.5;
+    // ground lane: little sward grows in a stand's shade — the forest floor is litter (the terrain draws it). The
+    // carpet only: it always streams after the build (the clearance seal), while the midfield chunks are built partly
+    // before the trees stand (the first-view ring, every chunk in a capture build) and partly after (the deferred
+    // rest) — the cover would split them at a chunk line
+    if (carpet && woodsCoverAt !== null && clJ < woodsCoverAt(x, z) * 0.85) return null;
     // splat-aware thinning: drier + thinner on dirt patches, dense in meadows
     const sn = sampleSplatNoise(x, z, _splatScratch);
     // (thresholds track the shader's `worn` band — r4: 0.55/0.80 + warp)
@@ -3764,7 +3809,32 @@ function* vegetationBuildSteps(
     // candidate set is accepted with exactly the same appearance — the
     // rejected majority just stops paying the 4-sample normal probe
     // (measured: 1.26 M candidates per boot on verdant).
-    if (!steepSeedOk(heightField.getNormalAt(x, z).y, x, z)) return null;
+    const normalY = heightField.getNormalAt(x, z).y;
+    // ground lane: inside a cultivated field (past its grass margin) the tuft is the crop — none on a plough, a few on
+    // a track, short straw on stubble, gold on ripe grain (crop ids: landUse.ts LAND_CROP). The fields keep to the
+    // ground the terrain draws them on (its landW; tallGrass.ts admit reads the same gate): off the villages, the
+    // roads' shoulders, the water and the slopes past ~2–3° — on a meadow slope the layout crosses the sward stays the
+    // sward's (the round-1 lane frames: crop tufts on Amberford's hillside, out of any field the terrain drew)
+    let crop = -1;
+    if (landUseAt !== null) {
+      const f = landUseAt(x, z, _landScratch);
+      if (f.active) {
+        const fieldW = (1 - smoothstepJs(0.05, 0.30, heightField._villageMask(x, z)))
+          * smoothstepJs(5.0, 8.0, heightField._roadDist(x, z)) * (1 - smoothstepJs(0.02, 0.06, 1 - normalY))
+          * (1 - smoothstepJs(0.02, 0.10, heightField.getWaterMaskAt(x, z)));
+        if (fieldW > 0.5) {
+          // a ditch's water and a dry stone wall carry no sward, a bund half of one, a track a few tufts
+          if (f.track > 0.5) { if (f.boundary === 1 || clJ < 0.7) return null; }
+          else if (f.edgeM < f.marginM) {
+            if (f.boundary === 3 && f.edgeM < 0.62) return null;
+            if (f.boundary === 2 && f.edgeM < 0.55 && clJ < 0.5) return null;
+          } else if (!f.sward) return null;
+          else if (f.weed) dry = Math.max(dry, 0.75); // a bare field's weeds: the tuft's own straw, not the soil's colour
+          else if (f.crop !== 0) crop = f.crop;
+        }
+      }
+    }
+    if (!steepSeedOk(normalY, x, z)) return null;
     const vv = varJ < (0.75 - dry * 0.5) ? 0 : 1;
     const y = heightField.getHeightAt(x, z);
     const tuftHeight = sy * syMul * (veg.stubblePatches ? stubbleHeightScale(x, z) : 1);
@@ -3792,12 +3862,23 @@ function* vegetationBuildSteps(
     ts *= 1 - dryPatch * 0.30;
     tl += dryPatch * 0.05;
     if (veg.tuftTone) [th, ts, tl] = veg.tuftTone(th, ts, tl);
+    let cropHeight = 1;
     _c.setHSL(((th % 1) + 1) % 1, clamp(ts, 0, 1), clamp(tl, 0, 1));
+    // a crop's tuft: the crop's measured albedo (landUse.ts LAND_CROP_ALBEDO, on the sample: ripe wheat
+    // 0.30/0.22/0.075, barley 0.33/0.28/0.12, a young crop 0.075/0.19/0.04, stubble 0.30/0.25/0.13, rice green
+    // 0.10/0.23/0.045 …) carried NEGATED in the instance colour: the grass shader then keeps only the card's luminance
+    // (its dark roots and lit tips) and lays the crop's colour over it. A multiplier on the green card turned its dry
+    // blades and flower specks pink and lavender (the round-1 lane frames).
+    if (crop > 0) {
+      const lj = -(0.90 + 0.20 * lumJ);
+      _c.setRGB(_landScratch.tintR * lj, _landScratch.tintG * lj, _landScratch.tintB * lj);
+      cropHeight = Math.max(0.3, Math.min(1.4, _landScratch.cropHeight));
+    }
     const t = _tuftScratch;
     // r2: midfield (non-carpet) tufts run ~15% wider — see the cull note
     // above (r3: 1.15 -> 1.28, coverage where the carpet hands over)
     t[0] = x; t[1] = y - 0.03; t[2] = z; t[3] = yaw;
-    t[4] = sxz * sxzMul * (carpet ? 1 : 1.28); t[5] = tuftHeight;
+    t[4] = sxz * sxzMul * (carpet ? 1 : 1.28); t[5] = tuftHeight * cropHeight;
     t[6] = _c.r; t[7] = _c.g; t[8] = _c.b; t[9] = vv;
     return t;
   }
@@ -5309,6 +5390,41 @@ function* vegetationBuildSteps(
   }
   placeTreeClusters();
   yield { stage: 'treeClusters' };
+  // Ground lane (2026-10-03, the gauntlet: trees "scattered evenly instead of growing in clumps, groves and forest
+  // masses"): on a map with a field system (the height field's landUse.ts hook) the nearest hedged field boundary within
+  // 45 m of a point, a seat in its grass margin (1–2.5 m off the line, beside a track rather than on it) and the line's
+  // heading — the lone trees' field-boundary share and field clumps grow there as hedgerow trees and remnants
+  // (placeLoneTrees), the field bushes in the margins (addBush). Position-hashed, no draw: the seat moves only where
+  // it is a site too. Without a field system nothing moves.
+  const _hedgeSite = [0, 0, 0, 0]; // x, z, tangent x, tangent z
+  // the field system read here from the height field itself (this section runs in the placement harnesses too)
+  const hedgeLandAt = heightField._landUseAt ?? null;
+  const _hedgeLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
+  function hedgeSite(x: number, z: number, salt: number): number[] {
+    _hedgeSite[0] = x; _hedgeSite[1] = z; _hedgeSite[2] = 0; _hedgeSite[3] = 0;
+    if (hedgeLandAt === null) return _hedgeSite;
+    const e0 = hedgeLandAt(x, z, _hedgeLand).edgeM;
+    if (!_hedgeLand.active || e0 > 45) return _hedgeSite;
+    const gx = hedgeLandAt(x + 1, z, _hedgeLand).edgeM - e0, gz = hedgeLandAt(x, z + 1, _hedgeLand).edgeM - e0;
+    const gl = Math.hypot(gx, gz);
+    if (gl < 0.3) return _hedgeSite;
+    const ux = gx / gl, uz = gz / gl;
+    const offset = 1.0 + 1.5 * treePositionNoise(x, z, salt);
+    let tx = x - ux * (e0 - offset), tz = z - uz * (e0 - offset);
+    const at = hedgeLandAt(tx, tz, _hedgeLand);
+    if (at.edgeM > 3.5) return _hedgeSite;
+    // only a hedged boundary takes its trees (the layout's hedge lines, landUse.ts hedgeShare): the field trees then draw
+    // a few boundaries as unbroken shelterbelts and hedgerows instead of dotting every one of them evenly (the round-2
+    // lab frames); a point near an open boundary keeps its own seat
+    // (the flag read half a metre off the line on the tree's own side: each field carries its own boundary's hedge)
+    if (hedgeLandAt(x - ux * (e0 - 0.5), z - uz * (e0 - 0.5), _hedgeLand).hedge < 0.5) return _hedgeSite;
+    hedgeLandAt(tx, tz, _hedgeLand);
+    if (_hedgeLand.track > 0.3) { tx = x - ux * (e0 - offset - 3.0); tz = z - uz * (e0 - offset - 3.0); }
+    if (!siteOk(tx, tz, 0)) return _hedgeSite;
+    _hedgeSite[0] = tx; _hedgeSite[1] = tz; _hedgeSite[2] = -uz; _hedgeSite[3] = ux;
+    return _hedgeSite;
+  }
   /**
    * The round-1 lone trees' draws on the shared stream: the scatter runs as it always did, its trees placed and then
    * popped with their trunk records and concealment discs, so every placement after it (the belts, the rim, the bushes)
@@ -5340,11 +5456,13 @@ function* vegetationBuildSteps(
   /**
    * Trees round 2b (2026-10-03, the gauntlet's wave 15: "trees scattered at even, savanna-like spacing, whatever the
    * place"): a lone tree stands where field trees stand. Over half at a woodlot's edge, just outside its outline where
-   * the wood's seedlings reach into the field; a fifth along a field boundary (a road's verge); a quarter as field
-   * clumps (a tree and two or three companions, a hedgerow's remnant) in the open ground between the deployments, where
-   * the round-1 scatter gave the fights their cover (battlePacing's fast tail grew without it). In a hyper-arid place
-   * (treeBiomes.ts arid) every one keeps to the low ground, the wadi beds and hollows where the water table lies. The
-   * lone trees draw from their own stream; the round-1 scatter's draws replay on the shared one.
+   * the wood's seedlings reach into the field; a fifth along a field boundary (a hedged one where the map has a field
+   * system, hedgeSite, the companion along its line; else a road's verge); a quarter as field clumps (a tree and two or
+   * three companions, a hedgerow's remnant: on the nearest hedged boundary within 45 m where there is one, strung along
+   * it) in the open ground between the deployments, where the round-1 scatter gave the fights their cover
+   * (battlePacing's fast tail grew without it). In a hyper-arid place (treeBiomes.ts arid) every one keeps to the low
+   * ground, the wadi beds and hollows where the water table lies. The lone trees draw from their own stream; the
+   * round-1 scatter's draws replay on the shared one; the hedge seats are position-hashed (no draw moves).
    */
   function placeLoneTrees(): void {
     replayRoundOneLoneDraws();
@@ -5365,6 +5483,8 @@ function* vegetationBuildSteps(
     for (let i = 0; i < 2400 && placed < loneTarget; i++) {
       const roll = lr();
       let x = (lr() * 2 - 1) * 460, z = (lr() * 2 - 1) * 460, companions = lr() < 0.4 ? 1 : 0;
+      // a hedgerow's heading when the tree takes a hedged boundary's seat (its companions string along the line)
+      let lineX = 0, lineZ = 0;
       if (arid) {
         // a wadi bed or a hollow, or nothing (try again)
         if (hollowDepthAt(x, z) < 1.2) continue;
@@ -5374,22 +5494,31 @@ function* vegetationBuildSteps(
         const point = standPoint(index, clusters[index], a, k);
         x = point[0]; z = point[1];
       } else if (roll < 0.75) {
-        // a field boundary: a road's verge, just outside the trees' road clearance
-        const d = admission()._roadDist(x, z);
-        if (d < 10 || d > 17) continue;
+        // a field boundary: the nearest hedged one, else a road's verge just outside the trees' road clearance
+        const site = hedgeSite(x, z, 61);
+        if (site[2] !== 0 || site[3] !== 0) { x = site[0]; z = site[1]; lineX = site[2]; lineZ = site[3]; }
+        else {
+          const d = admission()._roadDist(x, z);
+          if (d < 10 || d > 17) continue;
+        }
       } else {
         // a field clump in the open ground between the deployments (along the axis, its middle seven tenths, within
-        // 220 m of it)
+        // 220 m of it), on the nearest hedged boundary where there is one
         const t = 0.15 + lr() * 0.7, w = (lr() * 2 - 1) * 220;
         x = L.spawns.player.x + axisX * t - (axisZ / axisL) * w;
         z = L.spawns.player.z + axisZ * t + (axisX / axisL) * w;
         companions = 2 + (lr() < 0.4 ? 1 : 0);
+        const site = hedgeSite(x, z, 61);
+        if (site[2] !== 0 || site[3] !== 0) { x = site[0]; z = site[1]; lineX = site[2]; lineZ = site[3]; }
       }
       if (addTree(x, z, pickSpecies(veg.loneMix, lr()), lr)) {
         placed++;
         for (let c = 0; c < companions; c++) {
           const a2 = lr() * Math.PI * 2, r2 = 4 + lr() * 7;
-          if (addTree(x + Math.cos(a2) * r2, z + Math.sin(a2) * r2, pickSpecies(veg.loneMix, lr()), lr)) placed++;
+          // along the hedgerow (either way, the same distance), else round the tree
+          const along = lineX !== 0 || lineZ !== 0, side = Math.cos(a2) * lineX + Math.sin(a2) * lineZ >= 0 ? 1 : -1;
+          const cx = along ? x + lineX * r2 * side : x + Math.cos(a2) * r2, cz = along ? z + lineZ * r2 * side : z + Math.sin(a2) * r2;
+          if (addTree(cx, cz, pickSpecies(veg.loneMix, lr()), lr)) placed++;
         }
       }
     }
@@ -5636,6 +5765,9 @@ function* vegetationBuildSteps(
       authoredTreeDonors, veg.authoredTrees, heightField, siteOk, structureClearances, cfg?.props?.wallRuns ?? []);
   }
 
+  // ground lane: where the trees stand before the tidal map moves its willows (the field bushes' knot sites)
+  const knotSites = new Float64Array(trees.length * 2);
+  for (let i = 0; i < trees.length; i++) { knotSites[i * 2] = trees[i].x; knotSites[i * 2 + 1] = trees[i].z; }
   // near/far instanced meshes (partition rewritten on camera movement, hysteresis).
   function placeTidalTrees(): void {
     if (veg.willowForm === 'tidalMangrove' && veg.tidalTrees && authoredTreeDonors) {
@@ -6065,7 +6197,7 @@ function* vegetationBuildSteps(
       : [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
     const bushPlacements: [THREE.Matrix4[], THREE.Matrix4[]] = [[], []];
     const bushKeep: [boolean[],boolean[]]=[[],[]];
-    function addBush(x: number, z: number): void {
+    function addBush(x: number, z: number, hedge = false): void {
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) return;
       if (inAvoid(x, z)) return;
       if (rng() > veg.bushCount) return; // per-map density scale
@@ -6083,13 +6215,47 @@ function* vegetationBuildSteps(
         clump = biome * (0.12 + 0.88 * thicket);
         if (rng() > clump * 0.95 + 0.05) return;
       }
+      // ground lane (2026-10-03): a field bush on a map with a field system grows in the nearest boundary's margin
+      // (hedgeSite, as the lone trees) — decided where its candidate was drawn, so every seeded draw is unchanged
+      if (hedge) {
+        const site = hedgeSite(x, z, 67);
+        if (site[2] !== 0 || site[3] !== 0) { x = site[0]; z = site[1]; }
+        else if (treePositionNoise(x, z, 71) < 0.6) {
+          // ground lane: without a boundary to grow on, a field bush grows at the foot of the nearest tree within
+          // 35 m (2–5 m out from its trunk, on its own side) — scrub knots round the lone trees and the stands' edges
+          // instead of peppering the open ground evenly; position-hashed, so every seeded draw is unchanged. The trees
+          // as they stood before the tidal map moved its willows into the water (knotSites): both of that map's
+          // builds deal the same bushes (tidalMangrove.selftest).
+          let best = -1, bestD = 35;
+          for (let i = 0; i < knotSites.length; i += 2) {
+            const d = Math.hypot(x - knotSites[i], z - knotSites[i + 1]);
+            if (d < bestD) { bestD = d; best = i; }
+          }
+          if (best >= 0) {
+            const tx = knotSites[best], tz = knotSites[best + 1], dl = Math.hypot(x - tx, z - tz) || 1;
+            const out = 2 + 3 * treePositionNoise(x, z, 73);
+            const bx = tx + (x - tx) / dl * out, bz = tz + (z - tz) / dl * out;
+            if (admission()._roadDist(bx, bz) >= 6 && admission().getGroundType(bx, bz) !== 'soft' && !noVeg(bx, bz)
+              && steepSeedOk(admission().getNormalAt(bx, bz).y, bx, bz) && Math.max(Math.abs(bx), Math.abs(bz)) <= 470
+              && !inAvoid(bx, bz)) {
+              x = bx; z = bz;
+            }
+          }
+        }
+      }
       const y = heightField.getHeightAt(x, z);
       // hull-height concealers: foliage reaches ~2.5-3 m so a parked tank is
       // genuinely occluded (knee-high shrubs sold zero visual concealment)
       // r5: size keyed to the clump core — 2-3x spread, big growth at centers
       const sc = (1.6 + rng() * 1.6) * (0.7 + clump * 0.45);
       _q.setFromAxisAngle(_up, rng() * Math.PI * 2);
-      _m4.compose(_pv.set(x, y - 0.05, z), _q, _sv.set(sc, sc * (1.05 + rng() * 0.35), sc));
+      // ground lane (2026-10-03, the gauntlet: bushes were "near-identical round green balls"): each shrub its own shape —
+      // an oval footprint (the across axis 72–100 % of the cover axis, so it never leaves its cover disc), a crown a
+      // little lower or taller, and a lean of up to 6° about its own long axis; position-hashed, no seeded draw
+      const hz = treePositionNoise(x, z, 41), hy = treePositionNoise(x, z, 43), ht = treePositionNoise(x, z, 47);
+      _qLean.setFromAxisAngle(_axLean.set(1, 0, 0), (ht - 0.5) * 0.21);
+      _q.multiply(_qLean);
+      _m4.compose(_pv.set(x, y - 0.05, z), _q, _sv.set(sc, sc * (1.05 + rng() * 0.35) * (0.80 + 0.30 * hy), sc * (0.72 + 0.28 * hz)));
       const variant=(rng()*2)|0,keep=!newlyUnsafeRoadSite(x,z,6,.78);
       // a placed structure's clear ground takes no bush either: dropped after its draws, so every later bush stays
       if (placedClearances.length && overlapsStructureClearance(placedClearances, x, z, 2.5 * sc + 0.3)) return;
@@ -6123,7 +6289,7 @@ function* vegetationBuildSteps(
         const x = (rng() * 2 - 1) * 455, z = (rng() * 2 - 1) * 455;
         const rd = admission()._roadDist(x, z);
         if (rd > 26 && rng() > 0.55) continue;
-        addBush(x, z);
+        addBush(x, z, true);
       }
     }
     function placeBushClumps(): void {
@@ -6161,6 +6327,14 @@ function* vegetationBuildSteps(
           _c.setRGB(bj * (0.94 + rng() * 0.14), bj * (0.98 + rng() * 0.14), bj * (0.90 + rng() * 0.16));
           if(!bushKeep[bv][i])continue;
           const placement=bushPlacements[bv][i],e=placement.elements;
+          // ground lane: one shrub of a thicket is greyer, the next yellower or bluer (a position hash, no seeded draw)
+          {
+            const hh = treePositionNoise(e[12], e[14], 53), ha = treePositionNoise(e[12], e[14], 59);
+            const amt = 0.10 + 0.22 * ha;
+            if (hh < 0.34) _c.multiply(_bushCast.setRGB(1 + 0.12 * amt * 4, 1 + 0.02 * amt * 4, 1 - 0.20 * amt * 4).multiplyScalar(1 / (1 + amt * 0.4)));
+            else if (hh < 0.67) _c.multiply(_bushCast.setRGB(1 - 0.06 * amt * 4, 1 + 0.01 * amt * 4, 1 + 0.10 * amt * 4));
+            else { const g = (_c.r + _c.g + _c.b) / 3; _c.lerp(_bushCast.setRGB(g, g, g), amt * 1.6); }
+          }
           m.setMatrixAt(kept,placement);m.setColorAt(kept,_c);
           bushFadeReg.push({attr:bAttr,slot:kept,x:e[12],z:e[14],fade:0});
           kept++;
@@ -6925,6 +7099,54 @@ function* vegetationBuildSteps(
    *   the corridor/bush fades switch from screen-door dither to a binary
    *   cut (uScopeHard) so the magnified picture carries no stipple.
    */
+  // Ground lane (2026-10-03, the gauntlet: trees "scattered evenly instead of growing in clumps, groves and forest
+  // masses"; round 77's open item "no floor darkening — terrain has no canopy channel"): the canopy's cover over the
+  // square, rasterised once from the final tree records (every placement, exclusion and relocation pass is done; the
+  // snag conversion is a look only) — each crown a soft disc of its own radius, the crowns' union then spread over
+  // 12 m and thresholded, so a stand whose canopy closes reads 1 and a lone tree or an open row of them next to
+  // nothing (a pasture runs to a lone oak's trunk; a wood's floor is litter) — the mask the terrain reads (a forest
+  // floor, no field under the trees) and the ground tiers thin under. Self-contained between the factory's functions (the placement
+  // harnesses compile the sections above on their own, the grass-work receipt its slices from dispose to the return).
+  const woodsSize = 256, woodsCell = 1024 / 256;
+  const woodsCrowns = new Float32Array(woodsSize * woodsSize);
+  for (const tree of trees) {
+    const r = Math.max(1.5, tree.cr) * 1.15;
+    const i0 = Math.max(0, Math.floor((tree.x - r + 512) / woodsCell)), i1 = Math.min(woodsSize - 1, Math.floor((tree.x + r + 512) / woodsCell));
+    const j0 = Math.max(0, Math.floor((tree.z - r + 512) / woodsCell)), j1 = Math.min(woodsSize - 1, Math.floor((tree.z + r + 512) / woodsCell));
+    for (let j = j0; j <= j1; j++) {
+      const cz = -512 + (j + 0.5) * woodsCell;
+      for (let i = i0; i <= i1; i++) {
+        const cx = -512 + (i + 0.5) * woodsCell;
+        const w = Math.max(0, Math.min(1, 1.3 - Math.hypot(cx - tree.x, cz - tree.z) / r));
+        const k = j * woodsSize + i;
+        if (w > woodsCrowns[k]) woodsCrowns[k] = w;
+      }
+    }
+  }
+  // the 3 × 3 box (separable, clamped at the square's edge), then the stand threshold
+  const woodsRows = new Float32Array(woodsSize * woodsSize), woodsMask = new Float32Array(woodsSize * woodsSize);
+  for (let j = 0; j < woodsSize; j++) {
+    for (let i = 0; i < woodsSize; i++) {
+      const k = j * woodsSize + i;
+      woodsRows[k] = (woodsCrowns[k] + woodsCrowns[i > 0 ? k - 1 : k] + woodsCrowns[i < woodsSize - 1 ? k + 1 : k]) / 3;
+    }
+  }
+  for (let j = 0; j < woodsSize; j++) {
+    for (let i = 0; i < woodsSize; i++) {
+      const k = j * woodsSize + i;
+      const spread = (woodsRows[k] + woodsRows[j > 0 ? k - woodsSize : k] + woodsRows[j < woodsSize - 1 ? k + woodsSize : k]) / 3;
+      const t = Math.max(0, Math.min(1, (spread - 0.30) / 0.55));
+      woodsMask[k] = t * t * (3 - 2 * t);
+    }
+  }
+  woodsCoverAt = (x: number, z: number): number => {
+    const u = Math.max(0, Math.min(woodsSize - 1.001, (x + 512) / woodsCell - 0.5));
+    const v = Math.max(0, Math.min(woodsSize - 1.001, (z + 512) / woodsCell - 0.5));
+    const i = Math.floor(u), j = Math.floor(v), fu = u - i, fv = v - j, k = j * woodsSize + i;
+    const a = woodsMask[k] + (woodsMask[k + 1] - woodsMask[k]) * fu;
+    const b = woodsMask[k + woodsSize] + (woodsMask[k + woodsSize + 1] - woodsMask[k + woodsSize]) * fu;
+    return a + (b - a) * fv;
+  };
   function setSniperFade(
     f: number,
     immediate = false,
@@ -6997,6 +7219,7 @@ function* vegetationBuildSteps(
   rimTrees.length = 0;
   return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
     crushTree, resetToppled, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
+    _woodsMask: woodsMask,
     _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,
     warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false) };
 }

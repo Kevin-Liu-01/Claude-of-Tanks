@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { TANK_SPECS } from '../specs.ts';
 import { createTank } from '../tankFactory.ts';
 import { measureTurretBarrelCircularity } from '../turretBarrelCircularity.ts';
+import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
 
 const EPSILON = 1e-6;
 const near = (actual, expected, message, epsilon = EPSILON) => {
@@ -234,8 +235,15 @@ const burlak = createTank('t90a_burlak', null, {
 });
 try {
   const burlakTurret = burlak.root.getObjectByName('rig_turret');
-  near(burlakTurret.position.z, 0.12,
+  // The accepted seat is a source-frame station; main's owner-directed 1.05 T-90 family size (245aa4e4e) bakes the
+  // Burlak's installed turret frame by its factor (the base T-90A above is not resized).
+  const burlakSeat = () => near(burlakTurret.position.z, 0.12 * (VEHICLE_SIZE_FACTORS.t90a_burlak ?? 1),
     'Burlak preserves its independently accepted turret seat');
+  burlakSeat();
+  // Seeded defect: the installed seat moved by one millimetre must fail.
+  burlakTurret.position.z += 0.001;
+  assert.throws(burlakSeat, assert.AssertionError, 'a displaced Burlak turret seat is rejected');
+  burlakTurret.position.z -= 0.001;
   assert.equal(burlakTurret.userData.t90aSeatReceipt, undefined,
     'RU-112 adjustment receipt does not leak into Burlak');
   const burlakRoofParts = burlak.root.userData.combatGeometryParts.filter((part) =>

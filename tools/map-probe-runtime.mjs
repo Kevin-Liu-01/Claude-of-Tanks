@@ -18,7 +18,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createServer } from 'vite';
+import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
 
 export const MAP_PROBE_PORT_BASE = 5300;
@@ -52,6 +52,7 @@ const FLAGS = Object.freeze({
   hide: { kind: 'hide', doc: 'suffix=regex;suffix=regex — world mesh names hidden one pattern at a time' },
   ids: { kind: 'list', doc: 'specId:label cases, the label names the capture files' },
   'cache-dir': { kind: 'string', doc: 'reuse a warm vite optimizer cache of your own (default: a fresh temporary directory)' },
+  dist: { kind: 'string', doc: 'serve this built dist (vite preview) instead of the live tree through a dev server' },
   'executable-path': { kind: 'string', doc: 'Chrome binary for the real-input path (default: the system Chrome when present)' },
 });
 
@@ -188,6 +189,38 @@ export async function withMapProbeSession({ root, cacheDir = null, launch = {} }
       ['browser', async () => { if (browser) await browser.close(); }],
       ['server', async () => { if (server) await server.close(); }],
       ['cache', () => { if (cache.temporary) rmSync(cache.dir, { recursive: true, force: true }); }],
+    ]) {
+      try { await close(); } catch (error) { failures.push({ resource, error }); }
+    }
+    for (const { resource, error } of failures) console.error(`[map-probe cleanup ${resource}]`, String(error));
+    if (failures.length && !primaryFailed) throw new AggregateError(failures.map((f) => f.error), 'map probe cleanup failed');
+  }
+}
+
+/**
+ * The same session over a BUILT dist (physics lane, 2026-10-03): vite preview serves `dist` (no config file, so none of
+ * the dev server's transforms), the browser is the same. A before/after pair captured from two builds cannot share a
+ * dev server's module graph or optimizer cache, and a build loads in a fraction of a dev boot.
+ */
+export async function withDistProbeSession({ root, dist, launch = {} }, run) {
+  if (!existsSync(path.join(dist, 'index.html'))) throw new Error(`--dist ${dist} has no index.html to serve`);
+  let server = null, browser = null, primaryFailed = false;
+  try {
+    server = await preview({
+      root, configFile: false, logLevel: 'error', build: { outDir: dist },
+      preview: { host: '127.0.0.1', port: MAP_PROBE_PORT_BASE + (process.pid % MAP_PROBE_PORT_SPAN), strictPort: false },
+    });
+    const port = server.httpServer.address().port;
+    browser = await puppeteer.launch(mapProbeLaunchOptions(launch));
+    return await run({ server, browser, port, baseUrl: `http://127.0.0.1:${port}`, cacheDir: null });
+  } catch (error) {
+    primaryFailed = true;
+    throw error;
+  } finally {
+    const failures = [];
+    for (const [resource, close] of [
+      ['browser', async () => { if (browser) await browser.close(); }],
+      ['server', async () => { if (server) await new Promise((resolve) => server.httpServer.close(() => resolve())); }],
     ]) {
       try { await close(); } catch (error) { failures.push({ resource, error }); }
     }

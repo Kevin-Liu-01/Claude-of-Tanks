@@ -128,8 +128,9 @@ export interface SceneryConfig {
   powerLines?: readonly SceneryPowerLine[];
   fieldWorks?: SceneryFieldWorks;
   /**
-   * A linear multiplier on the map's masonry print (the props stone material): its field walls, their posts and its
-   * stone-built houses in the map's own rock (Saltwind's karst limestone). Omitted, the print is the map's tone.
+   * A linear multiplier on the field walls' rubble print (the props `fieldStone` material): the dry-stone walls and
+   * their posts in the map's own rock (Saltwind's karst limestone). Never the house masonry, which a regional kit
+   * paints. Omitted, the print is the map's stone tone.
    */
   masonryTint?: readonly [number, number, number];
 }

@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   HAZE_EXT_CHROMA, HAZE_LAW_GLSL, HAZE_LAYER_SCALE_M, HAZE_MATERIAL_FOG_SHARE, HAZE_OVERCAST_K, HAZE_SIGMA_PER_FOG,
-  HAZE_TARGET_SKY_K, HAZE_TINT_SHARE, hazeLayerInverseScale, hazeSigma,
+  HAZE_TARGET_SKY_K, HAZE_TINT_SHARE, hazeLayerInverseScale, hazeSigma, hazeTargetTerms,
 } from './hazeLaw.ts';
 import { MAP_IDS } from '../world/maps/mapIds.ts';
 
@@ -73,8 +73,22 @@ assert.match(post, /\(u\.uHazeLaw\.value as THREE\.Vector4\)\.x = 0;/, 'the lega
 assert.match(post, /\* \( hazeLaw \? uDetailW : 1\.0 \)/, 'the green hue clamp keeps only its sniper-scope share on the law');
 assert.match(sky, /atmosphereState\.fogDensity = preset\.fogDensity;/, 'the sky publishes the map\'s air');
 assert.match(sky, /\* \(atmosphereState\.active \? lightTune\('AERIAL_MATERIAL_FOG_SHARE', HAZE_MATERIAL_FOG_SHARE\) : 1\)\);/, 'the materials\' fog thins only over the physically based sky');
-assert.match(post, /\* THREE\.MathUtils\.lerp\(1, lightTune\('AERIAL_OVERCAST_K', HAZE_OVERCAST_K\), THREE\.MathUtils\.clamp\(overcast, 0, 1\)\),/,
+// the target's two terms under the light model's overcast, shared by the aerial pass and the cloud trace (2026-10-03, the
+// gauntlet's wave 17 on Frosthollow: the deck's far rows paled to the clear horizon over ranges on the dim overcast haze)
+assert.match(post, /const terms = hazeTargetTerms\(overcast, hazeTermsScratch\);\s*law\.set\(hazeSigma\(atmosphere\.fogDensity\), hazeLayerInverseScale\(\), terms\.x, terms\.y\);/,
   'the light model\'s overcast dims the target');
+{
+  const open = hazeTargetTerms(0, { x: 0, y: 0 }), closed = hazeTargetTerms(1, { x: 0, y: 0 }), half = hazeTargetTerms(0.5, { x: 0, y: 0 });
+  assert.equal(open.x, HAZE_TINT_SHARE); assert.equal(open.y, HAZE_TARGET_SKY_K);
+  assert.equal(closed.x, 1, 'all of the authored tint under a closed deck');
+  assert.ok(Math.abs(closed.y - HAZE_TARGET_SKY_K * HAZE_OVERCAST_K) < 1e-12, 'the deck\'s level');
+  assert.ok(half.x > open.x && half.x < 1 && half.y < open.y && half.y > closed.y, 'between them under half a deck');
+  const out = { x: 0, y: 0 }; assert.equal(hazeTargetTerms(0.3, out), out, 'written in place');
+  assert.match(clouds, /const terms = hazeTargetTerms\(overcast, this\.hazeTerms\);/, 'the cloud trace reads the same terms');
+  assert.match(clouds, /\(a\.fogMix \?\? 0\) \* terms\.x\)\), terms\.y, 0, smoothstep01\(overcast \/ 0\.3\)\);/, 'its share by the map\'s fogMix, its weight by the overcast');
+  assert.match(clouds, /vec3 law = mix\( target, uOvercastTint \* \( luma\( target \) \/ max\( luma\( uOvercastTint \), 1e-4 \) \), uOvercastHaze\.x \) \* uOvercastHaze\.y;/,
+    'the pass\'s target: the tint\'s hue at the sky\'s luminance, a level under it');
+}
 assert.doesNotMatch(clouds, /HAZE_LAW_GLSL|hazeSigma/, 'the clouds keep their own haze law (CLOUD_AERIAL)');
 
 console.log(`hazeLaw.selftest: Beer–Lambert law (σ ${HAZE_SIGMA_PER_FOG} × fogDensity, layer ${HAZE_LAYER_SCALE_M} m), ${checked} maps readable at 2 km and separated to 3 km, layer integral exact, wiring PASS`);
