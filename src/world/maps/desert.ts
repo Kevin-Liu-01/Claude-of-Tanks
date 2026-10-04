@@ -212,7 +212,9 @@ export default {
     // finally reads as one weathered rock mass
     // r4: sat 0.55 -> 0.42 — pairs with the makeSandstoneLayer desaturation
     // (terrain.js) to kill the residual PINK cast on the cliff beds
-    rockTone: (h: number, s: number, l: number) => [h, clamp01(s * 0.42), clamp01(0.53 + (l - 0.5) * 0.70)],
+    // ground lane (2026-10-03, the gauntlet: "a purple tint splotch on the mound", "violet-grey rock"): the beds a step
+    // yellower and less desaturated — a near-grey rust beside the saturated sand read violet under the sky's fill
+    rockTone: (h: number, s: number, l: number) => [clamp01(h + 0.022), clamp01(s * 0.62), clamp01(0.53 + (l - 0.5) * 0.70)],
     mudTone: (h: number, s: number, l: number) => [0.078, 0.30, clamp01(l * 1.5 + 0.04)], // cracked dry clay
     mudRough: 1.15,
     // r3 (content_breadth): tintB pushed to a REAL darkener (0.94 -> 0.84
@@ -485,6 +487,9 @@ export default {
     // feature that survives grazing-angle minification on the far ring
     baseHex: 0xa87c4e, amp: 1.15, style: 'mesa', banding: 0.30,
     rockHex: 0x96603a, haze: 0.85, grain: 0.7,
+    // the mountains lane (2026-10-03): the outland boulders a shade sparser — they follow the ring's tilted beds, and
+    // the map's horizon draws no more triangles than the PR head's
+    outlandRocks: 0.95,
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)

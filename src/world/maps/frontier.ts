@@ -208,7 +208,9 @@ export default {
     powerLines: [{ towers: [[-440, -150], [-147, -50], [147, 50], [440, 150]], heightM: 36, name: 'the 380 kV line' }],
   },
   horizon: {
-    baseHex: 0x526344, amp: 1.18, style: 'rolling', treeline: 0.91, treelineLayers: 3,
+    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): the Fulda Gap's basin under the
+    // Rhön: low rounded forested hills, no peaks
+    baseHex: 0x526344, amp: 0.8, style: 'rolling', treeline: 0.91, treelineLayers: 3, panorama: { regional: 'upland' },
     forestHex: 0x2f472d, rockHex: 0x6c6b5c, haze: 0.94, grain: 0.66,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
