@@ -20,7 +20,7 @@ import { getMapConfig } from '../world/maps/index.ts';
 import { rockDressingFor } from '../world/rockDressing.ts';
 
 const luma = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
-const BARE = new Set(['desert', 'urban', 'autumn', 'steppe', 'railyard', 'badlands', 'alpine', 'caldera', 'foundry', 'ruinspires',
+const BARE = new Set(['desert', 'urban', 'autumn', 'steppe', 'railyard', 'badlands', 'caldera', 'foundry', 'ruinspires',
   'blackglass', 'titan_gorge', 'skybridge', 'copper_mesa', 'moon']);
 
 // 1. one row per battlefield, its soil the map's own dirt

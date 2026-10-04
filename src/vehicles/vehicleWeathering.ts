@@ -64,7 +64,9 @@ const AUTUMN: Climate = Object.freeze({ ...TEMPERATE, dust: 0.66, wet: 0.5 });
 const WET: Climate = Object.freeze({ dust: 0.72, film: 0.02, snow: 0, wet: 0.75, grime: 0.65, wear: 0.4 });
 const COASTAL: Climate = Object.freeze({ dust: 0.56, film: 0.03, snow: 0, wet: 0.35, grime: 0.55, wear: 0.45 });
 const SNOW: Climate = Object.freeze({ dust: 0.45, film: 0, snow: 0.8, wet: 0.3, grime: 0.5, wear: 0.35 });
-const ALPINE: Climate = Object.freeze({ dust: 0.55, film: 0.02, snow: 0.35, wet: 0.25, grime: 0.55, wear: 0.45 });
+// (Glacier Pass is a snowfield with exposed stone: its pale rock albedo as the running-gear dust read as alloy wheels in
+// the snow, so it takes the snow maps' slush and a lighter snow)
+const ALPINE: Climate = Object.freeze({ dust: 0.5, film: 0.02, snow: 0.6, wet: 0.3, grime: 0.55, wear: 0.45 });
 const REGOLITH: Climate = Object.freeze({ dust: 0.66, film: 0.09, snow: 0, wet: 0, grime: 0.3, wear: 0.3 });
 
 /** The terrain's loam base through no dirt tone (world/rockDressing.ts): the maps that author none. */
@@ -105,7 +107,7 @@ export const VEHICLE_WEATHER_BY_MAP: Readonly<Record<MapId, VehicleWeather>> = O
   delta: row(LOAM, WET),
   badlands: row(0x8c5438, ARID, 0xaa8161),
   monsoon: row(LOAM, WET),
-  alpine: row(0x625952, ALPINE, 0x9ea0a2),
+  alpine: row(0x625952, ALPINE, SLUSH),
   caldera: row(0x352e2a, DRY, 0x4b4845),
   foundry: row(LOAM, INDUSTRIAL, 0x736f69),
   ruinspires: row(0x3d3834, DRY, 0xad9b7c),
