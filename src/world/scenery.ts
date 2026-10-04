@@ -26,7 +26,7 @@
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildBedrock, buildRockFormation, type RockFormationSpec } from './sceneryRocks.ts';
-import { restsOnTalus } from './landformGeology.ts';
+import { restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 import { buildConductor, buildPylon, SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
 import { buildFieldWorks, type FieldWorksKeepOut, type FieldWorksReceipt, type FieldWorksRect } from './fieldWorks.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
@@ -360,6 +360,7 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
     const forms = field.forms ?? FIELD_FORMS[field.geology];
     const total = forms.reduce((sum, [, w]) => sum + w, 0);
     const [sMin, sMax] = field.size ?? [2.5, 6];
+    const talus = field.talusDeg === undefined ? TALUS_DEG : field.talusDeg;
     // the same formations on every tier: they are colliders the hosts' manifests carry (the phones get fewer stones and
     // facets per formation, never fewer formations)
     const want = Math.max(0, Math.round(field.count));
@@ -388,9 +389,10 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
         : form === 'hoodoo' ? r * 1.9 : form === 'menhir' ? r * 2.6 : form === 'cairn' ? r * 0.6
           : form === 'pavement' ? (rng() < 0.35 ? 0.8 : 0) : 0;
       const yawDeg = rng() * 180;
-      // the steeper ground first, but never a wall (talusDeg; the mountains lane, 2026-10-04): no formation where the ground
-      // falls away past a talus slope. Its draws are taken, so the field's later candidates keep their seats.
-      if (field.talusDeg !== undefined && !restsOnTalus(ground, x, z, reach, field.talusDeg)) continue;
+      // the steeper ground first, but never a wall (talusDeg, default 35 degrees; the mountains lane, 2026-10-04): no
+      // formation where the ground falls away past a talus slope. Its draws are taken, so the field's later candidates
+      // keep their seats.
+      if (talus !== null && !restsOnTalus(ground, x, z, reach, talus)) continue;
       const built = buildRockFormation({ form, geology: field.geology, x, z, radius: r, height, yawDeg, tone: field.tone, shed: 0.6 },
         ground, noise, mulberry32(stream), { mobile: ctx.mobile });
       if (!built.geometry) continue;

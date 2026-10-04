@@ -652,6 +652,10 @@ export function geologyBoulderSite(form: GeologicForm, u: number, v: number): [n
   return [form.x + lx * c - lz * s, form.z + lx * s + lz * c];
 }
 
+/** The steepest ground a loose block rests on by default, degrees: the repose angle of angular debris (props boulders,
+ *  scenery rock fields; a map or a field may name another, or null for none). */
+export const TALUS_DEG = 35;
+
 /**
  * Whether a block of footprint radius r rests at (x, z) on ground no steeper than a talus slope of talusDeg (the
  * mountains lane, 2026-10-04, gauntlet wave 48 on Redrock: "two low-poly orange boulders hanging on its face"): the

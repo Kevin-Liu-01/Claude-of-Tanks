@@ -144,7 +144,7 @@ import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
 import type { RegionalBuildContext } from './maps/regional/types.ts';
 import { makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
-import { geologyBoulderSite, restsOnTalus } from './landformGeology.ts';
+import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). The exact float/index streams live in a gzip-packed
 // binary archive; createMapAsync starts it while terrain is being constructed.
@@ -422,8 +422,8 @@ interface PropsSettings {
   tankWrecks?: TankWreckSettings;
   rockSink?: number;
   /** The steepest ground a boulder rests on, degrees (landformGeology.ts restsOnTalus; the mountains lane, 2026-10-04,
-   *  gauntlet wave 48 on Redrock: boulders hanging on the jebels' walls). Unset: no limit. */
-  rockTalusDeg?: number;
+   *  gauntlet wave 48 on Redrock: boulders hanging on the jebels' walls). Default TALUS_DEG (35); null: no limit. */
+  rockTalusDeg?: number | null;
   extraKits?: readonly string[] | null;
   riverLandings?: readonly RiverLandingAnchor[];
 }
@@ -2753,6 +2753,40 @@ function composeAutumnHeadlandDressing(context: DestructibleBuildContext, field:
  * @returns {{group:THREE.Group, obstacles:Array<{min:number[],max:number[]}>,
  *   colliders:Array<{min:number[],max:number[]}>, features:{buildings:Array<object>}}}
  */
+/** A boulder's collision hull (local x, z pairs) scaled and turned to its seat, as its collider is built. */
+function turnedRockHull(local: ArrayLike<number>, x: number, z: number, sc: number, yawR: number): number[] {
+  const c = Math.cos(yawR), s = Math.sin(yawR), pts = new Array<number>(local.length);
+  for (let i = 0; i < local.length; i += 2) {
+    const lx = local[i] * sc, lz = local[i + 1] * sc;
+    pts[i] = x + lx * c + lz * s;
+    pts[i + 1] = z - lx * s + lz * c;
+  }
+  return pts;
+}
+
+/** How far two convex footprints (x, z pairs) reach into each other (separating axes: the least overlap over every
+ *  edge normal of both), 0 when they are apart. */
+function hullPenetration(a: number[], b: number[]): number {
+  let depth = Infinity;
+  for (const poly of [a, b]) {
+    const n = poly.length / 2;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      let ax = poly[j * 2 + 1] - poly[i * 2 + 1], az = poly[i * 2] - poly[j * 2];
+      const len = Math.hypot(ax, az);
+      if (len < 1e-9) continue;
+      ax /= len; az /= len;
+      let minA = Infinity, maxA = -Infinity, minB = Infinity, maxB = -Infinity;
+      for (let k = 0; k < a.length; k += 2) { const p = a[k] * ax + a[k + 1] * az; minA = Math.min(minA, p); maxA = Math.max(maxA, p); }
+      for (let k = 0; k < b.length; k += 2) { const p = b[k] * ax + b[k + 1] * az; minB = Math.min(minB, p); maxB = Math.max(maxB, p); }
+      const overlap = Math.min(maxA, maxB) - Math.max(minA, minB);
+      if (overlap <= 0) return 0;
+      depth = Math.min(depth, overlap);
+    }
+  }
+  return depth === Infinity ? 0 : depth;
+}
+
 export function createProps(
   heightField: HeightField,
   engineCtx: EngineContext,
@@ -5600,6 +5634,32 @@ ${snowCap ? `
 
   yield { fine: true, stage: 'rock-variants' };
   const rockPlacements: THREE.Matrix4[][] = [[], [], []];
+  const rockTalus = P.rockTalusDeg === undefined ? TALUS_DEG : P.rockTalusDeg;
+  // The no-overlap law (the mountains lane, 2026-10-04, gauntlet wave 52: "polyhedra that pass through each other"):
+  // the scaled, turned hulls of the boulders placed so far, on a 16 m grid. A candidate whose hull reaches more than
+  // 5 cm into one of them is left out the talus law's way (after every draw, its count kept).
+  const placedRockHulls = new Map<number, Array<{ x: number; z: number; r: number; pts: number[] }>>();
+  let placedRockReach = 0;
+  const rockCell = (c: number): number => Math.floor(c / 16);
+  const rockCellKey = (cx: number, cz: number): number => (cx + 512) * 1024 + (cz + 512);
+  function overlapsPlacedRock(x: number, z: number, r: number, pts: number[]): boolean {
+    const reach = r + placedRockReach;
+    for (let cx = rockCell(x - reach); cx <= rockCell(x + reach); cx++) {
+      for (let cz = rockCell(z - reach); cz <= rockCell(z + reach); cz++) {
+        for (const o of placedRockHulls.get(rockCellKey(cx, cz)) ?? []) {
+          if (Math.hypot(o.x - x, o.z - z) < o.r + r && hullPenetration(pts, o.pts) > 0.05) return true;
+        }
+      }
+    }
+    return false;
+  }
+  function addPlacedRock(x: number, z: number, r: number, pts: number[]): void {
+    const key = rockCellKey(rockCell(x), rockCell(z));
+    let list = placedRockHulls.get(key);
+    if (!list) placedRockHulls.set(key, list = []);
+    list.push({ x, z, r, pts });
+    placedRockReach = Math.max(placedRockReach, r);
+  }
   function tryRock(
     x: number,
     z: number,
@@ -5633,11 +5693,16 @@ ${snowCap ? `
     let hullReach = 0;
     for (let i = 0; i < hull.length; i += 2) hullReach = Math.max(hullReach, Math.hypot(hull[i], hull[i + 1]));
     if (!discClearOfRoadCore(heightField, x, z, hullReach * sc)) return true;
-    // The talus law (rockTalusDeg): a boulder whose footprint falls away more steeply than a talus slope — on a wall, or
-    // astride a ledge's lip — hangs there; it is left out the same way, so every later placement keeps its seat.
-    if (P.rockTalusDeg !== undefined && !restsOnTalus(heightField, x, z, hullReach * sc, P.rockTalusDeg)) return true;
+    // The talus law (rockTalusDeg, default 35 degrees): a boulder whose footprint falls away more steeply than a talus
+    // slope — on a wall, astride a ledge's lip or on a narrow bench — hangs there; it is left out the same way, so every
+    // later placement keeps its seat.
+    if (rockTalus !== null && !restsOnTalus(heightField, x, z, hullReach * sc, rockTalus)) return true;
+    // The no-overlap law: no boulder passes through one placed before it; left out the same way.
+    const footprint = turnedRockHull(hull, x, z, sc, yawR);
+    if (overlapsPlacedRock(x, z, hullReach * sc, footprint)) return true;
     const placement = _mat4.clone();
     rockPlacements[vv].push(placement);
+    addPlacedRock(x, z, hullReach * sc, footprint);
     // sink <= 0.5: half-drifted surface rocks keep their cover role; only the
     // deep-embedded ground-clutter class (0.60) is drive-over
     if (sc >= 1.25 && sink <= 0.5) {
