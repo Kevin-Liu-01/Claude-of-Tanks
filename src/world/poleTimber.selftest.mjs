@@ -2,13 +2,15 @@
 // pole's are found by their baked tones and only those — the insulators and the steel keep theirs; a piece's grain axis
 // runs up the shaft, the pegs and the braces and along the arms; a cached geometry is never marked twice; the hook
 // anchors on the grime hook, paints the timber ahead of the grime and the snow, hashes an instance's place for its tone
-// and samples its grain with the seam-free gradients; the producer clones the cached sourced pole, marks both models
-// and gives both meshes the poles' own material and program.
+// and samples its grain with the seam-free gradients; the producer clones the cached sourced pole, rounds its shaft,
+// marks both models and gives both meshes the poles' own material and program. Wave 66 ("a straight, flat-faced,
+// constant-width beam"): the near pole's shaft is a twelve-sided frustum with smooth normals, tapered to the collar;
+// the distance pole's trunk ten-sided.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { makeTelephonePoleDistanceGeometry } from './propGeometry.ts';
-import { applyPoleTimberHook, markPoleTimber } from './poleTimber.ts';
+import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts';
 
 const sourceTone = [0.41, 0.34, 0.21];
 const near = (a, b, eps = 1e-6) => Math.abs(a - b) <= eps;
@@ -75,13 +77,62 @@ const distance = markPoleTimber(makeTelephonePoleDistanceGeometry());
   }
   const faces = woodTriangles(distance, (i) => axis.getX(i) > 0);
   const trunk = faces.filter((f) => f.dy > 7), arms = faces.filter((f) => f.dx > 2.5);
-  assert.equal(trunk.length, 14, 'the seven-sided trunk');
+  assert.equal(trunk.length, 20, 'the ten-sided trunk');
   assert.equal(arms.length, 16, 'two arms, four long faces of two triangles each');
   for (const f of trunk) assert.deepEqual(f.axes, [1, 1, 1]);
   for (const f of arms) assert.deepEqual(f.axes, [2, 2, 2]);
   assert.ok(ceramic > 50, `insulators ${ceramic}`);
   assert.equal(distance.index, null, 'the distance pole stays a triangle list');
   distance.dispose();
+}
+
+// --- the round shaft: the near post as the build slices it (the source's z > -1), its eight flat faces out, a smooth
+// twelve-sided frustum in
+{
+  const P = pole.positions, keep = [];
+  for (let t = 0; t < pole.indices.length; t += 3) {
+    const v = [pole.indices[t], pole.indices[t + 1], pole.indices[t + 2]];
+    if (v.every((i) => P[i * 3 + 2] > -1)) keep.push(...v);
+  }
+  const post = new THREE.BufferGeometry();
+  post.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(pole.positions), 3));
+  post.setAttribute('normal', new THREE.BufferAttribute(Float32Array.from(pole.normals), 3));
+  post.setAttribute('color', new THREE.BufferAttribute(Float32Array.from(pole.colors), 3));
+  post.setIndex(new THREE.BufferAttribute(Uint16Array.from(keep), 1));
+  const trianglesBefore = keep.length / 3;
+  assert.equal(roundPoleShaft(post), post, 'rounded in place');
+  const p = post.getAttribute('position'), n = post.getAttribute('normal'), c = post.getAttribute('color'), index = post.index.array;
+  assert.equal(index.length / 3, trianglesBefore - 16 + 24, 'the eight flat faces (sixteen triangles) out, twelve round in');
+  const isWood = (v) => near(c.getX(v), sourceTone[0], 0.012) && near(c.getY(v), sourceTone[1], 0.012) && near(c.getZ(v), sourceTone[2], 0.012);
+  let shaftTris = 0, minY = Infinity, maxY = -Infinity;
+  for (let i = 0; i < p.count; i++) { minY = Math.min(minY, p.getY(i)); maxY = Math.max(maxY, p.getY(i)); }
+  const shaftVerts = new Set();
+  const e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), fn = new THREE.Vector3();
+  for (let t = 0; t < index.length; t += 3) {
+    const v = [index[t], index[t + 1], index[t + 2]];
+    const ys = v.map((i) => p.getY(i));
+    if (!v.every(isWood) || Math.max(...ys) - Math.min(...ys) < 0.8 * (maxY - minY)) continue;
+    shaftTris++;
+    v.forEach((i) => shaftVerts.add(i));
+    e1.set(p.getX(v[1]) - p.getX(v[0]), p.getY(v[1]) - p.getY(v[0]), p.getZ(v[1]) - p.getZ(v[0]));
+    e2.set(p.getX(v[2]) - p.getX(v[0]), p.getY(v[2]) - p.getY(v[0]), p.getZ(v[2]) - p.getZ(v[0]));
+    fn.crossVectors(e1, e2).normalize();
+    for (const i of v) assert.ok(fn.x * n.getX(i) + fn.y * n.getY(i) + fn.z * n.getZ(i) > 0.9, 'the shaft faces outward, its normals with its faces');
+  }
+  assert.equal(shaftTris, 24, 'twelve sides, two triangles each');
+  assert.equal(shaftVerts.size, 24, 'two rings of twelve, every side sharing its edges (smooth normals)');
+  const rings = [...shaftVerts].map((i) => [p.getX(i), p.getY(i), p.getZ(i)]);
+  const y0 = Math.min(...rings.map((q) => q[1])), y1 = Math.max(...rings.map((q) => q[1]));
+  const cx = rings.reduce((a, q) => a + q[0], 0) / rings.length, cz = rings.reduce((a, q) => a + q[2], 0) / rings.length;
+  const radius = (y) => Math.max(...rings.filter((q) => Math.abs(q[1] - y) < 1e-4).map((q) => Math.hypot(q[0] - cx, q[2] - cz)));
+  assert.ok(Math.abs(radius(y0) - 0.363) < 0.01, `the butt keeps the post's girth (${radius(y0).toFixed(3)})`);
+  assert.ok(Math.abs(radius(y1) / radius(y0) - 0.7) < 1e-3, 'tapered to seven tenths at the collar');
+  assert.ok(Math.hypot(cx, cz) < 0.02 && y0 < 0.01 && y1 > 10.4, 'on the post\'s own axis, butt to collar');
+  for (const i of shaftVerts) assert.ok(n.getY(i) > 0.005 && n.getY(i) < 0.05, 'the normals lean with the taper');
+  markPoleTimber(post);
+  const axis = post.getAttribute('aPoleWood');
+  for (const i of shaftVerts) assert.equal(axis.getX(i), 1, 'the round shaft is timber, its grain up the pole');
+  assert.throws(() => roundPoleShaft(post), /before marking/, 'a marked pole is never rounded again');
 }
 
 // --- the hook, over the grime hook's anchors
@@ -115,8 +166,8 @@ assert.throws(() => applyPoleTimberHook({ uniforms: {}, vertexShader: '', fragme
 
 // --- the producer
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-assert.match(source, /markPoleTimber\(bakedGeometry\('telephone_pole_polygoogle',[\s\S]{0,160}\)\.clone\(\)\)/,
-  'the cached sourced pole is cloned before it is marked');
+assert.match(source, /markPoleTimber\(roundPoleShaft\(bakedGeometry\('telephone_pole_polygoogle',[\s\S]{0,160}\)\.clone\(\)\)\)/,
+  'the cached sourced pole is cloned, its shaft rounded, then marked');
 assert.match(source, /pole: new THREE\.MeshStandardMaterial\(\{ vertexColors: true, roughness: 0\.9, metalness: 0 \}\)/);
 assert.match(source, /const poleHook: MaterialShaderHook = \(shader\) => \{ grimeHook\(shader\); applyPoleTimberHook\(shader, rockDressing\.dust >= 0\.5\); \};/);
 assert.match(source, /materialKind === 'pole' \? poleHook/);

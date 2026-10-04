@@ -38,7 +38,7 @@ function richCount(n: number | undefined, fallback = 0): number { return Math.ro
 import { markShadowOnly, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
-import { applySourcedBuildings, sourcedStoneIsBrick, type BuildingPaletteId, type SourcedTextureApplicationOptions } from './sourcedTextures.ts';
+import { applySourcedBuildings, applySourcedRock, sourcedStoneIsBrick, type BuildingPaletteId, type SourcedTextureApplicationOptions } from './sourcedTextures.ts';
 import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
@@ -46,7 +46,7 @@ import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNe
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import { applyRockShaderHook, boulderKindFor, buildBoulderForm, makeRockDetail, paintBoulder, rockDressingFor, rockLithologyFor } from './rockDressing.ts'; // round 75 item 6
-import { applyPoleTimberHook, markPoleTimber } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
+import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
@@ -3055,15 +3055,20 @@ function* propsBuildSteps(
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
   // urban) in place when they load; procedural stays the fallback of record.
   // A regional kit keeps its own roof and masonry painters; it opts into the plaster and timber photo sets.
-  const sourcedTexturesReady = applySourcedBuildings(
-    regionalArchitecture
-      ? {
-        ...(regionalArchitecture.surfaces.sourced.plaster ? { plaster } : {}),
-        ...(regionalArchitecture.surfaces.sourced.wood ? { wood } : {}),
-      }
-      : { plaster, roof: roofT, wood, stone },
-    mapId, P, sourceApplication,
-  );
+  // The scenery lane (gauntlet wave 66): the boulders wear the terrain's own photographed rock in place of their
+  // procedural tile (the fallback of record), and the map's texture readiness waits for it with the buildings'.
+  const sourcedTexturesReady = Promise.all([
+    applySourcedBuildings(
+      regionalArchitecture
+        ? {
+          ...(regionalArchitecture.surfaces.sourced.plaster ? { plaster } : {}),
+          ...(regionalArchitecture.surfaces.sourced.wood ? { wood } : {}),
+        }
+        : { plaster, roof: roofT, wood, stone },
+      mapId, P, sourceApplication,
+    ),
+    applySourcedRock({ albedo: rockDetail.albedo, normal: rockDetail.normal }, mapId, sourceApplication),
+  ]).then(([buildings, boulders]) => [...buildings, ...boulders]);
 
   const windowStyle = resolveStructureWindowStyle(mapId);
   const mats: Record<string, THREE.MeshStandardMaterial> = {
@@ -5388,13 +5393,14 @@ ${snowCap ? `
     // near-post slice as the physical primitive, then let terrain policy and
     // the live utility network decide whether a station has one or two posts.
     // the scenery lane (after wave 57, Frosthollow's "beige column"): its wood is marked for the poles' timber material
-    // (poleTimber.ts) on a clone — the baked source stays cached unmarked
+    // (poleTimber.ts) on a clone — the baked source stays cached unmarked; wave 66 ("a straight, flat-faced,
+    // constant-width beam"): its shaft round, smooth and tapered first
     const poleGeo = SOURCED.poles && P.telegraph
-      ? markPoleTimber(bakedGeometry('telephone_pole_polygoogle',
+      ? markPoleTimber(roundPoleShaft(bakedGeometry('telephone_pole_polygoogle',
         {
           targetH: 7.4, sink: 0.15, sourceZMin: -1,
           whiteCap: [0.14, 0.21, 0.16],
-        }).clone()) : null;
+        }).clone())) : null;
     // r4 terrain_environment: record pole stations — catenary WIRES are strung
     // between consecutive poles below (the bare pole line was a critique item:
     // "telephone poles have no visible wires, they read as bare sticks")

@@ -359,10 +359,12 @@ export function sourcedTerrainLayerSet(
 // ARCH-P8: decoded source photos only feed the bounded composite caches below
 // (8 albedo + 4 normal canvases). Keep the most recently used photos up to one
 // battlefield's working set — three terrain sets plus the four building sets,
-// four maps each — so a map's own loads never evict each other, while earlier
-// battlefields' photos are released (the cache used to keep all 48 forever).
+// four photos each, and the boulders' stone (the terrain's rock set: the scenery
+// lane, wave 66) where the terrain does not already wear it — so a map's own
+// loads never evict each other, while earlier battlefields' photos are released
+// (the cache used to keep all 48 forever).
 // src/world/sourcedImageCache.selftest.mjs proves the bound covers every map.
-const IMAGE_CACHE_MAX = 28;
+const IMAGE_CACHE_MAX = 32;
 const _imgCache = new Map<string, Promise<HTMLImageElement>>();
 function loadImage(url: string): Promise<HTMLImageElement> {
   const cached = _imgCache.get(url);
@@ -833,6 +835,26 @@ export function prepareSourcedTerrain(
       for (const entry of entries.values()) entry.composed = null;
     },
   };
+}
+
+/**
+ * The boulders' photographed stone (the scenery lane, gauntlet wave 66: "the same orange-peel bump texture on every
+ * facet" — the procedural tile was the constant, whatever the form). The boulders wear the rock the terrain's own rock
+ * layer is photographed from (Rock058: its albedo with its occlusion multiplied in, and its relief), composed to a
+ * neutral mid grey — linear 0.214 per channel on average, no texel clipped — so the boulder material multiplies the
+ * stone's structure into its vertex tone and the lithology keeps its colour (rockDressing.ts applyRockShaderHook).
+ * Same in-place swap contract as the building sets: the procedural tile stays the fallback of record. The photos are
+ * the terrain's (one decode, the shared image cache); the composite is the boulders' own.
+ */
+const ROCK_NEUTRAL_TINT: Tint = [1.746, 1.62, 1.507];
+
+export function applySourcedRock(
+  layer: TextureLayer,
+  mapId: string,
+  application: SourcedTextureApplicationOptions = {},
+): Promise<SourcedTextureResult[]> {
+  return sourceJob(`boulders ${mapId}/stone`, 'rock', { albedo: layer.albedo, normal: layer.normal },
+    { roughInAlpha: false, tint: ROCK_NEUTRAL_TINT }, application).then((result) => [result]);
 }
 
 /**

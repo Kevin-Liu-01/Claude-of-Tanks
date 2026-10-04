@@ -1,11 +1,13 @@
-// The boulders (round 75 item 6, rebuilt by the scenery lane 2026-10-04 after gauntlet wave 52): a boulder is a block
-// its joints cut and the weather rounded — a closed, welded, star-shaped surface with no folded or flipped triangle,
-// its normals the surface's own (no triangle above the ground line spans more than a right angle of them), fitted
-// inside the legacy hull the shards carry above the ground line and as tall as the legacy rock, with joint faces and
-// arrises both present, and a function of its seed; its tone reads face, fracture and arris; every battlefield resolves
-// a dressing (its lithology, beds, lichen, varnish); the detail tile is its lithology's and bounded, the lichen tile's
-// coverage rank is exact; the hook patches the grime hook's anchors, keeps the beds, the varnish, the lichen and the
-// contact darkening to the instanced boulders, and the producer keeps the legacy hull as the collision proxy.
+// The boulders (round 75 item 6, rebuilt by the scenery lane 2026-10-04 after gauntlet waves 52, 57 and 66): a boulder
+// is a weathered mass — a welded cube-sphere cast at the smooth maximum of its joints, lumped at three scales, at most
+// one blended fracture: closed, unfolded, its normals the surface's own and facing out (no triangle above the ground
+// line spans more than a right angle of them), fitted inside the legacy hull the shards carry above the ground line and
+// as tall as the legacy rock, its skirt deep, hollowed and knobbed, and a function of its seed; its tone reads face,
+// fracture, arris and hollow (the chalk a warm off-white, grey only in its hollows); every battlefield resolves a
+// dressing (its lithology, the photographed stone's treatment, lichen, varnish); the stand-in tile is its lithology's,
+// a mid grey on average, the lichen tile's coverage rank is exact; the hook patches the grime hook's anchors, multiplies
+// the photographed stone's structure into the vertex tone, keeps the varnish, the lichen and the contact darkening to
+// the instanced boulders, and the producer keeps the legacy hull as the collision proxy.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
@@ -64,83 +66,104 @@ function closedWelded(position, index) {
 }
 
 // --- the forms
-assert.deepEqual([...BOULDER_KINDS], ['jointed block', 'corestone', 'bedded block', 'slab']);
+assert.deepEqual([...BOULDER_KINDS], ['block', 'rounded', 'slab']);
 const LITHOLOGIES = ['granite', 'gneiss', 'sandstone', 'limestone', 'slate', 'basalt', 'chalk'];
-const tri = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
+const tri = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), centroid = new THREE.Vector3();
 const meanLuma = {};
+/** The weathered mass, every rock and tier: a welded cube-sphere (closed, unfolded, its normals the surface's own and
+ * facing out, none above the ground line apart from the triangles it shades), as tall as the legacy rock and inside its
+ * hull above the ground line, its skirt deep; broken up by the weather (hollows), its faces and arrises both present. */
+function checkForm(form, label, hull, legacyTop, subdiv) {
+  const g = form.geometry, p = g.attributes.position, n = g.attributes.normal, index = g.index.array;
+  const cells = subdiv >= 6 ? 8 : 5;
+  assert.equal(index.length / 3, 10 * cells * cells + 4 * cells, `${label}: a cube-sphere's triangles, the buried floor a fan`);
+  assert.ok(index.length / 3 <= (subdiv >= 6 ? 900 : 320), `${label}: within its budget (${index.length / 3})`);
+  assert.equal(p.count, 6 * cells * cells + 2 - (cells - 1) ** 2 + 1, `${label}: welded (one vertex per grid point, shared normals)`);
+  assert.ok([form.edge, form.fresh, form.facet, form.hollow].every((a) => a.length === p.count), `${label}: per-vertex facts`);
+  assert.ok(closedWelded(p, index), `${label}: closed`);
+  let top = -Infinity, floor = Infinity, worstAbove = 1;
+  for (let i = 0; i < p.count; i++) {
+    top = Math.max(top, p.getY(i)); floor = Math.min(floor, p.getY(i));
+    assert.ok(Math.abs(Math.hypot(n.getX(i), n.getY(i), n.getZ(i)) - 1) < 1e-4, `${label}: unit normals`);
+    assert.ok(n.getX(i) * p.getX(i) + n.getY(i) * p.getY(i) + n.getZ(i) * p.getZ(i) > 0, `${label}: normals face out`);
+  }
+  for (let t = 0; t < index.length; t += 3) {
+    const [a, b, c] = [index[t], index[t + 1], index[t + 2]];
+    e1.set(p.getX(b) - p.getX(a), p.getY(b) - p.getY(a), p.getZ(b) - p.getZ(a));
+    e2.set(p.getX(c) - p.getX(a), p.getY(c) - p.getY(a), p.getZ(c) - p.getZ(a));
+    tri.crossVectors(e1, e2).normalize();
+    centroid.set(p.getX(a) + p.getX(b) + p.getX(c), p.getY(a) + p.getY(b) + p.getY(c), p.getZ(a) + p.getZ(b) + p.getZ(c)).divideScalar(3);
+    assert.ok(tri.dot(centroid) > 0, `${label}: no triangle folds inward (star-shaped, unfolded)`);
+    // (the buried floor's fan meets the flanks at a right angle: its rim shades as the flank does, and nothing sees it)
+    if (centroid.y > BOULDER_SEAT_Y - 0.4) for (const v of [a, b, c]) assert.ok(tri.x * n.getX(v) + tri.y * n.getY(v) + tri.z * n.getZ(v) > 0.05, `${label}: the shading normals agree with every triangle a slope can bare`);
+    if (centroid.y > BOULDER_SEAT_Y) {
+      let spread = 1;
+      for (const [u, w] of [[a, b], [b, c], [a, c]]) spread = Math.min(spread, n.getX(u) * n.getX(w) + n.getY(u) * n.getY(w) + n.getZ(u) * n.getZ(w));
+      worstAbove = Math.min(worstAbove, spread);
+    }
+  }
+  // (a phone's five cells a face cannot follow an arris its joints set at any azimuth: there a cell may straddle a little
+  // more than the arris's turn)
+  assert.ok(worstAbove > (subdiv >= 6 ? 0 : -0.35), `${label}: no triangle above the ground line spans more than a right angle of normal (${worstAbove.toFixed(3)})`);
+  assert.ok(Math.abs(top - legacyTop * 0.98) < 1e-5, `${label}: as tall as the legacy rock (its collider's cover)`);
+  assert.ok(floor < -1.2, `${label}: the skirt runs deep under the ground (${floor.toFixed(2)}), so no slope bares its underside`);
+  // inside the legacy hull above the ground line; under it, where a slope's downhill side can bare the stone, within
+  // a few per cent of it (a hull stopped by the collider never sinks into a rock it can see), more only deeper down
+  const band = (lo, hi) => {
+    const g2 = new THREE.BufferGeometry(), out = [];
+    for (let i = 0; i < p.count; i++) if (p.getY(i) >= lo && p.getY(i) < hi) out.push(p.getX(i), 0, p.getZ(i));
+    g2.setAttribute('position', new THREE.BufferAttribute(new Float32Array(out), 3));
+    return g2;
+  };
+  assert.ok(projectsInsideHull(band(BOULDER_SEAT_Y, Infinity), hull), `${label}: inside the legacy hull above the ground line`);
+  assert.ok(projectsInsideHull(band(BOULDER_SEAT_Y - 0.4, BOULDER_SEAT_Y), hull.map((c) => c * 1.04)), `${label}: within 4 % of it to 0.4 under the ground line`);
+  assert.ok(projectsInsideHull(band(-Infinity, BOULDER_SEAT_Y - 0.4), hull.map((c) => c * 1.16)), `${label}: within 16 % of it deeper down`);
+  // the weather's hollows (wave 57: "a bar-of-soap form"): a share of the stone hollowed, a share not
+  const hollowed = form.hollow.filter((h) => h > 0.3).length / p.count, proud = form.hollow.filter((h) => h === 0).length / p.count;
+  assert.ok(hollowed > 0.08 && proud > 0.3, `${label}: hollows and knobs (${hollowed.toFixed(2)} hollowed, ${proud.toFixed(2)} proud)`);
+  // at most one fracture, blended: its share never a hard face's alone over a whole ring
+  assert.ok(form.fresh.every((f) => f >= 0 && f <= 1), `${label}: a bounded fracture share`);
+  return { p, n };
+}
 for (const lithology of LITHOLOGIES) {
-  for (const seed of [2002, 77]) {
+  for (const seed of [2002, 77, 9001]) {
     for (const [detail, variant] of [[2, 0], [2, 1], [3, 2]]) {
       const legacy = legacyBoulder(detail, variant);
       const kind = boulderKindFor(lithology, variant);
       for (const subdiv of [6, 4]) {
         const label = `${lithology} seed ${seed}, ${BOULDER_KINDS[kind]}, ${subdiv === 6 ? 'desktop' : 'phone'}`;
         const form = buildBoulderForm(variant, noise, mulberry32(seed + 60 + variant), legacy.hull, subdiv, legacy.top, kind, lithology);
-        const g = form.geometry, p = g.attributes.position, n = g.attributes.normal, index = g.index.array;
-        assert.ok(form.edge.length === p.count && form.fresh.length === p.count && form.facet.length === p.count, `${label}: per-vertex facts`);
-        assert.ok(index.length / 3 <= (subdiv === 6 ? 900 : 320), `${label}: within its budget (${index.length / 3} triangles)`);
-        // closed: every block's every edge between exactly two triangles (coincident points welded)
-        assert.ok(closedWelded(p, index), `${label}: closed`);
-        let top = -Infinity, floor = Infinity;
-        for (let i = 0; i < p.count; i++) {
-          top = Math.max(top, p.getY(i)); floor = Math.min(floor, p.getY(i));
-          assert.ok(Math.abs(Math.hypot(n.getX(i), n.getY(i), n.getZ(i)) - 1) < 1e-4, `${label}: unit normals`);
-        }
-        // the shading normals agree with the triangles they shade: none above the ground line flipped, and on the desktop
-        // all but a couple of per cent within eighty-five degrees (a hidden groove under a ledge; a phone's arrises are one
-        // segment across, coarse by design)
-        let above = 0, loose = 0;
-        for (let t = 0; t < index.length; t += 3) {
-          const [a, b, c] = [index[t], index[t + 1], index[t + 2]];
-          if ((p.getY(a) + p.getY(b) + p.getY(c)) / 3 < BOULDER_SEAT_Y) continue;
-          e1.set(p.getX(b) - p.getX(a), p.getY(b) - p.getY(a), p.getZ(b) - p.getZ(a));
-          e2.set(p.getX(c) - p.getX(a), p.getY(c) - p.getY(a), p.getZ(c) - p.getZ(a));
-          tri.crossVectors(e1, e2);
-          if (tri.length() < 1e-12) continue;
-          tri.normalize();
-          const dots = [a, b, c].map((v) => tri.x * n.getX(v) + tri.y * n.getY(v) + tri.z * n.getZ(v));
-          above++;
-          // (an edge-on sliver where three of a corner's points lie on one arc covers no pixel: it may sit at right angles)
-          assert.ok(Math.max(...dots) > -0.15, `${label}: no triangle above the ground line faces against its normals`);
-          if (Math.min(...dots) < 0.1) loose++;
-        }
-        if (subdiv === 6) assert.ok(loose <= Math.max(2, above * 0.02), `${label}: the normals agree with the triangles (${loose} of ${above} loose)`);
-        assert.ok(Math.abs(top - legacy.top * 0.98) < 1e-5, `${label}: as tall as the legacy rock (its collider's cover)`);
-        assert.ok(floor < -1.2, `${label}: the skirt runs deep under the ground (${floor.toFixed(2)}), so no slope bares its underside`);
-        // inside the legacy hull above the ground line; under it, where a slope's downhill side can bare the stone, within
-        // a few per cent of it (a hull stopped by the collider never sinks into a rock it can see), more only deeper down
-        const band = (lo, hi) => {
-          const g2 = new THREE.BufferGeometry(), out = [];
-          for (let i = 0; i < p.count; i++) if (p.getY(i) >= lo && p.getY(i) < hi) out.push(p.getX(i), 0, p.getZ(i));
-          g2.setAttribute('position', new THREE.BufferAttribute(new Float32Array(out), 3));
-          return g2;
-        };
-        assert.ok(projectsInsideHull(band(BOULDER_SEAT_Y, Infinity), legacy.hull), `${label}: inside the legacy hull above the ground line`);
-        assert.ok(projectsInsideHull(band(BOULDER_SEAT_Y - 0.4, BOULDER_SEAT_Y), legacy.hull.map((c) => c * 1.04)), `${label}: within 4 % of it to 0.4 under the ground line`);
-        assert.ok(projectsInsideHull(band(-Infinity, BOULDER_SEAT_Y - 0.4), legacy.hull.map((c) => c * 1.16)), `${label}: within 16 % of it deeper down`);
-        // flat joint faces and rounded arrises, both (a phone's arrises are one chamfer across, no point on their round)
-        const faces = form.edge.filter((e) => e === 0).length / p.count, arrises = form.edge.filter((e) => e > 0.5).length / p.count;
-        assert.ok(faces > 0.3, `${label}: joint faces (${faces.toFixed(2)})`);
-        if (subdiv === 6) assert.ok(arrises > 0.1, `${label}: rounded arrises (${arrises.toFixed(2)})`);
+        const { p, n } = checkForm(form, label, legacy.hull, legacy.top, subdiv);
+        const g = form.geometry;
+        // broad faces and rounded arrises, both (the corestone is all arris)
+        const faces = form.edge.filter((e) => e < 0.1).length / p.count, arrises = form.edge.filter((e) => e > 0.3).length / p.count;
+        if (BOULDER_KINDS[kind] !== 'rounded') assert.ok(faces > (subdiv === 6 ? 0.1 : 0.05), `${label}: joint faces (${faces.toFixed(2)})`);
+        assert.ok(arrises > 0.05, `${label}: rounded arrises (${arrises.toFixed(2)})`);
         if (subdiv === 6) {
-          // more than one block (a parted joint, a lobe, the beds) on the desktop kinds that have them
-          const blocks = new Set(Array.from(form.facet, (t) => Math.round(t * 1e4))).size;
-          if (BOULDER_KINDS[kind] !== 'slab') assert.ok(blocks >= 6, `${label}: its faces and blocks each a shade of their own (${blocks})`);
           const again = buildBoulderForm(variant, noise, mulberry32(seed + 60 + variant), legacy.hull, subdiv, legacy.top, kind, lithology);
           assert.equal(hashOf(again.geometry), hashOf(g), `${label}: a function of its seed`);
           const other = buildBoulderForm(variant, noise, mulberry32(seed + 61 + variant * 7), legacy.hull, subdiv, legacy.top, kind, lithology);
           assert.notEqual(hashOf(other.geometry), hashOf(g), `${label}: another seed, another rock`);
         }
-        // the tone: a colour attribute in range; the chalk paler than the rest
+        // the tone: a colour attribute in range; the fracture paler than the weathered faces; the chalk paler than the
+        // rest, its hollows greyer
         paintBoulder(form, null, lithology);
         const col = g.attributes.color;
         assert.ok(col && col.count === p.count, `${label}: a vertex tone`);
-        let luma = 0;
+        let luma = 0, freshL = 0, freshN = 0, oldL = 0, oldN = 0, hollowS = 0, hollowN = 0, proudS = 0, proudN = 0;
+        const hsl = { h: 0, s: 0, l: 0 }, c3 = new THREE.Color();
         for (let i = 0; i < p.count; i++) {
           assert.ok(col.getX(i) >= 0 && col.getX(i) <= 1 && col.getY(i) >= 0 && col.getY(i) <= 1 && col.getZ(i) >= 0 && col.getZ(i) <= 1, `${label}: a bounded tone`);
-          luma += col.getX(i) * 0.2126 + col.getY(i) * 0.7152 + col.getZ(i) * 0.0722;
+          const l = col.getX(i) * 0.2126 + col.getY(i) * 0.7152 + col.getZ(i) * 0.0722;
+          luma += l;
+          c3.setRGB(col.getX(i), col.getY(i), col.getZ(i)).getHSL(hsl, THREE.SRGBColorSpace);
+          if (form.hollow[i] > 0.5) { hollowS += hsl.s; hollowN++; } else if (form.hollow[i] === 0) { proudS += hsl.s; proudN++; }
+          if (Math.abs(n.getY(i)) > 0.5) continue; // compare the sides (the tops take the cap tone)
+          if (form.fresh[i] > 0.8) { freshL += l; freshN++; } else if (form.fresh[i] < 0.05) { oldL += l; oldN++; }
         }
         meanLuma[lithology] = luma / p.count;
+        if (freshN > 3 && oldN > 3) assert.ok(freshL / freshN > oldL / oldN, `${label}: the fracture paler`);
+        if (lithology === 'chalk' && hollowN > 3 && proudN > 3) assert.ok(hollowS / hollowN < proudS / proudN * 0.6, `${label}: the chalk grey only in its hollows`);
         const toned = buildBoulderForm(variant, noise, mulberry32(seed + 60 + variant), legacy.hull, subdiv, legacy.top, kind, lithology);
         paintBoulder(toned, (h, s, l) => [0.6, s, l], lithology);
         assert.notDeepEqual(Array.from(toned.geometry.attributes.color.array.slice(0, 9)), Array.from(col.array.slice(0, 9)), `${label}: the map's tone law reaches the stone`);
@@ -149,7 +172,7 @@ for (const lithology of LITHOLOGIES) {
   }
 }
 // the forms the props build draws (its seed 2002 and its noise, its legacy rocks' three octaves and crease), every rock
-// and tier: closed, no triangle above the ground line flipped, inside the hull, the skirt deep
+// and tier
 {
   const propsNoise = new SimplexNoise({ random: mulberry32(2002 + 7) });
   for (let vi = 0; vi < 3; vi++) {
@@ -168,26 +191,7 @@ for (const lithology of LITHOLOGIES) {
     for (let i = 0; i < p.count; i++) legacyTop = Math.max(legacyTop, p.getY(i));
     for (const lithology of LITHOLOGIES) for (const subdiv of [6, 4]) {
       const label = `the props build's ${lithology} variant ${vi}, ${subdiv === 6 ? 'desktop' : 'phone'}`;
-      const form = buildBoulderForm(vi, propsNoise, mulberry32(2002 + 60 + vi), hull, subdiv, legacyTop, boulderKindFor(lithology, vi), lithology);
-      const fp = form.geometry.attributes.position, fn = form.geometry.attributes.normal, index = form.geometry.index.array;
-      assert.ok(closedWelded(fp, index), `${label}: closed`);
-      for (let t = 0; t < index.length; t += 3) {
-        const [a, b, c] = [index[t], index[t + 1], index[t + 2]];
-        if ((fp.getY(a) + fp.getY(b) + fp.getY(c)) / 3 < BOULDER_SEAT_Y) continue;
-        e1.set(fp.getX(b) - fp.getX(a), fp.getY(b) - fp.getY(a), fp.getZ(b) - fp.getZ(a));
-        e2.set(fp.getX(c) - fp.getX(a), fp.getY(c) - fp.getY(a), fp.getZ(c) - fp.getZ(a));
-        tri.crossVectors(e1, e2);
-        if (tri.length() < 1e-12) continue;
-        tri.normalize();
-        assert.ok(Math.max(...[a, b, c].map((w) => tri.x * fn.getX(w) + tri.y * fn.getY(w) + tri.z * fn.getZ(w))) > -0.15, `${label}: no triangle above the ground line flipped`);
-      }
-      const above = new THREE.BufferGeometry(), pts = [];
-      let floor = Infinity;
-      for (let i = 0; i < fp.count; i++) { floor = Math.min(floor, fp.getY(i)); if (fp.getY(i) >= BOULDER_SEAT_Y) pts.push(fp.getX(i), 0, fp.getZ(i)); }
-      above.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts), 3));
-      assert.ok(projectsInsideHull(above, hull), `${label}: inside its legacy hull above the ground line`);
-      assert.ok(floor < -1.2, `${label}: its skirt deep`);
-      assert.ok(index.length / 3 <= (subdiv === 6 ? 900 : 320), `${label}: within its budget (${index.length / 3})`);
+      checkForm(buildBoulderForm(vi, propsNoise, mulberry32(2002 + 60 + vi), hull, subdiv, legacyTop, boulderKindFor(lithology, vi), lithology), label, hull, legacyTop, subdiv);
     }
   }
 }
@@ -215,7 +219,13 @@ assert.ok(rockDressingFor('desert', null).varnish > 0.2 && rockDressingFor('verd
 assert.deepEqual([rockDressingFor('mars', null).lichen[0], rockDressingFor('moon', null).lichen[0]], [0, 0], 'no lichen off the earth');
 assert.equal(rockDressingFor('desert', null).lithology, 'sandstone');
 assert.equal(rockDressingFor('verdant', null).lithology, 'chalk', 'Prokhorovka\'s exposed rock is chalk (wave 57: no erratics south of the glacial limit)');
-assert.ok(['bedded block', 'slab'].includes(BOULDER_KINDS[boulderKindFor('sandstone', 0)]), 'sandstone beds');
+assert.ok([0, 1, 2].some((v) => BOULDER_KINDS[boulderKindFor('sandstone', v)] === 'slab'), 'sandstone parts in slabs');
+assert.ok([0, 1, 2].filter((v) => BOULDER_KINDS[boulderKindFor('chalk', v)] === 'rounded').length >= 2, 'the chalk weathers round');
+for (const mapId of MAP_IDS) {
+  const [contrast, colour, relief] = rockDressingFor(mapId, null).photo;
+  assert.ok(contrast > 0.3 && contrast <= 1.3 && colour >= 0 && colour <= 1 && relief > 0.3 && relief <= 1, `${mapId}: the photographed stone's treatment bounded`);
+}
+assert.ok(rockDressingFor('verdant', null).photo[0] < rockDressingFor('coastal', null).photo[0] * 0.5, 'the chalk takes the photo softly, the granite whole');
 assert.notDeepEqual(rockDressingFor('coastal', null).lichenA, rockDressingFor('verdant', null).lichenA, 'the climate picks the lichen');
 assert.notDeepEqual(rockDressingFor('railyard', (h, s, l) => [0.6, s, l]).soil, rockDressingFor('railyard', null).soil, 'the dirt tone law reaches the soil');
 
@@ -239,7 +249,8 @@ try {
     const alb = r.value.albedo.image.pixels; let dark = 0, sum = 0, sq = 0;
     for (let i = 0; i < alb.length; i += 4) { if (alb[i] < 140) dark++; sum += alb[i]; sq += alb[i] * alb[i]; }
     const mean = sum / 65536, sd = Math.sqrt(sq / 65536 - mean * mean);
-    assert.ok(sd > 12 && mean > 175 && dark < 65536 * 0.35, `${lithology}: its grain present but the tile near-white (sd ${sd.toFixed(1)}, mean ${mean.toFixed(1)}, dark ${dark})`);
+    // (the photographed stone's stand-in: a mid grey on average, as the photo is composed — the hook divides it out)
+    assert.ok(sd > 5 && Math.abs(mean - 127.5) < 3, `${lithology}: its grain present about a mid grey (sd ${sd.toFixed(1)}, mean ${mean.toFixed(1)})`);
     albedoHashes.add(Buffer.from(alb.buffer).toString('base64'));
     const orm = r.value.surface.image.pixels;
     for (let i = 2; i < orm.length; i += 4) assert.equal(orm[i], 0, `${lithology}: no rust mask on the rock (the grime hook reads the blue)`);
@@ -267,7 +278,8 @@ const grimed = {
 const tile = new THREE.DataTexture(new Uint8Array(4), 1, 1);
 const shader = { uniforms: {}, vertexShader: grimed.vertexShader, fragmentShader: grimed.fragmentShader };
 applyRockShaderHook(shader, rockDressingFor('verdant', null), tile);
-assert.deepEqual(Object.keys(shader.uniforms).sort(), ['uRockDust', 'uRockLichen', 'uRockLichenA', 'uRockLichenB', 'uRockLichenTile', 'uRockMoss', 'uRockSoil', 'uRockVarnish']);
+assert.deepEqual(Object.keys(shader.uniforms).sort(), ['uRockDust', 'uRockLichen', 'uRockLichenA', 'uRockLichenB', 'uRockLichenTile', 'uRockMoss', 'uRockPhoto', 'uRockSoil', 'uRockVarnish']);
+assert.deepEqual(shader.uniforms.uRockPhoto.value.toArray(), [...rockDressingFor('verdant', null).photo], 'the lithology\'s photo treatment');
 assert.equal(shader.uniforms.uRockLichenTile.value, tile);
 assert.ok(shader.uniforms.uRockLichen.value.x > 0.1, 'the climate\'s lichen cover');
 assert.match(shader.vertexShader, /attribute float aRockGround;[\s\S]*vRockAbove = vGrimeW\.y - aRockGround;/);
@@ -275,7 +287,10 @@ assert.match(shader.vertexShader, /#ifdef USE_INSTANCING\nattribute vec2 aRockSl
 assert.match(shader.vertexShader, /vRockAbove -= dot\(aRockSlope, vGrimeW\.xz - \(modelMatrix \* instanceMatrix\[3\]\)\.xz\);/, 'its ground line is a plane through its centre along that slope');
 assert.match(shader.vertexShader, /vRockSeed = -1\.0;[\s\S]*#ifdef USE_INSTANCING[\s\S]*vRockSeed = fract\(sin\(dot\(instanceMatrix\[3\]\.xz/, 'the merged meshes are not boulders; an instance hashes its place');
 assert.ok(!/uRockBeds|vRockBed|bedTint|rockParting/.test(shader.vertexShader + shader.fragmentShader), 'no painted strata (wave 57: the beds are the forms\' relief)');
-assert.ok(!shader.fragmentShader.includes('#include <map_fragment>') && shader.fragmentShader.includes('texture2D(map, rockPw.yz)'), 'the map slot samples triplanar');
+assert.ok(!shader.fragmentShader.includes('#include <map_fragment>') && shader.fragmentShader.includes('texture2D(map, rockPw.yz).rgb'), 'the map slot samples the stone triplanar, its colour too');
+assert.match(shader.fragmentShader, /vec3 rockF = rockPhoto \/ 0\.214;[\s\S]*mix\(vec3\(1\.0\), mix\(vec3\(rockFL\), rockF, uRockPhoto\.y\), uRockPhoto\.x\)/,
+  'the photo multiplies its structure about its composed mid grey, its contrast and colour the lithology\'s');
+assert.match(shader.fragmentShader, /rockPert \* uRockPhoto\.z/, 'its relief at the lithology\'s strength');
 const frag = shader.fragmentShader;
 assert.ok(frag.indexOf('#include <color_fragment>') < frag.indexOf('mossMask'), 'the dressing mixes after the vertex tone');
 assert.ok(frag.indexOf('rockDetail') < frag.indexOf('{ grime }'), 'the detail multiplies before the grime block');
@@ -308,4 +323,4 @@ assert.match(source, /rock: new THREE\.MeshStandardMaterial\(\{\n\s*map: rockDet
 assert.match(source, /const rockDetail = yield\* makeRockDetail\(noi, aniso, rockLithologyFor\(mapId\)\);/);
 assert.match(source, /textures: \[grimeTex, rockDetail\.lichen\]/, 'the shader-only lichen tile is declared on its world');
 assert.match(source, /rockDressingFor\(mapId, P\.rockSoilTone \?\? null, snowCap\)[\s\S]{0,200}applyRockShaderHook\(shader, rockDressing, rockDetail\.lichen\)/);
-console.log('rockDressing self-test passed: four boulder kinds over seven rocks closed, unflipped, flat-faced and round-arrissed, deep-skirted and inside their hulls, every map dressed, seven lithology tiles bounded, the lichen rank exact, the hook anchored');
+console.log('rockDressing self-test passed: three weathered kinds over seven rocks closed, unfolded, hollowed and knobbed, deep-skirted and inside their hulls, every map dressed, seven stand-in tiles about a mid grey, the lichen rank exact, the photographed stone in the hook');

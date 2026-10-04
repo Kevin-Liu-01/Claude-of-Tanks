@@ -68,6 +68,62 @@ export function markPoleTimber(geometry: THREE.BufferGeometry): THREE.BufferGeom
   return geometry;
 }
 
+/**
+ * The sourced pole's shaft made round (gauntlet wave 66: "a straight, flat-faced, constant-width beam … no round
+ * section, taper", "one hard vertical brightness seam"): its eight flat-shaded faces (the wood triangles that run most
+ * of the model's height) out, a frustum of `sides` faces in, its normals smooth and leaning with the taper, from the
+ * butt's girth to `taper` of it at the top (where the model's collar sits). In place on an indexed geometry with baked
+ * vertex tones; the new wood carries the shaft's tone, so markPoleTimber marks it after. Refused on a geometry with no
+ * shaft (or one already marked: its wood is white).
+ */
+export function roundPoleShaft(geometry: THREE.BufferGeometry, sides = 12, taper = 0.7): THREE.BufferGeometry {
+  if (geometry.getAttribute('aPoleWood')) throw new Error('world/poleTimber: round the shaft before marking the timber');
+  const position = geometry.getAttribute('position'), color = geometry.getAttribute('color');
+  const normal = geometry.getAttribute('normal'), index = geometry.index;
+  if (!position || !color || !normal || !index) throw new Error('world/poleTimber: a pole needs an indexed mesh with tones');
+  let minY = Infinity, maxY = -Infinity;
+  for (let i = 0; i < position.count; i++) { minY = Math.min(minY, position.getY(i)); maxY = Math.max(maxY, position.getY(i)); }
+  const wood = (v: number): boolean => isPoleWood(color.getX(v), color.getY(v), color.getZ(v));
+  const kept: number[] = [], shaft = new Set<number>();
+  for (let t = 0; t + 2 < index.count; t += 3) {
+    const a = index.getX(t), b = index.getX(t + 1), c = index.getX(t + 2);
+    const y0 = Math.min(position.getY(a), position.getY(b), position.getY(c));
+    const y1 = Math.max(position.getY(a), position.getY(b), position.getY(c));
+    if (wood(a) && wood(b) && wood(c) && y1 - y0 > 0.8 * (maxY - minY)) { shaft.add(a); shaft.add(b); shaft.add(c); }
+    else kept.push(a, b, c);
+  }
+  if (shaft.size < 6) throw new Error('world/poleTimber: no shaft runs the pole\'s height');
+  let cx = 0, cz = 0, y0 = Infinity, y1 = -Infinity;
+  for (const v of shaft) { cx += position.getX(v); cz += position.getZ(v); y0 = Math.min(y0, position.getY(v)); y1 = Math.max(y1, position.getY(v)); }
+  cx /= shaft.size; cz /= shaft.size;
+  let r0 = 0;
+  for (const v of shaft) r0 = Math.max(r0, Math.hypot(position.getX(v) - cx, position.getZ(v) - cz));
+  const r1 = r0 * taper, slope = (r0 - r1) / (y1 - y0);
+  const tone = [color.getX([...shaft][0]), color.getY([...shaft][0]), color.getZ([...shaft][0])];
+  const base = position.count, ring = sides;
+  const pos = new Float32Array((base + ring * 2) * 3), nor = new Float32Array((base + ring * 2) * 3), col = new Float32Array((base + ring * 2) * 3);
+  pos.set(position.array as ArrayLike<number>); nor.set(normal.array as ArrayLike<number>); col.set(color.array as ArrayLike<number>);
+  for (let k = 0; k < ring; k++) {
+    const a = (k / ring) * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a), nl = Math.hypot(1, slope);
+    for (const [row, y, r] of [[0, y0, r0], [1, y1, r1]] as const) {
+      const v = base + row * ring + k;
+      pos[v * 3] = cx + ca * r; pos[v * 3 + 1] = y; pos[v * 3 + 2] = cz + sa * r;
+      nor[v * 3] = ca / nl; nor[v * 3 + 1] = slope / nl; nor[v * 3 + 2] = sa / nl;
+      col[v * 3] = tone[0]; col[v * 3 + 1] = tone[1]; col[v * 3 + 2] = tone[2];
+    }
+    const k1 = (k + 1) % ring;
+    // counter-clockwise from outside (the angle runs from +x toward +z, so outward faces wind a, top-of-a, b)
+    kept.push(base + k, base + ring + k, base + k1, base + k1, base + ring + k, base + ring + k1);
+  }
+  geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geometry.setIndex(new THREE.BufferAttribute(new Uint16Array(kept), 1));
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
 function mustReplace(source: string, anchor: string, replacement: string): string {
   const out = source.replace(anchor, replacement);
   if (out === source) throw new Error(`world/poleTimber: shader anchor missing: ${anchor}`);

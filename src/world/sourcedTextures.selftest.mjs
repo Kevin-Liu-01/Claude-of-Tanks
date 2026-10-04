@@ -73,7 +73,7 @@ class TestImage {
 globalThis.Image = TestImage;
 
 const {
-  applySourcedBuildings, applySourcedTerrain, composeAlbedo, composeSurface,
+  applySourcedBuildings, applySourcedRock, applySourcedTerrain, composeAlbedo, composeSurface,
   sourcedBuildingTintPolicy, resolveSourcedTerrainPalette, resolveSourcedBuildingPalette,
   applySet, _compositeCache,
 } = await import(sourcedUrl);
@@ -142,6 +142,23 @@ assert.equal(buildingLayer.albedo.disposeCount, 1, 'building albedo swaps withou
 assert.equal(buildingLayer.normal.disposeCount, 1, 'building normal swaps once');
 assert.equal(buildingLayer.surface.disposeCount, 1,
   'building packed AO/roughness surface swaps once');
+
+// the boulders' photographed stone (the scenery lane, wave 66): the terrain's rock set, its occlusion in the albedo (no
+// surface map), tinted to a neutral mid grey; one receipt for the map's readiness
+const rockLayer = { albedo: texture(), normal: texture() };
+const rockResults = await applySourcedRock(rockLayer, 'desert');
+assert.deepEqual(rockResults.map((r) => [r.target, r.applied]), [['boulders desert/stone', true]], 'one boulder receipt, applied');
+assert.equal(rockLayer.albedo.disposeCount, 1, 'the stone albedo replaces the procedural tile once');
+assert.equal(rockLayer.normal.disposeCount, 1, 'the stone relief replaces the procedural normal once');
+assert.ok(loadedImageUrls.some((url) => url.endsWith('Rock058_1K-JPG_Color.jpg')), 'the terrain\'s own rock photograph');
+{
+  // the fixture photo's texel (100, 150, 200) under no occlusion (the fixture's AO is the photo itself, red channel 100):
+  // colour × AO × the neutral tint (1.746, 1.62, 1.507), per channel, clamped
+  const px = rockLayer.albedo.image.pixels;
+  assert.deepEqual([px[0], px[1], px[2], px[3]], [
+    Math.min(255, 100 * (100 / 255) * 1.746), Math.min(255, 150 * (100 / 255) * 1.62), Math.min(255, 200 * (100 / 255) * 1.507), 255,
+  ].map((v, i) => (i < 3 ? Math.floor(v * 1e6) / 1e6 : v)).map((v) => new Uint8ClampedArray([v])[0]), 'colour × AO × the neutral tint');
+}
 
 const ruinspiresLayers = {
   plaster: { albedo: texture(), normal: texture(), surface: texture() },
