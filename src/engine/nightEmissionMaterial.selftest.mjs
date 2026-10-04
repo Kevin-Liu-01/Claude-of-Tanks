@@ -88,6 +88,7 @@ const SAT_LINEAR = gradeConstant('GRADE_SAT_LINEAR'), CONTRAST = gradeConstant('
 const DISPLAY_SAT = gradeConstant('GRADE_SATURATION');
 // 2026-10-03 (the shade-fill lane): the photographic toe below the card by day, its slope back to the constant one with the night
 const TOE_SLOPE = gradeConstant('GRADE_TOE_SLOPE'), TOE_STOPS = gradeConstant('GRADE_TOE_STOPS');
+const TOE_CHANNEL_FROM = gradeConstant('GRADE_TOE_CHANNEL_FROM'), TOE_CHANNEL_TO = gradeConstant('GRADE_TOE_CHANNEL_TO');
 const inOrder = (source, lines, what) => {
   let at = -1;
   for (const line of lines) {
@@ -100,6 +101,9 @@ inOrder(post, [
   'outputColor.rgb *= uExposure * uWhiteBalance;',
   'float sceneLuma = dot( outputColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );',
   'outputColor.rgb = max( mix( vec3( sceneLuma ), outputColor.rgb, uSatLinear ), vec3( 0.0 ) );',
+  'float cotUL = min( log2( max( sceneLuma, 1e-6 ) * ( 1.0 / 0.18 ) ), 0.0 );',
+  'vec3 cotLift = ( uContrast - uToe.x ) * mix( vec3( cotLiftL ), cotLiftC, smoothstep( uToe.z, uToe.w, -cotUL ) );',
+  'outputColor.rgb = 0.18 * exp2( uContrast * cotU + cotLift );',
   'outputColor.rgb = 0.18 * pow( max( outputColor.rgb, vec3( 1e-6 ) ) * ( 1.0 / 0.18 ), vec3( uContrast ) );',
   'outputColor.rgb = AgXToneMapping( outputColor.rgb );',
   'outputColor = sRGBTransferOETF( outputColor );',
@@ -125,12 +129,13 @@ function displayOf(radiance, { exposure, warmth = 0, night = 0 }) {
   const sceneLuma = lumaOf(c);
   c = c.map((v) => Math.max(sceneLuma + SAT_LINEAR * (v - sceneLuma), 0));
   if (night < 0.999) {
+    // the constant slope plus the toe's log-space lift: read from the luminance near the card, per channel deep under it
     const lo = TOE_SLOPE + (CONTRAST - TOE_SLOPE) * night;
+    const lift = (u) => { const uc = Math.min(u, 0), t = Math.min(1, Math.max(0, uc / TOE_STOPS + 1)); return TOE_STOPS * (t ** 3 * (1 - .5 * t) - .5) - uc; };
+    const uL = Math.min(Math.log2(Math.max(sceneLuma, 1e-6) / .18), 0), w = smooth(TOE_CHANNEL_FROM, TOE_CHANNEL_TO, -uL);
     c = c.map((v) => {
       const u = Math.log2(Math.max(v, 1e-6) / .18);
-      if (u >= 0) return .18 * 2 ** (CONTRAST * u);
-      const t = Math.min(1, Math.max(0, (u + TOE_STOPS) / TOE_STOPS)), g = t ** 3 * (1 - .5 * t);
-      return .18 * 2 ** (lo * u - (CONTRAST - lo) * TOE_STOPS * (.5 - g));
+      return .18 * 2 ** (CONTRAST * u + (CONTRAST - lo) * (lift(uL) + (lift(u) - lift(uL)) * w));
     });
   } else c = c.map((v) => .18 * Math.pow(Math.max(v, 1e-6) / .18, CONTRAST));
   c = agx(c).map((v) => THREE.MathUtils.clamp(v, 0, 1));

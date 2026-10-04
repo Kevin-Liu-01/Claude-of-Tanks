@@ -1356,9 +1356,21 @@ const GRADE_SATURATION = 1.0;
  * composite stays 0.97–1.19 from the card down to 4 stops under it; at and above the card nothing moves (the sunlit
  * range, the sky). The grounded rig by day only: the legacy rig (the mobile tier, the Garage, the galaxy skies) and
  * the night keep the constant slope.
+ *
+ * Which level the toe reads (GRADE_TOE_CHANNEL_FROM / _TO). Read per channel, the toe lifted a sunlit saturated colour's
+ * weak channels — the blue of a sunlit grass sits three stops under the card while its luminance sits at it — and took
+ * its chroma though its luminance held: measured on the GPU, Verdant's sunlit grass −4 %, Saltmere's dry grass −10 %
+ * (ΔE 3.5) and pasture −15 % (ΔE 4.5), Railyard's overcast grass −23 % (ΔE 8). The toe's lift is a log-space lift over
+ * the constant slope, so it can read either level: near the card it reads the pixel's luminance (every channel lifted
+ * alike: a sunlit colour keeps the colour the constant slope gives it), and from GRADE_TOE_CHANNEL_FROM to _TO stops
+ * under the card it hands over to each channel's own level (deep shade takes the chroma a camera's per-channel toe
+ * gives it: the grass shade's chroma about its lightness as the sunlit grass's, not the old chain's saturated hole).
+ * A grey reads the same either way.
  */
 const GRADE_TOE_SLOPE = 0.7;
 const GRADE_TOE_STOPS = 2.5;
+const GRADE_TOE_CHANNEL_FROM = 1.0;
+const GRADE_TOE_CHANNEL_TO = 2.5;
 // 2026-10-02 (the Garage under AgX): the showroom keeps its authored rig (lighting.ts, an enclosed presentation), tuned
 // under ACES's steep shoulder; AgX's gentler path to white compressed its spot-lit highlights (garage boot p95 182 →
 // 161, the showroom's own p90/p95/p99 197/207/215 → 162/179/194) while the dark bay and the midtones held (frame
@@ -1434,8 +1446,9 @@ const GradeShader = {
     tDiffuse: { value: null },
     uSatLinear: { value: GRADE_SAT_LINEAR },
     uContrast: { value: GRADE_CONTRAST },
-    // 2026-10-03: the photographic toe (GRADE_TOE_SLOPE note): x the slope it eases to, y the stops it eases over (0 = off)
-    uToe: { value: new THREE.Vector2(0, 0) },
+    // 2026-10-03: the photographic toe (GRADE_TOE_SLOPE note): x the slope it eases to, y the stops it eases over (0 = off),
+    // z / w the stops under the card over which its lift hands over from the pixel's luminance to each channel's own level
+    uToe: { value: new THREE.Vector4(0, 0, 0, 0) },
     uBlackPoint: { value: GRADE_BLACK_POINT },
     uThermal: { value: 0 },
     uThermalPixel: { value: new THREE.Vector2(1/1280,1/720) },
@@ -1608,7 +1621,7 @@ function createOutputGradePass(): OutputGradePass {
     uniform vec3 uWhiteBalance;
     uniform float uSatLinear;
     uniform float uContrast;
-    uniform vec2 uToe;
+    uniform vec4 uToe;
     #include <tonemapping_pars_fragment>
     #include <colorspace_pars_fragment>
 
@@ -1626,13 +1639,19 @@ function createOutputGradePass(): OutputGradePass {
       float sceneLuma = dot( outputColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
       outputColor.rgb = max( mix( vec3( sceneLuma ), outputColor.rgb, uSatLinear ), vec3( 0.0 ) );
       if ( uToe.y > 0.0 ) {
-        // 2026-10-03: the photographic toe (post.ts GRADE_TOE_SLOPE) — the slope uContrast at and above the card, easing to
-        // uToe.x over the uToe.y stops below it (the smoothstep of the slope, integrated from the card down)
+        // 2026-10-03: the photographic toe (post.ts GRADE_TOE_SLOPE) — the constant slope uContrast, plus a log-space lift
+        // under the card that eases the slope to uToe.x over uToe.y stops (the smoothstep of the slope, integrated from the
+        // card down; none at or above it). The lift reads the pixel's luminance near the card (every channel alike: a sunlit
+        // colour keeps its colour) and each channel's own level from uToe.z to uToe.w stops under it (the shade's chroma)
         vec3 cotU = log2( max( outputColor.rgb, vec3( 1e-6 ) ) * ( 1.0 / 0.18 ) );
-        vec3 cotT = clamp( ( cotU + uToe.y ) / uToe.y, 0.0, 1.0 );
-        vec3 cotG = cotT * cotT * cotT * ( 1.0 - 0.5 * cotT );
-        vec3 cotBelow = uToe.x * cotU - ( uContrast - uToe.x ) * uToe.y * ( 0.5 - cotG );
-        outputColor.rgb = 0.18 * exp2( mix( cotBelow, uContrast * cotU, step( 0.0, cotU ) ) );
+        vec3 cotUC = min( cotU, vec3( 0.0 ) );
+        float cotUL = min( log2( max( sceneLuma, 1e-6 ) * ( 1.0 / 0.18 ) ), 0.0 );
+        vec3 cotT = clamp( cotUC / uToe.y + 1.0, 0.0, 1.0 );
+        float cotTL = clamp( cotUL / uToe.y + 1.0, 0.0, 1.0 );
+        vec3 cotLiftC = uToe.y * ( cotT * cotT * cotT * ( 1.0 - 0.5 * cotT ) - 0.5 ) - cotUC;
+        float cotLiftL = uToe.y * ( cotTL * cotTL * cotTL * ( 1.0 - 0.5 * cotTL ) - 0.5 ) - cotUL;
+        vec3 cotLift = ( uContrast - uToe.x ) * mix( vec3( cotLiftL ), cotLiftC, smoothstep( uToe.z, uToe.w, -cotUL ) );
+        outputColor.rgb = 0.18 * exp2( uContrast * cotU + cotLift );
       } else {
         outputColor.rgb = 0.18 * pow( max( outputColor.rgb, vec3( 1e-6 ) ) * ( 1.0 / 0.18 ), vec3( uContrast ) );
       }
@@ -2681,9 +2700,10 @@ export function createPost(
       const toeOn = model.mode === 'physical' && model.night < 0.999;
       const toeSlope = THREE.MathUtils.lerp(lightTune('GRADE_TOE_SLOPE', GRADE_TOE_SLOPE) * model.contrast, u.uContrast.value as number,
         THREE.MathUtils.clamp(model.night, 0, 1));
-      u.uToe.value.set(toeSlope, toeOn ? lightTune('GRADE_TOE_STOPS', GRADE_TOE_STOPS) : 0);
+      u.uToe.value.set(toeSlope, toeOn ? lightTune('GRADE_TOE_STOPS', GRADE_TOE_STOPS) : 0,
+        lightTune('GRADE_TOE_CHANNEL_FROM', GRADE_TOE_CHANNEL_FROM), lightTune('GRADE_TOE_CHANNEL_TO', GRADE_TOE_CHANNEL_TO));
     } else {
-      u.uToe.value.set(0, 0);
+      u.uToe.value.set(0, 0, 0, 0);
       u.uExposure.value = lightTune('LEGACY_EXPOSURE', LEGACY_EXPOSURE) * (scene.userData.postExposure || 1);
       u.uWhiteBalance.value.set(1, 1, 1);
       u.uContrast.value = contrast;
