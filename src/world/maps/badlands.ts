@@ -198,9 +198,10 @@ export default {
     // Round 29 (owner 2026-09-20, "see where the texture just stops"): treeline 0.06 let the vista paint every
     // outland surface under 8 m — the canyon-mouth floors past both deployment ends — as dark woodland (green
     // before the absolute tints, dark brown after). Redrock's outland is sand and rock; no ring forest.
-    // the mountains lane (2026-10-03, gauntlet wave 24): held at the PR head's far country while the far jebels are rebuilt on
-    // maps lane A's inselberg section — the regional 'jebel' read as "low rounded swells, nothing resembles Wadi Rum's walls"
-    baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0, ground: 'sand', banding: 0.045, panorama: false,
+    // the mountains lane (2026-10-03, gauntlet waves 15 and 24): Wadi Rum's far country — sheer jebels standing alone on
+    // the sand plain, each maps lane A's inselberg section with a rim (a bossed cap, a fluted wall over most of the height,
+    // a short talus apron), where the regional 'jebel' of mesa tables read as "low rounded swells"
+    baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0, ground: 'sand', banding: 0.045, panorama: { regional: 'jebel' },
     // (the outland boulders a shade sparser: they follow the ring's drained faces, and the map's horizon draws no more
     // triangles than before the mountains lane's relief work)
     outlandRocks: 0.95,
