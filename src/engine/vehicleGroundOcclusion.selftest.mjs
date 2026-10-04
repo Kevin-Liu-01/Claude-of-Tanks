@@ -166,7 +166,7 @@ for (const [x, y, z] of [[1.4, 0.05, 0], [-1.3, 0.06, 1.5], [1.6, 0.4, T.cz0 - 0
   [T.xo + 0.01, 0.06, 0.5], [-(T.xi - 0.01), 0.07, -1]]) {
   assert.ok(isRunShoe({ x, y, z }, T, true) && C(x, z, y) === 0, `a shoe at ${x}, ${y}, ${z}`);
 }
-near(trackFloorAt(0, T), 0.04, 1e-12, 'the floor along the ground run'); near(trackFloorAt(T.cz0 - 0.5, T), T.sr * 0.5 - 0.03, 1e-12, 'the rear ramp');
+near(trackFloorAt(0, T), -0.01, 1e-12, 'the contact plane (less a centimetre) along the ground run'); near(trackFloorAt(T.cz0 - 0.5, T), T.sr * 0.5 - 0.03, 1e-12, 'the rear ramp');
 near(trackFloorAt(T.cz1 + 0.5, T), T.sf * 0.5 - 0.03, 1e-12, 'the front ramp');
 // a lit pixel is never a shoe: the terrain over the floor behind a pitched hull's track ends, the snow over a sunk
 // track's foot (lab6's patches and line); grass under a wrap's ramp stays a receiver
@@ -362,7 +362,7 @@ assert.ok(g.indexOf('if ( !haveN )') > g.lastIndexOf('continue;'), 'the depth no
 assert.ok(g.includes(`if ( q.y > b0.y + 0.02 && dOut < ${f4(GROUND_AO_HULL_SKIN_M)} ) continue;`), 'the hull\'s own skin is skipped');
 assert.ok(g.includes('float laneD = 0.5 * ( b2.w - b2.z ) - abs( abs( q.x ) - 0.5 * ( b2.z + b2.w ) );')
   && g.includes('if ( sunVis < 0.0 && laneD > -0.0200 && q.y < b0.z + 0.0400 && q.z > b1.x && q.z < b1.y ) {')
-  && g.includes('if ( q.y >= b0.w + max( 0.0400, ( q.z < b3.z ? b3.x : b3.y ) * past - 0.0300 ) ) continue;'),
+  && g.includes('if ( q.y >= b0.w + max( -0.0100, ( q.z < b3.z ? b3.x : b3.y ) * past - 0.0300 ) ) continue;'),
   'and the shoes: no sun state, in their lane, over the track\'s lower edge');
 assert.ok(g.includes('ho = max( ho, smoothstep( -0.005, 0.005, laneD )'), 'the ground under the tracks\' ground run');
 

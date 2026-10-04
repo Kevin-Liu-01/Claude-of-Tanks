@@ -77,14 +77,14 @@ export const GROUND_AO_HULL_SKIN_M = 0.12;
  * The track shoes are the vehicle too, but their cloned material never joins the cascade setup, so it writes neither the
  * vehicle tag nor a sun state: to this block a shoe is a pixel without a sun state (a card's alpha) in the shoes'
  * measured lane (widened by GROUND_AO_LANE_MARGIN_M for their faces), within the hull's length, under the deck and over
- * the track's lower edge — GROUND_AO_SHOE_FLOOR_M over the contact plane along the ground run, the wraps' measured ramp
- * past it (less GROUND_AO_RAMP_TOL_M). A lit pixel (the terrain) is never a shoe (lab6, 2026-10-03: snow standing over a
- * height threshold behind a pitched hull's track ends was skipped and stayed lit), and grass under a wrap's ramp stays a
- * receiver. Under the ground run the shoes cover the ground (seen through their gaps and at their foot, the track's
+ * the track's lower edge — the contact plane (less GROUND_AO_SHOE_FLOOR_M's centimetre) along the ground run, the wraps'
+ * measured ramp past it (less GROUND_AO_RAMP_TOL_M). A lit pixel (the terrain) is never a shoe (lab6, 2026-10-03: snow
+ * standing over a height threshold behind a pitched hull's track ends was skipped and stayed lit; a shoe's foot darkened
+ * as ground drew a black line under lab8's tracks), and grass under a wrap's ramp stays a receiver. Under the ground run the shoes cover the ground (seen through their gaps and at their foot, the track's
  * contact line): it keeps no sky, and takes it back over GROUND_AO_TRACK_LIFTOFF_M past the run as the track lifts off.
  */
 const GROUND_AO_CONTACT_MARGIN_M = 0.03;
-const GROUND_AO_SHOE_FLOOR_M = 0.04;
+const GROUND_AO_SHOE_FLOOR_M = -0.01;
 const GROUND_AO_RAMP_TOL_M = 0.03;
 const GROUND_AO_LANE_MARGIN_M = 0.02;
 const GROUND_AO_TRACK_LIFTOFF_M = 0.3;
