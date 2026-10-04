@@ -6536,6 +6536,40 @@ woodland belts with height, farm clusters and roofs, and roads that visibly cont
   ground and the road runs on through it. The villages and avenues stand along the cut lines, and the ring forest and
   the hedges keep a 6.5 m ride either side of a carriageway (trees had stood on it at 9–142 spots per map).
 
+#### Wave 4 — 2026-10-03: gauntlet wave 30's six drops, each at its cause
+
+Gauntlet wave 30 (wave 3 against PR head 6309d167d: mean 3.37 → 3.48, Cinder Junction's north view +2.7, Ironworks'
+east +2.6, Ruin Spires' east +2.1) dropped six views by more than 0.5. Fixed on maps lane B's rebuilt maps (PR head
+4b20975bb), one commit a cause:
+
+- **The land past the edge is the terrain seed's again** (Frosthollow edge-n and edge-n-up −1.0 each, Glacier Pass
+  edge-s −1.2, Sirocco Wadi corner-ne −2.3, Amberford edge-n −0.6). Wave 3's `borderLandformSeed` seeded the landform
+  by the map id. Every ring and far country was authored over the landform's relief at the one seed, and the reseeded
+  hand-over, hills and foothills moved the ranges' foot by up to 136 m: Frosthollow's north rose as a towering wall
+  with smeared faces, Glacier Pass's southern range folded into a spike, a pale flat-topped slab stood in Sirocco's far
+  range. The reseeded cover moved the woods and fields the views were composed of: a wood over Frosthollow's north
+  hamlet, a stubble field across the middle of Amberford's north view (read as a bare sand patch). The landform is the
+  terrain seed's alone (relief and cover); the ring matches the PR head's to the bit on every map but along the road
+  exits, where wave 3's portal tails bring the road down to the land, and every ring's maximum height is the PR head's.
+  Receipt `borderLandform.selftest.mjs`: six maps' landforms, rebuilt from the seed, rim, settings and exit valleys
+  alone, answer the same relief, hand-over, woods and crops at 1872 points past each edge; Amberford's north view has
+  no straw in the middle of its middle distance.
+- **Villages from 110 m, each with its church** (Frosthollow's north views: the hamlet and church spire left them).
+  Wave 3 strung its villages from 260 m out, but the same wave ended each road at the foot of the ranges, ~300–450 m
+  out on a mountain map, so no village found room there and the map's one church was a chance hamlet's. A village
+  starts at the first flat stretch from 110 m, as far out as its road reaches; it has its church across the road from
+  one of its yards, the nave along the road and the tower facing the square. Frosthollow's north road runs into a
+  village with its church 220 m out. Receipt `borderFarmsteads.selftest.mjs` (a village on a 330 m road, its church
+  and spire; Frosthollow's north spire in the census's edge-n view).
+- **The region's own buildings** (Ironworks edge-e-up −0.9: "the new hamlets read as American red barns"). A map with
+  a regional building kit builds its hamlets from it — its square's kit, or for Ironworks (on the Saar) the coalfield
+  kit's workers' cottage pairs — at the kit's mobile detail in the farmsteads' one vertex-coloured mesh: farmhouse,
+  barn and shed, the kit's church or chapel (else the generic church in the kit's stone and roof: Ironworks' is brick
+  under slate), decor kept within 170 m of the edge. 8k–51k triangles a kit map, one draw and its far-cascade shadow.
+  The villages take one place a side (four a map) and the farms keep their own count, two fewer a village — with three
+  a map they had taken the farms' whole budget and left Ironworks' east, where the red barns stood, with no hamlet; a
+  village's shelter trees are thinner and narrower so it is not hidden in a wood.
+
 ### 2026-10-03 — skies, light and colour: one haze law, the shade's own colour, a calibrated camera (the skies-and-atmosphere lane)
 
 **Owner (2026-10-02): "dude genuinely maps need to look so much better esp the horizons and transitions around map
