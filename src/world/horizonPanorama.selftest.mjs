@@ -141,11 +141,13 @@ for (const [character, c] of Object.entries(HORIZON_PANORAMA_CHARACTERS)) {
 }
 assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShore\.x > 0\.0/.test(HORIZON_PANORAMA_SHADERS.height), 'the height pass raises the far shore where a map asks for one');
 {
-  const horizon = saltwind.horizon;
-  const pano = resolveHorizonPanoramaCharacter('coastal', horizon.panorama);
-  assert.ok(pano.shore > 1 && pano.shoreM > 4000 && pano.shoreM < 7000, 'Saltwind: the mainland\'s ranges across the western channel, 4-7 km out');
-  assert.ok(pano.shoreRange > 0 && pano.shoreRange <= 1, 'Saltwind: a coastal range along the far shore (no low strip where its own relief is low)');
-  assert.ok(pano.treeline < HORIZON_PANORAMA_CHARACTERS.coastal.treeline, 'Saltwind: the karst keeps its woods on the lower flanks');
+  // a channel coast's far shore (the Dalmatian mainland across Saltwind's channel, 4-7 km out, a coastal range along it).
+  // Saltwind itself is held at the PR head's far country (gauntlet wave 24) while its karst ridge is rebuilt
+  const pano = resolveHorizonPanoramaCharacter('coastal', { regional: 'karstRidge', shore: 1.2, shoreM: 5600, shoreRange: 0.9, treeline: 0.35 });
+  assert.ok(pano.shore > 1 && pano.shoreM > 4000 && pano.shoreM < 7000, 'a channel coast: the land across the water, 4-7 km out');
+  assert.ok(pano.shoreRange > 0 && pano.shoreRange <= 1, 'a coastal range along the far shore (no low strip where its own relief is low)');
+  assert.ok(pano.treeline < HORIZON_PANORAMA_CHARACTERS.coastal.treeline, 'the karst keeps its woods on the lower flanks');
+  assert.equal(saltwind.horizon.panorama, false, 'Saltwind holds the PR head\'s far country (gauntlet wave 24) until its ridge is rebuilt');
 }
 // --- the regional classes (gauntlet wave 15, every critic: "mountain ranges behind places that have none"): a map's
 // horizon block picks its real place's far country ------------------------------------------------------------------
