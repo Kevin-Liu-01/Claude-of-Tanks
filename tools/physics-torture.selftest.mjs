@@ -331,9 +331,10 @@ check('air-spin', 'tall', 'gearth', [g('prediction replay error (m)', (m) => m.r
     failures.push(`rest-slope25-down earth medium: the downhill nose sits ${(down.rear - down.front).toFixed(1)} cm under the uphill tail < 8 — before: 0.0`);
   }
   const across = rest('rest-cross20');
-  // the 20-degree cross slope rises to the right: the left track is the downhill one
-  if (!(mean(across.right) - mean(across.left) >= 3)) {
-    failures.push(`rest-cross20 earth medium: the downhill track sits ${(mean(across.right) - mean(across.left)).toFixed(1)} cm under the uphill one < 3 — before: 0.1`);
+  // the 20-degree cross slope rises to the right: the left track is the downhill one (round 8, wave 42 item 5: the springs
+  // bear on the tracks' centre lines, not their outer edges, where the roll stiffness read 40 % high on the T-90M)
+  if (!(mean(across.right) - mean(across.left) >= 7)) {
+    failures.push(`rest-cross20 earth medium: the downhill track sits ${(mean(across.right) - mean(across.left)).toFixed(1)} cm under the uphill one < 7 — before: 0.1, then 5.9 on the outer edges`);
   }
 }
 

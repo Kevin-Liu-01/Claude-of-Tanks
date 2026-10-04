@@ -917,7 +917,10 @@ contact constraints and cannot be crossed by residual uphill speed.
   share the tracks are seated at (`_holdSeat`, relaxing at the rock's rate), as the dive joins the rock; the suspension
   travel limits it with the dive; the movement checkpoint carries both from version 7. Parked facing up a 25° grade the
   medium hull pitches 1.1° further onto its downhill tail, its stations 17 cm apart end to end; on a 20° cross slope it
-  rolls 0.8° onto its downhill track, 6 cm under the uphill one. A slide, or a hull on its shell, holds nothing and
+  rolls 1.1° onto its downhill track, 8.2 cm under the uphill one. Across, the springs bear on the tracks' centre lines,
+  half the track's width in from its outer edge (`trackCentreHalfGauge`; round 8, wave 42: "side-load transfer is about
+  half its physical size"): read at the outer edges, the roll stiffness was 22-71 % high (42 % at the fleet's median)
+  and the hull rolled 0.8°, 5.9 cm. A slide, or a hull on its shell, holds nothing and
   transfers nothing. A landing is judged by its tracks' attitude, the spring's, not the posture. (Held in the rendered
   rock, as first built, the posture put the drawn hull off the authority's at rest: a UDES 03 laid its fixed bore 0.69
   degree off its sight on flat ground, where its own hydraulic nose-up posture read as a grade, and 1.08 degrees off on

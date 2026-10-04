@@ -98,6 +98,8 @@ export interface MovementSpec extends TerrainMobilitySpec {
     rateDegS?: number;
     compressionM?: number;
   };
+  /** The running gear's track width (m): the springs bear on the track's centre line, half of it in from its outer edge. */
+  visual?: { trackWidthM?: number };
 }
 
 interface MovementModuleState {
@@ -2960,11 +2962,25 @@ function reachableCorner(ground: number, plane: number): number {
  * the stations along each track (a track's stations spread evenly over its contact: their mean square lever is a third of
  * the half-length squared) and over the two tracks either side. The hull pitches and rolls toward its downhill end and
  * track by that angle (rad; the hold takes it at the rock's visible scale, SUSP_VIS_P / SUSP_VIS_R). The centre of mass
- * stands HOLD_CG_HEIGHT_FRAC of the hull's height over its tracks. Parked facing up a 25-degree grade the medium hull
- * pitches 1.1 degrees further onto its downhill tail, its stations 17 cm apart end to end; on a 20-degree cross slope it
- * rolls 0.8 degree onto its downhill track, 6 cm under the uphill one.
+ * stands HOLD_CG_HEIGHT_FRAC of the hull's height over its tracks. Across, the springs bear on the tracks' centre lines
+ * (trackCentreHalfGauge, round 8; wave 42: "side-load transfer is about half its physical size"): read at the tracks'
+ * outer edges, the roll stiffness was 22 % to 71 % too high (42 % at the fleet's median). Parked facing up a 25-degree
+ * grade the medium hull pitches 1.1 degrees further onto its downhill tail, its stations 17 cm apart end to end; on a
+ * 20-degree cross slope it rolls 1.1 degrees onto its downhill track, 8.2 cm under the uphill one (0.8 and 5.9 on the
+ * outer edges).
  */
 const HOLD_CG_HEIGHT_FRAC = 0.45;
+/** A track's width as a share of the hull's, for a spec without one (the fleet's median: 13 % to 18 % across it). */
+const TRACK_WIDTH_FRAC = 0.16;
+/**
+ * Half the gauge between the tracks' centre lines (m), where their springs bear: the contact's outer track edge (or half
+ * the hull's width) less half the track's width.
+ */
+function trackCentreHalfGauge(entity: MovementEntity, spec: MovementSpec): number {
+  const outer = entity.contactGeom ? entity.contactGeom.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
+  const width = spec.visual?.trackWidthM;
+  return Math.max(outer - 0.5 * (width !== undefined && width > 0 ? width : TRACK_WIDTH_FRAC * spec.dims.widthM), 0.5);
+}
 const _holdTransfer = { dive: 0, roll: 0 };
 function holdTransferAngles(
   entity: MovementEntity, spec: MovementSpec, along: number, across: number, out: { dive: number; roll: number },
@@ -2974,11 +2990,11 @@ function holdTransferAngles(
   if (along === 0 && across === 0) return;
   const contact = entity.contactGeom;
   const halfLength = contact ? contact.halfLenM : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
-  const halfWidth = contact ? contact.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
+  const halfGauge = trackCentreHalfGauge(entity, spec);
   const height = HOLD_CG_HEIGHT_FRAC * spec.dims.heightM;
   const stiffness = RIDE_OMEGA * RIDE_OMEGA;
   out.dive = along * height / (stiffness * Math.max(halfLength * halfLength / 3, 0.25));
-  out.roll = across * height / (stiffness * Math.max(halfWidth * halfWidth, 0.25));
+  out.roll = across * height / (stiffness * halfGauge * halfGauge);
 }
 
 /**
@@ -3174,10 +3190,9 @@ function limitDiveToTravel(entity: MovementEntity, spec: MovementSpec, state: Ta
     : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
   const travel = Math.max(0, Math.min(RIDE_DROOP_M - hang, RIDE_COMPRESSION_M + hang));
   // the posture held on a grade (physics lane round 5) pitches and rolls the hull over its tracks the same way, about
-  // their length and about half their width, as drawn
+  // their length and about half the gauge between their centre lines, where the road wheels ride (round 8)
   const pitchLimit = Math.asin(Math.min(1, travel / lever));
-  const rollLimit = Math.asin(Math.min(1, travel / Math.max(contact ? contact.halfWidM : HALF_WID_FRAC * spec.dims.widthM,
-    0.5)));
+  const rollLimit = Math.asin(Math.min(1, travel / trackCentreHalfGauge(entity, spec)));
   if (hold.p > pitchLimit || hold.p < -pitchLimit) {
     hold.p = clamp(hold.p, -pitchLimit, pitchLimit);
     if (hold.pv * hold.p > 0) hold.pv = 0;
