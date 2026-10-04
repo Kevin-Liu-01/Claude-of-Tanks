@@ -316,6 +316,17 @@ interface PropsSettings {
   foundryServiceCourt?: FoundryServiceCourtConfig;
   plan: string[];
   plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number }[];
+  /** The maps-and-layouts lane (2026-10-03; the owner's town-plan ruling): a settlement that stands exactly as an earlier
+   * build seated it (maps/townPlans.generated.ts). Each entry is one planned building as that build placed it: its
+   * structure, plan index, wall and the props stream's state after the wall pick, and its final pose. The replay
+   * builds each one from its own stream at its pose, so its geometry, footprint and place are the recorded build's
+   * whatever the ground, roads or aprons under the town have become; the generated road, row and block-fill passes then
+   * place nothing more. */
+  townPlan?: readonly TownPlanEntry[];
+  /** The light buildings of a recorded settlement (maps/townPlans.generated.ts TOWN_LIGHT_PLANS): each destructible
+   * building's kind and final pose as that build placed it. They stand there whatever the ground has become, and the
+   * light-building pass draws nothing. */
+  townLightPlan?: readonly TownLightEntry[];
   tones: Record<string, ToneFunction | null | undefined>;
   rockTone: ToneFunction | null;
   wallStoneChance: number;
@@ -353,6 +364,18 @@ interface PropsSettings {
   townCraters: boolean;
   snowCap?: boolean;
   streetRowsAfterLandmarks?: boolean;
+  /** The maps-and-layouts lane (2026-10-03): a roadside or block-fill building whose footprint stands in a carriageway
+   * (within the layout brief's 3.5 m road core of a road's line) moves, once every settlement building stands, by the
+   * least distance that clears it, keeping its ground fit and clear of every other building and strongpoint; without
+   * such a place it stays. The plan places every building exactly as before (no draw or eligibility changes), so a
+   * building that clears the carriageway stands where it always did. Opt-in: a map without it keeps every building. */
+  roadBuildingClearance?: boolean;
+  /** Authored places for carriageway buildings (with `roadBuildingClearance`): a building packed as standing in a
+   * carriageway whose recorded centre lies within 1.5 m of `from` moves to `to` instead of the nearest clear place,
+   * when `to` passes the same checks (the road clearance, its ground fit, every other building and strongpoint); else
+   * the ring search runs as for any other. For a building with no clear place nearby, or whose nearest one changes the
+   * battle (Blackglass's civic hall, settled by the bots lane's swap test). Default none. */
+  roadClearanceTargets?: readonly { from: readonly [number, number]; to: readonly [number, number] }[];
   streetRowRoadStride?: number;
   /** Junction corners the roadside buildings keep out of (maps lane B, 2026-10-03): a roadside building's centre stands
    * outside each disc ({ x, z, r }). The centre test (7.5 m off any road) lets a long building reach into the other road
@@ -383,6 +406,15 @@ interface PropsSettings {
   extraKits?: readonly string[] | null;
   riverLandings?: readonly RiverLandingAnchor[];
 }
+
+/** One planned building as a recorded build seated it (PropsMapConfig.townPlan; maps/townPlans.generated.ts): its
+ * structure, its plan index, its wall, the props stream's state after the wall pick, and its final pose. */
+export interface TownPlanEntry {
+  structure: string; planIndex: number; wall: string; rng: number; x: number; z: number; rot: number;
+}
+
+/** One light (destructible) building as a recorded build seated it (PropsMapConfig.townLightPlan): its kind and pose. */
+export interface TownLightEntry { kind: string; x: number; z: number; rot: number; }
 
 export interface PropsMapConfig {
   id: string;
@@ -3571,13 +3603,13 @@ ${snowCap ? `
   function isRoadBuildingSiteClear(x: number, z: number): boolean {
     return !placedB.some((placed) => Math.hypot(x - placed.x, z - placed.z) < placed.rr + P.spacingPad);
   }
-  function jitterBuildingUvs(tmp: PropsBuckets): void {
+  function jitterBuildingUvs(tmp: PropsBuckets, stream: Rng = rng): void {
     for (const bucketName of Object.keys(tmp)) {
       for (const geometry of tmp[bucketName]) {
         // Round 75: atlas-mapped parts (propsSteelAtlas.ts) keep their UVs. A part that stood in the seeded stream
         // before the atlas (a container body) still takes its four draws so every later placement keeps its seat;
         // parts new to the stream take none.
-        const source = geometry.userData?.detailUv ? detailUvRng : rng;
+        const source = geometry.userData?.detailUv ? detailUvRng : stream;
         const atlas = geometry.userData?.uvJitter;
         if (atlas === 'consume') { source(); source(); source(); source(); continue; }
         if (atlas === 'none' || geometry.userData?.atlasUv) continue;
@@ -3589,7 +3621,33 @@ ${snowCap ? `
   const structureContext: StructureBuildContext = {
     mapId, snowCap: mapId === 'winter' || !!P.snowCap, seed, cladding: P.industrialCladding ?? 'brick',
   };
-  function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string): boolean {
+  /** A building stands in a carriageway when its footprint comes within the road core (the layout brief's 3.5 m,
+   * tools/map-layout-metrics.mjs ROAD_CORE_M) of a road's line; a move clears it by a further 0.75 m. */
+  const CARRIAGEWAY_CORE = 3.5, CARRIAGEWAY_CLEARANCE = 4.25;
+  type CarriagewayPacket = {
+    kind: string; buckets: PropsBuckets; profile: ReturnType<typeof addStructureCollision>; records: CollisionRecord[];
+    feature: (typeof buildingFeatures)[number]; placement: PlacedRadius; source: { x: number; y: number; z: number; rot: number };
+    w: number; d: number; chimneys: [number, number, number][];
+  };
+  const carriagewayPackets: CarriagewayPacket[] = [];
+  /** A building's footprint as its geometry stands (wings and porches reach past the kit's nominal size) when it stands
+   * in a carriageway, else null. */
+  function carriagewayFootprint(tmp: PropsBuckets, info: { w: number; d: number }, x: number, z: number,
+    rot: number): { w: number; d: number } | null {
+    let w = info.w, d = info.d;
+    for (const geometry of Object.values(tmp).flat()) {
+      if (!geometry.boundingBox) geometry.computeBoundingBox();
+      const bounds = geometry.boundingBox;
+      if (!bounds) continue;
+      w = Math.max(w, 2 * Math.max(Math.abs(bounds.min.x), Math.abs(bounds.max.x)));
+      d = Math.max(d, 2 * Math.max(Math.abs(bounds.min.z), Math.abs(bounds.max.z)));
+    }
+    return buildingFootprintClearsRoads({ x, z, rot }, w, d, roads, CARRIAGEWAY_CORE) ? null : { w, d };
+  }
+  const roadClearanceMoves: { kind: string; from: [number, number]; to: [number, number] | null }[] = [];
+  if (P.roadBuildingClearance) group.userData.roadClearanceMoves = roadClearanceMoves;
+  function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
+    fromRoad = false): boolean {
     let tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
@@ -3686,6 +3744,9 @@ ${snowCap ? `
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
+    // a building that stands in a carriageway is packed for the move after every settlement building stands
+    const carriageway = fromRoad && P.roadBuildingClearance ? carriagewayFootprint(tmp, info, px, pz, rot) : null;
+    const chimneysBefore = carriageway ? exteriorChimneyTops(buckets).length : 0;
     _quat.setFromAxisAngle(_upAxis, rot);
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
     mergeInto(buckets, tmp, _mat4);
@@ -3697,6 +3758,12 @@ ${snowCap ? `
         feature: buildingFeatures[buildingFeatures.length - 1] };
     }
     placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
+    if (carriageway) {
+      carriagewayPackets.push({ kind: structureId, buckets: tmp, profile,
+        records: [obstacles[obstacleStart], ...colliders.slice(colliderStart)], feature: buildingFeatures[buildingFeatures.length - 1],
+        placement: placedB[placedB.length - 1], source: { x: px, y: fit.y + 0.05, z: pz, rot }, w: carriageway.w, d: carriageway.d,
+        chimneys: exteriorChimneyTops(buckets).slice(chimneysBefore) as [number, number, number][] });
+    }
     if (foundryDonors && P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId)) {
       foundryDonors.push({ planIndex: bi, kind: structureId, buckets: tmp, profile,
         source: { x: px, y: fit.y + 0.05, z: pz, yaw: rot },
@@ -3719,7 +3786,7 @@ ${snowCap ? `
     // 2026-10-02: Mangrove Reach, rebuilt to the layout brief, takes the frontage law as well
     const roadSite = mapId !== 'verdant' && mapId !== 'foundry'
       && !P.streetRows && !P.orbitalSettlement ? { ...cand, side } : undefined;
-    placePlannedBuilding(px, pz, rot, roadSite);
+    placePlannedBuilding(px, pz, rot, roadSite, undefined, true);
   }
   function* placeRoadBuildings(): Generator<PropsBuildSlice, void, void> {
     // Monumental-city maps place their landmark plan first, then let the
@@ -3734,7 +3801,59 @@ ${snowCap ? `
       }
     }
   }
-  for (const site of P.plannedSites ?? []) {
+  // A recorded town plan: every building from its own stream at its recorded pose, and nothing generated after it.
+  function placeRecordedBuilding(entry: TownPlanEntry): void {
+    const stream = mulberry32(entry.rng);
+    let tmp: PropsBuckets = {
+      plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
+      glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
+    };
+    attachStructureBuildContext(tmp, structureContext);
+    const builder = BUILDER_BY_NAME[entry.structure] || makeCottage;
+    const info = builder(stream, tmp, entry.wall);
+    if (tmp.steel?.length) ensureSteelAtlas('plan:' + entry.structure);
+    addCatalogExterior(tmp, { id: entry.structure, info, variant: entry.planIndex,
+      bathhouseStyle: entry.structure === 'bathhouse' ? P.bathhouseStyle : undefined });
+    jitterBuildingUvs(tmp, stream);
+    const fit = groundFit(entry.x, entry.z, info.w, info.d, entry.rot);
+    // a replayed building takes the map's regional kit as a generated one does (the foundry court's donors keep theirs)
+    const regionalDonor = !!foundryDonors
+      && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === entry.planIndex && site.kind === entry.structure);
+    if (regionalArchitecture && !regionalDonor) {
+      tmp = rebuildRegionalStructure(regionalArchitecture, entry.structure, tmp, info, entry.wall,
+        { mapId, snowCap: structureContext.snowCap, seed }, entry.x, entry.z, entry.rot) ?? tmp;
+    }
+    const obstacleStart = obstacles.length, colliderStart = colliders.length;
+    const profile = addStructureCollision(entry.structure, tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
+    const carriageway = P.roadBuildingClearance ? carriagewayFootprint(tmp, info, entry.x, entry.z, entry.rot) : null;
+    const chimneysBefore = carriageway ? exteriorChimneyTops(buckets).length : 0;
+    _quat.setFromAxisAngle(_upAxis, entry.rot);
+    _mat4.compose(_posv.set(entry.x, fit.y + 0.05, entry.z), _quat, _one);
+    mergeInto(buckets, tmp, _mat4);
+    buildingFeatures.push({ x: entry.x, z: entry.z, w: info.w, d: info.d, rot: entry.rot, kind: entry.structure });
+    placedB.push({ x: entry.x, z: entry.z, rr: Math.max(info.w, info.d) * 0.75 });
+    if (carriageway) {
+      carriagewayPackets.push({ kind: entry.structure, buckets: tmp, profile,
+        records: [obstacles[obstacleStart], ...colliders.slice(colliderStart)], feature: buildingFeatures[buildingFeatures.length - 1],
+        placement: placedB[placedB.length - 1], source: { x: entry.x, y: fit.y + 0.05, z: entry.z, rot: entry.rot },
+        w: carriageway.w, d: carriageway.d, chimneys: exteriorChimneyTops(buckets).slice(chimneysBefore) as [number, number, number][] });
+    }
+    // Ironworks' service court relocates its donors after the plan stands, as it does for a generated plan
+    if (foundryDonors && P.foundryServiceCourt?.sites.some(site => site.planIndex === entry.planIndex && site.kind === entry.structure)) {
+      foundryDonors.push({ planIndex: entry.planIndex, kind: entry.structure, buckets: tmp, profile,
+        source: { x: entry.x, y: fit.y + 0.05, z: entry.z, yaw: entry.rot },
+        records: [...obstacles.slice(obstacleStart), ...colliders.slice(colliderStart)],
+        feature: buildingFeatures[buildingFeatures.length - 1], placement: placedB[placedB.length - 1] });
+    }
+  }
+  if (P.townPlan?.length) {
+    for (const entry of P.townPlan) {
+      placeRecordedBuilding(entry);
+      yield { fine: true };
+    }
+    bi = builders.length;
+  }
+  for (const site of P.townPlan?.length ? [] : P.plannedSites ?? []) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!isRoadBuildingSiteClear(site.x, site.z)) continue;
     placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure);
@@ -4037,7 +4156,7 @@ ${snowCap ? `
       if (Math.hypot(px - junction.x, pz - junction.z) < 24) return;
       if (!isRoadBuildingSiteClear(px, pz)) return;
       const rot = (brng() < 0.5 ? 0 : Math.PI / 2) + (brng() - 0.5) * 0.06;
-      placePlannedBuilding(px, pz, rot);
+      placePlannedBuilding(px, pz, rot, undefined, undefined, true);
     };
     for (let gz = v.z0 + 14; gz < v.z1 - 14 && bi < builders.length; gz += step) {
       for (let gx = v.x0 + 14; gx < v.x1 - 14 && bi < builders.length; gx += step) {
@@ -4047,6 +4166,84 @@ ${snowCap ? `
     }
   }
   yield* placeTownBlockFill();
+
+  // Once every settlement building stands, each one packed as standing in a carriageway moves by the least distance
+  // that clears it: rings of 0.5 m out to 30 m, the bearing away from the nearest road first, then turning by 15
+  // degrees at a time to either side; the new place keeps its ground fit and stays clear of every other building and
+  // strongpoint. A map can author the place instead (props.roadClearanceTargets), checked alike. Its geometry,
+  // collision bands, footprint record and chimney tops move with it.
+  /** Whether two footprints (centre, size, yaw) come within `gap` metres of each other: separating axes of the two
+   * rectangles, each grown by half the gap. */
+  function footprintsMeet(a: { x: number; z: number; w: number; d: number; rot: number },
+    b: { x: number; z: number; w: number; d: number; rot: number }, gap: number): boolean {
+    const axes = [a.rot, a.rot + Math.PI / 2, b.rot, b.rot + Math.PI / 2];
+    for (const angle of axes) {
+      const ux = Math.cos(angle), uz = -Math.sin(angle);
+      const reach = (f: typeof a) => {
+        const c = Math.cos(f.rot), sn = Math.sin(f.rot);
+        // the footprint's half extents projected on the axis (its local x along (cos, -sin), local z along (sin, cos))
+        return Math.abs((f.w / 2 + gap / 2) * (c * ux - sn * uz)) + Math.abs((f.d / 2 + gap / 2) * (sn * ux + c * uz));
+      };
+      const separation = Math.abs((b.x - a.x) * ux + (b.z - a.z) * uz);
+      if (separation > reach(a) + reach(b)) return false;
+    }
+    return true;
+  }
+  function moveBuildingsOffCarriageways(): void {
+    for (const packet of carriagewayPackets) {
+      const { source, w, d } = packet;
+      let best = Infinity, ax = 0, az = 1;
+      for (const road of roads) for (let i = 1; i < road.length; i++) {
+        const [x0, z0] = road[i - 1], [x1, z1] = road[i];
+        const dx = x1 - x0, dz = z1 - z0, l2 = dx * dx + dz * dz;
+        const t = l2 > 0 ? clamp(((source.x - x0) * dx + (source.z - z0) * dz) / l2, 0, 1) : 0;
+        const cx = x0 + dx * t, cz = z0 + dz * t, dd = Math.hypot(source.x - cx, source.z - cz);
+        if (dd < best) {
+          best = dd;
+          if (dd > 1e-6) { ax = (source.x - cx) / dd; az = (source.z - cz) / dd; } else { const l = Math.sqrt(l2) || 1; ax = -dz / l; az = dx / l; }
+        }
+      }
+      let target: { x: number; z: number } | null = null;
+      const clearsAt = (x: number, z: number): boolean => {
+        if (x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1 || noVeg(x, z)) return false;
+        if (!buildingFootprintClearsRoads({ x, z, rot: source.rot }, w, d, roads, CARRIAGEWAY_CLEARANCE)) return false;
+        if (groundFit(x, z, w, d, source.rot).spread > P.maxSpread || conflictsTacticalReservation(x, z)) return false;
+        const footprint = { x, z, w, d, rot: source.rot };
+        return !buildingFeatures.some((other) => other !== packet.feature && footprintsMeet(footprint, other, 1));
+      };
+      const authored = P.roadClearanceTargets?.find((entry) =>
+        Math.hypot(entry.from[0] - source.x, entry.from[1] - source.z) <= 1.5);
+      if (authored && clearsAt(authored.to[0], authored.to[1])) target = { x: authored.to[0], z: authored.to[1] };
+      const turns = [0];
+      for (let k = 1; k <= 12; k++) turns.push(k * Math.PI / 12, -k * Math.PI / 12);
+      for (let step = 1; step <= 60 && !target; step++) {
+        const dist = step * 0.5;
+        for (const turn of turns) {
+          const c = Math.cos(turn), sn = Math.sin(turn);
+          const x = source.x + (ax * c - az * sn) * dist, z = source.z + (ax * sn + az * c) * dist;
+          if (!clearsAt(x, z)) continue;
+          target = { x, z };
+          break;
+        }
+      }
+      roadClearanceMoves.push({ kind: packet.kind, from: [source.x, source.z], to: target ? [target.x, target.z] : null });
+      if (!target) continue;
+      const y = groundFit(target.x, target.z, w, d, source.rot).y + 0.05;
+      const dx = target.x - source.x, dy = y - source.y, dz = target.z - source.z;
+      const transform = new THREE.Matrix4().makeTranslation(dx, dy, dz);
+      for (const geometries of Object.values(packet.buckets)) for (const geometry of geometries) geometry.applyMatrix4(transform);
+      [packet.profile.contact, ...packet.profile.shell].forEach((band, i) => {
+        const record = packet.records[i];
+        record.min[1] = y + band.minY; record.max[1] = y + band.maxY;
+        applyStructureCollisionBand(record, band, target.x, target.z, source.rot, y);
+      });
+      Object.assign(packet.feature, { x: target.x, z: target.z });
+      Object.assign(packet.placement, { x: target.x, z: target.z });
+      for (const top of packet.chimneys) { top[0] += dx; top[1] += dy; top[2] += dz; }
+    }
+    carriagewayPackets.length = 0;
+  }
+  moveBuildingsOffCarriageways();
 
   // Map-specific strongpoints. Random dressing is still valuable between
   // lanes, but critical cover cannot be left to a scatter pass: these beats
@@ -4109,6 +4306,19 @@ ${snowCap ? `
   // Each type becomes one intact InstancedMesh plus an empty broken-state
   // pool, bounded to the handful of families authored by the active map.
   function* placeDestructibleBuildings(): Generator<PropsBuildSlice, void, void> {
+    // a recorded settlement's light buildings stand at their recorded poses, and the pass draws nothing
+    if (P.townLightPlan) {
+      for (const entry of P.townLightPlan) {
+        const meta = DESTRUCTIBLE_BUILDING_TYPES[entry.kind];
+        if (!meta) continue;
+        const fit = groundFit(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot);
+        addDestructible(entry.kind, entry.x, fit.y + 0.04, entry.z, entry.rot);
+        buildingFeatures.push({ x: entry.x, z: entry.z, w: meta.hw * 2, d: meta.hl * 2, rot: entry.rot });
+        placedB.push({ x: entry.x, z: entry.z, rr: Math.hypot(meta.hw, meta.hl) * 0.72 });
+        yield { fine: true };
+      }
+      return;
+    }
     if (!P.destructibleBuildings?.length) return;
     const srng = mulberry32(seed + 17041);
     const lateral = P.destructibleBuildingLat || [9.5, 9.0];
@@ -5298,10 +5508,21 @@ ${snowCap ? `
   // (its geology.boulders; landformGeology.ts geologyBoulderSite crowds them towards the wall's foot). A map without
   // them draws nothing here, so its scatter keeps every seat.
   function placeLandformBoulders(): void {
-    for (const form of L.terrain.landforms) {
-      const count = form.kind === 'ridge' ? 0 : form.geology?.boulders ?? 0;
+    // The blocks keep off the trees the vegetation pass planted before them (the scenery lane, 2026-10-03: six trunks
+    // stood inside Redrock's blocks): a site within a trunk's reach plus the largest block's is skipped, its draws taken.
+    const forms = L.terrain.landforms.filter((form) => form.kind !== 'ridge' && (form.geology?.boulders ?? 0) > 0);
+    if (!forms.length) return;
+    const trunks = (vegetation?.treeObstacles ?? []).map((tree) => ({
+      x: (tree.min[0] + tree.max[0]) / 2, z: (tree.min[2] + tree.max[2]) / 2,
+      reach: Math.max(tree.max[0] - tree.min[0], tree.max[2] - tree.min[2]) / 2 + 3.2,
+    }));
+    const onTree = (x: number, z: number): boolean => trunks.some((t) => Math.abs(x - t.x) < t.reach
+      && Math.abs(z - t.z) < t.reach && Math.hypot(x - t.x, z - t.z) < t.reach);
+    for (const form of forms) {
+      const count = form.geology?.boulders ?? 0;
       for (let i = 0, placed = 0; i < count * 6 && placed < count; i++) {
         const [x, z] = geologyBoulderSite(form, rng(), rng());
+        if (onTree(x, z)) continue;
         if (tryRock(x, z, 0.9, 3.0, false, 0.3)) placed++;
       }
     }

@@ -94,7 +94,10 @@ const timeouts = resultReasons.filter((reason) => reason === 'time_limit').lengt
 // On 2026-10-03 the gate began registering the fleet as the game's authorities do (server/pacingRoster.test-support.ts):
 // its rosters had been drawn from five ids, four specs in every seat, and are now drawn from the production catalog.
 // Every roster changed, so the causes named above for Fjord 30001, Redrock 32003 and Mangrove 48001 describe the old
-// rosters and no longer stand; Polders 41002 became the first floor exception.
+// rosters and no longer stand; Polders 41002 became the first floor exception. Mars 51000 became the second when the
+// hull came to lie on the plane its tracks touch (the physics lane's round 3, 2026-10-03): each hull's attitude on a
+// grade changed (by a degree on 25 degrees), the run parted from the old one within seconds, and its one duel changed
+// order.
 const TARGET_MEDIAN_S = { min: 240, max: 480 };
 const PENDING_RULING_MEDIAN_FLOOR_S = 180;
 assert.ok(medianS >= PENDING_RULING_MEDIAN_FLOOR_S && medianS <= TARGET_MEDIAN_S.max,
@@ -120,6 +123,12 @@ const FLOOR_EXCEPTIONS = {
     roster: ['m1a2', 'm3a3_bradley', 'ua_m1a1', 'bmp3_rok'],
     floorS: 60,
     cause: 'alpha\'s lone M3A3 Bradley kills a UA M1A1 and a BMP-3 ROK in the open with TOW-2B and 25 mm',
+  },
+  'mars 51000': {
+    roster: ['m1a2', 'spz_puma_s1_x', 'aft10_x', 'amx56'],
+    floorS: 75,
+    cause: 'alpha\'s lone SPz Puma S1 X reaches the ridge first and fires first, and the AMX-56 arrives alone 12 s '
+      + 'after its partner dies',
   },
 };
 const keyOf = (entry) => `${entry.mapId} ${entry.seed}`;

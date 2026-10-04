@@ -8,10 +8,11 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import ts from 'typescript-compiler-api';
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, TREE_SPECIES } from './treeSpecies.ts';
 import { bendMangroveRoot, shapeMangroveFarStem } from './tidalMangrove.ts';
+import { treeBiomeColour, treeBiomePalette, treeBiomeSlot } from './treeBiomes.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { HORIZON_FOREST_IMPOSTOR_SKY_FILL, HORIZON_FOREST_IMPOSTOR_THIN, HORIZON_FOREST_IMPOSTOR_WRAP } from './horizonForestImpostors.ts';
 import * as growth from './treeGrowth.ts';
-import { makeSprayAtlas, SPRAY_ATLAS_TILES } from './treeSprayAtlas.ts';
+import { makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES } from './treeSprayAtlas.ts';
 
 // 2026-10-01 (frozen pins retired): the receipt used to compare every map's near/far/bush library with a "historical"
 // build (the 0823acd74 jitter and merge swapped into the live builders) and pin both literals by sha256, so any change
@@ -114,12 +115,15 @@ function compile(input = text, mode = 'current') {
     THREE, mergeGeometries, Float32Array, TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, bendMangroveRoot, shapeMangroveFarStem, shapeFarTreeBase,
     // p2 trees lane (2026-10-01): the desktop registry grows its near trees (treeGrowth.ts) and paints spray atlases;
     // both compiles take the same grown builders, so the near comparison stays exact on the desktop path
-    vegetationGrowsTrees: () => true, texSize: (px) => px, makeSprayAtlas, SPRAY_ATLAS_TILES,
+    vegetationGrowsTrees: () => true, texSize: (px) => px, makeSprayAtlas, SPRAY_ATLAS_TILES, SPRAY_ATLAS_COVERAGE,
     growTreeSkeleton: growth.growTreeSkeleton, emitBranchGeometry: growth.emitBranchGeometry, emitLeafCards: growth.emitLeafCards,
     emitCrownShadowHull: growth.emitCrownShadowHull, GROWTH_TUBE_SIDES: growth.GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES: growth.TREE_GROWTH_PROFILES,
     weldGrownGeometry: growth.weldGrownGeometry, canopySkyOcclusion: growth.canopySkyOcclusion, GROWTH_CANOPY_AO: growth.GROWTH_CANOPY_AO,
     growthCrownAttachments: growth.growthCrownAttachments, growthCardRows: growth.growthCardRows,
     GROWTH_CROWN_STEM_WIDTH: growth.GROWTH_CROWN_STEM_WIDTH,
+    // trees round 2 (2026-10-03): the crowns' lobes and hull normal (the shrubs' shade, the snow load) and the map's biome
+    crownLobes: growth.crownLobes, crownSurfaceNormal: growth.crownSurfaceNormal, treeBiomeSlot, treeBiomePalette, treeBiomeColour,
+    GROWTH_CROWN_SHADING: growth.GROWTH_CROWN_SHADING,
     _c: new THREE.Color(), _v3: new THREE.Vector3(), _e: new THREE.Euler(),
     _qq: new THREE.Quaternion(), _m: new THREE.Matrix4(), _scale: new THREE.Vector3(1, 1, 1),
   });
