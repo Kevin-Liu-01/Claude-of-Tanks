@@ -7079,6 +7079,71 @@ moves it 0.8 — the water's own reflection at grazing incidence is: `shallowWat
 - *GPU:* the old weight switched in-page, on / off / off / on: −1.3 and −0.3 ms (p25) — a constant.
 Frames: `$SP/p2/sea/pair/{saltwind,coastal}/{a,g}-<view>.png`, the glint `saltwind/{a,g,g~spec25,g~spec4}-glint.png`.
 
+### 2026-10-04 — the cumulus: shaded sides and darker flat bases under lit crowns, a soft outline, sizes that vary (the cumulus item)
+
+**The gauntlet's waves 46–50 on the cumulus:** "the darkest part of each cloud is only about a fifth darker than the
+brightest", "a grid-like rhythm", "hard cel outlines", "stamped popcorn"; facing the sun, the critics expected dark cores
+and silver linings. Branch `visual/cumulus` of the PR #9 program, from the PR head 4616c6c83.
+
+**How it is measured** (`$SP/p2/cumulus/tools/cloudrange.py`). A cloudless frame of the same pose (the skies lab's
+`coverage 0` variant; the dome is the same in both trees) gives the sky above its skyline; a cloud is where the frame
+leaves it by more than 8 levels. The light range reads each cloud's opaque interior (8+ pixels inside its outline: the
+outline's pixels mix the cloud with the sky behind it and would read the sky's level as the cloud's darkest): L* at the
+5th percentile (the shade side, the base) and the 95th (the lit crown), and dark / lit as display-linear luminance. The old
+cumulus: about 74 / 87–90, dark / lit 0.61–0.80 — the critics' "a fifth darker".
+
+**The first pick was wrong; one knob at a time found the lever.** A sweep judged by eye picked a stronger attenuation of
+the multiple-scattering octaves with depth, a faster decay of the diffused light and a lower sky floor. The pair against
+the PR head showed it darkened the whole cloud (61–64 / 74–81: crowns and shade 10–13 L* down together; dark / lit barely
+moved). Each knob alone on one build (crown / shade): the octaves' attenuation (1.0 / 0.8 for b, b²) −1 / −1; the
+diffused light's decay (0.6 for 0.15) −5 / −3.5, the crown more than the shade; the outline's saturation (0.85) −0–2 / −1;
+the sky floor in a cumulus' shade (0.34 → 0.12 of the sky mean) −1.5–4 / −9–10. The floor sets the shade side: the octaves
+and the diffusion stay as they were. Lower floors stop mattering (0.06 and 0.0 alike: the sky light itself is above them).
+
+**The law** (volumetricClouds.ts; `cumulusFields.selftest`):
+- `CLOUD_CU_FLOOR` 0.12: the sky floor in the cumulus' shade (it was 0.34);
+- `CLOUD_BASE_DARK` 0.8 (on; the 2026-10-03 knob): the underside in the shade of the mass over it, flat and darker (the
+  bracket: 0.6 gives dark / lit 0.39–0.46, 1.0 gives 0.33–0.41);
+- `CLOUD_CU_SUN_GAIN` 1.15: the sun's direct and diffused light on a cumulus, so the crowns hold at L* 88–90 over the
+  lower floor (the sky's light is not raised);
+- `CLOUD_CU_EDGE` 0.85: the density saturates further in from the outline (0.6): a soft rim, not a cel edge;
+- `CLOUD_SIZE_VAR` 0.35 over half a weather tile (6 km): the coverage cut shifts region by region within one view, so masses
+  merge large in places and stand small and scattered in others. At three tiles (36 km) the field held about one value over
+  the whole battlefield and only thinned it (the cover 1–11 points down on seven wide views); at half a tile the spread of
+  the clouds' areas in a frame rises on all seven and the cover holds within two points.
+All five on the cumulus regimes only (`cloudCumulusW`: stratiform 0.15 or less; a deck, a lens and an altocumulus sheet keep
+their light and outline).
+
+**Measured** (the pair: the PR head 4616c6c83 against the branch at 6a32bd4ee, desktop high, 1600 × 900;
+`$SP/p2/cumulus/final`; interior L* shade / crown, dark / lit):
+
+| view | before | after |
+|---|---|---|
+| Verdant chase | 74.2 / 90.1, 0.61 | 58.2 / 89.3, 0.35 |
+| Verdant establishing | 74.3 / 89.9, 0.62 | 59.1 / 88.6, 0.38 |
+| Verdant facing the sun | 76.6 / 90.4, 0.66 | 62.4 / 89.8, 0.41 |
+| Saltwind facing the sun | 76.2 / 90.0, 0.66 | 62.1 / 89.6, 0.41 |
+| Saltwind close-acacia (bases seen from under) | 74.2 / 87.0, 0.67 | 56.1 / 79.3, 0.44 |
+| Redrock edge-g (toward the sun) | 72.8 / 80.2, 0.78 | 59.0 / 84.5, 0.43 |
+| Redrock facing the sun (far, hazed humilis) | 73.7 / 80.6, 0.80 | 65.6 / 80.0, 0.62 |
+
+The shade side sits at a third to a half of the crown's luminance (a photograph's range; the bracket on the base dark
+moves it between 0.33 and 0.46) and the crowns hold at L* 88–90 where the sun lights them. Toward the sun the rims now
+outshine the cores (rim / core: Saltwind 1.04 → 1.21, Verdant 0.95 → 1.10, Redrock 0.92 → 1.22): dark cores, silver
+linings. The cover holds within three points. Overcast, no harm: Whiteout (low-stratus) — no sky pixel moves by more than
+2 levels on establishing, chase and facing the sun.
+- *Sizes* (`$SP/p2/cumulus/cap5`, the size spread alone in the page on seven wide views — establishing, the horizons, the
+  sky overhead): the spread of the clouds' areas in a frame (coefficient of variation) rises on all seven (Saltwind's
+  south horizon 1.71 → 3.14, its sky overhead 1.35 → 2.21, Verdant's establishing 2.45 → 2.67), the cover within two
+  points. On the pair's narrower views, five to fifteen clouds a frame, the measure is mixed.
+- *GPU* (in-page toggles, desktop high, GPU frame time p25 / p50): the whole change, on / off / off / on, −0.16 / −0.51 ms
+  (Saltwind facing the sun) and −0.05 / −0.41 ms (Verdant establishing); the size spread's texture read alone, on / off /
+  off / on twice, +0.09 / +0.52 and −0.23 / −0.25 ms. Nil within the run-to-run spread: the change is a few uniforms and
+  one texture read a weather sample.
+
+**Not this item:** the horizontal streaks inside some large masses (in the old cumulus too), and Redrock's small humilis
+puffs reading grey near the sun (they are backlit; the rims carry the light).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
