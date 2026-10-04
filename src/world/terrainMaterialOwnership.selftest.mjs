@@ -156,6 +156,8 @@ function checkSourceContract(text) {
     'uPavedRock',
     // maps lane B (2026-10-03): a sor's salt crust — on, polygon cell, damp margin (vec4, no sampler)
     'uSaltCrust',
+    // maps lane B (2026-10-03): airfield concrete — slab, joint, stains, tyres (vec4, no sampler)
+    'uPaveSlab',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);

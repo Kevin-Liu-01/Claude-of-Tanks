@@ -302,6 +302,10 @@ interface SplatConfig {
   microAmp?: number;
   strata?: number;
   pavedRoads?: boolean;
+  /** Maps lane B (2026-10-03, the gauntlet: Kestrel Airfield's apron "reads as a cobbled plaza"): the paved layer drawn
+   * as airfield concrete — square slabs `slabM` across with sealed expansion joints (`jointM` half-width), a tone per
+   * slab, oil stains (`stains`, 0..1) and rubber streaks along the x axis, the runway's (`tyres`, 0..1). */
+  pavement?: { slabM: number; jointM?: number; stains?: number; tyres?: number };
   /** Maps lane B (2026-10-03, the gauntlet: Tarkhan Steppe's pans "read as snow patches or grey mud"): the dry marsh
    * layer drawn as a sor's salt crust — white-grey salt with faint desiccation polygons (`crackM` across) over the
    * floor, the damp darker silt of its margin (`damp`, 0..1) outside the crust. */
@@ -3363,6 +3367,7 @@ uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoul
 // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving (a cobble set: Cinder Junction, Steinburg,
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
 uniform float uPavedRock;
+uniform vec4 uPaveSlab;   // maps lane B (2026-10-03): airfield concrete (slab m, joint half-width m, stains, tyres); x 0 = off
 uniform vec4 uSaltCrust;  // maps lane B (2026-10-03): a sor's salt crust (on, polygon cell m, damp margin, unused)
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
@@ -3464,7 +3469,8 @@ vec2 nzq(vec2 p, float s, vec2 o) {
   vec2 b = nz(vec2(0.7431 * p.x - 0.6691 * p.y, 0.6691 * p.x + 0.7431 * p.y), s * 0.7243, o.yx + vec2(0.37, 0.19)).gr;
   return clamp((a + b - 1.0) * 0.72 + 0.5, 0.0, 1.0);
 }
-// maps lane B (2026-10-03): two hash values in [0, 1) per integer cell, for the salt crust's desiccation polygons
+// maps lane B (2026-10-03): two hash values in [0, 1) per integer cell, for the airfield's slab tones and the salt
+// crust's desiccation polygons
 vec2 cellHash2(vec2 p) {
   return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
 }
@@ -5057,6 +5063,32 @@ void splatCompute() {
       // sky ambient read as a frozen canal; darker worn stone keeps the
       // street below the facade value range
       pav.rgb *= 0.72 + smoothstep(0.35, 0.75, pvar) * 0.22;
+      if (uPaveSlab.x > 0.0) {
+        // maps lane B (2026-10-03, the gauntlet: Kestrel Airfield's apron "reads as a cobbled plaza"): airfield
+        // concrete in place of the map's sett print — square slabs with sealed expansion joints, a tone per slab (pours
+        // of different age), the aggregate's mottle, oil and fuel stains, and rubber streaks along the runway's axis
+        vec2 slabP = wp.xz / uPaveSlab.x;
+        vec2 slabH = cellHash2(floor(slabP));
+        vec2 slabF = fract(slabP);
+        vec2 jointD = min(slabF, 1.0 - slabF) * uPaveSlab.x;
+        vec2 jointFw = max(fwidth(wp.xz), vec2(1e-4));
+        vec2 jointL = 1.0 - smoothstep(vec2(uPaveSlab.y) - jointFw, vec2(uPaveSlab.y) + jointFw, jointD);
+        float joint = max(jointL.x, jointL.y) * tileVis(uPaveSlab.x);
+        vec3 conc = vec3(dot(uMeanR.rgb, vec3(0.30, 0.59, 0.11))) * vec3(1.03, 1.01, 0.97);
+        conc *= 0.88 + slabH.x * 0.18;
+        conc *= 0.92 + nz(uv, 0.23, vec2(0.29, 0.63)).r * 0.16;
+        float stain = smoothstep(0.64, 0.84, nzq(uv, 0.11, vec2(0.17, 0.41)).x) * uPaveSlab.z;
+        stain = max(stain, smoothstep(0.80, 0.96, slabH.y) * smoothstep(0.45, 0.75, nz(uv, 0.37, vec2(0.83, 0.07)).g) * uPaveSlab.z);
+        conc *= 1.0 - stain * 0.40;
+        // (the noise stretched 150:1 along the runway's x axis, read at the across-axis scale's explicit LOD; faint, as
+        // the slab roads up from the valleys run across that axis)
+        float tyre = smoothstep(0.70, 0.86, nz(vec2(wp.x * 0.00677, wp.z), 0.31, vec2(0.0)).r)
+          * smoothstep(0.40, 0.66, nz(uv, 0.006, vec2(0.37, 0.91)).g) * uPaveSlab.w;
+        conc *= 1.0 - tyre * 0.22;
+        conc *= 1.0 - joint * 0.55;
+        pav = vec4(conc, mix(0.86, 0.60, stain));
+        pnn = NRM_MEAN;
+      }
       // ground lane (2026-10-03, the gauntlet: the cobble road "meets meadow at a knife edge with no verge, mud or broken
       // stones"): a country sett road's margin is broken — setts lost in runs along the edge with soil in the gaps (the
       // shoulder's own soil shows through), grass and moss climbing into the joints of the outer setts, and a strip of
@@ -5064,7 +5096,9 @@ void splatCompute() {
       {
         float paveVis = tileVis(1.6);
         float paveN = nzq(uv, 0.62, vec2(0.71, 0.37)).x;
-        float paveKept = smoothstep(0.15, 0.24, mk.r + (n1hs - 0.5) * 0.025 + (paveN - 0.5) * 0.20 * paveVis) * uRoadTex;
+        // (maps lane B: an airfield's concrete keeps a straight edge — no setts to lose)
+        float paveKept = smoothstep(0.15, 0.24, mk.r + (n1hs - 0.5) * 0.025
+          + (paveN - 0.5) * 0.20 * paveVis * (1.0 - step(0.001, uPaveSlab.x))) * uRoadTex;
         paveCore = min(paveCore, paveKept);
         float outer = paveCore * (1.0 - smoothstep(0.24, 0.46, mk.r));
         float pavL = dot(pav.rgb, vec3(0.34, 0.45, 0.21)) / max(dot(uMeanR.rgb, vec3(0.34, 0.45, 0.21)) * 0.8, 1e-3);
@@ -5817,7 +5851,9 @@ function* createSplatMaterialSteps(
     // round 55: the bedded sandstone R (no sourced R in the map's plan) carries the noise wall crag, not the tile's beds
     shader.uniforms.uBeddedR = { value: S.sandstone && !sourcedTerrainLayerPlanned(mapId, S, 'R') ? 1 : 0 };
     shader.uniforms.uPavedRock = { value: sourcedTerrainLayerSet(mapId, S, 'R') === 'cobble' ? 1 : 0 }; // the map-borders lane
-    // maps lane B (2026-10-03): a sor's salt crust (off unless the map authors it)
+    // maps lane B (2026-10-03): airfield concrete and a sor's salt crust (both off unless the map authors them)
+    shader.uniforms.uPaveSlab = { value: new THREE.Vector4(S.pavement ? S.pavement.slabM : 0, S.pavement?.jointM ?? 0.04,
+      S.pavement?.stains ?? 1, S.pavement?.tyres ?? 1) };
     shader.uniforms.uSaltCrust = { value: new THREE.Vector4(S.saltCrust ? 1 : 0, S.saltCrust?.crackM ?? 1.8,
       S.saltCrust?.damp ?? 1, 0) };
     // r2: agrarian field patchwork — only sensible on temperate farmland maps

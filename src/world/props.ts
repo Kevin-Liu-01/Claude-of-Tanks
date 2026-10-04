@@ -312,7 +312,10 @@ interface PropsSettings {
   reservoirWaterworks?: ReservoirWaterworksConfig;
   foundryServiceCourt?: FoundryServiceCourtConfig;
   plan: string[];
-  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number }[];
+  /** Maps lane B (2026-10-03): `plot` sizes the site — metres across (x) and deep (z) before the yaw — for a builder
+   * that honours one (the warehouse; the Hostomel kit raises its barrel-vault cargo hangar on a warehouse plot 21 m
+   * wide or more). */
+  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number } }[];
   tones: Record<string, ToneFunction | null | undefined>;
   rockTone: ToneFunction | null;
   wallStoneChance: number;
@@ -3583,13 +3586,14 @@ ${snowCap ? `
   const structureContext: StructureBuildContext = {
     mapId, snowCap: mapId === 'winter' || !!P.snowCap, seed, cladding: P.industrialCladding ?? 'brick',
   };
-  function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string): boolean {
+  function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
+    plot?: { w: number; d: number }): boolean {
     let tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
     };
     const structureId = explicitStructure ?? P.plan[bi] ?? 'cottage';
-    attachStructureBuildContext(tmp, structureContext);
+    attachStructureBuildContext(tmp, plot ? { ...structureContext, plot } : structureContext);
     const builder = explicitStructure ? BUILDER_BY_NAME[explicitStructure] : builders[bi];
     if (!builder) throw new Error(`Unknown planned structure ${structureId}`);
     const wallBucket = pickWall(rng);
@@ -3716,7 +3720,7 @@ ${snowCap ? `
   for (const site of P.plannedSites ?? []) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!isRoadBuildingSiteClear(site.x, site.z)) continue;
-    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure);
+    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, site.plot);
     yield { fine: true };
   }
   yield* placeRoadBuildings();
