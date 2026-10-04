@@ -35,7 +35,8 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
   const r = sink.recess, back = r > 0 ? -r : 0;
   facePanel(sink, pane, face, u, y + h / 2, r > 0 ? back + 0.012 : 0.018, w, h, { ...dec, window: face.out });
   const F = style.frameWidth, O = style.frameOut;
-  const fc = { colour: style.frame, decor: true };
+  // the frame, its glazing bars and the shutters' rails are fine joinery (EmitOptions.fine): drawn near the camera only
+  const fc = { colour: style.frame, decor: true, fine: true };
   // frame: jambs, head and bottom rail, standing out of the pane plane; a jamb's foot stands on the sill and its head
   // under the reveal's soffit (or a surround's lintel standing as far out): those caps never show
   const jamb = { bottom: !!style.sill, top: r > 0 || (!!style.surround && style.surround.out >= O) };
@@ -53,7 +54,8 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
   }
   if (style.surround) {
     const s = style.surround, sw = s.width, so = s.out, lintel = s.lintel ?? sw;
-    const sc = { decor: true, ...(s.colour ? { colour: s.colour } : {}) };
+    // a dressed surround reads by its face at range: its sides and soffits are fine joinery (EmitOptions.fineSides)
+    const sc = { decor: true, fineSides: true, ...(s.colour ? { colour: s.colour } : {}) };
     faceBox(sink, s.bucket, face, u - w / 2 - sw / 2, y + h / 2, so / 2, sw, h, so, sc);
     faceBox(sink, s.bucket, face, u + w / 2 + sw / 2, y + h / 2, so / 2, sw, h, so, sc);
     faceBox(sink, s.bucket, face, u, y + h + lintel / 2, so / 2, w + 2 * sw, lintel, so, sc);
@@ -62,7 +64,7 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
     // the sill runs through the reveal from the frame to its nose past the face
     const so = style.sill.out;
     faceBox(sink, style.sill.bucket, face, u, y - 0.045, (so - r) / 2, w + (style.surround ? 2 * style.surround.width : 0) + 0.1, 0.09, so + r,
-      { decor: true, ...(style.sill.colour ? { colour: style.sill.colour } : {}) });
+      { decor: true, fineSides: true, ...(style.sill.colour ? { colour: style.sill.colour } : {}) });
   }
   if (style.shutters) {
     const sh = style.shutters, leaf = w / 2 + 0.03, sideOff = style.surround ? style.surround.width : 0;
@@ -80,12 +82,12 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
         const cu = u + side * (w / 2 + sideOff + leaf / 2 + 0.02);
         // the open leaf folded back flat on the wall (its back face then never shows), its rails on its face
         const T = 0.035, front = T + 0.001, ro = front + 0.01 - 0.002;
-        faceBox(sink, 'structureWood', face, cu, y + h / 2, front - T / 2, leaf, h + 0.02, T, sc);
+        faceBox(sink, 'structureWood', face, cu, y + h / 2, front - T / 2, leaf, h + 0.02, T, { ...sc, fineSides: true });
         if (sh.kind === 'louvred') {
           // two rails read the louvre frame; the detail tile's grain carries the slats
-          for (const t of [0.06, 0.94]) faceBox(sink, 'structureWood', face, cu, y + h * t, ro, leaf, 0.05, 0.02, sc, { back: true });
+          for (const t of [0.06, 0.94]) faceBox(sink, 'structureWood', face, cu, y + h * t, ro, leaf, 0.05, 0.02, { ...sc, fine: true }, { back: true });
         } else if (sh.kind === 'plank') {
-          for (const t of [0.18, 0.82]) faceBox(sink, 'structureWood', face, cu, y + h * t, ro, leaf - 0.04, 0.07, 0.02, sc, { back: true });
+          for (const t of [0.18, 0.82]) faceBox(sink, 'structureWood', face, cu, y + h * t, ro, leaf - 0.04, 0.07, 0.02, { ...sc, fine: true }, { back: true });
         }
       }
     }
@@ -113,20 +115,21 @@ export function doorUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
   const lc = { colour: style.leaf, decor: true, uv: UV_MEMBER };
   // in a cut opening (sink.recess) the leaf hangs at the back of the reveal
   const r = sink.recess, lo = r > 0 ? -r + 0.022 : 0.012;
-  faceBox(sink, 'structureWood', face, u, y + leafH / 2, lo, w, leafH, 0.04, lc);
+  faceBox(sink, 'structureWood', face, u, y + leafH / 2, lo, w, leafH, 0.04, { ...lc, fineSides: true });
+  // the leaf's panels and battens are fine joinery (EmitOptions.fine): the leaf itself reads at any range
   if (style.leafKind === 'panel') {
-    for (const t of [0.28, 0.72]) faceBox(sink, 'structureWood', face, u, y + leafH * t, lo + 0.028, w * 0.7, leafH * 0.34, 0.02, lc);
+    for (const t of [0.28, 0.72]) faceBox(sink, 'structureWood', face, u, y + leafH * t, lo + 0.028, w * 0.7, leafH * 0.34, 0.02, { ...lc, fine: true });
   } else if (style.leafKind === 'plank') {
-    for (const t of [0.15, 0.85]) faceBox(sink, 'structureWood', face, u, y + leafH * t, lo + 0.028, w - 0.08, 0.09, 0.03, lc);
+    for (const t of [0.15, 0.85]) faceBox(sink, 'structureWood', face, u, y + leafH * t, lo + 0.028, w - 0.08, 0.09, 0.03, { ...lc, fine: true });
   } else {
     faceBox(sink, 'glass', face, u, y + leafH * 0.66, lo + 0.023, w * 0.6, leafH * 0.42, 0.02, { decor: true });
   }
   if (style.transom) {
     faceBox(sink, 'glass', face, u, y + h - 0.21, lo - 0.006, w, 0.36, 0.03, { decor: true });
-    faceBox(sink, 'structureWood', face, u, y + leafH + 0.03, lo + 0.028, w, 0.06, 0.06, { colour: style.leaf, decor: true });
+    faceBox(sink, 'structureWood', face, u, y + leafH + 0.03, lo + 0.028, w, 0.06, 0.06, { colour: style.leaf, decor: true, fine: true });
   }
   const f = style.frame, fw = f.width;
-  const fo = { decor: true, ...(f.colour ? { colour: f.colour } : {}) };
+  const fo = { decor: true, fineSides: true, ...(f.colour ? { colour: f.colour } : {}) };
   faceBox(sink, f.bucket, face, u - w / 2 - fw / 2, y + h / 2, f.out / 2, fw, h, f.out, fo);
   faceBox(sink, f.bucket, face, u + w / 2 + fw / 2, y + h / 2, f.out / 2, fw, h, f.out, fo);
   faceBox(sink, f.bucket, face, u, y + h + fw / 2, f.out / 2, w + 2 * fw, fw, f.out, fo);

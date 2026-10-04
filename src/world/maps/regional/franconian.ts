@@ -77,7 +77,7 @@ const townHouse: RegionalBuilder = (ctx) => {
         const x = sx > 0 ? b.x1 : b.x0, z = sz > 0 ? b.z1 : b.z0;
         for (let y = 0.4, k = 0; y < frame.eaveY - 0.3; y += 0.42, k++) {
           const lx = k % 2 ? 0.32 : 0.56, lz = k % 2 ? 0.56 : 0.32;
-          sink.span('stone', sx > 0 ? x - lx : x - 0.035, y, sz > 0 ? z - lz : z - 0.035, sx > 0 ? x + 0.035 : x + lx, y + 0.4, sz > 0 ? z + 0.035 : z + lz, { decor: true });
+          sink.quoin('stone', sx > 0 ? x - lx : x - 0.035, y, sz > 0 ? z - lz : z - 0.035, sx > 0 ? x + 0.035 : x + lx, y + 0.4, sz > 0 ? z + 0.035 : z + lz, sx, sz, { decor: true });
         }
       }
     }

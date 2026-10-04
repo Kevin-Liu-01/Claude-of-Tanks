@@ -33,7 +33,7 @@ const slate = (pitch: number, kind: RoofSpec['kind'] = 'gable'): RoofSpec => ({ 
 
 /** A yellow-brick band round a body at height y. */
 function band(sink: PartSink, b: { x0: number; x1: number; z0: number; z1: number }, y: number): void {
-  sink.span(YELLOW_BRICK, b.x0 - 0.04, y, b.z0 - 0.04, b.x1 + 0.04, y + 0.24, b.z1 + 0.04, { decor: true });
+  sink.band(YELLOW_BRICK, b.x0 - 0.04, y, b.z0 - 0.04, b.x1 + 0.04, y + 0.24, b.z1 + 0.04, { decor: true });
 }
 
 /** The colliery cottage pair: two storeys of brick, two doors, a dormer each, a stack at each gable. */

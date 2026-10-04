@@ -175,8 +175,8 @@ function quoins(sink: PartSink, frame: HouseFrame): void {
     for (let y = 0.15, k = 0; y < top - 0.3; y += 0.38, k++) {
       const long = (k & 1) === 0;
       const lx = long ? 0.62 : 0.34, lz = long ? 0.34 : 0.62;
-      sink.span('stone', sx > 0 ? x - lx : x - 0.035, y, sz > 0 ? z - lz : z - 0.035,
-        sx > 0 ? x + 0.035 : x + lx, y + 0.36, sz > 0 ? z + 0.035 : z + lz, { decor: true });
+      sink.quoin('stone', sx > 0 ? x - lx : x - 0.035, y, sz > 0 ? z - lz : z - 0.035,
+        sx > 0 ? x + 0.035 : x + lx, y + 0.36, sz > 0 ? z + 0.035 : z + lz, sx, sz, { decor: true });
     }
   }
 }

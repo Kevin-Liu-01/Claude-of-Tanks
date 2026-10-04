@@ -64,10 +64,10 @@ const companyOffice: RegionalBuilder = (ctx) => {
     const x = sx > 0 ? b.x1 : b.x0, z = sz > 0 ? b.z1 : b.z0;
     for (let y = 0.7, k = 0; y < frame.eaveY - 0.3; y += 0.45, k++) {
       const lx = k % 2 ? 0.36 : 0.62, lz = k % 2 ? 0.62 : 0.36;
-      sink.span(DRESSING, sx > 0 ? x - lx : x - 0.04, y, sz > 0 ? z - lz : z - 0.04, sx > 0 ? x + 0.04 : x + lx, y + 0.42, sz > 0 ? z + 0.04 : z + lz, { decor: true });
+      sink.quoin(DRESSING, sx > 0 ? x - lx : x - 0.04, y, sz > 0 ? z - lz : z - 0.04, sx > 0 ? x + 0.04 : x + lx, y + 0.42, sz > 0 ? z + 0.04 : z + lz, sx, sz, { decor: true });
     }
   }
-  sink.span(DRESSING, b.x0 - 0.06, frame.floors[1] - 0.1, b.z0 - 0.06, b.x1 + 0.06, frame.floors[1] + 0.12, b.z1 + 0.06, { decor: true });
+  sink.band(DRESSING, b.x0 - 0.06, frame.floors[1] - 0.1, b.z0 - 0.06, b.x1 + 0.06, frame.floors[1] + 0.12, b.z1 + 0.06, { decor: true });
   // the ridge lantern: a small slate-capped vent turret
   const top = frame.roof.ridgeTopY;
   sink.span('plaster', -0.6, top - 0.5, -0.6, 0.6, top + 1.1, 0.6);

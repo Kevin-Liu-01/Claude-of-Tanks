@@ -251,7 +251,7 @@ export function hessianDialect(st: HessianState): HouseDialect {
     dressJetty: (sink, face, u0, u1, y, depth) => {
       if (st.mobile) return;
       for (let u = u0 + 0.35; u < u1 - 0.2; u += 0.62) {
-        faceBox(sink, SW, face, u, y - 0.08, (0.06 - depth) / 2, 0.14, 0.16, depth + 0.06, { colour: st.timber, decor: true, uv: UV_MEMBER });
+        faceBox(sink, SW, face, u, y - 0.08, (0.06 - depth) / 2, 0.14, 0.16, depth + 0.06, { colour: st.timber, decor: true, uv: UV_MEMBER, fineSides: true });
       }
     },
   };
@@ -638,7 +638,7 @@ const church: RegionalBuilder = (ctx) => {
         const xIn = long ? 0.62 : 0.32, zIn = long ? 0.32 : 0.62;
         const xa = sx > 0 ? naveW / 2 - xIn : -naveW / 2 - 0.04, xb = sx > 0 ? naveW / 2 + 0.04 : -naveW / 2 + xIn;
         const za = sz > 0 ? naveD / 2 - zIn : -naveD / 2 - 0.04, zb = sz > 0 ? naveD / 2 + 0.04 : -naveD / 2 + zIn;
-        sink.span('stone', xa, y, za, xb, y + 0.4, zb, { decor: true });
+        sink.quoin('stone', xa, y, za, xb, y + 0.4, zb, sx, sz, { decor: true });
       }
     }
   });

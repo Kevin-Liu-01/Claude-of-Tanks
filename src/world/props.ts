@@ -22,7 +22,7 @@ import { roadSettlementJunction } from './roadSettlementJunction.ts';
 import { roadFencePath, fencePathSampler } from './roadFencePath.ts';
 import { buildingFootprintClearsRoads, roadBuildingFrontage, roadBuildingDoorAxis, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion,
   type RoadFrontageSite } from './roadBuildingFrontage.ts';
-import { getDeviceTier } from '../engine/quality.ts';
+import { getDeviceTier, resolvePresetName } from '../engine/quality.ts';
 
 // Environment richness (2026-09-14, owner: "add back so much environmental details — they
 // feel much barer now"): desktop tiers place 35 % more settlement and roadside clutter than
@@ -7392,14 +7392,51 @@ ${snowCap ? `
     // (geometry.ts EmitOptions.shadow).
     const RECEIVE_ONLY_DETAIL = new Set(['structureWood', 'structureMetal']);
     const castsNoShadow = (g: THREE.BufferGeometry) => g.userData.regional === true && g.userData.noCollision === true && g.userData.castsShadow !== true;
+    // regional-buildings lane (2026-10-03, the urban perf blocker): the fine joinery (geometry.ts EmitOptions.fine:
+    // frames, glazing bars, rails, door panels, downpipes, and the sides and caps of timbers, shutter leaves, surrounds,
+    // sills and quoins) is drawn only within the quality preset's fine-detail distance of the camera (updateFineDetail):
+    // at the town's establishing range it is sub-pixel, and ~0.3 M of Steinburg's triangles went to it. It merges by
+    // 120 m cell (60 m cells drew as many fine triangles at Steinburg's establishing view, and 9-10 cells stood in a
+    // street view's frustum), and each bucket's cells are the instances of one multi-draw batch (THREE.BatchedMesh,
+    // culled by the frustum per instance), the bucket's always-drawn receive-only dressing one more: one draw call
+    // whatever the number of cells. A phone builds no fine joinery (regional/index.ts) and culls the rest of its timber dressing by
+    // the same cells, at its own shorter distances.
+    const CELLED = new Set(['structureWood', 'regionalStone']);
+    const FINE_CELL_M = 120;
+    const culled = (g: THREE.BufferGeometry, key: string) => CELLED.has(key) && castsNoShadow(g)
+      && (g.userData.fine === true || (mobileProps && RECEIVE_ONLY_DETAIL.has(key)));
+    type Cell = { list: THREE.BufferGeometry[]; minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
+    const fineCells = (list: THREE.BufferGeometry[]): Cell[] => {
+      const cells = new Map<number, Cell>();
+      for (const g of list) {
+        if (!g.boundingBox) g.computeBoundingBox();
+        const b = g.boundingBox;
+        if (!b || b.isEmpty()) continue;
+        const key = (Math.floor((b.min.x + b.max.x) * 0.5 / FINE_CELL_M) + 4096) * 8192 + Math.floor((b.min.z + b.max.z) * 0.5 / FINE_CELL_M) + 4096;
+        let cell = cells.get(key);
+        if (!cell) { cell = { list: [], minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity, minZ: Infinity, maxZ: -Infinity }; cells.set(key, cell); }
+        cell.list.push(g);
+        cell.minX = Math.min(cell.minX, b.min.x); cell.maxX = Math.max(cell.maxX, b.max.x);
+        cell.minY = Math.min(cell.minY, b.min.y); cell.maxY = Math.max(cell.maxY, b.max.y);
+        cell.minZ = Math.min(cell.minZ, b.min.z); cell.maxZ = Math.max(cell.maxZ, b.max.z);
+      }
+      return [...cells.values()];
+    };
+    /** the batches and their cells' instances (updateFineDetail shows a cell's instance by its box) */
+    const fineDetail: Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: Omit<Cell, 'list'> }> }> = [];
+    group.userData.fineDetail = fineDetail;
     for (const key of Object.keys(buckets)) {
       if (buckets[key].length === 0) continue;
       if (key === 'curtain') for (const geometry of buckets[key]) ensureWorldNightEmissionMask(geometry);
       if (key === 'glass') prepareWorldStaticNightFixture(buckets[key], mats[key]);
-      const lists: Array<[THREE.BufferGeometry[], boolean, string]> = RECEIVE_ONLY_DETAIL.has(key)
-        ? [[buckets[key].filter((g) => !castsNoShadow(g)), true, ''], [buckets[key].filter(castsNoShadow), false, '-detail']]
-        : [[buckets[key], true, '']];
-      for (const [list, casts, suffix] of lists) {
+      const all = buckets[key];
+      const fine = all.filter((g) => culled(g, key));
+      const receiveOnly = RECEIVE_ONLY_DETAIL.has(key);
+      const cast = receiveOnly ? all.filter((g) => !castsNoShadow(g)) : all.filter((g) => !culled(g, key));
+      const coarse = receiveOnly ? all.filter((g) => castsNoShadow(g) && !culled(g, key)) : [];
+      const meshes: Array<[THREE.BufferGeometry[], boolean, string]> = [[cast, true, '']];
+      if (!fine.length) meshes.push([coarse, false, '-detail']);
+      for (const [list, casts, suffix] of meshes) {
         if (!list.length) continue;
         // mergeGeometries requires uniform indexing (ExtrudeGeometry is non-indexed)
         const profile = bucketShadowProfile(list); // round 79: the pieces' cells, before the merge owns them
@@ -7414,6 +7451,37 @@ ${snowCap ? `
         group.add(mesh);
         yield { fine: true }; // loading-speed r1: merge one material family per idle slice
       }
+      if (!fine.length) continue;
+      // the batch: the always-drawn receive-only dressing (instance 0, when there is any) and one instance per cell of
+      // fine joinery; every instance starts visible, so the deployment warm uploads and links it with the rest
+      const cells = fineCells(fine);
+      const parts: THREE.BufferGeometry[] = [];
+      if (coarse.length) parts.push(yield* mergePropsMaterialGeometrySteps(coarse, key));
+      for (const cell of cells) parts.push(yield* mergePropsMaterialGeometrySteps(cell.list, key));
+      const vertices = parts.reduce((n, g) => n + g.getAttribute('position').count, 0);
+      const indices = parts.reduce((n, g) => n + (g.index ? g.index.count : 0), 0);
+      // the batch draws through its own copy of the bucket's material: one material shared by a batched and a plain
+      // mesh re-resolves its program at every switch between them (three's batching parameter), several times a frame
+      const batchMaterial = mats[key].clone();
+      engineCtx.setupShadowMaterial(batchMaterial, grimeHook);
+      batchMaterial.customProgramCacheKey = () => 'world-props-' + key + '-v7' + (snowCap ? 's' : '') + '-batch';
+      retainedSurfaceMaterials.push(batchMaterial);
+      const batch = new THREE.BatchedMesh(parts.length, vertices, Math.max(indices, 1), batchMaterial);
+      batch.name = 'props-bucket-' + key + '-batch';
+      // no per-instance culling or sorting: three would walk and re-upload the draw list every frame. The batch is
+      // culled whole by its own sphere; its cells by the fine-detail distance (updateFineDetail), so the list is
+      // rebuilt only on the frames a cell shows or hides
+      batch.sortObjects = false;
+      batch.perObjectFrustumCulled = false;
+      batch.castShadow = false;
+      batch.receiveShadow = true;
+      batch.matrixAutoUpdate = false;
+      const ids = parts.map((g) => batch.addInstance(batch.addGeometry(g)));
+      for (const g of parts) g.dispose();
+      fineDetail.push({ mesh: batch, cells: cells.map((cell, i) => ({ id: ids[i + (coarse.length ? 1 : 0)],
+        box: { minX: cell.minX, maxX: cell.maxX, minY: cell.minY, maxY: cell.maxY, minZ: cell.minZ, maxZ: cell.maxZ } })) });
+      group.add(batch);
+      yield { fine: true };
     }
   }
   yield* mergeMaterialBuckets();
@@ -8151,8 +8219,29 @@ ${snowCap ? `
 
   let animatedTimeS = 0; // round 67: the world clock the moored hulls ride
   const _hullPose: MooredHullPose = { heave: 0, roll: 0, pitch: 0 };
+  // regional-buildings lane (2026-10-03): the fine joinery's cells shown within the quality preset's fine-detail distance
+  // of the camera (3D, to the cell's box), hidden 15 m past it (hysteresis); the preset re-read once a second. At High
+  // (900-1080 rows) a 7 cm frame is half a pixel at ~120 m.
+  const FINE_DETAIL_M: Readonly<Record<string, number>> = {
+    ultra: 180, high: 120, medium: 90, low: 70, 'mobile-high': 70, mobile: 60, 'mobile-low': 45,
+  };
+  let fineFar = 120, fineFrames = 0;
+  function updateFineDetail(cameraPos: THREE.Vector3 | null): void {
+    const batches = group.userData.fineDetail as Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number } }> }> | undefined;
+    if (!batches?.length || !cameraPos) return;
+    if (fineFrames-- <= 0) { fineFar = FINE_DETAIL_M[resolvePresetName()] ?? 90; fineFrames = 60; }
+    for (const { mesh, cells } of batches) for (const { id, box: b } of cells) {
+      const dx = Math.max(b.minX - cameraPos.x, 0, cameraPos.x - b.maxX);
+      const dy = Math.max(b.minY - cameraPos.y, 0, cameraPos.y - b.maxY);
+      const dz = Math.max(b.minZ - cameraPos.z, 0, cameraPos.z - b.maxZ);
+      const d = Math.hypot(dx, dy, dz), shown = mesh.getVisibleAt(id);
+      if (shown ? d > fineFar + 15 : d < fineFar) mesh.setVisibleAt(id, !shown);
+    }
+  }
+
   function updateProps(dt: number, cameraPos: THREE.Vector3 | null = null): void {
     updatePoleLod(cameraPos);
+    updateFineDetail(cameraPos);
     if (mooredHulls.length) {
       animatedTimeS += dt;
       for (let i = 0; i < mooredHulls.length; i++) {

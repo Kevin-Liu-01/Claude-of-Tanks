@@ -385,7 +385,8 @@ swaps it in through `LOCAL_TYPES`.
   plaster and timber photo sets stay when the kit opts in.
 - Walls and roofs render from three to five vertex-coloured buckets (`regionalPlaster`, `regionalPlaster2`,
   `regionalPlaster3`, `regionalStone`, `regionalRoof`) and painted joinery from `structureWood`: up to six draw calls
-  more than the base map, whatever the number of buildings.
+  more than the base map, whatever the number of buildings, and one multi-draw batch each for the fine timber and
+  stone joinery (below).
 - `src/world/maps/regional/regionalArchitecture.selftest.mjs` runs the road-building stage with and without the kit
   for every adopting map and fails if a building, a stream draw or a contact record moves, or if a kit building's
   collision-bearing parts reach more than 0.8 m past a side of its plot (or past the base geometry's own reach there).
@@ -403,6 +404,22 @@ masonry under it (`HouseSpec.spall`; none on clay walls), decor from the wear co
 roof weathers down its slope: chalky toward the ridge, rust and grime along the eaves. `dressing.ts` adds
 the lived-in parts a kit uses (window boxes, the bench by the door, a woodpile, the roof ladder, an aerial); they are
 dressing (no collision) and the phones leave them out, so the collision a host certifies is tier-independent.
+
+**Fine joinery and its draw distance.** What a long view cannot resolve is fine joinery (`EmitOptions.fine` in
+`geometry.ts`): window frames and glazing bars, shutter rails, door panels and battens, downpipes, and the sides and
+caps of every framing member, shutter leaf, jetty joist, dressed surround, sill, door frame, quoin and string course
+(`fineSides`, `span(..., coarse)`, `quoin`, `band`: the faces that read at range stay, the few centimetres of side and
+ledge do not). `props.ts` merges the timber and stone dressing's fine joinery by 120 m cell into one receive-only
+multi-draw batch per bucket (`THREE.BatchedMesh`, culled by the frustum per cell; the always-drawn timber dressing is
+one more instance), so a bucket costs one draw call whatever the number of cells, and shows a cell only while the
+camera stands within the quality preset's fine-detail distance of it (Ultra 180 m, High 120, Medium 90, Low 70),
+hiding it 15 m past that; at High a 7 cm frame is half a pixel at 120 m. Steinburg's always-drawn timber and metal
+dressing falls from 0.31 M to 0.08 M triangles and its shadow-casting stone from 0.19 M to 0.10 M; its establishing
+view draws two of 14 cells per batch, a street view three or four. A phone builds no fine joinery and culls the rest
+of its timber dressing by the same cells (70, 60 and 45 m on its three presets); `?fx=off` changes the post effects
+only, so a desktop with it culls as above. Mark a new part fine when it is under about 10 cm across, or when only its
+face reads from the street; `fineDetailLod.selftest.mjs` holds the batches, their cells and the hysteresis, and the
+regional receipt holds that fine joinery is receive-only dressing a phone never builds.
 
 **The yards round the houses.** A kit that names `yard` in its `ArchitectureStyle` (`kinds`, `fence`, `gate`, `shed`,
 `shedSize`, `garden`) gets yards on its houses of those kinds (`src/world/maps/regional/yards.ts`). The stage runs after
