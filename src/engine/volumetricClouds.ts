@@ -424,6 +424,9 @@ uniform float uBaseDark;
 uniform vec4 uCuShade;
 uniform float uCuEdge;
 uniform vec2 uCuSize;
+// (2026-10-04, QA: CLOUD_MS2_ATT / CLOUD_MS3_ATT) the second and third octaves' attenuation of the sun-ward optical depth
+// (Wrenninge's a, a²: 0.5 / 0.25 today) — slower halving darkens the interior and the shade side, the lit skin unchanged
+uniform vec2 uCuAtt;
 uniform float uFarFlat;
 // 2026-10-03: the crisp cumulus outline and the billowed tops (CLOUD_EDGE_CRISP, CLOUD_TOP_BILLOW; 0 = off)
 uniform float uEdgeCrisp;
@@ -1100,8 +1103,8 @@ void main() {
 					lit++;
 					float tau = lastLight + sig * 2.0;
 					// multiple-scattering octaves: contribution, attenuation and eccentricity halved per octave
-					float sun = phase.x * exp( -tau ) + phase.y * mix( uCuShade.x, 0.5, uStratiform ) * exp( -tau * 0.5 )
-						+ phase.z * mix( uCuShade.y, 0.25, uStratiform ) * exp( -tau * 0.25 );
+					float sun = phase.x * exp( -tau ) + phase.y * mix( uCuShade.x, 0.5, uStratiform ) * exp( -tau * mix( uCuAtt.x, 0.5, uStratiform ) )
+						+ phase.z * mix( uCuShade.y, 0.25, uStratiform ) * exp( -tau * mix( uCuAtt.y, 0.25, uStratiform ) );
 					// Beer–powder: light builds up inside the mass, so the sunlit face's crevices and thin edges
 					// read darker than its body
 					float powder = mix( 1.0, 1.0 - exp( -sig * 60.0 ), powderK );
@@ -1609,6 +1612,7 @@ export class VolumetricCloudLayer {
         uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 }, uBaseFlat: { value: 0 }, uDeckDetail: { value: 0 }, uFarThin: { value: 0 },
         uBaseSharp: { value: 0 }, uBaseDark: { value: 0 }, uFarFlat: { value: 0 }, uEdgeCrisp: { value: 0 }, uTopBillow: { value: 0 },
         uCuShade: { value: new THREE.Vector4(0.5, 0.25, 0.15, 0.34) }, uCuEdge: { value: 0.6 }, uCuSize: { value: new THREE.Vector2(0, 3) },
+        uCuAtt: { value: new THREE.Vector2(0.5, 0.25) },
         uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
         // 2026-10-03: the deck's far rows on the aerial pass's overcast target (cloudHaze; hazeLaw.ts hazeTargetTerms)
         uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
@@ -2015,6 +2019,7 @@ export class VolumetricCloudLayer {
       lightTune('CLOUD_CU_FLOOR', 0.34));
     t.uCuEdge.value = lightTune('CLOUD_CU_EDGE', 0.6);
     (t.uCuSize.value as THREE.Vector2).set(lightTune('CLOUD_SIZE_VAR', 0), lightTune('CLOUD_SIZE_PERIOD', 3));
+    (t.uCuAtt.value as THREE.Vector2).set(lightTune('CLOUD_MS2_ATT', 0.5), lightTune('CLOUD_MS3_ATT', 0.25));
     t.uFarFlat.value = lightTune('CLOUD_FAR_FLAT', CLOUD_FAR_FLAT);
     t.uEdgeCrisp.value = lightTune('CLOUD_EDGE_CRISP', CLOUD_EDGE_CRISP);
     t.uTopBillow.value = lightTune('CLOUD_TOP_BILLOW', CLOUD_TOP_BILLOW);
