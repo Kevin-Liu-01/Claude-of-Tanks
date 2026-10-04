@@ -16,6 +16,38 @@
 
 - Fresh integrated comparison (2026-10-04 09:54 UTC): the M3A3 remains failed, minimum 0, with the registered disassembled-parts reference. Its complete measured packet is unchanged; only the fleet-ledger measurement time changed. The owner-approved exception applies to this reference comparison alone. All physical checks remain required.
 
+### Post-publication follow-up
+
+The owner-authorized push `506690974` included the compact launcher, M3A3
+turret and seven M1A1 mantlet revisions while queued verification continued.
+That full-suite attempt reached 45 of 1,274 files and reported two causes:
+M6 inherited M3A3 reactive armor zones without their visible cassettes, and
+the geometry ledger still contained the old turret/gun measurements and no
+M6 entry. It was stopped while queued to correct those findings; this is an
+incomplete, failed attempt, not a full-suite pass.
+
+The follow-up removes only the absent M3 reactive arrays from M6's damage
+metadata, preserving its passive chassis and six fitted spaced-armor zones.
+The donor M3A3 retains its real reactive arrays. The focused HIGH/LOW fixture
+now invokes the existing gameplay-to-visual ERA audit and checks both armor
+contracts. The geometry ledger is regenerated only for the nine reviewed
+vehicles. Evidence is kept in `.qa-dev/linebacker-followup/`; the original
+failure log remains in
+`.qa-dev/linebacker-final/integrated-suite-before-era-ledger-fix.log`.
+
+Fresh strict track results also pass: all nine vehicles have zero band and
+shoe intersections in front, rear and sweep probes (27 shoe rows). Remaining
+standard-check stages and the full-suite rerun retain their actual status;
+none inherits a pass from the focused follow-up.
+
+Follow-up verification (2026-10-04 13:02 UTC): native HIGH/LOW fixture PASS,
+scoped geometry ledger check PASS (nine vehicles, both qualities), and
+TypeScript/core-unused PASS. The ledger review confirms every unrelated row
+is unchanged. Its M1A1 FEP hull digest includes derived marking seats; the
+previous 30/30 authored-geometry preservation checks establish that its actual
+chassis stock was retained. Full anatomy freshness and the integrated rerun
+are tracked separately and are not certified by these three focused results.
+
 ## Source and ownership
 
 The supplied tan M6 photograph establishes the Bradley chassis and left quad

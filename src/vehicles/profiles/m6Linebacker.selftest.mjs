@@ -10,6 +10,7 @@ import {censusEquipment} from '../../../tools/source-equipment-policy.mjs';
 import {LINEBACKER_MOUTHS,LINEBACKER_LAUNCHER as L} from '../m6LinebackerLayout.ts';
 import {placeBradleyScoutCheekEra} from './bradleyScoutTurretShell.ts';
 import {ensureInteriorFills,hasInteriorFills} from '../interiorFills.ts';
+import {createEraGameplayRegistrationAudit} from '../eraGameplayRegistrationAudit.test-support.mjs';
 
 const baseline=JSON.parse(readFileSync(new URL('./m6Linebacker.preservation.json',import.meta.url)));
 const options={proceduralOnly:true,geometryReceipt:true,batchStatic:false,decor:false,camoSeed:4242};
@@ -32,6 +33,12 @@ assert.equal(missile.type,'HE','Stinger is fragmentation, not the Bradley donorâ
 assert.equal(missile.launcherTubes,4);assert.equal(missile.count,12);
 assert.ok(missile.pen100Mm<25,'no inherited TOW penetration');
 assert.equal(spec.gun.launcherMuzzles.length,4);
+assert.equal([...spec.armor.hullPlates,...spec.armor.turretPlates].some(p=>p.kind==='era'),false,
+  'passive Linebacker armor must not grant protection from absent Bradley reactive arrays');
+assert.equal(spec.armor.hullPlates.filter(p=>p.name.startsWith('linebacker_skirt_')&&p.kind==='spaced').length,6,
+  'both three-section passive skirt assemblies retain their real spaced armor');
+assert.ok(getSpec('m3a3_bradley').armor.hullPlates.some(p=>p.name==='m3a3_glacis_R'&&p.kind==='era'),
+  'donor Bradley retains its actual reactive glacis');
 near(L.halfWidth*2,.483,1e-6,'pod body reduced by 30 percent');
 near(L.front-L.rear,1.218,1e-6,'pod length reduced by 30 percent');
 for(const quality of ['high','low']){
@@ -39,6 +46,7 @@ for(const quality of ['high','low']){
   try{
     const root=tank.root,hull=root.getObjectByName('rig_hull'),turret=root.getObjectByName('rig_turret'),gun=root.getObjectByName('rig_gun');
     root.updateMatrixWorld(true);
+    createEraGameplayRegistrationAudit().check(spec.id,tank);
     assert.equal(censusEquipment(root).mg,1,'one real remote M2, no inherited/random roof gun');
     const bounds=new Box3().setFromObject(root).getSize(new Vector3());
     near(bounds.x,4.178,.02,'complete cage width');near(bounds.z,6.59,.03,'retained Bradley hull length');

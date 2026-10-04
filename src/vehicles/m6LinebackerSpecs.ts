@@ -30,8 +30,9 @@ const armor = modernArmor({hl: 3.27, hw: 1.64, inW: .95, floor: .45, trkTop: .95
   glacis: [45,70,80], lower: [45,60,60], side: [35,40,45], skirt: null, rear: 25, roof: 20,
   tw: 1.10, tFrontZ: 1.06, tRearZ: -1.48, tH: .90,
   cheek: [65,105,140], tSide: [45,65,90], tRear: 30, tRoof: 25, mantlet: [70,110,150], loader: false});
-// Keep the donor's actual Bradley chassis armor and authored lower crew station.
-armor.hullPlates = structuredClone(spec.armor.hullPlates);
+// Keep the Bradley chassis armor; this build has passive skirts/cages, not
+// the M3A3's reactive glacis and side arrays. Do not inherit their damage zones.
+armor.hullPlates = structuredClone(spec.armor.hullPlates.filter(p => p.kind !== 'era'));
 armor.crew = [crewBox('driver',[-1.15,.75,1.23],[-.50,1.70,2.25]),
   crewBox('gunner',[.20,.08,-.32],[.87,.73,.38],true),
   crewBox('commander',[-.86,.08,-1.03],[-.17,.78,-.32],true)];
