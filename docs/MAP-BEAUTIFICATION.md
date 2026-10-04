@@ -6576,6 +6576,19 @@ east +2.6, Ruin Spires' east +2.1) dropped six views by more than 0.5. Fixed on 
   stands are accepted — stays the same tree for tree. Checked by a pixel diff of Ruin Spires' and Blackglass's twelve
   border views against a mask of the farm meshes: 1773 pixels changed, every one a farm pixel. A kit that builds no
   dwelling (Kestrel Airfield's Hostomel hangars) leaves the hamlets wholly to the generic set.
+- **The frame cost** (gauntlet wave 40's merge bar: at most +1 ms a view against the PR head on Ironworks, Cinder
+  Junction and Frontier; chase, centre-far and bird-n at 1600×900). Ironworks and Frontier passed in whole-build A B B
+  A pairs (PR head 4b20975bb against this branch, GPU ms: Ironworks −0.71 / −0.51 / −0.03, Frontier −0.12 / −0.22 /
+  −0.65). Cinder Junction's pairs moved by more than the bar in the post passes, which the lane cannot touch. They did
+  so twice: an eight-run re-run under 115–280 % foreign GPU load had per-page chase frames from 14 to 30 ms. So the
+  frame-budget probe's `--toggle=border-additions` measured the additions inside one page on the merged build
+  (03147bef3). It hides the farmsteads and hedgerows, and draws every ring forest pool without its 932 row trees
+  (including the 210 shadow casters among them). At each pose it runs off / on / on / off blocks, over four pages, and
+  both sides run without the static shadow cache, so every cascade redraws every caster every frame, as when the camera
+  moves. Hiding also removes the PR head's own farms and hedges, so the result is an upper bound. Whole frame with the
+  additions, median of eight block pairs: chase −0.03 ms, centre-far −0.51, bird-n +0.67. The scene pass moved
+  +0.16 / −0.21 / +0.38 and the shadow passes −0.02 / +0.02 / 0.00. The near class casts 55k more triangles than the
+  PR head's (231k against 176k: the rows' 210 trees and 144 more stands) at no measurable cost, so it keeps them.
 
 ### 2026-10-03 — skies, light and colour: one haze law, the shade's own colour, a calibrated camera (the skies-and-atmosphere lane)
 
