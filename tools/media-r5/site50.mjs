@@ -251,7 +251,10 @@ export const SHOTS = [
 
   // ---------------------------------------------------------------- scenes: the battlefield around the fight
   [40, 'rooftop-smoke', 'scene', 'Smoke columns rise over the rooftops of Steinburg', S.stNorth,
-    { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), ...wreck('foe1'), ...wreck('foe2'), barrage(H(-20, 140), 2400, 6, 16), fire('hero', 4200)], cam: DRONE() },
+    // the drone sits further back and lower and looks down the street to the wrecks ~100 m on, the hero in the
+    // foreground: DRONE()'s look 12 m ahead of the hero never framed the columns the shot is about (r4c review, 2026-10-04)
+    { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), ...wreck('foe1'), ...wreck('foe2'), barrage(H(-20, 140), 2400, 6, 16), fire('hero', 4200)],
+      cam: RIG.drone({ side: 9, along: [-45, -35], lift: [16, 14], fov: 46, look: [0, 90, 8] }) },
     { tMs: 3300, exposureMs: 25 }],
   [41, 'church-tower', 'scene', 'The night street fight seen from the church tower', S.stMain,
     { lineup: [CAST.leo2a6, CAST.puma, CAST.leo2a6], time: 'night', picture: { exposure: 0.6 }, speed: 0, effects: [NIGHT_FLARE(H(-8, 70), 100), ...wreck('foe0'), fire('hero', 1500), fire('ally1', 2500), ...incoming('foe1', -4, 16, 3500), fire('ally2', 4700)],
@@ -267,11 +270,13 @@ export const SHOTS = [
     { time: 'sunset', speed: 0, effects: [...wreck('foe0'), fire('hero', 1600), fire('ally1', 3000), ...incoming('foe1', -6, 18, 4000)],
       cam: RIG.crane({ side: -9, along: [-14, -20], lift: [2.4, 12], fov: 44, look: [0, 30, 2] }) },
     { tMs: 3300, exposureMs: 25 }],
-  [45, 'harbor-wide', 'scene', 'Nordhavn at sunset: the battle on the harbor road below the mountains', S.fHarbor,
-    { time: 'sunset', speed: 3, effects: [...wreck('foe0'), ...hitNear(10, 30, 2000), fire('hero', 3800)], cam: RIG.crane({ side: 18, along: [6, 0], lift: [6, 14], fov: 40, look: [0, -10, 1.5] }) },
+  // golden, not sunset: the 3.5° sunset sun sits behind the fjord's and the ridge's mountains, so from the crane and
+  // the drone the whole valley was in shadow and rendered nearly black (r4c review, 2026-10-04)
+  [45, 'harbor-wide', 'scene', 'Nordhavn at golden hour: the battle on the harbor road below the mountains', S.fHarbor,
+    { time: 'golden', speed: 3, effects: [...wreck('foe0'), ...hitNear(10, 30, 2000), fire('hero', 3800)], cam: RIG.crane({ side: 18, along: [6, 0], lift: [6, 14], fov: 40, look: [0, -10, 1.5] }) },
     { tMs: 3300, exposureMs: 25 }],
-  [46, 'river-drone', 'scene', 'Monsoon Ridge at sunset: shells land along the jungle river', S.mFord,
-    { lineup: [CAST.aft10, CAST.type96b], time: 'sunset', speed: 2.4, effects: [...wreck('foe0'), barrage(H(-10, 30), 1200, 6, 14), barrage(H(8, 50), 3400, 5, 12), fire('hero', 4600)], cam: DRONE() },
+  [46, 'river-drone', 'scene', 'Monsoon Ridge at golden hour: shells land along the jungle river', S.mFord,
+    { lineup: [CAST.aft10, CAST.type96b], time: 'golden', speed: 2.4, effects: [...wreck('foe0'), barrage(H(-10, 30), 1200, 6, 14), barrage(H(8, 50), 3400, 5, 12), fire('hero', 4600)], cam: DRONE() },
     { tMs: 3300, exposureMs: 25 }],
   [47, 'ironworks-crane', 'scene', 'Ironworks at night: the yard burns between the smoke stacks', S.iYard,
     { time: 'night', picture: { exposure: 0.6 }, speed: 0, effects: [NIGHT_FLARE(H(6, 60), 90), ...wreck('foe0'), fireField(H(-7, 10), 0, { radiusM: 3 }), fireField(H(21, 8), 0, { radiusM: 3 }), fire('hero', 1500), fire('ally2', 3200), barrage(H(0, 90), 3800, 5, 14)], cam: CRANE(-1) },
@@ -279,8 +284,9 @@ export const SHOTS = [
   [48, 'delta-crane', 'scene', 'Jade River Delta: the river village under fire, mountains beyond', S.dVillage,
     { lineup: [CAST.type96b, CAST.aft10, CAST.type96b], speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), fire('ally1', 2600), barrage(H(4, 80), 3500, 6, 14)], cam: CRANE() },
     { tMs: 4600, exposureMs: 25 }],
-  [49, 'orchard-sunset', 'scene', 'Orchard Valley at sunset: smoke drifts over the orchards', S.orGolden,
-    { time: 'sunset', speed: 1.5, effects: [...wreck('foe0'), ...incoming('foe1', 5, 18, 1700), fire('hero', 3500)], cam: DRONE(-1) },
+  // golden for the same reason as 45 and 46: from the drone the sunset valley rendered nearly black (r4c, 2026-10-04)
+  [49, 'orchard-sunset', 'scene', 'Orchard Valley at golden hour: smoke drifts over the orchards', S.orGolden,
+    { time: 'golden', speed: 1.5, effects: [...wreck('foe0'), ...incoming('foe1', 5, 18, 1700), fire('hero', 3500)], cam: DRONE(-1) },
     { tMs: 3300, exposureMs: 25 }],
   [50, 'reservoir-crane', 'scene', 'Highland Reservoir at sunset: the lake beyond the burning village', S.reVillage,
     { lineup: [CAST.chieftain5, CAST.warrior], time: 'sunset', speed: 0, effects: [...wreck('foe0'), fire('hero', 1500), ...incoming('foe1', 5, 13, 2700), fire('ally1', 3800)], cam: CRANE() },

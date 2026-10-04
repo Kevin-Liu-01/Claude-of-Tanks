@@ -62,9 +62,11 @@ for (const shot of SHOTS) {
 }
 assert.ok(maps.size >= 10, `many battlefields (${maps.size})`);
 assert.ok(times.size >= 4, `day, sunset and night (${[...times].join(', ')})`);
-for (const hour of ['sunset', 'night']) {
-  const n = SHOTS.map(siteScene).filter(sc => sc.meta.time === hour).length;
-  assert.ok(n >= 6, `at least six ${hour} shots (${n})`);
+// low warm sun counts sunset and golden hour: the sunset rig's 3.5° sun put the fjord, ridge and orchard valleys in
+// shadow from the drone and crane (nearly black renders, r4c 2026-10-04), so those three moved to golden
+for (const [label, hours] of [['sunset or golden-hour', ['sunset', 'golden']], ['night', ['night']]]) {
+  const n = SHOTS.map(siteScene).filter(sc => hours.includes(sc.meta.time)).length;
+  assert.ok(n >= 6, `at least six ${label} shots (${n})`);
 }
 
 // Paint (owner 2026-10-02: "all of our tanks have too similar camos"): every unit wears its own catalog scheme, no two
