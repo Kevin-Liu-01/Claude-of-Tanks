@@ -559,6 +559,9 @@ function newMetrics() {
     // touchdown, the fastest turn toward it in the next 0.1 s, the time to within a degree of it, and the most it turned
     // past it (degrees)
     landingTurn: null,
+    // the rendered pitch's swing after the first landing, against its pitch at touchdown (round 5: a level landing nods
+    // about the centre of mass): its most nose-up and most nose-down (degrees) over 0.8 s
+    landingNod: null,
     tunnelled: false, maxHeightM: 0,
     airS: 0, longestAirS: 0, hops: 0, landings: [], contactLandings: [], maxLandingMps: 0, reboundExcessMps: 0, closingExcessMps: 0,
     liftM: 0,
@@ -774,6 +777,7 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
   let overshootPrev = null;
   let settleTrace = null;
   let turnTrace = null;
+  let nodTrace = null;
   let wallSide = 0;
   let stuckRun = 0;
   // the prediction world over the same collision, seeing every other hull where the authority has it now
@@ -1047,6 +1051,11 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
       metrics.landingTravel.push([+Math.abs(pre.speed).toFixed(2), +Math.abs(state.speed).toFixed(2), +state._ride.v.toFixed(2)]);
       lastLanding = { closing: state.landingImpactMps, tick, travel: metrics.landingTravel.at(-1) };
       if (state.landingImpactMps > 2) settleTrace = [];
+      if (!metrics.landingNod) {
+        renderedAttitude(state, att);
+        metrics.landingNod = { closingMps: +state.landingImpactMps.toFixed(2), upDeg: 0, downDeg: 0 };
+        nodTrace = { tick, pitch: att.pitch };
+      }
       // the landing turn: about the axis the hull is furthest from the ground plane it lands on
       if (!metrics.landingTurn) {
         const errorPitch = state._terr.pitch - state._spring.pitch, errorRoll = state._terr.roll - state._spring.roll;
@@ -1060,6 +1069,12 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
       metrics.maxLandingMps = Math.max(metrics.maxLandingMps, state.landingImpactMps);
       metrics.apexes.push(+(apex - world.fn(state.pos.x, state.pos.z)).toFixed(2));
       apex = -Infinity;
+    }
+    if (nodTrace && tick - nodTrace.tick <= 48) {
+      renderedAttitude(state, att);
+      const swing = (att.pitch - nodTrace.pitch) * 57.2958;
+      metrics.landingNod.upDeg = Math.max(metrics.landingNod.upDeg, +swing.toFixed(3));
+      metrics.landingNod.downDeg = Math.max(metrics.landingNod.downDeg, +(-swing).toFixed(3));
     }
     if (turnTrace && tick > turnTrace.tick && tick - turnTrace.tick <= 120) {
       const turn = metrics.landingTurn, roll = turn.axis === 'roll';

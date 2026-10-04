@@ -886,6 +886,18 @@ contact constraints and cannot be crossed by residual uphill speed.
   the same way. Parked facing up a 25° grade the medium hull pitches 1.1° (rendered) further onto its downhill tail, its
   stations 17 cm apart end to end; on a 20° cross slope it rolls 0.8° onto its downhill track, 6 cm under the uphill
   one. A slide, or a hull on its shell, holds nothing and transfers nothing.
+- *A level landing nods about the centre of mass.* The springs stop a fall at the middle of the tracks' contact, and
+  the hull's centre of mass lies off that point along the hull (physics lane round 5; gauntlet wave 38: "flat
+  landings are perfectly level pistons"). Its anatomy places it: the turret's share (30 %) at the turret's pivot, the
+  power pack's (10 %) at the middle of its engine and transmission modules, the rest at the contact's centre
+  (`tankMassCenterOffsetM`; a spec without modules has none). Across the fleet it lies from 0.5 m aft of the contact's
+  centre to 0.4 m ahead of it, 0.22 m aft at the median. A landing met level (on the tracks, the hull within
+  3 degrees of the ground's pitch and roll) turns the hull about it by the closing speed times that offset over the
+  hull's pitch radius of gyration squared (`(L² + H²)/12`), into the dive and at the rendered rate (the rock's
+  amplification taken out). Off a 2 m drop the T-90M nods 1.2 degrees tail down and rocks back 0.35 degree, the
+  BMP-2 0.8 degree nose down, a Merkava 4 1.3 degrees nose down; from 8 m the stops' travel holds it to 0.9 degree.
+  A landing on a grade, or a hull met tilted, already turns at its contact (the landing turn) and takes none. The
+  fall's damage and its stroke are unchanged.
 - *The tracks' springs carry the hull over rough ground.* Every track-contact station (the outer pair and the wheel-run
   fan lines) is a spring loaded to the ride's static sag (`g/ω²`), and the seat the ride rests at is where the stations
   that reach the ground carry the hull's weight, read over the stations' own plane (that plane is the attitude's): on

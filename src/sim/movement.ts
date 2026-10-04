@@ -34,7 +34,7 @@ import { CLIFF_GRADE,
 } from './terrainMobility.ts';
 import type { TerrainMobilitySpec } from './terrainMobility.ts';
 import { STANDARD_PHYSICS, type RulesetPhysics } from './matchRuleset.ts';
-import { tankContactRect } from './tankContactShape.ts';
+import { tankContactRect, tankMassCenterOffsetM } from './tankContactShape.ts';
 
 type Vec3Tuple = readonly [number, number, number];
 type HeightSampler = (x: number, z: number) => number;
@@ -2841,6 +2841,28 @@ function holdTransferAngles(
   out.roll = across * height / (stiffness * Math.max(halfWidth * halfWidth, 0.25));
 }
 
+/**
+ * A level landing nods the hull about its centre of mass (physics lane round 5; gauntlet wave 38: "flat landings are
+ * perfectly level pistons ... a 55 t hull's centre of mass isn't at its geometric centre (engine aft, turret amidships),
+ * so a level drop should nod a little"). The springs stop the fall where they stand, around the middle of the track
+ * contact, while the centre of mass (tankMassCenterOffsetM) is a quarter metre aft of it on a rear-engined tank: the
+ * landing's impulse turns the hull about its centre of mass by the closing times that offset over the square of its
+ * pitch radius of gyration (a box of its length and height), tail down on a rear-engined hull and nose down on a
+ * front-engined one. The turn enters the dive (rad/s, before the renderer's amplification, so the rendered nod is the
+ * physical one), which carries it on the springs and rocks back past level as it settles: about a degree off a 2 m drop.
+ * Only a landing that meets the ground level (within LANDING_NOD_LEVEL_RAD in pitch and roll) and on its stroke nods:
+ * one that meets it tilted turns onto it about its first contact (landingTurnRate), which is the larger turn there.
+ */
+const LANDING_NOD_LEVEL_RAD = 0.05;
+function landingNodRate(spec: MovementSpec, closing: number): number {
+  if (!(closing > LANDING_STROKE_MIN_MPS)) return 0;
+  const offset = tankMassCenterOffsetM(spec);
+  if (offset === 0) return 0;
+  const rect = tankContactRect(spec);
+  const length = 2 * rect.halfLength, height = spec.dims.heightM;
+  return -closing * offset / ((length * length + height * height) / 12) / SUSP_VIS_P;
+}
+
 function updateSuspensionRock(
   spec: MovementSpec,
   state: TankState,
@@ -2849,10 +2871,16 @@ function updateSuspensionRock(
   poseAcceleration: number,
   slopeDive: number,
   slopeRoll: number,
+  landingNod: number,
   perch: number,
   dt: number,
 ): void {
   const suspension = state._susp;
+  // the nod is the dive's (its rate and the rock's total rate alike: the terrain rock does not take it back)
+  if (landingNod !== 0) {
+    suspension.dv += landingNod;
+    suspension.pv += landingNod;
+  }
   const acceleration = groundedAtStart
     ? clamp(poseAcceleration, -SUSP_ACCEL_CLAMP, SUSP_ACCEL_CLAMP)
     : 0;
@@ -4291,7 +4319,12 @@ export function updateTank(
   // loads the downhill end, across it the downhill track; a slide, or a hull on its shell, holds none
   const heldGravity = groundedAtStart && !drive.gripLost && !body.tumbling ? GRAVITY * drive.gravityScale : 0;
   holdTransferAngles(entity, spec, heldGravity * Math.sin(spr.pitch), heldGravity * Math.sin(spr.roll), _holdTransfer);
-  updateSuspensionRock(spec, state, hAt, groundedAtStart, poseDvdt, _holdTransfer.dive, _holdTransfer.roll, perch, dt);
+  // a level landing on the tracks nods the hull about its centre of mass (not one on its shell, nor one met tilted)
+  const levelLanding = landingImpactAtStart > 0 && !body.tumbling && upYAtStart >= TUMBLE_ENTER_UP_Y
+    && Math.abs(wrapAngle(state._terr.pitch - spr.pitch)) < LANDING_NOD_LEVEL_RAD
+    && Math.abs(wrapAngle(state._terr.roll - spr.roll)) < LANDING_NOD_LEVEL_RAD;
+  updateSuspensionRock(spec, state, hAt, groundedAtStart, poseDvdt, _holdTransfer.dive, _holdTransfer.roll,
+    levelLanding ? landingNodRate(spec, landingImpactAtStart) : 0, perch, dt);
 
   // ---- support solve: no contact sample below ground at the rendered pose ----
   // Effective RENDERED attitude (movement space): rotation.x = -(pitch +

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { CASES, HULLS, WORLDS, runCase } from './physics-torture.mjs';
 import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
 
-await ensureAuthorityFleet([...new Set([...Object.values(HULLS), 't90m', 'm1a2', 'm551_sheridan'])]);
+await ensureAuthorityFleet([...new Set([...Object.values(HULLS), 't90m', 'm1a2', 'm551_sheridan', 'merkava4b'])]);
 
 const failures = [];
 let runs = 0;
@@ -306,6 +306,18 @@ check('air-spin', 'tall', 'gearth', [g('prediction replay error (m)', (m) => m.r
   if (!(mean(across.right) - mean(across.left) >= 3)) {
     failures.push(`rest-cross20 earth medium: the downhill track sits ${(mean(across.right) - mean(across.left)).toFixed(1)} cm under the uphill one < 3 — before: 0.1`);
   }
+}
+
+// Round 5 (wave 38: "flat landings are perfectly level pistons ... a 55 t hull's centre of mass isn't at its geometric
+// centre (engine aft, turret amidships), so a level drop should nod a little"): the springs stop the fall around the
+// middle of the track contact, behind which a rear-engined T-90M's centre of mass sits, so a level 2 m drop turns it
+// tail down; a front-engined Merkava 4 nose down. A nod, never a lurch.
+for (const [hull, way] of [['medium', 'upDeg'], ['merkava4b', 'downDeg']]) {
+  check('drop-2', hull, 'earth', [
+    g(`level landing's nod ${way === 'upDeg' ? 'nose up' : 'nose down'} short of 0.6 degree`, (m) => 0.6 - (m.landingNod?.[way] ?? 0), 0,
+      'before: 0.0 (a level piston)'),
+    g('the nod (degrees)', (m) => Math.max(m.landingNod?.upDeg ?? 0, m.landingNod?.downDeg ?? 0), 2.5, 'guard: a nod, not a lurch'),
+  ]);
 }
 
 // Rest stays rest: no jitter, no creep on a 25-degree grade on the brake.
