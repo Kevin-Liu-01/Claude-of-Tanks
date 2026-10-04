@@ -935,6 +935,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/roadCrossingSweep.selftest.mjs', // 2026-10-03: the maps lane's road crossings, driven both ways (nothing standing in a carriageway)
     'src/sim/poseHistory.selftest.mjs',
     'src/sim/movement.selftest.mjs',
+    // 2026-10-04 (physics lane round 8): every playable tank publishes its track contact; the host and solo read it alike.
+    'src/sim/trackContact.selftest.mjs',
     'src/sim/impact.selftest.mjs',
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',

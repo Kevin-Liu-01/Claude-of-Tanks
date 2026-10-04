@@ -56,6 +56,8 @@ export interface MovementGunSpec {
 }
 
 export interface MovementArmorSpec {
+  /** The tracks' measured ground contact (trackContact.ts), published by finalizeCombatAnatomy. */
+  trackContact?: import('./trackContact.ts').TrackContactReceipt | null;
   turretless?: boolean;
   boundingRadiusM?: number;
   turretPivot?: Vec3Tuple | number[];
@@ -390,6 +392,14 @@ export interface MovementInput {
   aimPoint?: Vector3 | null;
   /** Hold the current articulated turret/gun/hydraulic lay while sight aim moves. */
   aimLocked?: boolean;
+}
+
+/**
+ * The track contact the solve reads: the one the caller stamped (solo play's drawn model), else none: the host and a
+ * synthetic test hull run the default support line.
+ */
+function trackContactOf(entity: MovementEntity): MovementContactGeometry | null {
+  return entity.contactGeom ?? null;
 }
 
 export interface MovementEntity {
@@ -3005,7 +3015,8 @@ const TRACK_WIDTH_FRAC = 0.16;
  * the hull's width) less half the track's width.
  */
 function trackCentreHalfGauge(entity: MovementEntity, spec: MovementSpec): number {
-  const outer = entity.contactGeom ? entity.contactGeom.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
+  const contact = trackContactOf(entity);
+  const outer = contact ? contact.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
   const width = spec.visual?.trackWidthM;
   return Math.max(outer - 0.5 * (width !== undefined && width > 0 ? width : TRACK_WIDTH_FRAC * spec.dims.widthM), 0.5);
 }
@@ -3016,7 +3027,7 @@ function holdTransferAngles(
   out.dive = 0;
   out.roll = 0;
   if (along === 0 && across === 0) return;
-  const contact = entity.contactGeom;
+  const contact = trackContactOf(entity);
   const halfLength = contact ? contact.halfLenM : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
   const halfGauge = trackCentreHalfGauge(entity, spec);
   const height = HOLD_CG_HEIGHT_FRAC * spec.dims.heightM;
@@ -3213,7 +3224,7 @@ function limitDiveToTravel(entity: MovementEntity, spec: MovementSpec, state: Ta
   if (suspension.d === 0 && hold.p === 0 && hold.r === 0) return;
   const ride = state._ride;
   const hang = Number.isFinite(ride.supportY) ? ride.y - ride.supportY : RIDE_DROOP_M;
-  const contact = entity.contactGeom;
+  const contact = trackContactOf(entity);
   const lever = contact
     ? contact.halfLenM + Math.abs(contact.zCenterM || 0)
     : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
@@ -3913,7 +3924,7 @@ function writeSupportCache(
   dt: number,
 ): void {
   const { spec, state } = entity;
-  const contact = entity.contactGeom;
+  const contact = trackContactOf(entity);
   const fanYield = updateFanYield(state, samples, rigidGear, dt);
   const rigidUndercut = !!contact && Number.isFinite(contact.gearBottomYM) &&
     Number.isFinite(contact.bottomYM) &&
@@ -4015,7 +4026,7 @@ function solveSupportHeight(
   dt: number,
 ): void {
   const { spec, state } = entity;
-  const contact = entity.contactGeom;
+  const contact = trackContactOf(entity);
   const rigidGear = entity.rigidGear === true;
   if (supportCacheIsFresh(state, contact, pitch, roll, rigidGear)) return;
   const gearBottomY = contact?.bottomYM || 0;
@@ -4583,7 +4594,7 @@ export function updateTank(
     ? state._terr.pitch + suspensionAimPitch
     : spr.pitch;
   const targetRoll = groundedAtStart ? state._terr.roll : spr.roll;
-  const turnContact = entity.contactGeom;
+  const turnContact = trackContactOf(entity);
   _landingTurn.halfLength = turnContact ? turnContact.halfLenM : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
   _landingTurn.halfWidth = turnContact ? turnContact.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
   _landingTurn.height = spec.dims.heightM;
