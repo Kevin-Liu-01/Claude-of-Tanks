@@ -1,12 +1,14 @@
 // Round 75, item 6 (integrator, deploy-100 Verdant hull-side frame), rebuilt by the scenery lane 2026-10-04 (gauntlet
 // wave 52: the boulders were "low-poly frustums, chamfered boxes or polyhedra … all under one even noise texture and
-// none sunk into the ground"). This module owns the boulders' look: their forms (jointed blocks the weather rounded,
-// buildBoulderForm), their tone by face, fracture and arris (paintBoulder), the per-map dressing (the map's rock — its
-// lithology: granite speckle, gneiss foliation, sandstone and limestone beds, slate cleavage, basalt vesicles — the
-// lichen of its climate in two species, moss on the shaded faces of wet maps, a dust cap and desert varnish on arid
-// maps, a soil skirt and contact darkening at the base everywhere so the stone sits in the ground), the generated tiles
-// the rock material samples (a 256 px detail tile of the map's lithology, triplanar — no UVs on a boulder — and a lichen
-// colony tile), and the shader hook. The legacy rocks' projected hulls stay the collision proxies: the visual rock lies
+// none sunk into the ground"; wave 57: "a bar-of-soap form", "painted strata", "confetti" lichen, "no soil collar").
+// This module owns the boulders' look: their forms (blocks their joints cut, flat faced and round arrissed; the bedded
+// rocks' beds stacked, the soft ones recessed under ledges: buildBoulderForm), their tone by block, face, fracture and
+// arris (paintBoulder), the per-map dressing (the map's rock — its lithology: granite speckle, gneiss foliation,
+// sandstone laminae, limestone pits, slate cleavage, basalt vesicles, chalk — the lichen of its climate in colonies on
+// the tops and the weather side, moss on the shaded faces of wet maps, a dust cap and desert varnish on arid maps, a
+// soil band and contact darkening at the ground line everywhere, on each rock's own ground plane so a slope is met all
+// round), the generated tiles the rock material samples (a 256 px detail tile of the map's lithology, triplanar — no UVs
+// on a boulder — and a lichen colony tile), and the shader hook. The legacy rocks' projected hulls stay the collision proxies: the visual rock lies
 // inside the hull the dedicated shards already carry and no record moves. Renderer-free apart from the texture
 // helpers; Node-runnable.
 import * as THREE from 'three';
@@ -15,8 +17,8 @@ import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } fr
 
 type ToneFunction = (hue: number, saturation: number, lightness: number) => readonly [number, number, number];
 
-/** The rock a battlefield's boulders are made of: what its detail tile and its beds draw. */
-type BoulderLithology = 'granite' | 'gneiss' | 'sandstone' | 'limestone' | 'slate' | 'basalt';
+/** The rock a battlefield's boulders are made of: what their forms and their detail tile draw. */
+type BoulderLithology = 'granite' | 'gneiss' | 'sandstone' | 'limestone' | 'slate' | 'basalt' | 'chalk';
 
 export interface RockDressing {
   /** Moss / lichen weight on the shaded and upward faces (0 on snow and arid maps). */
@@ -26,8 +28,6 @@ export interface RockDressing {
   /** Linear soil colour the base blends toward (the map's dirt tone). */
   soil: readonly [number, number, number];
   lithology: BoulderLithology;
-  /** The beds: strength (0 none), spacing (m), the largest tilt from level (radians), the partings' depth. */
-  beds: readonly [number, number, number, number];
   /** The lichen: cover of the exposed faces, the share of the first species, 1 where snow lies on the tops. */
   lichen: readonly [number, number, number];
   /** The two species' linear colours. */
@@ -52,7 +52,9 @@ interface RockClimate {
 
 /** The battlefields' rock; a map absent here is dry temperate granite (a little moss, grey lichen, no dust). */
 const ROCK_CLIMATE: Readonly<Record<string, RockClimate>> = Object.freeze({
-  verdant: { moss: 0.75, dust: 0, lith: 'granite', lichen: [0.21, GREY_GREEN, YELLOW_GREEN, 0.7] },
+  // (wave 57: Prokhorovka lies south of the glacial limit, so no erratic boulders; its exposed rock is the Cretaceous
+  // chalk of the Belogorye — white blocks and outcrops, a little moss, the grey and orange lichens of calcareous stone)
+  verdant: { moss: 0.6, dust: 0, lith: 'chalk', lichen: [0.16, GREY_GREEN, ORANGE, 0.7] },
   autumn: { moss: 0.7, dust: 0, lith: 'granite', lichen: [0.2, GREY_GREEN, ORANGE, 0.75] },
   coastal: { moss: 0.6, dust: 0, lith: 'granite', lichen: [0.27, ORANGE, PALE, 0.55] },
   fjord: { moss: 0.8, dust: 0, lith: 'gneiss', lichen: [0.2, GREY_GREEN, BLACK, 0.65] },
@@ -88,16 +90,6 @@ const ROCK_CLIMATE: Readonly<Record<string, RockClimate>> = Object.freeze({
 });
 const DEFAULT_CLIMATE: RockClimate = { moss: 0.35, dust: 0, lith: 'granite', lichen: [0.15, GREY_GREEN, PALE, 0.6] };
 
-/** The lithologies' beds: strength, spacing (m), the largest tilt from level (radians), the partings' depth. */
-const BEDS: Readonly<Record<BoulderLithology, readonly [number, number, number, number]>> = Object.freeze({
-  granite: [0, 1, 0, 0],             // massive: its joints are the forms' faces
-  gneiss: [0.5, 0.07, 1.1, 0.12],    // foliation: thin light and dark bands, steeply tilted
-  sandstone: [0.8, 0.2, 0.3, 0.35],  // beds a hand to a forearm thick, near level, parted by soft partings
-  limestone: [0.45, 0.38, 0.22, 0.4],
-  slate: [0.42, 0.05, 1.25, 0.25],   // the cleavage, close and steep
-  basalt: [0, 1, 0, 0],
-});
-
 /** The battlefield's boulder lithology (the detail tile is drawn for it). */
 export function rockLithologyFor(mapId: string): BoulderLithology {
   return (ROCK_CLIMATE[mapId] ?? DEFAULT_CLIMATE).lith;
@@ -125,7 +117,7 @@ export function rockDressingFor(mapId: string, dirtTone: ToneFunction | null | u
   const [cover, a, b, split] = climate.lichen;
   return {
     moss: climate.moss, dust: climate.dust, soil: [_soil.r, _soil.g, _soil.b],
-    lithology: climate.lith, beds: BEDS[climate.lith],
+    lithology: climate.lith,
     lichen: [cover, split, snowCap ? 1 : 0], lichenA: linearOf(a), lichenB: linearOf(b),
     varnish: climate.varnish ?? 0,
   };
@@ -134,133 +126,376 @@ export function rockDressingFor(mapId: string, dirtTone: ToneFunction | null | u
 // ---------------------------------------------------------------------------------------------- geometry
 
 /**
- * The boulders' forms (the scenery lane, 2026-10-04; gauntlet wave 52, the most-cited defect: "low-poly frustums,
- * chamfered boxes or polyhedra that pass through each other, all under one even noise texture and none sunk into the
- * ground", "a hard diagonal shading seam across its face"). A boulder is a block its joints cut out of the bedrock and
- * the weather rounded: the surface is the smooth maximum of its joint planes' signed distances (flat joint faces, the
- * arrises between them rounded over a width of their own, never a crease), lumped a few per cent by two octaves of
- * weathering, its foot flaring a little under the ground line so the ground cuts it where it still widens downward and
- * it reads bedded. Three kinds share the instancing: a jointed block (three joint sets a little out of square, its upper
- * corners chipped by later fractures), a rounded boulder (a jittered sphere of facets weathered round, one fresh cleaved
- * face) and a bedded slab (a bed's top and a polygon of steep joints). The surface is star-shaped about the centre, so
- * it is meshed by casting a cube-sphere grid's directions at it (rows crowded above the ground line, where the rock
- * shows) and its normals are the surface's own (central differences of the same function, never the triangles'), each
- * quad split along the diagonal whose ends shade alike: no seam of light runs along a triangle edge. Fitted inside the
- * legacy hull (the collision footprint the shards carry) above the ground line and as tall as the legacy rock, so the
- * collider stands for the visible rock and no record moves.
+ * The boulders' forms (the scenery lane). Gauntlet wave 52 read the first boulders as "low-poly frustums, chamfered
+ * boxes or polyhedra … none sunk into the ground"; wave 57 read their successors as "a bar-of-soap form", "a rounded box
+ * with a pillow or loaf silhouette", "a smooth, near-symmetric dome". A boulder is now one or more blocks its joints
+ * cut, each the intersection of its joint planes with its arrises rounded by the weather: the planes drawn in by the
+ * block's radius and the block grown back by a ball of it (a Minkowski sum), so a joint face is exactly flat, an arris
+ * exactly a quarter-cylinder and a corner a patch of sphere, every normal exact (no normal is a triangle's, and no seam
+ * of light runs along a triangle's edge). The kinds follow the rock: a jointed block (three joint sets out of square,
+ * every face at its own depth, its upper corners chipped by fresh fractures, often a lower shelf on one side), a
+ * corestone the weather rounded (many faces, a broad radius, one face flat), a bedded block (beds of their own
+ * thickness stacked, the soft ones recessed so the hard ones stand out as ledges and overhangs, every bed its own
+ * shade), a slab. A smooth warp bends every face a little; the rock is fitted inside the legacy hull above the ground
+ * line and as tall as the legacy rock (the collider's cover), and its skirt runs deep under the ground with its girth,
+ * so a slope's downhill side bares a buried flank and never an underside.
  */
-interface BoulderKind {
-  readonly name: string;
-  /** Semi-axes (x, up, z) of the ellipsoid the joint planes circumscribe, before the hull fit. */
-  readonly size: readonly [number, number, number];
-  /** 'box': three joint sets a little out of square; 'facets': a jittered sphere of facets; 'slab': a bed's top and a
-   * polygon of steep joints. */
-  readonly frame: 'box' | 'facets' | 'slab';
-  /** Later fractures through the frame's upper corners and edges (fresh faces). */
-  readonly chips: number;
-  /** The arrises' rounding: the width of the smooth maximum over the joint planes (unit space). */
-  readonly round: number;
-  /** Weathering: the broad and the fine lumps' share of the radius. */
-  readonly lumps: readonly [number, number];
-}
+export const BOULDER_KINDS = Object.freeze(['jointed block', 'corestone', 'bedded block', 'slab'] as const);
+type BoulderKindName = (typeof BOULDER_KINDS)[number];
 
-export const BOULDER_KINDS: readonly BoulderKind[] = Object.freeze([
-  Object.freeze({ name: 'jointed block', size: [1.0, 0.8, 0.86] as const, frame: 'box' as const, chips: 3, round: 0.07, lumps: [0.025, 0.01] as const }),
-  Object.freeze({ name: 'rounded boulder', size: [0.98, 0.84, 0.9] as const, frame: 'facets' as const, chips: 1, round: 0.1, lumps: [0.035, 0.012] as const }),
-  Object.freeze({ name: 'bedded slab', size: [1.05, 0.7, 0.92] as const, frame: 'slab' as const, chips: 2, round: 0.07, lumps: [0.025, 0.01] as const }),
-]);
-
-/**
- * The kinds a lithology's boulders take, one to each of the three variants: the bedded and cleaved rocks break into
- * blocks and slabs along their joints; granite, gneiss and basalt weather round as well (wave-52 shots: Desert's
- * sandstone as smooth eggs).
- */
-const BOULDER_KINDS_OF: Readonly<Record<BoulderLithology, readonly [number, number, number]>> = Object.freeze({
-  granite: [0, 1, 2], gneiss: [0, 1, 2], basalt: [0, 1, 0],
-  sandstone: [0, 2, 0], limestone: [0, 2, 1], slate: [2, 0, 2],
+/** The kinds a lithology's three variants are built as, how far the weather rounds its arrises, and whether it beds. */
+const LITHOLOGY_FORMS: Readonly<Record<BoulderLithology, { kinds: readonly [BoulderKindName, BoulderKindName, BoulderKindName]; soft: number; bedded: boolean }>> = Object.freeze({
+  granite: { kinds: ['jointed block', 'corestone', 'slab'], soft: 1, bedded: false },
+  gneiss: { kinds: ['jointed block', 'corestone', 'slab'], soft: 0.9, bedded: false },
+  basalt: { kinds: ['jointed block', 'corestone', 'jointed block'], soft: 0.8, bedded: false },
+  sandstone: { kinds: ['bedded block', 'slab', 'bedded block'], soft: 0.85, bedded: true },
+  limestone: { kinds: ['bedded block', 'jointed block', 'slab'], soft: 1, bedded: true },
+  slate: { kinds: ['slab', 'jointed block', 'slab'], soft: 0.6, bedded: false },
+  chalk: { kinds: ['bedded block', 'corestone', 'jointed block'], soft: 1.7, bedded: true },
 });
 
 /** The kind (an index into BOULDER_KINDS) a map's variant is built as. */
 export function boulderKindFor(lithology: BoulderLithology, variant: number): number {
-  return BOULDER_KINDS_OF[lithology][variant % 3];
+  return BOULDER_KINDS.indexOf(LITHOLOGY_FORMS[lithology].kinds[variant % 3]);
 }
 
-/** A joint plane: outward unit normal, offset from the centre, and 1 for a later (fresh) fracture. */
+/** A joint plane: outward unit normal, offset from the centre, and 1 for a fresh fracture. */
 type JointPlane = [nx: number, ny: number, nz: number, d: number, fresh: number];
 
-/** The kind's joint planes: the frame, a floor well under the ground, the chips. */
-function jointPlanes(kind: BoulderKind, rng: () => number): JointPlane[] {
-  const [sx, sy, sz] = kind.size;
-  const planes: JointPlane[] = [];
-  const add = (x: number, y: number, z: number, depth: number, fresh = 0): void => {
+/** One block of a boulder: its joint planes, its arrises' radius, its own shade (-1..1: a bed's hardness, a ledge's). */
+interface BoulderBody { planes: JointPlane[]; round: number; tone: number }
+
+/** The skirt's depth under the centre (unit space): deep under any ground a slope bares. */
+const BOULDER_FLOOR = 1.45;
+
+/** The blocks of a kind (unit space, about a metre across), every draw from `rng`. */
+function boulderBodies(kind: BoulderKindName, rng: () => number, soft: number, bedded: boolean, simple = false): BoulderBody[] {
+  const jitter = (a: number): number => (rng() * 2 - 1) * a;
+  const range = (lo: number, hi: number): number => lo + rng() * (hi - lo);
+  const bodies: BoulderBody[] = [];
+  /** A plane along a direction, at a depth relative to the support of an ellipsoid of `size` about `at`. */
+  const plane = (size: readonly number[], at: readonly number[], x: number, y: number, z: number, depth: number, fresh = 0): JointPlane => {
     const l = Math.hypot(x, y, z) || 1;
     x /= l; y /= l; z /= l;
-    // the ellipsoid's support along the normal, so a frame plane at depth 1 touches it
-    planes.push([x, y, z, Math.sqrt((sx * x) ** 2 + (sy * y) ** 2 + (sz * z) ** 2) * depth, fresh]);
+    const d = Math.sqrt((size[0] * x) ** 2 + (size[1] * y) ** 2 + (size[2] * z) ** 2) * depth + x * at[0] + y * at[1] + z * at[2];
+    return [x, y, z, d, fresh];
   };
-  const tilt = (x: number, y: number, z: number, a: number): [number, number, number] =>
-    [x + (rng() * 2 - 1) * a, y + (rng() * 2 - 1) * a, z + (rng() * 2 - 1) * a];
-  if (kind.frame === 'box') {
-    for (const [x, y, z] of [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [0, 1, 0]] as const) {
-      const [tx, ty, tz] = tilt(x, y, z, 0.15);
-      add(tx, ty, tz, 0.95 + rng() * 0.07);
+  /** Azimuths round the circle as a random walk (no two joint sets square). */
+  const ring = (count: number, spread = 0.55): number[] => {
+    const steps = Array.from({ length: count }, () => spread + rng());
+    const total = steps.reduce((p, q) => p + q, 0);
+    let az = rng() * Math.PI * 2;
+    return steps.map((step) => { const out = az; az += (step / total) * Math.PI * 2; return out; });
+  };
+  /** A joint face round the side, leaning back a little (never under: the girth only grows downward). */
+  const side = (size: readonly number[], at: readonly number[], az: number, lean: number, depth: number, fresh = 0): JointPlane =>
+    plane(size, at, Math.cos(az) * Math.cos(lean), Math.sin(Math.max(0, lean)), Math.sin(az) * Math.cos(lean), depth, fresh);
+  /** The shoulders: a ring of facets between the top joint and the sides, the weathered top's breaks, at their own heights. */
+  const shoulders = (size: readonly number[], at: readonly number[], count: number, el: [number, number], depth: [number, number], planes: JointPlane[], freshShare = 0.3): void => {
+    for (const az of ring(count, 0.4)) {
+      const e = range(el[0], el[1]);
+      planes.push(plane(size, at, Math.cos(e) * Math.cos(az), Math.sin(e), Math.cos(e) * Math.sin(az), range(depth[0], depth[1]), rng() < freshShare ? 1 : 0));
     }
-  } else if (kind.frame === 'facets') {
-    const count = 14;
-    for (let i = 0; i < count; i++) {
-      // a Fibonacci sphere's upper four fifths, jittered
-      const y = 1 - ((i + 0.5) / count) * 1.65, r = Math.sqrt(Math.max(0, 1 - y * y)), a = i * 2.39996 + rng() * 0.6;
-      const [tx, ty, tz] = tilt(Math.cos(a) * r, y, Math.sin(a) * r, 0.18);
-      add(tx, ty, tz, 0.9 + rng() * 0.1);
+  };
+  // the skirt's floor (fresh -1 marks it: the fit sets its depth under the fitted rock, whatever the kind's height)
+  const floor = (size: readonly number[] = [1, 0.8, 1]): JointPlane => [0, -1, 0, BOULDER_FLOOR * (size[1] / 0.8), -1];
+  /** An irregular block about `at`: a tilted top joint, a ring of shoulders, a set of near-upright joint faces, one of
+   * them cut deep (a broad flat face). */
+  const block = (size: readonly number[], at: readonly number[], o: { sides: [number, number]; shoulders: [number, number];
+    el: [number, number]; topTilt: number; round: number; tone: number }): BoulderBody => {
+    const planes: JointPlane[] = [plane(size, at, jitter(o.topTilt), 1, jitter(o.topTilt), range(0.86, 1))];
+    shoulders(size, at, o.shoulders[0] + Math.floor(rng() * (o.shoulders[1] - o.shoulders[0] + 1)), o.el, [0.84, 0.97], planes);
+    const sideAz = ring(o.sides[0] + Math.floor(rng() * (o.sides[1] - o.sides[0] + 1)));
+    const deep = Math.floor(rng() * sideAz.length);
+    sideAz.forEach((az, k) => planes.push(side(size, at, az, rng() * 0.1, k === deep ? range(0.7, 0.78) : range(0.84, 1.08), k === deep && rng() < 0.5 ? 1 : 0)));
+    planes.push(floor(size));
+    return { planes, round: o.round, tone: o.tone };
+  };
+  if (kind === 'jointed block') {
+    // a jointed rock parted along its joints: a main block, a sharper piece split off one side and standing a step
+    // higher or lower, often a low ledge on another (a union of blocks: their meeting creases are the joints)
+    const az = rng() * Math.PI * 2;
+    bodies.push(block([0.86, 0.8, 0.76], [0, 0, 0], { sides: [5, 7], shoulders: [1, 3], el: [0.4, 0.8], topTilt: 0.32, round: 0.095 * soft, tone: jitter(0.3) }));
+    if (simple) return bodies;
+    const up = rng() < 0.5 ? range(0.08, 0.2) : -range(0.15, 0.3);
+    bodies.push(block([0.52, 0.62, 0.5], [Math.cos(az) * 0.5, up, Math.sin(az) * 0.5],
+      { sides: [4, 6], shoulders: [1, 2], el: [0.45, 0.8], topTilt: 0.4, round: 0.045 * soft, tone: jitter(0.5) }));
+    if (rng() < 0.55) {
+      const az2 = az + Math.PI * range(0.6, 1.4);
+      bodies.push(block([0.58, 0.36, 0.52], [Math.cos(az2) * 0.5, -0.32, Math.sin(az2) * 0.5],
+        { sides: [4, 6], shoulders: [1, 2], el: [0.35, 0.7], topTilt: 0.25, round: 0.07 * soft, tone: jitter(0.45) }));
     }
+  } else if (kind === 'corestone') {
+    // the weathered core of a jointed mass: many facets, its arrises worn broad, a lobe the weather has not yet parted
+    // from it, one face still a flat joint
+    bodies.push(block([0.9, 0.82, 0.84], [0, 0, 0], { sides: [6, 8], shoulders: [4, 6], el: [0.3, 0.9], topTilt: 0.3, round: 0.15 * soft, tone: jitter(0.3) }));
+    if (simple) return bodies;
+    const az = rng() * Math.PI * 2;
+    bodies.push(block([0.56, 0.55, 0.52], [Math.cos(az) * 0.45, -range(0.12, 0.3), Math.sin(az) * 0.45],
+      { sides: [5, 6], shoulders: [3, 5], el: [0.3, 0.85], topTilt: 0.3, round: 0.1 * soft, tone: jitter(0.4) }));
   } else {
-    const [tx, ty, tz] = tilt(0, 1, 0, 0.1);
-    add(tx, ty, tz, 1);
-    const sides = 6, a0 = rng() * Math.PI * 2;
-    for (let i = 0; i < sides; i++) {
-      const a = a0 + ((i + (rng() - 0.5) * 0.55) / sides) * Math.PI * 2;
-      const [px, py, pz] = tilt(Math.cos(a), (rng() - 0.4) * 0.22, Math.sin(a), 0.07);
-      add(px, py, pz, 0.93 + rng() * 0.09);
+    // a bedded block, or a slab: an irregular jointed block (its top, shoulders and sides) sliced by its bedding planes
+    // into beds of their own thickness, each set back a little its own way (wave 57: "evenly spaced painted strata"; the
+    // beds are relief: small recessed ledges at irregular heights, a groove at every parting). A massive rock's slab is
+    // one bed.
+    const slab = kind === 'slab';
+    const size = slab ? [1.06, 0.5, 0.92] : [0.98, 0.8, 0.86];
+    // (its top is a bedding plane, near level for a bedded rock, the cleavage's tilt for a slate; its shoulders break it)
+    const outline = block(size, [0, 0, 0], slab
+      ? { sides: [5, 7], shoulders: [2, 4], el: [0.3, 0.6], topTilt: bedded ? 0.06 : 0.12, round: 0, tone: 0 }
+      : { sides: [5, 7], shoulders: [3, 4], el: [0.3, 0.7], topTilt: 0.07, round: 0, tone: 0 });
+    const topPlane = outline.planes[0], walls = outline.planes.slice(1, -1);
+    // the top joint's lowest point over the rock (it is tilted): no parting runs up to it, so no bed pinches out to an edge
+    const topY = (topPlane[3] - 1.1 * Math.hypot(topPlane[0], topPlane[2])) / Math.max(0.5, topPlane[1]);
+    const want = bedded && !simple ? (slab ? 1 + Math.floor(rng() * 2) : 2 + Math.floor(rng() * 2)) : 1;
+    // the partings: each bed its own thickness, the lowest the thickest (its first ledge stands well up the rock, never
+    // a plinth at the ground line); a parting that would leave a bed thinner than a hand and a half is not drawn (a thin
+    // bed's flat face is a sliver between its rounded arrises)
+    const weights = Array.from({ length: want }, (_, i) => (i === 0 && want > 1 ? 1.2 : 0.4) + rng());
+    const sum = weights.reduce((p, q) => p + q, 0), base = -0.08 * size[1];
+    const partings: number[] = [];
+    let at = base;
+    for (let i = 0; i < want - 1; i++) {
+      at += ((topY - base) * weights[i]) / sum;
+      if (at - (partings.length ? partings[partings.length - 1] : base) >= 0.16 && topY - at >= 0.16) partings.push(at);
+    }
+    const count = partings.length + 1;
+    // the beds dip together (a slate's cleavage steeper)
+    const dip = slab && !bedded ? range(0.08, 0.3) : rng() * 0.07, dipAz = rng() * Math.PI * 2;
+    const nx = Math.sin(dip) * Math.cos(dipAz), ny = Math.cos(dip), nz = Math.sin(dip) * Math.sin(dipAz);
+    let hard = false;
+    for (let i = 0; i < count; i++) {
+      hard = count === 1 ? true : i === 0 ? false : rng() < (hard ? 0.35 : 0.8);
+      const recess = hard ? rng() * 0.015 : range(0.025, 0.06);
+      const bottom = i === 0 ? base : partings[i - 1], top = i === count - 1 ? topY : partings[i];
+      const round = Math.min((hard ? 0.05 : 0.04) * soft, 0.24 * (top - bottom));
+      // (each face its own way: here the groove is deep, there the bed runs flush past it)
+      const planes: JointPlane[] = walls.map(([x, y, z, d, fresh]) => [x, y, z, d - recess * range(0, 1.6) - rng() * 0.02, fresh] as JointPlane);
+      planes.push(i === count - 1 ? topPlane : [nx, ny, nz, ny * top, 0]);
+      // a bed's bed: the parting under it, overlapped by its radius so the two press together in a groove
+      planes.push(i === 0 ? floor(size) : [-nx, -ny, -nz, -ny * (bottom - round - 0.01), 0]);
+      bodies.push({ planes, round, tone: (hard ? 0.5 : -0.45) + jitter(0.2) });
     }
   }
-  planes.push([0, -1, 0, sy * 0.8, 0]); // the floor, under every ground line
-  for (let c = 0; c < kind.chips; c++) {
-    const a = rng() * Math.PI * 2, e = 0.4 + rng() * 0.55;
-    add(Math.cos(a) * Math.cos(e), Math.sin(e), Math.sin(a) * Math.cos(e), 0.8 + rng() * 0.1, 1);
+  return bodies;
+}
+
+/** A face of a polytope: its plane and its vertex loop, counter-clockwise from outside. */
+interface PolytopeFace { plane: number; loop: number[] }
+
+/** The convex polytope of half-spaces n.x <= d: its vertices (with their incident planes) and its faces. */
+function polytope(planes: ReadonlyArray<readonly [number, number, number, number]>): { verts: number[][]; faces: PolytopeFace[] } {
+  const verts: number[][] = [];
+  const n = planes.length;
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) for (let k = j + 1; k < n; k++) {
+    const [ax, ay, az, ad] = planes[i], [bx, by, bz, bd] = planes[j], [cx, cy, cz, cd] = planes[k];
+    const bcx = by * cz - bz * cy, bcy = bz * cx - bx * cz, bcz = bx * cy - by * cx;
+    const det = ax * bcx + ay * bcy + az * bcz;
+    if (Math.abs(det) < 1e-9) continue;
+    const cax = cy * az - cz * ay, cay = cz * ax - cx * az, caz = cx * ay - cy * ax;
+    const abx = ay * bz - az * by, aby = az * bx - ax * bz, abz = ax * by - ay * bx;
+    const x = (ad * bcx + bd * cax + cd * abx) / det, y = (ad * bcy + bd * cay + cd * aby) / det, z = (ad * bcz + bd * caz + cd * abz) / det;
+    let inside = true;
+    for (const [px, py, pz, pd] of planes) if (px * x + py * y + pz * z > pd + 1e-7) { inside = false; break; }
+    if (!inside) continue;
+    if (!verts.some((v) => Math.abs(v[0] - x) + Math.abs(v[1] - y) + Math.abs(v[2] - z) < 1e-6)) verts.push([x, y, z]);
   }
-  return planes;
+  const faces: PolytopeFace[] = [];
+  planes.forEach(([px, py, pz, pd], plane) => {
+    const on = verts.map((_, v) => v).filter((v) => Math.abs(px * verts[v][0] + py * verts[v][1] + pz * verts[v][2] - pd) < 1e-6);
+    if (on.length < 3) return;
+    let cx = 0, cy = 0, cz = 0;
+    for (const v of on) { cx += verts[v][0]; cy += verts[v][1]; cz += verts[v][2]; }
+    cx /= on.length; cy /= on.length; cz /= on.length;
+    // a basis on the plane, e2 = n x e1: ascending angle runs counter-clockwise seen from outside
+    let ex = Math.abs(py) < 0.9 ? 0 : 1, ey = Math.abs(py) < 0.9 ? 1 : 0, ez = 0;
+    const dot = ex * px + ey * py + ez * pz;
+    ex -= dot * px; ey -= dot * py; ez -= dot * pz;
+    const el = Math.hypot(ex, ey, ez); ex /= el; ey /= el; ez /= el;
+    const fx = py * ez - pz * ey, fy = pz * ex - px * ez, fz = px * ey - py * ex;
+    const angle = (v: number): number => {
+      const dx = verts[v][0] - cx, dy = verts[v][1] - cy, dz = verts[v][2] - cz;
+      return Math.atan2(dx * fx + dy * fy + dz * fz, dx * ex + dy * ey + dz * ez);
+    };
+    faces.push({ plane, loop: on.sort((a, b) => angle(a) - angle(b)) });
+  });
+  return { verts, faces };
+}
+
+/** A boulder's mesh as it is assembled: positions, normals, index, and per vertex the facts its tone law reads. */
+interface BoulderMesh { positions: number[]; normals: number[]; index: number[]; arris: number[]; fresh: number[]; tone: number[]; radius: number[] }
+
+function slerp(a: readonly number[], b: readonly number[], t: number): number[] {
+  const cos = Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]));
+  const angle = Math.acos(cos);
+  if (angle < 1e-6) return [a[0], a[1], a[2]];
+  const s = Math.sin(angle), wa = Math.sin((1 - t) * angle) / s, wb = Math.sin(t * angle) / s;
+  return [a[0] * wa + b[0] * wb, a[1] * wa + b[1] * wb, a[2] * wa + b[2] * wb];
 }
 
 /**
- * Along the unit direction u: the distance to the rounded joint surface (the root of the planes' smooth maximum,
- * Newton from outside — the smooth maximum is convex along the ray, so the steps fall monotonically onto the root),
- * and, into `weights`, each plane's share of the surface there.
+ * One rounded block into the mesh: the polytope of its planes drawn in by its radius, grown back by a ball of it. Its
+ * faces (fanned from a ring, or from their centre on a phone), the arris strips between them (a segment across every
+ * `turnStep` radians the arris turns, at most `maxSegments`; an edge cut every `edgeStep` along) and the corner
+ * patches; every vertex shared, so the block is closed.
  */
-function jointRadius(planes: readonly JointPlane[], k: number, ux: number, uy: number, uz: number, weights: Float64Array | null): number {
-  let t = 4;
-  for (let iteration = 0; iteration < 40; iteration++) {
-    let m = -Infinity;
-    for (const p of planes) m = Math.max(m, t * (p[0] * ux + p[1] * uy + p[2] * uz) - p[3]);
-    let sum = 0, slope = 0;
-    for (const p of planes) {
-      const a = p[0] * ux + p[1] * uy + p[2] * uz, e = Math.exp((t * a - p[3] - m) / k);
-      sum += e; slope += e * a;
-    }
-    const step = (m + k * Math.log(sum)) / (slope / sum);
-    t -= step;
-    if (Math.abs(step) < 1e-10) break;
+function addRoundedBlock(body: BoulderBody, turnStep: number, maxSegments: number, edgeStep: number, ring: boolean, mesh: BoulderMesh): void {
+  const r = body.round;
+  // the drawn-in polytope, its slivers dropped: a plane that only grazes it (a face narrower than a few millimetres
+  // between its neighbours) is subsumed by the rounding, so its plane goes and its neighbours close over the spot
+  let planes = body.planes.slice();
+  let { verts, faces } = polytope(planes.map(([x, y, z, d]) => [x, y, z, d - r] as [number, number, number, number]));
+  for (let pass = 0; pass < 6; pass++) {
+    const sliver = faces.find((face) => {
+      let area = 0, perimeter = 0;
+      const o = verts[face.loop[0]];
+      for (let k = 0; k < face.loop.length; k++) {
+        const p = verts[face.loop[k]], q = verts[face.loop[(k + 1) % face.loop.length]];
+        perimeter += Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
+        if (k > 0 && k + 1 < face.loop.length) {
+          const ux = p[0] - o[0], uy = p[1] - o[1], uz = p[2] - o[2], vx = q[0] - o[0], vy = q[1] - o[1], vz = q[2] - o[2];
+          area += 0.5 * Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx);
+        }
+      }
+      return area / Math.max(1e-9, perimeter) < 0.006;
+    });
+    if (!sliver) break;
+    planes = planes.filter((_, i) => i !== sliver.plane);
+    ({ verts, faces } = polytope(planes.map(([x, y, z, d]) => [x, y, z, d - r] as [number, number, number, number])));
   }
-  if (weights) {
-    let m = -Infinity;
-    for (const p of planes) m = Math.max(m, t * (p[0] * ux + p[1] * uy + p[2] * uz) - p[3]);
-    let sum = 0;
-    for (let i = 0; i < planes.length; i++) {
-      const p = planes[i];
-      sum += weights[i] = Math.exp((t * (p[0] * ux + p[1] * uy + p[2] * uz) - p[3] - m) / k);
+  body = { ...body, planes };
+  const normalOf = (plane: number): number[] => [body.planes[plane][0], body.planes[plane][1], body.planes[plane][2]];
+  const freshOf = (plane: number): number => body.planes[plane][4];
+  // each joint face a shade of its own about its block's (a hash of its normal: no draw from the stream)
+  const toneOf = (plane: number): number => {
+    const [x, y, z] = body.planes[plane];
+    const hsh = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453;
+    return body.tone * 0.75 + (hsh - Math.floor(hsh) - 0.5) * 0.6;
+  };
+  const ids = new Map<string, number>();
+  const vertex = (key: string, p: readonly number[], n: readonly number[], arris: number, fresh: number, tone: number): number => {
+    let id = ids.get(key);
+    if (id !== undefined) return id;
+    id = mesh.positions.length / 3;
+    ids.set(key, id);
+    const l = Math.hypot(n[0], n[1], n[2]) || 1;
+    mesh.positions.push(p[0], p[1], p[2]);
+    mesh.normals.push(n[0] / l, n[1] / l, n[2] / l);
+    mesh.arris.push(arris); mesh.fresh.push(fresh); mesh.tone.push(tone); mesh.radius.push(r);
+    return id;
+  };
+  /** The arris between faces f and g: a segment across every turnStep of its turn (the same for its strip and its corners). */
+  const segmentsOf = (f: number, g: number): number => {
+    const a = normalOf(f), b = normalOf(g);
+    const turn = Math.acos(Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])));
+    return Math.max(1, Math.min(maxSegments, Math.ceil(turn / turnStep - 1e-6)));
+  };
+  /** A point of the arc at polytope vertex v from face f's normal toward face g's, s steps of the arris's segments along. */
+  const arc = (v: number, f: number, g: number, s: number): number => {
+    const S = segmentsOf(f, g);
+    if (s <= 0) return corner(v, f);
+    if (s >= S) return corner(v, g);
+    const lo = Math.min(f, g), hi = Math.max(f, g), step = f === lo ? s : S - s;
+    const u = slerp(normalOf(lo), normalOf(hi), step / S);
+    const p = verts[v];
+    return vertex(`a${v}:${lo}:${hi}:${step}`, [p[0] + r * u[0], p[1] + r * u[1], p[2] + r * u[2]], u, Math.sin((Math.PI * step) / S),
+      freshOf(lo) + (freshOf(hi) - freshOf(lo)) * (step / S), toneOf(lo) + (toneOf(hi) - toneOf(lo)) * (step / S));
+  };
+  const corner = (v: number, f: number): number => {
+    const p = verts[v], n = normalOf(f);
+    return vertex(`c${v}:${f}`, [p[0] + r * n[0], p[1] + r * n[1], p[2] + r * n[2]], n, 0, freshOf(f), toneOf(f));
+  };
+  // the edges: each with the face where it runs a -> b (a < b) and the face where it runs back
+  const edges = new Map<string, { a: number; b: number; F: number; G: number; M: number }>();
+  for (const face of faces) {
+    for (let k = 0; k < face.loop.length; k++) {
+      const v = face.loop[k], w = face.loop[(k + 1) % face.loop.length], a = Math.min(v, w), b = Math.max(v, w);
+      const key = `${a}:${b}`;
+      let e = edges.get(key);
+      if (!e) {
+        const len = Math.hypot(verts[b][0] - verts[a][0], verts[b][1] - verts[a][1], verts[b][2] - verts[a][2]);
+        e = { a, b, F: -1, G: -1, M: Math.max(1, Math.min(3, Math.round(len / edgeStep))) };
+        edges.set(key, e);
+      }
+      if (v === a) e.F = face.plane; else e.G = face.plane;
     }
-    for (let i = 0; i < planes.length; i++) weights[i] /= sum;
   }
-  return t;
+  /** A point along edge {a, b}, m steps of M from a, s steps across from F toward G. */
+  const along = (e: { a: number; b: number; F: number; G: number; M: number }, m: number, s: number): number => {
+    if (m <= 0) return arc(e.a, e.F, e.G, s);
+    if (m >= e.M) return arc(e.b, e.F, e.G, s);
+    const S = segmentsOf(e.F, e.G), t = m / e.M, pa = verts[e.a], pb = verts[e.b];
+    const u = slerp(normalOf(e.F), normalOf(e.G), s / S);
+    return vertex(`e${e.a}:${e.b}:${m}:${s}`, [pa[0] + (pb[0] - pa[0]) * t + r * u[0], pa[1] + (pb[1] - pa[1]) * t + r * u[1],
+      pa[2] + (pb[2] - pa[2]) * t + r * u[2]], u, Math.sin((Math.PI * s) / S), freshOf(e.F) + (freshOf(e.G) - freshOf(e.F)) * (s / S),
+      toneOf(e.F) + (toneOf(e.G) - toneOf(e.F)) * (s / S));
+  };
+  const tri = (a: number, b: number, c: number): void => { mesh.index.push(a, b, c); };
+  // the faces
+  for (const face of faces) {
+    const boundary: number[] = [];
+    for (let k = 0; k < face.loop.length; k++) {
+      const v = face.loop[k], w = face.loop[(k + 1) % face.loop.length];
+      const e = edges.get(`${Math.min(v, w)}:${Math.max(v, w)}`)!;
+      boundary.push(corner(v, face.plane));
+      if (v === e.a) for (let m = 1; m < e.M; m++) boundary.push(along(e, m, 0));
+      else for (let m = e.M - 1; m >= 1; m--) boundary.push(along(e, m, segmentsOf(e.F, e.G)));
+    }
+    const n = normalOf(face.plane), fresh = freshOf(face.plane), tone = toneOf(face.plane);
+    let cx = 0, cy = 0, cz = 0;
+    for (const id of boundary) { cx += mesh.positions[id * 3]; cy += mesh.positions[id * 3 + 1]; cz += mesh.positions[id * 3 + 2]; }
+    cx /= boundary.length; cy /= boundary.length; cz /= boundary.length;
+    const centre = vertex(`f${face.plane}`, [cx, cy, cz], n, 0, fresh, tone);
+    if (!ring || boundary.length < 6) {
+      for (let k = 0; k < boundary.length; k++) tri(centre, boundary[k], boundary[(k + 1) % boundary.length]);
+      continue;
+    }
+    const inner2 = boundary.map((id, k) => vertex(`f${face.plane}:${k}`, [cx + (mesh.positions[id * 3] - cx) * 0.55,
+      cy + (mesh.positions[id * 3 + 1] - cy) * 0.55, cz + (mesh.positions[id * 3 + 2] - cz) * 0.55], n, 0, fresh, tone));
+    for (let k = 0; k < boundary.length; k++) {
+      const k1 = (k + 1) % boundary.length;
+      tri(boundary[k], boundary[k1], inner2[k1]);
+      tri(boundary[k], inner2[k1], inner2[k]);
+      tri(centre, inner2[k], inner2[k1]);
+    }
+  }
+  // the arris strips: outside face F (where the edge runs a -> b), across toward G
+  for (const e of edges.values()) {
+    if (e.F < 0 || e.G < 0) continue;
+    const S = segmentsOf(e.F, e.G);
+    for (let m = 0; m < e.M; m++) for (let s = 0; s < S; s++) {
+      const A = along(e, m, s), B = along(e, m + 1, s), C = along(e, m + 1, s + 1), D = along(e, m, s + 1);
+      tri(A, C, B); tri(A, D, C);
+    }
+  }
+  // the corner patches: the faces round each vertex counter-clockwise from outside, fanned from their mean normal
+  verts.forEach((p, v) => {
+    const round = faces.filter((face) => face.loop.includes(v)).map((face) => face.plane);
+    if (round.length < 3) return;
+    let cx = 0, cy = 0, cz = 0;
+    for (const f of round) { const n = normalOf(f); cx += n[0]; cy += n[1]; cz += n[2]; }
+    const cl = Math.hypot(cx, cy, cz) || 1; cx /= cl; cy /= cl; cz /= cl;
+    let ex = Math.abs(cy) < 0.9 ? 0 : 1, ey = Math.abs(cy) < 0.9 ? 1 : 0, ez = 0;
+    const dot = ex * cx + ey * cy + ez * cz;
+    ex -= dot * cx; ey -= dot * cy; ez -= dot * cz;
+    const el = Math.hypot(ex, ey, ez); ex /= el; ey /= el; ez /= el;
+    const gx = cy * ez - cz * ey, gy = cz * ex - cx * ez, gz = cx * ey - cy * ex;
+    const angle = (f: number): number => { const n = normalOf(f); return Math.atan2(n[0] * gx + n[1] * gy + n[2] * gz, n[0] * ex + n[1] * ey + n[2] * ez); };
+    round.sort((a, b) => angle(a) - angle(b));
+    const rim: number[] = [];
+    for (let k = 0; k < round.length; k++) {
+      const S = segmentsOf(round[k], round[(k + 1) % round.length]);
+      for (let s = 0; s < S; s++) rim.push(arc(v, round[k], round[(k + 1) % round.length], s));
+    }
+    // a corner whose rim is only its faces' corners (one segment across every arris) is the triangle fan of its rim: a
+    // centre point would sit on the patch's edge where two of its faces nearly agree, and fold under the weathering
+    if (rim.length === round.length) {
+      for (let k = 1; k + 1 < rim.length; k++) tri(rim[0], rim[k], rim[k + 1]);
+      return;
+    }
+    const centre = vertex(`p${v}`, [p[0] + r * cx, p[1] + r * cy, p[2] + r * cz], [cx, cy, cz], 1, 0, body.tone);
+    for (let k = 0; k < rim.length; k++) tri(centre, rim[k], rim[(k + 1) % rim.length]);
+  });
 }
 
 /** The legacy hull's radius along an XZ direction (the convex polygon [x, z, ...] about the origin). */
@@ -279,55 +514,14 @@ function hullRadiusAt(hull: readonly number[], dx: number, dz: number): number {
   return best;
 }
 
-/**
- * A cube's surface gridded n x n a face, welded: the corner points, the quads (counter-clockwise from outside) and,
- * for the floor face (always buried: no grid there to pay for), a fan from its centre round its rim.
- */
-function cubeGrid(n: number): { points: number[]; quads: number[]; fan: number[] } {
-  const faces: ReadonlyArray<readonly [readonly number[], readonly number[], readonly number[]]> = [
-    [[1, 0, 0], [0, 0, -1], [0, 1, 0]], [[-1, 0, 0], [0, 0, 1], [0, 1, 0]], [[0, 1, 0], [1, 0, 0], [0, 0, -1]],
-    [[0, -1, 0], [1, 0, 0], [0, 0, 1]], [[0, 0, 1], [1, 0, 0], [0, 1, 0]], [[0, 0, -1], [-1, 0, 0], [0, 1, 0]],
-  ];
-  const points: number[] = [], quads: number[] = [], fan: number[] = [], seen = new Map<string, number>();
-  for (const [N, U, V] of faces) {
-    const floor = N[1] === -1, ids: number[] = [];
-    for (let j = 0; j <= n; j++) for (let i = 0; i <= n; i++) {
-      if (floor && i > 0 && i < n && j > 0 && j < n) { ids.push(-1); continue; }
-      const a = -1 + (2 * i) / n, b = -1 + (2 * j) / n;
-      const x = N[0] + a * U[0] + b * V[0], y = N[1] + a * U[1] + b * V[1], z = N[2] + a * U[2] + b * V[2];
-      const key = `${Math.round(x * 1e4)},${Math.round(y * 1e4)},${Math.round(z * 1e4)}`;
-      let id = seen.get(key);
-      if (id === undefined) { id = points.length / 3; seen.set(key, id); points.push(x, y, z); }
-      ids.push(id);
-    }
-    if (floor) {
-      // the rim in the quads' turning sense, then a fan from the centre
-      const rim: number[] = [];
-      for (let i = 0; i < n; i++) rim.push(ids[i]);
-      for (let j = 0; j < n; j++) rim.push(ids[j * (n + 1) + n]);
-      for (let i = n; i > 0; i--) rim.push(ids[n * (n + 1) + i]);
-      for (let j = n; j > 0; j--) rim.push(ids[j * (n + 1)]);
-      const centre = points.length / 3;
-      points.push(N[0], N[1], N[2]);
-      for (let k = 0; k < rim.length; k++) fan.push(centre, rim[k], rim[(k + 1) % rim.length]);
-      continue;
-    }
-    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
-      const o = j * (n + 1) + i;
-      quads.push(ids[o], ids[o + 1], ids[o + n + 2], ids[o + n + 1]);
-    }
-  }
-  return { points, quads, fan };
-}
-
 /** A boulder form and the per-vertex facts its tone law reads. */
 interface BoulderForm {
   geometry: THREE.BufferGeometry;
-  /** 0 on a joint face, rising over an arris (one less the largest plane's share). */
+  /** 0 on a joint face, rising to 1 across an arris or a corner. */
   edge: Float32Array;
-  /** The later fractures' share (fresh faces). */
+  /** The fresh fractures' share. */
   fresh: Float32Array;
-  /** The faces' own tone offsets (-1..1), blended over the arrises. */
+  /** The block's own shade (-1..1), and its face's. */
   facet: Float32Array;
 }
 
@@ -336,150 +530,120 @@ export const BOULDER_SEAT_Y = 0;
 
 export function buildBoulderForm(
   variant: number, noise: SimplexNoise, rng: () => number, hull: readonly number[], subdiv = 6, topY = 0,
-  kindIndex = variant % BOULDER_KINDS.length,
+  kindIndex = variant % 3, lithology: BoulderLithology = 'granite',
 ): BoulderForm {
-  const kind = BOULDER_KINDS[kindIndex];
-  const [sx, sy, sz] = kind.size;
-  const planes = jointPlanes(kind, rng);
-  const tones = planes.map(() => rng() * 2 - 1);
-  const salt = variant * 11.3 + rng() * 40;
-  const [lumpA, lumpB] = kind.lumps;
-  const out = [0, 0, 0];
-  /** The weathered surface along a unit direction (the joint surface lumped, its foot flared), in the kind's units. */
-  const surface = (ux: number, uy: number, uz: number, weights: Float64Array | null): number[] => {
-    const t = jointRadius(planes, kind.round, ux, uy, uz, weights);
-    let x = ux * t, y = uy * t, z = uz * t;
-    const f = 1 + noise.noise3d(x * 1.7 + salt, y * 1.7, z * 1.7 - salt) * lumpA + noise.noise3d(x * 4.3 - salt, y * 4.3 + salt, z * 4.3) * lumpB;
-    x *= f; y *= f; z *= f;
-    const q = clamp(-y / (0.45 * sy), 0, 1), foot = 1 + q * q * (3 - 2 * q) * 0.05;
-    out[0] = x * foot; out[1] = y; out[2] = z * foot;
-    return out;
+  const kind = BOULDER_KINDS[kindIndex] ?? BOULDER_KINDS[0];
+  const forms = LITHOLOGY_FORMS[lithology];
+  const fine = subdiv >= 6;
+  const bodies = boulderBodies(kind, rng, forms.soft, forms.bedded && (kind === 'bedded block' || kind === 'slab'), !fine);
+  // the fit, estimated on the blocks' sharp polytopes, is applied to the planes before they are rounded: every arris is
+  // rounded (and its segments counted) in the rock's own fitted proportions, never stretched after (a slab's fit doubles
+  // its height)
+  let top0 = -Infinity;
+  const corners: number[][] = [];
+  for (const body of bodies) for (const v of polytope(body.planes.map(([x, y, z, d]) => [x, y, z, d] as [number, number, number, number])).verts) { corners.push(v); top0 = Math.max(top0, v[1]); }
+  const ky0 = topY > 0 && top0 > 0 ? (topY * 0.98) / top0 : 1;
+  let kx0 = Infinity;
+  for (const [x, y, z] of corners) {
+    if (y * ky0 < BOULDER_SEAT_Y) continue;
+    const rr = Math.hypot(x, z);
+    if (rr > 1e-6) kx0 = Math.min(kx0, (hullRadiusAt(hull, x / rr, z / rr) * 0.985) / rr);
+  }
+  if (!Number.isFinite(kx0)) kx0 = 1;
+  for (const body of bodies) {
+    body.planes = body.planes.map(([x, y, z, d, fresh]) => {
+      const nx = x / kx0, ny = y / ky0, nz = z / kx0, l = Math.hypot(nx, ny, nz);
+      // (the skirt's floor: as deep under the fitted rock whatever its kind)
+      return fresh < 0 ? [0, -1, 0, Math.max(d / l, BOULDER_FLOOR), 0] as JointPlane : [nx / l, ny / l, nz / l, d / l, fresh] as JointPlane;
+    });
+  }
+  const mesh: BoulderMesh = { positions: [], normals: [], index: [], arris: [], fresh: [], tone: [], radius: [] };
+  for (const body of bodies) addRoundedBlock(body, fine ? Math.PI / 3 : Math.PI, fine ? 2 : 1, fine ? 1.4 : 9, false, mesh);
+  const count = mesh.positions.length / 3;
+  const pos = new Float32Array(mesh.positions), nor = new Float32Array(mesh.normals);
+  // weathering: a smooth warp of the whole rock (two octaves, its slope everywhere far under one: no face can fold, and
+  // nearby points move together, so even a hand-wide corner keeps its shape) bends every joint face a little, never a
+  // perfect plane; the normals carried through the warp's Jacobian (the inverse transpose, by central differences)
+  const salt = variant * 7.7 + rng() * 50, A = 0.034, F = 1.2, A2 = 0.01, F2 = 3.1, h = 1e-3;
+  const warp = (x: number, y: number, z: number, out: number[]): void => {
+    out[0] = x + A * noise.noise3d(x * F + salt, y * F, z * F) + A2 * noise.noise3d(x * F2 - salt, y * F2, z * F2);
+    out[1] = y + (A * noise.noise3d(x * F, y * F + salt, z * F) + A2 * noise.noise3d(x * F2, y * F2 - salt, z * F2)) * 0.7;
+    out[2] = z + A * noise.noise3d(x * F, y * F, z * F + salt) + A2 * noise.noise3d(x * F2, y * F2, z * F2 - salt);
   };
-  const { points, quads, fan } = cubeGrid(Math.max(2, subdiv));
-  const count = points.length / 3;
-  // the directions: columns crowded toward the cube's edges (where the frame's arrises fall) and rows upward (the
-  // ground cuts the lower half), aimed at the kind's ellipsoid
-  const dirs = new Float64Array(count * 3);
-  const edgeward = (t: number): number => 0.5 * t + 0.5 * Math.sin((t * Math.PI) / 2);
+  const w0 = [0, 0, 0], w1 = [0, 0, 0], J = new Float64Array(9);
   for (let v = 0; v < count; v++) {
-    const ux = edgeward(points[v * 3]) * sx, uy = (-1 + 2 * Math.pow((points[v * 3 + 1] + 1) / 2, 0.62)) * sy, uz = edgeward(points[v * 3 + 2]) * sz;
-    const ul = Math.hypot(ux, uy, uz);
-    dirs[v * 3] = ux / ul; dirs[v * 3 + 1] = uy / ul; dirs[v * 3 + 2] = uz / ul;
+    const x = pos[v * 3], y = pos[v * 3 + 1], z = pos[v * 3 + 2];
+    for (let axis = 0; axis < 3; axis++) {
+      warp(x + (axis === 0 ? h : 0), y + (axis === 1 ? h : 0), z + (axis === 2 ? h : 0), w1);
+      warp(x - (axis === 0 ? h : 0), y - (axis === 1 ? h : 0), z - (axis === 2 ? h : 0), w0);
+      for (let row = 0; row < 3; row++) J[row * 3 + axis] = (w1[row] - w0[row]) / (2 * h);
+    }
+    // the cofactor matrix is the inverse transpose up to the determinant's scale
+    const nx = nor[v * 3], ny = nor[v * 3 + 1], nz = nor[v * 3 + 2];
+    const c00 = J[4] * J[8] - J[5] * J[7], c01 = J[5] * J[6] - J[3] * J[8], c02 = J[3] * J[7] - J[4] * J[6];
+    const c10 = J[2] * J[7] - J[1] * J[8], c11 = J[0] * J[8] - J[2] * J[6], c12 = J[1] * J[6] - J[0] * J[7];
+    const c20 = J[1] * J[5] - J[2] * J[4], c21 = J[2] * J[3] - J[0] * J[5], c22 = J[0] * J[4] - J[1] * J[3];
+    const mx = c00 * nx + c10 * ny + c20 * nz, my = c01 * nx + c11 * ny + c21 * nz, mz = c02 * nx + c12 * ny + c22 * nz;
+    const ml = Math.hypot(mx, my, mz) || 1;
+    nor[v * 3] = mx / ml; nor[v * 3 + 1] = my / ml; nor[v * 3 + 2] = mz / ml;
+    warp(x, y, z, w0);
+    pos[v * 3] = w0[0]; pos[v * 3 + 1] = w0[1]; pos[v * 3 + 2] = w0[2];
   }
-  // the fit: as tall as the legacy rock (its collider's cover), and inside the legacy hull above the ground line
-  const edge = new Float32Array(count), fresh = new Float32Array(count), facet = new Float32Array(count);
-  const weights = new Float64Array(planes.length);
-  const raw = new Float64Array(count * 3);
+  // as tall as the legacy rock (its collider's cover), then inside the legacy hull above the ground line
   let top = -Infinity;
-  for (let v = 0; v < count; v++) {
-    const p = surface(dirs[v * 3], dirs[v * 3 + 1], dirs[v * 3 + 2], weights);
-    raw[v * 3] = p[0]; raw[v * 3 + 1] = p[1]; raw[v * 3 + 2] = p[2];
-    top = Math.max(top, p[1]);
-    let largest = 0, chip = 0, tone = 0;
-    for (let i = 0; i < planes.length; i++) { largest = Math.max(largest, weights[i]); chip += weights[i] * planes[i][4]; tone += weights[i] * tones[i]; }
-    edge[v] = 1 - largest; fresh[v] = chip; facet[v] = tone;
-  }
+  for (let v = 0; v < count; v++) top = Math.max(top, pos[v * 3 + 1]);
   const ky = topY > 0 && top > 0 ? (topY * 0.98) / top : 1;
   let kx = Infinity;
   for (let v = 0; v < count; v++) {
-    if (raw[v * 3 + 1] * ky < BOULDER_SEAT_Y) continue;
-    const x = raw[v * 3], z = raw[v * 3 + 2], r = Math.hypot(x, z);
-    if (r > 1e-6) kx = Math.min(kx, (hullRadiusAt(hull, x / r, z / r) * 0.985) / r);
+    if (pos[v * 3 + 1] * ky < BOULDER_SEAT_Y) continue;
+    const x = pos[v * 3], z = pos[v * 3 + 2], rr = Math.hypot(x, z);
+    if (rr > 1e-6) kx = Math.min(kx, (hullRadiusAt(hull, x / rr, z / rr) * 0.985) / rr);
   }
   if (!Number.isFinite(kx)) kx = 1;
-  // the girth at the ground line, round the rock: under it the sides go straight down (or a little out), never curving
-  // back under, so a slope's downhill side bares a buried flank and not an undercut a boulder seems to float on
-  const GIRTH = 72, girth = new Float64Array(GIRTH);
-  for (let j = 0; j < GIRTH; j++) {
-    const theta = (j / GIRTH) * Math.PI * 2, c = Math.cos(theta), sn = Math.sin(theta);
-    let lo = -1.3, hi = 1.3;
-    for (let it = 0; it < 26; it++) {
-      const e = (lo + hi) / 2, q = surface(Math.cos(e) * c, Math.sin(e), Math.cos(e) * sn, null);
-      if (q[1] > 0) hi = e; else lo = e;
-    }
-    const e = (lo + hi) / 2, q = surface(Math.cos(e) * c, Math.sin(e), Math.cos(e) * sn, null);
-    girth[j] = Math.hypot(q[0], q[2]);
-  }
-  const girthAt = (x: number, z: number): number => {
-    const t = ((Math.atan2(z, x) / (Math.PI * 2) + 1) % 1) * GIRTH, j = Math.floor(t) % GIRTH, f = t - Math.floor(t);
-    return girth[j] + (girth[(j + 1) % GIRTH] - girth[j]) * f;
-  };
-  /** The fitted surface: scaled into the hull; under the ground line the stone keeps its girth and is held softly to
-   * the hull (a few per cent over it where a slope's downhill side can bare it, more deeper down), so a hull never meets
-   * a rock it can't see. */
-  const fitted = (ux: number, uy: number, uz: number): number[] => {
-    const p = surface(ux, uy, uz, null);
-    if (p[1] < 0) {
-      const r0 = Math.hypot(p[0], p[2]);
-      if (r0 > 1e-6) {
-        const q = clamp(-p[1] / (0.12 * sy), 0, 1), w = q * q * (3 - 2 * q);
-        const k = (r0 + (Math.max(r0, girthAt(p[0], p[2])) - r0) * w) / r0;
-        p[0] *= k; p[2] *= k;
-      }
-    }
-    const x = p[0] * kx, y = p[1] * ky, z = p[2] * kx;
-    out[1] = y;
-    const r = Math.hypot(x, z);
-    if (y >= BOULDER_SEAT_Y || r < 1e-6) { out[0] = x; out[2] = z; return out; }
-    const deep = clamp((-y - 0.4) / 0.3, 0, 1);
-    const limit = hullRadiusAt(hull, x / r, z / r) * (1.03 + 0.12 * deep * deep * (3 - 2 * deep));
-    const soft = 0.04 * limit, k = (limit - soft * Math.log(1 + Math.exp((limit - r) / soft))) / r; // a smooth min(r, limit)
-    out[0] = x * k; out[2] = z * k;
-    return out;
-  };
-  const pos = new Float32Array(count * 3), nor = new Float32Array(count * 3);
-  // the normals are the fitted surface's own, averaged over a third of a grid cell either side: an arris narrower than
-  // the mesh can follow shades as one a cell wide instead of flickering between the faces from vertex to vertex
-  const eps = (Math.PI / 2 / Math.max(2, subdiv)) * 0.35;
   for (let v = 0; v < count; v++) {
-    const ux = dirs[v * 3], uy = dirs[v * 3 + 1], uz = dirs[v * 3 + 2];
-    const p = fitted(ux, uy, uz);
-    pos[v * 3] = p[0]; pos[v * 3 + 1] = p[1]; pos[v * 3 + 2] = p[2];
-    const ax = Math.abs(uy) < 0.9 ? 0 : 1, ay = Math.abs(uy) < 0.9 ? 1 : 0;
-    let t1x = ay * uz, t1y = -ax * uz, t1z = ax * uy - ay * ux;
-    const t1l = Math.hypot(t1x, t1y, t1z); t1x /= t1l; t1y /= t1l; t1z /= t1l;
-    const t2x = uy * t1z - uz * t1y, t2y = uz * t1x - ux * t1z, t2z = ux * t1y - uy * t1x;
-    const at = (a: number, b: number): number[] => {
-      const dx = ux + a * t1x + b * t2x, dy = uy + a * t1y + b * t2y, dz = uz + a * t1z + b * t2z, dl = Math.hypot(dx, dy, dz);
-      return fitted(dx / dl, dy / dl, dz / dl).slice();
-    };
-    const p1 = at(eps, 0), m1 = at(-eps, 0), p2 = at(0, eps), m2 = at(0, -eps);
-    const ex = p1[0] - m1[0], ey = p1[1] - m1[1], ez = p1[2] - m1[2], fx = p2[0] - m2[0], fy = p2[1] - m2[1], fz = p2[2] - m2[2];
-    let nx = ey * fz - ez * fy, ny = ez * fx - ex * fz, nz = ex * fy - ey * fx;
-    if (nx * ux + ny * uy + nz * uz < 0) { nx = -nx; ny = -ny; nz = -nz; }
-    const nl = Math.hypot(nx, ny, nz) || 1;
+    let x = pos[v * 3] * kx, z = pos[v * 3 + 2] * kx;
+    const y = pos[v * 3 + 1] * ky;
+    // under the ground line the stone is held softly to the hull (a few per cent over it where a slope's downhill side
+    // can bare it, more deeper down), so a hull never meets a rock it can't see
+    const rr = Math.hypot(x, z);
+    if (y < BOULDER_SEAT_Y && rr > 1e-6) {
+      const deep = clamp((-y - 0.4) / 0.3, 0, 1);
+      const limit = hullRadiusAt(hull, x / rr, z / rr) * (1.03 + 0.12 * deep * deep * (3 - 2 * deep));
+      const soft = 0.04 * limit, k = (limit - soft * Math.log(1 + Math.exp((limit - rr) / soft))) / rr; // a smooth min(r, limit)
+      x *= k; z *= k;
+    }
+    pos[v * 3] = x; pos[v * 3 + 1] = y; pos[v * 3 + 2] = z;
+    // a normal under the non-uniform scale: the inverse transpose
+    const nx = nor[v * 3] / kx, ny = nor[v * 3 + 1] / ky, nz = nor[v * 3 + 2] / kx, nl = Math.hypot(nx, ny, nz) || 1;
     nor[v * 3] = nx / nl; nor[v * 3 + 1] = ny / nl; nor[v * 3 + 2] = nz / nl;
   }
-  // each quad split along the diagonal whose ends shade alike (the other diagonal would carry a seam of light)
-  const index: number[] = [];
-  const dot = (a: number, b: number): number => nor[a * 3] * nor[b * 3] + nor[a * 3 + 1] * nor[b * 3 + 1] + nor[a * 3 + 2] * nor[b * 3 + 2];
-  for (let q = 0; q < quads.length; q += 4) {
-    const a = quads[q], b = quads[q + 1], c = quads[q + 2], d = quads[q + 3];
-    if (dot(a, c) >= dot(b, d)) index.push(a, b, c, a, c, d);
-    else index.push(a, b, d, b, c, d);
-  }
-  index.push(...fan);
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geometry.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-  geometry.setIndex(index);
+  geometry.setIndex(mesh.index);
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
-  return { geometry, edge, fresh, facet };
+  return { geometry, edge: new Float32Array(mesh.arris), fresh: new Float32Array(mesh.fresh), facet: new Float32Array(mesh.tone) };
 }
 
+/** The lithologies' base tones (sRGB HSL) under a map's rock tone law: a weathered grey, the chalk a cream white. */
+const LITHOLOGY_TONE: Readonly<Partial<Record<BoulderLithology, readonly [number, number, number]>>> = Object.freeze({
+  chalk: [0.115, 0.1, 0.62],
+});
+
 /**
- * The boulder's vertex tone: the map's rock tone over a weathered grey, the joint faces each a shade of their own, the
- * fresh fractures paler and greyer, the arrises a little paler (worn), the upward faces taking the map's cap tone harder.
- * Linear RGB in a 'color' attribute.
+ * The boulder's vertex tone: the map's rock tone over its lithology's base (a weathered grey), each block a shade of its
+ * own (a hard bed paler, a soft one darker), the fresh fractures paler and greyer, the arrises a little paler (worn), the
+ * upward faces taking the map's cap tone harder. Linear RGB in a 'color' attribute.
  */
-export function paintBoulder(form: BoulderForm, tone: ToneFunction | null | undefined): void {
+export function paintBoulder(form: BoulderForm, tone: ToneFunction | null | undefined, lithology: BoulderLithology = 'granite'): void {
   const g = form.geometry, p = g.attributes.position, n = g.attributes.normal;
   const col = new Float32Array(p.count * 3);
+  const [bh, bs, bl] = LITHOLOGY_TONE[lithology] ?? [0.09, 0.07, 0.28];
   for (let i = 0; i < p.count; i++) {
-    const up = clamp(n.getY(i), 0, 1), worn = clamp(form.edge[i] * 1.6, 0, 1), fresh = clamp(form.fresh[i], 0, 1);
-    const l = 0.28 + p.getY(i) * 0.04 + up * up * 0.1 + form.facet[i] * 0.025 + fresh * 0.05 + worn * 0.035;
-    let h = 0.09 + form.facet[i] * 0.008, s = 0.07 * (1 - fresh * 0.45), lt = clamp(l, 0.15, 0.5);
+    const up = clamp(n.getY(i), 0, 1), worn = clamp(form.edge[i] * 1.2, 0, 1), fresh = clamp(form.fresh[i], 0, 1);
+    const l = bl + p.getY(i) * 0.04 + up * up * 0.1 + form.facet[i] * 0.045 + fresh * 0.05 + worn * 0.03;
+    let h = bh + form.facet[i] * 0.008, s = bs * (1 - fresh * 0.45), lt = clamp(l, 0.15, bl > 0.4 ? 0.82 : 0.5);
     if (tone) { const t = tone(h, s, lt); h = t[0]; s = t[1]; lt = clamp(t[2], 0, 1); }
     _soil.setHSL(h, s, clamp(lt * (0.86 + up * 0.22), 0, 1), THREE.SRGBColorSpace);
     col[i * 3] = _soil.r; col[i * 3 + 1] = _soil.g; col[i * 3 + 2] = _soil.b;
@@ -555,7 +719,7 @@ export function* makeRockDetail(
   const s = 256, px = new Uint8ClampedArray(s * s * 4), orm = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   const lichenRank = new Float32Array(s * s), lichenId = new Float32Array(s * s);
   const cell = { d1: 0, d2: 0, id: 0 }, colony = { d1: 0, d2: 0, id: 0 };
-  const lineWeight = { granite: 0.75, gneiss: 0.6, sandstone: 0.55, limestone: 0.8, slate: 0.6, basalt: 0.7 }[lithology];
+  const lineWeight = { granite: 0.75, gneiss: 0.6, sandstone: 0.55, limestone: 0.8, slate: 0.6, basalt: 0.7, chalk: 0.3 }[lithology];
   for (let y = 0; y < s; y++) {
     for (let x = 0; x < s; x++) {
       const u = (x + 0.5) / s, v = (y + 0.5) / s, i = y * s + x, j = i * 4;
@@ -578,9 +742,11 @@ export function* makeRockDetail(
           lum += Math.sign(band) * Math.pow(Math.abs(band), 0.5) * 0.09;
         }
       } else if (lithology === 'sandstone') {
-        // the laminae: fine parallel lines, their set's angle swinging (cross-bedding), on a fine sand grain
-        const lam = (v * 28 + u * 3 * tileableTorusNoise(noi, u, v, 1, 2, 431) + tileableTorusNoise(noi, u, v, 3, 3, 433) * 0.3) % 1;
-        lum -= (1 - clamp(((lam + 1) % 1) / 0.14, 0, 1)) * 0.07;
+        // the laminae: fine lines, their set's angle swinging (cross-bedding), here and there (wave 57: "evenly spaced
+        // painted strata lines"), on a fine sand grain
+        const lam = (v * 28 + u * 3 * tileableTorusNoise(noi, u, v, 1, 2, 431) + tileableTorusNoise(noi, u, v, 3, 3, 433) * 0.6) % 1;
+        const patch = clamp(tileableTorusNoise(noi, u, v, 2, 2, 437) * 1.6, 0, 1);
+        lum -= (1 - clamp(((lam + 1) % 1) / 0.14, 0, 1)) * 0.045 * patch;
         const sand = tileableTorusNoise(noi, u, v, 61, 61, 439) * 0.5 + 0.5;
         lum += (sand - 0.5) * 0.08;
         height += (sand - 0.5) * 0.06;
@@ -592,6 +758,13 @@ export function* makeRockDetail(
         lum -= pit * (basalt ? 0.36 : 0.3);
         height -= pit * 0.45;
         if (!basalt) lum += (grain - 0.5) * -0.06; // smoother than the rest
+      } else if (lithology === 'chalk') {
+        // chalk: a soft fine-grained white stone, its pores and the odd dark flint nodule, few fractures
+        cellular(u, v, 30, 471, cell);
+        const flint = hash3(cell.id, 5, 473) < 0.035 ? 1 - clamp((cell.d1 - 0.18) / 0.08, 0, 1) : 0;
+        const pore = tileableTorusNoise(noi, u, v, 83, 83, 477) * 0.5 + 0.5;
+        lum += 0.06 - flint * 0.5 - (pore > 0.82 ? 0.08 : 0) + (grain - 0.5) * -0.05;
+        height -= flint * 0.2 + (pore > 0.82 ? 0.1 : 0);
       } else {
         // slate: the cleavage streaks, close and parallel
         const streak = tileableTorusNoise(noi, u, v, 2, 70, 457);
@@ -607,10 +780,11 @@ export function* makeRockDetail(
       orm[j + 2] = 0;
       orm[j + 3] = 255;
       hgt[i] = height;
-      // the lichen colonies: lobed discs, a scatter of large ones and of small satellites; each texel's priority falls
-      // from its colony's own toward the rim, so a growing cover grows every colony outward from its centre
+      // the lichen colonies: lobed discs of every size, six cells to the tile (wave 57: "confetti spots": no satellites);
+      // each texel's priority falls from its colony's own toward the rim, so a growing cover grows every colony outward
+      // from its centre and a dense cluster merges them into a patch
       let best = 0, bestId = 0;
-      for (const [n, salt, r0, r1, weight] of [[8, 461, 0.32, 0.4, 1], [20, 467, 0.26, 0.14, 0.55]] as const) {
+      for (const [n, salt, r0, r1, weight] of [[6, 461, 0.3, 0.38, 1]] as const) {
         cellular(u, v, n, salt, colony);
         const roll = hash3(colony.id, 11, salt + 2);
         const cx = colony.id % n, cy = (colony.id / n) | 0;
@@ -658,46 +832,39 @@ function mustReplace(src: string, anchor: string, replacement: string): string {
 
 /**
  * Patch the rock material's program after the props grime hook (which supplies vGrimeW / vGrimeN and uGrime): the
- * instance's ground height rides an instanced attribute, the detail tile is sampled triplanar in world space, and the
- * map's laws blend on top of the vertex tone. On the instanced boulders only (vRockSeed >= 0; the merged formations,
- * nests and works carry their own laws in their vertex tones): the beds in each rock's own frame and tilt, the desert
- * varnish, the lichen colonies of the climate and the contact darkening where the stone meets the ground.
+ * ground under every vertex rides an attribute (a merged mesh's per vertex; an instanced boulder's as its centre's
+ * height and the slope of its ground, `aRockSlope`, so the ground line is met all round on a slope), the detail tile is
+ * sampled triplanar in world space, and the map's laws blend on top of the vertex tone. On the instanced boulders only
+ * (vRockSeed >= 0; the merged formations, nests and works carry their own laws in their vertex tones): the desert
+ * varnish, the lichen colonies of the climate on the tops and the weather side, a snow map's snow, and the contact
+ * darkening where the stone meets the ground.
  */
 export function applyRockShaderHook(shader: RockShader, dressing: RockDressing, lichenTile: THREE.Texture | null = null): void {
   shader.uniforms.uRockMoss = { value: dressing.moss };
   shader.uniforms.uRockDust = { value: dressing.dust };
   shader.uniforms.uRockSoil = { value: new THREE.Vector3(...dressing.soil) };
-  shader.uniforms.uRockBeds = { value: new THREE.Vector4(...dressing.beds) };
   shader.uniforms.uRockLichen = { value: new THREE.Vector3(lichenTile ? dressing.lichen[0] : 0, dressing.lichen[1], dressing.lichen[2]) };
   shader.uniforms.uRockLichenA = { value: new THREE.Vector3(...dressing.lichenA) };
   shader.uniforms.uRockLichenB = { value: new THREE.Vector3(...dressing.lichenB) };
   shader.uniforms.uRockVarnish = { value: dressing.varnish };
   shader.uniforms.uRockLichenTile = { value: lichenTile };
   shader.vertexShader = mustReplace(shader.vertexShader, 'varying vec3 vGrimeW;\nvarying vec3 vGrimeN;',
-    'varying vec3 vGrimeW;\nvarying vec3 vGrimeN;\nattribute float aRockGround;\nvarying float vRockAbove;\nvarying float vRockSeed;\nvarying float vRockBed;\nuniform vec4 uRockBeds;');
+    'varying vec3 vGrimeW;\nvarying vec3 vGrimeN;\nattribute float aRockGround;\nvarying float vRockAbove;\nvarying float vRockSeed;\n#ifdef USE_INSTANCING\nattribute vec2 aRockSlope;\n#endif');
   shader.vertexShader = mustReplace(shader.vertexShader, '  vGrimeN = normalize(mat3(modelMatrix) * gn);\n}', /* glsl */`  vGrimeN = normalize(mat3(modelMatrix) * gn);
   vRockAbove = vGrimeW.y - aRockGround;
   vRockSeed = -1.0;
-  vRockBed = 0.0;
   #ifdef USE_INSTANCING
-  {
-    // the boulder's own frame: its hash, and its beds tilted and turned by it
-    vec3 rockScale = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
-    vRockSeed = fract(sin(dot(instanceMatrix[3].xz, vec2(12.9898, 78.233))) * 43758.5453);
-    float rockBedAz = vRockSeed * 6.2832, rockBedTilt = uRockBeds.z * fract(vRockSeed * 7.13);
-    vec3 rockBedN = vec3(sin(rockBedTilt) * cos(rockBedAz), cos(rockBedTilt), sin(rockBedTilt) * sin(rockBedAz));
-    vRockBed = dot(transformed * rockScale, rockBedN) / uRockBeds.y + vRockSeed * 31.0;
-  }
+  // a boulder's ground: the plane through its centre's ground along the slope under it; and its own hash
+  vRockAbove -= dot(aRockSlope, vGrimeW.xz - (modelMatrix * instanceMatrix[3]).xz);
+  vRockSeed = fract(sin(dot(instanceMatrix[3].xz, vec2(12.9898, 78.233))) * 43758.5453);
   #endif
 }`);
   shader.fragmentShader = mustReplace(shader.fragmentShader, 'uniform sampler2D uGrime;', `uniform sampler2D uGrime;
 varying float vRockAbove;
 varying float vRockSeed;
-varying float vRockBed;
 uniform float uRockMoss;
 uniform float uRockDust;
 uniform vec3 uRockSoil;
-uniform vec4 uRockBeds;
 uniform vec3 uRockLichen;
 uniform vec3 uRockLichenA;
 uniform vec3 uRockLichenB;
@@ -709,14 +876,12 @@ uniform sampler2D uRockLichenTile;`);
 vec3 rockTw = abs(vGrimeN); rockTw = rockTw * rockTw * rockTw * rockTw; rockTw /= max(1e-4, rockTw.x + rockTw.y + rockTw.z);
 vec3 rockPw = vGrimeW * 0.62;
 float rockDetail = 0.8;
-float rockParting = 0.0;
 #ifdef USE_MAP
 rockDetail = texture2D(map, rockPw.yz).r * rockTw.x + texture2D(map, rockPw.xz).r * rockTw.y + texture2D(map, rockPw.xy).r * rockTw.z;
 diffuseColor.rgb *= 0.42 + 0.66 * rockDetail;
 #endif`);
   // the normal tile, triplanar in world space: three's tangent frame (normal_fragment_maps) divides by the UV
-  // derivatives, which are zero on a mesh without UVs, so its chunk is replaced outright; a boulder's bed partings
-  // recess a few millimetres (a bump from their screen derivatives)
+  // derivatives, which are zero on a mesh without UVs, so its chunk is replaced outright
   shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <normal_fragment_maps>', /* glsl */`
 #ifdef USE_NORMALMAP
 {
@@ -725,52 +890,35 @@ diffuseColor.rgb *= 0.42 + 0.66 * rockDetail;
   vec3 rockTz = texture2D(normalMap, rockPw.xy).xyz * 2.0 - 1.0;
   vec3 rockPert = vec3(0.0, rockTx.x, rockTx.y) * rockTw.x + vec3(rockTy.x, 0.0, rockTy.y) * rockTw.y + vec3(rockTz.x, rockTz.y, 0.0) * rockTw.z;
   vec3 rockN = normalize(normalize(vGrimeN) + rockPert * 0.55);
-  if (vRockSeed >= 0.0 && uRockBeds.x > 0.0) {
-    vec3 rockDx = dFdx(vGrimeW), rockDy = dFdy(vGrimeW);
-    float rockHx = dFdx(rockParting) * -0.004, rockHy = dFdy(rockParting) * -0.004;
-    vec3 rockR1 = cross(rockDy, rockN), rockR2 = cross(rockN, rockDx);
-    float rockDet = dot(rockDx, rockR1);
-    vec3 rockGrad = sign(rockDet) * (rockHx * rockR1 + rockHy * rockR2);
-    rockN = normalize(abs(rockDet) * rockN - rockGrad * uRockBeds.x);
-  }
   normal = normalize((viewMatrix * vec4(rockN, 0.0)).xyz);
 }
 #endif`);
   shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <color_fragment>', /* glsl */`#include <color_fragment>
 {
   if (vRockSeed >= 0.0) {
-    // the beds (sandstone, limestone; gneiss foliation, slate cleavage): planes through the boulder in its own frame,
-    // each bed a shade of its own, the partings dark; beds finer than a pixel or two fade to their mean
-    if (uRockBeds.x > 0.0) {
-      float bedC = vRockBed + (texture2D(uGrime, vGrimeW.xz * 0.09 + vGrimeW.y * 0.03).b - 0.5) * 0.7;
-      bedC += 0.3 * sin(bedC * 2.1 + vRockSeed * 9.0); // beds of unequal thickness
-      float bedW = fwidth(bedC);
-      float bedFade = 1.0 - smoothstep(0.3, 0.7, bedW);
-      float bedHash = fract(sin(floor(bedC) * 91.17 + vRockSeed * 311.7) * 43758.5453);
-      float bedF = fract(bedC), bedPw = max(0.06, bedW * 1.5);
-      rockParting = min(1.0, (1.0 - smoothstep(0.0, bedPw, bedF)) + smoothstep(1.0 - bedPw, 1.0, bedF)) * bedFade;
-      // a bed's own shade and a little of its own hue (iron-stained, bleached)
-      vec3 bedTint = mix(vec3(0.66, 0.64, 0.62), vec3(1.24, 1.2, 1.12), bedHash) * mix(vec3(1.06, 0.98, 0.9), vec3(0.96, 1.0, 1.04), fract(bedHash * 5.3));
-      diffuseColor.rgb *= mix(vec3(1.0), bedTint * (1.0 - rockParting * uRockBeds.w), uRockBeds.x * bedFade);
-    }
     // desert varnish: a dark patina run down the exposed faces from their brows
     if (uRockVarnish > 0.0) {
       float runs = texture2D(uGrime, vec2((vGrimeW.x + vGrimeW.z) * 0.7, vGrimeW.y * 0.05)).g;
       float varnish = uRockVarnish * smoothstep(0.45, 0.75, runs) * (1.0 - abs(vGrimeN.y)) * smoothstep(0.15, 0.7, vRockAbove);
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.42, 0.35, 0.3), varnish);
     }
-    // the lichen: colonies of the climate's two species on the tops and the upper faces, clear of the soil (on a snowy
-    // map only the steep faces the snow leaves bare); a colony finer than the pixel keeps its share as a tint
+    // the lichen (wave 57: "pasted flecks", "evenly scattered confetti spots"): colonies grow in clusters, a few patches
+    // to a rock where the cluster field allows, on its tops and its weather side (none under), merging where they are
+    // dense; a crust over the stone, not a paint on it (on a snowy map only the steep faces the snow leaves bare)
     if (uRockLichen.x > 0.0) {
-      vec3 lPw = vGrimeW * 0.7 + vRockSeed * 3.7;
+      vec3 lPw = vGrimeW * 0.3 + vRockSeed * 3.7;
       vec2 lc = texture2D(uRockLichenTile, lPw.yz).rg * rockTw.x + texture2D(uRockLichenTile, lPw.xz).rg * rockTw.y + texture2D(uRockLichenTile, lPw.xy).rg * rockTw.z;
-      float exposed = smoothstep(-0.1, 0.75, vGrimeN.y) * smoothstep(0.22, 0.6, vRockAbove) * (1.0 - uRockLichen.z * smoothstep(0.4, 0.72, vGrimeN.y));
-      float clump = smoothstep(0.3, 0.72, texture2D(uGrime, vGrimeW.xz * 0.33 + vGrimeW.y * 0.21 + vRockSeed).r);
-      float cover = uRockLichen.x * exposed * (0.3 + 1.2 * fract(vRockSeed * 3.31)) * (0.25 + 1.5 * clump);
-      float edge = 0.03 + length(fwidth(lPw)) * 2.0;
+      vec2 lFlank = normalize(vGrimeN.xz + vec2(1e-4, 0.0));
+      float weather = dot(lFlank, vec2(0.55, -0.83)) * length(vGrimeN.xz);
+      float exposed = smoothstep(0.15, 0.75, vGrimeN.y + 0.45 * weather) * smoothstep(0.25, 0.6, vRockAbove)
+        * (1.0 - uRockLichen.z * smoothstep(0.4, 0.72, vGrimeN.y));
+      float cluster = smoothstep(0.5, 0.68, texture2D(uGrime, vGrimeW.xz * 0.09 + vec2(vRockSeed * 0.37, 0.61)).r);
+      float cover = min(0.72, uRockLichen.x * 3.0 * exposed * cluster * (0.6 + 0.8 * fract(vRockSeed * 3.31)));
+      float edge = 0.02 + length(fwidth(lPw)) * 2.0;
       float lichen = smoothstep(1.0 - cover - edge, 1.0 - cover + edge, lc.x);
       vec3 lichenColor = mix(uRockLichenB, uRockLichenA, step(lc.y, uRockLichen.y)) * (0.72 + 0.3 * rockDetail);
-      diffuseColor.rgb = mix(diffuseColor.rgb, lichenColor, lichen * (0.38 + 0.3 * fract(lc.y * 7.0)));
+      lichenColor = mix(lichenColor, diffuseColor.rgb, 0.3);
+      diffuseColor.rgb = mix(diffuseColor.rgb, lichenColor, lichen * (0.42 + 0.26 * fract(lc.y * 7.0)));
     }
   }
   // a snow map's boulders carry the snow on their tops and shelves, laid after their tone (the grime hook's snow lies
@@ -792,10 +940,12 @@ diffuseColor.rgb *= 0.42 + 0.66 * rockDetail;
   // dust: a pale cap on the upward faces and a skirt at the base of arid maps
   float dustMask = uRockDust * (0.4 * smoothstep(0.35, 0.9, vGrimeN.y) + 0.6 * (1.0 - smoothstep(0.0, 1.1, vRockAbove)));
   diffuseColor.rgb = mix(diffuseColor.rgb, uRockSoil * 1.35, dustMask * 0.65);
-  // the base sits in the ground: soil climbs the lower third of a metre, broken by the grime field
-  float soilMask = (1.0 - smoothstep(-0.12, 0.34, vRockAbove)) * (0.55 + 0.45 * texture2D(uGrime, vGrimeW.xz * 1.3).r);
+  // the base sits in the ground: soil climbs the lower third of a metre, its top wandering a hand up and down (wave 57:
+  // "a ruler-straight base line"), broken by the grime field
+  float soilTop = (texture2D(uGrime, vGrimeW.xz * 0.47 + vGrimeW.y * 0.11).g - 0.5) * 0.3;
+  float soilMask = (1.0 - smoothstep(-0.12 + soilTop, 0.34 + soilTop, vRockAbove)) * (0.55 + 0.45 * texture2D(uGrime, vGrimeW.xz * 1.3).r);
   diffuseColor.rgb = mix(diffuseColor.rgb, uRockSoil, soilMask * 0.92);
   // and a boulder darkens where it meets the ground (the occlusion of the turf and the soil round its foot)
-  if (vRockSeed >= 0.0) diffuseColor.rgb *= 0.6 + 0.4 * smoothstep(-0.04, 0.3, vRockAbove);
+  if (vRockSeed >= 0.0) diffuseColor.rgb *= 0.55 + 0.45 * smoothstep(-0.04 + soilTop * 0.5, 0.3 + soilTop * 0.5, vRockAbove);
 }`);
 }

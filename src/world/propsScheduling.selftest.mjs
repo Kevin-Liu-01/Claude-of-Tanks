@@ -529,7 +529,7 @@ assert.ok(mathEnd > mathStart && rubbleEnd > rubbleStart);
 const groundHelpers = source.slice(mathStart, mathEnd) + source.slice(rubbleStart, rubbleEnd);
 
 function groundFixture(code = groundCandidate, streetRows = true, foundry = false, {
-  buildings = 1, crushables = 1, stacks = 1, rejectCourtyards = false, disposeFailureAt = -1,
+  buildings = 1, crushables = 1, stacks = 1, rocks = 0, rejectCourtyards = false, disposeFailureAt = -1,
 } = {}) {
   const group = new THREE.Group(), buckets = { stone: [] }, commands = [], randoms = [], textures = [];
   const inputs = [], disposedInputs = [], heightQueries = [], privateRandoms = [];
@@ -585,6 +585,8 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     noVeg: () => rejectCourtyards, placedB: [],
     crushables: Array.from({ length: crushables }, (_, index) => ({ x: 12 + index, z: 18 })),
     stackSpots: Array.from({ length: stacks }, (_, index) => ({ x: 8 + index, z: 16, r: 2 })), wreckScorch: [[-20, 50]],
+    // 2026-10-04 (boulder round 2): every boulder's soil collar is one more private foundation input
+    rockSpots: Array.from({ length: rocks }, (_, index) => ({ x: -14 - index * 3, z: 22, r: 1.6 + index * 0.2 })),
     foundryDonors: foundry ? [{ feature: buildingFeatures[0] }] : null,
   };
   const api = new Function(...Object.keys(dependencies), stripTypeScriptTypes(
@@ -593,7 +595,7 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
   const geometry = geo => ({ index: geo.index ? Array.from(geo.index.array) : null,
     attributes: Object.fromEntries(Object.entries(geo.attributes).map(([name, attr]) => [name, Array.from(attr.array)])) });
   return { ...api, group, buckets, randoms, commands, buildingFeatures, inputs, disposedInputs,
-    foundationCount: buildings + crushables + stacks + (streetRows && !rejectCourtyards ? 84 : 0),
+    foundationCount: buildings + crushables + stacks + rocks + (streetRows && !rejectCourtyards ? 84 : 0),
     kinds: () => group.children.map(mesh => mesh.userData.terrainDecalKind),
     snapshot: () => ({ randoms, privateRandoms, heightQueries, commands, pixels: canvas.pixels, clods: buckets.stone.map(geometry),
       meshes: group.children.map(mesh => ({ geometry: geometry(mesh.geometry), data: mesh.userData,
@@ -623,7 +625,7 @@ function advanceFoundationInputs(h, iterator) {
 }
 
 for (const [streetRows, foundry, options] of [
-  [true, false, {}], [false, true, { buildings: 5, crushables: 3, stacks: 2 }],
+  [true, false, {}], [false, true, { buildings: 5, crushables: 3, stacks: 2, rocks: 3 }],
   [true, false, { buildings: 2, rejectCourtyards: true }],
 ]) {
   const before = groundFixture(groundOriginal, streetRows, foundry, options);

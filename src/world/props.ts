@@ -5587,8 +5587,9 @@ ${snowCap ? `
     // legacy hull above the ground line and as tall as the legacy rock; its tone by face, fracture and arris (paintBoulder)
     let legacyTop = 0;
     for (let i = 0; i < p.count; i++) legacyTop = Math.max(legacyTop, p.getY(i));
-    const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(rockLithologyFor(mapId), vi));
-    paintBoulder(form, P.rockTone);
+    const lithology = rockLithologyFor(mapId);
+    const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology);
+    paintBoulder(form, P.rockTone, lithology);
     rockGeos.push(form.geometry);
     g.dispose();
   }
@@ -5747,13 +5748,23 @@ ${snowCap ? `
   function instantiateRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
     if (rockPlacements[vi].length === 0) continue;
-    // round 75 item 6: the ground height under every instance, for the soil skirt and dust laws
-    const ground = new Float32Array(rockPlacements[vi].length);
+    // round 75 item 6: the ground height under every instance, for the soil skirt and dust laws; the scenery lane (wave
+    // 57, "its right end lifts off the slope with no contact shadow"): and the slope of that ground across the rock's
+    // reach, so the soil band and the contact darkening meet a slope all round, and the rock's foot its contact patch
+    const ground = new Float32Array(rockPlacements[vi].length), slope = new Float32Array(rockPlacements[vi].length * 2);
+    const hull = rockHulls[vi];
+    let reach = 0;
+    for (let k = 0; k < hull.length; k += 2) reach = Math.max(reach, Math.hypot(hull[k], hull[k + 1]));
     for (let i = 0; i < ground.length; i++) {
-      const e = rockPlacements[vi][i].elements;
-      ground[i] = heightField.getHeightAt(e[12], e[14]);
+      const e = rockPlacements[vi][i].elements, x = e[12], z = e[14];
+      const r = Math.max(0.5, reach * Math.hypot(e[0], e[1], e[2]));
+      ground[i] = heightField.getHeightAt(x, z);
+      slope[i * 2] = (heightField.getHeightAt(x + r, z) - heightField.getHeightAt(x - r, z)) / (2 * r);
+      slope[i * 2 + 1] = (heightField.getHeightAt(x, z + r) - heightField.getHeightAt(x, z - r)) / (2 * r);
+      if (rockContact) rockSpots.push({ x, z, r: r * (1.22 + 0.16 * ((Math.imul(i + 1, 0x9e3779b1) >>> 0) / 4294967296)) });
     }
     rockGeos[vi].setAttribute('aRockGround', new THREE.InstancedBufferAttribute(ground, 1));
+    rockGeos[vi].setAttribute('aRockSlope', new THREE.InstancedBufferAttribute(slope, 2));
     const im = new THREE.InstancedMesh(rockGeos[vi], mats.rock, rockPlacements[vi].length);
     for (let i = 0; i < rockPlacements[vi].length; i++) {
       const placement = rockPlacements[vi][i];
@@ -5764,10 +5775,20 @@ ${snowCap ? `
     im.matrixAutoUpdate = false;
     im.computeBoundingSphere();
     im.name = 'rock-variant-' + vi; // round 75: the probes and captures find the boulders by name
-    setShadowCasterProfile(im, { heightM: casterHeightM(rockGeos[vi], rockPlacements[vi]), instanced: true }); // round 79
+    // round 79; the scenery lane: the height a shadow can show, from the deepest seat (0.6 of a scale under the centre),
+    // not the skirt the rock carries deep under the ground
+    const box = rockGeos[vi].boundingBox ?? (rockGeos[vi].computeBoundingBox(), rockGeos[vi].boundingBox!);
+    let maxScale = 0;
+    for (const placement of rockPlacements[vi]) maxScale = Math.max(maxScale, placement.getMaxScaleOnAxis());
+    setShadowCasterProfile(im, { heightM: (box.max.y - Math.max(box.min.y, -0.6)) * maxScale, instanced: true });
     group.add(im);
   }
   }
+  // the scenery lane (wave 57, "a ruler-straight base line on the grass with no soil collar"): every boulder's contact
+  // patch, a ragged disc of soil a fifth to a third wider than its reach, to the ground decals below (none on a snow map,
+  // where the snow lies against the stone, nor on sand, where the dust skirt meets the dune)
+  const rockContact = !snowCap && rockDressing.dust < 0.5;
+  const rockSpots: Array<{ x: number; z: number; r: number }> = [];
   instantiateRockVariants();
   rockClutter.clear();
 
@@ -7241,6 +7262,10 @@ ${snowCap ? `
       }
       for (const stack of stackSpots) {
         dirtDiscs.push(conformedDisc(stack.x, stack.z, stack.r, [0.05, 0.05, 0.04, 0.03]));
+        yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
+      }
+      for (const spot of rockSpots) {
+        dirtDiscs.push(conformedDisc(spot.x, spot.z, spot.r, [0.04, 0.04, 0.04, 0.03]));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
     }
