@@ -124,9 +124,11 @@ export default {
     // outpost); a palm drawn anywhere else grows as an acacia
     palmSites: pair({ x: -166, z: -148, r: 24 }), palmFallback: 'acacia',
     // ground lane (2026-10-03, the gauntlet's wave 4: "saturated green grass cards" on the red floor): the wadi's tufts
-    // are cured straw, as Sirocco's are
-    grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.95 + 0.10)],
-    tuftTone: (h: number, s: number, l: number) => [0.10, 0.24, clamp01(l * 0.70 + 0.12)],
+    // are cured straw, as Sirocco's are. Trees round 4 (2026-10-04, the gauntlet's wave 50: "olive reed tufts", "flat,
+    // uniformly saturated billboards"): Wadi Rum's tussocks are sun-bleached — a pale buff, a third of the straw's
+    // saturation left in the card and half in the tint, lighter
+    grassTexTone: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.18), clamp01(l * 0.85 + 0.2)],
+    tuftTone: (h: number, s: number, l: number) => [0.11, 0.12, clamp01(l * 0.55 + 0.3)],
   },
   props: {
     // regional-buildings lane: the Wadi Rum outpost kit (maps/regional/wadirum.ts)
