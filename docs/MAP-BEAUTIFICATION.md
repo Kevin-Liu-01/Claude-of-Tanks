@@ -6882,6 +6882,90 @@ level as a hard plane the density is cut at, independent of the noise that shape
 for the tops (larger-scale billows that grow with height, with their own lit-edge sharpening), with the cells sized by
 a size distribution rather than a coverage cut, so the overhead cells are the large ones.
 
+### 2026-10-04 — shade kept off black: the grade's toe and the shadow dim's facing rule (the shade-fill lane)
+
+**The gauntlet's waves 29, 34 and 36: "deep shade crushes toward black on dark materials".** A tank's shadow on Verdant's
+grass read about RGB (12, 40, 8); a shaded Verdant village wall 40 against 130 sunlit ("a flat, textureless matte-black
+mass"); Saltmere's granite tor's shaded sides near-black against the bright sky. Branch `visual/shade-fill` of the PR #9
+program, from the PR head 24d0a3131. Three causes were open: (a) no sunlit-ground bounce, (b) AgX's toe or an exposure
+floor crushing the low end, (c) the cascades darkening more than the sky's direct share should.
+
+**What the light held (the probe).** Five shaded / sunlit pairs at fixed poses (the skies lab's `--poses`, desktop high,
+1600 × 900; each box on one material), their display medians inverted through the output chain to the light the scene
+held (`agxgrade.py`, the full-colour twin of the output pass): the scene put 11–22 % of the sunlit light in the shade —
+the grass beside the hull 16.3 %, the wall's shaded run 13.7 %, the tor's faces against the sunlit dry grass 10.8 %,
+open shade on Saltmere's dry grass 22.3 %, Sirocco's sand 10.1 % — and the screen showed 3.5–14.5 %: in deep shade under
+two fifths of the scene's share. (a) was not it: the environment's lower hemisphere carries the sunlit ground and the
+ground-bounce excess (`groundBounce.ts`) lights sun-facing receivers; a receiver in shadow has shaded ground about it.
+
+**(b) The grade crushed the shade.** The output pass's scene-referred contrast is a constant log-space slope about the 18 %
+card (1.28), set for the sunlit range where AgX's own slope is 0.79 (a composite of 1.0). AgX's slope rises below the
+card — 0.98 one stop under it, 1.31 at 2.5, 1.67 at 4 — so the composite climbed to 2.0 where a dark material's shade
+sits and to 4.8 four stops under, the black point under it; a camera's holds about 1.0–1.2. `GRADE_TOE_SLOPE` /
+`GRADE_TOE_STOPS` (`post.ts`): under the card the slope eases from 1.28 to 0.70 over 2.5 stops (the smoothstep of the
+slope, integrated: C1, monotonic, the pivot fixed), so the composite stays 0.97–1.19 from the card down to 4 stops under
+it; nothing at or above the card moves. The grounded rig by day only: the slope returns to the constant one with the
+night, and the legacy rig (phones, the Garage, the galaxy skies) keeps it.
+
+**Which level the toe reads.** The first build read each channel. A sunlit saturated colour's weak channel — the blue of
+a sunlit grass sits three stops under the card while its luminance sits at it — was lifted, and the colour lost chroma
+though its luminance held (GPU, the first capture: Verdant's sunlit grass −4 %, Saltmere's dry grass −10 % at ΔE 3.5 and
+its pasture −15 % at ΔE 4.5, Railyard's overcast grass −23 % at ΔE 8). The toe is now the constant slope plus a log-space
+lift, and the lift reads the pixel's luminance near the card (every channel lifted alike: the colour the constant slope
+gives it) and hands over to each channel's own level from 1.0 to 2.5 stops under it (`GRADE_TOE_CHANNEL_FROM` / `_TO`):
+deep shade takes a camera's per-channel chroma rather than the constant slope's saturated hole. A grey reads the same
+either way, so the shade ratios do not move.
+
+**(c) The shadow's ambient dim on faces turned from the sun.** The cascades dimmed the ambient 13 % (the specular 45 %) on
+every shadowed fragment: the occluder that shades a face hides that face's sun-side sky, the circumsolar light. A
+sun-facing face in a cast shadow keeps the dim; a solid face turned from the sun stands in its own shade — no occluder
+hides any of its sky — and keeps it (`SHADOW_DIM_FACING`, lighting.ts: ×1.147 on that shade; opaque materials only, the
+foliage cards keep the dim; the ground-bounce receiver still reads the shadow).
+
+**Measured (GPU, the same poses and boxes, before → after; `$SP/p2/shade/cap2`).**
+- *Shade (the probe pairs as the screen shows them):* the grass beside the hull 6.1 → 14.0 % of the sunlit grass (the
+  shade ×2.29); the wall's shaded run against its sunlit run 3.5 → 14.7 % (×4.21); the tor's shaded faces ×2.92
+  (display-linear 0.0106 → 0.0310), 3.8 → 11.2 % of the sunlit dry grass beside them (no sunlit granite in the pose: the
+  sun stands behind the tor); open shade on Saltmere's dry grass 14.5 → 18.9 %; Sirocco's sand, the control (bright,
+  barely crushed), 9.1 → 11.3 %. The screen now shows 0.85–1.12 of the scene's share; it showed under 0.4 of it in deep
+  shade.
+- *Why 14–15 % and not a clear day's 18–25 % for the first two:* beside a hull the hull hides about a fifth of the sky
+  (`vehicleGroundOcclusion.ts`) on top of the circumsolar sky the cast shadow takes; a vertical face turned from the sun
+  sees half the sky, its circumsolar part behind it, against a run that faces the sun — about three stops (12.5 %) in a
+  photograph, 15.7 % in the scene with the facing rule. Open shade on the ground clear of the hull reads 18.9 %. (The
+  first estimate's 22 % for the wall came from a box that took in the sunlit grass blades in front of it.)
+- *The shade's colour (CIELAB C*/L*, the shade box against the sunlit box):* the grass in the hull's shadow 1.93 → 1.01
+  against the sunlit grass's 1.05 (the old chain's saturated hole); the wall's shaded stone 0.71 → 0.21 against its sunlit
+  run's 0.29; the tor's faces 0.56 → 0.22; open shade on the dry grass 1.28 → 1.07 (lit by the bluer sky: the sunlit
+  grass 0.69).
+- *At and above the card (one sunlit box per view on one material: median per-pixel ΔE76, luminance):* Verdant's grass
+  0.00 (+0.03 %), meadow 0.00 (+0.01 %), the wall's sunlit stone 0.00 (+0.15 %); Saltmere's dry grass 0.00 (−0.04 %),
+  pasture 0.43 (+0.60 %: it sits 0.85 stops under the card, where the lift begins), the dry grass by the tor 0.00
+  (+0.00 %); Frosthollow's snow 0.00 and 0.00; Sirocco's sand 0.00 and 0.00. The sky band (the frames' top 108 rows):
+  +0.00 %, ΔE 0.00 on all twelve views. Pixels at or above the card's display level +0.0 % on every view; the band just
+  under it (display 0.10–0.21) +0.0–1.7 %; the shade (0.01–0.04) +40–81 %.
+- *Railyard's overcast grass (Cinder Junction under its deck):* +13.1 % (chase) and +4.6 % (establishing), ΔE 2.29 and
+  0.93, chroma 39.3 → 40.3 and 33.9 → 34.0 — the step is lightness. Under the deck the grass takes its light from the
+  whole sky and the exposure keys the card, so this dark material sits 0.9–1.35 stops under the card: in the toe, where
+  the old chain's composite slope (about 1.3) pressed it toward black and steepened its texture; the toe's slope there
+  (about 1.0) is the same correction the shade takes. Its colour holds because the lift reads its luminance there (the
+  per-channel first build took 23 % of its chroma).
+- *Perf (desktop high, 1600 × 900; EXT_disjoint_timer_query GPU frame time over 90 frames; the toe and the facing rule
+  toggled in-page, on / off / off / on per view):* the mean on − off over the twelve views +0.19 ms (p25) and +0.14 ms
+  (p50) on the final build (+0.07 / +0.12 on the first); the worst view, Sirocco's establishing, +2.39 / +1.28 (−0.85 at
+  p50 on the first build at the same view), inside a run-to-run spread where identical-setting passes differ by a median
+  0.39 ms and up to 1.62 ms. The change is arithmetic — about a hundred ALU operations on each of the output pass's five
+  samples a pixel, a few dozen a lit fragment for the facing rule — and the means agree with that count. Phones keep
+  their path: the legacy rig never takes the toe or the facing rule.
+- Frames: `$SP/p2/shade/cap2/<map>/{a,g}-<view>.png` (a: 24d0a3131, g: the fix), the gauntlet's list
+  `cap2/shots.json`, the sheet `cap2/sheet-before-after.jpg`; the tools (`probe.py`, `report.py`, `refmoves.py`,
+  `gpu-ab.py`, `agxgrade.py`, `toetwin.py`) in `$SP/p2/shade/tools`.
+
+**Receipts.** `shadeFill.selftest` (the CPU twin of the grey chain and of the toe on a colour: the old chain's crush, which
+fails the receipt; the composite slope 0.9–1.25 to four stops under the card; nothing at or above the card; a sunlit
+colour's channels lifted alike and deep shade per channel; the facing rule; the five probe pairs' shares) — and
+`groundBounce`, `cloudShadeMap`, `lightModel` and `nightEmissionMaterial` follow the new code.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
