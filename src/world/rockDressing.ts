@@ -32,6 +32,10 @@ const ROCK_CLIMATE: Readonly<Record<string, readonly [number, number]>> = Object
   oasis: [0, 0.7], mars: [0, 0.9], moon: [0, 0.7], cliffbridge: [0.6, 0.6], winter: [0, 0], whiteout: [0, 0],
 });
 
+/** The share of the soil's linear albedo the rocks' soil skirt paints at their foot (wave 48: the full soil rendered
+ * twice the terrain dirt's brightness beside a props surface). */
+export const ROCK_SKIRT_ALBEDO = 0.5;
+
 const _soil = new THREE.Color();
 
 /** Resolve a map's rock dressing; the soil follows the map's dirt tone law over a loam base. */
@@ -255,8 +259,11 @@ diffuseColor.rgb *= 0.42 + 0.66 * rockDetail;
   // dust: a pale cap on the upward faces and a skirt at the base of arid maps
   float dustMask = uRockDust * (0.4 * smoothstep(0.35, 0.9, vGrimeN.y) + 0.6 * (1.0 - smoothstep(0.0, 1.1, vRockAbove)));
   diffuseColor.rgb = mix(diffuseColor.rgb, uRockSoil * 1.35, dustMask * 0.65);
-  // the base sits in the ground: soil climbs the lower third of a metre, broken by the grime field
+  // the base sits in the ground: soil climbs the lower third of a metre, broken by the grime field. (The scenery lane,
+  // wave 48: at the soil's own albedo a props surface rendered twice as bright as the terrain's dirt beside it —
+  // Frontier's spoil, sRGB 169,119,73 against 118,83,54 — so the skirt takes ROCK_SKIRT_ALBEDO of it; the dust keeps
+  // the soil's full colour.)
   float soilMask = (1.0 - smoothstep(-0.12, 0.34, vRockAbove)) * (0.55 + 0.45 * texture2D(uGrime, vGrimeW.xz * 1.3).r);
-  diffuseColor.rgb = mix(diffuseColor.rgb, uRockSoil, soilMask * 0.92);
+  diffuseColor.rgb = mix(diffuseColor.rgb, uRockSoil * ${ROCK_SKIRT_ALBEDO.toFixed(2)}, soilMask * 0.92);
 }`);
 }
