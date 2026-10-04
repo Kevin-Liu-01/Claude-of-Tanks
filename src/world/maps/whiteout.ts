@@ -118,7 +118,11 @@ export default {
   // near the mountains" on a map that must be bare ice — buildHorizonForest and the stands painted on the ring's faces
   // both follow its treeline, and the forest builder stands down under 0.14); and no outland boulders in their place (a
   // treeless ring takes the boulder field at 0.55 by default: 256 k triangles of dark rocks strewn over the snow)
-  horizon: { baseHex: 0xa3b1be, amp: 1.0, style: 'alpine', relief: 'polar', treeline: 0, snowline: 0.30, outlandRocks: 0, panorama: false, forestHex: 0x536371, rockHex: 0x5b6772, bareRock: 0.35, haze: 0.92, grain: 0.60 },
+  // the mountains lane (2026-10-04): the ice sheet's far country again (gauntlet wave 15: a polar station on an ice sheet,
+  // a flat white skyline broken by a few dark nunataks, the ring's ranges at under half), now that the closed deck's
+  // aerial target is the deck's grey (the haze-deck lane, a0b19d811) — the beige band it was held for came from that
+  // target; the ring snow-covered to its foot (below a 0.30 snowline its outer faces took the battlefield's tundra grass)
+  horizon: { baseHex: 0xa3b1be, amp: 0.45, style: 'alpine', relief: 'polar', treeline: 0, snowline: 0, outlandRocks: 0, panorama: { regional: 'iceSheet' }, forestHex: 0x536371, rockHex: 0x5b6772, bareRock: 0.35, haze: 0.92, grain: 0.60 },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the polar deck authored explicitly instead of
   // inheriting Frosthollow's (320 m / 0.00013 / 2200 m) — a lower 300 m stratus of smaller 2000 m masses that keeps
   // its texture at the 13° sun's grazing elevations; diffuse light patchiness (cloudShadowAmp 0.08)
