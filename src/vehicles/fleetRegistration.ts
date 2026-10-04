@@ -55,6 +55,7 @@ import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
 import './europePhotoIfvSpecs.ts';
 import './amx10pSpecs.ts';
 import './marder2Specs.ts';
+import './m6LinebackerSpecs.ts';
 import { synchronizeFleetRenewalMetadata } from './fleetRenewalSpecs.ts';
 import { synchronizeNationalModernizationMetadata } from './nationalModernizationSpecs.ts';
 

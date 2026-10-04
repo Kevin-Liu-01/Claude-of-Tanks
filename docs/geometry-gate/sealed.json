@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-02T00:52:19.633Z",
+ "generatedAt": "2026-10-04T06:19:47.240Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening) and inside-out pixel totals over the 33 census views. Gate: a tank may not exceed its ledger open px by more than max(12, 10%) and a sealed tank must stay sealed.",
@@ -637,12 +637,12 @@
    "tris": 68886
   },
   "m3a3_bradley": {
-   "sealed": false,
-   "openPx": 481,
-   "openViews": 14,
-   "insideOutPx": 856,
-   "seeThroughPx": 15,
-   "tris": 76746
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 145,
+   "seeThroughPx": 9,
+   "tris": 92402
   },
   "m46_patton": {
    "sealed": false,
@@ -1571,6 +1571,14 @@
    "insideOutPx": 82,
    "seeThroughPx": 26,
    "tris": 101030
+  },
+  "m6_linebacker": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 124,
+   "seeThroughPx": 0,
+   "tris": 96010
   }
  }
 }

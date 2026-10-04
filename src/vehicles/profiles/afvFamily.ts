@@ -1,3 +1,4 @@
+import { buildBradleyScoutTurretShell, placeBradleyScoutCheekEra } from './bradleyScoutTurretShell.ts';
 import {buildUpiorUpgrade} from './upiorUpgrade.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { buildT80UXHull } from './t80uX.ts';
@@ -703,26 +704,7 @@ function addM3A3Turret(P: AfvBuilderPort): void {
   P.turretG.position.set(0.04, 1.895, -0.36);
   P.gunG.position.set(-0.06, 0.315, 0.66);
   P.add('turret', cylY(0.79, 0.90, 0.13, 26), 0, 0.015, -0.08);
-  P.add('turret', orientedSlab(
-    [-0.84, 0.03, 1.03], [0.84, 0.03, 1.03], [0.98, 0.04, -1.22], [-0.98, 0.04, -1.22],
-    [-0.66, 0.66, 0.82], [0.66, 0.66, 0.82], [0.80, 0.69, -1.08], [-0.80, 0.69, -1.08]));
-  P.add('turret', box(1.28, 0.075, 1.50), 0, 0.695, -0.24);                    // broad roof foundation
-  P.add('turretDark', box(1.12, 0.025, 1.34), 0, 0.742, -0.27);                // recessed roof/service field
-
-  // Faceted cheek shoulders flow into the M242 saddle and continue down both
-  // side walls.  Their outer faces also form physical backing beds for the
-  // destructible turret ERA below.
-  for (const side of [-1, 1]) {
-    P.add('turret', orientedSlab(
-      [side * 0.12, 0.10, 1.08], [side * 0.73, 0.08, 0.94],
-      [side * 0.88, 0.09, 0.31], [side * 0.20, 0.12, 0.46],
-      [side * 0.12, 0.56, 0.91], [side * 0.59, 0.62, 0.77],
-      [side * 0.72, 0.61, 0.30], [side * 0.18, 0.54, 0.53]));
-    P.add('turret', box(0.12, 0.44, 1.44), side * 0.80, 0.36, -0.38,
-      0, 0, side * 0.035);
-    P.add('turretDark', box(0.035, 0.35, 1.30), side * 0.872, 0.36, -0.38,
-      0, 0, side * 0.035);
-  }
+  buildBradleyScoutTurretShell(P);
   P.addGunExtra(box(0.56, 0.36, 0.31), 0, 0, 0.28);
   P.addGunExtraDark(cylZ(0.118, 0.38, 18, 0.095), 0, 0, 0.59);
   buildGun(P, { len: 2.42, r: 0.037, sleeve: true, evac: 0.34,
@@ -833,15 +815,11 @@ function addM3A3Turret(P: AfvBuilderPort): void {
   // frontal rake; the side rows stand on the dark beds authored above.
   for (const side of [-1, 1]) {
     P.eraCluster(`m3a3_turret_cheek_${side > 0 ? 'R' : 'L'}`, (put: EraPut) => {
-      for (let row = 0; row < 2; row++) for (let c = 0; c < 3; c++) {
-        put(side * (0.24 + c * 0.22), 1.895 + (0.34 + row * 0.17) * TURRET_HEIGHT_SCALE,
-          -0.36 + 0.92 - c * 0.035, -0.16, side * 0.08, 0,
-          0.72, 0.92 * TURRET_HEIGHT_SCALE, 1.05);
-      }
+      placeBradleyScoutCheekEra(side, put);
     }, true);
     P.eraCluster(`m3a3_turret_side_${side > 0 ? 'R' : 'L'}`, (put: EraPut) => {
       for (let row = 0; row < 2; row++) for (let c = 0; c < 4; c++) {
-        put(side * 0.875, 1.895 + (0.27 + row * 0.18) * TURRET_HEIGHT_SCALE, -0.36 + 0.32 - c * 0.31,
+        put(side * 1.08, 1.895 + (0.27 + row * 0.18) * TURRET_HEIGHT_SCALE, -0.36 + .005 - c * 0.31,
           0, side * Math.PI / 2, side * 0.025,
           1.00, 0.96 * TURRET_HEIGHT_SCALE, 1.75);
       }

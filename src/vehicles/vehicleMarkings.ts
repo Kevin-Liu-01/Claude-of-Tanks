@@ -356,6 +356,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   bmpt_t90: anchor('hull', 'left', 0.44, 0.60, 0.22, 1),
   bwp1: anchor('hull', 'right', 0.41, 0.64, 0.24, -1),
   marder1a3: anchor('hull', 'left', 0.46, 0.62, 0.23, 1),
+  m6_linebacker: anchor('hull', 'left', 0.39, 0.45, 0.23, 1),
   m3a3_bradley: anchor('turret', 'left', 0.39, 0.45, 0.23, 1),
   // §5.248 ground-up wave: flat authored faces per build — bmp3 turret dome
   // flank, upiór skirt panel field (bmpt removed by §5.304 owner order).

@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-02T11:28:32.531Z",
+ "generatedAt": "2026-10-04T07:01:33.619Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 66,
  "total": 170,
@@ -188,7 +188,7 @@
     "stations": 0,
     "turretCurves": 0,
     "wholeCurves": 0,
-    "dims": 58.6,
+    "dims": 42.3,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
