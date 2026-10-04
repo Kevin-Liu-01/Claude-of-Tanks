@@ -88,6 +88,12 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   'boulders': Object.freeze({
     on: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d$/.test(o.name)) o.visible = true; })`,
     off: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d$/.test(o.name)) o.visible = false; })` }),
+  // the scenery lane (after wave 57): the telegraph poles (props.ts baked-pole-full and baked-pole-distance, the two
+  // instanced pools of the sourced pole and its distance model); off hides them, so the delta is their whole frame cost.
+  // Both sides run without the static shadow cache (an upper bound, as for the boulders)
+  'telegraph-poles': Object.freeze({
+    on: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^baked-pole-(full|distance)$/.test(o.name)) o.visible = o.isInstancedMesh ? o.count > 0 : true; })`,
+    off: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^baked-pole-(full|distance)$/.test(o.name)) o.visible = false; })` }),
   // the water / grass simulations' idle sleep (waterRipples.ts, groundPressure.ts): off steps them every frame; the
   // ripple field falls asleep only after 20 s of quiet, so an 'on' block that follows an 'off' one waits that long
   'sim-sleep': Object.freeze({ on: 'window.__WORLD_SIM_DEBUG = Object.assign(window.__WORLD_SIM_DEBUG || {}, { noSleep: false })',
