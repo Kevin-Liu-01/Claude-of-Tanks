@@ -10,6 +10,8 @@ import {
   createPhaseSceneResidency,
   type PhaseSceneResidency,
 } from '../engine/phaseSceneResidency.ts';
+import { createGarageLampShadow } from './garageLampShadow.ts';
+import { GARAGE_PLATFORM_GEOMETRY, GARAGE_PRESENTATION_POSE } from './garagePresentationPose.ts';
 
 type GarageSkyConfig = MapSkyConfig;
 
@@ -101,10 +103,13 @@ export function createGaragePhasePresentationRuntime({
   const spotTarget = new THREE.Object3D();
 
   const positionLights = (): void => {
+    // 2026-10-04 (gauntlet wave 60, item 1: the winter roofs "clip"): the key comes down from 41° to 27° over the
+    // podium, so the sides and the glacis carry the form and the roofs take less of it (−0.1 of the roofs' modelled
+    // 3.4 irradiance units, +0.16 on the near side); the highbays' cut in garageStage.ts takes the rest.
     spotA.position.set(
-      garagePosition.x + 9,
-      garagePosition.y + 11,
-      garagePosition.z + 7,
+      garagePosition.x + 10,
+      garagePosition.y + 7.6,
+      garagePosition.z + 8,
     );
     spotB.position.set(
       garagePosition.x - 10,
@@ -121,11 +126,21 @@ export function createGaragePhasePresentationRuntime({
   positionLights();
   spotA.target = spotTarget;
   spotB.target = spotTarget;
-  scene.add(spotTarget, spotA, spotB);
+  // 2026-10-04 (gauntlet wave 60, item 4: the hull "reads as slightly hovering"): the lamps' umbra under the hull,
+  // baked onto the podium (garageLampShadow.ts) — none of the Garage's lamps casts a shadow
+  const lampShadow = createGarageLampShadow({
+    scene,
+    lampRoots: [stageRoot, dressingRoot, spotA, spotB],
+    garagePosition,
+    podiumTopY: GARAGE_PLATFORM_GEOMETRY.topYM,
+    podiumRadius: GARAGE_PLATFORM_GEOMETRY.deckRadiusM,
+    cameraOffset: GARAGE_PRESENTATION_POSE.cameraOffsetM,
+  });
+  scene.add(spotTarget, spotA, spotB, lampShadow.mesh);
 
   const sceneResidency = createPhaseSceneResidency({
     scene,
-    garageRoots: [stageRoot, dressingRoot, spotTarget, spotA, spotB],
+    garageRoots: [stageRoot, dressingRoot, spotTarget, spotA, spotB, lampShadow.mesh],
   });
   let restoreReceipt: GaragePresentationRestoreReceipt | null = null;
   let restoreDepth = 0;
