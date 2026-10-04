@@ -188,6 +188,8 @@ for (const [name, c] of [...Object.entries(HORIZON_PANORAMA_CHARACTERS), ...Obje
     'the fill law: the lowland\'s own cover under the law\'s air, toward the same target as the range above it');
   assert.ok(height.includes('if (uTrees.z > 0.0) gTree = max(gTree, uTrees.z * gGully);'), 'the scrub holds the gullies (the grid\'s tree cover)');
   assert.ok(strip.includes('smoothstep(uAir.z - 0.12, uAir.z + 0.12, hT + 0.05 * n1 - climb)'), 'bare rock above its floor, the floor climbing with the scrub');
+  assert.ok(strip.includes('float fallStreak(vec2 xz)') && strip.includes('float streak = uTrees.z > 0.0 ? smoothstep(-0.2, 0.6, fallStreak(wp.xz)) : 0.0;'),
+    'the scrub\'s edge follows each hillside\'s own fall line, only on a dry coast');
   // (toward the far shore the channel is darker, never haze-bright)
   assert.ok(strip.includes('uFog * vec3(0.55, 0.62, 0.66) * (1.0 - 0.45 * shoreAhead)'), 'the channel darkens toward the far shore');
 }

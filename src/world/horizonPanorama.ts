@@ -800,6 +800,23 @@ uniform vec3 uHazeAnti, uHazeToward; // its in-scatter target at the horizon awa
 ${NOISE_GLSL}
 ${GRID_LOOKUP_GLSL}
 ${HAZE_LAW_GLSL}
+// the streaks down a hillside's fall line: each 1.2 km cell draws them in its own frame (the grid's gradient over 600 m at
+// its centre, about that centre), the four nearest cells blended, so neither a texel's small relief winds them into loops
+// nor one global frame slants them across the faces it does not fit
+float fallStreak(vec2 xz) {
+  vec2 cf = xz / 1200.0 - 0.5, c0 = floor(cf), f = fract(cf);
+  float acc = 0.0;
+  for (int j = 0; j < 2; j++) for (int i = 0; i < 2; i++) {
+    vec2 cell = c0 + vec2(float(i), float(j)), centre = (cell + 0.5) * 1200.0;
+    vec2 grad = vec2(heightAt(centre + vec2(300.0, 0.0)) - heightAt(centre - vec2(300.0, 0.0)),
+      heightAt(centre + vec2(0.0, 300.0)) - heightAt(centre - vec2(0.0, 300.0)));
+    vec2 fall = abs(grad.x) + abs(grad.y) > 1.0 && abs(grad.x) + abs(grad.y) < 1e6 ? -normalize(grad) : -normalize(centre + vec2(1e-3));
+    vec2 q = xz - centre;
+    float s = noised(vec2(dot(q, vec2(-fall.y, fall.x)) / 70.0, dot(q, fall) / 300.0) + 13.0 * vec2(hash12(cell), hash12(cell + 7.3))).x;
+    acc += s * (i == 0 ? 1.0 - f.x : f.x) * (j == 0 ? 1.0 - f.y : f.y);
+  }
+  return acc;
+}
 vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   float slope = 1.0 - n.y;
   // the zones (forest, fields, snow, scree) by the height over the upland's plinth where it has one
@@ -809,17 +826,9 @@ vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   // lowland), the crowns' mottle; the meadows and fields a patchwork of their own tones
   // a dry coast's scrub (uTrees.z, the maquis; gauntlet wave 32, Saltwind: "dark maquis on the lower slopes, pale bare
   // limestone only on the upper faces"): its edge and the bare rock's floor climb the gullies (the height pass's scrub in
-  // their troughs) and fall-line streaks, so no contour runs level across a face. The streaks run radially (the faces seen
-  // from the battlefield face it, so their fall lines run toward it; a frame from each texel's own normal wound them into
-  // loops over the curved faces), in two azimuth frames each away from its own seam (atan turns at the west, its mirror
-  // at the east)
-  float streak = 0.0;
-  if (uTrees.z > 0.0) {
-    float wr = length(wp.xz);
-    float streakE = noised(vec2(atan(wp.z, wp.x) * wr / 70.0, wr / 300.0) + vec2(1.7, 3.1)).x;
-    float streakW = noised(vec2(atan(-wp.z, -wp.x) * wr / 70.0, wr / 300.0) + vec2(-6.2, 8.4)).x;
-    streak = smoothstep(-0.2, 0.6, mix(streakW, streakE, smoothstep(-0.35, 0.35, wp.x / max(wr, 1.0))));
-  }
+  // their troughs) and the streaks down each hillside's fall line (fallStreak), so no contour runs level across a face
+  // (radial streaks slanted across the faces they did not fit; a frame from each texel's own normal wound them into loops)
+  float streak = uTrees.z > 0.0 ? smoothstep(-0.2, 0.6, fallStreak(wp.xz)) : 0.0;
   float climb = uTrees.z * (0.3 * texture2D(uHeight, g).b + 0.25 * streak + 0.1 * n1);
   float vegW = uChar3.y > 0.0 ? (1.0 - smoothstep(uChar3.y * 0.75, uChar3.y * 1.05, hT + 0.05 * n1 - climb)) * (1.0 - smoothstep(uTrees.y, uTrees.y + 0.23, slope)) : 0.0;
   float standN = noised(wp.xz / 170.0 + vec2(3.1, -7.7)).x + (1.0 - apron) * (0.45 * noised(wp.xz / 61.0 + vec2(-9.2, 4.4)).x + 0.25 * noised(wp.xz / 23.0).x);
@@ -857,7 +866,7 @@ vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   rockW = max(rockW, peak * smoothstep(0.03, 0.14, slope + 0.03 * n1));
   col = mix(col, rockC, rockW);
   // (and in the fissures down the bare faces, fainter: the limestone between them)
-  col = mix(col, uForest * mottle * 0.85, uTrees.z * rockW * streak * 0.3);
+  col = mix(col, uForest * mottle * 0.85, uTrees.z * rockW * streak * 0.5);
   // scree on the moderate slopes below the rock
   col = mix(col, uScree, smoothstep(0.12, 0.24, slope) * (1.0 - rockW) * (1.0 - vegW) * 0.7);
   // snow above the snowline on the slopes that hold it
