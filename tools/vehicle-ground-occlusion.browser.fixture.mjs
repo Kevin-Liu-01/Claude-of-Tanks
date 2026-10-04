@@ -5,7 +5,7 @@
 
 /**
  * @param {{ glsl: string, hullCount: number, rows: number[], solids: number[], light: number[], amb: number[],
- *   sunLum: number, sunDir: number[], fillDir: number[], points: number[][], normals: number[][] }} input
+ *   sunLum: number, sunDir: number[], fillDir: number[], points: number[][], normals: number[][], alphas: number[] }} input
  * @returns {{ values: number[], renderer: string | null }}
  */
 export function evaluateVehicleGroundGlsl(input) {
@@ -29,13 +29,15 @@ uniform vec3 uContactFillDir;
 uniform vec3 uSunDir;
 uniform vec3 uPts[ ${n} ];
 uniform vec3 uNrm[ ${n} ];
-float cotSunVisOf( float alpha ) { return 1.0; }
+uniform float uAlpha[ ${n} ];
+// the aerial pass's reading of the scene target's alpha, by its sign: a card (no sun state) under 1.5, lit over it
+float cotSunVisOf( float alpha ) { return alpha < 1.5 ? -1.0 : 1.0; }
 vec3 cotNormalAt( vec2 uv, vec3 P ) { return uNrm[ int( uv.x ) ]; }
 ${input.glsl}
 out vec4 outColor;
 void main() {
   int i = int( gl_FragCoord.x );
-  outColor = vec4( 1.0 - cotVehicleGroundShade( vec2( float( i ) + 0.25, 0.5 ), uPts[ i ], 2.5, 0.0 ), 0.0, 0.0, 1.0 );
+  outColor = vec4( 1.0 - cotVehicleGroundShade( vec2( float( i ) + 0.25, 0.5 ), uPts[ i ], uAlpha[ i ], 0.0 ), 0.0, 0.0, 1.0 );
 }`;
   const compile = (type, source) => {
     const shader = gl.createShader(type);
@@ -59,6 +61,7 @@ void main() {
   gl.uniform3fv(at('uContactFillDir'), new Float32Array(input.fillDir));
   gl.uniform3fv(at('uPts'), new Float32Array(input.points.flat()));
   gl.uniform3fv(at('uNrm'), new Float32Array(input.normals.flat()));
+  gl.uniform1fv(at('uAlpha'), new Float32Array(input.alphas));
   const target = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, target);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, n, 1, 0, gl.RGBA, gl.FLOAT, null);

@@ -74,23 +74,22 @@ export const GROUND_AO_CLIP_SLACK_M = 4;
  */
 export const GROUND_AO_HULL_SKIN_M = 0.12;
 /**
- * The track shoes are the vehicle too, but their cloned material never joins the cascade setup, so it writes no vehicle
- * tag: a pixel in the shoes' measured lane (widened by GROUND_AO_LANE_MARGIN_M for their faces), over the floor, under
- * the deck and with its normal not turned up (GROUND_AO_SHOE_FACE_NY) is skipped where it is a shoe — along the shoes'
- * ground run (± GROUND_AO_CONTACT_MARGIN_M) and, past it, on the wraps once it stands GROUND_AO_WRAP_LIFT_M over the
- * ground (the ground under a rising wrap stays a receiver). Under the floor (GROUND_AO_SHOE_FLOOR_M over the contact
- * plane) a lane pixel is ground: under the ground run the shoes cover it (seen through their gaps and at their foot, the
- * track's contact line) and it keeps no sky; past the run it takes its sky back over GROUND_AO_TRACK_LIFTOFF_M as the
- * track lifts off.
+ * The track shoes are the vehicle too, but their cloned material never joins the cascade setup, so it writes neither the
+ * vehicle tag nor a sun state: to this block a shoe is a pixel without a sun state (a card's alpha) in the shoes'
+ * measured lane (widened by GROUND_AO_LANE_MARGIN_M for their faces), within the hull's length, under the deck and over
+ * the track's lower edge — GROUND_AO_SHOE_FLOOR_M over the contact plane along the ground run, the wraps' measured ramp
+ * past it (less GROUND_AO_RAMP_TOL_M). A lit pixel (the terrain) is never a shoe (lab6, 2026-10-03: snow standing over a
+ * height threshold behind a pitched hull's track ends was skipped and stayed lit), and grass under a wrap's ramp stays a
+ * receiver. Under the ground run the shoes cover the ground (seen through their gaps and at their foot, the track's
+ * contact line): it keeps no sky, and takes it back over GROUND_AO_TRACK_LIFTOFF_M past the run as the track lifts off.
  */
 const GROUND_AO_CONTACT_MARGIN_M = 0.03;
-const GROUND_AO_WRAP_LIFT_M = 0.05;
 const GROUND_AO_SHOE_FLOOR_M = 0.04;
-/** A lane pixel whose normal (root frame) faces up more than this is the ground, never a shoe's face: the terrain under a
- * pitched hull's track ends stands over the floor (lab6, 2026-10-03). */
-const GROUND_AO_SHOE_FACE_NY = 0.7;
+const GROUND_AO_RAMP_TOL_M = 0.03;
 const GROUND_AO_LANE_MARGIN_M = 0.02;
 const GROUND_AO_TRACK_LIFTOFF_M = 0.3;
+/** The wraps' rise per metre past the ground run where no shoe measures it. */
+const GROUND_AO_RAMP_FALLBACK = 0.6;
 /** The wraps reach this far (m) past the shoes' measured ends. */
 const GROUND_AO_RUN_END_M = 0.04;
 /**
@@ -116,9 +115,12 @@ interface VehicleGroundHull {
    */
   readonly hx: number; readonly yb: number; readonly yt: number; readonly fz0: number; readonly fz1: number;
   readonly pz0: number; readonly pz1: number; readonly hr: number; readonly hf: number;
-  /** The contact plane y0 and the runs: the shoes' lane xi ≤ |x| ≤ xo along tz0..tz1, their ground run cz0..cz1. */
+  /**
+   * The contact plane y0 and the runs: the shoes' lane xi ≤ |x| ≤ xo along tz0..tz1, their ground run cz0..cz1, the
+   * wraps' lower edge rising sr per metre behind the run and sf ahead of it.
+   */
   readonly y0: number; readonly xi: number; readonly xo: number;
-  readonly tz0: number; readonly tz1: number; readonly cz0: number; readonly cz1: number;
+  readonly tz0: number; readonly tz1: number; readonly cz0: number; readonly cz1: number; readonly sr: number; readonly sf: number;
 }
 
 interface VehicleGroundStrengths { readonly belly: number; readonly wall: number; }
@@ -228,12 +230,20 @@ export function vehicleGroundStrengths(
   };
 }
 
-/** A pixel that is one of the hull's own track shoes (their material carries no vehicle tag): see GROUND_AO_CONTACT_MARGIN_M. */
-export function isRunShoe(q: Vec3Like, h: VehicleGroundHull, n: Vec3Like): boolean {
-  if (Math.abs(Math.abs(q.x) - 0.5 * (h.xi + h.xo)) >= 0.5 * (h.xo - h.xi) + GROUND_AO_LANE_MARGIN_M
-    || q.y < h.y0 + GROUND_AO_SHOE_FLOOR_M || q.y >= h.yt + GROUND_AO_RUN_END_M || n.y >= GROUND_AO_SHOE_FACE_NY) return false;
-  if (q.z > h.cz0 - GROUND_AO_CONTACT_MARGIN_M && q.z < h.cz1 + GROUND_AO_CONTACT_MARGIN_M) return true;
-  return q.z > h.tz0 - GROUND_AO_RUN_END_M && q.z < h.tz1 + GROUND_AO_RUN_END_M && q.y > h.y0 + GROUND_AO_WRAP_LIFT_M;
+/** The track's lower edge over the contact plane at z: the floor along the ground run, the wraps' ramp past it. */
+export function trackFloorAt(z: number, h: VehicleGroundHull): number {
+  const past = Math.max(h.cz0 - z, z - h.cz1, 0);
+  return Math.max(GROUND_AO_SHOE_FLOOR_M, (z < h.cz0 ? h.sr : h.sf) * past - GROUND_AO_RAMP_TOL_M);
+}
+
+/**
+ * A pixel that is one of the hull's own track shoes (see GROUND_AO_SHOE_FLOOR_M): `card` — it has no sun state (the
+ * shoes' material writes none; a lit pixel is never a shoe).
+ */
+export function isRunShoe(q: Vec3Like, h: VehicleGroundHull, card: boolean): boolean {
+  if (!card || Math.abs(Math.abs(q.x) - 0.5 * (h.xi + h.xo)) >= 0.5 * (h.xo - h.xi) + GROUND_AO_LANE_MARGIN_M
+    || q.y >= h.yt + GROUND_AO_RUN_END_M || q.z <= h.fz0 || q.z >= h.fz1) return false;
+  return q.y >= h.y0 + trackFloorAt(q.z, h);
 }
 
 /** The ground under a track's ground run (the shoes cover it): 1 in the lane along the run, back to 0 past it as the
@@ -270,14 +280,14 @@ export function runGapOcclusion(q: Vec3Like, n: Vec3Like, h: VehicleGroundHull, 
  * ground its tracks cover, and the belly's or the walls' strength by the receiver's place across the footprint's edge.
  */
 export function vehicleGroundOcclusionLocal(
-  q: Vec3Like, n: Vec3Like, h: VehicleGroundHull, strengths: VehicleGroundStrengths,
+  q: Vec3Like, n: Vec3Like, h: VehicleGroundHull, strengths: VehicleGroundStrengths, card = false,
 ): number {
   const H = h.yt - h.y0;
   const dx = Math.abs(q.x) - h.hx, dz = Math.abs(q.z - 0.5 * (h.fz0 + h.fz1)) - 0.5 * (h.fz1 - h.fz0);
   const dOut = Math.hypot(Math.max(dx, 0), Math.max(dz, 0));
   if (dOut > H * GROUND_AO_REACH[1] || q.y > h.yt || q.y < h.y0 - H * GROUND_AO_REACH[1]) return 0;
   if (q.y > h.yb + 0.02 && dOut < GROUND_AO_HULL_SKIN_M) return 0;
-  if (isRunShoe(q, h, n)) return 0;
+  if (isRunShoe(q, h, card)) return 0;
   const c = q.y - GROUND_AO_CLIP_SLACK_M * (1 - n.y);
   const reach = 1 - smoothstep(H * GROUND_AO_REACH[0], H * GROUND_AO_REACH[1], dOut);
   const occ = Math.max(reach * (hullSkyOcclusion(q, n, h, c) + runGapOcclusion(q, n, h, c)), underTrackOcclusion(q, h));
@@ -298,7 +308,7 @@ export interface VehicleGroundOcclusionUniforms {
   uVehGround: THREE.IUniform<number>;
   /** Per hull, three rows: world → root frame (local axis i = dot(row.xyz, P) + row.w; the root's scale included). */
   uVehGroundM: THREE.IUniform<THREE.Vector4[]>;
-  /** Per hull, four vec4: (hx, yb, yt, y0), (fz0, fz1, pz0, pz1), (hr, hf, xi, xo), (tz0, tz1, cz0, cz1) — the root frame. */
+  /** Per hull, four vec4: (hx, yb, yt, y0), (fz0, fz1, pz0, pz1), (hr, hf, xi, xo), (sr, sf, cz0, cz1) — the root frame. */
   uVehGroundB: THREE.IUniform<THREE.Vector4[]>;
   /** The interreflection's inputs: the ground's albedo, the hull's, the belly's view of open ground, the shaded ground. */
   uVehGroundLight: THREE.IUniform<THREE.Vector4>;
@@ -398,6 +408,7 @@ function fitHinge(zs: readonly number[], ys: readonly number[], low: number, fro
 
 interface ContactGeometryLike {
   bottomYM?: number | null; panYM?: number | null; halfWidM?: number | null; halfLenM?: number | null; zCenterM?: number | null;
+  endRise?: { dzM?: number | null; frontM?: number | null; rearM?: number | null } | null;
 }
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -472,6 +483,24 @@ export function measureVehicleGroundHull(root: THREE.Object3D): VehicleGroundHul
     const hl = finite(cg?.halfLenM) ? cg.halfLenM : 0.35 * (hull.max.z - hull.min.z);
     const tz0 = haveShoes ? shoeZ0 : bands ? bandZ0 : zc - hl - 0.5, tz1 = haveShoes ? shoeZ1 : bands ? bandZ1 : zc + hl + 0.5;
     const cz0 = haveShoes ? runZ0 : Math.max(tz0, zc - hl), cz1 = haveShoes ? runZ1 : Math.min(tz1, zc + hl);
+    // the wraps' lower edge: per 10 cm from 0.1 m past the ground run the lowest shoe, and the lowest line from the run's
+    // end under all of them (so no wrap shoe falls under it); without wrap shoes the published approach rise (the band's
+    // centreline dzM past each end), then a typical one
+    const rampSlope = (rear: boolean): number => {
+      const lowest = new Map<number, { past: number; y: number }>();
+      for (const s of shoes) {
+        const past = rear ? cz0 - 0.5 * (s.z0 + s.z1) : 0.5 * (s.z0 + s.z1) - cz1;
+        if (past < 0.1) continue;
+        const key = Math.floor(past / 0.1), cur = lowest.get(key);
+        if (!cur || s.y < cur.y) lowest.set(key, { past, y: s.y });
+      }
+      let measured = Infinity;
+      for (const { past, y } of lowest.values()) measured = Math.min(measured, (y - y0) / past);
+      const rise = cg?.endRise, end = rear ? rise?.rearM : rise?.frontM;
+      const published = rise && finite(rise.dzM) && rise.dzM > 0.05 && finite(end) ? end / rise.dzM : NaN;
+      return Math.min(4, Math.max(0.1, Number.isFinite(measured) ? measured : Number.isFinite(published) ? published : GROUND_AO_RAMP_FALLBACK));
+    };
+    const sr = rampSlope(true), sf = rampSlope(false);
 
     // the lower profile: the proxy's underside between the runs, its lowest point set on the measured pan, a hinge each way
     const fz0 = hull.min.z, fz1 = hull.max.z, yt = hull.max.y;
@@ -491,7 +520,7 @@ export function measureVehicleGroundHull(root: THREE.Object3D): VehicleGroundHul
     }
     const candidate: VehicleGroundHull = {
       hx: Math.max(Math.abs(hull.min.x), Math.abs(hull.max.x), xo), yb, yt, fz0, fz1, pz0, pz1, hr, hf,
-      y0, xi, xo, tz0, tz1, cz0, cz1,
+      y0, xi, xo, tz0, tz1, cz0, cz1, sr, sf,
     };
     const valid = candidate.yt > candidate.yb + 0.2 && candidate.yb > candidate.y0 && candidate.xo > candidate.xi
       && candidate.fz1 > candidate.fz0 + 1 && candidate.pz1 >= candidate.pz0 && candidate.tz1 > candidate.tz0
@@ -533,7 +562,7 @@ export function updateVehicleGroundOcclusionUniforms(
       u.uVehGroundB.value[n * 4].set(h.hx, h.yb, h.yt, h.y0);
       u.uVehGroundB.value[n * 4 + 1].set(h.fz0, h.fz1, h.pz0, h.pz1);
       u.uVehGroundB.value[n * 4 + 2].set(h.hr, h.hf, h.xi, h.xo);
-      u.uVehGroundB.value[n * 4 + 3].set(h.tz0, h.tz1, h.cz0, h.cz1);
+      u.uVehGroundB.value[n * 4 + 3].set(h.sr, h.sf, h.cz0, h.cz1);
       n++;
     }
   }
@@ -628,17 +657,17 @@ ${GLSL_HULL_EDGES}
         float dOut = length( max( dd, vec2( 0.0 ) ) );
         if ( dOut > H * ${f(GROUND_AO_REACH[1])} || q.y > b0.z || q.y < b0.w - H * ${f(GROUND_AO_REACH[1])} ) continue;
         // the vehicle itself is never a receiver: the hull over its belly along its whole length (a marking decal or glass
-        // blended over it no longer carries the vehicle tag), and the shoes' faces in their lane over the floor (their
-        // material carries none; a face turned up is the ground): along their ground run, and on the wraps once off the
-        // ground (the ground under a wrap stays a receiver)
+        // blended over it no longer carries the vehicle tag), and the shoes: no sun state (their material writes none) in
+        // their lane over the track's lower edge — the floor along the ground run, the wraps' ramp past it (the ground,
+        // lit, is never one; grass under a wrap stays a receiver)
         if ( q.y > b0.y + 0.02 && dOut < ${f(GROUND_AO_HULL_SKIN_M)} ) continue;
         float laneD = 0.5 * ( b2.w - b2.z ) - abs( abs( q.x ) - 0.5 * ( b2.z + b2.w ) );
+        if ( sunVis < 0.0 && laneD > ${f(-GROUND_AO_LANE_MARGIN_M)} && q.y < b0.z + ${f(GROUND_AO_RUN_END_M)} && q.z > b1.x && q.z < b1.y ) {
+          float past = max( max( b3.z - q.z, q.z - b3.w ), 0.0 );
+          if ( q.y >= b0.w + max( ${f(GROUND_AO_SHOE_FLOOR_M)}, ( q.z < b3.z ? b3.x : b3.y ) * past - ${f(GROUND_AO_RAMP_TOL_M)} ) ) continue;
+        }
         if ( !haveN ) { haveN = true; if ( sunVis >= 0.0 ) N = cotNormalAt( uv, P ); }
         vec3 n = normalize( vec3( dot( m0.xyz, N ), dot( m1.xyz, N ), dot( m2.xyz, N ) ) );
-        if ( laneD > ${f(-GROUND_AO_LANE_MARGIN_M)} && q.y >= b0.w + ${f(GROUND_AO_SHOE_FLOOR_M)} && q.y < b0.z + ${f(GROUND_AO_RUN_END_M)}
-          && n.y < ${f(GROUND_AO_SHOE_FACE_NY)}
-          && ( ( q.z > b3.z - ${f(GROUND_AO_CONTACT_MARGIN_M)} && q.z < b3.w + ${f(GROUND_AO_CONTACT_MARGIN_M)} )
-            || ( q.z > b3.x - ${f(GROUND_AO_RUN_END_M)} && q.z < b3.y + ${f(GROUND_AO_RUN_END_M)} && q.y > b0.w + ${f(GROUND_AO_WRAP_LIFT_M)} ) ) ) continue;
         // the solid clipped at the receiver's horizon (exact for a level receiver; a wall facing the hull keeps it whole)
         float c = q.y - ${f(GROUND_AO_CLIP_SLACK_M)} * ( 1.0 - n.y );
         float ho = cotVgHull( q, n, b0, b1, b2, c );

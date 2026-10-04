@@ -13,7 +13,7 @@ import {
   GROUND_AO_BELLY_VIEW, GROUND_AO_CARD_AMBIENT_SHARE, GROUND_AO_CLIP_SLACK_M, GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_EDGE_M,
   GROUND_AO_FADE_M, GROUND_AO_GAP_FADE_M, GROUND_AO_HULL_ALBEDO, GROUND_AO_HULL_SKIN_M, GROUND_AO_MAX_HULLS, GROUND_AO_RANGE_M,
   GROUND_AO_REACH, GROUND_AO_UNDER_GROUND, VEHICLE_GROUND_OCCLUSION_GLSL, boxSkyOcclusion, combineVehicleGroundOcclusion,
-  createVehicleGroundOcclusionUniforms, hullBottomAt, hullProxyOf, hullSkyOcclusion, isRunShoe, measureVehicleGroundHull,
+  createVehicleGroundOcclusionUniforms, hullBottomAt, hullProxyOf, hullSkyOcclusion, isRunShoe, measureVehicleGroundHull, trackFloorAt,
   runGapOcclusion, underTrackOcclusion, updateVehicleGroundOcclusionUniforms, vehicleGroundOcclusionLocal, vehicleGroundStrengths,
 } from './vehicleGroundOcclusion.ts';
 import { T90M, T90M_RUN_TOP, UNION_POINTS } from './vehicleGroundOcclusion.test-support.mjs';
@@ -159,25 +159,29 @@ for (const [x, y, z] of [[1.9, 0.9, 0], [0.5, 1.0, 0.5], [-1.95, 0.6, -2], [0.2,
   assert.equal(F(x, z, y), 0, `the hull's skin at ${x}, ${y}, ${z}`);
   assert.equal(F(x, z, y, unit(0.3, 0.2, 0.9)), 0, 'whatever its normal');
 }
-// the shoes (their cloned material carries no vehicle tag) over the floor: along their ground run, their faces at the
-// lane's edges, and on the wraps off the ground
-const FACE = unit(1, 0.1, 0), TREAD = unit(0.2, -0.6, -0.8);
-for (const [x, y, z, n] of [[1.4, 0.05, 0, FACE], [-1.3, 0.06, 1.5, FACE], [1.6, 0.4, T.cz0 - 0.5, TREAD], [-1.4, 1.2, T.tz1 + 0.02, FACE],
-  [1.5, 0.06, T.cz1 + 0.02, FACE], [T.xo + 0.01, 0.06, 0.5, FACE], [-(T.xi - 0.01), 0.07, -1, unit(-1, 0, 0)]]) {
-  assert.ok(isRunShoe({ x, y, z }, T, n) && F(x, z, y, n) === 0, `a shoe at ${x}, ${y}, ${z}`);
+// the shoes (their cloned material writes no vehicle tag and no sun state: a card to this block) over the track's lower
+// edge in their lane: along their ground run, their faces at the lane's edges, up the wraps' ramp
+const C = (x, z, y, n = UP) => vehicleGroundOcclusionLocal({ x, y, z }, n, T, ONE, true);
+for (const [x, y, z] of [[1.4, 0.05, 0], [-1.3, 0.06, 1.5], [1.6, 0.4, T.cz0 - 0.5], [-1.4, 1.2, T.tz1 - 0.02], [1.5, 0.06, T.cz1 + 0.02],
+  [T.xo + 0.01, 0.06, 0.5], [-(T.xi - 0.01), 0.07, -1]]) {
+  assert.ok(isRunShoe({ x, y, z }, T, true) && C(x, z, y) === 0, `a shoe at ${x}, ${y}, ${z}`);
 }
-// a face turned up is the ground: the terrain under a pitched hull's track ends stands over the floor (lab6's patches)
-assert.ok(!isRunShoe({ x: 1.5, y: 0.09, z: T.cz0 - 0.5 }, T, unit(0, 1, 0.05)) && F(1.5, T.cz0 - 0.5, 0.09) > 0.5, 'the terrain under a pitched track end');
-assert.ok(!isRunShoe({ x: T.xo + 0.01, y: 0.06, z: 0 }, T, UP), 'and the snow over the shoes\' foot beside them');
+near(trackFloorAt(0, T), 0.04, 1e-12, 'the floor along the ground run'); near(trackFloorAt(T.cz0 - 0.5, T), T.sr * 0.5 - 0.03, 1e-12, 'the rear ramp');
+near(trackFloorAt(T.cz1 + 0.5, T), T.sf * 0.5 - 0.03, 1e-12, 'the front ramp');
+// a lit pixel is never a shoe: the terrain over the floor behind a pitched hull's track ends, the snow over a sunk
+// track's foot (lab6's patches and line); grass under a wrap's ramp stays a receiver
+assert.ok(!isRunShoe({ x: 1.5, y: 0.09, z: T.cz0 - 0.5 }, T, false) && F(1.5, T.cz0 - 0.5, 0.09) > 0.5, 'the terrain under a pitched track end');
+assert.ok(!isRunShoe({ x: T.xo + 0.01, y: 0.06, z: 0 }, T, false), 'the snow over a sunk track\'s foot');
+assert.ok(!isRunShoe({ x: 1.5, y: 0.1, z: T.cz0 - 0.5 }, T, true) && C(1.5, T.cz0 - 0.5, 0.1) > 0.5, 'a grass blade under the rear ramp');
 // under the floor a lane pixel is ground: under the ground run the shoes cover it (their gaps, their foot: the contact
 // line) and it keeps no sky; past the run it takes its sky back as the track lifts off
-assert.ok(!isRunShoe({ x: 1.5, y: 0, z: 0 }, T, UP) && F(1.5, 0) === 1 && underTrackOcclusion({ x: 1.5, y: 0, z: 0 }, T) === 1, 'the ground under the ground run');
+assert.ok(!isRunShoe({ x: 1.5, y: 0, z: 0 }, T, false) && F(1.5, 0) === 1 && underTrackOcclusion({ x: 1.5, y: 0, z: 0 }, T) === 1, 'the ground under the ground run');
 assert.ok(F(1.5, 0, -0.13) === 1, 'and under a hull that rides high (the battle visuals\' 12–14 cm float, 2026-10-03)');
 near(underTrackOcclusion({ x: 1.5, y: 0, z: T.cz1 + 0.15 }, T), 0.5, 1e-9, 'half lifted off 0.15 m past the run');
 assert.equal(underTrackOcclusion({ x: 1.5, y: 0, z: T.cz1 + 0.3 }, T), 0, 'lifted off');
 // lab4's two strips (2026-10-03): the ground under a rear wrap and the ground just past the shoes are receivers
-assert.ok(!isRunShoe({ x: 1.5, y: 0, z: T.cz0 - 0.5 }, T, UP) && F(1.5, T.cz0 - 0.5) > 0.6, `the ground under the rear wrap (${F(1.5, T.cz0 - 0.5).toFixed(3)})`);
-assert.ok(!isRunShoe({ x: T.xo + 0.01, y: 0, z: 0 }, T, UP) && F(T.xo + 0.01, 0) > 0.5 && F(T.xo + 0.01, 0) < 0.9, 'the ground just past the shoes');
+assert.ok(!isRunShoe({ x: 1.5, y: 0, z: T.cz0 - 0.5 }, T, false) && F(1.5, T.cz0 - 0.5) > 0.6, `the ground under the rear wrap (${F(1.5, T.cz0 - 0.5).toFixed(3)})`);
+assert.ok(!isRunShoe({ x: T.xo + 0.01, y: 0, z: 0 }, T, false) && F(T.xo + 0.01, 0) > 0.5 && F(T.xo + 0.01, 0) < 0.9, 'the ground just past the shoes');
 // continuous across every edge: the footprint's sides and ends, the shoes' lanes under the wraps, a corner, the plates'
 // knees (1 mm steps; a step function would keep its jump at any step, a steep gradient shrinks with it)
 for (const [line, label] of [[(t) => [0, T.fz0 - 0.9 + t], 'the rear end'], [(t) => [0, T.fz1 + 0.9 - t], 'the front end'],
@@ -270,7 +274,9 @@ function builtHull(name, { z = 0, bands = true, contact = true, shoes = true, sl
   assert.equal(hullProxyOf(root), proxy, 'the hull proxy');
   const h = measureVehicleGroundHull(root);
   for (const [key, want] of Object.entries({ hx: 1.79, yb: 0.31, yt: 1.37, fz0: -3.42, fz1: 3.68, hr: 0, hf: 0, pz0: -3.42, pz1: 3.68,
-    y0: 0, xi: 1.2, xo: 1.7, tz0: -2.25 - 0.72 - 0.07, tz1: 2.45 + 0.72 + 0.07, cz0: -2.15 - 0.07, cz1: 2.35 + 0.07 })) {
+    y0: 0, xi: 1.2, xo: 1.7, tz0: -2.25 - 0.72 - 0.07, tz1: 2.45 + 0.72 + 0.07, cz0: -2.15 - 0.07, cz1: 2.35 + 0.07,
+    // the ramp's shoes climb 0.12 m a 0.18 m step from 0.21 m past the run: the lowest line under them all
+    sr: 0.12 / 0.21, sf: 0.12 / 0.21 })) {
     near(h[key], want, 1e-6, `measured ${key}`);
   }
   assert.equal(measureVehicleGroundHull(root), h, 'measured once, cached on the root');
@@ -312,7 +318,7 @@ const row = (i, p) => u.uVehGroundM.value[i].x * p.x + u.uVehGroundM.value[i].y 
 near(row(2, nearRoot.position), 0, 1e-9, 'the nearest hull first');
 assert.deepEqual(u.uVehGroundB.value.slice(0, 4).map((v) => v.toArray()), [
   [packed.hx, packed.yb, packed.yt, packed.y0], [packed.fz0, packed.fz1, packed.pz0, packed.pz1],
-  [packed.hr, packed.hf, packed.xi, packed.xo], [packed.tz0, packed.tz1, packed.cz0, packed.cz1]], 'the packing');
+  [packed.hr, packed.hf, packed.xi, packed.xo], [packed.sr, packed.sf, packed.cz0, packed.cz1]], 'the packing');
 assert.equal(u.uVehGroundB.value.length, GROUND_AO_MAX_HULLS * 4, 'four vec4 a hull');
 nearRoot.position.set(7, 2, -9); nearRoot.rotation.set(0.05, 0.9, -0.03, 'YXZ'); nearRoot.scale.setScalar(1.15);
 const local = new THREE.Vector3(1.2, 0.4, -2.5), world = local.clone().applyMatrix4(new THREE.Matrix4().compose(nearRoot.position, nearRoot.quaternion, nearRoot.scale));
@@ -352,12 +358,12 @@ assert.ok(g.includes(`float ambShare = mix( ${f4(GROUND_AO_CARD_AMBIENT_SHARE)},
 assert.match(g, /ambShare = A \/ max\( T \+ A, 1e-4 \);/, 'only the ambient share darkens');
 assert.match(g, /return 1\.0 - occ \* ambShare;/);
 assert.ok(!/2\.0404|Jimenez|fract\( sin/.test(g), 'no ground-albedo multi-bounce, no per-pixel noise');
-assert.ok(g.indexOf('if ( !haveN )') > g.indexOf('if ( dOut > H *') && g.indexOf('if ( !haveN )') > g.indexOf('if ( q.y > b0.y + 0.02 && dOut <'),
-  'the depth normal only for a pixel some hull reaches, past the hull\'s own skin');
+assert.ok(g.indexOf('if ( !haveN )') > g.lastIndexOf('continue;'), 'the depth normal only for a pixel some hull reaches');
 assert.ok(g.includes(`if ( q.y > b0.y + 0.02 && dOut < ${f4(GROUND_AO_HULL_SKIN_M)} ) continue;`), 'the hull\'s own skin is skipped');
 assert.ok(g.includes('float laneD = 0.5 * ( b2.w - b2.z ) - abs( abs( q.x ) - 0.5 * ( b2.z + b2.w ) );')
-  && g.includes('if ( laneD > -0.0200 && q.y >= b0.w + 0.0400 &&') && g.includes('&& n.y < 0.7000'), 'and the shoes\' faces over the floor in their lane');
-assert.ok(g.indexOf('vec3 n = normalize(') < g.indexOf('if ( laneD > -0.0200'), 'the shoes\' test reads the depth normal');
+  && g.includes('if ( sunVis < 0.0 && laneD > -0.0200 && q.y < b0.z + 0.0400 && q.z > b1.x && q.z < b1.y ) {')
+  && g.includes('if ( q.y >= b0.w + max( 0.0400, ( q.z < b3.z ? b3.x : b3.y ) * past - 0.0300 ) ) continue;'),
+  'and the shoes: no sun state, in their lane, over the track\'s lower edge');
 assert.ok(g.includes('ho = max( ho, smoothstep( -0.005, 0.005, laneD )'), 'the ground under the tracks\' ground run');
 
 // ---- 10. the wiring: the router's selection, the aerial pass's order, the lever, the ground's albedo
