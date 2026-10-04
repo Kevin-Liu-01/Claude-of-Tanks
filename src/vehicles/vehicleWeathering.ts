@@ -67,7 +67,7 @@ const INDUSTRIAL: Climate = Object.freeze({ ...TEMPERATE, grime: 0.8, wet: 0.25 
 const AUTUMN: Climate = Object.freeze({ ...TEMPERATE, dust: 0.66, wet: 0.5 });
 const WET: Climate = Object.freeze({ dust: 0.72, film: 0.02, snow: 0, wet: 0.75, grime: 0.65, wear: 0.4 });
 const COASTAL: Climate = Object.freeze({ dust: 0.56, film: 0.03, snow: 0, wet: 0.35, grime: 0.55, wear: 0.45 });
-const SNOW: Climate = Object.freeze({ dust: 0.45, film: 0, snow: 0.8, wet: 0.3, grime: 0.5, wear: 0.35 });
+const SNOW: Climate = Object.freeze({ dust: 0.55, film: 0, snow: 0.8, wet: 0.4, grime: 0.5, wear: 0.35 });
 // (Glacier Pass is a snowfield with exposed stone: its pale rock albedo as the running-gear dust read as alloy wheels in
 // the snow, so it takes the snow maps' slush and a lighter snow)
 const ALPINE: Climate = Object.freeze({ dust: 0.5, film: 0.02, snow: 0.6, wet: 0.3, grime: 0.55, wear: 0.45 });
@@ -292,6 +292,14 @@ varying vec3 vCotVehObjN;
 vec3 cotVehFilm( vec3 base, vec3 film, float a ) {
 	return exp( mix( log( max( base, vec3( 1e-3 ) ) ), log( max( film, vec3( 1e-3 ) ) ), a ) );
 }
+// the relief a height field raises on the surface (three's perturbNormalArb on screen-space derivatives)
+vec3 cotVehRelief( vec3 surfPos, vec3 surfNorm, float height, float strength ) {
+	vec3 sx = dFdx( surfPos ), sy = dFdy( surfPos );
+	vec3 r1 = cross( sy, surfNorm ), r2 = cross( surfNorm, sx );
+	float det = dot( sx, r1 );
+	vec3 grad = sign( det ) * ( dFdx( height ) * r1 + dFdy( height ) * r2 );
+	return normalize( abs( det ) * surfNorm - strength * grad );
+}
 float cotVehHash( vec3 p ) {
 	p = fract( p * 0.3183099 + 0.1 );
 	p *= 17.0;
@@ -308,9 +316,20 @@ float cotVehNoise( vec3 x ) {
 }
 `;
 
-/** Breakup frequencies (cycles per metre of a part's frame): patches, then the fine octave. */
+/** Breakup frequencies (cycles per metre of a part's frame): patches, the fine octave, and the built-up dirt's grain. */
 export const VEHICLE_WEATHER_PATCH_FREQ = 2.3;
 export const VEHICLE_WEATHER_FINE_FREQ = 9.0;
+export const VEHICLE_WEATHER_GRAIN_FREQ = 31.0;
+/**
+ * Built-up dirt (wave 63: "a flat pale wash rather than built-up dust or packed snow"): its density is coverage, not
+ * translucency — clumps and speckle of a nearly opaque film whose holes open up the hull (HULL_OPACITY: at its foot, at
+ * its reach) — piled on the ledges and the running gear's tops, packed in the seams.
+ */
+export const VEHICLE_WEATHER_HULL_OPACITY = [0.85, 0.55] as const;
+/** The wet maps' mud splashes, low at the bow and round the sprockets and idlers (m along the hull from its centre). */
+export const VEHICLE_WEATHER_SPLASH_ENDS_M = [1.9, 2.9] as const;
+/** The relief packed snow and splashed mud raise on the surface: the grain as a height field this deep (m). */
+export const VEHICLE_WEATHER_RELIEF_M = 0.012;
 /** The film's reach up the hull (m): dry dust climbs to the first, wet mud stays under the second. */
 export const VEHICLE_WEATHER_REACH_DRY_M = 1.9;
 export const VEHICLE_WEATHER_REACH_WET_M = 1.3;
@@ -326,7 +345,7 @@ export const VEHICLE_WEATHER_TRACK_FILM_MAX = 0.35;
 export const VEHICLE_WEATHER_FILM_MAX = 0.88;
 /** Snow: linear albedo of fresh snow (the winter maps' ground, 0xe5e7ec, is 0.78), and of the snow trodden into the gear. */
 export const VEHICLE_WEATHER_SNOW = [0.8, 0.82, 0.85] as const;
-export const VEHICLE_WEATHER_PACKED_SNOW = [0.58, 0.59, 0.61] as const;
+export const VEHICLE_WEATHER_PACKED_SNOW = [0.66, 0.67, 0.7] as const;
 /**
  * Snow in the running gear (the lane's capture pairs, 2026-10-04): a thin veil over every wheel and shoe read as
  * polished alloy; lumps over the whole gear as cow-print blotches close up; snow round the wheels' feet, or lodged on a
@@ -395,12 +414,19 @@ export const VEHICLE_WEATHER_FRAGMENT_GLSL = `
 		cvRecess = 1.0 - smoothstep( 0.2, 0.5, texture2D( bumpMap, vBumpMapUv ).x );
 		#endif
 		#endif
-		// dust or mud: a film with holes that keeps each material's own contrast (cotVehFilm: the rubber stays darker than
-		// the wheel face, the steel darker than the paint). The running gear (its materials define COT_VEH_GEAR,
-		// COT_VEH_TRACK or COT_WHEEL_PAINT_READABILITY) takes a patchy film that fades up from the ground; the hull a
-		// gradient whole at its foot that breaks into patches and is gone by its reach (wave 55: "no dust film on the
-		// hull"), both heaviest at the bow and on the faces turned to it; the fenders' and the decks' flat tops collect it;
-		// the dusty maps' film over everything; packed into the track's recesses, never on its scraped faces
+		// the built-up dirt's grain: a third, fine octave in the part's own frame (speckle at a few centimetres), fading
+		// to its mean where a pixel spans its cycle, so the breakup's edges and holes are speckled, never a smooth wash
+		vec3 cvGq = vCotVehObj * ${f(VEHICLE_WEATHER_GRAIN_FREQ)} + 11.3;
+		float cvGrain = mix( 0.5, cotVehNoise( cvGq ), 1.0 - smoothstep( 0.35, 0.9, length( fwidth( cvGq ) ) ) );
+		float cvBg = cvB + ( cvGrain - 0.5 ) * 0.5;
+		// dust or mud, built up rather than washed on (wave 63: "a flat pale wash rather than built-up dust or packed
+		// snow"): a nearly opaque film whose density is its coverage — clumps and speckle that open up into holes away from
+		// the ground — that keeps each material's own contrast (cotVehFilm: the rubber darker than the wheel face, the steel
+		// darker than the paint). The running gear (its materials define COT_VEH_GEAR, COT_VEH_TRACK or
+		// COT_WHEEL_PAINT_READABILITY) carries clumps fading up from the ground, its tops piled; the hull is caked at its
+		// foot and broken into clumps by its reach, heaviest at the bow and on the faces turned to it; the ledges and the
+		// flat tops below the deck pile it; the seams pack it; the dusty maps' film over everything; the track's recesses
+		// pack it, never its scraped faces
 		float cvGear = 0.0;
 		#if defined( COT_VEH_GEAR ) || defined( COT_VEH_TRACK ) || defined( COT_WHEEL_PAINT_READABILITY )
 		cvGear = 1.0;
@@ -409,29 +435,44 @@ export const VEHICLE_WEATHER_FRAGMENT_GLSL = `
 		float cvLow = clamp( 1.0 - ( cvH - 0.1 + ( cvB - 0.5 ) * 0.5 ) / ( cvReach - 0.1 ), 0.0, 1.0 );
 		float cvFoot = mix( ${f(VEHICLE_WEATHER_HULL_FOOT_M[0])}, ${f(VEHICLE_WEATHER_HULL_FOOT_M[1])}, uVehWeatherA.w );
 		float cvGrad = 1.0 - smoothstep( cvFoot, cvReach, cvH + ( cvB - 0.5 ) * 0.45 );
-		float cvBow = max( smoothstep( 0.5, 3.0, dot( cvP - uVehGround.xyz, uVehFwd ) ),
-			0.75 * smoothstep( 0.3, 0.8, dot( cvNW, uVehFwd ) ) );
-		float cvGearFilm = cvLow * ( 0.6 + 0.4 * cvBow ) * smoothstep( 0.6 - 0.28 * cvLow, 0.78 - 0.18 * cvLow, cvB );
-		float cvHullFilm = 1.15 * cvGrad * ( 0.55 + 0.45 * cvBow ) * smoothstep( 0.72 - 0.6 * cvGrad, 0.88 - 0.45 * cvGrad, cvB );
-		float cvDust = uVehWeatherA.x * ( mix( cvHullFilm, cvGearFilm, cvGear )
-				+ 0.7 * cvTop * ( 1.0 - smoothstep( 1.4, 2.4, cvH ) ) * smoothstep( 0.38, 0.65, cvB ) )
-			+ uVehWeatherA.y * smoothstep( 0.3, 0.75, cvB );
+		float cvAlong = dot( cvP - uVehGround.xyz, uVehFwd );
+		float cvBow = max( smoothstep( 0.5, 3.0, cvAlong ), 0.75 * smoothstep( 0.3, 0.8, dot( cvNW, uVehFwd ) ) );
+		float cvGearFilm = cvLow * ( 0.6 + 0.4 * cvBow ) * smoothstep( 0.64 - 0.3 * cvLow, 0.72 - 0.27 * cvLow, cvBg );
+		float cvHullFilm = ( 0.6 + 0.4 * cvBow ) * mix( ${f(VEHICLE_WEATHER_HULL_OPACITY[1])}, ${f(VEHICLE_WEATHER_HULL_OPACITY[0])}, cvGrad )
+			* smoothstep( 0.62 - 0.52 * cvGrad, 0.7 - 0.47 * cvGrad, cvBg );
+		float cvPile = cvTop * ( 1.0 - smoothstep( 1.5, 2.5, cvH ) ) * smoothstep( 0.32, 0.42, cvBg );
+		float cvSeam = cvCrease * ( 1.0 - cvTop ) * max( cvGrad, cvLow * cvGear ) * smoothstep( 0.36, 0.48, cvBg );
+		float cvDust = uVehWeatherA.x * max( max( mix( cvHullFilm, cvGearFilm, cvGear ), 0.9 * cvPile ), 0.75 * cvSeam )
+			+ uVehWeatherA.y * smoothstep( 0.3, 0.75, cvBg );
 		#ifdef COT_VEH_TRACK
 		cvDust = min( cvDust, ${f(VEHICLE_WEATHER_TRACK_FILM_MAX)} );
 		#endif
 		cvDust = max( cvDust * ( 1.0 - 0.85 * cvScraped ),
-			cvRecess * smoothstep( 0.22, 0.48, cvB ) * min( 1.0, 1.3 * uVehWeatherA.x ) );
+			cvRecess * smoothstep( 0.22, 0.48, cvBg ) * min( 1.0, 1.3 * uVehWeatherA.x ) );
 		cvDust = min( cvDust, ${f(VEHICLE_WEATHER_FILM_MAX)} );
 		float cvWet = uVehWeatherA.w * mix( cvGrad, cvLow, cvGear );
-		// a dry film reads paler and chalkier than the ground it rose from; wet mud is the dirt darkened
-		vec3 cvFilmCol = mix( mix( uVehDust, vec3( dot( uVehDust, vec3( 0.2126, 0.7152, 0.0722 ) ) ), 0.35 ) * 1.18, uVehMud, cvWet );
+		// a dry film reads paler and chalkier than the ground it rose from, a little mottled; wet mud is the dirt darkened
+		vec3 cvFilmCol = mix( mix( uVehDust, vec3( dot( uVehDust, vec3( 0.2126, 0.7152, 0.0722 ) ) ), 0.35 ) * 1.18, uVehMud, cvWet )
+			* ( 0.9 + 0.2 * cvGrain );
 		diffuseColor.rgb = cotVehFilm( diffuseColor.rgb, cvFilmCol, cvDust );
 		// matte: dry dust, damp mud only a little smoother
 		roughnessFactor = mix( roughnessFactor, mix( 0.97, ${f(VEHICLE_WEATHER_MUD_ROUGHNESS)}, cvWet ), cvDust );
 		metalnessFactor = mix( metalnessFactor, 0.0, cvDust );
+		// the wet maps' mud splashes: darker, wetter, thrown low at the bow and round the sprockets and idlers at the
+		// track's ends, in blotches with their own relief
+		float cvEnds = smoothstep( ${f(VEHICLE_WEATHER_SPLASH_ENDS_M[0])}, ${f(VEHICLE_WEATHER_SPLASH_ENDS_M[1])}, abs( cvAlong ) );
+		float cvSplashZone = ( 1.0 - smoothstep( 0.35, 1.05, cvH ) ) * max( cvEnds, smoothstep( 0.5, 2.5, cvAlong ) );
+		float cvSplash = uVehWeatherA.w * cvSplashZone * smoothstep( 0.5, 0.58, cvB * 0.5 + cvGrain * 0.5 );
+		#ifdef COT_VEH_TRACK
+		cvSplash *= 1.0 - cvScraped;
+		#endif
+		diffuseColor.rgb = mix( diffuseColor.rgb, uVehMud * ( 0.85 + 0.3 * cvGrain ), min( 0.9, 1.6 * cvSplash ) );
+		roughnessFactor = mix( roughnessFactor, ${f(VEHICLE_WEATHER_MUD_ROUGHNESS)} - 0.12, min( 0.9, 1.6 * cvSplash ) );
+		metalnessFactor = mix( metalnessFactor, 0.0, min( 1.0, 1.6 * cvSplash ) );
 		// snow lodged on the flat faces turned up (fresh: a sheet on the deck, lumps down on the running gear, none on the
 		// track's scraped faces; it slides off a curved top — the surface's curvature is the geometric normal's turn per
-		// metre across the pixel) and packed into the track's recesses (trodden, greyer, with holes)
+		// metre across the pixel) and packed into the track's recesses and onto the running gear's flat tops: bright,
+		// grained and raised, a material of its own rather than a tint (wave 63)
 		float cvFlat = 1.0;
 		#ifndef FLAT_SHADED
 		cvFlat = 1.0 - smoothstep( ${VEHICLE_WEATHER_SNOW_FLAT_CURVATURE.map(f).join(', ')},
@@ -439,14 +480,17 @@ export const VEHICLE_WEATHER_FRAGMENT_GLSL = `
 		#endif
 		vec2 cvLump = vec2( ${VEHICLE_WEATHER_SNOW_LUMP.map(f).join(', ')} );
 		float cvSnowTop = cvFlat * ( 1.0 - cvScraped ) * smoothstep( 0.55, 0.85, cvUp + ( cvB - 0.5 ) * 0.35 )
-			* smoothstep( mix( 0.3, cvLump.x, cvLow ), mix( 0.55, cvLump.y, cvLow ), cvB );
-		float cvSnowPack = cvRecess * smoothstep( ${VEHICLE_WEATHER_SNOW_PACK_COVER.map(f).join(', ')}, cvB );
+			* smoothstep( mix( 0.3, cvLump.x, cvLow ), mix( 0.55, cvLump.y, cvLow ), cvBg );
+		float cvSnowPack = max( cvRecess, cvGear * cvFlat * cvTop * ( 1.0 - cvScraped ) ) * smoothstep( ${VEHICLE_WEATHER_SNOW_PACK_COVER.map(f).join(', ')}, cvBg );
 		float cvSnow = uVehWeatherA.z * max( cvSnowTop, cvSnowPack );
 		vec3 cvSnowCol = mix( vec3( ${VEHICLE_WEATHER_SNOW.map(f).join(', ')} ), vec3( ${VEHICLE_WEATHER_PACKED_SNOW.map(f).join(', ')} ),
-			cvSnowPack / max( cvSnowPack + cvSnowTop, 1e-4 ) );
+			cvSnowPack / max( cvSnowPack + cvSnowTop, 1e-4 ) ) * ( 0.88 + 0.24 * cvGrain );
 		diffuseColor.rgb = mix( diffuseColor.rgb, cvSnowCol, cvSnow );
 		roughnessFactor = mix( roughnessFactor, 0.85, cvSnow );
 		metalnessFactor = mix( metalnessFactor, 0.0, cvSnow );
+		// the relief of what is packed or splashed on: snow and wet mud raise their grain
+		float cvRelief = min( 1.0, max( cvSnow, 1.6 * cvSplash ) ) * cvGrain * ${f(VEHICLE_WEATHER_RELIEF_M)};
+		normal = cotVehRelief( -vViewPosition, normal, cvRelief, 1.0 );
 	}
 #endif
 `;
