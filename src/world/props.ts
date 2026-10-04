@@ -7245,22 +7245,35 @@ ${snowCap ? `
   yield* placeScenery();
 
   function* mergeMaterialBuckets(): Generator<PropsBuildSlice, void, void> {
+    // regional-buildings lane (2026-10-03, the urban GPU A B B A: +5 ms at the town's establishing view): a kit's
+    // joinery and metalwork dressing (window frames and bars, shutters, timbers, boards, gutters and downpipes; a few
+    // centimetres proud of a wall) receives shadows but casts none. It merges into its own receive-only mesh, so the
+    // shadow cascades skip ~0.3 M of Steinburg's triangles; dressing whose shadow reads (a slatted mat) keeps casting
+    // (geometry.ts EmitOptions.shadow).
+    const RECEIVE_ONLY_DETAIL = new Set(['structureWood', 'structureMetal']);
+    const castsNoShadow = (g: THREE.BufferGeometry) => g.userData.regional === true && g.userData.noCollision === true && g.userData.castsShadow !== true;
     for (const key of Object.keys(buckets)) {
       if (buckets[key].length === 0) continue;
       if (key === 'curtain') for (const geometry of buckets[key]) ensureWorldNightEmissionMask(geometry);
       if (key === 'glass') prepareWorldStaticNightFixture(buckets[key], mats[key]);
-      // mergeGeometries requires uniform indexing (ExtrudeGeometry is non-indexed)
-      const profile = bucketShadowProfile(buckets[key]); // round 79: the pieces' cells, before the merge owns them
-      const merged = yield* mergePropsMaterialGeometrySteps(buckets[key], key);
-      bindClutterBatch(buckets[key], merged);
-      const mesh = new THREE.Mesh(merged, mats[key]);
-      mesh.name = 'props-bucket-' + key; // round 75: the perf inventories attribute the merged buckets by name
-      setShadowCasterProfile(mesh, profile);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      mesh.matrixAutoUpdate = false;
-      group.add(mesh);
-      yield { fine: true }; // loading-speed r1: merge one material family per idle slice
+      const lists: Array<[THREE.BufferGeometry[], boolean, string]> = RECEIVE_ONLY_DETAIL.has(key)
+        ? [[buckets[key].filter((g) => !castsNoShadow(g)), true, ''], [buckets[key].filter(castsNoShadow), false, '-detail']]
+        : [[buckets[key], true, '']];
+      for (const [list, casts, suffix] of lists) {
+        if (!list.length) continue;
+        // mergeGeometries requires uniform indexing (ExtrudeGeometry is non-indexed)
+        const profile = bucketShadowProfile(list); // round 79: the pieces' cells, before the merge owns them
+        const merged = yield* mergePropsMaterialGeometrySteps(list, key);
+        bindClutterBatch(list, merged);
+        const mesh = new THREE.Mesh(merged, mats[key]);
+        mesh.name = 'props-bucket-' + key + suffix; // round 75: the perf inventories attribute the merged buckets by name
+        setShadowCasterProfile(mesh, profile);
+        mesh.castShadow = casts;
+        mesh.receiveShadow = true;
+        mesh.matrixAutoUpdate = false;
+        group.add(mesh);
+        yield { fine: true }; // loading-speed r1: merge one material family per idle slice
+      }
     }
   }
   yield* mergeMaterialBuckets();
