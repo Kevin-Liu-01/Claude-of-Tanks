@@ -145,9 +145,10 @@ export const CLOUD_FARBAND_START_CU_M = 16000;
 export const CLOUD_FARBAND_FADE_CU_M = 9000;
 /**
  * 2026-10-04: the cover a closed deck (coverage at 1) keeps where its weather field runs at its floor — a thin sheet, not a
- * hole to the clear sky (Titan Gorge's dense overcast opened one under a light model at overcast 1.00).
+ * hole to the clear sky (Titan Gorge's dense overcast opened one under a light model at overcast 1.00). 0.5 left a pale
+ * cream patch (ΔE 11.5 from the deck beside it); 0.7 reads as a thin, slightly brighter patch of the deck (ΔE 4.1).
  */
-const CLOUD_CLOSED_COVER_FLOOR = 0.5;
+const CLOUD_CLOSED_COVER_FLOOR = 0.7;
 /**
  * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: "no cloud shadows on the land"): the cloud shade
  * map, the clouds' one shadow path (cloudShadeMap.ts). The cores of the two weather fields at the cloud base, undithered,
