@@ -19,7 +19,7 @@ import { applyAbramsSourceXSkirtArmor } from './abramsSourceXSkirtArmor.ts';
 import { applyAbramsSourceXRackArmor } from './abramsSourceXRackArmor.ts';
 import { applyAbramsSourceXUkraineEraArmor } from './abramsSourceXUkraineEraArmor.ts';
 import { ukrainianSourceCage } from './ukrainianDroneCage.ts';
-import { turretSideX } from './profiles/abramsSourceXKitBase.ts';
+import { turretSideX } from './abramsSourceXDatums.ts';
 
 export const ABRAMS_SOURCE_X_ENTRIES = Object.freeze([
   // 2026-09-15 owner roster pass: the X studies carry the canonical names (their donors moved
