@@ -16,7 +16,7 @@ import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } fr
 type ToneFunction = (hue: number, saturation: number, lightness: number) => readonly [number, number, number];
 
 /** The rock a battlefield's boulders are made of: what its detail tile and its beds draw. */
-export type BoulderLithology = 'granite' | 'gneiss' | 'sandstone' | 'limestone' | 'slate' | 'basalt';
+type BoulderLithology = 'granite' | 'gneiss' | 'sandstone' | 'limestone' | 'slate' | 'basalt';
 
 export interface RockDressing {
   /** Moss / lichen weight on the shaded and upward faces (0 on snow and arid maps). */
@@ -321,7 +321,7 @@ function cubeGrid(n: number): { points: number[]; quads: number[]; fan: number[]
 }
 
 /** A boulder form and the per-vertex facts its tone law reads. */
-export interface BoulderForm {
+interface BoulderForm {
   geometry: THREE.BufferGeometry;
   /** 0 on a joint face, rising over an arris (one less the largest plane's share). */
   edge: Float32Array;
