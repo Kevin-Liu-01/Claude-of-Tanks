@@ -18,6 +18,11 @@ export interface TreeBiomeSlot {
   form: GrowthSpecies;
   /** A leafy crown for a birch-family form (the palette's birchLeaves). */
   leaves?: boolean;
+  /**
+   * The form's own foliage colour, over the map palette's (which was tuned for the slot's species, not this form):
+   * Dalmatia's olives silver-grey, its holm oaks a dull dark grey-green.
+   */
+  colour?: Readonly<TreeBiomeColour>;
 }
 
 export interface TreeBiome {
@@ -33,6 +38,11 @@ export interface TreeBiome {
   palette?: Readonly<TreeBiomeColour>;
   /** A hyper-arid place: its stands are open groves in the low ground, its lone trees keep to the wadi beds (vegetation.ts). */
   arid?: true;
+  /**
+   * A place whose stands are open groves wherever they stand (a third of a wood's trees over twice the ground each, no
+   * clearing): Las Cañadas' pines on the cinder (an arid place's are open too, and seated in the low ground).
+   */
+  open?: true;
 }
 
 /** A biome's foliage colour defaults (vegetation.ts VegetationPalette's colour fields). */
@@ -43,29 +53,48 @@ export interface TreeBiomeColour {
 }
 
 /**
- * Hyper-arid foliage: an acacia of Wadi Rum or the Sahara is a grey, dust-dulled olive, not a lawn's green (the
- * gauntlet's wave 15: "lush green groves on Wadi Rum"). The texture loses half its saturation toward a khaki hue and the
- * card tint is a pale buff, as the desert maps' own oak palettes already paint their trees.
+ * Hyper-arid foliage: an acacia of Wadi Rum or the Sahara is a grey, dust-dulled green, not a lawn's (the gauntlet's
+ * wave 15: "lush green groves on Wadi Rum"). The texture keeps two fifths of its saturation at a grey-green hue and the
+ * card tint is nearly neutral; wave 26 still read the round-2b khaki-olive (hue 0.17) as "lime-green" in the sun.
  */
 const ARID_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
-  cardHue: 0.15, cardSat: 0.14,
-  texTone: (_h: number, s: number, l: number): [number, number, number] => [0.17, Math.min(1, s * 0.5), Math.min(1, l * 1.06)],
+  cardHue: 0.2, cardSat: 0.1,
+  texTone: (_h: number, s: number, l: number): [number, number, number] => [0.2, Math.min(1, s * 0.4), Math.min(1, l * 1.04)],
 });
 
-const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies, palette?: Readonly<TreeBiomeColour>, arid?: true): Readonly<TreeBiome> =>
-  Object.freeze({ place, slots: Object.freeze(slots), ...(shrub ? { shrub } : {}), ...(palette ? { palette } : {}), ...(arid ? { arid } : {}) });
+/**
+ * The olive's silver: a grey-green a little toward blue at a fifth of a leaf's saturation, the leaves' pale undersides
+ * in the light (wave 26 on Saltwind Narrows: "uniform mid-green oak type with no olive-grey tone").
+ */
+const OLIVE_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.3, cardSat: 0.06,
+  texTone: (_h: number, s: number, l: number): [number, number, number] => [0.28, Math.min(1, s * 0.5), Math.min(1, l * 1.12)],
+});
+
+/** The holm oak's dull dark grey-green (its leaves' felted grey undersides): two thirds of a leaf's saturation. */
+const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.25, cardSat: 0.09,
+  texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.68), l],
+});
+
+const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies, palette?: Readonly<TreeBiomeColour>, arid?: true,
+  open?: true): Readonly<TreeBiome> =>
+  Object.freeze({ place, slots: Object.freeze(slots), ...(shrub ? { shrub } : {}), ...(palette ? { palette } : {}), ...(arid ? { arid } : {}),
+    ...(open ? { open } : {}) });
 
 /**
  * Per map id. Slots a map does not plant are harmless (the table is read per planted slot). Maps that are absent keep
  * every slot as its own form.
  */
 export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object.freeze({
-  // Las Cañadas del Teide: sparse Canary pines on bare cinder (the map's density and its scrub are the maps lane's; its
-  // acacia slot, the maps lane's scrub stand-in, grows as young pines among the trees and as broom among the bushes)
+  // Las Cañadas del Teide: sparse Canary pines on bare cinder in open groves (wave 26: "evenly spaced, grid-like" stands
+  // on a floor that is nearly treeless apart from broom); its acacia slot, the maps lane's scrub stand-in, grows as
+  // young pines among the trees and as broom among the bushes
   caldera: B('Las Cañadas del Teide, Tenerife', { pine: { form: 'canaryPine' }, cedar: { form: 'canaryPine' }, eucalyptus: { form: 'canaryPine' },
-    acacia: { form: 'canaryPine' } }, 'broom'),
+    acacia: { form: 'canaryPine' } }, 'broom', undefined, undefined, true),
   // the Dalmatian coast: Aleppo pine, holm oak and olive (and cypress, which the map names directly)
-  saltwind: B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak' }, acacia: { form: 'olive' } }),
+  saltwind: B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak', colour: HOLM_OAK_FOLIAGE },
+    acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }),
   // the Breton bocage: oak and sweet chestnut along the hedgebanks (the maritime pine stays a pine)
   coastal: B('the Breton bocage, Brittany', { cedar: { form: 'chestnut' } }),
   // the Fulda Gap: beech woods with spruce, oak and birch
@@ -120,7 +149,8 @@ export interface TreeBiomePaletteTerms {
  * sooty-gold birch twigs turned its leafy birches orange-brown: the gauntlet's "dead/brown foliage scattered randomly
  * among healthy green trees, reading as a widespread asset bug" (wave 6).
  */
-export function treeBiomePalette<P extends TreeBiomePaletteTerms>(pal: P, form: { leaves?: boolean } | null, crossFamily: boolean,
+export function treeBiomePalette<P extends TreeBiomePaletteTerms>(pal: P,
+  form: { leaves?: boolean; colour?: Readonly<TreeBiomeColour> } | null, crossFamily: boolean,
   defaults: Readonly<TreeBiomeColour> | null = null): P {
   const bareTuned = !!form && form.leaves === true && pal.birchLeaves !== true;
   const formed: P = !form ? pal : {
@@ -129,19 +159,32 @@ export function treeBiomePalette<P extends TreeBiomePaletteTerms>(pal: P, form: 
     ...(bareTuned ? { texTone: undefined } : {}),
     ...(form.leaves ? { birchLeaves: true } : {}),
   };
-  if (!defaults) return formed;
+  // the form's own colour wins over the map palette's, which was tuned for the slot's species (the olive's silver)
+  const colour = form?.colour;
+  const coloured: P = !colour ? formed : {
+    ...formed,
+    ...(colour.cardHue !== undefined ? { cardHue: colour.cardHue } : {}),
+    ...(colour.cardSat !== undefined ? { cardSat: colour.cardSat } : {}),
+    ...(colour.texTone ? { texTone: colour.texTone } : {}),
+  };
+  if (!defaults) return coloured;
   // the place's colour fills what the map palette leaves unnamed (a named colour always wins)
   return {
-    ...formed,
-    ...(formed.cardHue === undefined && defaults.cardHue !== undefined ? { cardHue: defaults.cardHue } : {}),
-    ...(formed.cardSat === undefined && defaults.cardSat !== undefined ? { cardSat: defaults.cardSat } : {}),
-    ...(!formed.texTone && defaults.texTone ? { texTone: defaults.texTone } : {}),
+    ...coloured,
+    ...(coloured.cardHue === undefined && defaults.cardHue !== undefined ? { cardHue: defaults.cardHue } : {}),
+    ...(coloured.cardSat === undefined && defaults.cardSat !== undefined ? { cardSat: defaults.cardSat } : {}),
+    ...(!coloured.texTone && defaults.texTone ? { texTone: defaults.texTone } : {}),
   };
 }
 
 /** Whether a map's place is hyper-arid (open groves in the low ground, lone trees in the wadi beds). */
 export function treeBiomeArid(mapId: string | null | undefined): boolean {
   return !!(mapId && TREE_BIOMES[mapId]?.arid);
+}
+
+/** Whether a map's stands are open groves (an arid place's, Las Cañadas'). */
+export function treeBiomeOpen(mapId: string | null | undefined): boolean {
+  return !!(mapId && (TREE_BIOMES[mapId]?.open || TREE_BIOMES[mapId]?.arid));
 }
 
 /** The foliage colour defaults of a map's place, or none. */

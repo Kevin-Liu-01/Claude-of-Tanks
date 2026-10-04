@@ -45,7 +45,7 @@ import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_T
 import type { GroundLitterConfig } from './groundLitter.ts';
 import type { LandFieldSample } from './landUse.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomePalette, treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeSlot, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -4773,11 +4773,11 @@ function* vegetationBuildSteps(
     };
   }
   // trees round 2 (2026-10-03): a slot's regional form — the map palette's `form`, else the map's biome (treeBiomes.ts)
-  const formOf = (sp: Species): { form: GrowthSpecies; leaves: boolean } | null => {
+  const formOf = (sp: Species): { form: GrowthSpecies; leaves: boolean; colour?: TreeBiomeSlot['colour'] } | null => {
     const explicit = veg.palettes[sp]?.form;
     if (explicit) return { form: explicit, leaves: veg.palettes[sp]?.birchLeaves === true };
     const slot = treeBiomeSlot(cfg?.id, sp);
-    return slot ? { form: slot.form, leaves: slot.leaves === true } : null;
+    return slot ? { form: slot.form, leaves: slot.leaves === true, ...(slot.colour ? { colour: slot.colour } : {}) } : null;
   };
   // p2 trees lane (2026-10-01): the desktop tiers grow their near trees (treeGrowth.ts) and paint branch-spray atlases
   // (treeSprayAtlas.ts); the far tier is the bake of those trees (treeImpostors.ts). The mobile tier keeps the
@@ -5323,8 +5323,8 @@ function* vegetationBuildSteps(
     replayRoundOneStandDraws();
     const wr = mulberry32((seed ^ 0x30d1a7) >>> 0);
     // trees round 2b: a hyper-arid place's stands are open groves in the low ground (a third of a wood's trees over
-    // three and a half times the ground each, seated in a wadi bed or a hollow)
-    const arid = treeBiomeArid(cfg?.id);
+    // three and a half times the ground each, seated in a wadi bed or a hollow); Las Cañadas' are open groves anywhere
+    const arid = treeBiomeArid(cfg?.id), open = treeBiomeOpen(cfg?.id);
     let attempts = 0;
     const clusterTarget = Math.round(veg.clusterCount * treeRichness());
     // round 2b: more tries than the round-1 2600 — a woodlot of the round-1 footprint fits fewer ways on a crowded map
@@ -5348,8 +5348,8 @@ function* vegetationBuildSteps(
       // of their tree cover (Fjord 14.6 -> 11.1 %, Monsoon 23.2 -> 16.6 %, Verdant 20.6 -> 15.2 %) — the fast-match
       // tail battlePacing guards grew from three to six
       // r5: ~1.7x trees per stand — designated forest strips must read DENSE (closed canopy) next to WoT tree lines
-      const n0 = 24 + (wr() * 34) | 0, n = arid ? Math.max(5, Math.round(n0 * 0.35)) : n0;
-      const base = Math.sqrt(n * (48 + wr() * 36) * (arid ? 2 : 1) / Math.PI);
+      const n0 = 24 + (wr() * 34) | 0, n = open ? Math.max(5, Math.round(n0 * 0.35)) : n0;
+      const base = Math.sqrt(n * (48 + wr() * 36) * (open ? 2 : 1) / Math.PI);
       const stretch = Math.sqrt(1 + wr() * wr() * 1.6);
       const heading = wr() * Math.PI;
       const shape: WoodlotShape = {
@@ -5360,9 +5360,9 @@ function* vegetationBuildSteps(
       const r = base * stretch;
       if (!isSeparatedTreeCluster(x, z, r)) continue;
       // a large wood holds a clearing (a glade, a felled patch) off its centre
-      const clearing = base > 21 && !arid ? { a: wr() * Math.PI * 2, k: 0.3 + wr() * 0.3, r: base * (0.2 + wr() * 0.12) } : null;
+      const clearing = base > 21 && !open ? { a: wr() * Math.PI * 2, k: 0.3 + wr() * 0.3, r: base * (0.2 + wr() * 0.12) } : null;
       let placed = 0;
-      const cb0 = trees.length;
+      const cb0 = trees.length, ob0 = treeObstacles.length, cc0 = concealers.length;
       const index = clusters.length;
       woodlotShapes[index] = shape;
       const disc: VegetationDisc = { x, z, r };
@@ -5376,16 +5376,25 @@ function* vegetationBuildSteps(
         const px = p[0], pz = p[1];
         if (clearing && Math.hypot(px - cx, pz - cz) < clearing.r) continue;
         if (k < 0.85 && keep > 0.5 + 0.8 * woodlotDensity(px, pz)) continue;
+        // a palm grove keeps to its water (wave 26: a palm stand's trees past the site grew as acacias round it, three
+        // to each palm on Sirocco Wadi)
+        if (palmStand && !palmSiteOk(px, pz)) continue;
         if (addTree(px, pz, sp, wr)) placed++;
       }
       // r6 (content_breadth): coherent PER-STAND tint bias — a whole-stand lean (warm vs cool, small value drift) is
       // what makes mid-distance forest blocks read as distinct species stands
       tintTreeStand(cb0, wr);
-      // Keep at least three quarters of every existing stand in place. The map-authored rows consume records, never
-      // add trees or change RNG.
-      rememberAuthoredDonors(cb0, Math.floor(placed / 4));
-      if (placed > 2) clusters.push(disc);
-      else woodlotShapes.length = index;
+      if (placed > 2) {
+        // Keep at least three quarters of every existing stand in place. The map-authored rows consume records, never
+        // add trees or change RNG.
+        rememberAuthoredDonors(cb0, Math.floor(placed / 4));
+        clusters.push(disc);
+      } else {
+        // a stand that could not stand leaves no stray trees in the open (wave 26: the Caldera floor's attempts on its
+        // steep cinder left a scatter of strays over it); its draws are spent as they were
+        woodlotShapes.length = index;
+        trees.length = cb0; treeObstacles.length = ob0; concealers.length = cc0;
+      }
     }
   }
   placeTreeClusters();
@@ -5573,10 +5582,15 @@ function* vegetationBuildSteps(
   // with clearings between. The placement stream is consumed exactly as before — a dropped tree is placed, then popped
   // with the trunk record and the concealment disc it registered — and a block's understorey still counts it.
   const borderWoodsAt = heightField.getBorderWoodsAt;
+  // trees round 2b (2026-10-03, wave 26 at Sirocco's east edge: "a lone lollipop broadleaf ... on the foreground dune"):
+  // a hyper-arid place's rim keeps its trees where its floor's do — a wadi bed or a hollow, or its palm sites
+  const aridRim = treeBiomeArid(cfg?.id);
   function dropRimTreeOutsideWoods(x: number, z: number): boolean {
-    if (!borderWoodsAt) return false;
     const inside = Math.max(Math.abs(x), Math.abs(z)) <= PLAYABLE_HALF_EXTENT_M;
-    if (treePositionNoise(x, z, 9) < Math.max(inside ? 0.34 : 0.04, borderWoodsAt(x, z))) return false;
+    if (!(aridRim && hollowDepthAt(x, z) < 1.2 && !palmSiteOk(x, z))) {
+      if (!borderWoodsAt) return false;
+      if (treePositionNoise(x, z, 9) < Math.max(inside ? 0.34 : 0.04, borderWoodsAt(x, z))) return false;
+    }
     const tree = trees.pop()!;
     roadBlockedRimTrees.delete(tree);
     if (inside && treeObstacles.length && treeObstacles[treeObstacles.length - 1].treeIdx === trees.length) {

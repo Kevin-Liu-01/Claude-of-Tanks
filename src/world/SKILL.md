@@ -114,23 +114,27 @@ lobes' smooth union and their vertices darken by depth in it and on the undersid
 giving the lit shell back) — and each card carries a billboard frame (`aAxis`, `aLeaf`) the near material turns about
 the card's own axis toward the camera (`COT_LEAF_BILLBOARD`, ahead of the wind; the impostor bake turns them the same
 way, `COT_BAKE_BILLBOARD`); a small crown's near-camera dissolve keeps to its size (`vCotNearScale`). The tiles are leaf
-clusters (smaller leaves, lit by where they sit in the cluster). `crownShadowDapple.ts` opens sun-space leaf gaps in the
+clusters (smaller leaves, lit by where they sit in the cluster); a pine's brush and an acacia's leaflets keep their gaps
+under the alpha test (their shading is painted `source-atop`, never a filled core). `crownShadowDapple.ts` opens sun-space leaf gaps in the
 crown hull's depth pass: each crown mass as far as its sprays leave it open (`GROWTH_CROWN_POROSITY`, Beer-Lambert over
 the tree's atlas share of opaque leaf, `SPRAY_ATLAS_COVERAGE`) with its own pattern, so a crown's heart casts darker than
 its fringe (world-anchored, the wood never opens, closing where a cascade's texel outgrows them).
 `treeBiomes.ts` (THREE-free) routes a map's species SLOTS to the regional FORMS of its real place on the desktop tiers
 (new profiles and tiles: beech, chestnut, holmOak, olive, canaryPine, aleppoPine, larch; summer birches in leaf; a map's
 shrub form, Las Cañadas' and Wadi Rum's broom; a place's foliage colour where the map palette names none, the hyper-arid
-places' dust-dulled acacias) — records, seeds and the mobile look stay the slot's; a birch crown in leaf on a palette
+places' dust-dulled acacias; a form's own colour over the slot's palette, Dalmatia's silver olives and grey holm oaks)
+— records, seeds and the mobile look stay the slot's; a birch crown in leaf on a palette
 naming no card colour takes the broadleaf tint law, never the bare twigs' warm grey (`grownTintLaw`). Snow maps: a conifer's
 load is its laden sprays over the upper crown (no bough lumps); the classic tufts follow `applySnowGrassLaw` (straw,
 sparse, short). Stands are woodlots (`placeTreeClusters`: the round-1 draws replayed on the shared stream so every later
 placement keeps its seat, then irregular outlines with denser margins, clearings and thin patches on their own stream, at
 the round-1 stands' mean footprint so the deployments' corridors keep their cover; `standPoint` puts the saplings,
-fringe scrub and understorey on the real outline). Lone trees (`placeLoneTrees`, own stream, round-1 draws replayed)
-stand at woodlot edges, on road verges and as field clumps between the deployments; a hyper-arid place
-(`treeBiomeArid`) seats its groves and lone trees in the wadi beds and hollows; a map's `palmSites` keep its palms at
-the water (any other palm grows as `palmFallback`, no draw moved). `treeCrownShading.selftest.mjs` pins the laws,
+fringe scrub and understorey on the real outline; a stand that cannot stand leaves no strays; `treeBiomeOpen` places'
+stands are open groves, Las Cañadas' and the arid places'). Lone trees (`placeLoneTrees`, own stream, round-1 draws
+replayed) stand at woodlot edges, on field boundaries (a hedged one, the ground lane's `hedgeSite`, else a road's verge)
+and as field clumps between the deployments (strung along a hedge where one is near); a hyper-arid place
+(`treeBiomeArid`) seats its groves, lone trees and border trees in the wadi beds and hollows; a map's `palmSites` keep
+its palms and its palm groves at the water (any other palm grows as `palmFallback`, no draw moved). `treeCrownShading.selftest.mjs` pins the laws,
 `treeSpacing.selftest.mjs` where the trees stand; battlePacing guards the fights' cover.
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
 pole distance representation; callers dispose or transfer every returned mesh.

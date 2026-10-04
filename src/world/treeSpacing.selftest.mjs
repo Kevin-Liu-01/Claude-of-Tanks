@@ -5,7 +5,10 @@
 //   woodlot's edge (just outside its outline) or along a road's verge;
 // - Redrock Divide (Wadi Rum): open groves seated in the low ground, few trees, and its palms at the springs only;
 // - Sirocco Wadi and Sunscar Oasis: every palm inside the map's palm sites (the wadi bed, the oasis), palm stands
-//   seated there.
+//   seated there; Sirocco's trees few, and its border's in the low ground or at the water (wave 26: "a lone lollipop
+//   broadleaf ... on the foreground dune");
+// - Las Cañadas (Obsidian Caldera): a floor nearly bare of trees — a few open groves and scattered pines (wave 26:
+//   "evenly spaced, grid-like" stands).
 // And the woods those stands make keep their summer colour: Verdant's leafy birches (its pine and willow slots) tint
 // their crowns as leaves, not as the bare twigs' warm grey (vegetation.ts grownTintLaw; the round-2 hand-over's frames).
 // A construction receipt: no GPU, no art claim.
@@ -79,7 +82,7 @@ try {
   }
   // the Sahara's wadi and oasis: every palm inside the map's palm sites, and palms there (the date-palm groves)
   for (const id of ['desert', 'oasis']) {
-    const { cfg, world } = produce(id);
+    const { cfg, field, world } = produce(id);
     try {
       const sites = cfg.vegetation.palmSites;
       assert.ok(sites?.length > 0, `${id}: palm sites named`);
@@ -88,6 +91,32 @@ try {
       assert.equal(stray.length, 0, `${id}: no palm outside the palm sites (${stray.length} of ${palms.length})`);
       assert.ok(palms.length >= 10, `${id}: the palm groves stand (${palms.length} palms)`);
       report[id] = { palms: palms.length };
+      if (id === 'desert') {
+        const trees = world._trees.filter(inside);
+        assert.ok(trees.length < 400, `Sirocco's wadi carries few trees (${trees.length})`);
+        // the border's trees (past the playable square) stand in the low ground or at the water, never on a dune
+        const border = world._trees.filter((t) => !inside(t));
+        for (const t of border) {
+          assert.ok(hollowDepth(field, t.x, t.z) >= 1.2 || sites.some((s) => Math.hypot(t.x - s.x, t.z - s.z) < s.r),
+            `a border tree in the low ground (${t.species} at ${t.x.toFixed(0)}, ${t.z.toFixed(0)})`);
+        }
+        Object.assign(report[id], { trees: trees.length, border: border.length });
+      }
+    } finally { world.dispose(); }
+  }
+  // Las Cañadas: a few open groves, scattered pines, the broom carrying the floor
+  {
+    const { world } = produce('caldera');
+    try {
+      const trees = world._trees.filter(inside), groves = world._clusters;
+      assert.ok(trees.length < 250, `the caldera floor carries few trees (${trees.length})`);
+      assert.ok(groves.length <= 6, `a few groves (${groves.length})`);
+      // open: a grove's trees over twice a wood's ground each (the woodlots' 48-84 m² a tree)
+      for (let i = 0; i < groves.length; i++) {
+        const g = groves[i], members = trees.filter((t) => world._standOutline(i, t.x, t.z) <= 1).length;
+        assert.ok(members > 2 && (Math.PI * g.r * g.r) / members > 90, `grove ${i} is open (${members} trees on ${(Math.PI * g.r * g.r).toFixed(0)} m²)`);
+      }
+      report.caldera = { trees: trees.length, groves: groves.length };
     } finally { world.dispose(); }
   }
   console.log(`treeSpacing.selftest: ${JSON.stringify(report)} PASS`);

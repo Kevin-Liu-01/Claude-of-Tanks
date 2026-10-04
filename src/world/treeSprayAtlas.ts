@@ -32,9 +32,9 @@ export const SPRAY_ATLAS_TILES = 2;
  * it (treeGrowth.ts emitCrownShadowHull): a spray card stops this share of the sun that meets it.
  */
 export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.freeze({
-  oak: 0.318, poplar: 0.285, willow: 0.17, acacia: 0.362, eucalyptus: 0.239, birch: 0.219, aspen: 0.274, 'birch-bare': 0.13,
-  spruce: 0.269, fir: 0.329, pine: 0.155, cedar: 0.188, cypress: 0.291, mangrove: 0.264, beech: 0.313, chestnut: 0.396,
-  holmOak: 0.213, olive: 0.225, canaryPine: 0.199, aleppoPine: 0.11, larch: 0.157, broom: 0.131,
+  oak: 0.318, poplar: 0.285, willow: 0.17, acacia: 0.175, eucalyptus: 0.239, birch: 0.219, aspen: 0.274, 'birch-bare': 0.13,
+  spruce: 0.269, fir: 0.329, pine: 0.128, cedar: 0.188, cypress: 0.291, mangrove: 0.264, beech: 0.313, chestnut: 0.396,
+  holmOak: 0.213, olive: 0.225, canaryPine: 0.161, aleppoPine: 0.087, larch: 0.157, broom: 0.131,
 });
 
 interface LeafColor { hue: number; sat: number; light: number }
@@ -290,7 +290,7 @@ const BROADLEAF_RECIPES: Readonly<Record<string, BroadleafRecipe>> = Object.free
   oak: { shape: 'lobed', leafLen: 0.105, leafAspect: 0.38, petiole: 0.08, spacing: 0.036, leafAngle: 0.85, twigs: [5, 7], twigLen: [0.24, 0.38], twigAngle: 0.75, hang: 0, droop: 0.15, stemWidth: 3.0 },
   poplar: { shape: 'deltoid', leafLen: 0.085, leafAspect: 0.48, petiole: 0.5, spacing: 0.034, leafAngle: 0.95, twigs: [4, 6], twigLen: [0.22, 0.34], twigAngle: 0.55, hang: 0, droop: 0.35, stemWidth: 2.4 },
   willow: { shape: 'lance', leafLen: 0.125, leafAspect: 0.12, petiole: 0.04, spacing: 0.02, leafAngle: 0.45, twigs: [5, 7], twigLen: [0.45, 0.68], twigAngle: 0.28, hang: 1, droop: 0.4, stemWidth: 1.8 },
-  acacia: { shape: 'pinnate', leafLen: 0.13, leafAspect: 0.15, petiole: 0.10, spacing: 0.028, leafAngle: 0.9, twigs: [6, 8], twigLen: [0.24, 0.38], twigAngle: 0.95, hang: 0, droop: 0.05, stemWidth: 2.2 },
+  acacia: { shape: 'pinnate', leafLen: 0.13, leafAspect: 0.15, petiole: 0.10, spacing: 0.044, leafAngle: 0.9, twigs: [5, 7], twigLen: [0.24, 0.38], twigAngle: 0.95, hang: 0, droop: 0.05, stemWidth: 2.2 },
   eucalyptus: { shape: 'falcate', leafLen: 0.15, leafAspect: 0.17, petiole: 0.10, spacing: 0.044, leafAngle: 0.55, twigs: [4, 6], twigLen: [0.30, 0.46], twigAngle: 0.45, hang: 0.7, droop: 0.7, stemWidth: 2.0 },
   birch: { shape: 'oval', leafLen: 0.078, leafAspect: 0.46, petiole: 0.3, spacing: 0.032, leafAngle: 0.95, twigs: [5, 7], twigLen: [0.30, 0.50], twigAngle: 0.55, hang: 0.85, droop: 0.4, stemWidth: 1.5 },
   aspen: { shape: 'round', leafLen: 0.074, leafAspect: 0.5, petiole: 0.42, spacing: 0.034, leafAngle: 0.95, twigs: [4, 6], twigLen: [0.22, 0.36], twigAngle: 0.6, hang: 0, droop: 0.45, stemWidth: 1.9 },
@@ -327,8 +327,11 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
   }
   const leafLen = S * recipe.leafLen;
   const leafW = leafLen * recipe.leafAspect;
-  // the shaded body under the leaves (the pinnate and the lanceolate sprays stay airier)
-  paintSprayBody(ctx, twigs, leafLen * 1.7, base, recipe.shape === 'pinnate' || recipe.shape === 'lance' ? 0.55 : 0.9, 0.42);
+  // the shaded body under the leaves (the lanceolate sprays stay airier). Trees round 2 (2026-10-03, wave 26: Sirocco's
+  // acacia read as "a lone lollipop broadleaf with lime-green blob foliage"): an acacia's feathery leaves keep the
+  // gaps between them — its body darkens the leaves along the twigs once they are painted, adding no alpha (below)
+  const pinnate = recipe.shape === 'pinnate';
+  if (!pinnate) paintSprayBody(ctx, twigs, leafLen * 1.7, base, recipe.shape === 'lance' ? 0.55 : 0.9, 0.42);
   // two layers: the back leaves (darker, the shaded interior of the spray) then the twigs, then the front leaves
   for (let layer = 0; layer < 2; layer++) {
     if (layer === 1) {
@@ -389,6 +392,12 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
       }
     }
   }
+  if (pinnate) {
+    const composite = ctx.globalCompositeOperation;
+    ctx.globalCompositeOperation = 'source-atop';
+    paintSprayBody(ctx, twigs, leafLen * 1.7, base, 0.9, 0.42);
+    ctx.globalCompositeOperation = composite;
+  }
   return twigs;
 }
 
@@ -429,10 +438,12 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
     // last half, every one pointing forward and out from it (the tip's more forward), so a tile reads as the fox-tail
     // tufts a pine crown is made of; round 1's tuft radiating from one point read as a palm frond or a maple leaf at
     // the chase camera (the lab's Caldera pairs). A main shoot and two side shoots off its lower half; the Canary pine's
-    // needles long and hanging, the Aleppo pine's fine and sparse.
+    // needles long and hanging, the Aleppo pine's fine and sparse. The tile's alpha is the needles' alone (the shaded
+    // heart darkens them, never fills between them): wave 26 read the Caldera pines' alpha-tested tiles, whose hearts
+    // filled each brush's core into one opaque rounded mass, as "flat broadleaf leaf-card clusters".
     const canary = kind === 'canaryPine', aleppo = kind === 'aleppoPine';
-    const needleL = canary ? 0.23 : aleppo ? 0.16 : 0.19, droopN = canary ? 0.3 : aleppo ? 0.1 : 0.08;
-    const perShoot = canary ? 96 : aleppo ? 50 : 76;
+    const needleL = canary ? 0.25 : aleppo ? 0.16 : 0.19, droopN = canary ? 0.34 : aleppo ? 0.1 : 0.08;
+    const perShoot = canary ? 175 : aleppo ? 95 : 140;
     const main = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * 0.56, (rng() - 0.5) * 0.35, 8);
     const shoots: Pt[][] = [main];
     for (const side of [-1, 1]) {
@@ -440,16 +451,6 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
       shoots.push(twigPoints(at.p, at.a + side * (0.55 + rng() * 0.25), S * (0.27 + rng() * 0.07), side * (0.15 + rng() * 0.2), 6));
     }
     for (const shoot of shoots) taperStroke(ctx, shoot, S * 0.014, S * 0.008, wood);
-    // each brush's shaded heart: a soft dark band along the needled half of its shoot
-    for (const shoot of shoots) {
-      for (let k = 0; k < 4; k++) {
-        const at = pointAt(shoot, 0.55 + k * 0.13), r = S * needleL * 0.72;
-        const gr = ctx.createRadialGradient(at.p.x, at.p.y, 0, at.p.x, at.p.y, r);
-        gr.addColorStop(0, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0.7));
-        gr.addColorStop(1, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0));
-        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(at.p.x, at.p.y, r, 0, Math.PI * 2); ctx.fill();
-      }
-    }
     for (let si = 0; si < shoots.length; si++) {
       const shoot = shoots[si], n = Math.round(perShoot * (si === 0 ? 1 : 0.7));
       for (let k = 0; k < n; k++) {
@@ -470,6 +471,20 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
         ctx.stroke();
       }
     }
+    // each brush's shaded heart: a soft dark band along the needled half of its shoot, laid over the needles already
+    // painted (source-atop: it darkens them and adds no alpha between them)
+    const composite = ctx.globalCompositeOperation;
+    ctx.globalCompositeOperation = 'source-atop';
+    for (const shoot of shoots) {
+      for (let k = 0; k < 4; k++) {
+        const at = pointAt(shoot, 0.55 + k * 0.13), r = S * needleL * 0.72;
+        const gr = ctx.createRadialGradient(at.p.x, at.p.y, 0, at.p.x, at.p.y, r);
+        gr.addColorStop(0, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0.7));
+        gr.addColorStop(1, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0));
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(at.p.x, at.p.y, r, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.globalCompositeOperation = composite;
     return shoots;
   }
   if (kind === 'cypress') {

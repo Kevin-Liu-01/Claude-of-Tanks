@@ -18,7 +18,7 @@ import {
 import { makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_KINDS } from './treeSprayAtlas.ts';
 import { LOD_SHADOW_FADE_ATTRIBUTE } from '../engine/lodShadowFade.ts';
 import { growShrubSkeleton } from './treeGrowth.ts';
-import { TREE_BIOMES, treeBiomeColour, treeBiomePalette, treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
+import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
 import { grownTintLaw } from './vegetation.ts';
 import { TREE_SPECIES } from './treeSpecies.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
@@ -154,6 +154,18 @@ for (const species of GROWTH_SPECIES) {
       for (let i = 3; i < data.length; i += 4) alpha += data[i] / 255;
       const share = alpha / (data.length / 4);
       assert.ok(Math.abs(share - SPRAY_ATLAS_COVERAGE[kind]) <= 0.03, `${kind}: the atlas share ${share.toFixed(3)} against the table's ${SPRAY_ATLAS_COVERAGE[kind]}`);
+      // a pine's brush and an acacia's leaflets keep their gaps under the alpha test (wave 26: the pines' shaded hearts and
+      // the acacia's body filled each tile's core, "flat broadleaf leaf-card clusters", "lime-green blob foliage"): under
+      // 5 % of the 8 × 8 windows wholly opaque (14.5 %, 6.8 %, 10 % and 28 % before; an oak's leaf mass 23 %)
+      if (kind === 'canaryPine' || kind === 'aleppoPine' || kind === 'pine' || kind === 'acacia') {
+        let solid = 0, windows = 0;
+        for (let y = 0; y + 8 <= 256; y += 2) for (let x = 0; x + 8 <= 256; x += 2) {
+          let opaque = true;
+          for (let j = 0; j < 8 && opaque; j++) for (let i = 0; i < 8; i++) if (data[((y + j) * 256 + x + i) * 4 + 3] < 97) { opaque = false; break; }
+          windows++; if (opaque) solid++;
+        }
+        assert.ok(solid / windows < 0.05, `${kind}: its tile keeps its gaps (${(solid / windows * 100).toFixed(1)} % of the windows solid)`);
+      }
     }
   } finally {
     globalThis.document = savedDocument;
@@ -285,7 +297,8 @@ assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alo
   const arid = treeBiomeColour('badlands');
   assert.ok(arid && arid.cardSat < 0.2 && typeof arid.texTone === 'function', 'Wadi Rum carries a dust-dulled foliage colour');
   const [h, sat, l] = arid.texTone(0.22, 0.4, 0.2);
-  assert.ok(Math.abs(h - 0.17) < 1e-9 && sat <= 0.2 + 1e-9 && l >= 0.2, 'the tone pulls the leaves toward a pale khaki at half the saturation');
+  // wave 26: the round-2b khaki-olive (hue 0.17, half the saturation) still read "lime-green" in the Sirocco sun
+  assert.ok(Math.abs(h - 0.2) < 1e-9 && sat <= 0.16 + 1e-9 && l >= 0.2, 'the tone pulls the leaves toward a grey green at two fifths the saturation');
   const filled = treeBiomePalette({}, null, false, arid);
   assert.ok(filled.cardHue === arid.cardHue && filled.cardSat === arid.cardSat && filled.texTone === arid.texTone, 'an unnamed palette takes the place\'s colour');
   const named = { cardHue: 0.3, cardSat: 0.4, texTone: (x, y, z) => [x, y, z] };
@@ -294,6 +307,23 @@ assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alo
   assert.equal(treeBiomeColour('verdant'), null, 'a temperate place keeps the green defaults');
   assert.equal(treeBiomeShrub('badlands'), 'broom', 'Wadi Rum\'s scrub is white broom');
   assert.equal(treeBiomeSlot('caldera', 'acacia')?.form, 'canaryPine', 'no umbrella acacia on Teide');
+  // Las Cañadas' stands are open groves, as the arid places' are, but not seated in the low ground (wave 26)
+  assert.ok(treeBiomeOpen('caldera') && !treeBiomeArid('caldera') && treeBiomeOpen('desert') && !treeBiomeOpen('verdant'),
+    'open groves on the caldera and the arid places only');
+}
+{
+  // a form's own colour wins over the map palette's (tuned for the slot's species): Dalmatia's olives silver-grey, its
+  // holm oaks a dull grey-green (wave 26 on Saltwind Narrows: "uniform mid-green oak type with no olive-grey tone")
+  const olive = treeBiomeSlot('saltwind', 'acacia');
+  assert.equal(olive?.form, 'olive');
+  const acaciaPalette = { cardHue: 0.22, cardSat: 0.3, texTone: (x, y, z) => [x, y, z] };
+  const silver = treeBiomePalette(acaciaPalette, olive, false);
+  assert.ok(silver.cardSat <= 0.08 && silver.cardHue >= 0.25 && silver.texTone !== acaciaPalette.texTone, 'the olive takes its own silver over the acacia palette');
+  const [oh, os, ol] = silver.texTone(0.2, 0.3, 0.3);
+  assert.ok(oh > 0.25 && os <= 0.15 + 1e-9 && ol > 0.3, 'its leaves turn grey-green, toward blue, at half their saturation and lighter');
+  const holm = treeBiomePalette({}, treeBiomeSlot('saltwind', 'cedar'), true);
+  assert.ok(holm.cardSat < 0.12, 'the holm oak a dull grey-green');
+  assert.deepEqual(treeBiomePalette(acaciaPalette, { form: 'acacia' }, false), acaciaPalette, 'a form without its own colour keeps the map palette');
 }
 assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a tree slot');
 {
