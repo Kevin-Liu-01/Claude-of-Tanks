@@ -34,7 +34,7 @@ import {
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 import {
   createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
-  setVehicleGroundFromRoot, resetVehicleGround,
+  setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial,
 } from './materials.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
@@ -998,12 +998,12 @@ function isolatedGearMaterial<M extends THREE.Material>(
   if (!wanted) return material;
   const tagged = (material.userData as { appearanceRole?: unknown } | undefined)?.appearanceRole;
   if (tagged === wanted) return material;
-  const clone = material.clone() as M;
-  clone.onBeforeCompile = material.onBeforeCompile;
-  clone.customProgramCacheKey = material.customProgramCacheKey;
+  // 2026-10-04: in its source's cascade registration (materials.ts cloneVehicleMaterial) — a plain clone kept the
+  // source's cascade hook without the defines that hook needs, and lit with every cascade's sun at once.
+  const clone = cloneVehicleMaterial(material);
   clone.userData = { ...(material.userData || {}), appearanceRole: wanted, isolatedFrom: material.name };
   // A fixed rubber/steel role cloned from wheel paint uses the ordinary gear
-  // lighting path. Material.clone() also clones shader defines.
+  // lighting path: cloneVehicleMaterial keeps the source's COT_* switches, so drop the wheel paint's floor.
   if ('defines' in clone && clone.defines) {
     delete (clone.defines as Record<string, unknown>).COT_WHEEL_PAINT_READABILITY;
   }
@@ -4367,7 +4367,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     if (cfg.trackBandHex == null
       && cfg.trackBandRoughness == null
       && cfg.trackBandEnvMapIntensity == null) return source;
-    const material = source.clone();
+    const material = cloneVehicleMaterial(source); // 2026-10-04: the band's cascade registration with it (materials.ts)
     if (cfg.trackBandHex != null) material.color.setHex(cfg.trackBandHex);
     if (cfg.trackBandRoughness != null) material.roughness = cfg.trackBandRoughness;
     if (cfg.trackBandEnvMapIntensity != null) {
@@ -4450,7 +4450,12 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // Family-specific neutral steel palettes keep the shoe constructions
   // readable without creating a pale second track. Per-instance colors are
   // assigned once below; this remains one InstancedMesh / one draw call.
-  const padMat=(mats.trackLink || mats.dark).clone();
+  // 2026-10-04 (the vehicle-look lane): the shoes join the link material's cascade registration, readability hook and
+  // program key (materials.ts cloneVehicleMaterial). Material.clone() drops onBeforeCompile and three's copy resets the
+  // defines, and the merkava r12 re-attach brought back the readability floor alone: the shoes lit with all four
+  // cascade suns at once (about four times the sun on a lit face, unshadowed outside the near cascade) and wrote no sun
+  // state or vehicle tag, so the aerial pass took them for ground cards (vehicleGroundOcclusion.ts).
+  const padMat = cloneVehicleMaterial(mats.trackLink || mats.dark);
   const buildRunningGearReceiptStage10 = (): void => {
     padMat.color=new THREE.Color(0xffffff);
     // Shoes use instanceColor, which Three enables independently. Neither
@@ -4459,11 +4464,6 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     padMat.vertexColors = false;
     padMat.roughness=0.97;
     padMat.metalness=0.08;
-    // cfg.gearFloor opt-in (merkava r12 order 2): Material.clone() drops
-    // onBeforeCompile, so the shoe clone silently lost the family ambient floor
-    // and rendered ambient-black in skirt shade. Re-attach on request.
-    padMat.onBeforeCompile = vehicleAmbientFloorHook;
-    padMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     padMat.userData = { ...(padMat.userData || {}), appearanceRole: 'trackPad',
       appearanceColorSource: 'instance-palette' };
     padMat.name = 'cot:track-pad';
@@ -4673,7 +4673,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
 
   // Loose shoes and wheels are created only after a break, preserving the
   // undamaged fleet's geometry envelope and sharing its material ownership.
-  const ribMat = (mats.trackLink || mats.dark).clone();
+  const ribMat = cloneVehicleMaterial(mats.trackLink || mats.dark); // 2026-10-04: in the cascade registration (materials.ts)
   // r7 (critic: the thrown band "reads as detached tan fence panels, not a
   // dark steel track ribbon"): FIXED dark tread-iron color — never derived
   // from a palette-tinted material, so a desert/tan scheme can never lighten
