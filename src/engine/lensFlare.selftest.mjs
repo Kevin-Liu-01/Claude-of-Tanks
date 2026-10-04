@@ -86,4 +86,14 @@ const post = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
 assert.match(post, /lensFlare\.update\(lightFx\.lensFlare\);\s*lensFlare\.clearTarget = !lightFx\.sunShafts;/, 'per-frame update and the clear hand-off follow the levers');
 assert.match(post, /new LensFlarePass\(camera, scene, sceneDepth, lightFxTarget\)/, 'the flare tests occlusion against the resolved scene depth');
 
-console.log('lensFlare.selftest: tap disc, visibility twin, easing, frame fade, moon share, disc radius, GLSL parts and chain wiring pinned');
+// 2026-10-04 (the gauntlet's wave 65 on Caldera: "a translucent circular lens-flare artifact sits directly on top of the
+// mountain silhouette"): the sun above the ridge, the occlusion right; the halo's ring and the far ghost over the dark ridge
+// read as the artifact — the ghosts and the halo turned down, the streak and the glow at the sun kept
+{
+  const flareSrc = readFileSync(new URL('./lensFlare.ts', import.meta.url), 'utf8');
+  assert.match(flareSrc, /export const LENS_FLARE_PARTS = Object\.freeze\(\{ ghosts: 0\.4, halo: 0\.25, streak: 1, glow: 1 \}\);/);
+  assert.match(flareSrc, /gl_FragColor = vec4\( uColor \* vis \* \( ghosts \* uParts\.x \+ halo \* uParts\.y \+ vec3\( streak \* uParts\.z \+ glow \* uParts\.w \) \), 1\.0 \);/,
+    'each part takes its share');
+  assert.match(flareSrc, /lightTune\('LENS_FLARE_PART_GHOSTS', LENS_FLARE_PARTS\.ghosts\)/, 'the QA reads default to the shipped shares');
+}
+console.log('lensFlare.selftest: tap disc, visibility twin, easing, frame fade, moon share, disc radius, GLSL parts and chain wiring pinned; the ghosts and the halo turned down');
