@@ -8,7 +8,9 @@
 //   seated there; Sirocco's trees few, and its border's in the low ground or at the water (wave 26: "a lone lollipop
 //   broadleaf ... on the foreground dune");
 // - Las Cañadas (Obsidian Caldera): a floor nearly bare of trees — a few open groves and scattered pines (wave 26:
-//   "evenly spaced, grid-like" stands).
+//   "evenly spaced, grid-like" stands);
+// - Copper Mesa (the Arizona uplands, wave 28: "green broadleaf and fir clumps on sand"): juniper and pinyon on the
+//   higher ground only, mesquite in the low ground only, few of either.
 // And the woods those stands make keep their summer colour: Verdant's leafy birches (its pine and willow slots) tint
 // their crowns as leaves, not as the bare twigs' warm grey (vegetation.ts grownTintLaw; the round-2 hand-over's frames).
 // A construction receipt: no GPU, no art claim.
@@ -17,7 +19,8 @@ import { createCanvas, ImageData } from '@napi-rs/canvas';
 import { createHeightField } from './terrain.ts';
 import { createVegetation } from './vegetation.ts';
 import { getMapConfig } from './maps/index.ts';
-import { treeBiomeArid } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeSlot } from './treeBiomes.ts';
+import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
 
 const savedDocument = globalThis.document, savedImageData = globalThis.ImageData;
 globalThis.ImageData = ImageData;
@@ -117,6 +120,29 @@ try {
         assert.ok(members > 2 && (Math.PI * g.r * g.r) / members > 90, `grove ${i} is open (${members} trees on ${(Math.PI * g.r * g.r).toFixed(0)} m²)`);
       }
       report.caldera = { trees: trees.length, groves: groves.length };
+    } finally { world.dispose(); }
+  }
+  // Copper Mesa: each form in its zone of the square's heights (the top two fifths for the juniper and the pinyon, the
+  // bottom two fifths for the mesquite), every tree past the square's edge too
+  {
+    const { field, world } = produce('copper_mesa');
+    try {
+      const heights = [];
+      for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) heights.push(field.getHeightAt(x, z));
+      heights.sort((a, b) => a - b);
+      const low = heights[Math.floor(heights.length * 0.4)], high = heights[Math.floor(heights.length * 0.6)];
+      const zoned = { conifer: 0, broadleaf: 0 };
+      for (const t of world._trees) {
+        if (t.species === 'snag') continue;
+        const form = treeBiomeSlot('copper_mesa', t.species)?.form ?? t.species;
+        const conifer = TREE_GROWTH_PROFILES[form].family === 'conifer', h = field.getHeightAt(t.x, t.z);
+        assert.ok(conifer ? h >= high - 1e-6 : h <= low + 1e-6,
+          `${form} in its zone (${h.toFixed(1)} m; the low ground under ${low.toFixed(1)}, the high over ${high.toFixed(1)})`);
+        zoned[conifer ? 'conifer' : 'broadleaf']++;
+      }
+      assert.ok(zoned.conifer >= 20 && zoned.broadleaf >= 20, `both zones grow (${JSON.stringify(zoned)})`);
+      assert.ok(world._trees.filter(inside).length < 300, `the mine's uplands carry few trees (${world._trees.filter(inside).length})`);
+      report.copper_mesa = zoned;
     } finally { world.dispose(); }
   }
   console.log(`treeSpacing.selftest: ${JSON.stringify(report)} PASS`);
