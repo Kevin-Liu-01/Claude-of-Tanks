@@ -184,8 +184,8 @@ for (const [name, c] of [...Object.entries(HORIZON_PANORAMA_CHARACTERS), ...Obje
 {
   const strip = HORIZON_PANORAMA_SHADERS.strip, height = HORIZON_PANORAMA_SHADERS.height;
   assert.ok(strip.includes('hazeTransmittance(uHaze.x * uAir.x, max(0.0, rr - uFrame.z), layer, uHazeChroma)'), 'the far path takes the map\'s share of the law\'s σ');
-  assert.ok(/if \(uAir\.y > 0\.5 && uHaze\.w > 0\.5\) \{[\s\S]*?fill = cover \* TF \+ lawTarget \* \(1\.0 - TF\);/.test(strip),
-    'the fill law: the lowland\'s own cover under the law\'s air, toward the same target as the range above it');
+  assert.ok(/if \(uAir\.y > 0\.5\) \{[\s\S]*?if \(uHaze\.w > 0\.5\) \{[\s\S]*?fill = cover \* TF \+ lawTarget \* \(1\.0 - TF\);[\s\S]*?fill = mix\(cover, uFog \* 0\.95, 1\.0 - exp\(-800\.0 \* recede \/ 13000\.0\)\);/.test(strip),
+    'the fill law: the lowland\'s own cover under the air of its own reach (the law\'s with a published sky, the bake\'s own without)');
   assert.ok(height.includes('if (uTrees.z > 0.0) gTree = max(gTree, uTrees.z * gGully);'), 'the scrub holds the gullies (the grid\'s tree cover)');
   assert.ok(strip.includes('smoothstep(uAir.z - 0.12, uAir.z + 0.12, hT + 0.05 * n1 - climb)'), 'bare rock above its floor, the floor climbing with the scrub');
   assert.ok(strip.includes('float fallStreak(vec2 xz)') && strip.includes('float streak = uTrees.z > 0.0 ? smoothstep(-0.2, 0.6, fallStreak(wp.xz)) : 0.0;'),

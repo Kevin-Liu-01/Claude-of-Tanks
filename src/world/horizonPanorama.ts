@@ -959,16 +959,20 @@ void main() {
     vec3 flatC = mix(uBase, uSnow, fillSnow) * (uGains.y * 1.05 * max(0.0, uSun.y) * vec3(1.06, 0.98, 0.86) + uGains.x * 0.82 * skyTint);
     vec3 fill = mix(flatC, flatC * uForest / max(vec3(1e-3), uBase) * 0.95, smoothstep(0.05, 0.45, patchN) * step(0.35, uChar3.y) * (1.0 - fillSnow));
     float recede = smoothstep(atan(edge.a) - 0.06, atan(edge.a), e);
-    if (uAir.y > 0.5 && uHaze.w > 0.5) {
+    if (uAir.y > 0.5) {
       // (the fill law, a map's opt-in — Saltwind, gauntlet wave 32: "a second range rests on a uniform bright haze
       // stripe, lighter than the range above it"): the lowland's own cover, its scrub and woods in broad patches round
-      // the compass, under the law's air over its own reach — the ground just behind the ring, under a kilometre past
-      // the shell, nearer than the far country above it and no hazier — so the band reads as the country between the
-      // ring and the range, never paler than the range
+      // the compass, under the air over its own reach — the ground just behind the ring, under a kilometre past the
+      // shell, nearer than the far country above it and no hazier — so the band reads as the country between the ring
+      // and the range, never paler than the range (the law's air with the battlefield's sky published, else the bake's own)
       vec3 cover = mix(flatC, flatC * uForest / max(vec3(1e-3), uBase) * 0.95, max(0.5 + 0.4 * smoothstep(0.05, 0.45, patchN), 0.9 * uTrees.z) * (1.0 - fillSnow));
-      float fillLayer = hazeLayerMean(max(uFrame.w - uHaze.z, 0.0) * uHaze.y, max(60.0 - uHaze.z, 0.0) * uHaze.y);
-      vec3 TF = hazeTransmittance(uHaze.x * uAir.x, 800.0 * recede, fillLayer, uHazeChroma);
-      fill = cover * TF + lawTarget * (1.0 - TF);
+      if (uHaze.w > 0.5) {
+        float fillLayer = hazeLayerMean(max(uFrame.w - uHaze.z, 0.0) * uHaze.y, max(60.0 - uHaze.z, 0.0) * uHaze.y);
+        vec3 TF = hazeTransmittance(uHaze.x * uAir.x, 800.0 * recede, fillLayer, uHazeChroma);
+        fill = cover * TF + lawTarget * (1.0 - TF);
+      } else {
+        fill = mix(cover, uFog * 0.95, 1.0 - exp(-800.0 * recede / 13000.0));
+      }
     } else {
       fill = mix(fill, uFog * 1.05, 0.25 + 0.35 * recede);
     }
