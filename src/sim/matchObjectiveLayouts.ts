@@ -106,14 +106,17 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // Jade River Delta (redesign 2026-10-02): the market square on the char (also the turbo-ball kickoff) and a
   // rice-drying yard on each bank, rotationally symmetric about the char's centre.
   delta: { kickoff: { x: -4, z: 14 }, zones: [{ x: -151, z: 43 }, { x: -4, z: 14 }, { x: 143, z: -15 }] },
-  // Highland Reservoir (redesign 2026-10-02): the waterworks' three gravel yards on the line of equal driven distance
-  // between the deployments — the north bank's timber landing, the shore yard (also the turbo-ball kickoff), the
-  // south yard.
+  // Monsoon Ridge (redesign 2026-10-02): three discs on the line of equal driven distance between the deployments — the
+  // temple forecourt astride the west road and the tea estate's drying yard (aprons in the map file) and the hill
+  // town's square (also the turbo-ball kickoff).
   monsoon: { kickoff: { x: -60, z: 24 }, zones: [{ x: -306, z: 16 }, { x: -60, z: 24 }, { x: 400, z: 8 }] },
   // Obsidian Caldera (redesign 2026-10-03): three discs on the line of equal driven distance — the Sulphur Works' yard
   // by the west road, the settlement's west end on the basin floor (also the turbo-ball kickoff), the eastern Loading
   // Yard. The two yards are graded aprons in the map file; the settlement's floor seats its disc as it lies.
   caldera: { kickoff: { x: -120, z: 0 }, zones: [{ x: -332, z: 96 }, { x: -120, z: 0 }, { x: 340, z: -200 }] },
+  // Highland Reservoir (redesign 2026-10-02): the waterworks' three gravel yards on the line of equal driven distance
+  // between the deployments — the north bank's timber landing, the shore yard (also the turbo-ball kickoff), the
+  // south yard.
   reservoir: { kickoff: { x: 88, z: 8 }, zones: [{ x: -8, z: 154 }, { x: 88, z: 8 }, { x: 12, z: -170 }] },
   // Ruinspires (redesign 2026-10-02): the boulevard's three squares, level aprons in the map file, rotationally
   // symmetric about the Square of the Republic (also the turbo-ball kickoff).
