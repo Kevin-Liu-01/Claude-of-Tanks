@@ -150,6 +150,9 @@ function checkSourceContract(text) {
     'uRingReliefWall',
     // ground lane (2026-10-03): the land use's field system (landUse.ts) — five packed vectors, no sampler
     'uLandA', 'uLandB', 'uLandC', 'uLandD', 'uLandE',
+    // ground lane (2026-10-03, the land-use bake): the bake's address in the ground mask's stack and the stack's own (two
+    // vectors, no sampler — the bake rides in uMask's unit)
+    'uLandBake', 'uMaskStack',
     // ground lane (2026-10-03): the two-formation bedrock's boundary (vec4, no sampler)
     'uFormation',
     // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving — natural steep faces take the D layer (scalar, no sampler)
@@ -162,7 +165,8 @@ function checkSourceContract(text) {
     grass.albedo, grass.normal, dirt.albedo, dirt.normal,
     rock.albedo, rock.normal, wet.albedo, wet.normal, mask, noiseTex,
     outlandWaterMask, ...(groundMask === mask ? [] : [groundMask]),
-  ]`)), 'the same ten shader-only texture owners keep their positions ([0] grass, [4] rock feed the horizon ground tone); the outland bay mask is the eleventh');
+    ...(maskStack.texture === groundMask ? [] : [maskStack.texture]),
+  ]`)), 'the same ten shader-only texture owners keep their positions ([0] grass, [4] rock feed the horizon ground tone); the outland bay mask is the eleventh, the land-use stack the last');
   // round 42 (2026-09-23): the program cache key moved with the sky-light fragment (was v31, relief pass 2 of 2026-09-12)
   // round 49 (2026-09-23): v38 — jointed marker-bed strata and the per-map ring rock band
   // round 55 (2026-09-24): v39 — the bedded sandstone maps' analytic wall crag replaces the tile's coarse wall tap

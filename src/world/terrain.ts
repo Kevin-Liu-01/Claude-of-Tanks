@@ -59,7 +59,7 @@ import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
 import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
-import { LAND_USE_GLSL, landUseAt, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
+import { LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -3210,6 +3210,50 @@ export function makeMaskTexture(
   return t;
 }
 
+/** Rows of gutter between the ground mask and the land-use bake in their stack (a 64-row alignment for the mips). */
+const MASK_STACK_GUTTER = 64;
+/**
+ * The ground mask with the land-use bake stacked under it (2026-10-03, the GPU fix): one RGBA8 texture, so the material
+ * reads the bake through the mask's own sampler (it sits at the 16-unit limit). Rows [0, W) the mask, then 64 rows
+ * repeating its last row, 64 repeating the bake's first, then the bake's two layers of n rows each (landUse.ts
+ * bakeLandUseSteps; every row padded to W with its last texel). The mask and the bake start and end on 64-row
+ * boundaries, so the mip chain's box filter never mixes them below level 6 and the mask keeps its own mips; its reads
+ * clamp half a texel inside its rows (maskAt) and the bake is fetched exactly at level 0 (lu_field). Without a bake the
+ * mask goes through unchanged (the stack's uniforms then address it whole).
+ */
+export function stackLandUseBake(ground: THREE.DataTexture, bake: Uint8Array | null, n: number): {
+  texture: THREE.DataTexture; stack: THREE.Vector4; bake: THREE.Vector4;
+} {
+  const W = ground.image.width, rows = ground.image.height;
+  if (!bake) {
+    return { texture: ground, stack: new THREE.Vector4(1, 0.5 / W, 1 - 0.5 / W, 1 / rows), bake: new THREE.Vector4(1, MAP_SIZE, 0, 1 / W) };
+  }
+  if (n > W || bake.length !== n * n * 8) throw new Error('stackLandUseBake: the bake must be two n × n RGBA8 layers with n ≤ the mask width');
+  const row0 = rows + 2 * MASK_STACK_GUTTER, H = row0 + 2 * n;
+  const data = new Uint8Array(W * H * 4);
+  const src = ground.image.data as Uint8Array;
+  data.set(src.subarray(0, W * rows * 4));
+  const last = src.subarray((rows - 1) * W * 4, rows * W * 4);
+  for (let r = 0; r < MASK_STACK_GUTTER; r++) data.set(last, (rows + r) * W * 4);
+  const padded = new Uint8Array(W * 4);
+  const bakeRow = (j: number): Uint8Array => {
+    padded.set(bake.subarray(j * n * 4, (j + 1) * n * 4));
+    const edge = bake.subarray(((j + 1) * n - 1) * 4, (j + 1) * n * 4);
+    for (let i = n; i < W; i++) padded.set(edge, i * 4);
+    return padded;
+  };
+  bakeRow(0);
+  for (let r = 0; r < MASK_STACK_GUTTER; r++) data.set(padded, (rows + MASK_STACK_GUTTER + r) * W * 4);
+  for (let j = 0; j < 2 * n; j++) data.set(bakeRow(j), (row0 + j) * W * 4);
+  const texture = new THREE.DataTexture(data, W, H, THREE.RGBAFormat);
+  texture.flipY = false;
+  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.minFilter = ground.minFilter; texture.magFilter = ground.magFilter;
+  texture.generateMipmaps = ground.generateMipmaps; texture.anisotropy = ground.anisotropy;
+  texture.needsUpdate = true; texture.name = 'terrain:maskStack';
+  return { texture, stack: new THREE.Vector4(rows / H, 0.5 / W, 1 - 0.5 / W, 1 / H), bake: new THREE.Vector4(n, MAP_SIZE, row0, 1 / W) };
+}
+
 function makeShaderNoiseTexture(_seed: number): THREE.CanvasTexture {
   // seed stays 3011: the RG channels quantize the SAME Float32 fields the
   // CPU twin (sampleSplatNoise) samples — shared bake, see splatFields().
@@ -3253,6 +3297,13 @@ uniform sampler2D uAlbG, uAlbD, uAlbR, uAlbM;
 uniform sampler2D uNrmG, uNrmD, uNrmR, uNrmM;
 uniform sampler2D uMask, uNoise;
 uniform float uMaskSize;
+// ground lane (2026-10-03, the land-use bake): uMask holds the ground mask in its first rows and the land use baked under
+// it (stackLandUseBake) — uMaskStack = (the mask's share of the stack's height, the half-texel clamp, 1 − it, 1 / the
+// stack's height); every mask read goes through maskAt, half a texel inside the mask's rows
+uniform vec4 uMaskStack;
+vec4 maskAt(vec2 uv) {
+  return texture2D(uMask, vec2(clamp(uv.x, uMaskStack.y, uMaskStack.z), clamp(uv.y, uMaskStack.y, uMaskStack.z) * uMaskStack.x));
+}
 // Terrain v2 (2026-10-01, the cost pass): each albedo layer's linear tile mean (rgb) and mean packed roughness (a),
 // measured from the layer's own image (terrain.ts layerAlbedoMean) when it is painted or swapped for its sourced set.
 // They stand in for the deep-mip "tile mean" fetches the far variant and the zero-mean octaves used to take.
@@ -3561,7 +3612,7 @@ void splatCompute() {
   vec3 wp = vWPos;
   vec3 wn = normalize(vWNormal);
   vec2 mUV = wp.xz / uMaskSize + 0.5;
-  vec4 mk = texture2D(uMask, mUV);
+  vec4 mk = maskAt(mUV);
   // vista pass (2026-09-19): the horizon ring's rim bands render with this material past the playable square,
   // where the clamped mask edge would drag any rim road, shoulder or town wear outward as a radial streak;
   // fade those channels to open ground there (the landform/marsh channel keeps its edge value)
@@ -4107,8 +4158,8 @@ void splatCompute() {
       * (1.0 - shoulder) * (1.0 - smoothstep(0.020, 0.060, slope)) * (1.0 - smoothstep(0.02, 0.10, fM))
       * (1.0 - smoothstep(0.10, 0.45, woods));
     if (landW > 0.003) {
-      float crop, edgeM, track, jit, endM, hedgeL; vec2 rowDir;
-      lu_field(wp.xz, crop, edgeM, track, rowDir, jit, endM, hedgeL);
+      float crop, edgeM, track, jit, hedgeL; vec2 rowDir;
+      lu_field(wp.xz, crop, edgeM, track, rowDir, jit, hedgeL);
       // the region's boundary (landUse.ts BOUNDARIES): 0 a grass margin with tracks, 1 a polder's water ditches on the
       // long lines, 2 a paddy's earth bund, 3 a karst field's dry stone wall
       float bnd = uLandE.z;
@@ -4962,8 +5013,8 @@ void splatCompute() {
   if (roadCore > 0.002) {
     float texel = 1.0 / 1024.0;
     vec2 gradD;
-    gradD.x = texture2D(uMask, mUV - vec2(texel, 0.0)).g - texture2D(uMask, mUV + vec2(texel, 0.0)).g;
-    gradD.y = texture2D(uMask, mUV - vec2(0.0, texel)).g - texture2D(uMask, mUV + vec2(0.0, texel)).g;
+    gradD.x = maskAt(mUV - vec2(texel, 0.0)).g - maskAt(mUV + vec2(texel, 0.0)).g;
+    gradD.y = maskAt(mUV - vec2(0.0, texel)).g - maskAt(mUV + vec2(0.0, texel)).g;
     gradD *= 6.0; // byte ramp over a 2 m baseline -> metres per metre, ~unit across the road
     float laneSlope = -2.0 * laneD * uLaneK * lane;
     n.xy += gradD * laneSlope * 0.14 * roadCore * rutAmp * (1.0 - df * 0.72);
@@ -5024,8 +5075,8 @@ void splatCompute() {
     if (ridgeBand > 0.004) {
       float texelR = 2.0 / 1024.0;
       vec2 gM;
-      gM.x = texture2D(uMask, mUV + vec2(texelR, 0.0)).b - texture2D(uMask, mUV - vec2(texelR, 0.0)).b;
-      gM.y = texture2D(uMask, mUV + vec2(0.0, texelR)).b - texture2D(uMask, mUV - vec2(0.0, texelR)).b;
+      gM.x = maskAt(mUV + vec2(texelR, 0.0)).b - maskAt(mUV - vec2(texelR, 0.0)).b;
+      gM.y = maskAt(mUV + vec2(0.0, texelR)).b - maskAt(mUV - vec2(0.0, texelR)).b;
       float gl = length(gM);
       if (gl > 1e-5) {
         vec2 gd = gM / gl;
@@ -5538,6 +5589,11 @@ function* createSplatMaterialSteps(
     redux.reduxD.fill(0); // terrain v2
     landUse.landA[0] = 0; // ground lane: no fields
   }
+  // ground lane (2026-10-03, the GPU fix): the land use baked once from its CPU twin at the interior mask's texel scale
+  // (landUse.ts bakeLandUseSteps), stacked under the ground mask below (stackLandUseBake) — 64 rows a build step
+  const landBakeN = mask.image.width;
+  const landBake = landUse.landA[0] > 0 ? new Uint8Array(landBakeN * landBakeN * 8) : null;
+  if (landBake) yield* bakeLandUseSteps(landUseProfile, landBakeN, MAP_SIZE, landBake, 64);
   const groundClock = { value: 0 };
   // the live uniform objects (a probe zeroes a term to isolate its cost or its look)
   const reduxUniforms = {
@@ -5579,7 +5635,9 @@ function* createSplatMaterialSteps(
     shader.uniforms.uNrmD = { value: layers.D.normal };
     shader.uniforms.uNrmR = { value: layers.R.normal };
     shader.uniforms.uNrmM = ringReliefUniforms.uNrmM; // round 72b: shared with the ring bands' atlas swap
-    shader.uniforms.uMask = { value: groundMask };
+    shader.uniforms.uMask = { value: maskStack.texture };
+    shader.uniforms.uMaskStack = { value: maskStack.stack };
+    shader.uniforms.uLandBake = { value: maskStack.bake };
     shader.uniforms.uMaskSize = { value: groundMask === mask ? MAP_SIZE : OUTLAND_WATER_MASK_SIZE_M };
     shader.uniforms.uNoise = { value: noiseTex };
     // terrain v2: the layers' measured means (the same vectors measureLayerMeans refreshes after the sourced swap)
@@ -5652,6 +5710,7 @@ function* createSplatMaterialSteps(
     texture.name = 'terrain:continuousCoastMask';
     return texture;
   })();
+  const maskStack = stackLandUseBake(groundMask, landBake, landBakeN);
   function assignSplatBiomeUniforms(shader: MaterialShader): void {
     // maps r1 (ADDITIVE, uSea-gated in the shader — 0 on every pre-existing
     // map): open-water mode. Remaps the wide marsh-mask shore ramp into a
@@ -5760,6 +5819,7 @@ function* createSplatMaterialSteps(
     grass.albedo, grass.normal, dirt.albedo, dirt.normal,
     rock.albedo, rock.normal, wet.albedo, wet.normal, mask, noiseTex,
     outlandWaterMask, ...(groundMask === mask ? [] : [groundMask]),
+    ...(maskStack.texture === groundMask ? [] : [maskStack.texture]),
   ], sourcedReady: sourcedTexturesReady.then(() => undefined, () => undefined) };
 }
 
