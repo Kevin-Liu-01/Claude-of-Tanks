@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {shoulderCoverTop} from './t72b3mXSideMounts.ts';
+import {shoulderCoverTop,T72B3M_DECK_FRONT_Z} from './t72b3mXSideMounts.ts';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT72B3MSideMounts} from './t72b3mXSideMounts.ts';
@@ -98,7 +98,8 @@ function markings(tank,quality){
   }
 }
 
-const ray=(meshes,p,d=[0,-1,0],far=10)=>new T.Raycaster(new T.Vector3(...p),new T.Vector3(...d),0,far).intersectObjects(meshes,false)[0];
+const hits=(meshes,p,d=[0,-1,0],far=10)=>new T.Raycaster(new T.Vector3(...p),new T.Vector3(...d),0,far).intersectObjects(meshes,false);
+const ray=(meshes,p,d,far)=>hits(meshes,p,d,far)[0];
 function stocksAt(mesh,p){
   const material=new T.MeshBasicMaterial({side:T.DoubleSide}),probe=new T.Mesh(mesh.geometry,material);
   probe.matrixWorld.copy(mesh.matrixWorld);let count=0,last=-1,lastSign=0;
@@ -121,7 +122,10 @@ function sourceSurfaces(all){
   // 2026-09-14 owner ruling: the fender-to-skirt gaps are closed. Over the deck return the
   // shoulder cover's top follows the deck edge, capped by the skirt top (shoulderCoverTop);
   // the mounted source surfaces below it are covered, not moved.
-  for(const side of [-1,1])for(const z of [-3.0,-2.5,-1.2,-.5,0,.2,1.01,1.05,1.9,2.35,2.6])
+  // 2026-10-03: the cover runs the whole deck fender, through the former front pocket (z 2.70-2.93, between the
+  // last upper link and the front lower link) to the deck fender's front station.
+  for(const side of [-1,1])for(const z of [-3.0,-2.5,-1.2,-.5,0,.2,1.01,1.05,1.9,2.35,2.6,2.75,2.80,2.85,2.90,3.00,
+    T72B3M_DECK_FRONT_Z-.005])
     for(const x of [1.80,1.86,1.90,1.925])
       near(ray(all,[side*x,3,z])?.point.y,shoulderCoverTop(z),.003,`shoulder cover top at x ${x} z ${z}`);
   near(ray(all,[1.93,1.34,-.6],[0,0,1])?.point.z,-.547072,.001,'source outer-ear fore plane');
@@ -135,8 +139,15 @@ function sourceSurfaces(all){
 
 function sourceAir(all){
   // The channel rays that used to prove the source's open air now prove the cover.
-  for(const side of [-1,1])for(const z of [-.29,-.28,0,.60,1.30])
+  for(const side of [-1,1])for(const z of [-.29,-.28,0,.60,1.30,2.80,2.85,2.90])
     assert.equal(Boolean(ray(all,[side*1.86,4,z])),true,'fender-to-skirt gap is closed (owner 2026-09-14)');
+  // Control: in the former front pocket the cover is the only stock in plan. Every hit of a vertical ray there lies in
+  // the cover slab, so a cover ending at the last rail-field station (z 2.702, until 2026-10-03) leaves open air.
+  for(const side of [-1,1])for(const z of [2.80,2.85,2.90])for(const x of [1.80,1.86,1.90]){
+    const top=shoulderCoverTop(z),found=hits(all,[side*x,4,z]);
+    assert.ok(found.length>0&&found.every(h=>h.point.y<=top+.003&&h.point.y>=top-.024-.003),
+      `the former front pocket at x ${x} z ${z} holds nothing but the cover (${found.map(h=>h.point.y.toFixed(4)).join(', ')})`);
+  }
   for(const side of [-1,1]){
     assert.equal(Boolean(ray(all,[side*1.86,1.30,-.51])),false,'source air below inner clamp lip');
     assert.equal(Boolean(ray(all,[side*1.90,1.31,-.61],[0,0,1],.028)),false,'air outside the bounded lower jaw');
@@ -192,4 +203,4 @@ for(const quality of ['high','low']){
     assert.equal(tank.resetEra(),true);sourceSurfaces(all);
   }finally{tank.dispose();}
 }
-console.log('t72b3mXSideMounts: high/low actual source surfaces, full helper wiring, permanent attachment after ERA stripping, shoulder cover closes the fender-to-skirt gap, clamp air PASS');
+console.log('t72b3mXSideMounts: high/low actual source surfaces, full helper wiring, permanent attachment after ERA stripping, shoulder cover closes the fender-to-skirt gap to the front fender, clamp air PASS');
