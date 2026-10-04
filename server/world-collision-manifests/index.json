@@ -40,18 +40,18 @@
       "concealers": 3626
     },
     "autumn": {
-      "bytes": 1525080,
-      "sha256": "40bf3fc37f33cee424abcbf9430df54590fe2186621ea2fc32e03ae69e926c6c",
-      "obstacles": 4702,
-      "colliders": 4592,
-      "concealers": 4810
+      "bytes": 1526803,
+      "sha256": "51199138d84363f62121563b2258101e119d9aed71a653016ee0b7e2ad6d600e",
+      "obstacles": 4776,
+      "colliders": 4668,
+      "concealers": 4841
     },
     "steppe": {
-      "bytes": 1047495,
-      "sha256": "d3923acc837843f5aeee1a7b7b5ec34f606099235602e83b3cbee08692737ee2",
-      "obstacles": 1847,
-      "colliders": 1557,
-      "concealers": 715
+      "bytes": 1076006,
+      "sha256": "4cc514c8b4349d84147265722a209ef1bb7775295ad1c363e578d9c8f7a285be",
+      "obstacles": 1834,
+      "colliders": 1547,
+      "concealers": 703
     },
     "railyard": {
       "bytes": 1291838,
@@ -68,10 +68,10 @@
       "concealers": 6296
     },
     "fjord": {
-      "bytes": 1554991,
-      "sha256": "fd552812e646884b11db127760e3a72b4890f826729e130aa30d14550be5a659",
-      "obstacles": 5116,
-      "colliders": 5067,
+      "bytes": 1510814,
+      "sha256": "2d9f244ae96e2f904d74cda45ed15d21e878776374196a445444fc4b695acfc2",
+      "obstacles": 5090,
+      "colliders": 5019,
       "concealers": 5190
     },
     "delta": {
@@ -153,16 +153,16 @@
     },
     "copper_mesa": {
       "bytes": 786913,
-      "sha256": "0f76e5c7daa837d87143f9bbb118a59bf7ceff938fa8cf46d6eca5ece8408ce0",
+      "sha256": "3c8a59daba49c25240ca9dc546ca152dcdcc248833333c978fd0b64aa422809f",
       "obstacles": 2158,
       "colliders": 2022,
       "concealers": 1453
     },
     "airfield": {
-      "bytes": 793763,
-      "sha256": "bb07d3cb733bdaa052aca5ba1f2dff8346833c94b11534c77222c3c607788d84",
-      "obstacles": 2492,
-      "colliders": 2451,
+      "bytes": 892265,
+      "sha256": "630490869d6b9e65bda260a4e3b16b3185ad52228641f2b7beb6d12984a50a45",
+      "obstacles": 2481,
+      "colliders": 2487,
       "concealers": 1967
     },
     "oasis": {

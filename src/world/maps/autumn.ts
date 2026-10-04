@@ -51,7 +51,13 @@ const RIVER_STATIONS = [
   { x: 413, z: 335, r: 21, dip: 0.9 }, { x: 440, z: 390, dip: 1.3 },
 ].map((m) => ({ r: 25, dip: 1.5, ...m }));
 const CROSSINGS = RIVER_STATIONS.filter(station => station.r < 25);
-const RIVER = createMarshChannel(RIVER_STATIONS).map(station => {
+// 2026-10-03 (maps lane B, gauntlet wave 28: "a jagged, stair-stepped band with a pale cyan rim"): the bank line is
+// smooth. The cells are circles (a plain station's shore carries capes, coves and 22 folded corners) at 0.96 of their
+// radius, the plain shore's mean reach, laid at half a radius apart so the union of circles is scalloped by a metre at
+// most (it was 4-5 m at 1.15 radii); the closer cells are shallower in proportion, so the bed keeps its depth.
+const RIVER_BANK = [0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96,
+  0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96] as const;
+const RIVER = createMarshChannel(RIVER_STATIONS, 0.5).map(station => ({ ...station, radii: RIVER_BANK })).map(station => {
   let r = station.r;
   // New overlaps connect the river, but the crossing section at each authored
   // narrows stays inside its original bank envelope: a neighbour's circle may
@@ -189,6 +195,10 @@ export default {
     rockTone: (h: number, s: number, l: number) => [0.09, clamp01(s * 0.5), clamp01(l * 1.02 + 0.02)],
     // r3: dark olive-teal river water (raw layer + sky sheen read pale-grey)
     mudTone: (h: number, s: number, l: number) => [0.52, clamp01(s * 0.95), clamp01(l * 0.78)],
+    // 2026-10-03 (maps lane B, gauntlet wave 28): an earthy bank — 3 m of trodden mud and gravel along the waterline,
+    // fading over 10 m into the meadow (shoreDirtMask.ts); the damp margin and the reeds are the ground profile's
+    // (groundRedux.ts), the muddy shallows the water's (waterContact.ts)
+    shoreDirt: true,
     // open-water mode tuned RIVER: gentler foam (bank riffles), mud shoals
     seaLake: true,
     seaFoam: 0.12, // r4: bank riffles only — even 0.22 read as rapids sparkle at range

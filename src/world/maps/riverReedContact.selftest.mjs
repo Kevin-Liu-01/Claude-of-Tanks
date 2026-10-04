@@ -110,7 +110,12 @@ function auditStem(geometry, field) {
   const radius = Math.hypot(p.getX(0) - base[0], p.getZ(0) - base[2]);
   const midRadius = Math.hypot(p.getX(5) - middle[0], p.getZ(5) - middle[2]);
   assert.ok(radius > .0089 && radius < .0226, 'thin physical culm radius');
-  assert.ok(Math.abs(midRadius / radius - .64) < .003, 'visible taper before pointed tip');
+  // the ratio is read off world-space Float32 vertices: each coordinate rounds by half an ulp of its magnitude, so a
+  // centimetre-thin culm 400 m out (Amberford's river reaches its north-east corner, 2026-10-03) reads its radii to
+  // ±2√2 half-ulps; the band widens by that much and no more (0 at the origin)
+  const halfUlp = Math.max(Math.abs(base[0]), Math.abs(base[2]), 1) * 2 ** -24;
+  const readError = .64 * 2 * Math.SQRT2 * halfUlp * (1 / midRadius + 1 / radius);
+  assert.ok(Math.abs(midRadius / radius - .64) < .003 + readError, 'visible taper before pointed tip');
   assert.ok(p.getY(10) > middle[1] && middle[1] > base[1]);
   for (let i = 11; i < 14; i++) assert.deepEqual([p.getX(i), p.getY(i), p.getZ(i)],
     [p.getX(10), p.getY(10), p.getZ(10)], 'four faces meet at the same tip');

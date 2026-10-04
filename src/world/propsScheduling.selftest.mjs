@@ -4,7 +4,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { box, jitterUV } from './propGeometry.ts';
-import { boxClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
+import { boxClearOfPoints, boxClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
 
 // Execute the actual public scheduling wrapper with an owned generator fixture.
 // Geometry/output equivalence is separately checked by the whole-world profile;
@@ -403,6 +403,8 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
       min: 0, max: 0, spread: 0, maxEmbed: state.maxEmbed, maxFloat: 0 }),
     // the road footprint law (roadFootprint.ts): far from every road unless a case puts the wreck on one
     heightField: { _roadDist: () => roadDistance }, shiftClearOfRoadCore, boxClearOfRoadCore, placedB: [],
+    // the sharp-bend law (roadFootprint.ts): no bend near the fixture's seats
+    boxClearOfPoints, sharpBends: [],
     _quat: { setFromUnitVectors() {} }, _upAxis: {},
     _posv: { set() { return this; } },
     setObbShape: record => record, cloneCollisionRecord: record => structuredClone(record),
@@ -576,6 +578,8 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     P: { streetRows, townCraters: true, craters: 8 },
     L: { spawns: { player: { x: -100, z: -100 }, enemies: [{ x: 100, z: 100 }] } },
     v: { cx: 10, cz: 40, x0: -65, x1: 65, z0: -65, z1: 65 },
+    // the settlement the props dress (props.ts town: the village rect unless P.town names another)
+    town: { cx: 10, cz: 40, x0: -65, x1: 65, z0: -65, z1: 65 },
     heightField: { getHeightAt(x, z) { heightQueries.push([x, z]); return x * 0.001 + z * 0.002; },
       _roadDist: () => 10, getGroundType: () => 'hard', getNormalAt: () => ({ y: 1 }) },
     noVeg: () => rejectCourtyards, placedB: [],

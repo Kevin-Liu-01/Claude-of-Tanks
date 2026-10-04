@@ -343,6 +343,7 @@ const dependencies = { roadBuildingDoorAxis, roadSettlementJunction, buildingRoa
 const makePlacement = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* build(config, heightField, seed) {
   const P = { maxSpread: 1.7, ...config.props, plan: ['bathhouse'] };
   const L = heightField._layout, v = L.village, mapId = config.id, noVeg = heightField._noVeg;
+  const town = P.town ? { ...v, ...P.town } : v; // the settlement the props dress (props.ts)
   const rng = mulberry32(seed), detailUvRng = mulberry32(seed + 990);
   const buckets = Object.fromEntries(${JSON.stringify(names)}.map(name => [name, []]));
   const obstacles = [], colliders = [], buildingFeatures = [];
