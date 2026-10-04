@@ -1720,6 +1720,12 @@
      "sha256": "019b7122482be6efd788d3440f82aa938f58815e26675ceada247e366e307ae1",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v6",
+     "sha256": "05a9daf5b4f19846bc7781335cd7d50fc11a8a9cc3f4f0f889265a6e44819890",
+     "at": "2026-10-04T16:02:09.809Z",
+     "note": "s40 drone looks down the street to the wreck columns; s45/s46/s49 at golden hour (664e1c14b)"
     }
    ],
    "renders": [
@@ -1729,8 +1735,21 @@
      "sceneSha256": "019b7122482be6efd788d3440f82aa938f58815e26675ceada247e366e307ae1",
      "renderer": "bca048dab",
      "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/versions/r4c",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs",
+     "superseded": {
+      "at": "2026-10-04T16:02:09.932Z",
+      "why": "s40: the drone never framed the wreck smoke columns it is named for; s45/s46/s49: the sunset sun sat behind the valleys' mountains and the takes rendered nearly black"
+     }
+    },
+    {
+     "round": "r4d",
+     "sceneVersion": "v6",
+     "sceneSha256": "05a9daf5b4f19846bc7781335cd7d50fc11a8a9cc3f4f0f889265a6e44819890",
+     "renderer": "7a5c80c2e",
+     "at": "2026-10-04T16:34:20.570Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
-     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+     "note": "2160p films and stills; s40 recam, s45/s46/s49 golden hour"
     }
    ],
    "title": "Smoke columns rise over the rooftops of Steinburg",
@@ -1920,6 +1939,12 @@
      "sha256": "d5c3bc70393f2248f76386eeb7cb833362cdf339d78813ffaba7270406dbd53f",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v6",
+     "sha256": "eb88a0dbdb2c6f535137d8e7503d93e483f734c355da4bba5905ca25ba497d69",
+     "at": "2026-10-04T16:02:09.809Z",
+     "note": "s40 drone looks down the street to the wreck columns; s45/s46/s49 at golden hour (664e1c14b)"
     }
    ],
    "renders": [
@@ -1929,13 +1954,26 @@
      "sceneSha256": "d5c3bc70393f2248f76386eeb7cb833362cdf339d78813ffaba7270406dbd53f",
      "renderer": "bca048dab",
      "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/versions/r4c",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs",
+     "superseded": {
+      "at": "2026-10-04T16:02:09.932Z",
+      "why": "s40: the drone never framed the wreck smoke columns it is named for; s45/s46/s49: the sunset sun sat behind the valleys' mountains and the takes rendered nearly black"
+     }
+    },
+    {
+     "round": "r4d",
+     "sceneVersion": "v6",
+     "sceneSha256": "eb88a0dbdb2c6f535137d8e7503d93e483f734c355da4bba5905ca25ba497d69",
+     "renderer": "7a5c80c2e",
+     "at": "2026-10-04T16:34:20.570Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
-     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+     "note": "2160p films and stills; s40 recam, s45/s46/s49 golden hour"
     }
    ],
-   "title": "Nordhavn at sunset: the battle on the harbor road below the mountains",
+   "title": "Nordhavn at golden hour: the battle on the harbor road below the mountains",
    "map": "fjord",
-   "time": "sunset",
+   "time": "golden",
    "hero": "leo2a7v_x",
    "paint": {
     "unit": "naval",
@@ -1954,6 +1992,12 @@
      "sha256": "7b01bde75727d11220d55d74f236e227bfc3ac701dc4c96a26ec0f0dfccbb644",
      "at": "2026-10-03T16:55:32.998Z",
      "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v6",
+     "sha256": "d22523e4b41da95d2b8ee09c4135ae898dcb52d5201348d4d3cba1d6385025a3",
+     "at": "2026-10-04T16:02:09.809Z",
+     "note": "s40 drone looks down the street to the wreck columns; s45/s46/s49 at golden hour (664e1c14b)"
     }
    ],
    "renders": [
@@ -1963,13 +2007,26 @@
      "sceneSha256": "7b01bde75727d11220d55d74f236e227bfc3ac701dc4c96a26ec0f0dfccbb644",
      "renderer": "bca048dab",
      "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/versions/r4c",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs",
+     "superseded": {
+      "at": "2026-10-04T16:02:09.932Z",
+      "why": "s40: the drone never framed the wreck smoke columns it is named for; s45/s46/s49: the sunset sun sat behind the valleys' mountains and the takes rendered nearly black"
+     }
+    },
+    {
+     "round": "r4d",
+     "sceneVersion": "v6",
+     "sceneSha256": "d22523e4b41da95d2b8ee09c4135ae898dcb52d5201348d4d3cba1d6385025a3",
+     "renderer": "7a5c80c2e",
+     "at": "2026-10-04T16:34:20.570Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
-     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+     "note": "2160p films and stills; s40 recam, s45/s46/s49 golden hour"
     }
    ],
-   "title": "Monsoon Ridge at sunset: shells land along the jungle river",
+   "title": "Monsoon Ridge at golden hour: shells land along the jungle river",
    "map": "monsoon",
-   "time": "sunset",
+   "time": "golden",
    "hero": "aft10_x",
    "paint": {
     "unit": "tropic",
@@ -2062,6 +2119,12 @@
      "sha256": "fbf8143858c1cc2952aa94d4a7bb1cc333a845b60752e02e0eb1eab725615faf",
      "at": "2026-10-03T18:31:40.466Z",
      "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v6",
+     "sha256": "93d104951223463245d7a6b5b8d938fd9ca27085c3263f76adefdc16e03240e5",
+     "at": "2026-10-04T16:02:09.809Z",
+     "note": "s40 drone looks down the street to the wreck columns; s45/s46/s49 at golden hour (664e1c14b)"
     }
    ],
    "renders": [
@@ -2071,13 +2134,26 @@
      "sceneSha256": "fbf8143858c1cc2952aa94d4a7bb1cc333a845b60752e02e0eb1eab725615faf",
      "renderer": "bca048dab",
      "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/versions/r4c",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs",
+     "superseded": {
+      "at": "2026-10-04T16:02:09.932Z",
+      "why": "s40: the drone never framed the wreck smoke columns it is named for; s45/s46/s49: the sunset sun sat behind the valleys' mountains and the takes rendered nearly black"
+     }
+    },
+    {
+     "round": "r4d",
+     "sceneVersion": "v6",
+     "sceneSha256": "93d104951223463245d7a6b5b8d938fd9ca27085c3263f76adefdc16e03240e5",
+     "renderer": "7a5c80c2e",
+     "at": "2026-10-04T16:34:20.570Z",
      "kept": "shots/media-r5/site50/{renders,deliver}",
-     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+     "note": "2160p films and stills; s40 recam, s45/s46/s49 golden hour"
     }
    ],
-   "title": "Orchard Valley at sunset: smoke drifts over the orchards",
+   "title": "Orchard Valley at golden hour: smoke drifts over the orchards",
    "map": "orchard",
-   "time": "sunset",
+   "time": "golden",
    "hero": "amx30_x",
    "paint": {
     "unit": "oakleaf",
