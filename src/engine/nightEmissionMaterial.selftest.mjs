@@ -86,6 +86,8 @@ const gradeConstant = (name) => {
 };
 const SAT_LINEAR = gradeConstant('GRADE_SAT_LINEAR'), CONTRAST = gradeConstant('GRADE_CONTRAST'), BLACK_POINT = gradeConstant('GRADE_BLACK_POINT');
 const DISPLAY_SAT = gradeConstant('GRADE_SATURATION');
+// 2026-10-03 (the shade-fill lane): the photographic toe below the card by day, its slope back to the constant one with the night
+const TOE_SLOPE = gradeConstant('GRADE_TOE_SLOPE'), TOE_STOPS = gradeConstant('GRADE_TOE_STOPS');
 const inOrder = (source, lines, what) => {
   let at = -1;
   for (const line of lines) {
@@ -122,7 +124,15 @@ function displayOf(radiance, { exposure, warmth = 0, night = 0 }) {
   let c = radiance.toArray().map((v, i) => v * exposure * wb[i]);
   const sceneLuma = lumaOf(c);
   c = c.map((v) => Math.max(sceneLuma + SAT_LINEAR * (v - sceneLuma), 0));
-  c = c.map((v) => .18 * Math.pow(Math.max(v, 1e-6) / .18, CONTRAST));
+  if (night < 0.999) {
+    const lo = TOE_SLOPE + (CONTRAST - TOE_SLOPE) * night;
+    c = c.map((v) => {
+      const u = Math.log2(Math.max(v, 1e-6) / .18);
+      if (u >= 0) return .18 * 2 ** (CONTRAST * u);
+      const t = Math.min(1, Math.max(0, (u + TOE_STOPS) / TOE_STOPS)), g = t ** 3 * (1 - .5 * t);
+      return .18 * 2 ** (lo * u - (CONTRAST - lo) * TOE_STOPS * (.5 - g));
+    });
+  } else c = c.map((v) => .18 * Math.pow(Math.max(v, 1e-6) / .18, CONTRAST));
   c = agx(c).map((v) => THREE.MathUtils.clamp(v, 0, 1));
   c = c.map((v) => Math.max(v - BLACK_POINT, 0) / (1 - BLACK_POINT));
   const luma = lumaOf(c);

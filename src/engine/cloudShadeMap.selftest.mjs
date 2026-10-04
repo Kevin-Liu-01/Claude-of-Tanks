@@ -89,7 +89,7 @@ assert.match(lighting, /#if defined\( COT_CLOUD_SHADE \) && defined\( USE_SHADOW
 assert.match(lighting, /const COT_CLOUD_SUN_GLSL = `#if defined\( COT_CLOUD_SHADE \) && defined\( USE_SHADOWMAP \)\n\t+directLight\.color \*= vCotCloudSun;\n#endif`;/, 'the sun cascade\'s light takes the share');
 assert.match(lighting, /frag = frag\.replace\(fadePrevAnchor, `\$\{COT_CLOUD_SUN_GLSL\}\n\t+\$\{fadePrevAnchor\}`\);/, 'before the shadow, on the fade path');
 assert.match(lighting, /frag = frag\.replace\(noFadeAnchor, `\$\{COT_CLOUD_SUN_GLSL\}\n\t+cotPrev = directLight\.color;/, 'and on the plain path');
-assert.match(lighting, /#if defined\( COT_CLOUD_SHADE \) && defined\( USE_SHADOWMAP \)\n\tcotSunVis \*= vCotCloudSun;\n\t#endif\n\tvec3 cotAmbDim = mix\( uCotShadowDim, vec3\( 1\.0 \), cotSunVis \);/,
+assert.match(lighting, /#if defined\( COT_CLOUD_SHADE \) && defined\( USE_SHADOWMAP \)\n\tcotSunVis \*= vCotCloudSun;\n\t#endif\n[\s\S]{0,700}float cotAmbVis = cotSunVis;[\s\S]{0,700}vec3 cotAmbDim = mix\( uCotShadowDim, vec3\( 1\.0 \), cotAmbVis \);/,
   'the sun visibility takes the cloud (the scene alpha, the contact shadows\' sun share, the shadowed ambient dim)');
 {
   // the patched chunks really carry the code (CSM installs its own lights chunks; lighting.ts patches them once)
