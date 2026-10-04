@@ -337,13 +337,16 @@ assert.deepEqual(table, {
   // round 76: the deck identities — winter's cells and transmitted lighting, foundry's and railyard's industrial
   // stratocumulus low under a smoggy horizon with a warm / dirty base tint, urban's altocumulus; whiteout keeps
   // round 71's ceiling exactly (the integrator rated it)
-  assert.deepEqual([winter.cells, winter.deckLight, winter.cellM, winter.ambientScale], [0.85, 1, 1100, 2], 'winter: a cellular deck lit through');
+  // (2026-10-03, the gauntlet's wave 27: kilometre-scale relief — fp14's dk3, broad cells and strong rolls, on Frosthollow
+  // and Railyard exactly as shot)
+  assert.deepEqual([winter.cells, winter.deckLight, winter.cellM, winter.ambientScale, winter.undulatus], [1, 1, 2400, 2, 0.7], 'winter: a cellular deck lit through, broad cells and rolls');
   assert.deepEqual([whiteout.cells, whiteout.deckLight, whiteout.undulatus, whiteout.interior], [0, 0, 0, 0], 'whiteout: untouched by the deck pass');
   const foundry = deriveCloudLayerPreset(skyOf('foundry'));
   assert.ok(foundry.regime === 'industrial-stratocumulus' && foundry.baseM === 850 && foundry.cells === 0.9 && foundry.deckLight === 1 && foundry.cirrus === 0, 'foundry: a low cellular industrial deck, no cirrus over it');
   assert.ok(foundry.tint[0] > foundry.tint[2] && foundry.tint[0] > 0.75, 'foundry: the smog rides on the deck\'s base as a warm-grey albedo');
   const railyard = deriveCloudLayerPreset(skyOf('railyard'));
-  assert.ok(railyard.regime === 'industrial-stratocumulus' && railyard.coverage === 0.92 && railyard.cells === 0.9 && railyard.cellM === 1300 && railyard.density === 0.16 && railyard.sunGain === 0.7 && railyard.undulatus === 0.35, 'railyard: a closed dirty deck with subdued wide cells and undulatus bands');
+  // (2026-10-03, the gauntlet's wave 27: fp14's dk3 — broad cells and strong rolls, cells 1, cellM 2400, undulatus 0.7)
+  assert.ok(railyard.regime === 'industrial-stratocumulus' && railyard.coverage === 0.92 && railyard.cells === 1 && railyard.cellM === 2400 && railyard.density === 0.16 && railyard.sunGain === 0.7 && railyard.undulatus === 0.7, 'railyard: a closed dirty deck with broad cells and strong undulatus rolls');
   assert.ok(railyard.tint.every((c) => c < foundry.tint[1]) && railyard.tint[0] - railyard.tint[2] < foundry.tint[0] - foundry.tint[2], 'railyard: a dirtier, less warm base than foundry\'s');
   const urban = deriveCloudLayerPreset(skyOf('urban'));
   assert.ok(urban.regime === 'altocumulus' && urban.cellM === 340 && urban.interior === 0.4 && urban.deckLight === 1, 'urban: an altocumulus layer of small elements');
