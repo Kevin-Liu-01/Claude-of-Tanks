@@ -367,6 +367,12 @@ export const CASES = [
     modes: 'jump' },
   { id: 'kicker', group: 'air', seconds: (w) => 2 + w.dropS(8) * 2 + 3, terrain: TERRAIN.kicker(22, 7, 14), spawn: { speed: 'top' }, input: hold(1) },
   { id: 'land-slope', group: 'air', seconds: (w) => w.dropS(8) + 6, terrain: TERRAIN.slopeAlong(25), spawn: { dropTo: 8 }, input: hold(0, 0, true), rest: 'tail' },
+  // Round 4 (gauntlet wave 33): a level hull dropped onto a 10-degree cross slope lands on its uphill track first and
+  // turns onto the slope (landingTurn), from 1.5 m (4.2 m/s) and 3 m (7 m/s)
+  { id: 'land-cross', group: 'air', seconds: (w) => w.dropS(3) + 3, terrain: TERRAIN.slopeAcross(10), spawn: { dropTo: 3 },
+    input: hold(0, 0, true) },
+  { id: 'land-cross-soft', group: 'air', seconds: (w) => w.dropS(1.5) + 3, terrain: TERRAIN.slopeAcross(10), spawn: { dropTo: 1.5 },
+    input: hold(0, 0, true) },
   { id: 'land-tank', group: 'air', seconds: (w) => w.dropS(7) + 6, terrain: TERRAIN.flat(), extras: [{ id: 'lower', specId: 'm1a2', x: 0, z: 0 }],
     spawn: { x: 0.4, z: 0.6, dropTo: 7 }, input: hold(), rest: 'tail' },
   { id: 'land-wreck', group: 'air', seconds: (w) => w.dropS(7) + 6, terrain: TERRAIN.flat(), extras: [{ id: 'wreck', specId: 't90m', x: 0, z: 0, wreck: true }],
@@ -543,6 +549,10 @@ function newMetrics() {
     bodyPenMaxM: 0, obstaclePenMaxM: 0, hullPenMaxM: 0, stackPenMaxM: 0, roofSinkMaxM: 0, gearCompMaxM: 0,
     trackTicks: 0, trackReachSum: 0, perchedS: 0, trackContactMean: 12,
     overshootPullG: 0, landingSettleS: 0, restAttitudeErrDeg: 0,
+    // the first landing that meets ground tilted under the hull (round 4): the attitude's error to the ground plane at
+    // touchdown, the fastest turn toward it in the next 0.1 s, the time to within a degree of it, and the most it turned
+    // past it (degrees)
+    landingTurn: null,
     tunnelled: false, maxHeightM: 0,
     airS: 0, longestAirS: 0, hops: 0, landings: [], contactLandings: [], maxLandingMps: 0, reboundExcessMps: 0, closingExcessMps: 0,
     liftM: 0,
@@ -757,6 +767,7 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
   const staticSag = gravity / ((2 * Math.PI * 1.8) ** 2);
   let overshootPrev = null;
   let settleTrace = null;
+  let turnTrace = null;
   let wallSide = 0;
   let stuckRun = 0;
   // the prediction world over the same collision, seeing every other hull where the authority has it now
@@ -1030,9 +1041,27 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
       metrics.landingTravel.push([+Math.abs(pre.speed).toFixed(2), +Math.abs(state.speed).toFixed(2), +state._ride.v.toFixed(2)]);
       lastLanding = { closing: state.landingImpactMps, tick, travel: metrics.landingTravel.at(-1) };
       if (state.landingImpactMps > 2) settleTrace = [];
+      // the landing turn: about the axis the hull is furthest from the ground plane it lands on
+      if (!metrics.landingTurn) {
+        const errorPitch = state._terr.pitch - state._spring.pitch, errorRoll = state._terr.roll - state._spring.roll;
+        if (Math.max(Math.abs(errorPitch), Math.abs(errorRoll)) > 0.035) {
+          const axis = Math.abs(errorRoll) >= Math.abs(errorPitch) ? 'roll' : 'pitch';
+          metrics.landingTurn = { axis, closingMps: +state.landingImpactMps.toFixed(2),
+            errorDeg: +((axis === 'roll' ? errorRoll : errorPitch) * 57.2958).toFixed(2), turnRateDegS: 0, alignS: null, overshootDeg: 0 };
+          turnTrace = { tick, sign: Math.sign(axis === 'roll' ? errorRoll : errorPitch) };
+        }
+      }
       metrics.maxLandingMps = Math.max(metrics.maxLandingMps, state.landingImpactMps);
       metrics.apexes.push(+(apex - world.fn(state.pos.x, state.pos.z)).toFixed(2));
       apex = -Infinity;
+    }
+    if (turnTrace && tick > turnTrace.tick && tick - turnTrace.tick <= 120) {
+      const turn = metrics.landingTurn, roll = turn.axis === 'roll';
+      const error = (roll ? state._terr.roll - state._spring.roll : state._terr.pitch - state._spring.pitch) * 57.2958;
+      const rate = (roll ? state._spring.rollV : state._spring.pitchV) * 57.2958 * turnTrace.sign;
+      if (tick - turnTrace.tick <= 6) turn.turnRateDegS = Math.max(turn.turnRateDegS, +rate.toFixed(1));
+      if (turn.alignS === null && Math.abs(error) < 1) turn.alignS = +((tick - turnTrace.tick) * DT).toFixed(3);
+      turn.overshootDeg = Math.max(turn.overshootDeg, +(-error * turnTrace.sign).toFixed(2));
     }
     if (lastLanding && !landed && tick - lastLanding.tick <= 60) {
       lastLanding.travel[2] = Math.max(lastLanding.travel[2], +state._ride.v.toFixed(2));
