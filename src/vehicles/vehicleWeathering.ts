@@ -12,7 +12,7 @@
  *    darkened and damp, never glossy; a film with holes at most (the paint shows through); an all-over film on the
  *    dusty maps;
  *  - snow lodged on the faces turned up (deck, turret roof, fenders, track tops) and packed into the running gear on
- *    the winter maps;
+ *    the winter maps, in lumps down there with the dark steel and rubber between them;
  *  - grime in the panel seams the normal map carries, on the faces not turned up;
  *  - light wear on the raised detail of the walked faces (deck, hatches), toward a paler, smoother paint.
  * The breakup noise is sampled in each part's own frame (the plate, the wheel, each track shoe by its instance), so it
@@ -52,7 +52,9 @@ export interface VehicleWeather {
 
 type Climate = Omit<VehicleWeather, 'soilHex' | 'dustHex'>;
 // (amounts tuned on the lane's first capture pair, 2026-10-04: full cover read as a sandblasted hull and chrome-silver
-// slush, so a battlefield's dust is a film at most three quarters opaque with holes, and its mud stays matte)
+// slush, so a battlefield's dust is a film at most three quarters opaque with holes, and its mud stays matte; the snow
+// maps' on the final pair: a pale slush veil under a grey snow veil turned the dark wheels and shoes one even mid grey,
+// read as polished alloy, so their slush is the dark wet dirt and their snow comes in lumps)
 const ARID: Climate = Object.freeze({ dust: 0.72, film: 0.07, snow: 0, wet: 0, grime: 0.5, wear: 0.55 });
 const DRY: Climate = Object.freeze({ dust: 0.66, film: 0.05, snow: 0, wet: 0.1, grime: 0.55, wear: 0.5 });
 const TEMPERATE: Climate = Object.freeze({ dust: 0.62, film: 0.03, snow: 0, wet: 0.35, grime: 0.6, wear: 0.45 });
@@ -60,14 +62,18 @@ const INDUSTRIAL: Climate = Object.freeze({ ...TEMPERATE, grime: 0.8, wet: 0.25 
 const AUTUMN: Climate = Object.freeze({ ...TEMPERATE, dust: 0.66, wet: 0.5 });
 const WET: Climate = Object.freeze({ dust: 0.72, film: 0.02, snow: 0, wet: 0.75, grime: 0.65, wear: 0.4 });
 const COASTAL: Climate = Object.freeze({ dust: 0.56, film: 0.03, snow: 0, wet: 0.35, grime: 0.55, wear: 0.45 });
-const SNOW: Climate = Object.freeze({ dust: 0.5, film: 0, snow: 0.8, wet: 0.2, grime: 0.5, wear: 0.35 });
+const SNOW: Climate = Object.freeze({ dust: 0.45, film: 0, snow: 0.8, wet: 0.3, grime: 0.5, wear: 0.35 });
 const ALPINE: Climate = Object.freeze({ dust: 0.55, film: 0.02, snow: 0.35, wet: 0.25, grime: 0.55, wear: 0.45 });
 const REGOLITH: Climate = Object.freeze({ dust: 0.66, film: 0.09, snow: 0, wet: 0, grime: 0.3, wear: 0.3 });
 
 /** The terrain's loam base through no dirt tone (world/rockDressing.ts): the maps that author none. */
 const LOAM = 0x654d34;
-/** Dirty slush: the winter maps' running-gear mix of their dirt and trodden snow. */
-const SLUSH = 0x8d8882;
+/**
+ * Dirty slush: the winter maps' running-gear film, their dirt churned with meltwater (a little paler than the dirt,
+ * never the pale grey that veiled dark steel into alloy); the white comes from the snow lumps.
+ */
+export const VEHICLE_WEATHER_SLUSH = 0x6e665d;
+const SLUSH = VEHICLE_WEATHER_SLUSH;
 const _lift = new THREE.Color();
 const _liftHsl = { h: 0, s: 0, l: 0 };
 /** Dry dust from a dirt: lifted and bleached (fine dust scatters more than the bulk soil it came from). */
@@ -285,7 +291,13 @@ export const VEHICLE_WEATHER_REACH_DRY_M = 1.25;
 export const VEHICLE_WEATHER_REACH_WET_M = 0.8;
 /** Snow: linear albedo of fresh snow (the winter maps' ground, 0xe5e7ec, is 0.78), and of the snow trodden into the gear. */
 export const VEHICLE_WEATHER_SNOW = [0.8, 0.82, 0.85] as const;
-export const VEHICLE_WEATHER_PACKED_SNOW = [0.52, 0.53, 0.54] as const;
+export const VEHICLE_WEATHER_PACKED_SNOW = [0.58, 0.59, 0.61] as const;
+/**
+ * Snow in the running gear comes in lumps: the breakup band a lump fills (its noise from the first to the second value),
+ * whole near the ground. A thin veil over the whole wheel or shoe, or an unbroken band of fresh snow along a tyre's or a
+ * hub's curved top, read as polished alloy and its highlight (the lane's final pair, 2026-10-04).
+ */
+export const VEHICLE_WEATHER_SNOW_LUMP = [0.52, 0.66] as const;
 /** The roughness of wet mud (damp, never glossy: a smoother mud read as chrome under the winter sky). */
 export const VEHICLE_WEATHER_MUD_ROUGHNESS = 0.68;
 
@@ -339,12 +351,15 @@ export const VEHICLE_WEATHER_FRAGMENT_GLSL = `
 		// matte: dry dust, damp mud only a little smoother
 		roughnessFactor = mix( roughnessFactor, mix( 0.97, ${f(VEHICLE_WEATHER_MUD_ROUGHNESS)}, cvWet ), cvDust );
 		metalnessFactor = mix( metalnessFactor, 0.0, cvDust );
-		// snow lodged on the faces turned up (fresh), packed into the running gear (trodden, greyer)
-		float cvSnowTop = smoothstep( 0.55, 0.85, cvUp + ( cvB - 0.5 ) * 0.35 ) * smoothstep( 0.3, 0.55, cvB );
-		float cvSnowPack = 0.35 * cvLow * smoothstep( 0.45, 0.72, cvB );
+		// snow lodged on the faces turned up (fresh: a sheet on the deck, lumps down on the running gear) and packed into
+		// the running gear in lumps (trodden, greyer), the dark steel and rubber showing between them
+		vec2 cvLump = vec2( ${VEHICLE_WEATHER_SNOW_LUMP.map(f).join(', ')} );
+		float cvSnowTop = smoothstep( 0.55, 0.85, cvUp + ( cvB - 0.5 ) * 0.35 )
+			* smoothstep( mix( 0.3, cvLump.x, cvLow ), mix( 0.55, cvLump.y, cvLow ), cvB );
+		float cvSnowPack = cvLow * smoothstep( cvLump.x, cvLump.y, cvB );
 		float cvSnow = uVehWeatherA.z * max( cvSnowTop, cvSnowPack );
 		vec3 cvSnowCol = mix( vec3( ${VEHICLE_WEATHER_SNOW.map(f).join(', ')} ), vec3( ${VEHICLE_WEATHER_PACKED_SNOW.map(f).join(', ')} ),
-			cvSnowPack > cvSnowTop ? 1.0 : 0.0 );
+			cvSnowPack / max( cvSnowPack + cvSnowTop, 1e-4 ) );
 		diffuseColor.rgb = mix( diffuseColor.rgb, cvSnowCol, cvSnow );
 		roughnessFactor = mix( roughnessFactor, 0.85, cvSnow );
 		metalnessFactor = mix( metalnessFactor, 0.0, cvSnow );

@@ -8,7 +8,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
   CLEAN_VEHICLE_WEATHER, VEHICLE_WEATHER_BY_MAP, VEHICLE_WEATHER_FRAGMENT_GLSL, VEHICLE_WEATHER_LEVEL, VEHICLE_WEATHER_REACH_DRY_M,
-  VEHICLE_WEATHER_REACH_WET_M, VEHICLE_WEATHER_SNOW, VEHICLE_WEATHER_PACKED_SNOW, VEHICLE_WEATHER_MUD_ROUGHNESS, applyVehicleWeather,
+  VEHICLE_WEATHER_REACH_WET_M, VEHICLE_WEATHER_SNOW, VEHICLE_WEATHER_PACKED_SNOW, VEHICLE_WEATHER_SNOW_LUMP, VEHICLE_WEATHER_SLUSH,
+  VEHICLE_WEATHER_MUD_ROUGHNESS, applyVehicleWeather,
   bindVehicleWeatherUniforms, garageVehicleWeather, liftedDustHex, mudColorOf, setVehicleWeatherLevel, syncVehicleWeather,
   vehicleWeatherForMap, vehicleWeatherLevelFor, vehicleWeatherState,
 } from './vehicleWeathering.ts';
@@ -38,7 +39,7 @@ for (const id of MAP_IDS) {
   // dirt lifted and bleached
   const config = getMapConfig(id);
   const ground = config?.sky?.lighting?.groundAlbedoHex ?? config?.sky?.atmosphere?.groundAlbedoHex ?? null;
-  if (row.snow >= 0.5) assert.equal(row.dustHex, 0x8d8882, `${id}: dirty slush`);
+  if (row.snow >= 0.5) assert.equal(row.dustHex, VEHICLE_WEATHER_SLUSH, `${id}: dirty slush`);
   else if (id === 'oasis') assert.equal(row.dustHex, VEHICLE_WEATHER_BY_MAP.desert.dustHex, 'oasis: Sirocco\'s sand');
   else if (BARE.has(id)) assert.equal(row.dustHex, ground, `${id}: the bare ground is the dust (0x${(ground ?? 0).toString(16)})`);
   else assert.equal(row.dustHex, liftedDustHex(row.soilHex), `${id}: its dirt lifted`);
@@ -71,6 +72,10 @@ for (const id of ['verdant', 'coastal', 'fjord', 'mars']) {
 }
 assert.ok(VEHICLE_WEATHER_MUD_ROUGHNESS >= 0.6, 'damp mud never turns glossy (chrome-silver slush on the first pair)');
 assert.ok(VEHICLE_WEATHER_PACKED_SNOW.every((v, i) => v < VEHICLE_WEATHER_SNOW[i] * 0.75), 'trodden snow is greyer than fresh');
+// the slush is the dark wet dirt (a pale grey slush under a grey snow veil turned the dark wheels and shoes one even mid
+// grey, read as polished alloy on the lane's final pair); the white is the lumps'
+assert.ok(luma(new THREE.Color().setHex(VEHICLE_WEATHER_SLUSH, THREE.SRGBColorSpace)) < 0.18, 'the slush is dark wet dirt, not a pale veil');
+assert.ok(Math.min(...VEHICLE_WEATHER_PACKED_SNOW) > 0.5, 'and the trodden snow is still snow, well above it');
 
 // 3. the uniforms: the row and the level, one identity for every program (no relink)
 const uniforms = {}, uniforms2 = {};
@@ -79,7 +84,7 @@ for (const key of ['uVehWeatherA', 'uVehWeatherB', 'uVehDust', 'uVehMud']) asser
 setVehicleWeatherLevel(2);
 applyVehicleWeather(VEHICLE_WEATHER_BY_MAP.winter);
 let state = vehicleWeatherState();
-assert.deepEqual(state.a.map((v) => +v.toFixed(3)), [0.5, 0, 0.8, 0.2], 'winter: dust, film, snow, wet');
+assert.deepEqual(state.a.map((v) => +v.toFixed(3)), [0.45, 0, 0.8, 0.3], 'winter: dust, film, snow, wet');
 assert.equal(state.b[2], 2, 'the level gates the layer');
 applyVehicleWeather(CLEAN_VEHICLE_WEATHER);
 assert.equal(vehicleWeatherState().b[2], 0, 'a clean row closes the gate whatever the level');
@@ -144,6 +149,20 @@ assert.ok(low(0.3, 0) > 0.85 && low(0.3, 1) > 0.7, 'the running gear (0.3 m) is 
 assert.ok(low(1.6, 0) === 0 && low(1.0, 1) === 0, 'the upper hull is past its reach');
 assert.ok(low(0.6, 1) < low(0.6, 0), 'mud stays lower than dust');
 assert.ok(VEHICLE_WEATHER_SNOW.every((v) => v > 0.75 && v < 0.9), 'snow is snow-white, not clipped white');
+
+// 7. the snow law (the GLSL's cvSnowTop and cvSnowPack at the breakup's quantiles, one octave: median 0.49, 90th
+// percentile 0.74): a sheet of fresh snow on the deck, lumps on the running gear with the steel showing between them —
+// never a veil over a whole wheel or shoe, never an unbroken band along a curved top
+const [lumpLo, lumpHi] = VEHICLE_WEATHER_SNOW_LUMP;
+const lerp = (a, b, t) => a + (b - a) * t;
+const snowTop = (up, b, lowness) => smoothstep(0.55, 0.85, up + (b - 0.5) * 0.35) * smoothstep(lerp(0.3, lumpLo, lowness), lerp(0.55, lumpHi, lowness), b);
+const snowPack = (b, lowness) => lowness * smoothstep(lumpLo, lumpHi, b);
+assert.ok(snowTop(1, 0.49, 0) > 0.75, 'the deck takes a sheet of fresh snow');
+assert.ok(snowTop(1, 0.49, 1) < 0.05 && snowPack(0.49, 1) < 0.05, 'the running gear at the breakup\'s median shows its steel');
+assert.equal(snowPack(0.74, 1), 1, 'and a lump there is whole');
+assert.equal(snowTop(1, 0.74, 1), 1, 'fresh snow on a gear top only where a lump is');
+assert.doesNotMatch(VEHICLE_WEATHER_FRAGMENT_GLSL, /cvSnowPack > cvSnowTop \?/, 'fresh and trodden snow blend, no seam inside a lump');
+assert.match(VEHICLE_WEATHER_FRAGMENT_GLSL, /float cvSnowPack = cvLow \* smoothstep\( cvLump\.x, cvLump\.y, cvB \);/, 'the GLSL is the law above');
 
 console.log(`vehicleWeathering.selftest: ${MAP_IDS.length} battlefield rows on their own dirt, climates in range, shared uniforms, `
   + 'change-only sync, Garage wear, QA switch, the layer once before the light, optics clean PASS');
