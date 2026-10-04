@@ -512,3 +512,20 @@ console.log('volumetricClouds.selftest: deterministic noise (six bakes), tiling,
 
 // The shade map keeps the gobos' soft edge band (a continuous opacity over the cut, never a binary stamp).
 assert.match(layerSource,/smoothstep\( uThreshold - 0\.08, uThreshold \+ 0\.08, cloudField/,'cloud edges have a continuous opacity band');
+
+// 2026-10-04 (the gauntlet's wave 62 on Titan Gorge: the sun "a flat, hard-edged white disc pasted on a featureless
+// grey-white sky"): a ray the march ends under the 0.03 cut is opaque, its in-scatter renormalised for the remainder —
+// the 3 % the cut left let the sun's disc (tens of thousands of times the sky) burn through a closed deck or a core.
+assert.match(layerSource, /if \( t > t1 \|\| T < 0\.03 \) break;[\s\S]*?if \( T < 0\.03 && uOpaqueCut > 0\.0 \) \{ L \/= max\( 1\.0 - T, 0\.5 \); T = 0\.0; \}\s*if \( wAcc > 1e-4 \) \{/,
+  'the cut ray opaque, before the haze reads its cover');
+assert.match(layerSource, /uOpaqueCut: \{ value: 1 \},/);
+assert.match(layerSource, /t\.uOpaqueCut\.value = lightTune\('CLOUD_OPAQUE_CUT', 1\);/, 'on by default (QA knob)');
+{
+  // the renormalisation keeps a uniform mass's radiance: a ray cut at T over a mass of radiance S carries S (1 − T);
+  // over (1 − T) it is S again, and nothing of the background (the disc) comes through
+  for (const T of [0.001, 0.01, 0.0299]) {
+    const S = 0.8, L = S * (1 - T);
+    assert.ok(Math.abs(L / Math.max(1 - T, 0.5) - S) < 1e-12, `cut at T ${T}: the mass's radiance whole`);
+  }
+}
+console.log('volumetricClouds.selftest: the cut ray opaque (no disc through a closed deck) PASS');
