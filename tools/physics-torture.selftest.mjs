@@ -280,6 +280,34 @@ check('air-spin', 'tall', 'gearth', [g('prediction replay error (m)', (m) => m.r
   }
 }
 
+// Round 5 (gauntlet wave 38: "on a 17.9-degree grade the front and rear stations carry about the same travel ... a real
+// tank shows a clear rear-heavy gradient on a slope"; and after the side-slope landing "the hull still leans on the
+// uphill track"): the tracks' hold on the hull against gravity on a grade transfers its weight like the drive's own
+// acceleration, onto the downhill end and the downhill track, which squat while the uphill wheels droop. Measured at the
+// track line under the rendered hull, the downhill end against the uphill end (cm).
+{
+  const mean = (values) => values.reduce((sum, v) => sum + v, 0) / values.length;
+  const endsGap = (gaps) => {
+    const rear = mean([gaps.left[0], gaps.right[0]]), front = mean([gaps.left[6], gaps.right[6]]);
+    return { rear, front };
+  };
+  const rest = (caseId) => runCase(HULLS.medium, 'earth', CASES.find((c) => c.id === caseId)).finalGapsCm;
+  runs += 3;
+  const up = endsGap(rest('rest-slope25'));
+  if (!(up.front - up.rear >= 8)) {
+    failures.push(`rest-slope25 earth medium: the downhill tail sits ${(up.front - up.rear).toFixed(1)} cm under the uphill nose < 8 — before: 0.0`);
+  }
+  const down = endsGap(rest('rest-slope25-down'));
+  if (!(down.rear - down.front >= 8)) {
+    failures.push(`rest-slope25-down earth medium: the downhill nose sits ${(down.rear - down.front).toFixed(1)} cm under the uphill tail < 8 — before: 0.0`);
+  }
+  const across = rest('rest-cross20');
+  // the 20-degree cross slope rises to the right: the left track is the downhill one
+  if (!(mean(across.right) - mean(across.left) >= 3)) {
+    failures.push(`rest-cross20 earth medium: the downhill track sits ${(mean(across.right) - mean(across.left)).toFixed(1)} cm under the uphill one < 3 — before: 0.1`);
+  }
+}
+
 // Rest stays rest: no jitter, no creep on a 25-degree grade on the brake.
 check('rest-slope25', 'medium', 'earth', [
   g('rest jitter (mm rms)', (m) => m.rest?.jitterYRmsMm ?? 0, 0.5, 'guard: a parked hull does not shimmer'),

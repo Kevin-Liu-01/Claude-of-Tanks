@@ -2810,12 +2810,45 @@ function reachableCorner(ground: number, plane: number): number {
   return plane - TOUCH_REACH_M * Math.max(0, 1 - (gap - TOUCH_REACH_M) / TOUCH_REACH_M);
 }
 
+/**
+ * The static weight transfer of a hull holding still on a grade (physics lane round 5; gauntlet wave 38: "on a
+ * 17.9-degree grade the front and rear stations carry about the same travel ... a real tank shows a clear rear-heavy
+ * gradient on a slope, with a slight extra squat downhill"; and after the side-slope landing "the hull still leans on the
+ * uphill track"). The tracks hold the hull against gravity's component along and across the ground, `along` and
+ * `across` (m/s², in the hull's frame), at the ground, under its centre of mass: the moment that leaves (the component
+ * times the centre of mass's height) is taken by the springs' pitch and roll stiffness, the heave rate RIDE_OMEGA over
+ * the stations along each track (a track's stations spread evenly over its contact: their mean square lever is a third of
+ * the half-length squared) and over the two tracks either side. The hull pitches and rolls toward its downhill end and
+ * track by that angle (rad, before the renderer's amplification, SUSP_VIS_P / SUSP_VIS_R, as the rest of the rock). The
+ * centre of mass stands HOLD_CG_HEIGHT_FRAC of the hull's height over its tracks. Parked facing up a 25-degree grade the
+ * medium hull pitches 1.1 degrees (rendered) further onto its downhill tail, its stations 17 cm apart end to end; on a
+ * 20-degree cross slope it rolls 0.8 degree onto its downhill track, 6 cm under the uphill one.
+ */
+const HOLD_CG_HEIGHT_FRAC = 0.45;
+const _holdTransfer = { dive: 0, roll: 0 };
+function holdTransferAngles(
+  entity: MovementEntity, spec: MovementSpec, along: number, across: number, out: { dive: number; roll: number },
+): void {
+  out.dive = 0;
+  out.roll = 0;
+  if (along === 0 && across === 0) return;
+  const contact = entity.contactGeom;
+  const halfLength = contact ? contact.halfLenM : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
+  const halfWidth = contact ? contact.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
+  const height = HOLD_CG_HEIGHT_FRAC * spec.dims.heightM;
+  const stiffness = RIDE_OMEGA * RIDE_OMEGA;
+  out.dive = along * height / (stiffness * Math.max(halfLength * halfLength / 3, 0.25));
+  out.roll = across * height / (stiffness * Math.max(halfWidth * halfWidth, 0.25));
+}
+
 function updateSuspensionRock(
   spec: MovementSpec,
   state: TankState,
   hAt: HeightSampler,
   groundedAtStart: boolean,
   poseAcceleration: number,
+  slopeDive: number,
+  slopeRoll: number,
   perch: number,
   dt: number,
 ): void {
@@ -2823,7 +2856,13 @@ function updateSuspensionRock(
   const acceleration = groundedAtStart
     ? clamp(poseAcceleration, -SUSP_ACCEL_CLAMP, SUSP_ACCEL_CLAMP)
     : 0;
-  let pitchTarget = acceleration * SUSP_ACCEL_GAIN;
+  // The weight transfer is the tracks' push on the hull below its centre of mass: the drive's own acceleration, and the
+  // gravity they hold the hull against on a grade (physics lane round 5; `slopeDive`, `slopeRoll`: the static share,
+  // holdTransferAngles). A hull parked facing up a slope squats on its downhill tail; across a slope it leans onto its
+  // downhill track.
+  const held = groundedAtStart ? slopeDive : 0;
+  const lateralTarget = groundedAtStart ? slopeRoll : 0;
+  let pitchTarget = acceleration * SUSP_ACCEL_GAIN + held;
   let rollTarget = 0;
   if (groundedAtStart) {
     const halfLength = SUSP_FIT_LEN * spec.dims.hullLengthM;
@@ -2875,7 +2914,7 @@ function updateSuspensionRock(
   // — the running gear conforms the road wheels (front compressed, rear drooped) — instead of lifting the tail off flat
   // ground, and it is damped lighter than the terrain rock (DIVE_ZETA), so a hard stop rocks back past level when the
   // tracks stop pulling. The rest of the pitch (the terrain rock) keeps the rock spring.
-  const diveTarget = acceleration * SUSP_ACCEL_GAIN;
+  const diveTarget = acceleration * SUSP_ACCEL_GAIN + held;
   let rock = suspension.p - suspension.d;
   let rockV = suspension.pv - suspension.dv;
   rockV += (SUSP_W * SUSP_W * (pitchTarget - diveTarget - rock) - 2 * SUSP_Z * SUSP_W * rockV) * dt;
@@ -2884,9 +2923,16 @@ function updateSuspensionRock(
   suspension.d += suspension.dv * dt;
   suspension.p = rock + suspension.d;
   suspension.pv = rockV + suspension.dv;
-  suspension.rv += (SUSP_W * SUSP_W * (rollTarget - suspension.r) -
-    2 * SUSP_Z * SUSP_W * suspension.rv) * dt;
-  suspension.r += suspension.rv * dt;
+  // The roll's weight-transfer share likewise (`l`, the dive's side-to-side counterpart): the support solve seats the
+  // tracks without it, so the downhill track's wheels compress and the uphill track's droop over planted tracks.
+  let rockRoll = suspension.r - suspension.l;
+  let rockRollV = suspension.rv - suspension.lv;
+  rockRollV += (SUSP_W * SUSP_W * (rollTarget - rockRoll) - 2 * SUSP_Z * SUSP_W * rockRollV) * dt;
+  rockRoll += rockRollV * dt;
+  suspension.lv += (SUSP_W * SUSP_W * (lateralTarget - suspension.l) - 2 * DIVE_ZETA * SUSP_W * suspension.lv) * dt;
+  suspension.l += suspension.lv * dt;
+  suspension.r = rockRoll + suspension.l;
+  suspension.rv = rockRollV + suspension.lv;
   if (perch <= 0) return;
   const bleed = Math.exp(-dt * perch * PERCH_SUSP_BLEED);
   suspension.p *= bleed;
@@ -2895,6 +2941,8 @@ function updateSuspensionRock(
   suspension.rv *= bleed;
   suspension.d *= bleed;
   suspension.dv *= bleed;
+  suspension.l *= bleed;
+  suspension.lv *= bleed;
 }
 
 /**
@@ -2906,7 +2954,7 @@ function updateSuspensionRock(
  */
 function limitDiveToTravel(entity: MovementEntity, spec: MovementSpec, state: TankState): void {
   const suspension = state._susp;
-  if (suspension.d === 0) return;
+  if (suspension.d === 0 && suspension.l === 0) return;
   const ride = state._ride;
   const hang = Number.isFinite(ride.supportY) ? ride.y - ride.supportY : RIDE_DROOP_M;
   const contact = entity.contactGeom;
@@ -2914,6 +2962,20 @@ function limitDiveToTravel(entity: MovementEntity, spec: MovementSpec, state: Ta
     ? contact.halfLenM + Math.abs(contact.zCenterM || 0)
     : SUPPORT_LEN_FRAC * spec.dims.hullLengthM;
   const travel = Math.max(0, Math.min(RIDE_DROOP_M - hang, RIDE_COMPRESSION_M + hang));
+  // the side-to-side share pivots the hull over its tracks the same way, about half its width (physics lane round 5)
+  const halfWidth = contact ? contact.halfWidM : HALF_WID_FRAC * spec.dims.widthM;
+  const lateralLimit = Math.asin(Math.min(1, travel / Math.max(halfWidth, 0.5))) / SUSP_VIS_R;
+  const lateralExcess = suspension.l > lateralLimit ? suspension.l - lateralLimit
+    : suspension.l < -lateralLimit ? suspension.l + lateralLimit : 0;
+  if (lateralExcess !== 0) {
+    suspension.l -= lateralExcess;
+    suspension.r -= lateralExcess;
+    if (suspension.lv * lateralExcess > 0) {
+      suspension.rv -= suspension.lv;
+      suspension.lv = 0;
+    }
+  }
+  if (suspension.d === 0) return;
   const limit = Math.asin(Math.min(1, travel / lever)) / SUSP_VIS_P;
   const excess = suspension.d > limit ? suspension.d - limit : suspension.d < -limit ? suspension.d + limit : 0;
   if (excess === 0) return;
@@ -4225,7 +4287,11 @@ export function updateTank(
   // rotation.set(-(visualPitch + suspP), yaw, visualRoll + suspR + sway) —
   // replicate its spring tick-for-tick so the support solve below clears the
   // terrain at the pose that actually reaches the screen.
-  updateSuspensionRock(spec, state, hAt, groundedAtStart, poseDvdt, perch, dt);
+  // the gravity the tracks hold the hull against on a grade (physics lane round 5), in the hull's frame: along the hull it
+  // loads the downhill end, across it the downhill track; a slide, or a hull on its shell, holds none
+  const heldGravity = groundedAtStart && !drive.gripLost && !body.tumbling ? GRAVITY * drive.gravityScale : 0;
+  holdTransferAngles(entity, spec, heldGravity * Math.sin(spr.pitch), heldGravity * Math.sin(spr.roll), _holdTransfer);
+  updateSuspensionRock(spec, state, hAt, groundedAtStart, poseDvdt, _holdTransfer.dive, _holdTransfer.roll, perch, dt);
 
   // ---- support solve: no contact sample below ground at the rendered pose ----
   // Effective RENDERED attitude (movement space): rotation.x = -(pitch +
@@ -4239,7 +4305,7 @@ export function updateTank(
   // imperceptible at 60 Hz, and exactly the pre-existing contract).
   // the tracks are seated at the attitude without the dive (SuspensionRockState.d): the hull pitches over them
   const pitchEff = spr.pitch + (susp.p - susp.d) * SUSP_VIS_P - flP;
-  const rollEff = spr.roll + susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + flR;
+  const rollEff = spr.roll + (susp.r - susp.l) * SUSP_VIS_R + state._swayEst * SWAY_VIS + flR;
   // Static-pose cache: a parked, settled tank re-uses the solved height instead
   // of re-sampling the (static) heightfield every tick. The rigid-gear flag is
   // part of the key: a GLB swap landing on a PARKED tank (deferred stream-in)
@@ -4278,6 +4344,8 @@ export function updateTank(
   if (groundedAtStart && !_wholeTrackOnGround) {
     state._susp.d = 0;
     state._susp.dv = 0;
+    state._susp.l = 0;
+    state._susp.lv = 0;
   }
 
   updateGunLay(entity, debuff, hAt, drive.gunArc, drive.steer, dt);

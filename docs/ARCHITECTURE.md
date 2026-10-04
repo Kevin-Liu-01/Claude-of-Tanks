@@ -876,7 +876,16 @@ contact constraints and cannot be crossed by residual uphill speed.
   solve seats the tracks without it, and the road wheels conform under it (front compressed, rear drooped). It is
   limited by the suspension travel left at each end, and off a whole-track seat (a trench crossed, a crest, an edge)
   it joins the rock the tracks are seated at. A hard stop dips the hull 2.5-3.5 degrees with its tracks planted and
-  rocks it back past level (about 0.9 degree) when the tracks stop pulling.
+  rocks it back past level (about 0.9 degree) when the tracks stop pulling. So does the gravity the tracks hold the
+  hull against on a grade (physics lane round 5; gauntlet wave 38: "on a 17.9-degree grade the front and rear stations
+  carry about the same travel ... a real tank shows a clear rear-heavy gradient"): along the hull it loads the downhill
+  end and across it the downhill track, the moment it leaves under the centre of mass (45 % of the hull's height over
+  its tracks) taken by the springs' pitch and roll stiffness, the ride's rate over the stations along each track and
+  over the two tracks (`holdTransferAngles`). Along the hull it joins the dive; across it, the dive's side-to-side
+  counterpart (`_susp.l`, which the movement checkpoint carries from version 7) rolls the hull over its planted tracks
+  the same way. Parked facing up a 25° grade the medium hull pitches 1.1° (rendered) further onto its downhill tail, its
+  stations 17 cm apart end to end; on a 20° cross slope it rolls 0.8° onto its downhill track, 6 cm under the uphill
+  one. A slide, or a hull on its shell, holds nothing and transfers nothing.
 - *The tracks' springs carry the hull over rough ground.* Every track-contact station (the outer pair and the wheel-run
   fan lines) is a spring loaded to the ride's static sag (`g/ω²`), and the seat the ride rests at is where the stations
   that reach the ground carry the hull's weight, read over the stations' own plane (that plane is the attitude's): on

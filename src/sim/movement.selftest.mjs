@@ -123,12 +123,16 @@ const SUSP_VIS_R = 2.1;
 // MOVEMENT r1: 2.3 was a stale mirror — movement.ts/tankFactory lock SWAY_VIS
 // at 3.2 (effects_combat r1), so floats during hard turns were under-measured.
 const SWAY_VIS = 3.2;
+// The tracks are seated without the suspension's weight-transfer shares, the dive (`_susp.d`) and its side-to-side
+// counterpart (`_susp.l`): with them the hull pitches and rolls over planted tracks, its wheels compressing at the
+// loaded end and drooping at the other (movement.ts pitchEff / rollEff). A hull parked facing up a grade squats on its
+// tail that way (physics lane round 5), so the track line is measured at the seat.
 function contactStats(state, field) {
   const hw = 0.5 * SPEC.dims.widthM;
   const sl = 0.45 * SPEC.dims.hullLengthM;
   const fl = state._flinch || { p: 0, r: 0 };
-  const pitch = state.visualPitch + state._susp.p * SUSP_VIS_P - fl.p;
-  const roll = state.visualRoll + state._susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + fl.r;
+  const pitch = state.visualPitch + (state._susp.p - (state._susp.d ?? 0)) * SUSP_VIS_P - fl.p;
+  const roll = state.visualRoll + (state._susp.r - (state._susp.l ?? 0)) * SUSP_VIS_R + state._swayEst * SWAY_VIS + fl.r;
   const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
   const ca = Math.cos(-pitch), sa = Math.sin(-pitch);
   const cr = Math.cos(roll), sr = Math.sin(roll);

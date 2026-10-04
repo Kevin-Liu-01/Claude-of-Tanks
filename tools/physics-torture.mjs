@@ -280,6 +280,9 @@ export const CASES = [
   { id: 'rest-slope15', group: 'rest', seconds: 7, terrain: TERRAIN.slopeAlong(15), input: hold(), rest: [3, 7] },
   { id: 'rest-slope25', group: 'rest', seconds: 7, terrain: TERRAIN.slopeAlong(25), input: hold(0, 0, true), rest: [3, 7] },
   { id: 'rest-cross20', group: 'rest', seconds: 7, terrain: TERRAIN.slopeAcross(20), input: hold(), rest: [3, 7] },
+  // Round 5 (gauntlet wave 38): parked facing down the 25-degree grade, the loaded end is the nose
+  { id: 'rest-slope25-down', group: 'rest', seconds: 7, terrain: TERRAIN.slopeAlong(25), spawn: { yaw: Math.PI },
+    input: hold(0, 0, true), rest: [3, 7] },
   { id: 'rest-rubble', group: 'rest', seconds: 7, terrain: TERRAIN.rubble(11, 0.35), spawn: { z: 14 }, input: hold(), rest: [3, 7] },
   { id: 'rest-kerb', group: 'rest', seconds: 7, terrain: TERRAIN.step(0.35, 0.4), input: hold(), rest: [3, 7] },
   { id: 'rest-roof', group: 'rest', seconds: 7, terrain: TERRAIN.flat(), obstacles: [box(0, 0, 7, 9, 0, 4)],
@@ -1154,6 +1157,24 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
     let last = 0;
     for (let index = 0; index < settleTrace.length; index++) if (Math.abs(settleTrace[index] - restOver) > 0.005) last = index;
     metrics.landingSettleS = last * DT;
+  }
+  // the track line's height over the ground at the end, at the rendered pose, at seven stations a side from the rear
+  // to the front (cm; round 5: a hull parked on a grade loads its downhill end and its downhill track, its wheels there
+  // compressed and the far ones drooped)
+  {
+    const s = subject.state;
+    renderedAttitude(s, att);
+    const cb = Math.cos(s.yaw), sb = Math.sin(s.yaw), ca = Math.cos(-att.pitch), sa = Math.sin(-att.pitch);
+    const cr = Math.cos(att.roll), sr = Math.sin(att.roll);
+    const station = (lx, lz) => {
+      const x1 = lx * cr, y1 = lx * sr;
+      const y2 = y1 * ca - lz * sa, z2 = y1 * sa + lz * ca;
+      const wx = s.pos.x + x1 * cb + z2 * sb, wz = s.pos.z - x1 * sb + z2 * cb;
+      return +((s.pos.y + y2 - world.fn(wx, wz)) * 100).toFixed(2);
+    };
+    const line = (side) => Array.from({ length: 7 }, (_, i) => station(side * rect.halfWidth,
+      rect.centerZ - rect.halfLength + (2 * rect.halfLength * i) / 6));
+    metrics.finalGapsCm = { left: line(-1), right: line(1) };
   }
   metrics.final = { x: +subject.state.pos.x.toFixed(2), y: +subject.state.pos.y.toFixed(3), z: +subject.state.pos.z.toFixed(2),
     pitch: +subject.state.visualPitch.toFixed(3), roll: +subject.state.visualRoll.toFixed(3), grounded: subject.state.grounded,
