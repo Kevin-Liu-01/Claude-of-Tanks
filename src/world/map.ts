@@ -405,7 +405,11 @@ function assembleWorld(
   const queryObstacles = createObstacleGrid(obstacles);
   const queryColliders = createObstacleGrid(colliders);
   // the scenery lane (2026-10-03): no grass, litter or tall grass grows up through a pavement's clints or a scree fan
-  const groundCoverHoles = (props.group.userData.scenery as { groundCoverHoles?: GroundCoverHole[] } | undefined)?.groundCoverHoles;
+  const groundCoverHoles = [
+    ...((props.group.userData.scenery as { groundCoverHoles?: GroundCoverHole[] } | undefined)?.groundCoverHoles ?? []),
+    // the regional-buildings lane (2026-10-03): nor through a kit house's yard (props.ts placeRegionalYards)
+    ...((props.group.userData.regionalYardHoles as GroundCoverHole[] | undefined) ?? []),
+  ];
   const groundCoverClearance = () => withGroundCoverHoles(createGroundCoverClearance(queryObstacles), groundCoverHoles);
   // Keep the synchronous seal visible in load diagnostics: it runs after the
   // sliced vegetation builder, so its work is not in that builder's timings.

@@ -56,10 +56,11 @@ export default {
     ],
     village: { x0: -96, x1: 112, z0: -86, z1: 106, cx: 8, cz: 0, feather: 40, flatten: 0.76, relief: 0.16 },
     landforms: [
-      // The inselbergs: sandstone jebels on the floor, each a main dome and a lower lobe (landformGeology.ts
-      // 'inselberg': a broad rounded crown steepening into a near-vertical wall whose foot wanders round the dome, clefts
-      // down the wall, talus fans spreading from the clefts' mouths over a concave apron, knobbly rock, and a boulder
-      // apron of fallen blocks), and a sand ramp banked against one flank. The gate pair screens each deployment from
+      // The inselbergs: sandstone jebels on the floor, each a main massif and a lower lobe (landformGeology.ts
+      // 'inselberg' with a rim, after gauntlet wave 16's "rounded loaf-shaped mounds": a nearly level cap broken into
+      // rounded bosses, a sheer fluted wall over most of the height whose foot wanders round the massif, deep clefts
+      // biting back into the cap's edge, talus fans spreading from the clefts' mouths over a concave apron, knobbly
+      // rock, and a boulder apron of fallen blocks only at the foot), and a sand ramp banked against one flank. The gate pair screens each deployment from
       // the other, 26 m further out than the batch-1 domes so that Frontline Assault's third sector (85 % of the way)
       // lies on the floor in front of the north gate, not on its face; the lane pairs stand between the tracks on the
       // slices at 35 and 65 % of the way, where they split the floor into three lanes.
@@ -72,11 +73,13 @@ export default {
         const ramp = (rampDeg ?? 0) * Math.PI / 180, reach = Math.max(rx, rz) * 0.55 + 34;
         return [
           ...pair({ kind: 'knoll', x, z, rx, rz, height, corridorScale: 1, geology: { profile: 'inselberg' as const,
-            outline: 0.18, foot: 0.66, footVary: 0.14, apron: 0.18, crown: 3.2, rough: 1.3, boulders: 24,
-            gullies: { count: 12, depthM: 4, width: 0.4 }, fans: { reach: 0.35, heightM: 2.6 } } }),
+            outline: 0.18, foot: 0.66, footVary: 0.14, apron: 0.18, rim: 0.86, bosses: { count: 5, heightM: 5 },
+            flutes: { count: 18, depth: 0.5 }, rough: 1.3, boulders: 24,
+            gullies: { count: 10, depthM: 7, width: 0.35 }, fans: { reach: 0.35, heightM: 2.6 } } }),
           ...pair({ kind: 'knoll', x: lx, z: lz, rx: lrx, rz: lrz, height: Math.round(height * 0.65), corridorScale: 1,
-            geology: { profile: 'inselberg' as const, outline: 0.2, foot: 0.62, footVary: 0.16, apron: 0.2, crown: 3,
-              rough: 1.1, boulders: 12, gullies: { count: 8, depthM: 3, width: 0.4 }, fans: { reach: 0.35, heightM: 1.8 } } }),
+            geology: { profile: 'inselberg' as const, outline: 0.2, foot: 0.62, footVary: 0.16, apron: 0.2, rim: 0.84,
+              bosses: { count: 3, heightM: 3 }, flutes: { count: 12, depth: 0.5 }, rough: 1.1, boulders: 12,
+              gullies: { count: 6, depthM: 5, width: 0.35 }, fans: { reach: 0.35, heightM: 1.8 } } }),
           // the sand ramp: wind-blown sand banked against the wall, falling away from it
           ...(rampDeg === null ? [] : pairBar({ kind: 'ridge', x: x + Math.cos(ramp) * reach, z: z + Math.sin(ramp) * reach,
             length: 72, width: 26, height: 7, yawDeg: rampDeg, geology: { outline: 0.22, taper: 0.92, rough: 0.25 } })),
@@ -112,8 +115,14 @@ export default {
   vegetation: {
     species: ['acacia', 'cedar', 'oak', 'palm'], clusterMix: [['acacia', 0.48], ['oak', 0.30], ['cedar', 0.17], ['palm', 0.05]],
     loneMix: [['acacia', 0.54], ['oak', 0.28], ['cedar', 0.14], ['palm', 0.04]], rimMix: [['cedar', 0.45], ['acacia', 0.35], ['oak', 0.20]],
-    clusterCount: 24, loneCount: 46, rimCount: 30, grassDensity: 0.38,
+    // Trees round 2b (2026-10-03, the gauntlet's wave 15: "lush green groves on Wadi Rum"): Wadi Rum's floor carries a
+    // few wide-spaced acacias in the wadi beds and hollows, not groves; six open groves (vegetation.ts treeBiomeArid
+    // seats them in the low ground), twenty lone trees in the beds, a thin sward on the sand. Was 24 / 46 / 0.38.
+    clusterCount: 6, loneCount: 20, rimCount: 30, grassDensity: 0.08,
     clusterScrub: 1.5, bushCount: 0.74, bushSpecies: 'oak',
+    // the palms grow at the springs under the lane inselbergs' west and east feet only (the pair turns about the
+    // outpost); a palm drawn anywhere else grows as an acacia
+    palmSites: pair({ x: -166, z: -148, r: 24 }), palmFallback: 'acacia',
     // ground lane (2026-10-03, the gauntlet's wave 4: "saturated green grass cards" on the red floor): the wadi's tufts
     // are cured straw, as Sirocco's are
     grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.95 + 0.10)],

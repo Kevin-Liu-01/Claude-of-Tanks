@@ -149,6 +149,11 @@ const hook=registerHooks({load(url,context,next){
   const plannedBlock='    const obstacleStart = obstacles.length, colliderStart = colliders.length;\n    const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);';
   text=replaceOnce(text,plannedBlock,plannedBlock.replace('    const obstacleStart =',
     '    globalThis.__courtPlanned(bi,structureId,px,pz,rot,fit,info,tmp);\n    const obstacleStart ='));
+  // 2026-10-03 (the owner's town-plan ruling): Ironworks replays its recorded plan (props.ts placeRecordedBuilding), so
+  // the capture hooks that path as well, at the same point of each building's build
+  const recordedBlock='    const obstacleStart = obstacles.length, colliderStart = colliders.length;\n    const profile = addStructureCollision(entry.structure, tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);';
+  text=replaceOnce(text,recordedBlock,recordedBlock.replace('    const obstacleStart =',
+    '    globalThis.__courtPlanned(entry.planIndex,entry.structure,entry.x,entry.z,entry.rot,fit,info,tmp);\n    const obstacleStart ='));
   text=replaceOnce(text,'    const receipt = composeFoundryServiceCourt(',
     '    globalThis.__courtBuckets = buckets;\n    const receipt = composeFoundryServiceCourt(');
   text=replaceOnce(text,'        reconformFoundryFoundations = () => {',
