@@ -1252,6 +1252,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/archedBridgeCollision.selftest.mjs',
     'src/world/railSpurs.selftest.mjs',
     'src/world/railCutting.selftest.mjs',
+    // the map-borders lane (gauntlet wave 30): the land past the edge is the terrain seed's, never the map id's
+    'src/world/borderLandform.selftest.mjs',
     'src/world/maps/snowDrift.selftest.mjs',
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',

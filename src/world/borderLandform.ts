@@ -251,19 +251,6 @@ const VALLEY_FLOOR_M = 70, VALLEY_SIDE_M = 190;
 const HOLD_FLOOR_M = 90, HOLD_SIDE_M = 300;
 
 /**
- * The landform's outland seed for one map: the terrain seed mixed with the map id (FNV-1a), as the horizon ring mixes it.
- * Every battle builds at the one terrain seed 1337, so a landform seeded by that alone laid the same hills, fields and
- * woods past the edge of every map (Verdant Fields, Amberford, Ironworks and Saltmere Bay showed one hillside). A config
- * without an id keeps the bare seed.
- */
-export function borderLandformSeed(seed: number, mapId?: string | null): number {
-  if (!mapId) return seed;
-  let h = 0x811c9dc5;
-  for (let i = 0; i < mapId.length; i++) { h ^= mapId.charCodeAt(i); h = Math.imul(h, 0x01000193); }
-  return (seed ^ h) >>> 0;
-}
-
-/**
  * The map's border landform. `rimH` is the map's authored rim height (TerrainSettings.rimH) — the scale every height
  * here is measured in, so a 58 m canyon rim and an 18 m polder dike keep their proportions.
  */
@@ -276,23 +263,11 @@ export function createBorderLandform(
    * landform's parcels and tracks stand down and the woods keep their free-form patches. Null: the landform's own fields.
    */
   landUse: BorderLandUse | null = null,
-  /**
-   * The seed of everything past the playable edge — the hills, woods, fields, foothills and the hand-over's wander
-   * (borderLandformSeed: the map's own country). The playable band's rim (the enclosure, so every height inside 470 m)
-   * keeps `seed`: the square's ground, and the dressing stream that reads it (its props and the placements on them),
-   * stay what they were.
-   */
-  outlandSeed = seed,
 ): BorderLandform {
   const noise = new SimplexNoise({ random: mulberry32((seed ^ 0xB0BDE5) >>> 0) });
-  const outNoise = outlandSeed === seed ? noise : new SimplexNoise({ random: mulberry32((outlandSeed ^ 0xB0BDE5) >>> 0) });
-  /** The map's own relief past the square (outNoise) takes over from the shared one (noise) over 8-188 m past the edge,
-   * so the ground of the square's mesh — read by the dressing stream, whose draws must not move — is the shared one. */
-  const ownCountryAt = (x: number, z: number): number => (outNoise === noise ? 1
-    : smoothstep(BORDER_EDGE_M + 8, BORDER_EDGE_M + 188, Math.max(Math.abs(x), Math.abs(z))));
   const { enclosure, hillHeight, reachM, rimFloor, wavelengthM, ridged, terrace } = settings;
   // the foothills' erosion (settings.erosion): the massif landform at foothill scale, calibrated past the edge
-  const foothills = settings.erosion > 0 && !settings.classic ? createMassifField((outlandSeed ^ 0xE40D) >>> 0, {
+  const foothills = settings.erosion > 0 && !settings.classic ? createMassifField((seed ^ 0xE40D) >>> 0, {
     baseWavelengthM: 620, gullyWavelengthM: 180, gullyOctaves: 2, gullyGain: 0.5, slopeStrength: 2.5, branch: 2.5,
     erosion: 0.5, concavity: 1.1, contrast: settings.erosion, smoothM: 0,
   }, [560, 1500]) : null;
@@ -364,18 +339,16 @@ export function createBorderLandform(
   function hillsAt(x: number, z: number): number {
     if (x === hillsX && z === hillsZ) return hillsLast;
     hillsX = x; hillsZ = z;
-    const own = ownCountryAt(x, z);
-    hillsLast = own <= 0 ? hillsField(noise, x, z) : own >= 1 ? hillsField(outNoise, x, z)
-      : hillsField(noise, x, z) * (1 - own) + hillsField(outNoise, x, z) * own;
+    hillsLast = hillsField(x, z);
     return hillsLast;
   }
-  function hillsField(n: SimplexNoise, x: number, z: number): number {
-    const wx = x + n.noise(x * 0.0024 + 3.7, z * 0.0024 - 8.1) * 90;
-    const wz = z + n.noise(x * 0.0024 - 12.2, z * 0.0024 + 6.4) * 90;
+  function hillsField(x: number, z: number): number {
+    const wx = x + noise.noise(x * 0.0024 + 3.7, z * 0.0024 - 8.1) * 90;
+    const wz = z + noise.noise(x * 0.0024 - 12.2, z * 0.0024 + 6.4) * 90;
     const u = wx * inv, v = wz * inv;
-    const n0 = n.noise(u + 51.3, v - 7.7);
-    const n1 = n.noise(u * 2.07 - 13.1, v * 2.07 + 29.5);
-    const n2 = n.noise(u * 4.31 + 7.9, v * 4.31 - 61.2);
+    const n0 = noise.noise(u + 51.3, v - 7.7);
+    const n1 = noise.noise(u * 2.07 - 13.1, v * 2.07 + 29.5);
+    const n2 = noise.noise(u * 4.31 + 7.9, v * 4.31 - 61.2);
     // the base octave carries the character (rounded downs or a ridge's crest line), the finer octaves stay smooth
     // shoulders and knolls, so a ridged map has long crests with spurs instead of crumpled noise
     const base = n0 * (1 - ridged) + ((1 - Math.abs(n0)) * 2 - 1.15) * ridged;
@@ -393,9 +366,7 @@ export function createBorderLandform(
     let h = hillsAt(x, z);
     if (valleys.length) h *= 1 - 0.65 * valleyAt(x, z);
     // the reach wanders along the border (spurs and re-entrants) and is shorter where the land is enclosed
-    const own = ownCountryAt(x, z);
-    const wander = (own >= 1 ? outNoise.noise(x * 0.0031 + 91.1, z * 0.0031 - 33.3)
-      : noise.noise(x * 0.0031 + 91.1, z * 0.0031 - 33.3) * (1 - own) + (own > 0 ? outNoise.noise(x * 0.0031 + 91.1, z * 0.0031 - 33.3) * own : 0)) * 55;
+    const wander = noise.noise(x * 0.0031 + 91.1, z * 0.0031 - 33.3) * 55;
     const d = r - BORDER_PLAYABLE_M + wander;
     const reach = reachM * (1.3 - 0.7 * a);
     // the hills grow with distance into the foothills of the ranges behind (which the ring's rows carry from ~350 m on)
@@ -413,7 +384,7 @@ export function createBorderLandform(
 
   const landUseSample: LandUseSampleLike = landUse ? landUse.sample() : { active: 0, hedge: 0, edgeM: 1e9, boundary: 0 };
   // the field system (FIELD_PITCH_M): this map's orientation, and its share of boundaries per family
-  const fieldRand = mulberry32((outlandSeed ^ 0xF1E1D5) >>> 0);
+  const fieldRand = mulberry32((seed ^ 0xF1E1D5) >>> 0);
   const ownAngle = (fieldRand() < 0.5 ? -1 : 1) * (0.12 + 0.24 * fieldRand());
   // (a land-use map's grid has its own heading: the farmsteads square up to it)
   const fieldAngle = landUse ? landUse.heading : ownAngle;
@@ -425,8 +396,8 @@ export function createBorderLandform(
     if (x !== fieldX || z !== fieldZ) {
       // (the ring's attribute passes ask parcel, track and woods of one vertex in turn: the last point is kept)
       const u = x * fieldCos + z * fieldSin, v = z * fieldCos - x * fieldSin;
-      fieldA = (u + 22 * outNoise.noise(x * 0.0011 + 5.1, z * 0.0011 - 3.7)) / FIELD_PITCH_M;
-      fieldB = (v + 22 * outNoise.noise(x * 0.0011 - 8.2, z * 0.0011 + 6.6)) / FIELD_PITCH_M;
+      fieldA = (u + 22 * noise.noise(x * 0.0011 + 5.1, z * 0.0011 - 3.7)) / FIELD_PITCH_M;
+      fieldB = (v + 22 * noise.noise(x * 0.0011 - 8.2, z * 0.0011 + 6.6)) / FIELD_PITCH_M;
       fieldX = x; fieldZ = z;
     }
     _field.a = fieldA; _field.b = fieldB;
@@ -473,8 +444,8 @@ export function createBorderLandform(
   }
   /** The woods field before its cut: patches at ~420 m and ~160 m, a fine ragged edge, leaning onto the hills. */
   function woodsField(x: number, z: number): number {
-    return outNoise.noise(x * 0.0024 - 33.1, z * 0.0024 + 57.9) * 0.62 + outNoise.noise(x * 0.0062 + 12.4, z * 0.0062 - 8.8) * 0.3
-      + outNoise.noise(x * 0.019 - 2.2, z * 0.019 + 4.6) * 0.08 + (hillsAt(x, z) - 0.5) * 0.35;
+    return noise.noise(x * 0.0024 - 33.1, z * 0.0024 + 57.9) * 0.62 + noise.noise(x * 0.0062 + 12.4, z * 0.0062 - 8.8) * 0.3
+      + noise.noise(x * 0.019 - 2.2, z * 0.019 + 4.6) * 0.08 + (hillsAt(x, z) - 0.5) * 0.35;
   }
   // the cut that leaves `forest` of the near outland wooded: the field's quantile over a fixed lattice of the band
   // 0–400 m past the edge (deterministic per seed, ~2.3k samples)
@@ -580,7 +551,7 @@ export function createBorderLandform(
       const line = fieldBoundaryAt(x, z);
       if (line <= 0) return 0;
       // gates and gaps break every boundary; a boundary inside a wood needs no hedge
-      const gaps = smoothstep(-0.3, 0.0, outNoise.noise(x * 0.017 + 3.3, z * 0.017 - 7.1));
+      const gaps = smoothstep(-0.3, 0.0, noise.noise(x * 0.017 + 3.3, z * 0.017 - 7.1));
       return line * gaps * fade * settings.hedgerows;
     },
     traceHedgeLines(maxOut: number, keep?: (x: number, z: number) => boolean): { xs: number[]; zs: number[]; w: number[] }[] {
@@ -619,7 +590,7 @@ export function createBorderLandform(
             const c = fieldCoords(x, z), other = fieldCell(family ? c.a : c.b, 1 - family);
             let w = 0;
             if (fieldHash(k * 3.7 + other * 11.3 + family * 5.9) <= 0.8) {
-              const gaps = smoothstep(-0.3, 0.0, outNoise.noise(x * 0.017 + 3.3, z * 0.017 - 7.1));
+              const gaps = smoothstep(-0.3, 0.0, noise.noise(x * 0.017 + 3.3, z * 0.017 - 7.1));
               w = gaps * smoothstep(25, 110, edgeOut) * Math.min(1, settings.hedgerows * 1.25);
               if (w > 0) w *= 1 - woodsAt(x, z);
             }
@@ -703,7 +674,7 @@ export function createBorderLandform(
     },
     handOverAt(x: number, z: number): number {
       const edgeOut = Math.max(Math.abs(x), Math.abs(z)) - BORDER_EDGE_M;
-      const wander = outNoise.noise(x * 0.0019 - 71.7, z * 0.0019 + 14.9) * 110;
+      const wander = noise.noise(x * 0.0019 - 71.7, z * 0.0019 + 14.9) * 110;
       return 1 - smoothstep(330, 820, edgeOut + wander - (holdValleys.length ? holdAt(x, z) : 0));
     },
   };

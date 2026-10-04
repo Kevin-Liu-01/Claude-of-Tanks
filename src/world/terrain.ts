@@ -49,7 +49,7 @@ import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './
 import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
 import { createGeologyZoneSampler, knollGeologyHeight, ridgeGeologyHeight, type GeologyZones, type LandformGeology } from './landformGeology.ts';
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
-import { borderLandformSeed, createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
+import { createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
@@ -1044,7 +1044,7 @@ function* heightFieldBuildSteps(
       holdM: RAIL_OPEN_RANGES_BACK_M }];
   });
   const border = createBorderLandform(seed, T.rimH, resolveBorderLandform(cfg?.horizon?.style, T.border, cfg?.id),
-    [...roadExitLines, ...railExitValleys], null, borderLandformSeed(seed, cfg?.id));
+    [...roadExitLines, ...railExitValleys]);
   /** The classic rim lift rimH · s(r)² (s = smoothstep(430, 512, r)): what the authoring queries read (roads off). */
   const classicRimLift = (r: number): number => { const s = smoothstep(430, 512, r); return s * s * T.rimH; };
   // the map-borders lane (wave 2): set while buildRoadElevationGrid authors its second pass of road nodes on the
