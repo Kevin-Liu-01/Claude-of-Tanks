@@ -124,6 +124,8 @@ function compile(input = text, mode = 'current') {
     // trees round 2 (2026-10-03): the crowns' lobes and hull normal (the shrubs' shade, the snow load) and the map's biome
     crownLobes: growth.crownLobes, crownSurfaceNormal: growth.crownSurfaceNormal, treeBiomeSlot, treeBiomePalette, treeBiomeColour,
     GROWTH_CROWN_SHADING: growth.GROWTH_CROWN_SHADING,
+    // trees round 4: a birch's dark collar (its stem's foot)
+    GROWTH_BIRCH_FOOT: growth.GROWTH_BIRCH_FOOT,
     _c: new THREE.Color(), _v3: new THREE.Vector3(), _e: new THREE.Euler(),
     _qq: new THREE.Quaternion(), _m: new THREE.Matrix4(), _scale: new THREE.Vector3(1, 1, 1),
   });

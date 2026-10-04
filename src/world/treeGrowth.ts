@@ -134,10 +134,10 @@ const P = (p: GrowthProfile): Readonly<GrowthProfile> => Object.freeze(p);
 export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<GrowthProfile>>> = Object.freeze({
   oak: P({
     family: 'broadleaf', height: 7.0, heightSpread: 0.12, trunkR: 0.30, form: 'decurrent',
-    forkAt: [0.30, 0.38], scaffolds: [4, 6], scaffoldAngle: [0.55, 1.08], crownBase: 0.34, crownR: 2.75,
+    forkAt: [0.26, 0.33], scaffolds: [4, 6], scaffoldAngle: [0.28, 1.02], crownBase: 0.34, crownR: 2.75,
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.55, angleLow: 1.15, angleHigh: 0.6,
     droop: 0.42, upturn: 0.38, sidePerM: 2.3, sideAngle: 0.75, sideRatio: 0.62, sideDroop: 0.35, twigPerM: 1.8,
-    leafOrder: 1, leafPerM: 3.6, leafFrom: 0.3, spray: [0.62, 0.92], aspect: 0.86, habit: 'spray', tipSprays: 2,
+    leafOrder: 1, leafPerM: 3.6, leafFrom: 0.15, spray: [0.62, 0.92], aspect: 0.86, habit: 'spray', tipSprays: 2,
     cardBend: 0.16, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.46, 0.41, 0.36], barkTopTint: null,
     foliageValue: 1.25,
   }),
@@ -219,7 +219,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
   birch: P({
     family: 'birch', height: 7.0, heightSpread: 0.14, trunkR: 0.16, form: 'excurrent',
     forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.30, crownR: 2.45,
-    envelope: 'ellipsoid', whorled: false, perWhorl: [1, 1], spacing: 0.36, angleLow: 0.95, angleHigh: 0.48,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.36, angleLow: 1.35, angleHigh: 0.5,
     droop: 0.40, upturn: 0.0, sidePerM: 2.4, sideAngle: 0.65, sideRatio: 0.7, sideDroop: 1.5, twigPerM: 0,
     leafOrder: 1, leafPerM: 3.6, leafFrom: 0.2, spray: [0.62, 0.94], aspect: 0.68, habit: 'spray', tipSprays: 2,
     cardBend: 0.34, flatRoll: 0.6, flatDroop: 0.0, bark: 3, barkTint: [0.92, 0.91, 0.88], barkTopTint: null,
@@ -1214,9 +1214,15 @@ export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: Grow
   const ageH = variant === 0 ? 0.88 : variant === 2 ? 1.1 : 1;
   const ageW = variant === 0 ? 0.84 : variant === 2 ? 1.12 : 1;
   const height = profile.height * ageH * (1 + (rng() - 0.5) * 2 * profile.heightSpread * 0.5);
+  // trees round 4 (the gauntlet's waves 49 and 51 on Verdant's treeline: "one tree asset repeated at even spacing, with a
+  // hard dark band at the canopy base"): a broadleaf's or a birch's crown base moves with its age — a young leader's
+  // crown comes further down its stem, an old tree's stands higher (a fork never drops: the stem's collision band keeps
+  // no limb) — so a wood's crown bases stand at three heights instead of one
+  const leafy = profile.family === 'broadleaf' || profile.family === 'birch';
+  const baseShift = !leafy ? 1 : variant === 2 ? GROWTH_CROWN_BASE_AGE[1] : variant === 0 && profile.form === 'excurrent' ? GROWTH_CROWN_BASE_AGE[0] : 1;
   const ctx: GrowContext = {
     profile, rng, height, branches: [], mobile,
-    crownBaseY: height * (profile.form === 'decurrent' ? range(rng, profile.forkAt) : profile.crownBase),
+    crownBaseY: height * (profile.form === 'decurrent' ? range(rng, profile.forkAt) : profile.crownBase) * baseShift,
     crownTopY: height,
     crownR: profile.crownR * ageW * (0.94 + rng() * 0.12),
   };
@@ -1468,6 +1474,16 @@ const GROWTH_RESEAT_M = 0.6;
  * lower stem's girth stays the stem's for the collision fit). */
 export const GROWTH_LOWEST_WOOD_M = 1.7;
 /**
+ * Trees round 4: a broadleaf's or a birch's crown base by its age (growTreeSkeleton): the young variant's (an excurrent
+ * leader's only) and the old variant's, over the profile's.
+ */
+const GROWTH_CROWN_BASE_AGE = Object.freeze([0.84, 1.14] as const);
+/**
+ * Trees round 4: a birch's dark foot (emitBranchGeometry, bark style 3): the stem's rings darken by up to `depth` at the
+ * ground, the black fading out between `fromM` and `toM` (m up the stem), each face round it streaked to its own depth.
+ */
+export const GROWTH_BIRCH_FOOT = Object.freeze({ depth: 0.72, fromM: 0.2, toM: 2.2 });
+/**
  * Spray cards per near tree. Trees round 2 (2026-10-03): 230 smaller leaf clusters on two-row cards (460 card triangles
  * from 920 vertices) where a broadleaf drew 150 sprays on three-row cards (600 from 900) — the same vertex work (each
  * card vertex runs the wind, the billboard, the fade and the four-cascade sample) spread over half again as many,
@@ -1565,6 +1581,7 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
   const pos: number[] = [], nrm: number[] = [], uv: number[] = [], col: number[] = [], flex: number[] = [];
   const top = options.topTint ?? options.tint;
   const { rng } = options;
+  const birch = options.barkStyle === 3;
   const branchRanges: Array<readonly [number, number] | undefined> = [];
   for (let branchIndex = 0; branchIndex < skeleton.branches.length; branchIndex++) {
     const branch = skeleton.branches[branchIndex];
@@ -1614,6 +1631,10 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
       const canopy = 1 - GROWTH_CANOPY_AO * canopySkyOcclusion(skeleton, node.x, node.y, node.z);
       const shade = ground * branchTint * (branch.order >= 2 ? 0.92 : 1)
         * Math.min(1 - 0.5 * inner * inner * (3 - 2 * inner), canopy);
+      // trees round 4 (the gauntlet's wave 51: the white birch trunks "cardboard-like"): a birch's stem is rough and dark
+      // at its foot — black fissured bark up to a metre or two, breaking into the white (birchFoot, streaked round the
+      // stem below); the papery white above
+      const foot = birch && branch.order === 0 ? GROWTH_BIRCH_FOOT.depth * (1 - smooth01((node.y - GROWTH_BIRCH_FOOT.fromM) / (GROWTH_BIRCH_FOOT.toM - GROWTH_BIRCH_FOOT.fromM))) : 0;
       const row: Array<[number, number, number, number, number, number, number]> = [];
       for (let j = 0; j <= s; j++) {
         const phi = (j / s) * Math.PI * 2;
@@ -1624,7 +1645,7 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
         row.push([node.x + dx * rr, node.y + dy * rr, node.z + dz * rr, dx, dy, dz, j / s]);
       }
       ring.push(row);
-      (row as unknown as { meta: number[] }).meta = [along, tr * shade, tg * shade, tb * shade, node.flex];
+      (row as unknown as { meta: number[] }).meta = [along, tr * shade, tg * shade, tb * shade, node.flex, foot];
     }
     for (let i = 0; i < ring.length - 1; i++) {
       const A = ring[i], B = ring[i + 1];
@@ -1637,7 +1658,10 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
           // u ≥ 2 marks a styled bark face (vegetation.ts prepareTreeBarkSurface: 2 + 2 × style + the fraction round
           // the stem); the legacy builders' [0, 1] and the snow's -1 keep their meaning
           uv.push(2 + options.barkStyle * 2 + v[6] * 0.999, m[0]);
-          col.push(m[1], m[2], m[3]);
+          // the foot's fissures: each face round the stem its own depth of black (a fixed hash of the side, so the streaks
+          // run down the stem continuously)
+          const dark = m[5] > 0 ? 1 - m[5] * (0.55 + 0.45 * ((((Math.round(v[6] * s) % s) * 2654435761) >>> 0) % 997) / 996) : 1;
+          col.push(m[1] * dark, m[2] * dark, m[3] * dark);
           flex.push(m[4]);
         }
       }
@@ -1738,7 +1762,12 @@ interface CardEmitOptions {
  * underside, which sees the ground instead of the sky.
  */
 export const GROWTH_CROWN_SHADING = Object.freeze({
-  lobeShare: 0.5, volume: 0.25, upBias: 0.2, depthShade: 0.4, underside: 0.18,
+  lobeShare: 0.5, volume: 0.25, upBias: 0.2, depthShade: 0.4, underside: 0.12,
+  /**
+   * Trees round 4 (the waves' "hard dark band at the canopy base"): the lowest a crown card's normal turns toward the
+   * ground before it is normalised — the underside still faces down, but sees some sky round it, as an open crown's does
+   */
+  undersideFloor: -0.2,
   /**
    * The grown crowns' tint gain over that shade (vegetation.ts buildGrownTree). The shade alone took a portrait's
    * visible crown albedo at 22 m (.qa-dev trees2-portrait) from oak 0.122 to 0.083, pine 0.089 to 0.072, poplar 0.101 to
@@ -1825,6 +1854,7 @@ export function emitLeafCards(skeleton: TreeSkeleton, options: CardEmitOptions):
         const under = smooth01((-(has ? field[1] : sy / sl) - 0.1) / 0.8);
         shade = (1 - depthShade * depth) * (1 - GROWTH_CROWN_SHADING.underside * under);
         if (tufted) shade *= 1 - GROWTH_CROWN_SHADING.tuftCrownDepth * smooth01(1 - sl / Math.max(0.5, crown.r * 0.8));
+        ny = Math.max(ny, GROWTH_CROWN_SHADING.undersideFloor);
         // trees round 4: a cluster in its own shade toward its seat — the stem end of a card sits in the leaves round
         // its twig, its tip out in the light (the card reads as leaves in depth, not a flat sticker)
         shade *= GROWTH_CROWN_SHADING.cardRamp[0] + (GROWTH_CROWN_SHADING.cardRamp[1] - GROWTH_CROWN_SHADING.cardRamp[0]) * v;

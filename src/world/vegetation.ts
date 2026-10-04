@@ -39,7 +39,7 @@ import { createTreeImpostorLibrary, type TreeImpostorLibrary, type TreeImpostorR
 // branch-spray atlases
 import {
   canopySkyOcclusion, crownLobes, crownSurfaceNormal, emitBranchGeometry, GROWTH_CROWN_SHADING, emitCrownShadowHull, emitLeafCards, growShrubSkeleton, GROWTH_SHRUB_VALUE, growthCardRows, GROWTH_CROWN_STEM_WIDTH, growthCrownAttachments,
-  growTreeSkeleton, GROWTH_CANOPY_AO, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type CrownShadowMass, type GrowthSpecies,
+  growTreeSkeleton, GROWTH_BIRCH_FOOT, GROWTH_CANOPY_AO, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type CrownShadowMass, type GrowthSpecies,
 } from './treeGrowth.ts';
 import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
@@ -776,6 +776,34 @@ function paintBarkStyles(ctx: CanvasRenderingContext2D, rng: RandomSource, s: nu
     for (const [x, y, r] of scars) {
       ctx.beginPath();
       ctx.moveTo(x + offset - r, y); ctx.lineTo(x + offset, y - r * 0.45); ctx.lineTo(x + offset + r, y); ctx.lineTo(x + offset, y + r * 0.45);
+      ctx.closePath(); ctx.fill();
+    }
+    // trees round 4 (the gauntlet's wave 51: the birch trunks "cardboard-like"): the bark's own grain — long thin
+    // lenticel bands in loose rows, short paired dashes, grey hairline cracks running across, a few dark fissured
+    // lozenges with a pale lip — drawn from a stream of their own, so the sheet's other styles keep their draws
+    const grain = mulberry32(0xb1c4);
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = '#3a3532';
+    for (let k = 0; k < 34; k++) {
+      const x = grain() * B, y = grain() * s, w = 18 + grain() * 46, h = 0.7 + grain() * 1.1;
+      ctx.fillRect(x + offset, y, w, h);
+      if (grain() < 0.5) ctx.fillRect(x + offset + w * (0.2 + grain() * 0.5), y + h + 1.5 + grain() * 2, w * 0.35, h * 0.8);
+    }
+    ctx.globalAlpha = 0.35;
+    ctx.strokeStyle = '#8f877d';
+    ctx.lineWidth = 0.7;
+    for (let k = 0; k < 40; k++) {
+      const x = grain() * B, y = grain() * s, len = 8 + grain() * 26;
+      ctx.beginPath(); ctx.moveTo(x + offset, y); ctx.lineTo(x + offset + len, y + (grain() - 0.5) * 3); ctx.stroke();
+    }
+    ctx.globalAlpha = 0.85;
+    for (let k = 0; k < 3; k++) {
+      const x = grain() * B, y = grain() * s, r = 8 + grain() * 10;
+      ctx.fillStyle = '#d8d3ca';
+      ctx.beginPath(); ctx.ellipse(x + offset, y, r * 1.25, r * 0.62, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#26221f';
+      ctx.beginPath();
+      ctx.moveTo(x + offset - r, y); ctx.lineTo(x + offset, y - r * 0.5); ctx.lineTo(x + offset + r, y); ctx.lineTo(x + offset, y + r * 0.5);
       ctx.closePath(); ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -2414,8 +2442,10 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   const stemR = stem.nodes[Math.min(1, stem.nodes.length - 1)].r;
   // the flare and the root tongues stand in the crown's sky shade too (the stem's foot, canopySkyOcclusion)
   const footShade = 1 - GROWTH_CANOPY_AO * canopySkyOcclusion(skeleton, 0, 0.3, 0);
-  const footColor = new THREE.Color(profile.barkTint[0] * 0.80 * footShade, profile.barkTint[1] * 0.78 * footShade,
-    profile.barkTint[2] * 0.76 * footShade);
+  // trees round 4: a birch's collar is its stem's black foot (treeGrowth.ts GROWTH_BIRCH_FOOT), not white bark
+  const footDark = profile.bark === 3 ? 1 - GROWTH_BIRCH_FOOT.depth * 0.9 : 1;
+  const footColor = new THREE.Color(profile.barkTint[0] * 0.80 * footShade * footDark, profile.barkTint[1] * 0.78 * footShade * footDark,
+    profile.barkTint[2] * 0.76 * footShade * footDark);
   // the tidal mangrove stands on the reviewed stilt roots (addRootButtresses' bent cones, tidalMangrove.ts) over the
   // two-ring eased collar; every other tree takes the fluted collar and its swept root tongues
   const tidal = species === 'mangrove';
