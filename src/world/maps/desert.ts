@@ -272,8 +272,11 @@ export default {
     // r8: fewer LONE palms, more oasis clusters — uniformly scattered far
     // palms rendered as thin spider silhouettes of inconsistent scale across
     // the open flats (critique); date palms grow at water, i.e. in clumps
-    clusterCount: 27,
-    loneCount: 36, // r4: a few more standalone palms breaking the open flats
+    // Trees round 2b (2026-10-03, wave 26: "a lone lollipop broadleaf ... on the foreground dune"): the wadi's trees are
+    // few — date-palm groves at the water and scattered acacias in the bed and the hollows (vegetation.ts treeBiomeArid
+    // seats them there). Was 27 / 36.
+    clusterCount: 12,
+    loneCount: 16,
     rimCount: 22,
     // terrain_environment r3: dense understory scrub INSIDE the oases — the
     // palm clusters stood as bare sticks on clean sand (vegetation.ts
@@ -290,7 +293,9 @@ export default {
     // n1/n2 noise belts as the splat's worn bands (sampleSplatNoise twins the
     // shader warp), so denser tufts land INSIDE the darkened fields and the
     // banding reads as vegetated wadis rather than bare paint
-    grassDensity: 0.60,
+    // Trees round 2b (2026-10-03, wave 26: "an unbroken carpet of pale grass tufts covering the whole foreground
+    // dune"): a thin sward that keeps to the wadi thickets' belts, as Wadi Rum's. Was 0.60.
+    grassDensity: 0.15,
     // pale sun-bleached straw: the old darker olive tufts/scrub read as
     // black pepper speckle against the bright sand in establishing shots
     grassTexTone: (h: number, s: number, l: number) => [0.112, clamp01(s * 0.55), clamp01(l * 1.05 + 0.14)],
