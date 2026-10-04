@@ -22,7 +22,7 @@ import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalett
   type TerrainPaletteId, type TerrainSourcePreparation } from './sourcedTextures.ts';
 import { HORIZON_SEGMENTS, buildHorizonRingSteps, type HorizonMapConfig } from './maps/horizon.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
-import { resolvePresetName, texSize } from '../engine/quality.ts';
+import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { shorelineDistance, shorelineRadiusAt, shorelineWetness, sampleShorelineMask } from './shoreline.ts';
 import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, LIQUID_MARSH_CORE, LIQUID_MARSH_STRIDE } from './liquidMarshSurface.ts';
@@ -59,7 +59,7 @@ import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
 import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
-import { LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
+import { LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -4165,6 +4165,15 @@ void splatCompute() {
       * (1.0 - shoulder) * (1.0 - smoothstep(0.020, 0.060, slope)) * (1.0 - smoothstep(0.02, 0.10, fM))
       * (1.0 - smoothstep(0.10, 0.45, woods));
     if (landW > 0.003) {
+      // (the GPU cut, hold 13: the block was bound by its rounds of reads — a read that waited on another's answer cost a
+      // whole fetch latency at this material's occupancy, its ALU next to nothing. Two rounds now: the field-wide reads
+      // go out with the bake's own — the rows' bend (past a 1.5 m footprint only the faint 13 m passes and the tramlines'
+      // lines are left of the rows, so it stands down and skips its read) and the field's wet and dry — and what the
+      // texel decides, the edge zone's three reads and the soil, go out together after it)
+      float bendW = 1.0 - smoothstep(1.0, 1.5, gFootM);
+      // (the tier, landUseTierOf: Low reads the bake alone, Medium adds the field's wet and dry, High everything)
+      float nBend = bendW > 0.001 && uLandTier > 1.5 ? nzq(uvW, 0.013, vec2(0.47, 0.13)).x : 0.5;
+      vec2 fieldN = uLandTier > 0.5 ? nzq(uvW, 0.023, vec2(0.61, 0.17)) : vec2(0.5);
       float crop, edgeM, track, jit, hedgeL; vec2 rowDir;
       lu_field(wp.xz, crop, edgeM, track, rowDir, jit, hedgeL);
       // the region's boundary (landUse.ts BOUNDARIES): 0 a grass margin with tracks, 1 a polder's water ditches on the
@@ -4175,19 +4184,35 @@ void splatCompute() {
       // field edge wanders ±2–3 m along its boundary and the crop thins raggedly into the margin over 4 m, by a field of no
       // period — the boundary is a strip of rank grass between two worked fields, never a line between two colours. A
       // bund's or a wall's footing keeps its own straight line.
-      float edgeW = edgeM + (nzq(uvW, 0.045, vec2(0.21, 0.83)).y - 0.5) * 4.4 + (n1h - 0.5) * 1.6;
+      // (the wander, the headland and the hedge bank reach at most 9 m + 1.3 margins into a field — past that the crop is
+      // whole, the headland gone and the hedge far whatever the noise reads, and a bund's or a wall's field never reads
+      // them — so the field's interior skips the three reads, exactly; and the wander, the headland's width and the
+      // hedge bank's break are a pixel's detail: past a 1–2 m footprint they stand at their means and skip them too)
+      bool luEdge = bnd < 1.5 && edgeM < 9.0 + 1.3 * uLandB.y;
+      float luNear = 1.0 - smoothstep(1.0, 2.0, gFootM);
+      vec3 nEdge = vec3(0.5); // the wander, the headland's width, the hedge bank's break
+      if (luEdge && luNear > 0.001 && uLandTier > 1.5) nEdge = mix(vec3(0.5), vec3(nzq(uvW, 0.045, vec2(0.21, 0.83)).y,
+        nzq(uvW, 0.031, vec2(0.11, 0.59)).y, nzq(uvW, 0.17, vec2(0.83, 0.37)).x), luNear);
+      bool soilCrop = (crop > 3.5 && crop < 4.5) || (crop > 6.5 && crop < 8.5) || (crop > 10.5 && crop < 12.5) || crop > 16.5;
+      // (the soil is read where it is drawn — a soil crop but the flooded paddy's water, a track's ruts (not a polder's
+      // ditch), a bund's half metre; a wall's field and a paddy's water never read it, exactly — and its photo's grain
+      // is the layer's mean past a 1–2 m footprint, a turned field's own lines carrying it from there)
+      bool soilRead = (soilCrop && (crop < 7.5 || crop > 8.5)) || (track > 0.01 && (bnd < 0.5 || bnd > 1.5))
+        || (bnd > 1.5 && bnd < 2.5 && edgeM < 0.56);
+      vec4 soil = uMeanD;
+      if (soilRead && luNear > 0.001 && uLandTier > 1.5) soil = mix(uMeanD, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), luNear);
+      float edgeW = edgeM + (n1h - 0.5) * 1.6 + (nEdge.x - 0.5) * 4.4;
       float inField = bnd > 1.5 ? smoothstep(bnd > 2.5 ? 0.95 : 0.50, bnd > 2.5 ? 1.45 : 0.85, edgeM)
                                 : smoothstep(marginM, marginM + 4.0, edgeW);
       inField *= 1.0 - track;
       // one row direction a field (landUse.ts: its long side's axis turned by its own hash), its lines bent a little
       // over tens of metres — never ruled stripes repeating field to field (wave 14's "regular crosshatch weave")
-      float across = dot(wp.xz, vec2(-rowDir.y, rowDir.x)) + (nzq(uvW, 0.013, vec2(0.47, 0.13)).x - 0.5) * 5.0;
+      float across = dot(wp.xz, vec2(-rowDir.y, rowDir.x)) + (nBend - 0.5) * 5.0 * bendW;
       // (wave 8, saltwind chase: "an unnaturally regular striped banding pattern"; the verdant plough "a low-resolution
       // repeating texture"): every ruled period a field drew — furrows, the tractor's passes, tramlines, swaths, mown
       // stripes — read as synthetic at full strength. They stand down to a breath of themselves, and where they show
       // at all they come and go by a field of no period (a wet pass, a dry one, the light across them)
-      vec2 fieldN = nzq(uvW, 0.023, vec2(0.61, 0.17));
-      float rowsShow = 0.22 * smoothstep(0.30, 0.80, fieldN.x);
+      float rowsShow = uLandTier > 0.5 ? 0.22 * smoothstep(0.30, 0.80, fieldN.x) : 0.0;
       // (wave 8: "flat tinted patches … a painted map") a field is never one tone: its wetter and drier ground, thinner
       // and thicker stands, ±10 % over tens of metres by the same field of no period
       float fieldVar = 0.90 + 0.20 * fieldN.y;
@@ -4196,9 +4221,6 @@ void splatCompute() {
       float bright = 0.90 + 0.20 * jit;
       vec3 cropCol = a.rgb;
       float rows = 0.0; // the crop's row tone, signed
-      vec4 soil = vec4(0.0);
-      bool soilCrop = (crop > 3.5 && crop < 4.5) || (crop > 6.5 && crop < 8.5) || (crop > 10.5 && crop < 12.5) || crop > 16.5;
-      if (soilCrop || track > 0.01 || bnd > 1.5) soil = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
       // the soil photo's own mottle (pebbles, clods, dry crust) halved toward its mean and a third of its hue taken out:
       // a turned field reads as one dark, even soil with its lines, not a sandy blotch (Amberford) or red clay (Frontier)
       vec3 soilF = mix(soil.rgb, uMeanD.rgb, 0.5);
@@ -4255,7 +4277,7 @@ void splatCompute() {
         // stony red earth: a little less red, and strewn with the limestone the plough brings up (grey, 0.3–1 m
         // stones in drifts, a field of no period, faded as they near the pixel)
         cropCol = soilF / max(reduxLuma(soilF), 1e-3) * vec3(1.30, 0.90, 0.72) * 0.115 * bright;
-        float karstStone = smoothstep(0.62, 0.80, nzq(uvW, 0.61, vec2(0.37, 0.71)).x) * smoothstep(0.35, 0.70, nzq(uvW, 0.043, vec2(0.13, 0.29)).y);
+        float karstStone = uLandTier > 0.5 ? smoothstep(0.62, 0.80, nzq(uvW, 0.61, vec2(0.37, 0.71)).x) * smoothstep(0.35, 0.70, nzq(uvW, 0.043, vec2(0.13, 0.29)).y) : 0.0;
         cropCol = mix(cropCol, vec3(0.17, 0.165, 0.155) * bright, karstStone * 0.65 * tileVis(0.8));
         cropCol = mix(cropCol, mix(cropCol, vec3(reduxLuma(cropCol)), 0.25), 1.0 - tileVis(0.8)); // the stones' grey in the far average
         rows = sin(across * 7.854) * 0.10 * tileVis(0.8) + sin(across * 0.483 + jit * 6.0) * 0.06 * tileVis(13.0);
@@ -4287,10 +4309,10 @@ void splatCompute() {
         cropCol = vec3(0.16, 0.155, 0.15) * (0.88 + 0.24 * n1h) * bright; // ballast and hardcore: grey crushed stone
       } else {
         // brownfield grass: a patchy, cured sward with bare ground between its clumps
-        float bare = smoothstep(0.52, 0.72, nzq(uvW, 0.11, vec2(0.71, 0.23)).x);
+        float bare = uLandTier > 0.5 ? smoothstep(0.52, 0.72, nzq(uvW, 0.11, vec2(0.71, 0.23)).x) : 0.0;
         cropCol = mix(a.rgb * vec3(1.35, 1.15, 0.72), soilF * 0.95, bare);
       }
-      if (crop > 0.5 && crop < 3.5) {
+      if (crop > 0.5 && crop < 3.5 && uLandTier > 0.5) {
         // tramlines: the sprayer's wheel tracks, a pair every 18–24 m, a darker crushed line each (a line 0.5 m wide
         // fades as the footprint outgrows it)
         float period = 18.0 + floor(jit * 4.0) * 2.0;
@@ -4305,8 +4327,8 @@ void splatCompute() {
       // golden wheat field") a worked field's edge is a feature: inside its grass margin lies the headland, 3–5.5 m where
       // the drill turned — the crop pressed flat and thinner with the soil showing in it, and the turning wheels' two arcs
       // along the edge (the tall-grass tier flattens and weeds the same strip; the margin itself grows rank and tall)
-      if (bnd < 0.5 && crop > 0.5 && water < 0.5) {
-        float headW = 3.0 + 2.5 * nzq(uvW, 0.031, vec2(0.11, 0.59)).y;
+      if (bnd < 0.5 && crop > 0.5 && water < 0.5 && luEdge && uLandTier > 0.5) {
+        float headW = 3.0 + 2.5 * nEdge.y;
         float into = edgeW - marginM;
         float headL = inField * (1.0 - smoothstep(headW - 1.2, headW, into)) * (1.0 - track);
         vec3 soilM = mix(uMeanD.rgb, vec3(reduxLuma(uMeanD.rgb)), 0.35);
@@ -4321,13 +4343,15 @@ void splatCompute() {
       gSoilW = ((crop > 3.5 && crop < 4.5) || (crop > 10.5 && crop < 12.5) || (crop > 14.5 && crop < 16.5)) ? inField * landW : 0.0;
       gFieldWater = water * inField * landW;
       if (water > 0.5 && nrmOn) n = mix(n, NRM_MEAN, gFieldWater);
-      if (bnd < 1.5) {
+      if (uLandTier < 0.5) {
+        // (Low draws no boundary feature: the field's crop meets the sward of its margin and nothing else)
+      } else if (bnd < 1.5) {
         // the margin: an uncultivated strip of rank grass, a shade darker and greener than the fields either side, lumpy
         // with its tussocks; a hedged boundary carries its hedge bank — the shrubs' dark base and their shade, broken
         // along its run, under the hedge's own trees and bushes (the vegetation tier seats them on the same line)
         a.rgb = mix(a.rgb, a.rgb * vec3(0.90, 0.98, 0.84) * (0.86 + 0.28 * n1h), (1.0 - inField) * (1.0 - track) * landW * 0.75);
         if (hedgeL > 0.01) {
-          float hb = hedgeL * (0.55 + 0.45 * smoothstep(0.30, 0.70, nzq(uvW, 0.17, vec2(0.83, 0.37)).x));
+          float hb = hedgeL * (0.55 + 0.45 * smoothstep(0.30, 0.70, nEdge.z));
           a.rgb = mix(a.rgb, a.rgb * vec3(0.52, 0.60, 0.46), hb * (1.0 - track) * landW * 0.85);
         }
       } else if (bnd < 2.5) {
@@ -4344,7 +4368,7 @@ void splatCompute() {
         a.rgb = mix(a.rgb, stone, wall * landW);
         a.rgb *= 1.0 - 0.22 * (smoothstep(0.55, 0.75, edgeM) * (1.0 - smoothstep(0.85, 1.35, edgeM))) * landW;
       }
-      if (track > 0.01) {
+      if (track > 0.01 && uLandTier > 0.5) {
         if (bnd > 0.5 && bnd < 1.5) {
           // a polder's ditch along the long boundary: a metre and a half of still water between wet, rank banks
           float ditch = 1.0 - smoothstep(0.55, 0.85, edgeM);
@@ -5599,6 +5623,9 @@ function* createSplatMaterialSteps(
   // ground lane (2026-10-03, the GPU fix): the land use baked once from its CPU twin at the interior mask's texel scale
   // (landUse.ts bakeLandUseSteps), stacked under the ground mask below (stackLandUseBake) — 64 rows a build step
   const landBakeN = mask.image.width;
+  // ground lane (2026-10-04): the land use's tier (landUseTierOf) from the live preset, kept current across changes
+  const landTier = { value: landUseTierOf(resolvePresetName()) };
+  const offLandTier = onPresetChange(() => { landTier.value = landUseTierOf(resolvePresetName()); });
   const landBake = landUse.landA[0] > 0 ? new Uint8Array(landBakeN * landBakeN * 8) : null;
   if (landBake) yield* bakeLandUseSteps(landUseProfile, landBakeN, MAP_SIZE, landBake, 64);
   const groundClock = { value: 0 };
@@ -5614,6 +5641,7 @@ function* createSplatMaterialSteps(
   };
 
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0, metalness: 0.0 });
+  mat.addEventListener('dispose', () => { offLandTier(); });
   // round 72b: the ring's surface atlas uniforms — off (amplitude 0, uRingDraw 0) until the ring binds its bake
   // (horizonAutumnGround.bindAutumnHorizonGround). The program has no unit to spare for the atlas (see the fragment's
   // uRingDraw note): the M normal's uniform object is shared here so the ring bands' draw can point that unit at the
@@ -5645,6 +5673,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uMask = { value: maskStack.texture };
     shader.uniforms.uMaskStack = { value: maskStack.stack };
     shader.uniforms.uLandBake = { value: maskStack.bake };
+    shader.uniforms.uLandTier = landTier;
     shader.uniforms.uMaskSize = { value: groundMask === mask ? MAP_SIZE : OUTLAND_WATER_MASK_SIZE_M };
     shader.uniforms.uNoise = { value: noiseTex };
     // terrain v2: the layers' measured means (the same vectors measureLayerMeans refreshes after the sourced swap)
