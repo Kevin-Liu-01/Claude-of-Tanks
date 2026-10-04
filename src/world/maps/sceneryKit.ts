@@ -505,7 +505,8 @@ function sandbagBag(len: number, thick: number, wid: number, r: Rng, shape: BagS
   }
   const p = box3.attributes.position;
   const T = thick * fill, Wd = wid * (1 + (1 - fill) * 0.3);
-  const sag = (0.05 + r() * 0.07) * (1 + (1 - fill) * 2.5), droop = 0.008 + r() * 0.012;
+  // (wave 34, "tidy tubes": the fill settles — the top sags a sixth of the bag's thickness or more, the bag droops)
+  const sag = (0.07 + r() * 0.09) * (1 + (1 - fill) * 2.5), droop = 0.012 + r() * 0.016;
   const twist = (r() - 0.5) * 0.1, tie = r() < 0.5 ? 1 : -1, ear = 0.03 + r() * 0.03;
   for (let i = 0; i < p.count; i++) {
     const u = p.getX(i) * 2, v = p.getY(i) * 2, w = p.getZ(i) * 2; // -1..1
@@ -535,7 +536,9 @@ function sandbagBag(len: number, thick: number, wid: number, r: Rng, shape: BagS
     const x = gp.getX(i), y = gp.getY(i), z = gp.getZ(i);
     const bed = Math.max(0, Math.min(1, (-y / (T * 0.5) + 0.2) / 1.2));
     const earth = Math.min(1, bed * (0.32 + dirt * 0.3) + dirt * 0.18);
-    _c.setHSL(tone[0] + hue - earth * 0.01, tone[1] * (1 - earth * 0.3), Math.max(0.05, (tone[2] + lift) * (1 - earth)), THREE.SRGBColorSpace);
+    // (wave 34, "no ties": the tied end's neck reads darker — the cord bound round it and the cloth bunched into it)
+    const neck = x * tie > len * 0.45 ? 0.68 : 1;
+    _c.setHSL(tone[0] + hue - earth * 0.01, tone[1] * (1 - earth * 0.3), Math.max(0.05, (tone[2] + lift) * (1 - earth) * neck), THREE.SRGBColorSpace);
     col[i * 3] = _c.r; col[i * 3 + 1] = _c.g; col[i * 3 + 2] = _c.b;
     // the weave runs along the bag and round it (a planar wrap: x along, z and y around)
     uv[i * 2] = du + x * 4.2;
@@ -573,6 +576,7 @@ function sandbagCourses(half: number, depth: number, height: number, r: Rng): TH
   const parts: THREE.BufferGeometry[] = [];
   const courses = Math.max(2, Math.round(height / 0.15));
   const thick = height / courses;
+  const settleMid = 0.025 + r() * 0.02;
   for (let c = 0; c < courses; c++) {
     const inset = c * 0.02 + (c === courses - 1 ? 0.02 : 0);
     const rowHalf = depth - inset;
@@ -595,7 +599,7 @@ function sandbagCourses(half: number, depth: number, height: number, r: Rng): TH
         x0 = Math.max(-half, x0); x1 = Math.min(half, x1);
         if (x1 - x0 < len * 0.3) continue;
         // the top course: the odd bag missing, the rest standing at their own heights (an uneven line)
-        if (top && r() < 0.16) continue;
+        if (top && r() < 0.22) continue;
         const bagLen = (x1 - x0) * (0.97 + r() * 0.05);
         const fill = r() < 0.2 ? 0.76 + r() * 0.12 : 0.94 + r() * 0.1;
         // a course's inner ends abut their neighbours (the top course's do not: it has gaps); in the bag's own frame a
@@ -603,10 +607,13 @@ function sandbagCourses(half: number, depth: number, height: number, r: Rng): TH
         const leftHidden = !top && x0 > -half + len * 0.35, rightHidden = !top && x1 < half - len * 0.35;
         const hideEnds: [boolean, boolean] = side > 0 ? [leftHidden, rightHidden] : [rightHidden, leftHidden];
         const bag = sandbagBag(bagLen, thick * (1.12 + r() * 0.12), wid * (0.95 + r() * 0.08), r, { fill, dirt, laid: true, hideEnds });
-        bag.rotateY((r() - 0.5) * 0.07 + (side < 0 ? Math.PI : 0));
-        bag.rotateZ((r() - 0.5) * 0.06);
-        bag.rotateX((r() - 0.5) * 0.06 - side * 0.035);
-        const rise = top ? (r() - 0.5) * thick * 0.3 : (r() - 0.5) * 0.012;
+        bag.rotateY((r() - 0.5) * 0.1 + (side < 0 ? Math.PI : 0));
+        bag.rotateZ((r() - 0.5) * 0.09);
+        bag.rotateX((r() - 0.5) * 0.08 - side * 0.035);
+        // (wave 34, "no sag": a stack settles in its middle, the more the higher the course — up to 4 cm — and its top
+        // course lies askew, bags at their own heights)
+        const mid = (x0 + x1) / (2 * half), settle = settleMid * (c / Math.max(1, courses - 1)) * (1 - mid * mid);
+        const rise = (top ? (r() - 0.5) * thick * 0.45 : (r() - 0.5) * 0.02) - settle;
         // a slack bag lies lower in its course (it settled into the joint below)
         bag.translate((x0 + x1) / 2 + (r() - 0.5) * 0.03, c * thick + thick * 0.5 * fill + rise, side * (rowHalf - wid * 0.5) + (r() - 0.5) * 0.03);
         parts.push(bag);
@@ -693,4 +700,118 @@ export function buildSandbagHeap(kind: SandbagStackKind, spend: () => void): THR
   g.translate(0, -s.sink * 0.5, 0);
   if (s.along === 'z') g.rotateY(Math.PI / 2);
   return g;
+}
+
+/**
+ * The ground a sandbag nest was dug into (wave 34: "a stacked prop on a bare mound — no berm, trench or spilled sand"):
+ * the spoil banked against its outer long face, two fifths of its height up and 0.7-1 m out, lower along its inner
+ * face and its ends; lumpy, its toe wandering and sunk a centimetre; a spill of the fill heaped from a burst bag at one
+ * end, the emptied bag lying flat by it. World space on the height field (x, z the nest's foot, yaw and sc its turn and
+ * scale), vertex coloured in the map's soil (`soil`, linear RGB) for the props' baked material; its own stream (the seed
+ * names the place). Position, normal and colour; it collides with nothing (a hull drives over a nest as before).
+ */
+export function buildSandbagBedding(
+  kind: SandbagStackKind, ground: { getHeightAt(x: number, z: number): number },
+  x: number, z: number, yaw: number, sc: number, seed: number, soil: readonly [number, number, number], mobile = false,
+  toward: readonly [number, number] | null = null,
+): THREE.BufferGeometry {
+  const s = SANDBAG_STACKS[kind], r = sandbagRng(seed);
+  const hx = (s.along === 'x' ? s.half : s.depth) * sc, hz = (s.along === 'x' ? s.depth : s.half) * sc, H = s.top * sc;
+  const cos = Math.cos(yaw), sin = Math.sin(yaw);
+  const world = (lx: number, lz: number): [number, number] => [x + lx * cos + lz * sin, z - lx * sin + lz * cos];
+  const longZ = s.along === 'x'; // the long faces look along local z
+  // the face the spoil was thrown to: the enemy's (`toward`, a world direction) where the position has one
+  const pick = r() < 0.5 ? -1 : 1;
+  const facingDot = toward ? (longZ ? sin * toward[0] + cos * toward[1] : cos * toward[0] - sin * toward[1]) : 0;
+  const outer = toward && Math.abs(facingDot) > 1e-6 ? Math.sign(facingDot) : pick;
+  const positions: number[] = [], colors: number[] = [], index: number[] = [];
+  const shade = (o: number) => {
+    const n = 0.86 + r() * 0.24, toe = 1 - o * 0.12;
+    colors.push(soil[0] * n * toe, soil[1] * n * toe, soil[2] * n * toe);
+  };
+  // the ring round the stack's plan, a point every 35 cm (60 on a phone), four rows out
+  const per = 4 * (hx + hz), K = Math.max(12, Math.round(per / (mobile ? 0.6 : 0.35)));
+  const OUT = [0, 0.3, 0.65, 1];
+  const lumpA = r() * 6.3, lumpB = r() * 6.3;
+  const ring: Array<[number, number, number, number]> = [], hs: number[] = [], reaches: number[] = [];
+  for (let k = 0; k < K; k++) {
+    const t = (k / K) * per;
+    let lx: number, lz: number, nx: number, nz: number;
+    if (t < 2 * hx) { lx = -hx + t; lz = hz; nx = 0; nz = 1; }
+    else if (t < 2 * hx + 2 * hz) { lx = hx; lz = hz - (t - 2 * hx); nx = 1; nz = 0; }
+    else if (t < 4 * hx + 2 * hz) { lx = hx - (t - 2 * hx - 2 * hz); lz = -hz; nx = 0; nz = -1; }
+    else { lx = -hx; lz = -hz + (t - 4 * hx - 2 * hz); nx = -1; nz = 0; }
+    // which face: the outer long face carries the spoil, the inner one and the ends a lower bank
+    const onLong = longZ ? nz !== 0 : nx !== 0, facing = longZ ? nz : nx;
+    const big = onLong && facing === outer;
+    const a = (k / K) * Math.PI * 2;
+    const lump = 1 + 0.18 * Math.sin(a * 5 + lumpA) + 0.1 * Math.sin(a * 11 + lumpB);
+    ring.push([lx, lz, nx, nz]);
+    hs.push(H * (big ? 0.4 : 0.17) * lump);
+    reaches.push((big ? 0.85 : 0.5) * (0.85 + 0.3 * (0.5 + 0.5 * Math.sin(a * 3 + lumpB))) * Math.max(1, sc * 0.8));
+  }
+  // (the bank's height and reach eased round the corners, so the outer face's spoil runs down into the ends' bank)
+  const ease = (v: number[]) => v.map((_, k) => {
+    let sum = 0, w = 0;
+    for (let j = -3; j <= 3; j++) { const q = 4 - Math.abs(j); sum += v[(k + j + K) % K] * q; w += q; }
+    return sum / w;
+  });
+  const hE = ease(hs), reachE = ease(reaches);
+  for (let k = 0; k < K; k++) {
+    const [lx, lz, nx, nz] = ring[k], h = hE[k], reach = reachE[k];
+    for (const o of OUT) {
+      const d = -0.03 + reach * o;
+      const [wx, wz] = world(lx + nx * d, lz + nz * d);
+      positions.push(wx, ground.getHeightAt(wx, wz) + h * Math.pow(1 - o, 1.5) - 0.01 * o, wz);
+      shade(o);
+    }
+  }
+  const rows = OUT.length;
+  for (let k = 0; k < K; k++) {
+    const a = k * rows, b = ((k + 1) % K) * rows;
+    for (let j = 0; j + 1 < rows; j++) index.push(a + j, a + j + 1, b + j, b + j, a + j + 1, b + j + 1);
+  }
+  // the spill: a heap of the fill at one end, a dome of three rings, and the emptied bag by it
+  const end = r() < 0.5 ? -1 : 1, along = longZ ? [1, 0] : [0, 1], across = longZ ? [0, 1] : [1, 0];
+  const reachEnd = (longZ ? hx : hz) + 0.3 + r() * 0.25, off = (r() - 0.5) * (longZ ? hz : hx);
+  const cx = along[0] * end * reachEnd + across[0] * off, cz = along[1] * end * reachEnd + across[1] * off;
+  const [sx, sz] = world(cx, cz);
+  const radius = (0.32 + r() * 0.15) * Math.min(1.3, sc), height = 0.1 + r() * 0.08, segs = mobile ? 6 : 9;
+  const centre = positions.length / 3;
+  positions.push(sx, ground.getHeightAt(sx, sz) + height, sz);
+  colors.push(soil[0] * 1.1, soil[1] * 1.1, soil[2] * 1.1);
+  for (const ring of [0.45, 0.8, 1.15]) {
+    for (let q = 0; q < segs; q++) {
+      const a = (q / segs) * Math.PI * 2, rr = radius * ring * (0.85 + r() * 0.3);
+      const px = sx + Math.cos(a) * rr, pz = sz + Math.sin(a) * rr;
+      const fall = ring < 1 ? Math.pow(1 - ring / 1.15, 0.8) : 0;
+      positions.push(px, ground.getHeightAt(px, pz) + height * fall - (ring > 1 ? 0.01 : 0), pz);
+      const n = 0.95 + r() * 0.15;
+      colors.push(soil[0] * 1.08 * n, soil[1] * 1.08 * n, soil[2] * 1.08 * n);
+    }
+  }
+  for (let q = 0; q < segs; q++) {
+    const q1 = (q + 1) % segs;
+    index.push(centre, centre + 1 + q1, centre + 1 + q);
+    for (let ring = 0; ring < 2; ring++) {
+      const a0 = centre + 1 + ring * segs, b0 = a0 + segs;
+      index.push(a0 + q, a0 + q1, b0 + q, b0 + q, a0 + q1, b0 + q1);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  g.setIndex(index);
+  g.computeVertexNormals();
+  // the emptied bag, flat on the ground by the spill (hessian, a little earth on it)
+  const bag = sandbagBag(0.55 + r() * 0.12, 0.05 + r() * 0.03, 0.4, r, { fill: 0.6, dirt: 0.7 });
+  bag.rotateY(r() * Math.PI);
+  const bx = cx + along[0] * end * (radius + 0.2) + across[0] * (r() - 0.5) * 0.4, bz = cz + along[1] * end * (radius + 0.2) + across[1] * (r() - 0.5) * 0.4;
+  const [wbx, wbz] = world(bx, bz);
+  bag.rotateY(yaw).translate(wbx, ground.getHeightAt(wbx, wbz) + 0.012, wbz);
+  bag.deleteAttribute('uv');
+  const out = mergeGeometries([g.toNonIndexed(), bag.index ? bag.toNonIndexed() : bag], false);
+  g.dispose(); bag.dispose();
+  if (!out) throw new Error('sceneryKit: the sandbag bedding merge produced no geometry');
+  return out;
 }
