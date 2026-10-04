@@ -2,14 +2,21 @@
 // presentation metadata read from the finished geometry (never written).
 // Split out of tankFactoryCore.ts in round 46 (docs/CLEANUP-2026-09-22.md §4.4).
 import * as THREE from 'three';
-import { isVehicleInstancedMesh, isVehicleMesh, type VehicleInstancedMesh } from './vehicleMesh.ts';
+import { isVehicleBatchedMesh, isVehicleInstancedMesh, isVehicleMesh, type VehicleInstancedMesh } from './vehicleMesh.ts';
 import { staticMergePartMatrixWorld, staticMergePartsOf } from './staticMergeParts.ts';
 
 // ---------------------------------------------------------------------------
 // Rest-pose contact scan (movement-solve metadata — reads geometry, never
 // writes it). Runs once per createTank, after the gear instances are seated
 // at rest: strided vertices of every visible color-writing Mesh plus every
-// live InstancedMesh instance, in root-local (= hull) space. Returns the
+// live InstancedMesh and BatchedMesh instance, in root-local (= hull) space.
+// A batch-static build packs the sprocket and idler into BatchedMeshes whose
+// shared buffer is origin-local: until 2026-10-03 the scan read that buffer
+// through the batch's own matrix alone, so every end wheel landed at the hull
+// origin a wheel radius under the gear line, and the contact floor took the
+// 12 cm cap on every browser battle build (tanks rode 12-14 cm high). Each
+// batch instance now replays its own geometry range through its own matrix,
+// exactly as the plain-mesh course draws it. Returns the
 // SURFACE floor (robust low quantile — see below) and the 5 cm low-band
 // footprint. The whole-visual floor matters because mask-sovereign rebuilds
 // may sink a hull keel BELOW the gear line (m1a2_sepv2: keel +0.055 vs gear
@@ -26,6 +33,9 @@ import { staticMergePartMatrixWorld, staticMergePartsOf } from './staticMergePar
 // corner verts, a pad field is thousands.)
 const _rcM = new THREE.Matrix4();
 const _rcM2 = new THREE.Matrix4();
+const _rcBatchRange: THREE.BatchedMeshGeometryRange = {
+  vertexStart: 0, vertexCount: 0, reservedVertexCount: 0, indexStart: 0, indexCount: 0, reservedIndexCount: 0, start: 0, count: 0,
+};
 const _rcPartWorld = new THREE.Matrix4();
 const _rcV = new THREE.Vector3();
 const _floorHeap: number[] = [];
@@ -202,13 +212,38 @@ function appendMeshRestContactSamples(
   position: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
   invRoot: THREE.Matrix4,
   samples: RestContactSamples,
+  vertexStart = 0,
+  vertexCount = position.count,
 ): void {
   _rcM2.multiplyMatrices(invRoot, matrixWorld);
-  const stride = Math.max(1, Math.floor(position.count / 20000));
-  for (let vertex = 0; vertex < position.count; vertex += stride) {
+  const stride = Math.max(1, Math.floor(vertexCount / 20000));
+  for (let vertex = vertexStart; vertex < vertexStart + vertexCount; vertex += stride) {
     _rcV.fromBufferAttribute(position, vertex).applyMatrix4(_rcM2);
     samples.points.push(_rcV.x, _rcV.y, _rcV.z);
     if (_rcV.y < samples.absMinYM) samples.absMinYM = _rcV.y;
+  }
+}
+
+/** Each visible batch instance samples its own geometry range through its own matrix, with the stride the same
+ * geometry gets as a plain mesh (course 2 of buildRunningGear), so both courses read identical samples. End wheels
+ * are one-sided, like the instanced wheels, so they never offer a hull-pan floor. The fleet's batches only ever add
+ * instances, so instance ids are dense. */
+function appendBatchedRestContactSamples(
+  batch: THREE.BatchedMesh,
+  invRoot: THREE.Matrix4,
+  samples: RestContactSamples,
+): void {
+  const position = batch.geometry.getAttribute?.('position');
+  if (!position?.count) return;
+  for (let instance = 0; instance < batch.instanceCount; instance++) {
+    if (!batch.getVisibleAt(instance)) continue;
+    batch.getGeometryRangeAt(batch.getGeometryIdAt(instance), _rcBatchRange);
+    if (!_rcBatchRange.vertexCount) continue;
+    batch.getMatrixAt(instance, _rcM);
+    const elements = _rcM.elements;
+    if (Math.abs(elements[0]) + Math.abs(elements[5]) + Math.abs(elements[10]) < 1e-5) continue;
+    appendMeshRestContactSamples(_rcM.premultiply(batch.matrixWorld), position, invRoot, samples,
+      _rcBatchRange.vertexStart, _rcBatchRange.vertexCount);
   }
 }
 
@@ -221,6 +256,10 @@ function collectRestContactSamples(
   if (!isVehicleMesh(object) && !isVehicleInstancedMesh(object)) return;
   if (!materialWritesColor(object.material)) return;
   if (!isVisibleBelowRoot(object, root)) return;
+  if (isVehicleBatchedMesh(object)) {
+    appendBatchedRestContactSamples(object, invRoot, samples);
+    return;
+  }
   if (isVehicleInstancedMesh(object)) {
     const position = object.geometry.getAttribute?.('position');
     if (position?.count) appendInstancedRestContactSamples(object, position, invRoot, samples);
@@ -326,6 +365,7 @@ const _pfM = new THREE.Matrix4();
 const _pfM2 = new THREE.Matrix4();
 const _pfPartWorld = new THREE.Matrix4();
 const _pfV = new THREE.Vector3();
+const _pfBox = new THREE.Box3();
 export function measurePresentationFloor(root: THREE.Object3D): number | null {
   try {
     root.updateMatrixWorld(true);
@@ -347,6 +387,19 @@ export function measurePresentationFloor(root: THREE.Object3D): number | null {
       for (let current: THREE.Object3D | null = object;
         current && current !== root; current = current.parent) {
         if (!current.visible) return;
+      }
+      if (isVehicleBatchedMesh(object)) {
+        // Per instance: its geometry range's bounds through its own matrix (the shared buffer is origin-local).
+        _pfM2.multiplyMatrices(invRoot, object.matrixWorld);
+        for (let instance = 0; instance < object.instanceCount; instance++) {
+          if (!object.getVisibleAt(instance)) continue;
+          if (!object.getBoundingBoxAt(object.getGeometryIdAt(instance), _pfBox) || _pfBox.isEmpty()) continue;
+          object.getMatrixAt(instance, _pfM);
+          const elements = _pfM.elements;
+          if (Math.abs(elements[0]) + Math.abs(elements[5]) + Math.abs(elements[10]) < 1e-5) continue;
+          considerBox(_pfBox, _pfM.premultiply(_pfM2));
+        }
+        return;
       }
       const parts = isVehicleInstancedMesh(object) ? [] : staticMergePartsOf(object);
       for (const part of parts) {

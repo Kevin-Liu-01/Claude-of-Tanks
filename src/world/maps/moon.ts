@@ -75,6 +75,8 @@ export default {
   },
   vegetation: { ...mars.vegetation },
   props: { ...mars.props, sourcedPalette: 'winter', plan: [],
+    // Olympus Basin's recorded station (props townPlan / townLightPlan) stays on Mars
+    townPlan: undefined, townLightPlan: undefined, roadBuildingClearance: undefined,
     // the outpost's own module families are its strongpoints' structures
     destructibleBuildings: ['habmodule', 'commsmast', 'fueltanks'],
     // Three strongpoint pairs, each the other's rotation about the landing field: the track posts below the saddles,
