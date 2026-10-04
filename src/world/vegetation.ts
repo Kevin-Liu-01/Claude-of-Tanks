@@ -45,7 +45,7 @@ import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_T
 import type { GroundLitterConfig } from './groundLitter.ts';
 import type { LandFieldSample } from './landUse.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -6435,7 +6435,11 @@ function* vegetationBuildSteps(
   function createBushes(): void {
     // trees round 2: the desktop shrubs take the place's foliage colour where the map palette names none (the phones
     // keep the palette as it is)
-    const bushPal = grownTrees ? treeBiomePalette(palOf(bushSpecies), null, false, treeBiomeColour(cfg?.id)) : palOf(bushSpecies);
+    // trees round 4: a place's own shrub colour (treeBiomes.ts shrubColour) wins over the bush slot's palette, as a form's
+    // own colour does over its slot's (the Las Cañadas broom ash-dulled, where the slot's acacia palette read green)
+    const shrubColour = grownTrees ? treeBiomeShrubColour(cfg?.id) : null;
+    const bushPal = grownTrees ? treeBiomePalette(palOf(bushSpecies), shrubColour ? { colour: shrubColour } : null, false, treeBiomeColour(cfg?.id))
+      : palOf(bushSpecies);
     // p2 trees lane: the desktop shrubs grow from the bush species' sprays (buildGrownShrub); the phones keep the cards
     // the shrub grows from the sprays its material paints: the Mangrove map's willow form is the mangrove
     // trees round 2: the shrubs grow as the map's shrub form (their own material: shrubMaterials) or the bush slot's form

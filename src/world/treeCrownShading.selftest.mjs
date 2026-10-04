@@ -18,7 +18,7 @@ import {
 import { makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_KINDS } from './treeSprayAtlas.ts';
 import { LOD_SHADOW_FADE_ATTRIBUTE } from '../engine/lodShadowFade.ts';
 import { growShrubSkeleton } from './treeGrowth.ts';
-import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeSlot, treeBiomeUpland } from './treeBiomes.ts';
+import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland } from './treeBiomes.ts';
 import { grownTintLaw } from './vegetation.ts';
 import { TREE_SPECIES } from './treeSpecies.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
@@ -385,6 +385,22 @@ assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a
 {
   const broom = growShrubSkeleton('broom', 'bush', mulberry32(9));
   assert.ok(broom.leaves.length >= 32 && broom.leaves.every((l) => l.y >= -0.0601), `a broom mound of ${broom.leaves.length} sprays on the ground`);
+}
+
+// trees round 4 (the ground lane on Obsidian Caldera's establishing view: the broom "saturated green" on the ash plain):
+// the Las Cañadas broom takes the place's shrub colour over the bush slot's palette — an ash-dulled grey-green, its
+// sprays' saturation cut to three tenths, the hue turned to olive, a little paler — and no other place has one
+{
+  const ash = treeBiomeShrubColour('caldera');
+  assert.ok(ash && ash.texTone && ash.cardSat <= 0.06, 'Las Cañadas has its own shrub colour');
+  const [h, sat, l] = ash.texTone(0.36, 0.6, 0.45);
+  assert.ok(h >= 0.18 && h <= 0.26 && sat <= 0.2 && l >= 0.45, `the broom's tone ash-dulled olive (${h}, ${sat}, ${l})`);
+  const slot = { cardHue: 0.3, cardSat: 0.4, texTone: (hh, ss, ll) => [hh, ss, ll] };
+  const pal = treeBiomePalette(slot, { colour: ash }, false, treeBiomeColour('caldera'));
+  assert.equal(pal.cardSat, ash.cardSat, 'the shrub colour wins over the slot palette\'s named saturation');
+  assert.strictEqual(pal.texTone, ash.texTone, 'and its tone');
+  assert.deepEqual(MAP_IDS.filter((id) => treeBiomeShrubColour(id)), ['caldera'], 'only Las Cañadas names a shrub colour');
+  report.calderaBroom = { h: +h.toFixed(3), s: +sat.toFixed(3), l: +l.toFixed(3) };
 }
 
 console.log(JSON.stringify(report));

@@ -48,6 +48,11 @@ export interface TreeBiome {
    * (mesquite) in the low washes, nothing on the slopes between (vegetation.ts uplandZoneOk).
    */
   upland?: true;
+  /**
+   * Trees round 4: the colour of the place's shrubs (its biome shrub form), over the map palette's for the bush slot's
+   * species — the Las Cañadas broom an ash-dulled grey-green, not the slot palette's green.
+   */
+  shrubColour?: Readonly<TreeBiomeColour>;
 }
 
 /** A biome's foliage colour defaults (vegetation.ts VegetationPalette's colour fields). */
@@ -96,6 +101,16 @@ const VOLCANIC_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.5), Math.min(1, l * 1.04)],
 });
 
+/**
+ * Trees round 4 (the ground lane, on Obsidian Caldera's establishing view: the broom "saturated green" on the ash plain):
+ * the Teide broom (Spartocytisus supranubius) on the cinder is a dry, ash-dulled grey-green — the hue turned toward olive
+ * and three tenths of the sprays' saturation, a little paler, as the arid broom of Wadi Rum and the Saharan wadi.
+ */
+const ASH_SCRUB: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.23, cardSat: 0.05,
+  texTone: (_h: number, s: number, l: number): [number, number, number] => [0.22, Math.min(1, s * 0.3), Math.min(1, l * 1.07)],
+});
+
 /** The holm oak's dull dark grey-green (its leaves' felted grey undersides): two thirds of a leaf's saturation. */
 const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   cardHue: 0.25, cardSat: 0.09,
@@ -115,8 +130,8 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // Las Cañadas del Teide: sparse Canary pines on bare cinder in open groves (wave 26: "evenly spaced, grid-like" stands
   // on a floor that is nearly treeless apart from broom); its acacia slot, the maps lane's scrub stand-in, grows as
   // young pines among the trees and as broom among the bushes
-  caldera: B('Las Cañadas del Teide, Tenerife', { pine: { form: 'canaryPine' }, cedar: { form: 'canaryPine' }, eucalyptus: { form: 'canaryPine' },
-    acacia: { form: 'canaryPine' } }, 'broom', VOLCANIC_FOLIAGE, undefined, true),
+  caldera: Object.freeze({ ...B('Las Cañadas del Teide, Tenerife', { pine: { form: 'canaryPine' }, cedar: { form: 'canaryPine' },
+    eucalyptus: { form: 'canaryPine' }, acacia: { form: 'canaryPine' } }, 'broom', VOLCANIC_FOLIAGE, undefined, true), shrubColour: ASH_SCRUB }),
   // the Dalmatian coast: Aleppo pine, holm oak and olive (and cypress, which the map names directly)
   saltwind: B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak', colour: HOLM_OAK_FOLIAGE },
     acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }),
@@ -239,4 +254,9 @@ export function treeBiomeOpen(mapId: string | null | undefined): boolean {
 /** The foliage colour defaults of a map's place, or none. */
 export function treeBiomeColour(mapId: string | null | undefined): Readonly<TreeBiomeColour> | null {
   return (mapId ? TREE_BIOMES[mapId]?.palette : null) ?? null;
+}
+
+/** Trees round 4: the colour of a place's shrubs over the bush slot's palette (TreeBiome.shrubColour), or none. */
+export function treeBiomeShrubColour(mapId: string | null | undefined): Readonly<TreeBiomeColour> | null {
+  return (mapId ? TREE_BIOMES[mapId]?.shrubColour : null) ?? null;
 }
