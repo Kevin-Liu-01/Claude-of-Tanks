@@ -926,22 +926,31 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
         emberBurst(ctx, pos.x, y + 1.5, pos.z, 50, 11);
         return;
       }
+      // a shell burst's flame also burns out fast and low: no fuel load to lift orange lobes metres above the hit, or to
+      // hold a fireball over the water it landed in (2026-10-03, the site fifty)
       if (size === 'large') {
-        fireball(ctx, pos.x, y + 0.8, pos.z, { scale: 1.15, smoke: 1.1, rise: 1.15 });
+        fireball(ctx, pos.x, y + 0.8, pos.z, ammunition
+          ? { scale: 1.15, smoke: 1.1, rise: 1.15 }
+          : { scale: 1.0, smoke: 1.2, rise: 0.6, cool: 0.5 });
         debrisBurst(ctx, pos.x, y + 1, pos.z, 26, 20, 0.7, 1);
         emberBurst(ctx, pos.x, y + 2, pos.z, 90, 14);
         if (ammunition) cookOffs(ctx, pos.x, y + 0.6, pos.z, 2, 3, 0.9);
         return;
       }
-      // huge: fuel / ammunition cook-off column
-      fireball(ctx, pos.x, y + 1, pos.z, { scale: 2.3, smoke: 1.6, rise: 1.6 });
-      fireball(ctx, pos.x, y + 6, pos.z, { scale: 1.5, smoke: 1.2, rise: 2.2, ground: false, delayS: 0.35 });
+      // huge: fuel / ammunition cook-off column; a heavy shell burst keeps the blast and a shorter smoke column but
+      // lifts no second fireball 6 m up and leaves no 18 s ground fire or ember field where nothing is left to burn
+      fireball(ctx, pos.x, y + 1, pos.z, ammunition
+        ? { scale: 2.3, smoke: 1.6, rise: 1.6 }
+        : { scale: 2.0, smoke: 1.7, rise: 0.8, cool: 0.55 });
+      if (ammunition) fireball(ctx, pos.x, y + 6, pos.z, { scale: 1.5, smoke: 1.2, rise: 2.2, ground: false, delayS: 0.35 });
       debrisBurst(ctx, pos.x, y + 1.5, pos.z, 44, 28, 0.75, 1.5, 0.8);
       emberBurst(ctx, pos.x, y + 4, pos.z, 200, 20);
       shockwave(ctx, pos.x, pos.z, 34, 1.5);
       if (ammunition) cookOffs(ctx, pos.x, y + 0.5, pos.z, 5, 7, 1.2);
       const now = env.nowS;
-      addEmitter(columnEmitter(`${id}:column`, rngFor(id, 41), now + 0.8, now + 60, pos.x, y, pos.z, 48, 5, 0.85));
+      addEmitter(columnEmitter(`${id}:column`, rngFor(id, 41), now + 0.8, now + (ammunition ? 60 : 14), pos.x, y, pos.z,
+        ammunition ? 48 : 30, ammunition ? 5 : 4, 0.85));
+      if (!ammunition) return;
       addEmitter(fireFieldEmitter(`${id}:fire`, rngFor(id, 42), world, now + 0.5, now + 18, pos.x, pos.z, 6, 1.3, true));
       addEmitter(emberEmitter(`${id}:embers`, rngFor(id, 43), now + 0.6, now + 16, pos.x, y + 0.5, pos.z, 5, 26, 4));
     },
@@ -1046,7 +1055,18 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
         borrowedLightY: borrowed ? Math.round(borrowed.position.y * 10) / 10 : 0,
         night: Math.round(env.night * 100) / 100,
       };
-      for (const [name, pool] of Object.entries(particles.pools)) out[`pool.${name}`] = pool.highWater;
+      // `alive.<pool>`: cards burning at this instant (birth <= now < birth + life), so a recipe's lifetime is testable
+      const now = port.sharing.uTime.value;
+      for (const [name, pool] of Object.entries(particles.pools)) {
+        out[`pool.${name}`] = pool.highWater;
+        const birth = pool.attrs.aPB.array, life = pool.attrs[pool.lifeAttr];
+        let alive = 0;
+        for (let i = 0; i < pool.highWater; i++) {
+          const b = birth[i * 4 + 3];
+          if (b <= now && now < b + life.array[i * life.itemSize + pool.lifeComp]) alive++;
+        }
+        out[`alive.${name}`] = alive;
+      }
       return out;
     },
     dispose() {
