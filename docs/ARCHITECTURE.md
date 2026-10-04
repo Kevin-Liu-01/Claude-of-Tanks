@@ -854,6 +854,15 @@ contact constraints and cannot be crossed by residual uphill speed.
   limited by the suspension travel left at each end, and off a whole-track seat (a trench crossed, a crest, an edge)
   it joins the rock the tracks are seated at. A hard stop dips the hull 2.5-3.5 degrees with its tracks planted and
   rocks it back past level (about 0.9 degree) when the tracks stop pulling.
+- *The tracks' springs carry the hull over rough ground.* Every track-contact station (the outer pair and the wheel-run
+  fan lines) is a spring loaded to the ride's static sag (`g/ω²`), and the seat the ride rests at is where the stations
+  that reach the ground carry the hull's weight, read over the stations' own plane (that plane is the attitude's): on
+  flat ground the common contact, on a bump the bump's road wheels pushed up into the hull and the rest reaching down.
+  The seat sinks at most 0.1 m (`TRACK_SEAT_SINK_M`) under the highest contact (`_sup.top`, still the ground for
+  launches, landings, the floor and the drooped tracks' line), never under a track end or the belly; a station hanging
+  1.2 m under the highest, or out of the springs' reach, is no part of it, and rigid running gear has none. A heavy hull
+  on rubble used to perch on its highest contact with half its road wheels hanging (gauntlet wave 23, "no wheels down
+  in several frames"): 1.48 s of 6 on two stations or fewer and 6.8 of 12 in reach, now 0.13 s and 9.9.
 - *The step that leaves the ground moves.* A loaded ride that detaches integrates that step on gravity alone; it
   used to stand still for it, a 13 cm stall in the motion of a hull leaving a face at 8 m/s.
 - *Structures are floors by the underside.* A part is a floor for a hull when its top is within the 0.55 m

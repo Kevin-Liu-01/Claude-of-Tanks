@@ -254,7 +254,8 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
     // only while the running gear has contact.
     if (ent.state.grounded) {
       if (minGap > worstFloat) worstFloat = minGap;
-      const travel = ent.state._sup.y - ent.state.pos.y;
+      // the travel envelope is the top track contact's (the springs' seat sits inside it on uneven ground)
+      const travel = ent.state._sup.top - ent.state.pos.y;
       if (travel > worstCompression) worstCompression = travel;
       if (-travel > worstDroop) worstDroop = -travel;
     }
@@ -291,7 +292,8 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
     if (penetration > worstPen) worstPen = penetration;
     if (ent.state.grounded) {
       if (minGap > worstFloat) worstFloat = minGap;
-      const travel = ent.state._sup.y - ent.state.pos.y;
+      // the travel envelope is the top track contact's (the springs' seat sits inside it on uneven ground)
+      const travel = ent.state._sup.top - ent.state.pos.y;
       if (travel > worstCompression) worstCompression = travel;
       if (-travel > worstDroop) worstDroop = -travel;
     }

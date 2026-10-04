@@ -97,7 +97,9 @@ check('land-roof-edge', 'low', 'earth', [
 // Slopes that turn speed into a launch (Titan Gorge; Caldera CTF seed 0): the ground's vertical push on a grade turns
 // the hull's travel (movement.ts turnAlongGrade / landAlongGrade).
 check('climb-crest', 'medium', 'earth', [
-  g('lift off the crest (m)', (m) => m.liftM, 0.6, 'before: 1.88 m (rose at 8.4 m/s up a 38-degree face, travel kept)'),
+  // (round 3: the springs seat the climb under its top contact; the flight off the crest reads 0.61 m over the contact
+  // under it, peaking lower over the ground, 0.78 m at the root where it was 0.86, and landing at 2.5 m/s, was 3.1)
+  g('lift off the crest (m)', (m) => m.liftM, 0.65, 'before: 1.88 m (rose at 8.4 m/s up a 38-degree face, travel kept)'),
 ]);
 check('land-upslope', 'medium', 'earth', [
   g('travel kept landing on a 36 % upslope (m/s)', (m) => m.landingTravel[0]?.[1] ?? 0, 12.5, 'before: 15.0 of 15.0'),
@@ -194,6 +196,13 @@ check('wall-foot-side-t135', 'medium', 'earth', [
   g('falls', (m) => m.falls.length, 0, 'before: 5'),
   g('fall damage (hp)', (m) => m.fallDamageHp, 0, 'before: 614 hp'),
   g('height over the ground (m)', (m) => m.maxHeightM, 2, 'before: 12.8 m'),
+]);
+
+// Rough ground at speed (gauntlet wave 23, "skipping over the bumps with no wheels down in several frames"): the track's
+// springs carry the hull over uneven ground; it no longer perches on its single highest contact with the rest hanging.
+check('drive-rubble', 'heavy', 'earth', [
+  g('perched on two stations or fewer (s)', (m) => m.perchedS, 0.5, 'before: 1.48 s of 6 s'),
+  g('stations short of 9 of 12 within reach (mean)', (m) => 9 - m.trackContactMean, 0, 'before: 6.8 of 12'),
 ]);
 
 // Rest stays rest: no jitter, no creep on a 25-degree grade on the brake.

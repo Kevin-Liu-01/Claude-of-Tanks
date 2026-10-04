@@ -507,6 +507,7 @@ function newMetrics() {
     snapMaxRad: 0, snaps: 0, angRateMaxRadS: 0,
     jerkSamples: [], jerkMaxRadS3: 0,
     bodyPenMaxM: 0, obstaclePenMaxM: 0, hullPenMaxM: 0, stackPenMaxM: 0, roofSinkMaxM: 0, gearCompMaxM: 0,
+    trackTicks: 0, trackReachSum: 0, perchedS: 0, trackContactMean: 12,
     tunnelled: false, maxHeightM: 0,
     airS: 0, longestAirS: 0, hops: 0, landings: [], contactLandings: [], maxLandingMps: 0, reboundExcessMps: 0, closingExcessMps: 0,
     liftM: 0,
@@ -865,6 +866,29 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
     const tc = Math.cos(state.turretYaw || 0), ts = Math.sin(state.turretYaw || 0);
     const bodyPen = Math.max(shellDepth(hullCloud, 1, 0, 0, 0, 0), shellDepth(turretCloud, tc, ts, pivot[0], pivot[1], pivot[2]));
     if (bodyPen > metrics.bodyPenMaxM) metrics.bodyPenMaxM = bodyPen;
+    // road-wheel stations within reach of the ground (round 3, gauntlet wave 23: "no wheels down in several frames"): six
+    // stations along each outer track line at the pose the support seats the tracks at, a station reaching the ground
+    // when the ground under it lies between the wheels' full droop and their full conform travel (the renderer's -0.22 /
+    // +0.30 m); perched is time grounded with two stations or fewer
+    if (state.grounded && t >= 1) {
+      const sp = state._spring, su = state._susp;
+      const tp = sp.pitch + (su.p - su.d) * 2.2 - (state._flinch?.p ?? 0);
+      const tr = sp.roll + su.r * 1.9 + (state._swayEst ?? 0) * 2.4 + (state._flinch?.r ?? 0);
+      const halfLen = 0.45 * subject.spec.dims.hullLengthM, halfW = 0.5 * subject.spec.dims.widthM;
+      const tcp = Math.cos(-tp), tsp = Math.sin(-tp), tcr = Math.cos(tr), tsr = Math.sin(tr);
+      let reach = 0;
+      for (const lx of [-halfW, halfW]) {
+        for (let i = 0; i < 6; i++) {
+          const lz = -halfLen + (2 * halfLen * i) / 5;
+          const rx = lx * tcr, ry = lx * tsr, pz = ry * tsp + lz * tcp;
+          const gap = state.pos.y + ry * tcp - lz * tsp - world.contact(state.pos.x + rx * cy + pz * sy, state.pos.z - rx * sy + pz * cy);
+          if (gap <= 0.22 && gap >= -0.30) reach++;
+        }
+      }
+      metrics.trackTicks++;
+      metrics.trackReachSum += reach;
+      if (reach <= 2) metrics.perchedS += DT;
+    }
     for (let i = 0; i < world.obstacles.length; i++) {
       const record = world.obstacles[i];
       if (record.crushed) continue;
@@ -897,7 +921,7 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
       if (prefersVerticalTankContact(subject, other)) metrics.stackPenMaxM = Math.max(metrics.stackPenMaxM, 0);
       else metrics.hullPenMaxM = Math.max(metrics.hullPenMaxM, overlap);
     }
-    if (state.grounded) metrics.gearCompMaxM = Math.max(metrics.gearCompMaxM, state._sup.y - state._ride.y);
+    if (state.grounded) metrics.gearCompMaxM = Math.max(metrics.gearCompMaxM, state._sup.top - state._ride.y);
 
     // 5. tunnelling through a thin wall: the hull centre may never cross the wall line
     if (caseDef.wall) {
@@ -911,7 +935,7 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
     if (!state.grounded) {
       metrics.airS += DT;
       airRun += DT;
-      metrics.liftM = Math.max(metrics.liftM, state.pos.y - state._sup.y);
+      metrics.liftM = Math.max(metrics.liftM, state.pos.y - state._sup.top);
       metrics.airTiltMaxRad = Math.max(metrics.airTiltMaxRad, Math.acos(Math.max(-1, Math.min(1, Math.cos(state.visualPitch) * Math.cos(state.visualRoll)))));
       metrics.longestAirS = Math.max(metrics.longestAirS, airRun);
       apex = Math.max(apex, state.pos.y);
@@ -1009,6 +1033,7 @@ export function runCase(hullId, worldId, caseDef, { replay = true, trace = null 
     if (event.cause === 'fall') metrics.fallDamageHp += event.damage ?? 0;
   }
   if (restSamples.length > 2) metrics.rest = restStats(restSamples);
+  if (metrics.trackTicks) metrics.trackContactMean = metrics.trackReachSum / metrics.trackTicks;
   metrics.final = { x: +subject.state.pos.x.toFixed(2), y: +subject.state.pos.y.toFixed(3), z: +subject.state.pos.z.toFixed(2),
     pitch: +subject.state.visualPitch.toFixed(3), roll: +subject.state.visualRoll.toFixed(3), grounded: subject.state.grounded,
     speed: +subject.state.speed.toFixed(2) };
