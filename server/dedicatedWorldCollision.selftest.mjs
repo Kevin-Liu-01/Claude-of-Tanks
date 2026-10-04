@@ -33,7 +33,11 @@ const authoredWorlds = new Map();
 // yard's seeded heap draws land on new ground and six of seven clear the site law.
 // 2026-10-03 merged (maps lane A's Caldera v2 and Ironworks on the borders lane's wave 2): measured on the combined
 // ground, Caldera's yard admits all seven heap draws again and Ironworks five.
-const coalCensus = { railyard: 10, caldera: 7, foundry: 5, skybridge: 3 };
+// 2026-10-03: Ironworks' coal heaps draw after its works, which now replay PR #9's head (props townPlan) instead of drawing
+// their placement: foundry 5 -> 7 heaps on the same rail spurs.
+// 2026-10-03 Skybridge Chasm's rebuild: its coal heaps draw after its settlement, which now replays PR #9's head (props
+// townPlan) instead of drawing its placement, on the rebuilt floor: skybridge 3 -> 5 heaps on the same rail spurs.
+const coalCensus = { railyard: 10, caldera: 7, foundry: 7, skybridge: 5 };
 
 // 2026-09-29 roads/settlements: native all31-map recapture, terrain1337,
 // props2002, vegetation2001. Counts include shared tree colliders (the capture
