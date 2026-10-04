@@ -1404,6 +1404,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/battle-geometry-sharing.browser.selftest.mjs',
     'tools/track-texture-source.browser.selftest.mjs',
     'tools/sourced-building-source.browser.selftest.mjs',
+    'tools/horizon-panorama-bake.browser.selftest.mjs',
     'tools/props-build-profile.selftest.mjs',
     'tools/wreck-build-profile.selftest.mjs',
     'tools/wreck-paint-bench.selftest.mjs',

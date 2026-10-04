@@ -295,7 +295,7 @@ interface AiHeightField {
   getWaterMaskAt?(x: number, z: number): number;
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
-  getNormalAt?(x: number, z: number): { y: number };
+  getNormalAt?(x: number, z: number): { x?: number; y: number; z?: number };
   getGroundType?(x: number, z: number): string;
   getDriveGroundType?(x: number, z: number): string;
 }
@@ -540,6 +540,18 @@ const VANTAGE_CONTACT_RINGS_M = Object.freeze([70, 110]);
 const FLAT_CELL_RINGS_M = Object.freeze([18, 30, 45]);
 const FRIENDLY_LANE_RINGS_M = Object.freeze([22, 34, 46]);
 const GUN_LIMIT_NUDGE_S = 1.5;    // gun pinned this long → back up for depression
+// A leg that goes nowhere (physics lane round 8; Reservoir pacing seed 50001 on the track-contact parity tree): the last
+// bravo T-64BV stood rolled 17.5 degrees on a bank's flank with its stern against a building and its gun on the
+// depression stop, 54 m from the idle host, for the last 610 s of the 900 s cap. Its back-up for the gun (1.2 s at
+// -0.6 throttle every 1.5 s on the stop) drove into the building and went nowhere, the arc limit's flat-cell leg was
+// never driven (the press owned the hull and ran the back-up too), and nothing counted any of it as stuck. A back-up
+// or a relocation leg that ends with less displacement and turn than this went nowhere: it is a stuck strike, and the
+// next legs go another way.
+const LEG_DEAD_M = 0.3;
+const LEG_DEAD_TURN_RAD = 0.35;
+const LEG_DEAD_CHECK_S = 4;        // a relocation leg is judged this long after it began (a back-up at its end)
+const DEAD_LEG_AWAY_S = 20;        // how long the travel a dead leg tried is kept out of the next legs…
+const DEAD_LEG_AWAY_COS = 0.5;     // …within 60 degrees of its bearing (no back-up at all for that long)
 const EYE_FRAC          = 0.85;   // eye/turret-top height as fraction of heightM
 const ARRIVE_DIST_M     = 6.0;
 const MAX_FIRE_RANGE_M  = 620;
@@ -567,6 +579,7 @@ const PASSIVE_PRESS_FALLBACKS: readonly (readonly [number, number])[] = [
 ];
 const PASSIVE_PRESS_BEARINGS = 2 + PASSIVE_PRESS_FALLBACKS.length + 1; // per ring: the two sides, the fallbacks, straight in
 const PASSIVE_PRESS_REPICK_S = 3;
+const PRESS_VETO_SLOTS = 4;                 // press points (and missed-out spots) kept out of the picks at once
 const PASSIVE_PRESS_LANE_HULL_FRAC = 0.4; // the press point must reach the HULL with the gun, not only the turret top
 const PASSIVE_PRESS_DENIED_S = 6;          // closed penetration gate held at the press point before it is given up
 const PASSIVE_PRESS_ARC_S = 3;             // gun pinned at a pitch stop at the press point before it is given up
@@ -1176,7 +1189,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let passivePressRepicks = 0;               // probe-visible count of masked press points given up
   let passivePressCandidate = -1;            // probe-visible: ring * 16 + bearing index of the chosen press point
   let passivePressArcT = 0;                  // gun pinned at a pitch stop while standing on the press point
-  const pressVeto = { x: 0, z: 0, untilS: -1 }; // a press point whose probe found the hull masked
+  // press points given up (masked, missed out, pinned, unreached) and the spots misses came from, each kept out of the
+  // next picks for 120 s. One slot let two unreachable points take turns, each given up 30 s after it was picked, for
+  // 580 s (Reservoir pacing seed 50001 on the track-contact parity tree; see LEG_DEAD_M).
+  const pressVetoes = Array.from({ length: PRESS_VETO_SLOTS }, () => ({ x: 0, z: 0, untilS: -1 }));
   // missing an idle target (see PASSIVE_PRESS_MISSES)
   let missStreak = 0;                        // main-gun rounds in a row at missStreakTargetId without a hit on it…
   let missStreakTargetId: string | null = null;
@@ -1337,6 +1353,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let gunLimitT = 0;
   let nudgeUntilS = -1;
   let arcLimitedT = 0;              // gun pinned at an elevation/depression stop
+  let arcScoot = false;             // the running scoot leg is the arc limit's: it owns the hull (see LEG_DEAD_M)
+  // the back-up or relocation leg under way (see LEG_DEAD_M): its kind (0 none, 1 a back-up, 2 a scoot leg), where it
+  // began, the travel it tries (a unit vector) and whether the scoot drive has run it
+  let legKind = 0;
+  const leg = { x: 0, z: 0, yaw: 0, atS: -Infinity, dirX: 0, dirZ: 0, driven: false };
+  let deadLegs = 0;                 // probe-visible count of legs that went nowhere
+  const blockedTravel = { x: 0, z: 0, untilS: -Infinity }; // the last dead leg's travel, kept out of the next legs
   // STALEMATE BREAKER (controls_gunnery r5): mid-battle enemy fire rate
   // collapsed to 1-2 shells/10 s (bots posturing in patrol/seekCover with
   // live contacts). Track the last time the trigger was actually pulled;
@@ -3578,16 +3601,34 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const st = entity.state;
     for (let k = 0; k < 8; k++) {
       const angle = (k / 8) * TAU;
+      // no cell along the travel a dead leg tried (see LEG_DEAD_M)
+      if (travelBlocked(Math.sin(angle), Math.cos(angle))) continue;
       const candidateX = st.pos.x + Math.sin(angle) * radius;
       const candidateZ = st.pos.z + Math.cos(angle) * radius;
       if (Math.max(Math.abs(candidateX), Math.abs(candidateZ)) > 470) continue;
-      const normalY = hf.getNormalAt ? hf.getNormalAt(candidateX, candidateZ).y : 1;
+      const normal = hf.getNormalAt ? hf.getNormalAt(candidateX, candidateZ) : null;
+      const normalX = normal?.x ?? 0, normalZ = normal?.z ?? 0;
+      const normalLength = normal ? Math.hypot(normalX, normal.y, normalZ) : 1;
+      const normalY = normal ? normal.y : 1;
       if (normalY < 0.94) continue;
       const candidateY = hf.getHeightAt(candidateX, candidateZ) + selfEyeM;
       const hasSight = hasLos(
         candidateX, candidateY, candidateZ, targetX, targetY, targetZ,
       );
-      const score = (hasSight ? 100 : 0) + normalY * 10 - radius * 0.1;
+      // The gun lays from there (see LEG_DEAD_M): the target's elevation off the ground the hull will stand on is
+      // inside its arc. A hull on a planar face meets the target at the same elevation off the face whatever its
+      // heading (its up is the face's normal), so a turn on the spot never brings a target the face takes out of the
+      // arc back into it: the cell has to be other ground.
+      let reach = true;
+      if (normal && normalLength > 1e-6) {
+        const dx = targetX - candidateX, dy = targetY - candidateY, dz = targetZ - candidateZ;
+        const distance = Math.hypot(dx, dy, dz);
+        if (distance > 1e-6) {
+          const along = (dx * normalX + dy * normal.y + dz * normalZ) / (distance * normalLength);
+          reach = withinGunArc(Math.asin(clamp(along, -1, 1)));
+        }
+      }
+      const score = (hasSight ? 100 : 0) + (reach ? 100 : 0) + normalY * 10 - radius * 0.1;
       if (score <= flatCandidate.score) continue;
       flatCandidate.x = candidateX;
       flatCandidate.z = candidateZ;
@@ -3605,7 +3646,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       evaluateFlatRing(
         FLAT_CELL_RINGS_M[i], position.x, eyeY(target), position.z,
       );
-      if (flatCandidate.found && flatCandidate.score >= 100) break;
+      if (flatCandidate.found && flatCandidate.score >= 200) break;
     }
     if (!flatCandidate.found) return false;
     scootPoint.x = flatCandidate.x;
@@ -3957,7 +3998,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       ? Math.min(0.06, tolerance * 4)
       : tolerance * 1.5;
     if (arcLimitedT > 3 && pitchError > pitchTolerance && timeS >= scootUntilS) {
-      if (pickFlatCell()) beginScoot(10);
+      if (pickFlatCell()) beginScoot(10, 0, true);
       arcLimitedT = 0;
     }
     return pitchTolerance;
@@ -4228,8 +4269,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     gunLimitT += dt;
     if (gunLimitT <= GUN_LIMIT_NUDGE_S || timeS < nudgeUntilS) return;
-    nudgeUntilS = timeS + 1.2;
     gunLimitT = 0;
+    // no back-up while the arc limit's leg runs, nor into a face that stopped the last leg (see LEG_DEAD_M)
+    const backX = -Math.sin(st.yaw), backZ = -Math.cos(st.yaw);
+    if ((arcScoot && timeS < scootUntilS) || travelBlocked(backX, backZ)) return;
+    nudgeUntilS = timeS + 1.2;
+    beginLeg(1, backX, backZ);
   }
 
   function stepStateMachine(dt: number, timeS: number): void {
@@ -4540,12 +4585,70 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     );
   }
 
-  function beginScoot(durationS: number, line = 0): void {
+  function beginScoot(durationS: number, line = 0, arc = false): void {
     scootUntilS = nowS + durationS;
     scootLine = line;
+    arcScoot = arc;
     hasMoveTarget = false;
     hasCoverPoint = false;
     if (mode === 'seekCover') mode = 'engage';
+    beginLeg(2, scootPoint.x - entity.state.pos.x, scootPoint.z - entity.state.pos.z);
+    if (arc) nudgeUntilS = -1; // the arc limit's leg owns the hull: a back-up under way ends (see LEG_DEAD_M)
+  }
+
+  /** A back-up (kind 1) or a scoot leg (kind 2) begins here, trying the travel (dx, dz) (see LEG_DEAD_M). */
+  function beginLeg(kind: number, dx: number, dz: number): void {
+    const st = entity.state;
+    const length = Math.hypot(dx, dz);
+    legKind = kind;
+    leg.x = st.pos.x;
+    leg.z = st.pos.z;
+    leg.yaw = st.yaw;
+    leg.atS = nowS;
+    leg.dirX = length > 1e-6 ? dx / length : 0;
+    leg.dirZ = length > 1e-6 ? dz / length : 0;
+    leg.driven = kind === 1;
+  }
+
+  /** Is travel along the unit vector (dx, dz) one a dead leg tried, while that is kept out of the legs? */
+  function travelBlocked(dx: number, dz: number): boolean {
+    return nowS < blockedTravel.untilS && dx * blockedTravel.x + dz * blockedTravel.z > DEAD_LEG_AWAY_COS;
+  }
+
+  /**
+   * Judge the leg under way once it is due (a back-up at its end, a scoot leg LEG_DEAD_CHECK_S in or at its end): one
+   * that went nowhere is a stuck strike, its travel is kept out of the next legs for DEAD_LEG_AWAY_S (no back-up into
+   * the same face, no relocation cell that way), and a scoot leg ends so the next pick can go another way. A scoot leg
+   * nothing drove is not judged.
+   */
+  function updateDeadLegs(timeS: number): void {
+    if (arcScoot && timeS >= scootUntilS) arcScoot = false;
+    if (legKind === 0) return;
+    if (legKind === 2) {
+      const ended = timeS >= scootUntilS;
+      if (!leg.driven) {
+        if (ended) legKind = 0;
+        return;
+      }
+      if (!ended && timeS - leg.atS < LEG_DEAD_CHECK_S) return;
+    } else if (timeS < nudgeUntilS) {
+      return;
+    }
+    const st = entity.state;
+    const kind = legKind;
+    legKind = 0;
+    if (Math.hypot(st.pos.x - leg.x, st.pos.z - leg.z) >= LEG_DEAD_M
+      || Math.abs(wrapAngle(st.yaw - leg.yaw)) >= LEG_DEAD_TURN_RAD) return;
+    deadLegs++;
+    stuckStrikes++;
+    strikeEvents++;
+    blockedTravel.x = leg.dirX;
+    blockedTravel.z = leg.dirZ;
+    blockedTravel.untilS = timeS + DEAD_LEG_AWAY_S;
+    if (kind === 2 && timeS < scootUntilS) {
+      scootUntilS = -1;
+      arcScoot = false;
+    }
   }
 
   function updateShotRelocation(combat: CombatState | undefined, timeS: number): void {
@@ -4972,11 +5075,23 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       && timeS - missLastShotS >= MISS_SETTLE_S && Math.hypot(st.pos.x - missSpot.x, st.pos.z - missSpot.z) <= MISS_SPOT_M;
   }
 
+  /** Keep (x, z) out of the press picks until untilS, in the veto slot that frees soonest. */
+  function vetoPressPoint(x: number, z: number, untilS: number): void {
+    let slot = pressVetoes[0];
+    for (const veto of pressVetoes) if (veto.untilS < slot.untilS) slot = veto;
+    slot.x = x;
+    slot.z = z;
+    slot.untilS = untilS;
+  }
+
+  function pressPointVetoed(x: number, z: number): boolean {
+    for (const veto of pressVetoes) if (nowS < veto.untilS && Math.hypot(x - veto.x, z - veto.z) < 12) return true;
+    return false;
+  }
+
   /** Give up the spot the misses were fired from: no press point near it for a while, and a fresh count. */
   function giveUpMissedSpot(x: number, z: number, timeS: number): void {
-    pressVeto.x = x;
-    pressVeto.z = z;
-    pressVeto.untilS = timeS + 120;
+    vetoPressPoint(x, z, timeS + 120);
     missStreak = 0;
     missVerdicts++;
   }
@@ -5004,7 +5119,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         }
         const x = clamp(tp.x + Math.sin(a) * radius, -470, 470);
         const z = clamp(tp.z + Math.cos(a) * radius, -470, 470);
-        if (nowS < pressVeto.untilS && Math.hypot(x - pressVeto.x, z - pressVeto.z) < 12) continue;
+        if (pressPointVetoed(x, z)) continue;
         if (!reachableSpot(x, z)) continue;
         // round 67: a point on water is no press point where the map avoids liquid (the hull faces the target there)
         if (liquidSafe && !liquidSafe(x, z, Math.atan2(tp.x - x, tp.z - z), 0)) continue;
@@ -5048,7 +5163,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       hasMoveTarget = false;
       hasCoverPoint = false;
       hasVantage = false;
-      scootUntilS = -1;
+      if (!arcScoot) scootUntilS = -1; // (the arc limit's leg runs on: the gun cannot finish anything where it stands)
       settleUntilS = -1;
       return;
     }
@@ -5069,9 +5184,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
           || missed)) || unreached) && firstAvailableSlot() >= 0) {
         passivePressArcT = 0;
         if (missed) giveUpMissedSpot(missSpot.x, missSpot.z, timeS);
-        pressVeto.x = pressPoint.x;
-        pressVeto.z = pressPoint.z;
-        pressVeto.untilS = timeS + 120;
+        vetoPressPoint(pressPoint.x, pressPoint.z, timeS + 120);
         passivePressRepicks++;
         if (unreached) pressUnreached++;
         if (!pickPressPoint()) passivePressing = false;
@@ -5394,6 +5507,22 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return true;
   }
 
+  /** Drive the scoot leg under way; where it arrives is the new firing spot. */
+  function driveScootLeg(input: AiInput): void {
+    if (legKind === 2) leg.driven = true;
+    const arrived = scootLine !== 0
+      ? driveOnLine(input, scootPoint.x, scootPoint.z, targetBearing(), 0.8 * scootLine)
+      : driveToXZ(input, scootPoint.x, scootPoint.z, 0.95);
+    if (arrived) {
+      scootUntilS = -1;
+      arcScoot = false;
+      spotPos.x = entity.state.pos.x;
+      spotPos.z = entity.state.pos.z;
+      shotsFromSpot = 0;
+      relocations++;
+    }
+  }
+
   function driveCurrentMode(input: AiInput, timeS: number, targetDistance: number): void {
     input.brake = false;
     driveIntent = false;
@@ -5402,6 +5531,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // the route to the target's level owns the hull while it runs (see ELEVATION_LOCK_S)
     if (levelRouting) {
       drivePatrol(input);
+      return;
+    }
+    // a gun pinned at its stop finishes nothing from where it stands: the arc limit's leg owns the hull over the press
+    // and the press's back-up (see LEG_DEAD_M)
+    if (arcScoot && timeS < scootUntilS) {
+      driveScootLeg(input);
       return;
     }
     if (passivePressing && target && losClear) {
@@ -5416,16 +5551,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       return;
     }
     if (timeS < scootUntilS) {
-      const arrived = scootLine !== 0
-        ? driveOnLine(input, scootPoint.x, scootPoint.z, targetBearing(), 0.8 * scootLine)
-        : driveToXZ(input, scootPoint.x, scootPoint.z, 0.95);
-      if (arrived) {
-        scootUntilS = -1;
-        spotPos.x = entity.state.pos.x;
-        spotPos.z = entity.state.pos.z;
-        shotsFromSpot = 0;
-        relocations++;
-      }
+      driveScootLeg(input);
       return;
     }
     if (mode === 'patrol') drivePatrol(input);
@@ -5632,6 +5758,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const distToTarget = currentTargetDistance();
 
     stepStateMachine(dt, timeS);
+    updateDeadLegs(timeS);
 
     updateDoctrine(cb, dt, timeS, distToTarget);
 
@@ -5919,7 +6046,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       wpIndex, wpCount: waypoints.length,
       waypointX: waypoints[wpIndex]?.x ?? null, waypointZ: waypoints[wpIndex]?.z ?? null,
       conserveHolds, emptyRack, ramming, ramRuns, ramCapMps: Number.isFinite(ramCapMps) ? +ramCapMps.toFixed(2) : null,
-      missStreak, missVerdicts, pressUnreached,
+      missStreak, missVerdicts, pressUnreached, deadLegs,
+      arcScoot: arcScoot && nowS < scootUntilS,
+      pressReachInS: passivePressing && Number.isFinite(pressReachByS) ? +(pressReachByS - nowS).toFixed(1) : null,
+      pressRepickInS: passivePressing ? +(passivePressRepickS - nowS).toFixed(1) : null,
       rackSpent: !!target && target.id === rackSpentId, rackSpentT: +rackSpentT.toFixed(1), rackSpentVerdicts,
       objectiveShifts, objectiveShifting, zoneHoldMoves,
       routeCornerX: routeActive ? +routeCorner.x.toFixed(2) : null,
