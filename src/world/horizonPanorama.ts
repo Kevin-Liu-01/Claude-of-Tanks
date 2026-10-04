@@ -166,10 +166,9 @@ export function horizonPanoramaHaze(atmosphere: PanoramaAtmosphere | null | unde
   const density = fogDensity ?? atmosphere.fogDensity;
   if (!(Number.isFinite(density) && (density as number) > 0)) return null;
   // the target's tint share and level under the deck: the aerial pass's own terms (hazeLaw.ts hazeTargetTerms)
-  const terms = hazeTargetTerms(overcast, { x: 0, y: 0 });
-  const tintShare = terms.x, targetK = terms.y;
+  const terms = hazeTargetTerms(overcast, atmosphere.fogMix ?? 0, { x: 0, y: 0 });
+  const mix = terms.x, targetK = terms.y;
   const tint = atmosphere.fogTint, tintL = Math.max(0.2126 * tint.r + 0.7152 * tint.g + 0.0722 * tint.b, 1e-4);
-  const mix = THREE.MathUtils.clamp((atmosphere.fogMix ?? 0) * tintShare, 0, 1);
   const target = (sky: THREE.Color): THREE.Vector3 => {
     // post.ts's target, term by term
     const skyL = 0.2126 * sky.r + 0.7152 * sky.g + 0.0722 * sky.b;
