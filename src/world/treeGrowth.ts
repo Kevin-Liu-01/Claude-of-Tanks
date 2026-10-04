@@ -859,56 +859,109 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
   // the envelope: radius and height, its widest level; a conifer's top runs to a point (the superellipse exponent)
   const R = (under ? 0.64 : 0.9) * (conifer ? 0.9 : 1), H = (under ? 0.98 : 1.36) * (conifer ? 1.1 : 1);
   const c0 = conifer ? H * 0.22 : H * 0.32, Hc = H - c0, pow = conifer ? 1.25 : 2;
-  const lobe1 = rng() * Math.PI * 2, lobe2 = rng() * Math.PI * 2;
-  const golden = Math.PI * (3 - Math.sqrt(5)), az0 = rng() * Math.PI * 2;
+  const golden = Math.PI * (3 - Math.sqrt(5));
   const s0 = Math.sin(-0.4), s1 = Math.sin(1.5);
+  // Ground lane (2026-10-03, the gauntlet: "bushes are near-identical round green balls"): a field bush is a union of
+  // clumps — its heart and two or three stools leaning out of it at their own heights (a hawthorn's, a hazel's, a
+  // blackthorn's), each its own (super)ellipse — so the silhouette breaks into lobes and dips instead of one dome; the
+  // understorey keeps one clump. The sprays are dealt to the clumps by their shells' size; a seat that would sit inside
+  // another clump (hidden) is dealt again a few times. The spray budget, the shell, the cover disc stay what they were.
+  interface Clump { x: number; z: number; R: number; c0: number; Hc: number; lobe1: number; lobe2: number; az0: number; n: number }
+  const clumps: Clump[] = [{ x: 0, z: 0, R: R * (under ? 1 : 0.86), c0, Hc, lobe1: rng() * Math.PI * 2, lobe2: rng() * Math.PI * 2, az0: rng() * Math.PI * 2, n: 0 }];
+  if (!under) {
+    const stools = 2 + (rng() < 0.5 ? 1 : 0), a0 = rng() * Math.PI * 2;
+    for (let i = 0; i < stools; i++) {
+      const a = a0 + i * (Math.PI * 2 / stools) + (rng() - 0.5) * 1.1;
+      const d = R * (0.46 + rng() * 0.2), r = R * (0.5 + rng() * 0.16), h = H * (0.52 + rng() * 0.3);
+      const cc0 = conifer ? h * 0.22 : h * 0.32;
+      clumps.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, R: r, c0: cc0, Hc: h - cc0, lobe1: rng() * Math.PI * 2,
+        lobe2: rng() * Math.PI * 2, az0: rng() * Math.PI * 2, n: 0 });
+    }
+  }
+  // the deal: each clump's share by its shell (radius × height), the remainder to the heart
+  {
+    const w = clumps.map((c) => c.R * (c.c0 + c.Hc));
+    const total = w.reduce((a, b) => a + b, 0);
+    let dealt = 0;
+    for (let i = 1; i < clumps.length; i++) { clumps[i].n = Math.round(count * w[i] / total); dealt += clumps[i].n; }
+    clumps[0].n = count - dealt;
+  }
+  /** Whether a point sits inside a clump's envelope (a little in from its shell). */
+  const inside = (q: Clump, x: number, y: number, z: number): boolean => {
+    const rho = Math.hypot(x - q.x, z - q.z) / q.R;
+    if (y <= q.c0) return rho < 0.86;
+    const hy = (y - q.c0) / q.Hc;
+    return hy < 1 && Math.pow(Math.pow(rho, pow) + Math.pow(hy, pow), 1 / pow) < 0.86;
+  };
   const leaves: LeafSite[] = [];
   const up = v3(0, 1, 0);
-  for (let k = 0; k < count; k++) {
-    const t = (k + 0.5) / count;                     // 0 the skirt .. 1 the top
-    const az = az0 + k * golden + (rng() - 0.5) * 0.3;
-    const lobe = (1 + 0.11 * Math.sin(3 * az + lobe1) + 0.07 * Math.sin(5 * az + lobe2)) * (0.92 + rng() * 0.16);
-    const cx = Math.cos(az), cz = Math.sin(az);
-    // the envelope point at the spray's elevation from the heart (c0 up the axis): a (super)ellipse over c0, a wall
-    // under it down to the ground; its outward normal (the gradient)
-    const elev = Math.asin(Math.max(-1, Math.min(1, s0 + t * (s1 - s0) + (rng() - 0.5) * 0.05)));
-    const ce = Math.cos(elev), se = Math.sin(elev), Rl = R * lobe;
-    const reach = elev >= 0
-      ? Math.pow(Math.pow(ce / Rl, pow) + Math.pow(se / Hc, pow), -1 / pow)
-      : Math.min(Rl / Math.max(ce, 1e-3), c0 / Math.max(-se, 1e-3));
-    const P = v3(cx * ce * reach, c0 + se * reach, cz * ce * reach);
-    const rho = Math.hypot(P.x, P.z) / Rl, hy = (P.y - c0) / Hc;
-    const nOut = elev >= 0
-      ? norm(v3(cx * Math.pow(Math.max(rho, 1e-4), pow - 1) / Rl, Math.pow(Math.max(hy, 0), pow - 1) / Hc, cz * Math.pow(Math.max(rho, 1e-4), pow - 1) / Rl))
-      : norm(v3(cx, 0.12, cz));
-    let tUp = v3(up.x - nOut.x * nOut.y, up.y - nOut.y * nOut.y, up.z - nOut.z * nOut.y);
-    tUp = Math.hypot(tUp.x, tUp.y, tUp.z) < 0.2 ? v3(-cz, 0, cx) : norm(tUp);
-    tUp = norm(rotate(tUp, nOut, (rng() - 0.5) * (conifer ? 2.2 : 1.5)));
-    // the lift out of the shell: a broadleaf spray climbs, a conifer's reaches out near level and droops
-    const beta = conifer ? 0.62 + rng() * 0.3 : 0.32 + rng() * 0.32;
-    let axis = v3(tUp.x * Math.cos(beta) + nOut.x * Math.sin(beta), tUp.y * Math.cos(beta) + nOut.y * Math.sin(beta),
-      tUp.z * Math.cos(beta) + nOut.z * Math.sin(beta));
-    if (conifer) axis = v3(axis.x, axis.y * 0.45 - 0.12, axis.z);
-    axis = norm(axis);
-    const length = (under ? 0.55 : 0.72) * (0.85 + rng() * 0.3) * (elev > 1.1 ? 0.86 : 1);
-    const seat = v3(P.x - axis.x * length * 0.42 - nOut.x * 0.04, Math.max(-0.02, P.y - axis.y * length * 0.42 - nOut.y * 0.04),
-      P.z - axis.z * length * 0.42 - nOut.z * 0.04);
-    let face = v3(nOut.x - axis.x * dot(nOut, axis), nOut.y - axis.y * dot(nOut, axis), nOut.z - axis.z * dot(nOut, axis));
-    face = Math.hypot(face.x, face.y, face.z) < 1e-3 ? norm(cross(cross(axis, up), axis)) : norm(face);
-    face = norm(rotate(face, axis, (rng() - 0.5) * 0.7));
-    const width = length * profile.aspect * widen * (0.9 + rng() * 0.2);
-    const bend = profile.cardBend * (0.5 + rng() * 0.7);
-    // the card stands on the ground, not in it: its lowest corner (the two-row card's stem and tip rows, the tip's
-    // sag) at most a few centimetres under the base
-    const rightY = norm(cross(axis, face)).y * width * 0.5;
-    const low = Math.min(seat.y - 0.06 * length * axis.y - Math.abs(rightY) * 0.92,
-      seat.y + 0.94 * length * axis.y - bend * length - Math.abs(rightY));
-    if (low < -0.06) seat.y += -0.06 - low;
-    leaves.push({
-      x: seat.x, y: seat.y, z: seat.z, ax: axis.x, ay: axis.y, az: axis.z, nx: face.x, ny: face.y, nz: face.z,
-      length, width, shade: clamp01(0.3 + 0.62 * t + (rng() - 0.5) * 0.16),
-      flex: clamp01(0.2 + 0.1 * rng()), tile: (rng() * 4) | 0, bend, branch: -1,
-    });
+  for (let ci = 0; ci < clumps.length; ci++) {
+    const q = clumps[ci];
+    for (let j = 0; j < q.n; j++) {
+      const t = (j + 0.5) / q.n;                     // 0 the skirt .. 1 the top of this clump
+      let P = v3(0, 0, 0), nOut = v3(0, 1, 0), cx = 1, cz = 0, elev = 0;
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const az = q.az0 + j * golden + (rng() - 0.5) * (attempt ? 1.6 : 0.3);
+        const lobe = (1 + 0.11 * Math.sin(3 * az + q.lobe1) + 0.07 * Math.sin(5 * az + q.lobe2)) * (0.92 + rng() * 0.16);
+        cx = Math.cos(az); cz = Math.sin(az);
+        // the envelope point at the spray's elevation from the clump's heart (c0 up its axis): a (super)ellipse over c0,
+        // a wall under it down to the ground; its outward normal (the gradient)
+        elev = Math.asin(Math.max(-1, Math.min(1, s0 + t * (s1 - s0) + (rng() - 0.5) * (attempt ? 0.3 : 0.05))));
+        const ce = Math.cos(elev), se = Math.sin(elev), Rl = q.R * lobe;
+        const reach = elev >= 0
+          ? Math.pow(Math.pow(ce / Rl, pow) + Math.pow(se / q.Hc, pow), -1 / pow)
+          : Math.min(Rl / Math.max(ce, 1e-3), q.c0 / Math.max(-se, 1e-3));
+        P = v3(q.x + cx * ce * reach, q.c0 + se * reach, q.z + cz * ce * reach);
+        const rho = Math.hypot(P.x - q.x, P.z - q.z) / Rl, hy = (P.y - q.c0) / q.Hc;
+        nOut = elev >= 0
+          ? norm(v3(cx * Math.pow(Math.max(rho, 1e-4), pow - 1) / Rl, Math.pow(Math.max(hy, 0), pow - 1) / q.Hc, cz * Math.pow(Math.max(rho, 1e-4), pow - 1) / Rl))
+          : norm(v3(cx, 0.12, cz));
+        let hidden = false;
+        for (let k = 0; k < clumps.length && !hidden; k++) if (k !== ci && inside(clumps[k], P.x, P.y, P.z)) hidden = true;
+        if (!hidden) break;
+        if (attempt === 5) {
+          // still buried after the deals: carry the seat out along its own heading until it clears every clump
+          const hx = P.x, hz = P.z, hl = Math.hypot(hx, hz) || 1;
+          for (let step = 1; step <= 12; step++) {
+            const px = hx + (hx / hl) * R * 0.08 * step, pz = hz + (hz / hl) * R * 0.08 * step;
+            let still = false;
+            for (let k = 0; k < clumps.length && !still; k++) if (inside(clumps[k], px, P.y, pz)) still = true;
+            if (!still || step === 12) { P = v3(px, P.y, pz); nOut = norm(v3(hx / hl, Math.max(0.1, nOut.y), hz / hl)); break; }
+          }
+        }
+      }
+      let tUp = v3(up.x - nOut.x * nOut.y, up.y - nOut.y * nOut.y, up.z - nOut.z * nOut.y);
+      tUp = Math.hypot(tUp.x, tUp.y, tUp.z) < 0.2 ? v3(-cz, 0, cx) : norm(tUp);
+      tUp = norm(rotate(tUp, nOut, (rng() - 0.5) * (conifer ? 2.2 : 1.5)));
+      // the lift out of the shell: a broadleaf spray climbs, a conifer's reaches out near level and droops
+      const beta = conifer ? 0.62 + rng() * 0.3 : 0.32 + rng() * 0.32;
+      let axis = v3(tUp.x * Math.cos(beta) + nOut.x * Math.sin(beta), tUp.y * Math.cos(beta) + nOut.y * Math.sin(beta),
+        tUp.z * Math.cos(beta) + nOut.z * Math.sin(beta));
+      if (conifer) axis = v3(axis.x, axis.y * 0.45 - 0.12, axis.z);
+      axis = norm(axis);
+      const length = (under ? 0.55 : 0.72) * (0.85 + rng() * 0.3) * (elev > 1.1 ? 0.86 : 1);
+      const seat = v3(P.x - axis.x * length * 0.42 - nOut.x * 0.04, Math.max(-0.02, P.y - axis.y * length * 0.42 - nOut.y * 0.04),
+        P.z - axis.z * length * 0.42 - nOut.z * 0.04);
+      let face = v3(nOut.x - axis.x * dot(nOut, axis), nOut.y - axis.y * dot(nOut, axis), nOut.z - axis.z * dot(nOut, axis));
+      face = Math.hypot(face.x, face.y, face.z) < 1e-3 ? norm(cross(cross(axis, up), axis)) : norm(face);
+      face = norm(rotate(face, axis, (rng() - 0.5) * 0.7));
+      const width = length * profile.aspect * widen * (0.9 + rng() * 0.2);
+      const bend = profile.cardBend * (0.5 + rng() * 0.7);
+      // the card stands on the ground, not in it: its lowest corner (the two-row card's stem and tip rows, the tip's
+      // sag) at most a few centimetres under the base
+      const rightY = norm(cross(axis, face)).y * width * 0.5;
+      const low = Math.min(seat.y - 0.06 * length * axis.y - Math.abs(rightY) * 0.92,
+        seat.y + 0.94 * length * axis.y - bend * length - Math.abs(rightY));
+      if (low < -0.06) seat.y += -0.06 - low;
+      // the light a spray sees: its height in the whole mound (a stool's top sits lower than the heart's) and its own
+      // clump's skirt-to-top
+      const shadeT = 0.5 * t + 0.5 * Math.max(0, Math.min(1, P.y / H));
+      leaves.push({
+        x: seat.x, y: seat.y, z: seat.z, ax: axis.x, ay: axis.y, az: axis.z, nx: face.x, ny: face.y, nz: face.z,
+        length, width, shade: clamp01(0.3 + 0.62 * shadeT + (rng() - 0.5) * 0.16),
+        flex: clamp01(0.2 + 0.1 * rng()), tile: (rng() * 4) | 0, bend, branch: -1,
+      });
+    }
   }
   return { species, height: H, branches: [], leaves, crown: { x: 0, y: c0 + Hc * 0.25, z: 0, r: R } };
 }

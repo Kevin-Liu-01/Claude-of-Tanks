@@ -13,7 +13,10 @@ export function resizeAuthoredVehicle(P: TankBuilderPort, factor: number): void 
   for (const child of P.hullG.children) scaleChild(child);
   for (const child of P.turretG.children) if (child !== P.gunG) scaleChild(child);
   for (const child of P.gunG.children) if (child !== P.recoilG) scaleChild(child);
-  for (const child of P.recoilG.children) scaleChild(child);
+  // Twin-plant tube groups (rig_barrel_N) are articulation parents too: their
+  // gunBarrelN buckets merge into them already scaled above, so a scaled group
+  // would bake those tubes twice (bmpt_t90: fire axes 0.441 m apart, not 0.42).
+  for (const child of P.recoilG.children) if (!/^rig_barrel_\d+$/.test(child.name)) scaleChild(child);
   P.hullG.position.multiplyScalar(factor);
   P.turretG.position.multiplyScalar(factor);
   P.gunG.position.multiplyScalar(factor);

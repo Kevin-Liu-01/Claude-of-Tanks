@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { KIT } from './profiles/kit.ts';
 import { vehicleAmbientFloorHook } from './materials.ts';
+import { oplotFlankOuterX } from './oplotFlankLayout.ts';
 
 type Point2 = readonly [number, number];
 type Point3 = readonly [number, number, number];
@@ -717,9 +718,10 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
           x1: side < 0 ? -0.57 : 0.94, z0: 0.43, z1: 0.84, nx: 6, nz: 7,
           yAt: t84TurretCoverY, seatGapM: t84TurretCoverGapM, seat: 'cheek-roof', seed: 169 + side })),
       ],
+      // The flank drape hangs 44 mm outside the side cassettes and follows them onto the tapering bustle.
       side: [-1, 1].map(side => ({ side, z0: -1.66, z1: -0.42, nz: 20, ny: 7,
         topAt: () => 0.56, bottomAt: z => 0.15 + Math.sin(z * 3.6) * 0.016,
-        outAt: (_z, t) => 1.574 + (1 - t) * 0.010, seed: 175 + side })),
+        outAt: (z, t) => oplotFlankOuterX(z) + 0.044 + (1 - t) * 0.010, seed: 175 + side })),
       face: [{ z: -2.456, x0: -1.17, x1: 1.17, y0: 0.13, y1: 0.56, nx: 26, ny: 7,
         seatGapM: 0.026, seat: 'bustle-cage', seed: 183 }],
     },

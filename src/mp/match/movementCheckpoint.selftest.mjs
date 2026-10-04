@@ -25,8 +25,9 @@ function drive(ticks) {
   return state;
 }
 
-assert.equal(MOVEMENT_CHECKPOINT_VERSION, 3, 'bots lane (2026-10-02): the roof a hull rests on rides with the integrator');
-assert.equal(MOVEMENT_CHECKPOINT_VALUES, 46);
+assert.equal(MOVEMENT_CHECKPOINT_VERSION, 5,
+  'bots lane (2026-10-02): the roof a hull rests on rides with the integrator; physics lane (2026-10-03): and its gravity tip, then the landing stroke and the dive');
+assert.equal(MOVEMENT_CHECKPOINT_VALUES, 52, 'version 4 (48 values) + rebound, stroke, dive, dive rate');
 
 const driven = drive(180);
 const ours = captureMovementCheckpoint(driven);
@@ -57,14 +58,27 @@ const f32 = createTankState(SPEC, driven.pos, driven.yaw);
 assert.equal(applyMovementCheckpoint(f32, rounded), true);
 assert.ok(Math.abs(f32._ride.y - driven._ride.y) < 1e-4);
 
+// Version 5 appends its four values after the version-4 layout: a version-4 checkpoint (an older authority) still decodes,
+// as a hull with no landing stroke or dive in progress.
+const midStop = drive(150);
+midStop._susp.d = -0.02; midStop._susp.dv = 0.1; midStop._ride.rebound = 1.2; midStop._ride.stroke = 1;
+const v5 = captureMovementCheckpoint(midStop);
+assert.deepEqual(v5.values.slice(48), [1.2, 1, -0.02, 0.1], 'the tail is rebound, stroke, dive, dive rate');
+const fromV4 = createTankState(SPEC, midStop.pos, midStop.yaw);
+fromV4._susp.d = 0.5; fromV4._ride.rebound = 3;
+assert.equal(applyMovementCheckpoint(fromV4, { version: 4, values: v5.values.slice(0, 48), flags: v5.flags }), true);
+assert.equal(fromV4._ride.y, midStop._ride.y, 'the version-4 prefix restores as before');
+assert.deepEqual([fromV4._ride.rebound, fromV4._ride.stroke, fromV4._susp.d, fromV4._susp.dv], [0, 0, 0, 0]);
+
 // Rejections leave the state untouched.
 const untouched = createTankState(SPEC, new Vector3(), 0);
 const before = JSON.stringify(captureMovementCheckpoint(untouched));
-assert.equal(applyMovementCheckpoint(untouched, { version: 2, values: ours.values.slice(0, 45), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 4, values: ours.values, flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 3, values: ours.values.slice(1), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 3, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
-assert.equal(applyMovementCheckpoint(untouched, { version: 3, values: ours.values, flags: 4096 }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 3, values: ours.values.slice(0, 46), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 4, values: ours.values, flags: ours.flags }), false, 'a version-4 tag on 52 values');
+assert.equal(applyMovementCheckpoint(untouched, { version: 6, values: ours.values, flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 5, values: ours.values.slice(1), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 5, values: ours.values.map(() => 2e6), flags: ours.flags }), false);
+assert.equal(applyMovementCheckpoint(untouched, { version: 5, values: ours.values, flags: 4096 }), false);
 assert.equal(JSON.stringify(captureMovementCheckpoint(untouched)), before);
 
 // Version 3: a hull resting on another hull's roof carries that roof; a free hull carries none (flag bit 10 clear).
@@ -80,4 +94,4 @@ assert.equal(seated._body.restSupportY, resting._body.restSupportY, 'the replay 
 assert.equal(applyMovementCheckpoint(seated, ours), true);
 assert.ok(Number.isNaN(seated._body.restSupportY), 'a checkpoint without a roof clears it');
 
-console.log('mp movement checkpoint: 46-value version-3 layout identical to the authority encoder, the roof a hull rests on carried and cleared, identity after apply, f32 tolerant, typed rejections pass');
+console.log('mp movement checkpoint: 52-value version-5 layout identical to the authority encoder, version 4 still decodes, the roof a hull rests on carried and cleared, identity after apply, f32 tolerant, typed rejections pass');

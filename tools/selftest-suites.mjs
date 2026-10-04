@@ -101,6 +101,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/dragunForwardRoofStock.selftest.mjs',
     'tools/interior-fill-body-policy.selftest.mjs',
     'tools/track-lane-boxes.selftest.mjs',
+    // 2026-10-03: declared physical bore air is open, never filled and reported apart from leaks
+    'tools/physical-bore-air.selftest.mjs',
     // 2026-10-02: the fleet watertight gate's own controls (the gate itself runs in fleetPassDefault)
     'src/vehicles/watertightAudit.selftest.mjs',
     'tools/barak-rear-bay-fill-policy.selftest.mjs',
@@ -931,6 +933,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/rollover.selftest.mjs',
     'src/sim/tankBodyContacts.selftest.mjs',
     'src/sim/tankBodyRest.selftest.mjs',
+    'tools/physics-torture.selftest.mjs',
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
     'src/sim/spotting.selftest.mjs',
@@ -1139,6 +1142,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainMaterialV2.selftest.mjs',
     'src/world/groundPressure.selftest.mjs',
     'src/world/tallGrass.selftest.mjs',
+    'src/world/landUse.selftest.mjs', // ground lane (2026-10-03): the field system and its CPU twin
     'src/world/roadLookupGrid.selftest.mjs',
     'src/world/roadAuthoredExits.selftest.mjs',
     'src/world/roadBankComposition.selftest.mjs',
@@ -1165,6 +1169,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/yardDressing.selftest.mjs',
     'src/world/rockDressing.selftest.mjs',
     'src/world/scenery.selftest.mjs',
+    // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
+    'src/world/fieldStoneSurface.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
     'src/world/loggingYard.selftest.mjs',
     'src/world/foundryServiceCourt.selftest.mjs',

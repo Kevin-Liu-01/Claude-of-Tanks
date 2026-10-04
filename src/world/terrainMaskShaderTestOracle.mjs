@@ -98,6 +98,8 @@ export function assertTerrainFetchExpressionCensus(source) {
   // (the far variant's, the base / soil / rock transition means, the soil sample the transition re-read, the five
   // zero-mean octaves' means), and the near tap is written in both of splatSamp's exits (+1); the four wall-normal
   // expressions above stay exactly once each. Lexical census only.
-  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3 + 4 + 2 + 7 + 6 - 61, // round 47: the outland bay contour is evaluated analytically — no new sampler (16-unit budget)
-    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps plus four jointed-strata taps plus two crag phase taps plus seven ground-redux taps plus six round-73b taps, minus the terrain-v2 cost pass; lexical census only');
+  // ground lane (2026-10-03): +2 — the far turf's second read of the grass normal and tone, turned 42° at an
+  // incommensurate scale (the far band only), so the coarse turf no longer repeats on one 48 m / 73 m grid.
+  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3 + 3 + 4 + 2 + 7 + 6 - 61 + 2, // round 47: the outland bay contour is evaluated analytically — no new sampler (16-unit budget)
+    'historical78 plus four inlined wall samples plus three road-pass taps plus three dune-wind taps plus four jointed-strata taps plus two crag phase taps plus seven ground-redux taps plus six round-73b taps, minus the terrain-v2 cost pass, plus the ground lane\'s two far-turf taps; lexical census only');
 }

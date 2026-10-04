@@ -9,7 +9,12 @@ import { KIT } from './kit.ts';
 import { getSpec } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { isTrackShoeMesh } from '../../../tools/track-clip-classification.mjs';
+import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
 const id = 'kurganets25_x', front = new T.MeshBasicMaterial({ side: T.FrontSide }), double = new T.MeshBasicMaterial({ side: T.DoubleSide });
+// Owner-directed whole-vehicle size (2026-10-02, main 245aa4e4e): the factory bakes the source-frame build into the
+// installed frame at this factor. Source calipers below stay in the source frame; probes of the installed scene map
+// them by `f`. The recorded builder parts are captured before the bake, so seats() stays in the source frame.
+const f = VEHICLE_SIZE_FACTORS[id] ?? 1, at = p => p.map(v => v * f);
 const visible = h => {
     for (let n = h.object; n; n = n.parent)
         if (!n.visible || n.userData.shadowOnly)
@@ -93,9 +98,9 @@ function sourceProof(b) {
     let maximum = 0;
     for (const x of [-1.3, -1, 0, 1, 1.3])
         for (const [y, z] of firstHits) {
-            const hit = first(b.tank.root, [x, y, 5], [0, 0, -1], 2);
+            const hit = first(b.tank.root, at([x, y, 5]), [0, 0, -1], 2 * f);
             assert.ok(hit, 'broad physical skin is visible');
-            const error = Math.abs(hit.point.z - z);
+            const error = Math.abs(hit.point.z - z * f);
             maximum = Math.max(maximum, error);
             assert.ok(error < .002, `source front ${x}/${y}: ${error}`);
         }
@@ -103,13 +108,13 @@ function sourceProof(b) {
 }
 function structuralArmor(built) {
     for (const x of [-1, 0, 1]) {
-        const hit = first(built.tank.root, [x, 1.75, 5], [0, 0, -1], 2);
-        assert.ok(hit && Math.abs(hit.point.z - 3.65387594) < .002, 'measured receiving armor is exposed');
+        const hit = first(built.tank.root, at([x, 1.75, 5]), [0, 0, -1], 2 * f);
+        assert.ok(hit && Math.abs(hit.point.z - 3.65387594 * f) < .002, 'measured receiving armor is exposed');
         assert.equal(hit.object.name, 'hull', 'first visible receiving armor belongs to the hit shell');
     }
     for (const x of [-1, 1]) {
-        const hit = first(built.tank.root, [x, 2, 3.70], [0, -1, 0], .5);
-        assert.ok(hit && Math.abs(hit.point.y - 1.75988) < .002, 'thin roof continuation is physically exposed');
+        const hit = first(built.tank.root, at([x, 2, 3.70]), [0, -1, 0], .5 * f);
+        assert.ok(hit && Math.abs(hit.point.y - 1.75988 * f) < .002, 'thin roof continuation is physically exposed');
         assert.equal(hit.object.name, 'hull', 'forward roof continuation belongs to the hit shell');
     }
 }
@@ -137,8 +142,8 @@ function emptySpan(root, y, z, label) {
     const previous = front.side;
     front.side = T.DoubleSide;
     try {
-        const start = [-1.3, y, z];
-        assert.equal(first(root, start, [1, 0, 0], 2.6), undefined, label + ': no surface crosses span');
+        const start = at([-1.3, y, z]);
+        assert.equal(first(root, start, [1, 0, 0], 2.6 * f), undefined, label + ': no surface crosses span');
         for (const direction of [-1, 1]) {
             const hit = first(root, start, [direction, 0, 0], 10);
             if (!hit)
@@ -157,7 +162,10 @@ function air(b) {
     emptySpan(b.tank.root, 1.5, 3.58, 'air behind upper folded skin');
 }
 function clearance(b, intrude = false) {
-    const stock = b.parts.filter(p => p.bucket === 'hull' || p.role).flatMap(p => triangles(p.mesh.geometry)).filter(t => Math.max(t.a.z, t.b.z, t.c.z) > 3);
+    // Recorded parts are source-frame stock; the moving shoes are installed, so the stock is baked by the same factor.
+    const stock = b.parts.filter(p => p.bucket === 'hull' || p.role).flatMap(p => triangles(p.mesh.geometry))
+        .map(t => new T.Triangle(t.a.multiplyScalar(f), t.b.multiplyScalar(f), t.c.multiplyScalar(f)))
+        .filter(t => Math.max(t.a.z, t.b.z, t.c.z) > 3 * f);
     const shoes = [];
     b.tank.root.traverse(o => {
         if (isTrackShoeMesh(o))
@@ -177,7 +185,7 @@ function clearance(b, intrude = false) {
                 shoe.getMatrixAt(i, instance);
                 world.multiplyMatrices(shoe.matrixWorld, instance);
                 const box = shoe.geometry.boundingBox.clone().applyMatrix4(world);
-                if (box.max.z < 3)
+                if (box.max.z < 3 * f)
                     continue;
                 count++;
                 if (intrude) {
