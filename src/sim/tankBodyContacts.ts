@@ -21,7 +21,7 @@ interface TankBodyState {
   turretYaw: number;
   overturned?: boolean;
   /** The hull's own terrain/structure support under its tracks (movement's support envelope), when it has one. */
-  _sup?: { y: number };
+  _sup?: { y: number; top?: number };
   _spring: { pitchV: number; rollV: number };
   _ride: {
     y: number;
@@ -323,7 +323,7 @@ function isDynamicBodyContact(entity: TankBodyEntity): boolean {
   return state.grounded === false || state.overturned === true ||
     state._body?.tumbling === true || state._body?.dynamicSupport === true ||
     Number.isFinite(state._body?.restSupportY) ||
-    state.pos.y > (state._sup?.y ?? Infinity) + STACK_ELEVATED_M;
+    state.pos.y > (state._sup?.top ?? state._sup?.y ?? Infinity) + STACK_ELEVATED_M;
 }
 
 /** How deep an upper hull's bottom may sit in a lower roof and still be a landing on it (see STACK_ENTRY_M). */

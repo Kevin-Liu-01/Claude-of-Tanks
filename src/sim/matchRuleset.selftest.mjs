@@ -7,7 +7,7 @@ import {
   applyRulesetToCombat, rulesetLoadout, refillUnlimitedAmmunition, rulesetAllyCap,
   FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, TEAM_ARRANGEMENT_LIMITS, normalizeTeamArrangement,
   acceptsTeamArrangement, hordeWaveSize, BATTLE_FIELD_LIMIT, SIDES_PRESETS, STANDARD_SIDES, isWaveMode, rulesetSides, sidesPresetOf,
-  MARS_CACHE_IDS, MARS_DEFAULT_RULES, MARS_GRAVITY_IDS, ENDING_HOLD_LIMIT_S, endingHoldExpired,
+  MARS_CACHE_IDS, MARS_DEFAULT_RULES, MARS_GRAVITY_IDS, ENDING_HOLD_LIMIT_S, endingHoldExpired, STANDARD_PHYSICS,
 } from './matchRuleset.ts';
 
 for (const mode of GAME_MODE_IDS) {
@@ -191,6 +191,9 @@ assert.equal(rulesetAllyCap(standard, 6), 6); assert.equal(rulesetAllyCap(horde,
   assert.deepEqual(rulesetLines(mars).find((line) => line.key === 'marsCaches')?.values, { value: '22' });
   const earth = matchRulesetFor('mars', null, { marsGravity: 'earth' });
   assert.equal(earth.gravityScale, 1); assert.equal(earth.jumpMps, 6);
+  assert.equal(earth.physics.restitution, STANDARD_PHYSICS.restitution, 'Earth gravity lands with the whole game\'s bounce');
+  assert.equal(moon.physics.restitution, mars.physics.restitution, 'the Moon keeps the basin\'s bounce');
+  assert.ok(Object.isFrozen(earth.physics));
   assert.equal(earth.mars.caches, 'standard', 'a gravity-only arrangement keeps the default caches');
   assert.equal(matchRulesetFor('mars', null, { allies: 3 }).mars, MARS_DEFAULT_RULES, 'a sides-only arrangement keeps the base Mars rules');
   assert.equal(matchRulesetFor('standard', null, { marsGravity: 'moon' }).gravityScale, 1, 'Standard ignores Mars settings');

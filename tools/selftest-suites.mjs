@@ -969,6 +969,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.cornerHold.selftest.mjs',
     // 2026-10-03 (bots lane): an engaged casemate keeps its bow on its target (scoots, jinks, cover).
     'src/game/ai.casemateLay.selftest.mjs',
+    // 2026-10-03 (bots lane): a patrol leg the grid cannot route still drives (the bridge gate's no-route hold).
+    'src/game/ai.patrolNoRoute.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',

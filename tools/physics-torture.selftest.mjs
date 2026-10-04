@@ -7,15 +7,15 @@ import assert from 'node:assert/strict';
 import { CASES, HULLS, WORLDS, runCase } from './physics-torture.mjs';
 import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
 
-await ensureAuthorityFleet([...new Set([...Object.values(HULLS), 't90m', 'm1a2'])]);
+await ensureAuthorityFleet([...new Set([...Object.values(HULLS), 't90m', 'm1a2', 'm551_sheridan'])]);
 
 const failures = [];
 let runs = 0;
-function check(caseId, hull, world, gates) {
+function check(caseId, hull, world, gates, { publishedContact = false } = {}) {
   const caseDef = CASES.find((c) => c.id === caseId);
   assert.ok(caseDef, `unknown torture case ${caseId}`);
   assert.ok(WORLDS[world], `unknown world ${world}`);
-  const metrics = runCase(HULLS[hull] ?? hull, world, caseDef, { replay: gates.some((g) => g.replay) });
+  const metrics = runCase(HULLS[hull] ?? hull, world, caseDef, { replay: gates.some((g) => g.replay), publishedContact });
   runs++;
   if (metrics.nan) failures.push(`${caseId} ${world} ${hull}: NaN in ${metrics.nanField}`);
   for (const gate of gates) {
@@ -97,7 +97,12 @@ check('land-roof-edge', 'low', 'earth', [
 // Slopes that turn speed into a launch (Titan Gorge; Caldera CTF seed 0): the ground's vertical push on a grade turns
 // the hull's travel (movement.ts turnAlongGrade / landAlongGrade).
 check('climb-crest', 'medium', 'earth', [
-  g('lift off the crest (m)', (m) => m.liftM, 0.6, 'before: 1.88 m (rose at 8.4 m/s up a 38-degree face, travel kept)'),
+  // (round 3: the springs seat the climb under its top contact; the flight off the crest reads 0.61 m over the contact
+  // under it, peaking lower over the ground, 0.78 m at the root where it was 0.86, and landing at 2.5 m/s, was 3.1)
+  // (round 3, the hull lying on its plane: it climbs the face at 38 degrees, where it read 35.6, and its flight peaks
+  // lower over the ground, 0.75 m, and lands at 1.0 m/s, where it was 2.5; over the contact under it, which the truer
+  // pitch at the crest moves back down the face, it reads 0.73 m)
+  g('lift off the crest (m)', (m) => m.liftM, 0.75, 'before: 1.88 m (rose at 8.4 m/s up a 38-degree face, travel kept)'),
 ]);
 check('land-upslope', 'medium', 'earth', [
   g('travel kept landing on a 36 % upslope (m/s)', (m) => m.landingTravel[0]?.[1] ?? 0, 12.5, 'before: 15.0 of 15.0'),
@@ -120,7 +125,8 @@ check('flank-steep', 'medium', 'earth', [
 check('drive-assault-trench', 'heavy', 'earth', [
   g('progress short of 30 m (m)', (m) => 30 - m.progressM, 0, 'before: 19.6 m'),
   // (900: with the grade floor the crossing's own jerk reads 800.2, the far wall's lip taken a little harder)
-  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 900, 'before: 1366'),
+  // (950, round 3: the hull lying on its plane pitches to the walls it crosses, where it read them flatter: 909)
+  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 950, 'before: 1366'),
 ]);
 
 // Firing in flight (Mars gravity field audit): the shot turns an airborne hull by its rigid-body share, not the
@@ -151,6 +157,18 @@ for (const world of ['mars', 'moon', 'turbo']) {
     g('hop above the drooped line (m)', (m) => Math.max(0, (m.apexes[1] ?? 0) - 0.18), 0.3, 'before: 1.10 m at Mars, 1.54 m at the Moon'),
   ]);
 }
+// Gauntlet wave 23 ("the 0.17 g Moon drop settles like an Earth landing"; the rebound fell back "at about 2.6x lunar
+// gravity"): past its static sag over the seat the hull's springs are unloaded, so a landing's overshoot rises and falls
+// at the world's own gravity, never pulled down at Earth's spring rate.
+check('jump-flat', 'medium', 'moon', [
+  g('overshoot pulled down past the Moon\'s gravity (g)', (m) => m.overshootPullG, 1.02, 'before: 7.0 g'),
+  g('settle short of 0.85 s (s)', (m) => 0.85 - m.landingSettleS, 0, 'before: 0.60 s, an Earth landing\'s timeline'),
+]);
+// Gauntlet wave 23 ("an Earth-gravity drop hops clear of the ground"): Gravity mode's Earth lands with the whole game's
+// bounce (matchRuleset.ts); the basin's 30 % threw the 5.6 m/s landing of a 1 g jump back 0.35 m off the ground.
+check('jump-flat', 'medium', 'gearth', [
+  g('flights after the jump', (m) => m.hops - 1, 0, 'before: 1 (0.35 m off the ground, back down at 1.7 m/s)'),
+]);
 // Gauntlet wave 2 (the motion strips scored 4.70 and held the merge): the suspension takes the stop.
 // A hard stop dips the hull on its suspension over planted tracks and rocks it back past level; it no longer tips the
 // whole hull, tracks and all, up off flat ground (movement.ts SuspensionRockState.d).
@@ -188,13 +206,42 @@ const wallClean = [
 check('wall-foot-wedged', 'medium', 'earth', [...wallHeld({ falls: 3, hp: 236, top: 9.6 }), ...wallClean]);
 check('wall-foot-side', 'heavy', 'earth', [...wallHeld({ falls: 4, hp: 3598, top: 14.0 }), ...wallClean]);
 check('wall-foot-side', 'medium', 'moon', [...wallHeld({ falls: 0, hp: 0, top: 57.7 }), ...wallClean]);
-// across the terrain's triangle grid a face's foot is smeared over a cell: the hull still hops there as it pivots
-// (known limit), but it is never carried up the face or hurt
+// across the terrain's triangle grid a face's foot is smeared over a cell: the hull's support drops out for a tick there
+// as it pivots (known limit: a one-tick airborne flag, its vertical speed continuous, under every consumer's threshold),
+// but it is never carried up the face or hurt
 check('wall-foot-side-t135', 'medium', 'earth', [
   g('falls', (m) => m.falls.length, 0, 'before: 5'),
   g('fall damage (hp)', (m) => m.fallDamageHp, 0, 'before: 614 hp'),
   g('height over the ground (m)', (m) => m.maxHeightM, 2, 'before: 12.8 m'),
 ]);
+
+// Rough ground at speed (gauntlet wave 23, "skipping over the bumps with no wheels down in several frames"): the track's
+// springs carry the hull over uneven ground; it no longer perches on its single highest contact with the rest hanging.
+check('drive-rubble', 'heavy', 'earth', [
+  g('perched on two stations or fewer (s)', (m) => m.perchedS, 0.5, 'before: 1.48 s of 6 s'),
+  g('stations short of 9 of 12 within reach (mean)', (m) => 9 - m.trackContactMean, 0, 'before: 6.8 of 12'),
+]);
+
+// A viaduct at road speed (round 3; the trees lane's botObjectives seeds on Aegis Crossing): at each span joint the hull's
+// nose is alone over the next span's record, and the standing rule's step-up, counted against a nose row's height, also
+// decided whether the nose cleared the span's sub-deck slab a metre under the deck. The slab stopped a Sheridan dead on
+// the deck at 18.6 m/s for 248 hp at every joint and the bot crawled the viaduct in stuck-recovery cycles.
+// Hulls on their real contact shells (the long and tall hulls' noses rise 0.42-0.44 m) and the Sheridan on its published
+// box (a context that never finalized its combat anatomy, botObjectives' own: no nose lift at all).
+for (const [hull, publishedContact] of [['long', false], ['tall', false], ['m551_sheridan', true]]) {
+  check('drive-viaduct', hull, 'earth', [
+    g('impact damage on the deck (hp)', (m) => m.impactDamageHp, 5, 'before: span joints taken as walls'),
+    g('progress short of 110 m (m)', (m) => 110 - m.progressM, 0, 'before: stopped at the first joint'),
+  ], { publishedContact });
+}
+
+// Gauntlet wave 23, the slope strip ("the downhill rear stations are the most extended ... and the uphill front ones the
+// most compressed"): a hull at rest lies on the ground it stands on (movement.ts planePitch / planeRoll). The attitude fit
+// read the arctangent of the rise per hull-local metre and laid the hull flatter than its ground, its downhill end
+// hanging up to 12 cm over a 25-degree face.
+for (const [caseId, why] of [['rest-slope25', 'before: 0.97 degree flatter than the face'], ['rest-cross20', 'before: 1.0 degree flatter than the slope']]) {
+  check(caseId, 'medium', 'earth', [g('attitude off the ground it rests on (deg)', (m) => m.restAttitudeErrDeg, 0.1, why)]);
+}
 
 // Rest stays rest: no jitter, no creep on a 25-degree grade on the brake.
 check('rest-slope25', 'medium', 'earth', [
