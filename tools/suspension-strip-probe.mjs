@@ -84,10 +84,23 @@ export const STRIP_CASES = Object.freeze({
   // a 27-degree upslope there)
   'land-turbo': { map: 'airfield', mode: 'turbo_ball', find: 'flat', kind: 'landing', jump: true, speed: 'top', throttle: 1,
     view: 'quarter' },
+  // round 7 (the trench ruling, 2026-10-04): a field trench and a Frontline Assault sector line crossed at 11 m/s, and the
+  // assault line under the E100 X at 6 m/s (the matrix case that was thrown 38 degrees nose-up off its far wall), the
+  // throttle held at the run's speed. The camera stands in the trench 14 m along it, its eye a little over the lips, so
+  // the hull crosses the trench's own profile; the frames are anchored on the root crossing the trench's centre line.
+  // (The matrix's drive-trench, a 2 m box ditch with sheer walls, has no counterpart on any map.)
+  'trench-field': { map: 'badlands', mode: 'standard', find: 'trench-field', kind: 'cross', speed: 11, cruise: true,
+    view: 'trench' },
+  'trench-assault': { map: 'badlands', mode: 'frontline_assault', find: 'trench-assault', kind: 'cross', speed: 11, cruise: true,
+    view: 'trench' },
+  'trench-assault-heavy': { map: 'badlands', mode: 'frontline_assault', spec: 'jpz_e100_x', find: 'trench-assault', kind: 'cross',
+    speed: 6, cruise: true, stretch: 2, view: 'trench' },
 });
 
 /** Step offsets (sim ticks) captured around a landing's touchdown and around a hard stop. */
 export const LANDING_STEPS = Object.freeze([-10, -1, 0, 1, 2, 4, 8, 16, 32]);
+/** Step offsets around a trench crossing's anchor (the root over the trench's centre line), at 11 m/s. */
+export const CROSS_STEPS = Object.freeze([-45, -30, -18, -9, 0, 9, 18, 27, 36, 48, 66, 90]);
 const STOP_STEPS = Object.freeze([-6, 6, 15, 30, 60]);       // from the brake
 const STOPPED_STEPS = Object.freeze([0, 9, 24, 48]);        // from the stop
 
@@ -145,6 +158,54 @@ function pageFindStage(world, kind, landing) {
   const obstacles = typeof world.getObstacles === 'function' ? world.getObstacles() : [];
   const blocked = (x, z, margin) => obstacles.some((o) => !o.crushed
     && x > o.min[0] - margin && x < o.max[0] + margin && z > o.min[2] - margin && z < o.max[2] + margin);
+  if (kind === 'trench-field' || kind === 'trench-assault') {
+    // round 7: a straight run across one of the battle's own trench lines (terrain.ts fieldTrenchLines /
+    // assaultTrenchLines; the cross-section runs along the line's axis) where it is full depth (an assault line clear
+    // of the communication trench along its axis), the run in and out dry and clear, the run-in even
+    const plan = kind === 'trench-field' ? hf.fieldTrenchLines : hf.assaultTrenchLines;
+    // the works along a trench line (wire, sandbags, hedgehogs) are crushable and line its lips: a crossing goes through
+    // them as a tank does; anything that is not crushable keeps a 4 m berth
+    const hard = (x, z) => obstacles.some((o) => !o.crushed && !o.crushable
+      && x > o.min[0] - 4 && x < o.max[0] + 4 && z > o.min[2] - 4 && z < o.max[2] + 4);
+    const profile = plan?.profile ?? { floorHalfWidthM: 2.3, wallRunM: 1.7, depthM: 1.55 };
+    const half = profile.floorHalfWidthM + profile.wallRunM;
+    const approach = 20;
+    let bestTrench = null, relaxedTrench = null;
+    for (const line of plan?.lines ?? []) {
+      for (const dir of [1, -1]) {
+        for (const along of kind === 'trench-field' ? [-12, -6, 0, 6, 12] : [-36, -28, -20, -12, 12, 20, 28, 36]) {
+          const cx = line.x + line.lx * along, cz = line.z + line.lz * along;
+          const fx = line.ax * dir, fz = line.az * dir;
+          let ok = true, maxGrade = 0, maxSide = 0, prev = null;
+          for (let s = -approach - 4; s <= half + 14; s += 1) {
+            const x = cx + fx * s, z = cz + fz * s;
+            if (wet(x, z) || hard(x, z)) { ok = false; break; }
+            // the run-in is even; past the trench its own banks and spoil stand, and the run-out only has to be clear
+            if (s >= -(half + 6)) { prev = null; continue; }
+            const y = h(x, z);
+            if (prev !== null) maxGrade = Math.max(maxGrade, Math.abs(y - prev));
+            maxSide = Math.max(maxSide, Math.abs(h(x + fz * 2, z - fx * 2) - h(x - fz * 2, z + fx * 2)) / 4);
+            prev = y;
+          }
+          if (!ok) continue;
+          const lip = (h(cx - fx * (half + 1), cz - fz * (half + 1)) + h(cx + fx * (half + 1), cz + fz * (half + 1))) / 2;
+          const depth = lip - h(cx, cz);
+          const score = -maxGrade * 10 - maxSide * 10 - Math.abs(depth - profile.depthM) * 5 - Math.abs(along) * 0.01;
+          const candidate = { x: cx - fx * approach, z: cz - fz * approach, yaw: Math.atan2(fx, fz), score: +score.toFixed(4),
+            maxGrade: +maxGrade.toFixed(3), maxSide: +maxSide.toFixed(3),
+            trench: { x: cx, z: cz, ax: fx, az: fz, lx: line.lx, lz: line.lz, halfM: half, lipY: +lip.toFixed(3),
+              depthM: +depth.toFixed(3) } };
+          // a run-in that is not even is kept as a fallback (recorded as relaxed), never preferred
+          if (maxGrade > 0.15 || maxSide > 0.1) {
+            if (!relaxedTrench || score > relaxedTrench.score) relaxedTrench = { ...candidate, relaxed: true };
+            continue;
+          }
+          if (!bestTrench || score > bestTrench.score) bestTrench = candidate;
+        }
+      }
+    }
+    return bestTrench ?? relaxedTrench;
+  }
   const crossKind = kind === 'cross' || kind === 'cross-steep';
   let best = null;
   for (let gx = -280; gx <= 280; gx += 20) {
@@ -260,6 +321,7 @@ function pageRoadWheels(root) {
   return wheels;
 }
 
+
 const PAGE_HELPERS = [pageFindStage, pageResetVertical, pageLevel, pageJump, pageRoadWheels].map((fn) => fn.toString()).join('\n');
 
 async function installHelpers(page) {
@@ -373,7 +435,7 @@ async function launchCase(page, caseDef) {
 async function advance(page, ticks, plan) {
   return page.evaluate(({ ticks, plan }) => {
     const D = window.__DEBUG; const p = D.game.player; const st = p.state; const H = window.__strip;
-    let landedAt = -1, stoppedAt = -1, landedPos = null;
+    let landedAt = -1, stoppedAt = -1, landedPos = null, crossedAt = -1;
     for (let i = 0; i < ticks; i++) {
       const tick = plan.tick + i;
       const braking = plan.brakeTick != null && tick >= plan.brakeTick;
@@ -393,8 +455,11 @@ async function advance(page, ticks, plan) {
         landedPos = { x: st.pos.x, z: st.pos.z, yaw: st.yaw };
       }
       if (stoppedAt < 0 && braking && Math.abs(st.speed) < 0.05) stoppedAt = tick;
+      if (crossedAt < 0 && plan.trench && (st.pos.x - plan.trench.x) * plan.trench.ax + (st.pos.z - plan.trench.z) * plan.trench.az >= 0) {
+        crossedAt = tick;
+      }
     }
-    return { landedAt, stoppedAt, landedPos };
+    return { landedAt, stoppedAt, landedPos, crossedAt };
   }, { ticks, plan });
 }
 
@@ -408,7 +473,12 @@ async function placeCamera(page, view, follow, fixed) {
     const x = follow ? st.pos.x : at0.x, z = follow ? st.pos.z : at0.z;
     const ground = hf.getHeightAt(x, z);
     let cam, at;
-    if (view === 'quarter') {
+    if (view === 'trench') {
+      // round 7: in the trench, 14 m along it from the crossing, the eye a little over the lips (the fixed pose's lipY)
+      const lip = fixed?.lipY ?? ground;
+      cam = [x + rx * 14, lip + 0.9, z + rz * 14];
+      at = [x, lip - 0.2, z];
+    } else if (view === 'quarter') {
       cam = [x + rx * 9.5 + fx * 5, ground + 2.4, z + rz * 9.5 + fz * 5];
       at = [x, ground + 1.4, z];
     } else if (view === 'front') {
@@ -425,7 +495,7 @@ async function placeCamera(page, view, follow, fixed) {
     // never under the ground beneath the camera itself
     cam[1] = Math.max(cam[1], hf.getHeightAt(cam[0], cam[2]) + 1.2);
     D.rig.setExternalPose(new V(...cam), new V(...at), 40);
-    return { x: at0.x, z: at0.z, yaw: at0.yaw };
+    return { x: at0.x, z: at0.z, yaw: at0.yaw, lipY: fixed?.lipY };
   }, { view, follow, fixed });
 }
 
@@ -515,6 +585,10 @@ function captureTicks(caseDef, anchors) {
       ...STOPPED_STEPS.map((s) => ({ tick: anchors.stop + s, step: anchors.stop + s - anchors.brake, t: (anchors.stop + s - anchors.brake) / 60 })),
     ];
   }
+  if (caseDef.kind === 'cross') {
+    const stretch = caseDef.stretch ?? 1;
+    return CROSS_STEPS.map((s) => s * stretch).map((s) => ({ tick: anchors.cross + s, step: s, t: s / 60 }));
+  }
   return caseDef.frames.map((sec) => ({ tick: Math.round(sec * 60), step: Math.round(sec * 60), t: sec }));
 }
 
@@ -547,12 +621,31 @@ async function runCase(page, caseId, caseDef, options, build) {
     tick: 0, throttle: caseDef.throttle ?? 0, drop: caseDef.drop ?? 0,
     jumpTick: caseDef.jump ? startTick : null, dropTick: caseDef.drop ? startTick : null, level: caseDef.level === true,
     brakeTick: caseDef.brakeAtS != null ? Math.round(caseDef.brakeAtS * 60) : null,
+    trench: stage.trench ?? null,
   };
+  if (caseDef.cruise) {
+    // the throttle that holds the run's speed (the drive's target is the throttle times the top speed)
+    plan.throttle = await page.evaluate((speed) => {
+      const p = window.__DEBUG.game.player;
+      return Math.min(1, speed / (p.spec.topSpeedKmh / 3.6 * (p.modeSpeedMultiplier ?? 1)));
+    }, caseDef.speed);
+  }
   // dry run: find the anchors (the touchdown, the stop) on the same deterministic stage
-  const meta = await stageCase(page, stage);
+  let meta = await stageCase(page, stage);
   await launchCase(page, caseDef);
-  const anchors = { landing: -1, brake: plan.brakeTick ?? 0, stop: -1 };
-  if (caseDef.kind === 'landing' || caseDef.kind === 'stop') {
+  const anchors = { landing: -1, brake: plan.brakeTick ?? 0, stop: -1, cross: -1 };
+  if (caseDef.kind === 'cross') {
+    // A crossing goes through the works on its run-in (pageFindStage) and the dry run crushes them: the capture run then
+    // met them crushed and reached the trench 5 ticks before the dry run had (the field trench on Badlands). A first
+    // pass crushes them, and the anchor is read on a second over the same ground the capture run drives.
+    for (let tick = 0; tick < 60 * 40; tick += 30) {
+      plan.tick = tick;
+      if ((await advance(page, 30, plan)).crossedAt >= 0) break;
+    }
+    meta = await stageCase(page, stage);
+    await launchCase(page, caseDef);
+  }
+  if (caseDef.kind === 'landing' || caseDef.kind === 'stop' || caseDef.kind === 'cross') {
     const limit = 60 * 40;
     for (let tick = 0; tick < limit; tick += 30) {
       plan.tick = tick;
@@ -573,17 +666,21 @@ async function runCase(page, caseId, caseDef, options, build) {
         break;
       }
       if (caseDef.kind === 'stop' && found.stoppedAt >= 0) { anchors.stop = found.stoppedAt + 1; break; }
+      if (caseDef.kind === 'cross' && found.crossedAt >= 0) { anchors.cross = found.crossedAt + 1; break; }
     }
+    if (caseDef.kind === 'cross' && anchors.cross < 0) throw new Error(`${caseId}: the hull never reached the trench within 40 s`);
     if (caseDef.kind === 'landing' && anchors.landing < 0) throw new Error(`${caseId}: no touchdown within 40 s`);
     if (caseDef.kind === 'stop' && anchors.stop < 0) throw new Error(`${caseId}: no stop within 40 s`);
     await stageCase(page, stage);
     await launchCase(page, caseDef);
   }
   // a landing is watched where the dry run touched down (a running jump lands 20 m on from its takeoff)
-  const fixed = caseDef.kind === 'landing' || caseDef.kind === 'rest'
-    ? await placeCamera(page, caseDef.view, false, caseDef.kind === 'landing' ? anchors.landedPos ?? null : null) : null;
+  const fixed = caseDef.kind === 'landing' || caseDef.kind === 'rest' || caseDef.kind === 'cross'
+    ? await placeCamera(page, caseDef.view, false, caseDef.kind === 'landing' ? anchors.landedPos ?? null
+      : caseDef.kind === 'cross' ? { x: stage.trench.x, z: stage.trench.z, yaw: stage.yaw, lipY: stage.trench.lipY } : null)
+    : null;
   const frames = [];
-  const met = { landing: -1, stop: -1 };
+  const met = { landing: -1, stop: -1, cross: -1 };
   let tick = 0;
   const targets = captureTicks(caseDef, anchors);
   for (let index = 0; index < targets.length; index++) {
@@ -593,6 +690,7 @@ async function runCase(page, caseId, caseDef, options, build) {
       const found = await advance(page, target.tick - tick, plan);
       if (met.landing < 0 && found.landedAt >= 0) met.landing = found.landedAt + 1;
       if (met.stop < 0 && found.stoppedAt >= 0) met.stop = found.stoppedAt + 1;
+      if (met.cross < 0 && found.crossedAt >= 0) met.cross = found.crossedAt + 1;
       tick = target.tick;
     }
     if (!fixed) await placeCamera(page, caseDef.view, true, null);
@@ -605,7 +703,8 @@ async function runCase(page, caseId, caseDef, options, build) {
   }
   // the capture run must meet the dry run's anchor on the same tick (determinism), and exercise its case
   const anchorMismatch = (caseDef.kind === 'landing' && met.landing !== anchors.landing)
-    || (caseDef.kind === 'stop' && met.stop !== anchors.stop);
+    || (caseDef.kind === 'stop' && met.stop !== anchors.stop)
+    || (caseDef.kind === 'cross' && met.cross !== anchors.cross);
   if (anchorMismatch) throw new Error(`${caseId}: capture run anchors ${JSON.stringify(met)} differ from the dry run's ${JSON.stringify(anchors)}`);
   if (caseDef.kind === 'drive' && frames.some((f) => Math.abs(f.speed) < 0.5 * caseDef.speed)) {
     throw new Error(`${caseId}: the hull did not hold its run (speeds ${frames.map((f) => f.speed.toFixed(1)).join(', ')})`);
