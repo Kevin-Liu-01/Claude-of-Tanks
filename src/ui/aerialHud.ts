@@ -1,5 +1,5 @@
 import { createDroneFeedTransition } from './droneFeedTransition.ts';
-import type { HudTank } from './hud.ts';
+import type { HudTank, HudMatchModeState } from './hud.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { AERIAL_RULES, matchRulesetFor } from '../sim/matchRuleset.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
@@ -17,6 +17,9 @@ function icon(parent:HTMLElement,name:UiIconId,cls='flight-icon'):HTMLElement {
 function instrument(parent:HTMLElement,name:UiIconId,label:string){
   const host=node('span','flight-instrument',parent);host.title=label;host.setAttribute('aria-label',label);
   icon(host,name);const value=node('b','',host);return {host,value};
+}
+function gunshipDesignation(escort:HudMatchModeState['escort']):string {
+  return escort?t('flight.gunship.escort',{alive:escort.alive,rescued:escort.rescued,required:escort.required}):t('flight.gunship.role');
 }
 /** Mode-specific instruments keep the shared amber/slate HUD language and real controls. */
 export function createAerialHud(parent:HTMLElement,bus:EventBus){
@@ -38,9 +41,15 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
   const switchScope=()=>{if(!scopeView.hidden)cycleScopeVision();};scopeView.addEventListener('click',switchScope);bus.on('ui:aerialVision',switchScope);
   const root=node('section' ,'cot-flight-hud',parent);root.hidden=true;
   const sight=node('div','flight-sight',root);sight.setAttribute('aria-hidden','true');
+  const solution=node('div','gunship-solution',root);solution.hidden=true;
+  const solutionLabel=node('span','gunship-solution-label',solution);
+  const solutionTelemetry=node('div','gunship-solution-telemetry',solution);
+  const zoom=instrument(solutionTelemetry,'zoomIn',t('flight.zoom'));
+  const distance=instrument(solutionTelemetry,'scope',t('flight.range'));
   const panel=node('div','flight-console',root);
   const designation=node('div','flight-designation',panel);
-  icon(designation,'modeDrone');const designationLabel=node('span','',designation);
+  const designationIcon=icon(designation,'modeDrone');const designationLabel=node('span','',designation);
+  const role=node('span','gunship-role',designation);role.hidden=true;role.textContent=t('flight.gunship.role');
   const heading=node('div','flight-heading',panel),emblem=icon(heading,'modeDrone','flight-emblem');
   const identity=node('button','flight-identity flight-view-switch',heading),title=node('strong','',identity);
   identity.type='button';
@@ -56,13 +65,11 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
   const timer=instrument(telemetry,'reload',t('flight.battery'));
   const link=instrument(telemetry,'radio',t('flight.link'));
   const speedometer=instrument(telemetry,'speed',t('flight.speed'));
-  const zoom=instrument(telemetry,'zoomIn',t('flight.zoom'));
-  const distance=instrument(telemetry,'scope',t('flight.range'));
   const support=node('div','flight-support',heading);
   const supplyButtons=([{kind:'ammo',action:'supplyAmmo',glyph:'shell',key:'J'},{kind:'heal',action:'supplyHeal',glyph:'medkit',key:'K'}] as const).map(item=>{
     const button=node('button','flight-supply',support);button.type='button';button.dataset.supply=item.kind;
     icon(button,item.glyph);const status=node('small','',button),key=node('kbd','flight-key',button);key.textContent=item.key;
-    button.addEventListener('click',()=>bus.emit('ui:'+item.action,{}));return{...item,button,status,key};
+    button.addEventListener('click',()=>{if(!root.hidden&&root.dataset.kind==='gunship'&&!button.disabled)bus.emit('ui:'+item.action,{});});return{...item,button,status,key};
   });
   const battery=node('meter','flight-battery',panel);battery.min=0;battery.max=AERIAL_RULES.drone.batteryS;battery.setAttribute('aria-label',t('flight.battery'));
   const weapons=node('div','flight-weapons',panel);
@@ -71,8 +78,10 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
     const button=node('button','flight-weapon',weapons);button.type='button';
     icon(button,name,'flight-weapon-icon');
     const copy=node('span','flight-weapon-copy',button),label=node('strong','',copy);label.textContent=t(`flight.weapon.${slot}`);
+    const compact=node('strong','flight-weapon-compact',copy);compact.textContent=t(`flight.weapon.short.${slot}`);
     const status=node('small','',copy),key=node('kbd','flight-key',button);key.textContent=String(slot+1);
-    button.addEventListener('click',()=>bus.emit('ui:shellSelect',{slot}));
+    button.setAttribute('aria-keyshortcuts',String(slot+1));
+    button.addEventListener('click',()=>{if(!root.hidden&&root.dataset.kind==='gunship')bus.emit('ui:shellSelect',{slot});});
     return {button,status};
   });
   const actions=node('div','flight-actions',panel),hint=node('span','flight-hint',actions);
@@ -88,25 +97,44 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
       card.button.setAttribute('aria-pressed',String(selected));card.button.classList.toggle('reloading',wait>0);
       const ammo=player?.combat?.ammo?.[slot];
       card.status.textContent=wait>0?`${wait.toFixed(1)}s`:t('flight.ready',{ammo:GUNSHIP_UNLIMITED||ammo===Infinity?'∞':String(ammo??0)});
+      card.button.setAttribute('aria-label',`${t(`flight.weapon.${slot}`)} · ${card.status.textContent}`);
+      const total=player?.combat?.reloadChannels?.[slot]?.totalS??player?.spec?.gun.shells[slot]?.reloadS??1;
+      card.button.style.setProperty('--weapon-ready',String(1-Math.min(1,wait/Math.max(.01,total))));
+      if(selected){
+        root.dataset.weapon=String(slot);root.classList.toggle('weapon-reloading',wait>0);
+        solutionLabel.textContent=`${t(`flight.weapon.${slot}`)}${wait>0?` · ${wait.toFixed(1)}s`:''}`;
+      }
+    }
+  }
+  function updateScopeControls(visible:boolean,active:boolean,scoped:boolean,viewKey:string):void {
+    scopeView.hidden=!visible||active||!scoped;
+    const scope=getScopeVision(),scopeLocale=getLocale();
+    if(scope!==priorScope||viewKey!==priorScopeKey||scopeLocale!==priorScopeLocale){
+      const next=AERIAL_VIEWS[(AERIAL_VIEWS.indexOf(scope)+1)%AERIAL_VIEWS.length]!;
+      scopeLabel.textContent=t('flight.view.'+scope);scopeKey.textContent=viewKey;
+      scopeGlyph.innerHTML=uiIconSVG(scopeIcons[scope],22);scopeView.dataset.view=scope;
+      for(const step of scopeSteps)step.classList.toggle('active',step.dataset.view===scope);
+      scopeView.title=t('flight.view.next',{view:t('flight.view.'+next)});
+      scopeView.setAttribute('aria-label',t('flight.view.switch',{current:t('flight.view.'+scope),next:t('flight.view.'+next)}));
+      scopeView.setAttribute('aria-keyshortcuts',viewKey);
+      priorScope=scope;priorScopeKey=viewKey;priorScopeLocale=scopeLocale;
+    }
+  }
+  function updateSupplyControls(supplies?:{ammoReadyInS:number;healReadyInS:number},supplyKeys?:{ammo:string;heal:string}):void {
+    for(const item of supplyButtons){
+      const remaining=item.kind==='ammo'?supplies?.ammoReadyInS??0:supplies?.healReadyInS??0;
+      item.button.disabled=remaining>0;item.status.textContent=remaining>0?`${Math.ceil(remaining)}s`:t('flight.supply.short.'+item.kind);
+      item.key.textContent=supplyKeys?.[item.kind]??(item.kind==='ammo'?'J':'K');
+      item.button.setAttribute('aria-keyshortcuts',item.key.textContent);
+      item.button.title=t('flight.supply.'+item.kind);item.button.setAttribute('aria-label',item.button.title+(remaining>0?` · ${Math.ceil(remaining)}s`:''));
     }
   }
   return {
-    update(player:HudTank|null|undefined,now:number,fov:number,dist:number,visible:boolean,key='V',thermalReady=false,viewKey='I',supplies?:{ammoReadyInS:number;healReadyInS:number},supplyKeys?:{ammo:string;heal:string},scoped=false){
+    update(player:HudTank|null|undefined,now:number,fov:number,dist:number,visible:boolean,key='V',thermalReady=false,viewKey='I',supplies?:{ammoReadyInS:number;healReadyInS:number},supplyKeys?:{ammo:string;heal:string},scoped=false,escort?:HudMatchModeState['escort']){
       const view=player?.aerial,active=!!view?.active&&visible;
       const signalLevel=transition.step(active&&view?.kind==='drone'&&thermalReady,active,visible,performance.now());
       signal.hidden=signalLevel<=0;signal.style.opacity=String(Math.min(1,signalLevel*2));
-      scopeView.hidden=!visible||active||!scoped;
-      const scope=getScopeVision(),scopeLocale=getLocale();
-      if(scope!==priorScope||viewKey!==priorScopeKey||scopeLocale!==priorScopeLocale){
-        const next=AERIAL_VIEWS[(AERIAL_VIEWS.indexOf(scope)+1)%AERIAL_VIEWS.length]!;
-        scopeLabel.textContent=t('flight.view.'+scope);scopeKey.textContent=viewKey;
-        scopeGlyph.innerHTML=uiIconSVG(scopeIcons[scope],22);scopeView.dataset.view=scope;
-        for(const step of scopeSteps)step.classList.toggle('active',step.dataset.view===scope);
-        scopeView.title=t('flight.view.next',{view:t('flight.view.'+next)});
-        scopeView.setAttribute('aria-label',t('flight.view.switch',{current:t('flight.view.'+scope),next:t('flight.view.'+next)}));
-        scopeView.setAttribute('aria-keyshortcuts',viewKey);
-        priorScope=scope;priorScopeKey=viewKey;priorScopeLocale=scopeLocale;
-      }
+      updateScopeControls(visible,active,scoped,viewKey);
       root.hidden=!active;document.documentElement.dataset.flight=active?view!.kind:'';
       if(!active||!view){wasActive=false;return;}
       identity.disabled=!thermalReady;visionKey.textContent=viewKey;
@@ -121,18 +149,14 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus){
       identity.setAttribute('aria-keyshortcuts',viewKey);
       identity.title=t('flight.view.next',{view:t('flight.view.'+nextAerialVision())});
       identity.setAttribute('aria-label',t('flight.view.switch',{current:t('flight.view.'+getAerialVision()),next:t('flight.view.'+nextAerialVision())}));
-      const drone=view.kind==='drone';support.hidden=drone;
-      for(const item of supplyButtons){
-        const remaining=item.kind==='ammo'?supplies?.ammoReadyInS??0:supplies?.healReadyInS??0;
-        item.button.disabled=remaining>0;item.status.textContent=remaining>0?`${Math.ceil(remaining)}s`:t('flight.supply.short.'+item.kind);
-        item.key.textContent=supplyKeys?.[item.kind]??(item.kind==='ammo'?'J':'K');
-        item.button.title=t('flight.supply.'+item.kind);item.button.setAttribute('aria-label',item.button.title+(remaining>0?` · ${Math.ceil(remaining)}s`:''));
-      }
+      const drone=view.kind==='drone';support.hidden=drone;solution.hidden=drone;role.hidden=drone;
+      role.textContent=gunshipDesignation(escort);
+      updateSupplyControls(supplies,supplyKeys);
       root.dataset.kind=view.kind;backKey.textContent=key;
       back.setAttribute('aria-keyshortcuts',key);
-      if(kind!==view.kind){kind=view.kind;emblem.innerHTML=uiIconSVG(drone?'modeDrone':'modeAc130',24);}
+      if(kind!==view.kind){kind=view.kind;emblem.innerHTML=uiIconSVG(drone?'modeDrone':'modeAc130',24);designationIcon.innerHTML=uiIconSVG(drone?'modeDrone':'modeAc130',22);}
       title.textContent=drone?t(view.launching?'flight.launching':'flight.drone'):t('flight.gunship');
-      designation.hidden=!drone;designationLabel.textContent=title.textContent;
+      designation.hidden=false;designationLabel.textContent=title.textContent;
       const elapsed=now-priorTime;
       if(wasActive&&elapsed>0)speed+=.2*(Math.hypot(view.x-priorX,view.y-priorY,view.z-priorZ)/elapsed-speed);
       priorTime=now;priorX=view.x;priorY=view.y;priorZ=view.z;wasActive=true;

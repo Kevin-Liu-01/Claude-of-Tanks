@@ -181,6 +181,110 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
  .flight-view-track .scope-vision-step.active{background:Highlight}
 }
 
+/* Gunship: open fire-control rack, independent weapon channels and ground support. */
+.flight-weapon-compact{display:none}
+.cot-flight-hud[data-kind=gunship]{--flight-accent:#ffc46b;--flight-cut:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%)}
+.cot-flight-hud[data-kind=gunship][data-view=infrared]{--flight-accent:#daf4ff}
+.cot-flight-hud[data-kind=gunship][data-view=thermal]{--flight-accent:#ffb16d}
+.cot-flight-hud[data-kind=gunship][data-view=night]{--flight-accent:#b4ee8c}
+.cot-flight-hud[data-kind=gunship] .flight-console{
+ --gunship-width:min(600px,calc(100% - var(--hud-flight-right-clearance,248px) - 24px));
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:var(--gunship-width);
+ left:min(50%,calc(100% - var(--hud-flight-right-clearance,248px) - var(--gunship-width)/2));
+ padding:0;border:0;background:none;box-shadow:none;pointer-events:none;
+}
+.cot-flight-hud[data-kind=gunship] :is(.flight-heading,.flight-support,.flight-actions){display:contents}
+.cot-flight-hud[data-kind=gunship] :is(.flight-emblem,.flight-identity>strong,.flight-telemetry,.flight-cycle-icon){display:none}
+.cot-flight-hud[data-kind=gunship] .flight-designation{justify-content:flex-start;padding:0 16px;gap:8px;letter-spacing:.15em}
+.cot-flight-hud[data-kind=gunship] .flight-designation::after{content:'';height:1px;background:linear-gradient(90deg,#d59a4970,transparent);flex:1;order:1}
+.cot-flight-hud[data-kind=gunship] .gunship-role{order:2;font-size:9px;color:#c4d1d7;letter-spacing:.1em}
+.cot-flight-hud[data-kind=gunship] .flight-weapons{grid-column:1/-1;grid-row:2;gap:8px;margin:0;pointer-events:none}
+.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply){
+ position:relative;isolation:isolate;min-width:0;min-height:50px;margin:0;padding:9px 18px;
+ border:0;border-radius:0;background:none;box-shadow:none;color:#e6eef1;pointer-events:auto;
+ font:inherit;font-size:11px;line-height:1.2;filter:drop-shadow(0 2px 3px #0009);cursor:pointer;
+ --control-edge:#6a7d89;--control-fill:#101e28eb;
+}
+.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply)::before,
+.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply)::after{
+ content:'';position:absolute;inset:0;z-index:-1;clip-path:var(--flight-cut);pointer-events:none;
+}
+.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply)::before{background:var(--control-edge)}
+.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply)::after{inset:1px;background:var(--control-fill)}
+.cot-flight-hud[data-kind=gunship] .flight-weapon{display:grid;grid-template-columns:26px minmax(0,1fr);gap:9px;min-height:66px;text-align:left;align-items:center}
+.cot-flight-hud[data-kind=gunship] .flight-weapon-icon{display:flex;color:#c3d1d8}
+.cot-flight-hud[data-kind=gunship] .flight-weapon-icon svg{width:26px;height:30px}
+.cot-flight-hud[data-kind=gunship] .flight-weapon-copy{gap:5px}
+.cot-flight-hud[data-kind=gunship] .flight-weapon-copy strong{font-size:11px;line-height:1.2}
+.cot-flight-hud[data-kind=gunship] .flight-weapon small{font-size:9px;letter-spacing:.04em;color:#b6c7cd}
+.cot-flight-hud[data-kind=gunship] .flight-weapon-copy::after{content:'';position:absolute;left:18px;right:18px;bottom:5px;height:2px;background:#9caebc88;transform:scaleX(var(--weapon-ready,1));transform-origin:left}
+.cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true]{--control-edge:#ffc46b;--control-fill:linear-gradient(135deg,#67491dec,#302314f0);color:#ffdf9f}
+.cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true] :is(.flight-weapon-icon,small){color:#ffdb9f}
+.cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true] .flight-weapon-copy::after{background:#ffc46b}
+.cot-flight-hud[data-kind=gunship] .flight-key{border:0;border-radius:3px;background:#dfebef20;color:#dce6ed;min-width:17px;height:17px}
+.cot-flight-hud[data-kind=gunship] .flight-weapon>.flight-key{top:5px;right:14px;font-size:9px}
+.cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-column:1;grid-row:3;display:grid;grid-template-columns:20px minmax(0,1fr);grid-template-rows:auto 3px;column-gap:7px;row-gap:5px;align-content:center;--control-edge:var(--flight-accent)}
+.cot-flight-hud[data-kind=gunship] .flight-optic-icon{display:flex;grid-row:1/3;grid-column:1;color:var(--flight-accent)}
+.cot-flight-hud[data-kind=gunship] .flight-optic-icon svg{width:20px;height:20px}
+.cot-flight-hud[data-kind=gunship] .flight-feed{grid-column:2;grid-row:1;gap:4px;font-size:10px;letter-spacing:0;white-space:nowrap}
+.cot-flight-hud[data-kind=gunship] .flight-feed>span:first-child{flex:1}
+.cot-flight-hud[data-kind=gunship] .flight-view-track{display:flex;grid-column:2;grid-row:2;gap:4px;height:3px}
+.cot-flight-hud[data-kind=gunship] .flight-supply{grid-row:3;display:flex;flex-direction:row;justify-content:center;gap:7px}
+.cot-flight-hud[data-kind=gunship] .flight-supply[data-supply=ammo]{grid-column:2}
+.cot-flight-hud[data-kind=gunship] .flight-supply[data-supply=heal]{grid-column:3}
+.cot-flight-hud[data-kind=gunship] .flight-supply small{font:inherit;font-weight:700}
+.cot-flight-hud[data-kind=gunship] .flight-supply .flight-key{position:static;font-size:9px}
+.cot-flight-hud[data-kind=gunship] .flight-supply[data-supply=heal] .flight-icon{color:#b2e29e}
+.cot-flight-hud[data-kind=gunship] .flight-supply:disabled{opacity:.65;cursor:default}
+.cot-flight-hud[data-kind=gunship] .flight-hint{grid-column:1/-1;grid-row:4;max-width:none;text-align:center;font-size:9px;color:#c6d2d8}
+.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):hover:not(:disabled)::after{background:#304550ee}
+.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):focus-visible{outline:none;filter:drop-shadow(0 0 4px #fff)}
+.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):focus-visible::before{background:#fff}
+.cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):focus-visible::after{inset:3px}
+.gunship-solution{position:absolute;top:50%;left:50%;width:220px;transform:translate(-50%,-50%);color:var(--flight-accent);text-shadow:0 1px 2px #000,0 0 6px #000;pointer-events:none}
+.gunship-solution-label{position:absolute;bottom:calc(100% + 21px);left:50%;transform:translateX(-50%);font-size:10px;font-weight:750;letter-spacing:.06em;white-space:nowrap}
+.gunship-solution-telemetry{display:flex;justify-content:space-between;gap:70px}
+.gunship-solution .flight-instrument{font-size:11px;gap:4px}
+.gunship-solution .flight-icon{color:inherit}
+.cot-flight-hud[data-kind=gunship] .flight-sight{color:var(--flight-accent);transition:width .12s,height .12s}
+.cot-flight-hud[data-kind=gunship][data-weapon='0'] .flight-sight{width:28px;height:28px}
+.cot-flight-hud[data-kind=gunship][data-weapon='1'] .flight-sight{width:52px;height:52px;border:1px solid #dceee77a;border-radius:50%;background:none}
+.cot-flight-hud[data-kind=gunship][data-weapon='1'] .flight-sight::before{content:'';position:absolute;inset:8px;border:1px solid currentColor;border-radius:50%;opacity:.5}
+.cot-flight-hud[data-kind=gunship][data-weapon='2'] .flight-sight{width:38px;height:38px;transform:translate(-50%,-50%) rotate(45deg)}
+.cot-flight-hud[data-kind=gunship].weapon-reloading .flight-sight{opacity:.55}
+@media(pointer:coarse){
+ .cot-flight-hud[data-kind=gunship] .flight-console{left:50%;width:min(480px,calc(100% - 184px));gap:6px;bottom:max(8px,env(safe-area-inset-bottom))}
+ .cot-flight-hud[data-kind=gunship] .flight-weapons{gap:6px}
+ .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply){min-height:46px;padding:6px 12px;font-size:10px}
+ .cot-flight-hud[data-kind=gunship] .flight-weapon{grid-template-columns:16px minmax(0,1fr);gap:5px}
+ .cot-flight-hud[data-kind=gunship] .flight-weapon-icon svg{width:16px;height:21px}
+ .cot-flight-hud[data-kind=gunship] .flight-weapon-copy{gap:3px}
+ .cot-flight-hud[data-kind=gunship] .flight-weapon-copy strong{display:none;font-size:9px}
+ .cot-flight-hud[data-kind=gunship] .flight-weapon-copy .flight-weapon-compact{display:block}
+ .cot-flight-hud[data-kind=gunship] .flight-weapon small{font-size:8px;letter-spacing:0;white-space:nowrap}
+ .cot-flight-hud[data-kind=gunship] :is(.flight-key,.flight-hint){display:none}
+ .cot-flight-hud[data-kind=gunship] .flight-view-switch{grid-template-columns:15px minmax(0,1fr);gap:4px}
+ .cot-flight-hud[data-kind=gunship] .flight-optic-icon svg{width:15px;height:15px}
+ .cot-flight-hud[data-kind=gunship] .flight-feed{font-size:9px}
+ .cot-flight-hud[data-kind=gunship] .flight-supply{gap:5px}
+ .cot-flight-hud[data-kind=gunship] .flight-supply .flight-icon svg{width:16px;height:16px}
+ .cot-flight-hud[data-kind=gunship] .flight-designation{font-size:9px;padding:0 12px;line-height:16px}
+ .cot-flight-hud[data-kind=gunship] .gunship-role{font-size:8px}
+ .gunship-solution{width:190px}.gunship-solution .flight-instrument{font-size:10px}
+ .gunship-solution-label{font-size:9px;bottom:calc(100% + 18px)}
+}
+@media(pointer:coarse) and (orientation:portrait){.cot-flight-hud[data-kind=gunship] .flight-console{width:calc(100% - 24px);bottom:max(128px,calc(env(safe-area-inset-bottom) + 118px))}}
+@media(max-height:290px){
+ .cot-flight-hud[data-kind=gunship] :is(.flight-designation,.gunship-solution-label){display:none}
+ .cot-flight-hud[data-kind=gunship] .flight-weapons{grid-row:1}
+ .cot-flight-hud[data-kind=gunship] :is(.flight-view-switch,.flight-supply){grid-row:2}
+}
+@media(forced-colors:active){
+ .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply){outline:1px solid ButtonText}
+ .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply):focus-visible{outline:3px solid Highlight}
+}
+@media(prefers-reduced-motion:reduce){.cot-flight-hud[data-kind=gunship] .flight-sight{transition:none}}
+
 .cot-drone-signal-loss{position:absolute;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;pointer-events:none;background:#131d20;color:#e5f1e9;font-size:12px;letter-spacing:.18em;text-shadow:0 2px 4px #000;isolation:isolate}
 .cot-drone-signal-loss::before{content:'';position:absolute;inset:0;z-index:-1;background-image:var(--signal-noise);background-size:128px 128px;opacity:.55;animation:drone-signal-grain .16s steps(2) infinite}
 .cot-drone-signal-loss::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,#0003 3px 4px);pointer-events:none}
