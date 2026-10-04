@@ -6754,6 +6754,50 @@ recipe and its cloudscape gate, nine maps).**
   the re-shoot), the gated deck lumps ("a uniform, high-frequency grain like stucco"), and the haze's warm lobe toward the
   sun (no pixel changed on four maps' sunward views). Desert's sky-w streak was the before frame's contrail.
 
+**The cost and the clamp's proof (2026-10-03, one held turn with fp13).**
+- *Perf, ABBA:* the gobo build (a12c5681a) against the one-path build with the wave-17 batch (4b558d224), three maps
+  × two views × 300 frames, desktop high at 1600 × 900. GPU p25 lane → dev: Desert chase 12.28 → 12.34, centre-far
+  12.44 → 12.35; Frontier 13.86 → 12.14 and 12.43 → 11.93; Verdant 12.21 → 11.95 and 12.02 → 11.14 (ms) — no worse
+  anywhere, though the dev build also carries the PR head's scenery (Frontier's chase 455 draw calls against 417). Every
+  slot held 60 fps (a 16.7 ms frame interval); the CPU deltas sat inside the machine's load swing (load1 11 → 32).
+- *The bank clamp on the mountains lane's recipe* (their 01b90af3b with the panorama shell pushed to 4.5 km, scratch):
+  without the clamp Saltwind's far shells past 3.6 km stood as pale washed slabs with sheer sides and Coastal's far shore
+  as a white band; with it they keep their own colour and the bank stays in front of them and over the open sea.
+
+**The decks' relief (fp14; the gauntlet's wave 27).** The decks read "a featureless off-white wash"; the fine lumps
+read as stucco (wave 19), so the relief went to the kilometre scale instead: broad cells and strong rolls — cells 1,
+cellM 2400, undulatus 0.7 — on Frosthollow's `stratocumulus-deck` row and Railyard's own block, exactly as fp14's dk3
+shot them (sky +0.25 against the plain after; Foundry's deck, not shot, keeps its row). The critics still find the decks
+"blurry and pillowy" with 20–40 % blue on maps meant to be overcast: a fuller coverage for the deck maps is the next
+step, untried.
+
+**The cumulus: the residual gap (waves 19, 22 and 27; the thread closed after three waves without gain).** What the
+critics want, in their words across the waves: flat shaded bases at one condensation height, crisp lit edges,
+cauliflower tops, and cells that grow overhead and shrink toward the horizon. What each attempt did:
+- *Wave 19 (fp12):* a shaded underside (`CLOUD_BASE_DARK`: the base's light and sky floor down to about a fifth) and a
+  crisp flat base (`CLOUD_BASE_SHARP`: the footprint's density near the base). The sharp base filled every cell's
+  footprint, including the cells the shape noise had left empty — "grey soft-edged flat lozenges", "a regular row of
+  grey pills" (sky −0.67 to −1.67).
+- *Wave 22 (fp13):* the sharp base fixed to fill only a column that carries the body; the shaded base alone and with it
+  read as "grey saucers" on Coastal, "shaded flat bases" on Verdant and Frontier (sky −0.17 each); the far flattening
+  −0.67.
+- *Wave 27 (fp14):* a crisp outline (`CLOUD_EDGE_CRISP`: the base outline crinkled in plan, the density saturating a
+  shorter way in), billowed tops (`CLOUD_TOP_BILLOW`: the cells, not the wisps, carving the tops) and the battlefield's
+  field floor (`CLOUD_NEAR_FIELD`: the cumulus fields' gate never under the mean within 2.8 km of the centre, after a CPU
+  twin showed Verdant's battlefield in a field's gap — 0.64 over the first 2 km, 1.35 at 5 km — which is why the critics
+  saw "tiny grey dabs high in the frame" under big masses kilometres out). The crisp outline scored even (+0.00), the
+  billowed tops −0.50, the floor −0.50: "evenly bright cotton balls with rounded bottoms at different heights… egg and
+  pill shapes".
+All six knobs stay in the code at 0 (read per frame through `__LIGHT_TUNE`). The read on why: the slab model carves one
+density field — the weather's coverage, the shape volume's cells and two erosion octaves, under a height profile — and
+every lever that sharpens one feature softens another. The base's flatness, the outline's crispness and the tops'
+cauliflower all come from the same remap of the same noise, so a flat base costs the outline its lobes (erosion off),
+lobes cost the base its flatness (erosion on), and a darker base reads as a grey saucer without a crisp lit body over
+it. Getting all three needs a different density formulation: a base-height clamp in density space (the condensation
+level as a hard plane the density is cut at, independent of the noise that shapes the body), and a separate noise basis
+for the tops (larger-scale billows that grow with height, with their own lit-edge sharpening), with the cells sized by
+a size distribution rather than a coverage cut, so the overhead cells are the large ones.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

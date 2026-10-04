@@ -19,12 +19,17 @@ export default {
     ]) },
     marshes: [{ x: 136, z: -128, r: 28, dip: 0.7 }, { x: -120, z: 230, r: 29, dip: 0.8 }],
     landforms: [
-      { kind: 'ridge', x: -262, z: -36, length: 310, width: 64, height: 8.2, yawDeg: 6 },
-      { kind: 'ridge', x: 250, z: 36, length: 320, width: 70, height: 8.6, yawDeg: -8 },
+      // the valley's two flanks (2026-10-02, maps lane B: set back to the valley's real sides, off Verdant's skeleton)
+      { kind: 'ridge', x: -326, z: -30, length: 330, width: 70, height: 8.6, yawDeg: 6 },
+      { kind: 'ridge', x: 322, z: 30, length: 340, width: 74, height: 9, yawDeg: -8 },
       { kind: 'ridge', x: -194, z: -218, length: 210, width: 48, height: 5.6, yawDeg: 80 },
       { kind: 'ridge', x: 172, z: 218, length: 224, width: 52, height: 6.0, yawDeg: 82 },
       { kind: 'knoll', x: -84, z: 290, rx: 82, rz: 64, height: 6.2 },
       { kind: 'basin', x: 0, z: -12, rx: 136, rz: 182, height: -3.0, settlementScale: 0.5 },
+      // 2026-10-02 (maps lane B): the swells that close the valley's two ends, each screening one team's assembly
+      // ground from the other's down the valley floor; the farm tracks cross them in cuttings.
+      { kind: 'ridge', x: -40, z: -338, length: 340, width: 70, height: 7, yawDeg: 3 },
+      { kind: 'ridge', x: -20, z: 330, length: 340, width: 70, height: 6, yawDeg: -3 },
     ],
   },
   spawns: { player: { x: -68, z: -392 }, enemies: [
@@ -45,14 +50,20 @@ export default {
       { x0: 126, z0: -98, x1: 268, z1: -80, gap: 18, jitter: 0.8, species: 'oak' },
     ],
     authoredTrees: [
-      // Rehouse existing oaks as cultivated parcels. Cedar/pine libraries,
-      // total tree records, variants and the distant wooded rim stay intact.
-      { id: 'west-lower-orchard', species: 'oak', path: [[-210, -96], [-140, -78]], count: 10, width: 0.15 },
-      { id: 'west-middle-orchard', species: 'oak', path: [[-212, -44], [-142, -28]], count: 10, width: 0.15 },
-      { id: 'west-upper-orchard', species: 'oak', path: [[-208, 42], [-142, 60]], count: 10, width: 0.15 },
-      { id: 'east-lower-orchard', species: 'oak', path: [[146, -94], [250, -78]], count: 14, width: 0.15 },
-      { id: 'east-middle-orchard', species: 'oak', path: [[146, 78], [236, 94]], count: 12, width: 0.15 },
-      { id: 'east-upper-orchard', species: 'oak', path: [[150, 132], [246, 146]], count: 13, width: 0.15 },
+      // Four orchard blocks of three contour rows each, 9 m apart, on the terraces above their retaining walls: the
+      // existing oaks rehoused as cultivated parcels (no new trees; the cedar and pine stands stay the edges).
+      { id: 'west-lower-orchard-1', species: 'oak', path: [[-210, -96], [-140, -78]], count: 10, width: 0.15 },
+      { id: 'west-lower-orchard-2', species: 'oak', path: [[-212.2, -87.3], [-142.2, -69.3]], count: 10, width: 0.15 },
+      { id: 'west-lower-orchard-3', species: 'oak', path: [[-214.5, -78.6], [-144.5, -60.6]], count: 10, width: 0.15 },
+      { id: 'west-upper-orchard-1', species: 'oak', path: [[-208, 42], [-142, 60]], count: 10, width: 0.15 },
+      { id: 'west-upper-orchard-2', species: 'oak', path: [[-210.4, 50.7], [-144.4, 68.7]], count: 10, width: 0.15 },
+      { id: 'west-upper-orchard-3', species: 'oak', path: [[-212.7, 59.4], [-146.7, 77.4]], count: 10, width: 0.15 },
+      { id: 'east-lower-orchard-1', species: 'oak', path: [[168, -127], [256, -116]], count: 11, width: 0.15 },
+      { id: 'east-lower-orchard-2', species: 'oak', path: [[169.1, -135.9], [257.1, -124.9]], count: 11, width: 0.15 },
+      { id: 'east-lower-orchard-3', species: 'oak', path: [[170.2, -144.9], [258.2, -133.9]], count: 11, width: 0.15 },
+      { id: 'east-upper-orchard-1', species: 'oak', path: [[150, 132], [246, 146]], count: 12, width: 0.15 },
+      { id: 'east-upper-orchard-2', species: 'oak', path: [[148.7, 140.9], [244.7, 154.9]], count: 12, width: 0.15 },
+      { id: 'east-upper-orchard-3', species: 'oak', path: [[147.4, 149.8], [243.4, 163.8]], count: 12, width: 0.15 },
     ],
   },
   props: {
@@ -62,7 +73,7 @@ export default {
     buildingLat: [11, 2], destructibleBuildingLat: [15, 3], sideSkip: 0.16, spacingPad: 7.5,
     tacticalBeats: [
       { id: 'village-packing-court', role: 'brawl', x: 70, z: 56, yawDeg: -90, structure: 'longhouse', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
-      { id: 'western-orchard-watch', role: 'scout', x: -272, z: 48, yawDeg: 110, structure: 'huntingblind', outcrop: { count: 4, radius: 8 } },
+      { id: 'western-orchard-watch', role: 'scout', x: -330, z: 140, yawDeg: 110, structure: 'huntingblind', outcrop: { count: 4, radius: 8 } },
       { id: 'upper-harvest-store', role: 'support', x: 246, z: 238, yawDeg: -105, structure: 'fieldhut', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
     ],
     wallStyle: 'fieldstone', wallStoneChance: 0.68,
@@ -75,7 +86,9 @@ export default {
       ids: ['marder1a3', 'ua_t84_oplot_m', 'm551_sheridan', 'pt91m', 'm1a1'] },
     inhabit: { stalls: 4, benches: 4, coreClutter: 22, bales: 8, stooks: 8, pots: 8, laundry: 4, troughs: 2, handcarts: 4, carts: 4, trucks: 4, jeeps: 3, drumClusters: 3, camps: 2, modernClutter: 18, looseClutter: 20, roadFence: 'fencewattle', yardFence: 'fencepicket' },
   },
-  horizon: { baseHex: 0x5c7154, amp: 1.05, style: 'alpine', treeline: 0.84, snowline: 2, forestHex: 0x2e513c, rockHex: 0x7a8270, haze: 0.9, grain: 0.55 },
+  // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): a cultivated Japanese valley's
+  // forested mountains: steep and rounded, wooded to the crests, no snow or alpine rock
+  horizon: { baseHex: 0x5c7154, amp: 1.05, style: 'alpine', treeline: 0.84, snowline: 2, panorama: { regional: 'forested' }, forestHex: 0x2e513c, rockHex: 0x7a8270, haze: 0.9, grain: 0.55 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'fair-weather-cumulus', coverage: 0.28, streets: 0.4, contrails: 0.3 },
   sky: { ...verdant.sky, sunElevationDeg: 28, sunAzimuthDeg: 132, turbidity: 4.5, fogDensity: 0.00058, fogTintHex: 0x99aaac, fogMix: 0.5, cloudOpacity: 0.95, cloudOpacity2: 0.62, sunIntensity: 3.9, hemiIntensity: 0.42 },

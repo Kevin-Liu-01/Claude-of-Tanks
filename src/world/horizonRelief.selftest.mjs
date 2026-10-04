@@ -3,10 +3,13 @@
 // ranges, the far range under a map's cloud deck, and the ring geometry's relief within the receipts' own laws.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import {
-  HORIZON_RELIEF_BAKE_R0, HORIZON_RELIEF_BAKE_R1, HORIZON_RELIEF_CHARACTERS, HORIZON_RELIEF_GRAD_SCALE,
-  bakeHorizonRelief, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
+  HORIZON_COVER_RADIUS_M, HORIZON_RELIEF_AO_DEPTH, HORIZON_RELIEF_AO_POWER, HORIZON_RELIEF_BAKE_R0, HORIZON_RELIEF_BAKE_R1, HORIZON_STAND_HANDOVER_M,
+  HORIZON_RELIEF_CHARACTERS, HORIZON_RELIEF_GRAD_SCALE, HORIZON_RELIEF_SHADE, HORIZON_RELIEF_SUN_DEPTH,
+  bakeHorizonRelief, createHorizonReliefField, encodeCanopyAo, encodeCanopySun, resolveHorizonRelief, resolveHorizonReliefCharacter,
 } from './horizonRelief.ts';
+import { RING_RELIEF_SHADE } from './horizonAutumnGround.ts';
 import { HORIZON_FAR_FOOT_M, HORIZON_FAR_ROWS, HORIZON_FAR_SEGMENTS, resolveFarRangeAmp, sampleHorizonFarRange } from './horizonFarRange.ts';
 import { Matrix4, Vector3 } from 'three';
 import { HORIZON_SEGMENTS, buildHorizonRing, resolveHorizonLightingGains, sampleHorizonGeometry } from './maps/horizon.ts';
@@ -32,7 +35,7 @@ for (const character of HORIZON_RELIEF_CHARACTERS) {
 // the per-map keys: identity first, the style second, the authored key over both
 const expectedCharacter = {
   whiteout: 'polar', winter: 'polar', caldera: 'volcanic', blackglass: 'volcanic', mars: 'martian', monsoon: 'karst', mangrove: 'karst',
-  coastal: 'coastal', saltwind: 'coastal', polders: 'coastal', fjord: 'alpine', alpine: 'alpine', orchard: 'alpine', reservoir: 'alpine',
+  coastal: 'coastal', saltwind: 'coastal', polders: 'coastal', fjord: 'alpine', alpine: 'alpine', orchard: 'alpine', reservoir: 'rolling',
   desert: 'mesa', badlands: 'mesa', titan_gorge: 'mesa', skybridge: 'mesa', copper_mesa: 'mesa',
   verdant: 'rolling', urban: 'rolling', railyard: 'rolling', oasis: 'rolling',
 };
@@ -40,6 +43,10 @@ for (const [mapId, character] of Object.entries(expectedCharacter)) {
   assert.equal(resolveHorizonReliefCharacter(getMapConfig(mapId).horizon, mapId), character, `${mapId} resolves to ${character}`);
 }
 assert.equal(resolveHorizonReliefCharacter({ relief: 'karst', style: 'mesa' }, 'desert'), 'karst', 'an authored key wins');
+// the ring's own style decides where a map has one; the border's landform keeps reading `style` (gauntlet wave 15: Eifel
+// Reservoir's ring rolls like the Eifel over the alpine border its villages were authored on)
+assert.equal(resolveHorizonReliefCharacter({ style: 'alpine', ringStyle: 'rolling' }, 'frontier'), 'rolling', 'the ring\'s own style decides');
+assert.equal(getMapConfig('reservoir').horizon.style, 'alpine', 'Eifel Reservoir\'s border keeps its alpine landform');
 assert.equal(getMapConfig('whiteout').horizon.relief, 'polar', 'Whiteout authors its polar character');
 assert.equal(getMapConfig('whiteout').horizon.style, 'alpine', 'round 72: Whiteout stands on the alpine ladder (36 rows) for its polar ranges');
 
@@ -106,6 +113,155 @@ assert.equal(getMapConfig('whiteout').horizon.style, 'alpine', 'round 72: Whiteo
   let openSea = 0;
   for (let i = 0; i < marineBake.data.length; i += 4) if (marineBake.data[i + 2] === 255 && marineBake.data[i + 3] === 255 && marineBake.data[i] === 128 && marineBake.data[i + 1] === 128) openSea++;
   assert.equal(openSea, 256 * 32, 'the sea apron bakes to open, lit, flat texels');
+}
+
+// --- the mountains lane (2026-10-03): the fall-line drainage and the landcover -------------------------------------------
+// Gauntlet wave 0 named "an obviously repeating diagonal corduroy ridge pattern" on both flanks of Verdant's and Frontier
+// Basin's ranges: the round-72 fine relief stretched its crests along the RADIUS, and a flank seen obliquely does not
+// fall along the radius, so the crests crossed it as parallel diagonal combs. The drainage now follows the fall line.
+{
+  // the program's constants the landcover is encoded against (terrain.ts, the ring branch of splatCompute)
+  const terrainSource = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  assert.ok(terrainSource.includes(`gRingAo = 1.0 - (1.0 - pow(ringRel.z, ${HORIZON_RELIEF_AO_POWER.toFixed(1)})) * ${HORIZON_RELIEF_AO_DEPTH.toFixed(1)} * ringW;`),
+    'the terrain program reads the occlusion with the power and depth the landcover is encoded against');
+  assert.ok(terrainSource.includes(`gRingSun = 1.0 - (1.0 - ringRel.w) * ${HORIZON_RELIEF_SUN_DEPTH.toFixed(2)} * ringW;`),
+    'the terrain program reads the sun visibility with the depth the landcover is encoded against');
+  assert.equal(RING_RELIEF_SHADE, HORIZON_RELIEF_SHADE, 'the ring binds the atlas at the share the bake encodes for');
+  // the encoding: the program's factor from an encoded texel is the bare texel's factor times the cover's light
+  const kA = HORIZON_RELIEF_AO_DEPTH * HORIZON_RELIEF_SHADE, kS = HORIZON_RELIEF_SUN_DEPTH * HORIZON_RELIEF_SHADE;
+  const programAo = (z) => 1 - (1 - Math.pow(z, HORIZON_RELIEF_AO_POWER)) * kA, programSun = (w) => 1 - (1 - w) * kS;
+  for (const ao of [1, 0.9, 0.6, 0.3]) for (const sun of [1, 0.7, 0.2]) for (const light of [1, 0.85, 0.6, 0.5]) {
+    const a = programAo(encodeCanopyAo(ao, light)), b = programSun(encodeCanopySun(sun, light));
+    assert.ok(Math.abs(a - Math.max(1 - kA, programAo(ao) * light)) < 1e-9, `the occlusion texel carries the cover (ao ${ao}, light ${light})`);
+    assert.ok(Math.abs(b - Math.max(1 - kS, programSun(sun) * light)) < 1e-9, `the sun texel carries the cover (sun ${sun}, light ${light})`);
+  }
+  assert.equal(encodeCanopyAo(0.8, 1), 0.8, 'open ground keeps its occlusion texel');
+  assert.equal(encodeCanopySun(0.4, 1), 0.4, 'open ground keeps its sun texel');
+
+  // the comb: a synthetic ring whose ridge line swings up to 40 degrees off the tangent, so many of its flanks fall
+  // obliquely to the radius (35 degrees and more are sampled); on those flanks the fine relief's gradient lies across the FALL LINE (couloirs run down it) and no longer
+  // across the radius (the round-72 combs)
+  const n = HORIZON_SEGMENTS, radii = [];
+  for (let r = 420; r <= 1580; r += 20) radii.push(r);
+  const positions = new Float32Array(n * radii.length * 3), heights = new Float32Array(n * radii.length);
+  const crestAt = (theta) => 980 + 380 * Math.sin(2 * theta);
+  const hAt = (theta, r) => 40 + 170 * Math.exp(-(((r - crestAt(theta)) / 260) ** 2));
+  radii.forEach((r, row) => { for (let k = 0; k < n; k++) {
+    const theta = (k / n) * Math.PI * 2, i = row * n + k;
+    positions[i * 3] = Math.cos(theta) * r; positions[i * 3 + 2] = Math.sin(theta) * r;
+    heights[i] = positions[i * 3 + 1] = hAt(theta, r);
+  } });
+  const synthetic = { columns: n, rowCount: radii.length, positions, heights, maxHeight: 210, seed: 0x5eed, treelineM: null, snowlineM: null };
+  const rolling = resolveHorizonRelief('rolling');
+  const W = 1024, H = 128;
+  const alignment = (settings) => {
+    const bake = bakeHorizonRelief(synthetic, createHorizonReliefField(0x51ab, settings), [0.4, 0.6, 0.7], { width: W, height: H });
+    let fall = 0, tangent = 0, count = 0;
+    for (let j = 4; j < H - 4; j++) {
+      const r = bake.r0 + (j + 0.5) * (bake.r1 - bake.r0) / H;
+      if (r < 640) continue; // past the seam's fade
+      for (let i = 0; i < W; i += 2) {
+        const theta = (i / W) * Math.PI * 2, e = 1e-3, dr = 1;
+        // the macro fall line (analytic): world gradient of hAt
+        const gr = (hAt(theta, r + dr) - hAt(theta, r - dr)) / (2 * dr), gt = (hAt(theta + e, r) - hAt(theta - e, r)) / (2 * e * r);
+        const slope = Math.hypot(gr, gt);
+        if (slope < 0.15) continue;
+        const offRadial = Math.atan2(Math.abs(gt), Math.abs(gr));
+        if (offRadial < 35 * Math.PI / 180) continue;
+        const c = Math.cos(theta), s = Math.sin(theta);
+        const fx = gr * c - gt * s, fz = gr * s + gt * c; // the fall line (uphill) in world xz
+        const idx = (j * W + i) * 4;
+        const gx = (bake.data[idx] / 255 * 2 - 1), gz = (bake.data[idx + 1] / 255 * 2 - 1);
+        const g = Math.hypot(gx, gz);
+        if (g < 0.02) continue;
+        // across the fall line: perpendicular to (fx, fz); the tangential direction: (-s, c)
+        fall += Math.abs((gx * -fz + gz * fx) / (g * Math.hypot(fx, fz)));
+        tangent += Math.abs((gx * -s + gz * c) / g);
+        count++;
+      }
+    }
+    return { fall: fall / count, tangent: tangent / count, count };
+  };
+  const now = alignment(rolling), before = alignment({ ...rolling, drainage: null, cover: null });
+  assert.ok(now.count > 500 && before.count > 500, `the oblique flanks are sampled (${now.count} / ${before.count})`);
+  assert.ok(before.tangent > before.fall + 0.05,
+    `the round-72 field's crests ran across the radius on an oblique flank — the comb (tangential ${before.tangent.toFixed(3)} vs across the fall line ${before.fall.toFixed(3)})`);
+  assert.ok(now.fall > now.tangent + 0.05,
+    `the drainage's couloirs run down the fall line (across the fall line ${now.fall.toFixed(3)} vs tangential ${now.tangent.toFixed(3)})`);
+
+  // the cover: Frontier Basin's ring carries stands past the ring forest and none inside it, none under the treeline's
+  // floor in metres, none at sea; a polar ring and a treeless ring carry none
+  const cfg = getMapConfig('frontier');
+  const ring = sampleHorizonGeometry(cfg, 1337);
+  const base = { columns: HORIZON_SEGMENTS, rowCount: ring.rows.length, positions: ring.positions, heights: ring.heights, maxHeight: ring.maxHeight, seed: 0x5eed };
+  const covered = (input, character) => {
+    const settings = resolveHorizonRelief(character);
+    // the bare bake keeps the walls' rock (the mountain characters' rock bands, the tablelands' varnish): the stands alone
+    // are measured
+    const bareCover = settings.cover && ((settings.cover.varnish ?? 0) > 0 || (settings.cover.beds ?? 0) > 0)
+      ? { ...settings.cover, forest: 0, canopy: 0, fields: 0 } : null;
+    const bare = bakeHorizonRelief(input, createHorizonReliefField(0x51ab, { ...settings, cover: bareCover }), [0.4, 0.6, 0.7], { width: 512, height: 64 });
+    // the stands alone (the field parcels start nearer, at 560 m, on the open ground the band trees leave)
+    const stands = settings.cover ? { ...settings, cover: { ...settings.cover, fields: 0 } } : settings;
+    const bake = bakeHorizonRelief(input, createHorizonReliefField(0x51ab, stands), [0.4, 0.6, 0.7], { width: 512, height: 64 });
+    let inner = 0, outer = 0, outerTexels = 0;
+    for (let j = 0; j < 64; j++) {
+      const r = bake.r0 + (j + 0.5) * (bake.r1 - bake.r0) / 64;
+      for (let i = 0; i < 512; i++) {
+        const idx = (j * 512 + i) * 4;
+        // a texel the cover darkened: both its occlusion and its sun texel lower than the bare bake's (the crowns' grain
+        // and the canopy's height move the bare terms a little, so the margin is the canopy's own)
+        const darker = bake.data[idx + 3] < bare.data[idx + 3] - 40 && bake.data[idx + 2] < bare.data[idx + 2] - 20;
+        if (r < HORIZON_COVER_RADIUS_M[0] - 20) { if (darker) inner++; } else if (r > HORIZON_COVER_RADIUS_M[1]) { outerTexels++; if (darker) outer++; }
+      }
+    }
+    return { inner, share: outer / Math.max(1, outerTexels) };
+  };
+  const wooded = covered({ ...base, treelineM: 0.91 * ring.maxHeight, snowlineM: null }, 'rolling');
+  assert.equal(wooded.inner, 0, 'no baked stand inside the ring forest\'s reach');
+  assert.ok(wooded.share > 0.12 && wooded.share < 0.75, `stands cover part of the ranges past it (${(wooded.share * 100).toFixed(1)} %)`);
+  assert.equal(covered({ ...base, treelineM: 0, snowlineM: null }, 'rolling').share, 0, 'a treeless ring bakes no stand');
+  assert.equal(covered({ ...base, treelineM: 0.91 * ring.maxHeight, snowlineM: null }, 'polar').share, 0, 'a polar ring bakes no stand');
+  assert.equal(covered({ ...base, treelineM: 0.91 * ring.maxHeight, snowlineM: null, marine: new Float32Array(ring.heights.length).fill(1) }, 'rolling').share, 0,
+    'the sea bakes no stand');
+  // the map-borders lane's woods field leads the baked stands across the hand-over, where the ring forest's trees stand in
+  // it; past the hand-over the stands are the ranges' own, whatever the border's field (gauntlet wave 6, Verdant's edge-n:
+  // a woodland parcel's straight edges drawn up a mountain face read as "a translucent blue-grey band")
+  {
+    const settings = resolveHorizonRelief('rolling');
+    const stands = { ...settings, cover: { ...settings.cover, fields: 0 } };
+    const at = (woodsAt) => bakeHorizonRelief({ ...base, treelineM: 0.91 * ring.maxHeight, snowlineM: null, woodsAt }, createHorizonReliefField(0x51ab, stands), [0.4, 0.6, 0.7], { width: 512, height: 64 });
+    const none = at(() => 0), all = at(() => 1);
+    let inBand = 0, past = 0;
+    for (let j = 0; j < 64; j++) {
+      const r = none.r0 + (j + 0.5) * (none.r1 - none.r0) / 64;
+      for (let i = 0; i < 512; i++) {
+        const idx = (j * 512 + i) * 4;
+        const differs = none.data[idx + 2] !== all.data[idx + 2] || none.data[idx + 3] !== all.data[idx + 3];
+        if (r > HORIZON_STAND_HANDOVER_M[0] && r < HORIZON_STAND_HANDOVER_M[1]) { if (differs) inBand++; }
+        // (past the occlusion's and the cast shadows' reach of a band stand's canopy: its shadow falls a little way out)
+        else if (r > HORIZON_STAND_HANDOVER_M[1] + 220 && differs) past++;
+      }
+    }
+    assert.ok(inBand > 200, `the border's woods lead the stands across the hand-over (${inBand} texels follow them)`);
+    assert.equal(past, 0, 'past the hand-over the stands are the ranges\' own: the border\'s woods field changes no texel there');
+  }
+  {
+    const settings = resolveHorizonRelief('rolling');
+    const input = { ...base, treelineM: 0.91 * ring.maxHeight, snowlineM: null, woodsAt: () => 0 };
+    const own = bakeHorizonRelief(input, createHorizonReliefField(0x51ab, settings), [0.4, 0.6, 0.7], { width: 512, height: 64 });
+    const theirs = bakeHorizonRelief({ ...input, fields: false }, createHorizonReliefField(0x51ab, settings), [0.4, 0.6, 0.7], { width: 512, height: 64 });
+    const bare = bakeHorizonRelief(input, createHorizonReliefField(0x51ab, { ...settings, cover: null }), [0.4, 0.6, 0.7], { width: 512, height: 64 });
+    let parcels = 0, kept = 0;
+    for (let i = 0; i < own.data.length; i += 4) {
+      if (own.data[i + 3] < bare.data[i + 3] - 8) parcels++;
+      const r = own.r0 + (Math.floor(i / 4 / 512) + 0.5) * (own.r1 - own.r0) / 64;
+      // (inside the hand-over by the occlusion's and the shadows' reach: a range stand past it shades a little way in)
+      if (r < HORIZON_STAND_HANDOVER_M[0] - 220 && (theirs.data[i + 3] !== bare.data[i + 3] || theirs.data[i + 2] !== bare.data[i + 2])) kept++;
+    }
+    assert.ok(parcels > 500, `the bake lays its parcels on the open ground (${parcels} texels)`);
+    assert.equal(kept, 0, 'with the border\'s parcels in and no woods, the cover leaves the texels inside the hand-over as they were');
+  }
 }
 
 // --- the lighting gains: the vista's constants at the engine's references, following each map's sun and sky ------------
@@ -270,4 +426,4 @@ for(const id of MAP_IDS) {
     if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
   }
 }
-console.log('horizonRelief.selftest: characters, field, bake, far range, ring relief and the dressing rules PASS');
+console.log('horizonRelief.selftest: characters, field, bake, the fall-line drainage and the landcover, far range, ring relief and the dressing rules PASS');

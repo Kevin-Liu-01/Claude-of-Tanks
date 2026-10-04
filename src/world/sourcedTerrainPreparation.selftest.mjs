@@ -258,7 +258,8 @@ for (const [mapId, settings, sourceName] of [
   // round 70 (2026-09-25): the inherited palette under Whiteout's own snow multiplier — both paths must grade alike
   ['whiteout', { sourcedPalette: 'winter', sourcedTint: { G: [0.88, 0.885, 0.895] } }, 'Snow010A'],
   ['unknown-map', {}, 'Grass004'],
-  ['caldera', {}, 'Ground071'],
+  // 2026-10-03 the ground lane: Caldera's ash and cinder are the sand set (the dirt set's twigs read as wind ripple)
+  ['caldera', {}, 'Ground093C'],
 ]) await withFixture(async f => {
   const preparation = f.prepareSourcedTerrain(mapId, settings);
   await f.settle(); await preparation.ready;

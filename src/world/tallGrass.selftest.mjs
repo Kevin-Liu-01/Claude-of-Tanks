@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
-  TALL_GRASS, buildTallGrassClumpGeometry, buildTallGrassFarGeometry, createTallGrass, tallGrassShaderSource,
+  SHADED_SWARD_GLSL, TALL_GRASS, buildTallGrassClumpGeometry, buildTallGrassFarGeometry, createTallGrass, tallGrassShaderSource,
 } from './tallGrass.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { MAP_IDS } from './maps/catalog.ts';
@@ -308,4 +308,19 @@ assert.ok(map.includes('setupMaterial: (material, hook) => engineCtx.setupShadow
 assert.equal(PRESETS.high.tallGrass, 1); assert.equal(PRESETS.ultra.tallGrass, 1); assert.equal(PRESETS.medium.tallGrass, 0.5); assert.equal(PRESETS.low.tallGrass, 0.25);
 assert.equal(PRESETS.mobile.tallGrass, undefined, 'the mobile tier keeps today\'s ground');
 
+// ground lane (2026-10-03, hold 7: shaded straw at 51/81/76 beside sunlit 141/131/90): the shaded sward's light — its
+// final indirect term (after the engine's cool shadow dim and bounce) keeps a quarter of its hue over its luminance as far
+// as the blade stands in shadow, and the carpet (vegetation.ts) carries the same text
+{
+  assert.ok(/reflectedLight\.indirectDiffuse = mix\( cotIrr, vec3\( cotL \) \* vec3\( 1\.05, 1\.0, 0\.86 \), 0\.75 \* cotShade \) \* cotAlb;/.test(SHADED_SWARD_GLSL),
+    'the shaded sward keeps a quarter of its light\'s hue, warmed a little');
+  assert.ok(SHADED_SWARD_GLSL.includes('float cotShade = 1.0 - clamp( cotSunVis, 0.0, 1.0 );'), 'only as far as the blade stands in shadow');
+  const vegetationSource = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
+  assert.ok(vegetationSource.includes('const SHADED_SWARD_GLSL = /* glsl */ `' + SHADED_SWARD_GLSL + '`;'), 'the carpet carries the same shaded-sward light');
+  const tallGrassSource = readFileSync(new URL('./tallGrass.ts', import.meta.url), 'utf8');
+  for (const source of [tallGrassSource, vegetationSource]) {
+    assert.ok(source.replace(/\s+/g, '').includes("replace('#include<lights_fragment_end>',`#include<lights_fragment_end>\\n${SHADED_SWARD_GLSL}`)"),
+      'appended after the chunk (after the engine\'s shadow dim and bounce), not before it');
+  }
+}
 console.log('tallGrass.selftest: blade geometry, gates, a settled ring (exclusions, hollows, shoulders, tints), determinism, the quality knob, streaming, the reed margin, the tundra clumps, the shader, the engine hooks and the world wiring passed');

@@ -168,6 +168,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/efficientReturnRoller.selftest.mjs',
     'src/vehicles/pairedRunningGearStock.selftest.mjs',
     'src/vehicles/loadedTrackContact.selftest.mjs',
+    'src/vehicles/restPoseBatchedGear.selftest.mjs',
     'src/vehicles/trackCarrierSections.selftest.mjs',
     'src/vehicles/profiles/type10XRunningGear.selftest.mjs',
     'src/vehicles/returnRollerGeometry.selftest.mjs',
@@ -969,6 +970,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.cornerHold.selftest.mjs',
     // 2026-10-03 (bots lane): an engaged casemate keeps its bow on its target (scoots, jinks, cover).
     'src/game/ai.casemateLay.selftest.mjs',
+    // 2026-10-03 (bots lane): a patrol leg the grid cannot route still drives (the bridge gate's no-route hold).
+    'src/game/ai.patrolNoRoute.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',
@@ -1142,6 +1145,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainMaterialV2.selftest.mjs',
     'src/world/groundPressure.selftest.mjs',
     'src/world/tallGrass.selftest.mjs',
+    'src/world/landUse.selftest.mjs', // ground lane (2026-10-03): the field system and its CPU twin
     'src/world/roadLookupGrid.selftest.mjs',
     'src/world/roadAuthoredExits.selftest.mjs',
     'src/world/roadBankComposition.selftest.mjs',
@@ -1207,8 +1211,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/leafDetail.selftest.mjs',
     // round 77c (2026-09-26): the horizon ring's forest drawn from the far tier's impostor atlas
     'src/world/horizonForestImpostors.selftest.mjs',
+    // trees round 2 (2026-10-03): the ring forest's shapes keep their own streams (a taller ring moves trees, not shapes)
+    'src/world/horizonForestShapes.selftest.mjs',
     // p2 trees lane (2026-10-01): the grown near trees, their branch-spray atlases and the build's routing
     'src/world/treeGrowth.selftest.mjs',
+    'src/world/treeCrownShading.selftest.mjs',
+    // trees round 2b (2026-10-03): where trees stand: woodland edges and verges, Wadi Rum's groves, the palms' sites
+    'src/world/treeSpacing.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
@@ -1219,6 +1228,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/horizonRelief.selftest.mjs',
     // the mountains lane (2026-10-02): the eroded landform, the bed stair and the skyline cone measure
     'src/world/horizonMassif.selftest.mjs',
+    'src/world/horizonPanorama.selftest.mjs',
     'src/world/horizonCloudShade.selftest.mjs',
     'src/world/horizonRockfield.selftest.mjs',
   'src/world/horizonAutumnGround.selftest.mjs',

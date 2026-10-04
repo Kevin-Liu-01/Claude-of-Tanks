@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { getDeviceTier, getPreset } from '../engine/quality.ts';
 import { createGroundPressureField, type GroundDisturbance, type GroundPressureField } from './groundPressure.ts';
 import { resolveGroundReduxProfile, tallGrassQualityScale, type TallGrassBiome } from './groundRedux.ts';
+import { createLandFieldSample, LAND_CROP, type LandFieldSample } from './landUse.ts';
 
 // Round 73 (2026-09-25, the ground redux; owner: "add tall grass that interacts with tanks"): the tall-grass tier.
 // The meadows carried a knee-high tuft carpet of alpha cards that nothing in the battle ever touched; this tier
@@ -33,6 +34,10 @@ interface TallGrassField {
   _waterWetnessAt?(x: number, z: number): number;
   /** Round 73: the baked fold term (−1 crest .. +1 hollow) the terrain vertices carry. */
   _foldAt?(x: number, z: number): number;
+  /** Ground lane (2026-10-03): the field the terrain draws here (landUse.ts); absent on a map without fields. */
+  _landUseAt?(x: number, z: number, out: LandFieldSample): LandFieldSample;
+  /** Ground lane (2026-10-03): the canopy's cover (0..1) — little sward grows in a stand's shade. */
+  _woodsAt?(x: number, z: number): number;
 }
 
 type TallGrassBlocked = (x: number, y: number, z: number, height: number, radius: number) => boolean;
@@ -45,6 +50,7 @@ interface SplatNoiseSample { n1: number; n2: number; mA: number }
 interface TallGrassOptions {
   seed?: number;
   mapId?: string;
+
   /** Overrides the map's biome (receipts, studio). */
   biome?: TallGrassBiome | null;
   blocked?: TallGrassBlocked | null;
@@ -105,7 +111,7 @@ export const TALL_GRASS = Object.freeze({
                       // of Tarkhan's 44 k clumps sat over the tier's 1 ms budget on the toggle bench)
     fade: Object.freeze([-1, 0, 38, 46] as const), // (in0, in1, out0, out1) m — a strict in-ramp (smoothstep needs edge0 < edge1)
     cap: 56000,       // Tarkhan's 1.2 × steppe filled 40 000 and dropped its ring's far cells (the first sheets)
-    programKey: 'world-tall-grass-near-v1',
+    programKey: 'world-tall-grass-near-v3', // v3 (ground lane): the shaded sward's light neutralised after the chunk
   }),
   far: Object.freeze({
     cellM: 24,
@@ -113,7 +119,7 @@ export const TALL_GRASS = Object.freeze({
     perM2: 0.20,      // single wide blades per square metre (0.30 on the first sheet massed into a dark carpet at 30–120 m)
     fade: Object.freeze([34, 46, 104, 120] as const),
     cap: 28000,
-    programKey: 'world-tall-grass-far-v2',
+    programKey: 'world-tall-grass-far-v4', // v4 (ground lane): the shaded sward's light neutralised after the chunk
   }),
   /** Blade width multiplier of the far ring (one strip carries the read), the root-to-tip gradient exponents and the
    * far ring's lift: the near clump keeps a dark root; the far blade — seen from above, mostly root in screen space,
@@ -166,6 +172,21 @@ const smoothstep = (a: number, b: number, x: number): number => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
 };
+
+/**
+ * Ground lane (2026-10-03): a smooth value noise on a `cell`-metre lattice (0..1) — the sward's tussocks (1.7 m) and
+ * its tall and grazed patches (9 m). Position-hashed: it draws nothing from a cell's seeded stream.
+ */
+function swardNoise(x: number, z: number, cell: number, salt: number): number {
+  const fx = x / cell, fz = z / cell;
+  const ix = Math.floor(fx), iz = Math.floor(fz);
+  const tx = fx - ix, tz = fz - iz;
+  const sx = tx * tx * (3 - 2 * tx), sz = tz * tz * (3 - 2 * tz);
+  const h = (a: number, b: number): number => (cellSeed(salt, a, b) & 0xffff) / 65535;
+  const a = h(ix, iz) + (h(ix + 1, iz) - h(ix, iz)) * sx;
+  const b = h(ix, iz + 1) + (h(ix + 1, iz + 1) - h(ix, iz + 1)) * sx;
+  return a + (b - a) * sz;
+}
 
 /**
  * A clump of `blades` strips fanned around the root, each `segments` quads tall plus a tip triangle: position.x is
@@ -230,7 +251,18 @@ interface SharedUniforms {
   uPressParams: { value: THREE.Vector4 };
   uGrassBase: { value: THREE.Vector3 };
   uGrassTip: { value: THREE.Vector3 };
+  /** Ground lane: the biome's cured-blade colour (its `dry`), the colour a dead blade takes from the tip down. */
+  uGrassDry: { value: THREE.Vector3 };
 }
+
+/** The shaded sward's light (both grass tiers append it after `lights_fragment_end`): see tallGrassHook. */
+export const SHADED_SWARD_GLSL = /* glsl */ `{ vec3 cotAlb = max( material.diffuseColor, vec3( 1e-4 ) ); vec3 cotIrr = reflectedLight.indirectDiffuse / cotAlb; float cotL = dot( cotIrr, vec3( 0.2126, 0.7152, 0.0722 ) );
+#ifdef COT_SUN_VIS_CAPTURED
+float cotShade = 1.0 - clamp( cotSunVis, 0.0, 1.0 );
+#else
+float cotShade = 1.0;
+#endif
+reflectedLight.indirectDiffuse = mix( cotIrr, vec3( cotL ) * vec3( 1.05, 1.0, 0.86 ), 0.75 * cotShade ) * cotAlb; }`;
 
 /** The blade shader: every dimension from the instance attribute, the press from the field, the shadow at the root. */
 function tallGrassHook(shared: SharedUniforms, fade: readonly [number, number, number, number], bendRad: number,
@@ -245,6 +277,7 @@ function tallGrassHook(shared: SharedUniforms, fade: readonly [number, number, n
     shader.uniforms.uPressParams = shared.uPressParams;
     shader.uniforms.uGrassBase = shared.uGrassBase;
     shader.uniforms.uGrassTip = shared.uGrassTip;
+    shader.uniforms.uGrassDry = shared.uGrassDry;
     shader.uniforms.uGrassFade = { value: new THREE.Vector4(fade[0], fade[1], fade[2], fade[3]) };
     shader.uniforms.uBend = { value: bendRad };
     shader.uniforms.uBladeGamma = { value: bladeGamma };
@@ -253,7 +286,7 @@ function tallGrassHook(shared: SharedUniforms, fade: readonly [number, number, n
 uniform float uWindTime; uniform vec3 uCamPos; uniform vec3 uCamFwd; uniform float uSniperFade;
 uniform vec2 uWindDir; uniform sampler2D uPress; uniform vec4 uPressParams; uniform vec4 uGrassFade; uniform float uBend;
 attribute vec4 aBlade;
-varying float vBladeT; varying float vBladeCrush;`);
+varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;`);
     // the blade's own normal: its face turned by the yaw, leaning toward the sky so the strip never lights as a wall
     shader.vertexShader = mustReplace(shader.vertexShader, '#include <beginnormal_vertex>', /* glsl */`
       float cotYaw = aBlade.x + position.z;
@@ -275,6 +308,12 @@ varying float vBladeT; varying float vBladeCrush;`);
         float yaw = cotYaw;
         float hgt = aBlade.y * fade;
         float wid = aBlade.z;
+        // ground lane (2026-10-03, the gauntlet: "a uniform fur carpet", "a sparse comb of stiff blades"): every blade of
+        // a clump is its own — 62–124 % of the clump's height, its own lean (a long blade arches out and droops a little)
+        // and its own tone (the fragment cures a fifth of them to straw)
+        float bR = fract(sin(position.z * 91.7 + aBlade.w * 437.3) * 43758.5453);
+        float bR2 = fract(bR * 7.31 + aBlade.w * 3.17);
+        hgt *= 0.62 + 0.62 * bR;
         // the press at the root: how flat, which way, how bruised
         float press = 0.0; vec2 pdir = vec2(0.0, 1.0); float crush = 0.0;
         if (uPressParams.w > 0.5) {
@@ -296,12 +335,14 @@ varying float vBladeT; varying float vBladeCrush;`);
         vec3 pos = vec3(position.x * wid * taper * across.x, 0.0, position.x * wid * taper * across.y);
         float ang = press * uBend;
         vec3 up = vec3(pdir.x * sin(ang), cos(ang), pdir.y * sin(ang));
-        vec2 lean = vec2(cos(aBlade.w * 6.2832), sin(aBlade.w * 6.2832)) * 0.12;
-        pos += up * (t * hgt);
+        float leanA = aBlade.w * 6.2832 + (bR2 - 0.5) * 2.4;
+        vec2 lean = vec2(cos(leanA), sin(leanA)) * (0.10 + 0.34 * bR2);
+        pos += up * (t * hgt * (1.0 - 0.30 * dot(lean, lean) * t));
         pos.xz += (lean * (1.0 - press) + wind + pdir * press * 0.35) * t * t * hgt;
         transformed = pos;
         vBladeT = t;
         vBladeCrush = crush;
+        vBladeTone = bR2;
       }`);
     // the round-13 rule: the cascade shadow is read at the blade's root, so a swaying tip keeps one shadow state
     shader.vertexShader = mustReplace(shader.vertexShader, '#include <shadowmap_vertex>', /* glsl */`
@@ -316,12 +357,28 @@ varying float vBladeT; varying float vBladeCrush;`);
       #endif
       #include <shadowmap_vertex>`);
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <common>',
-      '#include <common>\nuniform vec3 uGrassBase; uniform vec3 uGrassTip; uniform float uBladeGamma; uniform float uBladeLift; varying float vBladeT; varying float vBladeCrush;');
+      '#include <common>\nuniform vec3 uGrassBase; uniform vec3 uGrassTip; uniform vec3 uGrassDry; uniform float uBladeGamma; uniform float uBladeLift; varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;');
     // both faces of a strip light the same way (no back-face flip) and the root is dark under the sward
+    // ground lane (2026-10-03, waves 13/14: "grass in shadow turns a saturated teal or indigo" — the tank's shadow on the
+    // sward): a shaded blade's light is the sky's own — strongly blue, cooled again by the engine's shadow dim, and a 1.4
+    // scene saturation turns that into teal straw and indigo turf (hold 7: shaded straw at 51/81/76 beside sunlit
+    // 141/131/90). As far as the blade stands in shadow (its root's sun visibility), its final indirect light is a
+    // quarter of that hue over its luminance, warmed a little (the sward's own interreflection and the sunlit ground's
+    // bounce): the shaded sward reads as a darker version of its own colour. Applied after the chunk, so after the
+    // engine's dim and bounce (a lit program carries the anchor; the receipts' bare stand-ins do not).
+    if (shader.fragmentShader.includes('#include <lights_fragment_end>')) {
+      shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>',
+        `#include <lights_fragment_end>\n${SHADED_SWARD_GLSL}`);
+    }
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <normal_fragment_begin>',
       '#include <normal_fragment_begin>\nnormal = normalize( vNormal );\nnonPerturbedNormal = normal;');
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <color_fragment>',
-      `#include <color_fragment>\ndiffuseColor.rgb *= mix(uGrassBase, uGrassTip, pow(vBladeT, uBladeGamma)) * uBladeLift * (1.0 - ${TALL_GRASS.crushDarken.toFixed(2)} * vBladeCrush);`);
+      `#include <color_fragment>\ndiffuseColor.rgb *= mix(uGrassBase, uGrassTip, pow(vBladeT, uBladeGamma)) * uBladeLift * (1.0 - ${TALL_GRASS.crushDarken.toFixed(2)} * vBladeCrush);`
+      // ground lane: a sward is never one green — each blade a shade lighter or darker, a fifth cured to straw from the
+      // tip down (the dead leaves of last season standing in the new)
+      + `\n{ float cure = smoothstep(0.78, 0.84, vBladeTone) * (0.55 + 0.45 * vBladeT);`
+      + `\n  diffuseColor.rgb *= 0.80 + 0.40 * fract(vBladeTone * 3.7);`
+      + `\n  diffuseColor.rgb = mix(diffuseColor.rgb, uGrassDry * mix(0.45, 1.0, vBladeT) * uBladeLift, cure); }`);
   };
 }
 
@@ -346,8 +403,9 @@ function makeSharedUniforms(): SharedUniforms {
     uWindDir: { value: new THREE.Vector2(0.8, 0.6) },
     uPress: { value: null },
     uPressParams: { value: new THREE.Vector4(GROUND_PRESSURE_WINDOW_FALLBACK, 0, 0, 0) },
-    uGrassBase: { value: new THREE.Vector3(0.08, 0.11, 0.03) },
-    uGrassTip: { value: new THREE.Vector3(0.3, 0.4, 0.12) },
+    uGrassBase: { value: new THREE.Vector3(0.025, 0.042, 0.012) },
+    uGrassTip: { value: new THREE.Vector3(0.085, 0.170, 0.035) },
+    uGrassDry: { value: new THREE.Vector3(0.27, 0.22, 0.095) },
   };
 }
 const GROUND_PRESSURE_WINDOW_FALLBACK = 96;
@@ -377,6 +435,9 @@ interface Ring {
 export function createTallGrass(field: TallGrassField, options: TallGrassOptions = {}): TallGrass {
   const seed = options.seed ?? 2006;
   const biome = options.biome === undefined ? resolveGroundReduxProfile(options.mapId).grass : options.biome;
+  // ground lane (2026-10-03): the map's field system (the height field's landUse.ts hook) — inside a field the sward
+  // stands as its crop
+  const _field = createLandFieldSample();
   const blocked = options.blocked ?? null;
   const tier = options.tier ?? getDeviceTier();
   // `?tallgrass=off` and `?ground=legacy` (the same-build A/B the round's captures compare against) keep the tier off
@@ -390,6 +451,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     shared.uWindDir.value.set(biome.windDir[0], biome.windDir[1]).normalize();
     shared.uGrassBase.value.set(biome.base[0], biome.base[1], biome.base[2]);
     shared.uGrassTip.value.set(biome.tip[0], biome.tip[1], biome.tip[2]);
+    shared.uGrassDry.value.set(biome.dry[0], biome.dry[1], biome.dry[2]);
   }
   const pressure = biome && tier !== 'mobile' ? createGroundPressureField(options.renderer, { tier }) : null;
   if (pressure) { shared.uPress = pressure.stateUniform; shared.uPressParams.value = pressure.params; }
@@ -453,8 +515,11 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     if (Math.max(Math.abs(x), Math.abs(z)) > 474) return;
     let keep = 1;
     const roadD = field._roadDist ? field._roadDist(x, z) : 1e9;
-    if (roadD < TALL_GRASS.roadKeepOutM) return;
-    if (roadD < TALL_GRASS.roadShoulderM) keep *= (roadD - TALL_GRASS.roadKeepOutM) / (TALL_GRASS.roadShoulderM - TALL_GRASS.roadKeepOutM);
+    // ground lane (2026-10-03): the sward meets a road on a ragged line — it stands back from the carriageway by up to
+    // 2.2 m more in trodden bays along it (a 2.2 m noise), never one ruled keep-out line; it never comes nearer
+    const keepOut = TALL_GRASS.roadKeepOutM + (roadD < TALL_GRASS.roadShoulderM + 3 ? swardNoise(x, z, 2.2, 0x7a11) * 2.2 : 0);
+    if (roadD < keepOut) return;
+    if (roadD < TALL_GRASS.roadShoulderM) keep *= (roadD - keepOut) / (TALL_GRASS.roadShoulderM - keepOut);
     if (field._noVeg && field._noVeg(x, z)) return;
     const ground = field.getGroundType ? field.getGroundType(x, z) : 'medium';
     if (ground === 'hard') return;
@@ -504,6 +569,73 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       keep *= (0.06 + 1.6 * hollow) * (0.35 + 0.65 * lee) * (0.15 + 0.85 * cluster);
       heightScale *= 0.85 + 0.45 * hollow;
     }
+    // Ground lane (2026-10-03): the land use. Inside a cultivated field the sward IS the crop — ripe wheat stands
+    // thick, tall and gold, barley paler, a young green crop low and dense, stubble a sparse stubble of straw, a plough
+    // bare; the field's grass margin grows rank and a little taller, its tracks thin out. The fields keep to the open,
+    // level ground the terrain draws them on (off roads, villages, water and slopes) — the same layout (landUseAt).
+    let cropTint: readonly [number, number, number] | null = null;
+    if (field._landUseAt && b.kind !== 'reed' && b.kind !== 'tundra') {
+      field._landUseAt(x, z, _field);
+      const vm = field._villageMask ? field._villageMask(x, z) : 0;
+      const slopeN = n ? 1 - n.y : 0;
+      const landW = (1 - smoothstep(0.05, 0.30, vm)) * smoothstep(5.0, 8.0, roadD) * (1 - smoothstep(0.02, 0.06, slopeN))
+        * (1 - smoothstep(0.02, 0.10, water));
+      if (landW > 0.5 && _field.active) {
+        if (_field.track > 0.5) {
+          // a polder's ditch: water, its banks reed (olive, tall); a track: trodden, a quarter of the sward
+          if (_field.boundary === 1) {
+            if (_field.edgeM < 0.85) return;
+            keep = Math.min(1, keep * 1.3); heightScale *= 1.5; cropTint = [0.16 / b.tip[0], 0.19 / b.tip[1], 0.07 / b.tip[2]];
+          } else keep *= 0.25;
+        } else if (_field.edgeM < _field.marginM) {
+          if (_field.boundary === 3) { if (_field.edgeM < 0.62) return; keep *= 0.6; } // a dry stone wall and its foot
+          else if (_field.boundary === 2) { keep *= 0.5; heightScale *= 0.6; } // a bund: short grass on its top
+          else {
+            // a margin: an uncut strip of rank grass and tall weeds (wave 21, the Verdant boundary: "just a line where
+            // sparse lime grass stops and a uniform golden crop carpet begins") — denser and taller than either field,
+            // uneven, a third of it cured: the strip a chase camera reads between two fields
+            keep = Math.min(1, keep * 1.6);
+            heightScale *= 1.45 + 0.65 * swardNoise(x, z, 2.1, 0x6e11);
+            if (swardNoise(x, z, 0.9, 0x3a5f) > 0.62) cropTint = [b.dry[0] / b.tip[0], b.dry[1] / b.tip[1], b.dry[2] / b.tip[2]];
+          }
+        } else {
+          const crop = _field.crop;
+          if (!_field.sward) return; // a plough, turned red earth, a paddy's water
+          if (_field.cropKeep >= 0) keep = _field.cropKeep; // a sown field has no bare dirt patches
+          heightScale *= _field.cropHeight;
+          // the crop's own colour (landUse.ts LAND_CROP_ALBEDO, measured: ripe wheat 0.30/0.22/0.075, barley
+          // 0.33/0.28/0.12, a young crop 0.075/0.19/0.04, stubble 0.30/0.25/0.13 …) as a multiplier on THIS biome's
+          // ramp — a fixed multiplier set against the meadow's tip turned a steppe or savanna sward pink
+          // (a bare field's weeds keep the grass's own cured end, not the soil's colour: LAND_CROP_GROWTH weed)
+          if (_field.weed) cropTint = [b.dry[0] / b.tip[0], b.dry[1] / b.tip[1], b.dry[2] / b.tip[2]];
+          else if (crop !== LAND_CROP.pasture) cropTint = [_field.tintR / b.tip[0], _field.tintG / b.tip[1], _field.tintB / b.tip[2]];
+          // the headland (the terrain draws the same strip): 3–5.5 m inside the margin where the drill turned, the crop
+          // pressed flat and thinner, weeds coming up in it
+          if (_field.boundary === 0 && crop !== LAND_CROP.pasture) {
+            const headW = 3.0 + 2.5 * swardNoise(x, z, 23, 0x4ead) + (swardNoise(x, z, 7, 0x77e1) - 0.5) * 2.0;
+            const into = _field.edgeM - _field.marginM;
+            if (into < headW) {
+              const h = 1 - smoothstep(headW - 1.2, headW, into);
+              keep *= 1 - 0.45 * h;
+              heightScale *= 1 - 0.40 * h;
+              if (h > 0.5 && swardNoise(x, z, 1.3, 0x5eed) > 0.70) cropTint = [b.dry[0] / b.tip[0], b.dry[1] / b.tip[1], b.dry[2] / b.tip[2]];
+            }
+          }
+        }
+      }
+    }
+    // ground lane (2026-10-03): a wild sward grows in tussocks with thinner ground between them, and stands tall in
+    // some patches and grazed short in others; a sown crop stands even (no tussocks there)
+    if (field._woodsAt) keep *= 1 - 0.85 * field._woodsAt(x, z); // a stand's shade: litter, little sward
+    if (!cropTint && b.kind !== 'reed') {
+      keep *= 0.30 + 0.70 * smoothstep(0.28, 0.72, swardNoise(x, z, 1.7, 0x51a7));
+      heightScale *= 0.62 + 0.76 * swardNoise(x, z, 9, 0x2c3d);
+    } else if (cropTint) {
+      // (wave 14, verdant chase: a sown field read as "a uniform carpet … at one height and spacing, like artificial
+      // turf") a crop stands evenly but not as a mat: thinner and shorter in its wet and poor patches, every few metres
+      keep *= 0.40 + 0.60 * smoothstep(0.25, 0.70, swardNoise(x, z, 2.3, 0x51a7));
+      heightScale *= 0.70 + 0.60 * swardNoise(x, z, 6.5, 0x2c3d);
+    }
     if (roll > keep) return;
     if (n && n.y < TALL_GRASS.minSlopeY) return;
     const y = heightAt(x, z);
@@ -521,6 +653,12 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     // sedge's own darkness (the far ring lifts its tips a third — on the snow that lit them white as frost spikes)
     const farDim = ring.far && b.kind === 'tundra' ? 0.5 : 1;
     const rr = (reedTint ? 0.95 : 1) * farDim, rg = (reedTint ? 0.86 : 1) * farDim, rb = (reedTint ? 0.55 : 1) * farDim;
+    if (cropTint) {
+      // a crop's own colour (a multiplier on the biome's root-to-tip ramp, like every clump's tint), its lum jitter kept
+      const cl = 0.90 + 0.20 * tintR;
+      list.push(x, y, z, yawR * Math.PI * 2, heightM, widthM, rnd, cropTint[0] * cl, cropTint[1] * cl, cropTint[2] * cl);
+      return;
+    }
     list.push(x, y, z, yawR * Math.PI * 2, heightM, widthM * (reedTint ? 1.25 : 1), rnd,
       Math.min(1.6, r * lum * moist * rr), Math.min(1.6, g * lum * rg), Math.min(1.6, bl * lum * moist * rb));
   }

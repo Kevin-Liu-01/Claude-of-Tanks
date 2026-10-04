@@ -104,14 +104,26 @@ export default {
     sandstone: true, rockTone: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.62), clamp01(0.43 + (l - 0.5) * 0.34)],
     tintA: [1.10, 0.88, 0.69], tintB: [0.71, 0.54, 0.45], tintC: [1.06, 0.84, 0.67],
     roadTint: [0.78, 0.61, 0.51], strata: 0.035, sandMacro: 0.9,
+    // ground lane (2026-10-03): Wadi Rum's two formations — the Umm Ishrin's red over the paler Disi
+    formation: { atFrac: 0.30, wobbleM: 3, pale: 0.16, red: 0.12 },
     // An alluvial wash has faint wind-scoured patches, not floor-wide dunes.
     rippleAmp: 0.045, midRelief: 0.65, midReliefFar: 780,
   },
   vegetation: {
     species: ['acacia', 'cedar', 'oak', 'palm'], clusterMix: [['acacia', 0.48], ['oak', 0.30], ['cedar', 0.17], ['palm', 0.05]],
     loneMix: [['acacia', 0.54], ['oak', 0.28], ['cedar', 0.14], ['palm', 0.04]], rimMix: [['cedar', 0.45], ['acacia', 0.35], ['oak', 0.20]],
-    clusterCount: 24, loneCount: 46, rimCount: 30, grassDensity: 0.38,
+    // Trees round 2b (2026-10-03, the gauntlet's wave 15: "lush green groves on Wadi Rum"): Wadi Rum's floor carries a
+    // few wide-spaced acacias in the wadi beds and hollows, not groves; six open groves (vegetation.ts treeBiomeArid
+    // seats them in the low ground), twenty lone trees in the beds, a thin sward on the sand. Was 24 / 46 / 0.38.
+    clusterCount: 6, loneCount: 20, rimCount: 30, grassDensity: 0.08,
     clusterScrub: 1.5, bushCount: 0.74, bushSpecies: 'oak',
+    // the palms grow at the springs under the lane inselbergs' west and east feet only (the pair turns about the
+    // outpost); a palm drawn anywhere else grows as an acacia
+    palmSites: pair({ x: -166, z: -148, r: 24 }), palmFallback: 'acacia',
+    // ground lane (2026-10-03, the gauntlet's wave 4: "saturated green grass cards" on the red floor): the wadi's tufts
+    // are cured straw, as Sirocco's are
+    grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.95 + 0.10)],
+    tuftTone: (h: number, s: number, l: number) => [0.10, 0.24, clamp01(l * 0.70 + 0.12)],
   },
   props: {
     // regional-buildings lane: the Wadi Rum outpost kit (maps/regional/wadirum.ts)
@@ -183,7 +195,12 @@ export default {
     // Round 29 (owner 2026-09-20, "see where the texture just stops"): treeline 0.06 let the vista paint every
     // outland surface under 8 m — the canyon-mouth floors past both deployment ends — as dark woodland (green
     // before the absolute tints, dark brown after). Redrock's outland is sand and rock; no ring forest.
-    baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0, ground: 'sand', banding: 0.045,
+    // the mountains lane (2026-10-03, gauntlet wave 24): held at the PR head's far country while the far jebels are rebuilt on
+    // maps lane A's inselberg section — the regional 'jebel' read as "low rounded swells, nothing resembles Wadi Rum's walls"
+    baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0, ground: 'sand', banding: 0.045, panorama: false,
+    // (the outland boulders a shade sparser: they follow the ring's drained faces, and the map's horizon draws no more
+    // triangles than before the mountains lane's relief work)
+    outlandRocks: 0.95,
     forestHex: 0x58402f, rockHex: 0x96533b, haze: 0.92, grain: 0.58,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
