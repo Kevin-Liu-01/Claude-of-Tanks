@@ -2500,6 +2500,43 @@ function supportsShadowHook(engineCtx: ShadowEngineContext | null | undefined): 
 }
 
 /**
+ * The registration each vehicle material was built with (createTankMaterials' `setup`): the cascade setup with the
+ * readability hook through the engine context, or the hook alone in a renderer stub, and the shared program key.
+ * 2026-10-04 (the vehicle-look lane): Material.clone() keeps none of it — three's MeshStandardMaterial.copy resets
+ * `defines` to { STANDARD } (USE_CSM, CSM_CASCADES and CSM_FADE go) and Material.copy never copies onBeforeCompile or
+ * customProgramCacheKey — so a cloned vehicle material (the track shoes, the thrown track, a profile's band finish, an
+ * isolated gear role) fell back to three's plain directional loop: all four cascade suns at full intensity, each
+ * unshadowed outside its own cascade (about four times the sun on a lit face), with neither the sun state nor the
+ * vehicle tag the aerial pass reads (lighting.ts, vehicleOcclusion.ts). cloneVehicleMaterial joins a clone to exactly
+ * the registration its source has; the clone is disposed and released like any vehicle material.
+ */
+const VEHICLE_MATERIAL_SETUP = new WeakMap<THREE.Material, <T extends THREE.Material>(material: T) => T>();
+
+/**
+ * The vehicle's own shader switches, which three's copy drops with the rest of the defines and a clone keeps (the wheel
+ * paint's floor). The cascade's defines (USE_CSM, CSM_*, COT_CLOUD_SHADE) belong to the registration and come back
+ * with it.
+ */
+const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY'] as const;
+
+/** Clone a vehicle material into its source's cascade registration, readability hook, program key and switches. */
+export function cloneVehicleMaterial<T extends THREE.Material>(source: T): T {
+  const clone = source.clone() as T;
+  const sourceDefines = (source as { defines?: Record<string, unknown> }).defines;
+  for (const key of VEHICLE_SHADER_SWITCHES) {
+    if (!sourceDefines || !(key in sourceDefines)) continue;
+    const target = clone as { defines?: Record<string, unknown> };
+    target.defines = { ...target.defines, [key]: sourceDefines[key] };
+  }
+  const setup = VEHICLE_MATERIAL_SETUP.get(source);
+  if (setup) return setup(clone);
+  // a material from outside createTankMaterials (a stub's, a receipt's): it keeps its hooks, which a plain clone drops
+  clone.onBeforeCompile = source.onBeforeCompile;
+  clone.customProgramCacheKey = source.customProgramCacheKey;
+  return clone;
+}
+
+/**
  * Build the full material set for one tank.
  * @param {object} spec TankSpec (reads spec.visual palette hints)
  * @param {object} engineCtx EngineCtx (§2.8) — setupShadowMaterial + anisotropy
@@ -2520,6 +2557,7 @@ export function createTankMaterials(
     if (shadowHookSupported && shadowSetup) shadowSetup(material, vehicleAmbientFloorHook);
     else material.onBeforeCompile = vehicleAmbientFloorHook;
     material.customProgramCacheKey = () => 'veh-ambient-floor-v5';
+    VEHICLE_MATERIAL_SETUP.set(material, setup); // cloneVehicleMaterial re-registers its clones the same way
     return material;
   };
   const aniso = engineCtx?.anisotropy || 8;
