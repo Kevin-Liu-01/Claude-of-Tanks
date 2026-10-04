@@ -857,11 +857,17 @@ contact constraints and cannot be crossed by residual uphill speed.
   hull about its centre of mass as well as lifting it, as a rigid body struck there moves: the root takes its share,
   `k²/(k²+a²)` of the rest, and the turn the remainder as a pitch rate eased in at 0.25 rad/s a step. Trenches crossed
   at speed slow at the far wall: entering an assault trench at 11 m/s, the median hull's slowest is 7.9 m/s where it
-  kept 9.0. A strike on the hull's own body (an end guard, not a track station) is still resolved by position, the
-  floor lifting the root: a UDES 03 landing 13 degrees nose-down in an assault trench at 11 m/s in the Earth-gravity
-  mode has its nose guard meet the far wall and is lifted 0.135 m in a step (a known glitch run of the torture matrix).
-  Splitting it like a station's strike leaves the guard 6.5 cm in the wall, since a guard has no stops to take the
-  first 8 cm; the fix is a body strike taken as a velocity impact.
+  kept 9.0. A strike on the hull's own body is a station too (round 8): an end guard (the lowest shell past the tracks'
+  flat run at each of four pitches, 14 to 63 degrees, in three lateral bins; up to 24, the fleet's median 7), or on a
+  structure one of the contact box's bottom corners 0.15 m over the track line, whatever the tracks' seat, grip or
+  travel. There are no stops between: the root takes its share and the hull the turn of the rest at once, the step's
+  depth taken as the struck end's closing rate, so the end stops on the ground and the attitude's step is its rate's.
+  A turn about the centre of mass that would sink the far end's body contact turns about that contact instead. A body
+  contact the hull rests on above its tracks joins the contact-aware fit (the plane, the gravity tip about it, the root
+  following a pivot there): a hull half over a roof's edge, its tracks past it, tips off the roof on its box rather than
+  resting on its nose 0.6 m over its track line, 0.55 m into the roof by the standing rule's reading, until the rule
+  pushed it out 0.15-0.9 m in a step. A body contact against a face steeper than the wall grade (the ground rising to
+  it from 0.3 m back) is no floor: the face meets it horizontally.
 - *Landing speed is the hull's own approach.* An airborne hull's ground moves only with its own travel over the
   slope beneath it (its grade along the travel, read from two world samples once the hull is pitched past 72
   degrees and its track samples stack over one point), never with the support envelope's swing as the hull turns.
