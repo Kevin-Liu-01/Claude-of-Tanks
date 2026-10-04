@@ -873,7 +873,12 @@ contact constraints and cannot be crossed by residual uphill speed.
   step-up of the hull's lowest underside point over that part's footprint (a 5 × 3 grid over the hull's footprint,
   the nose and tail rows lifted by the shell's own rise there; the track rows decide when any lies over the part) —
   in the support field (`structureSupport.beginHull` with `hullSupportPose`), the authority's and the solo sim's
-  obstacle solver and the client's prediction world alike; otherwise it is a wall.
+  obstacle solver and the client's prediction world alike; otherwise it is a wall. A nose or tail row alone over a
+  part stands on it only with the step-up counted against it, but clears it in the air as the track plane under it
+  does (`clearBottom`, the tracks that meet the part next): read through the step-up, a nose a metre over a viaduct
+  span's sub-deck slab cleared it by 0.45 m, under the 0.5 m overpass, and the slab stopped a hull with no nose lift
+  dead on the deck at every span joint (Aegis Crossing, 248 hp a joint); read at the nose's lifted height, a high
+  glacis passed over a low wall its tracks then met deep inside.
 - *The footprint is the hull at its attitude.* The obstacle solver pushes, and the underside is sampled over, the
   contact rect's track plane projected onto the ground (`world/collision.ts hullFootprint`): foreshortened by the
   pitch and the roll, never longer or wider than the rect, its underside rising across it as the tilted plane does.

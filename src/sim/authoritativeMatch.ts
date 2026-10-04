@@ -1146,7 +1146,8 @@ export function createAuthoritativeMatch({
       foot.centerZ = centerZ + outPush.z - startZ;
       _obstacleCenter.set(foot.centerX, pos.y, foot.centerZ);
       const spanBottom = hullUndersideOver(obstacle, foot, pos.y);
-      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+      const clearBottom = foot.clearBottom;
+      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, clearBottom)) continue;
       const closestX = Math.max(obstacle.min[0], Math.min(foot.centerX, obstacle.max[0]));
       const closestZ = Math.max(obstacle.min[2], Math.min(foot.centerZ, obstacle.max[2]));
       const dx = foot.centerX - closestX;
@@ -1156,7 +1157,7 @@ export function createAuthoritativeMatch({
       const beforeZ = outPush.z;
       const pushed = pushHullFromObstacle(
         _obstacleCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth,
-        obstacle, outPush, spanBottom, spanTop,
+        obstacle, outPush, spanBottom, spanTop, clearBottom,
       );
       if (!pushed) continue;
       if (!obstacle.crushable || !obstacleIsPressedThrough(entity, obstacle)) {
@@ -1176,10 +1177,10 @@ export function createAuthoritativeMatch({
       foot.centerZ = centerZ + outPush.z - startZ;
       _obstacleCenter.set(foot.centerX, pos.y, foot.centerZ);
       const spanBottom = hullUndersideOver(obstacle, foot, pos.y);
-      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable)) continue;
+      if (hullPassesObstacleTop(spanBottom, obstacle.max[1], obstacle.min[1], !obstacle.crushable, foot.clearBottom)) continue;
       pushHullFromObstacle(
         _obstacleCenter, foot.forwardX, foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth,
-        obstacle, outPush, spanBottom, spanTop,
+        obstacle, outPush, spanBottom, spanTop, foot.clearBottom,
       );
     }
     hardObstacles.length = 0;
