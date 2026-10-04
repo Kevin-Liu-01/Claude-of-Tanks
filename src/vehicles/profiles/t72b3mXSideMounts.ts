@@ -1,8 +1,9 @@
 // First-party closed stock from scalar source sections. The source's open
 // channel between deck and side armor was kept open until 2026-09-14; the
 // owner then ruled the fender-to-skirt gaps closed, so a shoulder cover now
-// bridges deck edge and skirt lane (shoulderCover) and the two open rail
-// fields between the ERA cassettes carry a backing sheet (railFieldBacking).
+// bridges deck edge and skirt lane (shoulderCover) along the whole deck fender
+// and the two open rail fields between the ERA cassettes carry a backing sheet
+// (railFieldBacking).
 import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
@@ -152,7 +153,13 @@ export function shoulderCoverTop(z:number):number {
 }
 /** Skirt top per station (t72b3mX.ts skirt ERA spans). */
 function skirtTopAt(z:number):number { return z>2.242?1.47615:z>1.637?1.52077:1.53164; }
-const SHOULDER_COVER_Z:readonly[number,number]=[-3.153,2.702];
+/** Front station of the deck fender (t72b3mX.ts fenders), where the rounded front fender takes over. */
+export const T72B3M_DECK_FRONT_Z=3.08;
+// 2026-10-03: the cover runs on to the deck fender's front station. It used to stop at the last rail-field station
+// (z 2.702), so the channel stayed open between the last upper link (z 2.74) and the front lower link (z 2.99): a
+// pocket enclosed in plan, 8-9 hole cells in the standard check's top-down scan of every hull with these mounts. Every
+// link there sits below the cover (link tops <= 1.419 m, cover underside 1.437 m).
+const SHOULDER_COVER_Z:readonly[number,number]=[-3.153,T72B3M_DECK_FRONT_Z];
 const SHOULDER_COVER_THICKNESS=.024;
 
 function shoulderCover(P:TankBuilderPort,side:number):void {
