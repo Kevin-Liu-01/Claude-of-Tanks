@@ -307,6 +307,13 @@ forty profile-pack clones still re-hook by hand (`rehook`, `'veh-ambient-floor-v
 The field camouflages (`catalogCamoPainter.ts` paintField) are thresholded on a 192-texel raster; above that size
 `paintFieldEdges` draws their boundaries at the tile's own resolution (one anti-aliased texel). Never scale the
 hard stencil up with smoothing again: that was the "soft, blurry camo blobs" (`camoFieldEdges.selftest.mjs`).
+The bolted-on buckets (add-on armour, detail, painted detail, equipment: `PART_AXIS_CAMO_BUCKETS`) take one camouflage
+projection plane per box-like part, its broad faces' (`partAxisUV`, factoryGeometry.ts), before the bucket merges:
+boxUV's per-face planes made every small box sample three unrelated parts of the tile ("a mosaic of tiles that change at
+almost every add-on armour box"). A part deeper than `PART_AXIS_UV_MAX_DEPTH_M` along that axis, or not box-like
+(`PART_AXIS_UV_MIN_BOXNESS`: cast, rounded, bevelled, a cylinder, a wedge) keeps boxUV, as do the hull's and turret's own
+plates and the gun. UVs are in the geometry ledger: a projection change re-pins through `npm run tank:geometry:update`
+(`camoPartProjection.selftest.mjs`).
 The shared checkout often contains active tank-generation WIP. Never stage
 builders, profiles, icons, GLBs, or generated geometry ledgers by directory.
 Chassis closure (FSP-05, 2026-09-25): a mirrored `for s of [-1, 1]` slab, a

@@ -27,7 +27,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.ts';
 import {
-  box, boxUV, cylX, cylY, cylZ, frustum, lathe, mergeAll, mulberry32,
+  box, boxUV, cylX, cylY, cylZ, frustum, lathe, mergeAll, mulberry32, partAxisUV,
   polyLoft, polyMultiLoft, polyTurret, slab, sph, straightRidgeGunMask,
   torus, xform,
 } from './factoryGeometry.ts';
@@ -6466,6 +6466,15 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   // §B4 from reporting the enclosure intersecting the belt it is built over.
   hullTrackGuardL: ['hullG', 'hull'], hullTrackGuardR: ['hullG', 'hull'],
 };
+/**
+ * The buckets of small bolted-on parts — add-on armour, detail, painted detail and equipment — projected one plane per
+ * box-like part (factoryGeometry partAxisUV); the hull's and turret's own plates, cupolas, hatches, lattices, guards and
+ * the gun keep boxUV's per-face planes.
+ */
+const PART_AXIS_CAMO_BUCKETS = new Set([
+  'hullExternalArmor', 'turretExternalArmor', 'hullDetail', 'turretDetail', 'hullPaintedDetail', 'turretPaintedDetail',
+  'hullEquipment', 'turretEquipment',
+]);
 const CAMO_BUCKETS = new Set([
   'hullDetail', 'turretDetail', 'hullTrackDetailL', 'hullTrackDetailR',
   'hullPaintedDetail', 'turretPaintedDetail',
@@ -7599,6 +7608,12 @@ function* createTankOwnedSteps(
     const [parentKey, matKey] = BUCKET_DEF[bucket];
     const authoredRanges = authoredRangesFor(list);
     prepareVehicleNightLensParts(list);
+    // 2026-10-04 (gauntlet wave 55, "a mosaic of differently coloured tan, beige and brown tiles that change at almost
+    // every add-on armour box"): each box-like part of the bolted-on buckets takes ONE projection plane, its broad
+    // faces' (factoryGeometry partAxisUV), before the merge, so its faces stop sampling three unrelated parts of the
+    // tile and its broad face continues the hull face behind it; the rest of the vehicle keeps boxUV's per-face planes.
+    const partAxisCamo = !geometryOnly && PART_AXIS_CAMO_BUCKETS.has(bucket);
+    if (partAxisCamo) for (const part of list) partAxisUV(part, CAMO_UV_REPEATS_PER_M);
     const merged = mergeAll(list);
     // Non-rendering consumers retain geometry, not this temporary paint.
     // Static wrecks replace both UVs and vertex colors in their final bake;
@@ -7607,7 +7622,7 @@ function* createTankOwnedSteps(
       // Round 35 (owner 2026-09-21: "the look of identical camos looks completely different if you switch between
       // tanks"): every hull projects the shared camo tile at ONE density, so a pattern's blotches cover the same
       // world metres on every vehicle; the recipe's camoScale only shapes the paint (camoWorldScale.ts).
-      boxUV(merged, CAMO_UV_REPEATS_PER_M);
+      if (!partAxisCamo) boxUV(merged, CAMO_UV_REPEATS_PER_M);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
     }

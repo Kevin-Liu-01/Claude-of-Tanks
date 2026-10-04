@@ -451,6 +451,118 @@ export function boxUV(geometry: THREE.BufferGeometry, scale = 0.35): THREE.Buffe
   return geometry;
 }
 
+/**
+ * The axis of a part's broad faces: the axis (0 x, 1 y, 2 z) along which its faces' area-weighted normals point most —
+ * the plate's facing axis for a plate or a brick, ties resolved as boxUV resolves them (y, then x, then z).
+ */
+export function partBroadFaceAxis(geometry: THREE.BufferGeometry): 0 | 1 | 2 {
+  const position = geometry.getAttribute('position');
+  if (!position) throw new Error('partBroadFaceAxis requires a position attribute');
+  const index = geometry.index;
+  const count = index ? index.count : position.count;
+  const weight = [0, 0, 0];
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  for (let i = 0; i + 2 < count; i += 3) {
+    a.fromBufferAttribute(position, index ? index.getX(i) : i);
+    b.fromBufferAttribute(position, index ? index.getX(i + 1) : i + 1);
+    c.fromBufferAttribute(position, index ? index.getX(i + 2) : i + 2);
+    b.sub(a).cross(c.sub(a)); // twice the triangle's area along its normal
+    weight[0] += Math.abs(b.x); weight[1] += Math.abs(b.y); weight[2] += Math.abs(b.z);
+  }
+  const eps = 1e-9 * (weight[0] + weight[1] + weight[2]);
+  if (weight[1] + eps >= weight[0] && weight[1] + eps >= weight[2]) return 1;
+  return weight[0] + eps >= weight[2] ? 0 : 2;
+}
+
+/** The deepest a part's narrow faces may run along its projection axis (m) before one plane would smear them. */
+export const PART_AXIS_UV_MAX_DEPTH_M = 0.3;
+/**
+ * How box-like a part must be to take one plane: the share of its area on three perpendicular face directions (a box,
+ * a plate, a brick, turned any way: 1). A cast, rounded or bevelled part, a cylinder or a wedge falls under it and keeps
+ * boxUV, where one plane would stretch its faces turned away from the axis.
+ */
+export const PART_AXIS_UV_MIN_BOXNESS = 0.72;
+const PART_AXIS_UV_MAX_FACES = 600;
+const ALIGNED_COS = Math.cos(THREE.MathUtils.degToRad(15));
+const PERPENDICULAR_DOT = Math.sin(THREE.MathUtils.degToRad(15));
+
+/** The share of a part's area whose faces lie on three perpendicular directions (1 for any box, turned any way). */
+export function partBoxness(geometry: THREE.BufferGeometry): number {
+  const position = geometry.getAttribute('position');
+  if (!position) return 0;
+  const index = geometry.index;
+  const count = index ? index.count : position.count;
+  const normals: THREE.Vector3[] = [];
+  const areas: number[] = [];
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  for (let i = 0; i + 2 < count; i += 3) {
+    a.fromBufferAttribute(position, index ? index.getX(i) : i);
+    b.fromBufferAttribute(position, index ? index.getX(i + 1) : i + 1);
+    c.fromBufferAttribute(position, index ? index.getX(i + 2) : i + 2);
+    const n = b.sub(a).cross(c.sub(a));
+    const area = n.length() / 2;
+    if (area <= 1e-12) continue;
+    normals.push(n.clone().normalize());
+    areas.push(area);
+  }
+  const total = areas.reduce((sum, area) => sum + area, 0);
+  if (!total || normals.length > PART_AXIS_UV_MAX_FACES) return 0;
+  // the direction (either sign) holding the most area, then the most among those perpendicular to it
+  const cluster = (direction: THREE.Vector3): number => {
+    let sum = 0;
+    for (let j = 0; j < normals.length; j++) if (Math.abs(normals[j].dot(direction)) >= ALIGNED_COS) sum += areas[j];
+    return sum;
+  };
+  const best = (accept: (n: THREE.Vector3) => boolean): THREE.Vector3 | null => {
+    let pick: THREE.Vector3 | null = null, pickArea = -1;
+    for (const n of normals) {
+      if (!accept(n)) continue;
+      const area = cluster(n);
+      if (area > pickArea) { pick = n; pickArea = area; }
+    }
+    return pick;
+  };
+  const d1 = best(() => true)!;
+  const perpendicular = (n: THREE.Vector3) => Math.abs(n.dot(d1)) <= PERPENDICULAR_DOT; // within 15° of a right angle
+  const d2 = best(perpendicular);
+  if (!d2) return cluster(d1) / total;
+  const d3 = new THREE.Vector3().crossVectors(d1, d2).normalize();
+  let aligned = 0;
+  for (let j = 0; j < normals.length; j++) {
+    const n = normals[j];
+    if (Math.abs(n.dot(d1)) >= ALIGNED_COS || Math.abs(n.dot(d2)) >= ALIGNED_COS || Math.abs(n.dot(d3)) >= ALIGNED_COS) aligned += areas[j];
+  }
+  return aligned / total;
+}
+
+/**
+ * Project one part's camouflage along its broad faces' axis with boxUV's plane for that axis (2026-10-04, gauntlet wave
+ * 55: the Factory scheme read as "a mosaic of differently coloured tan, beige and brown tiles that change at almost every
+ * add-on armour box"). boxUV picks each triangle's plane from its own normal, so a small box's front, top and side
+ * sample three unrelated parts of the tile and every corner is a seam; one plane per part keeps its broad face continuous
+ * with a hull face of the same facing (the same mapping as boxUV's) and wraps its narrow faces in the colour at their
+ * edge, as spray paint would. Only a box-like part (PART_AXIS_UV_MIN_BOXNESS) no deeper than PART_AXIS_UV_MAX_DEPTH_M
+ * along that axis takes one plane; a wrap-around shell, a cast or rounded part keeps boxUV's per-face planes, which one
+ * plane would stretch.
+ */
+export function partAxisUV(geometry: THREE.BufferGeometry, scale = 0.35): THREE.BufferGeometry {
+  const axis = partBroadFaceAxis(geometry);
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox!;
+  const depth = axis === 0 ? box.max.x - box.min.x : axis === 1 ? box.max.y - box.min.y : box.max.z - box.min.z;
+  if (depth > PART_AXIS_UV_MAX_DEPTH_M || partBoxness(geometry) < PART_AXIS_UV_MIN_BOXNESS) return boxUV(geometry, scale);
+  const position = geometry.getAttribute('position');
+  const uv = new Float32Array(position.count * 2);
+  for (let index = 0; index < position.count; index++) {
+    const u = axis === 1 ? position.getX(index) : axis === 0 ? position.getZ(index) : position.getX(index);
+    const v = axis === 1 ? position.getZ(index) : position.getY(index);
+    uv[index * 2] = u * scale;
+    uv[index * 2 + 1] = v * scale;
+  }
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return geometry;
+}
+
 export function mergeAll(geometries: readonly THREE.BufferGeometry[]): THREE.BufferGeometry {
   const flat = geometries.map((geometry) => geometry.index ? geometry.toNonIndexed() : geometry);
   const merged = mergeGeometries(flat, false);

@@ -648,6 +648,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/catalogCamoPainter.selftest.mjs',
     // 2026-10-04 (the vehicle-look lane): the field camouflages' boundaries at the tile's own resolution
     'src/vehicles/camoFieldEdges.selftest.mjs',
+    // 2026-10-04 (the vehicle-look lane): one camouflage projection plane per add-on armour part
+    'src/vehicles/camoPartProjection.selftest.mjs',
     'src/vehicles/vehicleMarkingsCanvas.selftest.mjs',
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
