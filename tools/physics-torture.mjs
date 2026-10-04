@@ -531,7 +531,7 @@ function newMetrics() {
     jerkSamples: [], jerkMaxRadS3: 0,
     bodyPenMaxM: 0, obstaclePenMaxM: 0, hullPenMaxM: 0, stackPenMaxM: 0, roofSinkMaxM: 0, gearCompMaxM: 0,
     trackTicks: 0, trackReachSum: 0, perchedS: 0, trackContactMean: 12,
-    overshootPullG: 0, landingSettleS: 0,
+    overshootPullG: 0, landingSettleS: 0, restAttitudeErrDeg: 0,
     tunnelled: false, maxHeightM: 0,
     airS: 0, longestAirS: 0, hops: 0, landings: [], contactLandings: [], maxLandingMps: 0, reboundExcessMps: 0, closingExcessMps: 0,
     liftM: 0,
@@ -1095,6 +1095,15 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
     else metrics.impactDamageHp += event.damage ?? 0;
   }
   if (restSamples.length > 2) metrics.rest = restStats(restSamples);
+  if (restSamples.length > 2) {
+    // at rest the hull lies on the ground it stands on: its pitch and roll against the ground's grade along and across it
+    const state = subject.state;
+    const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw), rx = Math.cos(state.yaw), rz = -Math.sin(state.yaw);
+    const { x, z } = state.pos;
+    const along = Math.atan((world.fn(x + fx, z + fz) - world.fn(x - fx, z - fz)) / 2);
+    const across = Math.atan((world.fn(x + rx, z + rz) - world.fn(x - rx, z - rz)) / 2);
+    metrics.restAttitudeErrDeg = Math.max(Math.abs(state.visualPitch - along), Math.abs(state.visualRoll - across)) * 180 / Math.PI;
+  }
   if (metrics.trackTicks) metrics.trackContactMean = metrics.trackReachSum / metrics.trackTicks;
   if (settleTrace?.length) {
     // the settle: the last tick the ride was more than 5 mm from where it came to rest after the last hard landing

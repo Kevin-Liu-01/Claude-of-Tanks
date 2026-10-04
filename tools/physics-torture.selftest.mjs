@@ -99,7 +99,10 @@ check('land-roof-edge', 'low', 'earth', [
 check('climb-crest', 'medium', 'earth', [
   // (round 3: the springs seat the climb under its top contact; the flight off the crest reads 0.61 m over the contact
   // under it, peaking lower over the ground, 0.78 m at the root where it was 0.86, and landing at 2.5 m/s, was 3.1)
-  g('lift off the crest (m)', (m) => m.liftM, 0.65, 'before: 1.88 m (rose at 8.4 m/s up a 38-degree face, travel kept)'),
+  // (round 3, the hull lying on its plane: it climbs the face at 38 degrees, where it read 35.6, and its flight peaks
+  // lower over the ground, 0.75 m, and lands at 1.0 m/s, where it was 2.5; over the contact under it, which the truer
+  // pitch at the crest moves back down the face, it reads 0.73 m)
+  g('lift off the crest (m)', (m) => m.liftM, 0.75, 'before: 1.88 m (rose at 8.4 m/s up a 38-degree face, travel kept)'),
 ]);
 check('land-upslope', 'medium', 'earth', [
   g('travel kept landing on a 36 % upslope (m/s)', (m) => m.landingTravel[0]?.[1] ?? 0, 12.5, 'before: 15.0 of 15.0'),
@@ -122,7 +125,8 @@ check('flank-steep', 'medium', 'earth', [
 check('drive-assault-trench', 'heavy', 'earth', [
   g('progress short of 30 m (m)', (m) => 30 - m.progressM, 0, 'before: 19.6 m'),
   // (900: with the grade floor the crossing's own jerk reads 800.2, the far wall's lip taken a little harder)
-  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 900, 'before: 1366'),
+  // (950, round 3: the hull lying on its plane pitches to the walls it crosses, where it read them flatter: 909)
+  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 950, 'before: 1366'),
 ]);
 
 // Firing in flight (Mars gravity field audit): the shot turns an airborne hull by its rigid-body share, not the
@@ -228,6 +232,14 @@ for (const [hull, publishedContact] of [['long', false], ['tall', false], ['m551
     g('impact damage on the deck (hp)', (m) => m.impactDamageHp, 5, 'before: span joints taken as walls'),
     g('progress short of 110 m (m)', (m) => 110 - m.progressM, 0, 'before: stopped at the first joint'),
   ], { publishedContact });
+}
+
+// Gauntlet wave 23, the slope strip ("the downhill rear stations are the most extended ... and the uphill front ones the
+// most compressed"): a hull at rest lies on the ground it stands on (movement.ts planePitch / planeRoll). The attitude fit
+// read the arctangent of the rise per hull-local metre and laid the hull flatter than its ground, its downhill end
+// hanging up to 12 cm over a 25-degree face.
+for (const [caseId, why] of [['rest-slope25', 'before: 0.97 degree flatter than the face'], ['rest-cross20', 'before: 1.0 degree flatter than the slope']]) {
+  check(caseId, 'medium', 'earth', [g('attitude off the ground it rests on (deg)', (m) => m.restAttitudeErrDeg, 0.1, why)]);
 }
 
 // Rest stays rest: no jitter, no creep on a 25-degree grade on the brake.
