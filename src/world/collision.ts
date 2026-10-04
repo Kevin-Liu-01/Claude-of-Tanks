@@ -5,9 +5,26 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 // carry a tighter `shape2` footprint for the movement and shell narrow phases:
 //   { kind:'obb', cx,cz, hw,hl,yaw }
 //   { kind:'circle', cx,cz,r }
-//   { kind:'convex', cx,cz, points:[x0,z0,...] }  // CCW world points
+//   { kind:'convex', cx,cz, points:[x0,z0,...] }  // world points, either winding (convexWinding)
 
 const EPS = 1e-9;
+
+/**
+ * The winding of a convex footprint's points: 1 counter-clockwise (inside on the left of every edge), -1 clockwise.
+ * Captured footprints carry either (2026-10-03: 935 clockwise parts in 503 records over the 33 maps' shards, structure
+ * roof strips, cable spools, stooks and wire among them). The route probe, the shell ray's edge clip and the clearance
+ * test read every footprint as counter-clockwise, so a clockwise part's inside was its outside: shells and sight lines
+ * passed through it, it held no point, and the bots' route probe hit it from far off (a 4 m hut on Railyard pulled a
+ * searching T-90A 90 m off its route to the hut's corners until battlePacing's 900 s cap). The SAT push is winding-free.
+ */
+function convexWinding(points: readonly number[]): number {
+  let area2 = 0;
+  for (let index = 0; index < points.length; index += 2) {
+    const next = index + 2 < points.length ? index + 2 : 0;
+    area2 += points[index] * points[next + 1] - points[next] * points[index + 1];
+  }
+  return area2 < 0 ? -1 : 1;
+}
 
 type Bounds3 = [number, number, number];
 
@@ -33,9 +50,15 @@ const UNDERPASS_CLEARANCE_M = 0.15;
 export const HULL_STEP_UP_M = 0.55;
 /** Tops of parts shorter than this (kerbs, sandbags, wreck plates) are never floors: the ride drives over them. */
 export const HULL_STANDABLE_HEIGHT_M = 0.9;
-/** Does the hull span pass above this obstacle top — clearing it in the air, or standing on it? */
-export function hullPassesObstacleTop(spanBottom: number, top: number, bottom: number, standable = true): boolean {
-  if (spanBottom > top + OVERPASS_CLEARANCE_M) return true;
+/**
+ * Does the hull span pass above this obstacle top — clearing it in the air, or standing on it? `spanBottom` is the
+ * underside the standing rule reads (hullUndersideOver), `clearBottom` the track plane that clears a top or not (the
+ * footprint's `clearBottom`: the same for track rows; under a nose or tail row alone, the tracks that meet it next).
+ */
+export function hullPassesObstacleTop(
+  spanBottom: number, top: number, bottom: number, standable = true, clearBottom = spanBottom,
+): boolean {
+  if (clearBottom > top + OVERPASS_CLEARANCE_M) return true;
   // crushable cover (sandbags, fences, light walls) is pushed and crushed as before, never mounted
   return standable && top - bottom >= HULL_STANDABLE_HEIGHT_M && spanBottom > top - HULL_STEP_UP_M;
 }
@@ -61,11 +84,14 @@ export function hullUndersideOver(record: CollisionRecord, foot: HullFootprint, 
   const reachX = Math.abs(forwardX) * halfLength + Math.abs(rightX) * halfWidth;
   const reachZ = Math.abs(forwardZ) * halfLength + Math.abs(rightZ) * halfWidth;
   if (centerX + reachX < record.min[0] || centerX - reachX > record.max[0]
-    || centerZ + reachZ < record.min[2] || centerZ - reachZ > record.max[2]) return rootY;
+    || centerZ + reachZ < record.min[2] || centerZ - reachZ > record.max[2]) {
+    foot.clearBottom = rootY;
+    return rootY;
+  }
   // the track rows decide when any lies over the record (the tracks are what stand on it); only a nose or tail row
   // alone over it decides by clearing its top
   const centerY = rootY + foot.centerRise;
-  let tracks = Infinity, ends = Infinity;
+  let tracks = Infinity, ends = Infinity, endsTrack = Infinity;
   for (let i = 0; i < 5; i++) {
     const along = (i * 0.5 - 1) * halfLength;
     const end = i === 0 || i === 4;
@@ -76,10 +102,20 @@ export function hullUndersideOver(record: CollisionRecord, foot: HullFootprint, 
       const z = centerZ + forwardZ * along + rightZ * across;
       if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
       if (!footprintHolds(record, x, z)) continue;
-      const y = centerY + along * foot.riseAlong + across * foot.riseAcross + lift;
-      if (end) { if (y < ends) ends = y; } else if (y < tracks) tracks = y;
+      const plane = centerY + along * foot.riseAlong + across * foot.riseAcross;
+      if (end) {
+        if (plane + lift < ends) ends = plane + lift;
+        if (plane < endsTrack) endsTrack = plane;
+      } else if (plane < tracks) tracks = plane;
     }
   }
+  // What clears a part is the track plane, the tracks that meet it next (physics lane round 3, Aegis Crossing): a nose or
+  // tail row alone over a record clears a part only as the tracks under it would, while the standing rule still counts
+  // the step-up against the row's own height. Read through the step-up, a nose over a viaduct span's sub-deck slab, a
+  // metre under the deck the hull drove on, cleared it by 0.45 m, under the 0.5 m overpass, and the slab stopped a hull
+  // without nose lift dead on the deck at every span joint (18.6 m/s, 248 hp a joint); read at its lifted height, a high
+  // glacis passed over a low wall its tracks then met a metre and a half deep.
+  foot.clearBottom = tracks < Infinity ? tracks : endsTrack < Infinity ? endsTrack : rootY;
   return tracks < Infinity ? tracks : ends < Infinity ? ends : rootY;
 }
 
@@ -109,6 +145,8 @@ export interface HullFootprint {
   /** Nose and tail lift of the underside above the track plane (the rect's frontLiftM / rearLiftM, upright). */
   frontLift: number;
   rearLift: number;
+  /** The track plane over the last record hullUndersideOver read (what clears a top; hullPassesObstacleTop). */
+  clearBottom: number;
 }
 
 /** The contact rect fields hullFootprint reads (sim/tankContactShape.ts tankContactRect). */
@@ -127,7 +165,7 @@ const FOOTPRINT_MIN_COS = 0.05;
 /** A footprint object for one caller's reuse (allocation-free stepping). */
 export function createHullFootprint(): HullFootprint {
   return { centerX: 0, centerZ: 0, forwardX: 0, forwardZ: 1, rightX: 1, rightZ: 0, halfLength: 0, halfWidth: 0,
-    centerRise: 0, riseAlong: 0, riseAcross: 0, frontLift: 0, rearLift: 0 };
+    centerRise: 0, riseAlong: 0, riseAcross: 0, frontLift: 0, rearLift: 0, clearBottom: 0 };
 }
 
 /** Fill `out` with the footprint of a hull whose root stands at (x, z) with this yaw, pitch and roll. */
@@ -385,12 +423,13 @@ function simpleFootprintContainsPoint(
     return Math.abs(dx * rightX + dz * rightZ) <= shape.hw + margin
       && Math.abs(dx * forwardX + dz * forwardZ) <= shape.hl + margin;
   }
+  const winding = convexWinding(shape.points);
   for (let index = 0; index < shape.points.length; index += 2) {
     const next = (index + 2) % shape.points.length;
     const edgeX = shape.points[next] - shape.points[index];
     const edgeZ = shape.points[next + 1] - shape.points[index + 1];
-    const cross = edgeX * (z - shape.points[index + 1])
-      - edgeZ * (x - shape.points[index]);
+    const cross = winding * (edgeX * (z - shape.points[index + 1])
+      - edgeZ * (x - shape.points[index]));
     if (cross < -margin * Math.hypot(edgeX, edgeZ)) return false;
   }
   return true;
@@ -481,15 +520,16 @@ function rayConvexEntry2(
   maxDistance: number,
   margin: number,
 ) {
+  const winding = convexWinding(shape.points);
   let entry = 0, exit = maxDistance;
   for (let index = 0; index < shape.points.length; index += 2) {
     const next = (index + 2) % shape.points.length;
     const edgeX = shape.points[next] - shape.points[index];
     const edgeZ = shape.points[next + 1] - shape.points[index + 1];
-    const offset = edgeX * (sourceZ - shape.points[index + 1])
-      - edgeZ * (sourceX - shape.points[index])
+    const offset = winding * (edgeX * (sourceZ - shape.points[index + 1])
+      - edgeZ * (sourceX - shape.points[index]))
       + margin * Math.hypot(edgeX, edgeZ);
-    const velocity = edgeX * directionZ - edgeZ * directionX;
+    const velocity = winding * (edgeX * directionZ - edgeZ * directionX);
     if (Math.abs(velocity) < EPS) {
       if (offset < 0) return null;
       continue;
@@ -653,6 +693,7 @@ export function pushHullFromObstacle(
   outPush: Push2,
   spanBottom = -Infinity,
   spanTop = Infinity,
+  clearBottom = spanBottom,
 ) {
   const sh = ob.shape2;
   if (sh && sh.kind === 'compound') {
@@ -662,14 +703,15 @@ export function pushHullFromObstacle(
     for (const part of sh.parts) {
       // per-part vertical extent: the hull passes over a part it clears (a low wing, a porch, a garage beside
       // the tower) and under a part it stays below (an overhang); parts without their own extent use the record's
-      if (part.y1 !== undefined && hullPassesObstacleTop(spanBottom, part.y1, part.y0 ?? ob.min[1], !ob.crushable)) continue;
+      if (part.y1 !== undefined
+        && hullPassesObstacleTop(spanBottom, part.y1, part.y0 ?? ob.min[1], !ob.crushable, clearBottom)) continue;
       if (part.y0 !== undefined && spanTop < part.y0 - UNDERPASS_CLEARANCE_M) continue;
       _compoundRec.min[1] = part.y0 ?? ob.min[1]; _compoundRec.max[1] = part.y1 ?? ob.max[1];
       _compoundRec.shape2 = part;
       _compoundPos.x = pos.x + outPush.x - startX;
       _compoundPos.z = pos.z + outPush.z - startZ;
       if (pushHullFromObstacle(
-        _compoundPos, fx, fz, rx, rz, halfL, halfW, _compoundRec, outPush, spanBottom, spanTop,
+        _compoundPos, fx, fz, rx, rz, halfL, halfW, _compoundRec, outPush, spanBottom, spanTop, clearBottom,
       )) hit = true;
     }
     return hit;
@@ -1079,11 +1121,13 @@ function clipConvexEdge(
   points: number[],
   index: number,
   interval: RayInterval,
+  winding: number,
 ): boolean {
   const next = (index + 2) % points.length;
   const edgeX = points[next] - points[index];
   const edgeZ = points[next + 1] - points[index + 1];
-  const inverseLength = 1 / (Math.hypot(edgeX, edgeZ) || 1);
+  // the inward normal is the edge's left for a counter-clockwise footprint, its right for a clockwise one
+  const inverseLength = winding / (Math.hypot(edgeX, edgeZ) || 1);
   const inwardX = -edgeZ * inverseLength;
   const inwardZ = edgeX * inverseLength;
   const originSide = (origin.x - points[index]) * inwardX
@@ -1112,8 +1156,9 @@ function rayConvex(
 ): number {
   const interval = initializeExtrudedInterval(origin, dir, rec, maxDist, true);
   if (!interval) return -1;
+  const winding = convexWinding(shape.points);
   for (let index = 0; index < shape.points.length; index += 2) {
-    if (!clipConvexEdge(origin, dir, shape.points, index, interval)) return -1;
+    if (!clipConvexEdge(origin, dir, shape.points, index, interval, winding)) return -1;
   }
   if (interval.t1 < 0 || interval.t0 > maxDist) return -1;
   outNormal.set(interval.nx, interval.ny, interval.nz);

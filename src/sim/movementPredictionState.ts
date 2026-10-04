@@ -26,12 +26,17 @@ const VERSION_4_COUNT = SCALARS.length + SPRING.length + ROCK.length * 2 +
 // solve seats the tracks without
 const RIDE_V5 = ['rebound', 'stroke'] as const;
 const DIVE_V5 = ['d', 'dv'] as const;
-const VALUE_COUNT = VERSION_4_COUNT + RIDE_V5.length + DIVE_V5.length;
+const VERSION_5_COUNT = VERSION_4_COUNT + RIDE_V5.length + DIVE_V5.length;
+// version 6 (physics lane round 3, 2026-10-03), appended after the version-5 layout so a version-5 or version-4
+// checkpoint still decodes (its top contact at its seat): the hull's highest track contact beside the seat
+// (`_sup.top`), which the springs carry the hull under on uneven ground
+const SUPPORT_V6 = ['top'] as const;
+const VALUE_COUNT = VERSION_5_COUNT + SUPPORT_V6.length;
 const MAX_ABS_VALUE = 1_000_000;
 const MAX_FLAGS = 2047;
 
 interface MovementPredictionState {
-  version: 5;
+  version: 6;
   values: number[];
   flags: number;
 }
@@ -76,13 +81,14 @@ export function captureMovementPredictionState(state: TankState): MovementPredic
     restInitialized ? state._body.restSupportY : 0);
   append(values, state._ride, RIDE_V5);
   append(values, state._susp, DIVE_V5);
+  append(values, state._sup, SUPPORT_V6);
   if (!finiteValues(values)) return null;
   const flags = Number(supportInitialized) | Number(state._ride.grounded) << 1 |
     Number(state._body.tumbling) << 2 | Number(state._body.dynamicSupport) << 3 |
     Number(state._body.autoRighting) << 4 | Number(state._rollover.expired) << 5 |
     Number(state.atGunLimit) << 6 | Number(state.gunLimitSpec) << 7 |
     Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9 | Number(restInitialized) << 10;
-  return { version: 5, values, flags };
+  return { version: 6, values, flags };
 }
 
 export function applyMovementPredictionState(
@@ -90,7 +96,8 @@ export function applyMovementPredictionState(
 ): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const record = value as Record<string, RuntimeValue>;
-  const count = record.version === 5 ? VALUE_COUNT : record.version === 4 ? VERSION_4_COUNT : 0;
+  const count = record.version === 6 ? VALUE_COUNT : record.version === 5 ? VERSION_5_COUNT
+    : record.version === 4 ? VERSION_4_COUNT : 0;
   if (!count || !finiteValues(record.values, count) ||
       typeof record.flags !== 'number' || !Number.isInteger(record.flags) ||
       record.flags < 0 || record.flags > MAX_FLAGS) return false;
@@ -123,9 +130,9 @@ export function applyMovementPredictionState(
   state._sup.rigid = !!(flags & 512);
   state._sup.cg = contact;
   state._body.restSupportY = flags & 1024 ? values[offset + 5] : NaN;
-  if (count === VALUE_COUNT) {
+  if (count >= VERSION_5_COUNT) {
     offset = restore(state._ride, RIDE_V5, values, offset + 6);
-    restore(state._susp, DIVE_V5, values, offset);
+    offset = restore(state._susp, DIVE_V5, values, offset);
   } else {
     // a version-4 checkpoint predates the landing stroke and the dive: none in progress
     state._ride.rebound = 0;
@@ -133,5 +140,8 @@ export function applyMovementPredictionState(
     state._susp.d = 0;
     state._susp.dv = 0;
   }
+  // a checkpoint before version 6 has the top contact at the seat
+  if (count === VALUE_COUNT) restore(state._sup, SUPPORT_V6, values, offset);
+  else state._sup.top = state._sup.y;
   return true;
 }

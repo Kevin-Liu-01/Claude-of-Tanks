@@ -109,8 +109,11 @@ export default {
     // caldera). The pine, cypress and acacia archetypes stand in for the Canary pine, juniper and broom.
     species: ['pine', 'cypress', 'acacia'], clusterMix: [['pine', 0.82], ['cypress', 0.1], ['acacia', 0.08]],
     loneMix: [['pine', 0.72], ['cypress', 0.12], ['acacia', 0.16]], rimMix: [['pine', 0.86], ['cypress', 0.08], ['acacia', 0.06]],
-    clusterCount: 16, loneCount: 38, rimCount: 40, grassDensity: 0.03,
-    bushCount: 0.55, bushSpecies: 'acacia',
+    // Trees round 2b (2026-10-03, wave 26: "evenly spaced, grid-like" pine stands; the caldera floor is nearly treeless
+    // but for the broom): a few open groves (treeBiomes.ts open), scattered pines and a thin rim (its blocks stand
+    // inside the square's corners), the broom carrying the floor. Was 16 / 38 / 40 trees and 0.55 broom.
+    clusterCount: 5, loneCount: 22, rimCount: 14, grassDensity: 0.03,
+    bushCount: 1.0, bushSpecies: 'acacia',
   },
   props: {
     plan: ['factory', 'foundryoffice', 'stack', 'depot', 'gantry', 'firestation',

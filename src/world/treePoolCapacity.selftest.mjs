@@ -15,6 +15,8 @@ import { relocateTidalMangroves } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { getMapConfig } from './maps/index.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
+import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from './crownShadowDapple.ts';
+import { treeBiomeArid, treeBiomeOpen } from './treeBiomes.ts';
 import { markShadowOnly, setShadowCasterProfile } from '../engine/renderLayers.ts';
 
 // Actual seeded tree placement, allocation, full/incremental partition and LOD
@@ -32,7 +34,11 @@ assert.equal(poolCode.split(capacityLine).length, 2, 'one construction-only spec
 const dependencies = { THREE, mulberry32, TREE_ARCHETYPES, treeTrunkCollisionRadiusM, setCircleShape,
   PLAYABLE_HALF_EXTENT_M, isClearOfSpawns, createStructureClearances, excludeStructureVegetation, excludeVegetation,
   redistributeAuthoredTrees, relocateTidalMangroves, DESTRUCTIBLE_BUILDING_TYPES, applyLodShadowFadeDepth,
-  markShadowOnly, treeRichness, setShadowCasterProfile, placedStructureClearances };
+  markShadowOnly, treeRichness, setShadowCasterProfile, placedStructureClearances,
+  // trees round 2 (2026-10-03): the grown crowns' dappled shadow proxies
+  applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags,
+  // trees round 2b (2026-10-03): the hyper-arid places' groves
+  treeBiomeArid, treeBiomeOpen };
 
 function compile(legacy) {
   const pools = legacy ? poolCode.replace(capacityLine, 'const capacity = trees.length;') : poolCode;

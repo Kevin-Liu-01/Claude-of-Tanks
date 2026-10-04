@@ -9,7 +9,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createHeightField } from './terrain.ts';
-import { createVegetation, standLobeAt } from './vegetation.ts';
+import { createVegetation } from './vegetation.ts';
 import { getMapConfig } from './maps/index.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
@@ -61,7 +61,8 @@ function legacyShapeContract(geometry) {
 // sprays carries up to a third more), welded to four vertices a spray, the six streams of the grown crowns' cards
 function grownShapeContract(geometry) {
   assert.ok(geometry.index, 'welded: indexed');
-  assert.deepEqual(Object.keys(geometry.attributes).filter(k => k !== 'aFadeI' && k !== 'aLodF').sort(), ['aCard', 'aFlex', 'color', 'normal', 'position', 'uv']);
+  // trees round 2 (2026-10-03): and the billboard frame its cards turn about (aAxis, aLeaf: vegetation.ts COT_LEAF_BILLBOARD)
+  assert.deepEqual(Object.keys(geometry.attributes).filter(k => k !== 'aFadeI' && k !== 'aLodF').sort(), ['aAxis', 'aCard', 'aFlex', 'aLeaf', 'color', 'normal', 'position', 'uv']);
   const p = geometry.attributes.position, sprays = geometry.index.count / 6;
   assert.ok(Number.isInteger(sprays) && sprays >= 20 && sprays <= 27, `twenty to twenty-seven two-triangle sprays (${sprays})`);
   assert.equal(p.count, sprays * 4, 'four vertices a spray');
@@ -108,9 +109,9 @@ function produce(id, extra = {}) {
     // round 77b (2026-09-26): the rim-forest blocks feather through the same law, at the rim trees' scale (× 1.4)
     // and the rim's bound (506 m); every instance stands in a stand's annulus or a rim block's
     const rimBlocks = world._rimBlocks;
-    // 2026-10-03 the ground lane: a stand's edge runs in lobes (vegetation.ts standLobeAt) — the annulus is read against
-    // the lobed radius at the instance's bearing
-    const annulus = (discs, x, z) => discs.map(c => Math.hypot(x - c.x, z - c.z) / (c.r * standLobeAt(c.x, c.z, Math.atan2(z - c.z, x - c.x))))
+    // trees round 2 (2026-10-03): a stand is a woodlot — its annulus is measured against its own outline
+    // (world._standOutline), a rim block's against its circle
+    const annulus = (discs, x, z, outline = null) => discs.map((c, i) => (outline ? outline(i, x, z) : Math.hypot(x - c.x, z - c.z) / c.r))
       .filter(r => r >= 0.82 - 1e-4 && r <= 1.6 + 1e-4).sort((a, b) => a - b)[0];
     let minR = Infinity, maxR = 0, standCount = 0, rimCount = 0;
     for (let i = 0; i < mesh.count; i++) {
@@ -120,7 +121,7 @@ function produce(id, extra = {}) {
       // the instance must sit in SOME stand's edge annulus, not necessarily its nearest's; a rim shrub near an
       // edge stand can satisfy both laws, so each instance is judged by whichever law it satisfies
       const bound = Math.max(Math.abs(x), Math.abs(z));
-      const standNear = annulus(clusters, x, z), rimNear = annulus(rimBlocks, x, z);
+      const standNear = annulus(clusters, x, z, world._standOutline), rimNear = annulus(rimBlocks, x, z);
       const standOk = standNear !== undefined && sc >= 0.85 - 1e-4 && sc <= 1.6 + 1e-4 && bound <= 470 + 1e-6;
       const rimOk = rimNear !== undefined && sc >= 0.85 * 1.4 - 1e-4 && sc <= 1.6 * 1.4 + 1e-4 && bound <= 506 + 1e-6;
       assert.ok(standOk || rimOk, `${id}: a stand's or a rim block's shrub (${x}, ${z}, scale ${sc}, bound ${bound})`); // float32 instance matrices

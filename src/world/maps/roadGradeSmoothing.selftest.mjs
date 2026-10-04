@@ -87,13 +87,23 @@ console.log('Polders shared boundary grade: unequal levels converge, interior an
 // Every road of a layout-brief map (2026-10-01, docs/MAP-LAYOUT-BRIEF.md) stays drivable on the actual collision
 // surface — not only its authored control heights — at three terrain seeds: no sampled grade over 18 %, and the
 // network is one connected graph. (This section replaces the Sirocco Wadi earthwork laws, which left with its old
-// country roads.)
+// country roads.) Over a bridge's span the surface a hull drives is the deck plane (Aegis Crossing's viaduct,
+// 2026-10-02), not the bed under it.
 for (const mapId of LAYOUT_BRIEF_MAPS) {
   const config = getMapConfig(mapId);
   const roads = createLayout(config).roads;
   assert.equal(roadNetworkComponentCount(roads), 1, `${mapId}: one connected road network`);
   for (const seed of [1337, 2025, 7719]) {
     const field = createHeightField(seed, { ...config, fieldTrenches: false });
+    const decks = field.bridgeDecks ?? [];
+    const surfaceAt = (x, z) => {
+      for (const deck of decks) {
+        const dx = x - deck.x, dz = z - deck.z;
+        if (Math.abs(dx * deck.ux + dz * deck.uz) <= deck.halfLength
+          && Math.abs(dx * deck.uz - dz * deck.ux) <= deck.halfWidth) return deck.deckY;
+      }
+      return field.getHeightAt(x, z);
+    };
     let worst = 0, at = null;
     for (const road of roads) for (let i = 1; i < road.length; i++) {
       const a = road[i - 1], b = road[i], length = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -101,7 +111,7 @@ for (const mapId of LAYOUT_BRIEF_MAPS) {
       for (let j = 0; j < steps; j++) {
         const t = (j + 0.5) / steps, x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t;
         if (Math.max(Math.abs(x), Math.abs(z)) > 470) continue; // the border portals grade through the rim
-        const grade = Math.abs(field.getHeightAt(x + 2 * dx, z + 2 * dz) - field.getHeightAt(x - 2 * dx, z - 2 * dz)) / 4;
+        const grade = Math.abs(surfaceAt(x + 2 * dx, z + 2 * dz) - surfaceAt(x - 2 * dx, z - 2 * dz)) / 4;
         if (grade > worst) { worst = grade; at = [Math.round(x), Math.round(z)]; }
       }
     }

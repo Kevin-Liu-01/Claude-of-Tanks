@@ -2937,11 +2937,15 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const st = entity.state;
     // Combat chase/flank destinations need the same bridge ingress as mission
     // routes. Local steering alone tried to cross gorge walls at target bearing.
+    // When nothing plans from where the hull stands, the local router drives on toward the destination (bots lane,
+    // 2026-10-03; Aegis Crossing pacing seed 53001 on the physics lane's plane attitude): the gate used to hold the
+    // hull with zero input, a hold with no drive intent, so neither wedge watchdog ever armed, and the no-contact
+    // search, which hands exactly this case to the local router, got the same hold back on every leg. A Type 96 that
+    // slid into a gorge pocket the grid cannot leave sat at rest for 798 s and the match ended in a draw.
     const crossBridge = !!deps.planRoute && crossesBridgeTo(x, z);
     if (crossBridge) {
       const point = combatBridgeWaypoint(x, z);
       if (point) { x = point[0]; z = point[1]; }
-      else { input.throttle = 0; input.steer = 0; input.brake = Math.abs(st.speed) > .5; return false; }
     }
     let dx = x - st.pos.x, dz = z - st.pos.z;
     let dist = Math.hypot(dx, dz);
