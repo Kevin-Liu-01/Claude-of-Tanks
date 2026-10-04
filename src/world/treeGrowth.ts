@@ -173,7 +173,8 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.07, crownR: 1.3,
     envelope: 'cone', whorled: true, perWhorl: [3, 5], spacing: 0.55, angleLow: 1.95, angleHigh: 1.05,
     droop: 0.30, upturn: 0.50, sidePerM: 2.4, sideAngle: 0.95, sideRatio: 0.42, sideDroop: 0.55, twigPerM: 0,
-    leafOrder: 1, leafPerM: 4.2, leafFrom: 0.0, spray: [0.6, 0.9], aspect: 0.72, habit: 'flat', tipSprays: 1,
+    // trees round 3: the sprays a little longer, so the open herringbone tiles still close the spire round the leader
+    leafOrder: 1, leafPerM: 4.2, leafFrom: 0.0, spray: [0.74, 1.06], aspect: 0.72, habit: 'flat', tipSprays: 1,
     cardBend: 0.18, flatRoll: 1.15, flatDroop: 0.35, bark: 1, barkTint: [0.36, 0.30, 0.27], barkTopTint: null, foliageValue: 1.24,
   }),
   fir: P({
@@ -181,7 +182,7 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.10, crownR: 1.45,
     envelope: 'tiered', whorled: true, perWhorl: [3, 5], spacing: 0.6, angleLow: 1.75, angleHigh: 1.05,
     droop: 0.12, upturn: 0.30, sidePerM: 2.4, sideAngle: 1.05, sideRatio: 0.45, sideDroop: 0.05, twigPerM: 0,
-    leafOrder: 1, leafPerM: 4.2, leafFrom: 0.0, spray: [0.64, 0.94], aspect: 0.76, habit: 'flat', tipSprays: 1,
+    leafOrder: 1, leafPerM: 4.2, leafFrom: 0.0, spray: [0.76, 1.08], aspect: 0.76, habit: 'flat', tipSprays: 1,
     cardBend: 0.06, flatRoll: 0.55, flatDroop: 0.12, bark: 2, barkTint: [0.42, 0.40, 0.38], barkTopTint: null, foliageValue: 1.11,
   }),
   cedar: P({
@@ -232,8 +233,8 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.38, crownR: 2.0,
     envelope: 'ellipsoid', whorled: false, perWhorl: [1, 1], spacing: 0.9, angleLow: 1.1, angleHigh: 0.65,
     droop: 0.15, upturn: 0.15, sidePerM: 0.6, sideAngle: 0.7, sideRatio: 0.45, sideDroop: 0.1, twigPerM: 0,
-    leafOrder: 1, leafPerM: 0.9, leafFrom: 0.55, spray: [0.7, 1.05], aspect: 0.9, habit: 'spray', tipSprays: 1,
-    cardBend: 0.05, flatRoll: 0.0, flatDroop: 0.0, bark: 0, barkTint: [0.36, 0.33, 0.30], barkTopTint: [0.22, 0.20, 0.19],
+    leafOrder: 1, leafPerM: 0, leafFrom: 0.55, spray: [0.7, 1.05], aspect: 0.9, habit: 'spray', tipSprays: 0,
+    cardBend: 0.05, flatRoll: 0.0, flatDroop: 0.0, bark: 0, barkTint: [0.36, 0.33, 0.30], barkTopTint: [0.20, 0.18, 0.17],
   }),
   // the tidal mangrove (the Mangrove map's willow form, vegetation.ts): a short bole forking low into spreading
   // scaffolds under a broad, dense, rounded crown of leathery sprays; smooth grey-brown bark; the stilt roots are
@@ -807,27 +808,43 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
   }
 }
 
-/** A shell-killed snag: a broken stem, a few dead limbs (some snapped), no foliage. */
+/**
+ * A shell-killed snag: a shattered trunk — a stem snapped off, its top a crown of splintered shards, a few dead limb
+ * stubs and no foliage. Trees round 3 (2026-10-03, the gauntlet's wave 31: "a dark, drooping, spiky tree ... reads as
+ * dead or diseased foliage" on Kursk, Fulda and Dalmatia): the snag kept a few long dead limbs with side twigs and a
+ * handful of drooping twig sprays, which read as a living species gone sick; it is wood only now, and fewer of them
+ * stand (vegetation.ts battleSnagShare).
+ */
 function growSnag(ctx: GrowContext): void {
   const { rng } = ctx;
   const top = ctx.height;
-  const stem = growStem(ctx, top, ctx.profile.trunkR * 1.02, ctx.profile.trunkR * (0.32 + rng() * 0.18), 6);
+  const rTop = ctx.profile.trunkR * (0.42 + rng() * 0.16);
+  const stem = growStem(ctx, top, ctx.profile.trunkR * 1.02, rTop, 6);
   ctx.branches[stem].broken = true;
-  const limbs = 3 + ((rng() * 4) | 0);
-  for (let k = 0; k < limbs; k++) {
-    const t = 0.38 + rng() * 0.55;
-    const at = sampleAlong(ctx.branches[stem].nodes, t);
-    const az = rng() * Math.PI * 2, a = 0.7 + rng() * 0.8;
+  // the break: three to five shards of the stem's wood standing up out of the snapped top, pointed and leaning out
+  const head = ctx.branches[stem].nodes[ctx.branches[stem].nodes.length - 1];
+  const shards = 3 + ((rng() * 3) | 0), az0 = rng() * Math.PI * 2;
+  for (let k = 0; k < shards; k++) {
+    const az = az0 + (k / shards) * Math.PI * 2 + (rng() - 0.5) * 0.6, a = 0.08 + rng() * 0.32;
     const dir = v3(Math.sin(a) * Math.cos(az), Math.cos(a), Math.sin(a) * Math.sin(az));
-    const snapped = rng() < 0.55;
-    const len = (snapped ? 0.35 + rng() * 0.6 : 1.1 + rng() * 1.6) * (1 - t * 0.35);
+    const at = v3(head.x + Math.cos(az) * head.r * 0.55, head.y - 0.05, head.z + Math.sin(az) * head.r * 0.55);
+    const nodes = growPolyline(ctx, at, dir, 0.25 + rng() * 0.3, 2, head.r * (0.28 + rng() * 0.12), 0.006,
+      0, 0, 0.05, 0, 0, false);
+    ctx.branches.push({ order: 1, parent: stem, nodes, mesh: true, broken: true });
+  }
+  // the limbs: one to three, most of them snapped to stubs
+  const limbs = 1 + ((rng() * 3) | 0);
+  for (let k = 0; k < limbs; k++) {
+    const t = 0.38 + rng() * 0.5;
+    const at = sampleAlong(ctx.branches[stem].nodes, t);
+    const az = rng() * Math.PI * 2, a = 0.8 + rng() * 0.7;
+    const dir = v3(Math.sin(a) * Math.cos(az), Math.cos(a), Math.sin(a) * Math.sin(az));
+    const snapped = rng() < 0.8;
+    const len = (snapped ? 0.3 + rng() * 0.5 : 0.9 + rng() * 1.0) * (1 - t * 0.35);
     const r0 = Math.max(0.03, at.r * (0.35 + rng() * 0.15));
     const nodes = growPolyline(ctx, at.p, dir, len, snapped ? 2 : 3, r0, snapped ? r0 * 0.7 : 0.012,
       0.2, 0.2, 0.3, 0.02, 0.12, false);
     ctx.branches.push({ order: 1, parent: stem, nodes, mesh: true, broken: snapped });
-    if (!snapped && rng() < 0.6) {
-      growSides(ctx, ctx.branches.length - 1, 2, 1.2, 0.8, 0.5, 0.1, 0.3, true);
-    }
   }
 }
 

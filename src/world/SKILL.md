@@ -180,7 +180,9 @@ giving the lit shell back) — and each card carries a billboard frame (`aAxis`,
 the card's own axis toward the camera (`COT_LEAF_BILLBOARD`, ahead of the wind; the impostor bake turns them the same
 way, `COT_BAKE_BILLBOARD`); a small crown's near-camera dissolve keeps to its size (`vCotNearScale`). The tiles are leaf
 clusters (smaller leaves, lit by where they sit in the cluster); a pine's brush and an acacia's leaflets keep their gaps
-under the alpha test (their shading is painted `source-atop`, never a filled core). `crownShadowDapple.ts` opens sun-space leaf gaps in the
+under the alpha test (their shading is painted `source-atop`, never a filled core; the spruce's and the fir's
+herringbone open between eight side twigs, the Canary pine's tile one long splayed fox-tail). A battle snag is a
+shattered trunk — wood only, its snapped top splintered into shards — and few stand. `crownShadowDapple.ts` opens sun-space leaf gaps in the
 crown hull's depth pass: each crown mass as far as its sprays leave it open (`GROWTH_CROWN_POROSITY`, Beer-Lambert over
 the tree's atlas share of opaque leaf, `SPRAY_ATLAS_COVERAGE`) with its own pattern, so a crown's heart casts darker than
 its fringe (world-anchored, the wood never opens, closing where a cascade's texel outgrows them).
@@ -197,9 +199,12 @@ placement keeps its seat, then irregular outlines with denser margins, clearings
 the round-1 stands' mean footprint so the deployments' corridors keep their cover; `standPoint` puts the saplings,
 fringe scrub and understorey on the real outline; a stand that cannot stand leaves no strays; `treeBiomeOpen` places'
 stands are open groves, Las Cañadas' and the arid places'; a `treeBiomeUpland` place zones its forms by height, the
-conifers on the high ground and the broadleaf forms in the low, Copper Mesa's juniper, pinyon and mesquite). Lone trees (`placeLoneTrees`, own stream, round-1 draws
-replayed) stand at woodlot edges, on field boundaries (a hedged one, the ground lane's `hedgeSite`, else a road's verge)
-and as field clumps between the deployments (strung along a hedge where one is near); a hyper-arid place
+conifers on the high ground and the broadleaf forms in the low, Copper Mesa's juniper, pinyon and mesquite; round 3: a
+closed wood holds half again the trees on two thirds of the ground each and spreads its crowns wider,
+`treeBiomeWoodSpread`, its canopy over about two thirds of its ground). Field trees (`placeLoneTrees`, own stream,
+round-1 draws replayed) stand in groups and lines, never alone: fringe groups along a woodlot's outline, hedgerows on
+hedged field boundaries (the ground lane's `hedgeSite`) or avenues on road verges, shelterbelts between the
+deployments; the border's open trees are kept by the 36 m patch; a hyper-arid place
 (`treeBiomeArid`) seats its groves, lone trees and border trees in the wadi beds and hollows; a map's `palmSites` keep
 its palms and its palm groves at the water (any other palm grows as `palmFallback`, no draw moved). `treeCrownShading.selftest.mjs` pins the laws,
 `treeSpacing.selftest.mjs` where the trees stand; battlePacing guards the fights' cover.

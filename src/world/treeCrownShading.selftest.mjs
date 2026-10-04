@@ -166,6 +166,17 @@ for (const species of GROWTH_SPECIES) {
         }
         assert.ok(solid / windows < 0.05, `${kind}: its tile keeps its gaps (${(solid / windows * 100).toFixed(1)} % of the windows solid)`);
       }
+      // round 3 (wave 31, the Fulda spruce's sprays "read as broadleaf"): the spruce's and the fir's herringbone stays
+      // open between its side twigs (19 % and 25 % of the windows solid before, one serrated leaf)
+      if (kind === 'spruce' || kind === 'fir') {
+        let solid = 0, windows = 0;
+        for (let y = 0; y + 8 <= 256; y += 2) for (let x = 0; x + 8 <= 256; x += 2) {
+          let opaque = true;
+          for (let j = 0; j < 8 && opaque; j++) for (let i = 0; i < 8; i++) if (data[((y + j) * 256 + x + i) * 4 + 3] < 97) { opaque = false; break; }
+          windows++; if (opaque) solid++;
+        }
+        assert.ok(solid / windows < (kind === 'fir' ? 0.2 : 0.14), `${kind}: its herringbone stays open (${(solid / windows * 100).toFixed(1)} % solid)`);
+      }
     }
   } finally {
     globalThis.document = savedDocument;

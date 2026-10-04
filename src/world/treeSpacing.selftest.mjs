@@ -2,7 +2,9 @@
 // whatever the place", "lush green groves on Wadi Rum"): where the trees stand (vegetation.ts placeTreeClusters,
 // placeLoneTrees, palmSites; treeBiomes.ts arid). On the real seeded producers:
 // - Verdant (a temperate field map): the lone trees no longer scatter evenly over the open field; most stand at a
-//   woodlot's edge (just outside its outline) or along a road's verge;
+//   woodlot's edge (just outside its outline) or along a road's verge; round 3 (wave 31: "trees stand singly like
+//   savanna; real places have closed woods, groves, shelterbelts and hedgerow lines"): the woods' canopies close over
+//   most of their ground, and the field trees stand in groups and lines, hardly a single one alone;
 // - Redrock Divide (Wadi Rum): open groves seated in the low ground, few trees, and its palms at the springs only;
 // - Sirocco Wadi and Sunscar Oasis: every palm inside the map's palm sites (the wadi bed, the oasis), palm stands
 //   seated there; Sirocco's trees few, and its border's in the low ground or at the water (wave 26: "a lone lollipop
@@ -64,7 +66,33 @@ try {
       });
       assert.ok(birchTints.length >= 2, `Verdant grows leafy birch crowns (${birchTints.length} pools)`);
       for (const [r, g, b] of birchTints) assert.ok(g > r * 1.2 && g > b, `a leafy birch crown tints green (${r.toFixed(3)}, ${g.toFixed(3)}, ${b.toFixed(3)})`);
-      report.verdant = { trees: trees.length, open: open.length, birchPools: birchTints.length };
+      // round 3: the woods' canopy closes (the crowns over 60 % of a wood's ground; 45 % in round 2b, a parkland)
+      let ground = 0, shaded = 0;
+      const cells = new Map(), cellOf = (x, z) => `${Math.floor(x / 10)},${Math.floor(z / 10)}`;
+      for (const t of world._trees) { const k = cellOf(t.x, t.z); if (!cells.has(k)) cells.set(k, []); cells.get(k).push(t); }
+      clusters.forEach((c, i) => {
+        for (let x = c.x - c.r * 1.5; x <= c.x + c.r * 1.5; x += 2) for (let z = c.z - c.r * 1.5; z <= c.z + c.r * 1.5; z += 2) {
+          if (world._standOutline(i, x, z) > 1) continue;
+          ground++;
+          const gx = Math.floor(x / 10), gz = Math.floor(z / 10);
+          let under = false;
+          for (let dx = -1; dx <= 1 && !under; dx++) for (let dz = -1; dz <= 1 && !under; dz++) {
+            for (const t of cells.get(`${gx + dx},${gz + dz}`) ?? []) if (Math.hypot(t.x - x, t.z - z) < t.cr) { under = true; break; }
+          }
+          if (under) shaded++;
+        }
+      });
+      assert.ok(shaded / ground > 0.6, `the woods' canopy closes (${(shaded / ground * 100).toFixed(0)} % of their ground)`);
+      // round 3: hardly a field tree stands alone (no other tree within 12 m: 10 % of the open trees in round 2b)
+      const alone = open.filter((t) => {
+        const gx = Math.floor(t.x / 10), gz = Math.floor(t.z / 10);
+        for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
+          for (const o of cells.get(`${gx + dx},${gz + dz}`) ?? []) if (o !== t && Math.hypot(o.x - t.x, o.z - t.z) < 12) return false;
+        }
+        return true;
+      });
+      assert.ok(alone.length / open.length < 0.06, `the field trees stand in groups (${alone.length} of ${open.length} alone)`);
+      report.verdant = { trees: trees.length, open: open.length, alone: alone.length, closure: +(shaded / ground).toFixed(2), birchPools: birchTints.length };
     } finally { world.dispose(); }
   }
   // Wadi Rum: few trees, open groves in the low ground, palms at the springs only

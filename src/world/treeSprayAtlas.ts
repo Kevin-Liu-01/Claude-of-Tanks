@@ -35,8 +35,8 @@ export const SPRAY_ATLAS_TILES = 2;
  */
 export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.freeze({
   oak: 0.318, poplar: 0.285, willow: 0.17, acacia: 0.175, eucalyptus: 0.239, birch: 0.219, aspen: 0.274, 'birch-bare': 0.13,
-  spruce: 0.269, fir: 0.329, pine: 0.128, cedar: 0.188, cypress: 0.291, mangrove: 0.264, beech: 0.313, chestnut: 0.396,
-  holmOak: 0.213, olive: 0.225, canaryPine: 0.161, aleppoPine: 0.087, larch: 0.157, broom: 0.131,
+  spruce: 0.241, fir: 0.287, pine: 0.128, cedar: 0.188, cypress: 0.291, mangrove: 0.264, beech: 0.313, chestnut: 0.396,
+  holmOak: 0.213, olive: 0.225, canaryPine: 0.107, aleppoPine: 0.087, larch: 0.157, broom: 0.131,
   juniper: 0.256, pinyon: 0.085,
 });
 
@@ -449,11 +449,15 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
     // filled each brush's core into one opaque rounded mass, as "flat broadleaf leaf-card clusters".
     const canary = kind === 'canaryPine', aleppo = kind === 'aleppoPine', pinyon = kind === 'pinyon';
     // the pinyon's needles short, stiff and crowded at the shoot ends
-    const needleL = canary ? 0.25 : aleppo ? 0.16 : pinyon ? 0.11 : 0.19, droopN = canary ? 0.34 : aleppo ? 0.1 : pinyon ? 0.02 : 0.08;
-    const perShoot = canary ? 175 : aleppo ? 95 : pinyon ? 210 : 140;
-    const main = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * 0.56, (rng() - 0.5) * 0.35, 8);
+    const needleL = canary ? 0.27 : aleppo ? 0.16 : pinyon ? 0.11 : 0.19, droopN = canary ? 0.3 : aleppo ? 0.1 : pinyon ? 0.02 : 0.08;
+    const perShoot = canary ? 300 : aleppo ? 95 : pinyon ? 210 : 140;
+    // trees round 3 (2026-10-03, the gauntlet's wave 31: "the Canary pines still read as broadleaf at mid distance"):
+    // a Canary pine's tile is one long fox-tail, its needles splayed wide round it — a three-shoot fan read as a leaf
+    // at range; the other pines keep a main shoot and two side shoots
+    const mainLen = canary ? 0.74 : 0.56;
+    const main = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * mainLen, (rng() - 0.5) * 0.35, 8);
     const shoots: Pt[][] = [main];
-    for (const side of [-1, 1]) {
+    for (const side of canary ? [] : [-1, 1]) {
       const at = pointAt(main, 0.3 + rng() * 0.12);
       shoots.push(twigPoints(at.p, at.a + side * (0.55 + rng() * 0.25), S * (0.27 + rng() * 0.07), side * (0.15 + rng() * 0.2), 6));
     }
@@ -535,7 +539,11 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
   const stem = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * 0.80, (rng() - 0.5) * 0.35, 10);
   const twigs: Pt[][] = [stem];
   const larch = kind === 'larch';
-  const sides = kind === 'cedar' ? 9 : larch ? 7 : 11;
+  // trees round 3 (2026-10-03, the gauntlet's wave 31 on the Fulda spruce: sprays "read as broadleaf"): eleven side twigs
+  // under a full-strength shaded body filled the spruce's and the fir's tiles into one solid serrated leaf under the
+  // alpha test; eight side twigs, and the body laid over the needles (below), keep the herringbone open
+  const needled = kind === 'spruce' || kind === 'fir';
+  const sides = kind === 'cedar' ? 9 : larch ? 7 : needled ? 8 : 11;
   for (let k = 0; k < sides; k++) {
     const t = 0.12 + (k + rng() * 0.5) / sides * 0.78;
     const at = pointAt(stem, t);
@@ -543,7 +551,7 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
     const len = S * (kind === 'fir' ? 0.31 : 0.28) * (1.15 - t * 0.6) * (0.85 + rng() * 0.3);
     twigs.push(twigPoints(at.p, at.a + side * (kind === 'fir' ? 1.0 : larch ? 1.2 : 0.85), len, side * (larch ? -0.9 : 0.15), 5));
   }
-  paintSprayBody(ctx, twigs, S * (kind === 'cedar' ? 0.085 : larch ? 0.075 : 0.095), base, larch ? 0.8 : 1.0, 0.3, 'butt', 0.8);
+  if (!needled) paintSprayBody(ctx, twigs, S * (kind === 'cedar' ? 0.085 : larch ? 0.075 : 0.095), base, larch ? 0.8 : 1.0, 0.3, 'butt', 0.8);
   for (const tw of twigs) taperStroke(ctx, tw, S * 0.010, S * 0.005, wood);
   if (kind === 'cedar' || larch) {
     // rosettes: little starbursts of short needles on spurs along the twigs
@@ -570,6 +578,11 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
   for (let i = twigs.length - 1; i >= 0; i--) {
     paintNeedleTwig(ctx, S, rng, twigs[i], base, flat ? 0.06 : 0.056, flat ? 5.4 : 7.0, flat ? 1.2 : 1.35, flat, i === 0 ? 0.12 : 0.16);
   }
+  // the shaded body along the twigs, over the needles already painted (source-atop: it darkens them, adds no alpha)
+  const composite = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'source-atop';
+  paintSprayBody(ctx, twigs, S * 0.095, base, 1.0, 0.3, 'butt', 0.8);
+  ctx.globalCompositeOperation = composite;
   if (flat) {
     // the fir's silver undersides show as pale lines along the twigs
     ctx.globalAlpha = 0.18;

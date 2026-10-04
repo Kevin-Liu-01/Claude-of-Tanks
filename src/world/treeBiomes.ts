@@ -86,6 +86,15 @@ const SONORAN_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.6), Math.min(1, l * 1.05)],
 });
 
+/**
+ * Las Cañadas' high, dry, volcanic light: the broom a grey-green and the pines a dull green at half their saturation
+ * (the gauntlet's wave 31: "the caldera broom is lime"), each keeping its hue.
+ */
+const VOLCANIC_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.25, cardSat: 0.08,
+  texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.5), Math.min(1, l * 1.04)],
+});
+
 /** The holm oak's dull dark grey-green (its leaves' felted grey undersides): two thirds of a leaf's saturation. */
 const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   cardHue: 0.25, cardSat: 0.09,
@@ -106,7 +115,7 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // on a floor that is nearly treeless apart from broom); its acacia slot, the maps lane's scrub stand-in, grows as
   // young pines among the trees and as broom among the bushes
   caldera: B('Las Cañadas del Teide, Tenerife', { pine: { form: 'canaryPine' }, cedar: { form: 'canaryPine' }, eucalyptus: { form: 'canaryPine' },
-    acacia: { form: 'canaryPine' } }, 'broom', undefined, undefined, true),
+    acacia: { form: 'canaryPine' } }, 'broom', VOLCANIC_FOLIAGE, undefined, true),
   // the Dalmatian coast: Aleppo pine, holm oak and olive (and cypress, which the map names directly)
   saltwind: B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak', colour: HOLM_OAK_FOLIAGE },
     acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }),
@@ -121,8 +130,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // map's oak bushes read as lawn shrubs on the sand)
   badlands: B('Wadi Rum, Jordan', { cedar: { form: 'acacia' }, oak: { form: 'acacia' } }, 'broom', ARID_FOLIAGE, true),
   // a Saharan wadi: date palms and acacias (the map's oak palette dusts them already; the defaults fill any slot it misses)
-  desert: B('a Saharan wadi', { eucalyptus: { form: 'acacia' } }, undefined, ARID_FOLIAGE, true),
-  oasis: B('a Saharan oasis', { eucalyptus: { form: 'acacia' } }, undefined, ARID_FOLIAGE, true),
+  // (trees round 3, the gauntlet's wave 31: the wadi's shrubs were "bright green balls" — a Saharan wadi's scrub is the
+  // white broom, Retama raetam, grey-green switches, as Wadi Rum's)
+  desert: B('a Saharan wadi', { eucalyptus: { form: 'acacia' } }, 'broom', ARID_FOLIAGE, true),
+  oasis: B('a Saharan oasis', { eucalyptus: { form: 'acacia' } }, 'broom', ARID_FOLIAGE, true),
   // the Rur dams in the Eifel: spruce plantations and beech, birches in leaf
   reservoir: B('the Rur dams, Eifel', { pine: { form: 'beech' }, fir: { form: 'spruce' }, birch: { form: 'birch', leaves: true } }),
   // the summer battlefields whose maps plant birches: in leaf (a bare birch crown in a green summer read as a dead tree,
@@ -200,6 +211,18 @@ export function treeBiomePalette<P extends TreeBiomePaletteTerms>(pal: P,
 /** Whether a map's place is hyper-arid (open groves in the low ground, lone trees in the wadi beds). */
 export function treeBiomeArid(mapId: string | null | undefined): boolean {
   return !!(mapId && TREE_BIOMES[mapId]?.arid);
+}
+
+/**
+ * Trees round 3 (2026-10-03, the gauntlet's wave 31: "real places have closed woods"): how much wider a closed wood's
+ * crowns spread than a field tree's (vegetation.ts placeTreeClusters; an open grove's never do). The tidal mangrove
+ * coast keeps its woods' crowns: its stands lend their trees to the mangrove rows, each in the envelope its row
+ * reserved (tidalMangrove.ts).
+ */
+const WOOD_SPREAD: Readonly<Record<string, number>> = Object.freeze({ mangrove: 1 });
+export function treeBiomeWoodSpread(mapId: string | null | undefined): number {
+  if (treeBiomeOpen(mapId)) return 1;
+  return (mapId ? WOOD_SPREAD[mapId] : undefined) ?? 1.16;
 }
 
 /** Whether a map's place is zoned by height (conifer forms high, broadleaf forms low). */

@@ -161,13 +161,18 @@ assert.ok(shape.pine.crownBase > 0.4 && shape.eucalyptus.crownBase > 0.3, 'the p
 assert.ok(shape.oak.aspect > shape.poplar.aspect * 1.6, 'the oak spreads where the poplar rises');
 // the envelopes narrow the way the species do
 assert.ok(envelopeFraction('cone', 0.9) < envelopeFraction('cone', 0.2) && envelopeFraction('column', 0.5) > 0.9);
-// the snag: a broken stem, dead limbs (some snapped), a few dead twig sprays and no sprays on a snapped limb
+// the snag: a broken stem, dead limbs (some snapped), a few dead twig sprays and no sprays on a snapped limb.
+// Trees round 3 (2026-10-03, the gauntlet's wave 31: "a dark, drooping, spiky tree ... reads as dead or diseased
+// foliage"): a shattered trunk — wood only, its snapped top a crown of three to five pointed shards
 {
-  const { skeleton } = grow('snag', 1);
-  assert.ok(skeleton.branches[0].broken, 'the stem is snapped');
-  for (const site of skeleton.leaves) {
-    const owner = skeleton.branches.filter((b) => !b.broken).some((b) => distanceToBranch(b, site) < 0.05);
-    assert.ok(owner, 'dead twigs seat on unbroken limbs only');
+  for (const variant of [0, 1, 2]) {
+    const { skeleton } = grow('snag', variant);
+    const stem = skeleton.branches[0], head = stem.nodes[stem.nodes.length - 1];
+    assert.ok(stem.broken, 'the stem is snapped');
+    assert.equal(skeleton.leaves.length, 0, 'a shattered trunk carries no foliage');
+    const shards = skeleton.branches.filter((b) => b.parent === 0 && b.nodes[0].y >= head.y - 0.1 && b.nodes[b.nodes.length - 1].y > head.y);
+    assert.ok(shards.length >= 3 && shards.length <= 5, `the break splinters into shards (${shards.length})`);
+    for (const shard of shards) assert.ok(shard.nodes[shard.nodes.length - 1].r < 0.01, 'a shard ends in a point');
   }
 }
 
@@ -371,6 +376,9 @@ const shrubRows = [];
   try {
     desktopRecords = records(desktop);
     assert.ok(desktop.group.userData.battleSnags?.converted > 0, 'Nordhavn grows battle snags');
+    // trees round 3: a shattered trunk here and there by the craters, not a tree in every stand (under 2.5 %)
+    assert.ok(desktop.group.userData.battleSnags.converted < desktop._trees.length * 0.025,
+      `a few snags (${desktop.group.userData.battleSnags.converted} of ${desktop._trees.length})`);
     assert.equal(V.vegetationGrowsTrees(), true);
     assert.equal(barkWidth(desktop), 1024, 'the grown trees read the four-style bark sheet');
     desktopBlock0 = barkBlock0(desktop);
