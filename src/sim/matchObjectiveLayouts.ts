@@ -90,7 +90,7 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // Skybridge Chasm (redesign 2026-10-03, the layout turned about the shoulder system's middle (5, 60)): three discs on
   // the line of equal driven distance, each on an apron in the map file — the west lane's yard, the gorge's west shore
   // between the lake and the west middle segment (also the turbo-ball kickoff) and the east lane's yard. Driven reach
-  // 475 / 464 m, 387 / 408 m and 457 / 488 m.
+  // 495 / 484 m, 407 / 428 m and 465 / 508 m.
   skybridge: { kickoff: { x: -139, z: 49 }, zones: [{ x: -300, z: 62 }, { x: -139, z: 49 }, { x: 310, z: 42 }] },
   // Olympus Basin (layout 2026-10-03, turned about the station): three discs on yards of equal driven reach — the
   // north-west yard (bravo's near zone) and the south-east yard (alpha's near zone), each the other's rotation about the

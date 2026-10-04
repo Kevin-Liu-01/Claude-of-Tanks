@@ -62,7 +62,7 @@ export default {
       // west and east, broken where the two cross roads pass, so the floor splits into a west lane, the gorge and an east
       // lane. Every segment ends in a nose: its wall and talus apron turn round the end, so no taper ramps up onto a cap
       // and no apron stops in a cut. The segments are each other's rotation about (5, 60), the middle of the system, so
-      // each deployment stands between two 176 m end segments with a 100 m gap 130-230 m ahead of it (the swap test,
+      // each deployment stands between two 176 m end segments with a 100 m gap 150-250 m ahead of it (the swap test,
       // 2026-10-03: with 300 m south segments the north deployment won 81 of 120 games over three layouts).
       ...[[-215, -238, 176], [-215, 60, 220], [-215, 358, 176], [225, -238, 176], [225, 60, 220], [225, 358, 176]]
         .map(([x, z, length]) => ({ kind: 'ridge', x, z, length, width: 34, height: 18, yawDeg: 90, corridorScale: 1, settlementScale: 1,
@@ -80,12 +80,12 @@ export default {
     ],
   },
   spawns: {
-    // The teams come in from opposite ends of the gorge: bravo's seven pads on the northern floor, centred where its old
-    // line of pads stood, and alpha's 4 x 2 block as their rotation about (5, 60) on the southern floor (the swap test,
-    // 2026-10-03: alpha's south-west corner block lost 27 of 40 games to bravo's northern block, the deployments
-    // exchanged or not).
-    player: { x: 10.6, z: -276.3 },
-    enemies: [{ x: 11.4, z: 396.3 }, { x: 3.4, z: 396.3 }, { x: -4.6, z: 396.3 }, { x: -12.6, z: 396.3 }, { x: 11.4, z: 406.3 }, { x: 3.4, z: 406.3 }, { x: -4.6, z: 406.3 }],
+    // The teams come in from opposite ends of the gorge: bravo's seven pads on the northern floor and alpha's 4 x 2 block
+    // as their rotation about (5, 60) on the southern floor, 721 m apart (the swap test, 2026-10-03: alpha's south-west
+    // corner block lost 27 of 40 games to bravo's northern block, the deployments exchanged or not; the pacing receipt:
+    // at 677 m a 2v2 ended in 102 s).
+    player: { x: 10.6, z: -296.3 },
+    enemies: [{ x: 11.4, z: 416.3 }, { x: 3.4, z: 416.3 }, { x: -4.6, z: 416.3 }, { x: -12.6, z: 416.3 }, { x: 11.4, z: 426.3 }, { x: 3.4, z: 426.3 }, { x: -4.6, z: 426.3 }],
   },
   splat: {
     // round 47 (2026-09-23, owner: "ground patterns are too black"): lightness FLOORS like every sibling canyon map
