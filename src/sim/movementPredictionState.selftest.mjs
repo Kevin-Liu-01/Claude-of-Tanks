@@ -43,8 +43,9 @@ test('fixed checkpoint is detached, JSON safe, and restores every admitted scala
   // round 32: + _autoTraverse; impact physics (2026-09-25): + _terr.fitPitch; bots lane (2026-10-02): + _body.restSupportY;
   // physics lane (2026-10-03, version 4): + _terr.tipPitch / tipRoll, the gravity tip of an overhanging hull;
   // (version 5, appended): + _ride.rebound / stroke, the landing the springs still owe and work through, and _susp.d / dv,
-  // the dive; (version 6, appended, round 3): + _sup.top, the top track contact beside the springs' seat
-  assert.equal(checkpoint.values.length, 53);
+  // the dive; (version 6, appended, round 3): + _sup.top, the top track contact beside the springs' seat; (version 7,
+  // appended, round 5): + _susp.l / lv, the side-to-side transfer the support seats the tracks without
+  assert.equal(checkpoint.values.length, 55);
   assert.deepEqual(JSON.parse(JSON.stringify(checkpoint)), checkpoint);
   const target = entity().state;
   const ride = target._ride;
@@ -103,13 +104,30 @@ test('a version-5 checkpoint still decodes, its top contact at its seat', () => 
   assert.equal(full._sup.top, source.state._sup.top);
 });
 
+test('a version-6 checkpoint still decodes, with no side-to-side transfer in progress', () => {
+  const source = entity();
+  for (let tick = 0; tick < 60; tick++) updateTank(source, field, SIM_DT);
+  source.state._susp.l = 0.01; source.state._susp.lv = 0.02;
+  const v7 = captureMovementPredictionState(source.state);
+  assert.deepEqual(v7.values.slice(53, 55), [0.01, 0.02], 'version 7 carries the side-to-side transfer last');
+  const target = entity().state;
+  target._susp.l = 0.4; target._susp.lv = 1;
+  assert.equal(applyMovementPredictionState(target, { version: 6, values: v7.values.slice(0, 53), flags: v7.flags }), true);
+  assert.equal(target._sup.top, source.state._sup.top);
+  assert.deepEqual([target._susp.l, target._susp.lv], [0, 0]);
+  const full = entity().state;
+  assert.equal(applyMovementPredictionState(full, v7), true);
+  assert.deepEqual([full._susp.l, full._susp.lv], [0.01, 0.02]);
+});
+
 test('malformed checkpoints are rejected atomically, including sparse or oversized numeric arrays', () => {
   const source = entity();
   const good = captureMovementPredictionState(source.state);
   const sparse = good.values.slice();
   delete sparse[8];
   const badNumbers = [NaN, Infinity, -Infinity, 1_000_001, '1', null, undefined];
-  const bad = [null, [], 1, {}, { ...good, version: 3 }, { ...good, version: 4 }, { ...good, version: 5 }, { ...good, version: 7 },
+  const bad = [null, [], 1, {}, { ...good, version: 3 }, { ...good, version: 4 }, { ...good, version: 5 }, { ...good, version: 6 },
+    { ...good, version: 8 },
     { ...good, values: [] }, { ...good, values: [...good.values, 0] },
     { ...good, values: sparse }, ...[-1, 2048, 1.5, NaN].map(flags => ({ ...good, flags })),
     ...badNumbers.map(value => ({ ...good, values: good.values.map((old, i) => i === 5 ? value : old) }))];

@@ -31,12 +31,17 @@ const VERSION_5_COUNT = VERSION_4_COUNT + RIDE_V5.length + DIVE_V5.length;
 // checkpoint still decodes (its top contact at its seat): the hull's highest track contact beside the seat
 // (`_sup.top`), which the springs carry the hull under on uneven ground
 const SUPPORT_V6 = ['top'] as const;
-const VALUE_COUNT = VERSION_5_COUNT + SUPPORT_V6.length;
+const VERSION_6_COUNT = VERSION_5_COUNT + SUPPORT_V6.length;
+// version 7 (physics lane round 5, 2026-10-04), appended after the version-6 layout so an older checkpoint still decodes
+// (no side-to-side transfer in progress): the weight-transfer share of the rock's roll (`_susp.l`, `_susp.lv`), the
+// dive's side-to-side counterpart, which the support solve seats the tracks without
+const LATERAL_V7 = ['l', 'lv'] as const;
+const VALUE_COUNT = VERSION_6_COUNT + LATERAL_V7.length;
 const MAX_ABS_VALUE = 1_000_000;
 const MAX_FLAGS = 2047;
 
 interface MovementPredictionState {
-  version: 6;
+  version: 7;
   values: number[];
   flags: number;
 }
@@ -82,13 +87,14 @@ export function captureMovementPredictionState(state: TankState): MovementPredic
   append(values, state._ride, RIDE_V5);
   append(values, state._susp, DIVE_V5);
   append(values, state._sup, SUPPORT_V6);
+  append(values, state._susp, LATERAL_V7);
   if (!finiteValues(values)) return null;
   const flags = Number(supportInitialized) | Number(state._ride.grounded) << 1 |
     Number(state._body.tumbling) << 2 | Number(state._body.dynamicSupport) << 3 |
     Number(state._body.autoRighting) << 4 | Number(state._rollover.expired) << 5 |
     Number(state.atGunLimit) << 6 | Number(state.gunLimitSpec) << 7 |
     Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9 | Number(restInitialized) << 10;
-  return { version: 6, values, flags };
+  return { version: 7, values, flags };
 }
 
 export function applyMovementPredictionState(
@@ -96,8 +102,8 @@ export function applyMovementPredictionState(
 ): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const record = value as Record<string, RuntimeValue>;
-  const count = record.version === 6 ? VALUE_COUNT : record.version === 5 ? VERSION_5_COUNT
-    : record.version === 4 ? VERSION_4_COUNT : 0;
+  const count = record.version === 7 ? VALUE_COUNT : record.version === 6 ? VERSION_6_COUNT
+    : record.version === 5 ? VERSION_5_COUNT : record.version === 4 ? VERSION_4_COUNT : 0;
   if (!count || !finiteValues(record.values, count) ||
       typeof record.flags !== 'number' || !Number.isInteger(record.flags) ||
       record.flags < 0 || record.flags > MAX_FLAGS) return false;
@@ -141,7 +147,13 @@ export function applyMovementPredictionState(
     state._susp.dv = 0;
   }
   // a checkpoint before version 6 has the top contact at the seat
-  if (count === VALUE_COUNT) restore(state._sup, SUPPORT_V6, values, offset);
+  if (count >= VERSION_6_COUNT) offset = restore(state._sup, SUPPORT_V6, values, offset);
   else state._sup.top = state._sup.y;
+  // a checkpoint before version 7 has no side-to-side weight transfer in progress
+  if (count === VALUE_COUNT) restore(state._susp, LATERAL_V7, values, offset);
+  else {
+    state._susp.l = 0;
+    state._susp.lv = 0;
+  }
   return true;
 }

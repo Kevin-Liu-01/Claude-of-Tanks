@@ -149,6 +149,10 @@ interface RockState {
 interface SuspensionRockState extends RockState {
   d: number;
   dv: number;
+  /** The weight-transfer share of the roll (physics lane round 5): the side-to-side counterpart of the dive (`d`, `dv`),
+   * rendered inside `r` and, like the dive, not seated by the support solve. */
+  l: number;
+  lv: number;
 }
 
 interface RideState {
@@ -1580,7 +1584,7 @@ export function createTankState(spec: MovementSpec, pos: Vector3, yaw: number): 
     _gunLimitHoldS: 0,             // continuous-pin dwell for the GUN LIMIT label
     _autoTraverse: 0,              // ±1 while a fixed-mount hull traverse is engaged toward the sight (round 32)
     _swayEst: 0,                   // predicted visual turn-lean sway (rad)
-    _susp: { p: 0, r: 0, pv: 0, rv: 0, d: 0, dv: 0 }, // mirror of the visual susp rock layer
+    _susp: { p: 0, r: 0, pv: 0, rv: 0, d: 0, dv: 0, l: 0, lv: 0 }, // mirror of the visual susp rock layer
     _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
     _ride: { // sprung vertical chassis motion + deterministic airborne phase
       y: pos.y, v: 0, supportY: NaN, groundV: 0, grounded: true, airTime: 0, bounces: 0, rebound: 0, stroke: 0,
