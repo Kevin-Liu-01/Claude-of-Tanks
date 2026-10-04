@@ -3253,6 +3253,73 @@ function limitDiveToTravel(entity: MovementEntity, spec: MovementSpec, state: Ta
   if (diveV * excess > 0) suspension.cv += diveV;
 }
 
+/** The ground over (+) or under (−) one end guard's height at an attitude (the reachable ground: beginReachableGround). */
+function guardDepthAt(guards: readonly number[], index: number, state: TankState, pitch: number, roll: number): number {
+  const cosRoll = Math.cos(roll), sinRoll = Math.sin(roll);
+  const cosNegPitch = Math.cos(-pitch), sinNegPitch = Math.sin(-pitch);
+  const localX = guards[index], localY = guards[index + 1], localZ = guards[index + 2];
+  const rolledX = localX * cosRoll - localY * sinRoll;
+  const rolledY = localX * sinRoll + localY * cosRoll;
+  const pitchedZ = rolledY * sinNegPitch + localZ * cosNegPitch;
+  const cosYaw = Math.cos(state.yaw), sinYaw = Math.sin(state.yaw);
+  const worldX = state.pos.x + rolledX * cosYaw + pitchedZ * sinYaw;
+  const worldZ = state.pos.z - rolledX * sinYaw + pitchedZ * cosYaw;
+  return reachableGroundAt(worldX, worldZ) - (state.pos.y + rolledY * cosNegPitch - localZ * sinNegPitch);
+}
+
+/**
+ * The drawn hull's ends rest on the ground (physics lane round 8). The posture the hull holds over its tracks
+ * (state._hold) and the dive (SuspensionRockState.d) turn the drawn hull over its seated tracks about its root, and past
+ * the tracks' ends its overhang, the tail or the nose, swings down by its reach times that turn. The support solve holds
+ * the end shell (hullEndGuards) out of the ground at the tracks' seat; where the turn would take an end into it, the end
+ * rests on the ground instead: the posture and the dive keep the share of their turn that brings it down to the ground,
+ * and their rates into it stop, as a bump stop's would. The host's support line of 0.9 x the hull's length reached past
+ * the real tracks and kept the overhang clear; on the tracks the drawn model has (solo play's all along), a BMP-2 holding
+ * its posture at a wall's foot drew its tail 18 cm into the ground.
+ */
+function restDrawnEndsOnGround(
+  spec: MovementSpec,
+  state: TankState,
+  hAt: HeightSampler,
+  terrainAt: HeightSampler,
+  seatPitch: number,
+  seatRoll: number,
+): void {
+  const hold = state._hold;
+  const suspension = state._susp;
+  const turnPitch = hold.p + suspension.d * SUSP_VIS_P;
+  const turnRoll = hold.r;
+  if (turnPitch === 0 && turnRoll === 0) return;
+  const guards = hullEndGuards(spec);
+  if (!guards) return;
+  beginReachableGround(hAt, terrainAt, state);
+  let share = 1;
+  for (let index = 0; index + 2 < guards.length; index += 3) {
+    const drawn = guardDepthAt(guards, index, state, seatPitch + turnPitch, seatRoll + turnRoll);
+    if (!(drawn > 0)) continue;
+    const seated = guardDepthAt(guards, index, state, seatPitch, seatRoll);
+    const keep = seated >= 0 ? 0 : -seated / (drawn - seated);
+    if (keep < share) share = keep;
+  }
+  if (!(share < 1)) return;
+  hold.p *= share;
+  hold.r *= share;
+  if (hold.pv * turnPitch > 0) hold.pv = 0;
+  if (hold.rv * turnRoll > 0) hold.rv = 0;
+  // the dive and the stops' share inside it alike; the rock (the tracks' seat) is untouched
+  const dive = suspension.d - suspension.c;
+  let diveV = suspension.dv - suspension.cv;
+  suspension.c *= share;
+  if (suspension.cv * turnPitch > 0) suspension.cv = 0;
+  if (diveV * turnPitch > 0) diveV = 0;
+  const d = dive * share + suspension.c;
+  const dv = diveV + suspension.cv;
+  suspension.p += d - suspension.d;
+  suspension.pv += dv - suspension.dv;
+  suspension.d = d;
+  suspension.dv = dv;
+}
+
 function resetSupportSamples(
   spec: MovementSpec,
   state: TankState,
@@ -4694,6 +4761,7 @@ export function updateTank(
     state.fallImpactMps *= landingFaceShare(hAt, state.pos.x, state.pos.z, drive.forwardX, drive.forwardZ);
   }
   limitDiveToTravel(entity, spec, state);
+  restDrawnEndsOnGround(spec, state, hAt, terrainAt, pitchEff, rollEff);
   // Off a whole-track seat (a trench crossed, a crest, an edge) the dive is no longer the suspension's to keep apart from
   // the tracks: it joins the rock, which the support solve seats the tracks at (physics lane, 2026-10-03). Held apart,
   // a heavy hull nosing into an assault trench's far wall was thrown out of it and stalled nose-up on the wall.

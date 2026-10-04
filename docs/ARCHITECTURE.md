@@ -924,7 +924,11 @@ contact constraints and cannot be crossed by residual uphill speed.
   half the track's width in from its outer edge (`trackCentreHalfGauge`; round 8, wave 42: "side-load transfer is about
   half its physical size"): read at the outer edges, the roll stiffness was 22-71 % high (42 % at the fleet's median)
   and the hull rolled 0.8°, 5.9 cm. A slide, or a hull on its shell, holds nothing and
-  transfers nothing. A landing is judged by its tracks' attitude, the spring's, not the posture. (Held in the rendered
+  transfers nothing. The posture and the dive turn the drawn hull over its seated tracks about its root, and past the
+  tracks' ends the overhang swings down with them; where an end guard would go into the ground (read at the tracks'
+  seat and at the drawn pose, the ground the hull can reach) the end rests on it: the posture and the dive keep the
+  share of their turn that brings it down to the ground, and their rates into it stop (round 8: on the drawn model's
+  tracks a BMP-2 holding its posture at a wall's foot drew its tail 18 cm into the ground). Nothing at rest changes. A landing is judged by its tracks' attitude, the spring's, not the posture. (Held in the rendered
   rock, as first built, the posture put the drawn hull off the authority's at rest: a UDES 03 laid its fixed bore 0.69
   degree off its sight on flat ground, where its own hydraulic nose-up posture read as a grade, and 1.08 degrees off on
   a 14-degree grade; a ZTZ-100's launch mouth sat 1 cm off the server's on its first shot and 8 mm once settled on a
