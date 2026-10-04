@@ -133,10 +133,23 @@ check('bank-hop', 'medium', 'earth', [
 // An assault trench under a heavy hull (its 45-degree far wall under the nose, its tail over the trench): the wall is not
 // its grade (movement.ts contactAwareFit's span rule). The grade rule stopped it dead in the trench and it see-sawed.
 check('drive-assault-trench', 'heavy', 'earth', [
-  g('progress short of 30 m (m)', (m) => 30 - m.progressM, 0, 'before: 19.6 m'),
+  // (26 m, round 7: the check exists for the old stuck case, 19.6 m. The far wall now costs the travel it lifts the hull
+  // by, by design (the trench ruling, 2026-10-04): the E100 X climbs out at 2.4-4 m/s where it kept 6.3 and is 28.6 m on
+  // after 9 s, past the far lip by a hull length)
+  g('progress short of 26 m (m)', (m) => 26 - m.progressM, 0, 'before: 19.6 m'),
   // (900: with the grade floor the crossing's own jerk reads 800.2, the far wall's lip taken a little harder)
   // (950, round 3: the hull lying on its plane pitches to the walls it crosses, where it read them flatter: 909)
   g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 950, 'before: 1366'),
+]);
+// Round 7 (ruling 2, the trench fix): the far wall under a partial contact's leading station pushes along its normal,
+// costing the travel the lift it gives, and a strike past the bump stops turns the hull about its centre of mass as well
+// as lifting it; a trench ahead is not leaned into. The wall lifted the hull a quarter metre a step, all its travel kept.
+check('drive-assault-trench', 'mbt', 'earth', [
+  g('vertical step (m)', (m) => m.popYMaxM, 0.12, 'before: 0.184 m, the far wall lifting the M1A2 at 13 m/s'),
+]);
+check('drive-trench', 'low', 'earth', [
+  g('vertical step (m)', (m) => m.popYMaxM, 0.12, 'before: 0.194 m, the ditch\'s far lip under the UDES 03\'s nose'),
+  g('flights', (m) => m.falls.length, 0, 'before: 1 (off the far lip)'),
 ]);
 
 // Firing in flight (Mars gravity field audit): the shot turns an airborne hull by its rigid-body share, not the

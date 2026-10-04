@@ -836,7 +836,11 @@ contact constraints and cannot be crossed by residual uphill speed.
   own belly (the grade the slope pull reads is its pitch); the spring that takes over when the tip ends starts from
   the landing blend's soft end. Faces (one plane under the hull) and bridged dips (nothing past 1.2 m) keep the full
   fit, and so does a pitch the supporting samples do not span (a cluster under 1.5 m long: a trench's far wall under
-  the nose of a hull whose tail hangs over the trench is not its grade).
+  the nose of a hull whose tail hangs over the trench is not its grade). A drop the ground comes back up from within
+  9 m of the end the hull drives toward (a trench, a ditch) leans the hull only on samples its tracks can carry
+  (within their reach of the loaded line, fading out at twice it): it goes over level until its centre of mass
+  overhangs the near lip (physics lane round 7; leaning into the trench, a hull met the far wall 14-16 degrees nose-down
+  at 9-11 m/s). A face that falls away and does not come back keeps the lean, so a hull over a crest follows it.
 - *A stop takes the climb with it.* A blow that removes the hull's travel (the grade rule, the cliff probe, a
   collider) removes the same share of the vertical motion that travel carried; it prices nothing by itself.
 - *A grade turns the travel.* The vertical speed the ground gives a hull on a grade comes out of its travel by the
@@ -846,7 +850,14 @@ contact constraints and cannot be crossed by residual uphill speed.
   travel's direction is a normal impulse (its vertical part `cos²θ` of the vertical closing law's, its horizontal part
   out of the travel). Downhill landings, grades under 14 degrees (`GRADE_TURN_MIN`: a turn of under 6 % of the
   travel, left to the rolling ground every battle crosses) and a crawl under 1 m/s are left alone; the travel never
-  passes through zero.
+  passes through zero. A partial contact's leading station driven into a face (smooth, at least 0.5 grade: a trench's
+  far wall) is pushed along that face's normal too: the lift it gives the hull costs the travel the face's grade times
+  it (physics lane round 7, the trench ruling of 2026-10-04: an assault trench's far wall lifted a hull at 13 m/s with
+  all its travel kept). A floor that rises past that station further than the bump stops take (8 cm a step) turns the
+  hull about its centre of mass as well as lifting it, as a rigid body struck there moves: the root takes its share,
+  `k²/(k²+a²)` of the rest, and the turn the remainder as a pitch rate eased in at 0.25 rad/s a step. Trenches crossed
+  at speed slow at the far wall: entering an assault trench at 11 m/s, the median hull's slowest is 7.9 m/s where it
+  kept 9.0.
 - *Landing speed is the hull's own approach.* An airborne hull's ground moves only with its own travel over the
   slope beneath it (its grade along the travel, read from two world samples once the hull is pitched past 72
   degrees and its track samples stack over one point), never with the support envelope's swing as the hull turns.
