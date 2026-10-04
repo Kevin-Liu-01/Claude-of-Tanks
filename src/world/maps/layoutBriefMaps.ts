@@ -4,7 +4,20 @@
 // byte; receipts that preserve the other maps' authoring exclude it by consulting this list.
 
 /** Maps rebuilt to the layout brief: their layout, landform, roads, settlements, spawns and objectives are new. */
-export const LAYOUT_BRIEF_MAPS = Object.freeze(['desert', 'urban', 'railyard', 'frontier', 'saltwind', 'coastal', 'verdant', 'mangrove', 'badlands', 'polders', 'delta', 'reservoir', 'monsoon', 'caldera', 'alpine', 'foundry'] as const);
+export const LAYOUT_BRIEF_MAPS = Object.freeze([
+  'desert', 'urban', 'railyard', 'frontier', 'saltwind', 'coastal', 'verdant', 'mangrove', 'badlands', 'polders', 'delta',
+  'reservoir', 'monsoon',
+  // maps lane A (2026-10-03)
+  'caldera', 'alpine', 'foundry',
+  // maps lane B, batch 5 (2026-10-02)
+  'cliffbridge', 'ruinspires', 'airfield',
+  // maps lane B, batch 6
+  'copper_mesa', 'moon', 'orchard', 'longleaf',
+  // maps lane B, batch 7
+  'autumn', 'steppe', 'winter', 'fjord',
+  // maps lane B, batch 8
+  'oasis', 'whiteout',
+] as const);
 
 export type LayoutBriefMapId = (typeof LAYOUT_BRIEF_MAPS)[number];
 

@@ -453,12 +453,37 @@ export async function loadLayoutWorld(mapId) {
   return { mapId, config, world, heightField, footprintContains: collision.collisionFootprintContainsPoint, mobility };
 }
 
+/**
+ * The bridge deck over (x, z), or null: inside a deck's span and between its parapets. A map's bridge decks (round 61's
+ * river crossings and the dry viaducts, heightField.bridgeDecks) are the floor a hull rides over the span; the height
+ * field there is the bed below. 1-based index into `decks`, 0 when no deck stands over the point.
+ */
+export function bridgeDeckIndexAt(decks, x, z) {
+  for (let d = 0; d < decks.length; d++) {
+    const deck = decks[d], dx = x - deck.x, dz = z - deck.z;
+    if (Math.abs(dx * deck.ux + dz * deck.uz) <= deck.halfLength
+      && Math.abs(dx * deck.uz - dz * deck.ux) <= deck.halfWidth) return d + 1;
+  }
+  return 0;
+}
+
 /** Rasterise the ground, the occluding surface, the solids and the passability of one map. */
 export function buildLayoutRasters({ heightField, world, footprintContains, mobility }) {
+  // Bridge decks (maps with heightField.bridgeDecks, 2026-10-02): over a span the rasters carry the deck, as the bot
+  // planner's grid does (sim/bridgeDeckNavigation.ts) — the deck's height is the ground, the bridge's own records are
+  // its floor and parapets rather than obstacles, and a step between a deck cell and a cell beside the span crosses
+  // the parapet, so it is no edge; only the abutments join the deck to the ground. The bed under the span is not
+  // represented (a 2.5-D raster carries one level, like the planner).
+  const decks = heightField.bridgeDecks ?? [];
+  const deckIndex = (x, z) => (decks.length ? bridgeDeckIndexAt(decks, x, z) : 0);
   const sight = rasterSpec(WORLD_HALF_M, SIGHT_RASTER_M);
   const ground = new Float32Array(sight.n * sight.n);
+  const sightDeck = decks.length ? new Uint8Array(sight.n * sight.n) : null;
   for (let j = 0; j < sight.n; j++) for (let i = 0; i < sight.n; i++) {
-    ground[j * sight.n + i] = heightField.getHeightAt(-WORLD_HALF_M + i * SIGHT_RASTER_M, -WORLD_HALF_M + j * SIGHT_RASTER_M);
+    const x = -WORLD_HALF_M + i * SIGHT_RASTER_M, z = -WORLD_HALF_M + j * SIGHT_RASTER_M, k = j * sight.n + i;
+    const d = deckIndex(x, z);
+    if (d) sightDeck[k] = d;
+    ground[k] = d ? decks[d - 1].deckY : heightField.getHeightAt(x, z);
   }
   const surface = Float32Array.from(ground);
   const sightSolid = new Uint8Array(sight.n * sight.n);
@@ -467,7 +492,9 @@ export function buildLayoutRasters({ heightField, world, footprintContains, mobi
     // a post, a hedgehog beam or a drum is thinner than a raster cell: on a 1-D ray it would hide everything behind it
     if (Math.max(record.max[0] - record.min[0], record.max[2] - record.min[2]) < THIN_COLLIDER_M) continue;
     const top = record.max[1];
+    const bridge = record.kind === 'bridge';
     recordFootprintCells(record, sight, 0, (i) => {
+      if (bridge && sightDeck && sightDeck[i]) return; // the deck itself: its floor is the ground above
       if (top > surface[i]) surface[i] = top;
       if (isSolidRecord(record) && top - ground[i] > 1.2) sightSolid[i] = 1;
     }, footprintContains);
@@ -477,42 +504,64 @@ export function buildLayoutRasters({ heightField, world, footprintContains, mobi
   const passable = new Uint8Array(count), cellCost = new Float32Array(count).fill(1);
   const height5 = new Float32Array(count), wet = new Uint8Array(count);
   const solid5 = new Uint8Array(count);
+  const deck5 = decks.length ? new Uint8Array(count) : null;
+  if (deck5) {
+    for (let j = 0; j < pass.n; j++) for (let i = 0; i < pass.n; i++) {
+      deck5[j * pass.n + i] = deckIndex(-WORLD_HALF_M + i * PASS_RASTER_M, -WORLD_HALF_M + j * PASS_RASTER_M);
+    }
+  }
   for (const record of world.getObstacles()) {
     if (!isSolidRecord(record)) continue;
-    recordFootprintCells(record, pass, 1.8, (i) => { solid5[i] = 1; }, footprintContains);
+    const bridge = record.kind === 'bridge';
+    recordFootprintCells(record, pass, 1.8, (i) => { if (!(bridge && deck5 && deck5[i])) solid5[i] = 1; }, footprintContains);
   }
   const depthAt = typeof heightField.getWaterDepthAt === 'function' ? (x, z) => heightField.getWaterDepthAt(x, z) : null;
   const groundAt = (x, z) => (heightField.getDriveGroundType?.(x, z) ?? heightField.getGroundType?.(x, z) ?? 'medium');
   const gradeLimit = maximumTwoWayGrade(mobility.terrainSlopeMargin, LAYOUT_DRIVETRAIN, 'medium');
   for (let j = 0; j < pass.n; j++) for (let i = 0; i < pass.n; i++) {
     const x = -WORLD_HALF_M + i * PASS_RASTER_M, z = -WORLD_HALF_M + j * PASS_RASTER_M, k = j * pass.n + i;
+    const inside = Math.abs(x) <= ARENA_HALF_M && Math.abs(z) <= ARENA_HALF_M;
+    if (deck5 && deck5[k]) {
+      height5[k] = decks[deck5[k] - 1].deckY;
+      passable[k] = inside && !solid5[k] ? 1 : 0;
+      continue;
+    }
     height5[k] = heightField.getHeightAt(x, z);
     const water = heightField.getWaterMaskAt?.(x, z) ?? 0;
     const deep = depthAt ? depthAt(x, z) > 1.4 : water > 0.85;
     if (water > 0.5) wet[k] = 1;
     const type = groundAt(x, z);
     cellCost[k] = (type === 'soft' ? 1.5 : 1) * (wet[k] ? 3 : 1);
-    passable[k] = Math.abs(x) <= ARENA_HALF_M && Math.abs(z) <= ARENA_HALF_M && !deep && !solid5[k] ? 1 : 0;
+    passable[k] = inside && !deep && !solid5[k] ? 1 : 0;
   }
+  // a deck cell and a cell beside its span meet only at the deck's ends (the abutments); across the parapet they are
+  // no neighbours, whatever the height step between them
+  const joined = (a, b) => {
+    if (!deck5 || deck5[a] === deck5[b]) return true;
+    const d = decks[(deck5[a] || deck5[b]) - 1], off = deck5[a] ? b : a;
+    const along = (pass.x(off) - d.x) * d.ux + (pass.z(off) - d.z) * d.uz;
+    return Math.abs(along) > d.halfLength;
+  };
   // slope: a cell whose steepest 4-neighbour grade exceeds the drivetrain's two-way limit is not drivable ground
   const slopeOk = new Uint8Array(count);
   for (let j = 0; j < pass.n; j++) for (let i = 0; i < pass.n; i++) {
     const k = j * pass.n + i;
     let worst = 0;
-    if (i > 0) worst = Math.max(worst, Math.abs(height5[k] - height5[k - 1]));
-    if (i < pass.n - 1) worst = Math.max(worst, Math.abs(height5[k] - height5[k + 1]));
-    if (j > 0) worst = Math.max(worst, Math.abs(height5[k] - height5[k - pass.n]));
-    if (j < pass.n - 1) worst = Math.max(worst, Math.abs(height5[k] - height5[k + pass.n]));
+    if (i > 0 && joined(k, k - 1)) worst = Math.max(worst, Math.abs(height5[k] - height5[k - 1]));
+    if (i < pass.n - 1 && joined(k, k + 1)) worst = Math.max(worst, Math.abs(height5[k] - height5[k + 1]));
+    if (j > 0 && joined(k, k - pass.n)) worst = Math.max(worst, Math.abs(height5[k] - height5[k - pass.n]));
+    if (j < pass.n - 1 && joined(k, k + pass.n)) worst = Math.max(worst, Math.abs(height5[k] - height5[k + pass.n]));
     slopeOk[k] = worst / PASS_RASTER_M <= gradeLimit ? 1 : 0;
   }
   for (let k = 0; k < count; k++) if (!slopeOk[k]) passable[k] = 0;
   const edgeOk = (from, to, w) => {
+    if (!joined(from, to)) return false;
     const grade = (height5[to] - height5[from]) / (w * PASS_RASTER_M);
     const type = 'medium';
     return mobility.terrainSlopeMargin(LAYOUT_DRIVETRAIN, type, grade) > mobility.TERRAIN_MARGIN_EPS
       && mobility.terrainSlopeMargin(LAYOUT_DRIVETRAIN, type, -grade) > mobility.TERRAIN_MARGIN_EPS;
   };
-  return { sight, ground, surface, sightSolid, pass, passable, cellCost, height5, wet, edgeOk, gradeLimit };
+  return { sight, ground, surface, sightSolid, pass, passable, cellCost, height5, wet, edgeOk, gradeLimit, deck5 };
 }
 
 /** Distance from a point to the nearest road polyline, through a 32 m bucket grid of segments. */
