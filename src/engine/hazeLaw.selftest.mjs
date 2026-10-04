@@ -105,5 +105,33 @@ assert.match(post, /vec3 target = mix\( skyT, uAtmoFogTint \* \( skyL \/ tintL \
     'the pass\'s target: the tint\'s hue at the sky\'s luminance, a level under it');
 }
 assert.doesNotMatch(clouds, /HAZE_LAW_GLSL|hazeSigma/, 'the clouds keep their own haze law (CLOUD_AERIAL)');
+// ---- the dome's horizon under a deck (2026-10-04, Whiteout's beige band over its far ice sheet; Titan Gorge, Frosthollow):
+// from an elevated eye the dome showed between the deck and the far ridges, and it was the clear sky's LUT — warm at the
+// anti-sun horizon under a low sun. The pair (e675ad400 against the haze target alone) left the band pixel for pixel: it
+// is sky, which the aerial pass never touches. Under a deck the horizon takes the tint's hue at the sky's own luminance
+// (the haze target's hue under a closed deck) by the overcast, over its first seven degrees.
+{
+  const sky = here('./sky.ts');
+  assert.match(sky, /float deckW = uDeckHorizon\.w \* \( 1\.0 - smoothstep\( 0\.0, 0\.12, direction\.y \) \);\s*if \( deckW > 0\.0 \) \{\s*float deckTintL = max\( dot\( uDeckHorizon\.rgb, vec3\( 0\.2126, 0\.7152, 0\.0722 \) \), 1e-4 \);\s*skyCol = mix\( skyCol, uDeckHorizon\.rgb \* \( dot\( skyCol, vec3\( 0\.2126, 0\.7152, 0\.0722 \) \) \/ deckTintL \), deckW \);\s*\}\s*float cosSun = dot\( direction, uSunDirection \);/,
+    'the dome: the deck\'s grey at the horizon, after the environment bake\'s early return and before the knee');
+  assert.ok(sky.indexOf('float deckW') > sky.indexOf('if ( uEnvBake > 0.5 ) {'), 'the environment bake keeps the raw sky');
+  assert.match(sky, /\(u\.uDeckHorizon\.value as THREE\.Vector4\)\.set\(tint\.r, tint\.g, tint\.b,\s*model\.mode === 'physical' \? Math\.min\(1, Math\.max\(0, model\.overcast\)\) \* lightTune\('SKY_DECK_HORIZON', 1\) : 0\);/,
+    'by the light model\'s overcast, on the grounded rig only');
+  // the twin: Whiteout's anti-sun horizon at the 13° sun under its own tint and closed deck
+  const Y = [0.2126, 0.7152, 0.0722], lum = (c) => c[0] * Y[0] + c[1] * Y[1] + c[2] * Y[2];
+  const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const dome = (sky, tint, overcast, dirY) => {
+    const w = overcast * (1 - smooth(0, 0.12, dirY)), k = lum(sky) / Math.max(lum(tint), 1e-4);
+    return sky.map((v, i) => v + (tint[i] * k - v) * w);
+  };
+  const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const tint = [0xb3, 0xbf, 0xc9].map((v) => srgbToLinear(v / 255)), warm = [0.60, 0.52, 0.30];
+  const closed = dome(warm, tint, 1, 0);
+  near(lum(closed), lum(warm), 1e-12, 'the horizon keeps the sky\'s luminance');
+  near(closed[2] / closed[0], tint[2] / tint[0], 1e-12, 'a closed deck: the tint\'s hue at the horizon');
+  assert.deepEqual(dome(warm, tint, 0, 0), warm, 'an open sky: the LUT');
+  assert.deepEqual(dome(warm, tint, 1, 0.13), warm, 'seven degrees up: the sky a broken deck\'s gaps show');
+}
+
 
 console.log(`hazeLaw.selftest: Beer–Lambert law (σ ${HAZE_SIGMA_PER_FOG} × fogDensity, layer ${HAZE_LAYER_SCALE_M} m), ${checked} maps readable at 2 km and separated to 3 km, layer integral exact, wiring PASS`);

@@ -651,6 +651,8 @@ uniform vec3 uSunTransmittance;
 uniform float uSunDiscRadiance;
 uniform float uEnvBake;
 uniform vec3 uEnvGround;
+// 2026-10-04: the authored fog tint (linear) and the deck's share at the horizon (the light model's overcast)
+uniform vec4 uDeckHorizon;
 uniform float uSkyIntensity;
 uniform float uNight;
 uniform float uGalaxy;
@@ -672,6 +674,16 @@ void main() {
 		float below = 1.0 - smoothstep( -0.035, 0.0, direction.y );
 		gl_FragColor = vec4( mix( max( skyCol, vec3( 0.0 ) ) * uSkyIntensity, uEnvGround, below ), 1.0 );
 		return;
+	}
+	// 2026-10-04 (Whiteout's beige band over its far ice sheet; Titan Gorge, Frosthollow): under a deck the horizon is the
+	// deck's grey — the deck seen at grazing angles through the haze under it — not the clear sky's LUT, whose anti-sun
+	// horizon at a low sun is warm: from an elevated eye the dome showed in the band between the deck and the far
+	// ridges. The hue goes to the authored tint at the sky's own luminance (the haze law's target under a closed deck,
+	// hazeLaw.ts), by the overcast, over the horizon's first seven degrees (gaps higher in a broken deck keep their sky)
+	float deckW = uDeckHorizon.w * ( 1.0 - smoothstep( 0.0, 0.12, direction.y ) );
+	if ( deckW > 0.0 ) {
+		float deckTintL = max( dot( uDeckHorizon.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 );
+		skyCol = mix( skyCol, uDeckHorizon.rgb * ( dot( skyCol, vec3( 0.2126, 0.7152, 0.0722 ) ) / deckTintL ), deckW );
 	}
 	float cosSun = dot( direction, uSunDirection );
 	// the legacy knee exemption spot around the sun keeps the disc and its immediate aureole HDR
@@ -1177,6 +1189,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       uSunDiscRadiance: { value: legacySunDiscRadiance(sunDir.y) },
       uEnvBake: { value: 0 },
       uEnvGround: { value: new THREE.Color(0, 0, 0) },
+      uDeckHorizon: { value: new THREE.Vector4(1, 1, 1, 0) },
       // shared by reference with the Preetham dome: configureSkyUniforms refreshes both at once
       uSkyIntensity: skyUniforms.uSkyIntensity, uNight: skyUniforms.uNight, uGalaxy: skyUniforms.uGalaxy,
       uNebula: skyUniforms.uNebula, uEarth: skyUniforms.uEarth, uPlanetR: skyUniforms.uPlanetR, uPlanetTint: skyUniforms.uPlanetTint,
@@ -1256,6 +1269,10 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       authoredSunOf(preset as LightModelPreset)); // the night's moon, as lighting.ts resolves it
     physicalEnvIntensity = model.mode === 'physical' ? model.envIntensity : null;
     (u.uEnvGround.value as THREE.Color).setRGB(model.groundRadiance[0], model.groundRadiance[1], model.groundRadiance[2]);
+    // 2026-10-04: the deck's grey at the horizon (the dome's uDeckHorizon note), by the overcast; QA: SKY_DECK_HORIZON
+    const tint = atmosphereState.fogTint;
+    (u.uDeckHorizon.value as THREE.Vector4).set(tint.r, tint.g, tint.b,
+      model.mode === 'physical' ? Math.min(1, Math.max(0, model.overcast)) * lightTune('SKY_DECK_HORIZON', 1) : 0);
     atmosphereKeySuffixLive = model.mode === 'physical'
       ? `${atmosphereKey(params, preset.skyIntensity)}|g:${model.groundRadiance.map((v) => v.toPrecision(6)).join(',')}`
       : atmosphereKey(params, preset.skyIntensity);
