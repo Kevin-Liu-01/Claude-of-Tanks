@@ -358,6 +358,12 @@ export const CASES = [
   { id: 'flank-steep', group: 'air', seconds: 6, spawn: { speed: 12 }, input: hold(1), terrain: TERRAIN.flank(12, 12, 45, 40),
     ground: () => 'soft' },
   { id: 'climb-crest', group: 'air', seconds: 7, spawn: { speed: 9 }, input: hold(1), terrain: TERRAIN.crestFace(14, 12, 38, 5) },
+  // Round 6 (Skybridge fall census, 2026-10-04: a hull climbing a 46-degree bank at 6.5 m/s hopped off its convexity
+  // and met the face 0.4 s later, 75.6 hp; the same bank cost another hull 160.5): a 30-degree ramp levels off for 2 m,
+  // the hull leaves its lip at 6.5 m/s and meets the 50-degree face beyond it 0.4 s later (a face its tracks cannot climb:
+  // a hull stopped on it, or on the ramp, is no glitch)
+  { id: 'bank-hop', group: 'air', seconds: 5, spawn: { speed: 11 }, input: hold(1), allowBlocked: true,
+    terrain: TERRAIN.profile([[0, 0], [12, 0], [19, 4.04], [21, 4.04], [29, 13.58], [69, 13.58]]) },
   // Mars gravity (field audit): a bot firing three times in a 3.7 s boost flight pitched over 95 degrees and came down
   // on its back — every shot spun the airborne hull by the suspension's ground rock, and the air barely damps a spin.
   { id: 'air-fire', group: 'air', seconds: (w) => 1 + w.jumpFlightS + 3, terrain: TERRAIN.flat(), input: hold(),

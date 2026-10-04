@@ -850,7 +850,10 @@ contact constraints and cannot be crossed by residual uphill speed.
 - *Landing speed is the hull's own approach.* An airborne hull's ground moves only with its own travel over the
   slope beneath it (its grade along the travel, read from two world samples once the hull is pitched past 72
   degrees and its track samples stack over one point), never with the support envelope's swing as the hull turns.
-  Falling support is followed uncapped; only a rising one is bounded (12 m/s) as a launch.
+  Falling support is followed uncapped; only a rising one is bounded (12 m/s) as a launch. The grade is the track
+  samples' rise per hull-local metre (the sine of the plane pitch the fit reads) over the cosine of the hull's pitch
+  (physics lane round 6: once the fit took the arcsine, the tangent read there made a 46-degree bank under a hull
+  pitched 45 degrees a 57-degree one, rising 47 % faster under the travel than it does).
 - *The landing stroke.* A landing on the tracks carries its closing into the springs: from the touchdown on the
   drooped tracks' line until the hull has come back up through its seat they work at the landing damping (ζ 0.45,
   `LANDING_ZETA`; driving keeps the critical damping), so a hard landing bottoms on the stops and a soft one dips,
@@ -951,6 +954,14 @@ contact constraints and cannot be crossed by residual uphill speed.
 - *A fall is the hull's own.* Fall damage prices the closing less, by energy, the height the support rose under the
   ride beyond what its own travel (and its turn on the spot) over a climbable grade explains (`fallImpactMps`; the
   ledger forgets over a second of riding the springs): a drop caused by the solver correcting itself is never a fall.
+  It is charged along the face's normal (physics lane round 6; Skybridge fall census: hulls climbing a 46-degree bank
+  hopped off its convexity and met the face 0.4 s later for 75.6 and 160.5 hp). The closing is vertical: the ground's
+  rise under the travel and the hull's fall. The face meets the hull at that times the cosine of its slope along and
+  across the travel (`landingFaceShare`), where the ground under the hull's middle holds a face at the grade the
+  closing read; an edge or a step under the hull (a roof's edge) keeps the vertical closing. A hull leaving a bank's
+  lip at 6.5 m/s and meeting the 50-degree face 0.4 s later lands at 5.7 m/s vertical (8.8 with the grade misread)
+  and is charged 3.6, nothing, where it lost 61 hp; an 8 m drop onto a 25-degree grade is charged 9.9 m/s, not 10.9.
+  The bounded rules (the gravity modes, Turbo Ball) keep their own vertical law.
 - *Known limits.* Rigid rotation is still about the root, though the tip lever reads the box centre (a nose-first
   landing settles about its centre, so it can hop a few times on a sharp kicker); a hull balanced exactly on a 4 m
   edge hangs nose-up near 80° before it slides off (its tail cannot reach the ground sooner); the drivetrain feels a

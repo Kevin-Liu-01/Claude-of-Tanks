@@ -120,6 +120,16 @@ check('flank-steep', 'medium', 'earth', [
   g('fall damage (hp)', (m) => m.fallDamageHp, 300, 'before: 4564 hp (the flank read as level under a nose-down hull)'),
 ]);
 
+// Round 6 (Skybridge fall census: 75.6 hp and 160.5 hp landings on one 46-degree bank): a hull climbing at 6.5 m/s hops
+// off a bank's lip and meets the 50-degree face beyond it 0.4 s later. The face rises under its travel at the face's
+// grade (the fit's rise per hull-local metre, not the tangent of its arcsine), and the landing is charged along the
+// face's normal: no fall damage.
+check('bank-hop', 'medium', 'earth', [
+  g('the face landing\'s vertical closing (m/s)', (m) => m.landings?.[0] ?? 0, 7, 'before: 8.84 m/s (the face read as 59 degrees)'),
+  g('its charged closing (m/s)', (m) => Math.max(0, ...(m.falls ?? [])), 6, 'before: 8.8 m/s (vertical)'),
+  g('fall damage (hp)', (m) => m.fallDamageHp, 0, 'before: 61.3 hp'),
+]);
+
 // An assault trench under a heavy hull (its 45-degree far wall under the nose, its tail over the trench): the wall is not
 // its grade (movement.ts contactAwareFit's span rule). The grade rule stopped it dead in the trench and it see-sawed.
 check('drive-assault-trench', 'heavy', 'earth', [

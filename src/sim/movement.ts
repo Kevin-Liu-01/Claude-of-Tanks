@@ -697,6 +697,33 @@ function worldGradeAlong(hAt: HeightSampler, x: number, z: number, forwardX: num
   const behind = hAt(x - forwardX * AIR_GRADE_PROBE_M, z - forwardZ * AIR_GRADE_PROBE_M);
   return (ahead - behind) / (2 * AIR_GRADE_PROBE_M);
 }
+/**
+ * The share of a landing's vertical closing that meets the face it lands on along its normal (physics lane round 6;
+ * Skybridge fall census, 2026-10-04: a hull climbing a 46-degree bank at 6.5 m/s hopped off its convexity and met the
+ * face 0.4 s later at a 9.4 m/s closing, 75.6 hp, and another 160.5 hp on the same bank). The closing is vertical: the
+ * ground rising under the travel (its grade G along it) and the hull's fall, u·G − w. The face meets the hull along its
+ * normal at that times the cosine of its slope, 1/√(1 + G² + S²) with S its grade across the travel: on a 46-degree
+ * bank 0.69 of it, the climb's travel into the face counted at its sine, not its tangent. Level ground keeps all of it.
+ * Only a face the ground under the hull's middle holds is projected on: the ground there runs on at one grade along
+ * the travel (bending less than FACE_BEND_M over the probe's two halves), the grade the closing read
+ * (FACE_AGREE_GRADE), and a cross slope that bends more than that across it counts none. An edge or a step under the
+ * hull, or one the track samples straddle, is no face: a roof's edge landed on keeps its vertical closing.
+ */
+const FACE_AGREE_GRADE = 0.35;
+const FACE_BEND_M = 0.4;
+function landingFaceShare(hAt: HeightSampler, x: number, z: number, forwardX: number, forwardZ: number): number {
+  const probe = AIR_GRADE_PROBE_M;
+  const middle = hAt(x, z);
+  const ahead = hAt(x + forwardX * probe, z + forwardZ * probe);
+  const behind = hAt(x - forwardX * probe, z - forwardZ * probe);
+  if (!(Math.abs(ahead + behind - 2 * middle) <= FACE_BEND_M)) return 1;
+  const along = _airGrade;
+  if (!(Math.abs(along - (ahead - behind) / (2 * probe)) <= FACE_AGREE_GRADE)) return 1;
+  const right = hAt(x + forwardZ * probe, z - forwardX * probe);
+  const left = hAt(x - forwardZ * probe, z + forwardX * probe);
+  const across = Math.abs(right + left - 2 * middle) <= FACE_BEND_M ? (right - left) / (2 * probe) : 0;
+  return 1 / Math.sqrt(1 + along * along + across * across);
+}
 let _tippedThisTick = false;
 const RIDE_SUPPORT_V_CAP = 12;         // m/s; bounds extreme launch ramps
 /** A hull coming down on its shell stops its closing at the contact past this (m/s): the armour has no stroke. */
@@ -4357,19 +4384,25 @@ export function updateTank(
   );
 
   // The ground's grade along the travel under a hull in flight, per horizontal metre (physics lane, 2026-10-03). The
-  // track samples just taken lie at z·cos(pitch) along the travel, so their fit reads the grade times that cosine; past
-  // 72 degrees of pitch they stack over one point and two world samples read it instead. A hull that left a 45-degree
-  // flank nose-down read the flank as level, landed on it at 18.7 m/s "closing" against ground that was falling away at
-  // 14.4 m/s under its travel, and took 4632 hp.
+  // track samples just taken lie at z·cos(pitch) along the travel, so their fit's rise per hull-local metre (the sine of
+  // the plane pitch it reads) is the grade times that cosine; past 72 degrees of pitch they stack over one point and two
+  // world samples read it instead. A hull that left a 45-degree flank nose-down read the flank as level, landed on it at
+  // 18.7 m/s "closing" against ground that was falling away at 14.4 m/s under its travel, and took 4632 hp. (Round 6:
+  // the rise is the sine of the fit's pitch since the fit takes the arcsine, 4549734b3; its tangent read a 46-degree
+  // face under a hull pitched 45 degrees as 57, the ground rising 47 % faster under the travel than it does.)
   if (!groundedAtStart) {
     const cosPitch = Math.cos(pitchEff);
     _airGrade = Math.abs(cosPitch) > AIR_GRADE_MIN_COS
-      ? Math.tan(state._terr.fitPitch) / cosPitch
+      ? Math.sin(state._terr.fitPitch) / cosPitch
       : worldGradeAlong(hAt, state.pos.x, state.pos.z, drive.forwardX, drive.forwardZ);
   }
   // Loaded suspension follows the support envelope; once the droop limit is
   // exceeded, the chassis uses an independent ballistic phase until landing.
   updateVerticalContact(state, groundedAtStart, dt, drive);
+  // a landing in flight is charged its closing along the normal of the face it meets (bounded rules keep their own)
+  if (!groundedAtStart && state.fallImpactMps > 0 && !Number.isFinite(drive.bounceMaxHeight)) {
+    state.fallImpactMps *= landingFaceShare(hAt, state.pos.x, state.pos.z, drive.forwardX, drive.forwardZ);
+  }
   limitDiveToTravel(entity, spec, state);
   // Off a whole-track seat (a trench crossed, a crest, an edge) the dive is no longer the suspension's to keep apart from
   // the tracks: it joins the rock, which the support solve seats the tracks at (physics lane, 2026-10-03). Held apart,
