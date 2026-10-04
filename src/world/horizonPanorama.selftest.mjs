@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
-  HORIZON_PANORAMA, HORIZON_PANORAMA_CHARACTERS, HORIZON_PANORAMA_SHADERS, buildHorizonPanoramaShellGeometry, horizonPanoramaHaze,
+  HORIZON_PANORAMA, HORIZON_PANORAMA_CHARACTERS, HORIZON_PANORAMA_REGIONAL, HORIZON_PANORAMA_SHADERS, buildHorizonPanoramaShellGeometry, horizonPanoramaHaze,
   createHorizonPanorama, horizonPanoramaUv, horizonRingSkylineTan, resolveHorizonPanoramaCharacter,
 } from './horizonPanorama.ts';
 import { HORIZON_FAR_ROWS } from './horizonFarRange.ts';
@@ -147,7 +147,43 @@ assert.ok(/uniform vec4 uShore;/.test(HORIZON_PANORAMA_SHADERS.height) && /uShor
   assert.ok(pano.shore > 1 && pano.shoreM > 4000 && pano.shoreM < 7000, 'a channel coast: the land across the water, 4-7 km out');
   assert.ok(pano.shoreRange > 0 && pano.shoreRange <= 1, 'a coastal range along the far shore (no low strip where its own relief is low)');
   assert.ok(pano.treeline < HORIZON_PANORAMA_CHARACTERS.coastal.treeline, 'the karst keeps its woods on the lower flanks');
-  assert.equal(saltwind.horizon.panorama, false, 'Saltwind holds the PR head\'s far country (gauntlet wave 24) until its ridge is rebuilt');
+  assert.equal(saltwind.horizon.panorama, false, 'Saltwind holds the PR head\'s far country (gauntlet waves 24 and 32) until its ridge is rebuilt');
+  // the channel past the sea apron is painted water on a channel coast, so the far ridge stands on it (wave 24: "floats
+  // above a flat white haze stripe"); an open sea stays the game's own
+  assert.ok(/float farWater = uShore\.x > 0\.0 \? sea \* smoothstep\(/.test(HORIZON_PANORAMA_SHADERS.strip)
+    && HORIZON_PANORAMA_SHADERS.strip.includes('smoothstep(0.02, 0.2, sea) * (1.0 - farWater)'), 'a channel coast\'s far reach is water, not open sky');
+}
+// the ring hands the bake its map's own overcast (lightModelCore resolveOvercast of its sky and cloudscape), not the light
+// model the battlefield may still publish from the last map
+{
+  const src = readFileSync(new URL('./maps/horizon.ts', import.meta.url), 'utf8');
+  assert.ok(/overcast: resolveOvercast\(/.test(src), 'the ring passes the map\'s own overcast to the bake');
+  const hp = readFileSync(new URL('./horizonPanorama.ts', import.meta.url), 'utf8');
+  assert.ok(hp.includes('options.overcast ?? published.overcast'), 'the bake prefers the map\'s own overcast');
+}
+// every uniform a pass reads is declared in that pass (a strip reading uTrees without its declaration compiled to nothing:
+// the SwiftShader lab drew no panorama at all — the receipts compile no GLSL)
+for (const [pass, source] of Object.entries(HORIZON_PANORAMA_SHADERS)) {
+  const declared = new Set([...source.matchAll(/uniform\s+\w+\s+([^;]+);/g)].flatMap((m) => m[1].split(',').map((n) => n.trim().replace(/\[.*\]$/, ''))));
+  for (const used of new Set([...source.matchAll(/\b(u[A-Z]\w*)\b/g)].map((m) => m[1]))) {
+    assert.ok(declared.has(used), `the ${pass} pass declares the ${used} it reads`);
+  }
+}
+// the strip's fill below the ring's skyline takes an ice sheet's snow (the follow-up ticket: over Whiteout's low ring the
+// elevated views saw it as a band of the battlefield's ground tone)
+assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('float fillSnow = uChar3.x < 0.0 ? 1.0 : 0.0;')
+  && HORIZON_PANORAMA_SHADERS.strip.includes('mix(uBase, uSnow, fillSnow)'), 'the fill below the skyline takes the sheet\'s snow');
+// the forest climbs a monsoon hill country's steep faces (gauntlet wave 24, Monsoon Ridge's 'ridges' "a pale, jagged desert
+// rock formation"): the vegetation's slope limit is the character's, the ridges' crests round, rock only on the cliffs
+{
+  const ridges = resolveHorizonPanoramaCharacter('karst', { regional: 'ridges' });
+  assert.ok(ridges.forestSlope >= 0.55 && ridges.rockSlope >= 0.85 && ridges.sharp <= 1.2, 'ridges: forest up the faces, rounded crests');
+  assert.equal(HORIZON_PANORAMA_CHARACTERS.rolling.forestSlope, 0.32, 'a temperate hill keeps the old forest limit');
+  // (and every other regional class: Orchard's forested far country stays the PR head's until its own views say otherwise)
+  for (const [regional, c] of Object.entries(HORIZON_PANORAMA_REGIONAL)) {
+    if (regional !== 'ridges') assert.equal(c.forestSlope, 0.32, `${regional}: the old forest limit`);
+  }
+  assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('smoothstep(uTrees.y, uTrees.y + 0.23, slope)'), 'the strip reads the forest\'s slope limit');
 }
 // --- the regional classes (gauntlet wave 15, every critic: "mountain ranges behind places that have none"): a map's
 // horizon block picks its real place's far country ------------------------------------------------------------------
@@ -184,6 +220,10 @@ assert.ok(HORIZON_PANORAMA_SHADERS.strip.includes('texture2D(uHeight, g).g'), 't
   assert.ok(haze.toward.x > haze.anti.x && haze.anti.z > haze.anti.x, 'the target: the sky at the horizon, warm toward the sun, cool away from it');
   assert.ok(haze.anti.y < 0.8, 'a step under the sky (a range never pales past it)');
   assert.equal(horizonPanoramaHaze(null, sun, 0.00074), null, 'no published sky: the bake\'s own air');
+  // under a closed deck the target is the authored tint at the deck's level, never the clear sky's warm horizon (the pair
+  // ticket of 5ea057f45: Whiteout's far ice sheet baked beige under a stale light model's overcast 0)
+  const deck = horizonPanoramaHaze(atmosphere, sun, 0.00074, 1);
+  assert.ok(deck.toward.x / deck.toward.z < haze.toward.x / haze.toward.z && deck.anti.y < haze.anti.y, 'a closed deck: the tint, dimmer, no warm band');
   assert.equal(horizonPanoramaHaze({ ...atmosphere, sunDir: { x: -0.5, y: 0.6, z: 0.6 } }, sun, 0.00074), null, 'another map\'s or hour\'s sky: the bake\'s own air');
   // a bake waits (a couple of seconds of frames) while the battlefield still publishes another map's sky (the shots' flow
   // baked every map after the first before its own sky was applied), and bakes at once where no sky is published
