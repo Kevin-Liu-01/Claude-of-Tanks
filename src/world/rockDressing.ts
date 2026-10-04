@@ -151,7 +151,7 @@ const LITHOLOGY_FORMS: Readonly<Record<BoulderLithology, { kinds: readonly [Boul
   sandstone: { kinds: ['bedded block', 'slab', 'bedded block'], soft: 0.85, bedded: true },
   limestone: { kinds: ['bedded block', 'jointed block', 'slab'], soft: 1, bedded: true },
   slate: { kinds: ['slab', 'jointed block', 'slab'], soft: 0.6, bedded: false },
-  chalk: { kinds: ['bedded block', 'corestone', 'jointed block'], soft: 1.7, bedded: true },
+  chalk: { kinds: ['bedded block', 'corestone', 'jointed block'], soft: 1.15, bedded: true },
 });
 
 /** The kind (an index into BOULDER_KINDS) a map's variant is built as. */
@@ -199,15 +199,22 @@ function boulderBodies(kind: BoulderKindName, rng: () => number, soft: number, b
   };
   // the skirt's floor (fresh -1 marks it: the fit sets its depth under the fitted rock, whatever the kind's height)
   const floor = (size: readonly number[] = [1, 0.8, 1]): JointPlane => [0, -1, 0, BOULDER_FLOOR * (size[1] / 0.8), -1];
-  /** An irregular block about `at`: a tilted top joint, a ring of shoulders, a set of near-upright joint faces, one of
-   * them cut deep (a broad flat face). */
-  const block = (size: readonly number[], at: readonly number[], o: { sides: [number, number]; shoulders: [number, number];
-    el: [number, number]; topTilt: number; round: number; tone: number }): BoulderBody => {
-    const planes: JointPlane[] = [plane(size, at, jitter(o.topTilt), 1, jitter(o.topTilt), range(0.86, 1))];
-    shoulders(size, at, o.shoulders[0] + Math.floor(rng() * (o.shoulders[1] - o.shoulders[0] + 1)), o.el, [0.84, 0.97], planes);
-    const sideAz = ring(o.sides[0] + Math.floor(rng() * (o.sides[1] - o.sides[0] + 1)));
-    const deep = Math.floor(rng() * sideAz.length);
-    sideAz.forEach((az, k) => planes.push(side(size, at, az, rng() * 0.1, k === deep ? range(0.7, 0.78) : range(0.84, 1.08), k === deep && rng() < 0.5 ? 1 : 0)));
+  const count = (span: readonly [number, number]): number => span[0] + Math.floor(rng() * (span[1] - span[0] + 1));
+  /** An irregular block about `at`: a tilted top joint; shoulders between it and the sides, each at its own height and
+   * depth (the weathered top's breaks, so the top is a low faceted dome and never a table); the sides round it, each
+   * leaning back at its own angle and set at its own depth (the girth only grows downward, and no two sides square:
+   * wave 57 round 2 read the upright walls and the flat top as cut stone, "a concrete block"); and joint cuts deep
+   * enough to leave a broad flat face each, at any height on any side, often fresh. */
+  const block = (size: readonly number[], at: readonly number[], o: { sides: [number, number]; lean: [number, number];
+    shoulders: [number, number]; el: [number, number]; topTilt: number; top: [number, number]; joints: [number, number];
+    jointEl: [number, number]; round: number; tone: number }): BoulderBody => {
+    const planes: JointPlane[] = [plane(size, at, jitter(o.topTilt), 1, jitter(o.topTilt), range(o.top[0], o.top[1]))];
+    shoulders(size, at, count(o.shoulders), o.el, [0.8, 0.97], planes);
+    for (const az of ring(count(o.sides))) planes.push(side(size, at, az, range(o.lean[0], o.lean[1]), range(0.86, 1.06)));
+    for (let k = count(o.joints); k > 0; k--) {
+      const az = rng() * Math.PI * 2, el = range(o.jointEl[0], o.jointEl[1]);
+      planes.push(plane(size, at, Math.cos(el) * Math.cos(az), Math.sin(el), Math.cos(el) * Math.sin(az), range(0.66, 0.8), rng() < 0.5 ? 1 : 0));
+    }
     planes.push(floor(size));
     return { planes, round: o.round, tone: o.tone };
   };
@@ -215,24 +222,27 @@ function boulderBodies(kind: BoulderKindName, rng: () => number, soft: number, b
     // a jointed rock parted along its joints: a main block, a sharper piece split off one side and standing a step
     // higher or lower, often a low ledge on another (a union of blocks: their meeting creases are the joints)
     const az = rng() * Math.PI * 2;
-    bodies.push(block([0.86, 0.8, 0.76], [0, 0, 0], { sides: [5, 7], shoulders: [1, 3], el: [0.4, 0.8], topTilt: 0.32, round: 0.095 * soft, tone: jitter(0.3) }));
+    bodies.push(block([0.86, 0.8, 0.76], [0, 0, 0], { sides: [5, 7], lean: [0.06, 0.38], shoulders: [3, 5], el: [0.35, 1.0],
+      topTilt: 0.3, top: [0.86, 0.97], joints: [1, 2], jointEl: [0.02, 0.8], round: 0.075 * soft, tone: jitter(0.3) }));
     if (simple) return bodies;
     const up = rng() < 0.5 ? range(0.08, 0.2) : -range(0.15, 0.3);
-    bodies.push(block([0.52, 0.62, 0.5], [Math.cos(az) * 0.5, up, Math.sin(az) * 0.5],
-      { sides: [4, 6], shoulders: [1, 2], el: [0.45, 0.8], topTilt: 0.4, round: 0.045 * soft, tone: jitter(0.5) }));
+    bodies.push(block([0.52, 0.62, 0.5], [Math.cos(az) * 0.5, up, Math.sin(az) * 0.5], { sides: [4, 6], lean: [0.05, 0.32],
+      shoulders: [2, 3], el: [0.4, 0.95], topTilt: 0.4, top: [0.84, 0.97], joints: [0, 1], jointEl: [0.05, 0.7], round: 0.05 * soft, tone: jitter(0.5) }));
     if (rng() < 0.55) {
       const az2 = az + Math.PI * range(0.6, 1.4);
-      bodies.push(block([0.58, 0.36, 0.52], [Math.cos(az2) * 0.5, -0.32, Math.sin(az2) * 0.5],
-        { sides: [4, 6], shoulders: [1, 2], el: [0.35, 0.7], topTilt: 0.25, round: 0.07 * soft, tone: jitter(0.45) }));
+      bodies.push(block([0.58, 0.36, 0.52], [Math.cos(az2) * 0.5, -0.32, Math.sin(az2) * 0.5], { sides: [4, 6], lean: [0.04, 0.3],
+        shoulders: [1, 2], el: [0.3, 0.7], topTilt: 0.25, top: [0.88, 1], joints: [0, 1], jointEl: [0.02, 0.5], round: 0.06 * soft, tone: jitter(0.45) }));
     }
   } else if (kind === 'corestone') {
     // the weathered core of a jointed mass: many facets, its arrises worn broad, a lobe the weather has not yet parted
     // from it, one face still a flat joint
-    bodies.push(block([0.9, 0.82, 0.84], [0, 0, 0], { sides: [6, 8], shoulders: [4, 6], el: [0.3, 0.9], topTilt: 0.3, round: 0.15 * soft, tone: jitter(0.3) }));
+    bodies.push(block([0.9, 0.82, 0.84], [0, 0, 0], { sides: [6, 8], lean: [0.12, 0.5], shoulders: [5, 7], el: [0.3, 1.1],
+      topTilt: 0.3, top: [0.84, 0.95], joints: [1, 1], jointEl: [0.05, 0.7], round: 0.13 * soft, tone: jitter(0.3) }));
     if (simple) return bodies;
     const az = rng() * Math.PI * 2;
-    bodies.push(block([0.56, 0.55, 0.52], [Math.cos(az) * 0.45, -range(0.12, 0.3), Math.sin(az) * 0.45],
-      { sides: [5, 6], shoulders: [3, 5], el: [0.3, 0.85], topTilt: 0.3, round: 0.1 * soft, tone: jitter(0.4) }));
+    bodies.push(block([0.56, 0.55, 0.52], [Math.cos(az) * 0.45, -range(0.12, 0.3), Math.sin(az) * 0.45], { sides: [5, 6],
+      lean: [0.1, 0.45], shoulders: [3, 5], el: [0.3, 1.0], topTilt: 0.3, top: [0.85, 0.96], joints: [0, 1], jointEl: [0.05, 0.6],
+      round: 0.1 * soft, tone: jitter(0.4) }));
   } else {
     // a bedded block, or a slab: an irregular jointed block (its top, shoulders and sides) sliced by its bedding planes
     // into beds of their own thickness, each set back a little its own way (wave 57: "evenly spaced painted strata"; the
@@ -241,13 +251,16 @@ function boulderBodies(kind: BoulderKindName, rng: () => number, soft: number, b
     const slab = kind === 'slab';
     const size = slab ? [1.06, 0.5, 0.92] : [0.98, 0.8, 0.86];
     // (its top is a bedding plane, near level for a bedded rock, the cleavage's tilt for a slate; its shoulders break it)
+    // (its sides lean back, so the beds step in as they rise; its joints are near upright)
     const outline = block(size, [0, 0, 0], slab
-      ? { sides: [5, 7], shoulders: [2, 4], el: [0.3, 0.6], topTilt: bedded ? 0.06 : 0.12, round: 0, tone: 0 }
-      : { sides: [5, 7], shoulders: [3, 4], el: [0.3, 0.7], topTilt: 0.07, round: 0, tone: 0 });
+      ? { sides: [5, 7], lean: [0.1, 0.45], shoulders: [3, 5], el: [0.3, 0.9], topTilt: bedded ? 0.08 : 0.14, top: [0.88, 1],
+        joints: [1, 2], jointEl: [0, 0.3], round: 0, tone: 0 }
+      : { sides: [6, 8], lean: [0.12, 0.5], shoulders: [5, 7], el: [0.3, 1.1], topTilt: 0.07, top: [0.84, 0.95], joints: [1, 1],
+        jointEl: [0, 0.2], round: 0, tone: 0 });
     const topPlane = outline.planes[0], walls = outline.planes.slice(1, -1);
     // the top joint's lowest point over the rock (it is tilted): no parting runs up to it, so no bed pinches out to an edge
     const topY = (topPlane[3] - 1.1 * Math.hypot(topPlane[0], topPlane[2])) / Math.max(0.5, topPlane[1]);
-    const want = bedded && !simple ? (slab ? 1 + Math.floor(rng() * 2) : 2 + Math.floor(rng() * 2)) : 1;
+    const want = bedded && !simple ? (slab ? 1 + Math.floor(rng() * 2) : 3 + Math.floor(rng() * 2)) : 1;
     // the partings: each bed its own thickness, the lowest the thickest (its first ledge stands well up the rock, never
     // a plinth at the ground line); a parting that would leave a bed thinner than a hand and a half is not drawn (a thin
     // bed's flat face is a sliver between its rounded arrises)
@@ -257,7 +270,7 @@ function boulderBodies(kind: BoulderKindName, rng: () => number, soft: number, b
     let at = base;
     for (let i = 0; i < want - 1; i++) {
       at += ((topY - base) * weights[i]) / sum;
-      if (at - (partings.length ? partings[partings.length - 1] : base) >= 0.16 && topY - at >= 0.16) partings.push(at);
+      if (at - (partings.length ? partings[partings.length - 1] : base) >= 0.12 && topY - at >= 0.14) partings.push(at);
     }
     const count = partings.length + 1;
     // the beds dip together (a slate's cleavage steeper)
@@ -266,9 +279,13 @@ function boulderBodies(kind: BoulderKindName, rng: () => number, soft: number, b
     let hard = false;
     for (let i = 0; i < count; i++) {
       hard = count === 1 ? true : i === 0 ? false : rng() < (hard ? 0.35 : 0.8);
-      const recess = hard ? rng() * 0.015 : range(0.025, 0.06);
+      // (most beds run nearly flush, a parting a thin groove; a soft bed now and then is eroded back into a notch under
+      // the bed above, a ledge's shadow)
+      // (never the top bed: a cap set back inside the bed under it reads as a tray)
+      const recess = hard || i === count - 1 ? rng() * 0.006 : rng() < 0.4 ? range(0.025, 0.05) : range(0.004, 0.014);
       const bottom = i === 0 ? base : partings[i - 1], top = i === count - 1 ? topY : partings[i];
-      const round = Math.min((hard ? 0.05 : 0.04) * soft, 0.24 * (top - bottom));
+      // (the top bed carries the weathering's rounding; a lower bed's arrises stay crisp, so a parting is a thin groove)
+      const round = i === count - 1 ? Math.min((slab ? 0.06 : 0.09) * soft, 0.3 * (top - bottom)) : Math.min(0.018 * soft, 0.2 * (top - bottom));
       // (each face its own way: here the groove is deep, there the bed runs flush past it)
       const planes: JointPlane[] = walls.map(([x, y, z, d, fresh]) => [x, y, z, d - recess * range(0, 1.6) - rng() * 0.02, fresh] as JointPlane);
       planes.push(i === count - 1 ? topPlane : [nx, ny, nz, ny * top, 0]);
@@ -564,7 +581,7 @@ export function buildBoulderForm(
   // weathering: a smooth warp of the whole rock (two octaves, its slope everywhere far under one: no face can fold, and
   // nearby points move together, so even a hand-wide corner keeps its shape) bends every joint face a little, never a
   // perfect plane; the normals carried through the warp's Jacobian (the inverse transpose, by central differences)
-  const salt = variant * 7.7 + rng() * 50, A = 0.034, F = 1.2, A2 = 0.01, F2 = 3.1, h = 1e-3;
+  const salt = variant * 7.7 + rng() * 50, A = 0.045, F = 1.2, A2 = 0.014, F2 = 3.1, h = 1e-3;
   const warp = (x: number, y: number, z: number, out: number[]): void => {
     out[0] = x + A * noise.noise3d(x * F + salt, y * F, z * F) + A2 * noise.noise3d(x * F2 - salt, y * F2, z * F2);
     out[1] = y + (A * noise.noise3d(x * F, y * F + salt, z * F) + A2 * noise.noise3d(x * F2, y * F2 - salt, z * F2)) * 0.7;
@@ -628,7 +645,7 @@ export function buildBoulderForm(
 
 /** The lithologies' base tones (sRGB HSL) under a map's rock tone law: a weathered grey, the chalk a cream white. */
 const LITHOLOGY_TONE: Readonly<Partial<Record<BoulderLithology, readonly [number, number, number]>>> = Object.freeze({
-  chalk: [0.115, 0.1, 0.62],
+  chalk: [0.12, 0.06, 0.5],
 });
 
 /**

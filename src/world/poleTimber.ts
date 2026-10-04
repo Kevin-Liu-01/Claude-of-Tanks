@@ -101,9 +101,9 @@ if (vPoleWood > 0.5) {
   // the timber's tone by instance: creosote-dark, greyed brown, a few silvered; the arid maps' bleached toward silver
   float poleT = vPoleSeed;
   float poleT2 = fract(vPoleSeed * 7.31 + 0.27);
-  vec3 poleTone = mix(vec3(0.15, 0.125, 0.1), vec3(0.22, 0.195, 0.165), smoothstep(0.05, 0.75, poleT));
-  poleTone = mix(poleTone, vec3(0.3, 0.29, 0.27), smoothstep(0.72, 1.0, poleT) * 0.85);
-  poleTone = mix(poleTone, mix(vec3(0.24, 0.215, 0.18), vec3(0.34, 0.325, 0.3), poleT), uPoleArid);
+  vec3 poleTone = mix(vec3(0.13, 0.108, 0.086), vec3(0.19, 0.168, 0.142), smoothstep(0.05, 0.75, poleT));
+  poleTone = mix(poleTone, vec3(0.24, 0.232, 0.216), smoothstep(0.78, 1.0, poleT) * 0.8);
+  poleTone = mix(poleTone, mix(vec3(0.21, 0.19, 0.16), vec3(0.29, 0.278, 0.256), poleT), uPoleArid);
   poleTone *= vec3(1.0 + (poleT2 - 0.5) * 0.08, 1.0, 1.0 - (poleT2 - 0.5) * 0.08);
   // the grain runs up the shaft (four grime tiles round it, so the seam closes) and along an arm; the gradients come
   // from the seam-free angle, so the seam keeps its mip
