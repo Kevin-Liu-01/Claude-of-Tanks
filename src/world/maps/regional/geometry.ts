@@ -68,6 +68,11 @@ export interface EmitOptions {
   colour?: Rgb;
   /** dressing only: no collision record (structureCollision.ts) */
   decor?: boolean;
+  /**
+   * dressing whose shadow still reads (a slatted mat's stripes on the ground): it keeps casting where the kit's other
+   * joinery and metalwork dressing casts none (props.ts merges that into a receive-only mesh)
+   */
+  shadow?: boolean;
   uv?: UvMode;
   /** night window: the faces whose normal matches this unit vector glow (curtain bucket only) */
   window?: Vec3;
@@ -113,8 +118,8 @@ export class PartSink {
     try { body(); } finally { this.place = prior; }
   }
 
-  private acc(bucket: RegionalBucket, decor: boolean): Accumulator {
-    const key = `${bucket}|${decor ? 'd' : 's'}`;
+  private acc(bucket: RegionalBucket, decor: boolean, shadow = false): Accumulator {
+    const key = `${bucket}|${decor ? (shadow ? 'c' : 'd') : 's'}`;
     let group = this.groups.get(key);
     if (!group) {
       group = { pos: [], nor: [], uv: [], col: COLOURED.has(bucket) ? [] : null, mask: bucket === 'curtain' ? [] : null,
@@ -144,7 +149,7 @@ export class PartSink {
     }
     normal.normalize();
     const n: Vec3 = [normal.x, normal.y, normal.z];
-    const g = this.acc(bucket, !!opts.decor);
+    const g = this.acc(bucket, !!opts.decor, !!opts.shadow);
     const colour = g.col ? (opts.colour ?? [0.6, 0.6, 0.6]) : null;
     const glow = g.mask && opts.window ? (n[0] * opts.window[0] + n[1] * opts.window[1] + n[2] * opts.window[2] > 0.999 ? 1 : 0) : 0;
     const density = opts.density ?? BUCKET_UV_DENSITY[bucket];
@@ -302,7 +307,7 @@ export class PartSink {
     const parts = newRegionalParts();
     for (const [key, g] of this.groups) {
       if (!g.pos.length) continue;
-      const [bucket, role] = key.split('|') as [RegionalBucket, 'd' | 's'];
+      const [bucket, role] = key.split('|') as [RegionalBucket, 'd' | 'c' | 's'];
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(g.pos, 3));
       geometry.setAttribute('normal', new THREE.Float32BufferAttribute(g.nor, 3));
@@ -311,7 +316,8 @@ export class PartSink {
       if (g.mask) geometry.setAttribute(NIGHT_EMISSION_ATTRIBUTE, new THREE.BufferAttribute(Uint8Array.from(g.mask), 1));
       // the weathering pass consumes (and removes) the occlusion record; an all-open part carries none
       if (g.shade && g.shade.some((v) => v !== 1)) geometry.setAttribute('shade', new THREE.Float32BufferAttribute(g.shade, 1));
-      if (role === 'd') geometry.userData.noCollision = true;
+      if (role !== 's') geometry.userData.noCollision = true;
+      if (role === 'c') geometry.userData.castsShadow = true;
       geometry.userData.uvJitter = 'none';
       geometry.userData.regional = true;
       parts[bucket].push(geometry);
