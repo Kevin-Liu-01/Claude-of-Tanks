@@ -19,6 +19,7 @@ import { makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_KINDS } from './treeSprayAt
 import { LOD_SHADOW_FADE_ATTRIBUTE } from '../engine/lodShadowFade.ts';
 import { growShrubSkeleton } from './treeGrowth.ts';
 import { TREE_BIOMES, treeBiomeColour, treeBiomePalette, treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
+import { grownTintLaw } from './vegetation.ts';
 import { TREE_SPECIES } from './treeSpecies.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
 
@@ -268,6 +269,15 @@ assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alo
   assert.equal(treeBiomePalette(twigs, null, false), twigs, 'no form: the map palette as it is');
   // the table's railyard birches are leafy, and their map palette is the twig-tuned one this rule is for
   assert.equal(treeBiomeSlot('railyard', 'birch')?.leaves, true);
+  // and the card tint law a crown falls back on where its palette names no card colour: a birch crown in leaf takes the
+  // leaves' hue and saturation, its bare twigs keep their warm grey (the round-2 hand-over: the leafy birches of
+  // Prokhorovka's pine and willow slots and of the Fulda Gap's aspens grew olive-brown crowns on the twigs' law)
+  const tint = ([hue, sat]) => new THREE.Color().setHSL(hue, sat, 0.5, THREE.SRGBColorSpace);
+  const inLeaf = tint(grownTintLaw('birch', true)), bare = tint(grownTintLaw('birch', false));
+  assert.ok(inLeaf.g > inLeaf.r && inLeaf.g > inLeaf.b, 'a birch crown in leaf tints its leaves green');
+  assert.deepEqual(grownTintLaw('birch', true).slice(0, 2), grownTintLaw('broadleaf').slice(0, 2), 'with the broadleaf crowns\' hue and saturation');
+  assert.equal(grownTintLaw('birch', true)[2], grownTintLaw('birch', false)[2], 'at the birch\'s own gain');
+  assert.ok(bare.r > bare.g && bare.g > bare.b, 'bare twigs keep their warm grey');
 }
 {
   // the place's foliage colour (wave 15: "lush green groves on Wadi Rum"): it fills what a map palette leaves unnamed and

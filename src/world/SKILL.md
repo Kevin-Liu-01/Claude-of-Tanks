@@ -116,7 +116,8 @@ its fringe (world-anchored, the wood never opens, closing where a cascade's texe
 `treeBiomes.ts` (THREE-free) routes a map's species SLOTS to the regional FORMS of its real place on the desktop tiers
 (new profiles and tiles: beech, chestnut, holmOak, olive, canaryPine, aleppoPine, larch; summer birches in leaf; a map's
 shrub form, Las Cañadas' and Wadi Rum's broom; a place's foliage colour where the map palette names none, the hyper-arid
-places' dust-dulled acacias) — records, seeds and the mobile look stay the slot's. Snow maps: a conifer's
+places' dust-dulled acacias) — records, seeds and the mobile look stay the slot's; a birch crown in leaf on a palette
+naming no card colour takes the broadleaf tint law, never the bare twigs' warm grey (`grownTintLaw`). Snow maps: a conifer's
 load is its laden sprays over the upper crown (no bough lumps); the classic tufts follow `applySnowGrassLaw` (straw,
 sparse, short). Stands are woodlots (`placeTreeClusters`: the round-1 draws replayed on the shared stream so every later
 placement keeps its seat, then irregular outlines with denser margins, clearings and thin patches on their own stream, at

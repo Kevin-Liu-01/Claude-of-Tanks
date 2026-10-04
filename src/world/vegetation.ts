@@ -2241,10 +2241,16 @@ const LEAF_TRANSMISSION = 0.45;
 const GROWN_LEAF_BILLBOARD = 1;
 
 
-/** The grown crowns' card tint law per family: the legacy HSL multiplier's hue and saturation, and its gain. */
-function grownTintLaw(family: string): readonly [number, number, number] {
+/**
+ * The grown crowns' card tint law per family: the legacy HSL multiplier's hue and saturation, and its gain. A birch's
+ * law is its bare twigs' warm grey; a birch crown in leaf (the palette's birchLeaves) takes the leaves' hue and
+ * saturation at the twigs' gain. Trees round 2 (2026-10-03): the biome table's leafy birches on palettes that name no
+ * card colour (Prokhorovka's pine and willow slots, the Fulda Gap's aspens, the junction's birches) fell back to the
+ * twigs' law and grew olive-brown crowns among the green ones (the round-2 hand-over's Verdant and Frontier frames).
+ */
+export function grownTintLaw(family: string, leafy = false): readonly [number, number, number] {
   if (family === 'conifer') return [0.30, 0.18, 1.95];
-  if (family === 'birch') return [0.08, 0.06, 1.8];
+  if (family === 'birch') return leafy ? [0.228, 0.19, 1.8] : [0.08, 0.06, 1.8];
   if (family === 'dead') return [0.08, 0.05, 1.7];
   if (family === 'palm') return [0.215, 0.28, 1.75];
   return [0.228, 0.19, 1.85];
@@ -2269,7 +2275,7 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
     const laden = new Set(order.slice(0, Math.round(skeleton.leaves.length * 0.12 * Math.min(1, snow * 1.1))));
     for (const site of skeleton.leaves) site.tile = (laden.has(site) ? 0 : SPRAY_ATLAS_TILES) + (site.tile % SPRAY_ATLAS_TILES);
   }
-  const [hueBase, satBase, gain] = grownTintLaw(profile.family);
+  const [hueBase, satBase, gain] = grownTintLaw(profile.family, pal.birchLeaves === true);
   const hue0 = (pal.cardHue ?? hueBase) + (kind === 'understorey' ? 0.015 : 0), sat0 = pal.cardSat ?? satBase;
   const shrubValue = GROWTH_SHRUB_VALUE[growth] ?? 1;
   // trees round 2 (2026-10-03, gauntlet wave 4: the "green balls", the "papercraft" foreground bush): a shrub shades as
@@ -2444,7 +2450,7 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   // a snow-laden spray takes the snow's neutral, lifted tint (its painted snow stays white, its needles frosted) and a
   // bare one none. The gain sits a little over the legacy 1.7: the spray atlases paint a touch darker than the round-8
   // ones.
-  const [hueBase, satBase, gain] = grownTintLaw(profile.family);
+  const [hueBase, satBase, gain] = grownTintLaw(profile.family, pal.birchLeaves === true);
   const hue0 = pal.cardHue ?? hueBase, sat0 = pal.cardSat ?? satBase;
   // a palm's frond atlas holds one frond (makePalmFrondAtlas); its dead fronds (shade 0) are straw-brown
   const palm = profile.family === 'palm';

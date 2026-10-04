@@ -6,6 +6,8 @@
 // - Redrock Divide (Wadi Rum): open groves seated in the low ground, few trees, and its palms at the springs only;
 // - Sirocco Wadi and Sunscar Oasis: every palm inside the map's palm sites (the wadi bed, the oasis), palm stands
 //   seated there.
+// And the woods those stands make keep their summer colour: Verdant's leafy birches (its pine and willow slots) tint
+// their crowns as leaves, not as the bare twigs' warm grey (vegetation.ts grownTintLaw; the round-2 hand-over's frames).
 // A construction receipt: no GPU, no art claim.
 import assert from 'node:assert/strict';
 import { createCanvas, ImageData } from '@napi-rs/canvas';
@@ -44,7 +46,18 @@ try {
       // (the open set keeps the road-verge trees, the true singles and the map's belts: 11.6 % on 2026-10-03, ~14 % with
       // the round-1 scatter's lone trees out in the field)
       assert.ok(open.length / trees.length < 0.13, `the open field holds few trees (${open.length} of ${trees.length})`);
-      report.verdant = { trees: trees.length, open: open.length };
+      // the birch crowns in leaf: each near crown's mean card tint is green (the twigs' law left them olive-brown)
+      const birchTints = [];
+      world.group.traverse((o) => {
+        if (!o.userData?.treeFoliage || o.material?.map?.name !== 'sprayAtlas:birch') return;
+        const c = o.geometry.getAttribute('color');
+        let r = 0, g = 0, b = 0;
+        for (let i = 0; i < c.count; i++) { r += c.getX(i); g += c.getY(i); b += c.getZ(i); }
+        birchTints.push([r / c.count, g / c.count, b / c.count]);
+      });
+      assert.ok(birchTints.length >= 2, `Verdant grows leafy birch crowns (${birchTints.length} pools)`);
+      for (const [r, g, b] of birchTints) assert.ok(g > r * 1.2 && g > b, `a leafy birch crown tints green (${r.toFixed(3)}, ${g.toFixed(3)}, ${b.toFixed(3)})`);
+      report.verdant = { trees: trees.length, open: open.length, birchPools: birchTints.length };
     } finally { world.dispose(); }
   }
   // Wadi Rum: few trees, open groves in the low ground, palms at the springs only
