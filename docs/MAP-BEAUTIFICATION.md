@@ -6569,6 +6569,13 @@ east +2.6, Ruin Spires' east +2.1) dropped six views by more than 0.5. Fixed on 
   The villages take one place a side (four a map) and the farms keep their own count, two fewer a village — with three
   a map they had taken the farms' whole budget and left Ironworks' east, where the red barns stood, with no hamlet; a
   village's shelter trees are thinner and narrower so it is not hidden in a wood.
+- **No farm past a ruined city** (gauntlet wave 40, Ruin Spires: "a red-roofed farm on that horizon reads wrong past a
+  destroyed megacity"). The border settings' `farmBuildings: false` raises no farm building past the edges of the
+  ruined cities (Ruin Spires, Blackglass, Skybridge) and of the countries without farmland (Titan Gorge, Obsidian
+  Caldera, Copper Mesa); their sites keep their shelter copses, so the ring forest — whose stream is drawn as its
+  stands are accepted — stays the same tree for tree. Checked by a pixel diff of Ruin Spires' and Blackglass's twelve
+  border views against a mask of the farm meshes: 1773 pixels changed, every one a farm pixel. A kit that builds no
+  dwelling (Kestrel Airfield's Hostomel hangars) leaves the hamlets wholly to the generic set.
 
 ### 2026-10-03 — skies, light and colour: one haze law, the shade's own colour, a calibrated camera (the skies-and-atmosphere lane)
 
