@@ -35,12 +35,17 @@ const VERSION_6_COUNT = VERSION_5_COUNT + SUPPORT_V6.length;
 // version 7 (physics lane round 5, 2026-10-04), appended after the version-6 layout so an older checkpoint still decodes
 // (holding no posture): the posture a hull holds over its planted tracks on a grade (`_hold`), which the support solve
 // seats the tracks without, and its share seated with them off a whole-track seat (`_holdSeat`), both part of its attitude
-const VALUE_COUNT = VERSION_6_COUNT + ROCK.length * 2;
+const VERSION_7_COUNT = VERSION_6_COUNT + ROCK.length * 2;
+// version 8 (physics lane round 8, 2026-10-04), appended after the version-7 layout so an older checkpoint still decodes
+// (nothing in the bump stops): the share of the dive the bump stops took when the travel ran out under it (`_susp.c`,
+// `_susp.cv`), stored with the dive but neither the dive the travel holds nor what joins the rock off a whole-track seat
+const STOP_V8 = ['c', 'cv'] as const;
+const VALUE_COUNT = VERSION_7_COUNT + STOP_V8.length;
 const MAX_ABS_VALUE = 1_000_000;
 const MAX_FLAGS = 2047;
 
 interface MovementPredictionState {
-  version: 7;
+  version: 8;
   values: number[];
   flags: number;
 }
@@ -88,13 +93,14 @@ export function captureMovementPredictionState(state: TankState): MovementPredic
   append(values, state._sup, SUPPORT_V6);
   append(values, state._hold, ROCK);
   append(values, state._holdSeat, ROCK);
+  append(values, state._susp, STOP_V8);
   if (!finiteValues(values)) return null;
   const flags = Number(supportInitialized) | Number(state._ride.grounded) << 1 |
     Number(state._body.tumbling) << 2 | Number(state._body.dynamicSupport) << 3 |
     Number(state._body.autoRighting) << 4 | Number(state._rollover.expired) << 5 |
     Number(state.atGunLimit) << 6 | Number(state.gunLimitSpec) << 7 |
     Number(cacheInitialized) << 8 | Number(state._sup.rigid) << 9 | Number(restInitialized) << 10;
-  return { version: 7, values, flags };
+  return { version: 8, values, flags };
 }
 
 export function applyMovementPredictionState(
@@ -102,8 +108,9 @@ export function applyMovementPredictionState(
 ): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const record = value as Record<string, RuntimeValue>;
-  const count = record.version === 7 ? VALUE_COUNT : record.version === 6 ? VERSION_6_COUNT
-    : record.version === 5 ? VERSION_5_COUNT : record.version === 4 ? VERSION_4_COUNT : 0;
+  const count = record.version === 8 ? VALUE_COUNT : record.version === 7 ? VERSION_7_COUNT
+    : record.version === 6 ? VERSION_6_COUNT : record.version === 5 ? VERSION_5_COUNT
+      : record.version === 4 ? VERSION_4_COUNT : 0;
   if (!count || !finiteValues(record.values, count) ||
       typeof record.flags !== 'number' || !Number.isInteger(record.flags) ||
       record.flags < 0 || record.flags > MAX_FLAGS) return false;
@@ -150,9 +157,9 @@ export function applyMovementPredictionState(
   if (count >= VERSION_6_COUNT) offset = restore(state._sup, SUPPORT_V6, values, offset);
   else state._sup.top = state._sup.y;
   // a checkpoint before version 7 holds no posture over its tracks
-  if (count === VALUE_COUNT) {
+  if (count >= VERSION_7_COUNT) {
     offset = restore(state._hold, ROCK, values, offset);
-    restore(state._holdSeat, ROCK, values, offset);
+    offset = restore(state._holdSeat, ROCK, values, offset);
   } else {
     for (const held of [state._hold, state._holdSeat]) {
       held.p = 0;
@@ -160,6 +167,12 @@ export function applyMovementPredictionState(
       held.pv = 0;
       held.rv = 0;
     }
+  }
+  // a checkpoint before version 8 has nothing in the bump stops
+  if (count === VALUE_COUNT) restore(state._susp, STOP_V8, values, offset);
+  else {
+    state._susp.c = 0;
+    state._susp.cv = 0;
   }
   return true;
 }

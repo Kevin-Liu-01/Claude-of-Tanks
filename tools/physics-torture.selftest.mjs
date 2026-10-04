@@ -133,10 +133,29 @@ check('bank-hop', 'medium', 'earth', [
 // An assault trench under a heavy hull (its 45-degree far wall under the nose, its tail over the trench): the wall is not
 // its grade (movement.ts contactAwareFit's span rule). The grade rule stopped it dead in the trench and it see-sawed.
 check('drive-assault-trench', 'heavy', 'earth', [
-  g('progress short of 30 m (m)', (m) => 30 - m.progressM, 0, 'before: 19.6 m'),
+  // (26 m, round 7: the check exists for the old stuck case, 19.6 m. The far wall now costs the travel it lifts the hull
+  // by, by design (the trench ruling, 2026-10-04): the E100 X climbs out at 2.4-4 m/s where it kept 6.3 and is 28.6 m on
+  // after 9 s, past the far lip by a hull length)
+  g('progress short of 26 m (m)', (m) => 26 - m.progressM, 0, 'before: 19.6 m'),
   // (900: with the grade floor the crossing's own jerk reads 800.2, the far wall's lip taken a little harder)
   // (950, round 3: the hull lying on its plane pitches to the walls it crosses, where it read them flatter: 909)
   g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 950, 'before: 1366'),
+]);
+// Round 7 (ruling 2, the trench fix): the far wall under a partial contact's leading station pushes along its normal,
+// costing the travel the lift it gives, and a strike past the bump stops turns the hull about its centre of mass as well
+// as lifting it; a trench ahead is not leaned into. The wall lifted the hull a quarter metre a step, all its travel kept.
+check('drive-assault-trench', 'mbt', 'earth', [
+  g('vertical step (m)', (m) => m.popYMaxM, 0.12, 'before: 0.184 m, the far wall lifting the M1A2 at 13 m/s'),
+]);
+check('drive-trench', 'low', 'earth', [
+  g('vertical step (m)', (m) => m.popYMaxM, 0.12, 'before: 0.194 m, the ditch\'s far lip under the UDES 03\'s nose'),
+  g('flights', (m) => m.falls.length, 0, 'before: 1 (off the far lip)'),
+]);
+// Round 8 (the far lip): what the suspension travel no longer holds of the dive the bump stops take, and the drawn hull
+// gives it up over their spring. The far wall bottoming the M3 Bradley's springs cut its drawn squat by a degree in one
+// frame as it climbed out, and by 0.2-0.4 degree in ten more.
+check('drive-assault-trench', 'tall', 'earth', [
+  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 1300, 'before: 1856'),
 ]);
 
 // Firing in flight (Mars gravity field audit): the shot turns an airborne hull by its rigid-body share, not the
@@ -312,9 +331,10 @@ check('air-spin', 'tall', 'gearth', [g('prediction replay error (m)', (m) => m.r
     failures.push(`rest-slope25-down earth medium: the downhill nose sits ${(down.rear - down.front).toFixed(1)} cm under the uphill tail < 8 — before: 0.0`);
   }
   const across = rest('rest-cross20');
-  // the 20-degree cross slope rises to the right: the left track is the downhill one
-  if (!(mean(across.right) - mean(across.left) >= 3)) {
-    failures.push(`rest-cross20 earth medium: the downhill track sits ${(mean(across.right) - mean(across.left)).toFixed(1)} cm under the uphill one < 3 — before: 0.1`);
+  // the 20-degree cross slope rises to the right: the left track is the downhill one (round 8, wave 42 item 5: the springs
+  // bear on the tracks' centre lines, not their outer edges, where the roll stiffness read 40 % high on the T-90M)
+  if (!(mean(across.right) - mean(across.left) >= 7)) {
+    failures.push(`rest-cross20 earth medium: the downhill track sits ${(mean(across.right) - mean(across.left)).toFixed(1)} cm under the uphill one < 7 — before: 0.1, then 5.9 on the outer edges`);
   }
 }
 
@@ -327,6 +347,9 @@ for (const [hull, way] of [['medium', 'upDeg'], ['merkava4b', 'downDeg']]) {
     g(`level landing's nod ${way === 'upDeg' ? 'nose up' : 'nose down'} short of 0.6 degree`, (m) => 0.6 - (m.landingNod?.[way] ?? 0), 0,
       'before: 0.0 (a level piston)'),
     g('the nod (degrees)', (m) => Math.max(m.landingNod?.upDeg ?? 0, m.landingNod?.downDeg ?? 0), 2.5, 'guard: a nod, not a lurch'),
+    // round 8 (wave 42 item 3: "rebounds past level into a brief nose-up"): the landing's stroke damps the dive harder
+    g('the nod back past level (degrees)', (m) => Math.min(m.landingNod?.upDeg ?? 9, m.landingNod?.downDeg ?? 9), 0.15,
+      'before: 0.35 (T-90M) / 0.40 (Merkava 4)'),
   ]);
 }
 

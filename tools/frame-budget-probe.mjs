@@ -82,6 +82,12 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   'pylon-wires': Object.freeze({
     on: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'props-pylon-wires') o.visible = true; })`,
     off: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'props-pylon-wires') o.visible = false; })` }),
+  // the scenery lane (wave 52): the boulders (props.ts rock-variant-0..2, three instanced pools drawn whole, map-wide);
+  // off hides them, so the delta is their whole frame cost. Both sides run without the static shadow cache, so every
+  // cascade redraws every boulder every frame, as it does while the camera moves (an upper bound)
+  'boulders': Object.freeze({
+    on: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d$/.test(o.name)) o.visible = true; })`,
+    off: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d$/.test(o.name)) o.visible = false; })` }),
   // the water / grass simulations' idle sleep (waterRipples.ts, groundPressure.ts): off steps them every frame; the
   // ripple field falls asleep only after 20 s of quiet, so an 'on' block that follows an 'off' one waits that long
   'sim-sleep': Object.freeze({ on: 'window.__WORLD_SIM_DEBUG = Object.assign(window.__WORLD_SIM_DEBUG || {}, { noSleep: false })',
