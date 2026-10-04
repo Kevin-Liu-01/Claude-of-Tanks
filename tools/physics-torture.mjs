@@ -280,6 +280,9 @@ export const CASES = [
   { id: 'rest-slope15', group: 'rest', seconds: 7, terrain: TERRAIN.slopeAlong(15), input: hold(), rest: [3, 7] },
   { id: 'rest-slope25', group: 'rest', seconds: 7, terrain: TERRAIN.slopeAlong(25), input: hold(0, 0, true), rest: [3, 7] },
   { id: 'rest-cross20', group: 'rest', seconds: 7, terrain: TERRAIN.slopeAcross(20), input: hold(), rest: [3, 7] },
+  // Round 5 (gauntlet wave 38): parked facing down the 25-degree grade, the loaded end is the nose
+  { id: 'rest-slope25-down', group: 'rest', seconds: 7, terrain: TERRAIN.slopeAlong(25), spawn: { yaw: Math.PI },
+    input: hold(0, 0, true), rest: [3, 7] },
   { id: 'rest-rubble', group: 'rest', seconds: 7, terrain: TERRAIN.rubble(11, 0.35), spawn: { z: 14 }, input: hold(), rest: [3, 7] },
   { id: 'rest-kerb', group: 'rest', seconds: 7, terrain: TERRAIN.step(0.35, 0.4), input: hold(), rest: [3, 7] },
   { id: 'rest-roof', group: 'rest', seconds: 7, terrain: TERRAIN.flat(), obstacles: [box(0, 0, 7, 9, 0, 4)],
@@ -355,6 +358,12 @@ export const CASES = [
   { id: 'flank-steep', group: 'air', seconds: 6, spawn: { speed: 12 }, input: hold(1), terrain: TERRAIN.flank(12, 12, 45, 40),
     ground: () => 'soft' },
   { id: 'climb-crest', group: 'air', seconds: 7, spawn: { speed: 9 }, input: hold(1), terrain: TERRAIN.crestFace(14, 12, 38, 5) },
+  // Round 6 (Skybridge fall census, 2026-10-04: a hull climbing a 46-degree bank at 6.5 m/s hopped off its convexity
+  // and met the face 0.4 s later, 75.6 hp; the same bank cost another hull 160.5): a 30-degree ramp levels off for 2 m,
+  // the hull leaves its lip at 6.5 m/s and meets the 50-degree face beyond it 0.4 s later (a face its tracks cannot climb:
+  // a hull stopped on it, or on the ramp, is no glitch)
+  { id: 'bank-hop', group: 'air', seconds: 5, spawn: { speed: 11 }, input: hold(1), allowBlocked: true,
+    terrain: TERRAIN.profile([[0, 0], [12, 0], [19, 4.04], [21, 4.04], [29, 13.58], [69, 13.58]]) },
   // Mars gravity (field audit): a bot firing three times in a 3.7 s boost flight pitched over 95 degrees and came down
   // on its back — every shot spun the airborne hull by the suspension's ground rock, and the air barely damps a spin.
   { id: 'air-fire', group: 'air', seconds: (w) => 1 + w.jumpFlightS + 3, terrain: TERRAIN.flat(), input: hold(),
@@ -556,6 +565,9 @@ function newMetrics() {
     // touchdown, the fastest turn toward it in the next 0.1 s, the time to within a degree of it, and the most it turned
     // past it (degrees)
     landingTurn: null,
+    // the rendered pitch's swing after the first landing, against its pitch at touchdown (round 5: a level landing nods
+    // about the centre of mass): its most nose-up and most nose-down (degrees) over 0.8 s
+    landingNod: null,
     tunnelled: false, maxHeightM: 0,
     airS: 0, longestAirS: 0, hops: 0, landings: [], contactLandings: [], maxLandingMps: 0, reboundExcessMps: 0, closingExcessMps: 0,
     liftM: 0,
@@ -771,6 +783,7 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
   let overshootPrev = null;
   let settleTrace = null;
   let turnTrace = null;
+  let nodTrace = null;
   let wallSide = 0;
   let stuckRun = 0;
   // the prediction world over the same collision, seeing every other hull where the authority has it now
@@ -1044,6 +1057,11 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
       metrics.landingTravel.push([+Math.abs(pre.speed).toFixed(2), +Math.abs(state.speed).toFixed(2), +state._ride.v.toFixed(2)]);
       lastLanding = { closing: state.landingImpactMps, tick, travel: metrics.landingTravel.at(-1) };
       if (state.landingImpactMps > 2) settleTrace = [];
+      if (!metrics.landingNod) {
+        renderedAttitude(state, att);
+        metrics.landingNod = { closingMps: +state.landingImpactMps.toFixed(2), upDeg: 0, downDeg: 0 };
+        nodTrace = { tick, pitch: att.pitch };
+      }
       // the landing turn: about the axis the hull is furthest from the ground plane it lands on
       if (!metrics.landingTurn) {
         const errorPitch = state._terr.pitch - state._spring.pitch, errorRoll = state._terr.roll - state._spring.roll;
@@ -1057,6 +1075,12 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
       metrics.maxLandingMps = Math.max(metrics.maxLandingMps, state.landingImpactMps);
       metrics.apexes.push(+(apex - world.fn(state.pos.x, state.pos.z)).toFixed(2));
       apex = -Infinity;
+    }
+    if (nodTrace && tick - nodTrace.tick <= 48) {
+      renderedAttitude(state, att);
+      const swing = (att.pitch - nodTrace.pitch) * 57.2958;
+      metrics.landingNod.upDeg = Math.max(metrics.landingNod.upDeg, +swing.toFixed(3));
+      metrics.landingNod.downDeg = Math.max(metrics.landingNod.downDeg, +(-swing).toFixed(3));
     }
     if (turnTrace && tick > turnTrace.tick && tick - turnTrace.tick <= 120) {
       const turn = metrics.landingTurn, roll = turn.axis === 'roll';
@@ -1139,13 +1163,15 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
   }
   if (restSamples.length > 2) metrics.rest = restStats(restSamples);
   if (restSamples.length > 2) {
-    // at rest the hull lies on the ground it stands on: its pitch and roll against the ground's grade along and across it
+    // at rest the hull lies on the ground it stands on: its tracks' pitch and roll (their seat's: the posture the hull holds
+    // over them on a grade, state._hold, is its own) against the ground's grade along and across it
     const state = subject.state;
     const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw), rx = Math.cos(state.yaw), rz = -Math.sin(state.yaw);
     const { x, z } = state.pos;
     const along = Math.atan((world.fn(x + fx, z + fz) - world.fn(x - fx, z - fz)) / 2);
     const across = Math.atan((world.fn(x + rx, z + rz) - world.fn(x - rx, z - rz)) / 2);
-    metrics.restAttitudeErrDeg = Math.max(Math.abs(state.visualPitch - along), Math.abs(state.visualRoll - across)) * 180 / Math.PI;
+    const seatPitch = state._spring.pitch + (state._holdSeat?.p ?? 0), seatRoll = state._spring.roll + (state._holdSeat?.r ?? 0);
+    metrics.restAttitudeErrDeg = Math.max(Math.abs(seatPitch - along), Math.abs(seatRoll - across)) * 180 / Math.PI;
   }
   if (metrics.trackTicks) metrics.trackContactMean = metrics.trackReachSum / metrics.trackTicks;
   if (settleTrace?.length) {
@@ -1154,6 +1180,24 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
     let last = 0;
     for (let index = 0; index < settleTrace.length; index++) if (Math.abs(settleTrace[index] - restOver) > 0.005) last = index;
     metrics.landingSettleS = last * DT;
+  }
+  // the track line's height over the ground at the end, at the rendered pose, at seven stations a side from the rear
+  // to the front (cm; round 5: a hull parked on a grade loads its downhill end and its downhill track, its wheels there
+  // compressed and the far ones drooped)
+  {
+    const s = subject.state;
+    renderedAttitude(s, att);
+    const cb = Math.cos(s.yaw), sb = Math.sin(s.yaw), ca = Math.cos(-att.pitch), sa = Math.sin(-att.pitch);
+    const cr = Math.cos(att.roll), sr = Math.sin(att.roll);
+    const station = (lx, lz) => {
+      const x1 = lx * cr, y1 = lx * sr;
+      const y2 = y1 * ca - lz * sa, z2 = y1 * sa + lz * ca;
+      const wx = s.pos.x + x1 * cb + z2 * sb, wz = s.pos.z - x1 * sb + z2 * cb;
+      return +((s.pos.y + y2 - world.fn(wx, wz)) * 100).toFixed(2);
+    };
+    const line = (side) => Array.from({ length: 7 }, (_, i) => station(side * rect.halfWidth,
+      rect.centerZ - rect.halfLength + (2 * rect.halfLength * i) / 6));
+    metrics.finalGapsCm = { left: line(-1), right: line(1) };
   }
   metrics.final = { x: +subject.state.pos.x.toFixed(2), y: +subject.state.pos.y.toFixed(3), z: +subject.state.pos.z.toFixed(2),
     pitch: +subject.state.visualPitch.toFixed(3), roll: +subject.state.visualRoll.toFixed(3), grounded: subject.state.grounded,
