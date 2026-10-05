@@ -28,7 +28,9 @@ function compileCoverage(text) {
   const shoulderUniform = text.match(/shader\.uniforms\.uShoulderDirt = \{ value: ([^}]+) \};/);
   assert.ok(shoulderUniform, 'authored shoulder scale must reach the shader uniform');
   const shoulderScale = new Function('S', 'clamp', `return ${shoulderUniform[1]};`);
-  const blend = new Function('worn', 'shoulder', 'mk', 'uTownWear', 'n1', 'uWornDirtStrength', 'uShoulderDirt', 'clamp', 'max',
+  // (wave 71, the ground lane: the ambient term is the worn patch's soil weight — wornCore, the whole patch on the arid
+  // and snow maps, its trodden core on a meadow — so the policy below runs with that weight as its `worn`)
+  const blend = new Function('wornCore', 'shoulder', 'mk', 'uTownWear', 'n1', 'uWornDirtStrength', 'uShoulderDirt', 'clamp', 'max',
     `return ${scalar(text, 'fD')};`);
   return {
     strength: settings => strength(settings, clamp),
