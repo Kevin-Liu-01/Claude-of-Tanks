@@ -4480,6 +4480,19 @@ void splatCompute() {
       a.rgb = mix(a.rgb, a.rgb * mix(vec3(0.66, 0.63, 0.62), vec3(0.92, 0.88, 0.84), smoothstep(0.45, 0.70, n1h)), fanW * vw * 0.8);
       gCinderW = max(coneW, fanW) * vw;
     }
+    // (waves 62 and 76, Caldera street-a and street-b: the rim's 33° slope "a near-black featureless dome") the rim is old
+    // basalt in the rock layer, not a cone's fresh cinder: its face weathered and dusted with the ash it stands in — half
+    // way to the ash's own tone, a breath warmer — and streaked down the fall line (the wall projections' noise stretched
+    // along the height, as the cinder's), faded as a streak nears the pixel
+    float rimW = uReduxFold.w * fR * (1.0 - roadCore);
+    if (rimW > 0.002) {
+      float lodR = max(0.0, gNoiseLog + log2(0.035));
+      float fallR = mix(textureLod(uNoise, gWallUVx * vec2(0.035, 0.0035) + vec2(0.61, 0.19), lodR).g,
+                        textureLod(uNoise, gWallUVz * vec2(0.035, 0.0035) + vec2(0.61, 0.19), lodR).g, gWallW);
+      vec3 weathered = mix(a.rgb, uMeanG.rgb * vec3(1.06, 1.0, 0.94), 0.45)
+        * (0.88 + 0.30 * smoothstep(0.40, 0.80, fallR) * tileVis(28.0));
+      a.rgb = mix(a.rgb, weathered, rimW * 0.75);
+    }
   }
   // Ground lane (2026-10-03, the gauntlet: "WoT's Prokhorovka and the Breton bocage photo show patchworks of fields in
   // distinct crops and colours, with boundaries, tracks and hedgerows. Ours is one uniform plain."): the land use
@@ -5833,6 +5846,11 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   // strand noise ("furry" mesa flanks); the geometric normal carries the
   // far shading instead.
   float dk = 1.0 * (1.0 - max(gSplatFar * 0.62, gSplatSteepAtt));
+  // (waves 62 and 76, Caldera's rim: "white specular glints … crumpled foil" — not specular: a dry texel's roughness is
+  // floored at 0.92) on a slope turned from the sun the detail normals' sun-facing facets lit full, where on the ground
+  // the grains' own neighbours shade them: the bright speckle of a backlit flank. On a volcanic map the detail relief
+  // fades as the surface turns from the sun (its fine ash and basalt grain; the light's own shading carries the slope)
+  if (uReduxFold.w > 0.001) dk *= mix(1.0, smoothstep(-0.06, 0.32, dot(gN, uSunDirW)), 0.85 * uReduxFold.w);
   vec3 wN = normalize(vec3(gN.x + dN.x * dk, max(gN.y, 0.02) + dN.z * dk, gN.z + dN.y * dk));
   normal = normalize((viewMatrix * vec4(wN, 0.0)).xyz);
 }
