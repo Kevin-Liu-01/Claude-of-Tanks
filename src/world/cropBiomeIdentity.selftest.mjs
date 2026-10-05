@@ -92,7 +92,7 @@ function legacyCropTexture(crng, _col, aniso) {
   return texture;
 }
 const painterNames = ['canvas2d', 'paintWetCropLeaves', 'paintCropPanicle', 'biomeCropHeight', 'biomeCropLean', 'paintCropStalk',
-  'finishStandingCrop', 'finishBrokenCrop', 'paintBiomeCrop', 'createCropTexture'];
+  'finishStandingCrop', 'finishBrokenCrop', 'paintGrainStalk', 'paintBiomeCrop', 'createCropTexture'];
 const painterSource = painterNames.map(name => declaration(source, name)).join('\n');
 const painterBindings = ['THREE', 'document', '_col', 'P', 'aniso'];
 const painterExports = '\nreturn { createCropTexture, paintWetCropLeaves, paintCropPanicle };';
@@ -135,6 +135,11 @@ function assertIdentity(form, levels) {
     assert.ok(full.bottom > full.covered * .65, 'harvest is predominantly short cut stubble');
     assert.ok(full.upper > 0 && full.upper < full.covered * .30, 'sparse intact standing heads remain');
     assert.ok(full.gold > full.covered * .8, 'dry harvest pigment');
+  } else if (form === 'grain') {
+    // ground lane (wave 71, Verdant: "a picket fence of chopsticks"): standing ripe grain — its ears and awns up in the
+    // card, gold, in uneven clumps (the columns the stalks hold vary along the card; no column band is solid)
+    assert.ok(full.upper > full.covered * .30, 'the grain stands: its ears and upper stems fill the card\'s top');
+    assert.ok(full.gold > full.covered * .8, 'ripe grain pigment');
   } else {
     assert.ok(full.upper > full.covered * .30, 'wet-edge plants retain substantial upright foliage');
     assert.ok(full.green > full.covered * .8, 'green wet-edge crop pigment');
@@ -242,9 +247,9 @@ function buildPlots(mapId, seed) {
 }
 function checkRows() {
   for (const seed of [2001, 1337]) {
-    const old = buildPlots('verdant', seed);
+    const old = buildPlots('frontier', seed);
     try {
-      for (const mapId of ['autumn', 'delta']) {
+      for (const mapId of ['autumn', 'delta', 'verdant']) {
         const actual = buildPlots(mapId, seed);
         try {
           for (const [key, attr] of Object.entries(old.geometry.attributes)) {
@@ -265,15 +270,16 @@ function checkRows() {
 if (values.out) mkdirSync(values.out, { recursive: true });
 const receipt = [];
 const targets = MAP_IDS.filter(id => getMapConfig(id).props.cropForm);
-assert.deepEqual(targets, ['autumn', 'delta'], 'only the two authored opt-ins change');
+assert.deepEqual([...targets].sort(), ['autumn', 'delta', 'verdant'], 'only the three authored opt-ins change');
 assert.equal(getMapConfig('autumn').props.cropForm, 'harvest');
 assert.equal(getMapConfig('delta').props.cropForm, 'wet-upright');
+assert.equal(getMapConfig('verdant').props.cropForm, 'grain');
 let completed = false;
 const failures = [];
 try {
   const cases = MAP_IDS.filter(id => !targets.includes(id)).map(id => [getMapConfig(id).props.cropForm, 2516]);
   // Production terrain1337 -> props2002 -> crop stream2517, plus all R2 seeds.
-  for (const form of ['harvest', 'wet-upright']) for (const seed of [2516, 2517, 1852, 0, 0xffffffff, 9347]) cases.push([form, seed]);
+  for (const form of ['harvest', 'wet-upright', 'grain']) for (const seed of [2516, 2517, 1852, 0, 0xffffffff, 9347]) cases.push([form, seed]);
   for (const [form, seed] of cases) {
     try { checkRaster(form, seed, receipt); }
     catch (error) { failures.push(new Error(`${form ?? 'legacy'}/${seed}: ${error.message}`, { cause: error })); }
