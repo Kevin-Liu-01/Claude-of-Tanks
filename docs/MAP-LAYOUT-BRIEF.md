@@ -460,6 +460,7 @@ region, registered in `index.ts`:
 | `ksar` | Dahar plateau: vaulted ghorfa ranges, flat-roofed houses, a minaret | Sirocco Wadi |
 | `wadirum` | Wadi Rum: block houses, rooftop tanks, the Desert Patrol fort | Redrock Divide |
 | `ruhr` | Ruhr and Silesian junctions: soot-dark brick, yellow-brick bands, slate | Cinder Junction |
+| `shanghai` | Shanghai, 1937, both banks of Suzhou Creek: shikumen lanes behind their stone gates, shophouses under stepped fire walls, the Settlement's brick blocks, godowns, a cotton mill, a fire station, a guild hall; the Bund's banks and Art Deco towers (Broadway Mansions, the Park Hotel, Sassoon House, the Bank of China, the Customs House) and the Joint Trust warehouse in the landmarks' footprints | Suzhou Creek |
 | `kohima` | Kohima 1944: bungalows under painted tin, a bazaar, Angami houses | Monsoon Ridge |
 | `hostomel` | Hostomel (Antonov) airport: a barrel-vaulted cargo hangar, sheet-steel maintenance hangars, a control tower's glazed cab, 1970s terminal and office blocks | Kestrel Airfield |
 

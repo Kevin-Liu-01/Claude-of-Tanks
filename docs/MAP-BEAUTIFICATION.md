@@ -127,7 +127,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Obsidian Caldera | Black volcanic shelves, ash and extraction equipment; distinct basalt fracture language |
 | Steinburg | Masonry street blocks, courtyards, central civic space and localized war damage |
 | Ruinspires | Monumental damaged street canyons; rubble belongs to adjacent structures and forms clear plazas/routes |
-| Blackglass District | Broken arcologies, elevated transit and flooded finance quarter; glass/concrete, not orange stone towers |
+| Suzhou Creek (`blackglass`) | Shanghai, autumn 1937: the creek and its four bridges between the Settlement's lanes, blocks and Art Deco towers and Zhabei's burnt shophouses; brick, granite and grey canal tiles |
 | Skybridge Chasm | Crossing/abutments/control works organize massive canyon; believable approaches and below-bridge debris |
 
 ## Order of work and visible checkpoints
