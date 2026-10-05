@@ -35,7 +35,7 @@ assert.match(composition, /autumnCropRows\.length = 0;\s+autumnFieldContext = nu
 // each kind, onto supported ground clear of the field entrance, and must leave every other record, the crop resources,
 // the pool families and the RNG stream exactly as the uncomposed build has them.
 const nested = ['placeCropFields', 'paintWetCropLeaves', 'paintCropPanicle', 'biomeCropHeight',
-  'biomeCropLean', 'paintCropStalk', 'finishStandingCrop', 'finishBrokenCrop', 'paintBiomeCrop',
+  'biomeCropLean', 'paintCropStalk', 'finishStandingCrop', 'finishBrokenCrop', 'paintGrainStalk', 'paintBiomeCrop',
   'createCropTexture', 'cropPlotAvoidsSpawns', 'cropPlotCornersAreLevel', 'appendCropRowGeometry',
   'tryPlaceCropPlot', 'refitDestructibleColliders', 'animateBrokenRecord', 'breakRecord',
   'restoreDestructibleRecord'].map(declaration).join('\n');
