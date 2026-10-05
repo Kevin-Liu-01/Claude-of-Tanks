@@ -217,8 +217,8 @@ const soukStall: RegionalBuilder = (ctx) => {
 };
 
 /** The stall itself, W x D about the origin, its counter to +z (the ksar's market plot, Siwa's shop rows). */
-function stallBody(sink: PartSink, look: () => number, W: number, D: number): void {
-  const floor = 0.18, top = 2.55, wallZ = -D / 2 + 0.4;
+function stallBody(sink: PartSink, look: () => number, W: number, D: number, top = 2.55): void {
+  const floor = 0.18, wallZ = -D / 2 + 0.4;
   // a beaten-earth platform skimmed with mud, the back wall of mud brick under plaster standing proud of the mat
   sink.span(MUD, -W / 2 - 0.2, -0.3, -D / 2 - 0.2, W / 2 + 0.2, floor, D / 2 + 0.2);
   sink.span(MUD, -W / 2, floor, -D / 2, W / 2, top + 0.45, wallZ);
@@ -533,7 +533,10 @@ const siwaShops: RegionalBuilder = (ctx) => {
   const look = ctx.variant;
   const R = reach(ctx);
   const n = Math.max(1, Math.round(R.W / 5.2)), w = R.W / n - 0.2, d = Math.max(3.6, R.D - 0.6);
-  for (let k = 0; k < n; k++) sink.placed(0, R.x0 + (k + 0.5) * R.W / n, 0, R.cz, () => stallBody(sink, look, w, d));
+  // the back wall (0.45 m over the mat's beam) no higher than the market row it replaces: Oasis's east zone stands on an
+  // apron above the row, and the objective search counts a solid reaching within half a metre of a zone's floor
+  const top = Math.max(2.0, Math.min(2.55, ctx.bounds.maxY - 0.45));
+  for (let k = 0; k < n; k++) sink.placed(0, R.x0 + (k + 0.5) * R.W / n, 0, R.cz, () => stallBody(sink, look, w, d, top));
   return sink.finish();
 };
 
@@ -579,10 +582,11 @@ export const SIWA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   surfaces: {
     roof: { kind: 'canal', tint: [0.66, 0.6, 0.52] },
     stone: { kind: 'rubble', tint: [0.7, 0.66, 0.58] },
-    sourced: { plaster: true, wood: true },
+    // (the kershef is the render canvas, toned: the plaster photo set read as speckled grey granite on the walls, h4)
+    sourced: { plaster: false, wood: true },
     tones: {
-      // kershef: the salt-crusted mud's grey-beige; the older walls darker; limewash
-      plaster: (_h, s, l) => [0.09, Math.min(1, s * 0.24), Math.min(1, l * 1.16 + 0.08)],
+      // kershef: the salt-crusted mud's warm grey-beige; the older walls darker; limewash
+      plaster: (_h, s, l) => [0.088, Math.min(1, s * 0.4 + 0.06), Math.min(1, l * 1.02 + 0.08)],
       plaster2: (_h, s, l) => [0.085, Math.min(1, s * 0.32 + 0.04), Math.min(1, l * 0.96 + 0.04)],
       plaster3: (_h, s, l) => [0.11, Math.min(1, s * 0.12), Math.min(1, l * 1.3 + 0.16)],
     },
