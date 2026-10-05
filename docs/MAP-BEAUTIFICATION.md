@@ -129,6 +129,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Ruinspires | Monumental damaged street canyons; rubble belongs to adjacent structures and forms clear plazas/routes |
 | Blackglass District | Broken arcologies, elevated transit and flooded finance quarter; glass/concrete, not orange stone towers |
 | Skybridge Chasm | Crossing/abutments/control works organize massive canyon; believable approaches and below-bridge debris |
+| Aegis Crossing | Ronda and the Tajo (map revival lane 2, 2026-10-05): the limestone gorge under the stone viaduct between two white bridgehead towns in the Andalusian kit (the arcaded casa consistorial, the stone church and belfry, the Nasrid tower, the posada, rejas and iron balconies), the Ronda street walls (21 terrace houses a side on the roads below each square), cortijos round their patios, ruined mills on the gorge floor; secano grain, olive groves on the west terraces, holm oak and cypress. Pacing median 277 s (PR head 293 s), p10 225 s; every layout band holds |
 
 ## Order of work and visible checkpoints
 

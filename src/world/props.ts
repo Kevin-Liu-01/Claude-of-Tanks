@@ -333,7 +333,11 @@ interface PropsSettings {
   /** Maps lane B (2026-10-03): `plot` sizes the site — metres across (x) and deep (z) before the yaw — for a builder
    * that honours one (the warehouse; the Hostomel kit raises its barrel-vault cargo hangar on a warehouse plot 21 m
    * wide or more). */
-  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number } }[];
+  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number };
+    /** map revival lane 2 (2026-10-05): a house in an authored street wall (Aegis Crossing's Ronda streets). It stands
+     * within a metre of its neighbours, inside the spacing disc every earlier building keeps, so that check passes it:
+     * its author holds the footprints apart. Every other site keeps the check. */
+    terrace?: boolean }[];
   /** Maps lane B (2026-10-03, Nordhavn Fjord): the settlement the props dress — its roadside and block-fill buildings,
    * its plaza (the road crossing nearest cx, cz), street furniture and clutter — when it is not the whole ground the
    * terrain's village rect grades (a harbour town on the quay of a graded valley floor). Default: the village rect. */
@@ -4068,7 +4072,7 @@ ${snowCap ? `
   }
   for (const site of P.townPlan?.length ? [] : P.plannedSites ?? []) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
-    if (!isRoadBuildingSiteClear(site.x, site.z)) continue;
+    if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
     placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot);
     yield { fine: true };
   }

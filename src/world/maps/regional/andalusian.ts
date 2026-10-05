@@ -1118,30 +1118,39 @@ const palomar: RegionalBuilder = (ctx) => {
 
 /**
  * The bread oven in the yard (horno de leña): a whitewashed block under a whitewashed dome, its arched mouth with a
- * stone lip, a little flue; firewood stacked against its side under a board roof (the yard's outbuilding).
+ * stone lip, a little flue; firewood stacked against its side under a lean-to of tiles on two posts (the yard's
+ * outbuilding). The oven stands at the plot's -x end as deep as the plot; the firewood rack fills the rest.
  */
 const horno: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const look = ctx.variant;
-  const B = clamp(Math.min(ctx.info.w, ctx.info.d) - 0.6, 1.8, 2.4), h = B / 2;
-  const ox = -Math.min(0.5, (ctx.info.w - B) / 2 - 0.15);
-  sink.span('stone', ox - h - 0.04, -0.4, -h - 0.04, ox + h + 0.04, 0.3, h + 0.04);
-  sink.span('plaster', ox - h, 0.3, -h, ox + h, 1.05, h);
-  sink.cylinder('plaster', [ox, 1.05, 0], 'y', 0.2, h * 0.98, 12, {}, h * 0.95);
+  const b = ctx.bounds, W = b.maxX - b.minX, D = b.maxZ - b.minZ, cz = (b.minZ + b.maxZ) / 2;
+  const B = clamp(Math.min(D - 0.1, W - 0.65), 1.8, 2.6), h = B / 2;
+  const ox = b.minX + 0.05 + h;
+  sink.span('stone', ox - h - 0.04, -0.4, cz - h - 0.04, ox + h + 0.04, 0.3, cz + h + 0.04);
+  sink.span('plaster', ox - h, 0.3, cz - h, ox + h, 1.05, cz + h);
+  sink.cylinder('plaster', [ox, 1.05, cz], 'y', 0.2, h * 0.98, 12, {}, h * 0.95);
   // the dome: stacked frustums swelling in and closing
   let y = 1.25, r = h * 0.95;
   for (const k of [0.92, 0.78, 0.56, 0.28]) {
     const nr = h * k, dh = 0.24;
-    sink.cylinder('plaster', [ox, y, 0], 'y', dh, r, 12, {}, nr);
+    sink.cylinder('plaster', [ox, y, cz], 'y', dh, r, 12, {}, nr);
     y += dh; r = nr;
   }
-  sink.span('plaster', ox - 0.16, y - 0.2, -0.16, ox + 0.16, y + 0.35, 0.16);
-  const f: Face = { origin: [ox, 0, h], u: [1, 0, 0], out: [0, 0, 1], width: B };
+  sink.span('plaster', ox - 0.16, y - 0.2, cz - 0.16, ox + 0.16, y + 0.35, cz + 0.16);
+  const f: Face = { origin: [ox, 0, cz + h], u: [1, 0, 0], out: [0, 0, 1], width: B };
   faceBox(sink, 'dark', f, 0, 0.72, 0.006, 0.55, 0.42, 0.01, { decor: true });
   faceBox(sink, 'stone', f, 0, 0.47, 0.12, 0.85, 0.08, 0.24, { decor: true });
-  if (ctx.tier !== 'mobile') {
-    const side: Face = { origin: [ox + h, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: B };
-    woodpile(sink, side, -h + 0.1, h - 0.1, 0.9 + look() * 0.2, look);
+  // the firewood rack: two posts on the plot's +x side and a lean-to of tiles falling to them from the oven
+  const x0 = ox + h + 0.04, x1 = b.maxX - 0.02, sw = x1 - x0, rz = h - 0.06;
+  if (sw > 0.35) {
+    for (const s of [-1, 1]) sink.span('wood', x1 - 0.1, 0, cz + s * rz - 0.05, x1, 1.2, cz + s * rz + 0.05);
+    const lean: RoofSpec = { kind: 'shed', pitchDeg: 14, eave: 0.1, verge: 0.1, thickness: 0.08, bucket: 'roof' };
+    sink.placed(0, (x0 + x1) / 2, 0, cz, () => emitRoof(sink, roofGeometry(sw, 2 * rz, 1.2, lean), lean));
+    if (ctx.tier !== 'mobile') {
+      const side: Face = { origin: [x0, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: 2 * rz };
+      woodpile(sink, side, -rz + 0.1, rz - 0.1, 0.9 + look() * 0.2, look);
+    }
   }
   return sink.finish();
 };

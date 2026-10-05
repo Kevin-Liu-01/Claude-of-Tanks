@@ -29,7 +29,8 @@
 // each square under its clock and bell gable where the old kit's domed hall stood, the stone parish church and its
 // belfry, the Nasrid wall tower at the bridgehead, the whitewashed town houses with their rejas and iron balconies, the
 // posada with its cart gate, the escuelas, the white hermitage with its bell gable, the cortijos round their patios with
-// their barns and dovecotes, the ruined flour mills on the gorge floor. Every building stands where it stood. The country
+// their barns and dovecotes, the ruined flour mills on the gorge floor. Every building stands where it stood, and below
+// each square the roads leave the crossroads between terraces of whitewashed houses, as Ronda's streets do. The country
 // is the tableland's: olive groves stepping down the west terraces, holm oak in the stands and on the uplands, poplars in
 // the river's bottomland, cypresses by the hermitages and on the cortijos' drives, the scrub wild olive; the grain
 // standing and stacked on the tableland.
@@ -53,6 +54,39 @@ const SOUTH_TOWN = [
   { structure: 'schoolhouse', x: -84, z: -236, yawDeg: 5 },
   { structure: 'chapel', x: -160, z: -246, yawDeg: 5 },
   { structure: 'cottage', x: 84, z: -262, yawDeg: -20 },
+];
+// The Ronda street walls (map revival lane 2, 2026-10-05): below each square the three roads leave the crossroads
+// between terraces of town houses, their fronts on one building line 5.5 m from the carriageway's centre (every part
+// clear of the road's edge), the eaves of each house 0.3 m from the next one's. Each slot was laid from the house its
+// own draw builds and its mirror's, so the north terraces are this list mirrored. They stand after every earlier site:
+// the 36 buildings above keep their places and their streams, and the posada keeps its yard before its door.
+const SOUTH_STREETS = [
+  // the main street below the square, west side, and south of the crossroads
+  { structure: 'rowhouse', x: -10.99, z: -267.75, yawDeg: 90, terrace: true },
+  { structure: 'rowhouse', x: -13.03, z: -239.57, yawDeg: 90, terrace: true },
+  { structure: 'cottage', x: -10.98, z: -230.19, yawDeg: 90, terrace: true },
+  // the main street south of the crossroads, east side
+  { structure: 'cottage', x: 10.8, z: -267.82, yawDeg: -90, terrace: true },
+  // the west ford road, south side
+  { structure: 'cottage', x: -20.46, z: -262.86, yawDeg: -6.8, terrace: true },
+  { structure: 'cottage', x: -27.86, z: -264.29, yawDeg: -6.8, terrace: true },
+  { structure: 'cottage', x: -35.31, z: -264.9, yawDeg: -6.8, terrace: true },
+  { structure: 'cottage', x: -42.48, z: -265.93, yawDeg: -6.8, terrace: true },
+  { structure: 'cottage', x: -49.72, z: -267.07, yawDeg: -6.8, terrace: true },
+  // the west ford road, north side
+  { structure: 'cottage', x: -24.17, z: -242.33, yawDeg: 173.2, terrace: true },
+  { structure: 'cottage', x: -31.62, z: -243.16, yawDeg: 173.2, terrace: true },
+  { structure: 'rowhouse', x: -42.12, z: -242.53, yawDeg: 173.2, terrace: true },
+  { structure: 'cottage', x: -51.15, z: -245.79, yawDeg: 173.2, terrace: true },
+  { structure: 'cottage', x: -58.72, z: -246.29, yawDeg: 173.2, terrace: true },
+  { structure: 'cottage', x: -66.48, z: -247.25, yawDeg: 173.2, terrace: true },
+  // the east road, north side
+  { structure: 'cottage', x: 17.78, z: -244.83, yawDeg: -160, terrace: true },
+  { structure: 'cottage', x: 24.28, z: -247.86, yawDeg: -160, terrace: true },
+  { structure: 'rowhouse', x: 33.81, z: -249.07, yawDeg: -160, terrace: true },
+  { structure: 'cottage', x: 42.39, z: -254.13, yawDeg: -160, terrace: true },
+  { structure: 'cottage', x: 49.11, z: -256.73, yawDeg: -160, terrace: true },
+  { structure: 'rowhouse', x: 58.61, z: -258.12, yawDeg: -160, terrace: true },
 ];
 // The ruined mills on the gorge floor beside the viaduct's piers (their mirrors stand on the north half of the floor).
 const MILLS = [
@@ -193,7 +227,7 @@ export default {
     // Every building is an authored site (the towns are mirror images), so the roadside builder places none.
     plan: [],
     plannedSites: [...SOUTH_TOWN, ...SOUTH_TOWN.map(mirrorSite), ...MILLS, ...SOUTH_FARMS,
-      ...[...MILLS, ...SOUTH_FARMS].map(mirrorSite)],
+      ...[...MILLS, ...SOUTH_FARMS].map(mirrorSite), ...SOUTH_STREETS, ...SOUTH_STREETS.map(mirrorSite)],
     destructibleBuildings: ['guardpost', 'fieldhut', 'leanto', 'huntingblind', 'commandtent'],
     blockFill: false, extraKits: [], buildingLat: [20, 5], spacingPad: 12, sideSkip: .12, maxSpread: 3.2,
     // Three strongpoint pairs, each the other's mirror across the gorge: the tollhouses at the bridgeheads, the rim
