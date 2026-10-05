@@ -2524,6 +2524,43 @@ function applyAnalyticHorizonNormals(
   geometry.setAttribute('normal', normals);
 }
 
+/**
+ * The ring's cliffs (the light lane, 2026-10-04: on Redrock's sunward view its faces turned away from the sun read at 74-82 %
+ * of the sunlit sand, where a face in its own shade sits near 15-30 %). The analytic normals come from heights smoothed
+ * over the neighbouring columns and rows, which tipped a cliff's normal up by a median 43 degrees on Redrock's ring and
+ * left half of its faces turned from the sun lit by it; within the seam band the playable ground's normals, sampled at a
+ * cliff's top or foot, did the same to the coarse ring triangles spanning it. On steep ground a vertex takes the geometry's
+ * own normal (its faces' area-weighted), blended in between 50 and 65 degrees of slope; gentler ground keeps its normal,
+ * and the first 20-60 m past the square's edge keep the playable ground's, so the seam still meets the battlefield.
+ */
+function sharpenHorizonCliffNormals(geometry: THREE.BufferGeometry): void {
+  const faces = new THREE.BufferGeometry();
+  faces.setAttribute('position', geometry.getAttribute('position'));
+  faces.setIndex(geometry.getIndex());
+  faces.computeVertexNormals();
+  const geometric = faces.getAttribute('normal'), normal = geometry.getAttribute('normal');
+  const positions = geometry.getAttribute('position');
+  const stride = HORIZON_SEGMENTS + 1;
+  for (let i = 0; i < normal.count; i++) {
+    // (the ring is wound facing down for computeVertexNormals: its geometric normal is the negation; the closing column
+    // repeats the first, so the two are averaged and the seam does not show)
+    const column = i % stride;
+    const twin = column === 0 ? i + HORIZON_SEGMENTS : column === HORIZON_SEGMENTS ? i - HORIZON_SEGMENTS : -1;
+    let gx = -geometric.getX(i), gy = -geometric.getY(i), gz = -geometric.getZ(i);
+    if (twin >= 0) { gx -= geometric.getX(twin); gy -= geometric.getY(twin); gz -= geometric.getZ(twin); }
+    const gl = Math.hypot(gx, gy, gz);
+    if (gl < 1e-6) continue;
+    gx /= gl; gy /= gl; gz /= gl;
+    const edgeOut = Math.max(Math.abs(positions.getX(i)), Math.abs(positions.getZ(i))) - 512;
+    const w = smoothstep(0.64, 0.42, gy) * smoothstep(20, 60, edgeOut);
+    if (w <= 0) continue;
+    const bx = normal.getX(i) * (1 - w) + gx * w, by = normal.getY(i) * (1 - w) + gy * w, bz = normal.getZ(i) * (1 - w) + gz * w;
+    const bl = Math.hypot(bx, by, bz) || 1;
+    normal.setXYZ(i, bx / bl, by / bl, bz / bl);
+  }
+  faces.dispose();
+}
+
 /** The playable mesh takes its normals from 1.33 m central differences.
  * Continue that same shading across the seam; heavily smoothed ring gradients
  * otherwise turn a single cliff into two visibly different materials. */
@@ -3676,6 +3713,7 @@ export function* buildHorizonRingSteps(
   if (horizonDebug) applyHorizonDebugColors(col, rows.length);
   const geo = buildHorizonGeometry(ring, col, uvA, gradients);
   matchHorizonGroundNormals(geo, ground);
+  sharpenHorizonCliffNormals(geo);
   yield;
   // DoubleSide: the shallow inner skirt annulus is seen from ABOVE by raised
   // establishing cameras — with default FrontSide it backface-culls and the
@@ -3792,6 +3830,8 @@ export function* buildHorizonRingSteps(
         // read the light model the battlefield still published from the last map, overcast 0 under Whiteout's closed
         // deck, and hazed its far ice sheet toward the clear sky's warm horizon — a beige band)
         overcast: resolveOvercast({ ...((cfg?.sky ?? {}) as LightModelPreset), cloudscape: (cfg as { clouds?: LightModelPreset['cloudscape'] } | null | undefined)?.clouds ?? null }),
+        // the aerial pass's haze datum, the ground under the camera (post.ts setGroundHeightSource takes the same field)
+        groundAt: ground ? (x: number, z: number) => ground.getHeightAt(x, z) : null,
       }, farRange);
       mesh.add(panorama.mesh);
       mesh.userData.horizonPanorama = panorama;

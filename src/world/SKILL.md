@@ -154,8 +154,43 @@ the lowland's own cover under the law's air over its reach instead of the lit gr
 gullies (the height pass writes it in the grid's B channel) and fall-line streaks, so no contour runs level across a
 face; `ownRock` keeps the authored rock in place of the battlefield's rock mean (Saltwind's pale limestone over a dark
 brown battlefield rock); `forestSlope` is where a character's forest gives way on the steep faces (a monsoon hill country's climbs them).
+Redrock's far jebels (`jebel`, gauntlet wave 50: "flat-coloured, pale-pink, near-rectangular blocks with dead-flat
+tops"): one jebel law (`JEBEL_GLSL` `jebelField`) serves the height pass and the strip, which takes a wall's normal from
+it at 4 m (the grid's rows lie ~35 m apart at 5 km and smoothed a sheer wall into a slope the sun lit from every side),
+paints Wadi Rum's sandstone, bedded every ~17 m and split by vertical joints whose clefts hold shadow. Its tones come
+from the plain's own sand (v3b; v3's cap stood as "pale grey-white castles" brighter than the sky): the walls
+desert-varnished at about a third of the sand's albedo, the pale Disi only on the domes and the rim, buff, near the sand.
+Every massif's near edge stands past `jebelNearM` (3 km, past the shell) and its height joins the field after the near
+band's press, so a near massif keeps its bossed top. The fill a high camera sees under the ring's skyline never paints
+over a massif's wall, and Redrock's fill is the fill law's (`fillLaw`), its bare lowland's own sand. Redrock's far `air`
+is 0.4 (desert air is clear).
+The ring's own cliffs (the light lane, 2026-10-04: faces turned from the sun read 74-82 % of the sunlit sand): the
+analytic normals of the smoothed heights tipped them up, so `sharpenHorizonCliffNormals` gives a vertex on ground
+steeper than 50-65 degrees its geometry's own normal past the first 20-60 m beyond the square (the seam keeps the
+playable ground's); `horizonCliffNormals.selftest.mjs` pins it on three cliff rings.
 `horizon.ringStyle` gives the ring its own style (rows, profile, rock, relief character) while the border's landform
 keeps reading `style` (Eifel Reservoir: the alpine border its villages stand on, a rolling ring).
+The shell over its column's skyline (the mountains lane, 2026-10-04, gauntlet waves 53-54's bird views: "the world simply
+ends ... a ruler-straight hard top edge", the sky dome under a high camera's own horizontal): two bake passes write each
+strip column's highest opaque texel (`SKYLINE_FRAGMENT`) and its colour averaged over 2.8 degrees either side
+(`SKYLINE_BLUR_FRAGMENT`). A texel over that skyline stays open except on a ray under the camera's own horizontal, where
+the shell is ground: the apron over the bake eye's horizon (its inner rows on the ring's outer edge, +0.8 to +2.5
+degrees, read sky over a low far country) takes the skyline's colour, and the far earth takes it hazed by the map's law
+over the reach past the strip at which the ray meets the ground, converging toward the horizontal onto the screen's own
+horizon: the dome's lookup greyed by the dome's deck greying and knee, under the cloud layer's composite at the horizon
+point (its history read where the cloud dome reads it, on this frame's screen), pre-compensated for the aerial pass
+(its haze, and its world-anchored cloud shade, which it multiplies into geometry after the haze when the clouds cast no
+shadows of their own). sky.ts, volumetricClouds.ts and post.ts keep these inline, so the shell carries copies
+(`DOME_DECK_GREY_GLSL`, `CLOUD_COMPOSITE_GLSL`, `AERIAL_CLOUD_SHADE_GLSL`) on their own uniforms (read off the
+`atmosphere-dome` mesh, `scene.userData.volumetricClouds.dome` and `scene.userData.cloudShadeAmp` each draw);
+`horizonPanoramaDeck.selftest.mjs` and `horizonPanoramaClouds.selftest.mjs` run the sources' statements and the copies
+through one GLSL-subset evaluator (`glslSubset.test-support.mjs`) and fail the build on any difference. The dome's sun
+glow, spot and disc are not copied: a bird toward the sunset sun (7 degrees up) matched within 0.006 a channel without
+them (the clouds' far rows cover the dome there). Where no cloud layer is read (none drawn, or the
+horizon point off the frame's top or bottom, eased in over the last twentieth) the dome goes toward the aerial pass's
+target as the overcast closes.
+A hole under the skyline (the game's open water) stays open; ground and tank-height cameras look up at the shell's sky,
+so their frames are bit-identical. The frame-budget probe's `--toggle=far-earth` switches it in place.
 `horizonPanorama.selftest.mjs` pins the shell, the atlas mapping and the bake contract; the bake's look is iterated
 offline on SwiftShader (no GPU) before the census.
 p2 trees lane (2026-10-01): the desktop tiers GROW their near trees — `treeGrowth.ts` (a THREE-free skeleton per
