@@ -95,9 +95,6 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // the Dalmatian coast: Aleppo pine, holm oak and olive (and cypress, which the map names directly)
   saltwind: B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak', colour: HOLM_OAK_FOLIAGE },
     acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }),
-  // the Moselle valley of Lorraine in the autumn of 1944 (the map-revival lane, 2026-10-05): the beech and oak woods of the
-  // Côtes de Moselle, birches in leaf along the river (the map's aspens grow as beech)
-  autumn: B('the Moselle valley, Lorraine', { aspen: { form: 'beech' }, birch: { form: 'birch', leaves: true } }),
   // the Breton bocage: oak and sweet chestnut along the hedgebanks (the maritime pine stays a pine)
   coastal: B('the Breton bocage, Brittany', { cedar: { form: 'chestnut' } }),
   // the Fulda Gap: beech woods with spruce, oak and birch
