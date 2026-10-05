@@ -35,7 +35,7 @@ export function environmentRichness(): number { return getDeviceTier() === 'mobi
 // A function declaration: roadStations.selftest.mjs extracts and executes the production placement
 // functions from this source, and they read their counts through this helper.
 function richCount(n: number | undefined, fallback = 0): number { return Math.round((n ?? fallback) * environmentRichness()); }
-import { markShadowOnly, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
+import { markShadowOnly, setShadowCasterCascades, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
 import {
@@ -499,6 +499,25 @@ interface UtilityPolePlacementReceipt {
   yaw: number;
   poles: UtilityPoleGroundingReceipt[];
 }
+
+/** The scenery lane (wave 74, the cascade trim): one rock variant's near and far pools and what repartitions them. */
+interface RockLodPools {
+  near: THREE.InstancedMesh;
+  far: THREE.InstancedMesh;
+  /** The crushable rocks hold the first near slots for good. */
+  pinned: number;
+  /** The rest, by placement index, repartitioned by distance. */
+  loose: number[];
+  placements: THREE.Matrix4[];
+  ground: Float32Array;
+  slope: Float32Array;
+  /** 1 while a loose rock draws its desktop form. */
+  high: Uint8Array;
+}
+/** The rocks' desktop form draws through this distance (and its phone form past it plus the hysteresis, 10 m), metres. */
+const ROCK_FAR_M = 60;
+/** The near cascades (0 and 1) take the near and far pools; the far cascades (2 and 3) the shadow-only pool. */
+const ROCK_NEAR_CASCADES = 0b0011, ROCK_FAR_CASCADES = 0b1100;
 
 interface BakedInstanceGroup {
   geo: THREE.BufferGeometry;
@@ -5579,6 +5598,9 @@ ${snowCap ? `
   // 2026-10-04).
   const rockClutter = new Map<THREE.Matrix4, CrushableClutter>();
   const rockGeos: THREE.BufferGeometry[] = [];
+  // the scenery lane (wave 74, the cascade trim): on the desktop each rock's phone form too (270 triangles against 672),
+  // for the far rocks and the far shadow cascades
+  const rockGeosFar: THREE.BufferGeometry[] = [];
   const rockHulls: number[][] = [];
   function buildRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
@@ -5613,6 +5635,11 @@ ${snowCap ? `
     const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology);
     paintBoulder(form, P.rockTone, lithology);
     rockGeos.push(form.geometry);
+    if (!mobileProps) {
+      const far = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 4, legacyTop, boulderKindFor(lithology, vi), lithology);
+      paintBoulder(far, P.rockTone, lithology);
+      rockGeosFar.push(far.geometry);
+    }
     g.dispose();
   }
   }
@@ -5785,25 +5812,81 @@ ${snowCap ? `
       slope[i * 2 + 1] = (heightField.getHeightAt(x, z + r) - heightField.getHeightAt(x, z - r)) / (2 * r);
       if (rockContact) rockSpots.push({ x, z, r: r * (1.22 + 0.16 * ((Math.imul(i + 1, 0x9e3779b1) >>> 0) / 4294967296)) });
     }
-    rockGeos[vi].setAttribute('aRockGround', new THREE.InstancedBufferAttribute(ground, 1));
-    rockGeos[vi].setAttribute('aRockSlope', new THREE.InstancedBufferAttribute(slope, 2));
-    const im = new THREE.InstancedMesh(rockGeos[vi], mats.rock, rockPlacements[vi].length);
-    for (let i = 0; i < rockPlacements[vi].length; i++) {
-      const placement = rockPlacements[vi][i];
-      im.setMatrixAt(i, placement); rockClutter.get(placement)?.bindInstance(im, i);
-    }
-    im.castShadow = true;
-    im.receiveShadow = true;
-    im.matrixAutoUpdate = false;
-    im.computeBoundingSphere();
-    im.name = 'rock-variant-' + vi; // round 75: the probes and captures find the boulders by name
     // round 79; the scenery lane: the height a shadow can show, from the deepest seat (0.6 of a scale under the centre),
     // not the skirt the rock carries deep under the ground
     const box = rockGeos[vi].boundingBox ?? (rockGeos[vi].computeBoundingBox(), rockGeos[vi].boundingBox!);
     let maxScale = 0;
     for (const placement of rockPlacements[vi]) maxScale = Math.max(maxScale, placement.getMaxScaleOnAxis());
-    setShadowCasterProfile(im, { heightM: (box.max.y - Math.max(box.min.y, -0.6)) * maxScale, instanced: true });
-    group.add(im);
+    const heightM = (box.max.y - Math.max(box.min.y, -0.6)) * maxScale;
+    const pool = (geometry: THREE.BufferGeometry, name: string, count: number): THREE.InstancedMesh => {
+      const mesh = new THREE.InstancedMesh(geometry, mats.rock, count);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.matrixAutoUpdate = false;
+      mesh.name = name; // round 75: the probes and captures find the boulders by name
+      return mesh;
+    };
+    if (mobileProps) {
+      rockGeos[vi].setAttribute('aRockGround', new THREE.InstancedBufferAttribute(ground, 1));
+      rockGeos[vi].setAttribute('aRockSlope', new THREE.InstancedBufferAttribute(slope, 2));
+      const im = pool(rockGeos[vi], 'rock-variant-' + vi, rockPlacements[vi].length);
+      for (let i = 0; i < rockPlacements[vi].length; i++) {
+        const placement = rockPlacements[vi][i];
+        im.setMatrixAt(i, placement); rockClutter.get(placement)?.bindInstance(im, i);
+      }
+      im.computeBoundingSphere();
+      setShadowCasterProfile(im, { heightM, instanced: true });
+      group.add(im);
+      continue;
+    }
+    // the scenery lane (wave 74, the cascade trim: 672-triangle rocks drawn into every cascade): the desktop form near the
+    // camera, the phone form past ROCK_FAR_M (rockLod below), both into the near cascades only; the far cascades take the
+    // phone form of every rock from a shadow-only pool. The crushable rocks keep the first near slots for good (their
+    // clutter writes its slot), cast into the near cascades alone (small, and gone when crushed)
+    const n = rockPlacements[vi].length;
+    const pinned = rockPlacements[vi].filter((placement) => rockClutter.has(placement)).length;
+    const near = pool(rockGeos[vi], 'rock-variant-' + vi, n);
+    const far = pool(rockGeosFar[vi], 'rock-variant-' + vi + '-far', n);
+    const nearGround = new THREE.InstancedBufferAttribute(new Float32Array(n), 1);
+    const nearSlope = new THREE.InstancedBufferAttribute(new Float32Array(n * 2), 2);
+    const farGround = new THREE.InstancedBufferAttribute(new Float32Array(n), 1);
+    const farSlope = new THREE.InstancedBufferAttribute(new Float32Array(n * 2), 2);
+    rockGeos[vi].setAttribute('aRockGround', nearGround);
+    rockGeos[vi].setAttribute('aRockSlope', nearSlope);
+    rockGeosFar[vi].setAttribute('aRockGround', farGround);
+    rockGeosFar[vi].setAttribute('aRockSlope', farSlope);
+    const shadowGeo = new THREE.BufferGeometry();
+    for (const key of ['position', 'normal', 'color'] as const) shadowGeo.setAttribute(key, rockGeosFar[vi].getAttribute(key));
+    shadowGeo.setIndex(rockGeosFar[vi].index);
+    const order: number[] = [], loose: number[] = [];
+    for (let i = 0; i < n; i++) (rockClutter.has(rockPlacements[vi][i]) ? order : loose).push(i);
+    const shadowGround = new Float32Array(n - pinned), shadowSlope = new Float32Array((n - pinned) * 2);
+    const shadow = pool(shadowGeo, 'rock-variant-' + vi + '-shadow', n - pinned);
+    loose.forEach((i, k) => {
+      shadow.setMatrixAt(k, rockPlacements[vi][i]);
+      shadowGround[k] = ground[i]; shadowSlope[k * 2] = slope[i * 2]; shadowSlope[k * 2 + 1] = slope[i * 2 + 1];
+    });
+    shadowGeo.setAttribute('aRockGround', new THREE.InstancedBufferAttribute(shadowGround, 1));
+    shadowGeo.setAttribute('aRockSlope', new THREE.InstancedBufferAttribute(shadowSlope, 2));
+    shadow.receiveShadow = false;
+    markShadowOnly(shadow);
+    setShadowCasterCascades(shadow, ROCK_FAR_CASCADES);
+    setShadowCasterCascades(near, ROCK_NEAR_CASCADES);
+    setShadowCasterCascades(far, ROCK_NEAR_CASCADES);
+    for (const [k, i] of order.entries()) {
+      // (the crushable rocks: their slots, their attributes, their clutter's binding, written once)
+      near.setMatrixAt(k, rockPlacements[vi][i]);
+      nearGround.setX(k, ground[i]); nearSlope.setXY(k, slope[i * 2], slope[i * 2 + 1]);
+      rockClutter.get(rockPlacements[vi][i])!.bindInstance(near, k);
+    }
+    // (every loose rock in the near pool until the first camera repartitions them: the pools are whole from the build)
+    const lod: RockLodPools = { near, far, pinned, loose, placements: rockPlacements[vi], ground, slope, high: new Uint8Array(n).fill(1) };
+    writeRockLod(lod);
+    rockLod.push(lod);
+    for (const mesh of [near, far, shadow]) {
+      setShadowCasterProfile(mesh, { heightM, instanced: true });
+      group.add(mesh);
+    }
   }
   }
   // the scenery lane (wave 57, "a ruler-straight base line on the grass with no soil collar"): every boulder's contact
@@ -5811,6 +5894,7 @@ ${snowCap ? `
   // where the snow lies against the stone, nor on sand, where the dust skirt meets the dune)
   const rockContact = !snowCap && rockDressing.dust < 0.5;
   const rockSpots: Array<{ x: number; z: number; r: number }> = [];
+  const rockLod: RockLodPools[] = [];
   instantiateRockVariants();
   rockClutter.clear();
 
@@ -7570,6 +7654,48 @@ ${snowCap ? `
     return changed;
   }
 
+  // the scenery lane (wave 74, the cascade trim): the rocks' near and far pools, repartitioned when the camera has moved
+  // 8 m, with hysteresis (the desktop form through ROCK_FAR_M, the phone form beyond ROCK_FAR_M + 10)
+  const lastRockCamera = new THREE.Vector3(Number.NaN, Number.NaN, Number.NaN);
+  function updateRockLod(cameraPos: THREE.Vector3 | null, force = false): void {
+    if (!rockLod.length || !cameraPos || !Number.isFinite(cameraPos.x) || !Number.isFinite(cameraPos.z)) return;
+    if (!force && Number.isFinite(lastRockCamera.x) && lastRockCamera.distanceToSquared(cameraPos) <= 64) return;
+    const first = !Number.isFinite(lastRockCamera.x);
+    lastRockCamera.copy(cameraPos);
+    for (const lod of rockLod) {
+      let changed = first || force;
+      for (const i of lod.loose) {
+        const e = lod.placements[i].elements, d = Math.hypot(e[12] - cameraPos.x, e[14] - cameraPos.z);
+        const wasHigh = lod.high[i] !== 0, high = wasHigh ? d <= ROCK_FAR_M + 10 : d < ROCK_FAR_M;
+        if (high !== wasHigh) { lod.high[i] = high ? 1 : 0; changed = true; }
+      }
+      if (changed) writeRockLod(lod);
+    }
+  }
+  function writeRockLod(lod: RockLodPools): void {
+    const nearGround = lod.near.geometry.getAttribute('aRockGround') as THREE.InstancedBufferAttribute;
+    const nearSlope = lod.near.geometry.getAttribute('aRockSlope') as THREE.InstancedBufferAttribute;
+    const farGround = lod.far.geometry.getAttribute('aRockGround') as THREE.InstancedBufferAttribute;
+    const farSlope = lod.far.geometry.getAttribute('aRockSlope') as THREE.InstancedBufferAttribute;
+    let nearCount = lod.pinned, farCount = 0;
+    for (const i of lod.loose) {
+      const high = lod.high[i] !== 0;
+      const mesh = high ? lod.near : lod.far, slot = high ? nearCount++ : farCount++;
+      mesh.setMatrixAt(slot, lod.placements[i]);
+      (high ? nearGround : farGround).setX(slot, lod.ground[i]);
+      (high ? nearSlope : farSlope).setXY(slot, lod.slope[i * 2], lod.slope[i * 2 + 1]);
+    }
+    lod.near.count = nearCount;
+    lod.far.count = farCount;
+    lod.near.visible = nearCount > 0;
+    lod.far.visible = farCount > 0;
+    for (const mesh of [lod.near, lod.far]) {
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.computeBoundingSphere();
+    }
+    nearGround.needsUpdate = true; nearSlope.needsUpdate = true; farGround.needsUpdate = true; farSlope.needsUpdate = true;
+  }
+
   function updatePoleLod(cameraPos: THREE.Vector3 | null, force = false): void {
     if (!poleMatrices || !poleHigh) return;
     let changed = force;
@@ -8814,6 +8940,7 @@ ${snowCap ? `
 
   function updateProps(dt: number, cameraPos: THREE.Vector3 | null = null): void {
     updatePoleLod(cameraPos);
+    updateRockLod(cameraPos);
     updateFineDetail(cameraPos);
     if (mooredHulls.length) {
       animatedTimeS += dt;

@@ -336,7 +336,23 @@ assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(co
   assert.match(source, /if \(fx \+ fz <= 1\) \{[\s\S]{0,140}return ha \+ \(at\(gx \+ 1, gz\) - ha\) \* fx \+ \(at\(gx, gz \+ 1\) - ha\) \* fz;/,
     'the patch reads the mesh\'s own triangle under it');
 }
-assert.match(source, /heightM: \(box\.max\.y - Math\.max\(box\.min\.y, -0\.6\)\) \* maxScale/, 'the shadow height is what can show, not the buried skirt');
+assert.match(source, /const heightM = \(box\.max\.y - Math\.max\(box\.min\.y, -0\.6\)\) \* maxScale;/, 'the shadow height is what can show, not the buried skirt');
+// the cascade trim (wave 74: 672-triangle rocks in every cascade): on the desktop the phone form beside the desktop one;
+// the desktop form near the camera and the phone form past ROCK_FAR_M, both into the near cascades; the far cascades
+// the phone form of every loose rock from a shadow-only pool; the crushable rocks pinned to the first near slots;
+// the pools whole from the build, repartitioned with hysteresis when the camera has moved 8 m
+assert.match(source, /if \(!mobileProps\) \{\n\s*const far = buildBoulderForm\(vi, noi, mulberry32\(seed \+ 60 \+ vi\), hull, 4, legacyTop, boulderKindFor\(lithology, vi\), lithology\);/,
+  'the far form is the same rock at the phone\'s tier');
+assert.match(source, /const ROCK_FAR_M = 60;/);
+assert.match(source, /const ROCK_NEAR_CASCADES = 0b0011, ROCK_FAR_CASCADES = 0b1100;/);
+assert.match(source, /markShadowOnly\(shadow\);\n\s*setShadowCasterCascades\(shadow, ROCK_FAR_CASCADES\);\n\s*setShadowCasterCascades\(near, ROCK_NEAR_CASCADES\);\n\s*setShadowCasterCascades\(far, ROCK_NEAR_CASCADES\);/,
+  'the near and far pools cast into the near cascades, the shadow-only pool into the far ones');
+assert.match(source, /'rock-variant-' \+ vi \+ '-far'[\s\S]{0,1500}'rock-variant-' \+ vi \+ '-shadow'/, 'the probes find every pool by name');
+assert.match(source, /rockClutter\.get\(rockPlacements\[vi\]\[i\]\)!\.bindInstance\(near, k\);/, 'a crushable rock keeps its near slot for its clutter');
+assert.match(source, /high: new Uint8Array\(n\)\.fill\(1\) \};\n\s*writeRockLod\(lod\);/, 'the pools are whole from the build');
+assert.match(source, /const wasHigh = lod\.high\[i\] !== 0, high = wasHigh \? d <= ROCK_FAR_M \+ 10 : d < ROCK_FAR_M;/, 'the repartition holds a 10 m hysteresis');
+assert.match(source, /lastRockCamera\.distanceToSquared\(cameraPos\) <= 64\) return;/, 'and runs when the camera has moved 8 m');
+assert.match(source, /updatePoleLod\(cameraPos\);\n\s*updateRockLod\(cameraPos\);/, 'the props update runs it');
 assert.match(source, /materialKind === 'rock' \? rockHook\s*:/); // (the field print's own hook follows: the scenery lane, wave 48)
 assert.match(source, /rock: new THREE\.MeshStandardMaterial\(\{\n\s*map: rockDetail\.albedo, normalMap: rockDetail\.normal/);
 assert.match(source, /const rockDetail = yield\* makeRockDetail\(noi, aniso, rockLithologyFor\(mapId\)\);/);

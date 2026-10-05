@@ -82,12 +82,19 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   'pylon-wires': Object.freeze({
     on: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'props-pylon-wires') o.visible = true; })`,
     off: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'props-pylon-wires') o.visible = false; })` }),
-  // the scenery lane (wave 52): the boulders (props.ts rock-variant-0..2, three instanced pools drawn whole, map-wide);
-  // off hides them, so the delta is their whole frame cost. Both sides run without the static shadow cache, so every
-  // cascade redraws every boulder every frame, as it does while the camera moves (an upper bound)
+  // the scenery lane (wave 52): the boulders (props.ts rock-variant-0..2, and since the wave-74 cascade trim each one's
+  // -far pool and its -shadow pool for the far cascades); off hides them, so the delta is their whole frame cost. Both
+  // sides run without the static shadow cache, so every cascade redraws every boulder every frame, as it does while the
+  // camera moves (an upper bound). ('on' restores a pool's own visibility: an empty LOD pool stays hidden.)
   'boulders': Object.freeze({
-    on: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d$/.test(o.name)) o.visible = true; })`,
-    off: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d$/.test(o.name)) o.visible = false; })` }),
+    on: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d(-far|-shadow)?$/.test(o.name)) o.visible = o.isInstancedMesh ? o.count > 0 : true; })`,
+    off: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d(-far|-shadow)?$/.test(o.name)) o.visible = false; })` }),
+  // the null control beside a toggle under a millisecond (docs/PERFORMANCE.md, "Light presets"): the same static
+  // shadow cache state as the boulders' toggle, and a switch nothing reads, so its on-off delta is the machine's own
+  // drift between blocks under other sessions' load
+  'null-control': Object.freeze({
+    on: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__COT_NULL_CONTROL = 1`,
+    off: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__COT_NULL_CONTROL = 0` }),
   // the scenery lane (after wave 57): the telegraph poles (props.ts baked-pole-full and baked-pole-distance, the two
   // instanced pools of the sourced pole and its distance model); off hides them, so the delta is their whole frame cost.
   // Both sides run without the static shadow cache (an upper bound, as for the boulders)
