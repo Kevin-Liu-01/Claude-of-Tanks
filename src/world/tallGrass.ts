@@ -578,7 +578,8 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       field._landUseAt(x, z, _field);
       const vm = field._villageMask ? field._villageMask(x, z) : 0;
       const slopeN = n ? 1 - n.y : 0;
-      const landW = (1 - smoothstep(0.05, 0.30, vm)) * smoothstep(5.0, 8.0, roadD) * (1 - smoothstep(0.02, 0.06, slopeN))
+      // (an urban land use — Ruinspires — lies inside the village too: landUse.ts LandUseProfile.urban)
+      const landW = (1 - smoothstep(0.05, 0.30, vm) * (1 - _field.urban)) * smoothstep(5.0, 8.0, roadD) * (1 - smoothstep(0.02, 0.06, slopeN))
         * (1 - smoothstep(0.02, 0.10, water));
       if (landW > 0.5 && _field.active) {
         if (_field.track > 0.5) {
