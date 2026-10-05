@@ -159,7 +159,10 @@ const TERRAIN_PLAN = {
     D: { set: 'dirt', tint: [0.74, 0.73, 0.72], roughMul: 1.3 },
     // snow-dusted rock: raw Rock058 is near-black here and punched dark
     // holes into the snowfield wherever a lake bank / cut slope got steep
-    R: { set: 'rock', tint: [1.52, 1.55, 1.62], roughMul: 1.1 }, M: null,
+    // (ground lane, wave 62: lifted half again and blued, its veins read as "blue-and-white swirled marble" — the rock
+    // is grey rock now, a little lifted and its veins' rust taken out, and the material lays the snow layer on it to
+    // ~45° and down the gullies to ~60°, so only the ribs and the sheer faces show it)
+    R: { set: 'rock', tint: [1.16, 1.18, 1.22], desat: 0.5, roughMul: 1.1 }, M: null,
   },
   urban: {
     G: { set: 'grass', tint: [0.92, 0.92, 0.88], roughMul: 1.25 },
@@ -252,7 +255,8 @@ const TERRAIN_PLAN = {
   alpine: {
     G: { set: 'snow', roughMul: 1.15 },
     D: { set: 'dirt', tint: [0.70, 0.70, 0.71], roughMul: 1.32 },
-    R: { set: 'rock', tint: [1.48, 1.53, 1.62], roughMul: 1.1 }, M: null,
+    // (ground lane, wave 62, street-b: the marble — as Frosthollow's rock, above)
+    R: { set: 'rock', tint: [1.16, 1.18, 1.22], desat: 0.5, roughMul: 1.1 }, M: null,
   },
   caldera: {
     // Charcoal ash still needs a diffuse floor: near-black sourced cavities
@@ -314,7 +318,7 @@ const TERRAIN_PLAN = {
 
 export type TerrainPaletteId = keyof typeof TERRAIN_PLAN;
 
-interface SourcedTerrainSettings {
+export interface SourcedTerrainSettings {
   mudRough?: number;
   sourcedPalette?: TerrainPaletteId;
   /** Round 70 (2026-09-25): a map's per-layer multiplier on the plan entry's albedo tint. The splat tone laws grade the
@@ -365,10 +369,12 @@ export function sourcedTerrainLayerSet(
 // ARCH-P8: decoded source photos only feed the bounded composite caches below
 // (8 albedo + 4 normal canvases). Keep the most recently used photos up to one
 // battlefield's working set — three terrain sets plus the four building sets,
-// four maps each — so a map's own loads never evict each other, while earlier
-// battlefields' photos are released (the cache used to keep all 48 forever).
+// four photos each, and the boulders' stone (the terrain's rock set: the scenery
+// lane, wave 66) where the terrain does not already wear it — so a map's own
+// loads never evict each other, while earlier battlefields' photos are released
+// (the cache used to keep all 48 forever).
 // src/world/sourcedImageCache.selftest.mjs proves the bound covers every map.
-const IMAGE_CACHE_MAX = 28;
+const IMAGE_CACHE_MAX = 32;
 const _imgCache = new Map<string, Promise<HTMLImageElement>>();
 function loadImage(url: string): Promise<HTMLImageElement> {
   const cached = _imgCache.get(url);
@@ -839,6 +845,57 @@ export function prepareSourcedTerrain(
       for (const entry of entries.values()) entry.composed = null;
     },
   };
+}
+
+/**
+ * The boulders' photographed stone (the scenery lane, gauntlet wave 66: "the same orange-peel bump texture on every
+ * facet" — the procedural tile was the constant, whatever the form). The boulders wear the map's own terrain rock
+ * layer: its photo set and its treatment (tint, desaturation, lift) as the terrain plan routes them — so a map whose
+ * rock layer changes (a pale bedded limestone, say) dresses its boulders in it too — with its occlusion multiplied into
+ * the albedo. A rock layer that is not stone (a cobbled street, a vegetated bank) or a procedural one leaves the
+ * boulders the terrain's rock photograph (Rock058). Same in-place swap contract as the building sets: the procedural
+ * tile stays the fallback of record. When the stone lands, `onStone` receives the composite's linear mean per channel:
+ * the boulder material divides the stone's structure out about it (rockDressing.ts applyRockShaderHook), so the
+ * lithology keeps its colour whatever the layer's tint. The photos are the terrain's (one decode, the shared image
+ * cache); the composite is the boulders' own (its occlusion in the albedo, no roughness in alpha).
+ */
+const NOT_STONE: ReadonlySet<string> = new Set(['grass', 'dryGrass', 'dirt', 'sand', 'snow', 'cobble']);
+
+/** The linear mean per channel of a composed albedo canvas (a strided sample), or null where it cannot be read. */
+function linearMeanOf(canvas: unknown): [number, number, number] | null {
+  try {
+    const c = canvas as HTMLCanvasElement;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    if (!ctx || !c.width || !c.height) return null;
+    const data = ctx.getImageData(0, 0, c.width, c.height).data;
+    const lin = (v: number): number => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let i = 0; i < data.length; i += 4 * 7) { r += lin(data[i]); g += lin(data[i + 1]); b += lin(data[i + 2]); n++; }
+    return n > 0 && r > 0 && g > 0 && b > 0 ? [r / n, g / n, b / n] : null;
+  } catch {
+    return null;
+  }
+}
+
+export function applySourcedRock(
+  layer: TextureLayer,
+  mapId: string,
+  settings: SourcedTerrainSettings = {},
+  application: SourcedTextureApplicationOptions = {},
+  onStone: ((linearMean: [number, number, number]) => void) | null = null,
+): Promise<SourcedTextureResult[]> {
+  const row = TERRAIN_PLAN[resolveSourcedTerrainPalette(mapId, settings)].R;
+  const entry: TerrainPlanOptions | null = row == null ? null : typeof row === 'string' ? { set: row } : row;
+  const stone: TerrainPlanOptions = entry && !NOT_STONE.has(entry.set) ? entry : { set: 'rock' };
+  const tint = stone === entry ? plannedLayerTint(stone, settings.sourcedTint?.R) : null;
+  return sourceJob(`boulders ${mapId}/stone`, stone.set, { albedo: layer.albedo, normal: layer.normal },
+    { roughInAlpha: false, tint, desat: stone.desat ?? 0, lift: stone.lift ?? 0 }, application).then((result) => {
+    if (result.applied && onStone) {
+      const mean = linearMeanOf(layer.albedo.image);
+      if (mean) onStone(mean);
+    }
+    return [result];
+  });
 }
 
 /**

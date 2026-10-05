@@ -71,8 +71,8 @@ for (let i = 0; i < jitterBefore.length; i += 2) {
 }
 
 const poleDistance = makeTelephonePoleDistanceGeometry();
-assert.equal((poleDistance.index?.count || poleDistance.attributes.position.count) / 3, 340,
-  'distance pole has a fixed 340-triangle silhouette');
+assert.equal((poleDistance.index?.count || poleDistance.attributes.position.count) / 3, 352,
+  'distance pole has a fixed 352-triangle silhouette (a ten-sided trunk)');
 assert.equal(poleDistance.userData.distanceRepresentation, 'telephone-pole');
 assert.equal(poleDistance.attributes.color.count, poleDistance.attributes.position.count,
   'every distance-pole vertex carries authored color');
