@@ -441,6 +441,23 @@ uniform float uBaseDark;
 uniform float uOpaqueCut;
 // 2026-10-04 (the deck's sun): the broad forward lobe of the sun's light diffused through a deck (QA: CLOUD_DECK_SUN_LOBE)
 uniform float uDeckLobe;
+// 2026-10-05 (item 1, the skies lane: a closed deck still reads flat at the gauntlet's size — its structure sits under
+// 1 km): QA knobs, 0 = off until a lab shows them. DECK_BROAD: the deck's column depth over 2-6 km, ± this share, so
+// thinner stretches of the base brighten and thicker ones darken (no hole opens: the cover is untouched); DECK_LIMB: the
+// base's emergent-angle law — a thick cloud's diffusely transmitted light leaves it as (1 + 1.5 μ) / 2 (the same flux),
+// μ the sine of the view's elevation, so the base dims toward the horizon (the CIE overcast sky's zenith-to-horizon fall)
+uniform float uDeckBroad;
+uniform float uDeckLimb;
+float cloudDeckBroad( vec2 xz ) {
+	if ( uDeckBroad <= 0.0 ) return 1.0;
+	vec2 q = xz + uNoiseShift.xz;
+	float a = texture( tShape, vec3( q.x / 6000.0, 0.37, q.y / 6000.0 ) ).r;
+	float b = texture( tShape, vec3( q.x / 2500.0, 0.71, q.y / 2500.0 ) ).r;
+	return 1.0 + uDeckBroad * ( smoothstep( 0.2, 0.8, a * 0.6 + b * 0.4 ) - 0.5 ) * 2.0;
+}
+float cloudDeckLimb( float dy ) {
+	return mix( 1.0, 0.5 + 0.75 * clamp( dy, 0.0, 1.0 ), uDeckLimb );
+}
 uniform float uFarFlat;
 // 2026-10-03: the crisp cumulus outline and the billowed tops (CLOUD_EDGE_CRISP, CLOUD_TOP_BILLOW; 0 = off)
 uniform float uEdgeCrisp;
@@ -966,6 +983,8 @@ vec4 farBandLayer( vec3 dir, float cosT, vec3 rayDx, vec3 rayDy, float sceneT, o
 	float TB = exp( -tauB );
 	float sunB = phaseHG( cosT, 0.3 ) * exp( -tauB * 0.5 ) * 2.0 + 0.12;
 	vec3 SB = ( uSunRadiance * sunB * 0.5 * uSunGain + uAmbientTop * 0.9 * uAmbientScale ) * uTint;
+	// (item 1's knobs on the deck's far rows: a thick base's light over its broad depth, the emergent-angle law)
+	SB *= cloudDeckLimb( dir.y ) * 3.25 / ( 1.0 + 2.25 * cloudDeckBroad( pb.xz ) );
 	return vec4( cloudHaze( SB * ( 1.0 - TB ), 1.0 - TB, tb, dir, 1.0 ), TB );
 }
 // ---- the cirrus sheet: wind-sheared streaks of ice high over everything, the forward lobe and the 22° halo; the
@@ -1191,6 +1210,7 @@ void main() {
 								tauAbove *= mix( 1.0, 0.3 + 1.4 * smoothstep( 0.15, 0.85, dm.r * 0.55 + dm.g * 0.3 + dm.b * 0.15 ), lkB );
 							}
 						}
+						tauAbove *= cloudDeckBroad( cxz );
 						float Tdiff = 1.0 / ( 1.0 + 0.1125 * tauAbove );
 						// (the transmitted sun at a third of its physical share: the battlefield skies are exposed for the
 						// ground with the horizon band near white, and a physically lit base — a third to a half of a lit
@@ -1210,7 +1230,7 @@ void main() {
 						// the ground bounce: the ground under the deck reflects the transmitted light back up (a grey
 						// ground at a quarter, scaled by the map's ambient scale — snow lifts a deck), plus the lower sky
 						vec3 ambD = uAmbientBottom * 0.4 * uAmbientScale + Etop * 0.3 * 0.25 * uAmbientScale + uAmbientTop * 0.5 * exp( -tauAbove * 0.7 );
-						vec3 Sd = ( uSunRadiance * sunD * powder * uSunGain + Lbase + ambD ) * uTint;
+						vec3 Sd = ( uSunRadiance * sunD * powder * uSunGain + ( Lbase + ambD ) * cloudDeckLimb( dir.y ) ) * uTint;
 						S = mix( S, Sd, uDeckLight );
 					}
 					if ( uDebug == 4.0 ) S = vec3( 0.6 );
@@ -1633,7 +1653,7 @@ export class VolumetricCloudLayer {
         uStepScale: { value: 1 }, uDebug: { value: 0 },
         uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 }, uBaseFlat: { value: 0 }, uDeckDetail: { value: 0 }, uFarThin: { value: 0 },
         uBaseSharp: { value: 0 }, uBaseDark: { value: 0 }, uFarFlat: { value: 0 }, uEdgeCrisp: { value: 0 }, uTopBillow: { value: 0 },
-        uOpaqueCut: { value: 1 }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE },
+        uOpaqueCut: { value: 1 }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckBroad: { value: 0 }, uDeckLimb: { value: 0 },
         uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
         // 2026-10-03: the deck's far rows on the aerial pass's overcast target (cloudHaze; hazeLaw.ts hazeTargetTerms)
         uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
@@ -2048,6 +2068,8 @@ export class VolumetricCloudLayer {
     t.uBaseDark.value = lightTune('CLOUD_BASE_DARK', CLOUD_BASE_DARK);
     t.uOpaqueCut.value = lightTune('CLOUD_OPAQUE_CUT', 1);
     t.uDeckLobe.value = lightTune('CLOUD_DECK_SUN_LOBE', CLOUD_DECK_SUN_LOBE);
+    t.uDeckBroad.value = lightTune('DECK_BROAD', 0);
+    t.uDeckLimb.value = lightTune('DECK_LIMB', 0);
     t.uFarFlat.value = lightTune('CLOUD_FAR_FLAT', CLOUD_FAR_FLAT);
     t.uEdgeCrisp.value = lightTune('CLOUD_EDGE_CRISP', CLOUD_EDGE_CRISP);
     t.uTopBillow.value = lightTune('CLOUD_TOP_BILLOW', CLOUD_TOP_BILLOW);
