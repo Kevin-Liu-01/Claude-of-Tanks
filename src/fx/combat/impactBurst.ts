@@ -148,12 +148,13 @@ export function groundBurst(C: CombatContext, pos: Vec3Like, caliberMm: number, 
 
   // 3. clods on ballistic arcs; the bigger ones kick a little dust where they land
   const clodN = tierCount(C, (explosive ? 22 : 14) * L.clodK);
+  const trailN = Math.min(clodN, tierCount(C, (explosive ? 5 : 3) * Math.min(1, L.clodK)));
   const k = C.k;
   for (let i = 0; i < clodN; i++) {
     const a = R() * TAU, tilt = 0.12 + R() * 0.85, v = (6 + R() * 13) * Math.pow(s, 0.4) * (explosive ? 1 : 0.8);
     k.px = pos.x + (R() - 0.5) * 0.4; k.py = by + 0.3; k.pz = pos.z + (R() - 0.5) * 0.4;
     k.vx = Math.cos(a) * Math.sin(tilt) * v; k.vy = Math.cos(tilt) * v + 2; k.vz = Math.sin(a) * Math.sin(tilt) * v;
-    k.scale = (0.05 + Math.pow(R(), 2) * 0.2) * s * (surf === 'sand' ? 0.6 : 1);
+    k.scale = (i < trailN ? 0.16 + R() * 0.08 : 0.05 + Math.pow(R(), 2) * 0.2) * s * (surf === 'sand' ? 0.6 : 1);
     k.ax = R() - 0.5; k.ay = R() - 0.5; k.az = R() - 0.5; k.spin = 6 + R() * 14;
     k.seed = R();
     const tint = 0.8 + R() * 0.4;
@@ -164,6 +165,18 @@ export function groundBurst(C: CombatContext, pos: Vec3Like, caliberMm: number, 
     k.life = k.landS + 1.4 + R() * 1.2;
     k.birthOffset = birthOffset;
     C.clod(k);
+    // the biggest clods drag a trail of crumbling soil along their arc (the arc reads in a still frame)
+    if (i < trailN) {
+      for (let ts = 0.05; ts < Math.min(0.55, k.landS - 0.05); ts += 0.09) {
+        const sd = (1 - Math.exp(-0.35 * ts)) / 0.35;
+        mPlace(m, k.px + k.vx * sd, k.py + k.vy * sd - 4.9 * ts * ts, k.pz + k.vz * sd, birthOffset + ts);
+        mMove(m, k.vx * 0.12, k.vy * 0.05, k.vz * 0.12, 2.2, 0.05, 0.5, -2);
+        mShape(m, 0.55 + R() * 0.3, 0.16 * sq, (0.6 + R() * 0.3) * sq, 2, 1, R() * TAU, (R() - 0.5) * 2);
+        mLook(m, L.ejecta0, L.dust0, 0.62, 0.01, 0.35, 0.5, 0.08, 0.02, L.scatter * 0.5, R());
+        mHeat(m, 0, 1, 0.5, 1);
+        C.earth(m);
+      }
+    }
     if (k.scale > 0.09 * s && i % 2 === 0) {
       const lx = k.px + k.vx * (1 - Math.exp(-0.35 * k.landS)) / 0.35;
       const lz = k.pz + k.vz * (1 - Math.exp(-0.35 * k.landS)) / 0.35;
