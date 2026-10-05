@@ -410,6 +410,15 @@ interface PropsSettings {
     { x: number; z: number; r: number } | { x0: number; z0: number; x1: number; z1: number })[];
   ruinChance?: number;
   blockFill?: boolean;
+  /**
+   * The map-revival lane (2026-10-05, Suzhou Creek): a water course (the map's liquid marsh chain) laid through a
+   * settlement that stood without it. Every placement decision stays the dry settlement's: the course's channel is not
+   * no-build ground to the placement, and a footprint reaching into it takes no ground-spread rejection (the dip the
+   * channel cuts is not the plot's slope), so every building clear of the water stands where it stood. What the water
+   * reaches leaves it: a planned building is packed for the carriageway post-pass (its new place dry), a street row or a
+   * light building is left out, its draws, its reservation and its strip kept so nothing after it moves. Default off.
+   */
+  settlementOverWater?: boolean;
   destructibleBuildingLat?: readonly [number, number];
   yardClutter?: boolean;
   /** Round 75: the industrial halls' cladding — the brick / stone default or corrugated sheet (Whiteout's station). */
@@ -3794,6 +3803,31 @@ ${snowCap ? `
   const builders = P.plan.map((n) => BUILDER_BY_NAME[n] || makeCottage);
   let bi = 0;
   const placedB: PlacedRadius[] = [];
+  // props.settlementOverWater (Suzhou Creek): the course's channel (its marsh cells, as noVeg reads a liquid one), the
+  // placement's no-build ground without it, and whether a footprint reaches the channel or its water
+  const overWater = !!P.settlementOverWater;
+  const courseCells = overWater ? (L.marshes ?? []) : [];
+  const inCourse = (x: number, z: number, pad = 0): boolean =>
+    courseCells.some((m) => (x - m.x) * (x - m.x) + (z - m.z) * (z - m.z) < (m.r + pad) * (m.r + pad));
+  const noVegPlace = overWater ? (x: number, z: number): boolean => noVeg(x, z) && !inCourse(x, z) : noVeg;
+  // (the bridges' decks and the ramps graded up to them are the course's too: the ground beside a ramp rose with it)
+  const courseDecks = overWater ? (heightField.bridgeDecks ?? []) : [];
+  const nearDeck = (x: number, z: number, pad: number): boolean => courseDecks.some((deck) => {
+    const ox = x - deck.x, oz = z - deck.z;
+    return Math.abs(ox * deck.ux + oz * deck.uz) < deck.halfLength + (deck.approachM ?? 0) + pad
+      && Math.abs(-ox * deck.uz + oz * deck.ux) < deck.halfWidth + pad + 10;
+  });
+  const footprintNearCourse = (x: number, z: number, w: number, d: number): boolean =>
+    overWater && (inCourse(x, z, Math.hypot(w, d) / 2 + 1) || nearDeck(x, z, Math.hypot(w, d) / 2 + 1));
+  const footprintWet = (x: number, z: number, w: number, d: number, rot: number): boolean => {
+    if (!overWater) return false;
+    const c = Math.cos(rot), sn = Math.sin(rot);
+    for (const a of [-1, -0.5, 0, 0.5, 1]) for (const b of [-1, -0.5, 0, 0.5, 1]) {
+      const lx = a * (w / 2 + 1), lz = b * (d / 2 + 1);
+      if (heightField.getWaterMaskAt(x + lx * c + lz * sn, z - lx * sn + lz * c) > 0) return true;
+    }
+    return false;
+  };
   function collectTacticalReservations(): PlacedRadius[] {
     const result: PlacedRadius[] = [];
     for (const beat of [...(P.tacticalBeats || []), ...(P.orbitalSettlement || [])]) {
@@ -3845,8 +3879,8 @@ ${snowCap ? `
   const carriagewayPackets: CarriagewayPacket[] = [];
   /** A building's footprint as its geometry stands (wings and porches reach past the kit's nominal size) when it stands
    * in a carriageway, else null. */
-  function carriagewayFootprint(tmp: PropsBuckets, info: { w: number; d: number }, x: number, z: number,
-    rot: number): { w: number; d: number } | null {
+  /** A building's whole footprint (its plot or its geometry's reach about the origin, whichever is larger). */
+  function footprintOf(tmp: PropsBuckets, info: { w: number; d: number }): { w: number; d: number } {
     let w = info.w, d = info.d;
     for (const geometry of Object.values(tmp).flat()) {
       if (!geometry.boundingBox) geometry.computeBoundingBox();
@@ -3855,6 +3889,11 @@ ${snowCap ? `
       w = Math.max(w, 2 * Math.max(Math.abs(bounds.min.x), Math.abs(bounds.max.x)));
       d = Math.max(d, 2 * Math.max(Math.abs(bounds.min.z), Math.abs(bounds.max.z)));
     }
+    return { w, d };
+  }
+  function carriagewayFootprint(tmp: PropsBuckets, info: { w: number; d: number }, x: number, z: number,
+    rot: number): { w: number; d: number } | null {
+    const { w, d } = footprintOf(tmp, info);
     return buildingFootprintClearsRoads({ x, z, rot }, w, d, roads, CARRIAGEWAY_CORE) ? null : { w, d };
   }
   const roadClearanceMoves: { kind: string; from: [number, number]; to: [number, number] | null }[] = [];
@@ -3875,7 +3914,7 @@ ${snowCap ? `
     addCatalogExterior(tmp, { id: structureId, info, variant: bi,
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
     let fit = groundFit(px, pz, info.w, info.d, rot);
-    if (fit.spread > P.maxSpread) return false;
+    if (fit.spread > P.maxSpread && !footprintNearCourse(px, pz, info.w, info.d)) return false;
     jitterBuildingUvs(tmp);
     // Keep the original eligibility/build/UV draws. Only an already accepted
     // ordinary roadside building can change parcel-facing; block fill and
@@ -3900,11 +3939,12 @@ ${snowCap ? `
         const cornersDry = [-1, 1].every(sx => [-1, 1].every(sz => {
           const x = proposed.x + sx * w / 2 * c + sz * d / 2 * s;
           const z = proposed.z - sx * w / 2 * s + sz * d / 2 * c;
-          return x >= town.x0 && x <= town.x1 && z >= town.z0 && z <= town.z1 && !noVeg(x, z);
+          return x >= town.x0 && x <= town.x1 && z >= town.z0 && z <= town.z1 && !noVegPlace(x, z);
         }));
         const revisedFit = groundFit(proposed.x, proposed.z, w, d, proposed.rot);
         const radius = Math.hypot(w, d) / 2;
-        if (cornersDry && !noVeg(proposed.x, proposed.z) && revisedFit.spread <= P.maxSpread
+        if (cornersDry && !noVegPlace(proposed.x, proposed.z)
+          && (revisedFit.spread <= P.maxSpread || footprintNearCourse(proposed.x, proposed.z, w, d))
           && !conflictsTacticalReservation(proposed.x, proposed.z, radius)
           && placedB.every(p => Math.hypot(proposed.x - p.x, proposed.z - p.z) >= p.rr + radius + 1)) {
           px = proposed.x; pz = proposed.z; rot = proposed.rot; fit = revisedFit; return true;
@@ -3941,7 +3981,9 @@ ${snowCap ? `
     // a building that stands in a carriageway is packed for the move after every settlement building stands; whether it
     // stands there, and the footprint it moves with, are the base geometry's, so a kit never changes which buildings move
     // or how far (the map-revival lanes, 2026-10-05: the owner's town-plan ruling)
-    const carriageway = fromRoad && P.roadBuildingClearance ? carriagewayFootprint(tmp, info, px, pz, rot) : null;
+    // (props.settlementOverWater: one the course's water reaches is packed alike, its new place dry)
+    const carriageway = (fromRoad && P.roadBuildingClearance ? carriagewayFootprint(tmp, info, px, pz, rot) : null)
+      ?? (footprintWet(px, pz, info.w, info.d, rot) ? footprintOf(tmp, info) : null);
     if (regionalArchitecture && !regionalDonor) {
       const rebuilt = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
         { mapId, snowCap: structureContext.snowCap, seed }, px, pz, rot);
@@ -3994,7 +4036,7 @@ ${snowCap ? `
     const px = cand.x - cand.tz * side * lat;
     const pz = cand.z + cand.tx * side * lat;
     if (px < town.x0 || px > town.x1 || pz < town.z0 || pz > town.z1) return;
-    if (heightField._roadDist(px, pz) < 7.5 || noVeg(px, pz)) return;
+    if (heightField._roadDist(px, pz) < 7.5 || noVegPlace(px, pz)) return;
     if (P.roadBuildingKeepouts?.some((keep) => Math.hypot(px - keep.x, pz - keep.z) < keep.r)) return;
     if (conflictsTacticalReservation(px, pz) || !isRoadBuildingSiteClear(px, pz)) return;
     const rot = Math.atan2(cand.tx, cand.tz) + (rng() - 0.5) * 0.10;
@@ -4186,7 +4228,7 @@ ${snowCap ? `
       depth: number,
     ): boolean => distToOtherRoads(x, z, roadIndex) < 9.5
       || Math.hypot(x - junction.x, z - junction.z) < 26
-      || noVeg(x, z)
+      || noVegPlace(x, z)
       || conflictsTacticalReservation(x, z, Math.hypot(width, depth) * 0.5)
       || (P.streetRowKeepouts?.some((keep) => {
         const reach = Math.hypot(width, depth) * 0.5;
@@ -4252,8 +4294,16 @@ ${snowCap ? `
           w: width, d: depth, lowContrastTrim: mapId === 'ruinspires',
         });
       const fit = groundFit(x, z, info.w, info.d, rot);
-      if (fit.spread > 3.2) return distance + width;
+      if (fit.spread > 3.2 && !footprintNearCourse(x, z, info.w, info.d)) return distance + width;
       jitterBuildingUvs(tmp);
+      // (props.settlementOverWater: a row the course's water reaches is left out; its reservation, its strip and its
+      // rubble's draws stand as they stood, so the rows after it keep their places)
+      if (footprintWet(x, z, info.w, info.d, rot)) {
+        placedB.push({ x, z, rr: Math.max(info.w, info.d) * 0.75 });
+        stripAABBs.push({ x, z, hx, hz });
+        addStreetRubble(ruined, rx, rz, nx, nz, offset, depth);
+        return distance + width - 0.25;
+      }
       // regional-buildings lane: the street row's draws and pose are settled; the map's kit swaps in its row house
       if (regionalArchitecture) {
         tmp = rebuildRegionalStructure(regionalArchitecture, ruined ? 'ruin' : 'rowhouse', tmp, info, rowWall,
@@ -4367,7 +4417,7 @@ ${snowCap ? `
       if (bi >= builders.length) return;
       const px = gx + (brng() - 0.5) * 10, pz = gz + (brng() - 0.5) * 10;
       const roadDistance = heightField._roadDist(px, pz);
-      if (roadDistance < 11 || roadDistance > 60 || noVeg(px, pz)) return;
+      if (roadDistance < 11 || roadDistance > 60 || noVegPlace(px, pz)) return;
       if (conflictsTacticalReservation(px, pz)) return;
       if (Math.hypot(px - junction.x, pz - junction.z) < 24) return;
       if (!isRoadBuildingSiteClear(px, pz)) return;
@@ -4422,6 +4472,7 @@ ${snowCap ? `
       let target: { x: number; z: number } | null = null;
       const clearsAt = (x: number, z: number): boolean => {
         if (x < v.x0 || x > v.x1 || z < v.z0 || z > v.z1 || noVeg(x, z)) return false;
+        if (footprintWet(x, z, w, d, source.rot)) return false;
         if (!buildingFootprintClearsRoads({ x, z, rot: source.rot }, w, d, roads, CARRIAGEWAY_CLEARANCE)) return false;
         if (groundFit(x, z, w, d, source.rot).spread > P.maxSpread || conflictsTacticalReservation(x, z)) return false;
         const footprint = { x, z, w, d, rot: source.rot };
@@ -4432,7 +4483,8 @@ ${snowCap ? `
       if (authored && clearsAt(authored.to[0], authored.to[1])) target = { x: authored.to[0], z: authored.to[1] };
       const turns = [0];
       for (let k = 1; k <= 12; k++) turns.push(k * Math.PI / 12, -k * Math.PI / 12);
-      for (let step = 1; step <= 60 && !target; step++) {
+      // (props.settlementOverWater: a building the course's water reaches looks out to 80 m for dry ground)
+      for (let step = 1; step <= (overWater ? 160 : 60) && !target; step++) {
         const dist = step * 0.5;
         for (const turn of turns) {
           const c = Math.cos(turn), sn = Math.sin(turn);
@@ -4586,11 +4638,13 @@ ${snowCap ? `
         const margin = Math.max(meta.hw, meta.hl) + 2;
         const outsideVillage = x < town.x0 + margin || x > town.x1 - margin
           || z < town.z0 + margin || z > town.z1 - margin;
-        if (outsideVillage || Math.hypot(x - junction.x, z - junction.z) < 18 || noVeg(x, z)) continue;
+        if (outsideVillage || Math.hypot(x - junction.x, z - junction.z) < 18 || noVegPlace(x, z)) continue;
         const fit = groundFit(x, z, meta.hw * 2, meta.hl * 2, rot);
-        if (fit.spread > Math.max(P.maxSpread, 1.9)) continue;
+        if (fit.spread > Math.max(P.maxSpread, 1.9) && !footprintNearCourse(x, z, meta.hw * 2, meta.hl * 2)) continue;
         const blocked = placedB.some((placed) => Math.hypot(x - placed.x, z - placed.z) < placed.rr + rr + 2.0);
         if (blocked) continue;
+        // (props.settlementOverWater: one the course's water reaches is left out, its reservation kept)
+        if (footprintWet(x, z, meta.hw * 2, meta.hl * 2, rot)) { placedB.push({ x, z, rr }); return; }
         addDestructible(kind, x, fit.y + 0.04, z, rot);
         buildingFeatures.push({ x, z, w: meta.hw * 2, d: meta.hl * 2, rot });
         placedB.push({ x, z, rr });

@@ -3,8 +3,46 @@
 // fewer buildings, far larger masses, and long diagonal firing corridors.
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
+import { createMarshChannel } from './marshChannel.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+
+// The map-revival lane (2026-10-05): Suzhou Creek (Wusong River) runs west to east through the district, the
+// International Settlement's banks and godowns on its south side, Zhabei's lilong and shophouses on its north. Its
+// course follows the old flooded quarter's low ground; the four roads that meet it cross on bridges (terrain.ts
+// resolves each `crossing: 'bridge'` station's deck from the road and the wet reach; the street kit dresses them).
+// Elsewhere the creek is soft water a hull fords slowly.
+const CREEK_STATIONS = [
+  { x: -512, z: 35 }, { x: -420, z: 38 }, { x: -330, z: 43 }, { x: -262, z: 51 },
+  { x: -206.8, z: 60, r: 14, dip: 1.2, crossing: 'bridge' as const }, // road 4's bridge
+  { x: -150, z: 76 }, { x: -100, z: 92 },
+  { x: -65.2, z: 100, r: 14, dip: 1.2, crossing: 'bridge' as const }, // road 1's bridge (the north-west diagonal)
+  { x: -20, z: 105 }, { x: 25, z: 104 },
+  { x: 69.7, z: 100, r: 14, dip: 1.2, crossing: 'bridge' as const }, // road 0's bridge (the north-east diagonal)
+  { x: 120, z: 96 }, { x: 165, z: 95 },
+  { x: 210.2, z: 95, r: 14, dip: 1.2, crossing: 'bridge' as const }, // road 5's bridge
+  { x: 300, z: 95 }, { x: 400, z: 92 }, { x: 512, z: 90 },
+].map((m) => ({ r: 17, dip: 1.4, ...m }));
+const BRIDGES = CREEK_STATIONS.filter((station) => station.crossing === 'bridge');
+// the bank line read smooth (Amberford's: circles at 0.96 of their radius, laid half a radius apart)
+const CREEK_BANK = [0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96,
+  0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96] as const;
+// the interpolated cells near a bridge keep inside the bridge station's own bank envelope, so the span stays short
+const CREEK = createMarshChannel(CREEK_STATIONS, 0.5).map((station) => ({ ...station, radii: CREEK_BANK })).map((station) => {
+  let r = station.r;
+  for (const bridge of BRIDGES) {
+    const index = CREEK_STATIONS.indexOf(bridge);
+    const previous = CREEK_STATIONS[index - 1], next = CREEK_STATIONS[index + 1];
+    const length = Math.hypot(next.x - previous.x, next.z - previous.z);
+    const tx = (next.x - previous.x) / length, tz = (next.z - previous.z) / length;
+    const dx = station.x - bridge.x, dz = station.z - bridge.z;
+    const along = Math.abs(dx * tx + dz * tz);
+    if (along >= r) continue;
+    const across = Math.max(0, bridge.r - Math.abs(-dx * tz + dz * tx));
+    r = Math.min(r, Math.hypot(along, across));
+  }
+  return r === station.r ? station : { ...station, r };
+});
 
 export default {
   id: 'blackglass',
@@ -12,9 +50,8 @@ export default {
   blurb: 'Broken arcologies, elevated transit ruins and a flooded financial quarter under a storm front',
   terrain: {
     hillScale: 0.62, microScale: 0.72, rimH: 36,
-    marshes: [
-      { x: -54, z: 36, r: 48, dip: 1.4 }, { x: 34, z: 72, r: 42, dip: 1.2 },
-    ],
+    // the creek (was the flooded quarter's two marshes on its course)
+    marshes: CREEK,
     village: { x0: -294, x1: 304, z0: -288, z1: 302, cx: 6, cz: 16, feather: 54, flatten: 0.82, relief: 0.46 },
     roads: { paths: [
       [[-450, -430], [-330, -302], [-210, -174], [-76, -34], [74, 104], [212, 246], [354, 430]],
@@ -48,6 +85,11 @@ export default {
     sourcedPalette: 'blackglass',
     tintA: [0.65, 0.72, 0.76], tintB: [0.38, 0.43, 0.46], tintC: [0.82, 0.72, 0.61],
     roadTint: [0.32, 0.35, 0.37], roadTexMix: 0.88, townWear: 2.0, midRelief: 0.95,
+    // the creek's water (the map-revival lane, 2026-10-05): liquid, its banks tight (Amberford's river ramp), the
+    // city creek's grey-brown silt water, a dull sheen under the storm front, no surf
+    seaLake: true, seaRamp: [0.10, 0.45], seaFoam: 0.05, iceDrift: 0.04, marshGloss: 0.7,
+    mudTone: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.45), clamp01(l * 0.62)],
+    iceSky: [0.30, 0.33, 0.35],
   },
   vegetation: {
     species: ['cedar', 'cypress', 'pine'], clusterMix: [['cedar', 0.45], ['cypress', 0.35], ['pine', 0.20]],
@@ -77,6 +119,9 @@ export default {
         structure: 'transformershed', redoubt: true, wreck: true, wreckOffsetZ: 16 },
     ],
     blockFill: true, streetRows: true, streetRowsAfterLandmarks: true,
+    // the creek runs through the district as it stood: every building keeps its place but those its water reaches
+    // (props.ts settlementOverWater: a landmark moves off the water after the district stands, a row is left out)
+    settlementOverWater: true,
     // the district's massive blocks keep their footprints off every carriageway, not only their own street's
     roadBuildingClearance: true,
     // The civic hall stood across road 3 at the district's crossroads and against road 1's edge, on the line between the

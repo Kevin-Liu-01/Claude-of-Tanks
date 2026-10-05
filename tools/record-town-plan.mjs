@@ -34,8 +34,9 @@ splice(/export function mulberry32\(a: number\): Rng \{return function\(\)\{([\s
   (_m, body) => `export function mulberry32(a: number): Rng {const f = function(){${body}}; (f as unknown as { state: () => number }).state = () => a; return f;}`,
   'mulberry32');
 // the wall pick, then the state the builder starts from
-splice(/const info = builder\(rng, tmp, pickWall\(rng\)\);/,
-  'const recWall = pickWall(rng); const recState = (rng as unknown as { state: () => number }).state();\n    const info = builder(rng, tmp, recWall);',
+// (the regional-buildings lane named the wall pick: `const wallBucket = pickWall(rng);` before the builder call)
+splice(/const wallBucket = pickWall\(rng\);(\s*)const info = builder\(rng, tmp, wallBucket\);/,
+  (_m, gap) => `const wallBucket = pickWall(rng); const recWall = wallBucket; const recState = (rng as unknown as { state: () => number }).state();${gap}const info = builder(rng, tmp, wallBucket);`,
   'the planned builder call');
 // the final pose, as the building is counted
 splice(/(\n\s*)if \(!explicitStructure\) bi\+\+;\n(\s*)return true;/,
