@@ -107,10 +107,17 @@ export const GROUND_REDUX_BUDGET = Object.freeze({
 
 // Ground lane (2026-10-03, albedo calibration with the light lane — under its calibrated camera the old blade tips
 // (luminance 0.36, a pale lime) rendered Amberford at L* 70+): every sward's linear albedo is set to measured values —
-// fresh green blades 0.10–0.20 (luminance), cured and dry grass 0.20–0.30, roots in the sward's shade a third of the
-// tip. The light model, not the albedo, makes a sunlit meadow bright.
-const MEADOW_BASE = [0.025, 0.042, 0.012] as const;  // luminance 0.036
-const MEADOW_TIP = [0.085, 0.170, 0.035] as const;   // 0.142
+// fresh green blades 0.10–0.20 (luminance), cured and dry grass 0.20–0.30. The light model, not the albedo, makes a
+// sunlit meadow bright.
+// (wave 71, every grass view: "thin black stems poking up everywhere", "evenly spaced dark sticks") a root a third of
+// its tip — the sward's own shade baked into the albedo — drew every blade's lower half near-black wherever it stood
+// apart from the tufts, against cards whose bases are lit: a blade's sheath is paler and yellower than its tip, not
+// darker. Every root is now half its tip's luminance, a little warmer; the shade inside a dense sward is the light's.
+const MEADOW_BASE = [0.052, 0.078, 0.030] as const;  // luminance 0.069
+// (wave 71, Verdant: "flat, oversaturated neon" — the frames' sward at HSV saturation 0.81 under the grade's boost, the
+// blue channel clipped to nothing in its shade) a summer meadow's blade tip is a less saturated green (was
+// 0.085 / 0.170 / 0.035: green four times its blue)
+const MEADOW_TIP = [0.092, 0.160, 0.045] as const;   // 0.137
 const MEADOW_DRY = [0.27, 0.22, 0.095] as const;     // 0.22
 
 const meadow = (density: number, heightM = 0.85, over: Partial<TallGrassBiome> = {}): TallGrassBiome => ({
@@ -118,11 +125,11 @@ const meadow = (density: number, heightM = 0.85, over: Partial<TallGrassBiome> =
   waterBand: 0, bank: 1, reedMargin: 0, windDir: [0.8, 0.6], ...over,
 });
 const steppe = (density: number, heightM = 1.05): TallGrassBiome => ({
-  kind: 'steppe', density, heightM, heightVar: 0.40, widthM: 0.045, base: [0.060, 0.050, 0.022], tip: [0.33, 0.27, 0.12],
+  kind: 'steppe', density, heightM, heightVar: 0.40, widthM: 0.045, base: [0.170, 0.135, 0.060], tip: [0.33, 0.27, 0.12],
   dry: [0.36, 0.29, 0.13], waterBand: 0, bank: 1, reedMargin: 0, windDir: [0.92, 0.38], // feather grass: cured, 0.27
 });
 const savanna = (density: number, heightM = 0.95): TallGrassBiome => ({
-  kind: 'savanna', density, heightM, heightVar: 0.45, widthM: 0.05, base: [0.055, 0.050, 0.022], tip: [0.30, 0.26, 0.13],
+  kind: 'savanna', density, heightM, heightVar: 0.45, widthM: 0.05, base: [0.155, 0.130, 0.060], tip: [0.30, 0.26, 0.13],
   dry: [0.33, 0.27, 0.12], waterBand: 0, bank: 1, reedMargin: 0, windDir: [0.6, 0.8], // pale tussock: 0.25
 });
 // round 73b: reeds are a margin — dense only at the waterline (waterBand 0.85 at mask 0.04–0.10, gone by 0.40), taller at the
@@ -130,7 +137,7 @@ const savanna = (density: number, heightM = 0.95): TallGrassBiome => ({
 // not the carpet of round 73 (1.0 across the whole 0.04–0.6 band); `bank` is the banks' own meadow relative to the
 // reed density (round 73 overrode the density itself, which made the margin no denser than the bank)
 const reed = (density: number, heightM = 1.6, waterBand = 0.85, bank = 0): TallGrassBiome => ({
-  kind: 'reed', density, heightM, heightVar: 0.30, widthM: 0.06, base: [0.035, 0.050, 0.016], tip: [0.16, 0.19, 0.07],
+  kind: 'reed', density, heightM, heightVar: 0.30, widthM: 0.06, base: [0.080, 0.095, 0.035], tip: [0.16, 0.19, 0.07],
   dry: [0.28, 0.24, 0.11], waterBand, bank, reedMargin: 0, windDir: [0.3, 0.95], // reed: 0.18
 });
 // dead sedge through the snow: dark straw, thin and short — the first sheet's pale 0.46 tips lit white under the
@@ -140,17 +147,17 @@ const reed = (density: number, heightM = 1.6, waterBand = 0.85, bank = 0): TallG
 // winter grass — a dull tan between the round-73 frost spikes (0.46) and the near-black sticks (0.17) — and every
 // blade of a clump differs (tallGrass.ts: its own height, lean and tone)
 const tundra = (density: number, heightM = 0.36): TallGrassBiome => ({
-  kind: 'tundra', density, heightM, heightVar: 0.45, widthM: 0.028, base: [0.085, 0.07, 0.04], tip: [0.25, 0.20, 0.105],
+  kind: 'tundra', density, heightM, heightVar: 0.45, widthM: 0.028, base: [0.130, 0.105, 0.055], tip: [0.25, 0.20, 0.105],
   dry: [0.27, 0.21, 0.11], waterBand: 0, bank: 1, reedMargin: 0, windDir: [0.95, 0.3],
 });
 // ground lane (2026-10-03, the gauntlet's wave 4 on Cinder Junction: "sparse isolated straight grass blades like
 // toothpicks"): a trodden verge is a short, broad-bladed sward in clumps, not a scatter of tall thin stalks
 const verge = (density: number, heightM = 0.38): TallGrassBiome => ({
-  kind: 'verge', density, heightM, heightVar: 0.45, widthM: 0.06, base: [0.030, 0.045, 0.015], tip: [0.10, 0.16, 0.045],
+  kind: 'verge', density, heightM, heightVar: 0.45, widthM: 0.06, base: [0.055, 0.082, 0.025], tip: [0.10, 0.16, 0.045],
   dry: [0.25, 0.21, 0.10], waterBand: 0, bank: 1, reedMargin: 0, windDir: [0.7, 0.7], // trodden verge: 0.14
 });
 const dune = (density: number, heightM = 0.8): TallGrassBiome => ({
-  kind: 'dune', density, heightM, heightVar: 0.40, widthM: 0.04, base: [0.045, 0.055, 0.020], tip: [0.19, 0.22, 0.10],
+  kind: 'dune', density, heightM, heightVar: 0.40, widthM: 0.04, base: [0.100, 0.115, 0.050], tip: [0.19, 0.22, 0.10],
   dry: [0.30, 0.27, 0.14], waterBand: 0, bank: 1, reedMargin: 0, windDir: [-0.9, 0.44], // marram, grey-green: 0.21
 });
 
@@ -200,7 +207,7 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   urban: { ...TEMPERATE, scree: 0.15, grass: verge(0.5) },
   coastal: { ...COAST, swashReachM: 6, scree: 0.2, grass: dune(0.55) },
   // maps lane B (2026-10-03, gauntlet wave 28): the river's margin is a steady damp bank with a wrack line and reeds
-  autumn: { ...STILL_WATER, scree: 0.3, grass: meadow(1.0, 0.9, { base: [0.055, 0.045, 0.018], tip: [0.26, 0.21, 0.08], dry: [0.30, 0.23, 0.08], reedMargin: 0.5 }) },
+  autumn: { ...STILL_WATER, scree: 0.3, grass: meadow(1.0, 0.9, { base: [0.135, 0.108, 0.042], tip: [0.26, 0.21, 0.08], dry: [0.30, 0.23, 0.08], reedMargin: 0.5 }) },
   steppe: { ...TEMPERATE, foldMoist: 0.5, scree: 0.2, grass: steppe(1.2) },
   railyard: { ...TEMPERATE, scree: 0.15, grass: verge(0.55) },
   frontier: { ...TEMPERATE, foldMoist: 0.55, scree: 0.3, grass: savanna(0.85) },
@@ -208,7 +215,7 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   delta: { ...STILL_WATER, rimTint: MOSS, grass: reed(0.75, 1.6, 0.85, 0.5) },
   badlands: { ...ARID, grass: null },
   monsoon: { ...STILL_WATER, swashStrength: 0.5, swashReachM: 3, scree: 0.3, rimTint: MOSS,
-    grass: meadow(0.9, 1.0, { base: [0.020, 0.045, 0.014], tip: [0.080, 0.180, 0.040], dry: [0.22, 0.22, 0.09], reedMargin: 0.55 }) },
+    grass: meadow(0.9, 1.0, { base: [0.042, 0.090, 0.022], tip: [0.080, 0.180, 0.040], dry: [0.22, 0.22, 0.09], reedMargin: 0.55 }) },
   alpine: { ...SNOW, scree: 0.6, grass: tundra(0.3) },
   caldera: { ...VOLCANIC, grass: null },
   foundry: { ...TEMPERATE, scree: 0.15, grass: verge(0.5) },

@@ -104,7 +104,7 @@ function compile(input = text, mode = 'current') {
       const receipt = streams.map(({seed, calls, next}) => ({seed, calls, tail: [next(), next(), next(), next()]}));
       streams.length = 0; return receipt;
     }
-    const BIRCH_VAR = ${variable('BIRCH_VAR')};\n// trees round 4: the fine wood's girth (buildGrownTree's aWoodFine tag)\nconst GROWTH_WOOD_FINE_R = ${variable('GROWTH_WOOD_FINE_R')};\n${get('makeBirchFoliageTexture')}\n${oldJitterFixture}\n${code}
+    const BIRCH_VAR = ${variable('BIRCH_VAR')};\n// trees round 4: the fine wood's girth (buildGrownTree's aWoodFine tag)\nconst GROWTH_WOOD_FINE_R = ${variable('GROWTH_WOOD_FINE_R')};\nconst GROWTH_WOOD_MID_R = ${variable('GROWTH_WOOD_MID_R')};\n${get('makeBirchFoliageTexture')}\n${oldJitterFixture}\n${code}
     function library(seed, input) {
       const cfg = { vegetation: input }, veg = ${variable('veg')};
       ${input.slice(start, end)}

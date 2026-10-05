@@ -2448,6 +2448,12 @@ const FOLIAGE_GATE_LIFT = Object.freeze({ crown: 0, shrub: 0.75 });
  */
 const GROWTH_WOOD_FINE_R = 0.05, GROWTH_WOOD_FINE_FAR = 80;
 /**
+ * Trees round 4 (the cost hold, the third trim): a limb under GROWTH_WOOD_MID_R (m) at its base — the tube law's
+ * four-sided limbs — is mid wood (aWoodFine 2), drawn no farther than twice the fine wood's reach: under a pixel and a
+ * half wide there; the stem and the scaffold limbs at every distance.
+ */
+const GROWTH_WOOD_MID_R = 0.12;
+/**
  * Trees round 4 (the cost hold: Verdant's understorey 3,609 shrubs, nine in ten past 100 m of the chase camera): a shrub
  * whose crown radius over its distance is under this (rad; about 24 px across on a 1600 px frame) draws half its clusters,
  * each kept by a hash of its own, at 1.25 times their size — the understorey's young growth past about 65 m, a field bush
@@ -2649,7 +2655,10 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
     const fine = new Float32Array(flatTrunk.getAttribute('position').count);
     skeleton.branches.forEach((branch, i) => {
       const range = branchRanges[i];
-      if (range && branch.order > 0 && branch.nodes[0].r <= GROWTH_WOOD_FINE_R) fine.fill(1, range[0], range[1]);
+      if (!range || branch.order === 0) return;
+      const r0 = branch.nodes[0].r;
+      if (r0 <= GROWTH_WOOD_FINE_R) fine.fill(1, range[0], range[1]);
+      else if (r0 <= GROWTH_WOOD_MID_R) fine.fill(2, range[0], range[1]);
     });
     flatTrunk.setAttribute('aWoodFine', new THREE.BufferAttribute(fine, 1));
   }
@@ -4053,10 +4062,18 @@ function* vegetationBuildSteps(
     // (thresholds track the shader's `worn` band — r4: 0.55/0.80 + warp)
     const dirtPatch = smoothstepJs(0.55, 0.80, sn.n2 + (sn.n1 - 0.5) * 0.45);
     if (dirtPatch > 0.35 && clJ < dirtPatch * 0.9) dry = Math.max(dry, 0.55);
+    // ground lane (wave 71: "hard-edged colour patches … real swards mix the two through a gradient, with cured blades
+    // among green ones"; Verdant's "flat, oversaturated neon … no yellow or brown mixing"): a summer sward is part cured
+    // wherever it stands — a tuft in six carries last season's straw (a hash of the tuft's own draws: the stream is
+    // unchanged)
+    if (((hueJ * 13.7 + varJ * 5.3) % 1) < 0.17) dry = Math.max(dry, 0.6);
     // r7: carpet cull 0.6 -> 0.4 — the near dirt patches punched hard bald
     // holes in the hero grass ring and the exposed albedo read as "flat
     // mottled texture up to the tracks"; keep them THINNER, not bare
-    if (rejectDenseScatter(sn, dirtPatch, roll, clJ, carpet)) return null;
+    // (wave 71: "bare, blurry soil between tufts") a worn patch is grazed turf with its soil at the trodden core only
+    // (terrain.ts wornCore): the tufts thin hard on the core, and only a little on the rim
+    const dirtCore = smoothstepJs(0.78, 1.0, sn.n2 + (sn.n1 - 0.5) * 0.45);
+    if (rejectDenseScatter(sn, Math.max(dirtCore, dirtPatch * 0.62), roll, clJ, carpet)) return null;
     // sparse-biome ecology (desert scrub / winter litter): confetti-uniform
     // scatter reads as noise dots — gate placement behind a low-frequency
     // mask so growth clusters in hollows and along moisture lines, with only
@@ -4077,22 +4094,43 @@ function* vegetationBuildSteps(
     // ground the terrain draws them on (its landW; tallGrass.ts admit reads the same gate): off the villages, the
     // roads' shoulders, the water and the slopes past ~2–3° — on a meadow slope the layout crosses the sward stays the
     // sward's (the round-1 lane frames: crop tufts on Amberford's hillside, out of any field the terrain drew)
-    let crop = -1;
+    let crop = -1, pastureDry = -1;
     if (landUseAt !== null) {
       const f = landUseAt(x, z, _landScratch);
       if (f.active) {
         const fieldW = (1 - smoothstepJs(0.05, 0.30, heightField._villageMask(x, z)))
-          * smoothstepJs(5.0, 8.0, heightField._roadDist(x, z)) * (1 - smoothstepJs(0.02, 0.06, 1 - normalY))
+          * smoothstepJs(5.0, 8.0, heightField._roadDist(x, z)) * (1 - smoothstepJs(0.04, 0.10, 1 - normalY))
           * (1 - smoothstepJs(0.02, 0.10, heightField.getWaterMaskAt(x, z)));
         if (fieldW > 0.5) {
           // a ditch's water and a dry stone wall carry no sward, a bund half of one, a track a few tufts
-          if (f.track > 0.5) { if (f.boundary === 1 || clJ < 0.7) return null; }
+          if (f.track > 0.5) {
+            // (wave 79: no grass in a farm track's wheel lanes — tallGrass.ts admit: the same law) a ditch's water and a
+            // track's lanes carry no tufts, its crown a short sparse few, its verges a trodden half
+            // (wave 83: the lanes wander and swell along the track — landUse.ts laneQ — their verge ragged by the tuft)
+            const dLine = Math.abs(f.sV);
+            const laneQ = f.laneQ ?? (dLine - 0.85) / 0.24;
+            if (f.boundary === 1 || Math.abs(laneQ) < 1.15 + 0.35 * clJ) return null;
+            if (laneQ < 0 ? clJ < 0.45 : clJ < 0.5) return null;
+            if (laneQ < 0) sy *= 0.6;
+          }
           else if (f.edgeM < f.marginM) {
             if (f.boundary === 3 && f.edgeM < 0.62) return null;
             if (f.boundary === 2 && f.edgeM < 0.55 && clJ < 0.5) return null;
           } else if (!f.sward) return null;
           else if (f.weed) dry = Math.max(dry, 0.75); // a bare field's weeds: the tuft's own straw, not the soil's colour
-          else if (f.crop !== 0) crop = f.crop;
+          else if (f.crop !== 0) {
+            // (wave 71: "… and green among straw") a sown field carries its weeds — an eighth of its tufts the sward's
+            // own, most of them along its edge, where the crop thins into the margin over three metres instead of
+            // stopping on a line
+            const weedP = 0.12 + 0.73 * (1 - smoothstepJs(0, 3.0, f.edgeM - f.marginM));
+            if (((hueJ * 7.31 + lumJ * 3.17) % 1) >= weedP) crop = f.crop;
+          } else {
+            // (wave 69, Verdant's establishing view: "near-circular blotches … rather than the rectilinear plots") a
+            // pasture's straw is its own — a grazed field paler and yellower, a shut-up one lush, by the field's draw
+            // (terrain.ts: its tone by the same draw, at the bake's six bits) — not the meadow's round dry patches
+            const jq = Math.round(f.jitter * 63) / 63;
+            pastureDry = 0.55 * ((jq * 7.31 + 0.13) % 1);
+          }
         }
       }
     }
@@ -4110,8 +4148,10 @@ function* vegetationBuildSteps(
     // and a low-frequency meadow unifier keyed to the shared splat field —
     // adjacent tufts now drift together like one sward instead of the
     // radioactive lime-vs-dark confetti the critique flagged
-    let th = 0.225 + (hueJ - 0.5) * 0.05 - dry * 0.08;
-    let ts = 0.30 - dry * 0.11;
+    // (wave 71: Verdant's "flat, oversaturated neon" — the carpet's tips at HSV saturation 0.8 under the grade's boost)
+    // the tint a third less saturated and a little yellower: a summer sward, not a lime lawn (was 0.225 / 0.30)
+    let th = 0.21 + (hueJ - 0.5) * 0.05 - dry * 0.08;
+    let ts = 0.19 - dry * 0.07;
     let tl = 0.44 + (lumJ - 0.5) * 0.12 + (sn.n2 - 0.5) * 0.10 + dry * 0.04;
     // r6 terrain_environment: MEADOW PATCHWORK on the blades themselves. The
     // splat shader stamps 50-200 m dry-straw fields (meadowA -> uTintA), but
@@ -4119,7 +4159,7 @@ function* vegetationBuildSteps(
     // saturated green across the entire map" critique. sn.mA is the CPU twin
     // of that shader field: tufts standing on a dry patch swing toward
     // yellow-brown straw, so the patchwork reads at every distance.
-    const dryPatch = smoothstepJs(0.54, 0.85, sn.mA);
+    const dryPatch = pastureDry >= 0 ? pastureDry : smoothstepJs(0.54, 0.85, sn.mA);
     th -= dryPatch * 0.075;
     ts *= 1 - dryPatch * 0.30;
     tl += dryPatch * 0.05;
@@ -4620,7 +4660,7 @@ function* vegetationBuildSteps(
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <project_vertex>', /* glsl */`
       if ( aWoodFine > 0.5 ) {
         float cotWoodHash = fract( sin( dot( instanceMatrix[ 3 ].xz, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
-        if ( distance( instanceMatrix[ 3 ].xyz, uCamPos ) > uCotWoodFineFar * ( 0.85 + 0.3 * cotWoodHash ) ) transformed = vec3( 0.0 );
+        if ( distance( instanceMatrix[ 3 ].xyz, uCamPos ) > uCotWoodFineFar * aWoodFine * ( 0.85 + 0.3 * cotWoodHash ) ) transformed = vec3( 0.0 );
       }
       vBarkY = ( instanceMatrix * vec4( transformed, 1.0 ) ).y - instanceMatrix[ 3 ].y;
       #include <project_vertex>`);

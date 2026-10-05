@@ -139,12 +139,13 @@ function assertProjectionContract(text) {
   // the whole terrain owner. Unrelated future terrain work must remain free.
   assert.ok(clean.includes(compact(`float grazeW = (1.0 - smoothstep(0.07, 0.22, dNV))
     * smoothstep(30.0, 70.0, camDist) * (1.0 - smoothstep(320.0, 480.0, camDist))
-    * (1.0 - projW) * (1.0 - fD) * (1.0 - fM) * (1.0 - roadCore) * (1.0 - fR);`)),
-  'grazing activation still excludes dirt, water, road and rock with the original LOD weights');
+    * (1.0 - projW) * (1.0 - fD) * (1.0 - fM) * (1.0 - roadCore) * (1.0 - fR)
+    * (1.0 - max(gCropW, gSoilW));`)),
+  'grazing activation still excludes dirt, water, road and rock with the original LOD weights (and, the ground lane\'s farmland, a sown or turned field)');
   assert.ok(clean.includes(compact(`float faceW = smoothstep(0.02, 0.085, slope) * (1.0 - steepW)
     * (1.0 - smoothstep(20.0, 60.0, camDist))
-    * (1.0 - fD) * (1.0 - fM) * (1.0 - roadCore) * (1.0 - fR);`)),
-  'near-slope relief retains the same exclusions and distance/slope weights');
+    * (1.0 - fD) * (1.0 - fM) * (1.0 - roadCore) * (1.0 - fR) * (1.0 - gSoilW);`)),
+  'near-slope relief retains the same exclusions and distance/slope weights (and, the farmland, none on turned earth)');
   const graze = compact(block(text, 'if (grazeW > 0.004)').body);
   const face = compact(block(text, 'if (faceW > 0.004)').body);
   // terrain v2 (2026-10-01, the cost pass): the splat samples carry the layer's measured mean (the far variant's tile
@@ -171,10 +172,12 @@ function assertProjectionContract(text) {
 assertProjectionContract(source);
 assert.throws(() => assertProjectionContract(source.replace('gMix = grazeW * 0.38', 'gMix = grazeW * 0.39')),
   'an unintended blend-gain change must fail');
-assert.throws(() => assertProjectionContract(source.replace(
-  '* (1.0 - fD) * (1.0 - fM) * (1.0 - roadCore) * (1.0 - fR);',
-  '* (1.0 - fD) * (1.0 - roadCore) * (1.0 - fR);')),
-  'dropping liquid isolation must fail');
+// (the ground lane's farmland: the grazing line now ends on its field factor)
+const dropLiquid = source.replace(
+  /\* \(1\.0 - fD\) \* \(1\.0 - fM\) \* \(1\.0 - roadCore\) \* \(1\.0 - fR\)(\s*\* \(1\.0 - max\(gCropW, gSoilW\)\);)/,
+  '* (1.0 - fD) * (1.0 - roadCore) * (1.0 - fR)$1');
+assert.notEqual(dropLiquid, source, 'the negative control reaches the grazing line');
+assert.throws(() => assertProjectionContract(dropLiquid), 'dropping liquid isolation must fail');
 assert.throws(() => assertProjectionContract(source.replace('float gMix = grazeW * 0.38;',
   'aG.rgb += texture2D(uAlbG, uvG).rgb; float gMix = grazeW * 0.38;')),
   'an extra active-branch sampler must fail');
