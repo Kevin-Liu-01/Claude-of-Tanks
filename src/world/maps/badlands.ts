@@ -161,6 +161,9 @@ export default {
     ],
     well: true, hayCrates: false, fences: true, telegraph: true, carts: false, logs: false,
     rocks: 264, outcrops: 58, craters: 74, rubblePiles: 22,
+    // (the talus law, landformGeology.ts restsOnTalus, began here: gauntlet wave 48 saw "two low-poly orange boulders
+    // hanging on its face" in all four of its Redrock frames; 278 of the map's 931 boulders hung on a wall, a ledge's lip
+    // or a narrow bench. The law is every map's default since 2026-10-04: rockTalusDeg names another angle)
     hedgehogs: 22, sandbagLines: 24,
     tankWrecks: { era: 'modern', count: 7, debris: true,
       ids: ['merkava3d', 'k2', 'merkava4b', 'm60a3', 'ariete', 't72b3m', 'm1a2_sepv3'] },
@@ -175,6 +178,8 @@ export default {
   // its cap on a wind-cut pedestal) stands in the open floor of each mouth; a rujm, the Bedouin cairn, marks each cross
   // track where it leaves for its ravine. Turned through 180 degrees about the outpost like the rest of the floor.
   scenery: {
+    // (the ledges keep to the talus round each dome, the talus law's default 35 degrees: eight of their 30 formations stood
+    // on a wall or its lip and each field draws its next candidate instead; the mountains lane, 2026-10-04, wave 48)
     // (the bedrock skin on the inselbergs is parked: wave 16's critics read a skin on the jebels' smooth domes as
     // masonry, "a ziggurat"; the domes' shape is the landform's — world/sceneryRocks.ts buildBedrock stays, unplaced)
     rocks: [
