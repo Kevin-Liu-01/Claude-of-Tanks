@@ -19,6 +19,14 @@
 // butte that screens it down the gorge's axis, and each block, its segments, its butte and its strongpoints are the
 // other's rotation there. The zone-control discs stand on the line of equal driven distance: the west lane's yard, the
 // gorge's west shore (also the turbo-ball kickoff) and the east lane's yard.
+//
+// The control district (the map-revival lane, 2026-10-05): the Bureau of Reclamation's works at Glen Canyon Dam and
+// its town, Page, built where the town plan seats them in the glencanyon kit (maps/regional/glencanyon.ts). The
+// powerhouse of board-formed concrete with its penstocks coming down from the anchor block and the catwalk truss broken
+// between them (the broken high crossing); the control building, the surge tower, the switchyard's lattice dead-end
+// towers and the transformer yards; the microwave relay tower; the gate-hoist houses and the penstock runs on their
+// saddles; the visitor centre with its overlook, or the town's school; the field offices and steel warehouses; and
+// Page's ranch houses under shingled gables with their carports, its fire station and its water tower.
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
@@ -118,6 +126,8 @@ export default {
     clusterScrub: 1.4, bushCount: 0.52, bushSpecies: 'poplar',
   },
   props: {
+    // the map-revival lane (2026-10-05): Glen Canyon Dam and Page, Arizona (maps/regional/glencanyon.ts)
+    architecture: 'glencanyon',
     plan: [
       'arcology', 'factory', 'gantry', 'parkingdeck', 'ruin', 'foundryoffice',
       'warehouse', 'needletower', 'containerRow', 'depot', 'ruin', 'civichall',
@@ -149,9 +159,8 @@ export default {
     townPlan: TOWN_PLANS.skybridge,
     townLightPlan: TOWN_LIGHT_PLANS.skybridge,
     roadBuildingClearance: true,
-    tones: makeRealisticCityBuildingTones({
-      value: 0.92, saturation: 1.06, soot: 0.015, roofValue: 0.90,
-    }),
+    // the kit owns the renders' tones; the field walls keep the city preset's stone
+    tones: { stone: makeRealisticCityBuildingTones({ value: 0.92, saturation: 1.06, soot: 0.015, roofValue: 0.90 }).stone },
     buildingLat: [13, 7], sideSkip: 0.07, spacingPad: 3.5, maxSpread: 4.2,
     wallRuns: [
       [-312, -148, -214, -112, 2], [-306, 138, -208, 174, 3],
