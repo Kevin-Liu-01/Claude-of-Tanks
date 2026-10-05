@@ -1,5 +1,17 @@
-// Japanese-inspired cultivated valley: contour-planted broadleaf rows,
-// cedar edges, a bathhouse/market settlement and three stepped farm tracks.
+// Orchard Valley: a cultivated valley of contour-planted orchard rows, cedar edges, a village with its bathhouse and
+// market and three stepped farm tracks.
+//
+// Reference: the Chouf on Mount Lebanon — the terraced valley below the Barouk and Ain Zhalta cedar forest, between
+// Beiteddine and Deir el Qamar: olive and apple terraces held by dry stone walls down the valley sides, stone pines and
+// the cedars on the upper slopes, and the mountain village of the 19th century in dressed cream sandstone — the
+// central-hall house (dar) under its red Marseille tiles with the triple arch (qanatir) over the door, the older houses
+// under flat earth roofs with their stone rollers, the hammam's domes, the souk's vaulted shops, the sabil fountain, the
+// church's open bell arch.
+//
+// 2026-10-05 (the map-revival lane; the owner: "make sure all maps look completely new and revitalized like verdant"):
+// the village is built in that construction (maps/regional/chouf.ts), every building where it stood, the gardens walled
+// behind the houses with their vine arbors (the kit's yards); the orchards grow as olives, the pines as the
+// Mediterranean pines and the cedars as the cedar of Lebanon (treeBiomes.ts).
 import verdant from './verdant.ts';
 import { roundRoadBends } from './roadBends.ts';
 export default {
@@ -68,6 +80,9 @@ export default {
   },
   props: {
     sourcedPalette: 'orchard', bathhouseStyle: 'timber',
+    // the map-revival lane (2026-10-05): the Chouf kit (maps/regional/chouf.ts) builds the plan in the mountain
+    // village's sandstone, every building where it stood
+    architecture: 'chouf',
     plan: ['bathhouse', 'farmhouse', 'marketRow', 'rangerlodge', 'granary', 'woodshed', 'cottage', 'barn', 'market', 'farmhouse', 'tavern', 'granary', 'woodshed', 'ruin', 'barn', 'cottage', 'farmhouse', 'marketRow'],
     destructibleBuildings: ['fieldhut', 'leanto', 'huntingblind', 'longhouse'],
     buildingLat: [11, 2], destructibleBuildingLat: [15, 3], sideSkip: 0.16, spacingPad: 7.5,
@@ -86,8 +101,18 @@ export default {
       ids: ['marder1a3', 'ua_t84_oplot_m', 'm551_sheridan', 'pt91m', 'm1a1'] },
     inhabit: { stalls: 4, benches: 4, coreClutter: 22, bales: 8, stooks: 8, pots: 8, laundry: 4, troughs: 2, handcarts: 4, carts: 4, trucks: 4, jeeps: 3, drumClusters: 3, camps: 2, modernClutter: 18, looseClutter: 20, roadFence: 'fencewattle', yardFence: 'fencepicket' },
   },
-  // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): a cultivated Japanese valley's
-  // forested mountains: steep and rounded, wooded to the crests, no snow or alpine rock
+  // the map-revival lane (2026-10-05; the scenery lane's generators, world/scenery.ts): a Maronite cross at the village's
+  // south entry and another on the western spur over the terraces, a cairn on the eastern flank's crest
+  scenery: {
+    landmarks: [
+      { kind: 'waysidecross', x: -54, z: -112, yawDeg: 10, name: 'the cross at the village entry' },
+      { kind: 'waysidecross', x: -318, z: -36, yawDeg: 90, name: 'the cross on the western spur' },
+      { kind: 'cairn', x: 318, z: 40, name: 'the cairn on the eastern crest' },
+    ],
+  },
+
+  // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): the valley's
+  // forested mountains: steep and rounded, wooded to the crests, no snow or alpine rock (the Barouk's cedar ridge)
   horizon: { baseHex: 0x5c7154, amp: 1.05, style: 'alpine', treeline: 0.84, snowline: 2, panorama: { regional: 'forested' }, forestHex: 0x2e513c, rockHex: 0x7a8270, haze: 0.9, grain: 0.55 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'fair-weather-cumulus', coverage: 0.28, streets: 0.4, contrails: 0.3 },
