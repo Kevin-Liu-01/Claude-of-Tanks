@@ -80,8 +80,8 @@ function library(species, fade, environment) {
   // law, the per-cluster cascade sample and the leaf translucency); and the far tier's one impostor material
   // trees round 2 (2026-10-03): v20 — the facing clusters (COT_LEAF_BILLBOARD) and the near-dissolve's crown scale;
   // trees round 3b (2026-10-04): v21 — the clusters' near dissolve by whole clusters; trees round 4: v22 — each
-  // material's near reach (uCotNearReach), v23 — and its gate lift (uCotGateLift)
-  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v23'));
+  // material's near reach (uCotNearReach), v23 — and its gate lift (uCotGateLift), v24 — and its inside fade
+  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v24'));
   assert.equal(foliage.length, species.length, 'the complete production species material library exists');
   const impostor = registered.filter(material => material.customProgramCacheKey() === 'world-tree-impostor-v3'); // round 77c: the elevated ring; p2 trees lane: the gust lift
   assert.equal(impostor.length, 1, 'one impostor material per world, registered with the cascades');
@@ -240,7 +240,13 @@ function checkEdgeFade(material, parameters) {
   assert.match(vertex, /float cotGate = 0\.1 \+ 0\.8 \* mix\( cotHash, clamp\( aCard\.y \/ \( 1\.5 \* aCard\.w \), 0\.0, 1\.0 \), uCotGateLift \);/,
     'the gate by the hash and the cluster\'s height');
   assert.equal(parameters.uniforms.uCotGateLift?.value, 0, 'a crown leaves by the hash alone');
-  assert.match(vertex, /transformed = aCard\.xyz \+ \( transformed - aCard\.xyz \) \* smoothstep\( cotGate - 0\.1, cotGate \+ 0\.1, cotKeep \);/,
+  // and a shrub the camera stands in leaves whole (the wave-68 dolly: its far top clusters over an emptied heart)
+  assert.match(vertex, /uniform float uCotInsideFade;/, 'the inside fade is a uniform of the material');
+  assert.match(vertex, /float cotIn = uCotInsideFade \* \( 1\.0 - smoothstep\( 0\.94, 1\.04, length\( cotCam\.xz \) \/ max\( aCard\.w, 1e-3 \) \) \)/,
+    'by the camera inside the crown radius in the instance frame');
+  assert.match(vertex, /smoothstep\( cotGate - 0\.1, cotGate \+ 0\.1, cotKeep \) \* \( 1\.0 - cotIn \);/, 'every cluster at once');
+  assert.equal(parameters.uniforms.uCotInsideFade?.value, 0, 'a crown never leaves whole');
+  assert.match(vertex, /transformed = aCard\.xyz \+ \( transformed - aCard\.xyz \) \* smoothstep\( cotGate - 0\.1, cotGate \+ 0\.1, cotKeep \)/,
     'the card shrinks to its centre at its own threshold');
   const shrink = vertex.indexOf('transformed = aCard.xyz + ( transformed - aCard.xyz )');
   assert.ok(turn < shrink && shrink < vertex.indexOf('float lean = uWind.x'), 'after the turn, before the wind');
@@ -270,7 +276,7 @@ function checkMobileFoliage(species, environment) {
     const engine = { setupShadowMaterial(material, hook) { registered.push(material); return lighting.setupShadowMaterial(material, hook); } };
     const cfg = { vegetation: { species, clusterCount: 0, loneCount: 0, rimCount: 0, grassDensity: 0, bushCount: 0, belts: [], authoredTrees: [] } };
     const vegetation = createVegetation(createHeightField(1337), engine, 1337, cfg);
-    const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v23'));
+    const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v24'));
     assert.equal(foliage.length, species.length, 'the mobile species library exists');
     const fragment = environment.expand(foliage[0]).parameters.fragmentShader;
     assert.doesNotMatch(fragment, /vWindLift \*/, 'the phones keep their foliage fragment: no gust lift');
@@ -389,14 +395,15 @@ function checkShrubMaterial(environment) {
   try {
     const bush = vegetation.group.children.find(m => m.userData.bush === true && m.count > 0);
     assert.ok(bush, 'the shrubs are planted');
-    const crown = registered.find(m => m !== bush.material && m.customProgramCacheKey?.() === 'world-tree-foliage-v23' && m.map === bush.material.map);
+    const crown = registered.find(m => m !== bush.material && m.customProgramCacheKey?.() === 'world-tree-foliage-v24' && m.map === bush.material.map);
     assert.ok(crown && bush.material !== crown, 'the shrubs draw with their own material, beside their slot\'s crowns\'');
-    assert.equal(bush.material.customProgramCacheKey(), 'world-tree-foliage-v23', 'on the one foliage program');
+    assert.equal(bush.material.customProgramCacheKey(), 'world-tree-foliage-v24', 'on the one foliage program');
     assert.deepEqual(bush.material.defines, crown.defines, 'with the crown material\'s defines (the facing clusters, the edge fade)');
     const shrubProgram = environment.expand(bush.material), crownProgram = environment.expand(crown);
     assert.equal(shrubProgram.key, crownProgram.key, 'the same program as the crowns\'');
     assert.equal(shrubProgram.parameters.uniforms.uCotNearReach.value, 0.5, 'the shrub\'s near reach');
     assert.equal(shrubProgram.parameters.uniforms.uCotGateLift.value, 0.75, 'and its clusters leave from the top down');
+    assert.equal(shrubProgram.parameters.uniforms.uCotInsideFade.value, 1, 'and it leaves whole with the camera inside it');
     assert.equal(crownProgram.parameters.uniforms.uCotNearReach.value, 1, 'the crowns keep theirs');
   } finally {
     vegetation.dispose(); disposeObject3DResources(vegetation.group);
