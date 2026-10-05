@@ -70,7 +70,7 @@ function lin(hex: number): Rgb {
   return Object.freeze([_c.r, _c.g, _c.b] as const);
 }
 
-export interface SurfaceLook {
+interface SurfaceLook {
   /** dense ejecta: born dark, dries lighter */
   ejecta0: Rgb; ejecta1: Rgb;
   /** fine dust (surge and crown) */

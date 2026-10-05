@@ -25,8 +25,8 @@ export function makeClodRecord(): ClodRecord {
 }
 
 /** The flight law the clod shader integrates (drag k on the launch velocity, gravity G). */
-export const CLOD_DRAG = 0.35;
-export const CLOD_GRAVITY = 9.8;
+const CLOD_DRAG = 0.35;
+const CLOD_GRAVITY = 9.8;
 
 /**
  * Where and when a chunk lands on the shader's own law: it stops dead there (no sliding, no spinning in place) and

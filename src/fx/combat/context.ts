@@ -90,12 +90,6 @@ export function mHeat(m: MediaPuff, heat: number, cool: number, hotCore: number,
   m.heat = heat; m.cool = cool; m.hotCore = hotCore; m.emissive = emissive;
 }
 
-/** Scale an albedo (value only). */
-export function shade(c: Rgb, k: number, out: [number, number, number]): Rgb {
-  out[0] = c[0] * k; out[1] = c[1] * k; out[2] = c[2] * k;
-  return out;
-}
-
 /** Mix two albedos. */
 export function blend(a: Rgb, b: Rgb, t: number, out: [number, number, number]): Rgb {
   out[0] = a[0] + (b[0] - a[0]) * t; out[1] = a[1] + (b[1] - a[1]) * t; out[2] = a[2] + (b[2] - a[2]) * t;

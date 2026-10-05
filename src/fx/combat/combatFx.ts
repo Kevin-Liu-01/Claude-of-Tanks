@@ -43,7 +43,7 @@ interface LightModelLike {
   mode?: string; envIntensity?: number; envDiffuseGain?: number; groundRadiance?: readonly number[];
 }
 
-export interface CombatFxOptions {
+interface CombatFxOptions {
   seed: number;
   scene?: THREE.Scene | null;
   camera?: () => THREE.Camera | null | undefined;
@@ -79,7 +79,7 @@ export function groundWindFromAloft(speedAloft: number): number {
  */
 const DEFAULT_TUNE = Object.freeze({ sun: 1.0, amb: 1.0, legacyAmb: 2.2, fire: 0.32, glow: 1.0, alpha: 1.0 });
 
-export interface CombatFx {
+interface CombatFx {
   readonly group: THREE.Group;
   update(): void;
   warmTextures(): void;

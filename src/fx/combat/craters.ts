@@ -9,11 +9,11 @@
  */
 import * as THREE from 'three';
 
-export const CRATER_SLOTS = 40;
+const CRATER_SLOTS = 40;
 const SEG = 16;
 const RINGS = 2;
 const VERTS = 1 + SEG * RINGS;
-export const CRATER_HOLD_S = 75;
+const CRATER_HOLD_S = 75;
 const CRATER_FADE_S = 20;
 
 /** Surface kinds the crater shader knows (match surface.ts SURFACE_INDEX). */

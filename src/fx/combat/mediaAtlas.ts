@@ -21,11 +21,11 @@ import * as THREE from 'three';
 import { mulberry32 } from '../particles.ts';
 
 type Rng = () => number;
-export type MediaAtlasStyle = 'billow' | 'wisp';
+type MediaAtlasStyle = 'billow' | 'wisp';
 
-export const MEDIA_TILES = 4;
-export const MEDIA_TILE_PX = 128;
-export const MEDIA_FRAMES = MEDIA_TILES * MEDIA_TILES;
+const MEDIA_TILES = 4;
+const MEDIA_TILE_PX = 128;
+const MEDIA_FRAMES = MEDIA_TILES * MEDIA_TILES;
 
 interface Lobe {
   x: number; y: number; r: number; w: number;
