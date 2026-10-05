@@ -702,3 +702,19 @@ The garage allied-nation selector has a DOM regression fixture in
 `tools/allied-nation.browser.mjs`. The spectator controls have desktop, portrait
 and short-landscape fixtures in `tools/spectator-switcher.browser.mjs`. These
 verify layout and interactions with WebGL disabled; neither measures GPU performance.
+
+### First-use Garage aura preparation
+
+The pedestal's `prepareVisual` hook installs a dormant energy skin before the
+vehicle's ordinary shader warm, including the initial hero, new carousel picks
+and an adopted battle vehicle. It does not compile a second copy of plain paint.
+Juggernaut and Infected selections then change uniforms on those same materials;
+they must not trigger first-use material replacement or another shader warm.
+
+Parked carousel vehicles retain their inactive skin. Explicit battle handoff
+restores source materials, and disposing the factory materials releases retained
+skins on cache eviction. Camouflage texture canvases and fitting-color objects
+stay shared with the source paint, so the dormant effect cannot freeze a repaint.
+The Garage preview and pedestal selftests cover this lifecycle. Native first-click
+frame times still require the shared capture lease; Node tests prove preparation
+ordering and material identity, not browser timing.

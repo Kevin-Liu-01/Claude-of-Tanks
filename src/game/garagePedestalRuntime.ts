@@ -114,6 +114,8 @@ interface GaragePedestalRuntimeOptions {
   ): Promise<RuntimeValue>;
   discardSharedTextures(specId: string): void;
   createBudgetYield(budgetMs: number): BudgetYield;
+  /** Install dormant presentation shaders before the first ordinary warm; no second compile on mode click. */
+  prepareVisual?(visual: GaragePedestalVisual, spec: GaragePedestalSpec): void;
   compilePrograms(root: Object3D): void;
   /**
    * Optional strict first-use preparation of the hero's forward programs:
@@ -197,6 +199,7 @@ export function createGaragePedestalRuntime({
   discardSharedTextures,
   createBudgetYield,
   compilePrograms,
+  prepareVisual,
   prepareProgramSteps,
   nextFrame,
   getDeviceTier,
@@ -534,6 +537,7 @@ export function createGaragePedestalRuntime({
         phases.buildMs = phases.maxBuildStepMs = now() - startedAt;
       }
       if (!visual || !stillCurrent()) return null;
+      prepareVisual?.(visual, getSpec(specId));
       transferred = true;
       return visual;
     } finally {
@@ -825,6 +829,7 @@ export function createGaragePedestalRuntime({
     if (cached && reusable(cached) && cached !== incoming) return false;
     const outgoing = current;
     incoming.spec = getSpec(specId);
+    prepareVisual?.(incoming, incoming.spec);
     if (!incoming.root.parent) scene.add(incoming.root);
     current = incoming;
     parked.delete(incoming);

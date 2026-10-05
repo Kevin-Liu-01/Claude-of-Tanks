@@ -36,6 +36,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   let buildClosures = 0;
   let programPrepared = 0;
   let programClosures = 0;
+  const prepared = new WeakSet();
 
   const makeVisual = (specId, options) => {
     visualOptions.push(options);
@@ -78,7 +79,9 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
 
   const runtime = createGaragePedestalRuntime({
     scene,
+    prepareVisual(visual) { prepared.add(visual.root); },
     compilePrograms(root) {
+      assert.ok(prepared.has(root),'dormant presentation materials precede the first GPU submission');
       assert.ok(root);
       compileCalls += 1;
     },
@@ -86,6 +89,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
       // FSP-01: strict first-use preparation port — each yield is one frame
       // the runtime must wait; IteratorClose is the stale-selection contract.
       *prepareProgramSteps(root, timing) {
+        assert.ok(prepared.has(root),'strict warm sees the final dormant material');
         assert.ok(root);
         assert.deepEqual(timing, {});
         programPrepared += 1;
