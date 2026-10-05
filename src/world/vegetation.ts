@@ -2388,6 +2388,12 @@ const FOLIAGE_GATE_LIFT = Object.freeze({ crown: 0, shrub: 0.75 });
  */
 const GROWTH_WOOD_FINE_R = 0.05, GROWTH_WOOD_FINE_FAR = 80;
 /**
+ * Trees round 4 (the cost hold, the third trim): a limb under GROWTH_WOOD_MID_R (m) at its base — the tube law's
+ * four-sided limbs — is mid wood (aWoodFine 2), drawn no farther than twice the fine wood's reach: under a pixel and a
+ * half wide there; the stem and the scaffold limbs at every distance.
+ */
+const GROWTH_WOOD_MID_R = 0.12;
+/**
  * Trees round 4 (the cost hold: Verdant's understorey 3,609 shrubs, nine in ten past 100 m of the chase camera): a shrub
  * whose crown radius over its distance is under this (rad; about 24 px across on a 1600 px frame) draws half its clusters,
  * each kept by a hash of its own, at 1.25 times their size — the understorey's young growth past about 65 m, a field bush
@@ -2567,7 +2573,10 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
     const fine = new Float32Array(flatTrunk.getAttribute('position').count);
     skeleton.branches.forEach((branch, i) => {
       const range = branchRanges[i];
-      if (range && branch.order > 0 && branch.nodes[0].r <= GROWTH_WOOD_FINE_R) fine.fill(1, range[0], range[1]);
+      if (!range || branch.order === 0) return;
+      const r0 = branch.nodes[0].r;
+      if (r0 <= GROWTH_WOOD_FINE_R) fine.fill(1, range[0], range[1]);
+      else if (r0 <= GROWTH_WOOD_MID_R) fine.fill(2, range[0], range[1]);
     });
     flatTrunk.setAttribute('aWoodFine', new THREE.BufferAttribute(fine, 1));
   }
@@ -4569,7 +4578,7 @@ function* vegetationBuildSteps(
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <project_vertex>', /* glsl */`
       if ( aWoodFine > 0.5 ) {
         float cotWoodHash = fract( sin( dot( instanceMatrix[ 3 ].xz, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
-        if ( distance( instanceMatrix[ 3 ].xyz, uCamPos ) > uCotWoodFineFar * ( 0.85 + 0.3 * cotWoodHash ) ) transformed = vec3( 0.0 );
+        if ( distance( instanceMatrix[ 3 ].xyz, uCamPos ) > uCotWoodFineFar * aWoodFine * ( 0.85 + 0.3 * cotWoodHash ) ) transformed = vec3( 0.0 );
       }
       vBarkY = ( instanceMatrix * vec4( transformed, 1.0 ) ).y - instanceMatrix[ 3 ].y;
       #include <project_vertex>`);
