@@ -12,7 +12,7 @@ import {
 import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { pottedPlant, tvAerial, wallLantern, washingLine } from './dressing.ts';
-import { facadeOn, facadeRng, trimRun } from './facade.ts';
+import { balconette, facadeOn, facadeRng, trimRun } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const SHUTTERS: readonly Rgb[] = [0x557a4c, 0x416650, 0x7a5a42, 0x7890a0, 0x8e7a52].map(rgb);
@@ -96,6 +96,13 @@ function dressedStone(sink: PartSink, frame: HouseFrame, rendered: boolean): voi
   if (frame.floors.length >= 3) {
     const face = frame.faces.front, half = face.width / 2;
     trimRun(sink, 'stone', face, -half, half, frame.floors[2] - 0.14, [{ h: 0.08, out: 0.05 }, { h: 0.08, out: 0.09 }], { ret: 0.3 });
+  }
+  // a balconette on the living floor's street windows of half the houses: a stone slab on corbels, an iron railing
+  if (frame.floors.length >= 2 && f() < 0.5) {
+    const iron: Rgb = [0.06, 0.07, 0.07];
+    const upper = frame.spec.openings.filter((o) => o.face === 'front' && o.storey >= 1 && o.kind === 'window' && !o.state);
+    const pick = upper.length ? upper[Math.floor(f() * upper.length)] : null;
+    if (pick) balconette(sink, frame.faces.front, pick.u, frame.floors[pick.storey] + pick.y0, pick.w, 'stone', iron);
   }
 }
 

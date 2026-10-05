@@ -544,3 +544,30 @@ function orientedPrism(sink: PartSink, bucket: RegionalBucket, pts: Vec3[], n: V
   const ordered = c[0] * n[0] + c[1] * n[1] + c[2] * n[2] >= 0 ? pts : [...pts].reverse();
   sink.prism(bucket, ordered, n, t, DECOR);
 }
+
+/**
+ * A balconette under an upper window (the Mediterranean street front's balkon): a stone slab on two corbels at the
+ * window's sill, an iron railing round it — its rails and bars fine joinery. `y` is the window's sill height, `w` its
+ * width.
+ */
+export function balconette(sink: PartSink, face: Face, u: number, y: number, w: number, slab: RegionalBucket, iron: Rgb, depth = 0.5): void {
+  const sw = w + 0.5, t = 0.13;
+  faceBox(sink, slab, face, u, y - t / 2 - 0.02, depth / 2, sw, t, depth, { ...DECOR, fineSides: true });
+  // the corbels: stepped blocks under the slab's ends
+  for (const side of [-1, 1]) {
+    const cu = u + side * (sw / 2 - 0.16);
+    faceBox(sink, slab, face, cu, y - t - 0.12, depth * 0.35, 0.18, 0.2, depth * 0.7, { ...DECOR, fineSides: true });
+    faceBox(sink, slab, face, cu, y - t - 0.3, depth * 0.2, 0.16, 0.16, depth * 0.4, { ...DECOR, fine: true });
+  }
+  // the railing: a top rail and a foot rail round the three open sides, bars between
+  const rail = { colour: iron, decor: true, fine: true } as EmitOptions;
+  const h = 0.92, o = depth - 0.05;
+  faceBox(sink, 'structureMetal', face, u, y + h, o, sw - 0.06, 0.04, 0.04, { colour: iron, decor: true });
+  faceBox(sink, 'structureMetal', face, u, y + 0.08, o, sw - 0.06, 0.03, 0.03, rail);
+  for (const side of [-1, 1]) {
+    faceBox(sink, 'structureMetal', face, u + side * (sw / 2 - 0.05), y + h, o / 2, 0.04, 0.04, o, { colour: iron, decor: true });
+    faceBox(sink, 'structureMetal', face, u + side * (sw / 2 - 0.05), y + h / 2, o, 0.04, h, 0.04, rail);
+  }
+  const bars = Math.max(4, Math.round(sw / 0.12));
+  for (let k = 1; k < bars; k++) faceBox(sink, 'structureMetal', face, u - sw / 2 + sw * k / bars, y + h / 2, o, 0.018, h - 0.08, 0.018, rail);
+}
