@@ -6,8 +6,9 @@
  * the sun's screen position integrates the in-scatter along each pixel's line to the sun — the streaks through a
  * treeline, a ridge or a gorge wall. Three quarter-resolution draws:
  *
- *   1. mask     — sky (device depth at the far plane) × a radial falloff around the sun's screen position, one
- *                 depth fetch per texel (the round-68 cloud lane may multiply a cloud transmittance in here);
+ *   1. mask     — sky (device depth at the far plane) × the clouds' transmittance there (2026-10-04: the resolved
+ *                 cloud history's alpha — a closed deck lets no shaft through, a gap in broken cloud does) × a radial
+ *                 falloff around the sun's screen position;
  *   2. blur ×2  — twelve taps along the segment from the texel to the sun with exponential decay, the first pass
  *                 spanning the whole segment, the second a twelfth of it (144 effective samples); the second pass
  *                 writes the field × the shaft colour × strength straight into the light target the grade adds
@@ -26,6 +27,7 @@ import * as THREE from 'three';
 import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import type { AtmospherePublishedState } from './sky.ts';
 import type { PublishedLightRig } from './contactShadows.ts';
+import { lightTune } from './lightModelCore.ts';
 
 export const SUN_SHAFT_TAPS = 12;
 export const SUN_SHAFT_DECAY = 0.90;
@@ -120,9 +122,12 @@ const MASK_FRAGMENT = /* glsl */`
 uniform sampler2D tDepth;
 uniform vec2 uSun;
 uniform float uAspect;
+uniform sampler2D tClouds;
+uniform float uCloudsOn;
 varying vec2 vUv;
 void main() {
   float sky = step( 0.9999999, texture2D( tDepth, vUv ).x );
+  if ( uCloudsOn > 0.5 ) sky *= smoothstep( 0.0, 0.25, texture2D( tClouds, vUv ).a );
   vec2 q = ( vUv - uSun ) * vec2( uAspect, 1.0 );
   float w = 1.0 - smoothstep( 0.0, ${SUN_SHAFT_MASK_RADIUS.toFixed(3)}, length( q ) );
   gl_FragColor = vec4( sky * w * w, 0.0, 0.0, 1.0 );
@@ -209,6 +214,7 @@ export class SunShaftsPass extends Pass {
     this.ping = quarterTarget(w, h, 'SunShafts.blur');
     this.maskMaterial = material(MASK_FRAGMENT, {
       tDepth: { value: depthTexture }, uSun: { value: new THREE.Vector2(0.5, 0.5) }, uAspect: { value: 16 / 9 },
+      tClouds: { value: null }, uCloudsOn: { value: 0 },
     }, 'SunShafts.mask');
     this.blurMaterial = material(BLUR_FRAGMENT, {
       tSrc: { value: null }, tMask: { value: null }, uSun: { value: new THREE.Vector2(0.5, 0.5) }, uSpan: { value: 1 },
@@ -268,6 +274,9 @@ export class SunShaftsPass extends Pass {
       const mu = this.maskMaterial.uniforms;
       mu.uSun.value.copy(this.sun.uv);
       mu.uAspect.value = aspect;
+      const clouds = (this.scene.userData.volumetricClouds as { historyTexture?: THREE.Texture | null } | undefined)?.historyTexture ?? null;
+      mu.tClouds.value = clouds;
+      mu.uCloudsOn.value = clouds && lightTune('SUN_SHAFT_CLOUD_GATE', 1) > 0 ? 1 : 0;
       this.quad.material = this.maskMaterial;
       renderer.setRenderTarget(this.mask);
       this.quad.render(renderer);
