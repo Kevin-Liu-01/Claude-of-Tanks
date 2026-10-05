@@ -52,11 +52,14 @@ const sor = (flat: number, dig: number, ...stations: readonly (readonly [number,
 // field tracks and dead stretches, and a run may stand a few metres off its neighbour's line.
 type BeltRun = readonly [number, number, 'poplar' | 'oak' | 'pine' | null, number, number, number];
 function shelterbelt(x0: number, z0: number, x1: number, z1: number, runs: readonly BeltRun[]) {
-  const len = Math.hypot(x1 - x0, z1 - z0), nx = -(z1 - z0) / len, nz = (x1 - x0) / len;
-  return runs.map(([t0, t1, species, gap, skip, lateral]) => ({
-    x0: Math.round(x0 + (x1 - x0) * t0 + nx * lateral), z0: Math.round(z0 + (z1 - z0) * t0 + nz * lateral),
-    x1: Math.round(x0 + (x1 - x0) * t1 + nx * lateral), z1: Math.round(z0 + (z1 - z0) * t1 + nz * lateral),
-    gap, jitter: 4.5, skip, ...(species ? { species } : {}),
+  // 2026-10-05 (the map-revival lane; gauntlet wave 106: "a savanna of evenly scattered orange trees" — make the belts
+  // "long straight poplar and elm lines"): the runs keep their ages, spacings and losses but stand on the belt's one line
+  // (no lateral step between runs), a tree a metre either side of it
+  // (a run's authored lateral step, the tuple's last member, is no longer laid)
+  return runs.map(([t0, t1, species, gap, skip]) => ({
+    x0: Math.round(x0 + (x1 - x0) * t0), z0: Math.round(z0 + (z1 - z0) * t0),
+    x1: Math.round(x0 + (x1 - x0) * t1), z1: Math.round(z0 + (z1 - z0) * t1),
+    gap, jitter: 2.0, skip, ...(species ? { species } : {}),
   }));
 }
 
@@ -253,8 +256,10 @@ export default {
     clusterMix: [['poplar', 0.50], ['oak', 0.35], ['pine', 0.15]],
     loneMix: [['poplar', 0.54], ['oak', 0.34], ['pine', 0.12]],
     rimMix: [['poplar', 0.40], ['oak', 0.35], ['pine', 0.25]],
-    clusterCount: 5,   // the plain is the point — groves are rare landmarks
-    loneCount: 24,
+    // (2026-10-05, the map-revival lane; gauntlet wave 106's "savanna of evenly scattered orange trees": the steppe's
+    // trees are its planted belts — fewer loose trees and groves)
+    clusterCount: 3,   // the plain is the point — groves are rare landmarks
+    loneCount: 10,
     rimCount: 34,
     grassDensity: 1.1,
     bushCount: 0.72,
@@ -279,6 +284,11 @@ export default {
       ...shelterbelt(300, -470, 266, -240, [[0, 0.55, 'poplar', 9, 0.2, 0], [0.62, 1, null, 12, 0.3, -3]]),  // east track approach
       ...shelterbelt(-370, -86, -250, -80, [[0, 0.45, 'oak', 8, 0.25, 0], [0.55, 1, null, 10, 0.3, 2]]),     // kolkhoz windbreak
       ...shelterbelt(-440, 386, -300, 382, [[0, 0.6, 'oak', 10, 0.28, 0], [0.7, 1, null, 12, 0.35, -2]]),    // plateau field boundary
+      // 2026-10-05 (the map-revival lane): Barayev's field-protective belts across the strips' long lines, poplar runs
+      // with oak (the elm's stand-in) and a gap where a field track crosses
+      ...shelterbelt(140, 20, 172, 300, [[0, 0.46, 'poplar', 8, 0.12, 0], [0.52, 1, 'oak', 9, 0.15, 0]]),   // station fields, south
+      ...shelterbelt(-330, 60, -298, 300, [[0, 0.5, 'oak', 9, 0.15, 0], [0.56, 1, 'poplar', 8, 0.12, 0]]),  // kolkhoz fields, south
+      ...shelterbelt(380, 30, 412, 300, [[0, 0.44, 'poplar', 8, 0.12, 0], [0.5, 1, 'poplar', 9, 0.14, 0]]), // east fields
     ],
     grassTexTone: (h: number, s: number, l: number) => [0.118, clamp01(s * 0.75 + 0.05), clamp01(l * 1.05 + 0.07)],
     tuftTone: (h: number, s: number, l: number) => [0.122, 0.30, clamp01(l * 0.85 + 0.14)],
