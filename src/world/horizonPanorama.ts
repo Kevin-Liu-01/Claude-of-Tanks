@@ -1647,8 +1647,10 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     }
     if (Number.isFinite(atmosphere.fogDensity)) air.uPanoSigmaPost.value = hazeSigma(atmosphere.fogDensity as number);
     // the aerial pass's cloud shade, as post.ts sets it each frame (its CLOUD_SHADE_DEFAULT without a published one)
+    // (2026-10-05, the skies lane: faded by the light model's overcast as post.ts fades it — none under a closed deck)
     const shade = (scene.userData as { cloudShadeAmp?: number }).cloudShadeAmp;
-    air.uCloudShade.value = typeof shade === 'number' && Number.isFinite(shade) ? shade : 0.22;
+    const deck = Math.min(1, Math.max(0, (scene.userData.lightModel as { overcast?: number } | undefined)?.overcast ?? 0));
+    air.uCloudShade.value = (typeof shade === 'number' && Number.isFinite(shade) ? shade : 0.22) * (1 - deck);
     const ground = options.groundAt ? options.groundAt(camera.position.x, camera.position.z) : NaN;
     air.uPanoDatum.value = Number.isFinite(ground) ? ground : hazeDatumM;
   };
