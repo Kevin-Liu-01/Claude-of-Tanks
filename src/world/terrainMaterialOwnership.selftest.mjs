@@ -110,9 +110,14 @@ function checkSourceContract(text) {
   // map pass 2026-09-12: the bare road shoulder gained its own authored scale
   // (uShoulderDirt, default 1) so snow passes keep white verges; the max()
   // competition between ambient wear, shoulder and town wear is unchanged.
+  // (wave 71, the ground lane: a meadow's worn patch is grazed turf with its soil at the trodden core — wornCore; the
+  // arid maps' sand and the snow maps' scoured crests keep the whole patch)
   assert.equal(compact(scalar(text, 'fD')),
-    'clamp(max(worn*uWornDirtStrength,max(shoulder*uShoulderDirt,mk.a*uTownWear*(0.35+0.65*n1))),0.0,1.0)',
+    'clamp(max(wornCore*uWornDirtStrength,max(shoulder*uShoulderDirt,mk.a*uTownWear*(0.35+0.65*n1))),0.0,1.0)',
     'authored dirt/road/town blend policy unchanged');
+  assert.equal(compact(scalar(text, 'wornCore')),
+    '(uSandMacro>0.001||uReduxD.y>1.5)?worn:smoothstep(0.78,1.0,n2w+(n1w-0.5)*0.45)',
+    'a meadow\'s worn patch soils only at its core; the arid and snow maps keep the whole patch');
   assertTerrainFetchExpressionCensus(text);
   assert.deepEqual(text.match(/texSize\(\d+\)/g), [...Array(6).fill('texSize(256)'), 'texSize(512)']);
   const declarations = (text.includes('${LAND_USE_GLSL}') ? text + landUseGlsl : text)

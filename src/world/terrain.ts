@@ -4020,7 +4020,13 @@ void splatCompute() {
   // Keep road/town coverage independent and raw worn aligned with grass scatter.
   // map pass 2026-09-12: uShoulderDirt scales the bare shoulder so snow passes
   // keep white verges beside a packed road instead of a 10 m mud slash.
-  float fD = clamp(max(worn * uWornDirtStrength, max(shoulder * uShoulderDirt, mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
+  // Ground lane (wave 71, every grass view: "bare, blurry soil between tufts … the sward isn't reaching it"): a
+  // meadow's worn patch is grazed turf — shorter, yellowed — and its soil shows only at the trodden core: the dirt layer
+  // takes the core, the turf's tone the rim (grazeT, laid on the base tile below; the grass tiers thin over the whole
+  // patch). The arid maps' sand patches and the snow maps' scoured crests keep the whole patch.
+  float wornCore = (uSandMacro > 0.001 || uReduxD.y > 1.5) ? worn : smoothstep(0.78, 1.0, n2w + (n1w - 0.5) * 0.45);
+  float grazeT = worn - wornCore;
+  float fD = clamp(max(wornCore * uWornDirtStrength, max(shoulder * uShoulderDirt, mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
   float fM = mkB;
   // marsh/ice sheets only live on near-flat ground: without this the graded
   // banks around a frozen lake inherit the sheet's glossy blue ice response
@@ -4205,6 +4211,8 @@ void splatCompute() {
       a = mix(a, wallSamp(uAlbG, uMeanG, 0.240, df, mipB), triW);
       if (nrmOn) n = mix(n, wallNrm(uNrmG, 0.240, df, mipB), triW);
     }
+    // the worn patch's rim: grazed turf, its green yellowed and a shade lighter (cropped short to the light)
+    if (grazeT > 0.003) a.rgb = mix(a.rgb, a.rgb * vec3(1.14, 1.05, 0.76), grazeT * 0.60 * (1.0 - shoulder) * (1.0 - triW));
   }
   // round 73: the base layer's relief against its tile mean, and the transition strength — full inside
   // the near variant, gone with the far one, off the wall projections whose UVs are not the planar tiles'
@@ -4684,10 +4692,17 @@ void splatCompute() {
           gFieldWater = max(gFieldWater, ditch * track * landW);
         } else {
           // a track along the boundary line: trodden soil, two wheel ruts 1.7 m apart astride the line, grass on the crown
+          // (wave 71, Frontier's close-up: the track "a ring of dirt … like a decal mask" — "its edge is too clean and too
+          // red") a field track is two worn ruts in the grass, not a band of soil: grass stands on the crown between them
+          // and mostly on their outer verges, the band's edge comes and goes along it (the edge-zone noise and the fine
+          // breaker), and the trodden soil is the soil's own tone half greyed — a farm track's dust, not the clay's red
           float rq = (edgeM - 0.85) / 0.30;
           float ruts = exp(-rq * rq);
-          vec3 trackCol = soil.rgb * vec3(0.92, 0.88, 0.80) * (1.0 - 0.28 * ruts);
-          a.rgb = mix(a.rgb, trackCol, track * landW * clamp(ruts * 1.3 + 0.35, 0.0, 1.0));
+          float crownG = 1.0 - smoothstep(0.30, 0.62, edgeM);
+          float bandT = track * smoothstep(0.0, 0.45, track + (nEdge.z - 0.5) * 0.9 + (n1h - 0.5) * 0.5);
+          vec3 trodden = mix(soil.rgb, vec3(reduxLuma(soil.rgb)), 0.45) * vec3(0.96, 0.93, 0.88);
+          vec3 trackCol = trodden * (1.0 - 0.28 * ruts);
+          a.rgb = mix(a.rgb, trackCol, bandT * landW * clamp(ruts * 1.3 + 0.22 * (1.0 - crownG), 0.0, 1.0));
         }
       }
     }

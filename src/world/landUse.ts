@@ -76,10 +76,10 @@ export type LandCropId = (typeof LAND_CROP)[keyof typeof LAND_CROP];
  * the plough 0.03–0.06, terra rossa ~0.12, a young crop 0.10–0.13, rice green brighter than a cereal.
  */
 export const LAND_CROP_ALBEDO: Readonly<Record<LandCropId, readonly [number, number, number]>> = Object.freeze({
-  0: [0.085, 0.170, 0.035], // pasture: the calibrated meadow tip (groundRedux.ts MEADOW_TIP)
+  0: [0.092, 0.160, 0.045], // pasture: the calibrated meadow tip (groundRedux.ts MEADOW_TIP)
   1: [0.30, 0.22, 0.075],   // ripe wheat
   2: [0.33, 0.28, 0.12],    // barley
-  3: [0.078, 0.150, 0.032], // young green crop (wave 14, verdant chase: "oversaturated lime … artificial turf"): the meadow's own
+  3: [0.085, 0.148, 0.040], // young green crop (wave 14, verdant chase: "oversaturated lime … artificial turf"): the meadow's own
   //   hue a shade deeper — a crop tint divides by the biome's tip, so a bluer albedo turned the blades teal (hold 6)
   4: [0.050, 0.042, 0.034], // plough (black earth; the terrain uses its own soil layer)
   5: [0.30, 0.25, 0.13],    // stubble

@@ -3791,10 +3791,18 @@ function* vegetationBuildSteps(
     // (thresholds track the shader's `worn` band — r4: 0.55/0.80 + warp)
     const dirtPatch = smoothstepJs(0.55, 0.80, sn.n2 + (sn.n1 - 0.5) * 0.45);
     if (dirtPatch > 0.35 && clJ < dirtPatch * 0.9) dry = Math.max(dry, 0.55);
+    // ground lane (wave 71: "hard-edged colour patches … real swards mix the two through a gradient, with cured blades
+    // among green ones"; Verdant's "flat, oversaturated neon … no yellow or brown mixing"): a summer sward is part cured
+    // wherever it stands — a tuft in six carries last season's straw (a hash of the tuft's own draws: the stream is
+    // unchanged)
+    if (((hueJ * 13.7 + varJ * 5.3) % 1) < 0.17) dry = Math.max(dry, 0.6);
     // r7: carpet cull 0.6 -> 0.4 — the near dirt patches punched hard bald
     // holes in the hero grass ring and the exposed albedo read as "flat
     // mottled texture up to the tracks"; keep them THINNER, not bare
-    if (rejectDenseScatter(sn, dirtPatch, roll, clJ, carpet)) return null;
+    // (wave 71: "bare, blurry soil between tufts") a worn patch is grazed turf with its soil at the trodden core only
+    // (terrain.ts wornCore): the tufts thin hard on the core, and only a little on the rim
+    const dirtCore = smoothstepJs(0.78, 1.0, sn.n2 + (sn.n1 - 0.5) * 0.45);
+    if (rejectDenseScatter(sn, Math.max(dirtCore, dirtPatch * 0.62), roll, clJ, carpet)) return null;
     // sparse-biome ecology (desert scrub / winter litter): confetti-uniform
     // scatter reads as noise dots — gate placement behind a low-frequency
     // mask so growth clusters in hollows and along moisture lines, with only
@@ -3830,7 +3838,13 @@ function* vegetationBuildSteps(
             if (f.boundary === 2 && f.edgeM < 0.55 && clJ < 0.5) return null;
           } else if (!f.sward) return null;
           else if (f.weed) dry = Math.max(dry, 0.75); // a bare field's weeds: the tuft's own straw, not the soil's colour
-          else if (f.crop !== 0) crop = f.crop;
+          else if (f.crop !== 0) {
+            // (wave 71: "… and green among straw") a sown field carries its weeds — an eighth of its tufts the sward's
+            // own, most of them along its edge, where the crop thins into the margin over three metres instead of
+            // stopping on a line
+            const weedP = 0.12 + 0.73 * (1 - smoothstepJs(0, 3.0, f.edgeM - f.marginM));
+            if (((hueJ * 7.31 + lumJ * 3.17) % 1) >= weedP) crop = f.crop;
+          }
         }
       }
     }
@@ -3848,8 +3862,10 @@ function* vegetationBuildSteps(
     // and a low-frequency meadow unifier keyed to the shared splat field —
     // adjacent tufts now drift together like one sward instead of the
     // radioactive lime-vs-dark confetti the critique flagged
-    let th = 0.225 + (hueJ - 0.5) * 0.05 - dry * 0.08;
-    let ts = 0.30 - dry * 0.11;
+    // (wave 71: Verdant's "flat, oversaturated neon" — the carpet's tips at HSV saturation 0.8 under the grade's boost)
+    // the tint a third less saturated and a little yellower: a summer sward, not a lime lawn (was 0.225 / 0.30)
+    let th = 0.21 + (hueJ - 0.5) * 0.05 - dry * 0.08;
+    let ts = 0.19 - dry * 0.07;
     let tl = 0.44 + (lumJ - 0.5) * 0.12 + (sn.n2 - 0.5) * 0.10 + dry * 0.04;
     // r6 terrain_environment: MEADOW PATCHWORK on the blades themselves. The
     // splat shader stamps 50-200 m dry-straw fields (meadowA -> uTintA), but
