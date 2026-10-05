@@ -8643,7 +8643,10 @@ ${snowCap ? `
         vertexColors: true, roughness: 1, metalness: 0,
       });
       wallMaterial.name = 'props-field-walls';
-      engineCtx.setupShadowMaterial(wallMaterial);
+      // (b14, wave 97: "uniform polygon cells": the print's two-metre tile varies by world place under the props' grime,
+      // and lichen grows by world place, as on the dry-stone modules)
+      engineCtx.setupShadowMaterial(wallMaterial, (shader) => { grimeHook(shader); applyStoneWallHook(shader, stoneShape); });
+      wallMaterial.customProgramCacheKey = () => 'world-props-field-walls-v1';
       retainedSurfaceMaterials.push(wallMaterial);
       // (the coordinator, after the first b13 count: "full stones within a near radius, merged per cell, with a simpler
       // mid and far form"; the joinery's law) the walls by 64 m cell: two batches of one draw each, the near form's and

@@ -189,7 +189,7 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
   const props = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
   assert.match(props, /const print = yield\* makeDryWall\(aniso, mobileProps \? 256 : 512\);/, 'the walls paint their print (half size on the phones)');
   assert.match(props, /map: print\.albedo, normalMap: print\.normal, roughnessMap: print\.surface, aoMap: print\.surface,\n\s*vertexColors: true,/, 'on their own material, the vertex tone over the print');
-  assert.match(props, /engineCtx\.setupShadowMaterial\(wallMaterial\);/, 'a lit material on the cascades');
+  assert.match(props, /engineCtx\.setupShadowMaterial\(wallMaterial, \(shader\) => \{ grimeHook\(shader\); applyStoneWallHook\(shader, stoneShape\); \}\);/, 'a lit material on the cascades, under the grime and the lichen by world place');
   assert.match(props, /works\.castShadow = false;\n\s*works\.receiveShadow = true;/, 'no shadow cast, shadows received');
   assert.match(props, /if \(built\.bankGeometry\) place\(built\.bankGeometry, mats\.rock,/, 'the banks on the rock material');
   // near-only detail: the cells' near forms and far forms in two batches, the near shown within the quality's distance
