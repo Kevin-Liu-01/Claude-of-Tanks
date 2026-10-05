@@ -229,9 +229,12 @@ const naya: RegionalBuilder = (ctx) => {
 /** A vinyl greenhouse (a gantry plot): steel hoops under milky film along the plot, the end walls and doors. */
 const greenhouse: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  // the house fills the old gantry's reach (its bounds, which stand off the plot's centre)
-  const R = reach(ctx), L = Math.max(10, R.W - 0.6), r = Math.max(1.6, Math.min(2.6, R.D / 2 - 0.3)), base = 0.5;
-  sink.placed(0, R.cx, 0, R.cz, () => {
+  // the house stands between the old gantry's legs: the symmetric part of its reach about the plot's origin. The reach's
+  // longer side is the crane beam's overhang, high over open ground (Caldera's south gantry overhangs the coast road's
+  // edge there: a house filling the whole reach stood half a metre into the carriageway's core)
+  const R = reach(ctx), halfX = Math.min(-R.x0, R.x1), halfZ = Math.min(-R.z0, R.z1);
+  const L = Math.max(10, 2 * halfX - 0.6), r = Math.max(1.6, Math.min(2.6, halfZ - 0.3)), base = 0.5;
+  sink.placed(0, 0, 0, 0, () => {
   sink.span(CEMENT, -L / 2 - 0.05, -0.3, -r - 0.05, L / 2 + 0.05, base, r + 0.05);
   sink.cylinder('structureMetal', [-L / 2, base, 0], 'x', L, r, 12, { colour: VINYL }, r, true, -Math.PI / 2, Math.PI);
   for (let x = -L / 2 + 0.5; x < L / 2; x += 1.0) {
