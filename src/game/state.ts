@@ -1997,6 +1997,7 @@ function traceNearestTank(
       pose,
       entity.spec.armor,
       entity.combat.eraSpent,
+      shell.spec.tracer === 'DRONE',
     );
     if (!intersections.length) continue;
     const distance = intersections[0].t * segmentLength;
@@ -2237,7 +2238,7 @@ function stepSpotting(game: SoloGameState, bus: EventBus): void {
   if (!game.spotting) return;
   for (const event of game.spotting.update(SIM_DT, game.timeS)) {
     bus.emit('tank:spotted', event);
-    if (game.player && event.id === game.player.id && event.team === 'enemy') {
+    if (game.player && event.id === game.player.id && event.team !== game.player.team) {
       bus.emit('player:spotted', { timeS: game.timeS });
     }
   }

@@ -161,9 +161,9 @@ for (const spec of Object.values(TANK_SPECS)) {
 // Legacy guided channels and source-based additions retain their contracts;
 // the two owner-authored concepts add four explicitly checked missile modes.
 const suppliedIds = new Set(SUPPLIED_SOURCE_IDS);
-const conceptIds = new Set(['ztz100_prototype', 'object695_x', 'griffin_viper']);
+const conceptIds = new Set(['ztz100_prototype', 'object695_x', 'griffin_viper', 'm6_linebacker']);
 const concepts = guidedRounds.filter(({spec}) => conceptIds.has(spec.id));
-assert.equal(concepts.length, 5);
+assert.equal(concepts.length, 6);
 // 2026-09-25 IFV identity batch (docs/references/batches/ifv-replicas-20260925.md, europe-ifvs-20260925.md):
 // the Puma S1 X and Type 89 X replica racks and the Borsuk's Spike LR are three additional guided channels,
 // counted beside the established fleet rather than folded into its immutable census.
@@ -175,7 +175,7 @@ assert.equal(guidedRounds.filter(({spec}) => !suppliedIds.has(spec.id) && !conce
 assert.deepEqual(guidedRounds.filter(({spec}) => suppliedIds.has(spec.id))
   .map(({spec}) => spec.id).sort(), ['aft10_x', 'cv90_mkiv_x', 'fv510_milan_x', 'k21_x', 'kurganets25_x', 'kurganets25_x'],
   'five source configurations carry six guided channels, including both Epokha launchers');
-assert.equal(guidedRounds.length, 37, 'the complete guided-ammunition fleet is covered'); // 34 + the three 2026-09-25 IFV racks
+assert.equal(guidedRounds.length, 38, 'the complete guided-ammunition fleet is covered'); // 34 + the three 2026-09-25 IFV racks
 // Preserve the existing 535 channels, including MBT-70's mixed gun/launcher,
 // separately from the 69 second-wave and 15 retained Abrams X channels.
 // Every new variant is exercised in the fleet loop above, not just its donor.
@@ -193,7 +193,7 @@ const laterChannelCounts = {
   tos1a_tagil: 1, ariete_c2_x: 3, griffin_viper: 1,
   // 2026-09-25 IFV identity batch: three X replicas beside their kept originals and three photographic additions.
   spz_puma_s1_x: 3, cv90_x: 3, type89_x: 3, dardo: 2, lrmv_lynx: 2, borsuk: 3,
-  amx10p: 2, amx10p_25: 2, marder2: 2,
+  amx10p: 2, amx10p_25: 2, marder2: 2, m6_linebacker: 3,
   type96_72_long: 3, type96_80_feng: 3, type96_72m_lei: 3, t72_rys: 3,
   ua_t80u_modern: 3, ua_t72b3m_modern: 3, ua_t72b3_modern: 3,
   pl_t80u_modern: 3, pl_t72b3m_modern: 3, pl_t72b3_modern: 3,
@@ -240,7 +240,7 @@ assert.deepEqual(arieteC2Rounds.map(round => [round.name, round.type, round.cali
 // when the remaining 36 hidden records retired (the same 106 channels as the census above).
 // 2026-09-25: the sixteen IFV identity channels are subtracted the same way; the 560 stay covered separately.
 // The French IFVs' four channels, Marder's two and the renewal concepts' twelve are also additions.
-assert.equal(authoredShellChannels - laterChannelCounts.ariete_c2_x - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels, 560,
+assert.equal(authoredShellChannels - laterChannelCounts.ariete_c2_x - laterChannelCounts.griffin_viper - ifvBatchChannels - frenchIfvChannels - laterChannelCounts.marder2 - fleetRenewalChannels - nationalChannels - laterChannelCounts.m6_linebacker, 560,
   'all 560 pre-C2 authored channels remain covered separately from its three new channels');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

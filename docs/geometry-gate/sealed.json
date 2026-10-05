@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-02T00:52:19.633Z",
+ "generatedAt": "2026-10-04T09:17:49.892Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening) and inside-out pixel totals over the 33 census views. Gate: a tank may not exceed its ledger open px by more than max(12, 10%) and a sealed tank must stay sealed.",
@@ -542,35 +542,35 @@
   },
   "m1a1": {
    "sealed": true,
-   "openPx": 3,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 17,
+   "insideOutPx": 36,
    "seeThroughPx": 0,
-   "tris": 102790
+   "tris": 103874
   },
   "m1a1ha": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 81,
+   "insideOutPx": 76,
    "seeThroughPx": 0,
-   "tris": 113866
+   "tris": 115182
   },
   "m1a2": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 2,
+   "insideOutPx": 1,
    "seeThroughPx": 0,
-   "tris": 114230
+   "tris": 115506
   },
   "m1a2_sepv2": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 2,
-   "seeThroughPx": 20,
-   "tris": 117102
+   "insideOutPx": 5,
+   "seeThroughPx": 16,
+   "tris": 118498
   },
   "m1a2_sepv2_x": {
    "sealed": true,
@@ -584,9 +584,9 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 0,
-   "seeThroughPx": 5551,
-   "tris": 129932
+   "insideOutPx": 5,
+   "seeThroughPx": 5694,
+   "tris": 131220
   },
   "m1a2_sepv3_x": {
    "sealed": true,
@@ -598,11 +598,11 @@
   },
   "m1a2_tusk": {
    "sealed": true,
-   "openPx": 2,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 503,
+   "insideOutPx": 180,
    "seeThroughPx": 0,
-   "tris": 123034
+   "tris": 125018
   },
   "m1a2_tusk_x": {
    "sealed": true,
@@ -637,12 +637,12 @@
    "tris": 68886
   },
   "m3a3_bradley": {
-   "sealed": false,
-   "openPx": 481,
-   "openViews": 14,
-   "insideOutPx": 856,
-   "seeThroughPx": 15,
-   "tris": 76746
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 145,
+   "seeThroughPx": 9,
+   "tris": 92402
   },
   "m46_patton": {
    "sealed": false,
@@ -1246,11 +1246,11 @@
   },
   "ua_m1a1": {
    "sealed": true,
-   "openPx": 0,
+   "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 37,
-   "seeThroughPx": 19407,
-   "tris": 140984
+   "insideOutPx": 44,
+   "seeThroughPx": 19035,
+   "tris": 142360
   },
   "ua_m1a1_x": {
    "sealed": true,
@@ -1571,6 +1571,14 @@
    "insideOutPx": 82,
    "seeThroughPx": 26,
    "tris": 101030
+  },
+  "m6_linebacker": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 124,
+   "seeThroughPx": 0,
+   "tris": 95662
   }
  }
 }

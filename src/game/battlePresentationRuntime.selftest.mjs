@@ -356,3 +356,19 @@ console.log('battlePresentationRuntime.selftest: interpolation, visibility, deta
  entity.combat.destroyed=true;runtime.update(.016,1);assert.equal(mesh.material,material,'dead infected stops glowing');
  mesh.geometry.dispose();material.dispose();
 }
+
+{
+ const {entity,root,syncs}=createEntity({isPlayer:true});
+ const material=new MeshStandardMaterial(),mesh=new Mesh(new BoxGeometry(),material);root.add(mesh);
+ entity.combat.hp=100;entity.combat.maxHp=100;
+ const {runtime,game,effects}=createHarness({tanks:[entity],phase:'garage',network:true});
+ game.matchModeState={id:'infected',factions:[{id:entity.id,team:'bravo'}]};
+ runtime.prepareModeVisuals();
+ assert.equal(mesh.material.name,'Infected surface highlight','network entry attaches mode shaders before activation/compile');
+ assert.equal(game.phase,'garage','warm never activates gameplay');
+ assert.equal(syncs.length,0,'warm never advances poses');
+ assert.equal(effects.dust.length,0,'warm never emits driving effects');
+ runtime.prepareModeVisuals();
+ assert.equal(mesh.material.name,'Infected surface highlight');
+ game.phase='ended';runtime.update(0);mesh.geometry.dispose();material.dispose();
+}

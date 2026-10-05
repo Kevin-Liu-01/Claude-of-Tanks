@@ -58,5 +58,20 @@ update();pulseJuggernautImpact(root,[0,1,0]);clearJuggernautVisual(root);clearJu
 assert.equal(hull.material,source);assert.equal(root.scale.x,2);assert.equal(pulseJuggernautImpact(root,[0,1,0]),false,'garage cleanup removes all live ripple state');
 update();const freshShader={uniforms:{},vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader};hull.material.onBeforeCompile(freshShader,{});
 assert.ok(freshShader.uniforms.juggernautHits.value.every(h=>h.w<0),'next match starts without old ripples');clearJuggernautVisual(root);
+// Stable models do not incur periodic whole-tree traversal. Material repair
+// and streamed attachment groups still join the existing effect.
+scene.add(root);let scans=0;const walk=root.traverse.bind(root);
+root.traverse=visit=>{scans++;walk(visit);};
+update();const initialScans=scans;
+for(let i=0;i<120;i++)update(100,1.12,1/60);
+assert.equal(scans,initialScans,'stationary topology requires no repeat full-model scans');
+hull.material=source;update(100,1.12,.3);
+assert.notEqual(hull.material,source,'material-only repair is discovered by the flat binding audit');
+const detailGroup=new T.Group();detailGroup.add(new T.Mesh(geometry,source));turret.add(detailGroup);
+update(100,1.12,.3);
+assert.equal(detailGroup.children[0].material,hull.material,'streamed subtrees acquire energy');
+clearJuggernautVisual(root);
+assert.equal(root._listeners.childadded.length,0,'effect cleanup releases hierarchy observers');
+
 geometry.dispose();batch.dispose();source.dispose();wreck.dispose();glassMaterial.dispose();
 console.log('juggernautVisual: exact surfaces, instancing/batching, shared paint isolation, original hooks, articulation, hit pulse, thermal, death, removal and reuse passed');

@@ -1,4 +1,3 @@
-import { createLazyRuntimeOwner } from './app/lazyRuntimeOwner.ts';
 import { structureTopAt, SUPPORT_STEP_UP_M } from './sim/structureSupport.ts';
 import type { CollisionRecord } from './world/collision.ts';
 import './ui/battleUiVisibility.css';
@@ -152,6 +151,7 @@ import {
   GARAGE_CAMERA_PITCH_RAD,
 } from './game/garagePresentationPose.ts';
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
+import { createGarageModePreviewRuntime } from './app/garageModePreviewRuntime.ts';
 import { createGarageShowroomRuntime } from './game/garageShowroomRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { createGarageReturnAccess } from './game/garageReturnAccess.ts';
@@ -881,7 +881,8 @@ const battleIntent = createBattleIntentRuntime({
   loadWorldModule,
   prefetchWorld,
   ensureTankBuilders,
-  planRoster: (specId) => planBattleParticipantIds(game, specId, true),
+  planRoster: (specId) => planBattleParticipantIds(game, specId, true)
+    .filter(id => garagePreviewMode !== 'ac130' || id !== specId),
   getSpec,
   prebakeSharedTextures,
   createBudgetYield: createFrameBudgetYielder,
@@ -1159,15 +1160,34 @@ const playSurface = createPlaySurfaceRuntime({
 // and solo all dismiss the operation picker before the next painted frame.
 bus.on('ui:battleStart', () => {
   sceneWatchdogEntryGeneration++;
-  garageModePreview.current?.clear();
+  garageModePreview.clear();
   coveredBattleWatchdog = null;
   playSurface.hideForBattle();
 });
 
 let garagePreviewMode = 'standard';
-const garageModePreview = createLazyRuntimeOwner(
-  () => import('./game/garageModePreview.ts'), module => module.createGarageModePreview(),
-);
+const garageModePreview = createGarageModePreviewRuntime({
+  load: () => import('./game/garageModePreview.ts').then(module => module.createGarageModePreview()),
+  prepare: async (root, current) => {
+    // Match the real Garage forward targets and light layers. A generic
+    // composer compile can leave the revealed frame to link a new variant.
+    const lateMask = 1 << LATE_FX_LAYER;
+    const passes = post?.composer ? [
+      { layerMask: camera.layers.mask & ~lateMask, target: post.sceneAA.sceneTarget },
+      { layerMask: lateMask, target: post.lateFx.target },
+    ] : undefined;
+    const steps = forwardProgramWarm.prepareSceneSteps({ visibleRoot: root, passes, strict: true, sliceMs: 4 });
+    try {
+      while (current() && game.phase === 'garage') {
+        const result = steps.next();
+        if (result.done) break;
+        await nextFrame();
+      }
+    } finally { steps.return(undefined as never); }
+  },
+  invalidate: () => invalidateGaragePresentation(),
+  warn: error => console.error('[garage mode preview]', error),
+});
 const garagePreviewAnimated = () => garagePreviewMode === 'juggernaut' || garagePreviewMode === 'capture_the_flag' || garagePreviewMode === 'infected';
 
 const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
@@ -1175,13 +1195,10 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   bus,
   onGameModeSelect: mode => {
     garagePreviewMode = mode;
-    garageModePreview.current?.clear();
-    if (['juggernaut', 'drone', 'capture_the_flag', 'infected'].includes(mode)) {
-      void garageModePreview.preload().then(() => invalidateGaragePresentation())
-        .catch(error => console.error('[garage mode preview]', error));
-    }
+    if (['juggernaut', 'drone', 'capture_the_flag', 'infected'].includes(mode)) void garageModePreview.preload();
     invalidateGaragePresentation();
   },
+  onGameModeIntent: () => { void garageModePreview.preload(); },
   onSelect: (specId: string) => {
     battleIntent.invalidateMapPlan();
     selectedVehicle.select(specId);
@@ -1553,6 +1570,7 @@ const combatWarmComposition = createCombatWarmComposition({
   setPending: (pending: boolean) => { battleWarmPending = pending; },
   prepareNextOpeningRoute: () => Boolean(prepareNextOpeningRoute(game)),
   ensureStagedVisuals: (count: number) => ensureStagedVisuals(game, count),
+  prepareModeVisuals: () => battlePresentation.prepareModeVisuals(),
   prebakeBurntSteps,
   warmWreckTextures,
   createIsolatedForwardWarmBatches,
@@ -1878,6 +1896,7 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     prepareRevealCamera: prepareBattleRevealCamera,
     preparePlayerPanel: async () => {
       const player = game.player;
+      if (player?.aerial?.kind === 'gunship') return;
       const panel = currentDamagePanel();
       if (!player || !panel) throw new Error('Player damage panel was not prepared');
       if (!await panel.prepareTankMasks(player.spec, player.visual)) {
@@ -2035,7 +2054,7 @@ const soloBattleStart = createSoloBattleStartAccess({
       armorAim: armorAimOverlay,
       resetDriveAim: () => driveTestController.resetAim(),
       setCamoBiome,
-      lendPlayerVisual: (specId: string) => pedestal.lendToBattle(specId),
+      lendPlayerVisual: (specId: string, useTank = true) => pedestal.lendToBattle(specId, useTank),
       setupBattle,
       combatWarm,
       presentation: battlePresentation,
@@ -2336,8 +2355,8 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
               biome: mapId,
             };
           },
-          rows: (players, team, viewerId) => (
-            rosterPresentation.lobbyRows({ players }, team, viewerId)
+          rows: (players, team, viewerId, gameMode) => (
+            rosterPresentation.lobbyRows({ players, gameMode }, team, viewerId)
           ),
           vehicleName: (specId: string) => getSpec(specId)?.name || specId,
           emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),
@@ -2454,6 +2473,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 maxMs: Math.max(0, ...casterBatchMs) } };
           },
           compile: async (signal?: AbortSignal) => {
+            battlePresentation.prepareModeVisuals();
             const timing: ForwardProgramCompileTiming = {};
             const lateMask = 1 << LATE_FX_LAYER;
             // Match SceneAAPass and LateFxPass light selection and their exact
@@ -2947,10 +2967,11 @@ const mainFrame = createMainFrameRuntime({
   pedestal,
   garageModePreview: {
     get animated() { return garagePreviewAnimated(); },
-    clear: () => garageModePreview.current?.clear(),
+    get pending() { return garageModePreview.pending; },
+    clear: () => garageModePreview.clear(),
     update: dt => {
       const visual = pedestal.current;
-      garageModePreview.current?.update(visual?.root ?? null, visual ? getSpec(visual.specId) : null, garagePreviewMode, dt);
+      garageModePreview.update(visual?.root ?? null, visual ? getSpec(visual.specId) : null, garagePreviewMode, dt);
     },
   },
   networkSession: networkPump,
@@ -3293,6 +3314,7 @@ if (diagnosticsRequested) {
       },
       getFx: () => fxRuntimeAccess.current,
       getPedestalVisual: () => pedestal.current,
+      isGarageModePreviewPending: () => garageModePreview.pending,
       isPedestalOnStage: () => pedestal.isOnStage(),
       getSelectedSpecId: () => selectedVehicle.id,
       getPedestalCacheIds: () => [...pedestal.cacheIds],

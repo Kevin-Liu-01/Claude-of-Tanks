@@ -162,7 +162,7 @@ export interface GaragePedestalRuntime {
   isOnStage(visual?: GaragePedestalVisual | null): boolean;
   poseCurrent(): void;
   adoptBattlePlayer(specId: string): boolean;
-  lendToBattle(specId: string): boolean;
+  lendToBattle(specId: string, useTank?: boolean): boolean;
   buildSpeculative(
     specId: string,
     stillValid?: () => boolean,
@@ -549,7 +549,6 @@ export function createGaragePedestalRuntime({
     stillCurrent: () => boolean = () => true,
     record: GarageSwitchRecord | null = null,
   ) => {
-    if (getDeviceTier() === 'mobile') return;
     try {
       if (!prepareProgramSteps) {
         // Submit-only fallback: two frames give the linker a head start and
@@ -821,7 +820,7 @@ export function createGaragePedestalRuntime({
   const adoptBattlePlayer = (specId: string) => {
     if (disposed || getPhase() !== 'garage') return false;
     const incoming = getBattlePlayer()?.visual;
-    if (!incoming || incoming.specId !== specId || retired.has(incoming)) return false;
+    if (!incoming || incoming.root.userData?.aircraftOnly || incoming.specId !== specId || retired.has(incoming)) return false;
     const cached = cache.get(specId);
     if (cached && reusable(cached) && cached !== incoming) return false;
     const outgoing = current;
@@ -842,9 +841,14 @@ export function createGaragePedestalRuntime({
     return true;
   };
 
-  const lendToBattle = (specId: string) => {
+  const lendToBattle = (specId: string, useTank = true) => {
     if (disposed) return false;
     const visual = current;
+    if (!useTank) {
+      pollToken += 1; shownToken = pollToken; preloader.invalidate();
+      if (visual) park(visual, true);
+      return false;
+    }
     const entity = getBattleEntity(specId);
     if (visual && visual.specId !== specId) {
       // Direct entry/rematch can request a different tank from the hero still

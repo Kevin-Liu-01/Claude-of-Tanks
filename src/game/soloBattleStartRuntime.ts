@@ -73,7 +73,7 @@ export interface SoloBattleStartRuntimeOptions {
     armorAim: { clear(): void };
     resetDriveAim(): void;
     setCamoBiome(mapId: string): void;
-    lendPlayerVisual(specId: string): void;
+    lendPlayerVisual(specId: string, useTank?: boolean): void;
     setupBattle(
       game: SoloBattleGame,
       specId: string,
@@ -201,7 +201,7 @@ export function createSoloBattleStartRuntime({
       round.setCamoBiome(activeWorld.mapId);
       mark('activateWorld');
 
-      round.lendPlayerVisual(specId);
+      round.lendPlayerVisual(specId, gameMode !== 'ac130');
       mark('lendPlayerVisual');
       round.setupBattle(game, specId, activeWorld, {
         random: randomRoster,
@@ -218,11 +218,11 @@ export function createSoloBattleStartRuntime({
       state.setSimulationAccumulator(0);
       round.presentation.resetSoloPoses();
 
-      round.applyPlayerCamo(specId);
+      if (gameMode !== 'ac130') round.applyPlayerCamo(specId);
       mark('playerCamo');
       state.setCamoSweep(round.applyRosterCamo({
-        priorityIds: [specId],
-        onlySpecIds: game.tanks.map((entity) => entity.specId),
+        priorityIds: gameMode === 'ac130' ? [] : [specId],
+        onlySpecIds: game.tanks.filter(entity => gameMode !== 'ac130' || entity.specId !== specId).map((entity) => entity.specId),
       }));
       mark('scheduleRosterCamo');
 
@@ -234,9 +234,11 @@ export function createSoloBattleStartRuntime({
       ui.playerActions.setTank(player.spec);
       // The panel borrows these materials immediately. Install the disarmed
       // destruction hook before its asynchronous mask compile can begin.
-      player.visual?.prewarmBurn?.();
-      ui.damagePanel.setTank(player.spec, player.visual);
-      ui.damagePanel.setEquipment(player.equip ?? null);
+      if (gameMode !== 'ac130') {
+        player.visual?.prewarmBurn?.();
+        ui.damagePanel.setTank(player.spec, player.visual);
+        ui.damagePanel.setEquipment(player.equip ?? null);
+      }
       ui.hideGarage();
       ui.hideEndOverlay();
       ui.resetBattleResult();

@@ -57,6 +57,53 @@ pedestal now prepares links before reveal and builds the two adjacent cards in
 the quiet window (desktop residency six); `tools/garage-switch-probe.selftest.mjs`
 gates warm switches in the post group.
 
+Tank energy highlights stay on the existing vehicle surfaces and add no geometry
+or draw calls. Stable models no longer undergo periodic recursive scans: hierarchy
+change listeners discover streamed parts, while a flat binding check catches repaired
+materials. The listeners are released with the effect. Each style evaluates only its
+own wave pattern instead of computing the Juggernaut pattern before replacing it.
+The original localized hit-ripple calculation and bounded six-contact pool are
+preserved; the rim uses a simple squared falloff.
+
+`node tools/tank-energy.browser.mjs` renders the real M1A2 with one and fourteen
+vehicles, quiet and impact-active effects, and saves screenshots and timing receipts
+under `.qa-dev/tank-energy/`. It uses native GPU queries when available and explicitly
+labels the render-plus-flush fallback. Set `COT_ENERGY_BASELINE` to a Vite-served copy
+of the previous effect module for a paired comparison. These isolated effect samples
+are not whole-game FPS measurements; the game still needs its normal battle checks.
+
+Mode previews use the same readiness principle. Opening the mode selector
+transfers the optional preview code; it does not start preparing a battlefield.
+Only the actual launch controls signal deployment intent. Juggernaut, CTF and
+Infected share their compiled energy materials and change pattern/color uniforms.
+The current Garage tank also retains these materials when switching to an ordinary
+mode: a zero-strength branch restores the original paint, and returning to an aura
+applies uniforms immediately without entering the pending preparation state. This
+cache is bounded to the current tank and released on tank replacement or battle
+entry. Garage shaders omit the battle-only hit-ripple calculations; battle effects
+retain the full contact animation. First-time preparation uses the actual Garage
+forward and late-FX render targets and layer masks to avoid another program variant
+on reveal.
+The selected preview prepares new equipment and shader links before its first
+visible frame, retaining the previous complete canvas while menus and the network
+pump remain active. Tank or mode changes cancel superseded preparation, and battle
+entry cancels all pending Garage work. Mobile tank switches also wait for bounded
+shader preparation instead of deferring that cost to the reveal frame.
+
+Solo and multiplayer loading install the initial vehicle mode effects before
+shader preparation. `garageModePreviewRuntime.selftest.mjs` covers cancellation,
+readiness and retry; `tools/garage-mode-preview.browser.mjs` records mode timing,
+checks material reuse across ordinary-mode round trips and rapid selections,
+records program counts and animation-frame gaps, and captures desktop, phone landscape
+and battle-return views. Timing receipts include menu interaction, so they are
+end-to-end readiness measurements, not isolated GPU compile durations.
+
+AC-130 entry prepares an aircraft-only flight anchor rather than the selected
+tank. Solo and multiplayer skip the pilot's tank builder, camouflage textures,
+and damage-panel masks while still preparing ground escorts. Loading rosters
+identify pilots as AC-130 aircraft. Flight anchors are disposed on exit and cannot
+enter either the Garage hero cache or the reusable tank pool.
+
 ## Build-local procedural plaster relief
 
 The second and third procedural plaster palettes retain independent albedo

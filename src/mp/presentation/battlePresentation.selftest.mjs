@@ -462,3 +462,19 @@ assert.equal(game.rosterTanks, undefined, 'dispose restores the solo roster fall
 }
 
 console.log('mp battle presentation: roster → hidden visuals, frames → game state/visuals/combat/ERA/wrecks/shells/props, events → bus vocabulary, predicted own shots, settled destroyed lists vs live prop falls, verdicts, disconnect, spectator perspective, prediction world pass');
+
+{
+ const state={tanks:[],tankById:new Map(),player:null,shells:[],spotting:null,allTanks:[],timeS:0};
+ const built=[],painted=[];
+ const p=createBattlePresentation({engineCtx:{scene,anisotropy:1},game:state,bus:{emit(){}},
+  createTankVisual:(id,...rest)=>{built.push(id);return fakeVisual(id,...rest);},
+  prepareVisualTextures:async spec=>{painted.push(spec.id);},clock:()=>nowMs});
+ await p.applyRoster([
+  {...roster[0],bot:false,team:TEAM.ALPHA},
+  {...roster[1],bot:true,team:TEAM.ALPHA},
+ ],{...context,mode:'ac130'});
+ assert.equal(p.actors.get('me').visual.root.userData.aircraftOnly,true);
+ assert.deepEqual(built,[roster[1].specId],'only the ground escort constructs a tank');
+ assert.deepEqual(painted,[roster[1].specId],'only the ground escort prepares camouflage');
+ p.dispose();
+}

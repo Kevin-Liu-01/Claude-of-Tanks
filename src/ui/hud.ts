@@ -1,7 +1,7 @@
 import { drawAerialMinimap } from './aerialMinimap.ts';
 import { createAerialHud } from './aerialHud.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
-import { createSpecialActionPresentationReader } from './vehicleSpecialAction.ts';
+import { createSpecialActionPresentationReader, depletedMissileLabel } from './vehicleSpecialAction.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 // src/ui/hud.ts — battle HUD overlay: dispersion/reload reticle, shell
@@ -2434,10 +2434,13 @@ export function initHud(bus: EventBus): HudRuntime {
     missilePlayer=player;
     const extraMissileSlot=guidedMissileSlot(player?.spec);
     missileButton.hidden=extraMissileSlot<0||specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE||!player?.spec?.gun?.shells.some(shell=>!shell.guided);
-    missileButton.disabled=!canControl;
+    const combat=player?.combat;
+    const emptyMissileLabel=depletedMissileLabel(combat,extraMissileSlot,player?.spec?.gun?.shells[extraMissileSlot]);
+    const missileEmpty=emptyMissileLabel!==null;
+    missileButton.disabled=!canControl||missileEmpty;
     const missileSelected=player?.combat?.shellSlot===extraMissileSlot;
     if(player?.combat&&!missileSelected)previousConventionalSlot=player.combat.shellSlot;
-    missileButton.classList.toggle('active',missileSelected);missileButton.setAttribute('aria-pressed',String(missileSelected));
+    missileButton.classList.toggle('active',missileSelected&&!missileEmpty);missileButton.setAttribute('aria-pressed',String(missileSelected));
     const action = player?.specialAction;
     // Missile selection is ordinary ammunition state. Keep the E shortcut
     // visibly latched for as long as that slot remains selected; 1/2/3 are
@@ -2445,22 +2448,19 @@ export function initHud(bus: EventBus): HudRuntime {
     const active = specialActionIsActive(action, player?.combat?.shellSlot);
     const missileSlot = specialKind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE
       ? Number(action?.missileSlot) : -1;
-    const ammunition = player?.combat?.ammo;
-    const missileEmpty = Number.isInteger(missileSlot) && missileSlot >= 0
-      && Array.isArray(ammunition)
-      && (ammunition[missileSlot] || 0) <= 0;
     // Weapon channels keep the missile timer accurate even while the cannon is selected.
-    const combat=player?.combat;
     const missileWait=extraMissileSlot>=0?Math.ceil(reloadForSlot(combat,extraMissileSlot,lastTimeS) || 0):0;
-    missileButton.querySelector('.sl')!.textContent=missileWait>0?t('systems.cooldown',{seconds:missileWait}):'ATGM';
+    missileButton.querySelector('.sl')!.textContent=emptyMissileLabel ?? (missileWait>0?t('systems.cooldown',{seconds:missileWait}):'ATGM');
+    missileButton.setAttribute('aria-label', emptyMissileLabel ? `ATGM ${emptyMissileLabel}` : 'ATGM');
     const wait=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE?Math.ceil(reloadForSlot(combat,missileSlot,lastTimeS)||0)
       :specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD?Math.ceil(combat?.gunReload?.t??combat?.reload.t??0):0;
-    specialLabel.textContent=wait>0?t('systems.cooldown',{seconds:wait}):specialLabel.dataset.short||'';
+    const specialMissileEmpty=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE&&missileEmpty;
+    specialLabel.textContent=specialMissileEmpty ? emptyMissileLabel! : wait>0?t('systems.cooldown',{seconds:wait}):specialLabel.dataset.short||'';
+    specialButton.setAttribute('aria-label', specialMissileEmpty ? `${specialButton.title} ${emptyMissileLabel}` : specialButton.title || t('hud.special.unavailable'));
     specialButton.querySelector('small')!.textContent='';
-    specialButton.classList.toggle('active', active);
-    specialButton.classList.toggle('empty', missileEmpty);
+    specialButton.classList.toggle('active', active&&!specialMissileEmpty);
     specialButton.classList.remove('pending');
-    specialButton.disabled = !canControl || specialKind === SPECIAL_ACTION_KINDS.NONE;
+    specialButton.disabled = !canControl || specialKind === SPECIAL_ACTION_KINDS.NONE || specialMissileEmpty;
     specialButton.setAttribute('aria-pressed', active ? 'true' : 'false');
   }
 
@@ -6331,7 +6331,7 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     root.classList.toggle('realistic-mode', frame.matchModeState?.id === 'realistic');
     updateSpecialAction(frame.player || playerRef);
-    aerialHud.update(frame.player || playerRef,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone || 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision || 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper');
+    aerialHud.update(frame.player || playerRef,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone || 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision || 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort);
     updateDriveReadout(frame.player || playerRef, frame.timeS);
     updateDamagePanelPose(state.camera);
     shotInfo.setPlayer(playerId);

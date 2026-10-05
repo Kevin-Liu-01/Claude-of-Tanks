@@ -5,6 +5,7 @@
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
 import { reactivePlate } from './specHelpers.ts';
+import { ukrainianAbramsCage } from './ukrainianDroneCage.ts';
 import {
   bindFleetRegistries,
   cloneFleetVariant,
@@ -125,4 +126,5 @@ const UKRAINE_SPECS = {
   Object.assign(spec.gun.shells[2], { dmg: 600 });
 }
 
+UKRAINE_SPECS.ua_m1a1.armor.droneScreens = ukrainianAbramsCage();
 registerFleetSpecs(registries, UKRAINE_IDS, UKRAINE_SPECS);

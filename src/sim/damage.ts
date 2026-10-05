@@ -1,4 +1,5 @@
 import type { AuxiliaryState } from './auxiliarySystems.ts';
+import { droneImpactTrace } from './droneArmor.ts';
 import { isUnguidedRocket, usesLauncherMuzzles, launcherMuzzleIndex, type LauncherMuzzle } from './launcherPolicy.ts';
 import type { MagazineIndicator } from './magazineIndicator.ts';
 /**
@@ -1086,6 +1087,16 @@ function resolveScreenPlate(
   const plate = hit.plate;
   if (plate.kind !== 'spaced' && plate.kind !== 'external') return null;
   const penBefore = resolution.pen;
+  if (resolution.shellSpec.tracer === 'DRONE' && plate.droneInterception
+      && !resolution.hullPen && resolution.hits.find(isPlateHit) === hit
+      && resolution.rng() < plate.droneInterception) {
+    resolution.pen = 0;
+    resolution.event.kind = 'spaced_absorb';
+    resolution.decided = true;
+    stampImpact(resolution.event, hit, effMm, penBefore);
+    stampShotInfo(resolution.event, hit, resolution.shellSpec, resolution.target, resolution.shell.vel);
+    return TRACE_BREAK;
+  }
   resolution.pen -= effMm;
   if (resolution.shellSpec.type === 'HEAT') {
     const gapM = heatGapAfter(resolution.hits, hit);
@@ -1344,6 +1355,7 @@ export function resolveShellHit(
   const spec = shell.spec;
   const combat = target.combat;
   const behavior = behaviorOf(spec.type);
+  hits = droneImpactTrace(shell, target, hits);
 
   // Arc-length correction (killcam_shotinfo r2): stepShell accumulated the
   // FULL step before this sweep resolved — trim the unused remainder past the

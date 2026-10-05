@@ -216,6 +216,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if (touch && width > height && height <= 340) noticeTop = Math.max(top + 8, scoreBottom + 52);
     const network = !!read('.cot-mp-status.battle');
     const properties = {
+      'flight-right-clearance': map && map.left > width / 2 && map.bottom > height / 2 ? width - map.left + 12 : 12,
       'network-left': width > height ? Math.max(122, (map?.right ?? 104) + 8) : (map?.right ?? 104) + 8,
       'aim-warning-top': width > height ? (map?.bottom ?? 114) + 4 : height * .5 + 48,
       'fps-top': (read('.cot-spec.show')?.top ?? 36) - 28,

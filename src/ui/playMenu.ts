@@ -748,7 +748,7 @@ export function createPlayMenu({
   const ruleLineCopy = (id: GameModeId, arrangement: TeamArrangement | null = readTeamArrangement(id)): string =>
     rulesetLines(matchRulesetFor(id, null, arrangement))
       .map((line) => t(`rules.line.${line.key}`, ruleLineValues(line))).join(' · ');
-  const leadingModes: readonly GameModeId[] = ['standard', 'turbo_ball', 'mars', 'drone', 'ac130', 'realistic', 'zone_control'];
+  const leadingModes: readonly GameModeId[] = ['standard', 'drone', 'ac130', 'mars', 'juggernaut', 'capture_the_flag', 'infected', 'frontline_assault', 'realistic', 'gun_game', 'turbo_ball', 'zone_control', 'endless_horde'];
   const modeRank = (id: GameModeId): number => { const rank = leadingModes.indexOf(id); return rank < 0 ? leadingModes.length : rank; };
   const ruleCards = Object.values(GAME_MODE_DEFINITIONS)
     .sort((a, b) => modeRank(a.id) - modeRank(b.id)).map((rule) =>
