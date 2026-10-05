@@ -4374,6 +4374,22 @@ void splatCompute() {
       if (nrmOn) n = mix(n, wallNrm(uNrmR, 0.155, df, mipB), steepW);
     }
   }
+  // Ground lane (wave 80, Titan Gorge's and Redrock's establishing views: "a glaring magenta/pink wavy decal stripe
+  // across the ground" — the 38–76° scarps of their ridges and knolls seen edge-on 350–770 m out, each one flat,
+  // saturated ribbon of the rock tone): on an arid map a rock face at range is its weathered skin — half its colour's
+  // saturation, pulled a quarter toward the ground around it at its own luminance (the dust on it and the aerial depth
+  // between), and streaked along the band by the varnish running down its fall line (the wall projections' noise
+  // stretched along the height), so it reads as weathered rock, not a painted ribbon
+  float rockFar = max(fR, steepW) * smoothstep(150.0, 450.0, camDist) * step(0.5, uReduxD.y) * step(uReduxD.y, 1.5);
+  if (rockFar > 0.003) {
+    float lodV = max(0.0, gNoiseLog + log2(0.05));
+    float varnish = mix(textureLod(uNoise, gWallUVx * vec2(0.05, 0.006) + vec2(0.29, 0.53), lodV).r,
+                        textureLod(uNoise, gWallUVz * vec2(0.05, 0.006) + vec2(0.29, 0.53), lodV).r, gWallW);
+    float rockL = reduxLuma(a.rgb);
+    vec3 skin = mix(vec3(rockL), a.rgb, 0.50);
+    skin = mix(skin, uMeanG.rgb * rockL / max(reduxLuma(uMeanG.rgb), 1e-3), 0.25);
+    a.rgb = mix(a.rgb, skin * (0.84 + 0.32 * varnish), rockFar);
+  }
   // Ground lane (wave 62, Glacier Pass street-b, 2.2, the worst view: "a blue-and-white swirled marble/agate texture …
   // a broken material", Frosthollow's walls the same): a snow map's rock layer was Rock058 lifted half again and
   // blued (sourcedTextures: "snow-dusted rock"), and its veins became polished marble wherever a slope turned rock. The
