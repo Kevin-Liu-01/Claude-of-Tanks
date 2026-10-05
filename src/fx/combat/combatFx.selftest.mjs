@@ -282,6 +282,53 @@ for (const [style, data] of [['billow', billow], ['wisp', sheet('wisp')]]) {
 assert.ok(alphaAt(billow, 64, 64) > 100 && alphaAt(billow, 0, 0) === 0 && alphaAt(billow, 127, 64) === 0,
   'frame 0: dense at its centre, clear at its border');
 
+// --- the hooks in effects.ts: the real runtime delegates its bursts, blast, kill and column to the layer, the late
+// pass stays on while the media live, a clock rebase carries them, and resetAll empties them
+{
+  const { createRequire } = await import('node:module');
+  const { createFx } = await import('../effects.ts');
+  const { createCanvas } = createRequire(import.meta.url)('@napi-rs/canvas');
+  const documentBefore = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  globalThis.document = { createElement(tag) { if (tag !== 'canvas') throw new Error(tag); return createCanvas(1, 1); } };
+  try {
+    const handlers = new Map();
+    const bus = { on(type, fn) { handlers.set(type, fn); return () => handlers.delete(type); }, emit(type, payload) { handlers.get(type)?.(payload); } };
+    const fx = createFx({ anisotropy: 1, scene: { userData: scene.userData } }, field, { seed: 77 });
+    fx.bindBus(bus);
+    fx.warmTextures();
+    const camera = new THREE.PerspectiveCamera();
+    const media = fx.group.getObjectByName('fx-combat-media');
+    assert.ok(media, 'the runtime composes the combat layer');
+    const counts = () => {
+      const out = {};
+      media.traverse((o) => { if (o.geometry && o.isMesh) out[o.name] = o.geometry.instanceCount ?? o.geometry.drawRange.count; });
+      return out;
+    };
+    fx.update(1 / 60, [], camera);
+    assert.equal(fx.group.userData.softParticles.isActive(), false, 'an idle runtime keeps the late pass off');
+    bus.emit('shell:fired', { shellId: 1, shellType: 'HE', caliberMm: 120, muzzlePos: [0, 2.3, 0], dir: [1, 0, 0] });
+    bus.emit('shell:expired', { shellId: 1, hitTerrain: true, pos: [30, 0, 0], caliberMm: 120 });
+    bus.emit('tank:destroyed', { id: 'v1', pos: [-20, 0.5, 5], cause: 'ammorack' });
+    for (let i = 0; i < 30; i++) fx.update(1 / 60, [], camera);
+    const c = counts();
+    assert.ok(c['Combat media: earth'] > 20 && c['Combat media: smoke'] > 40 && c['Combat clods'] > 10,
+      `a shot, an HE miss and a kill fill the layer (${JSON.stringify(c)})`);
+    assert.equal(fx.group.userData.softParticles.isActive(), true, 'the late pass runs while the media live');
+    fx.setFrozen(true, 900);
+    fx.update(0, [], camera);
+    assert.equal(fx.group.userData.softParticles.isActive(), true, 'a rebased clock keeps the media alive (ages kept)');
+    fx.setFrozen(false);
+    fx.resetAll();
+    fx.update(1 / 60, [], camera);
+    const r = counts();
+    assert.ok(r['Combat media: earth'] === 0 && r['Combat media: smoke'] === 0 && r['Combat clods'] === 0, 'resetAll empties the layer');
+    assert.equal(fx.group.userData.softParticles.isActive(), false, 'and the late pass rests again');
+  } finally {
+    if (documentBefore) Object.defineProperty(globalThis, 'document', documentBefore);
+    else delete globalThis.document;
+  }
+}
+
 // --- no wall clock or Math.random in the layer
 for (const name of readdirSync(new URL('.', import.meta.url))) {
   if (!name.endsWith('.ts')) continue;
