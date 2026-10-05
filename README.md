@@ -7,9 +7,9 @@
 <h1 align="center">CLAUDE OF TANKS</h1>
 
 <p align="center">
-  Free browser-native armored combat built with <strong>Three.js</strong>. Take 220 production-visible first-party procedural vehicles
-  across 33 battlefields with physical gunnery, plate-level armor, internal damage, guided missiles,
-  magazine autoloaders, terrain-following suspension, X-ray killcams, multiplayer rooms, and Scene Studio.
+<!-- product-summary:start -->
+A World of Tanks-style armored combat simulator built directly with Three.js and Vite: 220 vehicles, 33 destructible battlefields, and 13 modes, with plate-level armor, ballistics, modules, spotting, and physics. Play in your browser on desktop or mobile. Built end-to-end by a multi-agent Claude/Codex pipeline.
+<!-- product-summary:end -->
 </p>
 
 <table width="100%" align="center">
@@ -48,7 +48,7 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
 </p>
 
 - **Fight:** enter Standard Battle, Capture the Flag, Zone Control, armed low-gravity Turbo Ball, Gravity Mode, cooperative
-  Endless Horde, or the six-operation Frontline Assault campaign in solo or multiplayer, with physical shell travel, armor geometry, component damage, spotting,
+  Endless Horde, the six-operation Frontline Assault campaign, Juggernaut, Infected, Realistic, Gun Game, Drone, or AC-130 in solo or multiplayer, with physical shell travel, armor geometry, component damage, spotting,
   terrain, collision, destructible structures, persistent wrecks, mode-specific respawns, and authority-owned results.
 - **Inspect:** open any vehicle in Tank Gallery, articulate the live rig, isolate armor or internal anatomy, and export an
   exact-surface review packet from the same specification used in combat.
@@ -63,7 +63,7 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
 | Worlds | **33** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
 | Authority | Fixed **60 Hz** movement, ballistics, armor, damage, spotting, bots, destructibles, and result |
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
-| Play | Thirteen battle modes, solo bots, browser-hosted private rooms, LAN rooms, room chat, spectators, respawns, and rematches |
+| Play | **13 battle modes**, solo bots, browser-hosted private rooms, LAN rooms, room chat, spectators, respawns, and rematches |
 | Platforms | Mouse/keyboard and complete touch controls with safe-area layout and device-adaptive rendering |
 | Languages | English and Simplified Chinese across the game, Garage, Studio, Gallery, and public docs; local reviewed catalogs managed with General Translation |
 | Tools | Scene Studio, Tank Gallery, exact-surface review, deterministic capture, vehicle anatomy, and release gates |
