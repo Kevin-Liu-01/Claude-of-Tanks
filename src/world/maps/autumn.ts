@@ -11,6 +11,21 @@
 // the east; the manor park with its lake lies north-east. The autumn palette,
 // sky, vegetation species, prop tones, minimap and river material are the
 // round-1 identity and are unchanged.
+//
+// Reference: the Moselle valley of Lorraine between Pont-à-Mousson and Metz in the autumn of 1944, where the Third
+// Army forced the river at Dornot and Arnaville under the Metz forts and fought on the plateau at Arracourt: a walled
+// market town on the river's rise above its stone bridge, the Côtes de Moselle (a wooded limestone escarpment cut by
+// dry combes) along the valley's side, a château park with its pond, mirabelle orchards on the terraces, and the
+// village street of the maison lorraine — deep houses under one low roof of canal tiles, their eaves fronts to the
+// street with the barn's arched cart door beside the dwelling's, ochre and cream crépi with the golden Jaumont
+// limestone of Metz at every door and window.
+//
+// 2026-10-05 (the map-revival lane; the owner: "make sure all maps look completely new and revitalized like verdant"):
+// the town is built in that construction (maps/regional/lorrain.ts) — every building where it stood: the maisons
+// lorraines and their farms, the granges, the church with its slate spire, the chapel's bell-cote, the mairie-école,
+// the covered market and the arcaded row on the square, the round tower of the wall, the bakehouses and woodsheds,
+// the shelled houses — with the gardens walled behind the houses; stone calvaries stand at the bridgehead and the
+// cross lanes.
 
 import { gully } from './geology.ts';
 import { createMarshChannel } from './marshChannel.ts';
@@ -314,6 +329,9 @@ export default {
   },
 
   props: {
+    // the map-revival lane (2026-10-05): the Lorraine kit (maps/regional/lorrain.ts) builds the plan in the Moselle
+    // valley's construction, every building where it stood
+    architecture: 'lorrain',
     // round 48: a market town's plan — the church and the inn on the square,
     // a Norman tower keep, the market hall and rows, shops, granaries and
     // cottages; consumed along the town's three streets, the remainder fills
@@ -384,6 +402,17 @@ export default {
       trucks: 3, jeeps: 1, drumClusters: 3, camps: 2,
       modernClutter: { barrier: 4, roadsign: 4, cone: 6, transformer: 3, cablespool: 3 },
     },
+  },
+
+  // the map-revival lane (2026-10-05; the scenery lane's generators, world/scenery.ts): the Lorraine crossroads'
+  // calvaries in the golden Jaumont limestone — at the bridgehead on the town side and at the cross lanes south of the
+  // river — and an iron field cross on the sunken lane
+  scenery: {
+    landmarks: [
+      { kind: 'calvary', x: -44, z: -20, yawDeg: 30, geology: 'limestone', tone: [0.11, 0.32, 0.62], name: 'the calvary at the bridgehead' },
+      { kind: 'calvary', x: 142, z: -158, yawDeg: -60, geology: 'limestone', tone: [0.11, 0.32, 0.62], name: 'the calvary at the cross lanes' },
+      { kind: 'waysidecross', x: -255, z: -318, yawDeg: 24, name: 'the field cross on the sunken lane' },
+    ],
   },
 
   horizon: {
