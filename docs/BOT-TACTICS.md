@@ -75,6 +75,19 @@ Hidden shooters provide last-shot position hints, never permission to fire at
 unspotted live coordinates. If only one opponent remains, multiple bots can
 still attack it. This is target selection, not an artificial immunity cap.
 
+Movement under fire wins over a stop in the open. The settled-shot halt (a
+starved trigger with a clear ray halts the hull for a clean shot) waits for 8 s
+of contact with the target without a shot: the silence no longer runs from the
+bot's last shot, so a fresh contact is no starved trigger. The stalemate press
+halts only once the gun may fire on the contact. Neither halt holds a hull hit
+inside the under-fire window by a gun that still sees its body: it keeps the
+movement its state chose (the scout's kite, the fallback, the flank, cover).
+Behind a crest the gun sees only its turret over, it still halts to shoot. A
+scout struck from the side keeps moving instead of turning armour it does not
+have onto the shot; the other roles still angle. Tidegate Polders pacing seed
+41002: a BMP-3 braked to a stop 100 m from a Bradley on contact, sat facing it
+under fire through its own fallback and flank, and died 5 s later.
+
 Jev's target instructions explicitly give human and bot opponents equal
 priority, preserve useful local fights and distribute uncovered threats. Its
 explicit tactical orders still precede ordinary local ranking. The proxy tests
@@ -145,6 +158,16 @@ A hull that has reached its destination holds it. The arrival is not drive
 intent, so the low-speed watchdog does not read the hold as a wedge and reverse
 the hull off its hold point; a hull pressing into a wall short of it still backs
 off.
+
+A collider stop backs the hull off at once, whatever its mode. A contact with a
+solid primitive that takes 2 m/s and three quarters of the hull's speed within
+0.3 s, against a world obstacle rather than another hull, reverses the hull for
+1.4 s with its bow swinging along the face toward its goal's side, and the
+shared stuck escalation replans the leg. A scrape that keeps its speed is no
+stop, and a crawl into a face stays the low-speed watchdog's. Polders 41002: an
+M1A1 turning a route corner ran into a farm building's wall at 6 m/s and fought
+from the wall for 7.6 s, from the enemy it saw half a second after the stop
+until it was hit.
 
 A route corner round cover is not taken back at the next recheck. A recheck
 that would return to the corner the hull gave up less than 2 s ago keeps the
@@ -295,6 +318,14 @@ search cannot drive a hull.
   aspects do not take turns (they alternated before). The arc limit's leg
   starts with the press running and leaves the bank in under 2 s with no
   back-up.
+- `src/game/ai.underFire.selftest.mjs`: a BMP-3 that has never fired keeps
+  moving when it sights an enemy (no settled-shot halt); a settle holds no scout
+  hit in the open but still halts one behind a berm (with an unhit control); a
+  scout struck from the side keeps moving while a T-90M angles.
+- `src/game/ai.colliderStop.selftest.mjs`: an M1A1 that runs into a wall at
+  6 m/s reverses within a second of the stop with its bow toward its goal's
+  side, still does when it sights an enemy just after the stop, and a scrape or
+  a stop with no world obstacle on that side is no stop.
 - `src/game/ai.levels.selftest.mjs`: a synthetic deck over a floor, with and
   without a ramp: the deck bot leaves the floor target for one on its own level,
   the floor bot drives the ramp to the deck, gives the deck target up when no
