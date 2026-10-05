@@ -1,6 +1,7 @@
-// The boulders (round 75 item 6, rebuilt by the scenery lane 2026-10-04 after gauntlet waves 52, 57 and 66): a boulder
-// is a weathered mass — a welded cube-sphere cast at the smooth maximum of its joints, lumped at three scales, at most
-// one blended fracture: closed, unfolded, its normals the surface's own and facing out (no triangle above the ground
+// The boulders (round 75 item 6, rebuilt by the scenery lane 2026-10-04 after gauntlet waves 52, 57 and 66; b14 after
+// wave 97's "smooth, round, fracture-less blobs"): a boulder is a weathered mass — a welded cube-sphere cast at the
+// smooth maximum of its joints, lumped at three scales — broken by fresh fractures and stepped by notches (on a bedded
+// rock at its partings): closed, unfolded, its normals the surface's own and facing out (no triangle above the ground
 // line spans more than a right angle of them), fitted inside the legacy hull the shards carry above the ground line and
 // as tall as the legacy rock, its skirt deep, hollowed and knobbed, and a function of its seed; its tone reads face,
 // fracture, arris and hollow (the chalk a warm off-white, grey only in its hollows); every battlefield resolves a
@@ -10,6 +11,7 @@
 // the instanced boulders, and the producer keeps the legacy hull as the collision proxy.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SimplexNoise } from '../engine/simplexFast.ts';
@@ -17,8 +19,9 @@ import { convexHull2 } from './collision.ts';
 import { MAP_IDS } from './maps/index.ts';
 import { acquireTerrainChunkIndex, terrainNearMeshHeightAt } from './terrain.ts';
 import {
-  BOULDER_KINDS, BOULDER_SEAT_Y, applyRockShaderHook, boulderKindFor, buildBoulderForm, makeRockDetail, paintBoulder, projectsInsideHull,
-  rockDressingFor, rockLithologyFor,
+  BED_SECTION_BINS, BED_SECTION_LEVELS, BOULDER_KINDS, BOULDER_SEAT_Y, ROCK_SHADOW_INSET_M, applyRockShaderHook, bedHash, beddingParting,
+  boulderKindFor, boulderSectionRadius, boulderSections, buildBoulderForm, createRockDepthMaterial, makeRockDetail, paintBoulder,
+  projectsInsideHull, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts';
 
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -104,8 +107,9 @@ function checkForm(form, label, hull, legacyTop, subdiv) {
     }
   }
   // (a phone's five cells a face cannot follow an arris its joints set at any azimuth: there a cell may straddle a little
-  // more than the arris's turn)
-  assert.ok(worstAbove > (subdiv >= 6 ? 0 : -0.35), `${label}: no triangle above the ground line spans more than a right angle of normal (${worstAbove.toFixed(3)})`);
+  // more than the arris's turn; b14: and a fresh break's crisp arris, or a notch's, turns a little past a right angle
+  // across a desktop cell — a crisp edge a cell wide, no diagonal seam: the quad splits along its like-shaded diagonal)
+  assert.ok(worstAbove > (subdiv >= 6 ? -0.25 : -0.35), `${label}: no triangle above the ground line spans much more than a right angle of normal (${worstAbove.toFixed(3)})`);
   assert.ok(Math.abs(top - legacyTop * 0.98) < 1e-5, `${label}: as tall as the legacy rock (its collider's cover)`);
   assert.ok(floor < -1.2, `${label}: the skirt runs deep under the ground (${floor.toFixed(2)}), so no slope bares its underside`);
   // inside the legacy hull above the ground line; under it, where a slope's downhill side can bare the stone, within
@@ -122,9 +126,29 @@ function checkForm(form, label, hull, legacyTop, subdiv) {
   // the weather's hollows (wave 57: "a bar-of-soap form"): a share of the stone hollowed, a share not
   const hollowed = form.hollow.filter((h) => h > 0.3).length / p.count, proud = form.hollow.filter((h) => h === 0).length / p.count;
   assert.ok(hollowed > 0.08 && proud > 0.3, `${label}: hollows and knobs (${hollowed.toFixed(2)} hollowed, ${proud.toFixed(2)} proud)`);
-  // at most one fracture, blended: its share never a hard face's alone over a whole ring
-  assert.ok(form.fresh.every((f) => f >= 0 && f <= 1), `${label}: a bounded fracture share`);
-  return { p, n };
+  // the breaks (b14, wave 97: "no fracture planes to give it form"): every stone shows one above the ground — a vertex on
+  // a break's face — and its breaks and notches take a share of its skin
+  assert.ok(form.fresh.every((f) => f >= 0 && f <= 1), `${label}: a bounded break share`);
+  let above = 0, broken = 0, onFace = 0;
+  for (let i = 0; i < p.count; i++) {
+    if (p.getY(i) <= BOULDER_SEAT_Y) continue;
+    above++;
+    if (form.fresh[i] > 0.3) broken++;
+    onFace = Math.max(onFace, form.fresh[i]);
+  }
+  // (a phone's coarser rows blend a break into the mass over a wider arris)
+  assert.ok(onFace > (subdiv >= 6 ? 0.8 : 0.6) && broken / above >= 0.1, `${label}: a break above the ground (${(broken / above * 100).toFixed(0)} % of the skin, ${onFace.toFixed(2)} on its face)`);
+  // the material's facts per vertex (aRockFace): the bed coordinate, the height on the stone, the break, the hollow
+  const face = g.getAttribute('aRockFace');
+  assert.ok(face && face.itemSize === 4 && face.count === p.count, `${label}: a face fact for every vertex`);
+  let topFrac = -Infinity;
+  for (let i = 0; i < p.count; i++) {
+    topFrac = Math.max(topFrac, face.getY(i));
+    assert.ok(face.getY(i) >= -1 && face.getY(i) <= 1 && Math.abs(face.getZ(i) - form.fresh[i]) < 1e-6 && Math.abs(face.getW(i) - form.hollow[i]) < 1e-6,
+      `${label}: the height's share, the break and the hollow as the tone reads them`);
+  }
+  assert.ok(Math.abs(topFrac - 1) < 1e-3, `${label}: the height's share reaches 1 at the stone's top (${topFrac.toFixed(4)})`);
+  return { p, n, face };
 }
 for (const lithology of LITHOLOGIES) {
   for (const seed of [2002, 77, 9001]) {
@@ -134,7 +158,12 @@ for (const lithology of LITHOLOGIES) {
       for (const subdiv of [6, 4]) {
         const label = `${lithology} seed ${seed}, ${BOULDER_KINDS[kind]}, ${subdiv === 6 ? 'desktop' : 'phone'}`;
         const form = buildBoulderForm(variant, noise, mulberry32(seed + 60 + variant), legacy.hull, subdiv, legacy.top, kind, lithology);
-        const { p, n } = checkForm(form, label, legacy.hull, legacy.top, subdiv);
+        const { p, n, face } = checkForm(form, label, legacy.hull, legacy.top, subdiv);
+        // (b14) the bedding rides the sedimentary rocks only: several beds up a stone, none on the rest
+        let bedLo = Infinity, bedHi = -Infinity;
+        for (let i = 0; i < p.count; i++) if (p.getY(i) > BOULDER_SEAT_Y) { bedLo = Math.min(bedLo, face.getX(i)); bedHi = Math.max(bedHi, face.getX(i)); }
+        if (['sandstone', 'limestone'].includes(lithology)) assert.ok(bedHi - bedLo > 2, `${label}: beds up the stone (${(bedHi - bedLo).toFixed(2)})`);
+        else assert.ok(bedLo === 0 && bedHi === 0, `${label}: no bedding on ${lithology}`);
         const g = form.geometry;
         // broad faces and rounded arrises, both (the corestone is all arris)
         const faces = form.edge.filter((e) => e < 0.1).length / p.count, arrises = form.edge.filter((e) => e > 0.3).length / p.count;
@@ -205,6 +234,67 @@ const outside = new THREE.BufferGeometry();
 outside.setAttribute('position', new THREE.BufferAttribute(new Float32Array([5, 0, 5]), 3));
 assert.equal(projectsInsideHull(outside, legacyBoulder(2, 0).hull), false, 'the hull test rejects a point outside');
 
+// --- the bedding's law (b14): the partings' places by a hash the material shares, about one a bed and irregular (wave 57:
+// "evenly spaced painted strata lines"), the same bits in the shader
+{
+  for (let k = -40; k < 400; k++) {
+    const h = bedHash(k, 0);
+    assert.ok(h >= 0 && h <= 1 && h === bedHash(k, 0), 'a hash to [0, 1], a function of its index');
+  }
+  const gaps = [];
+  for (let k = 0; k < 300; k++) gaps.push(beddingParting(k + 1) - beddingParting(k));
+  const mean = gaps.reduce((a, b) => a + b, 0) / gaps.length, sd = Math.sqrt(gaps.reduce((a, b) => a + (b - mean) ** 2, 0) / gaps.length);
+  assert.ok(gaps.every((d) => d > 0.27 && d < 1.73) && Math.abs(mean - 1) < 0.02 && sd > 0.2,
+    `the partings in order, a bed apart on average, irregular (sd ${sd.toFixed(3)} of a bed)`);
+  const glsl = readFileSync(new URL('./rockDressing.ts', import.meta.url), 'utf8');
+  assert.match(glsl, /uint h = uint\(int\(k\) \+ 1024\) \* 747796405u \+ uint\(int\(salt\)\) \* 2891336453u \+ 1u;\n\s*h = \(\(h >> \(\(h >> 28u\) \+ 4u\)\) \^ h\) \* 277803737u;\n\s*h = \(h >> 22u\) \^ h;/,
+    'the shader hashes the same bits');
+  assert.match(glsl, /let h = \(Math\.imul\(\(k \+ 1024\) \| 0, 747796405\) \+ Math\.imul\(salt \| 0, 2891336453\) \+ 1\) >>> 0;/, 'as the form does');
+  assert.match(glsl, /float cotParting\(float k\) \{ return k \+ 0\.5 \+ 0\.36 \* \(2\.0 \* cotBedHash\(k, 0\.0\) - 1\.0\); \}/, 'the shader\'s parting law');
+  assert.match(glsl, /return k \+ 0\.5 \+ 0\.36 \* \(2 \* bedHash\(k, 0\) - 1\);/, 'the form\'s parting law');
+  // the ledges step at partings: the notch's bed plane is a parting's place (boulderCuts), as the shader draws it
+  assert.match(glsl, /const at = beddingParting\(k\);[\s\S]{0,300}target = \(best - bedding\.salt\) \* bedding\.thickness;/, 'a ledge at a parting');
+}
+
+// --- the stone's sections (b14, the beds): the radius of its section round the vertical at the heights its ground meets
+{
+  const legacy = legacyBoulder(2, 0);
+  const form = buildBoulderForm(0, noise, mulberry32(2002 + 60), legacy.hull, 6, legacy.top, boulderKindFor('granite', 0), 'granite');
+  const sections = boulderSections(form.geometry);
+  assert.equal(sections.length, BED_SECTION_LEVELS.length * BED_SECTION_BINS);
+  assert.ok(sections.every((r) => r > 0.2 && r < 1.6), 'every bin of every level filled with a radius');
+  const p = form.geometry.attributes.position;
+  // (at the heights a stone's ground meets it: a fifth to a third of the form up, where its sides stand steep)
+  for (const y of [0.1, 0.2, 0.3]) {
+    // the section's radius against the mesh's vertices about that height in its direction
+    let worst = 0;
+    for (let a = 0; a < 16; a++) {
+      const angle = (a / 16) * Math.PI * 2, r = boulderSectionRadius(sections, y, angle);
+      let reach = 0;
+      for (let i = 0; i < p.count; i++) {
+        if (Math.abs(p.getY(i) - y) > 0.06) continue;
+        const d = Math.abs(Math.atan2(Math.sin(Math.atan2(p.getZ(i), p.getX(i)) - angle), Math.cos(Math.atan2(p.getZ(i), p.getX(i)) - angle)));
+        if (d < 0.12) reach = Math.max(reach, Math.hypot(p.getX(i), p.getZ(i)));
+      }
+      if (reach > 0) worst = Math.max(worst, Math.abs(r - reach) / reach);
+    }
+    assert.ok(worst < 0.15, `the section at ${y} follows the stone (worst ${(worst * 100).toFixed(1)} %)`);
+  }
+}
+
+// --- the shadow pass (b14; wave 96: "an 8-16 px seam of lit sand" at a stone's shaded foot): each stone drawn inside
+// itself along its normals, ROCK_SHADOW_INSET_M at most 8 % of it
+{
+  const depth = createRockDepthMaterial();
+  assert.equal(depth.depthPacking, THREE.RGBADepthPacking);
+  const ds = { uniforms: {}, vertexShader: THREE.ShaderLib.depth.vertexShader, fragmentShader: THREE.ShaderLib.depth.fragmentShader };
+  depth.onBeforeCompile(ds);
+  assert.ok(ROCK_SHADOW_INSET_M > 0.05 && ROCK_SHADOW_INSET_M <= 0.15, `the inset (${ROCK_SHADOW_INSET_M} m)`);
+  assert.ok(ds.vertexShader.includes(`transformed -= normalize(normal) * min(${ROCK_SHADOW_INSET_M.toFixed(3)} / cotScale, 0.08);`) && ds.vertexShader.includes('#ifdef USE_INSTANCING'),
+    'the instanced stones inset in the depth pass, the world\'s metres over their scale, at most 8 % of them');
+  assert.equal(depth.customProgramCacheKey(), 'world-props-rock-depth-v1');
+}
+
 // --- dressing per battlefield
 for (const mapId of MAP_IDS) {
   const d = rockDressingFor(mapId, null);
@@ -240,6 +330,16 @@ for (const mapId of MAP_IDS) {
   if (!['chalk', 'limestone'].includes(d.lithology)) assert.deepEqual([...d.surface], [0, 0, 0], `${mapId}: no carbonate surface on ${d.lithology}`);
 }
 assert.notDeepEqual(rockDressingFor('coastal', null).lichenA, rockDressingFor('verdant', null).lichenA, 'the climate picks the lichen');
+// (b14) the bedding and the honeycomb: the sedimentary stone's partings and beds, the arid sandstone's tafoni
+for (const mapId of MAP_IDS) {
+  const d = rockDressingFor(mapId, null), [partings, tones, tafoni, depth] = d.beds;
+  const bedded = ['sandstone', 'limestone'].includes(d.lithology);
+  assert.ok(bedded ? partings > 0 && tones > 0 : partings === 0 && tones === 0, `${mapId}: partings and beds on bedded stone only (${d.lithology})`);
+  assert.ok(tafoni >= 0 && tafoni <= 1 && (d.lithology === 'sandstone' || tafoni === 0), `${mapId}: a honeycomb in sandstone only`);
+  assert.ok(depth > 0 && depth <= 0.03, `${mapId}: a parting a couple of centimetres deep`);
+}
+assert.ok(['desert', 'badlands', 'oasis'].every((m) => rockDressingFor(m, null).beds[2] === 1), 'the arid sandstone honeycombed');
+assert.equal(rockDressingFor('longleaf', null).beds[2], 0, 'the wet sandstone not');
 assert.notDeepEqual(rockDressingFor('railyard', (h, s, l) => [0.6, s, l]).soil, rockDressingFor('railyard', null).soil, 'the dirt tone law reaches the soil');
 
 // --- the tiles
@@ -277,6 +377,10 @@ try {
     const species = new Set();
     for (let i = 1; i < lich.length; i += 4) if (lich[i - 1] > 0) species.add(lich[i] >> 4);
     assert.ok(species.size >= 12, `${lithology}: every colony rolls its own species`);
+    // (b14) the honeycomb in the tile's blue: cells hollow to their walls, each its own depth
+    let walls = 0, deep = 0;
+    for (let i = 2; i < lich.length; i += 4) { if (lich[i] === 0) walls++; if (lich[i] > 128) deep++; }
+    assert.ok(walls / 65536 > 0.03 && deep / 65536 > 0.1, `${lithology}: honeycomb cells between walls (${(walls / 655.36).toFixed(1)} % walls, ${(deep / 655.36).toFixed(1)} % deep)`);
     for (const t of Object.values(r.value)) t.dispose();
   }
   assert.equal(albedoHashes.size, LITHOLOGIES.length, 'every lithology draws its own tile');
@@ -291,7 +395,8 @@ const grimed = {
 const tile = new THREE.DataTexture(new Uint8Array(4), 1, 1);
 const shader = { uniforms: {}, vertexShader: grimed.vertexShader, fragmentShader: grimed.fragmentShader };
 applyRockShaderHook(shader, rockDressingFor('verdant', null), tile);
-assert.deepEqual(Object.keys(shader.uniforms).sort(), ['uRockDust', 'uRockLichen', 'uRockLichenA', 'uRockLichenB', 'uRockLichenTile', 'uRockMoss', 'uRockPhoto', 'uRockSoil', 'uRockStoneMean', 'uRockSurface', 'uRockVarnish']);
+assert.deepEqual(Object.keys(shader.uniforms).sort(), ['uRockBeds', 'uRockDust', 'uRockLichen', 'uRockLichenA', 'uRockLichenB', 'uRockLichenTile', 'uRockMoss', 'uRockPhoto', 'uRockSoil', 'uRockStoneMean', 'uRockSurface', 'uRockVarnish']);
+assert.deepEqual(shader.uniforms.uRockBeds.value.toArray(), [...rockDressingFor('verdant', null).beds], 'the lithology\'s bedding and honeycomb');
 assert.deepEqual(shader.uniforms.uRockSurface.value.toArray(), [...rockDressingFor('verdant', null).surface], 'the lithology\'s own surface');
 assert.deepEqual(shader.uniforms.uRockStoneMean.value.toArray(), [0.214, 0.214, 0.214], 'the stand-in\'s mid grey until the stone lands');
 {
@@ -307,12 +412,37 @@ assert.match(shader.vertexShader, /attribute float aRockGround;[\s\S]*vRockAbove
 assert.match(shader.vertexShader, /#ifdef USE_INSTANCING\nattribute vec2 aRockSlope;\n#endif/, 'a boulder carries the slope of its ground');
 assert.match(shader.vertexShader, /vRockAbove -= dot\(aRockSlope, vGrimeW\.xz - \(modelMatrix \* instanceMatrix\[3\]\)\.xz\);/, 'its ground line is a plane through its centre along that slope');
 assert.match(shader.vertexShader, /vRockSeed = -1\.0;[\s\S]*#ifdef USE_INSTANCING[\s\S]*vRockSeed = fract\(sin\(dot\(instanceMatrix\[3\]\.xz/, 'the merged meshes are not boulders; an instance hashes its place');
-assert.ok(!/uRockBeds|vRockBed|bedTint|rockParting/.test(shader.vertexShader + shader.fragmentShader), 'no painted strata (wave 57: the beds are the forms\' relief)');
 assert.ok(!shader.fragmentShader.includes('#include <map_fragment>') && shader.fragmentShader.includes('texture2D(map, rockPw.yz).rgb'), 'the map slot samples the stone triplanar, its colour too');
 assert.match(shader.fragmentShader, /vec3 rockF = rockPhoto \/ max\(uRockStoneMean, vec3\(0\.01\)\);[\s\S]*mix\(vec3\(1\.0\), mix\(vec3\(rockFL\), rockF, uRockPhoto\.y\), uRockPhoto\.x\)/,
   'the photo multiplies its structure about its own mean, its contrast and colour the lithology\'s');
 assert.match(shader.fragmentShader, /rockPert \* uRockPhoto\.z/, 'its relief at the lithology\'s strength');
 const frag = shader.fragmentShader;
+// (b14; wave 57: "evenly spaced painted strata lines"; wave 97: "no bedding planes") the bedding in the stone's own frame
+// — the bed coordinate the vertex carries — at the irregular partings the forms step at: a groove the light finds (its
+// slope by the chain rule, never a derivative of the narrow groove, which steps with the pixel quads), a shade darker
+// below the parting than above, faded where a bed spans too few pixels; each bed a faint tone; no ruling
+assert.match(shader.vertexShader, /attribute vec4 aRockFace;\nvarying vec4 vRockFace;/, 'the face facts ride the vertex');
+assert.match(shader.vertexShader, /vRockFace = aRockFace;/);
+{
+  const beds = frag.slice(frag.indexOf('if (uRockBeds.x > 0.0) {'), frag.indexOf('if (uRockBeds.z > 0.0) {'));
+  assert.ok(beds.length > 400, 'the partings\' block');
+  assert.match(beds, /float p0 = cotParting\(k0 - 1\.0\), p1 = cotParting\(k0\), p2 = cotParting\(k0 \+ 1\.0\);/, 'the nearest of the irregular partings');
+  assert.match(beds, /rockBedDh -= strength \* uRockBeds\.w \* sign\(dn\) \* 6\.0 \* across \* \(1\.0 - across\) \/ halfWidth \* bedDu;/, 'the groove\'s slope by the chain rule');
+  assert.match(beds, /\* \(1\.0 - smoothstep\(0\.1, 0\.25, bedPx\)\)/, 'faded where a bed spans too few pixels');
+  assert.match(beds, /diffuseColor\.rgb \*= 1\.0 - groove \* \(dn < 0\.0 \? 0\.55 : 0\.3\) \* uRockBeds\.x;/, 'darker under the parting\'s lip');
+  assert.ok(!/fract\(bu|fract\(vRockFace\.x/.test(beds), 'no periodic ruling of the bed coordinate');
+  assert.match(frag, /vec2 rockDh = \(vec2\(dFdx\(rockBump\), dFdy\(rockBump\)\) \+ rockBedDh\) \* rockBumpFade;/, 'the relief near the eye');
+  const tafoni = frag.slice(frag.indexOf('if (uRockBeds.z > 0.0) {'), frag.indexOf('if (uRockBeds.z > 0.0) {') + 900);
+  assert.match(tafoni, /texture2D\(uRockLichenTile, cavP\.yz\)\.b \* rockTp\.x/, 'the honeycomb from the tile\'s blue, in the stone\'s frame');
+  assert.match(tafoni, /float low = 1\.0 - smoothstep\(0\.3, 0\.75, vRockFace\.y\);/, 'low on the stone');
+  assert.match(tafoni, /vRockFace\.w \* 0\.9/, 'where the weather hollowed it');
+}
+// (b14; wave 97: "no … varnish streaks") the varnish hung from the crown in streaks, darkest high, none on a break
+assert.match(frag, /float hang = smoothstep\(0\.05, 0\.75, vRockFace\.y\);/, 'the streaks darkest high');
+assert.match(frag, /\(1\.0 - 0\.85 \* vRockFace\.z\)\n\s*\* smoothstep\(0\.15, 0\.7, vRockAbove\);/, 'no varnish on a fresh break');
+assert.match(frag, /\* \(1\.0 - 0\.85 \* vRockFace\.z\);\n/, 'nor lichen');
+assert.match(frag, /float lichenRim = lichen \* \(1\.0 - smoothstep\(1\.0 - cover \+ edge, 1\.0 - cover \+ edge \+ cover \* 0\.3, lc\.x\)\);/,
+  'a colony\'s rim a shade darker than its heart (Sonnet, wave 97: "airbrushed")');
 assert.ok(frag.indexOf('#include <color_fragment>') < frag.indexOf('mossMask'), 'the dressing mixes after the vertex tone');
 assert.ok(frag.indexOf('rockDetail') < frag.indexOf('{ grime }'), 'the detail multiplies before the grime block');
 assert.ok(frag.indexOf('if (vRockSeed >= 0.0) {') < frag.indexOf('float lichen ='), 'the lichen on the boulders only');
@@ -430,4 +560,72 @@ assert.match(source, /rockDressingFor\(mapId, P\.rockSoilTone \?\? null, snowCap
 assert.match(source, /applySourcedRock\(\{ albedo: rockDetail\.albedo, normal: rockDetail\.normal \}, mapId,\s*\(cfg as \{ splat\?: SourcedTerrainSettings \} \| null\)\?\.splat \?\? \{\}, sourceApplication,\s*\(mean\) => rockStoneMean\.set\(mean\[0\], mean\[1\], mean\[2\]\)\)/,
   'the boulders wear the map\'s terrain rock layer (its splat settings), its mean to the material');
 assert.match(source, /const sourcedTexturesReady = Promise\.all\(\[[\s\S]{0,600}applySourcedRock\(/, 'the map\'s texture readiness waits for the stone');
+// (b14) the shadow pass inset on every pool; one horizontal axis drawn in by the place's hash (no draw: every later
+// placement keeps its seat), the stone inside its collider's hull
+assert.match(source, /const mesh = new THREE\.InstancedMesh\(geometry, mats\.rock, count\);[\s\S]{0,400}mesh\.customDepthMaterial = rockDepth;/, 'every rock pool casts through the inset pass');
+assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retainedSurfaceMaterials\.push\(rockDepth\);/, 'the inset pass retained with the props');
+{
+  const at = source.indexOf('const stretchRoll = ');
+  const stretch = source.slice(at, source.indexOf('const placement = _mat4.clone();', at));
+  assert.ok(at > 0 && !/rng\(\)/.test(stretch), 'the stretch draws nothing');
+  assert.match(stretch, /const stretch = 0\.74 \+ 0\.26 \* \(\(stretchRoll \* 7\.31\) % 1\);/, 'to three quarters at most');
+  assert.match(stretch, /_scalev\.set\(stretchRoll < 0\.5 \? sc \* stretch : sc, scaleY, stretchRoll < 0\.5 \? sc : sc \* stretch\)/, 'one horizontal axis, never up');
+}
+// (b14; wave 97: "no burial, soil lip …", "a clean seam instead of in drifted sand") the beds: run the props' own builder
+// (sliced from props.ts) over a stone on flat ground and on a sandy map
+{
+  const at = source.indexOf('  function* buildRockBeds(): Generator<PropsBuildSlice, THREE.BufferGeometry[], void> {');
+  const end = source.indexOf('  // the scenery lane (wave 57, "a ruler-straight base line on the grass with no soil collar")', at);
+  assert.ok(at > 0 && end > at, 'the beds\' builder');
+  const build = (dust, snowCap, crushable) => {
+    // (a straight-sided stone, a metre in radius: its section the same at every height, so no lip is held down by a
+    // stone drawing in above its foot)
+    const form = { geometry: new THREE.CylinderGeometry(1, 1, 2, 48, 12) };
+    const placement = new THREE.Matrix4().compose(new THREE.Vector3(10, -0.22 * 1.6, 20), new THREE.Quaternion(), new THREE.Vector3(1.6, 1.6, 1.6));
+    const rockPlacements = [[placement], [], []], rockGeos = [form.geometry, form.geometry, form.geometry];
+    const rockClutter = new Map(crushable ? [[placement, {}]] : []);
+    const fn = new Function('THREE', 'terrainNearMeshHeightAt', 'heightField', 'cfg', 'rockDressing', 'snowCap', 'rockGeos', 'rockPlacements',
+      'rockClutter', 'boulderSections', 'boulderSectionRadius',
+      `${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, { getHeightAt: () => 0 },
+      { splat: { rippleDir: [1, 0] } }, { dust }, snowCap, rockGeos, rockPlacements, rockClutter, boulderSections, boulderSectionRadius);
+    const it = fn();
+    let r = it.next();
+    while (!r.done) r = it.next();
+    return { beds: r.value, form, placement };
+  };
+  assert.equal(build(0, false, true).beds.length, 0, 'no bed under a crushable stone (a tank flattens it)');
+  const soil = build(0, false, false), sand = build(0.8, false, false);
+  for (const [label, { beds, form }] of [['a soil lip', soil], ['a sand drift', sand]]) {
+    assert.equal(beds.length, 1, `${label}: one cell's geometry`);
+    const g = beds[0], p = g.attributes.position, idx = g.index.array, sections = boulderSections(form.geometry);
+    assert.equal(p.count, 24 * 5, `${label}: 24 directions, five rings`);
+    assert.ok(!g.getAttribute('uv') && g.getAttribute('normal'), `${label}: world space, the terrain material\'s attributes`);
+    for (let k = 0; k < 24; k++) {
+      const v = (j) => [p.getX(k * 5 + j) - 10, p.getY(k * 5 + j), p.getZ(k * 5 + j) - 20];
+      const [x0, y0, z0] = v(0), [x4, y4, z4] = v(4), [x1, y1, z1] = v(1);
+      const angle = Math.atan2(z0, x0), inner = boulderSectionRadius(sections, (y0 + 0.22 * 1.6) / 1.6, angle) * 1.6;
+      assert.ok(Math.hypot(x0, z0) < inner, `${label}: the inner ring inside the stone`);
+      assert.ok(Math.abs(y4 + 0.05) < 1e-4, `${label}: the outer ring 5 cm under the ground`);
+      assert.ok(y1 > 0.01 && y1 < 0.35, `${label}: a lip at the stone's face (${y1.toFixed(3)} m)`);
+      assert.ok(Math.hypot(x4, z4) > Math.hypot(x1, z1) + 0.2, `${label}: a lip's width out`);
+    }
+    for (let t = 0; t < idx.length; t += 3) {
+      const a = new THREE.Vector3().fromBufferAttribute(p, idx[t]), b = new THREE.Vector3().fromBufferAttribute(p, idx[t + 1]), c = new THREE.Vector3().fromBufferAttribute(p, idx[t + 2]);
+      assert.ok(b.sub(a).cross(c.sub(a)).y > 0, `${label}: every triangle faces up`);
+    }
+  }
+  // the drift: the sand piled up the windward side (the wind blows along +x: its windward face looks along -x)
+  const lipAt = (beds, dirX) => {
+    const p = beds[0].attributes.position;
+    let best = -Infinity, y = 0;
+    for (let k = 0; k < 24; k++) { const dx = p.getX(k * 5 + 1) - 10, dz = p.getZ(k * 5 + 1) - 20, d = (dx * dirX) / Math.hypot(dx, dz); if (d > best) { best = d; y = p.getY(k * 5 + 1); } }
+    return y;
+  };
+  assert.ok(lipAt(sand.beds, -1) > lipAt(sand.beds, 1) * 2 && lipAt(sand.beds, -1) > 0.12, `the drift up the windward side (${lipAt(sand.beds, -1).toFixed(3)} m against ${lipAt(sand.beds, 1).toFixed(3)} m in the lee)`);
+  assert.match(source, /if \(!mobileProps\) group\.userData\.rockBeds = yield\* buildRockBeds\(\);\n\s*rockClutter\.clear\(\);/, 'the beds built while the crushables are known, not on the phones');
+  const map = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
+  assert.match(map, /group\.add\(terrain, vegetation\.group, props\.group\);\n\s*bindRockBeds\(terrain, props\.group\);/, 'the world binds the beds');
+  assert.match(map, /material\.userData\.layerMeans && material\.userData\.groundClock\) ground = material;/, 'to the terrain\'s own material');
+  assert.match(map, /mesh\.castShadow = false;\n\s*mesh\.receiveShadow = true;/, 'the beds cast nothing');
+}
 console.log('rockDressing self-test passed: three weathered kinds over seven rocks closed, unfolded, hollowed and knobbed, deep-skirted and inside their hulls, every map dressed, seven stand-in tiles about a mid grey, the lichen rank exact, the photographed stone in the hook');
