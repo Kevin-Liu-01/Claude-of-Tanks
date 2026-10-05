@@ -157,7 +157,7 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   coalfield: [[0, 0.26], [17, 0.22], [4, 0.14], [5, 0.14], [1, 0.12], [3, 0.06], [15, 0.06]],
   // the Virgin Lands' grain steppe (the Sary-Arka, Akmola and Kustanai): spring wheat and its stubble in long strips
   // against the black fallow (Barayev's strips), a little barley, mown hay and the unploughed feather-grass remnant
-  tselina: [[1, 0.30], [5, 0.26], [4, 0.24], [2, 0.08], [13, 0.06], [17, 0.06]],
+  tselina: [[1, 0.30], [5, 0.32], [4, 0.18], [2, 0.08], [13, 0.06], [17, 0.06]],
 });
 
 /** Each region's field boundary. */
@@ -247,11 +247,12 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   },
   // Tarkhan Steppe (the map-revival lane, 2026-10-05, through the coordinator: the Sary-Arka grain steppe of the Virgin
   // Lands): Barayev's strip fields — long strips of wheat, stubble and black fallow about 100 m wide, laid across the
-  // prevailing south-westerly along the steppe highway's bearing (~84°), the land surveyed straight (a slight warp); dirt
-  // tracks on some of the long lines, a shelterbelt on a few strip ends
+  // prevailing south-westerly along the steppe highway's bearing (~84°); dirt tracks on some of the long lines, a
+  // shelterbelt on a few strip ends. (Gauntlet wave 106: "hard-edged unblended fallow-field colour masks in the aerial
+  // views" — the strips wander more over their length, the crop's colour a little softer, fewer fallow strips.)
   steppe: {
-    strength: 0.72, heading: 1.457, blockU: 620, blockV: 104, maxSplit: 2, marginM: 1.8, trackShare: 0.35, hedgeShare: 0.18,
-    warpM: 7, region: 'tselina', salt: 103,
+    strength: 0.64, heading: 1.457, blockU: 620, blockV: 104, maxSplit: 2, marginM: 1.8, trackShare: 0.35, hedgeShare: 0.18,
+    warpM: 12, region: 'tselina', salt: 103,
   },
 });
 
