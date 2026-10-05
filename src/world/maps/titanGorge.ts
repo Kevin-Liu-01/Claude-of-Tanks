@@ -99,6 +99,10 @@ export default {
     // round 49 (owner audit 2026-09-23, "smooth beige ridge faces without strata"): the ring's 35–47° faces past the edge
     // become the bedded landform rock (default band 0.22–0.48 left them the wall-projected sand set)
     ringRockSlope: [0.15, 0.36],
+    // ground lane (wave 65, e-wall-300: "an identical yellow outline traced along every ledge and crest"): the ring's
+    // ledges and tops from 16 m above the square's highest ground are the walls' caprock, not sand (the low hills in
+    // front stay the sand they are)
+    ringCaprockM: 16,
     rippleAmp: 0.20, midRelief: 0.92, midReliefFar: 840,
   },
   vegetation: {
@@ -159,7 +163,8 @@ export default {
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // 2026-10-04 (its establishing view: a blue hole in a deck its lighting runs at overcast 1.00): a dense overcast is
   // closed — coverage 1 at the map, as Whiteout's stratus (the regime row's 0.96 left the broad field's gaps open)
-  clouds: { regime: 'dense-overcast', coverage: 1, rain: 0.25, virga: 0.55 },
+  // (2026-10-04, the skies lane's deck structure: soft base lumps and slightly stronger cells read at establishing range)
+  clouds: { regime: 'dense-overcast', coverage: 1, rain: 0.25, virga: 0.55, lumps: 0.7, cells: 0.7 },
   sky: {
     sunElevationDeg: 34, sunAzimuthDeg: 126, turbidity: 6.2, rayleigh: 1.15,
     mieCoefficient: 0.008, mieDirectionalG: 0.84, fogDensity: 0.00046,
