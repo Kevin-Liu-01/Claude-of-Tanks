@@ -38,9 +38,9 @@ export const SPRAY_ATLAS_TILES = 2;
  * it (treeGrowth.ts emitCrownShadowHull): a spray card stops this share of the sun that meets it.
  */
 export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.freeze({
-  oak: 0.32, poplar: 0.255, willow: 0.133, acacia: 0.175, eucalyptus: 0.175, birch: 0.209, aspen: 0.249,
-  'birch-bare': 0.15, spruce: 0.241, fir: 0.287, pine: 0.092, cedar: 0.186, cypress: 0.292, mangrove: 0.245,
-  beech: 0.304, chestnut: 0.365, holmOak: 0.216, olive: 0.188, canaryPine: 0.098, aleppoPine: 0.071, larch: 0.154,
+  oak: 0.279, poplar: 0.255, willow: 0.163, acacia: 0.175, eucalyptus: 0.193, birch: 0.235, aspen: 0.256,
+  'birch-bare': 0.15, spruce: 0.241, fir: 0.287, pine: 0.092, cedar: 0.186, cypress: 0.292, mangrove: 0.241,
+  beech: 0.292, chestnut: 0.337, holmOak: 0.198, olive: 0.188, canaryPine: 0.098, aleppoPine: 0.071, larch: 0.154,
   broom: 0.125, juniper: 0.256, pinyon: 0.074,
   longleafPine: 0.169, longleafSeedling: 0.216, lebanonCedar: 0.21, sugi: 0.187, redPine: 0.099,
 });
@@ -49,7 +49,7 @@ export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.
  * Trees round 4 (the gauntlet's wave 68): a broadleaf tile's leaves at this share of the recipe's length and spacing,
  * on this many more twigs, the back layer this light and the midrib this light against the blade.
  */
-const SPRAY_LEAF_LAW = Object.freeze({ leafScale: 0.82, spacingScale: 0.72, extraTwigs: 3, backLayer: 0.72, vein: 0.8, stemFrom: 0.25, wood: 1 });
+const SPRAY_LEAF_LAW = Object.freeze({ leafScale: 0.82, spacingScale: 0.72, extraTwigs: 5, backLayer: 0.72, vein: 0.8, stemFrom: 0.25, wood: 1 });
 /** The pinnate sprays (the acacia's leaflets) as they were: round 4's parasol is tuned on them. */
 const SPRAY_LEAF_LAW_PINNATE = Object.freeze({ leafScale: 1, spacingScale: 1, extraTwigs: 0, backLayer: 0.6, vein: 0.62, stemFrom: 0.25, wood: 1 });
 /**
@@ -345,16 +345,16 @@ const BROADLEAF_RECIPES: Readonly<Record<string, BroadleafRecipe>> = Object.free
 });
 
 /**
- * Trees round 5: a shrub spray's twigs — not the crown tile's even herringbone (with a shrub's small leaves the near
- * bush's cards read as fern fronds): each at its own place up the stem, on either side as it falls, at its own angle
- * and length, a third of them forking once.
+ * Trees round 5: a spray's twigs, not an even herringbone (with a shrub's small leaves the near bush's cards read as fern
+ * fronds; a crown's minified into one giant leaf): each at its own place up the stem, on either side as it falls, at
+ * its own angle and length (from `floor` of the recipe's shortest), a third of them forking once.
  */
-function shrubTwigs(stem: Pt[], twigs: Pt[][], S: number, rng: Rng, recipe: BroadleafRecipe, n: number): void {
+function shrubTwigs(stem: Pt[], twigs: Pt[][], S: number, rng: Rng, recipe: BroadleafRecipe, n: number, floor: number): void {
   for (let k = 0; k < n; k++) {
     const t = 0.1 + rng() * 0.82;
     const at = pointAt(stem, t);
     const side = rng() < 0.5 ? -1 : 1;
-    const len = S * (recipe.twigLen[0] * 0.8 + rng() * (recipe.twigLen[1] - recipe.twigLen[0] * 0.8)) * (1.2 - t * 0.6);
+    const len = S * (recipe.twigLen[0] * floor + rng() * (recipe.twigLen[1] - recipe.twigLen[0] * floor)) * (1.2 - t * 0.6);
     const angle = at.a + side * recipe.twigAngle * (0.55 + rng() * 0.8);
     const bend = side * (recipe.hang > 0.5 ? -0.5 : 0.4) * rng() + (rng() - 0.5) * 0.5;
     const tw = twigPoints(at.p, angle, len, bend, 7);
@@ -381,7 +381,13 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
   // (the acacia's pinnate leaflets keep round 4's parasol tuning: the law is the blade-leaved sprays')
   const law = recipe.shape === 'pinnate' ? (shrub ? SHRUB_LEAF_LAW_PINNATE : SPRAY_LEAF_LAW_PINNATE) : shrub ? SHRUB_LEAF_LAW : SPRAY_LEAF_LAW;
   const nTw = recipe.twigs[0] + ((rng() * (recipe.twigs[1] - recipe.twigs[0] + 1)) | 0) + law.extraTwigs;
-  if (shrub) shrubTwigs(stem, twigs, S, rng, recipe, nTw);
+  // trees round 5 (the gauntlet's wave 98: the treeline's "leaf silhouettes are individually legible at that range [40-60
+  // m], meaning the leaves are many times life size"): a crown's blade-leaved spray is not the even herringbone either —
+  // a stem with its side twigs paired off evenly up it minified into one giant pinnate leaf on its stalk (a card at 50 m
+  // is ~14 px); its twigs fall as a shrub's do (two more of them, at their full lengths) and its outline is a ragged
+  // clump. The acacia's pinnate leaflets keep round 4's parasol tuning.
+  const irregular = shrub || recipe.shape !== 'pinnate';
+  if (irregular) shrubTwigs(stem, twigs, S, rng, recipe, nTw, shrub ? 0.8 : 1);
   else for (let k = 0; k < nTw; k++) {
     const t = 0.18 + (k + rng() * 0.6) / nTw * 0.7;
     const at = pointAt(stem, t);
@@ -415,8 +421,8 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
       for (let k = 0; k <= n; k++) {
         // trees round 5: a shrub's leaves fall a little off the even step, now and then on the same side twice, and a
         // few are missing — no herringbone (shrubTwigs)
-        const jt = shrub ? (rng() - 0.5) * 0.8 / n : 0, flip = shrub && rng() < 0.3 ? -1 : 1;
-        if (shrub && k < n && rng() < 0.12) continue;
+        const jt = irregular ? (rng() - 0.5) * 0.8 / n : 0, flip = irregular && rng() < 0.3 ? -1 : 1;
+        if (irregular && k < n && rng() < (shrub ? 0.12 : 0.06)) continue;
         const t = Math.min(1, Math.max(0, (ti === 0 ? law.stemFrom + (1 - law.stemFrom) * (k / n) : 0.12 + 0.88 * (k / n)) + jt));
         const at = pointAt(tw, t);
         const side = (k % 2 === 0 ? -1 : 1) * (layer === 0 ? -1 : 1) * flip;
