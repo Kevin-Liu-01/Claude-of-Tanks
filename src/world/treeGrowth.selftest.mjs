@@ -16,7 +16,7 @@ import {
   emitBranchGeometry, emitCrownShadowHull, emitLeafCards, envelopeFraction, growTreeSkeleton, GROWTH_LEAF_BUDGET,
   GROWTH_LOWEST_WOOD_M, GROWTH_SIDE_TUBE_BUDGET, GROWTH_SPECIES, GROWTH_SPRAY_CLEARANCE_M, TREE_GROWTH_PROFILES,
   weldGrownGeometry, canopySkyOcclusion, GROWTH_CANOPY_AO, growthCrownAttachments, growShrubSkeleton, GROWTH_SHRUB_SPRAYS,
-  GROWTH_SHRUB_VALUE, GROWTH_CONIFER_LEAF_SHARE, growthCardRows,
+  GROWTH_SHRUB_VALUE, GROWTH_CONIFER_LEAF_SHARE, growthCardRows, shrubStemSites,
 } from './treeGrowth.ts';
 import { finishSprayTiles, makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_TILES, SPRAY_KINDS } from './treeSprayAtlas.ts';
 
@@ -434,6 +434,35 @@ const shrubRows = [];
   for (const [species, value] of Object.entries(GROWTH_SHRUB_VALUE)) {
     assert.ok(bushSpecies.includes(species) && value > 0.75 && value < 1.35, `${species}: a shrub value near one (${value})`);
   }
+}
+
+// trees round 5 (2026-10-05, the gauntlet's wave 98: the near bush "a cluster of flat, stemless leaf cards with no
+// visible branch structure connecting them to the ground"): a shrub's stems (shrubStemSites) — a card a stool, two for
+// the heart, on the tile it is given; each seated a few centimetres under the ground and reaching up into its own clump
+// (its top within the clump's radius of its centre, between the clump's wall and its top), near upright, stiff, unit
+// and square; deterministic. The grass stage's fountain has no stools and grows none.
+{
+  for (const species of ['oak', 'spruce', 'birch', 'mangrove']) for (const kind of ['bush', 'understorey']) {
+    const sk = growShrubSkeleton(species, kind, mulberry32(31));
+    const stems = shrubStemSites(sk, 3, mulberry32(9));
+    assert.deepEqual(stems, shrubStemSites(sk, 3, mulberry32(9)), `${species} ${kind}: the stems are deterministic`);
+    assert.equal(stems.length, sk.stools.length + 1, `${species} ${kind}: a stem a stool, two for the heart (${stems.length})`);
+    assert.ok(kind === 'bush' ? sk.stools.length >= 4 && sk.stools.length <= 6 : sk.stools.length === 1,
+      `${species} ${kind}: a bush's heart and three to five stools, the understorey's one clump (${sk.stools.length})`);
+    for (const st of stems) {
+      assert.ok(st.stem === true && st.tile === 3 && st.branch === -1, `${species} ${kind}: a stem card on its tile`);
+      assert.ok(st.y < 0 && st.y > -0.08, `${species} ${kind}: seated just under the ground (${st.y})`);
+      assert.ok(Math.abs(Math.hypot(st.ax, st.ay, st.az) - 1) < 1e-9 && Math.abs(Math.hypot(st.nx, st.ny, st.nz) - 1) < 1e-9, 'unit axis and face');
+      assert.ok(Math.abs(st.ax * st.nx + st.ay * st.ny + st.az * st.nz) < 1e-9, 'the face square to the axis');
+      assert.ok(st.ay > Math.sin(0.7), `${species} ${kind}: a stem stands near upright (${st.ay.toFixed(2)})`);
+      assert.ok(st.flex < 0.1 && st.bend === 0, 'a stem barely sways and never sags');
+      const top = { x: st.x + st.ax * st.length * 0.94, y: st.y + st.ay * st.length * 0.94, z: st.z + st.az * st.length * 0.94 };
+      assert.ok(sk.stools.some((q) => Math.hypot(top.x - q.x, top.z - q.z) <= q.r && top.y >= q.c0 - 1e-9 && top.y <= q.top + 1e-9),
+        `${species} ${kind}: a stem reaches up into its clump`);
+    }
+  }
+  const fountain = growShrubSkeleton('longleafSeedling', 'bush', mulberry32(31));
+  assert.equal(shrubStemSites(fountain, 3, mulberry32(9)).length, 0, 'the grass stage grows no stems');
 }
 
 // the integration: the real build on the desktop tier (no renderer), then legacyTrees, then the mobile tier

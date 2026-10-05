@@ -38,10 +38,10 @@ import { createTreeImpostorLibrary, type TreeImpostorLibrary, type TreeImpostorR
 // p2 trees lane (2026-10-01): the grown near trees — skeleton, wood, spray cards and crown shadow hull — and their
 // branch-spray atlases
 import {
-  canopySkyOcclusion, crownLobes, crownSurfaceNormal, emitBranchGeometry, GROWTH_CROWN_SHADING, emitCrownShadowHull, emitLeafCards, growShrubSkeleton, GROWTH_SHRUB_VALUE, growthCardRows, GROWTH_CROWN_STEM_WIDTH, growthCrownAttachments,
+  canopySkyOcclusion, crownLobes, crownSurfaceNormal, emitBranchGeometry, GROWTH_CROWN_SHADING, emitCrownShadowHull, emitLeafCards, growShrubSkeleton, GROWTH_SHRUB_VALUE, growthCardRows, shrubStemSites, GROWTH_CROWN_STEM_WIDTH, growthCrownAttachments,
   growTreeSkeleton, GROWTH_BIRCH_FOOT, GROWTH_CANOPY_AO, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type CrownShadowMass, type GrowthSpecies,
 } from './treeGrowth.ts';
-import { makePalmFrondAtlas, makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
+import { makePalmFrondAtlas, makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
 import type { LandFieldSample } from './landUse.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
@@ -807,12 +807,72 @@ function paintBarkStyles(ctx: CanvasRenderingContext2D, rng: RandomSource, s: nu
       ctx.closePath(); ctx.fill();
     }
     ctx.globalAlpha = 1;
+    paintBirchFarMarks(ctx, offset, B, s);
   });
   paintMeanderingFurrows(ctx, rng, s);
   // the gutters of styles 1–4 continue their first columns (filtering across the stem's seam stays continuous)
   for (let style = 1; style < TREE_BARK_STYLES; style++) {
     ctx.drawImage(ctx.canvas, style * s, 0, s - B, s, style * s + B, 0, s - B, s);
   }
+}
+
+/**
+ * Trees round 5 (2026-10-05, the gauntlet's wave 98: Frontier's birches "uniformly white, bark-less trunks", "paper-thin
+ * with zero bark texture at this distance"): the marks a birch's stem shows from across a field — its lenticel dashes
+ * and grain are a few centimetres and average to white by the fourth mip (a texel there is ~6 cm at 50 m) — the black
+ * horizontal bands where the bark has cracked across, ragged-edged, each a sixth to two fifths of the way round the
+ * stem and a few centimetres tall, some broken in two, and the dark chevrons under shed branches; about a tenth of the
+ * bark, from a stream of their own (the sheet's other styles keep their draws), each drawn again a sheet's height above
+ * and below so the bark tiles down the stem.
+ */
+function paintBirchFarMarks(ctx: CanvasRenderingContext2D, offset: number, B: number, s: number): void {
+  const far = mulberry32(0xb17c4);
+  ctx.fillStyle = '#1f1b19';
+  const blot = (cx: number, cy: number, w: number, h: number, alpha: number): void => {
+    // a band's piece: long across the stem, pinched at its ends, its edges rippled by three slow waves (never spiky)
+    const p1 = far() * 6.283, p2 = far() * 6.283, p3 = far() * 6.283, skew = (far() - 0.5) * 0.25, n = 24, pts: number[] = [];
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a);
+      const rx = w * 0.5 * (1 + 0.1 * Math.sin(2 * a + p1));
+      const ry = h * 0.5 * Math.pow(Math.abs(sn), 0.6) * (1 + 0.3 * Math.sin(3 * a + p2) + 0.18 * Math.sin(5 * a + p3));
+      pts.push(c * rx, sn * ry + c * rx * skew);
+    }
+    ctx.globalAlpha = alpha;
+    for (const dy of [-s, 0, s]) {
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const px = cx + offset + pts[i * 2], py = cy + dy + pts[i * 2 + 1];
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath(); ctx.fill();
+    }
+  };
+  for (let k = 0; k < 9; k++) {
+    const x = far() * B, y = far() * s, w = 36 + far() * 60, h = 6 + far() * 8, dark = 0.75 + far() * 0.2;
+    if (far() < 0.4) {
+      // broken in two across the stem
+      const split = 0.35 + far() * 0.3;
+      blot(x - w * (1 - split) * 0.5 - 1.5, y, w * split, h, dark);
+      blot(x + w * split * 0.5 + 1.5, y + (far() - 0.5) * h * 0.5, w * (1 - split), h * (0.7 + far() * 0.4), dark);
+    } else blot(x, y, w, h, dark);
+  }
+  for (let k = 0; k < 4; k++) {
+    // a shed branch's scar: a broad dark chevron opening up the stem, thickest at its point
+    const x = far() * B, y = far() * s, w = 30 + far() * 26, h = w * (0.22 + far() * 0.1), lean = (far() - 0.5) * 0.25 * w;
+    const arm = 0.2 + far() * 0.06;
+    ctx.globalAlpha = 0.85;
+    for (const dy of [-s, 0, s]) {
+      ctx.beginPath();
+      ctx.moveTo(x + offset - w * 0.5, y + dy - h * 0.5);
+      ctx.quadraticCurveTo(x + offset + lean - w * 0.2, y + dy + h * 0.2, x + offset + lean, y + dy + h * 0.5);
+      ctx.quadraticCurveTo(x + offset + lean + w * 0.2, y + dy + h * 0.2, x + offset + w * 0.5, y + dy - h * 0.5);
+      ctx.lineTo(x + offset + w * (0.5 - arm), y + dy - h * 0.5);
+      ctx.quadraticCurveTo(x + offset + lean + w * 0.1, y + dy - h * 0.1, x + offset + lean, y + dy + h * 0.02);
+      ctx.quadraticCurveTo(x + offset + lean - w * 0.1, y + dy - h * 0.1, x + offset - w * (0.5 - arm), y + dy - h * 0.5);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
 }
 
 /**
@@ -2417,7 +2477,8 @@ export function grownTintLaw(family: string, leafy = false): readonly [number, n
  * atlas they drew four sprays each), the trees' tint law (the understorey a touch younger and yellower), a snowy
  * palette's laden tiles on the sky-facing sprays. Cards only, welded: the shrub's stems stand inside its foliage.
  */
-function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: VegetationPalette, growth: GrowthSpecies): THREE.BufferGeometry {
+function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: VegetationPalette, growth: GrowthSpecies,
+  shrubAtlas = false): THREE.BufferGeometry {
   const profile = TREE_GROWTH_PROFILES[growth];
   const skeleton = growShrubSkeleton(growth, kind, rng);
   // a snowy palette's load lies on the sprays facing the sky highest on the mound: a fixed share of the shrub's sprays
@@ -2428,7 +2489,14 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
     const order = skeleton.leaves.filter(site => site.ny > 0.35)
       .sort((a, b) => (b.ny + 0.5 * b.y / skeleton.height) - (a.ny + 0.5 * a.y / skeleton.height));
     const laden = new Set(order.slice(0, Math.round(skeleton.leaves.length * 0.12 * Math.min(1, snow * 1.1))));
-    for (const site of skeleton.leaves) site.tile = (laden.has(site) ? 0 : SPRAY_ATLAS_TILES) + (site.tile % SPRAY_ATLAS_TILES);
+    // (trees round 5: a shrub atlas' bare row is its one plain tile and its stems; makeSprayAtlas `shrub`)
+    for (const site of skeleton.leaves) {
+      site.tile = shrubAtlas ? (laden.has(site) ? site.tile % SPRAY_ATLAS_TILES : SPRAY_ATLAS_TILES)
+        : (laden.has(site) ? 0 : SPRAY_ATLAS_TILES) + (site.tile % SPRAY_ATLAS_TILES);
+    }
+  } else if (shrubAtlas) {
+    // trees round 5: the sprays keep to the shrub atlas' leaf tiles (its last is the stems')
+    skeleton.leaves.forEach((site, i) => { if (site.tile === SHRUB_STEM_TILE) site.tile = i % SHRUB_STEM_TILE; });
   }
   const [hueBase, satBase, gain] = grownTintLaw(profile.family, pal.birchLeaves === true);
   const hue0 = (pal.cardHue ?? hueBase) + (kind === 'understorey' ? 0.015 : 0), sat0 = pal.cardSat ?? satBase;
@@ -2437,10 +2505,19 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
   // its own few masses — its sprays' lobes, the union's normals and a lighter depth shade than a crown's (a shrub is
   // open to the sky around it), its lit shell given back by the shrub gain (GROWTH_CROWN_SHADING)
   skeleton.lobes = crownLobes(skeleton, kind === 'bush' ? 3 : 2);
+  // trees round 5 (the gauntlet's wave 98: the near bush's "flat, stemless leaf cards with no visible branch structure
+  // connecting them to the ground"): a shrub on its shrub atlas stands on its stems — a card a stool from the ground into
+  // its clump (treeGrowth.ts shrubStemSites), drawn in the bark's grey-brown
+  if (shrubAtlas) skeleton.leaves.push(...shrubStemSites(skeleton, SHRUB_STEM_TILE, rng));
   const cards = emitLeafCards(skeleton, {
     tiles: SPRAY_ATLAS_TILES, rng, rows: 2, depthShade: GROWTH_CROWN_SHADING.shrubDepthShade,
     tint(shade, site, r) {
       const jitter = r();
+      if (site.stem) {
+        // the bark under the atlas' own grey-brown: a neutral, a little warm, in the mound's shade
+        const value = (0.55 + 0.45 * shade) * (0.9 + jitter * 0.2) * GROWTH_SHRUB_STEM_VALUE;
+        return [value, value * 0.94, value * 0.86];
+      }
       const sk = snow > 0.05 && site.tile < SPRAY_ATLAS_TILES ? 0.85 + jitter * 0.15 : 0;
       _c.setHSL(hue0 + (r() - 0.5) * 0.06 + (0.585 - hue0) * sk, (sat0 + r() * 0.06) * (1 - sk * 0.85) + 0.02 * sk, 0.5,
         THREE.SRGBColorSpace);
@@ -2458,6 +2535,11 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
   }
   return weldGrownGeometry(cards);
 }
+
+/** Trees round 5: a shrub stem card's tint (the bark atlas tile's multiplier; buildGrownShrub). */
+const GROWTH_SHRUB_STEM_VALUE = 1.15;
+/** Trees round 5: the shrub atlas' size before the device's texture scale (createBushes; the crowns' are 512). */
+const SHRUB_ATLAS_PX = 1024;
 
 function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, pal: VegetationPalette = {}): TreeGeometryPair {
   const profile = TREE_GROWTH_PROFILES[species];
@@ -6503,7 +6585,8 @@ function* vegetationBuildSteps(
    */
   function shrubMaterials(form: GrowthSpecies | null, pal: VegetationPalette): [THREE.MeshStandardMaterial, THREE.MeshDepthMaterial] | null {
     if (!form) return null;
-    const map = makeSprayAtlas(grownFormSprayKind(form, pal), mulberry32(seed + 77), texSize(512), pal.texTone || null, 0);
+    // trees round 5: a shrub atlas (its stems on the last tile; treeSprayAtlas.ts makeSprayAtlas `shrub`)
+    const map = makeSprayAtlas(grownFormSprayKind(form, pal), mulberry32(seed + 77), texSize(SHRUB_ATLAS_PX), pal.texTone || null, 0, true);
     const material = new THREE.MeshStandardMaterial({
       map, alphaTest: 0.38, alphaToCoverage: true, side: THREE.DoubleSide, vertexColors: true, roughness: 1.0, metalness: 0.0,
     });
@@ -6536,6 +6619,16 @@ function* vegetationBuildSteps(
     // near reach (FOLIAGE_NEAR_REACH): its own material over the one program, with the shrub hook's uniform — made when
     // the first shrub is planted (a world without shrubs registers none)
     let bushMatCache: THREE.MeshStandardMaterial | null = null;
+    // trees round 5 (the gauntlet's wave 98: the near bush's "lobed leaf cards two to four times life size with no
+    // twigs"): a shrub grown from its slot's sprays paints its own atlas — the slot's sprays at a shrub's leaf size on
+    // woody twigs, its stems on the last tile (treeSprayAtlas.ts makeSprayAtlas `shrub`), at twice the crowns' texels (a
+    // field bush's cards run 1-2.4 m against a crown's 0.55-1.1) — under the crowns' program, with its own shadow
+    // caster. A crown without the facing clusters (none on the desktop grown builds) keeps its own.
+    const slotCrown = foliageMats[bushSpecies];
+    const slotShrubAtlas = !shrubMats && grownTrees && sprayAtlasSpecies.has(bushSpecies)
+      && !!slotCrown?.defines && 'COT_LEAF_BILLBOARD' in slotCrown.defines;
+    const shrubOnAtlas = !!shrubMats || slotShrubAtlas;
+    let shrubDepthCache: THREE.MeshDepthMaterial | null = null;
     const bushMaterial = (): THREE.MeshStandardMaterial => {
       if (bushMatCache) return bushMatCache;
       const crown = foliageMats[bushSpecies];
@@ -6546,6 +6639,14 @@ function* vegetationBuildSteps(
         // clone compiles another program without the facing clusters and dissolves by the pixel dither)
         const shrub = crown.clone();
         shrub.defines = { ...(crown.defines ?? {}) };
+        if (slotShrubAtlas) {
+          const snow = bushPal.snow ?? 0;
+          shrub.map = makeSprayAtlas(grownFormSprayKind(shrubGrowth, bushPal), mulberry32(seed + 79), texSize(SHRUB_ATLAS_PX),
+            snow > 0.05 ? null : bushPal.texTone || null, snow, true);
+          shrubDepthCache = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: shrub.map, alphaTest: 0.38 });
+          retainedMaterials.push(shrubDepthCache);
+          retainedTextures.push(shrub.map);
+        }
         engineCtx.setupShadowMaterial(shrub, shrubFoliageHook);
         shrub.userData.cotShrubThin = uShrubThin;
         shrub.customProgramCacheKey = () => 'world-tree-foliage-v25';
@@ -6557,7 +6658,8 @@ function* vegetationBuildSteps(
     const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove'
       : shrubForm ?? (grownTrees ? formOf(bushSpecies)?.form : null) ?? bushSpecies;
     const bushGeos = sprayAtlasSpecies.has(bushSpecies)
-      ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, shrubGrowth), buildGrownShrub('bush', mulberry32(seed + 32), bushPal, shrubGrowth)]
+      ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, shrubGrowth, shrubOnAtlas),
+        buildGrownShrub('bush', mulberry32(seed + 32), bushPal, shrubGrowth, shrubOnAtlas)]
       : [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
     const bushPlacements: [THREE.Matrix4[], THREE.Matrix4[]] = [[], []];
     const bushKeep: [boolean[],boolean[]]=[[],[]];
@@ -6710,7 +6812,7 @@ function* vegetationBuildSteps(
         // toward the sun (foliageWindHook), so a bush under a crown sits in the crown's shadow, one state per shrub
         m.receiveShadow = canopyShadowReceive;
         m.matrixAutoUpdate = false;
-        m.customDepthMaterial = shrubMats?.[1] ?? foliageDepthMats[bushSpecies];
+        m.customDepthMaterial = shrubMats?.[1] ?? shrubDepthCache ?? foliageDepthMats[bushSpecies];
         m.userData.aoExclude = true; // GTAO override prepass ignores alphaTest
         m.userData.bush = true;
         m.computeBoundingSphere();
@@ -6827,7 +6929,7 @@ function* vegetationBuildSteps(
     function createUnderstoreyMesh(): void {
       const n = understoreyPlacements.length;
       if (n === 0) return;
-      const geometry = sprayAtlasSpecies.has(bushSpecies) ? buildGrownShrub('understorey', mulberry32(seed + 33), bushPal, shrubGrowth)
+      const geometry = sprayAtlasSpecies.has(bushSpecies) ? buildGrownShrub('understorey', mulberry32(seed + 33), bushPal, shrubGrowth, shrubOnAtlas)
         : buildUnderstoreyCards(mulberry32(seed + 33), bushPal);
       geometry.userData.understorey = true;
       geometry.setAttribute('aFadeI', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
@@ -6844,7 +6946,7 @@ function* vegetationBuildSteps(
       setShadowCasterCascades(m, UNDERSTOREY_SHADOW_CASCADES); // round 78: the two nearest cascades only
       m.receiveShadow = canopyShadowReceive;
       m.matrixAutoUpdate = false;
-      m.customDepthMaterial = shrubMats?.[1] ?? foliageDepthMats[bushSpecies];
+      m.customDepthMaterial = shrubMats?.[1] ?? shrubDepthCache ?? foliageDepthMats[bushSpecies];
       m.userData.aoExclude = true;
       m.userData.understorey = true;
       m.name = 'understorey';

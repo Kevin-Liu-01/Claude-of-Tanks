@@ -403,8 +403,15 @@ function checkShrubMaterial(environment) {
   try {
     const bush = vegetation.group.children.find(m => m.userData.bush === true && m.count > 0);
     assert.ok(bush, 'the shrubs are planted');
-    const crown = registered.find(m => m !== bush.material && m.customProgramCacheKey?.() === 'world-tree-foliage-v25' && m.map === bush.material.map);
+    const crown = registered.find(m => m !== bush.material && m.customProgramCacheKey?.() === 'world-tree-foliage-v25'
+      && m.map?.name === 'sprayAtlas:oak');
     assert.ok(crown && bush.material !== crown, 'the shrubs draw with their own material, beside their slot\'s crowns\'');
+    // trees round 5 (the gauntlet's wave 98: the near bush's "lobed leaf cards two to four times life size"): on their own
+    // atlas — the slot's sprays at a shrub's leaf size, their stems on its last tile — at twice the crowns' texels, which
+    // their shadow caster reads too
+    assert.equal(bush.material.map?.name, 'shrubAtlas:oak', 'the shrubs paint their own atlas');
+    assert.equal(bush.material.map.image.width, crown.map.image.width * 2, 'at twice the crowns\' texels');
+    assert.equal(bush.customDepthMaterial?.map, bush.material.map, 'their shadow caster reads it');
     assert.equal(bush.material.customProgramCacheKey(), 'world-tree-foliage-v25', 'on the one foliage program');
     assert.deepEqual(bush.material.defines, crown.defines, 'with the crown material\'s defines (the facing clusters, the edge fade)');
     const shrubProgram = environment.expand(bush.material), crownProgram = environment.expand(crown);

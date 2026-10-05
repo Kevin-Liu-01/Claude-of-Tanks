@@ -129,6 +129,13 @@ interface GrowthProfile {
    * needles, a few seedlings to a clump (growShrubSkeleton), where a shrub's mound of sprays stands on a shell.
    */
   fountain?: boolean;
+  /**
+   * Trees round 5 (the gauntlet's wave 98: Frontier's spruce "a smooth, uniform green cone with no needle-cluster
+   * silhouette or branching"): how ragged a whorled crown's tiers grow, 0..1 (unset 0) — each whorl reaching its own
+   * share of the cone and each limb in it its own share again, so the outline is serrated by limbs standing out and
+   * falling short, not every tier ending on one cone.
+   */
+  ragged?: number;
 }
 
 const P = (p: GrowthProfile): Readonly<GrowthProfile> => Object.freeze(p);
@@ -201,6 +208,8 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     // trees round 3: the sprays a little longer, so the open herringbone tiles still close the spire round the leader
     leafOrder: 1, leafPerM: 4.2, leafFrom: 0.0, spray: [0.74, 1.06], aspect: 0.72, habit: 'flat', tipSprays: 1,
     cardBend: 0.18, flatRoll: 1.15, flatDroop: 0.35, bark: 1, barkTint: [0.36, 0.30, 0.27], barkTopTint: null, foliageValue: 1.24,
+    // trees round 5 (the gauntlet's wave 98: Frontier's spruce "a smooth, uniform green cone"): its tiers ragged
+    ragged: 1,
   }),
   fir: P({
     family: 'conifer', height: 7.3, heightSpread: 0.10, trunkR: 0.27, form: 'excurrent',
@@ -477,6 +486,8 @@ interface LeafSite {
   bend: number;
   /** The branch (index into the skeleton's branches) the spray is seated on. */
   branch: number;
+  /** Trees round 5: a shrub's stem card (shrubStemSites), not a spray: its tile is the stems', its tint the bark's. */
+  stem?: boolean;
 }
 /**
  * Trees round 2 (2026-10-03): one mass of a crown — an axis-aligned ellipsoid fitted to a cluster of spray centres
@@ -498,7 +509,14 @@ interface TreeSkeleton {
    * shade read them instead of the crown's few masses, so every tuft lights as itself (absent on other crowns).
    */
   tufts?: CrownLobe[];
+  /**
+   * Trees round 5: a shrub's clumps (growShrubSkeleton), the heart first — each its centre on the ground, its radius,
+   * the height its envelope's wall gives way to its dome and its top; the stems grow from them (shrubStemSites).
+   */
+  stools?: ShrubStool[];
 }
+/** Trees round 5: one clump of a grown shrub (TreeSkeleton.stools). */
+interface ShrubStool { x: number; z: number; r: number; c0: number; top: number }
 
 interface GrowthOptions {
   /** 0, 1, 2: the near variants (smaller/younger, typical, larger/older); shapes the height and crown. */
@@ -824,9 +842,12 @@ function growPrimaries(ctx: GrowContext, stemIndex: number, variant: number): vo
   let y = y0 + rng() * profile.spacing * 0.5;
   let az = rng() * Math.PI * 2;
   const spacing = profile.spacing * (ctx.mobile ? 1.18 : 1);
+  const ragged = profile.ragged ?? 0;
   while (y < y1) {
     const t = (y - y0) / Math.max(0.3, ctx.crownTopY - y0);
     const count = profile.whorled ? Math.round(range(rng, profile.perWhorl)) : 1;
+    // trees round 5: a ragged crown's whorl reaches its own share of the cone (no draw for any other crown)
+    const whorlReach = ragged > 0 ? 1 + (rng() - 0.45) * 0.36 * ragged : 1;
     const at = sampleAlong(stem.nodes, y / ctx.height);
     for (let k = 0; k < count; k++) {
       const a = lerp(profile.angleLow, profile.angleHigh, t) + (rng() - 0.5) * 0.18;
@@ -834,7 +855,8 @@ function growPrimaries(ctx: GrowContext, stemIndex: number, variant: number): vo
       const dir = v3(Math.sin(a) * Math.cos(azK), Math.cos(a), Math.sin(a) * Math.sin(azK));
       const env = envelopeAt(ctx, y);
       // the branch reaches the envelope at its height (a hanging limb a little beyond: its droop pulls it back in)
-      const reach = Math.max(profile.family === 'conifer' ? 0.36 : 0.25, env * (0.82 + rng() * 0.3));
+      const reach = Math.max(profile.family === 'conifer' ? 0.36 : 0.25,
+        env * (0.82 - 0.22 * ragged + rng() * (0.3 + 0.5 * ragged)) * whorlReach);
       const len = Math.min(reach / Math.max(0.25, Math.sin(Math.min(a, Math.PI - 0.25))) * 1.05, ctx.crownR * 1.9);
       if (len < 0.25) continue;
       const r0 = Math.max(0.012, at.r * (profile.family === 'conifer' ? 0.30 : 0.5) * (0.85 + rng() * 0.3) * (1 - t * 0.5));
@@ -1290,7 +1312,40 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
       });
     }
   }
-  return { species, height: H, branches: [], leaves, crown: { x: 0, y: c0 + Hc * 0.25, z: 0, r: R } };
+  return { species, height: H, branches: [], leaves, crown: { x: 0, y: c0 + Hc * 0.25, z: 0, r: R },
+    stools: clumps.map((q) => ({ x: q.x, z: q.z, r: q.R, c0: q.c0, top: q.c0 + q.Hc })) };
+}
+
+/**
+ * Trees round 5 (2026-10-05, the gauntlet's wave 98 on the near field bush: "a cluster of flat, stemless leaf cards with
+ * no visible branch structure connecting them to the ground, so it reads as floating leaf confetti"): a shrub's stems —
+ * a card for each stool (two for the heart) on the shrub atlas' stem tile (`tile`), standing on the ground and reaching
+ * a third of the way up its clump, where the sprays clothe its forks. A stool's foot stands near the heart's (a stool
+ * leans out of the one root plate), the heart's two a little apart. Each card turns about its own stem to face the
+ * viewer as the sprays do (vegetation.ts COT_LEAF_BILLBOARD), so it reads as stems from every side; it barely sways.
+ * Its seat is a few centimetres under the ground (the tile's foot fades there); deep in the shrub's shade. None for a
+ * shrub without stools (the grass stage's fountain). Deterministic in `rng`.
+ */
+export function shrubStemSites(skeleton: TreeSkeleton, tile: number, rng: Rng): LeafSite[] {
+  const out: LeafSite[] = [];
+  (skeleton.stools ?? []).forEach((q, i) => {
+    const heart = i === 0;
+    for (let k = 0; k < (heart ? 2 : 1); k++) {
+      const a = rng() * Math.PI * 2, rr = q.r * (heart ? 0.16 : 0.08) * (0.5 + 0.5 * rng());
+      const bx = (heart ? q.x : q.x * 0.35) + Math.cos(a) * rr, bz = (heart ? q.z : q.z * 0.35) + Math.sin(a) * rr;
+      const top = v3(q.x + (rng() - 0.5) * q.r * 0.3, q.c0 + (q.top - q.c0) * (0.3 + 0.15 * rng()), q.z + (rng() - 0.5) * q.r * 0.3);
+      const seat = v3(bx, -0.05, bz);
+      const span = v3(top.x - seat.x, top.y - seat.y, top.z - seat.z);
+      const reach = Math.hypot(span.x, span.y, span.z), axis = norm(span), face = perpendicular(axis);
+      // the card's top row stands at 0.94 of its length over its seat (emitLeafCards)
+      const length = reach / 0.94;
+      out.push({
+        x: seat.x, y: seat.y, z: seat.z, ax: axis.x, ay: axis.y, az: axis.z, nx: face.x, ny: face.y, nz: face.z,
+        length, width: length * 0.45, shade: 0.3, flex: 0.04, tile, bend: 0, branch: -1, stem: true,
+      });
+    }
+  });
+  return out;
 }
 
 /**

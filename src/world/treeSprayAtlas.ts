@@ -49,9 +49,24 @@ export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.
  * Trees round 4 (the gauntlet's wave 68): a broadleaf tile's leaves at this share of the recipe's length and spacing,
  * on this many more twigs, the back layer this light and the midrib this light against the blade.
  */
-const SPRAY_LEAF_LAW = Object.freeze({ leafScale: 0.82, spacingScale: 0.72, extraTwigs: 3, backLayer: 0.72, vein: 0.8 });
+const SPRAY_LEAF_LAW = Object.freeze({ leafScale: 0.82, spacingScale: 0.72, extraTwigs: 3, backLayer: 0.72, vein: 0.8, stemFrom: 0.25, wood: 1 });
 /** The pinnate sprays (the acacia's leaflets) as they were: round 4's parasol is tuned on them. */
-const SPRAY_LEAF_LAW_PINNATE = Object.freeze({ leafScale: 1, spacingScale: 1, extraTwigs: 0, backLayer: 0.6, vein: 0.62 });
+const SPRAY_LEAF_LAW_PINNATE = Object.freeze({ leafScale: 1, spacingScale: 1, extraTwigs: 0, backLayer: 0.6, vein: 0.62, stemFrom: 0.25, wood: 1 });
+/**
+ * Trees round 5 (2026-10-05, the gauntlet's wave 98 on the near field bush: "flat, opaque, hard-edged lobed leaf cards
+ * two to four times life size with no twigs", "single leaf clumps on hairline stalks that read as floating lollipops"):
+ * a shrub's spray tile (makeSprayAtlas' `shrub` atlas). A field bush's cards run 1-2.4 m (its sprays at a shrub's
+ * length times the bush's 1.8-3.7 scale), so a crown tile's leaves painted 10-20 cm there; the shrub's are under half
+ * the size, twice as close, on seven more twigs — a hazel's or a hawthorn's 4-7 cm — clothing the stem from its seat
+ * (no bare stalk), and the stem and twigs are wood, half again as thick, lighter than the leaves.
+ */
+const SHRUB_LEAF_LAW = Object.freeze({ leafScale: 0.48, spacingScale: 0.34, extraTwigs: 7, backLayer: 0.7, vein: 0.85, stemFrom: 0.05, wood: 1.5 });
+const SHRUB_LEAF_LAW_PINNATE = Object.freeze({ leafScale: 0.6, spacingScale: 0.6, extraTwigs: 4, backLayer: 0.6, vein: 0.62, stemFrom: 0.05, wood: 1.5 });
+/**
+ * Trees round 5: the tile a shrub atlas paints its stool's stems on (the last tile; makeSprayAtlas' `shrub`): its
+ * sprays take the others (vegetation.ts buildGrownShrub).
+ */
+export const SHRUB_STEM_TILE = SPRAY_ATLAS_TILES * SPRAY_ATLAS_TILES - 1;
 
 interface LeafColor { hue: number; sat: number; light: number }
 /** The base leaf colour of each kind (linear HSL, the convention of the round-8 painters' css()). */
@@ -329,10 +344,34 @@ const BROADLEAF_RECIPES: Readonly<Record<string, BroadleafRecipe>> = Object.free
   olive: { shape: 'lance', leafLen: 0.085, leafAspect: 0.17, petiole: 0.04, spacing: 0.02, leafAngle: 0.55, twigs: [6, 8], twigLen: [0.24, 0.38], twigAngle: 0.65, hang: 0.2, droop: 0.3, stemWidth: 1.8 },
 });
 
+/**
+ * Trees round 5: a shrub spray's twigs — not the crown tile's even herringbone (with a shrub's small leaves the near
+ * bush's cards read as fern fronds): each at its own place up the stem, on either side as it falls, at its own angle
+ * and length, a third of them forking once.
+ */
+function shrubTwigs(stem: Pt[], twigs: Pt[][], S: number, rng: Rng, recipe: BroadleafRecipe, n: number): void {
+  for (let k = 0; k < n; k++) {
+    const t = 0.1 + rng() * 0.82;
+    const at = pointAt(stem, t);
+    const side = rng() < 0.5 ? -1 : 1;
+    const len = S * (recipe.twigLen[0] * 0.8 + rng() * (recipe.twigLen[1] - recipe.twigLen[0] * 0.8)) * (1.2 - t * 0.6);
+    const angle = at.a + side * recipe.twigAngle * (0.55 + rng() * 0.8);
+    const bend = side * (recipe.hang > 0.5 ? -0.5 : 0.4) * rng() + (rng() - 0.5) * 0.5;
+    const tw = twigPoints(at.p, angle, len, bend, 7);
+    twigs.push(tw);
+    if (rng() < 0.35) {
+      const f = pointAt(tw, 0.35 + rng() * 0.3);
+      twigs.push(twigPoints(f.p, f.a - side * (0.5 + rng() * 0.4), len * (0.35 + rng() * 0.25), (rng() - 0.5) * 0.4, 5));
+    }
+  }
+}
+
 /** One broadleaf spray tile: a stem, side twigs, a back layer and a front layer of leaves. */
-function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, kind: SprayKind, recipe: BroadleafRecipe): Pt[][] {
+function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, kind: SprayKind, recipe: BroadleafRecipe,
+  shrub = false): Pt[][] {
   const base = LEAF_COLOR[kind];
-  const stemColor = css(0.075, 0.20, 0.10);
+  // trees round 5: a shrub's twigs are grey-brown wood, lighter than its leaves, so they read between them
+  const stemColor = shrub ? css(0.07, 0.16, 0.15) : css(0.075, 0.20, 0.10);
   // the stem rises from the bottom centre (the card's seat) toward the top; a hanging spray arcs over and down
   const p0 = { x: S * 0.5, y: S * 0.95 };
   const stemLen = S * (recipe.hang > 0.5 ? 0.78 : 0.80);
@@ -340,9 +379,10 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
   const stem = twigPoints(p0, -Math.PI / 2 + lean, stemLen, (rng() - 0.5) * 0.5, 10);
   const twigs: Pt[][] = [stem];
   // (the acacia's pinnate leaflets keep round 4's parasol tuning: the law is the blade-leaved sprays')
-  const law = recipe.shape === 'pinnate' ? SPRAY_LEAF_LAW_PINNATE : SPRAY_LEAF_LAW;
+  const law = recipe.shape === 'pinnate' ? (shrub ? SHRUB_LEAF_LAW_PINNATE : SPRAY_LEAF_LAW_PINNATE) : shrub ? SHRUB_LEAF_LAW : SPRAY_LEAF_LAW;
   const nTw = recipe.twigs[0] + ((rng() * (recipe.twigs[1] - recipe.twigs[0] + 1)) | 0) + law.extraTwigs;
-  for (let k = 0; k < nTw; k++) {
+  if (shrub) shrubTwigs(stem, twigs, S, rng, recipe, nTw);
+  else for (let k = 0; k < nTw; k++) {
     const t = 0.18 + (k + rng() * 0.6) / nTw * 0.7;
     const at = pointAt(stem, t);
     const side = k % 2 === 0 ? -1 : 1;
@@ -363,7 +403,9 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
   // two layers: the back leaves (darker, the shaded interior of the spray) then the twigs, then the front leaves
   for (let layer = 0; layer < 2; layer++) {
     if (layer === 1) {
-      for (let i = twigs.length - 1; i >= 0; i--) taperStroke(ctx, twigs[i], i === 0 ? recipe.stemWidth * S / 256 : recipe.stemWidth * 0.55 * S / 256, 0.7 * S / 256, stemColor);
+      for (let i = twigs.length - 1; i >= 0; i--) {
+        taperStroke(ctx, twigs[i], (i === 0 ? recipe.stemWidth : recipe.stemWidth * 0.55) * law.wood * S / 256, 0.7 * S / 256, stemColor);
+      }
     }
     for (let ti = 0; ti < twigs.length; ti++) {
       const tw = twigs[ti];
@@ -371,9 +413,13 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
       for (let i = 1; i < tw.length; i++) twLen += Math.hypot(tw[i].x - tw[i - 1].x, tw[i].y - tw[i - 1].y);
       const n = Math.max(2, Math.round(twLen / (S * recipe.spacing * law.spacingScale)));
       for (let k = 0; k <= n; k++) {
-        const t = ti === 0 ? 0.25 + 0.75 * (k / n) : 0.12 + 0.88 * (k / n);
+        // trees round 5: a shrub's leaves fall a little off the even step, now and then on the same side twice, and a
+        // few are missing — no herringbone (shrubTwigs)
+        const jt = shrub ? (rng() - 0.5) * 0.8 / n : 0, flip = shrub && rng() < 0.3 ? -1 : 1;
+        if (shrub && k < n && rng() < 0.12) continue;
+        const t = Math.min(1, Math.max(0, (ti === 0 ? law.stemFrom + (1 - law.stemFrom) * (k / n) : 0.12 + 0.88 * (k / n)) + jt));
         const at = pointAt(tw, t);
-        const side = (k % 2 === 0 ? -1 : 1) * (layer === 0 ? -1 : 1);
+        const side = (k % 2 === 0 ? -1 : 1) * (layer === 0 ? -1 : 1) * flip;
         const terminal = k === n;
         const size = (0.75 + rng() * 0.45) * (terminal ? 1.1 : 1) * (layer === 0 ? 0.92 : 1) * (0.85 + 0.25 * t);
         const L = leafLen * size, W = leafW * size;
@@ -640,6 +686,18 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
   const composite = ctx.globalCompositeOperation;
   ctx.globalCompositeOperation = 'source-atop';
   paintSprayBody(ctx, twigs, S * 0.095, base, 1.0, 0.3, 'butt', 0.8);
+  if (kind === 'spruce') {
+    // trees round 5 (the gauntlet's wave 98: Frontier's spruce "a smooth, uniform green cone", its foliage "flat,
+    // undifferentiated"): the season's shoots at every twig's end, a lighter, yellower green over the needles already
+    // painted, so each tier's fringe lights against its dark heart
+    for (const tw of twigs) {
+      const at = pointAt(tw, 0.9), r = S * 0.06;
+      const gr = ctx.createRadialGradient(at.p.x, at.p.y, 0, at.p.x, at.p.y, r);
+      gr.addColorStop(0, css(base.hue - 0.025, base.sat * 1.2, base.light * 1.9, 0.6));
+      gr.addColorStop(1, css(base.hue - 0.025, base.sat * 1.2, base.light * 1.9, 0));
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(at.p.x, at.p.y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
   ctx.globalCompositeOperation = composite;
   if (flat) {
     // the fir's silver undersides show as pale lines along the twigs
@@ -924,10 +982,81 @@ const ROUND5_PAINTERS: Readonly<Partial<Record<SprayKind, (ctx: CanvasRenderingC
 });
 
 /**
- * Paint one species atlas: four tiles (2 × 2) of `size` / 2 px each, straight alpha, toned by the map palette's
- * texTone. Returns the ImageData-backed texture (sRGB, anisotropy 8, mipmapped).
+ * Trees round 5 (2026-10-05, the gauntlet's wave 98: the near bush "a cluster of flat, stemless leaf cards with no
+ * visible branch structure connecting them to the ground ... floating leaf confetti"): a shrub atlas's stem tile — a
+ * stool's two or three stems from the root plate (the tile's bottom centre, the card's seat on the ground) leaning
+ * apart, each forking once or twice in its upper half and shedding thinner twigs toward the top, where the clump's
+ * sprays clothe it. Grey-brown bark drawn round: its shade side, its body and a lit stripe toward the sun's side, with
+ * the bark's darker rings and lighter flecks along it. No leaves: the card turns about its stem to face the viewer
+ * (vegetation.ts COT_LEAF_BILLBOARD), so it reads as the stems from every side.
  */
-export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: ToneFunction | null = null, snow = 0): THREE.Texture {
+function paintShrubStemTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[][] {
+  const bark = { hue: 0.072, sat: 0.15, light: 0.11 };
+  const strokes: Array<{ pts: Pt[]; w0: number; w1: number }> = [];
+  const n = 2 + ((rng() * 2) | 0);
+  for (let i = 0; i < n; i++) {
+    const off = i - (n - 1) / 2;
+    const x0 = S * (0.5 + off * 0.045 + (rng() - 0.5) * 0.02);
+    const lean = off * 0.17 + (rng() - 0.5) * 0.12;
+    const stem = twigPoints({ x: x0, y: S * 1.0 }, -Math.PI / 2 + lean, S * (0.62 + rng() * 0.22), (rng() - 0.5) * 0.35, 10);
+    strokes.push({ pts: stem, w0: S * (0.048 + rng() * 0.012), w1: S * 0.014 });
+    const forks = 1 + ((rng() * 2) | 0);
+    for (let f = 0; f < forks; f++) {
+      const at = pointAt(stem, 0.45 + rng() * 0.35);
+      const side = (f % 2 === 0 ? 1 : -1) * (off >= 0 ? 1 : -1);
+      const fork = twigPoints(at.p, at.a + side * (0.32 + rng() * 0.3), S * (0.17 + rng() * 0.17), -side * 0.25, 7);
+      strokes.push({ pts: fork, w0: S * 0.021, w1: S * 0.007 });
+      for (let k = 0; k < 2; k++) {
+        const tw = pointAt(fork, 0.4 + k * 0.3);
+        strokes.push({ pts: twigPoints(tw.p, tw.a + (k % 2 ? 1 : -1) * (0.4 + rng() * 0.4), S * (0.06 + rng() * 0.07), 0.2, 5),
+          w0: S * 0.009, w1: S * 0.004 });
+      }
+    }
+    for (let k = 0; k < 3; k++) {
+      const tw = pointAt(stem, 0.72 + k * 0.1);
+      strokes.push({ pts: twigPoints(tw.p, tw.a + (k % 2 ? 1 : -1) * (0.3 + rng() * 0.5), S * (0.05 + rng() * 0.07), 0.1, 5),
+        w0: S * 0.009, w1: S * 0.004 });
+    }
+  }
+  // the shade side, the body, then the lit stripe (offset toward the canvas' left, the sun's side of every card)
+  for (const st of strokes) taperStroke(ctx, st.pts, st.w0, st.w1, css(bark.hue, bark.sat * 1.1, bark.light * 0.5));
+  for (const st of strokes) taperStroke(ctx, st.pts, st.w0 * 0.74, st.w1 * 0.74, css(bark.hue, bark.sat, bark.light));
+  for (const st of strokes) {
+    const lit = st.pts.map((p, i) => {
+      const w = st.w0 + (st.w1 - st.w0) * (i / (st.pts.length - 1));
+      return { x: p.x - w * 0.2, y: p.y };
+    });
+    taperStroke(ctx, lit, st.w0 * 0.26, st.w1 * 0.26, css(bark.hue + 0.01, bark.sat * 0.7, bark.light * 1.75));
+  }
+  // the bark: a darker ring or a lighter fleck every stem width or so along the thick stems
+  for (const st of strokes) {
+    if (st.w0 < S * 0.02) continue;
+    let len = 0;
+    for (let i = 1; i < st.pts.length; i++) len += Math.hypot(st.pts[i].x - st.pts[i - 1].x, st.pts[i].y - st.pts[i - 1].y);
+    const marks = Math.round(len / (st.w0 * 1.1));
+    for (let k = 0; k < marks; k++) {
+      const t = (k + rng()) / marks, at = pointAt(st.pts, t), w = (st.w0 + (st.w1 - st.w0) * t) * 0.74;
+      const dark = rng() < 0.6;
+      ctx.save();
+      ctx.translate(at.p.x, at.p.y);
+      ctx.rotate(at.a);
+      ctx.fillStyle = dark ? css(bark.hue, bark.sat, bark.light * 0.6, 0.8) : css(bark.hue + 0.02, bark.sat * 0.5, bark.light * 1.6, 0.7);
+      ctx.beginPath();
+      ctx.ellipse(0, (rng() - 0.5) * w * 0.4, w * (dark ? 0.12 : 0.08), w * (dark ? 0.42 : 0.2), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+  return strokes.map((st) => st.pts);
+}
+
+/**
+ * Paint one species atlas: four tiles (2 × 2) of `size` / 2 px each, straight alpha, toned by the map palette's
+ * texTone. Returns the ImageData-backed texture (sRGB, anisotropy 8, mipmapped). Trees round 5: a `shrub` atlas paints
+ * the shrub's leaf law on a broadleaf kind's tiles (SHRUB_LEAF_LAW) and its stems on the last (SHRUB_STEM_TILE).
+ */
+export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: ToneFunction | null = null, snow = 0,
+  shrub = false): THREE.Texture {
   const s = Math.max(64, size | 0), T = SPRAY_ATLAS_TILES, S = Math.floor(s / T);
   const c = document.createElement('canvas');
   c.width = c.height = s;
@@ -942,9 +1071,10 @@ export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: To
     ctx.rect(tx * S, ty * S, S, S);
     ctx.clip();
     ctx.translate(tx * S, ty * S);
-    const twigs = kind === 'birch-bare' ? paintBareTile(ctx, S, rng) : kind === 'broom' ? paintBroomTile(ctx, S, rng)
+    const twigs = shrub && ty * T + tx === SHRUB_STEM_TILE ? paintShrubStemTile(ctx, S, rng)
+      : kind === 'birch-bare' ? paintBareTile(ctx, S, rng) : kind === 'broom' ? paintBroomTile(ctx, S, rng)
       : ROUND5_PAINTERS[kind] ? ROUND5_PAINTERS[kind](ctx, S, rng)
-      : BROADLEAF_RECIPES[kind] ? paintBroadleafTile(ctx, S, rng, kind, BROADLEAF_RECIPES[kind])
+      : BROADLEAF_RECIPES[kind] ? paintBroadleafTile(ctx, S, rng, kind, BROADLEAF_RECIPES[kind], shrub)
         : paintConiferTile(ctx, S, rng, kind);
     // a winter palette's snow load rides the twigs of the top tile row — the snow-laden sprays the sky-facing seats
     // take (vegetation.ts buildGrownTree); the bottom row stays bare (its own stream: the leaf painting never moves)
@@ -958,7 +1088,7 @@ export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: To
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 8;
   texture.needsUpdate = true;
-  texture.name = `sprayAtlas:${kind}`;
+  texture.name = `${shrub ? 'shrubAtlas' : 'sprayAtlas'}:${kind}`;
   return texture;
 }
 

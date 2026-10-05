@@ -15,7 +15,7 @@ import {
   applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, CROWN_DAPPLE_LAW, CROWN_DAPPLE_PROGRAM_KEY, crownDappleTags, crownDappleThreshold,
   getCrownDappleDepthMaterial, patchCrownDappleDepthShader,
 } from './crownShadowDapple.ts';
-import { makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_KINDS } from './treeSprayAtlas.ts';
+import { makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, SPRAY_KINDS } from './treeSprayAtlas.ts';
 import { LOD_SHADOW_FADE_ATTRIBUTE } from '../engine/lodShadowFade.ts';
 import { growShrubSkeleton } from './treeGrowth.ts';
 import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland } from './treeBiomes.ts';
@@ -401,6 +401,77 @@ assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a
   assert.strictEqual(pal.texTone, ash.texTone, 'and its tone');
   assert.deepEqual(MAP_IDS.filter((id) => treeBiomeShrubColour(id)), ['caldera'], 'only Las Cañadas names a shrub colour');
   report.calderaBroom = { h: +h.toFixed(3), s: +sat.toFixed(3), l: +l.toFixed(3) };
+}
+
+// trees round 5 (2026-10-05, the gauntlet's wave 98 on the near field bush: "lobed leaf cards two to four times life
+// size with no twigs", "floating leaf confetti"): a shrub atlas (makeSprayAtlas `shrub`) paints a blade-leaved kind's
+// sprays at a shrub's leaf size — the leaves' colour steps along the tile's rows (each leaf its own shade: the smaller
+// the leaves, the closer the steps) at least two fifths again as close as the crown tiles' (the olive's narrow lances,
+// whose steps across a blade come close in either, a sixth) — and its stems on the last
+// tile: grey-brown wood standing on the tile's seat (its bottom centre), a thin share of the tile. The crown atlases keep
+// their shares (above).
+{
+  const savedDocument = globalThis.document, savedImageData = globalThis.ImageData;
+  globalThis.ImageData = ImageData;
+  globalThis.document = { createElement() { return createCanvas(1, 1); } };
+  const S = 512, T = S / SPRAY_ATLAS_TILES;
+  const pixels = (image) => (image.getContext ? image.getContext('2d').getImageData(0, 0, image.width, image.height).data : image.data);
+  /** A tile's colour steps along its rows: the share of neighbouring opaque texel pairs whose colours differ. */
+  const tileSteps = (data, tile) => {
+    const tx = (tile % SPRAY_ATLAS_TILES) * T, ty = Math.floor(tile / SPRAY_ATLAS_TILES) * T;
+    let pairs = 0, steps = 0;
+    for (let y = 0; y < T; y++) for (let x = 0; x < T - 1; x++) {
+      const i = ((ty + y) * S + tx + x) * 4, j = i + 4;
+      if (data[i + 3] < 200 || data[j + 3] < 200) continue;
+      pairs++;
+      if (Math.abs(data[i] - data[j]) + Math.abs(data[i + 1] - data[j + 1]) + Math.abs(data[i + 2] - data[j + 2]) > 18) steps++;
+    }
+    return steps / pairs;
+  };
+  /** A tile's opaque texels (at the alpha test) and its origin. */
+  const tileEdge = (data, tile) => {
+    const tx = (tile % SPRAY_ATLAS_TILES) * T, ty = Math.floor(tile / SPRAY_ATLAS_TILES) * T;
+    let area = 0;
+    for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) if (data[((ty + y) * S + tx + x) * 4 + 3] >= 97) area++;
+    return { area, tx, ty };
+  };
+  report.shrubAtlas = {};
+  try {
+    for (const kind of ['oak', 'beech', 'holmOak', 'chestnut', 'birch', 'mangrove', 'olive', 'acacia', 'spruce', 'broom']) {
+      const shrub = pixels(makeSprayAtlas(kind, mulberry32(79), S, null, 0, true).image);
+      const crown = pixels(makeSprayAtlas(kind, mulberry32(79), S, null, 0).image);
+      const bladed = !['acacia', 'spruce', 'broom'].includes(kind);
+      let shrubSteps = 0, crownSteps = 0;
+      for (let tile = 0; tile < SHRUB_STEM_TILE; tile++) {
+        const a = tileEdge(shrub, tile);
+        assert.ok(a.area > 0.08 * T * T, `${kind}: a shrub spray tile is foliage (${(a.area / (T * T)).toFixed(3)})`);
+        shrubSteps += tileSteps(shrub, tile) / SHRUB_STEM_TILE; crownSteps += tileSteps(crown, tile) / SHRUB_STEM_TILE;
+      }
+      if (bladed) {
+        assert.ok(shrubSteps > (kind === 'olive' ? 1.15 : 1.4) * crownSteps, `${kind}: the shrub's leaves are smaller than the crown's (colour steps ${shrubSteps.toFixed(3)} against ${crownSteps.toFixed(3)})`);
+      }
+      // the stem tile: wood, not leaves — warm grey-brown, thin, standing on the seat
+      const stem = tileEdge(shrub, SHRUB_STEM_TILE);
+      assert.ok(stem.area > 0.025 * T * T && stem.area < 0.2 * T * T, `${kind}: the stems a thin share of their tile (${(stem.area / (T * T)).toFixed(3)})`);
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
+        const i = ((stem.ty + y) * S + stem.tx + x) * 4;
+        if (shrub[i + 3] >= 200) { r += shrub[i]; g += shrub[i + 1]; b += shrub[i + 2]; n++; }
+      }
+      const c = new THREE.Color(r / n / 255, g / n / 255, b / n / 255), hsl = { h: 0, s: 0, l: 0 };
+      c.getHSL(hsl);
+      assert.ok(r >= g && g >= b && hsl.s < 0.3 && hsl.l > 0.15 && hsl.l < 0.6, `${kind}: the stems are grey-brown bark (${c.getHexString()})`);
+      let seat = 0;
+      for (let y = Math.floor(T * 0.9); y < Math.floor(T * 0.95); y++) for (let x = Math.floor(T * 0.4); x < Math.ceil(T * 0.6); x++) {
+        if (shrub[((stem.ty + y) * S + stem.tx + x) * 4 + 3] >= 97) seat++;
+      }
+      assert.ok(seat > 0, `${kind}: the stems stand on the card's seat`);
+      report.shrubAtlas[kind] = { steps: +shrubSteps.toFixed(3), crownSteps: +crownSteps.toFixed(3), stems: +(stem.area / (T * T)).toFixed(3) };
+    }
+  } finally {
+    globalThis.document = savedDocument;
+    globalThis.ImageData = savedImageData;
+  }
 }
 
 console.log(JSON.stringify(report));

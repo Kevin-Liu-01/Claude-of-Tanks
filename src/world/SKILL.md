@@ -218,7 +218,11 @@ deployments; the border's open trees are kept by the 36 m patch; a hyper-arid pl
 (`treeBiomeArid`) seats its groves, lone trees and border trees in the wadi beds and hollows (its border trees at a
 field tree's scale, not the forest ring's); a map's `palmSites` keep
 its palms and its palm groves at the water (any other palm grows as `palmFallback`, no draw moved). `treeCrownShading.selftest.mjs` pins the laws,
-`treeSpacing.selftest.mjs` where the trees stand; battlePacing guards the fights' cover.
+`treeSpacing.selftest.mjs` where the trees stand; battlePacing guards the fights' cover. Trees round 5: a grown shrub
+paints its own atlas (`makeSprayAtlas`'s `shrub`: the slot's sprays at a shrub's leaf size on irregular woody twigs, at
+1024 px, its stems on the last tile, `SHRUB_STEM_TILE`) and stands on stem cards from the ground into each clump
+(`shrubStemSites`, turned about their stems like the sprays); a birch's bark carries the bands and branch scars it shows
+across a field (`paintBirchFarMarks`).
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
 pole distance representation; callers dispose or transfer every returned mesh.
 `propPlacement.ts` owns typed terrain-support, rigid-footprint, utility-pole,
