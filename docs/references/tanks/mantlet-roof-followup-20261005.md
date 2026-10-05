@@ -8,12 +8,16 @@
   `gallery-r5-high`/`gallery-r5-low` views, including −9°/+30° poses. Full anatomy
   update/check, scoped assets/centering/geometry ledger, the 33-view sealed
   check and typecheck also pass; the regenerated fill is byte-identical.
-- **FAIL — TUSK smoke-bank regression:** `abramsTuskCheek` passes exact base
-  `2e299bec9` and fails this candidate. Narrowing the mantlet throat also changed
-  the cheek normal, moving its complete smoke banks inward by 13.8–14.3 mm.
-  This is repair debt in this batch, not inherited debt or a waived check.
+- **PASS — TUSK smoke-bank placement:** narrowing the mantlet throat changed
+  the cheek normal and moved the complete banks inward by 13.8–14.3 mm.
+  A 15 mm outward translation restores their presentation. The unchanged
+  `abramsTuskCheek` test and actual corrected HIGH/LOW stock probe pass.
+  Both feet and carriers remain seated, all rims/bores are clear, and sampled
+  forward faces are exposed. Independent review accepts all 22 fresh native
+  views, including −10°/+20° positions. Regenerated receipts are pending;
+  this does not claim a whole-vehicle release pass.
 - **INCOMPLETE — integrated suite:** the running 1,280-check invocation has
-  not completed. Seventeen other failures observed so far reproduce on the
+  not completed. Twenty other failures observed so far reproduce on the
   exact integrated base. The corrected roof-gun setup passes separately.
 - **NOT PUBLISHED:** the prior clean `3e3af3ca1` production preview is
   superseded by the M3 fix. Final main integration, clean production preview,
@@ -176,10 +180,25 @@ and geometry are unchanged by this repair.
 Five later failures also reproduce on exact `2e299bec9`:
 `t90AVladimirProportions`, `t90MSTurretArmorSeat`, `t90MProryvTrackRwsBustle`,
 `t84OplotTurret` and `specialActions` (the same two-versus-one shell assertion).
-The additional `abramsTuskCheek` failure does **not** reproduce there and must
-be repaired before publication. Its unchanged smoke helper consumes the
-changed turret-throat geometry indirectly; matching helper source alone was
-insufficient to establish an inherited failure.
+Three subsequent failures reproduce on that same base:
+`historicalT90MLamps` and `sourceXFleet` report the same rear lens/housing stock
+intersection, while `launcherOrigins` passes its firing checks but expects 35
+launchers instead of the current 36. This brings the observed inherited total
+to twenty; the complete suite is still running.
+
+The additional `abramsTuskCheek` failure did **not** reproduce on the base.
+Its unchanged smoke helper consumes the changed turret-throat geometry
+indirectly; matching helper source alone was insufficient to establish an
+inherited failure. The complete bank now moves outward by 15 mm, including
+its foot, carrier, tubes, rims and bores. The original test passes unchanged.
+The independent exact-stock comparison found that the failed global-X count
+measured outward presentation, not a newly blocked muzzle. In the corrected
+native HIGH/LOW builds both feet retain finite armor contact (estimated left
+260 mL, right 1,311 mL); rim/bore stock has no armor intersections and sampled
+forward faces are fully exposed. Rear tube seating remains intentional, with
+maximum overlap witness reach 3.915 mm left / 123.318 mm right, below the exact
+base's 37.311 / 136.380 mm. These are static measurements; fresh native views
+and regenerated receipts complete the correction's acceptance separately.
 
 The thirteenth, `remoteGunFleet`, expected firing after toggling an already
 enabled roof gun off. Its setup now asserts the default enabled state, disables
@@ -193,5 +212,13 @@ The clean `3e3af3ca1` production build passed the nine-vehicle Garage and rapid
 cache-return check (zero empty samples in 71 observations). The owner's later
 M3 planar-face correction invalidates that candidate's M3 visual evidence;
 its fresh physical checks, captures and regenerated assets now pass. The
-composed M3 release rerun, complete npm suite, TUSK launcher correction and
-final production/live verification remain pending.
+fresh composed M3 release reports the approved comparison failures unchanged
+(geometry score 0, procedural fidelity 50.5) and passes its 33-view sealed check.
+The separately queued standard check will run physical checks skipped after
+that comparison failure. The complete npm suite, TUSK regeneration and final
+production/live verification remain pending.
+
+The repair branch is rebased onto `16f624704`, preserving the intervening
+wreck-collision and Garage aura changes. An actual LOW-geometry comparison of
+Abrams wreck envelopes is queued to check this integration; no world collision
+manifest is modified without a measured envelope difference.

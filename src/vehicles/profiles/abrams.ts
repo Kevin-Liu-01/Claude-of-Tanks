@@ -3217,6 +3217,9 @@ function tejasRoofKit(
         // Keep the complete bank 12 mm farther out on its broad bracket
         // so its bore rims remain clear of the applique face.
         if (side > 0) smokeX += .012;
+        // The wider mantlet bay rotates the cheek frame inward. Restore the
+        // bank's outward reach as one assembly, including its seated foot.
+        smokeX += side * .015;
       }
       tejasSmokeCluster(P, smokeX, smokeY, smokeZ, side);
     }
