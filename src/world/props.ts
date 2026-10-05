@@ -38,7 +38,10 @@ function richCount(n: number | undefined, fallback = 0): number { return Math.ro
 import { markShadowOnly, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
-import { applySourcedBuildings, applySourcedRock, sourcedStoneIsBrick, type BuildingPaletteId, type SourcedTextureApplicationOptions } from './sourcedTextures.ts';
+import {
+  applySourcedBuildings, applySourcedRock, sourcedStoneIsBrick, type BuildingPaletteId, type SourcedTerrainSettings,
+  type SourcedTextureApplicationOptions,
+} from './sourcedTextures.ts';
 import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
@@ -3055,8 +3058,10 @@ function* propsBuildSteps(
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
   // urban) in place when they load; procedural stays the fallback of record.
   // A regional kit keeps its own roof and masonry painters; it opts into the plaster and timber photo sets.
-  // The scenery lane (gauntlet wave 66): the boulders wear the terrain's own photographed rock in place of their
-  // procedural tile (the fallback of record), and the map's texture readiness waits for it with the buildings'.
+  // The scenery lane (gauntlet wave 66): the boulders wear the map's own terrain rock layer, photographed, in place of
+  // their procedural tile (the fallback of record); the stone's mean, when it lands, is what their material divides the
+  // stone's structure out about. The map's texture readiness waits for it with the buildings'.
+  const rockStoneMean = new THREE.Vector3(0.214, 0.214, 0.214);
   const sourcedTexturesReady = Promise.all([
     applySourcedBuildings(
       regionalArchitecture
@@ -3067,7 +3072,9 @@ function* propsBuildSteps(
         : { plaster, roof: roofT, wood, stone },
       mapId, P, sourceApplication,
     ),
-    applySourcedRock({ albedo: rockDetail.albedo, normal: rockDetail.normal }, mapId, sourceApplication),
+    applySourcedRock({ albedo: rockDetail.albedo, normal: rockDetail.normal }, mapId,
+      (cfg as { splat?: SourcedTerrainSettings } | null)?.splat ?? {}, sourceApplication,
+      (mean) => rockStoneMean.set(mean[0], mean[1], mean[2])),
   ]).then(([buildings, boulders]) => [...buildings, ...boulders]);
 
   const windowStyle = resolveStructureWindowStyle(mapId);
@@ -3277,7 +3284,7 @@ ${snowCap ? `
   // Round 75 item 6: the boulders' dressing (moss on wet maps, dust on arid ones, the soil skirt everywhere; the scenery
   // lane, 2026-10-04: the map's beds, lichen and varnish, the contact darkening)
   const rockDressing = rockDressingFor(mapId, P.rockSoilTone ?? null, snowCap);
-  const rockHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRockShaderHook(shader, rockDressing, rockDetail.lichen); };
+  const rockHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRockShaderHook(shader, rockDressing, rockDetail.lichen, rockStoneMean); };
   // the telegraph poles (the scenery lane, after wave 57): creosote-dark to silvered timber, grain, checks, a stained foot;
   // the dusty maps' sun-bleached
   const poleHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyPoleTimberHook(shader, rockDressing.dust >= 0.5); };

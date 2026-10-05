@@ -739,7 +739,9 @@ function mustReplace(src: string, anchor: string, replacement: string): string {
  * varnish, the lichen colonies of the climate on the tops and the weather side, a snow map's snow, and the contact
  * darkening where the stone meets the ground.
  */
-export function applyRockShaderHook(shader: RockShader, dressing: RockDressing, lichenTile: THREE.Texture | null = null): void {
+export function applyRockShaderHook(
+  shader: RockShader, dressing: RockDressing, lichenTile: THREE.Texture | null = null, stoneMean: THREE.Vector3 | null = null,
+): void {
   shader.uniforms.uRockMoss = { value: dressing.moss };
   shader.uniforms.uRockDust = { value: dressing.dust };
   shader.uniforms.uRockSoil = { value: new THREE.Vector3(...dressing.soil) };
@@ -749,6 +751,9 @@ export function applyRockShaderHook(shader: RockShader, dressing: RockDressing, 
   shader.uniforms.uRockVarnish = { value: dressing.varnish };
   shader.uniforms.uRockLichenTile = { value: lichenTile };
   shader.uniforms.uRockPhoto = { value: new THREE.Vector3(...dressing.photo) };
+  // the stone's linear mean, per channel: the procedural stand-in's mid grey until the photographed stone lands (its
+  // owner updates the vector in place, sourcedTextures.ts applySourcedRock)
+  shader.uniforms.uRockStoneMean = { value: stoneMean ?? new THREE.Vector3(0.214, 0.214, 0.214) };
   shader.vertexShader = mustReplace(shader.vertexShader, 'varying vec3 vGrimeW;\nvarying vec3 vGrimeN;',
     'varying vec3 vGrimeW;\nvarying vec3 vGrimeN;\nattribute float aRockGround;\nvarying float vRockAbove;\nvarying float vRockSeed;\n#ifdef USE_INSTANCING\nattribute vec2 aRockSlope;\n#endif');
   shader.vertexShader = mustReplace(shader.vertexShader, '  vGrimeN = normalize(mat3(modelMatrix) * gn);\n}', /* glsl */`  vGrimeN = normalize(mat3(modelMatrix) * gn);
@@ -771,10 +776,11 @@ uniform vec3 uRockLichenA;
 uniform vec3 uRockLichenB;
 uniform float uRockVarnish;
 uniform sampler2D uRockLichenTile;
-uniform vec3 uRockPhoto;`);
-  // the stone in the map slot, triplanar (order-free): the photographed rock the terrain wears (sourcedTextures.ts
-  // applySourcedRock; the procedural tile until it loads), composed to a mid grey, so it multiplies its structure into the
-  // vertex tone — its contrast and its own colour's share the lithology's — and the stone's colour stays the vertex
+uniform vec3 uRockPhoto;
+uniform vec3 uRockStoneMean;`);
+  // the stone in the map slot, triplanar (order-free): the map's terrain rock layer, photographed (sourcedTextures.ts
+  // applySourcedRock; the procedural tile until it loads), divided by its own mean, so it multiplies its structure into
+  // the vertex tone — its contrast and its own colour's share the lithology's — and the stone's colour stays the vertex
   // tone's. The laws mix after the vertex tone has multiplied (three's color_fragment): the final colour, not a tint under it
   shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <map_fragment>', /* glsl */`
 vec3 rockTw = abs(vGrimeN); rockTw = rockTw * rockTw * rockTw * rockTw; rockTw /= max(1e-4, rockTw.x + rockTw.y + rockTw.z);
@@ -783,7 +789,7 @@ float rockDetail = 0.8;
 #ifdef USE_MAP
 {
   vec3 rockPhoto = texture2D(map, rockPw.yz).rgb * rockTw.x + texture2D(map, rockPw.xz).rgb * rockTw.y + texture2D(map, rockPw.xy).rgb * rockTw.z;
-  vec3 rockF = rockPhoto / 0.214;
+  vec3 rockF = rockPhoto / max(uRockStoneMean, vec3(0.01));
   float rockFL = dot(rockF, vec3(0.2126, 0.7152, 0.0722));
   rockF = max(vec3(0.0), mix(vec3(1.0), mix(vec3(rockFL), rockF, uRockPhoto.y), uRockPhoto.x));
   diffuseColor.rgb *= rockF;

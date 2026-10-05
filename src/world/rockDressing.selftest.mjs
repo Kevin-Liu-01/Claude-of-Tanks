@@ -278,7 +278,14 @@ const grimed = {
 const tile = new THREE.DataTexture(new Uint8Array(4), 1, 1);
 const shader = { uniforms: {}, vertexShader: grimed.vertexShader, fragmentShader: grimed.fragmentShader };
 applyRockShaderHook(shader, rockDressingFor('verdant', null), tile);
-assert.deepEqual(Object.keys(shader.uniforms).sort(), ['uRockDust', 'uRockLichen', 'uRockLichenA', 'uRockLichenB', 'uRockLichenTile', 'uRockMoss', 'uRockPhoto', 'uRockSoil', 'uRockVarnish']);
+assert.deepEqual(Object.keys(shader.uniforms).sort(), ['uRockDust', 'uRockLichen', 'uRockLichenA', 'uRockLichenB', 'uRockLichenTile', 'uRockMoss', 'uRockPhoto', 'uRockSoil', 'uRockStoneMean', 'uRockVarnish']);
+assert.deepEqual(shader.uniforms.uRockStoneMean.value.toArray(), [0.214, 0.214, 0.214], 'the stand-in\'s mid grey until the stone lands');
+{
+  const mean = new THREE.Vector3(0.1, 0.12, 0.14);
+  const owned = { uniforms: {}, vertexShader: grimed.vertexShader, fragmentShader: grimed.fragmentShader };
+  applyRockShaderHook(owned, rockDressingFor('verdant', null), tile, mean);
+  assert.equal(owned.uniforms.uRockStoneMean.value, mean, 'the owner\'s vector, updated in place when the stone lands');
+}
 assert.deepEqual(shader.uniforms.uRockPhoto.value.toArray(), [...rockDressingFor('verdant', null).photo], 'the lithology\'s photo treatment');
 assert.equal(shader.uniforms.uRockLichenTile.value, tile);
 assert.ok(shader.uniforms.uRockLichen.value.x > 0.1, 'the climate\'s lichen cover');
@@ -288,8 +295,8 @@ assert.match(shader.vertexShader, /vRockAbove -= dot\(aRockSlope, vGrimeW\.xz - 
 assert.match(shader.vertexShader, /vRockSeed = -1\.0;[\s\S]*#ifdef USE_INSTANCING[\s\S]*vRockSeed = fract\(sin\(dot\(instanceMatrix\[3\]\.xz/, 'the merged meshes are not boulders; an instance hashes its place');
 assert.ok(!/uRockBeds|vRockBed|bedTint|rockParting/.test(shader.vertexShader + shader.fragmentShader), 'no painted strata (wave 57: the beds are the forms\' relief)');
 assert.ok(!shader.fragmentShader.includes('#include <map_fragment>') && shader.fragmentShader.includes('texture2D(map, rockPw.yz).rgb'), 'the map slot samples the stone triplanar, its colour too');
-assert.match(shader.fragmentShader, /vec3 rockF = rockPhoto \/ 0\.214;[\s\S]*mix\(vec3\(1\.0\), mix\(vec3\(rockFL\), rockF, uRockPhoto\.y\), uRockPhoto\.x\)/,
-  'the photo multiplies its structure about its composed mid grey, its contrast and colour the lithology\'s');
+assert.match(shader.fragmentShader, /vec3 rockF = rockPhoto \/ max\(uRockStoneMean, vec3\(0\.01\)\);[\s\S]*mix\(vec3\(1\.0\), mix\(vec3\(rockFL\), rockF, uRockPhoto\.y\), uRockPhoto\.x\)/,
+  'the photo multiplies its structure about its own mean, its contrast and colour the lithology\'s');
 assert.match(shader.fragmentShader, /rockPert \* uRockPhoto\.z/, 'its relief at the lithology\'s strength');
 const frag = shader.fragmentShader;
 assert.ok(frag.indexOf('#include <color_fragment>') < frag.indexOf('mossMask'), 'the dressing mixes after the vertex tone');
@@ -322,5 +329,10 @@ assert.match(source, /materialKind === 'rock' \? rockHook\s*:/); // (the field p
 assert.match(source, /rock: new THREE\.MeshStandardMaterial\(\{\n\s*map: rockDetail\.albedo, normalMap: rockDetail\.normal/);
 assert.match(source, /const rockDetail = yield\* makeRockDetail\(noi, aniso, rockLithologyFor\(mapId\)\);/);
 assert.match(source, /textures: \[grimeTex, rockDetail\.lichen\]/, 'the shader-only lichen tile is declared on its world');
-assert.match(source, /rockDressingFor\(mapId, P\.rockSoilTone \?\? null, snowCap\)[\s\S]{0,200}applyRockShaderHook\(shader, rockDressing, rockDetail\.lichen\)/);
+assert.match(source, /rockDressingFor\(mapId, P\.rockSoilTone \?\? null, snowCap\)[\s\S]{0,200}applyRockShaderHook\(shader, rockDressing, rockDetail\.lichen, rockStoneMean\)/);
+// the stone: the map's terrain rock layer, swapped into the stand-in's textures; its mean to the hook's vector; the
+// map's texture readiness waits for it
+assert.match(source, /applySourcedRock\(\{ albedo: rockDetail\.albedo, normal: rockDetail\.normal \}, mapId,\s*\(cfg as \{ splat\?: SourcedTerrainSettings \} \| null\)\?\.splat \?\? \{\}, sourceApplication,\s*\(mean\) => rockStoneMean\.set\(mean\[0\], mean\[1\], mean\[2\]\)\)/,
+  'the boulders wear the map\'s terrain rock layer (its splat settings), its mean to the material');
+assert.match(source, /const sourcedTexturesReady = Promise\.all\(\[[\s\S]{0,600}applySourcedRock\(/, 'the map\'s texture readiness waits for the stone');
 console.log('rockDressing self-test passed: three weathered kinds over seven rocks closed, unfolded, hollowed and knobbed, deep-skirted and inside their hulls, every map dressed, seven stand-in tiles about a mid grey, the lichen rank exact, the photographed stone in the hook');

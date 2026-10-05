@@ -39,7 +39,7 @@ const families = ['plaster', 'plaster2', 'plaster3', 'roofT', 'stone', 'fieldSto
   'straw', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'vehiclePaint', 'steel', 'rockDetail'];
 const buildSurfaces = new Function('THREE', 'resolveStructureWindowStyle', 'makeRoofMaterial',
   'registerRetainedObject3DResources', 'makeGrimeTexture', '_mustReplace', 'rockDressingFor', 'applyRockShaderHook',
-  'applyPoleTimberHook',
+  'applyPoleTimberHook', 'rockStoneMean',
   `return ${stripTypeScriptTypes(`function* testSurfaceSteps(group, engineCtx, mapId, P, atlases) {
     const { ${families.join(', ')} } = atlases;
     const noi = null, aniso = 4;
@@ -52,7 +52,7 @@ const buildSurfaces = new Function('THREE', 'resolveStructureWindowStyle', 'make
   makeTexture, (text, anchor, replacement) => {
     assert.ok(text.includes(anchor), `production shader anchor ${anchor} remains present`);
     return text.replace(anchor, replacement);
-  }, rockDressingFor, applyRockShaderHook, applyPoleTimberHook);
+  }, rockDressingFor, applyRockShaderHook, applyPoleTimberHook, new THREE.Vector3(0.214, 0.214, 0.214));
 
 function makeTexture() {
   return new THREE.DataTexture(new Uint8Array(4 * 4 * 4).fill(128), 4, 4);
