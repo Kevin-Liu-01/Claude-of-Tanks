@@ -28,18 +28,21 @@ const law = 'float shade = uShadeLook.x * smoothstep( uThreshold + uShadeLook.y 
 assert.equal(clouds.split(law).length - 1, 1, 'one cut of the shared field, in the map alone');
 // (2026-10-05: the core, the cut's shift and its half-width through the QA hook — the defaults the constant law's)
 assert.match(clouds, /uShadeLook: \{ value: new THREE\.Vector3\(CLOUD_SHADOW_CORE, 0, 0\.08\) \},/);
-assert.match(clouds, /\(this\.farShadeMaterial\.uniforms\.uShadeLook\.value as THREE\.Vector3\)\.set\(lightTune\('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE\),\s*lightTune\('CLOUD_SHADOW_SHIFT', 0\), lightTune\('CLOUD_SHADOW_SOFT', 0\.08\)\);/);
+// (2026-10-05: a stratiform deck with gaps casts its cells too — a thick cell's core, by the deck's openness)
+assert.match(clouds, /const core = preset\.shadow \? lightTune\('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE\) : lightTune\('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYER_RULES\.deckShadowCore\);\s*const pattern = preset\.shadow \? preset\.shadowPattern : preset\.shadowPattern \* \(lightTune\('DECK_PATTERN', 1\) > 0 \? 1 : 0\);\s*\(this\.farShadeMaterial\.uniforms\.uShadeLook\.value as THREE\.Vector3\)\.set\(core \* pattern,\s*lightTune\('CLOUD_SHADOW_SHIFT', 0\), lightTune\('CLOUD_SHADOW_SOFT', 0\.08\)\);/);
+assert.match(clouds, /if \(!\(preset\.shadowPattern > 0\) \|\| preset\.coverage <= 0\) \{ this\.dropCloudShade\(\); return; \}/, 'a deck that casts no pattern publishes none');
 assert.match(clouds, /const FAR_SHADE_FRAGMENT = \/\* glsl \*\/`\nprecision highp float;\n\$\{CLOUD_FIELD_GLSL\}/, 'the map reads the shared field GLSL');
 assert.match(clouds, /gl_FragColor = vec4\( shade, 0\.0, 0\.0, 1\.0 \);/, 'undithered: the shade itself, no discard');
 assert.match(clouds, /if \( uClear\.z > 0\.0 \) shade \*= smoothstep\( uClear\.z \* 0\.6, uClear\.z \* 1\.4, length\( xz - uClear\.xy \) \);/, 'a front keeps its clear radius');
 assert.match(clouds, /const cx = Math\.round\(this\.cam\.pos\.x \/ texel\) \* texel, cz = Math\.round\(this\.cam\.pos\.z \/ texel\) \* texel;/, 'snapped: the shadows never swim');
 assert.match(clouds, /if \(!moved && \+\+this\.farShadeAge < CLOUD_FAR_SHADE_EVERY\) return;/, 'a refresh when the square moves, else on the schedule');
-assert.match(clouds, /if \(!preset\.shadow \|\| preset\.coverage <= 0\) \{ this\.dropCloudShade\(\); return; \}/, 'a deck that casts no shadows publishes none');
+// (2026-10-05: the publish gate is the pattern's share — pinned above)
 assert.match(clouds, /publishCloudShade\(shared, this\.farShadeInfo as \{ texture: THREE\.Texture; rect: THREE\.Vector3; baseM: number \},\s*this\.traceMaterial\.uniforms\.uSunDir\.value as THREE\.Vector3\);/,
   'published to the lit materials when the map is refreshed (one frame: map and square agree)');
 assert.match(clouds, /const shared = this\.scene\.userData\.cloudShadeUniforms as CloudShadeUniforms \| undefined;/, 'the scene\'s shared uniforms (lighting.ts)');
 assert.equal(clouds.split('this.dropCloudShade();').length - 1, 3, 'dropped when the layer stops, when the clouds cast none and on dispose');
-assert.match(clouds, /get shadowsActive\(\): boolean \{\s*return this\.active && !!this\.preset\?\.shadow && this\.preset\.coverage > 0;/, 'the shadows are the map\'s (the ring\'s horizon shade follows it)');
+// (2026-10-05: a deck with gaps casts its cells — the pattern's share, CloudLayerPreset.shadowPattern)
+assert.match(clouds, /get shadowsActive\(\): boolean \{\s*return this\.active && \(this\.preset\?\.shadowPattern \?\? 0\) > 0 && \(this\.preset\?\.coverage \?\? 0\) > 0;/, 'the shadows are the map\'s (the ring\'s horizon shade follows it)');
 
 // ---- no gobo, no far pass, no second path
 for (const gone of ['GOBO_FRAGMENT', 'GOBO_VERTEX', 'customDepthMaterial', 'uShadowCellOrigin', 'attachShadowCascades', 'markShadowOnly']) {

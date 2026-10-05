@@ -284,15 +284,25 @@ function resolveGrounded(
   sun: { intensity: number; colorHex: number } | null,
   overcast: number,
   night: number,
+  closure = 1,
 ): LightModel {
   const L = preset.lighting ?? {};
+  // (2026-10-05, the skies lane: a deck with gaps) the sun the cascades carry takes the overcast's cut only by the deck's
+  // closure (lightModelCore.ts resolveDeckClosure) — in a gap it is the clear sun, and the cloud shade map's pattern
+  // shades the cells — while the light the camera meters, the ground's radiance and the deck's return take the average
+  // cut (`derived`), so the exposure and the open ground's mean level hold
   const derived = deriveSun(params, overcast);
+  const close = clamp(closure, 0, 1);
+  const beam = close < 1 ? deriveSun(params, overcast * close) : derived;
   // the night: the dome dimmed to a moonlit sky. The direct light is the authored moon there, the derived sun by day,
   // blended by the night amount (the presets sit at its ends: day and sunset 0, the night preset 1)
   const moon = sun ? { intensity: sun.intensity, color: hexToLinear(sun.colorHex) } : { intensity: derived.intensity, color: derived.color };
-  const sunIntensity = derived.intensity + (moon.intensity - derived.intensity) * night;
-  const sunColor: Rgb = [0, 1, 2].map((c) => derived.color[c] + (moon.color[c] - derived.color[c]) * night) as unknown as Rgb;
-  const sunIrradiance = sunIntensity * luminance(sunColor);
+  const sunIntensity = beam.intensity + (moon.intensity - beam.intensity) * night;
+  const sunColor: Rgb = [0, 1, 2].map((c) => beam.color[c] + (moon.color[c] - beam.color[c]) * night) as unknown as Rgb;
+  // the average direct (the meter's, the ground's, the deck's return): the overcast's whole cut
+  const avgIntensity = derived.intensity + (moon.intensity - derived.intensity) * night;
+  const avgColor: Rgb = [0, 1, 2].map((c) => derived.color[c] + (moon.color[c] - derived.color[c]) * night) as unknown as Rgb;
+  const sunIrradiance = avgIntensity * luminance(avgColor);
   const sinEl = Math.max(0, params.sunDir[1]);
   // the clear sky (the env bake's dome, in its own units, × skyIntensity already) and its light
   const irr = sky.irradianceRaw;
@@ -348,8 +358,9 @@ function resolveGrounded(
     fillIntensity: 0,
     groundAlbedo: ground,
     groundRadiance: [0, 1, 2].map((c) => ground[c] * (irr[c] + lightTune('GROUND_SUNLIT_SHARE', GROUND_SUNLIT_SHARE)
-      * sunIntensity * sunColor[c] * sinEl / (Math.PI * Math.max(envDiffuseGain, 1e-3)))) as unknown as Rgb,
+      * avgIntensity * avgColor[c] * sinEl / (Math.PI * Math.max(envDiffuseGain, 1e-3)))) as unknown as Rgb,
     overcast,
+    deckClosure: close,
     illuminance,
     exposure,
     whiteBalance: whiteBalanceGains(L.warmth ?? 0),

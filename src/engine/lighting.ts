@@ -1015,7 +1015,9 @@ export function createLighting(
       groundBounceUniforms.uCotSkyChroma.value = model.envDiffuseChroma;
       groundBounceUniforms.uCotShadowDim.value.setScalar(SHADOW_AMBIENT_DIM_LUMA);
       // (2026-10-04, the light under a closed deck: the dims fade with the overcast — groundBounce.ts uCotShadowDepth)
-      groundBounceUniforms.uCotShadowDepth.value = 1 - Math.min(1, Math.max(0, model.overcast)) * lightTune('SHADOW_DIM_OVERCAST', SHADOW_DIM_OVERCAST);
+      // (2026-10-05: by the deck's closure — in a broken deck's gaps the circumsolar sky is out, and its cells' shade comes
+      // through the cloud shade map like a cumulus's)
+      groundBounceUniforms.uCotShadowDepth.value = 1 - Math.min(1, Math.max(0, model.overcast * model.deckClosure)) * lightTune('SHADOW_DIM_OVERCAST', SHADOW_DIM_OVERCAST);
       groundBounceUniforms.uCotShadowFacing.value = lightTune('SHADOW_DIM_FACING', SHADOW_DIM_FACING);
       // (2026-10-04: the environment lights a steep face's open sky here: no wall sky lift — groundBounce.ts)
       terrainWallSkyLift.value = lightTune('WALL_SKY_LIFT_GROUNDED', 0);
@@ -1195,8 +1197,9 @@ export function createLighting(
     const irr = atmo?.irradianceRaw;
     const physical = physicalRig && !farCascadeDormant && !!atmo?.active && !!atmo.params && !!irr;
     const authoredSun = authoredSunOf(opts);
+    // (2026-10-05: a deck with gaps casts its cells through the cloud shade map wherever the volumetric layer draws)
     const model = resolveLightModel(opts, physical ? atmo!.params! : null,
-      physical ? { irradianceRaw: [irr!.r, irr!.g, irr!.b] } : null, authoredSun);
+      physical ? { irradianceRaw: [irr!.r, irr!.g, irr!.b] } : null, authoredSun, cloudShadeOn && !!scene.userData.volumetricClouds);
     rigModel = model;
     scene.userData.lightModel = model;
     scene.userData.lightEnclosed = farCascadeDormant;

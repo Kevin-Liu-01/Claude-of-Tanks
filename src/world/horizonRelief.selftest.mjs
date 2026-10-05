@@ -274,6 +274,24 @@ assert.equal(getMapConfig('whiteout').horizon.style, 'alpine', 'round 72: Whiteo
   assert.ok(whiteout.shadow > 0.2 && whiteout.shadow < 0.35, `a closed deck fades the baked cast shadows (${whiteout.shadow.toFixed(3)})`);
   const bright = resolveHorizonLightingGains({ sun: 40, hemi: 5, cover: -1 });
   assert.ok(bright.sunGain <= 1.3 * Math.pow(1.6, 0.7) + 1e-9 && bright.ambient <= 0.5 * Math.pow(2, 0.8) + 1e-9 && bright.shadow === 0.85, 'the gains are clamped');
+  // 2026-10-05 (the skies lane; the gauntlet's wave 93 on Titan Gorge's far rock under its closed deck: "banded, graphic
+  // mountain-face shading ... inconsistent with the implied shadowless overcast light"): the sun term keeps the beam the
+  // deck lets through (the light model's 1 − OVERCAST_DIRECT_CUT × overcast) and the rest returns as sky light, so a
+  // level face keeps its light while the faces turned to and from the sun lose the difference
+  const sinEl = Math.sin(34 * Math.PI / 180);
+  const open = resolveHorizonLightingGains({ sun: 4.5, hemi: 0.51, cover: 1, sinEl });
+  const closed = resolveHorizonLightingGains({ sun: 4.5, hemi: 0.51, cover: 1, direct: 1 - 0.96, sinEl });
+  assert.ok(Math.abs(closed.sunGain - open.sunGain * 0.04) < 1e-12, `a closed deck: the sun term at the beam's 4 % (${closed.sunGain.toFixed(3)})`);
+  const level = (g) => g.sunGain * 1.05 * sinEl + g.ambient;
+  assert.ok(Math.abs(level(closed) - level(open)) < 1e-12, 'a level face keeps its light');
+  const facing = (g) => g.sunGain * 1.05 + g.ambient * 0.62, away = (g) => g.ambient * 0.62;
+  assert.ok(facing(open) / away(open) > 3 && facing(closed) / away(closed) < 1.2, `the faces to and from the sun ${(facing(open) / away(open)).toFixed(2)} → ${(facing(closed) / away(closed)).toFixed(2)}`);
+  assert.equal(resolveHorizonLightingGains({ sun: 4.5, hemi: 0.51, cover: 0 }).sunGain, ref.sunGain, 'an open sky: unchanged');
+  const horizonSource = readFileSync(new URL('./maps/horizon.ts', import.meta.url), 'utf8');
+  assert.match(horizonSource, /direct: 1 - OVERCAST_DIRECT_CUT_SHARED \* deckOvercast \* resolveDeckClosure\(deckPreset, getDeviceTier\(\) !== 'mobile'\),/,
+    'the ring: the uniform share of the cut (a deck with gaps casts its pattern on the ring through the cloud shade map)');
+  assert.match(horizonSource, /const farLighting: HorizonLighting = \{ \.\.\.lighting, direct: 1 - OVERCAST_DIRECT_CUT_SHARED \* deckOvercast \};/, 'the far range and the panorama: the average cut');
+  assert.equal(horizonSource.split('gains: resolveHorizonLightingGains(farLighting)').length - 1, 2, 'both far builders take it');
 }
 
 // --- the far range --------------------------------------------------------------------------------------------------

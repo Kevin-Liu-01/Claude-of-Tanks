@@ -76,6 +76,11 @@ export interface LightModel {
   /** The environment's radiance below the horizon, in the dome's units (sky.ts's env bake). */
   groundRadiance: Rgb;
   overcast: number;
+  /**
+   * 2026-10-05 (the skies lane): how closed the deck is (resolveDeckClosure) — the share of the overcast's direct cut the
+   * sun takes uniformly; a deck with gaps casts the rest as the cloud shade map's pattern (the sun out in its gaps).
+   */
+  deckClosure: number;
   /** Horizontal illuminance (luminance, light units) the exposure law meters. */
   illuminance: number;
   /** Linear exposure multiplier applied before the tone curve (post.ts). */
@@ -164,6 +169,35 @@ export function resolveOvercast(preset: LightModelPreset): number {
   return legacy ? 0.8 : 0;
 }
 
+/**
+ * 2026-10-05 (the skies lane; the gauntlet's wave 93: Frosthollow and Railyard facing the sun show it in a clear gap, "yet
+ * the snow, trees and yard have no shadows, rims or glare"): the coverage over which a deck closes — under the first it
+ * has gaps, over the second none.
+ */
+export const DECK_CLOSED_COVERAGE: readonly [number, number] = Object.freeze([0.95, 0.97]) as readonly [number, number];
+/**
+ * The share of the overcast's direct cut a deck takes uniformly: a closed deck (no gap) all of it; a deck with gaps none —
+ * where the cloud shade map can carry its cells (`patterned`: the volumetric layer draws on this tier) the cells shade
+ * the sun and the gaps let it through; without the map, or for an authored overcast or a legacy deck, the cut stays
+ * uniform (1).
+ */
+export function resolveDeckClosure(preset: LightModelPreset, patterned: boolean): number {
+  // (QA: DECK_PATTERN 0 restores the uniform cut on every deck)
+  if (!patterned || !(lightTune('DECK_PATTERN', 1) > 0)) return 1;
+  const authored = preset.lighting?.overcast;
+  if (typeof authored === 'number' && Number.isFinite(authored)) return 1;
+  const scape = preset.cloudscape;
+  if (!scape) return 1;
+  const row = scape.regime ? CLOUDSCAPE_REGIMES[scape.regime] : null;
+  if (scape.shadow ?? row?.shadow ?? true) return 1;
+  return smoothstep(DECK_CLOSED_COVERAGE[0], DECK_CLOSED_COVERAGE[1], scape.coverage ?? row?.coverage ?? 0);
+}
+/**
+ * The direct cut of a closed deck at overcast 1 — lightModel.ts OVERCAST_DIRECT_CUT, here for the modules that build
+ * before the grounded model loads (the far ranges, maps/horizon.ts); lightModel.selftest pins the two equal.
+ */
+export const OVERCAST_DIRECT_CUT_SHARED = 0.96;
+
 /** How much of the night a dome intensity means: full at the night preset's .08, none from .30 (sky.ts nightAmount). */
 function nightFor(skyIntensity: number): number {
   return clamp((0.30 - skyIntensity) / 0.22, 0, 1);
@@ -197,6 +231,7 @@ function legacyModel(preset: LightModelPreset): LightModel {
     groundAlbedo: ground,
     groundRadiance: [0, 0, 0],
     overcast: resolveOvercast(preset),
+    deckClosure: 1,
     illuminance: EXPOSURE_REFERENCE_ILLUMINANCE,
     exposure: lightTune('LEGACY_EXPOSURE', LEGACY_EXPOSURE) * (preset.postExposure ?? 1),
     whiteBalance: [1, 1, 1],
@@ -211,7 +246,7 @@ function legacyModel(preset: LightModelPreset): LightModel {
 /** The grounded model's resolver (lightModel.ts): an open sky's light from its atmosphere and summary. */
 export type GroundedLightResolver = (
   preset: LightModelPreset, params: AtmosphereParams, sky: LightModelSky, sun: { intensity: number; colorHex: number } | null,
-  overcast: number, night: number,
+  overcast: number, night: number, closure?: number,
 ) => LightModel;
 /** What the core hands the grounded model on install, so its chunk imports nothing at runtime: atmosphere.ts's medium
  * and transmittance march, the default ground and the exposure meter's reference. */
@@ -251,7 +286,9 @@ export function resolveLightModel(
   params: AtmosphereParams | null,
   sky: LightModelSky | null,
   sun: { intensity: number; colorHex: number } | null = null,
+  patterned = false,
 ): LightModel {
   return params && sky && grounded && !isGalaxySky(preset)
-    ? grounded(preset, params, sky, sun, resolveOvercast(preset), nightOf(preset)) : legacyModel(preset);
+    ? grounded(preset, params, sky, sun, resolveOvercast(preset), nightOf(preset), resolveDeckClosure(preset, patterned))
+    : legacyModel(preset);
 }

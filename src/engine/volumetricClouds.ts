@@ -46,7 +46,7 @@ import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 import { ATMOSPHERE_SKY_GLSL, ATMO_GROUND_KM } from './atmosphere.ts';
 import type { AtmospherePublishedState } from './sky.ts';
 import { CLOUD_BLUE_SIZE, CLOUD_CURL_SIZE, CLOUD_DETAIL_SIZE, CLOUD_SHAPE_SIZE, CLOUD_WEATHER_SIZE } from './cloudNoise.ts';
-import { cloudLayerKey, type CloudLayerPreset } from './cloudPresets.ts';
+import { CLOUD_LAYER_RULES, cloudLayerKey, type CloudLayerPreset } from './cloudPresets.ts';
 import { resolvePresetName } from './quality.ts';
 import { publishCloudShade, type CloudShadeUniforms } from './cloudShadeMap.ts';
 import { lightTune } from './lightModelCore.ts';
@@ -1760,7 +1760,7 @@ export class VolumetricCloudLayer {
 
   /** Whether the clouds cast shadows this frame (the shade map the lit materials read; the ring's horizon shade follows it). */
   get shadowsActive(): boolean {
-    return this.active && !!this.preset?.shadow && this.preset.coverage > 0;
+    return this.active && (this.preset?.shadowPattern ?? 0) > 0 && (this.preset?.coverage ?? 0) > 0;
   }
 
   private refreshLifetime(): void {
@@ -2140,7 +2140,8 @@ export class VolumetricCloudLayer {
    * lighting.ts); off where the clouds cast no shadows.
    */
   private updateFarShade(preset: CloudLayerPreset): void {
-    if (!preset.shadow || preset.coverage <= 0) { this.dropCloudShade(); return; }
+    // (2026-10-05: a stratiform deck with gaps casts its cells too — CloudLayerPreset.shadowPattern)
+    if (!(preset.shadowPattern > 0) || preset.coverage <= 0) { this.dropCloudShade(); return; }
     const texel = CLOUD_FAR_SHADE_SPAN_M / CLOUD_FAR_SHADE_SIZE;
     const cx = Math.round(this.cam.pos.x / texel) * texel, cz = Math.round(this.cam.pos.z / texel) * texel;
     const rect = this.farShadeInfo.rect;
@@ -2151,7 +2152,11 @@ export class VolumetricCloudLayer {
     }
     rect.set(cx, cz, CLOUD_FAR_SHADE_SPAN_M);
     (this.farShadeMaterial.uniforms.uFarShadeRect.value as THREE.Vector3).copy(rect);
-    (this.farShadeMaterial.uniforms.uShadeLook.value as THREE.Vector3).set(lightTune('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE),
+    // (a deck's cell is optically thick: CLOUD_LAYER_RULES.deckShadowCore; a deck closing toward no gaps casts less of its
+    // pattern as the light model's uniform cut takes over — the two complementary over the closing coverage)
+    const core = preset.shadow ? lightTune('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE) : lightTune('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYER_RULES.deckShadowCore);
+    const pattern = preset.shadow ? preset.shadowPattern : preset.shadowPattern * (lightTune('DECK_PATTERN', 1) > 0 ? 1 : 0);
+    (this.farShadeMaterial.uniforms.uShadeLook.value as THREE.Vector3).set(core * pattern,
       lightTune('CLOUD_SHADOW_SHIFT', 0), lightTune('CLOUD_SHADOW_SOFT', 0.08));
     this.renderQuad(this.farShadeMaterial, this.farShadeTarget);
     this.farShadeInfo.texture = this.farShadeTarget.texture;
@@ -2185,7 +2190,7 @@ export class VolumetricCloudLayer {
    */
   get farShade(): { readonly texture: THREE.Texture; readonly rect: THREE.Vector3; readonly baseM: number } | null {
     const info = this.farShadeInfo;
-    return this.active && this.farShadeValid && info.texture && this.preset?.shadow ? info as { texture: THREE.Texture; rect: THREE.Vector3; baseM: number } : null;
+    return this.active && this.farShadeValid && info.texture && (this.preset?.shadowPattern ?? 0) > 0 ? info as { texture: THREE.Texture; rect: THREE.Vector3; baseM: number } : null;
   }
 
   /**
