@@ -35,6 +35,7 @@ import type { CrushableRecord } from './props.ts';
 import { getMapConfig, type BattlefieldMapConfig } from './maps/index.ts';
 import { createGroundCoverClearance } from './groundCoverClearance.ts';
 import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
+import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import {
@@ -415,6 +416,9 @@ function assembleWorld(
   // sliced vegetation builder, so its work is not in that builder's timings.
   const groundCoverSealStarted = performance.now();
   vegetation.setGroundCoverClearance(groundCoverClearance());
+  // the scenery lane (b12; Fjord, wave 74: foliage cards through a boulder): and no shrub stands inside a boulder or a
+  // structure the props placed after it — cosmetic, its cover disc stays (shrubClearance.ts)
+  group.userData.shrubsCleared = clearShrubsFromSolids(vegetation.group, groundCoverClearance());
   group.userData.groundCoverSealMs = performance.now() - groundCoverSealStarted;
   // environment density pass (2026-09-12): the ground litter tier streams
   // stones, clods and splinters under the camera, kept out of the same sealed
