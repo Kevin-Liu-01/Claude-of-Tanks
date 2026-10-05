@@ -14,19 +14,21 @@
   `abramsTuskCheek` test and actual corrected HIGH/LOW stock probe pass.
   Both feet and carriers remain seated, all rims/bores are clear, and sampled
   forward faces are exposed. Independent review accepts all 22 fresh native
-  views, including −10°/+20° positions. Regenerated receipts are pending;
-  this does not claim a whole-vehicle release pass.
+  views, including −10°/+20° positions. All eleven regeneration/check steps
+  pass: original fixture, seven-Abrams mantlet check, fill, full anatomy update,
+  centering, scoped assets, full anatomy check, ledger update/check, sealed
+  visibility and typecheck. This does not claim a whole-vehicle release pass.
 - **INCOMPLETE — integrated suite:** the initial 1,280-check invocation was
   stopped after 448 considered checks because it predates the final corrections
   and rebases. Its observed results are retained; they do not certify the final
   tree. Twenty failures reproduce on the exact integrated base. The corrected
   roof-gun setup and TUSK fixture pass separately. Final-tree suite pending.
-- **PUBLICATION REQUESTED:** after the pending checks were disclosed, the
-  owner repeated “commit and push origin main.” The completed vehicle repairs
-  and current generated armor/fill data are being published with the incomplete
-  checks above explicitly retained. Remaining asset regeneration, wreck-record
-  synchronization and final validation will follow. No new deployment is
-  claimed; the prior `3e3af3ca1` production preview is superseded.
+- **PUBLISHED TO MAIN:** `f0248449a` was confirmed as `origin/main` after the
+  owner repeated “commit and push origin main.” This includes the repaired M3
+  face, M1A1 mantlets, Linebacker roof/optics and TUSK placement correction.
+  The scoped TUSK asset/ledger regeneration is a follow-up to that push.
+  Remaining final-suite validation and wreck-record synchronization stay
+  explicitly incomplete. No new deployment is claimed.
 
 ## Scope and construction
 
@@ -222,8 +224,8 @@ fresh composed M3 release reports the approved comparison failures unchanged
 The separate fresh standard check passes strict tracks and roof equipment;
 its one continuity cell, bounds, coverage and sample record exactly match the
 integrated baseline (`m3-flat-continuity-comparison.json`). That cell remains a
-retained failure. The complete final-tree npm suite, TUSK regeneration and
-final production/live verification remain pending.
+retained failure. TUSK regeneration passes all eleven steps. The complete final-tree npm suite,
+remaining release leaves and final production/live verification remain pending.
 
 The repair branch is rebased onto `efd68c1b5`, preserving the intervening
 wreck collision, Garage aura, Service Record/audio and General Translation
