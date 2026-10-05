@@ -30,9 +30,15 @@ export function withFacade<T>(context: FacadeContext | null, build: () => T): T 
   try { return build(); } finally { facadeContext = prior; }
 }
 
+/** The craft's switch: on in the game; the receipts turn it off to hold a desktop build to the kits' own (facade.selftest). */
+let craftEnabled = true;
+export function setFacadeCraft(on: boolean): void {
+  craftEnabled = on;
+}
+
 /** True on a desktop kit build: the facade craft is built. A phone, or a build outside a kit, keeps the plain parts. */
 export function facadeOn(): boolean {
-  return facadeContext?.tier === 'desktop';
+  return craftEnabled && facadeContext?.tier === 'desktop';
 }
 
 const FALLBACK = (): number => 0.5;
