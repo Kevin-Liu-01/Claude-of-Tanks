@@ -99,8 +99,13 @@ export default {
   // (0xaa9b89 -> 0xa8a49c), broken altocumulus (0.68 / 0.35 -> 0.80 / 0.50) on an explicit 880 m deck that keeps its
   // texture at 2-12°, and patchy light across the benches (cloudShadowAmp 0.30)
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'cumulus-humilis', coverage: 0.20, cirrus: 0.4, baseM: 1900 },
-  sky: { sunElevationDeg: 31, sunAzimuthDeg: 98, turbidity: 5.6, rayleigh: 1.1, mieCoefficient: 0.007, mieDirectionalG: 0.84, /* 2026-10-03 (the skies lane, agreed with the mountains lane: one haze law from the camera to the far country, the map's fogDensity its one lever): arid air is clear — 0.00025 on the four arid maps (a meteorological range near 37 km; a ridge 300 m up at 7.5 km keeps about 60 % of its contrast) (was 0.00050) */ fogDensity: 0.00025, fogTintHex: 0xa8a49c, fogMix: 0.48, envIntensity: 0.2, cloudOpacity: 0.80, cloudOpacity2: 0.50, cloudTintHex: 0xf2e6d6, cloudAltM: 880, cloudHazeK: 0.00012, cloudUvM: 2700, cloudShadowAmp: 0.30, sunIntensity: 4.1, sunColorHex: 0xffe0b6, hemiIntensity: 0.36, lighting: { groundAlbedoHex: 0xa68b6f } },
+  // (the map-revival lane, 2026-10-05) Queenstown's west coast overcast: the regime's broken stratocumulus deck (was
+  // cumulus humilis at 0.20 over Arizona)
+  clouds: { regime: 'broken-stratocumulus' },
+  // (the map-revival lane, 2026-10-05) the west coast's wet air under its overcast: a hazier, cooler, softer light
+  // (turbidity 5.6 -> 7.0, fog 0.00025 -> 0.00045 in a cool grey, the sun 4.1 -> 3.2 and paler, the sky's fill 0.36 ->
+  // 0.48, the pink-grey ground's bounce); the arid preset's clear-air note below is Arizona's
+  sky: { sunElevationDeg: 31, sunAzimuthDeg: 98, turbidity: 7.0, rayleigh: 1.1, mieCoefficient: 0.007, mieDirectionalG: 0.84, /* 2026-10-03 (the skies lane, agreed with the mountains lane: one haze law from the camera to the far country, the map's fogDensity its one lever): arid air is clear — 0.00025 on the four arid maps (a meteorological range near 37 km; a ridge 300 m up at 7.5 km keeps about 60 % of its contrast) (was 0.00050) */ fogDensity: 0.00045, fogTintHex: 0x9ca2a6, fogMix: 0.48, envIntensity: 0.2, cloudOpacity: 0.80, cloudOpacity2: 0.50, cloudTintHex: 0xf2e6d6, cloudAltM: 880, cloudHazeK: 0.00012, cloudUvM: 2700, cloudShadowAmp: 0.30, sunIntensity: 3.2, sunColorHex: 0xf2ece0, hemiIntensity: 0.48, lighting: { groundAlbedoHex: 0x9a8682 } },
   minimap: { base: [124, 98, 73], hard: [133, 110, 86], soft: [83, 71, 59], forest: 'rgba(75,83,49,.8)', forestStroke: 'rgba(46,52,31,.92)', water: 'rgba(75,92,90,.8)', waterStroke: 'rgba(45,58,59,.92)', roadCasing: 'rgba(51,40,32,.94)', roadFill: 'rgba(179,156,126,.96)', buildingFill: '#c4b6a3' },
   shot: { pos: [-284, 68, -282], look: [-30, -4, 90] },
 } satisfies import('./contracts.ts').MapCompositionConfig;
