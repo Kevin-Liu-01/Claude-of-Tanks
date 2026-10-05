@@ -334,6 +334,12 @@ interface SplatConfig {
   /** Round 49: slope band (1 − n.y) over which a RING face past the square becomes landform rock on landform-gated
    * maps (default [0.22, 0.48] ≈ 39°–59°); Titan authors [0.15, 0.36] so its bedded walls start at ~34°. */
   ringRockSlope?: readonly [number, number];
+  /** Ground lane (wave 65, Titan Gorge's e-wall-300: "soft mauve slabs with an identical yellow outline traced along
+   * every ledge and crest"): past the square a ring face is rock by its slope alone, so every ledge and crest — where
+   * the face flattens — turned the sand layer, a sand-yellow line along each. A landform-gated map whose ring rises in
+   * bedded walls sets this: the ring's ground more than this many metres above the field's highest ground is caprock
+   * (the rock layer on its ledges and tops, a little sand in its hollows), ramping in over 14 m. Absent = off. */
+  ringCaprockM?: number;
   fieldPatch?: number;
   sandMacro?: number;
   iceSky?: ColorTriple;
@@ -3554,6 +3560,7 @@ uniform vec3 uIceSky;     // r3: fresnel sky tint reflected by clear lake ice
 uniform float uMidFar;    // r3: far edge of the mid-relief dapple band (m)
 uniform float uSlopeGrassHold; // round 45: shifts the slope→rock thresholds (tropical hills hold turf longer)
 uniform vec2 uRingRock;        // round 49: slope band over which a ring face past the square becomes landform rock
+uniform vec2 uRingCap;         // ground lane (wave 65): the height band over which the ring's ground becomes caprock (x > 1e8: off)
 uniform float uBeddedR;        // round 55: 1 when the R layer is the procedural bedded sandstone tile (no sourced R)
 uniform vec3 uSunDirW;    // round 42: world direction toward the sun (the vista ring's uSunDirW)
 uniform float uWallSkyLift; // round 42: sky light a steep face turned from the sun receives (0 = off)
@@ -3622,6 +3629,7 @@ float gSeaFoam; // maps r1: foam coverage this fragment (mattes the water gloss)
 // across the face (the melted-taffy smear on the desert mesas).
 vec2 gWallUVx; vec2 gWallUVz; vec2 gWallSigns; float gWallW;
 float gSnowRock = 0.0; // ground lane (wave 62): the snow lying on a snow map's rock (the rock passes below stand down under it)
+float gRingCap = 0.0;  // ground lane (wave 65): the ring's caprock weight (ledges and tops high on its bedded walls)
 float gCinderW = 0.0;  // ground lane (wave 62): a volcanic basin's cinder (the cones' flanks and their talus) — dead matte
 float gTileMix; // r8 anti-tiling: stochastic rotation-blend weight (set in splatCompute)
 float gCliffJ;  // r8: per-cliff jitter field (set with the wall basis)
@@ -3923,6 +3931,9 @@ void splatCompute() {
     // 0.22–0.48 (39°–59°), so a ring face of 35–50° stayed the wall-projected sand set — smooth beige, no beds. The
     // band is authored per map (splat.ringRockSlope); Titan's bedded walls start at ~34° and are rock by ~47°.
     mkB = max(mkB, smoothstep(uRingRock.x, uRingRock.y, 1.0 - clamp(wn.y, 0.0, 1.0)) * outsideW);
+    // (ground lane, wave 65: the ring's ledges and crests high on its walls are the walls' caprock, not sand)
+    gRingCap = smoothstep(uRingCap.x, uRingCap.y, wp.y) * outsideW;
+    mkB = max(mkB, gRingCap);
     rockGate = smoothstep(0.10, 0.45, mkB);
     mkB = 0.0;
   }
@@ -4108,6 +4119,8 @@ void splatCompute() {
   // "pink contour marbling on sand" (desert critique). Rock now takes over
   // from ~37 deg; the 30-37 deg band stays sand (ripples own it).
   fR = max(fR, smoothstep(0.20, 0.42, slopeR) * (1.0 - mkB * 0.85) * 0.95 * rockGate);
+  // ground lane (wave 65): the caprock is rock whatever its slope — its ledges and tops — a little sand in its hollows
+  fR = max(fR, gRingCap * rockGate * (0.72 + 0.28 * smoothstep(0.30, 0.70, n1h)));
   // triplanar side projection on steep faces: planar XZ UVs smear vertically
   // down cliff walls (the classic heightmap-stretch tell on the mesa cliffs)
   // — resample the rock layer in the wall's own plane and take it over as
@@ -5872,6 +5885,7 @@ function* createSplatMaterialSteps(
   const S = splatCfg || {};
   // ground lane: the two-formation bedrock's boundary — the build sets it from the field's height span (S.formation)
   const formationUniform = { value: new THREE.Vector4(-1e9, 0, 0, 0) };
+  const ringCapUniform = { value: new THREE.Vector2(1e9, 1e9 + 1) }; // ground lane (wave 65): off until the build sets it
   const rockMask = selectTerrainLandformMask(S, landformW);
   // r6 terrain_environment: the mesa/rim landform weight rides the MASK's
   // BLUE channel on maps that provide landformW (desert — it has no marshes
@@ -6117,6 +6131,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
     shader.uniforms.uSlopeGrassHold = { value: S.slopeGrassHold ?? 0 }; // round 45
     shader.uniforms.uRingRock = { value: new THREE.Vector2(...(S.ringRockSlope ?? [0.22, 0.48])) }; // round 49
+    shader.uniforms.uRingCap = ringCapUniform; // ground lane (wave 65): set by the build from the field's highest ground
     // round 55: the bedded sandstone R (no sourced R in the map's plan) carries the noise wall crag, not the tile's beds
     shader.uniforms.uBeddedR = { value: S.sandstone && !sourcedTerrainLayerPlanned(mapId, S, 'R') ? 1 : 0 };
     shader.uniforms.uPavedRock = { value: sourcedTerrainLayerSet(mapId, S, 'R') === 'cobble' ? 1 : 0 }; // the map-borders lane
@@ -6204,6 +6219,7 @@ function* createSplatMaterialSteps(
   mat.customProgramCacheKey = () => `world-terrain-splat-v54-${seaOpenings.length ? 'coast' : 'land'}`; // terrain v3 (2026-10-02): v54
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   mat.userData.formationUniform = formationUniform;
+  mat.userData.ringCapUniform = ringCapUniform;
   mat.userData.groundClock = groundClock; // round 73: advanced with the water sheet's clock (terrainBuildSteps)
   mat.userData.reduxUniforms = reduxUniforms; // round 73: the probes' term isolation (zero a vector, recapture)
   mat.userData.layerMeans = layerMeans; // terrain v2: the measured layer means (probes read and override them)
@@ -6580,6 +6596,10 @@ function* terrainBuildSteps(
     const form = (cfg?.splat as { formation?: { atFrac: number; wobbleM?: number; pale?: number; red?: number } } | undefined)?.formation;
     const u = (mat.userData as { formationUniform?: { value: THREE.Vector4 } }).formationUniform;
     if (form && u) u.value.set(heightField.minY + (heightField.maxY - heightField.minY) * form.atFrac, form.wobbleM ?? 2.5, form.pale ?? 0.16, form.red ?? 0.12);
+    // (wave 65) the ring's caprock above the field's highest ground (S.ringCaprockM)
+    const capM = (cfg?.splat as { ringCaprockM?: number } | undefined)?.ringCaprockM;
+    const cap = (mat.userData as { ringCapUniform?: { value: THREE.Vector2 } }).ringCapUniform;
+    if (capM != null && cap && Number.isFinite(heightField.maxY)) cap.value.set(heightField.maxY + capM, heightField.maxY + capM + 14);
   }
   const chunks: TerrainChunk[] = [];
   const terrainIndexPool: TerrainIndexPool = new Map();

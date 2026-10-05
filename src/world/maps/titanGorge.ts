@@ -99,6 +99,10 @@ export default {
     // round 49 (owner audit 2026-09-23, "smooth beige ridge faces without strata"): the ring's 35–47° faces past the edge
     // become the bedded landform rock (default band 0.22–0.48 left them the wall-projected sand set)
     ringRockSlope: [0.15, 0.36],
+    // ground lane (wave 65, e-wall-300: "an identical yellow outline traced along every ledge and crest"): the ring's
+    // ledges and tops from 16 m above the square's highest ground are the walls' caprock, not sand (the low hills in
+    // front stay the sand they are)
+    ringCaprockM: 16,
     rippleAmp: 0.20, midRelief: 0.92, midReliefFar: 840,
   },
   vegetation: {
