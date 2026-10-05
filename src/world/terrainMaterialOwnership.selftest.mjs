@@ -166,6 +166,9 @@ function checkSourceContract(text) {
     'uSaltCrust',
     // maps lane B (2026-10-03): airfield concrete — slab, joint, stains, tyres (vec4, no sampler)
     'uPaveSlab',
+    // ground lane (2026-10-05, the road styles): the road layer's size and first row in the mask stack, on when a styled
+    // net bakes one (vec4, no sampler — the layer rides in uMask's unit, fetched exactly)
+    'uRoadClass',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
