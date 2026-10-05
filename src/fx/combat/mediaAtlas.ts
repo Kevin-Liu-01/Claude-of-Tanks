@@ -179,10 +179,10 @@ export function* bakeMediaAtlasSteps(style: MediaAtlasStyle, seed: number): Gene
     }
     // coverage, normals and thickness; tile border kept transparent
     const lo = (wisp ? 0.08 : 0.1) + (wisp ? 0.3 : 0.24) * p;
-    const hi = lo + (wisp ? 0.5 : 0.42) + 0.2 * p;
+    const hi = lo + (wisp ? 0.64 : 0.52) + 0.2 * p;
     const fade = 1 - (wisp ? 0.32 : 0.2) * p;
-    // gradient (per tile unit) -> normal tilt: a lobe rim (~8 / unit) leans ~50 degrees
-    const slope = wisp ? 0.1 : 0.16;
+    // gradient (per tile unit) -> normal tilt: a lobe rim (~8 / unit) leans ~40 degrees (soft media, not rock)
+    const slope = wisp ? 0.065 : 0.11;
     for (let y = 0; y < tile; y++) {
       for (let x = 0; x < tile; x++) {
         const i = y * tile + x;

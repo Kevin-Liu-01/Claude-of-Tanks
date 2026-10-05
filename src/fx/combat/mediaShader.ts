@@ -229,7 +229,6 @@ void main() {
     // the mobile tier: no warp fetch and the nearer flipbook frame only (two fewer texture reads per fragment)
     vec2 uv = clamp( vUv, 0.01, 0.99 ) * 0.25;
     vec4 s = texture2D( uMap, ( vFMix < 0.5 ? vCellA : vCellB ) + uv );
-    float pocketNoise = 0.55;
   #else
     // domain warp: a drifting low-frequency field pushes the silhouette around, harder as the puff ages
     // (the warp fades out toward the card's rim, so nothing is pushed into the octagon's cut corners)
@@ -237,8 +236,6 @@ void main() {
     vec2 w = ( nz - 0.5 ) * ( 1.0 - smoothstep( 0.27, 0.4, length( vUv - 0.5 ) ) );
     vec2 uv = clamp( vUv + w * vMisc.z, 0.01, 0.99 ) * 0.25;
     vec4 s = mix( texture2D( uMap, vCellA + uv ), texture2D( uMap, vCellB + uv ), vFMix );
-    // the same drifting field breaks a hot puff's interior into burning pockets and cooler soot between them
-    float pocketNoise = nz.y;
   #endif
   float d = s.a;
   // coverage: soft media thin out from the rim; eroding media tear apart from their thin texels inward
@@ -255,7 +252,7 @@ void main() {
   float thick = s.b;
   vec3 L = vLight;
   float ndl = dot( n, L );
-  float diff = clamp( ( ndl + 0.42 ) / 1.42, 0.0, 1.0 );
+  float diff = clamp( ( ndl + 0.55 ) / 1.55, 0.0, 1.0 );
   float backlit = clamp( -L.z, 0.0, 1.0 );
   // thick cores shade themselves, harder when the sun stands behind the smoke
   float selfShadow = 1.0 - ( 0.30 + 0.38 * backlit ) * thick;
@@ -265,17 +262,29 @@ void main() {
   vec3 amb = mix( uGroundCol, uSkyCol, upN );
   // fire light reaches the faces turned down toward the blaze hardest (fire-lit undersides)
   vec3 fireLit = vFire * ( 0.45 + 0.55 * ( 1.0 - upN ) );
-  vec3 albedo = vColor.rgb;
+  // thin media scatter more of what they meet: a thin veil of even black smoke reads grey against the sky (never a
+  // darkened blue window onto it); only thick cores keep the authored dark albedo
+  float dens = clamp( d * thick, 0.0, 1.0 );
+  vec3 albedo = mix( min( vColor.rgb * 3.0 + 0.07, vec3( 0.5 ) ), vColor.rgb, smoothstep( 0.12, 0.7, dens ) );
+  albedo = max( albedo, vColor.rgb );
   vec3 col = albedo * ( uSunCol * ( diff * selfShadow + silver * 1.6 ) + amb * ( 0.85 + 0.3 * vMisc.y ) + fireLit );
   // heat: the dense pockets burn hottest and longest, the thin rim cools first (fire inside its own smoke). The
   // emission falls steeply with the local temperature (~h^2.5, Stefan-Boltzmann-like), so a cooling pocket dims to a
   // dull ember and then to soot — never a uniform glowing disc.
   float heat = vMisc.w;
   if ( heat > 0.002 ) {
-    float pocket = smoothstep( vMisc2.z - 0.18, vMisc2.z + 0.18, d * thick * ( 0.55 + 0.9 * pocketNoise ) );
-    float h = clamp( heat * mix( 0.12, 1.0, pocket ), 0.0, 1.0 );
-    vec3 glow = blackbody( h ) * ( 12.0 * h * h * sqrt( h ) ) * vMisc2.w * uGrade.y;
-    col = col * ( 1.0 - 0.9 * smoothstep( 0.18, 0.7, h ) ) + glow;
+    // fire structure: each lobe's core (thick, facing the camera) burns while its flanks and the thin rim stay soot,
+    // and a finer drifting noise breaks the burning cores into separate pockets (hot puffs alone pay this read)
+    #ifdef MEDIA_LITE
+      float fineN = 0.55;
+    #else
+      float fineN = texture2D( uNoise, vUv * 2.6 + vMisc2.yx * 1.9 ).r;
+    #endif
+    float field = d * thick * ( 0.3 + 0.7 * n.z ) * ( 0.55 + 0.9 * fineN );
+    float pocket = smoothstep( vMisc2.z - 0.12, vMisc2.z + 0.14, field );
+    float h = clamp( heat * mix( 0.04, 1.0, pocket ), 0.0, 1.0 );
+    vec3 glow = blackbody( h ) * ( 9.0 * h * h * sqrt( h ) ) * vMisc2.w * uGrade.y;
+    col = col * ( 1.0 - 0.95 * smoothstep( 0.22, 0.75, h ) ) + glow;
   }
   ${FOG_FACTOR_F}
   #ifdef USE_FOG

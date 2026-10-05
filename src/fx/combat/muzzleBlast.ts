@@ -75,7 +75,7 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
       mMove(m, dir.x * f + rx * r, dir.y * f + Math.max(ry * r, -1) + 0.4, dir.z * f + rz * r, 7, 0.35, 0.7, 0);
       mShape(m, 1.6 + R() * 0.7, 0.55 * s, (2.7 + R() * 1.0) * s * dk, 3.2, 1, R() * TAU, (R() - 0.5) * 3);
       mLook(m, GAS0, GAS1, 0.62 * near, 0.008, 0.4, 0.45, 0.14, 0.02, 0.25, R());
-      mHeat(m, 1.0, 13 + R() * 5, 0.55, 1.05);
+      mHeat(m, 1.0, 13 + R() * 5, 0.62, 1.05);
       C.smoke(m);
     }
     // 2. the overpressure shell: thrown forward and out, stalls within metres, rolls and thins
@@ -95,25 +95,25 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
       mPlace(m, pos.x + dir.x * along, pos.y + dir.y * along, pos.z + dir.z * along, birthOffset + R() * 0.02);
       mMove(m, ex * v, ey * v + 0.3, ez * v, 6.2 + R() * 1.2, 0.32, 1, 0);
       mShape(m, 2.6 + R() * 1.2, 0.8 * s, (3.4 + R() * 1.6) * s * dk, 2.8, 1, R() * TAU, (R() - 0.5) * 2.2);
-      mLook(m, CLOUD0, CLOUD1, (0.5 + R() * 0.12) * near, 0.02, 0.34, 0.5, 0.2, 0.025, 0.3, R());
-      mHeat(m, 0.45, 16, 0.65, 0.9);
-      C.smoke(m);
+      mLook(m, CLOUD0, CLOUD1, (0.5 + R() * 0.12) * near, 0.02, 0.34, 0.62, 0.22, 0.025, 0.3, R());
+      mHeat(m, 0.45, 16, 0.8, 0.9);
+      C.earth(m);
     }
     // 3. the forward plume down the line of fire
     const plumeN = tierCount(C, 8);
     for (let i = 0; i < plumeN; i++) {
-      const along = 1.0 + R() * 4.5 * s;
+      const along = 0.8 + R() * 2.8 * s;
       const a = R() * TAU, lat = R() * 0.35 * along * 0.25;
       const ca = Math.cos(a), sa = Math.sin(a);
-      const f = 7 + R() * 9;
+      const f = 5 + R() * 6;
       mPlace(m, pos.x + dir.x * along + (_u.x * ca + _v.x * sa) * lat,
         pos.y + dir.y * along + (_u.y * ca + _v.y * sa) * lat,
         pos.z + dir.z * along + (_u.z * ca + _v.z * sa) * lat, birthOffset + along * 0.012);
       mMove(m, dir.x * f, dir.y * f + 0.5, dir.z * f, 4.2, 0.3, 1, 0);
       mShape(m, 2.6 + R() * 1.3, 0.9 * s, (3.2 + R() * 1.5) * s * dk, 2.2, 1, R() * TAU, (R() - 0.5) * 1.5);
-      mLook(m, CLOUD0, CLOUD1, (0.44 + R() * 0.12) * near, 0.03, 0.32, 0.5, 0.2, 0.02, 0.3, R());
+      mLook(m, CLOUD0, CLOUD1, (0.44 + R() * 0.12) * near, 0.03, 0.32, 0.62, 0.22, 0.02, 0.3, R());
       mHeat(m, 0, 1, 0.5, 1);
-      C.smoke(m);
+      C.earth(m);
     }
   }
 
@@ -127,7 +127,7 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
     mShape(m, 3.6 + R() * 1.6, 0.35 * s, (1.9 + R() * 0.9) * s, 1.4, 1, R() * TAU, (R() - 0.5) * 1.2);
     mLook(m, HAZE0, HAZE1, (scoped ? 0.12 : 0.26) + R() * 0.06, 0.12, 0.3, 0.6, 0.3, 0, 0.35, R());
     mHeat(m, 0, 1, 0.5, 1);
-    C.smoke(m);
+    C.earth(m);
   }
   if (scoped) return;
 
@@ -144,7 +144,7 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
   let fx = dir.x, fz = dir.z;
   const fl = Math.hypot(fx, fz) || 1;
   fx /= fl; fz /= fl;
-  const ringN = tierCount(C, 16 * Math.min(1.4, dust));
+  const ringN = tierCount(C, 20 * Math.min(1.4, dust));
   for (let i = 0; i < ringN; i++) {
     const a = (i / ringN) * TAU + (R() - 0.5) * 0.45;
     const cx = Math.cos(a), cz = Math.sin(a);
@@ -153,21 +153,21 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
     const v = (5 + R() * 6 + fwd * 7) * Math.sqrt(s);
     mPlace(m, aheadX + cx * 0.6, gy + 0.4, aheadZ + cz * 0.6, birthOffset + 0.012 + R() * 0.03);
     mMove(m, cx * v, 0.7 + R() * 0.9, cz * v, 3.3, 0.2, 0.95, 0);
-    mShape(m, 2.8 + R() * 1.4, 0.8, (3.2 + R() * 2 + fwd * 1.5) * s * Math.sqrt(Math.min(1.5, dust)) * dk, 2.5,
+    mShape(m, 3.0 + R() * 1.6, 1.0, (4.0 + R() * 2.2 + fwd * 2.0) * s * Math.sqrt(Math.min(1.5, dust)) * dk, 2.5,
       0.55, R() * TAU, (R() - 0.5) * 0.8);
-    mLook(m, L.dust0, L.dust1, (0.5 + R() * 0.16) * Math.min(1, dust), 0.03, 0.38, 0.55, 0.18, 0.02, L.scatter, R());
+    mLook(m, L.dust0, L.dust1, (0.52 + R() * 0.16) * Math.min(1, dust), 0.03, 0.4, 0.7, 0.2, 0.02, L.scatter, R());
     mHeat(m, 0, 1, 0.5, 1);
     C.earth(m);
   }
   // the sheet pushed down the line of fire
-  const sheetN = tierCount(C, 6 * Math.min(1.4, dust));
+  const sheetN = tierCount(C, 8 * Math.min(1.4, dust));
   for (let i = 0; i < sheetN; i++) {
     const ahead = 2 + R() * 5 * s;
     const side = (R() - 0.5) * 2.4;
     const px = aheadX + fx * ahead - fz * side, pz = aheadZ + fz * ahead + fx * side;
     mPlace(m, px, C.groundY(px, pz) + 0.45, pz, birthOffset + 0.03 + ahead * 0.01);
     mMove(m, fx * (6 + R() * 6), 0.8 + R() * 0.8, fz * (6 + R() * 6), 2.8, 0.2, 1, 0);
-    mShape(m, 3 + R() * 1.4, 0.8, (2.8 + R() * 1.4) * s * dk, 2.2, 0.6, R() * TAU, (R() - 0.5) * 0.6);
+    mShape(m, 3 + R() * 1.4, 0.9, (3.6 + R() * 1.6) * s * dk, 2.2, 0.6, R() * TAU, (R() - 0.5) * 0.6);
     mLook(m, L.dust0, L.dust1, (0.36 + R() * 0.12) * Math.min(1, dust), 0.05, 0.35, 0.6, 0.18, 0.02, L.scatter, R());
     mHeat(m, 0, 1, 0.5, 1);
     C.earth(m);

@@ -59,7 +59,7 @@ export function killBlast(C: CombatContext, pos: Vec3Like, cause: KillCause, bir
     mShape(m, 3.6 + R() * 1.6, (2.6 + R() * 1.2) * S * dk, (7.5 + R() * 3) * S * dk, 2.3, 1, R() * TAU,
       (R() - 0.5) * 1.2);
     mLook(m, SOOT0, SOOT1, 0.97, 0.015, 0.55, 0.25, 0.14, 0, 0.05, R());
-    mHeat(m, 1.15, rack ? 0.62 : 0.85, 0.6, 1.1);
+    mHeat(m, 1.15, rack ? 0.62 : 0.85, 0.74, 1.1);
     C.smoke(m);
   }
   // 1b. the violent outer shell: thrown out fast, stalls, keeps burning in its dense pockets
@@ -72,7 +72,7 @@ export function killBlast(C: CombatContext, pos: Vec3Like, cause: KillCause, bir
     mShape(m, 3 + R() * 1.4, (1.7 + R() * 0.8) * S * dk, (5.2 + R() * 2.2) * S * dk, 2.6, 1, R() * TAU,
       (R() - 0.5) * 1.6);
     mLook(m, SOOT0, SOOT1, 0.95, 0.012, 0.5, 0.3, 0.16, 0.012, 0.05, R());
-    mHeat(m, 1.0, rack ? 1.15 : 1.5, 0.68, 1.0);
+    mHeat(m, 0.9, rack ? 1.15 : 1.5, 0.9, 1.0);
     C.smoke(m);
   }
   // 1c. an ammo rack throws a mushroom cap high over the hull
@@ -84,7 +84,7 @@ export function killBlast(C: CombatContext, pos: Vec3Like, cause: KillCause, bir
       mMove(m, Math.cos(a) * (1.5 + R() * 2), 9 + R() * 4, Math.sin(a) * (1.5 + R() * 2), 1.3, 3.4, 0.45, 0);
       mShape(m, 4.2 + R() * 1.4, 3.2 * dk, (8.5 + R() * 3) * dk, 2.2, 1, R() * TAU, (R() - 0.5) * 0.9);
       mLook(m, SOOT0, SMOKE1, 0.96, 0.02, 0.5, 0.3, 0.16, 0, 0.05, R());
-      mHeat(m, 1.0, 0.95, 0.66, 1.05);
+      mHeat(m, 1.0, 0.95, 0.86, 1.05);
       C.smoke(m);
     }
   }
@@ -106,7 +106,7 @@ export function killBlast(C: CombatContext, pos: Vec3Like, cause: KillCause, bir
     mMove(m, Math.cos(a) * 0.6, 3.5 + R() * 2, Math.sin(a) * 0.6, 0.9, 3.0 + R() * 0.8, 0.9, 0);
     mShape(m, 6 + R() * 2.5, (2.2 + R() * 0.8) * dk, (8.5 + R() * 3.5) * dk, 1.5, 1, R() * TAU, (R() - 0.5) * 0.8);
     mLook(m, SMOKE0, SMOKE1, 0.88, 0.25, 0.42, 0.35, 0.24, 0, 0.1, R());
-    mHeat(m, burn ? 0.55 : 0.4, 2.2, 0.7, 0.9);
+    mHeat(m, burn ? 0.55 : 0.4, 2.2, 0.9, 0.9);
     C.smoke(m);
   }
 
@@ -165,9 +165,9 @@ function cookOff(C: CombatContext, x: number, cy: number, z: number, tb: number,
     const a = R() * TAU;
     mPlace(m, x + Math.cos(a) * 0.6, cy + 0.8 + R() * 0.8, z + Math.sin(a) * 0.6, bo + R() * 0.06);
     mMove(m, Math.cos(a) * 2.5, (6 + R() * 4) * k, Math.sin(a) * 2.5, 1.6, 3.0, 0.5, 0);
-    mShape(m, 3 + R() * 1.2, (1.6 + R() * 0.6) * k, (4.8 + R() * 1.6) * k, 2.2, 1, R() * TAU, (R() - 0.5) * 1.2);
+    mShape(m, 3 + R() * 1.2, (1.3 + R() * 0.5) * k, (3.6 + R() * 1.2) * k, 2.2, 1, R() * TAU, (R() - 0.5) * 1.2);
     mLook(m, SOOT0, SMOKE1, 0.93, 0.02, 0.5, 0.3, 0.16, 0, 0.05, R());
-    mHeat(m, 1.0, 1.6, 0.62, 1.0);
+    mHeat(m, 1.0, 1.6, 0.86, 1.0);
     C.smoke(m);
   }
   // the spark fountain: burning propellant grains
@@ -204,7 +204,7 @@ export function columnPuff(C: CombatContext, x: number, y: number, z: number, st
   if (stage > 0.45) mLook(m, SMOKE0, SMOKE1, 0.5 + 0.32 * stage, 0.3, 0.42, 0.35, 0.24, 0, 0.1, R());
   else mLook(m, SMOKE_LATE0, SMOKE_LATE1, 0.36 + 0.3 * stage, 0.3, 0.4, 0.4, 0.26, 0, 0.15, R());
   // the fire under the smoke lights its first metre from inside
-  mHeat(m, h < 0.6 ? 0.32 * stage : 0, 3.2, 0.72, 0.85);
+  mHeat(m, h < 0.6 ? 0.32 * stage : 0, 3.2, 0.92, 0.85);
   C.smoke(m);
 }
 
@@ -228,6 +228,6 @@ export function deckFlame(C: CombatContext, x: number, y: number, z: number, sca
   mMove(m, (R() - 0.5) * 0.6, 1.4 + R() * 1.2, (R() - 0.5) * 0.6, 1.5, 2.2, 0.4, 0);
   mShape(m, 1.1 + R() * 0.5, (0.9 + R() * 0.4) * scale, (2.4 + R() * 0.8) * scale, 1.8, 1, R() * TAU, (R() - 0.5) * 2);
   mLook(m, SOOT0, SMOKE1, 0.9, 0.04, 0.45, 0.35, 0.18, 0, 0.05, R());
-  mHeat(m, 1.0, 2.8, 0.6, 1.0);
+  mHeat(m, 1.0, 2.8, 0.76, 1.0);
   C.smoke(m);
 }

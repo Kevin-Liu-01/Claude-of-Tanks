@@ -127,4 +127,4 @@ export const SURFACE_LOOKS: Readonly<Record<SurfaceKind, SurfaceLook>> = Object.
 export const BLAST_SMOKE0 = lin(0x4a433b);
 export const BLAST_SMOKE1 = lin(0x8c857a);
 /** Soil under snow that an explosive burst throws through the powder. */
-export const UNDER_SNOW_SOIL = lin(0x3a3027);
+export const UNDER_SNOW_SOIL = lin(0x2c2219);

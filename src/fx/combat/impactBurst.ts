@@ -141,11 +141,11 @@ export function groundBurst(C: CombatContext, pos: Vec3Like, caliberMm: number, 
     const st = Math.sin(tilt), ct = Math.cos(tilt);
     mPlace(m, pos.x + (R() - 0.5) * 0.4 * s, by + 0.25, pos.z + (R() - 0.5) * 0.4 * s, birthOffset + R() * 0.02);
     mMove(m, Math.cos(a) * st * v, ct * v, Math.sin(a) * st * v, 2.6, 0, 0.2, -9.8 * L.heavy);
-    mShape(m, 0.9 + R() * 0.5, 0.45 * s, (1.6 + R()) * s * dk, 2, 1, R() * TAU, (R() - 0.5) * 2.4);
+    mShape(m, 0.9 + R() * 0.5, 0.4 * s, (1.4 + R() * 0.8) * s * dk, 2, 1, R() * TAU, (R() - 0.5) * 2.4);
     const soil = surf === 'snow' && explosive && i % 3 === 0;
     mLook(m, soil ? UNDER_SNOW_SOIL : L.ejecta0, L.ejecta1, 0.9, 0.01, 0.5, 0.45, 0.1, L.smear, L.scatter * 0.5, R());
     mHeat(m, 0, 1, 0.5, 1);
-    C.earth(m);
+    C.smoke(m);
   }
 
   // 3. clods on ballistic arcs; the bigger ones kick a little dust where they land
@@ -191,16 +191,18 @@ export function groundBurst(C: CombatContext, pos: Vec3Like, caliberMm: number, 
     }
   }
 
-  // 4. base surge: low dust driven radially along the ground, spreading wide and flat
-  const surgeN = tierCount(C, (explosive ? 13 : 8) * Math.sqrt(L.dustK));
+  // 4. base surge: low dust driven radially along the ground, spreading wide and flat — two rings (a fast outer wave
+  //    and a slower inner roll) of overlapping, tearing cards so the surge reads as one rolling dust wave
+  const surgeN = tierCount(C, (explosive ? 18 : 11) * Math.sqrt(L.dustK));
   for (let i = 0; i < surgeN; i++) {
-    const a = (i / surgeN) * TAU + (R() - 0.5) * 0.5;
-    const v = (explosive ? 10 + R() * 7 : 6 + R() * 5) * sq;
-    mPlace(m, pos.x + Math.cos(a) * 0.6 * s, by + 0.45, pos.z + Math.sin(a) * 0.6 * s, birthOffset + R() * 0.04);
-    mMove(m, Math.cos(a) * v, 0.6 + R() * 0.8, Math.sin(a) * v, 3.2, 0.22, 0.9, 0);
-    mShape(m, 2.6 + R() * 1.4, 0.9 * s, (3.4 + R() * 1.6) * s * Math.sqrt(L.dustK) * dk, 2.6, 0.55, R() * TAU,
-      (R() - 0.5) * 0.8);
-    mLook(m, L.dust0, L.dust1, (0.55 + R() * 0.15) * Math.min(1, L.dustK), 0.04, 0.4, 0.55, 0.16, 0.03,
+    const outer = i % 3 !== 0;
+    const a = (i / surgeN) * TAU + (R() - 0.5) * 0.6;
+    const v = (outer ? (explosive ? 11 + R() * 7 : 7 + R() * 5) : (explosive ? 4 + R() * 3 : 3 + R() * 2)) * sq;
+    mPlace(m, pos.x + Math.cos(a) * 0.6 * s, by + 0.45, pos.z + Math.sin(a) * 0.6 * s, birthOffset + R() * 0.05);
+    mMove(m, Math.cos(a) * v, 0.5 + R() * 0.8, Math.sin(a) * v, 3.0, 0.22, 0.9, 0);
+    mShape(m, 2.6 + R() * 1.6, 1.0 * s, (outer ? 4.0 + R() * 1.8 : 3.2 + R() * 1.2) * s * Math.sqrt(L.dustK) * dk, 2.6,
+      0.5, R() * TAU, (R() - 0.5) * 0.8);
+    mLook(m, L.dust0, L.dust1, (0.42 + R() * 0.14) * Math.min(1, L.dustK), 0.04, 0.38, 0.8, 0.2, 0.025,
       L.scatter, R());
     mHeat(m, 0, 1, 0.5, 1);
     C.earth(m);
@@ -232,7 +234,7 @@ export function groundBurst(C: CombatContext, pos: Vec3Like, caliberMm: number, 
       mMove(m, Math.cos(a) * 1.5, 2.5 + R() * 2.5, Math.sin(a) * 1.5, 1.6, 1.0 + R() * 0.4, 1, 0);
       mShape(m, 3.2 + R() * 1.4, 1.1 * s, (3.0 + R() * 1.2) * s * dk, 1.9, 1, R() * TAU, (R() - 0.5) * 0.8);
       mLook(m, BLAST_SMOKE0, BLAST_SMOKE1, 0.55 + R() * 0.15, 0.02, 0.4, 0.4, 0.18, 0, 0.1, R());
-      mHeat(m, 0.95, 5.5, 0.62, 1);
+      mHeat(m, 0.95, 5.5, 0.85, 1);
       C.smoke(m);
     }
     sparkSpray(C, pos.x, by + 0.4, pos.z, tierCount(C, 8), 13 * s, 0.9, EMBER, 0.55, 0.035, birthOffset);
@@ -284,16 +286,16 @@ export function waterBurst(C: CombatContext, pos: Vec3Like, caliberMm: number, e
     mHeat(m, 0, 1, 0.5, 1);
     C.earth(m);
   }
-  // the crown: spray jets fanning out at 25-45 degrees
-  const crownN = tierCount(C, 12);
+  // the crown: spray jets fanning out at 25-45 degrees (many small, quickly thinning sheets)
+  const crownN = tierCount(C, 18);
   for (let i = 0; i < crownN; i++) {
     const a = (i / crownN) * TAU + (R() - 0.5) * 0.4, tilt = 0.45 + R() * 0.4, v = (10 + R() * 7) * sq;
     mPlace(m, pos.x + Math.cos(a) * 0.4 * s, wy + 0.25, pos.z + Math.sin(a) * 0.4 * s, birthOffset + R() * 0.03);
     mMove(m, Math.cos(a) * Math.sin(tilt) * v, Math.cos(tilt) * v, Math.sin(a) * Math.sin(tilt) * v, 1.8, 0, 0.3, -9.8);
-    mShape(m, 1.3 + R() * 0.6, 0.45 * s, (1.8 + R()) * s * dk, 2, 1, R() * TAU, (R() - 0.5) * 2);
-    mLook(m, L.ejecta0, L.ejecta1, 0.75, 0.012, 0.5, 0.55, 0.12, 0.1, L.scatter, R());
+    mShape(m, 1.2 + R() * 0.5, 0.35 * s, (1.3 + R() * 0.7) * s * dk, 2, 1, R() * TAU, (R() - 0.5) * 2);
+    mLook(m, L.ejecta0, L.ejecta1, 0.62, 0.012, 0.45, 0.65, 0.12, 0.08, L.scatter, R());
     mHeat(m, 0, 1, 0.5, 1);
-    C.earth(m);
+    C.smoke(m);
   }
   // the surge over the surface
   const surgeN = tierCount(C, 10);
