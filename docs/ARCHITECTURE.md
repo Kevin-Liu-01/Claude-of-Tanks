@@ -796,8 +796,10 @@ contact constraints and cannot be crossed by residual uphill speed.
   move, even when one side touches first"): the fall's momentum about that contact turns it at v·r/(k² + r²) (the
   contact's lever r, the hull's radius of gyration k about the axis), never faster than aligns it in 0.08 s nor than
   its root can follow down (1.7 rad/s, 0.09 m a step), and while the landing settles a turn that would carry the hull
-  past the plane stops on it, the other side's landing. A level hull dropped onto a 10° cross slope turns onto it in
-  0.13 s at 6.9 m/s and 0.15 s at 4.2 m/s, where the attitude spring took 0.25 s for both. A hull running onto ground
+  past the plane stops on it, the other side's landing. Past 1.3 rad/s the turn grows with the closing at 0.45 of the
+  rest, so a harder landing turns faster up to the cap (round 8: on the real tracks' narrower lever a 4.3 m/s landing on
+  a 10° cross slope asked 1.67 rad/s, at the cap with the 6.9 m/s one). A level hull dropped onto a 10° cross slope
+  turns onto it in 0.13 s at 6.9 m/s and 0.17 s at 4.2 m/s, where the attitude spring took 0.25 s for both. A hull running onto ground
   above 3 m/s meets it with the front of its tracks and rolls onto it along its travel, and one coming down on its shell
   takes the old impulse (the mismatch × the closing × 0.22).
 - *Blocked drive.* `state.impactMps` is the closing speed the tracks lost this step; `impactSource` says

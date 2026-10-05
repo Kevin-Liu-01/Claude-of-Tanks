@@ -1076,6 +1076,11 @@ const LANDING_ALIGN_MIN_S = 0.08;
 /** The fastest a landing turns a hull onto the ground (rad/s, about 100 deg/s), and the most its root follows the turn
  * down in one step (m): the lever of the hull's longest axis bounds the rate below that (1.5 rad/s for a 7 m hull). */
 const LANDING_TURN_MAX = 1.7;
+/** Past this rate a landing's turn grows with its closing ever more slowly (LANDING_TURN_KNEE_SLOPE of the rest), so a
+ * harder landing turns faster up to the cap (the parity iteration: on the real tracks' narrower lever a 4.3 m/s landing
+ * on a 10-degree cross slope asked 1.67 rad/s, 2 % under the cap, and the 6.9 m/s one turned no faster). */
+const LANDING_TURN_KNEE = 1.3;
+const LANDING_TURN_KNEE_SLOPE = 0.45;
 const LANDING_FOLLOW_MAX_M = 0.09;
 /** Above this travel a landing's pitch is the tracks running onto the ground, not a pivot on the end that landed. */
 const LANDING_TURN_PITCH_MAX_MPS = 3;
@@ -1113,6 +1118,9 @@ function landingTurnRate(rate: number, error: number, closing: number, lever: nu
   // the other side's contact bounds the turn toward the ground: what lands it in the minimum time (or the rate it had)
   if (sign * next > Math.max(align, sign * rate)) next = sign * Math.max(align, sign * rate);
   const cap = landingTurnCap(lever);
+  if (Math.abs(next) > LANDING_TURN_KNEE && Math.abs(next) > Math.abs(rate)) {
+    next = Math.sign(next) * Math.max(Math.abs(rate), LANDING_TURN_KNEE + (Math.abs(next) - LANDING_TURN_KNEE) * LANDING_TURN_KNEE_SLOPE);
+  }
   return clamp(next, -cap, cap);
 }
 const TUMBLE_ENTER_UP_Y = 0.55;    // ~57° from upright
