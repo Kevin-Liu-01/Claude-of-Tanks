@@ -238,6 +238,8 @@ export function* buildFieldWorks(
   for (let i = 0; i < count0; i++) { const k = key(feet[i * 5], feet[i * 5 + 1]); const l = byCell.get(k); if (l) l.push(i); else byCell.set(k, [i]); }
   const fwd = new Int32Array(count0).fill(-1), back = new Int32Array(count0).fill(-1);
   for (let i = 0; i < count0; i++) {
+    // (b13: a slice every four thousand feet: a map's twenty thousand feet were one long task)
+    if ((i & 4095) === 4095) yield { fine: true, progress: false, stage: 'field-works' };
     const x = feet[i * 5], z = feet[i * 5 + 1], dx = feet[i * 5 + 2], dz = feet[i * 5 + 3], kind = feet[i * 5 + 4];
     let bf = -1, bb = -1, df = 3.4, db = 3.4;
     const cx = Math.floor(x / cell), cz = Math.floor(z / cell);
@@ -265,7 +267,9 @@ export function* buildFieldWorks(
       && ground._roadDist(mx, mz) >= FIELD_WORKS_ROAD_CORE_M + TOE_M[wallLink ? 0 : 1];
   };
   const edgeA = new Int32Array(count0).fill(-1), edgeB = new Int32Array(count0).fill(-1);
+  yield { fine: true, progress: false, stage: 'field-works' };
   for (let i = 0; i < count0; i++) {
+    if ((i & 4095) === 4095) yield { fine: true, progress: false, stage: 'field-works' };
     if (links(i, fwd[i])) edgeA[i] = fwd[i];
     if (links(i, back[i])) edgeB[i] = back[i];
   }
@@ -297,6 +301,7 @@ export function* buildFieldWorks(
   }
   yield { fine: true, progress: false, stage: 'field-works' };
   trimFieldWorksOvershoots(lines);
+  yield { fine: true, progress: false, stage: 'field-works' };
 
   // walls first, then banks: two groups, the walls on their own stone, the banks on the props rock material
   const wallBuf = newBuffers(), bankBuf = newBuffers();
@@ -305,7 +310,7 @@ export function* buildFieldWorks(
   let lineIndex = 0;
   for (const line of lines) {
     if (line.wall) layWall(line.pts, wallBuf); else sweepBank(line.pts, bankBuf);
-    if (++lineIndex % 200 === 0) yield { fine: true, progress: false, stage: 'field-works' };
+    if (++lineIndex % 20 === 0) yield { fine: true, progress: false, stage: 'field-works' };
   }
 
   function newBuffers() {
@@ -388,8 +393,8 @@ export function* buildFieldWorks(
     const slots: Slot[] = [];
     let s = 0, fallUntil = -1, fallH = 1, breachUntil = -1;
     while (s < L - 1e-3) {
-      let len = mobile ? 0.8 + rand() * 0.8 : 0.32 + rand() * 0.48;
-      if (L - (s + len) < (mobile ? 0.5 : 0.22)) len = L - s;
+      let len = mobile ? 1.0 + rand() * 1.0 : 0.34 + rand() * 0.5;
+      if (L - (s + len) < (mobile ? 0.6 : 0.22)) len = L - s;
       const mid = s + len / 2;
       const inner = s > 2 && L - (s + len) > 2;
       if (inner && s >= fallUntil && s >= breachUntil) {
@@ -407,8 +412,13 @@ export function* buildFieldWorks(
       const tilt = (rand() - 0.5) * 0.05;
       // (its top rounded: a ridge a little off the wall's middle, 2.5-6 cm above its edges)
       slots.push({ s0: s, s1: s + len, h0: h + tilt, h1: h - tilt, lean: (rand() - 0.5) * 0.04, tone: rand(), kind,
-        ridge: (rand() - 0.5) * 0.12, crest: 0.025 + rand() * 0.035 });
+        ridge: (rand() - 0.5) * 0.12, crest: mobile ? 0 : 0.025 + rand() * 0.035 });
       s += len;
+    }
+    // (a phone's crown is continuous: each slot starts where the last ended, upright, so it draws no step)
+    if (mobile) for (let i = 0; i < slots.length; i++) {
+      slots[i].lean = 0;
+      if (i > 0 && slots[i - 1].kind !== 2 && slots[i].kind !== 2) slots[i].h0 = slots[i - 1].h1;
     }
     // a fallen stretch eases in and out over a slot (the courses step down, not a cliff)
     for (let i = 0; i < slots.length; i++) {
@@ -522,7 +532,8 @@ export function* buildFieldWorks(
       };
       // (the top wound to face up — left at A, right at A, right at B — in two halves either side of its ridge)
       const ka = R(A, sl.ridge, sl.h0 + sl.crest), kb = R(B, sl.ridge, sl.h1 + sl.crest);
-      quad(buf, la, ka, kb, lb, col, topUv); quad(buf, ka, ra, rb, kb, col, topUv);
+      if (sl.crest > 0) { quad(buf, la, ka, kb, lb, col, topUv); quad(buf, ka, ra, rb, kb, col, topUv); }
+      else quad(buf, la, ra, rb, lb, col, topUv);
       const nx = slots[i + 1];
       if (nx && nx.kind !== 2) {
         const nl = C(B, -1, nx.h0 - nx.lean), nr = C(B, 1, nx.h0 + nx.lean), nk = R(B, nx.ridge, nx.h0 + nx.crest);
@@ -627,23 +638,38 @@ export function* buildFieldWorks(
     receipt.bankPieces++; receipt.bankM += (len - 1) * 1.4;
   }
 
-  /** The buffers as an indexed geometry: the walls without the rock material's ground and with byte colours. */
-  const build = (buf: Buffers, wall: boolean): THREE.BufferGeometry | null => {
+  /**
+   * The buffers as an indexed geometry: the walls without the rock material's ground and with byte colours. Copied
+   * into typed arrays a few hundred thousand values a slice (a map's walls are a million and more vertices).
+   */
+  function* build(buf: Buffers, wall: boolean): Generator<FieldWorksSlice, THREE.BufferGeometry | null, void> {
     if (!buf.index.length) return null;
+    const CHUNK = 400_000;
+    function* copy<T extends Float32Array | Uint8Array | Uint32Array>(from: number[], to: T, scale = 0): Generator<FieldWorksSlice, T, void> {
+      for (let i = 0; i < from.length; i += CHUNK) {
+        const end = Math.min(from.length, i + CHUNK);
+        if (scale) for (let k = i; k < end; k++) to[k] = Math.round(Math.min(1, Math.max(0, from[k])) * scale);
+        else for (let k = i; k < end; k++) to[k] = from[k];
+        yield { fine: true, progress: false, stage: 'field-works' };
+      }
+      return to;
+    }
     const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(buf.positions, 3));
-    g.setAttribute('normal', new THREE.Float32BufferAttribute(buf.normals, 3));
+    g.setAttribute('position', new THREE.BufferAttribute(yield* copy(buf.positions, new Float32Array(buf.positions.length)), 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(yield* copy(buf.normals, new Float32Array(buf.normals.length)), 3));
     g.setAttribute('color', wall
-      ? new THREE.BufferAttribute(Uint8Array.from(buf.colors, (c) => Math.round(Math.min(1, Math.max(0, c)) * 255)), 3, true)
-      : new THREE.Float32BufferAttribute(buf.colors, 3));
-    if (!wall) g.setAttribute('aRockGround', new THREE.Float32BufferAttribute(buf.grounds, 1));
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(buf.uvs, 2));
-    g.setIndex(new THREE.BufferAttribute(Uint32Array.from(buf.index), 1));
+      ? new THREE.BufferAttribute(yield* copy(buf.colors, new Uint8Array(buf.colors.length), 255), 3, true)
+      : new THREE.BufferAttribute(yield* copy(buf.colors, new Float32Array(buf.colors.length)), 3));
+    if (!wall) g.setAttribute('aRockGround', new THREE.BufferAttribute(yield* copy(buf.grounds, new Float32Array(buf.grounds.length)), 1));
+    g.setAttribute('uv', new THREE.BufferAttribute(yield* copy(buf.uvs, new Float32Array(buf.uvs.length)), 2));
+    g.setIndex(new THREE.BufferAttribute(yield* copy(buf.index, new Uint32Array(buf.index.length)), 1));
     g.computeBoundingBox(); g.computeBoundingSphere();
     receipt.triangles += buf.index.length / 3;
     return g;
-  };
-  const wallGeometry = build(wallBuf, true), bankGeometry = build(bankBuf, false);
+  }
+  yield { fine: true, progress: false, stage: 'field-works' };
+  const wallGeometry = yield* build(wallBuf, true);
+  const bankGeometry = yield* build(bankBuf, false);
   return { geometry: wallGeometry ?? bankGeometry, wallGeometry, bankGeometry, receipt };
 }
 
