@@ -299,7 +299,11 @@ export function createBattlePresentationRuntime({
         detailVisible,
       );
     }
-    syncModeVisual(entity, dtFrame, game.phase === 'battle');
+    // A retained player can be the Garage hero; its preview owner already
+    // updated this frame. Battle cleanup must not dispose that live effect.
+    if (game.phase !== 'garage' || visual !== pedestalVisual) {
+      syncModeVisual(entity, dtFrame, game.phase === 'battle');
+    }
     return viewDistanceM;
   };
 

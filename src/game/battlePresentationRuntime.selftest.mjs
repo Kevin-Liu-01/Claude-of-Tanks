@@ -372,3 +372,18 @@ console.log('battlePresentationRuntime.selftest: interpolation, visibility, deta
  assert.equal(mesh.material.name,'Infected surface highlight');
  game.phase='ended';runtime.update(0);mesh.geometry.dispose();material.dispose();
 }
+
+// The retained battle player may also be the live Garage pedestal. The
+// battle presenter must not tear down the Garage's freshly prepared shader.
+{
+ const {createGarageModePreview}=await import('./garageModePreview.ts');
+ const {entity,root,visual}=createEntity({isPlayer:true});
+ const paint=new MeshStandardMaterial(),geometry=new BoxGeometry(),mesh=new Mesh(geometry,paint);root.add(mesh);
+ const {runtime}=createHarness({tanks:[entity],phase:'garage',pedestalVisual:visual});
+ const preview=createGarageModePreview();preview.update(root,entity.spec,'juggernaut',0);
+ const resident=mesh.material;let disposals=0;resident.addEventListener('dispose',()=>disposals++);
+ for(let frame=0;frame<60;frame++){preview.update(root,entity.spec,'juggernaut',1/60);runtime.update(1/60);}
+ assert.equal(mesh.material,resident,'Garage preview survives the subsequent battle-presentation stage');
+ assert.equal(disposals,0,'Garage frames do not dispose and recreate energy shaders');
+ preview.clear();geometry.dispose();paint.dispose();
+}

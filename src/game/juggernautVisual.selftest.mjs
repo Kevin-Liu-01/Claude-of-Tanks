@@ -33,6 +33,7 @@ tracks.visible=false;update();assert.equal(tracks.visible,false,'hidden/destroye
 const hits=shader.uniforms.juggernautHits.value;
 const hitWorld=new T.Vector3(.3,.4,.2);turret.localToWorld(hitWorld);
 assert.equal(pulseJuggernautImpact(root,hitWorld.toArray(),'turret'),true);
+assert.equal(shader.uniforms.juggernautActiveHits.value,1,'one impact bounds the shader loop to one slot');
 assert.equal(hits[0].w,0);assert.ok(hits.slice(1).every(h=>h.w<0),'one hit lights only one contact');
 const originalHit=hits[0].clone();turret.rotation.y+=.6;root.position.set(17,0,29);root.rotation.y=.9;update(80);
 const expected=root.worldToLocal(turret.localToWorld(new T.Vector3(.3,.4,.2)));
@@ -43,6 +44,8 @@ assert.equal(pulseJuggernautImpact(root,[NaN,0,0]),false);assert.equal(pulseJugg
 for(let i=0;i<20;i++)pulseJuggernautImpact(root,[i,1,0]);
 assert.equal(hits.length,6,'rapid hits use a bounded reusable pool');assert.ok(hits.every(h=>h.w===0));
 update(80,1.12,1.3);assert.ok(hits.every(h=>h.w===-1),'all rings expire');
+assert.equal(shader.uniforms.juggernautActiveHits.value,0,'idle shader skips the entire hit loop');
+assert.doesNotMatch(shader.fragmentShader,/exp\(-pow|exp\(-d \* d/,'impact falloffs avoid expensive Gaussian powers');
 update(60);assert.ok(hits.every(h=>h.w===-1),'HP loss without a contact never creates a fake whole-tank pulse');
 assert.match(shader.vertexShader,/batchingMatrix \* shieldPoint/);assert.match(shader.vertexShader,/instanceMatrix \* shieldPoint/);
 assert.match(shader.fragmentShader,/shieldSurface - juggernautHits/);assert.match(shader.fragmentShader,/rippleWarp/);assert.match(shader.fragmentShader,/juggernautTime \* 2.8/);

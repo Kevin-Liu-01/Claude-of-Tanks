@@ -151,7 +151,7 @@ import {
   GARAGE_CAMERA_PITCH_RAD,
 } from './game/garagePresentationPose.ts';
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
-import { createGarageModePreviewRuntime } from './app/garageModePreviewRuntime.ts';
+import { createGarageModePreviewRuntime, prepareGarageModePrograms } from './app/garageModePreviewRuntime.ts';
 import { createGarageShowroomRuntime } from './game/garageShowroomRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { createGarageReturnAccess } from './game/garageReturnAccess.ts';
@@ -1176,14 +1176,11 @@ const garageModePreview = createGarageModePreviewRuntime({
       { layerMask: camera.layers.mask & ~lateMask, target: post.sceneAA.sceneTarget },
       { layerMask: lateMask, target: post.lateFx.target },
     ] : undefined;
-    const steps = forwardProgramWarm.prepareSceneSteps({ visibleRoot: root, passes, strict: true, sliceMs: 4 });
-    try {
-      while (current() && game.phase === 'garage') {
-        const result = steps.next();
-        if (result.done) break;
-        await nextFrame();
-      }
-    } finally { steps.return(undefined as never); }
+    await prepareGarageModePrograms(
+      () => forwardProgramWarm.prepareSceneSteps({ visibleRoot: root, passes, strict: true, sliceMs: 4 }),
+      () => current() && game.phase === 'garage',
+      nextFrame,
+    );
   },
   invalidate: () => invalidateGaragePresentation(),
   warn: error => console.error('[garage mode preview]', error),

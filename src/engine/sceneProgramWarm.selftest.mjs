@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { createForwardProgramWarmOwner } from './programWarm.ts';
+import { prepareGarageModePrograms } from '../app/garageModePreviewRuntime.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 
 let passed = 0;
@@ -974,7 +975,7 @@ console.log(`sceneProgramWarm.selftest: ${passed} scene submission, identity and
 {
  const body=mainSource.match(/prepare: async \(root, current\) => \{([\s\S]*?)\n  \},\n  invalidate:/)?.[1];
  assert.ok(body);
- const run=new Function('forwardProgramWarm','post','camera','LATE_FX_LAYER','nextFrame','game',
+ const run=new Function('forwardProgramWarm','post','camera','LATE_FX_LAYER','nextFrame','game','prepareGarageModePrograms',
    `return async (root,current)=>{${body.replace('undefined as never','undefined')}}`);
  for(const composed of [false,true]){
   const camera=new THREE.PerspectiveCamera();camera.layers.enable(LATE_FX_LAYER);
@@ -986,7 +987,7 @@ console.log(`sceneProgramWarm.selftest: ${passed} scene submission, identity and
     {layerMask:camera.layers.mask&~(1<<LATE_FX_LAYER),target:post.sceneAA.sceneTarget},
     {layerMask:1<<LATE_FX_LAYER,target:post.lateFx.target},
    ]:undefined);return {status:'complete',pending:0};
-  }},post,camera,LATE_FX_LAYER,async()=>{},{phase:'garage'})(root,()=>true);
+  }},post,camera,LATE_FX_LAYER,async()=>{},{phase:'garage'},prepareGarageModePrograms)(root,()=>true);
   assert.equal(prepared,1);
  }
  console.log('sceneProgramWarm: Garage aura uses exact rendered targets and light layers');

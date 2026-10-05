@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Group } from 'three';
-import { createGarageModePreviewRuntime } from './garageModePreviewRuntime.ts';
+import { createGarageModePreviewRuntime, prepareGarageModePrograms } from './garageModePreviewRuntime.ts';
 const turn = () => new Promise(resolve => setImmediate(resolve));
 const deferred = () => { let resolve, reject; const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject}; };
 function fixture(){
@@ -72,4 +72,24 @@ console.log('garageModePreviewRuntime: lazy intent, rapid switches, ready-before
  assert.equal(f.runtime.pending,true,'installed materials alone do not prove GPU readiness');
  f.warms[1].resolve();await turn();assert.equal(f.runtime.pending,false);
  f.runtime.clear();
+}
+
+{
+ let attempts=0,yields=0,closed=0;
+ await prepareGarageModePrograms(function*(){
+   attempts++;try {yield;return attempts===1?{status:'incomplete',pending:2,reason:'budget'}:{status:'complete',pending:0};}
+   finally {closed++;}
+ },()=>true,async()=>{yields++;});
+ assert.equal(attempts,2,'a partial GPU warm is retried before reveal');
+ assert.equal(closed,2);assert.ok(yields>=2,'retry leaves the UI responsive');
+ let failures=0;
+ await assert.rejects(prepareGarageModePrograms(function*(){failures++;return {status:'incomplete',pending:1,reason:'budget'};},()=>true,async()=>{}),/retry budget/);
+ assert.equal(failures,3,'a broken driver cannot hold the Garage forever');
+ const f=fixture();f.runtime.update(a,spec,'juggernaut',0);await turn();f.imports[0].resolve(f.preview);await turn();
+ f.warms[0].reject(new Error('shader failed'));await turn();
+ assert.equal(f.clears,1,'failed warm restores the original materials');
+ const updates=f.updates.length;
+ for(let i=0;i<60;i++)f.runtime.update(a,spec,'juggernaut',1/60);
+ assert.equal(f.updates.length,updates,'failed shaders are not recreated on each frame');
+ assert.equal(f.runtime.pending,false);
 }

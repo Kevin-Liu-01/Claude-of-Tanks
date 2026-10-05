@@ -26,7 +26,7 @@ try{
    const mobile=!!viewport.isMobile,suffix=mobile?'landscape':'desktop';
    const {page,errors}=await openGamePage(browser,{port,viewport});
    page.on('console',m=>{if(m.type()==='error'&&/THREE.WebGLProgram|Shader Error/.test(m.text()))errors.push(m.text());});
-   for(const id of mobile?['m1a2']:['m1a2','kf41_lynx_x','strv103']){
+   for(const id of mobile?['m1a2']:['m1a2_sepv3_x','kf41_lynx_x','strv103']){
     await page.evaluate(id=>window.__DEBUG.selectGarageTank(id),id);
     await page.waitForFunction(id=>window.__DEBUG.pedestalVisual?.specId===id,{timeout:180000},id);
     let priorEnergy=null;
@@ -58,10 +58,16 @@ try{
    if(!mobile){
     await selectMode(page,'juggernaut');
     await page.evaluate(async()=>{const {writeTeamArrangement}=await import('/src/game/teamArrangement.ts');writeTeamArrangement('juggernaut',{allies:1,enemies:2});});
-    await beginSoloBattle(page,{specId:'m1a2',mapId:'verdant',gameMode:'juggernaut'});
+    await beginSoloBattle(page,{specId:'m1a2_sepv3_x',mapId:'verdant',gameMode:'juggernaut'});
+    const battleTime=await page.evaluate(()=>window.__DEBUG.game.timeS);
+    await page.waitForFunction(start=>window.__DEBUG.game.timeS>start+1,{timeout:30000},battleTime);
+    assert.deepEqual(errors,[],'SEP v3 Juggernaut advances without render exceptions');
     await page.evaluate(()=>window.__DEBUG.leaveBattleToGarage());
     await page.waitForFunction(()=>window.__DEBUG.game.phase==='garage'&&window.__GARAGE_ENTRY?.presentationUnready===false,{timeout:180000});
     await page.waitForFunction(fn=>{const s=(0,eval)(`(${fn})`)();return s&&!s.pending&&s.shield>0;},{timeout:30000},previewState.toString());
+    const returned=await page.evaluate(previewState);
+    await page.evaluate(()=>new Promise(resolve=>{let frames=0;function sample(){if(++frames===60)resolve();else requestAnimationFrame(sample);}requestAnimationFrame(sample);}));
+    assert.deepEqual((await page.evaluate(previewState)).materials,returned.materials,'battle return retains Garage aura materials across frames');
     await page.screenshot({path:resolve(out,'juggernaut-return-desktop.png')});
     await selectMode(page,'standard');
     await page.waitForFunction(fn=>(0,eval)(`(${fn})`)()?.shield===0,{timeout:30000},previewState.toString());
