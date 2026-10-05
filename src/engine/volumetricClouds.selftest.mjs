@@ -511,7 +511,8 @@ assert.ok(layerSource.includes("name: 'VolumetricCloudTrace'") && layerSource.in
 console.log('volumetricClouds.selftest: deterministic noise (six bakes), tiling, equalisation and street anisotropy, the 31-map cloudscape table, the regime rows, the shadow policy, the slot cycle, the haze mirror and the hooks pinned');
 
 // The shade map keeps the gobos' soft edge band (a continuous opacity over the cut, never a binary stamp).
-assert.match(layerSource,/smoothstep\( uThreshold - 0\.08, uThreshold \+ 0\.08, cloudField/,'cloud edges have a continuous opacity band');
+// (2026-10-05: the band's half-width a QA knob, 0.08 by default — CLOUD_SHADOW_SOFT)
+assert.match(layerSource,/smoothstep\( uThreshold \+ uShadeLook\.y - uShadeLook\.z, uThreshold \+ uShadeLook\.y \+ uShadeLook\.z, cloudField/,'cloud edges have a continuous opacity band');
 
 // 2026-10-04 (the gauntlet's wave 62 on Titan Gorge: the sun "a flat, hard-edged white disc pasted on a featureless
 // grey-white sky"): a ray the march ends under the 0.03 cut is opaque, its in-scatter renormalised for the remainder —

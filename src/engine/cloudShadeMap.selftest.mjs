@@ -24,8 +24,11 @@ const texel = CLOUD_FAR_SHADE_SPAN_M / CLOUD_FAR_SHADE_SIZE;
 assert.ok(texel <= 30, `a texel (${texel.toFixed(1)} m) under a cumulus shadow's soft edge`);
 assert.ok(CLOUD_FAR_SHADE_SPAN_M / 2 >= 3300, 'the square reaches the ring and the far range (3.3 km)');
 assert.ok(CLOUD_FAR_SHADE_EVERY * 12 / 60 < texel / 4, 'between refreshes a strong wind moves the field well under a texel');
-const law = 'float shade = ${f(CLOUD_SHADOW_CORE)} * smoothstep( uThreshold - 0.08, uThreshold + 0.08, cloudField(';
+const law = 'float shade = uShadeLook.x * smoothstep( uThreshold + uShadeLook.y - uShadeLook.z, uThreshold + uShadeLook.y + uShadeLook.z, cloudField(';
 assert.equal(clouds.split(law).length - 1, 1, 'one cut of the shared field, in the map alone');
+// (2026-10-05: the core, the cut's shift and its half-width through the QA hook — the defaults the constant law's)
+assert.match(clouds, /uShadeLook: \{ value: new THREE\.Vector3\(CLOUD_SHADOW_CORE, 0, 0\.08\) \},/);
+assert.match(clouds, /\(this\.farShadeMaterial\.uniforms\.uShadeLook\.value as THREE\.Vector3\)\.set\(lightTune\('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE\),\s*lightTune\('CLOUD_SHADOW_SHIFT', 0\), lightTune\('CLOUD_SHADOW_SOFT', 0\.08\)\);/);
 assert.match(clouds, /const FAR_SHADE_FRAGMENT = \/\* glsl \*\/`\nprecision highp float;\n\$\{CLOUD_FIELD_GLSL\}/, 'the map reads the shared field GLSL');
 assert.match(clouds, /gl_FragColor = vec4\( shade, 0\.0, 0\.0, 1\.0 \);/, 'undithered: the shade itself, no discard');
 assert.match(clouds, /if \( uClear\.z > 0\.0 \) shade \*= smoothstep\( uClear\.z \* 0\.6, uClear\.z \* 1\.4, length\( xz - uClear\.xy \) \);/, 'a front keeps its clear radius');
@@ -151,5 +154,10 @@ assert.match(lighting, /#if defined\( COT_CLOUD_SHADE \) && defined\( USE_SHADOW
   }
 }
 assert.match(lighting, /const cloudShadeOn = !mobileTier;/, 'phones take no define (their tier has no volumetric layer)');
+
+// (2026-10-05, the gauntlet's wave 93 on Whiteout: "soft dark-grey blotches ... cloud shadows that a solid overcast cannot
+// cast") the aerial pass's world-anchored patchiness follows no cloud: it fades with the light model's overcast
+assert.match(post, /aerial\.uniforms\.uCloudShade\.value = \(scene\.userData\.cloudShadeAmp \?\? CLOUD_SHADE_DEFAULT\)\s*\* \(1 - Math\.min\(1, Math\.max\(0, \(scene\.userData\.lightModel as \{ overcast\?: number \} \| undefined\)\?\.overcast \?\? 0\)\)\);/,
+  'none under a closed deck, the whole under an open sky');
 
 console.log(`cloudShadeMap.selftest: one undithered ${CLOUD_FAR_SHADE_SIZE}² map over ${CLOUD_FAR_SHADE_SPAN_M / 1000} km (a ${texel.toFixed(1)} m texel), the lookup and its twin, the CSM chunks, the material hook and its ${CLOUD_SHADE_SAMPLER_BUDGET}-sampler budget, no gobo and no far pass PASS`);

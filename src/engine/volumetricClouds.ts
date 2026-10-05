@@ -1427,11 +1427,14 @@ ${CLOUD_FIELD_GLSL}
 uniform float uThreshold;
 uniform vec3 uClear;
 uniform vec3 uFarShadeRect;
+// 2026-10-05 (the skies lane, the clouds and the land; QA: CLOUD_SHADOW_CORE / _SHIFT / _SOFT): the core's share of the sun,
+// the cut's shift against the regime's threshold, its half-width
+uniform vec3 uShadeLook;
 varying vec2 vUv;
 void main() {
 	vec2 xz = uFarShadeRect.xy + ( vUv - 0.5 ) * uFarShadeRect.z;
 	vec4 w, st;
-	float shade = ${f(CLOUD_SHADOW_CORE)} * smoothstep( uThreshold - 0.08, uThreshold + 0.08, cloudField( xz, w, st ) );
+	float shade = uShadeLook.x * smoothstep( uThreshold + uShadeLook.y - uShadeLook.z, uThreshold + uShadeLook.y + uShadeLook.z, cloudField( xz, w, st ) );
 	if ( uClear.z > 0.0 ) shade *= smoothstep( uClear.z * 0.6, uClear.z * 1.4, length( xz - uClear.xy ) );
 	gl_FragColor = vec4( shade, 0.0, 0.0, 1.0 );
 }`;
@@ -1652,6 +1655,7 @@ export class VolumetricCloudLayer {
         tWeather: gu.tWeather, tStreets: gu.tStreets, uWeatherShift: gu.uWeatherShift, uStreetShift: gu.uStreetShift,
         uWindDir: gu.uWindDir, uStreets: gu.uStreets, uFieldMix: gu.uFieldMix, uCluster: gu.uCluster, uNearField: gu.uNearField, uThreshold: gu.uThreshold, uClear: gu.uClear,
         uFarShadeRect: { value: new THREE.Vector3(0, 0, CLOUD_FAR_SHADE_SPAN_M) },
+        uShadeLook: { value: new THREE.Vector3(CLOUD_SHADOW_CORE, 0, 0.08) },
       },
     });
     this.quad = new FullScreenQuad(this.traceMaterial);
@@ -2147,6 +2151,8 @@ export class VolumetricCloudLayer {
     }
     rect.set(cx, cz, CLOUD_FAR_SHADE_SPAN_M);
     (this.farShadeMaterial.uniforms.uFarShadeRect.value as THREE.Vector3).copy(rect);
+    (this.farShadeMaterial.uniforms.uShadeLook.value as THREE.Vector3).set(lightTune('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE),
+      lightTune('CLOUD_SHADOW_SHIFT', 0), lightTune('CLOUD_SHADOW_SOFT', 0.08));
     this.renderQuad(this.farShadeMaterial, this.farShadeTarget);
     this.farShadeInfo.texture = this.farShadeTarget.texture;
     this.farShadeInfo.baseM = preset.baseM;
