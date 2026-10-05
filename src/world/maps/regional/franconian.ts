@@ -4,8 +4,9 @@
 // rendered front in ochre, cream, rose or pale green with sandstone dressings; steep plain-tile roofs, gable-fronted to
 // the street or eaves-fronted with dormers, a hoist gable for the loft. The framing and openings are the Fachwerk kit's
 // (hessian.ts) under a Franconian palette; the rows replace the street rows and the block-fill row houses.
-import { PartSink, faceBox, rgb, type RegionalBucket, type RegionalParts } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
+import { PartSink, faceBox, pick, rgb, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
+import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
+import { doorCanopy, facadeOn, facadeRng, paintSurround, trimRun, windowHead } from './facade.ts';
 import { windowUnit } from './openings.ts';
 import {
   bindFachwerk, hessianDialect, houseUvOffset, roofFor, stateFor, withPalette, type FachwerkPalette,
@@ -70,6 +71,7 @@ const townHouse: RegionalBuilder = (ctx) => {
       chimneys: [{ x: (rng() - 0.5) * bw * 0.3, z: (rng() - 0.5) * bd * 0.4, sx: 0.55, sz: 0.6, above: 0.8, bucket: 'stone', cap: 'slab' }],
       gutters: { colour: rgb(0x8c9193) }, verge: framed ? { colour: st.timber, bucket: 'structureWood' } : null,
     }, hessianDialect(st));
+    if (!framed && facadeOn()) townFront(sink, frame, streetFace, gableFront, render, st.door);
     // rendered fronts: sandstone quoins and a cornice
     if (!framed) {
       const b = frame.bodies[0];
@@ -100,6 +102,41 @@ const townHouse: RegionalBuilder = (ctx) => {
   else sink.placed(Math.PI / 2, 0, 0, 0, build);
   return sink.finish();
 };
+
+/** Faschen: the render bands painted round a town house's windows, lighter or darker than its render. */
+const FASCHEN: readonly Rgb[] = [[1.14, 1.12, 1.08], [1.1, 1.06, 0.98], [0.8, 0.8, 0.78], [1.06, 0.86, 0.7], [0.86, 0.9, 0.84]];
+
+/**
+ * A rendered town front's masonry (facade craft, desktop): sandstone string courses at the floors and a cornice at
+ * the eaves (on an eaves-fronted house) or across the gable's foot, returned round the corners; the windows of the
+ * rendered storeys inside painted Faschen, the first floor's under sandstone hoods on the grander houses; a canopy over
+ * the street door. From the facade stream (the build stream as before).
+ */
+function townFront(sink: PartSink, frame: HouseFrame, streetFace: 'front' | 'left', gableFront: boolean, render: RegionalBucket, door: Rgb): void {
+  const f = facadeRng();
+  const face = frame.faces[streetFace], half = face.width / 2;
+  const fasche = pick(f, FASCHEN), hoods = f() < 0.55, courses = f() < 0.7, canopy = f() < 0.35;
+  const stoneTrim: RegionalBucket = f() < 0.7 ? 'stone' : render;
+  const trim = stoneTrim === 'stone' ? {} : { tint: fasche };
+  if (courses) {
+    for (let i = 1; i < frame.floors.length; i++) {
+      trimRun(sink, stoneTrim, face, -half, half, frame.floors[i] - 0.12, [{ h: 0.07, out: 0.04 }, { h: 0.09, out: 0.08 }], { ret: 0.3, ...trim });
+    }
+  }
+  // the cornice: under the street eaves, or across the street gable's foot
+  trimRun(sink, stoneTrim, face, -half, half, frame.eaveY - (gableFront ? 0.3 : 0.27),
+    [{ h: 0.1, out: 0.05 }, { h: 0.07, out: 0.1 }, { h: 0.1, out: gableFront ? 0.15 : 0.17 }], { ret: 0.4, ...trim });
+  for (const o of frame.spec.openings) {
+    if (o.face !== streetFace || o.state) continue;
+    const wall = frame.spec.storeys[o.storey].wall, y0 = frame.floors[o.storey] + o.y0;
+    if (o.kind === 'window' && wall !== 'stone') {
+      paintSurround(sink, wall, face, o.u, y0, o.w, o.h, 0.13, fasche);
+      if (o.storey === 1 && hoods) windowHead(sink, face, o.u, y0 + o.h + 0.13, o.w + 0.26, { kind: 'hood', bucket: 'stone', h: 0.2, out: 0.12, ext: 0.04 });
+    } else if (o.kind === 'door' && canopy) {
+      doorCanopy(sink, face, o.u, y0 + o.h + 0.2, o.w, { kind: 'shed', bucket: 'roof', timber: door, depth: 0.75 });
+    }
+  }
+}
 
 export const FRANCONIAN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   rowhouse: withPalette(FRANCONIAN_PALETTE, townHouse),

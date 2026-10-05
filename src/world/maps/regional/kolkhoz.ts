@@ -9,8 +9,10 @@ import {
   PartSink, faceBox, pick, rgb, shade,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { hollyhocks } from './dressing.ts';
+import { dentilCornice, facadeOn, facadeRng, faceSlab, paintBand, paintSurround, pilaster, ridgeRiders, trimRing, trimRun, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const PAINTS: readonly Rgb[] = [0x4a7aa8, 0x5a8fb8, 0x4f8a5a, 0x3f6f8f, 0x6b8a4a].map(rgb);
@@ -81,7 +83,39 @@ function khata(ctx: RegionalBuildContext, opts: { long?: boolean } = {}): Region
   return sink.finish();
 }
 
-function khataBody(sink: PartSink, ctx: RegionalBuildContext, st: KolkhozState, W: number, D: number): void {
+/** Clay under the whitewash: what a khata's worn render shows (a tint on the render, facade craft). */
+const CLAY: Rgb = [0.66, 0.55, 0.45];
+const HOLLYHOCK: readonly Rgb[] = [0xc23a5e, 0xd8d0d6, 0x9a2a4a, 0xe08aa8, 0x7a2a6a].map(rgb);
+const RIDER = rgb(0x6e6254);
+
+/**
+ * The carving and paint of one khata (facade craft, desktop builds; from the facade stream, so the house's build
+ * stream draws as before): most carry carved nalichniki — a crest cut to a gable peak, an arch or a step over the
+ * window, an apron cut to a drop under it, in the surround's paint with the carved field in the house's other paint —
+ * the rest keep their board surrounds inside a band painted on the whitewash; every house gets the painted line over
+ * its plinth. Returns the window style with its carving, and the paint of the house's bands.
+ */
+function khataCraft(st: KolkhozState): { window: WindowStyle; line: Rgb; surround: Rgb | null } {
+  const f = facadeRng();
+  const s = st.window.surround!;
+  const main = s.colour ?? WHITE_FRAME, other = main === WHITE_FRAME ? st.paint : WHITE_FRAME;
+  const roll = f();
+  const peak = roll < 0.5 ? 'gable' as const : roll < 0.8 ? 'arch' as const : 'stepped' as const;
+  const carved = f() < 0.72;
+  const rise = 0.13 + f() * 0.08, drop = 0.2 + f() * 0.1;
+  // the bands: the house's paint lightened toward the lime (a pale line over a dark plinth)
+  const light = (c: Rgb, k: number): Rgb => [c[0] + (1 - c[0]) * k, c[1] + (1 - c[1]) * k, c[2] + (1 - c[2]) * k];
+  return {
+    window: carved ? { ...st.window, carved: { crest: { peak, colour: main, field: shade(other, 0.86), rise }, apronDrop: drop } } : st.window,
+    line: light(st.paint, 0.18 + f() * 0.2),
+    surround: carved ? null : light(st.paint, 0.45),
+  };
+}
+
+function khataBody(sink: PartSink, ctx: RegionalBuildContext, st0: KolkhozState, W: number, D: number): void {
+  // (the craft draws from the facade stream: a phone and the build stream see the house as before)
+  const craft = facadeOn() ? khataCraft(st0) : null;
+  const st: KolkhozState = craft ? { ...st0, window: craft.window } : st0;
   const rng = st.rng;
   const wall: RegionalBucket = ctx.wallBucket === 'stone' ? 'plaster' : ctx.wallBucket as RegionalBucket;
   const thatched = rng() < 0.7;
@@ -95,9 +129,10 @@ function khataBody(sink: PartSink, ctx: RegionalBuildContext, st: KolkhozState, 
     w: W, d: D, plinth: { h: 0.45, out: 0.06, bucket: 'stone' }, storeys: [{ h: 2.45 + rng() * 0.2, wall }],
     roof: thatched ? thatch(40 + rng() * 6) : shifer(30, 'hip'), gableBucket: wall, openings,
     chimneys: [{ x: (rng() - 0.5) * 0.8, z: (rng() - 0.5) * D * 0.3, sx: 0.5, sz: 0.5, above: thatched ? 0.55 : 0.75, bucket: 'plaster', cap: 'slab' }],
-    // clay-rendered timber or adobe: no brick under the whitewash to show where it has spalled
-    gutters: null, verge: null, spall: null,
+    // clay-rendered timber or adobe: no brick under the whitewash; where the lime has worn off (desktop), the clay shows
+    gutters: null, verge: null, spall: craft ? wall : null, spallTint: CLAY, spallScale: 0.55,
   }, dialect(st));
+  if (craft) khataDressing(sink, frame, st, craft, wall, thatched);
   // the porch (ganok) over the door: two posts and a small lean-to
   const f = frame.faces.left, u = D * 0.2, y = frame.eaveY - 0.1;
   for (const du of [-0.75, 0.75]) faceBox(sink, 'structureWood', f, u + du, y / 2, 1.05, 0.12, y, 0.12, { colour: PLANK });
@@ -105,6 +140,89 @@ function khataBody(sink: PartSink, ctx: RegionalBuildContext, st: KolkhozState, 
   const pg = roofGeometry(1.15, 1.7, y, porch);
   // a shed rises toward -x of its own frame: turned half round, its high side meets the wall
   sink.placed(Math.PI, -W / 2 - 0.58, 0, f.u[2] * u, () => emitRoof(sink, pg, porch));
+}
+
+/**
+ * A khata's craft past its windows (desktop): the painted line over the plinth on every face, broken by the door; the
+ * painted bands round the board surrounds of an uncarved house; the riders crossed over a thatch ridge; hollyhocks
+ * against the front wall.
+ */
+function khataDressing(sink: PartSink, frame: HouseFrame, st: KolkhozState, craft: { line: Rgb; surround: Rgb | null },
+  wall: RegionalBucket, thatched: boolean): void {
+  const f = facadeRng();
+  const body = frame.bodies[0], y0 = body.y0;
+  for (const name of ['front', 'right', 'back', 'left'] as const) {
+    const face = frame.faces[name];
+    const doors = frame.spec.openings.filter((o) => o.face === name && o.storey === 0 && o.kind !== 'window' && o.kind !== 'loft');
+    paintBand(sink, wall, face, -face.width / 2, face.width / 2, y0, y0 + 0.13, craft.line,
+      doors.map((o) => [o.u - o.w / 2 - 0.14, o.u + o.w / 2 + 0.14] as const));
+    if (craft.surround) {
+      for (const o of frame.spec.openings) {
+        if (o.face !== name || o.kind !== 'window' || o.state) continue;
+        const sw = st.window.surround?.width ?? 0.12;
+        paintSurround(sink, wall, face, o.u, y0 + o.y0 - 0.09, o.w + 2 * sw, o.h + 0.09 + (st.window.surround?.lintel ?? 0.2), 0.1, craft.surround);
+      }
+    }
+  }
+  const rg = frame.roof;
+  if (thatched && rg.kind === 'hip') {
+    const half = rg.ridgeHalf, n = Math.max(1, Math.round(2 * half / 1.15));
+    const zs = n === 1 ? [0] : Array.from({ length: n + 1 }, (_, k) => -half + 0.2 + (2 * half - 0.4) * k / n);
+    ridgeRiders(sink, zs, rg.ridgeTopY + 0.06, rg.tanP, RIDER);
+  }
+  // hollyhocks against the long front (the porch's face), clear of its windows and the porch
+  if (f() < 0.65) {
+    const face = frame.faces.left;
+    const taken = frame.spec.openings.filter((o) => o.face === 'left').map((o) => [o.u - o.w / 2 - 0.5, o.u + o.w / 2 + 0.5]);
+    const half = face.width / 2 - 0.7;
+    for (let k = 0; k < 6; k++) {
+      const u = -half + f() * 2 * half;
+      if (taken.some(([a, b]) => u > a - 0.4 && u < b + 0.4)) continue;
+      hollyhocks(sink, face, u, pick(f, HOLLYHOCK), f);
+      break;
+    }
+  }
+}
+
+/**
+ * A cowshed's masonry (facade craft, desktop): brick piers between its windows and at its corners, a corbelled dentil
+ * cornice under both eaves returned round the gables, the windows under segmental brick arches (lintels on a
+ * whitewashed shed), a round vent high in each gable and a brick arch over each cart gate.
+ */
+function shedMasonry(sink: PartSink, frame: HouseFrame, wall: RegionalBucket): void {
+  const top = frame.eaveY, base = frame.floors[0];
+  for (const name of ['left', 'right'] as const) {
+    const face = frame.faces[name], half = face.width / 2;
+    const us = frame.spec.openings.filter((o) => o.face === name).map((o) => o.u).sort((a, b) => a - b);
+    const piers = [-half + 0.22, half - 0.22];
+    for (let k = 0; k + 1 < us.length; k++) piers.push((us[k] + us[k + 1]) / 2);
+    for (const u of piers) pilaster(sink, wall, face, u, base, top - 0.31, 0.44, 0.065);
+    dentilCornice(sink, wall, face, -half, half, top - 0.31, { ret: 0.35 });
+    for (const o of frame.spec.openings) {
+      if (o.face !== name) continue;
+      const y = base + o.y0 + o.h;
+      if (wall === 'stone') windowHead(sink, face, o.u, y, o.w, { kind: 'segment', bucket: 'stone', h: 0.09, out: 0.035, ext: 0.07, rise: 0.07 });
+      else windowHead(sink, face, o.u, y, o.w, { kind: 'lintel', bucket: wall, h: 0.14, out: 0.03, ext: 0.08 });
+    }
+  }
+  const rg = frame.roof;
+  for (const name of ['front', 'back'] as const) {
+    const face = frame.faces[name], half = face.width / 2;
+    for (const u of [-half + 0.22, half - 0.22]) pilaster(sink, wall, face, u, base, top - 0.05, 0.44, 0.065);
+    // the round vent in the gable, in a brick ring
+    const vy = top + (rg.ridgeY - top) * 0.52, ring: Array<[number, number]> = [], hole: Array<[number, number]> = [];
+    for (let k = 0; k < 12; k++) {
+      const a = Math.PI * 2 * k / 12;
+      ring.push([Math.cos(a) * 0.42, vy + Math.sin(a) * 0.42]);
+      hole.push([Math.cos(a) * 0.3, vy + Math.sin(a) * 0.3]);
+    }
+    faceSlab(sink, wall === 'stone' ? 'stone' : wall, face, ring, 0, 0.03);
+    faceSlab(sink, 'dark', face, hole, 0.03, 0.004);
+    for (const o of frame.spec.openings) {
+      if (o.face !== name || o.kind !== 'gate') continue;
+      windowHead(sink, face, o.u, base + o.y0 + o.h + 0.12, o.w + 0.24, { kind: 'segment', bucket: wall, h: 0.12, out: 0.05, ext: 0.1, rise: 0.22 });
+    }
+  }
 }
 
 /** The korovnik: a long brick cowshed, small windows in a row, cart doors at both gables, ridge vents. */
@@ -125,6 +243,7 @@ const korovnik: RegionalBuilder = (ctx) => {
     w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.0, wall }],
     roof: shifer(26), gableBucket: wall === 'stone' ? 'stone' : 'plaster', openings, chimneys: [], gutters: null, verge: null,
   }, dialect({ ...st, litShare: 0 }));
+  if (facadeOn()) shedMasonry(sink, frame, wall);
   // ventilation stacks on the ridge: boarded boxes with little gabled caps
   const rg = frame.roof;
   for (const z of [-D * 0.28, D * 0.28]) {
@@ -244,6 +363,7 @@ const church: RegionalBuilder = (ctx) => {
   const top = frame.roof.ridgeTopY, r = Math.min(1.5, W * 0.24);
   sink.cylinder('plaster', [0, top - 1.2, -D * 0.1], 'y', 2.4 * r / 1.5, r, 12, {});
   onion(sink, 0, top - 1.2 + 2.4 * r / 1.5, -D * 0.1, r, DOME_GREEN);
+  if (facadeOn()) churchMasonry(sink, frame, [0, top - 1.2, -D * 0.1], 2.4 * r / 1.5, r);
   if (!tower) {
     // the belfry over the west gable: four posts on the ridge, open between them, a pyramid of sheet and a small onion
     const bz = D / 2 - 0.9, by = frame.roof.ridgeY - 0.6, bh = 1.7, b = 0.65;
@@ -269,8 +389,57 @@ const church: RegionalBuilder = (ctx) => {
   }
   sink.span('structureMetal', -1.35, 9.6, tz - 1.35, 1.35, 9.75, tz + 1.35, { colour: GREEN_ROOF });
   onion(sink, 0, 9.75, tz, 0.95, DOME_GREEN);
+  if (facadeOn()) {
+    // the tower's tiers parted by cornices, its corners by pilasters, brows over the belfry's openings
+    trimRing(sink, 'plaster', { x0: -1.6, x1: 1.6, z0: tz - 1.6, z1: tz + 1.6 }, 6.72, [{ h: 0.1, out: 0.06 }, { h: 0.12, out: 0.14 }, { h: 0.06, out: 0.2 }]);
+    trimRing(sink, 'plaster', { x0: -1.25, x1: 1.25, z0: tz - 1.25, z1: tz + 1.25 }, 9.36, [{ h: 0.1, out: 0.05 }, { h: 0.12, out: 0.12 }]);
+    for (const [o, u] of [[[0, 0, tz + 1.25], [1, 0, 0]], [[0, 0, tz - 1.25], [-1, 0, 0]], [[1.25, 0, tz], [0, 0, -1]], [[-1.25, 0, tz], [0, 0, 1]]] as const) {
+      const f: Face = { origin: o as Vec3, u: u as Vec3, out: [Math.sign(o[0]), 0, o[0] === 0 ? Math.sign(o[2] - tz) : 0], width: 2.5 };
+      windowHead(sink, f, 0, 9.05, 0.8, { kind: 'segment', bucket: 'plaster', h: 0.08, out: 0.05, ext: 0.1, rise: 0.18 });
+      for (const cu of [-1.03, 1.03]) pilaster(sink, 'plaster', f, cu, 7.0, 9.36, 0.34, 0.05);
+    }
+    const lower: Face[] = [
+      { origin: [0, 0, tz + 1.6], u: [1, 0, 0], out: [0, 0, 1], width: 3.2 }, { origin: [1.6, 0, tz], u: [0, 0, -1], out: [1, 0, 0], width: 3.2 },
+      { origin: [-1.6, 0, tz], u: [0, 0, 1], out: [-1, 0, 0], width: 3.2 },
+    ];
+    for (const f of lower) for (const cu of [-1.35, 1.35]) pilaster(sink, 'plaster', f, cu, 0.4, 6.72, 0.42, 0.06);
+  }
   return sink.finish();
 };
+
+/**
+ * A village church's masonry (facade craft, desktop): pilasters at the nave's corners and between its windows, a
+ * stepped cornice under the eaves returned round the gables, arched brows over the windows; on the drum a cornice
+ * under the dome, a band at its foot and four arched windows.
+ */
+function churchMasonry(sink: PartSink, frame: HouseFrame, drum: Vec3, drumH: number, r: number): void {
+  const base = frame.floors[0], top = frame.eaveY;
+  for (const name of ['left', 'right'] as const) {
+    const face = frame.faces[name], half = face.width / 2;
+    const us = frame.spec.openings.filter((o) => o.face === name).map((o) => o.u).sort((a, b) => a - b);
+    const piers = [-half + 0.25, half - 0.25];
+    for (let k = 0; k + 1 < us.length; k++) piers.push((us[k] + us[k + 1]) / 2);
+    for (const u of piers) pilaster(sink, 'plaster', face, u, base, top - 0.34, 0.5, 0.07);
+    trimRun(sink, 'plaster', face, -half, half, top - 0.34, [{ h: 0.12, out: 0.07 }, { h: 0.1, out: 0.14 }, { h: 0.12, out: 0.22 }], { ret: 0.45 });
+    for (const o of frame.spec.openings) {
+      if (o.face !== name || o.state) continue;
+      windowHead(sink, face, o.u, base + o.y0 + o.h + 0.3, o.w + 0.36, { kind: 'segment', bucket: 'plaster', h: 0.1, out: 0.08, ext: 0.06, rise: 0.3 });
+    }
+  }
+  for (const name of ['front', 'back'] as const) {
+    const face = frame.faces[name], half = face.width / 2;
+    for (const u of [-half + 0.25, half - 0.25]) pilaster(sink, 'plaster', face, u, base, top - 0.04, 0.5, 0.07);
+  }
+  // the drum: a band at its foot, a cornice under the dome, four arched windows between
+  sink.cylinder('plaster', [drum[0], drum[1] + 0.95, drum[2]], 'y', 0.16, r + 0.07, 12, { decor: true }, r + 0.07, false);
+  sink.cylinder('plaster', [drum[0], drum[1] + drumH - 0.22, drum[2]], 'y', 0.22, r + 0.06, 12, { decor: true }, r + 0.16, false);
+  for (let k = 0; k < 4; k++) {
+    const a = Math.PI / 4 + k * Math.PI / 2, ca = Math.cos(a), sa = Math.sin(a);
+    const f: Face = { origin: [drum[0] + ca * r * 0.97, 0, drum[2] + sa * r * 0.97], u: [-sa, 0, ca], out: [ca, 0, sa], width: 1 };
+    const wy = drum[1] + 1.2, wh = Math.max(0.5, drumH - 1.6);
+    faceSlab(sink, 'dark', f, [[-0.2, wy], [0.2, wy], [0.2, wy + wh], [0, wy + wh + 0.18], [-0.2, wy + wh]], 0, 0.04);
+  }
+}
 
 /** The club or village shop (sel'po): one storey of whitewashed brick under a hipped sheet roof, a porch canopy. */
 function club(ctx: RegionalBuildContext, school = false): RegionalParts {
@@ -293,6 +462,23 @@ function club(ctx: RegionalBuildContext, school = false): RegionalParts {
     const canopy: RoofSpec = { kind: 'gable', pitchDeg: 24, eave: 0.15, verge: 0.1, thickness: 0.08, bucket: 'roof', ridge: null };
     sink.placed(Math.PI / 2, 0, 0, D / 2 + 0.85, () => emitRoof(sink, roofGeometry(1.8, 2.6, 2.9, canopy), canopy));
     faceBox(sink, 'structureWood', f, 0, 3.0, 0.03, 2.6, 0.55, 0.04, { colour: school ? rgb(0x8a2e26) : st.paint, decor: true });
+    if (facadeOn()) {
+      // the club's masonry (facade craft): a cornice round the eaves, corner pilasters, a water table over the plinth,
+      // lintels over the windows (in brick on the school, brows of render on the club)
+      const b = frame.bodies[0];
+      trimRing(sink, wall, b, frame.eaveY - 0.3, [{ h: 0.1, out: 0.05 }, { h: 0.08, out: 0.1 }, { h: 0.12, out: 0.16 }]);
+      trimRing(sink, wall, b, b.y0, [{ h: 0.08, out: 0.045 }]);
+      for (const name of ['front', 'right', 'back', 'left'] as const) {
+        const face = frame.faces[name], half = face.width / 2;
+        for (const u of [-half + 0.25, half - 0.25]) pilaster(sink, wall, face, u, b.y0 + 0.08, frame.eaveY - 0.3, 0.5, 0.06);
+        for (const o of frame.spec.openings) {
+          if (o.face !== name || o.kind !== 'window' || o.state) continue;
+          const y = b.y0 + o.y0 + o.h + (school ? 0 : 0.2);
+          if (school) windowHead(sink, face, o.u, y, o.w, { kind: 'segment', bucket: 'stone', h: 0.1, out: 0.04, ext: 0.08, rise: 0.1 });
+          else windowHead(sink, face, o.u, y, o.w + 0.24, { kind: 'hood', bucket: 'plaster', h: 0.16, out: 0.09, ext: 0.03 });
+        }
+      }
+    }
   });
   return sink.finish();
 }

@@ -2,6 +2,7 @@
 // (regional-buildings lane, 2026-10-03). Every unit is dressing (no collision) except where noted; panes go to the
 // glass bucket (dark interior at night) or the curtain bucket (a warm lit window at night, marked on its outward face).
 import { faceBox, facePanel, type Face, type PartSink, type RegionalBucket, type Rgb, UV_MEMBER } from './geometry.ts';
+import { facadeOn, nalichnikApron, nalichnikCrest, type CrestStyle } from './facade.ts';
 
 export interface WindowStyle {
   /** frame colour (painted joinery, structureWood) */
@@ -16,6 +17,11 @@ export interface WindowStyle {
   sill: { bucket: RegionalBucket; out: number; colour?: Rgb } | null;
   /** shutters: colour and kind, or null */
   shutters: { colour: Rgb; kind: 'louvred' | 'plank' | 'panel'; closed?: number } | null;
+  /**
+   * a carved surround (facade.ts, desktop builds): the surround's plain lintel becomes a cornice ledge and a crest
+   * board, its jambs run down past the sill to an apron cut to a drop (the Russian nalichnik)
+   */
+  carved?: { crest: CrestStyle; apronDrop: number } | null;
 }
 
 /** Choose the pane bucket: about `litShare` of windows show a lit curtain at night. */
@@ -52,7 +58,17 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
   if (style.bars === 'six') {
     for (const t of [1 / 3, 2 / 3]) faceBox(sink, 'structureWood', face, u, y + h * t, back + barO / 2, w - 2 * F, bar, barO, fc, 'ends');
   }
-  if (style.surround) {
+  const carved = style.surround && style.carved && facadeOn() ? style.carved : null;
+  if (style.surround && carved) {
+    // the carved surround: jambs from the apron to the head board, the crest over it, the apron under the sill
+    const s = style.surround, sw = s.width, so = s.out, outer = w + 2 * sw;
+    const sc = { decor: true, fineSides: true, ...(s.colour ? { colour: s.colour } : {}) };
+    const foot = y - 0.09 - carved.apronDrop * 0.55, head = y + h;
+    faceBox(sink, s.bucket, face, u - w / 2 - sw / 2, (foot + head) / 2, so / 2, sw, head - foot, so, sc);
+    faceBox(sink, s.bucket, face, u + w / 2 + sw / 2, (foot + head) / 2, so / 2, sw, head - foot, so, sc);
+    nalichnikCrest(sink, face, u, head, outer, carved.crest);
+    nalichnikApron(sink, face, u, y - 0.09, outer, carved.apronDrop, carved.crest.colour, carved.crest.field);
+  } else if (style.surround) {
     const s = style.surround, sw = s.width, so = s.out, lintel = s.lintel ?? sw;
     // a dressed surround reads by its face at range: its sides and soffits are fine joinery (EmitOptions.fineSides)
     const sc = { decor: true, fineSides: true, ...(s.colour ? { colour: s.colour } : {}) };

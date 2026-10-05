@@ -156,3 +156,29 @@ export function floweringShrub(sink: PartSink, face: Face, u: number, size: numb
 function facePointOut(face: Face, u: number, y: number, o: number): Vec3 {
   return [face.origin[0] + face.u[0] * u + face.out[0] * o, y, face.origin[2] + face.u[2] * u + face.out[2] * o];
 }
+
+/**
+ * Hollyhocks (mal'vy) against a house wall (the south Russian and Ukrainian village front): a clump of tall stalks
+ * leaning a little apart, leafy at the foot, the flowers set up the top half of each. (facades lane, 2026-10-05)
+ */
+export function hollyhocks(sink: PartSink, face: Face, u: number, bloom: Rgb, rng: () => number): void {
+  const stalks = 3 + Math.floor(rng() * 3);
+  const leaf: Rgb = [0.1 + rng() * 0.04, 0.2 + rng() * 0.06, 0.07];
+  // the leafy foot of the clump
+  faceBox(sink, 'structureWood', face, u, 0.28, 0.32, 0.9, 0.56, 0.5, { ...DECOR, colour: leaf });
+  for (let k = 0; k < stalks; k++) {
+    const du = (k - (stalks - 1) / 2) * 0.2 + (rng() - 0.5) * 0.08, o = 0.22 + rng() * 0.22;
+    const height = 1.5 + rng() * 0.7, lean = (rng() - 0.5) * 0.25;
+    const foot: Vec3 = [face.origin[0] + face.u[0] * (u + du) + face.out[0] * o, 0.3, face.origin[2] + face.u[2] * (u + du) + face.out[2] * o];
+    const tip: Vec3 = [foot[0] + face.u[0] * lean, height, foot[2] + face.u[2] * lean];
+    sink.member('structureWood', foot, tip, 0.03, 0.03, face.out, { ...DECOR, colour: [leaf[0] * 0.9, leaf[1] * 1.1, leaf[2]], exposed: true }, 0.015);
+    const tone = 0.82 + rng() * 0.3;
+    const c: Rgb = [Math.min(1, bloom[0] * tone), Math.min(1, bloom[1] * tone), Math.min(1, bloom[2] * tone)];
+    const flowers = 4 + Math.floor(rng() * 3);
+    for (let f = 0; f < flowers; f++) {
+      const t = 0.5 + 0.48 * f / flowers, s = 0.1 - f * 0.008;
+      const x = foot[0] + (tip[0] - foot[0]) * t, y = foot[1] + (tip[1] - foot[1]) * t, z = foot[2] + (tip[2] - foot[2]) * t;
+      sink.box('structureWood', [x, y, z], [s / 2, s / 2, s / 2], { ...DECOR, colour: c });
+    }
+  }
+}
