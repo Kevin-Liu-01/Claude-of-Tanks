@@ -3590,6 +3590,7 @@ float gSeaFoam; // maps r1: foam coverage this fragment (mattes the water gloss)
 // across the face (the melted-taffy smear on the desert mesas).
 vec2 gWallUVx; vec2 gWallUVz; vec2 gWallSigns; float gWallW;
 float gSnowRock = 0.0; // ground lane (wave 62): the snow lying on a snow map's rock (the rock passes below stand down under it)
+float gCinderW = 0.0;  // ground lane (wave 62): a volcanic basin's cinder (the cones' flanks and their talus) — dead matte
 float gTileMix; // r8 anti-tiling: stochastic rotation-blend weight (set in splatCompute)
 float gCliffJ;  // r8: per-cliff jitter field (set with the wall basis)
 float gBedWob = 0.0; // ground lane: the beds' wander in metres of height (set with the wall basis)
@@ -4419,14 +4420,20 @@ void splatCompute() {
       a.rgb = mix(a.rgb, a.rgb * vec3(1.32, 1.28, 1.20) * (0.90 + 0.20 * af.x), ashW * vw);
       // cinder: black, oxidised red in ~15–30 m patches, streaked paler down the fall line
       float ox = smoothstep(0.50, 0.78, nzq(uvW, 0.017, vec2(0.13, 0.37)).y);
-      vec3 cinderCol = a.rgb * mix(vec3(0.50, 0.48, 0.47), vec3(0.74, 0.50, 0.40), ox);
+      // (wave 62, Caldera street-a: "a near-black featureless dome … white specular glints … sparkles with bright
+      // pixels", read as "wet asphalt or crumpled foil") scoria is porous and dead matte, and black only fresh: a
+      // shade lighter (≈0.09 against the ash's 0.15) so its own streaks and oxidised patches read, and no sheen
+      vec3 cinderCol = a.rgb * mix(vec3(0.68, 0.65, 0.62), vec3(0.90, 0.62, 0.48), ox);
       float lodF = max(0.0, gNoiseLog + log2(0.035));
       float fall = mix(textureLod(uNoise, gWallUVx * vec2(0.035, 0.0035) + vec2(0.23, 0.71), lodF).r,
                        textureLod(uNoise, gWallUVz * vec2(0.035, 0.0035) + vec2(0.23, 0.71), lodF).r, gWallW);
       cinderCol *= 1.0 + 0.32 * smoothstep(0.56, 0.80, fall) * tileVis(28.0);
       a.rgb = mix(a.rgb, cinderCol, coneW * vw);
       // talus fans: cinder strewn with paler fragments in metre-scale blotches
-      a.rgb = mix(a.rgb, a.rgb * mix(vec3(0.66, 0.63, 0.62), vec3(1.12, 1.08, 1.02), smoothstep(0.45, 0.70, n1h)), fanW * vw * 0.8);
+      // (wave 62: the talus fans' paler fragments under a low sun were the "white specular glints" on the cone's lower
+      // third — the lighter lapilli a step paler than the cinder, never paler than the ash)
+      a.rgb = mix(a.rgb, a.rgb * mix(vec3(0.66, 0.63, 0.62), vec3(0.92, 0.88, 0.84), smoothstep(0.45, 0.70, n1h)), fanW * vw * 0.8);
+      gCinderW = max(coneW, fanW) * vw;
     }
   }
   // Ground lane (2026-10-03, the gauntlet: "WoT's Prokhorovka and the Breton bocage photo show patchworks of fields in
@@ -5739,6 +5746,10 @@ void splatCompute() {
   gSplatRough = mix(gSplatRough, 0.92, gStrandFoam); // round 73b: the foam line is matte
   gSplatRough = mix(gSplatRough, 0.62, gScour * 0.55); // round 73b: the wind-scoured crust takes a satin sheen
   gSplatRough = mix(gSplatRough, gSplatRough * 0.93, hollow * uReduxFold.x * (1.0 - fMs));
+  gSplatRough = mix(gSplatRough, 1.0, gCinderW); // ground lane (wave 62): the cinder's glitter was a sheen on black — none
+  // (and the "white specular glints" on the cone's lower third were the detail normals' sun-facing facets lit full on a
+  // flank turned from the sun: loose cinder lies at its angle of repose, a fine even surface — half the relief)
+  if (nrmOn) n.xy = mix(n.xy, vec2(0.5), 0.5 * gCinderW);
   if (uReduxA.w > 0.001) {
     // read near the finest level: the mip chain averages the peaks away at the 1–3 cm pixel footprint, and a glint
     // that twinkles with the camera's motion is the look (sparse, and gone by 42 m)
