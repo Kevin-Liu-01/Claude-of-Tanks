@@ -108,6 +108,9 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // a Saharan wadi: date palms and acacias (the map's oak palette dusts them already; the defaults fill any slot it misses)
   desert: B('a Saharan wadi', { eucalyptus: { form: 'acacia' } }, undefined, ARID_FOLIAGE, true),
   oasis: B('a Saharan oasis', { eucalyptus: { form: 'acacia' } }, undefined, ARID_FOLIAGE, true),
+  // Monument Valley (the map-revival lane, 2026-10-05): Utah juniper, low and gnarled, for the cedar and acacia slots,
+  // pinyon for the oak, sagebrush for the scrub; the placement stays the map's (no arid flag: it moves the stands)
+  titan_gorge: B('Monument Valley, Colorado Plateau', { cedar: { form: 'olive', colour: ARID_FOLIAGE }, acacia: { form: 'olive', colour: ARID_FOLIAGE }, oak: { form: 'pine', colour: HOLM_OAK_FOLIAGE } }, 'broom', ARID_FOLIAGE),
   // the Rur dams in the Eifel: spruce plantations and beech, birches in leaf
   reservoir: B('the Rur dams, Eifel', { pine: { form: 'beech' }, fir: { form: 'spruce' }, birch: { form: 'birch', leaves: true } }),
   // the summer battlefields whose maps plant birches: in leaf (a bare birch crown in a green summer read as a dead tree,
