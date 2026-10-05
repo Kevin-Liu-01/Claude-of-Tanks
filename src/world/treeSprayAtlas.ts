@@ -34,11 +34,19 @@ export const SPRAY_ATLAS_TILES = 2;
  * it (treeGrowth.ts emitCrownShadowHull): a spray card stops this share of the sun that meets it.
  */
 export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.freeze({
-  oak: 0.318, poplar: 0.285, willow: 0.17, acacia: 0.175, eucalyptus: 0.239, birch: 0.219, aspen: 0.274, 'birch-bare': 0.13,
-  spruce: 0.241, fir: 0.287, pine: 0.092, cedar: 0.188, cypress: 0.291, mangrove: 0.264, beech: 0.313, chestnut: 0.396,
-  holmOak: 0.213, olive: 0.225, canaryPine: 0.098, aleppoPine: 0.071, larch: 0.157, broom: 0.125,
-  juniper: 0.256, pinyon: 0.074,
+  oak: 0.32, poplar: 0.255, willow: 0.133, acacia: 0.175, eucalyptus: 0.175, birch: 0.209, aspen: 0.249,
+  'birch-bare': 0.15, spruce: 0.241, fir: 0.287, pine: 0.092, cedar: 0.186, cypress: 0.292, mangrove: 0.245,
+  beech: 0.304, chestnut: 0.365, holmOak: 0.216, olive: 0.188, canaryPine: 0.098, aleppoPine: 0.071, larch: 0.154,
+  broom: 0.125, juniper: 0.256, pinyon: 0.074,
 });
+
+/**
+ * Trees round 4 (the gauntlet's wave 68): a broadleaf tile's leaves at this share of the recipe's length and spacing,
+ * on this many more twigs, the back layer this light and the midrib this light against the blade.
+ */
+const SPRAY_LEAF_LAW = Object.freeze({ leafScale: 0.82, spacingScale: 0.72, extraTwigs: 3, backLayer: 0.72, vein: 0.8 });
+/** The pinnate sprays (the acacia's leaflets) as they were: round 4's parasol is tuned on them. */
+const SPRAY_LEAF_LAW_PINNATE = Object.freeze({ leafScale: 1, spacingScale: 1, extraTwigs: 0, backLayer: 0.6, vein: 0.62 });
 
 interface LeafColor { hue: number; sat: number; light: number }
 /** The base leaf colour of each kind (linear HSL, the convention of the round-8 painters' css()). */
@@ -319,7 +327,9 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
   const lean = (rng() - 0.5) * 0.35;
   const stem = twigPoints(p0, -Math.PI / 2 + lean, stemLen, (rng() - 0.5) * 0.5, 10);
   const twigs: Pt[][] = [stem];
-  const nTw = recipe.twigs[0] + ((rng() * (recipe.twigs[1] - recipe.twigs[0] + 1)) | 0);
+  // (the acacia's pinnate leaflets keep round 4's parasol tuning: the law is the blade-leaved sprays')
+  const law = recipe.shape === 'pinnate' ? SPRAY_LEAF_LAW_PINNATE : SPRAY_LEAF_LAW;
+  const nTw = recipe.twigs[0] + ((rng() * (recipe.twigs[1] - recipe.twigs[0] + 1)) | 0) + law.extraTwigs;
   for (let k = 0; k < nTw; k++) {
     const t = 0.18 + (k + rng() * 0.6) / nTw * 0.7;
     const at = pointAt(stem, t);
@@ -331,13 +341,13 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
     const bend = side * (recipe.hang > 0.5 ? -0.4 : 0.35) + (rng() - 0.5) * 0.3;
     twigs.push(twigPoints(at.p, angle, len, bend, 7));
   }
-  const leafLen = S * recipe.leafLen;
+  // trees round 4 (the gauntlet's wave 68 on the near bush: "each cluster card's alpha outline is one giant oak-leaf
+  // silhouette with dark vein and edge lines", "flat painted cutouts with heavy black vein outlines"): the cluster is an
+  // irregular spray of small leaves — smaller, closer leaves on three more twigs (SPRAY_LEAF_LAW) and no solid body under
+  // them, whose band along every twig had outlined the tile as one leaf. Round 2's acacia body (below) adds no alpha.
+  const leafLen = S * recipe.leafLen * law.leafScale;
   const leafW = leafLen * recipe.leafAspect;
-  // the shaded body under the leaves (the lanceolate sprays stay airier). Trees round 2 (2026-10-03, wave 26: Sirocco's
-  // acacia read as "a lone lollipop broadleaf with lime-green blob foliage"): an acacia's feathery leaves keep the
-  // gaps between them — its body darkens the leaves along the twigs once they are painted, adding no alpha (below)
   const pinnate = recipe.shape === 'pinnate';
-  if (!pinnate) paintSprayBody(ctx, twigs, leafLen * 1.7, base, recipe.shape === 'lance' ? 0.55 : 0.9, 0.42);
   // two layers: the back leaves (darker, the shaded interior of the spray) then the twigs, then the front leaves
   for (let layer = 0; layer < 2; layer++) {
     if (layer === 1) {
@@ -347,7 +357,7 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
       const tw = twigs[ti];
       let twLen = 0;
       for (let i = 1; i < tw.length; i++) twLen += Math.hypot(tw[i].x - tw[i - 1].x, tw[i].y - tw[i - 1].y);
-      const n = Math.max(2, Math.round(twLen / (S * recipe.spacing)));
+      const n = Math.max(2, Math.round(twLen / (S * recipe.spacing * law.spacingScale)));
       for (let k = 0; k <= n; k++) {
         const t = ti === 0 ? 0.25 + 0.75 * (k / n) : 0.12 + 0.88 * (k / n);
         const at = pointAt(tw, t);
@@ -365,7 +375,7 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
         const rim = Math.min(1, Math.hypot(at.p.x - S * 0.5, (at.p.y - S * 0.52) * 0.9) / (S * 0.42));
         const sun = (0.80 + 0.32 * t + (rng() - 0.5) * 0.36) * (0.82 + 0.3 * rim);
         const deep = rng() < 0.14 ? 0.6 : 1;
-        const light = base.light * sun * deep * (layer === 0 ? 0.6 : 1);
+        const light = base.light * sun * deep * (layer === 0 ? law.backLayer : 1);
         const hue = base.hue + (rng() - 0.5) * 0.035 + (t - 0.5) * 0.012;
         const sat = base.sat * (0.88 + rng() * 0.24);
         ctx.save();
@@ -390,8 +400,8 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
           ctx.quadraticCurveTo(L * 0.4, -W * 0.95, L * 0.95, 0);
           ctx.closePath();
           ctx.fill();
-          ctx.strokeStyle = css(hue + 0.01, sat * 0.8, light * 0.62);
-          ctx.lineWidth = Math.max(0.45, S / 700);
+          ctx.strokeStyle = css(hue + 0.01, sat * 0.8, light * law.vein);
+          ctx.lineWidth = Math.max(0.4, S / 800);
           ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(L * 0.92, 0); ctx.stroke();
         }
         ctx.restore();
@@ -757,6 +767,44 @@ export function finishSprayTiles(d: Uint8ClampedArray, s: number, S: number, T: 
       d[i + 3] = Math.round(d[i + 3] * fall);
       if (d[i + 3] < 24) { d[i] = fr; d[i + 1] = fg; d[i + 2] = fb; }
     }
+    padSprayTile(d, s, S, tx, ty, fr, fg, fb);
+  }
+}
+
+/** Trees round 4: the alpha a texel needs to pass the foliage's alpha test (0.38), on the 0–255 scale. */
+const SPRAY_ALPHA_CUT = 97;
+
+/**
+ * Trees round 4 (the gauntlet's wave 68: "visible alpha fringing", "heavy black vein outlines"): the colour under the
+ * alpha test. A texel the test discards still feeds the filter and the mips with its colour, and the painters leave the
+ * dark anti-aliased rims of their strokes there — a dark fringe round every leaf once filtered. Each texel under the cut
+ * takes the colour of its nearest leaf texel (a breadth-first dilation four texels deep, its own alpha kept), and the
+ * rest the tile's mean, as the flood already gave the clear ones.
+ */
+function padSprayTile(d: Uint8ClampedArray, s: number, S: number, tx: number, ty: number, fr: number, fg: number, fb: number): void {
+  const at = (x: number, y: number): number => ((ty * S + y) * s + tx * S + x) * 4;
+  const depth = new Int8Array(S * S).fill(-1);
+  let frontier: number[] = [];
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (d[at(x, y) + 3] >= SPRAY_ALPHA_CUT) { depth[y * S + x] = 0; frontier.push(y * S + x); }
+  for (let step = 1; step <= 4 && frontier.length; step++) {
+    const next: number[] = [];
+    for (const k of frontier) {
+      const x = k % S, y = (k / S) | 0, src = at(x, y);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= S || ny >= S || depth[ny * S + nx] !== -1) continue;
+        const dst = at(nx, ny);
+        d[dst] = d[src]; d[dst + 1] = d[src + 1]; d[dst + 2] = d[src + 2];
+        depth[ny * S + nx] = step;
+        next.push(ny * S + nx);
+      }
+    }
+    frontier = next;
+  }
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    if (depth[y * S + x] !== -1) continue;
+    const i = at(x, y);
+    d[i] = fr; d[i + 1] = fg; d[i + 2] = fb;
   }
 }
 
