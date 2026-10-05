@@ -83,6 +83,7 @@ uniform vec3 uSunDir;
 uniform vec4 uFirePos;   // xyz, range (m)
 uniform vec3 uFireCol;   // irradiance scale of the explosion light (colour x intensity, gained)
 uniform vec2 uNearFade;
+uniform vec4 uGradeV;    // diagnostic grade: size scale, cooling scale (1, 1 in play)
 varying vec2 vUv;
 varying vec2 vCellA;
 varying vec2 vCellB;
@@ -123,7 +124,7 @@ void main() {
   vec3 vcur = target + ( aVL.xyz - target ) * ek + vec3( 0.0, aDY.w * age, 0.0 );
   // --- shape: ease-out growth, angular drag on the spin
   float grow = 1.0 - pow( 1.0 - t, max( aSH.x, 0.2 ) );
-  float size = mix( aSR.x, aSR.y, grow );
+  float size = mix( aSR.x, aSR.y, grow ) * uGradeV.x;
   float ang = aSR.z + aSR.w * ( 1.0 - exp( -0.8 * age ) ) / 0.8;
   float ca = cos( ang ), sa = sin( ang );
   vec3 camRight = vec3( viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0] );
@@ -172,7 +173,7 @@ void main() {
   float fadeOut = 1.0 - smoothstep( aSH.w, 1.0, t );
   float alpha = aC0.w * fadeIn * fadeOut * nearFadeM( wpos );
   vColor = vec4( mix( aC0.rgb, aC1.rgb, smoothstep( 0.0, 1.0, t ) ), alpha );
-  float heat = aHT.x * exp( -aHT.y * age );
+  float heat = aHT.x * exp( -aHT.y * uGradeV.y * age );
   vMisc = vec4( aC1.w, aMS.w, aMS.y * ( 0.35 + 0.65 * t ), heat );
   vMisc2 = vec4( fract( aMS.x * 13.17 ) + age * 0.045, fract( aMS.x * 7.31 ) - age * 0.03, aHT.z, aHT.w );
   vUv = uv;

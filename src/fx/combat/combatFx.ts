@@ -77,7 +77,7 @@ export function groundWindFromAloft(speedAloft: number): number {
  * materials receive it) plus the hemisphere; the legacy rig (phones) has no published environment share, so its
  * hemisphere stands in at a higher gain. Live-tunable through group.userData.combatTune (diagnostics only).
  */
-const DEFAULT_TUNE = Object.freeze({ sun: 1.0, amb: 1.0, legacyAmb: 2.2, fire: 0.32, glow: 1.0, alpha: 1.0 });
+const DEFAULT_TUNE = Object.freeze({ sun: 1.0, amb: 1.0, legacyAmb: 2.2, fire: 0.32, glow: 1.0, alpha: 1.0, size: 1.0, cool: 1.0 });
 
 interface CombatFx {
   readonly group: THREE.Group;
@@ -119,6 +119,7 @@ export function createCombatFx(o: CombatFxOptions): CombatFx {
   const uFireCol = { value: new THREE.Vector3(0, 0, 0) };
   const uNoise = { value: noise };
   const uGrade = { value: new THREE.Vector2(1, 1) }; // media alpha, emissive gain
+  const uGradeV = { value: new THREE.Vector4(1, 1, 0, 0) }; // size scale, cooling scale
   const tune = { ...DEFAULT_TUNE };
   group.userData.combatTune = tune;
 
@@ -127,7 +128,7 @@ export function createCombatFx(o: CombatFxOptions): CombatFx {
       vertexShader: MEDIA_VERT,
       fragmentShader: MEDIA_FRAG,
       uniforms: Object.assign(THREE.UniformsUtils.clone(THREE.UniformsLib.fog), {
-        uTime, uWind, uSunDir, uSunCol, uSkyCol, uGroundCol, uFirePos, uFireCol, uNoise, uGrade,
+        uTime, uWind, uSunDir, uSunCol, uSkyCol, uGroundCol, uFirePos, uFireCol, uNoise, uGrade, uGradeV,
         uMap: { value: placeholder as THREE.Texture },
         uNearFade: { value: new THREE.Vector2(nearFade[0], nearFade[1]) },
         uSceneDepth: o.soft.uSceneDepth,
@@ -249,6 +250,7 @@ export function createCombatFx(o: CombatFxOptions): CombatFx {
     }
     uSunUp.value = Math.max(0.05, uSunDir.value.y);
     uGrade.value.set(tune.alpha, tune.glow);
+    uGradeV.value.set(tune.size, tune.cool, 0, 0);
     // the scene's surface wind when the world publishes one (scene.userData.surfaceWind: a world-XZ velocity in m/s,
     // the way it blows — the per-map wind the vegetation and the ocean read); until then the cloud layer's wind,
     // slowed to the ground
