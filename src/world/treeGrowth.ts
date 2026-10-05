@@ -430,8 +430,6 @@ interface GrowthOptions {
   variant?: number;
   /** Detail tier: 'desktop' or 'mobile' (fewer sprays and side shoots, same silhouette). */
   tier?: 'desktop' | 'mobile';
-  /** Trees round 4: the sprays kept over the tier's base budget (growthLeafBudget's share when unset; 1 = the base). */
-  leafShare?: number;
 }
 
 // ------------------------------------------------------------------------------------------------ vector helpers
@@ -1246,22 +1244,15 @@ export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: Grow
   // the budgets: a grown crown keeps its silhouette at a bounded card and tube count — surplus sprays are thinned
   // evenly along the seat order (each survivor grows by the area it inherits) and the thinnest side shoots stop being
   // tubes (their sprays still seat on them)
-  const tier = mobile ? 'mobile' : 'desktop';
-  const baseBudget = Math.round(GROWTH_LEAF_BUDGET[tier] * (profile.family === 'conifer' ? GROWTH_CONIFER_LEAF_SHARE : 1));
-  const leafBudget = options.leafShare !== undefined ? Math.round(baseBudget * options.leafShare) : growthLeafBudget(profile.family, tier);
-  if (leaves.length > baseBudget) {
+  const leafBudget = Math.round(GROWTH_LEAF_BUDGET[mobile ? 'mobile' : 'desktop'] * (profile.family === 'conifer' ? GROWTH_CONIFER_LEAF_SHARE : 1));
+  if (leaves.length > leafBudget) {
     // Trees round 2 (2026-10-03): the survivors cover the crown evenly (thinEvenly) — a dense whorl or a crowded limb
-    // gives up sprays, a sparse apex or an outer twig keeps them — and grow only a little by the area they inherit.
-    // Trees round 4: a denser crown (growthLeafBudget over the base) keeps more of them, the base budget's leaf area
-    // shared out: each survivor at the base's growth by √(base / kept) — smaller, never larger, than the base's card
-    const kept = leaves.length > leafBudget
-      ? thinEvenly(leaves, leafBudget, leaves.map((l) => 0.4 + 0.6 * clamp01(envelopeAt(ctx, l.y) / Math.max(0.3, ctx.crownR))))
-      : leaves.slice();
-    const grow = Math.min(GROWTH_THIN_GROWTH_MAX, Math.pow(leaves.length / baseBudget, 0.25))
-      * (kept.length > baseBudget ? Math.sqrt(baseBudget / kept.length) : 1);
+    // gives up sprays, a sparse apex or an outer twig keeps them — and grow only a little by the area they inherit
+    const kept = thinEvenly(leaves, leafBudget, leaves.map((l) => 0.4 + 0.6 * clamp01(envelopeAt(ctx, l.y) / Math.max(0.3, ctx.crownR))));
+    const grow = Math.min(GROWTH_THIN_GROWTH_MAX, Math.pow(leaves.length / leafBudget, 0.25));
     for (const l of kept) {
       const fall = Math.max(0, -l.ay) + l.bend;
-      const g = fall > 1e-3 ? Math.min(grow, Math.max(Math.min(1, grow), (l.y - GROWTH_SPRAY_CLEARANCE_M) / (fall * l.length))) : grow;
+      const g = fall > 1e-3 ? Math.min(grow, Math.max(1, (l.y - GROWTH_SPRAY_CLEARANCE_M) / (fall * l.length))) : grow;
       l.length *= g; l.width *= g;
     }
     leaves.length = 0;
@@ -1498,19 +1489,6 @@ export const GROWTH_LEAF_BUDGET: Readonly<Record<'desktop' | 'mobile', number>> 
 export const GROWTH_CONIFER_LEAF_SHARE = 0.72;
 /** Trees round 2: how much a thinned crown's survivors may grow by the area they inherit (the cards stay clusters). */
 const GROWTH_THIN_GROWTH_MAX = 1.15;
-/**
- * Trees round 4 (2026-10-04, the gauntlet's wave 39: the near crowns' "oversized flat cards ... up close"): a broadleaf's
- * or a birch's crown on the desktop tiers keeps this many more of its sprays, the same leaf area as the base budget
- * spread over them — more, smaller clusters (a crown of 300 at 0.88 of the size where it drew 230). The conifers'
- * sprays (their own count and tufts), the palms' fronds and the phones keep theirs.
- */
-const GROWTH_DENSE_LEAF_SHARE = 1.3;
-
-/** The sprays a grown crown keeps (growTreeSkeleton's thinning): the tier's budget by the family's share. */
-export function growthLeafBudget(family: GrowthProfile['family'], tier: 'desktop' | 'mobile'): number {
-  const base = Math.round(GROWTH_LEAF_BUDGET[tier] * (family === 'conifer' ? GROWTH_CONIFER_LEAF_SHARE : 1));
-  return tier === 'desktop' && (family === 'broadleaf' || family === 'birch') ? Math.round(base * GROWTH_DENSE_LEAF_SHARE) : base;
-}
 
 /**
  * The card rows a grown crown's sprays take (emitLeafCards): two (a near-square quad, 2 triangles from 4 vertices) for
