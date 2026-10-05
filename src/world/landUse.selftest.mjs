@@ -67,7 +67,7 @@ for (const id of landUseProfileIds()) {
     if (-x > -192 && -x < -148 && -z > -278 && -z < -246) { cemeteryRot[1]++; if (s.active && s.crop === LAND_CROP.hay) cemeteryRot[0]++; }
     if (Math.abs(z) > 330 || Math.abs(x) > 390) { past++; if (s.active) pastActive++; }
   }
-  assert.ok([...floor].every((c) => [LAND_CROP.ballast, LAND_CROP.slag, LAND_CROP.ruderal].includes(c)) && floor.size === 3,
+  assert.ok([...floor].every((c) => [LAND_CROP.hardstanding, LAND_CROP.ballast, LAND_CROP.ruderal].includes(c)) && floor.size === 3,
     `the valley floor is hardstanding (${[...floor].join(',')})`);
   assert.ok(cemetery[0] / cemetery[1] > 0.6 && cemeteryRot[0] / cemeteryRot[1] > 0.6,
     `both cemeteries are mown grass (${cemetery[0]}/${cemetery[1]}, ${cemeteryRot[0]}/${cemeteryRot[1]})`);

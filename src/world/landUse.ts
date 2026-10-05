@@ -90,6 +90,7 @@ export const LAND_CROP = Object.freeze({
   slag: 15,       // an ironworks' tipped slag: black-grey, granular
   ballast: 16,    // crushed-stone ballast and hardcore: grey
   ruderal: 17,    // brownfield grass: patchy, dry, with bare ground between
+  hardstanding: 18, // 2026-10-05 (Ruinspires): a city's hardstanding — patched asphalt and concrete pours, cracked, weeds in the cracks
 } as const);
 export type LandCropId = (typeof LAND_CROP)[keyof typeof LAND_CROP];
 
@@ -119,6 +120,7 @@ export const LAND_CROP_ALBEDO: Readonly<Record<LandCropId, readonly [number, num
   15: [0.075, 0.072, 0.070], // slag
   16: [0.16, 0.155, 0.15],  // ballast
   17: [0.20, 0.19, 0.10],   // ruderal brownfield grass (cured)
+  18: [0.095, 0.094, 0.092], // hardstanding (asphalt with its repairs and some concrete; the material draws its own)
 });
 
 /**
@@ -149,6 +151,7 @@ export const LAND_CROP_GROWTH: Readonly<Record<LandCropId, Readonly<{ sward: boo
   15: { sward: false, height: 0, keep: 0 },
   16: { sward: true, height: 0.4, keep: 0.12, weed: true },
   17: { sward: true, height: 0.85, keep: 0.6 },
+  18: { sward: true, height: 0.35, keep: 0.05, weed: true }, // a few weeds in the cracks
 });
 
 /** Each region's rotation: up to seven slots of [crop kind, share] (the material reads the shares and kinds, uLandC/D/E). */
@@ -179,9 +182,9 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // a coalfield valley's farmland (the Ruhr's, Silesia's, the Valleys'): pasture and rough grazing gone ruderal round the
   // pits, small arable fields, and here and there a plot of tipped slag
   coalfield: [[0, 0.26], [17, 0.22], [4, 0.14], [5, 0.14], [1, 0.12], [3, 0.06], [15, 0.06]],
-  // 2026-10-05, Ruinspires (Sarajevo under siege, the cities lane), until the hardstanding kind lands: the valley floor's
-  // hardstanding between the street rows — hardcore and compacted ground, dark tarred patches, rank grass in the gaps
-  cityfloor: [[16, 0.50], [15, 0.22], [17, 0.28]],
+  // 2026-10-05, Ruinspires (Sarajevo under siege, the cities lane): the valley floor's hardstanding between the street
+  // rows — patched asphalt and concrete pours, hardcore and compacted ground, rank grass in the gaps
+  cityfloor: [[18, 0.62], [16, 0.16], [17, 0.22]],
   // the block interiors: courtyards and gardens — grass, rank grass over beaten earth, allotment beds, a dug plot, a yard
   citycourt: [[0, 0.34], [17, 0.28], [7, 0.20], [4, 0.08], [16, 0.10]],
   // the slopes above the terrace streets: allotments and orchards in strips along the contour, hay and grazing between

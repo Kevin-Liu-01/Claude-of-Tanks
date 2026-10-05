@@ -4543,7 +4543,7 @@ void splatCompute() {
       vec3 nEdge = vec3(0.5); // the wander, the headland's width, the hedge bank's break
       if (luEdge && luNear > 0.001 && uLandTier > 1.5) nEdge = mix(vec3(0.5), vec3(nzq(uvW, 0.045, vec2(0.21, 0.83)).y,
         nzq(uvW, 0.031, vec2(0.11, 0.59)).y, nzq(uvW, 0.17, vec2(0.83, 0.37)).x), luNear);
-      bool soilCrop = (crop > 3.5 && crop < 4.5) || (crop > 6.5 && crop < 8.5) || (crop > 10.5 && crop < 12.5) || (crop > 16.5 && crop < 30.5);
+      bool soilCrop = (crop > 3.5 && crop < 4.5) || (crop > 6.5 && crop < 8.5) || (crop > 10.5 && crop < 12.5) || (crop > 16.5 && crop < 17.5);
       // (the soil is read where it is drawn — a soil crop but the flooded paddy's water, a track's ruts (not a polder's
       // ditch), a bund's half metre; a wall's field and a paddy's water never read it, exactly — and its photo's grain
       // is the layer's mean past a 1–2 m footprint, a turned field's own lines carrying it from there)
@@ -4554,6 +4554,13 @@ void splatCompute() {
       float edgeW = edgeM + (n1h - 0.5) * 1.6 + (nEdge.x - 0.5) * 4.4;
       float inField = bnd > 1.5 ? smoothstep(bnd > 2.5 ? 0.95 : 0.50, bnd > 2.5 ? 1.45 : 0.85, edgeM)
                                 : smoothstep(marginM, marginM + 4.0, edgeW);
+      // (2026-10-05, Ruinspires' lab: an urban land use's lots are 8–24 m across, and a field's 4 m ragged thinning into
+      // its margin left most of a lot the margin's — its hardstanding showed nowhere) a lot ends on its line, as a kerb,
+      // a fence or a pour's edge does: its wander a sixth, its fade 0.6 m (every other map's uLandE.w is 0)
+      if (uLandE.w > 0.5 && bnd < 1.5) {
+        edgeW = mix(edgeM, edgeW, 0.15);
+        inField = smoothstep(marginM, marginM + 0.6, edgeW);
+      }
       inField *= 1.0 - track;
       // one row direction a field (landUse.ts: its long side's axis turned by its own hash), its lines bent a little
       // over tens of metres — never ruled stripes repeating field to field (wave 14's "regular crosshatch weave")
@@ -4657,6 +4664,37 @@ void splatCompute() {
         cropCol = mix(vec3(0.068, 0.068, 0.072), vec3(0.090, 0.072, 0.060), smoothstep(0.40, 0.75, n1h)) * (0.85 + 0.30 * jit);
       } else if (crop < 16.5) {
         cropCol = vec3(0.16, 0.155, 0.15) * (0.88 + 0.24 * n1h) * bright; // ballast and hardcore: grey crushed stone
+      } else if (crop > 17.5) {
+        // (2026-10-05, Ruinspires) hardstanding: the city's patched asphalt and concrete pours between the street rows —
+        // a field one pour (asphalt, or concrete in 4 m slabs, by its draw), repaired in rectangles along its rows (newer
+        // darker, older paler and greyer, their seams sealed), the old surface cracked with weeds in the cracks near the
+        // camera, oil stains and the town's dust (the tier gate: Low draws the pour, its slabs and repairs — no read;
+        // Medium adds its grain and stains, High its cracks)
+        vec2 hq = vec2(dot(wp.xz, rowDir), dot(wp.xz, vec2(-rowDir.y, rowDir.x)));
+        bool concretePour = fract(jit * 7.31 + 0.13) > 0.64;
+        vec3 hard = concretePour ? vec3(0.150, 0.147, 0.140) : vec3(0.084, 0.084, 0.087);
+        float hGrain = uLandTier > 0.5 ? nz(uv, 1.9, vec2(0.31, 0.57)).r : 0.5;
+        hard *= 0.92 + 0.16 * hGrain;
+        if (concretePour) {
+          vec2 sl = fract(hq / 4.0);
+          vec2 sd = min(sl, 1.0 - sl) * 4.0;
+          hard *= 1.0 - 0.45 * (1.0 - smoothstep(0.02, 0.05 + gFootM, min(sd.x, sd.y))) * tileVis(4.0);
+          hard *= 0.92 + 0.16 * cellHash2(floor(hq / 4.0) + vec2(jit * 97.0, 3.0)).x;
+        }
+        vec2 hp = hq / vec2(5.2, 3.1), hpI = floor(hp), hpF = fract(hp);
+        vec2 hh = cellHash2(hpI + vec2(91.0 + jit * 53.0, 13.0));
+        float repair = step(hh.x, 0.30);
+        vec2 he = min(hpF, 1.0 - hpF) * vec2(5.2, 3.1);
+        float seamH = (1.0 - smoothstep(0.03, 0.06 + gFootM, min(he.x, he.y))) * repair * tileVis(0.6);
+        hard = mix(hard, hh.y > 0.5 ? hard * 0.78 : mix(hard, vec3(0.13, 0.128, 0.122), 0.5), repair);
+        hard *= 1.0 - 0.45 * seamH;
+        float crackH = uLandTier > 1.5 ? (1.0 - smoothstep(0.0, 0.02 + gFootM, abs(nz(uv, 0.9, vec2(0.71, 0.29)).r - 0.5) * 0.12))
+          * (1.0 - repair) * tileVis(0.5) : 0.0;
+        hard = mix(hard * (1.0 - 0.45 * crackH), vec3(0.060, 0.070, 0.036), crackH * 0.35 * (1.0 - smoothstep(0.03, 0.08, gFootM)));
+        float hStain = uLandTier > 0.5 ? smoothstep(0.62, 0.82, nzq(uv, 0.17, vec2(0.37, 0.83)).x) : 0.0;
+        hard *= 1.0 - 0.22 * hStain;
+        cropCol = hard;
+        if (nrmOn) n.xy = mix(n.xy, vec2(0.5), inField * landW * 0.85);
       } else {
         // brownfield grass: a patchy, cured sward with bare ground between its clumps
         float bare = uLandTier > 0.5 ? smoothstep(0.52, 0.72, nzq(uvW, 0.11, vec2(0.71, 0.23)).x) : 0.0;
