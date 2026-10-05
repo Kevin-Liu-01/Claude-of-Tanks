@@ -1046,6 +1046,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/sharedTextureWorkerLease.selftest.mjs',
     'src/vehicles/appearanceAudit.selftest.mjs',
     'src/vehicles/wheelPaintFloor.selftest.mjs',
+    'src/engine/showroomFrontAnchor.selftest.mjs',
     'src/vehicles/runningGearFinish.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
     'src/vehicles/profiles/leopard2A6UA.selftest.mjs',

@@ -1490,6 +1490,10 @@ export function createCameraRig(
 const SHOW_FOV_DEG = 42;               // stage lens (matches the authored bay)
 const SHOW_HERO_FILL = 0.86;           // hero framing: fraction of the stage rect
 const SHOW_KEEP_FILL = 0.99;           // orbiting: pull back rather than crop
+// 2026-10-05 (gauntlet wave 99: "in the Abrams and Leopard close views the gun runs under the opaque left UI panel"):
+// a dolly-in past the stage rect crops the hull's rear and keeps its front, gun included, inside the rect. Under this
+// share of the subject's forward axis on the camera's right axis the view is head-on and the crop stays centred.
+const SHOW_FRONT_ANCHOR_MIN = 0.2;
 // garage-scene r1: the ±72° yaw clamp is GONE — free continuous 360° orbit
 // (the hangar dressing gives every azimuth something to look at). Pitch keeps
 // its clamps: the turntable read must never go under the pedestal or top-down.
@@ -1531,6 +1535,9 @@ const _sbLook = new THREE.Vector3();
 const _sbCenter = new THREE.Vector3();
 const _sbCorners: THREE.Vector3[] = [];
 for (let i = 0; i < 8; i++) _sbCorners.push(new THREE.Vector3());
+const _sbTip = new THREE.Vector3();
+const _sbTipMin = new THREE.Vector3();
+const _sbTipMax = new THREE.Vector3();
 // per-corner camera-basis coordinates (right, up, toward-camera), reused
 const _sbPr = new Float64Array(8);
 const _sbPu = new Float64Array(8);
@@ -1672,6 +1679,14 @@ export function createShowroomOrbit(
   let lastInputMs = -Infinity;
   let measureAccS = 0;
   const win = { cx: 0, cy: 0, hx: 1, hy: 1 };
+  // The subject's front tip (the muzzle, the turret at rest) in its own frame, measured once per subject: the
+  // canonical stage frame (deps.fixedFrame) is one box for every hull, and a long gun reaches past its front face
+  // (leo2a7v's muzzle stood 160 px beyond it in the close view). `tip` carries its camera-basis coordinates per solve.
+  // Measured only once the orbit dollies in (the hero pose fits every gun), so a hull switch never pays the traversal.
+  let tipWanted = false;
+  let tipSubject: THREE.Object3D | null = null;
+  const tipLocal = new THREE.Vector3();
+  const tip = { ok: false, pr: 0, pc: 0 };
   let appliedAspect = NaN;
   const appliedWin = { cx: NaN, cy: NaN, hx: NaN, hy: NaN };
   const projectionBounds = { nx0: 0, nx1: 0, ny0: 0, ny1: 0 };
@@ -1797,7 +1812,16 @@ export function createShowroomOrbit(
     }
   }
 
-  function fitHorizontalWindow(distance: number, tanH: number): number {
+  /** The subject's front tip in its own frame, measured once per subject (an empty subject is measured again). */
+  function measureFrontTip(root: THREE.Object3D): boolean {
+    if (tipSubject === root) return true;
+    if (!measureLocalBox(root, _sbTipMin, _sbTipMax)) return false;
+    tipLocal.set((_sbTipMin.x + _sbTipMax.x) * 0.5, (_sbTipMin.y + _sbTipMax.y) * 0.5, _sbTipMax.z);
+    tipSubject = root;
+    return true;
+  }
+
+  function fitHorizontalWindow(distance: number, tanH: number, frontRight = 0): number {
     let shiftX = -win.cx * distance * tanH;
     let minX = Infinity;
     let maxX = -Infinity;
@@ -1806,10 +1830,19 @@ export function createShowroomOrbit(
       if (nx < minX) minX = nx;
       if (nx > maxX) maxX = nx;
     }
+    // the front tip (a gun past the frame's front face) widens the span on its own side
+    if (tip.ok) {
+      const nx = (tip.pr - shiftX) / ((distance - tip.pc) * tanH);
+      if (frontRight < 0) minX = Math.min(minX, nx);
+      else maxX = Math.max(maxX, nx);
+    }
     const windowMin = win.cx - win.hx * 0.995;
     const windowMax = win.cx + win.hx * 0.995;
     if (maxX - minX > windowMax - windowMin) {
-      shiftX += ((minX + maxX) * 0.5 - win.cx) * distance * tanH;
+      // wider than the stage rect (a dolly-in): the front end, gun included, stays inside it; the rear runs out
+      if (frontRight < -SHOW_FRONT_ANCHOR_MIN) shiftX += (minX - windowMin) * distance * tanH;
+      else if (frontRight > SHOW_FRONT_ANCHOR_MIN) shiftX += (maxX - windowMax) * distance * tanH;
+      else shiftX += ((minX + maxX) * 0.5 - win.cx) * distance * tanH;
     } else if (minX < windowMin) {
       shiftX += (minX - windowMin) * distance * tanH;
     } else if (maxX > windowMax) {
@@ -1835,6 +1868,18 @@ export function createShowroomOrbit(
     const tanV = Math.tan(THREE.MathUtils.degToRad(SHOW_FOV_DEG) * 0.5);
     const tanH = tanV * (camera.aspect || 16 / 9);
     const maxPc = prepareCornerProjection(y, p);
+    // the subject's forward axis (+Z) on the camera's right axis: which screen side its front, gun included, is on
+    let frontRight = 0;
+    tip.ok = false;
+    if (subject) {
+      frontRight = _sbV.set(0, 0, 1).transformDirection(subject.matrixWorld).dot(_sbR);
+      if (tipWanted && Math.abs(frontRight) > SHOW_FRONT_ANCHOR_MIN && measureFrontTip(subject)) {
+        _sbTip.copy(tipLocal).applyMatrix4(subject.matrixWorld).sub(_sbCenter);
+        tip.pr = _sbTip.dot(_sbR);
+        tip.pc = _sbTip.dot(_sbC);
+        tip.ok = true;
+      }
+    }
     const dFloor = Math.max(maxPc + SHOW_NEAR_PAD_M, nearDist, 1);
     let d = fixedDist || Math.max(dFloor, nearDist * 2.2);
     let sx = 0, sy = 0;
@@ -1866,7 +1911,7 @@ export function createShowroomOrbit(
       // tracks the hull mass, so the tank now reads centered in the UI-free
       // area. Camera ANGLES are untouched — this only slides the eye/look-at
       // pair along the camera's right axis, exactly like the old offset.
-      sx = fitHorizontalWindow(d, tanH);
+      sx = fitHorizontalWindow(d, tanH, frontRight);
       // vertical framing keeps the original extremes-midpoint behavior
       sy += ((projectionBounds.ny0 + projectionBounds.ny1) * 0.5 - w.cy) * d * tanV;
     }
@@ -1876,6 +1921,7 @@ export function createShowroomOrbit(
   /** Write the solved pose for the current damped orbit state to the rig. */
   function applyPose(): void {
     if (!haveBox) return;
+    tipWanted = zoom < 0.999;
     const need = solve(yaw, pitch, SHOW_KEEP_FILL, 0).dist;
     const d = THREE.MathUtils.clamp(Math.max(heroDist, need) * zoom,
       nearDist, SHOW_DIST_MAX_M);
