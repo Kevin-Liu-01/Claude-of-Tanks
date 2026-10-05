@@ -10,8 +10,9 @@
 // engine shed, the water tank on its trestle, the Empire Hotel behind its two-storey verandah of cast-iron lace, and
 // rows of weatherboard cottages under corrugated iron with their bullnose verandahs and picket fences.
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
-import desert from './desert.ts';
 import { roundRoadBends } from './roadBends.ts';
+
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 export default {
   id: 'copper_mesa', name: 'Copper Mesa Mine',
   blurb: 'Ore terraces and haul-road switchbacks encircle an abandoned open-pit mine',
@@ -53,14 +54,18 @@ export default {
     { x: -236, z: 386 }, { x: -154, z: 422 }, { x: -74, z: 380 }, { x: 8, z: 424 },
     { x: 90, z: 380 }, { x: 170, z: 418 }, { x: 250, z: 384 },
   ] },
-  splat: { sourcedPalette: 'badlands',
-    grassTone: (h: number, s: number, l: number) => [0.075, s * 0.55, 0.20 + l * 0.64],
-    dirtTone: (h: number, s: number, l: number) => [0.064, s * 0.58, 0.16 + l * 0.60],
+  // (the map-revival lane, 2026-10-05) Queenstown's bare hills: pink and mauve-grey conglomerate gravel with ochre
+  // seams, its own sourced row (sourcedTextures.ts copper_mesa); was Wadi Rum's sand ('badlands') in the desert's tones
+  splat: { sourcedPalette: 'copper_mesa',
+    grassTone: (h: number, s: number, l: number) => [0.02, s * 0.35, 0.22 + l * 0.6],
+    dirtTone: (h: number, s: number, l: number) => [0.09, s * 0.45, 0.18 + l * 0.58],
     sandstone: true, strata: 0.12, sandMacro: 0.7, midRelief: 0.8,
-    tintA: [1.03, 0.85, 0.63], tintB: [0.70, 0.55, 0.44], tintC: [1.06, 0.89, 0.7], roadTint: [0.68, 0.59, 0.48],
+    tintA: [1.0, 0.86, 0.82], tintB: [0.66, 0.58, 0.60], tintC: [1.04, 0.9, 0.7], roadTint: [0.62, 0.56, 0.54],
   },
   vegetation: {
-    grassTexTone: desert.vegetation.grassTexTone, tuftTone: desert.vegetation.tuftTone,
+    // the button grass of the west coast's cleared ground, gold-olive tussocks (was the desert's tones)
+    grassTexTone: (h: number, s: number, l: number) => [0.12, clamp01(s * 0.55), clamp01(l * 0.92 + 0.04)],
+    tuftTone: (h: number, s: number, l: number) => [0.11, 0.4, clamp01(l * 0.72 + 0.1)],
     species: ['acacia', 'cedar', 'pine'], clusterMix: [['acacia', 0.58], ['cedar', 0.32], ['pine', 0.1]],
     loneMix: [['acacia', 0.65], ['cedar', 0.25], ['pine', 0.1]], rimMix: [['cedar', 0.5], ['acacia', 0.4], ['pine', 0.1]],
     clusterCount: 22, loneCount: 32, rimCount: 40, grassDensity: 0.36, bushCount: 0.6, bushSpecies: 'acacia', clusterScrub: 1.6,

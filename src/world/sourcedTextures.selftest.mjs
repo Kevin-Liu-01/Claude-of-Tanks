@@ -211,7 +211,7 @@ const newMapPalettes = {
   titan_gorge: ['titan_gorge', null],
   skybridge: ['skybridge', null],
   polders: ['verdant', 'coastal'],
-  copper_mesa: ['badlands', 'foundry'],
+  copper_mesa: ['copper_mesa', 'foundry'],
   airfield: ['railyard', 'railyard'],
   oasis: ['desert', 'desert'],
   whiteout: ['winter', 'winter'],
@@ -358,7 +358,8 @@ for (const name of ['albedo', 'normal', 'surface']) {
 }
 for (const bucket of ['plaster', 'wood']) assert.deepEqual(sourcedBuildingTintPolicy('orchard', bucket),
   sourcedBuildingTintPolicy('autumn', bucket), 'the Orchard-only change does not recolor its other building surfaces');
-for (const [mapId, parent] of [['whiteout', 'winter'], ['oasis', 'desert'], ['copper_mesa', 'desert']]) {
+// (2026-10-05, the map-revival lane: Copper Mesa is Queenstown's button grass now, no longer the desert's tones)
+for (const [mapId, parent] of [['whiteout', 'winter'], ['oasis', 'desert']]) {
   const vegetation = getMapConfig(mapId).vegetation;
   const parentVegetation = getMapConfig(parent).vegetation;
   assert.equal(vegetation.grassTexTone, parentVegetation.grassTexTone,
