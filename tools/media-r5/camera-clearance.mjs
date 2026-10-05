@@ -1,6 +1,7 @@
-// Camera clearance against a battlefield's buildings (the dumped map features: rotated footprints): a built shot's
-// camera must never sit inside a building, and below roof height its line of sight to the hero must not pass through
-// one. Pure geometry on the scene JSON, so a plan is checked before it costs a GPU lease.
+// Camera clearance against a battlefield's buildings and woods (the dumped map features: rotated footprints, tree
+// cluster circles): a built shot's camera must never sit inside a building or a wood's dense core, and below roof
+// (canopy) height its line of sight to the hero must not pass through one. Pure geometry on the scene JSON, so a
+// plan is checked before it costs a GPU lease.
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SHOTS } from './paths.mjs';
@@ -15,6 +16,18 @@ export function buildingsOf(map) {
   }
   return footprints.get(map);
 }
+const woods = new Map();
+/** Tree clusters of `map` as dense cores (0.75 of the dumped radius: the trees thin toward a cluster's edge). */
+export function woodsOf(map) {
+  if (!woods.has(map)) {
+    const f = join(SHOTS, 'features', `features-${map}.json`);
+    const list = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')).treeClusters ?? [] : [];
+    woods.set(map, list.map(t => ({ x: t.x, z: t.z, r: t.r * 0.75 })));
+  }
+  return woods.get(map);
+}
+/** Height above which a camera clears the woods' canopy. */
+const CANOPY_CLEAR_M = 22;
 const inside = (b, x, z, pad) => {
   const dx = x - b.x, dz = z - b.z, u = dx * b.c + dz * b.s, v = -dx * b.s + dz * b.c;
   return Math.abs(u) < b.hw + pad && Math.abs(v) < b.hd + pad;
@@ -25,8 +38,8 @@ export const ROOF_CLEAR_M = 12;
 /** Fraction of the storyboard's camera keys that sit inside a building or lose the hero behind one. */
 export function blockedFraction(scene, { pad = 1.4 } = {}) {
   const shots = scene.storyboard?.shots ?? [];
-  const blds = buildingsOf(scene.map);
-  if (!shots.length || !blds.length) return 0;
+  const blds = buildingsOf(scene.map), trees = woodsOf(scene.map);
+  if (!shots.length || (!blds.length && !trees.length)) return 0;
   const hero = scene.storyboard.actorTracks?.find(t => t.actor === 'hero')?.keys;
   const heroAt = tMs => {
     if (!hero?.length) { const a = scene.actors.find(x => x.name === 'hero'); return a?.pos; }
@@ -36,15 +49,17 @@ export function blockedFraction(scene, { pad = 1.4 } = {}) {
   let bad = 0;
   for (const sh of shots) {
     const [cx, cy, cz] = sh.pos; // ground-relative storyboards: y is the lens height above the terrain
-    if (cy > ROOF_CLEAR_M) continue; // over the roofs
-    const near = blds.filter(b => Math.hypot(b.x - cx, b.z - cz) < 80);
-    if (near.some(b => inside(b, cx, cz, pad))) { bad++; continue; }
+    if (cy > CANOPY_CLEAR_M) continue; // over the roofs and the woods
+    const near = cy > ROOF_CLEAR_M ? [] : blds.filter(b => Math.hypot(b.x - cx, b.z - cz) < 80);
+    const wood = trees.filter(t => Math.hypot(t.x - cx, t.z - cz) < 80 + t.r);
+    const inWood = (x, z) => wood.some(t => Math.hypot(x - t.x, z - t.z) < t.r);
+    if (near.some(b => inside(b, cx, cz, pad)) || inWood(cx, cz)) { bad++; continue; }
     const h = heroAt(sh.tMs); if (!h) continue;
     const len = Math.hypot(h[0] - cx, h[1] - cz), steps = Math.max(2, Math.ceil(len));
     let blocked = false;
     for (let i = 1; i < steps - 3 && !blocked; i++) {
       const t = i / steps, x = cx + (h[0] - cx) * t, z = cz + (h[1] - cz) * t;
-      blocked = near.some(b => inside(b, x, z, 0));
+      blocked = near.some(b => inside(b, x, z, 0)) || inWood(x, z);
     }
     if (blocked) bad++;
   }

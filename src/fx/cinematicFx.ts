@@ -78,6 +78,9 @@ export interface StudioCinematicsOptions {
   seed(): number;
 }
 
+/** Near-lens fade of the cinematic cards: none inside 3 m of a card's centre, full beyond 10 m (battle pools: 0.5–4.6). */
+const CINEMATIC_NEAR_FADE_M: readonly [number, number] = [3, 10];
+
 const POOL_SIZES = {
   smoke: 6144, fire: 3072, billow: 768, psmoke: 1536, screen: 3072,
   dust: 4096, sparks: 4096, debris: 768, flash: 384, jet: 256,
@@ -312,6 +315,12 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
     seed: 5000, share: port.sharing, poolSizes: POOL_SIZES,
   });
   particles.setLightTintShading(true);
+  // These cards are metres wide (the gun-blast haze 9–13 m): fade them as the lens enters them, not only in the last two
+  // metres, so a blast rolling toward a front lens passes through it instead of walling off the frame (2026-10-05).
+  for (const pool of Object.values(particles.pools)) {
+    const near = (pool.mesh.material as THREE.ShaderMaterial).uniforms?.uNearFade as { value: THREE.Vector2 } | undefined;
+    near?.value.set(Math.max(near.value.x, CINEMATIC_NEAR_FADE_M[0]), Math.max(near.value.y, CINEMATIC_NEAR_FADE_M[1]));
+  }
   group.add(particles.group);
   port.group.add(group);
 

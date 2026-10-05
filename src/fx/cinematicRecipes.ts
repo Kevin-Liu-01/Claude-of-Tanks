@@ -332,7 +332,8 @@ export function muzzleBlast(
   }
   // propellant ring (the doughnut thrown out perpendicular to the bore). Owner 2026-10-05 (the round puffs in s28):
   // thirty small cards flung 4-6 m/s scattered into separate soft discs that defocus read as polka dots — sixteen
-  // larger, slower, fainter cards stay overlapped into one rolling ring that thins as a haze.
+  // larger, slower, fainter cards stay overlapped into one rolling ring that thins as a haze. Round 5 (front lenses
+  // on PR #9) found that haze a fog over the hero for seconds: every veil below is ~40 % fainter and ~25 % shorter.
   const ringN = 16;
   for (let i = 0; i < ringN; i++) {
     const a = (i / ringN) * TAU + r() * 0.35;
@@ -343,11 +344,11 @@ export function muzzleBlast(
     const fwd = (1.2 + r() * 1.8) * s;
     puff(ctx, 'psmoke', px + dx * 0.9 * s + cx * 0.3, py + dy * 0.9 * s + cy * 0.3, pz + dz * 0.9 * s + cz * 0.3,
       cx * sp + dx * fwd, cy * sp + dy * fwd + 0.35, cz * sp + dz * fwd,
-      3.0 + r() * 2.4, (1.3 + r() * 0.5) * s, (5.0 + r() * 1.8) * s,
-      PROP0, PROP1, 0.28 + r() * 0.1, 0.22, -r() * 0.03);
+      2.4 + r() * 1.8, (1.3 + r() * 0.5) * s, (5.0 + r() * 1.8) * s,
+      PROP0, PROP1, 0.16 + r() * 0.06, 0.22, -r() * 0.03);
   }
-  // forward gas cone: smoke pushed down the bore line (ten broad, overlapping cards, not eighteen scattered ones)
-  for (let i = 0; i < 10; i++) {
+  // forward gas cone: smoke pushed down the bore line (eight broad, overlapping cards, not eighteen scattered ones)
+  for (let i = 0; i < 8; i++) {
     const sp = (5 + r() * 8) * s;
     const spread = 0.08 + r() * 0.12;
     const a = r() * TAU;
@@ -356,8 +357,8 @@ export function muzzleBlast(
     const cz = dz + (u[2] * Math.cos(a) + v[2] * Math.sin(a)) * spread;
     puff(ctx, 'psmoke', px + dx * 0.8, py + dy * 0.8, pz + dz * 0.8,
       cx * sp, cy * sp + 0.3, cz * sp,
-      2.6 + r() * 2.4, (1.3 + r() * 0.6) * s, (5.0 + r() * 2.2) * s,
-      PROP0, PROP1, 0.24 + r() * 0.1, 0.25, -r() * 0.05);
+      2.0 + r() * 1.8, (1.3 + r() * 0.6) * s, (5.0 + r() * 2.2) * s,
+      PROP0, PROP1, 0.14 + r() * 0.06, 0.25, -r() * 0.05);
   }
   // unburnt propellant sparks spat down range
   for (let i = 0; i < 16; i++) {
@@ -379,7 +380,7 @@ export function muzzleBlast(
   const flatL = Math.hypot(dx, dz) || 1;
   const fx = dx / flatL, fz = dz / flatL;
   // (as the ring: fewer, broader, fainter cards that overlap into one sheet of dust instead of a field of discs)
-  const fanN = Math.round(22 * (0.5 + 0.5 * groundK));
+  const fanN = Math.round(16 * (0.5 + 0.5 * groundK));
   for (let i = 0; i < fanN; i++) {
     // fan centred on the bore, widening to the sides; the strongest gust runs forward
     const a = (r() - 0.5) * Math.PI * 1.35;
@@ -389,8 +390,8 @@ export function muzzleBlast(
     const ox = px + fx * (0.6 + r() * 2.6), oz = pz + fz * (0.6 + r() * 2.6);
     puff(ctx, 'dust', ox, ctx.world.groundY(ox, oz) + 0.35 + r() * 0.4, oz,
       rx * reach * 1.4, 0.5 + r() * 1.2, rz * reach * 1.4,
-      3.2 + r() * 3.0, (1.3 + r() * 0.6) * s, (5.0 + r() * 2.8) * s,
-      tone.light, tone.dark, (0.24 + r() * 0.14) * (0.55 + 0.45 * groundK), 0.18, -r() * 0.02);
+      2.6 + r() * 2.2, (1.3 + r() * 0.6) * s, (5.0 + r() * 2.8) * s,
+      tone.light, tone.dark, (0.13 + r() * 0.08) * (0.55 + 0.45 * groundK), 0.18, -r() * 0.02);
   }
   // grit + grass bits
   for (let i = 0; i < 10; i++) {
@@ -402,12 +403,12 @@ export function muzzleBlast(
     chunk(ctx, ox, g + 0.15, oz, rx * (4 + r() * 6), 2 + r() * 4, rz * (4 + r() * 6),
       0.9 + r() * 0.5, 0.025 + r() * 0.035, g, 0, 0);
   }
-  // hanging haze that drifts for many seconds after the shot: six broad veils
+  // hanging haze that drifts for seconds after the shot: six broad, faint veils
   for (let i = 0; i < 6; i++) {
     const ox = px + fx * (2 + r() * 5) + (r() - 0.5) * 2.4, oz = pz + fz * (2 + r() * 5) + (r() - 0.5) * 2.4;
     puff(ctx, 'dust', ox, ctx.world.groundY(ox, oz) + 0.8 + r(), oz,
       fx * 1.2 + WIND_X * 0.4, 0.2 + r() * 0.25, fz * 1.2 + WIND_Z * 0.4,
-      6 + r() * 4, 3.2 * s, (9 + r() * 4) * s, tone.light, tone.dark, 0.14 + r() * 0.06, 0.03, 0.1 + r() * 0.3);
+      4.5 + r() * 3, 3.2 * s, (9 + r() * 4) * s, tone.light, tone.dark, 0.08 + r() * 0.04, 0.03, 0.1 + r() * 0.3);
   }
   ctx.shockRing(px + fx * 1.4, pz + fz * 1.4, (7 + 6 * groundK) * s, 0.7 * groundK, 0);
 }

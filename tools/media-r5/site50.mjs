@@ -42,14 +42,14 @@ const S = {
   stWest: stage('steinburg-day-west', 'urban', 'day', 502, [-150, -75], 90, { formation: 'pair', lineup: [CAST.kf51, CAST.lynx], enemies: pair(CAST.t80u, CAST.t90a, ['intact', 'wrecked-burnt'], { along: 70 }) }),
   stCross: from('steinburg-day-crossroads', { anchor: [-50, -60], heading: 0, lineup: [CAST.strv122, CAST.leo2a5], enemies: { along: 70, lat: 4, count: 2, formation: 'pair', lineup: [CAST.t72b, CAST.t72b3], states: ['wrecked-burnt', 'burning'] } }),
   stEast: stage('steinburg-day-east', 'urban', 'day', 503, [-200, 30], 180, { formation: 'column', lineup: [CAST.tusk, CAST.sepv2, CAST.griffin], count: 3, enemies: pair(CAST.t72b3m, CAST.t90a, ['burning', 'intact'], { along: 84, lat: -3 }) }),
-  stSouth: stage('steinburg-day-south', 'urban', 'day', 504, [-120, 75], 90, { formation: 'pair', lineup: [CAST.leo2a6m, CAST.amx56], enemies: pair(CAST.t90a, CAST.t72b, ['intact', 'burning'], { along: 64, lat: 1 }) }),
+  stSouth: stage('steinburg-day-south', 'urban', 'day', 504, [-50, 35], 180, { formation: 'pair', lineup: [CAST.leo2a6m, CAST.amx56], enemies: pair(CAST.t90a, CAST.t72b, ['intact', 'burning'], { along: 64, lat: 1 }) }),
   stNorth: stage('steinburg-day-north', 'urban', 'day', 505, [-52, 175], 180, { formation: 'column', lineup: [CAST.amx56, CAST.leclerc, CAST.amx56], count: 3,
     enemies: { along: 92, lat: 0, count: 3, formation: 'line', spread: 0.45, lineup: [CAST.t72b3, CAST.t80u, CAST.t72bu], states: ['wrecked-burnt', 'burning', 'burning'] } }),
-  stSquare: stage('steinburg-day-square', 'urban', 'day', 506, [-2, 0], 270, { formation: 'pair', lineup: [CAST.leclerc, CAST.lynx], enemies: pair(CAST.t90, CAST.t72b3, ['burning', 'wrecked-burnt'], { along: 78, lat: 3 }) }),
+  stSquare: stage('steinburg-day-square', 'urban', 'day', 506, [-30, 0], 270, { formation: 'pair', lineup: [CAST.leclerc, CAST.lynx], enemies: pair(CAST.t90, CAST.t72b3, ['burning', 'wrecked-burnt'], { along: 78, lat: 3 }) }),
   // Verdant Fields: the country road and the farm village (the Open Graph battlefield)
   vRoad: stage('verdant-day-road', 'verdant', 'day', 511, [-64, 61.6], 82, { formation: 'column', lineup: [CAST.t90m, CAST.t90a, CAST.t72b3m], count: 3,
     enemies: { along: 86, lat: -26, count: 3, formation: 'line', spread: 0.6, lineup: ['leo2a6_x', 'm1a2_x', 'leo2a5_x'], states: ['burning', 'intact', 'wrecked-burnt'] } }),
-  vAssault: from('verdant-day-assault', { anchor: [-120, 22], heading: 84, lineup: [CAST.t90sm, CAST.t14, CAST.t90ms, CAST.obj695, CAST.kurganets] }),
+  vAssault: from('verdant-day-assault', { anchor: [-124, 58], heading: 75, lineup: [CAST.t90sm, CAST.t14, CAST.t90ms, CAST.obj695, CAST.kurganets] }),
   vVillage: stage('verdant-day-village', 'verdant', 'day', 512, [19.3, 48], 1, { formation: 'pair', lineup: [CAST.t14, CAST.t90m], enemies: pair(CAST.leo2a6m, CAST.sepv2, ['wrecked-burnt', 'intact'], { along: 80, lat: 3 }) }),
   vFarm: stage('verdant-day-farm', 'verdant', 'day', 513, [6.7, -64], 191, { formation: 'pair', lineup: [CAST.kf51, CAST.leo], enemies: pair(CAST.t90sm, CAST.t72b3m, ['burning', 'intact'], { along: 82, lat: -4 }) }),
   // Glacier Pass: the frozen lake and the alpine village
@@ -146,17 +146,18 @@ export const SHOTS = [
     { count: 2, speed: 2.8, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', -6, -8, 2000), mg('ally1', 1200, 9), fire('hero', 3900), dust('hero', 700, 10, 0.8)], cam: FRONT34() },
     { tMs: 3980, exposureMs: 25 }],
   [3, 'square-pass', 'tank', 'A Leclerc XLR crosses the burning square', S.stSquare,
-    // the lens waits at the square's edge ahead of the hero: its front quarter coming on, then its flank
+    // the lens waits in the mouth of the north street at the central crossing (PR #9's town has no wide square; a lens
+    // on the main street's kerb sat against the facades, review 2026-10-05): the hero's front quarter coming on
     { speed: 0.9, pinMs: 3300, sun: 'side', effects: [...wreck('foe0'), burn('foe1', 0), smoke('foe1', 0), fireField(H(10, 2), 0, { radiusM: 4 }), huge(H(12, -10), 2600), fire('hero', 4200)],
-      cam: RIG.passby({ side: -8, along: 5, lift: 2.4, fov: 40, look: [0, 0, 1.6] }) },
+      cam: RIG.passby({ side: -9, along: 22, lift: 2.6, fov: 36, look: [0, 0, 1.6] }) },
     { tMs: 3300, exposureMs: 33 }],
   [4, 'column-under-fire', 'tank', 'A T-90M column drives into the fight on the country road', S.vRoad,
     // the Open Graph height from ahead: the column bearing down the road, the barrage walking in behind it
     { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), burn('foe2', 0), smoke('foe2', 0), ...incoming('foe1', -6, -5, 1300), fire('hero', 2600), huge(H(-26, -24), 3300), barrage(H(-18, -34), 3900, 6, 14), mg('ally1', 4400, 9), fire('ally1', 5200)], cam: FRONT34_HIGH() },
     { tMs: 2700, exposureMs: 25 }],
   [5, 'barn-advance', 'tank', 'A T-14 Armata advances past the barns of Verdant Fields', S.vVillage,
-    // a tracking profile from the field side, the barns beyond the hero
-    { speed: 2.6, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', 11, 5, 2200), fire('hero', 3700), dust('hero', 800, 10, 0.8)], cam: SIDE(-1) },
+    // a tracking profile from the field side, the barns beyond the hero (the other side's lens passed behind a shed)
+    { speed: 2.6, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', -11, 5, 2200), fire('hero', 3700), dust('hero', 800, 10, 0.8)], cam: SIDE(1) },
     { tMs: 3780, exposureMs: 25 }],
   [6, 'farm-charge', 'tank', 'A KF51 Panther charges past the farmhouse through artillery', S.vFarm,
     { count: 1, speed: 3.2, sun: 'side', effects: [...wreck('foe0'), barrage(H(-12, -8), 900, 6, 12), barrage(H(10, -20), 3200, 5, 12), fire('hero', 4300), dust('hero', 700, 12, 1)], cam: RIG.lead({ side: 2.5, along: [15, 10], lift: 2.2, fov: 38, look: [0, -2, 1.5] }) },
@@ -179,7 +180,7 @@ export const SHOTS = [
     // the river-level profile a few metres ahead: the bow wave and the glacis as well as the flank
     { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), ...hitNear(-8, 0, 1300), ...hitNear(-10, -10, 3100), fire('hero', 4400)], cam: RIG.follow({ side: [12, 10.5], along: [6, 3.5], lift: 1.6, fov: 34, look: [0, 1, 1.4] }) },
     { tMs: 4480, exposureMs: 25 }],
-  [11, 'container-rows', 'tank', 'A Challenger 1 weaves between the container rows at Cinder Junction', S.rYard,
+  [11, 'container-rows', 'tank', 'A Challenger 1 column pushes through the rail yard at Cinder Junction', S.rYard,
     { speed: 2.8, sun: 'side', effects: [...wreck('foe0'), ...incoming('foe1', -3, -10, 2400), fire('hero', 3900)], cam: RIG.lead({ side: 3.2, along: [13, 9.5], lift: 2.6, fov: 38, look: [-0.5, 0, 1.6] }) },
     { tMs: 3980, exposureMs: 25 }],
   [12, 'gantry-advance', 'tank', 'A T-90MS Tagil column advances under the Ironworks gantries', S.iGantry,
@@ -205,7 +206,7 @@ export const SHOTS = [
     { tMs: 4460, exposureMs: 16 }],
   [17, 'crossroads-fire', 'battle', 'Fire at the Steinburg crossroads at noon', S.stCross,
     { speed: 0, effects: [...wreck('foe0'), burn('foe1', 0), fire('hero', 1300), huge(H(10, -22), 2400), fire('ally1', 3300), barrage(H(14, -40), 3900, 5, 12)],
-      cam: hold({ side: -14.5, along: 16.5, lift: 7.2, fov: 40 }, { side: -12.5, along: 14, lift: 6.4, fov: 38 }) },
+      cam: hold({ side: -10, along: 20, lift: 15, fov: 42 }, { side: -9, along: 18, lift: 14, fov: 40 }) },
     { tMs: 1380, exposureMs: 16 }],
   [18, 'street-knockout', 'battle', 'A T-90A is knocked out at the end of a Steinburg street at night', S.stSouth,
     // from behind the T-90A as the round strikes it, the shooter's flash down the street (the duel staged at 42 m)
@@ -249,16 +250,17 @@ export const SHOTS = [
     // from low behind the T-62 as the round strikes it, the Merkava's flash beyond: the target's hull covers the marbled
     // sand (the duel staged at 44 m)
     { speed: 0, sun: 'side', enemies: pair(CAST.t62, CAST.t72b, ['intact', 'burning'], { along: 44, lat: 2 }),
-      effects: [...wreck('foe1'), ...knockout('hero', 'foe0', 2000), fire('ally1', 3600)], cam: REVERSE(2, 44, 1, 1.6) },
+      effects: [...wreck('foe1'), ...knockout('hero', 'foe0', 2000), fire('ally1', 3600)], cam: REVERSE(2, 44, -1, 2.0) },
     { tMs: 2160, exposureMs: 16 }],
   [28, 'fjord-village', 'battle', 'A Stridsvagn 122 and a CV9040C hold the fjord village', S.fVillage,
     { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), fire('ally1', 2300), mg('ally1', 3100, 9), fire('hero', 3300), ...incoming('foe1', 7, -6, 4000)], cam: FRONT34_HOLD(-1) },
     { tMs: 3380, exposureMs: 16 }],
   [29, 'fjord-road-kill', 'battle', 'A T-90 burns on the road above the fjord', S.fNorth,
-    // the duel across the frame from the roadside, the round crossing between the two (staged at 32 m)
-    { speed: 0, sun: 'side', enemies: pair(CAST.t90, CAST.t72b3, ['intact', 'burning'], { along: 32, lat: 0 }),
+    // the duel across the frame from the roadside, the round crossing between the two (staged at 24 m: at 32 m the two
+    // tanks sat on the frame's edges with an empty field between, review 2026-10-05)
+    { speed: 0, sun: 'side', enemies: pair(CAST.t90, CAST.t72b3, ['intact', 'burning'], { along: 24, lat: 0 }),
       effects: [...wreck('foe1'), ...knockout('hero', 'foe0', 1800), fire('ally1', 3800)],
-      cam: hold({ side: -32, along: 16, lift: 5, fov: 40, lookHero: [0, 16, 1.6] }, { side: -30.5, along: 16, lift: 4.8, fov: 39, lookHero: [0, 16, 1.6] }) },
+      cam: hold({ side: -28, along: 12, lift: 4.2, fov: 44, lookHero: [0, 12, 1.6] }, { side: -27, along: 12, lift: 4, fov: 43, lookHero: [0, 12, 1.6] }) },
     { tMs: 1960, exposureMs: 16 }],
   [30, 'temple-village', 'battle', 'A K1A1 and a K21 fight through the temple village of Monsoon Ridge', S.mVillage,
     { speed: 0, sun: 'side', effects: [...wreck('foe0'), fire('hero', 1500), ...incoming('foe1', 6, -8, 2600), fire('hero', 3200), fire('ally1', 3900)], cam: HIGH34_HOLD(-1) },
