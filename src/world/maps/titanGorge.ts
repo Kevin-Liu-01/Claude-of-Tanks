@@ -68,19 +68,26 @@ export default {
       // Both ends of each shelf are cliffs, so no taper ramps up onto its cap (bots drove up the tapers and fell off the
       // walls), and the shelves stop short of the deployments.
       ...[[-390, 0], [390, 0]].map(([x, z]) => ({ kind: 'ridge', x, z, length: 660, width: 90, height: 22, yawDeg: 90,
-        corridorScale: 0.38, geology: { profile: 'butte' as const, wall: [0.35, 0.55] as const, apron: 0.3, cliffEnd: 'both' as const,
+        // (Titan round 2: the cap broader and the wall steeper over the same footprint, [0.35, 0.55] -> [0.46, 0.56])
+        corridorScale: 0.38, geology: { profile: 'butte' as const, wall: [0.46, 0.56] as const, apron: 0.3, cliffEnd: 'both' as const,
           strata: { stepM: 4.5, riser: 0.35 }, outline: 0.25, rough: 0.8, gullies: { count: 2, depthM: 2, width: 0.5 } } })),
       // buttes standing free on the valley floor, the shelves' outliers, in pairs that are each other's rotation about the
       // centre (the west lane's and the east lane's between the roads and the town)
       ...[[-188, -120, 30, 40, 18], [188, 120, 30, 40, 18], [-140, 280, 34, 34, 14], [140, -280, 34, 34, 14]].map(([x, z, rx, rz, height]) => ({
+        // (Titan round 2, gauntlet wave 104: "flat-capped, sheer-walled buttes over a talus skirt": the sheer jebel's
+        // section, a level cap to 0.88 of the wall's foot, the wall near-vertical down to a talus skirt, shallow flutes;
+        // the footprint, the height and the toe are the old butte's)
         kind: 'knoll', x, z, rx, rz, height, corridorScale: 0.44,
-        geology: { profile: 'butte' as const, wall: [0.4, 0.62] as const, apron: 0.28, strata: { stepM: 4 }, outline: 0.22,
-          rough: 0.8, gullies: { count: 5, depthM: 1.5, width: 0.5 } } })),
+        geology: { profile: 'inselberg' as const, outline: 0.22, foot: 0.6, footVary: 0.1, apron: 0.3, rim: 0.88,
+          flutes: { count: 10, depth: 0.3 }, rough: 0.9, boulders: 14, strata: { stepM: 4 },
+          gullies: { count: 4, depthM: 1.5, width: 0.4 } } })),
       // the gate buttes: one in front of each deployment, each the other's rotation about the centre, screening the
       // deployments from each other down the gorge's axis (whole through the deployment corridors: bots drive round them)
       ...[[-12, -300], [12, 300]].map(([x, z]) => ({ kind: 'knoll', x, z, rx: 24, rz: 22, height: 20, corridorScale: 1,
-        geology: { profile: 'butte' as const, wall: [0.4, 0.62] as const, apron: 0.28, strata: { stepM: 4 }, outline: 0.2,
-          rough: 0.8, gullies: { count: 5, depthM: 1.5, width: 0.5 } } })),
+        // (Titan round 2: the same sheer section as the free buttes, over the same footprint)
+        geology: { profile: 'inselberg' as const, outline: 0.2, foot: 0.6, footVary: 0.1, apron: 0.3, rim: 0.88,
+          flutes: { count: 9, depth: 0.3 }, rough: 0.9, boulders: 10, strata: { stepM: 4 },
+          gullies: { count: 4, depthM: 1.5, width: 0.4 } } })),
       // the wadi's floor, where the valley's streams braid
       { kind: 'basin', x: 22, z: 18, rx: 188, rz: 124, height: -7.0, yawDeg: -12, corridorScale: 0.68,
         geology: { outline: 0.2, rough: 0.4 } },
@@ -170,7 +177,13 @@ export default {
     },
   },
   horizon: {
+    // (the map-revival lane, 2026-10-05, Titan round 2; gauntlet wave 104: "continuous pointed, smoothly sloped mauve
+    // mountains wall the valley ... Monument Valley's isolated, flat-capped, sheer-walled buttes standing apart on an
+    // open plain"): the far country beyond the ring's tables becomes sheer, flat-topped massifs standing out of the
+    // plain with the sky between them ('jebel'). (A lower ring loses the escarpment's cliffs: at amp 1.0-1.2 the far
+    // rise keeps no tiered column, so the ring's own tables stay at 2.15.)
     baseHex: 0x7d3f2c, amp: 2.15, style: 'mesa', treeline: 0.03,
+    panorama: { regional: 'jebel' },
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): authored strata for the orange sandstone
     // walls (the style default 0.16 gave the canyon's own bedded rock the faintest beds of any mesa ring)
     banding: 0.24,
