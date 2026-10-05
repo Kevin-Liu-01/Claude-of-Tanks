@@ -795,10 +795,13 @@ const daySchool: RegionalBuilder = (ctx) => {
 const woolBarn: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant;
-  const W = Math.max(10, Math.min(16.5, ctx.info.w - 0.8)), D = Math.max(16, Math.min(26, ctx.info.d - 3.2));
-  const zc = -0.6;
+  // the barn fills the old warehouse's reach (its measured bounds, dock and canopy included): a shorter barn opened a
+  // tank-wide gap to its neighbour that the bots drove through (Titan's pacing: three of four matches over by 160 s)
+  const b = ctx.bounds;
+  const W = Math.max(10, Math.min(17, b.maxX - b.minX - 0.3)), D = Math.max(16, Math.min(28, b.maxZ - b.minZ - 0.3));
+  const xc = (b.maxX + b.minX) / 2, zc = (b.maxZ + b.minZ) / 2;
   const baseH = 1.5 + rng() * 0.4, H = 4.8 + rng() * 0.6;
-  sink.placed(0, 0, 0, zc, () => {
+  sink.placed(0, xc, 0, zc, () => {
     sink.span('stone', -W / 2 - 0.06, -0.5, -D / 2 - 0.06, W / 2 + 0.06, baseH, D / 2 + 0.06);
     // the walls of corrugated iron over the stone (structureMetal's profiled sheet: a roof covering is never a wall a
     // hull stops at, structureCollision.ts ROOF_BUCKETS), with their gable ends
@@ -819,7 +822,7 @@ const woolBarn: RegionalBuilder = (ctx) => {
       gateUnit(sink, f, 0, 0.0, Math.min(4.2, W * 0.36), 3.6, shade(PLANK_GREY, 0.95 + look() * 0.1), { bucket: 'structureWood', width: 0.2, out: 0.08, colour: JUNIPER_DARK });
       faceBox(sink, 'structureMetal', f, 0, 3.75, 0.12, Math.min(4.2, W * 0.36) * 2 + 0.4, 0.12, 0.12, { colour: IRON, decor: true });
     }
-    sink.span('stone', -3.0, -0.4, D / 2, 3.0, 1.0, D / 2 + 1.8);
+    sink.span('stone', -3.0, -0.4, D / 2 - 0.05, 3.0, 1.0, D / 2 + 0.9);
     // high windows down the sides
     for (const side of [-1, 1]) {
       const f: Face = { origin: [side * W / 2, 0, 0], u: [0, 0, -side], out: [side, 0, 0], width: D };
