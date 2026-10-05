@@ -47,7 +47,7 @@ the fictional map reproduces a particular real-world location.
 | oasis | Asymmetric dune arms and sparse distant rock around a protected spring basin. |
 | whiteout | Exposed snowy plain with broad low glacial rises and wind-shaped snow shoulders. |
 | orchard | Long unequal upland valley sides with cultivated shelves and drainage folds. |
-| longleaf | Interlocking wooded logging-country ridges, creek spurs and clearcut shoulders. |
+| longleaf | Longleaf, Louisiana: the Crowell Long Leaf Lumber Company's sawmill town in the pine flatwoods, crossed by the Louisiana Maneuvers of 1941 (the map-revival lane, 2026-10-05): interlocking wooded logging-country ridges, creek spurs and clearcut shoulders under longleaf pine; the town in the longleaf kit — the sawmill and its wigwam burner, the commissary, the engine shed and water tank, shotgun and dogtrot houses on brick piers under tin. |
 | mangrove | Open estuary sectors, low islands and elongated natural levees. |
 | saltwind | Western limestone bay with an open sea sector and stepped scrub headlands. |
 | reservoir | Waterworks basin framed by unequal reservoir-aligned ridges and tributary shoulders. |
