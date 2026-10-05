@@ -100,10 +100,21 @@ export function lensFlareVisibility(
   for (const [ox, oy] of lensFlareTapOffsets()) {
     if (isSky(sunUv[0] + ox * radiusUv / aspect, sunUv[1] + oy * radiusUv)) sky++;
   }
-  // 2026-10-04: the clouds' transmittance toward the sun, over the centre and four taps on the disc's rim
+  // 2026-10-04: the clouds' transmittance toward the sun, over the centre and four taps on the disc's rim, through
+  // lensFlareCloudGate (a veil the sun still burns through keeps the flare; a closed deck takes it all)
   let clouds = 0;
-  for (const [ox, oy] of LENS_FLARE_CLOUD_TAPS) clouds += clamp01(cloudTransmittance(sunUv[0] + ox * radiusUv / aspect, sunUv[1] + oy * radiusUv));
+  for (const [ox, oy] of LENS_FLARE_CLOUD_TAPS) clouds += lensFlareCloudGate(cloudTransmittance(sunUv[0] + ox * radiusUv / aspect, sunUv[1] + oy * radiusUv));
   return (sky / LENS_FLARE_VIS_TAPS) * (clouds / LENS_FLARE_CLOUD_TAPS.length) * clamp01(factors.up) * clamp01(factors.inFrame);
+}
+/**
+ * The flare's share at a cloud transmittance toward the sun: smoothstep(0, LENS_FLARE_CLOUD_FULL, T). Measured on the pair:
+ * Redrock's sun behind cirrus at T ≈ 0.09 and Caldera's at ≈ 0.18 still show a white disc (the disc is tens of thousands of
+ * times the sky), so their flare stays most of the way (0.30, 0.79); a closed deck (T 0 after the opaque cut) takes it all.
+ */
+export const LENS_FLARE_CLOUD_FULL = 0.25;
+export function lensFlareCloudGate(t: number): number {
+  const x = clamp01(t / LENS_FLARE_CLOUD_FULL);
+  return x * x * (3 - 2 * x);
 }
 /** The cloud-transmittance taps over the visibility disc (uv offsets before the disc scale): the centre and its rim. */
 export const LENS_FLARE_CLOUD_TAPS: ReadonlyArray<readonly [number, number]> = Object.freeze([[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]);
@@ -120,7 +131,7 @@ function visibilityFragment(): string {
   const taps = lensFlareTapOffsets().map(([x, y]) =>
     `  sky += step( 0.9999999, texture2D( tDepth, uSun + vec2( ${f(x)}, ${f(y)} ) * uDisc ).x );`).join('\n');
   const cloudTaps = LENS_FLARE_CLOUD_TAPS.map(([x, y]) =>
-    `    clouds += clamp( texture2D( tClouds, uSun + vec2( ${f(x)}, ${f(y)} ) * uDisc ).a, 0.0, 1.0 );`).join('\n');
+    `    clouds += smoothstep( 0.0, ${f(LENS_FLARE_CLOUD_FULL)}, texture2D( tClouds, uSun + vec2( ${f(x)}, ${f(y)} ) * uDisc ).a );`).join('\n');
   return /* glsl */`
 uniform sampler2D tDepth;
 uniform sampler2D tPrev;

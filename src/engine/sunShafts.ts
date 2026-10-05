@@ -127,7 +127,7 @@ uniform float uCloudsOn;
 varying vec2 vUv;
 void main() {
   float sky = step( 0.9999999, texture2D( tDepth, vUv ).x );
-  if ( uCloudsOn > 0.5 ) sky *= clamp( texture2D( tClouds, vUv ).a, 0.0, 1.0 );
+  if ( uCloudsOn > 0.5 ) sky *= smoothstep( 0.0, 0.25, texture2D( tClouds, vUv ).a );
   vec2 q = ( vUv - uSun ) * vec2( uAspect, 1.0 );
   float w = 1.0 - smoothstep( 0.0, ${SUN_SHAFT_MASK_RADIUS.toFixed(3)}, length( q ) );
   gl_FragColor = vec4( sky * w * w, 0.0, 0.0, 1.0 );
