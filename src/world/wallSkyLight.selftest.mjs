@@ -25,10 +25,21 @@ assert.ok(hook.includes(compact(`_mustReplace(shader.fragmentShader, '#include <
   'the hook replaces the lights_fragment_end include (a missing include fails loudly)');
 
 // 3. The gain and its per-map override, and a fresh program cache key for the new fragment.
-const gain = Number((source.match(/const WALL_SKY_LIFT = ([0-9.]+);/) || [])[1]);
-assert.ok(gain >= 4 && gain <= 10, `the default gain sits in the measured band (got ${gain})`);
-assert.ok(source.includes('shader.uniforms.uWallSkyLift = { value: S.wallSkyLift ?? WALL_SKY_LIFT };'),
-  'a map may author its own gain through splat.wallSkyLift');
+// (2026-10-04, the skies lane: the gain is the light rig's — round 42's on the legacy rig, none on the grounded rig, whose
+// environment lights a steep face's open sky itself; Redrock's backlit faces read 0.84–1.00 of the sunlit sand with it,
+// 0.28–0.33 without. One uniform object every terrain program binds, set with the rig's other terms.)
+const bounce = readFileSync(new URL('../engine/groundBounce.ts', import.meta.url), 'utf8');
+const lighting = compact(readFileSync(new URL('../engine/lighting.ts', import.meta.url), 'utf8'));
+const gain = Number((bounce.match(/export const WALL_SKY_LIFT_LEGACY = ([0-9.]+);/) || [])[1]);
+assert.ok(gain >= 4 && gain <= 10, `the legacy rig's gain sits in the measured band (got ${gain})`);
+assert.ok(/export const terrainWallSkyLift: \{ value: number \} = \{ value: WALL_SKY_LIFT_LEGACY \};/.test(bounce), 'one shared uniform object');
+assert.ok(source.includes('shader.uniforms.uWallSkyLift = S.wallSkyLift != null ? { value: S.wallSkyLift } : terrainWallSkyLift;'),
+  'the terrain binds the rig\'s object; a map may author its own gain through splat.wallSkyLift');
+assert.ok(lighting.includes(compact(`groundBounceUniforms.uCotShadowFacing.value = lightTune('SHADOW_DIM_FACING', SHADOW_DIM_FACING);
+      // (2026-10-04: the environment lights a steep face's open sky here: no wall sky lift — groundBounce.ts)
+      terrainWallSkyLift.value = lightTune('WALL_SKY_LIFT_GROUNDED', 0);`)), 'the grounded rig: none (a QA knob)');
+assert.ok(lighting.includes(compact(`groundBounceUniforms.uCotShadowFacing.value = 0;
+      terrainWallSkyLift.value = WALL_SKY_LIFT_LEGACY;`)), 'the legacy rig: round 42\'s gain');
 assert.ok(/wallSkyLift\?: number;/.test(source), 'SplatConfig declares wallSkyLift');
 assert.ok(source.includes("world-terrain-splat-v54-"), // terrain v3 (2026-10-02): v54; round 55 (2026-09-24): v39; round 72b: v41; round 73 (2026-09-26 rebase): v42 — the ground redux; round 73b (2026-09-26): v43 — the borders, the strand in metres; terrain v2 (2026-10-01): v53 — the cost pass, exposure, the non-periodic beds
   'the program cache key moved with the fragment change');
