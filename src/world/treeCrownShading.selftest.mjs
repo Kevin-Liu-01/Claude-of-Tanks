@@ -9,16 +9,16 @@ import * as THREE from 'three';
 import { createCanvas, ImageData } from '@napi-rs/canvas';
 import {
   crownLobes, emitCrownShadowHull, emitLeafCards, GROWTH_CROWN_POROSITY, GROWTH_CROWN_SHADING, GROWTH_SPECIES, growTreeSkeleton,
-  TREE_GROWTH_PROFILES,
+  TREE_GROWTH_PROFILES, tuftLobes,
 } from './treeGrowth.ts';
 import {
   applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, CROWN_DAPPLE_LAW, CROWN_DAPPLE_PROGRAM_KEY, crownDappleTags, crownDappleThreshold,
   getCrownDappleDepthMaterial, patchCrownDappleDepthShader,
 } from './crownShadowDapple.ts';
-import { makeSprayAtlas, SPRAY_ATLAS_COVERAGE, SPRAY_KINDS } from './treeSprayAtlas.ts';
+import { makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, SPRAY_KINDS } from './treeSprayAtlas.ts';
 import { LOD_SHADOW_FADE_ATTRIBUTE } from '../engine/lodShadowFade.ts';
 import { growShrubSkeleton } from './treeGrowth.ts';
-import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeSlot } from './treeBiomes.ts';
+import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland } from './treeBiomes.ts';
 import { grownTintLaw } from './vegetation.ts';
 import { TREE_SPECIES } from './treeSpecies.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
@@ -45,6 +45,24 @@ for (const species of GROWTH_SPECIES) {
     }
     assert.ok(covered >= 0.95 * skeleton.leaves.length, `${species}/${variant}: the lobes hold ${covered}/${skeleton.leaves.length} card centres`);
     assert.deepEqual(crownLobes(skeleton, lobes.length), lobes, `${species}: the lobes are deterministic from the sprays`);
+    // trees round 4 (the gauntlet's wave 39: Caldera's midground Canary pines read as "round broadleaf crowns", the crown's
+    // few lobes lighting each pine as a handful of lit round masses): a tufted pine's cards shade by its tufts — a mass
+    // for about every four sprays, each a fist of needles, every card centre in its own tuft — and no other crown has any
+    const tufts = skeleton.tufts;
+    if (profile.habit === 'tuft') {
+      assert.ok(tufts && tufts.length === Math.max(2, Math.round(skeleton.leaves.length / 4)) && tufts.length > lobes.length * 2,
+        `${species}/${variant}: ${tufts?.length} tufts for ${skeleton.leaves.length} sprays (${lobes.length} lobes)`);
+      for (const l of tufts) assert.ok(Math.max(l.rx, l.ry, l.rz) < 1.6 && Math.min(l.rx, l.ry, l.rz) >= 0.15, `${species}: a tuft is a fist of needles`);
+      let held = 0;
+      for (const s of skeleton.leaves) {
+        const cx = s.x + s.ax * s.length * 0.45, cy = s.y + s.ay * s.length * 0.45, cz = s.z + s.az * s.length * 0.45;
+        // a tuft's ellipsoid is its members' box with a hand's margin: a centre in the box's corner sits within √2 of it
+        if (tufts.some((l) => ((cx - l.x) / l.rx) ** 2 + ((cy - l.y) / l.ry) ** 2 + ((cz - l.z) / l.rz) ** 2 <= 2)) held++;
+      }
+      assert.ok(held >= 0.98 * skeleton.leaves.length, `${species}/${variant}: the tufts hold ${held}/${skeleton.leaves.length} card centres`);
+      assert.deepEqual(tuftLobes(skeleton), tufts, `${species}: the tufts are deterministic from the sprays`);
+    } else assert.equal(tufts, undefined, `${species}: only a tufted pine shades by tufts`);
+    const shadeLobes = tufts ?? lobes;
 
     const tint = () => [0.5, 0.6, 0.4];
     const cards = emitLeafCards(skeleton, { tint, tiles: 2, rng: mulberry32(7), rows: 2 });
@@ -85,7 +103,7 @@ for (const species of GROWTH_SPECIES) {
     assert.ok(facing > authored + 0.15 && facing > 0.6, `${species}/${variant}: the facing clusters show their face (|n·v| ${facing.toFixed(2)} against ${authored.toFixed(2)})`);
     // the lobe-union normals turn out of the crown: a step along a vertex's normal leaves the lobes' union (the field
     // Σ e^{−|q|²} falls along it)
-    const field = (x, y, z) => lobes.reduce((f, l) => f + Math.exp(-(((x - l.x) / l.rx) ** 2 + ((y - l.y) / l.ry) ** 2 + ((z - l.z) / l.rz) ** 2)), 0);
+    const field = (x, y, z) => shadeLobes.reduce((f, l) => f + Math.exp(-(((x - l.x) / l.rx) ** 2 + ((y - l.y) / l.ry) ** 2 + ((z - l.z) / l.rz) ** 2)), 0);
     let outward = 0;
     for (let i = 0; i < p.count; i++) {
       const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
@@ -97,16 +115,18 @@ for (const species of GROWTH_SPECIES) {
     const depth = [];
     for (let i = 0; i < p.count; i++) {
       let f = 0;
-      for (const l of lobes) f += Math.exp(-(((p.getX(i) - l.x) / l.rx) ** 2 + ((p.getY(i) - l.y) / l.ry) ** 2 + ((p.getZ(i) - l.z) / l.rz) ** 2));
+      for (const l of shadeLobes) f += Math.exp(-(((p.getX(i) - l.x) / l.rx) ** 2 + ((p.getY(i) - l.y) / l.ry) ** 2 + ((p.getZ(i) - l.z) / l.rz) ** 2));
       depth.push([f, lum(c.getX(i), c.getY(i), c.getZ(i))]);
     }
     depth.sort((x, y) => x[0] - y[0]);
     const k = Math.max(1, Math.floor(depth.length / 5));
     const shell = depth.slice(0, k).reduce((s, x) => s + x[1], 0) / k, heart = depth.slice(-k).reduce((s, x) => s + x[1], 0) / k;
-    const floor = lum(0.5, 0.6, 0.4) * (1 - GROWTH_CROWN_SHADING.depthShade) * (1 - GROWTH_CROWN_SHADING.underside) - 1e-6;
+    // trees round 4: the floor takes the card's own ramp at its stem row, and a tufted pine's tuft by its stem
+    const floor = lum(0.5, 0.6, 0.4) * (1 - GROWTH_CROWN_SHADING.depthShade) * (1 - GROWTH_CROWN_SHADING.underside)
+      * GROWTH_CROWN_SHADING.cardRamp[0] * (tufts ? 1 - GROWTH_CROWN_SHADING.tuftCrownDepth : 1) - 1e-6;
     assert.ok(heart < shell * 0.9, `${species}/${variant}: the heart (${heart.toFixed(3)}) sits in shade under the shell (${shell.toFixed(3)})`);
     assert.ok(depth.every((x) => x[1] >= floor), `${species}: no card darker than the shade law's floor`);
-    if (variant === 1) report.species[species] = { lobes: lobes.length, sprays: skeleton.leaves.length, facing: +facing.toFixed(2), authored: +authored.toFixed(2), shell: +shell.toFixed(3), heart: +heart.toFixed(3) };
+    if (variant === 1) report.species[species] = { lobes: lobes.length, tufts: tufts?.length ?? 0, sprays: skeleton.leaves.length, facing: +facing.toFixed(2), authored: +authored.toFixed(2), shell: +shell.toFixed(3), heart: +heart.toFixed(3) };
     // a conifer's apex: no bare leader — the top tenth of the tree carries sprays, and the highest spray tip reaches
     // within a hand's breadth of the stem's top
     if (profile.family === 'conifer' && profile.form === 'excurrent') {
@@ -157,7 +177,7 @@ for (const species of GROWTH_SPECIES) {
       // a pine's brush and an acacia's leaflets keep their gaps under the alpha test (wave 26: the pines' shaded hearts and
       // the acacia's body filled each tile's core, "flat broadleaf leaf-card clusters", "lime-green blob foliage"): under
       // 5 % of the 8 × 8 windows wholly opaque (14.5 %, 6.8 %, 10 % and 28 % before; an oak's leaf mass 23 %)
-      if (kind === 'canaryPine' || kind === 'aleppoPine' || kind === 'pine' || kind === 'acacia') {
+      if (kind === 'canaryPine' || kind === 'aleppoPine' || kind === 'pine' || kind === 'pinyon' || kind === 'acacia') {
         let solid = 0, windows = 0;
         for (let y = 0; y + 8 <= 256; y += 2) for (let x = 0; x + 8 <= 256; x += 2) {
           let opaque = true;
@@ -165,6 +185,17 @@ for (const species of GROWTH_SPECIES) {
           windows++; if (opaque) solid++;
         }
         assert.ok(solid / windows < 0.05, `${kind}: its tile keeps its gaps (${(solid / windows * 100).toFixed(1)} % of the windows solid)`);
+      }
+      // round 3 (wave 31, the Fulda spruce's sprays "read as broadleaf"): the spruce's and the fir's herringbone stays
+      // open between its side twigs (19 % and 25 % of the windows solid before, one serrated leaf)
+      if (kind === 'spruce' || kind === 'fir') {
+        let solid = 0, windows = 0;
+        for (let y = 0; y + 8 <= 256; y += 2) for (let x = 0; x + 8 <= 256; x += 2) {
+          let opaque = true;
+          for (let j = 0; j < 8 && opaque; j++) for (let i = 0; i < 8; i++) if (data[((y + j) * 256 + x + i) * 4 + 3] < 97) { opaque = false; break; }
+          windows++; if (opaque) solid++;
+        }
+        assert.ok(solid / windows < (kind === 'fir' ? 0.2 : 0.14), `${kind}: its herringbone stays open (${(solid / windows * 100).toFixed(1)} % solid)`);
       }
     }
   } finally {
@@ -181,6 +212,20 @@ for (const species of GROWTH_SPECIES) {
   const c = cards.getAttribute('color');
   for (let i = 0; i < c.count; i++) assert.deepEqual([c.getX(i), c.getY(i), c.getZ(i)].map((v) => +v.toFixed(5)), [0.5, 0.6, 0.4], 'no depth shade without lobes');
   assert.ok(cards.getAttribute('aAxis') && cards.getAttribute('aLeaf'), 'a shrub card carries the billboard frame');
+  // trees round 4 (the gauntlet's wave 39: "oversized flat cards with little interior shading up close"): a crown's card
+  // darkens toward its seat — a lone lobe far off (no depth) over a crown centre below (no underside) leaves the ramp alone: the stem row at the
+  // ramp's foot, the tip row at its head, so a cluster reads as leaves round its twig, the twig in their shade
+  const crowned = { ...skeleton, crown: { x: 0, y: -5, z: 0, r: 1 }, lobes: [{ x: 40, y: 40, z: 40, rx: 1, ry: 1, rz: 1 }] };
+  const ramped = emitLeafCards(crowned, { tint: () => [0.5, 0.6, 0.4], tiles: 2, rng: mulberry32(1), rows: 2 });
+  const rc = ramped.getAttribute('color'), rleaf = ramped.getAttribute('aLeaf');
+  const [stemK, tipK] = GROWTH_CROWN_SHADING.cardRamp;
+  assert.ok(stemK < 0.85 && tipK > 1 && (stemK + tipK) / 2 > 0.9, `the ramp darkens the seat and lifts the tip (${stemK}, ${tipK})`);
+  for (let i = 0; i < rc.count; i++) {
+    const stem = rleaf.getY(i) < 0; // along the card from its centre: the stem row behind it, the tip row ahead
+    const k = stem ? stemK : tipK;
+    assert.deepEqual([rc.getX(i), rc.getY(i), rc.getZ(i)].map((x) => +x.toFixed(4)), [0.5 * k, 0.6 * k, 0.4 * k].map((x) => +x.toFixed(4)),
+      `a crown card's ${stem ? 'stem' : 'tip'} row takes the ramp`);
+  }
 }
 
 // the dappled crown shadow
@@ -297,8 +342,9 @@ assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alo
   const arid = treeBiomeColour('badlands');
   assert.ok(arid && arid.cardSat < 0.2 && typeof arid.texTone === 'function', 'Wadi Rum carries a dust-dulled foliage colour');
   const [h, sat, l] = arid.texTone(0.22, 0.4, 0.2);
-  // wave 26: the round-2b khaki-olive (hue 0.17, half the saturation) still read "lime-green" in the Sirocco sun
-  assert.ok(Math.abs(h - 0.2) < 1e-9 && sat <= 0.16 + 1e-9 && l >= 0.2, 'the tone pulls the leaves toward a grey green at two fifths the saturation');
+  // wave 26: the round-2b khaki-olive (hue 0.17, half the saturation) still read "lime-green" in the Sirocco sun; wave
+  // 31: round 3's yellow-green (0.2) lit golden-olive — Acacia raddiana is a grey-green
+  assert.ok(Math.abs(h - 0.26) < 1e-9 && sat <= 0.128 + 1e-9 && l >= 0.2, 'the tone pulls the leaves toward a grey green at a third the saturation');
   const filled = treeBiomePalette({}, null, false, arid);
   assert.ok(filled.cardHue === arid.cardHue && filled.cardSat === arid.cardSat && filled.texTone === arid.texTone, 'an unnamed palette takes the place\'s colour');
   const named = { cardHue: 0.3, cardSat: 0.4, texTone: (x, y, z) => [x, y, z] };
@@ -310,6 +356,16 @@ assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alo
   // Las Cañadas' stands are open groves, as the arid places' are, but not seated in the low ground (wave 26)
   assert.ok(treeBiomeOpen('caldera') && !treeBiomeArid('caldera') && treeBiomeOpen('desert') && !treeBiomeOpen('verdant'),
     'open groves on the caldera and the arid places only');
+  // the Arizona uplands (wave 28): juniper and pinyon for the cedar and pine slots, the mesquite in the acacia slot's own
+  // form, creosote as the broom's switches, zoned by height in open groves under a dusty place colour
+  assert.equal(treeBiomeSlot('copper_mesa', 'cedar')?.form, 'juniper');
+  assert.equal(treeBiomeSlot('copper_mesa', 'pine')?.form, 'pinyon');
+  assert.equal(treeBiomeSlot('copper_mesa', 'acacia'), null, 'the mesquite grows in the acacia slot\'s own bipinnate form');
+  assert.ok(treeBiomeUpland('copper_mesa') && treeBiomeOpen('copper_mesa') && !treeBiomeUpland('caldera'), 'Copper Mesa zoned by height');
+  assert.equal(treeBiomeShrub('copper_mesa'), 'broom');
+  const sonoran = treeBiomeColour('copper_mesa');
+  assert.ok(sonoran && sonoran.cardSat < 0.12 && sonoran.texTone(0.36, 0.2, 0.2)[0] === 0.36, 'a dusty colour that keeps each form\'s hue');
+  for (const form of ['juniper', 'pinyon']) assert.equal(TREE_GROWTH_PROFILES[form].family, 'conifer', `${form}: a conifer (the high zone)`);
 }
 {
   // a form's own colour wins over the map palette's (tuned for the slot's species): Dalmatia's olives silver-grey, its
@@ -329,6 +385,93 @@ assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a
 {
   const broom = growShrubSkeleton('broom', 'bush', mulberry32(9));
   assert.ok(broom.leaves.length >= 32 && broom.leaves.every((l) => l.y >= -0.0601), `a broom mound of ${broom.leaves.length} sprays on the ground`);
+}
+
+// trees round 4 (the ground lane on Obsidian Caldera's establishing view: the broom "saturated green" on the ash plain):
+// the Las Cañadas broom takes the place's shrub colour over the bush slot's palette — an ash-dulled grey-green, its
+// sprays' saturation cut to three tenths, the hue turned to olive, a little paler — and no other place has one
+{
+  const ash = treeBiomeShrubColour('caldera');
+  assert.ok(ash && ash.texTone && ash.cardSat <= 0.06, 'Las Cañadas has its own shrub colour');
+  const [h, sat, l] = ash.texTone(0.36, 0.6, 0.45);
+  assert.ok(h >= 0.18 && h <= 0.26 && sat <= 0.2 && l >= 0.45, `the broom's tone ash-dulled olive (${h}, ${sat}, ${l})`);
+  const slot = { cardHue: 0.3, cardSat: 0.4, texTone: (hh, ss, ll) => [hh, ss, ll] };
+  const pal = treeBiomePalette(slot, { colour: ash }, false, treeBiomeColour('caldera'));
+  assert.equal(pal.cardSat, ash.cardSat, 'the shrub colour wins over the slot palette\'s named saturation');
+  assert.strictEqual(pal.texTone, ash.texTone, 'and its tone');
+  assert.deepEqual(MAP_IDS.filter((id) => treeBiomeShrubColour(id)), ['caldera'], 'only Las Cañadas names a shrub colour');
+  report.calderaBroom = { h: +h.toFixed(3), s: +sat.toFixed(3), l: +l.toFixed(3) };
+}
+
+// trees round 5 (2026-10-05, the gauntlet's wave 98 on the near field bush: "lobed leaf cards two to four times life
+// size with no twigs", "floating leaf confetti"): a shrub atlas (makeSprayAtlas `shrub`) paints a blade-leaved kind's
+// sprays at a shrub's leaf size — the leaves' colour steps along the tile's rows (each leaf its own shade: the smaller
+// the leaves, the closer the steps) at least two fifths again as close as the crown tiles' (the olive's narrow lances,
+// whose steps across a blade come close in either, a sixth) — and its stems on the last
+// tile: grey-brown wood standing on the tile's seat (its bottom centre), a thin share of the tile. The crown atlases keep
+// their shares (above).
+{
+  const savedDocument = globalThis.document, savedImageData = globalThis.ImageData;
+  globalThis.ImageData = ImageData;
+  globalThis.document = { createElement() { return createCanvas(1, 1); } };
+  const S = 512, T = S / SPRAY_ATLAS_TILES;
+  const pixels = (image) => (image.getContext ? image.getContext('2d').getImageData(0, 0, image.width, image.height).data : image.data);
+  /** A tile's colour steps along its rows: the share of neighbouring opaque texel pairs whose colours differ. */
+  const tileSteps = (data, tile) => {
+    const tx = (tile % SPRAY_ATLAS_TILES) * T, ty = Math.floor(tile / SPRAY_ATLAS_TILES) * T;
+    let pairs = 0, steps = 0;
+    for (let y = 0; y < T; y++) for (let x = 0; x < T - 1; x++) {
+      const i = ((ty + y) * S + tx + x) * 4, j = i + 4;
+      if (data[i + 3] < 200 || data[j + 3] < 200) continue;
+      pairs++;
+      if (Math.abs(data[i] - data[j]) + Math.abs(data[i + 1] - data[j + 1]) + Math.abs(data[i + 2] - data[j + 2]) > 18) steps++;
+    }
+    return steps / pairs;
+  };
+  /** A tile's opaque texels (at the alpha test) and its origin. */
+  const tileEdge = (data, tile) => {
+    const tx = (tile % SPRAY_ATLAS_TILES) * T, ty = Math.floor(tile / SPRAY_ATLAS_TILES) * T;
+    let area = 0;
+    for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) if (data[((ty + y) * S + tx + x) * 4 + 3] >= 97) area++;
+    return { area, tx, ty };
+  };
+  report.shrubAtlas = {};
+  try {
+    for (const kind of ['oak', 'beech', 'holmOak', 'chestnut', 'birch', 'mangrove', 'olive', 'acacia', 'spruce', 'broom']) {
+      const shrub = pixels(makeSprayAtlas(kind, mulberry32(79), S, null, 0, true).image);
+      const crown = pixels(makeSprayAtlas(kind, mulberry32(79), S, null, 0).image);
+      const bladed = !['acacia', 'spruce', 'broom'].includes(kind);
+      let shrubSteps = 0, crownSteps = 0;
+      for (let tile = 0; tile < SHRUB_STEM_TILE; tile++) {
+        const a = tileEdge(shrub, tile);
+        assert.ok(a.area > 0.08 * T * T, `${kind}: a shrub spray tile is foliage (${(a.area / (T * T)).toFixed(3)})`);
+        shrubSteps += tileSteps(shrub, tile) / SHRUB_STEM_TILE; crownSteps += tileSteps(crown, tile) / SHRUB_STEM_TILE;
+      }
+      if (bladed) {
+        assert.ok(shrubSteps > (kind === 'olive' ? 1.15 : 1.4) * crownSteps, `${kind}: the shrub's leaves are smaller than the crown's (colour steps ${shrubSteps.toFixed(3)} against ${crownSteps.toFixed(3)})`);
+      }
+      // the stem tile: wood, not leaves — warm grey-brown, thin, standing on the seat
+      const stem = tileEdge(shrub, SHRUB_STEM_TILE);
+      assert.ok(stem.area > 0.025 * T * T && stem.area < 0.2 * T * T, `${kind}: the stems a thin share of their tile (${(stem.area / (T * T)).toFixed(3)})`);
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
+        const i = ((stem.ty + y) * S + stem.tx + x) * 4;
+        if (shrub[i + 3] >= 200) { r += shrub[i]; g += shrub[i + 1]; b += shrub[i + 2]; n++; }
+      }
+      const c = new THREE.Color(r / n / 255, g / n / 255, b / n / 255), hsl = { h: 0, s: 0, l: 0 };
+      c.getHSL(hsl);
+      assert.ok(r >= g && g >= b && hsl.s < 0.3 && hsl.l > 0.15 && hsl.l < 0.6, `${kind}: the stems are grey-brown bark (${c.getHexString()})`);
+      let seat = 0;
+      for (let y = Math.floor(T * 0.9); y < Math.floor(T * 0.95); y++) for (let x = Math.floor(T * 0.4); x < Math.ceil(T * 0.6); x++) {
+        if (shrub[((stem.ty + y) * S + stem.tx + x) * 4 + 3] >= 97) seat++;
+      }
+      assert.ok(seat > 0, `${kind}: the stems stand on the card's seat`);
+      report.shrubAtlas[kind] = { steps: +shrubSteps.toFixed(3), crownSteps: +crownSteps.toFixed(3), stems: +(stem.area / (T * T)).toFixed(3) };
+    }
+  } finally {
+    globalThis.document = savedDocument;
+    globalThis.ImageData = savedImageData;
+  }
 }
 
 console.log(JSON.stringify(report));
