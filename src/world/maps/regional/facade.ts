@@ -482,7 +482,7 @@ export function dentilCornice(sink: PartSink, bucket: RegionalBucket, face: Face
  * cheeks closing it back to the slope, its little roof of the house's covering. `roof` is the house's roof geometry in
  * its own frame (house.ts roofGeometry: ridge along z, slopes falling to ±x). Dressing only: a dormer sits on a roof.
  */
-export interface DormerStyle {
+interface DormerStyle {
   kind: 'gable' | 'shed';
   wall: RegionalBucket;
   covering: RegionalBucket;
