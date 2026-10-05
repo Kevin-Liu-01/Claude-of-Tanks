@@ -62,31 +62,31 @@ const SOUTH_TOWN = [
 // the 36 buildings above keep their places and their streams, and the posada keeps its yard before its door.
 const SOUTH_STREETS = [
   // the main street below the square, west side, and south of the crossroads
-  { structure: 'rowhouse', x: -10.99, z: -267.75, yawDeg: 90, terrace: true },
-  { structure: 'rowhouse', x: -13.03, z: -239.57, yawDeg: 90, terrace: true },
-  { structure: 'cottage', x: -10.98, z: -230.19, yawDeg: 90, terrace: true },
+  { structure: 'rowhouse', x: -13.06, z: -267.97, yawDeg: 90, terrace: true },
+  { structure: 'rowhouse', x: -12.22, z: -239.34, yawDeg: 90, terrace: true },
+  { structure: 'cottage', x: -10.47, z: -230.2, yawDeg: 90, terrace: true },
   // the main street south of the crossroads, east side
-  { structure: 'cottage', x: 10.8, z: -267.82, yawDeg: -90, terrace: true },
+  { structure: 'cottage', x: 11.03, z: -267.52, yawDeg: -90, terrace: true },
   // the west ford road, south side
-  { structure: 'cottage', x: -20.46, z: -262.86, yawDeg: -6.8, terrace: true },
-  { structure: 'cottage', x: -27.86, z: -264.29, yawDeg: -6.8, terrace: true },
-  { structure: 'cottage', x: -35.31, z: -264.9, yawDeg: -6.8, terrace: true },
-  { structure: 'cottage', x: -42.48, z: -265.93, yawDeg: -6.8, terrace: true },
-  { structure: 'cottage', x: -49.72, z: -267.07, yawDeg: -6.8, terrace: true },
+  { structure: 'cottage', x: -24.45, z: -263.93, yawDeg: -6.8, terrace: true },
+  { structure: 'cottage', x: -32.42, z: -264.41, yawDeg: -6.8, terrace: true },
+  { structure: 'cottage', x: -40.18, z: -265.8, yawDeg: -6.8, terrace: true },
+  { structure: 'cottage', x: -47.31, z: -266.33, yawDeg: -6.8, terrace: true },
+  { structure: 'cottage', x: -54.2, z: -267.55, yawDeg: -6.8, terrace: true },
   // the west ford road, north side
-  { structure: 'cottage', x: -24.17, z: -242.33, yawDeg: 173.2, terrace: true },
-  { structure: 'cottage', x: -31.62, z: -243.16, yawDeg: 173.2, terrace: true },
-  { structure: 'rowhouse', x: -42.12, z: -242.53, yawDeg: 173.2, terrace: true },
-  { structure: 'cottage', x: -51.15, z: -245.79, yawDeg: 173.2, terrace: true },
-  { structure: 'cottage', x: -58.72, z: -246.29, yawDeg: 173.2, terrace: true },
-  { structure: 'cottage', x: -66.48, z: -247.25, yawDeg: 173.2, terrace: true },
+  { structure: 'cottage', x: -22.59, z: -241.73, yawDeg: 173.2, terrace: true },
+  { structure: 'cottage', x: -29.53, z: -243.16, yawDeg: 173.2, terrace: true },
+  { structure: 'rowhouse', x: -39.7, z: -242.15, yawDeg: 173.2, terrace: true },
+  { structure: 'cottage', x: -49.86, z: -244.95, yawDeg: 173.2, terrace: true },
+  { structure: 'cottage', x: -57.83, z: -246.04, yawDeg: 173.2, terrace: true },
+  { structure: 'cottage', x: -65.28, z: -246.79, yawDeg: 173.2, terrace: true },
   // the east road, north side
-  { structure: 'cottage', x: 17.78, z: -244.83, yawDeg: -160, terrace: true },
-  { structure: 'cottage', x: 24.28, z: -247.86, yawDeg: -160, terrace: true },
-  { structure: 'rowhouse', x: 33.81, z: -249.07, yawDeg: -160, terrace: true },
-  { structure: 'cottage', x: 42.39, z: -254.13, yawDeg: -160, terrace: true },
-  { structure: 'cottage', x: 49.11, z: -256.73, yawDeg: -160, terrace: true },
-  { structure: 'rowhouse', x: 58.61, z: -258.12, yawDeg: -160, terrace: true },
+  { structure: 'cottage', x: 16.32, z: -244.77, yawDeg: -160, terrace: true },
+  { structure: 'cottage', x: 23.9, z: -247.09, yawDeg: -160, terrace: true },
+  { structure: 'rowhouse', x: 33.19, z: -249.29, yawDeg: -160, terrace: true },
+  { structure: 'cottage', x: 41.6, z: -253.39, yawDeg: -160, terrace: true },
+  { structure: 'cottage', x: 48.26, z: -255.99, yawDeg: -160, terrace: true },
+  { structure: 'rowhouse', x: 57.42, z: -258.65, yawDeg: -160, terrace: true },
 ];
 // The ruined mills on the gorge floor beside the viaduct's piers (their mirrors stand on the north half of the floor).
 const MILLS = [
