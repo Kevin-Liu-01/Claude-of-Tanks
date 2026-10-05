@@ -294,9 +294,14 @@ carries it): while the film renders, every combat sound the timeline produces �
 gun reports, armour hits (penetrating, absorbed, ricochet, ERA), HE bursts,
 shell strikes on terrain and vehicle destructions — is logged at its exact
 instant and position. After the last frame `studioFilmAudio.ts` mixes them
-offline (OfflineAudioContext, 48 kHz stereo) from the game's baked SFX with the
-live mixer's distance gain and air-absorption curves, panned against the film
-camera at that instant and delayed by the speed of sound beyond 40 m. Speed
+offline (OfflineAudioContext, 48 kHz stereo) from the game's recorded sound
+library (`public/audio/sfx`, see `docs/AUDIO.md`), layered as the engine layers
+them: a shot is its bore's punch, close and distant reports and the map's echo
+tail; a kill is the blast, its sub, the debris and, after an ammunition fire,
+the turret landing. Each sound is panned against the film camera at that
+instant, attenuated by distance and air absorption and delayed by the speed of
+sound beyond 40 m. Nothing is synthesized: a missing recording fails the
+soundtrack rather than playing a stand-in. Speed
 ramps slow the sound with the picture (a 0.2× beat plays pitched down and
 stretched). A seeded RNG picks the variants, so a film mixes the same sound
 every time. The mix is encoded with WebCodecs (AAC-LC in MP4, with an edit

@@ -3805,7 +3805,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
             },
             filmMsAt: (timelineMs) => map.filmAt(timelineMs),
             speedAt: (timelineMs) => map.speedAt(timelineMs),
-          }, { durationS: session.frames / session.fps, seed: sceneMeta.seed || 5000 });
+          }, { durationS: session.frames / session.fps, seed: sceneMeta.seed || 5000, mapId: getWorld()?.mapId ?? null });
         } : undefined,
       }, {
         width: size.width,

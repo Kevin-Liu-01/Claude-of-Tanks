@@ -5,13 +5,17 @@
  * timeline produces (gun reports, armour hits, terrain strikes, HE bursts,
  * vehicle destructions) at the exact timeline instant and world position.
  * After the last frame the cues are mixed offline with an OfflineAudioContext
- * from the game's own baked SFX (public/audio/sfx, the audioPolicy.ts catalog,
- * distance gain and air-absorption curves, and the layer recipes of
- * src/audio/audio.ts): each sound is spatialized against the film camera at
- * that instant, arrives after the speed-of-sound delay, and follows the film's
+ * from the game's recorded sound library (public/audio/sfx, PR #9's generated
+ * set; docs/AUDIO.md), layered as src/audio/audioEngine.ts layers them: a shot
+ * is the bore's punch, close report, distant report and the map's echo tail;
+ * a kill is the blast, its sub, the debris (and the turret landing after an
+ * ammunition fire). Each sound is spatialized against the film camera at that
+ * instant, arrives after the speed-of-sound delay, and follows the film's
  * speed ramp (a 0.2x beat plays its boom pitched down and stretched, as a
  * high-speed camera's slowed soundtrack would). Deterministic: a seeded RNG
- * picks variants and jitter, so the same film mixes the same samples.
+ * picks variants and jitter, so the same film mixes the same recordings.
+ * Nothing is synthesized and no recording stands in for another: a missing
+ * file fails the soundtrack.
  */
 import type { MuxAudioTrack } from './studioFilmMux.ts';
 
@@ -29,12 +33,98 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-// PR #9's sound engine (f21e2cf1e) replaced audioPolicy.ts and its procedural samples with the generated SFX library.
-// Until this soundtrack is mapped onto those assets, the distance law is the old one kept here and no old sample name
-// resolves, so a Studio export's soundtrack comes out silent instead of failing (the media pipeline scores its films
-// separately, tools/media-r5/score).
+// The engine's data this module plays by, copied rather than imported: the Studio's chunks must not import a module
+// of the game's audio chunk (Rolldown would split it into a request of its own whenever the game's audio loads).
+// studioFilmAudio.selftest.mjs holds each copy to its source: the recordings and their variant counts to
+// sfxManifest.generated.ts, the weapon classes to weaponAudio.ts, the echo tails to environmentScenes.ts.
 const SPEED_OF_SOUND_MPS = 340;
-const SFX_FILES: Readonly<Record<string, string>> = {};
+/** The recordings a film plays: [group directory, variant count] (public/audio/sfx/<group>/<id>_<k>.webm). */
+export const FILM_SFX: Readonly<Record<string, readonly [string, number]>> = Object.freeze({
+  blast_punch_light: ['weapons', 3], blast_punch_medium: ['weapons', 3], blast_punch_heavy: ['weapons', 3],
+  mg_rifle_close: ['weapons', 3], mg_heavy_close: ['weapons', 4],
+  ac_20_close: ['weapons', 4], ac_25_close: ['weapons', 4], ac_30_close: ['weapons', 4], ac_40_close: ['weapons', 4], ac_50_close: ['weapons', 4],
+  gun_90_close: ['weapons', 3], gun_105_close: ['weapons', 3], gun_120_close: ['weapons', 3], gun_125_close: ['weapons', 3],
+  gun_130_close: ['weapons', 3], gun_152_close: ['weapons', 3], atgm_launch: ['weapons', 3], rocket_salvo: ['weapons', 2],
+  mg_far: ['weapons', 3], ac_far_light: ['weapons', 3], ac_far_heavy: ['weapons', 3],
+  gun_far_light: ['weapons', 2], gun_far_medium: ['weapons', 2], gun_far_heavy: ['weapons', 2],
+  tail_open: ['weapons', 2], tail_forest: ['weapons', 2], tail_urban: ['weapons', 2], tail_mountain: ['weapons', 2],
+  pen_heavy: ['impacts', 3], pen_light: ['impacts', 3], hull_thud_sub: ['impacts', 3], nonpen_heavy: ['impacts', 3],
+  ricochet_heavy: ['impacts', 4], ricochet_light: ['impacts', 4], era_det: ['impacts', 2], ground_dirt: ['impacts', 3],
+  expl_he_small: ['impacts', 3], expl_he_medium: ['impacts', 3], expl_he_large: ['impacts', 2], blast_sub: ['impacts', 3],
+  burnout_blast: ['destruction', 1], debris_metal: ['destruction', 2], tank_explode: ['destruction', 2],
+  tank_explode_ammo: ['destruction', 2], turret_land: ['destruction', 2],
+});
+
+type WeaponFamily = 'mg' | 'autocannon' | 'cannon' | 'launcher';
+interface FilmWeapon {
+  readonly family: WeaponFamily;
+  /** Close report fades out across these ranges (m), the distant one fades in across the next. */
+  readonly closeFadeM: readonly [number, number];
+  readonly farFadeM: readonly [number, number];
+  readonly tailRate: number;
+  readonly tailGain: number;
+  readonly close: string;
+  readonly far: string;
+}
+const W = (family: WeaponFamily, closeFadeM: readonly [number, number], farFadeM: readonly [number, number], tailRate: number, tailGain: number,
+  close: string, far: string): FilmWeapon => Object.freeze({ family, closeFadeM, farFadeM, tailRate, tailGain, close, far });
+/** weaponAudio.ts WEAPON_CLASSES with audioEngine.ts WEAPON_CLOSE / WEAPON_FAR, by class id. */
+export const FILM_WEAPONS: Readonly<Record<string, FilmWeapon>> = Object.freeze({
+  mg_rifle: W('mg', [30, 140], [40, 160], 1.45, 0.12, 'mg_rifle_close', 'mg_far'),
+  mg_heavy: W('mg', [40, 190], [50, 220], 1.3, 0.18, 'mg_heavy_close', 'mg_far'),
+  ac_20: W('autocannon', [45, 210], [60, 260], 1.22, 0.3, 'ac_20_close', 'ac_far_light'),
+  ac_25: W('autocannon', [50, 230], [65, 280], 1.16, 0.34, 'ac_25_close', 'ac_far_light'),
+  ac_30: W('autocannon', [55, 250], [70, 300], 1.1, 0.38, 'ac_30_close', 'ac_far_light'),
+  ac_40: W('autocannon', [60, 270], [80, 320], 1.04, 0.44, 'ac_40_close', 'ac_far_heavy'),
+  ac_50: W('autocannon', [65, 290], [85, 340], 0.98, 0.5, 'ac_50_close', 'ac_far_heavy'),
+  gun_90: W('cannon', [140, 330], [90, 360], 0.96, 0.62, 'gun_90_close', 'gun_far_light'),
+  gun_105: W('cannon', [145, 360], [95, 400], 0.93, 0.72, 'gun_105_close', 'gun_far_light'),
+  gun_120: W('cannon', [150, 390], [100, 440], 0.9, 0.82, 'gun_120_close', 'gun_far_medium'),
+  gun_125: W('cannon', [150, 400], [100, 450], 0.88, 0.86, 'gun_125_close', 'gun_far_medium'),
+  gun_130: W('cannon', [155, 420], [110, 480], 0.85, 0.92, 'gun_130_close', 'gun_far_heavy'),
+  gun_152: W('cannon', [160, 450], [120, 520], 0.8, 1, 'gun_152_close', 'gun_far_heavy'),
+  rocket_heavy: W('launcher', [80, 360], [100, 460], 0.9, 0.85, 'rocket_salvo', 'gun_far_heavy'),
+});
+/** weaponAudio.ts weaponClassForCaliber. */
+export function filmWeaponClass(caliberMm: number): string {
+  const mm = Number.isFinite(caliberMm) ? caliberMm : 100;
+  if (mm < 9) return 'mg_rifle';
+  if (mm < 16) return 'mg_heavy';
+  if (mm < 23) return 'ac_20';
+  if (mm < 27) return 'ac_25';
+  if (mm < 33) return 'ac_30';
+  if (mm < 45) return 'ac_40';
+  if (mm < 61) return 'ac_50';
+  if (mm < 95) return 'gun_90';
+  if (mm < 111) return 'gun_105';
+  if (mm < 123) return 'gun_120';
+  if (mm < 128) return 'gun_125';
+  if (mm < 146) return 'gun_130';
+  if (mm < 200) return 'gun_152';
+  return 'rocket_heavy';
+}
+/** environmentScenes.ts MAP_SCENES[map].tail: the echo a shot leaves on each battlefield ('open' when unlisted). */
+export const FILM_TAILS: Readonly<Record<string, 'urban' | 'forest' | 'mountain' | 'none'>> = Object.freeze({
+  urban: 'urban', railyard: 'urban', foundry: 'urban', ruinspires: 'urban', blackglass: 'urban',
+  autumn: 'forest', delta: 'forest', monsoon: 'forest', orchard: 'forest', longleaf: 'forest', mangrove: 'forest',
+  fjord: 'mountain', badlands: 'mountain', alpine: 'mountain', caldera: 'mountain', titan_gorge: 'mountain',
+  skybridge: 'mountain', copper_mesa: 'mountain', reservoir: 'mountain', cliffbridge: 'mountain',
+  moon: 'none',
+});
+type FilmTail = 'open' | 'urban' | 'forest' | 'mountain' | 'none';
+/** audioEngine.ts punchFor and BLAST_DB: the punch under a close report (a recording by bore, cut short). */
+function punchFor(family: WeaponFamily, caliberMm: number): { id: string; rate: number; maxDurS: number; db: number } | null {
+  if (family === 'mg') return { id: 'blast_punch_light', rate: clamp(1.12 - (caliberMm - 7.62) / 50, 0.96, 1.12), maxDurS: 0.22, db: -19 };
+  if (family === 'autocannon') return { id: 'blast_punch_medium', rate: clamp(1.15 - (caliberMm - 20) / 60, 0.9, 1.15), maxDurS: 0.32, db: -16 };
+  if (family === 'cannon') return { id: 'blast_punch_heavy', rate: clamp(1.1 - (caliberMm - 90) / 200, 0.88, 1.1), maxDurS: 0.5, db: -6 };
+  return null;
+}
+const clamp = (v: number, lo: number, hi: number): number => (v < lo ? lo : v > hi ? hi : v);
+const ramp = (v: number, [a, b]: readonly [number, number]): number => clamp((v - a) / Math.max(1e-6, b - a), 0, 1);
+const fromDb = (db: number): number => Math.pow(10, db / 20);
+/** A gun carries: the engine's compressed weapon law (25 m reference, rolloff 0.6). */
+const weaponDistanceGain = (distanceM: number): number => Math.pow(25 / Math.max(25, distanceM), 0.6);
+/** Everything else falls off as a point source (the old film law, kept for hits, bursts and kills). */
 const worldDistanceGain = (distanceM: number): number => Math.pow(Math.min(22 / Math.max(0.5, distanceM || 0.5), 1), 1.5);
 const distanceLowpassHz = (distanceM: number): number => Math.max(450, Math.min(18000, 18000 * (40 / (40 + Math.max(0, distanceM || 0)))));
 
@@ -51,11 +141,16 @@ export interface FilmSoundCue {
 }
 
 export interface FilmSoundLayer {
+  /** A recording id of FILM_SFX. */
   readonly name: string;
+  /** Which of its variants (public/audio/sfx/<group>/<name>_<variant>.webm). */
+  readonly variant: number;
   /** Seconds after the cue's arrival. */
   readonly delayS: number;
   readonly gain: number;
   readonly rate: number;
+  /** Cut the recording short (seconds of its own time), as the engine cuts the punch under a report. */
+  readonly maxDurS?: number;
 }
 
 export interface FilmSoundVoice {
@@ -70,70 +165,71 @@ export function filmTravelDelayS(distanceM: number): number {
   return distanceM > 40 ? Math.min(1.6, distanceM / SPEED_OF_SOUND_MPS) : 0;
 }
 
-function cannonCarry(distanceM: number): number {
-  return 1 + 0.85 * Math.max(0, Math.min(1, (distanceM - 180) / 720));
-}
-
 /**
- * The baked layers for one cue heard from `distanceM` (pure; mirrors the
- * baked voices of src/audio/audio.ts for a non-player source). Null when the
- * sound is inaudible at that range.
+ * The recorded layers for one cue heard from `distanceM` (pure; the layering of src/audio/audioEngine.ts for a source
+ * that is not the player's own tank). Null when the sound is inaudible at that range.
  */
-export function filmSoundVoice(cue: FilmSoundCue, distanceM: number, random: () => number): FilmSoundVoice | null {
+export function filmSoundVoice(cue: FilmSoundCue, distanceM: number, random: () => number, tail: FilmTail = 'open'): FilmSoundVoice | null {
   const d = Math.max(0.5, distanceM);
   const jitter = () => 0.96 + random() * 0.08;
-  const pick = <T>(options: readonly T[]): T => options[Math.min(options.length - 1, Math.floor(random() * options.length))];
+  const layer = (name: string, gain: number, rate = jitter(), delayS = 0, maxDurS?: number): FilmSoundLayer => ({
+    name, variant: Math.min(FILM_SFX[name]![1] - 1, Math.floor(random() * FILM_SFX[name]![1])), delayS, gain, rate, ...(maxDurS ? { maxDurS } : {}),
+  });
   const base = worldDistanceGain(d);
+  const heavy = (cue.caliberMm || 120) >= 100;
   switch (cue.kind) {
     case 'cannon': {
-      if (base < 0.00075) return null;
       const caliber = cue.caliberMm || 120;
-      const cls = caliber > 130 ? 'huge' : caliber > 105 ? 'large' : caliber > 76 ? 'medium' : 'small';
-      const crackK = Math.max(0, Math.min(1, 1 - (d - 45) / 135));
-      const layers: FilmSoundLayer[] = [{ name: `fire_${cls}_sub`, delayS: 0, gain: 0.72 + 0.28 * crackK, rate: jitter() }];
-      if (crackK > 0.02) layers.push({ name: `fire_${cls}_crack`, delayS: random() * 0.006, gain: crackK, rate: jitter() });
-      layers.push({ name: `fire_${cls}_tail`, delayS: 0.012 + random() * 0.018, gain: 1, rate: jitter() });
-      return { gain: base * cannonCarry(d), lowpassBiasM: 0, layers };
+      const weapon = FILM_WEAPONS[filmWeaponClass(caliber)]!;
+      const gain = weaponDistanceGain(d);
+      if (gain < 0.004) return null;
+      const closeK = 1 - ramp(d, weapon.closeFadeM), farK = ramp(d, weapon.farFadeM);
+      const layers: FilmSoundLayer[] = [];
+      const punch = closeK > 0.05 ? punchFor(weapon.family, caliber) : null;
+      if (punch) layers.push(layer(punch.id, fromDb(punch.db), punch.rate, 0, punch.maxDurS));
+      if (closeK > 0.03) layers.push(layer(weapon.close, closeK));
+      // the distant banks are loudness-mastered booms, the close reports peak-mastered cracks: the boom sits under
+      if (farK > 0.03) layers.push(layer(weapon.far, farK * fromDb(-3)));
+      if (tail !== 'none') layers.push(layer(`tail_${tail}`, weapon.tailGain * fromDb(-12), weapon.tailRate * jitter(), 0.035 + random() * 0.02));
+      return { gain, lowpassBiasM: 0, layers };
     }
     case 'pen':
       if (base < 0.0015) return null;
-      return { gain: base * 0.95, lowpassBiasM: 0, layers: [{ name: pick(['impact_pen_a', 'impact_pen_b']), delayS: 0, gain: 1, rate: jitter() }] };
+      return { gain: base * 0.95, lowpassBiasM: 0, layers: [layer(heavy ? 'pen_heavy' : 'pen_light', 1), layer('hull_thud_sub', 0.7)] };
     case 'nonpen':
       if (base < 0.0015) return null;
-      return { gain: base * 0.95, lowpassBiasM: 0, layers: [{ name: pick(['impact_absorb_a', 'impact_absorb_b']), delayS: 0, gain: 1, rate: jitter() }] };
+      return { gain: base * 0.95, lowpassBiasM: 0, layers: [layer('nonpen_heavy', 1)] };
     case 'ricochet':
       if (base < 0.0015) return null;
-      return { gain: base * 0.9, lowpassBiasM: 0, layers: [{ name: pick(['ricochet_a', 'ricochet_b', 'ricochet_c']), delayS: 0, gain: 1, rate: 0.94 + random() * 0.12 }] };
+      return { gain: base * 0.9, lowpassBiasM: 0, layers: [layer(heavy ? 'ricochet_heavy' : 'ricochet_light', 1, 0.94 + random() * 0.12)] };
     case 'era':
       if (base < 0.0015) return null;
-      return { gain: base * 0.9, lowpassBiasM: 0, layers: [{ name: 'era_pop', delayS: 0, gain: 1, rate: jitter() }] };
+      return { gain: base * 0.9, lowpassBiasM: 0, layers: [layer('era_det', 1)] };
     case 'dirt':
       if (base < 0.003) return null;
-      return { gain: base * 0.75, lowpassBiasM: 60, layers: [{ name: 'impact_dirt', delayS: 0, gain: 1, rate: jitter() }] };
+      return { gain: base * 0.75, lowpassBiasM: 60, layers: [layer('ground_dirt', 1)] };
     case 'he': {
       if (base < 0.0015) return null;
-      const rate = Math.max(0.82, Math.min(1.18, 0.9 + (122 - (cue.caliberMm || 122)) / 300)) * (0.97 + random() * 0.06);
-      return { gain: base * 0.85, lowpassBiasM: 120, layers: [
-        { name: pick(['expl_he_a', 'expl_he_b']), delayS: 0, gain: 1, rate },
-        { name: 'impact_dirt', delayS: 0.01, gain: 0.9, rate: jitter() },
-      ] };
+      const caliber = cue.caliberMm || 122;
+      const size = caliber >= 120 ? 'large' : caliber >= 85 ? 'medium' : 'small';
+      const layers = [layer(`expl_he_${size}`, 1, Math.max(0.85, Math.min(1.12, 0.94 + (122 - caliber) / 400)) * jitter())];
+      if (size === 'large') layers.push(layer('blast_sub', 0.8, 0.97));
+      return { gain: base * 0.85, lowpassBiasM: 120, layers };
     }
     case 'tank': {
       const gain = Math.pow(Math.min(1, 26 / d), 1.6);
       if (gain < 0.002) return null;
       if (cue.cause === 'fire') {
-        return { gain: gain * 0.95, lowpassBiasM: 0, layers: [
-          { name: 'expl_burnout', delayS: 0, gain: 1, rate: jitter() },
-          { name: 'expl_tank_debris', delayS: 0.12 + random() * 0.08, gain: 0.45, rate: jitter() },
-        ] };
+        return { gain: gain * 0.95, lowpassBiasM: 0, layers: [layer('burnout_blast', 1), layer('debris_metal', 0.45, jitter(), 0.12 + random() * 0.08)] };
       }
+      // an ammunition fire throws the turret: the blast lower and heavier, the turret landing after it
       const rack = cue.cause !== 'shot';
-      const rate = (rack ? 0.98 : 1.06) * (0.97 + random() * 0.06);
       const layers: FilmSoundLayer[] = [
-        { name: pick(['expl_tank_core_a', 'expl_tank_core_b']), delayS: 0, gain: 1, rate },
-        { name: 'expl_tank_debris', delayS: 0.06 + random() * 0.09, gain: rack ? 0.9 : 0.7, rate: jitter() },
+        layer(rack ? 'tank_explode_ammo' : 'tank_explode', 1),
+        layer('blast_sub', rack ? fromDb(2) : fromDb(1), rack ? 0.8 : 0.88),
+        layer('debris_metal', rack ? 0.9 : 0.7, jitter(), 0.06 + random() * 0.09),
       ];
-      if (rack) layers.push({ name: 'expl_turret_pop', delayS: 0.10 + random() * 0.08, gain: 0.95, rate: jitter() });
+      if (rack) layers.push(layer('turret_land', 0.85, jitter(), 1.3 + random() * 0.3));
       return { gain: gain * (rack ? 1 : 0.85), lowpassBiasM: 0, layers };
     }
     default:
@@ -160,6 +256,8 @@ export interface FilmSoundOptions {
   readonly sampleRate?: number;
   readonly seed?: number;
   readonly baseUrl?: string;
+  /** The battlefield, for its gun echo (FILM_TAILS). */
+  readonly mapId?: string | null;
 }
 
 /** Mix the cues into a stereo buffer (OfflineAudioContext); null when nothing is audible. */
@@ -179,7 +277,7 @@ export async function renderFilmSoundtrack(
     ports.listenerAt(cue.timelineMs, listener);
     const dx = cue.x - listener.x, dy = cue.y - listener.y, dz = cue.z - listener.z;
     const distance = Math.max(0.5, Math.hypot(dx, dy, dz));
-    const voice = filmSoundVoice(cue, distance, random);
+    const voice = filmSoundVoice(cue, distance, random, FILM_TAILS[options.mapId ?? ''] ?? 'open');
     if (!voice) continue;
     const arrivalMs = cue.timelineMs + filmTravelDelayS(distance) * 1000;
     const at = ports.filmMsAt(arrivalMs) / 1000;
@@ -189,15 +287,14 @@ export async function renderFilmSoundtrack(
       lowpassHz: distanceLowpassHz(distance + voice.lowpassBiasM), voice });
   }
   if (!planned.length) return null;
-  const names = new Set(planned.flatMap((entry) => entry.voice.layers.map((layer) => layer.name)));
   const base = options.baseUrl ?? '/';
+  const fileOf = (layer: FilmSoundLayer): string => `${base}audio/sfx/${FILM_SFX[layer.name]![0]}/${layer.name}_${layer.variant}.webm`;
+  const files = new Set(planned.flatMap((entry) => entry.voice.layers.map(fileOf)));
   const buffers = new Map<string, AudioBuffer>();
-  await Promise.all([...names].map(async (name) => {
-    const file = SFX_FILES[name];
-    if (!file) return;
-    const response = await fetch(`${base}audio/sfx/${file}`);
+  await Promise.all([...files].map(async (file) => {
+    const response = await fetch(file);
     if (!response.ok) throw new Error(`Missing film sound ${file}`);
-    buffers.set(name, await context.decodeAudioData(await response.arrayBuffer()));
+    buffers.set(file, await context.decodeAudioData(await response.arrayBuffer()));
   }));
   // Gentle bus glue, then a final peak normalisation below.
   const bus = context.createDynamicsCompressor();
@@ -213,7 +310,7 @@ export async function renderFilmSoundtrack(
     gain.gain.value = entry.voice.gain;
     lowpass.connect(gain).connect(panner).connect(bus);
     for (const layer of entry.voice.layers) {
-      const buffer = buffers.get(layer.name);
+      const buffer = buffers.get(fileOf(layer));
       if (!buffer) continue;
       const source = context.createBufferSource();
       source.buffer = buffer;
@@ -221,7 +318,15 @@ export async function renderFilmSoundtrack(
       const layerGain = context.createGain();
       layerGain.gain.value = layer.gain;
       source.connect(layerGain).connect(lowpass);
-      source.start(entry.at + layer.delayS / entry.rate);
+      const at = entry.at + layer.delayS / entry.rate;
+      source.start(at);
+      if (layer.maxDurS) {
+        // cut short with a 40 ms fade, as the engine cuts the punch under a report
+        const end = at + layer.maxDurS / (layer.rate * entry.rate);
+        layerGain.gain.setValueAtTime(layer.gain, Math.max(at, end - 0.04));
+        layerGain.gain.linearRampToValueAtTime(0, end);
+        source.stop(end + 0.005);
+      }
     }
   }
   const mixed = await context.startRendering();
