@@ -224,10 +224,16 @@ vec3 blackbody( float h ) {
   return mix( c, vec3( 1.0, 0.93, 0.74 ), smoothstep( 0.72, 1.0, h ) );
 }
 void main() {
-  // domain warp: a drifting low-frequency field pushes the silhouette around, harder as the puff ages
-  vec2 w = texture2D( uNoise, vUv * 0.85 + vMisc2.xy ).rg - 0.5;
-  vec2 uv = clamp( vUv + w * vMisc.z, 0.01, 0.99 ) * 0.25;
-  vec4 s = mix( texture2D( uMap, vCellA + uv ), texture2D( uMap, vCellB + uv ), vFMix );
+  #ifdef MEDIA_LITE
+    // the mobile tier: no warp fetch and the nearer flipbook frame only (two fewer texture reads per fragment)
+    vec2 uv = clamp( vUv, 0.01, 0.99 ) * 0.25;
+    vec4 s = texture2D( uMap, ( vFMix < 0.5 ? vCellA : vCellB ) + uv );
+  #else
+    // domain warp: a drifting low-frequency field pushes the silhouette around, harder as the puff ages
+    vec2 w = texture2D( uNoise, vUv * 0.85 + vMisc2.xy ).rg - 0.5;
+    vec2 uv = clamp( vUv + w * vMisc.z, 0.01, 0.99 ) * 0.25;
+    vec4 s = mix( texture2D( uMap, vCellA + uv ), texture2D( uMap, vCellB + uv ), vFMix );
+  #endif
   float d = s.a;
   // coverage: soft media thin out from the rim; eroding media tear apart from their thin texels inward
   float er = vT * 0.34;

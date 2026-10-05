@@ -29,22 +29,41 @@ export const CLOD_DRAG = 0.35;
 export const CLOD_GRAVITY = 9.8;
 
 /**
- * Fly the chunk on the shader's own law against the ground under it (8 ms steps) and record where and when it lands:
- * it stops dead there (no sliding, no spinning in place) and its resting height is the ground AT the landing point.
+ * Where and when a chunk lands on the shader's own law: it stops dead there (no sliding, no spinning in place) and
+ * rests on the ground AT the landing point. Solved, not stepped: the apex and the descent crossing by bisection on
+ * the closed-form height, then the ground re-read at the landing point and the crossing solved again (three terrain
+ * lookups per chunk instead of a few hundred).
  */
 export function landClod(o: ClodRecord, groundY: (x: number, z: number) => number): void {
-  const k = CLOD_DRAG;
-  let t = 0;
-  for (let step = 0; step < 600; step++) {
-    t += 0.008;
-    const s = (1 - Math.exp(-k * t)) / k;
-    const x = o.px + o.vx * s, z = o.pz + o.vz * s;
-    const y = o.py + o.vy * s - 0.5 * CLOD_GRAVITY * t * t;
-    const vy = o.vy * Math.exp(-k * t) - CLOD_GRAVITY * t;
-    const g = groundY(x, z);
-    if (vy < 0 && y <= g + o.scale * 0.35) { o.landS = t; o.restY = g; return; }
+  const k = CLOD_DRAG, g = CLOD_GRAVITY;
+  const s = (t: number): number => (1 - Math.exp(-k * t)) / k;
+  const y = (t: number): number => o.py + o.vy * s(t) - 0.5 * g * t * t;
+  // apex: vy e^-kt = g t (decreasing in t)
+  let lo = 0, hi = Math.max(0.05, o.vy / g + 0.1);
+  if (o.vy <= 0) hi = 0;
+  for (let i = 0; i < 24 && hi > 0; i++) {
+    const mid = (lo + hi) / 2;
+    if (o.vy * Math.exp(-k * mid) - g * mid > 0) lo = mid; else hi = mid;
   }
-  o.landS = t; o.restY = groundY(o.px, o.pz);
+  const apex = hi;
+  let rest = groundY(o.px, o.pz);
+  let t = apex;
+  for (let pass = 0; pass < 2; pass++) {
+    const target = rest + o.scale * 0.35;
+    if (y(apex) <= target) { t = apex; }
+    else {
+      let a = apex, b = apex + 0.5;
+      while (y(b) > target && b < apex + 12) b += 0.5;
+      for (let i = 0; i < 28; i++) {
+        const mid = (a + b) / 2;
+        if (y(mid) > target) a = mid; else b = mid;
+      }
+      t = b;
+    }
+    rest = groundY(o.px + o.vx * s(t), o.pz + o.vz * s(t));
+  }
+  o.landS = Math.max(0.02, t);
+  o.restY = rest;
 }
 
 const CLOD_VERT = /* glsl */ `

@@ -1732,7 +1732,9 @@ function* createFxSteps(
     _puffO.life = Math.max(0.17, -birthOffset * 3.0);
     _puffO.size0 = 0.55 * s * axSizeC * coreK; _puffO.size1 = 1.38 * s * axSizeC * coreK;
     _puffO.rotVel = (rng() - 0.5) * 2;
-    col3(0xffffff, _puffO.col0); col3(0xffc558, _puffO.col1);
+    // combat-fx lane: the second core card cools through orange (the propellant's secondary flash), and the side
+    // petals are short, warm licks around the forward cone — the critics' "cream-white petal-shaped flash"
+    col3(0xffffff, _puffO.col0); col3(0xff9a3c, _puffO.col1);
     particles.emit('flash', _puffO);
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2 + 0.4 + rng() * 0.6;
@@ -1747,10 +1749,10 @@ function* createFxSteps(
       _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
       _jetO.life = Math.max(0.07 + rng() * 0.03, -birthOffset * 1.5);
       _jetO.width = 0.20 * s * axSize;
-      _jetO.len0 = 0.42 * s; _jetO.len1 = (1.0 + rng() * 0.4) * s;
+      _jetO.len0 = 0.3 * s; _jetO.len1 = (0.6 + rng() * 0.3) * s;
       _jetO.seed = rng();
-      col3(0xfff0c4, _jetO.col);
-      _jetO.alpha = 0.92 * axAtt; _jetO.birthOffset = birthOffset;
+      col3(0xffc77a, _jetO.col);
+      _jetO.alpha = 0.55 * axAtt; _jetO.birthOffset = birthOffset;
       particles.emit('jet', _jetO);
     }
     if (birthOffset >= 0) {

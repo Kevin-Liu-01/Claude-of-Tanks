@@ -140,6 +140,7 @@ export function createCombatFx(o: CombatFxOptions): CombatFx {
       depthTest: true,
       blending: THREE.NormalBlending,
       fog: true,
+      ...(mobile ? { defines: { MEDIA_LITE: '' } } : {}),
     });
   }
 
@@ -221,8 +222,8 @@ export function createCombatFx(o: CombatFxOptions): CombatFx {
   const _sun = new THREE.Vector3();
   function refreshLight(): void {
     const ud = o.scene?.userData as { sunDirWorld?: THREE.Vector3; lightRig?: LightRigLike; lightModel?: LightModelLike;
-      skyIrradiance?: THREE.Color; volumetricClouds?: { currentPreset?: { windDirRad?: number; windSpeed?: number } | null } }
-      | undefined;
+      skyIrradiance?: THREE.Color; surfaceWind?: { x: number; z: number } | null;
+      volumetricClouds?: { currentPreset?: { windDirRad?: number; windSpeed?: number } | null } } | undefined;
     const sunDir = ud?.sunDirWorld;
     if (sunDir && sunDir.lengthSq() > 1e-8) uSunDir.value.copy(_sun.copy(sunDir).normalize());
     const rig = ud?.lightRig;
@@ -248,8 +249,14 @@ export function createCombatFx(o: CombatFxOptions): CombatFx {
     }
     uSunUp.value = Math.max(0.05, uSunDir.value.y);
     uGrade.value.set(tune.alpha, tune.glow);
+    // the scene's surface wind when the world publishes one (scene.userData.surfaceWind: a world-XZ velocity in m/s,
+    // the way it blows — the per-map wind the vegetation and the ocean read); until then the cloud layer's wind,
+    // slowed to the ground
+    const surfaceWind = ud?.surfaceWind;
     const preset = ud?.volumetricClouds?.currentPreset;
-    if (preset && Number.isFinite(preset.windDirRad) && Number.isFinite(preset.windSpeed)) {
+    if (surfaceWind && Number.isFinite(surfaceWind.x) && Number.isFinite(surfaceWind.z)) {
+      uWind.value.set(surfaceWind.x, 0, surfaceWind.z);
+    } else if (preset && Number.isFinite(preset.windDirRad) && Number.isFinite(preset.windSpeed)) {
       const speed = groundWindFromAloft(preset.windSpeed as number);
       uWind.value.set(Math.cos(preset.windDirRad as number) * speed, 0, Math.sin(preset.windDirRad as number) * speed);
     }
