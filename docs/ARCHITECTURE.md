@@ -826,6 +826,12 @@ contact constraints and cannot be crossed by residual uphill speed.
   kinematic, not pulls: a hull running down a grade keeps its tracks on it at its own travel's rate over the slope
   (only when every track sample carries it, and never while the ride still rises: over a crest it flies), and a hull
   tipping about an edge has its root follow the turn.
+- *One track contact everywhere.* Each playable tank publishes its tracks' ground contact as data (round 8, the ruling
+  of 2026-10-04: `sim/trackContact.ts`; the combat anatomy generator measures the built model's flat run, its centre,
+  outer half width, lowest surface, belly pan and track-end rises, and `finalizeCombatAnatomy` puts it on the spec's
+  armour), and the support solve reads it wherever it runs: the host, its Worker, the client's prediction, the torture
+  matrix and solo play alike. The host used to run 0.45 x the hull's length either side of its root at the hull's full
+  width (a 7.13 m line under the T-90M's 5.58 m of track); that default is now a synthetic test hull's only.
 - *The hull lies on its plane.* The attitude fit reads the ground's rise per hull-local metre under the track lines,
   sin(pitch) for a hull lying on it (`planePitch`, `planeRoll`); its arctangent laid the hull flatter than its ground
   (0.2° on a 15° face, 1° on 25°, 5° on 45°), the downhill end of a parked hull hanging up to 12 cm (gauntlet wave 23's

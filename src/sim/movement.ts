@@ -400,11 +400,12 @@ export interface MovementInput {
 }
 
 /**
- * The track contact the solve reads: the one the caller stamped (solo play's drawn model), else none: the host and a
- * synthetic test hull run the default support line.
+ * The track contact the solve reads: the spec's published receipt (trackContact.ts: the same on the host, its Worker, the
+ * client's prediction, the torture matrix and solo play), else one the caller stamped (solo play's drawn model, for a hull
+ * without a receipt), else none: a synthetic test hull on the default support line.
  */
 function trackContactOf(entity: MovementEntity): MovementContactGeometry | null {
-  return entity.contactGeom ?? null;
+  return publishedTrackContact(entity.spec) ?? entity.contactGeom ?? null;
 }
 
 export interface MovementEntity {
@@ -550,8 +551,10 @@ const HALF_WID_FRAC = 0.5;       // contact-line half-width = 0.5 × widthM (tra
 // probe) when it detects the swap and publishes the measured geometry as
 // `entity.contactGeom = { halfLenM, halfWidM, zCenterM }`; the solve below
 // uses it for the line half-length, half-width and longitudinal center.
-// Procedural gear keeps the 0.45 L / 0.5 W spec fractions (they match
-// tankFactory by construction — fallback when contactGeom is absent).
+// Physics lane round 8: every playable tank now publishes that receipt on its spec (trackContact.ts), measured on the
+// built model, and the solve reads it wherever it runs (trackContactOf). The 0.45 L / 0.5 W fractions below are the
+// fallback for a synthetic test hull only: the fleet's measured flat runs are 0.23-0.39 of the hull's length either side
+// of a centre up to 0.9 m off the root, the hulls' tracks 0.69-1.06 of their half-width out.
 const SUPPORT_LEN_FRAC = 0.45;   // support line half-length = 0.45 × hullLengthM
 const SUPPORT_SPACING_M = 0.35;  // max gap between contact samples along a line
 const SUPPORT_MAX_N = 24;        // per-line sample cap (Maus-length hulls)

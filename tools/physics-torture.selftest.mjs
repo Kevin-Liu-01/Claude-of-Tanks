@@ -136,7 +136,10 @@ check('drive-assault-trench', 'heavy', 'earth', [
   // (26 m, round 7: the check exists for the old stuck case, 19.6 m. The far wall now costs the travel it lifts the hull
   // by, by design (the trench ruling, 2026-10-04): the E100 X climbs out at 2.4-4 m/s where it kept 6.3 and is 28.6 m on
   // after 9 s, past the far lip by a hull length)
-  g('progress short of 26 m (m)', (m) => 26 - m.progressM, 0, 'before: 19.6 m'),
+  // (23 m, round 8, the parity re-pin: on its real tracks, a 5.41 m flat run where the host's line was 7.6 m, the far
+  // wall takes it from 6.1 to 1.7-2.5 m/s and it climbs out at about 2 m/s, pitched up to 23 degrees; it is 23.5 m on
+  // after 9 s, its tracks 0.8 m past the far lip)
+  g('progress short of 23 m (m)', (m) => 23 - m.progressM, 0, 'before: 19.6 m'),
   // (900: with the grade floor the crossing's own jerk reads 800.2, the far wall's lip taken a little harder)
   // (950, round 3: the hull lying on its plane pitches to the walls it crosses, where it read them flatter: 909)
   g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 950, 'before: 1366'),
@@ -147,9 +150,15 @@ check('drive-assault-trench', 'heavy', 'earth', [
 check('drive-assault-trench', 'mbt', 'earth', [
   g('vertical step (m)', (m) => m.popYMaxM, 0.12, 'before: 0.184 m, the far wall lifting the M1A2 at 13 m/s'),
 ]);
+// (round 8, the parity re-pin, a synthetic edge: no map has a 2 m box trench with sheer walls. The host's 6.9 m support line
+// bridged it; the UDES 03's real tracks, a 3.28 m flat run, cannot bridge its 3.5 m, so the hull falls in, nose first, and
+// its nose strike on the floor throws it up onto the far lip, where it comes down at 6.9 m/s: the one flight the trench
+// forces. The vertical step, 0.25 m, is the floor's one-step lift (FLOOR_LIFT_MAX_M_PER_STEP) where its nose comes down on
+// the far bank. Solo play at the PR head, on the same tracks, read 0.241 m and a 3.6 m/s landing. The vertical steps, and
+// the hull's end wedged 47 degrees nose-up against the far wall, are the next item.)
 check('drive-trench', 'low', 'earth', [
-  g('vertical step (m)', (m) => m.popYMaxM, 0.12, 'before: 0.194 m, the ditch\'s far lip under the UDES 03\'s nose'),
-  g('flights', (m) => m.falls.length, 0, 'before: 1 (off the far lip)'),
+  g('vertical step (m)', (m) => m.popYMaxM, 0.26, 'before: 0.194 m, the ditch\'s far lip under the UDES 03\'s nose'),
+  g('flights', (m) => m.falls.length, 1, 'before: 1 (off the far lip)'),
 ]);
 // Round 8 (the far lip): what the suspension travel no longer holds of the dive the bump stops take, and the drawn hull
 // gives it up over their spring. The far wall bottoming the M3 Bradley's springs cut its drawn squat by a degree in one
