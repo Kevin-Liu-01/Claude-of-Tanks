@@ -4803,6 +4803,30 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // ±bottomYM terrain deviation at every wheel and float/sink the whole wheel
   // train by that same deviation at rest.
   const conformPlaneY = gearContactGeom.bottomYM;
+  // The canonical road wheels conform() solves and their ground deviations, reused every update (round 8).
+  const conformWheels: WheelEntry[] = [];
+  const conformDevs: number[] = [];
+  /**
+   * The travel the track band gives wheel `k` between the nearest wheels fore and aft on its side that reach their
+   * ground (their travels, clamped as conform() clamps them, interpolated along the hull), or -Infinity without one on
+   * each side.
+   */
+  const supportedTrackLine = (k: number, count: number): number => {
+    const e = conformWheels[k];
+    const side = e.x < 0;
+    let fore = -1, aft = -1;
+    for (let j = 0; j < count; j++) {
+      if (j === k) continue;
+      const o = conformWheels[j];
+      if ((o.x < 0) !== side || !(conformDevs[j] >= -suspensionDroopM)) continue;
+      if (o.z > e.z && (fore < 0 || o.z < conformWheels[fore].z)) fore = j;
+      else if (o.z < e.z && (aft < 0 || o.z > conformWheels[aft].z)) aft = j;
+    }
+    if (fore < 0 || aft < 0) return -Infinity;
+    const travel = (dev: number): number => (dev > suspensionCompressionM ? suspensionCompressionM : dev);
+    const t = (e.z - conformWheels[aft].z) / Math.max(conformWheels[fore].z - conformWheels[aft].z, 1e-4);
+    return travel(conformDevs[aft]) * (1 - t) + travel(conformDevs[fore]) * t;
+  };
   // Reused on every conformance update. Keeping this frame outside the hot
   // method avoids allocating a transform object per render cadence.
   const wheelConformFrame: WheelConformFrame = {
@@ -5355,6 +5379,23 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       let settling = false;
       const initializeContact = cfg.continuousShoeFloorYM !== undefined && !groundConformanceInitialized;
       const alpha = shoeConformanceAlpha(dt, initializeContact);
+      // Every canonical road wheel's ground first (physics lane round 8, ruling 2 of 2026-10-04): a wheel whose ground
+      // lies past its droop (a trench, a ditch, an edge under it) is carried by the track band between the wheels on
+      // either side of it that reach their ground, not dropped to its full droop. The band runs taut between those
+      // supported wheels and the wheel rides on it, so it follows the line between their travels. Without a supported
+      // wheel on one side it keeps the droop, as before. Flat ground supports every wheel, so nothing at rest changes.
+      let conformed = 0;
+      for (const { list } of made) {
+        for (let i = 0; i < list.length; i++) {
+          const e = list[i];
+          if (!e.road || e.suspensionSource) continue;
+          if (conformed >= conformWheels.length) { conformWheels.push(e); conformDevs.push(0); }
+          conformWheels[conformed] = e;
+          conformDevs[conformed] = sampleWheelGroundDeviation(e, sampler, frame);
+          conformed++;
+        }
+      }
+      let wheel = 0;
       for (const { list } of made) {
         for (let i = 0; i < list.length; i++) {
           const e = list[i];
@@ -5363,6 +5404,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
           // their shifted copies here preserves the established damping
           // cadence while preventing concentric layers from drifting apart.
           if (e.suspensionSource) continue;
+          const k = wheel++;
           // world position of the CONTACT-plane point under this wheel (YXZ;
           // hull-local y = conformPlaneY — see the contact-metadata note)
           // gameplay_feel r5 (terrain-contact hard gate): the wheel is a DISC,
@@ -5372,7 +5414,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
           // hollows. Rest the wheel on the HIGHEST ground under its footprint:
           // rim edges across the width (±0.5 w along the axle, in hull-local
           // X) and half-radius fore/aft along the roll direction.
-          const dev = sampleWheelGroundDeviation(e, sampler, frame);
+          const dev = conformDevs[k];
           // Real suspension travel: wheels visibly drop into ruts
           // and ride crests instead of the r2 near-rigid ±7 cm creep.
           // Hydraulic siege vehicles opt into their larger physical envelope
@@ -5390,9 +5432,13 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
           // +10 cm crest moved the wheel/belt +13.5 cm and left daylight;
           // hollows overshot in the other direction. One-to-one displacement
           // is both physically correct and keeps the rendered contact honest.
-          const target = dev < -suspensionDroopM
+          let target = dev < -suspensionDroopM
             ? -suspensionDroopM
             : (dev > suspensionCompressionM ? suspensionCompressionM : dev);
+          if (dev < -suspensionDroopM) {
+            const line = supportedTrackLine(k, conformed);
+            if (line > target) target = line;
+          }
           // Frame-rate independent damping. Distant gear updates at 15/30 Hz,
           // so the caller accumulates skipped dt and lands the same response
           // as a near tank without doing extra terrain work.
