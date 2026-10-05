@@ -386,6 +386,35 @@ float cloudField( vec2 pxz, out vec4 w, out vec4 st ) {
 }
 `;
 
+/**
+ * A deck's cell factor at a column (1 without cells): the trace's thickness and its open borders (cellK under 0.08 is clear
+ * air) and, since 2026-10-05 (Part 1, item 2: a deck's sun in its gaps), the shade map's open borders. Reads tShape, tDetail,
+ * tWeather, uCells, uCellTile, uBase, uThick, uLumps, uNoiseShift and uWeatherShift.
+ */
+const CLOUD_CELL_GLSL = /* glsl */`
+float cloudLumpK( vec2 cxz ) {
+	if ( uLumps <= 0.0 ) return 0.0;
+	float b = textureLod( tWeather, ( cxz + uWeatherShift * 0.5 ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_LUMP_GATE_PERIOD_K)} + vec2( 0.53, 0.29 ), 0.0 ).b;
+	return uLumps * mix( 1.0, smoothstep( 0.3, 0.7, b ), ${f(CLOUD_LUMP_GATE)} );
+}
+float cloudCellK( vec2 cxz ) {
+	if ( uCells <= 0.0 ) return 1.0;
+	vec3 cp = ( vec3( cxz.x, uBase + uThick * 0.5, cxz.y ) + uNoiseShift ) / uCellTile;
+	vec4 c = texture( tShape, cp );
+	float k = mix( 1.0, smoothstep( 0.12, 0.88, c.g * 0.75 + c.b * 0.25 ), uCells );
+	// 2026-10-03: the sub-cell lumps — the detail volume's Worley lumps at twice its period (lumps of a few hundred
+	// metres) carry the cell factor down to the scale of a stratocumulus base's rolls: each lump core a thicker, lower,
+	// darker column, the lanes between them thinner and brighter (one fetch per column, the deck rows only)
+	float lk = cloudLumpK( cxz );
+	if ( lk > 0.0 ) {
+		vec3 dl = texture( tDetail, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift * 0.73 ) / ${f(CLOUD_DETAIL_TILE_M * 2)} ).rgb;
+		float lump = smoothstep( 0.25, 0.8, dl.r * 0.55 + dl.g * 0.3 + dl.b * 0.15 );
+		k *= mix( 1.0, 0.45 + 0.85 * lump, lk );
+	}
+	return k;
+}
+`;
+
 const TRACE_FRAGMENT = /* glsl */`
 precision highp float;
 precision highp sampler3D;
@@ -564,27 +593,7 @@ float cloudCoverageAt( vec2 pxz ) {
 // cores, and the borders open where the coverage is marginal. 1 when the regime has no cells (round 71's sheet).
 // 2026-10-03: a deck's lump strength at a column — the regime's lumps under a broad field's gate (CLOUD_LUMP_GATE), so
 // the rolls come and go across the deck instead of one even mottle; 0 without lumps
-float cloudLumpK( vec2 cxz ) {
-	if ( uLumps <= 0.0 ) return 0.0;
-	float b = textureLod( tWeather, ( cxz + uWeatherShift * 0.5 ) / ${f(CLOUD_WEATHER_TILE_M * CLOUD_LUMP_GATE_PERIOD_K)} + vec2( 0.53, 0.29 ), 0.0 ).b;
-	return uLumps * mix( 1.0, smoothstep( 0.3, 0.7, b ), ${f(CLOUD_LUMP_GATE)} );
-}
-float cloudCellK( vec2 cxz ) {
-	if ( uCells <= 0.0 ) return 1.0;
-	vec3 cp = ( vec3( cxz.x, uBase + uThick * 0.5, cxz.y ) + uNoiseShift ) / uCellTile;
-	vec4 c = texture( tShape, cp );
-	float k = mix( 1.0, smoothstep( 0.12, 0.88, c.g * 0.75 + c.b * 0.25 ), uCells );
-	// 2026-10-03: the sub-cell lumps — the detail volume's Worley lumps at twice its period (lumps of a few hundred
-	// metres) carry the cell factor down to the scale of a stratocumulus base's rolls: each lump core a thicker, lower,
-	// darker column, the lanes between them thinner and brighter (one fetch per column, the deck rows only)
-	float lk = cloudLumpK( cxz );
-	if ( lk > 0.0 ) {
-		vec3 dl = texture( tDetail, ( vec3( cxz.x, uBase, cxz.y ) + uNoiseShift * 0.73 ) / ${f(CLOUD_DETAIL_TILE_M * 2)} ).rgb;
-		float lump = smoothstep( 0.25, 0.8, dl.r * 0.55 + dl.g * 0.3 + dl.b * 0.15 );
-		k *= mix( 1.0, 0.45 + 0.85 * lump, lk );
-	}
-	return k;
-}
+${CLOUD_CELL_GLSL}
 // density 0..1 at a world point. detail: whether the erosion volumes are sampled (the light march skips them);
 // foot: the pixel footprint (m) at the point, which fades the fine erosion fetch out at range; cellK: the column's
 // deck cell factor (cloudCellK; 1 without cells)
@@ -1451,7 +1460,13 @@ void main() {
 /** 2026-10-03: the cloud shade map — the clouds' shade at the cloud base, undithered, over the square around the camera. */
 const FAR_SHADE_FRAGMENT = /* glsl */`
 precision highp float;
+precision highp sampler3D;
 ${CLOUD_FIELD_GLSL}
+uniform sampler3D tShape;
+uniform sampler3D tDetail;
+uniform float uCells, uCellTile, uBase, uThick, uLumps;
+uniform vec3 uNoiseShift;
+${CLOUD_CELL_GLSL}
 uniform float uThreshold;
 uniform vec3 uClear;
 uniform vec3 uFarShadeRect;
@@ -1464,6 +1479,10 @@ void main() {
 	vec4 w, st;
 	float shade = uShadeLook.x * smoothstep( uThreshold + uShadeLook.y - uShadeLook.z, uThreshold + uShadeLook.y + uShadeLook.z, cloudField( xz, w, st ) );
 	if ( uClear.z > 0.0 ) shade *= smoothstep( uClear.z * 0.6, uClear.z * 1.4, length( xz - uClear.xy ) );
+	// 2026-10-05 (Part 1, item 2: the gauntlet's wave 93, Frosthollow facing the sun in a clear gap "yet the snow ... no
+	// shadows"): a deck's sky gaps are mostly its cells' open borders, which the weather field alone never cut — the ground
+	// under them stayed shaded while the sun shone through. The borders the trace draws as clear air cast no shadow here
+	if ( uCells > 0.0 ) shade *= smoothstep( 0.04, 0.2, cloudCellK( xz ) );
 	gl_FragColor = vec4( shade, 0.0, 0.0, 1.0 );
 }`;
 
@@ -1683,6 +1702,11 @@ export class VolumetricCloudLayer {
         tWeather: gu.tWeather, tStreets: gu.tStreets, uWeatherShift: gu.uWeatherShift, uStreetShift: gu.uStreetShift,
         uWindDir: gu.uWindDir, uStreets: gu.uStreets, uFieldMix: gu.uFieldMix, uCluster: gu.uCluster, uNearField: gu.uNearField, uFrame: gu.uFrame, uThreshold: gu.uThreshold, uClear: gu.uClear,
         uFarShadeRect: { value: new THREE.Vector3(0, 0, CLOUD_FAR_SHADE_SPAN_M) },
+        // (Part 1, item 2: a deck's cells — the trace's own uniform objects)
+        tShape: this.traceMaterial.uniforms.tShape, tDetail: this.traceMaterial.uniforms.tDetail,
+        uCells: this.traceMaterial.uniforms.uCells, uCellTile: this.traceMaterial.uniforms.uCellTile,
+        uBase: this.traceMaterial.uniforms.uBase, uThick: this.traceMaterial.uniforms.uThick,
+        uLumps: this.traceMaterial.uniforms.uLumps, uNoiseShift: this.traceMaterial.uniforms.uNoiseShift,
         uShadeLook: { value: new THREE.Vector3(CLOUD_SHADOW_CORE, 0, CLOUD_SHADOW_SOFT) },
       },
     });

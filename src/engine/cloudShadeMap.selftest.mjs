@@ -32,7 +32,16 @@ assert.match(clouds, /const CLOUD_SHADOW_SOFT = 0\.04;/, 'a thin edge band over 
 // (2026-10-05: a stratiform deck with gaps casts its cells too — a thick cell's core, by the deck's openness)
 assert.match(clouds, /const core = preset\.shadow \? lightTune\('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE\) : lightTune\('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYER_RULES\.deckShadowCore\);\s*const pattern = preset\.shadow \? preset\.shadowPattern : preset\.shadowPattern \* \(lightTune\('DECK_PATTERN', 1\) > 0 \? 1 : 0\);\s*\(this\.farShadeMaterial\.uniforms\.uShadeLook\.value as THREE\.Vector3\)\.set\(core \* pattern,\s*lightTune\('CLOUD_SHADOW_SHIFT', 0\), lightTune\('CLOUD_SHADOW_SOFT', CLOUD_SHADOW_SOFT\)\);/);
 assert.match(clouds, /if \(!\(preset\.shadowPattern > 0\) \|\| preset\.coverage <= 0\) \{ this\.dropCloudShade\(\); return; \}/, 'a deck that casts no pattern publishes none');
-assert.match(clouds, /const FAR_SHADE_FRAGMENT = \/\* glsl \*\/`\nprecision highp float;\n\$\{CLOUD_FIELD_GLSL\}/, 'the map reads the shared field GLSL');
+assert.match(clouds, /const FAR_SHADE_FRAGMENT = \/\* glsl \*\/`\nprecision highp float;\nprecision highp sampler3D;\n\$\{CLOUD_FIELD_GLSL\}/, 'the map reads the shared field GLSL');
+// 2026-10-05 (Part 1, item 2: a deck's sun in its gaps): the trace's own cell factor, one chunk for both, and the open
+// borders (where the trace draws clear air, cellK under 0.08) cast no shadow; the map shares the trace's cell uniforms
+assert.equal(clouds.split('${CLOUD_CELL_GLSL}').length - 1, 2, 'the cell factor: one chunk, the trace and the shade map');
+assert.match(clouds, /const CLOUD_CELL_GLSL = \/\* glsl \*\/`\nfloat cloudLumpK\( vec2 cxz \) \{[\s\S]*?float cloudCellK\( vec2 cxz \) \{/, 'the lumps and the cells');
+assert.match(clouds, /if \( uCells > 0\.0 \) shade \*= smoothstep\( 0\.04, 0\.2, cloudCellK\( xz \) \);\s*gl_FragColor = vec4\( shade, 0\.0, 0\.0, 1\.0 \);/, 'a deck\'s open cell borders cast no shadow');
+assert.match(clouds, /if \( \( w\.cov <= 0\.0 \|\| cellK < 0\.08 \) && uDebug != 8\.0 \)/, 'where the trace draws clear air');
+for (const name of ['tShape', 'tDetail', 'uCells', 'uCellTile', 'uBase', 'uThick', 'uLumps', 'uNoiseShift']) {
+  assert.ok(clouds.includes(`${name}: this.traceMaterial.uniforms.${name}`), `the map shares the trace's ${name}`);
+}
 assert.match(clouds, /gl_FragColor = vec4\( shade, 0\.0, 0\.0, 1\.0 \);/, 'undithered: the shade itself, no discard');
 assert.match(clouds, /if \( uClear\.z > 0\.0 \) shade \*= smoothstep\( uClear\.z \* 0\.6, uClear\.z \* 1\.4, length\( xz - uClear\.xy \) \);/, 'a front keeps its clear radius');
 assert.match(clouds, /const cx = Math\.round\(this\.cam\.pos\.x \/ texel\) \* texel, cz = Math\.round\(this\.cam\.pos\.z \/ texel\) \* texel;/, 'snapped: the shadows never swim');
