@@ -112,6 +112,11 @@ assert.match(workshopLayout, /cameraAdvanceM: 4\.38/,
   'the Burlak foreground correction must remain large enough to clear the scaffold silhouette');
 assert.match(dressing, /tank\.position\.set\(16\.9, 0, 17\.7\)/,
   'Abrams welding bay retains its original transform');
+// 2026-10-05 (gauntlet wave 89, "a sand-coloured turret rises right behind the T-90's turret or gun"): the Abrams
+// welding bay moved out of the hero's sight line. It stood beside the east FLAMMABLE canisters (a half-turn, offset
+// (-0.8, 7.7), pose (-17.7, -10.0)), 7.5-8.4k px of it inside the hero's dilated silhouette from the default camera
+// and 13-14k from the close one; it now keeps its authored orientation between the Burlak gantry and the K2 square
+// (offset (-0.4, -14.5), pose (16.5, 3.2, -2.03)): 0 px with the m1a2, t90m and leo2a7v heroes in both views.
 assert.match(workshopLayout,
   /id: 'abrams_welding', role: 'welding', x: 16\.5, z: 3\.2, yaw: -2\.03/,
   'all-environment structures must follow the Abrams service owner beside the Garage camera');
@@ -163,6 +168,7 @@ assert.match(dressing, /perimeterCraneClearance = true/,
   'the complete bay owner must receipt its corrected crane clearance');
 assert.match(dressing, /supportMode = 'connected-steel-rollover-cradle'/,
   'the rolled K2 hull must identify its connected load-bearing support');
+// 2026-10-05: only the K2 keeps the half-turn swap; the Abrams has its own placement (above).
 assert.match(dressing, /swappedServiceBayIds = \['rolled_k2'\]/,
   'Garage diagnostics must receipt the K2 bay swap (the Abrams has its own placement since wave 89)');
 assert.match(dressing, /legacyVerdantRoot\.visible = true/,
@@ -317,6 +323,7 @@ assert.match(dressing, /workshopExhibitCount = 5/,
   'all Garage variants must expose the added teardown vehicle');
 assert.match(dressing, /verdantOriginalExhibitCount = 5/,
   'Verdant diagnostics must include the added teardown vehicle');
+// 2026-10-05: the Abrams bay's quadrant label follows it to the north floor (the bays' own compass: +x north)
 for (const quadrant of ['north-east', 'north', 'south-west', 'north-west']) {
   assert.match(dressing, new RegExp(quadrant));
 }
