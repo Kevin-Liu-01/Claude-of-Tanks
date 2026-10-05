@@ -19,6 +19,7 @@ import { HESSIAN_STYLE } from './hessian.ts';
 import { DALMATIAN_STYLE } from './dalmatian.ts';
 import { BRETON_STYLE } from './breton.ts';
 import { KOLKHOZ_STYLE } from './kolkhoz.ts';
+import { GORAL_STYLE } from './goral.ts';
 import { POLDER_STYLE } from './polder.ts';
 import { EIFEL_STYLE } from './eifel.ts';
 import { MEKONG_STYLE } from './mekong.ts';
@@ -38,6 +39,7 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   dalmatian: DALMATIAN_STYLE,
   breton: BRETON_STYLE,
   kolkhoz: KOLKHOZ_STYLE,
+  goral: GORAL_STYLE,
   polder: POLDER_STYLE,
   eifel: EIFEL_STYLE,
   mekong: MEKONG_STYLE,

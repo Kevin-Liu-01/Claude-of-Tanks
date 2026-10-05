@@ -20,6 +20,19 @@
 //   - the roads are authored: the valley road (utility line), the pass road,
 //     the Bystra crossing, the moraine track, the sawmill lateral, a village
 //     back lane and the yard loop (roadEndpoints.ts owns their endpoints).
+//
+// Reference: the Podhale under the Tatra, the Biały Dunajec valley between Nowy Targ and Zakopane, January 1945. The
+// river runs down a broad kotlina floor from the High Tatra; the highland villages (Biały Dunajec, Poronin) string
+// their timber houses along the valley road on the terraces above it, each with its wooden church, the hay barns behind
+// the houses, a sawmill on the stream, the shepherds' huts (bacówki) up on the meadows under the spruce. The front came
+// through in the January offensive; a few houses burnt, their stacks standing in the snow.
+//
+// The village and the country (map revival lane 2, 2026-10-05; the owner: every map as new as Verdant): the goral kit
+// (maps/regional/goral.ts) builds every building as the highlanders' own — houses of hewn spruce logs on granite
+// footings under steep shingle roofs with the small hip at each gable's top and the Zakopane sunburst in the gable
+// boards, the wooden church with its shingled tower and bulb, the school, the forester's villa, the hay barns, the
+// sawmill shed and its board store, the woodsheds, the burnt houses; the strongpoints' sauna hut is a bacówka. The
+// yards are plank-fenced with their woodsheds. Every building stands where it stood.
 
 import { gully, talusFan } from './geology.ts';
 
@@ -242,6 +255,8 @@ export default {
   },
 
   props: {
+    // map revival lane 2 (2026-10-05): the goral kit (maps/regional/goral.ts)
+    architecture: 'goral',
     // round 48: the timber-valley catalog — log cabins, steep-roof alpine
     // houses, the onion-dome church and open woodsheds make the terrace
     // village; depots, a warehouse and woodsheds make the sawmill yard at its

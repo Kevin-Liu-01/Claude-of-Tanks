@@ -1919,6 +1919,7 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
 // build and its palette are the region's. Every build stands inside the family's footprint box.
 
 const REGIONAL_PAL = {
+  goralLog: [0x5a4330, 0x6f5640, 0x5e5a52],
   tin: [0x8f9699, 0xb8bfc1, 0x4b5053],
   mud: [0x7b6650, 0x9c8669, 0x4f4335],
   bamboo: [0x9f8a62, 0xbfa97e, 0x5d4f37],
@@ -2086,6 +2087,31 @@ function makeMekongPondHut(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('fishershack', out);
 }
 
+/**
+ * The shepherds' hut on the Podhale's high meadows (bacówka; the goral kit, map revival lane 2, 2026-10-05): one room
+ * of spruce logs laid with their ends crossing out at the corners, under a steep shingle roof with no chimney (the smoke
+ * leaves under the ridge), the low plank door in the gable end, its threshold stone and the bench beside it.
+ */
+function makeGoralBacowka(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = REGIONAL_PAL.goralLog;
+  const w = 3.8, d = 4.6, course = 0.25, n = 8, wallH = course * n, roofH = 2.15;
+  // the log courses: the side logs run past the corners on even courses, the end logs on odd ones
+  for (let k = 0; k < n; k++) {
+    const y = k * course + course / 2, h = course * 0.94, tone = k % 2 ? p[0] : p[1], sides = k % 2 === 0;
+    for (const s of [-1, 1]) {
+      colored(out, box(0.24, h, sides ? d + 0.44 : d - 0.48).translate(s * (w / 2 - 0.12), y, 0), tone, rng, 0.06);
+      colored(out, box(sides ? w - 0.48 : w + 0.44, h, 0.24).translate(0, y, s * (d / 2 - 0.12)), tone, rng, 0.06);
+    }
+  }
+  // the steep shingle roof, its eaves and verges out over the walls
+  colored(out, gable(w + 0.9, roofH, d + 0.7).translate(0, wallH - 0.05, 0), p[2], rng, 0.08);
+  colored(out, box(0.78, 1.42, 0.06).translate(0.55, 0.71, d / 2 + 0.02), 0x2a2018, rng, 0.04);
+  colored(out, box(1.1, 0.16, 0.5).translate(0.55, 0.08, d / 2 + 0.3), 0x77736b, rng, 0.08);
+  colored(out, box(1.3, 0.08, 0.34).translate(-0.95, 0.45, d / 2 + 0.22), p[0], rng, 0.06);
+  for (const x of [-1.5, -0.4]) colored(out, box(0.1, 0.41, 0.3).translate(x, 0.205, d / 2 + 0.22), p[0], rng, 0.06);
+  return mergeConnectedStructure('saunahut', out);
+}
+
 /** The architecture kits' light-family variants (maps/regional): kit id -> family key -> the variant. */
 export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = (() => {
   const B = DESTRUCTIBLE_BUILDING_TYPES;
@@ -2094,6 +2120,10 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
     return lightMeta(b.id, b.family, b.hw, b.hl, b.h, pal, build, debrisMaterial);
   };
   return Object.freeze({
+    // the Podhale, 1945: the sauna hut is a shepherds' bacówka on the meadow
+    goral: Object.freeze({
+      saunahut: variant('saunahut', REGIONAL_PAL.goralLog, makeGoralBacowka),
+    }),
     bengal: Object.freeze({
       longhouse: variant('longhouse', REGIONAL_PAL.tin, makeBengalHomestead, 'metal'),
       stilthouse: variant('stilthouse', REGIONAL_PAL.bamboo, makeBengalStiltHouse),

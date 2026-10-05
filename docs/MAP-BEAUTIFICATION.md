@@ -107,7 +107,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Longleaf Crossing | Logging spur, cut blocks, timber yard and regrowth; visible forest-age variation |
 | Highland Reservoir | Pine catchments, exposed reservoir margin, waterworks and service roads |
 | Olympus Basin | Rust regolith and mesas under a galaxy sky, a research station of domes, modules, masts and pads (Mars mode, 2026-09-18) |
-| Frosthollow | Carpathian winter valley (round 48): a beaded frozen river down a kotlina floor, a linear timber street village on the west terrace with a sawmill yard, a two-armed ridge and saddle pass on the west flank, rolling moraine on the east; fieldstone walls, spruce blocks with cut clearings |
+| Frosthollow | Carpathian winter valley (round 48): a beaded frozen river down a kotlina floor, a linear timber street village on the west terrace with a sawmill yard, a two-armed ridge and saddle pass on the west flank, rolling moraine on the east; fieldstone walls, spruce blocks with cut clearings. Map revival lane 2 (2026-10-05): the Podhale in January 1945 — the goral kit (log houses under steep shingle, the Zakopane gables, the wooden church, hay barns, the sawmill, burnt houses, bacówki) |
 | Glacier Pass | Frozen lake, rocky alpine catchment, sheltered village; exposed crags and drifting snow |
 | Nordhavn Fjord | Steep harbor settlement, fishing quays, dark water and coastal rock; layered mountain valleys |
 | Whiteout Station | Sparse polar service compound, fuel storage and wind-shaped snow corridors; expansive low backdrop |
