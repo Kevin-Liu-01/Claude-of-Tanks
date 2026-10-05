@@ -14,7 +14,11 @@ Render combat feedback from authoritative events without modifying simulation.
 `fxRuntimeAccess.ts` owns retryable battle-only module/runtime acquisition,
 `effects.ts` composes event reactions, `particles.ts` owns typed pools, `clock.ts`
 owns presentation time, `effectAttachments.ts` owns continuous emitter anchor
-contracts, and `impactDecals.ts` owns bounded surface marks.
+contracts, and `impactDecals.ts` owns bounded surface marks. Scene Studio's
+cinematic layer (`cinematicFx.ts` runtime, `cinematicRecipes.ts` recipes) is
+Studio-only: it reaches the battle runtime through `effects.cinematicPort()`,
+which battle never calls, and its emitters tick on absolute timeline grids so
+renders are step-size independent (`cinematicFx.selftest.mjs`).
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

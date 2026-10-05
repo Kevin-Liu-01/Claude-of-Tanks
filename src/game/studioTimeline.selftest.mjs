@@ -132,5 +132,19 @@ sampleCameraCues(cinematic.cameraCues, 750, repeat);
 assert.deepEqual(repeat, cueFrame, 'scrubbing back yields the same deterministic cue');
 assert.equal(cueFrame.fovKickDeg, 2.25);
 assert.equal(sampleCameraCues(cinematic.cameraCues, 1600, cueFrame), false);
+// Film attack: the impulse starts from rest and matches the live kick once the attack has passed.
+{
+  const first = cinematic.cameraCues[0];
+  const live = { rightM: 0, upM: 0, forwardM: 0, rollDeg: 0, fovKickDeg: 0 };
+  const film = { rightM: 0, upM: 0, forwardM: 0, rollDeg: 0, fovKickDeg: 0 };
+  sampleCameraCues(cinematic.cameraCues, first.tMs, film, 12);
+  assert.ok([film.rightM, film.upM, film.forwardM, film.rollDeg, film.fovKickDeg].every((v) => v === 0), 'a film jolt starts from rest');
+  sampleCameraCues(cinematic.cameraCues, first.tMs + 6, film, 12);
+  sampleCameraCues(cinematic.cameraCues, first.tMs + 6, live, 0);
+  assert.ok(Math.abs(film.fovKickDeg) < Math.abs(live.fovKickDeg), 'the attack eases the kick in');
+  sampleCameraCues(cinematic.cameraCues, first.tMs + 20, film, 12);
+  sampleCameraCues(cinematic.cameraCues, first.tMs + 20, live, 0);
+  assert.deepEqual(film, live, 'after the attack the film and live impulses agree');
+}
 assert(Object.values(cueFrame).every((v) => v === 0), 'finished cues reset all reused scratch values');
 console.log('studioTimeline.selftest: legacy rails/cuts, v2 round trips, Bezier rails, tangent-aligned drive and deterministic cues passed');

@@ -1,0 +1,2209 @@
+{
+ "shots": {
+  "s01-main-street-push": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "35aa15ea03bda0b2bc09e10b532d2bce5bafeba8d0ef1afb0c6f9ce9754b65dd",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "476ec0b3255c80c47efc8e57910dc2d6109f8aa57dfbef00fce6af823a35ed92",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4a",
+     "sceneVersion": "v4",
+     "sceneSha256": "35aa15ea03bda0b2bc09e10b532d2bce5bafeba8d0ef1afb0c6f9ce9754b65dd",
+     "renderer": "fcf58b091",
+     "at": "2026-10-03T16:55:40.162Z",
+     "kept": "shots/media-r5/site50/versions/r4a",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5",
+     "superseded": {
+      "at": "2026-10-03T18:31:40.585Z",
+      "why": "floating fire: shell hits used the ammo-rack tank blast, whose turret-ring fire burns at hull height with no tank under it"
+     }
+    },
+    {
+     "round": "r4b",
+     "sceneVersion": "v5",
+     "sceneSha256": "476ec0b3255c80c47efc8e57910dc2d6109f8aa57dfbef00fce6af823a35ed92",
+     "renderer": "b9aad8d18",
+     "at": "2026-10-03T21:42:23.770Z",
+     "kept": "shots/media-r5/site50/versions/r4b",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts in the engine layer",
+     "superseded": {
+      "at": "2026-10-03T21:42:23.805Z",
+      "why": "cinematic cook-off jets (a tank's ammunition blowtorch) burned in mid-air over shell hits; fixed in bca048dab"
+     }
+    },
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "476ec0b3255c80c47efc8e57910dc2d6109f8aa57dfbef00fce6af823a35ed92",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A Leopard 2A6 pushes up the main street of burning Steinburg",
+   "map": "urban",
+   "time": "day",
+   "hero": "leo2a6_x",
+   "paint": {
+    "unit": "flecktarn",
+    "enemy": "sig_t90a"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 3480,
+    "exposureMs": 25
+   }
+  },
+  "s02-factory-road": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "8d4ad751d130b9f625baa5f92c0acd411e6cd29bee7f9886eacb5823bd230349",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "548a68c5742c69b0365f359e1e763198ca0b519ec40763c33361cfa5a03295b3",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4a",
+     "sceneVersion": "v4",
+     "sceneSha256": "8d4ad751d130b9f625baa5f92c0acd411e6cd29bee7f9886eacb5823bd230349",
+     "renderer": "fcf58b091",
+     "at": "2026-10-03T16:55:40.162Z",
+     "kept": "shots/media-r5/site50/versions/r4a",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5",
+     "superseded": {
+      "at": "2026-10-03T16:55:40.215Z",
+      "why": "track-dust leak (fixed in e2582bcf6): rendered after another take in the same cinema session, its dust followed that take's tanks"
+     }
+    },
+    {
+     "round": "r4b",
+     "sceneVersion": "v5",
+     "sceneSha256": "548a68c5742c69b0365f359e1e763198ca0b519ec40763c33361cfa5a03295b3",
+     "renderer": "b9aad8d18",
+     "at": "2026-10-03T21:42:23.770Z",
+     "kept": "shots/media-r5/site50/versions/r4b",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts in the engine layer",
+     "superseded": {
+      "at": "2026-10-03T21:42:23.805Z",
+      "why": "cinematic cook-off jets (a tank's ammunition blowtorch) burned in mid-air over shell hits; fixed in bca048dab"
+     }
+    },
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "548a68c5742c69b0365f359e1e763198ca0b519ec40763c33361cfa5a03295b3",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "An M1A2 Abrams TUSK rolls past the factory under fire",
+   "map": "urban",
+   "time": "day",
+   "hero": "m1a2_tusk_x",
+   "paint": {
+    "unit": "berlin",
+    "enemy": "service_soviet_coldwar"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 3980,
+    "exposureMs": 25
+   }
+  },
+  "s03-square-pass": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "8779f583bab04a52ddb77e1ffa1f6d3139352b709999a83dc0faa28ee5d8f95d",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "c98c00ba27c6643134e13521aa9893c72ec7f42dbfef2a4efb4f05bb7bc4bea7",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4a",
+     "sceneVersion": "v4",
+     "sceneSha256": "8779f583bab04a52ddb77e1ffa1f6d3139352b709999a83dc0faa28ee5d8f95d",
+     "renderer": "fcf58b091",
+     "at": "2026-10-03T16:55:40.162Z",
+     "kept": "shots/media-r5/site50/versions/r4a",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5",
+     "superseded": {
+      "at": "2026-10-03T16:55:40.215Z",
+      "why": "track-dust leak (fixed in e2582bcf6): rendered after another take in the same cinema session, its dust followed that take's tanks"
+     }
+    },
+    {
+     "round": "r4b",
+     "sceneVersion": "v5",
+     "sceneSha256": "c98c00ba27c6643134e13521aa9893c72ec7f42dbfef2a4efb4f05bb7bc4bea7",
+     "renderer": "b9aad8d18",
+     "at": "2026-10-03T21:42:23.770Z",
+     "kept": "shots/media-r5/site50/versions/r4b",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts in the engine layer",
+     "superseded": {
+      "at": "2026-10-03T21:42:23.805Z",
+      "why": "cinematic cook-off jets (a tank's ammunition blowtorch) burned in mid-air over shell hits; fixed in bca048dab"
+     }
+    },
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "c98c00ba27c6643134e13521aa9893c72ec7f42dbfef2a4efb4f05bb7bc4bea7",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A Leclerc XLR crosses the burning square",
+   "map": "urban",
+   "time": "day",
+   "hero": "leclerc_x",
+   "paint": {
+    "unit": "urbanblock",
+    "enemy": "sig_t90"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 3300,
+    "exposureMs": 33
+   }
+  },
+  "s04-column-under-fire": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "91a59b71b803c4ac2aa6eb38cd96eba2ac617cacd40e90c619a7387390ca0a9a",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "80b15aa2230146b0313fc8d248e484bc9ccaec1731ab352a4bb92c14d52cae66",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4a",
+     "sceneVersion": "v4",
+     "sceneSha256": "91a59b71b803c4ac2aa6eb38cd96eba2ac617cacd40e90c619a7387390ca0a9a",
+     "renderer": "fcf58b091",
+     "at": "2026-10-03T16:55:40.162Z",
+     "kept": "shots/media-r5/site50/versions/r4a",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5",
+     "superseded": {
+      "at": "2026-10-03T16:55:40.215Z",
+      "why": "track-dust leak (fixed in e2582bcf6): rendered after another take in the same cinema session, its dust followed that take's tanks"
+     }
+    },
+    {
+     "round": "r4b",
+     "sceneVersion": "v5",
+     "sceneSha256": "80b15aa2230146b0313fc8d248e484bc9ccaec1731ab352a4bb92c14d52cae66",
+     "renderer": "b9aad8d18",
+     "at": "2026-10-03T21:42:23.770Z",
+     "kept": "shots/media-r5/site50/versions/r4b",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts in the engine layer",
+     "superseded": {
+      "at": "2026-10-03T21:42:23.805Z",
+      "why": "cinematic cook-off jets (a tank's ammunition blowtorch) burned in mid-air over shell hits; fixed in bca048dab"
+     }
+    },
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "80b15aa2230146b0313fc8d248e484bc9ccaec1731ab352a4bb92c14d52cae66",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A T-90M column drives into the fight on the country road",
+   "map": "verdant",
+   "time": "day",
+   "hero": "t90m_x",
+   "paint": {
+    "unit": "sig_t90",
+    "enemy": "service_leo2a6m"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 2700,
+    "exposureMs": 25
+   }
+  },
+  "s05-barn-advance": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "21d1307fb1b3b96030d18c5cd3ea90ac5ec8160eba02aad6dee61f70278f9657",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "f37b28b5ca292cf9a5f90a48a8f7411e367dcd66fd385ffc3915aac6370c4f87",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4a",
+     "sceneVersion": "v4",
+     "sceneSha256": "21d1307fb1b3b96030d18c5cd3ea90ac5ec8160eba02aad6dee61f70278f9657",
+     "renderer": "fcf58b091",
+     "at": "2026-10-03T16:55:40.162Z",
+     "kept": "shots/media-r5/site50/versions/r4a",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5",
+     "superseded": {
+      "at": "2026-10-03T18:31:40.585Z",
+      "why": "floating fire: shell hits used the ammo-rack tank blast, whose turret-ring fire burns at hull height with no tank under it"
+     }
+    },
+    {
+     "round": "r4b",
+     "sceneVersion": "v5",
+     "sceneSha256": "f37b28b5ca292cf9a5f90a48a8f7411e367dcd66fd385ffc3915aac6370c4f87",
+     "renderer": "b9aad8d18",
+     "at": "2026-10-03T21:42:23.770Z",
+     "kept": "shots/media-r5/site50/versions/r4b",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts in the engine layer",
+     "superseded": {
+      "at": "2026-10-03T21:42:23.805Z",
+      "why": "cinematic cook-off jets (a tank's ammunition blowtorch) burned in mid-air over shell hits; fixed in bca048dab"
+     }
+    },
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "f37b28b5ca292cf9a5f90a48a8f7411e367dcd66fd385ffc3915aac6370c4f87",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A T-14 Armata advances past the barns of Verdant Fields",
+   "map": "verdant",
+   "time": "day",
+   "hero": "t14_x",
+   "paint": {
+    "unit": "sig_object695_x",
+    "enemy": "merdc"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 3780,
+    "exposureMs": 25
+   }
+  },
+  "s06-farm-charge": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "6dd1a1dea25fca90e993f68a1d546e45141600d2dd9752e1ee1cbde6fdf688d6",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "f0d84df44ff0d83f567b8a962a6d7ca22ac2b85854ed4ec801d7e9cd47c51c69",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4a",
+     "sceneVersion": "v4",
+     "sceneSha256": "6dd1a1dea25fca90e993f68a1d546e45141600d2dd9752e1ee1cbde6fdf688d6",
+     "renderer": "fcf58b091",
+     "at": "2026-10-03T16:55:40.162Z",
+     "kept": "shots/media-r5/site50/versions/r4a",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5",
+     "superseded": {
+      "at": "2026-10-03T16:55:40.215Z",
+      "why": "track-dust leak (fixed in e2582bcf6): rendered after another take in the same cinema session, its dust followed that take's tanks"
+     }
+    },
+    {
+     "round": "r4b",
+     "sceneVersion": "v5",
+     "sceneSha256": "f0d84df44ff0d83f567b8a962a6d7ca22ac2b85854ed4ec801d7e9cd47c51c69",
+     "renderer": "b9aad8d18",
+     "at": "2026-10-03T21:42:23.770Z",
+     "kept": "shots/media-r5/site50/versions/r4b",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts in the engine layer",
+     "superseded": {
+      "at": "2026-10-03T21:42:23.805Z",
+      "why": "cinematic cook-off jets (a tank's ammunition blowtorch) burned in mid-air over shell hits; fixed in bca048dab"
+     }
+    },
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "f0d84df44ff0d83f567b8a962a6d7ca22ac2b85854ed4ec801d7e9cd47c51c69",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A KF51 Panther charges past the farmhouse through artillery",
+   "map": "verdant",
+   "time": "day",
+   "hero": "kf51_x",
+   "paint": {
+    "unit": "splinter",
+    "enemy": "sig_t90a_vladimir"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 4380,
+    "exposureMs": 25
+   }
+  },
+  "s07-lake-shellfire": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "b7ba784dc37dd4c7c4132e6d56068975927d55a45c76808b83534c718d3c2e45",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "f55d2ee8df0d399a20c0536c16136b9a9ce30e496bc95706cd82147f6803d85a",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4a",
+     "sceneVersion": "v4",
+     "sceneSha256": "b7ba784dc37dd4c7c4132e6d56068975927d55a45c76808b83534c718d3c2e45",
+     "renderer": "fcf58b091",
+     "at": "2026-10-03T16:55:40.162Z",
+     "kept": "shots/media-r5/site50/versions/r4a",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5",
+     "superseded": {
+      "at": "2026-10-03T18:31:40.585Z",
+      "why": "floating fire: shell hits used the ammo-rack tank blast, whose turret-ring fire burns at hull height with no tank under it"
+     }
+    },
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "f55d2ee8df0d399a20c0536c16136b9a9ce30e496bc95706cd82147f6803d85a",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A Stridsvagn 122 crosses the frozen lake through shellfire",
+   "map": "alpine",
+   "time": "day",
+   "hero": "strv122_x",
+   "paint": {
+    "unit": "winterbands",
+    "enemy": "service_soviet_coldwar"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 3060,
+    "exposureMs": 25
+   }
+  },
+  "s08-market-push": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "2b8dd6f21f05eaade4ac245b0d75444d806925ab7c038e25ff76a98047a7f73e",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "2d3e79ce44b2d5d5506ffdab5fc32112313e2ed3acf36d51948c76885351328a",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4a",
+     "sceneVersion": "v4",
+     "sceneSha256": "2b8dd6f21f05eaade4ac245b0d75444d806925ab7c038e25ff76a98047a7f73e",
+     "renderer": "fcf58b091",
+     "at": "2026-10-03T16:55:40.162Z",
+     "kept": "shots/media-r5/site50/versions/r4a",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5",
+     "superseded": {
+      "at": "2026-10-03T16:55:40.215Z",
+      "why": "track-dust leak (fixed in e2582bcf6): rendered after another take in the same cinema session, its dust followed that take's tanks"
+     }
+    },
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "2d3e79ce44b2d5d5506ffdab5fc32112313e2ed3acf36d51948c76885351328a",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "An M1A2 Abrams column pushes through the market street of Sunscar Oasis",
+   "map": "oasis",
+   "time": "day",
+   "hero": "m1a2_x",
+   "paint": {
+    "unit": "chocchip",
+    "enemy": "sig_t90ms"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 3680,
+    "exposureMs": 25
+   }
+  },
+  "s09-harbor-run": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "f44416735857f9c09155ed9e76dee318373c88bb4ebbffd70fd131669d55b24d",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "76542ede6f5c4c6fb5ad1784840168039d7e1858dfe8e283480cb32e9387908e",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4a",
+     "sceneVersion": "v4",
+     "sceneSha256": "f44416735857f9c09155ed9e76dee318373c88bb4ebbffd70fd131669d55b24d",
+     "renderer": "fcf58b091",
+     "at": "2026-10-03T16:55:40.162Z",
+     "kept": "shots/media-r5/site50/versions/r4a",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5",
+     "superseded": {
+      "at": "2026-10-03T16:55:40.215Z",
+      "why": "track-dust leak (fixed in e2582bcf6): rendered after another take in the same cinema session, its dust followed that take's tanks"
+     }
+    },
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "76542ede6f5c4c6fb5ad1784840168039d7e1858dfe8e283480cb32e9387908e",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A Leopard 2A7V runs the harbor road at Nordhavn under fire",
+   "map": "fjord",
+   "time": "day",
+   "hero": "leo2a7v_x",
+   "paint": {
+    "unit": "sig_leo2a4_otco",
+    "enemy": "sig_t90a"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 4180,
+    "exposureMs": 25
+   }
+  },
+  "s10-ford-shellfire": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "491cc0f16752d694087bcd0e86727e7488fe77a83bcd9051b0f249c7c4c5dcbb",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "588a7b5edd95a2fd8bd807b489942ad3849184c23b6f0a2a579bc5da5a4b536d",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "588a7b5edd95a2fd8bd807b489942ad3849184c23b6f0a2a579bc5da5a4b536d",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A ZTZ-100 fords the river as shells land around it",
+   "map": "monsoon",
+   "time": "morning",
+   "hero": "ztz100_x",
+   "paint": {
+    "unit": "sig_type100",
+    "enemy": "rasputitsa"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 4480,
+    "exposureMs": 25
+   }
+  },
+  "s11-container-rows": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "5ee75b9ea3d8c66a1bb7d1e318659938a144c1c334a4c95204834e36851b8a9b",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "679da03c1b2440cf9fb6ff3f4dbb635d7ca2b8d803fe10e6c2b9e1b7c5ec6fa1",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "679da03c1b2440cf9fb6ff3f4dbb635d7ca2b8d803fe10e6c2b9e1b7c5ec6fa1",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A Challenger 1 weaves between the container rows at Cinder Junction",
+   "map": "railyard",
+   "time": "day",
+   "hero": "challenger1_x",
+   "paint": {
+    "unit": "desert",
+    "enemy": "paint_ru_t80u_modern"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 3980,
+    "exposureMs": 25
+   }
+  },
+  "s12-gantry-advance": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "f0f447a31f320af00621671a6247138ec0c439fee1ee893422ac5153cd8dd46c",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "8c2918bb13a527a87bf6ca85e291967bea1f0f08e8a47e19c9b23afcbed10385",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "8c2918bb13a527a87bf6ca85e291967bea1f0f08e8a47e19c9b23afcbed10385",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A T-90MS Tagil column advances under the Ironworks gantries",
+   "map": "foundry",
+   "time": "day",
+   "hero": "t90ms_x",
+   "paint": {
+    "unit": "sig_t90ms",
+    "enemy": "summer"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 3380,
+    "exposureMs": 25
+   }
+  },
+  "s13-farm-race": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "9728aa3ad7fa1f23ff81331893a9733e6bac3b6e70e300979e2d0e2335de1652",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "6904ae43eaf8747573b35ee42003581eb0464dda117d06ffe32f0236768f85e0",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "6904ae43eaf8747573b35ee42003581eb0464dda117d06ffe32f0236768f85e0",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A K2 Black Panther races past the red-roofed farm at sunset",
+   "map": "frontier",
+   "time": "sunset",
+   "hero": "k2_x",
+   "paint": {
+    "unit": "sig_k2b",
+    "enemy": null
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 3380,
+    "exposureMs": 25
+   }
+  },
+  "s14-snow-push": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "b9e55888e73f50044511afe1c2a680e0a11f855a590785b3e3f36b3282ba163f",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "d481ccdfb87bf687c8bc1b315a21a6aaf449e2bf57a9a9ab2164d569400037e5",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "d481ccdfb87bf687c8bc1b315a21a6aaf449e2bf57a9a9ab2164d569400037e5",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A T-80U pushes through snowy Frosthollow",
+   "map": "winter",
+   "time": "day",
+   "hero": "t80u_x",
+   "paint": {
+    "unit": "winter",
+    "enemy": "merdcwinter"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 3680,
+    "exposureMs": 25
+   }
+  },
+  "s15-orchard-column": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "a971ae1b752043edd2c456dd8b9e548fdfbcc6bf676d99fdf47df4b952e1e90a",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "9dd3c4432f8bb7ca5a60534eb8e08190ce72635448fd2384a48581b6bed6b30b",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "9dd3c4432f8bb7ca5a60534eb8e08190ce72635448fd2384a48581b6bed6b30b",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A C1 Ariete column drives through the orchard village under fire",
+   "map": "orchard",
+   "time": "day",
+   "hero": "ariete_c1_x",
+   "paint": {
+    "unit": "autumn",
+    "enemy": "service_soviet_coldwar"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 3580,
+    "exposureMs": 25
+   }
+  },
+  "s16-street-duel": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "6265337986fb7d228c29b1d03b3a3ff9c016462f56852f9ef80d57531d06f479",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "668fe111367b25512e850143e57be33c8970d394c2cffb69f77549225267cc57",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "668fe111367b25512e850143e57be33c8970d394c2cffb69f77549225267cc57",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "Street duel at night: a KF51 Panther trades fire down a Steinburg street",
+   "map": "urban",
+   "time": "night",
+   "hero": "kf51_x",
+   "paint": {
+    "unit": "dazzle",
+    "enemy": "sig_t90a"
+   },
+   "turrets": "lens",
+   "still": {
+    "tMs": 4460,
+    "exposureMs": 16
+   }
+  },
+  "s17-crossroads-fire": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "c897293af6b6e26e88144c94502ffd7192470a571ca6c75268950458d4ec171b",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "a13b5c5e266108125fa0b1bb00a53a2a38d3f74d42b862d811cfcb9bc5d4efe9",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "a13b5c5e266108125fa0b1bb00a53a2a38d3f74d42b862d811cfcb9bc5d4efe9",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "Fire at the Steinburg crossroads at noon",
+   "map": "urban",
+   "time": "day",
+   "hero": "strv122_x",
+   "paint": {
+    "unit": "service_strv122",
+    "enemy": "sig_t72m1_jaguar"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 1380,
+    "exposureMs": 16
+   }
+  },
+  "s18-street-knockout": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "0bccead7e6adbd8c248f809acd08a2961e8d46dcae031d0acc1342b5c689d2e1",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v4",
+     "sceneSha256": "0bccead7e6adbd8c248f809acd08a2961e8d46dcae031d0acc1342b5c689d2e1",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A T-90A is knocked out at the end of a Steinburg street at night",
+   "map": "urban",
+   "time": "night",
+   "hero": "leo2a6m_x",
+   "paint": {
+    "unit": "digitaldesert",
+    "enemy": "service_soviet_coldwar"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 2060,
+    "exposureMs": 16
+   }
+  },
+  "s19-roof-tiles": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "9417c86dc934e0211cd7a691c9de53ee05c57d697135adf6a98a2b407a4d2cff",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "5e29fede10d863af26e667803c237ea6fcd06933d09e48248a11ff63af40fcc7",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "5e29fede10d863af26e667803c237ea6fcd06933d09e48248a11ff63af40fcc7",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "Roof tiles rain down as a Leopard 2A6 fires up the street",
+   "map": "urban",
+   "time": "day",
+   "hero": "leo2a6_x",
+   "paint": {
+    "unit": "ambushdot",
+    "enemy": "paint_ru_t80u_modern"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 2680,
+    "exposureMs": 16
+   }
+  },
+  "s20-road-return-fire": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "e681349fce9efd1d1b3ac63f3e2f4b13171cecb5799dc98ac1a7095a324681b1",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "72fde7c53a504d6706e586a61a8c7cdabd7867fd5fd6a5b6b50a73b692b3961e",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "72fde7c53a504d6706e586a61a8c7cdabd7867fd5fd6a5b6b50a73b692b3961e",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A T-90M column returns fire across the fields at sunset",
+   "map": "verdant",
+   "time": "sunset",
+   "hero": "t90m_x",
+   "paint": {
+    "unit": "rasputitsa",
+    "enemy": "merdc"
+   },
+   "turrets": "lens",
+   "still": {
+    "tMs": 1380,
+    "exposureMs": 16
+   }
+  },
+  "s21-fields-assault": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "7f1c53794ff8b4bedce1e49bf4ad7308f90c3be2b8ab6e5fac3bc1e9686ece9e",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "57f63e3fbb6e1fe09eb013d4c0d30036635dc71e1ee63900b87358b59b6dd9ea",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "57f63e3fbb6e1fe09eb013d4c0d30036635dc71e1ee63900b87358b59b6dd9ea",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A T-90SM wedge assaults through the burning fields",
+   "map": "verdant",
+   "time": "day",
+   "hero": "t90sm_x",
+   "paint": {
+    "unit": "sig_t90sm",
+    "enemy": "service_leo2a6m"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 3720,
+    "exposureMs": 25
+   }
+  },
+  "s22-walking-barrage": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "deeef6ab22eb5759946398018bf356aa9ff019996249643c8972748e501dfcc1",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v4",
+     "sceneSha256": "deeef6ab22eb5759946398018bf356aa9ff019996249643c8972748e501dfcc1",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "Artillery walks across the fields toward the wedge at night",
+   "map": "verdant",
+   "time": "night",
+   "hero": "t90sm_x",
+   "paint": {
+    "unit": "sig_tos1a_tagil",
+    "enemy": "summer"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 3700,
+    "exposureMs": 25
+   }
+  },
+  "s23-village-crossroads": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "089aa9cd33389e73d6e3fb947f286fe40dde61ff7395fa290ed7929d6ffcccd3",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "d654b74fbebdaa021daee23e53a83fa1d62a74642af22dd97ebc693dcab708a7",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "d654b74fbebdaa021daee23e53a83fa1d62a74642af22dd97ebc693dcab708a7",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "T-14 and T-90M tanks hold the village crossroads",
+   "map": "verdant",
+   "time": "day",
+   "hero": "t14_x",
+   "paint": {
+    "unit": "hexfield",
+    "enemy": "service_usa_desert"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 1580,
+    "exposureMs": 16
+   }
+  },
+  "s24-ice-duel": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "c29d4951c135aa8cdc82e45659f73ca31cd02acccc48809c6d38dc0e17287c94",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "e3b18c3390ef95cd0662f4d40c484bb2c2350f07c49ed4a31ded97eb9d7a991b",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "e3b18c3390ef95cd0662f4d40c484bb2c2350f07c49ed4a31ded97eb9d7a991b",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A duel on the frozen lake: a T-80U takes the hit",
+   "map": "alpine",
+   "time": "day",
+   "hero": "strv122_x",
+   "paint": {
+    "unit": "merdcwinter",
+    "enemy": "sig_t90a_vladimir"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 1860,
+    "exposureMs": 16
+   }
+  },
+  "s25-alpine-village": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "7a1d220b5fb4a1173d1c1a1012456460fcbea12ac09d943b3be19f30164a0775",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "07c40f31a4786d951b9871d9b0309b7b102b04840d15b47416110a43e411827e",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "07c40f31a4786d951b9871d9b0309b7b102b04840d15b47416110a43e411827e",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A Leopard 2A5 and a CV90105 fight through the alpine village",
+   "map": "alpine",
+   "time": "day",
+   "hero": "leo2a5_x",
+   "paint": {
+    "unit": "washworn",
+    "enemy": "service_soviet_coldwar"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 3280,
+    "exposureMs": 16
+   }
+  },
+  "s26-minaret-fire": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "4b8ba383071f44ec040da94cdfa04a1df869c87b58e5c53fe7ca06be953ec098",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "99d3d2a2a9c1e0e3f970c4f2f8f29d83028be162d04aad8f21279f4d38d35e3a",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "99d3d2a2a9c1e0e3f970c4f2f8f29d83028be162d04aad8f21279f4d38d35e3a",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A Merkava Mk 3D fires past the minaret at Sunscar Oasis",
+   "map": "oasis",
+   "time": "day",
+   "hero": "merkava3d_x",
+   "paint": {
+    "unit": "sig_merkava3c",
+    "enemy": "paint_amx40"
+   },
+   "turrets": "lens",
+   "still": {
+    "tMs": 1680,
+    "exposureMs": 16
+   }
+  },
+  "s27-caravanserai-kill": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "60cf018617803fb7ce7ac4b0b8112acaae6619825f5b3f621442a15c0dfdb577",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v4",
+     "sceneSha256": "60cf018617803fb7ce7ac4b0b8112acaae6619825f5b3f621442a15c0dfdb577",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A T-62MV-1 is knocked out by the caravanserai",
+   "map": "oasis",
+   "time": "day",
+   "hero": "merkava4_x",
+   "paint": {
+    "unit": "sig_merkava4b",
+    "enemy": "sig_t90ms"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 2160,
+    "exposureMs": 16
+   }
+  },
+  "s28-fjord-village": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "0159b853a58c2a1bbc50f8a5e690e0f019024fab041d31ae8d7410c01828b064",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "a11bcc12783e0d0db49e6bf8ab0719fb1edd8d1815f21b08ffb23e5267882576",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "a11bcc12783e0d0db49e6bf8ab0719fb1edd8d1815f21b08ffb23e5267882576",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A Stridsvagn 122 and a CV9040C hold the fjord village",
+   "map": "fjord",
+   "time": "day",
+   "hero": "strv122_x",
+   "paint": {
+    "unit": "paint_cv90_mkiv",
+    "enemy": "sig_t90"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 3380,
+    "exposureMs": 16
+   }
+  },
+  "s29-fjord-road-kill": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "377fc484bbbde167b38558f4dfa4d74c6fe1555866d2bbade7465f58f8d9adfd",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v4",
+     "sceneSha256": "377fc484bbbde167b38558f4dfa4d74c6fe1555866d2bbade7465f58f8d9adfd",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A T-90 burns on the road above the fjord",
+   "map": "fjord",
+   "time": "day",
+   "hero": "leo2a4m_x",
+   "paint": {
+    "unit": "tigerstripe",
+    "enemy": "sig_t90a_vladimir"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 1960,
+    "exposureMs": 16
+   }
+  },
+  "s30-temple-village": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "dfb851e0d9f396c7492749f147e29670cafdf89c6cc5ac1c190ab087952fbf5f",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "adf292009191be35b3fdd4eed04400355fc9318b87a57bdb05bdceec61638660",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "adf292009191be35b3fdd4eed04400355fc9318b87a57bdb05bdceec61638660",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A K1A1 and a K21 fight through the temple village of Monsoon Ridge",
+   "map": "monsoon",
+   "time": "morning",
+   "hero": "k1a1_x",
+   "paint": {
+    "unit": "jungleops",
+    "enemy": "sig_t72m1_jaguar"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 3280,
+    "exposureMs": 16
+   }
+  },
+  "s31-ford-fire": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "68a984a7dac944ae941c804f698dfc993190ca342f6126c5cedda7b9fa604b4a",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "4dbc2ce4e0e193bd9be755e81085b42082bd19fc3702e30afa949bf7478700fa",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "4dbc2ce4e0e193bd9be755e81085b42082bd19fc3702e30afa949bf7478700fa",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A Type 96B fires across the river ford",
+   "map": "monsoon",
+   "time": "morning",
+   "hero": "type96b_x",
+   "paint": {
+    "unit": "service_type99a",
+    "enemy": "rasputitsa"
+   },
+   "turrets": "lens",
+   "still": {
+    "tMs": 1780,
+    "exposureMs": 16
+   }
+  },
+  "s32-yard-salvo": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "8e861b0e96828a5089f4f783421597bbe45ee8f8d241046664f8430be3a68427",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "ec1a9f90ebd96c1475b0a8ed3cc4a6b6e529f3162cfa216c9a1866874d33d6c3",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "ec1a9f90ebd96c1475b0a8ed3cc4a6b6e529f3162cfa216c9a1866874d33d6c3",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "M1A2 SEPv3 tanks fire across the rail yard at golden hour",
+   "map": "railyard",
+   "time": "golden",
+   "hero": "m1a2_sepv3_x",
+   "paint": {
+    "unit": "service_usa_desert",
+    "enemy": "sig_t90a"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 1380,
+    "exposureMs": 16
+   }
+  },
+  "s33-water-tower": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "0e1a2fb01cbef8dac2c83bca81cba5b3f029097ebeba1f548dd80c61b3f895b2",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "3b53e5e1b50af1d85c99d34f9279014a125c7b4e2d90f2ccfc0cdba33c0b7016",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "3b53e5e1b50af1d85c99d34f9279014a125c7b4e2d90f2ccfc0cdba33c0b7016",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "The line advances past the burning water tower at night",
+   "map": "railyard",
+   "time": "night",
+   "hero": "ua_m1a1_x",
+   "paint": {
+    "unit": "sig_ua_m1a1",
+    "enemy": "sig_t90m"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 3680,
+    "exposureMs": 25
+   }
+  },
+  "s34-furnace-salvo": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "07b6cad166d1b1ffac38bba85fdc158986ec022bb5ed1e9de2ace9a60db02e46",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v4",
+     "sceneSha256": "07b6cad166d1b1ffac38bba85fdc158986ec022bb5ed1e9de2ace9a60db02e46",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "T-14 Armatas fire a rippling salvo in the Ironworks yard at night",
+   "map": "foundry",
+   "time": "night",
+   "hero": "t14_x",
+   "paint": {
+    "unit": "sig_bmpt_t90",
+    "enemy": "service_leo2a6m"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 1180,
+    "exposureMs": 16
+   }
+  },
+  "s35-farm-village": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "4681f819a8035e5dc9822e9f8008977033b16b614e939f8125495b29f3f30601",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "64c37b5d47c63535bda0da201f1e508acf15fc8857aa63cb35dfdb9eb4980acf",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "64c37b5d47c63535bda0da201f1e508acf15fc8857aa63cb35dfdb9eb4980acf",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A Type 90 and a Type 89 fight through the farm village of Frontier Basin",
+   "map": "frontier",
+   "time": "morning",
+   "hero": "type90_x",
+   "paint": {
+    "unit": "sig_type90a",
+    "enemy": "service_soviet_coldwar"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 3380,
+    "exposureMs": 16
+   }
+  },
+  "s36-barn-knockout": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "a299afeb591d1f3ed98fe2a58debedfde72d4c8502a5d5d2c5cffdf72350e7c2",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v4",
+     "sceneSha256": "a299afeb591d1f3ed98fe2a58debedfde72d4c8502a5d5d2c5cffdf72350e7c2",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A Type 10 knocks out a T-90M beside the burning barn",
+   "map": "frontier",
+   "time": "morning",
+   "hero": "type10_x",
+   "paint": {
+    "unit": "amoeba",
+    "enemy": "paint_ru_t80u_modern"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 2060,
+    "exposureMs": 16
+   }
+  },
+  "s37-river-village": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "30a2f6556a889c8e41e8d2c59b1b2677ea7db9e69fd02f29ef6c0b4cad65b793",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "ed0ebe8e5697d5702ec7940138cc03493e647fc01aa63a3aacc03993c8861c9e",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "ed0ebe8e5697d5702ec7940138cc03493e647fc01aa63a3aacc03993c8861c9e",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "ZTZ-100 tanks fight through the river village of the Jade River Delta",
+   "map": "delta",
+   "time": "morning",
+   "hero": "ztz100_x",
+   "paint": {
+    "unit": "sig_ztz100_x",
+    "enemy": "sig_t90"
+   },
+   "turrets": "lens",
+   "still": {
+    "tMs": 1480,
+    "exposureMs": 16
+   }
+  },
+  "s38-church-knockout": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "014507bce7203e18552a9ba8b7a03fce959b5b30ca6844ca2f898367f6ce31fc",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v4",
+     "sceneSha256": "014507bce7203e18552a9ba8b7a03fce959b5b30ca6844ca2f898367f6ce31fc",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A Leopard 2A6 is knocked out beside the onion-domed church at night",
+   "map": "winter",
+   "time": "night",
+   "hero": "t90a_vladimir_x",
+   "paint": {
+    "unit": "ardennes44",
+    "enemy": "merdcwinter"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 2060,
+    "exposureMs": 16
+   }
+  },
+  "s39-lakeside-village": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "8ddca8884fe3fc9ae1cb52711c8b14e9474aa05790355a762b0d76ee66e6943d",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "add83b9b61065c8f44dc0e59679a3164f9cc527e0448b94b58f86641ec32f5b2",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "add83b9b61065c8f44dc0e59679a3164f9cc527e0448b94b58f86641ec32f5b2",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "A Chieftain Mk 10 fires across the village at Highland Reservoir",
+   "map": "reservoir",
+   "time": "day",
+   "hero": "chieftain_mk10_x",
+   "paint": {
+    "unit": "dpm",
+    "enemy": "sig_t90a"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 3380,
+    "exposureMs": 16
+   }
+  },
+  "s40-rooftop-smoke": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "019b7122482be6efd788d3440f82aa938f58815e26675ceada247e366e307ae1",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v6",
+     "sha256": "05a9daf5b4f19846bc7781335cd7d50fc11a8a9cc3f4f0f889265a6e44819890",
+     "at": "2026-10-04T16:02:09.809Z",
+     "note": "s40 drone looks down the street to the wreck columns; s45/s46/s49 at golden hour (664e1c14b)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v4",
+     "sceneSha256": "019b7122482be6efd788d3440f82aa938f58815e26675ceada247e366e307ae1",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/versions/r4c",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs",
+     "superseded": {
+      "at": "2026-10-04T16:02:09.932Z",
+      "why": "s40: the drone never framed the wreck smoke columns it is named for; s45/s46/s49: the sunset sun sat behind the valleys' mountains and the takes rendered nearly black"
+     }
+    },
+    {
+     "round": "r4d",
+     "sceneVersion": "v6",
+     "sceneSha256": "05a9daf5b4f19846bc7781335cd7d50fc11a8a9cc3f4f0f889265a6e44819890",
+     "renderer": "7a5c80c2e",
+     "at": "2026-10-04T16:34:20.570Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films and stills; s40 recam, s45/s46/s49 golden hour"
+    }
+   ],
+   "title": "Smoke columns rise over the rooftops of Steinburg",
+   "map": "urban",
+   "time": "day",
+   "hero": "leclerc_classic_x",
+   "paint": {
+    "unit": "sig_amx56",
+    "enemy": "service_soviet_coldwar"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 3300,
+    "exposureMs": 25
+   }
+  },
+  "s41-church-tower": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "f934bea01858370d3e4ee3b579845e4ef276512881e05dcafae723cce321c0e4",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "ec300a0f280ab64dd35c704692b0af8936235cc978ac0bafcc9fce6eb67397c3",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "ec300a0f280ab64dd35c704692b0af8936235cc978ac0bafcc9fce6eb67397c3",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "The night street fight seen from the church tower",
+   "map": "urban",
+   "time": "night",
+   "hero": "leo2a6_x",
+   "paint": {
+    "unit": "sig_sabra_mk2_x",
+    "enemy": "sig_t90"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 2700,
+    "exposureMs": 16
+   }
+  },
+  "s42-assault-above": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "4c0ddf25364284ffada8be3d9c948b1ce1d0328b249611c71ff404881b68925c",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "f4242e75600d3634246e41e031d94f10d1c2758181d083f348a7964fcf65f80d",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "f4242e75600d3634246e41e031d94f10d1c2758181d083f348a7964fcf65f80d",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "Verdant Fields from above as the assault rolls in",
+   "map": "verdant",
+   "time": "day",
+   "hero": "t90sm_x",
+   "paint": {
+    "unit": "paint_ru_t80u_modern",
+    "enemy": "service_leo2a6m"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 3300,
+    "exposureMs": 25
+   }
+  },
+  "s43-lake-crane": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "e31a60f9f3044dae44680e22f9ff78d1cfd43131249960e354e2acac088a9a51",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "229dcbc70553c70cdc84d16b8171f58fb567e64e6594d466e2e822672bd9d73b",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "229dcbc70553c70cdc84d16b8171f58fb567e64e6594d466e2e822672bd9d73b",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "Glacier Pass at sunset: smoke rises over the frozen lake and the peaks",
+   "map": "alpine",
+   "time": "sunset",
+   "hero": "strv122_x",
+   "paint": {
+    "unit": "m90",
+    "enemy": "winter"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 4600,
+    "exposureMs": 25
+   }
+  },
+  "s44-oasis-sunset": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "1fb491308581cf4f6d84f128b6ac7dfbec240fbf673657830ccb639b280ed2df",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "bbf93b237609daab192947398ae9220472fdabc7797246ea017e1b813f5838f2",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "bbf93b237609daab192947398ae9220472fdabc7797246ea017e1b813f5838f2",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "Sunscar Oasis at sunset: smoke over the palms and the minaret",
+   "map": "oasis",
+   "time": "sunset",
+   "hero": "m1a2_tusk_x",
+   "paint": {
+    "unit": "pinkdesert",
+    "enemy": "sig_t90ms"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 3300,
+    "exposureMs": 25
+   }
+  },
+  "s45-harbor-wide": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "13fac84dc78af048da88df3631f1b9c0570d7b644a984710f59b774cb0742409",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "d5c3bc70393f2248f76386eeb7cb833362cdf339d78813ffaba7270406dbd53f",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v6",
+     "sha256": "eb88a0dbdb2c6f535137d8e7503d93e483f734c355da4bba5905ca25ba497d69",
+     "at": "2026-10-04T16:02:09.809Z",
+     "note": "s40 drone looks down the street to the wreck columns; s45/s46/s49 at golden hour (664e1c14b)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "d5c3bc70393f2248f76386eeb7cb833362cdf339d78813ffaba7270406dbd53f",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/versions/r4c",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs",
+     "superseded": {
+      "at": "2026-10-04T16:02:09.932Z",
+      "why": "s40: the drone never framed the wreck smoke columns it is named for; s45/s46/s49: the sunset sun sat behind the valleys' mountains and the takes rendered nearly black"
+     }
+    },
+    {
+     "round": "r4d",
+     "sceneVersion": "v6",
+     "sceneSha256": "eb88a0dbdb2c6f535137d8e7503d93e483f734c355da4bba5905ca25ba497d69",
+     "renderer": "7a5c80c2e",
+     "at": "2026-10-04T16:34:20.570Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films and stills; s40 recam, s45/s46/s49 golden hour"
+    }
+   ],
+   "title": "Nordhavn at golden hour: the battle on the harbor road below the mountains",
+   "map": "fjord",
+   "time": "golden",
+   "hero": "leo2a7v_x",
+   "paint": {
+    "unit": "naval",
+    "enemy": "sig_t90a"
+   },
+   "turrets": "flank",
+   "still": {
+    "tMs": 3300,
+    "exposureMs": 25
+   }
+  },
+  "s46-river-drone": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "7b01bde75727d11220d55d74f236e227bfc3ac701dc4c96a26ec0f0dfccbb644",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v6",
+     "sha256": "d22523e4b41da95d2b8ee09c4135ae898dcb52d5201348d4d3cba1d6385025a3",
+     "at": "2026-10-04T16:02:09.809Z",
+     "note": "s40 drone looks down the street to the wreck columns; s45/s46/s49 at golden hour (664e1c14b)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v4",
+     "sceneSha256": "7b01bde75727d11220d55d74f236e227bfc3ac701dc4c96a26ec0f0dfccbb644",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/versions/r4c",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs",
+     "superseded": {
+      "at": "2026-10-04T16:02:09.932Z",
+      "why": "s40: the drone never framed the wreck smoke columns it is named for; s45/s46/s49: the sunset sun sat behind the valleys' mountains and the takes rendered nearly black"
+     }
+    },
+    {
+     "round": "r4d",
+     "sceneVersion": "v6",
+     "sceneSha256": "d22523e4b41da95d2b8ee09c4135ae898dcb52d5201348d4d3cba1d6385025a3",
+     "renderer": "7a5c80c2e",
+     "at": "2026-10-04T16:34:20.570Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films and stills; s40 recam, s45/s46/s49 golden hour"
+    }
+   ],
+   "title": "Monsoon Ridge at golden hour: shells land along the jungle river",
+   "map": "monsoon",
+   "time": "golden",
+   "hero": "aft10_x",
+   "paint": {
+    "unit": "tropic",
+    "enemy": "rasputitsa"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 3300,
+    "exposureMs": 25
+   }
+  },
+  "s47-ironworks-crane": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "6c359ab5e2a60a61356731301f7d584ffd30456adf7907532bc158aef65602ee",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v4",
+     "sceneSha256": "6c359ab5e2a60a61356731301f7d584ffd30456adf7907532bc158aef65602ee",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "Ironworks at night: the yard burns between the smoke stacks",
+   "map": "foundry",
+   "time": "night",
+   "hero": "t14_x",
+   "paint": {
+    "unit": "sig_t90a",
+    "enemy": "summer"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 4600,
+    "exposureMs": 25
+   }
+  },
+  "s48-delta-crane": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "fab3196cc2a16acbd9a3383f6c75d9d3221fb47e0d3a070ee9f77bcdf42ea04f",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v4",
+     "sceneSha256": "fab3196cc2a16acbd9a3383f6c75d9d3221fb47e0d3a070ee9f77bcdf42ea04f",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "Jade River Delta: the river village under fire, mountains beyond",
+   "map": "delta",
+   "time": "morning",
+   "hero": "type96b_x",
+   "paint": {
+    "unit": "sig_ztz85_iii",
+    "enemy": "sig_t72m1_jaguar"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 4600,
+    "exposureMs": 25
+   }
+  },
+  "s49-orchard-sunset": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "0df8060d4520b666b25cd8852ca1467b0f4614661a03766dff1d2cb7ca15725e",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "fbf8143858c1cc2952aa94d4a7bb1cc333a845b60752e02e0eb1eab725615faf",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    },
+    {
+     "version": "v6",
+     "sha256": "93d104951223463245d7a6b5b8d938fd9ca27085c3263f76adefdc16e03240e5",
+     "at": "2026-10-04T16:02:09.809Z",
+     "note": "s40 drone looks down the street to the wreck columns; s45/s46/s49 at golden hour (664e1c14b)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "fbf8143858c1cc2952aa94d4a7bb1cc333a845b60752e02e0eb1eab725615faf",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/versions/r4c",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs",
+     "superseded": {
+      "at": "2026-10-04T16:02:09.932Z",
+      "why": "s40: the drone never framed the wreck smoke columns it is named for; s45/s46/s49: the sunset sun sat behind the valleys' mountains and the takes rendered nearly black"
+     }
+    },
+    {
+     "round": "r4d",
+     "sceneVersion": "v6",
+     "sceneSha256": "93d104951223463245d7a6b5b8d938fd9ca27085c3263f76adefdc16e03240e5",
+     "renderer": "7a5c80c2e",
+     "at": "2026-10-04T16:34:20.570Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films and stills; s40 recam, s45/s46/s49 golden hour"
+    }
+   ],
+   "title": "Orchard Valley at golden hour: smoke drifts over the orchards",
+   "map": "orchard",
+   "time": "golden",
+   "hero": "amx30_x",
+   "paint": {
+    "unit": "oakleaf",
+    "enemy": "service_soviet_coldwar"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 3300,
+    "exposureMs": 25
+   }
+  },
+  "s50-reservoir-crane": {
+   "versions": [
+    {
+     "version": "v4",
+     "sha256": "aef7a0c487741e3b4fbff1995f14c86970ef8325726f3d2b13cb50c8da1abbe9",
+     "at": "2026-10-03T16:55:32.998Z",
+     "note": "per-shot paint plan, turret choreography (sectors, flank, lens), Studio key caps, s01 over-the-deck lens"
+    },
+    {
+     "version": "v5",
+     "sha256": "700ea188ff60137f6e17aa6f00fa1ed21b9414db1f515c059ed5497d3a6ecb0f",
+     "at": "2026-10-03T18:31:40.466Z",
+     "note": "shell hits are shot blasts (no ammo-rack turret-ring fire floating with no tank)"
+    }
+   ],
+   "renders": [
+    {
+     "round": "r4c",
+     "sceneVersion": "v5",
+     "sceneSha256": "700ea188ff60137f6e17aa6f00fa1ed21b9414db1f515c059ed5497d3a6ecb0f",
+     "renderer": "bca048dab",
+     "at": "2026-10-04T15:15:24.537Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "2160p films (from the 2160p proxy) and 2160p stills, supersample 1.5; shot blasts without cook-offs"
+    }
+   ],
+   "title": "Highland Reservoir at sunset: the lake beyond the burning village",
+   "map": "reservoir",
+   "time": "sunset",
+   "hero": "chieftain5_x",
+   "paint": {
+    "unit": "service_challenger_3",
+    "enemy": "paint_ru_t80u_modern"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 4600,
+    "exposureMs": 25
+   }
+  }
+ }
+}
