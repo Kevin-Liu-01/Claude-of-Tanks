@@ -350,8 +350,20 @@ assert.match(source, /paintBoulder\(form, P\.rockTone, lithology\);\n\s*rockGeos
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockGround', new THREE\.InstancedBufferAttribute\(ground, 1\)\)/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockSlope', new THREE\.InstancedBufferAttribute\(slope, 2\)\)/, 'every boulder the slope of its ground');
 assert.match(source, /const rockContact = !snowCap && rockDressing\.dust < 0\.5;/, 'a contact patch round every boulder, but on snow and sand');
-assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(conformedDisc\(spot\.x, spot\.z, spot\.r, \[[^\]]*\], true\)\);\n\s*yield \{ fine: true, progress: false, stage: 'ground-foundation-instances' \};/,
+assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(conformedDisc\(spot\.x, spot\.z, spot\.r, \[[^\]]*\], true, ROCK_PATCH\)\);\n\s*yield \{ fine: true, progress: false, stage: 'ground-foundation-instances' \};/,
   'the contact patches go to the ground decals, conformed to the drawn mesh, one private input and checkpoint each');
+// (b12, after the Coastal re-shoot: a 2-3 px crease at a stone's foot where the patch's inner ring showed past a bank's
+// lip) a boulder's patch lightens toward the stone, its outer shadow whole; the contact layer carries the shares in its
+// vertex alpha, the other decals keep their geometry
+{
+  const shares = /const ROCK_PATCH: readonly number\[\] = \[([^\]]+)\];/.exec(source)[1].split(',').map(Number);
+  assert.equal(shares.length, 4, 'a share for every ring');
+  assert.ok(shares.every((v, i) => i === 0 || v >= shares[i - 1]) && shares[3] === 1 && shares[2] <= 0.6,
+    `the inner rings lightened, the outer one whole (${shares})`);
+  assert.match(source, /const FULL_PATCH: readonly number\[\] = \[1, 1, 1, 1\];/, 'the other contact patches whole');
+  assert.match(source, /if \(tint\) geo\.setAttribute\('color', new THREE\.BufferAttribute\(tint, 4\)\);/, 'the shares in a vertex alpha, only when passed');
+  assert.match(source, /if \(geos\[0\]\.getAttribute\('color'\)\) mat\.vertexColors = true;/, 'the contact layer reads them');
+}
 // (wave 74, Coastal boulder-a: a patch conformed to the analytic height floated over a bank's drawn lip): the patch lies
 // on the nearest terrain mesh — its grid and its diagonal those terrain.ts draws
 {

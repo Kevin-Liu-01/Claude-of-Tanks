@@ -7368,20 +7368,29 @@ ${snowCap ? `
     // patch conformed to that floated over the drawn lip and showed edge-on
     const groundHeightAt = (px: number, pz: number): number => heightField.getHeightAt(px, pz);
     const meshHeightAt = (px: number, pz: number): number => terrainNearMeshHeightAt(groundHeightAt, px, pz);
+    // (b12, the coordinator after the Coastal re-shoot: "lighten the patch's inner ring") the ground contact patches carry
+    // each ring's share of their darkness in a vertex alpha; a boulder's patch keeps its soft outer shadow but lightens
+    // toward the stone, whose foot covers the inner rings and leaves only a sliver showing at a bank's lip (a crease, not a
+    // contact). Only the contact layer passes shares; the other decals keep their geometry as it was.
+    const FULL_PATCH: readonly number[] = [1, 1, 1, 1];
+    const ROCK_PATCH: readonly number[] = [0.3, 0.35, 0.5, 1];
     function conformedDisc(
       x: number,
       z: number,
       r: number,
       profile: readonly number[],
       onMesh = false,
+      shares: readonly number[] | null = null,
     ): THREE.BufferGeometry {
       const rings = [0, 0.4, 0.7, 1.0], segs = 18;
       const nv = 1 + (rings.length - 1) * segs;
       const pos = new Float32Array(nv * 3);
       const uv = new Float32Array(nv * 2);
+      const tint = shares ? new Float32Array(nv * 4).fill(1) : null;
       const groundAt = onMesh ? meshHeightAt : groundHeightAt;
       pos[0] = x; pos[1] = groundAt(x, z) + profile[0]; pos[2] = z;
       uv[0] = 0.5; uv[1] = 0.5;
+      if (tint && shares) tint[3] = shares[0];
       let vi = 1;
       for (let ri = 1; ri < rings.length; ri++) {
         for (let k = 0; k < segs; k++) {
@@ -7392,6 +7401,7 @@ ${snowCap ? `
           pos[vi * 3 + 2] = pz;
           uv[vi * 2] = 0.5 + Math.cos(a) * 0.5 * rings[ri];
           uv[vi * 2 + 1] = 0.5 + Math.sin(a) * 0.5 * rings[ri];
+          if (tint && shares) tint[vi * 4 + 3] = shares[ri];
           vi++;
         }
       }
@@ -7407,6 +7417,7 @@ ${snowCap ? `
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
       geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      if (tint) geo.setAttribute('color', new THREE.BufferAttribute(tint, 4));
       geo.setIndex(idx);
       geo.computeVertexNormals();
       return geo;
@@ -7463,6 +7474,8 @@ ${snowCap ? `
         polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
       });
       if (receiveShadow) engineCtx.setupShadowMaterial(mat);
+      // (the contact layer's per-ring shares ride its vertex alpha)
+      if (geos[0].getAttribute('color')) mat.vertexColors = true;
       const mesh = new THREE.Mesh(mergeGeometries(geos, false), mat);
       // Foundation/contact tint already supplies the small-scale grounding
       // term. Letting the live CSM shade that translucent layer again stacks
@@ -7490,20 +7503,20 @@ ${snowCap ? `
             building.w / 2 + 2.8, building.d / 2 + 2.8, building.rot || 0));
         } else {
           dirtDiscs.push(conformedDisc(building.x, building.z,
-            Math.max(building.w, building.d) * 1.2, [0.05, 0.05, 0.05, 0.04]));
+            Math.max(building.w, building.d) * 1.2, [0.05, 0.05, 0.05, 0.04], false, FULL_PATCH));
         }
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const prop of crushables) {
-        dirtDiscs.push(conformedDisc(prop.x, prop.z, 1.15, [0.05, 0.05, 0.04, 0.03]));
+        dirtDiscs.push(conformedDisc(prop.x, prop.z, 1.15, [0.05, 0.05, 0.04, 0.03], false, FULL_PATCH));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const stack of stackSpots) {
-        dirtDiscs.push(conformedDisc(stack.x, stack.z, stack.r, [0.05, 0.05, 0.04, 0.03]));
+        dirtDiscs.push(conformedDisc(stack.x, stack.z, stack.r, [0.05, 0.05, 0.04, 0.03], false, FULL_PATCH));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const spot of rockSpots) {
-        dirtDiscs.push(conformedDisc(spot.x, spot.z, spot.r, [0.04, 0.04, 0.04, 0.03], true));
+        dirtDiscs.push(conformedDisc(spot.x, spot.z, spot.r, [0.04, 0.04, 0.04, 0.03], true, ROCK_PATCH));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
     }
