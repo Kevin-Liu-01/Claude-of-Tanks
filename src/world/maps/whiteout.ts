@@ -1,7 +1,18 @@
 // Wind-scoured polar logistics station, not an alpine-village reskin:
 // staggered snow berms screen a wide service grid and a frozen melt pan.
+//
+// Reference: a Distant Early Warning Line station on the Tuktoyaktuk Peninsula, Northwest Territories, in the 1980s, as
+// the North Warning System took the line over. The Arctic coastal plain north of the treeline: tundra and frozen
+// thaw lakes on permafrost, pingos and the gravel ridges the ice left, no tree for a hundred kilometres. Nothing the
+// station built stands on the ground: its modules ride on steel piles so their heat cannot thaw it.
+//
+// The station (map revival lane 2, 2026-10-05; the owner: every map as new as Verdant): the arctic kit
+// (maps/regional/arctic.ts) builds every building as the line's own — the module trains on their piles with the white
+// radome over the upper level, the tropospheric-scatter billboards facing the next station over the horizon, the
+// short-range radar on its lattice tower under its own radome, the steel garages with their overhead doors, the
+// warehouse, the Jamesway huts, the plywood sheds on runners, a module stripped and left to the wind. The tundra has
+// no trees; dwarf birch and willow scrub keep to the hollows.
 import winter from './winter.ts';
-import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 import { roundRoadBends } from './roadBends.ts';
 export default {
@@ -75,10 +86,14 @@ export default {
     // increasing the deliberately sparse station's tree placement budget.
     species: ['spruce', 'birch', 'fir'], clusterMix: [['spruce', 0.55], ['birch', 0.35], ['fir', 0.10]],
     loneMix: [['birch', 0.65], ['spruce', 0.30], ['fir', 0.05]], rimMix: [['spruce', 0.65], ['birch', 0.25], ['fir', 0.10]],
-    clusterCount: 8, loneCount: 12, rimCount: 20, grassDensity: 0.20, bushCount: 0.22, bushSpecies: 'birch',
+    // map revival lane 2 (2026-10-05): the Arctic coast is north of the treeline (was 8 stands, 12 lone trees, 20 on the rim)
+    clusterCount: 0, loneCount: 0, rimCount: 0, grassDensity: 0.20, bushCount: 0.22, bushSpecies: 'birch',
     palettes: winter.vegetation.palettes,
   },
   props: {
+    // map revival lane 2 (2026-10-05): the arctic kit (maps/regional/arctic.ts); the kit's own panel paints, so the map
+    // no longer tones the renders (it toned the old generic halls: makeRealisticCityBuildingTones)
+    architecture: 'arctic',
     sourcedPalette: 'winter',
     plan: ['depot', 'warehouse', 'watertower', 'foundryoffice', 'containerRow', 'depot', 'warehouse', 'ruin', 'firestation', 'depot', 'containerRow', 'woodshed', 'warehouse', 'ruin', 'depot', 'foundryoffice'],
     destructibleBuildings: ['quonsethut', 'relaystation', 'motorpool', 'servicegarage'],
@@ -91,7 +106,6 @@ export default {
       { id: 'eastern-weather-relay', role: 'scout', x: 320, z: -10, yawDeg: -90, structure: 'relaystation', outcrop: { count: 4, radius: 8 } },
       { id: 'north-fuel-shelter', role: 'support', x: -70, z: 270, yawDeg: 180, structure: 'quonsethut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true },
     ],
-    tones: makeRealisticCityBuildingTones({ value: 1.04, saturation: 1.02, soot: 0.01, roofValue: 0.94 }),
     industrialCladding: 'steel', // round 75: a polar station's halls are corrugated sheet, not brick
     yardDressing: 60, // round 75: a snowed-in station keeps its yards sparse
     snowCap: true, extraKits: ['winterLake'], wallStyle: 'fieldstone', wallStoneChance: 0.78,

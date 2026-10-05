@@ -110,7 +110,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Frosthollow | Carpathian winter valley (round 48): a beaded frozen river down a kotlina floor, a linear timber street village on the west terrace with a sawmill yard, a two-armed ridge and saddle pass on the west flank, rolling moraine on the east; fieldstone walls, spruce blocks with cut clearings |
 | Glacier Pass | Frozen lake, rocky alpine catchment, sheltered village; exposed crags and drifting snow |
 | Nordhavn Fjord | Steep harbor settlement, fishing quays, dark water and coastal rock; layered mountain valleys |
-| Whiteout Station | Sparse polar service compound, fuel storage and wind-shaped snow corridors; expansive low backdrop |
+| Whiteout Station | Sparse polar service compound, fuel storage and wind-shaped snow corridors; expansive low backdrop. Map revival lane 2 (2026-10-05): a DEW Line station on the Tuktoyaktuk Peninsula in the 1980s — the arctic kit (module trains on steel piles under the radome, tropospheric-scatter billboards, the radar on its lattice tower, steel garages, Jamesways, sheds on runners) on a treeless Arctic coastal plain |
 | Saltmere Bay | Dune-backed fishing coast, sheltered harbor and inland pasture; no inland sand marbling |
 | Saltwind Narrows | Dry limestone terraces, scrub and narrow sheltered water; pale stone with restrained green |
 | Jade River Delta | Braided channels, floodplain agriculture and raised compounds; vegetation follows water |
