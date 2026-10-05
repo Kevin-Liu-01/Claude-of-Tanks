@@ -98,6 +98,15 @@ export default {
       [[-150, 0], [-150, 50], [-150, 100], [-150, 150], [-150, 175]],
       [[-200, 0], [-200, -50], [-200, -100], [-200, -150], [-200, -175]],
       [[200, 0], [200, 50], [200, 100], [200, 150], [200, 175]],
+    ],
+    // the map-revival lane (2026-10-05): each street's own surface, kerb to kerb (props.ts sets the kerbs 5.05 m off
+    // every line): the boulevard's asphalt (the tram bed down its middle is the street kit's), the trunk roads' asphalt
+    // patched over the shell holes, the terrace and cross streets' setts in courses
+    pathStyles: [
+      { surface: 'asphalt', widthM: 10 },
+      { surface: 'patched', widthM: 9.8 }, { surface: 'patched', widthM: 9.8 },
+      { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 },
+      { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 }, { surface: 'cobble', widthM: 9.8 },
     ] },
     landforms: [
       // The two hill flanks and their wooded ridges, each the other's rotation about the square.
