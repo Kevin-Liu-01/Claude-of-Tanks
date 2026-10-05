@@ -233,9 +233,11 @@ export function treeBiomeArid(mapId: string | null | undefined): boolean {
  * Trees round 3 (2026-10-03, the gauntlet's wave 31: "real places have closed woods"): how much wider a closed wood's
  * crowns spread than a field tree's (vegetation.ts placeTreeClusters; an open grove's never do). The tidal mangrove
  * coast keeps its woods' crowns: its stands lend their trees to the mangrove rows, each in the envelope its row
- * reserved (tidalMangrove.ts).
+ * reserved (tidalMangrove.ts). Trees round 5 (the gauntlet's wave 98 on Saltwind: "the oak canopies merge into a single
+ * flat-topped green wall ... with no sky gaps between individual crowns"): the Dalmatian coast's holm oak and olive
+ * woods are open woodland, each crown its own dome — they keep a field tree's spread.
  */
-const WOOD_SPREAD: Readonly<Record<string, number>> = Object.freeze({ mangrove: 1 });
+const WOOD_SPREAD: Readonly<Record<string, number>> = Object.freeze({ mangrove: 1, saltwind: 1 });
 export function treeBiomeWoodSpread(mapId: string | null | undefined): number {
   if (treeBiomeOpen(mapId)) return 1;
   return (mapId ? WOOD_SPREAD[mapId] : undefined) ?? 1.16;
