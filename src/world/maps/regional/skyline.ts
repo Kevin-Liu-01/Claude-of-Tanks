@@ -557,7 +557,20 @@ export function curtainTower(opts: SkylineOptions & { spandrel?: Rgb } = {}): Re
     const floors = opts.floors ?? Math.max(6, Math.min(26, Math.round((ctx.info.h > 20 ? ctx.info.h : 54) / 3.4)));
     const fh = 3.4;
     const top = towerTier(sink, plot, lobbyH + 0.6, floors, fh, facade, tierDamage(rng, damage, floors), rng, { base: lobbyH });
-    roofTop(sink, plot, top, 'plaster3', rng, true);
+    // the corner fins running the shaft's height, a shade lighter than its spandrels, and the crown: the plant storeys
+    // set back behind a band of louvres
+    for (const face of rectFaces(plot)) {
+      for (const end of [-1, 1]) faceBox(sink, 'structureMetal', face, end * (face.width / 2 - 0.3), (lobbyH + top) / 2, 0.22, 0.6, top - lobbyH, 0.44,
+        { ...DECOR, colour: shade(colour, 1.35), fineSides: true });
+    }
+    const crown = inset(plot, 1.2);
+    sink.span('dark', crown.x0, top, crown.z0, crown.x1, top + 4.2, crown.z1);
+    for (const face of rectFaces(crown)) {
+      facePanel(sink, 'structureMetal', face, 0, top + 2.1, 0.03, face.width - 0.4, 3.6, { ...DECOR, colour: shade(colour, 1.2) });
+      for (let k = 1; k < 8; k++) facePanel(sink, 'structureMetal', face, 0, top + 0.3 + k * 0.45, 0.05, face.width - 0.5, 0.08, { ...DECOR, colour: shade(colour, 0.7), fine: true });
+    }
+    roofTop(sink, crown, top + 4.2, 'plaster3', rng, true);
+    sink.span('plaster3', plot.x0, top - 0.2, plot.z0, plot.x1, top + 0.9, plot.z1);
     return sink.finish();
   };
 }
