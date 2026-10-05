@@ -1125,6 +1125,11 @@ export function dressMapExtras({
   }
   if (kits.includes('rail')) dressRailYard(focused, mapId === 'skybridge');
   if (kits.includes('winterLake')) dressWinterLakes(focused);
+  // the map-revival lane (2026-10-05): Suzhou Creek's four bridges, on the decks terrain.ts resolved for the stations
+  // authored crossing: 'bridge' (the arched spans, the abutments, the parapets and their collision, as Amberford's)
+  if (kits.includes('shanghai')) {
+    for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
+  }
   // Round 56 (2026-09-24, owner decision 21 of 2026-09-23): the wrack line and debris of every strand the map authors
   // (a sea lake with a shelf), after every kit so the boats, jetties and landings above are known and the kits' own
   // draw sequences are untouched. Soft dressing in the existing baked/wood buckets; no collision record.

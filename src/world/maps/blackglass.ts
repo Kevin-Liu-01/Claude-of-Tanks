@@ -122,6 +122,8 @@ export default {
     // the creek runs through the district as it stood: every building keeps its place but those its water reaches
     // (props.ts settlementOverWater: a landmark moves off the water after the district stands, a row is left out)
     settlementOverWater: true,
+    // the creek's bridges (maps/mapKits.ts)
+    extraKits: ['shanghai'],
     // the district's massive blocks keep their footprints off every carriageway, not only their own street's
     roadBuildingClearance: true,
     // The civic hall stood across road 3 at the district's crossroads and against road 1's edge, on the line between the
