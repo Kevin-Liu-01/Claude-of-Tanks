@@ -101,6 +101,20 @@ function shedGables(sink: PartSink, w: number, d: number, eaveY: number, tanP: n
   wallPolygon(sink, bucket, back, [[-w / 2, eaveY], [w / 2, eaveY], [w / 2, eaveY + rise]], 0.2, opts);
 }
 
+/**
+ * Brick pilasters down a long industrial face (gauntlet wave 106: "oversized grey block-grid placeholder walls"): a strip
+ * of the kit's brick every `step` metres from the plinth to the eave, a little proud, skipping the openings, so a long
+ * whitewashed wall reads as built bay by bay (dressing).
+ */
+function pilasters(sink: PartSink, face: Face, y0: number, y1: number, step: number, holes: Array<[number, number]> = []): void {
+  const n = Math.max(1, Math.round((face.width - 0.6) / step));
+  for (let k = 0; k <= n; k++) {
+    const u = -face.width / 2 + 0.3 + (face.width - 0.6) * k / n;
+    if (holes.some(([a, b]) => u > a - 0.4 && u < b + 0.4)) continue;
+    faceBox(sink, 'stone', face, u, (y0 + y1) / 2, 0.06, 0.52, y1 - y0, 0.12, { decor: true }, 'caps');
+  }
+}
+
 // ---------------------------------------------------------------------------------------------------------- the lot
 
 /**
@@ -144,7 +158,10 @@ function settlerHouse(ctx: RegionalBuildContext): RegionalParts {
   const brick = rng() < 0.18;
   const wall: RegionalBucket = brick ? 'stone' : 'plaster';
   const sheet = rng() < 0.32, livery = pick(rng, SHEET);
-  const roof = sheetRoof('gable', 21 + rng() * 7, sheet, 0.4, 0.35);
+  // (gauntlet wave 106, round 2: "Western cottages") the settlers' standard houses sat under low four-slope roofs of
+  // asbestos sheet as often as under gables, pitched low (18–24°)
+  const hip = rng() < 0.5;
+  const roof = sheetRoof(hip ? 'hip' : 'gable', 18 + rng() * 6, sheet, 0.4, 0.35);
   const openings: Opening[] = [
     ...windowRhythm('front', 0, W, { w: 0.86, h: 1.2, sill: 0.85, spacing: 1.55, margin: 0.75, max: 3 }),
     ...windowRhythm('left', 0, D, { w: 0.86, h: 1.2, sill: 0.85, spacing: 2.3, margin: 1.1, max: 2 }),
@@ -159,11 +176,13 @@ function settlerHouse(ctx: RegionalBuildContext): RegionalParts {
       gutters: null, verge: { colour: rng() < 0.5 ? WHITE : st.paint, bucket: 'structureWood' },
       spall: brick ? undefined : null,
     }, dialect(st));
-    // the attic vent in the street gable: a louvred board hatch
+    // the attic vent in the street gable: a louvred board hatch (a hipped roof has none)
     const gf: Face = { origin: [0, 0, (D - 0.1) / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-    const ventY = frame.eaveY + (frame.roof.ridgeY - frame.eaveY) * 0.38;
-    faceBox(sink, 'dark', gf, 0, ventY, 0.01, 0.55, 0.42, 0.02, { decor: true });
-    faceBox(sink, 'structureWood', gf, 0, ventY, 0.03, 0.72, 0.6, 0.04, { colour: st.paint, decor: true }, { back: true });
+    if (!hip) {
+      const ventY = frame.eaveY + (frame.roof.ridgeY - frame.eaveY) * 0.38;
+      faceBox(sink, 'dark', gf, 0, ventY, 0.01, 0.55, 0.42, 0.02, { decor: true });
+      faceBox(sink, 'structureWood', gf, 0, ventY, 0.03, 0.72, 0.6, 0.04, { colour: st.paint, decor: true }, { back: true });
+    }
     tvAerial(sink, frame, (look() - 0.5) * D * 0.5, look);
     if (look() < 0.6) bench(sink, gf, (look() - 0.5) * Math.max(0, W - 2.4), 1.4, PLANK);
   });
@@ -390,6 +409,8 @@ const elevator = (ctx: RegionalBuildContext): RegionalParts => {
       { origin: [0, 0, halfZ], u: [1, 0, 0], out: [0, 0, 1], width: Wl },
     ];
     for (const f of lotFaces) {
+      // (gauntlet wave 106, round 2) the slip-formed storey's pilasters, bay by bay, in its own concrete
+      for (let u = -f.width / 2 + 2.6; u < f.width / 2 - 1.0; u += 5.2) faceBox(sink, 'plaster2', f, u, H0 / 2, 0.08, 0.5, H0 + 0.5, 0.16, { decor: true, shade: 0.86 }, 'caps');
       for (let u = -f.width / 2 + 1.2; u < f.width / 2 - 1.0; u += 2.6) facePanel(sink, 'dark', f, u, H0 - 0.9, 0.012, 1.1, 0.55, { decor: true });
       faceBox(sink, 'structureMetal', f, f.width * 0.2, 1.2, 0.03, 1.6, 2.4, 0.06, { colour: pick(look, GATE), decor: true });
     }
@@ -425,9 +446,12 @@ const workshop = (ctx: RegionalBuildContext): RegionalParts => {
       ...windowRhythm('right', 0, D, { w: 2.2, h: 2.0, sill: 2.3, spacing: 3.2, margin: 1.4 }),
     ];
     const frame = buildHouse(sink, {
-      w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'plaster2' }, storeys: [{ h: H, wall: rng() < 0.4 ? 'stone' : 'plaster2' }],
-      roof: sheetRoof('gable', 12, false, 0.45, 0.3), gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, reveal: 0.22,
+      w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'plaster2' }, storeys: [{ h: H, wall: 'plaster' }],
+      roof: sheetRoof('gable', 12, false, 0.45, 0.3), gableBucket: 'plaster', openings, chimneys: [], gutters: null, verge: null, reveal: 0.22,
     }, { ...dialect(st, gate), window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, steel, rng, 0.3) });
+    for (const name of ['left', 'right'] as const) {
+      pilasters(sink, frame.faces[name], 0.3, frame.eaveY, 3.2, openings.filter((o) => o.face === name).map((o): [number, number] => [o.u - o.w / 2, o.u + o.w / 2]));
+    }
     const mw = Math.min(2.6, W * 0.24), my0 = frame.roof.ridgeY - 0.25, mh = 1.25, md = D * 0.72;
     sink.span('structureMetal', -mw / 2, my0, -md / 2, mw / 2, my0 + mh, md / 2, { colour: STEEL });
     const mr: RoofSpec = { kind: 'gable', pitchDeg: 12, eave: 0.3, verge: 0.25, thickness: 0.08, bucket: 'roof', ridge: 'saddle' };
@@ -450,7 +474,7 @@ const grainStore = (ctx: RegionalBuildContext): RegionalParts => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx), rng = st.rng;
   const fp = footprint(ctx);
-  const wall: RegionalBucket = rng() < 0.3 ? 'stone' : 'plaster';
+  const wall: RegionalBucket = rng() < 0.3 ? 'plaster3' : 'plaster';
   onLot(sink, fp, (Wl, Ll) => {
     const W = Wl - 0.1, D = Ll - 0.1;
     const doors: Opening[] = [];
@@ -499,7 +523,9 @@ const conveyor: RegionalBuilder = (ctx) => {
     sink.span('plaster2', -binS / 2, 2.2, z0 - binS / 2, binS / 2, binH, z0 + binS / 2);
     sink.span('plaster2', -binS / 2 - 0.15, binH, z0 - binS / 2 - 0.15, binS / 2 + 0.15, binH + 0.3, z0 + binS / 2 + 0.15);
     const shedL = Math.min(4.5, Ll * 0.22), zi = half - shedL / 2;
-    sink.span('plaster2', -hw, -0.4, zi - shedL / 2, hw, 3.2, half);
+    sink.span('plaster', -hw, -0.4, zi - shedL / 2, hw, 3.2, half);
+    sink.band('stone', -hw - 0.04, -0.1, zi - shedL / 2 - 0.04, hw + 0.04, 0.45, half + 0.04, { decor: true });
+    sink.band('plaster2', -hw - 0.08, 2.95, zi - shedL / 2 - 0.08, hw + 0.08, 3.2, half + 0.08, { decor: true, shade: 0.9 });
     sink.span('roof', -hw - 0.25, 3.2, zi - shedL / 2 - 0.2, hw + 0.25, 3.36, half + 0.25);
     faceBox(sink, 'dark', { origin: [0, 0, half], u: [1, 0, 0], out: [0, 0, 1], width: Wl }, 0, 1.4, 0.01, Wl - 1.0, 2.4, 0.02, { decor: true });
     const a: Vec3 = [-1.0, 2.9, zi - shedL / 2 + 0.6], b: Vec3 = [-1.0, binH - 2.2, z0 + binS / 2 - 0.4];
@@ -533,6 +559,8 @@ const mtsGarage: RegionalBuilder = (ctx) => {
   const st = stateFor(ctx), rng = st.rng;
   const fp = footprint(ctx);
   const gate = pick(rng, GATE), H = 4.6;
+  // (gauntlet wave 106, round 2: "grey block-grid placeholder walls") whitewash or ochre render over the garages' brick
+  const garageWall: RegionalBucket = rng() < 0.7 ? 'plaster' : 'plaster3';
   onLot(sink, fp, (Wl, Ll) => {
     const W = Wl - 0.1, L = Ll - 0.1;
     const bays = Math.max(2, Math.floor(L / 4.6)), bay = L / bays;
@@ -543,8 +571,8 @@ const mtsGarage: RegionalBuilder = (ctx) => {
     }
     const roof = sheetRoof('shed', 6, false, 0.45, 0.3);
     const frame = buildHouse(sink, {
-      w: W, d: L, plinth: { h: 0.25, out: 0.04, bucket: 'plaster2' }, storeys: [{ h: H, wall: rng() < 0.45 ? 'stone' : 'plaster2' }],
-      roof, gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, reveal: 0.2,
+      w: W, d: L, plinth: { h: 0.25, out: 0.04, bucket: 'plaster2' }, storeys: [{ h: H, wall: garageWall }],
+      roof, gableBucket: garageWall, openings, chimneys: [], gutters: null, verge: null, reveal: 0.2,
     }, {
       ...dialect(st, gate),
       door: (s, face, o, y0) => {
@@ -553,7 +581,10 @@ const mtsGarage: RegionalBuilder = (ctx) => {
         faceBox(s, 'structureMetal', face, o.u + o.w * 0.75, y0 + o.y0 + o.h / 2, 0.08, o.w * 0.5, o.h, 0.06, { colour: gate, decor: true });
       },
     });
-    shedGables(sink, W, L, frame.eaveY, Math.tan(6 * Math.PI / 180), 'stone');
+    shedGables(sink, W, L, frame.eaveY, Math.tan(6 * Math.PI / 180), garageWall);
+    for (const name of ['left', 'right'] as const) {
+      pilasters(sink, frame.faces[name], 0.25, frame.eaveY, bay, openings.filter((o) => o.face === name).map((o): [number, number] => [o.u - o.w / 2, o.u + o.w / 2]));
+    }
   });
   return sink.finish();
 };
@@ -567,7 +598,7 @@ const implementShed: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant;
   const fp = footprint(ctx);
-  const hBack = 3.9, hFront = 3.1, wall: RegionalBucket = rng() < 0.6 ? 'stone' : 'plaster2';
+  const hBack = 3.9, hFront = 3.1, wall: RegionalBucket = rng() < 0.25 ? 'stone' : 'plaster';
   onLot(sink, fp, (Wl, Ll) => {
     const W = Wl - 0.1, L = Ll - 0.1;
     sink.span(wall, -W / 2, -0.3, -L / 2, -W / 2 + 0.32, hBack, L / 2);
@@ -611,8 +642,9 @@ const rozhnovsky: RegionalBuilder = (ctx) => {
   const H = clamp(ctx.info.h + 3, 14, 20), Ht = 3.2 + rng() * 0.6, hp = 2.6;
   const paint = rng() < 0.5 ? SILVER : pick(rng, [rgb(0x8aa4b0), rgb(0x9a9a8e)]);
   sink.placed(0, fp.cx, 0, fp.cz, () => {
-    // the pump house: brick over the lot, a flat slab roof with a parapet, its door
-    sink.span('stone', -fp.w / 2 + 0.05, -0.4, -fp.d / 2 + 0.05, fp.w / 2 - 0.05, hp, fp.d / 2 - 0.05);
+    // the pump house: whitewashed over a brick plinth, a flat slab roof with a parapet, its door
+    sink.span('stone', -fp.w / 2 + 0.05, -0.4, -fp.d / 2 + 0.05, fp.w / 2 - 0.05, 0.5, fp.d / 2 - 0.05);
+    sink.span('plaster', -fp.w / 2 + 0.1, 0.5, -fp.d / 2 + 0.1, fp.w / 2 - 0.1, hp, fp.d / 2 - 0.1);
     sink.span('plaster2', -fp.w / 2, hp, -fp.d / 2, fp.w / 2, hp + 0.25, fp.d / 2);
     faceBox(sink, 'structureWood', { origin: [0, 0, fp.d / 2 - 0.05], u: [1, 0, 0], out: [0, 0, 1], width: fp.w }, fp.w * 0.2, 1.0, 0.02, 0.85, 1.95, 0.04, { colour: pick(rng, PAINTS), decor: true });
     sink.cylinder('structureMetal', [0, hp + 0.25, 0], 'y', H - hp - 0.25, R, 12, { colour: shade(paint, 0.94) });
@@ -864,5 +896,6 @@ export const TSELINA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
   },
   wear: 0.25,
   // the settlers' yards: a picket fence round the kitchen garden (ogorod), a gate, the shed in its corner (yards.ts)
-  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencepicket', gate: 'gate', shed: 'granary', shedSize: [3.6, 3.0], garden: true },
+  // (gauntlet wave 106, round 2: "Western cottages") board fences round the settlers' yards, not white pickets
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fenceplank', gate: 'gate', shed: 'granary', shedSize: [3.6, 3.0], garden: true },
 });
