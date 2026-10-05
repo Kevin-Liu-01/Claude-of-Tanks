@@ -1764,16 +1764,17 @@ function updateRideSupportVelocity(ride: RideState, supportY: number, dt: number
  * Ballistic flight and the landing. The contact is SWEPT inside the step: the fraction of the step at which the
  * ride crossed the contact line gives the true closing speed (not the post-step value a 40 m/s fall would read
  * 0.67 m past the ground), and the remainder of the step is integrated after the contact — so a rebound is the
- * same at any step size and the ride never ends a step below the contact line. Impact physics (2026-09-25): the
- * closing speed rebounds by the ruleset's restitution; a rebound under bounceMin settles and the loaded
- * suspension takes over (the old contact killed every landing's vertical speed on touch, so nothing ever bounced,
- * not even at 0.17 g).
+ * same at any step size, and a landing on the tracks spends the rest of its step on the springs (never past the
+ * floor). Impact physics (2026-09-25): the closing speed rebounds by the ruleset's restitution; a rebound under
+ * bounceMin settles and the loaded suspension takes over (the old contact killed every landing's vertical speed on
+ * touch, so nothing ever bounced, not even at 0.17 g).
  */
 function advanceAirborneRide(
   state: TankState,
   ride: RideState,
   dt: number,
   contactY: number,
+  seatY: number,
   floorY: number,
   gravityScale: number,
   restitution: number,
@@ -1836,6 +1837,23 @@ function advanceAirborneRide(
   // restitution owes is paid when the springs have stopped the fall and extend again (constrainLoadedRide): the hull
   // dips onto its suspension and rises off it.
   ride.y = seat;
+  // The rest of the step after the contact is the springs' (physics lane round 8, wave 42 item 1: "the hull loses a whole
+  // step of fall at touchdown", 5 mm while falling at 5.9 m/s on a contact early in its step). It used to be dropped: the
+  // ride stood on the contact line, the stroke a step late. It moves on the loaded law the stroke runs at, damped against
+  // the ground's own rate under the travel (the bounded rules hold their ground still for the bounce, not for the
+  // dampers: against still ground a hull grazing a falling flank was slowed off it and fell further). A remainder that
+  // would pass the floor keeps the contact line, as before, so a fast hull cannot tunnel.
+  if (crossed && seat === contactY) {
+    const rest = (1 - fraction) * dt;
+    const groundRate = clamp(state.speed * _airGrade, -RIDE_SUPPORT_V_FALL_CAP, RIDE_SUPPORT_V_CAP);
+    const accel = RIDE_OMEGA * RIDE_OMEGA * (seatY - contactY) + 2 * LANDING_ZETA * RIDE_OMEGA * (groundRate - vAtContact);
+    const vRest = vAtContact + Math.max(accel, -gravity) * rest;
+    const yRest = contactY + vRest * rest;
+    if (yRest >= floorY) {
+      ride.y = yRest;
+      ride.v = vRest;
+    }
+  }
   ride.rebound = rebound > bounceMin ? rebound : 0;
   ride.stroke = closing > LANDING_STROKE_MIN_MPS ? 1 : 0;
   if (ride.rebound === 0) ride.bounces = 0;
@@ -2088,7 +2106,8 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   const grounded = groundedAtStart
     ? constrainLoadedRide(ride, seatY, contactY, floorY, dt, GRAVITY * drive.gravityScale,
       _wholeTrackOnGround ? Math.max(0, -state.speed * Math.tan(state._terr.pitch)) : 0, state._spring.pitchV)
-    : advanceAirborneRide(state, ride, dt, contactY, floorY, drive.gravityScale, drive.restitution, drive.bounceMin, drive.bounceMaxHeight);
+    : advanceAirborneRide(state, ride, dt, contactY, seatY, floorY, drive.gravityScale, drive.restitution, drive.bounceMin,
+      drive.bounceMaxHeight);
   if (faceGrade > 0 && grounded && ride.v > rideVBefore) {
     // the lift the face gave the hull this step costs the travel its grade times that (turnAlongGrade's rule, at the face)
     const travel = Math.abs(state.speed);

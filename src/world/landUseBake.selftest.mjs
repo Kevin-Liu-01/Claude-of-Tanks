@@ -10,14 +10,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
-  LAND_BAKE_ALONG_U_BIT, LAND_BAKE_HEDGE_BIT, LAND_BAKE_TRACK_BIT, LAND_USE_GLSL, bakeLandUseSteps, createLandFieldSample, landUseAt,
-  landUseProfileIds, landUseUniformValues, resolveLandUseProfile,
+  LAND_BAKE_ALONG_U_BIT, LAND_BAKE_HEDGE_BIT, LAND_BAKE_LAYERS, LAND_BAKE_TRACK_BIT, LAND_USE_GLSL, LAND_WARP_K_RANGE, bakeLandUseSteps,
+  createLandFieldSample, landUseAt, landUseProfileIds, landUseUniformValues, resolveLandUseProfile,
 } from './landUse.ts';
 import { stackLandUseBake } from './terrain.ts';
 
 const MAP = 1024;
 const bake = (id, n) => {
-  const out = new Uint8Array(n * n * 8);
+  const out = new Uint8Array(n * n * 4 * LAND_BAKE_LAYERS);
   const steps = bakeLandUseSteps(resolveLandUseProfile(id), n, MAP, out, 64);
   let slices = 0;
   for (let r = steps.next(); !r.done; r = steps.next()) slices++;
@@ -26,7 +26,9 @@ const bake = (id, n) => {
 const offset = (hi, lo) => (hi * 256 + lo - 32768) / 256;
 let rng = 0x2545f491;
 const rand = () => { rng ^= rng << 13; rng ^= rng >>> 17; rng ^= rng << 5; return (rng >>> 0) / 4294967296; };
-// the warped grid (landUse.ts warpX / warpZ and the heading; the GLSL's lu_grid)
+// the warp's Jacobian a bake texel carries (layer C), decoded as the GLSL decodes it
+const warpK = (out, C, t) => [0, 1, 2, 3].map((c) => (out[C + t + c] / 255 * 2 - 1) * LAND_WARP_K_RANGE);
+// the warped grid (landUse.ts warpX / warpZ and the heading: the twin's own)
 const grid = (id, x, z) => {
   const v = landUseUniformValues(resolveLandUseProfile(id)), warpM = Math.fround(v.landC[0]), heading = Math.fround(v.landA[1]);
   const wx = Math.sin(x * 0.00523 + z * 0.00311 + 1.3) + 0.5 * Math.sin(x * -0.00197 + z * 0.00877 + 4.1);
@@ -55,6 +57,18 @@ for (const id of landUseProfileIds()) {
       assert.ok(Math.abs(offset(hi, lo) - Math.max(-128, Math.min(65535 / 256 - 128, want))) <= 0.5 / 256 + 1e-9, `${id}: a signed edge offset within half a 4 mm step (±128 m)`);
     }
     assert.ok(Math.abs(Math.min(Math.abs(s.sU), Math.abs(s.sV)) - s.edgeM) < 1e-9, `${id}: the twin's offsets are its edge distance`);
+    // layer C: the warp's metres times its Jacobian at the texel's centre — against the twin's own warp by central
+    // differences (2 cm), within half an 8-bit step of the ±0.32 range
+    const cx = ((i + 0.5) / n - 0.5) * MAP, cz = ((j + 0.5) / n - 0.5) * MAP, h = 0.02;
+    const v = landUseUniformValues(resolveLandUseProfile(id)), warpM = v.landC[0], heading = Math.fround(v.landA[1]);
+    const unrot = (x, z) => { const [u, w] = grid(id, x, z), ch = Math.cos(heading), sh = Math.sin(heading); return [ch * u - sh * w - x, sh * u + ch * w - z]; };
+    const [ax, az] = unrot(cx + h, cz), [bx, bz] = unrot(cx - h, cz), [cxp, czp] = unrot(cx, cz + h), [dx, dz] = unrot(cx, cz - h);
+    const fd = [(ax - bx) / (2 * h), (cxp - dx) / (2 * h), (az - bz) / (2 * h), (czp - dz) / (2 * h)];
+    const K = warpK(out, 2 * B, t);
+    for (let c = 0; c < 4; c++) {
+      assert.ok(Math.abs(fd[c]) < LAND_WARP_K_RANGE, `${id}: the warp's Jacobian inside the code's range (${fd[c].toFixed(3)}, warp ${warpM} m)`);
+      assert.ok(Math.abs(K[c] - fd[c]) <= LAND_WARP_K_RANGE / 255 + 1e-4, `${id}: layer C's Jacobian entry ${c} (${K[c].toFixed(4)} vs ${fd[c].toFixed(4)})`);
+    }
   }
 }
 
@@ -70,10 +84,14 @@ for (const id of landUseProfileIds()) {
       landUseAt(resolveLandUseProfile(id), x, z, s);
       if (s.edgeM > 10) continue; // a texel's nearer edge is the point's own whenever the edge is near
       const i = Math.min(n - 1, Math.max(0, Math.floor((x / MAP + 0.5) * n))), j = Math.min(n - 1, Math.max(0, Math.floor((z / MAP + 0.5) * n)));
-      const t = (j * n + i) * 4, [qx, qz] = grid(id, x, z), [tx, tz] = grid(id, ((i + 0.5) / n - 0.5) * MAP, ((j + 0.5) / n - 0.5) * MAP);
+      const t = (j * n + i) * 4, v = landUseUniformValues(resolveLandUseProfile(id));
+      // the GLSL's lu_decode: the texel's offsets carried to the point through layer C's Jacobian and the heading
+      const dpx = x - ((i + 0.5) / n - 0.5) * MAP, dpz = z - ((j + 0.5) / n - 0.5) * MAP, K = warpK(out, 2 * B, t);
+      const dwx = dpx + K[0] * dpx + K[1] * dpz, dwz = dpz + K[2] * dpx + K[3] * dpz;
+      const ch = Math.fround(Math.cos(v.landA[1])), sh = Math.fround(Math.sin(v.landA[1]));
       const tU = offset(out[B + t], out[B + t + 1]), tV = offset(out[B + t + 2], out[B + t + 3]);
-      const sU = tU + (qx - tx), sV = tV + (qz - tz), crossU = sU * tU < 0, crossV = sV * tV < 0;
-      const v = landUseUniformValues(resolveLandUseProfile(id)), split = (out[t + 1] & 3) + 1, alongU = !!(out[t] & LAND_BAKE_ALONG_U_BIT);
+      const sU = tU + (ch * dwx + sh * dwz), sV = tV + (-sh * dwx + ch * dwz), crossU = sU * tU < 0, crossV = sV * tV < 0;
+      const split = (out[t + 1] & 3) + 1, alongU = !!(out[t] & LAND_BAKE_ALONG_U_BIT);
       const wU = alongU ? v.landA[2] / split : v.landA[2], wV = alongU ? v.landA[3] : v.landA[3] / split;
       const eU = crossU ? Math.abs(sU) : Math.min(Math.abs(sU), wU - Math.abs(sU)), eV = crossV ? Math.abs(sV) : Math.min(Math.abs(sV), wV - Math.abs(sV));
       const edge = crossV === crossU ? Math.min(eU, eV) : crossV ? Math.abs(sV) : Math.abs(sU);
@@ -101,15 +119,15 @@ for (const [W, n] of [[512, 512], [1536, 512], [256, 256]]) {
   for (let k = 0; k < mask.length; k++) mask[k] = (k * 7 + (k >> 9)) & 255;
   const ground = new THREE.DataTexture(mask, W, W, THREE.RGBAFormat);
   ground.minFilter = THREE.LinearMipmapLinearFilter; ground.magFilter = THREE.LinearFilter; ground.generateMipmaps = true; ground.anisotropy = 4;
-  const baked = new Uint8Array(n * n * 8);
+  const baked = new Uint8Array(n * n * 4 * LAND_BAKE_LAYERS);
   for (let k = 0; k < baked.length; k++) baked[k] = (k * 13 + 5) & 255;
   const st = stackLandUseBake(ground, baked, n);
   const H = st.texture.image.height, row0 = W + 128, data = st.texture.image.data;
-  assert.equal(st.texture.image.width, W); assert.equal(H, W + 128 + 2 * n, `${W}: the stack's height`);
+  assert.equal(st.texture.image.width, W); assert.equal(H, W + 128 + LAND_BAKE_LAYERS * n, `${W}: the stack's height`);
   assert.ok(W % 64 === 0 && row0 % 64 === 0 && H % 64 === 0, `${W}: the mask and the bake start and end on 64-row boundaries`);
   assert.deepEqual(data.subarray(0, W * W * 4), mask, `${W}: the mask's rows unchanged`);
   for (const r of [W, W + 63]) assert.deepEqual(data.subarray(r * W * 4, (r + 1) * W * 4), mask.subarray((W - 1) * W * 4, W * W * 4), `${W}: the first gutter repeats the mask's last row`);
-  for (const j of [0, 1, n - 1, n, 2 * n - 1]) {
+  for (const j of [0, 1, n - 1, n, 2 * n - 1, 2 * n, LAND_BAKE_LAYERS * n - 1]) {
     const row = data.subarray((row0 + j) * W * 4, (row0 + j + 1) * W * 4);
     assert.deepEqual(row.subarray(0, n * 4), baked.subarray(j * n * 4, (j + 1) * n * 4), `${W}: bake row ${j}`);
     if (W > n) assert.deepEqual(row.subarray((W - 1) * 4, W * 4), baked.subarray(((j + 1) * n - 1) * 4, (j + 1) * n * 4), `${W}: padded with its last texel`);
@@ -126,7 +144,7 @@ for (const [W, n] of [[512, 512], [1536, 512], [256, 256]]) {
 // mix below level 6; the coordinator's acceptance, 2026-10-03)
 {
   const W = 512, n = 512;
-  const mask = new Uint8Array(W * W * 4), baked = new Uint8Array(n * n * 8);
+  const mask = new Uint8Array(W * W * 4), baked = new Uint8Array(n * n * 4 * LAND_BAKE_LAYERS);
   for (let k = 0; k < mask.length; k++) mask[k] = (k * 31 + (k >> 11) * 7) & 255;
   for (let k = 0; k < baked.length; k++) baked[k] = (k * 17 + (k >> 10) * 3 + 101) & 255;
   const st = stackLandUseBake(new THREE.DataTexture(mask, W, W, THREE.RGBAFormat), baked, n);
@@ -140,8 +158,8 @@ for (const [W, n] of [[512, 512], [1536, 512], [256, 256]]) {
   };
   const H = st.texture.image.height, row0 = W + 128;
   let stack = Float64Array.from(st.texture.image.data), alone = Float64Array.from(mask);
-  let bakeAlone = Float64Array.from(st.texture.image.data.subarray(row0 * W * 4, (row0 + 2 * n) * W * 4));
-  let w = W, h = H, mh = W, bh = 2 * n, r0 = row0;
+  let bakeAlone = Float64Array.from(st.texture.image.data.subarray(row0 * W * 4, (row0 + LAND_BAKE_LAYERS * n) * W * 4));
+  let w = W, h = H, mh = W, bh = LAND_BAKE_LAYERS * n, r0 = row0;
   for (let level = 1; level <= 5; level++) {
     stack = down(stack, w, h); alone = down(alone, w, mh); bakeAlone = down(bakeAlone, w, bh);
     w /= 2; h /= 2; mh /= 2; bh /= 2; r0 /= 2;
@@ -162,8 +180,10 @@ for (const [W, n] of [[512, 512], [1536, 512], [256, 256]]) {
 }
 
 // 4. the GLSL decodes this packing on the twin's own warp
-for (const decode of ['vec4 a = texelFetch(uMask, t + ivec2(0, row0), 0);', 'vec4 b = texelFetch(uMask, t + ivec2(0, row0 + int(n)), 0);',
-  'vec2 d = lu_grid(p) - lu_grid(((vec2(t) + 0.5) / n - 0.5) * uLandBake.y);', 'crop = float(r & 31);',
+for (const decode of ['a = texelFetch(uMask, t + ivec2(0, row0), 0);', 'b = texelFetch(uMask, t + ivec2(0, row0 + int(n)), 0);',
+  'k = texelFetch(uMask, t + ivec2(0, row0 + 2 * int(n)), 0);', 'vec2 dp = p - ((vec2(t) + 0.5) / n - 0.5) * uLandBake.y;',
+  `vec4 K = (k * 2.0 - 1.0) * ${LAND_WARP_K_RANGE};`, 'vec2 dw = dp + vec2(K.x * dp.x + K.y * dp.y, K.z * dp.x + K.w * dp.y);',
+  'vec2 d = vec2(uLandRot.x * dw.x + uLandRot.y * dw.y, -uLandRot.y * dw.x + uLandRot.x * dw.y);', 'crop = float(r & 31);',
   `(r & ${LAND_BAKE_TRACK_BIT}) != 0 ? 1.0 - smoothstep(1.6, 2.6, abs(sV))`, `(r & ${LAND_BAKE_HEDGE_BIT}) != 0 ? 1.0 - smoothstep(1.2, 2.4, abs(sU))`,
   'float tU = (b.r * 65280.0 + b.g * 255.0 - 32768.0) / 256.0, tV = (b.b * 65280.0 + b.a * 255.0 - 32768.0) / 256.0;',
   'float sU = tU + d.x, sV = tV + d.y;', 'bool crossU = sU * tU < 0.0, crossV = sV * tV < 0.0;',
@@ -172,7 +192,7 @@ for (const decode of ['vec4 a = texelFetch(uMask, t + ivec2(0, row0), 0);', 'vec
 }
 const twin = readFileSync(new URL('./landUse.ts', import.meta.url), 'utf8');
 for (const k of ['0.00523', '0.00311', '-0.00197', '0.00877', '0.00409', '0.00587', '0.00913', '0.00241']) {
-  assert.ok(twin.split(k).length >= 3, `warp coefficient ${k} appears in both the twin and the GLSL's lu_grid`);
+  assert.ok(twin.split(k).length >= 3, `warp coefficient ${k} appears in both the twin's warp and the bake's Jacobian`);
 }
 assert.ok(!/sampler2D/.test(LAND_USE_GLSL), 'the land use declares no sampler: it reads the ground mask\'s (the material sits at 16 units)');
 console.log('landUseBake: the bake equals the twin at its texels on every map, the rebuilt boundary distance equals the twin\'s, sliced in 64-row steps; the stack keeps the mask and the bake apart (rows, gutters, mip levels 1–5) and addresses both; the GLSL decodes the packing on the twin\'s warp PASS; no GPU/art claim');

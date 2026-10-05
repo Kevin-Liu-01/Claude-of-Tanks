@@ -494,6 +494,28 @@ export const LAND_BAKE_HEDGE_BIT = 64;
 export const LAND_BAKE_ALONG_U_BIT = 128;
 /** The signed edge offsets' 16-bit code: 256 steps a metre around 32768 (±128 m, 4 mm steps). */
 const OFFSET_SCALE = 256, OFFSET_ZERO = 32768;
+/** The bake's layers (RGBA8, n × n each): A the field, B its signed edge offsets, C the warp's local Jacobian. */
+export const LAND_BAKE_LAYERS = 3;
+/**
+ * The range of the warp's Jacobian times its metres (|warpM · ∂w/∂x| ≤ 0.27 at the 30 m warp): layer C codes each of
+ * its four entries in 8 bits over ±0.32 (2.5e-3 a step — under 4 mm over the half-diagonal of a 2 m texel).
+ */
+export const LAND_WARP_K_RANGE = 0.32;
+const warpCode = (k: number): number => Math.min(255, Math.max(0, Math.round((k / LAND_WARP_K_RANGE * 0.5 + 0.5) * 255)));
+/**
+ * The warp's metres times its Jacobian at (x, z) — ∂(warpX, warpZ)/∂(x, z), the analytic derivative of the two slow
+ * sines per axis — into out[0..3] = (∂wx/∂x, ∂wx/∂z, ∂wz/∂x, ∂wz/∂z) · warpM. The material carries a texel's offsets to a
+ * pixel through it (the warp is near-linear over a texel: its curvature costs under 3 mm there) instead of evaluating
+ * the warp twice a pixel.
+ */
+function warpJacobian(x: number, z: number, warpM: number, out: Float64Array): void {
+  const c1 = Math.cos(x * 0.00523 + z * 0.00311 + 1.3), c2 = Math.cos(x * -0.00197 + z * 0.00877 + 4.1);
+  const c3 = Math.cos(x * 0.00409 - z * 0.00587 + 2.7), c4 = Math.cos(x * 0.00913 + z * 0.00241 + 0.6);
+  out[0] = warpM * (0.00523 * c1 - 0.5 * 0.00197 * c2);
+  out[1] = warpM * (0.00311 * c1 + 0.5 * 0.00877 * c2);
+  out[2] = warpM * (0.00409 * c3 + 0.5 * 0.00913 * c4);
+  out[3] = warpM * (-0.00587 * c3 + 0.5 * 0.00241 * c4);
+}
 const offsetCode = (m: number): number => Math.min(65535, Math.max(0, Math.round(m * OFFSET_SCALE + OFFSET_ZERO)));
 
 /**
@@ -512,13 +534,15 @@ const offsetCode = (m: number): number => Math.min(65535, Math.max(0, Math.round
 export function* bakeLandUseSteps(
   profile: LandUseProfile | null, n: number, mapSize: number, out: Uint8Array, rowsPerSlice = 64,
 ): Generator<void, Uint8Array, void> {
-  if (out.length !== n * n * 8) throw new Error('bakeLandUseSteps: the output holds two n × n RGBA8 layers');
+  if (out.length !== n * n * 4 * LAND_BAKE_LAYERS) throw new Error('bakeLandUseSteps: the output holds three n × n RGBA8 layers');
   const sample = createLandFieldSample();
-  const layerB = n * n * 4;
+  const layerB = n * n * 4, layerC = n * n * 8;
+  const warpM = profile && profile.strength > 0 ? compile(profile).warpM : 0, jac = new Float64Array(4);
   for (let j = 0; j < n; j++) {
     const z = ((j + 0.5) / n - 0.5) * mapSize;
     for (let i = 0; i < n; i++) {
-      landUseAt(profile, ((i + 0.5) / n - 0.5) * mapSize, z, sample);
+      const x = ((i + 0.5) / n - 0.5) * mapSize;
+      landUseAt(profile, x, z, sample);
       const k = (j * n + i) * 4;
       out[k] = (sample.crop & 31) | (sample.track > 0 ? LAND_BAKE_TRACK_BIT : 0) | (sample.hedge > 0 ? LAND_BAKE_HEDGE_BIT : 0)
         | (sample.alongU ? LAND_BAKE_ALONG_U_BIT : 0);
@@ -529,6 +553,9 @@ export function* bakeLandUseSteps(
       const u = offsetCode(sample.sU), v = offsetCode(sample.sV);
       out[layerB + k] = u >> 8; out[layerB + k + 1] = u & 255;
       out[layerB + k + 2] = v >> 8; out[layerB + k + 3] = v & 255;
+      warpJacobian(x, z, warpM, jac);
+      out[layerC + k] = warpCode(jac[0]); out[layerC + k + 1] = warpCode(jac[1]);
+      out[layerC + k + 2] = warpCode(jac[2]); out[layerC + k + 3] = warpCode(jac[3]);
     }
     if ((j + 1) % rowsPerSlice === 0 && j + 1 < n) yield;
   }
@@ -554,22 +581,25 @@ uniform vec4 uLandD;
 uniform vec4 uLandE;
 uniform vec4 uLandBake;
 uniform float uLandTier; // landUseTierOf: 0 the bake's crop on its edges, 1 + the cheap reads, 2 the full block
-// the warped grid's (qu, qv) at a world point — landUse.ts warpX / warpZ and the heading, as the twin's own
-vec2 lu_grid(vec2 p) {
-  vec2 w = vec2(sin(p.x * 0.00523 + p.y * 0.00311 + 1.3) + 0.5 * sin(p.x * -0.00197 + p.y * 0.00877 + 4.1),
-                sin(p.x * 0.00409 - p.y * 0.00587 + 2.7) + 0.5 * sin(p.x * 0.00913 + p.y * 0.00241 + 0.6));
-  vec2 pw = p + w * uLandC.x;
-  float ch = cos(uLandA.y), sh = sin(uLandA.y);
-  return vec2(ch * pw.x + sh * pw.y, -sh * pw.x + ch * pw.y);
-}
-void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2 rowDir, out float jitter, out float hedge) {
+uniform vec2 uLandRot; // (cos, sin) of the field grid's heading (uLandA.y), once on the CPU
+// the bake's three texels at a world point (the material reads them at the top of the splat, with the ground mask's own
+// read, and decodes them where it draws the fields: on a light frame nothing else would hide their latency)
+void lu_fetch(vec2 p, out vec4 a, out vec4 b, out vec4 k, out ivec2 t) {
   float n = uLandBake.x;
-  ivec2 t = clamp(ivec2(floor((p / uLandBake.y + 0.5) * n)), ivec2(0), ivec2(int(n) - 1));
+  t = clamp(ivec2(floor((p / uLandBake.y + 0.5) * n)), ivec2(0), ivec2(int(n) - 1));
   int row0 = int(uLandBake.z + 0.5);
-  vec4 a = texelFetch(uMask, t + ivec2(0, row0), 0);
-  vec4 b = texelFetch(uMask, t + ivec2(0, row0 + int(n)), 0);
-  // the texel's signed offsets to the field's nearer edge across each axis, carried to p along the warped grid
-  vec2 d = lu_grid(p) - lu_grid(((vec2(t) + 0.5) / n - 0.5) * uLandBake.y);
+  a = texelFetch(uMask, t + ivec2(0, row0), 0);
+  b = texelFetch(uMask, t + ivec2(0, row0 + int(n)), 0);
+  k = texelFetch(uMask, t + ivec2(0, row0 + 2 * int(n)), 0);
+}
+void lu_decode(vec2 p, vec4 a, vec4 b, vec4 k, ivec2 t, out float crop, out float edgeM, out float track, out vec2 rowDir, out float jitter, out float hedge) {
+  float n = uLandBake.x;
+  // the texel's signed offsets to the field's nearer edge across each axis, carried to p along the warped grid — through
+  // the warp's Jacobian at the texel's centre (layer C, landUse.ts warpJacobian) and the grid's heading: no trigonometry
+  vec2 dp = p - ((vec2(t) + 0.5) / n - 0.5) * uLandBake.y;
+  vec4 K = (k * 2.0 - 1.0) * ${LAND_WARP_K_RANGE};
+  vec2 dw = dp + vec2(K.x * dp.x + K.y * dp.y, K.z * dp.x + K.w * dp.y);
+  vec2 d = vec2(uLandRot.x * dw.x + uLandRot.y * dw.y, -uLandRot.y * dw.x + uLandRot.x * dw.y);
   float tU = (b.r * 65280.0 + b.g * 255.0 - ${OFFSET_ZERO}.0) / ${OFFSET_SCALE}.0, tV = (b.b * 65280.0 + b.a * 255.0 - ${OFFSET_ZERO}.0) / ${OFFSET_SCALE}.0;
   float sU = tU + d.x, sV = tV + d.y;
   int r = int(a.r * 255.0 + 0.5), g = int(a.g * 255.0 + 0.5);
@@ -588,5 +618,10 @@ void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2
   float turn = (a.b * 65280.0 + a.a * 255.0) * (6.2831853 / 65536.0);
   rowDir = vec2(cos(turn), sin(turn));
   jitter = float(g >> 2) / 63.0;
+}
+void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2 rowDir, out float jitter, out float hedge) {
+  vec4 a, b, k; ivec2 t;
+  lu_fetch(p, a, b, k, t);
+  lu_decode(p, a, b, k, t, crop, edgeM, track, rowDir, jitter, hedge);
 }
 `;

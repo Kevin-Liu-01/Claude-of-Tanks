@@ -475,6 +475,27 @@ key, the shared sun vector), `terrainMaterialOwnership` (two uniforms declared, 
 **Still open under 4/11.** Flat ground in cast shadow still takes the hemisphere preset colour rather than the rendered
 sky (check 11's second half); Mars' black is the far vista ring's night side, a vista item.
 
+**2026-10-04: off on the grounded rig (the skies lane, agreed with the ground lane).** Redrock's battlefield inselbergs,
+their faces turned from the sun on the into-sun frame, read 0.84–1.00 of the sunlit sand (the gauntlet's wave 50 frame;
+the mountains lane had cleared their normals). Each non-sun term switched off alone in the page, the boxes taken back to
+scene light through the output pass's twin: this lift carried 0.54–0.71 of the sunlit sand's light, the environment's sky
+diffuse 0.13–0.17, the ground bounce and the facing rule nothing (the face's own shadow covers the ground before it); with
+all three off, 0.13–0.18 remained — the haze's in-scatter toward the sun. The grounded rig (2026-10-01) lights a steep
+face's open sky through its environment, so the lift counted that light twice. The gain is now the rig's
+(`groundBounce.ts` `terrainWallSkyLift`, one uniform object every terrain program binds; `lighting.ts` applyGroundBounce
+sets it): round 42's 7 on the legacy rig (phones, the Preetham tier, the galaxy skies), none on the grounded rig
+(`WALL_SKY_LIFT_GROUNDED`, a QA knob); a map's own `splat.wallSkyLift` stays its own. The shader is unchanged.
+- *Redrock, facing the sun:* the faces 0.28–0.33 of the sunlit sand (a backlit wall under a clear sky: half the dome and
+  the bounce, about 0.20–0.35), a shaded red-brown; the touched pixels' median 145 → 88 display luma.
+- *The slopes round 42 rescued* (the pixels the lift touched, display luma p5): Caldera's e-wall-300 61.7 → 53.6 (32 % of
+  the sky; round 42 measured its black at 6.6, 3 %, and its fix at 16.7); Skybridge's e-wall-300 85.8 → 67.3 (43 % of the
+  sky; round 42: 21.2 → 34.8). Mars barely moves (0.5 % of its establishing frame, a slope by the settlement; the other
+  touched pixels are the starfield's twinkle). No slope returns to black.
+- *Overcast:* Titan Gorge's walls untouched (at most 3 levels). Frosthollow's snow slopes on e-wall-300 (5 % of the frame)
+  p5 127 → 112.
+- *GPU* (the old gain switched in-page, on / off / off / on twice): +0.13 / +0.06 ms (Redrock), −0.71 / −0.13 ms
+  (Caldera), p25 / p50 — nil, a uniform's value.
+
 ### Local wind field for the dune ripples — 2026-09-23 (round 43)
 
 **Symptom (check 8).** On the desert and Oasis the dune flats printed dark parallel bands of one heading and one
@@ -7078,6 +7099,78 @@ moves it 0.8 — the water's own reflection at grazing incidence is: `shallowWat
   critics (`WATER_SPEC_CAP`). The edge-w view faces away from the sun, where no glitter belongs.
 - *GPU:* the old weight switched in-page, on / off / off / on: −1.3 and −0.3 ms (p25) — a constant.
 Frames: `$SP/p2/sea/pair/{saltwind,coastal}/{a,g}-<view>.png`, the glint `saltwind/{a,g,g~spec25,g~spec4}-glint.png`.
+
+### 2026-10-04 — the cumulus item, shelved: what it learned (the skies lane)
+
+**The gauntlet's waves 46–50 on the cumulus:** "the darkest part of each cloud is only about a fifth darker than the
+brightest", "a grid-like rhythm", "hard cel outlines". Branch `visual/cumulus` (on origin, not merged).
+
+**Measured.** One knob at a time on each cloud's opaque interior (L*, desktop high; a cloudless frame of the same pose
+gives the cloud mask, the interior keeps 8+ pixels inside the outline; `$SP/p2/cumulus/tools/cloudrange.py`):
+- the sky floor in a cumulus' shade is the lever for its shade side — 0.34 → 0.12 of the sky mean took the shade 9–10 L*
+  down and the crown 1.5–4; below about 0.06 the sky light itself sits above the floor;
+- the multiple-scattering octaves' attenuation with depth (1.0 / 0.8 for b, b²) moved the clouds by one L*; a faster
+  decay of the diffused light took the crown down more than the shade; a first pick judged by eye on a sheet greyed
+  whole clouds (crowns 10 L* down with the shade) — measure the interior, not the sheet;
+- with the base dark (0.8) and a cumulus sun gain (1.15) the branch reached dark / lit 0.35–0.44 (it was 0.61–0.80) with
+  the crowns held at L* 88–90 and, toward the sun, rims brighter than cores; a coverage field over 36 km held one value
+  over the whole battlefield and only thinned its clouds — a size spread needs a period of a few kilometres (6 km).
+
+**Held by the gauntlet (wave 64):** the mean 4.25 → 4.19, the sky criterion down a point on four views, nothing up. Both
+critics still saw "airbrushed cotton balls … no flat bases or backlit edges" and "soft, flatly shaded, blurred-edge"
+clouds. Contrast alone does not read as volume: the gap is the density field's shape — one flat base at the condensation
+level with cauliflower towers above it — not its light. If the clouds come back: the shape first, measured against
+photographs; the light knobs are on the branch.
+
+### 2026-10-04 — no hard sun disc through a closed deck; the deck brightens toward the sun (the skies lane)
+
+**The gauntlet's wave 62 on Titan Gorge (dense overcast, a closed deck):** "the sun is a flat, hard-edged white disc
+pasted on a featureless grey-white sky with no bloom, corona, or gradient" (Sonnet); "no readable sun direction" (Opus).
+
+**Cause.** The cloud march ends a ray once its transmittance falls under 0.03, and the composite let that 3 % of the dome
+through. The dome's sun disc is tens of thousands of times the sky's radiance, so it burned through the deck as a white
+disc: 264 near-white pixels facing Titan's sun, 216 on Whiteout's, where a closed overcast leaves no direct sun.
+
+**The fix** (`volumetricClouds.ts`, `sky.ts`):
+- a ray the march ends under the cut is opaque — its in-scatter renormalised for the remainder, nothing behind it showing
+  through (`CLOUD_OPAQUE_CUT`); a clear sky does not move (Saltwind facing the sun: ±1 level, run-to-run);
+- under a closed deck (`uDeckClosed`, the overcast's last tenth) the dome draws no disc and no clear-air glow
+  (`SKY_DISC_DECK_FADE`); either alone removed the disc;
+- the sun's share of the light a deck transmits keeps a broad forward lobe — a dual Henyey–Greenstein of g 0.6 over its
+  isotropic share, the mean over the sky unchanged (`CLOUD_DECK_SUN_LOBE` 0.2): facing Titan's sun the deck brightens
+  200 → 219 display levels near the sun and 190 → 201 300–600 px out, a readable sun direction without a disc. The
+  deck path only: Whiteout's low stratus (lit as a sheet) and every cumulus are unchanged.
+
+**Measured** (desktop high, in-page toggles on one build; `$SP/p2/decksun`): the disc gone on Titan Gorge and Whiteout
+(near-white pixels 264 → 0 and 216 → 0), Redrock and Saltwind's clear-sky suns as they were; GPU on / off / off / on
+twice: +0.73 / +0.06 ms (p25 / p50) for the cut and the fade, +0.12 / +0.01 ms for the lobe — nil.
+
+### 2026-10-04 — Whiteout's ice sheet re-candidated and dropped; the shell's apron read sky (the mountains lane)
+
+**The candidate (d9f5f6b06: `panorama: { regional: 'iceSheet' }`, the ring at amp 0.45 and snow-covered to its foot)
+against the PR head's dark far range, in one paired ticket (establishing, bird, sky-w, sky-s, corner-ne and corner-sw).
+It was dropped before a wave, and the PR head's far range stays.**
+- *The band.* The bird view (303 m up) showed a cream-white band (L 0.69–0.74) lying on the ring with a ruler-straight
+  top edge, and above it the far sheet as a flat grey strip (0.63–0.64) under the sky (0.77). These are waves 53–54's
+  overcast bird views, "the world simply ends … a ruler-straight hard top edge". It is not the fill: in the SwiftShader
+  lab, with the fill's sun term at zero, nothing changes there. The shell reads the atlas by each fragment's elevation
+  from the bake eye (30 m at the centre), and the inner rows of its apron stand above that eye's horizon:
+  - the edge row, at the ring's outer edge (1.3–1.5 km out, 48–90 m up), sits at +0.76° to +2.54°;
+  - the first apron row (1.9 km) sits at 0.01°–0.88°.
+
+  At those elevations a low far country's atlas is sky; over an ice sheet it is opaque only to about +0.3°. Those
+  fragments are discarded, and from a camera well above the eye the sky dome's below-horizon colour shows through them.
+  From the bake eye the apron is hidden behind the ring, so the ground views never show it. Redrock's shell has the same
+  rows (+0.92° to +2.43°).
+- *From the ground* (corner-ne, corner-sw, sky-w) the PR head's dark ranges gave way to a near-featureless white line.
+- *Open: the nunataks' tint.* They came out as small beige-pink pyramids in the game's frames and grey-blue in the lab's
+  bake, so the tint enters after the bake (the aerial pass or the grade). It has not been traced.
+- *Next, the far-earth fix:* the apron is ground and never reads sky. Either its lookup is clamped to its column's
+  lowest opaque row, or it is painted with the fill's ground; the lab decides which reads better.
+
+Frames: `$SP/p2/mountains/pair-wo/{before,after}/frames/whiteout/` and the sheet `handover-wo/sheets/whiteout.jpg`. The
+lab: `lab4/out/wo-bird-check.png` (game / bake / bake without the fill's sun term) and `wo-bird-ring-vs-noring.png` (the
+shell alone, no apron).
 
 ## Acceptance is visual and measured
 
