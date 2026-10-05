@@ -41,6 +41,7 @@ for (const id of landUseProfileIds()) {
   const sample = createLandFieldSample();
   for (let z = -500; z <= 500; z += 8) for (let x = -500; x <= 500; x += 8) {
     landUseAt(p, x, z, sample);
+    if (!sample.active) continue; // a zoned land use's ground past its zones (Ruinspires)
     assert.equal(sample.boundary, ['margin', 'ditch', 'bund', 'wall'].indexOf(landUseBoundary(p)), `${id}: the sample carries the region's boundary`);
     const prior = seen.get(sample.id);
     if (prior === undefined) seen.set(sample.id, sample.crop); else assert.equal(prior, sample.crop, `${id}: one crop a field`);
@@ -48,6 +49,29 @@ for (const id of landUseProfileIds()) {
   }
   const kinds = new Set(seen.values());
   assert.ok(kinds.size >= 3, `${id}: at least three crops sown (${[...kinds].join(',')})`);
+}
+// 2026-10-05, Ruinspires (the cities lane): a zoned, urban land use — the valley floor's hardstanding kinds, the
+// cemeteries' mown grass at both of the rotation pair's rectangles, nothing past the city; the urban flag on its row
+// alone (every other map's village keeps its fields off), carried on the sample for the tiers that grow on the ground
+{
+  const p = resolveLandUseProfile('ruinspires'), s = createLandFieldSample();
+  assert.equal(landUseUniformValues(p).landE[3], 1, 'ruinspires: an urban land use');
+  for (const id of landUseProfileIds()) if (id !== 'ruinspires') assert.equal(landUseUniformValues(resolveLandUseProfile(id)).landE[3], 0, `${id}: not urban`);
+  const floor = new Set(), cemetery = [0, 0], cemeteryRot = [0, 0];
+  let past = 0, pastActive = 0;
+  for (let z = -500; z <= 500; z += 3) for (let x = -500; x <= 500; x += 3) {
+    landUseAt(p, x, z, s);
+    if (s.active) assert.equal(s.urban, 1, 'an urban field says so');
+    if (Math.abs(z) < 50 && Math.abs(x) < 300 && s.active) floor.add(s.crop);
+    if (x > -192 && x < -148 && z > -278 && z < -246) { cemetery[1]++; if (s.active && s.crop === LAND_CROP.hay) cemetery[0]++; }
+    if (-x > -192 && -x < -148 && -z > -278 && -z < -246) { cemeteryRot[1]++; if (s.active && s.crop === LAND_CROP.hay) cemeteryRot[0]++; }
+    if (Math.abs(z) > 330 || Math.abs(x) > 390) { past++; if (s.active) pastActive++; }
+  }
+  assert.ok([...floor].every((c) => [LAND_CROP.ballast, LAND_CROP.slag, LAND_CROP.ruderal].includes(c)) && floor.size === 3,
+    `the valley floor is hardstanding (${[...floor].join(',')})`);
+  assert.ok(cemetery[0] / cemetery[1] > 0.6 && cemeteryRot[0] / cemeteryRot[1] > 0.6,
+    `both cemeteries are mown grass (${cemetery[0]}/${cemetery[1]}, ${cemeteryRot[0]}/${cemeteryRot[1]})`);
+  assert.equal(pastActive, 0, `nothing past the city (${past} points)`);
 }
 // the slot→kind table: the classic regions keep their identity order (their crops are what they were)
 for (const id of ['verdant', 'coastal', 'frontier']) {

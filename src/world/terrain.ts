@@ -4415,7 +4415,11 @@ void splatCompute() {
   if (max(abs(wp.x), abs(wp.z)) < 511.0) woods = nz(wp.xz, 1.0 / 1024.0, vec2(0.5)).b;
   float landW = 0.0;
   if (uLandA.x > 0.001) {
-    landW = uLandA.x * meadowG * (1.0 - fR) * (1.0 - outsideW) * (1.0 - smoothstep(0.05, 0.30, mk.a))
+    // (2026-10-05, Ruinspires: an urban land use — uLandE.w, landUse.ts LandUseProfile.urban — lies inside the village,
+    // its yards, courts, allotments and parks under the town's own wear, laid over them below; elsewhere the village and
+    // its wear keep the fields off)
+    float landMeadow = uLandE.w > 0.5 ? (1.0 - projW) * (1.0 - fMs) : meadowG;
+    landW = uLandA.x * landMeadow * (1.0 - fR) * (1.0 - outsideW) * (1.0 - smoothstep(0.05, 0.30, mk.a) * (1.0 - uLandE.w))
       * (1.0 - shoulder) * (1.0 - smoothstep(0.020, 0.060, slope)) * (1.0 - smoothstep(0.02, 0.10, fM))
       * (1.0 - smoothstep(0.10, 0.45, woods));
     if (landW > 0.003) {
@@ -4430,6 +4434,7 @@ void splatCompute() {
       vec2 fieldN = uLandTier > 0.5 ? nzq(uvW, 0.023, vec2(0.61, 0.17)) : vec2(0.5);
       float crop, edgeM, track, jit, hedgeL; vec2 rowDir;
       lu_decode(wp.xz, luA, luB, luK, luT, crop, edgeM, track, rowDir, jit, hedgeL);
+      landW *= step(crop, 30.5); // (a zoned land use's texel in no zone — landUse.ts LAND_CROP_NONE: no field there)
       // the region's boundary (landUse.ts BOUNDARIES): 0 a grass margin with tracks, 1 a polder's water ditches on the
       // long lines, 2 a paddy's earth bund, 3 a karst field's dry stone wall
       float bnd = uLandE.z;
@@ -4447,7 +4452,7 @@ void splatCompute() {
       vec3 nEdge = vec3(0.5); // the wander, the headland's width, the hedge bank's break
       if (luEdge && luNear > 0.001 && uLandTier > 1.5) nEdge = mix(vec3(0.5), vec3(nzq(uvW, 0.045, vec2(0.21, 0.83)).y,
         nzq(uvW, 0.031, vec2(0.11, 0.59)).y, nzq(uvW, 0.17, vec2(0.83, 0.37)).x), luNear);
-      bool soilCrop = (crop > 3.5 && crop < 4.5) || (crop > 6.5 && crop < 8.5) || (crop > 10.5 && crop < 12.5) || crop > 16.5;
+      bool soilCrop = (crop > 3.5 && crop < 4.5) || (crop > 6.5 && crop < 8.5) || (crop > 10.5 && crop < 12.5) || (crop > 16.5 && crop < 30.5);
       // (the soil is read where it is drawn — a soil crop but the flooded paddy's water, a track's ruts (not a polder's
       // ditch), a bund's half metre; a wall's field and a paddy's water never read it, exactly — and its photo's grain
       // is the layer's mean past a 1–2 m footprint, a turned field's own lines carrying it from there)
@@ -4577,6 +4582,10 @@ void splatCompute() {
       }
       cropCol *= (1.0 + rows * rowsShow) * fieldVar;
       a.rgb = mix(a.rgb, cropCol, inField * landW);
+      // (an urban land use: the town's wear lies over its parcels — trodden, dusty, dug — at four tenths of the wear the
+      // village draws on its bare ground)
+      if (uLandE.w > 0.5) a.rgb = mix(a.rgb, uMeanD.rgb * vec3(1.02, 0.98, 0.92),
+        clamp(mk.a * uTownWear * (0.35 + 0.65 * n1), 0.0, 1.0) * 0.40 * inField * landW);
       // (wave 21, the Verdant boundary at tank eye: "a dead-straight, unblended seam between the green grass field and the
       // golden wheat field") a worked field's edge is a feature: inside its grass margin lies the headland, 3–5.5 m where
       // the drill turned — the crop pressed flat and thinner with the soil showing in it, and the turning wheels' two arcs

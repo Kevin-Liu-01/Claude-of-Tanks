@@ -21,7 +21,7 @@
 // walls.
 
 export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst'
-  | 'brownfield' | 'coalfield';
+  | 'brownfield' | 'coalfield' | 'cityfloor' | 'citycourt' | 'cityslope' | 'cemetery' | 'park';
 
 /** How a region's fields are bounded (the material's uLandE.z). */
 export type LandBoundary = 'margin' | 'ditch' | 'bund' | 'wall';
@@ -49,6 +49,30 @@ export interface LandUseProfile {
   region: LandRegion;
   /** Salt of the field hash (two maps with one layout still crop differently). */
   salt: number;
+  /**
+   * 2026-10-05 (Ruinspires, the cities lane): the land use lies inside the village too — a city's yards, courts,
+   * allotments and parks — with the town's wear laid over it (the material's uLandE.w; elsewhere the village keeps the
+   * fields off).
+   */
+  urban?: boolean;
+  /**
+   * 2026-10-05 (Ruinspires): zones by map metres, the first a field's middle falls in naming its rotation, its track
+   * and hedge shares; a field in none carries no land use (LAND_CROP_NONE in the bake). Without zones the whole map is
+   * the profile's region.
+   */
+  zones?: readonly LandZone[];
+}
+
+/** A zone of a zoned land use (Ruinspires): a band of |z| (an x range), a rectangle or a disc, `mirror` adding its
+ * rotation about (0, 0); its region's rotation and its own track and hedge shares (else the profile's). */
+export interface LandZone {
+  region: LandRegion;
+  band?: { zMin: number; zMax: number; xMin: number; xMax: number };
+  rect?: { x0: number; x1: number; z0: number; z1: number };
+  disc?: { x: number; z: number; r: number };
+  mirror?: boolean;
+  trackShare?: number;
+  hedgeShare?: number;
 }
 
 /** Crop kinds (the shader's ids, 0..15). */
@@ -155,12 +179,24 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // a coalfield valley's farmland (the Ruhr's, Silesia's, the Valleys'): pasture and rough grazing gone ruderal round the
   // pits, small arable fields, and here and there a plot of tipped slag
   coalfield: [[0, 0.26], [17, 0.22], [4, 0.14], [5, 0.14], [1, 0.12], [3, 0.06], [15, 0.06]],
+  // 2026-10-05, Ruinspires (Sarajevo under siege, the cities lane), until the hardstanding kind lands: the valley floor's
+  // hardstanding between the street rows — hardcore and compacted ground, dark tarred patches, rank grass in the gaps
+  cityfloor: [[16, 0.50], [15, 0.22], [17, 0.28]],
+  // the block interiors: courtyards and gardens — grass, rank grass over beaten earth, allotment beds, a dug plot, a yard
+  citycourt: [[0, 0.34], [17, 0.28], [7, 0.20], [4, 0.08], [16, 0.10]],
+  // the slopes above the terrace streets: allotments and orchards in strips along the contour, hay and grazing between
+  cityslope: [[7, 0.28], [12, 0.22], [13, 0.20], [0, 0.20], [4, 0.10]],
+  // a cemetery's mown grass
+  cemetery: [[13, 1]],
+  // a park's lawns, mown in part
+  park: [[0, 0.75], [13, 0.25]],
 });
 
 /** Each region's field boundary. */
 const BOUNDARIES: Readonly<Record<LandRegion, LandBoundary>> = Object.freeze({
   steppe: 'margin', bocage: 'margin', temperate: 'margin', upland: 'margin', strip: 'margin',
   polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin',
+  cityfloor: 'margin', citycourt: 'margin', cityslope: 'margin', cemetery: 'margin', park: 'margin',
 });
 
 /** The rotation's cumulative shares at slots 0..5 (slot 6 takes the rest), normalised. */
@@ -242,6 +278,23 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     strength: 0.65, heading: 0.066, blockU: 84, blockV: 52, maxSplit: 3, marginM: 1.5, trackShare: 0.3, hedgeShare: 0.3,
     warpM: 14, region: 'coalfield', salt: 97,
   },
+  // 2026-10-05, Ruinspires (the cities lane; Sarajevo under siege): the city's own ground inside the village — strips
+  // along the valley (the contour on both flanks), every zone mirrored through the Square of the Republic as the map is:
+  // the valley floor's hardstanding (|z| < 70), the block interiors' courts and gardens (70–185), the allotments and
+  // orchards above the terrace streets (185–300), the two cemeteries' mown grass and the four parks' lawns with their
+  // paths. No hedge lines (the trees and bushes keep their seats: hedgeShare 0), nothing past the city.
+  ruinspires: {
+    strength: 1, heading: 0, blockU: 48, blockV: 24, maxSplit: 3, marginM: 1.0, trackShare: 0.25, hedgeShare: 0,
+    warpM: 6, region: 'citycourt', salt: 107, urban: true,
+    zones: [
+      { region: 'cemetery', rect: { x0: -200, x1: -140, z0: -284, z1: -240 }, mirror: true, trackShare: 0.5, hedgeShare: 0 },
+      { region: 'park', disc: { x: -200, z: 230, r: 52 }, mirror: true, trackShare: 0.45, hedgeShare: 0 },
+      { region: 'park', disc: { x: 170, z: 250, r: 46 }, mirror: true, trackShare: 0.45, hedgeShare: 0 },
+      { region: 'cityfloor', band: { zMin: 0, zMax: 70, xMin: -330, xMax: 330 }, trackShare: 0, hedgeShare: 0 },
+      { region: 'citycourt', band: { zMin: 70, zMax: 185, xMin: -360, xMax: 360 }, trackShare: 0.25, hedgeShare: 0 },
+      { region: 'cityslope', band: { zMin: 185, zMax: 300, xMin: -360, xMax: 360 }, trackShare: 0.4, hedgeShare: 0 },
+    ],
+  },
 });
 
 /** The map's land use, or null (no fields). */
@@ -292,7 +345,7 @@ export function landUseUniformValues(profile: LandUseProfile | null): {
     landC: [Math.max(0, profile.warpM), profile.salt >>> 0, c[4], c[5]],
     landD: [c[0], c[1], c[2], c[3]],
     // the slots' crop kinds (five bits a slot: 0..3, 4..6), the boundary (margin 0, ditch 1, bund 2, wall 3)
-    landE: [kinds[0], kinds[1], BOUNDARY_ID[BOUNDARIES[profile.region]], 0],
+    landE: [kinds[0], kinds[1], BOUNDARY_ID[BOUNDARIES[profile.region]], profile.urban ? 1 : 0],
   };
 }
 
@@ -358,11 +411,13 @@ export interface LandFieldSample {
   cropKeep: number;
   /** 1 when the field's sward is its weeds (cured grass tones, not the crop's albedo). */
   weed: number;
+  /** 1 on an urban land use (LandUseProfile.urban): its fields lie inside the village too. */
+  urban: number;
 }
 
 export function createLandFieldSample(): LandFieldSample {
   return { active: 0, crop: 0, edgeM: 1e9, endM: 1e9, sU: 1e9, sV: 1e9, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0,
-    jitter: 0, id: 0, boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
+    jitter: 0, id: 0, boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0 };
 }
 
 /** The analytic warp of the boundaries (m): two slow sines per axis, identical in GLSL. */
@@ -383,7 +438,28 @@ function cropFromRoll(c: Float64Array, roll: number): number {
 interface CompiledLandUse {
   ch: number; sh: number; blockU: number; blockV: number; maxSplit: number; marginM: number;
   trackShare: number; hedgeShare: number; warpM: number; salt: number; cum: Float64Array; kinds: Uint8Array;
-  boundary: number;
+  boundary: number; urban: number; zones: readonly CompiledLandZone[] | null;
+}
+/** A zone's test and its rotation (the same float32 packing as a profile's). */
+interface CompiledLandZone { zone: LandZone; cum: Float64Array; kinds: Uint8Array; trackShare: number; hedgeShare: number }
+/** A region's cumulative shares and slot kinds as the material packs them (float32 shares). */
+function compileRotation(region: LandRegion): { cum: Float64Array; kinds: Uint8Array } {
+  const c = rotationCumulative(region), k = rotationKinds(region);
+  const cum = new Float64Array(6);
+  for (let i = 0; i < 6; i++) cum[i] = Math.fround(c[i]);
+  const kinds = new Uint8Array(7);
+  for (let i = 0; i < 7; i++) kinds[i] = ((i < 4 ? Math.fround(k[0]) : Math.fround(k[1])) >> ((i < 4 ? i : i - 4) * 5)) & 31;
+  return { cum, kinds };
+}
+/** Whether (x, z) lies in a zone (or, mirrored, in its rotation about (0, 0)). */
+function inLandZone(zone: LandZone, x: number, z: number): boolean {
+  const test = (px: number, pz: number): boolean => {
+    if (zone.band) return Math.abs(pz) >= zone.band.zMin && Math.abs(pz) < zone.band.zMax && px >= zone.band.xMin && px < zone.band.xMax;
+    if (zone.rect) return px >= zone.rect.x0 && px < zone.rect.x1 && pz >= zone.rect.z0 && pz < zone.rect.z1;
+    if (zone.disc) return (px - zone.disc.x) ** 2 + (pz - zone.disc.z) ** 2 < zone.disc.r * zone.disc.r;
+    return false;
+  };
+  return test(x, z) || (!!zone.mirror && test(-x, -z));
 }
 const compiled = new WeakMap<LandUseProfile, CompiledLandUse>();
 function compile(profile: LandUseProfile): CompiledLandUse {
@@ -397,7 +473,10 @@ function compile(profile: LandUseProfile): CompiledLandUse {
   c = {
     ch: Math.cos(v.landA[1]), sh: Math.sin(v.landA[1]), blockU: v.landA[2], blockV: v.landA[3],
     maxSplit: v.landB[0], marginM: v.landB[1], trackShare: v.landB[2], hedgeShare: v.landB[3],
-    warpM: v.landC[0], salt: v.landC[1], cum, kinds, boundary: v.landE[2],
+    warpM: v.landC[0], salt: v.landC[1], cum, kinds, boundary: v.landE[2], urban: v.landE[3] > 0.5 ? 1 : 0,
+    zones: profile.zones?.length ? profile.zones.map((zone) => ({ zone, ...compileRotation(zone.region),
+      trackShare: Math.min(1, Math.max(0, zone.trackShare ?? profile.trackShare)),
+      hedgeShare: Math.min(1, Math.max(0, zone.hedgeShare ?? profile.hedgeShare)) })) : null,
   };
   compiled.set(profile, c);
   return c;
@@ -413,9 +492,10 @@ function compile(profile: LandUseProfile): CompiledLandUse {
 export function landUseAt(profile: LandUseProfile | null, x: number, z: number, out: LandFieldSample): LandFieldSample {
   out.active = 0; out.crop = 0; out.edgeM = 1e9; out.endM = 1e9; out.sU = 1e9; out.sV = 1e9; out.split = 1; out.alongU = 1; out.marginM = 0; out.track = 0; out.hedge = 0; out.rowX = 1; out.rowZ = 0;
   out.jitter = 0; out.id = 0; out.boundary = 0; out.tintR = 0; out.tintG = 0; out.tintB = 0; out.sward = 1;
-  out.cropHeight = 1; out.cropKeep = -1; out.weed = 0;
+  out.cropHeight = 1; out.cropKeep = -1; out.weed = 0; out.urban = 0;
   if (!profile || !(profile.strength > 0)) return out;
-  const { ch, sh, blockU, blockV, maxSplit, marginM, trackShare, hedgeShare, warpM, salt, cum, kinds, boundary } = compile(profile);
+  const { ch, sh, blockU, blockV, maxSplit, marginM, warpM, salt, boundary, urban, zones } = compile(profile);
+  let { trackShare, hedgeShare, cum, kinds } = compile(profile);
   const px = x + warpX(x, z) * warpM, pz = z + warpZ(x, z) * warpM;
   const qu = ch * px + sh * pz, qv = -sh * px + ch * pz;
   const row = Math.floor(qv / blockV);
@@ -447,6 +527,18 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
     rowAlongU = blockU > w;
   }
   const fieldA = row, fieldB = col * 8 + k;
+  if (zones) {
+    // the zone of the field's middle (in the warped grid, turned back to the map — the warp's few metres aside), so a
+    // field is one zone's whole: no zone's line cuts a field in two
+    const w = (alongU ? blockU : blockV) / split;
+    const mu = alongU ? col * blockU + (k + 0.5) * w - shift : col * blockU + blockU * 0.5 - shift;
+    const mv = alongU ? row * blockV + blockV * 0.5 : row * blockV + (k + 0.5) * w;
+    const mx = ch * mu - sh * mv, mz = sh * mu + ch * mv;
+    let found: CompiledLandZone | null = null;
+    for (const z of zones) if (inLandZone(z.zone, mx, mz)) { found = z; break; }
+    if (!found) return out; // past the zones: no land use (the bake's LAND_CROP_NONE)
+    cum = found.cum; kinds = found.kinds; trackShare = found.trackShare; hedgeShare = found.hedgeShare;
+  }
   const crop = kinds[cropFromRoll(cum, luRand(fieldA, fieldB, salt + 23))] as LandCropId;
   // a long boundary (the row line) carries a track by its own line index and 120 m segment along it, so both blocks
   // either side agree; the short boundaries (block ends and the cuts) carry hedges by the block and cut index
@@ -459,6 +551,7 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   const dShort = alongU ? Math.min(edgeU, Math.min(lu, blockU - lu)) : Math.min(lu, blockU - lu);
   out.hedge = hedgeOn ? 1 - smooth(1.2, 2.4, dShort) : 0;
   out.active = 1;
+  out.urban = urban;
   out.crop = crop;
   out.edgeM = Math.min(edgeU, edgeV);
   out.endM = rowAlongU ? edgeU : edgeV;
@@ -489,6 +582,8 @@ function smooth(a: number, b: number, x: number): number {
 
 /** The bake's first layer's R channel: the crop kind in its low five bits, then the track and the hedge flags. */
 export const LAND_BAKE_TRACK_BIT = 32;
+/** 2026-10-05: the crop code of a texel no zone of a zoned land use holds (Ruinspires): the material draws no field. */
+export const LAND_CROP_NONE = 31;
 export const LAND_BAKE_HEDGE_BIT = 64;
 /** Set when the field's block is cut along its u axis (its fields are blockU / split by blockV). */
 export const LAND_BAKE_ALONG_U_BIT = 128;
@@ -544,8 +639,8 @@ export function* bakeLandUseSteps(
       const x = ((i + 0.5) / n - 0.5) * mapSize;
       landUseAt(profile, x, z, sample);
       const k = (j * n + i) * 4;
-      out[k] = (sample.crop & 31) | (sample.track > 0 ? LAND_BAKE_TRACK_BIT : 0) | (sample.hedge > 0 ? LAND_BAKE_HEDGE_BIT : 0)
-        | (sample.alongU ? LAND_BAKE_ALONG_U_BIT : 0);
+      out[k] = (sample.active ? sample.crop & 31 : LAND_CROP_NONE) | (sample.track > 0 ? LAND_BAKE_TRACK_BIT : 0)
+        | (sample.hedge > 0 ? LAND_BAKE_HEDGE_BIT : 0) | (sample.alongU ? LAND_BAKE_ALONG_U_BIT : 0);
       out[k + 1] = (Math.min(63, Math.round(sample.jitter * 63)) << 2) | ((sample.split - 1) & 3);
       const turn = Math.atan2(sample.rowZ, sample.rowX) / (2 * Math.PI);
       const code = Math.round((turn - Math.floor(turn)) * 65536) & 65535;
