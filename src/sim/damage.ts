@@ -1,4 +1,4 @@
-import type { AuxiliaryState } from './auxiliarySystems.ts';
+import { createAuxiliaryState, type AuxiliaryState } from './auxiliarySystems.ts';
 import { droneImpactTrace } from './droneArmor.ts';
 import { isUnguidedRocket, usesLauncherMuzzles, launcherMuzzleIndex, type LauncherMuzzle } from './launcherPolicy.ts';
 import type { MagazineIndicator } from './magazineIndicator.ts';
@@ -105,6 +105,7 @@ export interface DamageGunSpec {
 }
 
 export interface DamageTankSpec {
+  id?: string;
   era: string;
   hp: number;
   gun: DamageGunSpec;
@@ -548,6 +549,7 @@ export function createCombatState(spec: DamageTankSpec): CombatState {
     hp: spec.hp,
     maxHp: spec.hp,
     destroyed: false,
+    auxiliary: createAuxiliaryState(spec),
     modules,
     crew,
     fire: { burning: false, tickTimer: 0, ticksLeft: 0 },
