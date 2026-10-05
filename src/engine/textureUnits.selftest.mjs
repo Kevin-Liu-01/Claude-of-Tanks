@@ -130,9 +130,8 @@ try {
   material.onBeforeCompile(shader, null);
   const defines = { ...BATTLE_PROGRAM, USE_CSM: '', CSM_CASCADES: rig.csm.lights.length, CSM_FADE: '' };
   terrainUnits = programUnits(shader, material, defines);
-  // the PR head before the fix: the same program with three's DFG LUT left in (the gate passed it at "sixteen")
-  // rebuild the unswapped program directly: the terrain's own hook alone over three's standard sources, the CSM chunks and
-  // the cloud shade as the gate left them on the PR head
+  // the PR head before the fix: the same program with three's DFG LUT put back in place of the fit (its gate passed the
+  // terrain at "sixteen" and kept the cloud shade)
   const plain = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
   material.onBeforeCompile(plain, null);
   plain.fragmentShader = plain.fragmentShader.replace(/\nvec2 cotDfgApprox\([\s\S]*?\n}\n/, '\nuniform sampler2D dfgLUT;\n')
