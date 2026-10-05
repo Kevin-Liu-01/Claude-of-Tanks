@@ -472,13 +472,16 @@ ${HAZE_LAW_GLSL}`)
           // camera's own horizontal — the apron over the bake eye's horizon, or the far earth. A hole under the skyline
           // (the open water the game draws, the band over a sea's ring) stays open, as does a column with no land; a
           // camera looking up at the shell's sky (every ground and tank-height view) sees it open as before
-          vec4 skyline = texture2D(uPanoSkyline, vec2(vPanoU, 0.5));
+          vec4 skyline = texture2D(uPanoSkyline, vec2(vPanoU, 0.25));
           if (skyline.a < 0.0 || panoUv.y <= skyline.a) discard;
           vec3 vd = vPanoWorld - cameraPosition;
           bool apron = vPanoApron > 0.5 && e > 0.0;
           if (vd.y >= 0.0 || !(apron || uPanoHaze.w > 0.5)) discard;
           vec3 ground = pow(max(skyline.rgb, vec3(0.0)), vec3(2.2));
           if (!apron) {
+            // (its land the column's skyline right over it, the wide average above: one colour per column, constant up
+            // the ray, stood as bars to the horizon in the clear air — Verdant and Oasis in the lab)
+            vec3 wide = pow(max(texture2D(uPanoSkyline, vec2(vPanoU, 0.75)).rgb, vec3(0.0)), vec3(2.2));
             // the far earth: the law over the reach past the strip (its far country already carries the air to 9 km)
             // at which the camera's ray meets the ground, the layer's density between there and the ray's height at
             // the strip's end, toward the column's own target
@@ -490,6 +493,7 @@ ${HAZE_LAW_GLSL}`)
             vec3 T = hazeTransmittance(uPanoHaze.x, reach, layer, uPanoHazeChroma);
             float a = vPanoU * 6.2831853;
             float toward = 0.5 + 0.5 * (cos(a) * uPanoSunH.x + sin(a) * uPanoSunH.y);
+            ground = mix(ground, wide, smoothstep(0.0, 0.0087, e - mix(uPanoElev.x, uPanoElev.y, skyline.a)));
             ground = ground * T + mix(uPanoHazeAnti, uPanoHazeToward, toward * toward) * (1.0 - T);
           }
           diffuseColor.rgb *= ground;
@@ -915,9 +919,9 @@ void main() {
 }
 `;
 
-/** pass 5: the skyline's colour averaged over 2.8 degrees either side among the columns that hold land (one bright peak's
- *  column would stand as a bar up the far earth), each column keeping its own v: the ground the shell shows over the far
- *  country's skyline */
+/** pass 5: the skyline's colour averaged among the columns that hold land, each column keeping its own v — row 0 over 2.8
+ *  degrees either side (one bright peak's column would stand as a bar up the far earth), row 1 over 45 degrees (the far
+ *  earth's land past the strip: the clear air carried row 0's bars to the horizon, Verdant and Oasis in the lab) */
 const SKYLINE_BLUR_FRAGMENT = /* glsl */`
 precision highp float;
 varying vec2 vUv;
@@ -925,10 +929,11 @@ uniform sampler2D uSkyline;
 uniform float uColumns;
 void main() {
   vec4 own = textureLod(uSkyline, vec2(vUv.x, 0.5), 0.0);
+  float stride = vUv.y < 0.5 ? 1.0 : 16.0;
   vec3 sum = vec3(0.0);
   float n = 0.0;
   for (int k = -64; k <= 64; k++) {
-    vec4 c = textureLod(uSkyline, vec2(vUv.x + float(k) / uColumns, 0.5), 0.0);
+    vec4 c = textureLod(uSkyline, vec2(vUv.x + float(k) * stride / uColumns, 0.5), 0.0);
     if (c.a >= 0.0) { sum += c.rgb; n += 1.0; }
   }
   gl_FragColor = vec4(n > 0.0 ? sum / n : own.rgb, own.a);
@@ -1510,7 +1515,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     stripRT.texture.name = 'horizon-panorama-atlas';
     const skylineRawRT = target(res.width, 1, THREE.HalfFloatType, false);
     skylineRawRT.texture.minFilter = skylineRawRT.texture.magFilter = THREE.NearestFilter;
-    const skylineRT = target(res.width, 1, THREE.HalfFloatType, false);
+    const skylineRT = target(res.width, 2, THREE.HalfFloatType, false);
     skylineRT.texture.name = 'horizon-panorama-skyline';
     const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
     quad.frustumCulled = false;

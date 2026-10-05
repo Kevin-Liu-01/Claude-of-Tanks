@@ -101,8 +101,11 @@ const ringEdge = (() => {
   const skyline = HORIZON_PANORAMA_SHADERS.skyline;
   assert.ok(skyline && skyline.includes('if (c.a >= 0.5) { found = vec4(c.rgb / c.a, v); break; }') && skyline.includes('vec4 found = vec4(0.0, 0.0, 0.0, -1.0);'),
     'the skyline pass: per column the highest opaque texel, out of the premultiplication, or -1 where no land');
-  assert.ok(HORIZON_PANORAMA_SHADERS.skylineBlur?.includes('for (int k = -64; k <= 64; k++)') && HORIZON_PANORAMA_SHADERS.skylineBlur.includes('if (c.a >= 0.0) { sum += c.rgb; n += 1.0; }'),
-    'its colour averaged over 2.8 degrees either side among the columns with land, so no one column stands as a bar');
+  assert.ok(HORIZON_PANORAMA_SHADERS.skylineBlur?.includes('for (int k = -64; k <= 64; k++)') && HORIZON_PANORAMA_SHADERS.skylineBlur.includes('if (c.a >= 0.0) { sum += c.rgb; n += 1.0; }')
+    && HORIZON_PANORAMA_SHADERS.skylineBlur.includes('float stride = vUv.y < 0.5 ? 1.0 : 16.0;'),
+    'its colour averaged among the columns with land, over 2.8 degrees either side and over 45 degrees, so no column stands as a bar');
+  assert.ok(frag.includes('ground = mix(ground, wide, smoothstep(0.0, 0.0087, e - mix(uPanoElev.x, uPanoElev.y, skyline.a)));'),
+    'the far earth\'s land is the wide average half a degree over the skyline, so no column\'s colour stands as a bar up to the horizon');
   const src = readFileSync(new URL('./horizonPanorama.ts', import.meta.url), 'utf8');
   assert.ok(src.includes('air.uPanoHaze.value.set(haze.sigma * ch.air, haze.invScale, hazeDatumM, 1);'), 'the bake hands the shell the far path\'s σ (the map\'s air share), the layer and the datum');
   assert.ok(src.includes('air.uPanoHaze.value.set(0, 0, 0, 0);'), 'no law (its own air): no far earth');
@@ -459,8 +462,8 @@ const options = { seed: 1337, character: 'alpine', palette, sun: [0.5, 0.6, 0.6]
   assert.equal(handle.ensureBaked(renderer), true, 'a capable renderer bakes');
   assert.equal(handle.setGroundTone(new THREE.Color(0.5, 0.5, 0.5), null), false, 'a tone after the bake is not taken (a re-bake would hitch a frame)');
   const renders = renderer.calls.filter((c) => c[0] === 'render');
-  assert.deepEqual(renders.map((c) => c[1]), [`${P.gridA}x${P.gridR}`, `${P.gridA}x${P.gridR}`, `${P.width}x${P.height}`, `${P.width}x1`, `${P.width}x1`],
-    'five passes: the heights, their light, the strip, its skyline per column and that skyline\'s colour averaged round the compass');
+  assert.deepEqual(renders.map((c) => c[1]), [`${P.gridA}x${P.gridR}`, `${P.gridA}x${P.gridR}`, `${P.width}x${P.height}`, `${P.width}x1`, `${P.width}x2`],
+    'five passes: the heights, their light, the strip, its skyline per column and that skyline\'s colour averaged round the compass (near and wide)');
   assert.deepEqual(renderer.state(), before, 'the renderer\'s target, clear colour and alpha and auto-clear are restored');
   assert.equal(handle.mesh.visible, true, 'the shell shows once baked');
   assert.equal(fallback.visible, false, 'and takes the round-72 far range\'s place: one far draw');
