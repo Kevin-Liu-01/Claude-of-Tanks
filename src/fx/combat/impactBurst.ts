@@ -232,7 +232,7 @@ export function groundBurst(C: CombatContext, pos: Vec3Like, caliberMm: number, 
       mMove(m, Math.cos(a) * 1.5, 2.5 + R() * 2.5, Math.sin(a) * 1.5, 1.6, 1.0 + R() * 0.4, 1, 0);
       mShape(m, 3.2 + R() * 1.4, 1.1 * s, (3.0 + R() * 1.2) * s * dk, 1.9, 1, R() * TAU, (R() - 0.5) * 0.8);
       mLook(m, BLAST_SMOKE0, BLAST_SMOKE1, 0.55 + R() * 0.15, 0.02, 0.4, 0.4, 0.18, 0, 0.1, R());
-      mHeat(m, 0.95, 5.5, 0.45, 1);
+      mHeat(m, 0.95, 5.5, 0.62, 1);
       C.smoke(m);
     }
     sparkSpray(C, pos.x, by + 0.4, pos.z, tierCount(C, 8), 13 * s, 0.9, EMBER, 0.55, 0.035, birthOffset);

@@ -75,7 +75,7 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
       mMove(m, dir.x * f + rx * r, dir.y * f + Math.max(ry * r, -1) + 0.4, dir.z * f + rz * r, 7, 0.35, 0.7, 0);
       mShape(m, 1.6 + R() * 0.7, 0.55 * s, (2.7 + R() * 1.0) * s * dk, 3.2, 1, R() * TAU, (R() - 0.5) * 3);
       mLook(m, GAS0, GAS1, 0.62 * near, 0.008, 0.4, 0.45, 0.14, 0.02, 0.25, R());
-      mHeat(m, 1.0, 13 + R() * 5, 0.38, 1.05);
+      mHeat(m, 1.0, 13 + R() * 5, 0.55, 1.05);
       C.smoke(m);
     }
     // 2. the overpressure shell: thrown forward and out, stalls within metres, rolls and thins
@@ -96,7 +96,7 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
       mMove(m, ex * v, ey * v + 0.3, ez * v, 6.2 + R() * 1.2, 0.32, 1, 0);
       mShape(m, 2.6 + R() * 1.2, 0.8 * s, (3.4 + R() * 1.6) * s * dk, 2.8, 1, R() * TAU, (R() - 0.5) * 2.2);
       mLook(m, CLOUD0, CLOUD1, (0.5 + R() * 0.12) * near, 0.02, 0.34, 0.5, 0.2, 0.025, 0.3, R());
-      mHeat(m, 0.45, 16, 0.5, 0.9);
+      mHeat(m, 0.45, 16, 0.65, 0.9);
       C.smoke(m);
     }
     // 3. the forward plume down the line of fire

@@ -229,13 +229,16 @@ void main() {
     // the mobile tier: no warp fetch and the nearer flipbook frame only (two fewer texture reads per fragment)
     vec2 uv = clamp( vUv, 0.01, 0.99 ) * 0.25;
     vec4 s = texture2D( uMap, ( vFMix < 0.5 ? vCellA : vCellB ) + uv );
+    float pocketNoise = 0.55;
   #else
     // domain warp: a drifting low-frequency field pushes the silhouette around, harder as the puff ages
     // (the warp fades out toward the card's rim, so nothing is pushed into the octagon's cut corners)
-    vec2 w = ( texture2D( uNoise, vUv * 0.85 + vMisc2.xy ).rg - 0.5 )
-      * ( 1.0 - smoothstep( 0.27, 0.4, length( vUv - 0.5 ) ) );
+    vec2 nz = texture2D( uNoise, vUv * 0.85 + vMisc2.xy ).rg;
+    vec2 w = ( nz - 0.5 ) * ( 1.0 - smoothstep( 0.27, 0.4, length( vUv - 0.5 ) ) );
     vec2 uv = clamp( vUv + w * vMisc.z, 0.01, 0.99 ) * 0.25;
     vec4 s = mix( texture2D( uMap, vCellA + uv ), texture2D( uMap, vCellB + uv ), vFMix );
+    // the same drifting field breaks a hot puff's interior into burning pockets and cooler soot between them
+    float pocketNoise = nz.y;
   #endif
   float d = s.a;
   // coverage: soft media thin out from the rim; eroding media tear apart from their thin texels inward
@@ -269,7 +272,7 @@ void main() {
   // dull ember and then to soot — never a uniform glowing disc.
   float heat = vMisc.w;
   if ( heat > 0.002 ) {
-    float pocket = smoothstep( vMisc2.z - 0.22, vMisc2.z + 0.3, d * ( 0.7 + 0.6 * thick ) );
+    float pocket = smoothstep( vMisc2.z - 0.18, vMisc2.z + 0.18, d * thick * ( 0.55 + 0.9 * pocketNoise ) );
     float h = clamp( heat * mix( 0.12, 1.0, pocket ), 0.0, 1.0 );
     vec3 glow = blackbody( h ) * ( 12.0 * h * h * sqrt( h ) ) * vMisc2.w * uGrade.y;
     col = col * ( 1.0 - 0.9 * smoothstep( 0.18, 0.7, h ) ) + glow;
