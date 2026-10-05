@@ -124,6 +124,10 @@ export default {
     loneMix: [['poplar', 0.44], ['pine', 0.31], ['cedar', 0.25]], rimMix: [['pine', 0.40], ['cedar', 0.34], ['poplar', 0.26]],
     clusterCount: 24, loneCount: 42, rimCount: 34, grassDensity: 0.30,
     clusterScrub: 1.4, bushCount: 0.52, bushSpecies: 'poplar',
+    // (Skybridge round 2, the map-revival lane: Glen Canyon's bunchgrass is cured straw on the slickrock's sand, as Titan
+    // Gorge's; the default tufts were the meadow's green)
+    grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.95 + 0.10)],
+    tuftTone: (h: number, s: number, l: number) => [0.10, 0.24, clamp01(l * 0.70 + 0.12)],
   },
   props: {
     // the map-revival lane (2026-10-05): Glen Canyon Dam and Page, Arizona (maps/regional/glencanyon.ts)
