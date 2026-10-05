@@ -44,6 +44,8 @@ interface EngineContext {
 }
 
 export interface RosterEntity {
+  /** Extra solo seat; never a catalog/Garage entry. */
+  matchReinforcement?: boolean;
   id: string;
   specId: string;
   spec: ReturnType<typeof getSpec>;
@@ -102,6 +104,38 @@ function debugFlags(): DebugFlags | null {
   return root.__DEBUG?.flags || null;
 }
 
+function createRosterEntity(specId: string, id: string, seed: number, matchReinforcement = false): RosterEntity {
+  const spec = getSpec(specId);
+  return {
+    id,
+    matchReinforcement,
+    specId,
+    spec,
+    team: 'enemy',
+    isPlayer: false,
+    state: null,
+    combat: null,
+    specialAction: null,
+    input: {
+      throttle: 0, steer: 0, brake: false, fire: false,
+      aimLocked: false,
+      aimPoint: new Vector3(), shellSlot: 0,
+    },
+    visual: null,
+    // True when the rendered running gear lacks a complete wheel + belt
+    // terrain-conformance layer. Some comparison GLBs remain rigid; newer
+    // imports publish __glbConformingGear after both layers are discovered.
+    rigidGear: false,
+    // gameplay_feel r7: measured GLB contact footprint (null = procedural
+    // spec fractions). Stamped with rigidGear — see measureContactGeom.
+    contactGeom: null,
+    _camoSeed: seed,
+    ai: null,
+    aiCtl: null,
+    _destroyedAnnounced: false,
+  };
+}
+
 /**
  * Build every TankEntity record without constructing its visual. Called once
  * at startup; battles reuse the entities via setupBattle().
@@ -109,6 +143,7 @@ function debugFlags(): DebugFlags | null {
  * @param {object} engineCtx EngineCtx (§2.8)
  * @returns {void}
  */
+
 export function spawnTanks(game: RosterGameState, engineCtx: EngineContext) {
   // COMMUNITY TANKS: build entities for the FULL pool (core roster + sourced
   // community vehicles). A battle fields 8 of them (setupBattle picks the
@@ -126,34 +161,7 @@ export function spawnTanks(game: RosterGameState, engineCtx: EngineContext) {
   game._engineCtx = engineCtx;   // for lazy visual builds (ensureTankVisual)
   game._groundSampler = null;    // set by main.ts; applied to lazy visuals too
   PRODUCTION_TANK_IDS.forEach((specId: string, i: number) => {
-    const spec = getSpec(specId);
-    const ent = {
-      id: specId,
-      specId,
-      spec,
-      team: 'enemy',
-      isPlayer: false,
-      state: null,
-      combat: null,
-      specialAction: null,
-      input: {
-        throttle: 0, steer: 0, brake: false, fire: false,
-        aimLocked: false,
-        aimPoint: new Vector3(), shellSlot: 0,
-      },
-      visual: null,
-      // True when the rendered running gear lacks a complete wheel + belt
-      // terrain-conformance layer. Some comparison GLBs remain rigid; newer
-      // imports publish __glbConformingGear after both layers are discovered.
-      rigidGear: false,
-      // gameplay_feel r7: measured GLB contact footprint (null = procedural
-      // spec fractions). Stamped with rigidGear — see measureContactGeom.
-      contactGeom: null,
-      _camoSeed: 4000 + i,
-      ai: null,
-      aiCtl: null,
-      _destroyedAnnounced: false,
-    };
+    const ent = createRosterEntity(specId, specId, 4000 + i);
     game.allTanks.push(ent);
     game.tankById.set(ent.id, ent);
   });
@@ -415,7 +423,7 @@ function shuffledBotPool(
   battleOrdinal: number,
   excluded: readonly RosterEntity[] = [],
 ): RosterEntity[] {
-  const candidates = game.allTanks.filter((entity) =>
+  const candidates = game.allTanks.filter((entity) => !entity.matchReinforcement &&
     entity !== player && !excluded.includes(entity) && isBotTankId(entity.specId));
   return shuffleBattleCandidates(candidates, battleOrdinal, game.rosterSeed ?? 0);
 }
@@ -538,7 +546,7 @@ function defaultWaveNations(
   formationLead: number,
 ): readonly string[] {
   const countOf = (specNations: readonly string[]): number => game.allTanks.filter((entity) =>
-    isBotTankId(entity.specId) && specNations.includes(String((entity.spec as { nation?: string } | null | undefined)?.nation || ''))).length;
+    !entity.matchReinforcement && isBotTankId(entity.specId) && specNations.includes(String((entity.spec as { nation?: string } | null | undefined)?.nation || ''))).length;
   const counts = ENEMY_NATION_OPTIONS.map((option) => ({ option, count: countOf(option.specNations) }));
   const best = counts.reduce((max, row) => Math.max(max, row.count), 0);
   if (best <= 0) return [];
@@ -558,6 +566,7 @@ export function pickBattleParticipants(
   // (allies + enemy pool) and keep exactly `formationLead` seats for the named nation
   slots: number | null = null,
   formationLead: number | null = null,
+  alliedSlots: number | null = null,
 ): RosterEntity[] {
   const player = game.tankById.get(playerSpecId);
   if (!player) throw new Error(`unknown battle vehicle: ${playerSpecId}`);
@@ -584,6 +593,23 @@ export function pickBattleParticipants(
     const nations = preferredNations.length || !waveMode
       ? preferredNations
       : defaultWaveNations(game, battleOrdinal, Math.min(enemySlots, Math.floor(formationLead)));
+    if (alliedSlots != null) {
+      const count = Math.min(enemySlots - 1, Math.max(0, Math.floor(alliedSlots)));
+      const candidates = randomBattleCandidates(game, player, battleOrdinal);
+      const nation = String(player.spec.nation ?? '');
+      const aliases = ENEMY_NATION_OPTIONS.find(option => option.specNations.includes(nation))?.specNations ?? [nation];
+      const national = candidates.filter(entity => aliases.includes(String(entity.spec.nation ?? '')));
+      const pool = national.length ? national : [player];
+      const allies = Array.from({length: count}, (_, index) => {
+        const source = pool[index % pool.length];
+        return index < national.length ? source
+          : createRosterEntity(source.specId, `allied:${index}:${source.specId}`, 8000 + index, true);
+      });
+      const reserved = new Set(allies.map(entity => entity.id));
+      const enemies = preferNations(candidates.filter(entity => !reserved.has(entity.id)), player, nations,
+        enemySlots - count, waveMode).slice(0, enemySlots - count);
+      return [player, ...enemies, ...allies];
+    }
     others = preferNations(randomBattleCandidates(game, player, battleOrdinal), player, nations,
       Math.max(0, waveMode ? Math.min(enemySlots, Math.floor(formationLead)) : enemySlots - 3), waveMode);
   } else {
@@ -606,8 +632,9 @@ export function planBattleParticipantIds(
   preferredNations: readonly string[] = [],
   slots: number | null = null,
   formationLead: number | null = null,
+  alliedSlots: number | null = null,
 ) {
-  return pickBattleParticipants(game, playerSpecId, randomize, game.battleCount + 1, preferredNations, slots, formationLead)
+  return pickBattleParticipants(game, playerSpecId, randomize, game.battleCount + 1, preferredNations, slots, formationLead, alliedSlots)
     .map((entity) => entity.specId);
 }
 
@@ -644,9 +671,10 @@ export function planBattleCamoOverrides(
   preferredNations: readonly string[] = [],
   slots: number | null = null,
   formationLead: number | null = null,
+  alliedSlots: number | null = null,
 ) {
   const battleOrdinal = game.battleCount + 1;
-  const participants = pickBattleParticipants(game, playerSpecId, randomize, battleOrdinal, preferredNations, slots, formationLead);
+  const participants = pickBattleParticipants(game, playerSpecId, randomize, battleOrdinal, preferredNations, slots, formationLead, alliedSlots);
   return autoCamoIdsForBattle(
     participants, playerSpecId, mapId, randomize, battleOrdinal,
   );

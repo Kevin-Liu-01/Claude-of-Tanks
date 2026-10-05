@@ -3081,6 +3081,8 @@
   "playMenu.arrange.enemies": "Enemy pool",
   "playMenu.arrange.waveSize": "First wave",
   "playMenu.arrange.nation": "Enemy nation",
+  "playMenu.arrange.alliedNation": "Allied nation",
+  "playMenu.arrange.sameNation": "Same as your tank",
   "playMenu.arrange.mixed": "Mixed nations",
   "playMenu.arrange.reset": "Defaults",
   "playMenu.arrange.sides": "Sides",

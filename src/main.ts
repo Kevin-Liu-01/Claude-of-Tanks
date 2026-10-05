@@ -2128,11 +2128,11 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     // team arrangement (2026-09-15): the plan sizes the field and leads with the arranged nation like setupBattle
     planRoster: (specId: string, randomRoster: boolean, campaignOperationId: string | null = null, gameMode: string | null = null) => {
       const plan = soloRosterPlan(gameMode, campaignOperationId, randomRoster);
-      return planBattleParticipantIds(game, specId, randomRoster, plan.nations, plan.slots, plan.formationLead);
+      return planBattleParticipantIds(game, specId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.alliedSlots);
     },
     planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean, campaignOperationId: string | null = null, gameMode: string | null = null) => {
       const plan = soloRosterPlan(gameMode, campaignOperationId, randomRoster);
-      return planBattleCamoOverrides(game, specId, mapId, randomRoster, plan.nations, plan.slots, plan.formationLead);
+      return planBattleCamoOverrides(game, specId, mapId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.alliedSlots);
     },
     ensureTankBuilders,
     preloadSoloAuthority: preloadSoloBattleRuntime,

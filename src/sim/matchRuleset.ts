@@ -117,6 +117,8 @@ export interface TeamArrangement {
   readonly waveSize?: number | null;
   /** Enemy nation id (game/teamArrangement.ts ENEMY_NATION_OPTIONS) or null for a mixed force. */
   readonly enemyNation?: string | null;
+  /** Solo allied bots follow the selected player's nation. */
+  readonly alliedNation?: 'player' | null;
   /** Mars mode only: the gravity world and boost-cache cadence (MARS_GRAVITY_OPTIONS / MARS_CACHE_OPTIONS). */
   readonly marsGravity?: MarsGravityId | null;
   readonly marsCaches?: MarsCachesId | null;
@@ -272,6 +274,7 @@ export interface MatchRuleset {
   readonly horde: HordeRules | null;
   /** Enemy nation id the roster fills from first (co-op modes; null = mixed / the operation decides). */
   readonly enemyNation: string | null;
+  readonly alliedNation?: 'player' | null;
 }
 
 export interface CampaignRulesetInput {
@@ -404,6 +407,7 @@ export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangemen
   const enemies = input.enemies == null ? null : clampInt(input.enemies, TEAM_ARRANGEMENT_LIMITS.enemies[mode]);
   const waveSize = mode === 'endless_horde' && input.waveSize != null
     ? clampInt(input.waveSize, TEAM_ARRANGEMENT_LIMITS.waveSize) : null;
+  const alliedNation = input.alliedNation === 'player' ? 'player' : null;
   const enemyNation = typeof input.enemyNation === 'string' && /^[a-z_]{2,24}$/.test(input.enemyNation) ? input.enemyNation : null;
   const marsGravity = mode === 'mars' && isMarsGravityId(input.marsGravity) ? input.marsGravity : null;
   const marsCaches = mode === 'mars' && isMarsCachesId(input.marsCaches) ? input.marsCaches : null;
@@ -420,9 +424,10 @@ export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangemen
     const sides = rulesetSides({ allies, enemies });
     if (sides.allies + sides.enemies + 1 > BATTLE_FIELD_LIMIT) allies = Math.max(0, BATTLE_FIELD_LIMIT - 1 - sides.enemies);
   }
-  if (allies == null && enemies == null && waveSize == null && enemyNation == null && marsGravity == null && marsCaches == null && scoreTarget == null && respawnS == null && waveStep == null && holdS == null && juggernautRole == null) return null;
+  if (allies == null && enemies == null && waveSize == null && enemyNation == null && alliedNation == null && marsGravity == null && marsCaches == null && scoreTarget == null && respawnS == null && waveStep == null && holdS == null && juggernautRole == null) return null;
   return Object.freeze({
     allies, enemies, waveSize, enemyNation,
+    ...(alliedNation ? { alliedNation } : {}),
     ...(juggernautRole ? { juggernautRole } : {}),
     ...(scoreTarget != null ? { scoreTarget } : {}), ...(respawnS != null ? { respawnS } : {}),
     ...(waveStep != null ? { waveStep } : {}), ...(holdS != null ? { holdS } : {}),
@@ -461,6 +466,7 @@ export function matchRulesetFor(
         ? Object.freeze({ ...ruleset.assault, holdS: arranged.holdS }) : ruleset.assault,
       allies: arranged.allies ?? ruleset.allies,
       enemies: arranged.enemies ?? ruleset.enemies,
+      ...(arranged.alliedNation ? { alliedNation: arranged.alliedNation } : {}),
       // a campaign operation's formation is not overridden by the free-sortie nation setting
       enemyNation: campaign?.enemy ? ruleset.enemyNation : (arranged.enemyNation ?? ruleset.enemyNation),
       horde: ruleset.horde && (arranged.waveSize != null || arranged.waveStep != null)

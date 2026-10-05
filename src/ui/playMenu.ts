@@ -873,6 +873,7 @@ export function createPlayMenu({
         <label data-arrange-field="alliesCount" hidden><span>${t('playMenu.arrange.allies')}</span><input type="number" inputmode="numeric" step="1" data-arrange="alliesCount"></label>
         <label data-arrange-field="enemiesCount" hidden><span>${t('playMenu.arrange.enemiesField')}</span><input type="number" inputmode="numeric" step="1" data-arrange="enemiesCount"></label>
         <label data-arrange-wave><span>${t('playMenu.arrange.waveSize')}</span><select data-arrange="waveSize"></select></label>
+        <label class="cot-nation-field" data-arrange-field="alliedNation"><span>${t('playMenu.arrange.alliedNation')}</span><select data-arrange="alliedNation"></select></label>
         <label><span>${t('playMenu.arrange.nation')}</span><select data-arrange="enemyNation"></select></label>
         <label data-arrange-field="marsGravity" hidden><span>${t('playMenu.arrange.marsGravity')}</span><select data-arrange="marsGravity"></select></label>
         <label data-arrange-field="juggernautRole" hidden><span>${t('playMenu.arrange.juggernautRole')}</span><select data-arrange="juggernautRole"></select></label>
@@ -1118,6 +1119,9 @@ export function createPlayMenu({
       fillOptions(arrangeSelect('waveSize'), range(TEAM_ARRANGEMENT_LIMITS.waveSize[0], TEAM_ARRANGEMENT_LIMITS.waveSize[1]),
         String(arranged?.waveSize ?? defaults.horde?.waveSize ?? TEAM_ARRANGEMENT_LIMITS.waveSize[0]));
     }
+    arrangeField('alliedNation').hidden = fromLobby;
+    fillOptions(arrangeSelect('alliedNation'),
+      [['', t('playMenu.arrange.mixed')], ['player', t('playMenu.arrange.sameNation')]], arranged?.alliedNation ?? '');
     fillOptions(arrangeSelect('enemyNation'),
       [['', t('playMenu.arrange.mixed')], ...ENEMY_NATION_OPTIONS.map((option): [string, string] => [option.id, t(`campaign.enemy.${option.id}`)])],
       arranged?.enemyNation ?? '');
@@ -1152,6 +1156,7 @@ export function createPlayMenu({
       allies: number('allies'), enemies: number('enemies'),
       waveSize: Number.isFinite(waveSize) ? waveSize : null,
       enemyNation: arrangeSelect('enemyNation').value || null,
+      alliedNation: arrangeSelect('alliedNation').value === 'player' ? 'player' : null,
       juggernautRole: mode === 'juggernaut' ? arrangeSelect('juggernautRole').value as TeamArrangement['juggernautRole'] : null,
       marsGravity: mode === 'mars' ? arrangeSelect('marsGravity').value as TeamArrangement['marsGravity'] : null,
       marsCaches: mode === 'mars' ? arrangeSelect('marsCaches').value as TeamArrangement['marsCaches'] : null,

@@ -3081,6 +3081,8 @@
   "playMenu.arrange.enemies": "敌方兵力池",
   "playMenu.arrange.waveSize": "首波数量",
   "playMenu.arrange.nation": "敌方国家",
+  "playMenu.arrange.alliedNation": "友军国家",
+  "playMenu.arrange.sameNation": "与您的坦克相同",
   "playMenu.arrange.mixed": "混合国家",
   "playMenu.arrange.reset": "恢复默认",
   "playMenu.arrange.sides": "阵容",
