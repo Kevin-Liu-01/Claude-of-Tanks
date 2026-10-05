@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { Group, ShaderLib, Texture } from 'three';
 import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
-import { createShallowWaterSurface, shallowWaterGeometrySteps, WAKE_FULL_SPEED_MPS } from './shallowWater.ts';
+import { createShallowWaterSurface, SEA_SHELF_WIDTH_M, seaShelfWidthM, shallowWaterGeometrySteps, shoreDistanceTexture, WAKE_FULL_SPEED_MPS } from './shallowWater.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { createLiveHeightFieldProxy } from './liveHeightFieldProxy.ts';
 import { disposeObject3DResources, registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
@@ -160,7 +160,7 @@ const water = createShallowWaterSurface(surface.geometry, mask, waves, field.siz
     'the procedural bow foam bar is off inside the window too (it was the last thing that followed the hull)');
   assert.match(probe.fragmentShader, /wave\.x \* uWaterWaveStrength - rippleGrad\.x \* 1\.6/, 'the field slope tilts the normal');
   assert.match(probe.fragmentShader, /rippleGrad \*= \(min\(gl, 0\.45\) \/ max\(gl, 1e-4\)\) \* rippleW;/, 'the slope is capped at a breaking face');
-  assert.equal(routed.mesh.material.customProgramCacheKey(), 'shallow-water-v21-land', 'the program key moved with the fragment (v13: round 66, the FFT ocean)');
+  assert.equal(routed.mesh.material.customProgramCacheKey(), 'shallow-water-v23-land', 'the program key moved with the fragment (v13: round 66, the FFT ocean; v22: 2026-10-04, the sea\'s shelf and swell; v23: 2026-10-05, the sea\'s second round)');
   // round 47: without a baked bay contour the apron keeps the round-40 ramp; with one, the coast fades past the edge
   assert.equal(probe.uniforms.uOutlandWaterSize.value, 0, 'no contour: size 0 keeps the round-40 ramp');
   assert.match(probe.fragmentShader, /float coast = texture2D\(uOutlandWater, vWaterWorld\.xz \/ uOutlandWaterSize \+ 0\.5\)\.r;/,
@@ -177,7 +177,9 @@ water.mesh.material.onBeforeCompile(shader);
 assert.equal(shader.uniforms.uWaterMask.value, mask);
 assert.equal(shader.uniforms.uWaterWave.value, waves, 'shares already-owned terrain textures');
 assert.match(shader.fragmentShader, /if \(wet < 0\.015\) discard/);
-assert.match(shader.fragmentShader, /smoothstep\(0\.0, 0\.55, wet\) \* mix\(mix\(opacity, 0\.86, grazing\), 1\.0, smoothstep\(900\.0, 1600\.0, pastEdgeM\)\)/,
+// (2026-10-04: seaOpacity is the material's opacity wherever the coast's shelf law is off — every lake, river and marsh —
+// so those shallows still reach full body quickly; an FFT coast's shelf is clear, the sea's turquoise over its sand)
+assert.match(shader.fragmentShader, /smoothstep\(0\.0, 0\.55, wet\) \* mix\(mix\(seaOpacity, 0\.86, grazing\), 1\.0, smoothstep\(900\.0, 1600\.0, pastEdgeM\)\)/,
   'shallows reach full body quickly instead of showing bright sand through a pale cyan film');
 // Water pass 4 (2026-09-13): the glint keeps most of its energy (F90 0.9, clamp
 // 1.15) and the sky reflection is weighted by the water's own grazing term —
@@ -186,16 +188,37 @@ assert.match(shader.fragmentShader, /material\.specularF90 = 0\.9/,
   'sun glitter keeps its energy; bloom carries it as sparkle');
 // (2026-10-04: the reflection's weights, the specular cap and the body's grazing darkening are read per frame through the
 // light model's QA hook — uWaterQa: x / y the sky's reflection at normal / grazing incidence, z the cap, w the darkening)
-assert.match(shader.fragmentShader, /radiance \*= mix\(uWaterQa\.x, uWaterQa\.y, waterGrazing\)/,
-  'sky reflection follows the grazing term instead of one flat envMapIntensity');
+assert.match(shader.fragmentShader, /radiance \*= mix\(uWaterQa\.x, uWaterQa\.y, pow\(waterGrazing, uSeaLook\.x\)\)/,
+  'sky reflection follows the grazing term instead of one flat envMapIntensity (2026-10-05: its exponent a QA knob)');
 assert.match(shader.fragmentShader, /totalSpecular - vec3\(uWaterQa\.z\)/,
   'the specular clamp no longer deletes the glints');
+// (2026-10-05, the sea's second round; the gauntlet's wave 78: the glitter "tops out at a dull grey-white that never clips"):
+// on the open sea the sun's glints keep their energy over white while the sky's mirror keeps the cap; other water the joint cap
+assert.match(shader.fragmentShader, /if \(uSeaLook\.w > 0\.0\) outgoingLight -= max\(vec3\(0\.0\), reflectedLight\.indirectSpecular - vec3\(uWaterQa\.z\)\)\s*\+ max\(vec3\(0\.0\), reflectedLight\.directSpecular - vec3\(uSeaLook\.w\)\);\s*else outgoingLight -= max\(vec3\(0\.0\), totalSpecular - vec3\(uWaterQa\.z\)\);/,
+  'the open sea: the glints capped apart from the mirror');
+// (2026-10-05) the sun's lobe sharp on the open sea, the sky's mirror at the profile's own roughness: one sharp roughness for
+// both turned the far chop into white facets over dark troughs under the horizon (the environment's lookup follows the
+// direct lights, so the roughness is restored between them)
+assert.match(shader.fragmentShader, /#include <lights_physical_fragment>\nmaterial\.specularColor \*= 0\.85;\nmaterial\.specularF90 = 0\.9;\nfloat waterSkyRough = material\.roughness;\nmaterial\.roughness = max\(material\.roughness \* uSeaRough\.x, 0\.0525\);/,
+  'the direct lights take the sharp share');
+assert.match(shader.fragmentShader, /material\.roughness = waterSkyRough;\n#include <lights_fragment_maps>\nradiance \*= mix/, 'the sky\'s mirror the profile\'s roughness');
+assert.ok(shader.fragmentShader.indexOf('#include <lights_fragment_begin>') < shader.fragmentShader.indexOf('material.roughness = waterSkyRough;'),
+  'restored after the direct lights, before the environment');
+assert.deepEqual(shader.uniforms.uSeaRough.value.toArray(), [1, 0, 0], 'a land water: the profile\'s roughness for both');
+{
+  const src = readFileSync(new URL('./shallowWater.ts', import.meta.url), 'utf8');
+  assert.match(src, /seaLook\.value\.set\(lightTune\('WATER_GRAZE_POW', ocean \? 2 : 1\), shoreDist \? lightTune\('SEA_SHELF_BY_COAST', 1\) : 0,\s*lightTune\('SEA_SHELF_WIDTH_SCALE', 1\), ocean \? lightTune\('WATER_GLINT_CAP', 3\) : 0\);/,
+    'the open sea: the mirror later toward the horizon, the shelf by the coast, the glints over white; lakes and rivers as before');
+  assert.match(src, /seaRough\.value\.set\(ocean \? lightTune\('WATER_ROUGH', 0\.4\) : 1, 0, 0\);/,
+    'the open sea\'s sun lobe sharp: the direct lights take 0.4 of the roughness');
+}
 assert.match(shader.fragmentShader, /diffuseColor\.rgb \*= 1\.0 - uWaterQa\.w \* grazing;/, 'the body darkens toward grazing');
 assert.deepEqual(shader.uniforms.uWaterQa.value.toArray(), [0.45, 3.5, 1.15, 0.35], 'the reflection, cap and darkening as tuned (2026-10-04: the grazing reflection 1.75 → 3.5, the far band of the sea)');
 // Water pass 4 (2026-09-13): the deep body darkens harder (0.70 -> 0.58) and the
 // whole sheet loses 35 % of its body colour at grazing angles, where the sky
 // reflection takes over.
-assert.match(shader.fragmentShader, /mix\(0\.90, 0\.58, waterDeep\)/,
+// (2026-10-04: the coast's shelf law darkens its deep blue less, SEA_TINT.z; every other body keeps 0.58)
+assert.match(shader.fragmentShader, /mix\(0\.90, mix\(0\.58, uSeaTint\.z, uSeaShelf\.x\), waterDeep\)/,
   'deep water remains darker than its bank, and the bank no longer brightens above the base tint');
 assert.match(shader.fragmentShader, /1\.0 - uWaterQa\.w \* grazing/,
   'body colour yields to the sky toward the horizon');
@@ -203,7 +226,7 @@ assert.match(shader.fragmentShader, /1\.0 - uWaterQa\.w \* grazing/,
 // tint (colour only — the alpha ramp above is unchanged, so no pale film over
 // sand) and broken crests whiten the bank band at the authored foam strength.
 // Water pass 5 (2026-09-13): the bank colour rises further into the body (0.02..0.90).
-assert.match(shader.fragmentShader, /mix\(uWaterShallow, diffuseColor\.rgb, smoothstep\(0\.02, 0\.90, waterDeep\)\)/,
+assert.match(shader.fragmentShader, /vec3 seaShallowCol = mix\(uWaterShallow, vec3\(0\.028, 0\.45, 0\.42\), uSeaTint\.x \* uSeaShelf\.x\);\s*vec3 seaDeepCol = mix\(diffuseColor\.rgb, vec3\(0\.006, 0\.065, 0\.195\), uSeaTint\.y \* uSeaShelf\.x\);\s*diffuseColor\.rgb = mix\(seaShallowCol, seaDeepCol, smoothstep\(0\.02, 0\.90, waterDeep\)\)/,
   'the shallow tint is a depth-mixed hue, never an opacity change');
 assert.match(shader.fragmentShader, /foamBank \* 0\.55 \+ foamCrest \* 0\.45\) \* uWaterFoam/, 'shoreline and crest foam scale with the authored profile');
 assert.equal(shader.uniforms.uWaterFoam.value, 0.85, 'coastal foam strength');
@@ -316,4 +339,48 @@ assert.match(fx, /const surfaceY = water\s*\? heightField\?\.getWaterSurfaceHeig
 assert.match(fx, /surfaceY \+ \(water \? 0\.065 : 0\.035\)/);
 assert.match(fx, /float ring = 0\.28 \+ \(1\.0 - vFade\) \* 0\.66/);
 assert.match(fx, /printCenters\.fill\(1e9\)/, 'rematch reset clears wake admission');
+// 2026-10-04 (the gauntlet's wave 59 on the sea: a navy bay "right up to a hard sand edge, with no shallow-water shelf",
+// "one fine, uniform ripple pattern with no swell or wave-group structure"): the coast's shelf and swell.
+{
+  // the shore distance: a half-plane mask (dry west of x = 0.25 of the square, wet east of it) on 64² over 256 m —
+  // the field is 0 on the land and grows a metre a metre across the water (chamfered: exact along the axis)
+  const W = 64, data = new Uint8Array(W * W * 4);
+  for (let j = 0; j < W; j++) for (let i = 0; i < W; i++) data[(j * W + i) * 4 + 2] = i >= 16 ? 255 : 0;
+  const tex = shoreDistanceTexture({ image: { data, width: W, height: W } }, 256, 0.3);
+  assert.ok(tex && tex.image.width === 64, 'a field on the mask\'s grid (at most 512²)');
+  const at = (i, j = 20) => tex.image.data[(j * 64 + i) * 2];
+  assert.equal(tex.image.data[(20 * 64 + 40) * 2 + 1], 0, 'no rise read: no per-coast width');
+  // (2026-10-05) the shelf's width follows the coast: a beach rising 1.5 m over 30 m holds a 50 m shelf, a cliff rising
+  // 24 m a narrow one (the floor), carried from the nearest shore cell to every water cell
+  const beach = shoreDistanceTexture({ image: { data, width: W, height: W } }, 256, 0.3, () => 0.05);
+  assert.equal(beach.image.data[(20 * 64 + 40) * 2 + 1], Math.round(seaShelfWidthM(0.05)), 'a beach: 25 m');
+  // (2026-10-05: K 2.5 → 1.25 and the cap 120 → 60 m — the sweep's half: a graded bay, not a turquoise one)
+  assert.equal(seaShelfWidthM(0.05), 25);
+  assert.equal(seaShelfWidthM(0.005), SEA_SHELF_WIDTH_M[1], 'a flat shore: the cap');
+  assert.equal(SEA_SHELF_WIDTH_M[1], 60);
+  const cliff = shoreDistanceTexture({ image: { data, width: W, height: W } }, 256, 0.3, () => 0.8);
+  assert.equal(cliff.image.data[(20 * 64 + 40) * 2 + 1], SEA_SHELF_WIDTH_M[0], 'a cliff: the floor');
+  assert.equal(at(10), 0, 'dry land: 0');
+  assert.equal(at(16), 4, 'the first wet cell: one cell (4 m) from the last dry one');
+  assert.equal(at(40), 100, '24 cells (96 m) further: 100 m');
+  assert.equal(at(63), 192, 'and on to the far edge');
+  assert.equal(shoreDistanceTexture({ image: { width: 8, height: 8 } }, 256, 0.3), null, 'no CPU data, no field (the law stays off)');
+}
+assert.match(shader.fragmentShader, /seaShoreM = seaShore\.x \+ \(uSeaShelf\.x > 0\.0 \? max\(pastEdgeM, 0\.0\) : 0\.0\);[\s\S]{0,200}seaShelfM = mix\(uSeaShelf\.y, max\(seaShore\.y \* uSeaLook\.z, 4\.0\), uSeaLook\.y \* step\(0\.5, seaShore\.y\)\);\s*waterDeep = mix\(waterDeep, 1\.0 - exp\(-seaShoreM \/ seaShelfM\), uSeaShelf\.x\);/,
+  'the body\'s share rises over the shelf, metres from the shore (past the edge, plus the metres out — never minus inside the square)');
+assert.match(shader.fragmentShader, /float seaOpacity = mix\(opacity, mix\(uSeaShelf\.w, opacity, 1\.0 - exp\(-seaShoreM \/ \(uSeaShelf\.z \* seaShelfM \/ uSeaShelf\.y\)\)\), uSeaShelf\.x\);/, 'clear over the shelf (its clarity scaled with the width)');
+assert.match(shader.fragmentShader, /wave \*= uOceanGrid\.w > 0\.5 \? uSwell\.w : 1\.0;/, 'the tiled ripple steps back on an FFT sea');
+assert.match(shader.fragmentShader, /- oceanN\.x - swellN\.x, 1\.0,/, 'the swell joins the normal');
+assert.match(shader.fragmentShader, /float swellFoot = length\(fwidth\(vWaterWorld\.xz\)\);[\s\S]{0,200}if \(uSwell\.x > 0\.0 && swellFoot < uSwell\.y \* 0\.41\) \{/,
+  'the trains only where a pixel can hold the longest (1.17 x 0.35 of the length; the derivative outside the branch)');
+assert.equal(shader.uniforms.uSeaShelf.value.x, 0, 'a land map (no FFT ocean): no shelf law');
+{
+  const src = readFileSync(new URL('./shallowWater.ts', import.meta.url), 'utf8');
+  assert.match(src, /const SEA_SHELF = Object\.freeze\(\{ colourM: 25, alphaM: 15, shallowAlpha: 0\.35 \}\);/, 'a 25 m colour shelf (45 turned a whole bay turquoise)');
+  assert.match(src, /const SEA_TINT = Object\.freeze\(\{ turquoise: 0\.6, deepBlue: 0\.8, deepDarken: 0\.5 \}\);/, 'the deep blue, not teal or navy (2026-10-05: its body darker, 0.7 → 0.5)');
+  assert.match(src, /const SEA_SWELL = Object\.freeze\(\{ slope: 0\.08, lengthM: 55, classicNormal: 0\.6 \}\);/, 'a swell that reads under the chop');
+}
+assert.equal(shader.uniforms.uSwell.value.x, 0, 'and no swell');
+assert.equal(shader.uniforms.uSwell.value.w, 1, 'and its tiled ripple whole');
+
 console.log('shallowWater: bounded surface, four profiles, animated shared textures, frozen/dry isolation, cleanup and contact pass');

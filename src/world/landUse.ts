@@ -76,10 +76,10 @@ export type LandCropId = (typeof LAND_CROP)[keyof typeof LAND_CROP];
  * the plough 0.03–0.06, terra rossa ~0.12, a young crop 0.10–0.13, rice green brighter than a cereal.
  */
 export const LAND_CROP_ALBEDO: Readonly<Record<LandCropId, readonly [number, number, number]>> = Object.freeze({
-  0: [0.085, 0.170, 0.035], // pasture: the calibrated meadow tip (groundRedux.ts MEADOW_TIP)
+  0: [0.092, 0.160, 0.045], // pasture: the calibrated meadow tip (groundRedux.ts MEADOW_TIP)
   1: [0.30, 0.22, 0.075],   // ripe wheat
   2: [0.33, 0.28, 0.12],    // barley
-  3: [0.078, 0.150, 0.032], // young green crop (wave 14, verdant chase: "oversaturated lime … artificial turf"): the meadow's own
+  3: [0.085, 0.148, 0.040], // young green crop (wave 14, verdant chase: "oversaturated lime … artificial turf"): the meadow's own
   //   hue a shade deeper — a crop tint divides by the biome's tip, so a bluer albedo turned the blades teal (hold 6)
   4: [0.050, 0.042, 0.034], // plough (black earth; the terrain uses its own soil layer)
   5: [0.30, 0.25, 0.13],    // stubble
@@ -271,7 +271,7 @@ export function landUseBoundary(profile: LandUseProfile | null): LandBoundary {
  * the block cost 2.7 ms at Low against 1.1–1.7 at High, the weakest GPUs paying the most). The material reads it as
  * uLandTier, kept current across preset changes:
  * 0 — the bake's crop on its exact edges only, one round of reads (Low and the phones' two lower tiers);
- * 1 — + the field's wet and dry (one noise read), its rows and tramlines, and the boundary features — headlands,
+ * 1 — + its rows and tramlines, the crop's own grain, and the boundary features — headlands,
  *     margins, hedge banks, bunds, walls, tracks — at their means: no soil read, no edge noise (Medium, the phones' high);
  * 2 — the full block (High, Ultra).
  */
@@ -366,6 +366,13 @@ export interface LandFieldSample {
   cropKeep: number;
   /** 1 when the field's sward is its weeds (cured grass tones, not the crop's albedo). */
   weed: number;
+  /**
+   * On a track's two wheel lanes: the signed offset from the nearer lane's wandering centre line in its own half-widths
+   * (trackLaneMeander / trackLaneCentre / trackLaneHalfWidth; |laneQ| < 1 is the sunk lane, − toward the crown between
+   * the lanes, + toward the verge); 1e9 off a track.
+   * Optional: a sandboxed harness's own field sample may leave it out (the readers fall back to the straight lanes).
+   */
+  laneQ?: number;
 }
 
 export function createLandFieldSample(): LandFieldSample {
@@ -421,7 +428,7 @@ function compile(profile: LandUseProfile): CompiledLandUse {
 export function landUseAt(profile: LandUseProfile | null, x: number, z: number, out: LandFieldSample): LandFieldSample {
   out.active = 0; out.crop = 0; out.edgeM = 1e9; out.endM = 1e9; out.sU = 1e9; out.sV = 1e9; out.split = 1; out.alongU = 1; out.marginM = 0; out.track = 0; out.hedge = 0; out.rowX = 1; out.rowZ = 0;
   out.jitter = 0; out.id = 0; out.boundary = 0; out.tintR = 0; out.tintG = 0; out.tintB = 0; out.sward = 1;
-  out.cropHeight = 1; out.cropKeep = -1; out.weed = 0;
+  out.cropHeight = 1; out.cropKeep = -1; out.weed = 0; out.laneQ = 1e9;
   if (!profile || !(profile.strength > 0)) return out;
   const { ch, sh, blockU, blockV, maxSplit, marginM, trackShare, hedgeShare, warpM, salt, cum, kinds, boundary } = compile(profile);
   const px = x + warpX(x, z) * warpM, pz = z + warpZ(x, z) * warpM;
@@ -463,6 +470,11 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   const trackOn = luRand(lineIdx, segment, salt + 31) < trackShare;
   const dLine = Math.min(lv, blockV - lv);
   out.track = trackOn ? 1 - smooth(1.6, 2.6, dLine) : 0;
+  if (trackOn && dLine < 2.6) {
+    // the wheel lanes wander along the track (the GLSL lu_laneC / lu_laneW): u the unwarped grid's along coordinate
+    const u = ch * x + sh * z, sM = sV - trackLaneMeander(u), side = sM < 0 ? -1 : 1;
+    out.laneQ = (Math.abs(sM) - trackLaneCentre(u, side)) / trackLaneHalfWidth(u, side);
+  }
   const hedgeOn = luRand(row, col * 8 + (alongU ? k : 7), salt + 37) < hedgeShare;
   const dShort = alongU ? Math.min(edgeU, Math.min(lu, blockU - lu)) : Math.min(lu, blockU - lu);
   out.hedge = hedgeOn ? 1 - smooth(1.2, 2.4, dShort) : 0;
@@ -486,6 +498,27 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   out.sward = growth.sward ? 1 : 0; out.cropHeight = growth.height; out.cropKeep = growth.keep; out.weed = growth.weed ? 1 : 0;
   out.id = (U32(Math.imul(fieldA + 4096, 65537) ^ (fieldB + 4096)) % 1000003);
   return out;
+}
+
+/**
+ * A farm track's wheel lanes (wave 83, Verdant: "crisp, uniform dark-grey stripes straight into the distance like painted
+ * rails"): each lane's centre wanders ±0.11 m about its line 0.85 m from the track's, and its half-width swells and
+ * narrows 0.19–0.29 m along the track, the two lanes on their own phases. u is the track's along coordinate — the
+ * unwarped grid's u (the slow boundary warp turns a track by well under a degree across a lane) — and side ±1 the side
+ * of the track's line (the sign of sV). LAND_USE_GLSL's lu_laneC and lu_laneW are the same sums; the material sinks
+ * the lanes there and the grass tiers keep them bare (tallGrass.ts, vegetation.ts: laneQ).
+ */
+/** The wheel lanes' common drift across the track (m): both lanes and the crown between them meander ±0.48 m about the
+ * track's line over 60–150 m — no farm track is ruled (LAND_USE_GLSL lu_laneM). */
+export function trackLaneMeander(u: number): number {
+  return 0.30 * Math.sin(u * 0.105 + 0.7) + 0.18 * Math.sin(u * 0.043 + 2.3);
+}
+export function trackLaneCentre(u: number, side: number): number {
+  return 0.85 + 0.11 * (0.50 * Math.sin(u * 0.53 + side * 1.9) + 0.32 * Math.sin(u * 1.37 + side * 0.7 + 1.1)
+    + 0.18 * Math.sin(u * 3.11 + side * 2.3 + 0.4));
+}
+export function trackLaneHalfWidth(u: number, side: number): number {
+  return 0.24 * (1 + 0.22 * Math.sin(u * 0.91 + side * 2.6 + 0.4));
 }
 
 function smooth(a: number, b: number, x: number): number {
@@ -627,6 +660,22 @@ void lu_decode(vec2 p, vec4 a, vec4 b, vec4 k, ivec2 t, out float crop, out floa
   rowDir = vec2(cos(turn), sin(turn));
   jitter = float(g >> 2) / 63.0;
 }
+// the signed offset to the field's long edge at p (lu_decode's own reconstruction of sV): which side of a track's line p
+// lies on, for the wheel lanes' relief (2026-10-04, the ground lane)
+float lu_sV(vec2 p, vec4 b, vec4 k, ivec2 t) {
+  vec2 dp = p - ((vec2(t) + 0.5) / uLandBake.x - 0.5) * uLandBake.y;
+  vec4 K = (k * 2.0 - 1.0) * ${LAND_WARP_K_RANGE};
+  vec2 dw = dp + vec2(K.x * dp.x + K.y * dp.y, K.z * dp.x + K.w * dp.y);
+  return (b.b * 65280.0 + b.a * 255.0 - ${OFFSET_ZERO}.0) / ${OFFSET_SCALE}.0 - uLandRot.y * dw.x + uLandRot.x * dw.y;
+}
+// a track's wheel lanes along its line: the centre's distance from the lanes' meandering mid-line and the half-width (m)
+// at the along coordinate u = dot(p, uLandRot), side ±1 the mid-line's side (landUse.ts trackLaneCentre /
+// trackLaneHalfWidth / trackLaneMeander)
+float lu_laneC(float u, float side) {
+  return 0.85 + 0.11 * (0.50 * sin(u * 0.53 + side * 1.9) + 0.32 * sin(u * 1.37 + side * 0.7 + 1.1) + 0.18 * sin(u * 3.11 + side * 2.3 + 0.4));
+}
+float lu_laneW(float u, float side) { return 0.24 * (1.0 + 0.22 * sin(u * 0.91 + side * 2.6 + 0.4)); }
+float lu_laneM(float u) { return 0.30 * sin(u * 0.105 + 0.7) + 0.18 * sin(u * 0.043 + 2.3); } // the lanes' common meander
 void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2 rowDir, out float jitter, out float hedge) {
   vec4 a, b, k; ivec2 t;
   lu_fetch(p, a, b, k, t);

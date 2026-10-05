@@ -25,6 +25,7 @@
 // on (the receipts, a renderer without float targets). Desktop tier only: the mobile tier has no far range.
 import * as THREE from 'three';
 import { HAZE_EXT_CHROMA, HAZE_LAW_GLSL, hazeLayerInverseScale, hazeSigma, hazeTargetTerms } from '../engine/hazeLaw.ts';
+import { ATMO_GROUND_KM, ATMOSPHERE_SKY_GLSL } from '../engine/atmosphere.ts';
 import { SEA_APRON_OUTER_RADIUS_M, type SeaOpening } from './edgeWater.ts';
 import type { HorizonReliefCharacter } from './horizonRelief.ts';
 
@@ -99,6 +100,18 @@ export interface HorizonPanoramaCharacter {
    * mainland is pale limestone, its battlefield rock a dark brown (gauntlet wave 32: "pale bare limestone on the upper
    * faces"; with the battlefield's rock its ridge held 17 levels of shading) */
   ownRock: number;
+  /** sheer jebels standing alone on the plain (maps lane A's inselberg section, horizonJebelSection): the share of
+   * 2.6 km cells holding one, its height (m), its radius (m), the wall's foot and the cap's rim (fractions of the radius
+   * and of the foot), the talus apron's share of the height, the flutes round the wall and their depth, the cap's
+   * bosses (m) and the foot's wander; 0 share: none */
+  jebelShare: number; jebelM: number; jebelRadiusM: number; jebelFoot: number; jebelRim: number; jebelApron: number;
+  jebelFlutes: number; jebelFluteDepth: number; jebelBossM: number; jebelFootVary: number;
+  /** desert varnish down the jebels' walls: the darkening of its streaks (0: none) */
+  jebelVarnish: number;
+  /** the nearest a jebel's near edge stands from the battlefield's centre (m). The massifs stand clear of the near band's
+   * pressing under the ring's skyline (that cut a near massif's top dead flat, gauntlet wave 50: "near-rectangular blocks
+   * with dead-flat tops"), so this keeps them past the shell, where the shell's parallax stays small */
+  jebelNearM: number;
 }
 
 /** The knobs most characters leave at rest: open sea, no tree canopy, the eroded mesa's profile, no isolated peaks. */
@@ -108,7 +121,40 @@ const PANO_EXTRAS = Object.freeze({
   peakShare: 0, peakM: 0, peakRadiusM: 600, peakSharp: 1.5,
   forestSlope: 0.32,
   air: 1, fillLaw: 0, rockFloor: -1, scrub: 0, ownRock: 0,
+  jebelShare: 0, jebelM: 0, jebelRadiusM: 900, jebelFoot: 0.66, jebelRim: 0.86, jebelApron: 0.18,
+  jebelFlutes: 16, jebelFluteDepth: 0.5, jebelBossM: 0, jebelFootVary: 0.14, jebelVarnish: 0, jebelNearM: 0,
 });
+
+/** Maps lane A's sheer jebel (landformGeology.ts inselbergSection with a rim, origin/visual/maps-layouts ca018e38e):
+ * the cap's fall from its crown to its rim, as a share of the height. */
+export const HORIZON_JEBEL_CAP_DROP = 0.08;
+/**
+ * A sheer jebel's section, ported from maps lane A's inselbergSection (with a rim) for the far bake: a gently domed cap
+ * out to `rim` of the wall's foot, a sheer wall (a smoothstep fall) down to the foot `foot` (fractions of the radius),
+ * then a concave talus apron `apron` (a share of the height) high at the foot and thinning to the plain at q = 1. The
+ * bake's GLSL (HORIZON_JEBEL_SECTION_GLSL) is the same law; receipts check the two against each other.
+ */
+export function horizonJebelSection(q: number, foot: number, apron: number, rim: number): number {
+  if (q >= 1) return 0;
+  const top = foot * rim;
+  if (q <= top) return 1 - HORIZON_JEBEL_CAP_DROP * (q / top) ** 2;
+  if (q <= foot) {
+    const t = (q - top) / (foot - top);
+    return apron + (1 - HORIZON_JEBEL_CAP_DROP - apron) * (1 - t * t * (3 - 2 * t));
+  }
+  const t = (1 - q) / (1 - foot);
+  return apron * t * t;
+}
+const HORIZON_JEBEL_SECTION_GLSL = /* glsl */`
+float jebelSection(float q, float foot, float apron, float rim) {
+  if (q >= 1.0) return 0.0;
+  float top = foot * rim;
+  if (q <= top) return 1.0 - ${HORIZON_JEBEL_CAP_DROP.toFixed(4)} * (q / top) * (q / top);
+  if (q <= foot) { float t = (q - top) / (foot - top); return apron + (${(1 - HORIZON_JEBEL_CAP_DROP).toFixed(4)} - apron) * (1.0 - t * t * (3.0 - 2.0 * t)); }
+  float t = (1.0 - q) / (1.0 - foot);
+  return apron * t * t;
+}
+`;
 
 export const HORIZON_PANORAMA_CHARACTERS: Readonly<Record<HorizonReliefCharacter, HorizonPanoramaCharacter>> = Object.freeze({
   alpine: { ampM: 1700, foot: 0.16, macroL: 5200, sharp: 1.45, midL: 1500, gullyL: 520, gullyM: 55, warpM: 900, valley: 0.4, valleyL: 7500, snowline: 0.40, treeline: 0.22, rockSlope: 0.30, bedM: 70, strata: 0.10, tables: false, farRise: 0, layers: 1, plinth: false, ...PANO_EXTRAS },
@@ -151,6 +197,9 @@ export interface HorizonPanoramaOptions {
   /** the map's own overcast fraction (lightModelCore resolveOvercast of its sky and cloudscape): the haze target's terms
    * under its deck — the light model the battlefield publishes can still be the last map's when the bake runs */
   overcast?: number | null;
+  /** the battlefield's ground (world x, z → y), the aerial pass's haze datum under the camera (post.ts
+   *  setGroundHeightSource): the far earth lands on the screen's horizon through that pass */
+  groundAt?: ((x: number, z: number) => number) | null;
 }
 
 /** How many frames a bake waits for the battlefield to publish this map's own sky before it keeps its own air. */
@@ -162,6 +211,8 @@ interface PanoramaAtmosphere {
   sunDir?: { x: number; y: number; z: number };
   fogDensity?: number; fogMix?: number; fogTint?: THREE.Color;
   summary?: { horizon: THREE.Color; sunHorizon: THREE.Color } | null;
+  /** the sky-view LUT and what sampling it needs (sky.ts AtmospherePublishedState; read, never written) */
+  skyView?: THREE.Texture | null; viewHeightKm?: number; knee?: THREE.Vector3; skyIntensity?: number;
 }
 
 /**
@@ -273,7 +324,11 @@ export const HORIZON_PANORAMA_REGIONAL: Readonly<Record<HorizonPanoramaRegional,
   // mountain spike" — rounded crests, shallower gullies, the forest up the steep faces and over the crests, rock only on
   // the cliffs, less lift toward the deck)
   ridges: { ampM: 750, foot: 0.25, macroL: 3800, sharp: 0.95, midL: 1500, gullyL: 380, gullyM: 30, warpM: 700, valley: 0.5, valleyL: 6000, snowline: 2, treeline: 1.6, rockSlope: 0.95, bedM: 40, strata: 0.02, tables: false, farRise: 0, layers: 0.25, plinth: false, ...PANO_EXTRAS, forestSlope: 0.8 },
-  jebel: { ampM: 700, foot: 0.24, macroL: 5200, sharp: 1.0, midL: 2000, gullyL: 500, gullyM: 30, warpM: 900, valley: 0.3, valleyL: 7000, snowline: 2, treeline: 0, rockSlope: 0.30, bedM: 46, strata: 0.32, tables: true, farRise: 0, layers: 1, plinth: false, ...PANO_EXTRAS, mesaTalusM: 160, mesaTalusShare: 0.12, mesaCliffM: 110, mesaFluteM: 90 },
+  // (gauntlet wave 24, Redrock corner-ne: the tabled 'jebel' read as "low rounded swells, nothing resembles Wadi Rum's
+  // walls" — now sheer massifs standing alone on a flat sand plain, maps lane A's section: bossed caps, fluted walls,
+  // short talus aprons; the massifs bare rock, the aprons and the plain sand)
+  jebel: { ampM: 45, foot: 0.7, macroL: 2600, sharp: 1.0, midL: 1000, gullyL: 600, gullyM: 0, warpM: 700, valley: 0.15, valleyL: 6000, snowline: 2, treeline: 0, rockSlope: 0.5, bedM: 26, strata: 0.3, tables: false, farRise: 0, layers: 0, plinth: false, ...PANO_EXTRAS,
+    jebelShare: 0.65, jebelM: 720, jebelRadiusM: 700, jebelFoot: 0.66, jebelRim: 0.86, jebelApron: 0.18, jebelFlutes: 20, jebelFluteDepth: 0.8, jebelBossM: 110, jebelFootVary: 0.14, jebelVarnish: 0.55, jebelNearM: 3000 },
   volcanicField: { ampM: 380, foot: 0.3, macroL: 4800, sharp: 1.0, midL: 1600, gullyL: 420, gullyM: 20, warpM: 800, valley: 0.3, valleyL: 7000, snowline: 2, treeline: 0.35, rockSlope: 0.4, bedM: 40, strata: 0.1, tables: false, farRise: 0, layers: 0.6, plinth: false, ...PANO_EXTRAS, peakShare: 0.35, peakM: 260, peakRadiusM: 800, peakSharp: 1.2 },
   iceSheet: { ampM: 110, foot: 0.5, macroL: 6000, sharp: 1.0, midL: 2200, gullyL: 600, gullyM: 6, warpM: 1000, valley: 0.2, valleyL: 8000, snowline: -0.5, treeline: 0, rockSlope: 0.35, bedM: 80, strata: 0.04, tables: false, farRise: 0, layers: 0.3, plinth: false, ...PANO_EXTRAS, peakShare: 0.2, peakM: 320, peakRadiusM: 380, peakSharp: 2.2 },
 });
@@ -290,7 +345,8 @@ export function resolveHorizonPanoramaCharacter(character: HorizonReliefCharacte
 /**
  * The shell: row 0 on the ring's outer edge (its own positions and heights, so the apron leaves the ring without a
  * seam), the apron's rows easing down to the shell's foot, the wall at the shell radius up its elevations. Every
- * vertex carries its azimuth fraction (u, continuous across the seam: column n repeats column 0 at u = 1).
+ * vertex carries its azimuth fraction (u, continuous across the seam: column n repeats column 0 at u = 1), and v marks
+ * the ground rows (1 on the edge and the apron, 0 on the wall): the apron is ground and never reads sky.
  */
 export function buildHorizonPanoramaShellGeometry(ringEdge: HorizonPanoramaOptions['ringEdge']): THREE.BufferGeometry {
   const n = ringEdge.columns, stride = n + 1;
@@ -320,7 +376,7 @@ export function buildHorizonPanoramaShellGeometry(ringEdge: HorizonPanoramaOptio
     const put = (x: number, y: number, z: number): void => {
       const o = row * stride + k;
       positions[o * 3] = x; positions[o * 3 + 1] = y; positions[o * 3 + 2] = z;
-      uvs[o * 2] = k / n; uvs[o * 2 + 1] = 0;
+      uvs[o * 2] = k / n; uvs[o * 2 + 1] = row <= P.apronM.length ? 1 : 0;
       row++;
     };
     put(ex, eh - 0.05, ez);
@@ -355,21 +411,225 @@ export function buildHorizonPanoramaShellGeometry(ringEdge: HorizonPanoramaOptio
   return geometry;
 }
 
+/** The shell's uniforms the bake fills: the strip's skyline per column (SKYLINE_FRAGMENT) and the far path's haze law
+ *  (σ times the map's air share, the layer's inverse scale, the datum, on; the targets away from and toward the sun; the
+ *  sun's bearing; the per-channel extinction) */
+interface ShellAir {
+  uPanoSkyline: THREE.IUniform<THREE.Texture | null>;
+  uPanoHaze: THREE.IUniform<THREE.Vector4>;
+  uPanoHazeAnti: THREE.IUniform<THREE.Vector3>;
+  uPanoHazeToward: THREE.IUniform<THREE.Vector3>;
+  uPanoSunH: THREE.IUniform<THREE.Vector2>;
+  uPanoHazeChroma: THREE.IUniform<THREE.Vector3>;
+  /** the aerial pass's σ over the shell's depth (the law's, no air share) */
+  uPanoSigmaPost: THREE.IUniform<number>;
+  /** the dome's own lookup (atmosphere.ts ATMOSPHERE_SKY_GLSL, bound read-only from the published atmosphere each draw) */
+  tAtmoSky: THREE.IUniform<THREE.Texture | null>;
+  uAtmoSun: THREE.IUniform<THREE.Vector3>;
+  uAtmoViewH: THREE.IUniform<number>;
+  uAtmoKnee: THREE.IUniform<THREE.Vector3>;
+  uAtmoIntensity: THREE.IUniform<number>;
+  /** the aerial pass's terms each draw: the fog tint; (its share, the target's level, the overcast); the haze datum
+   *  under the camera; whether the dome's lookup is live */
+  uPanoTint: THREE.IUniform<THREE.Vector3>;
+  uPanoTerms: THREE.IUniform<THREE.Vector3>;
+  /** the dome's deck greying, its own uniforms copied each draw (sky.ts: the tint and its weight by the overcast, the
+   *  closed deck's), read-only (DOME_DECK_GREY_GLSL) */
+  uDeckHorizon: THREE.IUniform<THREE.Vector4>;
+  uDeckClosed: THREE.IUniform<number>;
+  uPanoDatum: THREE.IUniform<number>;
+  uPanoSkyOn: THREE.IUniform<number>;
+  /** the cloud layer's composite, its dome's own uniforms copied each draw (CLOUD_COMPOSITE_GLSL), read-only; whether
+   *  the layer draws; the frame's view-projection (the screen the dome samples the clouds' history in) */
+  tClouds: THREE.IUniform<THREE.Texture | null>;
+  uHistorySize: THREE.IUniform<THREE.Vector2>;
+  uKnee: THREE.IUniform<THREE.Vector3>;
+  uSkyIntensity: THREE.IUniform<number>;
+  uFlash: THREE.IUniform<THREE.Vector4>;
+  uFlashTint: THREE.IUniform<THREE.Vector3>;
+  uSunDir: THREE.IUniform<THREE.Vector3>;
+  uInside: THREE.IUniform<number>;
+  uPanoCloudOn: THREE.IUniform<number>;
+  uPanoViewProj: THREE.IUniform<THREE.Matrix4>;
+  /** the aerial pass's cloud shade, as post.ts sets it each frame (AERIAL_CLOUD_SHADE_GLSL) */
+  uCloudShade: THREE.IUniform<number>;
+}
+
+/** The dome's deck greying (sky.ts ATMOSPHERE_DOME_FRAGMENT: the deck's grey at the horizon, a closed deck's at every
+ * elevation), which the far earth's screen horizon goes through. sky.ts keeps it inline in the dome's fragment rather than
+ * as a chunk, so this is a copy of its statements, wrapped in a function: horizonPanoramaDeck.selftest.mjs evaluates the
+ * dome's statements, read out of sky.ts, and this function's on the same skies, directions, overcasts and knobs, and
+ * fails on any difference. Its uniforms are the dome's own, copied each draw (the shell's onBeforeRender), so the knob,
+ * the light model's mode and the tint are the dome's too. */
+const DOME_DECK_GREY_GLSL = /* glsl */`
+uniform vec4 uDeckHorizon;
+uniform float uDeckClosed;
+vec3 panoDeckGrey( vec3 skyCol, vec3 direction ) {
+	float deckW = max( uDeckHorizon.w * ( 1.0 - smoothstep( 0.0, 0.12, direction.y ) ), uDeckClosed );
+	if ( deckW > 0.0 ) {
+		float deckTintL = max( dot( uDeckHorizon.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 );
+		float deckL = dot( skyCol, vec3( 0.2126, 0.7152, 0.0722 ) );
+		if ( uDeckClosed > 0.0 ) {
+			vec2 hzXZ = length( direction.xz ) > 1e-4 ? normalize( direction.xz ) : vec2( 1.0, 0.0 );
+			deckL = mix( deckL, dot( atmoSky( vec3( hzXZ.x, 0.0, hzXZ.y ) ), vec3( 0.2126, 0.7152, 0.0722 ) ), uDeckClosed );
+		}
+		skyCol = mix( skyCol, uDeckHorizon.rgb * ( deckL / deckTintL ), deckW );
+	}
+	return skyCol;
+}
+`;
+
+/** The cloud layer's composite (volumetricClouds.ts DOME_FRAGMENT), which the far earth's screen horizon goes through:
+ * what the frame shows just over the horizontal is the dome under the cloud layer, and under a deck that is the deck's
+ * far rows, which the layer pulls only 82 % of the way to the aerial pass's target (the rest is the deck's own lit
+ * radiance: Titan Gorge's and Frosthollow's far earth stood 0.08 and 0.05 under them on the screen-horizon pair).
+ * volumetricClouds.ts keeps it in the dome's fragment rather than as a chunk, so this carries the dome's filter and knee
+ * word for word, its statements from the history's sample to the flash on a given uv and direction, and the dome's blend
+ * (one, one minus the source alpha) over the sky under it: horizonPanoramaClouds.selftest.mjs runs the dome's and these
+ * through one GLSL-subset evaluator and fails on any difference. The uniforms are the cloud dome's own, copied each draw
+ * (the shell's onBeforeRender). */
+const CLOUD_COMPOSITE_GLSL = /* glsl */`
+uniform sampler2D tClouds;
+uniform vec2 uHistorySize;
+uniform vec3 uKnee;
+uniform float uSkyIntensity;
+uniform vec4 uFlash;
+uniform vec3 uFlashTint;
+uniform vec3 uSunDir;
+uniform float uInside;
+vec4 cloudsCatmullRom( vec2 uv, vec2 size ) {
+	vec2 sp = uv * size;
+	vec2 tp1 = floor( sp - 0.5 ) + 0.5;
+	vec2 fr = sp - tp1;
+	vec2 w0 = fr * ( fr * ( fr * -0.5 + 1.0 ) - 0.5 );
+	vec2 w1 = fr * fr * ( fr * 1.5 - 2.5 ) + 1.0;
+	vec2 w2 = fr * ( fr * ( fr * -1.5 + 2.0 ) + 0.5 );
+	vec2 w3 = fr * fr * ( fr * 0.5 - 0.5 );
+	vec2 w12 = w1 + w2;
+	vec2 tc0 = ( tp1 - 1.0 ) / size, tc3 = ( tp1 + 2.0 ) / size, tc12 = ( tp1 + w2 / w12 ) / size;
+	float a = w12.x * w0.y, b = w0.x * w12.y, c = w12.x * w12.y, d = w3.x * w12.y, e = w12.x * w3.y;
+	vec4 sum = texture2D( tClouds, vec2( tc12.x, tc0.y ) ) * a + texture2D( tClouds, vec2( tc0.x, tc12.y ) ) * b
+		+ texture2D( tClouds, tc12 ) * c + texture2D( tClouds, vec2( tc3.x, tc12.y ) ) * d + texture2D( tClouds, vec2( tc12.x, tc3.y ) ) * e;
+	return sum / ( a + b + c + d + e );
+}
+vec3 cloudKnee( vec3 c ) {
+	float l = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) );
+	if ( l > uKnee.x ) c *= ( uKnee.x + uKnee.y * ( 1.0 - exp( -( l - uKnee.x ) * uKnee.z ) ) ) / l;
+	return c;
+}
+vec3 panoCloudOver( vec3 sky, vec2 uv, vec3 dir ) {
+	vec4 c = max( cloudsCatmullRom( uv, uHistorySize ), vec4( 0.0 ) );
+	// nothing below the horizon line (the history holds no cloud there either) — unless the camera is in the slab
+	float above = max( smoothstep( -0.05, -0.02, dir.y ), uInside );
+	// the knee eases off within a few degrees of the sun: the silver lining of a cloud in front of it outshines the glow
+	float sunNear = pow( max( dot( dir, uSunDir ), 0.0 ), 400.0 );
+	vec3 rgb = mix( cloudKnee( c.rgb ), min( c.rgb, vec3( 6.0 ) ), sunNear ) * uSkyIntensity * above;
+	float alpha = ( 1.0 - min( c.a, 1.0 ) ) * above;
+	if ( uFlash.w > 0.0 ) {
+		// the cloud mass around the strike lit from inside: a broad glow and a bright core, only where there is cloud
+		float k = max( dot( dir, uFlash.xyz ), 0.0 );
+		rgb += uFlashTint * ( uFlash.w * ( pow( k, 30.0 ) * 0.7 + pow( k, 600.0 ) * 1.6 ) * alpha );
+	}
+	return rgb + sky * ( 1.0 - alpha );
+}
+`;
+
+/** The aerial pass's cloud shade (post.ts: "large-scale cloud shadows / light patchiness", world-anchored noise that
+ * multiplies every geometry pixel after the haze while the clouds cast no shadows of their own), which falls on the far
+ * earth too: Titan Gorge's dense overcast (0.30) laid patches up to a third darker across its far earth at the horizon on
+ * the composite's pair, where the land has long gone into the haze. post.ts keeps the noise and the shade inline in its
+ * aerial pass, so this is a copy of its statements: horizonPanoramaClouds.selftest.mjs runs post.ts's and these through
+ * the GLSL-subset evaluator and fails on any difference. The far earth divides its screen horizon by it before the
+ * aerial pass's compensation, so the pass's shade lands it back on the horizon. */
+const AERIAL_CLOUD_SHADE_GLSL = /* glsl */`
+uniform float uCloudShade;
+float vhash( vec2 p ) {
+  return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 );
+}
+float vnoise( vec2 p ) {
+  vec2 i = floor( p );
+  vec2 f = fract( p );
+  vec2 u = f * f * f * ( f * ( f * 6.0 - 15.0 ) + 10.0 );
+  return mix( mix( vhash( i ), vhash( i + vec2( 1.0, 0.0 ) ), u.x ),
+              mix( vhash( i + vec2( 0.0, 1.0 ) ), vhash( i + vec2( 1.0, 1.0 ) ), u.x ), u.y );
+}
+float panoCloudShade( vec2 cp ) {
+  vec3 shade = vec3( 1.0 );
+  if ( uCloudShade > 0.003 ) {
+    float cn = vnoise( cp * ( 1.0 / 340.0 ) ) * 0.62
+             + vnoise( cp * ( 1.0 / 131.0 ) + vec2( 4.7, 8.1 ) ) * 0.38;
+    shade *= 1.0 - uCloudShade * smoothstep( 0.52, 0.80, cn );
+  }
+  return shade.r;
+}
+`;
+
 /** The shell's material: the atlas by direction from the bake eye (an unlit backdrop; the post pass hazes it by depth),
  * transparent texels discarded (the sky and the clouds behind). The scene fog is off, as it was on the round-72 far
- * range: the strip carries its own air past the shell (the bake's distance grading). */
-function buildShellMaterial(): THREE.MeshBasicMaterial {
+ * range: the strip carries its own air past the shell (the bake's distance grading).
+ * Over its column's skyline (the mountains lane, 2026-10-04) a texel the shell reads as sky stays open, except where the
+ * shell is ground for the camera: the apron (its inner rows stand on the ring's outer edge above the bake eye's horizon,
+ * where a low far country's atlas is sky; discarded, they let the sky dome through between the ring and the shell from a
+ * high camera) and the far earth (gauntlet waves 53-54's bird views, "the world simply ends ... a ruler-straight hard top
+ * edge": the sky dome under the camera's own horizontal, where the land goes on to a horizon 0.56 degrees under it from
+ * 300 m). Both take the column's skyline, its farthest ground; the far earth hazed by the map's law over the reach past
+ * the strip at which the camera's ray meets the ground, so it converges to the law's target toward the horizontal. A
+ * ground or tank-height camera's rays to the wall's sky point above its own horizontal, so its view is unchanged. */
+function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAir } {
   const material = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, side: THREE.DoubleSide });
   material.name = 'horizon-panorama';
   const P = HORIZON_PANORAMA;
+  const air: ShellAir = {
+    uPanoSkyline: { value: null },
+    uPanoHaze: { value: new THREE.Vector4(0, 0, 0, 0) },
+    uPanoHazeAnti: { value: new THREE.Vector3() },
+    uPanoHazeToward: { value: new THREE.Vector3() },
+    uPanoSunH: { value: new THREE.Vector2(1, 0) },
+    uPanoHazeChroma: { value: new THREE.Vector3(...HAZE_EXT_CHROMA) },
+    uPanoSigmaPost: { value: 0 },
+    tAtmoSky: { value: null },
+    uAtmoSun: { value: new THREE.Vector3(0, 1, 0) },
+    uAtmoViewH: { value: ATMO_GROUND_KM + 0.05 },
+    uAtmoKnee: { value: new THREE.Vector3(1e6, 0, 1) },
+    uAtmoIntensity: { value: 1 },
+    uPanoTint: { value: new THREE.Vector3(1, 1, 1) },
+    uPanoTerms: { value: new THREE.Vector3(0, 1, 0) },
+    uDeckHorizon: { value: new THREE.Vector4(1, 1, 1, 0) },
+    uDeckClosed: { value: 0 },
+    tClouds: { value: null },
+    uHistorySize: { value: new THREE.Vector2(4, 4) },
+    uKnee: { value: new THREE.Vector3(1e6, 0, 1) },
+    uSkyIntensity: { value: 1 },
+    uFlash: { value: new THREE.Vector4() },
+    uFlashTint: { value: new THREE.Vector3(1, 1, 1) },
+    uSunDir: { value: new THREE.Vector3(0, 1, 0) },
+    uInside: { value: 0 },
+    uPanoCloudOn: { value: 0 },
+    uPanoViewProj: { value: new THREE.Matrix4() },
+    uCloudShade: { value: 0 },
+    uPanoDatum: { value: 0 },
+    uPanoSkyOn: { value: 0 },
+  };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uPanoEye = { value: new THREE.Vector3(0, P.eyeY, 0) };
     shader.uniforms.uPanoElev = { value: new THREE.Vector2(P.elevMin, P.elevMax) };
+    Object.assign(shader.uniforms, air);
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vPanoWorld; varying float vPanoU;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPanoWorld = (modelMatrix * vec4(position, 1.0)).xyz; vPanoU = uv.x;');
+      .replace('#include <common>', '#include <common>\nvarying vec3 vPanoWorld; varying float vPanoU; varying float vPanoApron;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPanoWorld = (modelMatrix * vec4(position, 1.0)).xyz; vPanoU = uv.x; vPanoApron = uv.y;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uPanoEye; uniform vec2 uPanoElev; varying vec3 vPanoWorld; varying float vPanoU;')
+      .replace('#include <common>', `#include <common>
+uniform vec3 uPanoEye; uniform vec2 uPanoElev; varying vec3 vPanoWorld; varying float vPanoU; varying float vPanoApron;
+uniform sampler2D uPanoSkyline; uniform vec4 uPanoHaze; uniform vec3 uPanoHazeAnti, uPanoHazeToward, uPanoHazeChroma;
+uniform vec2 uPanoSunH;
+uniform float uPanoSigmaPost;
+uniform vec3 uPanoTint; uniform vec3 uPanoTerms; uniform float uPanoDatum, uPanoSkyOn, uPanoCloudOn;
+uniform mat4 uPanoViewProj;
+${ATMOSPHERE_SKY_GLSL}
+${DOME_DECK_GREY_GLSL}
+${CLOUD_COMPOSITE_GLSL}
+${AERIAL_CLOUD_SHADE_GLSL}
+${HAZE_LAW_GLSL}`)
       .replace('#include <map_fragment>', /* glsl */`
       #ifndef USE_MAP
         discard;
@@ -382,16 +642,90 @@ function buildShellMaterial(): THREE.MeshBasicMaterial {
         if (fl > 1e-6 && fh > 0.5 * fl && abs(dot(fn.xz / fh, normalize(vPanoWorld.xz - uPanoEye.xz + vec2(1e-3)))) < 0.45) discard;
         vec3 d = vPanoWorld - uPanoEye;
         float e = atan(d.y, length(d.xz));
-        vec4 pano = texture2D(map, vec2(vPanoU, clamp((e - uPanoElev.x) / (uPanoElev.y - uPanoElev.x), 0.002, 0.998)));
-        if (pano.a < 0.5) discard;
-        // the atlas holds display-encoded colour (more precision in the shadows), premultiplied so its filtered edge
-        // samples carry no black from the sky texels: divided back out, then back to linear
-        diffuseColor.rgb *= pow(pano.rgb / pano.a, vec3(2.2));
+        vec2 panoUv = vec2(vPanoU, clamp((e - uPanoElev.x) / (uPanoElev.y - uPanoElev.x), 0.002, 0.998));
+        vec4 pano = texture2D(map, panoUv);
+        if (pano.a < 0.5) {
+          // over its column's skyline: open (the sky), unless the shell is ground for this camera, on a ray under the
+          // camera's own horizontal — the apron over the bake eye's horizon, or the far earth. A hole under the skyline
+          // (the open water the game draws, the band over a sea's ring) stays open, as does a column with no land; a
+          // camera looking up at the shell's sky (every ground and tank-height view) sees it open as before
+          vec4 skyline = texture2D(uPanoSkyline, vec2(vPanoU, 0.25));
+          if (skyline.a < 0.0 || panoUv.y <= skyline.a) discard;
+          vec3 vd = vPanoWorld - cameraPosition;
+          bool apron = vPanoApron > 0.5 && e > 0.0;
+          if (vd.y >= 0.0 || !(apron || uPanoHaze.w > 0.5)) discard;
+          vec3 ground = pow(max(skyline.rgb, vec3(0.0)), vec3(2.2));
+          if (!apron) {
+            // (its land the column's skyline right over it, the wide average above: one colour per column, constant up
+            // the ray, stood as bars to the horizon in the clear air — Verdant and Oasis in the lab)
+            vec3 wide = pow(max(texture2D(uPanoSkyline, vec2(vPanoU, 0.75)).rgb, vec3(0.0)), vec3(2.2));
+            // the far earth: the law over the reach past the strip (its far country already carries the air to 9 km)
+            // at which the camera's ray meets the ground, the layer's density between there and the ray's height at
+            // the strip's end, toward the column's own target
+            vec3 rd = vd / length(vd);
+            float meet = (cameraPosition.y - uPanoHaze.z) / max(-rd.y, 1e-5);
+            float stripEnd = min(meet, ${P.outerM.toFixed(1)});
+            float reach = max(0.0, meet - ${P.outerM.toFixed(1)});
+            float layer = hazeLayerMean(max(cameraPosition.y + rd.y * stripEnd - uPanoHaze.z, 0.0) * uPanoHaze.y, 0.0);
+            vec3 T = hazeTransmittance(uPanoHaze.x, reach, layer, uPanoHazeChroma);
+            float a = vPanoU * 6.2831853;
+            float toward = 0.5 + 0.5 * (cos(a) * uPanoSunH.x + sin(a) * uPanoSunH.y);
+            ground = mix(ground, wide, smoothstep(0.0, 0.0087, e - mix(uPanoElev.x, uPanoElev.y, skyline.a)));
+            // toward the horizontal the land goes into the screen's own horizon (the pairs of bfc773bb1 and f61a53f3d:
+            // the law's target from the bake, and the atmosphere's summary bands, both landed 0.08-0.27 over the sky
+            // the frames show). It is the dome as sky.ts draws it just over the horizon — the sky-view LUT on this
+            // bearing, greyed by the deck (the dome's own greying on the dome's own uniforms), through the knee, at
+            // the sky's intensity — drawn toward the aerial pass's target as the overcast closes (the cloud layer's far
+            // rows, pulled to that target, are the horizon under a deck). The in-scatter target is the colour the
+            // aerial pass turns into it: its own target along this fragment's ray and its own transmittance over the
+            // camera's distance (σ, the layer from the ground under the camera, the per-channel extinction)
+            vec3 inScatter = mix(uPanoHazeAnti, uPanoHazeToward, toward * toward);
+            if (uPanoSkyOn > 0.5) {
+              const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+              vec3 skyT = atmoSkyVisible(normalize(vec3(rd.x, max(rd.y, 0.02), rd.z)));
+              float tintL = max(dot(uPanoTint, LUMA), 1e-4);
+              vec3 aerialT = mix(skyT, uPanoTint * (dot(skyT, LUMA) / tintL), uPanoTerms.x);
+              if (aerialT.g > aerialT.b) {
+                float tl = dot(aerialT, LUMA);
+                aerialT = mix(aerialT, vec3(tl * 0.92, tl * 0.99, tl * 1.12), 0.6);
+              }
+              aerialT *= uPanoTerms.y;
+              vec3 hdir = normalize(vec3(rd.x, 0.004, rd.z));
+              vec3 domeSky = atmoKnee(panoDeckGrey(atmoSky(hdir), hdir)) * uAtmoIntensity;
+              // where the cloud layer is not read (none drawn, or the horizon point off the frame's top or bottom):
+              // the dome, toward the aerial pass's target as the overcast closes
+              vec3 screen = mix(domeSky, aerialT, smoothstep(0.3, 0.8, uPanoTerms.z));
+              if (uPanoCloudOn > 0.5) {
+                // the dome under the cloud layer as the frame composites it at the horizon point on this bearing: its
+                // history sampled where the cloud dome samples it, at the point's own place on this frame's screen
+                vec4 hc = uPanoViewProj * vec4(hdir, 0.0);
+                if (hc.w > 0.0) {
+                  vec2 cuv = hc.xy / hc.w * 0.5 + 0.5;
+                  // eased to the proxy over the frame's last twentieth at the top and the bottom (no jump as the point
+                  // leaves the frame); held at the side edges, where the horizon beside it is in the frame
+                  float inFrame = smoothstep(0.0, 0.05, cuv.y) * (1.0 - smoothstep(0.95, 1.0, cuv.y));
+                  if (inFrame > 0.0) screen = mix(screen, panoCloudOver(domeSky, vec2(clamp(cuv.x, 0.0, 1.0), cuv.y), hdir), inFrame);
+                }
+              }
+              // (the aerial pass shades this pixel by its cloud shade after its haze: the horizon taken back out of it)
+              screen /= max(panoCloudShade(vPanoWorld.xz), 0.05);
+              float postLayer = hazeLayerMean(max(cameraPosition.y - uPanoDatum, 0.0) * uPanoHaze.y, max(vPanoWorld.y - uPanoDatum, 0.0) * uPanoHaze.y);
+              vec3 Tp = hazeTransmittance(uPanoSigmaPost, length(vd), postLayer, uPanoHazeChroma);
+              inScatter = max((screen - aerialT * (1.0 - Tp)) / max(Tp, vec3(0.05)), vec3(0.0));
+            }
+            ground = ground * T + inScatter * (1.0 - T);
+          }
+          diffuseColor.rgb *= ground;
+        } else {
+          // the atlas holds display-encoded colour (more precision in the shadows), premultiplied so its filtered edge
+          // samples carry no black from the sky texels: divided back out, then back to linear
+          diffuseColor.rgb *= pow(pano.rgb / pano.a, vec3(2.2));
+        }
       }
       #endif`);
   };
-  material.customProgramCacheKey = () => 'horizon-panorama-v3';
-  return material;
+  material.customProgramCacheKey = () => 'horizon-panorama-v4';
+  return { material, air };
 }
 
 // --------------------------------------------------------------------------------------------------- the bake shaders
@@ -414,6 +748,82 @@ vec3 noised(vec2 x) {
 const mat2 ROT = mat2(1.6, 1.2, -1.2, 1.6);
 `;
 
+/** The far jebels' law, shared by the height pass and the strip (which takes the walls' normals from it). */
+const JEBEL_GLSL = /* glsl */`
+uniform vec4 uJebel;   // sheer jebels: share of 2.6 km cells, height (m), radius (m), the cap's bosses (m)
+uniform vec4 uJebel2;  // the wall's foot, the cap's rim, the apron's share, the flutes round the wall
+uniform vec4 uJebel3;  // the flutes' depth, the foot's wander, the varnish, the nearest centre (m)
+${HORIZON_JEBEL_SECTION_GLSL}
+// a smooth wander round a massif in its bearing, in [-1, 1] (maps lane A's lobe: four harmonics, falling amplitude)
+float jebelLobe(float th, float salt) {
+  float sum = 0.0;
+  for (int k = 2; k <= 5; k++) {
+    float fk = float(k);
+    sum += sin(fk * th + 6.2831853 * hash12(vec2(fk, salt))) / (fk - 1.0);
+  }
+  return sum / 2.0833333;
+}
+
+// the jebels at a point (uJebel.x > 0): the tallest massif's height over the plain (one in a share of 2.6 km cells,
+// standing alone on the plain — maps lane A's section, horizonJebelSection: a bossed cap, a sheer wall fluted in vertical
+// grooves whose foot wanders round the massif, a short concave talus apron; drawn out along a turned axis). Beside it the
+// footprint inside the walls' feet (the height pass writes it for the strip to bare), the varnish down the walls, and for
+// the strip the massif the point belongs to: its share of its own height there, its bearing round its centre, its salt
+float gJebelBare = 0.0, gJebelVarnish = 0.0, gJebelRel = 0.0, gJebelTh = 0.0, gJebelSalt = 0.0;
+float jebelField(vec2 p) {
+  gJebelBare = 0.0; gJebelVarnish = 0.0; gJebelRel = 0.0; gJebelTh = 0.0; gJebelSalt = 0.0;
+  vec2 cell = floor(p / 2600.0);
+  float best = 0.0;
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    vec2 c = cell + vec2(float(i), float(j));
+    if (hash12(c + vec2(31.7, 3.1)) < 1.0 - uJebel.x) continue;
+    vec2 centre = (c + 0.2 + 0.6 * vec2(hash12(c + vec2(2.9, 7.3)), hash12(c + vec2(6.1, 1.7)))) * 2600.0;
+    float rad = uJebel.z * (0.7 + 0.6 * hash12(c + vec2(5.3, 8.8)));
+    float el = 1.0 + 0.5 * hash12(c + vec2(0.7, 2.2));
+    // (its near edge past the limit: the massif's long axis is rad * el)
+    if (length(centre) - rad * el < uJebel3.w) continue;
+    float ang = 6.2831853 * hash12(c + vec2(9.1, 4.4));
+    vec2 ax = vec2(cos(ang), sin(ang)), q2 = p - centre;
+    vec2 lq = vec2(dot(q2, ax) / el, dot(q2, vec2(-ax.y, ax.x))) / rad;
+    float q = length(lq);
+    if (q >= 1.0) continue;
+    float th = atan(lq.y, lq.x), salt = hash12(c + vec2(4.8, 5.9)) * 97.0;
+    float rim = uJebel2.y;
+    float wall = clamp(uJebel2.x * (1.0 + uJebel3.y * jebelLobe(th, salt + 29.0)), 0.25, 0.92);
+    // the flutes: a rounded notch where the cosine peaks, setting the wall back between its spurs
+    float notch = pow(max(0.0, cos(6.2831853 * (th / 6.2831853 * uJebel2.w + hash12(c + vec2(3.7, 0.3))))), 2.0);
+    wall -= notch * uJebel3.x * (1.0 - rim) * wall;
+    float apron = uJebel2.z * (1.0 + 0.5 * jebelLobe(th, salt + 31.0));
+    float hgt = uJebel.y * (0.7 + 0.3 * hash12(c + vec2(8.2, 6.6)));
+    float hj = hgt * jebelSection(q, wall, apron, rim);
+    // the cap's bosses: rounded domes inside the rim (their union), as maps lane A sets them
+    float top = wall * rim;
+    if (q < top && uJebel.w > 0.0) {
+      float boss = 0.0;
+      for (int k = 0; k < 4; k++) {
+        float fk = float(k);
+        float ba = 6.2831853 * hash12(vec2(fk, salt + 41.0)), br = sqrt(hash12(vec2(fk + 7.0, salt + 41.0))) * top * 0.62;
+        float bradius = top * (0.3 + 0.16 * hash12(vec2(fk + 13.0, salt + 41.0)));
+        float bd = length(lq - vec2(cos(ba), sin(ba)) * br) / bradius;
+        if (bd < 1.0) boss = max(boss, (1.0 - bd * bd) * (1.0 - bd * bd) * (0.6 + 0.4 * hash12(vec2(fk + 19.0, salt + 41.0))));
+      }
+      hj += uJebel.w * boss;
+    }
+    if (hj > best) { best = hj; gJebelRel = hj / hgt; gJebelTh = th; gJebelSalt = salt; }
+    gJebelBare = max(gJebelBare, smoothstep(wall + 0.04, wall - 0.01, q));
+    // desert varnish: dark streaks down the wall from under the rim (seepage from the cap), round the massif on the
+    // circle (no seam), drawn out down the wall, fading over the talus
+    if (uJebel3.z > 0.0 && q > top * 0.9 && q < wall + 0.05) {
+      vec2 ring = vec2(cos(th), sin(th));
+      float sv = noised(ring * 16.0 + vec2(q * 2.0, salt)).x * 0.65 + noised(ring * 41.0 + vec2(q * 4.0, salt + 5.0)).x * 0.35;
+      float down = 1.0 - smoothstep(wall - 0.2 * (wall - top), wall + 0.05, q);
+      gJebelVarnish = max(gJebelVarnish, smoothstep(0.08, 0.38, sv) * down);
+    }
+  }
+  return best;
+}
+`;
+
 const FIELD_GLSL = /* glsl */`
 uniform vec4 uOff0, uOff1, uOff2, uOff3;  // the seed's offsets
 uniform vec4 uChar0;   // ampM, foot, macroL, sharp
@@ -427,7 +837,7 @@ uniform vec4 uShore;   // the far shore's height share (0: open sea), the channe
 uniform vec4 uTrees;   // the tree lines' and woods' canopy (m; 0: none)
 uniform vec4 uMesa;    // a table's talus apron (m) and its share of the height, its caprock cliff (m), its rim's alcoves (m)
 uniform vec4 uPeaks;   // isolated peaks: share of 2.6 km cells, height (m), radius (m), sharpness
-
+${JEBEL_GLSL}
 float macroField(vec2 q) {
   float sum = 0.0, amp = 1.0, weight = 1.0, norm = 0.0;
   for (int o = 0; o < 7; o++) {
@@ -525,9 +935,11 @@ float gPlinth = 0.0; // farField's plinth at its last point (the height pass wri
 float gTree = 0.0;   // and its tree cover (the strip colours it as the forest)
 float gPeak = 0.0;   // and its isolated peaks' weight (the strip bares them: a nunatak's rock, a cone's scoria)
 float gGully = 0.0;  // and its erosion octaves' troughs on the steeper ground (a dry coast's scrub holds them)
+float gVarnish = 0.0; // and a jebel country's desert varnish down its walls (written in the tree-cover channel)
 float farField(vec2 p) {
   gPlinth = 0.0;
   gGully = 0.0;
+  gVarnish = 0.0;
   float r = length(p);
   float A = envelopeAt(p, r);
   float h = uChar2.z > 0.5 ? mesaField(p, A) : A * baseField(p);
@@ -573,6 +985,15 @@ float farField(vec2 p) {
     h += uPeaks.y * best;
     gPeak = foot;
   }
+  // sheer jebels (uJebel.x > 0): JEBEL_GLSL jebelField — the footprint inside the walls' feet is written for the strip to
+  // bare to rock, the varnish in the tree-cover channel; the massifs' heights join after the near band's pressing (v3b:
+  // pressed, a massif inside 4.8 km lost its bossed top to a level line under the ring's skyline)
+  float hJebel = 0.0;
+  if (uJebel.x > 0.0) {
+    hJebel = jebelField(p);
+    gPeak = max(gPeak, gJebelBare);
+    gVarnish = gJebelVarnish * uJebel3.z;
+  }
   gTree = 0.0;
   if (uTrees.x > 0.0) {
     float tu = p.x * 0.913 + p.y * 0.408, tv = -p.x * 0.408 + p.y * 0.913;
@@ -587,6 +1008,7 @@ float farField(vec2 p) {
   }
   // a dry coast's scrub (uTrees.z, the maquis): it holds the gullies up the bare faces, the limestone the spurs between
   if (uTrees.z > 0.0) gTree = max(gTree, uTrees.z * gGully);
+  gTree = max(gTree, gVarnish);
   float a = atan(p.y, p.x) * 0.15915494309;
   vec4 edge = texture2D(uEdge, vec2(fract(a), 0.5));
   // the layers behind the ring (the mountains lane, 2026-10-03: from the battlefield the far country hid behind the
@@ -644,6 +1066,8 @@ float farField(vec2 p) {
   float nearCap = uFrame.w + r * (edge.a - 0.03);
   float nearW = 1.0 - smoothstep(3200.0, 4800.0, r);
   if (h > nearCap) h = mix(h, nearCap + (h - nearCap) * 0.15, nearW);
+  // (the jebels stand whole: their near edges keep past the shell, jebelNearM)
+  h += hJebel;
   // the first kilometre eases out of the ring's outer heights; the sea sectors sink under their level — to the horizon,
   // or on a channel coast (uShore.x > 0, per map) as far as the far shore: the mainland or the islands across the water
   // (Saltwind, gauntlet wave 4: "behind the end of the road the land collapses into a thin flat strip with a pale blue
@@ -692,6 +1116,46 @@ float farField(vec2 p) {
     h *= landKeep;
   }
   return h;
+}
+`;
+
+/** pass 4: per strip column, its highest opaque texel — its colour (display-encoded, out of the premultiplication) and
+ *  its v; v -1 where the column holds no land */
+const SKYLINE_FRAGMENT = /* glsl */`
+precision highp float;
+varying vec2 vUv;
+uniform sampler2D uStrip;
+uniform float uRows;
+void main() {
+  vec4 found = vec4(0.0, 0.0, 0.0, -1.0);
+  for (int j = 0; j < 4096; j++) {
+    if (float(j) >= uRows) break;
+    float v = (uRows - float(j) - 0.5) / uRows;
+    vec4 c = textureLod(uStrip, vec2(vUv.x, v), 0.0);
+    if (c.a >= 0.5) { found = vec4(c.rgb / c.a, v); break; }
+  }
+  gl_FragColor = found;
+}
+`;
+
+/** pass 5: the skyline's colour averaged among the columns that hold land, each column keeping its own v — row 0 over 2.8
+ *  degrees either side (one bright peak's column would stand as a bar up the far earth), row 1 over 45 degrees (the far
+ *  earth's land past the strip: the clear air carried row 0's bars to the horizon, Verdant and Oasis in the lab) */
+const SKYLINE_BLUR_FRAGMENT = /* glsl */`
+precision highp float;
+varying vec2 vUv;
+uniform sampler2D uSkyline;
+uniform float uColumns;
+void main() {
+  vec4 own = textureLod(uSkyline, vec2(vUv.x, 0.5), 0.0);
+  float stride = vUv.y < 0.5 ? 1.0 : 16.0;
+  vec3 sum = vec3(0.0);
+  float n = 0.0;
+  for (int k = -64; k <= 64; k++) {
+    vec4 c = textureLod(uSkyline, vec2(vUv.x + float(k) * stride / uColumns, 0.5), 0.0);
+    if (c.a >= 0.0) { sum += c.rgb; n += 1.0; }
+  }
+  gl_FragColor = vec4(n > 0.0 ? sum / n : own.rgb, own.a);
 }
 `;
 
@@ -820,6 +1284,8 @@ float fallStreak(vec2 xz) {
   }
   return acc;
 }
+${JEBEL_GLSL}
+float gJebelW = 0.0; // how much of a jebel's own law this texel's surface takes (0 off the massifs)
 vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   float slope = 1.0 - n.y;
   // the zones (forest, fields, snow, scree) by the height over the upland's plinth where it has one
@@ -851,7 +1317,7 @@ vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   vec3 ground = uBase * (0.92 + 0.16 * (noised(wp.xz / 120.0 + vec2(7.7, -1.3)).x * 0.5 + 0.5));
   vec3 col = mix(ground, mix(meadow, uForest * mottle, stand), vegW);
   // the far field's own tree lines and woods (its height pass's tree cover)
-  col = mix(col, uForest * mottle * 0.9, texture2D(uHeight, g).b);
+  col = mix(col, uForest * mottle * 0.9, uJebel.x > 0.0 ? 0.0 : texture2D(uHeight, g).b);
   // rock on the steep faces, its beds: a tone per bed, the bedding planes darker
   float bt = (wp.y + (wp.x * 0.6 + wp.z * 0.8) * 0.004) / uChar3.w;
   float bi = floor(bt), bf = bt - bi;
@@ -867,9 +1333,35 @@ vec3 surfaceColour(vec2 g, vec3 wp, vec3 n, float apron, vec4 light) {
   // on all but their gentlest ground
   float peak = smoothstep(0.08, 0.3, texture2D(uHeight, g).a);
   rockW = max(rockW, peak * smoothstep(0.03, 0.14, slope + 0.03 * n1));
+  // (a jebel is bare rock over its whole footprint, its gently domed cap too: Wadi Rum's massifs carry no sand on top)
+  if (uJebel.x > 0.0) rockW = max(rockW, smoothstep(0.3, 0.7, texture2D(uHeight, g).a));
   col = mix(col, rockC, rockW);
   // (and in the fissures down the bare faces, fainter: the limestone between them)
   col = mix(col, uForest * mottle * 0.85, uTrees.z * rockW * streak * 0.5);
+  // (a jebel's desert varnish, the tree-cover channel of a treeless country: dark streaks down its walls)
+  if (uJebel.x > 0.0) col *= 1.0 - texture2D(uHeight, g).b;
+  // Wadi Rum's sandstone (v3): the dark red-brown walls (the Umm Ishrin sandstone) under the pale domes (the Disi), the
+  // contact wandering round each massif; bedded every ~17 m (each bed its own tone, the bedding planes dark); split by
+  // vertical joints whose clefts hold shadow on the walls
+  // (v3b, the pair of 8248ca70b: the cap uRock x (1.85, 3, 3.6) over the upper half stood as "pale grey-white castles",
+  // the domes brighter than the sky above them. From the plain's own sand now: the walls desert-varnished, about a third
+  // of the sand's albedo and redder-brown; the Disi only on the domes and the rim, buff, a touch paler than the sand)
+  if (gJebelW > 0.0) {
+    float rel = gJebelRel, th = gJebelTh, salt = gJebelSalt;
+    float wallW = smoothstep(0.35, 0.75, slope);
+    float contact = smoothstep(0.8, 0.9, rel + 0.05 * noised(vec2(th * 5.0, salt)).x);
+    vec3 lower = uBase * vec3(0.36, 0.3, 0.38);
+    vec3 upper = mix(uBase, vec3(dot(uBase, vec3(0.2126, 0.7152, 0.0722))), 0.25) * 1.15;
+    float bt = wp.y / 17.0 + 0.25 * noised(vec2(th * 3.0, wp.y / 70.0) + salt).x;
+    float bi = floor(bt), bf = bt - bi;
+    float bedT = 0.9 + 0.2 * hash12(vec2(bi, salt));
+    float plane = 1.0 - smoothstep(0.0, 0.07, bf) * smoothstep(0.0, 0.07, 1.0 - bf);
+    float joints = 30.0 + 24.0 * fract(salt * 0.618);
+    float jv = fract(th / 6.2831853 * joints + 0.18 * noised(vec2(rel * 3.0, th * 2.0 + salt)).x + fract(salt * 0.37));
+    float cleft = 1.0 - smoothstep(0.0, 0.045, min(jv, 1.0 - jv));
+    vec3 stone = mix(lower, upper, contact) * bedT * (1.0 - 0.22 * plane * wallW) * (1.0 - 0.5 * cleft * wallW);
+    col = mix(col, stone * (1.0 - texture2D(uHeight, g).b), gJebelW * rockW);
+  }
   // scree on the moderate slopes below the rock
   col = mix(col, uScree, smoothstep(0.12, 0.24, slope) * (1.0 - rockW) * (1.0 - vegW) * 0.7);
   // snow above the snowline on the slopes that hold it
@@ -927,6 +1419,18 @@ void main() {
     // fine tones would stand as one streak per column (where a low ring shows it) — it keeps the broad tones only
     apron = 1.0;
   }
+  // a jebel's walls (v3, gauntlet wave 50: "flat-coloured, near-rectangular blocks", the walls "one even pale tone with no
+  // lit or shaded faces"): the grid's rows lie ~35 m apart at 5 km, and its normal across two of them smoothed a 60 m sheer
+  // wall into a slope that took the sun from every side. The massif's own law gives the wall's normal at 4 m, so the face
+  // toward the sun is lit and the face away from it in shade.
+  gJebelW = 0.0;
+  if (uJebel.x > 0.0 && apron < 0.5 && texture2D(uHeight, g).a > 0.01) {
+    float e4 = 4.0;
+    float hx = jebelField(wp.xz + vec2(e4, 0.0)), hz = jebelField(wp.xz + vec2(0.0, e4));
+    float h0 = jebelField(wp.xz); // (last: the massif's globals are this point's own)
+    gJebelW = smoothstep(2.0, 14.0, h0);
+    n = normalize(mix(n, normalize(vec3(-(hx - h0) / e4, 1.0, -(hz - h0) / e4)), gJebelW));
+  }
   // the texel's footprint on the ground along the ray (one strip row is 25/512 degrees): at a grazing angle it spans
   // hundreds of metres, and the parcels and the fine tones would alias into one streak per column (Saltmere's coast
   // where the ring is low) — they fade out over a 40-160 m footprint, the broad tones stay
@@ -968,7 +1472,10 @@ void main() {
       // the compass, under the air over its own reach — the ground just behind the ring, under a kilometre past the
       // shell, nearer than the far country above it and no hazier — so the band reads as the country between the ring
       // and the range, never paler than the range (the law's air with the battlefield's sky published, else the bake's own)
-      vec3 cover = mix(flatC, flatC * uForest / max(vec3(1e-3), uBase) * 0.95, max(0.5 + 0.4 * smoothstep(0.05, 0.45, patchN), 0.9 * uTrees.z) * (1.0 - fillSnow));
+      // (a bare country's lowland is its own ground: Redrock's sand plain under the jebels, v3b — the fog-tinted fill
+      // stood as a peach band the massifs' feet dissolved into)
+      float wooded = uTrees.z > 0.0 || uChar3.y >= 0.35 ? 1.0 : 0.0;
+      vec3 cover = mix(flatC, flatC * uForest / max(vec3(1e-3), uBase) * 0.95, max(0.5 + 0.4 * smoothstep(0.05, 0.45, patchN), 0.9 * uTrees.z) * (1.0 - fillSnow) * wooded);
       if (uHaze.w > 0.5) {
         float fillLayer = hazeLayerMean(max(uFrame.w - uHaze.z, 0.0) * uHaze.y, max(60.0 - uHaze.z, 0.0) * uHaze.y);
         vec3 TF = hazeTransmittance(uHaze.x * uAir.x, 800.0 * recede, fillLayer, uHazeChroma);
@@ -979,7 +1486,9 @@ void main() {
     } else {
       fill = mix(fill, uFog * 1.05, 0.25 + 0.35 * recede);
     }
-    col = mix(col, fill, hiddenW * 0.95);
+    // (not over a jebel's wall: the march past the ring meets the massif's own lower wall there, not grazing ground —
+    // painted with the fill, the near massifs stood on a flat band of it from the elevated views, v3b)
+    col = mix(col, fill, hiddenW * 0.95 * (1.0 - gJebelW));
   }
   // the sea sectors: the open water is the game's own (the sea apron, 4 km out, and the sky past it) — the strip leaves
   // it open, as the round-72 far range did (painted, it stood on the shell over the real water as a pale band, a wedge from
@@ -1066,13 +1575,83 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   const P = HORIZON_PANORAMA;
   const ch = resolveHorizonPanoramaCharacter(options.character, options.overrides);
   const geometry = buildHorizonPanoramaShellGeometry(options.ringEdge);
-  const material = buildShellMaterial();
+  const { material, air } = buildShellMaterial();
   const mesh = new THREE.Mesh(geometry, material);
   // the far range's name: the battle atmosphere dims every 'horizon-far-range' mesh's colour at night
   // (battleAtmosphereRuntime.ts), and the panorama is that range now; lookups by name still find the round-72 mesh, the
   // ring's first child of the name
   mesh.name = 'horizon-far-range';
   mesh.userData.horizonPanorama = true;
+  // (the shell's air: the frame-budget probe's far-earth toggle switches the law's flag in place)
+  mesh.userData.panoAir = air;
+  const lawTerms = { x: 0, y: 0 };
+  // the dome (sky.ts's 'atmosphere-dome' mesh), found once per scene: its deck uniforms are read each draw
+  let domeScene: THREE.Object3D | null = null;
+  let dome: THREE.Object3D | undefined;
+  mesh.onBeforeRender = (_renderer, scene, camera) => {
+    // the far earth's landing on the screen's horizon (the shell's far-earth note): the dome's own lookup and greying and
+    // the aerial pass's terms as post.ts sets them this frame, the ground under the camera as its datum
+    const data = scene.userData as { atmosphere?: PanoramaAtmosphere; lightModel?: { overcast?: number } };
+    const atmosphere = data.atmosphere;
+    const live = !!(atmosphere?.active && atmosphere.skyView && atmosphere.sunDir && atmosphere.knee && atmosphere.fogTint
+      && air.uPanoHaze.value.w > 0.5);
+    air.uPanoSkyOn.value = live ? 1 : 0;
+    if (!live || !atmosphere) {
+      // (no reference kept to a cloud history the layer may since have released)
+      air.uPanoCloudOn.value = 0;
+      air.tClouds.value = null;
+      return;
+    }
+    air.tAtmoSky.value = atmosphere.skyView ?? null;
+    const sun = atmosphere.sunDir!;
+    air.uAtmoSun.value.set(sun.x, sun.y, sun.z).normalize();
+    air.uAtmoViewH.value = ATMO_GROUND_KM + (atmosphere.viewHeightKm ?? 0.05);
+    air.uAtmoKnee.value.copy(atmosphere.knee!);
+    air.uAtmoIntensity.value = atmosphere.skyIntensity ?? 1;
+    const tint = atmosphere.fogTint!;
+    air.uPanoTint.value.set(tint.r, tint.g, tint.b);
+    const overcast = Math.min(1, Math.max(0, data.lightModel?.overcast ?? 0));
+    hazeTargetTerms(overcast, atmosphere.fogMix ?? 0, lawTerms);
+    air.uPanoTerms.value.set(lawTerms.x, lawTerms.y, overcast);
+    // the deck's grey: the dome's own uniforms, as sky.ts set them (no dome in the scene: no greying)
+    if (domeScene !== scene || dome?.parent == null) { domeScene = scene; dome = scene.getObjectByName('atmosphere-dome'); }
+    const domeUniforms = ((dome as THREE.Mesh | undefined)?.material as THREE.ShaderMaterial | undefined)?.uniforms;
+    const deckHorizon = domeUniforms?.uDeckHorizon?.value, deckClosed = domeUniforms?.uDeckClosed?.value;
+    if (deckHorizon instanceof THREE.Vector4 && typeof deckClosed === 'number') {
+      air.uDeckHorizon.value.copy(deckHorizon);
+      air.uDeckClosed.value = deckClosed;
+    } else {
+      air.uDeckHorizon.value.set(1, 1, 1, 0);
+      air.uDeckClosed.value = 0;
+    }
+    // the cloud layer's composite: its dome's own uniforms while it draws, as volumetricClouds.ts set them for this
+    // frame (the history resolves before the scene draws), and this frame's view-projection, the screen the dome
+    // samples the history in (TAA's jitter included)
+    const cloudDome = (scene.userData as { volumetricClouds?: { dome?: THREE.Object3D } | null }).volumetricClouds?.dome;
+    const cu = cloudDome?.visible ? ((cloudDome as THREE.Mesh).material as THREE.ShaderMaterial | undefined)?.uniforms : undefined;
+    const clouds = cu?.tClouds?.value, perspective = (camera as THREE.PerspectiveCamera).isPerspectiveCamera === true;
+    const cloudsOn = !!(perspective && clouds instanceof THREE.Texture && cu && cu.uHistorySize?.value instanceof THREE.Vector2
+      && cu.uKnee?.value instanceof THREE.Vector3 && typeof cu.uSkyIntensity?.value === 'number' && cu.uFlash?.value instanceof THREE.Vector4
+      && cu.uFlashTint?.value instanceof THREE.Vector3 && cu.uSunDir?.value instanceof THREE.Vector3 && typeof cu.uInside?.value === 'number');
+    air.uPanoCloudOn.value = cloudsOn ? 1 : 0;
+    air.tClouds.value = cloudsOn ? clouds as THREE.Texture : null;
+    if (cloudsOn && cu) {
+      air.uHistorySize.value.copy(cu.uHistorySize.value as THREE.Vector2);
+      air.uKnee.value.copy(cu.uKnee.value as THREE.Vector3);
+      air.uSkyIntensity.value = cu.uSkyIntensity.value as number;
+      air.uFlash.value.copy(cu.uFlash.value as THREE.Vector4);
+      air.uFlashTint.value.copy(cu.uFlashTint.value as THREE.Vector3);
+      air.uSunDir.value.copy(cu.uSunDir.value as THREE.Vector3);
+      air.uInside.value = cu.uInside.value as number;
+      air.uPanoViewProj.value.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    }
+    if (Number.isFinite(atmosphere.fogDensity)) air.uPanoSigmaPost.value = hazeSigma(atmosphere.fogDensity as number);
+    // the aerial pass's cloud shade, as post.ts sets it each frame (its CLOUD_SHADE_DEFAULT without a published one)
+    const shade = (scene.userData as { cloudShadeAmp?: number }).cloudShadeAmp;
+    air.uCloudShade.value = typeof shade === 'number' && Number.isFinite(shade) ? shade : 0.22;
+    const ground = options.groundAt ? options.groundAt(camera.position.x, camera.position.z) : NaN;
+    air.uPanoDatum.value = Number.isFinite(ground) ? ground : hazeDatumM;
+  };
   mesh.visible = false;
   mesh.castShadow = false;
   mesh.receiveShadow = false;
@@ -1080,6 +1659,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   mesh.frustumCulled = false;
   mesh.userData.aoExclude = true;
   let atlas: THREE.WebGLRenderTarget | null = null;
+  let skyline: THREE.WebGLRenderTarget | null = null;
   let baked = false;
   const stats = { bakes: 0, ms: 0, unsupported: null as string | null, tone: 'authored' as 'authored' | 'ground', haze: 'own' as 'own' | 'law',
     groundTone: null as number[] | null, rockTone: null as number[] | null,
@@ -1191,6 +1771,9 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       uAir: { value: new THREE.Vector4(ch.air, ch.fillLaw, ch.rockFloor, 0) },
       uMesa: { value: new THREE.Vector4(ch.mesaTalusM, ch.mesaTalusShare, ch.mesaCliffM, ch.mesaFluteM) },
       uPeaks: { value: new THREE.Vector4(ch.peakShare, ch.peakM, ch.peakRadiusM, ch.peakSharp) },
+      uJebel: { value: new THREE.Vector4(ch.jebelShare, ch.jebelM, ch.jebelRadiusM, ch.jebelBossM) },
+      uJebel2: { value: new THREE.Vector4(ch.jebelFoot, ch.jebelRim, ch.jebelApron, ch.jebelFlutes) },
+      uJebel3: { value: new THREE.Vector4(ch.jebelFluteDepth, ch.jebelFootVary, ch.jebelVarnish, ch.jebelNearM) },
       uFrame: { value: new THREE.Vector4(P.innerM, P.outerM, P.shellM, P.eyeY) },
       uHaze: { value: new THREE.Vector4(haze?.sigma ?? 0, haze?.invScale ?? 0, hazeDatumM, haze ? 1 : 0) },
       uHazeChroma: { value: new THREE.Vector3(...HAZE_EXT_CHROMA) },
@@ -1217,6 +1800,10 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     stripRT.texture.colorSpace = THREE.NoColorSpace;
     stripRT.texture.anisotropy = 4;
     stripRT.texture.name = 'horizon-panorama-atlas';
+    const skylineRawRT = target(res.width, 1, THREE.HalfFloatType, false);
+    skylineRawRT.texture.minFilter = skylineRawRT.texture.magFilter = THREE.NearestFilter;
+    const skylineRT = target(res.width, 2, THREE.HalfFloatType, false);
+    skylineRT.texture.name = 'horizon-panorama-skyline';
     const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
     quad.frustumCulled = false;
     const scene = new THREE.Scene(); scene.add(quad);
@@ -1227,6 +1814,8 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     const heightMat = pass(HEIGHT_FRAGMENT, {});
     const lightMat = pass(LIGHT_FRAGMENT, { uHeight: { value: heightRT.texture } });
     const stripMat = pass(STRIP_FRAGMENT, { uHeight: { value: heightRT.texture }, uLight: { value: lightRT.texture } });
+    const skylineMat = pass(SKYLINE_FRAGMENT, { uStrip: { value: stripRT.texture }, uRows: { value: res.height } });
+    const skylineBlurMat = pass(SKYLINE_BLUR_FRAGMENT, { uSkyline: { value: skylineRawRT.texture }, uColumns: { value: res.width } });
     const previousTarget = renderer.getRenderTarget();
     const previousColor = renderer.getClearColor(_clear).clone();
     const previousAlpha = renderer.getClearAlpha();
@@ -1236,7 +1825,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       renderer.autoClear = false;
       if (renderer.xr) renderer.xr.enabled = false;
       renderer.setClearColor(_clear.setRGB(0, 0, 0), 0);
-      for (const [mat, rt] of [[heightMat, heightRT], [lightMat, lightRT], [stripMat, stripRT]] as const) {
+      for (const [mat, rt] of [[heightMat, heightRT], [lightMat, lightRT], [stripMat, stripRT], [skylineMat, skylineRawRT], [skylineBlurMat, skylineRT]] as const) {
         quad.material = mat;
         renderer.setRenderTarget(rt);
         renderer.clear(true, false, false);
@@ -1247,22 +1836,37 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       renderer.setClearColor(previousColor, previousAlpha);
       renderer.autoClear = previousAutoClear;
       if (renderer.xr && previousXr !== undefined) renderer.xr.enabled = previousXr;
-      for (const m of [heightMat, lightMat, stripMat]) m.dispose();
+      for (const m of [heightMat, lightMat, stripMat, skylineMat, skylineBlurMat]) m.dispose();
       quad.geometry.dispose();
-      heightRT.dispose(); lightRT.dispose(); edgeTex.dispose();
+      heightRT.dispose(); lightRT.dispose(); skylineRawRT.dispose(); edgeTex.dispose();
     }
     if (atlas) atlas.dispose();
+    if (skyline) skyline.dispose();
     atlas = stripRT;
+    skyline = skylineRT;
     // a GPU suspension (resourceLifetime) disposes the atlas texture: free its framebuffer, show the fallback again and
     // bake once more on the next request
     stripRT.texture.addEventListener('dispose', () => {
       if (atlas !== stripRT) return;
       baked = false; atlas = null; stripRT.dispose();
+      if (skyline === skylineRT) { skyline = null; skylineRT.dispose(); air.uPanoSkyline.value = null; }
       mesh.visible = false;
       if (fallback) fallback.visible = true;
     });
     material.map = stripRT.texture;
     material.needsUpdate = true;
+    // the shell's ground over the skyline: the column's skyline, the far path's law (σ times the map's air share)
+    air.uPanoSkyline.value = skylineRT.texture;
+    if (haze) {
+      air.uPanoHaze.value.set(haze.sigma * ch.air, haze.invScale, hazeDatumM, 1);
+      air.uPanoSigmaPost.value = haze.sigma;
+      air.uPanoHazeAnti.value.copy(haze.anti);
+      air.uPanoHazeToward.value.copy(haze.toward);
+      air.uPanoSunH.value.set(options.sun[0], options.sun[2]);
+      if (air.uPanoSunH.value.lengthSq() > 1e-8) air.uPanoSunH.value.normalize(); else air.uPanoSunH.value.set(1, 0);
+    } else {
+      air.uPanoHaze.value.set(0, 0, 0, 0);
+    }
     mesh.visible = true;
     if (fallback) fallback.visible = false;
     baked = true;
@@ -1297,6 +1901,7 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     },
     dispose() {
       if (atlas) { const a = atlas; atlas = null; baked = false; a.dispose(); }
+      if (skyline) { const k = skyline; skyline = null; air.uPanoSkyline.value = null; k.dispose(); }
       geometry.dispose();
       material.dispose();
     },
@@ -1313,4 +1918,4 @@ function mulberry32(a: number): () => number {
 }
 
 /** The bake's shader sources, for the receipts (a structural check: the passes compile against the same uniforms). */
-export const HORIZON_PANORAMA_SHADERS = Object.freeze({ vertex: QUAD_VERTEX, height: HEIGHT_FRAGMENT, light: LIGHT_FRAGMENT, strip: STRIP_FRAGMENT });
+export const HORIZON_PANORAMA_SHADERS = Object.freeze({ vertex: QUAD_VERTEX, height: HEIGHT_FRAGMENT, light: LIGHT_FRAGMENT, strip: STRIP_FRAGMENT, skyline: SKYLINE_FRAGMENT, skylineBlur: SKYLINE_BLUR_FRAGMENT });
