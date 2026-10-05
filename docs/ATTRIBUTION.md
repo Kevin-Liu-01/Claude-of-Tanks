@@ -1048,3 +1048,5 @@ All runtime vehicle geometry remains first-party procedural code. Individual
 fitting measurements are estimates; numerical 3D comparison is unverified.
 The target and physical qualification are recorded in
 [the photo reference packet](references/photos/ifvs-20260925.json).
+
+The optional GT camouflage also reproduces General Translation’s official vector mark in `src/vehicles/brandCamoMarks.ts`. Source SVG, revision and checksum are recorded in [brand-asset provenance](references/brand-assets/README.md). The mark remains General Translation, Inc.’s branding, outside the project license; its presence is not an endorsement.
