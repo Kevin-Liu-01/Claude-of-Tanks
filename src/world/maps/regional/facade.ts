@@ -171,7 +171,7 @@ function shrink(poly: ReadonlyArray<readonly [number, number]>, cu: number, cy: 
  * the slope's upper edge (on a hip, the ridge ends; on a hip's end slope, its apex twice), `n` the slope's normal.
  */
 export function thatchCourses(sink: PartSink, bucket: RegionalBucket, eave0: Vec3, eave1: Vec3, top0: Vec3, top1: Vec3, n: Vec3,
-  opts: { verges?: boolean } = {}): void {
+  opts: { verges?: boolean; stepped?: boolean } = {}): void {
   const lerp = (a: Vec3, b: Vec3, t: number): Vec3 => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
   const add = (a: Vec3, k: number): Vec3 => [a[0] + n[0] * k, a[1] + n[1] * k, a[2] + n[2] * k];
   const along = [eave1[0] - eave0[0], eave1[1] - eave0[1], eave1[2] - eave0[2]];
@@ -189,12 +189,16 @@ export function thatchCourses(sink: PartSink, bucket: RegionalBucket, eave0: Vec
   // course lines up the slope
   const step = Math.min(0.24, slopeLen * 0.11);
   const courses: Array<{ from: number; to: number; lift: number; jitter: number }> = [
-    { from: 0, to: step, lift: 0.065, jitter: 0.02 },
-    { from: step, to: 2 * step, lift: 0.055, jitter: 0.016 },
-    { from: 2 * step, to: 3 * step, lift: 0.045, jitter: 0.012 },
+    ...(opts.stepped === false ? [] : [
+      { from: 0, to: step, lift: 0.065, jitter: 0.02 },
+      { from: step, to: 2 * step, lift: 0.055, jitter: 0.016 },
+      { from: 2 * step, to: 3 * step, lift: 0.045, jitter: 0.012 },
+    ]),
+    // (a palm or grass thatch: its rows of shingles up the whole slope)
+    ...(opts.stepped === false ? [0.18, 0.4, 0.62].map((t) => ({ from: slopeLen * t, to: slopeLen * t + 0.22, lift: 0.03, jitter: 0.01 })) : []),
     { from: slopeLen * 0.42, to: slopeLen * 0.42 + 0.26, lift: 0.028, jitter: 0.008 },
     { from: slopeLen * 0.68, to: slopeLen * 0.68 + 0.24, lift: 0.024, jitter: 0.006 },
-  ];
+  ].filter((c, k, all) => all.findIndex((d) => Math.abs(d.from - c.from) < 0.2) === k);
   for (const course of courses) {
     if (course.to > slopeLen - 0.15) continue;
     // the course's lower and upper lines, as fractions from the eave (0) to the top edge (1)

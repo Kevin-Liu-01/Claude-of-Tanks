@@ -2,7 +2,7 @@
 // (regional-buildings lane, 2026-10-03). Every unit is dressing (no collision) except where noted; panes go to the
 // glass bucket (dark interior at night) or the curtain bucket (a warm lit window at night, marked on its outward face).
 import { faceBox, facePanel, type Face, type PartSink, type RegionalBucket, type Rgb, UV_MEMBER } from './geometry.ts';
-import { facadeOn, nalichnikApron, nalichnikCrest, type CrestStyle } from './facade.ts';
+import { facadeOn, nalichnikApron, nalichnikCrest, windowHead, type CrestStyle, type HeadStyle } from './facade.ts';
 
 export interface WindowStyle {
   /** frame colour (painted joinery, structureWood) */
@@ -22,6 +22,11 @@ export interface WindowStyle {
    * board, its jambs run down past the sill to an apron cut to a drop (the Russian nalichnik)
    */
   carved?: { crest: CrestStyle; apronDrop: number } | null;
+  /**
+   * a dressed head over the opening (facade.ts, desktop builds): a segmental arch, a hood, a pediment or a lintel. With
+   * a surround it takes the place of the surround's flat lintel and spans the surround; without one it spans the opening
+   */
+  head?: HeadStyle | null;
 }
 
 /** Choose the pane bucket: about `litShare` of windows show a lit curtain at night. */
@@ -74,7 +79,10 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
     const sc = { decor: true, fineSides: true, ...(s.colour ? { colour: s.colour } : {}) };
     faceBox(sink, s.bucket, face, u - w / 2 - sw / 2, y + h / 2, so / 2, sw, h, so, sc);
     faceBox(sink, s.bucket, face, u + w / 2 + sw / 2, y + h / 2, so / 2, sw, h, so, sc);
-    faceBox(sink, s.bucket, face, u, y + h + lintel / 2, so / 2, w + 2 * sw, lintel, so, sc);
+    if (style.head && facadeOn()) windowHead(sink, face, u, y + h, w + 2 * sw, style.head);
+    else faceBox(sink, s.bucket, face, u, y + h + lintel / 2, so / 2, w + 2 * sw, lintel, so, sc);
+  } else if (style.head && facadeOn()) {
+    windowHead(sink, face, u, y + h, w, style.head);
   }
   if (style.sill) {
     // the sill runs through the reveal from the frame to its nose past the face

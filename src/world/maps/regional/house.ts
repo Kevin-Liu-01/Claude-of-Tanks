@@ -31,6 +31,11 @@ export interface RoofSpec {
   parapet?: number;
   /** dressing only (a second covering over a structural slab): no collision */
   decor?: boolean;
+  /**
+   * a straw roof's thatch craft (facade.ts thatchCourses, desktop): the eaves beaten into steps of butt ends and course
+   * lines up the slope ('stepped', the default), the course lines alone ('rows': a palm or grass thatch), or none
+   */
+  thatch?: 'stepped' | 'rows' | 'none';
 }
 
 export interface StoreySpec {
@@ -422,10 +427,10 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
       kind: 'plane', origin: [0, ridgeY + t / cosP, 0], u: bucket === 'straw' ? down : along, v: bucket === 'straw' ? along : down,
     });
     // a thatched slope's eave course and course lines (facade.ts), on its top surface from the eave to the ridge
-    if (bucket === 'straw' && !roof.decor && facadeOn()) {
+    if (bucket === 'straw' && !roof.decor && roof.thatch !== 'none' && facadeOn()) {
       const top = (p: Vec3): Vec3 => [p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t];
       thatchCourses(sink, bucket, top([side * (s + e), lo, side * D]), top([side * (s + e), lo, -side * D]),
-        top([0, ridgeY, side * ridgeHalf]), top([0, ridgeY, -side * ridgeHalf]), n, { verges: roof.kind === 'gable' });
+        top([0, ridgeY, side * ridgeHalf]), top([0, ridgeY, -side * ridgeHalf]), n, { verges: roof.kind === 'gable', stepped: roof.thatch !== 'rows' });
     }
   }
   if (roof.kind !== 'gable' && ridgeHalf < D - 1e-6) {
@@ -440,10 +445,10 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
       sink.prism(bucket, pts, n, t, dec, {
         kind: 'plane', origin: [0, ridgeY, end * ridgeHalf], u: bucket === 'straw' ? hipDown : hipAlong, v: bucket === 'straw' ? hipAlong : hipDown,
       });
-      if (bucket === 'straw' && !roof.decor && facadeOn()) {
+      if (bucket === 'straw' && !roof.decor && roof.thatch !== 'none' && facadeOn()) {
         const top = (p: Vec3): Vec3 => [p[0] + n[0] * t, p[1] + n[1] * t, p[2] + n[2] * t];
         const apex = top([0, ridgeY, end * ridgeHalf]);
-        thatchCourses(sink, bucket, top([end * xC, yC, end * D]), top([-end * xC, yC, end * D]), apex, apex, n);
+        thatchCourses(sink, bucket, top([end * xC, yC, end * D]), top([-end * xC, yC, end * D]), apex, apex, n, { stepped: roof.thatch !== 'rows' });
       }
       // hip caps along both hip lines
       for (const sx of [1, -1]) {
