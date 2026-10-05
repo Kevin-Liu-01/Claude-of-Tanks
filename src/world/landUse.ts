@@ -263,7 +263,7 @@ export function landUseBoundary(profile: LandUseProfile | null): LandBoundary {
  * the block cost 2.7 ms at Low against 1.1–1.7 at High, the weakest GPUs paying the most). The material reads it as
  * uLandTier, kept current across preset changes:
  * 0 — the bake's crop on its exact edges only, one round of reads (Low and the phones' two lower tiers);
- * 1 — + the field's wet and dry (one noise read), its rows and tramlines, and the boundary features — headlands,
+ * 1 — + its rows and tramlines, the crop's own grain, and the boundary features — headlands,
  *     margins, hedge banks, bunds, walls, tracks — at their means: no soil read, no edge noise (Medium, the phones' high);
  * 2 — the full block (High, Ultra).
  */

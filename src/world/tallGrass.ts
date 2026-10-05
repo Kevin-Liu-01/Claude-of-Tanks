@@ -591,6 +591,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     // bare; the field's grass margin grows rank and a little taller, its tracks thin out. The fields keep to the open,
     // level ground the terrain draws them on (off roads, villages, water and slopes) — the same layout (landUseAt).
     let cropTint: readonly [number, number, number] | null = null;
+    let pastureDry = -1;
     if (field._landUseAt && b.kind !== 'reed' && b.kind !== 'tundra') {
       field._landUseAt(x, z, _field);
       const vm = field._villageMask ? field._villageMask(x, z) : 0;
@@ -631,6 +632,12 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
             // metres instead of stopping on a line (vegetation.ts makeTuft: the same law for the tufts)
             const weedP = 0.12 + 0.73 * (1 - smoothstep(0, 3.0, _field.edgeM - _field.marginM));
             if (((tintR * 7.31 + hR * 3.17) % 1) >= weedP) cropTint = [_field.tintR / b.tip[0], _field.tintG / b.tip[1], _field.tintB / b.tip[2]];
+          } else {
+            // (wave 69: "near-circular blotches … rather than the rectilinear plots") a pasture's straw is its own, by
+            // the field's draw (terrain.ts and vegetation.ts makeTuft: the same, at the bake's six bits) — not the
+            // meadow's round dry patches
+            const jq = Math.round(_field.jitter * 63) / 63;
+            pastureDry = 0.55 * ((jq * 7.31 + 0.13) % 1);
           }
           // the headland (the terrain draws the same strip): 3–5.5 m inside the margin where the drill turned, the crop
           // pressed flat and thinner, weeds coming up in it
@@ -666,7 +673,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     if (blocked && blocked(x, y, z, heightM, 0.12)) return;
     const widthM = b.widthM * (ring.far ? TALL_GRASS.farWidth : 1) * (0.8 + 0.4 * wR);
     // the tint: a per-clump luminance jitter, straw on the terrain's dry patches, deeper green in the hollows
-    const dry = Math.max(splatNoise ? smoothstep(0.55, 0.85, _splat.mA) : 0, grazed * 0.45);
+    const dry = Math.max(pastureDry >= 0 ? pastureDry : splatNoise ? smoothstep(0.55, 0.85, _splat.mA) : 0, grazed * 0.45);
     const lum = 0.82 + 0.36 * tintR;
     const r = (b.tip[0] * (1 - dry) + b.dry[0] * dry) / b.tip[0];
     const g = (b.tip[1] * (1 - dry) + b.dry[1] * dry) / b.tip[1];

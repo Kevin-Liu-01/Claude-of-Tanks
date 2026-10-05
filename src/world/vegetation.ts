@@ -3823,7 +3823,7 @@ function* vegetationBuildSteps(
     // ground the terrain draws them on (its landW; tallGrass.ts admit reads the same gate): off the villages, the
     // roads' shoulders, the water and the slopes past ~2–3° — on a meadow slope the layout crosses the sward stays the
     // sward's (the round-1 lane frames: crop tufts on Amberford's hillside, out of any field the terrain drew)
-    let crop = -1;
+    let crop = -1, pastureDry = -1;
     if (landUseAt !== null) {
       const f = landUseAt(x, z, _landScratch);
       if (f.active) {
@@ -3844,6 +3844,12 @@ function* vegetationBuildSteps(
             // stopping on a line
             const weedP = 0.12 + 0.73 * (1 - smoothstepJs(0, 3.0, f.edgeM - f.marginM));
             if (((hueJ * 7.31 + lumJ * 3.17) % 1) >= weedP) crop = f.crop;
+          } else {
+            // (wave 69, Verdant's establishing view: "near-circular blotches … rather than the rectilinear plots") a
+            // pasture's straw is its own — a grazed field paler and yellower, a shut-up one lush, by the field's draw
+            // (terrain.ts: its tone by the same draw, at the bake's six bits) — not the meadow's round dry patches
+            const jq = Math.round(f.jitter * 63) / 63;
+            pastureDry = 0.55 * ((jq * 7.31 + 0.13) % 1);
           }
         }
       }
@@ -3873,7 +3879,7 @@ function* vegetationBuildSteps(
     // saturated green across the entire map" critique. sn.mA is the CPU twin
     // of that shader field: tufts standing on a dry patch swing toward
     // yellow-brown straw, so the patchwork reads at every distance.
-    const dryPatch = smoothstepJs(0.54, 0.85, sn.mA);
+    const dryPatch = pastureDry >= 0 ? pastureDry : smoothstepJs(0.54, 0.85, sn.mA);
     th -= dryPatch * 0.075;
     ts *= 1 - dryPatch * 0.30;
     tl += dryPatch * 0.05;

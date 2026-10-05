@@ -199,9 +199,10 @@ function checkSourceContract(text) {
   assert.ok(text.includes('shader.uniforms.uNrmM = ringReliefUniforms.uNrmM;'), 'the M normal uniform object is the one the ring swaps');
 }
 // ground lane (2026-10-04, the GPU cut and the coordinator's tier gate): the land-use block's reads go out by tier — Low
-// reads the bake alone, Medium adds the field's wet and dry and the crop's own grain (the karst's stones, the brownfield's
-// bare ground), High everything — Low draws none of the boundary features, rows or tramlines, and the field interior's
-// skip of the margin's reads is exact by the block's own constants
+// reads the bake alone, Medium adds the crop's own grain (the karst's stones, the brownfield's bare ground; a field's wet
+// and dry is its fold and its own draw since wave 69's field layout, no read), High everything — Low draws none of the
+// boundary features, rows or tramlines, and the field interior's skip of the margin's reads is exact by the block's own
+// constants
 function checkLandUseCut(text) {
   const start = text.indexOf('    if (landW > 0.003) {');
   assert.ok(start > 0, 'the land-use block');
@@ -213,11 +214,12 @@ function checkLandUseCut(text) {
   const block = text.slice(start, end).replace(/\/\/[^\n]*/g, '');
   const reads = [...block.matchAll(/\b(nzq|nz|groundSamp|splatSamp|texture2D|textureLod|texelFetch)\(/g)].map((m) => m[1]).sort();
   // (farmland: the rows' bend is one coarse level of the noise — a textureLod, where it was a two-read nzq)
-  assert.deepEqual(reads, ['groundSamp', ...Array(7).fill('nzq'), 'textureLod'],
-    'the block reads seven noise fields, the bend\'s coarse level and the soil (the bake is lu_field\'s)');
+  // (wave 69's field layout: a field's wet and dry follow its fold and its own draw — the round 43 m noise is gone)
+  assert.deepEqual(reads, ['groundSamp', ...Array(6).fill('nzq'), 'textureLod'],
+    'the block reads six noise fields, the bend\'s coarse level and the soil (the bake is lu_field\'s)');
+  assert.ok(!/fieldN/.test(block), 'no round noise patch varies a field: its tone is its fold and its own draw');
   for (const [gate, read] of [
     ['float nBend = bendW > 0.001 && uLandTier > 1.5 ? ', 'textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0)'],
-    ['vec2 fieldN = uLandTier > 0.5 ? ', 'nzq(uvW, 0.023, vec2(0.61, 0.17))'],
     ['if (luEdge && luNear > 0.001 && uLandTier > 1.5) nEdge = mix(vec3(0.5), vec3(', 'nzq(uvW, 0.045, vec2(0.21, 0.83))'],
     ['if (soilRead && luNear > 0.001 && uLandTier > 1.5) soil = mix(uMeanD, ', 'groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB)'],
     ['float karstStone = uLandTier > 0.5 ? ', 'smoothstep(0.62, 0.80, nzq(uvW, 0.61'],
