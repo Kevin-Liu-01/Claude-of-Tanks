@@ -106,7 +106,12 @@ export default {
     // Broad weathered beds, not high-contrast repeated marker stripes.
     sandstone: true, rockTone: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.62), clamp01(0.43 + (l - 0.5) * 0.34)],
     tintA: [1.10, 0.88, 0.69], tintB: [0.71, 0.54, 0.45], tintC: [1.06, 0.84, 0.67],
-    roadTint: [0.78, 0.61, 0.51], strata: 0.035, sandMacro: 0.9,
+    // (ground lane, wave 62: "smooth, plaster-like … identical wavy dark squiggles … a stamped pattern rather than
+    // sandstone" — the squiggles were the tile's marker beds and partings, repeating every 6.45 m up each wall) the
+    // bedding is the material's, at the wall's scale: a few thick beds of unequal tone, rust beds 2–5 m thick, joint
+    // blocks stepping their weathering along the face and varnish under the ledges (strata 0.12: six tenths of the
+    // joints, as Copper Mesa's), and the tile keeps its grain and broad beds without the stamped lines
+    roadTint: [0.78, 0.61, 0.51], strata: 0.12, sandstoneMarkers: 0, sandMacro: 0.9,
     // ground lane (2026-10-03): Wadi Rum's two formations — the Umm Ishrin's red over the paler Disi
     formation: { atFrac: 0.30, wobbleM: 3, pale: 0.16, red: 0.12 },
     // An alluvial wash has faint wind-scoured patches, not floor-wide dunes.
