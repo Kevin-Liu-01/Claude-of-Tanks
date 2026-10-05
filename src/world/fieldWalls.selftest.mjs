@@ -9,12 +9,21 @@
 //      heads wound to face out, fallen stretches and breaches along a long wall, fallen stones at its foot within the
 //      line's band, a line that overshoots the wall it meets cut back to it, indexed, the phones' fewer and longer;
 //   3. the wiring: the walls on their own lit material (the print, the cascades), no shadow cast, the banks on the rock
-//      material; Saltwind's tone set for the print; the field-stone and mud prints uploaded the GPU's way round.
+//      material; Saltwind's tone set for the print; the field-stone and mud prints uploaded the GPU's way round;
+//   4. the uploads (the ground lane's orientation audit, 2026-10-05): the three wall prints built by their real code
+//      (props.ts makeFieldStone, makeFieldMud, makeDryWall: the painters, the reversal, the canvas upload) and read the
+//      way WebGL samples them, against the painters' own rows.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
+import ts from 'typescript-compiler-api';
+import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildFieldWorks, trimFieldWorksOvershoots } from './fieldWorks.ts';
 import { DRY_WALL_FACE_V, DRY_WALL_TILE_M, paintDryWallBuffers } from './fieldWallFace.ts';
+import { FIELD_STONE_HEARTING_V, liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
+import { FIELD_MUD_PLAIN_V, mudEarthOfGround, paintFieldMudBuffers, tintFieldMudToEarth } from './fieldMudSurface.ts';
+import { normalTextureFromHeight, textureFromRgbaPixels } from './proceduralTexture.ts';
 
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const drain = (it) => { let s = it.next(); while (!s.done) s = it.next(); return s.value; };
@@ -219,4 +228,72 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
   assert.ok(tone[2] >= 0.7 && tone[2] <= 0.9 && tone[1] <= 0.1, `Saltwind's limestone tone set for the print (${tone})`);
 }
 
-console.log('fieldWalls.selftest: the print\'s stones and dry joints, a stepped uneven crown, heads facing out, fallen stretches, breaches and stones, the T cut back, the phones\' fewer, the wiring');
+// ---------------------------------------------------------------------------------------------- 4. the uploads
+// A canvas texture uploads flipped (its top row at v = 1; a DataTexture as written). The field-stone and mud painters
+// lay their bands with v down the image from row 0 (v = (row + 0.5) / size) and the props reverse their rows before the
+// upload (b13); the dry-wall painter paints the GPU's way round (v = 1 - (row + 0.5) / size) and uploads as painted.
+// Each print is built here by props.ts's own code — its builder, the reversal and the surface helper read out of the
+// source and run against the real painters and the real canvas upload (textureFromRgbaPixels) — and sampled as WebGL
+// samples it (bilinear between texel centres, repeat-wrapped, the source's rows bottom-up under flipY) against its
+// painter's rows at the painter's v; the same read turned over must differ, so the check tells the mirror apart.
+{
+  /** WebGL's bilinear sample of an uploaded RGBA8 source (rows top-down) at (u, v), repeat-wrapped. */
+  const glSample = (bytes, w, h, channel, flipY, u, v) => {
+    const x = u * w - 0.5, y = v * h - 0.5, x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
+    const col = (c) => ((c % w) + w) % w;
+    const row = (r) => { const t = ((r % h) + h) % h; return flipY ? h - 1 - t : t; };
+    const at = (c, r) => bytes[(row(r) * w + col(c)) * 4 + channel] / 255;
+    const a = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * fx, b = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * fx;
+    return a + (b - a) * fy;
+  };
+  const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+  const ast = ts.createSourceFile('props.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const declarations = (names) => names.map((name) => {
+    const found = ast.statements.filter((node) => ts.isFunctionDeclaration(node) && node.name?.text === name);
+    assert.equal(found.length, 1, `props.ts: one declaration of ${name}`);
+    return found[0].getText(ast);
+  }).join('\n');
+  globalThis.ImageData = class { constructor(data, w, h) { this.data = data; this.width = w; this.height = h; } };
+  globalThis.document = { createElement() { const canvas = { width: 0, height: 0 }; canvas.getContext = () => ({ putImageData(image) { canvas.pixels = image.data; } }); return canvas; } };
+  try {
+    const api = new Function('THREE', 'toTexture', 'normalFromHeight', 'applyTone', 'paintFieldStoneBuffers', 'liftFieldStoneMean',
+      'paintFieldMudBuffers', 'tintFieldMudToEarth', 'paintDryWallBuffers', stripTypeScriptTypes(
+        declarations(['clamp', 'surfaceFromHeight', 'flipPrintRows', 'makeFieldStone', 'makeFieldMud', 'makeDryWall'])
+      ) + '\nreturn { makeFieldStone, makeFieldMud, makeDryWall };')(THREE, textureFromRgbaPixels, normalTextureFromHeight,
+      (px, tone) => { assert.equal(tone, null, 'no tone law here: a tone colours the texels, it moves no row'); return px; },
+      paintFieldStoneBuffers, liftFieldStoneMean, paintFieldMudBuffers, tintFieldMudToEarth, paintDryWallBuffers);
+    const S = 128, earth = mudEarthOfGround(0xad9b7c);
+    // the painters' own rows (the stone lifted and the mud tinted as their builders do, before any reversal)
+    const stone = drain(paintFieldStoneBuffers(S)).px.slice(); liftFieldStoneMean(stone, S);
+    const mud = drain(paintFieldMudBuffers(S)).px.slice(); tintFieldMudToEarth(mud, S, earth);
+    const dryWall = drain(paintDryWallBuffers(S)).px;
+    const cases = [
+      ['the field-stone print', drain(api.makeFieldStone(4, null, S)), stone, false, FIELD_STONE_HEARTING_V],
+      ['the mud print', drain(api.makeFieldMud(4, null, S, earth)), mud, false, FIELD_MUD_PLAIN_V],
+      ['the dry-wall print', drain(api.makeDryWall(4, S)), dryWall, true, DRY_WALL_FACE_V],
+    ];
+    let state = 0x51f7a3;
+    const rnd = () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296; };
+    for (const [label, built, painted, paintedFlipped, band] of cases) {
+      const uploaded = built.albedo.image.pixels;
+      assert.equal(built.albedo.image.width, S, `${label}: its size`);
+      let worst = 0, mirrored = 0, bandWorst = 0;
+      const N = 2500;
+      for (let k = 0; k < N; k++) {
+        const u = rnd(), v = rnd(), inBand = band[0] + (band[1] - band[0]) * rnd();
+        for (let c = 0; c < 3; c++) {
+          worst = Math.max(worst, Math.abs(glSample(uploaded, S, S, c, built.albedo.flipY, u, v) - glSample(painted, S, S, c, paintedFlipped, u, v)));
+          bandWorst = Math.max(bandWorst, Math.abs(glSample(uploaded, S, S, c, built.albedo.flipY, u, inBand) - glSample(painted, S, S, c, paintedFlipped, u, inBand)));
+        }
+        mirrored += Math.abs(glSample(uploaded, S, S, 0, !built.albedo.flipY, u, v) - glSample(painted, S, S, 0, paintedFlipped, u, v));
+      }
+      assert.ok(worst <= 1 / 255 && bandWorst <= 1 / 255, `${label}: the GPU reads the painter's texel at the painter's v (worst |Δ| ${(worst * 255).toFixed(2)}/255, in its band ${(bandWorst * 255).toFixed(2)}/255)`);
+      assert.ok(mirrored / N > 0.02, `${label}: the check tells the mirror apart (mean |Δ| turned over ${(mirrored / N).toFixed(3)})`);
+      // (the relief and the surface go up with the albedo's rows: a texel's height under its colour)
+      assert.equal(built.normal.flipY, built.albedo.flipY, `${label}: the relief uploads the albedo's way`);
+      assert.equal(built.surface.flipY, built.albedo.flipY, `${label}: the surface uploads the albedo's way`);
+    }
+  } finally { delete globalThis.ImageData; delete globalThis.document; }
+}
+
+console.log('fieldWalls.selftest: the print\'s stones and dry joints, a stepped uneven crown, heads facing out, fallen stretches, breaches and stones, the T cut back, the phones\' fewer, the wiring; the three prints read by the GPU at their painters\' v');
