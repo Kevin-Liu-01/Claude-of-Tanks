@@ -45,12 +45,29 @@ for(const quality of ['high','low']){
     ray.set(new Vector3(x,y,.8),new Vector3(0,0,-1));ray.far=.7;
     assert.equal(ray.intersectObject(mask).length,0,`${quality}: actual gun/coax channel stays open`);
   }
-  const front=(x,y)=>{
+  const front=(x,y,surface=mask)=>{
     ray.set(new Vector3(x,y,.8),new Vector3(0,0,-1));ray.far=.7;
-    const hit=ray.intersectObject(mask)[0];assert.ok(hit);return hit.point.z;
+    const hit=ray.intersectObject(surface)[0];assert.ok(hit);return hit.point.z;
   };
   assert.ok(front(-.18,-.11)>front(-.18,.11)+.025,`${quality}: finite raked face`);
-  assert.ok(front(-.20,.08)>front(-.27,.08)+.015,`${quality}: shoulders sweep back into the cheeks`);
+  // A flat raked shield must not acquire a diagonal fold when the cap is
+  // triangulated around its gun holes. Sample both shoulders and the top
+  // strip, rather than accepting only the outline's corner coordinates.
+  const planarFace=surface=>{
+    const lower=front(-.18,-.11,surface),upper=front(-.18,.11,surface);
+    const rake=(upper-lower)/.22;
+    for(const[x,y]of[[-.25,-.09],[.25,-.09],[-.24,.12],[.24,.12],[-.18,.16],[0,.16],[.18,.16]]){
+      near(front(x,y,surface),lower+rake*(y+.11),1e-6,`${quality}: one planar front shield at ${x}/${y}`);
+    }
+  };
+  planarFace(mask);
+  const folded=new Mesh(mask.geometry.clone(),material),foldedPositions=folded.geometry.attributes.position;
+  for(let i=0;i<foldedPositions.count;i++){
+    const x=foldedPositions.getX(i),y=foldedPositions.getY(i),z=foldedPositions.getZ(i);
+    if(Math.abs(z-(.391-.24*y))<1e-6)foldedPositions.setZ(i,z-.60*Math.max(0,Math.abs(x)-.205));
+  }
+  assert.throws(()=>planarFace(folded),/one planar front shield/,`${quality}: reject the original folded shoulder cap`);
+  folded.geometry.dispose();
   ray.set(new Vector3(-.27,.17,.8),new Vector3(0,0,-1));ray.far=.7;
   assert.equal(ray.intersectObject(mask).length,0,`${quality}: clipped upper corner removes the old box silhouette`);
   for(const piece of pieces)piece.geometry.dispose();

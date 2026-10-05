@@ -1,5 +1,24 @@
 # Abrams and Bradley mantlet fit follow-up — 2026-10-05
 
+## Current status
+
+- **PASS — M3 folded-face repair:** the front cap is planar in HIGH/LOW;
+  the original warp fails the same regression. Authored and filled contact,
+  recoil and Bradley rig checks pass. Independent review accepts all 26 fresh
+  `gallery-r5-high`/`gallery-r5-low` views, including −9°/+30° poses. Full anatomy
+  update/check, scoped assets/centering/geometry ledger, the 33-view sealed
+  check and typecheck also pass; the regenerated fill is byte-identical.
+- **FAIL — TUSK smoke-bank regression:** `abramsTuskCheek` passes exact base
+  `2e299bec9` and fails this candidate. Narrowing the mantlet throat also changed
+  the cheek normal, moving its complete smoke banks inward by 13.8–14.3 mm.
+  This is repair debt in this batch, not inherited debt or a waived check.
+- **INCOMPLETE — integrated suite:** the running 1,280-check invocation has
+  not completed. Seventeen other failures observed so far reproduce on the
+  exact integrated base. The corrected roof-gun setup passes separately.
+- **NOT PUBLISHED:** the prior clean `3e3af3ca1` production preview is
+  superseded by the M3 fix. Final main integration, clean production preview,
+  push, deployment and live verification are pending.
+
 ## Scope and construction
 
 The owner requested better M1A1/Linebacker mantlets, removal of the block behind
@@ -19,6 +38,12 @@ M3A3 gets a rounded, raked casting with working gun/coax passages, stepped
 sleeve and seated fasteners. Split side journals and receiver cheeks carry the
 assembly without a transverse solid axle obstructing recoil. Its repaired
 high trunnion and closed sloping roof remain; hull and −9°/+30° limits stay intact.
+The owner's subsequent close-up exposed a folded top strip: the front cap had
+been triangulated around its holes before a nonlinear shoulder-depth warp.
+The October 5 correction keeps every front-cap vertex on one raked plane;
+rounded corners belong to the outline and taper belongs to the rear. The new
+regression samples both shoulders and the upper strip, and reconstructs the
+former warp as a failing control. This supersedes earlier M3 shaded acceptance.
 
 Linebacker's shaped shield, hollow rotor and annular bearings fit its concave
 roof recess. Top/chin returns close the moving casing. Its new continuous center
@@ -148,9 +173,25 @@ The independent source audit covers 135 files, including the 100-file combined
 profile dependency closure; the affected profile-specific configuration rows
 and geometry are unchanged by this repair.
 
+Five later failures also reproduce on exact `2e299bec9`:
+`t90AVladimirProportions`, `t90MSTurretArmorSeat`, `t90MProryvTrackRwsBustle`,
+`t84OplotTurret` and `specialActions` (the same two-versus-one shell assertion).
+The additional `abramsTuskCheek` failure does **not** reproduce there and must
+be repaired before publication. Its unchanged smoke helper consumes the
+changed turret-throat geometry indirectly; matching helper source alone was
+insufficient to establish an inherited failure.
+
 The thirteenth, `remoteGunFleet`, expected firing after toggling an already
 enabled roof gun off. Its setup now asserts the default enabled state, disables
 and checks that it cannot fire, then enables it before the existing firing,
-range, muzzle and independent-reload assertions. Its corrected execution and
-the complete suite remain pending; neither is recorded as a PASS here.
-Clean production and live verification also remain pending.
+range, muzzle and independent-reload assertions. Its corrected execution passes
+all 33 stations. A fresh render on the exact integrated baseline also matches
+the six retained continuity cells, including the complete coverage arrays and
+bounds reported above.
+
+The clean `3e3af3ca1` production build passed the nine-vehicle Garage and rapid
+cache-return check (zero empty samples in 71 observations). The owner's later
+M3 planar-face correction invalidates that candidate's M3 visual evidence;
+its fresh physical checks, captures and regenerated assets now pass. The
+composed M3 release rerun, complete npm suite, TUSK launcher correction and
+final production/live verification remain pending.

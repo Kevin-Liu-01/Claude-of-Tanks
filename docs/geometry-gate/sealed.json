@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-05T12:08:57.855Z",
+ "generatedAt": "2026-10-05T18:27:39.594Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening) and inside-out pixel totals over the 33 census views. Gate: a tank may not exceed its ledger open px by more than max(12, 10%) and a sealed tank must stay sealed.",

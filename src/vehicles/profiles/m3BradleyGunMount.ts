@@ -29,10 +29,10 @@ function shield(segments: number): THREE.BufferGeometry {
   const p = g.attributes.position;
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i), y = p.getY(i);
-    // A shallow forward rake and swept-back side returns distinguish the
-    // finite casting from the old square block. The back remains overlapped
-    // with the already-qualified transverse rotary receiver.
-    const front = .391 - .24 * y - .60 * Math.max(0, Math.abs(x) - .205);
+    // Keep the entire shield face in one raked plane. Warping only its
+    // outer vertices back folded the cap triangulation across the top lip.
+    // The outline owns the rounded corners; the rear owns the taper.
+    const front = .391 - .24 * y;
     const rear = .125 + .20 * Math.max(0, Math.abs(x) - .20);
     p.setZ(i, THREE.MathUtils.lerp(rear, front, p.getZ(i)));
   }
