@@ -1,7 +1,8 @@
 // Movement under fire (physics lane, 2026-10-04; the coordinator's defect 1 from Tidegate Polders pacing seed 41002 on
 // the merged tree): a BMP-3 that made contact with a Bradley 100 m off braked to a stop in the open, sat facing it under
 // fire and died there. An IFV under fire in the open keeps moving to cover or out of sight; it never parks. Real
-// movement drives the hull (updateTank) on open ground; the enemy stands idle. See SETTLE_STARVED_S in ai.ts.
+// movement drives the hull (updateTank) on open ground; the enemy stands idle. See SETTLE_STARVED_S and REACT_BACKOFF_M
+// in ai.ts.
 import { Vector3 } from 'three';
 // Register the same complete production specs without executing roster tests.
 import '../vehicles/fleetFactory.ts';
@@ -130,6 +131,32 @@ console.log('[2] under fire in the open a settle does not hold the hull; in cove
   const cover = settleCase({ hitAt: 2, covered: true });
   ok(cover.settleAt !== null && cover.endSpeed < 0.5,
     `hit behind a berm the gun sees only its turret over, it halts to shoot (${cover.endSpeed.toFixed(2)} m/s after 3 s)`);
+}
+
+console.log('[3] a scout struck from the side keeps moving; a main battle tank turns its hull onto the shot');
+{
+  // the enemy 100 m off the right side; one direct hit at 1 s, the hull's health untouched (no backoff)
+  const struck = (specId) => {
+    const host = idleEnemy(100, 0);
+    const bot = entity('bot', specId, 'enemy', 0, 0, 0);
+    const ctl = controller(bot, [host]);
+    let reaction = null, atHit = 0, after = 0, brakingS = 0;
+    drive(bot, ctl, 3.5, { onTick: (t) => {
+      if (Math.abs(t - 1) < SIM_DT / 2) {
+        ctl.notifyUnderFire(host, { selfHit: true, damaging: true, kind: 'pen' });
+        reaction = ctl.debugInfo().reaction;
+        atHit = Math.abs(bot.state.speed);
+      }
+      if (t > 1 && bot.input.throttle === 0 && bot.input.brake) brakingS += SIM_DT;
+      after = Math.abs(bot.state.speed);
+    } });
+    return { reaction, atHit, after, brakingS };
+  };
+  const scout = struck('bmp3');
+  ok(scout.reaction !== 'angle' && scout.brakingS === 0 && scout.after > scout.atHit + 3,
+    `the BMP-3 keeps moving (reaction ${scout.reaction}, ${scout.brakingS.toFixed(2)} s braking, ${scout.atHit.toFixed(1)} m/s at the hit and ${scout.after.toFixed(1)} m/s 2.5 s on)`);
+  const tank = struck('t90m');
+  ok(tank.reaction === 'angle', `the T-90M angles its hull onto the shot (reaction ${tank.reaction})`);
 }
 
 if (failures) {
