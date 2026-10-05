@@ -1021,6 +1021,22 @@ function makeStraw(
 }
 
 /**
+ * The scenery lane (b13): a painted print's rows reversed for the upload. The field-stone and mud painters lay their
+ * bands with v running down the image from row 0 (fieldStoneSurface.ts, fieldMudSurface.ts), but a canvas texture is
+ * flipped on upload, row 0 landing at v = 1: the geometry's hearting band read a stone's skin, a seventh of the face
+ * stones read the hearting's voids, and the mud walls' plain band read the brick courses. Reversed here, the GPU's v is
+ * the painter's v; the painters and their receipts keep their convention.
+ */
+function flipPrintRows<T extends Uint8ClampedArray | Float32Array>(data: T, size: number, channels: number): T {
+  const row = size * channels;
+  for (let y = 0; y < size >> 1; y++) {
+    const a = y * row, b = (size - 1 - y) * row;
+    for (let k = 0; k < row; k++) { const t = data[a + k]; data[a + k] = data[b + k]; data[b + k] = t; }
+  }
+  return data;
+}
+
+/**
  * The scenery lane (2026-10-03): the dry-stone field walls' print (fieldStoneSurface.ts) under the map's stone tone —
  * one stone's skin over its face band (the module's face stones are geometry, each a window of it; wave 34 read a
  * printed rubble on them as "stamped flagstone with dark outlines") and the hearting's packing stones and voids over a
@@ -1036,6 +1052,7 @@ function* makeFieldStone(
   applyTone(px, tone);
   liftFieldStoneMean(px, size); // (wave 34: never darker than a fieldstone, whatever the map's stone tone)
   yield { fine: true, stage: 'field-stone-tone' };
+  flipPrintRows(px, size, 4); flipPrintRows(hgt, size, 1); // (b13: the GPU's v is the painter's v)
   return {
     albedo: toTexture(px, size, { srgb: true, anisotropy }),
     // (a stone's skin, not stones: a gentle relief, and the occlusion the geometry's own gaps give)
@@ -1078,6 +1095,7 @@ function* makeFieldMud(
   applyTone(px, tone);
   if (earth) tintFieldMudToEarth(px, size, earth); // (wave 34: the walls and the mud at their feet are the map's earth)
   yield { fine: true, stage: 'field-mud-tone' };
+  flipPrintRows(px, size, 4); flipPrintRows(hgt, size, 1); // (b13: the GPU's v is the painter's v)
   return {
     albedo: toTexture(px, size, { srgb: true, anisotropy }),
     normal: normalFromHeight(hgt, size, 2.4 * size / 512, anisotropy),

@@ -9,7 +9,7 @@
 //      heads wound to face out, fallen stretches and breaches along a long wall, fallen stones at its foot within the
 //      line's band, a line that overshoots the wall it meets cut back to it, indexed, the phones' fewer and longer;
 //   3. the wiring: the walls on their own lit material (the print, the cascades), no shadow cast, the banks on the rock
-//      material; Saltwind's tone set for the print.
+//      material; Saltwind's tone set for the print; the field-stone and mud prints uploaded the GPU's way round.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SimplexNoise } from '../engine/simplexFast.ts';
@@ -171,6 +171,17 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
   assert.match(props, /engineCtx\.setupShadowMaterial\(wallMaterial\);/, 'a lit material on the cascades');
   assert.match(props, /works\.castShadow = false;\n\s*works\.receiveShadow = true;/, 'no shadow cast, shadows received');
   assert.match(props, /if \(built\.bankGeometry\) place\(built\.bankGeometry, mats\.rock,/, 'the banks on the rock material');
+  // (the field-stone and mud prints are painted with v down the image from row 0, but a canvas texture is flipped on
+  // upload, row 0 landing at v = 1 — measured in swiftshader: v = 0.9 sampled the top row — so they upload reversed;
+  // the dry-wall print paints the GPU's way round and uploads as it is)
+  const flips = props.match(/flipPrintRows\(px, size, 4\); flipPrintRows\(hgt, size, 1\);/g) ?? [];
+  assert.equal(flips.length, 2, 'the field-stone and mud prints upload row-reversed, so the GPU\'s v is the painters\' v');
+  assert.match(props, /liftFieldStoneMean\(px, size\);[^\n]*\n\s*yield \{ fine: true, stage: 'field-stone-tone' \};\n\s*flipPrintRows\(px, size, 4\);/,
+    'the lift reads the painter\'s rows before the reversal');
+  assert.match(props, /if \(earth\) tintFieldMudToEarth\(px, size, earth\);[^\n]*\n\s*yield \{ fine: true, stage: 'field-mud-tone' \};\n\s*flipPrintRows\(px, size, 4\);/,
+    'the mud print reversed after its tint');
+  const dry = props.slice(props.indexOf('function* makeDryWall('), props.indexOf('function* makeDryWall(') + 900);
+  assert.ok(!dry.includes('flipPrintRows'), 'the dry-wall print is painted the GPU\'s way round');
   const saltwind = readFileSync(new URL('./maps/saltwind.ts', import.meta.url), 'utf8');
   const tone = /fieldWorks: \{ walls: true, wallTone: \[([^\]]+)\] \}/.exec(saltwind)[1].split(',').map(Number);
   assert.ok(tone[2] >= 0.7 && tone[2] <= 0.9 && tone[1] <= 0.1, `Saltwind's limestone tone set for the print (${tone})`);
