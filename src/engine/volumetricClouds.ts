@@ -356,6 +356,11 @@ uniform float uNearField;
 // 2026-10-05 (Part 1's framing; QA: CLOUD_SHADOW_FRAME / _R, 0 = off): the cloud mass whose shadow crosses the battlefield —
 // xy the point up the sun's ray from the map's centre to the cloud base, z the field's lift there, w the radius (m)
 uniform vec4 uFrame;
+// 2026-10-05 (Part 2's first experiment; QA: CLOUD_FIELD_SCALE, 1 = off): the cells' plan scale — the weather and street
+// fields read s times finer about the drifting frame, so the cells are 1/s the size and s^2 as many at the same coverage
+// (the cut and the equalised values unchanged) and still ride the wind at its own speed; the fields' cluster gate keeps
+// its period
+uniform float uFieldScale;
 // the last cloudField call's cumulus-field gate (1 without fields): the trace's far-field re-mix gates its cells alike
 float cloudGate = 1.0;
 // the equalised field the coverage cuts at a world xz: the cell-carried cumuliform one blended toward the
@@ -363,9 +368,9 @@ float cloudGate = 1.0;
 float cloudField( vec2 pxz, out vec4 w, out vec4 st ) {
 	// March neighbours take different paths: implicit derivatives select unrelated mip levels inside the loop.
 	// Keep the authored volume and shadow coverage at level zero; the distant sheets filter their own footprint.
-	w = textureLod( tWeather, ( pxz + uWeatherShift ) / ${f(CLOUD_WEATHER_TILE_M)}, 0.0 );
+	w = textureLod( tWeather, ( pxz + uWeatherShift ) * uFieldScale / ${f(CLOUD_WEATHER_TILE_M)}, 0.0 );
 	vec2 q = vec2( dot( pxz, uWindDir ), dot( pxz, vec2( -uWindDir.y, uWindDir.x ) ) );
-	st = textureLod( tStreets, ( q + uStreetShift ) / ${f(CLOUD_STREET_TILE_M)}, 0.0 );
+	st = textureLod( tStreets, ( q + uStreetShift ) * uFieldScale / ${f(CLOUD_STREET_TILE_M)}, 0.0 );
 	float field = mix( mix( w.r, st.r, uStreets ), w.b, uFieldMix );
 	float frameK = uFrame.z > 0.0 ? 1.0 - smoothstep( uFrame.w * 0.45, uFrame.w, length( pxz - uFrame.xy ) ) : 0.0;
 	// 2026-10-03: the cumulus fields (CloudscapeConfig.cluster) — a broad field at ${CLOUD_CLUSTER_PERIOD_K}x the tile gates the cells:
@@ -1644,7 +1649,7 @@ export class VolumetricCloudLayer {
     const field = () => ({
       tWeather: { value: null }, tStreets: { value: null }, uWeatherShift: { value: new THREE.Vector2() }, uStreetShift: { value: new THREE.Vector2() },
       uWindDir: { value: new THREE.Vector2(1, 0) }, uStreets: { value: 0 }, uFieldMix: { value: 0 }, uCluster: { value: 0 },
-      uNearField: { value: 0 }, uFrame: { value: new THREE.Vector4() },
+      uNearField: { value: 0 }, uFrame: { value: new THREE.Vector4() }, uFieldScale: { value: 1 },
     });
     this.traceMaterial = new THREE.ShaderMaterial({
       name: 'VolumetricCloudTrace', vertexShader: QUAD_VERTEX, fragmentShader: TRACE_FRAGMENT, depthTest: false, depthWrite: false, blending: THREE.NoBlending,
@@ -1700,7 +1705,7 @@ export class VolumetricCloudLayer {
       depthTest: false, depthWrite: false, blending: THREE.NoBlending,
       uniforms: {
         tWeather: gu.tWeather, tStreets: gu.tStreets, uWeatherShift: gu.uWeatherShift, uStreetShift: gu.uStreetShift,
-        uWindDir: gu.uWindDir, uStreets: gu.uStreets, uFieldMix: gu.uFieldMix, uCluster: gu.uCluster, uNearField: gu.uNearField, uFrame: gu.uFrame, uThreshold: gu.uThreshold, uClear: gu.uClear,
+        uWindDir: gu.uWindDir, uStreets: gu.uStreets, uFieldMix: gu.uFieldMix, uCluster: gu.uCluster, uNearField: gu.uNearField, uFrame: gu.uFrame, uFieldScale: gu.uFieldScale, uThreshold: gu.uThreshold, uClear: gu.uClear,
         uFarShadeRect: { value: new THREE.Vector3(0, 0, CLOUD_FAR_SHADE_SPAN_M) },
         // (Part 1, item 2: a deck's cells — the trace's own uniform objects)
         tShape: this.traceMaterial.uniforms.tShape, tDetail: this.traceMaterial.uniforms.tDetail,
@@ -2101,6 +2106,9 @@ export class VolumetricCloudLayer {
       frame.set(sun.x * k, sun.z * k, preset.shadow ? lightTune('CLOUD_SHADOW_FRAME', CLOUD_SHADOW_FRAME) : 0, lightTune('CLOUD_SHADOW_FRAME_R', 2500));
       (this.goboMaterial.uniforms as unknown as { uFrame: { value: THREE.Vector4 } }).uFrame.value.copy(frame);
     }
+    // (Part 2's first experiment: the cells' plan scale, cumulus only — a deck's cells keep their own tile)
+    t.uFieldScale.value = preset.shadow ? Math.max(0.25, lightTune('CLOUD_FIELD_SCALE', 1)) : 1;
+    (this.goboMaterial.uniforms as unknown as { uFieldScale: { value: number } }).uFieldScale.value = t.uFieldScale.value as number;
     // (no datum yet: the camera stands on the layer's base, the haze law of a camera on the ground)
     t.uHazeDatum.value = Number.isFinite(this.hazeDatum) ? this.hazeDatum : camera.position.y;
     this.applyPresetUniforms(preset);

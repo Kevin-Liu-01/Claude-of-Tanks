@@ -33,7 +33,11 @@ assert.ok(0.9 * gate(0, 1) < cut, 'even a strong cell in a gap stays under the c
 assert.ok(0.5 * gate(1, 1) > cut * 0.9, 'an average cell at a field\'s heart rises to the cut (cells merge into masses)');
 
 // ---- the GLSL: one field for the trace, the gobos and the far shade
-assert.match(clouds, /uniform float uCluster;\n\/\/ 2026-10-03: the cumulus fields' floor over the battlefield \(CLOUD_NEAR_FIELD; 0 = off\)\nuniform float uNearField;\n[\s\S]{0,400}uniform vec4 uFrame;\n\/\/ the last cloudField call's cumulus-field gate/, 'declared with the shared field (2026-10-05: and the framing mass, uFrame)');
+assert.match(clouds, /uniform float uCluster;\n\/\/ 2026-10-03: the cumulus fields' floor over the battlefield \(CLOUD_NEAR_FIELD; 0 = off\)\nuniform float uNearField;\n[\s\S]{0,400}uniform vec4 uFrame;\n[\s\S]{0,500}uniform float uFieldScale;\n\/\/ the last cloudField call's cumulus-field gate/, 'declared with the shared field (2026-10-05: and the framing mass, uFrame, and the cells\' plan scale)');
+// 2026-10-05 (Part 2's first experiment): the cells' plan scale about the drifting frame (the drift keeps the wind's speed)
+assert.match(clouds, /textureLod\( tWeather, \( pxz \+ uWeatherShift \) \* uFieldScale \//, 'the weather field read s times finer');
+assert.match(clouds, /textureLod\( tStreets, \( q \+ uStreetShift \) \* uFieldScale \//, 'and the street field');
+assert.match(clouds, /t\.uFieldScale\.value = preset\.shadow \? Math\.max\(0\.25, lightTune\('CLOUD_FIELD_SCALE', 1\)\) : 1;/, 'cumulus only, 1 by default');
 // 2026-10-05 (Part 1's framing): the mass over the point up the sun's ray from the map's centre — never gated out, the
 // cells lifted over the cut; off by default (QA: CLOUD_SHADOW_FRAME) and in the shade map's field alike
 assert.match(clouds, /cloudGate = max\( cloudGate, frameK \);\s*field \*= cloudGate;\s*\}\s*\/\/[^\n]*\n\s*field \*= 1\.0 \+ uFrame\.z \* frameK;/, 'the framing lift after the gate');
