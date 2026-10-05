@@ -176,7 +176,11 @@ strip column's highest opaque texel (`SKYLINE_FRAGMENT`) and its colour averaged
 (`SKYLINE_BLUR_FRAGMENT`). A texel over that skyline stays open except on a ray under the camera's own horizontal, where
 the shell is ground: the apron over the bake eye's horizon (its inner rows on the ring's outer edge, +0.8 to +2.5
 degrees, read sky over a low far country) takes the skyline's colour, and the far earth takes it hazed by the map's law
-over the reach past the strip at which the ray meets the ground, converging to the law's target toward the horizontal.
+over the reach past the strip at which the ray meets the ground, converging toward the horizontal onto the screen's own
+horizon: the dome's lookup greyed by the dome's deck greying and knee, toward the aerial pass's target, pre-compensated for
+that pass. sky.ts keeps the deck greying inline, so the shell carries a copy (`DOME_DECK_GREY_GLSL`) on the dome's own
+uniforms (read off the `atmosphere-dome` mesh each draw); `horizonPanoramaDeck.selftest.mjs` runs the dome's statements
+(read out of sky.ts) and the copy through one GLSL-subset evaluator and fails the build on any difference.
 A hole under the skyline (the game's open water) stays open; ground and tank-height cameras look up at the shell's sky,
 so their frames are bit-identical. The frame-budget probe's `--toggle=far-earth` switches it in place.
 `horizonPanorama.selftest.mjs` pins the shell, the atlas mapping and the bake contract; the bake's look is iterated

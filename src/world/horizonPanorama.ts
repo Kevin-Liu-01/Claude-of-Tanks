@@ -429,13 +429,41 @@ interface ShellAir {
   uAtmoViewH: THREE.IUniform<number>;
   uAtmoKnee: THREE.IUniform<THREE.Vector3>;
   uAtmoIntensity: THREE.IUniform<number>;
-  /** the aerial pass's terms each draw: the fog tint; (its share, the target's level, the overcast, the closed deck);
-   *  the haze datum under the camera; whether the dome's lookup is live */
+  /** the aerial pass's terms each draw: the fog tint; (its share, the target's level, the overcast); the haze datum
+   *  under the camera; whether the dome's lookup is live */
   uPanoTint: THREE.IUniform<THREE.Vector3>;
-  uPanoTerms: THREE.IUniform<THREE.Vector4>;
+  uPanoTerms: THREE.IUniform<THREE.Vector3>;
+  /** the dome's deck greying, its own uniforms copied each draw (sky.ts: the tint and its weight by the overcast, the
+   *  closed deck's), read-only (DOME_DECK_GREY_GLSL) */
+  uDeckHorizon: THREE.IUniform<THREE.Vector4>;
+  uDeckClosed: THREE.IUniform<number>;
   uPanoDatum: THREE.IUniform<number>;
   uPanoSkyOn: THREE.IUniform<number>;
 }
+
+/** The dome's deck greying (sky.ts ATMOSPHERE_DOME_FRAGMENT: the deck's grey at the horizon, a closed deck's at every
+ * elevation), which the far earth's screen horizon goes through. sky.ts keeps it inline in the dome's fragment rather than
+ * as a chunk, so this is a copy of its statements, wrapped in a function: horizonPanoramaDeck.selftest.mjs evaluates the
+ * dome's statements, read out of sky.ts, and this function's on the same skies, directions, overcasts and knobs, and
+ * fails on any difference. Its uniforms are the dome's own, copied each draw (the shell's onBeforeRender), so the knob,
+ * the light model's mode and the tint are the dome's too. */
+const DOME_DECK_GREY_GLSL = /* glsl */`
+uniform vec4 uDeckHorizon;
+uniform float uDeckClosed;
+vec3 panoDeckGrey( vec3 skyCol, vec3 direction ) {
+	float deckW = max( uDeckHorizon.w * ( 1.0 - smoothstep( 0.0, 0.12, direction.y ) ), uDeckClosed );
+	if ( deckW > 0.0 ) {
+		float deckTintL = max( dot( uDeckHorizon.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 );
+		float deckL = dot( skyCol, vec3( 0.2126, 0.7152, 0.0722 ) );
+		if ( uDeckClosed > 0.0 ) {
+			vec2 hzXZ = length( direction.xz ) > 1e-4 ? normalize( direction.xz ) : vec2( 1.0, 0.0 );
+			deckL = mix( deckL, dot( atmoSky( vec3( hzXZ.x, 0.0, hzXZ.y ) ), vec3( 0.2126, 0.7152, 0.0722 ) ), uDeckClosed );
+		}
+		skyCol = mix( skyCol, uDeckHorizon.rgb * ( deckL / deckTintL ), deckW );
+	}
+	return skyCol;
+}
+`;
 
 /** The shell's material: the atlas by direction from the bake eye (an unlit backdrop; the post pass hazes it by depth),
  * transparent texels discarded (the sky and the clouds behind). The scene fog is off, as it was on the round-72 far
@@ -466,7 +494,9 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
     uAtmoKnee: { value: new THREE.Vector3(1e6, 0, 1) },
     uAtmoIntensity: { value: 1 },
     uPanoTint: { value: new THREE.Vector3(1, 1, 1) },
-    uPanoTerms: { value: new THREE.Vector4(0, 1, 0, 0) },
+    uPanoTerms: { value: new THREE.Vector3(0, 1, 0) },
+    uDeckHorizon: { value: new THREE.Vector4(1, 1, 1, 0) },
+    uDeckClosed: { value: 0 },
     uPanoDatum: { value: 0 },
     uPanoSkyOn: { value: 0 },
   };
@@ -483,8 +513,9 @@ uniform vec3 uPanoEye; uniform vec2 uPanoElev; varying vec3 vPanoWorld; varying 
 uniform sampler2D uPanoSkyline; uniform vec4 uPanoHaze; uniform vec3 uPanoHazeAnti, uPanoHazeToward, uPanoHazeChroma;
 uniform vec2 uPanoSunH;
 uniform float uPanoSigmaPost;
-uniform vec3 uPanoTint; uniform vec4 uPanoTerms; uniform float uPanoDatum, uPanoSkyOn;
+uniform vec3 uPanoTint; uniform vec3 uPanoTerms; uniform float uPanoDatum, uPanoSkyOn;
 ${ATMOSPHERE_SKY_GLSL}
+${DOME_DECK_GREY_GLSL}
 ${HAZE_LAW_GLSL}`)
       .replace('#include <map_fragment>', /* glsl */`
       #ifndef USE_MAP
@@ -530,11 +561,11 @@ ${HAZE_LAW_GLSL}`)
             // toward the horizontal the land goes into the screen's own horizon (the pairs of bfc773bb1 and f61a53f3d:
             // the law's target from the bake, and the atmosphere's summary bands, both landed 0.08-0.27 over the sky
             // the frames show). It is the dome as sky.ts draws it just over the horizon — the sky-view LUT on this
-            // bearing, greyed by the deck, through the knee, at the sky's intensity — drawn toward the aerial pass's
-            // target as the overcast closes (the cloud layer's far rows, pulled to that target, are the horizon under a
-            // deck). The in-scatter target is the colour the aerial pass turns into it: its own target along this
-            // fragment's ray and its own transmittance over the camera's distance (σ, the layer from the ground under
-            // the camera, the per-channel extinction)
+            // bearing, greyed by the deck (the dome's own greying on the dome's own uniforms), through the knee, at
+            // the sky's intensity — drawn toward the aerial pass's target as the overcast closes (the cloud layer's far
+            // rows, pulled to that target, are the horizon under a deck). The in-scatter target is the colour the
+            // aerial pass turns into it: its own target along this fragment's ray and its own transmittance over the
+            // camera's distance (σ, the layer from the ground under the camera, the per-channel extinction)
             vec3 inScatter = mix(uPanoHazeAnti, uPanoHazeToward, toward * toward);
             if (uPanoSkyOn > 0.5) {
               const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
@@ -547,9 +578,7 @@ ${HAZE_LAW_GLSL}`)
               }
               aerialT *= uPanoTerms.y;
               vec3 hdir = normalize(vec3(rd.x, 0.004, rd.z));
-              vec3 domeRaw = atmoSky(hdir);
-              float deckW = max(uPanoTerms.z * (1.0 - smoothstep(0.0, 0.12, hdir.y)), uPanoTerms.w);
-              domeRaw = mix(domeRaw, uPanoTint * (dot(domeRaw, LUMA) / tintL), deckW);
+              vec3 domeRaw = panoDeckGrey(atmoSky(hdir), hdir);
               vec3 screen = mix(atmoKnee(domeRaw) * uAtmoIntensity, aerialT, smoothstep(0.3, 0.8, uPanoTerms.z));
               float postLayer = hazeLayerMean(max(cameraPosition.y - uPanoDatum, 0.0) * uPanoHaze.y, max(vPanoWorld.y - uPanoDatum, 0.0) * uPanoHaze.y);
               vec3 Tp = hazeTransmittance(uPanoSigmaPost, length(vd), postLayer, uPanoHazeChroma);
@@ -1427,9 +1456,12 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   // (the shell's air: the frame-budget probe's far-earth toggle switches the law's flag in place)
   mesh.userData.panoAir = air;
   const lawTerms = { x: 0, y: 0 };
+  // the dome (sky.ts's 'atmosphere-dome' mesh), found once per scene: its deck uniforms are read each draw
+  let domeScene: THREE.Object3D | null = null;
+  let dome: THREE.Object3D | undefined;
   mesh.onBeforeRender = (_renderer, scene, camera) => {
-    // the far earth's landing on the screen's horizon (the shell's far-earth note): the dome's own lookup and the aerial
-    // pass's terms as post.ts sets them this frame, the ground under the camera as its datum
+    // the far earth's landing on the screen's horizon (the shell's far-earth note): the dome's own lookup and greying and
+    // the aerial pass's terms as post.ts sets them this frame, the ground under the camera as its datum
     const data = scene.userData as { atmosphere?: PanoramaAtmosphere; lightModel?: { overcast?: number } };
     const atmosphere = data.atmosphere;
     const live = !!(atmosphere?.active && atmosphere.skyView && atmosphere.sunDir && atmosphere.knee && atmosphere.fogTint
@@ -1446,8 +1478,18 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     air.uPanoTint.value.set(tint.r, tint.g, tint.b);
     const overcast = Math.min(1, Math.max(0, data.lightModel?.overcast ?? 0));
     hazeTargetTerms(overcast, atmosphere.fogMix ?? 0, lawTerms);
-    const closed = THREE.MathUtils.smoothstep(overcast, 0.9, 1.0);
-    air.uPanoTerms.value.set(lawTerms.x, lawTerms.y, overcast, closed);
+    air.uPanoTerms.value.set(lawTerms.x, lawTerms.y, overcast);
+    // the deck's grey: the dome's own uniforms, as sky.ts set them (no dome in the scene: no greying)
+    if (domeScene !== scene || dome?.parent == null) { domeScene = scene; dome = scene.getObjectByName('atmosphere-dome'); }
+    const domeUniforms = ((dome as THREE.Mesh | undefined)?.material as THREE.ShaderMaterial | undefined)?.uniforms;
+    const deckHorizon = domeUniforms?.uDeckHorizon?.value, deckClosed = domeUniforms?.uDeckClosed?.value;
+    if (deckHorizon instanceof THREE.Vector4 && typeof deckClosed === 'number') {
+      air.uDeckHorizon.value.copy(deckHorizon);
+      air.uDeckClosed.value = deckClosed;
+    } else {
+      air.uDeckHorizon.value.set(1, 1, 1, 0);
+      air.uDeckClosed.value = 0;
+    }
     if (Number.isFinite(atmosphere.fogDensity)) air.uPanoSigmaPost.value = hazeSigma(atmosphere.fogDensity as number);
     const ground = options.groundAt ? options.groundAt(camera.position.x, camera.position.z) : NaN;
     air.uPanoDatum.value = Number.isFinite(ground) ? ground : hazeDatumM;

@@ -99,13 +99,15 @@ const ringEdge = (() => {
     && frag.includes('inScatter = max((screen - aerialT * (1.0 - Tp)) / max(Tp, vec3(0.05)), vec3(0.0));')
     && frag.includes('ground = ground * T + inScatter * (1.0 - T);'),
     'the far earth takes the map\'s law over its reach, into the colour the aerial pass turns into the screen\'s own horizon');
-  // the screen's horizon: the dome as sky.ts draws it (its own lookup, greyed by the deck, the knee, the intensity),
-  // toward the aerial pass's target as the deck closes; the aerial pass's target and transmittance as post.ts lays them
+  // the screen's horizon: the dome as sky.ts draws it (its own lookup, greyed by the deck — the dome's greying on the
+  // dome's uniforms, horizonPanoramaDeck.selftest.mjs — the knee, the intensity), toward the aerial pass's target as the
+  // deck closes; the aerial pass's target and transmittance as post.ts lays them
   assert.ok(frag.includes('vec3 skyT = atmoSkyVisible(normalize(vec3(rd.x, max(rd.y, 0.02), rd.z)));')
-    && frag.includes('domeRaw = mix(domeRaw, uPanoTint * (dot(domeRaw, LUMA) / tintL), deckW);')
+    && frag.includes('vec3 domeRaw = panoDeckGrey(atmoSky(hdir), hdir);')
     && frag.includes('vec3 screen = mix(atmoKnee(domeRaw) * uAtmoIntensity, aerialT, smoothstep(0.3, 0.8, uPanoTerms.z));'),
     'the screen\'s horizon is the dome\'s own lookup and the aerial pass\'s own target');
-  for (const name of ['tAtmoSky', 'uAtmoSun', 'uAtmoViewH', 'uAtmoKnee', 'uAtmoIntensity', 'uPanoTint', 'uPanoTerms', 'uPanoDatum', 'uPanoSkyOn', 'uPanoSigmaPost']) {
+  for (const name of ['tAtmoSky', 'uAtmoSun', 'uAtmoViewH', 'uAtmoKnee', 'uAtmoIntensity', 'uPanoTint', 'uPanoTerms', 'uPanoDatum', 'uPanoSkyOn', 'uPanoSigmaPost',
+    'uDeckHorizon', 'uDeckClosed']) {
     assert.ok(name in shader.uniforms, `the shell binds ${name}`);
   }
   // per draw, read-only from the published atmosphere: no live sky (the receipts, the labs without one, the mobile tier's
