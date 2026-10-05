@@ -3589,6 +3589,7 @@ float gSeaFoam; // maps r1: foam coverage this fragment (mattes the water gloss)
 // frame rotated per-fragment, dragging the sample coordinate back and forth
 // across the face (the melted-taffy smear on the desert mesas).
 vec2 gWallUVx; vec2 gWallUVz; vec2 gWallSigns; float gWallW;
+float gSnowRock = 0.0; // ground lane (wave 62): the snow lying on a snow map's rock (the rock passes below stand down under it)
 float gTileMix; // r8 anti-tiling: stochastic rotation-blend weight (set in splatCompute)
 float gCliffJ;  // r8: per-cliff jitter field (set with the wall basis)
 float gBedWob = 0.0; // ground lane: the beds' wander in metres of height (set with the wall basis)
@@ -4327,6 +4328,33 @@ void splatCompute() {
       if (nrmOn) n = mix(n, wallNrm(uNrmR, 0.155, df, mipB), steepW);
     }
   }
+  // Ground lane (wave 62, Glacier Pass street-b, 2.2, the worst view: "a blue-and-white swirled marble/agate texture …
+  // a broken material", Frosthollow's walls the same): a snow map's rock layer was Rock058 lifted half again and
+  // blued (sourcedTextures: "snow-dusted rock"), and its veins became polished marble wherever a slope turned rock. The
+  // rock is grey rock again, and snow lies on it as snow lies on a mountain: everywhere up to ~45°, then held in the
+  // hollows and the gullies down the fall line (the wall projections' noise stretched along the height, as the
+  // cinder's streaks), the ribs and the sheer faces standing out of it — the snow layer itself, its own grain, never a
+  // tint over the rock's veins.
+  if (uReduxD.y > 1.5) {
+    float rockW = max(fR, steepW) * (1.0 - fMs);
+    if (rockW > 0.002) {
+      float lodG = max(0.0, gNoiseLog + log2(0.045));
+      float gully = mix(textureLod(uNoise, gWallUVx * vec2(0.045, 0.0055) + vec2(0.41, 0.17), lodG).g,
+                        textureLod(uNoise, gWallUVz * vec2(0.045, 0.0055) + vec2(0.41, 0.17), lodG).g, gWallW);
+      float hold = 1.0 - smoothstep(0.30, 0.56, slope + (0.5 - gully) * 0.40 - vFold * 0.12);
+      gSnowRock = hold * rockW;
+      if (gSnowRock > 0.002) {
+        vec4 snowA = groundSamp(uAlbG, uMeanG, uv * 0.240, df, mipB);
+        vec4 snowN = nrmOn ? groundNrm(uNrmG, uv * 0.240, df, mipB) : NRM_MEAN;
+        if (triW > 0.003) {
+          snowA = mix(snowA, wallSamp(uAlbG, uMeanG, 0.240, df, mipB), triW);
+          if (nrmOn) snowN = mix(snowN, wallNrm(uNrmG, 0.240, df, mipB), triW);
+        }
+        a = mix(a, snowA, gSnowRock);
+        if (nrmOn) n = mix(n, snowN, gSnowRock);
+      }
+    }
+  }
   // meadow macro variation, three scales (~80 m, ~230 m, ~600 m): dry-straw
   // patches, dark clover, and broad field-to-field tone shifts so open ground
   // never reads as one continuous green wash at any distance
@@ -4803,7 +4831,7 @@ void splatCompute() {
     // the coordinates: coordinate blending smeared diagonal fur across every
     // partially-steep slope.
     // terrain v2: only on rock inside the mid band (three rock-normal taps ran under every fragment at weight zero)
-    float rockRelW = fR * 0.6 * dMid * (1.0 - fMs);
+    float rockRelW = fR * 0.6 * dMid * (1.0 - fMs) * (1.0 - gSnowRock);
     if (rockRelW > 0.002) {
     vec3 dnRa = vec3(texture2D(uNrmR, uv * 0.041).xy * 2.0 - 1.0, 0.0);
     vec3 dnRb;
@@ -4918,7 +4946,7 @@ void splatCompute() {
   // faces past ~300 m into featureless sheets — re-project the rock layer at
   // a coarse world scale + its normals so distant mesa/cut walls stay craggy
   {
-    float farRock = fR * farM;
+    float farRock = fR * farM * (1.0 - gSnowRock); // ground lane (wave 62): not the rock's grain on the snow lying on it
     if (farRock > 0.003) {
       // wall-plane sample takes over on steep faces (r5). Mix SAMPLES, not
       // coordinates — coordinate blending smeared diagonal fur streaks across
