@@ -2,7 +2,7 @@
 // in"). A painted steel dish has to read against its rubber tire in every scheme, so wheel paint —
 // the camouflage-derived fleet tone, a profile's wheelHex, or a retoned clone — never drops below
 // this linear luminance. Colours below it are pulled toward road dust until they reach it; brighter
-// paint is untouched. The tire rubber (#292a28) sits at 0.023, so the floor is ~3x the tire.
+// paint is untouched. The tire rubber (#232422) sits at 0.017, so the floor is ~4x the tire.
 import type { Color } from 'three';
 
 export const WHEEL_PAINT_FLOOR_LUMINANCE = 0.075;

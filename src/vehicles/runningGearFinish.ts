@@ -22,8 +22,12 @@ import { WHEEL_PAINT_FLOOR_LUMINANCE, linearLuminance } from './wheelPaintFloor.
 
 /** Fixed sRGB hexes of the neutral working-gear finishes. */
 export const RUNNING_GEAR_PALETTE = Object.freeze({
-  /** Road-wheel and return-roller tires, and the dark insets of a painted face (hub wells, lightening holes). */
-  tireRubber: 0x292a28,
+  /**
+   * Road-wheel and return-roller tires, and the dark insets of a painted face (hub wells, lightening holes).
+   * 2026-10-04 (gauntlet wave 60, material roles): #292a28 -> #232422, darker than the steel beside it (with the
+   * rubber material's duller response, materials.ts).
+   */
+  tireRubber: 0x232422,
   /** Track shoes' pad steel. */
   trackPad: 0x30312f,
   /** Worn track steel: sprocket teeth, recess rings, end-wheel hardware, spare links, unpainted end drums. */
@@ -60,7 +64,7 @@ export const RUNNING_GEAR_FINISH_RULES: readonly RunningGearFinishRule[] = Objec
   Object.freeze({
     finish: 'rubber', roles: ['wheelTire', 'wheelInset', 'tireRubber'], materialRoles: ['tireRubber'],
     hex: RUNNING_GEAR_PALETTE.tireRubber, minLuminance: 0, maxLuminance: 0.035, maxSaturation: 0.10,
-    note: 'tires and face insets are dark rubber (#292a28, linear luminance 0.023), never a per-hull tone',
+    note: 'tires and face insets are dark rubber (#232422, linear luminance 0.017), never a per-hull tone',
   }),
   Object.freeze({
     finish: 'scheme-paint', roles: ['wheelDish'], materialRoles: ['wheelPaint', 'trackSteel', 'gunmetal'],

@@ -2608,8 +2608,12 @@ export function createTankMaterials(
   // level. Shade readability no longer needs the extra IBL — the
   // gameplay_feel r4/r5 view-fill + shadow floors in vehicleAmbientFloorHook
   // now guarantee it (they postdate the lighting_post r3 env raise).
+  // 2026-10-04 (gauntlet wave 60, material roles: "gun steel, rubber track pads and painted armor tiles are visually
+  // indistinguishable"): the roles separate by response — the paint one step off fully matte (0.85 under the
+  // multiplying roughness map, which keeps its pattern- and patch-keyed variation; the clearcoat stays the r4 trace,
+  // since more of it laid the white film over up-facing plates), the rubber darker and duller, the gunmetal a faint sheen.
   const hull = track(setup(new THREE.MeshPhysicalMaterial({
-    map: camoTex, roughnessMap: roughTex, roughness: 0.88, metalness: 0.05,
+    map: camoTex, roughnessMap: roughTex, roughness: 0.85, metalness: 0.05,
     normalMap: normalTex, normalScale: new THREE.Vector2(1.3, 1.3),
     // lighting_post r4: sheen without white-deck — NO clearcoatRoughnessMap
     // (map dips spike the lobe and blow flat rear fenders to mirror-white).
@@ -2648,8 +2652,10 @@ export function createTankMaterials(
   stampSchemeFinish(wheelsRecessed);
   // camo_spotting r3: lifted off near-black so lighting models tire rings
   // instead of silhouetting them (Tiger bullseye critique).
+  // 2026-10-04 (wave 60, material roles): darker and duller than the paint and the steel — and off the full-strength sky
+  // reflection (the default envMapIntensity 1) that gave the tyres the same sheen as the plates around them.
   const rubber = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x292a28, roughness: 0.96, metalness: 0.0,
+    color: 0x232422, roughness: 0.99, metalness: 0.0, envMapIntensity: 0.12,
   })));
   // Accessories must never read as raw #000 blockout: scheme-tinted fittings
   // and gunmetal hardware, both with roughness variation.
@@ -2693,8 +2699,10 @@ export function createTankMaterials(
     // r3: hue pulled off the blue-grey — 0x33383a leaned navy under the sky
     // env and cool key light; neutral warm gunmetal keeps fittings in the
     // same family as the dust/steel gear.
-    color: 0x36342f, roughness: 0.9, metalness: 0.18, roughnessMap: roughTex,
-    envMapIntensity: 0.22,
+    // 2026-10-04 (wave 60, material roles): a faint worn-steel sheen, short of the lighting_post r1 0.70 floor and of
+    // the r9 sky mirror (metalness 0.45 at env 1.0)
+    color: 0x36342f, roughness: 0.78, metalness: 0.28, roughnessMap: roughTex,
+    envMapIntensity: 0.28,
   })));
   // Individual track-link pads: worn dusty steel, clearly lighter than the
   // shadowed band behind them so the run reads as articulated links up close.

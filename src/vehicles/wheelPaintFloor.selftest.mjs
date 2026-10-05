@@ -10,7 +10,7 @@ import {
 } from './wheelPaintFloor.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 
-const tire = [0.0222, 0.0232, 0.0212]; // #292a28 in linear
+const tire = [0.0168, 0.0176, 0.0160]; // #232422 in linear
 assert.ok(linearLuminance(tire) < WHEEL_PAINT_FLOOR_LUMINANCE / 3,
   'the floor sits at least three times above the tire rubber');
 
@@ -50,6 +50,6 @@ normalizeTankAppearance(root);
 assert.ok(linearLuminance([paint.color.r, paint.color.g, paint.color.b]) >= WHEEL_PAINT_FLOOR_LUMINANCE - 1e-9, 'wheelPaint is floored by the normaliser');
 assert.equal(fitting.color.getHexString(), '33382c', 'fitting paint is not wheel paint and keeps its tone');
 assert.equal(mapped.color.getHexString(), '33382c', 'camouflage-mapped wheel paint keeps its multiplier');
-assert.equal(rubber.color.getHexString(), '292a28', 'fixed roles still snap to the neutral gear palette');
+assert.equal(rubber.color.getHexString(), '232422', 'fixed roles still snap to the neutral gear palette');
 
 console.log('wheelPaintFloor: floor maths (linear, sRGB, Color), dust direction, and the normaliser hook verified');

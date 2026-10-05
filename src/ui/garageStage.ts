@@ -829,7 +829,10 @@ export function createGarageStage(
       cable.position.set(x, 8.7, z);
       group.add(shade, glow, cable);
       // reach the hangar's far corners (~33 m) so the floor never dies to black
-      const pointLight = new THREE.PointLight(0xf3f1ea, 36, 42, 1.9); // camo_spotting r2: neutral highbay cast
+      // 2026-10-04 (gauntlet wave 60, item 1: "flat chalk white that clips on the turret and hull roofs"): 36 -> 22.
+      // The two highbays hang over the bay and gave the roofs about half their direct light (0.91 of ~1.8 units),
+      // twice the key's share; their reach past 12 m was already under a tenth of the floor's light.
+      const pointLight = new THREE.PointLight(0xf3f1ea, 22, 42, 1.9); // camo_spotting r2: neutral highbay cast
       pointLight.position.set(x, 7.1, z);
       verdantLights.push(pointLight);
       group.add(pointLight);
