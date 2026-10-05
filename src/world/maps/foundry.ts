@@ -21,6 +21,7 @@
 // and the north bank run toward the rim and every works street leaves on its own line: the borders lane carries them
 // outward.
 
+import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 
 export default {
@@ -162,6 +163,12 @@ export default {
     // The authored network mixes worker streets with unpaved freight/rail
     // approaches; a curb on every route outlined the map in orange ribbons.
     blockFill: true, curbs: false, lampposts: true, monument: true, townCraters: true,
+    // the works' palette (the realistic city tones) with the Saar kit's yellow brick carried over it: a map's tones
+    // override its kit's (props.ts), so the bands' brick of maps/regional/saar.ts surfaces.tones stands here as there
+    tones: {
+      ...makeRealisticCityBuildingTones({ value: 0.88, saturation: 0.92, soot: 0.035, roofValue: 0.84 }),
+      plaster2: (_h: number, s: number, l: number) => [0.11, Math.min(1, s * 0.6 + 0.2), Math.min(1, l + 0.05)],
+    },
     buildingLat: [18, 4], sideSkip: 0.06, maxSpread: 2.4, spacingPad: 6,
     well: false, hayCrates: false, fences: true, telegraph: true, carts: false, logs: false,
     rocks: 142, outcrops: 12, craters: 86, rubblePiles: 48,

@@ -36,7 +36,7 @@ the fictional map reproduces a particular real-world location.
 | monsoon | Rain-dissected tropical ridges and coherent branching drainage, not snowless alpine peaks. |
 | alpine | Lake-aligned ranges, trough shoulders, broken spurs and oblique saddles. |
 | caldera | Off-centre, breached volcanic rim with unequal shelves and radial drainage; not red mesas recoloured black. |
-| foundry | Industrial basin with low regional shoulders; factories remain the landmarks. |
+| foundry | The Völklingen ironworks on the Saar, March 1945 (the map-revival lane 2026-10-05): the blast furnaces and their Cowper stoves, the rolling mills under north lights, gas holders, conveyor galleries and the colliery headframe in an industrial basin with low regional shoulders; the works remain the landmarks. |
 | ruinspires | Destroyed vertical megacity above broad urban terraces; recessive background uplands. |
 | blackglass | Arcologies and directional transit-cut shoulders between offset low ridges. |
 | titan_gorge | Long plateau edges with branching tributary recesses; playable changes held until access constraints pass. |
