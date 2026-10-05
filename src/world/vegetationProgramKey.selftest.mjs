@@ -597,6 +597,69 @@ function checkShrubInside(environment) {
   }
 }
 
+// trees round 4 (the cost hold: Verdant's chase at +1.01 ms over the PR state, the near tier's trunks its largest
+// vegetation class): a grown trunk's thin branches (aWoodFine: under GROWTH_WOOD_FINE_R at their base, whole tubes) are
+// drawn no farther than the tree's share of GROWTH_WOOD_FINE_FAR from the camera — past it every fine corner sits at
+// the instance's origin (its triangles cover nothing), short of it the bark is whole; the stem and the thick limbs at
+// every distance. A mirror of the bark program's patch, pinned to its text, on the production trunks.
+function checkWoodFine(environment) {
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(55, 1.6, .5, 4000);
+  const lighting = createLighting(scene, camera, new THREE.Vector3(1, 1, 1).normalize());
+  const registered = [];
+  const engine = { renderer: stubRenderer(), scene, setupShadowMaterial(material, hook) { registered.push(material); return lighting.setupShadowMaterial(material, hook); } };
+  const cfg = { vegetation: { species: ['oak', 'pine', 'birch'], clusterCount: 4, loneCount: 8, rimCount: 0, grassDensity: 0, bushCount: 0, belts: [], authoredTrees: [] } };
+  const vegetation = createVegetation(createHeightField(1337), engine, 1337, cfg);
+  try {
+    const bark = registered.find(m => m.customProgramCacheKey?.() === 'world-tree-bark-v11');
+    assert.ok(bark, 'the bark program carries the fine wood (v11)');
+    const { parameters } = environment.expand(bark), vertex = parameters.vertexShader;
+    assert.match(vertex, /attribute float aWoodFine;\nuniform float uCotWoodFineFar;/, 'the tag and the reach reach the vertex stage');
+    assert.match(vertex, /if \( aWoodFine > 0\.5 \) \{\s*float cotWoodHash = fract\( sin\( dot\( instanceMatrix\[ 3 \]\.xz, vec2\( 12\.9898, 78\.233 \) \) \) \* 43758\.5453 \);\s*if \( distance\( instanceMatrix\[ 3 \]\.xyz, uCamPos \) > uCotWoodFineFar \* \( 0\.85 \+ 0\.3 \* cotWoodHash \) \) transformed = vec3\( 0\.0 \);\s*\}/,
+      'fine wood past its tree\'s share of the reach collapses to the instance origin');
+    const collapse = vertex.indexOf('if ( aWoodFine > 0.5 )');
+    assert.ok(collapse > vertex.lastIndexOf('transformed.y += fl * 0.3') && collapse < vertex.indexOf('#include <project_vertex>'), 'after the wind, before the projection');
+    const far = parameters.uniforms.uCotWoodFineFar?.value;
+    assert.equal(far, 80, 'the desktop reach (GROWTH_WOOD_FINE_FAR)');
+    assert.equal(bark.userData.cotWoodFineFar?.value, far, 'the probe reaches the reach');
+    let trunks = 0;
+    const seen = new Set();
+    vegetation.group.traverse((mesh) => {
+      if (!mesh.isInstancedMesh || !mesh.userData.treeTrunk || mesh.userData.treeLod !== 'near' || seen.has(mesh.geometry)) return;
+      seen.add(mesh.geometry);
+      const g = mesh.geometry, fine = g.getAttribute('aWoodFine'), index = g.index.array, pos = g.getAttribute('position');
+      assert.ok(fine, 'a grown trunk carries the fine-wood tag');
+      let fineTris = 0;
+      for (let t = 0; t < index.length; t += 3) {
+        const s = fine.getX(index[t]) + fine.getX(index[t + 1]) + fine.getX(index[t + 2]);
+        assert.ok(s === 0 || s === 3, 'the tag takes whole tubes, no triangle half-fine');
+        if (s === 3) fineTris++;
+      }
+      const share = fineTris / (index.length / 3);
+      assert.ok(share > 0.25 && share < 0.7, `the thin branches a share of the wood (${share.toFixed(2)})`);
+      // the mirror: an instance's fine corners at the origin past its share of the reach, every corner kept short of it
+      const e = new THREE.Matrix4().makeRotationY(0.7).setPosition(31, 2, -17).elements;
+      const hash = ((x) => x - Math.floor(x))(Math.sin(e[12] * 12.9898 + e[14] * 78.233) * 43758.5453), reach = far * (0.85 + 0.3 * hash);
+      for (const [d, gone] of [[reach * 0.98, false], [reach * 1.02, true]]) {
+        const cam = new THREE.Vector3(e[12] + d * 0.6, e[13] + d * 0.8, e[14]);
+        let kept = 0, collapsed = 0;
+        for (let v = 0; v < pos.count; v++) {
+          const isFine = fine.getX(v) > 0.5, out = isFine && cam.distanceTo(new THREE.Vector3(e[12], e[13], e[14])) > reach;
+          if (out) collapsed++; else kept++;
+          assert.equal(out, isFine && gone, 'fine wood leaves past the reach and only fine wood');
+        }
+        assert.ok(gone ? collapsed > 0 && kept > 0 : collapsed === 0, 'the stem and the thick limbs stay at every distance');
+      }
+      trunks++;
+    });
+    assert.ok(trunks >= 6, `the grown trunks checked (${trunks})`);
+    return trunks;
+  } finally {
+    vegetation.dispose(); disposeObject3DResources(vegetation.group);
+    for (const material of registered) releaseCsmShaderMaterial(lighting.csm, material);
+    lighting.csm.remove(); lighting.csm.dispose();
+  }
+}
+
 const species = [...new Set(MAP_IDS.flatMap(id => getMapConfig(id).vegetation.species))];
 assert.equal(species.length, 13, 'all 13 authored foliage species remain covered');
 assert.ok(species.includes('palm') && species.includes('birch') && species.includes('pine'));
@@ -634,6 +697,8 @@ try {
   }
   checkShrubMaterial(environment);
   const inside = checkShrubInside(environment);
+  const woodTrunks = checkWoodFine(environment);
+  console.log(`fine wood: ${woodTrunks} grown trunks tagged and their reach pinned`);
   console.log(`shrub inside: ${inside.poses} poses inside ${'the shrubs'}, ${inside.neighbourDrawn} of ${inside.neighbourCards} neighbour cards drawn, control ${JSON.stringify(inside.control)}`);
   // the mobile tier, resolved once and last (the device tier is process state)
   checkMobileFoliage(species, environment);

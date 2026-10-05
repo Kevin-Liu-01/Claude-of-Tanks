@@ -2379,6 +2379,14 @@ const FOLIAGE_NEAR_REACH = Object.freeze({ crown: 1, shrub: 0.5 });
  * its clusters leave from the top down and none is left over a thinned skirt; a crown's leave by the hash alone.
  */
 const FOLIAGE_GATE_LIFT = Object.freeze({ crown: 0, shrub: 0.75 });
+/**
+ * Trees round 4 (the cost hold: Verdant's chase at +1.01 ms over the PR state, the near tier's trunks its largest
+ * vegetation class): a branch tube under GROWTH_WOOD_FINE_R (m) at its base is fine wood — the tube law's three-sided limbs
+ * and twigs (treeGrowth.ts emitBranchGeometry), 40–75 % of a grown trunk's triangles — and the bark program draws it no
+ * farther than GROWTH_WOOD_FINE_FAR (m) from the camera, each tree at its own 0.85–1.15 of it: a pixel or two wide there,
+ * inside the crown, under its leaf cards (the desktop tiers; the phones' trunks carry no fine-wood tag).
+ */
+const GROWTH_WOOD_FINE_R = 0.05, GROWTH_WOOD_FINE_FAR = 80;
 
 
 /**
@@ -2544,6 +2552,18 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   const branchRanges = parts[0].userData.branchRanges ?? [];
   delete parts[0].userData.branchRanges;
   const flatTrunk = mergeParts(parts);
+  // trees round 4 (the cost hold: the near tier's trunks the frame's largest vegetation class, 1.2 M triangles at
+  // Verdant's chase): a thin branch's tube — a limb or a twig under 5 cm at its base, the tube law's three sides — carries
+  // aWoodFine, and the bark program draws it no farther than GROWTH_WOOD_FINE_FAR from the camera, where it is a pixel
+  // wide inside the crown; a snag's bare wood is its whole silhouette and keeps every branch
+  if (species !== 'snag') {
+    const fine = new Float32Array(flatTrunk.getAttribute('position').count);
+    skeleton.branches.forEach((branch, i) => {
+      const range = branchRanges[i];
+      if (range && branch.order > 0 && branch.nodes[0].r <= GROWTH_WOOD_FINE_R) fine.fill(1, range[0], range[1]);
+    });
+    flatTrunk.setAttribute('aWoodFine', new THREE.BufferAttribute(fine, 1));
+  }
   const crownAttachments = growthCrownAttachments(skeleton, flatTrunk, branchRanges);
   const trunk = weldGrownGeometry(flatTrunk);
   if (tidal) {
@@ -3648,6 +3668,8 @@ function* vegetationBuildSteps(
     TREE_WIND_FLUTTER_M * treeWind.strength * (mobileTier ? TREE_WIND_MOBILE_SCALE.flutter : 1),
   ) };
   const uMoss = { value: resolveTrunkMoss(cfg) };
+  // trees round 4 (the cost hold): fine wood's reach from the camera (GROWTH_WOOD_FINE_FAR; the phones keep their trunks)
+  const uWoodFineFar = { value: mobileTier ? 1e9 : GROWTH_WOOD_FINE_FAR };
   const uCamPos = { value: new THREE.Vector3(0, 0, 0) };
   // gameplay_feel r2: camera->tank occlusion-fade focus point (y=-9999 = off)
   const uFocusPos = { value: new THREE.Vector3(0, -9999, 0) };
@@ -4498,9 +4520,19 @@ function* vegetationBuildSteps(
   const barkHook = (shader: MaterialShader): void => {
     treeWindHook(shader);
     shader.uniforms.uMoss = uMoss;
-    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>', '#include <common>\nvarying float vBarkY;');
-    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <project_vertex>',
-      'vBarkY = ( instanceMatrix * vec4( transformed, 1.0 ) ).y - instanceMatrix[ 3 ].y;\n#include <project_vertex>');
+    shader.uniforms.uCotWoodFineFar = uWoodFineFar;
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
+      '#include <common>\nvarying float vBarkY;\nattribute float aWoodFine;\nuniform float uCotWoodFineFar;');
+    // trees round 4 (the cost hold): fine wood (aWoodFine, a thin branch's tube) past its tree's share of
+    // GROWTH_WOOD_FINE_FAR from the camera collapses to a point — its triangles cover nothing and rasterize nothing; a
+    // geometry without the tag (the phones', a snag's, the round-8 trees') reads it as 0 and keeps all its wood
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <project_vertex>', /* glsl */`
+      if ( aWoodFine > 0.5 ) {
+        float cotWoodHash = fract( sin( dot( instanceMatrix[ 3 ].xz, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
+        if ( distance( instanceMatrix[ 3 ].xyz, uCamPos ) > uCotWoodFineFar * ( 0.85 + 0.3 * cotWoodHash ) ) transformed = vec3( 0.0 );
+      }
+      vBarkY = ( instanceMatrix * vec4( transformed, 1.0 ) ).y - instanceMatrix[ 3 ].y;
+      #include <project_vertex>`);
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nuniform float uMoss;\nvarying float vBarkY;');
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <normal_fragment_maps>', /* glsl */`
       #include <normal_fragment_maps>
@@ -4761,7 +4793,8 @@ function* vegetationBuildSteps(
   barkMat.normalScale.set(0.85, 0.85);
   barkMat.envMapIntensity = 0.85;
   engineCtx.setupShadowMaterial(barkMat, barkHook);
-  barkMat.customProgramCacheKey = () => 'world-tree-bark-v10'; // round 77: the wind law and the moss
+  barkMat.customProgramCacheKey = () => 'world-tree-bark-v11'; // trees round 4: fine wood's reach (round 77: the wind law and the moss)
+  barkMat.userData.cotWoodFineFar = uWoodFineFar; // the frame probe's same-page A/B (its wood-fine toggle)
   yield { stage: 'treePrep', fine: true };
 
   // far canopy: own material — strong sky/env fill acts as the fake-SSS
