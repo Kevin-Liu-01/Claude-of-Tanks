@@ -133,10 +133,12 @@ function khataBody(sink: PartSink, ctx: RegionalBuildContext, st0: KolkhozState,
     w: W, d: D, plinth: { h: 0.45, out: 0.06, bucket: 'stone' }, storeys: [{ h: 2.45 + rng() * 0.2, wall }],
     roof: thatched ? thatch(40 + rng() * 6) : shifer(30, 'hip'), gableBucket: wall, openings,
     chimneys: [{ x: (rng() - 0.5) * 0.8, z: (rng() - 0.5) * D * 0.3, sx: 0.5, sz: 0.5, above: thatched ? 0.55 : 0.75, bucket: 'plaster', cap: 'slab' }],
-    // clay-rendered timber or adobe: no brick under the whitewash; where the lime has worn off (desktop), the clay shows
-    gutters: null, verge: null, spall: craft ? wall : null, spallTint: CLAY, spallScale: 0.45,
+    // clay-rendered timber or adobe: no brick under the whitewash to show where it has spalled
+    gutters: null, verge: null, spall: null,
+    // (the facade craft, desktop) where the lime has worn off, the clay under it shows
+    ...(craft ? { spall: wall, spallTint: CLAY, spallScale: 0.45 } : {}),
   }, dialect(st));
-  if (craft) khataDressing(sink, frame, st, craft, wall, thatched);
+  if (craft) khataDressing(sink, frame, st, craft, wall);
   // the porch (ganok) over the door: two posts and a small lean-to
   const f = frame.faces.left, u = D * 0.2, y = frame.eaveY - 0.1;
   for (const du of [-0.75, 0.75]) faceBox(sink, 'structureWood', f, u + du, y / 2, 1.05, 0.12, y, 0.12, { colour: PLANK });
@@ -152,8 +154,10 @@ function khataBody(sink: PartSink, ctx: RegionalBuildContext, st0: KolkhozState,
  * against the front wall.
  */
 function khataDressing(sink: PartSink, frame: HouseFrame, st: KolkhozState, craft: { line: Rgb; surround: Rgb | null },
-  wall: RegionalBucket, thatched: boolean): void {
+  wall: RegionalBucket): void {
   const f = facadeRng();
+  // (read off the roof the house was built with, not the khata's own draw: the craft follows whatever roofs it)
+  const thatched = frame.spec.roof.bucket === 'straw';
   const body = frame.bodies[0], y0 = body.y0;
   for (const name of ['front', 'right', 'back', 'left'] as const) {
     const face = frame.faces[name];
