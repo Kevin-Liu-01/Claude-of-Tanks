@@ -80,6 +80,17 @@ function solidEnvelope(parts) {
 }
 /** World poses a placed rebuild hands a kit (types.ts RegionalBuildContext x, z, yaw): look and form choices only. */
 const POSES = [{ x: 140, z: -60, yaw: 0.7 }, { x: -310, z: 255, yaw: -2.2 }, { x: 0, z: 0, yaw: Math.PI }];
+/**
+ * Footprint coverage (the map-revival lanes, 2026-10-05): a kit's solid envelope reaches every side of the base's
+ * measured reach (ctx.bounds) to within COVER_M. A kit body narrower than the building it replaces opens a lane beside
+ * it: Titan Gorge's wool barn, 2.4 m shorter than the warehouse it replaced, opened a tank-wide gap to its neighbour,
+ * the bots drove through it and the pacing receipt's matches ended a minute early. The kits merged before the rule are
+ * allowlisted (their maps passed pacing as they stand); their shortfalls are printed, not failed.
+ */
+const COVER_M = 0.5;
+const COVERAGE_ALLOWLIST = new Set(['hessian', 'dalmatian', 'breton', 'kolkhoz', 'polder', 'eifel', 'mekong', 'bengal', 'franconian', 'ksar',
+  'wadirum', 'ruhr', 'kohima', 'hostomel']);
+const coverageShort = [];
 const all = (parts) => Object.values(parts).flat();
 function positions(parts) {
   return Object.entries(parts).map(([bucket, list]) => [bucket, list.map((g) => Array.from(g.getAttribute('position').array))]);
@@ -172,6 +183,16 @@ for (const style of STYLES) {
         }
         for (const g of all(posed)) g.dispose();
       }
+      {
+        // the solid envelope against the bounds the builder was handed (the plot's, here)
+        const env = solidEnvelope(parts);
+        const short = [['+x', w / 2 - env.max.x], ['-x', env.min.x + w / 2], ['+z', d / 2 - env.max.z], ['-z', env.min.z + d / 2]]
+          .filter(([, gap]) => gap > COVER_M).map(([side, gap]) => `${side} ${gap.toFixed(2)} m`);
+        if (short.length) {
+          if (COVERAGE_ALLOWLIST.has(style.id)) { if (seed === 11) coverageShort.push(`${style.id}/${id} (${short.join(', ')})`); }
+          else assert.fail(`${style.id}/${id}: the solid envelope stops short of the base's reach by ${short.join(', ')} (COVER_M ${COVER_M} m): a lane opens beside it`);
+        }
+      }
       triangles += tris; worst = Math.max(worst, tris); builders++;
       for (const g of [...all(parts), ...all(again), ...all(mobile)]) g.dispose();
     }
@@ -180,6 +201,8 @@ for (const style of STYLES) {
 // most builders have windows, doors or timbers (172 of 286 on 2026-10-03; the rest: stalls, sheds, ruins, bare towers)
 assert.ok(fine >= builders / 2, `most builds carry fine joinery (${fine} of ${builders})`);
 console.log(`regional builders: ${builders} builds sound, ${Math.round(triangles / builders)} triangles mean, ${worst} worst, ${fine} with fine joinery`);
+console.log(`regional coverage: every builder of a new kit reaches its bounds to within ${COVER_M} m; allowlisted builders short of theirs `
+  + `(${coverageShort.length}): ${coverageShort.join('; ')}`);
 
 // Surfaces: deterministic, in range, cached.
 for (const [target, kind] of [['roof', 'beavertail'], ['roof', 'canal'], ['roof', 'slate'], ['stone', 'sandstone'], ['stone', 'limestone'], ['stone', 'granite']]) {
