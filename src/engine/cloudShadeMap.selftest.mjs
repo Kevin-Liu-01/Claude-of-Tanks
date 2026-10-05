@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
   CLOUD_SHADE_EDGE_FADE, CLOUD_SHADE_PARS_GLSL, CLOUD_SHADE_SAMPLER_BUDGET, CLOUD_SHADE_SUN_FADE, attachCloudShadeUniforms,
-  cloudShadeSamplerCount, cloudSunShareAt, createCloudShadeUniforms, publishCloudShade,
+  cloudSunShareAt, createCloudShadeUniforms, physicalParsWithoutDfgLut, programTextureUnits, publishCloudShade,
 } from './cloudShadeMap.ts';
 import { CLOUD_FAR_SHADE_EVERY, CLOUD_FAR_SHADE_SIZE, CLOUD_FAR_SHADE_SPAN_M, CLOUD_SHADOW_CORE } from './volumetricClouds.ts';
 
@@ -116,10 +116,14 @@ assert.match(lighting, /#if defined\( COT_CLOUD_SHADE \) && defined\( USE_SHADOW
       mat.onBeforeCompile(shader, null);
       return shader;
     };
-    assert.equal(cloudShadeSamplerCount({ vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader },
-      new THREE.MeshStandardMaterial(), 4, false), 4, 'a bare standard material: the cascades alone (the inline standard maps cost nothing unset)');
-    assert.equal(cloudShadeSamplerCount({ vertexShader: '', fragmentShader: THREE.ShaderLib.standard.fragmentShader },
-      new THREE.MeshPhysicalMaterial({ sheenColorMap: new THREE.Texture() }), 4, false), 5, 'a set inline map counts once');
+    // (2026-10-05: three's DFG LUT counted — the physical fragment's include declares it — and the units of both stages:
+    // three numbers them over the whole program; textureUnits.selftest counts the expanded programs independently)
+    assert.deepEqual(programTextureUnits({ vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader },
+      new THREE.MeshStandardMaterial(), 4, false, false), { fragment: 5, vertex: 0, total: 5, dfg: true }, 'a bare standard material: the cascades and the DFG LUT (the inline standard maps cost nothing unset)');
+    assert.equal(programTextureUnits({ vertexShader: '', fragmentShader: THREE.ShaderLib.standard.fragmentShader },
+      new THREE.MeshPhysicalMaterial({ sheenColorMap: new THREE.Texture() }), 4, false, false).fragment, 6, 'a set inline map counts once');
+    const swapped = physicalParsWithoutDfgLut(THREE.ShaderChunk.lights_physical_pars_fragment);
+    assert.ok(swapped && !swapped.includes('dfgLUT') && swapped.split('cotDfgApprox(').length - 1 === 5, 'the analytic fit replaces the declaration and its four reads');
     const plain = new THREE.MeshStandardMaterial({ map: new THREE.Texture() });
     const s1 = compile(plain);
     assert.equal(plain.defines.COT_CLOUD_SHADE, '', 'a desktop CSM material takes the define');
@@ -131,15 +135,29 @@ assert.match(lighting, /#if defined\( COT_CLOUD_SHADE \) && defined\( USE_SHADOW
     const custom = new THREE.ShaderMaterial({ lights: true });
     compile(custom);
     assert.equal(custom.defines?.COT_CLOUD_SHADE, undefined, 'a custom shader opts in explicitly (its chunks must carry the varying both ways)');
-    // the terrain's program: ten samplers of its own, the cascades and the scene environment: the map makes sixteen
-    const terrainLike = new THREE.MeshStandardMaterial();
-    const s2 = compile(terrainLike, (shader) => {
+    // the terrain's program: ten samplers of its own, the cascades, the DFG LUT and the scene environment: the map makes
+    // seventeen, so the LUT goes (three's analytic fit) and the program binds sixteen with its cloud shade
+    const terrainPatch = (shader) => {
       shader.fragmentShader = 'uniform sampler2D uAlbG, uAlbD, uAlbR, uAlbM;\nuniform sampler2D uNrmG, uNrmD, uNrmR, uNrmM;\nuniform sampler2D uMask, uNoise;\n' + shader.fragmentShader;
-    });
+    };
     const cascades = rig.csm.lights.length;
-    assert.equal(cloudShadeSamplerCount(s2, terrainLike, cascades, true), 10 + cascades + 1, 'ten, the cascades and the environment (the physical fragment\'s inline maps skipped)');
-    assert.equal(cascades, 4, 'four desktop cascades: the terrain\'s fifteen plus the map is the budget exactly (a fifth cascade drops the terrain\'s cloud shade: revisit the budget first)');
-    assert.ok(!s2.vertexShader.startsWith('#undef COT_CLOUD_SHADE'), 'the terrain keeps its cloud shade (no scene environment yet in this fixture: fourteen + 1)');
+    assert.equal(cascades, 4, 'four desktop cascades');
+    const bare = new THREE.MeshStandardMaterial();
+    const s2 = compile(bare, terrainPatch);
+    assert.deepEqual(programTextureUnits(s2, bare, cascades, false, true), { fragment: 10 + cascades + 1, vertex: 1, total: 16, dfg: true },
+      'no scene environment yet: sixteen with the DFG LUT, kept');
+    assert.ok(!s2.vertexShader.startsWith('#undef COT_CLOUD_SHADE') && s2.fragmentShader.includes('#include <lights_physical_pars_fragment>'), 'with its cloud shade');
+    scene.environment = new THREE.Texture();
+    try {
+      const terrainLike = new THREE.MeshStandardMaterial();
+      const s2e = compile(terrainLike, terrainPatch);
+      assert.deepEqual(programTextureUnits(s2e, terrainLike, cascades, true, true), { fragment: 10 + cascades + 1, vertex: 1, total: 16, dfg: false },
+        'with the environment the DFG LUT made seventeen: the program took the analytic fit');
+      assert.ok(!s2e.fragmentShader.includes('dfgLUT') && s2e.fragmentShader.includes('cotDfgApprox('), 'the fit in the fragment');
+      assert.ok(!s2e.vertexShader.startsWith('#undef COT_CLOUD_SHADE'), 'and the terrain keeps its cloud shade');
+    } finally {
+      scene.environment = null;
+    }
     const crowded = new THREE.MeshStandardMaterial();
     const s3 = compile(crowded, (shader) => {
       shader.fragmentShader = `uniform sampler2D ${Array.from({ length: 12 }, (_, i) => `uX${i}`).join(', ')};\n` + shader.fragmentShader;
