@@ -811,6 +811,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/volumetricClouds.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the clouds' shadows by one undithered map on every lit material
     'src/engine/cloudShadeMap.selftest.mjs',
+    // 2026-10-05 (the skies-and-atmosphere lane): the terrain's program counted as the GPU binds it — the expanded
+    // shader's active samplers in both stages, three's DFG LUT included: sixteen units at most
+    'src/engine/textureUnits.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the ground's sky under and beside the near hulls
     'src/engine/vehicleGroundOcclusion.selftest.mjs',
     // 2026-10-03 (the skies-and-atmosphere lane): the cumulus fields and the flat condensation base
