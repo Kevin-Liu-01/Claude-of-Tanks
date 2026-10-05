@@ -150,7 +150,7 @@ const moduleTrain: RegionalBuilder = (ctx) => {
     const uz0 = -D / 2 + 0.4, uz1 = uz0 + Math.min(7, D * 0.45);
     module(sink, bx0 + 0.3, uz0, bx1 - 0.3, uz1, floor + h + 0.22, 2.7, paint, band, mobile, false);
     const top = floor + h + 0.22 + 2.7 + 0.22;
-    if (look() < 0.7) radome(sink, (bx0 + bx1) / 2, top + 0.4, (uz0 + uz1) / 2, clamp(mw * 0.62, 2.6, 4.6), mobile ? 12 : 18);
+    if (look() < 0.7) radome(sink, (bx0 + bx1) / 2, top + 0.4, (uz0 + uz1) / 2, clamp(mw * 0.62, 2.6, 4.6), 16);
     else for (const s of [-1, 1]) sink.member('structureMetal', [(bx0 + bx1) / 2 + s * 1.2, top, (uz0 + uz1) / 2], [(bx0 + bx1) / 2 + s * 1.2, top + 5.5, (uz0 + uz1) / 2], 0.08, 0.08, [0, 0, 1], { colour: STEEL_DARK, decor: true, exposed: true });
     // the doors at the rows' ends with their stairs, windows down the long faces
     const sa = boxFace(ax0, -D / 2, ax1, D / 2 - 1.6, 's'), sb = boxFace(bx0, -D / 2, bx1, D / 2 - 2.4, 's');
@@ -186,7 +186,8 @@ const tropo: RegionalBuilder = (ctx) => {
   for (const s of [-1, 1]) {
     const bx = cx + s * (bw / 2 + 0.3);
     // the reflector: vertical slats on a parabolic-cylinder curve, concave to +z
-    const n = mobile ? 7 : 11;
+    // (the slats are solid: their count is the same on every tier, so the collision is)
+    const n = 9;
     for (let k = 0; k < n; k++) {
       const t = (k + 0.5) / n - 0.5, x = bx + t * bw, sag = 4 * 0.9 * t * t;
       const ang = Math.atan(8 * 0.9 * t / bw);
@@ -250,7 +251,7 @@ const radarTower: RegionalBuilder = (ctx) => {
       const r = T + 0.45;
       sink.member('structureMetal', [a[0] * r, H + 1.0, a[1] * r], [b[0] * r, H + 1.0, b[1] * r], 0.05, 0.05, [0, 1, 0], { colour: STEEL_DARK, decor: true, exposed: true });
     }
-    radome(sink, 0, H + 0.6, 0, clamp(T + 0.4, 1.4, 2.4), mobile ? 10 : 16);
+    radome(sink, 0, H + 0.6, 0, clamp(T + 0.4, 1.4, 2.4), 14);
     // the equipment hut at the foot between two legs
     sink.span('plaster2', -1.1, 0, -B + 0.1, 1.1, 2.4, -B + 1.7);
     sink.span('roof', -1.2, 2.4, -B, 1.2, 2.55, -B + 1.8);
@@ -333,7 +334,7 @@ const jamesway: RegionalBuilder = (ctx) => {
   sink.span('wood', x0, -0.3, z0, x1, fl, zH);
   // the arch from the vestibule to the far end, the end wall at the far end
   // the canvas over the ribs: olive drab (in the vertex-coloured timber bucket: the sheet roof takes no colour)
-  sink.cylinder('structureWood', [x0, fl, zc], 'x', x1 - x0 - vest, r, mobile ? 8 : 12, { colour: OLIVE }, r, false, -Math.PI / 2, Math.PI);
+  sink.cylinder('structureWood', [x0, fl, zc], 'x', x1 - x0 - vest, r, 10, { colour: OLIVE }, r, false, -Math.PI / 2, Math.PI);
   const endW: Face = { origin: [x0, 0, zc], u: [0, 0, 1], out: [-1, 0, 0], width: 2 * r };
   const pts: Array<[number, number]> = [];
   for (let k = 0; k <= 10; k++) { const a = Math.PI * k / 10; pts.push([-Math.cos(a) * r, fl + Math.sin(a) * r]); }
