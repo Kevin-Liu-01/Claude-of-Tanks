@@ -203,4 +203,45 @@ cloudDome.visible = true;
 scene.userData.volumetricClouds = { dome: cloudDome };
 handle.mesh.onBeforeRender(null, { userData: {} }, camera);
 assert.ok(air.uPanoCloudOn.value === 0 && air.tClouds.value === null, 'no live sky: nothing read, no history held');
-console.log(`horizonPanoramaClouds.selftest: the far earth composites the clouds at its horizon as the cloud dome does: ${runs} composites (filter, knee, flash, inside, two skies), worst |Δ| ${worst}; read at this frame's view-projection after the history resolves; eased to the proxy at the frame's edges PASS`);
+
+// ------------------------------------------------------------------------------------ the aerial pass's cloud shade
+// (2026-10-05: Titan Gorge's far earth took patches up to a third darker under its dense overcast, whose clouds cast no
+// shadows of their own) post.ts multiplies every geometry pixel by its world-anchored cloud shade after the haze; the far
+// earth divides its screen horizon by the same factor first. post.ts's noise and shade statements against the shell's
+// AERIAL_CLOUD_SHADE_GLSL, run alike on positions across the noise lattice and four shade depths.
+let shadeRuns = 0, shaded = 0;
+{
+  const hazeAt = post.indexOf('texel.rgb = texel.rgb * trans + hazeCol * ( 1.0 - trans );');
+  const blockAt = post.indexOf('        if ( uCloudShade > 0.003 ) {', hazeAt);
+  assert.ok(hazeAt > 0 && blockAt > hazeAt && blockAt - hazeAt < 4000, 'post.ts shades geometry by its cloud shade after the haze');
+  const postBlock = parseGlsl(post.slice(blockAt, closingBrace(post, post.indexOf('{', blockAt)) + 1));
+  const postHash = parseGlsl(functionBody(post, '    float vhash( vec2 p ) {', 'post.ts'));
+  const postNoise = parseGlsl(functionBody(post, '    float vnoise( vec2 p ) {', 'post.ts'));
+  const shellHash = parseGlsl(functionBody(frag, 'float vhash( vec2 p ) {', 'the shell'));
+  const shellNoise = parseGlsl(functionBody(frag, 'float vnoise( vec2 p ) {', 'the shell'));
+  const shellShade = parseGlsl(functionBody(frag, 'float panoCloudShade( vec2 cp ) {', 'the shell'));
+  const taken = { post: new Set(), shell: new Set() };
+  const noiseOf = (hash, noise, set) => {
+    const vhash = (p) => runGlslFunction(hash, { p }, {}, set);
+    return { vnoise: (p) => runGlslFunction(noise, { p }, { vhash }, set) };
+  };
+  for (const uCloudShade of [0, 0.002, 0.22, 0.3]) {
+    for (let x = -2700; x <= 2700; x += 337) for (let z = -2650; z <= 2650; z += 419) {
+      const texel = runGlsl(postBlock, { uCloudShade, uCamPos: [x, 300, z], ray: [0, 0, 0], rayT: 0, texel: [1, 1, 1, 1] }, noiseOf(postHash, postNoise, taken.post), taken.post).texel;
+      const shell = runGlslFunction(shellShade, { cp: [x, z], uCloudShade }, noiseOf(shellHash, shellNoise, taken.shell), taken.shell);
+      assert.ok(texel[0] === texel[1] && texel[1] === texel[2], 'post.ts shades the three channels alike');
+      assert.equal(shell, texel[0], `shade ${uCloudShade} at (${x}, ${z}): the shell's shade is the aerial pass's (${shell} vs ${texel[0]})`);
+      if (shell < 0.99) shaded++;
+      shadeRuns++;
+    }
+  }
+  assert.ok(taken.post.has('0:true') && taken.post.has('0:false') && taken.shell.has('0:true') && taken.shell.has('0:false'), 'the shade ran on and off');
+  assert.ok(shaded > shadeRuns / 10, `the noise shaded some of the positions (${shaded} of ${shadeRuns})`);
+  assert.ok(post.includes('aerial.uniforms.uCloudShade.value = scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT;') && post.includes('const CLOUD_SHADE_DEFAULT = 0.22;')
+    && readFileSync(new URL('./horizonPanorama.ts', import.meta.url), 'utf8').includes("air.uCloudShade.value = typeof shade === 'number' && Number.isFinite(shade) ? shade : 0.22;"),
+    'the shell reads the shade the aerial pass reads (the published depth, else its 0.22)');
+  assert.ok(frag.includes('screen /= max(panoCloudShade(vPanoWorld.xz), 0.05);')
+    && frag.indexOf('screen /= max(panoCloudShade(vPanoWorld.xz), 0.05);') < frag.indexOf('inScatter = max((screen - aerialT * (1.0 - Tp)) / max(Tp, vec3(0.05)), vec3(0.0));'),
+    'the far earth takes the shade out of its screen horizon, at its own place, before the aerial pass\'s compensation');
+}
+console.log(`horizonPanoramaClouds.selftest: the far earth composites the clouds at its horizon as the cloud dome does: ${runs} composites (filter, knee, flash, inside, two skies), worst |Δ| ${worst}; read at this frame's view-projection after the history resolves; eased to the proxy at the frame's edges; the aerial pass's cloud shade taken out (${shadeRuns} positions) PASS`);

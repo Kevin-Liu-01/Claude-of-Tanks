@@ -168,6 +168,7 @@ const BUILTINS = {
   normalize: (a) => { const l = length(a); return zip([a], (x) => x / l); },
   abs: (a) => zip([a], Math.abs), sqrt: (a) => zip([a], Math.sqrt), exp: (a) => zip([a], Math.exp),
   pow: (a, b) => zip([a, b], Math.pow), floor: (a) => zip([a], Math.floor), fract: (a) => zip([a], (x) => x - Math.floor(x)),
+  sin: (a) => zip([a], Math.sin), cos: (a) => zip([a], Math.cos),
   float: (a) => scalar(a, 'float()'),
   vec2: (...a) => construct(2, a), vec3: (...a) => construct(3, a), vec4: (...a) => construct(4, a),
 };

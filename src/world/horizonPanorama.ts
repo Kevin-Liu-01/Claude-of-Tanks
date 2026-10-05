@@ -451,6 +451,8 @@ interface ShellAir {
   uInside: THREE.IUniform<number>;
   uPanoCloudOn: THREE.IUniform<number>;
   uPanoViewProj: THREE.IUniform<THREE.Matrix4>;
+  /** the aerial pass's cloud shade, as post.ts sets it each frame (AERIAL_CLOUD_SHADE_GLSL) */
+  uCloudShade: THREE.IUniform<number>;
 }
 
 /** The dome's deck greying (sky.ts ATMOSPHERE_DOME_FRAGMENT: the deck's grey at the horizon, a closed deck's at every
@@ -532,6 +534,36 @@ vec3 panoCloudOver( vec3 sky, vec2 uv, vec3 dir ) {
 }
 `;
 
+/** The aerial pass's cloud shade (post.ts: "large-scale cloud shadows / light patchiness", world-anchored noise that
+ * multiplies every geometry pixel after the haze while the clouds cast no shadows of their own), which falls on the far
+ * earth too: Titan Gorge's dense overcast (0.30) laid patches up to a third darker across its far earth at the horizon on
+ * the composite's pair, where the land has long gone into the haze. post.ts keeps the noise and the shade inline in its
+ * aerial pass, so this is a copy of its statements: horizonPanoramaClouds.selftest.mjs runs post.ts's and these through
+ * the GLSL-subset evaluator and fails on any difference. The far earth divides its screen horizon by it before the
+ * aerial pass's compensation, so the pass's shade lands it back on the horizon. */
+const AERIAL_CLOUD_SHADE_GLSL = /* glsl */`
+uniform float uCloudShade;
+float vhash( vec2 p ) {
+  return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 );
+}
+float vnoise( vec2 p ) {
+  vec2 i = floor( p );
+  vec2 f = fract( p );
+  vec2 u = f * f * f * ( f * ( f * 6.0 - 15.0 ) + 10.0 );
+  return mix( mix( vhash( i ), vhash( i + vec2( 1.0, 0.0 ) ), u.x ),
+              mix( vhash( i + vec2( 0.0, 1.0 ) ), vhash( i + vec2( 1.0, 1.0 ) ), u.x ), u.y );
+}
+float panoCloudShade( vec2 cp ) {
+  vec3 shade = vec3( 1.0 );
+  if ( uCloudShade > 0.003 ) {
+    float cn = vnoise( cp * ( 1.0 / 340.0 ) ) * 0.62
+             + vnoise( cp * ( 1.0 / 131.0 ) + vec2( 4.7, 8.1 ) ) * 0.38;
+    shade *= 1.0 - uCloudShade * smoothstep( 0.52, 0.80, cn );
+  }
+  return shade.r;
+}
+`;
+
 /** The shell's material: the atlas by direction from the bake eye (an unlit backdrop; the post pass hazes it by depth),
  * transparent texels discarded (the sky and the clouds behind). The scene fog is off, as it was on the round-72 far
  * range: the strip carries its own air past the shell (the bake's distance grading).
@@ -574,6 +606,7 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
     uInside: { value: 0 },
     uPanoCloudOn: { value: 0 },
     uPanoViewProj: { value: new THREE.Matrix4() },
+    uCloudShade: { value: 0 },
     uPanoDatum: { value: 0 },
     uPanoSkyOn: { value: 0 },
   };
@@ -595,6 +628,7 @@ uniform mat4 uPanoViewProj;
 ${ATMOSPHERE_SKY_GLSL}
 ${DOME_DECK_GREY_GLSL}
 ${CLOUD_COMPOSITE_GLSL}
+${AERIAL_CLOUD_SHADE_GLSL}
 ${HAZE_LAW_GLSL}`)
       .replace('#include <map_fragment>', /* glsl */`
       #ifndef USE_MAP
@@ -673,6 +707,8 @@ ${HAZE_LAW_GLSL}`)
                   if (inFrame > 0.0) screen = mix(screen, panoCloudOver(domeSky, vec2(clamp(cuv.x, 0.0, 1.0), cuv.y), hdir), inFrame);
                 }
               }
+              // (the aerial pass shades this pixel by its cloud shade after its haze: the horizon taken back out of it)
+              screen /= max(panoCloudShade(vPanoWorld.xz), 0.05);
               float postLayer = hazeLayerMean(max(cameraPosition.y - uPanoDatum, 0.0) * uPanoHaze.y, max(vPanoWorld.y - uPanoDatum, 0.0) * uPanoHaze.y);
               vec3 Tp = hazeTransmittance(uPanoSigmaPost, length(vd), postLayer, uPanoHazeChroma);
               inScatter = max((screen - aerialT * (1.0 - Tp)) / max(Tp, vec3(0.05)), vec3(0.0));
@@ -1610,6 +1646,9 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       air.uPanoViewProj.value.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     }
     if (Number.isFinite(atmosphere.fogDensity)) air.uPanoSigmaPost.value = hazeSigma(atmosphere.fogDensity as number);
+    // the aerial pass's cloud shade, as post.ts sets it each frame (its CLOUD_SHADE_DEFAULT without a published one)
+    const shade = (scene.userData as { cloudShadeAmp?: number }).cloudShadeAmp;
+    air.uCloudShade.value = typeof shade === 'number' && Number.isFinite(shade) ? shade : 0.22;
     const ground = options.groundAt ? options.groundAt(camera.position.x, camera.position.z) : NaN;
     air.uPanoDatum.value = Number.isFinite(ground) ? ground : hazeDatumM;
   };
