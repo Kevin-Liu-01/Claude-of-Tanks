@@ -218,6 +218,11 @@ export default {
       { x0: -44, z0: -300, x1: -48, z1: -196, gap: 12, jitter: 4, skip: 0.2, species: 'birch' },
       { x0: 136, z0: -150, x1: 136, z1: -62, gap: 10, jitter: 3, skip: 0.18, species: 'birch' },
       { x0: 150, z0: 236, x1: 150, z1: 330, gap: 10, jitter: 3, skip: 0.18, species: 'birch' },
+      // map revival lane 2 (2026-10-05): the riverside trees of the Biały Dunajec (alder and willow on the real banks;
+      // aspen here, the set's nearest) along the south reach's east bank and the north reach's west bank, clear of the
+      // two crossings
+      { x0: 22, z0: -330, x1: 30, z1: -196, gap: 12, jitter: 3, skip: 0.2, species: 'aspen' },
+      { x0: -34, z0: 300, x1: -44, z1: 384, gap: 12, jitter: 3, skip: 0.2, species: 'aspen' },
     ],
     // sparser, FROSTED tufts: the old dark dense scatter read as uniform
     // speckle noise across the snowfield in wide shots (r5 -> r7 -> r8: 0.24

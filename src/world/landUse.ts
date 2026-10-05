@@ -20,7 +20,7 @@
 // grass margin with tracks and hedges, a polder's water ditches, a paddy's earth bunds or a karst field's dry stone
 // walls.
 
-export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst'
+export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'podhale' | 'paddy' | 'terrace' | 'karst'
   | 'brownfield' | 'coalfield';
 
 /** How a region's fields are bounded (the material's uLandE.z). */
@@ -141,6 +141,9 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   upland: [[0, 0.50], [13, 0.20], [3, 0.08], [1, 0.07], [4, 0.07], [5, 0.08], [2, 0.0]],
   // the strip fields of a Franconian / Saxon village (Gewannflur): many narrow strips, every crop of the rotation
   strip: [[0, 0.16], [1, 0.20], [2, 0.12], [3, 0.14], [4, 0.14], [7, 0.12], [5, 0.12]],
+  // the Podhale's strip fields in January (map revival lane 2, 2026-10-05): oats and potatoes ploughed in, the furrows
+  // showing through a thin snow; the stubble of the rye and the oats; the hay meadows; a strip of barley stubble
+  podhale: [[4, 0.34], [5, 0.30], [13, 0.22], [2, 0.14]],
   // the chars of the Jamuna: small paddies, flooded, green and ripe, jute and a little grazing
   paddy: [[9, 0.38], [8, 0.22], [14, 0.15], [10, 0.10], [4, 0.07], [0, 0.08], [7, 0.0]],
   // a Japanese caldera floor (Aso): rectangular paddies, green and flooded, vegetable plots, meadow
@@ -160,6 +163,7 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
 /** Each region's field boundary. */
 const BOUNDARIES: Readonly<Record<LandRegion, LandBoundary>> = Object.freeze({
   steppe: 'margin', bocage: 'margin', temperate: 'margin', upland: 'margin', strip: 'margin',
+  podhale: 'margin',
   polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin',
 });
 
@@ -215,6 +219,15 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   urban: {
     strength: 1, heading: 1.62, blockU: 200, blockV: 84, maxSplit: 4, marginM: 1.2, trackShare: 0.5, hedgeShare: 0.15,
     warpM: 18, region: 'strip', salt: 67,
+  },
+  // Frosthollow (winter: the Podhale under the Tatra, the Biały Dunajec valley in January 1945, map revival lane 2,
+  // 2026-10-05): the highlanders' long narrow strip fields laid across the valley from the village street (the road's
+  // north-south line turned a right angle) to the river and up the slopes, under the snow: the crop's colour only a
+  // trace over the snowpack (strength 0.3), the furrows and the stubble grey and straw through a thin cover, the hay
+  // meadows white; a track along some of the strips' long lines, a few balks grown up with scrub
+  winter: {
+    strength: 0.3, heading: 0.2, blockU: 240, blockV: 30, maxSplit: 2, marginM: 1.2, trackShare: 0.25, hedgeShare: 0.12,
+    warpM: 14, region: 'podhale', salt: 107,
   },
   // Delta (the Jamuna chars): small paddies between earth bunds, a few raised paths, palm lines on some bunds (~60°)
   delta: {
