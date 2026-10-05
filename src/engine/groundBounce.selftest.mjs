@@ -95,6 +95,7 @@ assert.deepEqual(groundBounceIrradiance({ x: 0, y: 1, z: 0 }, sunLow, 1, radianc
   assert.equal(shader.uniforms.uCotBounceRad, u.uCotBounceRad, 'the very same uniform object rides every program');
   assert.equal(shader.uniforms.uCotSkyChroma, u.uCotSkyChroma); assert.equal(shader.uniforms.uCotShadowDim, u.uCotShadowDim);
   assert.equal(shader.uniforms.uCotShadowFacing, u.uCotShadowFacing); assert.equal(u.uCotShadowFacing.value, 0, 'the legacy dim until a rig says otherwise');
+  assert.equal(shader.uniforms.uCotShadowDepth, u.uCotShadowDepth); assert.equal(u.uCotShadowDepth.value, 1, 'the full dims until a rig says otherwise');
   assert.equal(u.uCotSkyChroma.value, 1, 'the sky keeps its hue until a rig says otherwise');
 }
 
@@ -134,12 +135,29 @@ assert.match(lighting, /groundBounceUniforms\.uCotSkyDiffuse\.value = model\.env
 assert.ok(GROUND_BOUNCE_GLSL_TERM.startsWith('\n\tiblIrradiance = mix( vec3( dot( iblIrradiance, vec3( 0.2126, 0.7152, 0.0722 ) ) ), iblIrradiance, uCotSkyChroma ) * uCotSkyDiffuse;\n'),
   'the chroma and the diffuse gain shape the environment before the bounce adds the ground');
 assert.ok(GROUND_BOUNCE_GLSL_PARS.includes('uniform float uCotSkyDiffuse;') && GROUND_BOUNCE_GLSL_PARS.includes('uniform float uCotSkyChroma;')
-  && GROUND_BOUNCE_GLSL_PARS.includes('uniform vec3 uCotShadowDim;') && GROUND_BOUNCE_GLSL_PARS.includes('uniform float uCotShadowFacing;'));
+  && GROUND_BOUNCE_GLSL_PARS.includes('uniform vec3 uCotShadowDim;') && GROUND_BOUNCE_GLSL_PARS.includes('uniform float uCotShadowFacing;')
+  && GROUND_BOUNCE_GLSL_PARS.includes('uniform float uCotShadowDepth;'));
 // 2026-10-03 (the shade-fill lane): the dims keep to the faces turned toward the sun on the grounded rig — a face turned
 // from the sun keeps its whole sky (the occluder that shades a face hides its circumsolar sky; a face turned away sees
 // none of it); the legacy rig dims every shadowed face as before
-assert.match(lighting, /float cotAmbVis = cotSunVis;\s*#ifdef OPAQUE\s*if \( uCotShadowFacing > 0\.0 \) \{\s*vec3 cotNf = normalize\( \( vec4\( geometryNormal, 0\.0 \) \* viewMatrix \)\.xyz \);\s*cotAmbVis = 1\.0 - \( 1\.0 - cotSunVis \) \* mix\( 1\.0, smoothstep\( -0\.05, 0\.25, dot\( cotNf, uCotBounceSun \) \), uCotShadowFacing \);\s*\}\s*#endif/,
+assert.match(lighting, /float cotAmbVis = cotSunVis;\s*#ifdef OPAQUE\s*if \( uCotShadowFacing > 0\.0 \) \{\s*vec3 cotNf = normalize\( \( vec4\( geometryNormal, 0\.0 \) \* viewMatrix \)\.xyz \);\s*cotAmbVis = 1\.0 - \( 1\.0 - cotSunVis \) \* mix\( 1\.0, smoothstep\( -0\.05, 0\.25, dot\( cotNf, uCotBounceSun \) \), uCotShadowFacing \);\s*\}[\s\S]{0,400}?#endif/,
   'the facing rule, on solid faces (the cards in a crown or a sward hide each other\'s sky: they keep the dim)');
+// 2026-10-04 (the skies lane: the light under a closed deck; the gauntlet's wave 82 on Titan Gorge: "crisp, hard-edged
+// shadows"): the dims stand for the circumsolar sky an occluder hides; a closed deck's light comes from every direction
+// alike, so they fade with the overcast — the ambient's and the specular's alike, after the facing rule
+assert.match(lighting, /uCotShadowFacing \);\s*\}\s*\/\/ 2026-10-04 \(groundBounce\.ts uCotShadowDepth\)[^\n]*\n[^\n]*\n\s*cotAmbVis = 1\.0 - \( 1\.0 - cotAmbVis \) \* uCotShadowDepth;\s*#endif\s*vec3 cotAmbDim = mix\( uCotShadowDim, vec3\( 1\.0 \), cotAmbVis \);/,
+  'the depth scales a solid face\'s shadowed share before both dims read it (the cards keep theirs: inside a crown they hide each other\'s sky)');
+assert.match(lighting, /groundBounceUniforms\.uCotShadowDepth\.value = 1 - Math\.min\(1, Math\.max\(0, model\.overcast\)\) \* lightTune\('SHADOW_DIM_OVERCAST', SHADOW_DIM_OVERCAST\);/,
+  'the grounded rig: the dims fade with the overcast (QA: SHADOW_DIM_OVERCAST)');
+assert.match(lighting, /groundBounceUniforms\.uCotShadowDepth\.value = 1;\s*groundBounceUniforms\.uCotShadowFacing\.value = 0;/, 'the legacy rig keeps them whole');
+assert.match(lighting, /const SHADOW_DIM_OVERCAST = 1;/);
+{
+  // modelled: a sun-facing face in a cast shadow (visibility 0) under a closed deck keeps its whole ambient and specular
+  const dims = (vis, depth, dimL = 0.874, spec = 0.55) => { const a = 1 - (1 - vis) * depth; return [dimL + (1 - dimL) * a, spec + (1 - spec) * a]; };
+  assert.deepEqual(dims(0, 0), [1, 1], 'a closed deck: no dim in the cast shadow');
+  assert.deepEqual(dims(0, 1), [0.874, 0.55], 'an open sky: the dims as before');
+  assert.ok(Math.abs(dims(0, 1 - 0.787)[0] - (1 - 0.126 * 0.213)) < 1e-9, 'Frosthollow\'s 0.79 deck keeps a fifth of the dim');
+}
 assert.match(lighting, /vec3 cotAmbDim = mix\( uCotShadowDim, vec3\( 1\.0 \), cotAmbVis \);/, 'the shadow\'s ambient dim rides the shared uniform');
 assert.match(lighting, /radiance \*= mix\( \$\{SHADOW_AMBIENT_SPEC_DIM\.toFixed\(3\)\}, 1\.0, cotAmbVis \);/, 'the specular dim follows the same rule');
 assert.ok(GROUND_BOUNCE_GLSL_TERM.includes('clamp( cotSunVis, 0.0, 1.0 )'), 'the bounce receiver keeps the cascade visibility (its ground is shaded too)');
