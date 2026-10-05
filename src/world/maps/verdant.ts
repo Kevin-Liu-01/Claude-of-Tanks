@@ -131,6 +131,15 @@ export default {
       [-56, 8, -56, 64, 2], [-56, 8, -20, 8, 3], [74, 30, 74, 96, 4],
       [-8, 110, 52, 110, 2], [38, -34, 74, -34, 1], [-44, 108, -10, 108, 0],
     ],
+    // The landmarks lane (2026-10-05; src/world/landmarks/): the set pieces, each on ground the settlement left empty (no
+    // building, wall or road of the town plan moves). The village church: a whitewashed brick church of the Kursk
+    // governorate's villages (1800-1900), its bell tower to the west with an open bell stage and a gilt needle, the
+    // refectory, the cube with its porticos, drum and green dome, the apse to the east — in the village's empty
+    // north-western quarter between the schoolhouse and the north wall. (Not Prokhorovka's Sts Peter and Paul: that
+    // church is the 1995 memorial to the battle.)
+    landmarks: [
+      { kind: 'church', x: -30, z: 96, yawDeg: -90, name: 'the village church' },
+    ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     // r2: more midfield material breakup (craters/haystacks) — the open
     // field between orchards and village read as a manicured golf course
