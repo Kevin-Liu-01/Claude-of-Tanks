@@ -94,7 +94,10 @@ export default {
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): banding 0.26 — the ore benches inside the square
   // are the most strongly bedded cliffs in the game; the ring behind them ran on the style default 0.16
-  horizon: { baseHex: 0x8d6a50, amp: 1.5, style: 'mesa', treeline: 0.1, banding: 0.26, forestHex: 0x5c6141, rockHex: 0xa37a58, haze: 0.86, grain: 0.55 },
+  // (the map-revival lane, 2026-10-05) the West Coast Range beyond Queenstown's bare hills: pink-grey conglomerate and
+  // quartzite faces (base and rock), less strongly bedded than Arizona's benches (banding 0.26 -> 0.14), the
+  // rainforest dark and wet on the far slopes (treeline 0.1 -> 0.4, forest 0x5c6141 -> 0x33442e)
+  horizon: { baseHex: 0x7a6a68, amp: 1.5, style: 'mesa', treeline: 0.4, banding: 0.14, forestHex: 0x33442e, rockHex: 0xa0908c, haze: 0.86, grain: 0.55 },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the haze a step cooler than the 0xffe0b6 sun
   // (0xaa9b89 -> 0xa8a49c), broken altocumulus (0.68 / 0.35 -> 0.80 / 0.50) on an explicit 880 m deck that keeps its
   // texture at 2-12°, and patchy light across the benches (cloudShadowAmp 0.30)
