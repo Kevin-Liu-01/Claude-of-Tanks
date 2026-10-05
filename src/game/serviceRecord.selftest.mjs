@@ -26,9 +26,9 @@ function makeBus() {
 }
 
 const teams = new Map([['me', 'player'], ['ally', 'player'], ['e1', 'enemy'], ['e2', 'enemy'], ['e3', 'enemy'], ['e4', 'enemy'], ['e5', 'enemy'], ['e6', 'enemy']]);
-const world = { clock: 0, hp: 1, aerial: null, respawns: false, mode: 'standard' };
+const world = { clock: 0, hp: 1, aerial: null, respawns: false, mode: 'standard', objective: null, spectator: false };
 const ctx = {
-  playerId: () => 'me',
+  playerId: () => (world.spectator ? null : 'me'),
   playerTeam: () => 'player',
   teamOf: (id) => teams.get(id) ?? null,
   gameMode: () => world.mode,
@@ -38,6 +38,7 @@ const ctx = {
   playerNation: () => 'Germany',
   playerAerialKind: () => world.aerial,
   respawns: () => world.respawns,
+  playerObjectiveTeam: () => world.objective,
 };
 const bus = makeBus();
 installBattleRecords(bus);
@@ -167,15 +168,96 @@ world.clock = 2; kill('e3');
 bus.emit('battle:ended', { result: 'draw', durationS: 30, mapId: 'desert', gameMode: 'standard', roster: [] });
 assert.equal(getServiceRecord().history[0].kills, 1, 'the abandoned battle\'s kills stayed behind');
 
-// ---- Mode medals come from the mode events, judged against our objective team.
+// ---- Mode medals come from the mode events: a capture is ours when we made it, a goal when it counts for our side.
 bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
 bus.emitted.length = 0;
-bus.emit('mode:flag_captured', { team: 'bravo', by: 'me' });
+bus.emit('mode:flag_captured', { team: 'alpha', by: 'ally' });
+bus.emit('mode:goal_scored', { team: 'bravo', by: 'me' });
+assert.deepEqual(medalsLive(), [], 'an ally\'s capture and our own goal earn nothing');
 bus.emit('mode:goal_scored', { team: 'alpha', by: 'me' });
-assert.deepEqual(medalsLive(), ['striker'], 'a capture credited to the other team is not ours');
+bus.emit('mode:flag_captured', { team: 'alpha', by: 'me' });
+assert.deepEqual(medalsLive(), ['striker', 'flag_runner']);
 for (let i = 0; i < 5; i++) bus.emit('mode:wave_cleared', { wave: i + 1 });
 assert.ok(medalsLive().includes('wave_breaker'));
 bus.emit('battle:ended', { result: 'victory', durationS: 30, mapId: 'arctic', gameMode: 'turbo_ball', roster: [] });
+
+// ---- A network bravo seat: its own team reads 'player'; the mode events carry the real side.
+world.objective = 'bravo';
+bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+bus.emitted.length = 0;
+bus.emit('mode:goal_scored', { team: 'alpha', by: 'me' });
+assert.deepEqual(medalsLive(), [], 'a bravo seat\'s own goal (credited to alpha) earns nothing');
+bus.emit('mode:goal_scored', { team: 'bravo', by: 'me' });
+bus.emit('mode:flag_captured', { team: 'bravo', by: 'me' });
+assert.deepEqual(medalsLive(), ['striker', 'flag_runner'], 'its real goal and capture count');
+bus.emit('battle:ended', { result: 'defeat', durationS: 30, mapId: 'desert', gameMode: 'capture_the_flag', roster: [] });
+world.objective = null;
+
+// ---- A drone strike is not a fired round: no Zero-Shot or Few-Shot from the air.
+world.aerial = 'drone';
+bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+bus.emitted.length = 0;
+world.clock = 10; kill('e1'); world.clock = 40; kill('e2'); world.clock = 70; kill('e3');
+assert.ok(medalsLive().includes('drone_ace'));
+assert.ok(!medalsLive().includes('few_shot'), 'three drone kills on no rounds are not few-shot');
+bus.emit('battle:ended', { result: 'victory', durationS: 200, mapId: 'desert', gameMode: 'drone', roster: [] });
+assert.ok(!getLastBattleAwards().medals.includes('zero_shot'), 'a drone win is not zero-shot');
+world.aerial = null;
+
+// ---- Zero-Shot needs us alive at the end, not just the bots' win.
+bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+world.clock = 5; bus.emit('tank:destroyed', { id: 'me', killerId: 'e1', cause: 'shot' });
+bus.emit('battle:ended', { result: 'victory', durationS: 200, mapId: 'desert', gameMode: 'standard', roster: [{ id: 'me', team: 'player', alive: false, isPlayer: true }] });
+assert.ok(!getLastBattleAwards().medals.includes('zero_shot'));
+
+// ---- A spectator records nothing.
+{
+  const battles = getServiceRecord().stats.battles;
+  world.spectator = true;
+  bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+  bus.emit('battle:ended', { result: 'draw', durationS: 300, mapId: 'desert', gameMode: 'standard', roster: [{ id: 'p2', team: 'player', alive: true }] });
+  world.spectator = false;
+  bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+  bus.emit('battle:ended', { result: 'draw', durationS: 300, mapId: 'desert', gameMode: 'standard', roster: [{ id: 'p2', team: 'player', alive: true }] });
+  assert.equal(getServiceRecord().stats.battles, battles, 'no row of ours in the roster: we only watched');
+}
+
+// ---- A quit drops what the battle tracked; a debug start (no garage battle start) begins afresh.
+bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+bus.emit('phase:change', { phase: 'battle' });
+world.clock = 5; kill('e1'); world.clock = 8; kill('e2');
+bus.emit('phase:change', { phase: 'garage' });
+bus.emit('phase:change', { phase: 'battle' });
+world.clock = 2; kill('e3');
+bus.emit('battle:ended', { result: 'draw', durationS: 40, mapId: 'desert', gameMode: 'standard', roster: [] });
+assert.equal(getServiceRecord().history[0].kills, 1, 'the quit battle\'s kills stayed behind');
+assert.equal(getServiceRecord().history[0].bestChain, 1, 'and its last kill time did not chain into the new clock');
+
+// ---- First Blood is the first hostile kill: our team kill is not it.
+bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'desert' });
+bus.emitted.length = 0;
+world.clock = 3; bus.emit('tank:destroyed', { id: 'ally', killerId: 'me', cause: 'shot' });
+assert.ok(!medalsLive().includes('first_blood'));
+world.clock = 9; kill('e1');
+assert.ok(medalsLive().includes('first_blood'), 'the first enemy destroyed is still first blood');
+
+// ---- A respawned enemy starts a new life: undamaged again for One Shot, no stale killing shot.
+world.respawns = true;
+fire(9001); hit(9001, 'e2', 500);
+bus.emit('mode:respawn', { id: 'e2' });
+bus.emitted.length = 0;
+world.clock = 20; fire(9002); hit(9002, 'e2', 2400, { destroyed: true, flightDistM: 120 }); kill('e2');
+assert.ok(medalsLive().includes('one_shot'), 'the new life fell to one round');
+bus.emit('mode:respawn', { id: 'e2' });
+world.clock = 40; kill('e2', { cause: 'ram' });
+assert.equal(getServiceRecord().history.length > 0, true);
+// ---- Untouched means full health at the end too (a ram leaves its mark there, not in the shell ledger).
+world.hp = 0.6;
+bus.emit('battle:ended', { result: 'victory', durationS: 60, mapId: 'desert', gameMode: 'capture_the_flag', roster: [] });
+assert.ok(!getLastBattleAwards().medals.includes('untouchable'), 'rammed to 60 % without a shell is not untouchable');
+assert.equal(getServiceRecord().history[0].trace.at(-1).distM, 0, 'the ram kill of the respawned enemy carries no stale shot distance');
+world.hp = 1;
+world.respawns = false;
 
 // ---- Persistence: counts, history cap, corrupt data.
 const record = getServiceRecord();
@@ -196,7 +278,7 @@ for (let i = 0; i < 30; i++) {
 assert.equal(getServiceRecord().history.length, 25, 'the history keeps the latest 25 battles');
 
 // A fresh module instance reads corrupt or hostile storage without throwing.
-store.set('cot.service.v1', JSON.stringify({ version: 1, stats: { battles: -4, kills: 'x' }, medals: { nope: { count: 3 }, first_blood: { count: 2.6 } }, history: [{ result: 'win', medals: ['first_blood', 'bogus'], trace: 'x' }], unseen: [1, 'medal:first_blood'] }));
+store.set('cot.service.v1', JSON.stringify({ version: 1, stats: { battles: -4, kills: 'x' }, medals: { nope: { count: 3 }, first_blood: { count: 2.6 } }, history: [{ result: 'win', medals: ['first_blood', 'bogus'], trace: 'x' }], unseen: [1, 'medal:first_blood', 'medal:nope', 'achievement:veteran:4', 'achievement:veteran:2', 'medal:first_blood:1', 'random'] }));
 const fresh = await import('./serviceRecord.ts?corrupt');
 const view = fresh.getServiceRecord();
 assert.equal(view.stats.battles, 0);
@@ -204,6 +286,6 @@ assert.deepEqual(Object.keys(view.medals), ['first_blood']);
 assert.equal(view.medals.first_blood.count, 3);
 assert.equal(view.history[0].result, 'defeat');
 assert.deepEqual(view.history[0].medals, ['first_blood']);
-assert.deepEqual(view.unseen, ['medal:first_blood']);
+assert.deepEqual(view.unseen, ['medal:first_blood', 'achievement:veteran:2'], 'only real award keys survive');
 
 console.log('serviceRecord selftest: ok');

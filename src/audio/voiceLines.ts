@@ -7,7 +7,8 @@
  * cut anything below; 3 = actionable damage and decisive events, may cut
  * situational calls; 2 = important reports (what our round did, what our
  * equipment just did), may cut flavour; 1 = situational; 0 = flavour that
- * never waits in the queue.
+ * never waits in the queue. A line that `yields` is cut by any call of
+ * priority 1 or more.
  */
 
 export interface VoiceLineMeta {
@@ -16,6 +17,7 @@ export interface VoiceLineMeta {
   readonly group: string;
   readonly groupCdS?: number;
   readonly staleS: number;
+  readonly yields?: boolean;
 }
 
 const V = (pri: VoiceLineMeta['pri'], cdS: number, group: string, staleS: number, groupCdS?: number): VoiceLineMeta =>
@@ -142,10 +144,11 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   goal_scored: V(2, 6, 'mode', 1.5),
   respawn: V(1, 10, 'flow', 1.5),
   pickup_collected: V(0, 10, 'mode', 0.8),
-  // The reasoning exchange (a Chain of Thought or five hits in a row, once a battle): the commander thinks
-  // aloud on a quiet net; the gunner's answer queues behind it and outranks the kill calls that follow.
-  think_step_by_step: V(2, 600, 'reasoning', 1.5),
-  step_by_step_reply: V(3, 600, 'reasoning_reply', 6.0),
+  // The reasoning exchange (a Chain of Thought or five hits in a row, once a battle): flavour that only starts on a
+  // quiet net and gives way to any real call; the engine speaks the gunner's answer only after the commander's line
+  // finished uninterrupted (audioEngine updateThink).
+  think_step_by_step: Object.freeze({ ...V(0, 600, 'reasoning', 1.5), yields: true }),
+  step_by_step_reply: Object.freeze({ ...V(0, 600, 'reasoning', 1.5), yields: true }),
 });
 
 /** A disciplined net: one transmission at a time with a breath between calls, two waiting at most. */

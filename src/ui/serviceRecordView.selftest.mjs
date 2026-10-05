@@ -9,7 +9,23 @@ globalThis.localStorage = {
 
 const { installBattleRecords } = await import('../game/profile.ts');
 const { installServiceRecord, getServiceRecord, markServiceRecordSeen, MEDALS, ACHIEVEMENTS } = await import('../game/serviceRecord.ts');
-const { RECORD_TABS, recordSummary, recordTabMarkup } = await import('./serviceRecordView.ts');
+const { RECORD_TABS, recordSummary, recordTabMarkup, recordTabForKey, recordFocusWrap } = await import('./serviceRecordView.ts');
+
+// Keyboard: arrows rove the tabs with wrap-around, Home/End jump to the ends, other keys belong to the browser.
+assert.equal(recordTabForKey('ArrowRight', 'overview'), 'medals');
+assert.equal(recordTabForKey('ArrowLeft', 'overview'), 'history', 'wraps backwards');
+assert.equal(recordTabForKey('ArrowRight', 'history'), 'overview', 'wraps forwards');
+assert.equal(recordTabForKey('End', 'medals'), 'history');
+assert.equal(recordTabForKey('Home', 'achievements'), 'overview');
+for (const key of ['Enter', ' ', 'Tab', 'ArrowDown', 'a']) assert.equal(recordTabForKey(key, 'medals'), null, `${JSON.stringify(key)} is left to the browser`);
+// Tab stays inside the dialog: it wraps at either end, enters at the right end from outside, and otherwise moves on.
+const order = ['close', 'tab', 'panel', 'row1', 'row2'];
+assert.equal(recordFocusWrap(order, 'row2', true, false), 'close', 'Tab from the last control returns to the first');
+assert.equal(recordFocusWrap(order, 'close', true, true), 'row2', 'Shift+Tab from the first goes to the last');
+assert.equal(recordFocusWrap(order, 'tab', true, false), null, 'inside, the browser moves focus');
+assert.equal(recordFocusWrap(order, null, false, false), 'close', 'focus outside enters at the first control');
+assert.equal(recordFocusWrap(order, null, false, true), 'row2');
+assert.equal(recordFocusWrap([], null, false, false), null);
 const { medalSVG, achievementSVG } = await import('./medalArt.ts');
 
 const handlers = new Map();

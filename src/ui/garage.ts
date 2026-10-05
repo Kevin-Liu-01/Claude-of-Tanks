@@ -67,7 +67,9 @@ import {
 import { readMarsSettings, readTeamArrangement, writeMarsSettings, writeTeamArrangement } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
 import { getServiceRecord, markServiceRecordSeen, unseenAwardCount } from '../game/serviceRecord.ts';
-import { RECORD_TABS, recordSummary, recordTabMarkup, type RecordTab, type RecordViewNames } from './serviceRecordView.ts';
+import {
+  RECORD_TABS, recordFocusWrap, recordSummary, recordTabForKey, recordTabMarkup, type RecordTab, type RecordViewNames,
+} from './serviceRecordView.ts';
 import type { PlayMode } from '../mp/session/playMode.ts';
 import { shellAmmunitionCapacity } from '../sim/ammunition.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
@@ -1278,13 +1280,36 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }, true);
   // Capture before the global rebindable input layer is created. Escape must
   // close this modal without also firing the settings-menu action behind it.
+  // Nothing behind the open dialog hears a key, so the dialog's own keys are
+  // handled here: Tab cycles inside it, the arrows and Home/End move between
+  // its tabs, and Enter/Space keep their default activation.
   window.addEventListener('keydown', (event) => {
     if (!isRecordOpen()) return;
-    event.preventDefault();
     event.stopImmediatePropagation();
-    if (event.code === 'Escape') closeServiceRecord();
-    else if (event.code === 'Tab') recordClose.focus();
+    if (event.code === 'Escape') {
+      event.preventDefault();
+      closeServiceRecord();
+    } else if (event.code === 'Tab') {
+      trapRecordFocus(event);
+    } else {
+      const tab = event.target instanceof HTMLElement ? event.target.closest<HTMLButtonElement>('[data-record-tab]') : null;
+      const next = tab && recordModal.contains(tab) ? recordTabForKey(event.key, tab.dataset.recordTab as RecordTab) : null;
+      if (next) {
+        event.preventDefault();
+        selectRecordTab(next, true);
+      }
+    }
   }, true);
+  const trapRecordFocus = (event: KeyboardEvent) => {
+    const focusable = [...recordModal.querySelectorAll<HTMLElement>('button, summary, [tabindex="0"]')]
+      .filter((element) => element.tabIndex >= 0 && element.offsetParent !== null && !element.hasAttribute('disabled'));
+    const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const target = recordFocusWrap(focusable, active, !!active && recordModal.contains(active), event.shiftKey);
+    if (target) {
+      event.preventDefault();
+      target.focus();
+    }
+  };
 
   // Show an edge affordance only while cards actually remain beyond it.
   // Keep unavailable buttons in layout (visibility:hidden) so the strip does
@@ -3228,20 +3253,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     renderServiceRecordTab();
     if (focus) recordTabs.find((button) => button.dataset.recordTab === tab)?.focus();
   };
-  for (const button of recordTabs) {
-    button.addEventListener('click', () => selectRecordTab(button.dataset.recordTab as RecordTab));
-    button.addEventListener('keydown', (event) => {
-      const index = RECORD_TABS.indexOf(button.dataset.recordTab as RecordTab);
-      const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
-      if (event.key === 'Home' || event.key === 'End') {
-        event.preventDefault();
-        selectRecordTab(RECORD_TABS[event.key === 'Home' ? 0 : RECORD_TABS.length - 1], true);
-      } else if (step) {
-        event.preventDefault();
-        selectRecordTab(RECORD_TABS[(index + step + RECORD_TABS.length) % RECORD_TABS.length], true);
-      }
-    });
-  }
+  // Keys reach the tabs through the dialog's capture handler above; a click selects directly.
+  for (const button of recordTabs) button.addEventListener('click', () => selectRecordTab(button.dataset.recordTab as RecordTab));
   const openStudio = () => {
     emit('ui:click', {});
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'F8' }));

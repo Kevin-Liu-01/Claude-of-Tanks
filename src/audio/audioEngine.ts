@@ -65,6 +65,8 @@ interface AudioMixerOptions {
   getMapId?(): string | null;
   /** The battle's game mode (each mode opens on its own sound). */
   getGameMode?(): string | null;
+  /** Our side in objective terms ('alpha' | 'bravo'): a network seat's own team reads 'player' whichever side it is. */
+  getObjectiveTeam?(): string | null;
   getTerrain?(): AudioTerrainProbe | null;
   initialPhase?: string;
   tier?: DeviceTier;
@@ -289,8 +291,10 @@ const UI_SET = [
 /** The crew radio's keyed elements and net static, decoded from boot like the interface. */
 const RADIO_SET = ['radio_interference', 'radio_key_in', 'radio_key_out', 'radio_static_loop'];
 
-/** The reasoning exchange waits this long for a quiet net, and rarely opens on our first shot. */
+/** The reasoning exchange waits this long for a quiet net, gives the answer as long to follow the commander's line
+ * (about 3 s of speech, the release and the net's gap), and rarely opens on our first shot. */
 const THINK_WAIT_S = 8;
+const THINK_REPLY_S = 7;
 const THINK_FIRST_SHOT_P = 0.03;
 const THINK_MEDALS = new Set(['chain_of_thought', 'step_by_step']);
 
@@ -333,6 +337,7 @@ export function createAudio({
   context: initialContext = null,
   getMapId,
   getGameMode,
+  getObjectiveTeam,
   getTerrain,
   initialPhase = 'garage',
   tier: forcedTier,
@@ -413,6 +418,7 @@ export function createAudio({
   let ammoLowCalled = false;
   let lastStanding = { mine: false, theirs: false, outnumbered: false };
   let lastKillAt = -99;
+  let thinkStage: 'idle' | 'wait' | 'reply' = 'idle';
   let thinkUntil = 0;
   let thoughtThisBattle = false;
   let firstShotHeard = false;
@@ -530,22 +536,29 @@ export function createAudio({
 
   /**
    * "Let me think step by step." A reasoning medal (Chain of Thought, or five hits in a row) and, rarely, our first
-   * shot of a battle ask for it; it waits up to THINK_WAIT_S for a quiet net so the kill calls go first, and the
-   * gunner's "Step one: aim. Step two: fire." queues straight behind it. Once a battle.
+   * shot of a battle ask for it, once a battle. It is flavour that gives way to any real call: the commander speaks
+   * only on a quiet net (waiting up to THINK_WAIT_S, so the kill call goes first), and the gunner's "Step one: aim.
+   * Step two: fire." follows only when the net is quiet again and the commander's line was the last thing said.
    */
   function requestThink(): void {
-    if (thoughtThisBattle || !ctx || phase !== 'battle' || battleOver) return;
+    if (thoughtThisBattle || thinkStage !== 'idle' || !ctx || phase !== 'battle' || battleOver) return;
+    thinkStage = 'wait';
     thinkUntil = ctx.currentTime + THINK_WAIT_S;
   }
 
   function updateThink(now: number): void {
-    if (!thinkUntil || !radio) return;
-    if (now > thinkUntil || battleOver || phase !== 'battle') { thinkUntil = 0; return; }
+    if (thinkStage === 'idle' || !radio) return;
+    if (now > thinkUntil || battleOver || phase !== 'battle') { thinkStage = 'idle'; return; }
     if (!radio.quiet) return;
-    thinkUntil = 0;
-    if (!say('think_step_by_step')) return;
-    thoughtThisBattle = true;
-    say('step_by_step_reply');
+    if (thinkStage === 'wait') {
+      if (!say('think_step_by_step')) { thinkStage = 'idle'; return; }
+      thoughtThisBattle = true;
+      thinkStage = 'reply';
+      thinkUntil = now + THINK_REPLY_S;
+      return;
+    }
+    thinkStage = 'idle';
+    if (radio.log.at(-1)?.id === 'think_step_by_step') say('step_by_step_reply');
   }
 
   function hullOptions(extra: PlayOptions = {}): PlayOptions {
@@ -1224,7 +1237,8 @@ export function createAudio({
 
   function onMode(type: string, payload: Record<string, unknown>): void {
     const mode = getGameMode?.() || 'standard';
-    const ours = objectiveTeam(playerTeam);
+    const perspective = getObjectiveTeam?.();
+    const ours = perspective === 'alpha' || perspective === 'bravo' ? perspective : objectiveTeam(playerTeam);
     const team = payload.team === 'alpha' || payload.team === 'bravo' ? payload.team : null;
     const byMe = payload.by != null && payload.by === playerId;
     switch (type) {
@@ -2063,6 +2077,7 @@ export function createAudio({
         lastSmokeBorn = -1;
         auxGunOn = null;
         auxLights = null;
+        thinkStage = 'idle';
         thinkUntil = 0;
         thoughtThisBattle = false;
         firstShotHeard = false;

@@ -25,6 +25,7 @@ interface AudioMixerModule {
     preparedBuffers?: unknown;
     getMapId?: () => string | null;
     getGameMode?: () => string | null;
+    getObjectiveTeam?: () => string | null;
     getTerrain?: () => AudioTerrainProbe | null;
     initialPhase?: string;
   }): AudioMixer;
@@ -35,6 +36,7 @@ interface LazyAudioOptions {
   createContext?(): AudioContext | null;
   getMapId?(): string | null;
   getGameMode?(): string | null;
+  getObjectiveTeam?(): string | null;
   getTerrain?(): AudioTerrainProbe | null;
   hasStickyActivation?(): boolean;
 }
@@ -71,6 +73,7 @@ function storedMasterVolume(): number {
 export function createLazyAudio({
   getMapId,
   getGameMode,
+  getObjectiveTeam,
   getTerrain,
   hasStickyActivation = () => (
     typeof navigator !== 'undefined' && navigator.userActivation?.hasBeenActive === true
@@ -159,7 +162,7 @@ export function createLazyAudio({
         // again at handoff.
         const preparedBuffers = context && module.prepareAudioBuffers
           ? await module.prepareAudioBuffers(context) : null;
-        return settleReal(module.createAudio({ context, preparedBuffers, getMapId, getGameMode, getTerrain, initialPhase: latestPhase }));
+        return settleReal(module.createAudio({ context, preparedBuffers, getMapId, getGameMode, getObjectiveTeam, getTerrain, initialPhase: latestPhase }));
       }).finally(() => {
         if (!real) realPromise = null;
       });

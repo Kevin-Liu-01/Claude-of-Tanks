@@ -337,25 +337,47 @@ moment('outnumbered', () => { for (const a of allies) a.combat.destroyed = true;
 
 // The reasoning exchange: a Chain of Thought (the Service Record's medal, announced inside the kill's own dispatch)
 // has the commander think step by step once the kill call is done, and the gunner answer with the drill; once a battle.
+const exchangeLines = ['target_destroyed', 'double_kill', 'think_step_by_step', 'step_by_step_reply'];
 await startBattle();
 {
   settle(6);
+  const ordinary = +ctx.currentTime.toFixed(3);
+  bus.emit('service:medal', { id: 'first_blood' });
+  settle(10);
+  assert.ok(!asked('think_step_by_step', ordinary), 'an ordinary medal does not start the exchange');
   const since = +ctx.currentTime.toFixed(3);
   foes[0].combat.destroyed = true;
   bus.emit('service:medal', { id: 'chain_of_thought' });
   bus.emit('tank:destroyed', { id: 'f1', killerId: 'me', pos: [0, 0, 200], cause: 'shot' });
   settle(12);
-  const exchange = ['target_destroyed', 'double_kill', 'think_step_by_step', 'step_by_step_reply'];
-  const heard = probe.voiceLog.filter((e) => e.t >= since && exchange.includes(e.id)).map((e) => e.id);
+  const heard = probe.voiceLog.filter((e) => e.t >= since && exchangeLines.includes(e.id)).map((e) => e.id);
   assert.deepEqual(heard.slice(1), ['think_step_by_step', 'step_by_step_reply'],
     `the kill call, then the exchange in order (heard ${heard}; asked ${JSON.stringify(probe.sayLog.filter((e) => e.t >= since))})`);
   covered.add('think_step_by_step');
   covered.add('step_by_step_reply');
   const again = +ctx.currentTime.toFixed(3);
   bus.emit('service:medal', { id: 'step_by_step' });
-  bus.emit('service:medal', { id: 'first_blood' });
   settle(10);
-  assert.ok(!asked('think_step_by_step', again), 'the exchange is once a battle, and only for the reasoning medals');
+  assert.ok(!asked('think_step_by_step', again), 'the exchange is once a battle');
+}
+// It never costs a real call: a hit that leaves us on low hit points cuts the commander off, is heard, and the
+// gunner's answer is dropped rather than spoken after it.
+await startBattle();
+{
+  // The lines also keep a ten-minute cooldown on the net, so back-to-back battles do not repeat the joke.
+  ctx.advance(601);
+  settle(6);
+  bus.emit('service:medal', { id: 'step_by_step' });
+  for (let i = 0; i < 8 && !spoken('think_step_by_step', +ctx.currentTime.toFixed(3) - 2); i++) frame(0.25);
+  const since = +ctx.currentTime.toFixed(3) - 2;
+  assert.ok(spoken('think_step_by_step', since), 'the commander starts thinking on the quiet net');
+  frame(0.25);
+  me.combat.hp = 180;
+  theirHit({ damage: 620, targetHpAfter: 180, targetMaxHp: 1000 });
+  settle(10);
+  assert.ok(spoken('low_hp', since), `the low hit points call is heard (${probe.voiceLog.filter((e) => e.t >= since).map((e) => e.id)})`);
+  assert.ok(!spoken('step_by_step_reply', since), 'no punchline after an interruption');
+  me.combat.hp = 1000;
 }
 
 // The AC-130: the gunner names the weapon, not a tank loader's round.

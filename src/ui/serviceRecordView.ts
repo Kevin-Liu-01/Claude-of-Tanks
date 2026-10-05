@@ -16,6 +16,27 @@ import { uiIconSVG } from './uiIcons.ts';
 export type RecordTab = 'overview' | 'medals' | 'achievements' | 'history';
 export const RECORD_TABS: readonly RecordTab[] = ['overview', 'medals', 'achievements', 'history'];
 
+/** The tab an arrow, Home or End key moves to from `current` (roving focus), or null for any other key. */
+export function recordTabForKey(key: string, current: RecordTab): RecordTab | null {
+  if (key === 'Home') return RECORD_TABS[0];
+  if (key === 'End') return RECORD_TABS[RECORD_TABS.length - 1];
+  const step = key === 'ArrowRight' ? 1 : key === 'ArrowLeft' ? -1 : 0;
+  if (!step) return null;
+  const index = Math.max(0, RECORD_TABS.indexOf(current));
+  return RECORD_TABS[(index + step + RECORD_TABS.length) % RECORD_TABS.length];
+}
+
+/** Where Tab must land to keep focus inside the dialog (the wrapped end), or null to let the browser move it. */
+export function recordFocusWrap<T>(focusable: readonly T[], active: T | null, inside: boolean, backwards: boolean): T | null {
+  if (!focusable.length) return null;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (!inside) return backwards ? last : first;
+  if (backwards && active === first) return last;
+  if (!backwards && active === last) return first;
+  return null;
+}
+
 export interface RecordViewNames {
   vehicle(id: string): string;
   map(id: string): string;

@@ -384,11 +384,15 @@ What the crew says for the tank's own systems and the modes (2026-10-04):
 | A reasoning medal (`service:medal` Chain of Thought or Let Me Think Step by Step), or 3 % of first shots | — | "Let me think step by step." then the gunner: "Step one: aim. Step two: fire." |
 
 The reasoning exchange (2026-10-05, the Claude of Tanks / chain-of-thought
-joke) is once a battle. A request waits up to 8 s for a quiet net (the radio's
-`quiet`: nothing queued, the last line and its gap over), so the kill call that
-earned the medal goes first; the commander's line then plays at priority 2 and
-the gunner's answer queues behind it at priority 3, so the next kill call
-cannot remove it. The 3 % first-shot chance draws from its own seeded stream.
+joke) is once a battle and never costs a real call. Both lines are priority-0
+flavour that `yields`: any call of priority 1 or more cuts them. A request
+waits up to 8 s for a quiet net (the radio's `quiet`: nothing queued, the last
+line and its gap over), so the kill call that earned the medal goes first; the
+gunner's answer is never queued — the engine speaks it only when the net is
+quiet again and the commander's line was the last thing said, so an
+interruption drops the punchline instead of leaving it to follow a damage
+call. Both lines also keep a ten-minute cooldown on the net, and the 3 %
+first-shot chance draws from its own seeded stream.
 
 A network battle reaches the same handlers: the presentation maps the
 authority's `tank_spotted` and `tank_autoflip` to solo's `tank:spotted` (the

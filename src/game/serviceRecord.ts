@@ -213,6 +213,8 @@ interface ServiceContext {
   playerNation(): string | null;
   /** 'gunship' or 'drone' when the player flies an aerial platform. */
   playerAerialKind(): string | null;
+  /** Our side in objective terms ('alpha' | 'bravo'); a network seat's own team reads 'player' whichever side it is. */
+  playerObjectiveTeam(): string | null;
   /** True when the battle's ruleset brings destroyed vehicles back. */
   respawns(): boolean;
 }
@@ -374,8 +376,14 @@ function sanitizeStore(value: RuntimeValue): ServiceStore {
     const battle = sanitizeBattle(entry);
     if (battle) store.history.push(battle);
   }
-  store.unseen = stringSet(source.unseen, UNSEEN_LIMIT);
+  store.unseen = stringSet(source.unseen, UNSEEN_LIMIT).filter(validUnseen);
   return store;
+}
+
+function validUnseen(key: string): boolean {
+  const [kind, id, tier] = key.split(':');
+  return kind === 'medal' ? MEDAL_IDS.has(id) && tier === undefined
+    : kind === 'achievement' && ACHIEVEMENT_IDS.has(id) && (tier === '1' || tier === '2' || tier === '3');
 }
 
 function saveStore(): void {
@@ -548,9 +556,14 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
   };
 
   bus.on('ui:battleStart', start);
+  let phase = '';
   bus.on('phase:change', (payload) => {
-    // Debug and API entry can skip the garage's battle start.
-    if (recordOf(payload)?.phase === 'battle' && !battle) start({});
+    const next = text(recordOf(payload)?.phase);
+    // Leaving a battle without its result (a quit) drops what it tracked; debug and API entry can skip the garage's
+    // battle start, so arriving in one starts tracking if nothing is.
+    if (phase === 'battle' && next !== 'battle') battle = null;
+    if (next === 'battle' && !battle) start({});
+    phase = next;
   });
 
   bus.on('shell:fired', (payload) => {
@@ -607,7 +620,9 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     const victim = text(event.id);
     const killer = text(event.killerId);
     if (player && victim === player) battle.alive = false;
-    const enemyKill = !!killer && killer !== victim;
+    const killerTeam = killer ? ctx.teamOf(killer) : null;
+    const victimTeam = ctx.teamOf(victim);
+    const enemyKill = !!killer && killer !== victim && (killerTeam == null || victimTeam == null || killerTeam !== victimTeam);
     if (enemyKill && !battle.firstKillSeen) {
       battle.firstKillSeen = true;
       if (player && killer === player) award('first_blood');
@@ -620,6 +635,7 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     battle.bestChain = Math.max(battle.bestChain, battle.chain);
     if (battle.chain >= CHAIN_LENGTH) award('chain_of_thought');
     const shot = battle.killShots.get(victim);
+    battle.killShots.delete(victim);
     const distM = shot?.distM ?? 0;
     battle.longestKillM = Math.max(battle.longestKillM, distM);
     if (distM >= LONG_SHOT_M) award('long_shot');
@@ -627,8 +643,9 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     if (event.cause === 'ammorack') award('detonator');
     if (event.cause === 'ram') award('battering_ram');
     if (battle.kills >= ACE_KILLS) award('ace_gunner');
-    if (battle.kills >= FEW_SHOT_KILLS && battle.shots <= FEW_SHOT_ROUNDS) award('few_shot');
     const aerial = ctx.playerAerialKind();
+    // A drone's strike is not a fired round (no shell:fired), so the round-counting medals stay out of its reach.
+    if (aerial !== 'drone' && battle.kills >= FEW_SHOT_KILLS && battle.shots <= FEW_SHOT_ROUNDS) award('few_shot');
     if (aerial === 'gunship' && battle.kills >= GUNSHIP_ACE_KILLS) award('gunship_ace');
     if (aerial === 'drone' && battle.kills >= DRONE_ACE_KILLS) award('drone_ace');
     if (battle.trace.length < TRACE_LIMIT) {
@@ -647,12 +664,15 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
   });
 
   const ours = () => {
+    const perspective = ctx.playerObjectiveTeam();
+    if (perspective === 'alpha' || perspective === 'bravo') return perspective;
     const team = ctx.playerTeam();
     return team === 'bravo' || team === 'enemy' ? 'bravo' : 'alpha';
   };
+  // The capturer's own side scores a capture, so capturing it ourselves is the whole test.
   bus.on('mode:flag_captured', (payload) => {
     const event = recordOf(payload);
-    if (event && me() && event.by === me() && event.team === ours()) award('flag_runner');
+    if (event && me() && event.by === me()) award('flag_runner');
   });
   bus.on('mode:goal_scored', (payload) => {
     const event = recordOf(payload);
@@ -663,8 +683,13 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     battle.waves++;
     if (battle.waves >= WAVE_BREAKER_WAVES) award('wave_breaker');
   });
+  // A vehicle back from the dead starts a new life: it is undamaged again and no earlier round is its killing shot.
   bus.on('mode:respawn', (payload) => {
-    if (battle && recordOf(payload)?.id === me()) battle.alive = true;
+    const id = text(recordOf(payload)?.id);
+    if (!battle || !id) return;
+    if (id === me()) battle.alive = true;
+    battle.damaged.delete(id);
+    battle.killShots.delete(id);
   });
 
   bus.on('battle:ended', (payload) => {
@@ -678,6 +703,8 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     const roster = (Array.isArray(event.roster) ? event.roster : []).map(recordOf)
       .filter((row): row is Record<string, RuntimeValue> => row != null);
     const ownRow = roster.find((row) => row.isPlayer === true || (player != null && row.id === player));
+    // A spectator saw the battle but fought nothing: no record, no medals.
+    if (!player || (roster.length > 0 && !ownRow)) { battle = null; return; }
     const alive = ownRow ? ownRow.alive !== false : tracker.alive;
     const durationS = finite(event.durationS) || Math.max(0, (Date.now() - tracker.startedAt) / 1000);
     const won = result === 'victory';
@@ -687,10 +714,11 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     const maxHp = ctx.playerMaxHp() || 1000;
     if (tracker.damage > topDamage && tracker.damage >= maxHp) award('high_caliber', false);
     if (tracker.aimedShots >= SHARPSHOOTER_SHOTS && tracker.aimedHits / tracker.aimedShots >= SHARPSHOOTER_RATIO) award('sharpshooter', false);
-    if (won && alive && tracker.damageTaken === 0 && tracker.kills >= 1) award('untouchable', false);
     const hp = ctx.playerHpFraction() ?? tracker.lastHpFraction;
+    // Untouched means no enemy round's damage and full health at the end (a ram or a fall leaves its mark there).
+    if (won && alive && tracker.damageTaken === 0 && hp >= 0.999 && tracker.kills >= 1) award('untouchable', false);
     if (won && alive && hp > 0 && hp <= CLOSE_CALL_HP) award('close_call', false);
-    if (won && tracker.shots === 0 && durationS >= ZERO_SHOT_MIN_S) award('zero_shot', false);
+    if (won && alive && tracker.shots === 0 && durationS >= ZERO_SHOT_MIN_S && ctx.playerAerialKind() !== 'drone') award('zero_shot', false);
     const myTeam = ownRow && typeof ownRow.team === 'string' ? ownRow.team : ctx.playerTeam();
     const allies = roster.filter((row) => row !== ownRow && myTeam != null && row.team === myTeam);
     if (won && alive && !ctx.respawns() && allies.length >= 1 && allies.every((row) => row.alive === false)) award('last_stand', false);

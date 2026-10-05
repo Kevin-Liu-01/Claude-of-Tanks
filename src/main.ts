@@ -616,6 +616,7 @@ installServiceRecord(bus, {
   playerMaxHp: () => game.player?.combat?.maxHp ?? null,
   playerNation: () => game.player?.spec?.nation ?? null,
   playerAerialKind: () => game.player?.aerial?.kind ?? null,
+  playerObjectiveTeam: () => game.matchModeState?.perspectiveTeam ?? null,
   respawns: () => game.ruleset?.respawnS != null,
 });
 installMedalToasts(bus);
@@ -1364,6 +1365,7 @@ const audio = await bootStage('audio', () => {
   const a = createLazyAudio({ getMapId: () => game.phase === 'battle'
     ? game.mapId : currentWorld()?.mapId ?? game.mapId,
   getGameMode: () => game.gameMode,
+  getObjectiveTeam: () => game.matchModeState?.perspectiveTeam ?? null,
   // Surface under each hull (track sounds), water depth and terrain occlusion.
   getTerrain: () => (currentWorld() ? hfProxy : null) });
   a.bindBus(bus);
