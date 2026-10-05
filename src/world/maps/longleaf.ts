@@ -1,5 +1,16 @@
 // A logging country T-junction with a diagonal clearcut, a wet western
 // bypass and a screened eastern spur. Planted belts define the cut edges.
+//
+// Reference: Longleaf, Rapides Parish, Louisiana — the Crowell Long Leaf Lumber Company's sawmill town in the longleaf
+// pine flatwoods (its mill now the Southern Forest Heritage Museum), crossed in September 1941 by the Louisiana
+// Maneuvers: the mill and its burner by the log pond, the planer mill and lumber sheds, the dry kilns, the logging
+// railroad's engine shed and water tank, the commissary on its loading platform, the boarding house, the manager's
+// raised cottage, the workers' shotgun and dogtrot houses on brick piers under tin, the clearcuts and the planted pine.
+//
+// 2026-10-05 (the map-revival lane; the owner: "make sure all maps look completely new and revitalized like verdant"):
+// the town is built in that construction (maps/regional/longleaf.ts), every building where it stood, the houses' yards
+// fenced in plank with their privies and gardens; the pines grow as longleaf pine over its grass-stage seedlings
+// (treeBiomes.ts).
 import frontier from './frontier.ts';
 import { roundRoadBends } from './roadBends.ts';
 export default {
@@ -65,6 +76,9 @@ export default {
   },
   props: {
     sourcedPalette: 'frontier',
+    // the map-revival lane (2026-10-05): the mill-town kit (maps/regional/longleaf.ts) builds the plan in the company
+    // town's construction, every building where it stood
+    architecture: 'longleaf',
     loggingYard: {
       // Existing flatbeds load beside grounded cut timber inside the western
       // garage apron. The existing access loop and defensive bay stay clear.
