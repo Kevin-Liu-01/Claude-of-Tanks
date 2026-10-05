@@ -218,6 +218,13 @@ interface SurfaceTextureOptions {
   aoMin?: number;
 }
 
+/** The field walls' cells and their two batches, the near form's and the far form's (b13; updateFieldWallLod). */
+interface FieldWallLod {
+  near: THREE.BatchedMesh | null;
+  far: THREE.BatchedMesh | null;
+  cells: Array<{ box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }; near: number; far: number; nearShown: boolean }>;
+}
+
 interface GeneratedSurfaceTextures {
   albedo: THREE.Texture;
   normal: THREE.Texture;
@@ -8569,11 +8576,6 @@ ${snowCap ? `
   // every solid is final — the pools' refit above reshapes the buildings' records, and the works keep off the objective
   // discs where the match placement seats them on these very solids — and off the aprons and the yards (the yard
   // structures, as placeYardDressing reads them). Low and long, grounded by their own shading and dark foot (no shadow).
-  /** The field walls' cells and their two batches, the near form's and the far form's (b13; updateFieldWallLod). */
-  let fieldWallLod: {
-    near: THREE.BatchedMesh | null; far: THREE.BatchedMesh | null;
-    cells: Array<{ box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }; near: number; far: number; nearShown: boolean }>;
-  } | null = null;
   function* placeFieldBoundaryWorks(): Generator<PropsBuildSlice, void, void> {
     const scenery = (cfg as (PropsMapConfig & SceneryMapConfig) | null)?.scenery;
     if (!scenery?.fieldWorks) return;
@@ -8632,8 +8634,8 @@ ${snowCap ? `
       const far = batchOf(built.wallCells.map((c) => c.far), 'props-field-works-far');
       const cells = built.wallCells.map((c, i) => ({ box: c.box, near: near ? near.ids[i] : -1, far: far ? far.ids[i] : -1, nearShown: false }));
       for (const cell of cells) if (near && cell.near >= 0) near.batch.setVisibleAt(cell.near, false);
-      fieldWallLod = { near: near?.batch ?? null, far: far?.batch ?? null, cells };
-      group.userData.fieldWallLod = fieldWallLod; // (the probes' and receipts' view of the cells)
+      // (the switch reads the cells through the group, as the fine joinery's does: updateFieldWallLod)
+      group.userData.fieldWallLod = { near: near?.batch ?? null, far: far?.batch ?? null, cells } satisfies FieldWallLod;
     }
     if (built.bankGeometry) place(built.bankGeometry, mats.rock, built.wallCells.length ? 'props-field-banks' : 'props-field-works');
   }
@@ -9164,9 +9166,10 @@ ${snowCap ? `
   };
   let wallNear = 100, wallFrames = 0;
   function updateFieldWallLod(cameraPos: THREE.Vector3 | null): void {
-    if (!fieldWallLod || !cameraPos) return;
+    const lod = group.userData.fieldWallLod as FieldWallLod | undefined;
+    if (!lod || !cameraPos) return;
     if (wallFrames-- <= 0) { wallNear = FIELD_WALL_NEAR_M[resolvePresetName()] ?? 80; wallFrames = 60; }
-    const { near, far, cells } = fieldWallLod;
+    const { near, far, cells } = lod;
     for (const cell of cells) {
       const b = cell.box;
       const dx = Math.max(b.minX - cameraPos.x, 0, cameraPos.x - b.maxX);
