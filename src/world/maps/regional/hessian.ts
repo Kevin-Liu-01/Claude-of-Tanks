@@ -15,7 +15,7 @@ import {
 } from './house.ts';
 import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { doorCanopy, facadeOn, facadeRng, windowHead } from './facade.ts';
+import { doorCanopy, facadeOn, facadeRng, roofDormers, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 // oak framing: dark brown, oxblood (Ochsenblut), weathered grey, black-brown, ochre-red; sRGB, kept above ~6 % linear
@@ -349,6 +349,17 @@ function hessianDwelling(ctx: RegionalBuildContext, opts: { storeys?: number; sh
   const frame = buildHouse(sink, spec, hessianDialect(st));
   if (opts.tavern) innSign(sink, frame, st);
   if (opts.school) roofTurret(sink, frame, st, 0.3);
+  // an inn's and a school's big roof carries a dormer on each eaves slope (facade craft, desktop)
+  if ((opts.tavern || opts.school) && facadeOn() && frame.roof.kind !== 'flat' && frame.roof.kind !== 'shed') {
+    const f = facadeRng();
+    if (f() < 0.7) {
+      const top = frame.bodies[frame.bodies.length - 1], z = (f() - 0.5) * frame.roof.halfD * 0.6 + (opts.school ? -frame.roof.halfD * 0.35 : 0);
+      sink.placed(0, (top.x0 + top.x1) / 2, 0, (top.z0 + top.z1) / 2, () => roofDormers(sink, frame.roof, [1, -1], [z], {
+        kind: f() < 0.5 ? 'gable' : 'shed', wall: st.infill, covering: 'roof',
+        window: (face, u, y, w, h) => windowUnit(sink, face, u, y, w, h, { ...st.window, shutters: null, bars: 'cross' }, f, 0.3),
+      }));
+    }
+  }
   dressHessianHouse(sink, frame, st, { aerial: opts.school ? 0.2 : 0.45, boxes: opts.school ? 0.2 : 0.6 });
   return sink.finish();
 }
