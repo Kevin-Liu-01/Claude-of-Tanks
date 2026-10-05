@@ -1,13 +1,16 @@
 # M3A3 Bradley CFV (`m3a3_bradley`) — GROUND-UP REBUILD packet (§5.248 IFV wave)
 
-## Current revision — 2026-10-03
+## Current revision — 2026-10-04
 
 Owner explicitly requested a new M3A3 turret base alongside the separate M6
 Linebacker concept. The chassis, Ukrainian Bradley and existing M3 equipment
 are preserved; the compact scout shell now has clipped shoulders, separate
 cheeks and an open M242 elevation bay. See [the active batch packet](m6_linebacker.md)
-for fresh tests and remaining checks. Historical qualification below is not
-a pass for this new geometry.
+for fresh tests and remaining checks. The owner’s roof follow-up adds a closed,
+sloping plate between the front shoulders and rear roof, ending behind the
+complete gun-elevation sweep. Current verification is recorded in
+[the roof/resize packet](bradley-roof-linebacker-resize-20261004.md). Historical
+qualification below is not a pass for this new geometry.
 
 On 2026-10-04 the owner authorized publishing this turret while retaining the
 failed comparison status. The registered reference remains a disassembled parts

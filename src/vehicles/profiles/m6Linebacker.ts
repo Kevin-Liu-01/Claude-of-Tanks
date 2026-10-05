@@ -10,7 +10,7 @@ import {sectionSolid} from './sectionSolid.ts';
 import {mirrorX} from '../runningGearPrimitives.ts';
 import {weaponAssembly} from './weaponStock.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
-import {LINEBACKER_RING, LINEBACKER_MUZZLE, LINEBACKER_LAUNCHER as L,
+import {LINEBACKER_TURRET_SCALE as T, LINEBACKER_RING, LINEBACKER_MUZZLE, LINEBACKER_LAUNCHER as L,
   LINEBACKER_MOUTHS, LINEBACKER_SKIRT_STATIONS, LINEBACKER_SKIRT_INNER, LINEBACKER_SKIRT_OUTER} from '../m6LinebackerLayout.ts';
 const {box, cylX, cylY, cylZ} = KIT;
 
@@ -89,7 +89,7 @@ function turretBody(P: TankBuilderPort): void {
   P.add('gunMountCanvasSkin',box(.62,.43,.14),0,-.01,-.25);
   P.addGunExtra(cylZ(.145,.39,24),0,0,.30);
   P.add('gun',cylZ(.092,.35,24),0,0,.44);
-  openTube(P,.039,.49,LINEBACKER_MUZZLE,.0125);
+  openTube(P,.039,.49,LINEBACKER_MUZZLE,.0125 / T);
   P.add('gun',cylZ(.051,.13,24),0,0,2.05);
   P.addGunExtraDark(cylZ(.017,.31,12),.255,-.09,.34);
 }
@@ -214,6 +214,19 @@ export function buildM6Linebacker(P: TankBuilderPort): void {
   roofKit(P);
   turretFieldKit(P);
   P.turretG.userData.linebackerLauncher = {launcherTubes:4};
-  P.topY = .95;
+  // Bake all turret-owned stock about the unchanged ring. The spec already
+  // places the gun pivot at 90%; fittings are separate scene objects and must
+  // scale with their seats. Hull skirts, tracks and fenders are untouched.
+  P.scaleBuckets(['turret','turretDark','turretDetail','turretEquipment',
+    'turretGlass','turretCloth','turretExternalArmor','turretCupola',
+    'turretHatch','turretRubber','turretFittingPaint','turretShadow',
+    'gun','gunDark','gunMount','gunMountDark','gunMountCanvasSkin'],T,T,T);
+  for (const child of P.turretG.children) if (child !== P.gunG) {
+    child.position.multiplyScalar(T);
+    child.scale.multiplyScalar(T);
+  }
+  P.muzzleZ *= T;
+  P.physicalMuzzleBore = {outerRadiusM:.039*T,innerRadiusM:.0125,depthM:.20*T};
+  P.topY = .95 * T;
   P.additionalShadowSources = {hull:['hullExternalArmor'],turret:['turretExternalArmor','turretCupola','turretHatch']};
 }

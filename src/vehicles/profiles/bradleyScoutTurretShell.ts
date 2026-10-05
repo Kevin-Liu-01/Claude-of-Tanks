@@ -49,6 +49,14 @@ export function buildBradleyScoutTurretShell(P: TankBuilderPort): void {
     P.addExternalArmor('turret',KIT.box(.07,.38,1.10),side*.993,.35,-.49,0,0,side*.06);
     for (const z of [-.88,-.45,-.02]) P.addEquipment('turretDetail',KIT.cylX(.022,.025,10),side*1.035,.40,z);
   }
+  // Close the fighting-compartment roof between the cheeks. The leading
+  // edge stops behind the rocking mask's complete -9/+30 degree sweep;
+  // a thin, closed plate joins both shoulders and the rear roof bulkhead.
+  P.add('turret',sectionSolid([
+    {z:-.11,ring:[[-.42,.670],[.30,.670],[.30,.735],[-.42,.735]]},
+    {z:.48,ring:[[-.42,.625],[.30,.625],[.30,.690],[-.42,.690]]},
+    {z:.60,ring:[[-.42,.601],[.30,.601],[.30,.666],[-.42,.666]]},
+  ]));
   P.add('turret',KIT.box(.72,.06,1.18),-.06,.025,.49);
   P.addEquipment('turretDark',KIT.box(.92,.016,.49),0,.75,-.67);
 }
