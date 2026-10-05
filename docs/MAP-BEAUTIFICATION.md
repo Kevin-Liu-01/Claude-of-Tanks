@@ -7200,6 +7200,32 @@ floor), the ring and the ghost gone off the ridge; facing the sun on Caldera 3.3
 the sun keep the glow and the streak (the flare's mean lift halved, 0.16 → 0.08 and 0.15 → 0.07 levels). Receipt:
 `lensFlare.selftest` (the twin's closed deck → 0, a veil at the gate's midpoint → half, an edge across the disc → a fifth).
 
+### 2026-10-05 — the glare's edge: the sky feeds the bloom only at the sun's disc (the skies lane)
+
+**The gauntlet (both critics, item 4 of the skies list):** Redrock sunward's "sun bloom is a huge flat-white halo ... with
+a hard edge and no colour falloff". Branch `visual/sun-rims` from the PR head 3e7dfc94b.
+
+**What it was** (desktop high, Redrock's sunward view, a thin cloud over the sun; in-page toggles on one build,
+`$SP/p2/rims/cap1`–`cap4`): 11 000 pure-white pixels around the sun, unchanged with the clouds taken away (coverage 0:
+10 992) — not the cloud. With the bloom off, 1 935 and the sun's place a graded bright spot: the bloom of the disc and of
+the bright sky beside it, laid over a sky the knee already holds near white, pushed a wide disc over the clip — a
+plateau with the clip's edge. The knee itself was not it: raising the cloud composite's knee top within 15–30° of the
+sun (up to 8 x its range) moved nothing measurable, and a lower knee start (1.8 → 1.5 stops) cut the white 30 % but
+dimmed every sun's aureole by 2–4 levels. A higher bloom threshold (2.5) cut it 72 % but would leave the bloom 0.1 of
+headroom under its 2.6 input clamp: fire, the muzzle flash and tracers would lose theirs (the r3 complaint).
+
+**The fix** (`post.ts` `SKY_BLOOM`): in the bloom's high-pass a sky pixel (no depth: the dome and the cloud layer — the
+aerial pass's own sky test) feeds the bloom only near the sun's disc: whole inside 1.5 disc radii, gone by 4. The disc
+keeps its halo; the bright sky and the forward-lit cloud beside it are not blown into a plateau; every surface — the
+emissives, the glints, the sea's sparkles — keeps the whole bloom. QA knobs `SKY_BLOOM`, `SKY_BLOOM_FULL`,
+`SKY_BLOOM_GONE`.
+
+**Measured** (`$SP/p2/rims/cap4`): Redrock sunward 11 004 → 4 940 pure-white pixels (the radii 1 and 3: 3 883; 2 and 6:
+6 911), the sun's place a brighter spot in a graded halo; Caldera, Saltwind and Verdant facing the sun unchanged to the
+pixel count (their sky never crossed the bloom's threshold). Caldera's own wide near-white region is the knee's, not the
+bloom's (the knee start at 1.5 stops shrinks it 28 %; held: it dims every sun). Receipt: `sunGlare.selftest` (the rule,
+its depth test, the disc's screen radius, the share's twin).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

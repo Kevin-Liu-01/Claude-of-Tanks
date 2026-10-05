@@ -51,4 +51,22 @@ for (const exposure of [1.2, 1.6, 2.6]) {
   assert.equal(knee(0.9 * start, start, range, z), 0.9 * start);
 }
 
+// ---- 3. (2026-10-05, the gauntlet's item on Redrock sunward: "a huge flat-white halo ... with a hard edge and no colour
+// falloff") the sky's share of the bloom: a sky pixel (no depth) feeds the bloom only near the sun's disc; the high-pass
+// keeps its input clamp, and every surface (emissives, glints) its whole bloom
+{
+  const post = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
+  const m = post.match(/const SKY_BLOOM: readonly \[number, number, number\] = \[([^\]]+)\];/);
+  assert.ok(m, 'post.ts declares SKY_BLOOM');
+  const [on, full, gone] = m[1].split(',').map(Number);
+  assert.ok(on === 1 && full >= 1 && gone > full && gone <= 6, `on by default, whole inside ${full} disc radii, gone by ${gone}`);
+  assert.match(post, /if \( uSkyBloom\.x > 0\.5 && texture2D\( tSkyBloomDepth, vUv \)\.x >= 0\.9999999 \) \{\s*vec2 sd = \( vUv - uSkyBloomSun\.xy \) \* vec2\( uSkyBloomSun\.z, 1\.0 \);\s*float sr = length\( sd \) \/ max\( uSkyBloom\.w, 1e-5 \);\s*gl_FragColor\.rgb \*= 1\.0 - smoothstep\( uSkyBloom\.y, uSkyBloom\.z, sr \);\s*\}/,
+    'the sky pixels only near the disc (the depth test is the aerial pass\'s sky test)');
+  assert.match(post, /hp\.uniforms\.tSkyBloomDepth = \{ value: sceneDepth \};/, 'the scene\'s own depth');
+  assert.match(post, /Math\.tan\(Math\.acos\(ATMO_SUN_DISC_COS\)\) \/ \(2 \* Math\.tan\(THREE\.MathUtils\.degToRad\(camera\.fov\) \/ 2\)\)/, 'the disc\'s radius in screen height');
+  // the twin: a sky pixel's share by its distance from the sun in disc radii
+  const share = (r) => { const t = Math.min(1, Math.max(0, (r - full) / (gone - full))); return 1 - t * t * (3 - 2 * t); };
+  assert.equal(share(0), 1); assert.equal(share(full), 1); assert.equal(share(gone), 0); assert.equal(share(40), 0);
+}
+
 console.log(`sunGlare.selftest: only the disc HDR (the exemption ends ${(spotDeg - discDeg).toFixed(3)}° past its edge), the glow under the knee, the knee as the camera shows the dome (${EV_START} → ${EV_START + EV_RANGE} stops over the card; the aureole a gradient across it) PASS`);

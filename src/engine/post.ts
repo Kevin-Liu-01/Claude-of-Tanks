@@ -81,7 +81,7 @@ import {
 } from './frameLoopScheduler.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 import { SceneAAPass, SceneAerialPass } from './sceneSourcePass.ts';
-import { ATMOSPHERE_SKY_GLSL, ATMO_GROUND_KM } from './atmosphere.ts';
+import { ATMOSPHERE_SKY_GLSL, ATMO_GROUND_KM, ATMO_SUN_DISC_COS } from './atmosphere.ts';
 import type { AtmospherePublishedState } from './sky.ts';
 import { TemporalAAPass, applyProjectionJitter, taaJitterOffset } from './temporalAA.ts';
 import { LateFxSceneView } from './lateFxSceneView.ts';
@@ -254,6 +254,17 @@ const BLOOM_THRESHOLD = 1.78;
 // headroom (up to ~5.15) must reach the bloom pass or the halo cannot scale
 // with core heat; still far below the 5-20 raw stack values that flooded.
 const BLOOM_INPUT_CLAMP = 2.6;
+/**
+ * 2026-10-05 (the skies lane; the gauntlet's item on Redrock sunward: "a huge flat-white halo ... with a hard edge and no
+ * colour falloff"): the sky's share of the bloom. A sky pixel (no depth: the dome and the cloud layer) feeds the bloom only
+ * near the sun's disc — inside SKY_BLOOM[1] disc radii whole, gone by SKY_BLOOM[2] — so the disc keeps its halo and the
+ * bright sky and the forward-lit cloud beside it, already held near white by the knee, are not pushed over the clip in a
+ * flat plateau. Emissives, glints and every surface keep the whole bloom. [0, ...]: off (QA: SKY_BLOOM, SKY_BLOOM_FULL,
+ * SKY_BLOOM_GONE). Measured (desktop high, Redrock sunward, a thin cloud over the sun): pure-white pixels 11 004 → 4 940
+ * and the sun's place a brighter spot in a graded halo; Caldera, Saltwind and Verdant facing the sun unchanged (their
+ * bright sky never crossed the threshold).
+ */
+const SKY_BLOOM: readonly [number, number, number] = [1, 1.5, 4];
 const HIGH_PASS_ANCHOR = 'gl_FragColor = mix( outputColor, texel, alpha );';
 // AO radius must be vehicle-scale (~1 m) to ground hulls/building bases;
 // 0.3 m read as nothing at gameplay camera distances. r3: radius 1.0 → 1.3,
@@ -2252,17 +2263,27 @@ export function createPost(
   let taaFrame = 0;
 
   const bloom = new UnrealBloomPass(size.clone(), BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD);
+  const skyBloomScratch = new THREE.Vector3();
   {
     // Clamp the bloom extraction (see BLOOM_INPUT_CLAMP above).
     const hp = bloom.materialHighPassFilter;
     const patched = hp.fragmentShader.replace(
       HIGH_PASS_ANCHOR,
-      `gl_FragColor = mix( outputColor, vec4( min( texel.rgb, vec3( ${BLOOM_INPUT_CLAMP.toFixed(2)} ) ), texel.a ), alpha );`,
+      `gl_FragColor = mix( outputColor, vec4( min( texel.rgb, vec3( ${BLOOM_INPUT_CLAMP.toFixed(2)} ) ), texel.a ), alpha );
+	if ( uSkyBloom.x > 0.5 && texture2D( tSkyBloomDepth, vUv ).x >= 0.9999999 ) {
+		vec2 sd = ( vUv - uSkyBloomSun.xy ) * vec2( uSkyBloomSun.z, 1.0 );
+		float sr = length( sd ) / max( uSkyBloom.w, 1e-5 );
+		gl_FragColor.rgb *= 1.0 - smoothstep( uSkyBloom.y, uSkyBloom.z, sr );
+	}`,
     );
     if (patched === hp.fragmentShader) {
       throw new Error('post.ts: bloom high-pass clamp anchor not found in LuminosityHighPassShader');
     }
-    hp.fragmentShader = patched;
+    // (2026-10-05: the sky's share of the bloom — SKY_BLOOM; the uniforms declared ahead of main, set per frame below)
+    hp.fragmentShader = `uniform sampler2D tSkyBloomDepth;\nuniform vec4 uSkyBloom;\nuniform vec3 uSkyBloomSun;\n${patched}`;
+    hp.uniforms.tSkyBloomDepth = { value: sceneDepth };
+    hp.uniforms.uSkyBloom = { value: new THREE.Vector4(0, SKY_BLOOM[1], SKY_BLOOM[2], 0.01) };
+    hp.uniforms.uSkyBloomSun = { value: new THREE.Vector3(-10, -10, 1) };
     hp.needsUpdate = true;
   }
   // Quality: scale the bloom chain input (its mip pyramid is already built
@@ -2731,6 +2752,21 @@ export function createPost(
     bloom.strength = lightTune('BLOOM_STRENGTH', BLOOM_STRENGTH) * (1 - 0.5 * scopeWeight);
     bloom.threshold = lightTune('BLOOM_THRESHOLD', BLOOM_THRESHOLD);
     bloom.radius = lightTune('BLOOM_RADIUS', BLOOM_RADIUS);
+    // (2026-10-05: the sky's share of the bloom — the sun's screen point and its disc's radius in screen height)
+    {
+      const hpu = bloom.materialHighPassFilter.uniforms;
+      const on = lightTune('SKY_BLOOM', SKY_BLOOM[0]) > 0;
+      const sunDir = (scene.userData.atmosphere as AtmospherePublishedState | undefined)?.sunDir;
+      (hpu.uSkyBloom.value as THREE.Vector4).set(on && sunDir ? 1 : 0, lightTune('SKY_BLOOM_FULL', SKY_BLOOM[1]),
+        lightTune('SKY_BLOOM_GONE', SKY_BLOOM[2]),
+        Math.tan(Math.acos(ATMO_SUN_DISC_COS)) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)));
+      if (on && sunDir) {
+        skyBloomScratch.copy(sunDir).normalize().multiplyScalar(1000).add(camera.position).project(camera);
+        const front = skyBloomScratch.z < 1;
+        (hpu.uSkyBloomSun.value as THREE.Vector3).set(front ? skyBloomScratch.x * 0.5 + 0.5 : -10, front ? skyBloomScratch.y * 0.5 + 0.5 : -10,
+          camera.aspect || 16 / 9);
+      }
+    }
     (grade.uniforms.uShoulder.value as THREE.Vector4).set(lightTune('GRADE_SHOULDER_SLOPE', 0.6), lightTune('GRADE_SHOULDER_STOPS', 0),
       lightTune('GRADE_SHOULDER_START', 2), 0);
     aerial.uniforms.uDensity.value *= 1 - 0.22 * scopeWeight;
