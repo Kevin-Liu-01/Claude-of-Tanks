@@ -518,6 +518,29 @@ only, so a desktop with it culls as above. Mark a new part fine when it is under
 face reads from the street; `fineDetailLod.selftest.mjs` holds the batches, their cells and the hysteresis, and the
 regional receipt holds that fine joinery is receive-only dressing a phone never builds.
 
+**The facade craft.** October 5, 2026 (facades & skyline lane). On a desktop build every kit's houses are finished by
+`src/world/maps/regional/facade.ts`, the way a mason, a joiner and a thatcher finish a real house. Every kit inherits
+the rain shadow under its eaves (the top storey's top row of wall vertices darkened by the overhang's depth: no new
+vertex), the dirt run off its sills (two streaks from each sill's ends, stopped at the opening below), the hangers of
+its gutters and the hopper heads, clips and shoes of its downpipes, the oversailing course under every stack's cap, and
+on every straw roof the thatcher's stepped eave (three courses of butt ends, the lift wandering along them) and two
+course lines up the slope (`RoofSpec.thatch`: `'rows'` for a palm or grass thatch, `'none'` to keep the plain slab). A
+kit opts into the vocabulary: `WindowStyle.carved` (the Russian nalichnik: a crest cut to a gable, an arch or a step,
+its carved field and rosettes, an apron cut to a drop), `WindowStyle.head` (a lintel, a hood, a pediment or a
+segmental arch with its keystone, taking the place of a surround's flat lintel), `WindowStyle.shutters.paint` (a
+border and a diamond or a heart), painted render bands and Faschen (`paintBand`, `paintSurround`: render 2 cm proud
+under `EmitOptions.tint`, a per-vertex paint the weathering pass folds into the building's tint and damp), cornices and
+string courses with their returns (`trimRun`, `trimRing`), pilasters, brick dentil cornices, door canopies, roof
+dormers (`roofDormers`), ridge riders on a thatch, hollyhocks, and spalled render showing clay (`HouseSpec.spallTint`,
+`spallScale`). Three laws keep every map's world as it was, held by `facade.selftest.mjs` for every builder: the craft
+is dressing only (the structural geometry with it is the craftless build's byte for byte, so collision and the shards
+do not move), it is desktop only (a phone's build is byte for byte its craftless build), and it draws from its own
+stream (index.ts forks it from the wear seed) or hashes positions, so a kit's build and look streams draw exactly as
+often with it as without it. Its fine metal and render work (hangers, fittings, streaks, the edges of trims) join the
+fine-detail cells: on a desktop build `structureMetal` and the three `regionalPlaster` buckets batch like the timber and
+stone (the metal's batch takes the place of its always-drawn mesh). A new part follows the same laws: decor, behind
+`facadeOn()`, no draw from `ctx.rng` or `ctx.variant`.
+
 **The yards round the houses.** A kit that names `yard` in its `ArchitectureStyle` (`kinds`, `fence`, `gate`, `shed`,
 `shedSize`, `garden`) gets yards on its houses of those kinds (`src/world/maps/regional/yards.ts`). The stage runs after
 the wrecks on its own stream, so nothing placed before it moves. Each house's yard goes on its freest side: up to 8 m
