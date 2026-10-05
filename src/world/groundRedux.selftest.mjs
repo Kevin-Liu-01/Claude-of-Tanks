@@ -24,6 +24,8 @@ assert.deepEqual(resolveGroundReduxProfile(undefined), fallback);
 // 2. Knob bands and the biomes where they belong.
 const ARID = ['desert', 'badlands', 'caldera', 'titan_gorge', 'skybridge', 'copper_mesa', 'mars', 'moon']; // moon (2026-10-01): airless regolith grows no sward
 const SNOW = ['winter', 'whiteout', 'alpine'];
+// trees round 2b (2026-10-03, gauntlet wave 28): Whiteout Station stands on an ice sheet — no sward through the ice
+const ICE = ['whiteout'];
 const COAST = ['coastal', 'saltwind', 'fjord', 'mangrove'];
 const STILL = ['delta', 'polders', 'reservoir', 'monsoon', 'oasis', 'skybridge', 'autumn'];
 for (const id of MAP_IDS) {
@@ -42,10 +44,11 @@ for (const id of MAP_IDS) {
   else assert.equal(p.driftEdge, 0, `${id}: no drift edge off the snow maps`);
   if (COAST.includes(id)) assert.ok(p.swashLines >= 0.9 && p.swashReachM >= 3, `${id}: a foam line and a reach of metres on a sea beach`);
   if (ARID.includes(id)) assert.equal(p.grass, null, `${id}: no sward on the arid ground`);
+  else if (ICE.includes(id)) assert.equal(p.grass, null, `${id}: no sward on the ice sheet`);
   else assert.ok(p.grass, `${id}: a sward`);
   if (SNOW.includes(id)) {
     assert.ok(p.snowRipple > 0 && p.snowMacro > 0 && p.glint > 0, `${id}: drifts, scour and sparkle on snow`);
-    assert.equal(p.grass.kind, 'tundra', `${id}: dead sedge through the snow`);
+    if (!ICE.includes(id)) assert.equal(p.grass.kind, 'tundra', `${id}: dead sedge through the snow`);
   } else {
     assert.equal(p.snowRipple, 0, `${id}: no snow drifts off the snow maps`);
     assert.equal(p.glint, 0, `${id}: no snow sparkle off the snow maps`);

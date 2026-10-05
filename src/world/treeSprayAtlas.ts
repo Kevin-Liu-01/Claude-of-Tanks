@@ -20,10 +20,16 @@ type ToneFunction = (hue: number, saturation: number, lightness: number) => read
 export type SprayKind = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus' | 'birch' | 'aspen' | 'birch-bare'
   | 'spruce' | 'fir' | 'pine' | 'cedar' | 'cypress' | 'mangrove'
   // trees round 2 (2026-10-03): the regional forms (treeBiomes.ts)
-  | 'beech' | 'chestnut' | 'holmOak' | 'olive' | 'canaryPine' | 'aleppoPine' | 'larch' | 'broom';
+  | 'beech' | 'chestnut' | 'holmOak' | 'olive' | 'canaryPine' | 'aleppoPine' | 'larch' | 'broom'
+  // the Arizona uplands (Copper Mesa)
+  | 'juniper' | 'pinyon'
+  // trees round 5 (2026-10-05, the map-revival lanes): the longleaf pine and its grass-stage seedlings, the cedar of
+  // Lebanon, the Aso caldera's sugi and Japanese red pine
+  | 'longleafPine' | 'longleafSeedling' | 'lebanonCedar' | 'sugi' | 'redPine';
 export const SPRAY_KINDS: readonly SprayKind[] = Object.freeze(['oak', 'poplar', 'willow', 'acacia', 'eucalyptus',
   'birch', 'aspen', 'birch-bare', 'spruce', 'fir', 'pine', 'cedar', 'cypress', 'mangrove',
-  'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'broom']);
+  'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'broom', 'juniper', 'pinyon',
+  'longleafPine', 'longleafSeedling', 'lebanonCedar', 'sugi', 'redPine']);
 /** Tiles per side of every spray atlas. */
 export const SPRAY_ATLAS_TILES = 2;
 /**
@@ -32,10 +38,35 @@ export const SPRAY_ATLAS_TILES = 2;
  * it (treeGrowth.ts emitCrownShadowHull): a spray card stops this share of the sun that meets it.
  */
 export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.freeze({
-  oak: 0.318, poplar: 0.285, willow: 0.17, acacia: 0.175, eucalyptus: 0.239, birch: 0.219, aspen: 0.274, 'birch-bare': 0.13,
-  spruce: 0.269, fir: 0.329, pine: 0.128, cedar: 0.188, cypress: 0.291, mangrove: 0.264, beech: 0.313, chestnut: 0.396,
-  holmOak: 0.213, olive: 0.225, canaryPine: 0.161, aleppoPine: 0.087, larch: 0.157, broom: 0.131,
+  oak: 0.279, poplar: 0.255, willow: 0.163, acacia: 0.175, eucalyptus: 0.193, birch: 0.235, aspen: 0.256,
+  'birch-bare': 0.15, spruce: 0.241, fir: 0.287, pine: 0.092, cedar: 0.186, cypress: 0.292, mangrove: 0.241,
+  beech: 0.292, chestnut: 0.337, holmOak: 0.198, olive: 0.188, canaryPine: 0.098, aleppoPine: 0.071, larch: 0.154,
+  broom: 0.125, juniper: 0.256, pinyon: 0.074,
+  longleafPine: 0.169, longleafSeedling: 0.216, lebanonCedar: 0.21, sugi: 0.187, redPine: 0.099,
 });
+
+/**
+ * Trees round 4 (the gauntlet's wave 68): a broadleaf tile's leaves at this share of the recipe's length and spacing,
+ * on this many more twigs, the back layer this light and the midrib this light against the blade.
+ */
+const SPRAY_LEAF_LAW = Object.freeze({ leafScale: 0.82, spacingScale: 0.72, extraTwigs: 5, backLayer: 0.72, vein: 0.8, stemFrom: 0.25, wood: 1 });
+/** The pinnate sprays (the acacia's leaflets) as they were: round 4's parasol is tuned on them. */
+const SPRAY_LEAF_LAW_PINNATE = Object.freeze({ leafScale: 1, spacingScale: 1, extraTwigs: 0, backLayer: 0.6, vein: 0.62, stemFrom: 0.25, wood: 1 });
+/**
+ * Trees round 5 (2026-10-05, the gauntlet's wave 98 on the near field bush: "flat, opaque, hard-edged lobed leaf cards
+ * two to four times life size with no twigs", "single leaf clumps on hairline stalks that read as floating lollipops"):
+ * a shrub's spray tile (makeSprayAtlas' `shrub` atlas). A field bush's cards run 1-2.4 m (its sprays at a shrub's
+ * length times the bush's 1.8-3.7 scale), so a crown tile's leaves painted 10-20 cm there; the shrub's are under half
+ * the size, twice as close, on seven more twigs — a hazel's or a hawthorn's 4-7 cm — clothing the stem from its seat
+ * (no bare stalk), and the stem and twigs are wood, half again as thick, lighter than the leaves.
+ */
+const SHRUB_LEAF_LAW = Object.freeze({ leafScale: 0.48, spacingScale: 0.34, extraTwigs: 7, backLayer: 0.7, vein: 0.85, stemFrom: 0.05, wood: 1.5 });
+const SHRUB_LEAF_LAW_PINNATE = Object.freeze({ leafScale: 0.6, spacingScale: 0.6, extraTwigs: 4, backLayer: 0.6, vein: 0.62, stemFrom: 0.05, wood: 1.5 });
+/**
+ * Trees round 5: the tile a shrub atlas paints its stool's stems on (the last tile; makeSprayAtlas' `shrub`): its
+ * sprays take the others (vegetation.ts buildGrownShrub).
+ */
+export const SHRUB_STEM_TILE = SPRAY_ATLAS_TILES * SPRAY_ATLAS_TILES - 1;
 
 interface LeafColor { hue: number; sat: number; light: number }
 /** The base leaf colour of each kind (linear HSL, the convention of the round-8 painters' css()). */
@@ -67,6 +98,16 @@ const LEAF_COLOR: Readonly<Record<SprayKind, LeafColor>> = Object.freeze({
   larch: { hue: 0.255, sat: 0.40, light: 0.25 },
   // the broom's green-grey switches
   broom: { hue: 0.22, sat: 0.16, light: 0.26 },
+  // the juniper's grey, faintly blue scale leaves; the pinyon's dark grey-green needles
+  juniper: { hue: 0.36, sat: 0.16, light: 0.2 },
+  pinyon: { hue: 0.29, sat: 0.24, light: 0.16 },
+  // trees round 5: the longleaf's bright, glossy, yellow-green needles (its seedlings' the same), the cedar of Lebanon's
+  // dark blue-green, sugi's deep green awl needles, the Japanese red pine's slender bright needles
+  longleafPine: { hue: 0.265, sat: 0.42, light: 0.2 },
+  longleafSeedling: { hue: 0.265, sat: 0.4, light: 0.21 },
+  lebanonCedar: { hue: 0.39, sat: 0.2, light: 0.15 },
+  sugi: { hue: 0.33, sat: 0.32, light: 0.15 },
+  redPine: { hue: 0.26, sat: 0.38, light: 0.19 },
 });
 
 const _cc = new THREE.Color();
@@ -303,18 +344,51 @@ const BROADLEAF_RECIPES: Readonly<Record<string, BroadleafRecipe>> = Object.free
   olive: { shape: 'lance', leafLen: 0.085, leafAspect: 0.17, petiole: 0.04, spacing: 0.02, leafAngle: 0.55, twigs: [6, 8], twigLen: [0.24, 0.38], twigAngle: 0.65, hang: 0.2, droop: 0.3, stemWidth: 1.8 },
 });
 
+/**
+ * Trees round 5: a spray's twigs, not an even herringbone (with a shrub's small leaves the near bush's cards read as fern
+ * fronds; a crown's minified into one giant leaf): each at its own place up the stem, on either side as it falls, at
+ * its own angle and length (from `floor` of the recipe's shortest), a third of them forking once.
+ */
+function shrubTwigs(stem: Pt[], twigs: Pt[][], S: number, rng: Rng, recipe: BroadleafRecipe, n: number, floor: number): void {
+  for (let k = 0; k < n; k++) {
+    const t = 0.1 + rng() * 0.82;
+    const at = pointAt(stem, t);
+    const side = rng() < 0.5 ? -1 : 1;
+    const len = S * (recipe.twigLen[0] * floor + rng() * (recipe.twigLen[1] - recipe.twigLen[0] * floor)) * (1.2 - t * 0.6);
+    const angle = at.a + side * recipe.twigAngle * (0.55 + rng() * 0.8);
+    const bend = side * (recipe.hang > 0.5 ? -0.5 : 0.4) * rng() + (rng() - 0.5) * 0.5;
+    const tw = twigPoints(at.p, angle, len, bend, 7);
+    twigs.push(tw);
+    if (rng() < 0.35) {
+      const f = pointAt(tw, 0.35 + rng() * 0.3);
+      twigs.push(twigPoints(f.p, f.a - side * (0.5 + rng() * 0.4), len * (0.35 + rng() * 0.25), (rng() - 0.5) * 0.4, 5));
+    }
+  }
+}
+
 /** One broadleaf spray tile: a stem, side twigs, a back layer and a front layer of leaves. */
-function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, kind: SprayKind, recipe: BroadleafRecipe): Pt[][] {
+function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, kind: SprayKind, recipe: BroadleafRecipe,
+  shrub = false): Pt[][] {
   const base = LEAF_COLOR[kind];
-  const stemColor = css(0.075, 0.20, 0.10);
+  // trees round 5: a shrub's twigs are grey-brown wood, lighter than its leaves, so they read between them
+  const stemColor = shrub ? css(0.07, 0.16, 0.15) : css(0.075, 0.20, 0.10);
   // the stem rises from the bottom centre (the card's seat) toward the top; a hanging spray arcs over and down
   const p0 = { x: S * 0.5, y: S * 0.95 };
   const stemLen = S * (recipe.hang > 0.5 ? 0.78 : 0.80);
   const lean = (rng() - 0.5) * 0.35;
   const stem = twigPoints(p0, -Math.PI / 2 + lean, stemLen, (rng() - 0.5) * 0.5, 10);
   const twigs: Pt[][] = [stem];
-  const nTw = recipe.twigs[0] + ((rng() * (recipe.twigs[1] - recipe.twigs[0] + 1)) | 0);
-  for (let k = 0; k < nTw; k++) {
+  // (the acacia's pinnate leaflets keep round 4's parasol tuning: the law is the blade-leaved sprays')
+  const law = recipe.shape === 'pinnate' ? (shrub ? SHRUB_LEAF_LAW_PINNATE : SPRAY_LEAF_LAW_PINNATE) : shrub ? SHRUB_LEAF_LAW : SPRAY_LEAF_LAW;
+  const nTw = recipe.twigs[0] + ((rng() * (recipe.twigs[1] - recipe.twigs[0] + 1)) | 0) + law.extraTwigs;
+  // trees round 5 (the gauntlet's wave 98: the treeline's "leaf silhouettes are individually legible at that range [40-60
+  // m], meaning the leaves are many times life size"): a crown's blade-leaved spray is not the even herringbone either —
+  // a stem with its side twigs paired off evenly up it minified into one giant pinnate leaf on its stalk (a card at 50 m
+  // is ~14 px); its twigs fall as a shrub's do (two more of them, at their full lengths) and its outline is a ragged
+  // clump. The acacia's pinnate leaflets keep round 4's parasol tuning.
+  const irregular = shrub || recipe.shape !== 'pinnate';
+  if (irregular) shrubTwigs(stem, twigs, S, rng, recipe, nTw, shrub ? 0.8 : 1);
+  else for (let k = 0; k < nTw; k++) {
     const t = 0.18 + (k + rng() * 0.6) / nTw * 0.7;
     const at = pointAt(stem, t);
     const side = k % 2 === 0 ? -1 : 1;
@@ -325,27 +399,33 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
     const bend = side * (recipe.hang > 0.5 ? -0.4 : 0.35) + (rng() - 0.5) * 0.3;
     twigs.push(twigPoints(at.p, angle, len, bend, 7));
   }
-  const leafLen = S * recipe.leafLen;
+  // trees round 4 (the gauntlet's wave 68 on the near bush: "each cluster card's alpha outline is one giant oak-leaf
+  // silhouette with dark vein and edge lines", "flat painted cutouts with heavy black vein outlines"): the cluster is an
+  // irregular spray of small leaves — smaller, closer leaves on three more twigs (SPRAY_LEAF_LAW) and no solid body under
+  // them, whose band along every twig had outlined the tile as one leaf. Round 2's acacia body (below) adds no alpha.
+  const leafLen = S * recipe.leafLen * law.leafScale;
   const leafW = leafLen * recipe.leafAspect;
-  // the shaded body under the leaves (the lanceolate sprays stay airier). Trees round 2 (2026-10-03, wave 26: Sirocco's
-  // acacia read as "a lone lollipop broadleaf with lime-green blob foliage"): an acacia's feathery leaves keep the
-  // gaps between them — its body darkens the leaves along the twigs once they are painted, adding no alpha (below)
   const pinnate = recipe.shape === 'pinnate';
-  if (!pinnate) paintSprayBody(ctx, twigs, leafLen * 1.7, base, recipe.shape === 'lance' ? 0.55 : 0.9, 0.42);
   // two layers: the back leaves (darker, the shaded interior of the spray) then the twigs, then the front leaves
   for (let layer = 0; layer < 2; layer++) {
     if (layer === 1) {
-      for (let i = twigs.length - 1; i >= 0; i--) taperStroke(ctx, twigs[i], i === 0 ? recipe.stemWidth * S / 256 : recipe.stemWidth * 0.55 * S / 256, 0.7 * S / 256, stemColor);
+      for (let i = twigs.length - 1; i >= 0; i--) {
+        taperStroke(ctx, twigs[i], (i === 0 ? recipe.stemWidth : recipe.stemWidth * 0.55) * law.wood * S / 256, 0.7 * S / 256, stemColor);
+      }
     }
     for (let ti = 0; ti < twigs.length; ti++) {
       const tw = twigs[ti];
       let twLen = 0;
       for (let i = 1; i < tw.length; i++) twLen += Math.hypot(tw[i].x - tw[i - 1].x, tw[i].y - tw[i - 1].y);
-      const n = Math.max(2, Math.round(twLen / (S * recipe.spacing)));
+      const n = Math.max(2, Math.round(twLen / (S * recipe.spacing * law.spacingScale)));
       for (let k = 0; k <= n; k++) {
-        const t = ti === 0 ? 0.25 + 0.75 * (k / n) : 0.12 + 0.88 * (k / n);
+        // trees round 5: a shrub's leaves fall a little off the even step, now and then on the same side twice, and a
+        // few are missing — no herringbone (shrubTwigs)
+        const jt = irregular ? (rng() - 0.5) * 0.8 / n : 0, flip = irregular && rng() < 0.3 ? -1 : 1;
+        if (irregular && k < n && rng() < (shrub ? 0.12 : 0.06)) continue;
+        const t = Math.min(1, Math.max(0, (ti === 0 ? law.stemFrom + (1 - law.stemFrom) * (k / n) : 0.12 + 0.88 * (k / n)) + jt));
         const at = pointAt(tw, t);
-        const side = (k % 2 === 0 ? -1 : 1) * (layer === 0 ? -1 : 1);
+        const side = (k % 2 === 0 ? -1 : 1) * (layer === 0 ? -1 : 1) * flip;
         const terminal = k === n;
         const size = (0.75 + rng() * 0.45) * (terminal ? 1.1 : 1) * (layer === 0 ? 0.92 : 1) * (0.85 + 0.25 * t);
         const L = leafLen * size, W = leafW * size;
@@ -359,7 +439,7 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
         const rim = Math.min(1, Math.hypot(at.p.x - S * 0.5, (at.p.y - S * 0.52) * 0.9) / (S * 0.42));
         const sun = (0.80 + 0.32 * t + (rng() - 0.5) * 0.36) * (0.82 + 0.3 * rim);
         const deep = rng() < 0.14 ? 0.6 : 1;
-        const light = base.light * sun * deep * (layer === 0 ? 0.6 : 1);
+        const light = base.light * sun * deep * (layer === 0 ? law.backLayer : 1);
         const hue = base.hue + (rng() - 0.5) * 0.035 + (t - 0.5) * 0.012;
         const sat = base.sat * (0.88 + rng() * 0.24);
         ctx.save();
@@ -384,8 +464,8 @@ function paintBroadleafTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, 
           ctx.quadraticCurveTo(L * 0.4, -W * 0.95, L * 0.95, 0);
           ctx.closePath();
           ctx.fill();
-          ctx.strokeStyle = css(hue + 0.01, sat * 0.8, light * 0.62);
-          ctx.lineWidth = Math.max(0.45, S / 700);
+          ctx.strokeStyle = css(hue + 0.01, sat * 0.8, light * law.vein);
+          ctx.lineWidth = Math.max(0.4, S / 800);
           ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(L * 0.92, 0); ctx.stroke();
         }
         ctx.restore();
@@ -429,55 +509,96 @@ function paintNeedleTwig(
   }
 }
 
+/** A pine needle as the tile draws it: its seat, its end, the bend's control point, its side of the shoot, its tone. */
+interface Needle {
+  x: number; y: number; ex: number; ey: number; cx: number; cy: number;
+  near: boolean; light: number; hue: number;
+}
+
 function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, kind: SprayKind): Pt[][] {
   const base = LEAF_COLOR[kind];
   const wood = css(0.06, 0.25, 0.09);
   const p0 = { x: S * 0.5, y: S * 0.95 };
-  if (kind === 'pine' || kind === 'canaryPine' || kind === 'aleppoPine') {
+  if (kind === 'pine' || kind === 'canaryPine' || kind === 'aleppoPine' || kind === 'pinyon') {
     // Trees round 2 (2026-10-03): a pine shoot is a brush, not a star. The needle fascicles stand all along each shoot's
     // last half, every one pointing forward and out from it (the tip's more forward), so a tile reads as the fox-tail
     // tufts a pine crown is made of; round 1's tuft radiating from one point read as a palm frond or a maple leaf at
-    // the chase camera (the lab's Caldera pairs). A main shoot and two side shoots off its lower half; the Canary pine's
-    // needles long and hanging, the Aleppo pine's fine and sparse. The tile's alpha is the needles' alone (the shaded
+    // the chase camera (the lab's Caldera pairs). The Canary pine's needles long and hanging, the Aleppo pine's fine
+    // and sparse. The tile's alpha is the needles' alone (the shaded
     // heart darkens them, never fills between them): wave 26 read the Caldera pines' alpha-tested tiles, whose hearts
     // filled each brush's core into one opaque rounded mass, as "flat broadleaf leaf-card clusters".
-    const canary = kind === 'canaryPine', aleppo = kind === 'aleppoPine';
-    const needleL = canary ? 0.25 : aleppo ? 0.16 : 0.19, droopN = canary ? 0.34 : aleppo ? 0.1 : 0.08;
-    const perShoot = canary ? 175 : aleppo ? 95 : 140;
-    const main = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * 0.56, (rng() - 0.5) * 0.35, 8);
+    const canary = kind === 'canaryPine', aleppo = kind === 'aleppoPine', pinyon = kind === 'pinyon';
+    // trees round 4 (2026-10-04, the gauntlet's wave 39 and the lab's mid-range portraits): a tile of one to three long
+    // brushes minified into one leaf-shaped blade on a stalk — a pine read as a broadleaf from 15 m out. The Canary
+    // pine keeps one long drooping fox-tail (its crown's own cone carries the read); the Scots and Aleppo pines and the
+    // pinyon paint a branchlet's end instead: a main shoot and four or five short side shoots, each clothed in a small
+    // brush of its own, gaps between them, so a card minifies into a lumpy clump of tufts, never one outline.
+    const needleL = canary ? 0.28 : aleppo ? 0.115 : pinyon ? 0.075 : 0.12;
+    const droopN = canary ? 0.45 : aleppo ? 0.12 : pinyon ? 0.02 : 0.08;
+    /** Needles per tile-length of brushed shoot, and the share of each shoot (from its tip) the brush clothes. */
+    const density = canary ? 830 : aleppo ? 400 : pinyon ? 820 : 470, reach = canary ? 0.5 : 0.48;
+    const mainLen = canary ? 0.7 : 0.78;
+    const main = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * mainLen, (rng() - 0.5) * 0.35, 8);
     const shoots: Pt[][] = [main];
-    for (const side of [-1, 1]) {
-      const at = pointAt(main, 0.3 + rng() * 0.12);
-      shoots.push(twigPoints(at.p, at.a + side * (0.55 + rng() * 0.25), S * (0.27 + rng() * 0.07), side * (0.15 + rng() * 0.2), 6));
+    const sideCount = canary ? 0 : aleppo ? 4 : 5;
+    for (let k = 0; k < sideCount; k++) {
+      const t = 0.2 + (k + rng() * 0.6) / sideCount * 0.62, side = k % 2 === 0 ? -1 : 1;
+      const at = pointAt(main, t);
+      shoots.push(twigPoints(at.p, at.a + side * (0.55 + rng() * 0.35), S * (0.2 + rng() * 0.1) * (1.15 - t * 0.6),
+        side * (0.1 + rng() * 0.2), 5));
     }
-    for (const shoot of shoots) taperStroke(ctx, shoot, S * 0.014, S * 0.008, wood);
+    // the fascicles stand round each shoot in three dimensions, each at an azimuth about it and a splay out of it,
+    // drawn as the tile sees it — the needles turned toward or away from the viewer foreshortened into the brush's
+    // dense core, the ones in the tile's plane its fringe — the far side's first (darker, in the brush's shade), then
+    // the wood, then the near side's
+    const needleW = Math.max(0.7, S / 256 * (aleppo ? 1.0 : 1.2));
+    const splay = canary ? 1.6 : pinyon ? 1.15 : 1.3;
+    const needles: Needle[] = [];
     for (let si = 0; si < shoots.length; si++) {
-      const shoot = shoots[si], n = Math.round(perShoot * (si === 0 ? 1 : 0.7));
+      const shoot = shoots[si];
+      const seat0 = 1 - (si === 0 && !canary ? reach * 0.75 : reach);
+      let len = 0;
+      for (let i = 1; i < shoot.length; i++) len += Math.hypot(shoot[i].x - shoot[i - 1].x, shoot[i].y - shoot[i - 1].y);
+      const n = Math.max(12, Math.round(density * len * (1 - seat0) / S));
       for (let k = 0; k < n; k++) {
-        // the fascicles stand round the shoot, not in two rows: a seat anywhere on its last 58 %, a side and an angle
-        // out of it at random (seen from the side, a brush is needles at every angle over each other, never a fishbone)
-        const t = 0.42 + Math.sqrt(rng()) * 0.58;
-        const at = pointAt(shoot, t), side = rng() < 0.5 ? 1 : -1;
-        const out = (0.12 + rng() * 1.05) * (1 - 0.35 * (t - 0.42) / 0.58);
-        const a = at.a + side * out;
+        // a seat on the brushed part (crowded toward the tip), an azimuth round the shoot, a splay forward of it
+        const t = seat0 + Math.sqrt(rng()) * (1 - seat0);
+        const at = pointAt(shoot, t);
+        const phi = rng() * Math.PI * 2, alpha = (0.22 + rng() * splay) * (1 - 0.3 * (t - seat0) / (1 - seat0));
+        const sx = Math.cos(at.a), sy = Math.sin(at.a), px = -sy, py = sx;
+        const along = Math.cos(alpha), across = Math.sin(alpha) * Math.cos(phi);
         const nl = S * needleL * (0.75 + rng() * 0.45) * (0.8 + 0.2 * (1 - t));
-        const light = base.light * (0.72 + rng() * 0.5) * (si === 0 ? 1.04 : 0.92);
-        ctx.strokeStyle = css(base.hue + (rng() - 0.5) * 0.03, base.sat, light);
-        ctx.lineWidth = Math.max(0.7, S / 256 * (aleppo ? 1.0 : 1.25));
-        ctx.beginPath();
-        ctx.moveTo(at.p.x, at.p.y);
-        ctx.quadraticCurveTo(at.p.x + Math.cos(a) * nl * 0.5, at.p.y + Math.sin(a) * nl * 0.5 + nl * droopN * 0.3,
-          at.p.x + Math.cos(a) * nl, at.p.y + Math.sin(a) * nl + nl * droopN);
-        ctx.stroke();
+        const dx = sx * along + px * across, dy = sy * along + py * across;
+        // the long needles hang (a Canary pine's tassel); a foreshortened one hangs as far as its own length shows
+        const show = Math.hypot(along, across), hang = nl * droopN * (0.4 + 0.6 * show);
+        const ex = at.p.x + dx * nl, ey = at.p.y + dy * nl + hang;
+        // the light: the near side and the upward needles lighter, the far side in the brush's own shade
+        const near = Math.sin(phi) >= 0;
+        const light = base.light * (0.7 + rng() * 0.45) * (near ? 1.06 : 0.74) * (1 - 0.12 * dy) * (si === 0 ? 1.04 : 0.96);
+        needles.push({ x: at.p.x, y: at.p.y, ex, ey, cx: at.p.x + dx * nl * 0.5, cy: at.p.y + dy * nl * 0.5 + hang * 0.3,
+          near, light, hue: base.hue + (rng() - 0.5) * 0.03 });
       }
     }
+    const strokeNeedle = (q: Needle): void => {
+      ctx.strokeStyle = css(q.hue, base.sat, q.light);
+      ctx.lineWidth = needleW;
+      ctx.beginPath();
+      ctx.moveTo(q.x, q.y);
+      ctx.quadraticCurveTo(q.cx, q.cy, q.ex, q.ey);
+      ctx.stroke();
+    };
+    ctx.lineCap = 'round';
+    for (const q of needles) if (!q.near) strokeNeedle(q);
+    for (const shoot of shoots) taperStroke(ctx, shoot, S * 0.014, S * 0.008, wood);
+    ctx.lineCap = 'round';
+    for (const q of needles) if (q.near) strokeNeedle(q);
     // each brush's shaded heart: a soft dark band along the needled half of its shoot, laid over the needles already
     // painted (source-atop: it darkens them and adds no alpha between them)
     const composite = ctx.globalCompositeOperation;
     ctx.globalCompositeOperation = 'source-atop';
     for (const shoot of shoots) {
       for (let k = 0; k < 4; k++) {
-        const at = pointAt(shoot, 0.55 + k * 0.13), r = S * needleL * 0.72;
+        const at = pointAt(shoot, 1 - reach * 0.9 + k * reach * 0.26), r = S * needleL * 0.72;
         const gr = ctx.createRadialGradient(at.p.x, at.p.y, 0, at.p.x, at.p.y, r);
         gr.addColorStop(0, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0.7));
         gr.addColorStop(1, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0));
@@ -486,6 +607,25 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
     }
     ctx.globalCompositeOperation = composite;
     return shoots;
+  }
+  if (kind === 'juniper') {
+    // a juniper's spray: a few forking twigs of scale-leaf cords, open between them (the shrubby upland juniper, not the
+    // cypress' dense column); no shaded body under them
+    const frond = (p: Pt, a: number, len: number, depth: number): void => {
+      const pts = twigPoints(p, a, len, (rng() - 0.5) * 0.4, 4);
+      const light = base.light * (0.7 + 0.14 * depth + rng() * 0.3);
+      taperStroke(ctx, pts, S * 0.032 * (depth + 1) / 3, S * 0.02, css(base.hue + (rng() - 0.5) * 0.04, base.sat, light));
+      if (depth <= 0) return;
+      const forks = 4 + ((rng() * 2) | 0);
+      for (let k = 0; k < forks; k++) {
+        const at = pointAt(pts, 0.25 + (k / forks) * 0.7);
+        frond(at.p, at.a + (k % 2 ? 0.7 : -0.7) + (rng() - 0.5) * 0.45, len * 0.6, depth - 1);
+      }
+    };
+    const spine = twigPoints(p0, -Math.PI / 2, S * 0.6, 0, 6);
+    taperStroke(ctx, spine, S * 0.012, S * 0.006, wood);
+    frond(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * 0.6, 3);
+    return [spine];
   }
   if (kind === 'cypress') {
     // scale-leaf fronds: a flattened spray that forks again and again, thick and dense
@@ -509,7 +649,11 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
   const stem = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * 0.80, (rng() - 0.5) * 0.35, 10);
   const twigs: Pt[][] = [stem];
   const larch = kind === 'larch';
-  const sides = kind === 'cedar' ? 9 : larch ? 7 : 11;
+  // trees round 3 (2026-10-03, the gauntlet's wave 31 on the Fulda spruce: sprays "read as broadleaf"): eleven side twigs
+  // under a full-strength shaded body filled the spruce's and the fir's tiles into one solid serrated leaf under the
+  // alpha test; eight side twigs, and the body laid over the needles (below), keep the herringbone open
+  const needled = kind === 'spruce' || kind === 'fir';
+  const sides = kind === 'cedar' ? 9 : larch ? 7 : needled ? 8 : 11;
   for (let k = 0; k < sides; k++) {
     const t = 0.12 + (k + rng() * 0.5) / sides * 0.78;
     const at = pointAt(stem, t);
@@ -517,7 +661,7 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
     const len = S * (kind === 'fir' ? 0.31 : 0.28) * (1.15 - t * 0.6) * (0.85 + rng() * 0.3);
     twigs.push(twigPoints(at.p, at.a + side * (kind === 'fir' ? 1.0 : larch ? 1.2 : 0.85), len, side * (larch ? -0.9 : 0.15), 5));
   }
-  paintSprayBody(ctx, twigs, S * (kind === 'cedar' ? 0.085 : larch ? 0.075 : 0.095), base, larch ? 0.8 : 1.0, 0.3, 'butt', 0.8);
+  if (!needled) paintSprayBody(ctx, twigs, S * (kind === 'cedar' ? 0.085 : larch ? 0.075 : 0.095), base, larch ? 0.8 : 1.0, 0.3, 'butt', 0.8);
   for (const tw of twigs) taperStroke(ctx, tw, S * 0.010, S * 0.005, wood);
   if (kind === 'cedar' || larch) {
     // rosettes: little starbursts of short needles on spurs along the twigs
@@ -544,6 +688,23 @@ function paintConiferTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, ki
   for (let i = twigs.length - 1; i >= 0; i--) {
     paintNeedleTwig(ctx, S, rng, twigs[i], base, flat ? 0.06 : 0.056, flat ? 5.4 : 7.0, flat ? 1.2 : 1.35, flat, i === 0 ? 0.12 : 0.16);
   }
+  // the shaded body along the twigs, over the needles already painted (source-atop: it darkens them, adds no alpha)
+  const composite = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'source-atop';
+  paintSprayBody(ctx, twigs, S * 0.095, base, 1.0, 0.3, 'butt', 0.8);
+  if (kind === 'spruce') {
+    // trees round 5 (the gauntlet's wave 98: Frontier's spruce "a smooth, uniform green cone", its foliage "flat,
+    // undifferentiated"): the season's shoots at every twig's end, a lighter, yellower green over the needles already
+    // painted, so each tier's fringe lights against its dark heart
+    for (const tw of twigs) {
+      const at = pointAt(tw, 0.9), r = S * 0.06;
+      const gr = ctx.createRadialGradient(at.p.x, at.p.y, 0, at.p.x, at.p.y, r);
+      gr.addColorStop(0, css(base.hue - 0.025, base.sat * 1.2, base.light * 1.9, 0.6));
+      gr.addColorStop(1, css(base.hue - 0.025, base.sat * 1.2, base.light * 1.9, 0));
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(at.p.x, at.p.y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.globalCompositeOperation = composite;
   if (flat) {
     // the fir's silver undersides show as pale lines along the twigs
     ctx.globalAlpha = 0.18;
@@ -561,18 +722,23 @@ function paintBroomTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[
   const base = LEAF_COLOR.broom;
   const p0 = { x: S * 0.5, y: S * 0.95 };
   const rods: Pt[][] = [];
-  const n = 26 + ((rng() * 8) | 0);
+  // trees round 4 (2026-10-04, the gauntlet's wave 50 on Redrock: the broom read as "agave-like clumps"): a retama's
+  // switches are slender and flexible — they rise from the stool, arch outward and hang at their tips, a fountain,
+  // where round 2's straight rods fanned from one point into a spiky rosette
+  const n = 34 + ((rng() * 10) | 0);
   for (let k = 0; k < n; k++) {
-    const a = -Math.PI / 2 + (rng() - 0.5) * 1.3;
-    const len = S * (0.48 + rng() * 0.36);
+    const lean = (rng() - 0.5) * 1.5, a = -Math.PI / 2 + lean;
+    const len = S * (0.5 + rng() * 0.38);
     const start = { x: p0.x + (rng() - 0.5) * S * 0.06, y: p0.y - rng() * S * 0.08 };
-    rods.push(twigPoints(start, a, len, (rng() - 0.5) * 0.5 + (a + Math.PI / 2) * 0.35, 8));
+    // the arch: away from upright, the further the more the switch leans (and a little either way for the upright ones)
+    const arch = (lean >= 0 ? 1 : -1) * (0.7 + rng() * 0.9) * (0.35 + Math.abs(lean)) + (rng() - 0.5) * 0.3;
+    rods.push(twigPoints(start, a, len, arch, 10));
   }
   // the sheaf's soft shaded heart, then the rods back to front, lighter toward their tips
   paintSprayBody(ctx, rods.slice(0, 10), S * 0.028, base, 0.35, 0.15);
   for (const rod of rods) {
     const light = base.light * (0.75 + rng() * 0.5);
-    taperStroke(ctx, rod, S * 0.011, S * 0.005, css(base.hue + (rng() - 0.5) * 0.03, base.sat * (0.8 + rng() * 0.4), light));
+    taperStroke(ctx, rod, S * 0.009, S * 0.0035, css(base.hue + (rng() - 0.5) * 0.03, base.sat * (0.8 + rng() * 0.4), light));
     for (let t = 0.45; t < 0.95; t += 0.09 + rng() * 0.08) {
       if (rng() < 0.55) continue;
       const at = pointAt(rod, t), side = rng() < 0.5 ? -1 : 1;
@@ -580,8 +746,8 @@ function paintBroomTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[
       ctx.save(); ctx.translate(at.p.x, at.p.y); ctx.rotate(at.a + side * 0.6);
       leafPath(ctx, 'lance', S * 0.03, S * 0.006, rng); ctx.fill(); ctx.restore();
     }
-    if (rng() < 0.4) {
-      const tip = pointAt(rod, 0.82 + rng() * 0.15);
+    if (rng() < 0.18) {
+      const tip = pointAt(rod, 0.7 + rng() * 0.25);
       ctx.fillStyle = css(0.95, 0.18, 0.78, 0.85);
       ctx.beginPath(); ctx.arc(tip.p.x, tip.p.y, S * (0.006 + rng() * 0.005), 0, Math.PI * 2); ctx.fill();
     }
@@ -618,11 +784,285 @@ function paintBareTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[]
   return limbs;
 }
 
+// ------------------------------------------------------------------------------------------------ trees round 5
+// The map-revival lanes' species (2026-10-05): their own painters, beside the earlier ones.
+
+/** A pine needle as a brush tile draws it: its seat, its end, the bend's control point, its side of the shoot, its tone. */
+interface BrushNeedle {
+  x: number; y: number; ex: number; ey: number; cx: number; cy: number;
+  near: boolean; light: number; hue: number;
+}
+
+/**
+ * A pine shoot as a brush — the needle fascicles round each shoot's last part, every one pointing forward and out from
+ * it, drawn as the tile sees them (the far side's in the brush's shade first, then the wood, then the near side's), the
+ * brush's heart darkened over them (source-atop: no alpha between the needles). The longleaf's one great fox-tail of the
+ * longest needles of any pine, drooping over, and a short side shoot's smaller one; the Japanese red pine's branchlet end
+ * of slender needles on a main shoot and four side shoots, gaps between their brushes.
+ */
+function paintBrushTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, kind: SprayKind): Pt[][] {
+  const base = LEAF_COLOR[kind];
+  const wood = css(0.06, 0.25, 0.09);
+  const p0 = { x: S * 0.5, y: S * 0.95 };
+  const longleaf = kind === 'longleafPine';
+  const needleL = longleaf ? 0.34 : 0.15, droopN = longleaf ? 0.5 : 0.12;
+  const density = longleaf ? 980 : 480, reach = longleaf ? 0.6 : 0.48, mainLen = longleaf ? 0.56 : 0.78;
+  const sideCount = longleaf ? 1 : 4, splay = longleaf ? 1.75 : 1.3;
+  const main = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * mainLen, (rng() - 0.5) * 0.35, 8);
+  const shoots: Pt[][] = [main];
+  for (let k = 0; k < sideCount; k++) {
+    const t = 0.2 + (k + rng() * 0.6) / sideCount * 0.62, side = k % 2 === 0 ? -1 : 1;
+    const at = pointAt(main, t);
+    shoots.push(twigPoints(at.p, at.a + side * (0.55 + rng() * 0.35), S * (0.2 + rng() * 0.1) * (1.15 - t * 0.6),
+      side * (0.1 + rng() * 0.2), 5));
+  }
+  const needleW = Math.max(0.7, S / 256 * 1.2);
+  const needles: BrushNeedle[] = [];
+  for (let si = 0; si < shoots.length; si++) {
+    const shoot = shoots[si];
+    const seat0 = 1 - (si === 0 && !longleaf ? reach * 0.75 : reach);
+    let len = 0;
+    for (let i = 1; i < shoot.length; i++) len += Math.hypot(shoot[i].x - shoot[i - 1].x, shoot[i].y - shoot[i - 1].y);
+    const n = Math.max(12, Math.round(density * len * (1 - seat0) / S));
+    for (let k = 0; k < n; k++) {
+      const t = seat0 + Math.sqrt(rng()) * (1 - seat0);
+      const at = pointAt(shoot, t);
+      const phi = rng() * Math.PI * 2, alpha = (0.22 + rng() * splay) * (1 - 0.3 * (t - seat0) / (1 - seat0));
+      const sx = Math.cos(at.a), sy = Math.sin(at.a), px = -sy, py = sx;
+      const along = Math.cos(alpha), across = Math.sin(alpha) * Math.cos(phi);
+      const nl = S * needleL * (0.75 + rng() * 0.45) * (0.8 + 0.2 * (1 - t));
+      const dx = sx * along + px * across, dy = sy * along + py * across;
+      const show = Math.hypot(along, across), hang = nl * droopN * (0.4 + 0.6 * show);
+      const ex = at.p.x + dx * nl, ey = at.p.y + dy * nl + hang;
+      const near = Math.sin(phi) >= 0;
+      const light = base.light * (0.7 + rng() * 0.45) * (near ? 1.06 : 0.74) * (1 - 0.12 * dy) * (si === 0 ? 1.04 : 0.96);
+      needles.push({ x: at.p.x, y: at.p.y, ex, ey, cx: at.p.x + dx * nl * 0.5, cy: at.p.y + dy * nl * 0.5 + hang * 0.3,
+        near, light, hue: base.hue + (rng() - 0.5) * 0.03 });
+    }
+  }
+  const strokeNeedle = (q: BrushNeedle): void => {
+    ctx.strokeStyle = css(q.hue, base.sat, q.light);
+    ctx.lineWidth = needleW;
+    ctx.beginPath();
+    ctx.moveTo(q.x, q.y);
+    ctx.quadraticCurveTo(q.cx, q.cy, q.ex, q.ey);
+    ctx.stroke();
+  };
+  ctx.lineCap = 'round';
+  for (const q of needles) if (!q.near) strokeNeedle(q);
+  for (const shoot of shoots) taperStroke(ctx, shoot, S * 0.014, S * 0.008, wood);
+  ctx.lineCap = 'round';
+  for (const q of needles) if (q.near) strokeNeedle(q);
+  const composite = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'source-atop';
+  for (const shoot of shoots) {
+    for (let k = 0; k < 4; k++) {
+      const at = pointAt(shoot, 1 - reach * 0.9 + k * reach * 0.26), r = S * needleL * 0.72;
+      const gr = ctx.createRadialGradient(at.p.x, at.p.y, 0, at.p.x, at.p.y, r);
+      gr.addColorStop(0, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0.7));
+      gr.addColorStop(1, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0));
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(at.p.x, at.p.y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.globalCompositeOperation = composite;
+  return shoots;
+}
+
+/**
+ * A sugi spray: a drooping rope of a shoot forking into side ropes and theirs again, every one clothed in short awl
+ * needles curving forward round it (a dense, spiky cord, never a flat frond), its heart shaded over them.
+ */
+function paintSugiTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[][] {
+  const base = LEAF_COLOR.sugi;
+  const wood = css(0.06, 0.25, 0.09);
+  const p0 = { x: S * 0.5, y: S * 0.95 };
+  const ropes: Pt[][] = [];
+  const rope = (p: Pt, a: number, len: number, depth: number): void => {
+    const pts = twigPoints(p, a, len, (a > -Math.PI / 2 ? 1 : -1) * (0.18 + rng() * 0.22), 6);
+    ropes.push(pts);
+    if (depth <= 0) return;
+    const forks = 3 + ((rng() * 2) | 0);
+    for (let k = 0; k < forks; k++) {
+      const at = pointAt(pts, 0.22 + (k / forks) * 0.62 + rng() * 0.06);
+      rope(at.p, at.a + (k % 2 ? 0.62 : -0.62) + (rng() - 0.5) * 0.3, len * (0.48 + rng() * 0.12), depth - 1);
+    }
+  };
+  rope(p0, -Math.PI / 2 + (rng() - 0.5) * 0.3, S * 0.74, 2);
+  for (const r of ropes) taperStroke(ctx, r, S * 0.009, S * 0.005, wood);
+  for (let i = ropes.length - 1; i >= 0; i--) paintNeedleTwig(ctx, S, rng, ropes[i], base, 0.032, 9.5, 0.75, false, 0.1);
+  const composite = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'source-atop';
+  paintSprayBody(ctx, ropes.slice(0, 4), S * 0.07, base, 0.9, 0.3, 'butt', 0.8);
+  ctx.globalCompositeOperation = composite;
+  return ropes;
+}
+
+/**
+ * The cedar of Lebanon's plate: the cedar's spray — a main twig and ten side twigs under a shaded body — crowded with
+ * rosettes, little starbursts of short needles on spurs along every twig.
+ */
+function paintCedarPlateTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[][] {
+  const base = LEAF_COLOR.lebanonCedar;
+  const wood = css(0.06, 0.25, 0.09);
+  const p0 = { x: S * 0.5, y: S * 0.95 };
+  const stem = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * 0.80, (rng() - 0.5) * 0.35, 10);
+  const twigs: Pt[][] = [stem];
+  const sides = 10;
+  for (let k = 0; k < sides; k++) {
+    const t = 0.12 + (k + rng() * 0.5) / sides * 0.78;
+    const at = pointAt(stem, t);
+    const side = k % 2 === 0 ? -1 : 1;
+    twigs.push(twigPoints(at.p, at.a + side * 0.85, S * 0.28 * (1.15 - t * 0.6) * (0.85 + rng() * 0.3), side * 0.15, 5));
+  }
+  paintSprayBody(ctx, twigs, S * 0.085, base, 1.0, 0.3, 'butt', 0.8);
+  for (const tw of twigs) taperStroke(ctx, tw, S * 0.010, S * 0.005, wood);
+  for (const tw of twigs) {
+    const n = 11 + ((rng() * 4) | 0);
+    for (let k = 0; k < n; k++) {
+      const at = pointAt(tw, (k + 0.5) / n);
+      const rays = 15 + ((rng() * 7) | 0), rr = S * (0.038 + rng() * 0.022);
+      ctx.strokeStyle = css(base.hue + (rng() - 0.5) * 0.04, base.sat, base.light * (0.75 + rng() * 0.5));
+      ctx.lineWidth = Math.max(0.6, S / 256 * 1.2);
+      for (let r = 0; r < rays; r++) {
+        const a = (r / rays) * Math.PI * 2 + rng() * 0.3;
+        ctx.beginPath();
+        ctx.moveTo(at.p.x, at.p.y);
+        ctx.lineTo(at.p.x + Math.cos(a) * rr, at.p.y + Math.sin(a) * rr * 0.75);
+        ctx.stroke();
+      }
+    }
+  }
+  return twigs;
+}
+
+/**
+ * A longleaf seedling in its grass stage (Longleaf Crossing's cutover): a dense fountain of long needles from one seat at
+ * the ground, the heart's standing steep and the rim's arching out and over toward their tips, glossy and bright on the
+ * near side, in their own shade at the heart. The alpha is the needles' alone.
+ */
+function paintGrassStageTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[][] {
+  const base = LEAF_COLOR.longleafSeedling;
+  const p0 = { x: S * 0.5, y: S * 0.96 };
+  const n = 150 + ((rng() * 30) | 0);
+  const needles: Array<{ pts: Pt[]; near: boolean; light: number; hue: number }> = [];
+  for (let k = 0; k < n; k++) {
+    // a lean off upright across the fan; the longer and the further over a needle leans, the more it arches
+    const lean = (rng() - 0.5) * 2.3;
+    const len = S * (0.42 + rng() * 0.46);
+    const start = { x: p0.x + (rng() - 0.5) * S * 0.07, y: p0.y - rng() * S * 0.05 };
+    const arch = (lean >= 0 ? 1 : -1) * (0.5 + Math.abs(lean) * 0.9) * (0.6 + rng() * 0.6) * (len / (S * 0.7));
+    const near = rng() < 0.55;
+    const light = base.light * (0.62 + rng() * 0.5) * (near ? 1.08 : 0.72) * (1 - 0.18 * (1 - Math.abs(lean) / 1.2));
+    needles.push({ pts: twigPoints(start, -Math.PI / 2 + lean, len, arch, 8), near, light, hue: base.hue + (rng() - 0.5) * 0.035 });
+  }
+  const width = Math.max(0.7, S / 256 * 1.15);
+  const stroke = (q: (typeof needles)[number]): void => {
+    ctx.strokeStyle = css(q.hue, base.sat, q.light);
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(q.pts[0].x, q.pts[0].y);
+    for (let i = 1; i < q.pts.length; i++) ctx.lineTo(q.pts[i].x, q.pts[i].y);
+    ctx.stroke();
+  };
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const q of needles) if (!q.near) stroke(q);
+  for (const q of needles) if (q.near) stroke(q);
+  const composite = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'source-atop';
+  const gr = ctx.createRadialGradient(p0.x, p0.y, 0, p0.x, p0.y, S * 0.42);
+  gr.addColorStop(0, css(base.hue + 0.01, base.sat * 0.8, base.light * 0.42, 0.75));
+  gr.addColorStop(1, css(base.hue + 0.01, base.sat * 0.8, base.light * 0.42, 0));
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(p0.x, p0.y, S * 0.42, 0, Math.PI * 2); ctx.fill();
+  ctx.globalCompositeOperation = composite;
+  return needles.slice(0, 12).map((q) => q.pts);
+}
+
+/** The round-5 species' painters by kind. */
+const ROUND5_PAINTERS: Readonly<Partial<Record<SprayKind, (ctx: CanvasRenderingContext2D, S: number, rng: Rng) => Pt[][]>>> = Object.freeze({
+  longleafPine: (ctx, S, rng) => paintBrushTile(ctx, S, rng, 'longleafPine'),
+  redPine: (ctx, S, rng) => paintBrushTile(ctx, S, rng, 'redPine'),
+  sugi: paintSugiTile,
+  lebanonCedar: paintCedarPlateTile,
+  longleafSeedling: paintGrassStageTile,
+});
+
+/**
+ * Trees round 5 (2026-10-05, the gauntlet's wave 98: the near bush "a cluster of flat, stemless leaf cards with no
+ * visible branch structure connecting them to the ground ... floating leaf confetti"): a shrub atlas's stem tile — a
+ * stool's two or three stems from the root plate (the tile's bottom centre, the card's seat on the ground) leaning
+ * apart, each forking once or twice in its upper half and shedding thinner twigs toward the top, where the clump's
+ * sprays clothe it. Grey-brown bark drawn round: its shade side, its body and a lit stripe toward the sun's side, with
+ * the bark's darker rings and lighter flecks along it. No leaves: the card turns about its stem to face the viewer
+ * (vegetation.ts COT_LEAF_BILLBOARD), so it reads as the stems from every side.
+ */
+function paintShrubStemTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[][] {
+  const bark = { hue: 0.072, sat: 0.15, light: 0.11 };
+  const strokes: Array<{ pts: Pt[]; w0: number; w1: number }> = [];
+  const n = 2 + ((rng() * 2) | 0);
+  for (let i = 0; i < n; i++) {
+    const off = i - (n - 1) / 2;
+    const x0 = S * (0.5 + off * 0.045 + (rng() - 0.5) * 0.02);
+    const lean = off * 0.17 + (rng() - 0.5) * 0.12;
+    const stem = twigPoints({ x: x0, y: S * 1.0 }, -Math.PI / 2 + lean, S * (0.62 + rng() * 0.22), (rng() - 0.5) * 0.35, 10);
+    strokes.push({ pts: stem, w0: S * (0.048 + rng() * 0.012), w1: S * 0.014 });
+    const forks = 1 + ((rng() * 2) | 0);
+    for (let f = 0; f < forks; f++) {
+      const at = pointAt(stem, 0.45 + rng() * 0.35);
+      const side = (f % 2 === 0 ? 1 : -1) * (off >= 0 ? 1 : -1);
+      const fork = twigPoints(at.p, at.a + side * (0.32 + rng() * 0.3), S * (0.17 + rng() * 0.17), -side * 0.25, 7);
+      strokes.push({ pts: fork, w0: S * 0.021, w1: S * 0.007 });
+      for (let k = 0; k < 2; k++) {
+        const tw = pointAt(fork, 0.4 + k * 0.3);
+        strokes.push({ pts: twigPoints(tw.p, tw.a + (k % 2 ? 1 : -1) * (0.4 + rng() * 0.4), S * (0.06 + rng() * 0.07), 0.2, 5),
+          w0: S * 0.009, w1: S * 0.004 });
+      }
+    }
+    for (let k = 0; k < 3; k++) {
+      const tw = pointAt(stem, 0.72 + k * 0.1);
+      strokes.push({ pts: twigPoints(tw.p, tw.a + (k % 2 ? 1 : -1) * (0.3 + rng() * 0.5), S * (0.05 + rng() * 0.07), 0.1, 5),
+        w0: S * 0.009, w1: S * 0.004 });
+    }
+  }
+  // the shade side, the body, then the lit stripe (offset toward the canvas' left, the sun's side of every card)
+  for (const st of strokes) taperStroke(ctx, st.pts, st.w0, st.w1, css(bark.hue, bark.sat * 1.1, bark.light * 0.5));
+  for (const st of strokes) taperStroke(ctx, st.pts, st.w0 * 0.74, st.w1 * 0.74, css(bark.hue, bark.sat, bark.light));
+  for (const st of strokes) {
+    const lit = st.pts.map((p, i) => {
+      const w = st.w0 + (st.w1 - st.w0) * (i / (st.pts.length - 1));
+      return { x: p.x - w * 0.2, y: p.y };
+    });
+    taperStroke(ctx, lit, st.w0 * 0.26, st.w1 * 0.26, css(bark.hue + 0.01, bark.sat * 0.7, bark.light * 1.75));
+  }
+  // the bark: a darker ring or a lighter fleck every stem width or so along the thick stems
+  for (const st of strokes) {
+    if (st.w0 < S * 0.02) continue;
+    let len = 0;
+    for (let i = 1; i < st.pts.length; i++) len += Math.hypot(st.pts[i].x - st.pts[i - 1].x, st.pts[i].y - st.pts[i - 1].y);
+    const marks = Math.round(len / (st.w0 * 1.1));
+    for (let k = 0; k < marks; k++) {
+      const t = (k + rng()) / marks, at = pointAt(st.pts, t), w = (st.w0 + (st.w1 - st.w0) * t) * 0.74;
+      const dark = rng() < 0.6;
+      ctx.save();
+      ctx.translate(at.p.x, at.p.y);
+      ctx.rotate(at.a);
+      ctx.fillStyle = dark ? css(bark.hue, bark.sat, bark.light * 0.6, 0.8) : css(bark.hue + 0.02, bark.sat * 0.5, bark.light * 1.6, 0.7);
+      ctx.beginPath();
+      ctx.ellipse(0, (rng() - 0.5) * w * 0.4, w * (dark ? 0.12 : 0.08), w * (dark ? 0.42 : 0.2), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+  return strokes.map((st) => st.pts);
+}
+
 /**
  * Paint one species atlas: four tiles (2 × 2) of `size` / 2 px each, straight alpha, toned by the map palette's
- * texTone. Returns the ImageData-backed texture (sRGB, anisotropy 8, mipmapped).
+ * texTone. Returns the ImageData-backed texture (sRGB, anisotropy 8, mipmapped). Trees round 5: a `shrub` atlas paints
+ * the shrub's leaf law on a broadleaf kind's tiles (SHRUB_LEAF_LAW) and its stems on the last (SHRUB_STEM_TILE).
  */
-export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: ToneFunction | null = null, snow = 0): THREE.Texture {
+export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: ToneFunction | null = null, snow = 0,
+  shrub = false): THREE.Texture {
   const s = Math.max(64, size | 0), T = SPRAY_ATLAS_TILES, S = Math.floor(s / T);
   const c = document.createElement('canvas');
   c.width = c.height = s;
@@ -637,8 +1077,10 @@ export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: To
     ctx.rect(tx * S, ty * S, S, S);
     ctx.clip();
     ctx.translate(tx * S, ty * S);
-    const twigs = kind === 'birch-bare' ? paintBareTile(ctx, S, rng) : kind === 'broom' ? paintBroomTile(ctx, S, rng)
-      : BROADLEAF_RECIPES[kind] ? paintBroadleafTile(ctx, S, rng, kind, BROADLEAF_RECIPES[kind])
+    const twigs = shrub && ty * T + tx === SHRUB_STEM_TILE ? paintShrubStemTile(ctx, S, rng)
+      : kind === 'birch-bare' ? paintBareTile(ctx, S, rng) : kind === 'broom' ? paintBroomTile(ctx, S, rng)
+      : ROUND5_PAINTERS[kind] ? ROUND5_PAINTERS[kind](ctx, S, rng)
+      : BROADLEAF_RECIPES[kind] ? paintBroadleafTile(ctx, S, rng, kind, BROADLEAF_RECIPES[kind], shrub)
         : paintConiferTile(ctx, S, rng, kind);
     // a winter palette's snow load rides the twigs of the top tile row — the snow-laden sprays the sky-facing seats
     // take (vegetation.ts buildGrownTree); the bottom row stays bare (its own stream: the leaf painting never moves)
@@ -652,7 +1094,7 @@ export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: To
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 8;
   texture.needsUpdate = true;
-  texture.name = `sprayAtlas:${kind}`;
+  texture.name = `${shrub ? 'shrubAtlas' : 'sprayAtlas'}:${kind}`;
   return texture;
 }
 
@@ -677,6 +1119,44 @@ export function finishSprayTiles(d: Uint8ClampedArray, s: number, S: number, T: 
       d[i + 3] = Math.round(d[i + 3] * fall);
       if (d[i + 3] < 24) { d[i] = fr; d[i + 1] = fg; d[i + 2] = fb; }
     }
+    padSprayTile(d, s, S, tx, ty, fr, fg, fb);
+  }
+}
+
+/** Trees round 4: the alpha a texel needs to pass the foliage's alpha test (0.38), on the 0–255 scale. */
+const SPRAY_ALPHA_CUT = 97;
+
+/**
+ * Trees round 4 (the gauntlet's wave 68: "visible alpha fringing", "heavy black vein outlines"): the colour under the
+ * alpha test. A texel the test discards still feeds the filter and the mips with its colour, and the painters leave the
+ * dark anti-aliased rims of their strokes there — a dark fringe round every leaf once filtered. Each texel under the cut
+ * takes the colour of its nearest leaf texel (a breadth-first dilation four texels deep, its own alpha kept), and the
+ * rest the tile's mean, as the flood already gave the clear ones.
+ */
+function padSprayTile(d: Uint8ClampedArray, s: number, S: number, tx: number, ty: number, fr: number, fg: number, fb: number): void {
+  const at = (x: number, y: number): number => ((ty * S + y) * s + tx * S + x) * 4;
+  const depth = new Int8Array(S * S).fill(-1);
+  let frontier: number[] = [];
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (d[at(x, y) + 3] >= SPRAY_ALPHA_CUT) { depth[y * S + x] = 0; frontier.push(y * S + x); }
+  for (let step = 1; step <= 4 && frontier.length; step++) {
+    const next: number[] = [];
+    for (const k of frontier) {
+      const x = k % S, y = (k / S) | 0, src = at(x, y);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= S || ny >= S || depth[ny * S + nx] !== -1) continue;
+        const dst = at(nx, ny);
+        d[dst] = d[src]; d[dst + 1] = d[src + 1]; d[dst + 2] = d[src + 2];
+        depth[ny * S + nx] = step;
+        next.push(ny * S + nx);
+      }
+    }
+    frontier = next;
+  }
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    if (depth[y * S + x] !== -1) continue;
+    const i = at(x, y);
+    d[i] = fr; d[i + 1] = fg; d[i + 2] = fb;
   }
 }
 

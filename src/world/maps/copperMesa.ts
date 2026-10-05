@@ -54,7 +54,11 @@ export default {
     grassTexTone: desert.vegetation.grassTexTone, tuftTone: desert.vegetation.tuftTone,
     species: ['acacia', 'cedar', 'pine'], clusterMix: [['acacia', 0.58], ['cedar', 0.32], ['pine', 0.1]],
     loneMix: [['acacia', 0.65], ['cedar', 0.25], ['pine', 0.1]], rimMix: [['cedar', 0.5], ['acacia', 0.4], ['pine', 0.1]],
-    clusterCount: 22, loneCount: 32, rimCount: 40, grassDensity: 0.36, bushCount: 0.6, bushSpecies: 'acacia', clusterScrub: 1.6,
+    // Trees round 2b (2026-10-03, gauntlet wave 28: "green broadleaf and fir clumps on sand"): the Arizona uplands' cover —
+    // sparse juniper and pinyon (the cedar and pine slots' forms) on the higher benches, mesquite (the acacia slot) in
+    // the low washes (treeBiomes.ts copper_mesa: upland, open groves), creosote (the broom shrub form) between, a thin
+    // bunch-grass sward. Was 22 / 32 / 40 trees, grass 0.36, scrub 0.6.
+    clusterCount: 6, loneCount: 16, rimCount: 18, grassDensity: 0.1, bushCount: 0.9, bushSpecies: 'acacia', clusterScrub: 1.6,
   },
   props: {
     sourcedPalette: 'foundry',
