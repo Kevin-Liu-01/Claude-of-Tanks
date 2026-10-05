@@ -80,7 +80,20 @@ finite HIGH/LOW recoil prisms and reciprocal elevation sweeps, including every
 intermediate angle through a conservative chord bound. It removes only colliding
 turret/gun fill voxels after closure; authored stock and hull fill stay intact.
 Raw residual air remains reported, with no audit exemption. Focused controls and
-independent policy review pass; final corrected records remain pending.
+independent policy review pass. The final regenerated records pass all four
+independent HIGH/LOW checks: 924 fine recoil poses, 1,344 fixed/moving turret
+poses, 2,604 reciprocal finite-volume poses and 924 recoil-volume poses, with
+zero contact exemptions. All seven hull payloads are byte-identical to the
+previous records; remaining gun/turret voxels are strict subsets of the rejected
+occupancy. Raw residuals remain 65.8/101.1/43.6/80.9/66.7/40.3/81.0 L for
+M1A1/HA/HC/SA/AIM/FEP/UA respectively, not a watertight pass.
+
+The five local commits were rebased onto `2e299bec9`. Independent integration
+review compared all nine vehicles in both qualities with pre-rebase `aa62f89bf`:
+complete authored mesh/index buffers, hierarchy, rig/world transforms and
+floor seating are identical in all 18 cases. SEPv2's offending base geometry
+also matches `703b16e40` exactly on the new main; its inherited contact status
+is unchanged. The upstream aim change preserves the authored mechanical limits.
 
 Fresh Bradley raw water diagnostics are 49.05 L (M3) and 54.95 L (M6), both RED.
 Independent owner-span classification found M3's central 25.234375 L and M6's
@@ -88,7 +101,18 @@ entire central 1.21875 L outside each separate body owner: real articulation air
 M3's remaining 0.78125 L of central stationary residue matches all 50 prior cells
 exactly. No new stationary central hole was found; noncentral residual is retained.
 
-Fresh anatomy update/check, nine-ID assets, LOW/M1 visual reviews, geometry and
-sealed ledgers, composed release, integrated npm tests/build and production
-verification are pending. This record will be updated with actual outcomes
-before publication; no pending check is presented as passed.
+The complete 220-vehicle anatomy update/check passes, including all 660
+technical diagrams, 1,988 authored modules and 440 track sides. The existing
+110 dimension warnings remain warnings. Refreshed assets and centering for
+these nine IDs, geometry-ledger update/check, the 33-view sealed ledger,
+typecheck, attribution and public build all pass.
+
+Final independent native review accepts 70 fresh frames: 22 M1 HIGH, 22 M1 LOW
+and all 26 Bradley LOW views, alongside the three owner photographs. All 26
+manifest source/fill entries match current files. The earlier Bradley HIGH
+review remains valid by exact exterior/fill identity. This includes every M1
+front, base/HA elevation extremes, kit/net quarters and the protected modern
+M1A2 comparator. No exposed fill or new regional visual defect was found.
+
+Composed release, integrated npm tests and real Garage/production verification
+remain pending. No pending check is presented as passed.

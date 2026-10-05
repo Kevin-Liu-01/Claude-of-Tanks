@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-05T07:30:23.100Z",
+ "generatedAt": "2026-10-05T12:08:57.855Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening) and inside-out pixel totals over the 33 census views. Gate: a tank may not exceed its ledger open px by more than max(12, 10%) and a sealed tank must stay sealed.",
@@ -546,7 +546,7 @@
    "openViews": 0,
    "insideOutPx": 36,
    "seeThroughPx": 0,
-   "tris": 104666
+   "tris": 106686
   },
   "m1a1ha": {
    "sealed": true,
@@ -554,7 +554,7 @@
    "openViews": 0,
    "insideOutPx": 76,
    "seeThroughPx": 0,
-   "tris": 116078
+   "tris": 118038
   },
   "m1a2": {
    "sealed": true,
@@ -562,7 +562,7 @@
    "openViews": 0,
    "insideOutPx": 1,
    "seeThroughPx": 0,
-   "tris": 116298
+   "tris": 118306
   },
   "m1a2_sepv2": {
    "sealed": true,
@@ -570,7 +570,7 @@
    "openViews": 0,
    "insideOutPx": 5,
    "seeThroughPx": 16,
-   "tris": 119290
+   "tris": 121406
   },
   "m1a2_sepv2_x": {
    "sealed": true,
@@ -585,8 +585,8 @@
    "openPx": 0,
    "openViews": 0,
    "insideOutPx": 5,
-   "seeThroughPx": 5664,
-   "tris": 132012
+   "seeThroughPx": 5674,
+   "tris": 133996
   },
   "m1a2_sepv3_x": {
    "sealed": true,
@@ -602,7 +602,7 @@
    "openViews": 0,
    "insideOutPx": 934,
    "seeThroughPx": 0,
-   "tris": 125810
+   "tris": 127902
   },
   "m1a2_tusk_x": {
    "sealed": true,
@@ -642,7 +642,7 @@
    "openViews": 0,
    "insideOutPx": 146,
    "seeThroughPx": 9,
-   "tris": 92678
+   "tris": 94262
   },
   "m46_patton": {
    "sealed": false,
@@ -1249,8 +1249,8 @@
    "openPx": 2,
    "openViews": 0,
    "insideOutPx": 44,
-   "seeThroughPx": 19051,
-   "tris": 143244
+   "seeThroughPx": 19039,
+   "tris": 145192
   },
   "ua_m1a1_x": {
    "sealed": true,
@@ -1578,7 +1578,7 @@
    "openViews": 0,
    "insideOutPx": 121,
    "seeThroughPx": 0,
-   "tris": 95554
+   "tris": 97782
   }
  }
 }
