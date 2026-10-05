@@ -156,7 +156,8 @@ interface StudioFxRuntime {
     resolveSubject: (id: RuntimeValue) => StudioActor | null,
   ): void;
   muzzleFlash(position: THREE.Vector3, direction: THREE.Vector3, caliberMm: number): void;
-  destruction(position: THREE.Vector3, visual: TankVisual | null, cause: string): void;
+  destruction(position: THREE.Vector3, visual: TankVisual | null, cause: string, wreckOf?: string | null,
+    opts?: { shellBurst?: boolean }): void;
   dust(position: THREE.Vector3, direction: THREE.Vector3, intensity: number): void;
   armorScar(visual: TankVisual, position: THREE.Vector3, normal: THREE.Vector3, caliberMm: number): void;
   composeFiringMoment(options: Readonly<Record<string, RuntimeValue>>): void;
@@ -1878,7 +1879,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         pos: [position.x, position.y, position.z],
       });
     } else {
-      fx.destruction(position, null, size === 'medium' ? 'shot' : (params.cause || 'ammorack'));
+      // a shell burst (cause 'shot') has no wreck to burn: its column is smoke only (2026-10-03, the floating fire)
+      fx.destruction(position, null, size === 'medium' ? 'shot' : (params.cause || 'ammorack'), null,
+        { shellBurst: params.cause === 'shot' });
     }
     // `huge` (fuel / ammunition cook-off column) only exists as a cinematic recipe
     if (size === 'huge' || cinematicFor(params)) ensureCinematics().explosion(id, position, size, params.cause);
@@ -2048,7 +2051,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       const z = position.z + Math.cos(angle) * distance;
       const y = hfProxy.getHeightAt(x, z) + 0.05;
       const medium = size === 'medium' || (size === 'mixed' && index % 3 === 0);
-      if (medium) fx.destruction(_v2.set(x, y, z), null, 'shot');
+      if (medium) fx.destruction(_v2.set(x, y, z), null, 'shot', null, { shellBurst: true });
       else fxBus.emit('shell:expired', { shellId: -1, hitTerrain: true, pos: [x, y, z] });
     }
     return true;

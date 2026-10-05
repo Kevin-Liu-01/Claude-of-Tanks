@@ -420,6 +420,10 @@ export interface FireballOptions {
   ground?: boolean;
   /** Seconds after `now` this fireball erupts (cook-offs). */
   delayS?: number;
+  /** Flame lifetime factor (1 = an ammunition fireball). A shell burst has no fuel load: its core and billow lobes burn
+   * out in about half the time, cooling to soot near the ground instead of climbing as orange puffs that read as fire
+   * floating in the air (2026-10-03, the site fifty). */
+  cool?: number;
 }
 
 /**
@@ -432,6 +436,7 @@ export function fireball(ctx: CineCtx, x: number, y: number, z: number, o: Fireb
   const k = o.scale;
   const d = o.delayS ?? 0;
   const rise = o.rise ?? 1;
+  const cool = o.cool ?? 1;
   // flash
   for (let i = 0; i < 3; i++) {
     puff(ctx, 'flash', x + (r() - 0.5) * k, y + r() * k, z + (r() - 0.5) * k, 0, 2, 0,
@@ -445,7 +450,7 @@ export function fireball(ctx: CineCtx, x: number, y: number, z: number, o: Fireb
     const sx = Math.sin(b) * Math.cos(a), sy = Math.abs(Math.cos(b)), sz = Math.sin(b) * Math.sin(a);
     puff(ctx, 'fire', x + sx * 0.6 * k, y + sy * 0.4 * k, z + sz * 0.6 * k,
       sx * sp, sy * sp * 0.7 + 2.2 * rise, sz * sp,
-      0.55 + r() * 0.75, (1.4 + r() * 0.9) * k, (3.6 + r() * 2.2) * k,
+      (0.55 + r() * 0.75) * cool, (1.4 + r() * 0.9) * k, (3.6 + r() * 2.2) * k,
       i < coreN / 5 ? WHITE_HOT : FLAME_Y, FLAME_O, 0.42 + r() * 0.26, 2.4 * rise, d + r() * 0.12);
   }
   // billow body: occluding fire-in-smoke lobes rolling upward
@@ -457,7 +462,7 @@ export function fireball(ctx: CineCtx, x: number, y: number, z: number, o: Fireb
     const sp = (2.2 + r() * 4.2) * k;
     puff(ctx, 'billow', x + Math.cos(a) * out, y + (crown ? 0.8 + r() * 1.4 : r() * 0.8) * k, z + Math.sin(a) * out,
       Math.cos(a) * sp, (crown ? 4.5 + r() * 3.5 : 1.6 + r() * 2.4) * k * rise, Math.sin(a) * sp,
-      1.5 + r() * 1.3 + 0.4 * rise, (2.4 + r() * 1.2) * k, (6.4 + r() * 3.2) * k,
+      (1.5 + r() * 1.3 + 0.4 * rise) * cool, (2.4 + r() * 1.2) * k, (6.4 + r() * 3.2) * k,
       SOOT0, SOOT1, 0.9 + r() * 0.08, 1.6 * rise, d + 0.02 + r() * 0.2);
   }
   // dark smoke roll boiling out of the crown (normal-blended, long)
@@ -471,7 +476,7 @@ export function fireball(ctx: CineCtx, x: number, y: number, z: number, o: Fireb
     glowPuff(ctx, 'smoke', x + Math.cos(a) * out, y + lift, z + Math.sin(a) * out,
       Math.cos(a) * (0.8 + r() * 1.6) * k + WIND_X * 0.5, (2.6 + r() * 3.2) * k * rise, Math.sin(a) * (0.8 + r() * 1.6) * k + WIND_Z * 0.5,
       5.5 + r() * 4.5 + 2 * rise, (3.2 + r() * 1.4) * k, (8.5 + r() * 4.5) * k,
-      FIRE_LIGHT, glow * 0.6 * (1 - i / smokeN), SMOKE_DARK0, 0.62 + r() * 0.18, 0.9 * rise, birth);
+      FIRE_LIGHT, glow * 0.6 * cool * (1 - i / smokeN), SMOKE_DARK0, 0.62 + r() * 0.18, 0.9 * rise, birth);
   }
   if (o.ground !== false) {
     shockwave(ctx, x, z, 10 + 9 * k, 0.8 + 0.4 * Math.min(k, 1.5), d);

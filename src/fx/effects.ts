@@ -224,6 +224,9 @@ interface SmokeColumn {
   ttl: number;
   smolder?: number;
   scale: number;
+  /** false: a shell burst on open ground — smoke only, no flame licks on a deck line nothing stands on, no ember
+   * smolder after (2026-10-03, the Studio's floating fire: shell hits left 40 s of flame over bare ice and water). */
+  flame?: boolean;
 }
 
 interface LiveShell {
@@ -413,6 +416,8 @@ export interface FxRuntime {
     cause?: DestructionCause,
     /** wreck r1: the destroyed entity's id — its smoke column rides and leaves with the corpse. */
     wreckOf?: string | null,
+    /** shellBurst: a shell hitting open ground (the Studio's stand-in blast), not a tank — its column is smoke only. */
+    opts?: { shellBurst?: boolean },
   ): void;
   dust(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number): void;
   exhaust(pos: THREE.Vector3, intensity: number, sooty?: boolean, birthOffset?: number): void;
@@ -563,6 +568,7 @@ const EXPLOSION_LIGHT_PEAK = 520;
 // smolder for the rest of the match).
 const SMOKE_COLUMN_S = 40;
 const SMOKE_SMOLDER_S = 35;    // post-column ember/wisp stage on the wreck
+const SHELL_BURST_COLUMN_S = 14; // a shell hit's smoke-only column (the Studio's stand-in blast; no wreck burns)
 // r5 column-continuity rebuild: 0.05 (was 0.11) — the 9 Hz cadence of very
 // large puffs is what let the column macro-structure fall apart in motion
 // (a detached dark blob with clear air between it and the burning wreck at
@@ -3169,6 +3175,7 @@ function* createFxSteps(
     birthOffset = 0,
     cause: DestructionCause = 'ammorack',
     wreckOf: string | null = null,
+    shellBurst = false,
   ): void {
     const rack = cause === 'ammorack';
     const burn = cause === 'fire';
@@ -3237,7 +3244,9 @@ function* createFxSteps(
     emitDestructionEruptionSkirt(pos, cy, burn, dk, birthOffset);
     // wreck r1: a live kill names its wreck so the column rides the corpse (see syncColumnAnchors);
     // composed replays and warm-ups pass no id and keep the world-fixed column.
-    columns.push({ key: wreckOf ? `wreck:${wreckOf}` : null, wreckOf, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0, ttl: SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3 });
+    // a shell burst leaves a shorter smoke-only column: no wreck burns there
+    columns.push({ key: wreckOf ? `wreck:${wreckOf}` : null, wreckOf, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0,
+      ttl: shellBurst ? SHELL_BURST_COLUMN_S : SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3, flame: !shellBurst });
     capColumns();
     finalizeDestroyedVisual(visual, rack, birthOffset);
   }
@@ -3346,7 +3355,7 @@ function* createFxSteps(
     // hull"): licks are born ON the deck line, rise slowly, live SHORT and
     // SHRINK with age — fire that licks up off the wreck and dies before it
     // can drift free. Higher rate so the base always carries flame.
-    if (rng() < 0.70 + 0.30 * stage) {
+    if (col.flame !== false && rng() < 0.70 + 0.30 * stage) {
       const licks = rng() < 0.35 ? 2 : 1;
       for (let li = 0; li < licks; li++) {
         _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
@@ -3517,7 +3526,8 @@ function* createFxSteps(
     col.ttl -= tickDt;
     if (col.ttl <= 0) {
       col.ttl = 0;
-      col.smolder = SMOKE_SMOLDER_S;
+      // nothing smolders in a shell crater: a smoke-only column simply ends
+      col.smolder = col.flame === false ? 0 : SMOKE_SMOLDER_S;
       col.acc = 0;
       return;
     }
@@ -4566,6 +4576,8 @@ function* createFxSteps(
         resolvedKeyedColumns: resolved,
         unresolvedKeyedColumns: keyed - resolved,
         worldFixedColumns: columns.length - keyed,
+        // smoke-only (shell burst) columns, so a probe can tell them from burning wrecks
+        flamelessColumns: columns.filter((col) => col.flame === false).length,
         subjects,
       };
     },
@@ -5161,8 +5173,9 @@ function* createFxSteps(
       visual: FxVisual | null,
       cause: DestructionCause = 'ammorack',
       wreckOf: string | null = null,
+      opts: { shellBurst?: boolean } = {},
     ): void {
-      spawnDestruction(pos, visual, 0, cause, wreckOf);
+      spawnDestruction(pos, visual, 0, cause, wreckOf, !!opts.shellBurst);
     },
 
     /**
