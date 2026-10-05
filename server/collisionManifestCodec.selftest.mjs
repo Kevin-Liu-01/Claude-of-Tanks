@@ -204,7 +204,8 @@ const previousShardBytes = {
   mars: 669259,
   // 2026-09-29 (0e5fc79e2): Earthrise Basin and Aegis Crossing join at their shipped sizes (as last captured in
   // 2e19224a2); the map commit published their shards but left this budget behind.
-  moon: 391971, cliffbridge: 1723422,
+  // 2026-10-05: separate unpadded wreck solids add 2544 B / 3764 B; all other records are unchanged.
+  moon: 394515, cliffbridge: 1727186,
 };
 assert.deepEqual(Object.keys(previousShardBytes), MAP_IDS, 'storage budget covers every canonical map');
 let rawBytes = 0, encodedBytes = 0, publishedBytes = 0;
