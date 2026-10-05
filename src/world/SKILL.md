@@ -178,12 +178,15 @@ the shell is ground: the apron over the bake eye's horizon (its inner rows on th
 degrees, read sky over a low far country) takes the skyline's colour, and the far earth takes it hazed by the map's law
 over the reach past the strip at which the ray meets the ground, converging toward the horizontal onto the screen's own
 horizon: the dome's lookup greyed by the dome's deck greying and knee, under the cloud layer's composite at the horizon
-point (its history read where the cloud dome reads it, on this frame's screen), pre-compensated for the aerial pass.
-sky.ts and volumetricClouds.ts keep both inline, so the shell carries copies (`DOME_DECK_GREY_GLSL`,
-`CLOUD_COMPOSITE_GLSL`) on the domes' own uniforms (read off the `atmosphere-dome` mesh and
-`scene.userData.volumetricClouds.dome` each draw); `horizonPanoramaDeck.selftest.mjs` and
-`horizonPanoramaClouds.selftest.mjs` run the sources' statements and the copies through one GLSL-subset evaluator
-(`glslSubset.test-support.mjs`) and fail the build on any difference. Where no cloud layer is read (none drawn, or the
+point (its history read where the cloud dome reads it, on this frame's screen), pre-compensated for the aerial pass
+(its haze, and its world-anchored cloud shade, which it multiplies into geometry after the haze when the clouds cast no
+shadows of their own). sky.ts, volumetricClouds.ts and post.ts keep these inline, so the shell carries copies
+(`DOME_DECK_GREY_GLSL`, `CLOUD_COMPOSITE_GLSL`, `AERIAL_CLOUD_SHADE_GLSL`) on their own uniforms (read off the
+`atmosphere-dome` mesh, `scene.userData.volumetricClouds.dome` and `scene.userData.cloudShadeAmp` each draw);
+`horizonPanoramaDeck.selftest.mjs` and `horizonPanoramaClouds.selftest.mjs` run the sources' statements and the copies
+through one GLSL-subset evaluator (`glslSubset.test-support.mjs`) and fail the build on any difference. The dome's sun
+glow, spot and disc are not copied: a bird toward the sunset sun (7 degrees up) matched within 0.006 a channel without
+them (the clouds' far rows cover the dome there). Where no cloud layer is read (none drawn, or the
 horizon point off the frame's top or bottom, eased in over the last twentieth) the dome goes toward the aerial pass's
 target as the overcast closes.
 A hole under the skyline (the game's open water) stays open; ground and tank-height cameras look up at the shell's sky,
