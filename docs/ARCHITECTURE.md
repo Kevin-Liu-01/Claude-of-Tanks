@@ -1371,7 +1371,7 @@ asset, one still decoding is silent, and no cue or crew covers for another
 **Assets.** 398 sound assets (649 variant files, 18.6 MB WebM/Opus) under
 `public/audio/sfx/<group>/`, described by `sfxManifest.generated.ts`
 (duration, channels, rate, loop points, size). Crew radio: 13 language packs
-× 107 lines (one to four takes each, mostly two; ~1.6 MB per pack) under
+× 109 lines (one to four takes each, mostly two; ~1.6 MB per pack) under
 `public/audio/voice/<lang>/`, described by `voiceManifest.generated.ts`. Both
 are generated offline with ElevenLabs (sound generation `eleven_text_to_sound_v2`;
 speech `eleven_v4` with Voice Library voices), verified (speech-to-text

@@ -289,6 +289,11 @@ const UI_SET = [
 /** The crew radio's keyed elements and net static, decoded from boot like the interface. */
 const RADIO_SET = ['radio_interference', 'radio_key_in', 'radio_key_out', 'radio_static_loop'];
 
+/** The reasoning exchange waits this long for a quiet net, and rarely opens on our first shot. */
+const THINK_WAIT_S = 8;
+const THINK_FIRST_SHOT_P = 0.03;
+const THINK_MEDALS = new Set(['chain_of_thought', 'step_by_step']);
+
 /** Aircraft of the Drone and AC-130 modes, decoded on first sight of one. */
 const AERIAL_SET = [
   'drone_fpv_loop', 'drone_fpv_hover_loop', 'drone_wind_loop', 'drone_spinup', 'drone_feed_static_loop', 'drone_link_lost',
@@ -341,6 +346,8 @@ export function createAudio({
   let radio: CrewRadio | null = null;
   let ambience: AmbienceDirector | null = null;
   const random = mulberry32(0x7a11c);
+  // The reasoning exchange's rare first-shot chance draws apart, leaving every other call's sequence as it was.
+  const thinkRandom = mulberry32(0x5e9b7);
 
   // ---- settings (cot.settings.v1, live via 'ui:volumes').
   let masterVolume = 0.8;
@@ -406,6 +413,9 @@ export function createAudio({
   let ammoLowCalled = false;
   let lastStanding = { mine: false, theirs: false, outnumbered: false };
   let lastKillAt = -99;
+  let thinkUntil = 0;
+  let thoughtThisBattle = false;
+  let firstShotHeard = false;
   let lastSpots: number[] = [];
   let lastSpotCallAt = -99;
   // "We're spotted" once per exposure, not every time an enemy's view flickers back onto a still tank.
@@ -508,13 +518,34 @@ export function createAudio({
   /** Crew radio requests and what the net did with each (bounded; the debug surface's sayLog). */
   const sayLog: { id: string; t: number; ok: boolean; why?: string }[] = [];
 
-  function say(id: string, options?: Parameters<CrewRadio['say']>[1]): void {
+  function say(id: string, options?: Parameters<CrewRadio['say']>[1]): boolean {
     let why: string | undefined;
     if (!radio || phase !== 'battle') why = 'phase';
     else if (playerId != null && tanks.get(playerId)?.alive === false && id !== 'victory' && id !== 'defeat' && id !== 'draw') why = 'dead';
     const ok = why == null && !!radio?.say(id, options);
     sayLog.push({ id, t: ctx ? +ctx.currentTime.toFixed(3) : 0, ok, ...(why ? { why } : !ok ? { why: 'net' } : {}) });
     if (sayLog.length > 160) sayLog.shift();
+    return ok;
+  }
+
+  /**
+   * "Let me think step by step." A reasoning medal (Chain of Thought, or five hits in a row) and, rarely, our first
+   * shot of a battle ask for it; it waits up to THINK_WAIT_S for a quiet net so the kill calls go first, and the
+   * gunner's "Step one: aim. Step two: fire." queues straight behind it. Once a battle.
+   */
+  function requestThink(): void {
+    if (thoughtThisBattle || !ctx || phase !== 'battle' || battleOver) return;
+    thinkUntil = ctx.currentTime + THINK_WAIT_S;
+  }
+
+  function updateThink(now: number): void {
+    if (!thinkUntil || !radio) return;
+    if (now > thinkUntil || battleOver || phase !== 'battle') { thinkUntil = 0; return; }
+    if (!radio.quiet) return;
+    thinkUntil = 0;
+    if (!say('think_step_by_step')) return;
+    thoughtThisBattle = true;
+    say('step_by_step_reply');
   }
 
   function hullOptions(extra: PlayOptions = {}): PlayOptions {
@@ -1968,6 +1999,12 @@ export function createAudio({
     });
     // The optics' sensor changing (the tank sight or the drone and gunship cameras).
     on<undefined>('ui:visionChanged', () => { if (phase === 'battle') play('zoom_step', hullOptions({ gainDb: -6 })); });
+    on<{ id?: string }>('service:medal', (e) => { if (e?.id && THINK_MEDALS.has(e.id)) requestThink(); });
+    on<{ isPlayer?: boolean }>('shell:fired', (e) => {
+      if (!e?.isPlayer || firstShotHeard || phase !== 'battle') return;
+      firstShotHeard = true;
+      if (thinkRandom() < THINK_FIRST_SHOT_P) requestThink();
+    });
     on<{ id?: string }>('tank:jump', (e) => { if (isOwn(e?.id)) play('jump_launch', hullOptions({ bus: 'own' })); });
     const righted = (e: { id?: string } | undefined) => {
       const id = e?.id ?? null;
@@ -2026,6 +2063,9 @@ export function createAudio({
         lastSmokeBorn = -1;
         auxGunOn = null;
         auxLights = null;
+        thinkUntil = 0;
+        thoughtThisBattle = false;
+        firstShotHeard = false;
         radio?.setRadioDamage(0);
         applyScene();
         startEngineSoon = true;
@@ -2152,6 +2192,7 @@ export function createAudio({
     pool.prune(now);
     mixer.update(dt);
     radio?.update();
+    updateThink(now);
     if (list) {
       indexTanks(list, dt);
       if (playerId) {

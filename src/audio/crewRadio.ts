@@ -58,6 +58,8 @@ export interface CrewRadio {
   setRadioDamage(level: 0 | 1 | 2): void;
   readonly language: string;
   readonly speaking: boolean;
+  /** Nothing waiting, and the last transmission and the gap after it are over (the same clock `say` keeps). */
+  readonly quiet: boolean;
   readonly log: readonly RadioLogEntry[];
   debugState(): { currentPri: number; currentGroup: string | null; currentEnd: number; pending: Request[] };
 }
@@ -394,6 +396,7 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     },
     get language() { return language; },
     get speaking() { return !!currentSrc; },
+    get quiet() { return !queue.length && ctx.currentTime >= currentEnd + RADIO_DISCIPLINE.gapS; },
     log,
     debugState() {
       return { currentPri, currentGroup, currentEnd, pending: queue.map((q) => ({ ...q })) };

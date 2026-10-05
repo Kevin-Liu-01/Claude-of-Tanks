@@ -335,6 +335,29 @@ moment('last_enemy', () => { foes[2].combat.destroyed = true; bus.emit('tank:des
 await startBattle();
 moment('outnumbered', () => { for (const a of allies) a.combat.destroyed = true; frame(); }, { heard: false });
 
+// The reasoning exchange: a Chain of Thought (the Service Record's medal, announced inside the kill's own dispatch)
+// has the commander think step by step once the kill call is done, and the gunner answer with the drill; once a battle.
+await startBattle();
+{
+  settle(6);
+  const since = +ctx.currentTime.toFixed(3);
+  foes[0].combat.destroyed = true;
+  bus.emit('service:medal', { id: 'chain_of_thought' });
+  bus.emit('tank:destroyed', { id: 'f1', killerId: 'me', pos: [0, 0, 200], cause: 'shot' });
+  settle(12);
+  const exchange = ['target_destroyed', 'double_kill', 'think_step_by_step', 'step_by_step_reply'];
+  const heard = probe.voiceLog.filter((e) => e.t >= since && exchange.includes(e.id)).map((e) => e.id);
+  assert.deepEqual(heard.slice(1), ['think_step_by_step', 'step_by_step_reply'],
+    `the kill call, then the exchange in order (heard ${heard}; asked ${JSON.stringify(probe.sayLog.filter((e) => e.t >= since))})`);
+  covered.add('think_step_by_step');
+  covered.add('step_by_step_reply');
+  const again = +ctx.currentTime.toFixed(3);
+  bus.emit('service:medal', { id: 'step_by_step' });
+  bus.emit('service:medal', { id: 'first_blood' });
+  settle(10);
+  assert.ok(!asked('think_step_by_step', again), 'the exchange is once a battle, and only for the reasoning medals');
+}
+
 // The AC-130: the gunner names the weapon, not a tank loader's round.
 await startBattle('ac130');
 me.aerial = { kind: 'gunship', active: true, x: 0, y: 240, z: 90 };

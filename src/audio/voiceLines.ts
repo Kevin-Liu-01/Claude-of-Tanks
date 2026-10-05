@@ -142,6 +142,10 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   goal_scored: V(2, 6, 'mode', 1.5),
   respawn: V(1, 10, 'flow', 1.5),
   pickup_collected: V(0, 10, 'mode', 0.8),
+  // The reasoning exchange (a Chain of Thought or five hits in a row, once a battle): the commander thinks
+  // aloud on a quiet net; the gunner's answer queues behind it and outranks the kill calls that follow.
+  think_step_by_step: V(2, 600, 'reasoning', 1.5),
+  step_by_step_reply: V(3, 600, 'reasoning_reply', 6.0),
 });
 
 /** A disciplined net: one transmission at a time with a breath between calls, two waiting at most. */
