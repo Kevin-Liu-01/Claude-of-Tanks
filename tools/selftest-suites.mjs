@@ -990,6 +990,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.casemateLay.selftest.mjs',
     // 2026-10-03 (bots lane): a patrol leg the grid cannot route still drives (the bridge gate's no-route hold).
     'src/game/ai.patrolNoRoute.selftest.mjs',
+    // 2026-10-04 (physics lane): a fresh contact is no starved trigger; under fire in the open a settle holds nothing.
+    'src/game/ai.underFire.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',

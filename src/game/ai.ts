@@ -560,6 +560,21 @@ const UNDER_FIRE_RANGE_BONUS_M = 180; // engage-envelope extension toward the sh
 
 const STALEMATE_SILENT_S = 12;   // no shot fired this long w/ contact → push
 const STALEMATE_PUSH_S = 8;      // duration of one forced push window
+// The settled-shot halt (r7's direct trigger, updateEngagementSettle: a starved trigger with a clear ray halts the hull
+// for a clean shot) waits for a trigger that has starved: SETTLE_STARVED_S of contact with its target without a shot
+// (physics lane, 2026-10-04; Tidegate Polders pacing seed 41002 on the merged tree). It counted the silence from the
+// bot's last shot, so a bot that had not fired since it spawned halted the moment it saw an enemy: a BMP-3 kiting at
+// 8 m/s braked to a stop 100 m from an enemy Bradley at 48.75 s and sat facing it, hit from 50.1 s on, through the
+// fallback (50.5 s) and the flank (50.75 s) its own state machine chose, until a backoff took the hull at 51.25 s; it
+// died at 54 s. The stalemate press, which arms a settle with its push on 12 s of silence, halts only once the gun may
+// fire on the contact (the reaction gate): a press begins on a fresh contact when the bot was not pressing before it.
+// Nor does a settle, either one, hold a hull under fire in the open (exposedUnderFire): there the hull keeps the
+// movement its state chose (the scout's kite, the fallback, the flank, cover). In cover, where the gun that hit it no
+// longer sees its body, it still halts to shoot.
+const SETTLE_STARVED_S = 8;
+// A hull stands in the open to a gun that sees it at this fraction of its height off its root: the hull below the
+// turret (findCrestAlong's hull-down crest stands 0.45 of it high).
+const EXPOSED_BODY_FRAC = 0.3;
 // Round 48 pacing (2026-09-24): seconds of a closed penetration gate (no zone at or above the 0.9 ratio, no HE
 // left to fall back on) against a live, visible target before the bot changes the geometry with a flank.
 const PEN_DENIED_FLANK_S = 8;
@@ -3236,10 +3251,33 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
   }
 
+  /** The trigger has starved (SETTLE_STARVED_S): that long in contact with the current target without a shot. A fresh
+   * contact has not, however long ago the bot last fired. */
+  function triggerStarved(timeS: number): boolean {
+    return timeS - Math.max(lastFiredAtS, acquiredAtS) > SETTLE_STARVED_S;
+  }
+
+  // the last exposedUnderFire sight test, re-cast every LOS_INTERVAL_S while it is asked
+  let openExposedAtS = -Infinity;
+  let openExposed = false;
+  /**
+   * Under fire in the open (SETTLE_STARVED_S): a direct hit inside the under-fire window from a gun that still sees the
+   * hull's body (EXPOSED_BODY_FRAC), with no crest or wall between them.
+   */
+  function exposedUnderFire(timeS: number): boolean {
+    const shooter = directlyUnderFire && timeS < underFireUntilS && underFire && enemyAlive(underFire) ? underFire : null;
+    if (!shooter) return false;
+    if (timeS - openExposedAtS < LOS_INTERVAL_S) return openExposed;
+    openExposedAtS = timeS;
+    const st = entity.state, sp = shooter.state.pos;
+    openExposed = hasLos(sp.x, eyeY(shooter), sp.z, st.pos.x, st.pos.y + spec.dims.heightM * EXPOSED_BODY_FRAC, st.pos.z);
+    return openExposed;
+  }
+
   function updateEngagementSettle(timeS: number): void {
     const reload = entity.combat && entity.combat.reload;
     if (conserving || emptyRack) return; // round 62: the silence is a held round or an empty rack, not a bad lay
-    if (timeS - lastFiredAtS <= 8 || timeS < settleUntilS ||
+    if (!triggerStarved(timeS) || timeS < settleUntilS ||
         timeS < settleCdUntilS || !reload || reload.t > 0.5) return;
     settleStreak = timeS - settleUntilS < 1.5 ? settleStreak + 1 : 0;
     if (settleStreak < 3) {
@@ -4563,7 +4601,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         hasCoverPoint = false;
         if (mode === 'seekCover' || mode === 'patrol') mode = 'engage';
         if (target && !losClear && findVantage()) hasVantage = true;
-        if (target && losClear && !conserving && !emptyRack) settleUntilS = timeS + 3.5;
+        // the push's halt waits until the gun may fire on the contact (the reaction gate; see SETTLE_STARVED_S)
+        if (target && losClear && !conserving && !emptyRack && timeS - acquiredAtS >= tier.reactionS) {
+          settleUntilS = timeS + 3.5;
+        }
       }
       return;
     }
@@ -5543,7 +5584,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       drivePassivePress(input);
       return;
     }
-    if (timeS < settleUntilS && target && losClear && !conserving && !emptyRack) {
+    // the settled-shot halt, but not under fire in the open (SETTLE_STARVED_S)
+    if (timeS < settleUntilS && target && losClear && !conserving && !emptyRack && !exposedUnderFire(timeS)) {
       faceYaw(input, Math.atan2(
         target.state.pos.x - entity.state.pos.x,
         target.state.pos.z - entity.state.pos.z,
@@ -6016,6 +6058,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       reaction, reactions, suspectId: suspect && nowS < suspectUntilS ? suspect.id : null,
       scooting: nowS < scootUntilS,
       kiting: nowS < kiteUntilS,
+      settling: nowS < settleUntilS,
       fallingBack: nowS < fallbackUntilS,
       hpFrac: entity.combat && entity.combat.maxHp
         ? +(entity.combat.hp / entity.combat.maxHp).toFixed(2) : 1,
