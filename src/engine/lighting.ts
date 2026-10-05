@@ -18,6 +18,7 @@ import {
 } from './shadowRefresh.ts';
 import {
   SHADOW_OPACITY,
+  shadowDepthBiasForTexel,
   shadowNormalBiasForTexel,
   snapShadowCoordinate,
 } from './shadowStability.ts';
@@ -60,6 +61,9 @@ interface ShadowDebugOptions {
   noVehicleDetail?: boolean;
   /** 2026-10-02: render every caster into every cascade every frame (the static-caster cache off; A/B probes). */
   noStaticCache?: boolean;
+  /** 2026-10-04: every cascade on the old single depth bias, 0.40 m along the sun ray (A/B probes for the per-cascade
+   *  bias); read where the biases are applied, so a probe sets it and calls updateFrustums(). */
+  legacyBias?: boolean;
 }
 
 declare global {
@@ -161,6 +165,10 @@ function applyStableCascadePoses(csm: CSM, mask: number): void {
   }
 }
 
+// The old single depth bias, normalised over the CSM lights' depth range (three's CSM keeps lightNear 1 and lightFar
+// 2000, so it came to 0.40 m along the sun ray on every cascade). The constructor still takes it; each cascade then
+// gets its own (applyShadowNormalBias, shadowStability.ts shadowDepthBiasForTexel), and __SHADOW_DEBUG.legacyBias
+// restores this one for A/B probes.
 const SHADOW_BIAS = -0.0002;
 // r4 penumbra: r185's PCF getShadow() is a 5-tap Vogel disk rotated per-pixel
 // by interleaved gradient noise, and its disk radius comes straight from
@@ -814,12 +822,21 @@ export function createLighting(
   // vehicle cast shadows that the broken Basic-packing path was dropping.
   patchShadowDepthPacking();
 
-  /** Keep receiver separation proportional to each physical shadow texel. */
+  /**
+   * Keep receiver separation proportional to each physical shadow texel: the normal offset, and the depth bias the
+   * cascade's PCF reach needs on a caster face 70 degrees from the sun (2026-10-04; shadowStability.ts
+   * shadowDepthBiasForTexel), written in the light's normalised depth. Called after the filter radius is set.
+   */
   function applyShadowNormalBias(i: number): void {
     const shadow = csm.lights[i].shadow;
     const span = shadow.camera.right - shadow.camera.left;
     const worldUnitsPerTexel = span / Math.max(1, shadow.mapSize.x);
     shadow.normalBias = shadowNormalBiasForTexel(worldUnitsPerTexel);
+    const legacy = typeof window !== 'undefined' && !!window.__SHADOW_DEBUG?.legacyBias;
+    const depthRange = Math.max(1e-3, shadow.camera.far - shadow.camera.near);
+    // (never more than the old normalised bias: a cascade at the 0.40 m ceiling keeps it exactly)
+    shadow.bias = legacy ? SHADOW_BIAS
+      : Math.max(SHADOW_BIAS, -shadowDepthBiasForTexel(worldUnitsPerTexel, shadow.radius, shadow.normalBias) / depthRange);
   }
 
   function applyShadowNormalBiases(): void {
@@ -1565,6 +1582,9 @@ export function createLighting(
             radius: shadow.radius,
             intensity: shadow.intensity,
             normalBias: shadow.normalBias,
+            bias: shadow.bias,
+            // the depth bias in world metres along the sun ray
+            depthBiasM: Number((-shadow.bias * (shadow.camera.far - shadow.camera.near)).toFixed(4)),
             autoUpdate: shadow.autoUpdate,
             needsUpdate: shadow.needsUpdate,
           };
