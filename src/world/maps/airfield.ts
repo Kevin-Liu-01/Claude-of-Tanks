@@ -150,7 +150,19 @@ export default {
       { id: 'terminal-hut-line', role: 'support', x: 122, z: 150, yawDeg: -90, structure: 'quonsethut', redoubt: true, outcrop: { count: 5, radius: 10 }, wreck: true },
       { id: 'eastern-radar-berm', role: 'scout', x: 340, z: -44, yawDeg: -90, structure: 'relaystation', outcrop: { count: 4, radius: 8 } },
     ],
-    plannedSites: [...CARGO_SIDE, ...CARGO_SIDE.map(rotateSite)],
+    // the landmarks lane (2026-10-05): the cargo hangar's plot holds the An-225's wreck in the ruin of its hangar (below):
+    // the site stays in the plan, vacated (every other building builds as before); its rotation on the terminal side
+    // keeps the barrel-vault hangar
+    plannedSites: [...CARGO_SIDE.map((site) => (site.x === -225 && site.z === -212 ? { ...site, vacated: true } : site)), ...CARGO_SIDE.map(rotateSite)],
+    // The landmarks lane (2026-10-05; src/world/landmarks/wrecks.ts): the Antonov An-225 Mriya as Hostomel's hangar left
+    // it in February 2022, at true scale and broken up across the cargo hangar's plot (x -253..-197, z -230..-194): the
+    // forward fuselage and flight deck with the wing's centre box under the hangar's broken arch ribs, its nose toward
+    // the apron; the outer wing panels and fallen engines along the plot's back; the twin-fin tail torn away; burnt
+    // debris (dressing, no collision) on the apron strip z -192..-180, clear of the zone-control disc at (-225, -150).
+    // The piece's origin is the centre of plot and strip together.
+    landmarks: [
+      { kind: 'aircraftWreck', x: -225, z: -205, yawDeg: 0, params: { width: 56, depth: 36, strip: 12 }, name: 'the An-225 Mriya in its hangar' },
+    ],
     // 2026-10-03 (regional-buildings lane): the Antonov airport's own buildings (maps/regional/hostomel.ts): the cargo
     // hangar under its barrel vault, sheet-steel maintenance hangars, the control tower's glazed cab, the terminal and
     // office blocks, the fire station, the water tower, the war's damage
