@@ -137,9 +137,16 @@ function yardWall(sink: PartSink, W: number, D: number, gx: number, gw: number, 
 const ALU: WindowStyle = { frame: ALUMINIUM, frameWidth: 0.05, frameOut: 0.04, bars: 'cross', surround: null, sill: { bucket: 'plaster3', out: 0.06 }, shutters: null };
 const RIBBON: WindowStyle = { frame: ALUMINIUM, frameWidth: 0.05, frameOut: 0.03, bars: 'two', surround: null, sill: null, shutters: null };
 
-function dialectOf(rng: () => number, style: WindowStyle, door: Rgb, lit = 0.35, leaf: 'panel' | 'plank' | 'glazed' = 'glazed'): HouseDialect {
+/**
+ * A building's windows and doors. Its glazing is one choice for the whole building (gauntlet wave 107: panes chosen one
+ * by one read as "blue glass and tan opaque panels in a checkerboard across the same floor"): drawn from the look
+ * stream, curtained throughout with `lit` odds or clear glass throughout. Each pane still draws from the build stream,
+ * so every draw after the windows stays where it was.
+ */
+function dialectOf(rng: () => number, style: WindowStyle, door: Rgb, lit = 0.35, leaf: 'panel' | 'plank' | 'glazed' = 'glazed', look?: () => number): HouseDialect {
+  const share = look ? (look() < lit ? 1 : 0) : lit;
   return {
-    window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, o.kind === 'loft' ? { ...style, bars: 'none', sill: null } : style, rng, o.kind === 'loft' ? 0 : lit),
+    window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, o.kind === 'loft' ? { ...style, bars: 'none', sill: null } : style, rng, o.kind === 'loft' ? 0 : share),
     door: (s, face, o, y0, frame) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: door, frame: { bucket: 'plaster3', width: 0.1, out: 0.04 },
       steps: { bucket: 'plaster2' }, leafKind: leaf }, frame.floors[o.storey] + o.y0),
   };
@@ -173,12 +180,10 @@ const powerhouse: RegionalBuilder = (ctx) => {
   }
   // the fascia band and the parapet
   sink.band(CONCRETE, -W / 2 - 0.25, H - 1.2, zb - 0.25, W / 2 + 0.25, H + 0.6, zf + 0.25, { decor: true });
-  // the roof gantry crane on its rails
-  const crane = pick(rng, [rgb(0xc9a24a), STEEL_GREEN, rgb(0xb8302a)]);
-  for (const z of [zb + 1.2, zf - 1.2]) sink.span('structureMetal', -W / 2 + 0.6, H + 0.6, z - 0.12, W / 2 - 0.6, H + 0.8, z + 0.12, { colour: IRON, decor: true });
-  const gx = (look() - 0.5) * W * 0.5;
-  for (const z of [zb + 1.2, zf - 1.2]) for (const dx of [-1.6, 1.6]) sink.member('structureMetal', [gx + dx, H + 0.8, z], [gx + dx * 0.5, H + 6.5, z], 0.35, 0.35, [1, 0, 0], { colour: crane, decor: true, exposed: true }, 0);
-  sink.span('structureMetal', gx - 1.1, H + 6.2, zb + 0.8, gx + 1.1, H + 7.2, zf - 0.8, { colour: crane, decor: true });
+  // (gauntlet wave 107: the roof gantry crane read as "a yellow A-frame sitting on the rooftop with no rails, supports or
+  // load context" and is gone; its livery's draw and its place's are kept, so every later draw holds)
+  pick(rng, [rgb(0xc9a24a), STEEL_GREEN, rgb(0xb8302a)]);
+  look();
   // the anchor block and the penstocks
   const ab0 = -PD / 2 + 0.3, ab1 = ab0 + Math.max(2.8, Math.min(4.0, PD - hallD - 7));
   const abH = 9.5 + rng() * 2;
@@ -233,7 +238,7 @@ const controlBuilding: RegionalBuilder = (ctx) => {
       w: W, d: D, plinth: { h: 0.6, out: 0.1, bucket: CONCRETE }, storeys: [{ h: 4.2, wall: CONCRETE }, { h: 3.6, wall: CONCRETE }, { h: 3.6, wall: CONCRETE }, { h: 3.6, wall: CONCRETE }],
       roof: { kind: 'flat', pitchDeg: 0, eave: 0.3, verge: 0.3, thickness: 0.4, bucket: CONCRETE, parapet: 0.9 }, gableBucket: CONCRETE,
       openings, chimneys: [], gutters: null, verge: null, reveal: 0.35,
-    }, dialectOf(rng, RIBBON, pick(rng, DOOR_PAINT), 0.45));
+    }, dialectOf(rng, RIBBON, pick(rng, DOOR_PAINT), 0.45, 'glazed', ctx.variant));
     // the spandrel bands proud of the windows, and the fins on the entrance front
     for (let s = 1; s < 4; s++) {
       const y = frame.floors[s];
@@ -316,7 +321,7 @@ const switchyard: RegionalBuilder = (ctx) => {
         roof: { kind: 'flat', pitchDeg: 0, eave: 0.2, verge: 0.2, thickness: 0.2, bucket: CONCRETE, parapet: 0.25 }, gableBucket: BLOCK,
         openings: [{ face: 'left', storey: 0, kind: 'door', u: 0.8, w: 0.95, y0: 0, h: 2.1 }, { face: 'left', storey: 0, kind: 'window', u: -1.0, w: 1.4, h: 1.0, y0: 1.1 }],
         chimneys: [], gutters: null, verge: null, reveal: 0.15,
-      }, dialectOf(rng, ALU, pick(rng, DOOR_PAINT), 0.3, 'panel'));
+      }, dialectOf(rng, ALU, pick(rng, DOOR_PAINT), 0.3, 'panel', ctx.variant));
     });
     yardWall(sink, W, D, -W * 0.18, 5.0, ctx.tier);
   });
@@ -349,7 +354,7 @@ const transformerYard: RegionalBuilder = (ctx) => {
         w: 5.6, d: 4.0, plinth: { h: 0.2, out: 0.05, bucket: CONCRETE }, storeys: [{ h: 3.0, wall: BLOCK }],
         roof: { kind: 'flat', pitchDeg: 0, eave: 0.2, verge: 0.2, thickness: 0.2, bucket: CONCRETE, parapet: 0.25 }, gableBucket: BLOCK,
         openings: [{ face: 'left', storey: 0, kind: 'door', u: 0.6, w: 0.95, y0: 0, h: 2.1 }], chimneys: [], gutters: null, verge: null, reveal: 0.15,
-      }, dialectOf(rng, ALU, pick(rng, DOOR_PAINT), 0.3, 'panel'));
+      }, dialectOf(rng, ALU, pick(rng, DOOR_PAINT), 0.3, 'panel', ctx.variant));
     });
     yardWall(sink, W, D, -W / 2 + 6.0, 5.0, ctx.tier);
   });
@@ -381,7 +386,7 @@ const relayTower: RegionalBuilder = (ctx) => {
         w: hw, d: hd, plinth: { h: 0.2, out: 0.05, bucket: CONCRETE }, storeys: [{ h: 3.3, wall: BLOCK }],
         roof: { kind: 'flat', pitchDeg: 0, eave: 0.25, verge: 0.25, thickness: 0.2, bucket: CONCRETE, parapet: 0.25 }, gableBucket: BLOCK,
         openings: [{ face: 'left', storey: 0, kind: 'door', u: 0.6, w: 0.95, y0: 0, h: 2.1 }], chimneys: [], gutters: null, verge: null, reveal: 0.15,
-      }, dialectOf(rng, ALU, pick(rng, DOOR_PAINT), 0.3, 'panel'));
+      }, dialectOf(rng, ALU, pick(rng, DOOR_PAINT), 0.3, 'panel', ctx.variant));
       sink.span('structureMetal', -hw / 2 + 1.0, 3.55, -1.0, -hw / 2 + 2.2, 4.3, 0.2, { colour: rgb(0xc4c0b4), decor: true });
     });
     yardWall(sink, W, D, -W * 0.25, 4.2, ctx.tier);
@@ -437,7 +442,7 @@ const civicHall: RegionalBuilder = (ctx) => {
       w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: CONCRETE }, storeys: [{ h: 3.6, wall: rng() < 0.5 ? BLOCK : PAINTED }],
       roof: { kind: 'gable', pitchDeg: 12, eave: 0.9, verge: 0.6, thickness: 0.12, bucket: 'roof', ridge: 'saddle' }, gableBucket: PAINTED,
       openings, chimneys: [], gutters: null, verge: { colour: WHITE, bucket: 'structureWood' }, reveal: 0.2,
-    }, dialectOf(rng, ALU, pick(rng, DOOR_PAINT), 0.35, 'glazed'));
+    }, dialectOf(rng, ALU, pick(rng, DOOR_PAINT), 0.35, 'glazed', ctx.variant));
   });
   const walkZ = RR.z0 + 0.4 + D + 2.2;
   for (let x = RR.x0 + 1.3; x < RR.x0 + W; x += 3.2) sink.cylinder('structureMetal', [x, 0, walkZ], 'y', 2.8, 0.08, 8, { colour: STEEL_GREY });
@@ -448,7 +453,7 @@ const civicHall: RegionalBuilder = (ctx) => {
       roof: { kind: 'flat', pitchDeg: 0, eave: 0.3, verge: 0.3, thickness: 0.3, bucket: CONCRETE, parapet: 0.4 }, gableBucket: BLOCK,
       openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.8, y0: 0, h: 2.3 }, ...windowRhythm('left', 0, gd, { w: 2.0, h: 1.0, sill: 5.2, spacing: 3.0, margin: 1.4, kind: 'loft' })],
       chimneys: [], gutters: null, verge: null, reveal: 0.2,
-    }, dialectOf(rng, ALU, pick(rng, DOOR_PAINT), 0.3, 'glazed'));
+    }, dialectOf(rng, ALU, pick(rng, DOOR_PAINT), 0.3, 'glazed', ctx.variant));
   });
   void look;
   return sink.finish();
@@ -519,7 +524,7 @@ const fieldOffice: RegionalBuilder = (ctx) => {
       w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: CONCRETE }, storeys: [{ h: 3.4, wall: rng() < 0.5 ? BLOCK : PAINTED }, { h: 3.2, wall: rng() < 0.5 ? BLOCK : PAINTED }],
       roof: { kind: 'flat', pitchDeg: 0, eave: 0.45, verge: 0.45, thickness: 0.25, bucket: CONCRETE, parapet: 0.3 }, gableBucket: BLOCK,
       openings, chimneys: [], gutters: null, verge: null, reveal: 0.18,
-    }, dialectOf(rng, RIBBON, pick(rng, DOOR_PAINT), 0.4, 'glazed'));
+    }, dialectOf(rng, RIBBON, pick(rng, DOOR_PAINT), 0.4, 'glazed', ctx.variant));
     sink.span(CONCRETE, -2.4, 2.9, D / 2, 2.4, 3.15, D / 2 + 2.6, { decor: true, shadow: true });
     for (const s of [-1, 1]) sink.cylinder('structureMetal', [s * 2.1, 0, D / 2 + 2.3], 'y', 2.9, 0.07, 8, { colour: STEEL_GREY });
     const top = frame.eaveY + 0.25;
@@ -579,7 +584,7 @@ function ranchHouse(sink: PartSink, rng: () => number, look: () => number, W: nu
     roof: { kind: 'gable', pitchDeg: 17, eave: 0.55, verge: 0.4, thickness: 0.1, bucket: 'roof', ridge: 'saddle' }, gableBucket: wall,
     openings, chimneys: rng() < 0.4 ? [{ x: W * 0.3, z: -D * 0.15, sx: 0.5, sz: 0.5, above: 0.5, bucket: BLOCK, cap: 'slab' }] : [],
     gutters: rng() < 0.5 ? { colour: WHITE } : null, verge: { colour: WHITE, bucket: 'structureWood' }, reveal: 0.14, rafters: null,
-  }, dialectOf(rng, ALU, door, 0.45, rng() < 0.5 ? 'panel' : 'glazed'));
+  }, dialectOf(rng, ALU, door, 0.45, rng() < 0.5 ? 'panel' : 'glazed', look));
   if (carport > 2.4) {
     // the carport: a flat sheet roof on four steel posts against the house's side
     const cx = W / 2 + carport / 2;
@@ -625,7 +630,7 @@ const fireStation: RegionalBuilder = (ctx) => {
     roof: { kind: 'flat', pitchDeg: 0, eave: 0.3, verge: 0.3, thickness: 0.25, bucket: CONCRETE, parapet: 0.4 }, gableBucket: BLOCK,
     openings: [{ face: 'right', storey: 0, kind: 'door', u: D * 0.25, w: 0.95, y0: 0, h: 2.1 }, ...windowRhythm('left', 0, D, { w: 1.4, h: 1.0, sill: 1.4, spacing: 3.0, margin: 1.2 })],
     chimneys: [], gutters: null, verge: null, reveal: 0.18,
-  }, dialectOf(rng, ALU, rgb(0x8a2a22), 0.4, 'panel'));
+  }, dialectOf(rng, ALU, rgb(0x8a2a22), 0.4, 'panel', ctx.variant));
   const f = frame.faces.front;
   for (const u of [-W * 0.24, W * 0.24]) {
     faceBox(sink, 'dark', f, u, 2.1, 0.005, 3.4, 4.0, 0.02, { decor: true });
