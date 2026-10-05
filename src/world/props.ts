@@ -8339,9 +8339,14 @@ ${snowCap ? `
     // culled by the frustum per instance), the bucket's always-drawn receive-only dressing one more: one draw call
     // whatever the number of cells. A phone builds no fine joinery (regional/index.ts) and culls the rest of its timber dressing by
     // the same cells, at its own shorter distances.
+    // facades lane (2026-10-05): the facade craft's fine metalwork (gutter hangers, hopper heads, the downpipes) and its
+    // fine render work on the main render (paint, the dirt run off the sills, pilasters) cull by the same cells on a
+    // desktop build (maps/regional/facade.ts); the metal's batch takes the place of its always-drawn mesh, so it costs no
+    // draw, the render's one (the second and third renders' few fine pieces stay in their meshes). A phone builds none.
     const CELLED = new Set(['structureWood', 'regionalStone']);
+    const DESKTOP_CELLED = new Set(['structureMetal', 'regionalPlaster']);
     const FINE_CELL_M = 120;
-    const culled = (g: THREE.BufferGeometry, key: string) => CELLED.has(key) && castsNoShadow(g)
+    const culled = (g: THREE.BufferGeometry, key: string) => (CELLED.has(key) || (DESKTOP_CELLED.has(key) && !mobileProps)) && castsNoShadow(g)
       && (g.userData.fine === true || (mobileProps && RECEIVE_ONLY_DETAIL.has(key)));
     type Cell = { list: THREE.BufferGeometry[]; minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
     const fineCells = (list: THREE.BufferGeometry[]): Cell[] => {
