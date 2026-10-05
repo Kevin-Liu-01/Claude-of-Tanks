@@ -9,6 +9,7 @@ import { ALL_TANK_IDS } from './specs.ts';
 import { createFleetGeometryLedgerPassAudit } from '../../tools/fleet-geometry-digest.mjs';
 import { createEraGameplayRegistrationAudit } from './eraGameplayRegistrationAudit.test-support.mjs';
 import { createGunArticulationAudit } from './gunArticulationAudit.test-support.mjs';
+import { createRunningGearRegistrationAudit } from './runningGearRegistrationAudit.test-support.mjs';
 
 const BUILD = { proceduralOnly: true, quality: 'low', camoSeed: 4242, geometryReceipt: true, batchStatic: false };
 
@@ -19,6 +20,8 @@ await runFleetPass({
   ids: ALL_TANK_IDS,
   audits: [
     { name: 'fleetGeometryLedger', create: () => createFleetGeometryLedgerPassAudit(BUILD) },
+    // 2026-10-04: the LOW build registers exactly the running-gear units it draws (a profile may branch on quality)
+    { name: 'runningGearRegistration', create: createRunningGearRegistrationAudit },
     { name: 'eraGameplayRegistration', create: createEraGameplayRegistrationAudit },
     { name: 'gunArticulation', create: createGunArticulationAudit },
   ],

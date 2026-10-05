@@ -342,7 +342,14 @@ assert.deepEqual(table, {
   // (2026-10-03, the gauntlet's wave 27: kilometre-scale relief — fp14's dk3, broad cells and strong rolls, on Frosthollow
   // and Railyard exactly as shot)
   assert.deepEqual([winter.cells, winter.deckLight, winter.cellM, winter.ambientScale, winter.undulatus], [1, 1, 2400, 2, 0.7], 'winter: a cellular deck lit through, broad cells and rolls');
-  assert.deepEqual([whiteout.cells, whiteout.deckLight, whiteout.undulatus, whiteout.interior], [0, 0, 0, 0], 'whiteout: untouched by the deck pass');
+  // (2026-10-04, the skies lane's deck structure: Whiteout's stratus lit as a deck — one lighting path — with soft cells,
+  // base lumps and the detail's erosion, its base lifted by the snow; Titan's lumps)
+  assert.deepEqual([whiteout.cells, whiteout.deckLight, whiteout.lumps, whiteout.deckDetail, whiteout.ambientScale, whiteout.undulatus, whiteout.interior],
+    [0.5, 1, 0.6, 0.5, 3, 0, 0], 'whiteout: a structured deck on the deck path alone');
+  const titan = deriveCloudLayerPreset(skyOf('titan_gorge'));
+  // (2026-10-05, the map-revival lane's Titan round 2: Monument Valley's sky is the fair-weather cumulus regime — no deck,
+  // so no base lumps and no cells)
+  assert.deepEqual([titan.lumps, titan.cells, titan.deckLight], [0, 0, 0], 'titan: fair-weather cumulus, no deck structure');
   const foundry = deriveCloudLayerPreset(skyOf('foundry'));
   assert.ok(foundry.regime === 'industrial-stratocumulus' && foundry.baseM === 850 && foundry.cells === 0.9 && foundry.deckLight === 1 && foundry.cirrus === 0, 'foundry: a low cellular industrial deck, no cirrus over it');
   assert.ok(foundry.tint[0] > foundry.tint[2] && foundry.tint[0] > 0.75, 'foundry: the smog rides on the deck\'s base as a warm-grey albedo');
@@ -500,7 +507,8 @@ assert.deepEqual([cloudDeckMarch({ cells: 0, stratiform: 0.8, baseM: 300 }), clo
     assert.equal(cloudDeckMarch(preset), cells || (preset.stratiform >= 0.5 && preset.baseM < CLOUD_LOW_DECK_BASE_M) ? 1 : 0, id);
     if (cloudDeckMarch(preset) && !cells) deckMarchMaps.push(id);
   }
-  assert.deepEqual(deckMarchMaps, ['whiteout'], 'the low-deck law reaches exactly whiteout among the shipped maps (every other deck under 400 m is already cellular)');
+  // (2026-10-04: whiteout's deck is cellular now too — the law still marches it on the deck cap, through its cells)
+  assert.deepEqual(deckMarchMaps, [], 'every deck under 400 m is cellular (whiteout since 2026-10-04): the low-deck law is the backstop');
 }
 assert.match(layerSource, /t\.uStepScale\.value = CLOUD_STEP_SCALE_BY_PRESET\[resolvePresetName\(\)\]/, 'the stride scale follows the quality preset every frame');
 assert.match(layerSource, /blendSrc: THREE\.OneFactor, blendDst: THREE\.OneMinusSrcAlphaFactor/, 'premultiplied composite over the dome');

@@ -28,7 +28,10 @@ for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
 assert.match(source, /sA\.z = 0\.5; sB\.z = 0\.5/);
 assert.match(source, /pnn\.z = 0\.5/);
 assert.match(source, /nG\.z = 0\.5/);
-assert.match(source, /max\(gN\.y, 0\.02\) \+ dN\.z \* dk/);
+// the detail perturbation in world axes (packed X, Z, Y: its third channel is the world Y), then over the geometric
+// normal with the vertical floor (Caldera's backlit ash: the volcanic sun-ward tilt is taken off pN between them)
+assert.match(source, /vec3 pN = vec3\(dN\.x, dN\.z, dN\.y\) \* dk;/);
+assert.match(source, /vec3 wN = normalize\(vec3\(gN\.x \+ pN\.x, max\(gN\.y, 0\.02\) \+ pN\.y, gN\.z \+ pN\.z\)\);/);
 assert.doesNotMatch(source, /wall(?:Samp|Tex)\(uNrm/,
   'Wall normal samples must convert basis before blending');
 assert.match(source, /n\.xyz \+= rn \* farRock/);

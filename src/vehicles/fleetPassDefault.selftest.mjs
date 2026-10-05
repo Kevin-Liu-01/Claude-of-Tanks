@@ -5,6 +5,7 @@
 // and carries the fleet watertight gate (2026-10-02, watertightAudit.test-support.mjs). The first four read the build as
 // it leaves the factory (vehicleMarkings restores the turret yaw it probes; watertight attaches the shipped fills and
 // removes them again); tankAssets lets one microtask run before it certifies the shadow casters, so it comes last.
+// The running-gear registration audit (2026-10-04) reads first: the units P.gear registers are the units drawn.
 import { runFleetPass } from './fleetPass.test-support.mjs';
 import { createTank } from './tankFactory.ts';
 import { ALL_TANK_IDS } from './specs.ts';
@@ -13,6 +14,7 @@ import { createMudguardFenderSeatingAudit } from './mudguardFenderSeatingAudit.t
 import { createVehicleMarkingsAudit } from './vehicleMarkingsAudit.test-support.mjs';
 import { createWatertightAudit } from './watertightAudit.test-support.mjs';
 import { createTankAssetsAudit } from './tankAssetsAudit.test-support.mjs';
+import { createRunningGearRegistrationAudit } from './runningGearRegistrationAudit.test-support.mjs';
 
 await runFleetPass({
   name: 'fleetPassDefault',
@@ -20,6 +22,8 @@ await runFleetPass({
   createTank,
   ids: ALL_TANK_IDS,
   audits: [
+    // 2026-10-04: every running-gear unit registered is a unit drawn, and every unit drawn is registered
+    { name: 'runningGearRegistration', create: createRunningGearRegistrationAudit },
     { name: 'combatAnatomy', create: createCombatAnatomyAudit },
     { name: 'mudguardFenderSeating', create: createMudguardFenderSeatingAudit },
     { name: 'vehicleMarkings', create: createVehicleMarkingsAudit },
