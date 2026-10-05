@@ -242,6 +242,13 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     strength: 0.65, heading: 0.066, blockU: 84, blockV: 52, maxSplit: 3, marginM: 1.5, trackShare: 0.3, hedgeShare: 0.3,
     warpM: 14, region: 'coalfield', salt: 97,
   },
+  // Amberford (the map-revival lane, 2026-10-05, through the coordinator: the Moselle valley of Lorraine): the openfield
+  // (champs ouverts) — long narrow unhedged strips of the three-field rotation, tracks along their long lines, laid down
+  // the valley's axis (the river's ~39°); round 48's English hedged plan was not the Moselle's
+  autumn: {
+    strength: 0.8, heading: 0.68, blockU: 240, blockV: 36, maxSplit: 4, marginM: 1.2, trackShare: 0.5, hedgeShare: 0,
+    warpM: 10, region: 'strip', salt: 223,
+  },
 });
 
 /** The map's land use, or null (no fields). */
