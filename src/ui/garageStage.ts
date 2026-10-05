@@ -75,6 +75,24 @@ const GARAGE_TRACK_CENTER_OFFSET_M = 1.55;
 const GARAGE_TRACK_SCUFF_WIDTH_M = 0.78;
 const GARAGE_TRACK_CLEAT_PITCH_M = 0.32;
 const GARAGE_TRACK_CLEAT_THICKNESS_M = 0.065;
+// 2026-10-05 (gauntlet wave 99: "the hazard rim is the brightest thing in the frame"): the podium band measured 1.25x
+// the hero's mean luma (t90m, leo2a7v; 141 against 113 sRGB, light stripes 169 median, 219 at p90), above every plate
+// of the tank. Its light stripes are worn safety paint, not a lamp: the band's paint takes PODIUM_BAND_PAINT of the
+// location accent and its self-lift scales with it (0.3 of the old paint); the lip ring's glow drops to PODIUM_LIP_GLOW.
+// The stripes sat on the tone curve's shoulder, so the paint has to fall far to read lower: the band's median luma went
+// 169 (1.0) -> 147 (0.6, h23a) -> 131 (0.45) -> 118 (0.32, h23d) -> 110 (0.25 with the studio rig, h23e), t90m default;
+// the band now sits under the hero's mean on every hero (0.88 / 0.66 / 0.89 of t90m / m1a2 / leo2a7v, was 1.25 / 0.96 /
+// 1.28).
+const PODIUM_BAND_PAINT = 0.25;
+const PODIUM_BAND_SELF_LIFT = 0.3 * PODIUM_BAND_PAINT;
+const PODIUM_LIP_GLOW = 0.2;
+// 2026-10-05 (gauntlet wave 99: "uniform interior haze"): the haze was the stage's own dressing, not the shared aerial
+// law (in-page toggles on one build, t90m and m1a2 default, h23b: the beam cone +6.1 / +5.6 on the hall's mean luma and
+// +10 on the hero's p10, the floor pool +4.6 on the hall, the aerial pass 1.8, bloom and GTAO nothing). The cone stood
+// between the lens and the hull and veiled it. It keeps GARAGE_BEAM_SHARE of its density, and the contact pool round
+// the podium GARAGE_POOL_SHARE of its glow.
+const GARAGE_BEAM_SHARE = 0.25;
+const GARAGE_POOL_SHARE = 0.6;
 
 // deterministic PRNG (mulberry32) so the hangar is identical every boot
 // (exported: garageDressing.ts shares the stage's texture/prop language)
@@ -610,6 +628,7 @@ export function createGarageStage(
   const poolTex = track(canvasTexture(poolC));
   const poolMat = track(new THREE.MeshBasicMaterial({
     map: poolTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    opacity: GARAGE_POOL_SHARE,
   }));
   const pool = new THREE.Mesh(track(new THREE.PlaneGeometry(20, 20)), poolMat);
   pool.rotation.x = -Math.PI / 2;
@@ -735,7 +754,7 @@ export function createGarageStage(
   // silhouette of the podium must never dissolve into the floor shadow.
   const rimRingMat = track(new THREE.MeshStandardMaterial({
     color: 0x2b2d30, roughness: 0.4, metalness: 0.6,
-    emissive: 0xd9c9a6, emissiveIntensity: 0.55,
+    emissive: 0xd9c9a6, emissiveIntensity: PODIUM_LIP_GLOW,
   }));
   const rimRing = new THREE.Mesh(track(new THREE.TorusGeometry(6.0, 0.035, 8, 96)), rimRingMat);
   rimRing.rotation.x = Math.PI / 2;
@@ -745,10 +764,11 @@ export function createGarageStage(
   // r4: 0.07 was below the key light's falloff and the band fell to black
   // for ~3/4 of the circumference, reading as a texture seam that
   // "terminates mid-arc" (critique). 0.3 keeps every stripe legible in the
-  // shadowed sectors while the lit sector still carries the key.
+  // shadowed sectors while the lit sector still carries the key. 2026-10-05: scaled with the band's worn paint
+  // (PODIUM_BAND_SELF_LIFT), so the shadowed sectors keep the same share of the lit sector's light as before.
   podSideMat.emissive = new THREE.Color(0xffffff);
   podSideMat.emissiveMap = hazTex;
-  podSideMat.emissiveIntensity = 0.3;
+  podSideMat.emissiveIntensity = PODIUM_BAND_SELF_LIFT;
 
   // --- walls + ceiling -------------------------------------------------------
   const wallTexBase = makeWallTexture(rng);
@@ -832,7 +852,9 @@ export function createGarageStage(
       // 2026-10-04 (gauntlet wave 60, item 1: "flat chalk white that clips on the turret and hull roofs"): 36 -> 22.
       // The two highbays hang over the bay and gave the roofs about half their direct light (0.91 of ~1.8 units),
       // twice the key's share; their reach past 12 m was already under a tenth of the floor's light.
-      const pointLight = new THREE.PointLight(0xf3f1ea, 22, 42, 1.9); // camo_spotting r2: neutral highbay cast
+      // 2026-10-05 (gauntlet wave 99: "a flat top-down key light"): 22 -> 11, the studio key and the kicker carry the
+      // hull (garagePhasePresentationRuntime.ts); the roofs lose the lamps' share, the hall 1.5 levels (h23d).
+      const pointLight = new THREE.PointLight(0xf3f1ea, 11, 42, 1.9); // camo_spotting r2: neutral highbay cast
       pointLight.position.set(x, 7.1, z);
       verdantLights.push(pointLight);
       group.add(pointLight);
@@ -881,7 +903,7 @@ export function createGarageStage(
           float edge = pow(fres, 1.8);
           // dense at the fixture (uv.y 1), fully dissolved toward the floor
           float grad = pow(clamp(vV, 0.0, 1.0), 1.7);
-          gl_FragColor = vec4(uColor, edge * grad * 0.22);
+          gl_FragColor = vec4(uColor, edge * grad * ${(0.22 * GARAGE_BEAM_SHARE).toFixed(4)});
         }`,
     }));
     const cone = new THREE.Mesh(
@@ -1109,8 +1131,13 @@ export function createGarageStage(
   group.add(gearFill);
   // lighting_post r6 (optional minor): low-intensity cool rim behind-left of
   // the pedestal so the vehicle silhouette separates from the back wall.
-  const coolRim = new THREE.PointLight(0x9fb8d8, 8, 18, 1.8);
-  coolRim.position.set(-4.5, 3.2, -6.5);
+  // 2026-10-05 (gauntlet wave 99: "a rim light"): the lamp rides the indoor set's half-turn below
+  // (verdantIndoorSetRoot), which had put it on the lens side as a cool front fill on the hull and the podium band. It
+  // is authored in the turned set's frame (x and z negated) so it stands behind the hull again, five times stronger now
+  // that it rims. (The gear fill above takes the same turn and sits behind the far track; moved to the near track it lit
+  // a hot spot on the podium, so it stays.)
+  const coolRim = new THREE.PointLight(0x9fb8d8, 40, 18, 1.8);
+  coolRim.position.set(4.5, 3.2, 6.5);
   coolRim.castShadow = false;
   verdantLights.push(coolRim);
   group.add(coolRim);
@@ -1453,7 +1480,7 @@ export function createGarageStage(
     wallMat.color.setHex(variant.wallTint).lerp(neutral, 0.34);
     const platformEdge = new THREE.Color(variant.accent).lerp(neutral, 0.12);
     podTopMat.color.setHex(variant.platformTint);
-    podSideMat.color.copy(platformEdge);
+    podSideMat.color.copy(platformEdge).multiplyScalar(PODIUM_BAND_PAINT);
     podSideMat.emissive.copy(platformEdge);
     rimRingMat.emissive.copy(platformEdge);
     lampMat.color.setHex(variant.lightTint);
