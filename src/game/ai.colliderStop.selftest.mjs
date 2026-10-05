@@ -88,14 +88,14 @@ const WALL = { min: [-6, -1, 0], max: [6, 5, 3], kind: 'building' };
  * spots an idle enemy that long after the stop. Returns when the stop came, how far the hull got off the wall 1.5 s
  * later, the reverse it drove in the first second and the turn its bow made toward the goal's side.
  */
-function wallCase({ contactAt = null } = {}) {
+function wallCase({ contactAt = null, route = [[20, 30]] } = {}) {
   const bot = entity('bot', 'ua_m1a1', 'enemy', -2, -0.6 - 0.5 * getSpec('ua_m1a1').dims.hullLengthM, 0);
   bot.state.speed = 6;
   const host = entity('host', 'm1a2', 'player', 60, -80, 0);
   host.isPlayer = true;
   let seen = false;
   const ctl = controller(bot, { enemies: [host], obstacles: [WALL], spotted: () => seen });
-  ctl.setWaypoints([[20, 30]], { loop: false });
+  ctl.setWaypoints(route, { loop: false });
   const collide = discCollider(bot, [WALL]);
   let stopAt = null, reverseS = 0, gapAt15 = null, yawAtStop = 0, yawAt15 = 0, engaged = false;
   const front = () => WALL.min[2] - (bot.state.pos.z + 0.5 * bot.spec.dims.hullLengthM * Math.cos(bot.state.yaw));
@@ -113,7 +113,9 @@ function wallCase({ contactAt = null } = {}) {
       yawAt15 = bot.state.yaw;
     }
   });
-  return { stopAt, reverseS, gapAt15: gapAt15 ?? NaN, turn: yawAt15 - yawAtStop, engaged, stops: ctl.debugInfo().colliderStops };
+  const info = ctl.debugInfo();
+  return { stopAt, reverseS, gapAt15: gapAt15 ?? NaN, turn: yawAt15 - yawAtStop, engaged, stops: info.colliderStops,
+    wpIndex: info.wpIndex };
 }
 
 console.log('[1] a hull that runs into a wall at speed backs off at once, its bow swinging toward its goal\'s side');
@@ -132,7 +134,15 @@ console.log('[2] an enemy sighted just after the stop does not hold the hull aga
   ok(c.reverseS > 0.6 && c.gapAt15 > 1, `it still backs off the wall (${c.reverseS.toFixed(2)} s of reverse, ${c.gapAt15.toFixed(2)} m off at 1.5 s)`);
 }
 
-console.log('[3] a scrape that keeps its speed is no stop, and a hull is no wall');
+console.log('[3] a lone stop is a reverse, not a stuck strike\'s escalation: the route keeps its waypoint');
+{
+  // a two-leg patrol whose first leg runs past the wall's east end
+  const c = wallCase({ route: [[20, 30], [20, 200]] });
+  ok(c.stops === 1 && c.reverseS > 0.6, `fixture: one collider stop, backed off (${c.stops}, ${c.reverseS.toFixed(2)} s of reverse)`);
+  ok(c.wpIndex === 0, `the patrol still drives its first leg (waypoint ${c.wpIndex}, not skipped)`);
+}
+
+console.log('[4] a scrape that keeps its speed is no stop, and a hull is no wall');
 {
   // the movement's report on one tick, read by the controller: what the contact took and what the hull kept
   const probe = (lost, kept, obstacles) => {

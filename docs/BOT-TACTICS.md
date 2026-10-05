@@ -162,9 +162,12 @@ off.
 A collider stop backs the hull off at once, whatever its mode. A contact with a
 solid primitive that takes 2 m/s and three quarters of the hull's speed within
 0.3 s, against a world obstacle rather than another hull, reverses the hull for
-1.4 s with its bow swinging along the face toward its goal's side, and the
-shared stuck escalation replans the leg. A scrape that keeps its speed is no
-stop, and a crawl into a face stays the low-speed watchdog's. Polders 41002: an
+1.4 s with its bow swinging along the face toward its goal's side. It counts as
+a stuck strike, and as with the low-speed watchdog's only a repeat before the
+hull drives free escalates (the detour, the waypoint skip, the pocket escape):
+the pacing battles stop most bots once or twice, which is not yet a pocket. A
+scrape that keeps its speed is no stop, and a crawl into a face stays the
+low-speed watchdog's. Polders 41002: an
 M1A1 turning a route corner ran into a farm building's wall at 6 m/s and fought
 from the wall for 7.6 s, from the enemy it saw half a second after the stop
 until it was hit.
@@ -324,8 +327,9 @@ search cannot drive a hull.
   scout struck from the side keeps moving while a T-90M angles.
 - `src/game/ai.colliderStop.selftest.mjs`: an M1A1 that runs into a wall at
   6 m/s reverses within a second of the stop with its bow toward its goal's
-  side, still does when it sights an enemy just after the stop, and a scrape or
-  a stop with no world obstacle on that side is no stop.
+  side, still does when it sights an enemy just after the stop, keeps its
+  patrol's waypoint after a lone stop, and a scrape or a stop with no world
+  obstacle on that side is no stop.
 - `src/game/ai.levels.selftest.mjs`: a synthetic deck over a floor, with and
   without a ramp: the deck bot leaves the floor target for one on its own level,
   the floor bot drives the ramp to the deck, gives the deck target up when no

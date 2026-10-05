@@ -541,8 +541,11 @@ const SLOPE_BLOCK_RECOVERY_S = 0.35;
 // of the hull's speed (COLLIDER_STOP_FRAC) within COLLIDER_STOP_WINDOW_S of its first step (the obstacle push is capped
 // per step, so a stop can span steps; the authority prices a crash over the same window), against a world obstacle
 // rather than another hull, is definitive feedback, as a slope block is: the hull backs off at once for UNSTICK_TIME_S,
-// its bow swinging along the face toward the side its goal lies on, and the stuck escalation replans the leg. A scrape
-// along a face keeps its speed and is no stop; a crawl into one is the low-speed watchdog's.
+// its bow swinging along the face toward the side its goal lies on. It counts as a stuck strike, which escalates (the
+// detour, the waypoint skip, the pocket escape) only on a repeat before the hull drives free, as the low-speed
+// watchdog's do: the pacing battles stop 250 of their 396 bots 871 times, mostly once or twice each, and escalating
+// every stop sent a lone bump down a detour. A scrape along a face keeps its speed and is no stop; a crawl into one is
+// the low-speed watchdog's.
 const COLLIDER_STOP_MPS = 2;
 const COLLIDER_STOP_FRAC = 0.75;
 const COLLIDER_STOP_WINDOW_S = 0.3;
@@ -5684,7 +5687,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       tx = -tx;
       tz = -tz;
     }
-    escalateStuckRecovery(timeS, false);
+    escalateStuckRecovery(timeS, true);
     // reversing flips the steer (movement.ts): the opposite command swings the bow toward the tangent
     unstickSteer = wrapAngle(Math.atan2(tx, tz) - st.yaw) >= 0 ? -1 : 1;
     // and the detour (driveToXZ) goes round on that side (+1 offsets the goal to its bearing's right)
