@@ -292,6 +292,11 @@ interface SplatConfig {
    * the procedural fallback only (sourcedTextures TERRAIN_PLAN). Whiteout grades its inherited winter snow with it. */
   sourcedTint?: Partial<Record<'G' | 'D' | 'R' | 'M', ColorTriple>>;
   sandstone?: boolean;
+  /** Ground lane (wave 62, Redrock: "smooth, plaster-like … identical wavy dark squiggles … a stamped pattern rather than
+   * sandstone"): the sandstone tile's thin dark marker beds and the shaded parting at every bed boundary, 0..1 (default
+   * 1). The tile repeats every 6.45 m up a wall, so its markers printed the same wavy lines on every face; a map whose
+   * bedding the material draws at the wall's scale (strata: beds, joints, varnish) sets 0. */
+  sandstoneMarkers?: number;
   /** Ground lane (2026-10-03, Redrock's inselbergs "like extruded clay"): a two-formation bedrock — the beds under the
    * boundary (at `atFrac` of the field's height span, wandering ±`wobbleM`) paler by `pale`, those above it redder by
    * `red` (Wadi Rum: the Umm Ishrin's red over the paler Disi). Absent = one formation. */
@@ -329,6 +334,12 @@ interface SplatConfig {
   /** Round 49: slope band (1 − n.y) over which a RING face past the square becomes landform rock on landform-gated
    * maps (default [0.22, 0.48] ≈ 39°–59°); Titan authors [0.15, 0.36] so its bedded walls start at ~34°. */
   ringRockSlope?: readonly [number, number];
+  /** Ground lane (wave 65, Titan Gorge's e-wall-300: "soft mauve slabs with an identical yellow outline traced along
+   * every ledge and crest"): past the square a ring face is rock by its slope alone, so every ledge and crest — where
+   * the face flattens — turned the sand layer, a sand-yellow line along each. A landform-gated map whose ring rises in
+   * bedded walls sets this: the ring's ground more than this many metres above the field's highest ground is caprock
+   * (the rock layer on its ledges and tops, a little sand in its hollows), ramping in over 14 m. Absent = off. */
+  ringCaprockM?: number;
   fieldPatch?: number;
   sandMacro?: number;
   iceSky?: ColorTriple;
@@ -3126,6 +3137,7 @@ function makeSandstoneLayer(
   seed: number,
   anisotropy: number,
   tone: ToneFunction | null = null,
+  markers = 1,
 ): TerrainTextureLayer {
   const s = texSize(256); // loading-speed r1: distant/fallback terrain tile
   const noi = new SimplexNoise({ random: mulberry32(seed) });
@@ -3135,7 +3147,8 @@ function makeSandstoneLayer(
   {
     let y = 0;
     while (y < s) {
-      const marker = rng() < 0.16;
+      // (the draws keep their order whatever the markers' strength; without them a marker's slot is a bed like the rest)
+      const marker = rng() < 0.16 && markers > 0.5;
       // r4: thicker beds (20-80 -> 34-110 px) — the old thin-bed ladder
       // repeated every couple of meters on the walls and read as marble veins
       const th = marker ? 4 + rng() * 6 : 34 + rng() * 76;
@@ -3151,6 +3164,29 @@ function makeSandstoneLayer(
   function bedAt(yw: number): SandstoneBed {
     for (const b of beds) if (yw >= b.y0 && yw < b.y1) return b;
     return beds[beds.length - 1];
+  }
+  // (ground lane, wave 62: Redrock's walls, "identical wavy dark squiggles") a bed's tone and hue step at its
+  // boundary; seen on an inclined, gullied face the step traces the contour into every gully (the rule of Vs) — a
+  // hard-edged ladder of squiggles. Without the markers (markers 0) the steps are softened over ~6 px (15 cm of
+  // wall) and their contrast halved, so the beds read as broad weathered bands under the material's own bedding.
+  const soften = markers > 0.5 ? 0 : 6;
+  const toneRow = new Float32Array(s), hueRow = new Float32Array(s), hardRow = new Float32Array(s);
+  for (let y = 0; y < s; y++) {
+    const b = bedAt(y);
+    toneRow[y] = b.tone; hueRow[y] = b.hueJ; hardRow[y] = b.hard;
+  }
+  if (soften > 0) {
+    // (the beds' ledge relief too: a step in the tile's height is a line in its normal map — the squiggles' dark
+    // outlines on the wall-projected faces)
+    const t0 = Float32Array.from(toneRow), h0 = Float32Array.from(hueRow), r0 = Float32Array.from(hardRow);
+    for (let y = 0; y < s; y++) {
+      let ts = 0, hs = 0, rs = 0, ws = 0;
+      for (let k = -soften; k <= soften; k++) {
+        const w = 1 - Math.abs(k) / (soften + 1), yy = ((y + k) % s + s) % s;
+        ts += t0[yy] * w; hs += h0[yy] * w; rs += r0[yy] * w; ws += w;
+      }
+      toneRow[y] = 0.5 + (ts / ws - 0.5) * 0.5; hueRow[y] = 0.5 + (hs / ws - 0.5) * 0.5; hardRow[y] = 0.5 + (rs / ws - 0.5) * 0.5;
+    }
   }
   const px = new Uint8ClampedArray(s * s * 4);
   const hgt = new Float32Array(s * s);
@@ -3176,17 +3212,19 @@ function makeSandstoneLayer(
       const drift = torusNoise(noi, u, v * 0.15, 3, 1, 145) * 0.5 + 0.5;
       // r4: sat 0.42+0.12 -> 0.33+0.08 — the saturated ochre beds were the
       // PINK cast in the "contour-band marbling" read
-      let hue = 0.062 + bed.hueJ * 0.022 - 0.006 * grain2;
-      let sat = 0.33 + bed.hueJ * 0.08 - grain * 0.06;
+      const ywi = Math.min(s - 1, Math.floor(yw));
+      const bedTone = soften > 0 ? toneRow[ywi] : bed.tone, bedHue = soften > 0 ? hueRow[ywi] : bed.hueJ;
+      let hue = 0.062 + bedHue * 0.022 - 0.006 * grain2;
+      let sat = 0.33 + bedHue * 0.08 - grain * 0.06;
       let lum = bed.marker
         ? 0.185 + bed.tone * 0.05
-        : 0.315 + bed.tone * 0.20 + (bedT - 0.5) * 0.03 + grain * 0.05 + (drift - 0.5) * 0.07;
-      lum *= 1 - seam * 0.38; // shadowed parting line at every bed boundary
+        : 0.315 + bedTone * 0.20 + (bedT - 0.5) * 0.03 * markers + grain * 0.05 + (drift - 0.5) * 0.07;
+      lum *= 1 - seam * 0.38 * markers; // shadowed parting line at every bed boundary
       _col.setHSL(hue, clamp(sat, 0, 1), clamp(lum, 0.04, 0.75));
       px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255;
       // relief: hard beds ledge out, soft/marker beds recess, seams notch
-      let hn = 0.40 + bed.hard * 0.42 + grain * 0.10 - (bed.marker ? 0.26 : 0);
-      hn -= seam * 0.30;
+      let hn = 0.40 + (soften > 0 ? hardRow[ywi] : bed.hard) * 0.42 + grain * 0.10 - (bed.marker ? 0.26 : 0);
+      hn -= seam * 0.30 * markers;
       hgt[i] = clamp(hn, 0, 1);
       px[j + 3] = clamp(0.86 - grain * 0.06, 0.45, 1) * 255; // matte rough
     }
@@ -3522,10 +3560,12 @@ uniform vec3 uIceSky;     // r3: fresnel sky tint reflected by clear lake ice
 uniform float uMidFar;    // r3: far edge of the mid-relief dapple band (m)
 uniform float uSlopeGrassHold; // round 45: shifts the slope→rock thresholds (tropical hills hold turf longer)
 uniform vec2 uRingRock;        // round 49: slope band over which a ring face past the square becomes landform rock
+uniform vec2 uRingCap;         // ground lane (wave 65): the height band over which the ring's ground becomes caprock (x > 1e8: off)
 uniform float uBeddedR;        // round 55: 1 when the R layer is the procedural bedded sandstone tile (no sourced R)
 uniform vec3 uSunDirW;    // round 42: world direction toward the sun (the vista ring's uSunDirW)
 uniform float uWallSkyLift; // round 42: sky light a steep face turned from the sun receives (0 = off)
 float gWallSky = 0.0;     // round 42: steep × turned-from-the-sun weight, read by the indirect-light hook
+float gVolcShade = 0.0;   // ground lane (wave 85): a volcanic basin's slope turned from the sun (its warm bounce, the lights hook)
 // round 72b: the horizon ring's baked surface atlas (horizonRelief.ts: the fine relief's gradient, its occlusion and the
 // sun's visibility over the annulus), read by the ring's terrain-material bands past the square so the first ridge
 // carries the same striations, rock breaks, snow line, folds and cast shadows as the vista ranges behind it.
@@ -3589,6 +3629,9 @@ float gSeaFoam; // maps r1: foam coverage this fragment (mattes the water gloss)
 // frame rotated per-fragment, dragging the sample coordinate back and forth
 // across the face (the melted-taffy smear on the desert mesas).
 vec2 gWallUVx; vec2 gWallUVz; vec2 gWallSigns; float gWallW;
+float gSnowRock = 0.0; // ground lane (wave 62): the snow lying on a snow map's rock (the rock passes below stand down under it)
+float gRingCap = 0.0;  // ground lane (wave 65): the ring's caprock weight (ledges and tops high on its bedded walls)
+float gCinderW = 0.0;  // ground lane (wave 62): a volcanic basin's cinder (the cones' flanks and their talus) — dead matte
 float gTileMix; // r8 anti-tiling: stochastic rotation-blend weight (set in splatCompute)
 float gCliffJ;  // r8: per-cliff jitter field (set with the wall basis)
 float gBedWob = 0.0; // ground lane: the beds' wander in metres of height (set with the wall basis)
@@ -3889,6 +3932,9 @@ void splatCompute() {
     // 0.22–0.48 (39°–59°), so a ring face of 35–50° stayed the wall-projected sand set — smooth beige, no beds. The
     // band is authored per map (splat.ringRockSlope); Titan's bedded walls start at ~34° and are rock by ~47°.
     mkB = max(mkB, smoothstep(uRingRock.x, uRingRock.y, 1.0 - clamp(wn.y, 0.0, 1.0)) * outsideW);
+    // (ground lane, wave 65: the ring's ledges and crests high on its walls are the walls' caprock, not sand)
+    gRingCap = smoothstep(uRingCap.x, uRingCap.y, wp.y) * outsideW;
+    mkB = max(mkB, gRingCap);
     rockGate = smoothstep(0.10, 0.45, mkB);
     mkB = 0.0;
   }
@@ -3916,6 +3962,9 @@ void splatCompute() {
   // colour that never follows the rendered sky (Caldera's inner east wall measured 3 % of the sky's brightness).
   // Weight the faces that qualify here; the indirect-light hook below adds the sky's own colour to them.
   gWallSky = smoothstep(0.12, 0.50, 1.0 - clamp(wn.y, 0.0, 1.0)) * (1.0 - smoothstep(-0.08, 0.30, dot(wn, uSunDirW)));
+  // ground lane (wave 85, Caldera's backlit rim): the volcanic slopes that face the sunlit ash floor — from ~14°, not only
+  // the walls (the rim's 33° slope sat at the foot of the wall sky light's ramp) — turned from the sun
+  gVolcShade = uReduxFold.w * smoothstep(0.03, 0.20, 1.0 - clamp(wn.y, 0.0, 1.0)) * (1.0 - smoothstep(-0.08, 0.30, dot(wn, uSunDirW)));
   // Resolve detail by screen footprint and distance everywhere. Forcing the
   // far variant on exterior floors exposed the square as a quality boundary.
   // detail fade: positive mip bias at range kills the single-frequency
@@ -4074,6 +4123,8 @@ void splatCompute() {
   // "pink contour marbling on sand" (desert critique). Rock now takes over
   // from ~37 deg; the 30-37 deg band stays sand (ripples own it).
   fR = max(fR, smoothstep(0.20, 0.42, slopeR) * (1.0 - mkB * 0.85) * 0.95 * rockGate);
+  // ground lane (wave 65): the caprock is rock whatever its slope — its ledges and tops — a little sand in its hollows
+  fR = max(fR, gRingCap * rockGate * (0.72 + 0.28 * smoothstep(0.30, 0.70, n1h)));
   // triplanar side projection on steep faces: planar XZ UVs smear vertically
   // down cliff walls (the classic heightmap-stretch tell on the mesa cliffs)
   // — resample the rock layer in the wall's own plane and take it over as
@@ -4327,6 +4378,49 @@ void splatCompute() {
       if (nrmOn) n = mix(n, wallNrm(uNrmR, 0.155, df, mipB), steepW);
     }
   }
+  // Ground lane (wave 80, Titan Gorge's and Redrock's establishing views: "a glaring magenta/pink wavy decal stripe
+  // across the ground" — the 38–76° scarps of their ridges and knolls seen edge-on 350–770 m out, each one flat,
+  // saturated ribbon of the rock tone): on an arid map a rock face at range is its weathered skin — half its colour's
+  // saturation, pulled a quarter toward the ground around it at its own luminance (the dust on it and the aerial depth
+  // between), and streaked along the band by the varnish running down its fall line (the wall projections' noise
+  // stretched along the height), so it reads as weathered rock, not a painted ribbon
+  float rockFar = max(fR, steepW) * smoothstep(150.0, 450.0, camDist) * step(0.5, uReduxD.y) * step(uReduxD.y, 1.5);
+  if (rockFar > 0.003) {
+    float lodV = max(0.0, gNoiseLog + log2(0.05));
+    float varnish = mix(textureLod(uNoise, gWallUVx * vec2(0.05, 0.006) + vec2(0.29, 0.53), lodV).r,
+                        textureLod(uNoise, gWallUVz * vec2(0.05, 0.006) + vec2(0.29, 0.53), lodV).r, gWallW);
+    float rockL = reduxLuma(a.rgb);
+    vec3 skin = mix(vec3(rockL), a.rgb, 0.50);
+    skin = mix(skin, uMeanG.rgb * rockL / max(reduxLuma(uMeanG.rgb), 1e-3), 0.25);
+    a.rgb = mix(a.rgb, skin * (0.84 + 0.32 * varnish), rockFar);
+  }
+  // Ground lane (wave 62, Glacier Pass street-b, 2.2, the worst view: "a blue-and-white swirled marble/agate texture …
+  // a broken material", Frosthollow's walls the same): a snow map's rock layer was Rock058 lifted half again and
+  // blued (sourcedTextures: "snow-dusted rock"), and its veins became polished marble wherever a slope turned rock. The
+  // rock is grey rock again, and snow lies on it as snow lies on a mountain: everywhere up to ~45°, then held in the
+  // hollows and the gullies down the fall line (the wall projections' noise stretched along the height, as the
+  // cinder's streaks), the ribs and the sheer faces standing out of it — the snow layer itself, its own grain, never a
+  // tint over the rock's veins.
+  if (uReduxD.y > 1.5) {
+    float rockW = max(fR, steepW) * (1.0 - fMs);
+    if (rockW > 0.002) {
+      float lodG = max(0.0, gNoiseLog + log2(0.045));
+      float gully = mix(textureLod(uNoise, gWallUVx * vec2(0.045, 0.0055) + vec2(0.41, 0.17), lodG).g,
+                        textureLod(uNoise, gWallUVz * vec2(0.045, 0.0055) + vec2(0.41, 0.17), lodG).g, gWallW);
+      float hold = 1.0 - smoothstep(0.30, 0.56, slope + (0.5 - gully) * 0.40 - vFold * 0.12);
+      gSnowRock = hold * rockW;
+      if (gSnowRock > 0.002) {
+        vec4 snowA = groundSamp(uAlbG, uMeanG, uv * 0.240, df, mipB);
+        vec4 snowN = nrmOn ? groundNrm(uNrmG, uv * 0.240, df, mipB) : NRM_MEAN;
+        if (triW > 0.003) {
+          snowA = mix(snowA, wallSamp(uAlbG, uMeanG, 0.240, df, mipB), triW);
+          if (nrmOn) snowN = mix(snowN, wallNrm(uNrmG, 0.240, df, mipB), triW);
+        }
+        a = mix(a, snowA, gSnowRock);
+        if (nrmOn) n = mix(n, snowN, gSnowRock);
+      }
+    }
+  }
   // meadow macro variation, three scales (~80 m, ~230 m, ~600 m): dry-straw
   // patches, dark clover, and broad field-to-field tone shifts so open ground
   // never reads as one continuous green wash at any distance
@@ -4391,14 +4485,35 @@ void splatCompute() {
       a.rgb = mix(a.rgb, a.rgb * vec3(1.32, 1.28, 1.20) * (0.90 + 0.20 * af.x), ashW * vw);
       // cinder: black, oxidised red in ~15–30 m patches, streaked paler down the fall line
       float ox = smoothstep(0.50, 0.78, nzq(uvW, 0.017, vec2(0.13, 0.37)).y);
-      vec3 cinderCol = a.rgb * mix(vec3(0.50, 0.48, 0.47), vec3(0.74, 0.50, 0.40), ox);
+      // (wave 62, Caldera street-a: "a near-black featureless dome … white specular glints … sparkles with bright
+      // pixels", read as "wet asphalt or crumpled foil") scoria is porous and dead matte, and black only fresh: a
+      // shade lighter (≈0.09 against the ash's 0.15) so its own streaks and oxidised patches read, and no sheen
+      vec3 cinderCol = a.rgb * mix(vec3(0.68, 0.65, 0.62), vec3(0.90, 0.62, 0.48), ox);
       float lodF = max(0.0, gNoiseLog + log2(0.035));
       float fall = mix(textureLod(uNoise, gWallUVx * vec2(0.035, 0.0035) + vec2(0.23, 0.71), lodF).r,
                        textureLod(uNoise, gWallUVz * vec2(0.035, 0.0035) + vec2(0.23, 0.71), lodF).r, gWallW);
       cinderCol *= 1.0 + 0.32 * smoothstep(0.56, 0.80, fall) * tileVis(28.0);
       a.rgb = mix(a.rgb, cinderCol, coneW * vw);
       // talus fans: cinder strewn with paler fragments in metre-scale blotches
-      a.rgb = mix(a.rgb, a.rgb * mix(vec3(0.66, 0.63, 0.62), vec3(1.12, 1.08, 1.02), smoothstep(0.45, 0.70, n1h)), fanW * vw * 0.8);
+      // (wave 62: the talus fans' paler fragments under a low sun were the "white specular glints" on the cone's lower
+      // third — the lighter lapilli a step paler than the cinder, never paler than the ash)
+      a.rgb = mix(a.rgb, a.rgb * mix(vec3(0.66, 0.63, 0.62), vec3(0.92, 0.88, 0.84), smoothstep(0.45, 0.70, n1h)), fanW * vw * 0.8);
+      gCinderW = max(coneW, fanW) * vw;
+    }
+    // (waves 62 and 76, Caldera street-a and street-b: the rim's 33° slope "a near-black featureless dome") the rim is old
+    // basalt in the rock layer, not a cone's fresh cinder: its face weathered and dusted with the ash it stands in — half
+    // way to the ash's own tone, a breath warmer — and streaked down the fall line (the wall projections' noise stretched
+    // along the height, as the cinder's), faded as a streak nears the pixel
+    float rimW = uReduxFold.w * fR * (1.0 - roadCore);
+    if (rimW > 0.002) {
+      float lodR = max(0.0, gNoiseLog + log2(0.035));
+      float fallR = mix(textureLod(uNoise, gWallUVx * vec2(0.035, 0.0035) + vec2(0.61, 0.19), lodR).g,
+                        textureLod(uNoise, gWallUVz * vec2(0.035, 0.0035) + vec2(0.61, 0.19), lodR).g, gWallW);
+      // (wave 85: the shaded rim "nearly texture-less") the weathering shifts the basalt's tone half way to the ash's —
+      // a scale on the rock's own colour, so its grain (the lapilli, the scoria's colour) stays whole in the shade
+      vec3 ashShift = mix(vec3(1.0), uMeanG.rgb * vec3(1.08, 1.0, 0.90) / max(uMeanR.rgb, vec3(0.02)), 0.45);
+      vec3 weathered = a.rgb * ashShift * (0.88 + 0.30 * smoothstep(0.40, 0.80, fallR) * tileVis(28.0));
+      a.rgb = mix(a.rgb, weathered, rimW * 0.75);
     }
   }
   // Ground lane (2026-10-03, the gauntlet: "WoT's Prokhorovka and the Breton bocage photo show patchworks of fields in
@@ -4803,7 +4918,7 @@ void splatCompute() {
     // the coordinates: coordinate blending smeared diagonal fur across every
     // partially-steep slope.
     // terrain v2: only on rock inside the mid band (three rock-normal taps ran under every fragment at weight zero)
-    float rockRelW = fR * 0.6 * dMid * (1.0 - fMs);
+    float rockRelW = fR * 0.6 * dMid * (1.0 - fMs) * (1.0 - gSnowRock);
     if (rockRelW > 0.002) {
     vec3 dnRa = vec3(texture2D(uNrmR, uv * 0.041).xy * 2.0 - 1.0, 0.0);
     vec3 dnRb;
@@ -4918,7 +5033,7 @@ void splatCompute() {
   // faces past ~300 m into featureless sheets — re-project the rock layer at
   // a coarse world scale + its normals so distant mesa/cut walls stay craggy
   {
-    float farRock = fR * farM;
+    float farRock = fR * farM * (1.0 - gSnowRock); // ground lane (wave 62): not the rock's grain on the snow lying on it
     if (farRock > 0.003) {
       // wall-plane sample takes over on steep faces (r5). Mix SAMPLES, not
       // coordinates — coordinate blending smeared diagonal fur streaks across
@@ -5711,6 +5826,10 @@ void splatCompute() {
   gSplatRough = mix(gSplatRough, 0.92, gStrandFoam); // round 73b: the foam line is matte
   gSplatRough = mix(gSplatRough, 0.62, gScour * 0.55); // round 73b: the wind-scoured crust takes a satin sheen
   gSplatRough = mix(gSplatRough, gSplatRough * 0.93, hollow * uReduxFold.x * (1.0 - fMs));
+  gSplatRough = mix(gSplatRough, 1.0, gCinderW); // ground lane (wave 62): the cinder's glitter was a sheen on black — none
+  // (and the "white specular glints" on the cone's lower third were the detail normals' sun-facing facets lit full on a
+  // flank turned from the sun: loose cinder lies at its angle of repose, a fine even surface — half the relief)
+  if (nrmOn) n.xy = mix(n.xy, vec2(0.5), 0.5 * gCinderW);
   if (uReduxA.w > 0.001) {
     // read near the finest level: the mip chain averages the peaks away at the 1–3 cm pixel footprint, and a glint
     // that twinkles with the camera's motion is the look (sparse, and gone by 42 m)
@@ -5749,7 +5868,21 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   // strand noise ("furry" mesa flanks); the geometric normal carries the
   // far shading instead.
   float dk = 1.0 * (1.0 - max(gSplatFar * 0.62, gSplatSteepAtt));
-  vec3 wN = normalize(vec3(gN.x + dN.x * dk, max(gN.y, 0.02) + dN.z * dk, gN.z + dN.y * dk));
+  // (waves 62 and 76, Caldera's rim: "white specular glints … crumpled foil" — not specular: a dry texel's roughness is
+  // floored at 0.92) on a slope turned from the sun the detail normals' sun-facing facets lit full, where on the ground
+  // the grains' own neighbours shade them: the bright speckle of a backlit flank. On a volcanic map the detail relief
+  // fades as the surface turns from the sun (its fine ash and basalt grain; the light's own shading carries the slope)
+  // (wave 85, the backlit ash after that: "a crushed, nearly texture-less blue-black fill with no skylight fill, rim
+  // light or grain") fading the whole relief took its grain out of the sky's light too. Only the facets' tilt toward the
+  // sun goes now — the perturbation's component along the sun's heading, where it is positive — so no grain catches the
+  // sun its slope is turned from, while every other tilt still shades the sky's and the bounce's light
+  vec3 pN = vec3(dN.x, dN.z, dN.y) * dk; // the detail perturbation in world axes (horizontal: the third channel is unused)
+  if (uReduxFold.w > 0.001) {
+    float avert = (1.0 - smoothstep(-0.06, 0.32, dot(gN, uSunDirW))) * uReduxFold.w;
+    vec2 sH = uSunDirW.xz / max(length(uSunDirW.xz), 1e-4);
+    pN.xz -= sH * max(dot(pN.xz, sH), 0.0) * avert;
+  }
+  vec3 wN = normalize(vec3(gN.x + pN.x, max(gN.y, 0.02) + pN.y, gN.z + pN.z));
   normal = normalize((viewMatrix * vec4(wN, 0.0)).xyz);
 }
 `;
@@ -5801,6 +5934,7 @@ function* createSplatMaterialSteps(
   const S = splatCfg || {};
   // ground lane: the two-formation bedrock's boundary — the build sets it from the field's height span (S.formation)
   const formationUniform = { value: new THREE.Vector4(-1e9, 0, 0, 0) };
+  const ringCapUniform = { value: new THREE.Vector2(1e9, 1e9 + 1) }; // ground lane (wave 65): off until the build sets it
   const rockMask = selectTerrainLandformMask(S, landformW);
   // r6 terrain_environment: the mesa/rim landform weight rides the MASK's
   // BLUE channel on maps that provide landformW (desert — it has no marshes
@@ -5828,7 +5962,7 @@ function* createSplatMaterialSteps(
   // structure was the "wet-sand swirl" artifact on every canyon wall.
   yield* prepareSourceLayer('R');
   const rock = sourcePreparation?.tryCreateLayer('R', aniso) ?? (S.sandstone
-    ? makeSandstoneLayer(3002, aniso, S.rockTone || null)
+    ? makeSandstoneLayer(3002, aniso, S.rockTone || null, S.sandstoneMarkers ?? 1)
     : makeGroundLayer(3002, 'rock', aniso, S.rockTone || null));
   yield;
   const wet = yield* createWetSplatLayerSteps(S, aniso);
@@ -6046,6 +6180,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uMidRelief = { value: S.midRelief ?? 1 };
     shader.uniforms.uSlopeGrassHold = { value: S.slopeGrassHold ?? 0 }; // round 45
     shader.uniforms.uRingRock = { value: new THREE.Vector2(...(S.ringRockSlope ?? [0.22, 0.48])) }; // round 49
+    shader.uniforms.uRingCap = ringCapUniform; // ground lane (wave 65): set by the build from the field's highest ground
     // round 55: the bedded sandstone R (no sourced R in the map's plan) carries the noise wall crag, not the tile's beds
     shader.uniforms.uBeddedR = { value: S.sandstone && !sourcedTerrainLayerPlanned(mapId, S, 'R') ? 1 : 0 };
     shader.uniforms.uPavedRock = { value: sourcedTerrainLayerSet(mapId, S, 'R') === 'cobble' ? 1 : 0 }; // the map-borders lane
@@ -6122,6 +6257,13 @@ function* createSplatMaterialSteps(
     // limestone wall pale. Faces the sun lights are untouched (gWallSky is 0 there).
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <lights_fragment_end>',
       '#include <lights_fragment_end>\n#ifdef USE_FOG\nreflectedLight.indirectDiffuse += fogColor * (uWallSkyLift * gWallSky) * BRDF_Lambert(diffuseColor.rgb);\n#endif'
+      // ground lane (wave 85, Caldera's backlit rim: "a crushed, nearly texture-less blue-black fill with no skylight fill"):
+      // a slope turned from the sun on a volcanic basin faces the sunlit ash floor below it, and the light model's ground
+      // (a constant tone at half the zoned ash's albedo) under-counts that warm bounce — the face's indirect light is drawn
+      // two thirds of the way to a warm grey-brown of its own luminance and lifted 45 % (gVolcShade: from ~14°, turned from
+      // the sun; 0 on every other map, and a sunlit face is untouched)
+      + '\nif (uReduxFold.w > 0.001) { float cotWarm = gVolcShade; vec3 cotInd = reflectedLight.indirectDiffuse;'
+      + ' reflectedLight.indirectDiffuse = mix(cotInd, vec3(dot(cotInd, vec3(0.299, 0.587, 0.114))) * vec3(1.20, 1.0, 0.76), 0.65 * cotWarm) * (1.0 + 0.45 * cotWarm); }'
       // round 72b: the ring bands' baked cast shadows on the sun's light and their occlusion on the sky's
       + '\nreflectedLight.directDiffuse *= gRingSun; reflectedLight.directSpecular *= gRingSun; reflectedLight.indirectDiffuse *= gRingAo;');
     // Round 73: the folds' occlusion joins Three's own ambient-occlusion stage — indirect light only, as an aoMap would
@@ -6133,6 +6275,7 @@ function* createSplatMaterialSteps(
   mat.customProgramCacheKey = () => `world-terrain-splat-v54-${seaOpenings.length ? 'coast' : 'land'}`; // terrain v3 (2026-10-02): v54
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   mat.userData.formationUniform = formationUniform;
+  mat.userData.ringCapUniform = ringCapUniform;
   mat.userData.groundClock = groundClock; // round 73: advanced with the water sheet's clock (terrainBuildSteps)
   mat.userData.reduxUniforms = reduxUniforms; // round 73: the probes' term isolation (zero a vector, recapture)
   mat.userData.layerMeans = layerMeans; // terrain v2: the measured layer means (probes read and override them)
@@ -6528,6 +6671,10 @@ function* terrainBuildSteps(
     const form = (cfg?.splat as { formation?: { atFrac: number; wobbleM?: number; pale?: number; red?: number } } | undefined)?.formation;
     const u = (mat.userData as { formationUniform?: { value: THREE.Vector4 } }).formationUniform;
     if (form && u) u.value.set(heightField.minY + (heightField.maxY - heightField.minY) * form.atFrac, form.wobbleM ?? 2.5, form.pale ?? 0.16, form.red ?? 0.12);
+    // (wave 65) the ring's caprock above the field's highest ground (S.ringCaprockM)
+    const capM = (cfg?.splat as { ringCaprockM?: number } | undefined)?.ringCaprockM;
+    const cap = (mat.userData as { ringCapUniform?: { value: THREE.Vector2 } }).ringCapUniform;
+    if (capM != null && cap && Number.isFinite(heightField.maxY)) cap.value.set(heightField.maxY + capM, heightField.maxY + capM + 14);
   }
   const chunks: TerrainChunk[] = [];
   const terrainIndexPool: TerrainIndexPool = new Map();

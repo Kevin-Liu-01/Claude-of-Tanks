@@ -155,7 +155,10 @@ const TERRAIN_PLAN = {
     D: { set: 'dirt', tint: [0.74, 0.73, 0.72], roughMul: 1.3 },
     // snow-dusted rock: raw Rock058 is near-black here and punched dark
     // holes into the snowfield wherever a lake bank / cut slope got steep
-    R: { set: 'rock', tint: [1.52, 1.55, 1.62], roughMul: 1.1 }, M: null,
+    // (ground lane, wave 62: lifted half again and blued, its veins read as "blue-and-white swirled marble" — the rock
+    // is grey rock now, a little lifted and its veins' rust taken out, and the material lays the snow layer on it to
+    // ~45° and down the gullies to ~60°, so only the ribs and the sheer faces show it)
+    R: { set: 'rock', tint: [1.16, 1.18, 1.22], desat: 0.5, roughMul: 1.1 }, M: null,
   },
   urban: {
     G: { set: 'grass', tint: [0.92, 0.92, 0.88], roughMul: 1.25 },
@@ -246,7 +249,8 @@ const TERRAIN_PLAN = {
   alpine: {
     G: { set: 'snow', roughMul: 1.15 },
     D: { set: 'dirt', tint: [0.70, 0.70, 0.71], roughMul: 1.32 },
-    R: { set: 'rock', tint: [1.48, 1.53, 1.62], roughMul: 1.1 }, M: null,
+    // (ground lane, wave 62, street-b: the marble — as Frosthollow's rock, above)
+    R: { set: 'rock', tint: [1.16, 1.18, 1.22], desat: 0.5, roughMul: 1.1 }, M: null,
   },
   caldera: {
     // Charcoal ash still needs a diffuse floor: near-black sourced cavities
