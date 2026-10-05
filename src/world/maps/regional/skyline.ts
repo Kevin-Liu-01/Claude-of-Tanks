@@ -382,6 +382,18 @@ function spire(sink: PartSink, cx: number, cz: number, y: number, r: number, hei
   return top;
 }
 
+/** The piers of a deco tier carried up past its parapet (`y`) as stepped finials, a bay apart, round the tier. */
+function pierFinials(sink: PartSink, r: Rect, y: number, bay: number, bucket: RegionalBucket): void {
+  for (const face of rectFaces(r)) {
+    const n = Math.max(1, Math.round(face.width / bay)), bw = face.width / n;
+    for (let k = 0; k <= n; k++) {
+      const u = -face.width / 2 + k * bw, corner = k === 0 || k === n;
+      const h = corner ? 1.6 : 1.0;
+      faceBox(sink, bucket, face, u, y + h / 2, 0.25, corner ? 0.8 : 0.5, h, 0.5, { ...DECOR, fineSides: true });
+    }
+  }
+}
+
 /** Corner pinnacles on a tier's top: small obelisks at the four corners. */
 function pinnacles(sink: PartSink, r: Rect, y: number, size: number, bucket: RegionalBucket): void {
   for (const [x, z] of [[r.x0, r.z0], [r.x1, r.z0], [r.x0, r.z1], [r.x1, r.z1]] as const) {
@@ -460,9 +472,10 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
     const stone: RegionalBucket = 'stone';
     const podiumH = 8.5;
     podium(sink, plot, podiumH, stone, rng, { arcade: rng() < 0.5 });
+    // the vertical line of the deco shaft: piers standing well out, the spandrels set back between them and darker
     const facade: TowerFacade = {
-      pier: { bucket: stone, w: 0.62, out: 0.42 }, spandrel: { bucket: stone, h: 1.15, out: 0.16, shade: 0.78 },
-      bay: 2.4, lit: 0.32, glazing: 'bays', mullions: 1, mullion: BRONZE,
+      pier: { bucket: stone, w: 0.66, out: 0.5 }, spandrel: { bucket: stone, h: 1.1, out: 0.07, shade: 0.62 },
+      bay: 2.2, lit: 0.32, glazing: 'bays', mullions: 1, mullion: BRONZE,
     };
     const total = opts.floors ?? Math.max(6, Math.min(22, Math.round((ctx.info.h > 20 ? ctx.info.h : 48) / 3.6)));
     const fh = 3.6;
@@ -476,9 +489,9 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
       const n = t === tiers - 1 ? left : t === 0 ? first : Math.round(total * 0.28);
       const tierDmg = t === 0 ? dmg : { ...dmg, corner: null, blown: null, burnt: new Set<number>(), holes: dmg.holes.filter((h) => h.floor < n) };
       const top = towerTier(sink, r, y, n, fh, facade, tierDmg, rng);
-      // the setback's cornice and the terrace parapet
-      trimRing(sink, stone, r, top - 0.3, [{ h: 0.12, out: 0.12 }, { h: 0.18, out: 0.3 }]);
-      sink.span(stone, r.x0, top - 0.3, r.z0, r.x1, top + 0.2, r.z1);
+      // the setback: the piers carried up past the parapet as finials, the terrace parapet between them
+      sink.span(stone, r.x0, top - 0.3, r.z0, r.x1, top + 0.9, r.z1);
+      pierFinials(sink, r, top + 0.9, facade.bay, stone);
       left -= n; y = top;
       if (left <= 0) break;
       const k = Math.min((r.x1 - r.x0) * 0.16, (r.z1 - r.z0) * 0.16, 3.2);
@@ -488,17 +501,24 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
     const cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2, half = Math.min(r.x1 - r.x0, r.z1 - r.z0) / 2;
     if (damage === 3) {
       // the crown shot away: its stump and the broken frame
-      sink.span(stone, cx - half * 0.6, y, cz - half * 0.6, cx + half * 0.6, y + 2.2, cz + half * 0.6);
+      sink.span(stone, cx - half * 0.6, y + 0.9, cz - half * 0.6, cx + half * 0.6, y + 3.1, cz + half * 0.6);
     } else if (crown === 'pyramid') {
-      sink.span(stone, cx - half * 0.86, y, cz - half * 0.86, cx + half * 0.86, y + 3.2, cz + half * 0.86);
-      pyramidCrown(sink, cx, cz, half * 0.92, y + 3.2, half * 1.5, COPPER);
+      sink.span(stone, cx - half * 0.86, y + 0.9, cz - half * 0.86, cx + half * 0.86, y + 4.1, cz + half * 0.86);
+      pyramidCrown(sink, cx, cz, half * 0.92, y + 4.1, half * 1.5, COPPER);
     } else if (crown === 'stepped') {
-      let s = half * 0.82, yy = y;
-      for (let k = 0; k < 3; k++) { sink.span(stone, cx - s, yy, cz - s, cx + s, yy + 2.6, cz + s); yy += 2.6; s *= 0.7; }
+      // the ziggurat crown: three stepped drums, each ringed by fins, a flagstaff on the last
+      let s = half * 0.82, yy = y + 0.9;
+      for (let k = 0; k < 3; k++) {
+        sink.span(stone, cx - s, yy, cz - s, cx + s, yy + 2.6, cz + s);
+        for (const face of rectFaces({ x0: cx - s, x1: cx + s, z0: cz - s, z1: cz + s })) {
+          for (let f = -1; f <= 1; f++) faceBox(sink, stone, face, f * s * 0.55, yy + 1.6, 0.18, 0.28, 3.2, 0.36, { ...DECOR, fineSides: true });
+        }
+        yy += 2.6; s *= 0.7;
+      }
       sink.cylinder('structureMetal', [cx, yy, cz], 'y', 9, 0.1, 6, { ...DECOR, colour: STEEL }, 0.05);
     } else {
-      sink.span(stone, cx - half * 0.5, y, cz - half * 0.5, cx + half * 0.5, y + 4.5, cz + half * 0.5);
-      spire(sink, cx, cz, y + 4.5, half * 0.42, half * 3.2, COPPER, null);
+      sink.span(stone, cx - half * 0.5, y + 0.9, cz - half * 0.5, cx + half * 0.5, y + 5.4, cz + half * 0.5);
+      spire(sink, cx, cz, y + 5.4, half * 0.42, half * 3.2, COPPER, null);
     }
     return sink.finish();
   };
