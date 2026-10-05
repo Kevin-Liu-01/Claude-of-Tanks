@@ -726,11 +726,13 @@ const iglesia: RegionalBuilder = (ctx) => {
   }
   sink.band('stone', -half - 0.2, y1, tz - half - 0.2, half + 0.2, y1 + 0.32, tz + half + 0.2, { decor: true, shadow: true });
   // the corner pinnacles (a stork's nest on one corner's cornice instead, on most towers), the tiled spire and its cross
-  const nest = !st.mobile && look() < 0.6 ? (look() < 0.5 ? 0 : 1) : -1;
+  // (the corner is drawn on every tier, so a phone's tower keeps the same solid pinnacles: only the nest is dressing)
+  const nestDraw = look(), nestSide = look();
+  const nest = nestDraw < 0.6 ? (nestSide < 0.5 ? 0 : 1) : -1;
   ([[-1, 1], [1, 1], [-1, -1], [1, -1]] as const).forEach(([sx, sz], k) => {
     const px = sx * (half - 0.05), pz = tz + sz * (half - 0.05);
     if (k === nest) {
-      sink.cylinder('structureWood', [px - sx * 0.25, y1 + 0.3, pz - sz * 0.25], 'y', 0.42, 0.62, 8, { colour: rgb(0x5a4a36), decor: true, shadow: true }, 0.7);
+      if (!st.mobile) sink.cylinder('structureWood', [px - sx * 0.25, y1 + 0.3, pz - sz * 0.25], 'y', 0.42, 0.62, 8, { colour: rgb(0x5a4a36), decor: true, shadow: true }, 0.7);
       return;
     }
     sink.span('stone', px - 0.18, y1 + 0.32, pz - 0.18, px + 0.18, y1 + 0.7, pz + 0.18);
