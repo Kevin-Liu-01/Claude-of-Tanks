@@ -114,5 +114,43 @@ review remains valid by exact exterior/fill identity. This includes every M1
 front, base/HA elevation extremes, kit/net quarters and the protected modern
 M1A2 comparator. No exposed fill or new regional visual defect was found.
 
-Composed release, integrated npm tests and real Garage/production verification
-remain pending. No pending check is presented as passed.
+The composed release has completed and remains RED for the approved M3
+disassembled-reference comparison: its fresh procedural-fidelity score is 50.5,
+and the geometry comparison remains zero. The seven legacy Abrams have no
+currently registered comparison target; their stale historical score rows are
+not fresh qualification failures or a comparison pass.
+
+The separately completed physical standard records zero front/rear/swept track
+overlaps for all nine vehicles and valid roof equipment for each. Its continuity
+scan retains three M6 bow cells, one M3 bow cell and two Ukrainian Abrams rear
+cells. Complete cell coordinates, bounds and coverage counts match the earlier
+October 4 scan exactly. These six cells stay RED, not an exemption or a claim
+that the entire vehicle is contiguous. No roof or mantlet hole was added.
+
+All eleven remaining release-tail steps pass: centering, visual module
+alignment, module-hit checks, tank assets, duplicate tracks, muzzle bores,
+barrel/circularity, private build and both Garage switch probes plus the real
+Garage UI. Eighteen rapid switches produce zero empty samples; selected card,
+visible vehicle and final selection agree. All nine native Garage screenshots
+were visually inspected. That local preview identifies `5a059c21a.dirty`
+because the fresh M3 comparison updated documentation before the build; it is
+not offered as clean production-revision evidence.
+
+The integrated npm suite is still running. Thirteen failures observed so far
+were replayed on exact integrated main `2e299bec9`, with the same failing
+assertions. Twelve concern unchanged Kurganets/Dragun source-stock measurements
+and Dragun's six remaining primary-body voxels. They are retained failures:
+`kurganetsSourceDetail`, `dragunAssembledHull`, `sourceStudyAttachmentSeats`,
+`kurganetsRoofFittings`, `kurganetsGun`, `sourceStudyGunCradles`,
+`suppliedShadowCoverage`, `dragunHullFittings`, `dragunForwardRoofStock`,
+`interior-fill-body-policy`, `kurganetsRearDoorStock` and `kurganetsBowStock`.
+The independent source audit covers 135 files, including the 100-file combined
+profile dependency closure; the affected profile-specific configuration rows
+and geometry are unchanged by this repair.
+
+The thirteenth, `remoteGunFleet`, expected firing after toggling an already
+enabled roof gun off. Its setup now asserts the default enabled state, disables
+and checks that it cannot fire, then enables it before the existing firing,
+range, muzzle and independent-reload assertions. Its corrected execution and
+the complete suite remain pending; neither is recorded as a PASS here.
+Clean production and live verification also remain pending.
