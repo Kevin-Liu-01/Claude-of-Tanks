@@ -30,8 +30,12 @@ Run from the repo root.
    `cuts-gen.mjs c30|v15`, `lineup-gen.mjs`, `studio-feature-gen.mjs`, then `build.mjs
    <project>` and `render.mjs`. `sync-footage.mjs` copies film proxies into the projects;
    `posters-build.mjs` lays out the posters. Large type only (`motion/design.md`).
-5. **Sound** — `score/score.mjs --cues=<sheet>` synthesizes the score with the game's own
-   SFX; `score/sfx-cues.mjs` derives the effect cues from a film's EDL.
+5. **Sound** (nothing synthesized, owner 2026-10-05) — `score/sfx-cues.mjs` derives a film's
+   effect cues from its EDL with the game's own resolvers (gun class, engine family, track
+   set, the map's echo tail and ambience bed); `score/music.mjs --cues=<cues>` turns the cue
+   sheet into an Eleven Music composition plan and generates the bed
+   (`ELEVENLABS_API_KEY_FILE`, cached with a credit ledger); `score/score.mjs --cues=<cues>
+   --music=<music-gen.wav>` mixes it under the game's recorded SFX and masters it.
 6. **Kit** — `kit-assemble.mjs` collects films, frames, key art, posters and the site
    fifty into `shots/media-r5/kit/manifest.json`; `kit-page.mjs` renders its `index.html`.
 

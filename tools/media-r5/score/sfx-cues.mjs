@@ -1,9 +1,28 @@
 #!/usr/bin/env node
-// Derive the trailer's diegetic SFX cue list from the edit (edl.json) and each cut's Studio scene:
-// every effect inside a cut's source window becomes a game-SFX event at its global time, attenuated
-// by camera distance.  node sfx-cues.mjs <edl.json> <sceneDir> <cues-in.json> <cues-out.json>
+// Derive a film's diegetic SFX cue list from the edit (edl.json) and each cut's Studio scene: every effect inside a
+// cut's source window becomes an event at its global time with its camera distance, resolved the way the game
+// resolves its sound (score.mjs plays them from the recorded library): the shooter's gun class and calibre
+// (weaponAudio.ts), the hero's engine family and track set (vehicleAudioProfiles.ts), and the map's gun-echo tail
+// and ambience bed (environmentScenes.ts), one bed per cut.
+//   node sfx-cues.mjs <edl.json> <sceneDir> <cues-in.json> <cues-out.json>
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
+await import('../../../src/vehicles/fleetRegistration.ts');
+const { getSpec } = await import('../../../src/vehicles/specs.ts');
+const { resolveVehicleAudioIdentity } = await import('../../../src/audio/vehicleAudioProfiles.ts');
+const { resolveWeaponReport } = await import('../../../src/audio/weaponAudio.ts');
+const { sceneForMap } = await import('../../../src/audio/environmentScenes.ts');
+const specOf = (id) => { try { return getSpec(id); } catch { return null; } };
+const unknown = new Set();
+function gunOf(id) {
+  const spec = specOf(id);
+  if (!spec?.gun) { unknown.add(id); return { cls: 'gun_120', caliberMm: 120, rate: 1, gainDb: 0, twin: false }; }
+  const r = resolveWeaponReport(spec.gun.caliberMm, spec.gun.soundProfile);
+  return { cls: r.cls.id, caliberMm: spec.gun.caliberMm, rate: r.rate, gainDb: r.gainDb, twin: r.twin };
+}
+// the ground under the tracks, by battlefield (the game reads it from the terrain under each road wheel)
+const SURFACE = { desert: 'sand', oasis: 'sand', badlands: 'sand', winter: 'snow', alpine: 'snow', whiteout: 'snow',
+  monsoon: 'mud', delta: 'mud', mangrove: 'mud', urban: 'hard', railyard: 'hard', foundry: 'hard' };
 const [edlFile, sceneDir, cuesIn, cuesOut] = process.argv.slice(2);
 const edl = JSON.parse(readFileSync(edlFile, 'utf8')), cues = JSON.parse(readFileSync(cuesIn, 'utf8'));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -41,7 +60,9 @@ for (const cut of edl.shots) {
       let best = { d: Infinity, t: inMs };
       for (let tm = inMs; tm <= outMs; tm += 20) { const c = camAt(scene.storyboard, tm), h = actorAt(scene, 'hero', tm), d = Math.hypot(c[0] - h[0], c[2] - h[1]); if (d < best.d) best = { d, t: tm }; }
       const heroId = scene.actors.find(a => a.name === 'hero')?.id ?? '';
-      const ev = { kind: 'drive', t: +cut.start.toFixed(3), dur: +cut.dur.toFixed(3), speed: +speed.toFixed(1), turbine: TURBINE.test(heroId) };
+      const identity = specOf(heroId) ? resolveVehicleAudioIdentity(specOf(heroId)) : null;
+      const ev = { kind: 'drive', t: +cut.start.toFixed(3), dur: +cut.dur.toFixed(3), speed: +speed.toFixed(1),
+        engine: identity?.engine ?? (TURBINE.test(heroId) ? 'turbine_agt' : 'diesel_v12_modern'), tracks: identity?.tracks ?? 'heavy', surface: SURFACE[scene.map] ?? 'earth' };
       if (held && best.d < 18) {
         // screen direction of travel: hero velocity against the camera's right vector (-fz, fx)
         const c = camAt(scene.storyboard, best.t), sh0 = scene.storyboard.shots[0], fx = sh0.lookAt[0] - c[0], fz = sh0.lookAt[2] - c[2];
@@ -52,25 +73,30 @@ for (const cut of edl.shots) {
       sfx.push(ev);
     }
   }
+  const env = sceneForMap(scene.map);
+  sfx.push({ kind: 'bed', t: +cut.start.toFixed(3), dur: +cut.dur.toFixed(3), asset: env.bed, db: env.bedDb, ...(env.layer ? { layer: env.layer.asset, layerDb: env.layer.db } : {}) });
   for (const e of scene.effects ?? []) {
     if (e.tMs < inMs || e.tMs >= outMs) continue;
     const t = +(cut.start + (e.tMs - inMs) / 1000 / rate).toFixed(3);
     const cam = camAt(scene.storyboard ?? {}, e.tMs), pos = e.at ?? (e.actor ? actorAt(scene, e.actor, e.tMs) : null);
     const d = cam && pos ? Math.hypot(cam[0] - pos[0], cam[2] - pos[1]) : 40;
-    const near = Math.max(0, Math.min(1, 1 - (d - 8) / 220)); // 1 at 8 m, 0 at 228 m
-    const gain = +(0.35 + 0.65 * near).toFixed(2), dist = +(1 - near).toFixed(2), pan = 0;
-    if (e.type === 'fire') sfx.push({ kind: 'cannon', t, cls: d < 60 ? 'huge' : 'large', gain, dist, pan });
-    else if (e.type === 'tank_kill') sfx.push({ kind: 'kill', t, gain: Math.min(1, gain + 0.15), pop: e.params?.pop !== false });
-    else if (e.type === 'impact' && e.params?.kind === 'pen') sfx.push({ kind: 'pen', t, gain: gain * 0.8 });
-    else if (e.type === 'impact' && e.params?.kind === 'ricochet') sfx.push({ kind: 'ricochet', t, gain: gain * 0.7, alt: sfx.length });
-    else if (e.type === 'sparks') sfx.push({ kind: 'ricochet', t, gain: gain * 0.6, alt: sfx.length });
-    else if (e.type === 'explosion') sfx.push({ kind: 'he', t, gain, alt: sfx.length % 2 });
-    else if (e.type === 'barrage') for (let k = 0; k < (e.params?.count ?? 5); k++) sfx.push({ kind: 'he', t: +(t + k * 0.22).toFixed(3), gain: gain * 0.8, alt: k % 2 });
-    else if (e.type === 'mg_burst') for (let k = 0; k < Math.min(9, e.params?.count ?? 7); k++) sfx.push({ kind: 'sample', name: 'fire_small_crack', t: +(t + k * 0.075).toFixed(3), gain: gain * 0.35, send: 0.1 });
+    const distM = +d.toFixed(1), pan = 0, shooter = scene.actors.find(a => a.name === (e.actor ?? 'hero'))?.id ?? '';
+    const heavy = gunOf(shooter).caliberMm >= 100;
+    if (e.type === 'fire') sfx.push({ kind: 'cannon', t, ...gunOf(shooter), distM, tail: env.tail, pan });
+    else if (e.type === 'tank_kill') sfx.push({ kind: 'kill', t, distM, pop: e.params?.pop !== false });
+    else if (e.type === 'impact' && e.params?.kind === 'pen') sfx.push({ kind: 'pen', t, distM, heavy });
+    else if (e.type === 'impact' && e.params?.kind === 'nonpen') sfx.push({ kind: 'nonpen', t, distM });
+    else if (e.type === 'impact' && e.params?.kind === 'ricochet') sfx.push({ kind: 'ricochet', t, distM, heavy });
+    else if (e.type === 'sparks') sfx.push({ kind: 'ricochet', t, distM, heavy: false, gain: 0.8 });
+    else if (e.type === 'explosion') sfx.push({ kind: 'he', t, distM, size: e.params?.size ?? 'medium' });
+    else if (e.type === 'barrage') for (let k = 0; k < (e.params?.count ?? 5); k++) sfx.push({ kind: 'he', t: +(t + k * 0.22).toFixed(3), distM: distM + 30, size: 'medium', gain: 0.8 });
+    else if (e.type === 'mg_burst') for (let k = 0; k < Math.min(9, e.params?.count ?? 7); k++) sfx.push({ kind: 'mg', t: +(t + k * 0.075).toFixed(3), cls: 'mg_heavy', caliberMm: 12.7, distM, tail: env.tail, burstHead: k === 0, gain: 0.8 });
   }
 }
 sfx.sort((a, b) => a.t - b.t);
-// thin dense clusters: keep the loudest event within 60 ms of the same kind
-const thinned = sfx.filter((e, i) => !sfx.some((o, j) => j !== i && o.kind === e.kind && Math.abs(o.t - e.t) < 0.06 && (o.gain > e.gain || (o.gain === e.gain && j < i))));
+// thin dense clusters: keep the nearest one-shot within 60 ms of the same kind (beds and drives stay)
+const loud = (e) => (e.gain ?? 1) / Math.max(25, e.distM ?? 30);
+const thinned = sfx.filter((e, i) => e.kind === 'bed' || e.kind === 'drive' || e.kind === 'mg' || !sfx.some((o, j) => j !== i && o.kind === e.kind && Math.abs(o.t - e.t) < 0.06 && (loud(o) > loud(e) || (loud(o) === loud(e) && j < i))));
+if (unknown.size) console.warn(`sfx-cues: no spec for ${[...unknown].join(', ')} (their guns read as 120 mm)`);
 writeFileSync(cuesOut, JSON.stringify({ ...cues, sfx: thinned }, null, 1));
 console.log(`${thinned.length} sfx cues (${sfx.length - thinned.length} thinned) -> ${cuesOut}`);
