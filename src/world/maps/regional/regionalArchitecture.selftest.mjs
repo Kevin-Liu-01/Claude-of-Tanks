@@ -205,7 +205,8 @@ console.log(`regional coverage: every builder of a new kit reaches its bounds to
   + `(${coverageShort.length}): ${coverageShort.join('; ')}`);
 
 // Surfaces: deterministic, in range, cached.
-for (const [target, kind] of [['roof', 'beavertail'], ['roof', 'canal'], ['roof', 'slate'], ['stone', 'sandstone'], ['stone', 'limestone'], ['stone', 'granite']]) {
+for (const [target, kind] of [['roof', 'beavertail'], ['roof', 'canal'], ['roof', 'slate'], ['stone', 'sandstone'], ['stone', 'limestone'], ['stone', 'granite'],
+  ['concrete', 'boardFormed']]) {
   const paint = () => { const g = paintRegionalSurfaceBuffers(target, kind, [0.5, 0.4, 0.3], 7); let s = g.next(); while (!s.done) s = g.next(); return s.value; };
   const a = paint(), b = paint();
   assert.deepEqual(Buffer.from(a.px.buffer), Buffer.from(b.px.buffer), `${kind}: deterministic pixels`);

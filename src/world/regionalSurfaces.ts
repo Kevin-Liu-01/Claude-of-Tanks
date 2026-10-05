@@ -9,7 +9,7 @@
 // down-slope is toward canvas row 0, so a course's exposed tail points to smaller y.
 import * as THREE from 'three';
 import { normalTextureFromHeight as normalFromHeight, textureFromRgbaPixels as toTexture } from './proceduralTexture.ts';
-import type { RoofSurfaceKind, StoneSurfaceKind } from './maps/regional/types.ts';
+import type { ConcreteSurfaceKind, RoofSurfaceKind, StoneSurfaceKind } from './maps/regional/types.ts';
 
 export interface RegionalSurfaceTextures {
   albedo: THREE.Texture;
@@ -427,6 +427,78 @@ function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number): 
   return [px, hgt, rough];
 }
 
+// ------------------------------------------------------------------------------------------------ concrete
+
+/** Periodic value noise with its own lattice along each axis (cellsX across, cellsY down the tile): grain, streaks. */
+function pnoiseXY(x: number, y: number, size: number, cellsX: number, cellsY: number, seed: number): number {
+  const fx = x / size * cellsX, fy = y / size * cellsY;
+  const x0 = Math.floor(fx), y0 = Math.floor(fy);
+  const tx = fx - x0, ty = fy - y0;
+  const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+  const wx = (v: number) => ((v % cellsX) + cellsX) % cellsX, wy = (v: number) => ((v % cellsY) + cellsY) % cellsY;
+  const a = hash2(wx(x0), wy(y0), seed), b = hash2(wx(x0 + 1), wy(y0), seed);
+  const c = hash2(wx(x0), wy(y0 + 1), seed), d = hash2(wx(x0 + 1), wy(y0 + 1), seed);
+  return (a + (b - a) * sx) + ((c + (d - c) * sx) - (a + (b - a) * sx)) * sy;
+}
+
+/**
+ * Board-formed concrete (the map-revival lane, 2026-10-05, Skybridge round 2: Glen Canyon's poured concrete): the print
+ * of the timber formwork. At the plaster buckets' 0.42 repeats per metre a tile is 2.38 m: sixteen boards of 15 cm laid
+ * level, each its own plane, tone and grain, a thin fin where two boards met and one butt joint somewhere along each; a
+ * lift line (the pour's cold joint, a fine groove with a lime bleed under it) every eight boards; form-tie holes on a
+ * 60 cm grid, small dark cones, a rust tear under some; broad pour mottling and the odd blowhole. Neutral grey: the
+ * style's plaster2 tone colours it. Canvas rows run DOWN the wall (the canvas is flipped on upload: a wall's v rises
+ * with its height), so a bleed or a tear runs to larger y. Every feature ends on the tile edge.
+ */
+function* boardFormed(s: number, tint: Tint, seed: number): Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
+  const px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s), rough = new Float32Array(s * s);
+  const k = s / 256;
+  const boards = 16, bh = s / boards, lift = s / 2, tie = s / 4, tieR = 2.6 * k, bleed = 24 * k;
+  const mottle = field(s, 32, 3, 3, seed + 1), pores = field(s, 128, 32, 2, seed + 3);
+  const wrap = (v: number) => ((v % s) + s) % s;
+  for (let y = 0; y < s; y++) {
+    const b = Math.floor(y / bh), yb = y - b * bh;
+    const plane = hash2(b, 1, seed + 5), tone = hash2(b, 2, seed + 5), butt = hash2(b, 3, seed + 5) * s;
+    const below = y % lift;
+    for (let x = 0; x < s; x++) {
+      const i = y * s + x, j = i * 4;
+      // the board: its plane and tone, the grain of its timber printed along it (long along x, fine across)
+      const grain = smooth(0.6, 0.86, pnoiseXY(x, y, s, 5, 64, seed + 7 + b * 13));
+      let v = 0.47 + (tone - 0.5) * 0.05 + (mottle(x, y) - 0.5) * 0.1 - grain * 0.04;
+      let h = 0.45 + (plane - 0.5) * 0.2 - grain * 0.06;
+      let r = 0.86 + (pores(x, y) - 0.5) * 0.1;
+      // the fin where it met the board above, and the shadow line under the board below's fin
+      if (yb < k) { v += 0.035; h += 0.16; r -= 0.04; } else if (yb >= bh - k) { v -= 0.03; h -= 0.05; }
+      // the butt joint
+      const db = Math.abs(wrap(x - butt + s / 2) - s / 2);
+      if (db < 0.75 * k) { v -= 0.045; h -= 0.1; }
+      // the lift line: the groove of the cold joint, a lime bleed in streaks below it
+      if (below < 2 * k) { v -= 0.1; h = 0.1; r = 0.96; } else if (below < bleed) {
+        const t = 1 - (below - 2 * k) / (bleed - 2 * k);
+        const streak = smooth(0.45, 0.8, pnoiseXY(x, 0, s, 28, 1, seed + 11));
+        v += 0.075 * t * t * streak; r += 0.03 * t * streak;
+      }
+      // the form ties: a hole on the 60 cm grid, its patched rim, a rust tear under every other one
+      // (a tie's cell starts a quarter cell above it: the hole whole inside, the tear below it too)
+      const m = Math.floor(x / tie), n = Math.floor(wrap(y - bh * 1.5 + tie * 0.25) / tie);
+      const cx = (m + 0.5) * tie, cy = wrap(n * tie + bh * 1.5);
+      const dx = x - cx, dyTie = wrap(y - cy + s / 2) - s / 2, d = Math.hypot(dx, dyTie);
+      if (d < tieR) { v *= 0.55; h = 0.05; r = 0.97; } else if (d < tieR + 1.2 * k) { v += 0.04; h += 0.08; }
+      else if (hash2(m, n, seed + 13) > 0.5) {
+        const len = (10 + hash2(m, n, seed + 15) * 22) * k, dyTear = wrap(y - cy), t = (dyTear - tieR) / len;
+        if (t > 0 && t < 1 && Math.abs(dx) < 1.3 * k * (1 - t * 0.6)) v -= 0.07 * (1 - t);
+      }
+      // a blowhole (an air void at the form face)
+      if (hash2(x, y, seed + 17) > 0.996) { v -= 0.12; h -= 0.2; r = 0.97; }
+      put(px, j, tint[0] * v * 1.02, tint[1] * v, tint[2] * v * 0.97);
+      hgt[i] = clamp(h);
+      rough[i] = clamp(r);
+    }
+    if ((y & 15) === 15) yield { fine: true, stage: `concrete-${y + 1}` };
+  }
+  return [px, hgt, rough];
+}
+
 // ------------------------------------------------------------------------------------------------ public
 
 const ROOF_PAINTERS = { beavertail, canal, slate, pantile, sheet, asbestos } as const;
@@ -467,9 +539,25 @@ export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotrop
   return finish(px, hgt, rough, s, anisotropy, relief, kind === 'limestone' ? 0.74 : 0.66);
 }
 
+/**
+ * The plaster2 bucket's texture set for a style that pours its concrete (256 px: 2.38 m at the plaster buckets' 0.42
+ * repeats per metre). `tone` recolours the albedo in place before upload (props.ts: the bucket's tone, as the render's).
+ */
+export function* makeRegionalConcrete(kind: ConcreteSurfaceKind, tone: ((px: Uint8ClampedArray) => void) | null, anisotropy: number,
+  seed = 0xb0a8): Generator<SurfaceSlice, RegionalSurfaceTextures, void> {
+  const s = 256;
+  const [px, hgt, rough] = yield* cached(`concrete:${kind}:${seed}`, () => boardFormed(s, [1, 1, 1], seed));
+  tone?.(px);
+  return finish(px, hgt, rough, s, anisotropy, 1.4, 0.72);
+}
+
 /** Paint-only access for receipts (no canvas): the raw buffers. */
-export function* paintRegionalSurfaceBuffers(target: 'roof' | 'stone', kind: RoofSurfaceKind | StoneSurfaceKind, tint: Tint, seed: number):
-  Generator<SurfaceSlice, { size: number; px: Uint8ClampedArray; hgt: Float32Array; rough: Float32Array }, void> {
+export function* paintRegionalSurfaceBuffers(target: 'roof' | 'stone' | 'concrete', kind: RoofSurfaceKind | StoneSurfaceKind | ConcreteSurfaceKind,
+  tint: Tint, seed: number): Generator<SurfaceSlice, { size: number; px: Uint8ClampedArray; hgt: Float32Array; rough: Float32Array }, void> {
+  if (target === 'concrete') {
+    const [px, hgt, rough] = yield* boardFormed(256, tint, seed);
+    return { size: 256, px, hgt, rough };
+  }
   if (target === 'roof') {
     const painter = kind === 'shingle' ? ROOF_PAINTERS.slate : ROOF_PAINTERS[kind as keyof typeof ROOF_PAINTERS];
     const [px, hgt, rough] = yield* painter(256, tint, seed);

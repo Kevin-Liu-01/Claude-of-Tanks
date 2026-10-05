@@ -732,6 +732,8 @@ export const GLENCANYON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
       plaster2: (_h, s, l) => [0.08, Math.min(1, s * 0.25 + 0.03), Math.min(1, l * 0.95 + 0.14)],
       plaster3: (_h, s, l) => [0.11, Math.min(1, s * 0.25), Math.min(1, l * 1.2 + 0.16)],
     },
+    // (Skybridge round 2: the dam's, the powerhouse's and the Bureau's concrete is poured, board-formed, as at the dam)
+    concrete: 'boardFormed',
   },
   builders: GLENCANYON_BUILDERS,
   // the desert's dry air; the stucco houses each their own pale colour (peach, sky, sand, mint) and the concrete stained
