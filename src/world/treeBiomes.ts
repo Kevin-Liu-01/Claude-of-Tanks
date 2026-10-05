@@ -118,6 +118,11 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   fjord: B('a Norwegian fjord', { birch: { form: 'birch', leaves: true } }),
   // the Alps: spruce and larch
   alpine: B('an Alpine pass', { fir: { form: 'larch' }, pine: { form: 'larch' } }),
+  // Queenstown under Mount Lyell, Tasmania (the map-revival lane, 2026-10-05): eucalypt regrowth where the map plants its
+  // acacias and cedars, the radiata plantations' pines as pines, the bushes the tea-tree and myrtle scrub in the holm
+  // oak's dark leaf (no 'snag' for the fume-killed stumps: its slot would keep a concealing crown it does not draw);
+  // the placement stays the map's
+  copper_mesa: B('Queenstown under Mount Lyell, Tasmania', { acacia: { form: 'eucalyptus' }, cedar: { form: 'eucalyptus' } }, 'holmOak'),
   // the Scheldt polders: poplar and willow rows (the map's own slots already)
   polders: B('the Scheldt polders, Zeeland', {}),
 });
