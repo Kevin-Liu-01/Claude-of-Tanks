@@ -2387,6 +2387,13 @@ const FOLIAGE_GATE_LIFT = Object.freeze({ crown: 0, shrub: 0.75 });
  * inside the crown, under its leaf cards (the desktop tiers; the phones' trunks carry no fine-wood tag).
  */
 const GROWTH_WOOD_FINE_R = 0.05, GROWTH_WOOD_FINE_FAR = 80;
+/**
+ * Trees round 4 (the cost hold: Verdant's understorey 3,609 shrubs, nine in ten past 100 m of the chase camera): a shrub
+ * whose crown radius over its distance is under this (rad; about 24 px across on a 1600 px frame) draws half its clusters,
+ * each kept by a hash of its own, at 1.25 times their size — the understorey's young growth past about 65 m, a field bush
+ * past about 220 m (the desktop tiers; a crown never thins).
+ */
+const FOLIAGE_SHRUB_THIN = 0.011;
 
 
 /**
@@ -3670,6 +3677,8 @@ function* vegetationBuildSteps(
   const uMoss = { value: resolveTrunkMoss(cfg) };
   // trees round 4 (the cost hold): fine wood's reach from the camera (GROWTH_WOOD_FINE_FAR; the phones keep their trunks)
   const uWoodFineFar = { value: mobileTier ? 1e9 : GROWTH_WOOD_FINE_FAR };
+  // trees round 4 (the cost hold): a small shrub's thinning (FOLIAGE_SHRUB_THIN; 0 thins none — the phones)
+  const uShrubThin = { value: mobileTier ? 0 : FOLIAGE_SHRUB_THIN };
   const uCamPos = { value: new THREE.Vector3(0, 0, 0) };
   // gameplay_feel r2: camera->tank occlusion-fade focus point (y=-9999 = off)
   const uFocusPos = { value: new THREE.Vector3(0, -9999, 0) };
@@ -4560,10 +4569,12 @@ function* vegetationBuildSteps(
     shader.uniforms.uCotNearReach = { value: FOLIAGE_NEAR_REACH.shrub };
     shader.uniforms.uCotGateLift = { value: FOLIAGE_GATE_LIFT.shrub };
     shader.uniforms.uCotInsideFade = { value: 1 };
+    shader.uniforms.uCotShrubThin = uShrubThin;
   };
   const foliageWindHook = (shader: MaterialShader): void => {
     canopyWindHook(shader);
     shader.uniforms.uCotNearReach = { value: FOLIAGE_NEAR_REACH.crown };
+    shader.uniforms.uCotShrubThin = { value: 0 };
     shader.uniforms.uCotGateLift = { value: FOLIAGE_GATE_LIFT.crown };
     shader.uniforms.uCotInsideFade = { value: 0 };
     // Trees round 2 (2026-10-03): the grown crowns' leaf clusters turn about their own axes to face the camera
@@ -4575,7 +4586,7 @@ function* vegetationBuildSteps(
     // model-view's rigid inverse; the lighting keeps the crown hull's normals, which never turned with the card. A
     // geometry without the frame (the round-8 bush cards) reads aAxis as zero and stays as authored.
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
-      '#include <common>\n#ifdef COT_LEAF_BILLBOARD\nattribute vec3 aAxis;\nattribute vec3 aLeaf;\nuniform float uCotNearReach;\nuniform float uCotGateLift;\nuniform float uCotInsideFade;\nvarying float vCotNearScale;\nvarying float vCotGeoNear;\n#endif');
+      '#include <common>\n#ifdef COT_LEAF_BILLBOARD\nattribute vec3 aAxis;\nattribute vec3 aLeaf;\nuniform float uCotNearReach;\nuniform float uCotGateLift;\nuniform float uCotInsideFade;\nuniform float uCotShrubThin;\nvarying float vCotNearScale;\nvarying float vCotGeoNear;\n#endif');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`#include <begin_vertex>
       #ifdef COT_LEAF_BILLBOARD
       // trees round 4: the card's share of its size (the near dissolve's and the inside fade's), applied after the wind
@@ -4617,8 +4628,11 @@ function* vegetationBuildSteps(
         // crown's card shrinks over its own window about its gate; a shrub's (uCotInsideFade 1) is whole or gone, at its
         // gate — by the camera's distance (the near dissolve) and by the camera's depth into the shrub's rim (the inside
         // fade: its top cards first, the last of it at the rim's inner edge) — so no pose draws a shrunken card of a shrub
+        // trees round 4 (the cost hold): a shrub under uCotShrubThin of angular radius (its crown radius over its
+        // distance, in the instance's own frame) draws half its clusters, each by its own hash, at 1.25 times their size
+        float cotThin = step( length( cotCam ) * uCotShrubThin, aCard.w );
         cotShrinkF = uCotInsideFade > 0.5
-          ? step( cotGate, cotKeep ) * ( 1.0 - step( 1.0, cotIn + cotGate ) )
+          ? step( cotGate, cotKeep ) * ( 1.0 - step( 1.0, cotIn + cotGate ) ) * mix( step( 0.5, fract( cotHash * 7.13 ) ) * 1.25, 1.0, cotThin )
           : smoothstep( cotGate - 0.1, cotGate + 0.1, cotKeep );
         vCotGeoNear = 1.0;
       }
@@ -6499,6 +6513,7 @@ function* vegetationBuildSteps(
     material.defines = { ...(material.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2),
       COT_LEAF_BILLBOARD: GROWN_LEAF_BILLBOARD.toFixed(2) };
     engineCtx.setupShadowMaterial(material, shrubFoliageHook);
+    material.userData.cotShrubThin = uShrubThin; // the frame probe's same-page A/B (its shrub-thin toggle)
     material.customProgramCacheKey = () => 'world-tree-foliage-v25';
     const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map, alphaTest: 0.38 });
     retainedMaterials.push(material, depth);
@@ -6532,6 +6547,7 @@ function* vegetationBuildSteps(
         const shrub = crown.clone();
         shrub.defines = { ...(crown.defines ?? {}) };
         engineCtx.setupShadowMaterial(shrub, shrubFoliageHook);
+        shrub.userData.cotShrubThin = uShrubThin;
         shrub.customProgramCacheKey = () => 'world-tree-foliage-v25';
         retainedMaterials.push(shrub);
         bushMatCache = shrub;

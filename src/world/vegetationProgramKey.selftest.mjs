@@ -249,8 +249,9 @@ function checkEdgeFade(material, parameters) {
   // trees round 4 (the gauntlet's wave 84: the dolly's bush drawn in specks with the camera just inside its rim): a
   // crown's card shrinks to its centre over its own window about its gate; a shrub's card is whole or gone, at its gate,
   // by the camera's distance and by the camera's depth into its rim (checkShrubInside: the camera inside a shrub)
-  assert.match(vertex, /cotShrinkF = uCotInsideFade > 0\.5\s*\? step\( cotGate, cotKeep \) \* \( 1\.0 - step\( 1\.0, cotIn \+ cotGate \) \)\s*: smoothstep\( cotGate - 0\.1, cotGate \+ 0\.1, cotKeep \);/,
-    'a crown\'s card shrinks at its own threshold, a shrub\'s leaves whole');
+  assert.match(vertex, /float cotThin = step\( length\( cotCam \) \* uCotShrubThin, aCard\.w \);\s*cotShrinkF = uCotInsideFade > 0\.5\s*\? step\( cotGate, cotKeep \) \* \( 1\.0 - step\( 1\.0, cotIn \+ cotGate \) \) \* mix\( step\( 0\.5, fract\( cotHash \* 7\.13 \) \) \* 1\.25, 1\.0, cotThin \)\s*: smoothstep\( cotGate - 0\.1, cotGate \+ 0\.1, cotKeep \);/,
+    'a crown\'s card shrinks at its own threshold, a shrub\'s leaves whole (and a small far shrub keeps half its clusters)');
+  assert.equal(parameters.uniforms.uCotShrubThin?.value, 0, 'a crown never thins');
   // trees round 4 (the gauntlet's wave 84: a sliver left in the sky by the dolly's vanished bush): the factor is found
   // after the turn and applied after the wind — the wind moves each corner by its own flex, and a card collapsed ahead
   // of it was stretched back out into a sliver; after it, a collapsed card is a point
@@ -411,6 +412,8 @@ function checkShrubMaterial(environment) {
     assert.equal(shrubProgram.parameters.uniforms.uCotNearReach.value, 0.5, 'the shrub\'s near reach');
     assert.equal(shrubProgram.parameters.uniforms.uCotGateLift.value, 0.75, 'and its clusters leave from the top down');
     assert.equal(shrubProgram.parameters.uniforms.uCotInsideFade.value, 1, 'and it leaves whole with the camera inside it');
+    assert.equal(shrubProgram.parameters.uniforms.uCotShrubThin.value, 0.011, 'and a small far shrub thins (FOLIAGE_SHRUB_THIN)');
+    assert.equal(bush.material.userData.cotShrubThin, shrubProgram.parameters.uniforms.uCotShrubThin, 'the probe reaches the thinning');
     assert.equal(crownProgram.parameters.uniforms.uCotNearReach.value, 1, 'the crowns keep theirs');
   } finally {
     vegetation.dispose(); disposeObject3DResources(vegetation.group);
@@ -446,7 +449,7 @@ function checkShrubInside(environment) {
       [/float cotNear = length\( cotCam - aCard\.xyz \) \* length\( cotIm\[ 0 \] \);\s*float cotKeep = smoothstep\( 2\.50 \* vCotNearScale, 8\.00 \* vCotNearScale, cotNear \);/, 'the near dissolve'],
       [/float cotHash = fract\( sin\( dot\( aCard\.xyz \+ instanceMatrix\[ 3 \]\.xyz, vec3\( 12\.9898, 78\.233, 37\.719 \) \) \) \* 43758\.5453 \);\s*float cotGate = 0\.1 \+ 0\.8 \* mix\( cotHash, clamp\( aCard\.y \/ \( 1\.5 \* aCard\.w \), 0\.0, 1\.0 \), uCotGateLift \);/, 'the gate'],
       [/float cotIn = uCotInsideFade \* \( 1\.0 - smoothstep\( 0\.94, 1\.04, length\( cotCam\.xz \) \/ max\( aCard\.w, 1e-3 \) \) \)\s*\* \( 1\.0 - smoothstep\( 1\.4, 1\.8, cotCam\.y \/ max\( aCard\.w, 1e-3 \) \) \);/, 'the inside fade'],
-      [/cotShrinkF = uCotInsideFade > 0\.5\s*\? step\( cotGate, cotKeep \) \* \( 1\.0 - step\( 1\.0, cotIn \+ cotGate \) \)\s*: smoothstep\( cotGate - 0\.1, cotGate \+ 0\.1, cotKeep \);/, 'the shrink factor'],
+      [/float cotThin = step\( length\( cotCam \) \* uCotShrubThin, aCard\.w \);\s*cotShrinkF = uCotInsideFade > 0\.5\s*\? step\( cotGate, cotKeep \) \* \( 1\.0 - step\( 1\.0, cotIn \+ cotGate \) \) \* mix\( step\( 0\.5, fract\( cotHash \* 7\.13 \) \) \* 1\.25, 1\.0, cotThin \)\s*: smoothstep\( cotGate - 0\.1, cotGate \+ 0\.1, cotKeep \);/, 'the shrink factor'],
       [/vec4 tiw = instanceMatrix \* vec4\(0\.0, 0\.0, 0\.0, 1\.0\);/, 'the wind\'s station'],
       [/float ph = fract\(sin\(tiw\.x \* 12\.9898 \+ tiw\.z \* 78\.233\) \* 43758\.5453\) \* 6\.2831853;/, 'the tree\'s phase'],
       [/float front = 0\.5 \+ 0\.5 \* sin\(uWindTime \* 0\.42 - dot\(tiw\.xz, uWindDir\) \* 0\.018\);\s*float gust = 0\.30 \+ 0\.70 \* front \* \(0\.55 \+ 0\.45 \* sin\(uWindTime \* 1\.31 \+ ph\)\);/, 'the gust'],
@@ -456,6 +459,7 @@ function checkShrubInside(environment) {
     ]) assert.match(vertex, pattern, `the mirror follows the program: ${what}`);
     const billboard = Number(bushes[0].material.defines.COT_LEAF_BILLBOARD);
     const reach = u.uCotNearReach.value, lift = u.uCotGateLift.value, inside = u.uCotInsideFade.value, wind = u.uWind.value, dir = u.uWindDir.value;
+    const thin = u.uCotShrubThin.value;
     assert.equal(inside, 1, 'the shrub material leaves whole');
     assert.ok(wind.z > 0.05 && wind.x > 0, `the wind moves the cards (${wind.toArray()})`);
     const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -494,7 +498,8 @@ function checkShrubInside(environment) {
         const gate = 0.1 + 0.8 * (hash + (Math.min(1, Math.max(0, cy / (1.5 * cw))) - hash) * lift);
         const cotIn = inside * (1 - ss(0.94, 1.04, Math.hypot(qx, qz) / Math.max(cw, 1e-3))) * (1 - ss(1.4, 1.8, qy / Math.max(cw, 1e-3)));
         f = law === 'program'
-          ? (inside > 0.5 ? (keep < gate ? 0 : 1) * (1 - (cotIn + gate < 1 ? 0 : 1)) : ss(gate - 0.1, gate + 0.1, keep))
+          ? (inside > 0.5 ? (keep < gate ? 0 : 1) * (1 - (cotIn + gate < 1 ? 0 : 1))
+            * (cw < Math.hypot(qx, qy, qz) * thin ? (fract(hash * 7.13) < 0.5 ? 0 : 1) * 1.25 : 1) : ss(gate - 0.1, gate + 0.1, keep))
           : ss(gate - 0.1, gate + 0.1, keep) * (1 - cotIn);
       }
       if (law === 'v24') { tx = cx + (tx - cx) * f; ty = cy + (ty - cy) * f; tz = cz + (tz - cz) * f; }
@@ -581,6 +586,25 @@ function checkShrubInside(environment) {
             control.nbFragments += old.fragments; control.nbOverEye += old.overEye;
           }
         }
+      }
+    }
+    // trees round 4 (the cost hold): a shrub small on the screen (its crown radius under uCotShrubThin of its distance)
+    // draws half its clusters, each whole at 1.25 times its size; nearer, every cluster whole
+    assert.ok(thin > 0.005 && thin < 0.02, `the thinning's angle (${thin})`);
+    for (const h of hosts) {
+      const host = instances[h], w = host.geometry.attributes.aCard.getW(0);
+      for (const [k, thinned] of [[0.5, false], [2, true]]) {
+        // along the shrub's own x axis, k × the distance where its radius meets the angle (the instance frame's units)
+        placeCamera(host.e, w, k * 1 / thin, 0, 0.5);
+        const g = shrubArrays(host.geometry), index = g.index;
+        let drawn = 0, cards = 0;
+        for (let t = 0; t < index.length; t += 6) {
+          vertexPath(g, host.e, index[t], cam, 0, 'program');
+          cards++;
+          if (out[3] > 0) { drawn++; assert.equal(out[3], thinned ? 1.25 : 1, 'a drawn cluster is whole (1.25 times its size when thinned)'); }
+        }
+        if (thinned) assert.ok(drawn > cards * 0.25 && drawn < cards * 0.75, `a small far shrub keeps about half its clusters (${drawn} of ${cards})`);
+        else assert.equal(drawn, cards, 'a shrub big on the screen keeps every cluster');
       }
     }
     // the control: the laws that drew the wave fail the same case — the shrink ahead of the wind leaves the shrub the camera
