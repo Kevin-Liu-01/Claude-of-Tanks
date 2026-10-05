@@ -453,6 +453,7 @@ region, registered in `index.ts`:
 | `breton` | Finistère: granite and limewash, slate, coped gables, dormers | Saltmere Bay |
 | `kolkhoz` | Prokhorovka: whitewashed khatas, thatch and asbestos sheet, kolkhoz brick | Verdant Fields |
 | `polder` | Zeeland: brick farms, pantiles, tarred barns under thatch, a smock mill | Tidegate Polders |
+| `glencanyon` | Glen Canyon Dam and Page, Arizona (the Bureau of Reclamation, 1957-66): a board-formed concrete powerhouse with its penstocks, the control building, the surge tower, walled switchyards and transformer yards, the microwave relay, the visitor centre or the school, ranch houses with carports | Skybridge Chasm |
 | `eifel` | Rur dams: black-and-white Fachwerk on greywacke, slate, the dam company's stone | Highland Reservoir |
 | `mekong` | Cà Mau: stilt houses of plank and palm, nipa and corrugated iron | Mangrove Reach |
 | `bengal` | Jamuna chars: tin homesteads on earthen plinths, a tin bazaar, a mosque | Jade River Delta |

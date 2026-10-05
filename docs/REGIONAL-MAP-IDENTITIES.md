@@ -40,7 +40,7 @@ the fictional map reproduces a particular real-world location.
 | ruinspires | Destroyed vertical megacity above broad urban terraces; recessive background uplands. |
 | blackglass | Arcologies and directional transit-cut shoulders between offset low ridges. |
 | titan_gorge | Long plateau edges with branching tributary recesses; playable changes held until access constraints pass. |
-| skybridge | Opposing plateau shoulders aligned with the drowned gorge; preserve crossing approaches. |
+| skybridge | Glen Canyon above Lake Powell (layout 2026-10-03, settlement 2026-10-05): opposing plateau shoulders aligned with the drowned gorge, the dam's concrete works and Page; preserve crossing approaches. |
 | polders | Very low coastal skyline, long dikes and broad drainage cells; preserve the deliberately low amplitude. |
 | copper_mesa | Natural tablelands surrounding distinctly engineered quarry benches. |
 | airfield | Open approach sectors and distant low hills; restrained perimeter berms. |
