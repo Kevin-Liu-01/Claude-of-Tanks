@@ -415,6 +415,11 @@ interface ShellAir {
   uPanoHazeToward: THREE.IUniform<THREE.Vector3>;
   uPanoSunH: THREE.IUniform<THREE.Vector2>;
   uPanoHazeChroma: THREE.IUniform<THREE.Vector3>;
+  /** the dome's own colour at the horizon away from the sun and toward it (the atmosphere's horizon bands), and the
+   *  aerial pass's σ over the shell's depth (the law's, no air share) */
+  uPanoDomeAnti: THREE.IUniform<THREE.Vector3>;
+  uPanoDomeToward: THREE.IUniform<THREE.Vector3>;
+  uPanoSigmaPost: THREE.IUniform<number>;
 }
 
 /** The shell's material: the atlas by direction from the bake eye (an unlit backdrop; the post pass hazes it by depth),
@@ -439,6 +444,9 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
     uPanoHazeToward: { value: new THREE.Vector3() },
     uPanoSunH: { value: new THREE.Vector2(1, 0) },
     uPanoHazeChroma: { value: new THREE.Vector3(...HAZE_EXT_CHROMA) },
+    uPanoDomeAnti: { value: new THREE.Vector3() },
+    uPanoDomeToward: { value: new THREE.Vector3() },
+    uPanoSigmaPost: { value: 0 },
   };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uPanoEye = { value: new THREE.Vector3(0, P.eyeY, 0) };
@@ -452,6 +460,7 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
 uniform vec3 uPanoEye; uniform vec2 uPanoElev; varying vec3 vPanoWorld; varying float vPanoU; varying float vPanoApron;
 uniform sampler2D uPanoSkyline; uniform vec4 uPanoHaze; uniform vec3 uPanoHazeAnti, uPanoHazeToward, uPanoHazeChroma;
 uniform vec2 uPanoSunH;
+uniform vec3 uPanoDomeAnti, uPanoDomeToward; uniform float uPanoSigmaPost;
 ${HAZE_LAW_GLSL}`)
       .replace('#include <map_fragment>', /* glsl */`
       #ifndef USE_MAP
@@ -494,7 +503,16 @@ ${HAZE_LAW_GLSL}`)
             float a = vPanoU * 6.2831853;
             float toward = 0.5 + 0.5 * (cos(a) * uPanoSunH.x + sin(a) * uPanoSunH.y);
             ground = mix(ground, wide, smoothstep(0.0, 0.0087, e - mix(uPanoElev.x, uPanoElev.y, skyline.a)));
-            ground = ground * T + mix(uPanoHazeAnti, uPanoHazeToward, toward * toward) * (1.0 - T);
+            // toward the horizontal the land goes into the dome's own horizon (Saltwind's pair of bfc773bb1: converged
+            // on the law's target, brighter than its clear dome toward the sun, the far earth's top stood as a line,
+            // L 0.71 under the dome's 0.63): the in-scatter target is the colour that the aerial pass, laying the law's
+            // target over the shell's depth, turns into the dome's horizon
+            float w2 = toward * toward;
+            vec3 lawT = mix(uPanoHazeAnti, uPanoHazeToward, w2), dome = mix(uPanoDomeAnti, uPanoDomeToward, w2);
+            float postLayer = hazeLayerMean(max(cameraPosition.y - uPanoHaze.z, 0.0) * uPanoHaze.y, max(vPanoWorld.y - uPanoHaze.z, 0.0) * uPanoHaze.y);
+            vec3 Tp = hazeTransmittance(uPanoSigmaPost, length(vd), postLayer, uPanoHazeChroma);
+            vec3 inScatter = max((dome - lawT * (1.0 - Tp)) / max(Tp, vec3(0.05)), vec3(0.0));
+            ground = ground * T + inScatter * (1.0 - T);
           }
           diffuseColor.rgb *= ground;
         } else {
@@ -1572,6 +1590,15 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     air.uPanoSkyline.value = skylineRT.texture;
     if (haze) {
       air.uPanoHaze.value.set(haze.sigma * ch.air, haze.invScale, hazeDatumM, 1);
+      air.uPanoSigmaPost.value = haze.sigma;
+      const summary = published.atmosphere?.summary;
+      if (summary) {
+        air.uPanoDomeAnti.value.set(summary.horizon.r, summary.horizon.g, summary.horizon.b);
+        air.uPanoDomeToward.value.set(summary.sunHorizon.r, summary.sunHorizon.g, summary.sunHorizon.b);
+      } else {
+        air.uPanoDomeAnti.value.copy(haze.anti);
+        air.uPanoDomeToward.value.copy(haze.toward);
+      }
       air.uPanoHazeAnti.value.copy(haze.anti);
       air.uPanoHazeToward.value.copy(haze.toward);
       air.uPanoSunH.value.set(options.sun[0], options.sun[2]);

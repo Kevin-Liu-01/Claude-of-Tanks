@@ -104,6 +104,11 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   'far-earth': Object.freeze({
     on: `(() => { let n = 0; window.__DEBUG.scene.traverse((o) => { const a = o.userData && o.userData.panoAir; if (!a) return; if (a.offSkyline !== undefined) { a.uPanoSkyline.value = a.offSkyline; delete a.offSkyline; } a.uPanoHaze.value.w = a.uPanoHaze.value.x > 0 ? 1 : 0; n++; }); return { shells: n }; })()`,
     off: `(() => { let n = 0; window.__DEBUG.scene.traverse((o) => { const a = o.userData && o.userData.panoAir; if (!a) return; if (a.offSkyline === undefined) a.offSkyline = a.uPanoSkyline.value; a.uPanoSkyline.value = null; a.uPanoHaze.value.w = 0; n++; }); return { shells: n }; })()` }),
+  // its null control (docs/PERFORMANCE.md: a control beside any toggle under a millisecond): the same scene walk and
+  // the same shells found, a flag the shader never reads switched, so its quartets give the blocks' own noise
+  'far-earth-null': Object.freeze({
+    on: `(() => { let n = 0; window.__DEBUG.scene.traverse((o) => { const a = o.userData && o.userData.panoAir; if (!a) return; a.nullControl = 1; n++; }); return { shells: n }; })()`,
+    off: `(() => { let n = 0; window.__DEBUG.scene.traverse((o) => { const a = o.userData && o.userData.panoAir; if (!a) return; a.nullControl = 0; n++; }); return { shells: n }; })()` }),
 });
 
 /**
