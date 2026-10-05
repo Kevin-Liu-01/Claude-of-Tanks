@@ -1,5 +1,13 @@
 // A crescent oasis west of the town creates a short wet cut, an exposed
 // caravan road and a long dune-back flank. Reuses only the desert materials.
+//
+// Reference (the map-revival lane, 2026-10-05): Siwa, in Egypt's Western Desert below the Qattara Depression: the
+// springs and their salt lakes, the palm gardens walled in mud, and the old town of Shali, its kershef houses (salt-
+// crusted mud and rock) heaped up a hill in rounded, battered blocks. The settlement stands where the plan seats it in
+// the siwa variant of the ksar kit (maps/regional/ksar.ts): the kershef houses with their palm-beam ends, shuttered
+// windows and plank doors; old Shali's blocks of one to three storeys heaped together on the compound plots; the
+// mosque's tapering mud minaret and a watch tower; the spring in its stone rim with the café's palm-rib shelter; the
+// souk's stalls under their palm-rib mats; the melted ruins of the old town.
 import desert from './desert.ts';
 import { roundRoadBends } from './roadBends.ts';
 import { talusFan } from './geology.ts';
@@ -68,6 +76,8 @@ export default {
     palmFallback: 'acacia',
   },
   props: {
+    // the map-revival lane (2026-10-05): the town is Siwa's, in the siwa variant of the ksar kit (maps/regional/ksar.ts)
+    architecture: 'siwa',
     sourcedPalette: 'desert',
     plan: ['caravanserai', 'compoundSouk', 'adobe', 'bathhouse', 'marketRow', 'minaret', 'compound', 'adobe', 'market', 'ruin', 'adobe', 'compound', 'tower', 'adobe', 'marketRow', 'ruin', 'adobe', 'compound'],
     destructibleBuildings: ['deserttent', 'commandtent', 'checkpointhut', 'guardpost'],
@@ -82,7 +92,10 @@ export default {
       { id: 'western-dune-lookout', role: 'scout', x: -345, z: 32, yawDeg: 90, structure: 'guardpost', outcrop: { count: 5, radius: 9 } },
       { id: 'spring-supply-camp', role: 'support', x: -72, z: 256, yawDeg: 180, structure: 'deserttent', redoubt: true, outcrop: { count: 4, radius: 8 }, wreck: true },
     ],
-    tones: desert.props.tones, wallStyle: 'adobe', wallStoneChance: 0.16, sideSkip: 0.16, spacingPad: 7,
+    // the kit's kershef tones own the renders (a salt-mud grey-beige, not the Dahar's warm sand adobe); the roofs, field
+    // stone, timber and straw keep the desert's
+    tones: { roof: desert.props.tones.roof, stone: desert.props.tones.stone, wood: desert.props.tones.wood, straw: desert.props.tones.straw },
+    wallStyle: 'adobe', wallStoneChance: 0.16, sideSkip: 0.16, spacingPad: 7,
     wallRuns: [[38, -40, 38, 18, 2], [108, -106, 168, -106, 2], [248, 12, 248, 84, 3], [176, 90, 248, 90, 2], [-108, 280, -32, 280, 3], [-108, 216, -108, 280, 2]],
     well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: false,
     rocks: 144, outcrops: 24, craters: 48, rubblePiles: 12, sandbagLines: 14, hedgehogs: 8,
