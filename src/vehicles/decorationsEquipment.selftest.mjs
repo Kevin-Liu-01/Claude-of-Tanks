@@ -62,9 +62,53 @@ assert.ok(coolerColors.some(([r, g, b]) => Math.max(r, g, b) - Math.min(r, g, b)
   'beer cooler owns a separate neutral lid');
 assert.ok(coolerColors.every(([r, g, b]) => Math.max(r, g, b) < 0.78),
   'beer cooler avoids bright high-contrast authored colors');
-assert.ok(cooler.length >= 18,
-  `beer cooler has molded panels, ribs, latches, hinges, and weather bands (${cooler.length} parts)`);
+assert.ok(cooler.length >= 10,
+  `beer cooler is a molded body and lid with latches, grips, a raised lid panel and a drain plug (${cooler.length} parts)`);
+// 2026-10-05 (tank-accessories lane): molded stock, not twelve-triangle blocks — the body and lid carry filleted
+// edges, so their normals take many directions instead of the six axis faces of a box.
+const moldedFaces = cooler.filter((part) => part.mat === 'cans').map((part) => {
+  const normal = part.geo.attributes.normal;
+  const directions = new Set();
+  for (let i = 0; i < normal.count; i++) {
+    directions.add(`${normal.getX(i).toFixed(2)},${normal.getY(i).toFixed(2)},${normal.getZ(i).toFixed(2)}`);
+  }
+  return directions.size;
+});
+assert.ok(moldedFaces.filter((count) => count > 12).length >= 2,
+  'cooler body and lid are filleted molded shells (more than twelve normal directions each)');
 for (const part of cooler) part.geo.dispose();
+
+// Every cargo variant authors a coarse level (the far LOD and the mobile tier): the same envelope from no more
+// triangles, built from an identically seeded stream that both levels consume the same way.
+const tri = (geometry) => (geometry.index ? geometry.index.count : geometry.attributes.position.count) / 3;
+for (const variant of FLEET_EQUIPMENT_VARIANTS) {
+  const draws = { 1: 0, 0: 0 };
+  const build = (detail) => {
+    let a = 0x51f15e;
+    const rng = () => { draws[detail]++; a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; };
+    return DECOR_KITS.cargo({ rng, v: variant, detail });
+  };
+  const near = build(1), coarse = build(0);
+  const measure = (parts) => {
+    const box = new THREE.Box3();
+    let triangles = 0;
+    for (const part of parts) {
+      part.geo.computeBoundingBox();
+      box.union(part.geo.boundingBox);
+      triangles += tri(part.geo);
+    }
+    return { box, triangles, size: box.getSize(new THREE.Vector3()) };
+  };
+  const n = measure(near), c = measure(coarse);
+  assert.equal(draws[1], draws[0], `${variant}: near and coarse levels consume the same random draws`);
+  assert.ok(c.triangles <= n.triangles, `${variant}: coarse level is no heavier (${c.triangles} vs ${n.triangles})`);
+  for (const axis of ['x', 'y', 'z']) {
+    assert.ok(c.size[axis] >= n.size[axis] * 0.8 && c.size[axis] <= n.size[axis] * 1.05 + 0.01,
+      `${variant}: coarse ${axis} envelope ${c.size[axis].toFixed(3)} matches near ${n.size[axis].toFixed(3)}`);
+  }
+  assert.ok(n.triangles <= 700, `${variant}: near level stays inside the per-piece budget (${n.triangles})`);
+  for (const part of [...near, ...coarse]) part.geo.dispose();
+}
 
 for (const variant of ['nato-fuel-can', 'blue-water-can', 'twin-can-cradle']) {
   const pair = DECOR_KITS.cargo({ rng: () => 0.37, v: variant });

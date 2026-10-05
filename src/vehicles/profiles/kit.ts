@@ -12,6 +12,10 @@ import * as THREE from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { KIT } from '../tankFactoryCore.ts';
 import { ownFittingGeometry } from '../ownedFittingGeometry.ts';
+import {
+  addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield,
+  createPintleLayout, type PintleLayout,
+} from '../machineGunGeometry.ts';
 import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh, type VehicleLampKind } from '../vehicleNightLighting.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 
@@ -1346,26 +1350,9 @@ function fitAssemble(type: string, parts: FittingParts, opts: FittingOptions): T
   return g;
 }
 
-// Browning-derived MG family table. Every class keeps the same authored load
-// path and receiver grammar (bearing -> fork -> trunnion -> receiver ->
-// jacket/barrel) while caliber-specific dimensions, jackets and muzzle devices
-// preserve national identity. `pintleMG` is the fleet default; exact hero props
-// may add detail, but must not fall back to anonymous rods or floating boxes.
-// rec = [w,h,d] receiver mass.
-const MG_CLASSES = {
-  m2:    { s: 1.00, rec: [0.115, 0.095, 0.46], barrelR: 0.0165, barrelL: 0.52, jacket: 'sleeve', flashR: 0.021, flashL: 0.07, caliber: 12.7, name: 'Browning M2HB' },
-  heavy: { s: 1.00, rec: [0.115, 0.095, 0.46], barrelR: 0.0165, barrelL: 0.52, jacket: 'sleeve', flashR: 0.021, flashL: 0.07, caliber: 12.7, name: 'Browning-pattern HMG' },
-  dshk:  { s: 1.02, rec: [0.105, 0.105, 0.44], barrelR: 0.0155, barrelL: 0.50, jacket: 'fins',   flashR: 0.035, flashL: 0.10, caliber: 12.7, name: 'DShK-pattern HMG' },
-  nsvt:  { s: 0.98, rec: [0.095, 0.100, 0.42], barrelR: 0.0240, barrelL: 0.55, jacket: 'none',   flashR: 0.035, flashL: 0.10, caliber: 12.7, name: 'NSVT-pattern HMG' },
-  kord:  { s: 0.99, rec: [0.100, 0.105, 0.43], barrelR: 0.0220, barrelL: 0.57, jacket: 'ribbed', flashR: 0.033, flashL: 0.10, caliber: 12.7, name: 'Kord-pattern HMG' },
-  mag:   { s: 0.78, rec: [0.100, 0.050, 0.34], barrelR: 0.0120, barrelL: 0.46, jacket: 'none',   flashR: 0.017, flashL: 0.06, caliber: 7.62, name: 'Browning-derived GPMG' },
-  mag58: { s: 0.80, rec: [0.105, 0.052, 0.35], barrelR: 0.0125, barrelL: 0.47, jacket: 'ribbed', flashR: 0.018, flashL: 0.06, caliber: 7.62, name: 'MAG 58 GPMG' },
-};
-
-function isMgClass(value: string | undefined): value is keyof typeof MG_CLASSES {
-  return value !== undefined && Object.hasOwn(MG_CLASSES, value);
-}
-
+// Browning-derived MG family table and construction: src/vehicles/machineGunGeometry.ts (shared with the decor
+// layer's roof gun). `pintleMG` is the fleet default; exact hero props may add detail, but must not fall back to
+// anonymous rods or floating boxes.
 function fittingRing(options: FittingOptions): { r?: number; stubs?: number } | null {
   if (!options.ring) return null;
   return typeof options.ring === 'object' ? options.ring : {};
@@ -1404,233 +1391,20 @@ function placeMachineGunBarrelGeometry(
  * Envelope (m2/scale 1, no ring): x ±0.17, y 0..0.36, z -0.30..+0.93 —
  * authoritative per-build box in group.userData.aabb.
  */
-type MgClassKey = keyof typeof MG_CLASSES;
-type MgClassDefinition = (typeof MG_CLASSES)[MgClassKey];
 
-interface PintleMgBuildContext {
-  readonly opts: FittingOptions;
-  readonly classKey: MgClassKey;
-  readonly cls: MgClassDefinition;
-  readonly s: number;
-  readonly tone: string;
-  readonly weaponSlot: string;
-  readonly supportSlot: string;
-  readonly ammoSlot: string;
-  readonly parts: FittingParts;
-  readonly rw: number;
-  readonly rh: number;
-  readonly rd: number;
-  readonly colTop: number;
-  readonly recY: number;
-  readonly recZ: number;
-  readonly trunY: number;
-  readonly trunZ: number;
-  readonly shieldVariant: FittingOptions['shield'];
-  readonly aim: (geometry: THREE.BufferGeometry, dz: number, dy?: number) => THREE.BufferGeometry;
-}
+type PintleMgBuildContext = Omit<PintleLayout, 'parts'> & { readonly parts: FittingParts; readonly opts: FittingOptions };
 
 function createPintleMgBuildContext(opts: FittingOptions): PintleMgBuildContext {
-  const classKey = isMgClass(opts.cls) ? opts.cls : 'm2';
-  const cls = MG_CLASSES[classKey];
-  const s = (opts.scale || 1) * cls.s;
-  const tone = opts.tone || 'two-tone';
-  // Weapons and ammunition stay neutral gunmetal. Tone now controls only the
-  // support/shield finish; letting the host camouflage color receiver caps and
-  // ammo cans produced the miniature green/tan guns the fleet pass removes.
-  const weaponSlot = 'dark';
-  const supportSlot = tone === 'pale' ? 'detail' : 'dark';
-  const ammoSlot = opts.ammoSlot || 'gunmetalAmmo';
   const parts = fitParts();
-  const [rw, rh, rd] = cls.rec.map((v) => v * s);
-  const colH = 0.16 * s;
-  const colTop = 0.014 + colH;
-  const recY = opts.mount === 'external-cradle' ? rh / 2 : colTop + 0.080 * s + rh / 2;
-  const recZ = 0.06 * s;
-  const trunY = recY + 0.004;
-  const trunZ = recZ + rd / 2;
-  const shieldVariant = opts.shield === true ? 'standard' : opts.shield;
-  const aim = placeMachineGunBarrelGeometry;
-
-  return {
-    opts,
-    classKey,
-    cls,
-    s,
-    tone,
-    weaponSlot,
-    supportSlot,
-    ammoSlot,
-    parts,
-    rw,
-    rh,
-    rd,
-    colTop,
-    recY,
-    recZ,
-    trunY,
-    trunZ,
-    shieldVariant,
-    aim,
-  };
+  return { ...createPintleLayout(opts, parts), parts, opts };
 }
 
-function addPintleMgMount(context: PintleMgBuildContext): void {
-  if (context.opts.mount === 'external-cradle') return;
-  const { box, cylX, cylY, torus } = KIT;
-  const { colTop, parts, s, supportSlot, weaponSlot } = context;
-  // Flanged bearing, spindle, bridge, fork and cross-shaft form one visible
-  // load path. The old single post made every gun look like a block on a rod.
-  const colH = 0.16 * s;
-  parts.add(supportSlot, cylY(0.030 * s, 0.038 * s, 0.014, 14), 0, 0.007, 0);
-  parts.add(weaponSlot, torus(0.031 * s, 0.006 * s, 18), 0, 0.015, 0);
-  parts.add(weaponSlot, cylY(0.018 * s, 0.023 * s, colH, 12), 0, 0.014 + colH / 2, 0);
-  parts.add(weaponSlot, box(0.115 * s, 0.045 * s, 0.15 * s), 0, colTop + 0.0225 * s, 0.01);
-  for (const side of [-1, 1]) {
-    parts.add(weaponSlot, box(0.020 * s, 0.095 * s, 0.105 * s),
-      side * 0.052 * s, colTop + 0.070 * s, 0.045 * s, side * 0.05, 0, 0);
-  }
-  parts.add(weaponSlot, cylX(0.025 * s, 0.130 * s, 12), 0, colTop + 0.105 * s, 0.065 * s);
-}
-
-function addPintleMgReceiver(context: PintleMgBuildContext): void {
-  const { box } = KIT;
-  const { parts, rd, recY, recZ, rh, rw, s, weaponSlot } = context;
-  // Browning-family receiver: service box, hinged top cover, side plate,
-  // buffer head, charging handle, rear sight and dual spade grips.
-  parts.add(weaponSlot, box(rw, rh, rd), 0, recY, recZ);
-  parts.add(weaponSlot, box(rw * 0.92, 0.018 * s, rd * 0.88),
-    0, recY + rh / 2 + 0.009 * s, recZ + 0.005 * s);
-  parts.add(weaponSlot, box(0.020 * s, rh * 0.70, rd * 0.54),
-    rw / 2 + 0.010 * s, recY, recZ - 0.025 * s);
-  parts.add(weaponSlot, box(rw * 0.72, rh * 0.58, 0.050 * s),
-    0, recY - 0.005 * s, recZ - rd / 2 - 0.025 * s);
-  parts.add(weaponSlot, box(0.052 * s, 0.017 * s, 0.075 * s),
-    -rw / 2 - 0.026 * s, recY + 0.018 * s, recZ - 0.015 * s);
-  parts.add(weaponSlot, box(0.044 * s, 0.045 * s, 0.018 * s),
-    0, recY + rh / 2 + 0.030 * s, recZ - rd * 0.22);
-  for (const side of [-1, 1]) {
-    parts.add(weaponSlot, box(0.018 * s, 0.026 * s, 0.095 * s),
-      side * 0.036 * s, recY - 0.012 * s, recZ - rd / 2 - 0.080 * s,
-      side * 0.08, 0, 0);
-    parts.add(weaponSlot, box(0.035 * s, 0.018 * s, 0.018 * s),
-      side * 0.045 * s, recY - 0.042 * s, recZ - rd / 2 - 0.122 * s);
-  }
-  parts.add(weaponSlot, box(0.012 * s, 0.020 * s, 0.020 * s),
-    0, recY + rh / 2 + 0.022 * s, recZ + rd * 0.28);
-}
-
-function addPintleMgBarrel(context: PintleMgBuildContext): void {
-  const { box, cylZ, torus } = KIT;
-  const { aim, cls, opts, parts, s, trunY, trunZ, weaponSlot } = context;
-  // Barrel group stays collinear with the receiver at the front trunnion.
-  if (cls.jacket === 'sleeve') {
-    parts.add(weaponSlot, aim(cylZ(cls.barrelR * s * 1.85, 0.15 * s, 14), 0.075 * s), 0, trunY, trunZ);
-    for (let k = 0; k < 4; k++) {
-      parts.add(weaponSlot, aim(torus(cls.barrelR * s * 1.88, 0.0035 * s, 12),
-        (0.030 + k * 0.034) * s), 0, trunY, trunZ);
-    }
-  } else if (cls.jacket === 'fins') {
-    for (let k = 0; k < 5; k++) {
-      parts.add(weaponSlot, aim(cylZ(cls.barrelR * s * 1.5, 0.020 * s, 12), (0.03 + k * 0.028) * s), 0, trunY, trunZ);
-    }
-  } else if (cls.jacket === 'ribbed') {
-    parts.add(weaponSlot, aim(cylZ(cls.barrelR * s * 1.32, 0.13 * s, 12), 0.065 * s), 0, trunY, trunZ);
-    for (let k = 0; k < 4; k++) {
-      parts.add(weaponSlot, aim(torus(cls.barrelR * s * 1.34, 0.003 * s, 12),
-        (0.026 + k * 0.030) * s), 0, trunY, trunZ);
-    }
-  } else if (opts.barrelBridge) {
-    // Some slim, unsleeved weapons otherwise begin their barrel 100 mm ahead
-    // of the receiver.  Let callers request the missing breech-to-barrel run
-    // without changing the certified silhouettes of existing fittings.
-    parts.add(weaponSlot, aim(cylZ(cls.barrelR * s * 1.12, 0.105 * s, 10), 0.0525 * s), 0, trunY, trunZ);
-  }
-  const bl = cls.barrelL * s;
-  parts.add(weaponSlot, aim(cylZ(cls.barrelR * s, bl, 10), 0.10 * s + bl / 2), 0, trunY, trunZ);
-  parts.add(weaponSlot, aim(cylZ(cls.flashR * s, cls.flashL * s, 12), 0.10 * s + bl + cls.flashL * s / 2), 0, trunY, trunZ);
-  parts.add(weaponSlot, aim(cylZ(cls.barrelR * s * 0.55, 0.010, 10), 0.10 * s + bl + cls.flashL * s + 0.006), 0, trunY, trunZ);
-  parts.add(weaponSlot, aim(box(0.012 * s, 0.026 * s, 0.015 * s), 0.18 * s,
-    cls.barrelR * s + 0.014 * s), 0, trunY, trunZ);
-}
-
-function addPintleMgAmmo(context: PintleMgBuildContext): void {
-  const { box } = KIT;
-  const { ammoSlot, opts, parts, recY, recZ, rw, s, weaponSlot } = context;
-  if (opts.ammo !== false) {
-    const ax = -(rw / 2 + 0.055 * s);
-    parts.add(ammoSlot, box(0.085 * s, 0.11 * s, 0.17 * s), ax, recY - 0.005, recZ - 0.02);
-    parts.add(weaponSlot, box(0.079 * s, 0.008 * s, 0.158 * s), ax, recY + 0.058 * s, recZ - 0.02);
-    parts.add(weaponSlot, box(0.018 * s, 0.060 * s, 0.020 * s),
-      ax - 0.050 * s, recY + 0.002 * s, recZ - 0.020 * s);
-    // Short visible feed run; links stay gunmetal and terminate at the
-    // receiver instead of floating between unrelated boxes.
-    for (let index = 0; index < 5; index++) {
-      const t = index / 4;
-      parts.add(weaponSlot, box(0.018 * s, 0.026 * s, 0.024 * s),
-        ax * (1 - t) - rw * 0.36 * t, recY + (0.020 + t * 0.012) * s,
-        recZ + (0.065 + t * 0.070) * s, 0, 0, -0.10 + t * 0.16);
-    }
-  }
-}
-
-function addPintleMgShield(context: PintleMgBuildContext): void {
-  const { box, cylZ } = KIT;
-  const { parts, recY, s, shieldVariant, tone, trunZ, weaponSlot } = context;
-  if (shieldVariant) {
-    const shieldSlot = tone === 'dark' ? 'dark' : 'detail';
-    const shieldZ = trunZ + 0.035 * s;
-    const sideW = shieldVariant === 'armored' ? 0.18 : 0.145;
-    const shieldH = shieldVariant === 'low' ? 0.14 : shieldVariant === 'armored' ? 0.27 : 0.22;
-    for (const side of [-1, 1]) {
-      parts.add(shieldSlot, box(sideW * s, shieldH * s, 0.022 * s),
-        side * (0.075 + sideW / 2) * s, recY + 0.018 * s, shieldZ,
-        0, -side * 0.055, side * 0.035);
-      parts.add(weaponSlot, box(0.018 * s, shieldH * 0.82 * s, 0.030 * s),
-        side * (0.148 + sideW * 0.45) * s, recY + 0.006 * s, shieldZ - 0.020 * s);
-      parts.add(weaponSlot, box(0.020 * s, 0.020 * s, 0.14 * s),
-        side * 0.115 * s, recY - shieldH * 0.30 * s, shieldZ - 0.060 * s,
-        -0.22, 0, side * 0.08);
-    }
-    parts.add(shieldSlot, box(0.19 * s, 0.032 * s, 0.026 * s),
-      0, recY + shieldH * 0.48 * s, shieldZ);
-    // Folded lips, sight slots and fastener heads keep the shield from
-    // reading as one featureless rectangle. They share the shield plane and
-    // remain part of the equipment fitting rather than turret armor.
-    for (const side of [-1, 1]) {
-      parts.add(shieldSlot, box(0.022 * s, shieldH * 0.92 * s, 0.045 * s),
-        side * (0.075 + sideW - 0.012) * s, recY + 0.018 * s, shieldZ - 0.010 * s,
-        0, -side * 0.10, 0);
-      parts.add('shadow', box(sideW * 0.43 * s, 0.032 * s, 0.012 * s),
-        side * 0.145 * s, recY + shieldH * 0.18 * s, shieldZ + 0.014 * s,
-        0, -side * 0.055, 0);
-      for (const sy of [-0.28, 0.30]) {
-        parts.add('dark', cylZ(0.009 * s, 0.012 * s, 8),
-          side * (0.075 + sideW * 0.70) * s,
-          recY + sy * shieldH * s, shieldZ + 0.018 * s);
-      }
-    }
-    if (shieldVariant === 'armored') {
-      parts.add(shieldSlot, box(0.34 * s, 0.035 * s, 0.18 * s),
-        0, recY + shieldH * 0.58 * s, shieldZ - 0.070 * s);
-    }
-  }
-}
-
-function addPintleMgRing(context: PintleMgBuildContext): void {
-  const { box, torus } = KIT;
-  const { opts, parts, s, tone } = context;
-  const ring = fittingRing(opts);
-  if (ring) {
-    const rr = (ring.r || 0.20) * s;
-    const rSlot = tone === 'dark' ? 'dark' : 'detail';
-    parts.add(rSlot, torus(rr, 0.011, 26), 0, 0.035, 0);
-    const stubs = ring.stubs || 3;
-    for (let k = 0; k < stubs; k++) {
-      const a = 0.6 + k * (Math.PI * 2 / stubs);
-      parts.add(rSlot, box(0.024, 0.032, 0.024), Math.cos(a) * rr * 0.98, 0.018, Math.sin(a) * rr * 0.98);
-    }
-  }
-}
+function addPintleMgMount(context: PintleMgBuildContext): void { addPintleMount(context); }
+function addPintleMgReceiver(context: PintleMgBuildContext): void { addPintleReceiver(context); }
+function addPintleMgBarrel(context: PintleMgBuildContext): void { addPintleBarrel(context); }
+function addPintleMgAmmo(context: PintleMgBuildContext): void { addPintleAmmo(context); }
+function addPintleMgShield(context: PintleMgBuildContext): void { addPintleShield(context); }
+function addPintleMgRing(context: PintleMgBuildContext): void { addPintleRing(context); }
 
 function assemblePintleMg(context: PintleMgBuildContext): THREE.Group {
   const { classKey, cls, opts, parts, shieldVariant } = context;
