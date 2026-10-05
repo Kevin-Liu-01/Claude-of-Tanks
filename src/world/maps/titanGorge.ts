@@ -24,7 +24,17 @@
 // Landmarks: the West Shelf, the East Shelf, the four buttes, the gate buttes, the wash, the old town's crossroads, the western
 // switchback, the dry-river camp and the eastern shelf battery. The horizon ring still carries the gigantic stacked
 // escarpments beyond the edge without collision or draw calls.
+//
+// The settlement (the map-revival lane, 2026-10-05): the town is a Navajo community of the Oljato chapter round its
+// trading posts, built in the navajo kit (maps/regional/navajo.ts) where the town plan seats its buildings. Two trading
+// posts in the manner of Goulding's, two storeys of red sandstone with the trader's rooms above the store; a general
+// store with its false front and gas pump; family camps of a hogan, a stone house, a shade house and a sheep corral;
+// hogans of juniper logs and earth with their doors to the sunrise; the chapter's water tower and the windmills over
+// their stock tanks; a BIA day school of cut stone; the wool barns, equipment sheds, hay sheds and trailers of a working
+// valley; the jewellery stands by the road; abandoned camps. The valley floor is sand under juniper and sagebrush, the
+// grass on it cured to straw.
 
+import desert from './desert.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
@@ -102,12 +112,22 @@ export default {
     rippleAmp: 0.20, midRelief: 0.92, midReliefFar: 840,
   },
   vegetation: {
+    // the map-revival lane (2026-10-05): the slots and their placement stay (their trunks, concealment and the pacing
+    // that rests on them); Monument Valley's look comes from the trees' biome row (treeBiomes.ts: Utah juniper for the
+    // cedar and acacia slots, pinyon for the oak, sagebrush for the scrub). The bunchgrass is cured straw: the gauntlet's
+    // wave 93 read the default tufts as "lime-green tufts evenly over orange sand", a cartoon desert (Redrock's tones),
+    // and the scrub takes the desert's dusty sage
     species: ['cedar', 'acacia', 'oak'], clusterMix: [['cedar', 0.42], ['acacia', 0.36], ['oak', 0.22]],
     loneMix: [['acacia', 0.46], ['cedar', 0.34], ['oak', 0.20]], rimMix: [['cedar', 0.48], ['acacia', 0.34], ['oak', 0.18]],
     clusterCount: 16, loneCount: 34, rimCount: 18, grassDensity: 0.22,
     clusterScrub: 1.7, bushCount: 0.46, bushSpecies: 'oak',
+    grassTexTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.5), clamp01(l * 0.95 + 0.10)],
+    tuftTone: (h: number, s: number, l: number) => [0.10, 0.24, clamp01(l * 0.70 + 0.12)],
+    palettes: { oak: desert.vegetation.palettes.oak },
   },
   props: {
+    // the map-revival lane (2026-10-05): the Navajo Nation's Monument Valley kit (maps/regional/navajo.ts)
+    architecture: 'navajo',
     plan: [
       'caravanserai', 'compound', 'depot', 'ruin', 'marketRow', 'watertower',
       'adobe', 'compoundSouk', 'factory', 'ruin', 'containerRow', 'minaret',
