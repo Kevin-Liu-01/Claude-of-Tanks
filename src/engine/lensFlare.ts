@@ -23,6 +23,7 @@ import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js'
 import type { AtmospherePublishedState } from './sky.ts';
 import type { PublishedLightRig } from './contactShadows.ts';
 import { projectSunToScreen, sunShaftDayFactor, type SunScreenState } from './sunShafts.ts';
+import { lightTune } from './lightModelCore.ts';
 
 export const LENS_FLARE_VIS_TAPS = 24;
 /** Angular diameter of the visibility disc (degrees; the sun disc itself is 0.53°). */
@@ -52,6 +53,14 @@ export const LENS_FLARE_GHOSTS: readonly LensFlareGhost[] = Object.freeze([
   { a: -0.62, r: 0.040, tint: [1.0, 0.74, 0.86], k: 0.36 },
 ]);
 export const LENS_FLARE_HALO_RADIUS = 0.42;
+/**
+ * 2026-10-04 (the gauntlet's wave 65 on Caldera's e-wall-300: "a translucent circular lens-flare artifact sits directly on
+ * top of the mountain silhouette … breaking the solidity of the backlit ridge"): the sun stood above the ridge, so the
+ * occlusion pass rightly drew the flare; what read as an artifact were the parts laid over the dark ridge — the halo's ring
+ * (it carried most of the flare's visible pixels: 1.5 % of the frame over 3 levels with it, 0.3 % without) and the small
+ * far ghost. Each part's share of the flare: the ghosts and the halo turned down, the streak and the glow at the sun kept.
+ */
+export const LENS_FLARE_PARTS = Object.freeze({ ghosts: 0.4, halo: 0.25, streak: 1, glow: 1 });
 
 const clamp01 = (x: number): number => THREE.MathUtils.clamp(x, 0, 1);
 
@@ -85,13 +94,30 @@ export function lensFlareDiscRadiusUv(fovDeg: number): number {
 export function lensFlareVisibility(
   sunUv: [number, number], radiusUv: number, aspect: number, isSky: (u: number, v: number) => boolean,
   factors: { up: number; inFrame: number },
+  cloudTransmittance: (u: number, v: number) => number = () => 1,
 ): number {
   let sky = 0;
   for (const [ox, oy] of lensFlareTapOffsets()) {
     if (isSky(sunUv[0] + ox * radiusUv / aspect, sunUv[1] + oy * radiusUv)) sky++;
   }
-  return (sky / LENS_FLARE_VIS_TAPS) * clamp01(factors.up) * clamp01(factors.inFrame);
+  // 2026-10-04: the clouds' transmittance toward the sun, over the centre and four taps on the disc's rim, through
+  // lensFlareCloudGate (a veil the sun still burns through keeps the flare; a closed deck takes it all)
+  let clouds = 0;
+  for (const [ox, oy] of LENS_FLARE_CLOUD_TAPS) clouds += lensFlareCloudGate(cloudTransmittance(sunUv[0] + ox * radiusUv / aspect, sunUv[1] + oy * radiusUv));
+  return (sky / LENS_FLARE_VIS_TAPS) * (clouds / LENS_FLARE_CLOUD_TAPS.length) * clamp01(factors.up) * clamp01(factors.inFrame);
 }
+/**
+ * The flare's share at a cloud transmittance toward the sun: smoothstep(0, LENS_FLARE_CLOUD_FULL, T). Measured on the pair:
+ * Redrock's sun behind cirrus at T ≈ 0.09 and Caldera's at ≈ 0.18 still show a white disc (the disc is tens of thousands of
+ * times the sky), so their flare stays most of the way (0.30, 0.79); a closed deck (T 0 after the opaque cut) takes it all.
+ */
+export const LENS_FLARE_CLOUD_FULL = 0.25;
+export function lensFlareCloudGate(t: number): number {
+  const x = clamp01(t / LENS_FLARE_CLOUD_FULL);
+  return x * x * (3 - 2 * x);
+}
+/** The cloud-transmittance taps over the visibility disc (uv offsets before the disc scale): the centre and its rim. */
+export const LENS_FLARE_CLOUD_TAPS: ReadonlyArray<readonly [number, number]> = Object.freeze([[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]);
 
 /** Easing step toward the target visibility over dt seconds. */
 export function lensFlareEase(previous: number, target: number, dt: number): number {
@@ -104,6 +130,8 @@ const f = (x: number): string => x.toFixed(6);
 function visibilityFragment(): string {
   const taps = lensFlareTapOffsets().map(([x, y]) =>
     `  sky += step( 0.9999999, texture2D( tDepth, uSun + vec2( ${f(x)}, ${f(y)} ) * uDisc ).x );`).join('\n');
+  const cloudTaps = LENS_FLARE_CLOUD_TAPS.map(([x, y]) =>
+    `    clouds += smoothstep( 0.0, ${f(LENS_FLARE_CLOUD_FULL)}, texture2D( tClouds, uSun + vec2( ${f(x)}, ${f(y)} ) * uDisc ).a );`).join('\n');
   return /* glsl */`
 uniform sampler2D tDepth;
 uniform sampler2D tPrev;
@@ -111,10 +139,20 @@ uniform vec2 uSun;
 uniform vec2 uDisc;
 uniform float uTarget;
 uniform float uBlend;
+// 2026-10-04 (wave 71: the flare drew under Titan Gorge's closed deck): the resolved cloud history (alpha = the clouds'
+// transmittance along the view ray; volumetricClouds.ts historyTexture) and whether it is bound
+uniform sampler2D tClouds;
+uniform float uCloudsOn;
 void main() {
   float sky = 0.0;
 ${taps}
-  float target = ( sky / ${LENS_FLARE_VIS_TAPS.toFixed(1)} ) * uTarget;
+  float clouds = 1.0;
+  if ( uCloudsOn > 0.5 ) {
+    clouds = 0.0;
+${cloudTaps}
+    clouds /= ${LENS_FLARE_CLOUD_TAPS.length.toFixed(1)};
+  }
+  float target = ( sky / ${LENS_FLARE_VIS_TAPS.toFixed(1)} ) * clouds * uTarget;
   float previous = texture2D( tPrev, vec2( 0.5 ) ).r;
   gl_FragColor = vec4( mix( previous, target, uBlend ), 0.0, 0.0, 1.0 );
 }`;
@@ -135,6 +173,8 @@ uniform sampler2D tVis;
 uniform vec2 uSun;
 uniform float uAspect;
 uniform vec3 uColor;
+// 2026-10-04 (QA: LENS_FLARE_PART_GHOSTS / _HALO / _STREAK / _GLOW): each part's share of the flare
+uniform vec4 uParts;
 varying vec2 vUv;
 void main() {
   float vis = texture2D( tVis, vec2( 0.5 ) ).r;
@@ -154,7 +194,7 @@ void main() {
   vec2 q = p - s;
   float streak = exp( -( q.x * q.x ) * 7.0 ) * exp( -( q.y * q.y ) * 3200.0 ) * 0.55;
   float glow = exp( -length( q ) * 9.0 ) * 0.30;
-  gl_FragColor = vec4( uColor * vis * ( ghosts + halo + vec3( streak + glow ) ), 1.0 );
+  gl_FragColor = vec4( uColor * vis * ( ghosts * uParts.x + halo * uParts.y + vec3( streak * uParts.z + glow * uParts.w ) ), 1.0 );
 }`;
 }
 
@@ -201,6 +241,7 @@ export class LensFlarePass extends Pass {
       uniforms: {
         tDepth: { value: depthTexture }, tPrev: { value: null }, uSun: { value: new THREE.Vector2(0.5, 0.5) },
         uDisc: { value: new THREE.Vector2(0.01, 0.01) }, uTarget: { value: 0 }, uBlend: { value: 1 },
+        tClouds: { value: null }, uCloudsOn: { value: 0 },
       },
       vertexShader: QUAD_VERTEX, fragmentShader: visibilityFragment(),
       depthTest: false, depthWrite: false, blending: THREE.NoBlending,
@@ -210,6 +251,7 @@ export class LensFlarePass extends Pass {
       uniforms: {
         tVis: { value: null }, uSun: { value: new THREE.Vector2(0.5, 0.5) }, uAspect: { value: 16 / 9 },
         uColor: { value: new THREE.Vector3(1, 1, 1) },
+        uParts: { value: new THREE.Vector4(LENS_FLARE_PARTS.ghosts, LENS_FLARE_PARTS.halo, LENS_FLARE_PARTS.streak, LENS_FLARE_PARTS.glow) },
       },
       vertexShader: QUAD_VERTEX, fragmentShader: flareFragment(),
       depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending, transparent: true,
@@ -246,6 +288,13 @@ export class LensFlarePass extends Pass {
     if (transmittance) this.color.copy(transmittance);
     else if (rig) this.color.copy(rig.sunColor);
     else this.color.setRGB(1, 1, 1);
+    // 2026-10-04: the clouds' transmittance toward the sun joins the eased visibility (a closed deck draws no flare)
+    const clouds = (this.scene.userData.volumetricClouds as { historyTexture?: THREE.Texture | null } | undefined)?.historyTexture ?? null;
+    this.visMaterial.uniforms.tClouds.value = clouds;
+    this.visMaterial.uniforms.uCloudsOn.value = clouds && lightTune('LENS_FLARE_CLOUD_GATE', 1) > 0 ? 1 : 0;
+    (this.flareMaterial.uniforms.uParts.value as THREE.Vector4).set(lightTune('LENS_FLARE_PART_GHOSTS', LENS_FLARE_PARTS.ghosts),
+      lightTune('LENS_FLARE_PART_HALO', LENS_FLARE_PARTS.halo), lightTune('LENS_FLARE_PART_STREAK', LENS_FLARE_PARTS.streak),
+      lightTune('LENS_FLARE_PART_GLOW', LENS_FLARE_PARTS.glow));
   }
 
   render(renderer: THREE.WebGLRenderer): void {
