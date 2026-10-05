@@ -1034,6 +1034,12 @@ interface TankFactoryOptions {
   materialMode?: 'rendered' | 'geometry-only';
   proceduralOnly?: boolean;
   geometryReceipt?: boolean;
+  /** Seat the insignia and designation with the live surface solver (finalizeVehicleMarkingSeats) instead of the
+   * generated seats (vehicleMarkingSeats.generated.ts). Only tools/gen-vehicle-marking-seats.mjs passes it (update and
+   * --check, the seats' drift guard); every other build, receipt builds included, applies the generated seats as the
+   * game does (2026-10-05: leo2a6_ua's receipt builds ran the solver for 167-325 s). A vehicle without generated seats
+   * falls back to the solver either way. */
+  solveMarkingSeats?: boolean;
   /** Default-on anatomy metadata; static wreck baking discards this receipt. */
   eraVisualBindingReceipt?: boolean;
   batchStatic?: boolean;
@@ -6804,6 +6810,7 @@ function* createTankOwnedSteps(
     materialMode = 'rendered',
     proceduralOnly = false,
     geometryReceipt = false,
+    solveMarkingSeats = false,
     eraVisualBindingReceipt = true,
     batchStatic = false,
     deferStaticBatch = false,
@@ -7792,7 +7799,7 @@ function* createTankOwnedSteps(
   // the final armor position. A per-ID surface profile supplies any missing
   // national insignia/designation; historical builder decals are retained
   // only when they can be re-seated on their selected articulation owner.
-  const verifiedMarkingSeats = geometryReceipt ? null : vehicleMarkingSeats(spec.id);
+  const verifiedMarkingSeats = solveMarkingSeats ? null : vehicleMarkingSeats(spec.id);
   if (verifiedMarkingSeats) {
     const checkedSeats: VerifiedMarkingSeat[] = [];
     for (const seat of verifiedMarkingSeats) {

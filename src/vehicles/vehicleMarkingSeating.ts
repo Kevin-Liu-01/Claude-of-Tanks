@@ -425,6 +425,28 @@ function addProfileVehicleDecal(
   return true;
 }
 
+/**
+ * Re-measure a seated marking's visibility on the built vehicle, as the solver measured it (the same nine-ray footprint
+ * against every other visible mesh, both faces). The fleet audit holds the generated seats to the armor this way
+ * (2026-10-05: receipt builds apply them instead of re-solving).
+ */
+export function measureSeatedMarkingVisibility(
+  root: THREE.Object3D,
+  mark: THREE.Object3D,
+): { readonly visibilitySamples: number; readonly visibilityClearSamples: number } {
+  const owner = mark.parent;
+  if (!owner) throw new Error('measureSeatedMarkingVisibility: the marking has no owner');
+  root.updateMatrixWorld(true);
+  const occluders = markingOccluderMeshes(root);
+  const restoreMaterialSides = doubleSidedMarkingRaycastScope(occluders);
+  try {
+    const receipt = markingVisibilityReceipt(owner, mark.position, mark.quaternion, mark.scale.x, occluders);
+    return { visibilitySamples: receipt.visibilitySamples, visibilityClearSamples: receipt.visibilityClearSamples };
+  } finally {
+    restoreMaterialSides();
+  }
+}
+
 export function finalizeVehicleMarkingSeats(
   spec: FactoryTankSpec,
   marking: VehicleMarkingRecord,

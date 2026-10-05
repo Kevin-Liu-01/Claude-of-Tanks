@@ -396,10 +396,11 @@ export function vehicleMarkingIncludesPermanentHullArmor(
 /**
  * Return the release-verified, geometry-local paint seats for a vehicle.
  *
- * The expensive surface search remains part of geometryReceipt builds and
- * the fleet verification gate. Runtime visuals consume these generated
- * receipts directly instead of ray-testing every armor triangle again on
- * each garage switch or bot spawn.
+ * The expensive surface search runs only in tools/gen-vehicle-marking-seats.mjs
+ * (update, and --check: the seats' drift guard). Every build consumes these
+ * generated receipts directly, receipt builds included (2026-10-05), instead
+ * of ray-testing every armor triangle again on each garage switch, bot spawn
+ * or fleet pass.
  */
 function stableNumber(id: string | null | undefined): string {
   let hash = 0x811c9dc5;
