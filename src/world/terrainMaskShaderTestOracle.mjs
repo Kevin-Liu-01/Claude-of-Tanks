@@ -29,7 +29,9 @@ function compileConsumer(source) {
   assert.equal(atlasSize({},mask,1024,3072),3072,'coastal mask includes the extended shore');
   const expression = unique(code, /float\s+fD\s*=\s*([^;]+);/g, 'worked-soil coverage')[1];
   // map pass 2026-09-12: the shoulder term carries an authored scale (uShoulderDirt, default 1).
-  const coverage = new Function('mk', 'uTownWear', 'n1', 'worn', 'shoulder', 'uWornDirtStrength', 'uShoulderDirt', 'clamp', 'max', `return ${expression};`);
+  // (the ground lane, wave 71: the soil's coverage is the worn patch's trodden core — wornCore, the whole patch on the arid
+  // and snow maps — terrain.ts; the grazed rim keeps its turf)
+  const coverage = new Function('mk', 'uTownWear', 'n1', 'wornCore', 'shoulder', 'uWornDirtStrength', 'uShoulderDirt', 'clamp', 'max', `return ${expression};`);
   // terrain v2 (2026-10-01, the cost pass): the soil sample is taken once inside its coverage branch (vec4 aD = …) and
   // the albedo consumer mixes it by the same coverage; the normal consumer is unchanged (behind the far-band switch)
   const sample = unique(code, /\bvec4\s+aD\s*=\s*(groundSamp\(uAlbD,[^;]+\));/g, 'D albedo sample')[1];
