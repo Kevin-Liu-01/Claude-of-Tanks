@@ -8,7 +8,7 @@
  *
  * The model, in the engine's light units (a directional light of intensity 1 gives irradiance 1):
  *
- *   sun        E0 · T(sun) · (1 − 0.9 · overcast)    T = the atmosphere's transmittance toward the sun (the same medium
+ *   sun        E0 · T(sun) · (1 − 0.96 · overcast)   T = the atmosphere's transmittance toward the sun (the same medium
  *                                                    and march as the transmittance LUT, integrated here on the CPU), E0
  *                                                    LIGHT_SOLAR_IRRADIANCE: the solar constant in light units, fixed so
  *                                                    Verdant's 32° sun keeps the key every material was authored under;
@@ -97,8 +97,20 @@ export const SKY_DIFFUSE_GAIN = 1.45;
  * neutral (× 1 − the overcast: Whiteout's frames unchanged).
  */
 export const SKY_DIFFUSE_CHROMA = 0.5;
-/** Share of the direct sun an overcast deck removes at overcast 1. */
-export const OVERCAST_DIRECT_CUT = 0.9;
+/**
+ * Share of the direct sun an overcast deck removes at overcast 1.
+ *
+ * 2026-10-04 (the skies lane; the gauntlet's waves 80 and 82: under Titan Gorge's closed deck "the terrain beneath stays
+ * implausibly saturated and contrasty", "crisp, hard-edged shadows" under a discless glow): 0.9 → 0.96. A closed deck
+ * passes almost none of the beam — thick stratus leaves a few per cent, very soft — and the 0.9 cut left a tenth: on
+ * Titan's sand 13 % of the horizontal light came from a point sun, a sun-facing wall took 0.42 over the 0.95 the deck
+ * gave every wall (lit and shaded faces 1.4 apart), and the cascades cast it hard-edged. What the deck cuts past
+ * OVERCAST_DIFFUSED_FROM it sends down diffused, in its glow, so the horizontal light — the exposure — holds.
+ */
+export const OVERCAST_DIRECT_CUT = 0.96;
+/** The beam cut the deck's glow (OVERCAST_TRANSMISSION) was calibrated against (2026-10-01): a deck's cut past it comes
+ * down diffused, added to the glow. */
+export const OVERCAST_DIFFUSED_FROM = 0.9;
 /** Share of the clear sky's light an overcast deck replaces at overcast 1. */
 export const OVERCAST_SKY_CUT = 0.85;
 /** Diffuse transmission of the deck: the share of the clear-sky horizontal light it passes on as its own glow. */
@@ -290,10 +302,17 @@ function resolveGrounded(
   const skyLightH = Math.PI * luminance(irr) * envIntensity * envDiffuseGain;
   // the deck's glow: the clear-sky horizontal light it transmits (sun + sky as if the deck were absent)
   // (by night the moon the deck would pass: the authored key is the moonlight as seen, never cut)
-  const clearSun = derived.intensity * luminance(derived.color) / Math.max(1 - OVERCAST_DIRECT_CUT * overcast, 1e-3);
+  // (2026-10-04: the clear sun from the clear sun itself — dividing the cut one back out failed at a cut of 1)
+  const clear = deriveSun(params, 0);
+  const clearSun = clear.intensity * luminance(clear.color);
   const clearSunH = (clearSun + (moon.intensity * luminance(moon.color) - clearSun) * night) * sinEl;
   const clearSkyH = Math.PI * luminance(irr) * envDiffuseGain;
-  const deckGlow = overcast * lightTune('OVERCAST_TRANSMISSION', OVERCAST_TRANSMISSION) * (clearSunH + clearSkyH);
+  // (2026-10-04) the beam a deck cuts past the glow's calibration comes down diffused (OVERCAST_DIRECT_CUT): by day the
+  // horizontal light it took from the sun returns in the glow, so the exposure and the open ground's level hold while
+  // the faces and cast shadows the point sun modelled lose it (QA: OVERCAST_BEAM_DIFFUSE 0 drops it)
+  const beamDiffused = Math.max(0, lightTune('OVERCAST_DIRECT_CUT', OVERCAST_DIRECT_CUT) - OVERCAST_DIFFUSED_FROM) * clamp(overcast, 0, 1)
+    * clearSun * sinEl * (1 - night) * lightTune('OVERCAST_BEAM_DIFFUSE', 1);
+  const deckGlow = overcast * lightTune('OVERCAST_TRANSMISSION', OVERCAST_TRANSMISSION) * (clearSunH + clearSkyH) + beamDiffused;
   // at night the hemisphere also carries the night sky's own glow (NIGHT_SKY_GLOW), blended into its colour by share
   const nightGlow = night * lightTune('NIGHT_SKY_GLOW', NIGHT_SKY_GLOW);
   const ground = L.groundAlbedoHex != null ? hexToLinear(L.groundAlbedoHex) : atmosphereOf().groundAlbedo;
