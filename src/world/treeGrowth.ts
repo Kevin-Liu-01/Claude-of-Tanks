@@ -1051,10 +1051,11 @@ function supportSprays(ctx: GrowContext, leaves: LeafSite[]): boolean[] {
  * The grown shrubs (bushes and understorey): sprays per shrub, each a two-triangle card (emitLeafCards rows 2). Round
  * 2 kept the round-8 cards' triangle budget (32 and 20 sprays: the bush's 64 triangles, the understorey's 40); trees
  * round 4 (the gauntlet's wave 46: the shrubs read as "lettuce heads", "topiary", "a sphere with a leaf texture") grows
- * them from nearly twice as many sprays at 0.72 of the length (GROWTH_SHRUB_SPRAY_SCALE): a shrub's leaves at a shrub's
- * size, a finer, lumpier mound. A species of narrow sprays (aspect under 0.8: birch, willow) carries up to a third more.
+ * them from more sprays at 0.72 of the length (GROWTH_SHRUB_SPRAY_SCALE): a shrub's leaves at a shrub's size, a finer,
+ * lumpier mound — a bush's 48 (the merge's cost trim from 60), the understorey's 36. A species of narrow sprays (aspect
+ * under 0.8: birch, willow) carries up to a third more.
  */
-export const GROWTH_SHRUB_SPRAYS: Readonly<Record<'bush' | 'understorey', number>> = Object.freeze({ bush: 60, understorey: 36 });
+export const GROWTH_SHRUB_SPRAYS: Readonly<Record<'bush' | 'understorey', number>> = Object.freeze({ bush: 48, understorey: 36 });
 /** Trees round 4: a shrub's spray length against round 2's (the shrub's leaves at a shrub's size, not a crown's). */
 const GROWTH_SHRUB_SPRAY_SCALE = 0.72;
 
