@@ -71,18 +71,22 @@ const WATER_ENV_GRAZING = 3.5;
 // navy; a swell slope of 0.05 barely read at the edge views, 0.08 lays long bands under the chop; the clarity's shelf 8–30 m
 // and the tiled ripple's 0.35–1 were close calls)
 const SEA_SHELF = Object.freeze({ colourM: 25, alphaM: 15, shallowAlpha: 0.35 });
-const SEA_TINT = Object.freeze({ turquoise: 0.6, deepBlue: 0.8, deepDarken: 0.7 });
+// (2026-10-05, the sea's second round: the deep body darker — 0.7 → 0.5 — so the bay's offshore water reads deep blue
+// under the turquoise shelf; a bluer deep colour (1.0) moved nothing visible)
+const SEA_TINT = Object.freeze({ turquoise: 0.6, deepBlue: 0.8, deepDarken: 0.5 });
 const SEA_SWELL = Object.freeze({ slope: 0.08, lengthM: 55, classicNormal: 0.6 });
 /** Metres from the shore inside the water — the mask's visible edge, chamfered on a grid of at most 512² — R8, one metre a unit. */
 /**
  * 2026-10-05 (the gauntlet's wave 78: one shelf width read as "one saturated sky-cyan sheet" on a sandy bay and as sand
  * shallows on a deep channel): the shelf's width follows the coast — the land's rise within SEA_SHELF_RISE_M of the
  * waterline over that distance (a beach rises a metre or two, a karst coast tens): width = SEA_SHELF_WIDTH_K / rise slope,
- * between SEA_SHELF_WIDTH_M[0] and [1] metres.
+ * between SEA_SHELF_WIDTH_M[0] and [1] metres. (The sweep, the width scaled in-page: K 2.5 and a 120 m cap turned
+ * Saltmere's whole bay turquoise again and widened Saltwind's channel shelf; half of it grades the bay from a turquoise
+ * belt to deep blue; a third leaves a rim — K 1.25, at most 60 m.)
  */
 export const SEA_SHELF_RISE_M = 30;
-export const SEA_SHELF_WIDTH_K = 2.5;
-export const SEA_SHELF_WIDTH_M: readonly [number, number] = [8, 120];
+export const SEA_SHELF_WIDTH_K = 1.25;
+export const SEA_SHELF_WIDTH_M: readonly [number, number] = [8, 60];
 export function seaShelfWidthM(riseSlope: number): number {
   return Math.min(SEA_SHELF_WIDTH_M[1], Math.max(SEA_SHELF_WIDTH_M[0], SEA_SHELF_WIDTH_K / Math.max(riseSlope, 1e-3)));
 }
@@ -320,7 +324,9 @@ export function createShallowWaterSurface(
   const swellDirRad = (ocean?.state.swellDirDeg ?? 0) * Math.PI / 180;
   const swell = { value: new THREE.Vector4(ocean ? SEA_SWELL.slope : 0, SEA_SWELL.lengthM, swellDirRad, ocean ? SEA_SWELL.classicNormal : 1) };
   // 2026-10-05 (the sea's second round, QA): the sky mirror's grazing exponent (1 = as before) and the per-coast shelf share
-  const seaLook = { value: new THREE.Vector4(1, 0, 0, 0) };
+  const seaLook = { value: new THREE.Vector4(1, 0, 1, 0) };
+  // (2026-10-05: the open sea's sun lobe — the direct lights' share of the profile's roughness; the sky's mirror keeps it whole)
+  const seaRough = { value: new THREE.Vector3(1, 0, 0) };
   // Water pass 7: vehicle wakes. Slot A is (x, z, dirX, dirZ) in the map's tank frame,
   // slot B is (speed 0..1, strength 0..1, half length m, half width m).
   const wakeA = Array.from({ length: WATER_DISTURBANCE_CAP }, () => new THREE.Vector4(0, 0, 0, 1));
@@ -376,7 +382,7 @@ export function createShallowWaterSurface(
       uOceanLook: { value: new THREE.Vector4(ocean?.state.foam ?? 0, ocean?.state.breakers ?? 0, ocean?.state.caustics ?? 0, ocean?.hs ?? 0) },
       uOceanDepth: { value: profile.depthM },
       uWaterQa: waterQa,
-      uShoreDist: { value: shoreDist }, uSeaShelf: seaShelf, uSeaTint: seaTint, uSwell: swell, uSeaLook: seaLook,
+      uShoreDist: { value: shoreDist }, uSeaShelf: seaShelf, uSeaTint: seaTint, uSwell: swell, uSeaLook: seaLook, uSeaRough: seaRough,
     });
     material.userData.waterShader = shader;
     shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
@@ -472,7 +478,8 @@ export function createShallowWaterSurface(
       uniform vec4 uSeaShelf;         // (on, the colour's shelf m, the clarity's shelf m, the alpha at the shore)
       uniform vec4 uSeaTint;          // (the shelf's turquoise share, the deep blue's share, the deep body's darkening)
       uniform vec4 uSwell;            // (the swell's slope, its length m, its heading rad, the tiled ripple's scale on an FFT sea)
-      uniform vec4 uSeaLook;          // 2026-10-05: (the sky mirror's grazing exponent, the per-coast shelf's share, -, -)
+      uniform vec3 uSeaRough;         // 2026-10-05: (the open sea's sun-lobe roughness share, -, -)
+      uniform vec4 uSeaLook;          // 2026-10-05: (the sky mirror's grazing exponent, the per-coast shelf's share, its width's scale, the sun glints' cap on the open sea — 0: the joint cap)
       float seaShoreM;
       float seaShelfM;
       float oceanDebug;
@@ -514,7 +521,7 @@ export function createShallowWaterSurface(
       vec2 seaShore = uSeaShelf.x > 0.0 ? texture2D(uShoreDist, waterUvC).rg * 255.0 : vec2(0.0);
       seaShoreM = seaShore.x + (uSeaShelf.x > 0.0 ? max(pastEdgeM, 0.0) : 0.0);
       // (2026-10-05: the shelf's width follows the coast — a beach holds a wide one, a steep coast drops off in metres)
-      seaShelfM = mix(uSeaShelf.y, max(seaShore.y, 4.0), uSeaLook.y * step(0.5, seaShore.y));
+      seaShelfM = mix(uSeaShelf.y, max(seaShore.y * uSeaLook.z, 4.0), uSeaLook.y * step(0.5, seaShore.y));
       waterDeep = mix(waterDeep, 1.0 - exp(-seaShoreM / seaShelfM), uSeaShelf.x);
       // Water 2026-09-12: the bed shows through the shallows — the deep colour
       // rises out of a sunlit bank tint instead of one flat sheet.
@@ -757,12 +764,16 @@ export function createShallowWaterSurface(
     // Water pass 3 (2026-09-12): the old 0.16 / 0.35 / 0.18 clamps were
     // fighting four cascade suns; lit once, the sheet needs most of its
     // dielectric glint back or the waves read as one flat sheet.
+    // (2026-10-05, the sea's second round: the sun's lobe sharp on the fine normals — the direct lights take uSeaRough.x
+    // of the roughness — while the sky's mirror keeps the profile's own, restored before the environment's lookup
+    // below: one sharp roughness for both turned the far chop into white facets over dark troughs under the horizon)
     shader.fragmentShader = shader.fragmentShader.replace('#include <lights_physical_fragment>',
-      '#include <lights_physical_fragment>\nmaterial.specularColor *= 0.85;\nmaterial.specularF90 = 0.9;');
+      '#include <lights_physical_fragment>\nmaterial.specularColor *= 0.85;\nmaterial.specularF90 = 0.9;\nfloat waterSkyRough = material.roughness;\nmaterial.roughness = max(material.roughness * uSeaRough.x, 0.0525);');
     // Water pass 4: the sky reflection follows the water's own fresnel — a mirror
     // toward the horizon, a window into the shallows underfoot — and the sun
     // glitter keeps most of its energy (the old 0.55 clamp deleted the glints;
     // bloom now carries them as sparkle, not a white sheet).
+    shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_maps>', 'material.roughness = waterSkyRough;\n#include <lights_fragment_maps>');
     shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_maps>',
       // Water pass 5: wind-ruffled, sediment-laden patches mirror less sky, so the
       // sheet reads as water of varying depth and colour instead of one reflection.
@@ -774,7 +785,12 @@ export function createShallowWaterSurface(
     // Strongest in the first half metre, gone where the body colour hides the bed and where the pixel can no longer
     // resolve the fine tile.
     shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', `
-      outgoingLight -= max(vec3(0.0), totalSpecular - vec3(uWaterQa.z));
+      // (2026-10-05, the sea's second round; the gauntlet's wave 78: the glitter "tops out at a dull grey-white that never
+      // clips"): on the open sea the sun's glints keep their energy over white (uSeaLook.w) while the sky's mirror keeps
+      // the cap (a joint cap at 3 whitened the far band); every other water keeps the joint cap
+      if (uSeaLook.w > 0.0) outgoingLight -= max(vec3(0.0), reflectedLight.indirectSpecular - vec3(uWaterQa.z))
+        + max(vec3(0.0), reflectedLight.directSpecular - vec3(uSeaLook.w));
+      else outgoingLight -= max(vec3(0.0), totalSpecular - vec3(uWaterQa.z));
       #if NUM_DIR_LIGHTS > 0
       // the whole body is the shelf: the bed lies the wading depth (≤ 0.8 m) under every fragment, so the network runs
       // wherever the bed shows through the sheet — its share (1 − α) scales the term — and fades with the fine tile
@@ -810,7 +826,7 @@ export function createShallowWaterSurface(
   };
   if (setup) setup(material, hook);
   else material.onBeforeCompile = hook;
-  material.customProgramCacheKey = () => `shallow-water-v22-${outlandWater?.openings?.length ? 'coast' : 'land'}`;
+  material.customProgramCacheKey = () => `shallow-water-v23-${outlandWater?.openings?.length ? 'coast' : 'land'}`;
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `shallow_water_${mapId}`;
   mesh.userData.ocean = ocean; // round 66: probes read the field's maps and spectrum through the sheet
@@ -831,8 +847,12 @@ export function createShallowWaterSurface(
         lightTune('SEA_DEEP_DARKEN', SEA_TINT.deepDarken), 0);
       swell.value.set(ocean ? lightTune('SEA_SWELL_SLOPE', SEA_SWELL.slope) : 0, lightTune('SEA_SWELL_M', SEA_SWELL.lengthM), swellDirRad,
         ocean ? lightTune('SEA_CLASSIC_NORMAL', SEA_SWELL.classicNormal) : 1);
-      seaLook.value.set(lightTune('WATER_GRAZE_POW', 1), shoreDist ? lightTune('SEA_SHELF_BY_COAST', 0) : 0, 0, 0);
-      material.roughness = profile.roughness * (ocean ? lightTune('WATER_ROUGH', 1) : 1);
+      // (2026-10-05, the sea's second round, the open sea only: the sky's mirror takes over later toward the horizon (an
+      // exponent of 2 — the body shows under a camera looking down), the shelf follows the coast, and the surface is
+      // smoother — the sun's lobe on the fine normals sharp (0.4 of the profile's roughness) — with its glints over white)
+      seaLook.value.set(lightTune('WATER_GRAZE_POW', ocean ? 2 : 1), shoreDist ? lightTune('SEA_SHELF_BY_COAST', 1) : 0,
+        lightTune('SEA_SHELF_WIDTH_SCALE', 1), ocean ? lightTune('WATER_GLINT_CAP', 3) : 0);
+      seaRough.value.set(ocean ? lightTune('WATER_ROUGH', 0.4) : 1, 0, 0);
       if (!(Number.isFinite(dt) && dt > 0)) return;
       clock.value += Math.min(dt, 0.1);
       ocean?.update(dt); // round 66: the transform runs inside the world update, before lighting and post
