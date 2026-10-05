@@ -89,8 +89,10 @@ export function makeWarehouse(
   };
   if (buckets.glass) parts.glass = [];
   const pane = parts.glass || parts.dark;
-  const w = 13.5 + rng() * 3, d = 21 + rng() * 5, wallH = 5.4 + rng() * 0.8, roofH = 1.9;
-  const local = forkRng((w - 13.5) / 3 * 0.61 + (d - 21) / 5 * 0.29 + (wallH - 5.4) / 0.8 * 0.07);
+  const drawnW = 13.5 + rng() * 3, drawnD = 21 + rng() * 5, wallH = 5.4 + rng() * 0.8, roofH = 1.9;
+  // maps lane B (2026-10-03): an authored plot sets the footprint (Kestrel Airfield's cargo-hangar plot); the draws stay
+  const w = context?.plot?.w ?? drawnW, d = context?.plot?.d ?? drawnD;
+  const local = forkRng((drawnW - 13.5) / 3 * 0.61 + (drawnD - 21) / 5 * 0.29 + (wallH - 5.4) / 0.8 * 0.07);
   parts.stone.push(box(w + 0.4, 1.1, d + 0.4).translate(0, -0.1, 0));
   const wallBucket = steelClad ? parts.structureMetal! : parts.stone;
   const wall = box(w, wallH, d, 0.55).translate(0, wallH / 2, 0);

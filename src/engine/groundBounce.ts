@@ -49,6 +49,19 @@ export const GROUND_BOUNCE_SELF_SHADE = 0.6;
 export const GROUND_BOUNCE_UNDERSIDE_LIT = 0.5;
 /** Ground-lit floor for a receiver inside a cast shadow (its ground is shaded too). */
 export const GROUND_BOUNCE_SHADOWED_RECEIVER = 0.4;
+/**
+ * 2026-10-04 (the skies lane; Redrock's backlit inselbergs read 0.84–1.00 of the sunlit sand on the into-sun frame):
+ * the terrain's round-42 wall sky lift (terrain.ts uWallSkyLift: the fog colour × this gain × the slope and
+ * turned-from-the-sun weight, added to a steep face's indirect diffuse) as the light rig resolves it. Round 42 rescued
+ * slopes the legacy rig's fixed hemisphere left black; the grounded rig's environment lights a steep face's open sky
+ * itself, so there the lift counted that light twice — 0.54–0.71 of the sunlit sand on those faces, which sit at
+ * 0.28–0.33 of it without the lift (a backlit wall under a clear sky: about half the dome plus the bounce). The legacy
+ * rig (phones, the Preetham tier, the galaxy skies) keeps round 42's gain; the grounded rig takes none
+ * (WALL_SKY_LIFT_GROUNDED, a QA knob). One uniform object every terrain program binds; applyGroundBounce (lighting.ts)
+ * sets it with the rig's other terms.
+ */
+export const WALL_SKY_LIFT_LEGACY = 7.0;
+export const terrainWallSkyLift: { value: number } = { value: WALL_SKY_LIFT_LEGACY };
 
 export interface Vec3Like { x: number; y: number; z: number; }
 
@@ -119,6 +132,13 @@ export interface GroundBounceUniforms {
    * rig dims neutrally at the same luminance — its shade takes its hue from the sky light itself.
    */
   uCotShadowDim: THREE.IUniform<THREE.Vector3>;
+  /**
+   * 2026-10-03 (the shade-fill lane): 1 where the shadow's ambient dim keeps to the faces turned toward the sun. The
+   * occluder that shades a face hides the sun's side of its sky — the circumsolar light, the brightest part of a clear
+   * sky — so a face in a cast shadow keeps the dim; a face turned from the sun sees none of that side (its own
+   * environment light already leaves it out), so its sky stays whole. 0 = the legacy rig's dim on every shadowed face.
+   */
+  uCotShadowFacing: THREE.IUniform<number>;
 }
 
 export function createGroundBounceUniforms(): GroundBounceUniforms {
@@ -129,6 +149,7 @@ export function createGroundBounceUniforms(): GroundBounceUniforms {
     uCotSkyDiffuse: { value: 1 },
     uCotSkyChroma: { value: 1 },
     uCotShadowDim: { value: new THREE.Vector3(1, 1, 1) },
+    uCotShadowFacing: { value: 0 },
   };
 }
 
@@ -142,6 +163,7 @@ export function attachGroundBounceUniforms(
   shader.uniforms.uCotSkyDiffuse = uniforms.uCotSkyDiffuse;
   shader.uniforms.uCotSkyChroma = uniforms.uCotSkyChroma;
   shader.uniforms.uCotShadowDim = uniforms.uCotShadowDim;
+  shader.uniforms.uCotShadowFacing = uniforms.uCotShadowFacing;
 }
 
 export interface GroundBounceRigInput {
@@ -180,6 +202,7 @@ uniform vec3 uCotBounceSun;
 uniform float uCotSkyDiffuse;
 uniform float uCotSkyChroma;
 uniform vec3 uCotShadowDim;
+uniform float uCotShadowFacing;
 `;
 
 /**

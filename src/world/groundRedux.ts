@@ -199,7 +199,8 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   winter: { ...SNOW, scree: 0.35, grass: tundra(0.35) },
   urban: { ...TEMPERATE, scree: 0.15, grass: verge(0.5) },
   coastal: { ...COAST, swashReachM: 6, scree: 0.2, grass: dune(0.55) },
-  autumn: { ...TEMPERATE, scree: 0.3, grass: meadow(1.0, 0.9, { base: [0.055, 0.045, 0.018], tip: [0.26, 0.21, 0.08], dry: [0.30, 0.23, 0.08] }) },
+  // maps lane B (2026-10-03, gauntlet wave 28): the river's margin is a steady damp bank with a wrack line and reeds
+  autumn: { ...STILL_WATER, scree: 0.3, grass: meadow(1.0, 0.9, { base: [0.055, 0.045, 0.018], tip: [0.26, 0.21, 0.08], dry: [0.30, 0.23, 0.08], reedMargin: 0.5 }) },
   steppe: { ...TEMPERATE, foldMoist: 0.5, scree: 0.2, grass: steppe(1.2) },
   railyard: { ...TEMPERATE, scree: 0.15, grass: verge(0.55) },
   frontier: { ...TEMPERATE, foldMoist: 0.55, scree: 0.3, grass: savanna(0.85) },

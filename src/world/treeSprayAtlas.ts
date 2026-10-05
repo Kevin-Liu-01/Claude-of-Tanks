@@ -22,10 +22,14 @@ export type SprayKind = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus' | 
   // trees round 2 (2026-10-03): the regional forms (treeBiomes.ts)
   | 'beech' | 'chestnut' | 'holmOak' | 'olive' | 'canaryPine' | 'aleppoPine' | 'larch' | 'broom'
   // the Arizona uplands (Copper Mesa)
-  | 'juniper' | 'pinyon';
+  | 'juniper' | 'pinyon'
+  // trees round 5 (2026-10-05, the map-revival lanes): the longleaf pine and its grass-stage seedlings, the cedar of
+  // Lebanon, the Aso caldera's sugi and Japanese red pine
+  | 'longleafPine' | 'longleafSeedling' | 'lebanonCedar' | 'sugi' | 'redPine';
 export const SPRAY_KINDS: readonly SprayKind[] = Object.freeze(['oak', 'poplar', 'willow', 'acacia', 'eucalyptus',
   'birch', 'aspen', 'birch-bare', 'spruce', 'fir', 'pine', 'cedar', 'cypress', 'mangrove',
-  'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'broom', 'juniper', 'pinyon']);
+  'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'broom', 'juniper', 'pinyon',
+  'longleafPine', 'longleafSeedling', 'lebanonCedar', 'sugi', 'redPine']);
 /** Tiles per side of every spray atlas. */
 export const SPRAY_ATLAS_TILES = 2;
 /**
@@ -38,6 +42,7 @@ export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.
   'birch-bare': 0.15, spruce: 0.241, fir: 0.287, pine: 0.092, cedar: 0.186, cypress: 0.292, mangrove: 0.245,
   beech: 0.304, chestnut: 0.365, holmOak: 0.216, olive: 0.188, canaryPine: 0.098, aleppoPine: 0.071, larch: 0.154,
   broom: 0.125, juniper: 0.256, pinyon: 0.074,
+  longleafPine: 0.169, longleafSeedling: 0.216, lebanonCedar: 0.21, sugi: 0.187, redPine: 0.099,
 });
 
 /**
@@ -81,6 +86,13 @@ const LEAF_COLOR: Readonly<Record<SprayKind, LeafColor>> = Object.freeze({
   // the juniper's grey, faintly blue scale leaves; the pinyon's dark grey-green needles
   juniper: { hue: 0.36, sat: 0.16, light: 0.2 },
   pinyon: { hue: 0.29, sat: 0.24, light: 0.16 },
+  // trees round 5: the longleaf's bright, glossy, yellow-green needles (its seedlings' the same), the cedar of Lebanon's
+  // dark blue-green, sugi's deep green awl needles, the Japanese red pine's slender bright needles
+  longleafPine: { hue: 0.265, sat: 0.42, light: 0.2 },
+  longleafSeedling: { hue: 0.265, sat: 0.4, light: 0.21 },
+  lebanonCedar: { hue: 0.39, sat: 0.2, light: 0.15 },
+  sugi: { hue: 0.33, sat: 0.32, light: 0.15 },
+  redPine: { hue: 0.26, sat: 0.38, light: 0.19 },
 });
 
 const _cc = new THREE.Color();
@@ -708,6 +720,209 @@ function paintBareTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[]
   return limbs;
 }
 
+// ------------------------------------------------------------------------------------------------ trees round 5
+// The map-revival lanes' species (2026-10-05): their own painters, beside the earlier ones.
+
+/** A pine needle as a brush tile draws it: its seat, its end, the bend's control point, its side of the shoot, its tone. */
+interface BrushNeedle {
+  x: number; y: number; ex: number; ey: number; cx: number; cy: number;
+  near: boolean; light: number; hue: number;
+}
+
+/**
+ * A pine shoot as a brush — the needle fascicles round each shoot's last part, every one pointing forward and out from
+ * it, drawn as the tile sees them (the far side's in the brush's shade first, then the wood, then the near side's), the
+ * brush's heart darkened over them (source-atop: no alpha between the needles). The longleaf's one great fox-tail of the
+ * longest needles of any pine, drooping over, and a short side shoot's smaller one; the Japanese red pine's branchlet end
+ * of slender needles on a main shoot and four side shoots, gaps between their brushes.
+ */
+function paintBrushTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, kind: SprayKind): Pt[][] {
+  const base = LEAF_COLOR[kind];
+  const wood = css(0.06, 0.25, 0.09);
+  const p0 = { x: S * 0.5, y: S * 0.95 };
+  const longleaf = kind === 'longleafPine';
+  const needleL = longleaf ? 0.34 : 0.15, droopN = longleaf ? 0.5 : 0.12;
+  const density = longleaf ? 980 : 480, reach = longleaf ? 0.6 : 0.48, mainLen = longleaf ? 0.56 : 0.78;
+  const sideCount = longleaf ? 1 : 4, splay = longleaf ? 1.75 : 1.3;
+  const main = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * mainLen, (rng() - 0.5) * 0.35, 8);
+  const shoots: Pt[][] = [main];
+  for (let k = 0; k < sideCount; k++) {
+    const t = 0.2 + (k + rng() * 0.6) / sideCount * 0.62, side = k % 2 === 0 ? -1 : 1;
+    const at = pointAt(main, t);
+    shoots.push(twigPoints(at.p, at.a + side * (0.55 + rng() * 0.35), S * (0.2 + rng() * 0.1) * (1.15 - t * 0.6),
+      side * (0.1 + rng() * 0.2), 5));
+  }
+  const needleW = Math.max(0.7, S / 256 * 1.2);
+  const needles: BrushNeedle[] = [];
+  for (let si = 0; si < shoots.length; si++) {
+    const shoot = shoots[si];
+    const seat0 = 1 - (si === 0 && !longleaf ? reach * 0.75 : reach);
+    let len = 0;
+    for (let i = 1; i < shoot.length; i++) len += Math.hypot(shoot[i].x - shoot[i - 1].x, shoot[i].y - shoot[i - 1].y);
+    const n = Math.max(12, Math.round(density * len * (1 - seat0) / S));
+    for (let k = 0; k < n; k++) {
+      const t = seat0 + Math.sqrt(rng()) * (1 - seat0);
+      const at = pointAt(shoot, t);
+      const phi = rng() * Math.PI * 2, alpha = (0.22 + rng() * splay) * (1 - 0.3 * (t - seat0) / (1 - seat0));
+      const sx = Math.cos(at.a), sy = Math.sin(at.a), px = -sy, py = sx;
+      const along = Math.cos(alpha), across = Math.sin(alpha) * Math.cos(phi);
+      const nl = S * needleL * (0.75 + rng() * 0.45) * (0.8 + 0.2 * (1 - t));
+      const dx = sx * along + px * across, dy = sy * along + py * across;
+      const show = Math.hypot(along, across), hang = nl * droopN * (0.4 + 0.6 * show);
+      const ex = at.p.x + dx * nl, ey = at.p.y + dy * nl + hang;
+      const near = Math.sin(phi) >= 0;
+      const light = base.light * (0.7 + rng() * 0.45) * (near ? 1.06 : 0.74) * (1 - 0.12 * dy) * (si === 0 ? 1.04 : 0.96);
+      needles.push({ x: at.p.x, y: at.p.y, ex, ey, cx: at.p.x + dx * nl * 0.5, cy: at.p.y + dy * nl * 0.5 + hang * 0.3,
+        near, light, hue: base.hue + (rng() - 0.5) * 0.03 });
+    }
+  }
+  const strokeNeedle = (q: BrushNeedle): void => {
+    ctx.strokeStyle = css(q.hue, base.sat, q.light);
+    ctx.lineWidth = needleW;
+    ctx.beginPath();
+    ctx.moveTo(q.x, q.y);
+    ctx.quadraticCurveTo(q.cx, q.cy, q.ex, q.ey);
+    ctx.stroke();
+  };
+  ctx.lineCap = 'round';
+  for (const q of needles) if (!q.near) strokeNeedle(q);
+  for (const shoot of shoots) taperStroke(ctx, shoot, S * 0.014, S * 0.008, wood);
+  ctx.lineCap = 'round';
+  for (const q of needles) if (q.near) strokeNeedle(q);
+  const composite = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'source-atop';
+  for (const shoot of shoots) {
+    for (let k = 0; k < 4; k++) {
+      const at = pointAt(shoot, 1 - reach * 0.9 + k * reach * 0.26), r = S * needleL * 0.72;
+      const gr = ctx.createRadialGradient(at.p.x, at.p.y, 0, at.p.x, at.p.y, r);
+      gr.addColorStop(0, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0.7));
+      gr.addColorStop(1, css(base.hue + 0.01, base.sat * 0.85, base.light * 0.5, 0));
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(at.p.x, at.p.y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.globalCompositeOperation = composite;
+  return shoots;
+}
+
+/**
+ * A sugi spray: a drooping rope of a shoot forking into side ropes and theirs again, every one clothed in short awl
+ * needles curving forward round it (a dense, spiky cord, never a flat frond), its heart shaded over them.
+ */
+function paintSugiTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[][] {
+  const base = LEAF_COLOR.sugi;
+  const wood = css(0.06, 0.25, 0.09);
+  const p0 = { x: S * 0.5, y: S * 0.95 };
+  const ropes: Pt[][] = [];
+  const rope = (p: Pt, a: number, len: number, depth: number): void => {
+    const pts = twigPoints(p, a, len, (a > -Math.PI / 2 ? 1 : -1) * (0.18 + rng() * 0.22), 6);
+    ropes.push(pts);
+    if (depth <= 0) return;
+    const forks = 3 + ((rng() * 2) | 0);
+    for (let k = 0; k < forks; k++) {
+      const at = pointAt(pts, 0.22 + (k / forks) * 0.62 + rng() * 0.06);
+      rope(at.p, at.a + (k % 2 ? 0.62 : -0.62) + (rng() - 0.5) * 0.3, len * (0.48 + rng() * 0.12), depth - 1);
+    }
+  };
+  rope(p0, -Math.PI / 2 + (rng() - 0.5) * 0.3, S * 0.74, 2);
+  for (const r of ropes) taperStroke(ctx, r, S * 0.009, S * 0.005, wood);
+  for (let i = ropes.length - 1; i >= 0; i--) paintNeedleTwig(ctx, S, rng, ropes[i], base, 0.032, 9.5, 0.75, false, 0.1);
+  const composite = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'source-atop';
+  paintSprayBody(ctx, ropes.slice(0, 4), S * 0.07, base, 0.9, 0.3, 'butt', 0.8);
+  ctx.globalCompositeOperation = composite;
+  return ropes;
+}
+
+/**
+ * The cedar of Lebanon's plate: the cedar's spray — a main twig and ten side twigs under a shaded body — crowded with
+ * rosettes, little starbursts of short needles on spurs along every twig.
+ */
+function paintCedarPlateTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[][] {
+  const base = LEAF_COLOR.lebanonCedar;
+  const wood = css(0.06, 0.25, 0.09);
+  const p0 = { x: S * 0.5, y: S * 0.95 };
+  const stem = twigPoints(p0, -Math.PI / 2 + (rng() - 0.5) * 0.25, S * 0.80, (rng() - 0.5) * 0.35, 10);
+  const twigs: Pt[][] = [stem];
+  const sides = 10;
+  for (let k = 0; k < sides; k++) {
+    const t = 0.12 + (k + rng() * 0.5) / sides * 0.78;
+    const at = pointAt(stem, t);
+    const side = k % 2 === 0 ? -1 : 1;
+    twigs.push(twigPoints(at.p, at.a + side * 0.85, S * 0.28 * (1.15 - t * 0.6) * (0.85 + rng() * 0.3), side * 0.15, 5));
+  }
+  paintSprayBody(ctx, twigs, S * 0.085, base, 1.0, 0.3, 'butt', 0.8);
+  for (const tw of twigs) taperStroke(ctx, tw, S * 0.010, S * 0.005, wood);
+  for (const tw of twigs) {
+    const n = 11 + ((rng() * 4) | 0);
+    for (let k = 0; k < n; k++) {
+      const at = pointAt(tw, (k + 0.5) / n);
+      const rays = 15 + ((rng() * 7) | 0), rr = S * (0.038 + rng() * 0.022);
+      ctx.strokeStyle = css(base.hue + (rng() - 0.5) * 0.04, base.sat, base.light * (0.75 + rng() * 0.5));
+      ctx.lineWidth = Math.max(0.6, S / 256 * 1.2);
+      for (let r = 0; r < rays; r++) {
+        const a = (r / rays) * Math.PI * 2 + rng() * 0.3;
+        ctx.beginPath();
+        ctx.moveTo(at.p.x, at.p.y);
+        ctx.lineTo(at.p.x + Math.cos(a) * rr, at.p.y + Math.sin(a) * rr * 0.75);
+        ctx.stroke();
+      }
+    }
+  }
+  return twigs;
+}
+
+/**
+ * A longleaf seedling in its grass stage (Longleaf Crossing's cutover): a dense fountain of long needles from one seat at
+ * the ground, the heart's standing steep and the rim's arching out and over toward their tips, glossy and bright on the
+ * near side, in their own shade at the heart. The alpha is the needles' alone.
+ */
+function paintGrassStageTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[][] {
+  const base = LEAF_COLOR.longleafSeedling;
+  const p0 = { x: S * 0.5, y: S * 0.96 };
+  const n = 150 + ((rng() * 30) | 0);
+  const needles: Array<{ pts: Pt[]; near: boolean; light: number; hue: number }> = [];
+  for (let k = 0; k < n; k++) {
+    // a lean off upright across the fan; the longer and the further over a needle leans, the more it arches
+    const lean = (rng() - 0.5) * 2.3;
+    const len = S * (0.42 + rng() * 0.46);
+    const start = { x: p0.x + (rng() - 0.5) * S * 0.07, y: p0.y - rng() * S * 0.05 };
+    const arch = (lean >= 0 ? 1 : -1) * (0.5 + Math.abs(lean) * 0.9) * (0.6 + rng() * 0.6) * (len / (S * 0.7));
+    const near = rng() < 0.55;
+    const light = base.light * (0.62 + rng() * 0.5) * (near ? 1.08 : 0.72) * (1 - 0.18 * (1 - Math.abs(lean) / 1.2));
+    needles.push({ pts: twigPoints(start, -Math.PI / 2 + lean, len, arch, 8), near, light, hue: base.hue + (rng() - 0.5) * 0.035 });
+  }
+  const width = Math.max(0.7, S / 256 * 1.15);
+  const stroke = (q: (typeof needles)[number]): void => {
+    ctx.strokeStyle = css(q.hue, base.sat, q.light);
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(q.pts[0].x, q.pts[0].y);
+    for (let i = 1; i < q.pts.length; i++) ctx.lineTo(q.pts[i].x, q.pts[i].y);
+    ctx.stroke();
+  };
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const q of needles) if (!q.near) stroke(q);
+  for (const q of needles) if (q.near) stroke(q);
+  const composite = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'source-atop';
+  const gr = ctx.createRadialGradient(p0.x, p0.y, 0, p0.x, p0.y, S * 0.42);
+  gr.addColorStop(0, css(base.hue + 0.01, base.sat * 0.8, base.light * 0.42, 0.75));
+  gr.addColorStop(1, css(base.hue + 0.01, base.sat * 0.8, base.light * 0.42, 0));
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(p0.x, p0.y, S * 0.42, 0, Math.PI * 2); ctx.fill();
+  ctx.globalCompositeOperation = composite;
+  return needles.slice(0, 12).map((q) => q.pts);
+}
+
+/** The round-5 species' painters by kind. */
+const ROUND5_PAINTERS: Readonly<Partial<Record<SprayKind, (ctx: CanvasRenderingContext2D, S: number, rng: Rng) => Pt[][]>>> = Object.freeze({
+  longleafPine: (ctx, S, rng) => paintBrushTile(ctx, S, rng, 'longleafPine'),
+  redPine: (ctx, S, rng) => paintBrushTile(ctx, S, rng, 'redPine'),
+  sugi: paintSugiTile,
+  lebanonCedar: paintCedarPlateTile,
+  longleafSeedling: paintGrassStageTile,
+});
+
 /**
  * Paint one species atlas: four tiles (2 × 2) of `size` / 2 px each, straight alpha, toned by the map palette's
  * texTone. Returns the ImageData-backed texture (sRGB, anisotropy 8, mipmapped).
@@ -728,6 +943,7 @@ export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: To
     ctx.clip();
     ctx.translate(tx * S, ty * S);
     const twigs = kind === 'birch-bare' ? paintBareTile(ctx, S, rng) : kind === 'broom' ? paintBroomTile(ctx, S, rng)
+      : ROUND5_PAINTERS[kind] ? ROUND5_PAINTERS[kind](ctx, S, rng)
       : BROADLEAF_RECIPES[kind] ? paintBroadleafTile(ctx, S, rng, kind, BROADLEAF_RECIPES[kind])
         : paintConiferTile(ctx, S, rng, kind);
     // a winter palette's snow load rides the twigs of the top tile row — the snow-laden sprays the sky-facing seats

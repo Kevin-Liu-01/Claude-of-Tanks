@@ -4,7 +4,8 @@ import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { box, jitterUV } from './propGeometry.ts';
-import { boxClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
+import { boxClearOfPoints, boxClearOfRoadCore, shiftClearOfRoadCore } from './roadFootprint.ts';
+import { terrainNearMeshHeightAt } from './terrain.ts';
 
 // Execute the actual public scheduling wrapper with an owned generator fixture.
 // Geometry/output equivalence is separately checked by the whole-world profile;
@@ -403,6 +404,8 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
       min: 0, max: 0, spread: 0, maxEmbed: state.maxEmbed, maxFloat: 0 }),
     // the road footprint law (roadFootprint.ts): far from every road unless a case puts the wreck on one
     heightField: { _roadDist: () => roadDistance }, shiftClearOfRoadCore, boxClearOfRoadCore, placedB: [],
+    // the sharp-bend law (roadFootprint.ts): no bend near the fixture's seats
+    boxClearOfPoints, sharpBends: [],
     _quat: { setFromUnitVectors() {} }, _upAxis: {},
     _posv: { set() { return this; } },
     setObbShape: record => record, cloneCollisionRecord: record => structuredClone(record),
@@ -527,7 +530,7 @@ assert.ok(mathEnd > mathStart && rubbleEnd > rubbleStart);
 const groundHelpers = source.slice(mathStart, mathEnd) + source.slice(rubbleStart, rubbleEnd);
 
 function groundFixture(code = groundCandidate, streetRows = true, foundry = false, {
-  buildings = 1, crushables = 1, stacks = 1, rejectCourtyards = false, disposeFailureAt = -1,
+  buildings = 1, crushables = 1, stacks = 1, rocks = 0, rejectCourtyards = false, disposeFailureAt = -1,
 } = {}) {
   const group = new THREE.Group(), buckets = { stone: [] }, commands = [], randoms = [], textures = [];
   const inputs = [], disposedInputs = [], heightQueries = [], privateRandoms = [];
@@ -558,7 +561,7 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     },
     putImageData(image) { canvas.pixels = image.data; },
   };
-  const dependencies = { richCount: (n, fallback = 0) => n ?? fallback, // 2026-09-14: props.ts reads counts through richCount; control and scheduled bodies share this authored-count port
+  const dependencies = { terrainNearMeshHeightAt, richCount: (n, fallback = 0) => n ?? fallback, // 2026-09-14: props.ts reads counts through richCount; control and scheduled bodies share this authored-count port
     THREE: { ...THREE, BufferGeometry: InputGeometry }, mergeGeometries, box, jitterUV, group, buckets, buildingFeatures,
     rng() { const value = random(); randoms.push(value); return value; },
     mulberry32(seed) {
@@ -576,11 +579,15 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     P: { streetRows, townCraters: true, craters: 8 },
     L: { spawns: { player: { x: -100, z: -100 }, enemies: [{ x: 100, z: 100 }] } },
     v: { cx: 10, cz: 40, x0: -65, x1: 65, z0: -65, z1: 65 },
+    // the settlement the props dress (props.ts town: the village rect unless P.town names another)
+    town: { cx: 10, cz: 40, x0: -65, x1: 65, z0: -65, z1: 65 },
     heightField: { getHeightAt(x, z) { heightQueries.push([x, z]); return x * 0.001 + z * 0.002; },
       _roadDist: () => 10, getGroundType: () => 'hard', getNormalAt: () => ({ y: 1 }) },
     noVeg: () => rejectCourtyards, placedB: [],
     crushables: Array.from({ length: crushables }, (_, index) => ({ x: 12 + index, z: 18 })),
     stackSpots: Array.from({ length: stacks }, (_, index) => ({ x: 8 + index, z: 16, r: 2 })), wreckScorch: [[-20, 50]],
+    // 2026-10-04 (boulder round 2): every boulder's soil collar is one more private foundation input
+    rockSpots: Array.from({ length: rocks }, (_, index) => ({ x: -14 - index * 3, z: 22, r: 1.6 + index * 0.2 })),
     foundryDonors: foundry ? [{ feature: buildingFeatures[0] }] : null,
   };
   const api = new Function(...Object.keys(dependencies), stripTypeScriptTypes(
@@ -589,7 +596,7 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
   const geometry = geo => ({ index: geo.index ? Array.from(geo.index.array) : null,
     attributes: Object.fromEntries(Object.entries(geo.attributes).map(([name, attr]) => [name, Array.from(attr.array)])) });
   return { ...api, group, buckets, randoms, commands, buildingFeatures, inputs, disposedInputs,
-    foundationCount: buildings + crushables + stacks + (streetRows && !rejectCourtyards ? 84 : 0),
+    foundationCount: buildings + crushables + stacks + rocks + (streetRows && !rejectCourtyards ? 84 : 0),
     kinds: () => group.children.map(mesh => mesh.userData.terrainDecalKind),
     snapshot: () => ({ randoms, privateRandoms, heightQueries, commands, pixels: canvas.pixels, clods: buckets.stone.map(geometry),
       meshes: group.children.map(mesh => ({ geometry: geometry(mesh.geometry), data: mesh.userData,
@@ -619,7 +626,7 @@ function advanceFoundationInputs(h, iterator) {
 }
 
 for (const [streetRows, foundry, options] of [
-  [true, false, {}], [false, true, { buildings: 5, crushables: 3, stacks: 2 }],
+  [true, false, {}], [false, true, { buildings: 5, crushables: 3, stacks: 2, rocks: 3 }],
   [true, false, { buildings: 2, rejectCourtyards: true }],
 ]) {
   const before = groundFixture(groundOriginal, streetRows, foundry, options);

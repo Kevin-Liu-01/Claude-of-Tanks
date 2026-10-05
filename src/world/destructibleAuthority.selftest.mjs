@@ -95,6 +95,8 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
     // Poles are absent. The tested runtime still executes every destruction/
     // loose-body/reset function; only unrelated earlier pole LOD is inert.
     updatePoleLod() {},
+    // and so are the boulders: their near/far repartition (the scenery lane's cascade trim) is inert here too
+    updateRockLod() {},
     _quat: new THREE.Quaternion(), _upAxis: new THREE.Vector3(0, 1, 0),
     _mat4: new THREE.Matrix4(), _posv: new THREE.Vector3(), _zeroScale: new THREE.Vector3(),
     // settlement pass 2 (2026-09-12): the runtime reads chimney tops for hearth smoke; none here.

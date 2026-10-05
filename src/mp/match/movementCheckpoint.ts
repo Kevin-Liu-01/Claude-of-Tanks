@@ -25,10 +25,20 @@
  * Version 6 (physics lane round 3, 2026-10-03) appends the hull's highest track contact beside the seat (`_sup.top`,
  * 53 values): the springs carry a hull on uneven ground under its highest contact, and the ride reads both, so a replay
  * needs the pair. A version-5 or version-4 checkpoint (an older authority) still decodes, its top contact at its seat.
+ * Version 7 (physics lane round 5, 2026-10-04) appends the posture a hull holds over its planted tracks on a grade and
+ * its share seated with them off a whole-track seat (`_hold`, `_holdSeat`: pitch, roll and their rates, 61 values):
+ * they are part of the hull's attitude beside the attitude spring, so a replay on a grade needs them. An older checkpoint
+ * still decodes, holding none.
+ * Version 8 (physics lane round 8, 2026-10-04) appends the share of the dive the bump stops took when the travel ran out
+ * under it (`_susp.c`, `_susp.cv`, 63 values): it is part of the dive's stored value but no part of the dive the travel
+ * holds, nor of what joins the rock off a whole-track seat, so a replay needs it to split the two as the authority does.
+ * An older checkpoint still decodes, the stops holding nothing.
+ * The wire carries at most 64 values (`MAX_MOVEMENT_VALUES`; the codec rejects more): version 8 uses 63, so a version
+ * adding more than one value widens that limit first.
  */
 import type { MovementContactGeometry, TankState } from '../../sim/movement.ts';
 
-export const MOVEMENT_CHECKPOINT_VERSION = 6;
+export const MOVEMENT_CHECKPOINT_VERSION = 8;
 
 const SCALARS = ['yawRate', 'turretYawRate', 'suspensionAimPitch', 'bloomF',
   '_prevSpeed', '_spool', '_fanYield', '_perch', '_gunLimitHoldS', '_swayEst',
@@ -46,7 +56,10 @@ const RIDE_V5 = ['rebound', 'stroke'] as const;
 const DIVE_V5 = ['d', 'dv'] as const;
 const VERSION_5_VALUES = VERSION_4_VALUES + RIDE_V5.length + DIVE_V5.length;
 const SUPPORT_V6 = ['top'] as const;
-export const MOVEMENT_CHECKPOINT_VALUES = VERSION_5_VALUES + SUPPORT_V6.length;
+const VERSION_6_VALUES = VERSION_5_VALUES + SUPPORT_V6.length;
+const VERSION_7_VALUES = VERSION_6_VALUES + ROCK.length * 2;
+const STOP_V8 = ['c', 'cv'] as const;
+export const MOVEMENT_CHECKPOINT_VALUES = VERSION_7_VALUES + STOP_V8.length;
 const MAX_ABS_VALUE = 1_000_000;
 const MAX_FLAGS = 2047;
 
@@ -94,6 +107,9 @@ export function captureMovementCheckpoint(state: TankState): MovementCheckpoint 
   append(values, state._ride, RIDE_V5);
   append(values, state._susp, DIVE_V5);
   append(values, state._sup, SUPPORT_V6);
+  append(values, state._hold, ROCK);
+  append(values, state._holdSeat, ROCK);
+  append(values, state._susp, STOP_V8);
   if (!validMovementValues(values)) return null;
   const flags = Number(supportInitialized) | Number(state._ride.grounded) << 1 |
     Number(state._body.tumbling) << 2 | Number(state._body.dynamicSupport) << 3 |
@@ -104,14 +120,16 @@ export function captureMovementCheckpoint(state: TankState): MovementCheckpoint 
 }
 
 /**
- * Restore a checkpoint onto a state; false (and no change) when the layout is not the current version, version 5 (decoded
- * with its top contact at its seat) or version 4 (also with no landing stroke or dive in progress), or a value is unsafe.
+ * Restore a checkpoint onto a state; false (and no change) when the layout is not the current version, version 7 (decoded
+ * with nothing in the bump stops), version 6 (also holding no posture over its tracks), version 5 (also with its top
+ * contact at its seat) or version 4 (also with no landing stroke or dive in progress), or a value is unsafe.
  */
 export function applyMovementCheckpoint(
   state: TankState, checkpoint: MovementCheckpoint, contact: MovementContactGeometry | null = null,
 ): boolean {
   const count = checkpoint.version === MOVEMENT_CHECKPOINT_VERSION ? MOVEMENT_CHECKPOINT_VALUES
-    : checkpoint.version === 5 ? VERSION_5_VALUES : checkpoint.version === 4 ? VERSION_4_VALUES : 0;
+    : checkpoint.version === 7 ? VERSION_7_VALUES : checkpoint.version === 6 ? VERSION_6_VALUES
+      : checkpoint.version === 5 ? VERSION_5_VALUES : checkpoint.version === 4 ? VERSION_4_VALUES : 0;
   if (!count || !validMovementValues(checkpoint.values, count) ||
       !Number.isInteger(checkpoint.flags) || checkpoint.flags < 0 || checkpoint.flags > MAX_FLAGS) return false;
   const { values, flags } = checkpoint;
@@ -151,7 +169,25 @@ export function applyMovementCheckpoint(
     state._susp.dv = 0;
   }
   // a checkpoint before version 6 has the top contact at the seat (the springs did not seat a hull under it)
-  if (count === MOVEMENT_CHECKPOINT_VALUES) restore(state._sup, SUPPORT_V6, values, offset);
+  if (count >= VERSION_6_VALUES) offset = restore(state._sup, SUPPORT_V6, values, offset);
   else state._sup.top = state._sup.y;
+  // a checkpoint before version 7 holds no posture over its tracks
+  if (count >= VERSION_7_VALUES) {
+    offset = restore(state._hold, ROCK, values, offset);
+    offset = restore(state._holdSeat, ROCK, values, offset);
+  } else {
+    for (const held of [state._hold, state._holdSeat]) {
+      held.p = 0;
+      held.r = 0;
+      held.pv = 0;
+      held.rv = 0;
+    }
+  }
+  // a checkpoint before version 8 has nothing in the bump stops: its dive is the dive the travel holds
+  if (count === MOVEMENT_CHECKPOINT_VALUES) restore(state._susp, STOP_V8, values, offset);
+  else {
+    state._susp.c = 0;
+    state._susp.cv = 0;
+  }
   return true;
 }

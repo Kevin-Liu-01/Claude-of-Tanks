@@ -30,15 +30,15 @@ import {
 } from './nearVehicleShadowDetail.ts';
 import { primeShadowCascades, type ShadowPrimeOptions } from './shadowPrime.ts';
 import {
-  GROUND_BOUNCE_GLSL_PARS, GROUND_BOUNCE_GLSL_TERM, applyGroundBounceRig, attachGroundBounceUniforms,
-  createGroundBounceUniforms,
+  GROUND_BOUNCE_GLSL_PARS, GROUND_BOUNCE_GLSL_TERM, WALL_SKY_LIFT_LEGACY, applyGroundBounceRig, attachGroundBounceUniforms,
+  createGroundBounceUniforms, terrainWallSkyLift,
 } from './groundBounce.ts';
 import { currentPostLightFxQuery, resolvePostLightFx } from './postLightFxPolicy.ts';
 import {
   CLOUD_SHADE_PARS_GLSL, CLOUD_SHADE_SAMPLER_BUDGET, attachCloudShadeUniforms, cloudShadeSamplerCount, createCloudShadeUniforms,
 } from './cloudShadeMap.ts';
 import type { PublishedLightRig } from './contactShadows.ts';
-import { authoredSunOf, resolveLightModel, type LightModel, type LightModelPreset } from './lightModelCore.ts';
+import { authoredSunOf, lightTune, resolveLightModel, type LightModel, type LightModelPreset } from './lightModelCore.ts';
 import type { AtmosphereParams } from './atmosphere.ts';
 
 /** What sky.ts publishes on scene.userData.atmosphere that the grounded light model reads (sky.ts AtmospherePublishedState). */
@@ -225,6 +225,12 @@ const SHADOW_AMBIENT_DIM = [0.80, 0.88, 1.0];
 // shade under a hull indigo on straw and teal on grass. The dim rides a shared uniform (uCotShadowDim, applyGroundBounce).
 const SHADOW_AMBIENT_DIM_LUMA = 0.2126 * SHADOW_AMBIENT_DIM[0] + 0.7152 * SHADOW_AMBIENT_DIM[1] + 0.0722 * SHADOW_AMBIENT_DIM[2];
 const SHADOW_AMBIENT_SPEC_DIM = 0.55;
+// 2026-10-03 (the shade-fill lane; the gauntlet's waves 34 and 36: a shaded village wall and a granite tor's shaded sides
+// near black): the dims above apply where the cascades shade a face turned toward the sun — the occluder hides that
+// face's sun-side sky, the circumsolar light — never to a face turned from the sun, which stands in its own shade: no
+// occluder hides any of its sky, and its environment light (taken with its own normal) already leaves out the sun's
+// side. 1 = the grounded rig keeps the dims to sun-facing faces (groundBounce.ts uCotShadowFacing); the legacy rig 0.
+const SHADOW_DIM_FACING = 1;
 // r8 stable PCF: the old pseudo-PCSS multiplier expanded a five-tap kernel
 // as far as 14 texels. Five samples cannot cover that disk, so wide shadows
 // resolved as a visible hatch/cross pattern and crawled because its rotation
@@ -579,7 +585,17 @@ vec3 cotPrev;`);
 	#if defined( COT_CLOUD_SHADE ) && defined( USE_SHADOWMAP )
 	cotSunVis *= vCotCloudSun;
 	#endif
-	vec3 cotAmbDim = mix( uCotShadowDim, vec3( 1.0 ), cotSunVis );
+	// 2026-10-03 (the shade-fill lane; groundBounce.ts uCotShadowFacing): the dim keeps to the faces turned toward the sun
+	// (the occluder hides their circumsolar sky); a solid face turned from the sun keeps its whole sky. The grass and leaf
+	// cards (alpha to coverage, no OPAQUE) keep the dim: inside a crown or a sward the cards hide each other's sky
+	float cotAmbVis = cotSunVis;
+	#ifdef OPAQUE
+	if ( uCotShadowFacing > 0.0 ) {
+		vec3 cotNf = normalize( ( vec4( geometryNormal, 0.0 ) * viewMatrix ).xyz );
+		cotAmbVis = 1.0 - ( 1.0 - cotSunVis ) * mix( 1.0, smoothstep( -0.05, 0.25, dot( cotNf, uCotBounceSun ) ), uCotShadowFacing );
+	}
+	#endif
+	vec3 cotAmbDim = mix( uCotShadowDim, vec3( 1.0 ), cotAmbVis );
 
 	#if defined( RE_IndirectDiffuse )
 
@@ -590,7 +606,7 @@ ${GROUND_BOUNCE_GLSL_TERM}
 
 	#if defined( RE_IndirectSpecular )
 
-		radiance *= mix( ${SHADOW_AMBIENT_SPEC_DIM.toFixed(3)}, 1.0, cotSunVis );
+		radiance *= mix( ${SHADOW_AMBIENT_SPEC_DIM.toFixed(3)}, 1.0, cotAmbVis );
 
 	#endif
 
@@ -989,10 +1005,15 @@ export function createLighting(
       groundBounceUniforms.uCotSkyDiffuse.value = model.envDiffuseGain;
       groundBounceUniforms.uCotSkyChroma.value = model.envDiffuseChroma;
       groundBounceUniforms.uCotShadowDim.value.setScalar(SHADOW_AMBIENT_DIM_LUMA);
+      groundBounceUniforms.uCotShadowFacing.value = lightTune('SHADOW_DIM_FACING', SHADOW_DIM_FACING);
+      // (2026-10-04: the environment lights a steep face's open sky here: no wall sky lift — groundBounce.ts)
+      terrainWallSkyLift.value = lightTune('WALL_SKY_LIFT_GROUNDED', 0);
     } else {
       groundBounceUniforms.uCotSkyDiffuse.value = 1;
       groundBounceUniforms.uCotSkyChroma.value = 1;
       groundBounceUniforms.uCotShadowDim.value.fromArray(SHADOW_AMBIENT_DIM);
+      groundBounceUniforms.uCotShadowFacing.value = 0;
+      terrainWallSkyLift.value = WALL_SKY_LIFT_LEGACY;
     }
     applyGroundBounceRig(groundBounceUniforms, {
       enabled: lightFx.flags.groundBounce, sunDir: sunDirWorld, sunColor: lightRig.sunColor,

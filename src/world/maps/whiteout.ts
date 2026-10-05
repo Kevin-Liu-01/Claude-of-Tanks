@@ -115,8 +115,12 @@ export default {
   // the steep ones, the scoured ribs at a third (at 1 they greyed every upper slope to heath), spruce and birch stands
   // on the lower slopes
   // the mountains lane (2026-10-03): held at the PR head's far country while its ice sheet is finished — the overcast
-  // ticket (a7345bd2c) still showed the beige band over the low ring from the elevated views, pixel for pixel
-  horizon: { baseHex: 0xa3b1be, amp: 1.0, style: 'alpine', relief: 'polar', treeline: 0.22, snowline: 0.30, panorama: false, forestHex: 0x536371, rockHex: 0x5b6772, bareRock: 0.35, haze: 0.92, grain: 0.60 },
+  // ticket (a7345bd2c) still showed the beige band over the low ring from the elevated views, pixel for pixel (the aerial
+  // pass's target under a closed deck, the skies lane's); no ring forest (gauntlet wave 39: "distant conifer silhouettes
+  // near the mountains" on a map that must be bare ice — buildHorizonForest and the stands painted on the ring's faces
+  // both follow its treeline, and the forest builder stands down under 0.14); and no outland boulders in their place (a
+  // treeless ring takes the boulder field at 0.55 by default: 256 k triangles of dark rocks strewn over the snow)
+  horizon: { baseHex: 0xa3b1be, amp: 1.0, style: 'alpine', relief: 'polar', treeline: 0, snowline: 0.30, outlandRocks: 0, panorama: false, forestHex: 0x536371, rockHex: 0x5b6772, bareRock: 0.35, haze: 0.92, grain: 0.60 },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the polar deck authored explicitly instead of
   // inheriting Frosthollow's (320 m / 0.00013 / 2200 m) — a lower 300 m stratus of smaller 2000 m masses that keeps
   // its texture at the 13° sun's grazing elevations; diffuse light patchiness (cloudShadowAmp 0.08)

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createCaptureFlag, type CaptureFlag } from '../fx/captureFlag.ts';
 import { objectiveRing, fitObjectiveSurface } from './objectiveSurface.ts';
 
 import type { MatchModePresentationState, ObjectiveTeam } from '../sim/matchModes.ts';
@@ -27,6 +28,7 @@ const ICON_MAX_GROWTH = 3.5;
 
 interface MarkerGroup extends THREE.Group {
   userData: {
+    flagVisual?: CaptureFlag;
     markerMaterial?: THREE.MeshBasicMaterial;
     heal?: THREE.Object3D;
     crate?: THREE.Object3D;
@@ -34,7 +36,7 @@ interface MarkerGroup extends THREE.Group {
     cage?: THREE.Object3D;
     ammo?: THREE.Object3D;
     /** materials tinted by the viewer's side (own / enemy) on every update */
-    teamMaterials?: THREE.MeshBasicMaterial[];
+    teamMaterials?: (THREE.MeshBasicMaterial | THREE.MeshStandardMaterial)[];
     /** floating icon sprite above the objective */
     icon?: THREE.Sprite;
     /** capture-zone area disc and progress arc */
@@ -343,23 +345,16 @@ export function createMatchModeWorldPresentation(
 
   const buildFlags = (): MarkerGroup[] => {
     if (flagMarkers) return flagMarkers;
-    const poleGeometry = new THREE.CylinderGeometry(0.11, 0.15, 4.5, 8);
-    const bannerGeometry = new THREE.PlaneGeometry(2.8, 1.35);
-    const ringGeometry = new THREE.RingGeometry(6.6, 8, 48);
     flagMarkers = (['alpha', 'bravo'] as const).map((team) => {
       const marker = new THREE.Group() as MarkerGroup;
       marker.name = `${team}-flag`;
-      const pole = new THREE.Mesh(poleGeometry, basic(0xd6dde2));
-      pole.position.y = 2.25;
-      const banner = new THREE.Mesh(bannerGeometry, basic(teamColor(team), 0.93));
-      banner.position.set(1.45, 3.7, 0);
-      const ring = new THREE.Mesh(ringGeometry, basic(teamColor(team), 0.38));
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.y = 0.08;
+      const flag = createCaptureFlag(teamColor(team));
+      flag.root.scale.setScalar(1.65);
       const icon = iconSprite(`${team}-flag-icon`, 5.2, 7.2);
-      marker.userData.teamMaterials = [banner.material as THREE.MeshBasicMaterial, ring.material as THREE.MeshBasicMaterial];
+      marker.userData.flagVisual = flag;
+      marker.userData.teamMaterials = [flag.material];
       marker.userData.icon = icon;
-      marker.add(pole, banner, ring, icon);
+      marker.add(flag.root, icon);
       root.add(marker);
       return marker;
     });
@@ -688,10 +683,8 @@ export function createMatchModeWorldPresentation(
       const side = sideOf(flag.team, state);
       marker.visible = true;
       marker.position.set(flag.x, flag.y - 2.5, flag.z);
-      marker.rotation.y = timeS * 0.22 + index * Math.PI;
-      const homeRing = marker.children[2];
-      // The stationary base halo marks home; the carried banner never drags a ground decal.
-      homeRing.visible = false;
+      marker.rotation.y = index * Math.PI;
+      marker.userData.flagVisual?.update(timeS);
       if (flag.status === 'home') marker.position.y = flag.baseY;
       tintTeam(marker, side);
       setIcon(marker.userData.icon, `flag:${side}`, (ctx, c) => drawPennant(ctx, c - 14, c + 8, 92, sideColor(side)));

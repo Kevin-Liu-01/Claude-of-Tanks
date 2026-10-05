@@ -216,7 +216,9 @@ function paintVertices<T extends THREE.BufferGeometry>(geometry: T, color: Rgb):
 /**
  * Distance representation for the sourced telephone pole. The authored mesh
  * remains authoritative at readable range; beyond that, its 6,528 triangles
- * collapse to the same trunk/crossarm/insulator silhouette in 340 triangles.
+ * collapse to the same trunk/crossarm/insulator silhouette in 352 triangles
+ * (the scenery lane, wave 66: a ten-sided, smooth, tapered trunk, as round as
+ * the near model's).
  */
 export function makeTelephonePoleDistanceGeometry(): THREE.BufferGeometry {
   const wood: Rgb = [0.43, 0.34, 0.23];
@@ -227,7 +229,7 @@ export function makeTelephonePoleDistanceGeometry(): THREE.BufferGeometry {
     parts.push(paintVertices(geometry, color));
   };
 
-  const trunk = new THREE.CylinderGeometry(0.11, 0.18, 7.15, 7, 1, false);
+  const trunk = new THREE.CylinderGeometry(0.11, 0.18, 7.15, 10, 1, false);
   trunk.translate(0, 3.43, 0);
   add(trunk, wood);
 

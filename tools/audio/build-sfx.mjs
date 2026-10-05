@@ -48,15 +48,15 @@ function clippedRun(file) {
   return worst;
 }
 
-const PUNCHY = new Set(['weapon-close', 'gunshot', 'impact', 'foley', 'ui', 'radio']);
+const PUNCHY = new Set(['weapon-close', 'gunshot', 'punch', 'sub', 'impact', 'foley', 'ui', 'radio']);
 // Takes judged on low-end weight, and groups judged on staying dark (no bright, jingly takes).
 // Loading machinery is judged on weight plus a clean steel transient: dark, but not dull.
-const WEIGHTY = new Set(['weapon-close', 'weapon-far', 'impact']);
+const WEIGHTY = new Set(['weapon-close', 'weapon-far', 'impact', 'sub']);
 const DARK_GROUPS = new Set(['ui', 'stingers', 'equipment', 'edge']);
 const MECHANICAL = new Set(['mechanism']);
 
 /** Assets played once per round fired/struck: one report each, never a burst. */
-const SINGLE_SHOT = /^(mg_|ac_\d+_close|ac_far_|ac_own|bullet_|ricochet_light|radio_key_in)/;
+const SINGLE_SHOT = /^(mg_|ac_\d+_close|ac_far_|ac_own|bullet_|ricochet_light|radio_key_in|blast_punch_)/;
 
 /**
  * Cut a single-shot take before its second report (some generations answer a
@@ -106,6 +106,19 @@ function score(m, entry, clip) {
     s -= 2.5 * Math.max(0, a.lowBody - 0.55);
     if (clip > 3) s -= 3;
   }
+  // The punch under a report (2026-10-03): one instant air slam, over within 200 ms, all weight and no crack.
+  if (entry.proc === 'punch' && m.anatomy) {
+    const a = m.anatomy;
+    const [low, lowMid, , high] = m.bands || [0, 0, 0, 0];
+    s += 3 * Math.max(0, 1 - Math.max(0, a.riseMs - 3) / 25);
+    s -= Math.min(4, 2 * Math.max(0, a.riseMs - 60) / 60);
+    s += 4 * Math.min(0.85, a.e10 + a.e50 + a.e200);
+    s -= 4 * Math.max(0, a.e600 - 0.15);
+    s += 3 * (low + lowMid) - 4 * high;
+    if (clip > 3) s -= 3;
+  }
+  // No boings (2026-10-03): a weight layer must be rumble, never a pitched tone falling away under the hit.
+  if ((entry.proc === 'punch' || entry.proc === 'sub') && m.glide && m.glide.ms >= 60 && (m.glide.ratio >= 1.12 || m.glide.ms >= 150)) s -= 8;
   // Dead air: a "4 s" take whose energy is over in 0.2 s is usually a misfire.
   if (!entry.loop && m.decayS < 0.08) s -= 1;
   // A clunk or clack is one event, not a rattle of them.
@@ -140,7 +153,7 @@ for (const entry of SFX_CATALOG) {
   const pinned = picks[entry.id];
   // A single-shot gun take that was really a burst is cut to its first report; one cut to a bare click
   // (under 0.25 s) is a lost take. Ship fewer variants rather than a click, while two usable takes remain.
-  const usable = entry.proc === 'gunshot' && SINGLE_SHOT.test(entry.id)
+  const usable = (entry.proc === 'gunshot' || entry.proc === 'punch') && SINGLE_SHOT.test(entry.id)
     ? ranked.filter((r) => firstShotOnly(deinterleave(readFileSync(r.file), 2), SR, entry)[0].length >= 0.25 * SR)
     : ranked;
   const pool = usable.length >= 2 ? usable : ranked;

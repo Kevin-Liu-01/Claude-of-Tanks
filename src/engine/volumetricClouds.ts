@@ -105,6 +105,13 @@ export const CLOUD_CELLS_PER_TILE = 4;
  * cores in the mid-tones under the clear sky's level, the thin borders and the lit walls white.
  */
 export const CLOUD_DECK_SUN_SHARE = 0.35;
+/**
+ * 2026-10-04 (the gauntlet's wave 62 on Titan Gorge: "no readable sun direction" under its closed deck): the broad forward
+ * lobe the sun's light keeps diffused through a deck (a dual Henyey–Greenstein of g 0.6 over the isotropic share, its
+ * mean over the sky unchanged): Titan's deck facing the sun brightens 200 → 219 display levels near the sun and 190 → 201
+ * 300–600 px out, a readable gradient without a disc; a cumulus sky does not take it (the deck path only).
+ */
+export const CLOUD_DECK_SUN_LOBE = 0.2;
 /** 2026-10-01: a lightning stroke's peak glow on the cloud around it (the composite's units, after the night dimming). */
 const CLOUD_FLASH_STRENGTH = 0.9;
 /** 2026-10-01: the cirrus streak frame's warp (m): the jet's eddies bend the streaks over tens of kilometres. */
@@ -143,6 +150,12 @@ const CLOUD_FARBAND_START_M = 8000;
  */
 export const CLOUD_FARBAND_START_CU_M = 16000;
 export const CLOUD_FARBAND_FADE_CU_M = 9000;
+/**
+ * 2026-10-04: the cover a closed deck (coverage at 1) keeps where its weather field runs at its floor — a thin sheet, not a
+ * hole to the clear sky (Titan Gorge's dense overcast opened one under a light model at overcast 1.00). 0.5 left a pale
+ * cream patch (ΔE 11.5 from the deck beside it); 0.7 reads as a thin, slightly brighter patch of the deck (ΔE 4.1).
+ */
+const CLOUD_CLOSED_COVER_FLOOR = 0.7;
 /**
  * 2026-10-03 (the skies-and-atmosphere lane; the gauntlet's wave 0: "no cloud shadows on the land"): the cloud shade
  * map, the clouds' one shadow path (cloudShadeMap.ts). The cores of the two weather fields at the cloud base, undithered,
@@ -364,6 +377,8 @@ uniform vec3 uAmbientTop;
 uniform vec3 uAmbientBottom;
 uniform vec3 uSkyMean;
 uniform float uCoverage;
+// 2026-10-04: a closed deck's cover floor (CLOUD_CLOSED_COVER_FLOOR, QA-tunable)
+uniform float uClosedFloor;
 uniform float uTowers;
 uniform float uStratiform;
 uniform float uDensity;
@@ -410,6 +425,10 @@ uniform float uFarThin;
 // 2026-10-03: the cumulus knobs (CLOUD_BASE_SHARP, CLOUD_BASE_DARK, CLOUD_FAR_FLAT; 0 = off)
 uniform float uBaseSharp;
 uniform float uBaseDark;
+// 2026-10-04 (the deck's sun): 1 = a ray the march ends as nearly opaque is opaque (QA: CLOUD_OPAQUE_CUT; 0 = the old 3 %)
+uniform float uOpaqueCut;
+// 2026-10-04 (the deck's sun): the broad forward lobe of the sun's light diffused through a deck (QA: CLOUD_DECK_SUN_LOBE)
+uniform float uDeckLobe;
 uniform float uFarFlat;
 // 2026-10-03: the crisp cumulus outline and the billowed tops (CLOUD_EDGE_CRISP, CLOUD_TOP_BILLOW; 0 = off)
 uniform float uEdgeCrisp;
@@ -468,6 +487,10 @@ Weather cloudWeather( vec2 pxz ) {
 	float sheetK = max( smoothstep( 0.5, 0.85, uStratiform ), uCells * 0.85 );
 	float ramp = max( uCoverage * mix( 1.0, 0.35, sheetK ), 0.02 );
 	o.cov = pow( clamp( ( field - ( 1.0 - uCoverage ) ) / ramp, 0.0, 1.0 ), mix( 0.7, 0.4, max( uStratiform, uCells * 0.7 ) ) );
+	// 2026-10-04 (Titan Gorge's dense overcast: a blue hole at coverage 1): the sheet's ramp maps the equalised field's lowest
+	// values to no cover even at full coverage; a closed deck keeps a thin sheet there instead (a real closed deck's thin
+	// patch reads brighter grey, not blue), ramped in over the last hundredths of the coverage
+	o.cov = max( o.cov, uClosedFloor * smoothstep( 0.97, 1.0, uCoverage ) );
 	// a front keeps the sky over the camera open: its towers stand off toward the horizon
 	if ( uClearRadius > 0.0 ) o.cov *= smoothstep( uClearRadius * 0.6, uClearRadius * 1.4, length( pxz - uCamPos.xz ) );
 	// the column's type from the vigour channel inside the map's range: 0 stratus, 0.5 cumulus, 1 cumulonimbus
@@ -921,7 +944,9 @@ vec4 farBandLayer( vec3 dir, float cosT, vec3 rayDx, vec3 rayDy, float sceneT, o
 	// (2026-10-03: a deck's band admits the deck's own coverage when that is more — a closed deck's band stays closed to
 	// the horizon instead of opening gaps of the clear horizon's glow under its edge — and reaches down to the horizon)
 	float fbCov = max( uFarBand, uCoverage );
-	float covB = smoothstep( 1.0 - fbCov, 1.0 - fbCov + 0.35, fb ) * smoothstep( fbStart, fbStart + fbFade, horiz );
+	// (2026-10-04: a closed deck's band keeps the same thin-sheet floor as the slab — no clear-sky gaps at its minima)
+	float covB = max( smoothstep( 1.0 - fbCov, 1.0 - fbCov + 0.35, fb ), uClosedFloor * smoothstep( 0.97, 1.0, uCoverage ) )
+		* smoothstep( fbStart, fbStart + fbFade, horiz );
 	if ( covB <= 0.0 ) return none;
 	tLayer = tb;
 	// slant depth through a thin lumpy deck: opaque at a grazing angle, a veil overhead
@@ -1159,7 +1184,11 @@ void main() {
 						// ground with the horizon band near white, and a physically lit base — a third to a half of a lit
 						// top — landed in the tonemap's clipped shoulder as the same white sheet; the sky's share whole)
 						vec3 sunTop = mix( uSunRadiance, vec3( luma( uSunRadiance ) ), 0.5 ) * max( uSunDir.y, 0.03 ) * uSunGain;
-						vec3 Etop = sunTop * ${f(CLOUD_DECK_SUN_SHARE)} / CL_PI + uSkyIrradiance;
+						// 2026-10-04 (the gauntlet's wave 62 on Titan Gorge: "no readable sun direction"): the sun's light diffused
+						// through a deck keeps a broad forward lobe — the underside brightens toward the sun, most where the deck
+						// thins, and dims a little away from it; its mean over the sky is unchanged (CLOUD_DECK_SUN_LOBE)
+						float deckLobe = 1.0 + uDeckLobe * ( phaseDual( cosT, 0.6 ) * 4.0 * CL_PI - 1.0 );
+						vec3 Etop = sunTop * ${f(CLOUD_DECK_SUN_SHARE)} / CL_PI * deckLobe + uSkyIrradiance;
 						vec3 Lbase = Etop * Tdiff;
 						// the directional term keeps the light march's depth (a lump's flank lit from the side), extended
 						// to the plane-parallel slant depth only where the near taps are already inside cloud (a sheet's
@@ -1194,6 +1223,11 @@ void main() {
 					t += ds * ( uDebug == 8.0 ? 1.0 : 1.5 );
 				}
 			}
+			// 2026-10-04 (the gauntlet's wave 62 on Titan Gorge: the sun "a flat, hard-edged white disc" through a closed deck):
+			// a ray the march ends as nearly opaque (under the 0.03 cut) is opaque — its in-scatter stands for the whole mass
+			// (the remainder at its mean) and nothing behind shows through. The 3 % the cut left let the sun's disc, tens of
+			// thousands of times the sky's radiance, burn through a deck or a cumulus core as a white disc.
+			if ( T < 0.03 && uOpaqueCut > 0.0 ) { L /= max( 1.0 - T, 0.5 ); T = 0.0; }
 			if ( wAcc > 1e-4 ) {
 				float dist = tAcc / wAcc;
 				float hAtt = exp( -max( dir.y * dist - ${f(CLOUD_AERIAL.heightRef)}, 0.0 ) / ${f(CLOUD_AERIAL.heightScale)} );
@@ -1584,9 +1618,11 @@ export class VolumetricCloudLayer {
         uStepScale: { value: 1 }, uDebug: { value: 0 },
         uCells: { value: 0 }, uDeckMarch: { value: 0 }, uCellTile: { value: 4800 }, uDeckLight: { value: 0 }, uUndulatus: { value: 0 }, uInterior: { value: 0 }, uLumps: { value: 0 }, uBaseFlat: { value: 0 }, uDeckDetail: { value: 0 }, uFarThin: { value: 0 },
         uBaseSharp: { value: 0 }, uBaseDark: { value: 0 }, uFarFlat: { value: 0 }, uEdgeCrisp: { value: 0 }, uTopBillow: { value: 0 },
+        uOpaqueCut: { value: 1 }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE },
         uSkyIrradiance: { value: new THREE.Vector3(0.3, 0.4, 0.6) }, uHang: { value: 0 },
         // 2026-10-03: the deck's far rows on the aerial pass's overcast target (cloudHaze; hazeLaw.ts hazeTargetTerms)
         uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
+        uClosedFloor: { value: CLOUD_CLOSED_COVER_FLOOR },
         // 2026-10-03: the previous frame's scene depth and the camera that drew it (cloudSceneT)
         tSceneDepth: { value: null }, uSceneDepthOn: { value: 0 }, uSceneNearFar: { value: new THREE.Vector2(0.5, 4000) },
         uDepthRight: { value: new THREE.Vector3(1, 0, 0) }, uDepthUp: { value: new THREE.Vector3(0, 1, 0) },
@@ -1657,6 +1693,15 @@ export class VolumetricCloudLayer {
 
   /** The current preset (null = the baked decks show). */
   get currentPreset(): CloudLayerPreset | null { return this.preset; }
+
+  /**
+   * 2026-10-04 (the gauntlet's wave 71 on Titan Gorge: the lens flare's halo drew as "a vertical rainbow" under a closed
+   * deck): the resolved cloud history the dome composites, in screen uv — alpha is the clouds' transmittance along each
+   * view ray — while the layer draws; null otherwise. The lens flare and the sun shafts read it to fade behind cloud.
+   */
+  get historyTexture(): THREE.Texture | null {
+    return this.active && this.dome.visible && this.historyValid ? this.domeMaterial.uniforms.tClouds.value as THREE.Texture : null;
+  }
 
   setPreset(preset: CloudLayerPreset | null): void {
     const key = preset ? cloudLayerKey(preset) : '';
@@ -1985,6 +2030,8 @@ export class VolumetricCloudLayer {
     // (2026-10-03: the cumulus knobs, read per frame so a lab can sweep them)
     t.uBaseSharp.value = lightTune('CLOUD_BASE_SHARP', CLOUD_BASE_SHARP);
     t.uBaseDark.value = lightTune('CLOUD_BASE_DARK', CLOUD_BASE_DARK);
+    t.uOpaqueCut.value = lightTune('CLOUD_OPAQUE_CUT', 1);
+    t.uDeckLobe.value = lightTune('CLOUD_DECK_SUN_LOBE', CLOUD_DECK_SUN_LOBE);
     t.uFarFlat.value = lightTune('CLOUD_FAR_FLAT', CLOUD_FAR_FLAT);
     t.uEdgeCrisp.value = lightTune('CLOUD_EDGE_CRISP', CLOUD_EDGE_CRISP);
     t.uTopBillow.value = lightTune('CLOUD_TOP_BILLOW', CLOUD_TOP_BILLOW);
@@ -1998,10 +2045,10 @@ export class VolumetricCloudLayer {
     // (2026-10-03: the aerial pass's overcast target for the deck's far rows — cloudHaze)
     {
       const overcast = (this.scene.userData.lightModel as { overcast?: number } | undefined)?.overcast ?? 0;
-      const terms = hazeTargetTerms(overcast, this.hazeTerms);
       const a = this.atmosphere;
-      (t.uOvercastHaze.value as THREE.Vector4).set(
-        Math.min(1, Math.max(0, (a.fogMix ?? 0) * terms.x)), terms.y, 0, smoothstep01(overcast / 0.3));
+      const terms = hazeTargetTerms(overcast, a.fogMix ?? 0, this.hazeTerms);
+      (t.uOvercastHaze.value as THREE.Vector4).set(terms.x, terms.y, 0, smoothstep01(overcast / 0.3));
+      t.uClosedFloor.value = lightTune('CLOUD_CLOSED_COVER_FLOOR', CLOUD_CLOSED_COVER_FLOOR);
       const tint = a.fogTint;
       if (tint) (t.uOvercastTint.value as THREE.Vector3).set(tint.r, tint.g, tint.b);
     }

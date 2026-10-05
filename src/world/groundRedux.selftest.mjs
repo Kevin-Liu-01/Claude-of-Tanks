@@ -27,7 +27,7 @@ const SNOW = ['winter', 'whiteout', 'alpine'];
 // trees round 2b (2026-10-03, gauntlet wave 28): Whiteout Station stands on an ice sheet — no sward through the ice
 const ICE = ['whiteout'];
 const COAST = ['coastal', 'saltwind', 'fjord', 'mangrove'];
-const STILL = ['delta', 'polders', 'reservoir', 'monsoon', 'oasis', 'skybridge'];
+const STILL = ['delta', 'polders', 'reservoir', 'monsoon', 'oasis', 'skybridge', 'autumn'];
 for (const id of MAP_IDS) {
   const p = resolveGroundReduxProfile(id);
   for (const key of ['heightBlend', 'midDetail', 'scree', 'glint', 'snowRipple', 'snowMacro', 'foldMoist', 'foldAO', 'foldCrest']) {

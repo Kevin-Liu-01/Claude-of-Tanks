@@ -6,10 +6,10 @@
 // heading (each row of blocks shifted against the next, so no boundary crosses the map on a grid), each block cut into
 // one to `maxSplit` fields, every field one crop of its region's rotation (pasture, ripe wheat, barley, young green
 // crop, plough, stubble, sunflower), a grass margin round every field, dirt tracks along some of the long boundaries
-// and hedges along some of the short ones. The terrain material draws it (LAND_USE_GLSL, packed into three vec4
-// uniforms, no sampler) and the CPU twin (landUseAt) answers the same question for the tiers that grow on the ground —
-// the tall grass stands as the crop. The two use the same integer hash and the same analytic warp, so a field's crop
-// is the same on both sides (a float rounding can only move a boundary by a hair).
+// and hedges along some of the short ones. The CPU twin (landUseAt) is the one source: the tiers that grow on the
+// ground ask it directly (the tall grass stands as the crop), and the terrain material reads it baked once per map
+// (bakeLandUseSteps, stacked under the ground mask; LAND_USE_GLSL decodes a texel) — 2026-10-03, the GPU fix: the
+// per-pixel derivation of the parcels cost the 1080p frame about 2.7 ms at the field-side chase views.
 //
 // Every map without a row has no fields (strength 0); a row is the map's whole land-use authoring (no map-file edit).
 //
@@ -145,8 +145,10 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   paddy: [[9, 0.38], [8, 0.22], [14, 0.15], [10, 0.10], [4, 0.07], [0, 0.08], [7, 0.0]],
   // a Japanese caldera floor (Aso): rectangular paddies, green and flooded, vegetable plots, meadow
   terrace: [[9, 0.44], [8, 0.20], [10, 0.10], [7, 0.10], [0, 0.16], [4, 0.0], [5, 0.0]],
-  // the Dalmatian karst: small walled fields of red earth, vines, dry grazing and a little grain
-  karst: [[11, 0.30], [12, 0.26], [0, 0.28], [5, 0.08], [3, 0.08], [1, 0.0], [4, 0.0]],
+  // the Dalmatian karst: small walled fields of red earth, vines, dry grazing and a little grain — the grain ripe in the
+  // dry season (wave 39, Saltwind corner-ne: "a hard-edged, oversaturated bright-green rectangle in the mid-ground" was
+  // a young green crop's plot between the walls, a tone no summer karst field carries)
+  karst: [[11, 0.30], [12, 0.26], [0, 0.28], [5, 0.08], [1, 0.08], [13, 0.0], [4, 0.0]],
   // an ironworks' ground (Völklingen on the Saar): plots of brownfield grass, tipped slag, ballast and hardcore,
   // rank grass and bare earth, between the works' tracks and the birch scrub that seeds itself along them
   brownfield: [[17, 0.40], [15, 0.22], [16, 0.18], [0, 0.12], [4, 0.08], [5, 0.0], [3, 0.0]],
@@ -256,6 +258,19 @@ export function landUseBoundary(profile: LandUseProfile | null): LandBoundary {
   return profile ? BOUNDARIES[profile.region] : 'margin';
 }
 
+/**
+ * The land use's quality tier (2026-10-04, the GPU bar: the coordinator's rule that Low must not pay more than High —
+ * the block cost 2.7 ms at Low against 1.1–1.7 at High, the weakest GPUs paying the most). The material reads it as
+ * uLandTier, kept current across preset changes:
+ * 0 — the bake's crop on its exact edges only, one round of reads (Low and the phones' two lower tiers);
+ * 1 — + the field's wet and dry (one noise read), its rows and tramlines, and the boundary features — headlands,
+ *     margins, hedge banks, bunds, walls, tracks — at their means: no soil read, no edge noise (Medium, the phones' high);
+ * 2 — the full block (High, Ultra).
+ */
+export function landUseTierOf(preset: string): 0 | 1 | 2 {
+  return preset === 'high' || preset === 'ultra' ? 2 : preset === 'medium' || preset === 'mobile-high' ? 1 : 0;
+}
+
 /** The material's packing: five vec4 uniforms, no sampler (the program sits at the 16-unit budget). */
 export function landUseUniformValues(profile: LandUseProfile | null): {
   landA: [number, number, number, number];
@@ -309,6 +324,16 @@ export interface LandFieldSample {
   edgeM: number;
   /** Metres to the nearer of the field's two row ends (where the rows stop and the tractor turns: the headland). */
   endM: number;
+  /**
+   * The signed offsets (m, in the warped grid's u / v axes) to the field's nearer edge across each axis: the edge lies
+   * at qu − sU (qv − sV), so |sU| and |sV| are the distances to it and edgeM = min(|sU|, |sV|). The bake stores them so
+   * the material rebuilds the exact distance at any point of a texel (they run linearly in the warped grid).
+   */
+  sU: number;
+  sV: number;
+  /** The field's block: cut into `split` fields along its u axis (alongU 1) or its v axis (0). */
+  split: number;
+  alongU: number;
   /** The field's grass margin (m): inside it the ground is the margin's rank grass, not the crop. */
   marginM: number;
   /** 1 on a dirt track (the track's own width), 0 off it. */
@@ -336,8 +361,8 @@ export interface LandFieldSample {
 }
 
 export function createLandFieldSample(): LandFieldSample {
-  return { active: 0, crop: 0, edgeM: 1e9, endM: 1e9, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
-    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
+  return { active: 0, crop: 0, edgeM: 1e9, endM: 1e9, sU: 1e9, sV: 1e9, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0,
+    jitter: 0, id: 0, boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
 }
 
 /** The analytic warp of the boundaries (m): two slow sines per axis, identical in GLSL. */
@@ -386,7 +411,7 @@ function compile(profile: LandUseProfile): CompiledLandUse {
  * the square; the cell hash keeps its period beyond ±160 km.
  */
 export function landUseAt(profile: LandUseProfile | null, x: number, z: number, out: LandFieldSample): LandFieldSample {
-  out.active = 0; out.crop = 0; out.edgeM = 1e9; out.endM = 1e9; out.marginM = 0; out.track = 0; out.hedge = 0; out.rowX = 1; out.rowZ = 0;
+  out.active = 0; out.crop = 0; out.edgeM = 1e9; out.endM = 1e9; out.sU = 1e9; out.sV = 1e9; out.split = 1; out.alongU = 1; out.marginM = 0; out.track = 0; out.hedge = 0; out.rowX = 1; out.rowZ = 0;
   out.jitter = 0; out.id = 0; out.boundary = 0; out.tintR = 0; out.tintG = 0; out.tintB = 0; out.sward = 1;
   out.cropHeight = 1; out.cropKeep = -1; out.weed = 0;
   if (!profile || !(profile.strength > 0)) return out;
@@ -401,13 +426,15 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   const split = 1 + Math.min(maxSplit - 1, Math.floor(luRand(row, col, salt + 13) * maxSplit));
   const alongU = luRand(row, col, salt + 17) < 0.5;
   let k: number, s0: number, s1: number, rowAlongU: boolean;
-  let edgeU: number, edgeV: number;
+  let edgeU: number, edgeV: number, sU: number, sV: number;
   if (alongU) {
     const w = blockU / split;
     k = Math.min(split - 1, Math.floor(lu / w));
     s0 = lu - k * w; s1 = w - s0;
     edgeU = Math.min(s0, s1);
     edgeV = Math.min(lv, blockV - lv);
+    sU = s0 <= s1 ? s0 : -s1;
+    sV = lv <= blockV - lv ? lv : lv - blockV;
     rowAlongU = w > blockV; // rows run along the field's long side
   } else {
     const w = blockV / split;
@@ -415,6 +442,8 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
     s0 = lv - k * w; s1 = w - s0;
     edgeV = Math.min(s0, s1);
     edgeU = Math.min(lu, blockU - lu);
+    sV = s0 <= s1 ? s0 : -s1;
+    sU = lu <= blockU - lu ? lu : lu - blockU;
     rowAlongU = blockU > w;
   }
   const fieldA = row, fieldB = col * 8 + k;
@@ -433,6 +462,7 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   out.crop = crop;
   out.edgeM = Math.min(edgeU, edgeV);
   out.endM = rowAlongU ? edgeU : edgeV;
+  out.sU = sU; out.sV = sV; out.split = split; out.alongU = alongU ? 1 : 0;
   // each field's own row direction: the long side's axis turned up to ±20° by the field's hash (wave 14: one direction
   // per parcel, varied between parcels — never the block grid's two axes alternating as a woven crosshatch)
   const r0x = rowAlongU ? ch : -sh, r0z = rowAlongU ? sh : ch;
@@ -455,13 +485,93 @@ function smooth(a: number, b: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
+// --------------------------------------------------------------------------------------------- the bake
+
+/** The bake's first layer's R channel: the crop kind in its low five bits, then the track and the hedge flags. */
+export const LAND_BAKE_TRACK_BIT = 32;
+export const LAND_BAKE_HEDGE_BIT = 64;
+/** Set when the field's block is cut along its u axis (its fields are blockU / split by blockV). */
+export const LAND_BAKE_ALONG_U_BIT = 128;
+/** The signed edge offsets' 16-bit code: 256 steps a metre around 32768 (±128 m, 4 mm steps). */
+const OFFSET_SCALE = 256, OFFSET_ZERO = 32768;
+/** The bake's layers (RGBA8, n × n each): A the field, B its signed edge offsets, C the warp's local Jacobian. */
+export const LAND_BAKE_LAYERS = 3;
+/**
+ * The range of the warp's Jacobian times its metres (|warpM · ∂w/∂x| ≤ 0.27 at the 30 m warp): layer C codes each of
+ * its four entries in 8 bits over ±0.32 (2.5e-3 a step — under 4 mm over the half-diagonal of a 2 m texel).
+ */
+export const LAND_WARP_K_RANGE = 0.32;
+const warpCode = (k: number): number => Math.min(255, Math.max(0, Math.round((k / LAND_WARP_K_RANGE * 0.5 + 0.5) * 255)));
+/**
+ * The warp's metres times its Jacobian at (x, z) — ∂(warpX, warpZ)/∂(x, z), the analytic derivative of the two slow
+ * sines per axis — into out[0..3] = (∂wx/∂x, ∂wx/∂z, ∂wz/∂x, ∂wz/∂z) · warpM. The material carries a texel's offsets to a
+ * pixel through it (the warp is near-linear over a texel: its curvature costs under 3 mm there) instead of evaluating
+ * the warp twice a pixel.
+ */
+function warpJacobian(x: number, z: number, warpM: number, out: Float64Array): void {
+  const c1 = Math.cos(x * 0.00523 + z * 0.00311 + 1.3), c2 = Math.cos(x * -0.00197 + z * 0.00877 + 4.1);
+  const c3 = Math.cos(x * 0.00409 - z * 0.00587 + 2.7), c4 = Math.cos(x * 0.00913 + z * 0.00241 + 0.6);
+  out[0] = warpM * (0.00523 * c1 - 0.5 * 0.00197 * c2);
+  out[1] = warpM * (0.00311 * c1 + 0.5 * 0.00877 * c2);
+  out[2] = warpM * (0.00409 * c3 + 0.5 * 0.00913 * c4);
+  out[3] = warpM * (-0.00587 * c3 + 0.5 * 0.00241 * c4);
+}
+const offsetCode = (m: number): number => Math.min(65535, Math.max(0, Math.round(m * OFFSET_SCALE + OFFSET_ZERO)));
+
+/**
+ * The land use baked for the terrain material (2026-10-03, the GPU fix): this twin at every texel centre of an n × n
+ * grid over the square (row 0 at z = -mapSize / 2, as the ground mask), two RGBA8 layers one after the other in `out`
+ * (each n × n × 4), every channel read exactly (texelFetch, level 0):
+ *  - layer A: R the crop kind | LAND_BAKE_TRACK_BIT where a track runs along the field's long boundary here |
+ *    LAND_BAKE_HEDGE_BIT where a hedge runs along its short one | LAND_BAKE_ALONG_U_BIT when its block is cut along u;
+ *    G the field's jitter (six bits) and its block's cut count − 1 (two); B, A the row direction's turn (16 bits);
+ *  - layer B: R, G the signed offset sU and B, A sV (16 bits each, landUseAt's) — the material adds the warped grid's
+ *    own offset from the texel centre to them, so the distance to the boundary is exact anywhere in the texel (a
+ *    filtered unsigned distance clipped the zero at every boundary line: walls, bunds and ditches vanished).
+ * A generator: it yields every `rowsPerSlice` rows so a build step never runs long. A map without a field system bakes
+ * nothing (the material skips the block).
+ */
+export function* bakeLandUseSteps(
+  profile: LandUseProfile | null, n: number, mapSize: number, out: Uint8Array, rowsPerSlice = 64,
+): Generator<void, Uint8Array, void> {
+  if (out.length !== n * n * 4 * LAND_BAKE_LAYERS) throw new Error('bakeLandUseSteps: the output holds three n × n RGBA8 layers');
+  const sample = createLandFieldSample();
+  const layerB = n * n * 4, layerC = n * n * 8;
+  const warpM = profile && profile.strength > 0 ? compile(profile).warpM : 0, jac = new Float64Array(4);
+  for (let j = 0; j < n; j++) {
+    const z = ((j + 0.5) / n - 0.5) * mapSize;
+    for (let i = 0; i < n; i++) {
+      const x = ((i + 0.5) / n - 0.5) * mapSize;
+      landUseAt(profile, x, z, sample);
+      const k = (j * n + i) * 4;
+      out[k] = (sample.crop & 31) | (sample.track > 0 ? LAND_BAKE_TRACK_BIT : 0) | (sample.hedge > 0 ? LAND_BAKE_HEDGE_BIT : 0)
+        | (sample.alongU ? LAND_BAKE_ALONG_U_BIT : 0);
+      out[k + 1] = (Math.min(63, Math.round(sample.jitter * 63)) << 2) | ((sample.split - 1) & 3);
+      const turn = Math.atan2(sample.rowZ, sample.rowX) / (2 * Math.PI);
+      const code = Math.round((turn - Math.floor(turn)) * 65536) & 65535;
+      out[k + 2] = code >> 8; out[k + 3] = code & 255;
+      const u = offsetCode(sample.sU), v = offsetCode(sample.sV);
+      out[layerB + k] = u >> 8; out[layerB + k + 1] = u & 255;
+      out[layerB + k + 2] = v >> 8; out[layerB + k + 3] = v & 255;
+      warpJacobian(x, z, warpM, jac);
+      out[layerC + k] = warpCode(jac[0]); out[layerC + k + 1] = warpCode(jac[1]);
+      out[layerC + k + 2] = warpCode(jac[2]); out[layerC + k + 3] = warpCode(jac[3]);
+    }
+    if ((j + 1) % rowsPerSlice === 0 && j + 1 < n) yield;
+  }
+  return out;
+}
+
 // --------------------------------------------------------------------------------------------- the GLSL
 
 /**
- * The terrain material's field layout (declared in the splat fragment's globals). uLandA = (strength, heading,
- * blockU, blockV), uLandB = (maxSplit, margin m, track share, hedge share), uLandC = (warp m, salt, the rotation's
- * cumulative shares at crops 4 and 5), uLandD = its cumulative shares at crops 0..3. lu_field returns the crop id, the boundary distance (m), the track weight, the row direction and a
- * per-field jitter — the same numbers landUseAt computes.
+ * The terrain material's land use (declared in the splat fragment's globals, after the ground mask's sampler and its
+ * stack uniforms): uLandA = (strength, heading, blockU, blockV), uLandB = (maxSplit, margin m, track share, hedge
+ * share), uLandC..E the rotation (read by the twin's packing receipt and the border lane); uLandBake = (the bake's
+ * texels a side, the square's size m, its first row in the stacked mask, 1 / the stack's width). lu_field decodes the
+ * bake (bakeLandUseSteps) at a world point: the crop, the boundary distance (one filtered read), the track and hedge
+ * weights over that distance, the row direction and the field's jitter — the numbers landUseAt computes, at the
+ * bake's texel scale.
  */
 export const LAND_USE_GLSL = /* glsl */`
 uniform vec4 uLandA;
@@ -469,68 +579,49 @@ uniform vec4 uLandB;
 uniform vec4 uLandC;
 uniform vec4 uLandD;
 uniform vec4 uLandE;
-uint lu_hash(uint x) { x ^= x >> 16u; x *= 0x7feb352du; x ^= x >> 15u; x *= 0x846ca68bu; x ^= x >> 16u; return x; }
-float lu_rand(float a, float b, float salt) {
-  uint h = lu_hash((uint(int(a) + 4096) * 0x9e3779b1u) ^ lu_hash(uint(int(b) + 4096) ^ (uint(salt) * 0x85ebca6bu)));
-  return float(h >> 8u) * (1.0 / 16777216.0);
+uniform vec4 uLandBake;
+uniform float uLandTier; // landUseTierOf: 0 the bake's crop on its edges, 1 + the cheap reads, 2 the full block
+uniform vec2 uLandRot; // (cos, sin) of the field grid's heading (uLandA.y), once on the CPU
+// the bake's three texels at a world point (the material reads them at the top of the splat, with the ground mask's own
+// read, and decodes them where it draws the fields: on a light frame nothing else would hide their latency)
+void lu_fetch(vec2 p, out vec4 a, out vec4 b, out vec4 k, out ivec2 t) {
+  float n = uLandBake.x;
+  t = clamp(ivec2(floor((p / uLandBake.y + 0.5) * n)), ivec2(0), ivec2(int(n) - 1));
+  int row0 = int(uLandBake.z + 0.5);
+  a = texelFetch(uMask, t + ivec2(0, row0), 0);
+  b = texelFetch(uMask, t + ivec2(0, row0 + int(n)), 0);
+  k = texelFetch(uMask, t + ivec2(0, row0 + 2 * int(n)), 0);
 }
-float lu_crop(float roll) {
-  // the map's rotation: its cumulative shares at slots 0..5 (landUse.ts rotationCumulative), slot 6 the rest
-  return roll < uLandD.x ? 0.0 : roll < uLandD.y ? 1.0 : roll < uLandD.z ? 2.0 : roll < uLandD.w ? 3.0
-    : roll < uLandC.z ? 4.0 : roll < uLandC.w ? 5.0 : 6.0;
+void lu_decode(vec2 p, vec4 a, vec4 b, vec4 k, ivec2 t, out float crop, out float edgeM, out float track, out vec2 rowDir, out float jitter, out float hedge) {
+  float n = uLandBake.x;
+  // the texel's signed offsets to the field's nearer edge across each axis, carried to p along the warped grid — through
+  // the warp's Jacobian at the texel's centre (layer C, landUse.ts warpJacobian) and the grid's heading: no trigonometry
+  vec2 dp = p - ((vec2(t) + 0.5) / n - 0.5) * uLandBake.y;
+  vec4 K = (k * 2.0 - 1.0) * ${LAND_WARP_K_RANGE};
+  vec2 dw = dp + vec2(K.x * dp.x + K.y * dp.y, K.z * dp.x + K.w * dp.y);
+  vec2 d = vec2(uLandRot.x * dw.x + uLandRot.y * dw.y, -uLandRot.y * dw.x + uLandRot.x * dw.y);
+  float tU = (b.r * 65280.0 + b.g * 255.0 - ${OFFSET_ZERO}.0) / ${OFFSET_SCALE}.0, tV = (b.b * 65280.0 + b.a * 255.0 - ${OFFSET_ZERO}.0) / ${OFFSET_SCALE}.0;
+  float sU = tU + d.x, sV = tV + d.y;
+  int r = int(a.r * 255.0 + 0.5), g = int(a.g * 255.0 + 0.5);
+  // the field's own extent along each axis (its block's, cut split ways along one): within the field the distance to
+  // an axis's edges is min(|s|, width − |s|), past its medial line too; a point across the texel field's edge lies in
+  // the neighbour, whose other edges the texel does not know, so its distance is the crossed line's
+  float split = float((g & 3) + 1);
+  bool alongU = (r & ${LAND_BAKE_ALONG_U_BIT}) != 0;
+  float wU = alongU ? uLandA.z / split : uLandA.z, wV = alongU ? uLandA.w : uLandA.w / split;
+  bool crossU = sU * tU < 0.0, crossV = sV * tV < 0.0;
+  float eU = crossU ? abs(sU) : min(abs(sU), wU - abs(sU)), eV = crossV ? abs(sV) : min(abs(sV), wV - abs(sV));
+  edgeM = crossV == crossU ? min(eU, eV) : crossV ? abs(sV) : abs(sU);
+  crop = float(r & 31);
+  track = (r & ${LAND_BAKE_TRACK_BIT}) != 0 ? 1.0 - smoothstep(1.6, 2.6, abs(sV)) : 0.0;
+  hedge = (r & ${LAND_BAKE_HEDGE_BIT}) != 0 ? 1.0 - smoothstep(1.2, 2.4, abs(sU)) : 0.0;
+  float turn = (a.b * 65280.0 + a.a * 255.0) * (6.2831853 / 65536.0);
+  rowDir = vec2(cos(turn), sin(turn));
+  jitter = float(g >> 2) / 63.0;
 }
-float lu_kind(float slot) {
-  // the slot's crop kind: five bits a slot, slots 0..3 in uLandE.x and 4..6 in uLandE.y (landUse.ts rotationKinds)
-  int s = int(slot + 0.5);
-  int packed = s < 4 ? int(uLandE.x + 0.5) : int(uLandE.y + 0.5);
-  return float((packed >> ((s < 4 ? s : s - 4) * 5)) & 31);
-}
-void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2 rowDir, out float jitter, out float endM, out float hedge) {
-  float warpM = uLandC.x, salt = uLandC.y;
-  vec2 w = vec2(sin(p.x * 0.00523 + p.y * 0.00311 + 1.3) + 0.5 * sin(p.x * -0.00197 + p.y * 0.00877 + 4.1),
-                sin(p.x * 0.00409 - p.y * 0.00587 + 2.7) + 0.5 * sin(p.x * 0.00913 + p.y * 0.00241 + 0.6));
-  vec2 pw = p + w * warpM;
-  float ch = cos(uLandA.y), sh = sin(uLandA.y);
-  float qu = ch * pw.x + sh * pw.y, qv = -sh * pw.x + ch * pw.y;
-  float blockU = uLandA.z, blockV = uLandA.w, maxSplit = uLandB.x;
-  float row = floor(qv / blockV);
-  float uq = qu + lu_rand(row, 7.0, salt) * blockU;
-  float col = floor(uq / blockU);
-  float lu = uq - col * blockU, lv = qv - row * blockV;
-  float split = 1.0 + min(maxSplit - 1.0, floor(lu_rand(row, col, salt + 13.0) * maxSplit));
-  bool alongU = lu_rand(row, col, salt + 17.0) < 0.5;
-  float k, edgeU, edgeV;
-  bool rowAlongU;
-  if (alongU) {
-    float fw = blockU / split;
-    k = min(split - 1.0, floor(lu / fw));
-    float s0 = lu - k * fw;
-    edgeU = min(s0, fw - s0);
-    edgeV = min(lv, blockV - lv);
-    rowAlongU = fw > blockV;
-  } else {
-    float fw = blockV / split;
-    k = min(split - 1.0, floor(lv / fw));
-    float s0 = lv - k * fw;
-    edgeV = min(s0, fw - s0);
-    edgeU = min(lu, blockU - lu);
-    rowAlongU = blockU > fw;
-  }
-  float fieldB = col * 8.0 + k;
-  crop = lu_kind(lu_crop(lu_rand(row, fieldB, salt + 23.0)));
-  float lineIdx = lv < blockV * 0.5 ? row : row + 1.0;
-  bool trackOn = lu_rand(lineIdx, floor(qu / 120.0), salt + 31.0) < uLandB.z;
-  float dLine = min(lv, blockV - lv);
-  track = trackOn ? 1.0 - smoothstep(1.6, 2.6, dLine) : 0.0;
-  edgeM = min(edgeU, edgeV);
-  endM = rowAlongU ? edgeU : edgeV;
-  rowDir = rowAlongU ? vec2(ch, sh) : vec2(-sh, ch);
-  float ra = (lu_rand(row, fieldB, salt + 41.0) - 0.5) * 0.7, rc = cos(ra), rs = sin(ra);
-  rowDir = vec2(rowDir.x * rc - rowDir.y * rs, rowDir.x * rs + rowDir.y * rc);
-  jitter = lu_rand(row, fieldB, salt + 29.0);
-  // the boundary's hedge (the twin's out.hedge): a hedged short boundary, 1.2 m full and gone by 2.4 m into the field
-  bool hedgeOn = lu_rand(row, col * 8.0 + (alongU ? k : 7.0), salt + 37.0) < uLandB.w;
-  float dShort = alongU ? min(edgeU, min(lu, blockU - lu)) : min(lu, blockU - lu);
-  hedge = hedgeOn ? 1.0 - smoothstep(1.2, 2.4, dShort) : 0.0;
+void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2 rowDir, out float jitter, out float hedge) {
+  vec4 a, b, k; ivec2 t;
+  lu_fetch(p, a, b, k, t);
+  lu_decode(p, a, b, k, t, crop, edgeM, track, rowDir, jitter, hedge);
 }
 `;

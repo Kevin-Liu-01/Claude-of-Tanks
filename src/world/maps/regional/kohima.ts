@@ -243,6 +243,8 @@ export const KOHIMA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     tones: { straw: (h, s, l) => [h - 0.02, Math.min(1, s * 0.5), Math.min(1, l * 0.8)] },
   },
   builders: KOHIMA_BUILDERS,
+  // the Angami yards: a bamboo fence round the vegetable terrace and the granary on posts, an open gap (yards.ts)
+  yard: { kinds: ['farmhouse'], fence: 'fencewattle', gate: null, shed: 'granary', shedSize: [4.3, 4.1], garden: true },
 });
 
 export type { RegionalParts };

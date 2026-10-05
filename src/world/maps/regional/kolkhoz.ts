@@ -353,4 +353,6 @@ export const KOLKHOZ_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     },
   },
   builders: KOLKHOZ_BUILDERS,
+  // the yards: a wattle fence (pleten) round the vegetable plot (ogorod) and the log granary (ambar), a gate (yards.ts)
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencewattle', gate: 'gate', shed: 'granary', shedSize: [4.0, 6.5], garden: true },
 });

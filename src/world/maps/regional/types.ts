@@ -58,6 +58,29 @@ export interface ArchitectureStyle {
   weather?: WeatherPalette;
   /** share of houses showing war damage: burnt or boarded windows, a stripped roof patch (house.ts; default 0.2) */
   wear?: number;
+  /** the yards round the kit's houses (yards.ts): absent, the houses stand in the open ground as before */
+  yard?: YardStyle;
+}
+
+/**
+ * What a kit puts in the free ground round its houses (yards.ts plans it, props.ts places it): a yard on the house's
+ * freest side, enclosed by a run of the fence or wall destructible with a gate, an outbuilding in a far corner and
+ * kitchen-garden beds, each only where it clears the roads, the other plots, the objectives and the spawn pads.
+ */
+export interface YardStyle {
+  /** the plan kinds that keep a yard */
+  kinds: readonly string[];
+  /** the destructible kind of the enclosure's modules (a fence or a low wall) */
+  fence: string;
+  /** the destructible hung in the gate's gap, or none (an open gap) */
+  gate: string | null;
+  /** the kit builder of the outbuilding (a structure id it builds at a shed's size), or none */
+  shed: string | null;
+  /** the outbuilding's plot, width (along the yard) and depth (yards.ts YARD_SHED when absent): the size the kit's
+   *  builder keeps to */
+  shedSize?: readonly [number, number];
+  /** kitchen-garden beds in the yard */
+  garden: boolean;
 }
 
 export type RegionalGeometryBuckets = Record<string, THREE.BufferGeometry[]>;

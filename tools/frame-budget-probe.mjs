@@ -60,11 +60,108 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   // the static shadow-caster cache (engine/shadowStaticCache.ts): off forces every caster every frame
   'shadow-cache': Object.freeze({ on: 'window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: false })',
     off: 'window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true })' }),
+  // the scenery lane's field walls and everything on them (gauntlet wave 34): the wall pools (their modules carry a snow
+  // map's snow load), the field prints' buckets (the run heads, the foot stones, the breaches, the mud aprons) and the
+  // snow drifts; off hides them all, so the delta is the walls' whole frame cost (an upper bound on what the dressing
+  // added to them)
+  'field-walls': Object.freeze({
+    on: `window.__DEBUG.scene.traverse((o) => { if (/^(destructible-wall(stone|adobe)(-broken)?|props-bucket-field(Stone|Mud)|props-snow-drifts)$/.test(o.name)) o.visible = true; })`,
+    off: `window.__DEBUG.scene.traverse((o) => { if (/^(destructible-wall(stone|adobe)(-broken)?|props-bucket-field(Stone|Mud)|props-snow-drifts)$/.test(o.name)) o.visible = false; })` }),
+  // the scenery lane (wave 34): the sandbag stacks and the nests' bedding (sceneryKit.ts buildSandbagStack and
+  // buildSandbagBedding: the spoil, the spill and the emptied bag); off hides them, so the delta is their whole cost
+  'sandbag-nests': Object.freeze({
+    on: `window.__DEBUG.scene.traverse((o) => { if (/^(destructible-sandbag(big|small|wall)(-broken)?|props-sandbag-beds)$/.test(o.name)) o.visible = true; })`,
+    off: `window.__DEBUG.scene.traverse((o) => { if (/^(destructible-sandbag(big|small|wall)(-broken)?|props-sandbag-beds)$/.test(o.name)) o.visible = false; })` }),
+  // the scenery lane (wave 48, the merge's bench): both of the above at once — the field walls with their dressing and
+  // the sandbag nests with their bedding
+  'scenery-dressing': Object.freeze({
+    on: `window.__DEBUG.scene.traverse((o) => { if (/^(destructible-wall(stone|adobe)(-broken)?|props-bucket-field(Stone|Mud)|props-snow-drifts|destructible-sandbag(big|small|wall)(-broken)?|props-sandbag-beds)$/.test(o.name)) o.visible = true; })`,
+    off: `window.__DEBUG.scene.traverse((o) => { if (/^(destructible-wall(stone|adobe)(-broken)?|props-bucket-field(Stone|Mud)|props-snow-drifts|destructible-sandbag(big|small|wall)(-broken)?|props-sandbag-beds)$/.test(o.name)) o.visible = false; })` }),
+  // the scenery lane (wave 48): the power lines' conductors on the wire material (wireMaterial.ts, one mesh); a tree
+  // without that mesh has nothing to hide (its conductors are in the baked bucket), so read the toggle on the new tree
+  'pylon-wires': Object.freeze({
+    on: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'props-pylon-wires') o.visible = true; })`,
+    off: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'props-pylon-wires') o.visible = false; })` }),
+  // the scenery lane (wave 52): the boulders (props.ts rock-variant-0..2, and since the wave-74 cascade trim each one's
+  // -far pool and its -shadow pool for the far cascades); off hides them, so the delta is their whole frame cost. Both
+  // sides run without the static shadow cache, so every cascade redraws every boulder every frame, as it does while the
+  // camera moves (an upper bound). ('on' restores a pool's own visibility: an empty LOD pool stays hidden.)
+  'boulders': Object.freeze({
+    on: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d(-far|-shadow)?$/.test(o.name)) o.visible = o.isInstancedMesh ? o.count > 0 : true; })`,
+    off: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d(-far|-shadow)?$/.test(o.name)) o.visible = false; })` }),
+  // the null control beside a toggle under a millisecond (docs/PERFORMANCE.md, "Light presets"): the same static
+  // shadow cache state as the boulders' toggle, and a switch nothing reads, so its on-off delta is the machine's own
+  // drift between blocks under other sessions' load
+  'null-control': Object.freeze({
+    on: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__COT_NULL_CONTROL = 1`,
+    off: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__COT_NULL_CONTROL = 0` }),
+  // the scenery lane (after wave 57): the telegraph poles (props.ts baked-pole-full and baked-pole-distance, the two
+  // instanced pools of the sourced pole and its distance model); off hides them, so the delta is their whole frame cost.
+  // Both sides run without the static shadow cache (an upper bound, as for the boulders)
+  'telegraph-poles': Object.freeze({
+    on: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^baked-pole-(full|distance)$/.test(o.name)) o.visible = o.isInstancedMesh ? o.count > 0 : true; })`,
+    off: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^baked-pole-(full|distance)$/.test(o.name)) o.visible = false; })` }),
   // the water / grass simulations' idle sleep (waterRipples.ts, groundPressure.ts): off steps them every frame; the
   // ripple field falls asleep only after 20 s of quiet, so an 'on' block that follows an 'off' one waits that long
   'sim-sleep': Object.freeze({ on: 'window.__WORLD_SIM_DEBUG = Object.assign(window.__WORLD_SIM_DEBUG || {}, { noSleep: false })',
     off: 'window.__WORLD_SIM_DEBUG = Object.assign(window.__WORLD_SIM_DEBUG || {}, { noSleep: true })', onSettleMs: 21000 }),
+  // the map-borders lane's additions past the edge (gauntlet wave 40): the farmsteads (hamlets, villages, churches, the
+  // regional kits' buildings), the hedgerows and the ring forest's rows (shelter belts, road avenues: the placements
+  // keyed below zero), drawn and cast; off hides them all, so the delta is their whole frame cost (an upper bound on
+  // what the lane added: the head's own farms and hedges go too). Both sides run without the static shadow cache, so
+  // every cascade redraws every caster every frame, as it does while the camera moves.
+  'border-additions': Object.freeze({ on: borderAdditionsToggle(true), off: borderAdditionsToggle(false) }),
 });
+
+/**
+ * The in-page switch for the border additions: shows or hides the farmsteads and the hedgerows, and draws each ring
+ * forest pool (impostors, shadow proxies, lobes) with or without its row trees. The first call moves each pool's row
+ * instances behind the rest (every instanced attribute alike, matched by the instance's position to the row
+ * placements); after that the switch only sets the pool's draw count.
+ */
+export function borderAdditionsToggle(show) {
+  return `(() => {
+    const show = ${show ? 'true' : 'false'};
+    window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true });
+    const out = { farms: 0, hedges: 0, rows: 0, pools: 0, hidden: 0, impostors: 0 };
+    window.__DEBUG.scene.traverse((o) => {
+      if (o.name === 'border-farmsteads') { o.visible = show; out.farms++; }
+      if (o.name === 'border-hedgerows') { o.visible = show; out.hedges++; }
+      const record = o.userData && o.userData.horizonForest;
+      if (!record || !record.placements) return;
+      const P = record.placements, rows = new Set();
+      for (let o2 = 0; o2 + 9 < P.length; o2 += 10) if (P[o2 + 8] < 0) rows.add(P[o2] + ',' + P[o2 + 2]);
+      out.rows += rows.size;
+      if (o.userData.horizonForestImpostors) out.impostors++;
+      for (const mesh of o.children) {
+        if (!mesh.isInstancedMesh) continue;
+        let split = mesh.userData.borderRowSplit;
+        if (!split) {
+          const full = mesh.count, m = mesh.instanceMatrix.array, keep = [], drop = [];
+          for (let j = 0; j < full; j++) (rows.has(m[j * 16 + 12] + ',' + m[j * 16 + 14]) ? drop : keep).push(j);
+          const order = keep.concat(drop);
+          const permute = (attr) => {
+            if (!attr) return;
+            const size = attr.itemSize, src = attr.array.slice();
+            for (let k = 0; k < order.length; k++) for (let c = 0; c < size; c++) attr.array[k * size + c] = src[order[k] * size + c];
+            attr.needsUpdate = true;
+          };
+          permute(mesh.instanceMatrix);
+          permute(mesh.instanceColor);
+          for (const name of Object.keys(mesh.geometry.attributes)) {
+            const attr = mesh.geometry.attributes[name];
+            if (attr.isInstancedBufferAttribute && attr.count === full) permute(attr);
+          }
+          split = mesh.userData.borderRowSplit = { full, kept: keep.length };
+        }
+        mesh.count = show ? split.full : split.kept;
+        out.pools++;
+        out.hidden += split.full - mesh.count;
+      }
+    });
+    return out;
+  })()`;
+}
 
 // ---------------------------------------------------------------------------------------------- arguments
 
@@ -408,6 +505,9 @@ export function foreignGpuCpu() {
 export async function acquireProbeLocks({ sessionMutex = null, log = () => {}, fifoTimeoutMs = 3 * 60 * 60 * 1000,
   mutexWaitMs = 60_000, mutexIdleWaitMs = 45 * 60_000, lock = createCaptureLock(), tryMutex = defaultTryMutex,
   releaseMutex = defaultReleaseMutex, pause = sleep, mutexBusy = defaultMutexBusy, holderQueued = defaultHolderQueued } = {}) {
+  // a lane hold (one ticket for several probe steps, tools/tmp-lane-hold.mjs) already holds the FIFO and the mutex for
+  // the steps it spawns with COT_LANE_HOLD=1: they take nothing and release nothing
+  if (process.env.COT_LANE_HOLD === '1') { log('the capture FIFO and the session mutex are the lane hold\'s'); return { round: 0, release: () => {}, refresh: () => {} }; }
   let ticket = null; // the first ticket: our place in the FIFO, kept across a turn given back
   for (let round = 1; ; round++) {
     await lock.acquire(fifoTimeoutMs, ticket ? { ticket } : {});
@@ -523,7 +623,8 @@ async function sampleView(page, options, { moving = false } = {}) {
   const blocks = [];
   let previous = 'on';
   for (const side of ['off', 'on', 'on', 'off']) {
-    await page.evaluate(t[side]);
+    // (what the switch reports it did, kept with the block: a toggle that finds nothing to switch shows it here)
+    const switched = await page.evaluate(t[side]);
     await sleep(side === 'on' && previous === 'off' && t.onSettleMs ? t.onSettleMs : 700);
     const state = await page.evaluate(() => {
       const w = window.__DEBUG.world; const g = w?._tallGrass?.pressure; const r = w?.group?.getObjectByName?.('terrain')?.userData?.waterRipples ?? null;
@@ -533,7 +634,7 @@ async function sampleView(page, options, { moving = false } = {}) {
     });
     // a toggle block's frames rotate through a few prefix checkpoints: the simulations' step, the shadow maps' step,
     // the scene's and the whole frame (the last checkpoint), each from the same block of one pose
-    blocks.push({ side, state, result: await sample(half, ['prefix'], TOGGLE_CHECKPOINTS) });
+    blocks.push({ side, state, switched: switched ?? null, result: await sample(half, ['prefix'], TOGGLE_CHECKPOINTS) });
     previous = side;
   }
   await page.evaluate(t.on);
@@ -623,10 +724,20 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }) {
       heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null };
   });
   const tasks = await page.evaluate(() => window.__FBP.tasks);
+  // the scenery lane (wave 74): the rocks' repartition passes (props.ts rockLodTrace, the last 64), so a moving view's
+  // long tasks can be lined up with them
+  const rockLod = await page.evaluate(() => {
+    const trace = window.__DEBUG.scene.getObjectByName('props')?.userData?.rockLodTrace;
+    if (!trace) return null;
+    const passes = [];
+    for (let k = Math.max(0, trace.n - 64); k < trace.n; k++) passes.push({ t: +trace.at[k % 64].toFixed(1), ms: +trace.ms[k % 64].toFixed(3) });
+    return { total: trace.n, passes };
+  });
   return { mapId: slot.mapId, readyMs, entryMs, textures, timer, emulator, frozen: { dynScale: frozen.dynScale, perfTrim: frozen.perfTrim },
     roster: { count: frozen.roster.length, player: frozen.roster.find((r) => r.isPlayer)?.specId ?? null,
       opponents, teams: frozen.roster.reduce((a, r) => { a[r.team] = (a[r.team] || 0) + 1; return a; }, {}) },
-    samples, cpuProfile, memory, longTasks: { total: tasks.length, over100: tasks.filter((t) => t.ms >= 100).length, max: tasks.reduce((m, t) => Math.max(m, t.ms), 0) },
+    samples, cpuProfile, memory, longTasks: { total: tasks.length, over100: tasks.filter((t) => t.ms >= 100).length, max: tasks.reduce((m, t) => Math.max(m, t.ms), 0),
+      list: tasks.slice(-300) }, rockLod,
     pageErrors: errors };
 }
 

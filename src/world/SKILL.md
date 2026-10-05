@@ -146,6 +146,14 @@ sheer fluted wall: `mesaTalusM`/`mesaCliffM`/`mesaFluteM`), `volcanicField` and 
 `peakShare`/`peakM`/`peakRadiusM`/`peakSharp`; their footprint in the grid's A channel, bared to rock by the strip —
 nunataks dark through the ice, the sharp ones drawn out into outcrop ridges). The flat maps' rings were lowered with
 them (the crest past 900 m 21-57 m: a flat far country behind a 100 m ring only moved the wall closer).
+A dry coast (Saltwind, gauntlet wave 32: "a nearly shadeless silhouette at almost the sky's value", "a uniform bright
+haze stripe" under it): `air` thins the bake's own air (a share of the law's σ; the same layer, chroma and target),
+`fillLaw` gives the fill below the ring's skyline from the eye (the band an elevated camera sees over the ring's crest)
+the lowland's own cover under the law's air over its reach instead of the lit ground pushed toward the fog colour,
+`rockFloor` keeps bare rock to the upper faces, and `scrub` lays the maquis over the vegetated ground and up the
+gullies (the height pass writes it in the grid's B channel) and fall-line streaks, so no contour runs level across a
+face; `ownRock` keeps the authored rock in place of the battlefield's rock mean (Saltwind's pale limestone over a dark
+brown battlefield rock); `forestSlope` is where a character's forest gives way on the steep faces (a monsoon hill country's climbs them).
 `horizon.ringStyle` gives the ring its own style (rows, profile, rock, relief character) while the border's landform
 keeps reading `style` (Eifel Reservoir: the alpine border its villages stand on, a rolling ring).
 `horizonPanorama.selftest.mjs` pins the shell, the atlas mapping and the bake contract; the bake's look is iterated
@@ -188,8 +196,10 @@ the tree's atlas share of opaque leaf, `SPRAY_ATLAS_COVERAGE`) with its own patt
 its fringe (world-anchored, the wood never opens, closing where a cascade's texel outgrows them).
 `treeBiomes.ts` (THREE-free) routes a map's species SLOTS to the regional FORMS of its real place on the desktop tiers
 (new profiles and tiles: beech, chestnut, holmOak, olive, canaryPine, aleppoPine, larch, the Arizona uplands' juniper and
-pinyon; summer birches in leaf; a map's
-shrub form, Las Cañadas' and Wadi Rum's broom; a place's foliage colour where the map palette names none, the hyper-arid
+pinyon; round 5's map-revival forms: longleafPine (tufts on a long clear bole), lebanonCedar (the `shelf` envelope: level
+plates, a flat top), sugi, redPine; summer birches in leaf; a map's shrub form, Las Cañadas' and Wadi Rum's broom, a
+cutover's longleafSeedling (a `fountain` profile: grass-stage needle fountains from the ground); a place's foliage
+colour where the map palette names none, the hyper-arid
 places' dust-dulled acacias; a form's own colour over the slot's palette, Dalmatia's silver olives and grey holm oaks)
 — records, seeds and the mobile look stay the slot's; a birch crown in leaf on a palette
 naming no card colour takes the broadleaf tint law, never the bare twigs' warm grey (`grownTintLaw`). Snow maps: a conifer's
@@ -264,9 +274,15 @@ works (a karst's dry stone walls, a bocage's hedge banks) on the ground lane's l
 1 m tall; a world without the hook builds none. Props builds them last (`placeFieldBoundaryWorks`, after the pools'
 refit, through `scenery.ts` `composeFieldWorks`), so they keep off every mode's objective discs where the match
 placement seats them on those final solids, as well as the aprons, yards, bridges, trenches, pads and roads; the
-selftest proves it on Saltwind and Saltmere. The dry-stone field walls draw their own rubble print (`fieldStone`,
-`fieldStoneSurface.ts`), never the house masonry a regional kit repaints; a map's `scenery.masonryTint` tints that
-print (Saltwind's limestone).
+selftest proves it on Saltwind and Saltmere. The dry-stone field walls draw their own print (`fieldStone`,
+`fieldStoneSurface.ts`: one stone's skin over its face band, the hearting's packing stones over its hearting band;
+every piece's window inside its band), never the house masonry a regional kit repaints; a map's `scenery.masonryTint`
+tints that print (Saltwind's limestone) and `liftFieldStoneMean` keeps a dark tone from blacking it out. Mud walls draw
+their own worn render (`fieldMud`, `fieldMudSurface.ts`), taken toward the map's earth on an arid map. A wall module is
+sheared to follow its slope (`wallSpanPlacement.ts` `fitWallSpan`). Every wall run's islands are dressed at their feet,
+its heads tumble out past them (and on snow maps lee and windward drifts and snow loads) by `maps/fieldWallDressing.ts`,
+through one owner (`createWallDressing`) on streams of their own; the sandbag nests are bedded in their spoil
+(`maps/sceneryKit.ts` `buildSandbagBedding`, the `props-sandbag-beds` mesh).
 A plan builder reads its battlefield through `structureBuildContext(buckets)`
 (`maps/exteriorDetailKit.ts`), never a positional argument; a part new to a
 builder's seeded stream is tagged `userData.uvJitter = 'none'`, a part that

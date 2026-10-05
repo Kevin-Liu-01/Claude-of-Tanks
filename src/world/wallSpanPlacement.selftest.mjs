@@ -4,7 +4,9 @@ import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { DoubleSide, Euler, Matrix4, Mesh, MeshBasicMaterial, Quaternion, Raycaster, Vector3 } from 'three';
 import { fitWallSpan, wallIslandEdges } from './wallSpanPlacement.ts';
-import { DESTRUCTIBLE_TYPES, WALL_SEG } from './maps/inhabitKit.ts';
+import { ADOBE_UV_PER_M, DESTRUCTIBLE_TYPES, WALL_SEG, buildAdobePilaster, buildDryStoneWallHead } from './maps/inhabitKit.ts';
+import { createWallDressing } from './maps/fieldWallDressing.ts';
+import { sourcedStoneIsBrick } from './sourcedTextures.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
@@ -132,6 +134,29 @@ for (const seed of [1, 177, 991]) {
   geometry.dispose();
 }
 assert.ok(legacyMisses > 0, 'regression test reproduces the old reversed-pitch seam holes');
+// the scenery lane (wave 34, "walls on slopes step like battlements — courses must follow slope"): on a uniform grade a
+// fitted module is sheared to the slope: its top stands the same height over the ground at both ends (the terraced fit
+// stood it level at its high end, half a metre over the ground at the low end of a 0.3 grade), and it is not stretched
+{
+  const geometry = DESTRUCTIBLE_TYPES.wallstone.build(seeded(7));
+  geometry.computeBoundingBox();
+  const nominal = geometry.boundingBox.max.y - geometry.boundingBox.min.y;
+  for (const grade of [0.12, -0.3, 0.3]) {
+    const field = { getHeightAt: (x, z) => z * grade + 3 };
+    const span = { x0: 0, z0: 0, x1: 0, z1: WALL_SEG };
+    const { record, mesh } = wall(geometry, field, span, 1);
+    const attr = geometry.attributes.position, top = { lo: -Infinity, hi: -Infinity };
+    for (let i = 0; i < attr.count; i++) {
+      point.fromBufferAttribute(attr, i).applyMatrix4(mesh.matrix);
+      const over = point.y - field.getHeightAt(point.x, point.z);
+      if (point.z < 0.6) top.lo = Math.max(top.lo, over); else if (point.z > WALL_SEG - 0.6) top.hi = Math.max(top.hi, over);
+    }
+    assert.ok(Math.abs(top.hi - top.lo) < 0.12, `grade ${grade}: the module's top follows the slope (${top.lo.toFixed(2)} m over the ground at one end, ${top.hi.toFixed(2)} at the other)`);
+    assert.ok(mesh.matrix.elements[5] < 1.06, `grade ${grade}: the module is sheared, not stretched (y scale ${mesh.matrix.elements[5].toFixed(3)})`);
+    assert.ok(record.h < nominal + Math.abs(grade) * WALL_SEG * 1.06 + 0.02, `grade ${grade}: its cover box spans the sheared module`);
+  }
+  geometry.dispose();
+}
 for (const seed of [1337, 2049, 7719]) {
   const config = getMapConfig('reservoir'), field = createHeightField(seed, config);
   const geometry = DESTRUCTIBLE_TYPES.wallstone.build(seeded(seed));
@@ -250,7 +275,7 @@ function checkSourceLifecycle(pool) {
 function sourceRunFixture(code, runs, field, seed, style = 'fieldstone') {
   const spans = new Map(), records = [], matrices = [];
   const retainedSlots = [];
-  const buckets = { stone: [], fieldStone: [], plaster: [] };
+  const buckets = { stone: [], fieldStone: [], fieldMud: [], plaster: [] };
   let draws = 0;
   const next = seeded(seed), rng = () => { draws++; return next(); };
   const add = (kind, x, y, z, yaw, sc, tiltX, tiltZ) => {
@@ -261,10 +286,15 @@ function sourceRunFixture(code, runs, field, seed, style = 'fieldstone') {
       new Quaternion().setFromEuler(new Euler(tiltX, yaw, tiltZ, 'YXZ')), new Vector3(sc, sc, sc)));
     records.push(record); return record;
   };
-  const run = new Function('P', 'heightField', 'WALL_SEG', 'rng', 'buckets', 'box', 'jitterUV', 'addDestructible', 'noVeg', 'wallSpans', 'wallIslandEdges', 'legacyWallEdges', 'fieldWallBucket',
+  // (the run's ends are wall heads — the scenery lane's builders — keyed by the map's stone print; a dry-stone run's
+  // posts and breach draw the field walls' print)
+  const run = new Function('P', 'heightField', 'WALL_SEG', 'rng', 'buckets', 'box', 'jitterUV', 'addDestructible', 'noVeg', 'wallSpans', 'wallIslandEdges', 'legacyWallEdges',
+    'mapId', 'sourcedStoneIsBrick', 'buildDryStoneWallHead', 'buildAdobePilaster', 'fieldWallBucket', 'wallDressing',
     `const _rubbleOff = new Float32Array(24); ${rubbleSource}; ${code}; return addWallRun;`)(
     { wallStyle: style }, field, WALL_SEG, rng, buckets, box, jitterUV, add, field._noVeg, spans, wallIslandEdges, legacyWallEdges,
-    'fieldStone'); // the scenery lane: a dry-stone run's posts and breach draw the field walls' print
+    field._layout?.id ?? 'verdant', sourcedStoneIsBrick, buildDryStoneWallHead, buildAdobePilaster, 'fieldStone',
+    // the walls' feet and weather (fieldWallDressing.ts): their own streams, so the run's draws stay the props stream's
+    createWallDressing({ ground: field, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: ADOBE_UV_PER_M }));
   runs.forEach((args, runIndex) => {
     const [x0, z0, x1, z1] = args, start = records.length;
     const length = Math.hypot(x1 - x0, z1 - z0);

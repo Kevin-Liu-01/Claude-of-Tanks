@@ -16,13 +16,17 @@
 //      objective disc (every mode's, as the match placement places them on this world, and the authored targets), a
 //      spawn pad, a road or a bridge with its approaches, and none stands taller than 1.05 m;
 //   5. props.ts and vegetation.ts carry the pass, the late field works, the field walls' own rubble print (pool, posts
-//      and masonry tint on it, never on the house masonry) and the keep-out (source pins).
+//      and masonry tint on it, never on the house masonry), the mud walls' own worn render, the walls' feet, drifts
+//      and snow loads, the turned modules, and the keep-out (source pins).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildBedrock, buildRockFormation } from './sceneryRocks.ts';
-import { SCENERY_DESTRUCTIBLE_TYPES, buildConductor, buildPylon, buildSandbagHeap, buildSandbagStack } from './maps/sceneryKit.ts';
+import {
+  SANDBAG_WEAVE_UV, SCENERY_DESTRUCTIBLE_TYPES, buildConductor, buildPylon, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap,
+  sandbagBag,
+} from './maps/sceneryKit.ts';
 import {
   BEDROCK_TREE_CLEAR, LANDMARK_RADIUS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, pylonLegHalf, rockReach,
   sceneryClearances, withGroundCoverHoles,
@@ -147,7 +151,9 @@ for (const kind of Object.keys(STONE_LANDMARKS)) assert.ok(isStoneLandmark(kind)
     assert.ok(Math.abs(b.max.y - top) < 0.06, `${kind}: stands the sourced height (${b.max.y.toFixed(2)} vs ${top})`);
     for (const name of ['position', 'normal', 'uv', 'color']) assert.ok(g.attributes[name], `${kind}: carries ${name}`);
     assert.deepEqual(Array.from(again.attributes.position.array), Array.from(g.attributes.position.array), `${kind}: deterministic`);
-    assert.ok(g.attributes.position.count / 3 < 5000, `${kind}: under 5000 triangles`);
+    // (wave 52: closed pillow bags, headers every third course — 6036 / 3340 / 3816 at the redo; the batch-4 stacks were
+    // 4064 / 2300 / 2918)
+    assert.ok(g.attributes.position.count / 3 < 6500, `${kind}: under 6500 triangles (${g.attributes.position.count / 3})`);
     const col = g.attributes.color.array, tones = new Set();
     for (let i = 0; i < col.length; i += 3 * 44 * 3) tones.add(`${col[i].toFixed(2)},${col[i + 1].toFixed(2)}`);
     assert.ok(tones.size > 8, `${kind}: its bags are not one tone (${tones.size})`);
@@ -156,6 +162,40 @@ for (const kind of Object.keys(STONE_LANDMARKS)) assert.ok(isStoneLandmark(kind)
     const certification = certifyStructureCollisionProfile(buckets, profile);
     assert.ok(certification.minimumScore > 90, `${kind}: small-item collision certification above 90 (${certification.minimumScore.toFixed(1)})`);
     assert.ok(profile.contact.parts.length <= 64, `${kind}: its contact stays bounded (${profile.contact.parts.length} parts)`);
+    // no daylight through it (wave 52): every line of sight square through the stack, below its uneven top course and
+    // inside its ends, meets a bag or the stack's core
+    {
+      const p = g.attributes.position, across = kind === 'sandbagwall' ? 0 : 2, along = 2 - across;
+      const tris = p.count / 3, o = new THREE.Vector3(), d = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
+      const v0 = new THREE.Vector3(), v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), pv = new THREE.Vector3(), tv = new THREE.Vector3(), qv = new THREE.Vector3();
+      const hits = (ray) => {
+        for (let t = 0; t < tris; t++) {
+          v0.fromBufferAttribute(p, t * 3); v1.fromBufferAttribute(p, t * 3 + 1); v2.fromBufferAttribute(p, t * 3 + 2);
+          e1.subVectors(v1, v0); e2.subVectors(v2, v0); pv.crossVectors(ray.d, e2);
+          const det = e1.dot(pv);
+          if (Math.abs(det) < 1e-12) continue;
+          tv.subVectors(ray.o, v0);
+          const u = tv.dot(pv) / det;
+          if (u < 0 || u > 1) continue;
+          qv.crossVectors(tv, e1);
+          const v = ray.d.dot(qv) / det;
+          if (v < 0 || u + v > 1) continue;
+          if (e2.dot(qv) / det > 0) return true;
+        }
+        return false;
+      };
+      const extent = { sandbagbig: 1.787, sandbagsmall: 1.304, sandbagwall: 1.477 }[kind];
+      let rays = 0, through = 0;
+      for (let a = -extent + 0.1; a <= extent - 0.1; a += 0.17) {
+        for (let y = 0.04; y <= top - 0.3; y += 0.07) {
+          o.set(0, y, 0); o.setComponent(along, a); o.setComponent(across, -3);
+          d.set(0, 0, 0); d.setComponent(across, 1);
+          rays++;
+          if (!hits({ o, d })) through++;
+        }
+      }
+      assert.equal(through, 0, `${kind}: no daylight through the stack (${through} of ${rays} sight lines pass)`);
+    }
     let spent = 0;
     const heap = buildSandbagHeap(kind, () => { spent++; });
     assert.equal(spent, 1, `${kind}: the remnant spends the old remnant's draws first`);
@@ -163,10 +203,93 @@ for (const kind of Object.keys(STONE_LANDMARKS)) assert.ok(isStoneLandmark(kind)
     for (const geometry of [g, again, heap, ...buckets.baked]) geometry.dispose();
   }
 }
+// one bag (wave 52, "pillow bags", "round log ends"): closed, its section flat-topped and wider than thick, both ends
+// drawn in to a squashed lens (never a log end), its weave wrapped round it without stretch, a function of its stream
+{
+  const rng = (seed) => { let a = seed | 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; };
+  for (const seam of [1, -1]) {
+    const bag = sandbagBag(0.56, 0.18, 0.4, rng(7), { fill: 1, seam }), again = sandbagBag(0.56, 0.18, 0.4, rng(7), { fill: 1, seam });
+    assert.deepEqual(Array.from(again.attributes.position.array), Array.from(bag.attributes.position.array), 'a bag is a function of its stream');
+    const p = bag.attributes.position, uv = bag.attributes.uv, index = bag.index.array;
+    // closed: every edge (welded by position) between exactly two triangles
+    const key = (i) => `${Math.round(p.getX(i) * 1e5)},${Math.round(p.getY(i) * 1e5)},${Math.round(p.getZ(i) * 1e5)}`; // (a signed zero welds)
+    const edges = new Map();
+    for (let t = 0; t < index.length; t += 3) for (const [i, j] of [[0, 1], [1, 2], [2, 0]]) {
+      const a = key(index[t + i]), b = key(index[t + j]), k = a < b ? a + '|' + b : b + '|' + a;
+      edges.set(k, (edges.get(k) ?? 0) + 1);
+    }
+    assert.ok([...edges.values()].every((c) => c === 2), 'a loose bag is closed');
+    assert.equal(index.length / 3, 80, 'a closed bag is 80 triangles');
+    // the section at its middle and at its ends: thick at the middle, a squashed lens at each end
+    const span = (pred) => { let y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity; for (let i = 0; i < p.count; i++) if (pred(p.getX(i) * seam)) { y0 = Math.min(y0, p.getY(i)); y1 = Math.max(y1, p.getY(i)); z0 = Math.min(z0, p.getZ(i)); z1 = Math.max(z1, p.getZ(i)); } return [y1 - y0, z1 - z0]; };
+    const [midT, midW] = span((x) => Math.abs(x) < 0.01);
+    const [seamT, seamW] = span((x) => x > 0.27);
+    const [mouthT, mouthW] = span((x) => x < -0.27);
+    assert.ok(midW > midT * 1.8, `flat: wider than thick (${midW.toFixed(2)} x ${midT.toFixed(2)})`);
+    assert.ok(seamT < midT * 0.5 && seamW > midW * 0.9, `the seam end a squashed lens across the bag (${seamT.toFixed(3)} x ${seamW.toFixed(3)})`);
+    assert.ok(mouthT < midT * 0.65 && mouthW > midW * 0.8, `the folded mouth drawn in, never a log end (${mouthT.toFixed(3)} x ${mouthW.toFixed(3)})`);
+    // the weave without stretch: uv area against surface area near the weave's own scale on every body triangle
+    let lo = Infinity, hi = 0;
+    for (let t = 0; t < index.length; t += 3) {
+      const [a, b, c] = [index[t], index[t + 1], index[t + 2]];
+      const ax = p.getX(b) - p.getX(a), ay = p.getY(b) - p.getY(a), az = p.getZ(b) - p.getZ(a);
+      const bx = p.getX(c) - p.getX(a), by = p.getY(c) - p.getY(a), bz = p.getZ(c) - p.getZ(a);
+      const area = Math.hypot(ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx) / 2;
+      const uArea = Math.abs((uv.getX(b) - uv.getX(a)) * (uv.getY(c) - uv.getY(a)) - (uv.getX(c) - uv.getX(a)) * (uv.getY(b) - uv.getY(a))) / 2;
+      if (Math.abs(p.getX(a)) > 0.18 || Math.abs(p.getX(b)) > 0.18 || Math.abs(p.getX(c)) > 0.18) continue; // the body
+      const ratio = uArea / (area * SANDBAG_WEAVE_UV * SANDBAG_WEAVE_UV);
+      lo = Math.min(lo, ratio); hi = Math.max(hi, ratio);
+    }
+    assert.ok(lo > 0.6 && hi < 1.5, `the weave wraps the body without stretch (${lo.toFixed(2)}..${hi.toFixed(2)})`);
+    bag.dispose(); again.dispose();
+  }
+  // a laid bag draws only what its stack shows
+  const laid = sandbagBag(0.56, 0.18, 0.4, rng(9), { seam: 1, laid: { from: -45, to: 135, caps: [false, false], whole: [false, false] } });
+  assert.equal(laid.index.count / 3, 32, 'a stretcher inside a course: its outer side and its top');
+  // the hessian: 32 threads a tile (2.5 mm at the weave uv), deterministic, near-white with the weave's relief
+  const cloth = paintBurlap(128), again = paintBurlap(128);
+  assert.deepEqual(Array.from(again.lum), Array.from(cloth.lum), 'the hessian is deterministic');
+  assert.ok(Math.abs(1 / SANDBAG_WEAVE_UV / 32 - 0.0025) < 1e-6, 'a jute thread every 2.5 mm');
+  let mean = 0, sq = 0, hMin = 1, hMax = 0;
+  for (let i = 0; i < cloth.lum.length; i++) { mean += cloth.lum[i]; sq += cloth.lum[i] ** 2; hMin = Math.min(hMin, cloth.height[i]); hMax = Math.max(hMax, cloth.height[i]); }
+  mean /= cloth.lum.length;
+  const sd = Math.sqrt(sq / cloth.lum.length - mean * mean);
+  assert.ok(mean > 0.78 && mean < 0.95 && sd > 0.04, `near-white with its weave (mean ${mean.toFixed(2)}, sd ${sd.toFixed(3)})`);
+  assert.ok(hMin >= 0 && hMax <= 1.2 && hMax > 0.7, 'the threads stand proud of their gaps');
+  // over and under: along a weft row the warp is on top at every other crossing
+  const at = (x, y) => cloth.height[y * 128 + x];
+  assert.ok(at(2, 2) > at(2, 6) - 1 && at(6, 2) !== at(2, 2), 'crossings alternate');
+}
+// the nests' bedding (wave 34, "a stacked prop on a bare mound — no berm, trench or spilled sand"): the spoil banked on
+// the face toward the threat, two fifths of the stack's height, lower on its inner face; its toe on the ground; a spill
+// heaped at an end and the emptied bag by it; in the soil it was given; deterministic, and a few hundred triangles
+{
+  const flatGround = { getHeightAt: () => 0 }, soil = [0.12, 0.08, 0.05];
+  for (const [kind, toward, axis] of [['sandbagbig', [0, 1], 2], ['sandbagsmall', [0, -1], 2], ['sandbagwall', [1, 0], 0]]) {
+    const g = buildSandbagBedding(kind, flatGround, 0, 0, 0, 1.2, 0x5bed, soil, false, toward);
+    const again = buildSandbagBedding(kind, flatGround, 0, 0, 0, 1.2, 0x5bed, soil, false, toward);
+    assert.deepEqual(Array.from(again.attributes.position.array), Array.from(g.attributes.position.array), `${kind}: its bedding is deterministic`);
+    for (const name of ['position', 'normal', 'color']) assert.ok(g.attributes[name], `${kind}: its bedding carries ${name}`);
+    const p = g.attributes.position, sign = toward[axis === 2 ? 1 : 0];
+    let front = 0, back = 0, lowest = Infinity;
+    for (let i = 0; i < p.count; i++) {
+      const side = (axis === 2 ? p.getZ(i) : p.getX(i)) * sign, y = p.getY(i);
+      if (side > 0.3) front = Math.max(front, y); else if (side < -0.3) back = Math.max(back, y);
+      lowest = Math.min(lowest, y);
+    }
+    const H = { sandbagbig: 1.23, sandbagsmall: 0.95, sandbagwall: 0.9 }[kind] * 1.2;
+    assert.ok(front > H * 0.3 && front < H * 0.6, `${kind}: the spoil stands a third to three fifths up its outer face (${(front / H).toFixed(2)})`);
+    assert.ok(back < front * 0.75, `${kind}: its inner face's bank is lower (${back.toFixed(2)} vs ${front.toFixed(2)})`);
+    assert.ok(lowest < 0 && lowest > -0.05, `${kind}: its toes sink into the ground`);
+    assert.ok(p.count / 3 < 600, `${kind}: its bedding stays a few hundred triangles (${p.count / 3})`);
+    g.dispose(); again.dispose();
+  }
+}
 {
   const pylon = buildPylon(mulberry32(5), 34);
   assert.equal(pylon.legHalf, pylonLegHalf(34), 'the pylon footprint the vegetation reserves is the tower\'s');
-  assert.ok(pylon.geometry.attributes.position.count / 3 < 4000, 'a pylon stays under 4000 triangles');
+  // (the lattice's secondary members and the disc insulator strings, wave 16, cost about a thousand more)
+  assert.ok(pylon.geometry.attributes.position.count / 3 < 4600, `a pylon stays under 4600 triangles (${pylon.geometry.attributes.position.count / 3})`);
   assert.ok(pylon.arms.length >= 5, 'the pylon carries its phases and its earth wire');
   const wire = buildConductor(0, 20, 0, 300, 22, 0, 9, 18, 0.045);
   const ys = wire.attributes.position.array.filter((_, i) => i % 3 === 1);
@@ -320,8 +443,11 @@ function compose(scenery, solids = [], mobile = false) {
   assert.equal(built.receipt.colliders, 2 + 8);
   assert.equal(built.obstacles.length, 1 + 10); assert.equal(built.colliders.length, 10);
   assert.ok(built.obstacles.slice(1).every((r) => !r.crushable && r.shape2), 'static shaped masses');
-  assert.ok(built.baked.length > 3, 'the towers and their conductors fold into the baked bucket');
+  assert.ok(built.baked.length >= 3, 'the towers fold into the baked bucket');
   assert.ok(built.baked.slice(1).every((g) => !g.attributes.uv && g.attributes.color), 'baked pieces conformed to the bucket');
+  // (wave 48: the conductors are their own ribbons, for the wire material — never a sub-pixel tube in the baked bucket)
+  assert.ok(built.wires.length >= 5 && built.wires.every((g) => g.attributes.aWireTangent && g.attributes.aWireRadius),
+    `the conductors hand over as wire ribbons (${built.wires.length})`);
   // deterministic and independent of any outer stream: the same config builds the same bytes
   const again = compose({ rocks: [{ form: 'tor', geology: 'granite', x: -100, z: 0, radius: 6, height: 5, name: 'free' }] });
   assert.deepEqual(Array.from(again.rockPieces[0].attributes.position.array), Array.from(built.rockPieces[0].attributes.position.array),
@@ -346,7 +472,7 @@ function compose(scenery, solids = [], mobile = false) {
     landmarks: [{ kind: 'calvary', x: 50, z: 0 }, { kind: 'windpump', x: -50, z: 0, scale: 1.2 }],
     powerLines: [{ towers: [[100, 100], [300, 100]] }],
   });
-  assert.equal(clear.length, 2 + 2 + 2);
+  assert.equal(clear.length, 2 + 2 + 2, 'two rocks, two landmarks, two towers (the spans keep their trees: the towers stand over them)');
   const hill = sceneryClearances({ bedrock: [{ geology: 'sandstone', x: 5, z: 6, radius: 40 }] });
   assert.deepEqual(hill.map((c) => [c.x, c.z, c.halfWidth]), [[5, 6, 40 * BEDROCK_TREE_CLEAR]], 'a bedrock hill keeps the trees off its flanks');
   assert.equal(clear[0].halfWidth, rockReach({ form: 'tor', radius: 6 }) + 1.5);
@@ -556,7 +682,11 @@ for (const mapId of maps.MAP_IDS) {
       }
     }
   }
-  console.log(`scenery.selftest: ${mapId} — ${receipt.placed} features, ${receipt.rockTriangles} rock + ${receipt.bakedTriangles} baked triangles, ${receipt.colliders} colliders${worksLine}`);
+  // a pylon line stands its towers over the crowns under its spans (wave 16): its conductors clear them in their sag
+  const pylons = receipt.features.filter((f) => f.family === 'powerLine' && f.status === 'placed');
+  for (const p of pylons) assert.ok(p.heightM >= p.authoredHeightM && p.heightM <= 70, `${mapId}: a pylon stands ${p.heightM} m (authored ${p.authoredHeightM} m)`);
+  const pylonLine = pylons.length ? `; pylons ${pylons[0].authoredHeightM} -> ${pylons[0].heightM.toFixed(1)} m` : '';
+  console.log(`scenery.selftest: ${mapId} — ${receipt.placed} features, ${receipt.rockTriangles} rock + ${receipt.bakedTriangles} baked triangles, ${receipt.colliders} colliders${worksLine}${pylonLine}`);
 }
 
 // ---------------------------------------------------------------------------------------------- 5. the wiring
@@ -573,9 +703,28 @@ assert.match(propsSource, /mats\.fieldStone\.color\.setRGB\(masonryTint\[0\], ma
 assert.doesNotMatch(propsSource, /mats\.stone\.color\.setRGB\(masonryTint/, 'the masonry tint never multiplies the house masonry (a regional kit\'s print under it burns out)');
 // the dry-stone walls draw the field print, never the house masonry (a regional kit's brick, block or dressed stone)
 assert.match(propsSource, /const fieldWallBucket = P\.wallStyle === 'adobe' \|\| sourcedStoneIsBrick\(mapId\) \? 'stone' : 'fieldStone';/, 'the field print is the dry-stone walls\'');
-assert.match(propsSource, /wallstone: \{ \.\.\.DESTRUCTIBLE_TYPES\.wallstone, mat: fieldWallBucket \}/, 'the wall pool draws the field print');
-assert.match(propsSource, /const wallB = style === 'adobe' \? 'plaster' : fieldWallBucket;/, 'the run posts, breach stubs and tumbled blocks draw the field print');
+assert.match(propsSource, /wallstone: \{ \.\.\.DESTRUCTIBLE_TYPES\.wallstone, mat: fieldWallBucket[,} ]/, 'the wall pool draws the field print');
+assert.match(propsSource, /const wallB = style === 'adobe' \? wallDressing\.adobeBucket : fieldWallBucket;/, 'the run posts, breach stubs and tumbled blocks draw the field print (or the mud print)');
 assert.match(propsSource, /fieldStone: new THREE\.MeshStandardMaterial\(\{ map: fieldStone\.albedo,/, 'the field print has its own material');
+// wave 20: the mud walls' own worn render; the walls' feet, drifts and snow loads; the modules turned round by place
+assert.match(propsSource, /walladobe: \{ \.\.\.DESTRUCTIBLE_TYPES\.walladobe, mat: adobeWallBucket \}/, 'the mud wall pool draws the mud print');
+assert.match(propsSource, /fieldMud: new THREE\.MeshStandardMaterial\(\{ map: fieldMud\.albedo,/, 'the mud print has its own material');
+assert.match(propsSource, /\.\.\.\(snowCap \? \{ build: snowLoadedWallstone \} : \{\}\)/, 'a snow map\'s module carries its snow load');
+assert.match(propsSource, /const wallDressing = createWallDressing\(\{/, 'the wall runs dress their islands through one owner');
+assert.match(propsSource, /mesh\.name = 'props-snow-drifts';/, 'the snow drifts draw as one mesh of their own (the frame-budget probe\'s field-walls toggle hides them)');
+assert.match(propsSource, /if \(prevBuilt\) \{ endPost\(x1, z1, 1\); dressIsland\(islandFrom, along\); \}/, 'a run\'s last island is dressed');
+assert.match(propsSource, /const fallen = wallDressing\.tumble\(style === 'adobe', px, pz, tx \* out, tz \* out, thick \* 0\.5\);/, 'a run\'s ends tumble out past its heads (wave 34)');
+assert.match(propsSource, /if \(wallB === 'fieldStone'\) wallDressing\.stoneUv\(head, rng\); else jitterUV\(head, rng\);/, 'a head\'s print window stays in the field print\'s face band');
+assert.match(propsSource, /mesh\.name = 'props-sandbag-beds';/, 'the nests\' bedding draws as one mesh of its own');
+assert.equal((propsSource.match(/cls: 'break', mat: 'burlap', contact: 'ob'/g) ?? []).length, 3, 'the three stacks draw the hessian (wave 52)');
+assert.match(propsSource, /materialKind === 'burlap' \? 'structureCanvas'/, 'the hessian shares the canvas program');
+assert.match(propsSource, /materialKind === 'fieldStone' \? fieldStoneHook : materialKind === 'pole' \? poleHook : grimeHook/,
+  'the field print has its own hook (wave 48), and the telegraph poles theirs (after wave 57)');
+assert.match(propsSource, /vMapUv \+= cotStoneShift;/, 'each wall module shifts its print window along the wall (wave 48: "the coursing visibly repeats")');
+assert.match(propsSource, /bedSandbagNest\(kind, sx, sz, yaw \+ sideIndex \* 0\.12, 1\.18, \[fwdX, fwdZ\]\);/, 'a redoubt\'s stacks are bedded, their spoil thrown forward');
+assert.match(propsSource, /bedSandbagNest\(kind, bx, bz, moduleYaw, moduleScale, \[fx, fz\]\);/, 'a breastwork\'s modules are bedded toward the threat');
+assert.match(propsSource, /bedSandbagNest\(kind, sx, sz, yaw, scale\);/, 'a road nest is bedded');
+assert.match(propsSource, /cx \+ tz \* nudge, cy - 0\.13, cz - tx \* nudge, yaw \+ turn,/, 'a run turns its modules round by place, neighbours apart');
 const vegetationSource = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
 assert.match(vegetationSource, /placedStructureClearances\([^;]*\(cfg as SceneryMapConfig \| null\)\?\.scenery\)/s, 'the trees keep off the scenery');
 const clearanceSource = readFileSync(new URL('./vegetationClearance.ts', import.meta.url), 'utf8');

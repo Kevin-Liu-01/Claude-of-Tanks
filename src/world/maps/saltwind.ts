@@ -167,10 +167,11 @@ export default {
   scenery: {
     // the karst's small fields are walled in dry stone: the ground lane's land use draws their footing (landUse.ts, boundary
     // 3) and the walls stand on the same lines (fieldWorks.ts; decor, no collision)
-    fieldWorks: { walls: true, wallTone: [0.11, 0.07, 0.6] },
-    // the masonry is the same pale limestone as the outcrops (the maps lane's boulders, lightness 0.52-0.73): the stone
-    // print (mean sRGB lightness 0.36) lifted to lightness 0.6 at the limestone's hue
-    masonryTint: [2.74, 3.01, 3.2],
+    fieldWorks: { walls: true, wallTone: [0.11, 0.07, 0.52] },
+    // the masonry is the same limestone as the outcrops (the maps lane's boulders, lightness 0.52-0.73), weathered
+    // grey: the stone print (mean sRGB lightness 0.36) lifted to lightness 0.52 at the limestone's hue (0.6 read as
+    // whitewash in the targeted pairs)
+    masonryTint: [2.08, 2.23, 2.25],
     rocks: [
       { form: 'pavement', geology: 'limestone', x: -350, z: -262, radius: 15, height: 1.6, yawDeg: 30, name: 'the south karst pavement' },
       { form: 'pavement', geology: 'limestone', x: -350, z: 282, radius: 15, height: 1.6, yawDeg: -30, name: 'the north karst pavement' },
@@ -192,12 +193,14 @@ export default {
       { kind: 'cairn', x: -330, z: 190, scale: 4.2, height: 2.6, name: 'the north gomila' },
     ],
   },
-  // the mountains lane (2026-10-03, gauntlet wave 24): held at the PR head's far country while the mainland's karst ridge
-  // is rebuilt as pale limestone over scrub under the shared haze law — its establishing view read "a second, taller range
-  // of sharp peaks floats above a flat white haze stripe"
+  // the mountains lane (2026-10-03, gauntlet waves 4, 15, 24 and 32): the mainland's karst ridge across the western
+  // channel (the view from the Dalmatian islands, Biokovo / Mosor behind the coast) in clean Adriatic air — dark maquis on
+  // the lower slopes climbing the gullies, pale bare limestone on the upper faces, the channel 4.6 km wide and darker
+  // toward the far shore; the band an elevated view sees under the ridge is the lowland's own scrub, never paler than it
   horizon: {
     baseHex: 0x7f8977, amp: 0.90, style: 'rolling', treeline: 0.42, forestHex: 0x506044, rockHex: 0xa4a391, haze: 0.90, grain: 0.46,
-    panorama: false,
+    panorama: { regional: 'karstRidge', shore: 1.2, shoreM: 4600, shoreRange: 0.9, treeline: 0.75, rockSlope: 0.3, forestSlope: 0.6,
+      rockFloor: 0.4, gullyM: 110, strata: 0.2, scrub: 0.85, air: 0.25, fillLaw: 1, ownRock: 1 },
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'sea-streets', coverage: 0.30, windDirDeg: 200, farBand: 0.55, fogBank: 0.35, fogBankTopM: 100 },

@@ -1,6 +1,7 @@
 import { assertTerrainFetchExpressionCensus } from './terrainMaskShaderTestOracle.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { landUseTierOf } from './landUse.ts';
 
 const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 // ground lane (2026-10-03): the land use's field layout is declared in landUse.ts and spliced into the splat fragment
@@ -150,10 +151,21 @@ function checkSourceContract(text) {
     'uRingReliefWall',
     // ground lane (2026-10-03): the land use's field system (landUse.ts) — five packed vectors, no sampler
     'uLandA', 'uLandB', 'uLandC', 'uLandD', 'uLandE',
+    // ground lane (2026-10-03, the land-use bake): the bake's address in the ground mask's stack and the stack's own (two
+    // vectors, no sampler — the bake rides in uMask's unit)
+    'uLandBake', 'uMaskStack',
+    // ground lane (2026-10-04, the tier gate): the land use's tier from the live preset (landUseTierOf; scalar, no sampler)
+    'uLandTier',
+    // ground lane (2026-10-04): the field grid's heading as (cos, sin), once on the CPU (vec2, no sampler)
+    'uLandRot',
     // ground lane (2026-10-03): the two-formation bedrock's boundary (vec4, no sampler)
     'uFormation',
     // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving — natural steep faces take the D layer (scalar, no sampler)
     'uPavedRock',
+    // maps lane B (2026-10-03): a sor's salt crust — on, polygon cell, damp margin (vec4, no sampler)
+    'uSaltCrust',
+    // maps lane B (2026-10-03): airfield concrete — slab, joint, stains, tyres (vec4, no sampler)
+    'uPaveSlab',
   ].sort();
   assert.deepEqual(uniforms, expected, 'all declared uniforms are owned; the sampler budget is unchanged');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
@@ -162,7 +174,8 @@ function checkSourceContract(text) {
     grass.albedo, grass.normal, dirt.albedo, dirt.normal,
     rock.albedo, rock.normal, wet.albedo, wet.normal, mask, noiseTex,
     outlandWaterMask, ...(groundMask === mask ? [] : [groundMask]),
-  ]`)), 'the same ten shader-only texture owners keep their positions ([0] grass, [4] rock feed the horizon ground tone); the outland bay mask is the eleventh');
+    ...(maskStack.texture === groundMask ? [] : [maskStack.texture]),
+  ]`)), 'the same ten shader-only texture owners keep their positions ([0] grass, [4] rock feed the horizon ground tone); the outland bay mask is the eleventh, the land-use stack the last');
   // round 42 (2026-09-23): the program cache key moved with the sky-light fragment (was v31, relief pass 2 of 2026-09-12)
   // round 49 (2026-09-23): v38 — jointed marker-bed strata and the per-map ring rock band
   // round 55 (2026-09-24): v39 — the bedded sandstone maps' analytic wall crag replaces the tile's coarse wall tap
@@ -179,6 +192,61 @@ function checkSourceContract(text) {
   assert.ok(text.includes('vec4 ringRel = textureLod(uNrmM, vec2(atan(wp.z, wp.x)'), 'the ring atlas is read through the M normal unit');
   assert.ok(text.includes('shader.uniforms.uNrmM = ringReliefUniforms.uNrmM;'), 'the M normal uniform object is the one the ring swaps');
 }
+// ground lane (2026-10-04, the GPU cut and the coordinator's tier gate): the land-use block's reads go out by tier — Low
+// reads the bake alone, Medium adds the field's wet and dry and the crop's own grain (the karst's stones, the brownfield's
+// bare ground), High everything — Low draws none of the boundary features, rows or tramlines, and the field interior's
+// skip of the margin's reads is exact by the block's own constants
+function checkLandUseCut(text) {
+  const start = text.indexOf('    if (landW > 0.003) {');
+  assert.ok(start > 0, 'the land-use block');
+  let depth = 0, end = -1;
+  for (let i = text.indexOf('{', start); i < text.length; i++) {
+    if (text[i] === '{') depth++;
+    else if (text[i] === '}' && --depth === 0) { end = i + 1; break; }
+  }
+  const block = text.slice(start, end).replace(/\/\/[^\n]*/g, '');
+  const reads = [...block.matchAll(/\b(nzq|nz|groundSamp|splatSamp|texture2D|textureLod|texelFetch)\(/g)].map((m) => m[1]).sort();
+  assert.deepEqual(reads, ['groundSamp', ...Array(8).fill('nzq')], 'the block reads eight noise fields and the soil (the bake is lu_field\'s)');
+  for (const [gate, read] of [
+    ['float nBend = bendW > 0.001 && uLandTier > 1.5 ? ', 'nzq(uvW, 0.013, vec2(0.47, 0.13))'],
+    ['vec2 fieldN = uLandTier > 0.5 ? ', 'nzq(uvW, 0.023, vec2(0.61, 0.17))'],
+    ['if (luEdge && luNear > 0.001 && uLandTier > 1.5) nEdge = mix(vec3(0.5), vec3(', 'nzq(uvW, 0.045, vec2(0.21, 0.83))'],
+    ['if (soilRead && luNear > 0.001 && uLandTier > 1.5) soil = mix(uMeanD, ', 'groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB)'],
+    ['float karstStone = uLandTier > 0.5 ? ', 'smoothstep(0.62, 0.80, nzq(uvW, 0.61'],
+    ['float bare = uLandTier > 0.5 ? ', 'smoothstep(0.52, 0.72, nzq(uvW, 0.11'],
+  ]) assert.ok(compact(block).includes(compact(gate + read)), `${read}: read only behind ${gate}`);
+  assert.ok(compact(block).includes(compact('nzq(uvW, 0.031, vec2(0.11, 0.59)).y, nzq(uvW, 0.17, vec2(0.83, 0.37)).x), luNear);')),
+    'the headland\'s width and the hedge bank\'s break are read in the wander\'s own gated round');
+  for (const gate of ['if (uLandTier < 0.5) {', 'float rowsShow = uLandTier > 0.5 ?', '&& crop < 3.5 && uLandTier > 0.5) {',
+    '&& luEdge && uLandTier > 0.5) {', 'if (track > 0.01 && uLandTier > 0.5) {']) {
+    assert.ok(block.includes(gate), `Low draws no boundary feature, rows or tramlines: ${gate}`);
+  }
+  // the interior skip: past 9 m + 1.3 margins the crop is whole and the headland gone whatever the noise reads
+  const num = (re, label) => { const m = re.exec(block); assert.ok(m, label); return m.slice(1).map(Number); };
+  const [t0, t1] = num(/bool luEdge = bnd < 1\.5 && edgeM < ([\d.]+) \+ ([\d.]+) \* uLandB\.y;/, 'the interior threshold');
+  const [m0, m1] = num(/float marginM = uLandB\.y \* \(([\d.]+) \+ ([\d.]+) \* n1h\);/, 'the margin');
+  const [n1hAmp] = num(/float edgeW = edgeM \+ \(n1h - 0\.5\) \* ([\d.]+) \+ \(nEdge\.x - 0\.5\) \* ([\d.]+);/, 'the edge breaker');
+  const [, wanderAmp] = num(/float edgeW = edgeM \+ \(n1h - 0\.5\) \* ([\d.]+) \+ \(nEdge\.x - 0\.5\) \* ([\d.]+);/, 'the wander');
+  const [fade] = num(/smoothstep\(marginM, marginM \+ ([\d.]+), edgeW\)/, 'the crop\'s fade into the margin');
+  const [h0, h1] = num(/float headW = ([\d.]+) \+ ([\d.]+) \* nEdge\.y;/, 'the headland');
+  for (let margin = 0.5; margin <= 4; margin += 0.125) {
+    const edgeW = t0 + t1 * margin - n1hAmp / 2 - wanderAmp / 2, marginM = margin * (m0 + m1);
+    assert.ok(edgeW >= marginM + fade, `margin ${margin} m: the crop is whole past the threshold whatever the wander`);
+    assert.ok(edgeW - marginM >= h0 + h1, `margin ${margin} m: the headland is gone past the threshold whatever its width`);
+  }
+  // the bake's read goes out with the ground mask's own, at the top of the splat; the block decodes it
+  assert.ok(compact(text).includes(compact(`vec4 mk = maskAt(mUV);
+  // ground lane (the GPU cut, hold 16): the land use's bake goes out with the ground mask's own read
+  vec4 luA = vec4(0.0), luB = vec4(0.0), luK = vec4(0.5); ivec2 luT = ivec2(0);
+  if (uLandA.x > 0.001) lu_fetch(wp.xz, luA, luB, luK, luT);`)), 'the bake is read with the ground mask');
+  assert.ok(block.includes('lu_decode(wp.xz, luA, luB, luK, luT, crop, edgeM, track, rowDir, jit, hedgeL);'), 'the block decodes the early read');
+  // the tier follows the live preset and lets go with the material
+  assert.deepEqual(['ultra', 'high', 'medium', 'mobile-high', 'low', 'mobile', 'mobile-low'].map(landUseTierOf), [2, 2, 1, 1, 0, 0, 0],
+    'High and Ultra draw the full block, Medium and the phones\' high tier the cheap reads, Low and the phones\' lower tiers the bake alone');
+  assert.ok(compact(text).includes(compact('const offLandTier = onPresetChange(() => { landTier.value = landUseTierOf(resolvePresetName()); });')),
+    'the tier follows a live preset change');
+  assert.ok(compact(text).includes(compact("mat.addEventListener('dispose', () => { offLandTier(); });")), 'and lets go with the material');
+}
 function replaceOnce(text, from, to) {
   assert.equal(text.split(from).length, 2, `unique mutation seam: ${from}`);
   return text.replace(from, to);
@@ -189,6 +257,7 @@ async function rejects(text, label) {
 }
 
 checkSourceContract(source);
+checkLandUseCut(source);
 checkSourceContract(source + '\n// uniform float commentaryIsNotADeclaration;\n');
 const sample = await compile(source);
 checkEndpoints(sample);

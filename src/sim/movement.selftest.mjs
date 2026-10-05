@@ -123,12 +123,18 @@ const SUSP_VIS_R = 2.1;
 // MOVEMENT r1: 2.3 was a stale mirror — movement.ts/tankFactory lock SWAY_VIS
 // at 3.2 (effects_combat r1), so floats during hard turns were under-measured.
 const SWAY_VIS = 3.2;
+// The tracks are seated without the dive (`_susp.d`) or the posture the hull holds over them on a grade (`_hold`, part of
+// visualPitch / visualRoll): with them the hull pitches and rolls over planted tracks, its wheels compressing at the
+// loaded end and drooping at the other (movement.ts pitchEff / rollEff). A hull parked facing up a grade squats on its
+// tail that way (physics lane round 5), so the track line is measured at the seat: the attitude spring's, with the
+// posture's share seated off a whole-track seat (`_holdSeat`).
 function contactStats(state, field) {
   const hw = 0.5 * SPEC.dims.widthM;
   const sl = 0.45 * SPEC.dims.hullLengthM;
   const fl = state._flinch || { p: 0, r: 0 };
-  const pitch = state.visualPitch + state._susp.p * SUSP_VIS_P - fl.p;
-  const roll = state.visualRoll + state._susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + fl.r;
+  const seat = state._holdSeat || { p: 0, r: 0 };
+  const pitch = state._spring.pitch + seat.p + (state._susp.p - (state._susp.d ?? 0)) * SUSP_VIS_P - fl.p;
+  const roll = state._spring.roll + seat.r + state._susp.r * SUSP_VIS_R + state._swayEst * SWAY_VIS + fl.r;
   const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
   const ca = Math.cos(-pitch), sa = Math.sin(-pitch);
   const cr = Math.cos(roll), sr = Math.sin(roll);
@@ -203,7 +209,14 @@ function gunPoseWorld(state) {
   const field = makeField((x) => 0.25 * x);
   const ent = makeEntity(field, 0, 0, 0);
   run(ent, field, 600);
-  near(ent.state.visualRoll, Math.atan(0.25), 0.02, 'side slope: roll conforms (sign + magnitude)');
+  // the tracks lie on the slope (the attitude spring); the hull holds a posture over them onto its downhill (left) track
+  // (physics lane round 5: state._hold, part of visualRoll)
+  near(ent.state._spring.roll, Math.atan(0.25), 0.02, 'side slope: roll conforms (sign + magnitude)');
+  const leanDeg = (ent.state.visualRoll - ent.state._spring.roll) * 180 / Math.PI;
+  assert(leanDeg > 0.3 && leanDeg < 2.5, `side slope: the hull leans onto its downhill track over them (${leanDeg.toFixed(2)} deg)`);
+  // the posture is the hull's attitude, not the rendered rock: at rest the drawn hull is the authority's (a bore or a launch
+  // mouth drawn on the rock sat off the one the server fires from)
+  near(ent.state._susp.r * SUSP_VIS_R, 0, 1e-4, 'side slope: the rock rests at zero');
   const { penetration, minGap } = contactStats(ent.state, field);
   assert(penetration < 0.03, `side slope: no track buried (pen ${penetration.toFixed(3)} m)`);
   assert(minGap < 0.03, `side slope: no track floating (min gap ${minGap.toFixed(3)} m)`);
@@ -214,7 +227,11 @@ function gunPoseWorld(state) {
   const field = makeField((x, z) => 0.3 * z);
   const ent = makeEntity(field, 0, 0, 0);
   run(ent, field, 600);
-  near(ent.state.visualPitch, Math.atan(0.3), 0.02, 'uphill: nose-up pitch conforms');
+  // the tracks lie on the grade (the attitude spring); the hull squats over them onto its downhill tail (state._hold)
+  near(ent.state._spring.pitch, Math.atan(0.3), 0.02, 'uphill: nose-up pitch conforms');
+  const squatDeg = (ent.state.visualPitch - ent.state._spring.pitch) * 180 / Math.PI;
+  assert(squatDeg > 0.3 && squatDeg < 2.5, `uphill: the hull squats onto its tail over them (${squatDeg.toFixed(2)} deg)`);
+  near(ent.state._susp.p * SUSP_VIS_P, 0, 1e-4, 'uphill: the rock rests at zero');
   const { penetration, minGap } = contactStats(ent.state, field);
   assert(penetration < 0.03, `uphill: no penetration (pen ${penetration.toFixed(3)} m)`);
   assert(minGap < 0.03, `uphill: contact held (min gap ${minGap.toFixed(3)} m)`);
@@ -1166,6 +1183,29 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   run(flinching, field, 180);
   const after = Math.abs(flinching.state._flinch.p) + Math.abs(flinching.state._flinch.r);
   assert(after < before * 0.01, 'impact flinch decays through the bounded attitude spring');
+}
+
+// ------------------------------------------------ touchdown step (round 8) --
+// Wave 42 item 1: "the hull loses a whole step of fall at touchdown" (0.202 -> 0.197 m while falling at 5.9 m/s). The
+// ride stood on the contact line for the rest of the step it touched in: a drop touching early in its step moved 3-5 %
+// of the step its fall carried. The rest of the step now runs on the springs.
+{
+  const field = makeField(() => 0);
+  for (const drop of [1.85, 1.9, 1.95, 2]) {
+    const ent = makeEntity(field, 0, 0, 0);
+    ent.input.brake = true;
+    run(ent, field, 90);
+    resetTankVerticalState(ent.state, ent.state.pos.y + drop, 0, false);
+    let prevY = ent.state.pos.y, prevV = 0, touchdown = null;
+    for (let i = 0; i < 240 && !touchdown; i++) {
+      updateTank(ent, field, SIM_DT);
+      if (ent.state.landingImpactMps > 0) touchdown = { step: ent.state.pos.y - prevY, free: prevV * SIM_DT };
+      prevV = ent.state._ride.v;
+      prevY = ent.state.pos.y;
+    }
+    assert(touchdown && touchdown.step <= 0.85 * touchdown.free,
+      `touchdown from ${drop} m: the hull moves ${(touchdown?.step ?? 0).toFixed(3)} m in the step its fall carries ${(touchdown?.free ?? 0).toFixed(3)} (before: 3-56 %)`);
+  }
 }
 
 // ---------------------------------------------------------------- summary --

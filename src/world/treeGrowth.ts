@@ -22,17 +22,22 @@ export type GrowthSpecies = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus
   | 'beech' | 'chestnut' | 'holmOak' | 'olive' | 'canaryPine' | 'aleppoPine' | 'larch'
   // the Arizona uplands' juniper and pinyon (Copper Mesa: the Sonoran/Chihuahuan upland cover, gauntlet wave 28)
   | 'juniper' | 'pinyon'
-  // a shrub-only form (treeBiomes.ts `shrub`): the broom scrub of a volcanic upland — never a tree slot
-  | 'broom';
+  // trees round 5 (2026-10-05, the map-revival lanes): the longleaf pine of the Gulf coastal plain (Longleaf Crossing),
+  // the cedar of Lebanon (the Chouf, Orchard Valley), the Aso caldera's sugi and Japanese red pine (Obsidian Caldera)
+  | 'longleafPine' | 'lebanonCedar' | 'sugi' | 'redPine'
+  // shrub-only forms (treeBiomes.ts `shrub`): the broom scrub of a volcanic upland; trees round 5: the longleaf's
+  // grass-stage seedlings on a cutover — never a tree slot
+  | 'broom' | 'longleafSeedling';
 type Rng = () => number;
 
 export const GROWTH_SPECIES: readonly GrowthSpecies[] = Object.freeze([
   'oak', 'poplar', 'willow', 'acacia', 'eucalyptus', 'pine', 'spruce', 'fir', 'cedar', 'cypress', 'birch', 'aspen', 'palm', 'snag',
   'mangrove', 'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'juniper', 'pinyon',
+  'longleafPine', 'lebanonCedar', 'sugi', 'redPine',
 ]);
 
 /** How a crown envelope narrows from its base (t = 0) to its top (t = 1): the radius fraction at t. */
-type EnvelopeShape = 'cone' | 'ellipsoid' | 'dome' | 'column' | 'umbrella' | 'flame' | 'tiered' | 'tuft';
+type EnvelopeShape = 'cone' | 'ellipsoid' | 'dome' | 'column' | 'umbrella' | 'flame' | 'tiered' | 'tuft' | 'shelf';
 
 /** The card a leaf site takes: a spray seated on a branch, a hanging curtain, a flat tier spray, an upright frond. */
 type SprayHabit = 'spray' | 'hanging' | 'flat' | 'upright' | 'tuft';
@@ -119,6 +124,11 @@ interface GrowthProfile {
    * step, the rest within ±10 % or too few samples), applied part way. 1 when unset.
    */
   foliageValue?: number;
+  /**
+   * Trees round 5: a grass-stage seedling (shrub-only): its sprays fan from one seat at the ground, a fountain of long
+   * needles, a few seedlings to a clump (growShrubSkeleton), where a shrub's mound of sprays stands on a shell.
+   */
+  fountain?: boolean;
 }
 
 const P = (p: GrowthProfile): Readonly<GrowthProfile> => Object.freeze(p);
@@ -373,6 +383,71 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     cardBend: 0.06, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.42, 0.38, 0.34], barkTopTint: null,
     foliageValue: 1.15,
   }),
+  // ---- trees round 5 (2026-10-05): the map-revival lanes' species ----
+  // the longleaf pine (Pinus palustris, Longleaf Crossing's whole forest): a tall, straight, clear bole of orange-brown
+  // plates, self-pruned to three fifths of its height, under a small, open, irregular crown of a few stout upturned
+  // limbs, each ending in great tufts of very long bright-green needles — the fox-tails the species is named for, bare
+  // wood between them
+  longleafPine: P({
+    family: 'conifer', height: 9.6, heightSpread: 0.12, trunkR: 0.27, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.6, crownR: 2.5,
+    envelope: 'dome', whorled: true, perWhorl: [2, 4], spacing: 0.85, angleLow: 1.4, angleHigh: 0.85,
+    droop: 0.32, upturn: 0.6, sidePerM: 0.9, sideAngle: 0.75, sideRatio: 0.42, sideDroop: 0.12, twigPerM: 0,
+    leafOrder: 1, leafPerM: 1.6, leafFrom: 0.6, spray: [1.0, 1.4], aspect: 0.95, habit: 'tuft', tipSprays: 5,
+    cardBend: 0.24, flatRoll: 0.6, flatDroop: 0.0, bark: 1, barkTint: [0.50, 0.33, 0.25], barkTopTint: [0.60, 0.42, 0.30],
+    foliageValue: 1.18,
+  }),
+  // the cedar of Lebanon (Cedrus libani, the Chouf): a massive bole under a broad, flat-topped crown of great horizontal
+  // shelves — level limbs a tier apart carrying dense flat plates of needle rosettes, open sky between the tiers; dark
+  // grey furrowed bark
+  lebanonCedar: P({
+    family: 'conifer', height: 7.6, heightSpread: 0.12, trunkR: 0.42, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.22, crownR: 3.8,
+    envelope: 'shelf', whorled: true, perWhorl: [3, 5], spacing: 1.3, angleLow: 1.6, angleHigh: 1.48,
+    droop: 0.02, upturn: 0.0, sidePerM: 2.2, sideAngle: 1.15, sideRatio: 0.55, sideDroop: 0.0, twigPerM: 0,
+    // a shelf's sprays long and narrow along its limbs, so each faces the viewer as a level strip and a tier reads as
+    // one plate from the side (the card turn shows every spray's face)
+    leafOrder: 1, leafPerM: 6.0, leafFrom: 0.2, spray: [0.8, 1.15], aspect: 0.66, habit: 'flat', tipSprays: 3,
+    cardBend: 0.02, flatRoll: 0.16, flatDroop: 0.0, bark: 4, barkTint: [0.36, 0.33, 0.31], barkTopTint: null,
+    foliageValue: 1.22,
+  }),
+  // sugi (Cryptomeria japonica, the Aso caldera's plantations): a tall, straight, red-brown bole of long fibrous strips
+  // under a narrow, dense, conical crown; its branches spiral up the stem, droop and turn up at their ends, clothed in
+  // rope-like shoots of short awl-shaped needles
+  sugi: P({
+    family: 'conifer', height: 10.0, heightSpread: 0.10, trunkR: 0.25, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.28, crownR: 1.5,
+    envelope: 'cone', whorled: false, perWhorl: [1, 1], spacing: 0.3, angleLow: 1.45, angleHigh: 0.85,
+    droop: 0.32, upturn: 0.42, sidePerM: 2.4, sideAngle: 0.75, sideRatio: 0.45, sideDroop: 0.35, twigPerM: 0,
+    leafOrder: 1, leafPerM: 4.6, leafFrom: 0.0, spray: [0.8, 1.15], aspect: 0.72, habit: 'flat', tipSprays: 2,
+    cardBend: 0.24, flatRoll: 1.1, flatDroop: 0.25, bark: 4, barkTint: [0.52, 0.33, 0.25], barkTopTint: [0.56, 0.36, 0.27],
+    foliageValue: 1.15,
+  }),
+  // the Japanese red pine (Pinus densiflora, the Aso caldera's grassland edges): a leaning bole, grey and plated below
+  // and orange-red and flaking up into the crown, under an irregular, flat-topped crown of a few long limbs ending in
+  // tufts of slender bright-green needles
+  redPine: P({
+    family: 'conifer', height: 7.6, heightSpread: 0.14, trunkR: 0.24, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.55, crownR: 2.9,
+    envelope: 'dome', whorled: true, perWhorl: [2, 4], spacing: 0.72, angleLow: 1.42, angleHigh: 0.9,
+    droop: 0.3, upturn: 0.5, sidePerM: 1.3, sideAngle: 0.75, sideRatio: 0.48, sideDroop: 0.12, twigPerM: 0,
+    leafOrder: 1, leafPerM: 2.2, leafFrom: 0.5, spray: [0.75, 1.05], aspect: 0.92, habit: 'tuft', tipSprays: 3,
+    // (the merge with shape2: its gnarl crooks the red pine's bole and limbs)
+    cardBend: 0.1, flatRoll: 0.6, flatDroop: 0.0, gnarl: 0.55, bark: 1, barkTint: [0.48, 0.34, 0.28],
+    barkTopTint: [0.88, 0.48, 0.30], foliageValue: 1.1,
+  }),
+  // the longleaf's grass stage (shrub-only, Longleaf Crossing's cutover): a seedling of its first years is no stem at
+  // all, a dense fountain of long needles from the ground like a bunchgrass, a few to a clump; the tree fields mirror the
+  // longleaf's (growShrubSkeleton reads the fountain, the aspect and the bend)
+  longleafSeedling: P({
+    family: 'conifer', height: 1.0, heightSpread: 0.16, trunkR: 0.05, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.0, crownR: 0.7,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.3, angleLow: 0.6, angleHigh: 0.3,
+    droop: 0.05, upturn: 0.3, sidePerM: 0, sideAngle: 0.4, sideRatio: 0.5, sideDroop: 0, twigPerM: 0,
+    leafOrder: 1, leafPerM: 4, leafFrom: 0, spray: [0.6, 0.9], aspect: 0.95, habit: 'tuft', tipSprays: 1,
+    cardBend: 0.32, flatRoll: 0.6, flatDroop: 0, bark: 1, barkTint: [0.50, 0.33, 0.25], barkTopTint: null,
+    fountain: true, foliageValue: 1.1,
+  }),
 });
 
 interface GrowthNode { x: number; y: number; z: number; r: number; flex: number }
@@ -470,6 +545,9 @@ export function envelopeFraction(shape: EnvelopeShape, t: number): number {
     case 'umbrella': return u < 0.7 ? 0.3 + u : 1 - ((u - 0.7) / 0.3) ** 4 * 0.95;
     case 'flame': return Math.sin(Math.PI * Math.min(1, 0.08 + u * 0.92)) ** 0.7 * (1 - u * 0.35);
     case 'tuft': return Math.sqrt(Math.max(0, 1 - (2 * u - 1) ** 2));
+    // trees round 5: the cedar of Lebanon's shelves — broad from its lowest tier, widest through its middle, the top
+    // tier flat to a quick shoulder (an old tree is wider than it is tall)
+    case 'shelf': return u < 0.82 ? 0.8 + 0.2 * Math.sin(Math.PI * Math.min(1, u / 0.5) * 0.5) : 1 - ((u - 0.82) / 0.18) ** 3 * 0.85;
     default: return 1;
   }
 }
@@ -642,7 +720,10 @@ function growSides(
     const side = rotate(perpendicular(at.d), at.d, roll);
     let dir = norm(rotate(at.d, norm(cross(at.d, side)), angle * (0.8 + rng() * 0.4)));
     // flat-habit conifers keep their side shoots near the horizontal plane of the limb
-    if (profile.habit === 'flat' && order === 2) dir = norm(v3(dir.x, dir.y * 0.3, dir.z));
+    // (trees round 5: a shelved crown's level — its plates are flat)
+    if (profile.habit === 'flat' && order === 2) {
+      dir = norm(v3(dir.x, profile.envelope === 'shelf' ? (rng() - 0.5) * 0.12 : dir.y * 0.3, dir.z));
+    }
     const parentRemain = length * (1 - t);
     const len = Math.max(0.22, Math.min(parentRemain * 1.05 + 0.2, length * ratio * (0.65 + rng() * 0.5) * (1.15 - t * 0.5)));
     const segments = mesh ? Math.max(2, Math.min(4, Math.round(len / 0.45))) : 2;
@@ -738,7 +819,8 @@ function parasolSides(ctx: GrowContext, nodes: GrowthNode[], from: number): [num
 function growPrimaries(ctx: GrowContext, stemIndex: number, variant: number): void {
   const { rng, profile } = ctx;
   const stem = ctx.branches[stemIndex];
-  const y0 = ctx.crownBaseY, y1 = ctx.crownTopY - (profile.whorled ? 0.32 : 0.45);
+  // (trees round 5: a shelved crown's top tier is its top — no leader stands over it)
+  const y0 = ctx.crownBaseY, y1 = ctx.crownTopY - (profile.envelope === 'shelf' ? 0.08 : profile.whorled ? 0.32 : 0.45);
   let y = y0 + rng() * profile.spacing * 0.5;
   let az = rng() * Math.PI * 2;
   const spacing = profile.spacing * (ctx.mobile ? 1.18 : 1);
@@ -790,18 +872,24 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
     // Trees round 2 (2026-10-03): the apex is a spire of shoots round the leader, the youngest upright at the top and the
     // older ones leaning out below it, so no bare whip stands over the crown (the gauntlet's "pole with a tuft" read).
     // Each shoot's tip stays within a hand's breadth of the leader's top.
-    const leaders = ctx.mobile ? 1 : 6;
+    const leaders = ctx.mobile ? 1 : 6, shelf = profile.envelope === 'shelf';
     const spin0 = rng() * Math.PI * 2;
     for (let k = 0; k < leaders; k++) {
       const t = 0.985 - k * 0.032;
       const at = sampleAlong(stem.nodes, t);
       const spin = spin0 + k * 2.399 + (rng() - 0.5) * 0.4;
       const lean = k === 0 ? 0.04 : 0.16 + 0.07 * k;
-      const axis = norm(v3(Math.cos(spin) * lean, 1, Math.sin(spin) * lean));
-      const face = norm(rotate(perpendicular(axis), axis, spin));
+      // trees round 5: a shelved crown (the cedar of Lebanon) is flat-topped — its apex sprays lie level round the
+      // leader's top, a last plate, no spire
+      const axis = shelf ? norm(v3(Math.cos(spin), -0.03, Math.sin(spin))) : norm(v3(Math.cos(spin) * lean, 1, Math.sin(spin) * lean));
+      let face = norm(rotate(perpendicular(axis), axis, spin));
+      if (shelf) {
+        face = norm(cross(norm(cross(axis, v3(0, 1, 0))), axis));
+        if (face.y < 0) face = v3(-face.x, -face.y, -face.z);
+      }
       const size = range(rng, profile.spray) * (0.95 - k * 0.05);
       leaves.push({ x: at.p.x, y: at.p.y - 0.05, z: at.p.z, ax: axis.x, ay: axis.y, az: axis.z, nx: face.x, ny: face.y, nz: face.z,
-        length: Math.min(size, Math.max(0.3, (tip.y + 0.12 - at.p.y) / Math.max(0.5, axis.y))), width: size * profile.aspect * 0.8, shade: 1,
+        length: shelf ? size : Math.min(size, Math.max(0.3, (tip.y + 0.12 - at.p.y) / Math.max(0.5, axis.y))), width: size * profile.aspect * 0.8, shade: 1,
         flex: Math.min(1, at.flex + 0.3), tile: (rng() * 4) | 0, bend: 0, branch: 0 });
     }
   }
@@ -841,6 +929,8 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
           // tier sprays: along the branch, drooping a little below it, faces to the sky, rolled about the axis by the
           // species' roll (a spruce's sprays every way, a fir's and a cedar's flat)
           axis = norm(v3(at.d.x + roll * 0.5, at.d.y * 0.35 - 0.08 - profile.flatDroop * (0.5 + rng()), at.d.z - roll * 0.5));
+          // trees round 5: a shelf's sprays lie level along its plate, so the card turned to the viewer is a level strip
+          if (profile.envelope === 'shelf') axis = norm(v3(axis.x, -0.03, axis.z));
           const right = norm(cross(axis, v3(0, 1, 0)));
           face = norm(rotate(norm(cross(right, axis)), axis, (rng() - 0.5) * 2 * profile.flatRoll));
           if (face.y < 0) face = v3(-face.x, -face.y, -face.z);
@@ -1084,6 +1174,7 @@ export const GROWTH_SHRUB_VALUE: Readonly<Partial<Record<GrowthSpecies, number>>
  */
 export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'understorey', rng: Rng): TreeSkeleton {
   const profile = TREE_GROWTH_PROFILES[species];
+  if (profile.fountain) return growFountainShrub(species, kind, rng);
   const under = kind === 'understorey';
   const conifer = profile.family === 'conifer';
   // narrow sprays (birch, willow) come more to a shrub and a little wider, so its shell closes as a broad spray's does
@@ -1200,6 +1291,56 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
     }
   }
   return { species, height: H, branches: [], leaves, crown: { x: 0, y: c0 + Hc * 0.25, z: 0, r: R } };
+}
+
+/**
+ * Trees round 5 (2026-10-05, Longleaf Crossing's cutover): a clump of grass-stage seedlings (a fountain profile) — each
+ * seedling a burst of long needle sprays from one seat on the ground, steep at its heart and arching out and over at its
+ * rim, as a bunchgrass stands; a field bush's clump three to five seedlings over its ground, the understorey's one or
+ * two. The spray budget, the crown sample and the cover disc stay a shrub's.
+ */
+function growFountainShrub(species: GrowthSpecies, kind: 'bush' | 'understorey', rng: Rng): TreeSkeleton {
+  const profile = TREE_GROWTH_PROFILES[species];
+  const under = kind === 'understorey';
+  const count = GROWTH_SHRUB_SPRAYS[kind];
+  const R = under ? 0.6 : 0.85;
+  const seedlings = under ? 1 + ((rng() * 2) | 0) : 3 + ((rng() * 3) | 0);
+  const seats: Array<{ x: number; z: number; size: number }> = [];
+  const a0 = rng() * Math.PI * 2;
+  for (let i = 0; i < seedlings; i++) {
+    const a = a0 + i * 2.399 + (rng() - 0.5) * 0.6, d = i === 0 ? 0 : R * (0.32 + rng() * 0.4);
+    seats.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, size: i === 0 ? 1 : 0.7 + rng() * 0.3 });
+  }
+  const leaves: LeafSite[] = [];
+  let top = 0;
+  for (let j = 0; j < count; j++) {
+    const q = seats[j % seedlings];
+    const az = rng() * Math.PI * 2;
+    // the elevation: a fountain's heart stands steep, its rim leans out (26° to 80°)
+    const elev = 0.45 + rng() * 0.95, ce = Math.cos(elev), se = Math.sin(elev);
+    const axis = norm(v3(Math.cos(az) * ce, se, Math.sin(az) * ce));
+    const length = (under ? 0.36 : 0.45) * q.size * (0.75 + rng() * 0.5);
+    // the card's face square to its axis, turned out of the fan's plane by a little (the billboard turns it anyway)
+    let face = norm(cross(norm(v3(-Math.sin(az), 0, Math.cos(az))), axis));
+    face = norm(rotate(face, axis, (rng() - 0.5) * 1.2));
+    const width = length * profile.aspect * (0.9 + rng() * 0.2);
+    // the leaning needles arch over further than the upright heart's
+    const bend = profile.cardBend * (0.6 + rng() * 0.8) * (1.3 - se * 0.6);
+    const seat = v3(q.x, 0.03, q.z);
+    // the card stands on the ground: its lowest corner (the stem row's half width, the tip's sag) at most a few
+    // centimetres under the base
+    const rightY = norm(cross(axis, face)).y * width * 0.5;
+    const low = Math.min(seat.y - 0.06 * length * axis.y - Math.abs(rightY) * 0.92,
+      seat.y + 0.94 * length * axis.y - bend * length - Math.abs(rightY));
+    if (low < -0.05) seat.y += -0.05 - low;
+    leaves.push({
+      x: seat.x, y: seat.y, z: seat.z, ax: axis.x, ay: axis.y, az: axis.z, nx: face.x, ny: face.y, nz: face.z,
+      length, width, shade: clamp01(0.4 + 0.5 * se + (rng() - 0.5) * 0.15), flex: clamp01(0.3 + 0.15 * rng()),
+      tile: (rng() * 4) | 0, bend, branch: -1,
+    });
+    top = Math.max(top, seat.y + axis.y * length);
+  }
+  return { species, height: Math.max(0.3, top), branches: [], leaves, crown: { x: 0, y: top * 0.4, z: 0, r: R } };
 }
 
 /**
@@ -1326,6 +1467,8 @@ export function tuftLobes(skeleton: Pick<TreeSkeleton, 'leaves'>): CrownLobe[] {
 
 /** Trees round 2: how many masses a crown is read as — a broadleaf dome's lobes, a conifer's tiers. */
 function crownLobeCount(profile: Readonly<GrowthProfile>, sprays: number): number {
+  // (trees round 5: a shelved crown's level plates spread wide and thin — the most masses a crown takes)
+  if (profile.envelope === 'shelf') return 10;
   if (profile.family === 'conifer') return Math.max(4, Math.min(10, Math.round(sprays / 20)));
   if (profile.family === 'dead') return Math.max(2, Math.min(4, Math.round(sprays / 8)));
   return Math.max(4, Math.min(9, Math.round(sprays / 26)));
@@ -1373,7 +1516,10 @@ function thinEvenly(leaves: LeafSite[], budget: number, scale: readonly number[]
  * Trees round 2 (2026-10-03): the crown's masses — k-means over the spray card centres (seeded by the farthest-point
  * spread, four refinements), each mass an axis-aligned ellipsoid reaching a little past its members' card centres.
  */
-export function crownLobes(skeleton: Pick<TreeSkeleton, 'leaves'>, count: number, margin = 0.3, least = 0.45): CrownLobe[] {
+export function crownLobes(skeleton: Pick<TreeSkeleton, 'leaves'> & { species?: GrowthSpecies }, count: number,
+  // trees round 5: a shelved crown's masses reach further past their members — its level plates are wide and thin, an
+  // ellipsoid through its members' box leaves the plates' corners out
+  margin = skeleton.species && TREE_GROWTH_PROFILES[skeleton.species]?.envelope === 'shelf' ? 0.6 : 0.3, least = 0.45): CrownLobe[] {
   const sites = skeleton.leaves.map(sprayCentre);
   if (!sites.length) return [];
   const k = Math.max(1, Math.min(count, sites.length));

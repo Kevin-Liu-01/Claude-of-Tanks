@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { CASES, HULLS, WORLDS, runCase } from './physics-torture.mjs';
 import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
 
-await ensureAuthorityFleet([...new Set([...Object.values(HULLS), 't90m', 'm1a2', 'm551_sheridan'])]);
+await ensureAuthorityFleet([...new Set([...Object.values(HULLS), 't90m', 'm1a2', 'm551_sheridan', 'merkava4b'])]);
 
 const failures = [];
 let runs = 0;
@@ -120,13 +120,42 @@ check('flank-steep', 'medium', 'earth', [
   g('fall damage (hp)', (m) => m.fallDamageHp, 300, 'before: 4564 hp (the flank read as level under a nose-down hull)'),
 ]);
 
+// Round 6 (Skybridge fall census: 75.6 hp and 160.5 hp landings on one 46-degree bank): a hull climbing at 6.5 m/s hops
+// off a bank's lip and meets the 50-degree face beyond it 0.4 s later. The face rises under its travel at the face's
+// grade (the fit's rise per hull-local metre, not the tangent of its arcsine), and the landing is charged along the
+// face's normal: no fall damage.
+check('bank-hop', 'medium', 'earth', [
+  g('the face landing\'s vertical closing (m/s)', (m) => m.landings?.[0] ?? 0, 7, 'before: 8.84 m/s (the face read as 59 degrees)'),
+  g('its charged closing (m/s)', (m) => Math.max(0, ...(m.falls ?? [])), 6, 'before: 8.8 m/s (vertical)'),
+  g('fall damage (hp)', (m) => m.fallDamageHp, 0, 'before: 61.3 hp'),
+]);
+
 // An assault trench under a heavy hull (its 45-degree far wall under the nose, its tail over the trench): the wall is not
 // its grade (movement.ts contactAwareFit's span rule). The grade rule stopped it dead in the trench and it see-sawed.
 check('drive-assault-trench', 'heavy', 'earth', [
-  g('progress short of 30 m (m)', (m) => 30 - m.progressM, 0, 'before: 19.6 m'),
+  // (26 m, round 7: the check exists for the old stuck case, 19.6 m. The far wall now costs the travel it lifts the hull
+  // by, by design (the trench ruling, 2026-10-04): the E100 X climbs out at 2.4-4 m/s where it kept 6.3 and is 28.6 m on
+  // after 9 s, past the far lip by a hull length)
+  g('progress short of 26 m (m)', (m) => 26 - m.progressM, 0, 'before: 19.6 m'),
   // (900: with the grade floor the crossing's own jerk reads 800.2, the far wall's lip taken a little harder)
   // (950, round 3: the hull lying on its plane pitches to the walls it crosses, where it read them flatter: 909)
   g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 950, 'before: 1366'),
+]);
+// Round 7 (ruling 2, the trench fix): the far wall under a partial contact's leading station pushes along its normal,
+// costing the travel the lift it gives, and a strike past the bump stops turns the hull about its centre of mass as well
+// as lifting it; a trench ahead is not leaned into. The wall lifted the hull a quarter metre a step, all its travel kept.
+check('drive-assault-trench', 'mbt', 'earth', [
+  g('vertical step (m)', (m) => m.popYMaxM, 0.12, 'before: 0.184 m, the far wall lifting the M1A2 at 13 m/s'),
+]);
+check('drive-trench', 'low', 'earth', [
+  g('vertical step (m)', (m) => m.popYMaxM, 0.12, 'before: 0.194 m, the ditch\'s far lip under the UDES 03\'s nose'),
+  g('flights', (m) => m.falls.length, 0, 'before: 1 (off the far lip)'),
+]);
+// Round 8 (the far lip): what the suspension travel no longer holds of the dive the bump stops take, and the drawn hull
+// gives it up over their spring. The far wall bottoming the M3 Bradley's springs cut its drawn squat by a degree in one
+// frame as it climbed out, and by 0.2-0.4 degree in ten more.
+check('drive-assault-trench', 'tall', 'earth', [
+  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 1300, 'before: 1856'),
 ]);
 
 // Firing in flight (Mars gravity field audit): the shot turns an airborne hull by its rigid-body share, not the
@@ -153,7 +182,9 @@ check('drive-field-trench', 'medium', 'earth', [
 // hanging, to 50-70 % of its drop.
 for (const world of ['mars', 'moon', 'turbo']) {
   check('jump-flat', 'medium', world, [
-    g('compression short of 15 cm (m)', (m) => 0.15 - m.gearCompMaxM, 0, 'before: 0 (the rebound left from the drooped line)'),
+    // (14 cm, round 8: the touchdown's step now runs on in the springs, damped from the contact; the Mars landing reads
+    // 14.9 cm where it read 15.1)
+    g('compression short of 14 cm (m)', (m) => 0.14 - m.gearCompMaxM, 0, 'before: 0 (the rebound left from the drooped line)'),
     g('hop above the drooped line (m)', (m) => Math.max(0, (m.apexes[1] ?? 0) - 0.18), 0.3, 'before: 1.10 m at Mars, 1.54 m at the Moon'),
   ]);
 }
@@ -246,6 +277,83 @@ for (const [caseId, why] of [['rest-slope25', 'before: 0.97 degree flatter than 
 // Gravity mode's Earth (physics lane round 4): the prediction lands a 1 g basin hull at the authority's rebound. It
 // landed it at the basin's 30 % where the authority took 15 %, and a spinning hull's replay parted from the authority's.
 check('air-spin', 'tall', 'gearth', [g('prediction replay error (m)', (m) => m.replay.maxErrM, 0.001, 'before: 0.041 m', true)]);
+
+// Round 4 (gauntlet wave 33: "peak compression barely scales with impact, +3 to +5 cm whether 5.6 or 12.5 m/s"): a
+// harder landing goes deeper into the landing stroke's progressive stops. The springs alone bottomed out every landing
+// from 7 m/s up at the same 19 cm, the floor's last centimetre.
+{
+  const stroke = (caseId) => runCase(HULLS.medium, 'earth', CASES.find((c) => c.id === caseId)).gearCompMaxM;
+  const soft = stroke('drop-2'), hard = stroke('drop-8');
+  runs += 2;
+  if (!(hard - soft >= 0.04)) {
+    failures.push(`drop-2/drop-8 earth medium: the stroke deepens ${((hard - soft) * 100).toFixed(1)} cm from 5.9 to 12.3 m/s`
+      + ' < 4 cm — before: 1.2 cm (17.8 and 19.1 cm)');
+  }
+  if (!(hard <= 0.185)) {
+    failures.push(`drop-8 earth medium: a 12.3 m/s landing strokes ${(hard * 100).toFixed(1)} cm > 18.5 cm — before: 19.1 cm`);
+  }
+}
+
+// Round 4 (wave 33: "landings are pure vertical drops: hull pitch and roll never move, even when one side touches
+// first"): a level hull dropped onto a 10-degree cross slope lands on its uphill track and turns onto the slope about it,
+// faster for the harder landing, and the other track's landing stops the turn on the slope.
+{
+  const turn = (caseId) => runCase(HULLS.medium, 'earth', CASES.find((c) => c.id === caseId)).landingTurn;
+  const hard = turn('land-cross'), soft = turn('land-cross-soft');
+  runs += 2;
+  if (!(hard?.alignS <= 0.15)) failures.push(`land-cross earth medium: on the slope in ${hard?.alignS} s > 0.15 s — before: 0.25 s`);
+  if (!(hard?.turnRateDegS >= 1.1 * soft?.turnRateDegS)) {
+    failures.push(`land-cross earth medium: the 6.9 m/s landing turns at ${hard?.turnRateDegS} deg/s, the 4.2 m/s one at `
+      + `${soft?.turnRateDegS}: not sized by the landing — before: 42.2 and 41.0`);
+  }
+  if (!(Math.max(hard?.overshootDeg ?? 9, soft?.overshootDeg ?? 9) <= 0.5)) {
+    failures.push(`land-cross earth medium: turned ${hard?.overshootDeg} / ${soft?.overshootDeg} deg past the slope — guard`);
+  }
+}
+
+// Round 5 (gauntlet wave 38: "on a 17.9-degree grade the front and rear stations carry about the same travel ... a real
+// tank shows a clear rear-heavy gradient on a slope"; and after the side-slope landing "the hull still leans on the
+// uphill track"): the tracks' hold on the hull against gravity on a grade transfers its weight like the drive's own
+// acceleration, onto the downhill end and the downhill track, which squat while the uphill wheels droop. Measured at the
+// track line under the rendered hull, the downhill end against the uphill end (cm).
+{
+  const mean = (values) => values.reduce((sum, v) => sum + v, 0) / values.length;
+  const endsGap = (gaps) => {
+    const rear = mean([gaps.left[0], gaps.right[0]]), front = mean([gaps.left[6], gaps.right[6]]);
+    return { rear, front };
+  };
+  const rest = (caseId) => runCase(HULLS.medium, 'earth', CASES.find((c) => c.id === caseId)).finalGapsCm;
+  runs += 3;
+  const up = endsGap(rest('rest-slope25'));
+  if (!(up.front - up.rear >= 8)) {
+    failures.push(`rest-slope25 earth medium: the downhill tail sits ${(up.front - up.rear).toFixed(1)} cm under the uphill nose < 8 — before: 0.0`);
+  }
+  const down = endsGap(rest('rest-slope25-down'));
+  if (!(down.rear - down.front >= 8)) {
+    failures.push(`rest-slope25-down earth medium: the downhill nose sits ${(down.rear - down.front).toFixed(1)} cm under the uphill tail < 8 — before: 0.0`);
+  }
+  const across = rest('rest-cross20');
+  // the 20-degree cross slope rises to the right: the left track is the downhill one (round 8, wave 42 item 5: the springs
+  // bear on the tracks' centre lines, not their outer edges, where the roll stiffness read 40 % high on the T-90M)
+  if (!(mean(across.right) - mean(across.left) >= 7)) {
+    failures.push(`rest-cross20 earth medium: the downhill track sits ${(mean(across.right) - mean(across.left)).toFixed(1)} cm under the uphill one < 7 — before: 0.1, then 5.9 on the outer edges`);
+  }
+}
+
+// Round 5 (wave 38: "flat landings are perfectly level pistons ... a 55 t hull's centre of mass isn't at its geometric
+// centre (engine aft, turret amidships), so a level drop should nod a little"): the springs stop the fall around the
+// middle of the track contact, behind which a rear-engined T-90M's centre of mass sits, so a level 2 m drop turns it
+// tail down; a front-engined Merkava 4 nose down. A nod, never a lurch.
+for (const [hull, way] of [['medium', 'upDeg'], ['merkava4b', 'downDeg']]) {
+  check('drop-2', hull, 'earth', [
+    g(`level landing's nod ${way === 'upDeg' ? 'nose up' : 'nose down'} short of 0.6 degree`, (m) => 0.6 - (m.landingNod?.[way] ?? 0), 0,
+      'before: 0.0 (a level piston)'),
+    g('the nod (degrees)', (m) => Math.max(m.landingNod?.upDeg ?? 0, m.landingNod?.downDeg ?? 0), 2.5, 'guard: a nod, not a lurch'),
+    // round 8 (wave 42 item 3: "rebounds past level into a brief nose-up"): the landing's stroke damps the dive harder
+    g('the nod back past level (degrees)', (m) => Math.min(m.landingNod?.upDeg ?? 9, m.landingNod?.downDeg ?? 9), 0.15,
+      'before: 0.35 (T-90M) / 0.40 (Merkava 4)'),
+  ]);
+}
 
 // Rest stays rest: no jitter, no creep on a 25-degree grade on the brake.
 check('rest-slope25', 'medium', 'earth', [
