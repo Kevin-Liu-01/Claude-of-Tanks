@@ -1404,7 +1404,10 @@ dormant and applies the fixed anchor and canonical camera pose.
 GPU residency transaction: Garage-only geometry and textures leave VRAM before
 battle, then restore behind the covered return frame. The Verdant fixture objects
 remain in the stable light set at zero intensity outdoors, while one shadowless
-hero bounce remains active. Outdoor static scenery receives but does not cast
+hero bounce remains active. In the enclosed Verdant workshop the shadowed sun is the
+studio's key (the sky preset's bearing, 22° up) and the back spot a cool kicker behind
+the hull's far shoulder; outdoor packs keep the sky's sun and the default spots
+(2026-10-05, gauntlet wave 99). Outdoor static scenery receives but does not cast
 live CSM shadows. `garageDressingAccess.ts` demand-loads one optimized modern
 maintenance layer after interactive readiness. Four bays—Burlak gantry, Abrams
 welding, T-90M armor service, and K2 teardown—surround every Garage and are

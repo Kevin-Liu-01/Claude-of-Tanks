@@ -800,6 +800,8 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   getBattleSkyConfig: () => withWorldCloudscape(currentWorld()?.config.sky ?? null),
   getGroundHeight: () => 0,
   getPhase: () => game.phase,
+  // the enclosed Verdant workshop lights its hero with its own studio key (garagePhasePresentationRuntime.ts)
+  isEnclosedStudio: () => getGarageVariant(selectedGarageVariantId).id === 'verdant_motor_pool',
   // Desktop releases detached stage/workshop geometry while retaining textures
   // and programs. Constrained devices retain their stage-only release policy.
   // The existing covered return restores every evicted allocation.

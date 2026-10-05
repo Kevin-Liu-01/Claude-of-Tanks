@@ -37,6 +37,9 @@ interface GaragePhasePresentationOptions {
   getBattleSkyConfig(): GarageSkyConfig | null;
   getGroundHeight(x: number, z: number): number;
   getPhase(): string;
+  /** The selected Garage is the enclosed Verdant workshop (its studio key and kicker); outdoor packs keep the sky's
+   * sun and the default spots. Absent: never. */
+  isEnclosedStudio?(): boolean;
   shouldReleaseGpuOnBattle(): boolean;
   posePedestal(): void;
   poseCamera(): void;
@@ -64,6 +67,21 @@ export interface GaragePhasePresentationRuntime {
 
 const GARAGE_SUN_COLOR = 0xf2f0ea;
 const GARAGE_SUN_INTENSITY_SCALE = 0.55;
+// 2026-10-05 (gauntlet wave 99: "a flat top-down key light; a key with direction and a rim light"). In the enclosed
+// Verdant workshop the sky is never seen, so its "sun" is the studio key, the rig's only shadowed light. Measured with
+// in-page toggles on one build (h23a, h23d, t90m / m1a2 / leo2a7v): the overhead beam veiled the hull (see
+// garageStage.ts GARAGE_BEAM_SHARE), the spots barely reached it (the front spot 3 %, the back one 1.5 % of the hull's
+// light) and the 32-degree sun lit the roofs most. The studio takes the key 10 degrees lower from the same bearing
+// (the flank carries the form, the roofs less, a longer cast shadow) and turns the back spot into a cool kicker behind
+// the hull's far shoulder: with the thinner beam and the halved highbays (garageStage.ts) the hull's luma spread
+// (p90 - p10, default view) went 93 -> 110 (t90m), 110 -> 124 (m1a2), 87 -> 104 (leo2a7v) at a level mean (-0.7 to
+// -2.8), its tracks rose 4-6 levels and the hall's mean fell 73 -> 66 (h23e).
+const GARAGE_STUDIO_KEY = Object.freeze({ azimuthDeg: 115, elevationDeg: 22 });
+const GARAGE_STUDIO_KICKER = Object.freeze({
+  azimuthDeg: 160, elevationDeg: 32, distanceM: 12.5, intensity: 300, angle: 0.55, penumbra: 0.4,
+});
+const GARAGE_SPOT_B = Object.freeze({ intensity: 48, angle: 0.6, penumbra: 0.8 });
+const GARAGE_SPOT_TARGET_Y_M = 1.2;
 
 /**
  * Owns the phase-exclusive Garage scene roots, authored key lights, neutral
@@ -82,6 +100,7 @@ export function createGaragePhasePresentationRuntime({
   getBattleSkyConfig,
   getGroundHeight,
   getPhase,
+  isEnclosedStudio = () => false,
   shouldReleaseGpuOnBattle,
   posePedestal,
   poseCamera,
@@ -99,8 +118,22 @@ export function createGaragePhasePresentationRuntime({
   }
 
   const spotA = new THREE.SpotLight(0xf2f0e8, 64, 60, 0.5, 0.85, 1.6);
-  const spotB = new THREE.SpotLight(0xdce3ec, 48, 60, 0.6, 0.8, 1.6);
+  const spotB = new THREE.SpotLight(0xdce3ec, GARAGE_SPOT_B.intensity, 60, GARAGE_SPOT_B.angle, GARAGE_SPOT_B.penumbra, 1.6);
   const spotTarget = new THREE.Object3D();
+  const studioKeyDirection = new THREE.Vector3().setFromSphericalCoords(1,
+    THREE.MathUtils.degToRad(90 - GARAGE_STUDIO_KEY.elevationDeg), THREE.MathUtils.degToRad(GARAGE_STUDIO_KEY.azimuthDeg));
+  let studio = false;
+  type SpotPose = Readonly<{ azimuthDeg: number; elevationDeg: number; distanceM: number; intensity: number;
+    angle: number; penumbra: number }>;
+  const poseSpot = (spot: THREE.SpotLight, pose: SpotPose): void => {
+    const az = THREE.MathUtils.degToRad(pose.azimuthDeg), el = THREE.MathUtils.degToRad(pose.elevationDeg);
+    spot.position.set(
+      garagePosition.x + pose.distanceM * Math.cos(el) * Math.sin(az),
+      garagePosition.y + GARAGE_SPOT_TARGET_Y_M + pose.distanceM * Math.sin(el),
+      garagePosition.z + pose.distanceM * Math.cos(el) * Math.cos(az),
+    );
+    spot.intensity = pose.intensity; spot.angle = pose.angle; spot.penumbra = pose.penumbra;
+  };
 
   const positionLights = (): void => {
     // 2026-10-04 (gauntlet wave 60, item 1: the winter roofs "clip"): the key comes down from 41° to 27° over the
@@ -111,14 +144,20 @@ export function createGaragePhasePresentationRuntime({
       garagePosition.y + 7.6,
       garagePosition.z + 8,
     );
-    spotB.position.set(
-      garagePosition.x - 10,
-      garagePosition.y + 8,
-      garagePosition.z - 6,
-    );
+    if (studio) {
+      // the studio's kicker behind the hull's far shoulder, aimed at the hull's centre like the front spot
+      poseSpot(spotB, GARAGE_STUDIO_KICKER);
+    } else {
+      spotB.position.set(
+        garagePosition.x - 10,
+        garagePosition.y + 8,
+        garagePosition.z - 6,
+      );
+      spotB.intensity = GARAGE_SPOT_B.intensity; spotB.angle = GARAGE_SPOT_B.angle; spotB.penumbra = GARAGE_SPOT_B.penumbra;
+    }
     spotTarget.position.set(
       garagePosition.x,
-      garagePosition.y + 1.2,
+      garagePosition.y + GARAGE_SPOT_TARGET_Y_M,
       garagePosition.z,
     );
   };
@@ -186,13 +225,15 @@ export function createGaragePhasePresentationRuntime({
     // world's light, not reapply the workshop's untrimmed preset.
     const skyConfig = active ? getGarageSkyConfig() : getBattleSkyConfig();
     if (!skyConfig) throw new Error('Battle lighting requires an active world sky preset');
-    lighting.setSun(sunDirection, active
+    studio = active && isEnclosedStudio();
+    lighting.setSun(studio ? studioKeyDirection : sunDirection, active
       ? {
           ...skyConfig,
           sunColorHex: GARAGE_SUN_COLOR,
           sunIntensity: (skyConfig.sunIntensity ?? 4.5) * GARAGE_SUN_INTENSITY_SCALE,
         }
       : skyConfig);
+    positionLights();
   };
 
   const place = (): void => {

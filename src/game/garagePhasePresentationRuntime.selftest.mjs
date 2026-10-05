@@ -195,4 +195,54 @@ assert.doesNotMatch(mainSource, /function placeGarage\(/,
 assert.match(mainSource, /createGaragePhasePresentationRuntime\(/,
   'the composition root must delegate Garage presentation ownership');
 
-console.log('garagePhasePresentationRuntime.selftest: lighting, placement, residency, and world swaps pass');
+// 2026-10-05 (gauntlet wave 99): the enclosed Verdant studio lights its hero with its own key (the shadowed "sun" from
+// the sky's bearing, lower) and a kicker behind the hull's far shoulder; an outdoor pack and the battle keep the sky's
+// sun and the default spots.
+{
+  const studioScene = new THREE.Scene();
+  const studioStage = new THREE.Group(), studioDressing = new THREE.Group();
+  studioScene.add(studioStage, studioDressing);
+  const studioCalls = [];
+  let enclosed = true;
+  const anchor = new THREE.Vector3(-1500, 0, -1500);
+  const skyDir = new THREE.Vector3(0.769, 0.53, -0.358);
+  const studioRuntime = createGaragePhasePresentationRuntime({
+    scene: studioScene, stageRoot: studioStage, dressingRoot: studioDressing, garagePosition: anchor,
+    lighting: { setFarCascadeDormant: () => {}, setSun: (direction, config) => studioCalls.push([direction.clone(), config]) },
+    sunDirection: skyDir,
+    getGarageSkyConfig: () => ({ sunIntensity: 4.5 }),
+    getBattleSkyConfig: () => ({ sunIntensity: 3.5 }),
+    getGroundHeight: () => 0,
+    getPhase: () => 'garage',
+    isEnclosedStudio: () => enclosed,
+    shouldReleaseGpuOnBattle: () => false,
+    posePedestal: () => {}, poseCamera: () => {},
+    restorePresentationGpu: async ({ resourcesReleased }) => ({ resourcesReleased }),
+  });
+  const spots = [];
+  studioScene.traverse((o) => { if (o.isSpotLight) spots.push(o); });
+  const kicker = spots.find((l) => l.color.getHex() === 0xdce3ec);
+  const front = spots.find((l) => l.color.getHex() === 0xf2f0e8);
+  assert.ok(kicker && front, 'the Garage keeps its two spots');
+  const bearing = (v) => [THREE.MathUtils.radToDeg(Math.atan2(v.x, v.z)), THREE.MathUtils.radToDeg(Math.asin(v.y / v.length()))];
+  studioRuntime.setSunTrim(true);
+  const [keyAz, keyEl] = bearing(studioCalls.at(-1)[0]);
+  assert.ok(Math.abs(keyAz - 115) < 0.01 && Math.abs(keyEl - 22) < 0.01, `the studio key comes from 115 deg at 22 deg (${keyAz.toFixed(2)}, ${keyEl.toFixed(2)})`);
+  assert.equal(studioCalls.at(-1)[1].sunIntensity, 4.5 * 0.55, 'the studio key keeps the Garage trim');
+  const rel = kicker.position.clone().sub(anchor).sub(new THREE.Vector3(0, 1.2, 0));
+  const [kAz, kEl] = bearing(rel);
+  assert.ok(Math.abs(kAz - 160) < 0.01 && Math.abs(kEl - 32) < 0.01 && kicker.intensity === 300, 'the kicker stands behind the far shoulder');
+  assert.deepEqual(front.position.clone().sub(anchor).toArray(), [10, 7.6, 8], 'the front spot keeps its place');
+  enclosed = false;
+  studioRuntime.setSunTrim(true);
+  assert.equal(studioCalls.at(-1)[0].equals(skyDir), true, 'an outdoor pack keeps the sky sun');
+  assert.equal(kicker.intensity, 48, 'and the default back spot');
+  assert.deepEqual(front.position.clone().sub(anchor).toArray(), [10, 7.6, 8], 'and the default front spot');
+  enclosed = true;
+  studioRuntime.setSunTrim(true);
+  studioRuntime.setSunTrim(false);
+  assert.equal(studioCalls.at(-1)[0].equals(skyDir), true, 'the battle restores the sky sun');
+  assert.equal(kicker.intensity, 48, 'and the default back spot');
+}
+
+console.log('garagePhasePresentationRuntime.selftest: lighting, placement, residency, world swaps and the enclosed studio key pass');
