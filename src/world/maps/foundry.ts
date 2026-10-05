@@ -21,7 +21,6 @@
 // and the north bank run toward the rim and every works street leaves on its own line: the borders lane carries them
 // outward.
 
-import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 
 export default {
@@ -102,12 +101,18 @@ export default {
     townWear: 1.6, // Soil-dominant loading areas; existing alpha owns their irregular extent.
   },
   vegetation: {
-    species: ['poplar', 'oak', 'birch'], clusterMix: [['poplar', 0.42], ['oak', 0.38], ['birch', 0.20]],
-    loneMix: [['poplar', 0.44], ['oak', 0.36], ['birch', 0.20]], rimMix: [['poplar', 0.40], ['oak', 0.34], ['birch', 0.26]],
+    // the map-revival lane (2026-10-05): the works' waste ground goes to birch first (the ruderal stands that colonise
+    // slag and cinder), poplar along the sidings, the Saar valley's oak on the rim
+    species: ['birch', 'poplar', 'oak'], clusterMix: [['birch', 0.52], ['poplar', 0.30], ['oak', 0.18]],
+    loneMix: [['birch', 0.56], ['poplar', 0.30], ['oak', 0.14]], rimMix: [['oak', 0.40], ['birch', 0.34], ['poplar', 0.26]],
     clusterCount: 28, loneCount: 72, rimCount: 74, grassDensity: 0.44,
     bushCount: 0.5, bushSpecies: 'oak',
   },
   props: {
+    // the map-revival lane (2026-10-05): the works' own architecture (maps/regional/saar.ts) — the blast furnaces and
+    // their stoves, the rolling mills under north lights, gas holders, conveyor galleries, the colliery headframe, the
+    // works office and the workers' terraces in the coalfield's brick — in place of the generic halls and sheds
+    architecture: 'saar',
     sourcedPalette: 'ironworks',
     foundryServiceCourt: { sites: [
       { planIndex: 2, kind: 'containerRow', x: 163, z: -106, yawDeg: 0 },
@@ -157,9 +162,6 @@ export default {
     // The authored network mixes worker streets with unpaved freight/rail
     // approaches; a curb on every route outlined the map in orange ribbons.
     blockFill: true, curbs: false, lampposts: true, monument: true, townCraters: true,
-    tones: makeRealisticCityBuildingTones({
-      value: 0.88, saturation: 0.92, soot: 0.035, roofValue: 0.84,
-    }),
     buildingLat: [18, 4], sideSkip: 0.06, maxSpread: 2.4, spacingPad: 6,
     well: false, hayCrates: false, fences: true, telegraph: true, carts: false, logs: false,
     rocks: 142, outcrops: 12, craters: 86, rubblePiles: 48,
