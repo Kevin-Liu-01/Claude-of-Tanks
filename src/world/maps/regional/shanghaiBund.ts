@@ -1,16 +1,16 @@
 // src/world/maps/regional/shanghaiBund.ts — the Shanghai kit's landmarks (shanghai.ts), each in the footprint of the
 // megacity landmark it replaces, so the district keeps its skyline:
-//   - arcology → Broadway Mansions (1934): brown brick in tiers stepping back to its crown over a granite podium, the
-//     window columns between its piers;
-//   - needletower → the Park Hotel (1934): the dark brown shaft on its black granite base, piers running up to the
-//     stepped crown;
-//   - megatower → Sassoon House (1929): granite with bronze spandrels, its front tower under the green copper pyramid;
+//   - megatower, arcology, needletower → the Bund's Art Deco towers in the skyline kit's grammar (skyline.ts decoTower,
+//     the facades lane): Sassoon House under its copper pyramid, Broadway Mansions and the Park Hotel under stepped
+//     crowns; the Settlement's standing intact or shelled, Zhabei's at any damage;
 //   - terracetower → the Bank of China (1937): golden granite, the tower over its wings, the Chinese lattice band and
 //     the pyramid roof of green glazed tile;
 //   - broadcasttower → the Customs House (1927): granite, the Doric columns in its recessed front, the clock tower
 //     ("Big Ching") stepping up to its cap;
-//   - civichall → the Bund's banks, three ways: the HSBC's dome on its drum; a portico of giant columns in a recessed
-//     front under a pediment; a Renaissance block with copper-capped corner turrets;
+//   - civichall → in the Settlement the Bund's banks, three ways (the HSBC's dome on its drum; a portico of giant columns
+//     in a recessed front under a pediment; a Renaissance block with copper-capped corner turrets); in Zhabei, Shanghai
+//     North Station (skyline.ts stationHall), burnt out as in 1932 and 1937, turned a quarter so its train shed runs the
+//     plot's long side;
 //   - parkingdeck → the Joint Trust warehouse ("Sihang", 1931): four storeys of concrete frame, the front's middle bay
 //     rising over the flat roof with the warehouse's name, its windows sandbagged and shot out, the shell holes of
 //     October 1937 in the wall that faced the attack; some of them brick-faced godowns of the same build.
@@ -20,9 +20,10 @@ import { emitRoof, roofGeometry, type RoofSpec } from './house.ts';
 import { windowUnit } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
-  BRONZE, BUND_WINDOW, CHAR, COPPER_GREEN, GILT, IRON, WHITE_TRIM, breach, choose, clampTo, fillOf, planFaces, pocks, pyramid, rect, sandbags,
-  soot, uvOffset,
+  BRONZE, BUND_WINDOW, CHAR, COPPER_GREEN, GILT, IRON, WHITE_TRIM, bankOf, breach, choose, clampTo, fillOf, planFaces, pocks, pyramid, rect,
+  sandbags, soot, uvOffset,
 } from './shanghaiParts.ts';
+import { decoTower, stationHall } from './skyline.ts';
 
 const DEC = { decor: true } as const;
 const SHADOWED = { decor: true, shadow: true } as const;
@@ -64,15 +65,6 @@ function deco(sink: PartSink, face: Face, y0: number, y1: number, fh: number, st
 /** The faces of a tier x0..x1, z0..z1 (front +z, right, back, left). */
 const tierFaces = (x0: number, x1: number, z0: number, z1: number): Face[] => planFaces(rect(x0, z0, x1, z1));
 
-/** A flagpole on a roof (dressing): the pole and, now and then, the flag. */
-function flagpole(sink: PartSink, x: number, y: number, z: number, h: number, look: () => number): void {
-  sink.cylinder('structureMetal', [x, y, z], 'y', h, 0.05, 5, { colour: IRON, decor: true, fine: true });
-  if (look() < 0.5) {
-    const flag: Face = { origin: [x, 0, z], u: [1, 0, 0], out: [0, 0, 1], width: 1 };
-    faceBox(sink, 'structureWood', flag, 0.75, y + h - 0.55, 0, 1.4, 0.9, 0.02, { colour: choose(look(), [rgb(0x8c2b22), rgb(0x2f3f6a), rgb(0x6a6a5c)]), decor: true, fine: true });
-  }
-}
-
 /** The ground storey's shopfronts and doors along a podium face (dressing). */
 function podiumFront(sink: PartSink, face: Face, h: number, look: () => number, pierBucket: RegionalBucket, pierShade = 1): void {
   const w = face.width - 0.8, n = Math.max(1, Math.round(w / 3.2)), pitch = w / n;
@@ -91,94 +83,33 @@ function scars(sink: PartSink, face: Face, h: number, look: () => number, mobile
   if (heavy && look() < 0.6) breach(sink, face, (look() - 0.5) * face.width * 0.6, 4 + look() * Math.max(1, h - 6), 0.8 + look() * 0.6, look);
 }
 
-// ------------------------------------------------------------------------------------------------ Broadway Mansions
+// ------------------------------------------------------------------------------------------------ the Bund's towers
 
-/** Broadway Mansions: the granite podium, the brown brick tiers stepping back to the crown, the flagpole. */
-const broadwayMansions: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const f = fillOf(ctx.bounds, 0.1);
-  sink.placed(0, f.cx, 0, f.cz, () => {
-    const look = ctx.variant, mobile = ctx.tier === 'mobile';
-    const W = clampTo(f.w, 5, 60), D = clampTo(f.d, 5, 60), H = clampTo(ctx.info.h, 8, 80);
-    const podH = Math.min(7, H * 0.2), fh = 3.2;
-    const brick: FacadeStyle = { pitch: 1.7, pier: 0.5, pierBucket: 'stone', pierOut: 0.18, pierShade: 0.8, spandrel: rgb(0x55392b), lit: 0.16, dark: 0.12 };
-    sink.span('plaster3', -W / 2, -0.4, -D / 2, W / 2, podH, D / 2);
-    for (const face of tierFaces(-W / 2, W / 2, -D / 2, D / 2)) podiumFront(sink, face, podH, look, 'plaster3');
-    // the tiers: [half width, half depth, top] as shares of the lot and the height
-    const tiers: Array<readonly [number, number, number]> = [[0.5, 0.46, 0.46], [0.37, 0.42, 0.66], [0.27, 0.36, 0.82], [0.17, 0.28, 0.94], [0.09, 0.17, 1.0]];
-    let y = podH;
-    for (const [hx, hz, top] of tiers) {
-      const x0 = -W * hx, x1 = W * hx, z0 = -D * hz, z1 = D * hz, y1 = Math.max(y + fh, H * top);
-      sink.span('stone', x0, y, z0, x1, y1, z1, { shade: 0.82 });
-      sink.span('plaster3', x0 - 0.12, y1 - 0.35, z0 - 0.12, x1 + 0.12, y1, z1 + 0.12, SHADOWED);
-      for (const face of tierFaces(x0, x1, z0, z1)) deco(sink, face, y + 0.3, y1 - 0.6, fh, brick, look, 0.4);
-      y = y1;
-    }
-    flagpole(sink, 0, y, 0, 5, look);
-    scars(sink, tierFaces(-W / 2, W / 2, -D / 2, D / 2)[0], podH, look, mobile);
-  });
-  return sink.finish();
-};
+/**
+ * A Bund tower in the skyline kit's deco grammar (skyline.ts decoTower: the granite podium, the shaft of piers over
+ * recessed spandrels in setbacks, the crown): the Settlement's stand intact or shelled, Zhabei's take any damage.
+ */
+function bundTower(crown: 'pyramid' | 'stepped' | 'needle'): RegionalBuilder {
+  const standing = [decoTower({ crown, damage: 0 }), decoTower({ crown, damage: 1 })], any = decoTower({ crown });
+  return (ctx) => (bankOf(ctx) === 'zhabei' ? any(ctx) : standing[ctx.variant() < 0.6 ? 0 : 1](ctx));
+}
 
-// ------------------------------------------------------------------------------------------------ the Park Hotel
+/**
+ * A builder turned a quarter about the plot's centre: it builds on the plot read with its sides swapped and its parts
+ * are turned back, so a long building (a station's train shed) runs the plot's long side whichever way the plot lies.
+ */
+function turnedQuarter(builder: RegionalBuilder): RegionalBuilder {
+  return (ctx) => {
+    const b = ctx.bounds;
+    const parts = builder({ ...ctx, info: { ...ctx.info, w: ctx.info.d, d: ctx.info.w },
+      bounds: { minX: -b.maxZ, maxX: -b.minZ, minZ: b.minX, maxZ: b.maxX, maxY: b.maxY } });
+    for (const list of Object.values(parts)) for (const g of list) g.rotateY(Math.PI / 2);
+    return parts;
+  };
+}
 
-/** The Park Hotel: the black granite base, the dark brown shaft of piers, the stepped crown. */
-const parkHotel: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const f = fillOf(ctx.bounds, 0.1);
-  sink.placed(0, f.cx, 0, f.cz, () => {
-    const look = ctx.variant, mobile = ctx.tier === 'mobile';
-    const W = clampTo(f.w, 5, 60), D = clampTo(f.d, 5, 60), H = clampTo(ctx.info.h, 8, 90);
-    const baseH = Math.min(12.5, H * 0.2), fh = 3.2;
-    const shaft: FacadeStyle = { pitch: 1.45, pier: 0.55, pierBucket: 'stone', pierOut: 0.3, pierShade: 0.5, spandrel: rgb(0x2e221c), lit: 0.18, dark: 0.1 };
-    sink.span('plaster3', -W / 2, -0.4, -D / 2, W / 2, baseH, D / 2, { shade: 0.38 });
-    for (const face of tierFaces(-W / 2, W / 2, -D / 2, D / 2)) podiumFront(sink, face, baseH, look, 'plaster3', 0.32);
-    const tiers: Array<readonly [number, number, number]> = [[0.43, 0.43, 0.8], [0.35, 0.35, 0.88], [0.26, 0.26, 0.94], [0.16, 0.16, 1.0]];
-    let y = baseH;
-    tiers.forEach(([hx, hz, top], i) => {
-      const x0 = -W * hx, x1 = W * hx, z0 = -D * hz, z1 = D * hz, y1 = Math.max(y + fh, H * top);
-      sink.span('stone', x0, y, z0, x1, y1, z1, { shade: 0.52 });
-      for (const face of tierFaces(x0, x1, z0, z1)) deco(sink, face, y + 0.2, y1 - (i === 0 ? 0.4 : 0.2), fh, shaft, look, 0.3);
-      y = y1;
-    });
-    // the entrance canopy over the front door
-    const front = tierFaces(-W / 2, W / 2, -D / 2, D / 2)[0];
-    faceBox(sink, 'structureMetal', front, 0, 4.4, 0.9, Math.min(W * 0.4, 6), 0.3, 1.8, { colour: BRONZE, ...SHADOWED });
-    flagpole(sink, 0, y, 0, 4, look);
-    scars(sink, front, baseH, look, mobile);
-  });
-  return sink.finish();
-};
-
-// ------------------------------------------------------------------------------------------------ Sassoon House
-
-/** Sassoon House: the granite block, its front tower and the green copper pyramid over it. */
-const sassoonHouse: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const f = fillOf(ctx.bounds, 0.1);
-  sink.placed(0, f.cx, 0, f.cz, () => {
-    const look = ctx.variant, mobile = ctx.tier === 'mobile';
-    const W = clampTo(f.w, 5, 60), D = clampTo(f.d, 5, 60), H = clampTo(ctx.info.h, 8, 90);
-    const fh = 3.6, blockTop = Math.max(fh * 2, H * 0.55), towerTop = Math.max(blockTop + fh, H * 0.74);
-    const granite: FacadeStyle = { pitch: 1.9, pier: 0.6, pierBucket: 'plaster3', pierOut: 0.22, spandrel: BRONZE, lit: 0.2, dark: 0.08 };
-    sink.span('plaster3', -W / 2, -0.4, -D / 2, W / 2, blockTop, D / 2);
-    sink.span('plaster3', -W / 2 - 0.1, blockTop - 0.5, -D / 2 - 0.1, W / 2 + 0.1, blockTop, D / 2 + 0.1, SHADOWED);
-    const faces = tierFaces(-W / 2, W / 2, -D / 2, D / 2);
-    for (const face of faces) {
-      podiumFront(sink, face, 5.0, look, 'plaster3');
-      deco(sink, face, 5.4, blockTop - 0.6, fh, granite, look, 0.5);
-    }
-    // the tower on the front, its parapet, the pyramid
-    const tx = Math.min(W * 0.22, 6), td = Math.min(D * 0.44, 2 * tx), tz1 = D / 2, tz0 = tz1 - td;
-    sink.span('plaster3', -tx, blockTop, tz0, tx, towerTop, tz1);
-    for (const face of tierFaces(-tx, tx, tz0, tz1)) deco(sink, face, blockTop + 0.3, towerTop - 0.8, fh, granite, look, 0.4);
-    sink.span('plaster3', -tx - 0.15, towerTop, tz0 - 0.15, tx + 0.15, towerTop + 0.9, tz1 + 0.15);
-    pyramid(sink, 'structureMetal', 0, (tz0 + tz1) / 2, tx, td / 2, towerTop + 0.9, Math.max(towerTop + 3, H), { colour: COPPER_GREEN });
-    flagpole(sink, 0, Math.max(towerTop + 3, H) - 0.2, (tz0 + tz1) / 2, 3, look);
-    scars(sink, faces[0], 5, look, mobile);
-  });
-  return sink.finish();
-};
+/** Shanghai North Station in Zhabei: the skyline kit's terminus, its train shed along the plot, burnt out. */
+const northStation = turnedQuarter(stationHall({ damage: 2 }));
 
 // ------------------------------------------------------------------------------------------------ the Bank of China
 
@@ -419,12 +350,12 @@ const sihangWarehouse: RegionalBuilder = (ctx) => {
 };
 
 export const SHANGHAI_BUND_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
-  arcology: broadwayMansions,
-  needletower: parkHotel,
-  megatower: sassoonHouse,
+  megatower: bundTower('pyramid'),
+  arcology: bundTower('stepped'),
+  needletower: bundTower('stepped'),
   terracetower: bankOfChina,
   broadcasttower: customsHouse,
-  civichall: bundBank,
+  civichall: (ctx: RegionalBuildContext) => (bankOf(ctx) === 'zhabei' ? northStation(ctx) : bundBank(ctx)),
   parkingdeck: sihangWarehouse,
 });
 
