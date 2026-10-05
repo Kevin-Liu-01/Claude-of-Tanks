@@ -19,6 +19,14 @@
 // the cargo-apron motor pool (brawl) in bravo's half and the terminal-apron hut line (support) in alpha's stand where
 // each other's rotations would, and the radar post (scout) watches the runway's east end. The zone-control discs stand
 // on the cargo apron, the runway's centre (also the turbo-ball kickoff) and the terminal apron.
+//
+// 2026-10-05 (the map-revival lane; the owner: "make sure all maps look completely new and revitalized like verdant"):
+// Kestrel was an airfield on an empty lawn. Verdant's three layers are added round it, the airport's own buildings,
+// runway, aprons, roads, pads and objectives where they stood: the Polissia's pine and birch woods close round the
+// plateau and down the valley sides; the land outside the perimeter is worked (landUse.ts `airfield`: hay meadows and
+// pasture, small fields of rye and potatoes); and the garden cooperatives of Hostomel's dachas stand on the valley
+// shoulders beside the access roads (maps/regional/hostomel.ts `cottage`, their sheds and picket-fenced plots from the
+// yards), with a field cross at each cooperative's lane.
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 
 // The airfield's buildings: authored sites in rotation pairs about the runway's centre, so each half holds the same
@@ -54,6 +62,15 @@ const CARGO_SIDE = [
 ];
 const rotateSite = (site: { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number } }) =>
   ({ ...site, x: -site.x, z: -site.z, yawDeg: site.yawDeg + 180 });
+// 2026-10-05 (the map-revival lane): the dacha cooperative on the south valley's shoulder, east of the access road's
+// climb (its rotation on the north shoulder): two rows of four plots, 30 m apart, the houses' gables to the lane that runs
+// between the rows, the yards' fenced gardens and sheds round them. The shoulder there is the plateau's smoothest edge
+// (under 1.6 m of relief across a house), 25 m and more off the access road and 15 m clear of the marshes below it.
+// Appended after the airport's sites, so those keep their order and every pose.
+const DACHAS = [40, 70, 100, 130].flatMap((x) => [
+  { structure: 'cottage', x, z: -252, yawDeg: 180 },
+  { structure: 'cottage', x, z: -278, yawDeg: 0 },
+]);
 export default {
   id: 'airfield', name: 'Kestrel Airfield',
   blurb: 'A windswept landing strip separates dispersed shelters, service aprons and perimeter berms',
@@ -133,9 +150,12 @@ export default {
     // and fuel stains and tyre rubber along the runway's axis (terrain.ts uPaveSlab) — in place of the sett print
     pavement: { slabM: 6, jointM: 0.04, stains: 1, tyres: 1 } },
   vegetation: {
-    species: ['pine', 'birch', 'poplar'], clusterMix: [['pine', 0.6], ['birch', 0.25], ['poplar', 0.15]],
-    loneMix: [['birch', 0.4], ['pine', 0.4], ['poplar', 0.2]], rimMix: [['pine', 0.65], ['birch', 0.2], ['poplar', 0.15]],
-    clusterCount: 26, loneCount: 42, rimCount: 80, grassDensity: 0.72, bushCount: 0.82, bushSpecies: 'birch', // map pass 2026-09-12: perimeter scrub (tree/rock counts at the first-pass ceilings)
+    // 2026-10-05 (the map-revival lane): the Polissia's woods round the plateau — Scots pine stands with birch at their
+    // edges, down the valley sides and past the runway's ends (no tree stands inside the graded airfield: vegetation.ts
+    // keeps every tree 24 m off the settlement rect, here the whole plateau); toward Verdant's 72 / 185 / 102
+    species: ['pine', 'birch', 'poplar'], clusterMix: [['pine', 0.68], ['birch', 0.26], ['poplar', 0.06]],
+    loneMix: [['birch', 0.45], ['pine', 0.42], ['poplar', 0.13]], rimMix: [['pine', 0.74], ['birch', 0.21], ['poplar', 0.05]],
+    clusterCount: 60, loneCount: 120, rimCount: 108, grassDensity: 0.72, bushCount: 0.9, bushSpecies: 'birch', // map pass 2026-09-12: perimeter scrub
     // the runway's cleared strip, west to east
     avoid: [{ x: -300, z: 0, r: 80 }, { x: -150, z: 0, r: 80 }, { x: 0, z: 0, r: 80 }, { x: 150, z: 0, r: 80 }, { x: 300, z: 0, r: 80 }],
   },
@@ -150,7 +170,7 @@ export default {
       { id: 'terminal-hut-line', role: 'support', x: 122, z: 150, yawDeg: -90, structure: 'quonsethut', redoubt: true, outcrop: { count: 5, radius: 10 }, wreck: true },
       { id: 'eastern-radar-berm', role: 'scout', x: 340, z: -44, yawDeg: -90, structure: 'relaystation', outcrop: { count: 4, radius: 8 } },
     ],
-    plannedSites: [...CARGO_SIDE, ...CARGO_SIDE.map(rotateSite)],
+    plannedSites: [...CARGO_SIDE, ...CARGO_SIDE.map(rotateSite), ...DACHAS, ...DACHAS.map(rotateSite)],
     // 2026-10-03 (regional-buildings lane): the Antonov airport's own buildings (maps/regional/hostomel.ts): the cargo
     // hangar under its barrel vault, sheet-steel maintenance hangars, the control tower's glazed cab, the terminal and
     // office blocks, the fire station, the water tower, the war's damage
@@ -170,6 +190,16 @@ export default {
       ids: ['pl01', 'm551_sheridan', 'marder1a3', 'm2a2_bradley', 'm1a2'] },
     inhabit: { stalls: 0, benches: 2, coreClutter: 20, drums: 10, trucks: 7, jeeps: 5, drumClusters: 5, camps: 3, modernClutter: 22, looseClutter: 18, roadFence: 'fencerail', yardFence: 'fencerail' },
   },
+  // the map-revival lane (2026-10-05; the scenery lane's generators, world/scenery.ts): a field cross at the lane of each
+  // dacha cooperative. (No 110 kV line: every route to the plateau crosses the new woods, and a line's towers rise to keep
+  // the crowns clear under its spans — 55 m on the east-end route, a transmission giant beside a dacha.)
+  scenery: {
+    landmarks: [
+      { kind: 'orthodoxcross', x: 20, z: -265, yawDeg: 90, name: 'the cross at the south cooperative' },
+      { kind: 'orthodoxcross', x: -20, z: 265, yawDeg: 270, name: 'the cross at the north cooperative' },
+    ],
+  },
+
   // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): an airfield plain: low swells,
   // tree lines
   horizon: { baseHex: 0x6f795e, amp: 0.3, style: 'rolling', treeline: 0.60, panorama: { regional: 'plain' }, forestHex: 0x394e37, rockHex: 0x7a7c70, haze: 0.90, grain: 0.42 },
