@@ -86,4 +86,36 @@ const post = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
 assert.match(post, /lensFlare\.update\(lightFx\.lensFlare\);\s*lensFlare\.clearTarget = !lightFx\.sunShafts;/, 'per-frame update and the clear hand-off follow the levers');
 assert.match(post, /new LensFlarePass\(camera, scene, sceneDepth, lightFxTarget\)/, 'the flare tests occlusion against the resolved scene depth');
 
-console.log('lensFlare.selftest: tap disc, visibility twin, easing, frame fade, moon share, disc radius, GLSL parts and chain wiring pinned');
+// 2026-10-04 (the gauntlet's wave 65 on Caldera: "a translucent circular lens-flare artifact sits directly on top of the
+// mountain silhouette"): the sun above the ridge, the occlusion right; the halo's ring and the far ghost over the dark ridge
+// read as the artifact — the ghosts and the halo turned down, the streak and the glow at the sun kept
+{
+  const flareSrc = readFileSync(new URL('./lensFlare.ts', import.meta.url), 'utf8');
+  assert.match(flareSrc, /export const LENS_FLARE_PARTS = Object\.freeze\(\{ ghosts: 0\.4, halo: 0\.25, streak: 1, glow: 1 \}\);/);
+  assert.match(flareSrc, /gl_FragColor = vec4\( uColor \* vis \* \( ghosts \* uParts\.x \+ halo \* uParts\.y \+ vec3\( streak \* uParts\.z \+ glow \* uParts\.w \) \), 1\.0 \);/,
+    'each part takes its share');
+  assert.match(flareSrc, /lightTune\('LENS_FLARE_PART_GHOSTS', LENS_FLARE_PARTS\.ghosts\)/, 'the QA reads default to the shipped shares');
+}
+// 2026-10-04 (the gauntlet's wave 71 on Titan Gorge: the halo's arcs drew as "a vertical rainbow" across the gorge walls
+// under a closed deck): the clouds' transmittance toward the sun joins the visibility (the depth reads a deck as sky)
+{
+  const full = { up: 1, inFrame: 1 };
+  assert.equal(lensFlareVisibility([0.5, 0.5], 0.02, 16 / 9, () => true, full, () => 0), 0, 'a closed deck (coverage 1): no flare');
+  assert.equal(lensFlareVisibility([0.5, 0.5], 0.02, 16 / 9, () => true, full, () => 1), 1, 'a clear sky: the flare whole');
+  assert.equal(lensFlareVisibility([0.5, 0.5], 0.02, 16 / 9, () => true, full, () => 0.5), 1, 'a thin veil the sun burns through: the flare whole');
+  assert.ok(near(lensFlareVisibility([0.5, 0.5], 0.02, 16 / 9, () => true, full, () => 0.125), 0.5), 'a veil at T 0.125: half (the gate\'s midpoint)');
+  assert.equal(lensFlareVisibility([0.5, 0.5], 0.02, 16 / 9, () => true, full), 1, 'no cloud layer: the depth alone, as before');
+  // a cloud edge across the disc: the share of the five taps that see past it
+  assert.ok(near(lensFlareVisibility([0.5, 0.5], 0.02, 16 / 9, () => true, full, (u) => (u > 0.5 ? 1 : 0)), 1 / 5), 'an edge: one tap of five');
+  const flareSrc = readFileSync(new URL('./lensFlare.ts', import.meta.url), 'utf8');
+  assert.match(flareSrc, /float target = \( sky \/ \$\{LENS_FLARE_VIS_TAPS\.toFixed\(1\)\} \) \* clouds \* uTarget;/, 'the GPU pass multiplies the clouds in before the easing');
+  assert.match(flareSrc, /clouds \+= smoothstep\( 0\.0, \$\{f\(LENS_FLARE_CLOUD_FULL\)\}, texture2D\( tClouds,/, 'through the same gate as the twin');
+  assert.match(flareSrc, /export const LENS_FLARE_CLOUD_FULL = 0\.25;/);
+  assert.match(flareSrc, /this\.visMaterial\.uniforms\.tClouds\.value = clouds;\s*this\.visMaterial\.uniforms\.uCloudsOn\.value = clouds && lightTune\('LENS_FLARE_CLOUD_GATE', 1\) > 0 \? 1 : 0;/, 'bound per frame from the cloud layer (QA knob, on)');
+  const shaftSrc = readFileSync(new URL('./sunShafts.ts', import.meta.url), 'utf8');
+  assert.match(shaftSrc, /if \( uCloudsOn > 0\.5 \) sky \*= smoothstep\( 0\.0, 0\.25, texture2D\( tClouds, vUv \)\.a \);/, 'the shafts\' mask too: a closed deck lets none through');
+  const cloudSrc = readFileSync(new URL('./volumetricClouds.ts', import.meta.url), 'utf8');
+  assert.match(cloudSrc, /get historyTexture\(\): THREE\.Texture \| null \{\s*return this\.active && this\.dome\.visible && this\.historyValid \? this\.domeMaterial\.uniforms\.tClouds\.value as THREE\.Texture : null;/,
+    'the resolved history the dome composites (alpha: the transmittance), only while the layer draws');
+}
+console.log('lensFlare.selftest: tap disc, visibility twin, easing, frame fade, moon share, disc radius, GLSL parts and chain wiring pinned; the ghosts and the halo turned down; the clouds\' transmittance gates the flare and the shafts');
