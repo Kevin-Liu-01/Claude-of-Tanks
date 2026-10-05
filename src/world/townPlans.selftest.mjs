@@ -125,6 +125,42 @@ for (const mapId of Object.keys(TOWN_PLANS)) {
 }
 const footprint = (o) => ({ cx: (o.b[0] + o.b[3]) / 2, cz: (o.b[2] + o.b[5]) / 2, w: o.b[3] - o.b[0], d: o.b[5] - o.b[2] });
 const summary = [];
+/**
+ * A map that adopts a regional kit (props.architecture; maps/regional, the map-revival lanes, 2026-10-05). The kit
+ * rebuilds each structure in its region's architecture over the same seat, so the footprint's world box changes size
+ * with the kit's own shape, and the kit's yards add their sheds. regionalArchitecture.selftest holds the seats, the
+ * placement stream and the contact records with and without the kit, and each new kit's body within half a metre of
+ * the base's reach. Here each PR-head structure keeps a structure whose centre stands within KIT_SEAT_M of its own,
+ * one to one, or a short move off a carriageway. Every structure left over must be shed-sized (a yard's shed).
+ */
+const KIT_SEAT_M = 2.5, KIT_SHED_M = 6;
+function kitSeats(mapId, config, carriageway, structures, now) {
+  assert.ok(now.length >= structures.length, `${mapId}: at least as many structures as the PR head (${now.length} of ${structures.length})`);
+  const taken = new Set();
+  let seated = 0, moved = 0, worstSeat = 0, worstMove = 0;
+  const nearest = (cx, cz, within) => {
+    let best = -1, bestD = within;
+    now.forEach((s, i) => { const d = Math.hypot(s.cx - cx, s.cz - cz); if (!taken.has(i) && d <= bestD) { best = i; bestD = d; } });
+    return [best, bestD];
+  };
+  const pending = [];
+  for (const [cx, cz] of structures) {
+    const [i, d] = nearest(cx, cz, KIT_SEAT_M);
+    if (i >= 0) { taken.add(i); seated++; worstSeat = Math.max(worstSeat, d); } else pending.push([cx, cz]);
+  }
+  for (const [cx, cz] of pending) {
+    const authored = (config.props.roadClearanceTargets ?? []).find((t) => Math.hypot(t.from[0] - cx, t.from[1] - cz) <= 1.5);
+    const [i, d] = authored ? nearest(authored.to[0], authored.to[1], KIT_SEAT_M) : nearest(cx, cz, 30);
+    assert.ok(i >= 0, `${mapId}: the structure at (${cx}, ${cz}) keeps its seat in the ${config.props.architecture} kit or a short move off a carriageway`);
+    taken.add(i); moved++; worstMove = Math.max(worstMove, d);
+  }
+  assert.ok(moved <= carriageway, `${mapId}: only buildings that stood in a carriageway move (${moved} of ${carriageway})`);
+  const extra = now.filter((_, i) => !taken.has(i));
+  for (const s of extra) {
+    assert.ok(s.w <= KIT_SHED_M && s.d <= KIT_SHED_M, `${mapId}: a structure the PR head had no seat for at (${s.cx.toFixed(1)}, ${s.cz.toFixed(1)}) is a yard's shed (${s.w.toFixed(1)} x ${s.d.toFixed(1)} m)`);
+  }
+  summary.push(`${mapId} (${config.props.architecture} kit) ${seated} seated (up to ${worstSeat.toFixed(1)} m), ${moved} off a carriageway (up to ${worstMove.toFixed(1)} m), ${extra.length} yard sheds`);
+}
 for (const [mapId, { carriageway, structures }] of Object.entries(PR_HEAD)) {
   const config = getMapConfig(mapId);
   if (!TOWN_PLANS[mapId]) {
@@ -133,6 +169,10 @@ for (const [mapId, { carriageway, structures }] of Object.entries(PR_HEAD)) {
   const manifest = decodeCollisionManifest(JSON.parse(readFileSync(
     new URL(`../../server/world-collision-manifests/${mapId}.json`, import.meta.url), 'utf8')));
   const now = manifest.obstacles.filter((o) => o.k === 'structure').map(footprint);
+  if (config.props.architecture) {
+    kitSeats(mapId, config, carriageway, structures, now);
+    continue;
+  }
   assert.equal(now.length, structures.length, `${mapId}: as many structures as the PR head (${now.length})`);
   let exact = 0, moved = 0, worstMove = 0;
   const taken = new Set();
