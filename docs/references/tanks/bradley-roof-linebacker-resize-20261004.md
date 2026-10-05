@@ -32,8 +32,22 @@ stats are unchanged. The main barrel retains its physical 25 mm bore.
   (43 HIGH / 41 LOW meshes). Critic scripts, results and exact input hashes
   are saved in `.qa-dev/bradley-roof-resize/critic/`.
 - PASS: TypeScript and core-unused checks on the authored revision.
-- PENDING: regenerated fills/assets/anatomy, native HIGH/LOW visual review,
-  closure, integrated release, build and browser switching on the final tree.
+- PASS: scoped fill and asset regeneration; full 220-vehicle anatomy update/check;
+  scoped centering; geometry ledger update/check; 33-view sealed closure; public
+  and private builds; attribution; production Gallery/Garage display and switching.
+  The two generated asset records are the only changed rows in tank-assets.json.
+- PASS: independent review of all 40 unmodified native HIGH/LOW Gallery captures,
+  with exact source and image hashes in `critic/visual-review.json`. Acceptance
+  covers the added roof and complete M6 resize, not full-vehicle qualification.
+- PASS: release-tail anatomy freshness, centering, module visual alignment and
+  hits, asset currency, duplicate tracks, muzzle bores and barrel circularity
+  across the two Bradleys and all seven M1A1 photo-repair IDs.
+- PASS: the M6 owner-design gate after synchronizing its pinned expected datums
+  with the owner's 10% reduction. The first run failed because that duplicate
+  contract still described the previous turret. `concept.log` retains the raw
+  failure; `concept-retry/` holds the fresh pass. No tolerance was changed.
+- PENDING: composed release scoring and the integrated npm test suite. These
+  are separate from the passed release-tail commands and must not be called green.
 
 Current command logs, generated outcomes and captures live in the ignored
 `.qa-dev/bradley-roof-resize/` evidence directory. Do not infer a current pass
@@ -44,3 +58,20 @@ retains that status and does not waive physical checks.
 The previous M1A1 release retry was interrupted while still queued, before
 these edits. It remains incomplete, never a pass; its seven authored mantlets
 are unchanged and their final combined-tree release checks remain required.
+
+## Separate retained M3A3 gun-to-hull defect
+
+At -9 degrees with the turret facing forward, the cannon intersects the raised
+hull deck. The independent reviewer reproduced the same contact before this
+roof change at commit `2a9c9efe3`; its sampled centerline penetrates 61.6 mm.
+The new roof has no contact with the gun, and neither hull nor gun geometry was
+changed by the roof repair. This remains a real unresolved physical defect,
+not covered by the owner's failed-reference exception.
+
+A diagnostic-only trial raised the gun 140 mm and moved it forward 120 mm. It
+cleared the new roof and improved forward clearance to about 9.9 mm, but still
+intersected rear hull stock at yaw 165–190 degrees (52.8 mm sampled penetration
+at 180 degrees). It would also require relocating the stationary trunnions and
+support saddles. The trial was rejected and never applied to the runtime source.
+Raw observations and candidate failures remain under `critic/`. Do not claim
+complete M3A3 articulation qualification from this scoped roof acceptance.
