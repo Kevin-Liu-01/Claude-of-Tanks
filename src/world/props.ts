@@ -56,6 +56,7 @@ import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
 import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
+import { paintDryWallBuffers } from './fieldWallFace.ts';
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
 import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
@@ -1040,6 +1041,25 @@ function* makeFieldStone(
     // (a stone's skin, not stones: a gentle relief, and the occlusion the geometry's own gaps give)
     normal: normalFromHeight(hgt, size, 2.2 * size / 512, anisotropy),
     surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.8, roughMax: 0.98, aoMin: 0.72 }),
+  };
+}
+
+/**
+ * The scenery lane (b13; gauntlet wave 87, Saltwind's field walls "cast concrete rather than a drystone wall"): the
+ * field works' dry-stone walls' face print (fieldWallFace.ts) — rough courses of limestone between dark dry joints,
+ * crusted with lichen, and a top stone's skin for the crown. Neutral: the walls' vertex tone is the map's. Phones
+ * paint it at half size (the same stones).
+ */
+function* makeDryWall(
+  anisotropy: number,
+  size: number,
+): Generator<PropsBuildSlice, GeneratedSurfaceTextures, void> {
+  const { px, hgt } = yield* paintDryWallBuffers(size);
+  return {
+    albedo: toTexture(px, size, { srgb: true, anisotropy }),
+    // (stones standing out of dark joints: a firmer relief than a stone's skin)
+    normal: normalFromHeight(hgt, size, 3.2 * size / 512, anisotropy),
+    surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.82, roughMax: 1.0, aoMin: 0.55 }),
   };
 }
 
@@ -8544,12 +8564,28 @@ ${snowCap ? `
     const receipt = group.userData.scenery as { fieldWorks?: unknown } | undefined;
     if (receipt && built.receipt) receipt.fieldWorks = built.receipt;
     if (!built.geometry) return;
-    const works = new THREE.Mesh(built.geometry, mats.rock);
-    works.name = 'props-field-works';
-    works.castShadow = false;
-    works.receiveShadow = true;
-    works.matrixAutoUpdate = false;
-    group.add(works);
+    // (b13: the walls on their own dry stone — the face print, a lit material on the cascades like every other; the
+    // banks on the rock material)
+    const place = (geometry: THREE.BufferGeometry, material: THREE.Material, name: string): void => {
+      const works = new THREE.Mesh(geometry, material);
+      works.name = name;
+      works.castShadow = false;
+      works.receiveShadow = true;
+      works.matrixAutoUpdate = false;
+      group.add(works);
+    };
+    if (built.wallGeometry) {
+      const print = yield* makeDryWall(aniso, mobileProps ? 256 : 512);
+      const wallMaterial = new THREE.MeshStandardMaterial({
+        map: print.albedo, normalMap: print.normal, roughnessMap: print.surface, aoMap: print.surface,
+        vertexColors: true, roughness: 1, metalness: 0,
+      });
+      wallMaterial.name = 'props-field-walls';
+      engineCtx.setupShadowMaterial(wallMaterial);
+      retainedSurfaceMaterials.push(wallMaterial);
+      place(built.wallGeometry, wallMaterial, 'props-field-works');
+    }
+    if (built.bankGeometry) place(built.bankGeometry, mats.rock, built.wallGeometry ? 'props-field-banks' : 'props-field-works');
   }
   yield* placeFieldBoundaryWorks();
   // Construction-only spans are now sealed into matrices/support/colliders;

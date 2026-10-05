@@ -28,7 +28,7 @@ import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildBedrock, buildRockFormation, type RockFormationSpec } from './sceneryRocks.ts';
 import { restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 import { buildConductor, buildPylon, SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
-import { buildFieldWorks, type FieldWorksKeepOut, type FieldWorksReceipt, type FieldWorksRect } from './fieldWorks.ts';
+import { buildFieldWorks, type FieldWorksBuilt, type FieldWorksKeepOut, type FieldWorksReceipt, type FieldWorksRect } from './fieldWorks.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { ASSAULT_TRENCH, planAssaultTrenchLines } from '../sim/assaultLines.ts';
 import { createMatchPlacement, matchPlacementAnchors, type MatchPlacement, type PlacementTerrain } from '../sim/matchPlacement.ts';
@@ -515,9 +515,11 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
  */
 export function* composeFieldWorks(
   ctx: FieldWorksBuildContext,
-): Generator<SceneryBuildSlice, { geometry: THREE.BufferGeometry | null; receipt: FieldWorksReceipt | null }, void> {
+): Generator<SceneryBuildSlice, Omit<FieldWorksBuilt, 'receipt'> & { receipt: FieldWorksReceipt | null }, void> {
   const works = ctx.scenery?.fieldWorks;
-  if (!works || (!works.walls && !works.banks) || !ctx.heightField._landUseAt) return { geometry: null, receipt: null };
+  if (!works || (!works.walls && !works.banks) || !ctx.heightField._landUseAt) {
+    return { geometry: null, wallGeometry: null, bankGeometry: null, receipt: null };
+  }
   // (the hard solids: buildings, walls, the rock masses; not the trees, not the crushable clutter)
   const solids = ctx.obstacles.filter((ob) => ob.treeIdx == null && !ob.crushable && !SOFT_KINDS.has(ob.kind ?? ''));
   const keepOut = yield* fieldWorksKeepOut(ctx);

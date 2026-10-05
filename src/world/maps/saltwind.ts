@@ -166,8 +166,10 @@ export default {
   // the map (the rock fields draw their own ground on each side).
   scenery: {
     // the karst's small fields are walled in dry stone: the ground lane's land use draws their footing (landUse.ts, boundary
-    // 3) and the walls stand on the same lines (fieldWorks.ts; decor, no collision)
-    fieldWorks: { walls: true, wallTone: [0.11, 0.07, 0.52] },
+    // 3) and the walls stand on the same lines (fieldWorks.ts; decor, no collision). (b13, wave 87: the walls are laid
+    // as rubble on their own face print, whose stones are near white; the tone multiplies it, so the stones come out at
+    // the outcrops' limestone, sRGB lightness about 0.6, the joints dark between them)
+    fieldWorks: { walls: true, wallTone: [0.11, 0.06, 0.8] },
     // the masonry is the same limestone as the outcrops (the maps lane's boulders, lightness 0.52-0.73), weathered
     // grey: the stone print (mean sRGB lightness 0.36) lifted to lightness 0.52 at the limestone's hue (0.6 read as
     // whitewash in the targeted pairs)
