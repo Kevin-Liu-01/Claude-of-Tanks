@@ -242,6 +242,14 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     strength: 0.65, heading: 0.066, blockU: 84, blockV: 52, maxSplit: 3, marginM: 1.5, trackShare: 0.3, hedgeShare: 0.3,
     warpM: 14, region: 'coalfield', salt: 97,
   },
+  // Kestrel Airfield (Hostomel, in the Polissia north-west of Kyiv; the map-revival lane, 2026-10-05): outside the
+  // airport's perimeter the valleys of the Irpin's tributaries are hay meadow and pasture with small fields of rye and
+  // potatoes between the pine woods (the upland rotation), laid along the runway; the graded airfield inside the
+  // perimeter is the settlement rect, which the material keeps the fields off
+  airfield: {
+    strength: 0.85, heading: 0.08, blockU: 120, blockV: 64, maxSplit: 3, marginM: 1.8, trackShare: 0.35, hedgeShare: 0.12,
+    warpM: 14, region: 'upland', salt: 211,
+  },
 });
 
 /** The map's land use, or null (no fields). */
