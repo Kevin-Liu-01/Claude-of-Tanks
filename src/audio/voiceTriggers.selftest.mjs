@@ -349,6 +349,14 @@ moment('gunship_missile', () => bus.emit('ui:shellSelectionChanged', { slot: 2 }
   bus.emit('ui:shellSelectionChanged', { slot: 1 });
   settle(3);
   assert.ok(!['load_kinetic', 'load_he', 'load_heat', 'load_missile'].some((id) => asked(id, since)), 'no tank loader\'s line standing in for the gunship crew');
+  // Its missile leaves the pylon on its own recording, never the ground ATGM's launch (the owner's "popping sound").
+  for (let shot = 0; shot < 4; shot++) {
+    settle(8);
+    const sfxSince = probe.sfxLog.at(-1)?.seq ?? 0;
+    bus.emit('shell:fired', { shellId: 9300 + shot, shooterId: 'me', isPlayer: true, muzzlePos: [0, 238, 90], dir: [0, -0.8, -0.6], caliberMm: 180, shellType: 'HE', weaponSound: 'gunship-missile', velocityMps: 400 });
+    const names = probe.sfxLog.filter((e) => e.seq > sfxSince).map((e) => e.n);
+    assert.ok(names.includes('gunship_missile_own') && !names.includes('atgm_launch') && !names.some((n) => n.startsWith('blast_punch')), `the gunship's missile launch, shot ${shot + 1} (${names})`);
+  }
 }
 
 // A round into a prop sounds of what it struck, not a coin toss between wood and concrete.
