@@ -29,7 +29,7 @@
 // gutted floor shows the dark core prism behind its missing glass: no hole is cut through the structure.
 import {
   LocalFrame, PartSink, faceBox, facePanel, facePoint, normalize3, rgb, shade,
-  type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
+  type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3,
 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
@@ -65,7 +65,7 @@ const inset = (r: Rect, k: number): Rect => ({ x0: r.x0 + k, x1: r.x1 - k, z0: r
 // -------------------------------------------------------------------------------------------------------------------
 
 /** 0 intact, 1 shelled, 2 burnt floors and a blown bay, 3 a collapsed corner. */
-export type Damage = 0 | 1 | 2 | 3;
+type Damage = 0 | 1 | 2 | 3;
 
 /** A building's damage: the option, else drawn from its build stream (identically on every tier: it shapes the collision). */
 function damageOf(ctx: RegionalBuildContext, option: Damage | 'auto' | undefined): Damage {
@@ -109,7 +109,7 @@ function soot(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, w: 
 // -------------------------------------------------------------------------------------------------------------------
 
 /** How one tier's faces are dressed. */
-export interface TowerFacade {
+interface TowerFacade {
   /** the vertical piers between the bays (null: a curtain wall's mullion grid carries the faces) */
   pier: { bucket: RegionalBucket; w: number; out: number; colour?: Rgb; shade?: number } | null;
   /** the spandrel band of each floor (its sill and the slab edge) */
@@ -452,7 +452,7 @@ function archBand(u: number, y: number, w: number, h: number, rise: number): Arr
   return pts;
 }
 
-export interface SkylineOptions {
+interface SkylineOptions {
   damage?: Damage | 'auto';
   /** storeys of the shaft (default from the plan height or the plot) */
   floors?: number;
@@ -1047,4 +1047,4 @@ export const SKYLINE_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Objec
   cathedral: cathedral(),
 });
 
-export type { RegionalParts };
+
