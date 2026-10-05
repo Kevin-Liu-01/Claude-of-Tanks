@@ -429,6 +429,10 @@ and aircraft state, effective bus levels, and test hooks (`play`, `preload`,
 
 ## How generation worked
 
+The hands-on guide (prompt cookbook, take scoring and failure modes, costs,
+recipes) is the [audio-generation handbook](audio-generation/README.md); this
+section is the record of how the shipped set was made.
+
 Everything was generated on the owner's paid ElevenLabs Creator plan on
 2026-10-02 (paid plans license generated output for commercial use under
 ElevenLabs' terms). The API key is read from `ELEVENLABS_API_KEY` or a file named
@@ -681,7 +685,15 @@ crew-lines.json ─┐                    crew-voices.json
   (it now sounds of what it struck: steel, timber, earthworks, stone or
   masonry, with the steel clang that had shipped unused).
   `voiceTriggers.selftest.mjs` drives all 107 lines from their game moments and
-  fails on any sound chained in for another.
+  fails on any sound chained in for another. The pop the owner still heard on
+  the AC-130's missile was a take, not a fallback: take 0 of
+  `gunship_missile_own` was an ignition pop, 1.5 s of nothing, then the motor,
+  and with two takes that never repeat it played on every other launch.
+  `build-sfx` now measures a take split by silence (`splitGap` in `pcm.mjs`:
+  sound, more than 400 ms over 25 dB under the peak, then sound within 10 dB
+  of it) and scores it out for single-event sounds (calls, beds and stings may
+  pause); rebuilt from the cached takes at no cost, the missile ships two
+  clean launches and the repair kit lost a take whose clank came 1.65 s late.
 
 ### Cost
 
@@ -707,6 +719,9 @@ calls (634), the incoming-drone call (172) and the nine lines for the tank's own
 systems, the gunship and its drops (1,202).
 
 ## Changing or extending it
+
+Start from the [audio-generation skill](audio-generation/SKILL.md); the table
+below is the short form.
 
 | Task | Steps |
 |---|---|
