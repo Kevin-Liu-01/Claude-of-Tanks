@@ -571,3 +571,29 @@ export function balconette(sink: PartSink, face: Face, u: number, y: number, w: 
   const bars = Math.max(4, Math.round(sw / 0.12));
   for (let k = 1; k < bars; k++) faceBox(sink, 'structureMetal', face, u - sw / 2 + sw * k / bars, y + h / 2, o, 0.018, h - 0.08, 0.018, rail);
 }
+
+/**
+ * A carved gable (the Russian and Ukrainian prichelina): under each verge board a fringe of scallops along its lower
+ * edge, and the towel board (polotentse) hanging from the apex, cut to a point, a rosette on it. The gable's rakes run
+ * from (±x0, y0) at the eaves to (0, apex) on the plane z (`end` the gable's outward side, ±z).
+ */
+export function carvedVerge(sink: PartSink, x0: number, y0: number, apex: number, z: number, end: number, colour: Rgb): void {
+  const o = z + end * 0.03;
+  const c = { ...DECOR, colour };
+  const face: Face = { origin: [0, 0, o], u: [end, 0, 0], out: [0, 0, end], width: 2 * x0 };
+  for (const side of [-1, 1]) {
+    // scallops: small triangles hanging under the rake, one every 0.3 m
+    const len = Math.hypot(x0, apex - y0), n = Math.max(3, Math.floor(len / 0.3));
+    for (let k = 0; k < n; k++) {
+      const t0 = k / n, t1 = (k + 1) / n, tm = (t0 + t1) / 2;
+      const p = (t: number): [number, number] => [side * x0 * (1 - t), y0 + (apex - y0) * t - 0.11];
+      const [ua, ya] = p(t0), [ub, yb] = p(t1), [um, ym] = p(tm);
+      const tri: Array<[number, number]> = side * end > 0 ? [[ua, ya], [um, ym - 0.1], [ub, yb]] : [[ua, ya], [ub, yb], [um, ym - 0.1]];
+      faceSlab(sink, 'structureWood', face, tri.map(([u, y]): [number, number] => [u * end, y]), 0, 0.03, { colour, fine: true });
+    }
+  }
+  // the towel board from the apex
+  const w = 0.22, top = apex - 0.12, bottom = top - 1.0;
+  faceSlab(sink, 'structureWood', face, [[-w / 2, bottom + 0.14], [0, bottom], [w / 2, bottom + 0.14], [w / 2, top], [-w / 2, top]], 0, 0.035, c);
+  faceSlab(sink, 'structureWood', face, [[0, bottom + 0.42], [0.07, bottom + 0.52], [0, bottom + 0.62], [-0.07, bottom + 0.52]], 0.035, 0.008, { colour: [colour[0] * 0.6, colour[1] * 0.6, colour[2] * 0.6], fine: true });
+}

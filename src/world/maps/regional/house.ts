@@ -7,7 +7,7 @@ import {
   PartSink, bodyFaces, facePoint, faceBox, normalize3,
   type Face, type RegionalBucket, type Rgb, type Vec3, type EmitOptions,
 } from './geometry.ts';
-import { facadeOn, sillStreaks, thatchCourses } from './facade.ts';
+import { carvedVerge, facadeOn, sillStreaks, thatchCourses } from './facade.ts';
 
 export type RoofKind = 'gable' | 'halfhip' | 'hip' | 'flat' | 'shed';
 
@@ -92,8 +92,11 @@ export interface HouseSpec {
   openings: Opening[];
   chimneys: ChimneySpec[];
   gutters?: { colour: Rgb } | null;
-  /** verge boards along the gable rakes */
-  verge?: { colour: Rgb; bucket: RegionalBucket } | null;
+  /**
+   * verge boards along the gable rakes; `carved` (facade craft, desktop) cuts their lower edge in scallops and hangs the
+   * carved towel board (polotentse) from the apex, in its colour
+   */
+  verge?: { colour: Rgb; bucket: RegionalBucket; carved?: Rgb } | null;
   /** the roof covering's livery when it lies in a vertex-coloured bucket (painted sheet) */
   roofColour?: Rgb;
   /**
@@ -593,6 +596,12 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
           const a: Vec3 = [side * (rg.s + spec.roof.eave) * 0.999, eaveY - spec.roof.eave * rg.tanP - 0.02, z];
           const b: Vec3 = [0, rg.ridgeY - 0.02, z];
           if (rg.kind === 'gable') sink.member(spec.verge.bucket, a, b, 0.22, 0.05, [0, 0, end], { colour: spec.verge.colour, decor: true, ends: true });
+        }
+        if (spec.verge.carved && rg.kind === 'gable' && facadeOn()) {
+          for (const end of [1, -1]) {
+            carvedVerge(sink, rg.s + spec.roof.eave, eaveY - spec.roof.eave * rg.tanP - 0.02, rg.ridgeY - 0.02, end * (roofD / 2 + spec.roof.verge - 0.03), end,
+              spec.verge.carved);
+          }
         }
       }
     }

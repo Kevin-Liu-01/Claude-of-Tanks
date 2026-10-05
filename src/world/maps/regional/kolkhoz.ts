@@ -272,7 +272,7 @@ const ambar: RegionalBuilder = (ctx) => {
       w: W, d: D, plinth: null, storeys: [{ h: 2.2, wall: 'wood' }],
       roof: { kind: 'gable', pitchDeg: 38, eave: 0.3, verge: 1.2, thickness: 0.1, bucket: 'roof', ridge: 'saddle' },
       gableBucket: 'wood', openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.0, y0: 0, h: 1.8 }],
-      chimneys: [], gutters: null, verge: { colour: shade(PLANK, 0.85), bucket: 'structureWood' },
+      chimneys: [], gutters: null, verge: { colour: shade(PLANK, 0.85), bucket: 'structureWood', carved: shade(PLANK, 1.15) },
     }, dialect({ ...st, litShare: 0 }));
   });
   // the posts under the projecting gable
