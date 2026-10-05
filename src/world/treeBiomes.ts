@@ -120,6 +120,9 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   alpine: B('an Alpine pass', { fir: { form: 'larch' }, pine: { form: 'larch' } }),
   // the Scheldt polders: poplar and willow rows (the map's own slots already)
   polders: B('the Scheldt polders, Zeeland', {}),
+  // the Sary-Arka grain steppe of the Virgin Lands (the map-revival lane, 2026-10-05): the birch groves (kolki) of the
+  // northern Kazakh steppe where the map names a pine, in leaf; the poplar and oak slots stay its shelterbelts
+  steppe: B('the Sary-Arka grain steppe, Akmola oblast', { pine: { form: 'birch', leaves: true } }),
 });
 
 /** The form a map's shrubs grow as (their own atlas), or none (the bush slot's). */
