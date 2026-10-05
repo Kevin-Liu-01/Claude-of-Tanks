@@ -122,7 +122,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Titan Gorge | Immense canyon crossroads, branching dry channels and ledges; do not grass over every rock shelf |
 | Copper Mesa Mine | Extraction benches, haul roads and ore-loading courts; human cuts distinct from natural cliffs |
 | Cinder Junction | Rail ballast, freight platforms, graded service routes and storage blocks |
-| Ironworks | Connected loading courts, factory service yards, soot gradients and workers' streets |
+| Ironworks | The Völklingen ironworks on the Saar, March 1945: blast furnaces with their bunkers, skip hoists and stoves, sawtooth mills, gas holders, conveyors, the colliery headframe and the miners' houses (the `saar` kit, 2026-10-05); slag, gravel yards, ballast and ruderal birch are the ground lane's next |
 | Kestrel Airfield | Runway/apron geometry, dispersal bays, perimeter service roads; wide open sightlines |
 | Obsidian Caldera | Black volcanic shelves, ash and extraction equipment; distinct basalt fracture language |
 | Steinburg | Masonry street blocks, courtyards, central civic space and localized war damage |
@@ -7199,6 +7199,26 @@ pixels the flare lifts by more than 3 levels 32.5 % / 34.1 % → 0.00 %; Caldera
 floor), the ring and the ghost gone off the ridge; facing the sun on Caldera 3.3 % → 0.03 %; Saltwind and Redrock facing
 the sun keep the glow and the streak (the flare's mean lift halved, 0.16 → 0.08 and 0.15 → 0.07 levels). Receipt:
 `lensFlare.selftest` (the twin's closed deck → 0, a veil at the gate's midpoint → half, an edge across the disc → a fifth).
+
+### 2026-10-05 — Ironworks as the Völklingen ironworks (the map-revival lane, mr1)
+
+**The `saar` regional kit (`maps/regional/saar.ts`) rebuilds the works in place.**
+- *Blast furnaces:* banded shafts over a brick casting house, ore and coke bunkers across the lot's front, skip hoists
+  from their pit, Cowper stoves on the back edge.
+- *Mills and workshops:* sawtooth halls under north lights.
+- *Gas holders:* column-guided, inside the station's wall.
+- *Conveyors:* galleries from a receiving hopper to a transfer house.
+- *The colliery:* the headframe over its shaft hall, with the winding-engine house behind.
+- *The rest:* the works office, and miners' houses (Bergmannshäuser) for the terraces. The Ruhr kit's water towers,
+  shells and stacks stay.
+- *Footprints:* every builder fills the base's measured reach (`ctx.bounds`): −0.15 to 0.00 m on every side. The one
+  exception is the miners' houses' street side, −1.25 to −0.86 m: those are the base's porch canopies and steps.
+  The 46 structure records match the PR head's one for one, every footprint centre within 1.4 m (the town-plan
+  receipt seats all 46), so no building moved. The census is re-pinned at [3168, 3537, 2061]: the kit's shells add
+  122 records and the birch-first stands one tree.
+- *Pacing* (20 seeds, 36000–36019): median 180 s, p10 155 s, minimum 143 s, none under 120 s, no timeouts. The PR
+  head gives 163 / 149 / 129. The filled works conceal a little more.
+- *Layout brief:* holds as on the PR head (sight median 122 m, cover mid share 0.31, no solid in a road or water).
 
 ## Acceptance is visual and measured
 
