@@ -1005,6 +1005,10 @@ contact constraints and cannot be crossed by residual uphill speed.
   3 cm clear, at most 0.1 m a step, taking the travel into it as a wall impact (the hull's outline as drawn: 11-21
   points of its closed shell). A hull partly over an 80-degree face at the foot of its apron (maps lane A's Redrock and
   Skybridge faces) was carried 7-12 m up the face by its own samples and dropped back, again and again, for 500-1900 hp.
+  A sheer face taller than a track climbs (rising more than 1 m from its foot, steeper than the wall grade over 0.25 m),
+  within 0.75 m of a track sample toward the root, is the face's wherever the ground there stands more than 1 m over the
+  track line: the sample reads its foot, however far the cone of the cliff grade reaches, and a hull point deep inside it
+  is held off back toward the root (round 8). Ground the hull is level with is not a climb.
 - *The ground lifts a ride at most 0.25 m a step.* A floor that rises past the ride faster (a support that jumped
   under the hull, a top found under it) lifts it over several steps, never in one.
 - *A fall is the hull's own.* Fall damage prices the closing less, by energy, the height the support rose under the

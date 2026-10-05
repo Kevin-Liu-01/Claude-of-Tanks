@@ -248,6 +248,7 @@ interface SupportSamples {
   fitCosRoll: number;
   worldX: number;
   worldZ: number;
+  worldY: number;
   zHalf: number;
   sumHeightZ: number;
   sumZZ: number;
@@ -1061,6 +1062,73 @@ function reachableGroundAt(x: number, z: number): number {
   const share = wallShareAt(hAt, px, pz, h);
   return share > 0 ? h + share * (wallFootAt(hAt, px, pz, h) - h) : h;
 }
+/**
+ * A sheer face taller than a track climbs (physics lane round 8, the parity iteration). The cone (groundReachable) reads
+ * ground past a face as ground the hull climbs wherever its height is within the climb from the root, a grade's rule; no
+ * track climbs a sheer face taller than FACE_CLIMB_MAX_M, whatever the run behind it. A UDES 03, its 3.3 m of track
+ * fallen into a 3.5 m box trench, climbed the 2 m far wall on its front stations, pitched 47 degrees nose-up and wedged
+ * there with its root 0.4 m inside the bank. Ground past such a face (a rise steeper than WALL_GRADE_FULL over one probe,
+ * and taller than FACE_CLIMB_MAX_M from its foot), within FACE_SCAN_STEPS probes of it toward the root, is the face's
+ * own where the hull is below it by more than that: a track station there reads the face's foot
+ * (reachableTrackGroundAt), and the face holds a hull point deep inside it off horizontally (pushOffTerrainWalls). Ground
+ * the hull is level with is not a climb (a hull bridging a trench rests on its far bank), and the game's trenches have
+ * sloped walls (the assault trench's steepest probe rises 0.34 m), which stay ground.
+ */
+const FACE_CLIMB_MAX_M = 1.0;
+const FACE_SCAN_STEPS = 3;
+/** A point deeper than this below the ground is in it, not resting on it (a contact's sink over a step or two). */
+const FACE_DEPTH_M = 0.15;
+/** The run from the last point sheerFaceFoot tested back toward the root to the face it found (m). */
+let _faceRun = 0;
+/** The foot of a sheer face taller than FACE_CLIMB_MAX_M between (x, z), of ground h, and (rootX, rootZ), within the
+ * scan (the ground below its rise), or NaN where there is none. */
+function sheerFaceFoot(hAt: HeightSampler, x: number, z: number, h: number, rootX: number, rootZ: number): number {
+  const dx = rootX - x;
+  const dz = rootZ - z;
+  const r = Math.sqrt(dx * dx + dz * dz);
+  if (!(r > WALL_GRADIENT_PROBE_M)) return NaN;
+  const stepX = dx / r * WALL_GRADIENT_PROBE_M;
+  const stepZ = dz / r * WALL_GRADIENT_PROBE_M;
+  let previous = h;
+  for (let index = 1; index <= FACE_SCAN_STEPS && index * WALL_GRADIENT_PROBE_M < r; index++) {
+    const ground = hAt(x + stepX * index, z + stepZ * index);
+    if (previous - ground > WALL_GRADE_FULL * WALL_GRADIENT_PROBE_M && h - ground > FACE_CLIMB_MAX_M) {
+      _faceRun = (index - 0.5) * WALL_GRADIENT_PROBE_M;
+      return ground;
+    }
+    previous = ground;
+  }
+  return NaN;
+}
+/** The hull's track line for reachableTrackGroundAt: the root's height and the attitude the samples are read at. */
+let _trackLineY = 0;
+let _trackRisePerM = 0;
+let _trackSinRoll = 0;
+let _trackForwardX = 0;
+let _trackForwardZ = 1;
+function beginReachableTrackGround(state: TankState, bottomY: number, pitch: number, roll: number): void {
+  _trackLineY = state.pos.y + bottomY;
+  _trackRisePerM = Math.tan(pitch);
+  _trackSinRoll = Math.sin(roll);
+  _trackForwardX = Math.sin(state.yaw);
+  _trackForwardZ = Math.cos(state.yaw);
+}
+/**
+ * The track samples' height sampler (beginReachableGround and beginReachableTrackGround first): the ground the hull can
+ * reach (reachableGroundAt), or the foot of a sheer face taller than a track climbs where that ground lies past one and
+ * more than FACE_CLIMB_MAX_M over the track line there.
+ */
+function reachableTrackGroundAt(x: number, z: number): number {
+  const ground = reachableGroundAt(x, z);
+  const dx = x - _reachRootX;
+  const dz = z - _reachRootZ;
+  const along = dx * _trackForwardX + dz * _trackForwardZ;
+  const across = dx * _trackForwardZ - dz * _trackForwardX;
+  const line = _trackLineY + along * _trackRisePerM + across * _trackSinRoll;
+  if (!(ground - line > FACE_CLIMB_MAX_M)) return ground;
+  const foot = sheerFaceFoot(_reachTerrainH!, x, z, ground, _reachRootX, _reachRootZ);
+  return foot < ground ? foot : ground;
+}
 const LANDING_CONTACT_BLEND_S = 0.34;
 const LANDING_SPRING_MIN_SCALE = 0.28;
 /**
@@ -1360,6 +1428,7 @@ const _supportSamples: SupportSamples = {
   fitCosRoll: 1,
   worldX: 0,
   worldZ: 0,
+  worldY: 0,
   zHalf: 0,
   sumHeightZ: 0,
   sumZZ: 0,
@@ -1645,9 +1714,12 @@ function bodyContactSupport(
   // A contact against a face is no floor (round 8): ground rising to it from BODY_FACE_BACK_M back toward the root
   // steeper than WALL_GRADE_FULL is the face's, which meets the hull horizontally (pushOffTerrainWalls), not a floor that
   // lifts it up the face (a UDES 03 nosing into a box trench's far wall below its top was lifted onto it, 0.25 m in)
+  // (only a point deep in the ground there: one resting on the top by the face's edge, a tail on the bank the hull came
+  // down from, rests on it)
   const towardX = samples.worldX - worldX, towardZ = samples.worldZ - worldZ;
   const reach = Math.sqrt(towardX * towardX + towardZ * towardZ);
-  if (reach > BODY_FACE_BACK_M) {
+  const pointY = samples.worldY + rolledY * samples.cosNegPitch - localZ * samples.sinNegPitch;
+  if (reach > BODY_FACE_BACK_M && ground - pointY > FACE_DEPTH_M) {
     const back = hAt(worldX + towardX / reach * BODY_FACE_BACK_M, worldZ + towardZ / reach * BODY_FACE_BACK_M);
     if (ground - back > WALL_GRADE_FULL * BODY_FACE_BACK_M) return -Infinity;
   }
@@ -2849,12 +2921,22 @@ function pushOffTerrainWalls(
     const dz = worldZ - state.pos.z;
     const reach = Math.sqrt(dx * dx + dz * dz);
     const share = wallShareAt(hAt, worldX, worldZ, ground);
-    // ground the hull stands on or climbs is the support's; only a wall pushes, by its share of wall
-    if (!(share > 0) && groundReachable(ground, reach)) continue;
+    // ground the hull stands on or climbs is the support's; only a wall pushes, by its share of wall (and a sheer face
+    // taller than a track climbs, round 8: a point deep inside it, back toward the root by its run to the face)
+    let sheerRun = 0;
+    if (!(share > 0) && groundReachable(ground, reach)) {
+      if (!(depth > FACE_DEPTH_M) || !(sheerFaceFoot(hAt, worldX, worldZ, ground, state.pos.x, state.pos.z) < ground)) continue;
+      sheerRun = _faceRun;
+    }
     let pushX: number;
     let pushZ: number;
     let run: number;
-    if (share > 0) {
+    if (sheerRun > 0) {
+      const inv = reach > 1e-6 ? 1 / reach : 0;
+      pushX = -dx * inv;
+      pushZ = -dz * inv;
+      run = sheerRun + WALL_SKIN_M;
+    } else if (share > 0) {
       // down the face: the run that brings the face's surface (less its skin) below the point
       const grade = _wallGrade;
       const held = depth + Math.min(grade, WALL_SKIN_MAX_GRADE) * WALL_SKIN_M;
@@ -3550,6 +3632,7 @@ function resetSupportSamples(
   samples.fitCosRoll = Math.cos(state._terr.roll);
   samples.worldX = state.pos.x;
   samples.worldZ = state.pos.z;
+  samples.worldY = state.pos.y;
   samples.zHalf = 0.25 * samples.halfLength;
   samples.sumHeightZ = 0;
   samples.sumZZ = 0;
@@ -4314,8 +4397,10 @@ function solveSupportHeight(
   // carry it up the face (the terrain-wall rule above)
   beginReachableGround(hAt, terrainAt, state);
   const groundAt = reachableGroundAt;
-  sampleOuterTrackLines(samples, contact, groundAt, halfWidth, gearBottomY);
-  sampleSupportFan(samples, contact, groundAt, halfWidth, gearBottomY, rigidGear);
+  // (the tracks climb no sheer face taller than FACE_CLIMB_MAX_M: reachableTrackGroundAt)
+  beginReachableTrackGround(state, gearBottomY, pitch, roll);
+  sampleOuterTrackLines(samples, contact, reachableTrackGroundAt, halfWidth, gearBottomY);
+  sampleSupportFan(samples, contact, reachableTrackGroundAt, halfWidth, gearBottomY, rigidGear);
   const shellSupportY = rigidBodySupport(
     spec,
     state,
