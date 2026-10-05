@@ -27,6 +27,8 @@ function wallsIn(ctx: RegionalBuildContext, ex: number, ez: number): { cx: numbe
   return { cx: (b.minX + b.maxX) / 2, cz: (b.minZ + b.maxZ) / 2, w: b.maxX - b.minX - 2 * ex, d: b.maxZ - b.minZ - 2 * ez };
 }
 const uvOffset = (ctx: RegionalBuildContext): [number, number] => [ctx.rng() * 7.31, ctx.rng() * 5.17];
+/** A look-only choice from the building's own identity, drawn from a fork of its variant stream's seed. */
+const hashPlot = (ctx: RegionalBuildContext): number => { const v = ctx.variant; const a = v(), b = v(); return (a + b * 0.5) % 1; };
 
 const WINDOW: WindowStyle = {
   frame: STEEL_DARK, frameWidth: 0.06, frameOut: 0.03, bars: 'none',
@@ -290,6 +292,44 @@ const garage: RegionalBuilder = (ctx) => {
 };
 
 /**
+ * The fuel tank farm (on some of the depots' plots): two vertical tanks of white steel under shallow cones inside the
+ * gravel berm that would hold a spill, their ladders and the walkway between their tops, the pump house in a corner and
+ * the pipe run from the tanks to it.
+ */
+const tankFarm: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const mobile = ctx.tier === 'mobile';
+  const bb = ctx.bounds;
+  const x0 = bb.minX + 0.15, x1 = bb.maxX - 0.15, z0 = bb.minZ + 0.15, z1 = bb.maxZ - 0.15;
+  const t = 1.2, bh = 1.1;
+  // the berm: four gravel banks round the plot
+  sink.span('stone', x0, -0.3, z0, x1, bh, z0 + t);
+  sink.span('stone', x0, -0.3, z1 - t, x1, bh, z1);
+  sink.span('stone', x0, -0.3, z0 + t, x0 + t, bh, z1 - t);
+  sink.span('stone', x1 - t, -0.3, z0 + t, x1, bh, z1 - t);
+  const iw = x1 - x0 - 2 * t, id = z1 - z0 - 2 * t, cx = (x0 + x1) / 2;
+  const R = clamp(Math.min(iw / 2 - 0.5, id / 4 - 0.6), 2.2, 4.4), H = 6.2;
+  const zs = [z0 + t + 0.5 + R, z1 - t - 0.5 - R];
+  for (const tz of zs) {
+    sink.cylinder('plaster', [cx, -0.2, tz], 'y', H + 0.2, R, 16, {});
+    sink.cylinder('roof', [cx, H, tz], 'y', 0.9, R + 0.08, 16, {}, 0.35);
+    // the ladder up the side to the roof and the walkway rail
+    if (!mobile) {
+      for (const s of [-1, 1]) sink.span('structureMetal', cx + R + 0.05, 0.2, tz + s * 0.25 - 0.03, cx + R + 0.11, H + 0.6, tz + s * 0.25 + 0.03, { colour: STEEL_DARK, decor: true });
+      for (let y = 0.5; y < H; y += 0.4) sink.span('structureMetal', cx + R + 0.05, y, tz - 0.25, cx + R + 0.11, y + 0.04, tz + 0.25, { colour: STEEL_DARK, decor: true, fine: true });
+    }
+  }
+  // the walkway between the tops
+  if (!mobile) sink.span('structureMetal', cx - 0.5, H + 0.3, zs[0], cx + 0.5, H + 0.42, zs[1], { colour: STEEL, decor: true });
+  // the pump house in a corner inside the berm, the pipe run along the tanks to it
+  const px0 = x1 - t - 2.4, pz0 = (zs[0] + zs[1]) / 2 - 1.3;
+  sink.span('plaster2', px0, 0, pz0, x1 - t - 0.1, 2.5, pz0 + 2.6);
+  sink.span('roof', px0 - 0.1, 2.5, pz0 - 0.1, x1 - t, 2.65, pz0 + 2.7);
+  if (!mobile) sink.cylinder('structureMetal', [px0 - 0.2, 0.6, zs[0]], 'z', zs[1] - zs[0], 0.14, 8, { colour: STEEL, decor: true });
+  return sink.finish();
+};
+
+/**
  * The warehouse (the warehouse's plot): a big insulated steel building under a low ribbed gable, the rolling door and
  * the man door in its front gable to the apron, a row of small windows high in its long sides.
  */
@@ -411,7 +451,8 @@ export const ARCTIC_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object
   foundryoffice: moduleTrain,
   firestation: tropo,
   watertower: radarTower,
-  depot: garage,
+  // a depot's plot is the vehicle garage, or on some (one in three) the fuel tank farm in its berm
+  depot: (ctx) => (hashPlot(ctx) < 0.34 ? tankFarm(ctx) : garage(ctx)),
   warehouse,
   containerRow: jamesway,
   ruin: derelict,
