@@ -1046,6 +1046,22 @@ function keepFaces<T extends THREE.BufferGeometry>(g: T, keep: readonly number[]
 const DRY_UV = 1.2;
 
 /**
+ * The dry-stone module's parts by kind (the aStone attribute's w): the material settles a wall's stones and drops the
+ * odd cope by the world place of each stone's centre (props.ts, the stone wall hook), so a run's modules differ.
+ */
+export const DRY_STONE_KIND = { core: 0, face: 1, through: 2, cope: 3, tumbled: 4, snow: 5 } as const;
+
+/** Tag a part with its centre (its box's) and its kind, on every vertex (aStone: x, y, z, kind). */
+function tagStone<T extends THREE.BufferGeometry>(g: T, kind: number): T {
+  g.computeBoundingBox();
+  const c = g.boundingBox!.getCenter(new THREE.Vector3());
+  const n = g.attributes.position.count, a = new Float32Array(n * 4);
+  for (let i = 0; i < n; i++) { a[i * 4] = c.x; a[i * 4 + 1] = c.y; a[i * 4 + 2] = c.z; a[i * 4 + 3] = kind; }
+  g.setAttribute('aStone', new THREE.BufferAttribute(a, 4));
+  return g;
+}
+
+/**
  * A stone: a box with its corners knocked back a little (each corner moves inward by up to `knockBack` of its half
  * extents), only its listed faces kept, and a window of the field print of its own projected on each face at the wall's
  * density (wave 34: the print is one stone's skin over its face band — fieldStoneSurface.ts — and every face's window
@@ -1089,13 +1105,16 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
   // the hearting: a battered core, its faces a little uneven; its bottom sits in the ground and is left out
   const core = new THREE.BoxGeometry(2, 1, 2, 1, 1, 2);
   const cp = core.attributes.position;
+  // (b14: a whole module's hearting stops where its face stones do, under the copes: where the material drops a cope
+  // the face stones' tops and the rubble show, not a slab standing above them)
+  const coreH = broken ? H : H - 0.1;
   // the unevenness is a function of the corner's place (the box's faces share their corners: no crack opens); the
   // bow is nil at both ends, where the next module meets it, and the +z end steps a centimetre and a half inside the
   // next module's start, so the overlapping ends of a run never share a plane (no depth fighting at the joints)
   const phase = r() * 10, bow = (r() < 0.5 ? -1 : 1) * 0.012;
   const lift = (x: number, z: number) => Math.sin(z * 7.3 + x * 3.1 + phase) * 0.5 + Math.sin(z * 17.9 - phase) * 0.5;
   for (let i = 0; i < cp.count; i++) {
-    const u = cp.getZ(i), y = (cp.getY(i) + 0.5) * H, z = u * (L / 2) * 0.995, side = Math.sign(cp.getX(i));
+    const u = cp.getZ(i), y = (cp.getY(i) + 0.5) * coreH, z = u * (L / 2) * 0.995, side = Math.sign(cp.getX(i));
     const half = halfAt(y) - 0.03 - Math.max(0, u - 0.5) * 0.03;
     cp.setXYZ(i, side * half + Math.sin(Math.PI * u) * bow, y + (y > 0.01 ? lift(side, z) * 0.015 : 0), z);
   }
@@ -1106,11 +1125,11 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
     const [h0, h1] = FIELD_STONE_HEARTING_V;
     for (let i = 0; i < cp.count; i++) {
       const up = Math.abs(cn.getY(i)) > 0.5, across = Math.abs(cn.getX(i)) > 0.5;
-      const t = up ? 0.5 + cp.getX(i) / (2 * bottom) : Math.min(1, Math.max(0, cp.getY(i) / H));
+      const t = up ? 0.5 + cp.getX(i) / (2 * bottom) : Math.min(1, Math.max(0, cp.getY(i) / coreH));
       cuv.setXY(i, (across || up ? cp.getZ(i) : cp.getX(i)) * DRY_UV, h0 + (h1 - h0) * t);
     }
   }
-  parts.push(keepFaces(core, [0, 1, 2, 4, 5]));
+  parts.push(tagStone(keepFaces(core, [0, 1, 2, 4, 5]), DRY_STONE_KIND.core));
   // the face stones (wave 34, "coursed rubble relief"): laid in rough courses, the biggest at the foot as a waller lays
   // them, each course's line the module's own (a run repeats the module, so its courses meet the next one's) and every
   // stone sitting on what is under it, a little high or low; now and then a jumper standing two courses high, a pair
@@ -1122,7 +1141,9 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
   const limit = broken ? H : H - 0.12; // the top stones finish the wall
   const nCourses = broken ? (H > 0.4 ? 3 : 2) : 4;
   const heights: number[] = [];
-  for (let c = 0; c < nCourses; c++) heights.push((1.25 - c * 0.12) * (0.88 + r() * 0.24));
+  // (b14, wave 97: "stacked brown rectangular slabs of near-identical size and thickness": the courses' heights from a
+  // third more to two thirds of the mean, the foot's the biggest)
+  for (let c = 0; c < nCourses; c++) heights.push((1.3 - c * 0.15) * (0.66 + r() * 0.68));
   const sumH = heights.reduce((a, b) => a + b, 0);
   const lines = [0];
   for (const h of heights) lines.push(lines[lines.length - 1] + (h / sumH) * limit);
@@ -1145,7 +1166,7 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
       const topY = Math.max(base + 0.05, y1);
       const hh = topY - base, yc = base + hh / 2, proud = 0.006 + r() * 0.022;
       // (its corners knocked well back along the course, little in its height: the bed joints close, the corners gape)
-      const stone = roughStone(proud + 0.07, hh, zb - za, r, keep, 0.3, 0.1);
+      const stone = roughStone(proud + 0.07, hh, zb - za, r, keep, 0.34, 0.22);
       // (wave 34 re-shoot, "flat grey from a distance": each stone's face turned a little its own way — up to a
       // ninth of a radian — in its shading only, so neighbours catch the light differently and read stone by stone)
       // (wave 48, "crisp rectangular blocks … stacked crates or voxels": and its face shaded as a rounded stone — each
@@ -1162,8 +1183,9 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
           nrm.setXYZ(i, x / l, y / l, z / l);
         }
       }
-      stone.rotateZ(face * ((r() - 0.5) * 0.05 - 0.02)); stone.rotateX((r() - 0.5) * 0.05); stone.rotateY((r() - 0.5) * 0.05);
-      parts.push(stone.translate(face * (halfAt(yc) - 0.03 + proud - (proud + 0.07) / 2), yc, (za + zb) / 2));
+      // (b14: each stone set at its own tilt in the face, its bed off the course line: no stacked slabs)
+      stone.rotateZ(face * ((r() - 0.5) * 0.07 - 0.02)); stone.rotateX((r() - 0.5) * 0.16); stone.rotateY((r() - 0.5) * 0.08);
+      parts.push(tagStone(stone.translate(face * (halfAt(yc) - 0.03 + proud - (proud + 0.07) / 2), yc, (za + zb) / 2), DRY_STONE_KIND.face));
       for (let i = iOf(za); i <= iOf(zb); i++) sky[i] = Math.max(sky[i], topY);
     };
     for (let c = 0; c < nCourses; c++) {
@@ -1174,22 +1196,23 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
         const jump = taken[c].find(([a, b]) => z >= a - 0.01 && z < b);
         if (jump) { z = jump[1] + 0.004; continue; }
         const pick = r();
-        const len = (c === 0 ? 0.46 : 0.38) + r() * (c === 0 ? 0.44 : 0.36);
+        // (b14: lengths from a hand to a metre — a long bonder, a run of small ones — not a course of equal slabs)
+        const len = (c === 0 ? 0.3 : 0.18) + Math.pow(r(), 1.6) * (c === 0 ? 0.85 : 0.7);
         const gap = r() < 0.14 ? 0.012 + r() * 0.025 : 0.004;
-        const settle = (r() - 0.5) * 0.024;
-        if (pick < 0.08 && c + 1 < nCourses) {
+        const settle = (r() - 0.5) * 0.05;
+        if (pick < 0.1 && c + 1 < nCourses) {
           // a jumper: one stone two courses high
           const jl = Math.min(len, 0.55);
           layStone(z, z + jl, y0 + settle * 0.5, lines[c + 2] + settle);
           taken[c + 1].push([z, z + jl]);
           z += jl + gap;
-        } else if (pick < 0.2) {
+        } else if (pick < 0.26) {
           // two thin stones in the course, one on the other
           const split = 0.38 + r() * 0.24, pl = len * (0.75 + r() * 0.2);
           layStone(z, z + pl, y0, y0 + ch * split);
           layStone(z + (r() - 0.5) * 0.06, z + pl * (0.85 + r() * 0.2), y0 + ch * split, y1 + settle);
           z += pl + gap;
-        } else if (pick < 0.27) {
+        } else if (pick < 0.38) {
           // a pin wedged before the next stone
           const pl = 0.08 + r() * 0.07;
           layStone(z, z + pl, y0 + ch * (0.15 + r() * 0.3), y0 + ch * (0.55 + r() * 0.3));
@@ -1207,22 +1230,24 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
     for (let k = 0, n = 1 + (r() < 0.5 ? 1 : 0); k < n; k++) {
       const y = lines[1 + Math.floor(r() * 2)] + 0.04, len = 0.18 + r() * 0.12, th = 0.09 + r() * 0.05;
       const ts = roughStone(halfAt(y) * 2 + 0.12, th, len, r, [0, 1, 2, 4, 5]);
-      parts.push(ts.translate((r() - 0.5) * 0.03, y, (r() - 0.5) * (L - 0.6)));
+      parts.push(tagStone(ts.translate((r() - 0.5) * 0.03, y, (r() - 0.5) * (L - 0.6)), DRY_STONE_KIND.through));
     }
-    // the top: flattish stones laid across the wall on the uneven rubble under them (an uneven, unbroken top line —
-    // no comb, no crenels), each a little different in height and tilt; their tops carry the winter's snow load
+    // the top (b14, wave 97: "a dead-level top"): a coping of stones set on edge across the wall, as a Dalmatian or a
+    // Cotswold waller finishes one — each 6-15 cm thick along the wall, standing 12-20 cm on the rubble under it, its
+    // own lean, the odd flat top stone among them — so the top is a ragged line of copes, not a course. The material
+    // settles them and drops the odd one (props.ts), so a run's modules differ
     let z = -L / 2 + 0.005;
     while (z < L / 2 - 0.04) {
-      const len = Math.min(L / 2 - z, 0.24 + r() * 0.3), th = 0.09 + r() * 0.1;
+      const flat = r() < 0.12;
+      const len = Math.min(L / 2 - z, flat ? 0.22 + r() * 0.2 : 0.06 + r() * 0.09);
+      const ch = flat ? 0.08 + r() * 0.06 : 0.12 + r() * 0.08;
       const a = Math.max(0, Math.floor((z + L / 2) / CELL)), b = Math.min(cells, Math.ceil((z + len + L / 2) / CELL));
       let base = 0;
       for (const sky of skylines) for (let i = a; i <= b; i++) base = Math.max(base, sky[i]);
-      // (their ends meet the next top stone's: only the module's two end stones' ends ever show, and the next module's
-      // first and last stones cover them)
-      const cap = roughStone(top * 2 + 0.05 + r() * 0.06, th, len * 0.97, r, [0, 1, 2], 0.34);
-      cap.rotateX((r() - 0.5) * 0.08); cap.rotateZ((r() - 0.5) * 0.07);
-      parts.push(cap.translate((r() - 0.5) * 0.03, base + th * 0.45, z + len / 2));
-      z += len * (0.96 + r() * 0.03);
+      const cope = roughStone(top * 2 + 0.04 + r() * 0.08, ch, len * 0.96, r, [0, 1, 2, 4, 5], 0.3, 0.18);
+      cope.rotateX((r() - 0.5) * (flat ? 0.08 : 0.3)); cope.rotateZ((r() - 0.5) * 0.1);
+      parts.push(tagStone(cope.translate((r() - 0.5) * 0.04, base + ch * 0.42, z + len / 2), DRY_STONE_KIND.cope));
+      z += len * (0.94 + r() * 0.05);
     }
   } else {
     // the stones that came off it, tumbled on both sides
@@ -1230,7 +1255,7 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
       const bs = 0.14 + r() * 0.16;
       const stone = roughStone(bs * (1.4 + r() * 0.6), bs * 0.55, bs, r, [0, 1, 2, 3, 4, 5]);
       stone.rotateY(r() * Math.PI); stone.rotateX((r() - 0.5) * 0.5);
-      parts.push(stone.translate((r() < 0.5 ? -1 : 1) * (0.35 + r() * 0.6), bs * 0.25, (r() - 0.5) * L * 0.9));
+      parts.push(tagStone(stone.translate((r() < 0.5 ? -1 : 1) * (0.35 + r() * 0.6), bs * 0.25, (r() - 0.5) * L * 0.9), DRY_STONE_KIND.tumbled));
     }
   }
   // nothing runs past the hearting's ends: the module's length is the core's, so a run's terminal module still
@@ -1250,6 +1275,11 @@ function fitToEnvelope(g: THREE.BufferGeometry, box3: THREE.Box3): THREE.BufferG
   const sz = (box3.max.z - box3.min.z) / Math.max(1e-6, b.max.z - b.min.z);
   // the normals go through the inverse transpose (a per-axis scale: divide), so each stone keeps its smooth faces
   const n = g.attributes.normal;
+  // (a dry-stone module's stone centres go through the same map)
+  const stone = g.getAttribute('aStone');
+  if (stone) for (let i = 0; i < stone.count; i++) {
+    stone.setXYZ(i, box3.min.x + (stone.getX(i) - b.min.x) * sx, box3.min.y + (stone.getY(i) - b.min.y) * sy, box3.min.z + (stone.getZ(i) - b.min.z) * sz);
+  }
   for (let i = 0; i < p.count; i++) {
     p.setXYZ(i, box3.min.x + (p.getX(i) - b.min.x) * sx, box3.min.y + (p.getY(i) - b.min.y) * sy, box3.min.z + (p.getZ(i) - b.min.z) * sz);
     const nx = n.getX(i) / sx, ny = n.getY(i) / sy, nz = n.getZ(i) / sz, len = Math.hypot(nx, ny, nz) || 1;

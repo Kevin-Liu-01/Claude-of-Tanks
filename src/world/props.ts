@@ -58,6 +58,7 @@ import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buil
 import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
 import { paintDryWallBuffers } from './fieldWallFace.ts';
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
+import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
 import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
@@ -69,6 +70,7 @@ import {
   ADOBE_UV_PER_M,
   COURSED_WALLSTONE,
   DESTRUCTIBLE_TYPES,
+  DRY_STONE_KIND,
   FENCE_SEG,
   WALL_SEG,
   bSandbagBroken,
@@ -3400,8 +3402,12 @@ ${snowCap ? `
   // module, so the field print's window shifts along the wall by a hash of each module's place (sixteen steps of seven
   // sixteenths of a tile, u only: the print's bands lie in v) — every module's stones take tones of their own. Only the
   // instanced modules shift; the merged heads and foot stones keep their windows.
+  // (b14; gauntlet wave 97: "a dead-level top", "stacked ... slabs"): and the dry-stone modules' stones settle, their
+  // copes drop and lichen grows by world place (stoneWallShader.ts); the module's top is the pool geometry's
+  const stoneShape: THREE.IUniform<THREE.Vector4> = { value: new THREE.Vector4(1.15, STONE_SETTLE_M, snowCap ? 0 : 1, 0) };
   const fieldStoneHook: MaterialShaderHook = (shader) => {
     grimeHook(shader);
+    applyStoneWallHook(shader, stoneShape);
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <uv_vertex>', /* glsl */`#include <uv_vertex>
 #ifdef USE_INSTANCING
 {
@@ -3560,6 +3566,12 @@ ${snowCap ? `
   function snowLoadedWallstone(buildRng: () => number): THREE.BufferGeometry {
     const wall = DESTRUCTIBLE_TYPES.wallstone.build(buildRng);
     const snow = buildSnowLoad(wall, 0x5a0c1, { seamless: true });
+    // (b14: the snow load settles with the wall vertex by vertex: its stone tag is the snow's kind)
+    if (wall.getAttribute('aStone')) {
+      const n = snow.attributes.position.count, tag = new Float32Array(n * 4);
+      for (let i = 0; i < n; i++) tag[i * 4 + 3] = DRY_STONE_KIND.snow;
+      snow.setAttribute('aStone', new THREE.BufferAttribute(tag, 4));
+    }
     const loaded = mergeGeometries([wall.index ? wall.toNonIndexed() : wall, snow], false);
     wall.dispose(); snow.dispose();
     if (!loaded) throw new Error('props: the snow-loaded wall merge produced no geometry');
@@ -8544,6 +8556,14 @@ ${snowCap ? `
     const { geoI, groundCoverDetail } = yield* prepareDestructiblePoolGeometry(kind, pool);
     if (groundCoverDetail) sealGroundCoverPlacements(pool, groundCoverDetail);
     const imI = new THREE.InstancedMesh(geoI, material, pool.mats4.length);
+    if (material === mats.fieldStone && kind === 'wallstone' && geoI.getAttribute('aStone')) {
+      // (b14: the dry-stone walls' settling and copes by world place, and the same in the shadows)
+      if (!geoI.boundingBox) geoI.computeBoundingBox();
+      stoneShapeFor(geoI.boundingBox!, snowCap, stoneShape.value);
+      const depth = createStoneWallDepthMaterial(grimeTex, stoneShape);
+      retainedSurfaceMaterials.push(depth);
+      imI.customDepthMaterial = depth;
+    }
     if (material === mats.fieldMud && kind === 'walladobe') {
       // (b14: the mud walls' crown in world space: the module's top and shoulder, and the same crown in the shadows)
       if (!geoI.boundingBox) geoI.computeBoundingBox();
