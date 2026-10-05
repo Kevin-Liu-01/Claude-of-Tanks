@@ -292,6 +292,11 @@ interface SplatConfig {
    * the procedural fallback only (sourcedTextures TERRAIN_PLAN). Whiteout grades its inherited winter snow with it. */
   sourcedTint?: Partial<Record<'G' | 'D' | 'R' | 'M', ColorTriple>>;
   sandstone?: boolean;
+  /** Ground lane (wave 62, Redrock: "smooth, plaster-like … identical wavy dark squiggles … a stamped pattern rather than
+   * sandstone"): the sandstone tile's thin dark marker beds and the shaded parting at every bed boundary, 0..1 (default
+   * 1). The tile repeats every 6.45 m up a wall, so its markers printed the same wavy lines on every face; a map whose
+   * bedding the material draws at the wall's scale (strata: beds, joints, varnish) sets 0. */
+  sandstoneMarkers?: number;
   /** Ground lane (2026-10-03, Redrock's inselbergs "like extruded clay"): a two-formation bedrock — the beds under the
    * boundary (at `atFrac` of the field's height span, wandering ±`wobbleM`) paler by `pale`, those above it redder by
    * `red` (Wadi Rum: the Umm Ishrin's red over the paler Disi). Absent = one formation. */
@@ -3126,6 +3131,7 @@ function makeSandstoneLayer(
   seed: number,
   anisotropy: number,
   tone: ToneFunction | null = null,
+  markers = 1,
 ): TerrainTextureLayer {
   const s = texSize(256); // loading-speed r1: distant/fallback terrain tile
   const noi = new SimplexNoise({ random: mulberry32(seed) });
@@ -3135,7 +3141,8 @@ function makeSandstoneLayer(
   {
     let y = 0;
     while (y < s) {
-      const marker = rng() < 0.16;
+      // (the draws keep their order whatever the markers' strength; without them a marker's slot is a bed like the rest)
+      const marker = rng() < 0.16 && markers > 0.5;
       // r4: thicker beds (20-80 -> 34-110 px) — the old thin-bed ladder
       // repeated every couple of meters on the walls and read as marble veins
       const th = marker ? 4 + rng() * 6 : 34 + rng() * 76;
@@ -3151,6 +3158,29 @@ function makeSandstoneLayer(
   function bedAt(yw: number): SandstoneBed {
     for (const b of beds) if (yw >= b.y0 && yw < b.y1) return b;
     return beds[beds.length - 1];
+  }
+  // (ground lane, wave 62: Redrock's walls, "identical wavy dark squiggles") a bed's tone and hue step at its
+  // boundary; seen on an inclined, gullied face the step traces the contour into every gully (the rule of Vs) — a
+  // hard-edged ladder of squiggles. Without the markers (markers 0) the steps are softened over ~6 px (15 cm of
+  // wall) and their contrast halved, so the beds read as broad weathered bands under the material's own bedding.
+  const soften = markers > 0.5 ? 0 : 6;
+  const toneRow = new Float32Array(s), hueRow = new Float32Array(s), hardRow = new Float32Array(s);
+  for (let y = 0; y < s; y++) {
+    const b = bedAt(y);
+    toneRow[y] = b.tone; hueRow[y] = b.hueJ; hardRow[y] = b.hard;
+  }
+  if (soften > 0) {
+    // (the beds' ledge relief too: a step in the tile's height is a line in its normal map — the squiggles' dark
+    // outlines on the wall-projected faces)
+    const t0 = Float32Array.from(toneRow), h0 = Float32Array.from(hueRow), r0 = Float32Array.from(hardRow);
+    for (let y = 0; y < s; y++) {
+      let ts = 0, hs = 0, rs = 0, ws = 0;
+      for (let k = -soften; k <= soften; k++) {
+        const w = 1 - Math.abs(k) / (soften + 1), yy = ((y + k) % s + s) % s;
+        ts += t0[yy] * w; hs += h0[yy] * w; rs += r0[yy] * w; ws += w;
+      }
+      toneRow[y] = 0.5 + (ts / ws - 0.5) * 0.5; hueRow[y] = 0.5 + (hs / ws - 0.5) * 0.5; hardRow[y] = 0.5 + (rs / ws - 0.5) * 0.5;
+    }
   }
   const px = new Uint8ClampedArray(s * s * 4);
   const hgt = new Float32Array(s * s);
@@ -3176,17 +3206,19 @@ function makeSandstoneLayer(
       const drift = torusNoise(noi, u, v * 0.15, 3, 1, 145) * 0.5 + 0.5;
       // r4: sat 0.42+0.12 -> 0.33+0.08 — the saturated ochre beds were the
       // PINK cast in the "contour-band marbling" read
-      let hue = 0.062 + bed.hueJ * 0.022 - 0.006 * grain2;
-      let sat = 0.33 + bed.hueJ * 0.08 - grain * 0.06;
+      const ywi = Math.min(s - 1, Math.floor(yw));
+      const bedTone = soften > 0 ? toneRow[ywi] : bed.tone, bedHue = soften > 0 ? hueRow[ywi] : bed.hueJ;
+      let hue = 0.062 + bedHue * 0.022 - 0.006 * grain2;
+      let sat = 0.33 + bedHue * 0.08 - grain * 0.06;
       let lum = bed.marker
         ? 0.185 + bed.tone * 0.05
-        : 0.315 + bed.tone * 0.20 + (bedT - 0.5) * 0.03 + grain * 0.05 + (drift - 0.5) * 0.07;
-      lum *= 1 - seam * 0.38; // shadowed parting line at every bed boundary
+        : 0.315 + bedTone * 0.20 + (bedT - 0.5) * 0.03 * markers + grain * 0.05 + (drift - 0.5) * 0.07;
+      lum *= 1 - seam * 0.38 * markers; // shadowed parting line at every bed boundary
       _col.setHSL(hue, clamp(sat, 0, 1), clamp(lum, 0.04, 0.75));
       px[j] = _col.r * 255; px[j + 1] = _col.g * 255; px[j + 2] = _col.b * 255;
       // relief: hard beds ledge out, soft/marker beds recess, seams notch
-      let hn = 0.40 + bed.hard * 0.42 + grain * 0.10 - (bed.marker ? 0.26 : 0);
-      hn -= seam * 0.30;
+      let hn = 0.40 + (soften > 0 ? hardRow[ywi] : bed.hard) * 0.42 + grain * 0.10 - (bed.marker ? 0.26 : 0);
+      hn -= seam * 0.30 * markers;
       hgt[i] = clamp(hn, 0, 1);
       px[j + 3] = clamp(0.86 - grain * 0.06, 0.45, 1) * 255; // matte rough
     }
@@ -5867,7 +5899,7 @@ function* createSplatMaterialSteps(
   // structure was the "wet-sand swirl" artifact on every canyon wall.
   yield* prepareSourceLayer('R');
   const rock = sourcePreparation?.tryCreateLayer('R', aniso) ?? (S.sandstone
-    ? makeSandstoneLayer(3002, aniso, S.rockTone || null)
+    ? makeSandstoneLayer(3002, aniso, S.rockTone || null, S.sandstoneMarkers ?? 1)
     : makeGroundLayer(3002, 'rock', aniso, S.rockTone || null));
   yield;
   const wet = yield* createWetSplatLayerSteps(S, aniso);
