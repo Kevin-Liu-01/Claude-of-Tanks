@@ -7145,6 +7145,71 @@ disc: 264 near-white pixels facing Titan's sun, 216 on Whiteout's, where a close
 (near-white pixels 264 → 0 and 216 → 0), Redrock and Saltwind's clear-sky suns as they were; GPU on / off / off / on
 twice: +0.73 / +0.06 ms (p25 / p50) for the cut and the fade, +0.12 / +0.01 ms for the lobe — nil.
 
+### 2026-10-04 — the light under a closed deck, and the decks' own structure (the skies lane)
+
+**The gauntlet's waves 80 and 82: under Titan Gorge's closed deck "the terrain beneath stays implausibly saturated and
+contrasty", "crisp, hard-edged shadows" under a discless glow; waves 66–70: the closed decks "a single flat grey-white
+gradient with zero cloud structure".** Branch `visual/deck-structure` from the PR head 3e7dfc94b.
+
+**Was the direct light cut by the deck?** Yes — the light model's overcast cut (`lightModel.ts` OVERCAST_DIRECT_CUT) scales
+the CSM sun and every term that reads it (the ground's sunlit share, the ground bounce, the contact shadows); the cloud
+shade map is not involved (a stratiform deck, `shadow: false`, never writes it). At overcast 1 the 0.9 cut left a tenth of
+the clear beam: on Titan's sand 12.8 % of the horizontal light came from a point sun (DNI 0.42 against the deck's 1.45),
+a sun-facing wall took 0.42 over the ~0.95 the deck gives every wall (lit and shaded faces ~1.45 apart), and the
+cascades cast it hard-edged. And the cascades' shade dims — the ambient −13 %, the specular −45 % on a shadowed face
+turned to the sun, the circumsolar sky an occluder hides — applied whole under a deck that has no circumsolar sky: they
+doubled the cast shadow's depth (lit over shaded ~1.15 → ~1.32 on the sand).
+
+**The fix.** (1) OVERCAST_DIRECT_CUT 0.9 → 0.96: a closed deck passes a few per cent of the beam, and what it cuts past
+the 0.9 its glow was calibrated against (OVERCAST_DIFFUSED_FROM) comes down diffused, added to the glow — the horizontal
+light, the exposure and the open ground's level are unchanged on every map (the receipt holds them to 1e-9 at overcast
+1, 0.85 and 0.5); only the share the point sun models falls. (2) The cascades' dims fade with the overcast
+(`groundBounce.ts` uCotShadowDepth = 1 − overcast; SHADOW_DIM_OVERCAST): a closed deck's light comes from every
+direction alike, so a cast shadow hides no more than the occluder's own small solid angle — the contact shadows'
+business. The legacy rig (phones, the Garage) keeps both as they were. The CPU numbers, the point sun's share of the
+horizontal light and a sun-facing wall over a shaded one: Titan (overcast 1) 12.8 → 5.1 %, 1.45 → 1.16; Whiteout (1)
+5.2 → 2.1 %, 1.30 → 1.12; Railyard (0.95) 19.6 → 11.9 %; Foundry (0.85) 26 → 21 %; Frosthollow (0.79, a deck with
+breaks) 24 → 20 %; every open sky unchanged.
+
+**Measured** (desktop high, in-page on one build, every frame re-prepared: the old light — the 0.9 cut and the dims whole —
+against the new, and a full cut as the no-point-sun reference; `$SP/p2/overcast/cap1`, `cap1A`, `cap1B`). The point sun's
+and the dims' modulation of the ground (each pixel over the no-point-sun frame, p95 / p5 below the skyline): Titan Gorge
+1.19–1.22 → 1.08–1.10 on five views (the gauntlet's e-wall-300 1.22 → 1.08), the chase view's cast shadow 1.27 → 0.97
+lit over shaded; Whiteout 1.09–1.21 → 1.04–1.10; the ground's mean L* within 0.5 everywhere and its chroma +0.3 to +1.0
+(the shade lifted, not the sunlit sand). Split: the beam cut carries most of the modulation, the dims' fade most of the
+cast shadow. The old light against the new (p95 / p5 of their ratio): Frosthollow 1.01–1.10 (its deck keeps a fifth of
+the sun), Railyard 1.07–1.09, Foundry 1.09–1.29 (the chase view's tree shadows), Verdant unchanged (the re-prepared
+frames' own noise, 0.3 levels mean). The pair, the PR head 3e7dfc94b against the branch at the gauntlet's cameras
+(`$SP/p2/overcast/pairP1`, `pairP2`; the head over the branch per pixel, p95 / p5 below the skyline, and its median):
+Titan Gorge 1.10–1.13, median 0.97–1.02; Whiteout 1.05–1.07, median 1.00; Frosthollow 1.01–1.09; Railyard 1.07–1.21
+(its sunward view, the shaded facades facing the camera lifted); Verdant 1.000–1.007 — no harm under an open sky. Receipts: `lightModel.selftest` (the beam cut and its diffused share holding the
+light and the exposure to 1e-9 at three overcasts; an open sky untouched; a full cut keeping the glow), `groundBounce.
+selftest` (the depth's chunk, rig and twin); the receipts that read the light sources by text pass unchanged.
+
+**The decks' structure** (the gauntlet's waves 66–70: Titan's establishing and hz-w views and Whiteout's "a single flat
+grey-white gradient with zero cloud structure"; and Whiteout's "ice plain clearly darker than the white sky"). Measured as
+the sky region's luminance structure in three bands of a 1600 px frame (fine 8–32 px, mid 32–128, broad 128–512, as a
+share of the deck's mean; `$SP/p2/deck/deckstruct.py`), with the overcast reference photos for scale — `real_ca_mau_1`
+fine 0.39 % / mid 1.15 %, `real_jamuna_1` 0.29 / 0.37 — Whiteout's stratus measured 0.02–0.06 / 0.07–0.17: flatter than
+any real deck. Every deck regime carries `lumps 0` and `deckDetail 0`, and Whiteout's low stratus also `cells 0` and
+`deckLight 0` (the round-71 ceiling the integrator rated). The sweeps (`$SP/p2/deck/cap3`, `$SP/p2/overcast/cap1`):
+- *Whiteout* (`whiteout.ts` clouds): the stratus lit as a deck — what its columns transmit (`deckLight: 1`; a share
+  under 1 pays both lighting paths) — with soft cells (0.5), base lumps (0.6) and the detail's erosion (0.5), and the snow
+  under it lifting its base (`ambientScale: 3`, the deck path's ground bounce, a quarter-albedo ground at 1): fine
+  0.19–0.38 %, mid 0.42–0.61 % on the establishing, sky-w and sunward views — the photos' band. Its level comes down from
+  L* 88–90 to 77–81 over the snow's 73–75: a snowfield under a uniform deck sits at about its albedo times the deck's
+  radiance (0.8–0.85 here), where it sat at 0.6 — the whiteout's lost horizon. `ambientScale` 2 put the sky under the
+  snow on the establishing view (74 against 75); the deck light at 0.7 cost both paths. (Whiteout's bird camera, at
+  303 m, stands inside its 300 m deck base: any lit deck shows there as a veil.)
+- *Titan Gorge* (`titanGorge.ts` clouds): base lumps (0.7) and the cells at 0.7: fine 0.10–0.34 → 0.44–0.62 %, mid
+  0.40–1.03 → 0.76–1.23 %; lumps at 1.0 laid a mackerel mottle along the horizon, wrong for a rain deck.
+- The pair against the PR head: Titan's establishing, sunward, hz-w and sky-w views fine 0.18–0.34 → 0.39–0.61 %, mid
+  0.61–1.02 → 0.77–1.23 %; Whiteout's 0.02–0.06 → 0.19–0.38 % and 0.07–0.18 → 0.42–0.61 %, its sky's mean 221–227 →
+  189–203 (display).
+- The guarantees hold on every variant: no near-white pixel and no blue pixel in the sky region facing the sun, the
+  forward lobe kept (the brightest 2 % over the median 1.07–1.09).
+- *GPU* (the coordinator's rule, the load gate shut past two hours: in-page on the branch, the deck knobs against the regime's own, 8 interleaved quartets per arm against a null control, 1920 × 1080 high, the establishing view; `$SP/p2/costrule/deck-*`): Whiteout −0.24 ± 0.25 ms p50 (+0.02 ± 0.23 p25), the bound +0.26 / +0.49 ms; Titan Gorge +0.36 ± 0.22 ms p50 (+0.14 ± 0.18 p25), the bound +0.81 / +0.50 ms — both under +1 ms (frames 11.3 and 12.7 ms). The light's change is one multiply on a lit fragment and the light model's resolve, no pass.
+
 ### 2026-10-04 — Whiteout's ice sheet re-candidated and dropped; the shell's apron read sky (the mountains lane)
 
 **The candidate (d9f5f6b06: `panorama: { regional: 'iceSheet' }`, the ring at amp 0.45 and snow-covered to its foot)
@@ -7199,6 +7264,71 @@ pixels the flare lifts by more than 3 levels 32.5 % / 34.1 % → 0.00 %; Caldera
 floor), the ring and the ghost gone off the ridge; facing the sun on Caldera 3.3 % → 0.03 %; Saltwind and Redrock facing
 the sun keep the glow and the streak (the flare's mean lift halved, 0.16 → 0.08 and 0.15 → 0.07 levels). Receipt:
 `lensFlare.selftest` (the twin's closed deck → 0, a veil at the gate's midpoint → half, an edge across the disc → a fifth).
+
+### 2026-10-04 — the coast's shelf and swell: turquoise over the sand, deep blue beyond, long waves under the chop (the skies lane)
+
+**The gauntlet's wave 59 on the sea:** "a uniform saturated navy sheet that stays the same deep colour right up to a hard
+sand edge, with no shallow-water shelf, wet-sand band or surf" (Saltmere's bay); "one fine, uniform ripple pattern with
+no swell or wave-group structure … reads as a wind-ruffled lake" (Saltwind's sea).
+
+**Cause.** The water's colour turned from the shallow tint to the deep body over the mask's own ramp — a few metres at
+the waterline — so a bay was deep navy almost to the sand (the gameplay bed is the wading depth everywhere; the depth was
+only ever a colour). On the sea, the tiled ripple's relief (strength 1.2–1.6) outweighed the FFT ocean's swell, whose 120 m
+waves carry a third of the wind sea's energy at a slope too small to read.
+
+**The fix** (`shallowWater.ts`; a coast with an FFT ocean only — lakes, rivers and marshes keep their own):
+- *the shelf:* a shore-distance field (the mask's visible edge chamfered on a grid of at most 512², R8 metres; past the
+  square, plus the metres out) stands in for the depth: the body's share of the colour rises as 1 − e^(−d / 25 m) and its
+  opacity as 1 − e^(−d / 15 m) from 0.35 at the waterline — turquoise over the sand bed, the bed showing through, the
+  deep blue past the shelf (`SEA_SHELF_*`, `SEA_TINT`: the shelf's turquoise 0.6, the deep blue 0.8);
+- *the swell:* three long-crested trains (55 m, 48 m and 64 m, 8° apart) beat into wave groups at a slope of 0.08 under
+  the FFT chop, fading where a pixel can no longer hold them; the tiled ripple steps back to 0.6 on an FFT sea
+  (`SEA_SWELL_*`, `SEA_CLASSIC_NORMAL`).
+Set from a sweep of one knob at a time (`$SP/p2/sea/cap4`): a 45 m colour shelf turned Saltmere's whole bay turquoise,
+25 m keeps a rim; the deep blue at 0.5 still read teal at Saltwind's grazing view; a swell slope of 0.05 barely read.
+
+**Measured** (the pair: the PR head 6bf0a4c48 against the branch, desktop high; `$SP/p2/sea/pair2`):
+- *Saltmere:* the bay's waterline band turns turquoise and clear (a* −8 → −12, L* +8) and grades into the blue body;
+  from the bird view a turquoise rim follows the whole shore. The open sea toward the horizon keeps its sky mirror.
+- *Saltwind:* the sea seen at grazing turns from teal to blue (hue 215° → 234°, b* −9.6 → −15.8) and the sea beside the
+  sun's glitter deeper blue (b* −11.9 → −22.9); long bands of swell read under the chop.
+- *GPU* (the old water in-page, on / off / off / on twice): +0.57 / +1.01 and +0.67 / +0.85 ms (p25 / p50) on the two
+  sea views with the unprepared first frame in the "on" set; +0.4 to +0.6 ms without it — a texture fetch and three
+  cosines a water fragment, within the run-to-run spread on a loaded machine.
+
+### 2026-10-05 — the sea's second round: a shelf by the coast, deep water that reads deep, glitter over white (the skies lane)
+
+**The gauntlet's wave 78** (held: the water +0.14 for about +0.5 ms): Saltmere's bay "one saturated sky-cyan sheet … no
+shallow-to-deep gradation" (the 25 m shelf too narrow to read from 100–300 m up, 45 m flooding the bay); Saltwind's open
+channel "one bright aqua-turquoise from the foreground to the horizon"; the glitter "tops out at a dull grey-white that
+never clips … a single smooth, soft-edged bloom column instead of a dense field of small, sharp, dancing highlights".
+
+**The fix** (`shallowWater.ts`, the open sea only — lakes, rivers and marshes keep their own):
+- *a shelf by the coast:* the shelf's width follows the land's rise within 30 m of the waterline (a beach rises a metre or
+  two, a karst coast tens): width = 1.25 / rise slope, 8–60 m, carried from the nearest shore cell (the shore-distance
+  field's G channel). The sweep scaled the width in-page: K 2.5 with a 120 m cap turned Saltmere's whole bay turquoise
+  again and widened Saltwind's channel shelf, half of it grades the bay from a turquoise belt into deep blue, a third
+  leaves a rim (`SEA_SHELF_WIDTH_*`, `SEA_SHELF_BY_COAST`, `SEA_SHELF_WIDTH_SCALE`);
+- *deep water:* the deep body darker (0.7 → 0.5) and the sky's mirror taking over later toward the horizon (its grazing
+  exponent 1 → 2), so water seen from above shows its body; a bluer deep colour moved nothing visible (`SEA_TINT`,
+  `WATER_GRAZE_POW`);
+- *glitter:* the sun's lobe sharp on the fine normals — the direct lights take 0.4 of the profile's roughness — while the
+  sky's mirror keeps the profile's own, restored between the direct lights and the environment's lookup: one sharp
+  roughness for both turned the far chop into white facets over dark troughs under the horizon (its local texture 9 → 23
+  levels on Saltmere's edge view; a fade back to the profile's roughness with distance changed nothing, the isolation
+  sweep pinned it on the mirror's roughness); the sun's glints capped at 3 apart from the mirror, which keeps 1.15 (a
+  joint cap at 3 whitened the far band; `WATER_ROUGH`, `WATER_GLINT_CAP`, `WATER_SPEC_CAP`).
+
+**Measured** (the PR head against the branch, desktop high; `$SP/p2/sea/pair3`, the sweeps `cap5`–`cap9`):
+- *Saltwind's glint:* pure-white pixels 0 → 2.2 % of the sun's path, its brightest 0.5 % from 234 to 251 — sparkles that
+  clip, in a narrower path of small facets.
+- *Saltmere's bay:* the water's a* p10/p90 −9.5/−5.5 → −19.8/−6.3 — a turquoise belt along the sand grading into blue;
+  from the bird view a turquoise rim follows the shore and the bay's body stays blue.
+- *the water under the camera:* deeper and bluer — Saltwind L* 49.4 → 45.4, b* −9.5 → −16.5 (hue 187° → 195°); Saltmere
+  L* 56.3 → 45.9, b* −17.0 → −24.1.
+- *the far band:* its texture as the PR head's — Saltwind 4.5–5.9 → 4.7–7.5 levels (local deviation, the 200 rows under
+  the horizon), Saltmere 3.4–14.8 → 13.3–16.1 (it was 22.7 with one roughness) — and the sun's path keeps its sparkles.
+- *GPU* (the coordinator's rule: in-page, 8 interleaved quartets against a null control, 1920 × 1080 high): the sea's whole change (rounds 1 and 2: the shelf, the swell, the mirror's exponent, the split roughness, the glints' cap) against the PR head's water in-page — the load gate shut past two hours (`$SP/p2/costrule/sea-*`): Saltmere's establishing view +0.11 ± 0.25 ms p50 (+0.13 ± 0.23 p25), the bound +0.60 / +0.58 ms; Saltwind's glint +0.33 ± 0.31 ms p50 (+0.25 ± 0.17 p25), the bound +0.94 / +0.60 ms — both under +1 ms (frames 12.6 and 14.2 ms).
 
 ### 2026-10-05 — Ironworks as the Völklingen ironworks (the map-revival lane, mr1)
 
