@@ -16,12 +16,17 @@
   forward faces are exposed. Independent review accepts all 22 fresh native
   views, including −10°/+20° positions. Regenerated receipts are pending;
   this does not claim a whole-vehicle release pass.
-- **INCOMPLETE — integrated suite:** the running 1,280-check invocation has
-  not completed. Twenty other failures observed so far reproduce on the
-  exact integrated base. The corrected roof-gun setup passes separately.
-- **NOT PUBLISHED:** the prior clean `3e3af3ca1` production preview is
-  superseded by the M3 fix. Final main integration, clean production preview,
-  push, deployment and live verification are pending.
+- **INCOMPLETE — integrated suite:** the initial 1,280-check invocation was
+  stopped after 448 considered checks because it predates the final corrections
+  and rebases. Its observed results are retained; they do not certify the final
+  tree. Twenty failures reproduce on the exact integrated base. The corrected
+  roof-gun setup and TUSK fixture pass separately. Final-tree suite pending.
+- **PUBLICATION REQUESTED:** after the pending checks were disclosed, the
+  owner repeated “commit and push origin main.” The completed vehicle repairs
+  and current generated armor/fill data are being published with the incomplete
+  checks above explicitly retained. Remaining asset regeneration, wreck-record
+  synchronization and final validation will follow. No new deployment is
+  claimed; the prior `3e3af3ca1` production preview is superseded.
 
 ## Scope and construction
 
@@ -214,11 +219,16 @@ M3 planar-face correction invalidates that candidate's M3 visual evidence;
 its fresh physical checks, captures and regenerated assets now pass. The
 fresh composed M3 release reports the approved comparison failures unchanged
 (geometry score 0, procedural fidelity 50.5) and passes its 33-view sealed check.
-The separately queued standard check will run physical checks skipped after
-that comparison failure. The complete npm suite, TUSK regeneration and final
-production/live verification remain pending.
+The separate fresh standard check passes strict tracks and roof equipment;
+its one continuity cell, bounds, coverage and sample record exactly match the
+integrated baseline (`m3-flat-continuity-comparison.json`). That cell remains a
+retained failure. The complete final-tree npm suite, TUSK regeneration and
+final production/live verification remain pending.
 
-The repair branch is rebased onto `16f624704`, preserving the intervening
-wreck-collision and Garage aura changes. An actual LOW-geometry comparison of
-Abrams wreck envelopes is queued to check this integration; no world collision
-manifest is modified without a measured envelope difference.
+The repair branch is rebased onto `efd68c1b5`, preserving the intervening
+wreck collision, Garage aura, Service Record/audio and General Translation
+camouflage changes. The actual LOW-geometry comparison found changed turret
+collision envelopes for the three Abrams used in map wreck rosters: M1A1,
+M1A2 and SEPv3. Their hull bodies and ground-seating bounds are unchanged.
+A seeded refresh is queued for 20 tagged wreck records across 19 maps, using
+exact baseline preimages and preserving every unrelated collision record.
