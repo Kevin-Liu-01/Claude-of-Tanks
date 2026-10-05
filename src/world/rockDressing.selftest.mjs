@@ -196,7 +196,9 @@ for (const lithology of LITHOLOGIES) {
     }
   }
 }
-assert.ok(meanLuma.chalk > meanLuma.granite * 2.5, `the chalk is white (${meanLuma.chalk.toFixed(3)} against the granite's ${meanLuma.granite.toFixed(3)})`);
+assert.ok(meanLuma.chalk > meanLuma.granite * 2.5, `the chalk is pale (${meanLuma.chalk.toFixed(3)} against the granite's ${meanLuma.granite.toFixed(3)})`);
+// (b12, wave 74: "a white marshmallow, a fleece or a snow heap") an albedo of 0.6 to 0.7, not snow's
+assert.ok(meanLuma.chalk < 0.42, `the chalk is no snow (linear luma ${meanLuma.chalk.toFixed(3)})`);
 for (const lithology of LITHOLOGIES) for (let v = 0; v < 3; v++) assert.ok(BOULDER_KINDS[boulderKindFor(lithology, v)], `${lithology}: a kind for variant ${v}`);
 assert.ok([0, 1, 2].every((v) => boulderKindFor('sandstone', v) !== 1), 'bedded rock breaks into blocks and slabs, never weathered corestones');
 const outside = new THREE.BufferGeometry();
@@ -221,12 +223,22 @@ assert.deepEqual([rockDressingFor('mars', null).lichen[0], rockDressingFor('moon
 assert.equal(rockDressingFor('desert', null).lithology, 'sandstone');
 assert.equal(rockDressingFor('verdant', null).lithology, 'chalk', 'Prokhorovka\'s exposed rock is chalk (wave 57: no erratics south of the glacial limit)');
 assert.ok([0, 1, 2].some((v) => BOULDER_KINDS[boulderKindFor('sandstone', v)] === 'slab'), 'sandstone parts in slabs');
-assert.ok([0, 1, 2].filter((v) => BOULDER_KINDS[boulderKindFor('chalk', v)] === 'rounded').length >= 2, 'the chalk weathers round');
+assert.equal([0, 1, 2].filter((v) => BOULDER_KINDS[boulderKindFor('chalk', v)] === 'rounded').length, 1,
+  'the chalk breaks into blocks and slabs, one of three weathered round (b12: no marshmallow)');
 for (const mapId of MAP_IDS) {
   const [contrast, colour, relief] = rockDressingFor(mapId, null).photo;
   assert.ok(contrast > 0.3 && contrast <= 1.3 && colour >= 0 && colour <= 1 && relief > 0.3 && relief <= 1, `${mapId}: the photographed stone's treatment bounded`);
 }
-assert.ok(rockDressingFor('verdant', null).photo[0] < rockDressingFor('coastal', null).photo[0] * 0.5, 'the chalk takes the photo softly, the granite whole');
+assert.ok(rockDressingFor('verdant', null).photo[0] < rockDressingFor('coastal', null).photo[0], 'the chalk takes the photo more softly than the granite');
+assert.ok(rockDressingFor('verdant', null).photo[2] >= rockDressingFor('saltwind', null).photo[2], 'but its relief as strongly as the limestone (b12: pitted and fractured)');
+// the lithologies' own surfaces (b12): the chalk's flints, rind and stain; the limestone's rind and stain; none on the rest
+assert.deepEqual([...rockDressingFor('verdant', null).surface], [1, 0.6, 1], 'the chalk: flints, a grey rind, the soil\'s stain');
+assert.ok(rockDressingFor('saltwind', null).surface[0] === 0 && rockDressingFor('saltwind', null).surface[1] > 0, 'the limestone: a rind, no flints');
+for (const mapId of MAP_IDS) {
+  const d = rockDressingFor(mapId, null);
+  assert.ok(d.surface.every((v) => v >= 0 && v <= 1), `${mapId}: a bounded surface`);
+  if (!['chalk', 'limestone'].includes(d.lithology)) assert.deepEqual([...d.surface], [0, 0, 0], `${mapId}: no carbonate surface on ${d.lithology}`);
+}
 assert.notDeepEqual(rockDressingFor('coastal', null).lichenA, rockDressingFor('verdant', null).lichenA, 'the climate picks the lichen');
 assert.notDeepEqual(rockDressingFor('railyard', (h, s, l) => [0.6, s, l]).soil, rockDressingFor('railyard', null).soil, 'the dirt tone law reaches the soil');
 
@@ -279,7 +291,8 @@ const grimed = {
 const tile = new THREE.DataTexture(new Uint8Array(4), 1, 1);
 const shader = { uniforms: {}, vertexShader: grimed.vertexShader, fragmentShader: grimed.fragmentShader };
 applyRockShaderHook(shader, rockDressingFor('verdant', null), tile);
-assert.deepEqual(Object.keys(shader.uniforms).sort(), ['uRockDust', 'uRockLichen', 'uRockLichenA', 'uRockLichenB', 'uRockLichenTile', 'uRockMoss', 'uRockPhoto', 'uRockSoil', 'uRockStoneMean', 'uRockVarnish']);
+assert.deepEqual(Object.keys(shader.uniforms).sort(), ['uRockDust', 'uRockLichen', 'uRockLichenA', 'uRockLichenB', 'uRockLichenTile', 'uRockMoss', 'uRockPhoto', 'uRockSoil', 'uRockStoneMean', 'uRockSurface', 'uRockVarnish']);
+assert.deepEqual(shader.uniforms.uRockSurface.value.toArray(), [...rockDressingFor('verdant', null).surface], 'the lithology\'s own surface');
 assert.deepEqual(shader.uniforms.uRockStoneMean.value.toArray(), [0.214, 0.214, 0.214], 'the stand-in\'s mid grey until the stone lands');
 {
   const mean = new THREE.Vector3(0.1, 0.12, 0.14);
@@ -308,7 +321,21 @@ assert.match(frag, /float exposed = smoothstep\(0\.15, 0\.75, vGrimeN\.y \+ 0\.4
 assert.ok(frag.indexOf('float lichen =') < frag.indexOf('float mossMask'), 'the moss grows over the lichen');
 assert.ok(frag.indexOf('#include <color_fragment>') < frag.indexOf('float rockSnow') && frag.includes('if (vRockSeed >= 0.0 && uRockLichen.z > 0.5)'), 'a snow map\'s boulders take their snow after their tone');
 assert.match(frag, /float soilTop = \(texture2D\(uGrime, vGrimeW\.xz \* 0\.47 \+ vGrimeW\.y \* 0\.11\)\.g - 0\.5\) \* 0\.3;/, 'the soil band\'s top wanders (wave 57: "a ruler-straight base line")');
-assert.ok(frag.indexOf('float soilMask') < frag.indexOf('if (vRockSeed >= 0.0) diffuseColor.rgb *= 0.55 + 0.45 * smoothstep('), 'the contact darkening over the soil band, boulders only');
+assert.ok(frag.indexOf('float soilMask') < frag.indexOf('float contactK = 0.45 * (1.0 - 0.6 * uRockDust);'), 'the contact darkening over the soil band, boulders only');
+assert.match(frag, /diffuseColor\.rgb \*= \(1\.0 - contactK\) \+ contactK \* smoothstep\(-0\.04 \+ soilTop \* 0\.5, 0\.3 \+ 0\.25 \* uRockDust \+ soilTop \* 0\.5, vRockAbove\);/,
+  'softer and wider on a dusty map (b12, wave 72: Redrock\'s "uniformly dark crisp ring")');
+// (b12, Sonnet, wave 74: "identical banding recognisable") each boulder its own cut of the stone: its frame turned and
+// tipped, its scale and phase its own, the weights and the relief in that frame; a merged formation keeps the world's
+assert.match(frag, /mat3 rockR = mat3\(1\.0\);\nvec3 rockPw = vGrimeW \* 0\.55;\nif \(vRockSeed >= 0\.0\) \{/, 'the world frame unless a boulder');
+assert.match(frag, /rockPw = rockR \* vGrimeW \* \(0\.44 \+ 0\.25 \* fract\(vRockSeed \* 3\.71\)\) \+ vRockSeed \* vec3\(31\.7, 7\.3, 19\.1\);/, 'its scale and phase');
+assert.match(frag, /vec3 rockTp = abs\(rockR \* vGrimeN\);/, 'the photo\'s weights in its frame');
+assert.ok(frag.includes('texture2D(map, rockPw.yz).rgb * rockTp.x') && frag.includes('rockPert = transpose(rockR) * rockPert;'), 'the stone and its relief drawn in that frame, the relief turned back');
+assert.ok(frag.includes('texture2D(uRockLichenTile, lPw.yz).rg * rockTw.x'), 'the lichen keeps the world frame');
+// the carbonate surface (b12): the rind on the tops and the weather side, the flints in bands, the stain up the foot
+assert.match(frag, /float rind = uRockSurface\.y \* smoothstep\(0\.25, 0\.95, 0\.5 \+ 0\.45 \* vGrimeN\.y/, 'the rind');
+assert.match(frag, /float flint = uRockSurface\.x \* \(1\.0 - smoothstep\(0\.07, 0\.17, flintBand\)\)/, 'the flints in their bands');
+assert.match(frag, /float stain = uRockSurface\.z \* \(1\.0 - smoothstep\(0\.0, stainTop, vRockAbove\)\);/, 'the stain');
+assert.ok(frag.indexOf('float rind') < frag.indexOf('float lichen ='), 'the lichen over the rind');
 assert.ok(!frag.includes('#include <normal_fragment_maps>') && frag.includes('texture2D(normalMap, rockPw.yz)'), 'the tangent-frame chunk is replaced by the triplanar perturbation');
 const untiled = { uniforms: {}, vertexShader: grimed.vertexShader, fragmentShader: grimed.fragmentShader };
 applyRockShaderHook(untiled, rockDressingFor('verdant', null));
