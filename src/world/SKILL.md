@@ -177,10 +177,15 @@ strip column's highest opaque texel (`SKYLINE_FRAGMENT`) and its colour averaged
 the shell is ground: the apron over the bake eye's horizon (its inner rows on the ring's outer edge, +0.8 to +2.5
 degrees, read sky over a low far country) takes the skyline's colour, and the far earth takes it hazed by the map's law
 over the reach past the strip at which the ray meets the ground, converging toward the horizontal onto the screen's own
-horizon: the dome's lookup greyed by the dome's deck greying and knee, toward the aerial pass's target, pre-compensated for
-that pass. sky.ts keeps the deck greying inline, so the shell carries a copy (`DOME_DECK_GREY_GLSL`) on the dome's own
-uniforms (read off the `atmosphere-dome` mesh each draw); `horizonPanoramaDeck.selftest.mjs` runs the dome's statements
-(read out of sky.ts) and the copy through one GLSL-subset evaluator and fails the build on any difference.
+horizon: the dome's lookup greyed by the dome's deck greying and knee, under the cloud layer's composite at the horizon
+point (its history read where the cloud dome reads it, on this frame's screen), pre-compensated for the aerial pass.
+sky.ts and volumetricClouds.ts keep both inline, so the shell carries copies (`DOME_DECK_GREY_GLSL`,
+`CLOUD_COMPOSITE_GLSL`) on the domes' own uniforms (read off the `atmosphere-dome` mesh and
+`scene.userData.volumetricClouds.dome` each draw); `horizonPanoramaDeck.selftest.mjs` and
+`horizonPanoramaClouds.selftest.mjs` run the sources' statements and the copies through one GLSL-subset evaluator
+(`glslSubset.test-support.mjs`) and fail the build on any difference. Where no cloud layer is read (none drawn, or the
+horizon point off the frame's top or bottom, eased in over the last twentieth) the dome goes toward the aerial pass's
+target as the overcast closes.
 A hole under the skyline (the game's open water) stays open; ground and tank-height cameras look up at the shell's sky,
 so their frames are bit-identical. The frame-budget probe's `--toggle=far-earth` switches it in place.
 `horizonPanorama.selftest.mjs` pins the shell, the atlas mapping and the bake contract; the bake's look is iterated

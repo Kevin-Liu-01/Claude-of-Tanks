@@ -103,11 +103,12 @@ const ringEdge = (() => {
   // dome's uniforms, horizonPanoramaDeck.selftest.mjs — the knee, the intensity), toward the aerial pass's target as the
   // deck closes; the aerial pass's target and transmittance as post.ts lays them
   assert.ok(frag.includes('vec3 skyT = atmoSkyVisible(normalize(vec3(rd.x, max(rd.y, 0.02), rd.z)));')
-    && frag.includes('vec3 domeRaw = panoDeckGrey(atmoSky(hdir), hdir);')
-    && frag.includes('vec3 screen = mix(atmoKnee(domeRaw) * uAtmoIntensity, aerialT, smoothstep(0.3, 0.8, uPanoTerms.z));'),
-    'the screen\'s horizon is the dome\'s own lookup and the aerial pass\'s own target');
+    && frag.includes('vec3 domeSky = atmoKnee(panoDeckGrey(atmoSky(hdir), hdir)) * uAtmoIntensity;')
+    && frag.includes('vec3 screen = mix(domeSky, aerialT, smoothstep(0.3, 0.8, uPanoTerms.z));')
+    && frag.includes('if (inFrame > 0.0) screen = mix(screen, panoCloudOver(domeSky, vec2(clamp(cuv.x, 0.0, 1.0), cuv.y), hdir), inFrame);'),
+    'the screen\'s horizon is the dome\'s own lookup under the cloud layer\'s composite (horizonPanoramaClouds.selftest.mjs), the aerial pass\'s own target where no cloud layer is read');
   for (const name of ['tAtmoSky', 'uAtmoSun', 'uAtmoViewH', 'uAtmoKnee', 'uAtmoIntensity', 'uPanoTint', 'uPanoTerms', 'uPanoDatum', 'uPanoSkyOn', 'uPanoSigmaPost',
-    'uDeckHorizon', 'uDeckClosed']) {
+    'uDeckHorizon', 'uDeckClosed', 'tClouds', 'uHistorySize', 'uKnee', 'uSkyIntensity', 'uFlash', 'uFlashTint', 'uSunDir', 'uInside', 'uPanoCloudOn', 'uPanoViewProj']) {
     assert.ok(name in shader.uniforms, `the shell binds ${name}`);
   }
   // per draw, read-only from the published atmosphere: no live sky (the receipts, the labs without one, the mobile tier's

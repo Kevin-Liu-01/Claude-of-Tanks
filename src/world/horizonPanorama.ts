@@ -439,6 +439,18 @@ interface ShellAir {
   uDeckClosed: THREE.IUniform<number>;
   uPanoDatum: THREE.IUniform<number>;
   uPanoSkyOn: THREE.IUniform<number>;
+  /** the cloud layer's composite, its dome's own uniforms copied each draw (CLOUD_COMPOSITE_GLSL), read-only; whether
+   *  the layer draws; the frame's view-projection (the screen the dome samples the clouds' history in) */
+  tClouds: THREE.IUniform<THREE.Texture | null>;
+  uHistorySize: THREE.IUniform<THREE.Vector2>;
+  uKnee: THREE.IUniform<THREE.Vector3>;
+  uSkyIntensity: THREE.IUniform<number>;
+  uFlash: THREE.IUniform<THREE.Vector4>;
+  uFlashTint: THREE.IUniform<THREE.Vector3>;
+  uSunDir: THREE.IUniform<THREE.Vector3>;
+  uInside: THREE.IUniform<number>;
+  uPanoCloudOn: THREE.IUniform<number>;
+  uPanoViewProj: THREE.IUniform<THREE.Matrix4>;
 }
 
 /** The dome's deck greying (sky.ts ATMOSPHERE_DOME_FRAGMENT: the deck's grey at the horizon, a closed deck's at every
@@ -462,6 +474,61 @@ vec3 panoDeckGrey( vec3 skyCol, vec3 direction ) {
 		skyCol = mix( skyCol, uDeckHorizon.rgb * ( deckL / deckTintL ), deckW );
 	}
 	return skyCol;
+}
+`;
+
+/** The cloud layer's composite (volumetricClouds.ts DOME_FRAGMENT), which the far earth's screen horizon goes through:
+ * what the frame shows just over the horizontal is the dome under the cloud layer, and under a deck that is the deck's
+ * far rows, which the layer pulls only 82 % of the way to the aerial pass's target (the rest is the deck's own lit
+ * radiance: Titan Gorge's and Frosthollow's far earth stood 0.08 and 0.05 under them on the screen-horizon pair).
+ * volumetricClouds.ts keeps it in the dome's fragment rather than as a chunk, so this carries the dome's filter and knee
+ * word for word, its statements from the history's sample to the flash on a given uv and direction, and the dome's blend
+ * (one, one minus the source alpha) over the sky under it: horizonPanoramaClouds.selftest.mjs runs the dome's and these
+ * through one GLSL-subset evaluator and fails on any difference. The uniforms are the cloud dome's own, copied each draw
+ * (the shell's onBeforeRender). */
+const CLOUD_COMPOSITE_GLSL = /* glsl */`
+uniform sampler2D tClouds;
+uniform vec2 uHistorySize;
+uniform vec3 uKnee;
+uniform float uSkyIntensity;
+uniform vec4 uFlash;
+uniform vec3 uFlashTint;
+uniform vec3 uSunDir;
+uniform float uInside;
+vec4 cloudsCatmullRom( vec2 uv, vec2 size ) {
+	vec2 sp = uv * size;
+	vec2 tp1 = floor( sp - 0.5 ) + 0.5;
+	vec2 fr = sp - tp1;
+	vec2 w0 = fr * ( fr * ( fr * -0.5 + 1.0 ) - 0.5 );
+	vec2 w1 = fr * fr * ( fr * 1.5 - 2.5 ) + 1.0;
+	vec2 w2 = fr * ( fr * ( fr * -1.5 + 2.0 ) + 0.5 );
+	vec2 w3 = fr * fr * ( fr * 0.5 - 0.5 );
+	vec2 w12 = w1 + w2;
+	vec2 tc0 = ( tp1 - 1.0 ) / size, tc3 = ( tp1 + 2.0 ) / size, tc12 = ( tp1 + w2 / w12 ) / size;
+	float a = w12.x * w0.y, b = w0.x * w12.y, c = w12.x * w12.y, d = w3.x * w12.y, e = w12.x * w3.y;
+	vec4 sum = texture2D( tClouds, vec2( tc12.x, tc0.y ) ) * a + texture2D( tClouds, vec2( tc0.x, tc12.y ) ) * b
+		+ texture2D( tClouds, tc12 ) * c + texture2D( tClouds, vec2( tc3.x, tc12.y ) ) * d + texture2D( tClouds, vec2( tc12.x, tc3.y ) ) * e;
+	return sum / ( a + b + c + d + e );
+}
+vec3 cloudKnee( vec3 c ) {
+	float l = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) );
+	if ( l > uKnee.x ) c *= ( uKnee.x + uKnee.y * ( 1.0 - exp( -( l - uKnee.x ) * uKnee.z ) ) ) / l;
+	return c;
+}
+vec3 panoCloudOver( vec3 sky, vec2 uv, vec3 dir ) {
+	vec4 c = max( cloudsCatmullRom( uv, uHistorySize ), vec4( 0.0 ) );
+	// nothing below the horizon line (the history holds no cloud there either) — unless the camera is in the slab
+	float above = max( smoothstep( -0.05, -0.02, dir.y ), uInside );
+	// the knee eases off within a few degrees of the sun: the silver lining of a cloud in front of it outshines the glow
+	float sunNear = pow( max( dot( dir, uSunDir ), 0.0 ), 400.0 );
+	vec3 rgb = mix( cloudKnee( c.rgb ), min( c.rgb, vec3( 6.0 ) ), sunNear ) * uSkyIntensity * above;
+	float alpha = ( 1.0 - min( c.a, 1.0 ) ) * above;
+	if ( uFlash.w > 0.0 ) {
+		// the cloud mass around the strike lit from inside: a broad glow and a bright core, only where there is cloud
+		float k = max( dot( dir, uFlash.xyz ), 0.0 );
+		rgb += uFlashTint * ( uFlash.w * ( pow( k, 30.0 ) * 0.7 + pow( k, 600.0 ) * 1.6 ) * alpha );
+	}
+	return rgb + sky * ( 1.0 - alpha );
 }
 `;
 
@@ -497,6 +564,16 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
     uPanoTerms: { value: new THREE.Vector3(0, 1, 0) },
     uDeckHorizon: { value: new THREE.Vector4(1, 1, 1, 0) },
     uDeckClosed: { value: 0 },
+    tClouds: { value: null },
+    uHistorySize: { value: new THREE.Vector2(4, 4) },
+    uKnee: { value: new THREE.Vector3(1e6, 0, 1) },
+    uSkyIntensity: { value: 1 },
+    uFlash: { value: new THREE.Vector4() },
+    uFlashTint: { value: new THREE.Vector3(1, 1, 1) },
+    uSunDir: { value: new THREE.Vector3(0, 1, 0) },
+    uInside: { value: 0 },
+    uPanoCloudOn: { value: 0 },
+    uPanoViewProj: { value: new THREE.Matrix4() },
     uPanoDatum: { value: 0 },
     uPanoSkyOn: { value: 0 },
   };
@@ -513,9 +590,11 @@ uniform vec3 uPanoEye; uniform vec2 uPanoElev; varying vec3 vPanoWorld; varying 
 uniform sampler2D uPanoSkyline; uniform vec4 uPanoHaze; uniform vec3 uPanoHazeAnti, uPanoHazeToward, uPanoHazeChroma;
 uniform vec2 uPanoSunH;
 uniform float uPanoSigmaPost;
-uniform vec3 uPanoTint; uniform vec3 uPanoTerms; uniform float uPanoDatum, uPanoSkyOn;
+uniform vec3 uPanoTint; uniform vec3 uPanoTerms; uniform float uPanoDatum, uPanoSkyOn, uPanoCloudOn;
+uniform mat4 uPanoViewProj;
 ${ATMOSPHERE_SKY_GLSL}
 ${DOME_DECK_GREY_GLSL}
+${CLOUD_COMPOSITE_GLSL}
 ${HAZE_LAW_GLSL}`)
       .replace('#include <map_fragment>', /* glsl */`
       #ifndef USE_MAP
@@ -578,8 +657,22 @@ ${HAZE_LAW_GLSL}`)
               }
               aerialT *= uPanoTerms.y;
               vec3 hdir = normalize(vec3(rd.x, 0.004, rd.z));
-              vec3 domeRaw = panoDeckGrey(atmoSky(hdir), hdir);
-              vec3 screen = mix(atmoKnee(domeRaw) * uAtmoIntensity, aerialT, smoothstep(0.3, 0.8, uPanoTerms.z));
+              vec3 domeSky = atmoKnee(panoDeckGrey(atmoSky(hdir), hdir)) * uAtmoIntensity;
+              // where the cloud layer is not read (none drawn, or the horizon point off the frame's top or bottom):
+              // the dome, toward the aerial pass's target as the overcast closes
+              vec3 screen = mix(domeSky, aerialT, smoothstep(0.3, 0.8, uPanoTerms.z));
+              if (uPanoCloudOn > 0.5) {
+                // the dome under the cloud layer as the frame composites it at the horizon point on this bearing: its
+                // history sampled where the cloud dome samples it, at the point's own place on this frame's screen
+                vec4 hc = uPanoViewProj * vec4(hdir, 0.0);
+                if (hc.w > 0.0) {
+                  vec2 cuv = hc.xy / hc.w * 0.5 + 0.5;
+                  // eased to the proxy over the frame's last twentieth at the top and the bottom (no jump as the point
+                  // leaves the frame); held at the side edges, where the horizon beside it is in the frame
+                  float inFrame = smoothstep(0.0, 0.05, cuv.y) * (1.0 - smoothstep(0.95, 1.0, cuv.y));
+                  if (inFrame > 0.0) screen = mix(screen, panoCloudOver(domeSky, vec2(clamp(cuv.x, 0.0, 1.0), cuv.y), hdir), inFrame);
+                }
+              }
               float postLayer = hazeLayerMean(max(cameraPosition.y - uPanoDatum, 0.0) * uPanoHaze.y, max(vPanoWorld.y - uPanoDatum, 0.0) * uPanoHaze.y);
               vec3 Tp = hazeTransmittance(uPanoSigmaPost, length(vd), postLayer, uPanoHazeChroma);
               inScatter = max((screen - aerialT * (1.0 - Tp)) / max(Tp, vec3(0.05)), vec3(0.0));
@@ -1467,7 +1560,12 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     const live = !!(atmosphere?.active && atmosphere.skyView && atmosphere.sunDir && atmosphere.knee && atmosphere.fogTint
       && air.uPanoHaze.value.w > 0.5);
     air.uPanoSkyOn.value = live ? 1 : 0;
-    if (!live || !atmosphere) return;
+    if (!live || !atmosphere) {
+      // (no reference kept to a cloud history the layer may since have released)
+      air.uPanoCloudOn.value = 0;
+      air.tClouds.value = null;
+      return;
+    }
     air.tAtmoSky.value = atmosphere.skyView ?? null;
     const sun = atmosphere.sunDir!;
     air.uAtmoSun.value.set(sun.x, sun.y, sun.z).normalize();
@@ -1489,6 +1587,27 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     } else {
       air.uDeckHorizon.value.set(1, 1, 1, 0);
       air.uDeckClosed.value = 0;
+    }
+    // the cloud layer's composite: its dome's own uniforms while it draws, as volumetricClouds.ts set them for this
+    // frame (the history resolves before the scene draws), and this frame's view-projection, the screen the dome
+    // samples the history in (TAA's jitter included)
+    const cloudDome = (scene.userData as { volumetricClouds?: { dome?: THREE.Object3D } | null }).volumetricClouds?.dome;
+    const cu = cloudDome?.visible ? ((cloudDome as THREE.Mesh).material as THREE.ShaderMaterial | undefined)?.uniforms : undefined;
+    const clouds = cu?.tClouds?.value, perspective = (camera as THREE.PerspectiveCamera).isPerspectiveCamera === true;
+    const cloudsOn = !!(perspective && clouds instanceof THREE.Texture && cu && cu.uHistorySize?.value instanceof THREE.Vector2
+      && cu.uKnee?.value instanceof THREE.Vector3 && typeof cu.uSkyIntensity?.value === 'number' && cu.uFlash?.value instanceof THREE.Vector4
+      && cu.uFlashTint?.value instanceof THREE.Vector3 && cu.uSunDir?.value instanceof THREE.Vector3 && typeof cu.uInside?.value === 'number');
+    air.uPanoCloudOn.value = cloudsOn ? 1 : 0;
+    air.tClouds.value = cloudsOn ? clouds as THREE.Texture : null;
+    if (cloudsOn && cu) {
+      air.uHistorySize.value.copy(cu.uHistorySize.value as THREE.Vector2);
+      air.uKnee.value.copy(cu.uKnee.value as THREE.Vector3);
+      air.uSkyIntensity.value = cu.uSkyIntensity.value as number;
+      air.uFlash.value.copy(cu.uFlash.value as THREE.Vector4);
+      air.uFlashTint.value.copy(cu.uFlashTint.value as THREE.Vector3);
+      air.uSunDir.value.copy(cu.uSunDir.value as THREE.Vector3);
+      air.uInside.value = cu.uInside.value as number;
+      air.uPanoViewProj.value.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     }
     if (Number.isFinite(atmosphere.fogDensity)) air.uPanoSigmaPost.value = hazeSigma(atmosphere.fogDensity as number);
     const ground = options.groundAt ? options.groundAt(camera.position.x, camera.position.z) : NaN;
