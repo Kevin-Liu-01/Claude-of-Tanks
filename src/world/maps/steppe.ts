@@ -17,6 +17,15 @@
 // ford and climbing the western ramp; farm tracks; poplar shelterbelts instead
 // of forests. Wide-open sightlines are the point — the wadi banks and the
 // escarpment crest are the cover geometry.
+//
+// 2026-10-05 (the map-revival lane; the owner: "make sure all maps look completely new and revitalized like verdant"):
+// the grain station is a Virgin Lands sovkhoz estate in its own construction (maps/regional/tselina.ts) — the
+// slip-formed concrete elevator by the siding, the conveyor gallery, the MTS's garages, sheds and repair shop, the grain
+// stores, the settlers' saman and silicate-brick houses with their fenced kitchen gardens, the club, the Rozhnovsky
+// water tower, the boiler stack, the fuel store and the brigade wagons — every building where it stood. The steppe
+// around it is ploughed in Barayev's strips of wheat, stubble and black fallow (landUse.ts PROFILES.steppe), with stone
+// idols on the kurgans, a wind pump at the kolkhoz well, straw ricks on the station's fields and the 110 kV line that
+// brought the elevator its power.
 
 import { gully } from './geology.ts';
 
@@ -288,6 +297,11 @@ export default {
   },
 
   props: {
+    // the map-revival lane (2026-10-05): the Virgin Lands kit (maps/regional/tselina.ts) builds the station's plan as the
+    // sovkhoz's own: the widest warehouse lot is the grain elevator, the gantry the conveyor gallery to the wagon bin, the
+    // depot the MTS garage, the sheds its implement sheds, the corner shop the club, the farmhouse a two-family house, the
+    // cottages settlers' houses, the container rows the fuel store or the brigade wagons, the barn a sheep barn
+    architecture: 'tselina',
     // The grain station (round 48): the elevator's head tower, long grain
     // stores, the platform hall, the loading gantry, freight ranks and the
     // railway workers' houses along the station road and the east track.
@@ -357,6 +371,23 @@ export default {
       trucks: 3, jeeps: 2, drumClusters: 3, camps: 3,
       modernClutter: { barrier: 4, roadsign: 5, cone: 7, transformer: 3, cablespool: 3 },
     },
+  },
+
+  // the map-revival lane (2026-10-05; the scenery lane's generators, world/scenery.ts): the steppe's marks — a stone idol
+  // (balbal) on the great kurgan and the western one, the wind pump that waters the kolkhoz herds at its well, straw ricks
+  // left on the station's stubble, and the 110 kV line up from the south that brought the elevator its power
+  scenery: {
+    landmarks: [
+      { kind: 'menhir', x: -150, z: 227, scale: 0.7, height: 2.4, name: 'the stone idol on the great kurgan' },
+      { kind: 'menhir', x: -400, z: 236, scale: 0.6, height: 2.1, name: 'the stone idol on the western kurgan' },
+      { kind: 'windpump', x: -276, z: -170, yawDeg: 20, name: 'the wind pump at the kolkhoz well' },
+      { kind: 'strawstack', x: 58, z: -300, yawDeg: 12, name: 'a straw rick on the station fields' },
+      { kind: 'strawstack', x: 82, z: -314, yawDeg: 18, name: 'a straw rick on the station fields' },
+      { kind: 'strawstack', x: 104, z: -298, yawDeg: 8, name: 'a straw rick on the station fields' },
+    ],
+    // (up from the south edge to the station's substation, over open fields: a line over a belt's or a lone tree's
+    // crown stands its towers at 39-42 m)
+    powerLines: [{ towers: [[90, -430], [140, -362], [196, -296]], heightM: 30, name: 'the 110 kV line to the grain station' }],
   },
 
   horizon: {

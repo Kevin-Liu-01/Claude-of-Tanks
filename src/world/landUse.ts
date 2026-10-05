@@ -21,7 +21,7 @@
 // walls.
 
 export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst'
-  | 'brownfield' | 'coalfield';
+  | 'brownfield' | 'coalfield' | 'tselina';
 
 /** How a region's fields are bounded (the material's uLandE.z). */
 export type LandBoundary = 'margin' | 'ditch' | 'bund' | 'wall';
@@ -155,12 +155,15 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // a coalfield valley's farmland (the Ruhr's, Silesia's, the Valleys'): pasture and rough grazing gone ruderal round the
   // pits, small arable fields, and here and there a plot of tipped slag
   coalfield: [[0, 0.26], [17, 0.22], [4, 0.14], [5, 0.14], [1, 0.12], [3, 0.06], [15, 0.06]],
+  // the Virgin Lands' grain steppe (the Sary-Arka, Akmola and Kustanai): spring wheat and its stubble in long strips
+  // against the black fallow (Barayev's strips), a little barley, mown hay and the unploughed feather-grass remnant
+  tselina: [[1, 0.30], [5, 0.26], [4, 0.24], [2, 0.08], [13, 0.06], [17, 0.06]],
 });
 
 /** Each region's field boundary. */
 const BOUNDARIES: Readonly<Record<LandRegion, LandBoundary>> = Object.freeze({
   steppe: 'margin', bocage: 'margin', temperate: 'margin', upland: 'margin', strip: 'margin',
-  polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin',
+  polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin', tselina: 'margin',
 });
 
 /** The rotation's cumulative shares at slots 0..5 (slot 6 takes the rest), normalised. */
@@ -241,6 +244,14 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   railyard: {
     strength: 0.65, heading: 0.066, blockU: 84, blockV: 52, maxSplit: 3, marginM: 1.5, trackShare: 0.3, hedgeShare: 0.3,
     warpM: 14, region: 'coalfield', salt: 97,
+  },
+  // Tarkhan Steppe (the map-revival lane, 2026-10-05, through the coordinator: the Sary-Arka grain steppe of the Virgin
+  // Lands): Barayev's strip fields — long strips of wheat, stubble and black fallow about 100 m wide, laid across the
+  // prevailing south-westerly along the steppe highway's bearing (~84°), the land surveyed straight (a slight warp); dirt
+  // tracks on some of the long lines, a shelterbelt on a few strip ends
+  steppe: {
+    strength: 1, heading: 1.457, blockU: 620, blockV: 104, maxSplit: 2, marginM: 1.8, trackShare: 0.35, hedgeShare: 0.18,
+    warpM: 7, region: 'tselina', salt: 103,
   },
 });
 
