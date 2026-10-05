@@ -126,8 +126,9 @@ const TERRAIN_PLAN = {
     G: { set: 'grass', tint: [0.86, 0.91, 0.80], roughMul: 1.25 },
     // ground lane (wave 79: "the soil is mostly pale and sandy, where these places call for black chernozem
     // (Prokhorovka)"): the dirt photo's orange-tan (linear mean 0.22 / 0.14 / 0.07) half greyed and darkened to the
-    // black earth's dark brown (~0.076 / 0.060 / 0.047, luminance ~0.06; the plough's 0.03–0.06 under it)
-    D: { set: 'dirt', desat: 0.55, tint: [0.42, 0.40, 0.42], roughMul: 1.3 },
+    // black earth's dark brown (~0.084 / 0.057 / 0.042, luminance ~0.06; the plough's 0.03–0.06 under it; hold 27: at
+    // 0.42 / 0.40 / 0.42 it read a cool blue-black, chernozem is a warm one)
+    D: { set: 'dirt', desat: 0.55, tint: [0.46, 0.40, 0.37], roughMul: 1.3 },
     R: 'rock', M: null,
   },
   desert: {

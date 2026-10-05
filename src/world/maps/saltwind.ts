@@ -113,9 +113,10 @@ export default {
   // garrigue's dusty grey-olive and the rock lifted to the weathered limestone's pale warm grey (the boulders' tone)
   splat: { sourcedPalette: 'coastal', ...coastal.splat, sourcedTint: { G: [1.15, 0.95, 1.35], R: [1.40, 1.30, 1.30] }, seaLake: true, seaFoam: 0.2, seaRamp: [0.16, 0.54], iceDrift: 0.02, marshGloss: 0.90, iceSky: [0.23, 0.44, 0.58], tintA: [1.08, 1.04, 0.82], tintB: [0.73, 0.78, 0.62], tintC: [1.14, 1.08, 0.88], roadTint: [0.82, 0.76, 0.63], midRelief: 0.68,
     // ground lane (wave 79: "… red terra rossa among limestone (Dalmatia)"): the coast's dirt layer is its beach sand
-    // (0.55 / 0.42 / 0.22), so where it is drawn as the land's soil — the worn ground, verges, tracks, half on the roads —
-    // it takes the karst's terra rossa, a dull brick (~0.16 / 0.10 / 0.075); the strand keeps its sand
-    soilTint: [0.29, 0.24, 0.34] },
+    // (0.55 / 0.42 / 0.22), so where it is drawn as the land's soil — the worn ground, verges, tracks — it takes the
+    // karst's terra rossa; the strand and the white gravel roads keep the sand. (wave 83: "pastel pink, mauve and beige
+    // rather than rust-red terra rossa" — the dull brick ~0.16 / 0.10 / 0.075 read mauve) a red-brown, ~0.20 / 0.088 / 0.048
+    soilTint: [0.37, 0.21, 0.22] },
   vegetation: {
     species: ['cedar', 'acacia', 'pine'], clusterMix: [['cedar', 0.46], ['acacia', 0.38], ['pine', 0.16]],
     loneMix: [['acacia', 0.50], ['cedar', 0.32], ['pine', 0.18]], rimMix: [['cedar', 0.5], ['pine', 0.3], ['acacia', 0.2]],

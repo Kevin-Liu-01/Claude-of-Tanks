@@ -127,7 +127,7 @@ function checkSourceContract(text) {
     .map((m) => [m[0], m[1].replace(/\[\d+\]$/, '')])
     .flatMap(match => match[1].split(',').map(name => name.trim())).sort();
   const expected = ['uAlbG','uAlbD','uAlbR','uAlbM','uNrmG','uNrmD','uNrmR','uNrmM','uMask','uNoise',
-    'uTintA','uTintB','uTintC','uRoadTint','uSoilTint','uMarshGloss','uMicroAmp','uStrata','uRoadTex','uTownWear',
+    'uTintA','uTintB','uTintC','uRoadTint','uSoilTint','uPloughLift','uMarshGloss','uMicroAmp','uStrata','uRoadTex','uTownWear',
     'uWornDirtStrength','uIceDrift','uMidRelief','uFieldPatch','uRipple','uSandMacro','uIceSky',
     // round 40 (2026-09-22): the sea openings past the square (edgeWater.ts) that the ring's marine faces render as open water
     'uMidFar','uMaskSize', // The extended coast reuses uMask; no extra sampler.
@@ -215,8 +215,10 @@ function checkLandUseCut(text) {
   const reads = [...block.matchAll(/\b(nzq|nz|groundSamp|splatSamp|texture2D|textureLod|texelFetch)\(/g)].map((m) => m[1]).sort();
   // (farmland: the rows' bend is one coarse level of the noise — a textureLod, where it was a two-read nzq)
   // (wave 69's field layout: a field's wet and dry follow its fold and its own draw — the round 43 m noise is gone)
-  assert.deepEqual(reads, ['groundSamp', ...Array(6).fill('nzq'), 'textureLod'],
-    'the block reads six noise fields, the bend\'s coarse level and the soil (the bake is lu_field\'s)');
+  // (wave 83: a standing crop's canopy between the grass tier's blades — two reads of the noise at its own level, near
+  // the camera only, Medium and High: the crop's own grain)
+  assert.deepEqual(reads, ['groundSamp', 'nz', 'nz', ...Array(6).fill('nzq'), 'textureLod'],
+    'the block reads six noise fields, the canopy\'s two near reads, the bend\'s coarse level and the soil (the bake is lu_field\'s)');
   assert.ok(!/fieldN/.test(block), 'no round noise patch varies a field: its tone is its fold and its own draw');
   for (const [gate, read] of [
     ['float nBend = bendW > 0.001 && uLandTier > 1.5 ? ', 'textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0)'],
@@ -224,6 +226,8 @@ function checkLandUseCut(text) {
     ['if (soilRead && luNear > 0.001 && uLandTier > 1.5) soil = mix(uMeanD, ', 'groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB)'],
     ['float karstStone = uLandTier > 0.5 ? ', 'smoothstep(0.62, 0.80, nzq(uvW, 0.61'],
     ['float bare = uLandTier > 0.5 ? ', 'smoothstep(0.52, 0.72, nzq(uvW, 0.11'],
+    ['if (crop > 0.5 && crop < 3.5 && uLandTier > 0.5 && gFootM < 0.04) { vec2 uE = vec2(0.8090 * uv.x - 0.5878 * uv.y, 0.5878 * uv.x + 0.8090 * uv.y); float ear = ',
+      'nz(uv, 1.7, vec2(0.31, 0.77))'],
   ]) assert.ok(compact(block).includes(compact(gate + read)), `${read}: read only behind ${gate}`);
   assert.ok(compact(block).includes(compact('nzq(uvW, 0.031, vec2(0.11, 0.59)).y, nzq(uvW, 0.17, vec2(0.83, 0.37)).x), luNear);')),
     'the headland\'s width and the hedge bank\'s break are read in the wander\'s own gated round');

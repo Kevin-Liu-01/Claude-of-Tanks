@@ -85,6 +85,9 @@ export default {
     tintA: [1.14, 1.05, 0.78],
     tintB: [0.76, 0.80, 0.62],
     tintC: [1.09, 1.03, 0.80],
+    // ground lane (wave 83: "a cold blue-black surface"): the chernozem a very dark warm brown (~0.092 / 0.056 / 0.034,
+    // its plough ~0.055 / 0.031 / 0.018) — never blue under the sky's light
+    soilTint: [1.10, 0.96, 0.80],
   },
 
   vegetation: {

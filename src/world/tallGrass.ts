@@ -596,7 +596,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       field._landUseAt(x, z, _field);
       const vm = field._villageMask ? field._villageMask(x, z) : 0;
       const slopeN = n ? 1 - n.y : 0;
-      const landW = (1 - smoothstep(0.05, 0.30, vm)) * smoothstep(5.0, 8.0, roadD) * (1 - smoothstep(0.02, 0.06, slopeN))
+      const landW = (1 - smoothstep(0.05, 0.30, vm)) * smoothstep(5.0, 8.0, roadD) * (1 - smoothstep(0.04, 0.10, slopeN))
         * (1 - smoothstep(0.02, 0.10, water));
       if (landW > 0.5 && _field.active) {
         if (_field.track > 0.5) {
@@ -608,9 +608,12 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
             // (wave 79, the new ruts: "grass sprouting through them as thickly as on the verge") a farm track's two wheel
             // lanes (0.85 m either side of its line, the terrain's ruts) grow nothing; a short sward stands on the crown
             // between them and a trodden one on the verges outside
+            // (wave 83: "painted rails") the lanes wander and swell along the track (landUse.ts laneQ, the material's
+            // own lanes), and the sward's edge along them is ragged by the blade, not a ruled line
             const dLine = Math.abs(_field.sV);
-            if (Math.abs(dLine - 0.85) < 0.32) return;
-            if (dLine < 0.55) { keep *= 0.55; heightScale *= 0.55; } else keep *= 0.70;
+            const laneQ = _field.laneQ ?? (dLine - 0.85) / 0.24;
+            if (Math.abs(laneQ) < 1.15 + 0.35 * wR) return;
+            if (laneQ < 0) { keep *= 0.55; heightScale *= 0.55; } else keep *= 0.70;
           }
         } else if (_field.edgeM < _field.marginM) {
           if (_field.boundary === 3) { if (_field.edgeM < 0.62) return; keep *= 0.6; } // a dry stone wall and its foot

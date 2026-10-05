@@ -3828,17 +3828,19 @@ function* vegetationBuildSteps(
       const f = landUseAt(x, z, _landScratch);
       if (f.active) {
         const fieldW = (1 - smoothstepJs(0.05, 0.30, heightField._villageMask(x, z)))
-          * smoothstepJs(5.0, 8.0, heightField._roadDist(x, z)) * (1 - smoothstepJs(0.02, 0.06, 1 - normalY))
+          * smoothstepJs(5.0, 8.0, heightField._roadDist(x, z)) * (1 - smoothstepJs(0.04, 0.10, 1 - normalY))
           * (1 - smoothstepJs(0.02, 0.10, heightField.getWaterMaskAt(x, z)));
         if (fieldW > 0.5) {
           // a ditch's water and a dry stone wall carry no sward, a bund half of one, a track a few tufts
           if (f.track > 0.5) {
             // (wave 79: no grass in a farm track's wheel lanes — tallGrass.ts admit: the same law) a ditch's water and a
             // track's lanes carry no tufts, its crown a short sparse few, its verges a trodden half
+            // (wave 83: the lanes wander and swell along the track — landUse.ts laneQ — their verge ragged by the tuft)
             const dLine = Math.abs(f.sV);
-            if (f.boundary === 1 || Math.abs(dLine - 0.85) < 0.32) return null;
-            if (dLine < 0.55 ? clJ < 0.45 : clJ < 0.5) return null;
-            if (dLine < 0.55) sy *= 0.6;
+            const laneQ = f.laneQ ?? (dLine - 0.85) / 0.24;
+            if (f.boundary === 1 || Math.abs(laneQ) < 1.15 + 0.35 * clJ) return null;
+            if (laneQ < 0 ? clJ < 0.45 : clJ < 0.5) return null;
+            if (laneQ < 0) sy *= 0.6;
           }
           else if (f.edgeM < f.marginM) {
             if (f.boundary === 3 && f.edgeM < 0.62) return null;

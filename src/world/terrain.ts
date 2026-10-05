@@ -306,8 +306,12 @@ interface SplatConfig {
   tintC?: ColorTriple;
   roadTint?: ColorTriple;
   /** Ground lane (wave 79): the dirt layer's tint where it is drawn as the land's soil — the worn ground, verges, tracks,
-   * the turned fields, half on the dirt roads — not as the strand (a coast's dirt layer doubles as its beach). */
+   * the turned fields — not as the strand (a coast's dirt layer doubles as its beach) nor on a dirt road (Dalmatia's
+   * are white limestone gravel). */
   soilTint?: ColorTriple;
+  /** Ground lane (wave 83): a turned field's tone over the darkened soil (default 1) — a loam's plough a mid brown
+   * (Frontier 1.3), a chernozem's the near-black of its soil (1). */
+  ploughLift?: number;
   marshGloss?: number;
   microAmp?: number;
   strata?: number;
@@ -3582,6 +3586,7 @@ vec4 maskAt(vec2 uv) {
 uniform vec4 uMeanG, uMeanD, uMeanR, uMeanM;
 uniform vec3 uTintA, uTintB, uTintC, uRoadTint;
 uniform vec3 uSoilTint; // ground lane (wave 79): the land's soil where the dirt layer is drawn as soil (SplatConfig soilTint)
+uniform float uPloughLift; // ground lane (wave 83): a turned field's tone over the darkened soil (SplatConfig ploughLift)
 uniform float uMarshGloss;
 uniform vec4 uFormation; // ground lane: (boundary y, its wander m, the lower formation's paling, the upper's reddening); x < -1e8 = one formation
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uLaneK, uIceDrift, uMidRelief, uFieldPatch;
@@ -3693,16 +3698,21 @@ float stripeVis(float periodM, vec2 dir) {
 // a stripe from 10 px a period, so a turned field's furrows and lands were mostly a blurred tone at 30–80 m. The pixel's
 // own box filter of a sine keeps sinc(r) of it, r its footprint across the stripe in periods — 0.98 at 10 px a period,
 // 0.90 at 4, 0.76 at 3 — and below 3.3 px a period, where the sampled stripe would beat into moiré, it fades out by 1.8
+// (wave 81, Verdant's establishing view: the furrows still "smear into streaky, motion-blur-like banding and moiré" at
+// the frame's bottom corners) at a grazing view the footprint is a long sliver along the view: a furrow nearly along it
+// is resolved across but its phase races along the sliver, and the pixel's sample aliases there. The contrast goes to
+// its mean as a period nears ~2 px along the footprint's LONG axis (gFootM) as well as across the stripe
 float stripeAA(float periodM, vec2 dir) {
   float r = (abs(dot(gDwX, dir)) + abs(dot(gDwY, dir))) / periodM;
   float x = 3.14159 * min(r, 0.95);
-  return (x < 1e-3 ? 1.0 : sin(x) / x) * (1.0 - smoothstep(0.30, 0.55, r));
+  return (x < 1e-3 ? 1.0 : sin(x) / x) * (1.0 - smoothstep(0.30, 0.55, r)) * (1.0 - smoothstep(0.32, 0.50, gFootM / periodM));
 }
 // a ploughed land's tone is a band, not a sine: a square wave of period P across dir (its phase the sine's), its edges
 // box-filtered over the pixel's footprint — crisp where a period spans pixels, fading as stripeAA does
 float bandAA(float phase, float periodM, vec2 dir) {
   float r = (abs(dot(gDwX, dir)) + abs(dot(gDwY, dir))) / periodM;
-  return clamp(sin(phase) / max(r * 6.2832, 1e-3), -1.0, 1.0) * (1.0 - smoothstep(0.30, 0.55, r));
+  return clamp(sin(phase) / max(r * 6.2832, 1e-3), -1.0, 1.0) * (1.0 - smoothstep(0.30, 0.55, r))
+    * (1.0 - smoothstep(0.32, 0.50, gFootM / periodM));
 }
 float gFarVis = 1.0; // ground lane: tileVis of the far variants' shortest tile (the base layer's 18 m)
 // Ground lane: a field of the shared noise with no world period — the same texture read twice, at incommensurate
@@ -4337,7 +4347,7 @@ void splatCompute() {
     // the relief taps and the mix only where the transition runs (the far field and the ?ground=legacy A/B keep
     // the plain mask: with k = 0 reduxHeightMix would still S-curve it)
     if (hK > 0.001) {
-      float hD = reduxLuma(aD.rgb) - reduxLuma(uMeanD.rgb);
+      float hD = reduxLuma(aD.rgb) - reduxLuma(uMeanD.rgb * uSoilTint);
       fD = reduxHeightMix(fD, hBase, hD, hK);
       hBase = mix(hBase, hD, fD);
     }
@@ -4533,8 +4543,12 @@ void splatCompute() {
     // sward's worn patches — the meadow's own dirt (fD's worn term) no longer opens holes in it; its yards, verges and
     // rock still do (mk.a, shoulder, fR below)
     landW = uLandA.x * (1.0 - projW) * (1.0 - fMs) * (1.0 - fR) * (1.0 - outsideW) * (1.0 - smoothstep(0.05, 0.30, mk.a))
-      * (1.0 - shoulder) * (1.0 - smoothstep(0.020, 0.060, slope)) * (1.0 - smoothstep(0.02, 0.10, fM))
-      * (1.0 - smoothstep(0.10, 0.45, woods));
+      * (1.0 - shoulder) * (1.0 - smoothstep(0.040, 0.100, slope)) * (1.0 - smoothstep(0.02, 0.10, fM))
+      * (1.0 - smoothstep(0.35, 0.70, woods));
+    // (wave 81, Frontier's establishing view: "an edgeless blotch of mud-brown, sand and lawn") a field ended wherever
+    // its ground passed ~11° — along the contours, so on a rolling map every field was a blob — and around every lone
+    // tree (a single crown's 4 m cover read 0.1–0.45). A field is worked up to ~16° and gone by ~25°, and only a closed
+    // stand stops it (tallGrass.ts and vegetation.ts read the same slope gate; the trees' own layout is the trees lane's)
     if (landW > 0.003) {
       // (the GPU cut, hold 13: the block was bound by its rounds of reads — a read that waited on another's answer cost a
       // whole fetch latency at this material's occupancy, its ALU next to nothing. Two rounds now: the field-wide reads
@@ -4637,9 +4651,13 @@ void splatCompute() {
         // (waves 46–47, the establishing foregrounds: "a blurred, brush-stroke smear … less resolvable detail than fields a
         // kilometre away") the photo's last fifth was that smear at a grazing view — a turned field is its mean, and its
         // structure is its own: the furrows' relief and tone, the lands, the passes, the clods (the near micro grain on top)
+        // (wave 83: Hesse's plough "a neutral charcoal grey, a black-earth colour wrong for Hesse's brown loess and
+        // red-sandstone soils", Verdant's "a cold blue-black surface") a third of the soil's hue greyed out and a cool-
+        // neutral darkening left a dull grey that the sky's blue light turned charcoal: the turned soil keeps its hue
+        // (an eighth greyed) and darkens warm, as damp earth does — the place's own tone (soilTint) sets the rest
         vec3 ploughSoil = uMeanD.rgb * uSoilTint;
-        ploughSoil = mix(ploughSoil, vec3(reduxLuma(ploughSoil)), 0.35);
-        cropCol = ploughSoil * vec3(0.60, 0.56, 0.52) * bright;
+        ploughSoil = mix(ploughSoil, vec3(reduxLuma(ploughSoil)), 0.12);
+        cropCol = ploughSoil * vec3(0.62, 0.55, 0.47) * uPloughLift * bright;
         // (waves 46–47, the establishing views: "no crop rows", "less resolvable detail than fields a kilometre away")
         // a turned field seen from a ridge is its lands — the plough's passes turned alternately toward and away from
         // the light, light and dark bands 3–13 m wide — so they carry a plain ±15 % from 20–30 m on; the furrows'
@@ -4648,10 +4666,15 @@ void splatCompute() {
         // (wave 69: "the ploughed field nearest the camera smears") the furrows' tone and relief filtered by the pixel's
         // own box (stripeAA), so they hold their lines to ~3 px a period instead of fading from 10; the lands are crisp
         // bands (bandAA) a little softer than the old sines' peaks, and the tractor's 13 m passes a breath
-        float furrowVis = uLandTier > 0.5 ? stripeAA(0.8, acrossDir) : 0.0;
-        rows = sin(across * 7.854) * 0.16 * furrowVis + sin(across * 3.927 + jit * 2.0) * 0.07 * stripeAA(1.6, acrossDir)
-          + bandAA(across * 1.963 + jit * 3.0, 3.2, acrossDir) * 0.11
-          + sin(across * 0.483 + jit * 6.0) * 0.07 * stripeAA(13.0, acrossDir);
+        // (wave 83: "an identical diagonal tilling stripe at a visibly regular interval") every field is ploughed to its
+        // own widths (±14 %) and phase, and across it the lands drift ±9 % in width over ~37 m and wander ±0.4 m along
+        // the rows (the tractor's line is never ruled) — no period repeats field to field
+        float kP = 0.86 + 0.28 * fract(jit * 5.77 + 0.29);
+        float acrossP = (across + (n1 - 0.5) * 0.9 + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kP + jit * 9.7;
+        float furrowVis = uLandTier > 0.5 ? stripeAA(0.8 * kP, acrossDir) : 0.0;
+        rows = sin(acrossP * 7.854) * 0.16 * furrowVis + sin(acrossP * 3.927 + jit * 2.0) * 0.07 * stripeAA(1.6 * kP, acrossDir)
+          + bandAA(acrossP * 1.963 + jit * 3.0, 3.2 * kP, acrossDir) * 0.11
+          + sin(acrossP * 0.483 + jit * 6.0) * 0.07 * stripeAA(13.0 * kP, acrossDir);
         rowsShow = max(rowsShow, uLandTier > 0.5 ? 0.80 * smoothstep(0.05, 0.20, gFootM) : 0.0);
         // (wave 46, Verdant's establishing foreground: "a blurred, brush-stroke smear of dark brown soil … if the streaks
         // are intended furrows, keep their direction and give them ridge-and-furrow relief and clods") the sward's own
@@ -4662,7 +4685,7 @@ void splatCompute() {
         // along its run (n1h, the high-frequency breaker the material already read); the soil layer's own clod relief
         // (the dirt normal, 0.93 m) lies on it near the tank, further down
         float soilHere = inField * landW;
-        float ridge = (cos(across * 7.854) + 0.70 * cos(across * 15.708) * stripeAA(0.4, acrossDir)) * (0.55 + 0.90 * n1h);
+        float ridge = (cos(acrossP * 7.854) + 0.70 * cos(acrossP * 15.708) * stripeAA(0.4 * kP, acrossDir)) * (0.55 + 0.90 * n1h);
         if (nrmOn) n.xy = mix(n.xy, vec2(0.5), soilHere) + acrossDir * ridge * 0.20 * furrowVis * soilHere;
       } else if (crop < 5.5) {
         cropCol = vec3(1.218, 1.010, 0.627) * baseL * 2.8 * bright; // stubble
@@ -4695,22 +4718,28 @@ void splatCompute() {
         // (wave 8, saltwind establishing: "implausible salmon and rust tones … flat tinted patches") a karst field is
         // stony red earth: a little less red, and strewn with the limestone the plough brings up (grey, 0.3–1 m
         // stones in drifts, a field of no period, faded as they near the pixel)
-        cropCol = soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(1.30, 0.90, 0.72) * 0.115 * bright;
+        // (wave 83, Saltwind's plots: "pastel pink, mauve and beige rather than rust-red terra rossa among grey-white
+        // limestone"; the coordinator: the calibrated red "reads too light and desaturated from above") the red earth
+        // deeper and redder (~0.22 / 0.064 / 0.032 over the sand's hue, luminance ~0.095), its stones' grey a smaller
+        // share of its far mean
+        cropCol = soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(1.75, 0.62, 0.45) * 0.105 * bright;
         float karstStone = uLandTier > 0.5 ? smoothstep(0.62, 0.80, nzq(uvW, 0.61, vec2(0.37, 0.71)).x) * smoothstep(0.35, 0.70, nzq(uvW, 0.043, vec2(0.13, 0.29)).y) : 0.0;
         cropCol = mix(cropCol, vec3(0.17, 0.165, 0.155) * bright, karstStone * 0.65 * tileVis(0.8));
-        cropCol = mix(cropCol, mix(cropCol, vec3(reduxLuma(cropCol)), 0.25), 1.0 - tileVis(0.8)); // the stones' grey in the far average
-        rows = sin(across * 7.854) * 0.10 * tileVis(0.8) + sin(across * 0.483 + jit * 6.0) * 0.06 * tileVis(13.0);
+        cropCol = mix(cropCol, mix(cropCol, vec3(reduxLuma(cropCol)), 0.12), 1.0 - tileVis(0.8)); // the stones' grey in the far average
+        float kR = 0.86 + 0.28 * fract(jit * 5.77 + 0.29);
+        float acrossR = (across + (n1 - 0.5) * 0.9 + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kR + jit * 9.7;
+        rows = sin(acrossR * 7.854) * 0.10 * tileVis(0.8 * kR) + sin(acrossR * 0.483 + jit * 6.0) * 0.06 * tileVis(13.0 * kR);
         // the turned red earth's relief is its furrows, not the sward's blade strokes (as the plough's, a little softer)
         // (a breath of relief, broken along its run: wave 8's "unnaturally regular striped banding" was this field's)
-        if (nrmOn) n.xy = mix(n.xy, vec2(0.5), 0.80 * inField * landW) + vec2(-rowDir.y, rowDir.x) * cos(across * 7.854) * 0.08
-          * (0.55 + 0.90 * n1h) * (uLandTier > 0.5 ? stripeVis(0.8, vec2(-rowDir.y, rowDir.x)) : 0.0) * inField * landW;
+        if (nrmOn) n.xy = mix(n.xy, vec2(0.5), 0.80 * inField * landW) + vec2(-rowDir.y, rowDir.x) * cos(acrossR * 7.854) * 0.08
+          * (0.55 + 0.90 * n1h) * (uLandTier > 0.5 ? stripeVis(0.8 * kR, vec2(-rowDir.y, rowDir.x)) : 0.0) * inField * landW;
       } else if (crop < 12.5) {
         // a vineyard: rows 2.2 m apart, the vines' dark canopy 0.9 m wide over the earth between them (red on the
         // karst, the soil layer elsewhere)
         // (the saltwind sky-w pair, wave 5 and hold 3: "a red-and-green striped crop texture" — a lawn-green canopy band
         // over bare red earth, half and half: a vine's canopy is a dusty olive, about 0.7 m of a 2.2 m row, the
         // inter-row carries its weeds and dust, and the canopy shades a strip of it)
-        vec3 earth = bnd > 2.5 ? soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(1.40, 0.86, 0.66) * 0.115 : soilF * 0.85;
+        vec3 earth = bnd > 2.5 ? soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(1.80, 0.62, 0.45) * 0.105 : soilF * 0.85;
         earth = mix(earth, aF * vec3(1.10, 1.02, 0.80), 0.30);
         vec3 vine = vec3(0.860, 1.300, 0.560) * baseL * bright;
         float vf = fract(across / 2.2 + jit);
@@ -4734,6 +4763,16 @@ void splatCompute() {
         // brownfield grass: a patchy, cured sward with bare ground between its clumps
         float bare = uLandTier > 0.5 ? smoothstep(0.52, 0.72, nzq(uvW, 0.11, vec2(0.71, 0.23)).x) : 0.0;
         cropCol = mix(aF * vec3(1.35, 1.15, 0.72), soilF * 0.95, bare);
+      }
+      if (crop > 0.5 && crop < 3.5 && uLandTier > 0.5 && gFootM < 0.04) {
+        // (wave 83, Verdant's tree view: "sparse, headless straw blades over bare pale sand") a standing crop seen between
+        // the grass tier's blades is more crop, not bare ground: its canopy of ears and their shade, a 5–6 cm mottle of
+        // the noise read at its own level of detail (it averages to the field's calibrated tone with range, and is gone
+        // by a 4 cm footprint) — the gaps dark and their colour deeper, the ears paler
+        vec2 uE = vec2(0.8090 * uv.x - 0.5878 * uv.y, 0.5878 * uv.x + 0.8090 * uv.y);
+        float ear = nz(uv, 1.7, vec2(0.31, 0.77)).r * 0.55 + nz(uE, 1.13, vec2(0.62, 0.18)).g * 0.45;
+        float ec = clamp((ear - 0.5) * 2.4, -1.0, 1.0) * (1.0 - smoothstep(0.015, 0.04, gFootM));
+        cropCol *= 1.0 + ec * vec3(0.50, 0.53, 0.62);
       }
       if (crop > 0.5 && crop < 3.5 && uLandTier > 0.5) {
         // tramlines: the sprayer's wheel tracks, a pair every 18–24 m, a darker crushed line each (a line 0.5 m wide
@@ -4807,22 +4846,58 @@ void splatCompute() {
           // red") a field track is two worn ruts in the grass, not a band of soil: grass stands on the crown between them
           // and mostly on their outer verges, the band's edge comes and goes along it (the edge-zone noise and the fine
           // breaker), and the trodden soil is the soil's own tone half greyed — a farm track's dust, not the clay's red
-          float rq = (edgeM - 0.85) / 0.30;
-          float ruts = exp(-rq * rq);
-          float crownG = 1.0 - smoothstep(0.30, 0.62, edgeM);
+          // (wave 83: the lanes still "two thin, uniform grey-purple stripes painted flat onto pale sandy ground, with no
+          // sunken tyre lanes, raised crown, berms or soil-matched mud"; Verdant: "crisp, uniform dark-grey stripes
+          // straight into the distance like painted rails") a wheel lane is a groove: its floor 8 cm down between walls
+          // of ~45°, a low berm of thrown-up soil along its outer lip. The walls' relief follows the cross-section, so
+          // under the map's sun one wall is lit and the other shaded; the floor carries the sun-side lip's shadow (its
+          // length the lip's height over the sun's elevation, across the lane) and the walls' occlusion; its soil is the
+          // place's own, darker and damper toward the bottom — no tint of its own. Each lane wanders about its line and
+          // swells and narrows along the track (landUse.ts trackLaneCentre / trackLaneHalfWidth: the grass tiers keep the
+          // same lanes bare), and the track's wear comes and goes along it over tens of metres.
+          float uT = dot(wp.xz, uLandRot);
+          float sV = lu_sV(wp.xz, luB, luK, luT) - lu_laneM(uT); // across the lanes' meandering mid-line
+          float side = sV < 0.0 ? -1.0 : 1.0;
+          vec2 vW = vec2(-uLandRot.y, uLandRot.x) * side; // across the lane, away from the lanes' mid-line
+          // (its edge ragged by the decimetre near the camera: the edge-zone noise swells and pinches it ±20 %)
+          float lw = lu_laneW(uT, side) * (1.0 + (nEdge.z - 0.5) * 0.40);
+          float qx = (abs(sV) - lu_laneC(uT, side)) / lw; // across the lane in its half-widths, + outward
+          float aq = abs(qx);
+          float crownG = 1.0 - smoothstep(0.30, 0.62, abs(sV));
           float bandT = track * smoothstep(0.0, 0.45, track + (nEdge.z - 0.5) * 0.9 + (n1h - 0.5) * 0.5);
-          vec3 trodden = mix(soil.rgb * uSoilTint, vec3(reduxLuma(soil.rgb * uSoilTint)), 0.45) * vec3(0.96, 0.93, 0.88);
-          // (wave 79, the new ruts: "flat painted bands with no sunken ruts, compaction or tread marks") the wheel lanes are
-          // sunk: their soil darker and damper toward the bottom, a little smoother (pressed), and their walls lean into
-          // them — a groove 0.6 m across in the relief, across the track's line on the side the point lies (the grass
-          // tiers keep the lanes bare, tallGrass.ts / vegetation.ts)
-          vec3 trackCol = mix(trodden * (1.0 - 0.40 * ruts), trodden * vec3(0.78, 0.80, 0.84) * 0.62, 0.45 * ruts * ruts);
-          float laneW = bandT * landW * ruts;
-          a.rgb = mix(a.rgb, trackCol, bandT * landW * clamp(ruts * 1.3 + 0.22 * (1.0 - crownG), 0.0, 1.0));
-          a.a = mix(a.a, a.a * 0.82, laneW);
-          if (nrmOn && laneW > 0.01) {
-            vec2 vW = vec2(-uLandRot.y, uLandRot.x) * sign(lu_sV(wp.xz, luB, luK, luT));
-            n.xy = mix(n.xy, vec2(0.5), 0.45 * laneW) - vW * rq * ruts * 0.30 * bandT * landW * stripeAA(1.2, vW);
+          float use = 0.60 + 0.40 * smoothstep(0.25, 0.65, n1);
+          // the pixel's footprint across the lane (in half-widths): the lane, its floor and its wet bottom are box-filtered
+          // over it (exact coverage of each interval), the walls' relief and the shadow's edge hold while a wall spans ~2 px
+          float fq = max((abs(dot(gDwX, vW)) + abs(dot(gDwY, vW))) / lw, 0.25);
+          float laneM = (clamp(qx + 0.5 * fq, -1.0, 1.0) - clamp(qx - 0.5 * fq, -1.0, 1.0)) / fq;
+          // (the floor's share of the lane inside the pixel: at range the lane's colour is its floor and walls averaged)
+          float floorM = (clamp(qx + 0.5 * fq, -0.6, 0.6) - clamp(qx - 0.5 * fq, -0.6, 0.6)) / fq / max(laneM, 1e-3);
+          float wallVis = 1.0 - smoothstep(0.30, 0.65, fq);
+          vec3 soilL = soil.rgb * uSoilTint;
+          vec3 trodden = mix(soilL, vec3(reduxLuma(soilL)), 0.25) * vec3(1.03, 0.99, 0.93);
+          vec3 damp = pow(max(soilL, vec3(1e-4)), vec3(1.35)) * 1.30; // wet soil: darker, its colour deeper
+          // (wet and dry stretches of the floor along the lane, a few metres each: the breaker's two fields)
+          float wetF = 0.55 + 0.45 * smoothstep(0.30, 0.70, n1h);
+          // the sun-side lip's shadow on the floor: (8 cm + the 2 cm berm) over the sun's elevation, across the lane
+          float sA = dot(uSunDirW.xz, vW);
+          float sLq = 0.10 * abs(sA) / max(uSunDirW.y, 0.08) / lw;
+          float sh = sA > 0.0 ? smoothstep(1.0 - sLq - 0.14, 1.0 - sLq + 0.04, qx) : 1.0 - smoothstep(-1.0 + sLq - 0.04, -1.0 + sLq + 0.14, qx);
+          sh *= 1.0 - smoothstep(0.92, 1.04, aq);
+          float shade = mix(min(0.5 * sLq, 0.8), sh, wallVis) * 0.40; // unresolved: the lane's mean shadow
+          vec3 laneCol = mix(trodden, damp, floorM * wetF) * (1.0 - 0.18 * floorM - 0.06 * (1.0 - floorM)) * (1.0 - shade);
+          float laneW = bandT * landW * laneM * use;
+          // the band: the trodden soil on the lanes' verges (the crown between them keeps its grass), then the lanes;
+          // the berm, a paler lip of thrown-up soil along each lane's outer edge
+          float berm = qx > 0.0 ? smoothstep(0.95, 1.15, qx) * (1.0 - smoothstep(1.35, 1.75, qx)) * wallVis : 0.0;
+          a.rgb = mix(a.rgb, trodden * (1.0 + 0.10 * berm), bandT * landW * clamp(0.22 * (1.0 - crownG) + 0.45 * berm * use, 0.0, 1.0));
+          a.rgb = mix(a.rgb, laneCol, laneW);
+          a.a = mix(a.a, a.a * mix(0.86, 0.70, floorM), laneW);
+          if (nrmOn && bandT * landW > 0.01 && wallVis > 0.001) {
+            // the cross-section's slope along vW (m per m): the walls rise 8 cm over half a half-width, the berm 2 cm
+            float tw = clamp((aq - 0.5) * 2.0, 0.0, 1.0);
+            float tb1 = clamp((qx - 0.95) * 5.0, 0.0, 1.0), tb2 = clamp((qx - 1.35) * 2.5, 0.0, 1.0);
+            float hx = (sign(qx) * 0.08 * 12.0 * tw * (1.0 - tw) + 0.02 * (30.0 * tb1 * (1.0 - tb1) - 15.0 * tb2 * (1.0 - tb2))) / lw;
+            n.xy = mix(n.xy, vec2(0.5), 0.6 * laneW) - vW * (0.5 * hx * wallVis * bandT * landW * use);
           }
         }
       }
@@ -4989,7 +5064,13 @@ void splatCompute() {
     // gradient is a dapple of 1–5 m spots — on a sown or turned field it was the mottle, a meadow's tussocks where no
     // meadow grows. A field keeps the 192 m octave (its landform's roll) and its own tone (fieldVar)
     float dapField = 1.0 - 0.9 * max(gCropW, gSoilW);
-    n.xy -= (ga * 1.1 * dapField + gb * 1.55) * dMid * uMidRelief * dapG * (1.0 - fMs);
+    // (wave 69, Saltwind's tree view: "visible flat terracing bands in its slope, a stepped-heightmap look"; hold 27
+    // turned the candidate terms off one at a time in the game's renderer and the bands went with uMidRelief alone)
+    // the dapple is a field in plan: on a slope seen at a grazing angle its 1–5 m spots foreshorten into long bands
+    // across the face, lit and shaded by a low sun — a ladder of terraces. On a slope the relief fades as the view
+    // grazes it (flat ground keeps all of it)
+    float midGraze = mix(1.0, smoothstep(0.15, 0.55, saturate(dot(normalize(cameraPosition - wp), wn))), smoothstep(0.01, 0.08, slope));
+    n.xy -= (ga * 1.1 * dapField + gb * 1.55) * dMid * uMidRelief * dapG * (1.0 - fMs) * midGraze;
     float midN2 = nz(uv, 0.0089, vec2(0.71, 0.23)).g;
     a.rgb *= 1.0 + ((ha - 0.5) * 0.09 * dMid
                  + (midN2 - 0.5) * 0.12 * smoothstep(30.0, 90.0, camDist)) * uMidRelief * dapG * (1.0 - fMs) * dapField;
@@ -5372,7 +5453,7 @@ void splatCompute() {
     // without stamping round marks repeatedly down the road.
     // terrain v2: only on the carriageway (the packed-earth taps ran under every fragment at weight zero)
     if (dW > 0.002) {
-      vec3 packedRoad = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb * mix(vec3(1.0), uSoilTint, 0.5);
+      vec3 packedRoad = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb;
       packedRoad *= 0.985 + (n2w - 0.5) * 0.035;
       vec3 roadCol = mix(packedRoad, a.rgb, 0.30) * uRoadTint
         + vec3(0.014, 0.010, 0.006);
@@ -6178,6 +6259,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uTintC = { value: new THREE.Vector3(...tintC) };
     shader.uniforms.uRoadTint = { value: new THREE.Vector3(...roadTint) };
     shader.uniforms.uSoilTint = { value: new THREE.Vector3(...(S.soilTint ?? [1, 1, 1])) };
+    shader.uniforms.uPloughLift = { value: S.ploughLift ?? 1 };
     shader.uniforms.uMarshGloss = { value: S.marshGloss ?? 0 };
     shader.uniforms.uMicroAmp = { value: S.microAmp ?? 1 };
     shader.uniforms.uStrata = { value: S.strata ?? 0 };

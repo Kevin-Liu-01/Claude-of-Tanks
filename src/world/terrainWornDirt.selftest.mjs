@@ -117,8 +117,7 @@ for (const statement of [
   'a = mix(a, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), seaSand);',
   'n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), seaSand);',
   'a = mix(a, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), driftW * 0.85);',
-  // road pass 2026-09-12: smoothed, not deep (wave 79: half the place's soil tint on a dirt road)
-  'vec3 packedRoad = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb * mix(vec3(1.0), uSoilTint, 0.5);',
+  'vec3 packedRoad = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB + 4.0).rgb;', // road pass 2026-09-12: smoothed, not deep
 ]) assert.ok(compact(source).includes(compact(statement)), 'beach, shoal and road detail paths remain unchanged');
 assertTerrainFetchExpressionCensus(source);
 assert.deepEqual(source.match(/texSize\(\d+\)/g), [...Array(6).fill('texSize(256)'), 'texSize(512)']);
