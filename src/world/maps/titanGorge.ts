@@ -179,7 +179,9 @@ export default {
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // 2026-10-04 (its establishing view: a blue hole in a deck its lighting runs at overcast 1.00): a dense overcast is
   // closed — coverage 1 at the map, as Whiteout's stratus (the regime row's 0.96 left the broad field's gaps open)
-  clouds: { regime: 'dense-overcast', coverage: 1, rain: 0.25, virga: 0.55 },
+  // (the map-revival lane, 2026-10-05, Titan round 2: Monument Valley's sky is mostly clear, the critics' wave 104 read
+  // the closed deck as "a flat grey overcast"; the fair-weather cumulus regime, whole)
+  clouds: { regime: 'fair-weather-cumulus' },
   sky: {
     sunElevationDeg: 34, sunAzimuthDeg: 126, turbidity: 6.2, rayleigh: 1.15,
     mieCoefficient: 0.008, mieDirectionalG: 0.84, fogDensity: 0.00046,
