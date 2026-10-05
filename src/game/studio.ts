@@ -94,7 +94,6 @@ import { requestAuxiliary } from '../sim/auxiliarySystems.ts';
 import type { AuxiliaryEntity } from '../sim/auxiliarySystems.ts';
 import { createSmokeCanister, SMOKE_GRAVITY_MPS2 } from '../sim/smokeBallistics.ts';
 import { SMOKE_WIND_X, SMOKE_WIND_Z } from '../sim/smokeScreen.ts';
-import { resolveSourcedTerrainPalette } from '../world/sourcedTextures.ts';
 import { createProductionScene, productionPreset, productionCamera, productionAspect, reframeProductionPoint, reframeProductionFov } from './studioProduction.ts';
 import type { ProductionOptions, ProductionRigId, ProductionFormat } from './studioProduction.ts';
 import { createStudioFilm } from './studioFilm.ts';
@@ -1590,8 +1589,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const mapId = getWorld()?.mapId ?? 'verdant';
     if (mapId !== paletteMapId) {
       paletteMapId = mapId;
+      // the map's sourced palette, else its own id: sourcedTextures.ts resolveSourcedTerrainPalette, whose unknown-id
+      // fallback (verdant) the dust tones share. Not imported: a Studio import splits the world's terrain chunk.
       const splat = (getMapConfig(mapId) as { splat?: { sourcedPalette?: string } }).splat;
-      paletteId = resolveSourcedTerrainPalette(mapId, (splat ?? {}) as Parameters<typeof resolveSourcedTerrainPalette>[1]);
+      paletteId = splat?.sourcedPalette ?? mapId;
     }
     return paletteId;
   }

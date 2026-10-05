@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createStudioCinematics } from './cinematicFx.ts';
+import { createParticleSystem } from './particles.ts';
 
 /** Stats of one blast at each of `atS` seconds after it (ascending). */
 function blast(size, cause, atS = [6]) {
@@ -16,7 +17,7 @@ function blast(size, cause, atS = [6]) {
     textures: { smoke: tex(), fire: tex(), prop: tex(), dust: tex(), flash: tex(), jet: tex() },
   };
   const port = {
-    group: new THREE.Group(), sharing,
+    group: new THREE.Group(), sharing, createParticleSystem,
     heightField: { getWaterMaskAt: () => 0, getTrackSurfaceAt: () => 0, getGroundType: () => 'medium' },
     explosionLight: new THREE.PointLight(0xff7f38, 0, 13, 2), explosionPeak: 520,
     groundY: () => 0, explosionFlashAgeS: () => 1e9, flashExplosion: () => {},

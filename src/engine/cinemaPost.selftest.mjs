@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createCinemaPost } from './cinemaPost.ts';
+import { LateFxSceneView } from './lateFxSceneView.ts';
 import { NEUTRAL_PICTURE, pictureCinemaSettings, resolvePicture } from '../game/studioPicture.ts';
 
 // Composer wiring of the Studio picture stages against a stand-in post stack with the house
@@ -36,6 +37,7 @@ function fakePost() {
   const lateFx = new FakePass('lateFx');
   lateFx.scene = new THREE.Scene();
   lateFx.softState = null;
+  lateFx.renderSceneView = new LateFxSceneView(lateFx.scene);
   const passes = [sceneAA, new FakePass('aerial'), new FakePass('gtao'), lateFx, new FakePass('taa'),
     bloom, sunShafts, lensFlare, grade, new FakePass('smaa'), upscaler];
   const composer = {

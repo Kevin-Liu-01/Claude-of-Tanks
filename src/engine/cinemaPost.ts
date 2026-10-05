@@ -47,7 +47,7 @@ import * as THREE from 'three';
 import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import type { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import type { PostRuntime } from './post.ts';
-import { LateFxSceneView } from './lateFxSceneView.ts';
+import type { LateFxSceneView } from './lateFxSceneView.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 
 // --- engine-facing settings (studioPicture.ts derives them) -----------------------------------
@@ -399,12 +399,12 @@ class FxSlices {
   private readonly quad: FullScreenQuad;
   private readonly view: LateFxSceneView;
   private readonly scene: THREE.Scene;
-  private readonly lateFx: { softState: SoftParticleState | null };
+  private readonly lateFx: { softState: SoftParticleState | null; readonly renderSceneView: LateFxSceneView };
 
-  constructor(scene: THREE.Scene, depth: THREE.DepthTexture, lateFx: { softState: SoftParticleState | null }) {
+  constructor(scene: THREE.Scene, depth: THREE.DepthTexture, lateFx: { softState: SoftParticleState | null; readonly renderSceneView: LateFxSceneView }) {
     this.scene = scene;
     this.lateFx = lateFx;
-    this.view = new LateFxSceneView(scene);
+    this.view = lateFx.renderSceneView; // the late-FX pass's view of this scene (post.ts)
     this.targets = ['near', 'focus', 'mid', 'all'].map((name) => {
       const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: true, stencilBuffer: false });
       target.texture.name = `Cinema.fxCoverage.${name}`;
@@ -504,7 +504,7 @@ class CinemaLensPass extends Pass {
     depth: THREE.DepthTexture,
     provider: () => CinemaLensFrame,
     scene: THREE.Scene,
-    lateFx: { softState: SoftParticleState | null },
+    lateFx: { softState: SoftParticleState | null; readonly renderSceneView: LateFxSceneView },
   ) {
     super();
     this.camera = camera;

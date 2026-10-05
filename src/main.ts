@@ -68,7 +68,8 @@ import {
   reportSustainedOverload, setPresetName, setMobilePresetName,
   noteGpuRenderer, getDeviceTier, shouldReleaseInactivePhaseGpu, applyGraphicsRecovery, onPresetChange,
 } from './engine/quality.ts';
-import { createSky } from './engine/sky.ts';
+import { createSky, DEFAULT_SKY_PRESET } from './engine/sky.ts';
+import { deriveCloudLayerPreset } from './engine/cloudPresets.ts';
 import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
 import { loadGroundedLightModel } from './engine/lightModelCore.ts';
 import { loadCloudscapeLayers } from './engine/cloudPresets.ts';
@@ -3203,7 +3204,9 @@ await bootStage('post', async () => {
 let studioLightRuntime: Promise<import('./game/studioLightRuntime.ts').StudioLightRuntime> | null = null;
 let studioLightLive: import('./game/studioLightRuntime.ts').StudioLightRuntime | null = null;
 const studioAccess = createStudioAccess({
-  loadModule: () => import('./game/studio.ts'),
+  // the Studio's own catalog strings, which the game's catalogs leave out, load beside its chunk
+  loadModule: () => Promise.all([import('./game/studio.ts'), import('./ui/studioStrings.ts').then((strings) => strings.ensureStudioStrings())])
+    .then(([module]) => module),
   preloadFxModule,
   ensureFxRuntime,
   prepareRuntime: () => lighting.setFarCascadeDormant(false),
@@ -3229,6 +3232,10 @@ const studioAccess = createStudioAccess({
         const runtime = createStudioLightRuntime({
           scene,
           getWorld: currentWorld,
+          cloudIdentity: (authored) => {
+            const layer = deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...authored } as Parameters<typeof deriveCloudLayerPreset>[0]);
+            return { offset: [layer.offset[0], layer.offset[1]], windDirRad: layer.windDirRad };
+          },
           applySky: (preset, keyDirection) => {
             sky.applyPreset(preset, scene);
             lighting.setSun(keyDirection ?? sky.sunDir, preset);

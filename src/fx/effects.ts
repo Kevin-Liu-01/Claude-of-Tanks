@@ -357,6 +357,8 @@ interface FxEventMap {
 export interface FxCinematicPort {
   readonly group: THREE.Group;
   readonly sharing: ReturnType<typeof createParticleSystem>['sharing'];
+  /** The battle's particle-system factory (particles.ts), so the Studio chunk imports none of the FX runtime's modules. */
+  readonly createParticleSystem: typeof createParticleSystem;
   readonly heightField: FxHeightField;
   readonly explosionLight: THREE.PointLight;
   readonly explosionPeak: number;
@@ -5563,6 +5565,7 @@ function* createFxSteps(
       cinematicPortState = {
         group,
         sharing: particles.sharing,
+        createParticleSystem,
         heightField,
         explosionLight,
         explosionPeak: EXPLOSION_LIGHT_PEAK,

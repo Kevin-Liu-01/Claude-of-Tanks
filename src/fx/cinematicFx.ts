@@ -21,7 +21,6 @@
  * first cinematic need and disposes it on exit.
  */
 import * as THREE from 'three';
-import { createParticleSystem } from './particles.ts';
 import { LATE_FX_LAYER } from './layers.ts';
 import type { FxCinematicPort } from './effects.ts';
 import {
@@ -309,7 +308,7 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
   const group = new THREE.Group();
   group.name = 'fx-cinematic';
   group.matrixAutoUpdate = false;
-  const particles = createParticleSystem({ scene }, {
+  const particles = port.createParticleSystem({ scene }, {
     seed: 5000, share: port.sharing, poolSizes: POOL_SIZES,
   });
   particles.setLightTintShading(true);

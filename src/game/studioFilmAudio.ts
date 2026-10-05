@@ -13,8 +13,21 @@
  * high-speed camera's slowed soundtrack would). Deterministic: a seeded RNG
  * picks variants and jitter, so the same film mixes the same samples.
  */
-import { mulberry32 } from '../audio/audioMath.ts';
 import type { MuxAudioTrack } from './studioFilmMux.ts';
+
+/**
+ * The film's seeded variant picks: audioMath.ts's mulberry32, written here because a Studio import of audioMath.ts
+ * splits it out of the sound engine's chunk (one more request whenever the game's audio loads).
+ */
+function mulberry32(seed: number): () => number {
+  let state = seed | 0;
+  return function random(): number {
+    state = state + 0x6D2B79F5 | 0;
+    let value = Math.imul(state ^ state >>> 15, 1 | state);
+    value = value + Math.imul(value ^ value >>> 7, 61 | value) ^ value;
+    return ((value ^ value >>> 14) >>> 0) / 4294967296;
+  };
+}
 
 // PR #9's sound engine (f21e2cf1e) replaced audioPolicy.ts and its procedural samples with the generated SFX library.
 // Until this soundtrack is mapped onto those assets, the distance law is the old one kept here and no old sample name

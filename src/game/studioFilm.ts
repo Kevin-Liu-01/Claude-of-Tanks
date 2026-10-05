@@ -13,7 +13,6 @@
  * end(), and this module ships only in the lazily loaded Studio chunk.
  */
 import * as THREE from 'three';
-import { applyProjectionJitter } from '../engine/temporalAA.ts';
 import { FilmAccumulatePass } from '../engine/filmAccumulation.ts';
 import type { PostRuntime } from '../engine/post.ts';
 import {
@@ -146,6 +145,15 @@ interface SavedState {
   temporalAccumulation: boolean;
   adaptiveSuspended: boolean;
   flareDt: number | null;
+}
+
+/**
+ * Offset a projection by a sub-pixel sample (temporalAA.ts applyProjectionJitter, written here so the Studio chunk
+ * imports nothing from the game's entry chunk: a shared module splits into a boot request of its own).
+ */
+function jitterProjection(projection: THREE.Matrix4, jx: number, jy: number, width: number, height: number): void {
+  projection.elements[8] += (2 * jx) / Math.max(1, width);
+  projection.elements[9] += (2 * jy) / Math.max(1, height);
 }
 
 /** The film renderer bound to one Studio. */
@@ -316,7 +324,7 @@ export function createStudioFilm(ports: StudioFilmPorts) {
         const jx = jitter[index * 2], jy = jitter[index * 2 + 1];
         const jittered = jx !== 0 || jy !== 0;
         if (jittered) {
-          applyProjectionJitter(camera.projectionMatrix, jx, jy, target.width, target.height);
+          jitterProjection(camera.projectionMatrix, jx, jy, target.width, target.height);
           camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
         }
         try {

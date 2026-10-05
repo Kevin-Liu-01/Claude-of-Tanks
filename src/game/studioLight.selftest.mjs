@@ -11,8 +11,10 @@ import {
 import { createStudioLightRuntime, studioAuthoredSky } from './studioLightRuntime.ts';
 import { getVehicleReadabilityScale, setVehicleReadabilityScale } from '../vehicles/vehicleReadability.ts';
 import { MARS_SKY_PRESET } from '../engine/marsAtmosphere.ts';
-import { HORIZON_SEGMENTS } from '../world/maps/horizon.ts';
-import { createHorizonReliefField, resolveHorizonRelief } from '../world/horizonRelief.ts';
+import { DEFAULT_SKY_PRESET } from '../engine/sky.ts';
+import { deriveCloudLayerPreset } from '../engine/cloudPresets.ts';
+import { HORIZON_SEGMENTS, horizonSkyTint } from '../world/maps/horizon.ts';
+import { bakeHorizonRelief, createHorizonReliefField, resolveHorizonRelief } from '../world/horizonRelief.ts';
 
 // --- the time list: a superset of the battle times, battles untouched -------------------------------------
 assert.deepEqual([...STUDIO_TIMES], ['dawn', 'morning', 'day', 'golden', 'sunset', 'dusk', 'night']);
@@ -172,7 +174,7 @@ function fakeWorld(mapId = 'verdant') {
   ring.userData.horizonVista = { uniforms: {
     uVAmbient: { value: 0.5 }, uVSunGain: { value: 1.3 },
     uVSkyTint: { value: new THREE.Vector3(0.9, 1, 1.1) }, uVFogTint: { value: new THREE.Vector3(0.2, 0.3, 0.4) },
-  } };
+  }, skyTint: horizonSkyTint };
   const far = new THREE.MeshBasicMaterial({ color: 0xffffff });
   far.userData.horizonFarShading = {
     uFSun: { value: new THREE.Vector3(0, 1, 0) }, uFGains: { value: new THREE.Vector2(0.5, 1.3) },
@@ -196,8 +198,13 @@ scene.userData.volumetricClouds = { resetHistory: () => historyResets++ };
 const applied = [];
 let active = fakeWorld();
 const pristine = active.snapshot();
+// main.ts's wiring: the battle sky's cloud derivation
+const cloudIdentity = (authored) => {
+  const layer = deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...authored });
+  return { offset: [layer.offset[0], layer.offset[1]], windDirRad: layer.windDirRad };
+};
 const runtime = createStudioLightRuntime({
-  scene, getWorld: () => active.world,
+  scene, cloudIdentity, getWorld: () => active.world,
   applySky: (preset, key) => applied.push({ preset, key: key ? key.toArray() : null }),
   resetTemporalHistory: () => taaResets++,
 });
@@ -267,14 +274,16 @@ assert.equal(runtime.plan, null);
   ring.name = 'horizon-ring';
   ring.material.userData.horizonSunDir = { value: new THREE.Vector3(...studioSunDirection(32, 115)) };
   ring.material.userData.horizonVista = { uniforms: { uVRelief: { value: atlas }, uVReliefAmp: { value: 1 },
-    uVAmbient: { value: 0.5 }, uVSunGain: { value: 1.3 }, uVSkyTint: { value: new THREE.Vector3(1, 1, 1) }, uVFogTint: { value: new THREE.Vector3() } } };
+    uVAmbient: { value: 0.5 }, uVSunGain: { value: 1.3 }, uVSkyTint: { value: new THREE.Vector3(1, 1, 1) }, uVFogTint: { value: new THREE.Vector3() } },
+    skyTint: horizonSkyTint };
   Object.defineProperty(ring.userData, 'horizonReliefSource', {
-    value: { field: createHorizonReliefField(7, resolveHorizonRelief('alpine')), maxHeight: 220 }, enumerable: false });
+    value: { field: createHorizonReliefField(7, resolveHorizonRelief('alpine')), maxHeight: 220, columns: HORIZON_SEGMENTS, bake: bakeHorizonRelief },
+    enumerable: false });
   const group = new THREE.Group(); group.add(ring);
   const world = { mapId: 'alpine', group, config: { sky: { ...authored } } };
   const ringScene = new THREE.Scene();
   ringScene.userData.sunDirWorld = new THREE.Vector3(...studioSunDirection(32, 115));
-  const ringRuntime = createStudioLightRuntime({ scene: ringScene, getWorld: () => world,
+  const ringRuntime = createStudioLightRuntime({ scene: ringScene, cloudIdentity, getWorld: () => world,
     applySky: (preset, key) => { const dir = key ?? new THREE.Vector3(...studioSunDirection(preset.sunElevationDeg, preset.sunAzimuthDeg)); ringScene.userData.sunDirWorld.copy(dir); } });
   const before = data.slice();
   ringRuntime.apply('golden', { sunAzimuthDeg: 300 });

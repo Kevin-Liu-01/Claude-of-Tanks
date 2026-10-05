@@ -19,12 +19,10 @@ import * as THREE from 'three';
 import {
   planStudioLight, type StudioCloudIdentity, type StudioLight, type StudioLightLab, type StudioLightPlan, type StudioTimeOfDay,
 } from './studioLight.ts';
-import { deriveCloudLayerPreset } from '../engine/cloudPresets.ts';
-import { DEFAULT_SKY_PRESET } from '../engine/sky.ts';
 import { MARS_SKY_PRESET } from '../engine/marsAtmosphere.ts';
 import { setVehicleReadabilityScale } from '../vehicles/vehicleReadability.ts';
-import { HORIZON_SEGMENTS, horizonSkyTint, type MapSkyConfig } from '../world/maps/horizon.ts';
-import { bakeHorizonRelief, type HorizonReliefField } from '../world/horizonRelief.ts';
+import type { MapSkyConfig } from '../world/maps/horizon.ts';
+import type { bakeHorizonRelief, HorizonReliefField } from '../world/horizonRelief.ts';
 import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
 import { createNightLightingRuntime, type NightLightingBudget, type NightLightingRuntime } from '../engine/nightLightingRuntime.ts';
 
@@ -42,6 +40,11 @@ interface StudioLightRuntimeOptions {
   resetTemporalHistory?(): void;
   /** The tier's pooled lamp budget for the blue-hour and night emitters (the battle night's own budget). */
   nightLightBudget?(): NightLightingBudget;
+  /**
+   * The cloud field's identity (weather offset and wind) under an authored sky, by the battle sky's own derivation
+   * (cloudPresets.ts over sky.ts DEFAULT_SKY_PRESET). Passed in: the Studio chunk imports no boot sky module.
+   */
+  cloudIdentity(authored: MapSkyConfig): StudioCloudIdentity;
   scene: THREE.Scene;
 }
 
@@ -90,11 +93,13 @@ const SAME_SUN_COS = Math.cos(0.25 * Math.PI / 180);
  * longer or turned shadows; the gradient and occlusion channels keep the build's bytes.
  */
 function rebakeRingSun(ring: THREE.Mesh, texture: THREE.DataTexture, sun: THREE.Vector3): boolean {
-  const source = ring.userData.horizonReliefSource as { field: HorizonReliefField; maxHeight: number } | undefined;
+  // the ring's bake and column count ride with its relief field (horizon.ts): the Studio imports no horizon module
+  const source = ring.userData.horizonReliefSource as
+    { field: HorizonReliefField; maxHeight: number; columns: number; bake: typeof bakeHorizonRelief } | undefined;
   const image = texture.image as { data?: Uint8Array; width?: number; height?: number } | undefined;
   const position = ring.geometry.getAttribute('position'), uv = ring.geometry.getAttribute('uv');
   if (!source || !image?.data || !image.width || !image.height || !position || !uv) return false;
-  const n = HORIZON_SEGMENTS, stride = n + 1, rowCount = Math.floor(position.count / stride);
+  const n = source.columns, stride = n + 1, rowCount = Math.floor(position.count / stride);
   if (rowCount * stride !== position.count) return false;
   const positions = new Float32Array(n * rowCount * 3), heights = new Float32Array(n * rowCount), marine = new Float32Array(n * rowCount);
   for (let row = 0; row < rowCount; row++) {
@@ -105,7 +110,7 @@ function rebakeRingSun(ring: THREE.Mesh, texture: THREE.DataTexture, sun: THREE.
       marine[dst] = Math.max(0, -uv.getY(src));
     }
   }
-  const bake = bakeHorizonRelief({ columns: n, rowCount, positions, heights, maxHeight: source.maxHeight, marine },
+  const bake = source.bake({ columns: n, rowCount, positions, heights, maxHeight: source.maxHeight, marine },
     source.field, [sun.x, sun.y, sun.z], { width: image.width, height: image.height });
   const data = image.data;
   for (let i = 3; i < data.length; i += 4) data[i] = bake.data[i];
@@ -119,12 +124,6 @@ export function studioAuthoredSky(world: StudioLightWorld): MapSkyConfig {
   if (world.mapId === 'mars') return { ...MARS_SKY_PRESET };
   const sky = world.config.sky ?? {};
   return world.config.clouds ? { ...sky, cloudscape: world.config.clouds } : { ...sky };
-}
-
-/** The cloud field's identity under the authored sun (its weather offset and wind), pinned across Studio times. */
-function cloudIdentity(authored: MapSkyConfig): StudioCloudIdentity {
-  const layer = deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...authored } as Parameters<typeof deriveCloudLayerPreset>[0]);
-  return { offset: [layer.offset[0], layer.offset[1]], windDirRad: layer.windDirRad };
 }
 
 function linearHex(hex: number): THREE.Color {
@@ -215,17 +214,19 @@ export function createStudioLightRuntime(options: StudioLightRuntimeOptions): St
     const keyScale = (sky.sunIntensity ?? 4.5) / Math.max(1e-3, authored.sunIntensity ?? 4.5);
     const ambientScale = (sky.hemiIntensity ?? 0.36) / Math.max(1e-3, authored.hemiIntensity ?? 0.36);
     const fog = linearHex(sky.fogTintHex ?? 0x7e97b8);
-    const skyTint = horizonSkyTint(fog);
+    let skyTint: THREE.Vector3 | null = null; // the vista's own sky-tint law (horizon.ts horizonSkyTint) under this fog
     for (const material of horizonMaterials(root)) {
       saveColor(material.color);
       material.color.copy(savedColors.get(material.color)!).multiplyScalar(dim);
       const sun = material.userData.horizonSunDir as Uniform<THREE.Vector3> | undefined;
       if (saveUniform(sun)) sun.value.copy(key);
-      const vista = (material.userData.horizonVista as { uniforms?: VistaUniforms } | undefined)?.uniforms;
+      const vistaData = material.userData.horizonVista as
+        { uniforms?: VistaUniforms; skyTint?: (fog: THREE.Color) => THREE.Vector3 } | undefined;
+      const vista = vistaData?.uniforms;
       if (vista) {
         if (saveUniform(vista.uVSunGain)) vista.uVSunGain.value = original(vista.uVSunGain) * keyScale;
         if (saveUniform(vista.uVAmbient)) vista.uVAmbient.value = original(vista.uVAmbient) * ambientScale;
-        if (saveUniform(vista.uVSkyTint)) vista.uVSkyTint.value.copy(skyTint);
+        if (vistaData?.skyTint && saveUniform(vista.uVSkyTint)) vista.uVSkyTint.value.copy(skyTint ??= vistaData.skyTint(fog));
         if (saveUniform(vista.uVFogTint)) vista.uVFogTint.value.set(fog.r, fog.g, fog.b);
       }
       const far = material.userData.horizonFarShading as FarShading | undefined;
@@ -286,7 +287,7 @@ export function createStudioLightRuntime(options: StudioLightRuntimeOptions): St
     const authored = studioAuthoredSky(world);
     // QA calibration probes may set window.__STUDIO_LIGHT_LAB before applying a light (never set by the product)
     const lab = (globalThis as { __STUDIO_LIGHT_LAB?: StudioLightLab }).__STUDIO_LIGHT_LAB ?? null;
-    const plan = planStudioLight(world.mapId, authored, time, light, cloudIdentity(authored), lab);
+    const plan = planStudioLight(world.mapId, authored, time, light, options.cloudIdentity(authored), lab); // the cloud field pinned across Studio times
     const exactDay = plan.time === 'day' && plan.sunAzimuthDeg === (authored.sunAzimuthDeg ?? 115)
       && plan.sunElevationDeg === (authored.sunElevationDeg ?? 32);
     if (appliedRoot !== world.group) {

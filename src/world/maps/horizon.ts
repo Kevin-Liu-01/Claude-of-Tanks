@@ -41,7 +41,7 @@ import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, t
 import { buildHorizonRockfield } from '../horizonRockfield.ts';
 import {
   type HorizonReliefBake, type HorizonReliefCharacter, type HorizonReliefCover, type HorizonReliefField, type HorizonReliefSettings,
-  bakeHorizonReliefSteps, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
+  bakeHorizonRelief, bakeHorizonReliefSteps, createHorizonReliefField, resolveHorizonRelief, resolveHorizonReliefCharacter,
 } from '../horizonRelief.ts';
 import { buildHorizonFarRange } from '../horizonFarRange.ts';
 import { type HorizonPanoramaCharacter, createHorizonPanorama, type HorizonPanoramaRegional } from '../horizonPanorama.ts';
@@ -2885,7 +2885,7 @@ function* buildHorizonMaterialSteps({
       };
       mat.userData.horizonDetailNoise = detailNoise;
       mat.userData.horizonDetail2 = detail2;
-      mat.userData.horizonVista = { uniforms: carried, base: base.clone(), canopyMean: canopyTile.canopyMean };
+      mat.userData.horizonVista = { uniforms: carried, base: base.clone(), canopyMean: canopyTile.canopyMean, skyTint: horizonSkyTint };
       mat.userData.horizonTerrainBound = true;
       return mat;
     }
@@ -2958,7 +2958,7 @@ function* buildHorizonMaterialSteps({
     } : {};
     mat.userData.horizonDetailNoise = detailNoise;
     mat.userData.horizonDetail2 = detail2; // round 72: the far range's mottle reads the same tile
-    if (tiles) mat.userData.horizonVista = { uniforms: vistaUniforms, base: base.clone(), canopyMean: tiles.canopyMean };
+    if (tiles) mat.userData.horizonVista = { uniforms: vistaUniforms, base: base.clone(), canopyMean: tiles.canopyMean, skyTint: horizonSkyTint };
     // media r5: the ring's sun uniform is one shared object (every compile reads it), so Scene Studio can relight the
     // baked ring for a moved sun and restore it; the battle value is the authored map sun, as before
     const sunDirUniform = { value: new THREE.Vector3(lx, ly, lz) };
@@ -3740,9 +3740,15 @@ export function* buildHorizonRingSteps(
     // the map-borders lane: the road exits on this ring, for the carriageway attribute (terrain.ts)
     roadExits: ringExits,
   };
-  // media r5: the bake's relief field (a small noise object, non-enumerable so userData dumps stay JSON) — Scene Studio
-  // re-bakes the atlas's sun visibility from the ring geometry for a moved or lower sun, then restores the original
-  if (reliefBake) Object.defineProperty(mesh.userData, 'horizonReliefSource', { value: { field: bakeField, maxHeight: maxH }, enumerable: false });
+  // media r5: the bake's relief field (a small noise object, non-enumerable so userData dumps stay JSON) with the bake
+  // itself and the ring's column count — Scene Studio re-bakes the atlas's sun visibility from the ring geometry for a
+  // moved or lower sun, then restores the original. The Studio reaches the bake through the ring, never by import: a
+  // Studio import would split this chunk's horizon modules into chunks of their own.
+  if (reliefBake) {
+    Object.defineProperty(mesh.userData, 'horizonReliefSource', {
+      value: { field: bakeField, maxHeight: maxH, columns: HORIZON_SEGMENTS, bake: bakeHorizonRelief }, enumerable: false,
+    });
+  }
   // Round 72: the far range — the peaks behind the ring (1.9–3.3 km, inside the cloud dome and the camera's far
   // plane), one unlit vertex-shaded draw with its own aerial perspective; capped under a map's low cloud deck
   if (vista && H.farRange !== false && reliefSettings.far) {
