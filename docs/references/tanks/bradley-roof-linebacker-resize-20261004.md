@@ -59,13 +59,13 @@ The previous M1A1 release retry was interrupted while still queued, before
 these edits. It remains incomplete, never a pass; its seven authored mantlets
 are unchanged and their final combined-tree release checks remain required.
 
-## Separate retained M3A3 gun-to-hull defect
+## M3A3 gun-to-hull repair follow-up
 
 At -9 degrees with the turret facing forward, the cannon intersects the raised
 hull deck. The independent reviewer reproduced the same contact before this
 roof change at commit `2a9c9efe3`; its sampled centerline penetrates 61.6 mm.
 The new roof has no contact with the gun, and neither hull nor gun geometry was
-changed by the roof repair. This remains a real unresolved physical defect,
+changed by the roof repair. This was a real pre-existing physical defect,
 not covered by the owner's failed-reference exception.
 
 A diagnostic-only trial raised the gun 140 mm and moved it forward 120 mm. It
@@ -75,3 +75,47 @@ at 180 degrees). It would also require relocating the stationary trunnions and
 support saddles. The trial was rejected and never applied to the runtime source.
 Raw observations and candidate failures remain under `critic/`. Do not claim
 complete M3A3 articulation qualification from this scoped roof acceptance.
+
+The owner subsequently requested a physical repair before publication. The gun
+axis is now 240 mm higher and 120 mm farther forward, at turret-local
+`[-0.06, 0.492, 0.78]`. Welded cheek saddles carry the relocated stationary
+bearings; a rotary axle and rounded receiver connect the rocking mask. The
+original hull and full −9°/+30° aiming range are retained.
+
+Independent authored-surface checks pass in HIGH and LOW: 23.663 mm minimum
+clearance in the 0.05° full-yaw depression sweep with recoil, plus 22,140
+full-envelope poses per quality and zero unintended roof/saddle intersections
+over 483 pitch/recoil poses. The persistent regression uses finite triangle
+clipping and rejects the original low trunnion as a negative control.
+
+The regenerated fill now preserves the integrated base's exact 250-box hull,
+uses 24 turret boxes and has no moving-gun fill. The generator requires actual
+moving stock on both sides of a column before assigning it to the gun; seeing
+a gun overhead no longer creates a long artificial underside. M3's generation
+boundary narrows only turret fittings, preserving all original hull buckets.
+The independent final source and physical review passes in both qualities.
+
+The extra volumetric diagnostic remains explicitly RED: 48.73 L versus 23.50 L
+on integrated base `0afe2e51c`. This is not an identical inherited receipt.
+Its final decomposition is 21.296875 L of unchanged hull residue, 1.000 L of
+primary turret fine slivers (base 1.03125 L), 1.53125 L of external fitting
+columns and 24.90625 L of intentional air outside both the moving gun and fixed
+turret spans. No broad roof/body opening was found. The 33-view native sealed
+check passes with zero opening pixels; no threshold was changed and the
+articulation bay was not filled to improve the volumetric score.
+
+The complete interior-fill boundary fixture fails identically on base and
+candidate at unrelated BMP-3M (`bmp3m_dragun125_x`: six voxels versus zero).
+The M3-only cases, including the removed-plate negative control, pass. Raw logs
+and source hashes are retained under `critic/`; this is named inherited debt.
+
+Full anatomy update/check, the nine-ID physical release tail, public/private
+builds, attribution and real Garage selection/rapid return passed before the
+last hull-boundary correction. Its final assets, geometry ledger, 33-view closure and HIGH/LOW captures
+were refreshed successfully with the preserved hull fill. Integrated release
+and test checks remain tracked separately; do not infer pending passes. The first standalone switch profile used an invalid five-entry sequence
+with a repeated current selection and only two warm returns; the corrected run
+must include at least four actual warm switches.
+
+Evidence and exact statuses are in `.qa-dev/bradley-gun-repair/`, including
+`critic/residual-review.json` and `critic/final-turret-only-source-review.json`.

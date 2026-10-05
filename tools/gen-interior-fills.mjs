@@ -187,9 +187,15 @@ for (const id of ids) {
       // it, as GUN-frame stock (component 3, rides with elevation) when the moving group encloses it,
       // skipped only when neither does
       if (underMovingPart(grid, x, y, z) && !insideTurretProper(proper, grid, x, y, z)) {
-        // whatever the gun closes rides with the gun: inside a casemate the recess is the gun's own
-        // travel space, so gun-frame stock there stays hidden through elevation (chase-to-zero)
-        vox[i] = 3; found++; if (first) skipped++; continue;
+        // Seeing a gun above a voxel does not make the air below it part of
+        // the gun. Require moving shell on BOTH sides of the column before
+        // assigning gun-owned fill. Otherwise a raised trunnion acquires a
+        // long artificial skirt that rotates through its fixed deck/floor.
+        const k = z * nx + x;
+        if (moving.minY[k] < y && y < moving.maxY[k]) {
+          vox[i] = 3; found++; if (first) skipped++;
+        }
+        continue;
       }
       vox[i] = c; found++;
     }

@@ -43,7 +43,17 @@ export function buildBradleyScoutTurretShell(P: TankBuilderPort): void {
       return {z,ring:side<0?points.reverse():points};
     }));
     P.add('turret',cheek);
-    P.add('turret',KIT.cylX(.18,.10,24),side*.34-.06,.315,.66);
+    // Welded cheek saddles carry the raised trunnion without lifting the
+    // turret or changing its donor hull. Their roots overlap the cheek;
+    // the center stays open for the rocking receiver and closed rear roof.
+    P.add('turret',sectionSolid([
+      {z:.56,top:.755},{z:.78,top:.820},{z:1.04,top:.705},
+    ].map(({z,top})=>{
+      const ring:[number,number][]=[[.34,.30],[.54,.30],[.50,top],[.34,top]];
+      const points=ring.map(([x,y]):[number,number]=>[side*x-.06,y]);
+      return {z,ring:side<0?points.reverse():points};
+    })));
+    P.add('turret',KIT.cylX(.18,.10,24),side*.34-.06,.615,.78);
     // Side cassettes are supported by the widened shoulder and terminate
     // behind the sloped cheek instead of protruding across the gun opening.
     P.addExternalArmor('turret',KIT.box(.07,.38,1.10),side*.993,.35,-.49,0,0,side*.06);

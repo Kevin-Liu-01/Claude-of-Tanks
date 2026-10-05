@@ -8,6 +8,7 @@ import {tankTier} from '../tier.ts';
 import {geometryHash,near} from '../../../tools/receipt-kit.test-support.mjs';
 import {censusEquipment} from '../../../tools/source-equipment-policy.mjs';
 import {LINEBACKER_TURRET_SCALE as T,LINEBACKER_MOUTHS,LINEBACKER_LAUNCHER as L} from '../m6LinebackerLayout.ts';
+import {measureBradleyGunClearance} from './bradleyGunClearance.test-support.mjs';
 import {placeBradleyScoutCheekEra} from './bradleyScoutTurretShell.ts';
 import {ensureInteriorFills,hasInteriorFills} from '../interiorFills.ts';
 import {createEraGameplayRegistrationAudit} from '../eraGameplayRegistrationAudit.test-support.mjs';
@@ -150,7 +151,20 @@ for(const quality of ['high','low']){
   }finally{tank.dispose();}
   const scout=createTank('m3a3_bradley',null,{...options,quality});
   try{
+    const clearance=measureBradleyGunClearance(scout);
+    assert.ok(clearance.minimum>.020,`${quality}: gun clears actual hull triangles, including fill and recoil: ${JSON.stringify(clearance)}`);
+    assert.ok(measureBradleyGunClearance(scout,{negativeControl:true}).minimum<-.04,
+      'old low trunnion is a real collision, not a vacuous clearance pass');
+    console.log(`M3 ${quality}: gun/hull minimum ${(clearance.minimum*1000).toFixed(1)} mm across ${clearance.poses} poses.`);
     const turret=scout.root.getObjectByName('rig_turret');scout.root.updateMatrixWorld(true);
+    const pivot=scout.root.getObjectByName('rig_gun').position;
+    for(let i=0;i<3;i++)near(pivot.getComponent(i),getSpec('m3a3_bradley').armor.gunPivot[i],1e-8,'gun datum matches combat frame');
+    for(const side of [-1,1]){
+      const origin=turret.localToWorld(pivot.clone());
+      const bearing=new Raycaster(origin,new Vector3(side,0,0),0,.5).intersectObject(scout.root.getObjectByName('turret'))[0];
+      assert.ok(bearing,'each rotary axle has a fixed bearing');
+      near(bearing.distance,.29,.001,'70 mm axle insertion into bearing');
+    }
     const ray=new Raycaster(turret.localToWorld(new Vector3(-.06,.252,1.10)),new Vector3(0,0,-1),0,1.5);
     const hit=ray.intersectObject(scout.root.getObjectByName('turret'))[0];
     assert.ok(hit,'M3 rear bulkhead');assert.ok(turret.worldToLocal(hit.point.clone()).z<0,'M3 gun has an actual elevation cutout');

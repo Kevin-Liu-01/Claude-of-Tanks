@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-05T01:18:53.229Z",
+ "generatedAt": "2026-10-05T07:30:23.100Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening) and inside-out pixel totals over the 33 census views. Gate: a tank may not exceed its ledger open px by more than max(12, 10%) and a sealed tank must stay sealed.",
@@ -640,9 +640,9 @@
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 145,
+   "insideOutPx": 146,
    "seeThroughPx": 9,
-   "tris": 92530
+   "tris": 92678
   },
   "m46_patton": {
    "sealed": false,

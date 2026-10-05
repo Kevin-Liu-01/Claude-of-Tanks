@@ -702,9 +702,13 @@ function addM3A3Turret(P: AfvBuilderPort): void {
   // sight and left-hand elevating launcher. Every upper edge overlaps the
   // lower ring or the roof cap: there is no daylight seam around the race.
   P.turretG.position.set(0.04, 1.895, -0.36);
-  P.gunG.position.set(-0.06, 0.315, 0.66);
+  // Raised trunnions clear the original front AND rear decks at full -9°
+  // depression. The shell's saddles share this pre-compression datum.
+  P.gunG.position.set(-0.06, 0.615, 0.78);
   P.add('turret', cylY(0.79, 0.90, 0.13, 26), 0, 0.015, -0.08);
   buildBradleyScoutTurretShell(P);
+  P.addGunExtraDark(cylX(0.095, 0.72, 24), 0, 0, 0);
+  P.addGunExtra(cylX(0.14, 0.56, 24), 0, 0, 0.04);
   P.addGunExtra(box(0.56, 0.36, 0.31), 0, 0, 0.28);
   P.addGunExtraDark(cylZ(0.118, 0.38, 18, 0.095), 0, 0, 0.59);
   buildGun(P, { len: 2.42, r: 0.037, sleeve: true, evac: 0.34,
