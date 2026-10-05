@@ -80,8 +80,9 @@ function library(species, fade, environment) {
   // law, the per-cluster cascade sample and the leaf translucency); and the far tier's one impostor material
   // trees round 2 (2026-10-03): v20 — the facing clusters (COT_LEAF_BILLBOARD) and the near-dissolve's crown scale;
   // trees round 3b (2026-10-04): v21 — the clusters' near dissolve by whole clusters; trees round 4: v22 — each
-  // material's near reach (uCotNearReach), v23 — and its gate lift (uCotGateLift), v24 — and its inside fade
-  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v24'));
+  // material's near reach (uCotNearReach), v23 — and its gate lift (uCotGateLift), v24 — and its inside fade, v25 —
+  // the card's shrink applied after the wind
+  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v25'));
   assert.equal(foliage.length, species.length, 'the complete production species material library exists');
   const impostor = registered.filter(material => material.customProgramCacheKey() === 'world-tree-impostor-v3'); // round 77c: the elevated ring; p2 trees lane: the gust lift
   assert.equal(impostor.length, 1, 'one impostor material per world, registered with the cascades');
@@ -244,12 +245,18 @@ function checkEdgeFade(material, parameters) {
   assert.match(vertex, /uniform float uCotInsideFade;/, 'the inside fade is a uniform of the material');
   assert.match(vertex, /float cotIn = uCotInsideFade \* \( 1\.0 - smoothstep\( 0\.94, 1\.04, length\( cotCam\.xz \) \/ max\( aCard\.w, 1e-3 \) \) \)/,
     'by the camera inside the crown radius in the instance frame');
-  assert.match(vertex, /smoothstep\( cotGate - 0\.1, cotGate \+ 0\.1, cotKeep \) \* \( 1\.0 - cotIn \);/, 'every cluster at once');
   assert.equal(parameters.uniforms.uCotInsideFade?.value, 0, 'a crown never leaves whole');
-  assert.match(vertex, /transformed = aCard\.xyz \+ \( transformed - aCard\.xyz \) \* smoothstep\( cotGate - 0\.1, cotGate \+ 0\.1, cotKeep \)/,
-    'the card shrinks to its centre at its own threshold');
-  const shrink = vertex.indexOf('transformed = aCard.xyz + ( transformed - aCard.xyz )');
-  assert.ok(turn < shrink && shrink < vertex.indexOf('float lean = uWind.x'), 'after the turn, before the wind');
+  // trees round 4 (the gauntlet's wave 84: the dolly's bush drawn in specks with the camera just inside its rim): a
+  // crown's card shrinks to its centre over its own window about its gate; a shrub's card is whole or gone, at its gate,
+  // by the camera's distance and by the camera's depth into its rim (checkShrubInside: the camera inside a shrub)
+  assert.match(vertex, /cotShrinkF = uCotInsideFade > 0\.5\s*\? step\( cotGate, cotKeep \) \* \( 1\.0 - step\( 1\.0, cotIn \+ cotGate \) \)\s*: smoothstep\( cotGate - 0\.1, cotGate \+ 0\.1, cotKeep \);/,
+    'a crown\'s card shrinks at its own threshold, a shrub\'s leaves whole');
+  // trees round 4 (the gauntlet's wave 84: a sliver left in the sky by the dolly's vanished bush): the factor is found
+  // after the turn and applied after the wind — the wind moves each corner by its own flex, and a card collapsed ahead
+  // of it was stretched back out into a sliver; after it, a collapsed card is a point
+  const factor = vertex.indexOf('cotShrinkF = uCotInsideFade > 0.5'), shrink = vertex.indexOf('transformed = aCard.xyz + ( transformed - aCard.xyz ) * cotShrinkF;');
+  assert.ok(turn < factor && factor < vertex.indexOf('float lean = uWind.x'), 'the factor after the turn, before the wind');
+  assert.ok(shrink > vertex.lastIndexOf('transformed.y += fl * 0.3') && shrink < vertex.indexOf('#include <project_vertex>'), 'the shrink after the wind, before the projection');
   assert.match(vertex, /vCotGeoNear = 0\.0;[\s\S]*vCotGeoNear = 1\.0;/, 'only a framed card leaves geometrically');
   assert.match(fragment, /fadeKeep \*= mix\(smoothstep\(2\.50 \* vCotNearScale, 8\.00 \* vCotNearScale, length\(vViewPosition\)\), 1\.0, vCotGeoNear\);/,
     'a framed card\'s fragment takes no near dither; the rest keep the near dissolve by the crown\'s size');
@@ -276,7 +283,7 @@ function checkMobileFoliage(species, environment) {
     const engine = { setupShadowMaterial(material, hook) { registered.push(material); return lighting.setupShadowMaterial(material, hook); } };
     const cfg = { vegetation: { species, clusterCount: 0, loneCount: 0, rimCount: 0, grassDensity: 0, bushCount: 0, belts: [], authoredTrees: [] } };
     const vegetation = createVegetation(createHeightField(1337), engine, 1337, cfg);
-    const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v24'));
+    const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v25'));
     assert.equal(foliage.length, species.length, 'the mobile species library exists');
     const fragment = environment.expand(foliage[0]).parameters.fragmentShader;
     assert.doesNotMatch(fragment, /vWindLift \*/, 'the phones keep their foliage fragment: no gust lift');
@@ -395,9 +402,9 @@ function checkShrubMaterial(environment) {
   try {
     const bush = vegetation.group.children.find(m => m.userData.bush === true && m.count > 0);
     assert.ok(bush, 'the shrubs are planted');
-    const crown = registered.find(m => m !== bush.material && m.customProgramCacheKey?.() === 'world-tree-foliage-v24' && m.map === bush.material.map);
+    const crown = registered.find(m => m !== bush.material && m.customProgramCacheKey?.() === 'world-tree-foliage-v25' && m.map === bush.material.map);
     assert.ok(crown && bush.material !== crown, 'the shrubs draw with their own material, beside their slot\'s crowns\'');
-    assert.equal(bush.material.customProgramCacheKey(), 'world-tree-foliage-v24', 'on the one foliage program');
+    assert.equal(bush.material.customProgramCacheKey(), 'world-tree-foliage-v25', 'on the one foliage program');
     assert.deepEqual(bush.material.defines, crown.defines, 'with the crown material\'s defines (the facing clusters, the edge fade)');
     const shrubProgram = environment.expand(bush.material), crownProgram = environment.expand(crown);
     assert.equal(shrubProgram.key, crownProgram.key, 'the same program as the crowns\'');
@@ -405,6 +412,184 @@ function checkShrubMaterial(environment) {
     assert.equal(shrubProgram.parameters.uniforms.uCotGateLift.value, 0.75, 'and its clusters leave from the top down');
     assert.equal(shrubProgram.parameters.uniforms.uCotInsideFade.value, 1, 'and it leaves whole with the camera inside it');
     assert.equal(crownProgram.parameters.uniforms.uCotNearReach.value, 1, 'the crowns keep theirs');
+  } finally {
+    vegetation.dispose(); disposeObject3DResources(vegetation.group);
+    for (const material of registered) releaseCsmShaderMaterial(lighting.csm, material);
+    lighting.csm.remove(); lighting.csm.dispose();
+  }
+}
+
+// trees round 4 (the gauntlet's wave 84: the Frontier dolly's camera inside its field bush — "a stray foliage-green
+// sliver floats in the open sky" at dolly-3, specks at dolly-4): with the camera inside a shrub not a pixel of that shrub
+// is drawn, and no shrub draws a fragment — a card shrunken short of whole, or collapsed and stretched back out — so
+// none of a neighbour's hangs over the camera. A mirror of the shrub program's vertex path (the turn, the near dissolve,
+// the gate, the inside fade, the wind, the shrink), each expression it mirrors pinned to the program's text, run on the
+// production shrubs (their grown geometry, their placements' frames, their material's uniforms). The case's control is
+// the same mirror under the laws that drew the wave: the shrink ahead of the wind (v24: slivers), and the shrink after
+// it with the cards shrinking over their windows (specks at the rim).
+function checkShrubInside(environment) {
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(55, 1.6, .5, 4000);
+  const lighting = createLighting(scene, camera, new THREE.Vector3(1, 1, 1).normalize());
+  const registered = [];
+  const engine = { renderer: stubRenderer(), scene, setupShadowMaterial(material, hook) { registered.push(material); return lighting.setupShadowMaterial(material, hook); } };
+  const cfg = { vegetation: { species: ['oak', 'pine'], clusterCount: 0, loneCount: 0, rimCount: 0, grassDensity: 0, bushCount: 60, belts: [], authoredTrees: [] } };
+  const vegetation = createVegetation(createHeightField(1337), engine, 1337, cfg);
+  try {
+    const bushes = vegetation.group.children.filter(m => m.userData.bush === true && m.count > 0);
+    assert.ok(bushes.length > 0, 'the shrubs are planted');
+    const { parameters } = environment.expand(bushes[0].material), vertex = parameters.vertexShader, u = parameters.uniforms;
+    // the program the mirror follows, expression by expression
+    for (const [pattern, what] of [
+      [/vCotNearScale = mix\( 0\.45, 1\.0, smoothstep\( 1\.6, 3\.6, aCard\.w \* length\( instanceMatrix\[ 0 \]\.xyz \) \) \) \* uCotNearReach;/, 'the band by the crown\'s size'],
+      [/vec3 cotCam = - \( transpose\( mat3\( modelViewMatrix \) \) \* modelViewMatrix\[ 3 \]\.xyz \) - instanceMatrix\[ 3 \]\.xyz;\s*cotCam = vec3\( dot\( cotIm\[ 0 \], cotCam \) \/ dot\( cotIm\[ 0 \], cotIm\[ 0 \] \), dot\( cotIm\[ 1 \], cotCam \) \/ dot\( cotIm\[ 1 \], cotIm\[ 1 \] \),\s*dot\( cotIm\[ 2 \], cotCam \) \/ dot\( cotIm\[ 2 \], cotIm\[ 2 \] \) \);/, 'the camera in the instance frame'],
+      [/vec3 cotRight = cross\( aAxis, cotCam - aCard\.xyz \);\s*float cotRightL = length\( cotRight \);\s*if \( cotRightL > 1e-4 \) \{\s*vec3 cotFacing = aCard\.xyz \+ cotRight \* \( aLeaf\.x \/ cotRightL \) \+ aAxis \* aLeaf\.y - vec3\( 0\.0, aLeaf\.z, 0\.0 \);\s*transformed = mix\( transformed, cotFacing, COT_LEAF_BILLBOARD \);/, 'the turn'],
+      [/float cotNear = length\( cotCam - aCard\.xyz \) \* length\( cotIm\[ 0 \] \);\s*float cotKeep = smoothstep\( 2\.50 \* vCotNearScale, 8\.00 \* vCotNearScale, cotNear \);/, 'the near dissolve'],
+      [/float cotHash = fract\( sin\( dot\( aCard\.xyz \+ instanceMatrix\[ 3 \]\.xyz, vec3\( 12\.9898, 78\.233, 37\.719 \) \) \) \* 43758\.5453 \);\s*float cotGate = 0\.1 \+ 0\.8 \* mix\( cotHash, clamp\( aCard\.y \/ \( 1\.5 \* aCard\.w \), 0\.0, 1\.0 \), uCotGateLift \);/, 'the gate'],
+      [/float cotIn = uCotInsideFade \* \( 1\.0 - smoothstep\( 0\.94, 1\.04, length\( cotCam\.xz \) \/ max\( aCard\.w, 1e-3 \) \) \)\s*\* \( 1\.0 - smoothstep\( 1\.4, 1\.8, cotCam\.y \/ max\( aCard\.w, 1e-3 \) \) \);/, 'the inside fade'],
+      [/cotShrinkF = uCotInsideFade > 0\.5\s*\? step\( cotGate, cotKeep \) \* \( 1\.0 - step\( 1\.0, cotIn \+ cotGate \) \)\s*: smoothstep\( cotGate - 0\.1, cotGate \+ 0\.1, cotKeep \);/, 'the shrink factor'],
+      [/vec4 tiw = instanceMatrix \* vec4\(0\.0, 0\.0, 0\.0, 1\.0\);/, 'the wind\'s station'],
+      [/float ph = fract\(sin\(tiw\.x \* 12\.9898 \+ tiw\.z \* 78\.233\) \* 43758\.5453\) \* 6\.2831853;/, 'the tree\'s phase'],
+      [/float front = 0\.5 \+ 0\.5 \* sin\(uWindTime \* 0\.42 - dot\(tiw\.xz, uWindDir\) \* 0\.018\);\s*float gust = 0\.30 \+ 0\.70 \* front \* \(0\.55 \+ 0\.45 \* sin\(uWindTime \* 1\.31 \+ ph\)\);/, 'the gust'],
+      [/float lean = uWind\.x \* gust \* \(0\.70 \+ 0\.30 \* sin\(uWindTime \* 1\.15 \+ ph\) \+ 0\.12 \* sin\(uWindTime \* 2\.63 \+ ph \* 1\.7\)\);\s*float hn = clamp\(transformed\.y \* uWind\.y, 0\.0, 1\.0\);\s*vec2 leanDir = uWindDir \+ vec2\(-uWindDir\.y, uWindDir\.x\) \* \(0\.22 \* sin\(uWindTime \* 0\.97 \+ ph \* 1\.3\)\);/, 'the lean'],
+      [/float fph = \(aFlex \* 53\.17 \+ \(position\.x \* 0\.37 \+ position\.z \* 0\.53\) \* 0\.05\) \* 6\.2831853;\s*float fl = aFlex \* uWind\.z \* \(0\.45 \+ 0\.55 \* gust\);\s*transformed\.xz \+= leanDir \* \(lean \* hn \* hn\);\s*transformed\.x \+= fl \* \(sin\(uWindTime \* 3\.1 \+ fph\) \+ 0\.5 \* sin\(uWindTime \* 5\.3 \+ fph \* 1\.9\)\);\s*transformed\.z \+= fl \* 0\.7 \* cos\(uWindTime \* 2\.6 \+ fph \* 1\.3\);\s*transformed\.y \+= fl \* 0\.3 \* sin\(uWindTime \* 4\.3 \+ fph \* 0\.7\);/, 'the flutter'],
+      [/#ifdef COT_LEAF_BILLBOARD\s*(?:\/\/[^\n]*\n\s*)*transformed = aCard\.xyz \+ \( transformed - aCard\.xyz \) \* cotShrinkF;\s*#endif/, 'the shrink'],
+    ]) assert.match(vertex, pattern, `the mirror follows the program: ${what}`);
+    const billboard = Number(bushes[0].material.defines.COT_LEAF_BILLBOARD);
+    const reach = u.uCotNearReach.value, lift = u.uCotGateLift.value, inside = u.uCotInsideFade.value, wind = u.uWind.value, dir = u.uWindDir.value;
+    assert.equal(inside, 1, 'the shrub material leaves whole');
+    assert.ok(wind.z > 0.05 && wind.x > 0, `the wind moves the cards (${wind.toArray()})`);
+    const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+    const fract = x => x - Math.floor(x);
+    // one vertex through the program: its world position and its card's factor, under `law` — 'program', 'v24' (the
+    // factor of v24 — the cards shrinking over their windows and the whole shrub with the camera inside — applied ahead
+    // of the wind) or 'window' (v24's factor applied after the wind)
+    const out = [0, 0, 0, 0];
+    const arrays = new Map();
+    const shrubArrays = geometry => {
+      if (!arrays.has(geometry)) {
+        const at = name => { const attribute = geometry.attributes[name]; assert.ok(attribute && !attribute.isInterleavedBufferAttribute && !attribute.normalized, name); return attribute.array; };
+        arrays.set(geometry, { p: at('position'), c: at('aCard'), x: at('aAxis'), l: at('aLeaf'), f: at('aFlex'), index: geometry.index.array });
+      }
+      return arrays.get(geometry);
+    };
+    function vertexPath(g, e, vi, cam, time, law) {
+      const v3 = vi * 3, v4 = vi * 4;
+      const px = g.p[v3], py = g.p[v3 + 1], pz = g.p[v3 + 2], cx = g.c[v4], cy = g.c[v4 + 1], cz = g.c[v4 + 2], cw = g.c[v4 + 3];
+      let tx = px, ty = py, tz = pz, f = 1;
+      const len0 = Math.hypot(e[0], e[1], e[2]), scale = (0.45 + 0.55 * ss(1.6, 3.6, cw * len0)) * reach;
+      const ax = g.x[v3], ay = g.x[v3 + 1], az = g.x[v3 + 2];
+      if (ax * ax + ay * ay + az * az > 0.5) {
+        const dx = cam.x - e[12], dy = cam.y - e[13], dz = cam.z - e[14];
+        const qx = (e[0] * dx + e[1] * dy + e[2] * dz) / (e[0] * e[0] + e[1] * e[1] + e[2] * e[2]);
+        const qy = (e[4] * dx + e[5] * dy + e[6] * dz) / (e[4] * e[4] + e[5] * e[5] + e[6] * e[6]);
+        const qz = (e[8] * dx + e[9] * dy + e[10] * dz) / (e[8] * e[8] + e[9] * e[9] + e[10] * e[10]);
+        const vx = qx - cx, vy = qy - cy, vz = qz - cz;
+        const rx = ay * vz - az * vy, ry = az * vx - ax * vz, rz = ax * vy - ay * vx, rl = Math.hypot(rx, ry, rz);
+        if (rl > 1e-4) {
+          const lx = g.l[v3], ly = g.l[v3 + 1], lz = g.l[v3 + 2];
+          tx += (cx + rx * (lx / rl) + ax * ly - tx) * billboard; ty += (cy + ry * (lx / rl) + ay * ly - lz - ty) * billboard; tz += (cz + rz * (lx / rl) + az * ly - tz) * billboard;
+        }
+        const keep = ss(2.5 * scale, 8.0 * scale, Math.hypot(vx, vy, vz) * len0);
+        const hash = fract(Math.sin((cx + e[12]) * 12.9898 + (cy + e[13]) * 78.233 + (cz + e[14]) * 37.719) * 43758.5453);
+        const gate = 0.1 + 0.8 * (hash + (Math.min(1, Math.max(0, cy / (1.5 * cw))) - hash) * lift);
+        const cotIn = inside * (1 - ss(0.94, 1.04, Math.hypot(qx, qz) / Math.max(cw, 1e-3))) * (1 - ss(1.4, 1.8, qy / Math.max(cw, 1e-3)));
+        f = law === 'program'
+          ? (inside > 0.5 ? (keep < gate ? 0 : 1) * (1 - (cotIn + gate < 1 ? 0 : 1)) : ss(gate - 0.1, gate + 0.1, keep))
+          : ss(gate - 0.1, gate + 0.1, keep) * (1 - cotIn);
+      }
+      if (law === 'v24') { tx = cx + (tx - cx) * f; ty = cy + (ty - cy) * f; tz = cz + (tz - cz) * f; }
+      const ph = fract(Math.sin(e[12] * 12.9898 + e[14] * 78.233) * 43758.5453) * 6.2831853;
+      const front = 0.5 + 0.5 * Math.sin(time * 0.42 - (e[12] * dir.x + e[14] * dir.y) * 0.018);
+      const gust = 0.30 + 0.70 * front * (0.55 + 0.45 * Math.sin(time * 1.31 + ph));
+      const lean = wind.x * gust * (0.70 + 0.30 * Math.sin(time * 1.15 + ph) + 0.12 * Math.sin(time * 2.63 + ph * 1.7));
+      const hn = Math.min(1, Math.max(0, ty * wind.y)), sway = 0.22 * Math.sin(time * 0.97 + ph * 1.3);
+      const flex = g.f[vi], fph = (flex * 53.17 + (px * 0.37 + pz * 0.53) * 0.05) * 6.2831853;
+      const fl = flex * wind.z * (0.45 + 0.55 * gust);
+      tx += (dir.x - dir.y * sway) * lean * hn * hn + fl * (Math.sin(time * 3.1 + fph) + 0.5 * Math.sin(time * 5.3 + fph * 1.9));
+      tz += (dir.y + dir.x * sway) * lean * hn * hn + fl * 0.7 * Math.cos(time * 2.6 + fph * 1.3);
+      ty += fl * 0.3 * Math.sin(time * 4.3 + fph * 0.7);
+      if (law !== 'v24') { tx = cx + (tx - cx) * f; ty = cy + (ty - cy) * f; tz = cz + (tz - cz) * f; }
+      out[0] = e[0] * tx + e[4] * ty + e[8] * tz + e[12]; out[1] = e[1] * tx + e[5] * ty + e[9] * tz + e[13];
+      out[2] = e[2] * tx + e[6] * ty + e[10] * tz + e[14]; out[3] = f;
+      return out;
+    }
+    // a shrub's cards under one camera: the drawn area (m², the triangles' world areas), the fragments (cards drawn short
+    // of whole: a factor strictly between 0 and 1, or a collapsed card left with area) and those reaching over the eye
+    const a = [0, 0, 0], b = [0, 0, 0];
+    function shrubCards(geometry, e, cam, time, law) {
+      const g = shrubArrays(geometry), index = g.index, r = { area: 0, cards: 0, fragments: 0, overEye: 0 };
+      for (let t = 0; t < index.length; t += 6) { // a card: two triangles over four welded corners
+        let area = 0, fMin = 1, fMax = 0, top = -Infinity;
+        for (let k = t; k < t + 6; k += 3) {
+          vertexPath(g, e, index[k], cam, time, law); a[0] = out[0]; a[1] = out[1]; a[2] = out[2]; fMin = Math.min(fMin, out[3]); fMax = Math.max(fMax, out[3]); top = Math.max(top, out[1]);
+          vertexPath(g, e, index[k + 1], cam, time, law); b[0] = out[0] - a[0]; b[1] = out[1] - a[1]; b[2] = out[2] - a[2]; top = Math.max(top, out[1]);
+          vertexPath(g, e, index[k + 2], cam, time, law); top = Math.max(top, out[1]);
+          const c0 = out[0] - a[0], c1 = out[1] - a[1], c2 = out[2] - a[2];
+          area += 0.5 * Math.hypot(b[1] * c2 - b[2] * c1, b[2] * c0 - b[0] * c2, b[0] * c1 - b[1] * c0);
+        }
+        assert.equal(fMin, fMax, 'a card leaves as one');
+        r.area += area; if (area > 0) r.cards++;
+        const fragment = (fMax > 0 && fMax < 1) || (fMax === 0 && area > 0);
+        if (fragment) { r.fragments++; if (top > cam.y) r.overEye++; }
+      }
+      return r;
+    }
+    const instances = [];
+    for (const mesh of bushes) for (let i = 0; i < mesh.count; i++) { const m = new THREE.Matrix4(); mesh.getMatrixAt(i, m); instances.push({ geometry: mesh.geometry, e: m.elements }); }
+    assert.ok(instances.length >= 40, `the planted shrubs (${instances.length})`);
+    // twelve hosts and four neighbour kinds, spread over the planting (both variants, every scale)
+    const pick = (count, phase) => Array.from({ length: count }, (_, i) => Math.floor((i + phase) * instances.length / count));
+    const hosts = pick(12, 0), neighbours = pick(4, 0.5);
+    const times = [0, 11.2], cam = new THREE.Vector3();
+    // the camera at a point of a shrub's own frame: across its radius and its height (the crown radius aCard.w), inside
+    // the rim (to 0.95 of the radius) and under its top (1.4 radii); the dolly's frames among them (dolly-4 at 0.76 of the
+    // radius, dolly-3 at 0.947 — the twentieth of the rim the wave's sliver came from — both 1.05 radii up)
+    const placeCamera = (e, w, r, angle, y) => {
+      const lx = r * w * Math.cos(angle), ly = y * w, lz = r * w * Math.sin(angle);
+      return cam.set(e[0] * lx + e[4] * ly + e[8] * lz + e[12], e[1] * lx + e[5] * ly + e[9] * lz + e[13], e[2] * lx + e[6] * ly + e[10] * lz + e[14]);
+    };
+    const control = { v24: 0, window: 0, windowRim: 0, nbFragments: 0, nbOverEye: 0 };
+    let poses = 0, neighbourCards = 0, neighbourDrawn = 0;
+    const neighbourMatrix = new Float32Array(16);
+    for (const h of hosts) {
+      const host = instances[h], w = host.geometry.attributes.aCard.getW(0);
+      for (const r of [0, 0.5, 0.763, 0.947]) for (let k = 0; k < 8; k += 2) for (const y of [0.3, 0.7, 1.05, 1.3]) {
+        placeCamera(host.e, w, r, k * Math.PI / 4, y);
+        for (const time of times) {
+          poses++;
+          const own = shrubCards(host.geometry, host.e, cam, time, 'program');
+          assert.equal(own.area, 0, `the camera inside a shrub draws none of it (shrub ${h}, ${r} of its radius, ${y} radii up, t ${time}: ${own.cards} cards drawn)`);
+          if (shrubCards(host.geometry, host.e, cam, time, 'v24').area > 0) control.v24++;
+          const windowed = shrubCards(host.geometry, host.e, cam, time, 'window');
+          if (windowed.area > 0) { control.window++; if (r === 0.947) control.windowRim++; }
+        }
+        // the neighbours: every other kind of planted shrub, in its own frame and scale, standing round the camera from
+        // half a metre to eight metres off (through the near band of every size) on the host's ground
+        if ((r !== 0 && r !== 0.947) || k % 4 || (y !== 0.7 && y !== 1.05)) continue;
+        for (const n of neighbours) {
+          if (n === h) continue;
+          const nb = instances[n];
+          for (const d of [0.5, 1.5, 2.5, 3.5, 5, 8]) for (let q = 0; q < 2; q++) {
+            neighbourMatrix.set(nb.e);
+            const phi = q * Math.PI + 0.4 + 0.7 * k;
+            neighbourMatrix[12] = cam.x + d * Math.cos(phi); neighbourMatrix[13] = host.e[13]; neighbourMatrix[14] = cam.z + d * Math.sin(phi);
+            const time = times[(n + q) % times.length];
+            const near = shrubCards(nb.geometry, neighbourMatrix, cam, time, 'program');
+            assert.equal(near.fragments, 0, `no neighbour draws a fragment (shrub ${n} ${d} m off the camera inside shrub ${h}: ${near.fragments}, ${near.overEye} over the eye)`);
+            neighbourCards += nb.geometry.index.count / 6; neighbourDrawn += near.cards;
+            const old = shrubCards(nb.geometry, neighbourMatrix, cam, time, 'window');
+            control.nbFragments += old.fragments; control.nbOverEye += old.overEye;
+          }
+        }
+      }
+    }
+    // the control: the laws that drew the wave fail the same case — the shrink ahead of the wind leaves the shrub the camera
+    // stands in as slivers, the windows leave it in specks at its rim and neighbours in fragments over the camera
+    assert.ok(control.v24 > poses * 0.5, `v24's law draws slivers of the shrub the camera stands in (${control.v24} of ${poses} poses)`);
+    assert.ok(control.windowRim > 0 && control.window === control.windowRim, `the windows draw it in specks at the rim alone (${control.windowRim})`);
+    assert.ok(control.nbFragments > 0 && control.nbOverEye > 0, `and neighbours in fragments, some over the eye (${control.nbFragments}, ${control.nbOverEye})`);
+    assert.ok(neighbourDrawn > neighbourCards * 0.2 && neighbourDrawn < neighbourCards * 0.95, `the neighbours thin, not vanish (${neighbourDrawn} of ${neighbourCards} cards)`);
+    return { poses, neighbourCards, neighbourDrawn, control };
   } finally {
     vegetation.dispose(); disposeObject3DResources(vegetation.group);
     for (const material of registered) releaseCsmShaderMaterial(lighting.csm, material);
@@ -448,6 +633,8 @@ try {
     checkIndependentEviction(world, other, species);
   }
   checkShrubMaterial(environment);
+  const inside = checkShrubInside(environment);
+  console.log(`shrub inside: ${inside.poses} poses inside ${'the shrubs'}, ${inside.neighbourDrawn} of ${inside.neighbourCards} neighbour cards drawn, control ${JSON.stringify(inside.control)}`);
   // the mobile tier, resolved once and last (the device tier is process state)
   checkMobileFoliage(species, environment);
 } finally {

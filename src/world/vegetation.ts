@@ -4546,6 +4546,9 @@ function* vegetationBuildSteps(
       '#include <common>\n#ifdef COT_LEAF_BILLBOARD\nattribute vec3 aAxis;\nattribute vec3 aLeaf;\nuniform float uCotNearReach;\nuniform float uCotGateLift;\nuniform float uCotInsideFade;\nvarying float vCotNearScale;\nvarying float vCotGeoNear;\n#endif');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`#include <begin_vertex>
       #ifdef COT_LEAF_BILLBOARD
+      // trees round 4: the card's share of its size (the near dissolve's and the inside fade's), applied after the wind
+      // (the project_vertex patch below)
+      float cotShrinkF = 1.0;
       // the near-camera dissolve's reach by the crown's size: a shrub's (crown ~1.5–3 m across) under half a tree's;
       // trees round 4: times the material's own reach (uCotNearReach: a crown's 1, a shrub's FOLIAGE_NEAR_REACH.shrub)
       vCotNearScale = mix( 0.45, 1.0, smoothstep( 1.6, 3.6, aCard.w * length( instanceMatrix[ 0 ].xyz ) ) ) * uCotNearReach;
@@ -4577,7 +4580,14 @@ function* vegetationBuildSteps(
         // no pose catches the whole bush half-shrunk into scattered sprigs
         float cotIn = uCotInsideFade * ( 1.0 - smoothstep( 0.94, 1.04, length( cotCam.xz ) / max( aCard.w, 1e-3 ) ) )
           * ( 1.0 - smoothstep( 1.4, 1.8, cotCam.y / max( aCard.w, 1e-3 ) ) );
-        transformed = aCard.xyz + ( transformed - aCard.xyz ) * smoothstep( cotGate - 0.1, cotGate + 0.1, cotKeep ) * ( 1.0 - cotIn );
+        // trees round 4 (the gauntlet's wave 84: the dolly's camera a twentieth of the radius inside its bush's rim, and
+        // every card of the bush drawn at a hundredth of its size — specks over the whole frame, one in the open sky): a
+        // crown's card shrinks over its own window about its gate; a shrub's (uCotInsideFade 1) is whole or gone, at its
+        // gate — by the camera's distance (the near dissolve) and by the camera's depth into the shrub's rim (the inside
+        // fade: its top cards first, the last of it at the rim's inner edge) — so no pose draws a shrunken card of a shrub
+        cotShrinkF = uCotInsideFade > 0.5
+          ? step( cotGate, cotKeep ) * ( 1.0 - step( 1.0, cotIn + cotGate ) )
+          : smoothstep( cotGate - 0.1, cotGate + 0.1, cotKeep );
         vCotGeoNear = 1.0;
       }
       #endif`);
@@ -4619,6 +4629,13 @@ function* vegetationBuildSteps(
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
       '#include <common>\nvarying float vFolKeep;\nvarying vec3 vLeafW;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <project_vertex>', /* glsl */`
+      #ifdef COT_LEAF_BILLBOARD
+      // trees round 4 (the gauntlet's wave 84: "a stray foliage-green sliver floats in the open sky" at the dolly's
+      // vanished bush): a card shrinks to its centre after the wind, not before it — the wind moves each corner by its
+      // own flex (a card's stem little, its tip most), so a card collapsed ahead of it was stretched back out into a
+      // sliver; after it, a collapsed card is a point and draws nothing
+      transformed = aCard.xyz + ( transformed - aCard.xyz ) * cotShrinkF;
+      #endif
       {
         vec4 fiw = instanceMatrix * vec4(transformed, 1.0);
         vFolKeep = mix(1.0, smoothstep(4.0, 10.0, distance(fiw.xyz, uCamPos)), uSniperFade);
@@ -5110,7 +5127,7 @@ function* vegetationBuildSteps(
       // Species vary textures/uniforms, not this shared shader hook. Three
       // already keys material/geometry defines; a species suffix needlessly
       // recompiles identical programs when the last world using it is evicted.
-      fm.customProgramCacheKey = () => 'world-tree-foliage-v24'; // trees round 4: each material's near reach, gate lift and inside fade (round 3b: the clusters' near dissolve; round 2: the facing clusters; p2: the edge-on fade; round 77b: the leaf-scale detail; round 77: wind, cluster shadows, translucency)
+      fm.customProgramCacheKey = () => 'world-tree-foliage-v25'; // trees round 4: the shrink after the wind; each material's near reach, gate lift and inside fade (round 3b: the clusters' near dissolve; round 2: the facing clusters; p2: the edge-on fade; round 77b: the leaf-scale detail; round 77: wind, cluster shadows, translucency)
       foliageMats[sp] = fm;
       // alpha-tested shadow casting: without this every card shadows as a quad.
       // r6: palm gets a HIGHER shadow alphaTest — its frond texture covers most
@@ -6449,7 +6466,7 @@ function* vegetationBuildSteps(
     material.defines = { ...(material.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2),
       COT_LEAF_BILLBOARD: GROWN_LEAF_BILLBOARD.toFixed(2) };
     engineCtx.setupShadowMaterial(material, shrubFoliageHook);
-    material.customProgramCacheKey = () => 'world-tree-foliage-v24';
+    material.customProgramCacheKey = () => 'world-tree-foliage-v25';
     const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map, alphaTest: 0.38 });
     retainedMaterials.push(material, depth);
     retainedTextures.push(map);
@@ -6482,7 +6499,7 @@ function* vegetationBuildSteps(
         const shrub = crown.clone();
         shrub.defines = { ...(crown.defines ?? {}) };
         engineCtx.setupShadowMaterial(shrub, shrubFoliageHook);
-        shrub.customProgramCacheKey = () => 'world-tree-foliage-v24';
+        shrub.customProgramCacheKey = () => 'world-tree-foliage-v25';
         retainedMaterials.push(shrub);
         bushMatCache = shrub;
       }
