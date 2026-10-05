@@ -458,6 +458,7 @@ region, registered in `index.ts`:
 | `bengal` | Jamuna chars: tin homesteads on earthen plinths, a tin bazaar, a mosque | Jade River Delta |
 | `franconian` | Kronach, Meissen: framed and rendered town houses, plain tiles | Steinburg |
 | `ksar` | Dahar plateau: vaulted ghorfa ranges, flat-roofed houses, a minaret | Sirocco Wadi |
+| `siwa` (in `ksar.ts`) | Siwa: kershef houses heaped in old Shali's battered blocks, palm-beam ends, the tapering mud minaret, a spring in its stone rim, palm-rib souk stalls (the ksar's stall and helpers shared; the ksar's output byte-identical) | Sunscar Oasis |
 | `wadirum` | Wadi Rum: block houses, rooftop tanks, the Desert Patrol fort | Redrock Divide |
 | `ruhr` | Ruhr and Silesian junctions: soot-dark brick, yellow-brick bands, slate | Cinder Junction |
 | `kohima` | Kohima 1944: bungalows under painted tin, a bazaar, Angami houses | Monsoon Ridge |
