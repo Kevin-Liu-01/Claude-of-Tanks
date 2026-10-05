@@ -453,7 +453,8 @@ float cloudDeckBroad( vec2 xz ) {
 	vec2 q = xz + uNoiseShift.xz;
 	float a = texture( tShape, vec3( q.x / 6000.0, 0.37, q.y / 6000.0 ) ).r;
 	float b = texture( tShape, vec3( q.x / 2500.0, 0.71, q.y / 2500.0 ) ).r;
-	return 1.0 + uDeckBroad * ( smoothstep( 0.2, 0.8, a * 0.6 + b * 0.4 ) - 0.5 ) * 2.0;
+	// (the two slices' blend runs p10 0.31, p50 0.42, p90 0.51 over the volume: centred and spread to about ±1)
+	return 1.0 + uDeckBroad * ( smoothstep( 0.30, 0.54, a * 0.6 + b * 0.4 ) - 0.5 ) * 2.0;
 }
 float cloudDeckLimb( float dy ) {
 	return mix( 1.0, 0.5 + 0.75 * clamp( dy, 0.0, 1.0 ), uDeckLimb );
