@@ -273,6 +273,14 @@ sheared to follow its slope (`wallSpanPlacement.ts` `fitWallSpan`). Every wall r
 its heads tumble out past them (and on snow maps lee and windward drifts and snow loads) by `maps/fieldWallDressing.ts`,
 through one owner (`createWallDressing`) on streams of their own; the sandbag nests are bedded in their spoil
 (`maps/sceneryKit.ts` `buildSandbagBedding`, the `props-sandbag-beds` mesh).
+The landmarks lane (2026-10-05): a map's set pieces — bridges, monuments, parks and squares, gates, towers and civic
+buildings — are `props.landmarks` entries built by `landmarks/` (`plan.ts` kinds and footprints, `kit.ts` the kernel over
+the regional part sink: revolved drums and domes, walls pierced by arches, porticos; one builder file per family) and
+placed by `landmarks/compose.ts` right after the settlement stands: merged into the props buckets, weathered by the
+map's kit, collision derived from the solids (a gate's piers and arch as separate solids so its passage stays open; a
+bridge's standable deck authored, its shells derived through `deriveRuntimeStructureShellBands`), its ground reserved
+from the later passes and its footprint kept clear of trees (`vegetationClearance.ts`). `landmarks.selftest.mjs` pins
+the budgets, collision, open gates, drivable decks and the pass; docs/MAP-LAYOUT-BRIEF.md "Set pieces" is the guide.
 A plan builder reads its battlefield through `structureBuildContext(buckets)`
 (`maps/exteriorDetailKit.ts`), never a positional argument; a part new to a
 builder's seeded stream is tagged `userData.uvJitter = 'none'`, a part that

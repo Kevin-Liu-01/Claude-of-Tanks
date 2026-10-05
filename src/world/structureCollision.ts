@@ -1046,6 +1046,13 @@ function deriveCollisionBands<T extends StructureCollisionRuntimeBand>(
   createBand: (active: LocalSolid[], minY: number, maxY: number, ground: boolean) => T,
 ): { contact: T; shell: T[] } {
   const contact = deriveContactBand(solids, createBand);
+  return { contact, shell: deriveShellBands(solids, createBand) };
+}
+
+function deriveShellBands<T extends StructureCollisionRuntimeBand>(
+  solids: LocalSolid[],
+  createBand: (active: LocalSolid[], minY: number, maxY: number, ground: boolean) => T,
+): T[] {
   const minY = Math.min(...solids.map((solid) => solid.minY));
   const maxY = Math.max(...solids.map((solid) => solid.maxY));
   const shell: T[] = [];
@@ -1070,7 +1077,7 @@ function deriveCollisionBands<T extends StructureCollisionRuntimeBand>(
     }
     shell.push(band);
   }
-  return { contact, shell };
+  return shell;
 }
 
 function footprintKey(part: SimpleCollisionShape): string {
@@ -1115,6 +1122,18 @@ export function deriveRuntimeStructureCollisionProfile(
   buckets: StructureGeometryBuckets,
 ): StructureCollisionRuntimeProfile {
   return deriveRuntimeCollisionBands(collectSolids(buckets));
+}
+
+/**
+ * The shell bands alone (the landmarks lane, 2026-10-05): a structure whose movement record is authored — a bridge's
+ * standable deck over a gully, which has no solid near the gully floor to make a ground-contact band — still takes its
+ * shells' and sight's bands from its geometry.
+ */
+export function deriveRuntimeStructureShellBands(buckets: StructureGeometryBuckets): StructureCollisionRuntimeBand[] {
+  const solids = collectSolids(buckets);
+  if (!solids.length) return [];
+  const projectedCache = new Map<LocalSolid, number[][]>();
+  return deriveShellBands(solids, (active, minY, maxY, ground) => makeRuntimeBand(active, minY, maxY, ground, projectedCache));
 }
 
 /** Exact full-profile contact result for consumers that do not use shell bands. */

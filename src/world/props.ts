@@ -51,6 +51,8 @@ import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/y
 import { applyRockShaderHook, boulderKindFor, buildBoulderForm, makeRockDetail, paintBoulder, rockDressingFor, rockLithologyFor } from './rockDressing.ts'; // round 75 item 6
 import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
+import { composeLandmarks } from './landmarks/compose.ts'; // the landmarks lane, 2026-10-05
+import type { LandmarkPlacement } from './landmarks/types.ts';
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
@@ -430,6 +432,9 @@ interface PropsSettings {
   rockTalusDeg?: number | null;
   extraKits?: readonly string[] | null;
   riverLandings?: readonly RiverLandingAnchor[];
+  /** The landmarks lane (2026-10-05): the map's set pieces — bridges, monuments, squares, gates, towers and civic
+   * buildings (src/world/landmarks/) — placed once the settlement stands, before every scatter pass. */
+  landmarks?: readonly LandmarkPlacement[];
 }
 
 /** One planned building as a recorded build seated it (PropsMapConfig.townPlan; maps/townPlans.generated.ts): its
@@ -469,6 +474,8 @@ interface PlacedRadius {
   x: number;
   z: number;
   rr: number;
+  /** A set piece's reserved ground (the landmarks pass): kept clear by every later pass, never dressed as a yard. */
+  landmark?: true;
 }
 
 interface DecorationGroundingReceipt {
@@ -4458,6 +4465,24 @@ ${snowCap ? `
   }
   moveBuildingsOffCarriageways();
 
+  // The landmarks lane (2026-10-05): the map's set pieces (src/world/landmarks/compose.ts), once the settlement stands
+  // and before the strongpoints, the light buildings and every scatter pass, which keep off the ground each reserves.
+  // Built from streams of their own; a map without set pieces runs nothing here.
+  function* placeLandmarks(): Generator<PropsBuildSlice, void, void> {
+    if (!P.landmarks?.length) return;
+    const receipt = yield* composeLandmarks({
+      mapId, landmarks: P.landmarks, heightField, spawns: [L.spawns.player, ...L.spawns.enemies],
+      obstacles, colliders, architecture: regionalArchitecture, snowCap: structureContext.snowCap, seed,
+      tier: mobileProps ? 'mobile' : 'desktop',
+      merge: (parts, matrix) => mergeInto(buckets, parts as unknown as PropsBuckets, matrix),
+      reserve: (x, z, r) => { placedB.push({ x, z, rr: r, landmark: true }); },
+      publish: (x, z, w, d, rot, kind) => { buildingFeatures.push({ x, z, w, d, rot, kind }); },
+      addDestructible: (kind, x, y, z, yaw, scale) => { addDestructible(kind, x, y, z, yaw, scale); },
+    });
+    group.userData.landmarks = receipt;
+  }
+  yield* placeLandmarks();
+
   // the scenery lane (wave 34, "a stacked prop on a bare mound — no berm, trench or spilled sand"): each nest's spoil
   // banked against it and the spill of a burst bag (sceneryKit.ts buildSandbagBedding), a stream of its own named by
   // its place, in the map's soil (its earth on an arid map); drawn as one receive-only mesh of their own
@@ -4775,6 +4800,7 @@ ${snowCap ? `
       }
     };
     for (const building of placedB) {
+      if (building.landmark) continue; // a set piece keeps its own ground (the landmarks pass)
       placeYardFirewood(building);
       placeYardBarrels(building);
       placeYardTrough(building);
@@ -5134,6 +5160,7 @@ ${snowCap ? `
       for (let t = 0, placed = 0; t < potCount * 16 && placed < potCount; t++) {
         const pb = placedB.length ? placedB[(drng() * placedB.length) | 0] : null;
         if (!pb) break;
+        if (pb.landmark) continue;
         const a = drng() * Math.PI * 2, r = pb.rr + 0.8 + drng() * 2.6;
         const x = pb.x + Math.cos(a) * r, z = pb.z + Math.sin(a) * r;
         if (heightField._roadDist(x, z) < 3.6 || noVeg(x, z)) continue;
@@ -5393,6 +5420,7 @@ ${snowCap ? `
     const hayCrateSites = Math.max(0, Math.round(P.hayCrateSites ?? HAY_CRATE_SITES[mapId] ?? 5));
     for (let i = 0; P.hayCrates && i < Math.min(hayCrateSites, placedB.length); i++) {
       const pb = placedB[i];
+      if (pb.landmark) continue;
       const n = 1 + ((rng() * 3) | 0);
       for (let k = 0; k < n; k++) {
         const a = rng() * Math.PI * 2, r = pb.rr + 2 + rng() * 4;
@@ -7480,6 +7508,7 @@ ${snowCap ? `
       apronGeos: THREE.BufferGeometry[],
     ): Generator<PropsBuildSlice, void, void> {
       for (const building of buildingFeatures) {
+        if (building.kind?.startsWith('landmark:')) continue; // a set piece is grounded by its own plinths
         if (P.streetRows) {
           apronGeos.push(conformedRect(building.x, building.z,
             building.w / 2 + 2.8, building.d / 2 + 2.8, building.rot || 0));

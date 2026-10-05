@@ -5763,7 +5763,7 @@ function* vegetationBuildSteps(
   // gives; no other map publishes one.
   // The scenery lane (2026-10-03): a map's rock formations and landmarks claim their ground from the config alone.
   const placedClearances = placedStructureClearances((cfg as { id?: string } | null)?.id, heightField,
-    cfg?.props?.riverLandings ?? [], (cfg as SceneryMapConfig | null)?.scenery);
+    cfg?.props?.riverLandings ?? [], (cfg as SceneryMapConfig | null)?.scenery, cfg?.props?.landmarks);
   const structureClearances = [...createStructureClearances(
     cfg?.props?.tacticalBeats ?? [], DESTRUCTIBLE_BUILDING_TYPES,
   ), ...placedClearances];
