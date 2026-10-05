@@ -51,6 +51,7 @@ the fictional map reproduces a particular real-world location.
 | mangrove | Open estuary sectors, low islands and elongated natural levees. |
 | saltwind | Western limestone bay with an open sea sector and stepped scrub headlands. |
 | reservoir | Waterworks basin framed by unequal reservoir-aligned ridges and tributary shoulders. |
+| cliffbridge | Ronda and the Tajo of the Guadalevín (Málaga), map revival 2026-10-05: a limestone tableland cut by a gorge, the white bridgehead towns of the Serranía (the Andalusian kit: limewash under canal tiles, rejas and iron balconies, the arcaded casa consistorial, the stone church and belfry, cortijos round their patios), olive groves on the terraces, holm oak and cypress. |
 
 ## Order and acceptance
 

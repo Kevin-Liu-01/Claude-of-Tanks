@@ -21,7 +21,7 @@
 // walls.
 
 export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst'
-  | 'brownfield' | 'coalfield';
+  | 'brownfield' | 'coalfield' | 'secano';
 
 /** How a region's fields are bounded (the material's uLandE.z). */
 export type LandBoundary = 'margin' | 'ditch' | 'bund' | 'wall';
@@ -155,12 +155,16 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // a coalfield valley's farmland (the Ruhr's, Silesia's, the Valleys'): pasture and rough grazing gone ruderal round the
   // pits, small arable fields, and here and there a plot of tipped slag
   coalfield: [[0, 0.26], [17, 0.22], [4, 0.14], [5, 0.14], [1, 0.12], [3, 0.06], [15, 0.06]],
+  // the secano of the Ronda tableland (map revival lane 2, 2026-10-05): dry-farmed campiña — wheat and barley ripe
+  // and cut, the stubble, the fallow turned, the barbecho grazed, the plateau's vines, a field of sunflower
+  secano: [[1, 0.28], [2, 0.16], [5, 0.22], [4, 0.14], [0, 0.10], [12, 0.06], [6, 0.04]],
 });
 
 /** Each region's field boundary. */
 const BOUNDARIES: Readonly<Record<LandRegion, LandBoundary>> = Object.freeze({
   steppe: 'margin', bocage: 'margin', temperate: 'margin', upland: 'margin', strip: 'margin',
   polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin',
+  secano: 'margin',
 });
 
 /** The rotation's cumulative shares at slots 0..5 (slot 6 takes the rest), normalised. */
@@ -241,6 +245,13 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   railyard: {
     strength: 0.65, heading: 0.066, blockU: 84, blockV: 52, maxSplit: 3, marginM: 1.5, trackShare: 0.3, hedgeShare: 0.3,
     warpM: 14, region: 'coalfield', salt: 97,
+  },
+  // Aegis Crossing (cliffbridge: Ronda and the Tajo, map revival lane 2, 2026-10-05): the open campiña of the tableland
+  // in big dry-farmed blocks along the main road's north-south line (its length-weighted heading), tracks along many of
+  // the long lines, almost no hedges (open country); the plough on the map's own soil layer (no per-region soil tone)
+  cliffbridge: {
+    strength: 1, heading: 1.571, blockU: 170, blockV: 110, maxSplit: 3, marginM: 2.0, trackShare: 0.4, hedgeShare: 0.05,
+    warpM: 20, region: 'secano', salt: 103,
   },
 });
 

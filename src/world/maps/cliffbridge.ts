@@ -23,6 +23,16 @@
 // 610 m from the deck's end to the floor beside the viaduct, against 200 m over the deck. The zone-control discs stand
 // on the two market squares and on the gorge floor west of the viaduct, where the mills stood; the turbo-ball kickoff
 // on the gorge floor east of it.
+//
+// The towns and the country (map revival lane 2, 2026-10-05; the owner: every map as new as Verdant): the Andalusian
+// kit (maps/regional/andalusian.ts) builds every planned site as the Serranía's own — the casa consistorial arcaded on
+// each square under its clock and bell gable where the old kit's domed hall stood, the stone parish church and its
+// belfry, the Nasrid wall tower at the bridgehead, the whitewashed town houses with their rejas and iron balconies, the
+// posada with its cart gate, the escuelas, the white hermitage with its bell gable, the cortijos round their patios with
+// their barns and dovecotes, the ruined flour mills on the gorge floor. Every building stands where it stood. The country
+// is the tableland's: olive groves stepping down the west terraces, holm oak in the stands and on the uplands, poplars in
+// the river's bottomland, cypresses by the hermitages and on the cortijos' drives, the scrub wild olive; the grain
+// standing and stacked on the tableland.
 import verdant from './verdant.ts';
 import type { MapCompositionConfig } from './contracts.ts';
 
@@ -149,8 +159,37 @@ export default {
   },
   splat: {...verdant.splat, sourcedPalette:'verdant', fieldPatch:.35,
     tintA:[.94,1.04,.87],tintB:[.82,.91,.74],tintC:[1,1.05,.88],roadTint:[.83,.80,.70]},
-  vegetation: {...verdant.vegetation,clusterCount:60,loneCount:130,rimCount:95,grassDensity:1,bushCount:.8},
+  // map revival lane 2 (2026-10-05): the Serranía de Ronda's trees. The acacia slot grows as the olive (silver-grey), the
+  // oak slot as the holm oak (the encina, dull dark grey-green), the poplars stay poplars, the cypress is the cypress;
+  // the scrub grows as the olive's sprays (wild olive and lentisk)
+  vegetation: {
+    species: ['acacia', 'oak', 'poplar', 'cypress'],
+    clusterMix: [['acacia', 0.42], ['oak', 0.38], ['poplar', 0.2]],
+    loneMix: [['acacia', 0.44], ['oak', 0.3], ['poplar', 0.12], ['cypress', 0.14]],
+    rimMix: [['oak', 0.58], ['acacia', 0.3], ['cypress', 0.12]],
+    clusterCount: 60, loneCount: 110, rimCount: 95, grassDensity: 1, bushCount: 0.8, bushSpecies: 'acacia',
+    palettes: {
+      acacia: { form: 'olive', cardHue: 0.3, cardSat: 0.06,
+        texTone: (_h: number, s: number, l: number): [number, number, number] => [0.28, Math.min(1, s * 0.5), Math.min(1, l * 1.12)] },
+      oak: { form: 'holmOak', cardHue: 0.25, cardSat: 0.09,
+        texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.68), l] },
+    },
+    // planted lines (real cover: belts go through the tree admission), each with its mirror across the gorge: the olive
+    // groves' rows on the west terraces (between the rim bank and the upper terrace, and below the lower one), the
+    // cypresses round the hermitage and on the cortijos' drives
+    belts: [-1, 1].flatMap((side) => [
+      ...[-9, 0, 9].map((o) => ({ x0: -258 - o * 0.21, z0: side * (-152 + o * 0.98), x1: -182 - o * 0.21, z1: side * (-136 + o * 0.98),
+        gap: 9.5, jitter: 1.2, skip: 0.08, species: 'acacia' as const })),
+      ...[-9, 0, 9].map((o) => ({ x0: -205 - o * 0.41, z0: side * (-322 + o * 0.91), x1: -150 - o * 0.41, z1: side * (-300 + o * 0.91),
+        gap: 9.5, jitter: 1.2, skip: 0.08, species: 'acacia' as const })),
+      { x0: -177, z0: side * -262, x1: -177, z1: side * -230, gap: 5.5, jitter: 0.5, skip: 0.05, species: 'cypress' as const },
+      { x0: -250, z0: side * -246, x1: -236, z1: side * -266, gap: 6, jitter: 0.5, skip: 0.05, species: 'cypress' as const },
+      { x0: 342, z0: side * -140, x1: 352, z1: side * -128, gap: 6, jitter: 0.5, skip: 0.05, species: 'cypress' as const },
+    ]),
+  },
   props: {
+    // map revival lane 2 (2026-10-05): the Andalusian kit (maps/regional/andalusian.ts)
+    architecture: 'andalusian',
     // Every building is an authored site (the towns are mirror images), so the roadside builder places none.
     plan: [],
     plannedSites: [...SOUTH_TOWN, ...SOUTH_TOWN.map(mirrorSite), ...MILLS, ...SOUTH_FARMS,
@@ -180,10 +219,18 @@ export default {
     ],
     // no overhead line along the main road: it runs over the viaduct and through the two old squares
     well: false, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
-    haystacks: 14, rocks: 180, outcrops: 38, craters: 8, rubblePiles: 0, hedgehogs: 4, sandbagLines: 6, cropFields: 3,
+    haystacks: 14, rocks: 180, outcrops: 38, craters: 8, rubblePiles: 0, hedgehogs: 4, sandbagLines: 6, cropFields: 8,
     tankWrecks: verdant.props.tankWrecks,
     wallStyle: 'fieldstone',
     inhabit: { ...verdant.props.inhabit, stalls: 2, benches: 2, coreClutter: 6 },
+  },
+  // map revival lane 2 (2026-10-05): the tableland's harvest — straw stacks on the grain fields, each with its mirror
+  scenery: {
+    landmarks: [-1, 1].flatMap((side) => [
+      { kind: 'strawstack' as const, x: 168, z: side * -332, yawDeg: 20, name: 'the straw stack on the east tableland' },
+      { kind: 'strawstack' as const, x: 214, z: side * -350, yawDeg: 64, name: 'the second stack on the east tableland' },
+      { kind: 'strawstack' as const, x: -200, z: side * -350, yawDeg: -15, name: 'the straw stack below the swell' },
+    ]),
   },
   // the mountains lane (2026-10-03, gauntlet wave 15): wooded uplands round the gorge (not Verdant's plain)
   horizon:{...verdant.horizon,amp:1.1,baseHex:0x456a38,rockHex:0x777c70,treeline:.95,haze:.7,panorama:{regional:'upland'}},
