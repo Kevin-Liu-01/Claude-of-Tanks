@@ -42,6 +42,17 @@ splice(/const wallBucket = pickWall\(rng\);(\s*)const info = builder\(rng, tmp, 
 splice(/(\n\s*)if \(!explicitStructure\) bi\+\+;\n(\s*)return true;/,
   (_m, lead, tail) => `${lead}((globalThis as unknown as { __townRecord?: unknown[] }).__townRecord ??= []).push({ structure: structureId, planIndex: bi, wall: recWall, rng: recState, x: px, z: pz, rot });${lead}if (!explicitStructure) bi++;\n${tail}return true;`,
   'the planned building count');
+// the street rows (the map-revival lane, 2026-10-05): the props stream's state before a row's builder, the row as it
+// is counted, and its rubble's seat, size and the street stream's state before the pile
+splice(/(\n\s*)const info = ruined\n(\s*)\? makeRuin\(rng, tmp\)/,
+  (_m, lead, mid) => `${lead}const recRowState = (rng as unknown as { state: () => number }).state();${lead}const info = ruined\n${mid}? makeRuin(rng, tmp)`,
+  'the street row builder call');
+splice(/(\n\s*)addStructureCollision\(ruined \? 'ruin' : 'rowhouse', tmp, x, fit\.y \+ 0\.05, z, rot\);/,
+  (_m, lead) => `${lead}((globalThis as unknown as { __townRows?: unknown[] }).__townRows ??= []).push({ x, z, rot, w: width, d: depth, ruined, wall: rowWall, rng: recRowState });${lead}addStructureCollision(ruined ? 'ruin' : 'rowhouse', tmp, x, fit.y + 0.05, z, rot);`,
+  'the street row as it is counted');
+splice(/(\n\s*)addRubblePile\(seat\[0\], seat\[1\], pr, srng\);/,
+  (_m, lead) => `${lead}{ const rows = (globalThis as unknown as { __townRows?: Record<string, unknown>[] }).__townRows; const last = rows?.[rows.length - 1]; if (last) Object.assign(last, { rubbleX: seat[0], rubbleZ: seat[1], rubbleR: pr, rubbleRng: (srng as unknown as { state: () => number }).state() }); }${lead}addRubblePile(seat[0], seat[1], pr, srng);`,
+  'the street row rubble pile');
 // the light-building pass's placement, as it is placed
 splice(/(\n\s*)addDestructible\(kind, x, fit\.y \+ 0\.04, z, rot\);/,
   (_m, lead) => `${lead}((globalThis as unknown as { __townLight?: unknown[] }).__townLight ??= []).push({ kind, x, z, rot });${lead}addDestructible(kind, x, fit.y + 0.04, z, rot);`,
@@ -66,10 +77,14 @@ try {
     const flora = vegetation.createVegetation(field, engine, 2001, config);
     globalThis.__townRecord = [];
     globalThis.__townLight = [];
+    globalThis.__townRows = [];
     props.createProps(field, engine, 2002, config, flora);
     const pose = (entry) => ({ ...entry,
       x: Math.round(entry.x * 1e6) / 1e6, z: Math.round(entry.z * 1e6) / 1e6, rot: Math.round(entry.rot * 1e9) / 1e9 });
-    result[mapId] = { buildings: globalThis.__townRecord.map(pose), light: globalThis.__townLight.map(pose) };
+    const rowPose = (entry) => ({ ...pose(entry), w: Math.round(entry.w * 1e6) / 1e6, d: Math.round(entry.d * 1e6) / 1e6,
+      ...(entry.rubbleX !== undefined ? { rubbleX: Math.round(entry.rubbleX * 1e6) / 1e6, rubbleZ: Math.round(entry.rubbleZ * 1e6) / 1e6,
+        rubbleR: Math.round(entry.rubbleR * 1e9) / 1e9 } : {}) });
+    result[mapId] = { buildings: globalThis.__townRecord.map(pose), light: globalThis.__townLight.map(pose), rows: globalThis.__townRows.map(rowPose) };
   }
   if (writeTo) writeFileSync(path.resolve(writeTo), generatedModule(result));
   else process.stdout.write(`${JSON.stringify(result, null, 1)}\n`);

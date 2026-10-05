@@ -349,6 +349,18 @@ interface PropsSettings {
    * building's kind and final pose as that build placed it. They stand there whatever the ground has become, and the
    * light-building pass draws nothing. */
   townLightPlan?: readonly TownLightEntry[];
+  /** The street rows of a recorded settlement (maps/townPlans.generated.ts TOWN_ROW_PLANS; the map-revival lane,
+   * 2026-10-05): each row building's pose, plot, wall, ruin and the props stream's state before its builder, and its
+   * rubble's seat, size and the street stream's state before it. They stand there whatever the ground has become, and
+   * the street-row pass draws nothing. */
+  townRowPlan?: readonly TownRowEntry[];
+  /**
+   * The map-revival lane (2026-10-05, Suzhou Creek): a water course (the map's liquid marsh chain) laid through a
+   * recorded settlement (townPlan, townRowPlan, townLightPlan). What its water reaches leaves it: a planned building is
+   * packed for the carriageway post-pass (its new place dry, looked for out to 80 m), a street row or a light building
+   * is left out. Every other recorded building stands where it stood. Default off.
+   */
+  settlementOverWater?: boolean;
   tones: Record<string, ToneFunction | null | undefined>;
   rockTone: ToneFunction | null;
   wallStoneChance: number;
@@ -410,15 +422,6 @@ interface PropsSettings {
     { x: number; z: number; r: number } | { x0: number; z0: number; x1: number; z1: number })[];
   ruinChance?: number;
   blockFill?: boolean;
-  /**
-   * The map-revival lane (2026-10-05, Suzhou Creek): a water course (the map's liquid marsh chain) laid through a
-   * settlement that stood without it. Every placement decision stays the dry settlement's: the course's channel is not
-   * no-build ground to the placement, and a footprint reaching into it takes no ground-spread rejection (the dip the
-   * channel cuts is not the plot's slope), so every building clear of the water stands where it stood. What the water
-   * reaches leaves it: a planned building is packed for the carriageway post-pass (its new place dry), a street row or a
-   * light building is left out, its draws, its reservation and its strip kept so nothing after it moves. Default off.
-   */
-  settlementOverWater?: boolean;
   destructibleBuildingLat?: readonly [number, number];
   yardClutter?: boolean;
   /** Round 75: the industrial halls' cladding — the brick / stone default or corrugated sheet (Whiteout's station). */
@@ -449,6 +452,14 @@ export interface TownPlanEntry {
 
 /** One light (destructible) building as a recorded build seated it (PropsMapConfig.townLightPlan): its kind and pose. */
 export interface TownLightEntry { kind: string; x: number; z: number; rot: number; }
+
+/** One street-row building as a recorded build seated it (PropsMapConfig.townRowPlan): its pose, its plot, whether it
+ * stood ruined, its wall, the props stream's state before its builder, and its rubble's seat, size and the street
+ * stream's state before it (absent when it spilled none). */
+export interface TownRowEntry {
+  x: number; z: number; rot: number; w: number; d: number; ruined: boolean; wall: string; rng: number;
+  rubbleX?: number; rubbleZ?: number; rubbleR?: number; rubbleRng?: number;
+}
 
 export interface PropsMapConfig {
   id: string;
@@ -3803,22 +3814,8 @@ ${snowCap ? `
   const builders = P.plan.map((n) => BUILDER_BY_NAME[n] || makeCottage);
   let bi = 0;
   const placedB: PlacedRadius[] = [];
-  // props.settlementOverWater (Suzhou Creek): the course's channel (its marsh cells, as noVeg reads a liquid one), the
-  // placement's no-build ground without it, and whether a footprint reaches the channel or its water
+  // props.settlementOverWater (Suzhou Creek): whether a footprint (grown by a metre) reaches the course's water
   const overWater = !!P.settlementOverWater;
-  const courseCells = overWater ? (L.marshes ?? []) : [];
-  const inCourse = (x: number, z: number, pad = 0): boolean =>
-    courseCells.some((m) => (x - m.x) * (x - m.x) + (z - m.z) * (z - m.z) < (m.r + pad) * (m.r + pad));
-  const noVegPlace = overWater ? (x: number, z: number): boolean => noVeg(x, z) && !inCourse(x, z) : noVeg;
-  // (the bridges' decks and the ramps graded up to them are the course's too: the ground beside a ramp rose with it)
-  const courseDecks = overWater ? (heightField.bridgeDecks ?? []) : [];
-  const nearDeck = (x: number, z: number, pad: number): boolean => courseDecks.some((deck) => {
-    const ox = x - deck.x, oz = z - deck.z;
-    return Math.abs(ox * deck.ux + oz * deck.uz) < deck.halfLength + (deck.approachM ?? 0) + pad
-      && Math.abs(-ox * deck.uz + oz * deck.ux) < deck.halfWidth + pad + 10;
-  });
-  const footprintNearCourse = (x: number, z: number, w: number, d: number): boolean =>
-    overWater && (inCourse(x, z, Math.hypot(w, d) / 2 + 1) || nearDeck(x, z, Math.hypot(w, d) / 2 + 1));
   const footprintWet = (x: number, z: number, w: number, d: number, rot: number): boolean => {
     if (!overWater) return false;
     const c = Math.cos(rot), sn = Math.sin(rot);
@@ -3914,7 +3911,7 @@ ${snowCap ? `
     addCatalogExterior(tmp, { id: structureId, info, variant: bi,
       bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
     let fit = groundFit(px, pz, info.w, info.d, rot);
-    if (fit.spread > P.maxSpread && !footprintNearCourse(px, pz, info.w, info.d)) return false;
+    if (fit.spread > P.maxSpread) return false;
     jitterBuildingUvs(tmp);
     // Keep the original eligibility/build/UV draws. Only an already accepted
     // ordinary roadside building can change parcel-facing; block fill and
@@ -3939,12 +3936,11 @@ ${snowCap ? `
         const cornersDry = [-1, 1].every(sx => [-1, 1].every(sz => {
           const x = proposed.x + sx * w / 2 * c + sz * d / 2 * s;
           const z = proposed.z - sx * w / 2 * s + sz * d / 2 * c;
-          return x >= town.x0 && x <= town.x1 && z >= town.z0 && z <= town.z1 && !noVegPlace(x, z);
+          return x >= town.x0 && x <= town.x1 && z >= town.z0 && z <= town.z1 && !noVeg(x, z);
         }));
         const revisedFit = groundFit(proposed.x, proposed.z, w, d, proposed.rot);
         const radius = Math.hypot(w, d) / 2;
-        if (cornersDry && !noVegPlace(proposed.x, proposed.z)
-          && (revisedFit.spread <= P.maxSpread || footprintNearCourse(proposed.x, proposed.z, w, d))
+        if (cornersDry && !noVeg(proposed.x, proposed.z) && revisedFit.spread <= P.maxSpread
           && !conflictsTacticalReservation(proposed.x, proposed.z, radius)
           && placedB.every(p => Math.hypot(proposed.x - p.x, proposed.z - p.z) >= p.rr + radius + 1)) {
           px = proposed.x; pz = proposed.z; rot = proposed.rot; fit = revisedFit; return true;
@@ -3981,9 +3977,7 @@ ${snowCap ? `
     // a building that stands in a carriageway is packed for the move after every settlement building stands; whether it
     // stands there, and the footprint it moves with, are the base geometry's, so a kit never changes which buildings move
     // or how far (the map-revival lanes, 2026-10-05: the owner's town-plan ruling)
-    // (props.settlementOverWater: one the course's water reaches is packed alike, its new place dry)
-    const carriageway = (fromRoad && P.roadBuildingClearance ? carriagewayFootprint(tmp, info, px, pz, rot) : null)
-      ?? (footprintWet(px, pz, info.w, info.d, rot) ? footprintOf(tmp, info) : null);
+    const carriageway = fromRoad && P.roadBuildingClearance ? carriagewayFootprint(tmp, info, px, pz, rot) : null;
     if (regionalArchitecture && !regionalDonor) {
       const rebuilt = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
         { mapId, snowCap: structureContext.snowCap, seed }, px, pz, rot);
@@ -4036,7 +4030,7 @@ ${snowCap ? `
     const px = cand.x - cand.tz * side * lat;
     const pz = cand.z + cand.tx * side * lat;
     if (px < town.x0 || px > town.x1 || pz < town.z0 || pz > town.z1) return;
-    if (heightField._roadDist(px, pz) < 7.5 || noVegPlace(px, pz)) return;
+    if (heightField._roadDist(px, pz) < 7.5 || noVeg(px, pz)) return;
     if (P.roadBuildingKeepouts?.some((keep) => Math.hypot(px - keep.x, pz - keep.z) < keep.r)) return;
     if (conflictsTacticalReservation(px, pz) || !isRoadBuildingSiteClear(px, pz)) return;
     const rot = Math.atan2(cand.tx, cand.tz) + (rng() - 0.5) * 0.10;
@@ -4077,7 +4071,9 @@ ${snowCap ? `
     const regionalDonor = !!foundryDonors
       && !!P.foundryServiceCourt?.sites.some(site => site.planIndex === entry.planIndex && site.kind === entry.structure);
     // (the carriageway footprint is the base geometry's, as for a generated building)
-    const carriageway = P.roadBuildingClearance ? carriagewayFootprint(tmp, info, entry.x, entry.z, entry.rot) : null;
+    // (props.settlementOverWater: one the course's water reaches is packed alike, its new place dry)
+    const carriageway = (P.roadBuildingClearance ? carriagewayFootprint(tmp, info, entry.x, entry.z, entry.rot) : null)
+      ?? (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot) ? footprintOf(tmp, info) : null);
     if (regionalArchitecture && !regionalDonor) {
       tmp = rebuildRegionalStructure(regionalArchitecture, entry.structure, tmp, info, entry.wall,
         { mapId, snowCap: structureContext.snowCap, seed }, entry.x, entry.z, entry.rot) ?? tmp;
@@ -4194,6 +4190,37 @@ ${snowCap ? `
   // heights/facades, the odd collapsed slot spilling rubble into the street ---
   function* placeStreetRows(): Generator<PropsBuildSlice, void, void> {
     if (!P.streetRows) return;
+    // a recorded settlement's rows stand at their recorded poses from their own streams, and the pass draws nothing
+    // (props.townRowPlan; props.settlementOverWater leaves out a row its water reaches, and its rubble)
+    if (P.townRowPlan) {
+      for (const entry of P.townRowPlan) {
+        const stream = mulberry32(entry.rng);
+        let tmp: PropsBuckets = {
+          plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
+          glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
+        };
+        const info = entry.ruined ? makeRuin(stream, tmp)
+          : makeRowhouse(stream, tmp, entry.wall, { w: entry.w, d: entry.d, lowContrastTrim: mapId === 'ruinspires' });
+        const fit = groundFit(entry.x, entry.z, info.w, info.d, entry.rot);
+        jitterBuildingUvs(tmp, stream);
+        if (footprintWet(entry.x, entry.z, info.w, info.d, entry.rot)) continue;
+        if (regionalArchitecture) {
+          tmp = rebuildRegionalStructure(regionalArchitecture, entry.ruined ? 'ruin' : 'rowhouse', tmp, info, entry.wall,
+            { mapId, snowCap: structureContext.snowCap, seed }, entry.x, entry.z, entry.rot) ?? tmp;
+        }
+        addStructureCollision(entry.ruined ? 'ruin' : 'rowhouse', tmp, entry.x, fit.y + 0.05, entry.z, entry.rot);
+        _quat.setFromAxisAngle(_upAxis, entry.rot);
+        _mat4.compose(_posv.set(entry.x, fit.y + 0.05, entry.z), _quat, _one);
+        mergeInto(buckets, tmp, _mat4);
+        buildingFeatures.push({ x: entry.x, z: entry.z, w: info.w, d: info.d, rot: entry.rot });
+        placedB.push({ x: entry.x, z: entry.z, rr: Math.max(info.w, info.d) * 0.75 });
+        if (entry.rubbleRng !== undefined && entry.rubbleX !== undefined && entry.rubbleZ !== undefined && entry.rubbleR !== undefined) {
+          addRubblePile(entry.rubbleX, entry.rubbleZ, entry.rubbleR, mulberry32(entry.rubbleRng));
+        }
+        yield { fine: true };
+      }
+      return;
+    }
     const srng = mulberry32(seed + 505);
     interface StreetBounds { x: number; z: number; hx: number; hz: number }
     type RoadPoint = [number, number, number, number];
@@ -4228,7 +4255,7 @@ ${snowCap ? `
       depth: number,
     ): boolean => distToOtherRoads(x, z, roadIndex) < 9.5
       || Math.hypot(x - junction.x, z - junction.z) < 26
-      || noVegPlace(x, z)
+      || noVeg(x, z)
       || conflictsTacticalReservation(x, z, Math.hypot(width, depth) * 0.5)
       || (P.streetRowKeepouts?.some((keep) => {
         const reach = Math.hypot(width, depth) * 0.5;
@@ -4294,16 +4321,8 @@ ${snowCap ? `
           w: width, d: depth, lowContrastTrim: mapId === 'ruinspires',
         });
       const fit = groundFit(x, z, info.w, info.d, rot);
-      if (fit.spread > 3.2 && !footprintNearCourse(x, z, info.w, info.d)) return distance + width;
+      if (fit.spread > 3.2) return distance + width;
       jitterBuildingUvs(tmp);
-      // (props.settlementOverWater: a row the course's water reaches is left out; its reservation, its strip and its
-      // rubble's draws stand as they stood, so the rows after it keep their places)
-      if (footprintWet(x, z, info.w, info.d, rot)) {
-        placedB.push({ x, z, rr: Math.max(info.w, info.d) * 0.75 });
-        stripAABBs.push({ x, z, hx, hz });
-        addStreetRubble(ruined, rx, rz, nx, nz, offset, depth);
-        return distance + width - 0.25;
-      }
       // regional-buildings lane: the street row's draws and pose are settled; the map's kit swaps in its row house
       if (regionalArchitecture) {
         tmp = rebuildRegionalStructure(regionalArchitecture, ruined ? 'ruin' : 'rowhouse', tmp, info, rowWall,
@@ -4417,7 +4436,7 @@ ${snowCap ? `
       if (bi >= builders.length) return;
       const px = gx + (brng() - 0.5) * 10, pz = gz + (brng() - 0.5) * 10;
       const roadDistance = heightField._roadDist(px, pz);
-      if (roadDistance < 11 || roadDistance > 60 || noVegPlace(px, pz)) return;
+      if (roadDistance < 11 || roadDistance > 60 || noVeg(px, pz)) return;
       if (conflictsTacticalReservation(px, pz)) return;
       if (Math.hypot(px - junction.x, pz - junction.z) < 24) return;
       if (!isRoadBuildingSiteClear(px, pz)) return;
@@ -4599,6 +4618,8 @@ ${snowCap ? `
         const meta = DESTRUCTIBLE_BUILDING_TYPES[entry.kind];
         if (!meta) continue;
         const fit = groundFit(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot);
+        // (props.settlementOverWater: one the course's water reaches is left out)
+        if (footprintWet(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot)) continue;
         addDestructible(entry.kind, entry.x, fit.y + 0.04, entry.z, entry.rot);
         buildingFeatures.push({ x: entry.x, z: entry.z, w: meta.hw * 2, d: meta.hl * 2, rot: entry.rot });
         placedB.push({ x: entry.x, z: entry.z, rr: Math.hypot(meta.hw, meta.hl) * 0.72 });
@@ -4638,13 +4659,11 @@ ${snowCap ? `
         const margin = Math.max(meta.hw, meta.hl) + 2;
         const outsideVillage = x < town.x0 + margin || x > town.x1 - margin
           || z < town.z0 + margin || z > town.z1 - margin;
-        if (outsideVillage || Math.hypot(x - junction.x, z - junction.z) < 18 || noVegPlace(x, z)) continue;
+        if (outsideVillage || Math.hypot(x - junction.x, z - junction.z) < 18 || noVeg(x, z)) continue;
         const fit = groundFit(x, z, meta.hw * 2, meta.hl * 2, rot);
-        if (fit.spread > Math.max(P.maxSpread, 1.9) && !footprintNearCourse(x, z, meta.hw * 2, meta.hl * 2)) continue;
+        if (fit.spread > Math.max(P.maxSpread, 1.9)) continue;
         const blocked = placedB.some((placed) => Math.hypot(x - placed.x, z - placed.z) < placed.rr + rr + 2.0);
         if (blocked) continue;
-        // (props.settlementOverWater: one the course's water reaches is left out, its reservation kept)
-        if (footprintWet(x, z, meta.hw * 2, meta.hl * 2, rot)) { placedB.push({ x, z, rr }); return; }
         addDestructible(kind, x, fit.y + 0.04, z, rot);
         buildingFeatures.push({ x, z, w: meta.hw * 2, d: meta.hl * 2, rot });
         placedB.push({ x, z, rr });

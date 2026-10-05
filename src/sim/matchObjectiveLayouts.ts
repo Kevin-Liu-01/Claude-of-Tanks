@@ -18,6 +18,11 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // (level aprons in the map file) and the gorge floor west of the viaduct, where the mills stood; the turbo-ball
   // kickoff on the gorge floor east of it. Both teams reach the floor from the fords at the gorge's two ends.
   cliffbridge: { kickoff: { x: 130, z: 0 }, zones: [{ x: 0, z: -172 }, { x: 0, z: 172 }, { x: -130, z: 0 }] },
+  // Suzhou Creek (the map-revival lane, 2026-10-05): the creek runs between the deployments, alpha's side owning the west
+  // bridge and bravo's the three others; the discs stand on the line of equal driven distance on both banks — the west
+  // bank's open ground north of the creek (alpha crosses for it), the waterfront south of the diagonals' crossing and
+  // the east quarter's yards (bravo crosses for them); the kickoff between them on the south bank.
+  blackglass: { kickoff: { x: -97, z: -7 }, zones: [{ x: -285, z: 33 }, { x: 34, z: -50 }, { x: 140, z: -34 }] },
   // Amberford (layout brief, 2026-10-03): the three greens — the sunken lane's green in the south-bank orchards near the
   // southern deployment, the ford green on the line of equal drives and the fair green near the northern arc; the
   // kickoff on the north-bank meadow between the bridge and the ford (2026-10-03: 8 m north, where the bounded search

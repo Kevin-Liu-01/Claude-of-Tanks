@@ -4,6 +4,7 @@
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { createMarshChannel } from './marshChannel.ts';
+import { TOWN_LIGHT_PLANS, TOWN_PLANS, TOWN_ROW_PLANS } from './townPlans.generated.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -13,16 +14,16 @@ const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 // resolves each `crossing: 'bridge'` station's deck from the road and the wet reach; the street kit dresses them).
 // Elsewhere the creek is soft water a hull fords slowly.
 const CREEK_STATIONS = [
-  { x: -512, z: 35 }, { x: -420, z: 38 }, { x: -330, z: 43 }, { x: -262, z: 51 },
-  { x: -206.8, z: 60, r: 14, dip: 1.2, crossing: 'bridge' as const }, // road 4's bridge
-  { x: -150, z: 76 }, { x: -100, z: 92 },
-  { x: -65.2, z: 100, r: 14, dip: 1.2, crossing: 'bridge' as const }, // road 1's bridge (the north-west diagonal)
+  { x: -512, z: -40 }, { x: -420, z: -36 }, { x: -330, z: -26 }, { x: -265, z: -16 },
+  { x: -213.3, z: -10, r: 10, dip: 0.7, crossing: 'bridge' as const }, // road 4's bridge
+  { x: -165, z: 10 }, { x: -130, z: 34 }, { x: -100, z: 70 },
+  { x: -65.2, z: 100, r: 10, dip: 0.7, crossing: 'bridge' as const }, // road 1's bridge (the north-west diagonal)
   { x: -20, z: 105 }, { x: 25, z: 104 },
-  { x: 69.7, z: 100, r: 14, dip: 1.2, crossing: 'bridge' as const }, // road 0's bridge (the north-east diagonal)
+  { x: 69.7, z: 100, r: 10, dip: 0.7, crossing: 'bridge' as const }, // road 0's bridge (the north-east diagonal)
   { x: 120, z: 96 }, { x: 165, z: 95 },
-  { x: 210.2, z: 95, r: 14, dip: 1.2, crossing: 'bridge' as const }, // road 5's bridge
+  { x: 210.2, z: 95, r: 10, dip: 0.7, crossing: 'bridge' as const }, // road 5's bridge
   { x: 300, z: 95 }, { x: 400, z: 92 }, { x: 512, z: 90 },
-].map((m) => ({ r: 17, dip: 1.4, ...m }));
+].map((m) => ({ r: 17, dip: 1.4, ...(m.crossing ? { deckClearM: 0.6 } : {}), ...m }));
 const BRIDGES = CREEK_STATIONS.filter((station) => station.crossing === 'bridge');
 // the bank line read smooth (Amberford's: circles at 0.96 of their radius, laid half a radius apart)
 const CREEK_BANK = [0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96,
@@ -122,6 +123,9 @@ export default {
     // the creek runs through the district as it stood: every building keeps its place but those its water reaches
     // (props.ts settlementOverWater: a landmark moves off the water after the district stands, a row is left out)
     settlementOverWater: true,
+    // the district stands as PR #9's head seated it (the owner's town-plan ruling), its street rows too, so the creek moves
+    // only what its water reaches whatever it does to the ground under the rest
+    townPlan: TOWN_PLANS.blackglass, townLightPlan: TOWN_LIGHT_PLANS.blackglass, townRowPlan: TOWN_ROW_PLANS.blackglass,
     // the creek's bridges (maps/mapKits.ts)
     extraKits: ['shanghai'],
     // the district's massive blocks keep their footprints off every carriageway, not only their own street's
