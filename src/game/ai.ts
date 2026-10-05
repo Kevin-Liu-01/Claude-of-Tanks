@@ -25,7 +25,7 @@
 import { Euler, Quaternion, Vector3 } from 'three';
 import type { BotMission } from '../sim/matchModes.ts';
 import { createBotAbilityPlanner, type BotAbilityContext } from './botAbilities.ts';
-import { computeDispersionRadM } from '../sim/movement.ts';
+import { computeDispersionRadM, IMPACT_SOURCE_COLLIDER } from '../sim/movement.ts';
 import { createBotTerrainSafety } from '../sim/botTerrainSafety.ts';
 import type { RulesetPhysics } from '../sim/matchRuleset.ts';
 import type { NavigationBridgeDeck } from '../sim/bridgeDeckNavigation.ts';
@@ -533,6 +533,19 @@ const FLANK_ASPECT_RAD  = Math.PI / 3;  // 60° off target nose = flank achieved
 const STUCK_TIME_S      = 2.0;
 const UNSTICK_TIME_S    = 1.4;
 const SLOPE_BLOCK_RECOVERY_S = 0.35;
+// A collider stop (physics lane, 2026-10-04; Tidegate Polders pacing seed 41002 on the merged tree): a UA M1A1 turning a
+// route corner ran into a farm building's wall at 6 m/s and stayed against it for 7.6 s, pivoting where it stood to
+// fight the enemy it saw half a second later, until it was hit; nothing counted the wall, as the low-speed watchdog
+// counts only a drive that wants to move. The movement solve reports a hull a solid primitive stopped (impactSource
+// collider; impactMps, the speed the contact took that step). A contact that took at least COLLIDER_STOP_MPS and most
+// of the hull's speed (COLLIDER_STOP_FRAC) within COLLIDER_STOP_WINDOW_S of its first step (the obstacle push is capped
+// per step, so a stop can span steps; the authority prices a crash over the same window), against a world obstacle
+// rather than another hull, is definitive feedback, as a slope block is: the hull backs off at once for UNSTICK_TIME_S,
+// its bow swinging along the face toward the side its goal lies on, and the stuck escalation replans the leg. A scrape
+// along a face keeps its speed and is no stop; a crawl into one is the low-speed watchdog's.
+const COLLIDER_STOP_MPS = 2;
+const COLLIDER_STOP_FRAC = 0.75;
+const COLLIDER_STOP_WINDOW_S = 0.3;
 const TERRAIN_ROUTE_LOOK_M = 28;
 const TERRAIN_ROUTE_STEP_M = 4;
 const TERRAIN_ROUTE_FAN_RAD = Object.freeze([
@@ -1236,6 +1249,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let searchSweepIndex = 0;                  // rotates the sweep bearings across legs
   let searchNextCheckS = -1;
   let strikeEvents = 0;                      // monotonic count of stuck strikes (stuckStrikes itself is reset)
+  let colliderStops = 0;                     // probe-visible count of collider stops backed off (COLLIDER_STOP_MPS)
   // round 62 pacing: the ammunition economy — expected hit chance, the HE fallback's worth, the empty rack
   let heWorth = false;                       // the HE fallback round would burst for HE_SPLASH_WORTH_HP or more
   let heBurstBest = 0;                       // best surface-burst estimate of the HE slot in the last probe pass
@@ -5641,6 +5655,48 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     unstickSteer = detourSide;
   }
 
+  // the speed a collider contact has taken since its first step (COLLIDER_STOP_WINDOW_S)
+  let colliderLostMps = 0;
+  let colliderContactAtS = -Infinity;
+  function updateColliderRecovery(timeS: number): void {
+    const st = entity.state;
+    if (st.impactSource !== IMPACT_SOURCE_COLLIDER) {
+      colliderLostMps = 0;
+      return;
+    }
+    if (colliderLostMps === 0 || timeS - colliderContactAtS > COLLIDER_STOP_WINDOW_S) {
+      colliderLostMps = 0;
+      colliderContactAtS = timeS;
+    }
+    colliderLostMps += st.impactMps;
+    if (timeS < unstickUntilS || ramming) return;
+    const lost = colliderLostMps;
+    if (lost < COLLIDER_STOP_MPS || lost < (lost + Math.abs(st.speed)) * COLLIDER_STOP_FRAC) return;
+    const nx = st.impactNx, nz = st.impactNz; // off the face, toward the hull
+    // a world primitive on that side, not a hull (the traffic and ram rules own those)
+    if (!findBlockingObstacle(st.pos.x, st.pos.z, -nx, -nz,
+      spec.dims.hullLengthM * 0.5 + 1.5, spec.dims.widthM * 0.5)) return;
+    // the face's tangent on the side of the drive's goal (of the heading, with no drive)
+    let tx = nz, tz = -nx;
+    const goalX = navGoalX - st.pos.x, goalZ = navGoalZ - st.pos.z;
+    const toGoal = driveIntent && Math.abs(navGoalX) < 1e8;
+    if ((toGoal ? tx * goalX + tz * goalZ : tx * Math.sin(st.yaw) + tz * Math.cos(st.yaw)) < 0) {
+      tx = -tx;
+      tz = -tz;
+    }
+    escalateStuckRecovery(timeS, false);
+    // reversing flips the steer (movement.ts): the opposite command swings the bow toward the tangent
+    unstickSteer = wrapAngle(Math.atan2(tx, tz) - st.yaw) >= 0 ? -1 : 1;
+    // and the detour (driveToXZ) goes round on that side (+1 offsets the goal to its bearing's right)
+    if (toGoal) detourSide = tx * goalZ - tz * goalX >= 0 ? 1 : -1;
+    unstickUntilS = timeS + UNSTICK_TIME_S;
+    lowSpeedT = 0;
+    navNoProgressT = 0;
+    navBestD = Infinity;
+    colliderLostMps = 0;
+    colliderStops++;
+  }
+
   function applyActiveUnstick(input: AiInput): void {
     input.throttle = -0.7;
     input.steer = unstickSteer;
@@ -5831,6 +5887,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // invalidate the leg promptly so the existing seeded detour/replan policy
     // can route around it. The short dwell filters one-tick ridge contacts.
     updateSlopeRecovery(dt, timeS);
+    updateColliderRecovery(timeS);
     updateLowSpeedRecovery(input, dt, timeS, allyYieldingPrev);
 
     // r6 ORBIT WATCHDOG (see trackNavProgress): continuous displacement with
@@ -6064,6 +6121,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       scooting: nowS < scootUntilS,
       kiting: nowS < kiteUntilS,
       settling: nowS < settleUntilS,
+      colliderStops,
       fallingBack: nowS < fallbackUntilS,
       hpFrac: entity.combat && entity.combat.maxHp
         ? +(entity.combat.hp / entity.combat.maxHp).toFixed(2) : 1,

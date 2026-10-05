@@ -992,6 +992,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.patrolNoRoute.selftest.mjs',
     // 2026-10-04 (physics lane): a fresh contact is no starved trigger; under fire in the open a settle holds nothing.
     'src/game/ai.underFire.selftest.mjs',
+    // 2026-10-04 (physics lane): a collider stop backs the hull off at once, through an engagement that starts on it.
+    'src/game/ai.colliderStop.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',
