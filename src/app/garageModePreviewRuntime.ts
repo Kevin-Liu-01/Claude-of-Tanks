@@ -39,7 +39,12 @@ export function createGarageModePreviewRuntime({ load, prepare, invalidate, warn
     const token = ++generation, current = () => token === generation;
     // The ordinary Garage never acquires optional equipment or shader code.
     if (!hasPreview(mode) && !owner.current && !pending) return;
-    const retry = failed;
+    const retry = failed || pending;
+    // Resident aura styles and a disabled aura are uniform-only changes.
+    // Apply them synchronously, without freezing even one Garage frame.
+    const updated = !!owner.current && !pending && !retry;
+    const needsWarm = updated ? owner.current!.update(nextRoot, spec, nextMode, 0) : undefined;
+    if (updated && needsWarm === false) { invalidate(); return; }
     pending = true; failed = false;
     // Start transfer immediately; queued preparation still owns all mutations.
     const loaded = owner.preload();
@@ -49,7 +54,7 @@ export function createGarageModePreviewRuntime({ load, prepare, invalidate, warn
     tail = tail.then(async () => {
       const preview = await loaded;
       if (!current()) return;
-      if (preview.update(nextRoot, spec, nextMode, 0) !== false || retry) await prepare(nextRoot, current);
+      if ((updated ? needsWarm : preview.update(nextRoot, spec, nextMode, 0)) !== false || retry) await prepare(nextRoot, current);
     }).catch(error => { if (current()) { failed = true; report(error); } }).finally(() => {
       if (!current()) return;
       pending = false;

@@ -46,3 +46,30 @@ const a=new Group(),b=new Group(),spec={};
  assert.equal(f.runtime.pending,false,'a failed import remains retryable');
 }
 console.log('garageModePreviewRuntime: lazy intent, rapid switches, ready-before-reveal, battle cancellation and retry passed');
+
+{
+ const f=fixture();f.runtime.update(a,spec,'juggernaut',0);await turn();
+ f.imports[0].resolve(f.preview);await turn();f.warms[0].resolve();await turn();
+ f.preview.update=(root,spec,mode,dt)=>{f.updates.push({root,mode,dt});return false;};
+ const prior=f.paints;
+ f.runtime.update(a,spec,'standard',0);
+ assert.equal(f.runtime.pending,false,'turning a resident aura off never freezes the canvas');
+ assert.equal(f.paints,prior+1,'uniform-only change invalidates immediately');
+ f.runtime.update(a,spec,'juggernaut',0);
+ assert.equal(f.runtime.pending,false,'returning to a resident aura has no loading frame');
+ await turn();assert.equal(f.warms.length,1,'cached toggles never enter the compile queue');
+ f.runtime.clear();
+}
+
+{
+ const f=fixture();f.runtime.update(a,spec,'juggernaut',0);await turn();
+ f.imports[0].resolve(f.preview);await turn();
+ f.preview.update=()=>false;
+ f.runtime.update(a,spec,'infected',0);
+ assert.equal(f.warms[0].current(),false);
+ f.warms[0].resolve();await turn();
+ assert.equal(f.warms.length,2,'a cancelled first warm must finish for the replacement style');
+ assert.equal(f.runtime.pending,true,'installed materials alone do not prove GPU readiness');
+ f.warms[1].resolve();await turn();assert.equal(f.runtime.pending,false);
+ f.runtime.clear();
+}

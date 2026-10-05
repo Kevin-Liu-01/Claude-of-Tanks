@@ -69,6 +69,13 @@ try{
     await page.waitForFunction(()=>document.querySelector('.cot-drone-signal-loss').hidden);
     reports.push({mode,mobile,before,after,returned:true});
    }else if(mode==='ac130'){
+    assert.equal(await page.evaluate(()=>window.__DEBUG.game.player.visual.root.userData.aircraftOnly),true,'pilot never builds a tank visual');
+    assert.equal(await page.evaluate(()=>window.__DEBUG.game.player.visual.root.children.length),0,'flight anchor contains no tank geometry');
+    const aircraftRow=await page.$eval('.cot-bl .team.ally .row.me',el=>({name:el.querySelector('.nm').textContent,tier:el.querySelector('.tier').textContent,icon:!!el.querySelector('.sil svg'),background:el.querySelector('.sil').style.backgroundImage}));
+    assert.equal(aircraftRow.name,'AC-130');assert.equal(aircraftRow.tier,'');assert.equal(aircraftRow.icon,true);assert.equal(aircraftRow.background,'');
+    await page.$eval('.cot-bl',el=>el.classList.add('on'));
+    await page.screenshot({path:resolve(out,`ac130-roster-${suffix}.png`)});
+    await page.$eval('.cot-bl',el=>el.classList.remove('on'));
     const escort=await page.evaluate(()=>({...window.__DEBUG.game.matchModeController.state.escort}));
     assert.ok(escort.total>=2&&escort.required>=1,'gunship has a vulnerable ground escort');
     assert.match(await page.$eval('.cot-mode-status',el=>el.textContent),/PROTECT THE CONVOY/);

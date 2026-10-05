@@ -76,6 +76,14 @@ Mode previews use the same readiness principle. Opening the mode selector
 transfers the optional preview code; it does not start preparing a battlefield.
 Only the actual launch controls signal deployment intent. Juggernaut, CTF and
 Infected share their compiled energy materials and change pattern/color uniforms.
+The current Garage tank also retains these materials when switching to an ordinary
+mode: a zero-strength branch restores the original paint, and returning to an aura
+applies uniforms immediately without entering the pending preparation state. This
+cache is bounded to the current tank and released on tank replacement or battle
+entry. Garage shaders omit the battle-only hit-ripple calculations; battle effects
+retain the full contact animation. First-time preparation uses the actual Garage
+forward and late-FX render targets and layer masks to avoid another program variant
+on reveal.
 The selected preview prepares new equipment and shader links before its first
 visible frame, retaining the previous complete canvas while menus and the network
 pump remain active. Tank or mode changes cancel superseded preparation, and battle
@@ -85,9 +93,16 @@ shader preparation instead of deferring that cost to the reveal frame.
 Solo and multiplayer loading install the initial vehicle mode effects before
 shader preparation. `garageModePreviewRuntime.selftest.mjs` covers cancellation,
 readiness and retry; `tools/garage-mode-preview.browser.mjs` records mode timing,
-checks material reuse and rapid selections, and captures desktop, phone landscape
+checks material reuse across ordinary-mode round trips and rapid selections,
+records program counts and animation-frame gaps, and captures desktop, phone landscape
 and battle-return views. Timing receipts include menu interaction, so they are
 end-to-end readiness measurements, not isolated GPU compile durations.
+
+AC-130 entry prepares an aircraft-only flight anchor rather than the selected
+tank. Solo and multiplayer skip the pilot's tank builder, camouflage textures,
+and damage-panel masks while still preparing ground escorts. Loading rosters
+identify pilots as AC-130 aircraft. Flight anchors are disposed on exit and cannot
+enter either the Garage hero cache or the reusable tank pool.
 
 ## Build-local procedural plaster relief
 

@@ -969,3 +969,25 @@ for (const terminal of ['abort', 'return', 'throw', 'epoch', 'info', 'context', 
 }
 
 console.log(`sceneProgramWarm.selftest: ${passed} scene submission, identity and cancellation cases passed`);
+
+// The Garage aura adapter must warm the exact forward targets/layers too.
+{
+ const body=mainSource.match(/prepare: async \(root, current\) => \{([\s\S]*?)\n  \},\n  invalidate:/)?.[1];
+ assert.ok(body);
+ const run=new Function('forwardProgramWarm','post','camera','LATE_FX_LAYER','nextFrame','game',
+   `return async (root,current)=>{${body.replace('undefined as never','undefined')}}`);
+ for(const composed of [false,true]){
+  const camera=new THREE.PerspectiveCamera();camera.layers.enable(LATE_FX_LAYER);
+  const post=composed?{composer:{},sceneAA:{sceneTarget:{}},lateFx:{target:{}}}:null;
+  let prepared=0;const root=new THREE.Group();
+  await run({*prepareSceneSteps(options){
+   prepared++;assert.equal(options.visibleRoot,root);assert.equal(options.strict,true);
+   assert.deepEqual(options.passes,composed?[
+    {layerMask:camera.layers.mask&~(1<<LATE_FX_LAYER),target:post.sceneAA.sceneTarget},
+    {layerMask:1<<LATE_FX_LAYER,target:post.lateFx.target},
+   ]:undefined);return {status:'complete',pending:0};
+  }},post,camera,LATE_FX_LAYER,async()=>{},{phase:'garage'})(root,()=>true);
+  assert.equal(prepared,1);
+ }
+ console.log('sceneProgramWarm: Garage aura uses exact rendered targets and light layers');
+}

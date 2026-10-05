@@ -4,6 +4,7 @@
  * state.ts so this module can be loaded without ballistics, damage, AI, or
  * spotting.
  */
+import { createGunshipBattleVisual } from './gunshipVisual.ts';
 import { Vector3, type Object3D, type Scene } from 'three';
 import { getSpec, PRODUCTION_TANK_IDS, TANK_IDS } from '../vehicles/specs.ts';
 import { createTank, createTankSteps, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
@@ -74,6 +75,7 @@ export interface RosterGameState<Entity extends RosterEntity = RosterEntity> {
   tankById: Map<string, Entity>;
   tanks: Entity[];
   battleCount: number;
+  ruleset?: { aerial?: string | null };
   rosterSeed?: number;
   /** Spec ids of the bots that fought the previous battle (matchmaking diversity, 2026-09-17). */
   recentBotSpecIds?: ReadonlySet<string> | null;
@@ -274,6 +276,14 @@ function* buildRosterVisual(
   ent: RosterEntity,
   cooperative: boolean,
 ): Generator<void, BattleVisual, void> {
+  if (game.ruleset?.aerial === 'gunship' && ent === game.tanks[0]) {
+    if (ent.visual?.root.userData.aircraftOnly) return ent.visual;
+    ent.visual?.dispose();
+    const visual = createGunshipBattleVisual(ent.specId);
+    ent.visual = visual;
+    game._engineCtx?.scene.add(visual.root);
+    return visual;
+  }
   if (ent.visual) return ent.visual;
   const engineCtx = game._engineCtx;
   if (!engineCtx) throw new Error('battle roster engine context is unavailable');

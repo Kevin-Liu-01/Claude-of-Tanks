@@ -881,7 +881,8 @@ const battleIntent = createBattleIntentRuntime({
   loadWorldModule,
   prefetchWorld,
   ensureTankBuilders,
-  planRoster: (specId) => planBattleParticipantIds(game, specId, true),
+  planRoster: (specId) => planBattleParticipantIds(game, specId, true)
+    .filter(id => garagePreviewMode !== 'ac130' || id !== specId),
   getSpec,
   prebakeSharedTextures,
   createBudgetYield: createFrameBudgetYielder,
@@ -1168,7 +1169,14 @@ let garagePreviewMode = 'standard';
 const garageModePreview = createGarageModePreviewRuntime({
   load: () => import('./game/garageModePreview.ts').then(module => module.createGarageModePreview()),
   prepare: async (root, current) => {
-    const steps = forwardProgramWarm.prepareSceneSteps({ visibleRoot: root, strict: true, sliceMs: 4 });
+    // Match the real Garage forward targets and light layers. A generic
+    // composer compile can leave the revealed frame to link a new variant.
+    const lateMask = 1 << LATE_FX_LAYER;
+    const passes = post?.composer ? [
+      { layerMask: camera.layers.mask & ~lateMask, target: post.sceneAA.sceneTarget },
+      { layerMask: lateMask, target: post.lateFx.target },
+    ] : undefined;
+    const steps = forwardProgramWarm.prepareSceneSteps({ visibleRoot: root, passes, strict: true, sliceMs: 4 });
     try {
       while (current() && game.phase === 'garage') {
         const result = steps.next();
@@ -1888,6 +1896,7 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     prepareRevealCamera: prepareBattleRevealCamera,
     preparePlayerPanel: async () => {
       const player = game.player;
+      if (player?.aerial?.kind === 'gunship') return;
       const panel = currentDamagePanel();
       if (!player || !panel) throw new Error('Player damage panel was not prepared');
       if (!await panel.prepareTankMasks(player.spec, player.visual)) {
@@ -2045,7 +2054,7 @@ const soloBattleStart = createSoloBattleStartAccess({
       armorAim: armorAimOverlay,
       resetDriveAim: () => driveTestController.resetAim(),
       setCamoBiome,
-      lendPlayerVisual: (specId: string) => pedestal.lendToBattle(specId),
+      lendPlayerVisual: (specId: string, useTank = true) => pedestal.lendToBattle(specId, useTank),
       setupBattle,
       combatWarm,
       presentation: battlePresentation,
@@ -2346,8 +2355,8 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
               biome: mapId,
             };
           },
-          rows: (players, team, viewerId) => (
-            rosterPresentation.lobbyRows({ players }, team, viewerId)
+          rows: (players, team, viewerId, gameMode) => (
+            rosterPresentation.lobbyRows({ players, gameMode }, team, viewerId)
           ),
           vehicleName: (specId: string) => getSpec(specId)?.name || specId,
           emitBattleStart: (payload) => bus.emit('ui:battleStart', payload),

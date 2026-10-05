@@ -749,3 +749,20 @@ console.log('garagePedestalRuntime.selftest: private sliced construction, cancel
  assert.equal(h.debugTarget.__GARAGE_SWITCH.at(-1).link.status,'complete');
  h.runtime.dispose();
 }
+
+{
+ const h=createHarness();h.setPhase('garage');
+ const aircraft=h.makeVisual('alpha');aircraft.root.userData.aircraftOnly=true;
+ h.setPlayer({visual:aircraft});
+ assert.equal(h.runtime.adoptBattlePlayer('alpha'),false,'a flight anchor is never adopted as the garage tank');
+ h.runtime.dispose();
+}
+
+{
+ const h=createHarness();await h.runtime.set('alpha');const tank=h.runtime.current;
+ assert.equal(h.runtime.lendToBattle('alpha',false),false);
+ assert.equal(tank.root.parent,null,'aircraft entry detaches the retained garage tank');
+ assert.equal(tank.root.visible,false);
+ await h.runtime.set('alpha');assert.equal(tank.root.parent,h.scene);assert.equal(tank.root.visible,true);
+ h.runtime.dispose();
+}
