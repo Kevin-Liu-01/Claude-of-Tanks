@@ -176,8 +176,8 @@ is presented beneath the boot cover immediately and starts the same transaction,
 so reload cannot strand a hidden pack on the renderer clear color. Stale rapid-
 switch promises never become visible. One modern four-bay maintenance graph is
 demand-loaded in quiet slices after readiness, optimized once, and shared by
-all ten environments. Its static Burlak, Abrams, T-90M, and K2 displays occupy
-four quadrants without per-frame update work or per-variant duplication;
+all ten environments. Its static Burlak, Abrams, T-90M, and K2 displays surround
+the podium without per-frame update work or per-variant duplication;
 Verdant's extra wall clutter remains a separate visibility branch.
 
 One frozen presentation pose is shared by the stage, hero pedestal, return path,
