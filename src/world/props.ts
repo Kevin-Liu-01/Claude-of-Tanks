@@ -16,7 +16,7 @@ import {
   textureFromRgbaPixels as toTexture,
   tileableTorusNoise as torusN,
 } from './proceduralTexture.ts';
-import { applyTone, type HeightField, type TerrainLayout } from './terrain.ts';
+import { applyTone, terrainNearMeshHeightAt, type HeightField, type TerrainLayout } from './terrain.ts';
 import { authoredRoadStationCount, authoredRoadStationIndex, buildingRoadStationIndices } from './maps/roadStations.ts';
 import { roadSettlementJunction } from './roadSettlementJunction.ts';
 import { roadFencePath, fencePathSampler } from './roadFencePath.ts';
@@ -35,10 +35,13 @@ export function environmentRichness(): number { return getDeviceTier() === 'mobi
 // A function declaration: roadStations.selftest.mjs extracts and executes the production placement
 // functions from this source, and they read their counts through this helper.
 function richCount(n: number | undefined, fallback = 0): number { return Math.round((n ?? fallback) * environmentRichness()); }
-import { markShadowOnly, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
+import { markShadowOnly, setShadowCasterCascades, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
-import { applySourcedBuildings, sourcedStoneIsBrick, type BuildingPaletteId, type SourcedTextureApplicationOptions } from './sourcedTextures.ts';
+import {
+  applySourcedBuildings, applySourcedRock, sourcedStoneIsBrick, type BuildingPaletteId, type SourcedTerrainSettings,
+  type SourcedTextureApplicationOptions,
+} from './sourcedTextures.ts';
 import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { dressMapExtras, type AnimatedDressing } from './maps/mapKits.ts'; // content_breadth r2
@@ -46,6 +49,7 @@ import { STEEL_ATLAS_SIZE, STEEL_ATLAS_SIZE_MOBILE, makeSteelAtlas, steelAtlasNe
 import { planYardDressing, yardStructureKinds, type YardFamily, type YardStructure } from './yardDressing.ts'; // round 75
 import { buildYardFamily, yardInstanceLivery, type YardMaterial } from './maps/yardClutterKit.ts'; // round 75
 import { applyRockShaderHook, boulderKindFor, buildBoulderForm, makeRockDetail, paintBoulder, rockDressingFor, rockLithologyFor } from './rockDressing.ts'; // round 75 item 6
+import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
@@ -370,7 +374,7 @@ interface PropsSettings {
   rubblePiles: number;
   wrecks: number;
   cropFields: number;
-  cropForm?: 'harvest' | 'wet-upright';
+  cropForm?: 'harvest' | 'wet-upright' | 'grain';
   lampposts: boolean;
   hedgehogs: number;
   destructibleBuildings: string[];
@@ -498,6 +502,25 @@ interface UtilityPolePlacementReceipt {
   yaw: number;
   poles: UtilityPoleGroundingReceipt[];
 }
+
+/** The scenery lane (wave 74, the cascade trim): one rock variant's near and far pools and what repartitions them. */
+interface RockLodPools {
+  near: THREE.InstancedMesh;
+  far: THREE.InstancedMesh;
+  /** The crushable rocks hold the first near slots for good. */
+  pinned: number;
+  /** The rest, by placement index, repartitioned by distance. */
+  loose: Int32Array;
+  placements: THREE.Matrix4[];
+  ground: Float32Array;
+  slope: Float32Array;
+  /** 1 while a loose rock draws its desktop form. */
+  high: Uint8Array;
+}
+/** The rocks' desktop form draws through this distance (and its phone form past it plus the hysteresis, 10 m), metres. */
+const ROCK_FAR_M = 60;
+/** The near cascades (0 and 1) take the near and far pools; the far cascades (2 and 3) the shadow-only pool. */
+const ROCK_NEAR_CASCADES = 0b0011, ROCK_FAR_CASCADES = 0b1100;
 
 interface BakedInstanceGroup {
   geo: THREE.BufferGeometry;
@@ -3097,15 +3120,24 @@ function* propsBuildSteps(
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
   // urban) in place when they load; procedural stays the fallback of record.
   // A regional kit keeps its own roof and masonry painters; it opts into the plaster and timber photo sets.
-  const sourcedTexturesReady = applySourcedBuildings(
-    regionalArchitecture
-      ? {
-        ...(regionalArchitecture.surfaces.sourced.plaster ? { plaster } : {}),
-        ...(regionalArchitecture.surfaces.sourced.wood ? { wood } : {}),
-      }
-      : { plaster, roof: roofT, wood, stone },
-    mapId, P, sourceApplication,
-  );
+  // The scenery lane (gauntlet wave 66): the boulders wear the map's own terrain rock layer, photographed, in place of
+  // their procedural tile (the fallback of record); the stone's mean, when it lands, is what their material divides the
+  // stone's structure out about. The map's texture readiness waits for it with the buildings'.
+  const rockStoneMean = new THREE.Vector3(0.214, 0.214, 0.214);
+  const sourcedTexturesReady = Promise.all([
+    applySourcedBuildings(
+      regionalArchitecture
+        ? {
+          ...(regionalArchitecture.surfaces.sourced.plaster ? { plaster } : {}),
+          ...(regionalArchitecture.surfaces.sourced.wood ? { wood } : {}),
+        }
+        : { plaster, roof: roofT, wood, stone },
+      mapId, P, sourceApplication,
+    ),
+    applySourcedRock({ albedo: rockDetail.albedo, normal: rockDetail.normal }, mapId,
+      (cfg as { splat?: SourcedTerrainSettings } | null)?.splat ?? {}, sourceApplication,
+      (mean) => rockStoneMean.set(mean[0], mean[1], mean[2])),
+  ]).then(([buildings, boulders]) => [...buildings, ...boulders]);
 
   const windowStyle = resolveStructureWindowStyle(mapId);
   const mats: Record<string, THREE.MeshStandardMaterial> = {
@@ -3155,6 +3187,8 @@ function* propsBuildSteps(
       vertexColors: true, roughness: 0.95, metalness: 0,
     }),
     baked: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 }),
+    // the scenery lane (after wave 57): the telegraph poles' weathered timber, painted by its hook (poleTimber.ts)
+    pole: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }),
     // Round 75: painted corrugated steel — the atlas luminance under a vertex-colour livery, its ORM blue channel
     // the rust mask the weathering hook below mixes toward rust.
     steel: new THREE.MeshStandardMaterial({
@@ -3220,6 +3254,7 @@ function* propsBuildSteps(
     mats.steel.envMapIntensity = 0.42; // round 75: painted sheet, a little sky on the crests
     mats.rock.envMapIntensity = 0.35; // no white env-specular sparkle at distance
     mats.baked.envMapIntensity = 0.5; // flat-shaded sourced models: no spec sparkle
+    mats.pole.envMapIntensity = 0.4; // dry, checked timber
     mats.vehicle.envMapIntensity = 0.58;
     mats.structureWood.envMapIntensity = 0.34;
     mats.structureCanvas.envMapIntensity = 0.22;
@@ -3311,7 +3346,10 @@ ${snowCap ? `
   // Round 75 item 6: the boulders' dressing (moss on wet maps, dust on arid ones, the soil skirt everywhere; the scenery
   // lane, 2026-10-04: the map's beds, lichen and varnish, the contact darkening)
   const rockDressing = rockDressingFor(mapId, P.rockSoilTone ?? null, snowCap);
-  const rockHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRockShaderHook(shader, rockDressing, rockDetail.lichen); };
+  const rockHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyRockShaderHook(shader, rockDressing, rockDetail.lichen, rockStoneMean); };
+  // the telegraph poles (the scenery lane, after wave 57): creosote-dark to silvered timber, grain, checks, a stained foot;
+  // the dusty maps' sun-bleached
+  const poleHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyPoleTimberHook(shader, rockDressing.dust >= 0.5); };
   // the scenery lane (wave 48, "the same stone pattern clearly tiles going right"): a run repeats the kit's one wall
   // module, so the field print's window shifts along the wall by a hash of each module's place (sixteen steps of seven
   // sixteenths of a tile, u only: the print's bands lie in v) — every module's stones take tones of their own. Only the
@@ -3341,7 +3379,7 @@ ${snowCap ? `
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
-          : materialKind === 'fieldStone' ? fieldStoneHook : grimeHook);
+          : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook : grimeHook);
       // (the mud print is the plaster material's shader with another map, the hessian the canvas's: they share their
       // programs; the field print has its own, for the modules' shifted windows)
       const programKind = materialKind === 'fieldMud' ? 'plaster' : materialKind === 'burlap' ? 'structureCanvas' : materialKind;
@@ -5423,12 +5461,15 @@ ${snowCap ? `
     // 9.5 source metres apart plus conductor faces between them. Use its
     // near-post slice as the physical primitive, then let terrain policy and
     // the live utility network decide whether a station has one or two posts.
+    // the scenery lane (after wave 57, Frosthollow's "beige column"): its wood is marked for the poles' timber material
+    // (poleTimber.ts) on a clone — the baked source stays cached unmarked; wave 66 ("a straight, flat-faced,
+    // constant-width beam"): its shaft round, smooth and tapered first
     const poleGeo = SOURCED.poles && P.telegraph
-      ? bakedGeometry('telephone_pole_polygoogle',
+      ? markPoleTimber(roundPoleShaft(bakedGeometry('telephone_pole_polygoogle',
         {
           targetH: 7.4, sink: 0.15, sourceZMin: -1,
           whiteCap: [0.14, 0.21, 0.16],
-        }) : null;
+        }).clone())) : null;
     // r4 terrain_environment: record pole stations — catenary WIRES are strung
     // between consecutive poles below (the bare pole line was a critique item:
     // "telephone poles have no visible wires, they read as bare sticks")
@@ -5600,6 +5641,9 @@ ${snowCap ? `
   // 2026-10-04).
   const rockClutter = new Map<THREE.Matrix4, CrushableClutter>();
   const rockGeos: THREE.BufferGeometry[] = [];
+  // the scenery lane (wave 74, the cascade trim): on the desktop each rock's phone form too (270 triangles against 672),
+  // for the far rocks and the far shadow cascades
+  const rockGeosFar: THREE.BufferGeometry[] = [];
   const rockHulls: number[][] = [];
   function buildRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
@@ -5630,9 +5674,15 @@ ${snowCap ? `
     // legacy hull above the ground line and as tall as the legacy rock; its tone by face, fracture and arris (paintBoulder)
     let legacyTop = 0;
     for (let i = 0; i < p.count; i++) legacyTop = Math.max(legacyTop, p.getY(i));
-    const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(rockLithologyFor(mapId), vi));
-    paintBoulder(form, P.rockTone);
+    const lithology = rockLithologyFor(mapId);
+    const form = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, mobileProps ? 4 : 6, legacyTop, boulderKindFor(lithology, vi), lithology);
+    paintBoulder(form, P.rockTone, lithology);
     rockGeos.push(form.geometry);
+    if (!mobileProps) {
+      const far = buildBoulderForm(vi, noi, mulberry32(seed + 60 + vi), hull, 4, legacyTop, boulderKindFor(lithology, vi), lithology);
+      paintBoulder(far, P.rockTone, lithology);
+      rockGeosFar.push(far.geometry);
+    }
     g.dispose();
   }
   }
@@ -5864,27 +5914,106 @@ ${snowCap ? `
   function instantiateRockVariants(): void {
   for (let vi = 0; vi < 3; vi++) {
     if (rockPlacements[vi].length === 0) continue;
-    // round 75 item 6: the ground height under every instance, for the soil skirt and dust laws
-    const ground = new Float32Array(rockPlacements[vi].length);
+    // round 75 item 6: the ground height under every instance, for the soil skirt and dust laws; the scenery lane (wave
+    // 57, "its right end lifts off the slope with no contact shadow"): and the slope of that ground across the rock's
+    // reach, so the soil band and the contact darkening meet a slope all round, and the rock's foot its contact patch
+    const ground = new Float32Array(rockPlacements[vi].length), slope = new Float32Array(rockPlacements[vi].length * 2);
+    const hull = rockHulls[vi];
+    let reach = 0;
+    for (let k = 0; k < hull.length; k += 2) reach = Math.max(reach, Math.hypot(hull[k], hull[k + 1]));
     for (let i = 0; i < ground.length; i++) {
-      const e = rockPlacements[vi][i].elements;
-      ground[i] = heightField.getHeightAt(e[12], e[14]);
+      const e = rockPlacements[vi][i].elements, x = e[12], z = e[14];
+      const r = Math.max(0.5, reach * Math.hypot(e[0], e[1], e[2]));
+      ground[i] = heightField.getHeightAt(x, z);
+      slope[i * 2] = (heightField.getHeightAt(x + r, z) - heightField.getHeightAt(x - r, z)) / (2 * r);
+      slope[i * 2 + 1] = (heightField.getHeightAt(x, z + r) - heightField.getHeightAt(x, z - r)) / (2 * r);
+      if (rockContact) rockSpots.push({ x, z, r: r * (1.22 + 0.16 * ((Math.imul(i + 1, 0x9e3779b1) >>> 0) / 4294967296)) });
     }
-    rockGeos[vi].setAttribute('aRockGround', new THREE.InstancedBufferAttribute(ground, 1));
-    const im = new THREE.InstancedMesh(rockGeos[vi], mats.rock, rockPlacements[vi].length);
-    for (let i = 0; i < rockPlacements[vi].length; i++) {
-      const placement = rockPlacements[vi][i];
-      im.setMatrixAt(i, placement); rockClutter.get(placement)?.bindInstance(im, i);
+    // round 79; the scenery lane: the height a shadow can show, from the deepest seat (0.6 of a scale under the centre),
+    // not the skirt the rock carries deep under the ground
+    const box = rockGeos[vi].boundingBox ?? (rockGeos[vi].computeBoundingBox(), rockGeos[vi].boundingBox!);
+    let maxScale = 0;
+    for (const placement of rockPlacements[vi]) maxScale = Math.max(maxScale, placement.getMaxScaleOnAxis());
+    const heightM = (box.max.y - Math.max(box.min.y, -0.6)) * maxScale;
+    const pool = (geometry: THREE.BufferGeometry, name: string, count: number): THREE.InstancedMesh => {
+      const mesh = new THREE.InstancedMesh(geometry, mats.rock, count);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.matrixAutoUpdate = false;
+      mesh.name = name; // round 75: the probes and captures find the boulders by name
+      return mesh;
+    };
+    if (mobileProps) {
+      rockGeos[vi].setAttribute('aRockGround', new THREE.InstancedBufferAttribute(ground, 1));
+      rockGeos[vi].setAttribute('aRockSlope', new THREE.InstancedBufferAttribute(slope, 2));
+      const im = pool(rockGeos[vi], 'rock-variant-' + vi, rockPlacements[vi].length);
+      for (let i = 0; i < rockPlacements[vi].length; i++) {
+        const placement = rockPlacements[vi][i];
+        im.setMatrixAt(i, placement); rockClutter.get(placement)?.bindInstance(im, i);
+      }
+      im.computeBoundingSphere();
+      setShadowCasterProfile(im, { heightM, instanced: true });
+      group.add(im);
+      continue;
     }
-    im.castShadow = true;
-    im.receiveShadow = true;
-    im.matrixAutoUpdate = false;
-    im.computeBoundingSphere();
-    im.name = 'rock-variant-' + vi; // round 75: the probes and captures find the boulders by name
-    setShadowCasterProfile(im, { heightM: casterHeightM(rockGeos[vi], rockPlacements[vi]), instanced: true }); // round 79
-    group.add(im);
+    // the scenery lane (wave 74, the cascade trim: 672-triangle rocks drawn into every cascade): the desktop form near the
+    // camera, the phone form past ROCK_FAR_M (rockLod below), both into the near cascades only; the far cascades take the
+    // phone form of every rock from a shadow-only pool. The crushable rocks keep the first near slots for good (their
+    // clutter writes its slot), cast into the near cascades alone (small, and gone when crushed)
+    const n = rockPlacements[vi].length;
+    const pinned = rockPlacements[vi].filter((placement) => rockClutter.has(placement)).length;
+    const near = pool(rockGeos[vi], 'rock-variant-' + vi, n);
+    const far = pool(rockGeosFar[vi], 'rock-variant-' + vi + '-far', n);
+    const nearGround = new THREE.InstancedBufferAttribute(new Float32Array(n), 1);
+    const nearSlope = new THREE.InstancedBufferAttribute(new Float32Array(n * 2), 2);
+    const farGround = new THREE.InstancedBufferAttribute(new Float32Array(n), 1);
+    const farSlope = new THREE.InstancedBufferAttribute(new Float32Array(n * 2), 2);
+    rockGeos[vi].setAttribute('aRockGround', nearGround);
+    rockGeos[vi].setAttribute('aRockSlope', nearSlope);
+    rockGeosFar[vi].setAttribute('aRockGround', farGround);
+    rockGeosFar[vi].setAttribute('aRockSlope', farSlope);
+    const shadowGeo = new THREE.BufferGeometry();
+    for (const key of ['position', 'normal', 'color'] as const) shadowGeo.setAttribute(key, rockGeosFar[vi].getAttribute(key));
+    shadowGeo.setIndex(rockGeosFar[vi].index);
+    const order: number[] = [], loose: number[] = [];
+    for (let i = 0; i < n; i++) (rockClutter.has(rockPlacements[vi][i]) ? order : loose).push(i);
+    const shadowGround = new Float32Array(n - pinned), shadowSlope = new Float32Array((n - pinned) * 2);
+    const shadow = pool(shadowGeo, 'rock-variant-' + vi + '-shadow', n - pinned);
+    loose.forEach((i, k) => {
+      shadow.setMatrixAt(k, rockPlacements[vi][i]);
+      shadowGround[k] = ground[i]; shadowSlope[k * 2] = slope[i * 2]; shadowSlope[k * 2 + 1] = slope[i * 2 + 1];
+    });
+    shadowGeo.setAttribute('aRockGround', new THREE.InstancedBufferAttribute(shadowGround, 1));
+    shadowGeo.setAttribute('aRockSlope', new THREE.InstancedBufferAttribute(shadowSlope, 2));
+    shadow.receiveShadow = false;
+    markShadowOnly(shadow);
+    setShadowCasterCascades(shadow, ROCK_FAR_CASCADES);
+    setShadowCasterCascades(near, ROCK_NEAR_CASCADES);
+    setShadowCasterCascades(far, ROCK_NEAR_CASCADES);
+    for (const [k, i] of order.entries()) {
+      // (the crushable rocks: their slots, their attributes, their clutter's binding, written once)
+      near.setMatrixAt(k, rockPlacements[vi][i]);
+      nearGround.setX(k, ground[i]); nearSlope.setXY(k, slope[i * 2], slope[i * 2 + 1]);
+      rockClutter.get(rockPlacements[vi][i])!.bindInstance(near, k);
+    }
+    // (every loose rock in the near pool until the first camera repartitions them: the pools are whole from the build)
+    const lod: RockLodPools = {
+      near, far, pinned, loose: Int32Array.from(loose), placements: rockPlacements[vi], ground, slope, high: new Uint8Array(n).fill(1),
+    };
+    writeRockLod(lod);
+    rockLod.push(lod);
+    for (const mesh of [near, far, shadow]) {
+      setShadowCasterProfile(mesh, { heightM, instanced: true });
+      group.add(mesh);
+    }
   }
   }
+  // the scenery lane (wave 57, "a ruler-straight base line on the grass with no soil collar"): every boulder's contact
+  // patch, a ragged disc of soil a fifth to a third wider than its reach, to the ground decals below (none on a snow map,
+  // where the snow lies against the stone, nor on sand, where the dust skirt meets the dune)
+  const rockContact = !snowCap && rockDressing.dust < 0.5;
+  const rockSpots: Array<{ x: number; z: number; r: number }> = [];
+  const rockLod: RockLodPools[] = [];
   instantiateRockVariants();
   rockClutter.clear();
 
@@ -5982,6 +6111,7 @@ ${snowCap ? `
   // a fan of parallel crop-card rows (terrain-conformed vertical strips, one
   // merged alpha-tested mesh) plus the field's own haystack-ready clearing.
   // ~350 tris/plot — establishing-shot scale dressing at negligible cost.
+  const cropLandSample = {} as Parameters<NonNullable<HeightField['_landUseAt']>>[2];
   function placeCropFields(): void {
     if ((P.cropFields ?? 0) <= 0) return;
     const crng = mulberry32(seed + 515);
@@ -6066,6 +6196,7 @@ ${snowCap ? `
       // Admit wet stems after all draws: open gaps between whole attached
       // plants without changing the following plot/row placement stream.
       if (wet && growth < .60) continue;
+      if (form === 'grain') { paintGrainStalk(cctx, x, growth, bend, lum, hue, girth, headHue, headWidth, headLength); continue; }
       const standing = wet || growth > .88;
       const hgt = biomeCropHeight(wet, standing, growth, headLength);
       const lean = biomeCropLean(wet, standing, bend);
@@ -6078,6 +6209,56 @@ ${snowCap ? `
       cctx.strokeStyle = _col.getStyle();
       if (standing) finishStandingCrop(cctx, x + lean, 256 - hgt, wet, headLength, headWidth);
       else finishBrokenCrop(cctx, x + lean, 256 - hgt, width);
+    }
+  }
+
+  // Ground lane (2026-10-04, wave 71 on Verdant's close-up: the crop "a picket fence of chopsticks — evenly spaced beige
+  // dowels with flat cut tops and no ears, awns or leaves"; the coordinator: "irregular spacing and ears would fix most
+  // of it"): a field of ripe grain. The stalks stand in uneven clumps along the row (three incommensurate waves over
+  // the card's width admit them — the drill's row thinned and lodged in places, never the legacy card's four punched
+  // windows), every stalk its own height and lean, a leaf down the stem on the stouter ones, an ear on every one a
+  // shade deeper than its straw and a beard of awns on most. The nine draws a stalk stay as they were (the plot stream
+  // after the atlas is exact), and the card covers less than the legacy one at every mip (cropBiomeIdentity).
+  function paintGrainStalk(cctx: CanvasRenderingContext2D, x: number, growth: number, bend: number, lum: number,
+    hue: number, girth: number, headHue: number, headWidth: number, headLength: number): void {
+    const clump = .5 + .5 * Math.sin(x * .071 + 1.3) * Math.sin(x * .187 + .4) + .22 * Math.sin(x * .43 + 2.1);
+    if (growth > .18 + .42 * clump) return;
+    const hgt = 256 * (.50 + headLength * .30 + (growth - .3) * .14);
+    const lean = (bend - .5) * 22;
+    // (stems thick enough to hold through the card's 64 px mip: fewer and stouter, the coverage at the legacy's)
+    const width = 1.05 + girth * .55;
+    _col.setHSL(.110 + hue * .022, .32, lum);
+    cctx.strokeStyle = cctx.fillStyle = _col.getStyle();
+    paintCropStalk(cctx, x, hgt, lean, width);
+    if (girth > .55) {
+      // a leaf off the stem's lower half, arching out and drooping
+      const t = .34 + girth * .16, lx = x + lean * (.8 * t + .2 * t * t), ly = 258 - (1.2 * hgt + 4) * t + (.2 * hgt + 2) * t * t;
+      const reach = (headHue > .5 ? 1 : -1) * (10 + girth * 8);
+      cctx.lineWidth = .9;
+      cctx.beginPath();
+      cctx.moveTo(lx, ly);
+      cctx.quadraticCurveTo(lx + reach * .6, ly - hgt * .10, lx + reach, ly - hgt * .03);
+      cctx.stroke();
+    }
+    // the ear: a slim spike along the stalk's own lean at its tip, a shade deeper and warmer than the straw
+    const ex = x + lean, ey = 256 - hgt, len = 8 + headLength * 7, wid = 1.6 + headWidth * 1.0;
+    const ang = Math.atan2(lean, hgt) * .9;
+    _col.setHSL(.098 + headHue * .02, .40, Math.min(.34, lum + .035));
+    cctx.fillStyle = cctx.strokeStyle = _col.getStyle();
+    cctx.beginPath();
+    cctx.ellipse(ex + Math.sin(ang) * len * .4, ey - Math.cos(ang) * len * .4, wid, len * .55, ang, 0, Math.PI * 2);
+    cctx.fill();
+    if (headWidth > .28) {
+      // its awns: a fan of fine bristles past the ear's tip
+      cctx.lineWidth = .6;
+      cctx.beginPath();
+      const tx = ex + Math.sin(ang) * len * .9, ty = ey - Math.cos(ang) * len * .9;
+      for (let a = -2; a <= 2; a++) {
+        const aa = ang + a * .16, al = 4 + headLength * 5;
+        cctx.moveTo(tx, ty);
+        cctx.lineTo(tx + Math.sin(aa) * al, ty - Math.cos(aa) * al);
+      }
+      cctx.stroke();
     }
   }
 
@@ -6225,7 +6406,16 @@ ${snowCap ? `
     // Keep this seeded draw before the support decision: rejected flatness
     // candidates historically consume their row angle too.
     const dirA = crng() * Math.PI;
-    const dx = Math.cos(dirA), dz = Math.sin(dirA);
+    let dx = Math.cos(dirA), dz = Math.sin(dirA);
+    // ground lane (2026-10-04, wave 71 on Verdant's close-up): on a map with fields (the height field's land-use hook)
+    // a plot of standing grain stands only inside a field of ripe wheat or barley (landUse.ts LAND_CROP 1, 2), well
+    // inside its margin, its rows along the field's own — not at any angle over whatever crop the land use laid there
+    const landAt = heightField._landUseAt;
+    if (landAt) {
+      const f = landAt(cx, cz, cropLandSample);
+      if (!f.active || (f.crop !== 1 && f.crop !== 2) || f.edgeM - f.marginM < Math.max(pw, pd) * 0.5 + 2) supported = false;
+      else { dx = f.rowX; dz = f.rowZ; }
+    }
     const px2 = -dz, pz2 = dx;
     if (supported && !cropPlotCornersAreLevel(cx, cz, pw, pd, dx, dz, px2, pz2)) {
       supported = false;
@@ -7228,17 +7418,25 @@ ${snowCap ? `
       return geo;
     }
     // terrain-conformed disc; profile[] lifts each ring above the ground
+    // the scenery lane (Coastal boulder-a, gauntlet wave 74: "a hard, straight dark line along the grass bank's edge …
+    // the rock looks cut in two"): the ground as the nearest terrain mesh draws it (terrain.ts terrainNearMeshHeightAt:
+    // its finest grid and its cells' diagonal), not the analytic height, which stands above the mesh on a bank's lip — a
+    // patch conformed to that floated over the drawn lip and showed edge-on
+    const groundHeightAt = (px: number, pz: number): number => heightField.getHeightAt(px, pz);
+    const meshHeightAt = (px: number, pz: number): number => terrainNearMeshHeightAt(groundHeightAt, px, pz);
     function conformedDisc(
       x: number,
       z: number,
       r: number,
       profile: readonly number[],
+      onMesh = false,
     ): THREE.BufferGeometry {
       const rings = [0, 0.4, 0.7, 1.0], segs = 18;
       const nv = 1 + (rings.length - 1) * segs;
       const pos = new Float32Array(nv * 3);
       const uv = new Float32Array(nv * 2);
-      pos[0] = x; pos[1] = heightField.getHeightAt(x, z) + profile[0]; pos[2] = z;
+      const groundAt = onMesh ? meshHeightAt : groundHeightAt;
+      pos[0] = x; pos[1] = groundAt(x, z) + profile[0]; pos[2] = z;
       uv[0] = 0.5; uv[1] = 0.5;
       let vi = 1;
       for (let ri = 1; ri < rings.length; ri++) {
@@ -7246,7 +7444,7 @@ ${snowCap ? `
           const a = (k / segs) * Math.PI * 2;
           const px = x + Math.cos(a) * r * rings[ri], pz = z + Math.sin(a) * r * rings[ri];
           pos[vi * 3] = px;
-          pos[vi * 3 + 1] = heightField.getHeightAt(px, pz) + profile[ri];
+          pos[vi * 3 + 1] = groundAt(px, pz) + profile[ri];
           pos[vi * 3 + 2] = pz;
           uv[vi * 2] = 0.5 + Math.cos(a) * 0.5 * rings[ri];
           uv[vi * 2 + 1] = 0.5 + Math.sin(a) * 0.5 * rings[ri];
@@ -7358,6 +7556,10 @@ ${snowCap ? `
       }
       for (const stack of stackSpots) {
         dirtDiscs.push(conformedDisc(stack.x, stack.z, stack.r, [0.05, 0.05, 0.04, 0.03]));
+        yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
+      }
+      for (const spot of rockSpots) {
+        dirtDiscs.push(conformedDisc(spot.x, spot.z, spot.r, [0.04, 0.04, 0.04, 0.03], true));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
     }
@@ -7622,6 +7824,67 @@ ${snowCap ? `
     return changed;
   }
 
+  // the scenery lane (wave 74, the cascade trim): the rocks' near and far pools, repartitioned when the camera has moved
+  // 8 m, with hysteresis (the desktop form through ROCK_FAR_M, the phone form beyond ROCK_FAR_M + 10). A pass allocates
+  // nothing: index loops over the build's typed arrays, the placements' own matrices, the pools' own buffers
+  const lastRockCamera = new THREE.Vector3(Number.NaN, Number.NaN, Number.NaN);
+  // (the passes' start and duration, the last 64 of them, for the probes: a chase drive lines its long tasks up with them)
+  const rockLodTrace = { at: new Float64Array(64), ms: new Float32Array(64), n: 0 };
+  group.userData.rockLodTrace = rockLodTrace;
+  function updateRockLod(cameraPos: THREE.Vector3 | null, force = false): void {
+    if (rockLod.length === 0 || !cameraPos || !Number.isFinite(cameraPos.x) || !Number.isFinite(cameraPos.z)) return;
+    if (!force && Number.isFinite(lastRockCamera.x) && lastRockCamera.distanceToSquared(cameraPos) <= 64) return;
+    const startedAt = performance.now();
+    const first = !Number.isFinite(lastRockCamera.x);
+    lastRockCamera.copy(cameraPos);
+    for (let p = 0; p < rockLod.length; p++) {
+      const lod = rockLod[p], loose = lod.loose, high = lod.high, placements = lod.placements;
+      let changed = first || force;
+      for (let k = 0; k < loose.length; k++) {
+        const i = loose[k], e = placements[i].elements;
+        const dx = e[12] - cameraPos.x, dz = e[14] - cameraPos.z, d = Math.sqrt(dx * dx + dz * dz);
+        const wasHigh = high[i] !== 0, isHigh = wasHigh ? d <= ROCK_FAR_M + 10 : d < ROCK_FAR_M;
+        if (isHigh !== wasHigh) { high[i] = isHigh ? 1 : 0; changed = true; }
+      }
+      if (changed) writeRockLod(lod);
+    }
+    const slot = rockLodTrace.n++ % 64;
+    rockLodTrace.at[slot] = startedAt;
+    rockLodTrace.ms[slot] = performance.now() - startedAt;
+  }
+  function writeRockLod(lod: RockLodPools): void {
+    const near = lod.near, far = lod.far;
+    const nearGround = near.geometry.getAttribute('aRockGround') as THREE.InstancedBufferAttribute;
+    const nearSlope = near.geometry.getAttribute('aRockSlope') as THREE.InstancedBufferAttribute;
+    const farGround = far.geometry.getAttribute('aRockGround') as THREE.InstancedBufferAttribute;
+    const farSlope = far.geometry.getAttribute('aRockSlope') as THREE.InstancedBufferAttribute;
+    const loose = lod.loose, high = lod.high, placements = lod.placements, ground = lod.ground, slope = lod.slope;
+    let nearCount = lod.pinned, farCount = 0;
+    for (let k = 0; k < loose.length; k++) {
+      const i = loose[k];
+      if (high[i] !== 0) {
+        near.setMatrixAt(nearCount, placements[i]);
+        nearGround.setX(nearCount, ground[i]);
+        nearSlope.setXY(nearCount, slope[i * 2], slope[i * 2 + 1]);
+        nearCount++;
+      } else {
+        far.setMatrixAt(farCount, placements[i]);
+        farGround.setX(farCount, ground[i]);
+        farSlope.setXY(farCount, slope[i * 2], slope[i * 2 + 1]);
+        farCount++;
+      }
+    }
+    near.count = nearCount;
+    far.count = farCount;
+    near.visible = nearCount > 0;
+    far.visible = farCount > 0;
+    near.instanceMatrix.needsUpdate = true;
+    far.instanceMatrix.needsUpdate = true;
+    near.computeBoundingSphere();
+    far.computeBoundingSphere();
+    nearGround.needsUpdate = true; nearSlope.needsUpdate = true; farGround.needsUpdate = true; farSlope.needsUpdate = true;
+  }
+
   function updatePoleLod(cameraPos: THREE.Vector3 | null, force = false): void {
     if (!poleMatrices || !poleHigh) return;
     let changed = force;
@@ -7644,9 +7907,9 @@ ${snowCap ? `
       poleMatrices = matrixStore;
       poleHigh = new Uint8Array(e.list.length);
       poleHigh.fill(1);
-      poleFullIM = new THREE.InstancedMesh(e.geo, mats.baked, e.list.length);
+      poleFullIM = new THREE.InstancedMesh(e.geo, mats.pole, e.list.length);
       poleDistanceIM = new THREE.InstancedMesh(
-        makeTelephonePoleDistanceGeometry(), mats.baked, e.list.length);
+        markPoleTimber(makeTelephonePoleDistanceGeometry()), mats.pole, e.list.length);
       for (const mesh of [poleFullIM, poleDistanceIM]) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
@@ -8866,6 +9129,7 @@ ${snowCap ? `
 
   function updateProps(dt: number, cameraPos: THREE.Vector3 | null = null): void {
     updatePoleLod(cameraPos);
+    updateRockLod(cameraPos);
     updateFineDetail(cameraPos);
     if (mooredHulls.length) {
       animatedTimeS += dt;

@@ -28,13 +28,14 @@ globalThis.document = globalThis.document || { createElement() { throw new Error
 const { loadImage, _imgCache, IMAGE_CACHE_MAX, SETS, TERRAIN_PLAN } = await import(privateUrl);
 hooks.deregister();
 
-// The bound covers the largest single battlefield: its distinct terrain sets plus every building set.
+// The bound covers the largest single battlefield: its distinct terrain sets plus every building set, and the
+// boulders' photographed stone (the terrain's rock set, on every map: the scenery lane, wave 66).
 const imagesOf = (setKey) => ['color', 'normal', 'rough', 'ao'].filter((slot) => SETS[setKey][slot]).length;
 const setKeyOf = (entry) => (typeof entry === 'string' ? entry : entry?.set ?? null);
 const buildingSets = Object.keys(SETS).filter((key) => SETS[key].color.startsWith('/textures/buildings/'));
 let largest = 0;
 for (const [mapId, plan] of Object.entries(TERRAIN_PLAN)) {
-  const terrainSets = new Set(Object.values(plan).map(setKeyOf).filter(Boolean));
+  const terrainSets = new Set([...Object.values(plan).map(setKeyOf).filter(Boolean), 'rock']);
   const images = [...terrainSets, ...buildingSets].reduce((sum, key) => sum + imagesOf(key), 0);
   assert.ok(images <= IMAGE_CACHE_MAX, `${mapId} loads ${images} source photos, above the ${IMAGE_CACHE_MAX}-image cache`);
   largest = Math.max(largest, images);
