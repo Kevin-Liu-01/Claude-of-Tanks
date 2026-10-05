@@ -735,7 +735,15 @@ let _supportRate = 0;
  */
 const _supportStation = { valid: false, guard: false, localZ: 0, worldX: 0, worldZ: 0, comZ: 0, k2: 1 };
 /** The end guard the support rests on this step, when one binds (endGuardSupportY): its hull-local z and world xz. */
-const _guardHit = { deficit: -Infinity, localX: 0, localZ: 0, worldX: 0, worldZ: 0 };
+const _guardHit = { deficit: -Infinity, localX: 0, localZ: 0, worldX: 0, worldZ: 0, groundV: 0, grade: 0 };
+/** The most of a struck end's depth under the ground the root takes back in one step, as position (m): a deeper strike, a
+ * hull flying nose-first into a wall, comes out over steps. */
+const STRIKE_PROJECT_MAX_M = 0.1;
+/** The most a strike turns the hull's rate in one step (rad/s); the root takes the end's rise the turn defers. */
+const STRIKE_TURN_STEP = 0.2;
+/** The most the drawn ends' rest takes off the drawn pitch in one step (rad): the posture and the dive give way as a
+ * stop's spring does, not at once. */
+const REST_STEP_RAD = 0.003;
 /** Body contacts the fit can record beside the outer lines (24 end guards and 4 box corners). */
 const FIT_BODY_MAX = 28;
 /** The body contacts this step (hull-local z and deficit): those at the far end from a strike are what it turns about
@@ -2227,32 +2235,43 @@ function constrainLoadedRide(
     const floorV = Math.max(ride.groundV, Math.min(_supportRate, Math.max(ride.groundV, 0)));
     if (_stationTurn.guard && _stationTurn.rootShare < 1) {
       // A body strike (round 8): the hull's own nose or tail past its tracks meets the ground, with no spring or bump
-      // stop between. The root takes its share of the lift and the hull the turn of the rest, both at once, about its
-      // centre of mass as a rigid body struck there; the strike's rate splits the same way (the whole lift on the root
-      // pushed a hull's root 0.13-0.24 m up in a step where its nose met a flank's runout, a bank or a far wall)
-      // (the strike closes the step's whole depth at the station, so it is the station's closing rate: the root and the
-      // turn take its rate as they take its depth, and the struck end stops on the ground)
-      const station = Math.min(floorY - ride.y, FLOOR_LIFT_MAX_M_PER_STEP);
-      let lift = _stationTurn.rootShare * station;
-      let angle = _stationTurn.turnPerM * station;
-      // The other end on the ground (round 8): a turn about the centre of mass that would sink its contact turns about
-      // that contact instead, the root taking the rest of the lift (a BMP-2 struck on the nose at a 45-degree flank's
-      // foot put its tail 0.17 m into the flank behind it). Each requires the root at its depth less its lever times
-      // the turn; both met at once give the turn.
+      // stop between. The strike stops the end's closing on the ground, as an impulse at the end splits across a rigid
+      // body: the root takes its share of the closing speed and the hull the turn of the rest, about its centre of mass
+      // (the whole lift on the root pushed a hull's root 0.13-0.24 m up in a step where its nose met a flank's runout, a
+      // bank or a far wall). (The parity iteration: the strike closed the step's whole depth at once and took that as the
+      // end's closing rate as well, so the end rose past the ground, the spring brought it back down and it struck again,
+      // step after step: a trench crossing's rendered jerk p99 rose by more than half. The closing is the end's own speed
+      // into the ground, and the depth it is left with the root takes back as position, STRIKE_PROJECT_MAX_M a step.)
+      const depth = Math.min(floorY - ride.y, FLOOR_LIFT_MAX_M_PER_STEP);
       const stationZ = _stationTurn.stationZ;
+      // (the ground pushes along its normal: on a face of grade g under the end's travel the vertical share of the
+      // impulse that stops its closing is 1 / (1 + g^2) of the closing upward, the rest a stop of its travel, which the
+      // face's grade takes from the travel as the hull rises (facePushGrade); taken vertically whole, a UDES 03 nosing
+      // into a box trench's far wall at 10 m/s was thrown up at 13 m/s)
+      const closing = Math.max(0, _guardHit.groundV - (ride.v + stationZ * pitchV)) / (1 + _guardHit.grade * _guardHit.grade);
+      let rise = _stationTurn.rootShare * closing;
+      let turn = _stationTurn.turnPerM * closing;
+      // The other end on the ground (round 8): a turn about the centre of mass that would drive its contact into the
+      // ground turns about that contact instead, the root taking the rest (a BMP-2 struck on the nose at a 45-degree
+      // flank's foot put its tail 0.17 m into the flank behind it)
       for (let index = 0; index < _bodyCount; index++) {
         const otherZ = _bodyZ[index];
-        if (otherZ * stationZ >= 0 || !(ride.y + lift + otherZ * angle < _bodyD[index])) continue;
-        const pivotAngle = (ride.y + station - _bodyD[index]) / (stationZ - otherZ);
-        if (pivotAngle * angle >= 0 && Math.abs(pivotAngle) < Math.abs(angle)) {
-          angle = pivotAngle;
-          lift = station - stationZ * angle;
-        }
+        if (otherZ * stationZ >= 0 || !(ride.y + RIGID_BODY_MARGIN_M < _bodyD[index] + depth) || !(rise + otherZ * turn < 0)) continue;
+        turn = closing / (stationZ - otherZ);
+        rise = -otherZ * turn;
       }
-      ride.y += lift;
-      ride.v += lift / dt;
-      _stationTurn.angle = angle;
-      _stationTurn.rate = angle / dt;
+      // the turn eases in (a struck hull's attitude does not jump), the root taking the rise of the end the turn defers
+      if (Math.abs(turn) > STRIKE_TURN_STEP) {
+        const kept = Math.sign(turn) * STRIKE_TURN_STEP;
+        rise += (turn - kept) * stationZ;
+        turn = kept;
+      }
+      // (the impulse at the step's start: the step moves at the speed it leaves with; the depth the end is left in the
+      // ground with the root takes back as position)
+      ride.v += rise;
+      ride.y += rise * dt + Math.min(STRIKE_PROJECT_MAX_M, Math.max(0, depth - (rise + stationZ * turn) * dt));
+      _stationTurn.angle = 0;
+      _stationTurn.rate = turn;
       return true;
     }
     if (_stationTurn.rootShare < 1) {
@@ -3579,6 +3598,11 @@ function restDrawnEndsOnGround(
     if (keep < share) share = keep;
   }
   if (!(share < 1)) return;
+  // (the parity iteration: at once, the drawn pitch jumped by the whole turn the rest took, up to two degrees in a step;
+  // on the ground it gives way at most REST_STEP_RAD a step, its rates into the ground stopped at once; in flight, where
+  // the end meeting the ground is a landing, at once as before)
+  const drawnTurn = Math.abs(turnPitch) + Math.abs(turnRoll);
+  if (state.grounded !== false && drawnTurn * (1 - share) > REST_STEP_RAD) share = 1 - REST_STEP_RAD / drawnTurn;
   hold.p *= share;
   hold.r *= share;
   if (hold.pv * turnPitch > 0) hold.pv = 0;
@@ -3595,6 +3619,21 @@ function restDrawnEndsOnGround(
   suspension.pv += dv - suspension.dv;
   suspension.d = d;
   suspension.dv = dv;
+  // what the eased turn has not yet given leaves the drawn end in the ground: the root rests it on the ground (only that
+  // share: an end the seat itself leaves in the ground is the support solve's)
+  const leftPitch = hold.p + suspension.d * SUSP_VIS_P;
+  const leftRoll = hold.r;
+  let residual = 0;
+  for (let index = 0; index + 2 < guards.length; index += 3) {
+    const drawn = guardDepthAt(guards, index, state, seatPitch + leftPitch, seatRoll + leftRoll);
+    if (!(drawn > residual)) continue;
+    const extra = drawn - Math.max(0, guardDepthAt(guards, index, state, seatPitch, seatRoll));
+    if (extra > residual) residual = extra;
+  }
+  if (residual > 0) {
+    state.pos.y += residual;
+    state._ride.y += residual;
+  }
 }
 
 function resetSupportSamples(
@@ -4412,6 +4451,17 @@ function solveSupportHeight(
   endGuardSupportY(hullEndGuards(spec), groundAt, samples);
   structureBoxSupportY(spec, contact, groundAt, terrainAt, hAt, samples);
   const guardSupportY = _guardHit.deficit;
+  // the ground's rise under that contact as the hull travels over it (a strike stops the end's closing on it)
+  if (Number.isFinite(guardSupportY) && dt > 0) {
+    const travel = state.speed * dt;
+    const rise = groundAt(_guardHit.worldX + samples.sinYaw * travel, _guardHit.worldZ + samples.cosYaw * travel)
+      - groundAt(_guardHit.worldX, _guardHit.worldZ);
+    _guardHit.groundV = rise / dt;
+    _guardHit.grade = Math.abs(travel) > 1e-4 ? rise / Math.abs(travel) : 0;
+  } else {
+    _guardHit.groundV = 0;
+    _guardHit.grade = 0;
+  }
   const rigidSupportY = guardSupportY > shellSupportY ? guardSupportY : shellSupportY;
   writeSupportCache(
     entity,

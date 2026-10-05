@@ -862,8 +862,13 @@ contact constraints and cannot be crossed by residual uphill speed.
   kept 9.0. A strike on the hull's own body is a station too (round 8): an end guard (the lowest shell past the tracks'
   flat run at each of four pitches, 14 to 63 degrees, in three lateral bins; up to 24, the fleet's median 7), or on a
   structure one of the contact box's bottom corners 0.15 m over the track line, whatever the tracks' seat, grip or
-  travel. There are no stops between: the root takes its share and the hull the turn of the rest at once, the step's
-  depth taken as the struck end's closing rate, so the end stops on the ground and the attitude's step is its rate's.
+  travel. There are no stops between: the strike stops the struck end's closing on the ground as an impulse there
+  splits across a rigid body, the root taking its share of the closing speed and the hull the turn of the rest, and on a
+  face of grade g along the travel only 1/(1 + g²) of it is vertical (the rest stops the travel, as the face's grade
+  takes it). The turn eases in at most 0.2 rad/s a step, the root taking the end's rise the turn defers, and the depth
+  the end is left with comes back as position, at most 0.1 m a step (round 8, the parity iteration: taken at once, with
+  the step's whole depth as the end's closing rate, the end rose past the ground, the spring brought it back and it
+  struck again, step after step; a trench crossing's rendered jerk p99 rose by more than half).
   A turn about the centre of mass that would sink the far end's body contact turns about that contact instead. A body
   contact the hull rests on above its tracks joins the contact-aware fit (the plane, the gravity tip about it, the root
   following a pivot there): a hull half over a roof's edge, its tracks past it, tips off the roof on its box rather than
@@ -936,7 +941,9 @@ contact constraints and cannot be crossed by residual uphill speed.
   tracks' ends the overhang swings down with them; where an end guard would go into the ground (read at the tracks'
   seat and at the drawn pose, the ground the hull can reach) the end rests on it: the posture and the dive keep the
   share of their turn that brings it down to the ground, and their rates into it stop (round 8: on the drawn model's
-  tracks a BMP-2 holding its posture at a wall's foot drew its tail 18 cm into the ground). Nothing at rest changes. A landing is judged by its tracks' attitude, the spring's, not the posture. (Held in the rendered
+  tracks a BMP-2 holding its posture at a wall's foot drew its tail 18 cm into the ground). On the ground they give way
+  at most 0.003 rad a step, the root holding the drawn end on the ground meanwhile; at once, the drawn pitch jumped by
+  up to two degrees in a step. Nothing at rest changes. A landing is judged by its tracks' attitude, the spring's, not the posture. (Held in the rendered
   rock, as first built, the posture put the drawn hull off the authority's at rest: a UDES 03 laid its fixed bore 0.69
   degree off its sight on flat ground, where its own hydraulic nose-up posture read as a grade, and 1.08 degrees off on
   a 14-degree grade; a ZTZ-100's launch mouth sat 1 cm off the server's on its first shot and 8 mm once settled on a
