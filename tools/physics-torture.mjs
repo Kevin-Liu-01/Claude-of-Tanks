@@ -346,7 +346,12 @@ export const CASES = [
   { id: 'launch-back', group: 'air', seconds: (w) => 1 + w.dropS(20) + 4, terrain: TERRAIN.flat(), input: hold(),
     actions: [{ t: 1, kind: 'launch', dir: [0, -0.35, -0.94] }], modes: 'launch' },
   { id: 'cliff-10', group: 'air', seconds: (w) => 1 + w.dropS(10) + 4, terrain: TERRAIN.cliff(10, 14), spawn: { speed: 'top' }, input: hold(1) },
-  { id: 'cliff-30', group: 'air', seconds: (w) => 1 + w.dropS(30) + 4, terrain: TERRAIN.cliff(30, 14), spawn: { speed: 'top' }, input: hold(0.4) },
+  // (the coordinator's ruling of 2026-10-04: its fall damage is the mean over five spawn speeds, fallMeanSpeeds. The
+  // landing attitude after a 2.5 s fall follows the spin the hull leaves the edge with, which centimetres of track contact
+  // move: the M1A2's single sample ran 3132-3575 hp over +-2 cm of its run, the BMP-2's 600-863, so one sample measured
+  // that sensitivity, not the damage. Its other metrics stay the single run's at top speed, as every other case's do.)
+  { id: 'cliff-30', group: 'air', seconds: (w) => 1 + w.dropS(30) + 4, terrain: TERRAIN.cliff(30, 14), spawn: { speed: 'top' }, input: hold(0.4),
+    fallMeanSpeeds: [0.9, 0.95, 1, 1.05, 1.1] },
   // Sirocco Wadi, Zone Control, seed 57001 (maps lane, 2026-10-03): climbing a face too steep for the tracks at speed,
   // the grade rule stopped the hull and the ride flew on at the climb's 11 m/s — 5.7 m up and a 922 hp landing
   { id: 'climb-face', group: 'drive', seconds: 8, terrain: TERRAIN.quarterPipe(14, 14, 60), spawn: { speed: 'top' }, input: hold(1),
@@ -740,7 +745,7 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
   }
   if (spawn.dropTo != null) seatAirborne(subject, world, spawn.dropTo, spawn);
   if (spawn.speed != null) {
-    subject.state.speed = spawn.speed === 'top' ? topSpeedMps(subject) : spawn.speed;
+    subject.state.speed = (spawn.speed === 'top' ? topSpeedMps(subject) : spawn.speed) * (spawn.speedScale ?? 1);
     subject.state._spool = 1;
     subject.state._prevSpeed = subject.state.speed;
   }
@@ -788,6 +793,9 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
   // the underside as it is over each record, which clears a top or not (world/collision.ts hullPassesObstacleTop)
   const clears = new Float64Array(Math.max(1, world.obstacles.length));
   const att = { pitch: 0, roll: 0 };
+  // the rendered attitude unwrapped across +-pi (the coordinator's ruling of 2026-10-04): a hull rolling onto its back
+  // crossed from +pi to -pi in one step, and the jerk read the 2 pi jump as 1.36 M rad/s^3
+  const unwrapped = { pitch: 0, roll: 0, rawPitch: NaN, rawRoll: NaN };
   const renderedHistory = [];
   const restSamples = [];
   const replays = [];
@@ -928,7 +936,16 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
     if (att.pitch > metrics.renderPitchMaxRad) metrics.renderPitchMaxRad = att.pitch;
     if (att.pitch < metrics.renderPitchMinRad) metrics.renderPitchMinRad = att.pitch;
     metrics.diveMaxRad = Math.max(metrics.diveMaxRad, Math.abs(((state._susp?.d ?? 0) - (state._susp?.c ?? 0)) * 2.2));
-    renderedHistory.push(att.pitch, att.roll);
+    if (Number.isNaN(unwrapped.rawPitch)) {
+      unwrapped.pitch = att.pitch;
+      unwrapped.roll = att.roll;
+    } else {
+      unwrapped.pitch += wrap(att.pitch - unwrapped.rawPitch);
+      unwrapped.roll += wrap(att.roll - unwrapped.rawRoll);
+    }
+    unwrapped.rawPitch = att.pitch;
+    unwrapped.rawRoll = att.roll;
+    renderedHistory.push(unwrapped.pitch, unwrapped.roll);
     if (renderedHistory.length > 8) renderedHistory.splice(0, 2);
     if (renderedHistory.length === 8) {
       const h = renderedHistory;
@@ -1329,6 +1346,14 @@ export async function runMatrix({ hulls = Object.keys(HULLS), worlds = Object.ke
         const hullId = HULLS[hull] ?? hull;
         const started = performance.now();
         const metrics = runCase(hullId, worldId, caseDef, { replay });
+        if (caseDef.fallMeanSpeeds) {
+          // the fall damage over the case's spawn speeds (the single run at the nominal speed keeps its own on record)
+          const variants = caseDef.fallMeanSpeeds.map((scale) => (scale === 1 ? metrics.fallDamageHp
+            : runCase(hullId, worldId, { ...caseDef, spawn: { ...caseDef.spawn, speedScale: scale } }, { replay: false }).fallDamageHp));
+          metrics.fallDamageHpSingle = metrics.fallDamageHp;
+          metrics.fallDamageHpVariants = variants;
+          metrics.fallDamageHp = variants.reduce((sum, hp) => sum + hp, 0) / variants.length;
+        }
         const result = { case: caseId, group: caseDef.group, world: worldId, hull, hullId, metrics, failed: classify(metrics, caseDef),
           ms: performance.now() - started };
         results.push(result);
