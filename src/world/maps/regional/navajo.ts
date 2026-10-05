@@ -187,6 +187,40 @@ function woodpile(sink: PartSink, x: number, z: number, yaw: number, look: () =>
   });
 }
 
+/**
+ * A stack of split juniper (structure: a hull stops at it): a solid core of the cords, the ends of the lengths over its
+ * face as dressing. At (x, z), its length along local x turned `yaw`; it fills a plot's end beside a small house.
+ */
+function woodStack(sink: PartSink, x: number, z: number, yaw: number, len: number, h: number, look: () => number, depth = 0.9): void {
+  const hd = depth / 2;
+  sink.placed(yaw, x, 0, z, () => {
+    sink.span('structureWood', -len / 2, -0.2, -hd, len / 2, h, hd, { colour: shade(JUNIPER_DARK, 1.1) });
+    for (let k = 0; k < Math.round(len / 0.24) * 2; k++) {
+      const u = -len / 2 + 0.12 + look() * (len - 0.24), y = 0.12 + look() * (h - 0.24), r = 0.07 + look() * 0.04;
+      for (const side of [-1, 1]) sink.cylinder('structureWood', [u, y, side * hd - (side > 0 ? 0 : 0.03)], 'z', 0.03, r, 6, { colour: pick(look, JUNIPER), decor: true, fine: true });
+    }
+    sink.span('structureWood', -len / 2 - 0.05, h, -hd - 0.05, len / 2 + 0.05, h + 0.05, hd + 0.05, { colour: pick(look, JUNIPER), decor: true });
+  });
+}
+
+/**
+ * The cords of split juniper stacked at a plot's long ends beside a hogan standing at (0, hz) (structure: the hogan's
+ * octagon leaves the ends of its plot open, and a plot's reach is kept so no lane opens beside it), clear of the
+ * door's side: a single cord where an end is narrow, a deep stack where it has room.
+ */
+function endStacks(sink: PartSink, b: RegionalBuildContext['bounds'], hz: number, R: number, door: number, look: () => number, h: number): void {
+  const doorX = Math.cos(door * OCT), doorZ = Math.sin(door * OCT);
+  const A = R * Math.cos(OCT / 2) + 0.06;
+  for (const end of [-1, 1]) {
+    const edge = end > 0 ? b.maxZ : b.minZ, gap = Math.abs(edge - hz) - A;
+    if (gap <= 0.45) continue;
+    const depth = Math.max(0.4, Math.min(0.9, gap - 0.2)), z = edge - end * (0.15 + depth / 2);
+    const sx = doorX > 0.3 ? -1 : doorX < -0.3 ? 1 : (end * doorZ > 0 ? -1 : 1);
+    const len = Math.max(1.0, Math.min(2.6, (b.maxX - b.minX) / 2 - 0.6));
+    woodStack(sink, sx * ((b.maxX - b.minX) / 2 - len / 2 - 0.1) + (b.maxX + b.minX) / 2, z, 0, len, h, look, depth);
+  }
+}
+
 /** A water drum on the ground (dressing). */
 function drum(sink: PartSink, x: number, z: number, look: () => number): void {
   const c = pick(look, DRUM);
@@ -202,6 +236,7 @@ const hogan: RegionalBuilder = (ctx) => {
   const R = Math.max(2.4, Math.min(3.25, span / (2 * Math.cos(OCT / 2)) - 0.12));
   const door = eastSide(ctx.yaw);
   hoganBody(sink, rng, look, { r: R, door });
+  endStacks(sink, ctx.bounds, 0, R, door, look, 1.15);
   // the woodpile behind the hogan and a water drum beside the door, kept inside the plot (dressing, not on phones)
   if (ctx.tier !== 'mobile') {
     const clampX = (v: number, m: number) => Math.max(-ctx.info.w / 2 + m, Math.min(ctx.info.w / 2 - m, v));
@@ -261,8 +296,11 @@ function ramadaBody(sink: PartSink, W: number, D: number, H: number, look: () =>
 
 const ramada: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const W = Math.max(2.6, Math.min(5.0, ctx.info.w - 0.4)), D = Math.max(2.4, Math.min(4.2, ctx.info.d - 0.4));
-  ramadaBody(sink, W, D, 2.25 + ctx.rng() * 0.2, ctx.variant);
+  // the shade house fills its plot (its posts stand at the plot's corners)
+  const b = ctx.bounds;
+  const W = Math.max(2.6, b.maxX - b.minX - 0.3), D = Math.max(2.4, b.maxZ - b.minZ - 0.3);
+  const H = 2.25 + ctx.rng() * 0.2;
+  sink.placed(0, (b.maxX + b.minX) / 2, 0, (b.maxZ + b.minZ) / 2, () => ramadaBody(sink, W, D, H, ctx.variant));
   return sink.finish();
 };
 
@@ -391,11 +429,15 @@ function ranchBody(sink: PartSink, rng: () => number, look: () => number, o: Ran
 }
 
 /** A stone ranch house in a plot (the compound's house, the general store's back house). */
-function ranchIn(ctx: RegionalBuildContext, W: number, D: number): RegionalParts {
+function ranchIn(ctx: RegionalBuildContext): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
   const wall: RegionalBucket = ctx.wallBucket === 'stone' || rng() < 0.6 ? 'stone' : 'plaster';
-  ranchBody(sink, rng, ctx.variant, { W, D, wall, flat: rng() < 0.35, porch: rng() < 0.6 });
+  const flat = rng() < 0.35, porch = rng() < 0.6;
+  // the house fills the old cottage's reach: its back on the plot's back edge, its front (or its porch's) on the front
+  const b = ctx.bounds;
+  const W = Math.max(5.2, b.maxX - b.minX - 0.6), D = Math.max(5.6, b.maxZ - b.minZ - 0.6 - (porch ? 1.9 : 0));
+  sink.placed(0, (b.maxX + b.minX) / 2, 0, b.minZ + 0.3 + D / 2, () => ranchBody(sink, rng, ctx.variant, { W, D, wall, flat, porch }));
   return sink.finish();
 }
 
@@ -406,27 +448,33 @@ function ranchIn(ctx: RegionalBuildContext, W: number, D: number): RegionalParts
 const camp: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant;
-  const W = ctx.info.w, D = ctx.info.d;
+  // the camp fills the old compound's reach: the hogan and the house at its two ends, the shade house on its front
+  // edge, the corral along its back (no lane opens through the plot's ends)
+  const b = ctx.bounds;
+  const W = b.maxX - b.minX, D = b.maxZ - b.minZ, cx = (b.maxX + b.minX) / 2, cz = (b.maxZ + b.minZ) / 2;
   const flip = rng() < 0.5 ? -1 : 1;
   const R = Math.max(2.5, Math.min(3.1, D / 2 - 1.2));
-  const hx = flip * (W / 2 - R - 0.7), hz = -D / 2 + R + 1.1;
+  const A = R * Math.cos(OCT / 2) + 0.06;
+  const hx = cx + flip * (W / 2 - A - 0.15), hz = cz - D / 2 + A + 0.9;
   // the hogan's door: its east side in the camp's frame (the camp turns with the plot)
   sink.placed(0, hx, 0, hz, () => hoganBody(sink, rng, look, { r: R, door: eastSide(ctx.yaw) }));
   const rw = Math.min(7.6, W * 0.32), rd = Math.min(6.2, D * 0.45);
-  sink.placed(0, -flip * (W / 2 - rw / 2 - 0.8), 0, -D / 2 + rd / 2 + 0.8, () => {
+  sink.placed(0, cx - flip * (W / 2 - rw / 2 - 0.2), 0, cz - D / 2 + rd / 2 + 0.25, () => {
     const wall: RegionalBucket = ctx.wallBucket === 'stone' || rng() < 0.65 ? 'stone' : 'plaster';
     ranchBody(sink, rng, look, { W: rw, D: rd, wall, flat: rng() < 0.4, porch: false });
   });
-  // the shade house in front between them
-  sink.placed(0, flip * W * 0.05, 0, D / 2 - 2.4, () => ramadaBody(sink, 4.2, 3.4, 2.3, look));
+  // the shade house on the front edge between them
+  const rDw = 4.2, rDd = 3.4;
+  sink.placed(0, cx + flip * W * 0.05, 0, cz + D / 2 - rDd / 2 - 0.15, () => ramadaBody(sink, rDw, rDd, 2.3, look));
   // the sheep corral behind, between the houses
-  const cx0 = -flip * (W / 2 - rw - 1.4), cx1 = hx - flip * (R + 0.9);
-  const za = -D / 2 + 0.5, zb = -D / 2 + 4.2;
+  const cx0 = cx - flip * (W / 2 - rw - 0.6), cx1 = hx - flip * (A + 0.6);
+  const za = cz - D / 2 + 0.3, zb = cz - D / 2 + 4.2;
   if (Math.abs(cx1 - cx0) > 3) stockade(sink, [[cx0, zb, cx1, zb], [cx1, zb, cx1, za], [cx1, za, cx0, za], [cx0, za, cx0, zb]], look, 1.6);
+  // a cord of juniper along the front by the hogan
+  woodStack(sink, hx - flip * 0.4, cz + D / 2 - 0.45, 0, Math.min(2.6, A * 0.9), 1.15, look, 0.6);
   if (ctx.tier !== 'mobile') {
-    woodpile(sink, flip * W * 0.05 + 2.6, D / 2 - 0.9, 0, look);
-    drum(sink, hx - flip * (R + 0.35), hz + R * 0.6, look);
-    drum(sink, hx - flip * (R + 0.95), hz + R * 0.7, look);
+    drum(sink, hx - flip * (A + 0.35), hz + A * 0.6, look);
+    drum(sink, hx - flip * (A + 0.95), hz + A * 0.7, look);
   }
   return sink.finish();
 };
@@ -439,9 +487,10 @@ const camp: RegionalBuilder = (ctx) => {
 const tradingPost: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant;
-  const PW = ctx.info.w, PD = ctx.info.d;
+  // the post, its wool room and its corral fill the old caravanserai's reach (its measured bounds)
+  const bb = ctx.bounds, PW = bb.maxX - bb.minX, PD = bb.maxZ - bb.minZ;
   const W1 = Math.max(8.4, Math.min(10.2, PW * 0.46)), D1 = Math.max(7.2, Math.min(8.6, PD * 0.42));
-  const x1 = -PW / 2 + W1 / 2 + 1.4, z1 = PD / 2 - D1 / 2 - 2.6;
+  const x1 = bb.minX + W1 / 2 + 1.4, z1 = bb.maxZ - D1 / 2 - 2.45;
   const trim = pick(rng, TRIM), door = pick(rng, DOOR_PAINT);
   sink.placed(0, x1, 0, z1, () => {
     const openings: Opening[] = [
@@ -488,7 +537,7 @@ const tradingPost: RegionalBuilder = (ctx) => {
     sink.member('structureWood', [sx - 0.47, 0.9, z0 - run], [sx - 0.47, floor1 + 0.95, z0], 0.06, 0.06, [1, 0, 0], { colour: PLANK, decor: true, exposed: true }, 0);
   });
   // the wool room: one storey of the same stone, a wide plank door on the front, small high windows
-  const W2 = Math.max(5.6, Math.min(8.4, PW - W1 - 3.8)), D2 = Math.max(6.4, Math.min(10, PD * 0.48));
+  const W2 = Math.max(5.6, Math.min(9.6, PW - W1 - 2.9)), D2 = Math.max(6.4, Math.min(10, PD * 0.48));
   const x2 = x1 + W1 / 2 + 0.9 + W2 / 2, z2 = z1 + D1 / 2 - D2 / 2 - 0.2;
   sink.placed(0, x2, 0, z2, () => {
     const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'gate', u: 0, w: 2.2, y0: 0, h: 2.4 }];
@@ -502,9 +551,9 @@ const tradingPost: RegionalBuilder = (ctx) => {
   });
   // the stockade corral behind the buildings, and the gas pump at the porch's east end
   const zc = Math.min(z1 - D1 / 2, z2 - D2 / 2) - 0.6;
-  const cz0 = -PD / 2 + 0.5;
-  if (zc - cz0 > 3) stockade(sink, [[-PW / 2 + 1.2, zc, -PW / 2 + 1.2, cz0], [-PW / 2 + 1.2, cz0, PW / 2 - 1.2, cz0], [PW / 2 - 1.2, cz0, PW / 2 - 1.2, zc]], look);
-  const gx = x1 + W1 / 2 + 1.5, gz = PD / 2 - 1.2;
+  const cz0 = bb.minZ + 0.45, xa = bb.minX + 0.45, xb = bb.maxX - 0.45;
+  if (zc - cz0 > 3) stockade(sink, [[xa, zc, xa, cz0], [xa, cz0, xb, cz0], [xb, cz0, xb, zc]], look);
+  const gx = x1 + W1 / 2 + 1.5, gz = bb.maxZ - 1.2;
   sink.span('stone', gx - 0.9, -0.2, gz - 0.55, gx + 0.9, 0.18, gz + 0.55, { decor: true });
   sink.span('structureMetal', gx - 0.3, 0.18, gz - 0.25, gx + 0.3, 1.75, gz + 0.25, { colour: rgb(0xb8302a) });
   sink.cylinder('structureMetal', [gx, 1.75, gz], 'y', 0.42, 0.24, 10, { colour: rgb(0xe8e2d4), decor: true });
@@ -518,9 +567,10 @@ const tradingPost: RegionalBuilder = (ctx) => {
 const generalStore: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant;
-  const PW = ctx.info.w, PD = ctx.info.d;
-  const W = Math.max(9, Math.min(12.5, PW * 0.6)), D = Math.max(7.5, Math.min(9.5, PD - 5.2));
-  const x0 = -PW / 2 + W / 2 + 0.8, z0 = PD / 2 - D / 2 - 2.4;
+  // the store, its gas island and its storeroom fill the old souk compound's reach (no lane opens at its ends)
+  const bb = ctx.bounds, PW = bb.maxX - bb.minX, PD = bb.maxZ - bb.minZ, bx = (bb.maxX + bb.minX) / 2, bz = (bb.maxZ + bb.minZ) / 2;
+  const W = Math.max(9, PW - 4.6), D = Math.max(7.5, Math.min(9.5, PD - 5.2));
+  const x0 = bx - PW / 2 + W / 2 + 0.2, z0 = bz + PD / 2 - D / 2 - 2.4;
   const wall: RegionalBucket = ctx.wallBucket === 'stone' || rng() < 0.5 ? 'stone' : 'plaster';
   const trim = pick(rng, TRIM), door = pick(rng, DOOR_PAINT);
   sink.placed(0, x0, 0, z0, () => {
@@ -555,8 +605,8 @@ const generalStore: RegionalBuilder = (ctx) => {
     faceBox(sink, 'structureWood', f, -W * 0.3, 0.75, 0.42, 2.0, 0.08, 0.4, { colour: PLANK, decor: true });
   });
   // the gas island under its canopy east of the store
-  const gx = x0 + W / 2 + Math.min(3.2, (PW / 2 - x0 - W / 2) / 2 + 0.6), gz = PD / 2 - 2.6;
-  if (gx + 1.6 < PW / 2 + 0.3) {
+  const gx = bx + PW / 2 - 1.75, gz = bz + PD / 2 - 2.6;
+  {
     sink.span('stone', gx - 0.6, -0.2, gz - 1.6, gx + 0.6, 0.18, gz + 1.6);
     for (const dz of [-1.1, 1.1]) pole(sink, [gx, 0.18, gz + dz], [gx, 3.6, gz + dz], 0.09, IRON, false);
     sink.span('structureMetal', gx - 1.6, 3.6, gz - 2.0, gx + 1.6, 3.85, gz + 2.0, { colour: rgb(0xe2ddd0) });
@@ -567,8 +617,8 @@ const generalStore: RegionalBuilder = (ctx) => {
     }
   }
   // the storeroom behind: a lean stone box under a tin shed roof
-  const sw = Math.min(6.5, W * 0.6), sd = Math.max(2.6, Math.min(4.0, PD / 2 + z0 - D / 2 - 0.8));
-  if (sd > 2.4) {
+  const sw = Math.min(6.5, W * 0.6), sd = Math.max(2.4, Math.min(6.0, (z0 - D / 2) - (bz - PD / 2) - 0.25));
+  {
     sink.placed(0, x0 - W / 2 + sw / 2 + 0.3, 0, z0 - D / 2 - sd / 2 - 0.05, () => {
       buildHouse(sink, {
         w: sw, d: sd, plinth: null, storeys: [{ h: 2.5, wall: 'stone' }],
@@ -587,8 +637,11 @@ const generalStore: RegionalBuilder = (ctx) => {
 const roadsideStands: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const look = ctx.variant;
-  const W = Math.max(6, Math.min(12, ctx.info.w - 0.6)), D = Math.max(2.8, Math.min(3.6, ctx.info.d - 1.4));
+  // the stands fill the old market row's reach (its measured bounds, which stand off the plot's centre)
+  const bb = ctx.bounds;
+  const W = Math.max(6, bb.maxX - bb.minX - 0.5), D = Math.max(2.8, bb.maxZ - bb.minZ - 0.5);
   const n = Math.max(2, Math.round(W / 3.8)), bw = W / n, H = 2.35;
+  sink.placed(0, (bb.maxX + bb.minX) / 2, 0, (bb.maxZ + bb.minZ) / 2, () => {
   const ply: readonly Rgb[] = [0xb8a07a, 0xa89272, 0xc4b08c].map(rgb);
   const paint: readonly Rgb[] = [0x2f6a9a, 0x9a2e24, 0x3d8a86, 0xd8b04a, 0xe8e1d0].map(rgb);
   for (let k = 0; k <= n; k++) {
@@ -636,6 +689,7 @@ const roadsideStands: RegionalBuilder = (ctx) => {
     const x = -W / 2 + (k + 0.5) * bw;
     for (const s of [-1, 1]) sink.span('structureWood', x + s * (bw / 2 - 0.35) - 0.04, H, D / 2 - 0.12, x + s * (bw / 2 - 0.35) + 0.04, H + 0.85, D / 2 - 0.05, { colour: PLANK, decor: true });
   }
+  });
   return sink.finish();
 };
 
@@ -646,8 +700,11 @@ const roadsideStands: RegionalBuilder = (ctx) => {
 const windmill: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const look = ctx.variant;
-  const P = Math.max(3.6, Math.min(5.6, Math.min(ctx.info.w, ctx.info.d) - 0.3));
-  const tx = -P * 0.14, tz = -P * 0.14, base = Math.min(1.15, P * 0.24), H = 9.0 + ctx.rng() * 2.0, top = 0.32;
+  // the tower, the stock tank and the storage tank stand at three corners of the old tower's reach (its bounds)
+  const bb = ctx.bounds, PX = bb.maxX - bb.minX, PZ = bb.maxZ - bb.minZ, cx = (bb.maxX + bb.minX) / 2, cz = (bb.maxZ + bb.minZ) / 2;
+  const P = Math.max(3.6, Math.min(5.6, Math.min(PX, PZ) - 0.3));
+  const base = Math.min(1.15, P * 0.24), H = 9.0 + ctx.rng() * 2.0, top = 0.32;
+  const tx = cx - PX / 2 + base + 0.15, tz = cz - PZ / 2 + base + 0.15;
   const steel = GALV;
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     sink.member('structureMetal', [tx + sx * base, -0.4, tz + sz * base], [tx + sx * top, H, tz + sz * top], 0.09, 0.09, [sx, 0, 0], { colour: steel, exposed: true }, 0);
@@ -680,12 +737,13 @@ const windmill: RegionalBuilder = (ctx) => {
   sink.member('structureMetal', [tx, H + 0.75, tz - 1.6], [tx, H + 0.75, tz - 2.6], 1.0, 0.02, [1, 0, 0], { colour: rgb(0xd8d4c8), decor: true, exposed: true }, 0);
   sink.member('structureMetal', [tx, 0.2, tz], [tx, H, tz], 0.03, 0.03, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
   // the stock tank and the storage tank (structure), the water in them
-  const sr = Math.min(1.35, P * 0.26), sxp = P / 2 - sr - 0.15, szp = P / 2 - sr - 0.15;
+  const sr = Math.min(1.35, P * 0.26), sxp = cx + PX / 2 - sr - 0.15, szp = cz + PZ / 2 - sr - 0.15;
   sink.cylinder('structureMetal', [sxp, -0.2, szp], 'y', 0.9, sr, 16, { colour: shade(steel, 0.92) });
   sink.cylinder('glass', [sxp, 0.62, szp], 'y', 0.02, sr - 0.05, 16, { decor: true });
   const tr = Math.min(0.85, P * 0.16);
-  sink.cylinder('structureMetal', [-P / 2 + tr + 0.15, -0.2, P / 2 - tr - 0.15], 'y', 2.2, tr, 12, { colour: pick(look, [GALV, RUSTY, rgb(0x6e7f74)]) });
-  sink.cylinder('structureMetal', [-P / 2 + tr + 0.15, 2.0, P / 2 - tr - 0.15], 'y', 0.25, tr, 12, { colour: shade(GALV, 0.85), decor: true }, 0.1);
+  const stx = cx - PX / 2 + tr + 0.15, stz = cz + PZ / 2 - tr - 0.15;
+  sink.cylinder('structureMetal', [stx, -0.2, stz], 'y', 2.2, tr, 12, { colour: pick(look, [GALV, RUSTY, rgb(0x6e7f74)]) });
+  sink.cylinder('structureMetal', [stx, 2.0, stz], 'y', 0.25, tr, 12, { colour: shade(GALV, 0.85), decor: true }, 0.1);
   // the pipe from the pump to the tanks
   sink.member('structureMetal', [tx, 0.5, tz], [sxp, 0.75, szp], 0.06, 0.06, [0, 1, 0], { colour: IRON, decor: true, exposed: true }, 0);
   return sink.finish();
@@ -741,7 +799,9 @@ const waterTank: RegionalBuilder = (ctx) => {
 const daySchool: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
-  const W = Math.max(9, Math.min(12.5, ctx.info.w - 0.8)), D = Math.max(14, Math.min(22, ctx.info.d - 2.6));
+  // the school fills the old factory's reach (its bounds): its back wall on the back edge, its porch to the front
+  const bb = ctx.bounds;
+  const W = Math.max(9, bb.maxX - bb.minX - 1.0), D = Math.max(14, bb.maxZ - bb.minZ - 3.1);
   const trim = rgb(0xd8d2c4), door = pick(rng, [rgb(0x4d6f45), rgb(0x8a3a2c), rgb(0x3f6f99)]);
   const roofPaint = pick(rng, [rgb(0x56705a), rgb(0x8b3b2e), rgb(0x5f6f78)]);
   const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.7, y0: 0, h: 2.6 }];
@@ -752,6 +812,7 @@ const daySchool: RegionalBuilder = (ctx) => {
   }
   const style: WindowStyle = { frame: trim, frameWidth: 0.07, frameOut: 0.05, bars: 'six', surround: { bucket: 'stone', width: 0.16, out: 0.05, lintel: 0.28 },
     sill: { bucket: 'stone', out: 0.08 }, shutters: null };
+  sink.placed(0, (bb.maxX + bb.minX) / 2, 0, bb.minZ + 0.45 + D / 2, () => {
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.55, out: 0.08, bucket: 'stone' }, storeys: [{ h: 3.5, wall: 'stone' }, { h: 3.3, wall: 'stone' }],
     roof: { kind: 'hip', pitchDeg: 26, eave: 0.55, verge: 0.55, thickness: 0.08, bucket: 'structureMetal', ridge: 'saddle' }, roofColour: roofPaint,
@@ -785,6 +846,7 @@ const daySchool: RegionalBuilder = (ctx) => {
   sink.cylinder('structureMetal', [0, ry + 1.05, 0], 'y', 0.45, 0.32, 10, { colour: rgb(0x5a4a32), decor: true }, 0.18);
   // the flagpole by the steps
   sink.cylinder('structureMetal', [pw / 2 + 1.0, 0, D / 2 + pd + 0.6], 'y', 9.5, 0.06, 8, { colour: rgb(0xd8d8d4), decor: true }, 0.035);
+  });
   return sink.finish();
 };
 
@@ -798,8 +860,8 @@ const woolBarn: RegionalBuilder = (ctx) => {
   // the barn fills the old warehouse's reach (its measured bounds, dock and canopy included): a shorter barn opened a
   // tank-wide gap to its neighbour that the bots drove through (Titan's pacing: three of four matches over by 160 s)
   const b = ctx.bounds;
-  const W = Math.max(10, Math.min(17, b.maxX - b.minX - 0.3)), D = Math.max(16, Math.min(28, b.maxZ - b.minZ - 0.3));
-  const xc = (b.maxX + b.minX) / 2, zc = (b.maxZ + b.minZ) / 2;
+  const W = Math.max(10, Math.min(17, b.maxX - b.minX - 0.3)), D = Math.max(16, Math.min(28, b.maxZ - b.minZ - 1.2));
+  const xc = (b.maxX + b.minX) / 2, zc = b.minZ + 0.15 + D / 2;
   const baseH = 1.5 + rng() * 0.4, H = 4.8 + rng() * 0.6;
   sink.placed(0, xc, 0, zc, () => {
     sink.span('stone', -W / 2 - 0.06, -0.5, -D / 2 - 0.06, W / 2 + 0.06, baseH, D / 2 + 0.06);
@@ -846,8 +908,13 @@ const woolBarn: RegionalBuilder = (ctx) => {
 const equipmentShed: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const look = ctx.variant;
-  const D = Math.max(12, Math.min(22, ctx.info.d - 1.2));
-  const W = 7.0, x0 = -3.5, H = 4.2;
+  // the shed and its lean-to fill the old depot's reach (its bounds, which stand off the plot's centre): the clad shed
+  // on the back (-x) side, the lean-to out to the front (+x) side
+  const bb = ctx.bounds, PW = bb.maxX - bb.minX;
+  const D = Math.max(12, bb.maxZ - bb.minZ - 0.8), H = 4.2, x0 = bb.minX + 0.2;
+  let W = Math.max(6.5, Math.min(12, PW - 0.45 - 3.4)), lw = PW - 0.45 - W;
+  if (lw < 1.2) { W += lw; lw = 0; } else if (lw > 4) { W += lw - 4; lw = 4; }
+  sink.placed(0, 0, 0, (bb.maxZ + bb.minZ) / 2, () => {
   const roof: RoofSpec = { kind: 'shed', pitchDeg: 9, eave: 0.4, verge: 0.3, thickness: 0.07, bucket: 'roof' };
   const rise = W * Math.tan(9 * Math.PI / 180);
   // the clad walls: back (-x) full height, the ends (gable-trapezoid) and the posts along the open front (+x)
@@ -871,7 +938,6 @@ const equipmentShed: RegionalBuilder = (ctx) => {
   }
   sink.placed(Math.PI, x0 + W / 2, 0, 0, () => emitRoof(sink, roofGeometry(W, D, H, roof), roof));
   // the lean-to off the front for the trucks: posts and a low tin roof
-  const lw = Math.max(0, Math.min(3.0, ctx.info.w - W - 0.6 - (ctx.info.w / 2 + x0)));
   if (lw > 1.2) {
     for (let k = 0; k <= n; k += 2) {
       const z = -D / 2 + 0.3 + (D - 0.6) * k / n;
@@ -885,6 +951,7 @@ const equipmentShed: RegionalBuilder = (ctx) => {
     for (let k = 0; k < 4; k++) for (let r = 0; r < 3 - (k % 2); r++) sink.span('straw', x0 + 0.4, r * 0.45, -D / 2 + 0.6 + k * 1.05, x0 + 1.3, r * 0.45 + 0.45, -D / 2 + 1.6 + k * 1.05, { decor: true });
     for (let k = 0; k < 8; k++) sink.cylinder('structureWood', [x0 + 0.5, 0.08 + (k % 3) * 0.14, D / 2 - 3.6 + k * 0.17], 'z', 0.05, 0.07, 5, { colour: pick(look, JUNIPER), decor: true }, 0.07, true);
   }
+  });
   return sink.finish();
 };
 
@@ -897,14 +964,18 @@ const trailer: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
   const double = ctx.info.d >= 7.8;
-  const L = Math.max(10, Math.min(15, ctx.info.w - 0.8));
-  const T = double ? Math.min(7.2, ctx.info.d - 1.0) : 4.3;
-  const zc = double ? -0.5 : -Math.max(0, Math.min(1.2, ctx.info.d / 2 - T / 2 - 2.0));
+  // the home fills the old container row's reach (its bounds): its back on the back edge, a double-wide's front (a
+  // single-wide's deck) on the front edge
+  const bb = ctx.bounds, PD = bb.maxZ - bb.minZ;
+  const L = Math.max(10, bb.maxX - bb.minX - 0.8);
+  const T = double ? Math.max(5.6, Math.min(7.4, PD - 0.7)) : Math.max(4.3, Math.min(5.4, PD - 2.4));
+  const deckD = double ? 1.2 : Math.max(1.8, Math.min(2.6, PD - 0.6 - T));
+  const xc = (bb.maxX + bb.minX) / 2, zc = bb.minZ + 0.3 + T / 2;
   const skin = pick(rng, [rgb(0xe2dccd), rgb(0xd8d4c4), rgb(0xc8c0a8), rgb(0xb8c4c4), rgb(0xa9b4a6)]);
   const stripe = pick(rng, [rgb(0x7a5a3e), rgb(0x3f6f99), rgb(0x8a3a2c), rgb(0x56705a)]);
   const roofColour = double ? pick(rng, [rgb(0x6e6a62), rgb(0x8a8a84), rgb(0x5a4a3e)]) : shade(skin, 1.05);
   const floor = 0.75, top = double ? 3.1 : 3.3;
-  sink.placed(0, 0, 0, zc, () => {
+  sink.placed(0, xc, 0, zc, () => {
     // the piers behind the skirting, the skirting (structure) and the box
     sink.span('structureMetal', -L / 2 + 0.1, -0.3, -T / 2 + 0.1, L / 2 - 0.1, floor, T / 2 - 0.1, { colour: shade(skin, 0.82) });
     sink.span('structureMetal', -L / 2, floor, -T / 2, L / 2, top, T / 2, { colour: skin });
@@ -938,7 +1009,7 @@ const trailer: RegionalBuilder = (ctx) => {
     const du = L * 0.18;
     faceBox(sink, 'structureMetal', f, du, floor + 1.0, 0.015, 0.85, 1.95, 0.03, { colour: shade(skin, 0.92), decor: true });
     faceBox(sink, 'glass', f, du, floor + 1.55, 0.032, 0.4, 0.4, 0.01, { decor: true, fine: true });
-    const deckD = double ? 1.2 : 1.8, deckW = double ? 2.0 : 2.6;
+    const deckW = double ? 2.0 : 2.6;
     sink.span('structureWood', du - deckW / 2, 0.0, T / 2, du + deckW / 2, floor - 0.05, T / 2 + deckD, { colour: PLANK_GREY, ...(double ? { decor: true } : {}) });
     for (let k = 1; k <= 3; k++) sink.span('structureWood', du - 0.6, floor * (3 - k) / 4 - 0.05, T / 2 + deckD + 0.28 * (k - 1), du + 0.6, floor * (4 - k) / 4 - 0.05, T / 2 + deckD + 0.28 * k, { colour: PLANK_GREY, decor: true });
     for (const s2 of [-1, 1]) {
@@ -961,8 +1032,11 @@ const trailer: RegionalBuilder = (ctx) => {
 const hayShed: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const look = ctx.variant;
-  const L = Math.max(12, Math.min(20, ctx.info.w - 1.4)), Dd = Math.max(4.0, Math.min(5.4, ctx.info.d - 0.6)), H = 4.3;
+  // the shed fills the old gantry's reach (its bounds, which stand off the plot's centre)
+  const bb = ctx.bounds;
+  const L = Math.max(12, bb.maxX - bb.minX - 0.8), Dd = Math.max(4.0, bb.maxZ - bb.minZ - 0.6), H = 4.3;
   const n = Math.max(4, Math.round(L / 3.3));
+  sink.placed(0, (bb.maxX + bb.minX) / 2, 0, (bb.maxZ + bb.minZ) / 2, () => {
   for (let k = 0; k <= n; k++) {
     const x = -L / 2 + 0.15 + (L - 0.3) * k / n;
     for (const z of [-Dd / 2 + 0.15, Dd / 2 - 0.15]) pole(sink, [x, -0.3, z], [x + (look() - 0.5) * 0.08, H, z], 0.12, pick(look, JUNIPER), false);
@@ -981,6 +1055,7 @@ const hayShed: RegionalBuilder = (ctx) => {
       if (look() < 0.5) sink.span('straw', x0 + 0.3, h * 0.46, -0.4, x0 + 1.3, h * 0.46 + 0.46, 0.5, { decor: true });
     }
   }
+  });
   return sink.finish();
 };
 
@@ -991,12 +1066,18 @@ const hayShed: RegionalBuilder = (ctx) => {
 const ruin: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant;
-  const W = Math.max(5.0, ctx.info.w - 0.6), D = Math.max(6.0, ctx.info.d - 0.6);
+  // the ruin fills the old ruin's reach (its bounds)
+  const bb = ctx.bounds, cx = (bb.maxX + bb.minX) / 2, cz = (bb.maxZ + bb.minZ) / 2;
+  const W = Math.max(5.0, bb.maxX - bb.minX - 0.6), D = Math.max(6.0, bb.maxZ - bb.minZ - 0.6);
   if (rng() < 0.4) {
-    const R = Math.max(2.3, Math.min(3.0, (Math.min(W, D) - 0.2) / (2 * Math.cos(OCT / 2)) - 0.1));
-    hoganBody(sink, rng, look, { r: R, door: eastSide(ctx.yaw), fallen: true });
+    // the fallen hogan, the logs of its roof stacked in cords at the plot's ends
+    const R = Math.max(2.4, Math.min(3.45, Math.min(W, D) / (2 * Math.cos(OCT / 2)) - 0.12));
+    const door = eastSide(ctx.yaw);
+    sink.placed(0, cx, 0, cz, () => hoganBody(sink, rng, look, { r: R, door, fallen: true }));
+    endStacks(sink, bb, cz, R, door, look, 0.95);
     return sink.finish();
   }
+  sink.placed(0, cx, 0, cz, () => {
   const t = 0.42, H = 2.6;
   sink.span('stone', -W / 2 - 0.05, -0.5, -D / 2 - 0.05, W / 2 + 0.05, 0.25, D / 2 + 0.05);
   const runs: Array<[number, number, number, number, 'x' | 'z']> = [[-W / 2, -D / 2, W / 2, -D / 2 + t, 'x'], [-W / 2, D / 2 - t, W / 2, D / 2, 'x'],
@@ -1020,6 +1101,7 @@ const ruin: RegionalBuilder = (ctx) => {
       { colour: pick(look, JUNIPER), decor: true, exposed: true }, 0);
   }
   sink.cylinder('plaster2', [W * 0.1, 0.1, -D * 0.1], 'y', 0.55, Math.min(W, D) * 0.3, 7, { decor: true }, Math.min(W, D) * 0.12, true, look());
+  });
   return sink.finish();
 };
 
@@ -1040,7 +1122,7 @@ export const NAVAJO_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object
   // the yard's outbuilding by each hogan
   ramada,
   // a ranch house wherever a plan names a cottage
-  cottage: (ctx) => ranchIn(ctx, Math.max(5.2, Math.min(8.0, ctx.info.w - 0.6)), Math.max(5.6, Math.min(8.5, ctx.info.d - 2.6))),
+  cottage: ranchIn,
 });
 
 export const NAVAJO_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
