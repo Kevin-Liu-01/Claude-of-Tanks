@@ -1195,6 +1195,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/fieldStoneSurface.selftest.mjs',
     // the scenery lane (wave 20): the mud walls' worn render; the walls' feet, drifts and snow loads
     'src/world/fieldMudSurface.selftest.mjs',
+    // the scenery lane (b14, wave 97): the mud walls' crown, render losses and stains in world space
+    'src/world/mudWalls.selftest.mjs',
     // the scenery lane (b13, wave 87): the karst field walls laid as dry stone, their face print, the T cut back
     'src/world/fieldWalls.selftest.mjs',
     'src/world/wireMaterial.selftest.mjs',

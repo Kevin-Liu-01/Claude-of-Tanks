@@ -57,6 +57,7 @@ type SceneryHardstand = { x: number; z: number; width: number; length: number; y
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
 import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
 import { paintDryWallBuffers } from './fieldWallFace.ts';
+import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
 import { FIELD_MUD_PLAIN_V, paintFieldMudBuffers, mudEarthOfGround, tintFieldMudToEarth } from './fieldMudSurface.ts'; // the mud walls' worn render (the scenery lane)
 import { buildSnowLoad, createWallDressing } from './maps/fieldWallDressing.ts'; // the walls' ground and weather (the scenery lane)
@@ -3315,7 +3316,7 @@ function* propsBuildSteps(
   // uGrime is also invisible to a mesh/material-property traversal. Declare
   // both on their world owner so eviction releases every shadow registration
   // and texture, while GPU suspension retains the same reusable CPU objects.
-  const retainedSurfaceMaterials = Object.values(mats);
+  const retainedSurfaceMaterials: THREE.Material[] = Object.values(mats);
   registerRetainedObject3DResources(group, {
     materials: retainedSurfaceMaterials, textures: [grimeTex, rockDetail.lichen],
   });
@@ -3420,14 +3421,22 @@ ${snowCap ? `
 }
 #endif`);
   };
+  // the scenery lane (b14; gauntlet wave 97: the mud walls' "wave-top silhouette and rust-colored staining repeat
+  // identically roughly eight times across the frame", "stamped rectangle decals"): the pool draws one module for every
+  // module, so the mud material lays the crown's slumps, the render's losses over the courses and the rain's stains in
+  // world space (mudWallShader.ts). The module's top and shoulder are the pool geometry's (set when it is built); the
+  // shadow pass runs the same crown (its depth material).
+  const mudShape: THREE.IUniform<THREE.Vector3> = { value: new THREE.Vector3(1.2, 0.66, MUD_SLUMP_M) };
+  const mudHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyMudWallHook(shader, mudShape); };
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
-          : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook : grimeHook);
-      // (the mud print is the plaster material's shader with another map, the hessian the canvas's: they share their
-      // programs; the field print has its own, for the modules' shifted windows)
-      const programKind = materialKind === 'fieldMud' ? 'plaster' : materialKind === 'burlap' ? 'structureCanvas' : materialKind;
+          : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook
+            : materialKind === 'fieldMud' ? mudHook : grimeHook);
+      // (the hessian is the canvas's shader with another map: they share their programs; the field print has its own,
+      // for the modules' shifted windows, and the mud print its own, for its world-space weathering)
+      const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind;
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
@@ -8535,6 +8544,14 @@ ${snowCap ? `
     const { geoI, groundCoverDetail } = yield* prepareDestructiblePoolGeometry(kind, pool);
     if (groundCoverDetail) sealGroundCoverPlacements(pool, groundCoverDetail);
     const imI = new THREE.InstancedMesh(geoI, material, pool.mats4.length);
+    if (material === mats.fieldMud && kind === 'walladobe') {
+      // (b14: the mud walls' crown in world space: the module's top and shoulder, and the same crown in the shadows)
+      if (!geoI.boundingBox) geoI.computeBoundingBox();
+      mudShapeFor(geoI.boundingBox!, mudShape.value);
+      const depth = createMudWallDepthMaterial(grimeTex, mudShape);
+      retainedSurfaceMaterials.push(depth);
+      imI.customDepthMaterial = depth;
+    }
     for (let i = 0; i < pool.mats4.length; i++) imI.setMatrixAt(i, pool.mats4[i]);
     tintDestructibleInstances(kind, pool, imI);
     const castsDynamicShadow = destructibleCastsShadow(meta);

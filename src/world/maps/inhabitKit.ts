@@ -1332,70 +1332,35 @@ function adobeEnvelope(rng: Rng): THREE.BufferGeometry {
 
 /**
  * The scenery lane (2026-10-03; wave 20, "smooth pillow- and pipe-shaped walls instead of eroded mud brick"): the mud
- * wall as an eroded slab — near-upright faces battered a little, cut back at the foot where the splash wore it, squared
- * shoulders rubbed round; its crown bitten by the rain in scalloped losses (one broad loss a module, up to a quarter
- * metre deep, and a couple of small ones, each cut steeper on one side; none at the module's ends so a run's crown
- * meets itself, and no row of even teeth along a run), rain gullies
- * down the faces from the crown, deepest at the top. One extrusion of a thirteen-point section every 19 cm (about
- * 410 triangles, the old module's count) on the field-mud print, one tile a module (u along the wall, v round the section). Like the stone
- * wall, the original builder still runs first (its draws, its envelope) and the mass is fitted to that envelope, so the
- * fitted wall collider keeps its plan and height.
+ * wall as a slab — near-upright faces battered a little, cut back at the foot where the splash wore it, shoulders
+ * rubbed round to a worn crown. One extrusion of a thirteen-point section every 15 cm on the field-mud print, one tile
+ * a module (u along the wall, v round the section). Like the stone wall, the original builder still runs first (its
+ * draws, its envelope) and the mass is fitted to that envelope, so the fitted wall collider keeps its plan and height.
+ *
+ * (b14; gauntlet wave 97: "wave-top silhouette and rust-colored staining repeat identically roughly eight times across
+ * the frame", "stamped rectangle decals") A pool draws this one module for every module of every mud wall, so whatever
+ * it carries repeats every three metres. Its crown is now level and its faces plain: the crown's slumps and the
+ * wall's height, the render's losses with the courses under them, and the rain's stains are the material's, laid in
+ * world space (props.ts, the mud hook), continuous across the modules' joints and never the same twice.
  */
 function adobeModule(r: Rng): THREE.BufferGeometry {
   const L = WALL_SEG, H = 1.0, half = 0.26;
-  const segs = 16, phase = r() * 10, bow = (r() < 0.5 ? -1 : 1) * (0.012 + r() * 0.012);
-  // the gullies: a few each face, narrow, from the crown down, fading toward the foot
-  // (clear of the module's ends, so a turned neighbour's face meets this one's where neither is cut)
-  const gullies = Array.from({ length: 3 + Math.floor(r() * 4) }, () => [(r() - 0.5) * (L - 0.8), r() < 0.5 ? -1 : 1, 0.012 + r() * 0.016, 0.14 + r() * 0.08]);
-  // the crown's losses: [centre along, half width, depth, lean]; one broad loss and a couple of small ones, each
-  // steeper on one side (the rain cuts back into the wall), clear of the module's ends; a run repeats the module, so
-  // no row of even teeth
-  const bites: Array<[number, number, number, number]> = [];
-  for (let k = 0, n = 2 + Math.floor(r() * 2); k < n; k++) {
-    const broad = k === 0;
-    // (wave 34, "laser-straight tops": the broad loss is a slump a metre or so long, up to a third of a metre deep)
-    const w = broad ? 0.55 + r() * 0.4 : 0.1 + r() * 0.14, d = broad ? 0.16 + r() * 0.16 : 0.03 + r() * 0.06;
-    const c = (r() - 0.5) * (L - 2 * w - 0.3);
-    bites.push([c, w, d, (r() - 0.5) * 1.2]);
-  }
+  void r; // (a module's place seeds its stream; the level crown draws nothing from it)
+  const segs = 20;
   // the section, one foot over the crown to the other: [across (x / half), height (y / H)]
-  // (thirteen points, a row every 19 cm: about the old module's 410 triangles; wave 34 counted the triangles)
   // (wave 34: "rounded slumped tops" — the faces battered in toward a crown worn round, not squared shoulders)
   const section: Array<[number, number]> = [[-1.05, 0], [-0.99, 0.06], [-1.03, 0.22], [-0.95, 0.64], [-0.82, 0.86],
     [-0.48, 0.975], [0, 1.0], [0.48, 0.975], [0.82, 0.86], [0.95, 0.64], [1.03, 0.22], [0.99, 0.06], [1.05, 0]];
   const positions: number[] = [], uvs: number[] = [], index: number[] = [];
-  const rowLength = section.length, y0 = 0.55;
+  const rowLength = section.length;
   const arc = [0];
   for (let k = 1; k < rowLength; k++) arc.push(arc[k - 1] + Math.hypot((section[k][0] - section[k - 1][0]) * half, (section[k][1] - section[k - 1][1]) * H));
   for (let i = 0; i <= segs; i++) {
     const u = i / segs, z = (u - 0.5) * L * 0.995;
-    // the crown's bites (a U each), and a long gentle wave whose period is the module's
-    let loss = 0;
-    for (const [c, w, d, lean] of bites) {
-      // a skewed U: the lean moves the deepest point toward one side and steepens that side
-      const t = (z - c) / w;
-      if (Math.abs(t) >= 1) continue;
-      const tt = t >= lean * 0.5 ? (t - lean * 0.5) / (1 - lean * 0.5) : (t - lean * 0.5) / (1 + lean * 0.5);
-      loss = Math.max(loss, d * Math.max(0, 1 - tt * tt) * Math.max(0, 1 - tt * tt));
-    }
-    // the crown's own unevenness: two harmonics of the module and a finer ripple
-    loss += (Math.sin(2 * Math.PI * u + phase) * 0.5 + 0.5) * 0.06 + (Math.sin(6 * Math.PI * u + phase * 2.1) * 0.5 + 0.5) * 0.018
-      + (Math.sin(14 * Math.PI * u + phase * 0.7) * 0.5 + 0.5) * 0.006;
     const tuck = 1 - Math.max(0, u - 0.9) * 0.3; // the +z end steps inside the next module's start
     for (let k = 0; k < rowLength; k++) {
       const [sx, sy] = section[k];
-      const side = Math.sign(sx);
-      // the upper section compresses into the loss (the shoulders follow the crown down)
-      let y = sy * H;
-      if (sy > y0) y = y0 * H + (sy * H - y0 * H) * (H - loss - y0 * H) / (H - y0 * H);
-      let gully = 0;
-      for (const [gz, gs, depth, gw] of gullies) {
-        if (gs === side && sy > 0.08) gully += depth * Math.max(0, 1 - Math.abs(z - gz) / gw) * Math.min(1, sy * 1.3);
-      }
-      // a loss also eats the shoulder on its side: the crown narrows where it is bitten
-      const narrow = sy > 0.85 ? 1 - Math.min(0.12, loss * 0.5) : 1;
-      const x = sx * half * narrow * tuck - side * gully + Math.sin(Math.PI * u) * bow;
-      positions.push(x, y, z);
+      positions.push(sx * half * tuck, sy * H, z);
       uvs.push(u, arc[k] * ADOBE_UV_PER_M);
     }
   }
