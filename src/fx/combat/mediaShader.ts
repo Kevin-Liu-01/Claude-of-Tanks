@@ -231,7 +231,9 @@ void main() {
     vec4 s = texture2D( uMap, ( vFMix < 0.5 ? vCellA : vCellB ) + uv );
   #else
     // domain warp: a drifting low-frequency field pushes the silhouette around, harder as the puff ages
-    vec2 w = texture2D( uNoise, vUv * 0.85 + vMisc2.xy ).rg - 0.5;
+    // (the warp fades out toward the card's rim, so nothing is pushed into the octagon's cut corners)
+    vec2 w = ( texture2D( uNoise, vUv * 0.85 + vMisc2.xy ).rg - 0.5 )
+      * ( 1.0 - smoothstep( 0.27, 0.4, length( vUv - 0.5 ) ) );
     vec2 uv = clamp( vUv + w * vMisc.z, 0.01, 0.99 ) * 0.25;
     vec4 s = mix( texture2D( uMap, vCellA + uv ), texture2D( uMap, vCellB + uv ), vFMix );
   #endif

@@ -9,6 +9,9 @@
 import * as THREE from 'three';
 import { MEDIA_LAYOUT } from './mediaShader.ts';
 
+/** The inscribed radius of the media card (tile units): the sheets' content stays inside it. */
+export const MEDIA_CARD_RADIUS = 0.41;
+
 /** One puff's emit record. Recipes keep ONE of these and mutate it per emit (no allocation). */
 export interface MediaPuff {
   px: number; py: number; pz: number;
@@ -57,11 +60,21 @@ export class MediaPool {
 
   constructor(name: string, capacity: number, material: THREE.ShaderMaterial) {
     this.capacity = capacity;
+    // An octagon, not a quad: the sheets' lobe clusters never reach past a 0.37 radius of their tile (mediaAtlas.ts;
+    // combatFx.selftest.mjs holds it under 0.4) and the warp fades out before the rim, so everything outside a 0.41
+    // inscribed radius was always transparent — about half of every puff's fill for nothing.
     const geo = new THREE.InstancedBufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(
-      [-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0], 3));
-    geo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
-    geo.setIndex([0, 1, 2, 0, 2, 3]);
+    const pos: number[] = [], uvs: number[] = [];
+    const R = MEDIA_CARD_RADIUS / Math.cos(Math.PI / 8);
+    for (let k = 0; k < 8; k++) {
+      const a = Math.PI / 8 + (k * Math.PI) / 4;
+      const x = Math.cos(a) * R, y = Math.sin(a) * R;
+      pos.push(x, y, 0);
+      uvs.push(x + 0.5, y + 0.5);
+    }
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex([0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0, 5, 6, 0, 6, 7]);
     geo.instanceCount = 0;
     const attrs = {} as Record<AttrName, THREE.InstancedBufferAttribute>;
     const arrays = {} as Record<AttrName, Float32Array>;

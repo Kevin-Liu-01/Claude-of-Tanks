@@ -17,7 +17,7 @@ import { muzzleBlast } from './muzzleBlast.ts';
 import { COOK_OFF_S, columnPuff, killBlast } from './killBlast.ts';
 import { classifySurface } from './surface.ts';
 import { mediaPositionAt } from './context.ts';
-import { makeMediaPuff } from './mediaPool.ts';
+import { makeMediaPuff, MEDIA_CARD_RADIUS } from './mediaPool.ts';
 import { makeClodRecord, landClod } from './clods.ts';
 import { createCombatFx, groundWindFromAloft } from './combatFx.ts';
 import { bakeMediaAtlasSteps } from './mediaAtlas.ts';
@@ -267,6 +267,18 @@ const sheet = (style) => { const g = bakeMediaAtlasSteps(style, 5000); let r = g
 const billow = sheet('billow');
 assert.deepEqual(sheet('billow'), billow, 'the billow sheet bakes byte-identically');
 const alphaAt = (data, x, y) => data[(y * 512 + x) * 4 + 3];
+// every frame's content stays inside the card's octagon (mediaPool.ts MEDIA_CARD_RADIUS)
+for (const [style, data] of [['billow', billow], ['wisp', sheet('wisp')]]) {
+  let reach = 0;
+  for (let f = 0; f < 16; f++) {
+    const ox = (f % 4) * 128, oy = Math.floor(f / 4) * 128;
+    for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) {
+      if (alphaAt(data, ox + x, oy + y) <= 2) continue;
+      reach = Math.max(reach, Math.hypot((x + 0.5) / 128 - 0.5, (y + 0.5) / 128 - 0.5));
+    }
+  }
+  assert.ok(reach < MEDIA_CARD_RADIUS - 0.01, `${style}: the sheet's content stays inside the card (${reach.toFixed(3)})`);
+}
 assert.ok(alphaAt(billow, 64, 64) > 100 && alphaAt(billow, 0, 0) === 0 && alphaAt(billow, 127, 64) === 0,
   'frame 0: dense at its centre, clear at its border');
 
