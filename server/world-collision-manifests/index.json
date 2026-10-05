@@ -124,10 +124,10 @@
       "concealers": 462
     },
     "blackglass": {
-      "bytes": 2955229,
-      "sha256": "5fb6fb79dcea33dfb1727b73fe34946a372e79aa1d72656b3becce5bbc84098a",
-      "obstacles": 2710,
-      "colliders": 5010,
+      "bytes": 1224208,
+      "sha256": "45a2407937200d027f5f553bdc16b91501426d18f766efce49f8a0bccfa79ada",
+      "obstacles": 2713,
+      "colliders": 3073,
       "concealers": 1492
     },
     "titan_gorge": {

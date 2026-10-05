@@ -47,8 +47,10 @@ const CREEK = createMarshChannel(CREEK_STATIONS, 0.5).map((station) => ({ ...sta
 
 export default {
   id: 'blackglass',
-  name: 'Blackglass District',
-  blurb: 'Broken arcologies, elevated transit ruins and a flooded financial quarter under a storm front',
+  // Suzhou Creek (the map-revival lane, 2026-10-05): Shanghai in the autumn of 1937, the creek between the
+  // International Settlement and Zhabei; the id stays (saves, links, the census and the shards key on it)
+  name: 'Suzhou Creek',
+  blurb: 'Shanghai, autumn 1937: Art Deco towers and stone-gate lanes across four bridges from burning Zhabei',
   terrain: {
     hillScale: 0.62, microScale: 0.72, rimH: 36,
     // the creek (was the flooded quarter's two marshes on its course)
@@ -92,11 +94,13 @@ export default {
     mudTone: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.45), clamp01(l * 0.62)],
     iceSky: [0.30, 0.33, 0.35],
   },
+  // the city's broadleaves (the plane trees of the Settlement's avenues and the camphors read as broad oak crowns), the
+  // creek's willows, the poplar rows of the delta's fields past the city
   vegetation: {
-    species: ['cedar', 'cypress', 'pine'], clusterMix: [['cedar', 0.45], ['cypress', 0.35], ['pine', 0.20]],
-    loneMix: [['cypress', 0.45], ['cedar', 0.35], ['pine', 0.20]], rimMix: [['cedar', 0.55], ['cypress', 0.30], ['pine', 0.15]],
+    species: ['oak', 'willow', 'poplar'], clusterMix: [['oak', 0.55], ['willow', 0.25], ['poplar', 0.20]],
+    loneMix: [['oak', 0.5], ['willow', 0.3], ['poplar', 0.2]], rimMix: [['poplar', 0.4], ['oak', 0.35], ['willow', 0.25]],
     clusterCount: 18, loneCount: 36, rimCount: 62, grassDensity: 0.32,
-    bushCount: 0.38, bushSpecies: 'cedar',
+    bushCount: 0.38, bushSpecies: 'oak',
   },
   props: {
     plan: [
@@ -126,6 +130,9 @@ export default {
     // the district stands as PR #9's head seated it (the owner's town-plan ruling), its street rows too, so the creek moves
     // only what its water reaches whatever it does to the ground under the rest
     townPlan: TOWN_PLANS.blackglass, townLightPlan: TOWN_LIGHT_PLANS.blackglass, townRowPlan: TOWN_ROW_PLANS.blackglass,
+    // Shanghai in 1937 (maps/regional/shanghai*.ts): the Settlement's lanes, blocks and godowns, Zhabei's shophouses, the
+    // Bund's banks and the Art Deco towers in the landmarks' footprints
+    architecture: 'shanghai',
     // the creek's bridges (maps/mapKits.ts)
     extraKits: ['shanghai'],
     // the district's massive blocks keep their footprints off every carriageway, not only their own street's
@@ -159,14 +166,13 @@ export default {
     },
   },
   horizon: {
-    // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): the volcanic-glass district keeps
-    // a volcanic horizon, as a weathered volcanic field — rounded cones on low lava plateaus, not 1300 m spikes
-    baseHex: 0x333e46, amp: 1.05, style: 'escarpment', treeline: 0.24, panorama: { regional: 'volcanicField' },
-    // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): faint concrete-grey beds on the
-    // escarpment faces (the escarpment style authored none), boulder outcrops on the outland (treeline 0.24 fell in the
-    // rockfield's dead zone: neither forest impostors nor rocks) and more tone grain (0.50 -> 0.60)
-    banding: 0.10, outlandRocks: 0.45,
-    forestHex: 0x263431, rockHex: 0x53606a, haze: 1.0, grain: 0.60,
+    // Suzhou Creek (the map-revival lane, 2026-10-05): the Yangtze delta round Shanghai lies flat to the horizon — the
+    // city's edge, the fields and their poplar rows, a far line of low hills in the haze — where the volcanic-glass
+    // district kept a weathered volcanic field (the mountains lane, gauntlet wave 15); the coastal relief is the delta's
+    // (horizonRelief.ts: an authored key wins over the map's identity)
+    baseHex: 0x5f6a58, amp: 0.2, style: 'rolling', relief: 'coastal', treeline: 0.55, treelineLayers: 2,
+    panorama: { regional: 'plain', trees: 12 },
+    outlandRocks: 0.1, forestHex: 0x33473a, rockHex: 0x6d7068, haze: 0.98, grain: 0.5,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'ash-veil', nightGlow: 0.7, nightGlowHex: 0xffc890 },
