@@ -476,9 +476,10 @@ const REACT_ANGLE_RAD = 0.75;
 const REACT_ANGLE_OFFSET_RAD = 0.42;
 const REACT_BACKOFF_M = 32;
 // A scout's armor is its speed (physics lane, 2026-10-04; Tidegate Polders pacing seed 41002 on the merged tree, with
-// the settled-shot halt fixed): a BMP-3 kiting past an enemy tank 58 m off its flank was hit, stopped to angle its hull
-// onto the shot for 2 s, took its second hit at rest and died. Angling buys a light hull's plates nothing; struck from
-// the side, a scout keeps the movement it had (the kite, the orbit, the fallback) rather than park to turn.
+// the settled-shot halt fixed): a BMP-3 kiting past an enemy Bradley 58 m off its flank was hit, stopped to angle its
+// hull onto the shot for 2 s, took its second hit at rest and died. Angling buys a light hull's plates little against
+// the guns and missiles that hit it; struck from the side, a scout keeps the movement it had (the kite, the orbit, the
+// fallback) rather than park to turn.
 // A casemate lays its gun with the hull (bots lane, 2026-10-03; Aegis Crossing pacing seed 53002, the Strv 103 alone
 // against two T-90Ms): every move that turned the hull turned the gun off its target. Its shoot-and-scoot drove to a
 // spot 94-152 degrees off the bearing, its hit jink turned the bow onto the shooter (a second tank on its flank), its
