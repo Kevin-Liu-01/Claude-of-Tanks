@@ -8205,10 +8205,10 @@ ${snowCap ? `
     // facades lane (2026-10-05): the facade craft's fine metalwork (gutter hangers, hopper heads, the downpipes) and its
     // fine render work (the dirt run off the sills) cull by the same cells on a desktop build (maps/regional/facade.ts);
     // the metal's batch takes the place of its always-drawn mesh, so it costs no draw. A phone builds none of it.
-    const CELLED = new Set(['structureWood', 'regionalStone',
-      ...(mobileProps ? [] : ['structureMetal', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3'])]);
+    const CELLED = new Set(['structureWood', 'regionalStone']);
+    const DESKTOP_CELLED = new Set(['structureMetal', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3']);
     const FINE_CELL_M = 120;
-    const culled = (g: THREE.BufferGeometry, key: string) => CELLED.has(key) && castsNoShadow(g)
+    const culled = (g: THREE.BufferGeometry, key: string) => (CELLED.has(key) || (DESKTOP_CELLED.has(key) && !mobileProps)) && castsNoShadow(g)
       && (g.userData.fine === true || (mobileProps && RECEIVE_ONLY_DETAIL.has(key)));
     type Cell = { list: THREE.BufferGeometry[]; minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
     const fineCells = (list: THREE.BufferGeometry[]): Cell[] => {
