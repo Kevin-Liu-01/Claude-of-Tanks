@@ -3529,16 +3529,28 @@ function updateSuspensionRock(
     );
     const conformance = Math.min(1, Math.abs(state.speed) / SUSP_K_SPEED) *
       SUSP_K_GAIN * (1 - perch);
-    pitchTarget += clamp(
-      (terrainPitch - seatPitch) * conformance,
-      -SUSP_P_CLAMP,
-      SUSP_P_CLAMP,
-    );
-    rollTarget += clamp(
-      (terrainRoll - seatRoll) * conformance,
-      -SUSP_R_CLAMP,
-      SUSP_R_CLAMP,
-    );
+    // A hull pivoting on an edge under gravity (contactAwareFit's tip, physics lane round 8; motion wave 73, the roof
+    // drive-off: "it should start to tip as soon as the centre of mass passes the support edge") turns about the wheels
+    // still on it, and the rock conforms nothing about that axis: the corners past the edge hang, those behind it lift off
+    // the ground they were on, and read within their reach they pulled the drawn hull back toward that ground. The physics
+    // tipped from the moment the centre of mass passed the edge; the rock held the drawn hull 2.4 degrees nose-up against
+    // it (5.2 at the drawn scale) until the last wheels left, so it hung level over air and then spun up in free flight
+    // as the rock let go (24 to 62 degrees a second rendered, 44 physical).
+    const tip = state._terr;
+    if (tip.tipPitch === 0) {
+      pitchTarget += clamp(
+        (terrainPitch - seatPitch) * conformance,
+        -SUSP_P_CLAMP,
+        SUSP_P_CLAMP,
+      );
+    }
+    if (tip.tipRoll === 0) {
+      rollTarget += clamp(
+        (terrainRoll - seatRoll) * conformance,
+        -SUSP_R_CLAMP,
+        SUSP_R_CLAMP,
+      );
+    }
   }
   // The weight-transfer share of that pitch, the dive or squat (physics lane, 2026-10-03), rides its own spring: the
   // support solve seats the tracks without it, so a braking dive pitches the hull on its suspension over planted tracks

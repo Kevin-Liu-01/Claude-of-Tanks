@@ -856,6 +856,11 @@ contact constraints and cannot be crossed by residual uphill speed.
   (within their reach of the loaded line, fading out at twice it): it goes over level until its centre of mass
   overhangs the near lip (physics lane round 7; leaning into the trench, a hull met the far wall 14-16 degrees nose-down
   at 9-11 m/s). A face that falls away and does not come back keeps the lean, so a hull over a crest follows it.
+  While the hull tips about an axis the suspension rock conforms nothing about it (round 8, motion wave 73 item 2): the
+  corners past the edge hang and those behind it lift off, and read within the wheels' reach they pulled the drawn hull
+  back toward the ground it was leaving. A hull driven off a roof hung level over air while the physics tipped it
+  (+5.2 degrees drawn against the tip when it left the roof) and spun up in flight as the rock let go; the drawn hull
+  now tips from the moment the centre of mass passes the edge, at the rate it leaves with.
 - *A stop takes the climb with it.* A blow that removes the hull's travel (the grade rule, the cliff probe, a
   collider) removes the same share of the vertical motion that travel carried; it prices nothing by itself.
 - *A grade turns the travel.* The vertical speed the ground gives a hull on a grade comes out of its travel by the

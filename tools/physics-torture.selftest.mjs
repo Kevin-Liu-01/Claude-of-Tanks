@@ -144,7 +144,11 @@ check('drive-assault-trench', 'heavy', 'earth', [
   // (19.5 m, round 8, the coordinator's ruling of 2026-10-04 on item 3: digs in, then climbs. The far wall's strike grips
   // the nose (movement.ts STRIKE_FRICTION): the E100 X meets the 42-degree wall at 6 m/s, stops there instead of riding up
   // it, and climbs out from near rest; it is 19.9 m on after the case's 9 s.)
-  g('progress short of 19.5 m (m)', (m) => 19.5 - m.progressM, 0, 'before: 19.6 m'),
+  // (16.5 m, the rock no longer levels the drawn hull while it tips over the near lip (updateSuspensionRock): the support
+  // seats the E100 X at the attitude it tips with, so its nose reaches the far wall lower, and it is 16.9 m on after 9 s,
+  // its root past the far lip after 10.8 s. Every class still crosses: from rest, light 1.2 s, medium 2.0 s, heavy 6.1 s
+  // from the near lip to the far.)
+  g('progress short of 16.5 m (m)', (m) => 16.5 - m.progressM, 0, 'before: 19.6 m'),
   // (900: with the grade floor the crossing's own jerk reads 800.2, the far wall's lip taken a little harder)
   // (950, round 3: the hull lying on its plane pitches to the walls it crosses, where it read them flatter: 909)
   g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 950, 'before: 1366'),
