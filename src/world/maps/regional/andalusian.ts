@@ -1172,8 +1172,12 @@ export const ANDALUSIAN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Ob
   woodshed: horno,
 });
 
-/** whitewash (cal): a warm brilliant white over the render's own relief (the photo render set stays off) */
-const cal = (_h: number, s: number, l: number): readonly [number, number, number] => [0.1, Math.min(1, s * 0.16), Math.min(1, l * 1.24 + 0.15)];
+/**
+ * whitewash (cal): a warm brilliant white over the render's own relief (the photo render set stays off). The canvas's
+ * relief at a third of its contrast (the pair of 2026-10-05: at full contrast the limewash read as coarse popcorn
+ * stucco from 15 m), the same mean.
+ */
+const cal = (_h: number, s: number, l: number): readonly [number, number, number] => [0.1, Math.min(1, s * 0.16), Math.min(1, l * 0.42 + 0.6)];
 
 export const ANDALUSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   id: 'andalusian',
@@ -1187,9 +1191,9 @@ export const ANDALUSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     tones: {
       plaster: cal,
       // albero ochre: the bands round the openings, the dados, a few washed fronts
-      plaster2: (_h, s, l) => [0.105, Math.min(1, 0.42 + s * 0.6), Math.min(1, l * 0.86 + 0.08)],
+      plaster2: (_h, s, l) => [0.105, Math.min(1, 0.36 + s * 0.3), Math.min(1, l * 0.4 + 0.33)],
       // the grey of the dados and a few bands
-      plaster3: (_h, s, l) => [0.11, Math.min(1, 0.05 + s * 0.15), Math.min(1, l * 0.64 + 0.08)],
+      plaster3: (_h, s, l) => [0.11, Math.min(1, 0.05 + s * 0.15), Math.min(1, l * 0.32 + 0.255)],
     },
   },
   builders: ANDALUSIAN_BUILDERS,
