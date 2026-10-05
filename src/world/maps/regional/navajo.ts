@@ -11,7 +11,7 @@
 // the abandoned camps: a roofless stone house, a fallen hogan.
 import { PartSink, faceBox, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
-import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 /** Juniper logs and posts silvered by the sun (a few fresher, browner), and the shadowed underside of a log. */
@@ -226,6 +226,38 @@ function drum(sink: PartSink, x: number, z: number, look: () => number): void {
   sink.cylinder('structureMetal', [x, 0.88, z], 'y', 0.03, 0.27, 10, { colour: shade(c, 0.8), decor: true });
 }
 
+/** A point on a face: `u` along it, `y` up, `o` out from it. */
+function facePoint(f: Face, u: number, y: number, o: number): Vec3 {
+  return [f.origin[0] + f.u[0] * u + f.out[0] * o, y, f.origin[2] + f.u[2] * u + f.out[2] * o];
+}
+
+/**
+ * A pair of plank doors in a wide opening (the wool room, the barns): vertical boards with their joints, two battens
+ * and a Z brace on each leaf, strap hinges, the frame round them (gauntlet wave 104: the shared gate's dark wicket
+ * read as an unrendered black hole; these leaves are boards all over).
+ */
+function plankGate(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, leaf: Rgb, frame: { width: number; out: number; colour: Rgb }): void {
+  const go = sink.recess > 0 ? -sink.recess + 0.03 : 0.015;
+  const lc = { colour: leaf, decor: true, uv: UV_MEMBER };
+  const joint = shade(leaf, 0.72), batten = shade(leaf, 0.9);
+  for (const side of [-1, 1]) {
+    const cu = u + side * w / 4, lw = w / 2 - 0.02, boards = Math.max(3, Math.round(lw / 0.24));
+    faceBox(sink, 'structureWood', face, cu, y + h / 2, go, lw, h, 0.05, lc);
+    for (let k = 1; k < boards; k++) faceBox(sink, 'structureWood', face, cu - lw / 2 + k * lw / boards, y + h / 2, go + 0.027, 0.025, h - 0.06, 0.008, { colour: joint, decor: true, fine: true });
+    for (const t of [0.14, 0.86]) faceBox(sink, 'structureWood', face, cu, y + h * t, go + 0.045, lw - 0.12, 0.14, 0.03, { colour: batten, decor: true, uv: UV_MEMBER });
+    // the brace from the lower batten at the hinge side up to the upper batten at the meeting side
+    const hu = cu + side * (lw / 2 - 0.12), mu = cu - side * (lw / 2 - 0.12);
+    sink.member('structureWood', facePoint(face, hu, y + h * 0.14 + 0.07, go + 0.045), facePoint(face, mu, y + h * 0.86 - 0.07, go + 0.045), 0.12, 0.03, face.out,
+      { colour: batten, decor: true, exposed: true }, 0);
+    // the strap hinges, black iron across the battens at the hinge side
+    for (const t of [0.14, 0.86]) faceBox(sink, 'structureMetal', face, cu + side * (lw / 2 - 0.3), y + h * t, go + 0.065, 0.55, 0.05, 0.01, { colour: IRON, decor: true, fine: true });
+  }
+  const fo = { decor: true, colour: frame.colour };
+  faceBox(sink, 'structureWood', face, u - w / 2 - frame.width / 2, y + h / 2, frame.out / 2, frame.width, h, frame.out, fo);
+  faceBox(sink, 'structureWood', face, u + w / 2 + frame.width / 2, y + h / 2, frame.out / 2, frame.width, h, frame.out, fo);
+  faceBox(sink, 'structureWood', face, u, y + h + frame.width / 2, frame.out / 2, w + 2 * frame.width, frame.width, frame.out, fo);
+}
+
 /** The hogan: one octagon in its plot, its door facing the sunrise, a woodpile and a water drum by it. */
 const hogan: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -346,7 +378,7 @@ function dialectOf(rng: () => number, trim: Rgb, door: Rgb, opts: { lit?: number
     },
     door: (s, face, o, y0, frame) => {
       if (o.kind === 'gate') {
-        gateUnit(s, face, o.u, y0 + o.y0, o.w, o.h, PLANK_GREY, { bucket: 'structureWood', width: 0.16, out: 0.06, colour: JUNIPER_DARK });
+        plankGate(s, face, o.u, y0 + o.y0, o.w, o.h, PLANK_GREY, { width: 0.16, out: 0.06, colour: JUNIPER_DARK });
         return;
       }
       doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: door, frame: { bucket: 'structureWood', width: 0.1, out: 0.05, colour: trim },
@@ -747,45 +779,55 @@ const windmill: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The chapter's water tower (a minaret plot): a steel tank with a conical roof on four braced legs, ladder and rail. */
+/**
+ * The chapter's water tank (a minaret plot): a squat galvanised steel tank under a shallow cone roof on a trestle of
+ * four straight steel legs, X-braced, the walkway round the tank's floor, a ladder up one leg; rust streaks down from
+ * its seams. (Gauntlet wave 104: the first tank, tall and pale with a red band on tapering legs, read as a seaside
+ * lighthouse; this one is wider than its legs and the colour of the iron.)
+ */
 const waterTank: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const look = ctx.variant;
-  const P = Math.max(3.2, Math.min(4.4, Math.min(ctx.info.w, ctx.info.d) - 0.2));
-  const legH = Math.max(10, Math.min(13, ctx.info.h - 3.5)), tankR = P / 2 - 0.05, tankH = 3.0;
-  const paint = pick(look, [rgb(0xa9b8b0), rgb(0xc9ccc6), rgb(0x8fa6a8)]);
-  const lb = P / 2 - 0.15, lt = tankR * 0.72;
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    sink.member('structureMetal', [sx * lb, -0.4, sz * lb], [sx * lt, legH, sz * lt], 0.18, 0.18, [sx, 0, 0], { colour: shade(paint, 0.8), exposed: true }, 0);
-  }
-  for (const y of [legH * 0.36, legH * 0.7]) {
-    const f = y / legH, r = lb + (lt - lb) * f;
-    for (const [a, b] of [[[-r, -r], [r, -r]], [[r, -r], [r, r]], [[r, r], [-r, r]], [[-r, r], [-r, -r]]] as const) {
-      sink.member('structureMetal', [a[0], y, a[1]], [b[0], y, b[1]], 0.08, 0.08, [0, 1, 0], { colour: shade(paint, 0.8), decor: true, exposed: true }, 0);
+  const b = ctx.bounds, P = Math.max(3.2, Math.min(b.maxX - b.minX, b.maxZ - b.minZ) - 0.2);
+  const legH = 7.2 + ctx.rng() * 1.2, tankR = Math.min(2.4, P / 2 + 0.55), tankH = 3.4;
+  const steel = pick(look, [GALV, rgb(0x8f9390), rgb(0x9a9a92)]);
+  const lb = P / 2 - 0.15, lt = lb * 0.92;
+  sink.placed(0, (b.maxX + b.minX) / 2, 0, (b.maxZ + b.minZ) / 2, () => {
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      sink.member('structureMetal', [sx * lb, -0.4, sz * lb], [sx * lt, legH, sz * lt], 0.2, 0.2, [sx, 0, 0], { colour: shade(steel, 0.78), exposed: true }, 0);
     }
-  }
-  for (const [y0, y1] of [[0.3, legH * 0.36], [legH * 0.36, legH * 0.7], [legH * 0.7, legH]] as const) {
-    const r0 = lb + (lt - lb) * y0 / legH, r1 = lb + (lt - lb) * y1 / legH;
-    for (const s of [-1, 1]) {
-      sink.member('structureMetal', [-r0, y0, s * r0], [r1, y1, s * r1], 0.03, 0.03, [0, 0, s], { colour: IRON, decor: true, exposed: true }, 0);
-      sink.member('structureMetal', [s * r0, y0, -r0], [s * r1, y1, r1], 0.03, 0.03, [s, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
+    // the X braces between the legs, two bays to a face, and the girt at the bay line (dressing)
+    const at = (y: number) => lb + (lt - lb) * y / legH;
+    for (const [y0, y1] of [[0.3, legH * 0.5], [legH * 0.5, legH - 0.25]] as const) {
+      const r0 = at(y0), r1 = at(y1);
+      for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]] as const) {
+        const out: Vec3 = [ax === bx ? ax : 0, 0, az === bz ? az : 0];
+        sink.member('structureMetal', [ax * r0, y0, az * r0], [bx * r1, y1, bz * r1], 0.05, 0.05, out, { colour: shade(steel, 0.7), decor: true, exposed: true }, 0);
+        sink.member('structureMetal', [bx * r0, y0, bz * r0], [ax * r1, y1, az * r1], 0.05, 0.05, out, { colour: shade(steel, 0.7), decor: true, exposed: true }, 0);
+        sink.member('structureMetal', [ax * r1, y1, az * r1], [bx * r1, y1, bz * r1], 0.08, 0.08, [0, 1, 0], { colour: shade(steel, 0.75), decor: true, exposed: true }, 0);
+      }
     }
-  }
-  // the tank, its floor ring and balcony, the cone roof and finial
-  sink.cylinder('structureMetal', [0, legH, 0], 'y', 0.35, tankR * 0.75, 16, { colour: shade(paint, 0.85) }, tankR);
-  sink.cylinder('structureMetal', [0, legH + 0.35, 0], 'y', tankH, tankR, 20, { colour: paint });
-  sink.cylinder('structureMetal', [0, legH + 0.35 + tankH, 0], 'y', 0.9, tankR + 0.08, 20, { colour: shade(paint, 0.9) }, 0.15);
-  sink.cylinder('structureMetal', [0, legH + 1.25 + tankH, 0], 'y', 0.45, 0.06, 6, { colour: IRON, decor: true });
-  sink.cylinder('structureMetal', [0, legH + 0.32, 0], 'y', 0.05, tankR + 0.55, 20, { colour: IRON, decor: true });
-  for (let k = 0; k < 16; k++) {
-    const a = k / 16 * Math.PI * 2;
-    sink.member('structureMetal', [Math.cos(a) * (tankR + 0.5), legH + 0.35, Math.sin(a) * (tankR + 0.5)], [Math.cos(a) * (tankR + 0.5), legH + 1.35, Math.sin(a) * (tankR + 0.5)],
-      0.03, 0.03, [Math.cos(a), 0, Math.sin(a)], { colour: IRON, decor: true, exposed: true, fine: true }, 0);
-  }
-  // a painted band round the tank
-  sink.cylinder('structureMetal', [0, legH + 1.4, 0], 'y', 0.5, tankR + 0.012, 20, { colour: pick(look, [rgb(0x2f5a8a), rgb(0x9a2e24), rgb(0x3d6b4a)]), decor: true }, tankR + 0.012, false);
-  // the ladder up one leg
-  for (const dx of [-0.22, 0.22]) sink.member('structureMetal', [lb + 0.1 + dx * 0, 0.0, dx], [lt + 0.12, legH + 0.4, dx], 0.04, 0.04, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
+    // the tank: its floor's ring beam, the shell, the seams and the rust run down from them, the shallow cone roof
+    sink.cylinder('structureMetal', [0, legH, 0], 'y', 0.3, tankR * 0.82, 20, { colour: shade(steel, 0.72) }, tankR);
+    sink.cylinder('structureMetal', [0, legH + 0.3, 0], 'y', tankH, tankR, 24, { colour: steel });
+    for (let k = 1; k < 4; k++) sink.cylinder('structureMetal', [0, legH + 0.3 + tankH * k / 4, 0], 'y', 0.06, tankR + 0.015, 24, { colour: shade(steel, 0.82), decor: true }, tankR + 0.015, false);
+    for (let k = 0; k < 5; k++) {
+      const a = look() * Math.PI * 2, len = 0.8 + look() * 1.6, top = legH + 0.3 + tankH * (0.5 + look() * 0.5);
+      const f: Face = { origin: [Math.cos(a) * (tankR + 0.012), 0, Math.sin(a) * (tankR + 0.012)], u: [Math.sin(a), 0, -Math.cos(a)], out: [Math.cos(a), 0, Math.sin(a)], width: 1 };
+      faceBox(sink, 'structureMetal', f, 0, top - len / 2, 0.004, 0.12 + look() * 0.1, len, 0.004, { colour: shade(RUSTY, 0.9 + look() * 0.2), decor: true, fine: true });
+    }
+    sink.cylinder('structureMetal', [0, legH + 0.3 + tankH, 0], 'y', 0.6, tankR + 0.06, 24, { colour: shade(steel, 0.9) }, 0.3);
+    sink.cylinder('structureMetal', [0, legH + 0.9 + tankH, 0], 'y', 0.35, 0.18, 8, { colour: shade(steel, 0.8), decor: true }, 0.12);
+    // the walkway round the tank's floor and its rail
+    sink.cylinder('structureMetal', [0, legH + 0.22, 0], 'y', 0.06, tankR + 0.6, 24, { colour: IRON, decor: true });
+    for (let k = 0; k < 16; k++) {
+      const a = k / 16 * Math.PI * 2;
+      sink.member('structureMetal', [Math.cos(a) * (tankR + 0.55), legH + 0.28, Math.sin(a) * (tankR + 0.55)], [Math.cos(a) * (tankR + 0.55), legH + 1.2, Math.sin(a) * (tankR + 0.55)],
+        0.03, 0.03, [Math.cos(a), 0, Math.sin(a)], { colour: IRON, decor: true, exposed: true, fine: true }, 0);
+    }
+    // the ladder up one leg to the walkway
+    for (const dz of [-0.22, 0.22]) sink.member('structureMetal', [lb + 0.12, 0.0, dz], [lt + 0.12, legH + 0.25, dz], 0.04, 0.04, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
+  });
   return sink.finish();
 };
 
@@ -879,7 +921,7 @@ const woolBarn: RegionalBuilder = (ctx) => {
     // the sliding doors on both gable ends, the dock in front of the main one
     for (const [z, out] of [[D / 2, 1], [-D / 2, -1]] as const) {
       const f: Face = { origin: [0, 0, z], u: [out, 0, 0], out: [0, 0, out], width: W };
-      gateUnit(sink, f, 0, 0.0, Math.min(4.2, W * 0.36), 3.6, shade(PLANK_GREY, 0.95 + look() * 0.1), { bucket: 'structureWood', width: 0.2, out: 0.08, colour: JUNIPER_DARK });
+      plankGate(sink, f, 0, 0.0, Math.min(4.2, W * 0.36), 3.6, shade(PLANK_GREY, 0.95 + look() * 0.1), { width: 0.2, out: 0.08, colour: JUNIPER_DARK });
       faceBox(sink, 'structureMetal', f, 0, 3.75, 0.12, Math.min(4.2, W * 0.36) * 2 + 0.4, 0.12, 0.12, { colour: IRON, decor: true });
     }
     sink.span('stone', -3.0, -0.4, D / 2 - 0.05, 3.0, 1.0, D / 2 + 0.9);
