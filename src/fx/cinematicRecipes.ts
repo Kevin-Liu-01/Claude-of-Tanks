@@ -330,32 +330,34 @@ export function muzzleBlast(
       cx + dx * 0.35, cy + dy * 0.35, cz + dz * 0.35,
       0.05 + r() * 0.04, 0.22 * s, 0.25 * s, (0.9 + r() * 0.7) * s, FLAME_Y, 0.55 * hot, 0);
   }
-  // propellant ring (the doughnut thrown out perpendicular to the bore)
-  const ringN = 30;
+  // propellant ring (the doughnut thrown out perpendicular to the bore). Owner 2026-10-05 (the round puffs in s28):
+  // thirty small cards flung 4-6 m/s scattered into separate soft discs that defocus read as polka dots — sixteen
+  // larger, slower, fainter cards stay overlapped into one rolling ring that thins as a haze.
+  const ringN = 16;
   for (let i = 0; i < ringN; i++) {
     const a = (i / ringN) * TAU + r() * 0.35;
     const cx = u[0] * Math.cos(a) + v[0] * Math.sin(a);
     const cy = u[1] * Math.cos(a) + v[1] * Math.sin(a);
     const cz = u[2] * Math.cos(a) + v[2] * Math.sin(a);
-    const sp = (3.6 + r() * 2.6) * s;
-    const fwd = (1.5 + r() * 2.5) * s;
+    const sp = (2.2 + r() * 1.4) * s;
+    const fwd = (1.2 + r() * 1.8) * s;
     puff(ctx, 'psmoke', px + dx * 0.9 * s + cx * 0.3, py + dy * 0.9 * s + cy * 0.3, pz + dz * 0.9 * s + cz * 0.3,
       cx * sp + dx * fwd, cy * sp + dy * fwd + 0.35, cz * sp + dz * fwd,
-      2.6 + r() * 2.2, (0.7 + r() * 0.4) * s, (2.6 + r() * 1.6) * s,
-      PROP0, PROP1, 0.40 + r() * 0.16, 0.22, -r() * 0.03);
+      3.0 + r() * 2.4, (1.3 + r() * 0.5) * s, (5.0 + r() * 1.8) * s,
+      PROP0, PROP1, 0.28 + r() * 0.1, 0.22, -r() * 0.03);
   }
-  // forward gas cone: smoke pushed far down the bore line
-  for (let i = 0; i < 18; i++) {
-    const sp = (7 + r() * 13) * s;
-    const spread = 0.10 + r() * 0.16;
+  // forward gas cone: smoke pushed down the bore line (ten broad, overlapping cards, not eighteen scattered ones)
+  for (let i = 0; i < 10; i++) {
+    const sp = (5 + r() * 8) * s;
+    const spread = 0.08 + r() * 0.12;
     const a = r() * TAU;
     const cx = dx + (u[0] * Math.cos(a) + v[0] * Math.sin(a)) * spread;
     const cy = dy + (u[1] * Math.cos(a) + v[1] * Math.sin(a)) * spread;
     const cz = dz + (u[2] * Math.cos(a) + v[2] * Math.sin(a)) * spread;
     puff(ctx, 'psmoke', px + dx * 0.8, py + dy * 0.8, pz + dz * 0.8,
       cx * sp, cy * sp + 0.3, cz * sp,
-      2.2 + r() * 2.4, (0.8 + r() * 0.5) * s, (3.0 + r() * 2.0) * s,
-      PROP0, PROP1, 0.30 + r() * 0.15, 0.25, -r() * 0.05);
+      2.6 + r() * 2.4, (1.3 + r() * 0.6) * s, (5.0 + r() * 2.2) * s,
+      PROP0, PROP1, 0.24 + r() * 0.1, 0.25, -r() * 0.05);
   }
   // unburnt propellant sparks spat down range
   for (let i = 0; i < 16; i++) {
@@ -376,18 +378,19 @@ export function muzzleBlast(
   const tone = toneAt(ctx, px + dx * 2, pz + dz * 2);
   const flatL = Math.hypot(dx, dz) || 1;
   const fx = dx / flatL, fz = dz / flatL;
-  const fanN = Math.round(36 * (0.5 + 0.5 * groundK));
+  // (as the ring: fewer, broader, fainter cards that overlap into one sheet of dust instead of a field of discs)
+  const fanN = Math.round(22 * (0.5 + 0.5 * groundK));
   for (let i = 0; i < fanN; i++) {
     // fan centred on the bore, widening to the sides; the strongest gust runs forward
     const a = (r() - 0.5) * Math.PI * 1.35;
     const ca = Math.cos(a), sa = Math.sin(a);
     const rx = fx * ca - fz * sa, rz = fz * ca + fx * sa;
-    const reach = (0.5 + 0.5 * ca) * (8 + r() * 9) * s * groundK;
+    const reach = (0.5 + 0.5 * ca) * (6 + r() * 6) * s * groundK;
     const ox = px + fx * (0.6 + r() * 2.6), oz = pz + fz * (0.6 + r() * 2.6);
     puff(ctx, 'dust', ox, ctx.world.groundY(ox, oz) + 0.35 + r() * 0.4, oz,
-      rx * reach * 1.4, 0.6 + r() * 1.5, rz * reach * 1.4,
-      2.8 + r() * 2.8, (0.7 + r() * 0.5) * s, (3.0 + r() * 2.6) * s,
-      tone.light, tone.dark, (0.32 + r() * 0.2) * (0.55 + 0.45 * groundK), 0.18, -r() * 0.02);
+      rx * reach * 1.4, 0.5 + r() * 1.2, rz * reach * 1.4,
+      3.2 + r() * 3.0, (1.3 + r() * 0.6) * s, (5.0 + r() * 2.8) * s,
+      tone.light, tone.dark, (0.24 + r() * 0.14) * (0.55 + 0.45 * groundK), 0.18, -r() * 0.02);
   }
   // grit + grass bits
   for (let i = 0; i < 10; i++) {
@@ -399,12 +402,12 @@ export function muzzleBlast(
     chunk(ctx, ox, g + 0.15, oz, rx * (4 + r() * 6), 2 + r() * 4, rz * (4 + r() * 6),
       0.9 + r() * 0.5, 0.025 + r() * 0.035, g, 0, 0);
   }
-  // hanging haze that drifts for many seconds after the shot
-  for (let i = 0; i < 10; i++) {
-    const ox = px + fx * (2 + r() * 6) + (r() - 0.5) * 3, oz = pz + fz * (2 + r() * 6) + (r() - 0.5) * 3;
+  // hanging haze that drifts for many seconds after the shot: six broad veils
+  for (let i = 0; i < 6; i++) {
+    const ox = px + fx * (2 + r() * 5) + (r() - 0.5) * 2.4, oz = pz + fz * (2 + r() * 5) + (r() - 0.5) * 2.4;
     puff(ctx, 'dust', ox, ctx.world.groundY(ox, oz) + 0.8 + r(), oz,
-      fx * 1.5 + WIND_X * 0.4, 0.25 + r() * 0.3, fz * 1.5 + WIND_Z * 0.4,
-      6 + r() * 4, 2.2 * s, (6 + r() * 3) * s, tone.light, tone.dark, 0.2 + r() * 0.1, 0.03, 0.1 + r() * 0.3);
+      fx * 1.2 + WIND_X * 0.4, 0.2 + r() * 0.25, fz * 1.2 + WIND_Z * 0.4,
+      6 + r() * 4, 3.2 * s, (9 + r() * 4) * s, tone.light, tone.dark, 0.14 + r() * 0.06, 0.03, 0.1 + r() * 0.3);
   }
   ctx.shockRing(px + fx * 1.4, pz + fz * 1.4, (7 + 6 * groundK) * s, 0.7 * groundK, 0);
 }
