@@ -152,6 +152,7 @@ import {
 } from './game/garagePresentationPose.ts';
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageModePreviewRuntime, prepareGarageModePrograms } from './app/garageModePreviewRuntime.ts';
+import { clearJuggernautVisual, prepareGarageTankEnergyVisual } from './game/juggernautVisual.ts';
 import { createGarageShowroomRuntime } from './game/garageShowroomRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { createGarageReturnAccess } from './game/garageReturnAccess.ts';
@@ -926,6 +927,7 @@ const pedestal = createGaragePedestalRuntime({
   // forwardProgramWarm is initialized before the first pedestal warm is
   // invoked; the closure keeps this early lifecycle declaration independent
   // of the later renderer-target owner.
+  prepareVisual: (visual) => prepareGarageTankEnergyVisual(visual.root, getSpec(visual.specId).dims),
   compilePrograms: (root) => forwardProgramWarm.compile(root),
   // FSP-01: strict first-use preparation (submission, readiness polling,
   // uniform reflection) of the parked hero's forward programs against the
@@ -1161,6 +1163,7 @@ const playSurface = createPlaySurfaceRuntime({
 bus.on('ui:battleStart', () => {
   sceneWatchdogEntryGeneration++;
   garageModePreview.clear();
+  if(pedestal.current)clearJuggernautVisual(pedestal.current.root);
   coveredBattleWatchdog = null;
   playSurface.hideForBattle();
 });

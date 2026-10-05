@@ -72,6 +72,17 @@ export function pauseGarageTankEnergyVisual(root:THREE.Object3D):void {
   for(const [source,material] of shield.materials)material.name=source.name;
 }
 
+/** Install the dormant skin before the Garage's ordinary first shader submission.
+ * The first aura selection then changes uniforms, just like changing paint. */
+export function prepareGarageTankEnergyVisual(root:THREE.Object3D,dims:{widthM:number;hullLengthM:number;heightM:number}):void {
+  if(shields.get(root)?.preview)return;
+  syncTankEnergyVisual(root,dims,1.12,1,1,0,false,TANK_ENERGY.juggernaut,true);
+  pauseGarageTankEnergyVisual(root);
+}
+export function hasGarageTankEnergyVisual(root:THREE.Object3D):boolean {
+  return shields.get(root)?.preview===true;
+}
+
 /** Shade the actual vehicle surfaces: no enclosing geometry, extra draw calls,
  * enlarged silhouette, or highlight through cover. Instancing, batching, moving
  * turrets and hidden/detached modules keep their original geometry and poses. */
@@ -91,7 +102,7 @@ export function syncTankEnergyVisual(root:THREE.Object3D,_dims:{widthM:number;hu
       }
       // Existing vehicle shader hooks include CSM registrations keyed by the
       // source material. Recompile the restored source to rebind those hooks.
-      for(const [source,material] of materials){source.needsUpdate=true;material.dispose();}
+      for(const [source,material] of materials){source.removeEventListener('dispose',dispose);source.needsUpdate=true;material.dispose();}
       for(const object of watched){
         object.removeEventListener('childadded',markDirty);
         object.removeEventListener('childremoved',markDirty);
@@ -129,7 +140,10 @@ export function syncTankEnergyVisual(root:THREE.Object3D,_dims:{widthM:number;hu
       if(topologyDirty){root.traverse(inspect);topologyDirty=false;}
       else for(const surface of surfaces)if(surface.mesh.material!==surface.highlight)inspect(surface.mesh);
     },refreshIn:0};
-    shields.set(root,shield);root.addEventListener('removed',dispose);
+    shields.set(root,shield);
+    // Cached Garage roots are detached while parked. Their materials stay resident
+    // until explicit battle handoff or their owning factory materials are disposed.
+    if(!preview)root.addEventListener('removed',dispose);
   }
   if(shield.style!==style){
     shield.style=style;shield.color.value.setHex(style.color);shield.pattern.value=style.pattern;
@@ -182,6 +196,9 @@ function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
   if(!(source instanceof THREE.MeshStandardMaterial)||!source.colorWrite||source.transparent)return source;
   const existing=shield.materials.get(source);if(existing)return existing;
   const material=source.clone();material.name=shield.style.name;
+  // Camouflage repaints shared texture canvases and retints the factory's
+  // fitting colors. The dormant skin must follow those live paint bindings.
+  material.color=source.color;material.emissive=source.emissive;
   // Shader drivers (especially the prewarmed burn uniforms) are live objects,
   // not serializable metadata. Preserve their identities when isolating paint.
   material.userData={...source.userData};
@@ -233,6 +250,7 @@ function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
         #include <opaque_fragment>`);
   };
   material.customProgramCacheKey=()=>cacheKey+(shield.preview?'|tank-mode-energy-preview-v1':'|tank-mode-energy-v6');
+  if(shield.preview)source.addEventListener('dispose',shield.dispose);
   highlightSources.set(material,source);
   shield.materials.set(source,material);return material;
 }
