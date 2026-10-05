@@ -136,6 +136,12 @@ interface GrowthProfile {
    * falling short, not every tier ending on one cone.
    */
   ragged?: number;
+  /**
+   * Trees round 5 (the arid and volcanic lane's Monument Valley juniper: "often partly dead with silver deadwood"): the
+   * share of a decurrent crown's scaffolds that stand dead, 0..1 (unset 0) — a dead limb and everything it carries bear no
+   * sprays, its wood weathered silver-grey (GROWTH_DEADWOOD_TINT), the limb snapped short at its tip.
+   */
+  deadwood?: number;
 }
 
 const P = (p: GrowthProfile): Readonly<GrowthProfile> => Object.freeze(p);
@@ -371,15 +377,18 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     foliageValue: 1.3,
   }),
   // the one-seed and Utah junipers of the Arizona uplands: a short shaggy grey bole forking near the ground into a few
-  // leaning stems under a low, irregular, rounded crown of grey-green scale-leaf sprays, as wide as it is tall
+  // leaning stems under a low, irregular, rounded crown of grey-green scale-leaf sprays, as wide as it is tall. Trees
+  // round 5 (the arid and volcanic lane's Monument Valley, where the olive stand-in read as "lush broadleaf groves"): its
+  // stems gnarled and twisting, a quarter of its scaffolds dead silver wood, its crown open (the sprays two thirds as
+  // close), the twisted wood showing through it
   juniper: P({
     family: 'conifer', height: 4.4, heightSpread: 0.16, trunkR: 0.24, form: 'decurrent',
     forkAt: [0.1, 0.2], scaffolds: [3, 5], scaffoldAngle: [0.5, 1.0], crownBase: 0.12, crownR: 2.1,
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.4, angleLow: 1.2, angleHigh: 0.65,
     droop: 0.22, upturn: 0.35, sidePerM: 2.6, sideAngle: 0.8, sideRatio: 0.55, sideDroop: 0.2, twigPerM: 1.4,
-    leafOrder: 1, leafPerM: 5.2, leafFrom: 0.05, spray: [0.6, 0.86], aspect: 0.82, habit: 'spray', tipSprays: 2,
+    leafOrder: 1, leafPerM: 3.4, leafFrom: 0.05, spray: [0.6, 0.86], aspect: 0.82, habit: 'spray', tipSprays: 2,
     cardBend: 0.1, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.46, 0.42, 0.38], barkTopTint: null,
-    foliageValue: 1.2,
+    foliageValue: 1.2, gnarl: 0.7, deadwood: 0.25,
   }),
   // the pinyon (Pinus edulis): a short pine, its crown low, round and dense, its needles short and stiff in tufts at
   // the shoot ends; a grey, furrowed bole
@@ -470,6 +479,8 @@ interface GrowthBranch {
   broken: boolean;
   /** Emitted as a straight supporting twig whatever its order (supportSprays: it carries sprays the tube budget left). */
   support?: boolean;
+  /** Trees round 5: dead wood in a living crown (the profile's `deadwood`): no sprays, silver-grey, its limb snapped. */
+  dead?: boolean;
 }
 interface LeafSite {
   /** Seat of the spray on its branch (tree space). */
@@ -536,6 +547,8 @@ interface GrowthOptions {
  * broadleaf carries its crown from near half its height and a conifer from over a third, and a gnarled form grows
  * straighter. The field trees keep the open-grown form.
  */
+/** Trees round 5: dead wood's weathered silver-grey (emitBranchGeometry, the profile's deadwood). */
+export const GROWTH_DEADWOOD_TINT: readonly [number, number, number] = Object.freeze([0.82, 0.8, 0.76]) as unknown as readonly [number, number, number];
 export const GROWTH_FOREST_FORM = Object.freeze({
   height: 1.12, crownR: 0.86, trunkR: 0.86, fork: 1.45, forkMax: 0.56, crownBase: 0.48, coniferCrownBase: 0.36,
   scaffoldAngle: 0.72, gnarl: 0.5,
@@ -800,7 +813,13 @@ function growScaffolds(ctx: GrowContext, stemIndex: number, variant: number): vo
   const phase = rng() * Math.PI * 2;
   /** Trees round 4: a parasol crown's limbs and where their side shoots may start, grown once every limb has its reach. */
   const parasol: Array<[number, number]> = [];
+  // trees round 5: a crown with deadwood loses its share of the scaffolds (one at the least), from its own draws (none
+  // for a crown without)
+  const deadShare = profile.deadwood ?? 0;
+  const deadCount = deadShare > 0 ? Math.max(1, Math.round(n * deadShare)) : 0, deadFrom = deadShare > 0 ? (rng() * n) | 0 : 0;
   for (let s = 0; s < n; s++) {
+    const firstBranch = ctx.branches.length;
+    const dead = deadCount > 0 && ((s - deadFrom + n) % n) < deadCount;
     const az = phase + (s / n) * Math.PI * 2 + (rng() - 0.5) * 0.7;
     const a = range(rng, profile.scaffoldAngle) * (variant === 1 ? 0.92 : variant === 2 ? 1.08 : 1);
     const dir = v3(Math.sin(a) * Math.cos(az), Math.cos(a), Math.sin(a) * Math.sin(az));
@@ -809,9 +828,11 @@ function growScaffolds(ctx: GrowContext, stemIndex: number, variant: number): vo
     const rise = ctx.crownTopY - fork.y;
     const len = Math.min(Math.hypot(reach, rise * 0.85), reach / Math.max(0.35, Math.sin(a)) * 1.05);
     const r0 = fork.r * (0.62 + rng() * 0.12) * (n > 3 ? 0.9 : 1);
-    const nodes = growPolyline(ctx, v3(fork.x, fork.y - 0.12, fork.z), dir, len, 4 + Math.round(3 * (profile.gnarl ?? 0)), r0, 0.025,
+    const grown = growPolyline(ctx, v3(fork.x, fork.y - 0.12, fork.z), dir, len, 4 + Math.round(3 * (profile.gnarl ?? 0)), r0, 0.025,
       profile.droop * 0.7, profile.upturn, 0.22, 0.05, 0.28, true);
-    ctx.branches.push({ order: 1, parent: stemIndex, nodes, mesh: true, broken: false });
+    // (trees round 5: a dead limb snapped a third short, before anything grows on it — its tip a splintered stub)
+    const nodes = dead ? grown.slice(0, Math.max(2, Math.ceil(grown.length * 0.7))) : grown;
+    ctx.branches.push({ order: 1, parent: stemIndex, nodes, mesh: true, broken: dead });
     const limb = ctx.branches.length - 1;
     // a continuing leader on some scaffolds: a second split two thirds up gives the dome its lobes
     if (rng() < 0.45) {
@@ -826,6 +847,8 @@ function growScaffolds(ctx: GrowContext, stemIndex: number, variant: number): vo
     }
     if (profile.foliageBand) parasol.push([limb, 0.18]);
     else growSides(ctx, limb, 2, profile.sidePerM, profile.sideAngle, profile.sideRatio, profile.sideDroop, 0.18, true);
+    // the dead limb and all it carries: bare and silver
+    if (dead) for (let b = firstBranch; b < ctx.branches.length; b++) ctx.branches[b].dead = true;
   }
   // trees round 4: a parasol crown's layer lies over its limbs' highest reach (a young tree's limbs may fall short of
   // the profile's height), and the limbs' side shoots crowd into it
@@ -953,7 +976,7 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
   }
   for (let branchIndex = 0; branchIndex < ctx.branches.length; branchIndex++) {
     const branch = ctx.branches[branchIndex];
-    if (branch.broken) continue;
+    if (branch.broken || branch.dead) continue;
     // a weeping crown's scaffold tips carry curtains too (the limb would otherwise end bare above them); trees round 4:
     // and a parasol's limb tips their sprays (a bare limb end stood over the acacia's flat layer)
     const tipOnly = branch.order < profile.leafOrder;
@@ -1828,6 +1851,8 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
       frames.push({ t, n, b: norm(cross(t, n)) });
     }
     const branchTint = 0.9 + rng() * 0.16;
+    // trees round 5: dead wood weathers silver-grey, whatever the bark (the profile's deadwood)
+    const deadTint = branch.dead ? GROWTH_DEADWOOD_TINT : null;
     const circumference = Math.max(0.22, 2 * Math.PI * nodes[0].r);
     let along = rng() * 3;
     const ring: Array<Array<[number, number, number, number, number, number, number]>> = [];
@@ -1838,7 +1863,8 @@ export function emitBranchGeometry(skeleton: TreeSkeleton, options: BranchEmitOp
       const ground = 0.78 + 0.22 * clamp01(node.y / 1.4);
       const heightT = clamp01(node.y / Math.max(1, skeleton.height));
       const topMix = branch.order > 0 ? 0.65 : clamp01((heightT - 0.45) / 0.4);
-      const tr = lerp(options.tint[0], top[0], topMix), tg = lerp(options.tint[1], top[1], topMix), tb = lerp(options.tint[2], top[2], topMix);
+      const tr = deadTint ? deadTint[0] : lerp(options.tint[0], top[0], topMix), tg = deadTint ? deadTint[1] : lerp(options.tint[1], top[1], topMix);
+      const tb = deadTint ? deadTint[2] : lerp(options.tint[2], top[2], topMix);
       // the wood inside the crown stands in the leaves' shade (the near trunks receive no cascade shadow — their
       // stability rule — so the canopy's occlusion is baked: the deeper in the crown, the darker the limb)
       const cdx = node.x - skeleton.crown.x, cdy = (node.y - skeleton.crown.y) * 1.2, cdz = node.z - skeleton.crown.z;
