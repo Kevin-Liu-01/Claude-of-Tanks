@@ -206,7 +206,7 @@ export const SHOTS = [
     { tMs: 4460, exposureMs: 16 }],
   [17, 'crossroads-fire', 'battle', 'Fire at the Steinburg crossroads at noon', S.stCross,
     { speed: 0, effects: [...wreck('foe0'), burn('foe1', 0), fire('hero', 1300), huge(H(10, -22), 2400), fire('ally1', 3300), barrage(H(14, -40), 3900, 5, 12)],
-      cam: hold({ side: -10, along: 20, lift: 15, fov: 42 }, { side: -9, along: 18, lift: 14, fov: 40 }) },
+      cam: hold({ side: -10, along: 20, lift: 24, fov: 44 }, { side: -9, along: 18, lift: 23, fov: 42 }) },
     { tMs: 1380, exposureMs: 16 }],
   [18, 'street-knockout', 'battle', 'A T-90A is knocked out at the end of a Steinburg street at night', S.stSouth,
     // from behind the T-90A as the round strikes it, the shooter's flash down the street (the duel staged at 42 m)
@@ -302,14 +302,17 @@ export const SHOTS = [
   // ---------------------------------------------------------------- scenes: the battlefield around the fight
   [40, 'rooftop-smoke', 'scene', 'Smoke columns rise over the rooftops of Steinburg', S.stNorth,
     // from up the street past the burning wrecks, looking back: their columns rise over the rooftops as the column advances
-    // on them (r4c's drone never framed them; r4d's street-level push behind the hero framed only wisps)
-    { speed: 2.4, sun: 'side', effects: [...wreck('foe0'), ...wreck('foe1'), ...wreck('foe2'), barrage(H(-14, 40), 2400, 6, 16), fire('hero', 4200)],
+    // on them (r4c's drone never framed them; r4d's street-level push behind the hero framed only wisps). The wrecks burn 60 m
+    // ahead, 52 m from the lens: at 92 m their smoke smeared across the lens between the near rooftops (review 2026-10-05)
+    { speed: 2.4, sun: 'side', enemies: { ...S.stNorth.enemies, along: 60 },
+      effects: [...wreck('foe0'), ...wreck('foe1'), ...wreck('foe2'), barrage(H(-14, 40), 2400, 6, 16), fire('hero', 4200)],
       cam: RIG.passby({ side: 6, along: 112, lift: 9, fov: 40, look: [0, 30, 6] }) },
     { tMs: 3300, exposureMs: 25 }],
   [41, 'church-tower', 'scene', 'The night street fight seen from the church tower', S.stMain,
-    // the tower now stands ahead of the column: the tanks' fronts from above, the street lit by the flare
+    // the tower view, 24 m up between the church and the street: the tanks' fronts from above, the street lit by the flare
+    // (at 16 m the lens hovered inside the main street's tall houses, review 2026-10-05)
     { lineup: [CAST.leo2a6, CAST.puma, CAST.leo2a6], time: 'night', picture: { exposure: 0.6 }, speed: 0, effects: [NIGHT_FLARE(H(-8, 20), 100), ...wreck('foe0'), fire('hero', 1500), fire('ally1', 2500), ...incoming('foe1', -4, 10, 3500), fire('ally2', 4700)],
-      cam: hold({ side: -11, along: 34, lift: 16, fov: 38, lookHero: [0, 6, 0] }, { side: -10, along: 31, lift: 15, fov: 37, lookHero: [0, 6, 0] }) },
+      cam: hold({ side: -18, along: 20, lift: 24, fov: 40, lookHero: [0, 6, 0] }, { side: -17, along: 18.5, lift: 23, fov: 39, lookHero: [0, 6, 0] }) },
     { tMs: 2700, exposureMs: 16 }],
   [42, 'assault-above', 'scene', 'Verdant Fields from above as the assault rolls in', S.vAssault,
     // the drone ahead of the wedge, looking back down at it rolling in

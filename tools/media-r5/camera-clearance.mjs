@@ -34,6 +34,8 @@ const inside = (b, x, z, pad) => {
 };
 /** Height above which a camera clears the village roofs (sightlines are only tested below it). */
 export const ROOF_CLEAR_M = 12;
+/** Height below which a camera may not hover over a building at all (the tall town houses rise past ROOF_CLEAR_M). */
+const HOVER_CLEAR_M = 22;
 
 /** Fraction of the storyboard's camera keys that sit inside a building or lose the hero behind one. */
 export function blockedFraction(scene, { pad = 1.4 } = {}) {
@@ -50,6 +52,7 @@ export function blockedFraction(scene, { pad = 1.4 } = {}) {
   for (const sh of shots) {
     const [cx, cy, cz] = sh.pos; // ground-relative storyboards: y is the lens height above the terrain
     if (cy > CANOPY_CLEAR_M) continue; // over the roofs and the woods
+    if (cy > ROOF_CLEAR_M && cy <= HOVER_CLEAR_M && blds.some(b => Math.hypot(b.x - cx, b.z - cz) < 40 && inside(b, cx, cz, pad))) { bad++; continue; }
     const near = cy > ROOF_CLEAR_M ? [] : blds.filter(b => Math.hypot(b.x - cx, b.z - cz) < 80);
     const wood = trees.filter(t => Math.hypot(t.x - cx, t.z - cz) < 80 + t.r);
     const inWood = (x, z) => wood.some(t => Math.hypot(x - t.x, z - t.z) < t.r);
