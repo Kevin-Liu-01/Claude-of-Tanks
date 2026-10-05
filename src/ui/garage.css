@@ -78,9 +78,8 @@
 .cot-header-nav .record-badge{min-width:17px;height:16px;padding:0 4px;display:inline-grid;place-items:center;
   color:#1a1105;background:#f0a030;border:1px solid #ffc46b;font:900 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
   line-height:1;letter-spacing:0;box-shadow:0 0 12px rgba(240,160,48,.2);}
-.cot-header-nav .record-new{position:absolute;top:-6px;right:-6px;min-width:15px;height:15px;padding:0 4px;border-radius:8px;
-  display:grid;place-items:center;color:#1a1004;background:#ffd27a;border:1px solid #f0a030;
-  font:900 8px/1 'ABC Monument Grotesk','Arial Narrow','Roboto Condensed',Arial,sans-serif;box-shadow:0 0 10px rgba(240,160,48,.75);}
+.cot-header-nav .record-new{position:absolute;top:-4px;right:-4px;width:9px;height:9px;border-radius:50%;
+  background:#ffd27a;border:1px solid #f0a030;box-shadow:0 0 10px rgba(240,160,48,.85);}
 .cot-header-nav .record-new[hidden]{display:none;}
 .cot-garage-variant-control{position:relative;z-index:14;width:100%;min-width:0;flex:0 0 54px;display:flex;}
 .cot-garage-variant-trigger{appearance:none;position:relative;isolation:isolate;width:100%;height:54px;padding:6px 8px 7px 10px;
@@ -206,7 +205,7 @@
 .cot-record-dialog::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(circle at 12% 0,rgba(240,160,48,.12),transparent 38%),
     linear-gradient(115deg,transparent 0 63%,rgba(255,255,255,.022) 63% 64%,transparent 64%);}
-.cot-record-head{position:relative;display:flex;align-items:flex-start;gap:16px;padding:20px 24px 14px;}
+.cot-record-head{position:relative;flex:0 0 auto;display:flex;align-items:flex-start;gap:16px;padding:20px 24px 14px;}
 .cot-record-title{min-width:0;flex:1 1 auto;}
 .cot-record-head .eyebrow{font:900 8px var(--record-cond);letter-spacing:.24em;text-transform:uppercase;color:#f0b04a;}
 .cot-sidebar-section-title{display:flex;align-items:center;gap:7px;min-height:24px;margin-bottom:7px;
@@ -231,7 +230,7 @@
   color:#9fb0bf;background:rgba(8,12,16,.72);border:1px solid rgba(146,164,180,.28);
   font:400 22px/1 'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;transition:color .12s,border-color .12s,background .12s;}
 .cot-record-close:hover{color:#ffd27a;border-color:rgba(240,176,74,.65);background:rgba(35,24,10,.8);}
-.cot-record-tabs{position:relative;display:flex;gap:2px;padding:0 18px;border-bottom:1px solid rgba(146,164,180,.18);
+.cot-record-tabs{position:relative;flex:0 0 auto;display:flex;gap:2px;padding:0 18px;border-bottom:1px solid rgba(146,164,180,.18);
   overflow-x:auto;scrollbar-width:none;}
 .cot-record-tabs::-webkit-scrollbar{display:none;}
 .cot-record-tabs [role='tab']{position:relative;flex:0 0 auto;display:flex;align-items:baseline;gap:6px;padding:11px 14px 10px;
@@ -245,7 +244,7 @@
 .cot-record-tab-count{font:800 8px var(--record-cond);letter-spacing:.06em;color:#66788a;}
 .cot-record-tabs [role='tab'].has-new::before{content:'';position:absolute;top:8px;right:5px;width:6px;height:6px;border-radius:50%;
   background:#f0a030;box-shadow:0 0 8px rgba(240,160,48,.8);}
-.cot-record-body{position:relative;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:20px 24px 24px;
+.cot-record-body{position:relative;flex:1 1 0;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:20px 24px 24px;
   scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
 .cot-record-body:focus{outline:none;}
 .cot-record-body:focus-visible{box-shadow:inset 0 0 0 2px rgba(240,160,48,.55);}
@@ -1702,7 +1701,9 @@ body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .srow 
 body[data-cot-width='phone'] .cot-card{width:102px}
 body[data-cot-width='phone'] .cot-car-arrow{width:32px;flex-basis:32px}
 body[data-cot-width='phone'] .cot-record-overview{grid-template-columns:1fr}
-body[data-cot-width='phone'] .cot-record-dialog{width:calc(100vw - 20px);height:calc(var(--cot-viewport-height,100dvh) - 20px)}
+body[data-cot-width='phone'] .cot-record-modal{padding:10px}
+body[data-cot-width='phone'] .cot-record-dialog{width:100%;height:calc(var(--cot-viewport-height,100dvh) - 20px)}
+body[data-cot-width='phone'] .cot-record-tab-count{display:none}
 body[data-cot-width='phone'] .cot-record-head{flex-wrap:wrap;gap:10px;padding:15px 14px 10px}
 body[data-cot-width='phone'] .cot-record-summary{order:3;width:100%;justify-content:flex-start}
 body[data-cot-width='phone'] .cot-record-chip{flex:1 1 0;min-width:0}

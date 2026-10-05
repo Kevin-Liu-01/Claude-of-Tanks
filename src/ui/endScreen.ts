@@ -291,10 +291,10 @@ const ES_CSS = `
 .cot-es .es-awards .ak{display:flex;align-items:center;gap:7px;font:800 10.5px ${FONT_COND};letter-spacing:.14em;
   text-transform:uppercase;color:${COL.amberHi};}
 .cot-es .es-awards .ak svg{flex:0 0 auto;}
-.cot-es .es-awards .al{display:flex;gap:6px;min-width:0;overflow-x:auto;scrollbar-width:none;}
-.cot-es .es-awards .al::-webkit-scrollbar{display:none;}
+.cot-es .es-awards .al{display:flex;flex-wrap:wrap;gap:5px 6px;min-width:0;}
 .cot-es .es-awards .aw{display:flex;flex:0 0 auto;align-items:center;gap:6px;padding:3px 9px 3px 4px;
   background:rgba(8,12,16,.72);border:1px solid rgba(166,184,199,.22);}
+.cot-es .es-awards .aw.icon{padding:3px 4px;}
 .cot-es .es-awards .aw.signature{border-color:rgba(240,160,48,.65);background:rgba(240,160,48,.1);}
 .cot-es .es-awards .aw b{font:800 10px ${FONT_COND};letter-spacing:.08em;text-transform:uppercase;color:#eef4f9;white-space:nowrap;}
 .cot-es .es-awards .aw.tier b{color:#cfd9e2;}
@@ -963,12 +963,22 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const strip = el('div', 'es-awards', parent);
     strip.setAttribute('aria-label', t('endScreen.medals.aria'));
     strip.style.setProperty('--i', nextI());
+    // Two awards keep their names; a longer haul is one row of artwork (named in the tooltips), so the column's
+    // fixed height still leaves the kill list its room.
+    const compact = medals.length + tiers.length > 2;
+    const attr = (value: string) => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    const chip = (classes: string, art: string, name: string, title: string, named: boolean) =>
+      `<span class="aw${classes}${named ? '' : ' icon'}" title="${attr(title)}" aria-label="${attr(name)}">${art}${named ? `<b>${name}</b>` : ''}</span>`;
     strip.innerHTML = `<span class="ak">${uiIconSVG('gold', 16)}<span>${t('endScreen.medals.heading')}</span></span>` +
-      `<span class="al">${medals.map((medal) =>
-        `<span class="aw${medal.tier === 'signature' ? ' signature' : ''}" title="${t(`service.medal.${medal.id}.desc`)}">` +
-        `${medalSVG(medal, 26)}<b>${t(`service.medal.${medal.id}.name`)}</b></span>`).join('')}` +
-      `${tiers.map(({ def, tier }) =>
-        `<span class="aw tier">${achievementSVG(def!, tier, 22)}<b>${t(`service.achievement.${def!.id}.name`)} ${['', 'I', 'II', 'III'][tier]}</b></span>`).join('')}</span>`;
+      `<span class="al">${medals.map((medal) => {
+        const name = t(`service.medal.${medal.id}.name`);
+        const signature = medal.tier === 'signature';
+        return chip(signature ? ' signature' : '', medalSVG(medal, 26), name, `${name}: ${t(`service.medal.${medal.id}.desc`)}`, !compact);
+      }).join('')}` +
+      `${tiers.map(({ def, tier }) => {
+        const name = `${t(`service.achievement.${def!.id}.name`)} ${['', 'I', 'II', 'III'][tier]}`;
+        return chip(' tier', achievementSVG(def!, tier, 22), name, name, !compact);
+      }).join('')}</span>`;
   }
 
   function renderKillList(

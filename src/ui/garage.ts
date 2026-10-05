@@ -804,10 +804,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (badge) badge.textContent = record.matches > 999 ? '999+' : formatNumber(record.matches);
     const fresh = unseenAwardCount();
     const dot = root.querySelector<HTMLElement>('.cot-record-trigger .record-new');
-    if (dot) {
-      dot.hidden = fresh === 0;
-      dot.textContent = fresh > 99 ? '99+' : formatNumber(fresh);
-    }
+    if (dot) dot.hidden = fresh === 0;
     root.querySelector('.cot-record-trigger')?.setAttribute('aria-label',
       fresh ? t('garage.record.triggerNew', { count: formatNumber(fresh) }) : t('garage.nav.record'));
     if (root.querySelector('.cot-record-modal.open')) renderServiceRecordTab();
