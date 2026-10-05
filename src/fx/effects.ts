@@ -2596,7 +2596,8 @@ function* createFxSteps(
     // combat-fx lane (2026-10-05): the fireball (fire-in-smoke billows that stay hot for ~1 s in their dense
     // pockets), an ammo rack's cook-off over the next seconds, the column's first seconds (thick smoke widening as it
     // climbs, leaning downwind) and the ground shock in the ground's colour — combat/killBlast.ts. The additive fire
-    // pockets, flames, sparks, debris, scorch and turret toss below stay the battle recipe's.
+    // pockets, flames, sparks, debris, scorch and turret toss below stay the battle recipe's. A Studio shell burst
+    // (destruction opts.shellBurst) passes it as kill's fourth argument: no cap, no cook-offs, a smoke-only column.
     emitDestructionFirePockets(pos, cy, rack, burn, burn ? 0.7 : 1, dk, birthOffset);
     combat.kill(pos, cause, birthOffset);
     emitDestructionHullFire(pos, gy, cy, rack, burn, birthOffset);

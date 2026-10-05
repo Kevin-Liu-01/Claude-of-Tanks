@@ -39,8 +39,13 @@ const SPARK: Rgb = [1, 0.72, 0.35];
 /** Seconds after the blast at which an ammo rack's secondary charges cook off. */
 export const COOK_OFF_S: readonly number[] = Object.freeze([0.9, 1.55, 2.35, 3.2, 4.3]);
 
-export function killBlast(C: CombatContext, pos: Vec3Like, cause: KillCause, birthOffset: number): void {
-  const rack = cause === 'ammorack';
+/**
+ * shellBurst: a shell hitting open ground (the Studio's stand-in blast, effects.ts destruction(..., { shellBurst })),
+ * not a tank: the fireball and the ground shock only — no mushroom cap, no cook-offs, and its column is smoke only.
+ */
+export function killBlast(C: CombatContext, pos: Vec3Like, cause: KillCause, birthOffset: number,
+  shellBurst = false): void {
+  const rack = cause === 'ammorack' && !shellBurst;
   const burn = cause === 'fire';
   const S = rack ? 1 : burn ? 0.62 : 0.8;
   const gy = C.groundY(pos.x, pos.z);
@@ -106,7 +111,7 @@ export function killBlast(C: CombatContext, pos: Vec3Like, cause: KillCause, bir
     mMove(m, Math.cos(a) * 0.6, 3.5 + R() * 2, Math.sin(a) * 0.6, 0.9, 3.0 + R() * 0.8, 0.9, 0);
     mShape(m, 6 + R() * 2.5, (2.2 + R() * 0.8) * dk, (8.5 + R() * 3.5) * dk, 1.5, 1, R() * TAU, (R() - 0.5) * 0.8);
     mLook(m, SMOKE0, SMOKE1, 0.88, 0.25, 0.42, 0.35, 0.24, 0, 0.1, R());
-    mHeat(m, burn ? 0.55 : 0.4, 2.2, 0.9, 0.9);
+    mHeat(m, shellBurst ? 0 : burn ? 0.55 : 0.4, 2.2, 0.9, 0.9);
     C.smoke(m);
   }
 

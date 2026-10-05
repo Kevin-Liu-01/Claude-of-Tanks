@@ -91,7 +91,8 @@ interface CombatFx {
     surface?: SurfaceKind | null): SurfaceKind;
   waterImpact(pos: Vec3Like, caliberMm: number, explosive: boolean, birthOffset?: number, surfaceY?: number | null): void;
   muzzleBlast(o: MuzzleBlastInput): void;
-  kill(pos: Vec3Like, cause: KillCause, birthOffset?: number): void;
+  /** shellBurst: the Studio's stand-in shell blast (no cap, no cook-offs, a smoke-only column), killBlast.ts */
+  kill(pos: Vec3Like, cause: KillCause, birthOffset?: number, shellBurst?: boolean): void;
   columnPuff(x: number, y: number, z: number, stage: number, scale: number, birthOffset?: number): void;
   smolderPuff(x: number, y: number, z: number, k: number, birthOffset?: number): void;
   deckFlame(x: number, y: number, z: number, scale: number, birthOffset?: number): void;
@@ -311,9 +312,9 @@ export function createCombatFx(o: CombatFxOptions): CombatFx {
       ensureBaked();
       muzzleBlast(C, input);
     },
-    kill(pos, cause, birthOffset = 0) {
+    kill(pos, cause, birthOffset = 0, shellBurst = false) {
       ensureBaked();
-      killBlast(C, pos, cause, birthOffset);
+      killBlast(C, pos, cause, birthOffset, shellBurst);
     },
     columnPuff(x, y, z, stage, scale, birthOffset = 0) {
       ensureBaked();
