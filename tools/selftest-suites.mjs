@@ -948,6 +948,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/movement.selftest.mjs',
     // 2026-10-04 (physics lane round 8): every playable tank publishes its track contact; the host and solo read it alike.
     'src/sim/trackContact.selftest.mjs',
+    // 2026-10-05: the contact audit's rules, the run within 5 mm and the belly pan 5 mm below to 1 cm above (the K2 LOW gear).
+    'src/vehicles/trackContactDerivationAudit.selftest.mjs',
     'src/sim/impact.selftest.mjs',
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',

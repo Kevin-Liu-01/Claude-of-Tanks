@@ -1,16 +1,25 @@
 // The published track contact against each build (physics lane round 8; the coordinator's ruling of 2026-10-04 on the
 // track contact). The builder reads the contact off the drawn band (tankFactoryCore bandGroundContact), from the band's
 // own loop, which no render tier changes, so every tier derives the contact the anatomy published. The HIGH pass and the
-// LOW pass each hold every tank's build within TIER_TOLERANCE_M of its published receipt, field by field, so the two
-// tiers derive the same contact within 1 cm of each other (the movement solve must give the same answer on the host,
-// its Worker, solo play and every client). The run's ends are also read off the band as the meshes draw it, in the
-// tank's frame: a replaced gear unit left in the build's union (the T-90M's published its contact 0.75 m past its
-// drawn ground contact), or a profile that scaled the contact apart from its band, shows there.
+// LOW pass each hold every tank's build within TIER_TOLERANCE_M of its published receipt, field by field (the belly pan
+// in the one-sided band below), so the two tiers derive the same contact within 1 cm of each other and a stale receipt
+// shows at once. The movement solve reads that receipt wherever it runs: the host, its Worker, solo play and every
+// client (movement.ts and prediction.ts take publishedTrackContact before the build's own contactGeom). The run's ends
+// are also read off the band as the meshes draw it, in the tank's frame: a replaced gear unit left in the build's union
+// (the T-90M's published its contact 0.75 m past its drawn ground contact), or a profile that scaled the contact apart
+// from its band, shows there.
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { TANK_SPECS } from './specs.ts';
 
 const TIER_TOLERANCE_M = 0.005;
+/** The belly pan is the lowest centre-spanning surface measureRestContact finds. On some hulls that surface is the
+ * merged running-gear detail, whose LOW tessellation sits a few millimetres above HIGH's: on the K2 and the K2B the
+ * LOW build's lowest gear point is 5.1 mm above the published pan. The solve clamps the ground 15 mm under the
+ * PUBLISHED pan on every peer, so a tier drawn above that pan leaves a gap of the difference and never lets the
+ * ground into the drawn hull. A tier's drawn pan may therefore sit up to PAN_GAP_M above the published pan, and no
+ * more than TIER_TOLERANCE_M below it. */
+const PAN_GAP_M = 0.01;
 const FIELDS = ['halfLenM', 'zCenterM', 'halfWidM', 'bottomYM', 'panYM'];
 const RISES = ['dzM', 'frontM', 'rearM'];
 /** The drawn band's ground contact: the extent of its meshes' lowest points within this of the band's lowest point (the
@@ -43,7 +52,7 @@ function drawnBandProfile(root, halfWidth) {
 }
 
 export function createTrackContactDerivationAudit(tier) {
-  let tanks = 0, banded = 0, worstTier = 0, worstEnd = 0;
+  let tanks = 0, banded = 0, worstTier = 0, worstPanGap = 0, worstEnd = 0;
   return {
     check(id, tank) {
       const published = TANK_SPECS[id]?.armor?.trackContact;
@@ -52,6 +61,14 @@ export function createTrackContactDerivationAudit(tier) {
       assert.ok(built, `${id}: the ${tier} build lays a track contact`);
       const compare = (label, expected, actual) => {
         if (expected == null && actual == null) return;
+        if (label === 'panYM') {
+          const above = actual - expected;
+          assert.ok(above >= -TIER_TOLERANCE_M && above <= PAN_GAP_M,
+            `${id}: the ${tier} build's panYM ${actual} is not the published ${expected} (a drawn pan may sit up to `
+            + `${PAN_GAP_M} m above it, ${TIER_TOLERANCE_M} m below; npm run tank:anatomy:update)`);
+          if (above > worstPanGap) worstPanGap = above;
+          return;
+        }
         const difference = Math.abs(expected - actual);
         assert.ok(difference <= TIER_TOLERANCE_M,
           `${id}: the ${tier} build's ${label} ${actual} is not the published ${expected} (npm run tank:anatomy:update)`);
@@ -82,7 +99,8 @@ export function createTrackContactDerivationAudit(tier) {
     },
     finish() {
       console.log(`track contact (${tier}): ${tanks} tanks within ${worstTier.toFixed(4)} m of their published receipts `
-        + `(tolerance ${TIER_TOLERANCE_M}); the run's ends within ${worstEnd.toFixed(3)} m of the drawn band on ${banded}`);
+        + `(tolerance ${TIER_TOLERANCE_M}), drawn pans at most ${worstPanGap.toFixed(4)} m above theirs `
+        + `(band ${PAN_GAP_M}); the run's ends within ${worstEnd.toFixed(3)} m of the drawn band on ${banded}`);
     },
   };
 }
