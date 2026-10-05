@@ -116,6 +116,11 @@ export default {
     // inside the square's corners), the broom carrying the floor. Was 16 / 38 / 40 trees and 0.55 broom.
     clusterCount: 5, loneCount: 22, rimCount: 14, grassDensity: 0.03,
     bushCount: 1.0, bushSpecies: 'acacia',
+    // ground lane (wave 62, Caldera street-a: "a bright neon yellow-green scribble … an unmistakable rendering glitch" on
+    // the cone's face was one of these few tufts, in the meadow's default green): the caldera's grass is dry, ash-dulled
+    // straw, as the badlands' and the desert's
+    grassTexTone: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.40), clamp01(l * 0.85 + 0.05)],
+    tuftTone: (h: number, s: number, l: number) => [0.11, 0.18, clamp01(l * 0.62 + 0.10)],
   },
   props: {
     plan: ['factory', 'foundryoffice', 'stack', 'depot', 'gantry', 'firestation',
