@@ -228,8 +228,8 @@ function checkLandUseCut(text) {
     ['float bare = uLandTier > 0.5 ? ', 'smoothstep(0.52, 0.72, nzq(uvW, 0.11'],
     ['if (crop > 0.5 && crop < 3.5 && uLandTier > 0.5 && gFootM < 0.04) { vec2 uE = vec2(0.8090 * uv.x - 0.5878 * uv.y, 0.5878 * uv.x + 0.8090 * uv.y); float ear = ',
       'nz(uv, 1.7, vec2(0.31, 0.77))'],
-    ['float clodVis = uLandTier > 1.5 ? 1.0 - smoothstep(0.08, 0.25, gFootM) : 0.0; if (clodVis > 0.001) { vec2 cl = ',
-      'nz(uv, 0.9, vec2(0.17, 0.41))'],
+    ['float clodVis = uLandTier > 1.5 ? 1.0 - smoothstep(0.15, 0.50, gFootM) : 0.0; if (clodVis > 0.001) { vec2 cl = ',
+      'nz(uv, 0.45, vec2(0.17, 0.41))'],
   ]) assert.ok(compact(block).includes(compact(gate + read)), `${read}: read only behind ${gate}`);
   assert.ok(compact(block).includes(compact('nzq(uvW, 0.031, vec2(0.11, 0.59)).y, nzq(uvW, 0.17, vec2(0.83, 0.37)).x), luNear);')),
     'the headland\'s width and the hedge bank\'s break are read in the wander\'s own gated round');
