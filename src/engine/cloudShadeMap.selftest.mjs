@@ -19,7 +19,7 @@ const clouds = here('./volumetricClouds.ts'), lighting = here('./lighting.ts'), 
 const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b} (tol ${tol})`);
 
 // ---- the map: the clouds' shade at the base, undithered, world-anchored, on a schedule
-assert.ok(CLOUD_SHADOW_CORE > 0.4 && CLOUD_SHADOW_CORE < 0.9, 'a cloud core takes most of the sun, never all of it');
+assert.ok(CLOUD_SHADOW_CORE >= 0.8 && CLOUD_SHADOW_CORE < 1, 'a cloud core takes most of the sun\'s beam (a cumulus core passes about a tenth), never all of it');
 const texel = CLOUD_FAR_SHADE_SPAN_M / CLOUD_FAR_SHADE_SIZE;
 assert.ok(texel <= 30, `a texel (${texel.toFixed(1)} m) under a cumulus shadow's soft edge`);
 assert.ok(CLOUD_FAR_SHADE_SPAN_M / 2 >= 3300, 'the square reaches the ring and the far range (3.3 km)');
@@ -27,9 +27,10 @@ assert.ok(CLOUD_FAR_SHADE_EVERY * 12 / 60 < texel / 4, 'between refreshes a stro
 const law = 'float shade = uShadeLook.x * smoothstep( uThreshold + uShadeLook.y - uShadeLook.z, uThreshold + uShadeLook.y + uShadeLook.z, cloudField(';
 assert.equal(clouds.split(law).length - 1, 1, 'one cut of the shared field, in the map alone');
 // (2026-10-05: the core, the cut's shift and its half-width through the QA hook — the defaults the constant law's)
-assert.match(clouds, /uShadeLook: \{ value: new THREE\.Vector3\(CLOUD_SHADOW_CORE, 0, 0\.08\) \},/);
+assert.match(clouds, /uShadeLook: \{ value: new THREE\.Vector3\(CLOUD_SHADOW_CORE, 0, CLOUD_SHADOW_SOFT\) \},/);
+assert.match(clouds, /const CLOUD_SHADOW_SOFT = 0\.04;/, 'a thin edge band over the visible outline (2026-10-05)');
 // (2026-10-05: a stratiform deck with gaps casts its cells too — a thick cell's core, by the deck's openness)
-assert.match(clouds, /const core = preset\.shadow \? lightTune\('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE\) : lightTune\('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYER_RULES\.deckShadowCore\);\s*const pattern = preset\.shadow \? preset\.shadowPattern : preset\.shadowPattern \* \(lightTune\('DECK_PATTERN', 1\) > 0 \? 1 : 0\);\s*\(this\.farShadeMaterial\.uniforms\.uShadeLook\.value as THREE\.Vector3\)\.set\(core \* pattern,\s*lightTune\('CLOUD_SHADOW_SHIFT', 0\), lightTune\('CLOUD_SHADOW_SOFT', 0\.08\)\);/);
+assert.match(clouds, /const core = preset\.shadow \? lightTune\('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE\) : lightTune\('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYER_RULES\.deckShadowCore\);\s*const pattern = preset\.shadow \? preset\.shadowPattern : preset\.shadowPattern \* \(lightTune\('DECK_PATTERN', 1\) > 0 \? 1 : 0\);\s*\(this\.farShadeMaterial\.uniforms\.uShadeLook\.value as THREE\.Vector3\)\.set\(core \* pattern,\s*lightTune\('CLOUD_SHADOW_SHIFT', 0\), lightTune\('CLOUD_SHADOW_SOFT', CLOUD_SHADOW_SOFT\)\);/);
 assert.match(clouds, /if \(!\(preset\.shadowPattern > 0\) \|\| preset\.coverage <= 0\) \{ this\.dropCloudShade\(\); return; \}/, 'a deck that casts no pattern publishes none');
 assert.match(clouds, /const FAR_SHADE_FRAGMENT = \/\* glsl \*\/`\nprecision highp float;\n\$\{CLOUD_FIELD_GLSL\}/, 'the map reads the shared field GLSL');
 assert.match(clouds, /gl_FragColor = vec4\( shade, 0\.0, 0\.0, 1\.0 \);/, 'undithered: the shade itself, no discard');

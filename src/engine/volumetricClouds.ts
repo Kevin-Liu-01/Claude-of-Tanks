@@ -210,8 +210,20 @@ export const CLOUD_FAR_FLAT = 0;
 export const CLOUD_EDGE_CRISP = 0;
 export const CLOUD_TOP_BILLOW = 0;
 export const CLOUD_NEAR_FIELD = 0;
-/** The share of the sun a cloud core takes (the map's darkest texel). */
-export const CLOUD_SHADOW_CORE = 0.62;
+/**
+ * The share of the sun's beam a cloud core takes (the map's darkest texel). 2026-10-05 (the skies lane, the clouds and
+ * the land; QA: CLOUD_SHADOW_CORE): 0.62 → 0.9. A fair-weather cumulus core passes about a tenth of the direct beam
+ * (optical depth past 2); the sky's light stays, so on Verdant's 3.76:1 sun/shade key (the beam 2.76 skies) the ground
+ * under a core keeps (0.1 × 2.76 + 1) / 3.76 = 34 % of the open ground's light — a clear day's cloud shadow — where 0.62
+ * kept 54 %, the faint "is that a shadow" patch the critics walked past.
+ */
+export const CLOUD_SHADOW_CORE = 0.9;
+/**
+ * The half-width of the shade map's edge band over the cut (QA: CLOUD_SHADOW_SOFT; 2026-10-05: 0.08 → 0.04). The cut is
+ * the visible cloud's own (CLOUD_LAYER_RULES.shadowCoreBand 0): the band straddles the cloud's outline, a thin margin half
+ * shaded as the penumbra and the cloud's thinning edge make it — a 1.5 km base's penumbra is 14 m, under one 23 m texel.
+ */
+const CLOUD_SHADOW_SOFT = 0.04;
 /** March limits: steps, the farthest slant distance marched (m) and the dome shell radius (inside camera.far). */
 export const CLOUD_MARCH_STEPS = 96;
 /** The farthest slant distance marched (m): a bank beyond it has melted into the sky (the far scatter ramp). */
@@ -1655,7 +1667,7 @@ export class VolumetricCloudLayer {
         tWeather: gu.tWeather, tStreets: gu.tStreets, uWeatherShift: gu.uWeatherShift, uStreetShift: gu.uStreetShift,
         uWindDir: gu.uWindDir, uStreets: gu.uStreets, uFieldMix: gu.uFieldMix, uCluster: gu.uCluster, uNearField: gu.uNearField, uThreshold: gu.uThreshold, uClear: gu.uClear,
         uFarShadeRect: { value: new THREE.Vector3(0, 0, CLOUD_FAR_SHADE_SPAN_M) },
-        uShadeLook: { value: new THREE.Vector3(CLOUD_SHADOW_CORE, 0, 0.08) },
+        uShadeLook: { value: new THREE.Vector3(CLOUD_SHADOW_CORE, 0, CLOUD_SHADOW_SOFT) },
       },
     });
     this.quad = new FullScreenQuad(this.traceMaterial);
@@ -2157,7 +2169,7 @@ export class VolumetricCloudLayer {
     const core = preset.shadow ? lightTune('CLOUD_SHADOW_CORE', CLOUD_SHADOW_CORE) : lightTune('CLOUD_DECK_SHADOW_CORE', CLOUD_LAYER_RULES.deckShadowCore);
     const pattern = preset.shadow ? preset.shadowPattern : preset.shadowPattern * (lightTune('DECK_PATTERN', 1) > 0 ? 1 : 0);
     (this.farShadeMaterial.uniforms.uShadeLook.value as THREE.Vector3).set(core * pattern,
-      lightTune('CLOUD_SHADOW_SHIFT', 0), lightTune('CLOUD_SHADOW_SOFT', 0.08));
+      lightTune('CLOUD_SHADOW_SHIFT', 0), lightTune('CLOUD_SHADOW_SOFT', CLOUD_SHADOW_SOFT));
     this.renderQuad(this.farShadeMaterial, this.farShadeTarget);
     this.farShadeInfo.texture = this.farShadeTarget.texture;
     this.farShadeInfo.baseM = preset.baseM;

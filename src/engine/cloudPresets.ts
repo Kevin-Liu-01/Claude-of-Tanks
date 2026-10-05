@@ -177,7 +177,12 @@ export const CLOUD_LAYER_RULES = Object.freeze({
   /** the shadow caster needs a fair-weather cloud-shadow amplitude (the legacy AUTO is 0.22) and a day sky */
   shadowMinAmp: 0.15,
   shadowMinSkyIntensity: 0.3,
-  shadowCoreBand: 0.06,
+  /**
+   * the shade map's cut over the visible coverage's (1 - coverage + band). 2026-10-05 (the skies lane, the clouds and the
+   * land): 0.06 → 0 — the band drew every shadow smaller than its cloud (only the dense core cast one), so a sunlit gap
+   * read wider on the ground than in the sky; the footprint is now the visible cloud's, its edge the shade map's soft band
+   */
+  shadowCoreBand: 0,
   /**
    * 2026-10-05 (the skies lane: a deck with gaps): the coverage over which a stratiform deck closes (lightModelCore.ts
    * DECK_CLOSED_COVERAGE, the receipt pins them equal) — under the first its cells cast the shade map's pattern by day
