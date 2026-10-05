@@ -59,51 +59,17 @@ body[data-cot-width='compact']:not(.cot-touch-layout) .cot-minimap{
 body[data-cot-width='phone']:not(.cot-touch-layout) .cot-dp{transform:scale(.7);transform-origin:left bottom}
 body[data-cot-width='laptop'] .cot-spec,
 body[data-cot-width='tablet'] .cot-spec{
-  left:16px;right:auto;width:min(760px,calc(100vw - 268px));transform:translateY(16px);
+  left:16px;right:auto;width:min(620px,calc(100vw - 268px));transform:translateY(12px);
 }
 body[data-cot-width='laptop'] .cot-spec.in,
 body[data-cot-width='tablet'] .cot-spec.in{transform:translateY(0)}
-body[data-cot-width='tablet'] .cot-spec,
-body[data-cot-width='compact'] .cot-spec{
-  grid-template-columns:72px minmax(140px,1fr) 116px 72px;min-height:72px;
-}
-body[data-cot-width='tablet'] .cot-spec .portrait img,
-body[data-cot-width='compact'] .cot-spec .portrait img{width:66px;height:58px}
-body[data-cot-width='tablet'] .cot-spec .identity,
-body[data-cot-width='compact'] .cot-spec .identity{padding-inline:11px}
-body[data-cot-width='tablet'] .cot-spec .who b,
-body[data-cot-width='compact'] .cot-spec .who b{font-size:15px}
-body[data-cot-width='tablet'] .cot-spec .switch,
-body[data-cot-width='compact'] .cot-spec .switch{width:104px;height:44px}
-body[data-cot-width='tablet'] .cot-spec .cycle,
-body[data-cot-width='compact'] .cot-spec .cycle{padding-inline:5px;gap:4px}
-body[data-cot-width='tablet'] .cot-spec .gar,
-body[data-cot-width='compact'] .cot-spec .gar{height:44px;font-size:8px;padding-inline:4px;gap:5px;margin-right:5px}
-body[data-cot-width='tablet'] .cot-spec .gar-icon,
-body[data-cot-width='tablet'] .cot-spec .gar-icon svg,
-body[data-cot-width='compact'] .cot-spec .gar-icon,
-body[data-cot-width='compact'] .cot-spec .gar-icon svg{width:16px;height:16px}
 body[data-cot-width='compact'] .cot-spec,
 body[data-cot-width='phone'] .cot-spec{bottom:252px}
-body[data-cot-width='compact'] .cot-spec{width:min(620px,calc(100vw - (var(--cot-edge) * 2)))}
 body[data-cot-width='phone'] .cot-spec{
-  left:var(--cot-edge);right:auto;width:calc(100vw - (var(--cot-edge) * 2));
-  grid-template-columns:62px minmax(0,1fr) 96px 46px;min-height:62px;padding:4px;
-  transform:translateY(14px);
+  left:var(--cot-edge);right:auto;width:calc(100vw - (var(--cot-edge) * 2));transform:translateY(12px);
 }
 body[data-cot-width='phone'] .cot-spec.in{transform:translateY(0)}
-body[data-cot-width='phone'] .cot-spec .portrait img{width:58px;height:52px}
-body[data-cot-width='phone'] .cot-spec .identity{padding:4px 8px}
-body[data-cot-width='phone'] .cot-spec .spec-status{margin-bottom:5px;font-size:7px;letter-spacing:.12em}
-body[data-cot-width='phone'] .cot-spec .spec-status::after{display:none}
-body[data-cot-width='phone'] .cot-spec .spec-status svg{width:11px;height:11px}
-body[data-cot-width='phone'] .cot-spec .who b{font-size:13px}
-body[data-cot-width='phone'] .cot-spec .who span{font-size:8px}
-body[data-cot-width='phone'] .cot-spec .switch{width:88px;height:40px}
-body[data-cot-width='phone'] .cot-spec .cycle{padding-inline:3px;gap:2px}
-body[data-cot-width='phone'] .cot-spec .cycle kbd{width:20px;height:20px;font-size:9px}
-body[data-cot-width='phone'] .cot-spec .gar{width:40px;height:40px;padding:0;margin-right:2px}
-body[data-cot-width='phone'] .cot-spec .gar>span:last-child{display:none}
+
 body[data-cot-height='short'] .cot-prebattle{top:16%;transform:translateX(-50%) scale(.82)}
 /* Keep the initial countdown clear of the portrait minimap/chat stack. */
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-prebattle{
