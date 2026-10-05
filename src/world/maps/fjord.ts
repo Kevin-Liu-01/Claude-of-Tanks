@@ -1,7 +1,27 @@
 // fjord.js — cold-water harbor approaches with a clipped coastal road grid,
 // fishing yards, stone settlement, steep conifer shoulders and a deep bay.
+//
+// Reference: the arms of the Ofotfjord and Bjerkvik at the head of the Herjangsfjord, Nordland, May 1940. Three arms of
+// the fjord reach in from the sea between steep peninsulas of ice-ground gneiss; the harbour town stands on the strip
+// between the terraces and the quays at their heads, its painted board houses along the harbour road, its red quay
+// warehouses (sjøhus), the fish plant and the boathouses (naust) at the water, the stockfish racks (hjell) on the shore,
+// the white chapel; spruce and birch on the shoulders above. In May 1940 the Allied landings at Bjerkvik and the
+// fighting for Narvik burnt much of the village.
+//
+// The town and the harbour (map revival lane 2, 2026-10-05; the owner: every map as new as Verdant): the nordland kit
+// (maps/regional/nordland.ts) builds every building as Nordland's own — houses of boards painted white lead, falu red
+// or ochre on granite footings, white corner boards and window casings, slate roofs, the bislag porches, the
+// two-storey Nordland houses with their glassed verandas, the landhandel, the sjøhus with the loading doors stacked up
+// the gable under the hoist beam, the fish plant on its deck of piles, the storehouses with their loading platforms,
+// the naust of dry stone, the hjell, the chapel with its spire, the houses burnt in 1940; the yards white-fenced round
+// their potato beds; the fishermen's shack is a red rorbu. The two rock peninsulas and the south headland break off
+// into the arms in steep ice-ground walls over a talus apron (their harbour faces were smooth turf-and-rock ramps).
 
 import { gully, talusFan } from './geology.ts';
+
+/** The peninsulas' and the headland's rock (landformGeology.ts): ice-ground gneiss, rounded on top, walls to the water. */
+const GNEISS = { profile: 'butte', wall: [0.35, 0.6], apron: 0.22, gullies: { count: 3, depthM: 1.8, width: 0.5 },
+  outline: 0.2, rough: 1.0 } as const;
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -52,9 +72,10 @@ export default {
       { kind: 'basin', x: 252, z: 32, rx: 98, rz: 150, height: -3.2, yawDeg: 3, wetScale: 0.8 },
       // round 47 follow-up: the rock peninsulas between the fjord arms and the walls outside them — the arms' water
       // flattening wins inside the lobes, so each ridge's flanks drop straight into the fjord
-      { kind: 'ridge', x: 395, z: -32, length: 210, width: 50, height: 13.0, yawDeg: 0 },
-      { kind: 'ridge', x: 395, z: 170, length: 210, width: 46, height: 12.0, yawDeg: 0 },
-      { kind: 'ridge', x: 430, z: -268, length: 170, width: 56, height: 12.0, yawDeg: -4 },
+      // map revival lane 2 (2026-10-05): the two peninsulas and the south headland in ice-ground gneiss (GNEISS)
+      { kind: 'ridge', x: 395, z: -32, length: 210, width: 50, height: 13.0, yawDeg: 0, geology: GNEISS },
+      { kind: 'ridge', x: 395, z: 170, length: 210, width: 46, height: 12.0, yawDeg: 0, geology: GNEISS },
+      { kind: 'ridge', x: 430, z: -268, length: 170, width: 56, height: 12.0, yawDeg: -4, geology: GNEISS },
       { kind: 'ridge', x: 430, z: 378, length: 160, width: 56, height: 11.0, yawDeg: 4 },
       // 2026-10-03 (maps lane B): glacial geology (geology.ts). Roches moutonnées on the heights outside the town — the
       // ice that dug the fjord flowed east, so each knob rises gently from the west and breaks off steep to the east (a
@@ -105,6 +126,8 @@ export default {
     bushCount: 1.15, bushSpecies: 'spruce',
   },
   props: {
+    // map revival lane 2 (2026-10-05): the nordland kit (maps/regional/nordland.ts)
+    architecture: 'nordland',
     plan: ['fishery', 'netyard', 'depot', 'logcabin', 'alpine',
       'warehouse', 'boatshed', 'chapel', 'cornershop', 'ruin', 'netyard', 'depot', 'logcabin',
       'warehouse', 'boatshed', 'netyard', 'logcabin', 'alpine', 'depot', 'woodshed', 'chapel',

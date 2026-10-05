@@ -109,7 +109,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Olympus Basin | Rust regolith and mesas under a galaxy sky, a research station of domes, modules, masts and pads (Mars mode, 2026-09-18) |
 | Frosthollow | Carpathian winter valley (round 48): a beaded frozen river down a kotlina floor, a linear timber street village on the west terrace with a sawmill yard, a two-armed ridge and saddle pass on the west flank, rolling moraine on the east; fieldstone walls, spruce blocks with cut clearings |
 | Glacier Pass | Frozen lake, rocky alpine catchment, sheltered village; exposed crags and drifting snow |
-| Nordhavn Fjord | Steep harbor settlement, fishing quays, dark water and coastal rock; layered mountain valleys |
+| Nordhavn Fjord | Steep harbor settlement, fishing quays, dark water and coastal rock; layered mountain valleys. Map revival lane 2 (2026-10-05): the Ofotfjord's arms and Bjerkvik in 1940 — the nordland kit (painted board houses under slate, glassed verandas, red sjøhus on granite quays, the fish plant, naust, hjell, the white chapel, houses burnt in 1940, a red rorbu) and the peninsulas' harbour faces in ice-ground gneiss walls |
 | Whiteout Station | Sparse polar service compound, fuel storage and wind-shaped snow corridors; expansive low backdrop |
 | Saltmere Bay | Dune-backed fishing coast, sheltered harbor and inland pasture; no inland sand marbling |
 | Saltwind Narrows | Dry limestone terraces, scrub and narrow sheltered water; pale stone with restrained green |

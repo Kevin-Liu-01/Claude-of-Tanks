@@ -1921,6 +1921,7 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
 const REGIONAL_PAL = {
   tin: [0x8f9699, 0xb8bfc1, 0x4b5053],
   mud: [0x7b6650, 0x9c8669, 0x4f4335],
+  rorbu: [0x8c3326, 0xe8e6de, 0x34373a],
   bamboo: [0x9f8a62, 0xbfa97e, 0x5d4f37],
   thatch: [0x7c6b4d, 0x9f8c65, 0x3e3327],
   nagaWood: [0x5b4735, 0x856b51, 0x2f251b],
@@ -2027,6 +2028,27 @@ function makeAngamiHouse(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('longhouse', out);
 }
 
+/**
+ * The fishermen's cabin on the shore (rorbu; the nordland kit, map revival lane 2, 2026-10-05): a falu-red board cabin
+ * on granite piers, white corner boards and window casings, a dark slate roof, the landing before its door with the
+ * steps down to the stones.
+ */
+function makeNordlandRorbu(rng: Rng): THREE.BufferGeometry {
+  const p = REGIONAL_PAL.rorbu, w = 4.4, d = 6.2, raised = 0.6, wallH = 2.4;
+  const out = gableLight({ w, d, wallH, roofH: 1.5, pal: p, raised, windows: 2 }, rng);
+  for (const x of [-w / 2 + 0.05, w / 2 - 0.05]) for (const z of [-d / 2 + 0.05, d / 2 - 0.05]) {
+    colored(out, box(0.16, wallH, 0.16).translate(x, raised + wallH / 2, z), p[1], rng, 0.03);
+  }
+  for (const x of [-w / 2 + 0.3, w / 2 - 0.3]) for (const z of [-d / 2 + 0.3, 0, d / 2 - 0.3]) {
+    colored(out, box(0.5, raised + 0.05, 0.5).translate(x, (raised + 0.05) / 2, z), 0x77736b, rng, 0.08);
+  }
+  // the landing against the door's wall and two stone steps down from it, each standing on the ground
+  colored(out, slab(1.9, 0.1, 0.8).translate(0, raised - 0.05, d / 2 + 0.4), 0x6e5d4b, rng);
+  colored(out, box(1.6, raised - 0.1, 0.3).translate(0, (raised - 0.1) / 2, d / 2 + 0.95), 0x77736b, rng, 0.06);
+  colored(out, box(1.6, (raised - 0.1) / 2, 0.3).translate(0, (raised - 0.1) / 4, d / 2 + 1.25), 0x77736b, rng, 0.06);
+  return mergeConnectedStructure('fishershack', out);
+}
+
 /** A Naga granary on posts: a plank and bamboo store raised on timber legs under a steep thatch, a notched-log ladder. */
 function makeNagaGranary(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], th = REGIONAL_PAL.thatch, wd = REGIONAL_PAL.nagaWood, bam = REGIONAL_PAL.bamboo;
@@ -2098,6 +2120,10 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
       longhouse: variant('longhouse', REGIONAL_PAL.tin, makeBengalHomestead, 'metal'),
       stilthouse: variant('stilthouse', REGIONAL_PAL.bamboo, makeBengalStiltHouse),
       fishershack: variant('fishershack', REGIONAL_PAL.bamboo, makeBengalFisherShed),
+    }),
+    // Nordland, 1940: the fishermen's shack is a red rorbu on the shore
+    nordland: Object.freeze({
+      fishershack: variant('fishershack', REGIONAL_PAL.rorbu, makeNordlandRorbu),
     }),
     kohima: Object.freeze({
       longhouse: variant('longhouse', REGIONAL_PAL.thatch, makeAngamiHouse),
