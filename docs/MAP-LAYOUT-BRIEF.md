@@ -456,6 +456,7 @@ region, registered in `index.ts`:
 | `eifel` | Rur dams: black-and-white Fachwerk on greywacke, slate, the dam company's stone | Highland Reservoir |
 | `mekong` | Cà Mau: stilt houses of plank and palm, nipa and corrugated iron | Mangrove Reach |
 | `bengal` | Jamuna chars: tin homesteads on earthen plinths, a tin bazaar, a mosque | Jade River Delta |
+| `kyushu` | The Aso caldera, Kumamoto: minka under thatch, smoked tile or painted tin with irimoya gables and the engawa, white kura on namako bases, naya barns, vinyl greenhouses, the co-op's rice warehouse, the sulphur works, the fire brigade's post and lookout, shrines with their torii | Obsidian Caldera |
 | `franconian` | Kronach, Meissen: framed and rendered town houses, plain tiles | Steinburg |
 | `ksar` | Dahar plateau: vaulted ghorfa ranges, flat-roofed houses, a minaret | Sirocco Wadi |
 | `wadirum` | Wadi Rum: block houses, rooftop tanks, the Desert Patrol fort | Redrock Divide |

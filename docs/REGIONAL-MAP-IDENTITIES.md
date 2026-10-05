@@ -35,7 +35,7 @@ the fictional map reproduces a particular real-world location.
 | badlands | Redrock canyon: a continuous north–south valley floor between unequal red-rock walls, connected side ravines and open canyon mouths. |
 | monsoon | Rain-dissected tropical ridges and coherent branching drainage, not snowless alpine peaks. |
 | alpine | Lake-aligned ranges, trough shoulders, broken spurs and oblique saddles. |
-| caldera | Off-centre, breached volcanic rim with unequal shelves and radial drainage; not red mesas recoloured black. |
+| caldera | The Aso caldera, Kyushu (settlement and trees 2026-10-05): an off-centre, breached volcanic rim with unequal shelves and radial drainage over a farmed and settled floor; not red mesas recoloured black. |
 | foundry | Industrial basin with low regional shoulders; factories remain the landmarks. |
 | ruinspires | Destroyed vertical megacity above broad urban terraces; recessive background uplands. |
 | blackglass | Arcologies and directional transit-cut shoulders between offset low ridges. |

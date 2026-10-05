@@ -124,7 +124,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Cinder Junction | Rail ballast, freight platforms, graded service routes and storage blocks |
 | Ironworks | Connected loading courts, factory service yards, soot gradients and workers' streets |
 | Kestrel Airfield | Runway/apron geometry, dispersal bays, perimeter service roads; wide open sightlines |
-| Obsidian Caldera | Black volcanic shelves, ash and extraction equipment; distinct basalt fracture language |
+| Obsidian Caldera | The Aso caldera, Kyushu: black volcanic shelves and cinder cones on a farmed floor; a village of minka, kura and greenhouses round the sulphur works in the `kyushu` kit; sugi and Japanese red pine; distinct basalt fracture language |
 | Steinburg | Masonry street blocks, courtyards, central civic space and localized war damage |
 | Ruinspires | Monumental damaged street canyons; rubble belongs to adjacent structures and forms clear plazas/routes |
 | Blackglass District | Broken arcologies, elevated transit and flooded finance quarter; glass/concrete, not orange stone towers |
