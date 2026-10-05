@@ -232,5 +232,12 @@ wreck collision, Garage aura, Service Record/audio and General Translation
 camouflage changes. The actual LOW-geometry comparison found changed turret
 collision envelopes for the three Abrams used in map wreck rosters: M1A1,
 M1A2 and SEPv3. Their hull bodies and ground-seating bounds are unchanged.
-A seeded refresh is queued for 20 tagged wreck records across 19 maps, using
-exact baseline preimages and preserving every unrelated collision record.
+The seeded refresh now updates 20 wrecks across 19 maps (40 paired movement
+and shell records). Exact native baseline preimages authenticate every
+replacement. An independent decoded comparison preserves the hull bodies,
+ground-seating bounds, 108,363 unrelated collision records, 66,518 concealers
+and all 14 untouched shards. All 1,865 pinned source hashes remained stable.
+The applied shards and their checksum index match the staged candidate exactly.
+The full final-tree suite is still incomplete; its immutable 49d29cee8 run
+precedes this generated-data follow-up, so subsequent collision checks must
+cover these refreshed shards explicitly. No deployment is claimed.
