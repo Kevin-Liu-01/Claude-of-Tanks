@@ -541,6 +541,22 @@ fine-detail cells: on a desktop build `structureMetal` and the three `regionalPl
 stone (the metal's batch takes the place of its always-drawn mesh). A new part follows the same laws: decor, behind
 `facadeOn()`, no draw from `ctx.rng` or `ctx.variant`.
 
+**The skyline kit.** October 5, 2026 (facades & skyline lane). `src/world/maps/regional/skyline.ts` is a grammar of
+tall and big buildings a city kit puts in its builders map, each fitted to the plan plot it replaces: `decoTower` (the
+Bund's inter-war tower: a granite podium of tall openings, continuous piers over recessed spandrels in setbacks with
+finials, a copper pyramid, a finned ziggurat or a needle), `curtainTower` (the post-war glass tower over a recessed
+lobby), `modernSlab` (ribbon windows, blank stair-core ends, painted loggias), `stalinistTower` (wings, tiers under
+cornices and pinnacles, the drum, the spire and its star), `industrialHall` (brick under sawtooth north lights, a works
+chimney), `gasHolder`, `stationHall` (the head building's lunette and clock tower before a glass train shed) and
+`cathedral` (aisles, flying buttresses, transept, apse, rose windows, west towers). Every builder takes `damage` (0
+intact, 1 shelled, 2 burnt floors and a bay blown to the slabs, 3 a collapsed corner with its slab ends and rubble), by
+default drawn from the building's stream. A tower is a few structural prisms — its dark core is the body and the
+collision, and shows behind every missing pane — under coarse dressing that is its silhouette at any range (tiers,
+crowns, the fronts of piers and spandrels, the glass) and fine dressing drawn near the camera only (mullions, pier
+sides, tracery, bracing). `SKYLINE_CITY` binds the kit to the generic `megatower`, `arcology`, `needletower`,
+`terracetower`, `parkingdeck` and `civichall`: `builders: { ...SKYLINE_CITY, ...own }`, then regenerate the map's shard.
+`skyline.selftest.mjs` builds every builder at every damage state on two plots (and the binding on Blackglass's plots).
+
 **The yards round the houses.** A kit that names `yard` in its `ArchitectureStyle` (`kinds`, `fence`, `gate`, `shed`,
 `shedSize`, `garden`) gets yards on its houses of those kinds (`src/world/maps/regional/yards.ts`). The stage runs after
 the wrecks on its own stream, so nothing placed before it moves. Each house's yard goes on its freest side: up to 8 m

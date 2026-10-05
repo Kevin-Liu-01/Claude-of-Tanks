@@ -38,7 +38,9 @@ coloured `regional*` buckets, war wear, `dressing.ts`); collision follows the ne
 the map's shard. The kit guide is in docs/MAP-LAYOUT-BRIEF.md ("Regional building kits"). On desktop builds the facade
 craft (`maps/regional/facade.ts`, 2026-10-05) finishes every kit's houses — window heads and carved surrounds, cornices,
 painted bands, gutter fittings, thatch courses, dormers, weathering — as dressing only, desktop only and from its own
-stream (`facade.selftest.mjs` holds the three laws).
+stream (`facade.selftest.mjs` holds the three laws). `maps/regional/skyline.ts` is the tall- and big-building kit (art-deco
+and curtain towers, slabs, the Stalinist high-rise, sawtooth halls, gasholders, a terminus, a cathedral, each with its
+damage states) a city kit binds into its builders (`SKYLINE_CITY`).
 `destructibles.ts` is the typed, allocation-free active-world seam between
 shell traffic, break FX, prop destruction events, and cached map handlers.
 `utilityNetwork.ts` owns renderer-free pole adjacency, hinge poses, stable
