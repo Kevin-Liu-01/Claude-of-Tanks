@@ -1434,7 +1434,6 @@
   "hud.hitOutcome.no_damage": "未造成伤害",
   "hud.hitOutcome.module_hit": "部件命中",
   "hud.aimWarning.selfRight": "按 {key} 翻正",
-  "hud.aimWarning.muzzleBlocked": "炮口受阻 · {dist} 米",
   "hud.alert.magazineReloadStarted": "弹匣装填开始",
   "hud.alert.missilesDepleted": "导弹耗尽",
   "hud.alert.consumableUsed": "{name} 已使用",

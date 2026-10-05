@@ -681,8 +681,7 @@ export function directionalHitValueVisible(
 
 /**
  * Convert physical aim constraints into one stable, player-facing warning.
- * A blocked bore tints immediately, but its copy appears only after the aim
- * controller's dwell gate so rough terrain cannot flicker text every frame.
+ * Bore obstruction remains a reticle tint, without a muzzle-block text overlay.
  */
 export function aimWarningState(
   view: AimWarningView | null | undefined,
@@ -696,10 +695,6 @@ export function aimWarningState(
     state.kind = 'rollover';
     state.visible = true;
     state.text = t('hud.aimWarning.selfRight', { key: view.selfRightLabel });
-  } else if (view?.blockedDistM != null) {
-    state.kind = 'blocked';
-    state.visible = !!view.blockedLabel;
-    state.text = t('hud.aimWarning.muzzleBlocked', { dist: Math.round(view.blockedDistM) });
   } else if (view?.gunLimitSpec) {
     state.kind = 'limit';
     state.visible = true;
@@ -4156,7 +4151,7 @@ export function initHud(bus: EventBus): HudRuntime {
     // BLOCKED-SHOT INDICATOR (controls_gunnery r2): the muzzle→aim path is
     // obstructed short of the aim point — WoT's red reticle on a blocked gun
     // line. The circle flips red so the player never fires into a crest.
-    // GUN-LIMIT (r2): gun pinned by the pitch clamp / muzzle-clearance floor
+    // GUN-LIMIT (r2): gun pinned by the mechanical pitch limit
     // / casemate arc — the circle greys out so an unconverged lay is visibly
     // not-ready even though the path itself is clear.
     const gunCol = draw.gunColor;

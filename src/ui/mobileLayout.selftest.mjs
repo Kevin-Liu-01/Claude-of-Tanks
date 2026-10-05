@@ -209,10 +209,8 @@ assert.match(shotInfo, /const damaging = group\.damage > 0;[\s\S]*toast\.classLi
 assert.match(hud,
   /function resetCombatPresentation\(\)[\s\S]*hitDirs\.length = 0[\s\S]*hitMark = null[\s\S]*liveNums\.length = 0[\s\S]*dmgLayer\.replaceChildren\(\)[\s\S]*killLeft\.replaceChildren\(\)[\s\S]*killRight\.replaceChildren\(\)/,
   'phase changes must clear every transient combat-feedback surface together');
-assert.match(hud, /t\('hud\.aimWarning\.muzzleBlocked', \{ dist: Math\.round\(view\.blockedDistM\) \}\)[\s\S]*t\('hud\.gunTravelLimit'\)/,
-  'aim warnings must distinguish a physical bore obstruction from a gun travel limit');
-assert.match(hud, /state\.visible = !!view\.blockedLabel/,
-  'blocked-path copy must honor the stable dwell gate instead of flickering with every terrain graze');
+assert.doesNotMatch(hud, /t\('hud\.aimWarning\.muzzleBlocked'/,
+  'bore obstructions must not add a muzzle-block overlay');
 assert.match(hud, /--hud-layer-world:6;--hud-layer-sight:8;--hud-layer-status:18;[\s\S]*--hud-layer-controls:24;--hud-layer-score:30/,
   'battle UI must declare one ordered layer contract with world indicators below fixed controls');
 assert.match(hud, /t\('hud\.sixth\.label'\)[\s\S]*t\('hud\.sixth\.sub'\)/,
