@@ -43,8 +43,10 @@ const S = {
   stCross: from('steinburg-day-crossroads', { anchor: [-50, -60], heading: 0, lineup: [CAST.strv122, CAST.leo2a5], enemies: { along: 70, lat: 4, count: 2, formation: 'pair', lineup: [CAST.t72b, CAST.t72b3], states: ['wrecked-burnt', 'burning'] } }),
   stEast: stage('steinburg-day-east', 'urban', 'day', 503, [-200, 30], 180, { formation: 'column', lineup: [CAST.tusk, CAST.sepv2, CAST.griffin], count: 3, enemies: pair(CAST.t72b3m, CAST.t90a, ['burning', 'intact'], { along: 84, lat: -3 }) }),
   stSouth: stage('steinburg-day-south', 'urban', 'day', 504, [-50, 35], 180, { formation: 'pair', lineup: [CAST.leo2a6m, CAST.amx56], enemies: pair(CAST.t90a, CAST.t72b, ['intact', 'burning'], { along: 64, lat: 1 }) }),
-  stNorth: stage('steinburg-day-north', 'urban', 'day', 505, [-52, 175], 180, { formation: 'column', lineup: [CAST.amx56, CAST.leclerc, CAST.amx56], count: 3,
-    enemies: { along: 92, lat: 0, count: 3, formation: 'line', spread: 0.45, lineup: [CAST.t72b3, CAST.t80u, CAST.t72bu], states: ['wrecked-burnt', 'burning', 'burning'] } }),
+  // the ring road's south side, east-bound, with the wrecks strung down the street (on the north highway the column's tail
+  // stood in the wood south of town, and a line abreast put a wreck into the houses here; review 2026-10-05)
+  stRing: stage('steinburg-day-ring', 'urban', 'day', 505, [-140, 75], 90, { formation: 'column', lineup: [CAST.amx56, CAST.leclerc, CAST.amx56], count: 3,
+    enemies: { along: 40, lat: 0, count: 3, formation: 'column', spread: 1.2, lineup: [CAST.t72b3, CAST.t80u, CAST.t72bu], states: ['wrecked-burnt', 'burning', 'burning'] } }),
   stSquare: stage('steinburg-day-square', 'urban', 'day', 506, [-30, 0], 270, { formation: 'pair', lineup: [CAST.leclerc, CAST.lynx], enemies: pair(CAST.t90, CAST.t72b3, ['burning', 'wrecked-burnt'], { along: 78, lat: 3 }) }),
   // Verdant Fields: the country road and the farm village (the Open Graph battlefield)
   vRoad: stage('verdant-day-road', 'verdant', 'day', 511, [-64, 61.6], 82, { formation: 'column', lineup: [CAST.t90m, CAST.t90a, CAST.t72b3m], count: 3,
@@ -66,7 +68,8 @@ const S = {
   fNorth: stage('nordhavn-day-north', 'fjord', 'day', 543, [62, 226], 188, { formation: 'pair', lineup: [CAST.leo2a5m, CAST.cv90], enemies: pair(CAST.t90, CAST.t72b3, ['intact', 'burning'], { along: 66, lat: 0 }) }),
   // Monsoon Ridge: the river ford and the temple village
   mFord: from('monsoon-morning-ford', { enemies: pair(CAST.t72b3m, CAST.t90m, ['burning', 'intact'], { along: 72, lat: 6 }) }),
-  mVillage: stage('monsoon-morning-village', 'monsoon', 'morning', 551, [24, 30], 8, { formation: 'pair', lineup: [CAST.k1a1, CAST.k21], enemies: pair(CAST.t72b3, CAST.t72b, ['burning', 'intact'], { along: 70, lat: 2 }) }),
+  // the K21 pulls in 4 m from the pair slot, whose centre stood on the chapel's wall line (review 2026-10-05)
+  mVillage: stage('monsoon-morning-village', 'monsoon', 'morning', 551, [24, 30], 8, { formation: [[0, 0], [7, -8]], lineup: [CAST.k1a1, CAST.k21], enemies: pair(CAST.t72b3, CAST.t72b, ['burning', 'intact'], { along: 70, lat: 2 }) }),
   // Cinder Junction: the tracks, the container rows and the water tower
   rTracks: from('cinder-dusk-tracks', { anchor: [58.3, 68.3], heading: 88, time: 'golden', lineup: [CAST.sepv3, CAST.sepv3, CAST.sepv3, CAST.griffin], count: 3, enemies: pair(CAST.t90m, CAST.t72b3m, ['burning', 'intact'], { along: 92, lat: 0 }) }),
   rYard: stage('cinder-day-yard', 'railyard', 'day', 561, [-27, -42], 21, { formation: 'column', lineup: [CAST.challenger1, CAST.warrior, CAST.challenger1], count: 3, enemies: pair(CAST.t72b, CAST.t80u, ['wrecked-burnt', 'intact'], { along: 80, lat: 3 }) }),
@@ -300,12 +303,13 @@ export const SHOTS = [
     { tMs: 3380, exposureMs: 16 }],
 
   // ---------------------------------------------------------------- scenes: the battlefield around the fight
-  [40, 'rooftop-smoke', 'scene', 'Smoke columns rise over the rooftops of Steinburg', S.stNorth,
+  [40, 'rooftop-smoke', 'scene', 'Smoke columns rise over the rooftops of Steinburg', S.stRing,
     // from up the street past the burning wrecks, looking back: their columns rise over the rooftops as the column advances
-    // on them (r4c's drone never framed them; r4d's street-level push behind the hero framed only wisps). The wrecks burn 60 m
-    // ahead, 52 m from the lens: at 92 m their smoke smeared across the lens between the near rooftops (review 2026-10-05)
-    { speed: 2.4, sun: 'side', enemies: { ...S.stNorth.enemies, along: 60 },
-      effects: [...wreck('foe0'), ...wreck('foe1'), ...wreck('foe2'), barrage(H(-14, 40), 2400, 6, 16), fire('hero', 4200)],
+    // on them (r4c's drone never framed them; r4d's street-level push behind the hero framed only wisps). The wrecks burn 40 to
+    // 59 m ahead, 53 m and more from the lens: at 20 m their smoke smeared across the lens between the near rooftops, and the
+    // barrage keeps to the street (review 2026-10-05)
+    { speed: 2.4, sun: 'side',
+      effects: [...wreck('foe0'), ...wreck('foe1'), ...wreck('foe2'), barrage(H(0, 30), 2400, 4, 6), fire('hero', 4200)],
       cam: RIG.passby({ side: 6, along: 112, lift: 9, fov: 40, look: [0, 30, 6] }) },
     { tMs: 3300, exposureMs: 25 }],
   [41, 'church-tower', 'scene', 'The night street fight seen from the church tower', S.stMain,
