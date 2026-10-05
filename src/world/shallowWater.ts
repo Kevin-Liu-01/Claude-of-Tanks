@@ -66,9 +66,13 @@ const WATER_ENV_GRAZING = 3.5;
  * beat into wave groups under the FFT chop (SEA_SWELL_*), and the tiled ripple steps back where the FFT ocean runs
  * (SEA_CLASSIC_NORMAL). A coast with an FFT ocean only; lakes, rivers and marshes keep their own.
  */
-const SEA_SHELF = Object.freeze({ colourM: 45, alphaM: 15, shallowAlpha: 0.35 });
-const SEA_TINT = Object.freeze({ turquoise: 0.6, deepBlue: 0.5, deepDarken: 0.7 });
-const SEA_SWELL = Object.freeze({ slope: 0.05, lengthM: 55, classicNormal: 0.6 });
+// (the sweep on Saltwind and Saltmere, one knob at a time: a 45 m colour shelf turned Saltmere's whole bay turquoise, 25 m
+// keeps a turquoise rim over the sand and the deep blue in the bay's body; the deep blue at 0.8 reads blue, not teal or
+// navy; a swell slope of 0.05 barely read at the edge views, 0.08 lays long bands under the chop; the clarity's shelf 8–30 m
+// and the tiled ripple's 0.35–1 were close calls)
+const SEA_SHELF = Object.freeze({ colourM: 25, alphaM: 15, shallowAlpha: 0.35 });
+const SEA_TINT = Object.freeze({ turquoise: 0.6, deepBlue: 0.8, deepDarken: 0.7 });
+const SEA_SWELL = Object.freeze({ slope: 0.08, lengthM: 55, classicNormal: 0.6 });
 /** Metres from the shore inside the water — the mask's visible edge, chamfered on a grid of at most 512² — R8, one metre a unit. */
 export function shoreDistanceTexture(mask: THREE.Texture, size: number, wetFrom: number): THREE.DataTexture | null {
   const img = mask.image as { data?: ArrayLike<number> | null; width?: number; height?: number } | undefined;

@@ -341,6 +341,12 @@ assert.match(shader.fragmentShader, /float seaOpacity = mix\(opacity, mix\(uSeaS
 assert.match(shader.fragmentShader, /wave \*= uOceanGrid\.w > 0\.5 \? uSwell\.w : 1\.0;/, 'the tiled ripple steps back on an FFT sea');
 assert.match(shader.fragmentShader, /- oceanN\.x - swellN\.x, 1\.0,/, 'the swell joins the normal');
 assert.equal(shader.uniforms.uSeaShelf.value.x, 0, 'a land map (no FFT ocean): no shelf law');
+{
+  const src = readFileSync(new URL('./shallowWater.ts', import.meta.url), 'utf8');
+  assert.match(src, /const SEA_SHELF = Object\.freeze\(\{ colourM: 25, alphaM: 15, shallowAlpha: 0\.35 \}\);/, 'a 25 m colour shelf (45 turned a whole bay turquoise)');
+  assert.match(src, /const SEA_TINT = Object\.freeze\(\{ turquoise: 0\.6, deepBlue: 0\.8, deepDarken: 0\.7 \}\);/, 'the deep blue, not teal or navy');
+  assert.match(src, /const SEA_SWELL = Object\.freeze\(\{ slope: 0\.08, lengthM: 55, classicNormal: 0\.6 \}\);/, 'a swell that reads under the chop');
+}
 assert.equal(shader.uniforms.uSwell.value.x, 0, 'and no swell');
 assert.equal(shader.uniforms.uSwell.value.w, 1, 'and its tiled ripple whole');
 
