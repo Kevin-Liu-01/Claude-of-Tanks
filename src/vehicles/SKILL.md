@@ -53,8 +53,22 @@ operation explicit, its variable loft/scale adapters narrow, and its runtime
 registration idempotent.
 `decorations.ts` owns deterministic cosmetic-kit construction and exact
 surface seating. Keep decoration geometry merged by material and owner frame,
-retain the existing 4,200-triangle budget and 150 m LOD, and preserve the typed
-projected-ray index plus gun, turret-sweep, width, and overlap guards.
+keep the 6,000-triangle near budget (2026-10-05, tank-accessories lane; the
+coarse level runs at about two fifths of it), and preserve the typed
+projected-ray index plus gun, turret-sweep, width, and overlap guards. Piece
+shapes come from `accessoryKits.ts` on the shared `accessoryPrimitives.ts`
+vocabulary (molded boxes, sewn fabric lofts whose straps cinch the fabric,
+round members, swept tubes): author every new piece there, drawing all random
+values before any `detail` branch, with a coarse level (`detail: 0`) in the
+same envelope. Each material family draws its near forms to 28 m, its coarse
+forms to 150 m, nothing beyond; the mobile tier builds only the coarse forms.
+Cosmetic decor is `combatHitboxRole: 'nonArmor'` so battle distance detail may
+drop it; the smoke banks are working equipment in their own resident group.
+Leaves on vehicles (suit garnish, the per-spec opt-in branch bundles) are spray
+cards on the trees lane's atlases through `vehicleFoliage.ts`, never a second
+foliage system. The Browning-family roof gun is one construction,
+`machineGunGeometry.ts`, shared by `KIT.fittings.pintleMG` and the decor roof
+gun: keep envelopes and muzzle points when changing it (remote parity).
 For player-reported Garage defects, also verify the actual carousel/pedestal
 path with its live engine context, AI geometry quality, static batching and
 cache return. Bare procedural or Gallery captures are insufficient. Record
@@ -184,9 +198,15 @@ openings; keep the hem above the smart-track corridor; and attach hull/turret
 meshes to their canonical owner rigs. A suit must be a detailed suspended
 equipment mesh with a visible air layer, deterministic connected netting, and
 an identity-appropriate treatment (`leafy`, `nakidka`, or `ulcans`)—never a
-paint alias, generic outer box, or inherited family blanket. Verify additions
-with `ghillieSuit.selftest.mjs`, standard front/quarter/side/top views, and the
-normal anatomy/release sequence below.
+paint alias, generic outer box, or inherited family blanket. The garnish is
+spray cards seated stem-first on the carrier (`foliageKind`: a species atlas of
+the trees lane, or the painted multispectral garnish for `ulcans`/`nakidka`),
+kept whole on the net, off every opening and inside the certified width; suit
+cloth and garnish clone the canvas through `cloneVehicleMaterial(source,
+configure)` (a plain `Material.clone()` lights with every cascade's sun at once).
+Both meshes are `continuityRole: 'open-lattice'`. Verify additions with
+`ghillieSuit.selftest.mjs`, `accessoryMaterials.selftest.mjs`, standard
+front/quarter/side/top views, and the normal anatomy/release sequence below.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

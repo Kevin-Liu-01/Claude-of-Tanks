@@ -20,10 +20,9 @@ const get = (name) => {
 };
 const hullNet = get('leo2a4_ghillie_hull_net');
 const turretNet = get('leo2a4_ghillie_turret_net');
-get('leo2a4_ghillie_hull_light');
-get('leo2a4_ghillie_hull_dark');
-get('leo2a4_ghillie_turret_light');
-get('leo2a4_ghillie_turret_dark');
+// 2026-10-05 (tank-accessories lane): the suit runs on the shared builder; its garnish is one spray-card draw per owner
+get('leo2a4_ghillie_hull_leaves');
+get('leo2a4_ghillie_turret_leaves');
 
 const belongsTo = (object, parent) => {
   for (let node = object; node; node = node.parent) if (node === parent) return true;
@@ -42,8 +41,8 @@ assert.ok(hullBounds.min.y >= 0.56,
 
 const completeGhillie = new THREE.Box3();
 for (const name of [
-  'leo2a4_ghillie_hull_net', 'leo2a4_ghillie_hull_light', 'leo2a4_ghillie_hull_dark',
-  'leo2a4_ghillie_turret_net', 'leo2a4_ghillie_turret_light', 'leo2a4_ghillie_turret_dark',
+  'leo2a4_ghillie_hull_net', 'leo2a4_ghillie_hull_leaves',
+  'leo2a4_ghillie_turret_net', 'leo2a4_ghillie_turret_leaves',
 ]) completeGhillie.union(new THREE.Box3().setFromObject(get(name)));
 assert.ok(completeGhillie.min.x >= -1.85 && completeGhillie.max.x <= 1.85,
   'broken-outline leaves remain inside the certified 3.70 m A4 width');

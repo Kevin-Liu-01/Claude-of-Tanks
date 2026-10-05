@@ -2519,8 +2519,13 @@ const VEHICLE_MATERIAL_SETUP = new WeakMap<THREE.Material, <T extends THREE.Mate
  */
 const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY'] as const;
 
-/** Clone a vehicle material into its source's cascade registration, readability hook, program key and switches. */
-export function cloneVehicleMaterial<T extends THREE.Material>(source: T): T {
+/**
+ * Clone a vehicle material into its source's cascade registration, readability hook, program key and switches.
+ * `configure` runs on the clone before it is registered (2026-10-05, tank-accessories lane): an alpha-tested clone
+ * (an equipment leaf or net card) sets its map and alphaTest there, so the cascade setup builds the map's
+ * coverage-preserving mip chain exactly as it does for a foliage material.
+ */
+export function cloneVehicleMaterial<T extends THREE.Material>(source: T, configure?: (clone: T) => void): T {
   const clone = source.clone() as T;
   const sourceDefines = (source as { defines?: Record<string, unknown> }).defines;
   for (const key of VEHICLE_SHADER_SWITCHES) {
@@ -2528,6 +2533,7 @@ export function cloneVehicleMaterial<T extends THREE.Material>(source: T): T {
     const target = clone as { defines?: Record<string, unknown> };
     target.defines = { ...target.defines, [key]: sourceDefines[key] };
   }
+  configure?.(clone);
   const setup = VEHICLE_MATERIAL_SETUP.get(source);
   if (setup) return setup(clone);
   // a material from outside createTankMaterials (a stub's, a receipt's): it keeps its hooks, which a plain clone drops

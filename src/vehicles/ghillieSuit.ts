@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { KIT } from './profiles/kit.ts';
-import { vehicleAmbientFloorHook } from './materials.ts';
+import { cloneVehicleMaterial } from './materials.ts';
 import { oplotFlankOuterX } from './oplotFlankLayout.ts';
+import {
+  configureFoliageMaterial, FoliageCardBuffer, vehicleFoliageAtlas, type VehicleFoliageKind,
+} from './vehicleFoliage.ts';
 
 type Point2 = readonly [number, number];
 type Point3 = readonly [number, number, number];
@@ -19,6 +22,10 @@ interface TopPanel {
   yAt(x: number, z: number): number;
   outline?: readonly Point2[];
   holes?: readonly (readonly Point2[])[];
+  /** Remove every cell any of whose corners falls in an opening (the authored A4 openings' rule), not just its centre. */
+  strictHoles?: boolean;
+  /** Regions where the carrier continues but no spray may sit (track lanes at the hull's ends). */
+  foliageExclude?: readonly (readonly Point2[])[];
   seatGapM?: number;
   seat?: string;
   seed?: number;
@@ -47,6 +54,7 @@ interface FacePanel {
   ny?: number;
   outline?: readonly Point2[];
   holes?: readonly (readonly Point2[])[];
+  strictHoles?: boolean;
   seatGapM?: number;
   seat?: string;
   seed?: number;
@@ -69,6 +77,11 @@ export interface GhillieConfig {
   netColor: string;
   disabled?: boolean;
   foliage?: boolean;
+  /**
+   * The garnish tucked into the net: a species spray atlas of the trees lane (src/world/treeSprayAtlas.ts) for
+   * leafy suits, or a painted multispectral cut garnish. Defaults by style (leafy: oak; ulcans / nakidka: woodland).
+   */
+  foliageKind?: VehicleFoliageKind;
   hull?: GhilliePanels;
   turret?: GhilliePanels;
   gun?: GhilliePanels;
@@ -146,6 +159,8 @@ function clothTop(panel: TopPanel, suitSeed: number): THREE.BufferGeometry {
       const cz = (za + zb) * 0.5;
       if (outline && !insidePoly(cx, cz, outline)) continue;
       if (holes.some((hole) => insidePoly(cx, cz, hole))) continue;
+      if (panel.strictHoles && holes.some((hole) => [[xa, za], [xb, za], [xb, zb], [xa, zb]]
+        .some(([px, pz]) => insidePoly(px, pz, hole)))) continue;
       // Deterministically tear a few perimeter-adjacent cells.  The carrier
       // remains connected while its silhouette stops reading machine-cut.
       const edge = ix === 0 || iz === 0 || ix === nx - 1 || iz === nz - 1;
@@ -219,6 +234,8 @@ function clothFace(panel: FacePanel, suitSeed: number): THREE.BufferGeometry {
       const cx = (xa + xb) * 0.5; const cy = (ya + yb) * 0.5;
       if (outline && !insidePoly(cx, cy, outline)) continue;
       if (holes.some((hole) => insidePoly(cx, cy, hole))) continue;
+      if (panel.strictHoles && holes.some((hole) => [[xa, ya], [xb, ya], [xb, yb], [xa, yb]]
+        .some(([px, py]) => insidePoly(px, py, hole)))) continue;
       const edge = ix === 0 || iy === 0 || ix === nx - 1 || iy === ny - 1;
       if (edge && noise01(ix + iy * nx + seed, suitSeed) < 0.20) continue;
       const a = vertex(xa, ya); const b = vertex(xb, ya);
@@ -229,56 +246,91 @@ function clothFace(panel: FacePanel, suitSeed: number): THREE.BufferGeometry {
   return makeGeometry(positions, uvs);
 }
 
-function leafGeometry(scale: number, seed: number, style: GhillieStyle): THREE.BufferGeometry {
-  const { slab } = KIT;
-  const wide = style === 'ulcans' ? 0.090 : style === 'nakidka' ? 0.075 : 0.064;
-  const long = style === 'ulcans' ? 0.130 : style === 'nakidka' ? 0.145 : 0.165;
-  const w = wide * scale * (0.82 + noise01(seed, 2) * 0.35);
-  const d = long * scale * (0.82 + noise01(seed, 3) * 0.38);
-  const h = 0.014 + noise01(seed, 4) * 0.012;
-  const skew = (noise01(seed, 5) - 0.5) * 0.34;
-  return slab(
-    [-w * 0.58, 0, -d], [w, 0, -d * (0.18 + skew)],
-    [w * 0.18, 0, d], [-w * (0.62 - skew), 0, d * 0.10],
-    [-w * 0.58, h, -d], [w, h, -d * (0.18 + skew)],
-    [w * 0.18, h, d], [-w * (0.62 - skew), h, d * 0.10],
-  );
+// ---------------------------------------------------------------------------------------------------------------
+// Garnish: spray cards seated stem-first in the net (vehicleFoliage.ts). One card reaches across what three of the
+// old eight-vertex slab leaves covered, so a suit draws a fraction of the triangles with a ragged, leafy silhouette.
+// ---------------------------------------------------------------------------------------------------------------
+
+function defaultFoliageKind(style: GhillieStyle): VehicleFoliageKind {
+  return style === 'leafy' ? 'oak' : 'garnish-woodland';
+}
+
+/** The per-card tint: a blend toward the suit's light or dark garnish, kept close to the atlas' own colour. */
+function garnishTint(cfg: GhillieConfig, seed: number): [number, number, number] {
+  const pick = noise01(seed, 81);
+  const light = new THREE.Color(cfg.light), dark = new THREE.Color(cfg.dark);
+  const mix = light.lerp(dark, pick * 0.85);
+  // relative to a mid foliage green, clamped: the suit's palette shifts the atlas, never repaints it
+  const k = (c: number, ref: number) => THREE.MathUtils.clamp(0.55 + (c / ref) * 0.45, 0.62, 1.22);
+  const bright = 0.78 + noise01(seed, 82) * 0.34;
+  return [k(mix.r, 0.11) * bright, k(mix.g, 0.15) * bright, k(mix.b, 0.07) * bright];
+}
+
+function cardSize(cfg: GhillieConfig, seed: number): { length: number; width: number } {
+  const base = cfg.style === 'leafy' ? 0.5 : 0.44;
+  const length = base * cfg.leafScale * (0.82 + noise01(seed, 83) * 0.36);
+  return { length, width: length * (cfg.style === 'leafy' ? 0.92 : 1.02) };
 }
 
 function topFoliagePointAllowed(panel: TopPanel, x: number, z: number): boolean {
   if (panel.outline && !insidePoly(x, z, panel.outline)) return false;
+  if ((panel.foliageExclude ?? []).some((region) => insidePoly(x, z, region))) return false;
   return !(panel.holes ?? []).some((hole) => insidePoly(x, z, hole));
 }
 
 function appendTopFoliageCluster(
-  outA: THREE.BufferGeometry[],
-  outB: THREE.BufferGeometry[],
+  out: FoliageCardBuffer,
   panel: TopPanel,
   cfg: GhillieConfig,
   seed: number,
   x: number,
   z: number,
 ): void {
-  const { xform } = KIT;
-  const target = seed % 3 ? outA : outB;
-  const count = cfg.style === 'leafy' ? 3 : 2;
+  const count = noise01(seed, 84) < (cfg.style === 'leafy' ? 0.6 : 0.35) ? 2 : 1;
   for (let index = 0; index < count; index++) {
-    const scale = (0.66 + noise01(seed, 20 + index) * 0.44) * cfg.leafScale;
-    target.push(xform(
-      leafGeometry(scale, seed + index * 31, cfg.style),
-      x + (noise01(seed, 30 + index) - 0.5) * 0.12,
-      panel.yAt(x, z) + 0.018 + index * 0.010,
-      z + (noise01(seed, 40 + index) - 0.5) * 0.12,
-      (noise01(seed, 50 + index) - 0.5) * 0.16,
-      noise01(seed, 60 + index) * Math.PI,
-      (noise01(seed, 70 + index) - 0.5) * 0.15,
-    ));
+    const s = seed + index * 31;
+    let { length, width } = cardSize(cfg, s);
+    // The spray stays on its carrier: turn it until its stem and tip both land on the net (outline, openings),
+    // shortening it when no heading fits — a card never reaches over a track lane, hatch or gun corridor.
+    let heading = noise01(s, 60) * Math.PI * 2;
+    // the card's stem, tip and four corners (its width spreads across the heading) all land on the net
+    const fits = (h: number, len: number): boolean => {
+      const c = Math.cos(h), sn = Math.sin(h);
+      const half = len * (width / length) * 0.5;
+      for (const [along, across] of [[-0.42, 0], [0.58, 0], [-0.42, 0.55], [-0.42, -0.55], [0.58, 0.88], [0.58, -0.88]]) {
+        const px = x + c * len * along - sn * half * across, pz = z + sn * len * along + c * half * across;
+        if (px < panel.x0 || px > panel.x1 || pz < panel.z0 || pz > panel.z1) return false;
+        if (!topFoliagePointAllowed(panel, px, pz)) return false;
+      }
+      return true;
+    };
+    let placed = false;
+    for (const scale of [1, 0.7, 0.5]) {
+      for (let k = 0; k < 6 && !placed; k++) {
+        const h = heading + k * (Math.PI / 3);
+        if (fits(h, length * scale)) { heading = h; length *= scale; width *= scale; placed = true; }
+      }
+      if (placed) break;
+    }
+    if (!placed) continue;
+    const lift = (cfg.style === 'leafy' ? 0.16 : 0.06) + noise01(s, 61) * 0.22 + index * 0.12;
+    const axis: [number, number, number] = [Math.cos(heading) * Math.cos(lift), Math.sin(lift), Math.sin(heading) * Math.cos(lift)];
+    const roll = (noise01(s, 62) - 0.5) * 0.9;
+    const face: [number, number, number] = [-axis[0] * Math.sin(lift) + Math.cos(heading + Math.PI / 2) * roll * 0.4,
+      Math.cos(lift), -axis[2] * Math.sin(lift) + Math.sin(heading + Math.PI / 2) * roll * 0.4];
+    const sx = x - axis[0] * length * 0.42, sz = z - axis[2] * length * 0.42;
+    out.push({
+      stem: [sx, panel.yAt(sx, sz) + 0.014 + index * 0.012, sz],
+      axis, face, out: [0, 1, 0], length, width,
+      tile: Math.floor(noise01(s, 63) * 4) % 4,
+      bend: 0.08 + noise01(s, 64) * 0.16,
+      tint: garnishTint(cfg, s),
+    });
   }
 }
 
 function addTopFoliage(
-  outA: THREE.BufferGeometry[],
-  outB: THREE.BufferGeometry[],
+  out: FoliageCardBuffer,
   panel: TopPanel,
   cfg: GhillieConfig,
   seedBase: number,
@@ -292,53 +344,59 @@ function addTopFoliage(
       const px = x + (noise01(seed, 6) - 0.5) * stepX * 0.58;
       const pz = z + (noise01(seed, 7) - 0.5) * stepZ * 0.58;
       if (!topFoliagePointAllowed(panel, px, pz)) continue;
-      if (noise01(seed, 8) > cfg.density) continue;
-      appendTopFoliageCluster(outA, outB, panel, cfg, seed, px, pz);
+      if (noise01(seed, 8) > cfg.density * 0.82) continue;
+      appendTopFoliageCluster(out, panel, cfg, seed, px, pz);
     }
   }
 }
 
 function addSideFoliage(
-  outA: THREE.BufferGeometry[],
-  outB: THREE.BufferGeometry[],
+  out: FoliageCardBuffer,
   panel: SidePanel,
   cfg: GhillieConfig,
   seedBase: number,
 ): void {
-  const { xform } = KIT;
   const stepZ = cfg.style === 'nakidka' ? 0.40 : 0.32;
   let n = 0;
   for (let z = panel.z0 + stepZ * 0.5; z < panel.z1; z += stepZ) {
-    for (const t0 of [0.18, 0.48, 0.78]) {
+    for (const t0 of [0.3, 0.72]) {
       const seed = seedBase + n++;
-      if (noise01(seed, 9) > cfg.density) continue;
-      const t = THREE.MathUtils.clamp(t0 + (noise01(seed, 10) - 0.5) * 0.18, 0.08, 0.94);
+      if (noise01(seed, 9) > cfg.density * 0.86) continue;
+      const t = THREE.MathUtils.clamp(t0 + (noise01(seed, 10) - 0.5) * 0.22, 0.12, 0.92);
       const y = THREE.MathUtils.lerp(panel.bottomAt(z), panel.topAt(z), t);
-      const x = panel.outAt(z, t) + 0.012;
-      const target = seed % 3 ? outA : outB;
-      for (let k = 0; k < (cfg.style === 'leafy' ? 3 : 2); k++) {
-        const s = (0.62 + noise01(seed, 21 + k) * 0.46) * cfg.leafScale;
-        target.push(xform(leafGeometry(s, seed + k * 37, cfg.style),
-          panel.side * x,
-          y + (noise01(seed, 31 + k) - 0.5) * 0.10,
-          z + (noise01(seed, 41 + k) - 0.5) * 0.12,
-          noise01(seed, 51 + k) * 0.6,
-          0,
-          panel.side * (Math.PI / 2 + (noise01(seed, 61 + k) - 0.5) * 0.22)));
-      }
+      const x = panel.side * (panel.outAt(z, t) + 0.012);
+      const { length, width } = cardSize(cfg, seed);
+      // sprays hang from the net: mostly down, swept fore or aft, a little proud of the drape — never below the
+      // hem (the running gear's corridor) and never past the carrier's ends
+      let sweep = (noise01(seed, 51) - 0.5) * 1.3;
+      const reachZ = Math.sin(sweep) * length;
+      if (z + reachZ > panel.z1 || z + reachZ < panel.z0) sweep = -sweep * 0.5;
+      if (z - width * 0.5 < panel.z0 || z + width * 0.5 > panel.z1) continue;
+      const axis: [number, number, number] = [panel.side * 0.04, -Math.cos(sweep), Math.sin(sweep)];
+      // face square to the drape: the spray's width runs along it, never out past the carrier's certified width
+      const face: [number, number, number] = [panel.side, 0.08, 0];
+      const bend = 0.04 + noise01(seed, 54) * 0.1;
+      const drop = length * (Math.cos(sweep) + bend);
+      const stemY = Math.min(panel.topAt(z) + length * 0.1,
+        Math.max(y + length * 0.42, panel.bottomAt(z) + 0.035 + drop));
+      out.push({
+        stem: [x, stemY, z], axis, face, out: [panel.side, 0, 0], length, width,
+        tile: Math.floor(noise01(seed, 53) * 4) % 4,
+        bend,
+        tint: garnishTint(cfg, seed),
+      });
     }
   }
 }
 
 function addFaceFoliage(
-  outA: THREE.BufferGeometry[],
-  outB: THREE.BufferGeometry[],
+  out: FoliageCardBuffer,
   panel: FacePanel,
   cfg: GhillieConfig,
   seedBase: number,
 ): void {
-  const { xform } = KIT;
-  const sx = 0.31; const sy = 0.26;
+  const sx = 0.34, sy = 0.3;
+  const facing = panel.z >= 0 || (panel.zAt ? panel.zAt((panel.x0 + panel.x1) / 2, (panel.y0 + panel.y1) / 2) >= 0 : false) ? 1 : -1;
   let n = 0;
   for (let y = panel.y0 + sy * 0.5; y < panel.y1; y += sy) {
     for (let x = panel.x0 + sx * 0.5; x < panel.x1; x += sx) {
@@ -347,44 +405,66 @@ function addFaceFoliage(
       const py = y + (noise01(seed, 12) - 0.5) * 0.10;
       if (panel.outline && !insidePoly(px, py, panel.outline)) continue;
       if ((panel.holes || []).some((hole) => insidePoly(px, py, hole))) continue;
-      if (noise01(seed, 13) > cfg.density) continue;
-      const target = seed % 2 ? outA : outB;
-      const s = (0.66 + noise01(seed, 14) * 0.42) * cfg.leafScale;
+      if (noise01(seed, 13) > cfg.density * 0.86) continue;
       const pz = panel.zAt ? panel.zAt(px, py) : panel.z;
-      target.push(xform(leafGeometry(s, seed, cfg.style), px, py, pz + 0.014,
-        Math.PI / 2, noise01(seed, 15) * 0.25,
-        (noise01(seed, 16) - 0.5) * 0.50));
+      let { length, width } = cardSize(cfg, seed);
+      let swing = (noise01(seed, 15) - 0.5) * 1.6;
+      const clear = (sw: number, len: number): boolean => {
+        const half = len * 0.46;
+        for (const [t, across] of [[-0.42, 0], [0.08, 0], [0.58, 0], [-0.42, 0.55], [-0.42, -0.55], [0.58, 0.88], [0.58, -0.88]]) {
+          const qx = px + Math.sin(sw) * len * t + Math.cos(sw) * half * across;
+          const qy = py + len * 0.38 - Math.cos(sw) * len * (t + 0.42) + Math.sin(sw) * half * across;
+          if (qx < panel.x0 || qx > panel.x1 || qy < panel.y0 - 0.05 || qy > panel.y1 + 0.05) return false;
+          if (panel.outline && !insidePoly(qx, qy, panel.outline)) return false;
+          if ((panel.holes || []).some((hole) => insidePoly(qx, qy, hole))) return false;
+        }
+        return true;
+      };
+      let ok = false;
+      for (const scale of [1, 0.7, 0.5]) {
+        for (const sw of [swing, -swing, swing * 0.3, swing + 1.2, swing - 1.2]) {
+          if (clear(sw, length * scale)) { swing = sw; length *= scale; width *= scale; ok = true; break; }
+        }
+        if (ok) break;
+      }
+      if (!ok) continue;
+      const axis: [number, number, number] = [Math.sin(swing), -Math.cos(swing), facing * 0.2];
+      out.push({
+        stem: [px - axis[0] * length * 0.42, py + length * 0.38, pz + facing * 0.016], axis,
+        face: [0, 0.1, facing], out: [0, 0, facing], length, width,
+        tile: Math.floor(noise01(seed, 16) * 4) % 4,
+        bend: 0.05 + noise01(seed, 17) * 0.1,
+        tint: garnishTint(cfg, seed),
+      });
     }
   }
 }
 
+/**
+ * The suit's cloth: a per-visual clone of the vehicle's canvas joined to its cascade registration
+ * (cloneVehicleMaterial). The old plain clone lit with every cascade's sun at once (about four times the sun on a lit
+ * face), which is why the suits read pale and flat in battle.
+ */
 function makeCloth(
   P: GhillieBuilderPort,
-  _cfg: GhillieConfig,
-  hex: number,
-  _key: string,
+  configure: (material: THREE.MeshStandardMaterial) => void,
 ): THREE.MeshStandardMaterial {
-  const mat = P.mats.canvasCloth.clone();
-  mat.color.setHex(hex);
-  mat.roughness = 1;
-  mat.metalness = 0;
-  mat.envMapIntensity = 0.08;
-  // sealed check 2026-09-13: the cloth strips are single quads; culled from
-  // behind they vanished as the camera orbited and exposed the hull through
-  // the suit. Cloth is seen from both sides.
-  mat.side = THREE.DoubleSide;
-  mat.onBeforeCompile = vehicleAmbientFloorHook;
-  mat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-  return mat;
+  return cloneVehicleMaterial(P.mats.canvasCloth, (mat) => {
+    mat.roughness = 1;
+    mat.metalness = 0;
+    mat.envMapIntensity = 0.08;
+    // sealed check 2026-09-13: cloth is seen from both sides as the camera orbits
+    mat.side = THREE.DoubleSide;
+    configure(mat);
+  });
 }
 
 function makeNet(
   P: GhillieBuilderPort,
   cfg: GhillieConfig,
-  owner: GhillieOwner,
+  _owner: GhillieOwner,
 ): { mat: THREE.MeshStandardMaterial; texture: THREE.CanvasTexture | null } {
-  const mat = makeCloth(P, cfg, 0xffffff, `${owner}-net`);
-  let texture = null;
+  let texture: THREE.CanvasTexture | null = null;
   if (typeof document !== 'undefined') {
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = 128;
@@ -415,12 +495,16 @@ function makeNet(
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
     texture.anisotropy = 4;
-    mat.map = texture;
-    mat.transparent = true;
-    mat.alphaTest = 0.10;
-    mat.side = THREE.DoubleSide;
-    mat.needsUpdate = true;
   }
+  const mat = makeCloth(P, (m) => {
+    m.color.setHex(0xffffff);
+    if (texture) {
+      m.map = texture;
+      // an alpha-tested opaque web (sorted transparency is neither needed nor stable for a cut net)
+      m.alphaTest = 0.10;
+      m.transparent = false;
+    }
+  });
   return { mat, texture };
 }
 
@@ -441,6 +525,9 @@ function addMerged(
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = name;
   mesh.castShadow = mesh.receiveShadow = true;
+  // A cut net encloses real exterior air: it is suspended dressing, outside the armor's zero-hole scan.
+  mesh.userData.combatHitboxRole = 'nonArmor';
+  mesh.userData.continuityRole = 'open-lattice';
   parent.add(mesh);
   P.disposables.push(geo, mat);
   for (const extra of extras) {
@@ -581,7 +668,93 @@ const leo2A6UAMidRoofY = (x: number, z: number): number => {
 const leo2A6UARearRoofY = (_x: number, z: number): number => profileY([
   [-3.34, 0.62], [-3.02, 0.64], [-2.30, 0.66], [-1.58, 0.78],
 ], z) + 0.026;
+// Leopard 2A4 full-vehicle suit (2026-10-05: moved from its private copy in profiles/leopard.ts onto this shared
+// builder — the authored A4 cut-net carriers below are its outlines, openings and drapes unchanged; the garnish is
+// the shared spray cards). The hull blanket floats 5-7 cm above the deck and follows the glacis to the beak; the
+// side carriers follow the skirt shoulder and stop where the sprocket/idler arcs begin; the turret face opens a
+// 0.9 m gun corridor; the crown opens around both hatches, EMES, the loader MG and the antenna seats.
+const leo2A4HullBlanketY = (_x: number, z: number): number => {
+  if (z <= 2.20) return 1.765;
+  if (z <= 2.40) return 1.765 - (z - 2.20) * 0.45;
+  if (z <= 2.96) return 1.675 - (z - 2.40) * 0.33;
+  if (z <= 3.52) return 1.490 - (z - 2.96) * 0.18;
+  return 1.389 - (z - 3.52) * 0.44;
+};
+const leo2A4HullSideWidth = (z: number): number => {
+  if (z > 2.25) return THREE.MathUtils.lerp(1.71, 1.06, (z - 2.25) / 1.53);
+  if (z < -3.20) return THREE.MathUtils.lerp(1.71, 1.33, (-z - 3.20) / 0.58);
+  return 1.71;
+};
+// the physical skirt course moved up 100 mm; the carrier hem follows the supported 0.62/0.64 m armor bottoms
+const leo2A4HullSideBottom = (z: number): number => 0.725 + Math.sin(z * 3.1) * 0.035 + Math.cos(z * 5.7) * 0.020;
+const leo2A4TurretSideWidth = (z: number): number => {
+  if (z > 0.55) return THREE.MathUtils.lerp(1.31, 1.05, (z - 0.55) / 0.55);
+  if (z < -1.45) return THREE.MathUtils.lerp(1.28, 1.03, (-z - 1.45) / 1.28);
+  return z < -0.50 ? 1.28 : 1.31;
+};
+const LEO2A4_HULL_BLANKET_OUTLINE: readonly Point2[] = [
+  [-0.94, -3.80], [0.94, -3.80], [1.02, -3.42], [1.68, -3.12],
+  // the bow shoulders come in before the idler arc, clear of the animated terminal shoes
+  [1.71, -2.62], [1.72, 2.18], [1.57, 2.72], [0.84, 3.42],
+  [0.88, 3.82], [-0.88, 3.82], [-0.84, 3.42], [-1.57, 2.72],
+  [-1.72, 2.18], [-1.71, -2.62], [-1.68, -3.12], [-1.02, -3.42],
+];
+// end courses keep their sprays between the live track lanes
+const LEO2A4_HULL_END_LANES: readonly (readonly Point2[])[] = [-1, 1].flatMap((side) => [
+  [[side * 0.72, 3.18], [side * 2.0, 3.18], [side * 2.0, 4.2], [side * 0.72, 4.2]] as Point2[],
+  [[side * 0.72, -3.18], [side * 2.0, -3.18], [side * 2.0, -4.2], [side * 0.72, -4.2]] as Point2[],
+]);
+const LEO2A4_TURRET_ROOF_OUTLINE: readonly Point2[] = [
+  [-0.81, 1.06], [-0.48, 1.06], [-0.48, 0.80], [0.18, 0.80],
+  [0.18, 0.30], [1.05, 0.30], [1.09, 0.69], [1.06, -0.72],
+  [0.99, -1.58], [0.91, -2.28], [-0.91, -2.28], [-0.99, -1.58],
+  [-1.06, -0.72], [-1.09, 0.69],
+];
+const LEO2A4_TURRET_ROOF_HOLES: readonly (readonly Point2[])[] = [
+  [[-1.00, -0.98], [-1.00, 0.34], [-0.14, 0.34], [-0.14, -0.98]],
+  [[0.19, -0.52], [0.19, -0.10], [0.53, -0.10], [0.53, -0.52]],
+  [[0.28, -0.52], [0.91, -0.52], [0.91, -0.62], [0.96, -0.62],
+    [0.96, -1.58], [0.38, -1.65], [0.38, -1.06], [0.28, -1.06]],
+  [[-0.90, -2.25], [-0.90, -1.78], [-0.73, -1.78], [-0.73, -2.25]],
+];
+
 export const GHILLIE_SUIT_CONFIGS = Object.freeze({
+  leo2a4: {
+    id: 'leo2a4', seed: 2404, style: 'leafy', density: 0.9, leafScale: 0.96, foliageKind: 'beech',
+    light: 0x64794a, dark: 0x34462d, netColor: 'rgba(34,48,27,0.72)',
+    hull: {
+      top: [{ x0: -1.72, x1: 1.72, z0: -3.80, z1: 3.82, nx: 30, nz: 60, yAt: leo2A4HullBlanketY,
+        outline: LEO2A4_HULL_BLANKET_OUTLINE, holes: [rect(-1.39, 1.39, -2.12, 1.58)], strictHoles: true,
+        foliageExclude: LEO2A4_HULL_END_LANES, seed: 4 }],
+      side: [-1, 1].map((side) => ({ side, z0: -3.12, z1: 2.24, nz: 44, ny: 10,
+        topAt: (z: number) => leo2A4HullBlanketY(0, z) - 0.015, bottomAt: leo2A4HullSideBottom,
+        outAt: (z: number, t: number) => leo2A4HullSideWidth(z) + 0.025 + (1 - t) * 0.075, seed: 11 + side })),
+      face: [
+        { z: 3.895, x0: -1.05, x1: 1.05, y0: 0.66, y1: 1.57, nx: 16, ny: 9, strictHoles: true,
+          outline: [[-0.86, 0.69], [0.86, 0.69], [1.04, 0.88], [0.91, 1.40], [0.67, 1.55], [-0.67, 1.55], [-0.91, 1.40], [-1.04, 0.88]],
+          holes: [[[-0.72, 1.09], [-0.46, 1.09], [-0.46, 1.34], [-0.72, 1.34]], [[0.46, 1.09], [0.72, 1.09], [0.72, 1.34], [0.46, 1.34]]],
+          seed: 23 },
+        { z: -3.825, x0: -1.48, x1: 1.48, y0: 0.64, y1: 1.74, nx: 20, ny: 10, strictHoles: true,
+          outline: [[-1.31, 0.66], [1.31, 0.66], [1.46, 0.92], [1.37, 1.62], [0.98, 1.72], [-0.98, 1.72], [-1.37, 1.62], [-1.46, 0.92]],
+          seed: 29 },
+      ],
+    },
+    turret: {
+      top: [{ x0: -1.10, x1: 1.10, z0: -2.30, z1: 1.08, nx: 22, nz: 34, yAt: () => 0.758,
+        outline: LEO2A4_TURRET_ROOF_OUTLINE, holes: LEO2A4_TURRET_ROOF_HOLES, strictHoles: true, seed: 19 }],
+      side: [-1, 1].map((side) => ({ side, z0: -2.73, z1: 1.08, nz: 38, ny: 9,
+        topAt: (z: number) => 0.755 - Math.max(0, -z - 1.55) * 0.045,
+        bottomAt: (z: number) => 0.10 + Math.sin(z * 4.7) * 0.028,
+        outAt: (z: number, t: number) => leo2A4TurretSideWidth(z) + 0.018 + (1 - t) * 0.028, seed: 43 + side })),
+      face: [
+        { z: 1.292, x0: -1.20, x1: 1.20, y0: 0.06, y1: 0.80, nx: 20, ny: 9, strictHoles: true,
+          outline: [[-1.18, 0.10], [1.18, 0.10], [1.11, 0.72], [0.74, 0.79], [-0.74, 0.79], [-1.11, 0.72]],
+          holes: [[[-0.47, 0.04], [0.47, 0.04], [0.47, 0.73], [-0.47, 0.73]]], seed: 37 },
+        { z: -2.755, x0: -1.10, x1: 1.10, y0: 0.08, y1: 0.70, nx: 18, ny: 8, strictHoles: true,
+          outline: [[-0.98, 0.10], [0.98, 0.10], [1.09, 0.28], [0.91, 0.69], [-0.91, 0.69], [-1.09, 0.28]], seed: 47 },
+      ],
+    },
+  },
   ua_t64bv: {
     id: 'ua_t64bv', seed: 640, style: 'leafy', density: 0.92, leafScale: 1.04,
     light: 0x6f7d48, dark: 0x33452d, netColor: 'rgba(38,54,29,0.76)',
@@ -610,7 +783,7 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
     },
   },
   pt91_twardy: {
-    id: 'pt91_twardy', seed: 911, style: 'leafy', density: 0.86, leafScale: 0.92,
+    id: 'pt91_twardy', seed: 911, style: 'leafy', density: 0.86, leafScale: 0.92, foliageKind: 'birch',
     light: 0x71835a, dark: 0x374a35, netColor: 'rgba(43,58,35,0.76)',
     hull: {
       top: [{ x0: -1.55, x1: 1.55, z0: -3.15, z1: 3.22, nx: 24, nz: 48,
@@ -639,7 +812,7 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
     },
   },
   strv103a: {
-    id: 'strv103a', seed: 1031, style: 'leafy', density: 0.82, leafScale: 0.90,
+    id: 'strv103a', seed: 1031, style: 'leafy', density: 0.82, leafScale: 0.90, foliageKind: 'spruce',
     light: 0x667a43, dark: 0x32452b, netColor: 'rgba(39,55,31,0.80)',
     hull: {
       top: [{ x0: -1.66, x1: 1.66, z0: -3.30, z1: 3.46, nx: 26, nz: 52,
@@ -653,7 +826,7 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
     },
   },
   strv103: {
-    id: 'strv103', seed: 1032, style: 'leafy', density: 0.88, leafScale: 0.92,
+    id: 'strv103', seed: 1032, style: 'leafy', density: 0.88, leafScale: 0.92, foliageKind: 'spruce',
     light: 0x65783f, dark: 0x304329, netColor: 'rgba(37,53,29,0.80)',
     hull: {
       top: [{ x0: -1.66, x1: 1.66, z0: -3.76, z1: 3.24, nx: 26, nz: 54,
@@ -667,7 +840,7 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
     },
   },
   strv122: {
-    id: 'strv122', seed: 1220, style: 'leafy', density: 0.78, leafScale: 0.92,
+    id: 'strv122', seed: 1220, style: 'leafy', density: 0.78, leafScale: 0.92, foliageKind: 'spruce',
     disabled: true,
     light: 0x657845, dark: 0x31422d, netColor: 'rgba(39,53,31,0.80)',
     hull: {
@@ -887,8 +1060,7 @@ const GHILLIE_CONFIG_INDEX: Readonly<Record<string, GhillieConfig>> = GHILLIE_SU
 
 interface GhillieGeometryBuckets {
   readonly net: THREE.BufferGeometry[];
-  readonly light: THREE.BufferGeometry[];
-  readonly dark: THREE.BufferGeometry[];
+  readonly foliage: FoliageCardBuffer;
 }
 
 function appendTopGhilliePanels(
@@ -900,9 +1072,7 @@ function appendTopGhilliePanels(
   let panelIndex = initialIndex;
   for (const panel of panels) {
     buckets.net.push(clothTop(panel, cfg.seed));
-    if (cfg.foliage !== false) {
-      addTopFoliage(buckets.light, buckets.dark, panel, cfg, cfg.seed + panelIndex * 1000);
-    }
+    if (cfg.foliage !== false) addTopFoliage(buckets.foliage, panel, cfg, cfg.seed + panelIndex * 1000);
     panelIndex++;
   }
   return panelIndex;
@@ -917,9 +1087,7 @@ function appendSideGhilliePanels(
   let panelIndex = initialIndex;
   for (const panel of panels) {
     buckets.net.push(clothSide(panel, cfg.seed));
-    if (cfg.foliage !== false) {
-      addSideFoliage(buckets.light, buckets.dark, panel, cfg, cfg.seed + panelIndex * 1000);
-    }
+    if (cfg.foliage !== false) addSideFoliage(buckets.foliage, panel, cfg, cfg.seed + panelIndex * 1000);
     panelIndex++;
   }
   return panelIndex;
@@ -934,9 +1102,7 @@ function appendFaceGhilliePanels(
   let panelIndex = initialIndex;
   for (const panel of panels) {
     buckets.net.push(clothFace(panel, cfg.seed));
-    if (cfg.foliage !== false) {
-      addFaceFoliage(buckets.light, buckets.dark, panel, cfg, cfg.seed + panelIndex * 1000);
-    }
+    if (cfg.foliage !== false) addFaceFoliage(buckets.foliage, panel, cfg, cfg.seed + panelIndex * 1000);
     panelIndex++;
   }
   return panelIndex;
@@ -949,7 +1115,7 @@ function addGhillieOwner(
   parent: THREE.Group,
   panels: GhilliePanels,
 ): void {
-  const buckets: GhillieGeometryBuckets = { net: [], light: [], dark: [] };
+  const buckets: GhillieGeometryBuckets = { net: [], foliage: new FoliageCardBuffer() };
   let panelIndex = appendTopGhilliePanels(panels.top ?? [], cfg, buckets, 0);
   panelIndex = appendSideGhilliePanels(panels.side ?? [], cfg, buckets, panelIndex);
   appendFaceGhilliePanels(panels.face ?? [], cfg, buckets, panelIndex);
@@ -957,20 +1123,21 @@ function addGhillieOwner(
   addMerged(
     P, parent, buckets.net, netPack.mat, `${cfg.id}_ghillie_${owner}_net`, [netPack.texture],
   );
-  addMerged(
-    P,
-    parent,
-    buckets.light,
-    makeCloth(P, cfg, cfg.light, `${owner}-light`),
-    `${cfg.id}_ghillie_${owner}_light`,
-  );
-  addMerged(
-    P,
-    parent,
-    buckets.dark,
-    makeCloth(P, cfg, cfg.dark, `${owner}-dark`),
-    `${cfg.id}_ghillie_${owner}_dark`,
-  );
+  const leaves = buckets.foliage.toGeometry();
+  if (leaves) {
+    const atlas = vehicleFoliageAtlas(cfg.foliageKind ?? defaultFoliageKind(cfg.style));
+    const mat = makeCloth(P, (m) => configureFoliageMaterial(m, atlas));
+    const mesh = new THREE.Mesh(leaves, mat);
+    mesh.name = `${cfg.id}_ghillie_${owner}_leaves`;
+    mesh.castShadow = mesh.receiveShadow = true;
+    mesh.userData.vehicleFoliage = cfg.foliageKind ?? defaultFoliageKind(cfg.style);
+    // alpha-cut sprays enclose air between their leaves, like the net that carries them
+    mesh.userData.combatHitboxRole = 'nonArmor';
+    mesh.userData.continuityRole = 'open-lattice';
+    parent.add(mesh);
+    // the atlas is shared fleet-wide (vehicleFoliage.ts) and never joins a visual's disposables
+    P.disposables.push(leaves, mat);
+  }
 }
 
 export function addVehicleGhillieSuit(P: GhillieBuilderPort, config?: GhillieConfig): boolean {
