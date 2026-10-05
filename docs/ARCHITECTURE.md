@@ -831,7 +831,14 @@ contact constraints and cannot be crossed by residual uphill speed.
   outer half width, lowest surface, belly pan and track-end rises, and `finalizeCombatAnatomy` puts it on the spec's
   armour), and the support solve reads it wherever it runs: the host, its Worker, the client's prediction, the torture
   matrix and solo play alike. The host used to run 0.45 x the hull's length either side of its root at the hull's full
-  width (a 7.13 m line under the T-90M's 5.58 m of track); that default is now a synthetic test hull's only.
+  width (a 7.13 m line under the T-90M's 5.58 m of track); that default is now a synthetic test hull's only. The flat
+  run is read off the drawn band (the coordinator's ruling of 2026-10-04 on item 1; `tankFactoryCore.ts`
+  `bandGroundContact`, `drawnBandContact`): each band's loop, the same on every render tier, ends where the band has
+  risen 4 cm off its ground run, carried through the band's transforms to the tank's frame and moved with the
+  side-station bake, the union over sides and units, the end rise read off the bands past each end. The profiles'
+  pinned contactZF/ZR used to publish the run whatever the band became: the T-90M's ran 0.75 m past its drawn ground
+  contact, so the solve carried the hull at a trench's far bank on track that was not drawn while all its road wheels
+  hung at full droop. The HIGH and LOW fleet passes hold every build within 5 mm of its published receipt.
 - *The hull lies on its plane.* The attitude fit reads the ground's rise per hull-local metre under the track lines,
   sin(pitch) for a hull lying on it (`planePitch`, `planeRoll`); its arctangent laid the hull flatter than its ground
   (0.2° on a 15° face, 1° on 25°, 5° on 45°), the downhill end of a parked hull hanging up to 12 cm (gauntlet wave 23's
