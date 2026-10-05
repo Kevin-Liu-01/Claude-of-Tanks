@@ -141,7 +141,10 @@ check('drive-assault-trench', 'heavy', 'earth', [
   // (23 m, round 8, the parity re-pin: on its real tracks, a 5.41 m flat run where the host's line was 7.6 m, the far
   // wall takes it from 6.1 to 1.7-2.5 m/s and it climbs out at about 2 m/s, pitched up to 23 degrees; it is 23.5 m on
   // after 9 s, its tracks 0.8 m past the far lip)
-  g('progress short of 23 m (m)', (m) => 23 - m.progressM, 0, 'before: 19.6 m'),
+  // (19.5 m, round 8, the coordinator's ruling of 2026-10-04 on item 3: digs in, then climbs. The far wall's strike grips
+  // the nose (movement.ts STRIKE_FRICTION): the E100 X meets the 42-degree wall at 6 m/s, stops there instead of riding up
+  // it, and climbs out from near rest; it is 19.9 m on after the case's 9 s.)
+  g('progress short of 19.5 m (m)', (m) => 19.5 - m.progressM, 0, 'before: 19.6 m'),
   // (900: with the grade floor the crossing's own jerk reads 800.2, the far wall's lip taken a little harder)
   // (950, round 3: the hull lying on its plane pitches to the walls it crosses, where it read them flatter: 909)
   g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 950, 'before: 1366'),
@@ -169,8 +172,9 @@ check('drive-trench', 'low', 'earth', [
 // rear rise 0.27 m where it read 0.32, so its tail leaves the near lip a step sooner and touches it twice more on the way
 // down at 7.5 m/s, three steps of contact on and off: p99 2272, where its old span read under 1300. An open item: the
 // lip's chatter under a short tail.)
+// (2150, the far wall's grip, movement.ts STRIKE_FRICTION: its nose no longer rides up the far wall and drops back, p99 2089)
 check('drive-assault-trench', 'tall', 'earth', [
-  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 2300, 'before: 1856'),
+  g('rendered jerk p99 (rad/s³)', (m) => m.jerkP99, 2150, 'before: 1856'),
 ]);
 
 // Firing in flight (Mars gravity field audit): the shot turns an airborne hull by its rigid-body share, not the

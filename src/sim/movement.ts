@@ -736,14 +736,23 @@ let _supportRate = 0;
  * shell (writeSupportCache; physics lane round 7): its hull-local z and world position, the centre of mass's z and the
  * hull's pitch radius of gyration squared (facePushGrade, the floor's turn at a leading station).
  */
-const _supportStation = { valid: false, guard: false, localZ: 0, worldX: 0, worldZ: 0, comZ: 0, k2: 1 };
+const _supportStation = { valid: false, guard: false, localZ: 0, worldX: 0, worldZ: 0, comZ: 0, k2: 1, overCom: 0 };
 /** The end guard the support rests on this step, when one binds (endGuardSupportY): its hull-local z and world xz. */
-const _guardHit = { deficit: -Infinity, localX: 0, localZ: 0, worldX: 0, worldZ: 0, groundV: 0, grade: 0 };
+const _guardHit = { deficit: -Infinity, localX: 0, localY: 0, localZ: 0, worldX: 0, worldZ: 0, groundV: 0, grade: 0 };
 /** The most of a struck end's depth under the ground the root takes back in one step, as position (m): a deeper strike, a
  * hull flying nose-first into a wall, comes out over steps. */
 const STRIKE_PROJECT_MAX_M = 0.1;
 /** The most a strike turns the hull's rate in one step (rad/s); the root takes the end's rise the turn defers. */
 const STRIKE_TURN_STEP = 0.2;
+/**
+ * The grip of the ground a struck end digs into (physics lane round 8; motion wave 73, item 3: "should dig in, not
+ * bounce"): the Coulomb bound on the impulse along the face, against the normal impulse that stops the end's closing on it.
+ * The hull's own shell, a nose or a tail, does not roll as a track does: a struck end that slides along the face is held
+ * by its grip, up to this share of the push. Without it the face pushed only along its normal: a T-90M meeting an
+ * assault trench's 42-degree far wall at 11 m/s slid up it with 7 m/s of its travel and a 1.4 rad/s nose-up turn, a
+ * frictionless plastic impact, and sailed off the lip to land on its tail. Steel on soil, ploughing.
+ */
+const STRIKE_FRICTION = 0.7;
 /** The most the drawn ends' rest takes off the drawn pitch in one step (rad): the posture and the dive give way as a
  * stop's spring does, not at once. */
 const REST_STEP_RAD = 0.003;
@@ -758,7 +767,7 @@ let _bodyCount = 0;
  * The floor's correction at the leading station of a partial contact (constrainLoadedRide): the root's share of a lift
  * there, the turn per metre of the rest and the station's z; out, the turn rate it leaves the hull with (rad/s).
  */
-const _stationTurn = { rootShare: 1, turnPerM: 0, stationZ: 0, rate: 0, guard: false, angle: 0 };
+const _stationTurn = { rootShare: 1, turnPerM: 0, stationZ: 0, overCom: 0, comZ: 0, k2: 1, speed: 0, travel: 0, rate: 0, guard: false, angle: 0 };
 /** World-space grade along the travel under an airborne hull this step (worldGradeAlong). */
 let _airGrade = 0;
 /** Half the run the world grade is read over. */
@@ -1738,6 +1747,7 @@ function bodyContactSupport(
   if (deficit > _guardHit.deficit) {
     _guardHit.deficit = deficit;
     _guardHit.localX = localX;
+    _guardHit.localY = localY;
     _guardHit.localZ = localZ;
     _guardHit.worldX = worldX;
     _guardHit.worldZ = worldZ;
@@ -2105,6 +2115,55 @@ function advanceAirborneRide(
   return true;
 }
 
+const _strike = { v: 0, travel: 0, turn: 0, endV: 0 };
+/**
+ * The plastic impulse a struck end takes from the face under it, on the hull as a rigid body in its pitch plane (round 8,
+ * item 3). The end sits `lever` ahead of the centre of mass and `overCom` above it (below: negative), k2 the pitch radius
+ * of gyration squared; the centre of mass travels at `speed` (along the hull, signed), the end rises at `endV` and the
+ * hull turns nose-up at `pitchV`. The face rises `grade` per metre along the travel. Per unit mass an impulse J at the
+ * end changes the centre of mass's velocity by J and the turn by (lever Jy - overCom Jz) / k2, so the end's own velocity
+ * by K J, K = I + q q^T / k2 with q = (-overCom, lever). The impulse stops the end on the face where the grip holds it
+ * (|J along the face| <= STRIKE_FRICTION x J into it), else stops its closing and slides it along the face under the
+ * grip's bound. Out: the centre of mass's vertical change and travel change, the turn, and the end's vertical change.
+ */
+function rigidStrikeImpulse(
+  lever: number, overCom: number, k2: number, speed: number, endV: number, pitchV: number, grade: number,
+): typeof _strike {
+  _strike.v = 0; _strike.travel = 0; _strike.turn = 0; _strike.endV = 0;
+  const dir = speed < 0 ? -1 : 1;
+  const norm = Math.sqrt(1 + grade * grade);
+  // the face's normal, out of the ground, and its line up the face in the travel's direction (hull z forward, y up)
+  const nz = -dir * grade / norm, ny = 1 / norm;
+  const tz = dir / norm, ty = grade / norm;
+  // the end's velocity: the travel, less the turn's at its height (a nose-up turn carries an end below the centre
+  // forward), and its rise
+  const vz = speed - pitchV * overCom;
+  const vy = endV;
+  const approach = vz * nz + vy * ny;
+  if (!(approach < 0)) return _strike;
+  const qz = -overCom, qy = lever;
+  const kzz = 1 + qz * qz / k2, kzy = qz * qy / k2, kyy = 1 + qy * qy / k2;
+  const det = kzz * kyy - kzy * kzy;
+  // stuck: the end stops on the face, J = -K^-1 v
+  let jz = -(kyy * vz - kzy * vy) / det;
+  let jy = -(kzz * vy - kzy * vz) / det;
+  if (!(Math.abs(jz * tz + jy * ty) <= STRIKE_FRICTION * (jz * nz + jy * ny))) {
+    // sliding: the push along n less the grip against the slide stops the closing alone
+    const sign = vz * tz + vy * ty >= 0 ? 1 : -1;
+    const dz = nz - STRIKE_FRICTION * sign * tz, dy = ny - STRIKE_FRICTION * sign * ty;
+    const along = nz * (kzz * dz + kzy * dy) + ny * (kzy * dz + kyy * dy);
+    const push = along > 1e-9 ? -approach / along : 0;
+    jz = push * dz;
+    jy = push * dy;
+  }
+  const turn = (qz * jz + qy * jy) / k2;
+  _strike.v = jy;
+  _strike.travel = jz;
+  _strike.turn = turn;
+  _strike.endV = jy + lever * turn;
+  return _strike;
+}
+
 function constrainLoadedRide(
   ride: RideState,
   supportY: number,
@@ -2247,13 +2306,19 @@ function constrainLoadedRide(
       // into the ground, and the depth it is left with the root takes back as position, STRIKE_PROJECT_MAX_M a step.)
       const depth = Math.min(floorY - ride.y, FLOOR_LIFT_MAX_M_PER_STEP);
       const stationZ = _stationTurn.stationZ;
-      // (the ground pushes along its normal: on a face of grade g under the end's travel the vertical share of the
-      // impulse that stops its closing is 1 / (1 + g^2) of the closing upward, the rest a stop of its travel, which the
-      // face's grade takes from the travel as the hull rises (facePushGrade); taken vertically whole, a UDES 03 nosing
-      // into a box trench's far wall at 10 m/s was thrown up at 13 m/s)
-      const closing = Math.max(0, _guardHit.groundV - (ride.v + stationZ * pitchV)) / (1 + _guardHit.grade * _guardHit.grade);
-      let rise = _stationTurn.rootShare * closing;
-      let turn = _stationTurn.turnPerM * closing;
+      // The impulse that stops the end's closing on the face, on the rigid body (round 8, item 3). The ground pushes along
+      // its normal (on a face of grade g under the end's travel; taken vertically whole, a UDES 03 nosing into a box
+      // trench's far wall at 10 m/s was thrown up at 13 m/s) and grips along it (STRIKE_FRICTION): the end stops on the
+      // face where its grip holds it, and slides on it under that grip where it does not. Both act at the end, below and
+      // ahead of the centre of mass, so the push turns the hull nose-up and the grip turns it back nose-down: the hull
+      // digs in instead of riding up the face on its nose and sailing off its top.
+      const strike = rigidStrikeImpulse(stationZ - _stationTurn.comZ, _stationTurn.overCom, _stationTurn.k2,
+        _stationTurn.speed, ride.v + stationZ * pitchV, pitchV, _guardHit.grade);
+      // the end's own vertical change, the root's and the turn: the root sits comZ behind the centre of mass
+      const closing = strike.endV;
+      let rise = strike.v - _stationTurn.comZ * strike.turn;
+      let turn = strike.turn;
+      _stationTurn.travel = strike.travel;
       // The other end on the ground (round 8): a turn about the centre of mass that would drive its contact into the
       // ground turns about that contact instead, the root taking the rest (a BMP-2 struck on the nose at a 45-degree
       // flank's foot put its tail 0.17 m into the flank behind it)
@@ -2376,6 +2441,7 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   _stationTurn.rate = 0;
   _stationTurn.guard = false;
   _stationTurn.angle = 0;
+  _stationTurn.travel = 0;
   let faceGrade = 0;
   // (an end guard's strike whatever the tracks' seat or grip: the hull's nose meets the runout at a flank's foot with its
   // whole track still on the flank, sliding on it, round 8)
@@ -2393,6 +2459,10 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
       _stationTurn.turnPerM = turnPerM;
       _stationTurn.stationZ = _supportStation.localZ;
       _stationTurn.guard = _supportStation.guard;
+      _stationTurn.overCom = _supportStation.overCom;
+      _stationTurn.comZ = _supportStation.comZ;
+      _stationTurn.k2 = _supportStation.k2;
+      _stationTurn.speed = state.speed;
     }
   }
   const contactY = supportY + RIDE_DROOP_M;
@@ -2402,7 +2472,14 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
       _wholeTrackOnGround ? Math.max(0, -state.speed * Math.tan(state._terr.pitch)) : 0, state._spring.pitchV)
     : advanceAirborneRide(state, ride, dt, contactY, seatY, floorY, drive.gravityScale, drive.restitution, drive.bounceMin,
       drive.bounceMaxHeight);
-  if (faceGrade > 0 && grounded && ride.v > rideVBefore) {
+  if (_stationTurn.travel !== 0) {
+    // a body strike's impulse along the travel (constrainLoadedRide: the face's push and its grip), taken as the face's
+    // grade rule below would take the push alone
+    const kept = state.speed + _stationTurn.travel;
+    const travel = state.speed > 0 ? Math.max(0, kept) : Math.min(0, kept);
+    state._prevSpeed += travel - state.speed;
+    state.speed = travel;
+  } else if (faceGrade > 0 && grounded && ride.v > rideVBefore) {
     // the lift the face gave the hull this step costs the travel its grade times that (turnAlongGrade's rule, at the face)
     const travel = Math.abs(state.speed);
     const kept = Math.sign(state.speed) * Math.max(0, travel - faceGrade * (ride.v - rideVBefore));
@@ -4398,6 +4475,8 @@ function writeSupportCache(
   if (_supportStation.valid) {
     _supportStation.comZ = tankContactRect(spec).centerZ + tankMassCenterOffsetM(spec);
     _supportStation.k2 = (spec.dims.hullLengthM * spec.dims.hullLengthM + spec.dims.heightM * spec.dims.heightM) / 12;
+    // a struck end's height over the centre of mass (the posture law's, HOLD_CG_HEIGHT_FRAC of the hull over its tracks)
+    _supportStation.overCom = _supportStation.guard ? _guardHit.localY - HOLD_CG_HEIGHT_FRAC * spec.dims.heightM : 0;
   }
 }
 

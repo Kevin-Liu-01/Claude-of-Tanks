@@ -875,10 +875,15 @@ contact constraints and cannot be crossed by residual uphill speed.
   kept 9.0. A strike on the hull's own body is a station too (round 8): an end guard (the lowest shell past the tracks'
   flat run at each of four pitches, 14 to 63 degrees, in three lateral bins; up to 24, the fleet's median 7), or on a
   structure one of the contact box's bottom corners 0.15 m over the track line, whatever the tracks' seat, grip or
-  travel. There are no stops between: the strike stops the struck end's closing on the ground as an impulse there
-  splits across a rigid body, the root taking its share of the closing speed and the hull the turn of the rest, and on a
-  face of grade g along the travel only 1/(1 + g²) of it is vertical (the rest stops the travel, as the face's grade
-  takes it). The turn eases in at most 0.2 rad/s a step, the root taking the end's rise the turn defers, and the depth
+  travel. There are no stops between: the strike is the plastic impulse a rigid body takes at the struck end, in its
+  pitch plane (`rigidStrikeImpulse`): the face pushes along its normal and grips along it, up to 0.7 of the push
+  (`STRIKE_FRICTION`, steel ploughing soil; the hull's shell does not roll as a track does). The end stops on the face
+  where the grip holds it and slides under the grip where it does not; the push at the end turns the hull nose-up, the
+  grip below the centre of mass turns it back, and the travel loses both shares. A frontal strike digs in (round 8,
+  motion wave 73 item 3): pushed along the normal alone, a T-90M meeting an assault trench's 42-degree far wall at
+  11 m/s slid up it with 7 m/s of its travel and a 1.4 rad/s nose-up turn and sailed off the lip onto its tail; it now
+  stops at the wall, 11 to 0.3 m/s, and climbs out. The turn eases in at most 0.2 rad/s a step, the root taking the
+  end's rise the turn defers, and the depth
   the end is left with comes back as position, at most 0.1 m a step (round 8, the parity iteration: taken at once, with
   the step's whole depth as the end's closing rate, the end rose past the ground, the spring brought it back and it
   struck again, step after step; a trench crossing's rendered jerk p99 rose by more than half).
