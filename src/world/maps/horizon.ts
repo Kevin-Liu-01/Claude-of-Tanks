@@ -823,6 +823,11 @@ function* makeDetailNoiseTextureSteps(
   }
   ctx.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c);
+  // ground lane (2026-10-05, the terrain noise's z-mirror, the same here): a canvas uploads flipped (its top row at
+  // v = 1), so the fragment read the field at (u, 1 − v) while the JS twin — the ring forest's stands (horizonVista.ts)
+  // and its rock field (horizonRockfield.ts) — read it at (u, v): the stands stood off the painted woods. Row y at
+  // v = (y + 0.5) / S, as written and as the twin reads it.
+  t.flipY = false;
   t.wrapS = THREE.RepeatWrapping;
   t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = 2; // grazing walls mip to a soft blend, never fiber streaks

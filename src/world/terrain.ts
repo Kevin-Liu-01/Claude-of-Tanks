@@ -3470,7 +3470,25 @@ function makeShaderNoiseTexture(_seed: number): THREE.CanvasTexture {
   // (0.90 + n2*0.20, far mottling, meadow tints). At aniso 1 every steep face
   // seen at a grazing angle smeared those terms into long downslope "rain
   // streak" strands — the furry mesa-flank artifact.
-  return canvasToTexture(px, s, { anisotropy: 16 });
+  const texture = canvasToTexture(px, s, { anisotropy: 16 });
+  // Ground lane (2026-10-05, the lab's readback over 200 m of Saltwind: the shader's R and G against the twin's fields,
+  // mean |Δ| 0.126 as the twin reads them and 0.0013 with v turned over): a canvas uploads flipped (its top row at v = 1),
+  // so the shader read every field mirrored in z against its CPU twin — the tufts and the tall grass thinned where the
+  // ground drew green and stood on its bare patches, and the karst twin's soil was another place's. Row 0 at v = 0, as
+  // the land-use mask (its own z-mirror, fixed the same way) and the twin's fieldSample read it.
+  texture.flipY = false;
+  return texture;
+}
+
+/**
+ * Ground lane (2026-10-05): the woods mask (vegetation.ts _woodsMask, size² cells over the square, row j at z from
+ * -512) into the noise texture's blue channel — row j into canvas row j, the row the shader's woods read
+ * (nz(wp.xz, 1/1024, 0.5).b) samples now the texture uploads unflipped (makeShaderNoiseTexture).
+ */
+function stampWoodsMaskRows(data: Uint8ClampedArray, mask: Float32Array, size: number): void {
+  for (let j = 0; j < size; j++) {
+    for (let i = 0; i < size; i++) data[(j * size + i) * 4 + 2] = Math.round(Math.max(0, Math.min(1, mask[j * size + i])) * 255);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -6580,10 +6598,7 @@ function* terrainBuildSteps(
       const context = canvas.getContext('2d');
       if (context) {
         const image = context.getImageData(0, 0, size, size);
-        // the canvas uploads flipped (texture v = 1 at its top row): mask row j (z from -512) is canvas row size-1-j
-        for (let j = 0; j < size; j++) {
-          for (let i = 0; i < size; i++) image.data[((size - 1 - j) * size + i) * 4 + 2] = Math.round(Math.max(0, Math.min(1, mask[j * size + i])) * 255);
-        }
+        stampWoodsMaskRows(image.data, mask, size);
         context.putImageData(image, 0, 0);
         noise!.needsUpdate = true;
       }
