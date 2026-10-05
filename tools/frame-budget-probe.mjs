@@ -82,12 +82,25 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   'pylon-wires': Object.freeze({
     on: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'props-pylon-wires') o.visible = true; })`,
     off: `window.__DEBUG.scene.traverse((o) => { if (o.name === 'props-pylon-wires') o.visible = false; })` }),
-  // the scenery lane (wave 52): the boulders (props.ts rock-variant-0..2, three instanced pools drawn whole, map-wide);
-  // off hides them, so the delta is their whole frame cost. Both sides run without the static shadow cache, so every
-  // cascade redraws every boulder every frame, as it does while the camera moves (an upper bound)
+  // the scenery lane (wave 52): the boulders (props.ts rock-variant-0..2, and since the wave-74 cascade trim each one's
+  // -far pool and its -shadow pool for the far cascades); off hides them, so the delta is their whole frame cost. Both
+  // sides run without the static shadow cache, so every cascade redraws every boulder every frame, as it does while the
+  // camera moves (an upper bound). ('on' restores a pool's own visibility: an empty LOD pool stays hidden.)
   'boulders': Object.freeze({
-    on: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d$/.test(o.name)) o.visible = true; })`,
-    off: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d$/.test(o.name)) o.visible = false; })` }),
+    on: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d(-far|-shadow)?$/.test(o.name)) o.visible = o.isInstancedMesh ? o.count > 0 : true; })`,
+    off: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d(-far|-shadow)?$/.test(o.name)) o.visible = false; })` }),
+  // the null control beside a toggle under a millisecond (docs/PERFORMANCE.md, "Light presets"): the same static
+  // shadow cache state as the boulders' toggle, and a switch nothing reads, so its on-off delta is the machine's own
+  // drift between blocks under other sessions' load
+  'null-control': Object.freeze({
+    on: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__COT_NULL_CONTROL = 1`,
+    off: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__COT_NULL_CONTROL = 0` }),
+  // the scenery lane (after wave 57): the telegraph poles (props.ts baked-pole-full and baked-pole-distance, the two
+  // instanced pools of the sourced pole and its distance model); off hides them, so the delta is their whole frame cost.
+  // Both sides run without the static shadow cache (an upper bound, as for the boulders)
+  'telegraph-poles': Object.freeze({
+    on: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^baked-pole-(full|distance)$/.test(o.name)) o.visible = o.isInstancedMesh ? o.count > 0 : true; })`,
+    off: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^baked-pole-(full|distance)$/.test(o.name)) o.visible = false; })` }),
   // the water / grass simulations' idle sleep (waterRipples.ts, groundPressure.ts): off steps them every frame; the
   // ripple field falls asleep only after 20 s of quiet, so an 'on' block that follows an 'off' one waits that long
   'sim-sleep': Object.freeze({ on: 'window.__WORLD_SIM_DEBUG = Object.assign(window.__WORLD_SIM_DEBUG || {}, { noSleep: false })',
@@ -711,10 +724,20 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }) {
       heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null };
   });
   const tasks = await page.evaluate(() => window.__FBP.tasks);
+  // the scenery lane (wave 74): the rocks' repartition passes (props.ts rockLodTrace, the last 64), so a moving view's
+  // long tasks can be lined up with them
+  const rockLod = await page.evaluate(() => {
+    const trace = window.__DEBUG.scene.getObjectByName('props')?.userData?.rockLodTrace;
+    if (!trace) return null;
+    const passes = [];
+    for (let k = Math.max(0, trace.n - 64); k < trace.n; k++) passes.push({ t: +trace.at[k % 64].toFixed(1), ms: +trace.ms[k % 64].toFixed(3) });
+    return { total: trace.n, passes };
+  });
   return { mapId: slot.mapId, readyMs, entryMs, textures, timer, emulator, frozen: { dynScale: frozen.dynScale, perfTrim: frozen.perfTrim },
     roster: { count: frozen.roster.length, player: frozen.roster.find((r) => r.isPlayer)?.specId ?? null,
       opponents, teams: frozen.roster.reduce((a, r) => { a[r.team] = (a[r.team] || 0) + 1; return a; }, {}) },
-    samples, cpuProfile, memory, longTasks: { total: tasks.length, over100: tasks.filter((t) => t.ms >= 100).length, max: tasks.reduce((m, t) => Math.max(m, t.ms), 0) },
+    samples, cpuProfile, memory, longTasks: { total: tasks.length, over100: tasks.filter((t) => t.ms >= 100).length, max: tasks.reduce((m, t) => Math.max(m, t.ms), 0),
+      list: tasks.slice(-300) }, rockLod,
     pageErrors: errors };
 }
 

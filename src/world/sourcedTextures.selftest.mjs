@@ -73,7 +73,7 @@ class TestImage {
 globalThis.Image = TestImage;
 
 const {
-  applySourcedBuildings, applySourcedTerrain, composeAlbedo, composeSurface,
+  applySourcedBuildings, applySourcedRock, applySourcedTerrain, composeAlbedo, composeSurface,
   sourcedBuildingTintPolicy, resolveSourcedTerrainPalette, resolveSourcedBuildingPalette,
   applySet, _compositeCache,
 } = await import(sourcedUrl);
@@ -142,6 +142,35 @@ assert.equal(buildingLayer.albedo.disposeCount, 1, 'building albedo swaps withou
 assert.equal(buildingLayer.normal.disposeCount, 1, 'building normal swaps once');
 assert.equal(buildingLayer.surface.disposeCount, 1,
   'building packed AO/roughness surface swaps once');
+
+// the boulders' photographed stone (the scenery lane, wave 66): the map's terrain rock layer — its set and its
+// treatment — with its occlusion in the albedo (no surface map); the terrain's rock photograph where that layer is
+// procedural or not stone; one receipt for the map's readiness; the stone's linear mean to the material
+{
+  const lin = (v) => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+  const expectTexel = (tint) => [100, 150, 200].map((v, i) => new Uint8ClampedArray([Math.min(255, v * (100 / 255) * (tint ? tint[i] : 1))])[0]);
+  for (const [mapId, tint, why] of [
+    ['desert', null, 'a procedural rock layer leaves the boulders the terrain\'s rock photograph, untinted'],
+    ['urban', null, 'a cobbled rock layer is not stone: the rock photograph'],
+    ['winter', [1.52, 1.55, 1.62], 'the map\'s rock layer, its own tint'],
+  ]) {
+    const urlsBefore = loadedImageUrls.length;
+    const rockLayer = { albedo: texture(), normal: texture() };
+    let mean = null;
+    const rockResults = await applySourcedRock(rockLayer, mapId, {}, {}, (m) => { mean = m; });
+    assert.deepEqual(rockResults.map((r) => [r.target, r.applied]), [[`boulders ${mapId}/stone`, true]], `${mapId}: one boulder receipt, applied`);
+    assert.equal(rockLayer.albedo.disposeCount, 1, `${mapId}: the stone albedo replaces the procedural tile once`);
+    assert.equal(rockLayer.normal.disposeCount, 1, `${mapId}: the stone relief replaces the procedural normal once`);
+    const urls = loadedImageUrls.slice(urlsBefore);
+    assert.ok(urls.every((url) => url.includes('Rock058')), `${mapId}: ${why} (${urls.join(', ') || 'cached'})`);
+    const px = rockLayer.albedo.image.pixels;
+    assert.deepEqual([px[0], px[1], px[2], px[3]], [...expectTexel(tint), 255], `${mapId}: colour × AO × the layer's tint (${why})`);
+    // the mean the material divides by: the composite's own, linear, per channel
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let i = 0; i < px.length; i += 4 * 7) { r += lin(px[i]); g += lin(px[i + 1]); b += lin(px[i + 2]); n++; }
+    assert.deepEqual(mean, [r / n, g / n, b / n], `${mapId}: the stone's linear mean reaches the material`);
+  }
+}
 
 const ruinspiresLayers = {
   plaster: { albedo: texture(), normal: texture(), surface: texture() },
