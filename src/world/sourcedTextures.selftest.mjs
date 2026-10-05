@@ -148,11 +148,17 @@ assert.equal(buildingLayer.surface.disposeCount, 1,
 // procedural or not stone; one receipt for the map's readiness; the stone's linear mean to the material
 {
   const lin = (v) => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
-  const expectTexel = (tint) => [100, 150, 200].map((v, i) => new Uint8ClampedArray([Math.min(255, v * (100 / 255) * (tint ? tint[i] : 1))])[0]);
-  for (const [mapId, tint, why] of [
+  // the composer's order: colour × AO × tint, then desaturation toward Rec. 601 luminance (sourcedTextureComposer.ts)
+  const expectTexel = (tint, desat = 0) => {
+    const c = [100, 150, 200].map((v, i) => v * (100 / 255) * (tint ? tint[i] : 1));
+    const lum = c[0] * 0.299 + c[1] * 0.587 + c[2] * 0.114;
+    return c.map((v) => new Uint8ClampedArray([Math.min(255, v + (lum - v) * desat)])[0]);
+  };
+  for (const [mapId, tint, why, desat = 0] of [
     ['desert', null, 'a procedural rock layer leaves the boulders the terrain\'s rock photograph, untinted'],
     ['urban', null, 'a cobbled rock layer is not stone: the rock photograph'],
-    ['winter', [1.52, 1.55, 1.62], 'the map\'s rock layer, its own tint'],
+    // the snow maps' rock layer is grey stone under the snow, half desaturated (ground bug batch, 6d2973847), not Rock058 lifted and blued
+    ['winter', [1.16, 1.18, 1.22], 'the map\'s rock layer, its own tint and desaturation', 0.5],
   ]) {
     const urlsBefore = loadedImageUrls.length;
     const rockLayer = { albedo: texture(), normal: texture() };
@@ -164,7 +170,7 @@ assert.equal(buildingLayer.surface.disposeCount, 1,
     const urls = loadedImageUrls.slice(urlsBefore);
     assert.ok(urls.every((url) => url.includes('Rock058')), `${mapId}: ${why} (${urls.join(', ') || 'cached'})`);
     const px = rockLayer.albedo.image.pixels;
-    assert.deepEqual([px[0], px[1], px[2], px[3]], [...expectTexel(tint), 255], `${mapId}: colour × AO × the layer's tint (${why})`);
+    assert.deepEqual([px[0], px[1], px[2], px[3]], [...expectTexel(tint, desat), 255], `${mapId}: colour × AO × the layer's tint (${why})`);
     // the mean the material divides by: the composite's own, linear, per channel
     let r = 0, g = 0, b = 0, n = 0;
     for (let i = 0; i < px.length; i += 4 * 7) { r += lin(px[i]); g += lin(px[i + 1]); b += lin(px[i + 2]); n++; }

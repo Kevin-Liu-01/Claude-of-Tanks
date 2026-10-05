@@ -7616,18 +7616,18 @@ function addT90MProryvGlacisRelikt(P: T90BuilderPort): void {
 }
 
 function replaceT90MProryvHull(P: T90BuilderPort): void {
-  const { box, cylX, cylY, torus, buildRunningGear } = KIT;
+  const { box, cylX, cylY, torus, buildRunningGear, discardRunningGear } = KIT;
 
   // Remove the calibration-era hull and every direct fitting/gear child.
   // The replacement below is a complete repository-authored chassis, not a
   // decorative skin over the old rectangular body.
   P.hullG.clear();
-  // The calibration-era gear left its receipts behind: the fleet wheel tools read receipt [0] and
-  // reported the replaced 0.41 m wheels as the T-90M's (round 46 census). The installed course below
-  // is the only running gear this hull renders, so it is the only one it records.
-  delete P.hullG.userData.runningGearReceipts;
-  delete P.hullG.userData.wheelPatternReceipts;
-  delete P.hullG.userData.trackPatternReceipts;
+  // ...and unregister the calibration-era running gear. Clearing the group only stopped it drawing: P.gear still fanned
+  // its update and conform out every frame, its track hitbox prisms stayed in the shared armour and its span in the
+  // contact union (the physics lane, 2026-10-04), and its receipts made the fleet wheel tools report the replaced
+  // 0.41 m wheels as the T-90M's (round 46 census). The installed course below is the only running gear this hull
+  // renders, so it is the only one it registers and records.
+  discardRunningGear(P);
   P.clear(
     'hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth',
     'hullGlass', 'hullShadow', 'hullTrack', 'hullTrackDetailL',
