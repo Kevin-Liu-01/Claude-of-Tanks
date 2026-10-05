@@ -20,8 +20,12 @@ const tuple = (name) => {
 };
 
 // ---- 1. the dome: the glow under the knee, the exemption at the disc's own edge, the disc after
-assert.match(sky, /vec3 sunGlowCol = vec3\( 1\.30, 1\.02, 0\.68 \) \* \( pow\( max\( cosSun, 0\.0 \), 240\.0 \) \* uSunGlow \);\s*skyCol \+= sunGlowCol \* uSunSpot\.z;[\s\S]{0,300}float sunSpot = smoothstep\( uSunSpot\.x, uSunSpot\.y, cosSun \);\s*skyCol = mix\( atmoKnee\( skyCol \), skyCol, sunSpot \);[\s\S]{0,400}skyCol \+= uSunTransmittance \* \( disc \* uSunDiscRadiance \);\s*skyCol \+= sunGlowCol \* \( 1\.0 - uSunSpot\.z \);/,
+assert.match(sky, /vec3 sunGlowCol = vec3\( 1\.30, 1\.02, 0\.68 \) \* \( pow\( max\( cosSun, 0\.0 \), 240\.0 \) \* uSunGlow \* discK \);\s*skyCol \+= sunGlowCol \* uSunSpot\.z;[\s\S]{0,300}float sunSpot = smoothstep\( uSunSpot\.x, uSunSpot\.y, cosSun \);\s*skyCol = mix\( atmoKnee\( skyCol \), skyCol, sunSpot \);[\s\S]{0,400}skyCol \+= uSunTransmittance \* \( disc \* uSunDiscRadiance \* discK \);\s*skyCol \+= sunGlowCol \* \( 1\.0 - uSunSpot\.z \);/,
   'the glow\'s share under the knee before it, the rest after the disc');
+// (2026-10-04, wave 62 on Titan Gorge: a hard white disc through a closed deck) under a closed deck no disc and no
+// clear-air aureole: the brighter patch where the deck thins is the cloud layer's forward scatter
+assert.match(sky, /float discK = 1\.0 - uDeckClosed \* uDiscDeckFade;/, 'the disc and the glow go with the closed deck');
+assert.match(sky, /u\.uDiscDeckFade\.value = lightTune\('SKY_DISC_DECK_FADE', 1\);/, 'on by default (QA knob)');
 assert.deepEqual(tuple('SKY_SUN_SPOT'), ['ATMO_SUN_DISC_COS - 0.00002', 'ATMO_SUN_DISC_COS'], 'only the disc keeps its HDR (the old spot kept 0.5–0.9° of aureole)');
 assert.match(sky, /const SKY_GLOW_IN_KNEE = 1;/, 'the whole glow under the knee: only the disc can reach the bloom\'s threshold');
 assert.match(sky, /uSunSpot: \{ value: new THREE\.Vector3\(SKY_SUN_SPOT\[0\], SKY_SUN_SPOT\[1\], SKY_GLOW_IN_KNEE\) \},/);
