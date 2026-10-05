@@ -1252,6 +1252,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // the mountains lane (2026-10-02): the eroded landform, the bed stair and the skyline cone measure
     'src/world/horizonMassif.selftest.mjs',
     'src/world/horizonPanorama.selftest.mjs',
+    // the mountains lane (2026-10-05): the far earth's deck greying is the dome's (sky.ts keeps it inline, so the copy is held here)
+    'src/world/horizonPanoramaDeck.selftest.mjs',
+    // the mountains lane (2026-10-05): and its cloud composite the cloud dome's (volumetricClouds.ts keeps it inline too)
+    'src/world/horizonPanoramaClouds.selftest.mjs',
+    'src/world/horizonCliffNormals.selftest.mjs', // the mountains lane (2026-10-04): the ring's cliffs take their geometry's normals
     'src/world/horizonCloudShade.selftest.mjs',
     'src/world/horizonRockfield.selftest.mjs',
   'src/world/horizonAutumnGround.selftest.mjs',
