@@ -226,9 +226,12 @@ for (const kind of ['stoneArchBridge', 'trussBridge', 'trestleBridge', 'baileyBr
   assert.ok(discs.some(([x, z, r]) => x === -250 && z === -126 && r === 30), "Verdant's western zone seat");
 }
 
-// the trees keep off the set pieces: the vegetation adds their footprints to its placed-structure keep-out
-assert.match(readFileSync(new URL('../vegetation.ts', import.meta.url), 'utf8'), /\.\.\.landmarkClearances\(cfg\?\.props\?\.landmarks\)/,
-  'the trees keep off the set pieces');
+// the trees keep off the set pieces: the vegetation hands their placements to its placed-structure keep-out (the
+// function the tree harnesses inject), which adds their footprints
+assert.match(readFileSync(new URL('../vegetation.ts', import.meta.url), 'utf8'),
+  /placedStructureClearances\([^;]*cfg\?\.props\?\.landmarks, \(cfg as SceneryMapConfig \| null\)\?\.scenery\)/s, 'the trees keep off the set pieces');
+assert.match(readFileSync(new URL('../vegetationClearance.ts', import.meta.url), 'utf8'), /\.\.\.landmarkClearances\(landmarks\)/,
+  'the placed-structure keep-out carries the set pieces');
 
 // ---------------------------------------------------------------------------------------------------------- authoring maps
 let authored = 0;
