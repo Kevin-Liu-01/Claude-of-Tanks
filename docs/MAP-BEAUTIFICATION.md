@@ -108,7 +108,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Highland Reservoir | Pine catchments, exposed reservoir margin, waterworks and service roads |
 | Olympus Basin | Rust regolith and mesas under a galaxy sky, a research station of domes, modules, masts and pads (Mars mode, 2026-09-18) |
 | Frosthollow | Carpathian winter valley (round 48): a beaded frozen river down a kotlina floor, a linear timber street village on the west terrace with a sawmill yard, a two-armed ridge and saddle pass on the west flank, rolling moraine on the east; fieldstone walls, spruce blocks with cut clearings |
-| Glacier Pass | Frozen lake, rocky alpine catchment, sheltered village; exposed crags and drifting snow |
+| Glacier Pass | Frozen lake, rocky alpine catchment, sheltered village; exposed crags and drifting snow. Map revival lane 2 (2026-10-05): the Col du Mont-Cenis in April 1945 — the Savoyard kit (rubble and lauze, larch galleries, mazots, the hospice, the frontier barracks, the Vallo Alpino's works) and the Grande Croix |
 | Nordhavn Fjord | Steep harbor settlement, fishing quays, dark water and coastal rock; layered mountain valleys |
 | Whiteout Station | Sparse polar service compound, fuel storage and wind-shaped snow corridors; expansive low backdrop |
 | Saltmere Bay | Dune-backed fishing coast, sheltered harbor and inland pasture; no inland sand marbling |

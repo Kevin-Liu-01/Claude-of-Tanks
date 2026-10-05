@@ -1926,6 +1926,7 @@ const REGIONAL_PAL = {
   nagaWood: [0x5b4735, 0x856b51, 0x2f251b],
   nipa: [0x6e6447, 0x8f8460, 0x3a3426],
   mekongPlank: [0x6f6150, 0x8d7c66, 0x3c342b],
+  concrete: [0x8f8d86, 0xa9a79f, 0x55544f],
 } as const satisfies Record<string, Palette>;
 
 /** A light gable roof built at the origin and moved: the shared roof helper lays its planes out centred on x = 0. */
@@ -2004,6 +2005,34 @@ function makeBengalFisherShed(rng: Rng): THREE.BufferGeometry {
   colored(out, box(3.4, 0.06, 0.06).translate(0, 2.25, zn), bam[2], rng);
   colored(out, box(0.06, 0.06, 0.9).translate(-1.6, 2.2, zn - 0.45), bam[2], rng);
   return mergeConnectedStructure('fishershack', out);
+}
+
+/**
+ * A casemate of the Vallo Alpino (the Savoyard kit's mountain refuge, map revival lane 2, 2026-10-05): a concrete block
+ * under a thick roof slab with stones bedded on it, two splayed embrasures and their slits to the front, one to the
+ * side, the entrance at the back behind its blast wall with a steel door.
+ */
+function makeSavoyardCasemate(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], c = REGIONAL_PAL.concrete;
+  const w = 5.8, d = 6.0, h = 2.6, z0 = 0;
+  colored(out, box(w, h, d).translate(0, h / 2, z0), c[0], rng, 0.05);
+  colored(out, slab(w + 0.5, 0.6, d + 0.5).translate(0, h + 0.3, z0), c[1], rng, 0.05);
+  for (let k = 0; k < 9; k++) {
+    const x = (rng() - 0.5) * (w - 0.6), z = z0 + (rng() - 0.5) * (d - 0.6), s = 0.35 + rng() * 0.35;
+    colored(out, box(s * 1.4, 0.18 + rng() * 0.2, s).translate(x, h + 0.68, z), 0x6f6c66, rng, 0.12);
+  }
+  // the front embrasures: a splay frame proud of the wall and the dark slit in it
+  for (const x of [-1.5, 1.5]) {
+    colored(out, box(1.4, 0.8, 0.22).translate(x, 1.65, z0 + d / 2 + 0.11), c[1], rng, 0.04);
+    colored(out, box(1.0, 0.22, 0.06).translate(x, 1.65, z0 + d / 2 + 0.25), 0x1b1c1d, rng, 0.02);
+  }
+  colored(out, box(0.22, 0.8, 1.4).translate(w / 2 + 0.11, 1.65, z0 + 0.6), c[1], rng, 0.04);
+  colored(out, box(0.06, 0.22, 1.0).translate(w / 2 + 0.25, 1.65, z0 + 0.6), 0x1b1c1d, rng, 0.02);
+  // the entrance at the back: the steel door and the blast wall before it
+  colored(out, box(0.95, 1.9, 0.06).translate(-1.2, 0.95, z0 - d / 2 - 0.03), 0x44494a, rng, 0.04);
+  colored(out, box(3.2, 2.2, 0.5).translate(-1.0, 1.1, z0 - d / 2 - 1.05), c[0], rng, 0.05);
+  colored(out, box(0.5, 2.2, 1.1).translate(-2.85, 1.1, z0 - d / 2 - 0.55), c[0], rng, 0.05);
+  return mergeConnectedStructure('alpinerefuge', out);
 }
 
 /**
@@ -2107,6 +2136,10 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
     mekong: Object.freeze({
       longhouse: variant('longhouse', REGIONAL_PAL.mekongPlank, makeMekongLongHouse),
       fishershack: variant('fishershack', REGIONAL_PAL.mekongPlank, makeMekongPondHut),
+    }),
+    // the Col du Mont-Cenis, 1945: the pass's refuge is a casemate of the Vallo Alpino
+    savoyard: Object.freeze({
+      alpinerefuge: variant('alpinerefuge', REGIONAL_PAL.concrete, makeSavoyardCasemate, 'metal'),
     }),
   });
 })();

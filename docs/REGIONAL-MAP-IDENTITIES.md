@@ -34,7 +34,7 @@ the fictional map reproduces a particular real-world location.
 | delta | Low braided floodplain, elongated levees and islands; limited distant uplands. |
 | badlands | Redrock canyon: a continuous north–south valley floor between unequal red-rock walls, connected side ravines and open canyon mouths. |
 | monsoon | Rain-dissected tropical ridges and coherent branching drainage, not snowless alpine peaks. |
-| alpine | Lake-aligned ranges, trough shoulders, broken spurs and oblique saddles. |
+| alpine | The Col du Mont-Cenis, April 1945 (map revival 2026-10-05): lake-aligned ranges, trough shoulders, broken spurs and oblique saddles round the frozen lake; the village in the Savoyard kit (grey rubble houses under lauze roofs with whitewashed bands and larch galleries, granges, mazots, chapels with bell turrets, the parish church's tin bulb, the hospice, the Italian frontier barracks, the Vallo Alpino's blockhouses and casemate, houses roofless from the April 1945 shelling), the Grande Croix. |
 | caldera | Off-centre, breached volcanic rim with unequal shelves and radial drainage; not red mesas recoloured black. |
 | foundry | Industrial basin with low regional shoulders; factories remain the landmarks. |
 | ruinspires | Destroyed vertical megacity above broad urban terraces; recessive background uplands. |

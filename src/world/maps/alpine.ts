@@ -19,6 +19,14 @@
 // western pass redoubt, the rescue station on the east shore, the three rock spurs and the moraines. At the square's
 // edge the spurs run into the north-west, north-east and south-east corners, the west moraine runs along the west edge
 // and the five roads cross the north and south edges: the borders lane carries them outward.
+//
+// The buildings (map revival lane 2, 2026-10-05; the owner: every map as new as Verdant): the Savoyard kit
+// (maps/regional/savoyard.ts) builds every one in place as the high Maurienne's and the pass's own — the grey rubble
+// houses of Bessans and Lanslevillard under broad lauze roofs, their openings banded in whitewash, the hayloft gables
+// boarded in larch, the larch galleries; the granges, mazots on their stone mushrooms and woodsheds; the chapels with
+// their bell turrets and porches; the parish church with its tin bulb; the Hospice under its hipped roof and bell; the
+// Italian frontier guard's ochre barracks (the plateau was Italian until 1947); the Vallo Alpino's concrete blockhouse in
+// the village and its casemate at the western pass redoubt; the houses shelled in April 1945, roofless.
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -103,6 +111,8 @@ export default {
     bushCount: 0.62, bushSpecies: 'spruce', // map pass 2026-09-12: exposed stone/scrub on the snowfields
   },
   props: {
+    // map revival lane 2 (2026-10-05): the Savoyard kit (maps/regional/savoyard.ts)
+    architecture: 'savoyard',
     plan: ['rangerlodge', 'logcabin', 'chapel', 'alpine', 'depot', 'onionchurch',
       'logcabin', 'woodshed', 'alpine', 'ruin', 'depot', 'granary', 'alpine', 'tower',
       'logcabin', 'alpine', 'woodshed', 'chapel', 'depot', 'logcabin', 'alpine', 'ruin',
@@ -139,6 +149,10 @@ export default {
       looseClutter: 26,
       roadFence: 'fencerail', yardFence: 'fencepicket',
     },
+  },
+  // map revival lane 2 (2026-10-05): the Grande Croix at the foot of the southern climb, beside its chapel
+  scenery: {
+    landmarks: [{ kind: 'waysidecross', x: -96, z: -224, yawDeg: 0, scale: 1.15, name: 'the Grande Croix' }],
   },
   horizon: {
     baseHex: 0x708397, amp: 1.42, style: 'alpine', treeline: 0.80, snowline: 0.72,

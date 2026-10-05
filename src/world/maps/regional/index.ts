@@ -16,6 +16,7 @@ import { hashSeed, streamFrom, REGIONAL_BUCKETS, type RegionalParts } from './ge
 import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts } from './weather.ts';
 import { withWear } from './house.ts';
 import { HESSIAN_STYLE } from './hessian.ts';
+import { SAVOYARD_STYLE } from './savoyard.ts';
 import { DALMATIAN_STYLE } from './dalmatian.ts';
 import { BRETON_STYLE } from './breton.ts';
 import { KOLKHOZ_STYLE } from './kolkhoz.ts';
@@ -35,6 +36,7 @@ export type { ArchitectureStyle } from './types.ts';
 
 const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   hessian: HESSIAN_STYLE,
+  savoyard: SAVOYARD_STYLE,
   dalmatian: DALMATIAN_STYLE,
   breton: BRETON_STYLE,
   kolkhoz: KOLKHOZ_STYLE,
