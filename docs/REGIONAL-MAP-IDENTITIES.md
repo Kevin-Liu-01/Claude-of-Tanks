@@ -46,7 +46,7 @@ the fictional map reproduces a particular real-world location.
 | airfield | Open approach sectors and distant low hills; restrained perimeter berms. |
 | oasis | Asymmetric dune arms and sparse distant rock around a protected spring basin. |
 | whiteout | Exposed snowy plain with broad low glacial rises and wind-shaped snow shoulders. |
-| orchard | Long unequal upland valley sides with cultivated shelves and drainage folds. |
+| orchard | The Chouf on Mount Lebanon below the Barouk cedars (Beiteddine, Deir el Qamar; the map-revival lane, 2026-10-05): long unequal valley sides with cultivated shelves and drainage folds, olive terraces held by dry stone walls, and the mountain village in the chouf kit — the sandstone dar under red tiles with its triple arch, the earth-roofed houses, the hammam's domes, the souk, the sabil. |
 | longleaf | Interlocking wooded logging-country ridges, creek spurs and clearcut shoulders. |
 | mangrove | Open estuary sectors, low islands and elongated natural levees. |
 | saltwind | Western limestone bay with an open sea sector and stepped scrub headlands. |
