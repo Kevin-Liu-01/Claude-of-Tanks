@@ -335,7 +335,11 @@ interface PropsSettings {
   /** Maps lane B (2026-10-03): `plot` sizes the site — metres across (x) and deep (z) before the yaw — for a builder
    * that honours one (the warehouse; the Hostomel kit raises its barrel-vault cargo hangar on a warehouse plot 21 m
    * wide or more). */
-  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number } }[];
+  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number };
+    /** The landmarks lane (2026-10-05): a set piece (props.landmarks) stands on this site instead. The site keeps its plan
+     * draws, spacing and footprint (every later building, yard and clutter piece stays where it was); its geometry and
+     * collision are the piece's. */
+    vacated?: boolean }[];
   /** Maps lane B (2026-10-03, Nordhavn Fjord): the settlement the props dress — its roadside and block-fill buildings,
    * its plaza (the road crossing nearest cx, cz), street furniture and clutter — when it is not the whole ground the
    * terrain's village rect grades (a harbour town on the quay of a graded valley floor). Default: the village rect. */
@@ -3867,7 +3871,7 @@ ${snowCap ? `
   const roadClearanceMoves: { kind: string; from: [number, number]; to: [number, number] | null }[] = [];
   if (P.roadBuildingClearance) group.userData.roadClearanceMoves = roadClearanceMoves;
   function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
-    fromRoad = false, plot?: { w: number; d: number }): boolean {
+    fromRoad = false, plot?: { w: number; d: number }, vacated = false): boolean {
     let tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
@@ -3961,6 +3965,15 @@ ${snowCap ? `
         }
         if (Number.isFinite(b.minX)) body = b;
       }
+    }
+    if (vacated) {
+      // a set piece stands here (the landmarks lane): the plan's draws were taken and the site keeps its footprint, its
+      // geometry and collision are dropped
+      for (const list of Object.values(tmp)) for (const geometry of list as THREE.BufferGeometry[]) geometry.dispose();
+      buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot, kind: structureId });
+      placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
+      if (!explicitStructure) bi++;
+      return true;
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
@@ -4076,7 +4089,7 @@ ${snowCap ? `
   for (const site of P.townPlan?.length ? [] : P.plannedSites ?? []) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!isRoadBuildingSiteClear(site.x, site.z)) continue;
-    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot);
+    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot, site.vacated);
     yield { fine: true };
   }
   yield* placeRoadBuildings();

@@ -6,10 +6,12 @@ import { church, grainElevator, granary, marketHall, stationHall, townHall } fro
 import { kolkhozArch, torii, townGate, triumphalArch } from './gates.ts';
 import { columnMonument, equestrianStatue, memorialWall, obelisk, statue } from './monuments.ts';
 import { bandstand, fountain, parkGate, parkSquare } from './parks.ts';
+import { aircraftWreck } from './wrecks.ts';
 import { belfry, campanile, fireLookout, waterTower, windmill } from './towers.ts';
 import type { LandmarkBuilder, LandmarkKind } from './types.ts';
 
 export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBuilder>>> = Object.freeze({
+  aircraftWreck,
   baileyBridge,
   bandstand,
   belfry,

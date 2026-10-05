@@ -4,7 +4,7 @@
 import type { LandmarkKind, LandmarkParams, LandmarkPlacement } from './types.ts';
 import type { StructureClearance } from '../vegetationClearance.ts';
 
-type LandmarkFamily = 'bridge' | 'monument' | 'park' | 'gate' | 'tower' | 'civic';
+type LandmarkFamily = 'bridge' | 'monument' | 'park' | 'gate' | 'tower' | 'civic' | 'wreck';
 
 interface LandmarkKindSpec {
   family: LandmarkFamily;
@@ -14,6 +14,9 @@ interface LandmarkKindSpec {
   footprint(p: LandmarkParams): readonly [number, number];
   /** The piece stands astride a road (a gate, an arch, a bridge): the road admission is its passage's, not its body's. */
   spansRoad?: boolean;
+  /** How far its footprint keeps from a road's line (default the carriageway's 3.5 m core): a plot a map lane hands over
+   *  against an apron (whose paving the road field counts) keeps none. */
+  roadMargin?: number;
 }
 
 const num = (p: LandmarkParams, key: string): number => Number(p[key]);
@@ -95,6 +98,12 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   grainElevator: { family: 'civic', defaults: { rows: 2, cols: 4, radius: 3.2, height: 28, head: 38 },
     // the silos along x, the head house at their +x end
     footprint: (p) => [num(p, 'cols') * num(p, 'radius') + 9.0, num(p, 'rows') * num(p, 'radius') + 1.4] },
+  // ------------------------------------------------------------------------------------------------ wrecks
+  // the An-225 Mriya in the ruin of its hangar (Hostomel, February 2022): a plot `width` × `depth` whose open front (+z)
+  // faces an apron, and a `strip` beyond it where burnt debris spills (dressing only); the piece's origin is the centre
+  // of plot and strip together
+  aircraftWreck: { family: 'wreck', roadMargin: 0, defaults: { model: 'an225', width: 56, depth: 36, strip: 12 },
+    footprint: (p) => [num(p, 'width') / 2, (num(p, 'depth') + num(p, 'strip') + 2) / 2] },
   // a collective farm's grain store (zernosklad): a long single-storey store, its loading doors and ramps on the front
   granary: { family: 'civic', defaults: { length: 30, width: 11, walls: 'brick' },
     footprint: (p) => [num(p, 'length') / 2 + 0.8, num(p, 'width') / 2 + 2.6] },

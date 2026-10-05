@@ -44,6 +44,7 @@ const BUDGET = {
   fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000,
   townGate: 4000, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
   stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000,
+  aircraftWreck: 9000,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
 /** The authored variants each kind is built in besides its defaults. */
@@ -247,7 +248,8 @@ for (const id of MAP_IDS) {
       const ex = Math.max(0, Math.abs(lx) - hw), ez = Math.max(0, Math.abs(lz) - hl);
       assert.ok(ex * ex + ez * ez >= r * r, `${label}: clear of the objective disc at (${x}, ${z})`);
     }
-    if (!LANDMARK_KINDS[placement.kind].spansRoad) assert.ok(field._roadDist(placement.x, placement.z) > 3.5, `${label}: out of the road core`);
+    const margin = LANDMARK_KINDS[placement.kind].roadMargin ?? 3.5;
+    if (!LANDMARK_KINDS[placement.kind].spansRoad && margin > 0) assert.ok(field._roadDist(placement.x, placement.z) > margin, `${label}: out of the road core`);
     if (placement.kind !== 'parkSquare') {
       const stood = structures.some((record) => {
         const cx = (record.b[0] + record.b[3]) / 2, cz = (record.b[2] + record.b[5]) / 2;

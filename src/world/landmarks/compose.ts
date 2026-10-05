@@ -162,7 +162,8 @@ function admission(ctx: LandmarkComposeContext, discs: ReadonlyArray<readonly [n
     // a bridge stands over its water; every other piece keeps dry
     if (LANDMARK_KINDS[placement.kind].family !== 'bridge') return 'water';
   }
-  if (!LANDMARK_KINDS[placement.kind].spansRoad && probes.some(([px, pz]) => ctx.heightField._roadDist(px, pz) < ROAD_CORE_M)) return 'road';
+  const spec = LANDMARK_KINDS[placement.kind], margin = spec.roadMargin ?? ROAD_CORE_M;
+  if (!spec.spansRoad && margin > 0 && probes.some(([px, pz]) => ctx.heightField._roadDist(px, pz) < margin)) return 'road';
   return null;
 }
 

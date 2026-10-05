@@ -23,7 +23,9 @@ export type LandmarkKind =
   // towers
   | 'belfry' | 'campanile' | 'waterTower' | 'fireLookout' | 'windmill'
   // civic buildings
-  | 'church' | 'townHall' | 'stationHall' | 'marketHall' | 'grainElevator' | 'granary';
+  | 'church' | 'townHall' | 'stationHall' | 'marketHall' | 'grainElevator' | 'granary'
+  // wrecks
+  | 'aircraftWreck';
 
 /** A kind's parameters: numbers (metres, counts), choices (strings) and switches. */
 export type LandmarkParams = Readonly<Record<string, number | string | boolean>>;

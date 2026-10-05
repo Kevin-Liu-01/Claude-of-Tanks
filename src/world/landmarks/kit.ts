@@ -618,3 +618,27 @@ export function smoothRender(parts: RegionalParts, k: number, buckets: readonly 
   }
   return parts;
 }
+
+/**
+ * Settle a piece onto uneven ground: every vertex lifted by the ground's height under it (types.ts ground, over the base),
+ * so wreckage and debris lie on the slope they fell on. A grade of a few percent bends a long hull imperceptibly;
+ * vertical edges stay vertical and welded corners stay welded (the collision is derived after).
+ */
+export function settleOnGround(parts: RegionalParts, ground: ((lx: number, lz: number) => number) | undefined): RegionalParts {
+  if (!ground) return parts;
+  const memo = new Map<string, number>();
+  for (const list of Object.values(parts)) {
+    for (const geometry of list) {
+      const p = geometry.getAttribute('position');
+      for (let i = 0; i < p.count; i++) {
+        const x = p.getX(i), z = p.getZ(i), key = `${Math.round(x * 100)},${Math.round(z * 100)}`;
+        let g = memo.get(key);
+        if (g === undefined) { g = ground(x, z); memo.set(key, g); }
+        p.setY(i, p.getY(i) + g);
+      }
+      p.needsUpdate = true;
+      geometry.computeBoundingBox();
+    }
+  }
+  return parts;
+}
