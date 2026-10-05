@@ -74,36 +74,68 @@ const SEA_SHELF = Object.freeze({ colourM: 25, alphaM: 15, shallowAlpha: 0.35 })
 const SEA_TINT = Object.freeze({ turquoise: 0.6, deepBlue: 0.8, deepDarken: 0.7 });
 const SEA_SWELL = Object.freeze({ slope: 0.08, lengthM: 55, classicNormal: 0.6 });
 /** Metres from the shore inside the water — the mask's visible edge, chamfered on a grid of at most 512² — R8, one metre a unit. */
-export function shoreDistanceTexture(mask: THREE.Texture, size: number, wetFrom: number): THREE.DataTexture | null {
+/**
+ * 2026-10-05 (the gauntlet's wave 78: one shelf width read as "one saturated sky-cyan sheet" on a sandy bay and as sand
+ * shallows on a deep channel): the shelf's width follows the coast — the land's rise within SEA_SHELF_RISE_M of the
+ * waterline over that distance (a beach rises a metre or two, a karst coast tens): width = SEA_SHELF_WIDTH_K / rise slope,
+ * between SEA_SHELF_WIDTH_M[0] and [1] metres.
+ */
+export const SEA_SHELF_RISE_M = 30;
+export const SEA_SHELF_WIDTH_K = 2.5;
+export const SEA_SHELF_WIDTH_M: readonly [number, number] = [8, 120];
+export function seaShelfWidthM(riseSlope: number): number {
+  return Math.min(SEA_SHELF_WIDTH_M[1], Math.max(SEA_SHELF_WIDTH_M[0], SEA_SHELF_WIDTH_K / Math.max(riseSlope, 1e-3)));
+}
+/**
+ * Metres from the shore inside the water — the mask's visible edge, chamfered on a grid of at most 512² — in R, one metre
+ * a unit; in G the shelf width (m) at the nearest shore cell, from `riseAt` (the land's rise slope there; absent: G 0).
+ */
+export function shoreDistanceTexture(mask: THREE.Texture, size: number, wetFrom: number,
+  riseAt: ((x: number, z: number) => number) | null = null): THREE.DataTexture | null {
   const img = mask.image as { data?: ArrayLike<number> | null; width?: number; height?: number } | undefined;
   const W = img?.width ?? 0, H = img?.height ?? 0, src = img?.data;
   if (!src || !W || !H || src.length < W * H * 4) return null;
-  const N = Math.min(512, W, H), cell = size / N, INF = 1e9, d = new Float32Array(N * N);
+  const N = Math.min(512, W, H), cell = size / N, INF = 1e9, d = new Float32Array(N * N), seed = new Int32Array(N * N).fill(-1);
   for (let j = 0; j < N; j++) {
     const sj = Math.min(H - 1, Math.floor((j + 0.5) * H / N));
     for (let i = 0; i < N; i++) {
       const si = Math.min(W - 1, Math.floor((i + 0.5) * W / N));
-      d[j * N + i] = src[(sj * W + si) * 4 + 2] / 255 < wetFrom ? 0 : INF;
+      const k = j * N + i;
+      if (src[(sj * W + si) * 4 + 2] / 255 < wetFrom) { d[k] = 0; seed[k] = k; } else d[k] = INF;
     }
   }
   const D = Math.SQRT2;
+  const relax = (k: number, n: number, w: number): void => { if (d[n] + w < d[k]) { d[k] = d[n] + w; seed[k] = seed[n]; } };
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-    const k = j * N + i; let v = d[k];
-    if (v === 0) continue;
-    if (i > 0) v = Math.min(v, d[k - 1] + 1);
-    if (j > 0) { v = Math.min(v, d[k - N] + 1); if (i > 0) v = Math.min(v, d[k - N - 1] + D); if (i < N - 1) v = Math.min(v, d[k - N + 1] + D); }
-    d[k] = v;
+    const k = j * N + i;
+    if (d[k] === 0) continue;
+    if (i > 0) relax(k, k - 1, 1);
+    if (j > 0) { relax(k, k - N, 1); if (i > 0) relax(k, k - N - 1, D); if (i < N - 1) relax(k, k - N + 1, D); }
   }
   for (let j = N - 1; j >= 0; j--) for (let i = N - 1; i >= 0; i--) {
-    const k = j * N + i; let v = d[k];
-    if (v === 0) continue;
-    if (i < N - 1) v = Math.min(v, d[k + 1] + 1);
-    if (j < N - 1) { v = Math.min(v, d[k + N] + 1); if (i < N - 1) v = Math.min(v, d[k + N + 1] + D); if (i > 0) v = Math.min(v, d[k + N - 1] + D); }
-    d[k] = v;
+    const k = j * N + i;
+    if (d[k] === 0) continue;
+    if (i < N - 1) relax(k, k + 1, 1);
+    if (j < N - 1) { relax(k, k + N, 1); if (i < N - 1) relax(k, k + N + 1, D); if (i > 0) relax(k, k + N - 1, D); }
   }
-  const out = new Uint8Array(N * N);
-  for (let k = 0; k < N * N; k++) out[k] = Math.min(255, Math.round(d[k] >= INF ? 255 : d[k] * cell));
-  const tex = new THREE.DataTexture(out, N, N, THREE.RedFormat, THREE.UnsignedByteType);
+  // the shelf width per shore cell, memoised (many water cells share a shore cell)
+  const widthOf = new Map<number, number>();
+  const shelf = (k: number): number => {
+    if (!riseAt || k < 0) return 0;
+    let w = widthOf.get(k);
+    if (w === undefined) {
+      const x = ((k % N) + 0.5) * cell - size / 2, z = (Math.floor(k / N) + 0.5) * cell - size / 2;
+      w = seaShelfWidthM(riseAt(x, z));
+      widthOf.set(k, w);
+    }
+    return w;
+  };
+  const out = new Uint8Array(N * N * 2);
+  for (let k = 0; k < N * N; k++) {
+    out[k * 2] = Math.min(255, Math.round(d[k] >= INF ? 255 : d[k] * cell));
+    out[k * 2 + 1] = Math.min(255, Math.round(shelf(seed[k])));
+  }
+  const tex = new THREE.DataTexture(out, N, N, THREE.RGFormat, THREE.UnsignedByteType);
   tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
   tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
   tex.name = 'shallow-water-shore-distance';
@@ -159,6 +191,16 @@ export function* shallowWaterGeometrySteps(
   // from four populated corners around an omitted cell. At 1024 m these two
   // retained buffers total 66,564 + 2,048 = 68,612 bytes. The separate factory
   // captures neither temporary slots/arrays nor the rendered geometry owner.
+  // 2026-10-05: the land's rise slope near a shore point (the highest ground within SEA_SHELF_RISE_M over that distance),
+  // read once per shore cell by shoreDistanceTexture through the geometry (terrain.ts hands the two over unchanged)
+  geometry.userData.landRiseAt = (x: number, z: number): number => {
+    const h0 = field.getHeightAt(x, z); let top = h0;
+    for (let a = 0; a < 12; a++) {
+      const t = a * Math.PI / 6;
+      for (const r of [SEA_SHELF_RISE_M * 0.5, SEA_SHELF_RISE_M]) top = Math.max(top, field.getHeightAt(x + Math.cos(t) * r, z + Math.sin(t) * r));
+    }
+    return (top - h0) / SEA_SHELF_RISE_M;
+  };
   return { geometry, heightAt: waterHeightSampler(wet, admitted, field, segments) };
 }
 
@@ -271,11 +313,14 @@ export function createShallowWaterSurface(
   // incidence and the specular cap, read per frame through the light model's QA hook
   const waterQa = { value: new THREE.Vector4(0.45, WATER_ENV_GRAZING, 1.15, 0.35) };
   // 2026-10-04 (the sea's shelf and swell): a coast with an FFT ocean and a readable mask only
-  const shoreDist = profile.kind === 'coast' && ocean ? shoreDistanceTexture(mask, size, ramp[0] + 0.02) : null;
+  const shoreDist = profile.kind === 'coast' && ocean
+    ? shoreDistanceTexture(mask, size, ramp[0] + 0.02, (geometry.userData.landRiseAt as ((x: number, z: number) => number) | undefined) ?? null) : null;
   const seaShelf = { value: new THREE.Vector4(shoreDist ? 1 : 0, SEA_SHELF.colourM, SEA_SHELF.alphaM, SEA_SHELF.shallowAlpha) };
   const seaTint = { value: new THREE.Vector4(SEA_TINT.turquoise, SEA_TINT.deepBlue, SEA_TINT.deepDarken, 0) };
   const swellDirRad = (ocean?.state.swellDirDeg ?? 0) * Math.PI / 180;
   const swell = { value: new THREE.Vector4(ocean ? SEA_SWELL.slope : 0, SEA_SWELL.lengthM, swellDirRad, ocean ? SEA_SWELL.classicNormal : 1) };
+  // 2026-10-05 (the sea's second round, QA): the sky mirror's grazing exponent (1 = as before) and the per-coast shelf share
+  const seaLook = { value: new THREE.Vector4(1, 0, 0, 0) };
   // Water pass 7: vehicle wakes. Slot A is (x, z, dirX, dirZ) in the map's tank frame,
   // slot B is (speed 0..1, strength 0..1, half length m, half width m).
   const wakeA = Array.from({ length: WATER_DISTURBANCE_CAP }, () => new THREE.Vector4(0, 0, 0, 1));
@@ -331,7 +376,7 @@ export function createShallowWaterSurface(
       uOceanLook: { value: new THREE.Vector4(ocean?.state.foam ?? 0, ocean?.state.breakers ?? 0, ocean?.state.caustics ?? 0, ocean?.hs ?? 0) },
       uOceanDepth: { value: profile.depthM },
       uWaterQa: waterQa,
-      uShoreDist: { value: shoreDist }, uSeaShelf: seaShelf, uSeaTint: seaTint, uSwell: swell,
+      uShoreDist: { value: shoreDist }, uSeaShelf: seaShelf, uSeaTint: seaTint, uSwell: swell, uSeaLook: seaLook,
     });
     material.userData.waterShader = shader;
     shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
@@ -427,7 +472,9 @@ export function createShallowWaterSurface(
       uniform vec4 uSeaShelf;         // (on, the colour's shelf m, the clarity's shelf m, the alpha at the shore)
       uniform vec4 uSeaTint;          // (the shelf's turquoise share, the deep blue's share, the deep body's darkening)
       uniform vec4 uSwell;            // (the swell's slope, its length m, its heading rad, the tiled ripple's scale on an FFT sea)
+      uniform vec4 uSeaLook;          // 2026-10-05: (the sky mirror's grazing exponent, the per-coast shelf's share, -, -)
       float seaShoreM;
+      float seaShelfM;
       float oceanDebug;
     `);
     shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
@@ -464,8 +511,11 @@ export function createShallowWaterSurface(
       waterBank = smoothstep(0.015, 0.20, wet) * (1.0 - smoothstep(0.32, 0.74, wet));
       // 2026-10-04 (the sea's shelf): the metres from the shore stand in for the depth — the body's share of the colour
       // rises over the shelf, not over the mask's few-metre ramp (which painted the bay deep right up to the sand)
-      seaShoreM = uSeaShelf.x > 0.0 ? texture2D(uShoreDist, waterUvC).r * 255.0 + max(pastEdgeM, 0.0) : 0.0;
-      waterDeep = mix(waterDeep, 1.0 - exp(-seaShoreM / uSeaShelf.y), uSeaShelf.x);
+      vec2 seaShore = uSeaShelf.x > 0.0 ? texture2D(uShoreDist, waterUvC).rg * 255.0 : vec2(0.0);
+      seaShoreM = seaShore.x + (uSeaShelf.x > 0.0 ? max(pastEdgeM, 0.0) : 0.0);
+      // (2026-10-05: the shelf's width follows the coast — a beach holds a wide one, a steep coast drops off in metres)
+      seaShelfM = mix(uSeaShelf.y, max(seaShore.y, 4.0), uSeaLook.y * step(0.5, seaShore.y));
+      waterDeep = mix(waterDeep, 1.0 - exp(-seaShoreM / seaShelfM), uSeaShelf.x);
       // Water 2026-09-12: the bed shows through the shallows — the deep colour
       // rises out of a sunlit bank tint instead of one flat sheet.
       // Water pass 5 (2026-09-13): the bank colour reaches further into the body
@@ -481,7 +531,7 @@ export function createShallowWaterSurface(
       diffuseColor.rgb *= mix(0.90, mix(0.58, uSeaTint.z, uSeaShelf.x), waterDeep);
       diffuseColor.rgb *= 1.0 - uWaterQa.w * grazing;
       // (2026-10-04: clear over the shelf — the bed shows through its first metres — opaque past it)
-      float seaOpacity = mix(opacity, mix(uSeaShelf.w, opacity, 1.0 - exp(-seaShoreM / uSeaShelf.z)), uSeaShelf.x);
+      float seaOpacity = mix(opacity, mix(uSeaShelf.w, opacity, 1.0 - exp(-seaShoreM / (uSeaShelf.z * seaShelfM / uSeaShelf.y))), uSeaShelf.x);
       diffuseColor.a = smoothstep(0.0, 0.55, wet) * mix(mix(seaOpacity, 0.86, grazing), 1.0, smoothstep(900.0, 1600.0, pastEdgeM));
       // Blend the last ocean cells into their continuous ground receiver. The
       // finite carrier must never reveal its stair-stepped outer grid edge.
@@ -716,7 +766,7 @@ export function createShallowWaterSurface(
     shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_maps>',
       // Water pass 5: wind-ruffled, sediment-laden patches mirror less sky, so the
       // sheet reads as water of varying depth and colour instead of one reflection.
-      '#include <lights_fragment_maps>\nradiance *= mix(uWaterQa.x, uWaterQa.y, waterGrazing);\nradiance *= 1.15 - 0.55 * smoothstep(0.35, 0.85, waterTurbidity);');
+      '#include <lights_fragment_maps>\nradiance *= mix(uWaterQa.x, uWaterQa.y, pow(waterGrazing, uSeaLook.x));\nradiance *= 1.15 - 0.55 * smoothstep(0.35, 0.85, waterTurbidity);');
     // Round 66: caustics on the shelf bed. The sun ray refracts at the flat surface and lands `bed` metres down; the
     // finest cascade's curvature at that entry point focuses or spreads the light there (a thin lens of index
     // 1.333: concentration 1 / (1 + 0.25·d·∇²h), the one-bounce form of Wallace's photon splatting) and the sheet
@@ -753,6 +803,7 @@ export function createShallowWaterSurface(
       }
       #endif
       if (uWaterDebug > 5.5) oceanDebug = clamp(seaShoreM / 120.0, 0.0, 1.0); // 2026-10-04 QA: the metres from the shore
+      if (uWaterDebug > 6.5) oceanDebug = clamp(seaShelfM / 120.0, 0.0, 1.0); // 2026-10-05 QA: the shelf's width here
       if (uWaterDebug > 0.5) { outgoingLight = uWaterDebug > 1.5 ? vec3(oceanDebug) : vec3(waterTurbidity); diffuseColor.a = 1.0; }
       #include <opaque_fragment>`);
     if (outlandWater?.openings?.length) shader.fragmentShader = fadeDistantCoastShadows(shader.fragmentShader, 'vWaterWorld');
@@ -780,6 +831,8 @@ export function createShallowWaterSurface(
         lightTune('SEA_DEEP_DARKEN', SEA_TINT.deepDarken), 0);
       swell.value.set(ocean ? lightTune('SEA_SWELL_SLOPE', SEA_SWELL.slope) : 0, lightTune('SEA_SWELL_M', SEA_SWELL.lengthM), swellDirRad,
         ocean ? lightTune('SEA_CLASSIC_NORMAL', SEA_SWELL.classicNormal) : 1);
+      seaLook.value.set(lightTune('WATER_GRAZE_POW', 1), shoreDist ? lightTune('SEA_SHELF_BY_COAST', 0) : 0, 0, 0);
+      material.roughness = profile.roughness * (ocean ? lightTune('WATER_ROUGH', 1) : 1);
       if (!(Number.isFinite(dt) && dt > 0)) return;
       clock.value += Math.min(dt, 0.1);
       ocean?.update(dt); // round 66: the transform runs inside the world update, before lighting and post
