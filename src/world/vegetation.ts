@@ -22,6 +22,7 @@ import { isClearOfSpawns } from './spawnClearance.ts';
 import { createStructureClearances, excludeStructureVegetation, excludeVegetation, overlapsStructureClearance,
   placedStructureClearances } from './vegetationClearance.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
+import { landmarkClearances } from './landmarks/plan.ts';
 import { compactGroundCoverInstances, type GroundCoverBlocked } from './groundCoverClearance.ts';
 import { attachTreeCards, attachTreeLobes } from './treeAttachments.ts';
 import { applyCanopyDiffuseWrap } from './canopyLighting.ts'; // round 55: shared with the horizon ring (leaf module)
@@ -5762,8 +5763,10 @@ function* vegetationBuildSteps(
   // Placed structures that need clear ground (Mangrove's fishery wharf) join them with the footprint their own plan
   // gives; no other map publishes one.
   // The scenery lane (2026-10-03): a map's rock formations and landmarks claim their ground from the config alone.
-  const placedClearances = placedStructureClearances((cfg as { id?: string } | null)?.id, heightField,
-    cfg?.props?.riverLandings ?? [], (cfg as SceneryMapConfig | null)?.scenery, cfg?.props?.landmarks);
+  // The landmarks lane (2026-10-05): a map's set pieces claim their footprints the same way (landmarks/plan.ts).
+  const placedClearances = [...placedStructureClearances((cfg as { id?: string } | null)?.id, heightField,
+    cfg?.props?.riverLandings ?? [], (cfg as SceneryMapConfig | null)?.scenery),
+    ...landmarkClearances(cfg?.props?.landmarks)];
   const structureClearances = [...createStructureClearances(
     cfg?.props?.tacticalBeats ?? [], DESTRUCTIBLE_BUILDING_TYPES,
   ), ...placedClearances];
