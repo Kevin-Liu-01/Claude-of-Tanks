@@ -211,6 +211,14 @@ export const CLOUD_EDGE_CRISP = 0;
 export const CLOUD_TOP_BILLOW = 0;
 export const CLOUD_NEAR_FIELD = 0;
 /**
+ * 2026-10-05 (Part 1's framing; the gauntlet's wave 101: "cumulus overhead but evenly sunlit land below"): a census
+ * camera faces away from the sun, so the clouds in its frame shade land 5-15 km out and the near ground's shadows come
+ * from clouds behind it. The lift of the cumulus field around the point up the sun's ray from the map's centre to the
+ * cloud base (QA: CLOUD_SHADOW_FRAME; the radius CLOUD_SHADOW_FRAME_R, 2.5 km): their shadows cross the battlefield.
+ * 0 = off until a lab shows it.
+ */
+const CLOUD_SHADOW_FRAME = 0;
+/**
  * The share of the sun's beam a cloud core takes (the map's darkest texel). 2026-10-05 (the skies lane, the clouds and
  * the land; QA: CLOUD_SHADOW_CORE): 0.62 → 0.9. A fair-weather cumulus core passes about a tenth of the direct beam
  * (optical depth past 2); the sky's light stays, so on Verdant's 3.76:1 sun/shade key (the beam 2.76 skies) the ground
@@ -345,6 +353,9 @@ uniform float uFieldMix;
 uniform float uCluster;
 // 2026-10-03: the cumulus fields' floor over the battlefield (CLOUD_NEAR_FIELD; 0 = off)
 uniform float uNearField;
+// 2026-10-05 (Part 1's framing; QA: CLOUD_SHADOW_FRAME / _R, 0 = off): the cloud mass whose shadow crosses the battlefield —
+// xy the point up the sun's ray from the map's centre to the cloud base, z the field's lift there, w the radius (m)
+uniform vec4 uFrame;
 // the last cloudField call's cumulus-field gate (1 without fields): the trace's far-field re-mix gates its cells alike
 float cloudGate = 1.0;
 // the equalised field the coverage cuts at a world xz: the cell-carried cumuliform one blended toward the
@@ -356,6 +367,7 @@ float cloudField( vec2 pxz, out vec4 w, out vec4 st ) {
 	vec2 q = vec2( dot( pxz, uWindDir ), dot( pxz, vec2( -uWindDir.y, uWindDir.x ) ) );
 	st = textureLod( tStreets, ( q + uStreetShift ) / ${f(CLOUD_STREET_TILE_M)}, 0.0 );
 	float field = mix( mix( w.r, st.r, uStreets ), w.b, uFieldMix );
+	float frameK = uFrame.z > 0.0 ? 1.0 - smoothstep( uFrame.w * 0.45, uFrame.w, length( pxz - uFrame.xy ) ) : 0.0;
 	// 2026-10-03: the cumulus fields (CloudscapeConfig.cluster) — a broad field at ${CLOUD_CLUSTER_PERIOD_K}x the tile gates the cells:
 	// inside a field they merge into large masses, at its edge they fray small, between fields the sky is clear
 	cloudGate = 1.0;
@@ -364,8 +376,12 @@ float cloudField( vec2 pxz, out vec4 w, out vec4 st ) {
 		cloudGate = mix( 1.0, ${f(CLOUD_CLUSTER_GAP)} + ${f(2 * (1 - CLOUD_CLUSTER_GAP))} * smoothstep( 0.3, 0.7, g ), uCluster );
 		// (2026-10-03: over the battlefield the gate never falls under the mean — CLOUD_NEAR_FIELD)
 		if ( uNearField > 0.0 ) cloudGate = max( cloudGate, uNearField * ( 1.0 - smoothstep( 2800.0, 8000.0, length( pxz ) ) ) );
+		// (the framing mass is never gated out)
+		cloudGate = max( cloudGate, frameK );
 		field *= cloudGate;
 	}
+	// (the cells kept: more of them over the coverage's cut where the shadow will cross the battlefield)
+	field *= 1.0 + uFrame.z * frameK;
 	return field;
 }
 `;
@@ -1609,7 +1625,7 @@ export class VolumetricCloudLayer {
     const field = () => ({
       tWeather: { value: null }, tStreets: { value: null }, uWeatherShift: { value: new THREE.Vector2() }, uStreetShift: { value: new THREE.Vector2() },
       uWindDir: { value: new THREE.Vector2(1, 0) }, uStreets: { value: 0 }, uFieldMix: { value: 0 }, uCluster: { value: 0 },
-      uNearField: { value: 0 },
+      uNearField: { value: 0 }, uFrame: { value: new THREE.Vector4() },
     });
     this.traceMaterial = new THREE.ShaderMaterial({
       name: 'VolumetricCloudTrace', vertexShader: QUAD_VERTEX, fragmentShader: TRACE_FRAGMENT, depthTest: false, depthWrite: false, blending: THREE.NoBlending,
@@ -1665,7 +1681,7 @@ export class VolumetricCloudLayer {
       depthTest: false, depthWrite: false, blending: THREE.NoBlending,
       uniforms: {
         tWeather: gu.tWeather, tStreets: gu.tStreets, uWeatherShift: gu.uWeatherShift, uStreetShift: gu.uStreetShift,
-        uWindDir: gu.uWindDir, uStreets: gu.uStreets, uFieldMix: gu.uFieldMix, uCluster: gu.uCluster, uNearField: gu.uNearField, uThreshold: gu.uThreshold, uClear: gu.uClear,
+        uWindDir: gu.uWindDir, uStreets: gu.uStreets, uFieldMix: gu.uFieldMix, uCluster: gu.uCluster, uNearField: gu.uNearField, uFrame: gu.uFrame, uThreshold: gu.uThreshold, uClear: gu.uClear,
         uFarShadeRect: { value: new THREE.Vector3(0, 0, CLOUD_FAR_SHADE_SPAN_M) },
         uShadeLook: { value: new THREE.Vector3(CLOUD_SHADOW_CORE, 0, CLOUD_SHADOW_SOFT) },
       },
@@ -2054,6 +2070,13 @@ export class VolumetricCloudLayer {
     // (the floor reaches the shade map too: its field is the trace's)
     t.uNearField.value = lightTune('CLOUD_NEAR_FIELD', CLOUD_NEAR_FIELD);
     (this.goboMaterial.uniforms as { uNearField: { value: number } }).uNearField.value = t.uNearField.value as number;
+    // (Part 1's framing: the point up the sun's ray from the map's centre to the base; cumulus that cast shadows only)
+    {
+      const sun = t.uSunDir.value as THREE.Vector3, k = (preset.baseM ?? 1400) / Math.max(sun.y, 0.1);
+      const frame = t.uFrame.value as THREE.Vector4;
+      frame.set(sun.x * k, sun.z * k, preset.shadow ? lightTune('CLOUD_SHADOW_FRAME', CLOUD_SHADOW_FRAME) : 0, lightTune('CLOUD_SHADOW_FRAME_R', 2500));
+      (this.goboMaterial.uniforms as unknown as { uFrame: { value: THREE.Vector4 } }).uFrame.value.copy(frame);
+    }
     // (no datum yet: the camera stands on the layer's base, the haze law of a camera on the ground)
     t.uHazeDatum.value = Number.isFinite(this.hazeDatum) ? this.hazeDatum : camera.position.y;
     this.applyPresetUniforms(preset);
