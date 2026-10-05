@@ -12,8 +12,8 @@
       "concealers": 5934
     },
     "desert": {
-      "bytes": 1281439,
-      "sha256": "97def7eafe4b2def3c45a9b362f50f34050d4ff5097e878fb40ba061f543db63",
+      "bytes": 1280667,
+      "sha256": "b723e44f6a77b18f7351b5912b374eb230f5b22a22eec92a9b6fb3597b66ace4",
       "obstacles": 1546,
       "colliders": 1371,
       "concealers": 1299
@@ -26,15 +26,15 @@
       "concealers": 4178
     },
     "urban": {
-      "bytes": 4291491,
-      "sha256": "a90309980a28a1595492527eaa769c19a4e1e935021aac74ba1604082bb40a48",
+      "bytes": 4291413,
+      "sha256": "90e26aec890752957917f7a0a506376bc52d9b5d24de17eef6956dc5a56d1c29",
       "obstacles": 2690,
       "colliders": 6647,
       "concealers": 2254
     },
     "coastal": {
-      "bytes": 1305447,
-      "sha256": "7a1fe976343e8e398e000e881647a67960ccbe750b899c986c02bd7c8d7fcb83",
+      "bytes": 1305410,
+      "sha256": "a8b91b31a144f970cba6cbaca79cc5161a3bb34331e556977fbdb33e9791b5ee",
       "obstacles": 3667,
       "colliders": 3580,
       "concealers": 3626
@@ -61,8 +61,8 @@
       "concealers": 1091
     },
     "frontier": {
-      "bytes": 1867791,
-      "sha256": "e4f783cdea7c536889c7d52acfb0b73c0ac23f36aef12b3a6fcaa896f6974a21",
+      "bytes": 1867473,
+      "sha256": "2e7f57e911f94d19c1a133b13fd9a7adc98d13d1a2a0301b45da13256123a0c4",
       "obstacles": 6073,
       "colliders": 5970,
       "concealers": 6296
@@ -82,10 +82,10 @@
       "concealers": 8252
     },
     "badlands": {
-      "bytes": 771236,
-      "sha256": "1e3eeedeebdd1e2412fba645b76c91773ad57fb33b89928c3cfcafa98d099641",
-      "obstacles": 1503,
-      "colliders": 1132,
+      "bytes": 768988,
+      "sha256": "139e8540499ccb0154dfee44a884eb366c6b5677b115fd0a060d564b18a1a88b",
+      "obstacles": 1496,
+      "colliders": 1125,
       "concealers": 283
     },
     "monsoon": {
@@ -201,8 +201,8 @@
       "concealers": 5709
     },
     "saltwind": {
-      "bytes": 1247282,
-      "sha256": "6f75d596b425ab1c3bad027f30b813119d6c3e1673c663a360b2a58bdbbb543e",
+      "bytes": 1246886,
+      "sha256": "c31b4839467709329f68eba8660c168490c068cc98933c486d429cee54b4c33a",
       "obstacles": 3037,
       "colliders": 2880,
       "concealers": 3408
