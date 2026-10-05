@@ -419,3 +419,33 @@ magnification and target distance beside it. The header reads the actual escort
 and rescue counts. The shared HUD layout owns minimap clearance. Short landscape
 omits the repeated designation/sight label, while portrait raises the rack above
 fire and zoom. Drone instruments keep their existing layout.
+
+
+## HUD editor and minimal display
+
+Settings → Gameplay → Interface → **Edit HUD layout** opens a still battlefield
+with draggable HUD panels. It uses a UI-free game capture rather than another
+running scene. Currently visible panels are inert snapshots; unavailable panels
+use labeled samples. The inspector can select hidden elements and restore them.
+Drag, arrow keys (Shift for larger steps), or the directional buttons position
+panels. Zoom preview helps on small screens. Save applies the layout; Cancel
+discards it. Reset layout restores the selected profile's responsive defaults.
+
+Desktop, phone portrait, and phone landscape have independent saved layouts.
+Positions remain within the viewport after resizing. Tank labels and floating
+damage numbers can be hidden, but stay attached to their world targets. The
+reticle stays attached to the real aiming point.
+
+**Minimal battle HUD** replaces the former hide-all setting, preserving existing
+preferences. It retains the actual aiming canvas, ammunition/reload, distance,
+zoom, and scope vision switching. Mobile driving and firing controls remain
+available. F10 toggles it; Esc opens Settings; a three-finger tap restores the
+full HUD on touch screens. Aircraft retain sight, weapons and return controls.
+
+`node src/ui/hudPreferences.selftest.mjs` checks profile selection, persistence,
+invalid data, storage failure and full-panel viewport bounds.
+`node tools/hud-editor.browser.mjs` checks the actual Settings entry point,
+dragging, keyboard movement, hiding/restoring, saving, canceling, reset, reload
+persistence, Escape ownership and minimal HUD visibility. The DOM-only matrix
+uses production HUD components at 1440×900, 390×844, 667×375 and 568×256. It does
+not claim native-device touch or rendered ballistic-scene validation.

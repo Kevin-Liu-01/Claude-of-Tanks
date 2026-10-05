@@ -1,5 +1,7 @@
 // Real production components, deterministic presentation data, no WebGL/simulation.
 import '../../src/ui/motion.css';
+import '../../src/ui/battleUiVisibility.css';
+import '../../src/ui/hudCustomization.css';
 import '../../src/ui/responsiveSurfaces.css';
 import { Vector3 } from 'three';
 import { installResponsiveLayout } from '../../src/ui/responsiveLayout.ts';
