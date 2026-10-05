@@ -1,5 +1,14 @@
 // A horseshoe quarry with a low ore-cut and two unequal rim routes. No new
 // geometry family or runtime update loop.
+//
+// Reference (the map-revival lane, 2026-10-05): Queenstown under Mount Lyell on the west coast of Tasmania, the Mount
+// Lyell Mining and Railway Company's town (1893-1994): the Iron Blow and West Lyell open cuts in the hills above it,
+// their benches and haul roads, and round them the bare hills the smelters' fumes, the cutting for their furnaces and
+// the rain stripped to pink, ochre and grey conglomerate. The works and the town stand where the plan seats them in the
+// queenstown kit (maps/regional/queenstown.ts): the headframes over the North Lyell shafts with their winding houses
+// and ore bins, the concentrator stepping down its slope, the smelters' brick power house and its stack, the railway's
+// engine shed, the water tank on its trestle, the Empire Hotel behind its two-storey verandah of cast-iron lace, and
+// rows of weatherboard cottages under corrugated iron with their bullnose verandahs and picket fences.
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import desert from './desert.ts';
 import { roundRoadBends } from './roadBends.ts';
@@ -57,6 +66,8 @@ export default {
     clusterCount: 22, loneCount: 32, rimCount: 40, grassDensity: 0.36, bushCount: 0.6, bushSpecies: 'acacia', clusterScrub: 1.6,
   },
   props: {
+    // the map-revival lane (2026-10-05): the Queenstown kit (maps/regional/queenstown.ts)
+    architecture: 'queenstown',
     sourcedPalette: 'foundry',
     plan: ['gantry', 'warehouse', 'foundryoffice', 'depot', 'watertower', 'containerRow', 'factory', 'ruin', 'warehouse', 'depot', 'gantry', 'containerRow', 'foundryoffice', 'ruin', 'depot', 'warehouse'],
     destructibleBuildings: ['quonsethut', 'motorpool', 'guardpost', 'servicegarage'],
@@ -66,7 +77,8 @@ export default {
       { id: 'western-rim-survey', role: 'scout', x: -300, z: 120, yawDeg: 70, structure: 'guardpost', outcrop: { count: 5, radius: 9 } },
       { id: 'southern-haul-workshop', role: 'support', x: -76, z: -228, yawDeg: -90, structure: 'servicegarage', redoubt: true, outcrop: { count: 5, radius: 10 }, wreck: true },
     ],
-    tones: makeRealisticCityBuildingTones({ value: 0.95, saturation: 0.92, soot: 0.03, roofValue: 0.88 }),
+    // the kit owns the renders' tones; the field walls keep the city preset's stone
+    tones: { stone: makeRealisticCityBuildingTones({ value: 0.95, saturation: 0.92, soot: 0.03, roofValue: 0.88 }).stone },
     wallStyle: 'fieldstone', wallStoneChance: 0.8,
     wallRuns: [[110, -162, 110, -106, 2], [172, -116, 232, -116, 2], [246, -40, 246, 22, 3], [166, 118, 230, 118, 2], [-126, -244, -58, -244, 3], [-326, 96, -326, 168, 2]],
     well: false, hayCrates: false, fences: true, telegraph: false, carts: false, logs: false,
