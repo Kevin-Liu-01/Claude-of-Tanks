@@ -214,7 +214,8 @@ function ahBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
   // a row's blocks meet at firewalls: a gable roof flush with them, or a zinc mansard; the street and court walls stand
   // in by the roof's overhang, so the eaves meet the lot's edge and every row house's solid envelope is the lot's fill
   const roofKind: 'gable' | 'mansard' = roofRoll < 0.62 ? 'gable' : 'mansard';
-  const over = roofKind === 'gable' ? 0.5 : 0.12;
+  // (a pitched roof's slab reaches past its eave by its thickness on the slope: 0.16 m at 35-43 degrees, ~0.11 m)
+  const over = roofKind === 'gable' ? 0.62 : 0.12;
   const f = rowFill(ctx), W = clampTo(f.w, 5.0, 60), D = clampTo(f.d - 2 * over, 4.0, 60);
   const door = choose(rng(), DOOR_LEAVES), sign = choose(rng(), SIGNS);
   const passage = rng() < 0.3;
@@ -253,7 +254,7 @@ function ahBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
   for (let i = 1; i < n; i++) for (const o of windowRhythm('right', i, len, { w: 0.95, h: 1.6, sill: 0.95, spacing: 2.5, margin: 1.0 })) openings.push(o);
   // a burnt top storey (one block in six): every casement of it gutted, the soot up to the cornice
   if (look() < 0.17) for (const o of openings) if (o.storey === n - 1 && o.kind === 'window' && o.face === 'left') o.state = 'burnt';
-  const roof: RoofSpec = roofKind === 'gable' ? { kind: 'gable', pitchDeg: pitch + 3, eave: over, verge: 0, thickness: 0.16, bucket: 'roof', ridge: 'saddle' }
+  const roof: RoofSpec = roofKind === 'gable' ? { kind: 'gable', pitchDeg: pitch + 3, eave: over - 0.12, verge: 0, thickness: 0.16, bucket: 'roof', ridge: 'saddle' }
     : { kind: 'flat', pitchDeg: 0, eave: 0.06, verge: 0, thickness: 0.24, bucket: 'stone' };
   const chimneys: HouseSpec['chimneys'] = roofKind === 'mansard' ? [] : [
     { x: (rng() - 0.5) * 0.8, z: len / 2 - 0.9, sx: 0.6, sz: 0.75, above: 1.0, bucket: 'stone', cap: 'slab' },
@@ -473,8 +474,10 @@ function mahalaHouse(ctx: RegionalBuildContext): RegionalParts {
   const jet = 0.45, sideJet = rng() < 0.4 ? 0.3 : 0;
   // the house as wide as its eaves allow in the lot (they meet the neighbours' at the lot's edge), the lot's sides walled
   // to the street; a narrow lot takes a shorter eave
-  const eaveM = Math.max(0.35, Math.min(0.8 + rng() * 0.2, (W - 4.4) / 2 - sideJet));
-  const Wh = clampTo(W - 2 * (eaveM + sideJet), 3.6, 14), Dh = clampTo(D * (0.55 + rng() * 0.12), 4.6, 9.0);
+  // (the steep roof's slab reaches past its eave by its thickness on the slope: 0.15 m at 47-56 degrees, under 0.13 m)
+  const eaveM = Math.max(0.35, Math.min(0.8 + rng() * 0.2, (W - 4.4) / 2 - sideJet - 0.13));
+  const reach = eaveM + 0.13;
+  const Wh = clampTo(W - 2 * (reach + sideJet), 3.6, 14), Dh = clampTo(D * (0.55 + rng() * 0.12), 4.6, 9.0);
   const groundStone = rng() < 0.6;
   const timber = choose(rng(), TIMBER);
   const pitch = 47 + rng() * 9, eave = eaveM;
@@ -482,7 +485,7 @@ function mahalaHouse(ctx: RegionalBuildContext): RegionalParts {
   const g0 = 2.55 + rng() * 0.25, g1 = 2.7 + rng() * 0.25;
   const h = siege(ctx, 0.7);
   // the house's front face (its upper storey's, jettied) at the plot's street edge
-  const front = D / 2 - jet - eaveM, zc = front - Dh / 2;
+  const front = D / 2 - jet - reach, zc = front - Dh / 2;
   sink.placed(0, f.cx, 0, f.cz, () => {
   const openings: Opening[] = [];
   const doorU = (rng() - 0.5) * (Wh - 2.2);

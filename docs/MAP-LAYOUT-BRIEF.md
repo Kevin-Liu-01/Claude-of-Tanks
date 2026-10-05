@@ -462,6 +462,7 @@ region, registered in `index.ts`:
 | `ruhr` | Ruhr and Silesian junctions: soot-dark brick, yellow-brick bands, slate | Cinder Junction |
 | `kohima` | Kohima 1944: bungalows under painted tin, a bazaar, Angami houses | Monsoon Ridge |
 | `hostomel` | Hostomel (Antonov) airport: a barrel-vaulted cargo hangar, sheet-steel maintenance hangars, a control tower's glazed cab, 1970s terminal and office blocks | Kestrel Airfield |
+| `sarajevo` | Sarajevo under siege, 1992–96: Austro-Hungarian blocks and Yugoslav towers (the twin office towers, the Holiday Inn, the parliament, the newspaper's gutted core), mahala houses with their doksats, mosques and churches, the market hall and the čaršija; shell pocks, UNHCR sheeting, sandbagged windows; the boulevard's tram line, burnt trams and container screens (`extraKits: ['sarajevo']`) | Ruinspires |
 
 **Adopting a kit is one line** in the map's props settings: `architecture: '<kit>'`. The plan builders still run
 first: every draw, the ground fit, the UV jitter and the road frontage see the base geometry, so every building keeps

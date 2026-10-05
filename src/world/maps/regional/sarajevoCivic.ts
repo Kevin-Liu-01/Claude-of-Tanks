@@ -347,7 +347,7 @@ const orthodoxChurch: RegionalBuilder = (ctx) => {
     const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
     const W = clampTo(f.w, 6, 40), D = clampTo(f.d, 9, 40);
     // the nave's eaves on the lot's side edges, the apse on its back edge, the bell tower's front on its street edge
-    const nw = clampTo(W - 0.9, 4.6, 14), ar = Math.min(nw * 0.36, 3.4), tw = clampTo(nw * 0.42, 3.0, 4.6);
+    const nw = clampTo(W - 0.9, 4.6, 40), ar = Math.min(nw * 0.36, 3.4), tw = clampTo(nw * 0.42, 3.0, 4.6);
     const az = -D / 2 + ar, tz1 = D / 2, tz0 = tz1 - tw, nz0 = az, nz1 = tz0 + 0.2;
     const nh = clampTo(nw * 0.95, 6, 8.6);
     const wall: RegionalBucket = rng() < 0.6 ? 'plaster' : 'stone';
@@ -411,7 +411,7 @@ const catholicChurch: RegionalBuilder = (ctx) => {
   sink.placed(0, f.cx, 0, f.cz, () => {
     const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
     const W = clampTo(f.w, 6, 40), D = clampTo(f.d, 8, 40);
-    const nw = clampTo(W - 1.3, 5, 13), tw = clampTo(nw * 0.42, 3, 4.8);
+    const nw = clampTo(W - 1.3, 5, 40), tw = clampTo(nw * 0.42, 3, 4.8);
     const tz1 = D / 2 - 0.3, tz0 = tz1 - tw, nz0 = -D / 2 + 0.3, nz1 = tz0 + 0.3, nl = nz1 - nz0;
     const nh = clampTo(nw * 0.95, 6, 9);
     const door = choose(rng(), DOOR_LEAVES);

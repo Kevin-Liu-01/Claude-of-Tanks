@@ -126,7 +126,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Kestrel Airfield | Runway/apron geometry, dispersal bays, perimeter service roads; wide open sightlines |
 | Obsidian Caldera | Black volcanic shelves, ash and extraction equipment; distinct basalt fracture language |
 | Steinburg | Masonry street blocks, courtyards, central civic space and localized war damage |
-| Ruinspires | Monumental damaged street canyons; rubble belongs to adjacent structures and forms clear plazas/routes |
+| Ruinspires | Sarajevo under siege (1992–96): the boulevard's tram line between Austro-Hungarian blocks and Yugoslav towers, the mahalas on the flanks, the siege on every building (the `sarajevo` kit, 2026-10-05); the ground's land use and the roads' surfaces are the ground lane's next |
 | Blackglass District | Broken arcologies, elevated transit and flooded finance quarter; glass/concrete, not orange stone towers |
 | Skybridge Chasm | Crossing/abutments/control works organize massive canyon; believable approaches and below-bridge debris |
 
@@ -7199,6 +7199,29 @@ pixels the flare lifts by more than 3 levels 32.5 % / 34.1 % → 0.00 %; Caldera
 floor), the ring and the ghost gone off the ridge; facing the sun on Caldera 3.3 % → 0.03 %; Saltwind and Redrock facing
 the sun keep the glow and the streak (the flare's mean lift halved, 0.16 → 0.08 and 0.15 → 0.07 levels). Receipt:
 `lensFlare.selftest` (the twin's closed deck → 0, a veil at the gate's midpoint → half, an edge across the disc → a fifth).
+
+### 2026-10-05 — Ruinspires as Sarajevo under siege (the map-revival lane, mr1)
+
+**The `sarajevo` regional kit replaces all 14 structure ids the map draws in place, and the street kit
+(`extraKits: ['sarajevo']`) lays the boulevard's tram line and the cemeteries.** The kit
+(`maps/regional/sarajevo*.ts`) builds Austro-Hungarian blocks (gable or zinc-mansard roofs over firewalls, one in nine
+with a collapsed end), Yugoslav infill blocks, mahala houses with doksats and walled gardens, the twin office towers,
+the Holiday Inn, the parliament, the newspaper's gutted core, estate and slab towers, the museum and the Vijećnica,
+mosques, the Orthodox and Catholic churches, the market hall and the čaršija. It adds shell pocks, UNHCR sheeting and
+sandbagged windows. The street kit lays the double track in its bed with the catenary, two burnt trams shoved against
+the kerbs and 17 container screens at the crossings, every one clear of the roads' cores (3.9 m from a road's line).
+- *Footprints:* every builder fills the base's measured reach (`ctx.bounds`): −0.30 to 0.00 m on every side. The one
+  exception is the row houses' street side, −1.25 to −0.85 m: those are the base's shop canopies and balconies, 2.7 to
+  3.1 m up, while the fronts stand on the plot's street edge. The 392 structure records match the PR head's one for one,
+  every footprint centre within 0.58 m, so no building moved. The census's colliders went from 8,349 to 6,241 (the
+  structure shells from 7,158 to 5,040), and the shard is re-pinned at [1942, 6241, 462].
+- *Pacing* (20 seeds, 37000–37019): median 447 s, p10 263 s, minimum 208 s, none under 120 s, no timeouts. The PR head
+  gives 263 / 183 / 162. The kit's solid bodies conceal more than the base's ragged low ruins did.
+- *Frame pacing* (one hold at load ~90, single runs, no long tasks in any). PR head, chase / establishing p50/p95/p99:
+  Ruinspires 16.9/22.7/32.1 and 16.6/22.1/31.4 ms; Verdant 18.4/31.0/37.8 and 17.1/33.5/49.5 ms. The owner's
+  "choppiness" is not Ruinspires' frame pacing on the PR head. The candidate gave 17.5/30.1/40.9 and 16.8/36.3/58.8 ms
+  at 682 calls and 2.93 M triangles in the chase (head: 679 and 2.83 M). The A B C C B A ×8 cost gate waits for a quiet
+  machine.
 
 ## Acceptance is visual and measured
 

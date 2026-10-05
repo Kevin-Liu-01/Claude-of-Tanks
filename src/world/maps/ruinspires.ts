@@ -20,6 +20,8 @@
 // bravo behind the north ridge. The three zone-control discs stand on the boulevard's three squares — the west square,
 // the Square of the Republic (also the turbo-ball kickoff) and the east square — so both teams fight down into the
 // valley; the trunk roads reach the boulevard 50 m apart, so neither runs straight on into the other.
+import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
+
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 // The towers, halls and works of the city: authored sites in rotation pairs about the Square of the Republic, so each
@@ -182,6 +184,14 @@ export default {
     // and a bot hunting a hull on the far ridge pressed at its gaps until a pacing match timed out.
     streetRowKeepouts: [{ x: -225, z: 0, r: 31 }, { x: 0, z: 0, r: 31 }, { x: 225, z: 0, r: 31 },
       { x0: -215, z0: -192, x1: 215, z1: -182 }, { x0: -215, z0: 182, x1: 215, z1: 192 }],
+    // the city's palette (the realistic city tones) with the Sarajevo kit's two renders carried over it: a map's tones
+    // override its kit's (props.ts), so the Austro-Hungarian ochre and the Yugoslav concrete of maps/regional/sarajevo.ts
+    // surfaces.tones stand here as they stand there
+    tones: {
+      ...makeRealisticCityBuildingTones({ value: 0.80, saturation: 0.86, soot: 0.045, roofValue: 0.78, coolAccent: 0.01 }),
+      plaster2: (h: number, s: number, l: number) => [0.105, clamp01(s * 0.4 + 0.34), clamp01(l * 0.82 + 0.06)],
+      plaster3: (h: number, s: number, l: number) => [0.11, clamp01(s * 0.12 + 0.03), clamp01(l * 0.78 + 0.04)],
+    },
     wallStyle: 'brick', wallStoneChance: 0.74, buildingLat: [21, 4],
     sideSkip: 0.04, spacingPad: 4.5, maxSpread: 4.2,
     // Park walls on the flanks and the barricades across the boulevard's ends (rotation pairs).

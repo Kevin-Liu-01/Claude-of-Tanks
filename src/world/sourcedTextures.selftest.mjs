@@ -206,7 +206,9 @@ for (const mapId of ['urban', 'ruinspires', 'blackglass', 'skybridge', 'foundry'
 // strata). Every battlefield after the sixteen legacy ids now routes deliberately; `null` marks a map that keeps
 // the legacy own-id building route instead of an authored props.sourcedPalette.
 const newMapPalettes = {
-  ruinspires: ['ruinspires', null],
+  // 2026-10-05 (the map-revival lane): Ruinspires' Sarajevo kit takes Steinburg's lime-render tint, warm enough for the
+  // kit's ochre, cream, green and pink washes (its own-id tint browned them)
+  ruinspires: ['ruinspires', 'urban'],
   blackglass: ['blackglass', null],
   titan_gorge: ['titan_gorge', null],
   skybridge: ['skybridge', null],

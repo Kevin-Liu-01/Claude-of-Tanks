@@ -2,16 +2,17 @@
 // map's `props.extraKits: ['sarajevo']`, dressed from maps/mapKits.ts dressMapExtras). Zmaja od Bosne carried the city's tram line
 // down the valley through the whole siege: the double track in its paved bed between low kerbs down the boulevard's
 // middle, the rails, the catenary on tubular steel poles at the kerbs with their cross-spans and the contact wires over
-// each track (a pole bent here and there, a wire down); the trams burnt out where the shelling caught them, standing on
-// the rails; and the shipping containers stood along the kerbs at the crossings as screens against the snipers in the
-// hills, behind which people ran across.
+// each track (a pole bent here and there, a wire down); the trams burnt out where the shelling caught them, derailed
+// and shoved against the kerb; and the shipping containers stood along the kerbs at the crossings as screens against
+// the snipers in the hills, behind which people ran across.
 //
 // On the slopes below the ridges lie the cemeteries the siege filled — Kovači, the Lion cemetery, Bare: the white
 // nišani of the Muslim graves in their rows, turbaned and plain, the crosses of the Christian ones among them.
 //
 // The bed, rails, poles, wires and stones are dressing (no collision: a hull drives over the bed and its kerbs); the burnt trams
-// and the containers block like any wreck, each a convex footprint in both collision sinks. Everything draws from a
-// stream of its own (never the props placement stream), and stands only where it clears the records already placed.
+// and the containers block like any wreck, each a convex footprint in both collision sinks, and stand clear of every
+// road's core (the layout brief's solidPropsInRoad: a hull drives the roads past them). Everything draws from a stream
+// of its own (never the props placement stream), and stands only where it clears the records already placed.
 import type * as THREE from 'three';
 import { PartSink, hashSeed, normalize3, rgb, shade, streamFrom, type Rgb, type Vec3 } from './regional/geometry.ts';
 import { getDeviceTier } from '../../engine/quality.ts';
@@ -57,6 +58,29 @@ function resample(points: ReadonlyArray<readonly [number, number]>, step: number
 function clears(records: readonly CollisionRecord[], cx: number, cz: number, hl: number, hw: number, tx: number, tz: number, pad: number): boolean {
   const ex = Math.abs(tx) * hl + Math.abs(tz) * hw + pad, ez = Math.abs(tz) * hl + Math.abs(tx) * hw + pad;
   return !records.some((r) => !r.dead && r.max[0] > cx - ex && r.min[0] < cx + ex && r.max[2] > cz - ez && r.min[2] < cz + ez);
+}
+
+/**
+ * The layout brief's road core (tools/map-layout-metrics.mjs ROAD_CORE_M: 3.5 m either side of a road's line) and a
+ * margin for the metric's metre grid: a wreck or a screen keeps this far from every road's line.
+ */
+const ROAD_CLEAR = 3.5 + 0.4;
+
+/** Does a footprint (centre, half extents along / across a heading) keep ROAD_CLEAR from every road's line? */
+function clearOfRoads(roads: ReadonlyArray<ReadonlyArray<readonly [number, number]>>, cx: number, cz: number, hl: number, hw: number,
+  tx: number, tz: number): boolean {
+  const nx = -tz, nz = tx, na = Math.max(1, Math.ceil(2 * hl)), nb = Math.max(1, Math.ceil(2 * hw));
+  for (let i = 0; i <= na; i++) for (let j = 0; j <= nb; j++) {
+    const a = -hl + (2 * hl * i) / na, b = -hw + (2 * hw * j) / nb;
+    const x = cx + tx * a + nx * b, z = cz + tz * a + nz * b;
+    for (const line of roads) for (let k = 0; k + 1 < line.length; k++) {
+      const [ax, az] = line[k], [bx, bz] = line[k + 1];
+      const dx = bx - ax, dz = bz - az, len2 = dx * dx + dz * dz;
+      const t = len2 > 1e-9 ? Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / len2)) : 0;
+      if (Math.hypot(x - ax - dx * t, z - az - dz * t) < ROAD_CLEAR) return false;
+    }
+  }
+  return true;
 }
 
 /** A convex box footprint in both collision sinks. */
@@ -128,9 +152,8 @@ function dressTramBoulevard(ctx: TramContext, road = 0): void {
   if (!line || line.length < 2) return;
   const hf = ctx.heightField;
   const mobile = getDeviceTier() === 'mobile';
-  // the placements (what blocks) draw from one stream, the looks from another: a phone's lighter dressing never moves a
-  // wreck or a container, so the collision a host certifies is the desktop's
-  const place = streamFrom(hashSeed('sarajevo-tram-place', road, line.length));
+  // the placements (what blocks) draw from the seats' own hashes, the looks from a stream: a phone's lighter dressing
+  // never moves a wreck or a container, so the collision a host certifies is the desktop's
   const look = streamFrom(hashSeed('sarajevo-tram', road, line.length));
   const st = resample(line, 2.0, 430);
   if (st.length < 4) return;
@@ -198,12 +221,16 @@ function dressTramBoulevard(ctx: TramContext, road = 0): void {
     prev = { y, s };
   }
   push(ctx, wires);
-  // ---- two burnt trams, rotation-symmetric about the map's centre: one on each track
-  const tramAt = (sTarget: number, track: number) => {
-    for (const shift of [0, 8, -8, 16, -16, 24]) {
-      const s = st.reduce((best, c) => (Math.abs(c.s - sTarget - shift) < Math.abs(best.s - sTarget - shift) ? c : best));
-      const [cx, , cz] = at(s, track * TRACK);
-      if (!clears(records, cx, cz, 10.9, 1.3, s.tx, s.tz, 0.4)) continue;
+  // ---- two burnt trams, rotation-symmetric about the map's centre: derailed and shoved against the kerb, one on each
+  // side, each midway between two poles of the catenary (its inner side clear of the boulevard's core)
+  const poles = st.filter((_c, i) => i % Math.round(SPAN / 2) === 0);
+  const TRAM_OFF = ROAD_CLEAR + 1.25 + 0.1;
+  const tramAt = (sTarget: number, side: number) => {
+    const bays = poles.slice(0, -1).map((p) => p.s + SPAN / 2).sort((a, b) => Math.abs(a - sTarget) - Math.abs(b - sTarget));
+    for (const target of bays.slice(0, 6)) {
+      const s = st.reduce((best, c) => (Math.abs(c.s - target) < Math.abs(best.s - target) ? c : best));
+      const [cx, , cz] = at(s, side * TRAM_OFF);
+      if (!clears(records, cx, cz, 10.9, 1.3, s.tx, s.tz, 0.4) || !clearOfRoads(roads, cx, cz, 10.9, 1.25, s.tx, s.tz)) continue;
       const y = hf.getHeightAt(cx, cz);
       const sink = new PartSink([look() * 5, look() * 5]);
       sink.placed(Math.atan2(-s.tz, s.tx), cx, y + 0.02, cz, () => burntTram(sink, look));
@@ -216,21 +243,29 @@ function dressTramBoulevard(ctx: TramContext, road = 0): void {
   const total = st[st.length - 1].s, mid = st.reduce((best, c) => (Math.hypot(c.x, c.z) < Math.hypot(best.x, best.z) ? c : best)).s;
   tramAt(mid - Math.min(110, total * 0.12), 1);
   tramAt(mid + Math.min(110, total * 0.12), -1);
-  // ---- the container screens at the crossings: along the kerb on each side, clear of the cross street
+  // ---- the container screens at the crossings: along the kerb on each side, clear of the cross street. They stand in
+  // rotation pairs about the Square (the layout is its own rotation): each crossing seats its screens from the cross
+  // street's own end point, and each seat draws its rotation-canonical seat's lot (turned half round, a seat's side of
+  // the boulevard and its way along it flip; the boulevard's heading at the two crossings is the same)
+  const seen = new Set<string>();
   for (let r = 0; r < roads.length; r++) {
     if (r === road) continue;
     const other = roads[r];
     for (const end of [other[0], other[other.length - 1]]) {
       const hit = st.find((c) => Math.hypot(c.x - end[0], c.z - end[1]) < 1.6);
-      if (!hit) continue;
+      const id = `${Math.round(end[0])},${Math.round(end[1])}`;
+      if (!hit || seen.has(id)) continue;
+      seen.add(id);
+      const canon = end[0] > 1e-6 || (Math.abs(end[0]) <= 1e-6 && end[1] > 0);
       for (const side of [1, -1]) for (const dir of [1, -1]) {
-        if (place() < 0.3) continue;
+        const key = canon ? [end[0], end[1], side, dir] : [-end[0], -end[1], -side, -dir];
+        if (streamFrom(hashSeed('sarajevo-screen', Math.round(key[0]), Math.round(key[1]), key[2], key[3]))() < 0.5) continue;
         // the corner between the two roads (the street rows keep 9.5 m clear of a crossing road): the first seat clear
         const off = side * (POLE_OFFSET + 1.5);
-        for (const at0 of [7.2, 8.4, 6.2]) {
+        for (const at0 of [7.4, 8.6, 9.8]) {
           const along = dir * at0;
-          const cx = hit.x + hit.tx * along + hit.nx * off, cz = hit.z + hit.tz * along + hit.nz * off;
-          if (!clears(records, cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz, 0.4)) continue;
+          const cx = end[0] + hit.tx * along + hit.nx * off, cz = end[1] + hit.tz * along + hit.nz * off;
+          if (!clears(records, cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz, 0.4) || !clearOfRoads(roads, cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz)) continue;
           const y = Math.min(hf.getHeightAt(cx - hit.tx * BOX_HL, cz - hit.tz * BOX_HL), hf.getHeightAt(cx + hit.tx * BOX_HL, cz + hit.tz * BOX_HL));
           const sink = new PartSink([look() * 5, look() * 5]);
           sink.placed(Math.atan2(-hit.tz, hit.tx), cx, y - 0.05, cz, () => container(sink, CONTAINERS[Math.floor(look() * CONTAINERS.length) % CONTAINERS.length], look, mobile));
