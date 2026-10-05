@@ -3565,6 +3565,7 @@ uniform float uBeddedR;        // round 55: 1 when the R layer is the procedural
 uniform vec3 uSunDirW;    // round 42: world direction toward the sun (the vista ring's uSunDirW)
 uniform float uWallSkyLift; // round 42: sky light a steep face turned from the sun receives (0 = off)
 float gWallSky = 0.0;     // round 42: steep × turned-from-the-sun weight, read by the indirect-light hook
+float gVolcShade = 0.0;   // ground lane (wave 85): a volcanic basin's slope turned from the sun (its warm bounce, the lights hook)
 // round 72b: the horizon ring's baked surface atlas (horizonRelief.ts: the fine relief's gradient, its occlusion and the
 // sun's visibility over the annulus), read by the ring's terrain-material bands past the square so the first ridge
 // carries the same striations, rock breaks, snow line, folds and cast shadows as the vista ranges behind it.
@@ -3961,6 +3962,9 @@ void splatCompute() {
   // colour that never follows the rendered sky (Caldera's inner east wall measured 3 % of the sky's brightness).
   // Weight the faces that qualify here; the indirect-light hook below adds the sky's own colour to them.
   gWallSky = smoothstep(0.12, 0.50, 1.0 - clamp(wn.y, 0.0, 1.0)) * (1.0 - smoothstep(-0.08, 0.30, dot(wn, uSunDirW)));
+  // ground lane (wave 85, Caldera's backlit rim): the volcanic slopes that face the sunlit ash floor — from ~14°, not only
+  // the walls (the rim's 33° slope sat at the foot of the wall sky light's ramp) — turned from the sun
+  gVolcShade = uReduxFold.w * smoothstep(0.03, 0.20, 1.0 - clamp(wn.y, 0.0, 1.0)) * (1.0 - smoothstep(-0.08, 0.30, dot(wn, uSunDirW)));
   // Resolve detail by screen footprint and distance everywhere. Forcing the
   // far variant on exterior floors exposed the square as a quality boundary.
   // detail fade: positive mip bias at range kills the single-frequency
@@ -4505,8 +4509,10 @@ void splatCompute() {
       float lodR = max(0.0, gNoiseLog + log2(0.035));
       float fallR = mix(textureLod(uNoise, gWallUVx * vec2(0.035, 0.0035) + vec2(0.61, 0.19), lodR).g,
                         textureLod(uNoise, gWallUVz * vec2(0.035, 0.0035) + vec2(0.61, 0.19), lodR).g, gWallW);
-      vec3 weathered = mix(a.rgb, uMeanG.rgb * vec3(1.06, 1.0, 0.94), 0.45)
-        * (0.88 + 0.30 * smoothstep(0.40, 0.80, fallR) * tileVis(28.0));
+      // (wave 85: the shaded rim "nearly texture-less") the weathering shifts the basalt's tone half way to the ash's —
+      // a scale on the rock's own colour, so its grain (the lapilli, the scoria's colour) stays whole in the shade
+      vec3 ashShift = mix(vec3(1.0), uMeanG.rgb * vec3(1.08, 1.0, 0.90) / max(uMeanR.rgb, vec3(0.02)), 0.45);
+      vec3 weathered = a.rgb * ashShift * (0.88 + 0.30 * smoothstep(0.40, 0.80, fallR) * tileVis(28.0));
       a.rgb = mix(a.rgb, weathered, rimW * 0.75);
     }
   }
@@ -5866,8 +5872,17 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   // floored at 0.92) on a slope turned from the sun the detail normals' sun-facing facets lit full, where on the ground
   // the grains' own neighbours shade them: the bright speckle of a backlit flank. On a volcanic map the detail relief
   // fades as the surface turns from the sun (its fine ash and basalt grain; the light's own shading carries the slope)
-  if (uReduxFold.w > 0.001) dk *= mix(1.0, smoothstep(-0.06, 0.32, dot(gN, uSunDirW)), 0.85 * uReduxFold.w);
-  vec3 wN = normalize(vec3(gN.x + dN.x * dk, max(gN.y, 0.02) + dN.z * dk, gN.z + dN.y * dk));
+  // (wave 85, the backlit ash after that: "a crushed, nearly texture-less blue-black fill with no skylight fill, rim
+  // light or grain") fading the whole relief took its grain out of the sky's light too. Only the facets' tilt toward the
+  // sun goes now — the perturbation's component along the sun's heading, where it is positive — so no grain catches the
+  // sun its slope is turned from, while every other tilt still shades the sky's and the bounce's light
+  vec3 pN = vec3(dN.x, dN.z, dN.y) * dk; // the detail perturbation in world axes (horizontal: the third channel is unused)
+  if (uReduxFold.w > 0.001) {
+    float avert = (1.0 - smoothstep(-0.06, 0.32, dot(gN, uSunDirW))) * uReduxFold.w;
+    vec2 sH = uSunDirW.xz / max(length(uSunDirW.xz), 1e-4);
+    pN.xz -= sH * max(dot(pN.xz, sH), 0.0) * avert;
+  }
+  vec3 wN = normalize(vec3(gN.x + pN.x, max(gN.y, 0.02) + pN.y, gN.z + pN.z));
   normal = normalize((viewMatrix * vec4(wN, 0.0)).xyz);
 }
 `;
@@ -6242,6 +6257,13 @@ function* createSplatMaterialSteps(
     // limestone wall pale. Faces the sun lights are untouched (gWallSky is 0 there).
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <lights_fragment_end>',
       '#include <lights_fragment_end>\n#ifdef USE_FOG\nreflectedLight.indirectDiffuse += fogColor * (uWallSkyLift * gWallSky) * BRDF_Lambert(diffuseColor.rgb);\n#endif'
+      // ground lane (wave 85, Caldera's backlit rim: "a crushed, nearly texture-less blue-black fill with no skylight fill"):
+      // a slope turned from the sun on a volcanic basin faces the sunlit ash floor below it, and the light model's ground
+      // (a constant tone at half the zoned ash's albedo) under-counts that warm bounce — the face's indirect light is drawn
+      // two thirds of the way to a warm grey-brown of its own luminance and lifted 45 % (gVolcShade: from ~14°, turned from
+      // the sun; 0 on every other map, and a sunlit face is untouched)
+      + '\nif (uReduxFold.w > 0.001) { float cotWarm = gVolcShade; vec3 cotInd = reflectedLight.indirectDiffuse;'
+      + ' reflectedLight.indirectDiffuse = mix(cotInd, vec3(dot(cotInd, vec3(0.299, 0.587, 0.114))) * vec3(1.20, 1.0, 0.76), 0.65 * cotWarm) * (1.0 + 0.45 * cotWarm); }'
       // round 72b: the ring bands' baked cast shadows on the sun's light and their occlusion on the sky's
       + '\nreflectedLight.directDiffuse *= gRingSun; reflectedLight.directSpecular *= gRingSun; reflectedLight.indirectDiffuse *= gRingAo;');
     // Round 73: the folds' occlusion joins Three's own ambient-occlusion stage — indirect light only, as an aoMap would
