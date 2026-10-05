@@ -574,6 +574,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/phaseGpuResidency.selftest.mjs',
     'src/engine/resourceLifetime.selftest.mjs',
     'src/fx/lazyRuntime.selftest.mjs',
+    'src/fx/flipbookOrientation.selftest.mjs',
     'src/fx/clock.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
