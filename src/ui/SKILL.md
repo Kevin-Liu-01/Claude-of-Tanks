@@ -11,6 +11,10 @@ Present game and session state with fast, legible desktop/mobile interactions.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
+`serviceRecordView.ts` renders the garage's tabbed Service Record (overview,
+medals, achievements, history with each battle's kill trace) into the dialog
+`garage.ts` owns, only while it is open; `medalArt.ts` draws every medal and
+achievement as inline SVG; `medalToast.ts` shows medals as they are earned;
 `garage.ts` owns roster/loadout presentation; its intent-loaded
 `camoSwatchPainter.ts` owns deterministic exact camouflage cards;
 `garageStage.ts` owns the typed visible hero podium and environment bridge;

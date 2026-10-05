@@ -922,6 +922,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',
     'src/game/profile.selftest.mjs',
+    'src/game/serviceRecord.selftest.mjs',
+    'src/ui/serviceRecordView.selftest.mjs',
     'src/game/campaignProgress.selftest.mjs',
     'src/game/campaignOperations.selftest.mjs',
     'src/game/teamArrangement.selftest.mjs',

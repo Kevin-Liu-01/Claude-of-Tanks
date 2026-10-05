@@ -37,6 +37,8 @@ import type { EventBus } from '../game/stateCore.ts';
 import { t, formatNumber } from './i18n.ts';
 import type { CampaignDebrief } from '../game/campaignDebrief.ts';
 import { finalBlowLine, type FinalBlow } from './finalBlow.ts';
+import { ACHIEVEMENTS, MEDALS, type BattleAwards } from '../game/serviceRecord.ts';
+import { achievementSVG, medalSVG } from './medalArt.ts';
 import type { LobbyPlayer, SerializedLobby } from '../mp/room/lobbyShape.ts';
 
 export type EndScreenResult = '' | 'victory' | 'defeat' | 'draw';
@@ -108,6 +110,8 @@ export interface EndScreenSummary {
   hordeWave?: number | null;
   /** Jev commander (2026-09-25): who commanded each side's bots ('classic' | 'jev'); absent in rooms. */
   brains?: { readonly enemy: string; readonly allies: string } | null;
+  /** Medals and achievement tiers this battle earned (serviceRecord.ts). */
+  awards?: BattleAwards | null;
 }
 
 interface EndScreenRuntime {
@@ -281,6 +285,20 @@ const ES_CSS = `
   font-variant-numeric:tabular-nums;}
 .cot-es .es-best .bt b{color:#eef4f9;font-weight:700;}
 .cot-es .es-best .bt small{display:block;margin-top:2px;font-size:11px;color:#83929e;}
+.cot-es .es-awards{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px;
+  min-height:46px;padding:6px 14px;border-bottom:1px solid rgba(166,184,199,.18);
+  background:linear-gradient(90deg,rgba(255,209,102,.08),rgba(255,209,102,0) 70%);}
+.cot-es .es-awards .ak{display:flex;align-items:center;gap:7px;font:800 10.5px ${FONT_COND};letter-spacing:.14em;
+  text-transform:uppercase;color:${COL.amberHi};}
+.cot-es .es-awards .ak svg{flex:0 0 auto;}
+.cot-es .es-awards .al{display:flex;gap:6px;min-width:0;overflow-x:auto;scrollbar-width:none;}
+.cot-es .es-awards .al::-webkit-scrollbar{display:none;}
+.cot-es .es-awards .aw{display:flex;flex:0 0 auto;align-items:center;gap:6px;padding:3px 9px 3px 4px;
+  background:rgba(8,12,16,.72);border:1px solid rgba(166,184,199,.22);}
+.cot-es .es-awards .aw.signature{border-color:rgba(240,160,48,.65);background:rgba(240,160,48,.1);}
+.cot-es .es-awards .aw b{font:800 10px ${FONT_COND};letter-spacing:.08em;text-transform:uppercase;color:#eef4f9;white-space:nowrap;}
+.cot-es .es-awards .aw.tier b{color:#cfd9e2;}
+.cot-es .es-awards svg{display:block;flex:0 0 auto;}
 .cot-es .es-kill-block{display:flex;flex:1;min-height:0;flex-direction:column;padding:0 12px 10px;}
 .cot-es .es-kill-list{min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(240,160,48,.45) transparent;}
 /* the legacy integration overlay may flash its old button/earnings line in
@@ -935,6 +953,24 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     host.dataset.bestShot = String(Math.round(bestShot.damage));
   }
 
+  function renderAwards(parent: HTMLElement, awards: BattleAwards | null | undefined): void {
+    const medals = (awards?.medals ?? []).map((id) => MEDALS.find((medal) => medal.id === id)).filter((medal) => medal != null);
+    const tiers = (awards?.achievements ?? []).map((award) => ({
+      def: ACHIEVEMENTS.find((achievement) => achievement.id === award.id), tier: award.tier,
+    })).filter((entry) => entry.def != null);
+    host.dataset.medals = String(medals.length);
+    if (!medals.length && !tiers.length) return;
+    const strip = el('div', 'es-awards', parent);
+    strip.setAttribute('aria-label', t('endScreen.medals.aria'));
+    strip.style.setProperty('--i', nextI());
+    strip.innerHTML = `<span class="ak">${uiIconSVG('gold', 16)}<span>${t('endScreen.medals.heading')}</span></span>` +
+      `<span class="al">${medals.map((medal) =>
+        `<span class="aw${medal.tier === 'signature' ? ' signature' : ''}" title="${t(`service.medal.${medal.id}.desc`)}">` +
+        `${medalSVG(medal, 26)}<b>${t(`service.medal.${medal.id}.name`)}</b></span>`).join('')}` +
+      `${tiers.map(({ def, tier }) =>
+        `<span class="aw tier">${achievementSVG(def!, tier, 22)}<b>${t(`service.achievement.${def!.id}.name`)} ${['', 'I', 'II', 'III'][tier]}</b></span>`).join('')}</span>`;
+  }
+
   function renderKillList(
     parent: HTMLElement,
     result: EndScreenResult,
@@ -986,6 +1022,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     renderSecondaryStats(el('div', 'es-stat-secondary', personal), sum.stats,
       sum.revives ? Math.max(0, Math.floor(Number(sum.playerDeaths) || 0)) : null);
     renderBestShot(personal, sum.bestShot);
+    renderAwards(personal, sum.awards);
     renderKillList(personal, result, sum.kills);
   }
 

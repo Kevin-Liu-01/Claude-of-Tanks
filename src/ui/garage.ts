@@ -58,7 +58,7 @@ import { mountGitHubStars } from './githubStars.ts';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.ts';
-import { t, formatNumber, formatDate, getLocale, setLocale } from './i18n.ts';
+import { t, formatNumber, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
 import {
@@ -66,8 +66,8 @@ import {
 } from '../sim/matchRuleset.ts';
 import { readMarsSettings, readTeamArrangement, writeMarsSettings, writeTeamArrangement } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
-import { campaignSummary } from '../game/campaignOperations.ts';
-import { frontlineSummary } from '../game/campaignProgress.ts';
+import { getServiceRecord, markServiceRecordSeen, unseenAwardCount } from '../game/serviceRecord.ts';
+import { RECORD_TABS, recordSummary, recordTabMarkup, type RecordTab, type RecordViewNames } from './serviceRecordView.ts';
 import type { PlayMode } from '../mp/session/playMode.ts';
 import { shellAmmunitionCapacity } from '../sim/ammunition.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
@@ -545,7 +545,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="nv cot-record-trigger" type="button" aria-label="${t('garage.nav.record')}" ` +
     `title="${t('garage.nav.record')}" aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-record-modal">` +
     `${uiIconSVG('battleRecord', 15, 'currentColor', 'nvi')}` +
-    `<span class="nav-label">${t('garage.nav.record')}</span><span class="record-badge" aria-hidden="true">0</span></button>` +
+    `<span class="nav-label">${t('garage.nav.record')}</span><span class="record-badge" aria-hidden="true">0</span>` +
+    `<span class="record-new" aria-hidden="true" hidden></span></button>` +
     `</div></div>` +
     `<nav class="cot-nav cot-header-nav" aria-label="${t('garage.nav.garage')}">` +
     `<button class="nv on cot-nav-desktop" data-nav="garage" type="button" aria-label="${t('garage.nav.garage')}" title="${t('garage.nav.garage')}">` +
@@ -608,11 +609,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<div class="cot-record-modal" id="cot-record-modal" role="dialog" aria-modal="true" ` +
     `aria-labelledby="cot-record-title" aria-describedby="cot-record-description" hidden>` +
     `<section class="cot-record-dialog">` +
-    `<header class="cot-record-head"><div><div class="eyebrow">${t('garage.record.eyebrow')}</div>` +
+    `<header class="cot-record-head"><div class="cot-record-title"><div class="eyebrow">${t('garage.record.eyebrow')}</div>` +
     `<h2 id="cot-record-title">${t('garage.record.heading')}</h2>` +
     `<p id="cot-record-description">${t('garage.record.description')}</p></div>` +
+    `<div class="cot-record-summary"></div>` +
     `<button class="cot-record-close" type="button" aria-label="${t('garage.record.close')}">&times;</button></header>` +
-    `<div class="cot-record-body"></div></section></div>` +
+    `<div class="cot-record-tabs" role="tablist" aria-label="${t('garage.record.tabsAria')}">` +
+    RECORD_TABS.map((tab) => `<button type="button" role="tab" id="cot-record-tab-${tab}" data-record-tab="${tab}" ` +
+      `aria-controls="cot-record-panel" aria-selected="${tab === 'overview'}" tabindex="${tab === 'overview' ? 0 : -1}">` +
+      `<span>${t(`garage.record.tab.${tab}`)}</span><small class="cot-record-tab-count"></small></button>`).join('') +
+    `</div><div class="cot-record-body" id="cot-record-panel" role="tabpanel" tabindex="0" ` +
+    `aria-labelledby="cot-record-tab-overview"></div></section></div>` +
     `<div class="cot-battle-control">` +
     `<button class="cot-battle" type="button" aria-label="${t('garage.battle.startBots')}">` +
     `<span class="battle-active-icon">${uiIconSVG('battleBots', 20)}</span>` +
@@ -758,70 +765,52 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   document.body.appendChild(root);
   mountGitHubStars(root);
 
+  // The Service Record dialog renders only while open: a garage return after battle
+  // refreshes just the button's badges, never a hidden tab of medal artwork.
+  let recordTab: RecordTab = 'overview';
+  let recordUnseen: string[] = [];
+  const recordNames: RecordViewNames = {
+    vehicle: (id) => {
+      const vehicle = allSpecs.find((spec) => spec.id === id);
+      return vehicle?.label?.displayName || vehicle?.name || id || t('garage.record.unknownVehicle');
+    },
+    map: (id) => (opts.maps || []).find((entry) => entry.id === id)?.name || id || t('garage.record.unknownMap'),
+    modeIcon: (mode) => battleRuleMeta[mode as GameModeId]?.icon || 'modeStandard',
+  };
+  function renderServiceRecordTab() {
+    const view = { ...getServiceRecord(), unseen: recordUnseen };
+    const summary = recordSummary(view);
+    const chips = root.querySelector<HTMLElement>('.cot-record-summary');
+    if (chips) chips.innerHTML = summary.chips;
+    for (const tab of root.querySelectorAll<HTMLButtonElement>('[data-record-tab]')) {
+      const id = tab.dataset.recordTab as RecordTab;
+      const selected = id === recordTab;
+      tab.setAttribute('aria-selected', String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+      const prefix = id === 'medals' ? 'medal:' : id === 'achievements' ? 'achievement:' : null;
+      tab.classList.toggle('has-new', !!prefix && recordUnseen.some((key) => key.startsWith(prefix)));
+      const count = tab.querySelector<HTMLElement>('.cot-record-tab-count');
+      if (count) count.textContent = summary.counts[id];
+    }
+    const body = root.querySelector<HTMLElement>('.cot-record-body');
+    if (!body) return;
+    body.setAttribute('aria-labelledby', `cot-record-tab-${recordTab}`);
+    body.innerHTML = recordTabMarkup(recordTab, recordNames, view);
+    body.scrollTop = 0;
+  }
   function refreshServiceRecord() {
     const record = getPlayerRecord();
     const badge = root.querySelector<HTMLElement>('.cot-record-trigger .record-badge');
     if (badge) badge.textContent = record.matches > 999 ? '999+' : formatNumber(record.matches);
-
-    const body = root.querySelector<HTMLElement>('.cot-record-body');
-    if (!body) return;
-    const pct = record.matches ? Math.round((record.wins / record.matches) * 100) : 0;
-    const avgDamage = record.matches ? Math.round(record.damage / record.matches) : 0;
-    const avgKills = record.matches ? record.kills / record.matches : 0;
-    const num = (value: number) => formatNumber(value);
-    const safe = (value: RuntimeValue) => String(value).replace(/[&<>"']/g, (char) => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-    } as Record<string, string>)[char] ?? char);
-    const metric = (label: string, value: string, note: string) => `<div class="cot-record-metric"><span>${label}</span>` +
-      `<strong>${value}</strong><small>${note}</small></div>`;
-    // batch 19/20 (2026-09-14): the campaign ladder's standing — operations cleared, stars, best push
-    const campaignBlock = (): string => {
-      const ladder = campaignSummary();
-      const front = frontlineSummary();
-      const standing = front.attempts
-        ? `<div class="cot-last-battle-grid">` +
-          `<div><span>${t('garage.record.campaignOperations')}</span><b>${num(ladder.cleared)} / ${num(ladder.total)}</b></div>` +
-          `<div><span>${t('garage.record.campaignStars')}</span><b>${num(ladder.stars)} / ${num(ladder.maxStars)}</b></div>` +
-          `<div><span>${t('garage.record.campaignPush')}</span><b>${num(front.bestLine)} / ${num(front.total)}</b></div>` +
-          `<div><span>${t('garage.record.campaignHeld')}</span><b>${num(front.held)}</b></div></div>`
-        : `<div class="cot-record-empty">${t('garage.record.campaignNone')}</div>`;
-      return `<div class="cot-last-battle cot-record-campaign"><div class="cot-last-battle-head">` +
-        `<strong>${t('garage.record.campaign')}</strong><time>${safe(t(`campaign.op.${ladder.next.id}.title`))}</time></div>${standing}</div>`;
-    };
-    let lastBattle = `<div class="cot-record-empty">${t('garage.record.empty')}</div>`;
-    if (record.lastBattle) {
-      const last = record.lastBattle;
-      const vehicle = allSpecs.find((spec) => spec.id === last.vehicleId);
-      const map = (opts.maps || []).find((entry) => entry.id === last.mapId);
-      const durationM = Math.floor(last.durationS / 60);
-      const durationS = String(last.durationS % 60).padStart(2, '0');
-      const completed = last.completedAt ? new Date(last.completedAt) : null;
-      const completedLabel = completed && !Number.isNaN(completed.getTime())
-        ? formatDate(completed, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-        : 'Local session';
-      lastBattle = `<div class="cot-last-battle"><div class="cot-last-battle-head">` +
-        `<strong>${safe(last.result)}</strong><time>${safe(completedLabel)}</time></div>` +
-        `<div class="cot-last-battle-grid">` +
-        `<div><span>${t('garage.record.deployment')}</span><b>${safe(vehicle?.label?.displayName || vehicle?.name || last.vehicleId || t('garage.record.unknownVehicle'))} · ${safe(map?.name || last.mapId || t('garage.record.unknownMap'))}</b></div>` +
-        `<div><span>${t('garage.record.damage')}</span><b>${num(last.damage)}</b></div>` +
-        `<div><span>${t('garage.record.kills')}</span><b>${num(last.kills)}</b></div>` +
-        `<div><span>${t('garage.record.duration')}</span><b>${durationM}:${durationS}</b></div></div></div>`;
+    const fresh = unseenAwardCount();
+    const dot = root.querySelector<HTMLElement>('.cot-record-trigger .record-new');
+    if (dot) {
+      dot.hidden = fresh === 0;
+      dot.textContent = fresh > 99 ? '99+' : formatNumber(fresh);
     }
-    body.innerHTML = `<div class="cot-record-overview">` +
-      `<div class="cot-record-ring" style="--record-pct:${pct}"><div class="cot-record-ring-copy">` +
-      `<strong>${record.matches ? `${pct}%` : '—'}</strong><span>${t('garage.record.winrate')}</span></div></div>` +
-      `<div><div class="cot-record-outcomes">` +
-      `<div class="cot-record-outcome win"><span>${t('garage.record.victories')}</span><strong>${num(record.wins)}</strong></div>` +
-      `<div class="cot-record-outcome"><span>${t('garage.record.defeats')}</span><strong>${num(record.losses)}</strong></div>` +
-      `<div class="cot-record-outcome"><span>${t('garage.record.draws')}</span><strong>${num(record.draws)}</strong></div></div>` +
-      `<div class="cot-record-metrics">` +
-      metric(t('garage.record.battles'), num(record.matches), t('garage.record.completedLocally')) +
-      metric(t('garage.record.destroyed'), num(record.kills), `${avgKills.toFixed(2)} ${t('garage.record.perBattle')}`) +
-      metric(t('garage.record.totalDamage'), num(record.damage), t('garage.record.careerOutput')) +
-      metric(t('garage.record.avgDamage'), num(avgDamage), t('garage.record.perBattle')) +
-      metric(t('garage.record.bestDamage'), num(record.bestDamage), t('garage.record.singleBattle')) +
-      metric(t('garage.record.decisiveResults'), num(record.wins + record.losses), t('garage.record.nonDraw')) +
-      `</div></div></div>${lastBattle}${campaignBlock()}`;
+    root.querySelector('.cot-record-trigger')?.setAttribute('aria-label',
+      fresh ? t('garage.record.triggerNew', { count: formatNumber(fresh) }) : t('garage.nav.record'));
+    if (root.querySelector('.cot-record-modal.open')) renderServiceRecordTab();
   }
 
   // --- MARKETING FEATURED PANEL: rotating in-engine action stills ------------
@@ -1081,6 +1070,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const openServiceRecord = () => {
     closeGarageVariantMenu();
     setGaragePanel('');
+    // New awards keep their marks for this whole look, across tabs, and are seen once it opens.
+    recordUnseen = getServiceRecord().unseen;
+    markServiceRecordSeen();
+    recordModal.classList.add('open');
     refreshServiceRecord();
     recordRestoreFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     recordModal.hidden = false;
@@ -3231,6 +3224,27 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   recordModal.addEventListener('click', (event) => {
     if (event.target === recordModal) closeServiceRecord();
   });
+  const recordTabs = [...root.querySelectorAll<HTMLButtonElement>('[data-record-tab]')];
+  const selectRecordTab = (tab: RecordTab, focus = false) => {
+    if (tab !== recordTab) emit('ui:click', {});
+    recordTab = tab;
+    renderServiceRecordTab();
+    if (focus) recordTabs.find((button) => button.dataset.recordTab === tab)?.focus();
+  };
+  for (const button of recordTabs) {
+    button.addEventListener('click', () => selectRecordTab(button.dataset.recordTab as RecordTab));
+    button.addEventListener('keydown', (event) => {
+      const index = RECORD_TABS.indexOf(button.dataset.recordTab as RecordTab);
+      const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+      if (event.key === 'Home' || event.key === 'End') {
+        event.preventDefault();
+        selectRecordTab(RECORD_TABS[event.key === 'Home' ? 0 : RECORD_TABS.length - 1], true);
+      } else if (step) {
+        event.preventDefault();
+        selectRecordTab(RECORD_TABS[(index + step + RECORD_TABS.length) % RECORD_TABS.length], true);
+      }
+    });
+  }
   const openStudio = () => {
     emit('ui:click', {});
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'F8' }));
