@@ -11,7 +11,7 @@ import {
 } from './horizonRelief.ts';
 import { RING_RELIEF_SHADE } from './horizonAutumnGround.ts';
 import { HORIZON_FAR_FOOT_M, HORIZON_FAR_ROWS, HORIZON_FAR_SEGMENTS, resolveFarRangeAmp, sampleHorizonFarRange } from './horizonFarRange.ts';
-import { Matrix4, Vector3 } from 'three';
+import { Matrix4, Texture, Vector3, Vector4 } from 'three';
 import { HORIZON_SEGMENTS, buildHorizonRing, resolveHorizonLightingGains, sampleHorizonGeometry } from './maps/horizon.ts';
 import { seaOpeningWeight } from './edgeWater.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
@@ -428,6 +428,22 @@ for(const id of MAP_IDS) {
     // the low passes keep a ribbon — never more than half the columns, possibly none
     assert.ok(spans <= HORIZON_SEGMENTS * 0.5, `at most the low crests keep their ribbon (${spans})`);
     assert.ok(mesh.getObjectByName('horizon-far-range'), 'the far range stands behind the ring');
+    // 2026-10-05 (Part 1, the skies lane): the round-72 range (the panorama's fallback) takes the clouds' shadows on its sun
+    // term as the panorama does — the shared shade map's lookup, bound per draw, the sky's term untouched
+    {
+      const far = mesh.getObjectByName('horizon-far-range');
+      const farShader = { uniforms: {}, vertexShader: '#include <common>\n#include <begin_vertex>', fragmentShader: '#include <common>\n#include <color_fragment>' };
+      far.material.onBeforeCompile(farShader, null);
+      assert.ok(farShader.fragmentShader.includes('float shade = uFGains.x * sky + uFGains.y * max(ndl, 0.0) * cotCloudSun(vFWorld);'),
+        'the far range\'s sun term under the cloud shade (the sky\'s term kept)');
+      assert.ok(farShader.fragmentShader.includes('float cotCloudSun( vec3 wp )') && 'tCotCloudShade' in farShader.uniforms, 'through the shared lookup');
+      const shared = { tCotCloudShade: { value: new Texture() }, uCotCloudShade: { value: new Vector4(0, 0, 1 / 12000, 1) }, uCotCloudSun: { value: new Vector4(0, 1, 0, 1400) } };
+      far.onBeforeRender(null, { userData: { cloudShadeUniforms: shared } });
+      assert.strictEqual(farShader.uniforms.uCotCloudShade.value, shared.uCotCloudShade.value, 'bound to the layer\'s map by reference');
+      far.onBeforeRender(null, { userData: {} });
+      assert.equal(farShader.uniforms.uCotCloudShade.value.w, 0, 'no published map: off');
+      assert.equal(shared.uCotCloudShade.value.w, 1, 'and the layer\'s own uniform untouched');
+    }
     // round 72b: the relieved normal composes two vec2 world-xz gradients — a `.z` on either is a compile error the game
     // never reports (renderer.debug.checkShaderErrors is off), and it left the vista program uncompiled for a whole
     // round while the ring drew with a stale program; the capture tool now checks shader errors, this pins the text

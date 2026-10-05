@@ -3809,6 +3809,8 @@ export function* buildHorizonRingSteps(
     if (H.panorama !== false) {
       const panorama = createHorizonPanorama({
         seed: ((seed ^ 0x9A70) ^ idHash(mapId)) >>> 0, character: reliefCharacter,
+        // (Part 1, 2026-10-05: the far country takes the clouds' shadows where the tier has a shade map)
+        cloudShade: getDeviceTier() !== 'mobile',
         overrides: typeof H.panorama === 'object' ? H.panorama : undefined,
         palette: { base, rock: rockC, snow: snowC, forest: forestC, fog: fogC },
         sun: [lx, ly, lz], gains: resolveHorizonLightingGains(farLighting), deckBaseM: horizonPanoramaDeckM(cfg, deckBaseM), seaOpenings,
