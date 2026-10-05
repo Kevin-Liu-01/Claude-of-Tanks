@@ -45,6 +45,7 @@ import {
   SIM_DT, applyShellKnock, createTankState, fireRecoil, resetTankVerticalState, updateTank,
 } from '../src/sim/movement.ts';
 import { applyMovementPredictionState, captureMovementPredictionState } from '../src/sim/movementPredictionState.ts';
+import { publishedTrackContact } from '../src/sim/trackContact.ts';
 import { PLAYER_ACTION_BITS } from '../src/sim/playerActions.ts';
 import { tankBodyTopM, tankContactRect } from '../src/sim/tankContactShape.ts';
 import { prefersVerticalTankContact, tanksVerticallyClear } from '../src/sim/tankBodyContacts.ts';
@@ -680,7 +681,8 @@ function replayStateFrom(entity) {
   state._ride.airTime = 0;
   state._ride.supportY = NaN;
   const checkpoint = captureMovementPredictionState(source);
-  if (checkpoint) applyMovementPredictionState(state, checkpoint, null);
+  // (the support cache against the contact the solve reads, as the client's prediction restores it)
+  if (checkpoint) applyMovementPredictionState(state, checkpoint, publishedTrackContact(entity.spec) ?? entity.contactGeom ?? null);
   state._groundType = source._groundType;
   return state;
 }
