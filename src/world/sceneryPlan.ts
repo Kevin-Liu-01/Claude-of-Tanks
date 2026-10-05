@@ -79,6 +79,9 @@ interface SceneryRockField {
   size?: readonly [number, number];
   /** 0: anywhere in the disc; 1: the steeper ground only. */
   slopeBias?: number;
+  /** The steepest ground a formation rests on, degrees (landformGeology.ts restsOnTalus; the mountains lane, 2026-10-04,
+   *  gauntlet wave 48 on Redrock: outcrops hanging on the jebels' walls). Default TALUS_DEG (35); null: no limit. */
+  talusDeg?: number | null;
   /** Discs [x, z, r] the field leaves bare (a dune is steep but it is sand). */
   avoid?: ReadonlyArray<readonly [number, number, number]>;
   tone?: readonly [number, number, number];
