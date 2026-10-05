@@ -31,9 +31,10 @@ if (which === 'c30') {
     flashes: [{ t: b(1), frames: 3 }, { t: b(4), frames: 2 }, { t: b(7), frames: 4 }, { t: b(8), frames: 2 }, { t: b(10), frames: 3 }],
     endcard: { start: b(10), url: SITE_URL } });
 } else {
-  // head-on and behind-the-tank shots survive the 9:16 frame (side profiles don't); round 2 takes from the site fifty
+  // head-on and front-quarter shots survive the 9:16 frame (side profiles and reverses don't); round 5 takes from the
+  // site fifty (s27's knockout reverse frames its target off-centre, so the oasis take is s08's low lead)
   cut('s06-farm-charge-p', 0, 0, 4);
-  ['s01-main-street-push-p', 's16-street-duel-p', 's11-container-rows-p', 's27-caravanserai-kill-p', 's14-snow-push-p', 's33-water-tower-p']
+  ['s01-main-street-push-p', 's16-street-duel-p', 's11-container-rows-p', 's08-market-push-p', 's14-snow-push-p', 's33-water-tower-p']
     .forEach((id, i) => cut(id, 1 + Math.floor(i / 2), (i % 2) * 2, 2));
   writeEdl(project, { fps: 30, ...canvas(1080, 1920), duration: 15, letterbox: 0, safeTop: px(210), safeBottom: px(470), typeScale: 1.25, audio: 'assets/audio/mix.wav', grain: 0.06, shots,
     titles: [
