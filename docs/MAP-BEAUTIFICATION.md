@@ -7265,6 +7265,69 @@ floor), the ring and the ghost gone off the ridge; facing the sun on Caldera 3.3
 the sun keep the glow and the streak (the flare's mean lift halved, 0.16 → 0.08 and 0.15 → 0.07 levels). Receipt:
 `lensFlare.selftest` (the twin's closed deck → 0, a veil at the gate's midpoint → half, an edge across the disc → a fifth).
 
+### 2026-10-05 — the clouds and the land: shadows the size of their clouds, a broken deck's cells and gaps, the far country under the clouds (the skies lane)
+
+**The gauntlet's wave 93.** Clear-sky cumulus cast faint shadows smaller than their clouds; Frosthollow and Railyard
+facing the sun in a clear gap, "yet the snow, trees and yard have no shadows, rims or glare"; on Titan Gorge's far rock
+under its closed deck "banded, graphic mountain-face shading ... inconsistent with the implied shadowless overcast
+light"; blotches on Whiteout's snow. Branch `visual/cloud-land` (the PR head with `visual/mountains-jebels3` and
+`visual/deck-structure`).
+
+**A cumulus shadow** (`volumetricClouds.ts`, `cloudPresets.ts`; QA `CLOUD_SHADOW_CORE / _SHIFT / _SOFT`):
+- the core takes 0.9 of the beam (was 0.62): a fair-weather cumulus core passes about a tenth of the direct sun; the
+  sky's light stays, so on Verdant's 3.76:1 key the ground under a core keeps 34 % of the open ground's light (0.62 kept
+  54 %);
+- the cut is the visible coverage's (`shadowCoreBand` 0.06 → 0: only the dense core cast one, so every shadow was smaller
+  than its cloud), the edge band ±0.04 (was 0.08) straddling the outline;
+- measured against the in-page no-shade frame (share of the ground over 10 % darker; median luminance ratio inside):
+  Frontier establishing 26 % / 0.83 → 49 % / 0.52, bird 31 % / 0.72 → 41 % / 0.59; Saltwind establishing 2 % / 0.83 →
+  25 % / 0.79, bird 19 % / 0.79 → 27 % / 0.59; the chase cameras stand in a shadow (0.51–0.55 → 0.30–0.31). The
+  gauntlet's wave 101 (base against c9, one build): no harm, lighting +0.11 — and "nearly every frame has cumulus
+  overhead but evenly sunlit land below".
+- Every lit material takes the shade (the in-page census: `COT_CLOUD_SHADE` defined and `tCotCloudShade` active on the
+  terrain, the grass, tufts and crop cards, the trees and their impostors, the props and every vehicle role, no
+  `#undef`); grass pixels shade as the bare ground does (Frontier chase: medians 0.33 and 0.31).
+- Why the critics walk past them: the census cameras face 130–146° away from the sun, so the clouds in a frame shade
+  land beyond it and the near ground's shadows come from clouds behind the camera (the in-page framing meter: Frontier's
+  establishing frame 0 % of its visible clouds' shadows in frame, Saltwind's 6 %, Verdant's — across the sun — 82 %).
+  Lifting the cumulus field where its shadow crosses the battlefield (`CLOUD_SHADOW_FRAME`, kept off) turned the near
+  field into one shadow (Frontier 72 → 95 %, Saltwind 17 → 89 %) that reads as overcast; the lever left is the cells'
+  scale (more, smaller patches at the same coverage), Part 2's first experiment.
+- A tank in a cloud shadow keeps its light: the vehicle readability floors (`vehicles/materials.ts`) gate on the direct
+  light a plate receives, as under a tree (the chase tank's p90 −8 % where the near ground falls 70 %) — the vehicle-look
+  lane's calibration.
+
+**A deck with gaps casts its cells** (`lightModelCore.ts resolveDeckClosure`, `lightModel.ts`, `volumetricClouds.ts`):
+- the light model's uniform cut of the beam applies by how closed a deck is (smoothstep over coverage 0.95–0.97: Titan
+  Gorge and Whiteout whole, Frosthollow 0.86, Foundry 0.88 and Railyard 0.92 none); below it the shade map draws the
+  deck's pattern with a thick core (`CLOUD_LAYER_RULES.deckShadowCore` 0.9; QA `DECK_PATTERN 0` restores the uniform
+  cut); the exposure keeps the average light;
+- a deck's sky gaps are mostly its cells' open borders, which the weather field alone never cut (hold B: Frosthollow
+  facing the sun through a gap kept 0 % of its ground lit): the trace's cell factor is one chunk (`CLOUD_CELL_GLSL`) the
+  shade map reads too, and the borders the trace draws as clear air (`cellK` < 0.08) cast no shadow;
+- measured against the uniform cut (ground below the skyline): Railyard facing the sun 40 % of the ground in sunlit gaps
+  (×2.0), the frame ×1.15; Foundry's and Frosthollow's cells 65–84 % of their chase and sunward ground (×0.73–0.88).
+
+**The aerial noise fades under a deck** (`post.ts`, `horizonPanorama.ts`): the aerial pass's world-anchored patchiness
+(`cloudShadowAmp`, 0.08–0.22) × (1 − overcast) — none under a closed deck, the panorama's copy alike (Whiteout's
+blotches).
+
+**The far rock under a closed deck keeps only the beam** (`maps/horizon.ts resolveHorizonLightingGains`): the vista's
+sun term takes the deck's beam share (1 − 0.96 × overcast) and the rest returns as sky light (a level face keeps its
+light); the ring takes the uniform share, the far range and the panorama the average cut.
+
+**The far country under the clouds** (`horizonPanorama.ts`, `horizonFarRange.ts`): the distant hills never showed the
+dappled shadows that best read as cloud shadows. The far country the battle frames show is the panorama shell (the
+round-72 range is its fallback until the bake runs), and its atlas held colour only. An aux pass of the bake
+(`STRIP_AUX_FRAGMENT`, the strip's own march run with the sun's term on and off, a quarter of the strip: 2048 × 128 half
+floats, 2 MB) stores each texel's distance from the eye and the sun's share of its colour (1 − L(no sun) / L(full): the
+haze and the sky's light cancel; 0 where the sun's term is 0); the shell rebuilds the far point and dims only that share
+through the shared lookup (`cotCloudSun`: inside the shade map's 12 km square, faded at its edge, so 1.5–6 km of the
+panorama's 9). Baked on the tier with a shade map only (phones none); freed with the atlas on a GPU suspension and baked
+again with it; QA `PANO_CLOUD_SHADE 0`. The fallback range's sun term takes the same lookup. Subtle at 3–6 km behind the
+haze, as it should be.
+
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
