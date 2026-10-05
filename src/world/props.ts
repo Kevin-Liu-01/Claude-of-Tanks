@@ -16,7 +16,7 @@ import {
   textureFromRgbaPixels as toTexture,
   tileableTorusNoise as torusN,
 } from './proceduralTexture.ts';
-import { applyTone, type HeightField, type TerrainLayout } from './terrain.ts';
+import { applyTone, terrainNearMeshHeightAt, type HeightField, type TerrainLayout } from './terrain.ts';
 import { authoredRoadStationCount, authoredRoadStationIndex, buildingRoadStationIndices } from './maps/roadStations.ts';
 import { roadSettlementJunction } from './roadSettlementJunction.ts';
 import { roadFencePath, fencePathSampler } from './roadFencePath.ts';
@@ -507,7 +507,7 @@ interface RockLodPools {
   /** The crushable rocks hold the first near slots for good. */
   pinned: number;
   /** The rest, by placement index, repartitioned by distance. */
-  loose: number[];
+  loose: Int32Array;
   placements: THREE.Matrix4[];
   ground: Float32Array;
   slope: Float32Array;
@@ -5880,7 +5880,9 @@ ${snowCap ? `
       rockClutter.get(rockPlacements[vi][i])!.bindInstance(near, k);
     }
     // (every loose rock in the near pool until the first camera repartitions them: the pools are whole from the build)
-    const lod: RockLodPools = { near, far, pinned, loose, placements: rockPlacements[vi], ground, slope, high: new Uint8Array(n).fill(1) };
+    const lod: RockLodPools = {
+      near, far, pinned, loose: Int32Array.from(loose), placements: rockPlacements[vi], ground, slope, high: new Uint8Array(n).fill(1),
+    };
     writeRockLod(lod);
     rockLod.push(lod);
     for (const mesh of [near, far, shadow]) {
@@ -7239,21 +7241,11 @@ ${snowCap ? `
     }
     // terrain-conformed disc; profile[] lifts each ring above the ground
     // the scenery lane (Coastal boulder-a, gauntlet wave 74: "a hard, straight dark line along the grass bank's edge …
-    // the rock looks cut in two"): the ground as the nearest terrain mesh draws it (terrain.ts: 1024 m in eight chunks of
-    // 96 cells, each cell split along the diagonal from its +x corner to its +z corner), not the analytic height, which
-    // stands above the mesh on a bank's lip — a patch conformed to that floated over the drawn lip and showed edge-on
-    const TERRAIN_NEAR_STEP = 1024 / 8 / 96;
-    function meshHeightAt(px: number, pz: number): number {
-      const u = (px + 512) / TERRAIN_NEAR_STEP, w = (pz + 512) / TERRAIN_NEAR_STEP;
-      const gx = Math.floor(u), gz = Math.floor(w), fx = u - gx, fz = w - gz;
-      const at = (i: number, k: number): number => heightField.getHeightAt(-512 + i * TERRAIN_NEAR_STEP, -512 + k * TERRAIN_NEAR_STEP);
-      if (fx + fz <= 1) {
-        const ha = at(gx, gz);
-        return ha + (at(gx + 1, gz) - ha) * fx + (at(gx, gz + 1) - ha) * fz;
-      }
-      const hd = at(gx + 1, gz + 1);
-      return hd + (at(gx, gz + 1) - hd) * (1 - fx) + (at(gx + 1, gz) - hd) * (1 - fz);
-    }
+    // the rock looks cut in two"): the ground as the nearest terrain mesh draws it (terrain.ts terrainNearMeshHeightAt:
+    // its finest grid and its cells' diagonal), not the analytic height, which stands above the mesh on a bank's lip — a
+    // patch conformed to that floated over the drawn lip and showed edge-on
+    const groundHeightAt = (px: number, pz: number): number => heightField.getHeightAt(px, pz);
+    const meshHeightAt = (px: number, pz: number): number => terrainNearMeshHeightAt(groundHeightAt, px, pz);
     function conformedDisc(
       x: number,
       z: number,
@@ -7265,7 +7257,7 @@ ${snowCap ? `
       const nv = 1 + (rings.length - 1) * segs;
       const pos = new Float32Array(nv * 3);
       const uv = new Float32Array(nv * 2);
-      const groundAt = onMesh ? meshHeightAt : (px: number, pz: number): number => heightField.getHeightAt(px, pz);
+      const groundAt = onMesh ? meshHeightAt : groundHeightAt;
       pos[0] = x; pos[1] = groundAt(x, z) + profile[0]; pos[2] = z;
       uv[0] = 0.5; uv[1] = 0.5;
       let vi = 1;
@@ -7655,44 +7647,63 @@ ${snowCap ? `
   }
 
   // the scenery lane (wave 74, the cascade trim): the rocks' near and far pools, repartitioned when the camera has moved
-  // 8 m, with hysteresis (the desktop form through ROCK_FAR_M, the phone form beyond ROCK_FAR_M + 10)
+  // 8 m, with hysteresis (the desktop form through ROCK_FAR_M, the phone form beyond ROCK_FAR_M + 10). A pass allocates
+  // nothing: index loops over the build's typed arrays, the placements' own matrices, the pools' own buffers
   const lastRockCamera = new THREE.Vector3(Number.NaN, Number.NaN, Number.NaN);
+  // (the passes' start and duration, the last 64 of them, for the probes: a chase drive lines its long tasks up with them)
+  const rockLodTrace = { at: new Float64Array(64), ms: new Float32Array(64), n: 0 };
+  group.userData.rockLodTrace = rockLodTrace;
   function updateRockLod(cameraPos: THREE.Vector3 | null, force = false): void {
-    if (!rockLod.length || !cameraPos || !Number.isFinite(cameraPos.x) || !Number.isFinite(cameraPos.z)) return;
+    if (rockLod.length === 0 || !cameraPos || !Number.isFinite(cameraPos.x) || !Number.isFinite(cameraPos.z)) return;
     if (!force && Number.isFinite(lastRockCamera.x) && lastRockCamera.distanceToSquared(cameraPos) <= 64) return;
+    const startedAt = performance.now();
     const first = !Number.isFinite(lastRockCamera.x);
     lastRockCamera.copy(cameraPos);
-    for (const lod of rockLod) {
+    for (let p = 0; p < rockLod.length; p++) {
+      const lod = rockLod[p], loose = lod.loose, high = lod.high, placements = lod.placements;
       let changed = first || force;
-      for (const i of lod.loose) {
-        const e = lod.placements[i].elements, d = Math.hypot(e[12] - cameraPos.x, e[14] - cameraPos.z);
-        const wasHigh = lod.high[i] !== 0, high = wasHigh ? d <= ROCK_FAR_M + 10 : d < ROCK_FAR_M;
-        if (high !== wasHigh) { lod.high[i] = high ? 1 : 0; changed = true; }
+      for (let k = 0; k < loose.length; k++) {
+        const i = loose[k], e = placements[i].elements;
+        const dx = e[12] - cameraPos.x, dz = e[14] - cameraPos.z, d = Math.sqrt(dx * dx + dz * dz);
+        const wasHigh = high[i] !== 0, isHigh = wasHigh ? d <= ROCK_FAR_M + 10 : d < ROCK_FAR_M;
+        if (isHigh !== wasHigh) { high[i] = isHigh ? 1 : 0; changed = true; }
       }
       if (changed) writeRockLod(lod);
     }
+    const slot = rockLodTrace.n++ % 64;
+    rockLodTrace.at[slot] = startedAt;
+    rockLodTrace.ms[slot] = performance.now() - startedAt;
   }
   function writeRockLod(lod: RockLodPools): void {
-    const nearGround = lod.near.geometry.getAttribute('aRockGround') as THREE.InstancedBufferAttribute;
-    const nearSlope = lod.near.geometry.getAttribute('aRockSlope') as THREE.InstancedBufferAttribute;
-    const farGround = lod.far.geometry.getAttribute('aRockGround') as THREE.InstancedBufferAttribute;
-    const farSlope = lod.far.geometry.getAttribute('aRockSlope') as THREE.InstancedBufferAttribute;
+    const near = lod.near, far = lod.far;
+    const nearGround = near.geometry.getAttribute('aRockGround') as THREE.InstancedBufferAttribute;
+    const nearSlope = near.geometry.getAttribute('aRockSlope') as THREE.InstancedBufferAttribute;
+    const farGround = far.geometry.getAttribute('aRockGround') as THREE.InstancedBufferAttribute;
+    const farSlope = far.geometry.getAttribute('aRockSlope') as THREE.InstancedBufferAttribute;
+    const loose = lod.loose, high = lod.high, placements = lod.placements, ground = lod.ground, slope = lod.slope;
     let nearCount = lod.pinned, farCount = 0;
-    for (const i of lod.loose) {
-      const high = lod.high[i] !== 0;
-      const mesh = high ? lod.near : lod.far, slot = high ? nearCount++ : farCount++;
-      mesh.setMatrixAt(slot, lod.placements[i]);
-      (high ? nearGround : farGround).setX(slot, lod.ground[i]);
-      (high ? nearSlope : farSlope).setXY(slot, lod.slope[i * 2], lod.slope[i * 2 + 1]);
+    for (let k = 0; k < loose.length; k++) {
+      const i = loose[k];
+      if (high[i] !== 0) {
+        near.setMatrixAt(nearCount, placements[i]);
+        nearGround.setX(nearCount, ground[i]);
+        nearSlope.setXY(nearCount, slope[i * 2], slope[i * 2 + 1]);
+        nearCount++;
+      } else {
+        far.setMatrixAt(farCount, placements[i]);
+        farGround.setX(farCount, ground[i]);
+        farSlope.setXY(farCount, slope[i * 2], slope[i * 2 + 1]);
+        farCount++;
+      }
     }
-    lod.near.count = nearCount;
-    lod.far.count = farCount;
-    lod.near.visible = nearCount > 0;
-    lod.far.visible = farCount > 0;
-    for (const mesh of [lod.near, lod.far]) {
-      mesh.instanceMatrix.needsUpdate = true;
-      mesh.computeBoundingSphere();
-    }
+    near.count = nearCount;
+    far.count = farCount;
+    near.visible = nearCount > 0;
+    far.visible = farCount > 0;
+    near.instanceMatrix.needsUpdate = true;
+    far.instanceMatrix.needsUpdate = true;
+    near.computeBoundingSphere();
+    far.computeBoundingSphere();
     nearGround.needsUpdate = true; nearSlope.needsUpdate = true; farGround.needsUpdate = true; farSlope.needsUpdate = true;
   }
 

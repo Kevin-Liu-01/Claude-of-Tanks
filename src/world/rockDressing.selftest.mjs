@@ -15,6 +15,7 @@ import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { convexHull2 } from './collision.ts';
 import { MAP_IDS } from './maps/index.ts';
+import { acquireTerrainChunkIndex, terrainNearMeshHeightAt } from './terrain.ts';
 import {
   BOULDER_KINDS, BOULDER_SEAT_Y, applyRockShaderHook, boulderKindFor, buildBoulderForm, makeRockDetail, paintBoulder, projectsInsideHull,
   rockDressingFor, rockLithologyFor,
@@ -332,9 +333,29 @@ assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(co
   assert.match(terrainSource, /const CHUNKS = 8, CHUNK_SIZE = MAP_SIZE \/ CHUNKS;\nconst LOD_SEGS = \[96, 48, 24\];/);
   assert.match(terrainSource, /idx\[ii\+\+\] = a; idx\[ii\+\+\] = c; idx\[ii\+\+\] = b;\n\s*idx\[ii\+\+\] = b; idx\[ii\+\+\] = c; idx\[ii\+\+\] = d;/,
     'the terrain splits a cell along the diagonal from its +x corner to its +z corner');
-  assert.match(source, /const TERRAIN_NEAR_STEP = 1024 \/ 8 \/ 96;/);
-  assert.match(source, /if \(fx \+ fz <= 1\) \{[\s\S]{0,140}return ha \+ \(at\(gx \+ 1, gz\) - ha\) \* fx \+ \(at\(gx, gz \+ 1\) - ha\) \* fz;/,
-    'the patch reads the mesh\'s own triangle under it');
+  assert.match(source, /const meshHeightAt = \(px: number, pz: number\): number => terrainNearMeshHeightAt\(groundHeightAt, px, pz\);/,
+    'the patch reads the terrain\'s own export, no copied grid');
+  // the export against the terrain's own chunk index: the grid it samples (read from the corners it asks for) and the
+  // diagonal its cells split on (read from acquireTerrainChunkIndex), so the two can never diverge
+  const asked = [];
+  const corner = (x, z) => { asked.push([x, z]); return 0; };
+  terrainNearMeshHeightAt(corner, 0.1, 0.1);
+  const xs = [...new Set(asked.map((p) => p[0]))].sort((a, b) => a - b), zs = [...new Set(asked.map((p) => p[1]))].sort((a, b) => a - b);
+  const cell = xs[1] - xs[0];
+  assert.ok(xs.length === 2 && zs.length === 2 && Math.abs(zs[1] - zs[0] - cell) < 1e-9 && Math.abs((xs[0] + 512) / cell - Math.round((xs[0] + 512) / cell)) < 1e-6,
+    `the export samples a square cell of the near grid from -512 (${cell})`);
+  const terrainSource2 = terrainSource;
+  const segs = Number(/const LOD_SEGS = \[(\d+),/.exec(terrainSource2)[1]);
+  assert.ok(Math.abs(cell - 1024 / 8 / segs) < 1e-9, 'the cell is the finest chunk grid\'s');
+  const index = acquireTerrainChunkIndex(new Map(), 4).array, n = 5;
+  const tri0 = [index[0], index[1], index[2]], tri1 = [index[3], index[4], index[5]];
+  const shared = tri0.filter((v) => tri1.includes(v)).sort((a, b) => a - b);
+  assert.deepEqual(shared, [1, n], 'the chunk index splits a cell along its +x corner to its +z corner');
+  // and the export interpolates on that triangle pair: corner heights a=0, b=1, c=2, d=4
+  const heights = (x, z) => { const i = Math.round((x - xs[0]) / cell), k = Math.round((z - zs[0]) / cell); return [[0, 2], [1, 4]][i][k]; };
+  const at = (fx, fz) => terrainNearMeshHeightAt(heights, xs[0] + fx * cell, zs[0] + fz * cell);
+  assert.ok(Math.abs(at(0.3, 0.2) - (0 + 1 * 0.3 + 2 * 0.2)) < 1e-9, 'under the diagonal: the a b c triangle');
+  assert.ok(Math.abs(at(0.8, 0.7) - (4 + (2 - 4) * 0.2 + (1 - 4) * 0.3)) < 1e-9, 'over it: the b c d triangle');
 }
 assert.match(source, /const heightM = \(box\.max\.y - Math\.max\(box\.min\.y, -0\.6\)\) \* maxScale;/, 'the shadow height is what can show, not the buried skirt');
 // the cascade trim (wave 74: 672-triangle rocks in every cascade): on the desktop the phone form beside the desktop one;
@@ -349,8 +370,15 @@ assert.match(source, /markShadowOnly\(shadow\);\n\s*setShadowCasterCascades\(sha
   'the near and far pools cast into the near cascades, the shadow-only pool into the far ones');
 assert.match(source, /'rock-variant-' \+ vi \+ '-far'[\s\S]{0,1500}'rock-variant-' \+ vi \+ '-shadow'/, 'the probes find every pool by name');
 assert.match(source, /rockClutter\.get\(rockPlacements\[vi\]\[i\]\)!\.bindInstance\(near, k\);/, 'a crushable rock keeps its near slot for its clutter');
-assert.match(source, /high: new Uint8Array\(n\)\.fill\(1\) \};\n\s*writeRockLod\(lod\);/, 'the pools are whole from the build');
-assert.match(source, /const wasHigh = lod\.high\[i\] !== 0, high = wasHigh \? d <= ROCK_FAR_M \+ 10 : d < ROCK_FAR_M;/, 'the repartition holds a 10 m hysteresis');
+assert.match(source, /high: new Uint8Array\(n\)\.fill\(1\),\n\s*\};\n\s*writeRockLod\(lod\);/, 'the pools are whole from the build');
+assert.match(source, /const wasHigh = high\[i\] !== 0, isHigh = wasHigh \? d <= ROCK_FAR_M \+ 10 : d < ROCK_FAR_M;/, 'the repartition holds a 10 m hysteresis');
+assert.match(source, /loose: Int32Array\.from\(loose\)/, 'the repartition walks the build\'s typed arrays');
+{
+  // (a pass allocates nothing: no array literal, no new matrix, no closure in the repartition or its writer)
+  const body = source.slice(source.indexOf('function updateRockLod('), source.indexOf('function updatePoleLod('));
+  assert.ok(body.length > 500 && !/\bnew (?!THREE\.Vector3\(Number\.NaN|Float64Array\(64\)|Float32Array\(64\))\w|\[[a-z][^\]]*,[^\]]*\]\)|=>|\.map\(|\.forEach\(|\.filter\(|of \[/.test(body.slice(body.indexOf('function updateRockLod('))),
+    'the rocks\' repartition allocates nothing per pass');
+}
 assert.match(source, /lastRockCamera\.distanceToSquared\(cameraPos\) <= 64\) return;/, 'and runs when the camera has moved 8 m');
 assert.match(source, /updatePoleLod\(cameraPos\);\n\s*updateRockLod\(cameraPos\);/, 'the props update runs it');
 assert.match(source, /materialKind === 'rock' \? rockHook\s*:/); // (the field print's own hook follows: the scenery lane, wave 48)

@@ -724,10 +724,20 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }) {
       heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null };
   });
   const tasks = await page.evaluate(() => window.__FBP.tasks);
+  // the scenery lane (wave 74): the rocks' repartition passes (props.ts rockLodTrace, the last 64), so a moving view's
+  // long tasks can be lined up with them
+  const rockLod = await page.evaluate(() => {
+    const trace = window.__DEBUG.scene.getObjectByName('props')?.userData?.rockLodTrace;
+    if (!trace) return null;
+    const passes = [];
+    for (let k = Math.max(0, trace.n - 64); k < trace.n; k++) passes.push({ t: +trace.at[k % 64].toFixed(1), ms: +trace.ms[k % 64].toFixed(3) });
+    return { total: trace.n, passes };
+  });
   return { mapId: slot.mapId, readyMs, entryMs, textures, timer, emulator, frozen: { dynScale: frozen.dynScale, perfTrim: frozen.perfTrim },
     roster: { count: frozen.roster.length, player: frozen.roster.find((r) => r.isPlayer)?.specId ?? null,
       opponents, teams: frozen.roster.reduce((a, r) => { a[r.team] = (a[r.team] || 0) + 1; return a; }, {}) },
-    samples, cpuProfile, memory, longTasks: { total: tasks.length, over100: tasks.filter((t) => t.ms >= 100).length, max: tasks.reduce((m, t) => Math.max(m, t.ms), 0) },
+    samples, cpuProfile, memory, longTasks: { total: tasks.length, over100: tasks.filter((t) => t.ms >= 100).length, max: tasks.reduce((m, t) => Math.max(m, t.ms), 0),
+      list: tasks.slice(-300) }, rockLod,
     pageErrors: errors };
 }
 
