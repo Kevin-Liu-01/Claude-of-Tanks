@@ -1,75 +1,133 @@
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import {
   CIVILIAN_VEHICLE_CLUSTER_COUNT,
   CIVILIAN_VEHICLE_RECEIPTS,
   CIVILIAN_VEHICLES_PER_CLUSTER,
+  civilianVehicleOverrides,
   civilianVehiclePalette,
   pickCivilianVehicleKind,
   pickCivilianVehicleKindForPlacement,
   visibleCivilianVehicleCount,
 } from './maps/civilianVehicleKit.ts';
-import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.ts';
+import { LEGACY_CONTACT_BANDS, LEGACY_DRAWS } from './maps/civilianVehicleLegacy.ts';
+import { DEFAULT_FLEET, FLEETS, fleetForMap } from './maps/vehicleFleets.ts';
+import { DESTRUCTIBLE_TYPES, civilianVehicleTypes } from './maps/inhabitKit.ts';
 import { MAP_IDS } from './maps/index.ts';
 
+// The map-vehicles lane (2026-10-05): the eight roles keep their records — the placement boxes, the legacy contact
+// band every pool refits its obstacles to, the legacy builders' draws from the destructible stream — while each map's
+// fleet builds them as real types. Every fleet's every role is held to the role's box (a canvas tilt or a box van may
+// rise over the record by the role's allowance), the tier budgets, the surface stream (the paint mask on the intact
+// body only) and the stream budget.
+
 function seeded(seed) {
-  return () => {
+  const next = () => {
     seed |= 0;
     seed = seed + 0x6D2B79F5 | 0;
     let value = Math.imul(seed ^ seed >>> 15, 1 | seed);
     value = value + Math.imul(value ^ value >>> 7, 61 | value) ^ value;
+    next.calls++;
     return ((value ^ value >>> 14) >>> 0) / 4294967296;
   };
+  next.calls = 0;
+  return next;
 }
 
 const kinds = Object.keys(CIVILIAN_VEHICLE_RECEIPTS);
-assert.deepEqual(kinds.sort(), [
+assert.deepEqual([...kinds].sort(), [
   'jeep', 'pickup', 'sedan', 'truck', 'truckbox', 'truckflatbed', 'van', 'wagon',
-], 'vehicle kit exposes eight distinct civilian/utility silhouettes');
+], 'vehicle kit exposes the eight placement roles');
 
 for (const [kind, receipt] of Object.entries(CIVILIAN_VEHICLE_RECEIPTS)) {
   const metadata = DESTRUCTIBLE_TYPES[kind];
   assert.ok(metadata, `${kind} is registered as a world destructible`);
   assert.equal(metadata.mat, 'vehicle', `${kind} uses the shared textured vehicle PBR material`);
-  assert.equal(metadata.build, receipt.build, `${kind} registry keeps the audited intact builder`);
-  assert.equal(metadata.broken, receipt.broken, `${kind} registry keeps the audited wreck builder`);
-
-  const geometry = receipt.build(seeded(0x91a7));
-  const wreck = receipt.broken(seeded(0x5c31));
-  for (const [state, candidate] of [['intact', geometry], ['broken', wreck]]) {
-    for (const attribute of ['position', 'normal', 'uv', 'color']) {
-      assert.ok(candidate.getAttribute(attribute), `${kind} ${state} geometry carries ${attribute}`);
-    }
-    const positions = candidate.getAttribute('position');
-    for (let index = 0; index < positions.count; index++) {
-      assert.ok(Number.isFinite(positions.getX(index))
-        && Number.isFinite(positions.getY(index))
-        && Number.isFinite(positions.getZ(index)), `${kind} ${state} geometry contains finite positions`);
-    }
-  }
-
-  const triangles = (geometry.index?.count ?? geometry.getAttribute('position').count) / 3;
-  assert.ok(triangles <= receipt.triangleBudget,
-    `${kind} stays within its ${receipt.triangleBudget}-triangle instanced-geometry budget (got ${triangles})`);
-  geometry.computeBoundingBox();
-  const bounds = geometry.boundingBox;
-  assert.ok(bounds.min.y > -0.001 && bounds.min.y < 0.001,
-    `${kind} tires are authored exactly onto the local ground plane`);
-  assert.ok(Math.max(Math.abs(bounds.min.x), Math.abs(bounds.max.x)) <= receipt.halfWidth + 0.001,
-    `${kind} authored width stays inside its placement receipt`);
-  assert.ok(Math.max(Math.abs(bounds.min.z), Math.abs(bounds.max.z)) <= receipt.halfLength + 0.001,
-    `${kind} authored length stays inside its placement receipt`);
-  assert.ok(bounds.max.y <= receipt.height + 0.001,
-    `${kind} authored height stays inside its placement receipt`);
-  const colors = geometry.getAttribute('color');
-  const colorZones = new Set();
-  for (let index = 0; index < colors.count; index += Math.max(1, Math.floor(colors.count / 96))) {
-    colorZones.add(`${colors.getX(index).toFixed(2)}:${colors.getY(index).toFixed(2)}:${colors.getZ(index).toFixed(2)}`);
-  }
-  assert.ok(colorZones.size >= 6,
-    `${kind} carries distinct paint, glass, rubber, lamp, and metal zones`);
-  geometry.dispose();
-  wreck.dispose();
+  assert.equal(metadata.build, receipt.build, `${kind} registry keeps the kit's default builder`);
+  assert.equal(metadata.broken, receipt.broken, `${kind} registry keeps the kit's default burnt builder`);
+  assert.equal(metadata.contactBand, LEGACY_CONTACT_BANDS[kind], `${kind} refits to the legacy contact band (collision unchanged)`);
+  assert.equal(metadata.hw, receipt.halfWidth, `${kind}: the record's half-width is the role box's`);
+  assert.equal(metadata.hl, receipt.halfLength, `${kind}: the record's half-length is the role box's`);
+  assert.equal(metadata.h, receipt.height, `${kind}: the record's height is the role box's`);
 }
+
+const DESKTOP_BUDGET = 9000, MOBILE_BUDGET = 3600;
+function checkRole(label, kind, geometry, burnt, mobile) {
+  const receipt = CIVILIAN_VEHICLE_RECEIPTS[kind];
+  for (const attribute of ['position', 'normal', 'uv', 'color', 'surf']) {
+    assert.ok(geometry.getAttribute(attribute), `${label}: carries ${attribute}`);
+  }
+  const positions = geometry.getAttribute('position');
+  for (let index = 0; index < positions.count; index++) {
+    assert.ok(Number.isFinite(positions.getX(index)) && Number.isFinite(positions.getY(index))
+      && Number.isFinite(positions.getZ(index)), `${label}: finite positions`);
+  }
+  const triangles = geometry.index.count / 3;
+  assert.ok(triangles <= (mobile ? MOBILE_BUDGET : Math.min(DESKTOP_BUDGET, receipt.triangleBudget)),
+    `${label}: ${triangles} triangles within the ${mobile ? 'mobile' : 'desktop'} budget`);
+  geometry.computeBoundingBox();
+  const b = geometry.boundingBox;
+  assert.ok(Math.abs(b.min.y) < 0.001, `${label}: the tyres (or the burnt rims) stand on the ground plane (${b.min.y})`);
+  assert.ok(Math.max(-b.min.x, b.max.x) <= receipt.halfWidth + 0.001, `${label}: inside the role's width`);
+  assert.ok(Math.max(-b.min.z, b.max.z) <= receipt.halfLength + 0.001, `${label}: inside the role's length`);
+  assert.ok(b.max.y <= receipt.height + receipt.rise + 0.001, `${label}: under the role's height and allowance`);
+  const surf = geometry.getAttribute('surf');
+  let painted = 0, glossy = 0;
+  for (let index = 0; index < surf.count; index++) {
+    if (surf.getZ(index) > 0.5) painted++;
+    if (surf.getX(index) < 0.15) glossy++;
+  }
+  if (burnt) {
+    assert.equal(painted, 0, `${label}: a burnt body keeps no livery`);
+    assert.equal(glossy, 0, `${label}: a burnt body keeps no gloss (the glass is gone)`);
+  } else {
+    assert.ok(painted > 50, `${label}: the body paint carries the paint mask`);
+    assert.ok(glossy > 10, `${label}: glass or chrome reads glossy`);
+  }
+  const colors = geometry.getAttribute('color');
+  const zones = new Set();
+  for (let index = 0; index < colors.count; index += Math.max(1, Math.floor(colors.count / 160))) {
+    zones.add(`${colors.getX(index).toFixed(2)}:${colors.getY(index).toFixed(2)}:${colors.getZ(index).toFixed(2)}`);
+  }
+  assert.ok(zones.size >= 6, `${label}: distinct paint, glass, rubber, lamp and metal zones`);
+}
+
+// every map's fleet, both tiers: the builders, the stream budget, the liveries
+const checkedFleets = new Set();
+for (const mapId of MAP_IDS) {
+  const fleet = fleetForMap(mapId);
+  assert.ok(fleet && FLEETS[fleet.id] === fleet, `${mapId} dresses in a catalogued fleet`);
+  const types = civilianVehicleTypes(mapId, false);
+  for (const kind of kinds) {
+    assert.equal(types[kind].contactBand, LEGACY_CONTACT_BANDS[kind], `${mapId}/${kind}: same contact band`);
+    assert.equal(types[kind].hw, DESTRUCTIBLE_TYPES[kind].hw, `${mapId}/${kind}: same record`);
+    assert.equal(typeof types[kind].instancePaint, 'function', `${mapId}/${kind}: liveries`);
+  }
+  if (checkedFleets.has(fleet.id)) continue;
+  checkedFleets.add(fleet.id);
+  for (const mobile of [false, true]) {
+    const overrides = civilianVehicleOverrides(mapId, mobile);
+    for (const kind of kinds) {
+      for (const burnt of [false, true]) {
+        const rng = seeded(0x91a7);
+        const geometry = (burnt ? overrides[kind].broken : overrides[kind].build)(rng);
+        assert.equal(rng.calls, LEGACY_DRAWS[kind][burnt ? 'broken' : 'build'],
+          `${fleet.id}/${kind}${burnt ? '/burnt' : ''}: spends the legacy builder's draws from the stream`);
+        checkRole(`${fleet.id}/${kind}${burnt ? '/burnt' : ''}${mobile ? '/mobile' : ''}`, kind, geometry, burnt, mobile);
+        geometry.dispose();
+      }
+      // a livery is one of the role's paints (faded or fresh), the same for the same place
+      const a = new THREE.Color(), b = new THREE.Color();
+      overrides[kind].instancePaint(a, 12.5, -40.25, 3);
+      overrides[kind].instancePaint(b, 12.5, -40.25, 3);
+      assert.ok(a.equals(b), `${fleet.id}/${kind}: a copy's livery is deterministic`);
+      const swatches = fleet.roles[kind].paints.map((hex) => new THREE.Color(hex));
+      assert.ok(swatches.some((c) => ['r', 'g', 'b'].every((ch) => a[ch] >= c[ch] * 0.879 && a[ch] <= c[ch] * 1.041)),
+        `${fleet.id}/${kind}: the livery comes from the role's paints`);
+    }
+  }
+}
+assert.ok(checkedFleets.has(DEFAULT_FLEET), 'the default fleet is exercised');
 
 for (const [mapId, expectedLight, expectedHeavy] of [
   ['urban', ['sedan', 'van', 'pickup', 'wagon', 'jeep'], ['truckbox', 'truckflatbed', 'truck']],
@@ -112,5 +170,5 @@ assert.equal(CIVILIAN_VEHICLE_CLUSTER_COUNT, 2,
 assert.equal(CIVILIAN_VEHICLES_PER_CLUSTER, 4,
   'each grouped traffic pocket has enough vehicles to read as a convoy or parking row');
 
-console.log(`civilianVehicles.selftest: ${MAP_IDS.length} maps, full palettes, dense traffic, clusters, `
-  + 'textured geometry, footprints, and budgets passed');
+console.log(`civilianVehicles.selftest: ${MAP_IDS.length} maps on ${checkedFleets.size} fleets, both tiers, burnt states, `
+  + 'legacy records, contact bands and stream draws, liveries, footprints and budgets passed');

@@ -17,7 +17,8 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import {
   certifyGroundedStructureParts, certifyStructureAttachments,
 } from '../structureConnectivity.ts';
-import { CIVILIAN_VEHICLE_RECEIPTS } from './civilianVehicleKit.ts';
+import { CIVILIAN_VEHICLE_RECEIPTS, civilianVehicleOverrides } from './civilianVehicleKit.ts';
+import type { StructureCollisionRuntimeBand } from '../structureCollision.ts';
 import { setNightEmissionMask } from '../../engine/nightEmissionMaterial.ts';
 import { FIELD_STONE_FACE_V, FIELD_STONE_HEARTING_V } from '../fieldStoneSurface.ts';
 
@@ -50,6 +51,11 @@ export interface DestructiblePropType {
   keep?: number;
   crushMin?: number;
   explosive?: boolean;
+  /** A frozen contact band the pool refit uses in place of the built geometry's (the rebuilt vehicles keep their legacy
+   * collision exactly: civilianVehicleLegacy.ts). */
+  contactBand?: StructureCollisionRuntimeBand;
+  /** Each instance's own colour (a vehicle's livery through the material's paint mask), by its place and slot. */
+  instancePaint?: (out: THREE.Color, x: number, z: number, slot: number) => void;
 }
 
 export const FENCE_SEG = 2.4; // fence-kit module pitch, meters
@@ -1890,14 +1896,14 @@ export const DESTRUCTIBLE_TYPES = {
   // --- DESTRUCTIBLES r1: heavier light cover + soft vehicles ---------------
   wallstone:   { cls: 'break',  mat: 'stone',   contact: 'ob', r: 1.6,  h: 1.15, hw: 0.30, hl: 1.54, build: bWallStone,  broken: bWallStoneBroken, wall: true, collider: true, keep: 0.82, crushMin: 2.2 },
   walladobe:   { cls: 'break',  mat: 'plaster', contact: 'ob', r: 1.6,  h: 1.2,  hw: 0.28, hl: 1.53, build: bWallAdobe,  broken: bWallAdobeBroken, wall: true, collider: true, keep: 0.86, crushMin: 2.0 },
-  truck:       { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 3.55, h: 2.3,  hw: 1.29, hl: 3.30, build: CIVILIAN_VEHICLE_RECEIPTS.truck.build, broken: CIVILIAN_VEHICLE_RECEIPTS.truck.broken, collider: true, keep: 0.88, crushMin: 2.0 },
-  jeep:        { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.10, h: 1.73, hw: 0.94, hl: 1.88, build: CIVILIAN_VEHICLE_RECEIPTS.jeep.build, broken: CIVILIAN_VEHICLE_RECEIPTS.jeep.broken, keep: 0.94 },
-  sedan:       { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.35, h: 1.61, hw: 1.01, hl: 2.13, build: CIVILIAN_VEHICLE_RECEIPTS.sedan.build, broken: CIVILIAN_VEHICLE_RECEIPTS.sedan.broken, keep: 0.95 },
-  wagon:       { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.35, h: 1.69, hw: 1.01, hl: 2.13, build: CIVILIAN_VEHICLE_RECEIPTS.wagon.build, broken: CIVILIAN_VEHICLE_RECEIPTS.wagon.broken, keep: 0.95 },
-  pickup:      { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.72, h: 1.77, hw: 1.11, hl: 2.47, build: CIVILIAN_VEHICLE_RECEIPTS.pickup.build, broken: CIVILIAN_VEHICLE_RECEIPTS.pickup.broken, keep: 0.93 },
-  van:         { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.63, h: 2.08, hw: 1.11, hl: 2.38, build: CIVILIAN_VEHICLE_RECEIPTS.van.build, broken: CIVILIAN_VEHICLE_RECEIPTS.van.broken, collider: true, keep: 0.92, crushMin: 1.8 },
-  truckbox:    { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 3.55, h: 2.47, hw: 1.29, hl: 3.30, build: CIVILIAN_VEHICLE_RECEIPTS.truckbox.build, broken: CIVILIAN_VEHICLE_RECEIPTS.truckbox.broken, collider: true, keep: 0.87, crushMin: 2.0 },
-  truckflatbed:{ cls: 'break',  mat: 'vehicle', contact: 'ob', r: 3.55, h: 1.96, hw: 1.29, hl: 3.30, build: CIVILIAN_VEHICLE_RECEIPTS.truckflatbed.build, broken: CIVILIAN_VEHICLE_RECEIPTS.truckflatbed.broken, collider: true, keep: 0.87, crushMin: 2.0 },
+  truck:       { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 3.55, h: 2.3,  hw: 1.29, hl: 3.30, build: CIVILIAN_VEHICLE_RECEIPTS.truck.build, broken: CIVILIAN_VEHICLE_RECEIPTS.truck.broken, contactBand: CIVILIAN_VEHICLE_RECEIPTS.truck.contactBand, collider: true, keep: 0.88, crushMin: 2.0 },
+  jeep:        { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.10, h: 1.73, hw: 0.94, hl: 1.88, build: CIVILIAN_VEHICLE_RECEIPTS.jeep.build, broken: CIVILIAN_VEHICLE_RECEIPTS.jeep.broken, contactBand: CIVILIAN_VEHICLE_RECEIPTS.jeep.contactBand, keep: 0.94 },
+  sedan:       { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.35, h: 1.61, hw: 1.01, hl: 2.13, build: CIVILIAN_VEHICLE_RECEIPTS.sedan.build, broken: CIVILIAN_VEHICLE_RECEIPTS.sedan.broken, contactBand: CIVILIAN_VEHICLE_RECEIPTS.sedan.contactBand, keep: 0.95 },
+  wagon:       { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.35, h: 1.69, hw: 1.01, hl: 2.13, build: CIVILIAN_VEHICLE_RECEIPTS.wagon.build, broken: CIVILIAN_VEHICLE_RECEIPTS.wagon.broken, contactBand: CIVILIAN_VEHICLE_RECEIPTS.wagon.contactBand, keep: 0.95 },
+  pickup:      { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.72, h: 1.77, hw: 1.11, hl: 2.47, build: CIVILIAN_VEHICLE_RECEIPTS.pickup.build, broken: CIVILIAN_VEHICLE_RECEIPTS.pickup.broken, contactBand: CIVILIAN_VEHICLE_RECEIPTS.pickup.contactBand, keep: 0.93 },
+  van:         { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 2.63, h: 2.08, hw: 1.11, hl: 2.38, build: CIVILIAN_VEHICLE_RECEIPTS.van.build, broken: CIVILIAN_VEHICLE_RECEIPTS.van.broken, contactBand: CIVILIAN_VEHICLE_RECEIPTS.van.contactBand, collider: true, keep: 0.92, crushMin: 1.8 },
+  truckbox:    { cls: 'break',  mat: 'vehicle', contact: 'ob', r: 3.55, h: 2.47, hw: 1.29, hl: 3.30, build: CIVILIAN_VEHICLE_RECEIPTS.truckbox.build, broken: CIVILIAN_VEHICLE_RECEIPTS.truckbox.broken, contactBand: CIVILIAN_VEHICLE_RECEIPTS.truckbox.contactBand, collider: true, keep: 0.87, crushMin: 2.0 },
+  truckflatbed:{ cls: 'break',  mat: 'vehicle', contact: 'ob', r: 3.55, h: 1.96, hw: 1.29, hl: 3.30, build: CIVILIAN_VEHICLE_RECEIPTS.truckflatbed.build, broken: CIVILIAN_VEHICLE_RECEIPTS.truckflatbed.broken, contactBand: CIVILIAN_VEHICLE_RECEIPTS.truckflatbed.contactBand, collider: true, keep: 0.87, crushMin: 2.0 },
   ammobox:     { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.85, h: 0.75, build: bAmmobox,    broken: bAmmoboxBroken },
   tent:        { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.7,  h: 2.1,  hw: 1.28, hl: 1.90, build: bTent, broken: bTentBroken, keep: 0.985 },
   drumred:     { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.34, h: 0.92, build: bDrumRed,    broken: bDrumRedBroken, explosive: true },
@@ -1910,6 +1916,18 @@ export const DESTRUCTIBLE_TYPES = {
   transformer: { cls: 'break',  mat: 'baked', contact: 'ob',   r: 0.9,  h: 1.85, hw: 0.76, hl: 0.51, build: bTransformer, broken: bTransformerBroken, collider: true, keep: 0.86, crushMin: 2.2 },
   cablespool:  { cls: 'break',  mat: 'baked', contact: 'ob',   r: 0.9,  h: 1.5,  hw: 0.66, hl: 0.76, build: bCableSpool, broken: bCableSpoolBroken, keep: 0.9 },
 } satisfies Record<string, DestructiblePropType>;
+
+/**
+ * One map's civilian vehicles (the map-vehicles lane, 2026-10-05): every role's entry with the map's fleet builders and
+ * liveries over the table's record (footprint, class, collision and contact band unchanged), for props.ts's local types.
+ */
+export function civilianVehicleTypes(mapId: string, mobile: boolean): Record<string, DestructiblePropType> {
+  const out: Record<string, DestructiblePropType> = {};
+  for (const [kind, override] of Object.entries(civilianVehicleOverrides(mapId, mobile))) {
+    out[kind] = { ...DESTRUCTIBLE_TYPES[kind as keyof typeof DESTRUCTIBLE_TYPES], ...override };
+  }
+  return out;
+}
 
 /** The coursed wall module the brick-print maps keep (see bWallStone): the stone wall's record with its original
  * courses and remnant. */

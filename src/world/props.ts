@@ -73,8 +73,12 @@ import {
   type DestructiblePropType,
   buildAdobePilaster,
   buildDryStoneWallHead,
+  civilianVehicleTypes,
 } from './maps/inhabitKit.ts';
 import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
+// the map-vehicles lane (2026-10-05): the vehicles' surface stream and liveries, their ground-contact patches
+import { applyVehicleSurfaceHook, VEHICLE_SURFACE_PROGRAM } from './maps/vehicleSurface.ts';
+import { buildVehicleContactShadows } from './maps/vehicleContactShadow.ts';
 import {
   boxClearOfPoints, boxClearOfRoadCore, discClearOfRoadCore, sharpRoadBends, shiftClearOfRoadCore,
 } from './roadFootprint.ts';
@@ -3375,14 +3379,18 @@ ${snowCap ? `
 }
 #endif`);
   };
+  // the map-vehicles lane (2026-10-05): the vehicles read their per-vertex surface stream and wear each copy's livery
+  const vehicleHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyVehicleSurfaceHook(shader); };
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
-          : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook : grimeHook);
+          : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook
+            : materialKind === 'vehicle' ? vehicleHook : grimeHook);
       // (the mud print is the plaster material's shader with another map, the hessian the canvas's: they share their
       // programs; the field print has its own, for the modules' shifted windows)
-      const programKind = materialKind === 'fieldMud' ? 'plaster' : materialKind === 'burlap' ? 'structureCanvas' : materialKind;
+      const programKind = materialKind === 'fieldMud' ? 'plaster' : materialKind === 'burlap' ? 'structureCanvas'
+        : materialKind === 'vehicle' ? `vehicle-${VEHICLE_SURFACE_PROGRAM}` : materialKind;
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
@@ -3501,6 +3509,8 @@ ${snowCap ? `
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
+    // the map-vehicles lane (2026-10-05): the eight vehicle roles as the map's fleet builds them (same records)
+    ...civilianVehicleTypes(mapId, mobileProps),
   };
   /** The dry-stone module with the winter's snow load along its top (fieldWallDressing.ts; one stream of its own). */
   function snowLoadedWallstone(buildRng: () => number): THREE.BufferGeometry {
@@ -8350,7 +8360,7 @@ ${snowCap ? `
     // walls (including their later terrain fit) and trees retain the cheap path.
     const source = DESTRUCTIBLE_BUILDING_TYPES[kind]
       ? deriveRuntimeStructureCollisionWithSolids({ baked: [geometry] }) : null;
-    const contactBand = source?.profile.contact
+    const contactBand = source?.profile.contact ?? pool.meta.contactBand
       ?? deriveRuntimeStructureContactBand({ baked: [geometry] });
     for (const record of pool.records) {
       if (!record.ob) continue;
@@ -8416,6 +8426,16 @@ ${snowCap ? `
         imI.setColorAt(i, tint);
       }
       imI.instanceColor!.needsUpdate = true;
+    }
+    if (pool.meta.instancePaint) {
+      // the map-vehicles lane: each copy's livery (the vehicle material carries it onto the body paint only)
+      for (let i = 0; i < pool.mats4.length; i++) {
+        const record = pool.records[i];
+        pool.meta.instancePaint(_structureTint, record.x, record.z, i);
+        imI.setColorAt(i, _structureTint);
+      }
+      imI.instanceColor!.needsUpdate = true;
+      return;
     }
     if (!pool.meta.instanceTintStrength) return;
     for (let i = 0; i < pool.mats4.length; i++) {
@@ -8508,6 +8528,11 @@ ${snowCap ? `
     }
   }
   yield* finalizeDestructiblePools();
+  // the map-vehicles lane (2026-10-05): the ground darkened under every parked vehicle (desktop tiers)
+  if (!mobileProps) {
+    const contact = buildVehicleContactShadows(destructibles, heightField, aniso);
+    if (contact) group.add(contact);
+  }
 
   // the scenery lane (2026-10-03): the field boundaries' walls and banks (world/scenery.ts composeFieldWorks), once
   // every solid is final — the pools' refit above reshapes the buildings' records, and the works keep off the objective
