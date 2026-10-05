@@ -674,6 +674,8 @@ uniform vec3 uEnvGround;
 // deck's share at every elevation
 uniform vec4 uDeckHorizon;
 uniform float uDeckClosed;
+// 2026-10-04 (the deck's sun): the share of the closed deck that takes the sun's disc and its clear-air aureole away
+uniform float uDiscDeckFade;
 uniform float uSkyIntensity;
 uniform float uNight;
 uniform float uGalaxy;
@@ -717,7 +719,11 @@ void main() {
 	float cosSun = dot( direction, uSunDirection );
 	// the legacy compact warm forward-scatter glow (~5°) so the disc keeps its tight golden halo; 2026-10-04 (QA:
 	// SKY_GLOW_IN_KNEE) a share of it under the knee with the sky, so only the disc can reach the bloom's threshold
-	vec3 sunGlowCol = vec3( 1.30, 1.02, 0.68 ) * ( pow( max( cosSun, 0.0 ), 240.0 ) * uSunGlow );
+	// 2026-10-04 (the gauntlet's wave 62 on Titan Gorge: "a flat, hard-edged white disc pasted on a featureless grey-white
+	// sky"): under a closed deck the sun has no disc and no clear-air aureole — the brighter patch where the deck thins is
+	// the cloud layer's own forward scatter toward the sun (QA: SKY_DISC_DECK_FADE)
+	float discK = 1.0 - uDeckClosed * uDiscDeckFade;
+	vec3 sunGlowCol = vec3( 1.30, 1.02, 0.68 ) * ( pow( max( cosSun, 0.0 ), 240.0 ) * uSunGlow * discK );
 	skyCol += sunGlowCol * uSunSpot.z;
 	// the legacy knee exemption spot around the sun keeps the disc and its immediate aureole HDR (QA: SKY_SUN_SPOT_*)
 	float sunSpot = smoothstep( uSunSpot.x, uSunSpot.y, cosSun );
@@ -725,7 +731,7 @@ void main() {
 	// the sun disc: the legacy disc's angular size and radiance law (see legacySunDiscRadiance) through the
 	// atmosphere's transmittance toward the sun
 	float disc = smoothstep( ${ATMO_SUN_DISC_COS.toFixed(15)}, ${ATMO_SUN_DISC_COS.toFixed(15)} + 0.00002, cosSun );
-	skyCol += uSunTransmittance * ( disc * uSunDiscRadiance );
+	skyCol += uSunTransmittance * ( disc * uSunDiscRadiance * discK );
 	skyCol += sunGlowCol * ( 1.0 - uSunSpot.z );
 	skyCol += ( fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5 ) * ${SKY_DITHER.toFixed(4)};
 	vec3 nightCol = vec3( 0.0 );
@@ -1223,7 +1229,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       uEnvBake: { value: 0 },
       uEnvGround: { value: new THREE.Color(0, 0, 0) },
       uDeckHorizon: { value: new THREE.Vector4(1, 1, 1, 0) },
-      uDeckClosed: { value: 0 },
+      uDeckClosed: { value: 0 }, uDiscDeckFade: { value: 1 },
       // shared by reference with the Preetham dome: configureSkyUniforms refreshes both at once
       uSkyIntensity: skyUniforms.uSkyIntensity, uNight: skyUniforms.uNight, uGalaxy: skyUniforms.uGalaxy,
       uNebula: skyUniforms.uNebula, uEarth: skyUniforms.uEarth, uPlanetR: skyUniforms.uPlanetR, uPlanetTint: skyUniforms.uPlanetTint,
@@ -1328,6 +1334,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     // a closed deck greys the whole dome, ramped in over the last tenth of the overcast (the 0.8 decks keep their breaks)
     const closedT = Math.min(1, Math.max(0, (deckOvercast - 0.9) / 0.1));
     u.uDeckClosed.value = closedT * closedT * (3 - 2 * closedT) * deckKnob;
+    u.uDiscDeckFade.value = lightTune('SKY_DISC_DECK_FADE', 1);
     atmosphereKeySuffixLive = model.mode === 'physical'
       ? `${atmosphereKey(params, preset.skyIntensity)}|g:${model.groundRadiance.map((v) => v.toPrecision(6)).join(',')}`
       : atmosphereKey(params, preset.skyIntensity);

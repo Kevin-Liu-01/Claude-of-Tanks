@@ -30,8 +30,8 @@ import {
 } from './nearVehicleShadowDetail.ts';
 import { primeShadowCascades, type ShadowPrimeOptions } from './shadowPrime.ts';
 import {
-  GROUND_BOUNCE_GLSL_PARS, GROUND_BOUNCE_GLSL_TERM, applyGroundBounceRig, attachGroundBounceUniforms,
-  createGroundBounceUniforms,
+  GROUND_BOUNCE_GLSL_PARS, GROUND_BOUNCE_GLSL_TERM, WALL_SKY_LIFT_LEGACY, applyGroundBounceRig, attachGroundBounceUniforms,
+  createGroundBounceUniforms, terrainWallSkyLift,
 } from './groundBounce.ts';
 import { currentPostLightFxQuery, resolvePostLightFx } from './postLightFxPolicy.ts';
 import {
@@ -1006,11 +1006,14 @@ export function createLighting(
       groundBounceUniforms.uCotSkyChroma.value = model.envDiffuseChroma;
       groundBounceUniforms.uCotShadowDim.value.setScalar(SHADOW_AMBIENT_DIM_LUMA);
       groundBounceUniforms.uCotShadowFacing.value = lightTune('SHADOW_DIM_FACING', SHADOW_DIM_FACING);
+      // (2026-10-04: the environment lights a steep face's open sky here: no wall sky lift — groundBounce.ts)
+      terrainWallSkyLift.value = lightTune('WALL_SKY_LIFT_GROUNDED', 0);
     } else {
       groundBounceUniforms.uCotSkyDiffuse.value = 1;
       groundBounceUniforms.uCotSkyChroma.value = 1;
       groundBounceUniforms.uCotShadowDim.value.fromArray(SHADOW_AMBIENT_DIM);
       groundBounceUniforms.uCotShadowFacing.value = 0;
+      terrainWallSkyLift.value = WALL_SKY_LIFT_LEGACY;
     }
     applyGroundBounceRig(groundBounceUniforms, {
       enabled: lightFx.flags.groundBounce, sunDir: sunDirWorld, sunColor: lightRig.sunColor,

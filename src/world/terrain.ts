@@ -24,6 +24,7 @@ import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalett
 import { HORIZON_SEGMENTS, buildHorizonRingSteps, type HorizonMapConfig } from './maps/horizon.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts';
+import { terrainWallSkyLift } from '../engine/groundBounce.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { shorelineDistance, shorelineRadiusAt, shorelineWetness, sampleShorelineMask } from './shoreline.ts';
 import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, LIQUID_MARSH_CORE, LIQUID_MARSH_STRIDE } from './liquidMarshSurface.ts';
@@ -3482,8 +3483,6 @@ function _mustReplace(src: string, anchor: string, replacement: string): string 
   return out;
 }
 
-/** Round 42: sky light on steep faces turned from the sun, as a fraction of the horizon sky colour (fogColor). */
-const WALL_SKY_LIFT = 7.0;
 /** World direction toward the sun for a map's sky preset — the same formula the vista ring uses (horizon.ts). */
 function skySunDirection(sky: { sunAzimuthDeg?: number; sunElevationDeg?: number } | null | undefined): THREE.Vector3 {
   const sunAz = (sky?.sunAzimuthDeg ?? 115) * Math.PI / 180;
@@ -6142,7 +6141,9 @@ function* createSplatMaterialSteps(
     };
     // round 42: the sun the vista ring shades with, and the sky-light weight for steep faces turned from it
     shader.uniforms.uSunDirW = { value: skySunDirection(sky) };
-    shader.uniforms.uWallSkyLift = { value: S.wallSkyLift ?? WALL_SKY_LIFT };
+    // (2026-10-04: the light rig's live gain — round 42's on the legacy rig, none on the grounded rig, groundBounce.ts
+    // WALL_SKY_LIFT_LEGACY; a map's own splat.wallSkyLift stays its own on both)
+    shader.uniforms.uWallSkyLift = S.wallSkyLift != null ? { value: S.wallSkyLift } : terrainWallSkyLift;
     // round 72b: the ring's surface atlas — neutral until horizonAutumnGround.bindAutumnHorizonGround points these at the
     // ring's own bake (the same uniform objects, so a bind after the compile still reaches the program)
     shader.uniforms.uRingDraw = ringReliefUniforms.uRingDraw;

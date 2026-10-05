@@ -1185,6 +1185,29 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   assert(after < before * 0.01, 'impact flinch decays through the bounded attitude spring');
 }
 
+// ------------------------------------------------ touchdown step (round 8) --
+// Wave 42 item 1: "the hull loses a whole step of fall at touchdown" (0.202 -> 0.197 m while falling at 5.9 m/s). The
+// ride stood on the contact line for the rest of the step it touched in: a drop touching early in its step moved 3-5 %
+// of the step its fall carried. The rest of the step now runs on the springs.
+{
+  const field = makeField(() => 0);
+  for (const drop of [1.85, 1.9, 1.95, 2]) {
+    const ent = makeEntity(field, 0, 0, 0);
+    ent.input.brake = true;
+    run(ent, field, 90);
+    resetTankVerticalState(ent.state, ent.state.pos.y + drop, 0, false);
+    let prevY = ent.state.pos.y, prevV = 0, touchdown = null;
+    for (let i = 0; i < 240 && !touchdown; i++) {
+      updateTank(ent, field, SIM_DT);
+      if (ent.state.landingImpactMps > 0) touchdown = { step: ent.state.pos.y - prevY, free: prevV * SIM_DT };
+      prevV = ent.state._ride.v;
+      prevY = ent.state.pos.y;
+    }
+    assert(touchdown && touchdown.step <= 0.85 * touchdown.free,
+      `touchdown from ${drop} m: the hull moves ${(touchdown?.step ?? 0).toFixed(3)} m in the step its fall carries ${(touchdown?.free ?? 0).toFixed(3)} (before: 3-56 %)`);
+  }
+}
+
 // ---------------------------------------------------------------- summary --
 if (failures > 0) {
   console.error(`movement.selftest: ${failures}/${checks} checks FAILED`);

@@ -179,6 +179,31 @@ straight at the hull. Its own contact does not count as the target moving, and
 the empty rack's probe does not scoot the run away. Runs that cannot finish the
 target alone keep the full-speed judgement.
 
+A press point given up (masked, missed out, pinned or unreached) stays out of
+the picks for 120 seconds, with three more held beside it. One veto slot let two
+unreachable points take turns: on the track-contact parity tree, Reservoir
+pacing seed 50001 alternated between two of them every 30 seconds for 580
+seconds.
+
+A gun pinned at its elevation or depression stop for three seconds with a round
+ready is a reposition the hull drives. A hull on a planar face meets its target
+at the same elevation off the face whatever its heading, because its up is the
+face's normal, so a turn on the spot cannot bring the target into the arc. The
+bot leaves the face for a cell where the gun lays: a cell that gives both a
+sight line and the gun's arc ranks first. That leg owns the hull ahead of the
+press and the press's back-up for the gun.
+
+A back-up or a relocation leg that goes nowhere counts. A back-up is judged at
+its end and a relocation leg 4 seconds in; one that moved less than 0.3 m and
+turned less than 0.35 rad is a stuck strike. For 20 seconds after it, no
+back-up and no relocation cell lies within 60 degrees of the travel it tried,
+and a dead relocation leg ends so the next pick goes another way. In Reservoir
+seed 50001 the last bravo T-64BV stood rolled 17.5 degrees on a bank's flank,
+its stern against a building and its gun on the depression stop, 54 m from the
+idle host, for the last 610 s of the 900 s cap. Its back-up drove into the
+building every 1.5 s and the press owned the hull, so the arc limit's leg never
+ran.
+
 The traffic regressions run actual movement for both teams: parked hulls,
 oncoming pairs, and a three-bot queue. Prolonged idle deployment is not a
 tactic. The owner accepted the faster battles this produces (2026-10-03): the
@@ -263,7 +288,13 @@ search cannot drive a hull.
   that miss from the flank spot (the spot is given up, with a control whose
   rounds land), an empty rack against a 320 hp idle host (a capped finishing
   ram, with full-health and moving-host controls), and a press point inside a
-  closed pen, given up unreached.
+  closed pen, given up unreached. It also covers the Reservoir seed 50001 stall:
+  a T-64BV on a 12-degree bank with its gun on the stop and a building 0.12 m
+  behind its stern. Its back-up counts as a strike and is not repeated (7.1 s
+  of reverse into the building before). Press points in pens round both side
+  aspects do not take turns (they alternated before). The arc limit's leg
+  starts with the press running and leaves the bank in under 2 s with no
+  back-up.
 - `src/game/ai.levels.selftest.mjs`: a synthetic deck over a floor, with and
   without a ramp: the deck bot leaves the floor target for one on its own level,
   the floor bot drives the ramp to the deck, gives the deck target up when no
