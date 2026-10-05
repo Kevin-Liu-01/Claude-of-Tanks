@@ -15,8 +15,11 @@ export interface WindowStyle {
   surround: { bucket: RegionalBucket; width: number; out: number; lintel?: number; colour?: Rgb } | null;
   /** the sill */
   sill: { bucket: RegionalBucket; out: number; colour?: Rgb } | null;
-  /** shutters: colour and kind, or null */
-  shutters: { colour: Rgb; kind: 'louvred' | 'plank' | 'panel'; closed?: number } | null;
+  /**
+   * shutters: colour and kind, or null; `paint` (facade.ts, desktop builds) paints a border round each leaf and a motif
+   * on it in a second colour (the painted shutters of a Russian or Ukrainian village)
+   */
+  shutters: { colour: Rgb; kind: 'louvred' | 'plank' | 'panel'; closed?: number; paint?: { border: Rgb; motif: 'diamond' | 'heart' | null } } | null;
   /**
    * a carved surround (facade.ts, desktop builds): the surround's plain lintel becomes a cornice ledge and a crest
    * board, its jambs run down past the sill to an apron cut to a drop (the Russian nalichnik)
@@ -107,6 +110,7 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
         // the open leaf folded back flat on the wall (its back face then never shows), its rails on its face
         const T = 0.035, front = T + 0.001, ro = front + 0.01 - 0.002;
         faceBox(sink, 'structureWood', face, cu, y + h / 2, front - T / 2, leaf, h + 0.02, T, { ...sc, fineSides: true });
+        if (sh.paint && facadeOn()) paintedLeaf(sink, face, cu, y + h / 2, leaf, h + 0.02, front, sh.paint);
         if (sh.kind === 'louvred') {
           // two rails read the louvre frame; the detail tile's grain carries the slats
           for (const t of [0.06, 0.94]) faceBox(sink, 'structureWood', face, cu, y + h * t, ro, leaf, 0.05, 0.02, { ...sc, fine: true }, { back: true });
@@ -116,6 +120,35 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
       }
     }
   }
+}
+
+/**
+ * A shutter leaf's paint (facade craft): a border a hand wide round its face and a motif cut or painted at its middle
+ * (a diamond, a heart), in a second colour, 6 mm on its face (fine: drawn near the camera only).
+ */
+function paintedLeaf(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, o: number,
+  paint: { border: Rgb; motif: 'diamond' | 'heart' | null }): void {
+  const b = Math.min(0.06, w * 0.12), c = { colour: paint.border, decor: true, fine: true };
+  const z = o + 0.006;
+  facePanel(sink, 'structureWood', face, u, y + h / 2 - b / 2, z, w, b, c);
+  facePanel(sink, 'structureWood', face, u, y - h / 2 + b / 2, z, w, b, c);
+  facePanel(sink, 'structureWood', face, u - w / 2 + b / 2, y, z, b, h - 2 * b, c);
+  facePanel(sink, 'structureWood', face, u + w / 2 - b / 2, y, z, b, h - 2 * b, c);
+  if (paint.motif) {
+    const s = Math.min(w, h) * 0.22;
+    const P = (du: number, dy: number) => facePointOf(face, u + du, y + dy, z);
+    if (paint.motif === 'diamond') sink.polygon('structureWood', [P(0, -s), P(s * 0.7, 0), P(0, s), P(-s * 0.7, 0)], c);
+    else {
+      // a heart: two lobes over a point
+      sink.polygon('structureWood', [P(0, -s), P(s * 0.75, s * 0.25), P(s * 0.4, s * 0.7), P(0, s * 0.35)], c);
+      sink.polygon('structureWood', [P(0, -s), P(0, s * 0.35), P(-s * 0.4, s * 0.7), P(-s * 0.75, s * 0.25)], c);
+    }
+  }
+}
+
+/** A point on a face (u along it, y up, o out of it). */
+function facePointOf(face: Face, u: number, y: number, o: number): [number, number, number] {
+  return [face.origin[0] + face.u[0] * u + face.out[0] * o, y, face.origin[2] + face.u[2] * u + face.out[2] * o];
 }
 
 export interface DoorStyle {

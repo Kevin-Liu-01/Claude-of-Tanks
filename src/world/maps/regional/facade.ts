@@ -250,7 +250,7 @@ function orient4(a: Vec3, b: Vec3, c: Vec3, d: Vec3, toward: Vec3): [Vec3, Vec3,
  * slopes, their heads standing over the ridge. `ridgeTop` is the ridge's top line height, `tanP` the slope.
  */
 export function ridgeRiders(sink: PartSink, zs: readonly number[], ridgeTop: number, tanP: number, colour: Rgb): void {
-  const foot = 0.75, head = 0.32, lift = 0.05;
+  const foot = 0.6, head = 0.2, lift = 0.05;
   for (const z of zs) {
     const tone = 0.86 + hash01(z, ridgeTop, 3.3) * 0.22;
     const c: Rgb = [colour[0] * tone, colour[1] * tone, colour[2] * tone];
@@ -474,4 +474,73 @@ export function dentilCornice(sink: PartSink, bucket: RegionalBucket, face: Face
     faceBox(sink, bucket, face, u, y + 0.075 + 0.04, 0.05, 0.12, 0.08, 0.1, { ...DECOR, fineSides: true });
   }
   trimRun(sink, bucket, face, u0, u1, y + 0.155, [{ h: 0.075, out: 0.12 }, { h: 0.075, out: 0.16 }], { ret: opts.ret });
+}
+
+/**
+ * Dormers on a pitched roof's long slopes (facade craft, desktop): a gabled dormer (Giebelgaube) or a shed dormer
+ * (Schleppgaube) every few metres along the slope, its front wall standing up from the slope with a small window, its
+ * cheeks closing it back to the slope, its little roof of the house's covering. `roof` is the house's roof geometry in
+ * its own frame (house.ts roofGeometry: ridge along z, slopes falling to ±x). Dressing only: a dormer sits on a roof.
+ */
+export interface DormerStyle {
+  kind: 'gable' | 'shed';
+  wall: RegionalBucket;
+  covering: RegionalBucket;
+  /** the window unit drawn in the dormer's front (openings.ts windowUnit through a callback, so the kit's own joinery) */
+  window: (face: Face, u: number, y: number, w: number, h: number) => void;
+  colour?: Rgb;
+}
+
+export function roofDormers(sink: PartSink, roof: { s: number; halfD: number; tanP: number; eaveY: number; ridgeY: number; ridgeTopY: number;
+  topAt(x: number, z: number): number | null }, sides: readonly (1 | -1)[], zs: readonly number[], style: DormerStyle): void {
+  const dw = 1.3, fh = 1.25;
+  for (const side of sides) {
+    for (const zc of zs) {
+      // the front wall stands where the slope is ~0.9 m above the eave
+      const xf = Math.max(0.6, roof.s - 0.9 / roof.tanP);
+      const yb = (roof.topAt(side * xf, zc) ?? roof.eaveY) - 0.12, yt = yb + 0.12 + fh;
+      const xb = Math.max(0.15, (roof.ridgeTopY - yt) / roof.tanP);
+      if (xb >= xf - 0.2) continue;
+      const face: Face = { origin: [side * xf, 0, zc], u: [0, 0, -side], out: [side, 0, 0], width: dw };
+      // the front wall and its window
+      sink.quad(style.wall, facePoint(face, -dw / 2, yb, 0), facePoint(face, dw / 2, yb, 0), facePoint(face, dw / 2, yt, 0), facePoint(face, -dw / 2, yt, 0),
+        { ...DECOR, ...(style.colour ? { colour: style.colour } : {}) });
+      style.window(face, 0, yb + 0.32, 0.72, fh - 0.5);
+      // the cheeks: triangles from the front back to the slope
+      for (const end of [-1, 1]) {
+        const z = zc + end * dw / 2;
+        const a: Vec3 = [side * xf, yb, z], b: Vec3 = [side * xf, yt, z], c: Vec3 = [side * xb, yt, z];
+        const toward: Vec3 = [0, 0, end];
+        orientedTri(sink, style.wall, a, b, c, toward, { ...DECOR, ...(style.colour ? { colour: style.colour } : {}) });
+      }
+      // the dormer's roof
+      if (style.kind === 'shed') {
+        const t = 0.1, over = 0.18;
+        const pts: Vec3[] = [[side * (xf + over), yt + 0.05, zc - dw / 2 - 0.12], [side * (xf + over), yt + 0.05, zc + dw / 2 + 0.12],
+          [side * xb, yt + 0.32, zc + dw / 2 + 0.12], [side * xb, yt + 0.32, zc - dw / 2 - 0.12]];
+        const n = normalize3([side * 0.27, Math.abs(xf + over - xb), 0]);
+        orientedPrism(sink, style.covering, pts, n, t);
+      } else {
+        const rise = dw * 0.42, over = 0.2;
+        for (const end of [-1, 1]) {
+          const eave = (x: number): Vec3 => [x, yt, zc + end * (dw / 2 + 0.12)];
+          const ridge = (x: number): Vec3 => [x, yt + rise, zc];
+          const pts: Vec3[] = [eave(side * (xf + over)), eave(side * xb), ridge(side * xb), ridge(side * (xf + over))];
+          const n = normalize3([0, dw / 2, end * rise]);
+          orientedPrism(sink, style.covering, pts, n, 0.09);
+        }
+        // the dormer's little gable over its window
+        const g: Vec3[] = [[side * xf, yt, zc - dw / 2], [side * xf, yt, zc + dw / 2], [side * xf, yt + rise - 0.06, zc]];
+        orientedTri(sink, style.wall, g[0], g[1], g[2], [side, 0, 0], { ...DECOR, ...(style.colour ? { colour: style.colour } : {}) });
+      }
+    }
+  }
+}
+
+/** A prism whose base polygon is ordered to face `n` (PartSink.prism wants it counter-clockwise seen from +dir). */
+function orientedPrism(sink: PartSink, bucket: RegionalBucket, pts: Vec3[], n: Vec3, t: number): void {
+  const ab = [pts[1][0] - pts[0][0], pts[1][1] - pts[0][1], pts[1][2] - pts[0][2]], ac = [pts[2][0] - pts[0][0], pts[2][1] - pts[0][1], pts[2][2] - pts[0][2]];
+  const c = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
+  const ordered = c[0] * n[0] + c[1] * n[1] + c[2] * n[2] >= 0 ? pts : [...pts].reverse();
+  sink.prism(bucket, ordered, n, t, DECOR);
 }

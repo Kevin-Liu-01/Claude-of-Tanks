@@ -84,7 +84,7 @@ function khata(ctx: RegionalBuildContext, opts: { long?: boolean } = {}): Region
 }
 
 /** Clay under the whitewash: what a khata's worn render shows (a tint on the render, facade craft). */
-const CLAY: Rgb = [0.66, 0.55, 0.45];
+const CLAY: Rgb = [0.8, 0.7, 0.58];
 const HOLLYHOCK: readonly Rgb[] = [0xc23a5e, 0xd8d0d6, 0x9a2a4a, 0xe08aa8, 0x7a2a6a].map(rgb);
 const RIDER = rgb(0x6e6254);
 
@@ -105,8 +105,12 @@ function khataCraft(st: KolkhozState): { window: WindowStyle; line: Rgb; surroun
   const rise = 0.13 + f() * 0.08, drop = 0.2 + f() * 0.1;
   // the bands: the house's paint lightened toward the lime (a pale line over a dark plinth)
   const light = (c: Rgb, k: number): Rgb => [c[0] + (1 - c[0]) * k, c[1] + (1 - c[1]) * k, c[2] + (1 - c[2]) * k];
+  // the shutters painted: a border and a diamond or a heart in the surround's other colour
+  const motif = f() < 0.5 ? 'diamond' as const : f() < 0.6 ? 'heart' as const : null;
+  const shutters = st.window.shutters ? { ...st.window.shutters, paint: { border: other, motif } } : null;
+  const window: WindowStyle = { ...st.window, shutters };
   return {
-    window: carved ? { ...st.window, carved: { crest: { peak, colour: main, field: shade(other, 0.86), rise }, apronDrop: drop } } : st.window,
+    window: carved ? { ...window, carved: { crest: { peak, colour: main, field: shade(other, 0.86), rise }, apronDrop: drop } } : window,
     line: light(st.paint, 0.18 + f() * 0.2),
     surround: carved ? null : light(st.paint, 0.45),
   };
@@ -130,7 +134,7 @@ function khataBody(sink: PartSink, ctx: RegionalBuildContext, st0: KolkhozState,
     roof: thatched ? thatch(40 + rng() * 6) : shifer(30, 'hip'), gableBucket: wall, openings,
     chimneys: [{ x: (rng() - 0.5) * 0.8, z: (rng() - 0.5) * D * 0.3, sx: 0.5, sz: 0.5, above: thatched ? 0.55 : 0.75, bucket: 'plaster', cap: 'slab' }],
     // clay-rendered timber or adobe: no brick under the whitewash; where the lime has worn off (desktop), the clay shows
-    gutters: null, verge: null, spall: craft ? wall : null, spallTint: CLAY, spallScale: 0.55,
+    gutters: null, verge: null, spall: craft ? wall : null, spallTint: CLAY, spallScale: 0.45,
   }, dialect(st));
   if (craft) khataDressing(sink, frame, st, craft, wall, thatched);
   // the porch (ganok) over the door: two posts and a small lean-to
@@ -165,9 +169,10 @@ function khataDressing(sink: PartSink, frame: HouseFrame, st: KolkhozState, craf
     }
   }
   const rg = frame.roof;
-  if (thatched && rg.kind === 'hip') {
-    const half = rg.ridgeHalf, n = Math.max(1, Math.round(2 * half / 1.15));
-    const zs = n === 1 ? [0] : Array.from({ length: n + 1 }, (_, k) => -half + 0.2 + (2 * half - 0.4) * k / n);
+  // (calibration 2026-10-05: nine pairs down a long khata's ridge read as a fence; two or three, on most houses)
+  if (thatched && rg.kind === 'hip' && f() < 0.7) {
+    const half = rg.ridgeHalf, n = Math.min(2, Math.max(0, Math.round(2 * half / 2.6)));
+    const zs = n === 0 ? [0] : Array.from({ length: n + 1 }, (_, k) => -half * 0.8 + 1.6 * half * k / n);
     ridgeRiders(sink, zs, rg.ridgeTopY + 0.06, rg.tanP, RIDER);
   }
   // hollyhocks against the long front (the porch's face), clear of its windows and the porch
@@ -196,7 +201,7 @@ function shedMasonry(sink: PartSink, frame: HouseFrame, wall: RegionalBucket): v
     const us = frame.spec.openings.filter((o) => o.face === name).map((o) => o.u).sort((a, b) => a - b);
     const piers = [-half + 0.22, half - 0.22];
     for (let k = 0; k + 1 < us.length; k++) piers.push((us[k] + us[k + 1]) / 2);
-    for (const u of piers) pilaster(sink, wall, face, u, base, top - 0.31, 0.44, 0.065);
+    for (const u of piers) pilaster(sink, wall, face, u, base, top - 0.31, 0.5, 0.12);
     dentilCornice(sink, wall, face, -half, half, top - 0.31, { ret: 0.35 });
     for (const o of frame.spec.openings) {
       if (o.face !== name) continue;
@@ -208,7 +213,7 @@ function shedMasonry(sink: PartSink, frame: HouseFrame, wall: RegionalBucket): v
   const rg = frame.roof;
   for (const name of ['front', 'back'] as const) {
     const face = frame.faces[name], half = face.width / 2;
-    for (const u of [-half + 0.22, half - 0.22]) pilaster(sink, wall, face, u, base, top - 0.05, 0.44, 0.065);
+    for (const u of [-half + 0.25, half - 0.25]) pilaster(sink, wall, face, u, base, top - 0.05, 0.5, 0.12);
     // the round vent in the gable, in a brick ring
     const vy = top + (rg.ridgeY - top) * 0.52, ring: Array<[number, number]> = [], hole: Array<[number, number]> = [];
     for (let k = 0; k < 12; k++) {
