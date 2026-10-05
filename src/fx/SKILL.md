@@ -14,10 +14,7 @@ Render combat feedback from authoritative events without modifying simulation.
 `fxRuntimeAccess.ts` owns retryable battle-only module/runtime acquisition,
 `effects.ts` composes event reactions, `particles.ts` owns typed pools, `clock.ts`
 owns presentation time, `effectAttachments.ts` owns continuous emitter anchor
-contracts, and `impactDecals.ts` owns bounded surface marks. `combat/` owns the
-media of impacts, muzzle blasts, kills and wreck columns (lit, wind-borne,
-deforming puffs, clods and craters) that `effects.ts` delegates to
-(docs/ARCHITECTURE.md §3.8.3).
+contracts, and `impactDecals.ts` owns bounded surface marks.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
@@ -29,6 +26,11 @@ inputs only, and respect pause/killcam/shot-mode time scaling.
 Trace the bus event, confirm the access owner is acquired before the consumer,
 confirm pool teardown/reset paths, then test live battle, killcam, and rematch
 behavior.
+
+Impact, muzzle-blast, kill and wreck-column media live in `combat/` (lit,
+wind-borne, deforming puffs, clods and craters) that `effects.ts` delegates to:
+change a recipe there and keep `combat/combatFx.selftest.mjs` green
+(docs/ARCHITECTURE.md §3.8.3).
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
