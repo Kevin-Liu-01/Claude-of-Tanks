@@ -33,15 +33,10 @@ assert.ok(0.9 * gate(0, 1) < cut, 'even a strong cell in a gap stays under the c
 assert.ok(0.5 * gate(1, 1) > cut * 0.9, 'an average cell at a field\'s heart rises to the cut (cells merge into masses)');
 
 // ---- the GLSL: one field for the trace, the gobos and the far shade
-assert.match(clouds, /uniform float uCluster;\n\/\/ 2026-10-03: the cumulus fields' floor over the battlefield \(CLOUD_NEAR_FIELD; 0 = off\)\nuniform float uNearField;\n[\s\S]{0,400}uniform vec4 uFrame;\n\/\/ the last cloudField call's cumulus-field gate/, 'declared with the shared field (2026-10-05: and the framing mass, uFrame)');
-// 2026-10-05 (Part 1's framing): the mass over the point up the sun's ray from the map's centre — never gated out, the
-// cells lifted over the cut; off by default (QA: CLOUD_SHADOW_FRAME) and in the shade map's field alike
-assert.match(clouds, /cloudGate = max\( cloudGate, frameK \);\s*field \*= cloudGate;\s*\}\s*\/\/[^\n]*\n\s*field \*= 1\.0 \+ uFrame\.z \* frameK;/, 'the framing lift after the gate');
-assert.match(clouds, /const CLOUD_SHADOW_FRAME = 0;/, 'off until a lab shows it');
-assert.match(clouds, /uFrame: gu\.uFrame/, 'the shade map reads the same mass');
+assert.match(clouds, /uniform float uCluster;\n\/\/ 2026-10-03: the cumulus fields' floor over the battlefield \(CLOUD_NEAR_FIELD; 0 = off\)\nuniform float uNearField;\n\/\/ the last cloudField call's cumulus-field gate/, 'declared with the shared field');
 assert.match(clouds, /float g = textureLod\( tWeather, \( pxz \+ uWeatherShift \* 0\.5 \) \/ \$\{f\(CLOUD_WEATHER_TILE_M \* CLOUD_CLUSTER_PERIOD_K\)\} \+ vec2\( 0\.37, 0\.61 \), 0\.0 \)\.b;/,
   'the broad channel at the fields\' period, drifting at half the cells\' speed');
-assert.match(clouds, /cloudGate = mix\( 1\.0, \$\{f\(CLOUD_CLUSTER_GAP\)\} \+ \$\{f\(2 \* \(1 - CLOUD_CLUSTER_GAP\)\)\} \* smoothstep\( 0\.3, 0\.7, g \), uCluster \);[\s\S]{0,360}field \*= cloudGate;/, 'the gate');
+assert.match(clouds, /cloudGate = mix\( 1\.0, \$\{f\(CLOUD_CLUSTER_GAP\)\} \+ \$\{f\(2 \* \(1 - CLOUD_CLUSTER_GAP\)\)\} \* smoothstep\( 0\.3, 0\.7, g \), uCluster \);[\s\S]{0,240}field \*= cloudGate;/, 'the gate');
 // (2026-10-03, wave 22: "tiny grey dabs high in the frame smaller than the clouds near the horizon") the floor over the
 // battlefield: never under the mean within 2.8 km of the map's centre, fading by 8 km; off until a capture shows it
 assert.match(clouds, /if \( uNearField > 0\.0 \) cloudGate = max\( cloudGate, uNearField \* \( 1\.0 - smoothstep\( 2800\.0, 8000\.0, length\( pxz \) \) \) \);/, 'the floor');
