@@ -7265,6 +7265,71 @@ floor), the ring and the ghost gone off the ridge; facing the sun on Caldera 3.3
 the sun keep the glow and the streak (the flare's mean lift halved, 0.16 → 0.08 and 0.15 → 0.07 levels). Receipt:
 `lensFlare.selftest` (the twin's closed deck → 0, a veil at the gate's midpoint → half, an edge across the disc → a fifth).
 
+### 2026-10-04 — the coast's shelf and swell: turquoise over the sand, deep blue beyond, long waves under the chop (the skies lane)
+
+**The gauntlet's wave 59 on the sea:** "a uniform saturated navy sheet that stays the same deep colour right up to a hard
+sand edge, with no shallow-water shelf, wet-sand band or surf" (Saltmere's bay); "one fine, uniform ripple pattern with
+no swell or wave-group structure … reads as a wind-ruffled lake" (Saltwind's sea).
+
+**Cause.** The water's colour turned from the shallow tint to the deep body over the mask's own ramp — a few metres at
+the waterline — so a bay was deep navy almost to the sand (the gameplay bed is the wading depth everywhere; the depth was
+only ever a colour). On the sea, the tiled ripple's relief (strength 1.2–1.6) outweighed the FFT ocean's swell, whose 120 m
+waves carry a third of the wind sea's energy at a slope too small to read.
+
+**The fix** (`shallowWater.ts`; a coast with an FFT ocean only — lakes, rivers and marshes keep their own):
+- *the shelf:* a shore-distance field (the mask's visible edge chamfered on a grid of at most 512², R8 metres; past the
+  square, plus the metres out) stands in for the depth: the body's share of the colour rises as 1 − e^(−d / 25 m) and its
+  opacity as 1 − e^(−d / 15 m) from 0.35 at the waterline — turquoise over the sand bed, the bed showing through, the
+  deep blue past the shelf (`SEA_SHELF_*`, `SEA_TINT`: the shelf's turquoise 0.6, the deep blue 0.8);
+- *the swell:* three long-crested trains (55 m, 48 m and 64 m, 8° apart) beat into wave groups at a slope of 0.08 under
+  the FFT chop, fading where a pixel can no longer hold them; the tiled ripple steps back to 0.6 on an FFT sea
+  (`SEA_SWELL_*`, `SEA_CLASSIC_NORMAL`).
+Set from a sweep of one knob at a time (`$SP/p2/sea/cap4`): a 45 m colour shelf turned Saltmere's whole bay turquoise,
+25 m keeps a rim; the deep blue at 0.5 still read teal at Saltwind's grazing view; a swell slope of 0.05 barely read.
+
+**Measured** (the pair: the PR head 6bf0a4c48 against the branch, desktop high; `$SP/p2/sea/pair2`):
+- *Saltmere:* the bay's waterline band turns turquoise and clear (a* −8 → −12, L* +8) and grades into the blue body;
+  from the bird view a turquoise rim follows the whole shore. The open sea toward the horizon keeps its sky mirror.
+- *Saltwind:* the sea seen at grazing turns from teal to blue (hue 215° → 234°, b* −9.6 → −15.8) and the sea beside the
+  sun's glitter deeper blue (b* −11.9 → −22.9); long bands of swell read under the chop.
+- *GPU* (the old water in-page, on / off / off / on twice): +0.57 / +1.01 and +0.67 / +0.85 ms (p25 / p50) on the two
+  sea views with the unprepared first frame in the "on" set; +0.4 to +0.6 ms without it — a texture fetch and three
+  cosines a water fragment, within the run-to-run spread on a loaded machine.
+
+### 2026-10-05 — the sea's second round: a shelf by the coast, deep water that reads deep, glitter over white (the skies lane)
+
+**The gauntlet's wave 78** (held: the water +0.14 for about +0.5 ms): Saltmere's bay "one saturated sky-cyan sheet … no
+shallow-to-deep gradation" (the 25 m shelf too narrow to read from 100–300 m up, 45 m flooding the bay); Saltwind's open
+channel "one bright aqua-turquoise from the foreground to the horizon"; the glitter "tops out at a dull grey-white that
+never clips … a single smooth, soft-edged bloom column instead of a dense field of small, sharp, dancing highlights".
+
+**The fix** (`shallowWater.ts`, the open sea only — lakes, rivers and marshes keep their own):
+- *a shelf by the coast:* the shelf's width follows the land's rise within 30 m of the waterline (a beach rises a metre or
+  two, a karst coast tens): width = 1.25 / rise slope, 8–60 m, carried from the nearest shore cell (the shore-distance
+  field's G channel). The sweep scaled the width in-page: K 2.5 with a 120 m cap turned Saltmere's whole bay turquoise
+  again and widened Saltwind's channel shelf, half of it grades the bay from a turquoise belt into deep blue, a third
+  leaves a rim (`SEA_SHELF_WIDTH_*`, `SEA_SHELF_BY_COAST`, `SEA_SHELF_WIDTH_SCALE`);
+- *deep water:* the deep body darker (0.7 → 0.5) and the sky's mirror taking over later toward the horizon (its grazing
+  exponent 1 → 2), so water seen from above shows its body; a bluer deep colour moved nothing visible (`SEA_TINT`,
+  `WATER_GRAZE_POW`);
+- *glitter:* the sun's lobe sharp on the fine normals — the direct lights take 0.4 of the profile's roughness — while the
+  sky's mirror keeps the profile's own, restored between the direct lights and the environment's lookup: one sharp
+  roughness for both turned the far chop into white facets over dark troughs under the horizon (its local texture 9 → 23
+  levels on Saltmere's edge view; a fade back to the profile's roughness with distance changed nothing, the isolation
+  sweep pinned it on the mirror's roughness); the sun's glints capped at 3 apart from the mirror, which keeps 1.15 (a
+  joint cap at 3 whitened the far band; `WATER_ROUGH`, `WATER_GLINT_CAP`, `WATER_SPEC_CAP`).
+
+**Measured** (the PR head against the branch, desktop high; `$SP/p2/sea/pair3`, the sweeps `cap5`–`cap9`):
+- *Saltwind's glint:* pure-white pixels 0 → 2.2 % of the sun's path, its brightest 0.5 % from 234 to 251 — sparkles that
+  clip, in a narrower path of small facets.
+- *Saltmere's bay:* the water's a* p10/p90 −9.5/−5.5 → −19.8/−6.3 — a turquoise belt along the sand grading into blue;
+  from the bird view a turquoise rim follows the shore and the bay's body stays blue.
+- *the water under the camera:* deeper and bluer — Saltwind L* 49.4 → 45.4, b* −9.5 → −16.5 (hue 187° → 195°); Saltmere
+  L* 56.3 → 45.9, b* −17.0 → −24.1.
+- *the far band:* its texture as the PR head's — Saltwind 4.5–5.9 → 4.7–7.5 levels (local deviation, the 200 rows under
+  the horizon), Saltmere 3.4–14.8 → 13.3–16.1 (it was 22.7 with one roughness) — and the sun's path keeps its sparkles.
+- *GPU* (the coordinator's rule: in-page, 8 interleaved quartets against a null control, 1920 × 1080 high): the sea's whole change (rounds 1 and 2: the shelf, the swell, the mirror's exponent, the split roughness, the glints' cap) against the PR head's water in-page — the load gate shut past two hours (`$SP/p2/costrule/sea-*`): Saltmere's establishing view +0.11 ± 0.25 ms p50 (+0.13 ± 0.23 p25), the bound +0.60 / +0.58 ms; Saltwind's glint +0.33 ± 0.31 ms p50 (+0.25 ± 0.17 p25), the bound +0.94 / +0.60 ms — both under +1 ms (frames 12.6 and 14.2 ms).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
