@@ -66,6 +66,8 @@ interface FieldWorksOptions {
   /** sRGB HSL base tones of the wall stone and the bank's earth. */
   wallTone?: readonly [number, number, number];
   bankTone?: readonly [number, number, number];
+  /** Also merge the walls' cells into one near and one far geometry (the receipts read them whole). */
+  merged?: boolean;
 }
 
 export interface FieldWorksReceipt {
@@ -74,16 +76,36 @@ export interface FieldWorksReceipt {
   /** Approximate lengths laid (m); a 'piece' is one swept chain. */
   wallM: number;
   bankM: number;
+  /** The walls' near form (every cell) and the banks. */
   triangles: number;
+  /** The walls' far form (every cell). */
+  farTriangles: number;
+  /** The cells the walls are laid in (FIELD_WALL_CELL_M square). */
+  cells: number;
   scanned: number;
+}
+
+/** The side of a wall cell (m): its near form shows within a quality's near distance of the camera, its far form past it. */
+export const FIELD_WALL_CELL_M = 64;
+
+/** A wall cell: its box (both forms) and its near and far forms (a cell holding only a breach's stones has no far form). */
+export interface FieldWallCell {
+  box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
+  near: THREE.BufferGeometry | null;
+  far: THREE.BufferGeometry | null;
 }
 
 type FieldWorksSlice = { fine: true; progress: false; stage: string };
 
 /** What the works build: the walls (the dry-stone print's) and the banks (the rock material's); `geometry` is the one there is. */
 export interface FieldWorksBuilt {
+  /** The merged walls' near form when asked for (options.merged), else the banks. */
   geometry: THREE.BufferGeometry | null;
+  /** The walls by cell. */
+  wallCells: FieldWallCell[];
+  /** The merged walls, near and far, when asked for (options.merged). */
   wallGeometry: THREE.BufferGeometry | null;
+  wallFarGeometry: THREE.BufferGeometry | null;
   bankGeometry: THREE.BufferGeometry | null;
   receipt: FieldWorksReceipt;
 }
@@ -114,9 +136,9 @@ function hsl(h: number, s: number, l: number): [number, number, number] {
 export function* buildFieldWorks(
   ground: FieldWorksGround, noise: SimplexNoise, options: FieldWorksOptions,
 ): Generator<FieldWorksSlice, FieldWorksBuilt, void> {
-  const receipt: FieldWorksReceipt = { wallPieces: 0, bankPieces: 0, wallM: 0, bankM: 0, triangles: 0, scanned: 0 };
+  const receipt: FieldWorksReceipt = { wallPieces: 0, bankPieces: 0, wallM: 0, bankM: 0, triangles: 0, farTriangles: 0, cells: 0, scanned: 0 };
   const landAt = ground._landUseAt;
-  if (!landAt || (!options.walls && !options.banks)) return { geometry: null, wallGeometry: null, bankGeometry: null, receipt };
+  if (!landAt || (!options.walls && !options.banks)) return { geometry: null, wallCells: [], wallGeometry: null, wallFarGeometry: null, bankGeometry: null, receipt };
   const s: FieldSample = { active: 0, edgeM: 0, boundary: 0, track: 0, hedge: 0 };
   const edgeAt = (x: number, z: number) => landAt(x, z, s).edgeM;
   const heightAt = ground.getHeightAtFast ? (x: number, z: number) => ground.getHeightAtFast!(x, z) : (x: number, z: number) => ground.getHeightAt(x, z);
@@ -304,12 +326,20 @@ export function* buildFieldWorks(
   yield { fine: true, progress: false, stage: 'field-works' };
 
   // walls first, then banks: two groups, the walls on their own stone, the banks on the props rock material
-  const wallBuf = newBuffers(), bankBuf = newBuffers();
+  // (b13: the walls by cell, a near form and a far form each; the banks one buffer)
+  const wallCells = new Map<number, { fine: Buffers; coarse: Buffers }>();
+  const cellOf = (x: number, z: number, coarse: boolean): Buffers => {
+    const key = (Math.floor(x / FIELD_WALL_CELL_M) + 512) * 1024 + (Math.floor(z / FIELD_WALL_CELL_M) + 512);
+    let cell = wallCells.get(key);
+    if (!cell) { cell = { fine: newBuffers(), coarse: newBuffers() }; wallCells.set(key, cell); }
+    return coarse ? cell.coarse : cell.fine;
+  };
+  const bankBuf = newBuffers();
   const [wh, ws, wl] = options.wallTone ?? [0.11, 0.06, 0.8];
   const [bh, bs, bl] = options.bankTone ?? [0.2, 0.28, 0.24];
   let lineIndex = 0;
   for (const line of lines) {
-    if (line.wall) layWall(line.pts, wallBuf); else sweepBank(line.pts, bankBuf);
+    if (line.wall) layWall(line.pts, cellOf); else sweepBank(line.pts, bankBuf);
     if (++lineIndex % 20 === 0) yield { fine: true, progress: false, stage: 'field-works' };
   }
 
@@ -360,7 +390,7 @@ export function* buildFieldWorks(
    * a stretch has fallen in (its upper courses tumbled at its foot), a breach opens here and there with its stones in
    * the gap, the heads are lower, and a fallen stone lies at the foot now and then. Deterministic for the line's place.
    */
-  function layWall(pts: number[], buf: Buffers): void {
+  function layWall(pts: number[], cellOf: (x: number, z: number, coarse: boolean) => Buffers): void {
     const n = pts.length / 2;
     const S = [0];
     for (let k = 1; k < n; k++) S.push(S[k - 1] + Math.hypot(pts[k * 2] - pts[k * 2 - 2], pts[k * 2 + 1] - pts[k * 2 - 1]));
@@ -386,6 +416,9 @@ export function* buildFieldWorks(
     };
     const rand = lineRng(pts[0], pts[1], pts[pts.length - 2], pts[pts.length - 1]);
     const mobile = options.mobile;
+    // (the near form is laid into the cell of each slot's middle, the far form into its segment's: buf is the current one)
+    let buf: Buffers = cellOf(pts[0], pts[1], false);
+    const slotCell = (s0: number, s1: number, coarse: boolean): Buffers => { const [x, z] = at((s0 + s1) / 2); return cellOf(x, z, coarse); };
     const H0 = 0.8 + rand() * 0.12;
     const uFace = rand() * 7, uTop = rand() * 7;
     // the slots, and what each is: whole, fallen in (its height a share of the wall's) or a breach (none)
@@ -498,7 +531,8 @@ export function* buildFieldWorks(
     for (let i = 0; i < slots.length; i++) {
       const sl = slots[i];
       if (sl.kind === 2) {
-        if (piece) { endFace(slots[i - 1], false); piece = false; }
+        // (the piece before a breach closed with its head at its last slot, below)
+        buf = slotCell(sl.s0, sl.s1, false);
         // the breach's stones lie in the gap and spill to either side
         if (!mobile || rand() < 0.5) for (let k = 0, m = 1 + Math.floor(rand() * 2); k < m; k++) {
           const [x, z] = at(sl.s0 + rand() * (sl.s1 - sl.s0));
@@ -508,6 +542,7 @@ export function* buildFieldWorks(
         }
         continue;
       }
+      buf = slotCell(sl.s0, sl.s1, false);
       if (!piece) { startFace(sl); piece = true; receipt.wallPieces++; }
       const A = station(sl.s0), B = station(sl.s1);
       const col = tone(sl.tone);
@@ -563,6 +598,7 @@ export function* buildFieldWorks(
       }
     }
     if (piece) endFace(slots[slots.length - 1], true);
+    layFar();
 
     /** A wall head: the section's outline at the slot's start (facing back) or end (facing ahead), fanned from its foot. */
     function endFace(sl: Slot, atEnd: boolean): void {
@@ -570,7 +606,8 @@ export function* buildFieldWorks(
       const outline: number[][] = [];
       for (const side of [-1, 1]) {
         const ring = [P(st, side, st.hb, -st.sink), C(st, side, h + side * sl.lean)];
-        if (side < 0) outline.push(...ring, R(st, sl.ridge, h + sl.crest)); else outline.push(...ring.reverse());
+        // (the ridge's point only where the top stone has one: a flat top's head is three triangles)
+        if (side < 0) outline.push(...ring, ...(sl.crest > 0 ? [R(st, sl.ridge, h + sl.crest)] : [])); else outline.push(...ring.reverse());
       }
       // the outline runs left foot, up, across the crown, down to the right foot (fanned from the foot's middle: the
       // start's fan wound to face back along the wall, the end's ahead)
@@ -585,6 +622,64 @@ export function* buildFieldWorks(
       }
     }
     function startFace(sl: Slot): void { endFace(sl, false); }
+
+    /**
+     * The far form (the scenery lane, b13; the coordinator: "full stones within a near radius, merged per cell, with a
+     * simpler mid and far form"): the same wall on the same stations — its breaches, its fallen stretches and heads
+     * where the near form has them — as segments of a few slots (3.6 m; a phone's 6 m) with a continuous upright crown
+     * and no ridge, step or fallen stone: two faces and a top a segment. A segment never spans a cell or a change from
+     * whole to fallen, so a cell's far form stands exactly where its near form does.
+     */
+    function layFar(): void {
+      const SEG = mobile ? 6 : 3.6;
+      let i = 0;
+      while (i < slots.length) {
+        if (slots[i].kind === 2) { i++; continue; }
+        // a piece: the slots up to the next breach
+        let j = i;
+        while (j + 1 < slots.length && slots[j + 1].kind !== 2) j++;
+        // its segments, the crown continuous: each boundary at the mean of the near form's two crowns there
+        const crownAt = (k: number): number => {
+          if (k <= i) return slots[i].h0;
+          if (k > j) return slots[j].h1;
+          return (slots[k - 1].h1 + slots[k].h0) / 2;
+        };
+        let a = i;
+        // (a segment is laid in its slots' cell, the cell their near form is in)
+        const segs: Array<{ sg: Slot; cell: Buffers }> = [];
+        while (a <= j) {
+          let b = a;
+          const cellA = slotCell(slots[a].s0, slots[a].s1, true);
+          while (b + 1 <= j && slots[b + 1].s1 - slots[a].s0 <= SEG && slots[b + 1].kind === slots[a].kind
+            && slotCell(slots[b + 1].s0, slots[b + 1].s1, true) === cellA) b++;
+          segs.push({ cell: cellA, sg: { s0: slots[a].s0, s1: slots[b].s1, h0: crownAt(a), h1: crownAt(b + 1), lean: 0,
+            tone: slots[a].tone, kind: slots[a].kind, ridge: 0, crest: 0 } });
+          a = b + 1;
+        }
+        for (let k = 0; k < segs.length; k++) {
+          const { sg, cell } = segs[k];
+          buf = cell;
+          if (k === 0) endFace(sg, false);
+          const A = station(sg.s0), B = station(sg.s1), col = tone(sg.tone);
+          for (const side of [-1, 1]) {
+            const ba = P(A, side, A.hb, -A.sink), bb = P(B, side, B.hb, -B.sink);
+            const ca = C(A, side, sg.h0), cb = C(B, side, sg.h1);
+            const uvA = faceUv(side, sg.s0, A.sink), uvB = faceUv(side, sg.s1, B.sink);
+            const uvOf = (p: number[]) => (p === ba || p === ca ? uvA(p) : uvB(p));
+            if (side > 0) quad(buf, ba, bb, cb, ca, col, uvOf); else quad(buf, ba, ca, cb, bb, col, uvOf);
+          }
+          const la = C(A, -1, sg.h0), ra = C(A, 1, sg.h0), lb = C(B, -1, sg.h1), rb = C(B, 1, sg.h1);
+          const topUv = (p: number[]): [number, number] => {
+            const across = (p[0] - A.x) * A.ax + (p[2] - A.z) * A.az;
+            const along = sg.s0 + (p[0] - A.x) * -A.az + (p[2] - A.z) * A.ax;
+            return [uTop + along / DRY_WALL_TILE_M, DRY_WALL_CROWN_MID_V + across / DRY_WALL_TILE_M];
+          };
+          quad(buf, la, ra, rb, lb, col, topUv);
+          if (k === segs.length - 1) endFace(sg, true);
+        }
+        i = j + 1;
+      }
+    }
   }
 
   /**
@@ -640,20 +735,24 @@ export function* buildFieldWorks(
 
   /**
    * The buffers as an indexed geometry: the walls without the rock material's ground and with byte colours. Copied
-   * into typed arrays a few hundred thousand values a slice (a map's walls are a million and more vertices).
+   * into typed arrays a slice every 400 000 values (a map's walls are a million and more vertices, in a few hundred
+   * cells).
    */
+  let copied = 0;
+  function* copy<T extends Float32Array | Uint8Array | Uint32Array>(from: number[], to: T, scale = 0, offset = 0): Generator<FieldWorksSlice, T, void> {
+    const CHUNK = 400_000;
+    for (let i = 0; i < from.length;) {
+      const end = Math.min(from.length, i + CHUNK - copied);
+      if (scale) for (let k = i; k < end; k++) to[k] = Math.round(Math.min(1, Math.max(0, from[k])) * scale);
+      else if (offset) for (let k = i; k < end; k++) to[k] = from[k] + offset;
+      else for (let k = i; k < end; k++) to[k] = from[k];
+      copied += end - i; i = end;
+      if (copied >= CHUNK) { copied = 0; yield { fine: true, progress: false, stage: 'field-works' }; }
+    }
+    return to;
+  }
   function* build(buf: Buffers, wall: boolean): Generator<FieldWorksSlice, THREE.BufferGeometry | null, void> {
     if (!buf.index.length) return null;
-    const CHUNK = 400_000;
-    function* copy<T extends Float32Array | Uint8Array | Uint32Array>(from: number[], to: T, scale = 0): Generator<FieldWorksSlice, T, void> {
-      for (let i = 0; i < from.length; i += CHUNK) {
-        const end = Math.min(from.length, i + CHUNK);
-        if (scale) for (let k = i; k < end; k++) to[k] = Math.round(Math.min(1, Math.max(0, from[k])) * scale);
-        else for (let k = i; k < end; k++) to[k] = from[k];
-        yield { fine: true, progress: false, stage: 'field-works' };
-      }
-      return to;
-    }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(yield* copy(buf.positions, new Float32Array(buf.positions.length)), 3));
     g.setAttribute('normal', new THREE.BufferAttribute(yield* copy(buf.normals, new Float32Array(buf.normals.length)), 3));
@@ -664,13 +763,37 @@ export function* buildFieldWorks(
     g.setAttribute('uv', new THREE.BufferAttribute(yield* copy(buf.uvs, new Float32Array(buf.uvs.length)), 2));
     g.setIndex(new THREE.BufferAttribute(yield* copy(buf.index, new Uint32Array(buf.index.length)), 1));
     g.computeBoundingBox(); g.computeBoundingSphere();
-    receipt.triangles += buf.index.length / 3;
     return g;
   }
+  /** Several buffers as one (the receipts' merged walls). */
+  const concat = (list: Buffers[]): Buffers => {
+    const out = newBuffers();
+    for (const b of list) {
+      const base = out.positions.length / 3;
+      for (const key of ['positions', 'normals', 'colors', 'grounds', 'uvs'] as const) for (const v of b[key]) out[key].push(v);
+      for (const k of b.index) out.index.push(k + base);
+    }
+    return out;
+  };
   yield { fine: true, progress: false, stage: 'field-works' };
-  const wallGeometry = yield* build(wallBuf, true);
+  const wallCellList: FieldWallCell[] = [];
+  for (const cell of wallCells.values()) {
+    const near = yield* build(cell.fine, true), far = yield* build(cell.coarse, true);
+    if (!near && !far) continue;
+    const box = new THREE.Box3();
+    if (near) box.union(near.boundingBox!);
+    if (far) box.union(far.boundingBox!);
+    wallCellList.push({ near, far, box: { minX: box.min.x, maxX: box.max.x, minY: box.min.y, maxY: box.max.y, minZ: box.min.z, maxZ: box.max.z } });
+    receipt.triangles += cell.fine.index.length / 3;
+    receipt.farTriangles += cell.coarse.index.length / 3;
+  }
+  receipt.cells = wallCellList.length;
+  const cellBuffers = [...wallCells.values()];
+  const wallGeometry = options.merged ? yield* build(concat(cellBuffers.map((c) => c.fine)), true) : null;
+  const wallFarGeometry = options.merged ? yield* build(concat(cellBuffers.map((c) => c.coarse)), true) : null;
   const bankGeometry = yield* build(bankBuf, false);
-  return { geometry: wallGeometry ?? bankGeometry, wallGeometry, bankGeometry, receipt };
+  if (bankGeometry) receipt.triangles += bankBuf.index.length / 3;
+  return { geometry: wallGeometry ?? bankGeometry, wallCells: wallCellList, wallGeometry, wallFarGeometry, bankGeometry, receipt };
 }
 
 /** A line's own stream: seeded by its two ends' places (never by the order the scan walked it). */

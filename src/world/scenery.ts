@@ -518,7 +518,7 @@ export function* composeFieldWorks(
 ): Generator<SceneryBuildSlice, Omit<FieldWorksBuilt, 'receipt'> & { receipt: FieldWorksReceipt | null }, void> {
   const works = ctx.scenery?.fieldWorks;
   if (!works || (!works.walls && !works.banks) || !ctx.heightField._landUseAt) {
-    return { geometry: null, wallGeometry: null, bankGeometry: null, receipt: null };
+    return { geometry: null, wallCells: [], wallGeometry: null, wallFarGeometry: null, bankGeometry: null, receipt: null };
   }
   // (the hard solids: buildings, walls, the rock masses; not the trees, not the crushable clutter)
   const solids = ctx.obstacles.filter((ob) => ob.treeIdx == null && !ob.crushable && !SOFT_KINDS.has(ob.kind ?? ''));

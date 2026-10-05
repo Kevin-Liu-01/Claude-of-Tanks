@@ -68,7 +68,7 @@ const fieldOf = (lines) => ({
     return out;
   },
 });
-const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noise, { walls: true, banks: false, spawns: [{ x: 0, z: -400 }], mobile }));
+const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noise, { walls: true, banks: false, spawns: [{ x: 0, z: -400 }], mobile, merged: true }));
 // a long straight wall: its crown, its fallen stretches and breaches, its fallen stones
 {
   const built = lay([[-200, 0, 200, 0]]);
@@ -102,7 +102,27 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
   assert.deepEqual(Array.from(again.wallGeometry.attributes.position.array), Array.from(p), 'deterministic');
   const phone = lay([[-200, 0, 200, 0]], true);
   assert.ok(phone.receipt.triangles < built.receipt.triangles * 0.5, `the phones' walls are fewer triangles (${phone.receipt.triangles} < ${built.receipt.triangles})`);
-  for (const b of [built, again, phone]) b.wallGeometry.dispose();
+  // the cells: each a near form and a far form in the same place, the far a fraction of the near; the far form keeps
+  // the wall's line and its height, and draws no fallen stone
+  assert.ok(built.wallCells.length >= 6 && built.receipt.cells === built.wallCells.length, `the wall laid by cell (${built.wallCells.length} cells of 64 m)`);
+  for (const cell of built.wallCells) {
+    assert.ok(cell.near && cell.far, 'a cell of a whole wall has both forms');
+    const a = cell.near.boundingBox, b = cell.far.boundingBox;
+    assert.ok(a.min.x >= cell.box.minX - 1e-6 && a.max.x <= cell.box.maxX + 1e-6 && b.min.x >= cell.box.minX - 1e-6 && b.max.x <= cell.box.maxX + 1e-6, 'the box holds both forms');
+    assert.ok(Math.abs((a.min.x + a.max.x) - (b.min.x + b.max.x)) < 4, 'the far form stands where the near form does');
+    assert.ok(cell.box.maxX - cell.box.minX < 64 + 3, 'a cell is no longer than its side (and a slot)');
+  }
+  assert.ok(built.receipt.farTriangles < built.receipt.triangles * 0.25, `the far form a quarter of the near or less (${built.receipt.farTriangles} against ${built.receipt.triangles})`);
+  const fp = built.wallFarGeometry.attributes.position.array;
+  let farOff = 0, farHigh = 0;
+  for (let i = 0; i < fp.length; i += 3) { if (Math.abs(fp[i + 2]) > 0.5) farOff++; if (fp[i + 1] - 2 > 1.0) farHigh++; }
+  assert.equal(farOff, 0, 'the far form is the wall alone: no fallen stone, within its foot');
+  assert.equal(farHigh, 0, 'the far form never above a metre');
+  assert.ok(phone.receipt.farTriangles < built.receipt.farTriangles, 'the phones\' far form is fewer still');
+  for (const b of [built, again, phone]) {
+    b.wallGeometry.dispose(); b.wallFarGeometry.dispose();
+    for (const c of b.wallCells) { c.near?.dispose(); c.far?.dispose(); }
+  }
 }
 // a short wall (no breach, no fallen stretch): its two heads face out of it
 {
@@ -126,6 +146,7 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
   assert.ok(heads >= 4, `the wall's two heads are drawn (${heads} faces)`);
   assert.equal(inward, 0, 'every head faces out of the wall (none drawn inside out)');
   g.dispose();
+  built.wallFarGeometry.dispose();
 }
 // a T on the lines themselves (Saltwind corner-ne: the chain of one wall ran on 2 m through the wall it met): the stub
 // is cut at the crossing, so the meeting wall's head stands inside the wall it meets; a crossing farther from an end
@@ -160,7 +181,7 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
   let north = 0;
   for (let i = 0; i < p.length; i += 3) if (p[i + 2] > 3 && Math.abs(p[i]) < 0.6) north++;
   assert.ok(north > 0, 'the meeting wall stands north of the T');
-  built.wallGeometry.dispose();
+  built.wallGeometry.dispose(); built.wallFarGeometry.dispose();
 }
 
 // ---------------------------------------------------------------------------------------------- 3. the wiring
@@ -171,6 +192,16 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
   assert.match(props, /engineCtx\.setupShadowMaterial\(wallMaterial\);/, 'a lit material on the cascades');
   assert.match(props, /works\.castShadow = false;\n\s*works\.receiveShadow = true;/, 'no shadow cast, shadows received');
   assert.match(props, /if \(built\.bankGeometry\) place\(built\.bankGeometry, mats\.rock,/, 'the banks on the rock material');
+  // near-only detail: the cells' near forms and far forms in two batches, the near shown within the quality's distance
+  assert.match(props, /const near = batchOf\(built\.wallCells\.map\(\(c\) => c\.near\), 'props-field-works'\);/, 'the near forms one batch');
+  assert.match(props, /const far = batchOf\(built\.wallCells\.map\(\(c\) => c\.far\), 'props-field-works-far'\);/, 'the far forms another');
+  assert.match(props, /batch\.castShadow = false;\n\s*batch\.receiveShadow = true;/, 'neither casts a shadow');
+  assert.match(props, /updateFineDetail\(cameraPos\);\n\s*updateFieldWallLod\(cameraPos\);/, 'the switch runs with the props\' other distances');
+  assert.match(props, /if \(near && cell\.near >= 0\) near\.setVisibleAt\(cell\.near, show\);\n\s*if \(far && cell\.far >= 0\) far\.setVisibleAt\(cell\.far, !show\);/, 'a cell shows one form or the other');
+  const table = /const FIELD_WALL_NEAR_M: Readonly<Record<string, number>> = \{([^}]+)\}/.exec(props)[1];
+  const near = Object.fromEntries([...table.matchAll(/'?([a-z-]+)'?: (\d+)/g)].map((m) => [m[1], Number(m[2])]));
+  assert.ok(near.high <= 100 && near.ultra <= 140 && near['mobile-high'] <= 45 && near.mobile <= 35 && near['mobile-low'] <= 25,
+    `the near form within a short radius, shorter on the phones (${JSON.stringify(near)})`);
   // (the field-stone and mud prints are painted with v down the image from row 0, but a canvas texture is flipped on
   // upload, row 0 landing at v = 1 — measured in swiftshader: v = 0.9 sampled the top row — so they upload reversed;
   // the dry-wall print paints the GPU's way round and uploads as it is)

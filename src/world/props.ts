@@ -8569,6 +8569,11 @@ ${snowCap ? `
   // every solid is final — the pools' refit above reshapes the buildings' records, and the works keep off the objective
   // discs where the match placement seats them on these very solids — and off the aprons and the yards (the yard
   // structures, as placeYardDressing reads them). Low and long, grounded by their own shading and dark foot (no shadow).
+  /** The field walls' cells and their two batches, the near form's and the far form's (b13; updateFieldWallLod). */
+  let fieldWallLod: {
+    near: THREE.BatchedMesh | null; far: THREE.BatchedMesh | null;
+    cells: Array<{ box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number }; near: number; far: number; nearShown: boolean }>;
+  } | null = null;
   function* placeFieldBoundaryWorks(): Generator<PropsBuildSlice, void, void> {
     const scenery = (cfg as (PropsMapConfig & SceneryMapConfig) | null)?.scenery;
     if (!scenery?.fieldWorks) return;
@@ -8581,7 +8586,7 @@ ${snowCap ? `
     });
     const receipt = group.userData.scenery as { fieldWorks?: unknown } | undefined;
     if (receipt && built.receipt) receipt.fieldWorks = built.receipt;
-    if (!built.geometry) return;
+    if (!built.wallCells.length && !built.bankGeometry) return;
     // (b13: the walls on their own dry stone — the face print, a lit material on the cascades like every other; the
     // banks on the rock material)
     const place = (geometry: THREE.BufferGeometry, material: THREE.Material, name: string): void => {
@@ -8592,7 +8597,7 @@ ${snowCap ? `
       works.matrixAutoUpdate = false;
       group.add(works);
     };
-    if (built.wallGeometry) {
+    if (built.wallCells.length) {
       const print = yield* makeDryWall(aniso, mobileProps ? 256 : 512);
       const wallMaterial = new THREE.MeshStandardMaterial({
         map: print.albedo, normalMap: print.normal, roughnessMap: print.surface, aoMap: print.surface,
@@ -8601,9 +8606,36 @@ ${snowCap ? `
       wallMaterial.name = 'props-field-walls';
       engineCtx.setupShadowMaterial(wallMaterial);
       retainedSurfaceMaterials.push(wallMaterial);
-      place(built.wallGeometry, wallMaterial, 'props-field-works');
+      // (the coordinator, after the first b13 count: "full stones within a near radius, merged per cell, with a simpler
+      // mid and far form"; the joinery's law) the walls by 64 m cell: two batches of one draw each, the near form's and
+      // the far form's, one instance a cell in each; a cell shows its near form within the quality's near distance of
+      // the camera (updateFieldWallLod) and its far form past it. Every far instance starts shown, every near one hidden
+      // (the same material and program: the far draw links it for both)
+      const batchOf = (forms: Array<THREE.BufferGeometry | null>, name: string) => {
+        const list = forms.filter((g): g is THREE.BufferGeometry => !!g);
+        if (!list.length) return null;
+        const vertices = list.reduce((n, g) => n + g.getAttribute('position').count, 0);
+        const indices = list.reduce((n, g) => n + (g.index ? g.index.count : 0), 0);
+        const batch = new THREE.BatchedMesh(list.length, vertices, Math.max(1, indices), wallMaterial);
+        batch.name = name;
+        batch.sortObjects = false;
+        batch.perObjectFrustumCulled = false;
+        batch.castShadow = false;
+        batch.receiveShadow = true;
+        batch.matrixAutoUpdate = false;
+        const ids = forms.map((g) => (g ? batch.addInstance(batch.addGeometry(g)) : -1));
+        for (const g of list) g.dispose();
+        group.add(batch);
+        return { batch, ids };
+      };
+      const near = batchOf(built.wallCells.map((c) => c.near), 'props-field-works');
+      const far = batchOf(built.wallCells.map((c) => c.far), 'props-field-works-far');
+      const cells = built.wallCells.map((c, i) => ({ box: c.box, near: near ? near.ids[i] : -1, far: far ? far.ids[i] : -1, nearShown: false }));
+      for (const cell of cells) if (near && cell.near >= 0) near.batch.setVisibleAt(cell.near, false);
+      fieldWallLod = { near: near?.batch ?? null, far: far?.batch ?? null, cells };
+      group.userData.fieldWallLod = fieldWallLod; // (the probes' and receipts' view of the cells)
     }
-    if (built.bankGeometry) place(built.bankGeometry, mats.rock, built.wallGeometry ? 'props-field-banks' : 'props-field-works');
+    if (built.bankGeometry) place(built.bankGeometry, mats.rock, built.wallCells.length ? 'props-field-banks' : 'props-field-works');
   }
   yield* placeFieldBoundaryWorks();
   // Construction-only spans are now sealed into matrices/support/colliders;
@@ -9124,6 +9156,30 @@ ${snowCap ? `
   const FINE_DETAIL_M: Readonly<Record<string, number>> = {
     ultra: 180, high: 120, medium: 90, low: 70, 'mobile-high': 70, mobile: 60, 'mobile-low': 45,
   };
+  // the scenery lane (b13): the field walls' cells, their near form within the quality's near distance of the camera
+  // (3D, to the cell's box), their far form past it, 10 m of hysteresis; the preset re-read once a second. At High a
+  // top stone's 5 cm step is a third of a pixel at 100 m.
+  const FIELD_WALL_NEAR_M: Readonly<Record<string, number>> = {
+    ultra: 130, high: 100, medium: 80, low: 60, 'mobile-high': 45, mobile: 35, 'mobile-low': 25,
+  };
+  let wallNear = 100, wallFrames = 0;
+  function updateFieldWallLod(cameraPos: THREE.Vector3 | null): void {
+    if (!fieldWallLod || !cameraPos) return;
+    if (wallFrames-- <= 0) { wallNear = FIELD_WALL_NEAR_M[resolvePresetName()] ?? 80; wallFrames = 60; }
+    const { near, far, cells } = fieldWallLod;
+    for (const cell of cells) {
+      const b = cell.box;
+      const dx = Math.max(b.minX - cameraPos.x, 0, cameraPos.x - b.maxX);
+      const dy = Math.max(b.minY - cameraPos.y, 0, cameraPos.y - b.maxY);
+      const dz = Math.max(b.minZ - cameraPos.z, 0, cameraPos.z - b.maxZ);
+      const d = Math.hypot(dx, dy, dz);
+      const show = cell.nearShown ? d < wallNear + 10 : d < wallNear;
+      if (show === cell.nearShown) continue;
+      cell.nearShown = show;
+      if (near && cell.near >= 0) near.setVisibleAt(cell.near, show);
+      if (far && cell.far >= 0) far.setVisibleAt(cell.far, !show);
+    }
+  }
   let fineFar = 120, fineFrames = 0;
   function updateFineDetail(cameraPos: THREE.Vector3 | null): void {
     const batches = group.userData.fineDetail as Array<{ mesh: THREE.BatchedMesh; cells: Array<{ id: number; box: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number } }> }> | undefined;
@@ -9142,6 +9198,7 @@ ${snowCap ? `
     updatePoleLod(cameraPos);
     updateRockLod(cameraPos);
     updateFineDetail(cameraPos);
+    updateFieldWallLod(cameraPos);
     if (mooredHulls.length) {
       animatedTimeS += dt;
       for (let i = 0; i < mooredHulls.length; i++) {

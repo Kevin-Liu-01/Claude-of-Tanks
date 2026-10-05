@@ -495,7 +495,7 @@ function compose(scenery, solids = [], mobile = false) {
     },
   });
   const lay = (ground, options) => {
-    const steps = buildFieldWorks(ground, noise, { spawns: [{ x: 0, z: -300 }], mobile: false, ...options });
+    const steps = buildFieldWorks(ground, noise, { spawns: [{ x: 0, z: -300 }], mobile: false, merged: true, ...options });
     let step = steps.next();
     while (!step.done) step = steps.next();
     return step.value;
@@ -651,6 +651,9 @@ for (const mapId of maps.MAP_IDS) {
   if (works) {
     const built = dressing.group.getObjectByName('props-field-works');
     assert.ok(built && receipt.fieldWorks, `${mapId}: the field works stand`);
+    // (b13: a map's walls are two batches, the cells' near forms and their far forms; both keep the clearances)
+    const far = dressing.group.getObjectByName('props-field-works-far');
+    if (far) fieldWorksClearances(mapId, config, heightField, dressing, flora, far);
     const c = fieldWorksClearances(mapId, config, heightField, dressing, flora, built);
     worksLine = `; field works ${Math.round(receipt.fieldWorks.wallM)} m walls + ${Math.round(receipt.fieldWorks.bankM)} m banks clear of ${c.discs} discs `
       + `(${c.discGap.toFixed(1)} m) and ${c.rects} aprons/yards/bridges (${c.rectGap.toFixed(1)} m), ${c.roadGap.toFixed(1)} m off the roads, `
