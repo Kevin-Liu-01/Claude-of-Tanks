@@ -8,7 +8,8 @@ import {tankTier} from '../tier.ts';
 import {geometryHash,near} from '../../../tools/receipt-kit.test-support.mjs';
 import {censusEquipment} from '../../../tools/source-equipment-policy.mjs';
 import {LINEBACKER_TURRET_SCALE as T,LINEBACKER_MOUTHS,LINEBACKER_LAUNCHER as L} from '../m6LinebackerLayout.ts';
-import {measureBradleyGunClearance} from './bradleyGunClearance.test-support.mjs';
+import {measureBradleyGunClearance,measureGunHullClearance} from './bradleyGunClearance.test-support.mjs';
+import {minimumMechanicalGunPitch} from '../../sim/gunPitchLimits.ts';
 import {placeBradleyScoutCheekEra} from './bradleyScoutTurretShell.ts';
 import {ensureInteriorFills,hasInteriorFills} from '../interiorFills.ts';
 import {createEraGameplayRegistrationAudit} from '../eraGameplayRegistrationAudit.test-support.mjs';
@@ -47,6 +48,16 @@ for(const quality of ['high','low']){
   try{
     const root=tank.root,hull=root.getObjectByName('rig_hull'),turret=root.getObjectByName('rig_turret'),gun=root.getObjectByName('rig_gun');
     root.updateMatrixWorld(true);
+    near(minimumMechanicalGunPitch(spec,0),-9*Math.PI/180,1e-12,'full forward depression retained');
+    const clearance=measureGunHullClearance(tank,{pitchDegrees:yaw=>[
+      minimumMechanicalGunPitch(spec,yaw*Math.PI/180)*180/Math.PI,0,15,30,45,45+.014*180/Math.PI],
+      yawDegrees:Array.from({length:72},(_,i)=>i*5),recoilDistances:[0,.03,.06]});
+    assert.ok(clearance.minimum>.005,`${quality}: full Linebacker gun and pod clear finite hull surfaces: ${JSON.stringify(clearance)}`);
+    assert.ok(measureGunHullClearance(tank,{pitchDegrees:[-9],yawDegrees:[145],recoilDistances:[.06]}).minimum<-.09,
+      'the former unrestricted depression really intersects rear equipment');
+    assert.ok(measureGunHullClearance(tank,{pitchDegrees:[-9],yawDegrees:[0,180],recoilDistances:[0],
+      pivotOverride:[gun.position.x,gun.position.y-.5,gun.position.z]}).minimum<0,
+      'a lowered gun/pod is rejected by the same finite hull clearance test');
     createEraGameplayRegistrationAudit().check(spec.id,tank);
     assert.equal(censusEquipment(root).mg,1,'one real remote M2, no inherited/random roof gun');
     const bounds=new Box3().setFromObject(root).getSize(new Vector3());
@@ -59,7 +70,15 @@ for(const quality of ['high','low']){
       'owner-requested 10% shrink of structural turret');
     const bay=new Raycaster(turret.localToWorld(new Vector3(0,.48,1.09).multiplyScalar(T)),new Vector3(0,0,-1),0,1.4).intersectObject(mesh)[0];
     assert.ok(bay,'closed rear wall behind elevation bay');
-    assert.ok(turret.worldToLocal(bay.point.clone()).z<0,'no donor turret cap behind rocking mantlet');
+    near(turret.worldToLocal(bay.point.clone()).z,.595*T,.002,'curved center roof ends behind the receiver sweep');
+    // The center slot is covered by real roof stock behind the curved
+    // elevation recess, while the new receiver has its own closed top.
+    for(const x of [-.24,0,.24])for(const z of [.05,.25,.45]){
+      const origin=turret.localToWorld(new Vector3(x,1.4,z).multiplyScalar(T));
+      const hit=new Raycaster(origin,new Vector3(0,-1,0),0,1.5).intersectObject(mesh)[0];
+      assert.ok(hit,`${quality}: center roof stock at ${x}/${z}`);
+      assert.ok(turret.worldToLocal(hit.point.clone()).y>.84*T,'roof hits the crown, not floor under a hole');
+    }
     const mounting=root.getObjectByName('gunMount');
     assert.equal(mounting.parent,gun,'canister housing and mask share elevation');
     const stationaryTurret=[];
@@ -86,7 +105,7 @@ for(const quality of ['high','low']){
     // viewing path, and fittings accidentally assigned to the fixed hull.
     const optics=[
       [.58,1.255,.51,0],[.86,1.28,.51,0],[.86,1.15,.51,0],
-      [.686,1.655,-.405,0],[.887,1.698,-.405,0],[.887,1.564,-.405,0],
+      [-.714,1.395,-.835,0],[-.513,1.438,-.835,0],[-.513,1.304,-.835,0],
       [-1.18,1.075,-.17,-Math.PI/2],[1.18,1.075,-.17,Math.PI/2],
     ];
     const visible=[];root.traverse(o=>{

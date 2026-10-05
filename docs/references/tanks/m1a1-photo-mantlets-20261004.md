@@ -1,5 +1,9 @@
 # M1A1 mantlet photograph correction — 2026-10-04
 
+The later [October 5 mantlet and roof follow-up](mantlet-roof-followup-20261005.md)
+supersedes this packet’s geometry and validation status for the latest owner request.
+
+
 ## Target and scope
 
 The owner rejected the previously published mantlets and supplied front,

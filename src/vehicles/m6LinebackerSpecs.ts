@@ -13,6 +13,12 @@ delete spec.balancePeerOf;
 Object.assign(spec, {hp: 2400, enginePowerHp: 800, weightTons: 39.5,
   topSpeedKmh: 60, reverseSpeedKmh: 22, hullTraverseDegS: 42,
   turretTraverseDegS: 65, gunPitchDegS: 50, gunElevationDeg: 45, gunDepressionDeg: 9});
+// The cannon clears the rear stowage at these traverse-dependent stops. Keep
+// full depression over the front; use the shared simulation/gallery policy so
+// rearward aiming cannot drive the recoiling barrel through the deck equipment.
+spec.gunPitchByYawDeg = Object.freeze([
+  [0, -9], [125, -9], [140, -5], [150, -5], [160, -7], [180, -7],
+] as const);
 spec.dims = {hullLengthM: 6.71, overallLengthM: 6.71, widthM: 4.12, heightM: LINEBACKER_RING[1] + (3.75-LINEBACKER_RING[1])*T};
 // Penetration and damage are game balance, not claims about Stinger armor performance.
 // The blast-fragmentation missile is deliberately not the donor's HEAT/TOW round.

@@ -1754,9 +1754,41 @@ function addAbramsShellBody(
         [topLeft, t.roofWide, t.zWide], [topRight, t.roofWide, t.zWide],
         [topRight, t.roofMain, zMain], [topLeft, t.roofMain, zMain]));
     }
-    P.add('turret', slab(
-      [-t.throat, t.yBot, frontZ], [t.throat, t.yBot, frontZ], [t.throat, t.yBot, zMain], [-t.throat, t.yBot, zMain],
-      [-t.throat, frontY, frontZ], [t.throat, frontY, frontZ], [t.throat, t.roofMain, zMain], [-t.throat, t.roofMain, zMain]));
+    if (t.separateMantlet) {
+      // M1A1: the center roof ends in a curved elevation recess. The old
+      // full-height rectangular throat occupied the moving shield's rear
+      // volume and appeared as an extra cube behind the mantlet.
+      const gun = P.gunG.position;
+      const radius = .356;
+      const profile = new THREE.Shape();
+      profile.moveTo(zMain, t.yBot);
+      profile.lineTo(gun.z - .09, t.yBot);
+      profile.lineTo(gun.z - .09, gun.y - .35);
+      for (let i = 0; i <= 24; i++) {
+        const y = -.344 + i * (.662 / 24);
+        profile.lineTo(gun.z - Math.sqrt(radius * radius - y * y), gun.y + y);
+      }
+      profile.lineTo(gun.z - .22, gun.y + .35);
+      profile.lineTo(zMain, t.roofMain);
+      profile.closePath();
+      P.add('turret', new THREE.ExtrudeGeometry(profile, {
+        depth: t.throat * 2, steps: 1, bevelEnabled: false,
+      }).rotateY(-Math.PI / 2), t.throat, 0, 0);
+      // Coaxial bearing housings seat the journals in the cheek walls;
+      // the 5 mm running gap is radial, never a floating axial mount.
+      const bearing = new THREE.Shape();
+      bearing.absarc(0, 0, .225, 0, Math.PI * 2, false);
+      const bore = new THREE.Path();
+      bore.absarc(0, 0, .180, 0, Math.PI * 2, true);
+      bearing.holes.push(bore);
+      for (const side of [-1, 1]) P.add('turret', new THREE.ExtrudeGeometry(bearing, {
+        depth: .03, steps: 1, bevelEnabled: false, curveSegments: P.q ? 16 : 10,
+      }).rotateY(-Math.PI / 2), side * .39 + .015, gun.y, gun.z);
+    } else {
+      P.add('turret', slab(
+        [-t.throat, t.yBot, frontZ], [t.throat, t.yBot, frontZ], [t.throat, t.yBot, zMain], [-t.throat, t.yBot, zMain],
+        [-t.throat, frontY, frontZ], [t.throat, frontY, frontZ], [t.throat, t.roofMain, zMain], [-t.throat, t.roofMain, zMain]));
+    }
   } else {
     P.add('turret', slab(
       [-(tw - wp), t.yBot, t.zWide + 0.1], [tw - wp, t.yBot, t.zWide + 0.1], [tw - wp, t.yBot, zMain], [-(tw - wp), t.yBot, zMain],
@@ -4383,22 +4415,22 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     // The photo-based armored face and round cradle pitch as one assembly.
     buildM1A1GunMount(P, P.spec.id === 'm1a1ha');
     if (P.spec.id === 'm1a1ha') {
-      // HA gun-rig searchlight: its rear shell overlaps the left mantlet edge,
-      // so the complete lamp pitches with rig_gun instead of floating on the
-      // turret when the cannon elevates.  The broad glass face is deliberately
+      // HA gun-rig searchlight: a two-stage bracket carries the entire
+      // lamp ahead of the left cheek, and pitches with the gun without
+      // cutting through the fixed turret when it elevates.  The broad glass face is deliberately
       // visible beside the tube from frontal and left-quarter views.
-      P.add('gunMount', box(0.34, 0.32, 0.22), -0.48, 0.04, 0.54);
-      P.add('gunMountDark', box(0.305, 0.285, 0.028), -0.48, 0.04, 0.660);
-      P.add('gunMountGlass', box(0.245, 0.215, 0.016), -0.48, 0.04, 0.683);
-      P.add('gunMountDark', box(0.045, 0.26, 0.19), -0.285, 0.04, 0.525,
+      P.add('gunMount', box(0.34, 0.32, 0.22), -0.48, 0.07, 0.70);
+      P.add('gunMountDark', box(0.305, 0.285, 0.028), -0.48, 0.07, 0.820);
+      P.add('gunMountGlass', box(0.245, 0.215, 0.016), -0.48, 0.07, 0.843);
+      P.add('gunMountDark', box(0.045, 0.26, 0.19), -0.285, 0.07, 0.685,
         0, 0, -0.12);
-      P.add('gunMountDark', box(0.045, 0.26, 0.19), -0.675, 0.04, 0.525,
+      P.add('gunMountDark', box(0.045, 0.26, 0.19), -0.675, 0.07, 0.685,
         0, 0, 0.12);
       P.gunG.userData.abramsGunRigSearchlightReceipt = Object.freeze({
         host: P.spec.id,
         x: -0.48,
-        y: 0.04,
-        z: 0.54,
+        y: 0.07,
+        z: 0.70,
         lensWidthM: 0.245,
         lensHeightM: 0.215,
         pitchesWithGun: true,

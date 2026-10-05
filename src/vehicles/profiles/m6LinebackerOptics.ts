@@ -54,19 +54,20 @@ export function linebackerOptics(P:TankBuilderPort):void {
   gunner('turretDetail',box(.225,.023,.028),0,.271,.01);
   for(const y of [-.08,-.025,.03])gunner('turretDark',box(.013,.018,.16),.353,y,-.08);
 
-  // Tall commander panorama: tapered bearing pedestal, fork and a trunnion-
-  // mounted sensor head. This is turret-owned equipment, not main armor stock.
-  P.addEquipment('turretDetail',box(.43,.06,.42),.77,.93,-.65);
-  P.addEquipment('turretDetail',cylY(.17,.205,.16,28),.77,1.035,-.65);
-  P.addEquipment('turretDark',cylY(.17,.17,.035,28),.77,1.1275,-.65);
-  P.addEquipment('turretDetail',cylY(.115,.15,.17,24),.77,1.2225,-.65);
-  P.addEquipment('turretDetail',box(.60,.06,.28),.77,1.3275,-.65);
+  // A separate commander panorama sits on the left rear roof, with a low
+  // bearing pedestal and fork. Both sensor heads remain visible from ahead;
+  // they no longer read as two boxes stacked on one tall gunner's sight.
+  const cx=-.63,cz=-1.08;
+  P.addEquipment('turretDetail',box(.43,.06,.42),cx,.93,cz);
+  P.addEquipment('turretDetail',cylY(.17,.205,.12,28),cx,1.015,cz);
+  P.addEquipment('turretDark',cylY(.17,.17,.035,28),cx,1.0925,cz);
+  P.addEquipment('turretDetail',box(.60,.06,.28),cx,1.135,cz);
   for(const side of [-1,1]){
-    P.addEquipment('turretDetail',box(.055,.34,.23),.77+side*.271,1.4975,-.65);
-    P.addEquipment('turretDark',cylX(.073,.10,20),.77+side*.242,1.63,-.65);
-    P.addEquipment('turretDetail',cylX(.046,.012,16),.77+side*.303,1.63,-.65);
+    P.addEquipment('turretDetail',box(.055,.24,.23),cx+side*.271,1.285,cz);
+    P.addEquipment('turretDark',cylX(.073,.10,20),cx+side*.242,1.36,cz);
+    P.addEquipment('turretDetail',cylX(.046,.012,16),cx+side*.303,1.36,cz);
   }
-  const panorama=at(.77,1.64,-.65);
+  const panorama=at(cx,1.38,cz);
   hood(panorama,.47,.36,.42,.245);
   lens(P,panorama,-.084,.015,.245,.083);
   lens(P,panorama,.117,.058,.245,.048);
@@ -75,8 +76,8 @@ export function linebackerOptics(P:TankBuilderPort):void {
   panorama('turretDetail',box(.44,.027,.30),0,.196,.115);
   panorama('turretDark',box(.27,.19,.014),0,0,-.182);
   for(const x of [-.083,0,.083])panorama('turretDetail',box(.032,.14,.021),x,0,-.193);
-  P.addEquipment('turretDark',cylY(.028,.028,.28,12),.77,1.15,-.824);
-  P.addEquipment('turretDetail',box(.105,.047,.30),.77,.948,-.89);
+  P.addEquipment('turretDark',cylY(.028,.028,.18,12),cx,1.055,cz-.174);
+  P.addEquipment('turretDetail',box(.105,.047,.30),cx,.948,cz-.24);
 
   // Outward-looking flank cameras on roof-mounted shoes. Recessed circular
   // glass stays exposed in both quality levels; the hoods face away from the gun.

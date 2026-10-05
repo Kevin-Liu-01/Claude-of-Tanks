@@ -1,4 +1,5 @@
 import { buildBradleyScoutTurretShell, placeBradleyScoutCheekEra } from './bradleyScoutTurretShell.ts';
+import { buildM3BradleyGunMount } from './m3BradleyGunMount.ts';
 import {buildUpiorUpgrade} from './upiorUpgrade.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { buildT80UXHull } from './t80uX.ts';
@@ -707,10 +708,14 @@ function addM3A3Turret(P: AfvBuilderPort): void {
   P.gunG.position.set(-0.06, 0.615, 0.78);
   P.add('turret', cylY(0.79, 0.90, 0.13, 26), 0, 0.015, -0.08);
   buildBradleyScoutTurretShell(P);
-  P.addGunExtraDark(cylX(0.095, 0.72, 24), 0, 0, 0);
-  P.addGunExtra(cylX(0.14, 0.56, 24), 0, 0, 0.04);
-  P.addGunExtra(box(0.56, 0.36, 0.31), 0, 0, 0.28);
-  P.addGunExtraDark(cylZ(0.118, 0.38, 18, 0.095), 0, 0, 0.59);
+  // Separate side journals preserve the 70 mm bearing insertion while
+  // leaving an actual longitudinal passage for the recoiling M242 root.
+  // A full cross-shaft/receiver would pass straight through that barrel.
+  for (const side of [-1, 1]) {
+    P.addGunExtraDark(cylX(0.095, 0.225, 24), side * 0.2475, 0, 0);
+    P.addGunExtra(cylX(0.14, 0.14, 24), side * 0.21, 0, 0.04);
+  }
+  buildM3BradleyGunMount(P);
   buildGun(P, { len: 2.42, r: 0.037, sleeve: true, evac: 0.34,
     collar: true, baseR: 0.10 });
   muzzleBore(P, { len: 2.42, r: 0.037 });

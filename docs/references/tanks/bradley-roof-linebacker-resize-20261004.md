@@ -1,5 +1,9 @@
 # Bradley roof and Linebacker turret resize — 2026-10-04
 
+The later [October 5 mantlet and roof follow-up](mantlet-roof-followup-20261005.md)
+supersedes this packet’s geometry and validation status for the latest owner request.
+
+
 Owner corrected “M313” to M3A3 Bradley (`m3a3_bradley`) and requested a proper
 turret roof plus a complete 10% turret reduction for `m6_linebacker`. Work is
 isolated on `codex/linebacker-bradley-mantlets-20261004`, based on `2a9c9efe3`.

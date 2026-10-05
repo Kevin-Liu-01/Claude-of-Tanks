@@ -1,4 +1,4 @@
-// Kevin B. Liu — finite-surface regression for the M3A3 depressed gun.
+// Kevin B. Liu — finite-surface regression for articulated gun assemblies.
 // Project each real moving triangle onto the finite upward hull faces. This
 // catches crossings between vertices, including the aft hatch at oblique yaw.
 import {Matrix4,Vector3} from 'three';
@@ -35,17 +35,21 @@ function clip(poly,n,d){
   return out;
 }
 
-export function measureBradleyGunClearance(tank,{negativeControl=false}={}){
+export function measureGunHullClearance(tank,{
+  minimumHullY=0, movingFilter=null, fixedFilter=null, yawDegrees, pitchDegrees,
+  recoilDistances, pivotOverride=null,
+}){
   const root=tank.root,turret=root.getObjectByName('rig_turret'),gun=root.getObjectByName('rig_gun');
   turret.rotation.y=0;gun.rotation.x=0;root.getObjectByName('rig_recoil').position.z=0;root.updateMatrixWorld(true);
-  const moving=triangles(gun,gun),grid=new Map(),cell=.2;
+  const moving=triangles(gun,gun).filter(t=>!movingFilter||movingFilter(t)),grid=new Map(),cell=.2;
   let hullMax=-Infinity;
   for(const face of triangles(root.getObjectByName('rig_hull'),root)){
+    if(fixedFilter&&!fixedFilter(face))continue;
     const [a,b,c]=face.v;
     const normal=new Vector3().fromArray(b).sub(new Vector3().fromArray(a))
       .cross(new Vector3().fromArray(c).sub(new Vector3().fromArray(a)));
     face.maxY=Math.max(...face.v.map(p=>p[1]));
-    if(normal.y<1e-9||face.maxY<1.7)continue;
+    if(normal.y<1e-9||face.maxY<minimumHullY)continue;
     hullMax=Math.max(hullMax,face.maxY);
     face.yA=-normal.x/normal.y;face.yB=-normal.z/normal.y;
     face.yC=a[1]-face.yA*a[0]-face.yB*a[2];face.bounds=bounds(face.v);face.planes=[];
@@ -60,12 +64,21 @@ export function measureBradleyGunClearance(tank,{negativeControl=false}={}){
         const key=`${x},${z}`;if(!grid.has(key))grid.set(key,[]);grid.get(key).push(face);
       }
   }
-  const yaws=negativeControl?[0,180]:[...Array.from({length:72},(_,i)=>i*5),163.55,196.45];
-  const pitches=negativeControl?[-9]:[-9,0,15,30,30+.014*180/Math.PI];
-  const recoils=negativeControl?[0]:[0,.03,.06];
-  const pivot=negativeControl?[-.06,.252,.66]:gun.position.toArray();
-  let minimum=Infinity,witness=null;
-  for(const pitch of pitches)for(const recoil of recoils)for(const yaw of yaws){
+  const yaws=yawDegrees,pitches=pitchDegrees,recoils=recoilDistances;
+  function* sampledPoses(){
+    if(typeof pitches==='function'){
+      for(const yaw of yaws)for(const pitch of pitches(yaw))for(const recoil of recoils)
+        yield {yaw,pitch,recoil};
+    }else{
+      // Preserve the original iteration order and tie-breaking witnesses.
+      for(const pitch of pitches)for(const recoil of recoils)for(const yaw of yaws)
+        yield {yaw,pitch,recoil};
+    }
+  }
+  const pivot=pivotOverride??gun.position.toArray();
+  let minimum=Infinity,witness=null,poses=0;
+  for(const {pitch,recoil,yaw} of sampledPoses()){
+    poses++;
     const cp=Math.cos(pitch*Math.PI/180),sp=Math.sin(pitch*Math.PI/180),cy=Math.cos(yaw*Math.PI/180),sy=Math.sin(yaw*Math.PI/180);
     for(const triangle of moving){
       const v=triangle.v.map(([x,y,z])=>{
@@ -87,5 +100,16 @@ export function measureBradleyGunClearance(tank,{negativeControl=false}={}){
         }
     }
   }
-  return {minimum,witness,poses:yaws.length*pitches.length*recoils.length};
+  return {minimum,witness,poses};
+}
+
+// Preserve the original Bradley regression's poses and low-pivot control.
+export function measureBradleyGunClearance(tank,{negativeControl=false}={}){
+  return measureGunHullClearance(tank,{
+    minimumHullY:1.7,
+    yawDegrees:negativeControl?[0,180]:[...Array.from({length:72},(_,i)=>i*5),163.55,196.45],
+    pitchDegrees:negativeControl?[-9]:[-9,0,15,30,30+.014*180/Math.PI],
+    recoilDistances:negativeControl?[0]:[0,.03,.06],
+    pivotOverride:negativeControl?[-.06,.252,.66]:null,
+  });
 }
