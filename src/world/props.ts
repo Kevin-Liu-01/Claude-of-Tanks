@@ -7154,17 +7154,35 @@ ${snowCap ? `
       return geo;
     }
     // terrain-conformed disc; profile[] lifts each ring above the ground
+    // the scenery lane (Coastal boulder-a, gauntlet wave 74: "a hard, straight dark line along the grass bank's edge …
+    // the rock looks cut in two"): the ground as the nearest terrain mesh draws it (terrain.ts: 1024 m in eight chunks of
+    // 96 cells, each cell split along the diagonal from its +x corner to its +z corner), not the analytic height, which
+    // stands above the mesh on a bank's lip — a patch conformed to that floated over the drawn lip and showed edge-on
+    const TERRAIN_NEAR_STEP = 1024 / 8 / 96;
+    function meshHeightAt(px: number, pz: number): number {
+      const u = (px + 512) / TERRAIN_NEAR_STEP, w = (pz + 512) / TERRAIN_NEAR_STEP;
+      const gx = Math.floor(u), gz = Math.floor(w), fx = u - gx, fz = w - gz;
+      const at = (i: number, k: number): number => heightField.getHeightAt(-512 + i * TERRAIN_NEAR_STEP, -512 + k * TERRAIN_NEAR_STEP);
+      if (fx + fz <= 1) {
+        const ha = at(gx, gz);
+        return ha + (at(gx + 1, gz) - ha) * fx + (at(gx, gz + 1) - ha) * fz;
+      }
+      const hd = at(gx + 1, gz + 1);
+      return hd + (at(gx, gz + 1) - hd) * (1 - fx) + (at(gx + 1, gz) - hd) * (1 - fz);
+    }
     function conformedDisc(
       x: number,
       z: number,
       r: number,
       profile: readonly number[],
+      onMesh = false,
     ): THREE.BufferGeometry {
       const rings = [0, 0.4, 0.7, 1.0], segs = 18;
       const nv = 1 + (rings.length - 1) * segs;
       const pos = new Float32Array(nv * 3);
       const uv = new Float32Array(nv * 2);
-      pos[0] = x; pos[1] = heightField.getHeightAt(x, z) + profile[0]; pos[2] = z;
+      const groundAt = onMesh ? meshHeightAt : (px: number, pz: number): number => heightField.getHeightAt(px, pz);
+      pos[0] = x; pos[1] = groundAt(x, z) + profile[0]; pos[2] = z;
       uv[0] = 0.5; uv[1] = 0.5;
       let vi = 1;
       for (let ri = 1; ri < rings.length; ri++) {
@@ -7172,7 +7190,7 @@ ${snowCap ? `
           const a = (k / segs) * Math.PI * 2;
           const px = x + Math.cos(a) * r * rings[ri], pz = z + Math.sin(a) * r * rings[ri];
           pos[vi * 3] = px;
-          pos[vi * 3 + 1] = heightField.getHeightAt(px, pz) + profile[ri];
+          pos[vi * 3 + 1] = groundAt(px, pz) + profile[ri];
           pos[vi * 3 + 2] = pz;
           uv[vi * 2] = 0.5 + Math.cos(a) * 0.5 * rings[ri];
           uv[vi * 2 + 1] = 0.5 + Math.sin(a) * 0.5 * rings[ri];
@@ -7287,7 +7305,7 @@ ${snowCap ? `
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const spot of rockSpots) {
-        dirtDiscs.push(conformedDisc(spot.x, spot.z, spot.r, [0.04, 0.04, 0.04, 0.03]));
+        dirtDiscs.push(conformedDisc(spot.x, spot.z, spot.r, [0.04, 0.04, 0.04, 0.03], true));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
     }

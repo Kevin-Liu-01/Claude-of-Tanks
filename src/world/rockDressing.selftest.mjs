@@ -322,8 +322,20 @@ assert.match(source, /paintBoulder\(form, P\.rockTone, lithology\);\n\s*rockGeos
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockGround', new THREE\.InstancedBufferAttribute\(ground, 1\)\)/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockSlope', new THREE\.InstancedBufferAttribute\(slope, 2\)\)/, 'every boulder the slope of its ground');
 assert.match(source, /const rockContact = !snowCap && rockDressing\.dust < 0\.5;/, 'a contact patch round every boulder, but on snow and sand');
-assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(conformedDisc\(spot\.x, spot\.z, spot\.r, [^\n]*\n\s*yield \{ fine: true, progress: false, stage: 'ground-foundation-instances' \};/,
-  'the contact patches go to the ground decals, one private input and checkpoint each');
+assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(conformedDisc\(spot\.x, spot\.z, spot\.r, \[[^\]]*\], true\)\);\n\s*yield \{ fine: true, progress: false, stage: 'ground-foundation-instances' \};/,
+  'the contact patches go to the ground decals, conformed to the drawn mesh, one private input and checkpoint each');
+// (wave 74, Coastal boulder-a: a patch conformed to the analytic height floated over a bank's drawn lip): the patch lies
+// on the nearest terrain mesh — its grid and its diagonal those terrain.ts draws
+{
+  const terrainSource = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  assert.match(terrainSource, /const MAP_SIZE = 1024;/);
+  assert.match(terrainSource, /const CHUNKS = 8, CHUNK_SIZE = MAP_SIZE \/ CHUNKS;\nconst LOD_SEGS = \[96, 48, 24\];/);
+  assert.match(terrainSource, /idx\[ii\+\+\] = a; idx\[ii\+\+\] = c; idx\[ii\+\+\] = b;\n\s*idx\[ii\+\+\] = b; idx\[ii\+\+\] = c; idx\[ii\+\+\] = d;/,
+    'the terrain splits a cell along the diagonal from its +x corner to its +z corner');
+  assert.match(source, /const TERRAIN_NEAR_STEP = 1024 \/ 8 \/ 96;/);
+  assert.match(source, /if \(fx \+ fz <= 1\) \{[\s\S]{0,140}return ha \+ \(at\(gx \+ 1, gz\) - ha\) \* fx \+ \(at\(gx, gz \+ 1\) - ha\) \* fz;/,
+    'the patch reads the mesh\'s own triangle under it');
+}
 assert.match(source, /heightM: \(box\.max\.y - Math\.max\(box\.min\.y, -0\.6\)\) \* maxScale/, 'the shadow height is what can show, not the buried skirt');
 assert.match(source, /materialKind === 'rock' \? rockHook\s*:/); // (the field print's own hook follows: the scenery lane, wave 48)
 assert.match(source, /rock: new THREE\.MeshStandardMaterial\(\{\n\s*map: rockDetail\.albedo, normalMap: rockDetail\.normal/);
