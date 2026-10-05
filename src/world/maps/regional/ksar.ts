@@ -211,8 +211,13 @@ const ruin: RegionalBuilder = (ctx) => {
  */
 const soukStall: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const look = ctx.variant;
   const W = Math.max(4.5, Math.min(6.4, ctx.info.w - 0.4)), D = Math.max(3.6, Math.min(5.0, ctx.info.d - 0.4));
+  stallBody(sink, ctx.variant, W, D);
+  return sink.finish();
+};
+
+/** The stall itself, W x D about the origin, its counter to +z (the ksar's market plot, Siwa's shop rows). */
+function stallBody(sink: PartSink, look: () => number, W: number, D: number): void {
   const floor = 0.18, top = 2.55, wallZ = -D / 2 + 0.4;
   // a beaten-earth platform skimmed with mud, the back wall of mud brick under plaster standing proud of the mat
   sink.span(MUD, -W / 2 - 0.2, -0.3, -D / 2 - 0.2, W / 2 + 0.2, floor, D / 2 + 0.2);
@@ -265,8 +270,7 @@ const soukStall: RegionalBuilder = (ctx) => {
     sink.cylinder('structureWood', [x, floor, z], 'y', r * 1.8, r * 0.7, 8, { colour: clay, decor: true }, r * 1.25);
     sink.cylinder('structureWood', [x, floor + r * 1.8, z], 'y', r * 0.9, r * 1.25, 8, { colour: shade(clay, 0.95), decor: true }, r * 0.45);
   }
-  return sink.finish();
-};
+}
 
 export const KSAR_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   adobe: house,
@@ -309,3 +313,4 @@ export const KSAR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   // the courtyards: mud-brick walls round each house's court (hosh), a gate (yards.ts)
   yard: { kinds: ['adobe'], fence: 'walladobe', gate: 'gate', shed: null, garden: false },
 });
+
