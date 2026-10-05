@@ -178,7 +178,8 @@ export function hollyhocks(sink: PartSink, face: Face, u: number, bloom: Rgb, rn
     for (let f = 0; f < flowers; f++) {
       const t = 0.5 + 0.48 * f / flowers, s = 0.1 - f * 0.008;
       const x = foot[0] + (tip[0] - foot[0]) * t, y = foot[1] + (tip[1] - foot[1]) * t, z = foot[2] + (tip[2] - foot[2]) * t;
-      sink.box('structureWood', [x, y, z], [s / 2, s / 2, s / 2], { ...DECOR, colour: c });
+      // the flowers read near (fine joinery); past the fine-detail distance the stalks and the leafy foot remain
+      sink.box('structureWood', [x, y, z], [s / 2, s / 2, s / 2], { ...DECOR, colour: c, fine: true });
     }
   }
 }

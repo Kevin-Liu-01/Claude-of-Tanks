@@ -212,7 +212,9 @@ export function thatchCourses(sink: PartSink, bucket: RegionalBucket, eave0: Vec
     const lo0 = lerp(eave0, top0, ta), lo1 = lerp(eave1, top1, ta);
     const hi0 = lerp(eave0, top0, tb), hi1 = lerp(eave1, top1, tb);
     const span = Math.hypot(lo1[0] - lo0[0], lo1[1] - lo0[1], lo1[2] - lo0[2]);
-    const cells = Math.max(1, Math.round(span / (course.jitter > 0.01 ? 0.8 : 1.6)));
+    // (a bundle's wander every 1.3 m along the eave course, a course line straight: Verdant's thatch at a third of
+    // its first cost)
+    const cells = Math.max(1, Math.round(span / (course.jitter > 0.01 ? 1.3 : 4)));
     const lifts: number[] = [];
     for (let k = 0; k <= cells; k++) {
       const p = lerp(lo0, lo1, k / cells);
@@ -284,8 +286,9 @@ export function paintBand(sink: PartSink, bucket: RegionalBucket, face: Face, u0
     cur = Math.max(cur, b);
   }
   if (u1 > cur + 0.05) runs.push([cur, u1]);
+  // (fine: a paint read near and middle range; past the fine-detail distance, and in the shadow maps, it is nothing)
   for (const [a, b] of runs) {
-    sink.polygon(bucket, [facePoint(face, a, y0, 0.02), facePoint(face, b, y0, 0.02), facePoint(face, b, y1, 0.02), facePoint(face, a, y1, 0.02)], { ...DECOR, tint });
+    sink.polygon(bucket, [facePoint(face, a, y0, 0.02), facePoint(face, b, y0, 0.02), facePoint(face, b, y1, 0.02), facePoint(face, a, y1, 0.02)], { ...DECOR, tint, fine: true });
   }
 }
 
@@ -293,7 +296,7 @@ export function paintBand(sink: PartSink, bucket: RegionalBucket, face: Face, u0
 export function paintSurround(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y: number, w: number, h: number,
   width: number, tint: Rgb, opts: { sill?: boolean } = {}): void {
   const l = u - w / 2, r = u + w / 2, b = opts.sill === false ? y : y - width, t = y + h + width;
-  const band = (pts: ReadonlyArray<readonly [number, number]>) => sink.polygon(bucket, pts.map(([pu, py]) => facePoint(face, pu, py, 0.02)), { ...DECOR, tint });
+  const band = (pts: ReadonlyArray<readonly [number, number]>) => sink.polygon(bucket, pts.map(([pu, py]) => facePoint(face, pu, py, 0.02)), { ...DECOR, tint, fine: true });
   band([[l - width, b], [l, b], [l, t], [l - width, t]]);
   band([[r, b], [r + width, b], [r + width, t], [r, t]]);
   band([[l, y + h], [r, y + h], [r, t], [l, t]]);
@@ -455,11 +458,14 @@ export function trimRing(sink: PartSink, bucket: RegionalBucket, body: { x0: num
   for (const face of faces) trimRun(sink, bucket, face, -face.width / 2, face.width / 2, y, layers, { ...opts, wrap: true });
 }
 
-/** A pilaster (a lesene, a brick pier) up a face: its front reads at range, its sides are fine. */
+/**
+ * A pilaster (a lesene, a brick pier) up a face, a few centimetres proud: the rhythm of a facade within the fine-detail
+ * distance, and past it, where its face is the wall's own colour, nothing (fine joinery whole, out of the shadow maps).
+ */
 export function pilaster(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y0: number, y1: number, width: number, out: number,
   opts: EmitOptions = {}): void {
   if (y1 - y0 < 0.2) return;
-  faceBox(sink, bucket, face, u, (y0 + y1) / 2, out / 2, width, y1 - y0, out, { ...DECOR, ...opts, fineSides: true });
+  faceBox(sink, bucket, face, u, (y0 + y1) / 2, out / 2, width, y1 - y0, out, { ...DECOR, ...opts, fine: true });
 }
 
 /**
@@ -471,7 +477,7 @@ export function dentilCornice(sink: PartSink, bucket: RegionalBucket, face: Face
   const n = Math.max(2, Math.floor((u1 - u0) / 0.25));
   for (let k = 0; k < n; k++) {
     const u = u0 + (u1 - u0) * (k + 0.5) / n;
-    faceBox(sink, bucket, face, u, y + 0.075 + 0.04, 0.05, 0.12, 0.08, 0.1, { ...DECOR, fineSides: true });
+    faceBox(sink, bucket, face, u, y + 0.075 + 0.04, 0.05, 0.12, 0.08, 0.1, { ...DECOR, fine: true });
   }
   trimRun(sink, bucket, face, u0, u1, y + 0.155, [{ h: 0.075, out: 0.12 }, { h: 0.075, out: 0.16 }], { ret: opts.ret });
 }
