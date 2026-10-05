@@ -17,10 +17,18 @@ import type * as THREE from 'three';
 import { PartSink, hashSeed, normalize3, rgb, shade, streamFrom, type Rgb, type Vec3 } from './regional/geometry.ts';
 import { getDeviceTier } from '../../engine/quality.ts';
 import { cloneCollisionRecord, setConvexShape, type CollisionRecord } from '../collision.ts';
+import { yardKeepOut, type YardKeepOut } from './regional/yards.ts';
 
 interface TramContext {
-  L: { roads?: ReadonlyArray<ReadonlyArray<readonly [number, number]>> };
-  heightField: { getHeightAt(x: number, z: number): number };
+  L: {
+    roads?: ReadonlyArray<ReadonlyArray<readonly [number, number]>>;
+    spawns?: { player: { x: number; z: number }; enemies: ReadonlyArray<{ x: number; z: number }> };
+    terrain?: { hardstands?: ReadonlyArray<{ x: number; z: number; width: number; length: number; yawDeg?: number }> };
+  };
+  heightField: {
+    getHeightAt(x: number, z: number): number;
+    bridgeDecks?: ReadonlyArray<{ x: number; z: number; ux: number; uz: number; halfLength: number; halfWidth: number; approachM?: number }>;
+  };
   buckets: Record<string, THREE.BufferGeometry[] | undefined>;
   obstacles?: CollisionRecord[];
   colliders?: CollisionRecord[];
@@ -79,6 +87,25 @@ function clearOfRoads(roads: ReadonlyArray<ReadonlyArray<readonly [number, numbe
       const t = len2 > 1e-9 ? Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / len2)) : 0;
       if (Math.hypot(x - ax - dx * t, z - az - dz * t) < ROAD_CLEAR) return false;
     }
+  }
+  return true;
+}
+
+/**
+ * Does a footprint keep off the layout's objective ground (yards.ts yardKeepOut: the spawn pads, the zone-control discs,
+ * the kickoff, the aprons and the bridge decks, each with its margin)? A screen in a square would move its zone.
+ */
+function clearOfKeepOut(keep: YardKeepOut | null, cx: number, cz: number, hl: number, hw: number, tx: number, tz: number): boolean {
+  if (!keep) return true;
+  const nx = -tz, nz = tx, na = Math.max(1, Math.ceil(2 * hl)), nb = Math.max(1, Math.ceil(2 * hw));
+  for (let i = 0; i <= na; i++) for (let j = 0; j <= nb; j++) {
+    const a = -hl + (2 * hl * i) / na, b = -hw + (2 * hw * j) / nb;
+    const x = cx + tx * a + nx * b, z = cz + tz * a + nz * b;
+    if (keep.discs.some(([dx, dz, r]) => Math.hypot(x - dx, z - dz) < r)) return false;
+    if (keep.rects.some((q) => {
+      const ox = x - q.x, oz = z - q.z;
+      return Math.abs(ox * q.ux + oz * q.uz) < q.halfAlong && Math.abs(-ox * q.uz + oz * q.ux) < q.halfAcross;
+    })) return false;
   }
   return true;
 }
@@ -146,7 +173,7 @@ function container(sink: PartSink, colour: Rgb, look: () => number, mobile: bool
  * Lay the tram line down the boulevard (road `road` of the layout), its catenary, two burnt trams in rotation about the
  * map's centre, and the container screens at the crossings with the other roads.
  */
-function dressTramBoulevard(ctx: TramContext, road = 0): void {
+function dressTramBoulevard(ctx: TramContext, keep: YardKeepOut | null, road = 0): void {
   const roads = ctx.L.roads ?? [];
   const line = roads[road];
   if (!line || line.length < 2) return;
@@ -230,7 +257,8 @@ function dressTramBoulevard(ctx: TramContext, road = 0): void {
     for (const target of bays.slice(0, 6)) {
       const s = st.reduce((best, c) => (Math.abs(c.s - target) < Math.abs(best.s - target) ? c : best));
       const [cx, , cz] = at(s, side * TRAM_OFF);
-      if (!clears(records, cx, cz, 10.9, 1.3, s.tx, s.tz, 0.4) || !clearOfRoads(roads, cx, cz, 10.9, 1.25, s.tx, s.tz)) continue;
+      if (!clears(records, cx, cz, 10.9, 1.3, s.tx, s.tz, 0.4) || !clearOfRoads(roads, cx, cz, 10.9, 1.25, s.tx, s.tz)
+        || !clearOfKeepOut(keep, cx, cz, 10.9, 1.25, s.tx, s.tz)) continue;
       const y = hf.getHeightAt(cx, cz);
       const sink = new PartSink([look() * 5, look() * 5]);
       sink.placed(Math.atan2(-s.tz, s.tx), cx, y + 0.02, cz, () => burntTram(sink, look));
@@ -252,10 +280,14 @@ function dressTramBoulevard(ctx: TramContext, road = 0): void {
     if (r === road) continue;
     const other = roads[r];
     for (const end of [other[0], other[other.length - 1]]) {
-      const hit = st.find((c) => Math.hypot(c.x - end[0], c.z - end[1]) < 1.6);
       const id = `${Math.round(end[0])},${Math.round(end[1])}`;
-      if (!hit || seen.has(id)) continue;
+      if (seen.has(id) || !st.some((c) => Math.hypot(c.x - end[0], c.z - end[1]) < 1.6)) continue;
       seen.add(id);
+      // the boulevard's heading at the crossing: the chord of its line 9 m either side (a bend's vertex has no one
+      // tangent, and the two crossings of a rotation pair must read the same heading)
+      const near = st.filter((c) => Math.hypot(c.x - end[0], c.z - end[1]) < 9);
+      const c0 = near[0], c1 = near[near.length - 1], cl = Math.hypot(c1.x - c0.x, c1.z - c0.z) || 1;
+      const hit = { tx: (c1.x - c0.x) / cl, tz: (c1.z - c0.z) / cl, nx: -(c1.z - c0.z) / cl, nz: (c1.x - c0.x) / cl };
       const canon = end[0] > 1e-6 || (Math.abs(end[0]) <= 1e-6 && end[1] > 0);
       for (const side of [1, -1]) for (const dir of [1, -1]) {
         const key = canon ? [end[0], end[1], side, dir] : [-end[0], -end[1], -side, -dir];
@@ -265,7 +297,8 @@ function dressTramBoulevard(ctx: TramContext, road = 0): void {
         for (const at0 of [7.4, 8.6, 9.8]) {
           const along = dir * at0;
           const cx = end[0] + hit.tx * along + hit.nx * off, cz = end[1] + hit.tz * along + hit.nz * off;
-          if (!clears(records, cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz, 0.4) || !clearOfRoads(roads, cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz)) continue;
+          if (!clears(records, cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz, 0.4) || !clearOfRoads(roads, cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz)
+            || !clearOfKeepOut(keep, cx, cz, BOX_HL, BOX_HW, hit.tx, hit.tz)) continue;
           const y = Math.min(hf.getHeightAt(cx - hit.tx * BOX_HL, cz - hit.tz * BOX_HL), hf.getHeightAt(cx + hit.tx * BOX_HL, cz + hit.tz * BOX_HL));
           const sink = new PartSink([look() * 5, look() * 5]);
           sink.placed(Math.atan2(-hit.tz, hit.tx), cx, y - 0.05, cz, () => container(sink, CONTAINERS[Math.floor(look() * CONTAINERS.length) % CONTAINERS.length], look, mobile));
@@ -331,7 +364,10 @@ function dressCemeteries(ctx: TramContext): void {
 }
 
 /** Ruinspires as Sarajevo: the boulevard's tram line and its street works, the hillside cemeteries. */
-export function dressSarajevo(ctx: TramContext): void {
-  dressTramBoulevard(ctx, 0);
+export function dressSarajevo(ctx: TramContext, mapId = 'ruinspires'): void {
+  // the objective ground the trams and the screens keep off (the squares stay open: their zones seat where authored)
+  const decks = (ctx.heightField.bridgeDecks ?? []).map((deck) => ({ ...deck, approachM: deck.approachM ?? 0 }));
+  const keep = ctx.L.spawns ? yardKeepOut(mapId, ctx.L.spawns, ctx.L.terrain?.hardstands ?? [], decks) : null;
+  dressTramBoulevard(ctx, keep, 0);
   dressCemeteries(ctx);
 }

@@ -7209,14 +7209,16 @@ with a collapsed end), Yugoslav infill blocks, mahala houses with doksats and wa
 the Holiday Inn, the parliament, the newspaper's gutted core, estate and slab towers, the museum and the Vijećnica,
 mosques, the Orthodox and Catholic churches, the market hall and the čaršija. It adds shell pocks, UNHCR sheeting and
 sandbagged windows. The street kit lays the double track in its bed with the catenary, two burnt trams shoved against
-the kerbs and 17 container screens at the crossings, every one clear of the roads' cores (3.9 m from a road's line).
+the kerbs and 8 container screens at the crossings, every one clear of the roads' cores (3.9 m from a road's line) and
+of the squares' objective ground (yards.ts yardKeepOut: the zone discs, the kickoff and the aprons stay open).
 - *Footprints:* every builder fills the base's measured reach (`ctx.bounds`): −0.30 to 0.00 m on every side. The one
   exception is the row houses' street side, −1.25 to −0.85 m: those are the base's shop canopies and balconies, 2.7 to
   3.1 m up, while the fronts stand on the plot's street edge. The 392 structure records match the PR head's one for one,
-  every footprint centre within 0.58 m, so no building moved. The census's colliders went from 8,349 to 6,241 (the
-  structure shells from 7,158 to 5,040), and the shard is re-pinned at [1942, 6241, 462].
-- *Pacing* (20 seeds, 37000–37019): median 447 s, p10 263 s, minimum 208 s, none under 120 s, no timeouts. The PR head
-  gives 263 / 183 / 162. The kit's solid bodies conceal more than the base's ragged low ruins did.
+  every footprint centre within 0.58 m, so no building moved. The census's colliders went from 8,349 to 6,232 (the
+  structure shells from 7,158 to 5,040), and the shard is re-pinned at [1933, 6232, 462].
+- *Pacing* (20 seeds, 37000–37019): median 325 s, p10 229 s, minimum 190 s, none under 120 s, no timeouts. The PR head
+  gives 263 / 183 / 162. The kit's solid bodies conceal more than the base's ragged low ruins did; with 17 screens
+  (some on the squares' edges) the median was 447 s.
 - *Frame pacing* (one hold at load ~90, single runs, no long tasks in any). PR head, chase / establishing p50/p95/p99:
   Ruinspires 16.9/22.7/32.1 and 16.6/22.1/31.4 ms; Verdant 18.4/31.0/37.8 and 17.1/33.5/49.5 ms. The owner's
   "choppiness" is not Ruinspires' frame pacing on the PR head. The candidate gave 17.5/30.1/40.9 and 16.8/36.3/58.8 ms
