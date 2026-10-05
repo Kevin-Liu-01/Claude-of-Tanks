@@ -7172,6 +7172,34 @@ Frames: `$SP/p2/mountains/pair-wo/{before,after}/frames/whiteout/` and the sheet
 lab: `lab4/out/wo-bird-check.png` (game / bake / bake without the fill's sun term) and `wo-bird-ring-vs-noring.png` (the
 shell alone, no apron).
 
+### 2026-10-05 — no lens flare under a closed deck; the ghosts and the halo turned down (the skies lane)
+
+**The gauntlet:** wave 71 on Titan Gorge, "an outright rendering bug (a vertical rainbow chromatic-aberration streak)" —
+two vertical bands across the gorge walls, symmetric about the image centre: the arcs of the lens flare's dispersive halo
+under a closed deck; wave 65 on Caldera's e-wall-300, "a translucent circular lens-flare artifact sits directly on top of
+the mountain silhouette".
+
+**Causes.** The flare's occlusion pass sampled only the scene depth over the sun's disc, and a closed deck reads as sky
+there: the visibility stayed 1 under coverage 1 (the deck-sun fix took the disc away, not the flare). On Caldera the sun
+stood above the ridge, so the flare was right to draw; the parts laid over the dark ridge read as the artifact — the halo's
+ring and the small far ghost.
+
+**The fix** (`lensFlare.ts`, `sunShafts.ts`, `volumetricClouds.ts` `historyTexture`):
+- the cloud layer hands its resolved history (alpha: the clouds' transmittance along each view ray, screen uv) to the
+  flare's 1 × 1 eased visibility — the centre and four rim taps of the sun's disc, each through smoothstep(0, 0.25, T)
+  (`LENS_FLARE_CLOUD_FULL`): a sun behind cirrus that still burns white keeps most of its flare (Redrock's T ≈ 0.09 → 0.30,
+  Caldera's ≈ 0.18 → 0.79), a closed deck (T 0 after the opaque cut) takes all of it; the 70 ms easing stays, so a sun
+  crossing broken cloud dims and returns smoothly; the shafts' mask takes the same gate per texel (none through a deck,
+  rays through a gap); QA knobs `LENS_FLARE_CLOUD_GATE`, `SUN_SHAFT_CLOUD_GATE`;
+- each part takes a share (`LENS_FLARE_PARTS`): the ghosts 0.4, the halo 0.25, the streak and the glow at the sun whole.
+
+**Measured** (desktop high, in-page on one build, every frame re-prepared; the flare's contribution = the frame against
+the same frame with no flare; `$SP/p2/flare/pair4`): Titan Gorge, the gauntlet's e-wall-300 camera and facing the sun —
+pixels the flare lifts by more than 3 levels 32.5 % / 34.1 % → 0.00 %; Caldera's e-wall-300 8.6 % → 0.03 % (the noise
+floor), the ring and the ghost gone off the ridge; facing the sun on Caldera 3.3 % → 0.03 %; Saltwind and Redrock facing
+the sun keep the glow and the streak (the flare's mean lift halved, 0.16 → 0.08 and 0.15 → 0.07 levels). Receipt:
+`lensFlare.selftest` (the twin's closed deck → 0, a veil at the gate's midpoint → half, an edge across the disc → a fifth).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
