@@ -29,6 +29,7 @@ import { WADIRUM_STYLE } from './wadirum.ts';
 import { RUHR_STYLE } from './ruhr.ts';
 import { KOHIMA_STYLE } from './kohima.ts';
 import { HOSTOMEL_STYLE } from './hostomel.ts';
+import { SARAJEVO_STYLE } from './sarajevo.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
@@ -48,6 +49,7 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   ruhr: RUHR_STYLE,
   kohima: KOHIMA_STYLE,
   hostomel: HOSTOMEL_STYLE,
+  sarajevo: SARAJEVO_STYLE,
 });
 
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));
@@ -130,7 +132,7 @@ export function rebuildRegionalStructure(
     structureId, info, bounds, wallBucket,
     rng: streamFrom(hashSeed(`${style.id}:${context.mapId}:${structureId}`, context.seed, x, z, yaw)),
     variant: streamFrom(hashSeed(`${style.id}:variant:${context.mapId}:${structureId}`, context.seed, x, z, yaw)),
-    mapId: context.mapId, snowCap: context.snowCap, tier: getDeviceTier() === 'mobile' ? 'mobile' : 'desktop',
+    mapId: context.mapId, snowCap: context.snowCap, tier: getDeviceTier() === 'mobile' ? 'mobile' : 'desktop', yaw, x, z,
   };
   // the walls and roofs take the building's own tints and weathering (weather.ts), from a stream of their own
   const parts = buildRegionalParts(style, ctx,
