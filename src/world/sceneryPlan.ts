@@ -34,7 +34,7 @@ interface SceneryRock {
 }
 
 /** The destructible landmark kinds (maps/sceneryKit.ts). */
-type SceneryDestructibleKind = 'bildstock' | 'waysidecross' | 'orthodoxcross' | 'windpump' | 'tomb' | 'strawstack';
+type SceneryDestructibleKind = 'bildstock' | 'waysidecross' | 'orthodoxcross' | 'windpump' | 'tomb' | 'strawstack' | 'strawrick';
 /** The landmark kinds: stone ones are rock forms, the rest the kit's destructibles. */
 type SceneryLandmarkKind = 'calvary' | 'menhir' | 'cairn' | SceneryDestructibleKind;
 
@@ -163,7 +163,7 @@ export const STONE_LANDMARKS: Readonly<Record<'calvary' | 'menhir' | 'cairn', { 
 
 /** The destructible landmarks' record radii at scale 1 (the kit's `r`). */
 export const LANDMARK_RADIUS: Readonly<Record<SceneryDestructibleKind, number>> = Object.freeze({
-  bildstock: 0.5, waysidecross: 0.75, orthodoxcross: 0.65, windpump: 2.4, tomb: 1.9, strawstack: 1.6,
+  bildstock: 0.5, waysidecross: 0.75, orthodoxcross: 0.65, windpump: 2.4, tomb: 1.9, strawstack: 1.6, strawrick: 4.8,
 });
 
 /** A pylon's leg half-spread at its height (maps/sceneryKit.ts buildPylon: 4.2 m at 34 m). */

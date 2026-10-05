@@ -348,7 +348,9 @@ export default {
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     // the steppe's dressing IS hay + stone: bale silhouettes on every fold
-    haystacks: 44, rocks: 230, outcrops: 34, craters: 42, rubblePiles: 0,
+    // (2026-10-05, the map-revival lane; gauntlet wave 106: "a bare, textureless dark cone … reads as a leftover debug
+    // marker"): no field cones — the Virgin Lands stack the combine's straw in long ricks (scenery below)
+    haystacks: 0, rocks: 230, outcrops: 34, craters: 42, rubblePiles: 0,
     // Legacy-map quality backport: modern hulks scattered on the open
     // plain (baked roster tanks, paired duel beats), tank-trap lines
     tankWrecks: {
@@ -363,7 +365,8 @@ export default {
     wallStyle: 'fieldstone',
     inhabit: {
       stalls: 1, benches: 1, coreClutter: 6,
-      bales: 16, stooks: 10,
+      // (no stooks: sheaves stood in shocks before the combines; the sovkhoz's straw is ricked)
+      bales: 16, stooks: 0,
       troughs: 1, churns: 1, handcarts: 1, carts: 2,
       roadFence: 'fencerail', yardFence: 'fencewattle',
       // DESTRUCTIBLES r1: steppe columns — trucks + field cars on the road
@@ -374,16 +377,31 @@ export default {
   },
 
   // the map-revival lane (2026-10-05; the scenery lane's generators, world/scenery.ts): the steppe's marks — a stone idol
-  // (balbal) on the great kurgan and the western one, the wind pump that waters the kolkhoz herds at its well, straw ricks
-  // left on the station's stubble, and the 110 kV line up from the south that brought the elevator its power
+  // (balbal) on the great kurgan and the western one, the wind pump that waters the kolkhoz herds at its well, the straw
+  // ricks (skirdy) on the fields (maps/sceneryKit.ts strawrick, where the field cones stood), and the 110 kV line up from
+  // the south that brought the elevator its power
   scenery: {
     landmarks: [
       { kind: 'menhir', x: -150, z: 227, scale: 0.7, height: 2.4, name: 'the stone idol on the great kurgan' },
       { kind: 'menhir', x: -400, z: 236, scale: 0.6, height: 2.1, name: 'the stone idol on the western kurgan' },
       { kind: 'windpump', x: -276, z: -170, yawDeg: 20, name: 'the wind pump at the kolkhoz well' },
-      { kind: 'strawstack', x: 58, z: -300, yawDeg: 12, name: 'a straw rick on the station fields' },
-      { kind: 'strawstack', x: 82, z: -314, yawDeg: 18, name: 'a straw rick on the station fields' },
-      { kind: 'strawstack', x: 104, z: -298, yawDeg: 8, name: 'a straw rick on the station fields' },
+      // the straw ricks (skirdy) on the strips, their long axes down the fields (the strips run ~7° off north)
+      { kind: 'strawrick', x: 58, z: -300, yawDeg: 7, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 82, z: -314, yawDeg: 4, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 104, z: -298, yawDeg: 9, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -298.3, z: -161.8, yawDeg: 6, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -336.1, z: -107.5, yawDeg: 8, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -88.7, z: -272.9, yawDeg: 5, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 186.4, z: -78.3, yawDeg: 7, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 302.8, z: 38.6, yawDeg: 3, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -229.2, z: 72.6, yawDeg: 9, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 169.6, z: 93.4, yawDeg: 6, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -156.1, z: 88.2, yawDeg: 4, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 158.9, z: 251.2, yawDeg: 8, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -286.3, z: 289.3, yawDeg: 5, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -27.8, z: 287.2, yawDeg: 7, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 219.8, z: 205.3, yawDeg: 6, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -159.1, z: -376.2, yawDeg: 9, name: 'a straw rick on the fields' },
     ],
     // (up from the south edge to the station's substation, over open fields: a line over a belt's or a lone tree's
     // crown stands its towers at 39-42 m)

@@ -314,6 +314,71 @@ function bStrawStackBroken(rng: Rng): THREE.BufferGeometry {
   return merge(parts, false, true);
 }
 
+/**
+ * A straw rick (skirda) of the Virgin Lands: the combine's straw stacked on the field's edge in one long loaf, its steep
+ * sides bellying out under a full rounded crown, the ends hipped round, trodden and slumped in lumps along its length
+ * (the map-revival lane, 2026-10-05: Tarkhan Steppe's straw, in place of the field cones the critics took for markers).
+ */
+function bStrawRick(rng: Rng): THREE.BufferGeometry {
+  const L = 9 + rng() * 3, W = 3.4 + rng() * 0.6, H = 3.5 + rng() * 0.6;
+  const nL = 12, nS = 12, phase = rng() * 6.28;
+  // the section from the ground on its +x side over the crown to the ground on its -x side (a superellipse)
+  const section = (t: number): [number, number] => {
+    const a = Math.PI * t, c = Math.cos(a), sn = Math.sin(a);
+    return [Math.sign(c) * Math.pow(Math.abs(c), 0.55) * (W / 2), Math.pow(sn, 0.75) * H];
+  };
+  const pos: number[] = [], uv: number[] = [], idx: number[] = [];
+  const ring = (i: number): Array<[number, number, number]> => {
+    const t = i / nL, z = (t - 0.5) * L;
+    // the hipped ends: the section draws in over the last 1.8 m to a third of its size
+    const k = 0.34 + 0.66 * Math.sqrt(Math.min(1, Math.min(t * L, (1 - t) * L) / 1.8));
+    return Array.from({ length: nS + 1 }, (_, j) => {
+      const [x, y] = section(j / nS);
+      const lump = 1 + 0.05 * Math.sin(z * 0.9 + phase + y * 0.7) + 0.025 * Math.sin(z * 2.3 - y * 1.3 + phase * 2);
+      return [x * k * lump, y * (0.5 + 0.5 * k) * (1 + 0.03 * Math.sin(z * 0.6 + phase)), z] as [number, number, number];
+    });
+  };
+  const rings = Array.from({ length: nL + 1 }, (_, i) => ring(i));
+  for (let i = 0; i <= nL; i++) for (let j = 0; j <= nS; j++) {
+    pos.push(...rings[i][j]);
+    uv.push(rings[i][j][2] / 3, j / nS * (W + 2 * H) / 2.5);
+  }
+  for (let i = 0; i < nL; i++) for (let j = 0; j < nS; j++) {
+    const a = i * (nS + 1) + j, b = a + 1, c = a + nS + 1, d = c + 1;
+    idx.push(a, b, c, b, d, c);
+  }
+  // the hipped ends closed by a fan from the section's middle (the -z end faces -z, the +z end +z)
+  for (const [i, sign] of [[0, -1], [nL, 1]] as const) {
+    const base = pos.length / 3, mid = rings[i].reduce((m, p) => m + p[1], 0) / rings[i].length;
+    pos.push(0, mid * 0.6, rings[i][0][2] + sign * 0.15); uv.push(rings[i][0][2] / 3, 0.5);
+    for (let j = 0; j < nS; j++) {
+      const a = i * (nS + 1) + j, b = a + 1;
+      if (sign < 0) idx.push(base, b, a); else idx.push(base, a, b);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.translate(0, -0.12, 0);
+  const flat = g.toNonIndexed();
+  g.dispose();
+  flat.computeVertexNormals();
+  return merge([flat], false, true);
+}
+
+function bStrawRickBroken(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  for (const [oz, rr] of [[-3.2, 1.5], [-0.6, 1.8], [2.2, 1.6], [4.4, 1.1]] as const) {
+    const mound = new THREE.CylinderGeometry(rr * 0.55, rr, 0.7, 9, 1);
+    const p = mound.attributes.position;
+    for (let i = 0; i < p.count; i++) { const f = 1 + (rng() - 0.5) * 0.3; p.setX(i, p.getX(i) * f * 1.1); p.setZ(i, p.getZ(i) * f); }
+    mound.computeVertexNormals();
+    parts.push(scaleUV(mound, 2, 0.6).translate((rng() - 0.5) * 0.6, 0.33, oz));
+  }
+  return merge(parts, false, true);
+}
+
 // ---------------------------------------------------------------------------------------------- the registry
 
 /**
@@ -328,6 +393,8 @@ export const SCENERY_DESTRUCTIBLE_TYPES = {
   windpump: { cls: 'topple', mat: 'baked', contact: 'ob', r: 2.4, h: 13.9, hw: 1.4, hl: 1.4, groundR: 1.35, build: bWindPump, broken: null, keep: 0.86, crushMin: 2.0 },
   tomb: { cls: 'break', mat: 'baked', contact: 'ob', r: 1.9, h: 2.4, hw: 1.3, hl: 1.7, build: bTomb, broken: bTombBroken, collider: true, keep: 0.86, crushMin: 2.4 },
   strawstack: { cls: 'break', mat: 'straw', contact: 'ob', r: 1.6, h: 5.1, shape: 'circle', collisionR: 1.35, build: bStrawStack, broken: bStrawStackBroken },
+  // (appended: every kind before it keeps its place in the props registry)
+  strawrick: { cls: 'break', mat: 'straw', contact: 'ob', r: 4.8, h: 4.6, hw: 1.6, hl: 4.4, build: bStrawRick, broken: bStrawRickBroken },
 } satisfies Record<string, DestructiblePropType>;
 
 
