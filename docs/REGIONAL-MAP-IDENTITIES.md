@@ -43,7 +43,7 @@ the fictional map reproduces a particular real-world location.
 | skybridge | Opposing plateau shoulders aligned with the drowned gorge; preserve crossing approaches. |
 | polders | Very low coastal skyline, long dikes and broad drainage cells; preserve the deliberately low amplitude. |
 | copper_mesa | Natural tablelands surrounding distinctly engineered quarry benches. |
-| airfield | Open approach sectors and distant low hills; restrained perimeter berms. |
+| airfield | Hostomel (Antonov) airport on its pine plateau north-west of Kyiv, February 2022 (the map-revival lane, 2026-10-05): open approach sectors and restrained perimeter berms round the hostomel kit's barrel-vaulted cargo hangar, sheet hangars, tower and terminal; the Polissia's pine and birch woods closing round the plateau and down the valley sides, hay meadow and small fields outside the perimeter, and the dacha cooperatives on the valley shoulders beside the access roads; distant low hills. |
 | oasis | Asymmetric dune arms and sparse distant rock around a protected spring basin. |
 | whiteout | Exposed snowy plain with broad low glacial rises and wind-shaped snow shoulders. |
 | orchard | Long unequal upland valley sides with cultivated shelves and drainage folds. |
