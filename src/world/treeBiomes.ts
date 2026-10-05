@@ -87,11 +87,12 @@ const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies, pale
  * every slot as its own form.
  */
 export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object.freeze({
-  // Las Cañadas del Teide: sparse Canary pines on bare cinder in open groves (wave 26: "evenly spaced, grid-like" stands
-  // on a floor that is nearly treeless apart from broom); its acacia slot, the maps lane's scrub stand-in, grows as
-  // young pines among the trees and as broom among the bushes
-  caldera: B('Las Cañadas del Teide, Tenerife', { pine: { form: 'canaryPine' }, cedar: { form: 'canaryPine' }, eucalyptus: { form: 'canaryPine' },
-    acacia: { form: 'canaryPine' } }, 'broom', undefined, undefined, true),
+  // the Aso caldera, Kyushu (the map-revival lane, 2026-10-05; was Las Cañadas del Teide): sugi plantations and shrine
+  // groves where the map plants its pines and cypresses, Japanese red pine on the dry cinder where it plants its scrub
+  // stand-in (the acacia slot), the bushes the evergreen broadleaf scrub of the grazed grassland (azalea, camellia) in
+  // the holm oak's dark leaf; the stands stay open groves (treeBiomes open: the placement is the map's)
+  caldera: B('the Aso caldera, Kyushu', { pine: { form: 'sugi' }, cypress: { form: 'sugi' }, acacia: { form: 'redPine' } }, 'holmOak',
+    undefined, undefined, true),
   // the Dalmatian coast: Aleppo pine, holm oak and olive (and cypress, which the map names directly)
   saltwind: B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak', colour: HOLM_OAK_FOLIAGE },
     acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }),
