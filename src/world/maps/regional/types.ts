@@ -30,14 +30,18 @@ export interface RegionalBuildContext {
   /** 'mobile' builds leave out the finest dressing (never a structural part: collision stays tier-independent) */
   tier: 'desktop' | 'mobile';
   /**
-   * The building's world yaw (props.ts rot, a turn about +Y), for a kit whose buildings face a compass point rather than
-   * the plot's front (a hogan's door to the sunrise); absent outside a placed rebuild (a yard's shed, the receipts).
+   * The building's world pose (props.ts: its position and yaw, a turn about +Y), for a kit whose buildings answer to
+   * the place rather than the plot: a hogan's door to the sunrise, a street row zoned by its distance from the valley
+   * axis. Absent outside a placed rebuild (a yard's outbuilding, the receipts' harness).
+   *
+   * The rule: a kit uses x, z and yaw only for look and form choices inside the plot. It never draws from the placement
+   * stream (the context holds no such stream; the receipt's placement harness checks the stream draws exactly as
+   * without the kit) and never changes the footprint (regionalArchitecture.selftest.mjs builds every builder at several
+   * poses and holds each pose's solid envelope to the plot and the unposed build's reach).
    */
-  yaw?: number;
-  /** The building's world position (props.ts settled it before the kit runs), for a kit that zones a city by where its
-   *  buildings stand (Sarajevo: the valley floor's blocks, the slopes' mahalas); absent outside a placed rebuild. */
   x?: number;
   z?: number;
+  yaw?: number;
 }
 
 export type RegionalBuilder = (ctx: RegionalBuildContext) => RegionalParts;

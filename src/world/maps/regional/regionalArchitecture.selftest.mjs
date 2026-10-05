@@ -27,7 +27,7 @@ import { roadBuildingFrontage, roadBuildingDoorAxis, buildingFootprintClearsRoad
 import { VILLAGE_BUILDERS } from '../villageKit.ts';
 import { URBAN_BUILDERS } from '../urbanKit.ts';
 import { STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, makeTimberBathhouse } from '../structureKit.ts';
-import { addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops } from '../exteriorDetailKit.ts';
+import { addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, exteriorChimneyTops } from '../exteriorDetailKit.ts';
 import { jitterUV } from '../../propGeometry.ts';
 import { sampleObbGround } from '../../propPlacement.ts';
 import { createHeightField } from '../../terrain.ts';
@@ -64,13 +64,36 @@ const INFO = {
 const BUDGET = 12000;
 const ray = new THREE.Raycaster();
 
-function build(style, id, seed, wallBucket, tier = 'desktop') {
+function build(style, id, seed, wallBucket, tier = 'desktop', pose = {}) {
   const [w, d, h] = INFO[id] ?? [7, 9, 6];
   return buildRegionalParts(style, {
     structureId: id, info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
-    wallBucket, rng: streamFrom(seed), variant: streamFrom(seed * 7 + 3), mapId: 'selftest', snowCap: false, tier,
+    wallBucket, rng: streamFrom(seed), variant: streamFrom(seed * 7 + 3), mapId: 'selftest', snowCap: false, tier, ...pose,
   }, streamFrom(seed * 3 + 5));
 }
+/** A build's solid (collision-bearing) envelope in its own frame. */
+function solidEnvelope(parts) {
+  const b = new THREE.Box3();
+  for (const g of Object.values(parts).flat()) {
+    if (g.userData.noCollision) continue;
+    g.computeBoundingBox();
+    if (g.boundingBox && !g.boundingBox.isEmpty()) b.union(g.boundingBox);
+  }
+  return b;
+}
+/** World poses a placed rebuild hands a kit (types.ts RegionalBuildContext x, z, yaw): look and form choices only. */
+const POSES = [{ x: 140, z: -60, yaw: 0.7 }, { x: -310, z: 255, yaw: -2.2 }, { x: 0, z: 0, yaw: Math.PI }];
+/**
+ * Footprint coverage (the map-revival lanes, 2026-10-05): a kit's solid envelope reaches every side of the base's
+ * measured reach (ctx.bounds) to within COVER_M. A kit body narrower than the building it replaces opens a lane beside
+ * it: Titan Gorge's wool barn, 2.4 m shorter than the warehouse it replaced, opened a tank-wide gap to its neighbour,
+ * the bots drove through it and the pacing receipt's matches ended a minute early. The kits merged before the rule are
+ * allowlisted (their maps passed pacing as they stand); their shortfalls are printed, not failed.
+ */
+const COVER_M = 0.5;
+const COVERAGE_ALLOWLIST = new Set(['hessian', 'dalmatian', 'breton', 'kolkhoz', 'polder', 'eifel', 'mekong', 'bengal', 'franconian', 'ksar',
+  'wadirum', 'ruhr', 'kohima', 'hostomel']);
+const coverageShort = [];
 const all = (parts) => Object.values(parts).flat();
 function positions(parts) {
   return Object.entries(parts).map(([bucket, list]) => [bucket, list.map((g) => Array.from(g.getAttribute('position').array))]);
@@ -144,6 +167,35 @@ for (const style of STYLES) {
         if (hit.face.normal.dot(dir) < -0.05) back++;
       }
       assert.ok(back <= Math.max(2, hits * 0.005), `${style.id}/${id}: ${back} of ${hits} first hits see an inverted face`);
+      // the world pose (x, z, yaw) is for look and form choices: at every pose the build stays deterministic and its solid
+      // envelope never reaches past both the plot and the unposed build's reach (it never changes the footprint); the
+      // first seed's builds carry the poses
+      const plain = solidEnvelope(parts);
+      for (const pose of seed === 11 ? POSES : []) {
+        const posed = build(style, id, seed, wallBucket, 'desktop', pose);
+        if (pose === POSES[0]) {
+          const again2 = build(style, id, seed, wallBucket, 'desktop', pose);
+          assert.deepEqual(positions(again2), positions(posed), `${style.id}/${id}: deterministic at a pose`);
+          for (const g of all(again2)) g.dispose();
+        }
+        const env = solidEnvelope(posed);
+        for (const [side, a, b, half] of [['+x', env.max.x, plain.max.x, w / 2], ['-x', -env.min.x, -plain.min.x, w / 2],
+          ['+z', env.max.z, plain.max.z, d / 2], ['-z', -env.min.z, -plain.min.z, d / 2]]) {
+          assert.ok(a <= Math.max(b, half) + 0.05, `${style.id}/${id}: at yaw ${pose.yaw.toFixed(2)} the solid reaches ${a.toFixed(2)} m on ${side}, `
+            + `past the plot (${half.toFixed(2)}) and the unposed build (${b.toFixed(2)})`);
+        }
+        for (const g of all(posed)) g.dispose();
+      }
+      {
+        // the solid envelope against the bounds the builder was handed (the plot's, here)
+        const env = solidEnvelope(parts);
+        const short = [['+x', w / 2 - env.max.x], ['-x', env.min.x + w / 2], ['+z', d / 2 - env.max.z], ['-z', env.min.z + d / 2]]
+          .filter(([, gap]) => gap > COVER_M).map(([side, gap]) => `${side} ${gap.toFixed(2)} m`);
+        if (short.length) {
+          if (COVERAGE_ALLOWLIST.has(style.id)) { if (seed === 11) coverageShort.push(`${style.id}/${id} (${short.join(', ')})`); }
+          else assert.fail(`${style.id}/${id}: the solid envelope stops short of the base's reach by ${short.join(', ')} (COVER_M ${COVER_M} m): a lane opens beside it`);
+        }
+      }
       triangles += tris; worst = Math.max(worst, tris); builders++;
       for (const g of [...all(parts), ...all(again), ...all(mobile)]) g.dispose();
     }
@@ -152,6 +204,8 @@ for (const style of STYLES) {
 // most builders have windows, doors or timbers (172 of 286 on 2026-10-03; the rest: stalls, sheds, ruins, bare towers)
 assert.ok(fine >= builders / 2, `most builds carry fine joinery (${fine} of ${builders})`);
 console.log(`regional builders: ${builders} builds sound, ${Math.round(triangles / builders)} triangles mean, ${worst} worst, ${fine} with fine joinery`);
+console.log(`regional coverage: every builder of a new kit reaches its bounds to within ${COVER_M} m; allowlisted builders short of theirs `
+  + `(${coverageShort.length}): ${coverageShort.join('; ')}`);
 
 // Surfaces: deterministic, in range, cached.
 for (const [target, kind] of [['roof', 'beavertail'], ['roof', 'canal'], ['roof', 'slate'], ['stone', 'sandstone'], ['stone', 'limestone'], ['stone', 'granite']]) {
@@ -215,7 +269,7 @@ function recordingRebuild(style, structureId, base, info, wallBucket, context, x
   return out;
 }
 const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE, VILLAGE_BUILDERS, URBAN_BUILDERS, STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES,
-  makeTimberBathhouse, addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, jitterUV,
+  makeTimberBathhouse, addCatalogExterior, attachStructureBuildContext, carryExteriorChimneyTops, exteriorChimneyTops, jitterUV,
   sampleObbGround, deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand,
   rebuildRegionalStructure: recordingRebuild, resolveRegionalArchitecture,
   buildingFootprintClearsRoads, roadBuildingFrontage, roadBuildingDoorAxis, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion,
