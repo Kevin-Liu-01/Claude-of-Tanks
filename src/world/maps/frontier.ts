@@ -114,6 +114,10 @@ export default {
   splat: {
     fieldPatch: 1, tintA: [1.10, 1.03, 0.78], tintB: [0.72, 0.78, 0.58],
     tintC: [1.04, 0.98, 0.73], roadTint: [0.82, 0.77, 0.66], midRelief: 0.82,
+    // ground lane (wave 83: Hesse "a neutral charcoal grey, a black-earth colour wrong for Hesse's brown loess and
+    // red-sandstone soils"): the loam warmer at its own luminance (~0.157 / 0.096 / 0.052) and its plough a warm mid
+    // brown (~0.12 / 0.070 / 0.036), not the chernozem's near-black
+    soilTint: [1.22, 0.98, 0.78], ploughLift: 1.3,
   },
   vegetation: {
     species: ['pine', 'spruce', 'oak', 'aspen'], clusterMix: [['pine', 0.36], ['spruce', 0.28], ['oak', 0.24], ['aspen', 0.12]],
