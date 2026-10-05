@@ -65,3 +65,9 @@ export function shadowDepthBiasForTexel(worldUnitsPerTexel: number, filterRadius
   return Math.min(SHADOW_DEPTH_BIAS_MAX_M, Math.max(SHADOW_DEPTH_BIAS_MIN_M, needed));
 }
 
+/**
+ * The depth bias of a receiver-only surface, world metres along the sun ray (lighting.ts setupShadowMaterial,
+ * material.userData.cotShadowReceiverOnly): a surface whose meshes never cast is in no depth map, so it needs no acne
+ * margin, only a hair over the depth's own precision. It takes no receiver normal offset either.
+ */
+export const SHADOW_RECEIVER_ONLY_BIAS_M = 0.02;

@@ -6129,6 +6129,10 @@ function* createSplatMaterialSteps(
       '#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= gFoldAO;');
     if (seaOpenings.length) shader.fragmentShader = fadeDistantCoastShadows(shader.fragmentShader, 'vWPos');
   };
+  // the scenery lane (visual/shadow-bias, 2026-10-04): the ground casts no shadow (its chunks and the horizon ring that
+  // draws its faces with this material keep castShadow false), so it takes no caster's acne bias: its shadows meet each
+  // caster at the contact (lighting.ts RECEIVER_ONLY_SHADOW_NOTE)
+  mat.userData.cotShadowReceiverOnly = true;
   engineCtx.setupShadowMaterial(mat, splatHook);
   mat.customProgramCacheKey = () => `world-terrain-splat-v54-${seaOpenings.length ? 'coast' : 'land'}`; // terrain v3 (2026-10-02): v54
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;

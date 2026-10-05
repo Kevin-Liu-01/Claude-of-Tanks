@@ -16,8 +16,10 @@ import {
   createShadowRefreshScheduler,
   resolveShadowPrimeCount,
 } from './shadowRefresh.ts';
+import { debugModeRequested } from '../dev/debugIntent.ts';
 import {
   SHADOW_OPACITY,
+  SHADOW_RECEIVER_ONLY_BIAS_M,
   shadowDepthBiasForTexel,
   shadowNormalBiasForTexel,
   snapShadowCoordinate,
@@ -170,6 +172,9 @@ function applyStableCascadePoses(csm: CSM, mask: number): void {
 // gets its own (applyShadowNormalBias, shadowStability.ts shadowDepthBiasForTexel), and __SHADOW_DEBUG.legacyBias
 // restores this one for A/B probes.
 const SHADOW_BIAS = -0.0002;
+// The receiver-only materials' share of their own shadow terms (RECEIVER_ONLY_SHADOW_NOTE): 1, the 2 cm bias and no
+// normal offset; 0 under __SHADOW_DEBUG.legacyBias, the cascade's terms as every material had them.
+const receiverOnlyShadowUniform = { value: 1 };
 // r4 penumbra: r185's PCF getShadow() is a 5-tap Vogel disk rotated per-pixel
 // by interleaved gradient noise, and its disk radius comes straight from
 // `shadow.radius` (in shadow-map texels). The default 1.0 produced razor-hard
@@ -581,6 +586,14 @@ vec3 cotPrev;`);
 				cotPrev = directLight.color;
 				${noFadeAnchor}
 				cotSunVis = min( cotSunVis, directLight.color.g / max( cotPrev.g, 1e-4 ) );`);
+  // 2026-10-04 (visual/shadow-bias): the receiver-only branch — see RECEIVER_ONLY_SHADOW_NOTE below
+  const receiverLightAnchor = 'directionalLightShadow = directionalLightShadows[ i ];';
+  const receiverLightParts = frag.split(receiverLightAnchor);
+  if (receiverLightParts.length !== 4) throw new Error('lighting.ts: receiver-only anchors not found in lights_fragment_begin');
+  frag = receiverLightParts.join(`${receiverLightAnchor}
+				#if defined( COT_SHADOW_RECEIVER_ONLY ) && defined( USE_SHADOWMAP )
+				directionalLightShadow.shadowBias = mix( directionalLightShadow.shadowBias, COT_RECEIVER_SHADOW_BIAS, uCotReceiverOnly );
+				#endif`);
   THREE.ShaderChunk.lights_fragment_begin = frag;
 
   const endHead = '#if defined( RE_IndirectDiffuse )';
@@ -660,6 +673,32 @@ varying float vCotCloudSun;
 	vCotCloudSun = cotCloudSun( worldPosition.xyz );
 #endif`;
 
+  // RECEIVER_ONLY_SHADOW_NOTE — 2026-10-04 (the scenery lane, visual/shadow-bias). A material whose meshes never cast
+  // (the terrain, and the horizon ring that draws its ground faces with the terrain's material) is never in a depth
+  // map, so it cannot shadow itself. It needs neither the cascade's acne depth bias nor the receiver normal offset,
+  // and those two together held every ground shadow 0.40 x cos(e) + 0.045 / tan(e) away from its caster: 39 cm under
+  // a 35-degree sun, a lit seam round every rock, track and wall, and no shadow under a pebble. Under
+  // COT_SHADOW_RECEIVER_ONLY (setupShadowMaterial: material.userData.cotShadowReceiverOnly) the shadow lookup takes
+  // the define's own 2 cm bias and no offset; the shared uniform (one value, a name per stage) set to 0 restores the
+  // cascade's terms (__SHADOW_DEBUG.legacyBias). The lines go in after the chunks' own: cloudShadeMap's receipt pins
+  // shadowmap_vertex's normal-bias line.
+  THREE.ShaderChunk.shadowmap_pars_vertex = `${THREE.ShaderChunk.shadowmap_pars_vertex}
+#if defined( COT_SHADOW_RECEIVER_ONLY ) && defined( USE_SHADOWMAP )
+uniform float uCotReceiverOnlyV;
+#endif`;
+  THREE.ShaderChunk.shadowmap_pars_fragment = `${THREE.ShaderChunk.shadowmap_pars_fragment}
+#if defined( COT_SHADOW_RECEIVER_ONLY ) && defined( USE_SHADOWMAP )
+uniform float uCotReceiverOnly;
+#endif`;
+  const receiverVertexAnchor = '\tvec4 shadowWorldPosition;\n';
+  if (THREE.ShaderChunk.shadowmap_vertex.split(receiverVertexAnchor).length !== 2) {
+    throw new Error('lighting.ts: receiver-only anchor not found in shadowmap_vertex');
+  }
+  THREE.ShaderChunk.shadowmap_vertex = THREE.ShaderChunk.shadowmap_vertex.replace(receiverVertexAnchor, `${receiverVertexAnchor}\t#if defined( COT_SHADOW_RECEIVER_ONLY ) && defined( USE_SHADOWMAP )
+	shadowWorldNormal *= 1.0 - uCotReceiverOnlyV;
+	#endif
+`);
+
   // Round 69: an opaque lit pixel writes 2 + its sun visibility (cotSunVis, captured above) into the scene
   // target's alpha — the canvas is opaque (renderer.ts, alpha false) and opaque draws blend nothing, so the
   // channel is free — and the post aerial pass decodes it to blend the screen-space contact shadows into the
@@ -733,6 +772,32 @@ export function releaseCsmShaderMaterial(
 /** Near-hull detail casters need a desktop tier and a 2K+ near cascade to be worth their draws. */
 function nearVehicleDetailAllowedFor(preset: { readonly shadowMapSizes: readonly number[] }): boolean {
   return getDeviceTier() !== 'mobile' && preset.shadowMapSizes[0] >= 2048;
+}
+
+/**
+ * A receiver-only material's promise, kept where it could break: a mesh that draws it and casts would shadow itself
+ * with a 2 cm bias (acne). Its first draw turns the casting off; a dev or QA build (Vite's dev server, or ?debug on a
+ * production URL) says so once, naming the mesh, so a terrain-material mesh meant to cast is found rather than hidden.
+ * The public build stays quiet; shadowReceiverOnly.selftest proves no shipped mesh reaches it (RECEIVER_ONLY_SHADOW_NOTE).
+ */
+const guardedReceiverOnlyMaterials = new WeakSet<THREE.Material>();
+function receiverOnlyGuardSpeaks(): boolean {
+  return import.meta.env?.DEV === true || debugModeRequested();
+}
+function guardReceiverOnlyMaterial(material: THREE.Material): void {
+  if (guardedReceiverOnlyMaterials.has(material)) return;
+  guardedReceiverOnlyMaterials.add(material);
+  const previous = material.onBeforeRender;
+  material.onBeforeRender = function (renderer, scene, camera, geometry, object, group) {
+    if (object.castShadow) {
+      object.castShadow = false;
+      if (receiverOnlyGuardSpeaks()) {
+        console.warn(`lighting.ts: ${object.name || object.type} draws a receiver-only shadow material and cast shadows; `
+          + 'its casting is turned off (the material carries no acne bias)');
+      }
+    }
+    previous.call(this, renderer, scene, camera, geometry, object, group);
+  };
 }
 
 export function createLighting(
@@ -837,6 +902,7 @@ export function createLighting(
     // (never more than the old normalised bias: a cascade at the 0.40 m ceiling keeps it exactly)
     shadow.bias = legacy ? SHADOW_BIAS
       : Math.max(SHADOW_BIAS, -shadowDepthBiasForTexel(worldUnitsPerTexel, shadow.radius, shadow.normalBias) / depthRange);
+    receiverOnlyShadowUniform.value = legacy ? 0 : 1;
   }
 
   function applyShadowNormalBiases(): void {
@@ -1422,6 +1488,7 @@ export function createLighting(
       const optIn = mat.userData.cotCloudShade as boolean | undefined;
       const cloudShade = cloudShadeOn && (optIn === true || (optIn !== false && !(mat as unknown as { isShaderMaterial?: boolean }).isShaderMaterial));
       if (cloudShade) (mat.defines ??= {}).COT_CLOUD_SHADE = '';
+      const receiverOnly = mat.userData.cotShadowReceiverOnly === true; // (RECEIVER_ONLY_SHADOW_NOTE, below)
       {
         // Round 69: the ground-bounce uniforms ride on every CSM registration (groundBounce.ts).
         const csmHook = mat.onBeforeCompile;
@@ -1429,6 +1496,10 @@ export function createLighting(
           csmHook(shader, rdr);
           attachGroundBounceUniforms(shader, groundBounceUniforms);
           if (extraHook) extraHook(shader, rdr);
+          if (receiverOnly) {
+            shader.uniforms.uCotReceiverOnly = receiverOnlyShadowUniform;
+            shader.uniforms.uCotReceiverOnlyV = receiverOnlyShadowUniform;
+          }
           if (cloudShade) {
             attachCloudShadeUniforms(shader, cloudShadeUniforms);
             // three counts a program's units against the fragment limit (sixteen) wherever the sampler sits: a program
@@ -1439,6 +1510,16 @@ export function createLighting(
             }
           }
         };
+      }
+      // 2026-10-04 (visual/shadow-bias, RECEIVER_ONLY_SHADOW_NOTE): a material whose meshes never cast opts out of the
+      // casters' acne terms — the 2 cm bias in the light's normalised depth, no normal offset — and is held to that
+      // promise at draw time (guardReceiverOnlyMaterial)
+      if (receiverOnly) {
+        const camera = csm.lights[0].shadow.camera;
+        const defines = (mat.defines ??= {});
+        defines.COT_SHADOW_RECEIVER_ONLY = '';
+        defines.COT_RECEIVER_SHADOW_BIAS = (-SHADOW_RECEIVER_ONLY_BIAS_M / Math.max(1e-3, camera.far - camera.near)).toExponential(6);
+        guardReceiverOnlyMaterial(mat);
       }
       // Alpha-tested foliage: replace the GPU-averaged mip chain with a
       // coverage-preserving one so distant cards keep their cutout silhouette
