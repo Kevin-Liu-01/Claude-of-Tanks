@@ -7231,6 +7231,40 @@ Set from a sweep of one knob at a time (`$SP/p2/sea/cap4`): a 45 m colour shelf 
   sea views with the unprepared first frame in the "on" set; +0.4 to +0.6 ms without it — a texture fetch and three
   cosines a water fragment, within the run-to-run spread on a loaded machine.
 
+### 2026-10-05 — the sea's second round: a shelf by the coast, deep water that reads deep, glitter over white (the skies lane)
+
+**The gauntlet's wave 78** (held: the water +0.14 for about +0.5 ms): Saltmere's bay "one saturated sky-cyan sheet … no
+shallow-to-deep gradation" (the 25 m shelf too narrow to read from 100–300 m up, 45 m flooding the bay); Saltwind's open
+channel "one bright aqua-turquoise from the foreground to the horizon"; the glitter "tops out at a dull grey-white that
+never clips … a single smooth, soft-edged bloom column instead of a dense field of small, sharp, dancing highlights".
+
+**The fix** (`shallowWater.ts`, the open sea only — lakes, rivers and marshes keep their own):
+- *a shelf by the coast:* the shelf's width follows the land's rise within 30 m of the waterline (a beach rises a metre or
+  two, a karst coast tens): width = 1.25 / rise slope, 8–60 m, carried from the nearest shore cell (the shore-distance
+  field's G channel). The sweep scaled the width in-page: K 2.5 with a 120 m cap turned Saltmere's whole bay turquoise
+  again and widened Saltwind's channel shelf, half of it grades the bay from a turquoise belt into deep blue, a third
+  leaves a rim (`SEA_SHELF_WIDTH_*`, `SEA_SHELF_BY_COAST`, `SEA_SHELF_WIDTH_SCALE`);
+- *deep water:* the deep body darker (0.7 → 0.5) and the sky's mirror taking over later toward the horizon (its grazing
+  exponent 1 → 2), so water seen from above shows its body; a bluer deep colour moved nothing visible (`SEA_TINT`,
+  `WATER_GRAZE_POW`);
+- *glitter:* the sun's lobe sharp on the fine normals — the direct lights take 0.4 of the profile's roughness — while the
+  sky's mirror keeps the profile's own, restored between the direct lights and the environment's lookup: one sharp
+  roughness for both turned the far chop into white facets over dark troughs under the horizon (its local texture 9 → 23
+  levels on Saltmere's edge view; a fade back to the profile's roughness with distance changed nothing, the isolation
+  sweep pinned it on the mirror's roughness); the sun's glints capped at 3 apart from the mirror, which keeps 1.15 (a
+  joint cap at 3 whitened the far band; `WATER_ROUGH`, `WATER_GLINT_CAP`, `WATER_SPEC_CAP`).
+
+**Measured** (the PR head against the branch, desktop high; `$SP/p2/sea/pair3`, the sweeps `cap5`–`cap9`):
+- *Saltwind's glint:* pure-white pixels 0 → 2.2 % of the sun's path, its brightest 0.5 % from 234 to 251 — sparkles that
+  clip, in a narrower path of small facets.
+- *Saltmere's bay:* the water's a* p10/p90 −9.5/−5.5 → −19.8/−6.3 — a turquoise belt along the sand grading into blue;
+  from the bird view a turquoise rim follows the shore and the bay's body stays blue.
+- *the water under the camera:* deeper and bluer — Saltwind L* 49.4 → 45.4, b* −9.5 → −16.5 (hue 187° → 195°); Saltmere
+  L* 56.3 → 45.9, b* −17.0 → −24.1.
+- *the far band:* its texture as the PR head's — Saltwind 4.5–5.9 → 4.7–7.5 levels (local deviation, the 200 rows under
+  the horizon), Saltmere 3.4–14.8 → 13.3–16.1 (it was 22.7 with one roughness) — and the sun's path keeps its sparkles.
+- *GPU* (the coordinator's rule: in-page, 8 interleaved quartets against a null control, 1920 × 1080 high): the sea's whole change (rounds 1 and 2: the shelf, the swell, the mirror's exponent, the split roughness, the glints' cap) against the PR head's water in-page — the load gate shut past two hours (`$SP/p2/costrule/sea-*`): Saltmere's establishing view +0.11 ± 0.25 ms p50 (+0.13 ± 0.23 p25), the bound +0.60 / +0.58 ms; Saltwind's glint +0.33 ± 0.31 ms p50 (+0.25 ± 0.17 p25), the bound +0.94 / +0.60 ms — both under +1 ms (frames 12.6 and 14.2 ms).
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
