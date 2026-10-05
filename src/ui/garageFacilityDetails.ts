@@ -144,12 +144,11 @@ export function getGarageFacilityTerraces(variant: GarageVariant): readonly Gara
   const layout = facilityLayout(variant);
   const serviceBays: GarageFacilityTerrace[] = [];
   for (const bay of getGarageWorkshopBayPoses(variant)) {
-    // The Abrams welding bay stands on its own pad since it moved beside the camera (2026-10-05, wave 89): on raw
-    // terrain the exhibit sank up to 3.2 m into Steinburg's cobbled bank and stood up to 1.5 m clear of Sirocco's sand.
-    // Its pad is wider than the two frame bays' (the tank, the stripped skirts, the dolly and the carts spread over
-    // about 11 m) and still clears the Burlak's pad.
+    // Every fleet exhibit stands on a pad at the datum (2026-10-05). On raw terrain the Abrams welding bay sank up to
+    // 3.2 m into Steinburg's cobbled bank and stood up to 1.5 m clear of Sirocco's sand, and the rolled K2's cradle
+    // stood up to 2.8 m clear of Sirocco's and Saltmere's ground. The Abrams pad is wider than the others (the tank,
+    // the stripped skirts, the dolly and the carts spread over about 11 m) and still clears the Burlak's and the K2's.
     const abrams = bay.id === 'abrams_welding';
-    if (bay.id !== 'burlak_gantry' && bay.id !== 't90m_relikt' && !abrams) continue;
     const view = garageWorldPointToView(bay.x, bay.z);
     serviceBays.push(Object.freeze({
       label: `fleet-service-${serviceBays.length + 1}`,
