@@ -25,8 +25,6 @@ const TRIM: readonly Rgb[] = [0xd6d0c2, 0x4f7a52, 0x3f6f99, 0x8a3a2c].map(rgb);
 const STOVEPIPE = rgb(0x2c2b29), GALV = rgb(0xa4a8a5), RUSTY = rgb(0x7a5641), IRON = rgb(0x3b3d3e);
 /** Corrugated iron cladding (structureMetal's profiled sheet under a livery): galvanised, dulled, rusting, barn red. */
 const CLADDING: readonly Rgb[] = [0xa4a8a5, 0x8f9390, 0x8a6a55, 0x8b3b2e].map(rgb);
-/** Painted corrugated iron: barn red, a faded green, silver, a grey-blue. */
-const TIN_PAINT: readonly Rgb[] = [0x8b3b2e, 0x56705a, 0x9fa4a0, 0x687c88].map(rgb);
 /** Hauled water: the blue plastic drum, the old steel one. */
 const DRUM: readonly Rgb[] = [0x2f5f98, 0x2f5f98, 0x6a4a3a].map(rgb);
 const OCT = Math.PI / 4;
