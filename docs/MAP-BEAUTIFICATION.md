@@ -7145,6 +7145,33 @@ disc: 264 near-white pixels facing Titan's sun, 216 on Whiteout's, where a close
 (near-white pixels 264 → 0 and 216 → 0), Redrock and Saltwind's clear-sky suns as they were; GPU on / off / off / on
 twice: +0.73 / +0.06 ms (p25 / p50) for the cut and the fade, +0.12 / +0.01 ms for the lobe — nil.
 
+### 2026-10-04 — Whiteout's ice sheet re-candidated and dropped; the shell's apron read sky (the mountains lane)
+
+**The candidate (d9f5f6b06: `panorama: { regional: 'iceSheet' }`, the ring at amp 0.45 and snow-covered to its foot)
+against the PR head's dark far range, in one paired ticket (establishing, bird, sky-w, sky-s, corner-ne and corner-sw).
+It was dropped before a wave, and the PR head's far range stays.**
+- *The band.* The bird view (303 m up) showed a cream-white band (L 0.69–0.74) lying on the ring with a ruler-straight
+  top edge, and above it the far sheet as a flat grey strip (0.63–0.64) under the sky (0.77). These are waves 53–54's
+  overcast bird views, "the world simply ends … a ruler-straight hard top edge". It is not the fill: in the SwiftShader
+  lab, with the fill's sun term at zero, nothing changes there. The shell reads the atlas by each fragment's elevation
+  from the bake eye (30 m at the centre), and the inner rows of its apron stand above that eye's horizon:
+  - the edge row, at the ring's outer edge (1.3–1.5 km out, 48–90 m up), sits at +0.76° to +2.54°;
+  - the first apron row (1.9 km) sits at 0.01°–0.88°.
+
+  At those elevations a low far country's atlas is sky; over an ice sheet it is opaque only to about +0.3°. Those
+  fragments are discarded, and from a camera well above the eye the sky dome's below-horizon colour shows through them.
+  From the bake eye the apron is hidden behind the ring, so the ground views never show it. Redrock's shell has the same
+  rows (+0.92° to +2.43°).
+- *From the ground* (corner-ne, corner-sw, sky-w) the PR head's dark ranges gave way to a near-featureless white line.
+- *Open: the nunataks' tint.* They came out as small beige-pink pyramids in the game's frames and grey-blue in the lab's
+  bake, so the tint enters after the bake (the aerial pass or the grade). It has not been traced.
+- *Next, the far-earth fix:* the apron is ground and never reads sky. Either its lookup is clamped to its column's
+  lowest opaque row, or it is painted with the fill's ground; the lab decides which reads better.
+
+Frames: `$SP/p2/mountains/pair-wo/{before,after}/frames/whiteout/` and the sheet `handover-wo/sheets/whiteout.jpg`. The
+lab: `lab4/out/wo-bird-check.png` (game / bake / bake without the fill's sun term) and `wo-bird-ring-vs-noring.png` (the
+shell alone, no apron).
+
 ### 2026-10-04 — the coast's shelf and swell: turquoise over the sand, deep blue beyond, long waves under the chop (the skies lane)
 
 **The gauntlet's wave 59 on the sea:** "a uniform saturated navy sheet that stays the same deep colour right up to a hard
