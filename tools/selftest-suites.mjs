@@ -1200,6 +1200,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/destructibles.selftest.mjs',
     'src/world/destructibleAuthority.selftest.mjs',
     'src/world/utilityNetwork.selftest.mjs',
+    'src/world/utilityPoleSurface.selftest.mjs',
     'src/world/wrecks.selftest.mjs',
     'src/world/wreckRoster.selftest.mjs',
     'src/world/wreckFleet.selftest.mjs',

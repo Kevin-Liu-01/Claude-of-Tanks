@@ -1,3 +1,4 @@
+import { createUtilityPoleMaterial, textureUtilityPoleGeometry } from './utilityPoleSurface.ts';
 // src/world/props.ts — rocks, ~10-building village, walls and cover props.
 // Contract: docs/ARCHITECTURE.md §3.2. All geometry composed BufferGeometry,
 // all textures canvas-generated, everything merged into few draw calls.
@@ -6707,9 +6708,15 @@ ${snowCap ? `
       poleMatrices = matrixStore;
       poleHigh = new Uint8Array(e.list.length);
       poleHigh.fill(1);
-      poleFullIM = new THREE.InstancedMesh(e.geo, mats.baked, e.list.length);
-      poleDistanceIM = new THREE.InstancedMesh(
-        makeTelephonePoleDistanceGeometry(), mats.baked, e.list.length);
+      const poleMaterial = createUtilityPoleMaterial(aniso);
+      engineCtx.setupShadowMaterial(poleMaterial, grimeHook);
+      poleMaterial.customProgramCacheKey = () => 'world-props-pole-v1' + (snowCap ? 's' : '');
+      retainedSurfaceMaterials.push(poleMaterial);
+      poleFullIM = new THREE.InstancedMesh(textureUtilityPoleGeometry(e.geo), poleMaterial, e.list.length);
+      const distanceSource = makeTelephonePoleDistanceGeometry();
+      const distanceGeometry = textureUtilityPoleGeometry(distanceSource);
+      distanceSource.dispose();
+      poleDistanceIM = new THREE.InstancedMesh(distanceGeometry, poleMaterial, e.list.length);
       for (const mesh of [poleFullIM, poleDistanceIM]) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
