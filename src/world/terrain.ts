@@ -6217,6 +6217,25 @@ function* buildFineGridSteps(
  * The pool is intentionally world-local: disposing one cached battlefield
  * can never invalidate a buffer still referenced by another world.
  */
+/**
+ * The scenery lane (gauntlet wave 74, Coastal boulder-a's line): the ground as the nearest terrain mesh draws it — the
+ * chunks' finest grid (CHUNK_SIZE / LOD_SEGS[0] a cell, from −HALF) and each cell's two triangles split as
+ * acquireTerrainChunkIndex below splits them (a c b and b c d: the diagonal from the cell's +x corner to its +z corner).
+ * A ground decal conformed to the analytic height floats over a bank's drawn lip; one conformed to this lies on it.
+ */
+export function terrainNearMeshHeightAt(heightAt: (x: number, z: number) => number, x: number, z: number): number {
+  const cell = CHUNK_SIZE / LOD_SEGS[0];
+  const u = (x + HALF) / cell, w = (z + HALF) / cell;
+  const gx = Math.floor(u), gz = Math.floor(w), fx = u - gx, fz = w - gz;
+  const x0 = -HALF + gx * cell, z0 = -HALF + gz * cell;
+  if (fx + fz <= 1) {
+    const ha = heightAt(x0, z0);
+    return ha + (heightAt(x0 + cell, z0) - ha) * fx + (heightAt(x0, z0 + cell) - ha) * fz;
+  }
+  const hd = heightAt(x0 + cell, z0 + cell);
+  return hd + (heightAt(x0, z0 + cell) - hd) * (1 - fx) + (heightAt(x0 + cell, z0) - hd) * (1 - fz);
+}
+
 export function acquireTerrainChunkIndex(
   pool: TerrainIndexPool,
   segs: number,
