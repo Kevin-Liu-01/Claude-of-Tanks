@@ -231,6 +231,12 @@ const SHADOW_AMBIENT_SPEC_DIM = 0.55;
 // occluder hides any of its sky, and its environment light (taken with its own normal) already leaves out the sun's
 // side. 1 = the grounded rig keeps the dims to sun-facing faces (groundBounce.ts uCotShadowFacing); the legacy rig 0.
 const SHADOW_DIM_FACING = 1;
+// 2026-10-04 (the skies lane; the gauntlet's wave 82 on Titan Gorge: "crisp, hard-edged shadows" under a closed deck):
+// the dims above stand for the circumsolar sky an occluder hides. A closed deck's light comes from every direction alike,
+// so a cascade's shadow under it hides no more than the occluder's own small solid angle: the dims fade with the
+// overcast, this share of it (1: none left at a closed deck; the legacy rig keeps them whole). With the deck's beam cut
+// (lightModel.ts OVERCAST_DIRECT_CUT) a closed deck's cast shadow is the few per cent of light the sun still sends.
+const SHADOW_DIM_OVERCAST = 1;
 // r8 stable PCF: the old pseudo-PCSS multiplier expanded a five-tap kernel
 // as far as 14 texels. Five samples cannot cover that disk, so wide shadows
 // resolved as a visible hatch/cross pattern and crawled because its rotation
@@ -594,6 +600,9 @@ vec3 cotPrev;`);
 		vec3 cotNf = normalize( ( vec4( geometryNormal, 0.0 ) * viewMatrix ).xyz );
 		cotAmbVis = 1.0 - ( 1.0 - cotSunVis ) * mix( 1.0, smoothstep( -0.05, 0.25, dot( cotNf, uCotBounceSun ) ), uCotShadowFacing );
 	}
+	// 2026-10-04 (groundBounce.ts uCotShadowDepth): under a closed deck a solid occluder hides no circumsolar sky (the
+	// cards keep the dim under any sky: inside a crown or a sward they hide each other's)
+	cotAmbVis = 1.0 - ( 1.0 - cotAmbVis ) * uCotShadowDepth;
 	#endif
 	vec3 cotAmbDim = mix( uCotShadowDim, vec3( 1.0 ), cotAmbVis );
 
@@ -1005,6 +1014,8 @@ export function createLighting(
       groundBounceUniforms.uCotSkyDiffuse.value = model.envDiffuseGain;
       groundBounceUniforms.uCotSkyChroma.value = model.envDiffuseChroma;
       groundBounceUniforms.uCotShadowDim.value.setScalar(SHADOW_AMBIENT_DIM_LUMA);
+      // (2026-10-04, the light under a closed deck: the dims fade with the overcast — groundBounce.ts uCotShadowDepth)
+      groundBounceUniforms.uCotShadowDepth.value = 1 - Math.min(1, Math.max(0, model.overcast)) * lightTune('SHADOW_DIM_OVERCAST', SHADOW_DIM_OVERCAST);
       groundBounceUniforms.uCotShadowFacing.value = lightTune('SHADOW_DIM_FACING', SHADOW_DIM_FACING);
       // (2026-10-04: the environment lights a steep face's open sky here: no wall sky lift — groundBounce.ts)
       terrainWallSkyLift.value = lightTune('WALL_SKY_LIFT_GROUNDED', 0);
@@ -1012,6 +1023,7 @@ export function createLighting(
       groundBounceUniforms.uCotSkyDiffuse.value = 1;
       groundBounceUniforms.uCotSkyChroma.value = 1;
       groundBounceUniforms.uCotShadowDim.value.fromArray(SHADOW_AMBIENT_DIM);
+      groundBounceUniforms.uCotShadowDepth.value = 1;
       groundBounceUniforms.uCotShadowFacing.value = 0;
       terrainWallSkyLift.value = WALL_SKY_LIFT_LEGACY;
     }
