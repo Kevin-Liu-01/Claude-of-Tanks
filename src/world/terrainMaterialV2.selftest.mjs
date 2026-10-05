@@ -21,7 +21,7 @@ import { readFileSync } from 'node:fs';
 import { groundReduxProfileIds, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { MAP_IDS } from './maps/catalog.ts';
 import { RING_RELIEF_WALL_BAND } from './horizonAutumnGround.ts';
-import { terrainBedWobbleAt, terrainFormationBoundaryY } from './terrain.ts';
+import { karstSlabAt, terrainBedWobbleAt, terrainFormationBoundaryY } from './terrain.ts';
 
 const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const active = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
@@ -232,4 +232,104 @@ assert.ok(ground.includes("const wallBand = character ? RING_RELIEF_WALL_BAND[ch
   assert.ok(lo >= -2.15 - 1e-9 && hi <= 2.15 + 1e-9, `the bed wander stays inside ±2.15 m (${lo.toFixed(2)}..${hi.toFixed(2)})`);
   assert.ok(sd > 0.2, `the beds wander (sd ${sd.toFixed(2)} m)`);
 }
-console.log(`terrainMaterialV2: coverage-gated layers (7 gates, 512 executed coverage cases), far band without detail normals, one-fetch far variant on measured means, explicit-LOD noise, exposure and non-periodic beds on ${MAP_IDS.length} maps, the ring as this material (bedforms on gentle sand, distance-faded slip-face sines, the atlas gradient's wall band), ${mutants.length + 3} mutation controls PASS; no GPU/art claim`);
+
+// the ground lane (the limestone, fourth cut): the karst pavement's CPU twin (karstSlabAt — the tufts and the tall grass
+// keep to its grikes) carries the material's law — the joints' integer hash (lowbias32 on uint, bit-exact on both
+// sides), the two joint sets (master joints along the grain, each band's cross joints staggered and slanted), the
+// grikes' widths, the drop-out and the same thin-soil field; a field track and a sown field carry no slabs; the slabs
+// take more of the convex ground than of the level, and a clint is longer along the grain than across it
+{
+  const flat = (text) => text.replace(/\s+/g, ' ');
+  const shader = flat(shaderOf(terrain));
+  for (const line of [
+    'x ^= x >> 16; x *= 0x7feb352du; x ^= x >> 15; x *= 0x846ca68bu; x ^= x >> 16;',
+    'uvec2 q = uvec2(ivec2(c) + 4096);',
+    'uint h = karstHash(q.x * 0x9e3779b1u ^ q.y * 0x85ebca77u ^ 0x5bd1e995u);',
+    'return vec2(float(h & 0xffffu), float(h >> 16u)) / 65536.0;',
+    'const vec2 KARST_JOINT = vec2(${KARST_JOINT_U.toFixed(2)}, ${KARST_JOINT_V.toFixed(2)});',
+    'const vec2 KARST_WANDER = vec2(${KARST_WANDER_U.toFixed(2)}, ${KARST_WANDER_V.toFixed(2)});',
+    'float karstCrossHw(float w) { float t = (w - 0.33) / 0.67; return w < 0.33 ? 0.012 : 0.04 + 0.11 * t * t; }',
+    'float slopeK = smoothstep(0.0, 0.12, slope) * (1.0 - smoothstep(0.30, 0.55, slope));',
+    'float soilD = clamp((nz(uvW, 0.0045, vec2(0.71, 0.19)).g + nz(pR, 0.00326, vec2(0.56, 0.90)).g - 1.0) * 0.72 + 0.5, 0.0, 1.0);',
+    'float thin = soilD + 0.30 * max(convex, 0.5 * slopeK);',
+    'kCover = smoothstep(0.56, 0.74, thin) * kGate;',
+    '* (1.0 - smoothstep(0.05, 0.30, mk.a)) * (1.0 - gTrackW);',
+    'vec2 kp = vec2(dot(wp.xz, kAx), dot(wp.xz, kAy)) + (nzq(uv, 0.012, vec2(0.57, 0.29)) - 0.5) * KARST_WANDER;',
+    'float lo = j0 + 0.50 * (hA.x - 0.5), hi = j0 + 1.0 + 0.50 * (hB.x - 0.5), band = j0;',
+    'hLo = karstRand2(vec2(j0 - 1.0, KARST_BAND_KEY)); lo = j0 - 1.0 + 0.50 * (hLo.x - 0.5);',
+    'hHi = karstRand2(vec2(j0 + 2.0, KARST_BAND_KEY)); hi = j0 + 2.0 + 0.50 * (hHi.x - 0.5);',
+    'float kTan = (fract(hLo.y * 3.17 + 0.71) - 0.5) * 0.36, kSec = inversesqrt(1.0 + kTan * kTan);',
+    'float kOff = fract(hLo.y * 7.31 + 0.13);',
+    'float cu = (kp.x + kp.y * kTan) / KARST_JOINT.x + kOff, i0 = floor(cu);',
+    'float cl = i0 + 0.30 * (cA.x - 0.5), cr = i0 + 1.0 + 0.30 * (cB.x - 0.5), clint = i0;',
+    'cL = karstRand2(vec2(i0 - 1.0, band)); cl = i0 - 1.0 + 0.30 * (cL.x - 0.5);',
+    'cR = karstRand2(vec2(i0 + 2.0, band)); cr = i0 + 2.0 + 0.30 * (cR.x - 0.5);',
+    'vec2 ks = karstRand2(vec2(clint, band + KARST_CLINT_KEY));',
+    'float wide = (1.0 + 0.6 * (1.0 - kCover)) * (0.78 + 0.44 * n1h);',
+    'float hwLo = (0.06 + 0.16 * hLo.y * hLo.y) * wide, hwHi = (0.06 + 0.16 * hHi.y * hHi.y) * wide;',
+    'float eL = (cu - cl) * KARST_JOINT.x * kSec - hwL, eR = (cr - cu) * KARST_JOINT.x * kSec - hwR;',
+    'float slabOn = mix(kCover, smoothstep(ks.x - 0.06, ks.x + 0.06, kCover * 1.15), slabVis);',
+    'gSlabW = slabOn * (1.0 - grike);',
+    'float floorW = woods * (1.0 - 0.8 * fR) * (1.0 - roadCore) * (1.0 - 0.85 * gSlabW);',
+  ]) assert.ok(shader.includes(flat(line)), `the material's pavement law: ${line}`);
+  assert.ok(active(terrain).includes('const KARST_JOINT_U = 3.6, KARST_JOINT_V = 2.2;'), 'the twin\'s joints are the material\'s KARST_JOINT');
+  assert.ok(active(terrain).includes('const KARST_BAND_KEY = -3001, KARST_CLINT_KEY = 1500;'), 'the twin\'s hash keys are the material\'s');
+  const twin = flat(active(terrain.slice(terrain.indexOf('function karstHash('), terrain.indexOf('function karstSlabHook('))));
+  for (const line of [
+    'x = Math.imul(x, 0x7feb352d) >>> 0;',
+    'x = Math.imul(x, 0x846ca68b) >>> 0;',
+    'karstHash((Math.imul((cu + 4096) >>> 0, 0x9e3779b1) ^ Math.imul((cv + 4096) >>> 0, 0x85ebca77) ^ 0x5bd1e995) >>> 0)',
+    'out[0] = (h & 0xffff) / 65536;',
+    'out[1] = (h >>> 16) / 65536;',
+    'return w < 0.33 ? 0.012 : 0.04 + 0.11 * t * t;',
+    'const slopeK = smoothstep(0.0, 0.12, slope) * (1 - smoothstep(0.30, 0.55, slope));',
+    'const cover = smoothstep(0.56, 0.74, thinN + 0.30 * Math.max(Math.min(1, Math.max(0, -fold)), 0.5 * slopeK));',
+    'const thinN = Math.min(1, Math.max(0, (fieldSample(f.b, wrapUnit(wx * 0.0045 + 0.71), wrapUnit(wz * 0.0045 + 0.19)) * 0.5 + 0.5',
+    '+ fieldSample(f.b, wrapUnit(rx * 0.00326 + 0.56), wrapUnit(rz * 0.00326 + 0.90)) * 0.5 + 0.5 - 1) * 0.72 + 0.5));',
+    'noiseQuadTwin(x, z, 0.012, 0.57, 0.29, _karstNoise);',
+    'const pu = x * rotC + z * rotS + (_karstNoise[0] - 0.5) * KARST_WANDER_U;',
+    'const pv = z * rotC - x * rotS + (_karstNoise[1] - 0.5) * KARST_WANDER_V;',
+    'let lo = j0 + 0.50 * (_karstA[0] - 0.5), hi = j0 + 1 + 0.50 * (_karstB[0] - 0.5), band = j0;',
+    'const kTan = (karstFract(loW * 3.17 + 0.71) - 0.5) * 0.36, kSec = 1 / Math.sqrt(1 + kTan * kTan);',
+    'const cu = (pu + pv * kTan) / KARST_JOINT_U + karstFract(loW * 7.31 + 0.13), i0 = Math.floor(cu);',
+    'let cl = i0 + 0.30 * (_karstA[0] - 0.5), cr = i0 + 1 + 0.30 * (_karstB[0] - 0.5), clint = i0;',
+    'if (cover * 1.15 <= karstRand2(clint, band + KARST_CLINT_KEY, _karstA)[0]) return 0;',
+    'const wide = (1 + 0.6 * (1 - cover)) * (0.78 + 0.44 * n1h);',
+    '(cu - cl) * KARST_JOINT_U * kSec - karstCrossHw(lW) * wide,',
+    'const s2 = s * 0.7243, bu = wrapUnit((0.7431 * x - 0.6691 * z) * s2 + oz + 0.37), bv = wrapUnit((0.6691 * x + 0.7431 * z) * s2 + ox + 0.19);',
+  ]) assert.ok(twin.includes(flat(line)), `the twin's pavement law: ${line}`);
+  const off = { active: 0, track: 0, edgeM: 0, marginM: 0, crop: 0 };
+  const c = Math.cos(0.37), s = Math.sin(0.37);
+  const share = (fold) => {
+    let slab = 0, n = 0;
+    for (let z = -470; z <= 470; z += 2.9) for (let x = -470; x <= 470; x += 2.9) { slab += karstSlabAt(x, z, 1, fold, off, c, s); n++; }
+    return slab / n;
+  };
+  const level = share(0), crest = share(-1);
+  assert.ok(level > 0.03 && level < 0.25 && crest > 0.6 && crest < 0.95,
+    `the slabs take more of a crest than of the level (${(crest * 100).toFixed(0)} % / ${(level * 100).toFixed(0)} %)`);
+  // along lines over the crest: clints metres long between grikes a few tenths across, longer along the grain
+  const median = (a) => [...a].sort((p, q) => p - q)[Math.floor(a.length / 2)];
+  const runs = (dx, dz) => {
+    const grikes = [], slabs = [];
+    let prev = -1, len = 0;
+    for (let t = 0; t < 800; t += 0.02) {
+      const v = karstSlabAt(-400 + t * dx, -380 + t * dz, 1, -1, off, c, s);
+      if (v === prev) len += 0.02;
+      else { if (prev === 0 && len < 2) grikes.push(len); if (prev === 1) slabs.push(len); prev = v; len = 0.02; }
+    }
+    return { grikes, slabs };
+  };
+  const diag = runs(0.7416, 0.6708), along = runs(c, s), across = runs(-s, c);
+  assert.ok(diag.grikes.length > 100 && median(diag.grikes) > 0.08 && median(diag.grikes) < 0.6 && median(diag.slabs) > 0.8 && median(diag.slabs) < 5,
+    `clints between grikes (${diag.grikes.length} grikes, median ${median(diag.grikes).toFixed(2)} m; slabs median ${median(diag.slabs).toFixed(2)} m)`);
+  assert.ok(median(along.slabs) > 1.5 * median(across.slabs) && median(across.grikes) > median(along.grikes),
+    `a clint is long along the grain (${median(along.slabs).toFixed(2)} m) and narrow across it (${median(across.slabs).toFixed(2)} m), its master joints the wider (${median(across.grikes).toFixed(2)} / ${median(along.grikes).toFixed(2)} m)`);
+  let bare = 0;
+  for (let x = -400; x < 400; x += 0.7) {
+    bare += karstSlabAt(x, 3, 1, -1, { active: 1, track: 1, edgeM: 5, marginM: 2, crop: 0 }, c, s);
+    bare += karstSlabAt(x, 3, 1, -1, { active: 1, track: 0, edgeM: 10, marginM: 2, crop: 5 }, c, s);
+  }
+  assert.equal(bare, 0, 'a field track and a sown field carry no slabs');
+}
+console.log(`terrainMaterialV2: coverage-gated layers (7 gates, 512 executed coverage cases), far band without detail normals, one-fetch far variant on measured means, explicit-LOD noise, exposure and non-periodic beds on ${MAP_IDS.length} maps, the ring as this material (bedforms on gentle sand, distance-faded slip-face sines, the atlas gradient's wall band), the karst pavement's twin, ${mutants.length + 3} mutation controls PASS; no GPU/art claim`);

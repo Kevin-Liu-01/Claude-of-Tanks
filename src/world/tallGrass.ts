@@ -36,6 +36,8 @@ interface TallGrassField {
   _foldAt?(x: number, z: number): number;
   /** Ground lane (2026-10-03): the field the terrain draws here (landUse.ts); absent on a map without fields. */
   _landUseAt?(x: number, z: number, out: LandFieldSample): LandFieldSample;
+  /** Ground lane (the limestone, fourth cut): 1 on a karst clint's face, 0 in its grike or off it (terrain.ts karstSlabAt). */
+  _karstSlabAt?(x: number, z: number, normalY: number, fold: number, field: LandFieldSample): number;
   /** Ground lane (2026-10-03): the canopy's cover (0..1) — little sward grows in a stand's shade. */
   _woodsAt?(x: number, z: number): number;
 }
@@ -682,6 +684,10 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
           }
         }
       }
+      // ground lane (the limestone, fourth cut): on a karst pavement the sward keeps to the grikes, none on a clint's
+      // face (terrain.ts karstSlabAt: the material's own clints; vegetation.ts makeTuft reads the same)
+      if (field._karstSlabAt
+        && field._karstSlabAt(x, z, n ? n.y : 1, field._foldAt ? field._foldAt(x, z) : 0, _field) > 0.5) return;
     }
     // ground lane (2026-10-03): a wild sward grows in tussocks with thinner ground between them, and stands tall in
     // some patches and grazed short in others; a sown crop stands even (no tussocks there)

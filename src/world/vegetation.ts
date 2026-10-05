@@ -3882,6 +3882,11 @@ function* vegetationBuildSteps(
           }
         }
       }
+      // ground lane (the limestone, fourth cut; wave 95: "tall flat grass blades stand straight out of the solid
+      // limestone slabs" — the third cut left a clint's face a tuft in twenty-five): on a karst pavement the sward keeps
+      // to the grikes (terrain.ts karstSlabAt: the material's own clints)
+      if (heightField._karstSlabAt
+        && heightField._karstSlabAt(x, z, normalY, heightField._foldAt ? heightField._foldAt(x, z) : 0, f) > 0.5) return null;
     }
     if (!steepSeedOk(normalY, x, z)) return null;
     const vv = varJ < (0.75 - dry * 0.5) ? 0 : 1;

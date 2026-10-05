@@ -61,7 +61,7 @@ import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
 import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaBankUniforms, seaSectorBlend, SEA_COAST_GLSL, type SeaOpening } from './edgeWater.ts';
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
-import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
+import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseBoundary, landUseTierOf, landUseUniformValues, resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -468,6 +468,10 @@ export interface HeightField {
   /** Ground lane (2026-10-03): the field the terrain material draws at (x, z) (landUse.ts) — absent on a map without
    * fields; the tiers that grow on the ground (tall grass, tufts) stand as its crop. */
   _landUseAt?(x: number, z: number, out: LandFieldSample): LandFieldSample;
+  /** Ground lane (the limestone, fourth cut): 1 on a karst clint's face, 0 in its grike or off the pavement (karstSlabAt,
+   * the material's own slabs) — present on a map with a walled karst land use only; the field is _landUseAt's at (x, z),
+   * normalY the terrain normal's y there, fold the baked fold (_foldAt, 0 before it is baked). */
+  _karstSlabAt?(x: number, z: number, normalY: number, fold: number, field: LandFieldSample): number;
   /** Ground lane (2026-10-03): the canopy's cover (0..1) once the vegetation is placed (terrain applyWoodsMask). */
   _woodsAt?(x: number, z: number): number;
   /** The maps-and-layouts lane (2026-10-03): the authored landforms' geological zones at (x, z), each 0..1 —
@@ -2600,6 +2604,10 @@ function* heightFieldBuildSteps(
     // `?ground=legacy` draws no fields and grows no crops
     ...(landUseProfile && !legacyGroundLanes ? { _landUseAt: (x: number, z: number, out: LandFieldSample): LandFieldSample =>
       landUseAt(landUseProfile, x, z, out) } : {}),
+    // ground lane (the limestone, third cut): a walled karst's pavement, its slabs the material's own (the sward keeps to
+    // their grikes)
+    ...(landUseProfile && !legacyGroundLanes && landUseProfile.strength > 0 && landUseBoundary(landUseProfile) === 'wall'
+      ? karstSlabHook(landUseProfile.heading) : {}),
     // Frontline Assault trenches (assault-trenches variant), null on the standard field.
     assaultTrenchLines: trenchPlan(),
     // Field trenches on every standard field (2026-09-17), also on the assault variant clear of its sector lines.
@@ -2742,6 +2750,131 @@ export function sampleSplatNoise(
   result.n2 = n2 * 0.5 + 0.5;
   result.mA = mA * 0.5 + 0.5;
   return result;
+}
+
+/**
+ * Ground lane (the limestone, fourth cut): a karst pavement's clints lie between two joint sets near right angles in
+ * the field grid's frame (its heading the walls'): master joints KARST_JOINT_V metres apart across the grain, and in
+ * each band between two of them cross joints KARST_JOINT_U apart along it — staggered band to band, each band's set
+ * slanted its own few degrees — the material's KARST_JOINT (the splat fragment interpolates these).
+ */
+const KARST_JOINT_U = 3.6, KARST_JOINT_V = 2.2;
+/** The joints' wander (m, peak to peak) along and across the grain. */
+const KARST_WANDER_U = 1.2, KARST_WANDER_V = 0.9;
+/** The hash keys of a band's master joint and of a clint's own draws (a cross joint keys on its band). */
+const KARST_BAND_KEY = -3001, KARST_CLINT_KEY = 1500;
+/** lowbias32 (Wellons) on uint: identical to the material's karstHash. */
+function karstHash(x: number): number {
+  x = (x ^ (x >>> 16)) >>> 0;
+  x = Math.imul(x, 0x7feb352d) >>> 0;
+  x = (x ^ (x >>> 15)) >>> 0;
+  x = Math.imul(x, 0x846ca68b) >>> 0;
+  return (x ^ (x >>> 16)) >>> 0;
+}
+/** A lattice point's two draws in [0, 1) (16 bits each, one hash): the material's karstRand2. Indices stay above −4096. */
+function karstRand2(cu: number, cv: number, out: [number, number]): [number, number] {
+  const h = karstHash((Math.imul((cu + 4096) >>> 0, 0x9e3779b1) ^ Math.imul((cv + 4096) >>> 0, 0x85ebca77) ^ 0x5bd1e995) >>> 0);
+  out[0] = (h & 0xffff) / 65536;
+  out[1] = (h >>> 16) / 65536;
+  return out;
+}
+/** A cross joint's grike half width (m) by its draw: a third of them hairline cracks (the material's karstCrossHw). */
+function karstCrossHw(w: number): number {
+  const t = (w - 0.33) / 0.67;
+  return w < 0.33 ? 0.012 : 0.04 + 0.11 * t * t;
+}
+const karstFract = (v: number): number => v - Math.floor(v);
+const _karstA: [number, number] = [0, 0];
+const _karstB: [number, number] = [0, 0];
+const _karstNoise: [number, number] = [0, 0];
+/** The material's nzq(p, s, o) at a world point (level 0): the noise read twice, the second turned 42° at 0.7243 of the scale. */
+function noiseQuadTwin(x: number, z: number, s: number, ox: number, oz: number, out: [number, number]): [number, number] {
+  const f = splatFields();
+  const u = wrapUnit(x * s + ox), v = wrapUnit(z * s + oz);
+  const s2 = s * 0.7243, bu = wrapUnit((0.7431 * x - 0.6691 * z) * s2 + oz + 0.37), bv = wrapUnit((0.6691 * x + 0.7431 * z) * s2 + ox + 0.19);
+  const ar = fieldSample(f.a, u, v) * 0.5 + 0.5, ag = fieldSample(f.b, u, v) * 0.5 + 0.5;
+  const bg = fieldSample(f.b, bu, bv) * 0.5 + 0.5, br = fieldSample(f.a, bu, bv) * 0.5 + 0.5;
+  out[0] = Math.min(1, Math.max(0, (ar + bg - 1) * 0.72 + 0.5));
+  out[1] = Math.min(1, Math.max(0, (ag + br - 1) * 0.72 + 0.5));
+  return out;
+}
+
+/**
+ * Ground lane (the limestone, fourth cut): the CPU twin of the terrain material's karst pavement at (x, z) — 1 on a
+ * clint's face, 0 in its grike, where its slab has dropped out at the patch's edge, past the patch, on a field track and
+ * in a sown or bare field — so the sward keeps to the grikes (vegetation.ts tufts, tallGrass.ts). The thin-soil field
+ * reads the same float fields the shader's noise texture quantizes (level 0, sampleSplatNoise's convention: the
+ * shader's level past ~0.35 m a pixel, where no tuft stands); the joints and their draws are the material's exactly.
+ * normalY: the terrain normal's y; fold: the baked fold (−1 crest .. +1 hollow); field: landUseAt's at (x, z);
+ * (rotC, rotS): the field grid's heading (the material's uLandRot).
+ */
+export function karstSlabAt(x: number, z: number, normalY: number, fold: number, field: LandFieldSample,
+  rotC: number, rotS: number): number {
+  const slope = 1 - Math.min(1, Math.max(0, normalY));
+  if (field.active) {
+    if (field.track > 0.5) return 0;
+    // a sown or bare field (the material's gCropW, gSoilW: any crop but pasture 0 and hay 13) on the ground the fields
+    // keep to (its landW slope gate, the vegetation's fieldW)
+    if (field.edgeM >= field.marginM && field.crop !== 0 && field.crop !== 13 && slope < 0.07) return 0;
+  }
+  const f = splatFields();
+  // the material's uvW (its domain warp) and its soil depth: the noise's broad (green) channel twice, turned 42° apart
+  const uw = wrapUnit(x * 0.0009 + 0.53), vw = wrapUnit(z * 0.0009 + 0.17);
+  const wx = x + fieldSample(f.a, uw, vw) * 24, wz = z + fieldSample(f.b, uw, vw) * 24;
+  const rx = 0.7431 * wx - 0.6691 * wz, rz = 0.6691 * wx + 0.7431 * wz;
+  const thinN = Math.min(1, Math.max(0, (fieldSample(f.b, wrapUnit(wx * 0.0045 + 0.71), wrapUnit(wz * 0.0045 + 0.19)) * 0.5 + 0.5
+    + fieldSample(f.b, wrapUnit(rx * 0.00326 + 0.56), wrapUnit(rz * 0.00326 + 0.90)) * 0.5 + 0.5 - 1) * 0.72 + 0.5));
+  const slopeK = smoothstep(0.0, 0.12, slope) * (1 - smoothstep(0.30, 0.55, slope));
+  const cover = smoothstep(0.56, 0.74, thinN + 0.30 * Math.max(Math.min(1, Math.max(0, -fold)), 0.5 * slopeK));
+  if (cover <= 0.003) return 0;
+  // the joints in the grid's own frame (metres), wandering
+  noiseQuadTwin(x, z, 0.012, 0.57, 0.29, _karstNoise);
+  const pu = x * rotC + z * rotS + (_karstNoise[0] - 0.5) * KARST_WANDER_U;
+  const pv = z * rotC - x * rotS + (_karstNoise[1] - 0.5) * KARST_WANDER_V;
+  // the band between two master joints
+  const rv = pv / KARST_JOINT_V, j0 = Math.floor(rv);
+  karstRand2(j0, KARST_BAND_KEY, _karstA);
+  karstRand2(j0 + 1, KARST_BAND_KEY, _karstB);
+  let lo = j0 + 0.50 * (_karstA[0] - 0.5), hi = j0 + 1 + 0.50 * (_karstB[0] - 0.5), band = j0;
+  let loW = _karstA[1], hiW = _karstB[1];
+  if (rv < lo) {
+    band = j0 - 1; hiW = _karstA[1]; hi = lo;
+    karstRand2(j0 - 1, KARST_BAND_KEY, _karstA); loW = _karstA[1]; lo = j0 - 1 + 0.50 * (_karstA[0] - 0.5);
+  } else if (rv >= hi) {
+    band = j0 + 1; loW = _karstB[1]; lo = hi;
+    karstRand2(j0 + 2, KARST_BAND_KEY, _karstB); hiW = _karstB[1]; hi = j0 + 2 + 0.50 * (_karstB[0] - 0.5);
+  }
+  // the band's cross joints: staggered band to band, slanted up to ±10°
+  const kTan = (karstFract(loW * 3.17 + 0.71) - 0.5) * 0.36, kSec = 1 / Math.sqrt(1 + kTan * kTan);
+  const cu = (pu + pv * kTan) / KARST_JOINT_U + karstFract(loW * 7.31 + 0.13), i0 = Math.floor(cu);
+  karstRand2(i0, band, _karstA);
+  karstRand2(i0 + 1, band, _karstB);
+  let cl = i0 + 0.30 * (_karstA[0] - 0.5), cr = i0 + 1 + 0.30 * (_karstB[0] - 0.5), clint = i0;
+  let lW = _karstA[1], rW = _karstB[1];
+  if (cu < cl) {
+    clint = i0 - 1; rW = _karstA[1]; cr = cl;
+    karstRand2(i0 - 1, band, _karstA); lW = _karstA[1]; cl = i0 - 1 + 0.30 * (_karstA[0] - 0.5);
+  } else if (cu >= cr) {
+    clint = i0 + 1; lW = _karstB[1]; cl = cr;
+    karstRand2(i0 + 2, band, _karstB); rW = _karstB[1]; cr = i0 + 2 + 0.30 * (_karstB[0] - 0.5);
+  }
+  // the slab stands where its draw is under the cover (the patch's edge drops whole slabs into the stony ground)
+  if (cover * 1.15 <= karstRand2(clint, band + KARST_CLINT_KEY, _karstA)[0]) return 0;
+  // the four edges less their grikes' half widths (the material's n1h swells and pinches them along their length)
+  const n1h = fieldSample(f.a, wrapUnit(x * 0.047), wrapUnit(z * 0.047)) * 0.5 + 0.5;
+  const wide = (1 + 0.6 * (1 - cover)) * (0.78 + 0.44 * n1h);
+  const e = Math.min(
+    (rv - lo) * KARST_JOINT_V - (0.06 + 0.16 * loW * loW) * wide,
+    (hi - rv) * KARST_JOINT_V - (0.06 + 0.16 * hiW * hiW) * wide,
+    (cu - cl) * KARST_JOINT_U * kSec - karstCrossHw(lW) * wide,
+    (cr - cu) * KARST_JOINT_U * kSec - karstCrossHw(rW) * wide);
+  return e > 0 ? 1 : 0;
+}
+/** The height field's _karstSlabAt for a land use of this heading (its rotation once, as the material's uLandRot). */
+function karstSlabHook(heading: number): Pick<HeightField, '_karstSlabAt'> {
+  const c = Math.cos(heading), s = Math.sin(heading);
+  return { _karstSlabAt: (x: number, z: number, normalY: number, fold: number, field: LandFieldSample): number =>
+    karstSlabAt(x, z, normalY, fold, field, c, s) };
 }
 
 /**
@@ -3699,6 +3832,8 @@ float gFieldWater = 0.0;     // ground lane: a flooded paddy's or a polder ditch
 float gCropW = 0.0;          // ground lane: a sown field's weight (not pasture or hay): the sward's own relief stands down there
 float gSoilW = 0.0;          // ground lane: a bare field's weight (plough, terra rossa, a vineyard's earth, slag, ballast)
 float gLaneSheen = 0.0;      // ground lane (wave 86): a field track's pressed lane floor (its faint satin in the roughness stage)
+float gTrackW = 0.0;         // ground lane (the limestone): a field track's weight (the karst pavement keeps off it)
+float gSlabW = 0.0;          // ground lane (the limestone): a karst clint's bare face (the forest floor and the sward's patchwork keep off it)
 vec3 gMeadowTint = vec3(1.0); // ground lane: the meadow's macro tint the base took (a field divides it back out)
 varying float vFold;         // round 73: the baked fold attribute (−1 crest .. +1 hollow) the chunk vertices carry
 float gFoldAO = 1.0;         // round 73: indirect occlusion in the folds, read by the aomap hook
@@ -3779,6 +3914,25 @@ float soilHash(float a, float b) {
   x ^= x >> 16; x *= 0x7feb352du; x ^= x >> 15; x *= 0x846ca68bu; x ^= x >> 16;
   return float(x >> 8) / 16777216.0;
 }
+// ground lane (the limestone, third cut): a karst clint's two draws by integer arithmetic (lowbias32 on uint) — exact on
+// the CPU too (terrain.ts karstRand2), so the vegetation finds the same slabs and grows its grass in their grikes
+uint karstHash(uint x) {
+  x ^= x >> 16; x *= 0x7feb352du; x ^= x >> 15; x *= 0x846ca68bu; x ^= x >> 16;
+  return x;
+}
+// (hold 48, the cost: three hashes a cell, 33 a pavement fragment) one hash a cell, its two halves the two draws
+vec2 karstRand2(vec2 c) {
+  uvec2 q = uvec2(ivec2(c) + 4096);
+  uint h = karstHash(q.x * 0x9e3779b1u ^ q.y * 0x85ebca77u ^ 0x5bd1e995u);
+  return vec2(float(h & 0xffffu), float(h >> 16u)) / 65536.0;
+}
+// (the fourth cut) the joints (m): a clint's mean length along the grain and a band's width across it; their wander
+// (peak to peak) along and across; the hash keys of a band's master joint and of a clint's own draws
+const vec2 KARST_JOINT = vec2(${KARST_JOINT_U.toFixed(2)}, ${KARST_JOINT_V.toFixed(2)});
+const vec2 KARST_WANDER = vec2(${KARST_WANDER_U.toFixed(2)}, ${KARST_WANDER_V.toFixed(2)});
+const float KARST_BAND_KEY = ${KARST_BAND_KEY.toFixed(1)}, KARST_CLINT_KEY = ${KARST_CLINT_KEY.toFixed(1)};
+// a cross joint's grike half width (m) by its draw: a third of them hairline cracks (terrain.ts karstCrossHw)
+float karstCrossHw(float w) { float t = (w - 0.33) / 0.67; return w < 0.33 ? 0.012 : 0.04 + 0.11 * t * t; }
 // the flat normal a layer's normal tile averages to (x, z perturbation 0; the packed third channel is unused)
 const vec4 NRM_MEAN = vec4(0.5, 0.5, 0.5, 1.0);
 vec4 splatSamp(sampler2D t, vec2 uv, float df, float mb, vec4 mean) {
@@ -4691,6 +4845,7 @@ void splatCompute() {
       float nBend = bendW > 0.001 && uLandTier > 1.5 ? textureLod(uNoise, uvW * 0.0021 + vec2(0.47, 0.13), 4.0).r : 0.5;
       float crop, edgeM, track, jit, hedgeL; vec2 rowDir;
       lu_decode(wp.xz, luA, luB, luK, luT, crop, edgeM, track, rowDir, jit, hedgeL);
+      gTrackW = track * landW;
       // the region's boundary (landUse.ts BOUNDARIES): 0 a grass margin with tracks, 1 a polder's water ditches on the
       // long lines, 2 a paddy's earth bund, 3 a karst field's dry stone wall
       float bnd = uLandE.z;
@@ -5162,13 +5317,155 @@ void splatCompute() {
       }
     }
   }
+  // Ground lane (wave 87, the limestone held: the first cut's "snow-like white flecks … at a uniform size and density"
+  // and "a large white smear"; the brief: Dalmatian karst is continuous grey-white pavement with structure). On a karst
+  // (the land use's walled region, uLandE.z 3) the limestone lies bare where its soil is thin — on the crests and convex
+  // slopes (the baked fold) and on the slopes a field leaves unworked — as a pavement of clints between grikes. The
+  // patch is a field of no period at ~90 m with no fine breaker, so it never specks: toward its edge whole slabs drop
+  // out, one by one, into the stony ground. Off the sown fields, the tracks, the roads, the yards, the shore and the
+  // rock layer's own faces.
+  // (the fourth cut, wave 95: the third's Voronoi seams read as "a turtle shell or cracked slate", its slabs as "flat
+  // grey concrete-like paving with uniform brown grout lines and a blue cast in shade", coplanar, with "tall flat
+  // grass blades" standing out of them) The clints lie between two joint sets near right angles — the master joints
+  // run on along the region's grain (the walls' heading), the cross joints break each band into clints, staggered band
+  // to band and each band's set slanted its own few degrees — so a clint is a long block, not a cell. A grike is deep
+  // and dark: its wall facing the camera shows near its lip, darkening down to a floor of soil and plants; a third of
+  // the cross joints are hairline cracks. The stone is pale and warm (Dalmatian limestone is cream-grey, and a neutral
+  // grey went blue under the sky in shade), crusted with dark and pale lichen; its edges round over into the grikes,
+  // a sloping clint is fluted with runnels down its fall line, a level one pitted with silted solution pans, and each
+  // clint is tilted its own way. Where the soil gains on the patch's edge it veils the slabs. The vegetation reads the same clints (karstSlabAt) and grows its grass in the
+  // grikes alone.
+  if (uLandE.z > 2.5 && uLandA.x > 0.001) {
+    float convex = clamp(-vFold, 0.0, 1.0);
+    // (the crest or the slope, whichever is thinner — summed, a near-level crest lost the slope's share in blobs that
+    // followed the mesh's flattest facets: bare holes in the pavement)
+    float slopeK = smoothstep(0.0, 0.12, slope) * (1.0 - smoothstep(0.30, 0.55, slope));
+    // (the soil's depth from the noise's broad channel alone, read twice turned 42° apart — 13–45 m patches; the red
+    // channel's 9-cycle octave is ~3 m at this scale, and it punched bare blobs through the pavement)
+    // (hold 48, the cost: the soil's two reads ran under every fragment of the map) where the pavement cannot lie — the
+    // sown fields, the tracks, the roads, the yards, the shore, the rock's faces — nothing is read
+    float kGate = (1.0 - roadCore) * (1.0 - fMs) * (1.0 - max(gCropW, gSoilW)) * (1.0 - fR) * (1.0 - shoulder)
+      * (1.0 - smoothstep(0.05, 0.30, mk.a)) * (1.0 - gTrackW);
+    float kCover = 0.0;
+    if (kGate > 0.003) {
+      vec2 pR = vec2(0.7431 * uvW.x - 0.6691 * uvW.y, 0.6691 * uvW.x + 0.7431 * uvW.y);
+      float soilD = clamp((nz(uvW, 0.0045, vec2(0.71, 0.19)).g + nz(pR, 0.00326, vec2(0.56, 0.90)).g - 1.0) * 0.72 + 0.5, 0.0, 1.0);
+      float thin = soilD + 0.30 * max(convex, 0.5 * slopeK);
+      kCover = smoothstep(0.56, 0.74, thin) * kGate;
+    }
+    if (kCover > 0.003) {
+      // the joints in the field grid's frame (metres), wandering a half metre or so over a 9–20 m field of the noise
+      vec2 kAx = uLandRot, kAy = vec2(-uLandRot.y, uLandRot.x);
+      vec2 kp = vec2(dot(wp.xz, kAx), dot(wp.xz, kAy)) + (nzq(uv, 0.012, vec2(0.57, 0.29)) - 0.5) * KARST_WANDER;
+      // the band between two master joints, each jittered up to a quarter of the spacing (bands 1.1–3.3 m across)
+      float rv = kp.y / KARST_JOINT.y, j0 = floor(rv);
+      vec2 hA = karstRand2(vec2(j0, KARST_BAND_KEY)), hB = karstRand2(vec2(j0 + 1.0, KARST_BAND_KEY));
+      float lo = j0 + 0.50 * (hA.x - 0.5), hi = j0 + 1.0 + 0.50 * (hB.x - 0.5), band = j0;
+      vec2 hLo = hA, hHi = hB;
+      if (rv < lo) {
+        band = j0 - 1.0; hHi = hA; hi = lo;
+        hLo = karstRand2(vec2(j0 - 1.0, KARST_BAND_KEY)); lo = j0 - 1.0 + 0.50 * (hLo.x - 0.5);
+      } else if (rv >= hi) {
+        band = j0 + 1.0; hLo = hB; lo = hi;
+        hHi = karstRand2(vec2(j0 + 2.0, KARST_BAND_KEY)); hi = j0 + 2.0 + 0.50 * (hHi.x - 0.5);
+      }
+      // the band's cross joints, a clint KARST_JOINT.x long on average: staggered band to band, slanted up to ±10°
+      float kTan = (fract(hLo.y * 3.17 + 0.71) - 0.5) * 0.36, kSec = inversesqrt(1.0 + kTan * kTan);
+      float kOff = fract(hLo.y * 7.31 + 0.13);
+      float cu = (kp.x + kp.y * kTan) / KARST_JOINT.x + kOff, i0 = floor(cu);
+      vec2 cA = karstRand2(vec2(i0, band)), cB = karstRand2(vec2(i0 + 1.0, band));
+      float cl = i0 + 0.30 * (cA.x - 0.5), cr = i0 + 1.0 + 0.30 * (cB.x - 0.5), clint = i0;
+      vec2 cL = cA, cR = cB;
+      if (cu < cl) {
+        clint = i0 - 1.0; cR = cA; cr = cl;
+        cL = karstRand2(vec2(i0 - 1.0, band)); cl = i0 - 1.0 + 0.30 * (cL.x - 0.5);
+      } else if (cu >= cr) {
+        clint = i0 + 1.0; cL = cB; cl = cr;
+        cR = karstRand2(vec2(i0 + 2.0, band)); cr = i0 + 2.0 + 0.30 * (cR.x - 0.5);
+      }
+      vec2 ks = karstRand2(vec2(clint, band + KARST_CLINT_KEY));
+      // each edge's distance (m) less its grike's half width: a master joint 0.12–0.44 m across, a cross joint 0.08–0.30
+      // m or (a third of them) a hairline crack, all wider where the soil gains on the patch's edge, swelling and
+      // pinching along their length
+      float wide = (1.0 + 0.6 * (1.0 - kCover)) * (0.78 + 0.44 * n1h);
+      float hwLo = (0.06 + 0.16 * hLo.y * hLo.y) * wide, hwHi = (0.06 + 0.16 * hHi.y * hHi.y) * wide;
+      float hwL = karstCrossHw(cL.y) * wide, hwR = karstCrossHw(cR.y) * wide;
+      float eLo = (rv - lo) * KARST_JOINT.y - hwLo, eHi = (hi - rv) * KARST_JOINT.y - hwHi;
+      float eL = (cu - cl) * KARST_JOINT.x * kSec - hwL, eR = (cr - cu) * KARST_JOINT.x * kSec - hwR;
+      float eV = min(eLo, eHi), eU = min(eL, eR), e = min(eV, eU);
+      // the nearest grike: from the clint into it (world xz) and its half width
+      vec2 outG = eV < eU ? vec2(0.0, eLo < eHi ? -1.0 : 1.0) : vec2(eL < eR ? -kSec : kSec) * vec2(1.0, kTan);
+      vec2 outW = outG.x * kAx + outG.y * kAy;
+      float hwN = eV < eU ? (eLo < eHi ? hwLo : hwHi) : (eL < eR ? hwL : hwR);
+      // a slab stands where its own draw is under the cover: at the patch's edge the slabs drop out whole (stony
+      // ground), a continuous fade where a slab is a pixel or two
+      float slabVis = 1.0 - smoothstep(0.30, 0.80, gFootM);
+      float slabOn = mix(kCover, smoothstep(ks.x - 0.06, ks.x + 0.06, kCover * 1.15), slabVis);
+      float grikeVis = 1.0 - smoothstep(0.08, 0.26, gFootM);
+      float grike = (1.0 - smoothstep(-0.02 - 0.5 * gFootM, 0.02 + 0.5 * gFootM, e)) * grikeVis;
+      // the stone: pale, warm cream-grey clint by clint, crusted in patches with dark grey-black lichen and paler crust
+      vec3 lime = mix(vec3(0.172, 0.164, 0.142), vec3(0.232, 0.222, 0.194), ks.y) * (0.93 + 0.14 * n1h);
+      vec2 lq = nzq(uvW, 0.29, vec2(0.41, 0.83));
+      lime *= 1.0 - 0.30 * smoothstep(0.60, 0.78, lq.y);
+      lime = mix(lime, lime * vec3(1.06, 1.06, 1.03) + vec3(0.012, 0.011, 0.009), 0.8 * smoothstep(0.64, 0.80, lq.x));
+      // near: the face rounds over into its grike (each edge its own round), a sloping clint is fluted with runnels down
+      // its fall line, a level one pitted with solution pans silted dark, and the orange crust (Caloplaca) sits in drops
+      float nearK = 1.0 - smoothstep(0.03, 0.10, gFootM);
+      float midK = 1.0 - smoothstep(0.06, 0.16, gFootM);
+      float rim = 0.0, runnel = 0.0;
+      vec2 grain = vec2(0.0), runW = vec2(0.0);
+      if (midK > 0.001) {
+        rim = (1.0 - smoothstep(0.0, 0.16 + 0.24 * fract(ks.y * 9.13), e)) * (1.0 - grike) * midK;
+        vec2 pq = nzq(uv, 0.23, vec2(0.37, 0.61));
+        float panK = (1.0 - smoothstep(0.04, 0.09, slope)) * smoothstep(0.10, 0.30, e) * midK;
+        float pan = smoothstep(0.70, 0.73, pq.x) * panK;
+        float panLip = (smoothstep(0.66, 0.70, pq.x) - smoothstep(0.70, 0.73, pq.x)) * panK;
+        lime = mix(lime * (1.0 + 0.10 * panLip), vec3(0.062, 0.056, 0.046), pan * 0.85);
+        lime = mix(lime, lime * vec3(1.30, 1.00, 0.62), smoothstep(0.74, 0.80, pq.y) * 0.5 * nearK);
+        lime *= 1.0 + 0.06 * rim;
+        float runK = smoothstep(0.06, 0.13, slope) * (1.0 - smoothstep(0.02, 0.045, gFootM)) * (1.0 - grike);
+        if (runK > 0.003) {
+          // the runnels in the clint's own frame (metres from its middle), so the fall line only turns across a clint
+          vec2 flW = normalize(wn.xz + vec2(1e-5, 0.0));
+          vec2 acW = vec2(-flW.y, flW.x);
+          vec2 mid = vec2(((cl + cr) * 0.5 - kOff) * KARST_JOINT.x - (lo + hi) * 0.5 * KARST_JOINT.y * kTan, (lo + hi) * 0.5 * KARST_JOINT.y);
+          float ra = fract(dot(kp - mid, vec2(dot(acW, kAx), dot(acW, kAy))) / 0.30 + ks.y * 3.0);
+          runnel = sin(3.14159 * ra) * runK;
+          runW = acW * cos(3.14159 * ra) * runK;
+          lime *= 1.0 - 0.10 * runnel;
+        }
+        if (nearK > 0.001) grain = (nz(uv, 2.3, vec2(0.13, 0.77)).rg - 0.5) * nearK;
+      }
+      // the soil and the sward creep over the slabs where the pavement thins at its edge
+      lime = mix(lime, a.rgb, 0.55 * (1.0 - smoothstep(0.35, 0.95, kCover)));
+      // the grike: the wall facing the camera near its lip (ray-cast into the slot), its dark floor of soil and plants
+      // below; at range its share darkens the slabs' mean
+      vec3 toC = cameraPosition - wp;
+      float cS = dot(toC.xz, outW);
+      float gD = 0.9 * (0.7 + 0.6 * n1h);
+      float hitD = (cS > 0.0 ? -e : 2.0 * hwN + e) * max(toC.y, 0.0) / max(abs(cS), 1e-3);
+      float wallT = clamp(hitD / gD, 0.0, 1.0);
+      vec3 floorCol = mix(vec3(0.026, 0.022, 0.016), vec3(0.030, 0.040, 0.016), smoothstep(0.40, 0.70, n1h));
+      vec3 grikeCol = mix(lime * (0.62 - 0.50 * wallT), floorCol, smoothstep(0.85, 1.0, wallT));
+      vec3 paveCol = mix(lime * (1.0 - 0.12 * (1.0 - grikeVis)), grikeCol, grike);
+      a.rgb = mix(a.rgb, paveCol, slabOn);
+      gSlabW = slabOn * (1.0 - grike);
+      if (nrmOn) {
+        // each clint tilted its own way (the relief from slab to slab); its rim leans into the grike; in the grike the
+        // wall faces the camera; the face carries its runnels and grain
+        n.xy = mix(n.xy, vec2(0.5) + (fract(ks * 5.17 + 0.31) - 0.5) * 0.22, 0.75 * slabOn * (1.0 - grike));
+        vec2 wallN = sign(cS) * outW * (1.0 - smoothstep(0.85, 1.0, wallT));
+        n.xy += (outW * 0.30 * rim + wallN * 0.40 * grike + runW * 0.18 + grain * 0.22 * (1.0 - grike)) * slabOn;
+      }
+    }
+  }
   // Ground lane (2026-10-03, round 77's open item "no floor darkening under the canopy"): the forest floor — leaf
   // litter over the soil, browner and a shade darker than the turf, broken by moss and by the sward that holds on in
   // the light gaps (a ~12 m field with no world period); on a snow map the snow lies thin under the conifers and the
   // needles and the soil show in the wells. Rock and the roads keep their own.
   if (woods > 0.02) {
     float gap = nzq(uvW, 0.021, vec2(0.13, 0.59)).x;
-    float floorW = woods * (1.0 - 0.8 * fR) * (1.0 - roadCore);
+    float floorW = woods * (1.0 - 0.8 * fR) * (1.0 - roadCore) * (1.0 - 0.85 * gSlabW); // (a clint's face: only a breath of litter)
     vec3 soilF = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB).rgb;
     if (uReduxD.y > 1.5) {
       a.rgb = mix(a.rgb, soilF * vec3(0.80, 0.70, 0.62), floorW * smoothstep(0.55, 0.95, woods) * smoothstep(0.35, 0.75, gap) * 0.55);
@@ -5186,7 +5483,7 @@ void splatCompute() {
   {
     // (ground lane, wave 46: the fields' "green, tan and dark-brown blotches") the sward's own 2–8 m patchwork is the
     // meadow's; a sown or turned field keeps its own tone (its wet and dry are the land use's fieldVar)
-    float patchW = uReduxD.w * meadowG * (1.0 - smoothstep(70.0, 240.0, camDist)) * (1.0 - 0.85 * max(gCropW, gSoilW));
+    float patchW = uReduxD.w * meadowG * (1.0 - smoothstep(70.0, 240.0, camDist)) * (1.0 - 0.85 * max(gCropW, gSoilW)) * (1.0 - gSlabW);
     if (patchW > 0.003) {
       vec2 hp = nzq(uvW, 0.057, vec2(0.31, 0.47)) - 0.5; // ground lane: no 17.5 m repeat (nzq)
       vec3 warmP = uReduxD.y < 0.5 ? vec3(1.07, 1.045, 0.84) : uReduxD.y < 1.5 ? vec3(1.035, 1.015, 0.97) : vec3(1.0, 1.0, 1.0);
