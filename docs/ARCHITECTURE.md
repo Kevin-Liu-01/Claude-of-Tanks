@@ -1406,12 +1406,13 @@ battle, then restore behind the covered return frame. The Verdant fixture object
 remain in the stable light set at zero intensity outdoors, while one shadowless
 hero bounce remains active. Outdoor static scenery receives but does not cast
 live CSM shadows. `garageDressingAccess.ts` demand-loads one optimized modern
-maintenance layer after interactive readiness. Four diagonally opposed bays—
-Burlak gantry, Abrams welding, T-90M armor service, and K2 teardown—surround
-every Garage and are recomposed by the destination layout. The Abrams and K2
-bay owners use an explicit static half-turn to exchange opposite quadrants as
-complete assemblies, keeping the Verdant overhead work lamp attached to the
-Abrams repair choreography. The rolled K2 hull rests in a connected steel
+maintenance layer after interactive readiness. Four bays—Burlak gantry, Abrams
+welding, T-90M armor service, and K2 teardown—surround every Garage and are
+recomposed by the destination layout. The K2 bay owner uses an explicit static
+half-turn into the Abrams's authored quadrant; the Abrams bay owner keeps its
+authored orientation and stands beside the Garage camera, outside the hero's
+silhouette from the default and close views (`ABRAMS_WELDING_BAY_PLACEMENT`),
+with the Verdant overhead work lamp following its repair choreography. The rolled K2 hull rests in a connected steel
 rollover cradle with grounded skids, crossmembers, A-frames, a continuous spine,
 and rubber contact saddles instead of disconnected timber blocks. A connected
 freestanding field-record display shares that graph in every variant, remains
