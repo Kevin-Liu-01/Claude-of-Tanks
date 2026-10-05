@@ -250,7 +250,7 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   // prevailing south-westerly along the steppe highway's bearing (~84°), the land surveyed straight (a slight warp); dirt
   // tracks on some of the long lines, a shelterbelt on a few strip ends
   steppe: {
-    strength: 1, heading: 1.457, blockU: 620, blockV: 104, maxSplit: 2, marginM: 1.8, trackShare: 0.35, hedgeShare: 0.18,
+    strength: 0.72, heading: 1.457, blockU: 620, blockV: 104, maxSplit: 2, marginM: 1.8, trackShare: 0.35, hedgeShare: 0.18,
     warpM: 7, region: 'tselina', salt: 103,
   },
 });
