@@ -505,16 +505,19 @@ export function createShallowWaterSurface(
       // pixel can no longer hold it, and over the bank band like the FFT's own swell
       wave *= uOceanGrid.w > 0.5 ? uSwell.w : 1.0;
       vec2 swellN = vec2(0.0);
-      if (uSwell.x > 0.0) {
-        float swellFoot = length(fwidth(vWaterWorld.xz));
+      float swellFoot = length(fwidth(vWaterWorld.xz));
+      // (2026-10-05: the trains only where a pixel can still hold the longest of them — past that every fade is zero)
+      if (uSwell.x > 0.0 && swellFoot < uSwell.y * 0.41) {
         for (int si = 0; si < 3; si++) {
           float lam = uSwell.y * (si == 0 ? 1.0 : si == 1 ? 0.87 : 1.17);
+          float fade = 1.0 - smoothstep(lam * 0.12, lam * 0.35, swellFoot);
+          if (fade <= 0.0) continue;
           float hdg = uSwell.z + (si == 0 ? 0.0 : si == 1 ? 0.14 : -0.10);
           float share = si == 0 ? 0.45 : si == 1 ? 0.33 : 0.22;
           float kS = 6.2831853 / lam;
           vec2 dS = vec2(cos(hdg), sin(hdg));
           float ph = kS * dot(dS, vWaterWorld.xz) - sqrt(9.81 * kS) * uWaterTime + float(si) * 2.1;
-          swellN += dS * (cos(ph) * share * uSwell.x * (1.0 - smoothstep(lam * 0.12, lam * 0.35, swellFoot)));
+          swellN += dS * (cos(ph) * share * uSwell.x * fade);
         }
         swellN *= smoothstep(0.06, 0.55, wet);
       }

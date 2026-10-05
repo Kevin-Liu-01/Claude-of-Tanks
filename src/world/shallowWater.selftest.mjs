@@ -340,6 +340,8 @@ assert.match(shader.fragmentShader, /seaShoreM = uSeaShelf\.x > 0\.0 \? texture2
 assert.match(shader.fragmentShader, /float seaOpacity = mix\(opacity, mix\(uSeaShelf\.w, opacity, 1\.0 - exp\(-seaShoreM \/ uSeaShelf\.z\)\), uSeaShelf\.x\);/, 'clear over the shelf');
 assert.match(shader.fragmentShader, /wave \*= uOceanGrid\.w > 0\.5 \? uSwell\.w : 1\.0;/, 'the tiled ripple steps back on an FFT sea');
 assert.match(shader.fragmentShader, /- oceanN\.x - swellN\.x, 1\.0,/, 'the swell joins the normal');
+assert.match(shader.fragmentShader, /float swellFoot = length\(fwidth\(vWaterWorld\.xz\)\);[\s\S]{0,200}if \(uSwell\.x > 0\.0 && swellFoot < uSwell\.y \* 0\.41\) \{/,
+  'the trains only where a pixel can hold the longest (1.17 x 0.35 of the length; the derivative outside the branch)');
 assert.equal(shader.uniforms.uSeaShelf.value.x, 0, 'a land map (no FFT ocean): no shelf law');
 {
   const src = readFileSync(new URL('./shallowWater.ts', import.meta.url), 'utf8');
