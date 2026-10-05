@@ -724,7 +724,7 @@ function chooseBattleAllies(
   playerSpecId: string,
   randomBattle: boolean,
 ): SoloEntity[] {
-  const candidates = game.tanks.filter((entity) => entity.specId !== playerSpecId);
+  const candidates = game.tanks.filter((entity) => entity !== game.tanks[0]);
   if (!randomBattle) {
     // The staged screenshot battle takes the first three roster entities as
     // allies; the archived WWII preference list retired with those hulls
@@ -735,6 +735,7 @@ function chooseBattleAllies(
   // three, Standard keeps the 6 / 7 balance. The cap never exceeds the pool minus one enemy.
   const exactCap = soloDebugFlags()?.rosterExact && candidates.length < 13 ? 3 : 6;
   const allyCap = Math.min(rulesetAllyCap(game.ruleset, exactCap), Math.max(0, candidates.length - 1));
+  if (game.ruleset.alliedNation === 'player') return allyCap ? candidates.slice(-allyCap) : [];
   const enemyCap = candidates.length - allyCap;
   const byTier = candidates.slice()
     .sort((a, b) => tankTier(b.specId) - tankTier(a.specId));
@@ -1130,7 +1131,7 @@ function spawnBattleEntities(context: BattleSpawnContext): void {
   const { game } = context;
   for (let index = 0; index < game.tanks.length; index++) {
     const entity = game.tanks[index];
-    const isPlayer = entity.specId === context.playerSpecId;
+    const isPlayer = entity === game.tanks[0];
     const isAlly = !isPlayer && context.allies.has(entity);
     const preferred = selectEntitySpawn(context, isPlayer, isAlly);
     const safe = context.placement.spawn({ x: preferred.pos[0], z: preferred.pos[2], yaw: preferred.yaw },
@@ -1187,6 +1188,12 @@ export function setupBattle(
   opts: SetupBattleOptions = {},
 ): void {
   const sp = world.spawnPoints;
+  // Same-nation reinforcements have match-owned identities and resources.
+  for (const entity of game.allTanks) if (entity.matchReinforcement) {
+    releaseParkedTank(game, entity);
+    game.tankById.delete(entity.id);
+  }
+  game.allTanks = game.allTanks.filter(entity => !entity.matchReinforcement);
   resetBattleSession(game, opts);
 
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
@@ -1194,7 +1201,11 @@ export function setupBattle(
   // campaign: the operation's formation leads the curated pool (rosterState.preferNations)
   const rosterPlan = battleRosterPlan(game.ruleset, game.campaignOperationId, !!opts.random);
   game.tanks = pickBattleParticipants(game, playerSpecId, !!opts.random, game.battleCount,
-    rosterPlan.nations, rosterPlan.slots, rosterPlan.formationLead) as SoloEntity[];
+    rosterPlan.nations, rosterPlan.slots, rosterPlan.formationLead, rosterPlan.alliedSlots) as SoloEntity[];
+  for (const entity of game.tanks) if (entity.matchReinforcement) {
+    game.allTanks.push(entity);
+    game.tankById.set(entity.id, entity);
+  }
   // matchmaking diversity (owner 2026-09-17): this battle's bots and the previous battle's yield their era-band place
   {
     const memory = rememberBattleBots(game.previousBotSpecIds, game.tanks.filter((entity) => entity.specId !== playerSpecId).map((entity) => entity.specId));
@@ -1305,7 +1316,7 @@ export function setupBattle(
   const teamHasBrawler: Record<TeamId, boolean> = { player: false, enemy: false };
   const teamHasScout: Record<TeamId, boolean> = { player: false, enemy: false };
   for (const entity of game.tanks) {
-    if (entity.specId === playerSpecId) continue;
+    if (entity === game.tanks[0]) continue;
     const team: TeamId = allySet.has(entity) ? 'player' : 'enemy';
     const role = roleOf(entity.spec);
     if (role === 'brawler') teamHasBrawler[team] = true;
@@ -2046,6 +2057,7 @@ function traceNearestTank(
       pose,
       entity.spec.armor,
       entity.combat.eraSpent,
+      shell.spec.tracer === 'DRONE',
     );
     if (!intersections.length) continue;
     const distance = intersections[0].t * segmentLength;
@@ -2286,7 +2298,7 @@ function stepSpotting(game: SoloGameState, bus: EventBus): void {
   if (!game.spotting) return;
   for (const event of game.spotting.update(SIM_DT, game.timeS)) {
     bus.emit('tank:spotted', event);
-    if (game.player && event.id === game.player.id && event.team === 'enemy') {
+    if (game.player && event.id === game.player.id && event.team !== game.player.team) {
       bus.emit('player:spotted', { timeS: game.timeS });
     }
   }

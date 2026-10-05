@@ -19,6 +19,9 @@ const RENEWED_BODY_IDS = [
 ];
 const PRIMARY_BODY_BUCKETS = Object.freeze({
   ...Object.fromEntries(RENEWED_BODY_IDS.map(id => [id, Object.freeze(['hull', 'turret'])])),
+  // Linebacker's slat screens, strapped cargo and roof fittings surround exterior
+  // air. Its closed Bradley hull and new turret shell bound the actual interior.
+  m6_linebacker: Object.freeze(['hull', 'turret']),
   // The owner-requested AMX field kit adds strapped packs and open baskets
   // around closed hull/turret shells. Air behind cargo is outside the vehicle,
   // so never bridge it with generated interior solids. Native audits keep it.

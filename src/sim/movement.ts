@@ -1155,24 +1155,9 @@ const SWAY_VIS = 2.4;
 // SUBTRACTS from the movement-space pitch; flinch roll adds like the others.
 const FLINCH_W = 13;
 const FLINCH_Z = 0.32;
-const MUZZLE_CLEARANCE_M = 0.15; // gun-terrain clamp: min muzzle height above ground
-const MUZZLE_CLEARANCE_FRACTIONS = Object.freeze([1, 0.55]);
-// GUN LIMIT label gating (r3, round critique): the muzzle-terrain clearance
-// clamp pins the reticle near-CONSTANTLY while driving rough ground (every
-// crest the barrel sweeps raises the depression floor over the close-range
-// server-aim ask), which reads as UI noise — WoT only shouts at true
-// depression limits. state.gunLimitSpec carries the LABEL: genuine spec pins
-// (gunDepressionDeg / gunElevationDeg / casemate arc) always label; a pin
-// that exists only because of the terrain-clearance floor stays label-silent
-// at close range — the red tint still marks it, and a shot that would
-// actually strike the near terrain raises the richer PATH BLOCKED indicator
-// (hud blockedDistM), so no information is lost. Far asks (≥ the distance
-// gate) keep the label: pinning there means real hull-down geometry.
-const GUN_LIMIT_LABEL_DIST_M = 120; // terrain-floor pins label only past this
-// r5 (round critique): even the far-ask label re-fired on every crest while
-// rolling cross-country. The LABEL (not the tint) requires this much
-// CONTINUOUS pin time — transient hull-pitch pins at speed never reach it,
-// a deliberate hull-down lay does.
+// Genuine mechanical limits retain a short dwell to avoid flashing while the
+// hull rocks. Terrain never overrides the player's requested gun elevation.
+const GUN_LIMIT_LABEL_DIST_M = 120; // hydraulic fixed-gun label distance
 const GUN_LIMIT_LABEL_DWELL_S = 0.5;
 const SPRING_OMEGA = 2 * Math.PI * 3; // hull attitude spring natural frequency (rad/s)
 const SPRING_ZETA = 0.6;         // damping ratio
@@ -1284,9 +1269,7 @@ const _push = new Vector3();
 const _aimLocal = new Vector3();
 const _gunOriginWorld = new Vector3();
 const _turretPivotLocal = new Vector3();
-const _hullUpWorld = new Vector3();
 const _turretForwardWorld = new Vector3();
-const _gunWorldDir = new Vector3();
 const _worldUp = new Vector3(0, 1, 0);
 const _hullEuler = new Euler(0, 0, 0, 'YXZ');
 const _hullQuat = new Quaternion();
@@ -2315,50 +2298,11 @@ function clampCasemateYaw(
   return fixedMountYawPinned(state, steer, debuff);
 }
 
-function minimumTerrainGunPitch(
-  spec: MovementSpec,
-  state: TankState,
-  hAt: HeightSampler,
-  mechanicalLow: number,
-  mechanicalHigh: number,
-): number {
-  const barrelLength = spec.armor?.gunBarrel?.lengthM ?? 0;
-  if (barrelLength <= 1) return mechanicalLow;
-  _hullUpWorld.set(0, 1, 0).applyQuaternion(_hullQuat);
-  _turretForwardWorld.set(
-    Math.sin(state.turretYaw),
-    0,
-    Math.cos(state.turretYaw),
-  ).applyQuaternion(_hullQuat);
-  _gunWorldDir.copy(_hullUpWorld).multiplyScalar(Math.sin(state.gunPitch))
-    .addScaledVector(_turretForwardWorld, Math.cos(state.gunPitch));
-
-  let requiredSin = -1;
-  for (const fraction of MUZZLE_CLEARANCE_FRACTIONS) {
-    const terrainY = hAt(
-      _gunOriginWorld.x + _gunWorldDir.x * barrelLength * fraction,
-      _gunOriginWorld.z + _gunWorldDir.z * barrelLength * fraction,
-    );
-    const candidate = (terrainY + MUZZLE_CLEARANCE_M - _gunOriginWorld.y) /
-      (barrelLength * fraction);
-    if (candidate > requiredSin) requiredSin = candidate;
-  }
-  if (requiredSin <= -1) return mechanicalLow;
-  // worldY(p) = A·sin(p) + B·cos(p) = R·sin(p + phase).
-  const radiusY = Math.hypot(_hullUpWorld.y, _turretForwardWorld.y) || 1;
-  const phaseY = Math.atan2(_turretForwardWorld.y, _hullUpWorld.y);
-  const terrainLow = Math.asin(clamp(requiredSin / radiusY, -1, 1)) - phaseY;
-  return terrainLow > mechanicalLow
-    ? Math.min(terrainLow, mechanicalHigh)
-    : mechanicalLow;
-}
-
 function updateConventionalGunLay(
   spec: MovementSpec,
   state: TankState,
   debuff: MovementDebuffs,
   solution: GunLaySolution,
-  hAt: HeightSampler,
   gunArc: number,
   steer: number,
   dt: number,
@@ -2368,44 +2312,34 @@ function updateConventionalGunLay(
   const yawPinned = clampCasemateYaw(state, gunArc, steer, debuff);
   const mechanicalLow = minimumMechanicalGunPitch(spec, state.turretYaw);
   const mechanicalHigh = spec.gunElevationDeg * DEG2RAD;
-  const terrainLow = minimumTerrainGunPitch(
-    spec,
-    state,
-    hAt,
-    mechanicalLow,
-    mechanicalHigh,
-  );
   const desiredGun = solution.gunPitch;
   const specPinned = yawPinned || desiredGun < mechanicalLow - 1e-4 ||
     desiredGun > mechanicalHigh + 1e-4;
-  state.atGunLimit = specPinned || desiredGun < terrainLow - 1e-4;
+  state.atGunLimit = specPinned;
   state.gunPitch = clamp(
     approach(
       state.gunPitch,
-      clamp(desiredGun, terrainLow, mechanicalHigh),
+      clamp(desiredGun, mechanicalLow, mechanicalHigh),
       spec.gunPitchDegS * DEG2RAD * dt,
     ),
     mechanicalLow,
     mechanicalHigh,
   );
 
-  // Suppress labels for transient terrain-only pins while driving; the red
-  // reticle still communicates the instantaneous physical constraint.
+  // Suppress brief mechanical-limit labels while the moving hull rocks.
   const attitudePin = (desiredGun < mechanicalLow - 1e-4 ||
     desiredGun > mechanicalHigh + 1e-4) &&
     solution.worldPitch >= mechanicalLow - 1e-4 &&
     solution.worldPitch <= mechanicalHigh + 1e-4;
   const fastTransient = attitudePin && Math.abs(state.speed) * 3.6 > 15;
   const labelWanted = !fastTransient && Math.abs(steer) < 0.2 &&
-    (specPinned || (state.atGunLimit &&
-      solution.horizontalDistance >= GUN_LIMIT_LABEL_DIST_M));
+    specPinned;
   updateGunLimitDwell(state, labelWanted, dt);
 }
 
 function updateGunLay(
   entity: MovementEntity,
   debuff: MovementDebuffs,
-  hAt: HeightSampler,
   gunArc: number,
   steer: number,
   dt: number,
@@ -2417,7 +2351,7 @@ function updateGunLay(
     if (hasFixedHydraulicGun(spec)) {
       updateHydraulicGunLay(spec, state, debuff, solution, steer, dt);
     } else {
-      updateConventionalGunLay(spec, state, debuff, solution, hAt, gunArc, steer, dt);
+      updateConventionalGunLay(spec, state, debuff, solution, gunArc, steer, dt);
     }
   } else if (input.aimLocked) {
     // Holding the gun is deliberate rather than a mechanical limit.
@@ -4476,7 +4410,7 @@ export function updateTank(
   collide: MovementCollisionResolver | null = null,
 ): void {
   // perf-r3b: terrain probes below run dozens of times per tank per frame
-  // (pose corners, per-wheel gear lines, muzzle clearance). Real battles
+  // (pose corners and per-wheel gear lines). Real battles
   // provide the baked 1 m grid (≤ ~1 cm from the analytic surface); selftest
   // fixtures don't and keep their exact synthetic function.
   // Height-field samplers are closure-backed pure functions in both browser
@@ -4705,7 +4639,7 @@ export function updateTank(
   state.visualPitch += hold.p + holdSeat.p - heldPitch;
   state.visualRoll += hold.r + holdSeat.r - heldRoll;
 
-  updateGunLay(entity, debuff, hAt, drive.gunArc, drive.steer, dt);
+  updateGunLay(entity, debuff, drive.gunArc, drive.steer, dt);
   updateTrackScrollAndBloom(spec, state, debuff, dt);
 }
 

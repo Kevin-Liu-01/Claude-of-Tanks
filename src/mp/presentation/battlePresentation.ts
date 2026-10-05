@@ -1,3 +1,4 @@
+import { createGunshipBattleVisual } from '../../game/gunshipVisual.ts';
 import type { AerialView } from '../../sim/aerialCombat.ts';
 import { setModeWeapon } from '../../sim/modeLoadout.ts';
 /**
@@ -300,7 +301,8 @@ export function createBattlePresentation({
     const spec = getSpec(entry.specId);
     const camo = camoFor(entry);
     const state = createTankState(spec, new Vector3(), 0);
-    const visual = createTankVisual(spec.id, engineCtx, {
+    const gunship = game.gameMode === 'ac130' && entry.team === TEAM.ALPHA && !entry.bot;
+    const visual = gunship ? createGunshipBattleVisual(spec.id) : createTankVisual(spec.id, engineCtx, {
       camoSeed: 4000 + (hashString(entry.playerId) % 100000),
       camoPattern: camo,
       quality: textureQuality(isViewer),
@@ -321,7 +323,7 @@ export function createBattlePresentation({
       _networkPoseReady: false, _networkDestroyed: false, _networkDestroyPop: false, _networkEraSpent: new Set(),
       _lastX: 0, _lastZ: 0,
     };
-    if (game.gameMode === 'ac130' && entry.team === TEAM.ALPHA && !entry.bot) actor.aerial = { kind:'gunship',active:true,launching:false,x:0,y:AERIAL_RULES.gunship.altitudeM,z:AERIAL_RULES.gunship.radiusM,yaw:0,pitch:-1,batteryS:0,cooldownS:0 };
+    if (gunship) actor.aerial = { kind:'gunship',active:true,launching:false,x:0,y:AERIAL_RULES.gunship.altitudeM,z:AERIAL_RULES.gunship.radiusM,yaw:0,pitch:-1,batteryS:0,cooldownS:0 };
     if (game.gameMode === 'drone') actor.aerial={kind:'drone',active:false,launching:false,x:0,y:0,z:0,yaw:0,pitch:0,batteryS:0,cooldownS:0};
     actors.set(actor.id, actor);
     actorsByEntity.set(actor.entityId, actor);
@@ -342,12 +344,13 @@ export function createBattlePresentation({
     for (let index = 0; index < active.length; index++) {
       const entry = active[index]!;
       const isViewer = !spectator && entry.entityId === rosterContext.ownEntityId;
-      await ensureTankBuilder(entry.specId);
+      const gunship = game.gameMode === 'ac130' && entry.team === TEAM.ALPHA && !entry.bot;
+      if (!gunship) await ensureTankBuilder(entry.specId);
       assertActive();
       const camo = camoFor(entry);
       const quality = textureQuality(isViewer);
       const key = `${entry.specId}:${camo}:${quality}`;
-      if (!warmed.has(key)) {
+      if (!gunship && !warmed.has(key)) {
         warmed.add(key);
         try { await prepareVisualTextures(getSpec(entry.specId), engineCtx.anisotropy ?? 4, quality, textureTick, camo); }
         catch { /* createTank keeps its synchronous compatibility path */ }

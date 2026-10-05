@@ -152,6 +152,15 @@ try {
   stripMounted=false;
   listeners.get('cot-hud-relayout')();flush();
   assert.equal(properties.has('--hud-roster-top-right'),false,'the strip\'s dispose removes the variable');
+  const map=node({class:'cot-minimap'});
+  globalThis.document.querySelector=selector=>selector==='.cot-minimap'?map:null;
+  for(const size of [160,220,300]){
+    map.getBoundingClientRect=()=>rect(viewport.height-size-16,viewport.height-16,viewport.width-size-16,viewport.width-16);
+    callbacks.resize();flush();
+    assert.equal(properties.get('--hud-flight-right-clearance'),`${size+28}px`,'aircraft rack reserves the actual resized minimap plus a gap');
+  }
+  map.getBoundingClientRect=()=>rect(8,100,8,100);callbacks.resize();flush();
+  assert.equal(properties.get('--hud-flight-right-clearance'),'12px','a top-left mobile map releases the lower rack lane');
 } finally {
   for(const [key,descriptor] of originals){
     if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];

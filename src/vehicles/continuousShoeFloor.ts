@@ -10,8 +10,8 @@ export function continuousShoeFloor(existingFloorYM: number, certifiedFloorYM?: 
 interface XYZ { x: number; y: number; z: number }
 
 /** These certificates describe an identity hull frame. A different authored
- * frame or an external visual scale must be converted and certified, never
- * compared silently with the presentation's root-space floor. Root yaw,
+ * frame must be certified again. Positive uniform mode scaling preserves the
+ * root-local certificate; world-space seating must multiply by that scale. Root yaw,
  * pitch, roll and translation are ordinary posed-plane placement, not scale. */
 export function assertShoeFloorFrame(
   hull: {position: XYZ; rotation: XYZ; scale: XYZ}, rootScale: XYZ,
@@ -19,8 +19,9 @@ export function assertShoeFloorFrame(
   if (hull.position.x !== 0 || hull.position.y !== 0 || hull.position.z !== 0
       || hull.rotation.x !== 0 || hull.rotation.y !== 0 || hull.rotation.z !== 0
       || hull.scale.x !== 1 || hull.scale.y !== 1 || hull.scale.z !== 1
-      || rootScale.x !== 1 || rootScale.y !== 1 || rootScale.z !== 1)
-    throw new RangeError('Continuous shoe floor requires its certified identity hull and unit root scale');
+      || !Number.isFinite(rootScale.x) || rootScale.x <= 0
+      || rootScale.x !== rootScale.y || rootScale.x !== rootScale.z)
+    throw new RangeError('Continuous shoe floor requires its certified identity hull and positive uniform root scale');
 }
 
 /** A certified whole-course floor may be below the loaded straight segment.

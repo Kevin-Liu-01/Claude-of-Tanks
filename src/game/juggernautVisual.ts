@@ -12,12 +12,33 @@ export const TANK_ENERGY = Object.freeze({
   infected: Object.freeze({color:0x80ef35,pattern:2,name:'Infected surface highlight'}),
 });
 interface Shield {
+  preview:boolean;
   surfaces:Surface[];materials:Map<THREE.Material,THREE.Material>;
   style:TankEnergyStyle;color:{value:THREE.Color};pattern:{value:number};
   strength:{value:number};time:{value:number};rootInverse:{value:THREE.Matrix4};
-  impacts:Impact[];hitPositions:{value:THREE.Vector4[]};nextImpact:number;
+  impacts:Impact[];activeHits:{value:number};hitPositions:{value:THREE.Vector4[]};nextImpact:number;
   dispose:()=>void;refresh:()=>void;refreshIn:number;
 }
+const ENERGY_IMPACT_FRAGMENT = `
+        for(int i = 0; i < ${IMPACT_COUNT}; i++) {
+          if(i >= juggernautActiveHits) break;
+          float age = juggernautHits[i].w;
+          if(age >= 0.0 && age < ${IMPACT_DURATION}) {
+            vec3 offset = shieldSurface - juggernautHits[i].xyz;
+            float d = length(offset);
+            vec3 direction = offset / max(d, 0.0001);
+            // Smooth 3-D lobes avoid a circular stamp or an angular seam.
+            float rippleWarp = (sin(direction.x * 7.0 + direction.y * 5.0 + age * 10.0) * 0.15
+              + sin(direction.z * 9.0 - direction.y * 6.0 - age * 7.0) * 0.10)
+              * smoothstep(0.0, 0.28, age);
+            float ring = 1.0 - smoothstep(0.0, 0.24, abs(d - max(0.0, age * 2.4 + rippleWarp)));
+            float core = (1.0 - smoothstep(0.0, 0.45, d)) * (1.0 - smoothstep(0.0, 0.4, age));
+            float fade = 1.0 - smoothstep(0.25, ${IMPACT_DURATION}, age);
+            hitGlow += (ring + core) * fade;
+          }
+        }
+        hitGlow = min(hitGlow, 2.0);
+`;
 const scales=new WeakMap<THREE.Object3D,number>();
 const shields=new WeakMap<THREE.Object3D,Shield>();
 // Wreck/repair snapshots can retain a highlight after its live effect is gone.
@@ -42,13 +63,23 @@ export function clearJuggernautVisual(root:THREE.Object3D,restoreSavedMaterials=
   });
 }
 
+/** Keep compiled Garage materials resident across mode switches. A zero
+ * strength is exactly the original paint, without disposing/linking shaders. */
+export function pauseGarageTankEnergyVisual(root:THREE.Object3D):void {
+  const shield=shields.get(root);
+  if(!shield?.preview)return;
+  shield.strength.value=0;
+  for(const [source,material] of shield.materials)material.name=source.name;
+}
+
 /** Shade the actual vehicle surfaces: no enclosing geometry, extra draw calls,
  * enlarged silhouette, or highlight through cover. Instancing, batching, moving
  * turrets and hidden/detached modules keep their original geometry and poses. */
-export function syncTankEnergyVisual(root:THREE.Object3D,_dims:{widthM:number;hullLengthM:number;heightM:number},scale:number,hp:number,maxHp:number,dt:number,enlarge=true,style:TankEnergyStyle=TANK_ENERGY.juggernaut):void {
+export function syncTankEnergyVisual(root:THREE.Object3D,_dims:{widthM:number;hullLengthM:number;heightM:number},scale:number,hp:number,maxHp:number,dt:number,enlarge=true,style:TankEnergyStyle=TANK_ENERGY.juggernaut,preview=false):void {
   const previous=scales.get(root)??1,visualScale=enlarge?scale:1;
   if(previous!==visualScale){root.scale.multiplyScalar(visualScale/previous);scales.set(root,visualScale);}
   let shield=shields.get(root);
+  if(shield&&shield.preview!==preview){shield.dispose();shield=undefined;}
   if(scale<=1||hp<=0){shield?.dispose();return;}
   if(!shield){
     const surfaces:Surface[]=[],materials=new Map<THREE.Material,THREE.Material>();
@@ -61,11 +92,27 @@ export function syncTankEnergyVisual(root:THREE.Object3D,_dims:{widthM:number;hu
       // Existing vehicle shader hooks include CSM registrations keyed by the
       // source material. Recompile the restored source to rebind those hooks.
       for(const [source,material] of materials){source.needsUpdate=true;material.dispose();}
-      materials.clear();surfaces.length=0;shields.delete(root);
+      for(const object of watched){
+        object.removeEventListener('childadded',markDirty);
+        object.removeEventListener('childremoved',markDirty);
+      }
+      watched.clear();materials.clear();surfaces.length=0;shields.delete(root);
       root.removeEventListener('removed',dispose);
     };
     const bindings=new WeakMap<THREE.Mesh,Surface>();
+    // Topology changes are rare. Track them rather than rescanning every part
+    // of every glowing tank four times per second.
+    const watched=new Set<THREE.Object3D>();
+    let topologyDirty=true;
+    const markDirty=()=>{topologyDirty=true;};
+    const watch=(object:THREE.Object3D)=>{
+      if(watched.has(object))return;
+      watched.add(object);
+      object.addEventListener('childadded',markDirty);
+      object.addEventListener('childremoved',markDirty);
+    };
     const inspect=(object:THREE.Object3D)=>{
+      watch(object);
       if(!(object instanceof THREE.Mesh))return;
       for(let part:THREE.Object3D|null=object;part&&part!==root;part=part.parent)if(part.userData.excludeModeEnergy)return;
       const bound=bindings.get(object);
@@ -78,7 +125,10 @@ export function syncTankEnergyVisual(root:THREE.Object3D,_dims:{widthM:number;hu
       else {const surface={mesh:object,original,highlight};surfaces.push(surface);bindings.set(object,surface);}
       object.material=highlight;
     };
-    shield={surfaces,materials,strength,time,rootInverse,style,color:{value:new THREE.Color(style.color)},pattern:{value:style.pattern},impacts,hitPositions:{value:impacts.map(i=>i.sample)},nextImpact:0,dispose,refresh:()=>root.traverse(inspect),refreshIn:0};
+    shield={preview,surfaces,materials,strength,time,rootInverse,style,color:{value:new THREE.Color(style.color)},pattern:{value:style.pattern},impacts,activeHits:{value:0},hitPositions:{value:impacts.map(i=>i.sample)},nextImpact:0,dispose,refresh:()=>{
+      if(topologyDirty){root.traverse(inspect);topologyDirty=false;}
+      else for(const surface of surfaces)if(surface.mesh.material!==surface.highlight)inspect(surface.mesh);
+    },refreshIn:0};
     shields.set(root,shield);root.addEventListener('removed',dispose);
   }
   if(shield.style!==style){
@@ -94,15 +144,19 @@ export function syncTankEnergyVisual(root:THREE.Object3D,_dims:{widthM:number;hu
   shield.time.value+=elapsed;
   root.updateWorldMatrix(true,false);
   shield.rootInverse.value.copy(root.matrixWorld).invert();
-  for(const impact of shield.impacts){
+  shield.activeHits.value=0;
+  for(let index=0;index<shield.impacts.length;index++){
+    const impact=shield.impacts[index]!;
     if(!impact.anchor)continue;
     impact.sample.w+=elapsed;
     if(impact.sample.w>=IMPACT_DURATION){impact.anchor=null;impact.sample.w=-1;continue;}
+    shield.activeHits.value=index+1;
     // Keep a turret/barrel hit on its moving part, even while the hull turns.
     impact.anchor.updateWorldMatrix(true,false);
     impactPoint.copy(impact.local).applyMatrix4(impact.anchor.matrixWorld).applyMatrix4(shield.rootInverse.value);
     impact.sample.set(impactPoint.x,impactPoint.y,impactPoint.z,impact.sample.w);
   }
+  if(shield.preview&&shield.strength.value===0)for(const material of shield.materials.values())material.name=style.name;
   shield.strength.value=.55+.08*Math.sin(shield.time.value*1.8)+.3*Math.max(0,hp/Math.max(1,maxHp));
 }
 
@@ -111,10 +165,11 @@ const impactPoint=new THREE.Vector3();
  * damage deduction is needed: ricochets also disturb the shield at contact. */
 export function pulseJuggernautImpact(root:THREE.Object3D,pos:readonly number[],frame?:string):boolean {
   const shield=shields.get(root);
-  if(!shield||pos.length<3||!Number.isFinite(pos[0])||!Number.isFinite(pos[1])||!Number.isFinite(pos[2]))return false;
+  if(!shield||shield.preview||pos.length<3||!Number.isFinite(pos[0])||!Number.isFinite(pos[1])||!Number.isFinite(pos[2]))return false;
   const rig=frame==='turret'?'rig_turret':frame==='gun'||frame==='barrel'?'rig_gun':null;
   const anchor=(rig&&root.getObjectByName(rig))||root;
   const impact=shield.impacts[shield.nextImpact]!;
+  shield.activeHits.value=Math.max(shield.activeHits.value,shield.nextImpact+1);
   shield.nextImpact=(shield.nextImpact+1)%IMPACT_COUNT;
   root.updateWorldMatrix(true,false);anchor.updateWorldMatrix(true,false);
   impact.local.set(pos[0]!,pos[1]!,pos[2]!);anchor.worldToLocal(impact.local);impact.anchor=anchor;
@@ -137,7 +192,7 @@ function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
     compile.call(this,shader,renderer);
     shader.uniforms.juggernautStrength=shield.strength;shader.uniforms.juggernautTime=shield.time;
     shader.uniforms.energyColor=shield.color;shader.uniforms.energyPattern=shield.pattern;
-    shader.uniforms.juggernautRootInverse=shield.rootInverse;shader.uniforms.juggernautHits=shield.hitPositions;
+    shader.uniforms.juggernautRootInverse=shield.rootInverse;shader.uniforms.juggernautHits=shield.hitPositions;shader.uniforms.juggernautActiveHits=shield.activeHits;
     shader.vertexShader=shader.vertexShader
       .replace('#include <common>','#include <common>\nuniform mat4 juggernautRootInverse;\nvarying vec3 vJuggernautPosition;')
       .replace('#include <project_vertex>',`#include <project_vertex>
@@ -151,46 +206,33 @@ function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
         vJuggernautPosition = (juggernautRootInverse * modelMatrix * shieldPoint).xyz;
       `);
     shader.fragmentShader=shader.fragmentShader
-      .replace('#include <common>',`#include <common>\nuniform float juggernautStrength;\nuniform float juggernautTime;\nuniform vec3 energyColor;\nuniform float energyPattern;\nuniform vec4 juggernautHits[${IMPACT_COUNT}];\nvarying vec3 vJuggernautPosition;`)
+      .replace('#include <common>',`#include <common>\nuniform float juggernautStrength;\nuniform float juggernautTime;\nuniform vec3 energyColor;\nuniform float energyPattern;\nuniform int juggernautActiveHits;\nuniform vec4 juggernautHits[${IMPACT_COUNT}];\nvarying vec3 vJuggernautPosition;`)
       .replace('#include <opaque_fragment>',`
-        float juggernautRim = pow(1.0 - abs(dot(normalize(normal), normalize(vViewPosition))), 2.4);
+        ${shield.preview ? 'if (juggernautStrength > 0.0) {' : ''}
+        float juggernautRim = 1.0 - abs(dot(normal, normalize(vViewPosition)));
+        juggernautRim *= juggernautRim;
         vec3 shieldSurface = vJuggernautPosition;
-        float wave = smoothstep(0.78, 1.0, sin(shieldSurface.z * 1.65 + shieldSurface.y * 2.6 - juggernautTime * 2.8
-          + sin(shieldSurface.x * 2.4 + juggernautTime * 1.3) * 1.0
-          + sin(shieldSurface.z * 2.1 - juggernautTime * 0.8) * 0.4));
-        if(energyPattern > 0.5 && energyPattern < 1.5) {
-          // Carrier chevrons travel up the skin like the banner's woven emblem.
+        float wave;
+        if(energyPattern < 0.5) {
+          wave = smoothstep(0.78, 1.0, sin(shieldSurface.z * 1.65 + shieldSurface.y * 2.6 - juggernautTime * 2.8
+            + sin(shieldSurface.x * 2.4 + juggernautTime * 1.3)
+            + sin(shieldSurface.z * 2.1 - juggernautTime * 0.8) * 0.4));
+        } else if(energyPattern < 1.5) {
           wave = smoothstep(0.78,1.0,sin(shieldSurface.y*6.0-abs(shieldSurface.x)*3.5-juggernautTime*3.2));
           wave *= 0.7+0.3*sin(shieldSurface.z*3.0+juggernautTime);
-        } else if(energyPattern > 1.5) {
-          // Uneven green veins breathe across infected armor.
+        } else {
           float veins = sin(shieldSurface.x*4.2+sin(shieldSurface.z*3.5+juggernautTime))
             + sin(shieldSurface.y*5.6-shieldSurface.z*2.8-juggernautTime*1.6);
           wave = smoothstep(0.8,1.65,veins)*(0.7+0.3*sin(juggernautTime*2.2));
         }
         float hitGlow = 0.0;
-        for(int i = 0; i < ${IMPACT_COUNT}; i++) {
-          float age = juggernautHits[i].w;
-          if(age >= 0.0 && age < ${IMPACT_DURATION}) {
-            vec3 offset = shieldSurface - juggernautHits[i].xyz;
-            float d = length(offset);
-            vec3 direction = offset / max(d, 0.0001);
-            // Smooth 3-D lobes avoid a circular stamp or an angular seam.
-            float rippleWarp = (sin(direction.x * 7.0 + direction.y * 5.0 + age * 10.0) * 0.15
-              + sin(direction.z * 9.0 - direction.y * 6.0 - age * 7.0) * 0.10)
-              * smoothstep(0.0, 0.28, age);
-            float ring = exp(-pow((d - max(0.0, age * 2.4 + rippleWarp)) / 0.16, 2.0));
-            float core = exp(-d * d * 8.0 - age * 7.0);
-            float fade = 1.0 - smoothstep(0.25, ${IMPACT_DURATION}, age);
-            hitGlow += (ring + core) * fade;
-          }
-        }
-        hitGlow = min(hitGlow, 2.0);
+        ${shield.preview ? '' : ENERGY_IMPACT_FRAGMENT}
         outgoingLight += energyColor * (0.055 + juggernautRim * 0.65 + wave * 0.6) * juggernautStrength
           + mix(energyColor,vec3(1.0),0.4) * hitGlow * 2.0;
+        ${shield.preview ? '}' : ''}
         #include <opaque_fragment>`);
   };
-  material.customProgramCacheKey=()=>cacheKey+'|tank-mode-energy-v4';
+  material.customProgramCacheKey=()=>cacheKey+(shield.preview?'|tank-mode-energy-preview-v1':'|tank-mode-energy-v6');
   highlightSources.set(material,source);
   shield.materials.set(source,material);return material;
 }

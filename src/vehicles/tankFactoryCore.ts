@@ -759,6 +759,7 @@ interface RunningGearUnit {
     pitch?: number,
     roll?: number,
     dt?: number,
+    modeScale?: number,
   ): boolean;
   setBroken?(module: 'trackL' | 'trackR', broken: boolean): void;
   addRoadWheelLayer(
@@ -5322,7 +5323,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
      * @param {number} [pitchEff] effective RENDERED pitch (see below)
      * @param {number} [rollEff] effective RENDERED roll (see below)
      */
-    conform(state, sampler, pitchEff, rollEff, dt = 1 / 60) {
+    conform(state, sampler, pitchEff, rollEff, dt = 1 / 60, modeScale = 1) {
       // gameplay_feel r5: conform at the RENDERED attitude. syncFromState
       // draws the hull at -(visualPitch + suspP·VIS) + flinchP (and roll +
       // suspR·VIS + sway); computing the wheel's hull-plane point with the
@@ -5348,12 +5349,14 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       // Wheel records remain in hullG-local space, so fold that persistent
       // transform into both the sampled station and its physical footprint.
       // The solved offset stays hullG-local and therefore divides by scaleY.
-      frame.hsx = hullG.scale.x;
-      frame.hsy = hullG.scale.y;
-      frame.hsz = hullG.scale.z;
-      frame.hpx = hullG.position.x;
-      frame.hpy = hullG.position.y;
-      frame.hpz = hullG.position.z;
+      // Juggernaut is a uniform presentation scale; sample its actual larger
+      // footprint and convert world-space displacement back into local travel.
+      frame.hsx = hullG.scale.x * modeScale;
+      frame.hsy = hullG.scale.y * modeScale;
+      frame.hsz = hullG.scale.z * modeScale;
+      frame.hpx = hullG.position.x * modeScale;
+      frame.hpy = hullG.position.y * modeScale;
+      frame.hpz = hullG.position.z * modeScale;
       frame.invHsy = 1 / Math.max(Math.abs(frame.hsy), 1e-6);
       let settling = false;
       const initializeContact = cfg.continuousShoeFloorYM !== undefined && !groundConformanceInitialized;
@@ -5514,10 +5517,10 @@ function registerGearUnit(P: RunningGearBuilderPort, unit: RunningGearUnit): voi
     update(l, r, dt) { for (const u of units) u.update(l, r, dt); },
     updateDebris(dt, sampler) { for (const u of units) u.updateDebris?.(dt, sampler); },
     resetPose() { for (const u of units) u.resetPose?.(); },
-    conform(state, sampler, pitchEff, rollEff, dt) {
+    conform(state, sampler, pitchEff, rollEff, dt, modeScale) {
       let settling = false;
       for (const u of units) {
-        if (u.conform(state, sampler, pitchEff, rollEff, dt)) settling = true;
+        if (u.conform(state, sampler, pitchEff, rollEff, dt, modeScale)) settling = true;
       }
       return settling;
     },
@@ -8776,7 +8779,7 @@ function* createTankOwnedSteps(
         this.presentationFloorYM = presentationFloorYM;
         presentationFloorMeasured = true;
       }
-      root.position.y = floorYM - continuousShoeFloor(this.presentationFloorYM, continuousRootFloor());
+      root.position.y = floorYM - continuousShoeFloor(this.presentationFloorYM, continuousRootFloor()) * root.scale.y;
       return root.position.y;
     },
 
@@ -8786,7 +8789,7 @@ function* createTankOwnedSteps(
       if (typeof trackFloorYM !== 'number' || !Number.isFinite(trackFloorYM)) {
         return this.seatOnFloor(floorYM);
       }
-      root.position.y = floorYM - trackFloorYM;
+      root.position.y = floorYM - trackFloorYM * root.scale.y;
       return root.position.y;
     },
 
@@ -9097,7 +9100,7 @@ function* createTankOwnedSteps(
           // gameplay_feel r5: conform at the EXACT rendered attitude (see the
           // conform() jsdoc) — root.rotation was just set from these terms.
             gearSettling = !!P.gear.conform(
-              renderState, groundSampler, gearPitch, gearRoll, gearStepDt,
+              renderState, groundSampler, gearPitch, gearRoll, gearStepDt, root.scale.x,
             );
           }
           P.gear.update(renderState.trackScroll.l, renderState.trackScroll.r, gearStepDt);

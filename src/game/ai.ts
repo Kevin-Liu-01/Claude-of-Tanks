@@ -1435,7 +1435,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   function enemyAlive(e: AiEntity | null | undefined): e is AiEntity {
-    return !!e && e !== entity && (!e.combat || !e.combat.destroyed);
+    return !!e && e !== entity && (e.team == null || entity.team == null || e.team !== entity.team)
+      && e.modeActive !== false && (!e.combat || !e.combat.destroyed);
   }
 
   const focusCounts = new Map<string, number>();
@@ -4874,7 +4875,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     let partners = 0, betterFlankers = 0, alreadyFlanking = false;
     const mobility = (spec.topSpeedKmh ?? 40) + (role === 'flanker' ? 20 : 0);
     for (const friend of getAllies()) {
-      if (friend === entity || !enemyAlive(friend)) continue;
+      if (!friend || friend === entity || friend.modeActive === false || friend.combat?.destroyed) continue;
       const ctl = (friend as ControllerOwnedEntity).aiCtl ?? (friend as ControllerOwnedEntity).ai;
       if (ctl?.targetId !== target.id || Math.hypot(friend.state.pos.x - entity.state.pos.x, friend.state.pos.z - entity.state.pos.z) > 220) continue;
       partners++;

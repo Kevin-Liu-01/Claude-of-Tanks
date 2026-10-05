@@ -401,3 +401,21 @@ indices to their authored owners. They additionally verify that every clutter
 binding addresses the original position/normal bytes or instance transform,
 so material batching and waterworks donor replacement cannot conceal a bad
 destruction target.
+
+## AC-130 fire-control rack
+
+`node tools/gunship-hud.browser.mjs` renders the production HUD and touch
+controls with the actual gunship loadout. It covers 1280×800 and 800×600 desktop,
+568×320 and 480×270 landscape, 320×568 and 390×844 portrait, and Chinese landscape.
+The matrix checks all three weapon selections, independent reload progress,
+sensor cycling, ready/cooling supply commands, keyboard activation, flight exit,
+minimum touch targets, and clearance from the scope, objective, minimap and
+mobile controls. Desktop cases also enlarge the minimap. Screenshots and the
+measurement report are written to `.qa-dev/gunship-hud/`.
+
+The gunship uses an open rack with six angled controls. Ammunition channels keep
+independent reload bars; the central sight follows the selected weapon, with
+magnification and target distance beside it. The header reads the actual escort
+and rescue counts. The shared HUD layout owns minimap clearance. Short landscape
+omits the repeated designation/sight label, while portrait raises the rack above
+fire and zoom. Drone instruments keep their existing layout.

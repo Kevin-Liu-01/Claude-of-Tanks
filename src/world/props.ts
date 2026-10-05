@@ -1,3 +1,4 @@
+import { placeWreckCollision } from './wreckCollision.ts';
 // src/world/props.ts — rocks, ~10-building village, walls and cover props.
 // Contract: docs/ARCHITECTURE.md §3.2. All geometry composed BufferGeometry,
 // all textures canvas-generated, everything merged into few draw calls.
@@ -122,7 +123,7 @@ import {
   pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
-import { bakeTankWreckSteps, bakeWreckDebris } from './wrecks.ts';
+import { bakeTankWreckSteps, bakeWreckDebris, type WreckBake } from './wrecks.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
 import { mergeWreckGeometries } from './exactWreckGeometry.ts';
@@ -702,15 +703,6 @@ interface TankWreckSpot {
   supportSpread: number;
   supportMaxEmbed: number;
   supportMaxFloat: number;
-}
-
-interface WreckBake {
-  geo: THREE.BufferGeometry;
-  shadowGeo: THREE.BufferGeometry | null;
-  hx: number;
-  hz: number;
-  h: number;
-  tris: number;
 }
 
 export interface PropsRuntime {
@@ -6907,13 +6899,14 @@ ${snowCap ? `
           sg.translate(x, y, z);
           wreckShadowGeos.push(sg);
         }
-        // solid obstacle + shell collider from the yaw-rotated footprint
-        const cs = Math.abs(Math.cos(yaw)), sn = Math.abs(Math.sin(yaw));
-        const hx = baked.hx * cs + baked.hz * sn + 0.2;
-        const hz = baked.hx * sn + baked.hz * cs + 0.2;
-        const rec = setObbShape(
-          { min: [x - hx, y, z - hz], max: [x + hx, y + baked.h - 0.2, z + hz] },
-          x, z, baked.hx + 0.2, baked.hz + 0.2, yaw);
+        // Separate hull/turret solids follow the exact visible yaw and slope pose.
+        // A sideways gun must never turn the empty space beside a wreck into a wall.
+        const placement = new THREE.Matrix4().makeRotationFromQuaternion(_quat)
+          .multiply(new THREE.Matrix4().makeRotationY(yaw));
+        placement.setPosition(x, y, z);
+        const rec = placeWreckCollision(baked.solids, placement);
+        const hx = (rec.max[0] - rec.min[0]) * 0.5;
+        const hz = (rec.max[2] - rec.min[2]) * 0.5;
         obstacles.push(rec);
         colliders.push(cloneCollisionRecord(rec));
         wreckScorch.push([x, z]);

@@ -88,6 +88,7 @@ const ownedSkillDocs = new Set([
   '.agents/skills/improve-threejs/SKILL.md',
   'SKILL.md',
   'api/SKILL.md',
+  'docs/audio-generation/SKILL.md',
   'docs/tank-generation/SKILL.md',
   'server/SKILL.md',
   'src/SKILL.md',

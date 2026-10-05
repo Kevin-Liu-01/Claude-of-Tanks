@@ -8,7 +8,7 @@ import { createTank } from '../src/vehicles/tankFactory.ts';
 
 const id = 'bmp3m_dragun125_x';
 const configuredIds = [id, 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'amx10p_25', 'leclerc_classic_x', 't80u',
-  'k21_x', 'kurganets25_x'];
+  'k21_x', 'kurganets25_x', 'm6_linebacker'];
 const names = ['hull', 'hullDetail', 'hullDark', 'turret', 'turretDetail', 'gun',
   'gunDark', 'gunMount', 'gunMountDark', 'muzzleBoreShadowFallbackDisc', 'track'];
 const triangles = names.map((name, mesh) => ({ mesh, identity: name }));

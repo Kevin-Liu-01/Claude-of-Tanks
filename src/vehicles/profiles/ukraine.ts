@@ -22,6 +22,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 //   long with a +23% kit band; kursk -2.6% overall (usable as-is).
 
 import * as THREE from 'three';
+import { UA_CAGE_STATIONS as ABRAMS_DRONE_CAGE_STATIONS } from '../ukrainianDroneCage.ts';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
@@ -1767,12 +1768,6 @@ function addCageBar(
   P.add('turretOpenLatticeDark', KIT.box(w, h, d), x, y, z, rx, ry, rz);
 }
 
-const ABRAMS_DRONE_CAGE_STATIONS: readonly CageStation[] = Object.freeze([
-  Object.freeze({ z: 2.62, x: 1.94, base: 0.20, roof: 1.16 }),
-  Object.freeze({ z: 0.28, x: 1.98, base: 0.10, roof: 1.30 }),
-  Object.freeze({ z: -1.28, x: 2.04, base: 0.08, roof: 1.34 }),
-  Object.freeze({ z: -3.34, x: 2.06, base: 0.14, roof: 1.28 }),
-]);
 
 function addPitchedAbramsCageBar(
   P: UkraineBuilderPort,

@@ -1,0 +1,29 @@
+{
+  "baseline": "1eb8375d6",
+  "rows": [
+    {
+      "id": "m3a3_bradley",
+      "quality": "high",
+      "scope": "hull-gear",
+      "sha256": "36ee2ea927f962ecc6f1e75fc9f1298b01be3afa38e6f8bcefe7595a5e28429d"
+    },
+    {
+      "id": "m3a3_bradley",
+      "quality": "low",
+      "scope": "hull-gear",
+      "sha256": "55c61028fdfebf1c10ffb7d4f15f115a6c95788e66fd268fe52e1d5866283bbf"
+    },
+    {
+      "id": "ua_m2a3_bradley",
+      "quality": "high",
+      "scope": "all",
+      "sha256": "9ac3b5ec21e787e879706159ba263aaa5a360aa9a4db5129ad2484f8399573cf"
+    },
+    {
+      "id": "ua_m2a3_bradley",
+      "quality": "low",
+      "scope": "all",
+      "sha256": "6ad17719268d89e1c5c3664c7606192f2527bb4d5c12e0696fd5eb12714fe7ce"
+    }
+  ]
+}
