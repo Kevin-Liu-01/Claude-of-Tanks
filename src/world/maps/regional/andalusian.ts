@@ -36,6 +36,14 @@ const BELL = rgb(0x6a5a3a);
 const CACTUS = rgb(0x66794a), CACTUS_FRUIT = rgb(0x9a2a40);
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
+/**
+ * Where the walls stand: the base geometry's measured box (ctx.bounds) less the kit's own overhang on its x and z sides
+ * (the coordinator's rule, 2026-10-05: a kit building fills the base's bounds, so no gap opens between two buildings).
+ */
+function wallsIn(ctx: RegionalBuildContext, ex: number, ez: number): { cx: number; cz: number; w: number; d: number } {
+  const b = ctx.bounds;
+  return { cx: (b.minX + b.maxX) / 2, cz: (b.minZ + b.maxZ) / 2, w: b.maxX - b.minX - 2 * ex, d: b.maxZ - b.minZ - 2 * ez };
+}
 const uvOffset = (ctx: RegionalBuildContext): [number, number] => [ctx.rng() * 7.31, ctx.rng() * 5.17];
 
 // ------------------------------------------------------------------------------------------------ the dialect
@@ -330,7 +338,8 @@ function casa(ctx: RegionalBuildContext, opts: { two?: boolean } = {}): Regional
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
   const rng = st.rng, look = ctx.variant;
-  const W = clamp(ctx.info.w - 0.3, 4.8, 9.5), D = clamp(ctx.info.d - 0.5, 6.0, 12);
+  const fit = wallsIn(ctx, 0.09, 0.28);
+  const W = clamp(fit.w, 4.8, 10), D = clamp(fit.d, 6.0, 12);
   const two = opts.two ?? rng() < 0.5;
   const camara = !two && rng() < 0.55;
   const wall: RegionalBucket = ctx.wallBucket === 'plaster2' && look() < 0.45 ? 'plaster2' : 'plaster';
@@ -360,7 +369,7 @@ function casa(ctx: RegionalBuildContext, opts: { two?: boolean } = {}): Regional
     gutters: null, verge: null, reveal: 0.22,
   };
   const dado = st.band && look() < 0.7, bench = look() < 0.5, pots = look() < 0.55, lantern = look() < 0.4;
-  streetwise(sink, () => {
+  sink.placed(0, fit.cx, 0, fit.cz, () => streetwise(sink, () => {
     const frame = buildHouse(sink, spec, dialect(st, look));
     alero(sink, frame);
     if (dado && st.band) zocalo(sink, frame, st.band, 0.75);
@@ -374,7 +383,7 @@ function casa(ctx: RegionalBuildContext, opts: { two?: boolean } = {}): Regional
     if (pots) wallPots(sink, f, -W / 2 + 0.5, W / 2 - 0.5, two ? frame.floors[1] - 0.35 : 2.45, look, two ? [] : spans);
     const lu = du + (dw / 2 + 0.45) * (du > 0 ? -1 : 1);
     if (lantern && !spans.some(([a, b]) => lu > a - 0.15 && lu < b + 0.15)) wallLantern(sink, f, lu, 2.55);
-  });
+  }));
   return sink.finish();
 }
 
@@ -387,7 +396,8 @@ function townhouse(ctx: RegionalBuildContext, opts: { shop?: boolean } = {}): Re
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
   const rng = st.rng, look = ctx.variant;
-  const W = clamp(ctx.info.w - 0.3, 6.5, 12), D = clamp(ctx.info.d - 0.5, 7, 13);
+  const fit = wallsIn(ctx, 0.1, 0.32);
+  const W = clamp(fit.w, 6.5, 12.5), D = clamp(fit.d, 7, 13.5);
   const three = rng() < 0.55;
   const wall: RegionalBucket = ctx.wallBucket === 'plaster3' && look() < 0.4 ? 'plaster2' : 'plaster';
   const sts: StoreySpec[] = [{ h: 3.4, wall }, { h: 3.05, wall }];
@@ -429,7 +439,7 @@ function townhouse(ctx: RegionalBuildContext, opts: { shop?: boolean } = {}): Re
   const impost = rng() < 0.55, dado = st.band !== null || rng() < 0.4, pots = look() < 0.6, lantern = look() < 0.5;
   const span = W - 2.2 + 1.6;
   const lst: AndalusianState = long ? { ...st, longBalcony: { face: 'right', storey: 1, u0: -span / 2, u1: span / 2 } } : st;
-  streetwise(sink, () => {
+  sink.placed(0, fit.cx, 0, fit.cz, () => streetwise(sink, () => {
     const frame = buildHouse(sink, spec, dialect(lst, look));
     alero(sink, frame);
     const bandBucket = st.band ?? 'plaster3';
@@ -448,7 +458,7 @@ function townhouse(ctx: RegionalBuildContext, opts: { shop?: boolean } = {}): Re
       wallPots(sink, f, -W / 2 + 0.45, W / 2 - 0.45, frame.floors[1] - 0.6, look, [...spans, [door.u - door.w / 2 - 0.9, door.u + door.w / 2 + 0.9]]);
     }
     if (lantern) wallLantern(sink, f, door.u + (door.w / 2 + 0.8) * (door.u > 0 ? -1 : 1), 3.0);
-  });
+  }));
   return sink.finish();
 }
 
@@ -483,56 +493,59 @@ const posada: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
   const rng = st.rng, look = ctx.variant;
-  const W = clamp(ctx.info.w - 0.5, 7.5, 11), D = clamp(ctx.info.d - 0.6, 10, 16);
-  const gateSide = rng() < 0.5 ? -1 : 1;
-  const gw = 2.6, gu = gateSide * (W / 2 - 0.9 - gw / 2), du = -gateSide * (W / 2 - 1.9);
-  const openings: Opening[] = [
-    { face: 'front', storey: 0, kind: 'gate', u: gu, w: gw, y0: 0, h: 3.1 },
-    { face: 'front', storey: 0, kind: 'door', u: du, w: 1.3, y0: 0, h: 2.5 },
-  ];
-  const mid = (gu + du) / 2;
-  if (Math.abs(gu - du) > 4.2) openings.push({ face: 'front', storey: 0, kind: 'window', u: mid, w: 0.95, y0: 1.0, h: 1.4 });
-  for (const u of [gu, du, ...(W > 9 ? [mid] : [])]) openings.push({ face: 'front', storey: 1, kind: 'door', u, w: 0.95, y0: 0, h: 2.2 });
-  for (const face of ['right', 'left'] as const) {
-    for (const o of windowRhythm(face, 0, D, { w: 0.9, h: 1.3, sill: 1.0, spacing: 2.6, margin: 1.2 })) openings.push(o);
-    for (const o of windowRhythm(face, 1, D, { w: 0.85, h: 1.15, sill: 0.8, spacing: 2.6, margin: 1.2 })) openings.push(o);
-  }
-  for (const o of windowRhythm('back', 1, W, { w: 0.8, h: 1.1, sill: 0.85, spacing: 2.4, margin: 1.2 })) openings.push(o);
-  openings.push({ face: 'back', storey: 0, kind: 'door', u: 0, w: 1.1, y0: 0, h: 2.2 });
-  const span = Math.abs(gu - du) + 1.6, centre = (gu + du) / 2;
-  const lst: AndalusianState = { ...st, longBalcony: { face: 'front', storey: 1, u0: centre - span / 2, u1: centre + span / 2 } };
-  const frame = buildHouse(sink, {
-    w: W, d: D, plinth: { h: 0.3, out: 0.04, bucket: 'stone' }, storeys: [{ h: 3.5, wall: 'plaster' }, { h: 2.9, wall: 'plaster' }],
-    roof: canal(21 + rng() * 3, 0.32, 0.32, 'hip'), openings,
-    chimneys: [{ x: W * 0.22, z: -D * 0.25, sx: 0.7, sz: 0.7, above: 0.8, bucket: 'plaster', cap: 'tile' },
-      { x: -W * 0.2, z: D * 0.15, sx: 0.55, sz: 0.55, above: 0.7, bucket: 'plaster', cap: 'tile' }],
-    gutters: null, verge: null, reveal: 0.28,
-  }, dialect(lst, look));
-  alero(sink, frame);
-  zocalo(sink, frame, st.band ?? 'plaster3', 0.85);
-  // the gateway's voussoirs round its arch and the keystone
-  const f = frame.faces.front;
-  for (let k = 0; k <= 8; k++) {
-    const a = Math.PI * k / 8;
-    faceBox(sink, 'stone', f, gu + Math.cos(a) * (gw / 2 + 0.16), frame.floors[0] + 3.1 + Math.sin(a) * 0.62, 0.05, 0.36, 0.32, 0.1, { decor: true });
-  }
-  // a long balcony across the main floor
-  balcony(sink, f, centre, frame.floors[1], span, 0.6, look, st.mobile);
-  // the board over the tavern door
-  faceBox(sink, 'structureWood', f, du, frame.floors[0] + 2.95, 0.04, 1.3, 0.42, 0.05, { colour: rgb(0x3a2a1e), decor: true });
-  faceBox(sink, 'structureWood', f, du, frame.floors[0] + 2.95, 0.07, 1.1, 0.26, 0.01, { colour: rgb(0xc8a050), decor: true });
-  if (!st.mobile) {
-    // the vine over the tavern door: a trellis of poles on two posts and the leaves in loose clumps
-    const timber = rgb(0x6a5440), leaf = rgb(0x4f6a34);
-    for (const s of [-1, 1]) faceBox(sink, 'structureWood', f, du + s * 1.1, frame.floors[0] + 1.25, 1.55, 0.1, 2.5, 0.1, { colour: timber, decor: true });
-    for (const s of [-1, 1]) faceBox(sink, 'structureWood', f, du + s * 1.1, frame.floors[0] + 2.55, 0.8, 0.08, 0.08, 1.6, { colour: timber, decor: true });
-    for (let k = 0; k < 14; k++) {
-      faceBox(sink, 'structureWood', f, du + (look() - 0.5) * 2.4, frame.floors[0] + 2.6 + look() * 0.25, 0.2 + look() * 1.3,
-        0.4 + look() * 0.4, 0.22 + look() * 0.2, 0.35 + look() * 0.3, { colour: shade(leaf, 0.75 + look() * 0.45), decor: true, shadow: true });
+  const fit = wallsIn(ctx, 0.36, 0.36);
+  const W = clamp(fit.w, 7.5, 11.5), D = clamp(fit.d, 10, 16.5);
+  sink.placed(0, fit.cx, 0, fit.cz, () => {
+    const gateSide = rng() < 0.5 ? -1 : 1;
+    const gw = 2.6, gu = gateSide * (W / 2 - 0.9 - gw / 2), du = -gateSide * (W / 2 - 1.9);
+    const openings: Opening[] = [
+      { face: 'front', storey: 0, kind: 'gate', u: gu, w: gw, y0: 0, h: 3.1 },
+      { face: 'front', storey: 0, kind: 'door', u: du, w: 1.3, y0: 0, h: 2.5 },
+    ];
+    const mid = (gu + du) / 2;
+    if (Math.abs(gu - du) > 4.2) openings.push({ face: 'front', storey: 0, kind: 'window', u: mid, w: 0.95, y0: 1.0, h: 1.4 });
+    for (const u of [gu, du, ...(W > 9 ? [mid] : [])]) openings.push({ face: 'front', storey: 1, kind: 'door', u, w: 0.95, y0: 0, h: 2.2 });
+    for (const face of ['right', 'left'] as const) {
+      for (const o of windowRhythm(face, 0, D, { w: 0.9, h: 1.3, sill: 1.0, spacing: 2.6, margin: 1.2 })) openings.push(o);
+      for (const o of windowRhythm(face, 1, D, { w: 0.85, h: 1.15, sill: 0.8, spacing: 2.6, margin: 1.2 })) openings.push(o);
     }
-    faceBox(sink, 'stone', f, gu + (gw / 2 + 1.0) * -gateSide, frame.floors[0] + 0.3, 0.45, 1.5, 0.55, 0.6, { decor: true, shadow: true });
-    wallLantern(sink, f, du + 0.9 * gateSide, 2.6);
-  }
+    for (const o of windowRhythm('back', 1, W, { w: 0.8, h: 1.1, sill: 0.85, spacing: 2.4, margin: 1.2 })) openings.push(o);
+    openings.push({ face: 'back', storey: 0, kind: 'door', u: 0, w: 1.1, y0: 0, h: 2.2 });
+    const span = Math.abs(gu - du) + 1.6, centre = (gu + du) / 2;
+    const lst: AndalusianState = { ...st, longBalcony: { face: 'front', storey: 1, u0: centre - span / 2, u1: centre + span / 2 } };
+    const frame = buildHouse(sink, {
+      w: W, d: D, plinth: { h: 0.3, out: 0.04, bucket: 'stone' }, storeys: [{ h: 3.5, wall: 'plaster' }, { h: 2.9, wall: 'plaster' }],
+      roof: canal(21 + rng() * 3, 0.32, 0.32, 'hip'), openings,
+      chimneys: [{ x: W * 0.22, z: -D * 0.25, sx: 0.7, sz: 0.7, above: 0.8, bucket: 'plaster', cap: 'tile' },
+        { x: -W * 0.2, z: D * 0.15, sx: 0.55, sz: 0.55, above: 0.7, bucket: 'plaster', cap: 'tile' }],
+      gutters: null, verge: null, reveal: 0.28,
+    }, dialect(lst, look));
+    alero(sink, frame);
+    zocalo(sink, frame, st.band ?? 'plaster3', 0.85);
+    // the gateway's voussoirs round its arch and the keystone
+    const f = frame.faces.front;
+    for (let k = 0; k <= 8; k++) {
+      const a = Math.PI * k / 8;
+      faceBox(sink, 'stone', f, gu + Math.cos(a) * (gw / 2 + 0.16), frame.floors[0] + 3.1 + Math.sin(a) * 0.62, 0.05, 0.36, 0.32, 0.1, { decor: true });
+    }
+    // a long balcony across the main floor
+    balcony(sink, f, centre, frame.floors[1], span, 0.6, look, st.mobile);
+    // the board over the tavern door
+    faceBox(sink, 'structureWood', f, du, frame.floors[0] + 2.95, 0.04, 1.3, 0.42, 0.05, { colour: rgb(0x3a2a1e), decor: true });
+    faceBox(sink, 'structureWood', f, du, frame.floors[0] + 2.95, 0.07, 1.1, 0.26, 0.01, { colour: rgb(0xc8a050), decor: true });
+    if (!st.mobile) {
+      // the vine over the tavern door: a trellis of poles on two posts and the leaves in loose clumps
+      const timber = rgb(0x6a5440), leaf = rgb(0x4f6a34);
+      for (const s of [-1, 1]) faceBox(sink, 'structureWood', f, du + s * 1.1, frame.floors[0] + 1.25, 1.55, 0.1, 2.5, 0.1, { colour: timber, decor: true });
+      for (const s of [-1, 1]) faceBox(sink, 'structureWood', f, du + s * 1.1, frame.floors[0] + 2.55, 0.8, 0.08, 0.08, 1.6, { colour: timber, decor: true });
+      for (let k = 0; k < 14; k++) {
+        faceBox(sink, 'structureWood', f, du + (look() - 0.5) * 2.4, frame.floors[0] + 2.6 + look() * 0.25, 0.2 + look() * 1.3,
+          0.4 + look() * 0.4, 0.22 + look() * 0.2, 0.35 + look() * 0.3, { colour: shade(leaf, 0.75 + look() * 0.45), decor: true, shadow: true });
+      }
+      faceBox(sink, 'stone', f, gu + (gw / 2 + 1.0) * -gateSide, frame.floors[0] + 0.3, 0.45, 1.5, 0.55, 0.6, { decor: true, shadow: true });
+      wallLantern(sink, f, du + 0.9 * gateSide, 2.6);
+    }
+  });
   return sink.finish();
 };
 
@@ -549,9 +562,12 @@ const ayuntamiento: RegionalBuilder = (ctx) => {
   const st = stateFor(ctx);
   const look = ctx.variant;
   // the plot's long side is the square: the grammar's ridge along it (streetwise), the arcade on the street front
-  const L = clamp(ctx.info.w - 2.6, 18, 31), body = clamp(ctx.info.d - 8.0, 10, 15.5), arcade = 4.4;
-  const back = -ctx.info.d / 2 + 0.6;
-  const bays = Math.max(5, Math.round(L / 3.4) | 1);
+  // the building fills the base hall's measured box: its back wall at the box's back, the arcade's piers a metre inside
+  // its front (the old colonnade's line), its ends at the box's ends
+  const bb = ctx.bounds, arcade = 4.6;
+  const L = clamp(bb.maxX - bb.minX - 0.4, 18, 33), back = bb.minZ + 0.35, body = clamp(bb.maxZ - 1.0 - back - arcade, 10, 18);
+  const xc = (bb.minX + bb.maxX) / 2;
+  const bays = Math.max(5, Math.round(L / 3.8) | 1);
   const bay = L / bays;
   const g0 = 4.4, g1 = 4.0, plinth = 0.45;
   const openings: Opening[] = [];
@@ -563,11 +579,11 @@ const ayuntamiento: RegionalBuilder = (ctx) => {
     openings.push({ face: 'right', storey: 1, kind: 'door', u, w: centre ? 1.4 : 1.05, y0: 0, h: centre ? 2.7 : 2.45 });
   }
   for (const face of ['front', 'back'] as const) for (const i of [0, 1]) {
-    for (const o of windowRhythm(face, i, body + (i ? arcade : 0), { w: 1.0, h: i ? 1.6 : 1.4, sill: i ? 0.7 : 1.0, spacing: 4.0, margin: 1.6, max: 3 })) openings.push(o);
+    for (const o of windowRhythm(face, i, body + (i ? arcade : 0), { w: 1.0, h: i ? 1.6 : 1.4, sill: i ? 0.7 : 1.0, spacing: 4.2, margin: 1.8, max: 2 })) openings.push(o);
   }
-  for (const i of [0, 1]) for (const o of windowRhythm('left', i, L, { w: 1.0, h: i ? 1.6 : 1.35, sill: i ? 0.7 : 1.1, spacing: 4.4, margin: 2.0 })) openings.push(o);
+  for (const i of [0, 1]) for (const o of windowRhythm('left', i, L, { w: 1.0, h: i ? 1.6 : 1.35, sill: i ? 0.7 : 1.1, spacing: 5.0, margin: 2.2 })) openings.push(o);
   const cx = back + body / 2;
-  streetwise(sink, () => sink.placed(0, cx, 0, 0, () => {
+  sink.placed(0, xc, 0, 0, () => streetwise(sink, () => sink.placed(0, cx, 0, 0, () => {
     const frame = buildHouse(sink, {
       w: body, d: L, plinth: { h: plinth, out: 0.06, bucket: 'stone' },
       storeys: [{ h: g0, wall: 'plaster' }, { h: g1, wall: 'plaster', jetty: [0, arcade, 0, 0] }],
@@ -587,15 +603,15 @@ const ayuntamiento: RegionalBuilder = (ctx) => {
     }
     for (let k = 0; k < bays; k++) {
       const u0 = -L / 2 + k * bay + 0.3, u1 = -L / 2 + (k + 1) * bay - 0.3, r = (u1 - u0) / 2;
-      archFill(sink, front, (u0 + u1) / 2, r, floorY - 1.0 - r * 0.92, r * 0.92, floorY, 0.5, 'plaster', 'stone', true, 7);
+      archFill(sink, front, (u0 + u1) / 2, r, floorY - 1.0 - r * 0.92, r * 0.92, floorY, 0.5, 'plaster', 'stone', true, 6);
     }
     sink.span('stone', top.x1 - 0.55, floorY - 0.22, -L / 2, top.x1 + 0.06, floorY + 0.05, L / 2, { decor: true });
     // quoins and the cornice
     for (const [qx, qz] of [[top.x0, top.z0], [top.x1, top.z0], [top.x0, top.z1], [top.x1, top.z1]] as const) {
       const sx = qx > 0 ? 1 : -1, sz = qz > 0 ? 1 : -1;
-      for (let y = floorY + 0.2, k = 0; y < eaveY - 0.5; y += 0.62, k++) {
-        const lx = k % 2 ? 0.66 : 0.38, lz = k % 2 ? 0.38 : 0.66;
-        sink.quoin('stone', qx - sx * lx, y, qz - sz * lz, qx + sx * 0.03, y + 0.55, qz + sz * 0.03, sx, sz, { decor: true });
+      for (let y = floorY + 0.2, k = 0; y < eaveY - 0.5; y += 0.75, k++) {
+        const lx = k % 2 ? 0.7 : 0.4, lz = k % 2 ? 0.4 : 0.7;
+        sink.quoin('stone', qx - sx * lx, y, qz - sz * lz, qx + sx * 0.03, y + 0.68, qz + sz * 0.03, sx, sz, { decor: true });
       }
     }
     sink.band('stone', top.x0 - 0.12, eaveY - 0.3, top.z0 - 0.12, top.x1 + 0.12, eaveY, top.z1 + 0.12, { decor: true, shadow: true });
@@ -613,7 +629,7 @@ const ayuntamiento: RegionalBuilder = (ctx) => {
     sink.cylinder('structureMetal', [clockC[0] + 0.08, clockC[1], clockC[2]], 'x', 0.02, 0.56, 16, { colour: rgb(0xe8e2d2), decor: true });
     sink.span('structureMetal', clockC[0] + 0.1, clockC[1] - 0.02, clockC[2] - 0.02, clockC[0] + 0.12, clockC[1] + 0.4, clockC[2] + 0.02, { colour: IRON, decor: true });
     sink.span('structureMetal', clockC[0] + 0.1, clockC[1] - 0.02, clockC[2] - 0.02, clockC[0] + 0.12, clockC[1] + 0.02, clockC[2] + 0.28, { colour: IRON, decor: true });
-  }));
+  })));
   return sink.finish();
 };
 
@@ -785,37 +801,40 @@ const ermita: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
   const look = ctx.variant;
-  const W = clamp(ctx.info.w - 0.6, 4.4, 6.2), porch = 1.4;
-  const D = clamp(ctx.info.d - 0.5 - porch, 5.6, 9.0);
-  const H = 4.4;
-  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.3, y0: 0, h: 2.5 },
-    { face: 'right', storey: 0, kind: 'window', u: D * 0.12, w: 0.55, h: 0.9, y0: 2.2 },
-    { face: 'left', storey: 0, kind: 'window', u: -D * 0.12, w: 0.55, h: 0.9, y0: 2.2 }];
-  const zc = -porch / 2;
-  sink.placed(0, 0, 0, zc, () => {
-    const frame = buildHouse(sink, {
-      w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: H, wall: 'plaster' }],
-      roof: canal(24, 0.25, 0.08), gableBucket: 'plaster', openings, chimneys: [], gutters: null, verge: null, reveal: 0.35,
-    }, { ...dialect({ ...st, band: 'plaster2', reja: 'flat' }, look),
-      door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
-        leaf: rgb(0x4a3322), frame: { bucket: 'plaster2', width: 0.26, out: 0.02, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank',
-      }, y0 + o.y0) });
-    alero(sink, frame);
-    zocalo(sink, frame, 'plaster2', 0.7);
-    const f = frame.faces.front;
-    // the round window over the door
-    sink.cylinder('plaster2', facePoint(f, 0, H + 0.75, 0.0), 'z', 0.012, 0.45, 12, { decor: true });
-    sink.cylinder('dark', facePoint(f, 0, H + 0.75, 0.0), 'z', 0.022, 0.31, 12, { decor: true });
-    // the bell gable on the front gable's apex
-    const ridge = frame.roof.ridgeTopY;
-    espadana(sink, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: 1.9 }, ridge - 0.9, 1.9, 0.3, 0.21, st.mobile);
+  const fit = wallsIn(ctx, 0.3, 0.08);
+  const W = clamp(fit.w, 4.4, 6.6), porch = 1.4;
+  const D = clamp(fit.d - porch, 5.6, 9.5);
+  sink.placed(0, fit.cx, 0, fit.cz, () => {
+    const H = 4.4;
+    const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.3, y0: 0, h: 2.5 },
+      { face: 'right', storey: 0, kind: 'window', u: D * 0.12, w: 0.55, h: 0.9, y0: 2.2 },
+      { face: 'left', storey: 0, kind: 'window', u: -D * 0.12, w: 0.55, h: 0.9, y0: 2.2 }];
+    const zc = -porch / 2;
+    sink.placed(0, 0, 0, zc, () => {
+      const frame = buildHouse(sink, {
+        w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: H, wall: 'plaster' }],
+        roof: canal(24, 0.25, 0.08), gableBucket: 'plaster', openings, chimneys: [], gutters: null, verge: null, reveal: 0.35,
+      }, { ...dialect({ ...st, band: 'plaster2', reja: 'flat' }, look),
+        door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+          leaf: rgb(0x4a3322), frame: { bucket: 'plaster2', width: 0.26, out: 0.02, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank',
+        }, y0 + o.y0) });
+      alero(sink, frame);
+      zocalo(sink, frame, 'plaster2', 0.7);
+      const f = frame.faces.front;
+      // the round window over the door
+      sink.cylinder('plaster2', facePoint(f, 0, H + 0.75, 0.0), 'z', 0.012, 0.45, 12, { decor: true });
+      sink.cylinder('dark', facePoint(f, 0, H + 0.75, 0.0), 'z', 0.022, 0.31, 12, { decor: true });
+      // the bell gable on the front gable's apex
+      const ridge = frame.roof.ridgeTopY;
+      espadana(sink, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: 1.9 }, ridge - 0.9, 1.9, 0.3, 0.21, st.mobile);
+    });
+    // the porch: two white pillars and a lean-to of tiles from the front wall
+    const fz = zc + D / 2, pz = fz + porch;
+    for (const s of [-1, 1]) sink.span('plaster', s * 1.15 - 0.2, -0.3, pz - 0.4, s * 1.15 + 0.2, 2.9, pz);
+    const lean: RoofSpec = { kind: 'shed', pitchDeg: 16, eave: 0.12, verge: 0.18, thickness: 0.1, bucket: 'roof' };
+    sink.placed(-Math.PI / 2, 0, 0, fz + porch / 2, () => emitRoof(sink, roofGeometry(porch + 0.05, 2.9, 2.9, lean), lean));
+    sink.span('stone', -1.5, -0.3, fz, 1.5, 0.12, pz + 0.1, { decor: true });
   });
-  // the porch: two white pillars and a lean-to of tiles from the front wall
-  const fz = zc + D / 2, pz = fz + porch;
-  for (const s of [-1, 1]) sink.span('plaster', s * 1.15 - 0.2, -0.3, pz - 0.4, s * 1.15 + 0.2, 2.9, pz);
-  const lean: RoofSpec = { kind: 'shed', pitchDeg: 16, eave: 0.12, verge: 0.18, thickness: 0.1, bucket: 'roof' };
-  sink.placed(-Math.PI / 2, 0, 0, fz + porch / 2, () => emitRoof(sink, roofGeometry(porch + 0.05, 2.9, 2.9, lean), lean));
-  sink.span('stone', -1.5, -0.3, fz, 1.5, 0.12, pz + 0.1, { decor: true });
   return sink.finish();
 };
 
@@ -827,9 +846,12 @@ const ermita: RegionalBuilder = (ctx) => {
 const molino: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
-  const W = clamp(ctx.info.w - 0.6, 5.0, 7.0), D = clamp(ctx.info.d - 1.8, 6.0, 8.5);
+  // the shell fills the base ruin's measured box, the race channel running out of its front
+  const bb = ctx.bounds;
+  const W = clamp(bb.maxX - bb.minX - 0.1, 5.0, 7.4), D = clamp(bb.maxZ - bb.minZ - 1.7, 6.0, 9.0);
   const t = 0.6, H1 = 4.2;
-  const zc = -0.6;
+  const zc = bb.minZ + 0.05 + D / 2, xc = (bb.minX + bb.maxX) / 2;
+  sink.placed(0, xc, 0, 0, () => {
   const faces: Array<{ face: Face; gable: boolean; race: boolean }> = [
     { face: { origin: [0, 0, zc + D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, gable: true, race: true },
     { face: { origin: [0, 0, zc - D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W }, gable: true, race: false },
@@ -876,11 +898,12 @@ const molino: RegionalBuilder = (ctx) => {
     }
   }
   // the race's channel out of the arch, its stone sides
-  const rz0 = zc + D / 2, rz1 = Math.min(ctx.info.d / 2 + 0.6, rz0 + 2.0);
+  const rz0 = zc + D / 2, rz1 = Math.min(bb.maxZ + 0.1, rz0 + 2.0);
   for (const s of [-1, 1]) sink.span('stone', s * 0.95 - 0.25, -0.3, rz0, s * 0.95 + 0.25, 0.35, rz1);
   // the rubble heap and a millstone in it
   sink.span('stone', -W * 0.28, -0.2, zc - D * 0.22, W * 0.26, 0.85, zc + D * 0.12, { decor: true });
   sink.cylinder('stone', [W * 0.08, 0.6, zc - D * 0.06], 'y', 0.32, 0.72, 14, { decor: true, shadow: true });
+  });
   return sink.finish();
 };
 
@@ -893,32 +916,35 @@ const escuela: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
   const look = ctx.variant;
-  const W = clamp(ctx.info.w - 0.5, 7.5, 10), D = clamp(ctx.info.d - 0.8, 11, 16);
-  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.6, y0: 0, h: 2.8 }];
-  for (const o of windowRhythm('front', 0, W, { w: 1.1, h: 1.8, sill: 0.9, spacing: 2.6, margin: 1.1, avoid: [[-1.1, 1.1]] })) openings.push(o);
-  for (const o of windowRhythm('front', 1, W, { w: 1.1, h: 1.7, sill: 0.8, spacing: 2.4, margin: 1.1, avoid: [[-1.3, 1.3]] })) openings.push(o);
-  for (const face of ['right', 'left'] as const) for (const i of [0, 1]) {
-    for (const o of windowRhythm(face, i, D, { w: 1.15, h: i ? 1.8 : 1.9, sill: i ? 0.8 : 0.9, spacing: 2.5, margin: 1.2 })) openings.push(o);
-  }
-  for (const o of windowRhythm('back', 0, W, { w: 1.0, h: 1.4, sill: 1.1, spacing: 2.6, margin: 1.2 })) openings.push(o);
-  const frame = buildHouse(sink, {
-    w: W, d: D, plinth: { h: 0.55, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.9, wall: 'plaster' }, { h: 3.6, wall: 'plaster' }],
-    roof: canal(22, 0.38, 0.38, 'hip'), openings, gutters: null, verge: null, reveal: 0.3,
-    chimneys: [{ x: W * 0.2, z: -D * 0.28, sx: 0.6, sz: 0.6, above: 0.8, bucket: 'plaster', cap: 'tile' }],
-  }, dialect({ ...st, band: 'plaster2', reja: 'flat', window: { ...st.window, surround: { bucket: 'plaster2', width: 0.18, out: 0.02, lintel: 0.24 } } }, look));
-  alero(sink, frame);
-  band(sink, frame, 1, frame.floors[1] - 0.05, 0.24, 0.05, 'plaster2');
-  const b0 = frame.bodies[0];
-  for (const [cx, cz] of [[b0.x0, b0.z0], [b0.x1, b0.z0], [b0.x0, b0.z1], [b0.x1, b0.z1]] as const) {
-    const sx = cx > 0 ? 1 : -1, sz = cz > 0 ? 1 : -1;
-    sink.quoin('plaster2', cx - sx * 0.45, 0.55, cz - sz * 0.45, cx + sx * 0.02, frame.eaveY - 0.05, cz + sz * 0.02, sx, sz, { decor: true });
-  }
-  const f = frame.faces.front;
-  // the stone pediment over the door, the plaque under it
-  faceBox(sink, 'stone', f, 0, 3.75, 0.1, 2.5, 0.26, 0.2, { decor: true, shadow: true });
-  for (const s of [-1, 1]) sink.member('stone', facePoint(f, s * 1.25, 3.88, 0.1), facePoint(f, 0, 4.45, 0.1), 0.2, 0.2, f.out, { decor: true, exposed: true }, 0);
-  faceBox(sink, 'stone', f, 0, frame.floors[1] + 1.7, 0.03, 2.3, 0.62, 0.06, { decor: true, shadow: true });
-  faceBox(sink, 'dark', f, 0, frame.floors[1] + 1.7, 0.065, 1.95, 0.22, 0.01, { decor: true });
+  const fit = wallsIn(ctx, 0.44, 0.44);
+  const W = clamp(fit.w, 7.5, 10.5), D = clamp(fit.d, 11, 17);
+  sink.placed(0, fit.cx, 0, fit.cz, () => {
+    const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.6, y0: 0, h: 2.8 }];
+    for (const o of windowRhythm('front', 0, W, { w: 1.1, h: 1.8, sill: 0.9, spacing: 2.6, margin: 1.1, avoid: [[-1.1, 1.1]] })) openings.push(o);
+    for (const o of windowRhythm('front', 1, W, { w: 1.1, h: 1.7, sill: 0.8, spacing: 2.4, margin: 1.1, avoid: [[-1.3, 1.3]] })) openings.push(o);
+    for (const face of ['right', 'left'] as const) for (const i of [0, 1]) {
+      for (const o of windowRhythm(face, i, D, { w: 1.15, h: i ? 1.8 : 1.9, sill: i ? 0.8 : 0.9, spacing: 2.5, margin: 1.2 })) openings.push(o);
+    }
+    for (const o of windowRhythm('back', 0, W, { w: 1.0, h: 1.4, sill: 1.1, spacing: 2.6, margin: 1.2 })) openings.push(o);
+    const frame = buildHouse(sink, {
+      w: W, d: D, plinth: { h: 0.55, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.9, wall: 'plaster' }, { h: 3.6, wall: 'plaster' }],
+      roof: canal(22, 0.38, 0.38, 'hip'), openings, gutters: null, verge: null, reveal: 0.3,
+      chimneys: [{ x: W * 0.2, z: -D * 0.28, sx: 0.6, sz: 0.6, above: 0.8, bucket: 'plaster', cap: 'tile' }],
+    }, dialect({ ...st, band: 'plaster2', reja: 'flat', window: { ...st.window, surround: { bucket: 'plaster2', width: 0.18, out: 0.02, lintel: 0.24 } } }, look));
+    alero(sink, frame);
+    band(sink, frame, 1, frame.floors[1] - 0.05, 0.24, 0.05, 'plaster2');
+    const b0 = frame.bodies[0];
+    for (const [cx, cz] of [[b0.x0, b0.z0], [b0.x1, b0.z0], [b0.x0, b0.z1], [b0.x1, b0.z1]] as const) {
+      const sx = cx > 0 ? 1 : -1, sz = cz > 0 ? 1 : -1;
+      sink.quoin('plaster2', cx - sx * 0.45, 0.55, cz - sz * 0.45, cx + sx * 0.02, frame.eaveY - 0.05, cz + sz * 0.02, sx, sz, { decor: true });
+    }
+    const f = frame.faces.front;
+    // the stone pediment over the door, the plaque under it
+    faceBox(sink, 'stone', f, 0, 3.75, 0.1, 2.5, 0.26, 0.2, { decor: true, shadow: true });
+    for (const s of [-1, 1]) sink.member('stone', facePoint(f, s * 1.25, 3.88, 0.1), facePoint(f, 0, 4.45, 0.1), 0.2, 0.2, f.out, { decor: true, exposed: true }, 0);
+    faceBox(sink, 'stone', f, 0, frame.floors[1] + 1.7, 0.03, 2.3, 0.62, 0.06, { decor: true, shadow: true });
+    faceBox(sink, 'dark', f, 0, frame.floors[1] + 1.7, 0.065, 1.95, 0.22, 0.01, { decor: true });
+  });
   return sink.finish();
 };
 
@@ -933,9 +959,11 @@ const cortijo: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
   const rng = st.rng, look = ctx.variant;
-  const hw = ctx.info.w / 2, hd = ctx.info.d / 2;
-  const x0 = -Math.min(hw - 0.2, 7.6), x1 = Math.min(Math.max(hw - 0.2, ctx.bounds.maxX - 0.4), 8.6);
-  const D = clamp(ctx.info.d - 0.6, 7.5, 11);
+  // the farmstead fills the base farmhouse's measured box: the house's eave at its -x side, the stable wing's at its +x
+  const bb = ctx.bounds, hd = (bb.maxZ - bb.minZ) / 2, zc = (bb.minZ + bb.maxZ) / 2;
+  const x0 = bb.minX + 0.36, x1 = bb.maxX - 0.27;
+  const D = clamp(bb.maxZ - bb.minZ - 0.24, 7.5, 11.5);
+  sink.placed(0, 0, 0, zc, () => {
   const hwide = clamp((x1 - x0) * 0.4, 5.6, 6.8);
   const hx = x0 + hwide / 2;
   // the house
@@ -996,6 +1024,7 @@ const cortijo: RegionalBuilder = (ctx) => {
     if (look() < 0.8) chumbera(sink, x0 + 1.2, -hd - 0.4, 1.05 + look() * 0.3, look);
     if (look() < 0.6) chumbera(sink, x1 - 0.8, -hd - 0.3, 0.9 + look() * 0.3, look);
   }
+  });
   return sink.finish();
 };
 
@@ -1008,32 +1037,35 @@ const pajar: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
   const look = ctx.variant;
-  const W = clamp(ctx.info.w - 0.6, 6.0, 9.0), D = clamp(ctx.info.d - 0.8, 9, 14);
-  const openings: Opening[] = [
-    { face: 'front', storey: 0, kind: 'gate', u: 0, w: 2.8, y0: 0, h: 2.9 },
-    { face: 'front', storey: 0, kind: 'loft', u: 0, w: 0.9, y0: 3.4, h: 0.75 },
-    { face: 'back', storey: 0, kind: 'door', u: W * 0.2, w: 1.1, y0: 0, h: 2.1 },
-  ];
-  for (const face of ['right', 'left'] as const) {
-    for (const o of windowRhythm(face, 0, D, { w: 0.3, h: 0.55, sill: 3.0, spacing: 2.2, margin: 1.4, kind: 'loft' })) openings.push(o);
-  }
-  const frame = buildHouse(sink, {
-    w: W, d: D, plinth: { h: 0.4, out: 0.05, bucket: 'stone' }, storeys: [{ h: 4.3, wall: 'plaster' }],
-    roof: canal(20, 0.3), gableBucket: 'plaster', openings, chimneys: [], gutters: null, verge: null, reveal: 0.35,
-  }, dialect({ ...st, litShare: 0, reja: null }, look));
-  alero(sink, frame);
-  const f = frame.faces.front;
-  for (let k = 0; k <= 8; k++) {
-    const a = Math.PI * k / 8;
-    faceBox(sink, 'stone', f, Math.cos(a) * 1.58, frame.floors[0] + 2.9 + Math.sin(a) * 0.5, 0.05, 0.36, 0.32, 0.1, { decor: true });
-  }
-  faceBox(sink, 'structureWood', f, 0, frame.floors[0] + 4.55, 0.55, 0.16, 0.18, 1.1, { colour: rgb(0x5a4632), decor: true, uv: UV_MEMBER });
-  // corner buttresses
-  for (const [cx, cz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-    const x = cx * W / 2, z = cz * D / 2;
-    sink.span('plaster', x - (cx > 0 ? 0.02 : 0.7), -0.3, z - (cz > 0 ? 0.02 : 0.55), x + (cx > 0 ? 0.7 : 0.02), 2.4, z + (cz > 0 ? 0.55 : 0.02));
-  }
-  if (!st.mobile && look() < 0.55) chumbera(sink, -W / 2 - 0.2, -D / 2 - 0.9, 1.0 + look() * 0.3, look);
+  const fit = wallsIn(ctx, 0.3, 0.1);
+  const W = clamp(fit.w, 6.0, 9.5), D = clamp(fit.d, 9, 14.5);
+  sink.placed(0, fit.cx, 0, fit.cz, () => {
+    const openings: Opening[] = [
+      { face: 'front', storey: 0, kind: 'gate', u: 0, w: 2.8, y0: 0, h: 2.9 },
+      { face: 'front', storey: 0, kind: 'loft', u: 0, w: 0.9, y0: 3.4, h: 0.75 },
+      { face: 'back', storey: 0, kind: 'door', u: W * 0.2, w: 1.1, y0: 0, h: 2.1 },
+    ];
+    for (const face of ['right', 'left'] as const) {
+      for (const o of windowRhythm(face, 0, D, { w: 0.3, h: 0.55, sill: 3.0, spacing: 2.2, margin: 1.4, kind: 'loft' })) openings.push(o);
+    }
+    const frame = buildHouse(sink, {
+      w: W, d: D, plinth: { h: 0.4, out: 0.05, bucket: 'stone' }, storeys: [{ h: 4.3, wall: 'plaster' }],
+      roof: canal(20, 0.3), gableBucket: 'plaster', openings, chimneys: [], gutters: null, verge: null, reveal: 0.35,
+    }, dialect({ ...st, litShare: 0, reja: null }, look));
+    alero(sink, frame);
+    const f = frame.faces.front;
+    for (let k = 0; k <= 8; k++) {
+      const a = Math.PI * k / 8;
+      faceBox(sink, 'stone', f, Math.cos(a) * 1.58, frame.floors[0] + 2.9 + Math.sin(a) * 0.5, 0.05, 0.36, 0.32, 0.1, { decor: true });
+    }
+    faceBox(sink, 'structureWood', f, 0, frame.floors[0] + 4.55, 0.55, 0.16, 0.18, 1.1, { colour: rgb(0x5a4632), decor: true, uv: UV_MEMBER });
+    // corner buttresses
+    for (const [cx, cz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+      const x = cx * W / 2, z = cz * D / 2;
+      sink.span('plaster', x - (cx > 0 ? 0.02 : 0.3), -0.3, z - (cz > 0 ? 0.02 : 0.45), x + (cx > 0 ? 0.3 : 0.02), 2.4, z + (cz > 0 ? 0.45 : 0.02));
+    }
+    if (!st.mobile && look() < 0.55) chumbera(sink, -W / 2 - 0.2, -D / 2 - 0.9, 1.0 + look() * 0.3, look);
+  });
   return sink.finish();
 };
 
@@ -1045,8 +1077,11 @@ const palomar: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
   const look = ctx.variant;
-  const S = clamp(Math.min(ctx.info.w - 0.6, 3.6), 3.0, 3.6), half = S / 2;
-  const tz = -ctx.info.d / 2 + 0.3 + half, H = 5.8;
+  // the dovecote at the back of the base granary's measured box, its store reaching the box's front
+  const bb = ctx.bounds;
+  const S = clamp(Math.min(bb.maxX - bb.minX - 0.5, 3.8), 3.0, 3.8), half = S / 2;
+  const tz = bb.minZ + 0.25 + half, H = 5.8, xc = (bb.minX + bb.maxX) / 2;
+  sink.placed(0, xc, 0, 0, () => {
   sink.span('stone', -half - 0.05, -0.4, tz - half - 0.05, half + 0.05, 0.4, tz + half + 0.05);
   sink.span('plaster', -half, 0.4, tz - half, half, H, tz + half);
   // the tower's low pyramid of tiles
@@ -1065,7 +1100,7 @@ const palomar: RegionalBuilder = (ctx) => {
     }
   }
   // the store in front, its own lean-to falling toward the plot's front
-  const s0 = tz + half, s1 = ctx.info.d / 2 - 0.25;
+  const s0 = tz + half, s1 = bb.maxZ - 0.22;
   if (s1 - s0 > 1.2) {
     // its walls a prism under the lean-to's slope, high against the tower
     const L = s1 - s0 + 0.02, rise = (s1 - s0) * Math.tan(14 * Math.PI / 180);
@@ -1077,6 +1112,7 @@ const palomar: RegionalBuilder = (ctx) => {
     doorUnit(sink, sf, 0, 0, 0.95, 1.85, { leaf: st.door, frame: { bucket: 'plaster2', width: 0.12, out: 0.015 }, steps: null, leafKind: 'plank' });
   }
   if (!st.mobile && look() < 0.5) chumbera(sink, half + 0.6, tz, 0.9, look);
+  });
   return sink.finish();
 };
 
