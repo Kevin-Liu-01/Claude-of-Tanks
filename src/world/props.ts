@@ -379,7 +379,7 @@ interface PropsSettings {
   rubblePiles: number;
   wrecks: number;
   cropFields: number;
-  cropForm?: 'harvest' | 'wet-upright';
+  cropForm?: 'harvest' | 'wet-upright' | 'grain';
   lampposts: boolean;
   hedgehogs: number;
   destructibleBuildings: string[];
@@ -6118,6 +6118,7 @@ ${snowCap ? `
   // a fan of parallel crop-card rows (terrain-conformed vertical strips, one
   // merged alpha-tested mesh) plus the field's own haystack-ready clearing.
   // ~350 tris/plot — establishing-shot scale dressing at negligible cost.
+  const cropLandSample = {} as Parameters<NonNullable<HeightField['_landUseAt']>>[2];
   function placeCropFields(): void {
     if ((P.cropFields ?? 0) <= 0) return;
     const crng = mulberry32(seed + 515);
@@ -6202,6 +6203,7 @@ ${snowCap ? `
       // Admit wet stems after all draws: open gaps between whole attached
       // plants without changing the following plot/row placement stream.
       if (wet && growth < .60) continue;
+      if (form === 'grain') { paintGrainStalk(cctx, x, growth, bend, lum, hue, girth, headHue, headWidth, headLength); continue; }
       const standing = wet || growth > .88;
       const hgt = biomeCropHeight(wet, standing, growth, headLength);
       const lean = biomeCropLean(wet, standing, bend);
@@ -6214,6 +6216,56 @@ ${snowCap ? `
       cctx.strokeStyle = _col.getStyle();
       if (standing) finishStandingCrop(cctx, x + lean, 256 - hgt, wet, headLength, headWidth);
       else finishBrokenCrop(cctx, x + lean, 256 - hgt, width);
+    }
+  }
+
+  // Ground lane (2026-10-04, wave 71 on Verdant's close-up: the crop "a picket fence of chopsticks — evenly spaced beige
+  // dowels with flat cut tops and no ears, awns or leaves"; the coordinator: "irregular spacing and ears would fix most
+  // of it"): a field of ripe grain. The stalks stand in uneven clumps along the row (three incommensurate waves over
+  // the card's width admit them — the drill's row thinned and lodged in places, never the legacy card's four punched
+  // windows), every stalk its own height and lean, a leaf down the stem on the stouter ones, an ear on every one a
+  // shade deeper than its straw and a beard of awns on most. The nine draws a stalk stay as they were (the plot stream
+  // after the atlas is exact), and the card covers less than the legacy one at every mip (cropBiomeIdentity).
+  function paintGrainStalk(cctx: CanvasRenderingContext2D, x: number, growth: number, bend: number, lum: number,
+    hue: number, girth: number, headHue: number, headWidth: number, headLength: number): void {
+    const clump = .5 + .5 * Math.sin(x * .071 + 1.3) * Math.sin(x * .187 + .4) + .22 * Math.sin(x * .43 + 2.1);
+    if (growth > .18 + .42 * clump) return;
+    const hgt = 256 * (.50 + headLength * .30 + (growth - .3) * .14);
+    const lean = (bend - .5) * 22;
+    // (stems thick enough to hold through the card's 64 px mip: fewer and stouter, the coverage at the legacy's)
+    const width = 1.05 + girth * .55;
+    _col.setHSL(.110 + hue * .022, .32, lum);
+    cctx.strokeStyle = cctx.fillStyle = _col.getStyle();
+    paintCropStalk(cctx, x, hgt, lean, width);
+    if (girth > .55) {
+      // a leaf off the stem's lower half, arching out and drooping
+      const t = .34 + girth * .16, lx = x + lean * (.8 * t + .2 * t * t), ly = 258 - (1.2 * hgt + 4) * t + (.2 * hgt + 2) * t * t;
+      const reach = (headHue > .5 ? 1 : -1) * (10 + girth * 8);
+      cctx.lineWidth = .9;
+      cctx.beginPath();
+      cctx.moveTo(lx, ly);
+      cctx.quadraticCurveTo(lx + reach * .6, ly - hgt * .10, lx + reach, ly - hgt * .03);
+      cctx.stroke();
+    }
+    // the ear: a slim spike along the stalk's own lean at its tip, a shade deeper and warmer than the straw
+    const ex = x + lean, ey = 256 - hgt, len = 8 + headLength * 7, wid = 1.6 + headWidth * 1.0;
+    const ang = Math.atan2(lean, hgt) * .9;
+    _col.setHSL(.098 + headHue * .02, .40, Math.min(.34, lum + .035));
+    cctx.fillStyle = cctx.strokeStyle = _col.getStyle();
+    cctx.beginPath();
+    cctx.ellipse(ex + Math.sin(ang) * len * .4, ey - Math.cos(ang) * len * .4, wid, len * .55, ang, 0, Math.PI * 2);
+    cctx.fill();
+    if (headWidth > .28) {
+      // its awns: a fan of fine bristles past the ear's tip
+      cctx.lineWidth = .6;
+      cctx.beginPath();
+      const tx = ex + Math.sin(ang) * len * .9, ty = ey - Math.cos(ang) * len * .9;
+      for (let a = -2; a <= 2; a++) {
+        const aa = ang + a * .16, al = 4 + headLength * 5;
+        cctx.moveTo(tx, ty);
+        cctx.lineTo(tx + Math.sin(aa) * al, ty - Math.cos(aa) * al);
+      }
+      cctx.stroke();
     }
   }
 
@@ -6361,7 +6413,16 @@ ${snowCap ? `
     // Keep this seeded draw before the support decision: rejected flatness
     // candidates historically consume their row angle too.
     const dirA = crng() * Math.PI;
-    const dx = Math.cos(dirA), dz = Math.sin(dirA);
+    let dx = Math.cos(dirA), dz = Math.sin(dirA);
+    // ground lane (2026-10-04, wave 71 on Verdant's close-up): on a map with fields (the height field's land-use hook)
+    // a plot of standing grain stands only inside a field of ripe wheat or barley (landUse.ts LAND_CROP 1, 2), well
+    // inside its margin, its rows along the field's own — not at any angle over whatever crop the land use laid there
+    const landAt = heightField._landUseAt;
+    if (landAt) {
+      const f = landAt(cx, cz, cropLandSample);
+      if (!f.active || (f.crop !== 1 && f.crop !== 2) || f.edgeM - f.marginM < Math.max(pw, pd) * 0.5 + 2) supported = false;
+      else { dx = f.rowX; dz = f.rowZ; }
+    }
     const px2 = -dz, pz2 = dx;
     if (supported && !cropPlotCornersAreLevel(cx, cz, pw, pd, dx, dz, px2, pz2)) {
       supported = false;

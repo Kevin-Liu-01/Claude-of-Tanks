@@ -732,6 +732,8 @@ function sampleWheelGroundDeviation(
 
 interface RunningGearUnit {
   __units?: RunningGearUnit[];
+  /** The hull-local id its scene objects carry as userData.runningGearUnitId (one per buildRunningGear call). */
+  unitId?: number;
   continuousShoeFloorYM?: number;
   contactGeom: GearContactGeometry;
   trackHitbox: TrackHitboxReceipt[];
@@ -5242,6 +5244,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     source: !!w.suspensionSource, rec: !!w.rec,
   }));
   const gearUnit: RunningGearUnit = {
+    unitId: runningGearUnitId,
     contactGeom: gearContactGeom,
     ...(cfg.continuousShoeFloorYM !== undefined ? {continuousShoeFloorYM: cfg.continuousShoeFloorYM} : {}),
     trackHitbox: [{
@@ -5534,6 +5537,35 @@ function registerGearUnit(P: RunningGearBuilderPort, unit: RunningGearUnit): voi
       },
     },
   };
+}
+
+/**
+ * Unregister every running-gear unit this hull has built, for a profile that rebuilds its chassis and gear.
+ *
+ * 2026-10-04 (the physics lane, on the T-90M): replaceT90MProryvHull cleared the hull group and built a new course, but
+ * the calibration-era unit stayed registered in P.gear's fan-out — its update and conform ran every frame on meshes no
+ * longer drawn, its track hitbox prisms stayed in the shared armour (shells could strike the old, longer track), and
+ * its span stayed in the contact union the movement solve reads. After this call nothing of the old units remains:
+ * P.gear no longer reaches them, their scene objects leave the hull (a caller that cleared the hull has none left),
+ * and the receipts they wrote leave its userData, so the next buildRunningGear registers alone.
+ */
+function discardRunningGear(builder: object): void {
+  if (!isRunningGearBuilderPort(builder)) throw new TypeError('Invalid procedural running-gear contract');
+  const P = builder;
+  const units = P.gear ? (P.gear.__units || [P.gear]) : [];
+  const ids = new Set(units.map((unit) => unit.unitId).filter((id): id is number => id !== undefined));
+  const owned: THREE.Object3D[] = [];
+  P.hullG.traverse((object) => {
+    if (object !== P.hullG && object.userData?.runningGear === true && ids.has(object.userData.runningGearUnitId)) {
+      owned.push(object);
+    }
+  });
+  for (const object of owned) object.removeFromParent();
+  P.gear = null;
+  for (const key of [
+    'runningGearReceipts', 'wheelPatternReceipts', 'trackPatternReceipts', 'nativeWheelPatterns',
+    'nativeTrackPatterns', 'nativeRoadWheelStations', 'runningGearEndRelays', 'runningGearRoadWheels',
+  ]) delete P.hullG.userData[key];
 }
 
 // ---------------------------------------------------------------------------
@@ -6178,7 +6210,7 @@ export const KIT = {
   boxUV, mergeAll, trackBandGeo, trackLoopPoints, trackShoeGeometry,
   simplifiedTrackShoeGeometry, trackHitboxHull,
   runningGearContactPatch, endRoadWheels, groundSeatBotY, seatedWheelY, trackWrapClearanceM, endpointWrapClearanceM,
-  buildRunningGear: buildRunningGearPublic, buildGun,
+  buildRunningGear: buildRunningGearPublic, discardRunningGear, buildGun,
   cupola, headlight, liftEye, periscope, pintleMG, smokeCluster, towCable,
   fenders, openRackGrid, stowage, jerryCan, tarpRoll, ammoCan, shovelTool, spareTrackStrip,
   grilleIndices,
@@ -8332,6 +8364,9 @@ function* createTankOwnedSteps(
   // includes approach/departure ramps), while the scan owns the bottom (a
   // rebuilt hull keel can undercut the gear floor).
   if (P.gear) P.gear.update(0, 0);
+  // The units P.gear fans update/conform/setBroken out to, and whose track hitboxes and contact spans make the unions
+  // below (fleetPass receipts: they must be exactly the units drawn — runningGearRegistrationAudit.test-support.mjs).
+  root.userData.runningGearUnitIds = P.gear ? (P.gear.__units || [P.gear]).map((unit) => unit.unitId ?? -1) : [];
   // Static showroom previews never enter game state, so their
   // movement contact metadata normally has no consumer. The full-tree vertex
   // scan was measurable cold-switch work, so defer it until a caller elects
