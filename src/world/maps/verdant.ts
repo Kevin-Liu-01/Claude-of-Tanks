@@ -31,6 +31,10 @@ export default {
     // the cross's 32 m nodes; the map-borders lane grades its exits through the rim); the three default marsh dips go
     hillScale: 0.6,   // the plateau's broad roll (the default 1.0 broke every sightline inside 80 m)
     microScale: 0.75, // field-scale folds (default 1.0)
+    // ground lane (wave 69, the establishing view: "near-circular blotches … rather than the rectilinear hedge- and
+    // fence-bounded plots a real farmed valley would show"): the village's ground in its plots — yards, kitchen gardens
+    // and paddocks running back from the two streets — not 22 m wear patches (terrain.ts createVillagePlotWear)
+    villageWear: 'plots',
     // the default rim, stated: the authored border roads' portal shoulders size their support from it
     rimH: 24,
     marshes: [],
@@ -81,6 +85,9 @@ export default {
     tintA: [1.14, 1.05, 0.78],
     tintB: [0.76, 0.80, 0.62],
     tintC: [1.09, 1.03, 0.80],
+    // ground lane (wave 83: "a cold blue-black surface"): the chernozem a very dark warm brown (~0.092 / 0.056 / 0.034,
+    // its plough ~0.055 / 0.031 / 0.018) — never blue under the sky's light
+    soilTint: [1.10, 0.96, 0.80],
   },
 
   vegetation: {
@@ -162,6 +169,9 @@ export default {
     // "summer fields have no crops" was a major dressing gap; pairs with the
     // fieldPatch splat tint so plots sit inside visibly worked fields
     cropFields: 7,
+    // ground lane (wave 71 on the close-up: "a picket fence of chopsticks … no ears, awns or leaves"): ripe grain in
+    // uneven clumps with its ears and awns (props.ts paintGrainStalk), its plots inside the land use's grain fields
+    cropForm: 'grain',
     // world-dressing r1: destructible inhabiting objects — village market by
     // the well, working farm clutter through the yards, round bales + stooks
     // on the open fields; wooden fences are the breakable plank/picket kit

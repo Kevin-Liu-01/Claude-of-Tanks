@@ -139,6 +139,14 @@ export interface GroundBounceUniforms {
    * environment light already leaves it out), so its sky stays whole. 0 = the legacy rig's dim on every shadowed face.
    */
   uCotShadowFacing: THREE.IUniform<number>;
+  /**
+   * 2026-10-04 (the skies lane: the light under a closed deck): the share of the shadow's dims (the ambient's and the
+   * specular's) a cascade's shadow keeps. They stand for the circumsolar sky an occluder hides; a closed deck's light
+   * comes from every direction alike — its forward lobe is broad — so an occluder hides no more of it than its own small
+   * solid angle (the contact shadows' business), and the dims fade with the overcast. 1 = the full dims (the legacy rig,
+   * an open sky).
+   */
+  uCotShadowDepth: THREE.IUniform<number>;
 }
 
 export function createGroundBounceUniforms(): GroundBounceUniforms {
@@ -150,6 +158,7 @@ export function createGroundBounceUniforms(): GroundBounceUniforms {
     uCotSkyChroma: { value: 1 },
     uCotShadowDim: { value: new THREE.Vector3(1, 1, 1) },
     uCotShadowFacing: { value: 0 },
+    uCotShadowDepth: { value: 1 },
   };
 }
 
@@ -164,6 +173,7 @@ export function attachGroundBounceUniforms(
   shader.uniforms.uCotSkyChroma = uniforms.uCotSkyChroma;
   shader.uniforms.uCotShadowDim = uniforms.uCotShadowDim;
   shader.uniforms.uCotShadowFacing = uniforms.uCotShadowFacing;
+  shader.uniforms.uCotShadowDepth = uniforms.uCotShadowDepth;
 }
 
 export interface GroundBounceRigInput {
@@ -203,6 +213,7 @@ uniform float uCotSkyDiffuse;
 uniform float uCotSkyChroma;
 uniform vec3 uCotShadowDim;
 uniform float uCotShadowFacing;
+uniform float uCotShadowDepth;
 `;
 
 /**

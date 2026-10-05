@@ -41,13 +41,18 @@ assert.match(terrainSource,
   /float roadCore = 1\.0 - smoothstep\(roadHalf - 0\.55, roadHalf \+ 0\.55, dRoad\);/,
   'the compacted core ends on an analytic gauge, not on a filtered byte threshold');
 assert.match(terrainSource,
-  /float laneD = \(dRoad - 1\.55\) \* uLaneK;[\s\S]{0,120}float lane = uLaneK > 0\.0 \? exp\(-laneD \* laneD\) : 1\.0 - smoothstep\(2\.6, 3\.6, dRoad\);/,
-  'twin wheel lanes sit 1.55 m either side of the centreline on the 2 m mask; a coarse mask gets one bead-free plateau');
+  /float laneD = \(dRoad - 1\.55 - \(n1 - 0\.5\) \* 0\.55\) \* uLaneK;[\s\S]{0,120}float lane = uLaneK > 0\.0 \? exp\(-laneD \* laneD\) : 1\.0 - smoothstep\(2\.6, 3\.6, dRoad\);/,
+  'twin wheel lanes sit 1.55 m either side of the centreline on the 2 m mask, swinging a quarter metre along the road (wave 69); a coarse mask gets one bead-free plateau');
+assert.match(terrainSource,
+  /float rutAmp = \(0\.22 \+ 0\.78 \* smoothstep\(0\.28, 0\.70, n2 \* 0\.55 \+ n1 \* 0\.45\)\) \* \(0\.72 \+ 0\.28 \* n1hs\);/,
+  'the wheel tracks come and go along the road: deep down one stretch, nearly gone on a hard dry one (wave 69)');
 assert.match(terrainSource, /shader\.uniforms\.uLaneK = \{ value: roadLaneSharpness\(mask\.image\.width\) \};/,
   'lane sharpness follows the actual mask texel size');
 assert.match(terrainSource,
-  /min\(rut \* \(1\.0 \+ farM \* 0\.9\), 1\.0\) \* mix\(0\.34, 0\.26, uRoadTex\)/,
-  'the two-track wear is back near the 1049e4e strength with its far boost');
+  /min\(mix\(rut, trodMid \* 0\.55, laneFar\), 1\.0\) \* mix\(0\.34, 0\.26, uRoadTex\)/,
+  'the two-track wear near the 1049e4e strength by the camera; past a 0.15 m footprint one trodden middle, no ruled lanes (waves 69, hold 26)');
+assert.match(terrainSource, /float laneFar = smoothstep\(0\.08, 0\.28, gFootM\) \* \(1\.0 - uRoadTex\);/,
+  'the lanes hand over to the trodden middle as they shrink under three pixels');
 assert.match(terrainSource, /a\.a = mix\(a\.a, a\.a \* 0\.86, rut \* \(1\.0 - uRoadTex\)\);/,
   'compacted lanes run slightly less rough (damp) on dirt roads only');
 assert.match(terrainSource,

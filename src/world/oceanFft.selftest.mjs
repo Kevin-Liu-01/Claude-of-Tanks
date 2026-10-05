@@ -240,7 +240,7 @@ assert.deepEqual(['low', 'medium', 'high', 'ultra'].map(oceanFrameStride), [2, 2
     'return vec2(f.x + 0.5 / uOceanGrid.x, (f.y * uOceanGrid.x + 0.5 + c * uOceanGrid.y) / (uOceanGrid.y * uOceanGrid.z));'])
     assert.ok(probe.fragmentShader.includes(line), `fragment: ${line}`);
   assert.equal((probe.fragmentShader.match(/texture2D\(uWaterWave/g) ?? []).length, 3, 'the normal-map wave keeps its three fetches beside the cascades');
-  assert.equal(sheet.mesh.material.customProgramCacheKey(), 'shallow-water-v21-land');
+  assert.equal(sheet.mesh.material.customProgramCacheKey(), 'shallow-water-v23-land'); // v22: 2026-10-04, the sea's shelf and swell; v23: 2026-10-05, the second round
   sheet.update(1 / 60);
   assert.equal(field.frames, 1, 'the sheet\'s update runs the transform');
   sheet.setTime(2);
