@@ -523,6 +523,42 @@ interface GrowthOptions {
   variant?: number;
   /** Detail tier: 'desktop' or 'mobile' (fewer sprays and side shoots, same silhouette). */
   tier?: 'desktop' | 'mobile';
+  /** Trees round 5: grown inside a closed wood (forestGrownProfile), not in the open. */
+  forest?: boolean;
+}
+
+/**
+ * Trees round 5 (2026-10-05, the coordinator's ruling on the gauntlet's wave 98: Frontier's woods "a single wall of
+ * near-identical forked grey trunks", the woods' savanna read): how a tree grown inside a closed wood differs from one
+ * grown in the open. Drawn up toward the light among its neighbours it self-prunes its lower limbs into a tall clear bole
+ * under a high crown, a little narrower, its stem slimmer for its height and its scaffolds more upright: a decurrent
+ * broadleaf forks at about one and a half times its open height (never past 56 % of its height), an excurrent
+ * broadleaf carries its crown from near half its height and a conifer from over a third, and a gnarled form grows
+ * straighter. The field trees keep the open-grown form.
+ */
+export const GROWTH_FOREST_FORM = Object.freeze({
+  height: 1.12, crownR: 0.86, trunkR: 0.86, fork: 1.45, forkMax: 0.56, crownBase: 0.48, coniferCrownBase: 0.36,
+  scaffoldAngle: 0.72, gnarl: 0.5,
+});
+const forestProfiles = new Map<Readonly<GrowthProfile>, Readonly<GrowthProfile>>();
+/** A profile's forest-grown form (GROWTH_FOREST_FORM); a palm, a snag or a grass-stage seedling keeps its own. */
+export function forestGrownProfile(p: Readonly<GrowthProfile>): Readonly<GrowthProfile> {
+  if (p.family === 'palm' || p.family === 'dead' || p.fountain) return p;
+  const cached = forestProfiles.get(p);
+  if (cached) return cached;
+  const f = GROWTH_FOREST_FORM;
+  const forest = P({
+    ...p,
+    height: p.height * f.height,
+    crownR: p.crownR * f.crownR,
+    trunkR: p.trunkR * f.trunkR,
+    forkAt: p.form === 'decurrent' ? [Math.min(f.forkMax, p.forkAt[0] * f.fork), Math.min(f.forkMax, p.forkAt[1] * f.fork)] : p.forkAt,
+    scaffoldAngle: [p.scaffoldAngle[0] * f.scaffoldAngle, p.scaffoldAngle[1] * f.scaffoldAngle],
+    crownBase: p.form === 'excurrent' ? Math.max(p.crownBase, p.family === 'conifer' ? f.coniferCrownBase : f.crownBase) : p.crownBase,
+    ...(p.gnarl !== undefined ? { gnarl: p.gnarl * f.gnarl } : {}),
+  });
+  forestProfiles.set(p, forest);
+  return forest;
 }
 
 // ------------------------------------------------------------------------------------------------ vector helpers
@@ -1403,7 +1439,7 @@ function growFountainShrub(species: GrowthSpecies, kind: 'bush' | 'understorey',
  * 1, 2) sets the age class — a younger, narrower tree, the typical one, an older broader one.
  */
 export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: GrowthOptions = {}): TreeSkeleton {
-  const profile = TREE_GROWTH_PROFILES[species];
+  const profile = options.forest ? forestGrownProfile(TREE_GROWTH_PROFILES[species]) : TREE_GROWTH_PROFILES[species];
   const variant = ((options.variant ?? 1) % 3 + 3) % 3;
   const mobile = options.tier === 'mobile';
   const ageH = variant === 0 ? 0.88 : variant === 2 ? 1.1 : 1;

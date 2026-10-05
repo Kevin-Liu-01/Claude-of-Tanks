@@ -170,9 +170,13 @@ for (const config of [polders, mangrove, orchard]) for (const seed of config.id 
   let moved = 0;
   for (let i = 0; i < before.trees.length; i++) {
     const a = before.trees[i], b = after.trees[i];
-    for (const key of Object.keys(a).filter(key => !['x', 'z', 'cy', 'mat'].includes(key))) assert.deepEqual(b[key], a[key]);
+    // (trees round 5: a moved tree takes its new seat's wood mark — an authored row's seat is a field tree's, its form
+    // the open-grown one; a squatter moved onto a stand tree's seat stands in the wood; vegetation.ts assignTreeForms)
+    for (const key of Object.keys(a).filter(key => !['x', 'z', 'cy', 'mat', 'wood'].includes(key))) assert.deepEqual(b[key], a[key]);
     for (let k = 0; k < 16; k++) if (![12, 13, 14].includes(k)) assert.equal(b.mat.elements[k], a.mat.elements[k]);
-    if (a.x === b.x && a.z === b.z) { assert.deepEqual(b.mat.elements, a.mat.elements); continue; }
+    if (a.x === b.x && a.z === b.z) { assert.deepEqual(b.mat.elements, a.mat.elements); assert.equal(b.wood, a.wood); continue; }
+    const seat = before.trees.find((t) => t.x === b.x && t.z === b.z);
+    assert.equal(b.wood === true, seat?.wood === true, `${config.id}: a moved tree takes its seat's wood mark`);
     moved++;
     assert.ok(Math.abs(b.mat.elements[13] - (hf.getHeightAt(b.x, b.z) - 0.06)) < 1e-10);
     assert.ok(Math.abs((b.cy - b.mat.elements[13]) - (a.cy - a.mat.elements[13])) < 1e-10);

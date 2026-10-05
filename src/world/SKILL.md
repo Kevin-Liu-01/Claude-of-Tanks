@@ -257,7 +257,10 @@ its palms and its palm groves at the water (any other palm grows as `palmFallbac
 paints its own atlas (`makeSprayAtlas`'s `shrub`: the slot's sprays at a shrub's leaf size on irregular woody twigs, at
 1024 px, its stems on the last tile, `SHRUB_STEM_TILE`) and stands on stem cards from the ground into each clump
 (`shrubStemSites`, turned about their stems like the sprays); a birch's bark carries the bands and branch scars it shows
-across a field (`paintBirchFarMarks`).
+across a field (`paintBirchFarMarks`). A tree inside a closed wood is forest-grown (`forestGrownProfile`: a tall clear
+bole under a high, narrower crown): on a map whose woods close, the woods' species grow near variants 0 and 1 forest-grown
+and keep variant 2 open-grown, the woods' trees take the pair and the field trees the open one (`assignTreeForms`; pools,
+impostor rows and records unchanged; `?forestForm=0` and `?forestAB=1` for the probes).
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
 pole distance representation; callers dispose or transfer every returned mesh.
 `propPlacement.ts` owns typed terrain-support, rigid-footprint, utility-pole,

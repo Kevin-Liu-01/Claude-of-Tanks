@@ -70,6 +70,11 @@ function compile(legacy) {
       // round 77b (2026-09-26): this fixture takes the lobe path (no renderer, as the receipts and the mobile tier
       // do); the impostor pools on the production build are treeImpostors.selftest's subject
       const treeImpostors = null;
+      // trees round 5: the forest-grown form's variants on this fixture's closed woods (production's rule; the open
+      // alternates are the probes' only), so the capacities hold the woods' trees on their forest-grown pair
+      const FOREST_NEAR_VARIANTS = ${Number(/const FOREST_NEAR_VARIANTS = (\d+);/.exec(source)[1])};
+      const forestSpecies = new Set(treeBiomeWoodSpread(cfg?.id) > 1 ? veg.clusterMix.map(([sp]) => sp).filter((sp) => sp !== 'palm') : []);
+      const treeGeoOpen = {};
       ${pools}
       const uCamFwd = { value: new THREE.Vector3(0,0,1) };
       const attribute = (geo, name) => geo.getAttribute(name);
