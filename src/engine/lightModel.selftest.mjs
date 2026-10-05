@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import {
   EXPOSURE_ADAPTATION, EXPOSURE_KEY, EXPOSURE_MAX, EXPOSURE_MIN, GROUND_SUNLIT_SHARE, LIGHT_SOLAR_IRRADIANCE, LOW_SUN_EV, NIGHT_EV, NIGHT_SKY_GLOW, OVERCAST_GROUND_RETURN, OVERCAST_SKY_CUT,
   SKY_DIFFUSE_CHROMA, SKY_DIFFUSE_GAIN, atmosphereTransmittance, deriveSun, exposureFor, linearToHex, whiteBalanceGains,
-  EXPOSURE_ALBEDO_K, EXPOSURE_ALBEDO_REF, exposureAlbedoEV,
+  EXPOSURE_ALBEDO_K, EXPOSURE_ALBEDO_REF, exposureAlbedoEV, OVERCAST_DIRECT_CUT, OVERCAST_DIFFUSED_FROM,
 } from './lightModel.ts';
 import {
   DEFAULT_GROUND_ALBEDO, EXPOSURE_REFERENCE_ILLUMINANCE, hexToLinear, isGalaxySky, lightTune, loadGroundedLightModel, luminance,
@@ -58,7 +58,7 @@ for (const el of [44, 32, 20, 12, 7, 3]) {
   last = { irr, blue: s.color[2] };
 }
 const grey = deriveSun(verdant, 1);
-assert.ok(grey.intensity * luminance(grey.color) < 0.15 * day.intensity * luminance(day.color), 'a closed deck leaves a tenth of the direct sun');
+assert.ok(grey.intensity * luminance(grey.color) < 0.06 * day.intensity * luminance(day.color), 'a closed deck leaves a few per cent of the direct sun');
 assert.ok(grey.color[2] > day.color[2], 'and greys its colour toward the cool deck light');
 
 // ---- 3. the overcast fraction: authored, then the cloudscape, then the legacy deck rule
@@ -112,6 +112,40 @@ assert.ok(overcastModel.exposure / clear.exposure < clear.illuminance / overcast
 // sky"): the deck sends back OVERCAST_GROUND_RETURN of what the ground sends up, in its own light — the direct light
 // × g / (1 − g), g = overcast × the share × the ground's albedo — and the clear sky's share under a closed deck keeps
 // none of the dome's blue
+// 2026-10-04 (the skies lane; the gauntlet's waves 80 and 82: under Titan Gorge's closed deck the ground still read as lit
+// by a sunny day — "crisp, hard-edged shadows" under a discless glow): a closed deck passes OVERCAST_DIRECT_CUT's
+// remainder of the beam, a few per cent, and sends what it cuts past OVERCAST_DIFFUSED_FROM (the cut its glow was
+// calibrated against) down diffused, so the horizontal light — the exposure, the open ground's level — holds while the
+// sun's share of it falls
+{
+  const at = (overcast, tune) => {
+    const saved = globalThis.__LIGHT_TUNE; globalThis.__LIGHT_TUNE = tune;
+    try { return resolveLightModel({ ...verdantSky, lighting: { overcast } }, verdant, { irradianceRaw: irr }, null); }
+    finally { globalThis.__LIGHT_TUNE = saved; }
+  };
+  assert.ok(OVERCAST_DIRECT_CUT >= 0.94 && OVERCAST_DIRECT_CUT <= 0.98 && OVERCAST_DIFFUSED_FROM === 0.9, 'a closed deck cuts 94-98 % of the beam');
+  const sunH = (m) => m.sunIntensity * luminance(m.sunColor) * verdant.sunDir[1];
+  for (const o of [1, 0.85, 0.5]) {
+    const now = at(o, undefined), was = at(o, { OVERCAST_DIRECT_CUT: OVERCAST_DIFFUSED_FROM });
+    near(now.illuminance, was.illuminance, 1e-9, `overcast ${o}: the horizontal light holds`);
+    near(now.exposure, was.exposure, 1e-12, `overcast ${o}: and the exposure`);
+    near(now.hemiIntensity - was.hemiIntensity, sunH(was) - sunH(now), 1e-9, `overcast ${o}: the cut beam comes down in the deck's glow`);
+    assert.ok(sunH(now) < sunH(was), `overcast ${o}: less of it from the point sun`);
+  }
+  const closed = at(1, undefined), closedWas = at(1, { OVERCAST_DIRECT_CUT: OVERCAST_DIFFUSED_FROM });
+  const share = sunH(closed) / closed.illuminance, shareWas = sunH(closedWas) / closedWas.illuminance;
+  assert.ok(share > 0.02 && share < 0.07, `the sun's share of a closed deck's horizontal light ${(100 * share).toFixed(1)} % (it was ${(100 * shareWas).toFixed(1)} %)`);
+  // an open sky: the cut never touches it
+  const open = at(0, undefined);
+  near(open.sunIntensity, clear.sunIntensity, 1e-12, 'an open sky keeps its whole sun');
+  near(open.illuminance, clear.illuminance, 1e-12, 'and its light');
+  // the QA knob drops the diffused share; a cut of 1 diffuses all of the beam (the clear sun read from the clear sun itself)
+  assert.ok(at(1, { OVERCAST_BEAM_DIFFUSE: 0 }).illuminance < closed.illuminance, 'OVERCAST_BEAM_DIFFUSE 0: the cut light lost');
+  const full = at(1, { OVERCAST_DIRECT_CUT: 1 });
+  near(full.sunIntensity, 0, 1e-12, 'a full cut: no beam');
+  near(full.illuminance, closedWas.illuminance, 1e-9, 'a full cut: all of it diffused, the light still whole');
+}
+
 {
   const at = (overcast, groundAlbedoHex, tune) => {
     const saved = globalThis.__LIGHT_TUNE; globalThis.__LIGHT_TUNE = tune;
