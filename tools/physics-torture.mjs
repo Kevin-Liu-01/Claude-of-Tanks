@@ -292,6 +292,11 @@ export const CASES = [
   { id: 'rest-bridge', group: 'rest', seconds: 7, terrain: TERRAIN.valley(-14, 14, 6),
     obstacles: [box(0, 0, 4.5, 16, -1.1, 0, { kind: 'bridge' })], spawn: { dropTo: 0.6 }, input: hold(), rest: [3, 7] },
   { id: 'rest-inverted', group: 'rest', seconds: 8, terrain: TERRAIN.flat(), spawn: { dropTo: 2.5, roll: Math.PI }, input: hold(), rest: [4, 8] },
+  // Round 8 (a known limit, the parity iteration): a hull parked along a 1.7 m drop with one track over it, the lip a metre
+  // from its root under its belly. The support solve has no belly contact for a hull over a terrain edge: it rolls in
+  // about its tracks until the hanging track finds ground or its inner edge the lip (tankBodyRest.selftest's crater: the
+  // M1A2 30-33 degrees, its centre of mass a metre inboard), where it should rest on its belly at the lip a few degrees over.
+  { id: 'rest-edge', group: 'rest', seconds: 7, terrain: (x) => (x < -1 ? -1.7 : 0), input: hold(), rest: [3, 7] },
 
   // DRIVE: full throttle across the feature (flying start where marked); stuck time, pops, snaps, penetration
   { id: 'drive-kerb', group: 'drive', seconds: 5, terrain: TERRAIN.kerb(0.3, 12, 2.8), spawn: { speed: 'top' }, input: hold(1), drive: [0, 5] },
