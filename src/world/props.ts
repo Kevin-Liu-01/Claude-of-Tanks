@@ -5859,12 +5859,17 @@ ${snowCap ? `
     }));
     const onTree = (x: number, z: number): boolean => trunks.some((t) => Math.abs(x - t.x) < t.reach
       && Math.abs(z - t.z) < t.reach && Math.hypot(x - t.x, z - t.z) < t.reach);
+    // (b12, wave 72 on Redrock: the fallen blocks "soap bars" — angular, size-graded, half-buried, sand drifted) the talus
+    // sorted by size as a rockfall sorts it, the small blocks near the wall's foot and the big ones rolled out to the toe;
+    // on a dusty map the drifted sand holds them deeper
+    const apronSink = rockDressing.dust >= 0.5 ? 0.4 : 0.3;
     for (const form of forms) {
       const count = form.geology?.boulders ?? 0;
       for (let i = 0, placed = 0; i < count * 6 && placed < count; i++) {
-        const [x, z] = geologyBoulderSite(form, rng(), rng());
+        const u = rng(), reach = rng();
+        const [x, z] = geologyBoulderSite(form, u, reach);
         if (onTree(x, z)) continue;
-        if (tryRock(x, z, 0.9, 3.0, false, 0.3)) placed++;
+        if (tryRock(x, z, 0.9 * (0.7 + 0.6 * reach), 3.0 * (0.6 + 0.6 * reach), false, apronSink)) placed++;
       }
     }
   }
