@@ -33,7 +33,7 @@ let cellCount = 0;
 for (const { mesh, cells } of batches) {
   assert.ok(mesh.isBatchedMesh, `${mesh.name}: one multi-draw batch`);
   // (facades lane, 2026-10-05: the facade craft's metalwork and render work batch too, on a desktop build)
-  assert.match(mesh.name, /^props-bucket-(structureWood|regionalStone|structureMetal|regionalPlaster[23]?)-batch$/,
+  assert.match(mesh.name, /^props-bucket-(structureWood|regionalStone|structureMetal|regionalPlaster)-batch$/,
     'a batch is a timber, stone, metal or render dressing bucket');
   assert.equal(mesh.parent, dressing.group, `${mesh.name}: in the props group`);
   assert.equal(mesh.castShadow, false, `${mesh.name}: casts no shadow`);

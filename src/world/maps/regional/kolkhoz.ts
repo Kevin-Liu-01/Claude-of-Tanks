@@ -221,7 +221,7 @@ function shedMasonry(sink: PartSink, frame: HouseFrame, wall: RegionalBucket): v
       ring.push([Math.cos(a) * 0.42, vy + Math.sin(a) * 0.42]);
       hole.push([Math.cos(a) * 0.3, vy + Math.sin(a) * 0.3]);
     }
-    faceSlab(sink, wall === 'stone' ? 'stone' : wall, face, ring, 0, 0.03);
+    faceSlab(sink, wall === 'stone' ? 'stone' : wall, face, ring, 0, 0.03, { fine: true });
     faceSlab(sink, 'dark', face, hole, 0.03, 0.004);
     for (const o of frame.spec.openings) {
       if (o.face !== name || o.kind !== 'gate') continue;
@@ -436,7 +436,7 @@ function churchMasonry(sink: PartSink, frame: HouseFrame, drum: Vec3, drumH: num
     for (const u of [-half + 0.25, half - 0.25]) pilaster(sink, 'plaster', face, u, base, top - 0.04, 0.5, 0.07);
   }
   // the drum: a band at its foot, a cornice under the dome, four arched windows between
-  sink.cylinder('plaster', [drum[0], drum[1] + 0.95, drum[2]], 'y', 0.16, r + 0.07, 12, { decor: true }, r + 0.07, false);
+  sink.cylinder('plaster', [drum[0], drum[1] + 0.95, drum[2]], 'y', 0.16, r + 0.07, 12, { decor: true, fine: true }, r + 0.07, false);
   sink.cylinder('plaster', [drum[0], drum[1] + drumH - 0.22, drum[2]], 'y', 0.22, r + 0.06, 12, { decor: true }, r + 0.16, false);
   for (let k = 0; k < 4; k++) {
     const a = Math.PI / 4 + k * Math.PI / 2, ca = Math.cos(a), sa = Math.sin(a);
@@ -471,7 +471,7 @@ function club(ctx: RegionalBuildContext, school = false): RegionalParts {
       // the club's masonry (facade craft): a cornice round the eaves, corner pilasters, a water table over the plinth,
       // lintels over the windows (in brick on the school, brows of render on the club)
       const b = frame.bodies[0];
-      trimRing(sink, wall, b, frame.eaveY - 0.3, [{ h: 0.1, out: 0.05 }, { h: 0.08, out: 0.1 }, { h: 0.12, out: 0.16 }]);
+      trimRing(sink, wall, b, frame.eaveY - 0.26, [{ h: 0.12, out: 0.06 }, { h: 0.14, out: 0.16 }]);
       trimRing(sink, wall, b, b.y0, [{ h: 0.08, out: 0.045 }]);
       for (const name of ['front', 'right', 'back', 'left'] as const) {
         const face = frame.faces[name], half = face.width / 2;

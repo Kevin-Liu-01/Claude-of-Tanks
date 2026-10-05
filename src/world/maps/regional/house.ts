@@ -675,7 +675,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     // the oversailing course a mason corbels out under the cap (facade craft, desktop)
     if (facadeOn() && cap !== 'tile' && c.above >= 0.45) {
       const o = 0.045, y = topY - 0.36;
-      sink.band(c.bucket, c.x - c.sx / 2 - o, y, c.z - c.sz / 2 - o, c.x + c.sx / 2 + o, y + 0.13, c.z + c.sz / 2 + o, { decor: true, shade: 0.9 });
+      sink.span(c.bucket, c.x - c.sx / 2 - o, y, c.z - c.sz / 2 - o, c.x + c.sx / 2 + o, y + 0.13, c.z + c.sz / 2 + o, { decor: true, shade: 0.9, fine: true });
     }
   }
   // rafter feet under the eaves overhang, every 0.8 m along both eaves (dressing)
