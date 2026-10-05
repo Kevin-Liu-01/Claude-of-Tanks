@@ -20,6 +20,15 @@
 // Landmarks: the Cinder Cone, the Little Cone, the Ember Cone, the Black Shelves, the Ash Hollow, the Sulphur Works'
 // stack and the Loading Yard. At the square's edge the west and east Black Shelves run into the rim: the borders lane
 // carries them outward.
+//
+// The settlement (the map-revival lane, 2026-10-05): a farming village of the caldera floor round its sulphur works,
+// built in the kyushu kit (maps/regional/kyushu.ts) where the plan seats its buildings. Minka farmhouses under thatch,
+// smoked tile or painted tin, with their irimoya gables and the engawa along the south front; white kura storehouses
+// on namako bases; timber naya barns; the vinyl greenhouses of the floor's market gardens; the agricultural co-op's
+// rice warehouse; the sulphur works' refinery sheds (stained yellow at the foot, a monitor along the ridge) or the
+// co-op's big rice kura; the works office of clapboard under tile; the fire brigade's post and its hose tower; the
+// works' brick stacks, or the village's fire lookout with its bell; the village shrine with its torii and lanterns;
+// burnt farmsteads. The trees are Aso's (treeBiomes.ts): sugi and Japanese red pine.
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 
@@ -137,9 +146,10 @@ export default {
         structure: 'transformershed', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: 16 },
     ],
     blockFill: true,
-    tones: makeRealisticCityBuildingTones({
-      value: 0.70, saturation: 0.88, soot: 0.055, roofValue: 0.68,
-    }),
+    // the village in Aso's architecture (the kyushu kit); the kit owns the renders' tones, the field walls keep the
+    // city preset's stone
+    architecture: 'kyushu',
+    tones: { stone: makeRealisticCityBuildingTones({ value: 0.70, saturation: 0.88, soot: 0.055, roofValue: 0.68 }).stone },
     extraKits: ['rail'], wallStyle: 'fieldstone', wallStoneChance: 0.72,
     wallRuns: [
       [-306, -140, -214, -104, 2], [-298, 130, -206, 166, 3],
