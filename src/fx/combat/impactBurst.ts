@@ -122,12 +122,14 @@ export function groundBurst(C: CombatContext, pos: Vec3Like, caliberMm: number, 
     const st = Math.sin(tilt), ct = Math.cos(tilt);
     mPlace(m, pos.x + (R() - 0.5) * 0.5 * s, by + 0.3 + R() * 0.3, pos.z + (R() - 0.5) * 0.5 * s,
       birthOffset + R() * 0.025);
-    mMove(m, Math.cos(a) * st * v, ct * v, Math.sin(a) * st * v, 2.4, 0, 0.2, -8.3 * L.heavy);
-    mShape(m, 1.3 + R() * 0.7, (0.9 + R() * 0.4) * s, (2.8 + R() * 1.4) * s * dk, 2.4, 1, R() * TAU, (R() - 0.5) * 2);
+    // the column's mass is soil AND dust: it climbs, stalls and sags back (a softer fall than the spikes' clumps) as
+    // it fades, never sinking through the ground
+    mMove(m, Math.cos(a) * st * v, ct * v, Math.sin(a) * st * v, 2.4, 0, 0.2, -5 * L.heavy);
+    mShape(m, 1.2 + R() * 0.5, (0.9 + R() * 0.4) * s, (2.8 + R() * 1.4) * s * dk, 2.4, 1, R() * TAU, (R() - 0.5) * 2);
     const soil = surf === 'snow' && explosive && i % 2 === 0;
     const c0 = soil ? UNDER_SNOW_SOIL : L.ejecta0;
     const c1 = soil ? blend(UNDER_SNOW_SOIL, L.ejecta1, 0.5, _c1) : L.ejecta1;
-    mLook(m, c0, c1, 0.96, 0.01, 0.55, 0.3, 0.12, L.smear * 0.5, L.scatter * 0.4, R());
+    mLook(m, c0, c1, 0.96, 0.01, 0.45, 0.3, 0.12, L.smear * 0.5, L.scatter * 0.4, R());
     mHeat(m, 0, 1, 0.5, 1);
     C.smoke(m);
   }

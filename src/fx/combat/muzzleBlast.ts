@@ -72,7 +72,7 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
       const ca = Math.cos(a), sa = Math.sin(a);
       const rx = _u.x * ca + _v.x * sa, ry = _u.y * ca + _v.y * sa, rz = _u.z * ca + _v.z * sa;
       mPlace(m, pos.x + dir.x * along, pos.y + dir.y * along, pos.z + dir.z * along, birthOffset);
-      mMove(m, dir.x * f + rx * r, dir.y * f + ry * r + 0.4, dir.z * f + rz * r, 7, 0.35, 0.7, 0);
+      mMove(m, dir.x * f + rx * r, dir.y * f + Math.max(ry * r, -1) + 0.4, dir.z * f + rz * r, 7, 0.35, 0.7, 0);
       mShape(m, 1.6 + R() * 0.7, 0.55 * s, (2.7 + R() * 1.0) * s * dk, 3.2, 1, R() * TAU, (R() - 0.5) * 3);
       mLook(m, GAS0, GAS1, 0.62 * near, 0.008, 0.4, 0.45, 0.14, 0.02, 0.25, R());
       mHeat(m, 1.0, 13 + R() * 5, 0.38, 1.05);
@@ -86,6 +86,8 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
       const rx = _u.x * ca + _v.x * sa, ry = _u.y * ca + _v.y * sa, rz = _u.z * ca + _v.z * sa;
       const fw = 0.45 + R() * 0.35, side = 0.8 + R() * 0.3;
       let ex = dir.x * fw + rx * side, ey = dir.y * fw + ry * side, ez = dir.z * fw + rz * side;
+      // the ground turns the downward half of the ring aside: it spreads out low instead of burrowing
+      if (ey < -0.15) { const k = 0.15 / -ey; ey = -0.15; ex /= Math.sqrt(k); ez /= Math.sqrt(k); }
       const el = Math.hypot(ex, ey, ez) || 1;
       ex /= el; ey /= el; ez /= el;
       const v = (14 + R() * 12) * Math.sqrt(s);

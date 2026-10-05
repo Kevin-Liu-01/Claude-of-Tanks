@@ -79,7 +79,7 @@ for (const { rec } of [he, kin]) {
     assert.ok(m.life > 0 && m.size1 > 0 && m.alpha > 0 && m.alpha <= 1);
   }
 }
-const fountain = (rec) => [...rec.earth, ...rec.smoke].filter((m) => m.grav < -5);
+const fountain = (rec) => [...rec.earth, ...rec.smoke].filter((m) => m.grav <= -4);
 const heFountain = fountain(he.rec), kinFountain = fountain(kin.rec);
 assert.ok(heFountain.length >= 14, `an explosive burst throws a dense fountain (${heFountain.length})`);
 const hePeak = Math.max(...heFountain.map(peak)), kinPeak = Math.max(...kinFountain.map(peak));
@@ -245,6 +245,10 @@ assert.ok(st.baked && st.earth > 50 && st.smoke > 50 && st.clods > 10, `the laye
 assert.ok(Math.abs(Math.hypot(st.wind[0], st.wind[2]) - groundWindFromAloft(6)) < 1e-6, 'the wind is the cloud layer\'s, slowed to the ground');
 assert.ok(Math.abs(Math.atan2(st.wind[2], st.wind[0]) - 0.4) < 1e-6, 'blowing the way the clouds drift');
 assert.ok(runs[0].fx.isActive(), 'the late pass runs while media live');
+scene.userData.surfaceWind = new THREE.Vector3(-1.5, 0, 2.5);
+runs[1].tick(1 / 60);
+assert.deepEqual(runs[1].fx.stats().wind, [-1.5, 0, 2.5], 'a published surface wind takes precedence over the clouds');
+delete scene.userData.surfaceWind;
 const birthsBefore = [];
 runs[0].fx.group.traverse((o) => { if (o.geometry?.attributes?.aPB) birthsBefore.push(o.geometry.attributes.aPB.array[3]); });
 runs[0].fx.shiftTime(100);
