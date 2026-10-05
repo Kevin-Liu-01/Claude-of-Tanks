@@ -127,7 +127,7 @@ function checkSourceContract(text) {
     .map((m) => [m[0], m[1].replace(/\[\d+\]$/, '')])
     .flatMap(match => match[1].split(',').map(name => name.trim())).sort();
   const expected = ['uAlbG','uAlbD','uAlbR','uAlbM','uNrmG','uNrmD','uNrmR','uNrmM','uMask','uNoise',
-    'uTintA','uTintB','uTintC','uRoadTint','uMarshGloss','uMicroAmp','uStrata','uRoadTex','uTownWear',
+    'uTintA','uTintB','uTintC','uRoadTint','uSoilTint','uMarshGloss','uMicroAmp','uStrata','uRoadTex','uTownWear',
     'uWornDirtStrength','uIceDrift','uMidRelief','uFieldPatch','uRipple','uSandMacro','uIceSky',
     // round 40 (2026-09-22): the sea openings past the square (edgeWater.ts) that the ring's marine faces render as open water
     'uMidFar','uMaskSize', // The extended coast reuses uMask; no extra sampler.

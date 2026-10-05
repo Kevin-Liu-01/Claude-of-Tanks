@@ -3832,7 +3832,14 @@ function* vegetationBuildSteps(
           * (1 - smoothstepJs(0.02, 0.10, heightField.getWaterMaskAt(x, z)));
         if (fieldW > 0.5) {
           // a ditch's water and a dry stone wall carry no sward, a bund half of one, a track a few tufts
-          if (f.track > 0.5) { if (f.boundary === 1 || clJ < 0.7) return null; }
+          if (f.track > 0.5) {
+            // (wave 79: no grass in a farm track's wheel lanes — tallGrass.ts admit: the same law) a ditch's water and a
+            // track's lanes carry no tufts, its crown a short sparse few, its verges a trodden half
+            const dLine = Math.abs(f.sV);
+            if (f.boundary === 1 || Math.abs(dLine - 0.85) < 0.32) return null;
+            if (dLine < 0.55 ? clJ < 0.45 : clJ < 0.5) return null;
+            if (dLine < 0.55) sy *= 0.6;
+          }
           else if (f.edgeM < f.marginM) {
             if (f.boundary === 3 && f.edgeM < 0.62) return null;
             if (f.boundary === 2 && f.edgeM < 0.55 && clJ < 0.5) return null;

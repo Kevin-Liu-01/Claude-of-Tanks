@@ -619,6 +619,14 @@ void lu_decode(vec2 p, vec4 a, vec4 b, vec4 k, ivec2 t, out float crop, out floa
   rowDir = vec2(cos(turn), sin(turn));
   jitter = float(g >> 2) / 63.0;
 }
+// the signed offset to the field's long edge at p (lu_decode's own reconstruction of sV): which side of a track's line p
+// lies on, for the wheel lanes' relief (2026-10-04, the ground lane)
+float lu_sV(vec2 p, vec4 b, vec4 k, ivec2 t) {
+  vec2 dp = p - ((vec2(t) + 0.5) / uLandBake.x - 0.5) * uLandBake.y;
+  vec4 K = (k * 2.0 - 1.0) * ${LAND_WARP_K_RANGE};
+  vec2 dw = dp + vec2(K.x * dp.x + K.y * dp.y, K.z * dp.x + K.w * dp.y);
+  return (b.b * 65280.0 + b.a * 255.0 - ${OFFSET_ZERO}.0) / ${OFFSET_SCALE}.0 - uLandRot.y * dw.x + uLandRot.x * dw.y;
+}
 void lu_field(vec2 p, out float crop, out float edgeM, out float track, out vec2 rowDir, out float jitter, out float hedge) {
   vec4 a, b, k; ivec2 t;
   lu_fetch(p, a, b, k, t);

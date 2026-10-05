@@ -19,8 +19,8 @@ assert.match(terrainSource, /vec3 packedRoad = groundSamp\(uAlbD,/,
   'the continuous dirt-road core uses the smoothed packed-earth layer');
 // terrain v2 (2026-10-01, the cost pass): the soil sample takes the layer's measured mean (its far variant's tile mean),
 // the packed-earth normal is skipped past the far band (nrmOn), and the block runs only on the carriageway (dW)
-assert.match(terrainSource, /vec3 packedRoad = groundSamp\(uAlbD, uMeanD, uv \* 0\.210, df, mipB \+ 4\.0\)\.rgb;/,
-  'the dirt-road palette keeps a smoothed mip: soil grain survives, no single source clod is stamped');
+assert.match(terrainSource, /vec3 packedRoad = groundSamp\(uAlbD, uMeanD, uv \* 0\.210, df, mipB \+ 4\.0\)\.rgb \* mix\(vec3\(1\.0\), uSoilTint, 0\.5\);/,
+  'the dirt-road palette keeps a smoothed mip: soil grain survives, no single source clod is stamped (half the place\'s soil tint: wave 79)');
 assert.match(terrainSource,
   /vec2 packedRoadN = nrmOn \? groundNrm\(uNrmD,[\s\S]{0,240}n\.xy = mix\(n\.xy, packedRoadN, dW\);/,
   'the dirt-road core replaces the open-ground normal with its shallow packed-earth response');
@@ -49,8 +49,10 @@ assert.match(terrainSource,
 assert.match(terrainSource, /shader\.uniforms\.uLaneK = \{ value: roadLaneSharpness\(mask\.image\.width\) \};/,
   'lane sharpness follows the actual mask texel size');
 assert.match(terrainSource,
-  /min\(rut \* \(1\.0 \+ farM \* 0\.30\), 1\.0\) \* mix\(0\.34, 0\.26, uRoadTex\)/,
-  'the two-track wear is back near the 1049e4e strength, its far boost a third (wave 69: ruled lines across an establishing view)');
+  /min\(mix\(rut, trodMid \* 0\.55, laneFar\), 1\.0\) \* mix\(0\.34, 0\.26, uRoadTex\)/,
+  'the two-track wear near the 1049e4e strength by the camera; past a 0.15 m footprint one trodden middle, no ruled lanes (waves 69, hold 26)');
+assert.match(terrainSource, /float laneFar = smoothstep\(0\.08, 0\.28, gFootM\) \* \(1\.0 - uRoadTex\);/,
+  'the lanes hand over to the trodden middle as they shrink under three pixels');
 assert.match(terrainSource, /a\.a = mix\(a\.a, a\.a \* 0\.86, rut \* \(1\.0 - uRoadTex\)\);/,
   'compacted lanes run slightly less rough (damp) on dirt roads only');
 assert.match(terrainSource,

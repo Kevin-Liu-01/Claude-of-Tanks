@@ -604,7 +604,14 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
           if (_field.boundary === 1) {
             if (_field.edgeM < 0.85) return;
             keep = Math.min(1, keep * 1.3); heightScale *= 1.5; cropTint = [0.16 / b.tip[0], 0.19 / b.tip[1], 0.07 / b.tip[2]];
-          } else keep *= 0.25;
+          } else {
+            // (wave 79, the new ruts: "grass sprouting through them as thickly as on the verge") a farm track's two wheel
+            // lanes (0.85 m either side of its line, the terrain's ruts) grow nothing; a short sward stands on the crown
+            // between them and a trodden one on the verges outside
+            const dLine = Math.abs(_field.sV);
+            if (Math.abs(dLine - 0.85) < 0.32) return;
+            if (dLine < 0.55) { keep *= 0.55; heightScale *= 0.55; } else keep *= 0.70;
+          }
         } else if (_field.edgeM < _field.marginM) {
           if (_field.boundary === 3) { if (_field.edgeM < 0.62) return; keep *= 0.6; } // a dry stone wall and its foot
           else if (_field.boundary === 2) { keep *= 0.5; heightScale *= 0.6; } // a bund: short grass on its top

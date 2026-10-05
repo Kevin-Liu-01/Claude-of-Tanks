@@ -124,7 +124,10 @@ const TERRAIN_PLAN = {
     // (field pixels 124 vs 101); a cool, slightly darker tint returns the
     // deeper green the reference carried under the same sky.
     G: { set: 'grass', tint: [0.86, 0.91, 0.80], roughMul: 1.25 },
-    D: { set: 'dirt', tint: [0.82, 0.80, 0.76], roughMul: 1.3 },
+    // ground lane (wave 79: "the soil is mostly pale and sandy, where these places call for black chernozem
+    // (Prokhorovka)"): the dirt photo's orange-tan (linear mean 0.22 / 0.14 / 0.07) half greyed and darkened to the
+    // black earth's dark brown (~0.076 / 0.060 / 0.047, luminance ~0.06; the plough's 0.03–0.06 under it)
+    D: { set: 'dirt', desat: 0.55, tint: [0.42, 0.40, 0.42], roughMul: 1.3 },
     R: 'rock', M: null,
   },
   desert: {
@@ -214,7 +217,9 @@ const TERRAIN_PLAN = {
   // a year — see their rows at the end of this table.
   frontier: {
     G: { set: 'grass', tint: [0.96, 0.94, 0.76], roughMul: 1.28 },
-    D: { set: 'dirt', tint: [0.80, 0.75, 0.64], roughMul: 1.3 },
+    // ground lane (wave 79: "… brown loam (Hesse)"): the dirt photo greyed a third and darkened to a mid brown loam
+    // (~0.13 / 0.095 / 0.066, luminance ~0.10), not the pale orange sand it read as
+    D: { set: 'dirt', desat: 0.35, tint: [0.66, 0.68, 0.68], roughMul: 1.3 },
     R: { set: 'rock', tint: [1.02, 1.0, 0.92], roughMul: 1.15 }, M: null,
   },
   fjord: {
