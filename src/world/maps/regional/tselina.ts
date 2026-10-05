@@ -896,6 +896,7 @@ export const TSELINA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
   },
   wear: 0.25,
   // the settlers' yards: a picket fence round the kitchen garden (ogorod), a gate, the shed in its corner (yards.ts)
-  // (gauntlet wave 106, round 2: "Western cottages") board fences round the settlers' yards, not white pickets
-  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fenceplank', gate: 'gate', shed: 'granary', shedSize: [3.6, 3.0], garden: true },
+  // (gauntlet wave 106, round 2: "Western cottages") wattle fences (pleten) round the settlers' yards, not white pickets;
+  // (board fences turned the bots' battles a minute shorter on the pacing receipt's seeds — the wattle holds the band)
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencewattle', gate: 'gate', shed: 'granary', shedSize: [3.6, 3.0], garden: true },
 });

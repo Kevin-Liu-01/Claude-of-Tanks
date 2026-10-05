@@ -256,10 +256,11 @@ export default {
     clusterMix: [['poplar', 0.50], ['oak', 0.35], ['pine', 0.15]],
     loneMix: [['poplar', 0.54], ['oak', 0.34], ['pine', 0.12]],
     rimMix: [['poplar', 0.40], ['oak', 0.35], ['pine', 0.25]],
-    // (2026-10-05, the map-revival lane; gauntlet wave 106's "savanna of evenly scattered orange trees": the steppe's
-    // trees are its planted belts — fewer loose trees and groves)
-    clusterCount: 3,   // the plain is the point — groves are rare landmarks
-    loneCount: 10,
+    // (2026-10-05, the map-revival lane: thinning the loose trees to 10 and the groves to 3 for wave 106's "savanna of
+    // evenly scattered orange trees" took the cover the bots fight from — the pacing median fell to 172 s, under the
+    // band; the field-interior rule for loose trees is the trees lane's, the counts stay)
+    clusterCount: 5,   // the plain is the point — groves are rare landmarks
+    loneCount: 24,
     rimCount: 34,
     grassDensity: 1.1,
     bushCount: 0.72,
@@ -412,6 +413,20 @@ export default {
       { kind: 'strawrick', x: -27.8, z: 287.2, yawDeg: 7, name: 'a straw rick on the fields' },
       { kind: 'strawrick', x: 219.8, z: 205.3, yawDeg: 6, name: 'a straw rick on the fields' },
       { kind: 'strawrick', x: -159.1, z: -376.2, yawDeg: 9, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 13.8, z: 47.9, yawDeg: 6, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 11.2, z: 232.3, yawDeg: 8, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -288.7, z: 178.4, yawDeg: 4, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 411.6, z: 223.2, yawDeg: 7, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -201.9, z: -8.3, yawDeg: 9, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 280.5, z: 20.2, yawDeg: 5, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -40.8, z: 81.9, yawDeg: 6, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -153.5, z: -69.1, yawDeg: 8, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -84.9, z: 128.2, yawDeg: 3, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -59.7, z: -163.3, yawDeg: 7, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 76.3, z: -388.5, yawDeg: 5, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: 201.7, z: 287.7, yawDeg: 9, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -208.9, z: -59.2, yawDeg: 6, name: 'a straw rick on the fields' },
+      { kind: 'strawrick', x: -406.1, z: -92.8, yawDeg: 4, name: 'a straw rick on the fields' },
     ],
     // (up from the south edge to the station's substation, over open fields: a line over a belt's or a lone tree's
     // crown stands its towers at 39-42 m)
