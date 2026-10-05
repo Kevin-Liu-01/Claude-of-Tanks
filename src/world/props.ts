@@ -8621,7 +8621,9 @@ ${snowCap ? `
         const batch = new THREE.BatchedMesh(list.length, vertices, Math.max(1, indices), wallMaterial);
         batch.name = name;
         batch.sortObjects = false;
-        batch.perObjectFrustumCulled = false;
+        // (b13's cost hold, Saltwind chase: the walls drew every cell's far form, behind the camera too; a cell outside
+        // the frustum is culled, a few hundred sphere tests a frame against the draws they save)
+        batch.perObjectFrustumCulled = true;
         batch.castShadow = false;
         batch.receiveShadow = true;
         batch.matrixAutoUpdate = false;
@@ -9160,11 +9162,11 @@ ${snowCap ? `
   };
   // the scenery lane (b13): the field walls' cells, their near form within the quality's near distance of the camera
   // (3D, to the cell's box), their far form past it, 10 m of hysteresis; the preset re-read once a second. At High a
-  // top stone's 5 cm step is a third of a pixel at 100 m.
+  // top stone's 5 cm step is under half a pixel at 80 m (the cost hold's chase view read 100 m's near cells).
   const FIELD_WALL_NEAR_M: Readonly<Record<string, number>> = {
-    ultra: 130, high: 100, medium: 80, low: 60, 'mobile-high': 45, mobile: 35, 'mobile-low': 25,
+    ultra: 110, high: 80, medium: 65, low: 50, 'mobile-high': 45, mobile: 35, 'mobile-low': 25,
   };
-  let wallNear = 100, wallFrames = 0;
+  let wallNear = 80, wallFrames = 0;
   function updateFieldWallLod(cameraPos: THREE.Vector3 | null): void {
     const lod = group.userData.fieldWallLod as FieldWallLod | undefined;
     if (!lod || !cameraPos) return;

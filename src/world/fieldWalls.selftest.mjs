@@ -196,11 +196,12 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
   assert.match(props, /const near = batchOf\(built\.wallCells\.map\(\(c\) => c\.near\), 'props-field-works'\);/, 'the near forms one batch');
   assert.match(props, /const far = batchOf\(built\.wallCells\.map\(\(c\) => c\.far\), 'props-field-works-far'\);/, 'the far forms another');
   assert.match(props, /batch\.castShadow = false;\n\s*batch\.receiveShadow = true;/, 'neither casts a shadow');
+  assert.match(props, /batch\.perObjectFrustumCulled = true;/, 'a cell outside the frustum is culled');
   assert.match(props, /updateFineDetail\(cameraPos\);\n\s*updateFieldWallLod\(cameraPos\);/, 'the switch runs with the props\' other distances');
   assert.match(props, /if \(near && cell\.near >= 0\) near\.setVisibleAt\(cell\.near, show\);\n\s*if \(far && cell\.far >= 0\) far\.setVisibleAt\(cell\.far, !show\);/, 'a cell shows one form or the other');
   const table = /const FIELD_WALL_NEAR_M: Readonly<Record<string, number>> = \{([^}]+)\}/.exec(props)[1];
   const near = Object.fromEntries([...table.matchAll(/'?([a-z-]+)'?: (\d+)/g)].map((m) => [m[1], Number(m[2])]));
-  assert.ok(near.high <= 100 && near.ultra <= 140 && near['mobile-high'] <= 45 && near.mobile <= 35 && near['mobile-low'] <= 25,
+  assert.ok(near.high <= 80 && near.ultra <= 110 && near['mobile-high'] <= 45 && near.mobile <= 35 && near['mobile-low'] <= 25,
     `the near form within a short radius, shorter on the phones (${JSON.stringify(near)})`);
   // (the field-stone and mud prints are painted with v down the image from row 0, but a canvas texture is flipped on
   // upload, row 0 landing at v = 1 — measured in swiftshader: v = 0.9 sampled the top row — so they upload reversed;
