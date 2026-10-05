@@ -7290,7 +7290,7 @@ light"; blotches on Whiteout's snow. Branch `visual/cloud-land` (the PR head wit
 - Why the critics walk past them: the census cameras face 130–146° away from the sun, so the clouds in a frame shade
   land beyond it and the near ground's shadows come from clouds behind the camera (the in-page framing meter: Frontier's
   establishing frame 0 % of its visible clouds' shadows in frame, Saltwind's 6 %, Verdant's — across the sun — 82 %).
-  Lifting the cumulus field where its shadow crosses the battlefield (`CLOUD_SHADOW_FRAME`, kept off) turned the near
+  Lifting the cumulus field where its shadow crosses the battlefield (a QA knob, `CLOUD_SHADOW_FRAME`, measured and removed) turned the near
   field into one shadow (Frontier 72 → 95 %, Saltwind 17 → 89 %) that reads as overcast; the lever left is the cells'
   scale (more, smaller patches at the same coverage), Part 2's first experiment.
 - A tank in a cloud shadow keeps its light: the vehicle readability floors (`vehicles/materials.ts`) gate on the direct
