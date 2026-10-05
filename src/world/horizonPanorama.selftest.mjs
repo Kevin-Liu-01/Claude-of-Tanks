@@ -96,10 +96,23 @@ const ringEdge = (() => {
   assert.ok(frag.includes('bool apron = vPanoApron > 0.5 && e > 0.0;') && frag.includes('if (vd.y >= 0.0 || !(apron || uPanoHaze.w > 0.5)) discard;'),
     'only a ray under the camera\'s own horizontal takes ground (the apron over the eye\'s horizon, else the far earth under the law); a camera looking up at the shell\'s sky sees it open');
   assert.ok(frag.includes('vec3 T = hazeTransmittance(uPanoHaze.x, reach, layer, uPanoHazeChroma);')
-    && frag.includes('vec3 inScatter = max((dome - lawT * (1.0 - Tp)) / max(Tp, vec3(0.05)), vec3(0.0));')
+    && frag.includes('inScatter = max((screen - aerialT * (1.0 - Tp)) / max(Tp, vec3(0.05)), vec3(0.0));')
     && frag.includes('ground = ground * T + inScatter * (1.0 - T);'),
-    'the far earth takes the map\'s law over its reach, into the colour the aerial pass turns into the dome\'s own horizon');
-  for (const name of ['uPanoDomeAnti', 'uPanoDomeToward', 'uPanoSigmaPost']) assert.ok(name in shader.uniforms, `the shell binds ${name}`);
+    'the far earth takes the map\'s law over its reach, into the colour the aerial pass turns into the screen\'s own horizon');
+  // the screen's horizon: the dome as sky.ts draws it (its own lookup, greyed by the deck, the knee, the intensity),
+  // toward the aerial pass's target as the deck closes; the aerial pass's target and transmittance as post.ts lays them
+  assert.ok(frag.includes('vec3 skyT = atmoSkyVisible(normalize(vec3(rd.x, max(rd.y, 0.02), rd.z)));')
+    && frag.includes('domeRaw = mix(domeRaw, uPanoTint * (dot(domeRaw, LUMA) / tintL), deckW);')
+    && frag.includes('vec3 screen = mix(atmoKnee(domeRaw) * uAtmoIntensity, aerialT, smoothstep(0.3, 0.8, uPanoTerms.z));'),
+    'the screen\'s horizon is the dome\'s own lookup and the aerial pass\'s own target');
+  for (const name of ['tAtmoSky', 'uAtmoSun', 'uAtmoViewH', 'uAtmoKnee', 'uAtmoIntensity', 'uPanoTint', 'uPanoTerms', 'uPanoDatum', 'uPanoSkyOn', 'uPanoSigmaPost']) {
+    assert.ok(name in shader.uniforms, `the shell binds ${name}`);
+  }
+  // per draw, read-only from the published atmosphere: no live sky (the receipts, the labs without one, the mobile tier's
+  // Preetham dome) leaves the far earth on the bake's law target
+  const air = handle.mesh.userData.panoAir;
+  handle.mesh.onBeforeRender(null, { userData: {} }, { position: new THREE.Vector3(0, 300, 0) });
+  assert.equal(air.uPanoSkyOn.value, 0, 'no published sky: the bake\'s own target');
   const skyline = HORIZON_PANORAMA_SHADERS.skyline;
   assert.ok(skyline && skyline.includes('if (c.a >= 0.5) { found = vec4(c.rgb / c.a, v); break; }') && skyline.includes('vec4 found = vec4(0.0, 0.0, 0.0, -1.0);'),
     'the skyline pass: per column the highest opaque texel, out of the premultiplication, or -1 where no land');
@@ -111,8 +124,9 @@ const ringEdge = (() => {
   const src = readFileSync(new URL('./horizonPanorama.ts', import.meta.url), 'utf8');
   assert.ok(src.includes('air.uPanoHaze.value.set(haze.sigma * ch.air, haze.invScale, hazeDatumM, 1);'), 'the bake hands the shell the far path\'s σ (the map\'s air share), the layer and the datum');
   assert.ok(src.includes('air.uPanoHaze.value.set(0, 0, 0, 0);'), 'no law (its own air): no far earth');
-  assert.ok(src.includes('air.uPanoDomeAnti.value.set(summary.horizon.r, summary.horizon.g, summary.horizon.b);') && src.includes('air.uPanoSigmaPost.value = haze.sigma;'),
-    'the bake hands the shell the dome\'s horizon bands and the aerial pass\'s σ');
+  assert.ok(src.includes('air.uPanoSigmaPost.value = haze.sigma;') && src.includes('air.uAtmoKnee.value.copy(atmosphere.knee!);')
+    && src.includes('air.uPanoDatum.value = Number.isFinite(ground) ? ground : hazeDatumM;'),
+    'the shell takes the aerial pass\'s σ, the dome\'s lookup each draw, and the ground under the camera as the datum');
   handle.dispose();
 }
 

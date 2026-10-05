@@ -25,6 +25,7 @@
 // on (the receipts, a renderer without float targets). Desktop tier only: the mobile tier has no far range.
 import * as THREE from 'three';
 import { HAZE_EXT_CHROMA, HAZE_LAW_GLSL, hazeLayerInverseScale, hazeSigma, hazeTargetTerms } from '../engine/hazeLaw.ts';
+import { ATMO_GROUND_KM, ATMOSPHERE_SKY_GLSL } from '../engine/atmosphere.ts';
 import { SEA_APRON_OUTER_RADIUS_M, type SeaOpening } from './edgeWater.ts';
 import type { HorizonReliefCharacter } from './horizonRelief.ts';
 
@@ -196,6 +197,9 @@ export interface HorizonPanoramaOptions {
   /** the map's own overcast fraction (lightModelCore resolveOvercast of its sky and cloudscape): the haze target's terms
    * under its deck — the light model the battlefield publishes can still be the last map's when the bake runs */
   overcast?: number | null;
+  /** the battlefield's ground (world x, z → y), the aerial pass's haze datum under the camera (post.ts
+   *  setGroundHeightSource): the far earth lands on the screen's horizon through that pass */
+  groundAt?: ((x: number, z: number) => number) | null;
 }
 
 /** How many frames a bake waits for the battlefield to publish this map's own sky before it keeps its own air. */
@@ -207,6 +211,8 @@ interface PanoramaAtmosphere {
   sunDir?: { x: number; y: number; z: number };
   fogDensity?: number; fogMix?: number; fogTint?: THREE.Color;
   summary?: { horizon: THREE.Color; sunHorizon: THREE.Color } | null;
+  /** the sky-view LUT and what sampling it needs (sky.ts AtmospherePublishedState; read, never written) */
+  skyView?: THREE.Texture | null; viewHeightKm?: number; knee?: THREE.Vector3; skyIntensity?: number;
 }
 
 /**
@@ -415,11 +421,20 @@ interface ShellAir {
   uPanoHazeToward: THREE.IUniform<THREE.Vector3>;
   uPanoSunH: THREE.IUniform<THREE.Vector2>;
   uPanoHazeChroma: THREE.IUniform<THREE.Vector3>;
-  /** the dome's own colour at the horizon away from the sun and toward it (the atmosphere's horizon bands), and the
-   *  aerial pass's σ over the shell's depth (the law's, no air share) */
-  uPanoDomeAnti: THREE.IUniform<THREE.Vector3>;
-  uPanoDomeToward: THREE.IUniform<THREE.Vector3>;
+  /** the aerial pass's σ over the shell's depth (the law's, no air share) */
   uPanoSigmaPost: THREE.IUniform<number>;
+  /** the dome's own lookup (atmosphere.ts ATMOSPHERE_SKY_GLSL, bound read-only from the published atmosphere each draw) */
+  tAtmoSky: THREE.IUniform<THREE.Texture | null>;
+  uAtmoSun: THREE.IUniform<THREE.Vector3>;
+  uAtmoViewH: THREE.IUniform<number>;
+  uAtmoKnee: THREE.IUniform<THREE.Vector3>;
+  uAtmoIntensity: THREE.IUniform<number>;
+  /** the aerial pass's terms each draw: the fog tint; (its share, the target's level, the overcast, the closed deck);
+   *  the haze datum under the camera; whether the dome's lookup is live */
+  uPanoTint: THREE.IUniform<THREE.Vector3>;
+  uPanoTerms: THREE.IUniform<THREE.Vector4>;
+  uPanoDatum: THREE.IUniform<number>;
+  uPanoSkyOn: THREE.IUniform<number>;
 }
 
 /** The shell's material: the atlas by direction from the bake eye (an unlit backdrop; the post pass hazes it by depth),
@@ -444,9 +459,16 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
     uPanoHazeToward: { value: new THREE.Vector3() },
     uPanoSunH: { value: new THREE.Vector2(1, 0) },
     uPanoHazeChroma: { value: new THREE.Vector3(...HAZE_EXT_CHROMA) },
-    uPanoDomeAnti: { value: new THREE.Vector3() },
-    uPanoDomeToward: { value: new THREE.Vector3() },
     uPanoSigmaPost: { value: 0 },
+    tAtmoSky: { value: null },
+    uAtmoSun: { value: new THREE.Vector3(0, 1, 0) },
+    uAtmoViewH: { value: ATMO_GROUND_KM + 0.05 },
+    uAtmoKnee: { value: new THREE.Vector3(1e6, 0, 1) },
+    uAtmoIntensity: { value: 1 },
+    uPanoTint: { value: new THREE.Vector3(1, 1, 1) },
+    uPanoTerms: { value: new THREE.Vector4(0, 1, 0, 0) },
+    uPanoDatum: { value: 0 },
+    uPanoSkyOn: { value: 0 },
   };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uPanoEye = { value: new THREE.Vector3(0, P.eyeY, 0) };
@@ -460,7 +482,9 @@ function buildShellMaterial(): { material: THREE.MeshBasicMaterial; air: ShellAi
 uniform vec3 uPanoEye; uniform vec2 uPanoElev; varying vec3 vPanoWorld; varying float vPanoU; varying float vPanoApron;
 uniform sampler2D uPanoSkyline; uniform vec4 uPanoHaze; uniform vec3 uPanoHazeAnti, uPanoHazeToward, uPanoHazeChroma;
 uniform vec2 uPanoSunH;
-uniform vec3 uPanoDomeAnti, uPanoDomeToward; uniform float uPanoSigmaPost;
+uniform float uPanoSigmaPost;
+uniform vec3 uPanoTint; uniform vec4 uPanoTerms; uniform float uPanoDatum, uPanoSkyOn;
+${ATMOSPHERE_SKY_GLSL}
 ${HAZE_LAW_GLSL}`)
       .replace('#include <map_fragment>', /* glsl */`
       #ifndef USE_MAP
@@ -503,15 +527,34 @@ ${HAZE_LAW_GLSL}`)
             float a = vPanoU * 6.2831853;
             float toward = 0.5 + 0.5 * (cos(a) * uPanoSunH.x + sin(a) * uPanoSunH.y);
             ground = mix(ground, wide, smoothstep(0.0, 0.0087, e - mix(uPanoElev.x, uPanoElev.y, skyline.a)));
-            // toward the horizontal the land goes into the dome's own horizon (Saltwind's pair of bfc773bb1: converged
-            // on the law's target, brighter than its clear dome toward the sun, the far earth's top stood as a line,
-            // L 0.71 under the dome's 0.63): the in-scatter target is the colour that the aerial pass, laying the law's
-            // target over the shell's depth, turns into the dome's horizon
-            float w2 = toward * toward;
-            vec3 lawT = mix(uPanoHazeAnti, uPanoHazeToward, w2), dome = mix(uPanoDomeAnti, uPanoDomeToward, w2);
-            float postLayer = hazeLayerMean(max(cameraPosition.y - uPanoHaze.z, 0.0) * uPanoHaze.y, max(vPanoWorld.y - uPanoHaze.z, 0.0) * uPanoHaze.y);
-            vec3 Tp = hazeTransmittance(uPanoSigmaPost, length(vd), postLayer, uPanoHazeChroma);
-            vec3 inScatter = max((dome - lawT * (1.0 - Tp)) / max(Tp, vec3(0.05)), vec3(0.0));
+            // toward the horizontal the land goes into the screen's own horizon (the pairs of bfc773bb1 and f61a53f3d:
+            // the law's target from the bake, and the atmosphere's summary bands, both landed 0.08-0.27 over the sky
+            // the frames show). It is the dome as sky.ts draws it just over the horizon — the sky-view LUT on this
+            // bearing, greyed by the deck, through the knee, at the sky's intensity — drawn toward the aerial pass's
+            // target as the overcast closes (the cloud layer's far rows, pulled to that target, are the horizon under a
+            // deck). The in-scatter target is the colour the aerial pass turns into it: its own target along this
+            // fragment's ray and its own transmittance over the camera's distance (σ, the layer from the ground under
+            // the camera, the per-channel extinction)
+            vec3 inScatter = mix(uPanoHazeAnti, uPanoHazeToward, toward * toward);
+            if (uPanoSkyOn > 0.5) {
+              const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+              vec3 skyT = atmoSkyVisible(normalize(vec3(rd.x, max(rd.y, 0.02), rd.z)));
+              float tintL = max(dot(uPanoTint, LUMA), 1e-4);
+              vec3 aerialT = mix(skyT, uPanoTint * (dot(skyT, LUMA) / tintL), uPanoTerms.x);
+              if (aerialT.g > aerialT.b) {
+                float tl = dot(aerialT, LUMA);
+                aerialT = mix(aerialT, vec3(tl * 0.92, tl * 0.99, tl * 1.12), 0.6);
+              }
+              aerialT *= uPanoTerms.y;
+              vec3 hdir = normalize(vec3(rd.x, 0.004, rd.z));
+              vec3 domeRaw = atmoSky(hdir);
+              float deckW = max(uPanoTerms.z * (1.0 - smoothstep(0.0, 0.12, hdir.y)), uPanoTerms.w);
+              domeRaw = mix(domeRaw, uPanoTint * (dot(domeRaw, LUMA) / tintL), deckW);
+              vec3 screen = mix(atmoKnee(domeRaw) * uAtmoIntensity, aerialT, smoothstep(0.3, 0.8, uPanoTerms.z));
+              float postLayer = hazeLayerMean(max(cameraPosition.y - uPanoDatum, 0.0) * uPanoHaze.y, max(vPanoWorld.y - uPanoDatum, 0.0) * uPanoHaze.y);
+              vec3 Tp = hazeTransmittance(uPanoSigmaPost, length(vd), postLayer, uPanoHazeChroma);
+              inScatter = max((screen - aerialT * (1.0 - Tp)) / max(Tp, vec3(0.05)), vec3(0.0));
+            }
             ground = ground * T + inScatter * (1.0 - T);
           }
           diffuseColor.rgb *= ground;
@@ -1383,6 +1426,32 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   mesh.userData.horizonPanorama = true;
   // (the shell's air: the frame-budget probe's far-earth toggle switches the law's flag in place)
   mesh.userData.panoAir = air;
+  const lawTerms = { x: 0, y: 0 };
+  mesh.onBeforeRender = (_renderer, scene, camera) => {
+    // the far earth's landing on the screen's horizon (the shell's far-earth note): the dome's own lookup and the aerial
+    // pass's terms as post.ts sets them this frame, the ground under the camera as its datum
+    const data = scene.userData as { atmosphere?: PanoramaAtmosphere; lightModel?: { overcast?: number } };
+    const atmosphere = data.atmosphere;
+    const live = !!(atmosphere?.active && atmosphere.skyView && atmosphere.sunDir && atmosphere.knee && atmosphere.fogTint
+      && air.uPanoHaze.value.w > 0.5);
+    air.uPanoSkyOn.value = live ? 1 : 0;
+    if (!live || !atmosphere) return;
+    air.tAtmoSky.value = atmosphere.skyView ?? null;
+    const sun = atmosphere.sunDir!;
+    air.uAtmoSun.value.set(sun.x, sun.y, sun.z).normalize();
+    air.uAtmoViewH.value = ATMO_GROUND_KM + (atmosphere.viewHeightKm ?? 0.05);
+    air.uAtmoKnee.value.copy(atmosphere.knee!);
+    air.uAtmoIntensity.value = atmosphere.skyIntensity ?? 1;
+    const tint = atmosphere.fogTint!;
+    air.uPanoTint.value.set(tint.r, tint.g, tint.b);
+    const overcast = Math.min(1, Math.max(0, data.lightModel?.overcast ?? 0));
+    hazeTargetTerms(overcast, atmosphere.fogMix ?? 0, lawTerms);
+    const closed = THREE.MathUtils.smoothstep(overcast, 0.9, 1.0);
+    air.uPanoTerms.value.set(lawTerms.x, lawTerms.y, overcast, closed);
+    if (Number.isFinite(atmosphere.fogDensity)) air.uPanoSigmaPost.value = hazeSigma(atmosphere.fogDensity as number);
+    const ground = options.groundAt ? options.groundAt(camera.position.x, camera.position.z) : NaN;
+    air.uPanoDatum.value = Number.isFinite(ground) ? ground : hazeDatumM;
+  };
   mesh.visible = false;
   mesh.castShadow = false;
   mesh.receiveShadow = false;
@@ -1591,14 +1660,6 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     if (haze) {
       air.uPanoHaze.value.set(haze.sigma * ch.air, haze.invScale, hazeDatumM, 1);
       air.uPanoSigmaPost.value = haze.sigma;
-      const summary = published.atmosphere?.summary;
-      if (summary) {
-        air.uPanoDomeAnti.value.set(summary.horizon.r, summary.horizon.g, summary.horizon.b);
-        air.uPanoDomeToward.value.set(summary.sunHorizon.r, summary.sunHorizon.g, summary.sunHorizon.b);
-      } else {
-        air.uPanoDomeAnti.value.copy(haze.anti);
-        air.uPanoDomeToward.value.copy(haze.toward);
-      }
       air.uPanoHazeAnti.value.copy(haze.anti);
       air.uPanoHazeToward.value.copy(haze.toward);
       air.uPanoSunH.value.set(options.sun[0], options.sun[2]);

@@ -3806,6 +3806,8 @@ export function* buildHorizonRingSteps(
         // read the light model the battlefield still published from the last map, overcast 0 under Whiteout's closed
         // deck, and hazed its far ice sheet toward the clear sky's warm horizon — a beige band)
         overcast: resolveOvercast({ ...((cfg?.sky ?? {}) as LightModelPreset), cloudscape: (cfg as { clouds?: LightModelPreset['cloudscape'] } | null | undefined)?.clouds ?? null }),
+        // the aerial pass's haze datum, the ground under the camera (post.ts setGroundHeightSource takes the same field)
+        groundAt: ground ? (x: number, z: number) => ground.getHeightAt(x, z) : null,
       }, farRange);
       mesh.add(panorama.mesh);
       mesh.userData.horizonPanorama = panorama;
