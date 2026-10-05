@@ -675,3 +675,30 @@ The 16 colored navigation and feature marks share native SVG artwork generated b
 `node tools/generate-product-icons.mjs`. Their existing URLs serve the game, public
 pages, and README. `node tools/product-icon-sheet.mjs` renders a CPU-only review
 sheet at large, 32 px, and 24 px sizes; the UI icon selftest rejects stale exports.
+
+### Tank and wreck collision clearance
+
+Live tanks use the finalized hull-shell bounds through `tankContactRect`, without
+added horizontal padding. `src/sim/tankContactShape.selftest.mjs` checks every
+playable vehicle at four headings: a 1 mm gap must stay clear, while a 1 mm overlap
+must contact, both against another tank and against a world obstacle.
+
+Static map wrecks bake separate posed hull/track and turret collision envelopes.
+The gun, antennas and scattered dressing do not inflate those envelopes. Placement
+applies the same yaw, terrain tilt and vertical seating as the visible wreck;
+worker transfers retain the collision points. Wreck collision is built once, with
+no new frame-time geometry work. `src/world/wreckCollision.selftest.mjs` covers
+side/end clearance, the gap to a fallen turret, rotated/sloped placement and real
+fleet wrecks.
+
+After changing wreck collision, run
+`node tools/refresh-wreck-collision-manifests.mjs`, then repeat with `--check`.
+This CPU-only tool runs the production map producers at the canonical seeds and
+updates only identified wreck records in the server shards. It retains unrelated
+obstacles, shell colliders and concealment records. Its inert canvas is sufficient
+for collision generation; it is not evidence of native rendering quality.
+
+The garage allied-nation selector has a DOM regression fixture in
+`tools/allied-nation.browser.mjs`. The spectator controls have desktop, portrait
+and short-landscape fixtures in `tools/spectator-switcher.browser.mjs`. These
+verify layout and interactions with WebGL disabled; neither measures GPU performance.
