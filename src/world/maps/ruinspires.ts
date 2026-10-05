@@ -150,8 +150,9 @@ export default {
     // every one — in place of the megacity kit; the render takes Steinburg's lime-render photo tint, warm enough for
     // the kit's ochre, cream, green and pink washes
     architecture: 'sarajevo', sourcedPalette: 'urban',
-    // the boulevard's tram line, catenary, burnt trams and the container screens at its crossings (maps/sarajevoStreets.ts)
-    extraKits: ['tram'],
+    // the boulevard's tram line, catenary, burnt trams and the container screens at its crossings, the white stones of the
+    // cemeteries on the slopes below the ridges (maps/sarajevoStreets.ts)
+    extraKits: ['sarajevo'],
     plan: [],
     plannedSites: [...SOUTH_LANDMARKS, ...SOUTH_LANDMARKS.map(rotateSite)],
     destructibleBuildings: [

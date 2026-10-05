@@ -22,6 +22,17 @@ export const CHAR: Rgb = [0.06, 0.05, 0.045];
 
 const DECOR = { decor: true } as const;
 
+/**
+ * The footprint a kit building fills: the base geometry's measured bounds (ctx.bounds; the coordinator's rule of
+ * 2026-10-05 — a body short of them opens lanes between buildings), inset, with an optional limit on the +z (street)
+ * side. Edges, sizes and centre in the building's frame.
+ */
+export interface Fill { x0: number; x1: number; z0: number; z1: number; w: number; d: number; cx: number; cz: number }
+export function fillOf(bounds: { minX: number; maxX: number; minZ: number; maxZ: number }, inset = 0.05, front = Infinity): Fill {
+  const x0 = bounds.minX + inset, x1 = bounds.maxX - inset, z0 = bounds.minZ + inset, z1 = Math.min(bounds.maxZ, front) - inset;
+  return { x0, x1, z0, z1, w: x1 - x0, d: z1 - z0, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2 };
+}
+
 /** Clamp helper shared by the kit's builders. */
 export const clampTo = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 

@@ -30,7 +30,7 @@ import { tvAerial, woodpile, pottedPlant } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
   AH_FRAME, CHAR, DARK_FRAME, DOOR_LEAVES, IRON, PANEL_PAINTS, ROLL_SHUTTER, TIMBER, ZINC,
-  archHead, choose, clampTo, pediment, railing, sandbagWindow, shellHole, shellPocks, sootBand, unhcrSheet, type Keep,
+  archHead, choose, clampTo, fillOf, pediment, railing, sandbagWindow, shellHole, shellPocks, sootBand, unhcrSheet, type Keep,
 } from './sarajevoParts.ts';
 import { SARAJEVO_CIVIC_BUILDERS } from './sarajevoCivic.ts';
 import { SARAJEVO_TOWER_BUILDERS } from './sarajevoTowers.ts';
@@ -38,6 +38,12 @@ import { SARAJEVO_TOWER_BUILDERS } from './sarajevoTowers.ts';
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
 }
+
+/**
+ * A street-row building's footprint: the base geometry's bounds (the row's houses meet and the gaps between them stay
+ * the base's), its street front no further out than the plot's (the base's steps and porches reach past it).
+ */
+const rowFill = (ctx: RegionalBuildContext) => fillOf(ctx.bounds, 0.05, ctx.info.d / 2 - 0.1);
 
 /** 0 on the valley floor .. 1 up the mahala slopes (the distance from the valley axis), or null without a place. */
 export function slopeOf(ctx: RegionalBuildContext): number | null {
@@ -202,11 +208,14 @@ const SIGNS: readonly Rgb[] = [0x2f4f3f, 0x6a2e26, 0x2c3d57, 0x7a6a3a, 0x3c3c3c]
 function ahBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
-  const W = clampTo(ctx.info.w - 0.3, 6.4, 40), D = clampTo(ctx.info.d - 0.3, 7.0, 40);
   const groundH = 3.9 + rng() * 0.5, upperH = 3.2 + rng() * 0.3;
   const groundStone = rng() < 0.45;
   const roofRoll = rng();
-  const roofKind: 'hip' | 'gable' | 'mansard' = roofRoll < 0.42 ? 'hip' : roofRoll < 0.78 ? 'gable' : 'mansard';
+  // a row's blocks meet at firewalls: a gable roof flush with them, or a zinc mansard; the street and court walls stand
+  // in by the roof's overhang, so the eaves meet the lot's edge and every row house's solid envelope is the lot's fill
+  const roofKind: 'gable' | 'mansard' = roofRoll < 0.62 ? 'gable' : 'mansard';
+  const over = roofKind === 'gable' ? 0.5 : 0.12;
+  const f = rowFill(ctx), W = clampTo(f.w, 5.0, 60), D = clampTo(f.d - 2 * over, 4.0, 60);
   const door = choose(rng(), DOOR_LEAVES), sign = choose(rng(), SIGNS);
   const passage = rng() < 0.3;
   const balcony = n >= 4 && rng() < 0.38;
@@ -244,14 +253,13 @@ function ahBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
   for (let i = 1; i < n; i++) for (const o of windowRhythm('right', i, len, { w: 0.95, h: 1.6, sill: 0.95, spacing: 2.5, margin: 1.0 })) openings.push(o);
   // a burnt top storey (one block in six): every casement of it gutted, the soot up to the cornice
   if (look() < 0.17) for (const o of openings) if (o.storey === n - 1 && o.kind === 'window' && o.face === 'left') o.state = 'burnt';
-  const roof: RoofSpec = roofKind === 'hip' ? { kind: 'hip', pitchDeg: pitch, eave: 0.55, verge: 0.55, thickness: 0.16, bucket: 'roof', ridge: 'saddle' }
-    : roofKind === 'gable' ? { kind: 'gable', pitchDeg: pitch + 3, eave: 0.5, verge: 0.06, thickness: 0.16, bucket: 'roof', ridge: 'saddle' }
-      : { kind: 'flat', pitchDeg: 0, eave: 0.06, verge: 0.06, thickness: 0.24, bucket: 'stone' };
+  const roof: RoofSpec = roofKind === 'gable' ? { kind: 'gable', pitchDeg: pitch + 3, eave: over, verge: 0, thickness: 0.16, bucket: 'roof', ridge: 'saddle' }
+    : { kind: 'flat', pitchDeg: 0, eave: 0.06, verge: 0, thickness: 0.24, bucket: 'stone' };
   const chimneys: HouseSpec['chimneys'] = roofKind === 'mansard' ? [] : [
     { x: (rng() - 0.5) * 0.8, z: len / 2 - 0.9, sx: 0.6, sz: 0.75, above: 1.0, bucket: 'stone', cap: 'slab' },
     { x: (rng() - 0.5) * 0.8, z: -len / 2 + 0.9, sx: 0.6, sz: 0.75, above: 1.0, bucket: 'stone', cap: 'slab' },
   ];
-  sink.placed(Math.PI / 2, 0, 0, 0, () => sink.placed(0, 0, 0, zc, () => {
+  sink.placed(0, f.cx, 0, f.cz, () => sink.placed(Math.PI / 2, 0, 0, 0, () => sink.placed(0, 0, 0, zc, () => {
     const frame = buildHouse(sink, {
       w: D, d: len, plinth: { h: 0.35, out: 0.05, bucket: 'stone' }, storeys, roof, gableBucket: 'plaster', openings, chimneys,
       gutters: roofKind === 'mansard' ? null : { colour: ZINC }, verge: null, reveal: 0.22, rafters: null, spall: 'stone',
@@ -314,7 +322,7 @@ function ahBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
       if (!keeps.some((k) => hu > k.u0 - 0.5 && hu < k.u1 + 0.5 && hy > k.y0 - 0.5 && hy < k.y1 + 0.5)) shellHole(sink, street, hu, hy, 0.35 + look() * 0.3, look);
     }
     if (collapse) collapsedEnd(sink, frame, collapse, cut, len, groundH, look, mobile);
-  }));
+  })));
   return sink.finish();
 }
 
@@ -386,7 +394,8 @@ function collapsedEnd(sink: PartSink, frame: HouseFrame, side: -1 | 1, cut: numb
 function yuBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
-  const W = clampTo(ctx.info.w - 0.3, 6.4, 40), D = clampTo(ctx.info.d - 0.3, 7.0, 40);
+  // the flat roof overhangs its walls by 0.12 m: the walls stand in by that, the roof's edge on the lot's fill
+  const f = rowFill(ctx), W = clampTo(f.w - 0.24, 5.0, 60), D = clampTo(f.d - 0.24, 5.0, 60);
   const groundH = 3.5, upperH = 2.85;
   const panel = choose(rng(), PANEL_PAINTS), sign = choose(rng(), SIGNS);
   const loggiaEvery = rng() < 0.5 ? 2 : 3;
@@ -409,7 +418,7 @@ function yuBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
   openings.push({ face: 'right', storey: 0, kind: 'door', u: 0, w: 1.1, y0: 0, h: 2.3 });
   for (let i = 1; i < n; i++) for (const o of windowRhythm('right', i, W, { w: 1.1, h: 1.2, sill: 1.0, spacing: 2.4, margin: 0.9 })) openings.push(o);
   if (look() < 0.15) for (const o of openings) if (o.storey === n - 2 && o.face === 'left' && o.kind === 'window') o.state = 'burnt';
-  sink.placed(Math.PI / 2, 0, 0, 0, () => {
+  sink.placed(0, f.cx, 0, f.cz, () => sink.placed(Math.PI / 2, 0, 0, 0, () => {
     const frame = buildHouse(sink, {
       w: D, d: W, plinth: { h: 0.25, out: 0.04, bucket: 'plaster3' }, storeys,
       roof: { kind: 'flat', pitchDeg: 0, eave: 0.12, verge: 0.12, thickness: 0.3, bucket: 'plaster3', parapet: 0.45 }, gableBucket: 'plaster3',
@@ -444,7 +453,7 @@ function yuBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
       const hy = frame.floors[1 + Math.floor(look() * (n - 1))] + 1.3, hu = (look() - 0.5) * W * 0.7;
       if (!keeps.some((k) => hu > k.u0 - 0.5 && hu < k.u1 + 0.5 && hy > k.y0 - 0.5 && hy < k.y1 + 0.5)) shellHole(sink, street, hu, hy, 0.4 + look() * 0.35, look);
     }
-  });
+  }));
   return sink.finish();
 }
 
@@ -459,17 +468,22 @@ function yuBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
 function mahalaHouse(ctx: RegionalBuildContext): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
-  const W = clampTo(ctx.info.w - 0.3, 6.0, 30), D = clampTo(ctx.info.d - 0.3, 7.0, 30);
-  const Wh = clampTo(W - 1.5 - rng() * 0.9, 5.0, 9.6), Dh = clampTo(D * (0.55 + rng() * 0.12), 5.0, 8.4);
+  const f = rowFill(ctx), W = clampTo(f.w, 5.0, 40), D = clampTo(f.d, 5.0, 40);
+  // the house fills the plot's width (the row's houses meet, as the base row's do), its garden behind it
   const jet = 0.45, sideJet = rng() < 0.4 ? 0.3 : 0;
+  // the house as wide as its eaves allow in the lot (they meet the neighbours' at the lot's edge), the lot's sides walled
+  // to the street; a narrow lot takes a shorter eave
+  const eaveM = Math.max(0.35, Math.min(0.8 + rng() * 0.2, (W - 4.4) / 2 - sideJet));
+  const Wh = clampTo(W - 2 * (eaveM + sideJet), 3.6, 14), Dh = clampTo(D * (0.55 + rng() * 0.12), 4.6, 9.0);
   const groundStone = rng() < 0.6;
   const timber = choose(rng(), TIMBER);
-  const pitch = 47 + rng() * 9, eave = 0.8 + rng() * 0.2;
+  const pitch = 47 + rng() * 9, eave = eaveM;
   const doksat = rng() < 0.8, dw = clampTo(Wh * (0.36 + rng() * 0.12), 2.2, 3.6), du = (rng() - 0.5) * (Wh - dw - 1.2);
   const g0 = 2.55 + rng() * 0.25, g1 = 2.7 + rng() * 0.25;
   const h = siege(ctx, 0.7);
-  // the house's front face (its upper storey's, jettied) 0.15 m inside the plot's street edge
-  const front = D / 2 - 0.15 - jet, zc = front - Dh / 2;
+  // the house's front face (its upper storey's, jettied) at the plot's street edge
+  const front = D / 2 - jet - eaveM, zc = front - Dh / 2;
+  sink.placed(0, f.cx, 0, f.cz, () => {
   const openings: Opening[] = [];
   const doorU = (rng() - 0.5) * (Wh - 2.2);
   openings.push({ face: 'front', storey: 0, kind: 'door', u: doorU, w: 1.05, y0: 0, h: 2.05 });
@@ -516,15 +530,16 @@ function mahalaHouse(ctx: RegionalBuildContext): RegionalParts {
       }
     }
     // the garden wall round the yard behind the house, under its tiled coping, the gate in a side wall
-    const ga = -D / 2 + 0.2, gb = zc - Dh / 2 + Math.min(1.2, Dh * 0.3);
-    if (gb - ga > 1.2) {
-      const wallH = 2.1 + rng() * 0.3, t = 0.34, gateSide = rng() < 0.5 ? -1 : 1, gz = ga + (gb - ga) * (0.35 + rng() * 0.3), gw = 1.6;
-      const runs: Array<[number, number, number, number]> = [[-W / 2 + 0.2, ga, W / 2 - 0.2, ga + t]];
+    // (the side walls run the lot's whole depth, alongside the house to the street: the row's lots stay closed)
+    const ga = -D / 2, gb = D / 2 - 0.1, yard = zc - Dh / 2;
+    if (yard - ga > 1.2) {
+      const wallH = 2.1 + rng() * 0.3, t = 0.34, gateSide = rng() < 0.5 ? -1 : 1, gz = ga + (yard - ga) * (0.35 + rng() * 0.3), gw = 1.6;
+      const runs: Array<[number, number, number, number]> = [[-W / 2, ga, W / 2, ga + t]];
       for (const s of [-1, 1]) {
-        const x0 = s < 0 ? -W / 2 + 0.2 : W / 2 - 0.2 - t, x1 = x0 + t;
-        if (s === gateSide && gb - ga > gw + 1.2) {
+        const x0 = s < 0 ? -W / 2 : W / 2 - t, x1 = x0 + t;
+        if (s === gateSide && yard - ga > gw + 1.2) {
           runs.push([x0, ga + t, x1, gz - gw / 2], [x0, gz + gw / 2, x1, gb]);
-          const gf: Face = { origin: [s * (W / 2 - 0.2), 0, gz], u: [0, 0, -s], out: [s, 0, 0], width: gw };
+          const gf: Face = { origin: [s * W / 2, 0, gz], u: [0, 0, -s], out: [s, 0, 0], width: gw };
           sink.placed(0, 0, 0, -zc, () => gateUnit(sink, gf, 0, 0, gw - 0.1, 1.95, timber, { bucket: 'plaster', width: 0.18, out: 0.04 }));
         } else runs.push([x0, ga + t, x1, gb]);
       }
@@ -548,6 +563,7 @@ function mahalaHouse(ctx: RegionalBuildContext): RegionalParts {
     const keeps = keepsOf(openings, 'front', frame);
     shellPocks(sink, frame.faces.front, { u0: -Wh / 2 + 0.2, u1: Wh / 2 - 0.2, y0: 0.4, y1: y1 - 0.2 }, Math.round((mobile ? 0.3 : 1) * (3 + look() * 12)), keeps, look, 'stone');
   });
+  });
   return sink.finish();
 }
 
@@ -561,7 +577,8 @@ function mahalaHouse(ctx: RegionalBuildContext): RegionalParts {
 function ahShell(ctx: RegionalBuildContext): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
-  const W = clampTo(ctx.info.w - 0.3, 5.6, 30), D = clampTo(ctx.info.d - 0.3, 6.4, 30), t = 0.4;
+  // (a ruin's base is centred on its plot: its fill's centre stands within a few centimetres of the origin)
+  const f = rowFill(ctx), W = clampTo(f.w, 4.6, 30), D = clampTo(f.d, 5.0, 30), t = 0.4;
   const storeys = 2 + (rng() < 0.45 ? 1 : 0), gH = 4.0, uH = 3.3;
   const wall: RegionalBucket = rng() < 0.3 ? 'stone' : 'plaster';
   const zf = D / 2 - t;
@@ -619,7 +636,7 @@ function ahShell(ctx: RegionalBuildContext): RegionalParts {
 function mahalaShell(ctx: RegionalBuildContext): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
-  const W = clampTo(ctx.info.w - 0.3, 5.6, 30), D = clampTo(ctx.info.d - 0.3, 6.4, 30), t = 0.5;
+  const f = rowFill(ctx), W = clampTo(f.w, 4.6, 30), D = clampTo(f.d, 5.0, 30), t = 0.5;
   const gH = 2.5 + rng() * 0.3;
   sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 0.3, D / 2);
   const walls: Array<[number, number, number, number, boolean]> = [
@@ -657,7 +674,7 @@ function mahalaShell(ctx: RegionalBuildContext): RegionalParts {
 function frameShell(ctx: RegionalBuildContext): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
-  const W = clampTo(ctx.info.w - 0.3, 5.6, 30), D = clampTo(ctx.info.d - 0.3, 6.4, 30);
+  const f = rowFill(ctx), W = clampTo(f.w, 4.6, 30), D = clampTo(f.d, 5.0, 30);
   const floors = 2 + (rng() < 0.5 ? 1 : 0), fh = 2.9, c = 0.4;
   sink.span('plaster3', -W / 2, -0.3, -D / 2, W / 2, 0.3, D / 2);
   const xs = [-W / 2 + c / 2, 0, W / 2 - c / 2], zs = [-D / 2 + c / 2, D / 2 - c / 2];

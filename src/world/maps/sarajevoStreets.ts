@@ -1,12 +1,15 @@
-// src/world/maps/sarajevoStreets.ts — Ruinspires' boulevard as Sarajevo's (the map-revival lane, 2026-10-05; the map's
-// `props.extraKits: ['tram']`, dressed from maps/mapKits.ts dressMapExtras). Zmaja od Bosne carried the city's tram line
+// src/world/maps/sarajevoStreets.ts — Ruinspires' streets and slopes as Sarajevo's (the map-revival lane, 2026-10-05; the
+// map's `props.extraKits: ['sarajevo']`, dressed from maps/mapKits.ts dressMapExtras). Zmaja od Bosne carried the city's tram line
 // down the valley through the whole siege: the double track in its paved bed between low kerbs down the boulevard's
 // middle, the rails, the catenary on tubular steel poles at the kerbs with their cross-spans and the contact wires over
 // each track (a pole bent here and there, a wire down); the trams burnt out where the shelling caught them, standing on
 // the rails; and the shipping containers stood along the kerbs at the crossings as screens against the snipers in the
 // hills, behind which people ran across.
 //
-// The bed, rails, poles and wires are dressing (no collision: a hull drives over the bed and its kerbs); the burnt trams
+// On the slopes below the ridges lie the cemeteries the siege filled — Kovači, the Lion cemetery, Bare: the white
+// nišani of the Muslim graves in their rows, turbaned and plain, the crosses of the Christian ones among them.
+//
+// The bed, rails, poles, wires and stones are dressing (no collision: a hull drives over the bed and its kerbs); the burnt trams
 // and the containers block like any wreck, each a convex footprint in both collision sinks. Everything draws from a
 // stream of its own (never the props placement stream), and stands only where it clears the records already placed.
 import type * as THREE from 'three';
@@ -23,7 +26,7 @@ interface TramContext {
 }
 
 /** The track bed's half width, the track centres off the road's line, the rails off each track centre (standard gauge). */
-const BED_HALF = 2.9, TRACK = 1.55, GAUGE_HALF = 0.7175;
+const BED_HALF = 2.55, TRACK = 1.45, GAUGE_HALF = 0.7175;
 /** The poles stand behind the kerb line (props.ts kerbs at 5.05 m), every SPAN metres along the line. */
 const POLE_OFFSET = 5.65, SPAN = 34, WIRE_Y = 5.7, SPAN_Y = 6.7, POLE_H = 7.6;
 const RAIL = rgb(0x6f645a), POLE = rgb(0x3d4a44), WIRE = rgb(0x26292a);
@@ -119,7 +122,7 @@ function container(sink: PartSink, colour: Rgb, look: () => number, mobile: bool
  * Lay the tram line down the boulevard (road `road` of the layout), its catenary, two burnt trams in rotation about the
  * map's centre, and the container screens at the crossings with the other roads.
  */
-export function dressTramBoulevard(ctx: TramContext, road = 0): void {
+function dressTramBoulevard(ctx: TramContext, road = 0): void {
   const roads = ctx.L.roads ?? [];
   const line = roads[road];
   if (!line || line.length < 2) return;
@@ -140,12 +143,12 @@ export function dressTramBoulevard(ctx: TramContext, road = 0): void {
     const L0 = at(a, BED_HALF), L1 = at(b, BED_HALF), R0 = at(a, -BED_HALF), R1 = at(b, -BED_HALF), C0 = at(a, 0), C1 = at(b, 0);
     const lift = 0.045;
     const up = (p: Vec3, k = lift): Vec3 => [p[0], p[1] + k, p[2]];
-    bed.quad('stone', up(L0), up(L1), up(C1), up(C0), { decor: true, uv: { kind: 'world' }, density: 0.9 });
-    bed.quad('stone', up(C0), up(C1), up(R1), up(R0), { decor: true, uv: { kind: 'world' }, density: 0.9 });
+    bed.quad('plaster3', up(L0), up(L1), up(C1), up(C0), { decor: true, uv: { kind: 'world' } });
+    bed.quad('plaster3', up(C0), up(C1), up(R1), up(R0), { decor: true, uv: { kind: 'world' } });
     // the bed's low kerbs
     for (const off of [BED_HALF, -BED_HALF]) {
       const p0 = at(a, off), p1 = at(b, off);
-      bed.member('stone', up(p0, 0.02), up(p1, 0.02), 0.2, 0.12, [0, 1, 0], { decor: true }, 0.02);
+      bed.member('stone', up(p0, 0.02), up(p1, 0.02), 0.2, 0.09, [0, 1, 0], { decor: true }, 0.02);
     }
     // the rails, a few millimetres proud of the setts (fine: a long view cannot resolve them)
     for (const t of [-1, 1]) for (const g of [-1, 1]) {
@@ -241,3 +244,59 @@ export function dressTramBoulevard(ctx: TramContext, road = 0): void {
   }
 }
 
+
+/** The cemeteries' plots on Ruinspires' slopes below the ridges (a rotation pair about the Square): centre, half sizes. */
+const CEMETERIES: ReadonlyArray<{ x: number; z: number; hx: number; hz: number }> = [
+  { x: -170, z: -262, hx: 30, hz: 22 }, { x: 170, z: 262, hx: 30, hz: 22 },
+];
+
+/** A cross of white stone on its plinth. (x, z) its foot. */
+function cross(sink: PartSink, x: number, y: number, z: number, h: number, yaw: number): void {
+  sink.placed(yaw, x, y, z, () => {
+    sink.span('stone', -0.16, -0.2, -0.1, 0.16, 0.1, 0.1, { decor: true });
+    sink.span('stone', -0.05, 0.1, -0.04, 0.05, h, 0.04, { decor: true });
+    sink.span('stone', -0.24, h * 0.66, -0.04, 0.24, h * 0.66 + 0.1, 0.04, { decor: true });
+  });
+}
+
+/**
+ * The cemeteries: rows of graves along the contour, each a white nišan (a turban on a man's, a pointed head on a
+ * woman's, the plain rounded pillar of the siege's dead) or a cross, gaps where the rows break, clear of every record.
+ */
+function dressCemeteries(ctx: TramContext): void {
+  const hf = ctx.heightField;
+  const mobile = getDeviceTier() === 'mobile';
+  const records = [...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])];
+  for (const [k, c] of CEMETERIES.entries()) {
+    const look = streamFrom(hashSeed('sarajevo-cemetery', k, c.x, c.z));
+    const sink = new PartSink([look() * 5, look() * 5]);
+    const step = mobile ? 2.2 : 1.15, rowGap = 2.3;
+    for (let z = c.z - c.hz; z <= c.z + c.hz; z += rowGap) {
+      let x = c.x - c.hx + look() * step;
+      while (x <= c.x + c.hx) {
+        const gap = look();
+        if (gap < 0.22) { x += step * (1 + look() * 3); continue; }
+        const px = x + (look() - 0.5) * 0.25, pz = z + (look() - 0.5) * 0.3;
+        x += step * (0.85 + look() * 0.3);
+        if (!clears(records, px, pz, 0.3, 0.3, 1, 0, 0.25)) continue;
+        const y = hf.getHeightAt(px, pz), roll = look(), h = 0.7 + look() * 0.6, yaw = (look() - 0.5) * 0.25;
+        if (roll < 0.14) cross(sink, px, y, pz, h + 0.2, yaw);
+        else sink.placed(yaw, px, y, pz, () => {
+          // a nišan: plinth, shaft, head (turban / pointed / the šehid's rounded pillar)
+          sink.span('stone', -0.17, -0.25, -0.12, 0.17, 0.1, 0.12, { decor: true });
+          sink.span('stone', -0.12, 0.1, -0.09, 0.12, h, 0.09, { decor: true });
+          if (roll < 0.5) sink.cylinder('stone', [0, h - 0.02, 0], 'y', 0.24, 0.17, 6, { decor: true }, 0.13);
+          else if (roll < 0.75) sink.cylinder('stone', [0, h, 0], 'y', 0.2, 0.12, 4, { decor: true }, 0.01, true, Math.PI / 4);
+          else sink.cylinder('stone', [0, h, 0], 'y', 0.1, 0.12, 6, { decor: true }, 0.07);
+        });
+      }
+    }
+    push(ctx, sink);
+  }
+}
+
+/** Ruinspires as Sarajevo: the boulevard's tram line and its street works, the hillside cemeteries. */
+export function dressSarajevo(ctx: TramContext): void {
+  dressTramBoulevard(ctx, 0);
+  dressCemeteries(ctx);
+}

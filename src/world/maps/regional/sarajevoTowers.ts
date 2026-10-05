@@ -18,7 +18,7 @@ import { PartSink, faceBox, facePanel, facePoint, normalize3, rgb, shade, type F
 import { paneBucket } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
-  CHAR, IRON, PANEL_PAINTS, ROLL_SHUTTER, choose, clampTo, shellHole, shellPocks, sootBand, unhcrSheet,
+  CHAR, IRON, PANEL_PAINTS, ROLL_SHUTTER, choose, clampTo, fillOf, shellHole, shellPocks, sootBand, unhcrSheet,
 } from './sarajevoParts.ts';
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
@@ -100,38 +100,41 @@ function panelWindow(sink: PartSink, face: Face, u: number, y: number, w: number
  */
 const unisTowers: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
-  const W = clampTo(ctx.info.w - 0.6, 5, 60), D = clampTo(ctx.info.d - 0.6, 5, 60);
-  const T = clampTo(Math.min((W - 3) / 2, D - 2), 1.6, 13.2), c = T * 0.17;
-  const fh = 3.2, floors = Math.max(4, Math.min(18, Math.round((W > 20 ? 56 : 18) / fh)));
-  const gap = clampTo(W - 2 * T - 0.4, 0.6, 8);
-  const bronze = rgb(0x4b3a2b), slab = 'plaster3' as const;
-  // the lobby the towers stand on
-  const lobbyH = 7.0;
-  sink.span(slab, -W / 2, -0.4, -D / 2 + 1, W / 2, lobbyH, D / 2 - 1);
-  const lobby: Face = { origin: [0, 0, D / 2 - 1], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  facePanel(sink, 'glass', lobby, 0, 2.2, 0.03, W - 2, 3.4, { decor: true, window: [0, 0, 1] });
-  faceBox(sink, 'structureMetal', lobby, 0, 4.3, 0.06, W, 0.8, 0.12, { decor: true, colour: bronze });
-  for (const side of [-1, 1]) {
-    const cx = side * (gap / 2 + T / 2), hz = Math.min(T / 2, D / 2 - 0.4);
-    const plan = chamferedSquare(cx, 0, T / 2, hz, c);
-    const top = lobbyH + floors * fh;
-    planPrism(sink, 'dark', plan, lobbyH, top);
-    planPrism(sink, slab, chamferedSquare(cx, 0, T / 2 + 0.15, hz + 0.15, c), top, top + 0.45);
-    planPrism(sink, slab, chamferedSquare(cx, 0, T * 0.32, hz * 0.64, c * 0.6), top + 0.45, top + 3.4);
-    // the fire's floors: a run of gutted floors per tower, a few burnt, the rest glass (lit very rarely)
-    const gutFrom = Math.floor(rng() * floors * 0.4), gutTo = Math.min(floors, gutFrom + Math.floor(floors * (0.45 + rng() * 0.4)));
-    const faces = planFaces(plan);
-    faces.forEach((face, fi) => {
-      const state = (f: number): PaneState => {
-        const r = look();
-        if (f >= gutFrom && f < gutTo) return r < 0.22 ? 'burnt' : r < 0.9 ? 'gone' : 'glass';
-        return r < 0.12 ? 'gone' : r < 0.16 ? 'sheet' : r < 0.18 ? 'lit' : 'glass';
-      };
-      curtainFace(sink, face, lobbyH, floors, fh, bronze, slab, state, look, fi % 2 ? 0.1 : 0.25);
-      if (!mobile) mullions(sink, face, lobbyH, top, 1.6, shade(bronze, 0.8), fi % 2 ? 0.1 : 0.25);
-    });
-  }
+  const f = fillOf(ctx.bounds, 0.1);
+  sink.placed(0, f.cx, 0, f.cz, () => {
+    const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
+    const W = clampTo(f.w, 5, 60), D = clampTo(f.d, 5, 60);
+    const T = clampTo(Math.min((W - 3) / 2, D - 2), 1.6, 13.2), c = T * 0.17;
+    const fh = 3.2, floors = Math.max(4, Math.min(18, Math.round((W > 20 ? 56 : 18) / fh)));
+    const gap = clampTo(W - 2 * T - 0.4, 0.6, 8);
+    const bronze = rgb(0x4b3a2b), slab = 'plaster3' as const;
+    // the lobby the towers stand on
+    const lobbyH = 7.0;
+    sink.span(slab, -W / 2, -0.4, -D / 2, W / 2, lobbyH, D / 2);
+    const lobby: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
+    facePanel(sink, 'glass', lobby, 0, 2.2, 0.03, W - 2, 3.4, { decor: true, window: [0, 0, 1] });
+    faceBox(sink, 'structureMetal', lobby, 0, 4.3, 0.06, W, 0.8, 0.12, { decor: true, colour: bronze });
+    for (const side of [-1, 1]) {
+      const cx = side * (gap / 2 + T / 2), hz = Math.min(T / 2, D / 2 - 0.4);
+      const plan = chamferedSquare(cx, 0, T / 2, hz, c);
+      const top = lobbyH + floors * fh;
+      planPrism(sink, 'dark', plan, lobbyH, top);
+      planPrism(sink, slab, chamferedSquare(cx, 0, T / 2 + 0.15, hz + 0.15, c), top, top + 0.45);
+      planPrism(sink, slab, chamferedSquare(cx, 0, T * 0.32, hz * 0.64, c * 0.6), top + 0.45, top + 3.4);
+      // the fire's floors: a run of gutted floors per tower, a few burnt, the rest glass (lit very rarely)
+      const gutFrom = Math.floor(rng() * floors * 0.4), gutTo = Math.min(floors, gutFrom + Math.floor(floors * (0.45 + rng() * 0.4)));
+      const faces = planFaces(plan);
+      faces.forEach((face, fi) => {
+        const state = (f: number): PaneState => {
+          const r = look();
+          if (f >= gutFrom && f < gutTo) return r < 0.22 ? 'burnt' : r < 0.9 ? 'gone' : 'glass';
+          return r < 0.12 ? 'gone' : r < 0.16 ? 'sheet' : r < 0.18 ? 'lit' : 'glass';
+        };
+        curtainFace(sink, face, lobbyH, floors, fh, bronze, slab, state, look, fi % 2 ? 0.1 : 0.25);
+        if (!mobile) mullions(sink, face, lobbyH, top, 1.6, shade(bronze, 0.8), fi % 2 ? 0.1 : 0.25);
+      });
+    }
+  });
   return sink.finish();
 };
 
@@ -140,43 +143,47 @@ const unisTowers: RegionalBuilder = (ctx) => {
 /** The parliament's tower: a slab behind its grid of fins, burnt floors black, the assembly wing in front. */
 function parliament(ctx: RegionalBuildContext): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
-  const W = clampTo(ctx.info.w - 1.2, 5, 60), D = clampTo(ctx.info.d - 1.0, 5, 60);
-  const td = clampTo(D * 0.54, 6, 14), tz0 = -D / 2 + 0.3, tz1 = tz0 + td;
-  const fh = 3.1, floors = Math.max(4, Math.min(19, Math.round((W > 16 ? 58 : 16) / fh)));
-  const top = floors * fh + 1.2;
-  const concrete = 'plaster3' as const;
-  sink.span('dark', -W / 2 + 0.4, -0.4, tz0 + 0.4, W / 2 - 0.4, top, tz1 - 0.4);
-  sink.span(concrete, -W / 2 + 0.2, top, tz0 + 0.2, W / 2 - 0.2, top + 0.6, tz1 - 0.2);
-  sink.span(concrete, -W * 0.2, top + 0.6, (tz0 + tz1) / 2 - 1.8, W * 0.2, top + 3.2, (tz0 + tz1) / 2 + 1.8);
-  const faces = planFaces(rect(-W / 2 + 0.4, tz0 + 0.4, W / 2 - 0.4, tz1 - 0.4));
-  // the fire took the floors under the top and a few here and there below (the tower burnt for days in 1992)
-  const burntFrom = Math.max(1, floors - 7 - Math.floor(rng() * 5));
-  for (const face of faces) {
-    for (let f = 0; f < floors; f++) {
-      const y = 1.2 + f * fh, r = look();
-      const burnt = f >= burntFrom ? r < 0.8 : r < 0.12;
-      facePanel(sink, burnt ? 'dark' : r < 0.9 ? 'glass' : 'curtain', face, 0, y + fh / 2, 0.02, face.width - 0.2, fh - 0.5, { decor: true, window: face.out });
-      faceBox(sink, concrete, face, 0, y + 0.1, 0.12, face.width + 0.3, 0.42, 0.24, { decor: true, fineSides: true });
-      if (burnt && f + 1 < floors) sootBand(sink, concrete, face, -face.width / 2, face.width / 2, y + fh - 0.3, y + fh + 0.6);
+  const f = fillOf(ctx.bounds, 0.1);
+  sink.placed(0, f.cx, 0, f.cz, () => {
+    const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
+    const W = clampTo(f.w, 5, 60), D = clampTo(f.d, 5, 60);
+    // the slab's crown on the lot's back and side edges, the assembly wing's front on its street edge
+    const td = clampTo(D * 0.54, 6, 14), tz0 = -D / 2, tz1 = tz0 + td;
+    const fh = 3.1, floors = Math.max(4, Math.min(19, Math.round((W > 16 ? 58 : 16) / fh)));
+    const top = floors * fh + 1.2;
+    const concrete = 'plaster3' as const;
+    sink.span('dark', -W / 2 + 0.2, -0.4, tz0 + 0.2, W / 2 - 0.2, top, tz1 - 0.2);
+    sink.span(concrete, -W / 2, top, tz0, W / 2, top + 0.6, tz1);
+    sink.span(concrete, -W * 0.2, top + 0.6, (tz0 + tz1) / 2 - 1.8, W * 0.2, top + 3.2, (tz0 + tz1) / 2 + 1.8);
+    const faces = planFaces(rect(-W / 2 + 0.2, tz0 + 0.2, W / 2 - 0.2, tz1 - 0.2));
+    // the fire took the floors under the top and a few here and there below (the tower burnt for days in 1992)
+    const burntFrom = Math.max(1, floors - 7 - Math.floor(rng() * 5));
+    for (const face of faces) {
+      for (let f = 0; f < floors; f++) {
+        const y = 1.2 + f * fh, r = look();
+        const burnt = f >= burntFrom ? r < 0.8 : r < 0.12;
+        facePanel(sink, burnt ? 'dark' : r < 0.9 ? 'glass' : 'curtain', face, 0, y + fh / 2, 0.02, face.width - 0.2, fh - 0.5, { decor: true, window: face.out });
+        faceBox(sink, concrete, face, 0, y + 0.1, 0.12, face.width + 0.3, 0.42, 0.24, { decor: true, fineSides: true });
+        if (burnt && f + 1 < floors) sootBand(sink, concrete, face, -face.width / 2, face.width / 2, y + fh - 0.3, y + fh + 0.6);
+      }
+      // the grid of fins, full height
+      const n = Math.max(2, Math.round(face.width / 1.75));
+      for (let k = 0; k <= n; k++) {
+        const u = -face.width / 2 + face.width * k / n;
+        faceBox(sink, concrete, face, u, (1.2 + top) / 2, 0.22, 0.26, top - 1.2, 0.44, { decor: true, fineSides: true });
+      }
     }
-    // the grid of fins, full height
-    const n = Math.max(2, Math.round(face.width / 1.75));
-    for (let k = 0; k <= n; k++) {
-      const u = -face.width / 2 + face.width * k / n;
-      faceBox(sink, concrete, face, u, (1.2 + top) / 2, 0.22, 0.26, top - 1.2, 0.44, { decor: true, fineSides: true });
+    // the assembly wing in front: two storeys, a ribbon of dark glass, a flat roof
+    const wz0 = tz1 + 0.6, wz1 = D / 2;
+    if (wz1 - wz0 > 2.5) {
+      sink.span(concrete, -W / 2, -0.4, wz0, W / 2, 8.2, wz1);
+      const wf: Face = { origin: [0, 0, wz1], u: [1, 0, 0], out: [0, 0, 1], width: W };
+      facePanel(sink, 'glass', wf, 0, 2.0, 0.02, W - 1.6, 2.6, { decor: true, window: [0, 0, 1] });
+      facePanel(sink, look() < 0.5 ? 'dark' : 'glass', wf, 0, 5.6, 0.02, W - 1.6, 2.2, { decor: true, window: [0, 0, 1] });
+      faceBox(sink, concrete, wf, 0, 8.0, 0.2, W + 0.2, 0.5, 0.4, { decor: true });
+      if (!mobile) shellPocks(sink, wf, { u0: -W / 2 + 0.6, u1: W / 2 - 0.6, y0: 3.4, y1: 4.6 }, 10 + Math.floor(look() * 14), [], look, 'stone');
     }
-  }
-  // the assembly wing in front: two storeys, a ribbon of dark glass, a flat roof
-  const wz0 = tz1 + 0.6, wz1 = D / 2 - 0.2;
-  if (wz1 - wz0 > 2.5) {
-    sink.span(concrete, -W / 2 + 0.2, -0.4, wz0, W / 2 - 0.2, 8.2, wz1);
-    const wf: Face = { origin: [0, 0, wz1], u: [1, 0, 0], out: [0, 0, 1], width: W - 0.4 };
-    facePanel(sink, 'glass', wf, 0, 2.0, 0.02, W - 1.6, 2.6, { decor: true, window: [0, 0, 1] });
-    facePanel(sink, look() < 0.5 ? 'dark' : 'glass', wf, 0, 5.6, 0.02, W - 1.6, 2.2, { decor: true, window: [0, 0, 1] });
-    faceBox(sink, concrete, wf, 0, 8.0, 0.2, W - 0.2, 0.5, 0.4, { decor: true });
-    if (!mobile) shellPocks(sink, wf, { u0: -W / 2 + 0.6, u1: W / 2 - 0.6, y0: 3.4, y1: 4.6 }, 10 + Math.floor(look() * 14), [], look, 'stone');
-  }
+  });
   return sink.finish();
 }
 
@@ -189,63 +196,66 @@ function parliament(ctx: RegionalBuildContext): RegionalParts {
  */
 function estateTower(ctx: RegionalBuildContext): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
-  const W = clampTo(ctx.info.w - 0.8, 7, 60), D = clampTo(ctx.info.d - 0.8, 7, 60);
-  const fr = rng();
-  const fh = 2.85, floors = W > 16 ? 15 + Math.round(fr * 2) : 4;
-  const armW = clampTo(Math.min(W, D) * 0.46, 4, 11);
-  const top = 1.0 + floors * fh;
-  const concrete = 'plaster3' as const;
-  const paint = choose(rng(), PANEL_PAINTS), paint2 = choose(rng(), PANEL_PAINTS);
-  // the two slabs (structure) and the roof's parapet, lift rooms
-  const slabs = [rect(-W / 2, -armW / 2, W / 2, armW / 2), rect(-armW / 2, -D / 2, armW / 2, D / 2)];
-  for (const plan of slabs) planPrism(sink, concrete, plan, -0.4, top);
-  sink.span(concrete, -armW / 2 - 0.5, top, -armW / 2 - 0.5, armW / 2 + 0.5, top + 2.6, armW / 2 + 0.5);
-  // the faces of the cross: the arm ends (loggias) and the arms' sides (windows)
-  const hx = W / 2, hz = D / 2, a = armW / 2;
-  const faces: Array<{ face: Face; end: boolean; colour: Rgb }> = [];
-  const add = (x0: number, z0: number, x1: number, z1: number, end: boolean, colour: Rgb) => {
-    const len = Math.hypot(x1 - x0, z1 - z0);
-    if (len < 0.5) return;
-    const u: Vec3 = [(x1 - x0) / len, 0, (z1 - z0) / len];
-    faces.push({ face: { origin: [(x0 + x1) / 2, 0, (z0 + z1) / 2], u, out: [-u[2], 0, u[0]], width: len }, end, colour });
-  };
-  // counter-clockwise round the cross seen from above
-  add(-a, hz, a, hz, true, paint); add(a, hz, a, a, false, paint); add(a, a, hx, a, false, paint);
-  add(hx, a, hx, -a, true, paint2); add(hx, -a, a, -a, false, paint2); add(a, -a, a, -hz, false, paint2);
-  add(a, -hz, -a, -hz, true, paint); add(-a, -hz, -a, -a, false, paint); add(-a, -a, -hx, -a, false, paint);
-  add(-hx, -a, -hx, a, true, paint2); add(-hx, a, -a, a, false, paint2); add(-a, a, -a, hz, false, paint2);
-  const burnt = new Set<number>();
-  for (let k = 0; k < 3 + Math.floor(rng() * 4); k++) burnt.add(Math.floor(rng() * faces.length) * 100 + Math.floor(rng() * floors));
-  faces.forEach(({ face, end, colour }, fi) => {
-    for (let f = 0; f < floors; f++) {
-      const y = 1.0 + f * fh;
-      if (f > 0) faceBox(sink, concrete, face, 0, y - 0.05, 0.03, face.width, 0.14, 0.06, { decor: true, fine: true });
-      const isBurnt = burnt.has(fi * 100 + f);
-      if (end && f > 0) {
-        // the loggia: the dark recess, the slab, the coloured parapet panel
-        const lw = Math.min(face.width - 0.8, 3.6);
-        facePanel(sink, isBurnt ? 'dark' : look() < 0.85 ? 'glass' : 'dark', face, 0, y + 1.2, 0.01, lw, 2.2, { decor: true, window: face.out });
-        faceBox(sink, concrete, face, 0, y - 0.05, 0.45, lw + 0.6, 0.15, 0.9, { decor: true });
-        faceBox(sink, 'structureMetal', face, 0, y + 0.5, 0.88, lw + 0.6, 0.95, 0.06, { decor: true, colour: isBurnt ? CHAR : shade(colour, 0.9 + look() * 0.2) });
-        if (isBurnt) sootBand(sink, concrete, face, -lw / 2, lw / 2, y + 2.3, y + fh + 1.0);
-        continue;
+  const f = fillOf(ctx.bounds, 0.1);
+  sink.placed(0, f.cx, 0, f.cz, () => {
+    const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
+    const W = clampTo(f.w, 7, 60), D = clampTo(f.d, 7, 60);
+    const fr = rng();
+    const fh = 2.85, floors = W > 16 ? 15 + Math.round(fr * 2) : 4;
+    const armW = clampTo(Math.min(W, D) * 0.46, 4, 11);
+    const top = 1.0 + floors * fh;
+    const concrete = 'plaster3' as const;
+    const paint = choose(rng(), PANEL_PAINTS), paint2 = choose(rng(), PANEL_PAINTS);
+    // the two slabs (structure) and the roof's parapet, lift rooms
+    const slabs = [rect(-W / 2, -armW / 2, W / 2, armW / 2), rect(-armW / 2, -D / 2, armW / 2, D / 2)];
+    for (const plan of slabs) planPrism(sink, concrete, plan, -0.4, top);
+    sink.span(concrete, -armW / 2 - 0.5, top, -armW / 2 - 0.5, armW / 2 + 0.5, top + 2.6, armW / 2 + 0.5);
+    // the faces of the cross: the arm ends (loggias) and the arms' sides (windows)
+    const hx = W / 2, hz = D / 2, a = armW / 2;
+    const faces: Array<{ face: Face; end: boolean; colour: Rgb }> = [];
+    const add = (x0: number, z0: number, x1: number, z1: number, end: boolean, colour: Rgb) => {
+      const len = Math.hypot(x1 - x0, z1 - z0);
+      if (len < 0.5) return;
+      const u: Vec3 = [(x1 - x0) / len, 0, (z1 - z0) / len];
+      faces.push({ face: { origin: [(x0 + x1) / 2, 0, (z0 + z1) / 2], u, out: [-u[2], 0, u[0]], width: len }, end, colour });
+    };
+    // counter-clockwise round the cross seen from above
+    add(-a, hz, a, hz, true, paint); add(a, hz, a, a, false, paint); add(a, a, hx, a, false, paint);
+    add(hx, a, hx, -a, true, paint2); add(hx, -a, a, -a, false, paint2); add(a, -a, a, -hz, false, paint2);
+    add(a, -hz, -a, -hz, true, paint); add(-a, -hz, -a, -a, false, paint); add(-a, -a, -hx, -a, false, paint);
+    add(-hx, -a, -hx, a, true, paint2); add(-hx, a, -a, a, false, paint2); add(-a, a, -a, hz, false, paint2);
+    const burnt = new Set<number>();
+    for (let k = 0; k < 3 + Math.floor(rng() * 4); k++) burnt.add(Math.floor(rng() * faces.length) * 100 + Math.floor(rng() * floors));
+    faces.forEach(({ face, end, colour }, fi) => {
+      for (let f = 0; f < floors; f++) {
+        const y = 1.0 + f * fh;
+        if (f > 0) faceBox(sink, concrete, face, 0, y - 0.05, 0.03, face.width, 0.14, 0.06, { decor: true, fine: true });
+        const isBurnt = burnt.has(fi * 100 + f);
+        if (end && f > 0) {
+          // the loggia: the dark recess, the slab, the coloured parapet panel
+          const lw = Math.min(face.width - 0.8, 3.6);
+          facePanel(sink, isBurnt ? 'dark' : look() < 0.85 ? 'glass' : 'dark', face, 0, y + 1.2, 0.01, lw, 2.2, { decor: true, window: face.out });
+          faceBox(sink, concrete, face, 0, y - 0.05, 0.45, lw + 0.6, 0.15, 0.9, { decor: true });
+          faceBox(sink, 'structureMetal', face, 0, y + 0.5, 0.88, lw + 0.6, 0.95, 0.06, { decor: true, colour: isBurnt ? CHAR : shade(colour, 0.9 + look() * 0.2) });
+          if (isBurnt) sootBand(sink, concrete, face, -lw / 2, lw / 2, y + 2.3, y + fh + 1.0);
+          continue;
+        }
+        const n = Math.max(1, Math.floor((face.width - 0.6) / 2.4));
+        for (let k = 0; k < n; k++) {
+          const u = -face.width / 2 + 0.3 + (face.width - 0.6) * (k + 0.5) / n;
+          if (isBurnt) {
+            facePanel(sink, 'dark', face, u, y + 1.5, 0.01, 1.3, 1.3, { decor: true });
+            sootBand(sink, concrete, face, u - 0.85, u + 0.85, y + 2.15, y + fh + 0.8);
+          } else panelWindow(sink, face, u, y + 0.85, 1.3, 1.3, look, 0.06);
+        }
       }
-      const n = Math.max(1, Math.floor((face.width - 0.6) / 2.4));
-      for (let k = 0; k < n; k++) {
-        const u = -face.width / 2 + 0.3 + (face.width - 0.6) * (k + 0.5) / n;
-        if (isBurnt) {
-          facePanel(sink, 'dark', face, u, y + 1.5, 0.01, 1.3, 1.3, { decor: true });
-          sootBand(sink, concrete, face, u - 0.85, u + 0.85, y + 2.15, y + fh + 0.8);
-        } else panelWindow(sink, face, u, y + 0.85, 1.3, 1.3, look, 0.06);
-      }
-    }
-    if (!mobile && look() < 0.35) shellHole(sink, face, (look() - 0.5) * face.width * 0.5, 1.0 + fh * (2 + look() * (floors - 4)), 0.5 + look() * 0.4, look, 'stone');
+      if (!mobile && look() < 0.35) shellHole(sink, face, (look() - 0.5) * face.width * 0.5, 1.0 + fh * (2 + look() * (floors - 4)), 0.5 + look() * 0.4, look, 'stone');
+    });
+    // the ground storey: the entrance's glazed screen under a canopy
+    const entry = faces[0].face;
+    facePanel(sink, 'glass', entry, 0, 1.3, 0.04, Math.min(entry.width - 0.6, 3.2), 2.2, { decor: true, window: entry.out });
+    faceBox(sink, concrete, entry, 0, 2.7, 0.9, Math.min(entry.width, 4.4), 0.2, 1.8, { decor: true });
   });
-  // the ground storey: the entrance's glazed screen under a canopy
-  const entry = faces[0].face;
-  facePanel(sink, 'glass', entry, 0, 1.3, 0.04, Math.min(entry.width - 0.6, 3.2), 2.2, { decor: true, window: entry.out });
-  faceBox(sink, concrete, entry, 0, 2.7, 0.9, Math.min(entry.width, 4.4), 0.2, 1.8, { decor: true });
   return sink.finish();
 }
 
@@ -254,50 +264,53 @@ function estateTower(ctx: RegionalBuildContext): RegionalParts {
 /** The Holiday Inn: the yellow cube on its brown-glazed podium, the window bands, the crown storey and the sign. */
 const holidayInn: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
-  const W = clampTo(ctx.info.w - 0.6, 7, 60), D = clampTo(ctx.info.d - 0.6, 7, 60);
-  const yellow = rgb(0xd2a63a), brown = rgb(0x4a3326);
-  const podH = 7.0, T = clampTo(Math.min(W, D) - 1.6, 4, 18), fh = 3.1;
-  const floors = Math.max(3, Math.min(10, Math.round(T * 0.58)));
-  const top = podH + floors * fh;
-  // the podium: brown glass between yellow piers; the cube with its corners notched; the crown storey
-  sink.span('structureMetal', -W / 2, -0.4, -D / 2, W / 2, podH, D / 2, { colour: shade(yellow, 0.92) });
-  const c = T * 0.08;
-  const cube = chamferedSquare(0, 0, T / 2, T / 2, c);
-  planPrism(sink, 'structureMetal', cube, podH, top, { colour: yellow });
-  planPrism(sink, 'structureMetal', chamferedSquare(0, 0, T * 0.36, T * 0.36, c * 0.7), top, top + 3.0, { colour: shade(yellow, 0.95) });
-  for (const face of planFaces(rect(-W / 2, -D / 2, W / 2, D / 2))) {
-    facePanel(sink, 'glass', face, 0, 2.0, 0.02, face.width - 1.2, 2.8, { decor: true, window: face.out });
-    faceBox(sink, 'structureMetal', face, 0, 4.4, 0.04, face.width - 1.2, 0.6, 0.06, { decor: true, colour: brown });
-    facePanel(sink, look() < 0.3 ? 'dark' : 'glass', face, 0, 5.7, 0.02, face.width - 1.2, 1.6, { decor: true, window: face.out });
-  }
-  // the window bands, brown-framed, on every face of the cube (the south-west faces shelled toward the front line)
-  planFaces(cube).forEach((face, fi) => {
-    if (face.width < 2) return;
-    const shelled = fi === 4 || fi === 6;
-    for (let f = 0; f < floors; f++) {
-      const y = podH + f * fh;
-      const roll = look();
-      const state = shelled ? (roll < 0.35 ? 'gone' : roll < 0.5 ? 'sheet' : 'glass') : roll < 0.08 ? 'gone' : roll < 0.12 ? 'lit' : 'glass';
-      const gw = face.width - 0.8;
-      if (state === 'gone') facePanel(sink, 'dark', face, 0, y + 1.55, 0.02, gw, 1.5, { decor: true });
-      else if (state === 'sheet') facePanel(sink, 'structureMetal', face, 0, y + 1.55, 0.03, gw, 1.5, { decor: true, colour: rgb(0xd9dedb) });
-      else facePanel(sink, state === 'lit' ? 'curtain' : 'glass', face, 0, y + 1.55, 0.02, gw, 1.5, { decor: true, window: face.out });
-      faceBox(sink, 'structureMetal', face, 0, y + 0.72, 0.05, gw + 0.1, 0.12, 0.08, { decor: true, colour: brown, fineSides: true });
-      faceBox(sink, 'structureMetal', face, 0, y + 2.36, 0.05, gw + 0.1, 0.12, 0.08, { decor: true, colour: brown, fineSides: true });
-      if (!mobile) for (let k = 1; k < Math.round(gw / 1.5); k++) {
-        faceBox(sink, 'structureWood', face, -gw / 2 + gw * k / Math.round(gw / 1.5), y + 1.55, 0.05, 0.07, 1.5, 0.06, { decor: true, colour: brown, fine: true });
+  const f = fillOf(ctx.bounds, 0.1);
+  sink.placed(0, f.cx, 0, f.cz, () => {
+    const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
+    const W = clampTo(f.w, 7, 60), D = clampTo(f.d, 7, 60);
+    const yellow = rgb(0xd2a63a), brown = rgb(0x4a3326);
+    const podH = 7.0, T = clampTo(Math.min(W, D) - 1.6, 4, 18), fh = 3.1;
+    const floors = Math.max(3, Math.min(10, Math.round(T * 0.58)));
+    const top = podH + floors * fh;
+    // the podium: brown glass between yellow piers; the cube with its corners notched; the crown storey
+    sink.span('structureMetal', -W / 2, -0.4, -D / 2, W / 2, podH, D / 2, { colour: shade(yellow, 0.92) });
+    const c = T * 0.08;
+    const cube = chamferedSquare(0, 0, T / 2, T / 2, c);
+    planPrism(sink, 'structureMetal', cube, podH, top, { colour: yellow });
+    planPrism(sink, 'structureMetal', chamferedSquare(0, 0, T * 0.36, T * 0.36, c * 0.7), top, top + 3.0, { colour: shade(yellow, 0.95) });
+    for (const face of planFaces(rect(-W / 2, -D / 2, W / 2, D / 2))) {
+      facePanel(sink, 'glass', face, 0, 2.0, 0.02, face.width - 1.2, 2.8, { decor: true, window: face.out });
+      faceBox(sink, 'structureMetal', face, 0, 4.4, 0.04, face.width - 1.2, 0.6, 0.06, { decor: true, colour: brown });
+      facePanel(sink, look() < 0.3 ? 'dark' : 'glass', face, 0, 5.7, 0.02, face.width - 1.2, 1.6, { decor: true, window: face.out });
+    }
+    // the window bands, brown-framed, on every face of the cube (the south-west faces shelled toward the front line)
+    planFaces(cube).forEach((face, fi) => {
+      if (face.width < 2) return;
+      const shelled = fi === 4 || fi === 6;
+      for (let f = 0; f < floors; f++) {
+        const y = podH + f * fh;
+        const roll = look();
+        const state = shelled ? (roll < 0.35 ? 'gone' : roll < 0.5 ? 'sheet' : 'glass') : roll < 0.08 ? 'gone' : roll < 0.12 ? 'lit' : 'glass';
+        const gw = face.width - 0.8;
+        if (state === 'gone') facePanel(sink, 'dark', face, 0, y + 1.55, 0.02, gw, 1.5, { decor: true });
+        else if (state === 'sheet') facePanel(sink, 'structureMetal', face, 0, y + 1.55, 0.03, gw, 1.5, { decor: true, colour: rgb(0xd9dedb) });
+        else facePanel(sink, state === 'lit' ? 'curtain' : 'glass', face, 0, y + 1.55, 0.02, gw, 1.5, { decor: true, window: face.out });
+        faceBox(sink, 'structureMetal', face, 0, y + 0.72, 0.05, gw + 0.1, 0.12, 0.08, { decor: true, colour: brown, fineSides: true });
+        faceBox(sink, 'structureMetal', face, 0, y + 2.36, 0.05, gw + 0.1, 0.12, 0.08, { decor: true, colour: brown, fineSides: true });
+        if (!mobile) for (let k = 1; k < Math.round(gw / 1.5); k++) {
+          faceBox(sink, 'structureWood', face, -gw / 2 + gw * k / Math.round(gw / 1.5), y + 1.55, 0.05, 0.07, 1.5, 0.06, { decor: true, colour: brown, fine: true });
+        }
       }
-    }
-    if (shelled && !mobile) {
-      shellPocks(sink, face, { u0: -face.width / 2 + 0.3, u1: face.width / 2 - 0.3, y0: podH + 0.3, y1: top - 0.5 }, 30 + Math.floor(look() * 30), [], look, 'stone');
-      for (let k = 0; k < 2; k++) shellHole(sink, face, (look() - 0.5) * face.width * 0.6, podH + fh * (1 + look() * (floors - 2)) + 2.6, 0.5 + look() * 0.5, look, 'stone');
-    }
+      if (shelled && !mobile) {
+        shellPocks(sink, face, { u0: -face.width / 2 + 0.3, u1: face.width / 2 - 0.3, y0: podH + 0.3, y1: top - 0.5 }, 30 + Math.floor(look() * 30), [], look, 'stone');
+        for (let k = 0; k < 2; k++) shellHole(sink, face, (look() - 0.5) * face.width * 0.6, podH + fh * (1 + look() * (floors - 2)) + 2.6, 0.5 + look() * 0.5, look, 'stone');
+      }
+    });
+    // the sign frame on the roof: posts and the board (its green lettering a dark panel at this range)
+    const sy = top + 3.0;
+    for (const dx of [-T * 0.25, T * 0.25]) sink.member('structureMetal', [dx, sy, 0], [dx, sy + 2.6, 0], 0.12, 0.12, [0, 0, 1], { colour: IRON, decor: true, exposed: true }, 0);
+    sink.span('structureMetal', -T * 0.33, sy + 1.0, -0.08, T * 0.33, sy + 2.5, 0.08, { colour: rng() < 0.5 ? rgb(0x2f6b4a) : rgb(0x2a4c3a), decor: true });
   });
-  // the sign frame on the roof: posts and the board (its green lettering a dark panel at this range)
-  const sy = top + 3.0;
-  for (const dx of [-T * 0.25, T * 0.25]) sink.member('structureMetal', [dx, sy, 0], [dx, sy + 2.6, 0], 0.12, 0.12, [0, 0, 1], { colour: IRON, decor: true, exposed: true }, 0);
-  sink.span('structureMetal', -T * 0.33, sy + 1.0, -0.08, T * 0.33, sy + 2.5, 0.08, { colour: rng() < 0.5 ? rgb(0x2f6b4a) : rgb(0x2a4c3a), decor: true });
   return sink.finish();
 };
 
@@ -309,46 +322,66 @@ const holidayInn: RegionalBuilder = (ctx) => {
  */
 const slabBlock: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
-  const W = clampTo(ctx.info.w - 0.8, 7, 60), D = clampTo(ctx.info.d - 0.8, 7, 60);
-  const sd = clampTo(D * 0.5, 5, 12), z0 = -sd / 2 - 1.0, z1 = z0 + sd;
-  const fh = 2.85, gH = 3.4, floors = Math.max(2, Math.min(9, 6 + Math.floor(rng() * 4)));
-  const top = gH + floors * fh;
-  const concrete = 'plaster3' as const;
-  const paint = choose(rng(), PANEL_PAINTS);
-  sink.span(concrete, -W / 2, -0.4, z0, W / 2, top, z1);
-  sink.span(concrete, -W / 2 - 0.1, top, z0 - 0.1, W / 2 + 0.1, top + 0.7, z1 + 0.1);
-  for (const x of [-W * 0.28, W * 0.28]) sink.span(concrete, x - 1.3, top + 0.7, z0 + sd * 0.25, x + 1.3, top + 3.0, z1 - sd * 0.25, { decor: true });
-  const front: Face = { origin: [0, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  const back: Face = { origin: [0, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: W };
-  const bays = Math.max(2, Math.round(W / 2.9)), bw = W / bays;
-  const burnt = new Set<number>();
-  for (let k = 0; k < 2 + Math.floor(rng() * 5); k++) burnt.add(Math.floor(rng() * bays) * 100 + Math.floor(rng() * floors));
-  // the foot: shops' glazing and the entrances
-  facePanel(sink, 'glass', front, 0, 1.6, 0.02, W - 1, 2.4, { decor: true, window: [0, 0, 1] });
-  faceBox(sink, 'structureMetal', front, 0, gH - 0.35, 0.06, W, 0.5, 0.1, { decor: true, colour: ROLL_SHUTTER });
-  for (let f = 0; f < floors; f++) {
-    const y = gH + f * fh;
-    faceBox(sink, concrete, front, 0, y - 0.04, 0.5, W, 0.14, 1.0, { decor: true });
-    for (let k = 0; k < bays; k++) {
-      const u = -W / 2 + bw * (k + 0.5), isBurnt = burnt.has(k * 100 + f);
-      facePanel(sink, isBurnt ? 'dark' : look() < 0.9 ? 'glass' : 'curtain', front, u, y + 1.2, 0.01, bw - 0.5, 2.2, { decor: true, window: [0, 0, 1] });
-      faceBox(sink, 'structureMetal', front, u, y + 0.52, 0.97, bw - 0.12, 0.96, 0.06, { decor: true, colour: isBurnt ? CHAR : shade(paint, 0.88 + look() * 0.22) });
-      if (isBurnt) sootBand(sink, concrete, front, u - bw / 2 + 0.2, u + bw / 2 - 0.2, y + 2.3, y + fh + 1.1);
+  const f = fillOf(ctx.bounds, 0.1);
+  sink.placed(0, f.cx, 0, f.cz, () => {
+    const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
+    const W = clampTo(f.w, 7, 60), D = clampTo(f.d, 7, 60);
+    // the slab along the back of the lot, its low annex of shops and garages filling the front to the lot's edge
+    const sd = clampTo(D * 0.5, 5, 12), z0 = -D / 2, z1 = z0 + sd;
+    const fh = 2.85, gH = 3.4, floors = Math.max(2, Math.min(9, 6 + Math.floor(rng() * 4)));
+    const top = gH + floors * fh;
+    const concrete = 'plaster3' as const;
+    const paint = choose(rng(), PANEL_PAINTS);
+    sink.span(concrete, -W / 2, -0.4, z0, W / 2, top, z1);
+    if (D / 2 - z1 > 1.5) {
+      const ah = 4.2;
+      sink.span(concrete, -W / 2, -0.4, z1 - 0.2, W / 2, ah, D / 2);
+      sink.span(concrete, -W / 2, ah, D / 2 - 0.25, W / 2, ah + 0.7, D / 2);
+      const af: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
+      const units = Math.max(2, Math.floor(W / 4.2));
+      for (let k = 0; k < units; k++) {
+        const u = -W / 2 + W * (k + 0.5) / units, uw = W / units - 1.0;
+        if (k % 3 === 2) faceBox(sink, 'structureMetal', af, u, 1.4, 0.03, uw, 2.8, 0.05, { decor: true, colour: shade(ROLL_SHUTTER, 0.9 + look() * 0.2) });
+        else {
+          facePanel(sink, look() < 0.3 ? 'dark' : 'glass', af, u, 1.5, 0.02, uw, 2.6, { decor: true, window: [0, 0, 1] });
+          faceBox(sink, 'structureMetal', af, u, 3.2, 0.05, uw + 0.4, 0.55, 0.08, { decor: true, colour: shade(paint, 0.9) });
+        }
+      }
+      if (!mobile) shellPocks(sink, af, { u0: -W / 2 + 0.3, u1: W / 2 - 0.3, y0: 0.3, y1: ah - 0.3 }, 12 + Math.floor(look() * 16), [], look, 'stone');
     }
-    for (let k = 0; k <= bays; k++) faceBox(sink, concrete, front, -W / 2 + bw * k, y + fh / 2, 0.5, 0.14, fh, 1.0, { decor: true, fine: true });
-    // the back: kitchen windows, the stair glazing
-    for (let k = 0; k < bays; k++) {
-      const u = -W / 2 + bw * (k + 0.5);
-      if (k % 4 === 2) continue;
-      panelWindow(sink, back, u, y + 1.0, 1.1, 1.2, look, 0.06);
+    sink.span(concrete, -W / 2 - 0.1, top, z0 - 0.1, W / 2 + 0.1, top + 0.7, z1 + 0.1);
+    for (const x of [-W * 0.28, W * 0.28]) sink.span(concrete, x - 1.3, top + 0.7, z0 + sd * 0.25, x + 1.3, top + 3.0, z1 - sd * 0.25, { decor: true });
+    const front: Face = { origin: [0, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: W };
+    const back: Face = { origin: [0, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: W };
+    const bays = Math.max(2, Math.round(W / 2.9)), bw = W / bays;
+    const burnt = new Set<number>();
+    for (let k = 0; k < 2 + Math.floor(rng() * 5); k++) burnt.add(Math.floor(rng() * bays) * 100 + Math.floor(rng() * floors));
+    // the foot: shops' glazing and the entrances
+    facePanel(sink, 'glass', front, 0, 1.6, 0.02, W - 1, 2.4, { decor: true, window: [0, 0, 1] });
+    faceBox(sink, 'structureMetal', front, 0, gH - 0.35, 0.06, W, 0.5, 0.1, { decor: true, colour: ROLL_SHUTTER });
+    for (let f = 0; f < floors; f++) {
+      const y = gH + f * fh;
+      faceBox(sink, concrete, front, 0, y - 0.04, 0.5, W, 0.14, 1.0, { decor: true });
+      for (let k = 0; k < bays; k++) {
+        const u = -W / 2 + bw * (k + 0.5), isBurnt = burnt.has(k * 100 + f);
+        facePanel(sink, isBurnt ? 'dark' : look() < 0.9 ? 'glass' : 'curtain', front, u, y + 1.2, 0.01, bw - 0.5, 2.2, { decor: true, window: [0, 0, 1] });
+        faceBox(sink, 'structureMetal', front, u, y + 0.52, 0.97, bw - 0.12, 0.96, 0.06, { decor: true, colour: isBurnt ? CHAR : shade(paint, 0.88 + look() * 0.22) });
+        if (isBurnt) sootBand(sink, concrete, front, u - bw / 2 + 0.2, u + bw / 2 - 0.2, y + 2.3, y + fh + 1.1);
+      }
+      for (let k = 0; k <= bays; k++) faceBox(sink, concrete, front, -W / 2 + bw * k, y + fh / 2, 0.5, 0.14, fh, 1.0, { decor: true, fine: true });
+      // the back: kitchen windows, the stair glazing
+      for (let k = 0; k < bays; k++) {
+        const u = -W / 2 + bw * (k + 0.5);
+        if (k % 4 === 2) continue;
+        panelWindow(sink, back, u, y + 1.0, 1.1, 1.2, look, 0.06);
+      }
     }
-  }
-  for (let k = 2; k < bays; k += 4) facePanel(sink, 'glass', back, -W / 2 + bw * (k + 0.5), (gH + top) / 2, 0.02, 1.4, top - gH - 1, { decor: true, window: [0, 0, -1] });
-  if (!mobile) {
-    shellPocks(sink, back, { u0: -W / 2 + 0.4, u1: W / 2 - 0.4, y0: 1, y1: top - 1 }, 20 + Math.floor(look() * 30), [], look, 'stone');
-    for (let k = 0; k < 2; k++) shellHole(sink, back, (look() - 0.5) * W * 0.8, gH + fh * (1 + look() * (floors - 2)) + 2.4, 0.45 + look() * 0.4, look, 'stone');
-  }
+    for (let k = 2; k < bays; k += 4) facePanel(sink, 'glass', back, -W / 2 + bw * (k + 0.5), (gH + top) / 2, 0.02, 1.4, top - gH - 1, { decor: true, window: [0, 0, -1] });
+    if (!mobile) {
+      shellPocks(sink, back, { u0: -W / 2 + 0.4, u1: W / 2 - 0.4, y0: 1, y1: top - 1 }, 20 + Math.floor(look() * 30), [], look, 'stone');
+      for (let k = 0; k < 2; k++) shellHole(sink, back, (look() - 0.5) * W * 0.8, gH + fh * (1 + look() * (floors - 2)) + 2.4, 0.45 + look() * 0.4, look, 'stone');
+    }
+  });
   return sink.finish();
 };
 
@@ -360,53 +393,68 @@ const slabBlock: RegionalBuilder = (ctx) => {
  */
 const oslobodjenje: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
-  const W = clampTo(ctx.info.w - 0.8, 8, 60), D = clampTo(ctx.info.d - 0.8, 7, 60);
-  const concrete = 'plaster3' as const;
-  // the print works: three storeys along the back of the plot, its roof broken
-  const bz0 = -D / 2, bz1 = bz0 + clampTo(D * 0.48, 4, 11), bh = 10.5;
-  sink.span(concrete, -W / 2, -0.4, bz0, W / 2, bh, bz1);
-  const pf: Face = { origin: [0, 0, bz1], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  for (let f = 0; f < 3; f++) for (let k = 0; k < Math.max(2, Math.floor(W / 2.6)); k++) {
-    const n = Math.max(2, Math.floor(W / 2.6)), u = -W / 2 + W * (k + 0.5) / n;
-    panelWindow(sink, pf, u, 0.9 + f * 3.4, 1.5, 1.4, look, 0.04);
-  }
-  sink.span('dark', -W * 0.2, bh - 0.02, bz0 + 1.5, W * 0.1, bh + 0.02, bz1 - 1.5, { decor: true });
-  // the cores
-  const cs = clampTo(Math.min(W, D) * 0.25, 2.5, 5.6), ch = clampTo(W * 1.75, 12, 46);
-  const cz = bz1 + cs / 2 + 0.3;
-  for (const side of [-1, 1]) {
-    const cx = side * (W / 2 - cs / 2 - 0.6), h = ch * (side > 0 ? 1 : 0.86 + rng() * 0.08);
-    sink.span(concrete, cx - cs / 2, -0.4, cz - cs / 2, cx + cs / 2, h, cz + cs / 2);
-    const faces = planFaces(rect(cx - cs / 2, cz - cs / 2, cx + cs / 2, cz + cs / 2));
-    for (const face of faces) sootBand(sink, concrete, face, -cs / 2, cs / 2, h * (0.3 + look() * 0.3), h);
-    // the slab stubs on the inner face at every floor, rebar at the head
-    for (let y = 3.4; y < h - 1; y += 3.4) {
-      const inner: Face = faces.find((f) => f.out[0] === -side) ?? faces[0];
-      if (look() < 0.55) faceBox(sink, concrete, inner, 0, y, 0.6 + look() * 1.2, cs * 0.9, 0.26, 1.2 + look() * 2.4, { decor: true });
+  const f = fillOf(ctx.bounds, 0.1);
+  sink.placed(0, f.cx, 0, f.cz, () => {
+    const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
+    const W = clampTo(f.w, 8, 60), D = clampTo(f.d, 7, 60);
+    const concrete = 'plaster3' as const;
+    // the print works: three storeys along the back of the plot, its roof broken
+    const bz0 = -D / 2, bz1 = bz0 + clampTo(D * 0.48, 4, 11), bh = 10.5;
+    sink.span(concrete, -W / 2, -0.4, bz0, W / 2, bh, bz1);
+    const pf: Face = { origin: [0, 0, bz1], u: [1, 0, 0], out: [0, 0, 1], width: W };
+    for (let f = 0; f < 3; f++) for (let k = 0; k < Math.max(2, Math.floor(W / 2.6)); k++) {
+      const n = Math.max(2, Math.floor(W / 2.6)), u = -W / 2 + W * (k + 0.5) / n;
+      panelWindow(sink, pf, u, 0.9 + f * 3.4, 1.5, 1.4, look, 0.04);
     }
-    if (!mobile) for (let k = 0; k < 6; k++) {
-      const x = cx + (look() - 0.5) * cs, z = cz + (look() - 0.5) * cs;
-      sink.member('structureWood', [x, h, z], [x + (look() - 0.5) * 0.6, h + 0.6 + look() * 0.9, z + (look() - 0.5) * 0.6], 0.035, 0.035, [0, 0, 1], { colour: rgb(0x5e4030), decor: true, exposed: true }, 0);
+    sink.span('dark', -W * 0.2, bh - 0.02, bz0 + 1.5, W * 0.1, bh + 0.02, bz1 - 1.5, { decor: true });
+    // the cores
+    const cs = clampTo(Math.min(W, D) * 0.25, 2.5, 5.6), ch = clampTo(W * 1.75, 12, 46);
+    const cz = bz1 + cs / 2 + 0.3;
+    // the collapsed tower's two lowest storeys still standing round the cores' feet to the lot's front, gutted
+    const tz0 = bz1 - 0.2, tz1 = D / 2, th = 6.8;
+    if (tz1 - tz0 > 2) {
+      sink.span(concrete, -W / 2, -0.4, tz0, W / 2, th, tz1);
+      const tf: Face = { origin: [0, 0, tz1], u: [1, 0, 0], out: [0, 0, 1], width: W };
+      const n = Math.max(2, Math.floor(W / 2.8));
+      for (let fl = 0; fl < 2; fl++) for (let k = 0; k < n; k++) {
+        const u = -W / 2 + W * (k + 0.5) / n;
+        facePanel(sink, 'dark', tf, u, 1.6 + fl * 3.4, 0.01, W / n - 0.9, 1.9, { decor: true });
+      }
+      sootBand(sink, concrete, tf, -W / 2, W / 2, 2.6, th);
     }
-    if (side > 0) {
-      sink.cylinder('structureMetal', [cx, h, cz], 'y', 7.5, 0.12, 6, { colour: rgb(0xb4b2aa), decor: true }, 0.06);
-      for (const k of [0.4, 0.7]) sink.member('structureMetal', [cx - 0.9, h + 7.5 * k, cz], [cx + 0.9, h + 7.5 * k, cz], 0.05, 0.05, [0, 0, 1], { colour: rgb(0xb4b2aa), decor: true, exposed: true }, 0);
+    for (const side of [-1, 1]) {
+      const cx = side * (W / 2 - cs / 2 - 0.6), h = ch * (side > 0 ? 1 : 0.86 + rng() * 0.08);
+      sink.span(concrete, cx - cs / 2, -0.4, cz - cs / 2, cx + cs / 2, h, cz + cs / 2);
+      const faces = planFaces(rect(cx - cs / 2, cz - cs / 2, cx + cs / 2, cz + cs / 2));
+      for (const face of faces) sootBand(sink, concrete, face, -cs / 2, cs / 2, h * (0.3 + look() * 0.3), h);
+      // the slab stubs on the inner face at every floor, rebar at the head
+      for (let y = 3.4; y < h - 1; y += 3.4) {
+        const inner: Face = faces.find((f) => f.out[0] === -side) ?? faces[0];
+        if (look() < 0.55) faceBox(sink, concrete, inner, 0, y, 0.6 + look() * 1.2, cs * 0.9, 0.26, 1.2 + look() * 2.4, { decor: true });
+      }
+      if (!mobile) for (let k = 0; k < 6; k++) {
+        const x = cx + (look() - 0.5) * cs, z = cz + (look() - 0.5) * cs;
+        sink.member('structureWood', [x, h, z], [x + (look() - 0.5) * 0.6, h + 0.6 + look() * 0.9, z + (look() - 0.5) * 0.6], 0.035, 0.035, [0, 0, 1], { colour: rgb(0x5e4030), decor: true, exposed: true }, 0);
+      }
+      if (side > 0) {
+        sink.cylinder('structureMetal', [cx, h, cz], 'y', 7.5, 0.12, 6, { colour: rgb(0xb4b2aa), decor: true }, 0.06);
+        for (const k of [0.4, 0.7]) sink.member('structureMetal', [cx - 0.9, h + 7.5 * k, cz], [cx + 0.9, h + 7.5 * k, cz], 0.05, 0.05, [0, 0, 1], { colour: rgb(0xb4b2aa), decor: true, exposed: true }, 0);
+      }
     }
-  }
-  // slabs hanging between the cores, the mound of the fallen floors
-  const span = W - 2 * cs - 1.2;
-  for (let k = 0; k < 3; k++) {
-    const y = 8 + k * (ch * 0.22) + look() * 3;
-    const a: Vec3 = [-span / 2 + 0.2, y, cz], b: Vec3 = [span / 2 - 0.2, y - 2 - look() * 6, cz + (look() - 0.5) * 2];
-    sink.member(concrete, a, b, cs * 0.9, 0.26, normalize3([0.2, 1, 0]), { decor: true, exposed: true });
-  }
-  sink.span('stone', -span / 2 - 0.5, -0.3, cz - cs, span / 2 + 0.5, 2.2, Math.min(D / 2, cz + cs * 1.4), { decor: true });
-  for (let k = 0; k < (mobile ? 2 : 6); k++) {
-    const x = (look() - 0.5) * span, z = cz + (look() - 0.3) * cs;
-    sink.member(concrete, [x, 0.8, z], [x + (look() - 0.5) * 3, 2.2 + look() * 2, z + (look() - 0.5) * 3], 2 + look() * 2, 0.24, [0, 1, 0], { decor: true, exposed: true });
-  }
-  if (!mobile) shellPocks(sink, pf, { u0: -W / 2 + 0.4, u1: W / 2 - 0.4, y0: 0.6, y1: bh - 0.6 }, 30, [], look, 'stone');
+    // slabs hanging between the cores, the mound of the fallen floors
+    const span = W - 2 * cs - 1.2;
+    for (let k = 0; k < 3; k++) {
+      const y = 8 + k * (ch * 0.22) + look() * 3;
+      const a: Vec3 = [-span / 2 + 0.2, y, cz], b: Vec3 = [span / 2 - 0.2, y - 2 - look() * 6, cz + (look() - 0.5) * 2];
+      sink.member(concrete, a, b, cs * 0.9, 0.26, normalize3([0.2, 1, 0]), { decor: true, exposed: true });
+    }
+    sink.span('stone', -span / 2 - 0.5, -0.3, cz - cs, span / 2 + 0.5, 2.2, Math.min(D / 2, cz + cs * 1.4), { decor: true });
+    for (let k = 0; k < (mobile ? 2 : 6); k++) {
+      const x = (look() - 0.5) * span, z = cz + (look() - 0.3) * cs;
+      sink.member(concrete, [x, 0.8, z], [x + (look() - 0.5) * 3, 2.2 + look() * 2, z + (look() - 0.5) * 3], 2 + look() * 2, 0.24, [0, 1, 0], { decor: true, exposed: true });
+    }
+    if (!mobile) shellPocks(sink, pf, { u0: -W / 2 + 0.4, u1: W / 2 - 0.4, y0: 0.6, y1: bh - 0.6 }, 30, [], look, 'stone');
+  });
   return sink.finish();
 };
 
