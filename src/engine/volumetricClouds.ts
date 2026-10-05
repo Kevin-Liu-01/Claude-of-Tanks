@@ -1673,6 +1673,15 @@ export class VolumetricCloudLayer {
   /** The current preset (null = the baked decks show). */
   get currentPreset(): CloudLayerPreset | null { return this.preset; }
 
+  /**
+   * 2026-10-04 (the gauntlet's wave 71 on Titan Gorge: the lens flare's halo drew as "a vertical rainbow" under a closed
+   * deck): the resolved cloud history the dome composites, in screen uv — alpha is the clouds' transmittance along each
+   * view ray — while the layer draws; null otherwise. The lens flare and the sun shafts read it to fade behind cloud.
+   */
+  get historyTexture(): THREE.Texture | null {
+    return this.active && this.dome.visible && this.historyValid ? this.domeMaterial.uniforms.tClouds.value as THREE.Texture : null;
+  }
+
   setPreset(preset: CloudLayerPreset | null): void {
     const key = preset ? cloudLayerKey(preset) : '';
     if (key !== this.presetKey) {

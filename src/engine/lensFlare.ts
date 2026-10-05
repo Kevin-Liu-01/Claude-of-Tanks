@@ -94,13 +94,19 @@ export function lensFlareDiscRadiusUv(fovDeg: number): number {
 export function lensFlareVisibility(
   sunUv: [number, number], radiusUv: number, aspect: number, isSky: (u: number, v: number) => boolean,
   factors: { up: number; inFrame: number },
+  cloudTransmittance: (u: number, v: number) => number = () => 1,
 ): number {
   let sky = 0;
   for (const [ox, oy] of lensFlareTapOffsets()) {
     if (isSky(sunUv[0] + ox * radiusUv / aspect, sunUv[1] + oy * radiusUv)) sky++;
   }
-  return (sky / LENS_FLARE_VIS_TAPS) * clamp01(factors.up) * clamp01(factors.inFrame);
+  // 2026-10-04: the clouds' transmittance toward the sun, over the centre and four taps on the disc's rim
+  let clouds = 0;
+  for (const [ox, oy] of LENS_FLARE_CLOUD_TAPS) clouds += clamp01(cloudTransmittance(sunUv[0] + ox * radiusUv / aspect, sunUv[1] + oy * radiusUv));
+  return (sky / LENS_FLARE_VIS_TAPS) * (clouds / LENS_FLARE_CLOUD_TAPS.length) * clamp01(factors.up) * clamp01(factors.inFrame);
 }
+/** The cloud-transmittance taps over the visibility disc (uv offsets before the disc scale): the centre and its rim. */
+export const LENS_FLARE_CLOUD_TAPS: ReadonlyArray<readonly [number, number]> = Object.freeze([[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]);
 
 /** Easing step toward the target visibility over dt seconds. */
 export function lensFlareEase(previous: number, target: number, dt: number): number {
@@ -113,6 +119,8 @@ const f = (x: number): string => x.toFixed(6);
 function visibilityFragment(): string {
   const taps = lensFlareTapOffsets().map(([x, y]) =>
     `  sky += step( 0.9999999, texture2D( tDepth, uSun + vec2( ${f(x)}, ${f(y)} ) * uDisc ).x );`).join('\n');
+  const cloudTaps = LENS_FLARE_CLOUD_TAPS.map(([x, y]) =>
+    `    clouds += clamp( texture2D( tClouds, uSun + vec2( ${f(x)}, ${f(y)} ) * uDisc ).a, 0.0, 1.0 );`).join('\n');
   return /* glsl */`
 uniform sampler2D tDepth;
 uniform sampler2D tPrev;
@@ -120,10 +128,20 @@ uniform vec2 uSun;
 uniform vec2 uDisc;
 uniform float uTarget;
 uniform float uBlend;
+// 2026-10-04 (wave 71: the flare drew under Titan Gorge's closed deck): the resolved cloud history (alpha = the clouds'
+// transmittance along the view ray; volumetricClouds.ts historyTexture) and whether it is bound
+uniform sampler2D tClouds;
+uniform float uCloudsOn;
 void main() {
   float sky = 0.0;
 ${taps}
-  float target = ( sky / ${LENS_FLARE_VIS_TAPS.toFixed(1)} ) * uTarget;
+  float clouds = 1.0;
+  if ( uCloudsOn > 0.5 ) {
+    clouds = 0.0;
+${cloudTaps}
+    clouds /= ${LENS_FLARE_CLOUD_TAPS.length.toFixed(1)};
+  }
+  float target = ( sky / ${LENS_FLARE_VIS_TAPS.toFixed(1)} ) * clouds * uTarget;
   float previous = texture2D( tPrev, vec2( 0.5 ) ).r;
   gl_FragColor = vec4( mix( previous, target, uBlend ), 0.0, 0.0, 1.0 );
 }`;
@@ -212,6 +230,7 @@ export class LensFlarePass extends Pass {
       uniforms: {
         tDepth: { value: depthTexture }, tPrev: { value: null }, uSun: { value: new THREE.Vector2(0.5, 0.5) },
         uDisc: { value: new THREE.Vector2(0.01, 0.01) }, uTarget: { value: 0 }, uBlend: { value: 1 },
+        tClouds: { value: null }, uCloudsOn: { value: 0 },
       },
       vertexShader: QUAD_VERTEX, fragmentShader: visibilityFragment(),
       depthTest: false, depthWrite: false, blending: THREE.NoBlending,
@@ -258,6 +277,10 @@ export class LensFlarePass extends Pass {
     if (transmittance) this.color.copy(transmittance);
     else if (rig) this.color.copy(rig.sunColor);
     else this.color.setRGB(1, 1, 1);
+    // 2026-10-04: the clouds' transmittance toward the sun joins the eased visibility (a closed deck draws no flare)
+    const clouds = (this.scene.userData.volumetricClouds as { historyTexture?: THREE.Texture | null } | undefined)?.historyTexture ?? null;
+    this.visMaterial.uniforms.tClouds.value = clouds;
+    this.visMaterial.uniforms.uCloudsOn.value = clouds && lightTune('LENS_FLARE_CLOUD_GATE', 1) > 0 ? 1 : 0;
     (this.flareMaterial.uniforms.uParts.value as THREE.Vector4).set(lightTune('LENS_FLARE_PART_GHOSTS', LENS_FLARE_PARTS.ghosts),
       lightTune('LENS_FLARE_PART_HALO', LENS_FLARE_PARTS.halo), lightTune('LENS_FLARE_PART_STREAK', LENS_FLARE_PARTS.streak),
       lightTune('LENS_FLARE_PART_GLOW', LENS_FLARE_PARTS.glow));
