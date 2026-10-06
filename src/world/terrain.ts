@@ -4792,17 +4792,12 @@ void splatCompute() {
         // own widths (±14 %) and phase, and across it the lands drift ±9 % in width over ~37 m and wander ±0.4 m along
         // the rows (the tractor's line is never ruled) — no period repeats field to field
         float kP = 0.86 + 0.28 * fract(jit * 5.77 + 0.29);
-        // (wave 86: "an obviously regular stripe/speckle repeat … a tiling texture" within a field) along its run each
-        // furrow wanders ±0.37 m over 25–70 m — the plough's line, never ruled — and the rows' depth comes and goes in
-        // stretches (a wetter strip, a shallower pass) on a field of no period across and along it
-        float alongP = dot(wp.xz, rowDir);
-        float wobP = 0.25 * sin(alongP * 0.093 + jit * 5.1) + 0.12 * sin(alongP * 0.241 + jit * 2.3);
-        float depthP = 0.35 + 0.65 * smoothstep(-0.6, 0.6, sin(alongP * 0.057 + across * 0.031 + jit * 4.0)
-          + 0.6 * sin(alongP * 0.149 + jit * 2.7) + (n2 - 0.5) * 1.2);
-        float acrossP = (across + wobP + (n1 - 0.5) * 0.9 + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kP + jit * 9.7;
+        // (2026-10-06, the cost trim: the furrows' wander along their run and their depth's stretches — four sines a
+        // fragment, wave 86's — are gone again; the rows keep their field-by-field widths and phase)
+        float acrossP = (across + (n1 - 0.5) * 0.9 + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kP + jit * 9.7;
         float furrowVis = uLandTier > 0.5 ? stripeAA(0.8 * kP, acrossDir) : 0.0;
-        rows = (sin(acrossP * 7.854) * 0.16 * furrowVis + sin(acrossP * 3.927 + jit * 2.0) * 0.07 * stripeAA(1.6 * kP, acrossDir)
-          + bandAA(acrossP * 1.963 + jit * 3.0, 3.2 * kP, acrossDir) * 0.11) * depthP
+        rows = sin(acrossP * 7.854) * 0.16 * furrowVis + sin(acrossP * 3.927 + jit * 2.0) * 0.07 * stripeAA(1.6 * kP, acrossDir)
+          + bandAA(acrossP * 1.963 + jit * 3.0, 3.2 * kP, acrossDir) * 0.11
           + sin(acrossP * 0.483 + jit * 6.0) * 0.07 * stripeAA(13.0 * kP, acrossDir);
         rowsShow = max(rowsShow, uLandTier > 0.5 ? 0.80 * smoothstep(0.05, 0.20, gFootM) : 0.0);
         // (wave 46, Verdant's establishing foreground: "a blurred, brush-stroke smear of dark brown soil … if the streaks
@@ -4815,22 +4810,11 @@ void splatCompute() {
         // (the dirt normal, 0.93 m) lies on it near the tank, further down
         float soilHere = inField * landW;
         float ridge = (cos(acrossP * 7.854) + 0.70 * cos(acrossP * 15.708) * stripeAA(0.4 * kP, acrossDir)) * (0.55 + 0.90 * n1h);
-        if (nrmOn) n.xy = mix(n.xy, vec2(0.5), soilHere) + acrossDir * ridge * 0.20 * furrowVis * soilHere * depthP;
+        if (nrmOn) n.xy = mix(n.xy, vec2(0.5), soilHere) + acrossDir * ridge * 0.20 * furrowVis * soilHere;
         // (wave 86, Verdant's establishing view: "a smeared, streaky charcoal texture with no clods or furrow relief") past
-        // the furrows' own reach the plough keeps its relief: the lands' low crowns (each 3.2 m land a gentle ridge, lit
-        // and shaded with the sun) and its clods, faded only as they near the pixel
-        // (wave 88: "no clods" from above) the clods as the eye reads them from a ridge: lumps and their clusters of
-        // 30–60 cm (the noise read at its own level of detail), paler on their dry tops and dark in their hollows, to a
-        // half-metre footprint
-        if (nrmOn) {
-          n.xy += acrossDir * sin(acrossP * 1.963 + jit * 3.0) * 0.14 * stripeAA(3.2 * kP, acrossDir) * soilHere * depthP;
-          float clodVis = uLandTier > 1.5 ? 1.0 - smoothstep(0.15, 0.50, gFootM) : 0.0;
-          if (clodVis > 0.001) {
-            vec2 cl = nz(uv, 0.45, vec2(0.17, 0.41)).rg - 0.5;
-            n.xy += cl * 0.55 * clodVis * soilHere;
-            cropCol *= 1.0 + clamp(cl.x * 1.4, -0.5, 0.5) * 0.50 * clodVis;
-          }
-        }
+        // the furrows' own reach the plough keeps its relief: the lands' low crowns, each 3.2 m land a gentle ridge lit and
+        // shaded with the sun (2026-10-06, the cost trim: wave 88's clods — a near read of the noise — are gone again)
+        if (nrmOn) n.xy += acrossDir * sin(acrossP * 1.963 + jit * 3.0) * 0.14 * stripeAA(3.2 * kP, acrossDir) * soilHere;
       } else if (crop < 5.5) {
         cropCol = vec3(1.218, 1.010, 0.627) * baseL * 2.8 * bright; // stubble
         // (wave 88: "a pale sandy grey-beige, which is neither Prokhorovka's black chernozem nor Hesse's brown loam")
@@ -4874,9 +4858,7 @@ void splatCompute() {
         cropCol = mix(cropCol, vec3(0.17, 0.165, 0.155) * bright, karstStone * 0.65 * tileVis(0.8));
         cropCol = mix(cropCol, mix(cropCol, vec3(reduxLuma(cropCol)), 0.12), 1.0 - tileVis(0.8)); // the stones' grey in the far average
         float kR = 0.86 + 0.28 * fract(jit * 5.77 + 0.29);
-        float alongR = dot(wp.xz, rowDir);
-        float acrossR = (across + 0.25 * sin(alongR * 0.093 + jit * 5.1) + 0.12 * sin(alongR * 0.241 + jit * 2.3)
-          + (n1 - 0.5) * 0.9 + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kR + jit * 9.7;
+        float acrossR = (across + (n1 - 0.5) * 0.9 + 0.55 * sin(across * 0.17 + jit * 6.2832)) / kR + jit * 9.7;
         rows = sin(acrossR * 7.854) * 0.10 * tileVis(0.8 * kR) + sin(acrossR * 0.483 + jit * 6.0) * 0.06 * tileVis(13.0 * kR);
         // the turned red earth's relief is its furrows, not the sward's blade strokes (as the plough's, a little softer)
         // (a breath of relief, broken along its run: wave 8's "unnaturally regular striped banding" was this field's)
