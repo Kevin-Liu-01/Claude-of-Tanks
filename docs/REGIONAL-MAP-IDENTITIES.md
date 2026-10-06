@@ -45,7 +45,7 @@ the fictional map reproduces a particular real-world location.
 | copper_mesa | Natural tablelands surrounding distinctly engineered quarry benches. |
 | airfield | Open approach sectors and distant low hills; restrained perimeter berms. |
 | oasis | Asymmetric dune arms and sparse distant rock around a protected spring basin. |
-| whiteout | A DEW Line station on the Tuktoyaktuk Peninsula (Northwest Territories), 1980s, map revival 2026-10-05: an exposed treeless coastal plain on permafrost with broad low glacial rises, pingos, an esker and wind-shaped snow shoulders; the station in the arctic kit (module trains on steel piles under the white radome, tropospheric-scatter billboards, the radar on its lattice tower, steel garages, Jamesway huts, plywood sheds on runners). Round 2: the panels' paint smooth, not stucco. |
+| whiteout | A DEW Line station on the Tuktoyaktuk Peninsula (Northwest Territories), 1980s, map revival 2026-10-05: an exposed treeless coastal plain on permafrost with broad low glacial rises, pingos, an esker and wind-shaped snow shoulders; the station in the arctic kit (module trains on steel piles under the white radome, tropospheric-scatter billboards, the radar on its lattice tower, steel garages, Jamesway huts, plywood sheds on runners). Round 2: the panels' paint smooth, not stucco; sectional doors, snow banks at the walls, the tropo dishes deep. |
 | orchard | Long unequal upland valley sides with cultivated shelves and drainage folds. |
 | longleaf | Interlocking wooded logging-country ridges, creek spurs and clearcut shoulders. |
 | mangrove | Open estuary sectors, low islands and elongated natural levees. |

@@ -173,8 +173,8 @@
       "concealers": 674
     },
     "whiteout": {
-      "bytes": 564504,
-      "sha256": "d0b27197835fa19da9af2722a075206fa6fa101850e7b774890e0fd19a3b2c11",
+      "bytes": 567254,
+      "sha256": "d67296873f59a2cdfbb627e4961e084c5673fe303b36bf19d92914517d8cba60",
       "obstacles": 737,
       "colliders": 584,
       "concealers": 16

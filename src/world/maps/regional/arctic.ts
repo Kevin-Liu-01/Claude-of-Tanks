@@ -10,8 +10,8 @@ import {
   LocalFrame, PartSink, faceBox, facePoint, rgb, shade,
   type Face, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
-import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { buildHouse, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const STEEL = rgb(0x5d6266), STEEL_DARK = rgb(0x34383b), WHITE = rgb(0xe8e9e6), ORANGE = rgb(0xc4602b), BLUE = rgb(0x6f8796);
@@ -36,13 +36,57 @@ const WINDOW: WindowStyle = {
   sill: { bucket: 'structureMetal', out: 0.06, colour: STEEL }, shutters: null,
 };
 
+/**
+ * An insulated sectional overhead door (round 2, gauntlet wave 112b: "a door of vertical boards ... a plastered barn rather
+ * than a steel-panel garage with a sectional overhead door"): the steel frame, the leaf of five horizontal sections in the
+ * wall's paint, the joints between them, a row of small panes in the second section from the top, the bottom seal.
+ */
+function overheadDoor(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, paint: Paint): void {
+  const steel = { colour: STEEL, decor: true } as const;
+  faceBox(sink, 'structureMetal', face, u - w / 2 - 0.07, y + h / 2, 0.04, 0.14, h + 0.1, 0.08, steel);
+  faceBox(sink, 'structureMetal', face, u + w / 2 + 0.07, y + h / 2, 0.04, 0.14, h + 0.1, 0.08, steel);
+  faceBox(sink, 'structureMetal', face, u, y + h + 0.07, 0.04, w + 0.28, 0.14, 0.08, steel, 'ends');
+  const leaf = shade(PAINT_RGB[paint], 0.9);
+  faceBox(sink, 'structureMetal', face, u, y + h / 2, -0.02, w, h, 0.04, { colour: leaf, decor: true });
+  for (let k = 1; k < 5; k++) faceBox(sink, 'structureMetal', face, u, y + h * k / 5, 0.0, w, 0.035, 0.02, { colour: STEEL_DARK, decor: true, fine: true }, 'ends');
+  for (let k = 0; k < 4; k++) faceBox(sink, 'dark', face, u - w * 0.375 + k * w * 0.25, y + h * 0.7, 0.002, w * 0.16, h * 0.08, 0.01, { decor: true });
+  faceBox(sink, 'structureMetal', face, u, y + 0.03, 0.01, w, 0.06, 0.03, { colour: STEEL_DARK, decor: true }, 'ends');
+}
+
+/**
+ * The snow banked against a building that stands on the ground (round 2, wave 112b: "set straight onto a featureless snow
+ * plane with no piles, drifts, contact shadows"): a bank along each ground-storey wall, deeper on the windward side,
+ * running past the corners and cut away before every door and gate (the ploughed way in). Dressing.
+ */
+function drifts(sink: PartSink, frame: HouseFrame, openings: readonly Opening[], look: () => number): void {
+  const foot = -0.3;
+  for (const name of ['front', 'back', 'left', 'right'] as const) {
+    const face = frame.faces[name], half = face.width / 2;
+    const out = 0.8 + look() * 0.5;
+    const cuts = openings.filter((o) => o.face === name && o.storey === 0 && (o.kind === 'door' || o.kind === 'gate'))
+      .map((o) => [o.u - o.w / 2 - 0.8, o.u + o.w / 2 + 0.8] as const).sort((a, b) => a[0] - b[0]);
+    let u = -half - out * 0.8;
+    const runs: Array<[number, number]> = [];
+    for (const [c0, c1] of cuts) { if (c0 > u) runs.push([u, c0]); u = Math.max(u, c1); }
+    if (half + out * 0.8 > u) runs.push([u, half + out * 0.8]);
+    for (const [u0, u1] of runs) {
+      if (u1 - u0 < 0.8) continue;
+      const h0 = 0.35 + look() * 0.45, h1 = 0.35 + look() * 0.45;
+      const a = facePoint(face, u0, h0, 0.01), b = facePoint(face, u1, h1, 0.01);
+      const c = facePoint(face, u1, foot, out), d = facePoint(face, u0, foot, out);
+      sink.polygon('plaster', [a, d, c, b], { decor: true });
+      sink.polygon('plaster', [a, facePoint(face, u0, foot, 0.01), d], { decor: true });
+      sink.polygon('plaster', [b, c, facePoint(face, u1, foot, 0.01)], { decor: true });
+    }
+  }
+}
+
 function dialect(rng: () => number, paint: Paint): HouseDialect {
   return {
     window: (sink, face, o, y0) => windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, WINDOW, rng, 0.5),
     door: (sink, face, o, y0, frame) => {
       if (o.kind === 'gate') {
-        // an insulated overhead door: its panels in the wall's own paint, ribbed
-        gateUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, shade(PAINT_RGB[paint], 0.86), { bucket: 'structureMetal', width: 0.14, out: 0.05, colour: STEEL });
+        overheadDoor(sink, face, o.u, y0 + o.y0, o.w, o.h, paint);
         return;
       }
       doorUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, {
@@ -187,12 +231,13 @@ const tropo: RegionalBuilder = (ctx) => {
   const back = z0 + 2.6;
   for (const s of [-1, 1]) {
     const bx = cx + s * (bw / 2 + 0.3);
-    // the reflector: vertical slats on a parabolic-cylinder curve, concave to +z
+    // the reflector: vertical slats on a parabolic-cylinder curve, concave to +z — deep enough to read as the dish it is
+    // (round 2, wave 112b: "flat white slabs standing in for the curved tropo-scatter reflectors": the sag was 0.9 m)
     // (the slats are solid: their count is the same on every tier, so the collision is)
-    const n = 9;
+    const n = 13, SAG = 2.4;
     for (let k = 0; k < n; k++) {
-      const t = (k + 0.5) / n - 0.5, x = bx + t * bw, sag = 4 * 0.9 * t * t;
-      const ang = Math.atan(8 * 0.9 * t / bw);
+      const t = (k + 0.5) / n - 0.5, x = bx + t * bw, sag = 4 * SAG * t * t;
+      const ang = Math.atan(8 * SAG * t / bw);
       const c: Vec3 = [x, H / 2 + 0.6, back + sag];
       const f = new LocalFrame([Math.cos(ang), 0, Math.sin(ang)], [0, 1, 0], [-Math.sin(ang), 0, Math.cos(ang)], c);
       sink.box('plaster', c, [bw / n / 2 + 0.02, H / 2 - 0.6, 0.05], { colour: WHITE }, f);
@@ -200,8 +245,16 @@ const tropo: RegionalBuilder = (ctx) => {
     // the back frame: legs, struts down to the ground behind, the braces
     for (const t of [-0.45, 0, 0.45]) {
       const x = bx + t * bw;
-      sink.member('structureMetal', [x, -0.3, back + 4 * 0.9 * t * t - 0.15], [x, H + 0.2, back + 4 * 0.9 * t * t - 0.15], 0.25, 0.25, [0, 0, 1], { colour: STEEL, exposed: true });
-      sink.member('structureMetal', [x, -0.3, z0], [x, H * 0.75, back + 4 * 0.9 * t * t - 0.3], 0.18, 0.18, [1, 0, 0], { colour: STEEL, exposed: true });
+      sink.member('structureMetal', [x, -0.3, back + 4 * SAG * t * t - 0.15], [x, H + 0.2, back + 4 * SAG * t * t - 0.15], 0.25, 0.25, [0, 0, 1], { colour: STEEL, exposed: true });
+      sink.member('structureMetal', [x, -0.3, z0], [x, H * 0.75, back + 4 * SAG * t * t - 0.3], 0.18, 0.18, [1, 0, 0], { colour: STEEL, exposed: true });
+    }
+    // the reflector's stiffeners: horizontal ribs following its curve on the back, every three metres (dressing)
+    for (let y = 2.0; y < H - 0.5; y += 3.0) {
+      for (let k = 0; k + 1 < n; k++) {
+        const ta = (k + 0.5) / n - 0.5, tb = (k + 1.5) / n - 0.5;
+        sink.member('structureMetal', [bx + ta * bw, y, back + 4 * SAG * ta * ta - 0.1], [bx + tb * bw, y, back + 4 * SAG * tb * tb - 0.1], 0.07, 0.12, [0, 1, 0],
+          { colour: STEEL_DARK, decor: true, exposed: true });
+      }
     }
     if (!mobile) for (let y = 1.5; y < H; y += 2.6) sink.member('structureMetal', [bx - bw * 0.45, y, back - 0.3], [bx + bw * 0.45, y + 1.3, back - 0.3], 0.08, 0.08, [0, 0, 1], { colour: STEEL_DARK, decor: true, exposed: true });
     // the feed horn on its stand before the reflector's focus
@@ -280,11 +333,12 @@ const garage: RegionalBuilder = (ctx) => {
     for (const o of windowRhythm('left', 0, D, { w: 1.0, h: 0.7, sill: 2.4, spacing: 3.2, margin: 1.6, max: 6 })) openings.push(o);
     for (const o of windowRhythm('front', 0, W, { w: 1.0, h: 0.7, sill: 2.4, spacing: 2.4, margin: W * 0.45, max: 1 })) openings.push(o);
     const roof: RoofSpec = { kind: 'gable', pitchDeg: 10, eave: 0.35, verge: 0.3, thickness: 0.14, bucket: 'roof', ridge: 'saddle' };
-    buildHouse(sink, {
+    const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: 4.6, wall: paint }], roof, gableBucket: paint, openings,
       chimneys: [{ x: -W * 0.25, z: -D * 0.3, sx: 0.4, sz: 0.4, above: 1.4, bucket: 'stone', cap: 'none' }],
       gutters: null, verge: null, reveal: 0.08, spall: null,
     }, dialect(rng, paint));
+    drifts(sink, frame, openings, look);
     // the apron along the doors
     sink.span('stone', W / 2, -0.3, -D / 2, W / 2 + apron, 0.08, D / 2);
   });
@@ -348,10 +402,11 @@ const warehouse: RegionalBuilder = (ctx) => {
     ];
     for (const face of ['right', 'left'] as const) for (const o of windowRhythm(face, 0, D, { w: 1.2, h: 0.6, sill: 4.4, spacing: 3.6, margin: 2.0, max: 7 })) openings.push(o);
     const roof: RoofSpec = { kind: 'gable', pitchDeg: 9, eave: 0.35, verge: 0.3, thickness: 0.14, bucket: 'roof', ridge: 'saddle' };
-    buildHouse(sink, {
+    const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.35, out: 0.05, bucket: 'stone' }, storeys: [{ h: 6.4, wall: paint }], roof, gableBucket: paint, openings,
       chimneys: [], gutters: null, verge: null, reveal: 0.08, spall: null,
     }, dialect(rng, paint));
+    drifts(sink, frame, openings, look);
     sink.span('stone', -W / 2, -0.3, D / 2, W / 2, 0.08, D / 2 + apron);
     // the band of the station's colour round the eaves
     sink.span('plaster2', -W / 2 - 0.03, 5.85, -D / 2 - 0.03, W / 2 + 0.03, 6.35, D / 2 + 0.03);
