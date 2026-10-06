@@ -7408,6 +7408,22 @@ carrying 42 % of the clear light. Three scaled laws, all at 1 on the 28 maps wit
 QA knobs of the same names.
 
 
+### 2026-10-06 — the air under a thick deck is lit by the deck's reduced glow (the skies lane)
+
+**The gauntlet's wave 141** (Opus on both overcast maps: "a flat milky band at the horizon"). Measured on its frames, the
+distance ordering holds in every column strip (luminance falls and saturation rises toward the camera); what reads wrong
+is the step from the nearest hills (display luma about 110) to a flat far band (about 182, saturation 0.06–0.10): the
+panorama converging on the haze law's in-scatter target under the deck. That target's level under a deck
+(`HAZE_OVERCAST_K` 0.45) was set against the old glow; with the glow's thickness cut (`OVERCAST_THICK_CUT`, above) the
+ground under a thick deck is lit by about half that light, and the air the haze stands for by the same. `hazeTargetTerms`
+now takes the deck's level × the thickness on its glow (`lightModelCore.ts overcastThickness`, the light model's own law
+and knobs; shared copies pinned equal by `lightModel.selftest`): Cinder Junction's 0.95 at 0.21, a closed deck 0.20,
+Frosthollow's 0.79 at 0.30, half a deck and every clear map untouched (QA `AERIAL_OVERCAST_THICK 0` restores the plain
+level). The aerial pass, the panorama's bake and the cloud trace's deck rows read the same terms. Measured as the lab's
+"ovk21" on the wave's frames (Cinder Junction and Ironworks establishing): local contrast +14 %, the darkest 1 % about 5
+levels deeper, the far third's lift over the near 4.4 L* smaller (the band a grey under the deck, not a milky white).
+Receipt: `hazeLaw.selftest`.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

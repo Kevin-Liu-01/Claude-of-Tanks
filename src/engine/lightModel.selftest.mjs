@@ -15,7 +15,7 @@ import {
 } from './lightModel.ts';
 import {
   DEFAULT_GROUND_ALBEDO, EXPOSURE_REFERENCE_ILLUMINANCE, hexToLinear, isGalaxySky, lightTune, loadGroundedLightModel, luminance,
-  resolveLightModel, resolveOvercast, resolveDeckClosure, DECK_CLOSED_COVERAGE, OVERCAST_DIRECT_CUT_SHARED,
+  resolveLightModel, resolveOvercast, resolveDeckClosure, DECK_CLOSED_COVERAGE, OVERCAST_DIRECT_CUT_SHARED, OVERCAST_THICK_CUT_SHARED, OVERCAST_THICK_FROM_SHARED,
 } from './lightModelCore.ts';
 import { CLOUD_LAYER_RULES } from './cloudPresets.ts';
 import { ATMO_GROUND_KM, skyPresetToAtmosphere } from './atmosphere.ts';
@@ -121,6 +121,9 @@ assert.ok(overcastModel.exposure / clear.exposure < clear.illuminance / overcast
 // cut, so the exposure and the open ground's mean level hold.
 {
   assert.equal(OVERCAST_DIRECT_CUT_SHARED, OVERCAST_DIRECT_CUT, 'the shared copy of the cut (the far ranges build before the model loads)');
+  // 2026-10-06: the shared copies of the deck's thickness (the haze law's target under a deck reads them before the model loads)
+  assert.equal(OVERCAST_THICK_CUT_SHARED, OVERCAST_THICK_CUT, 'the shared thickness cut');
+  assert.equal(OVERCAST_THICK_FROM_SHARED, OVERCAST_THICK_FROM, 'the shared thickness start');
   assert.deepEqual([...DECK_CLOSED_COVERAGE], [...CLOUD_LAYER_RULES.deckClosedCoverage], 'the light model and the layer close a deck at one coverage');
   const scape = (regime, coverage) => ({ ...verdantSky, cloudscape: { regime, coverage } });
   // the closure: a broken deck none, a closed one whole; a shadow-casting cumulus, an authored overcast and a tier without

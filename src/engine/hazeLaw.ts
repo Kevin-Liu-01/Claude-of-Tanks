@@ -20,7 +20,7 @@
  * The constants are read through the light model's QA hook (lightTune), so a lab can sweep them live; the GLSL is shared
  * by the aerial pass (post.ts) and the cloud trace (volumetricClouds.ts), so a cloud bank and the range under it haze alike.
  */
-import { lightTune } from './lightModelCore.ts';
+import { lightTune, overcastThickness } from './lightModelCore.ts';
 
 /** σ (1/m) per unit of the map's fogDensity: Verdant's 0.00074 → 0.00031 (T at 2 km 0.54 on the ground). */
 export const HAZE_SIGMA_PER_FOG = 0.42;
@@ -63,7 +63,12 @@ export function hazeTargetTerms<T extends { x: number; y: number }>(overcast: nu
   const o = Math.min(1, Math.max(0, Number.isFinite(overcast) ? overcast : 0));
   const open = Math.min(1, Math.max(0, (Number.isFinite(fogMix) ? fogMix : 0) * lightTune('AERIAL_TINT_SHARE', HAZE_TINT_SHARE)));
   out.x = open + (1 - open) * o;
-  out.y = lightTune('AERIAL_TARGET_SKY_K', HAZE_TARGET_SKY_K) * (1 + (lightTune('AERIAL_OVERCAST_K', HAZE_OVERCAST_K) - 1) * o);
+  // 2026-10-06 (the skies lane; the gauntlet's wave 141, Opus on both overcast maps: "a flat milky band at the horizon"): the
+  // deck's level × the deck's thickness on its glow (lightModelCore.ts overcastThickness, the light model's own law) — the
+  // air under a thick deck is lit by the reduced glow the ground is (0.45 → 0.21 at Cinder Junction's 0.95; QA
+  // AERIAL_OVERCAST_THICK 0 restores the plain level)
+  const deckK = lightTune('AERIAL_OVERCAST_K', HAZE_OVERCAST_K) * (1 + (overcastThickness(o) - 1) * lightTune('AERIAL_OVERCAST_THICK', 1));
+  out.y = lightTune('AERIAL_TARGET_SKY_K', HAZE_TARGET_SKY_K) * (1 + (deckK - 1) * o);
   return out;
 }
 

@@ -13,6 +13,7 @@ import {
   HAZE_TARGET_SKY_K, HAZE_TINT_SHARE, hazeExtinctionChroma, hazeLayerInverseScale, hazeSigma, hazeTargetTerms,
 } from './hazeLaw.ts';
 import { MAP_IDS } from '../world/maps/mapIds.ts';
+import { overcastThickness } from './lightModelCore.ts';
 
 const here = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b} (tol ${tol})`);
@@ -88,10 +89,21 @@ assert.match(post, /vec3 target = mix\( skyT, uAtmoFogTint \* \( skyL \/ tintL \
     // under a closed deck the target is the deck's grey whatever the map's fogMix: the clear sky's LUT is light no one sees
     // there (Whiteout, fogMix 0.56: the old rule kept 44 % of its warm anti-sun horizon at the 13° sun)
     assert.equal(closed.x, 1, `fogMix ${fogMix}: all of the authored tint under a closed deck`);
-    assert.ok(Math.abs(closed.y - HAZE_TARGET_SKY_K * HAZE_OVERCAST_K) < 1e-12, 'the deck\'s level');
+    // (2026-10-06) the deck's level × the deck's thickness on its glow (the light model's own law)
+    assert.ok(Math.abs(closed.y - HAZE_TARGET_SKY_K * HAZE_OVERCAST_K * overcastThickness(1)) < 1e-12, 'the deck\'s level under its thickness');
     assert.ok(half.x >= open.x && half.x <= 1 && half.y < open.y && half.y > closed.y, 'between them under half a deck');
   }
   assert.equal(hazeTargetTerms(1, Number.NaN, { x: 0, y: 0 }).x, 1, 'a missing fogMix: still the deck\'s grey under a closed deck');
+  // the thickness follows the light model's glow: none below overcast 0.5 (half a deck keeps the plain level), Cinder
+  // Junction's 0.95 at about 0.21, and the QA knob AERIAL_OVERCAST_THICK 0 restores the plain level
+  {
+    const at = (o, tune) => { const saved = globalThis.__LIGHT_TUNE; globalThis.__LIGHT_TUNE = tune; try { return hazeTargetTerms(o, 0.6, { x: 0, y: 0 }).y; } finally { globalThis.__LIGHT_TUNE = saved; } };
+    near(at(0.5, undefined), at(0.5, { AERIAL_OVERCAST_THICK: 0 }), 1e-12, 'half a deck: no thickness');
+    const ry = at(0.95, undefined) / HAZE_TARGET_SKY_K, k = (ry - 1) / 0.95 + 1;
+    assert.ok(k > 0.19 && k < 0.23, `Cinder Junction's deck level ${k.toFixed(3)} (0.45 × its thickness)`);
+    near(at(1, { AERIAL_OVERCAST_THICK: 0 }), HAZE_TARGET_SKY_K * HAZE_OVERCAST_K, 1e-12, 'the knob off: the plain deck level');
+    assert.ok(at(1, undefined) < at(0.8, undefined) && at(0.8, undefined) < at(0.6, undefined), 'darker as the deck thickens');
+  }
   const out = { x: 0, y: 0 }; assert.equal(hazeTargetTerms(0.3, 0.5, out), out, 'written in place');
   assert.match(clouds, /const terms = hazeTargetTerms\(overcast, a\.fogMix \?\? 0, this\.hazeTerms\);/, 'the cloud trace reads the same terms');
   assert.match(clouds, /\.set\(terms\.x, terms\.y, 0, smoothstep01\(overcast \/ 0\.3\)\);/, 'its hue by the terms\' weight, its share by the overcast');

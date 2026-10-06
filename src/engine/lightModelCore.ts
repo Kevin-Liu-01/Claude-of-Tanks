@@ -197,6 +197,18 @@ export function resolveDeckClosure(preset: LightModelPreset, patterned: boolean)
  * before the grounded model loads (the far ranges, maps/horizon.ts); lightModel.selftest pins the two equal.
  */
 export const OVERCAST_DIRECT_CUT_SHARED = 0.98;
+/**
+ * The deck's thickness on its glow — lightModel.ts OVERCAST_THICK_CUT / OVERCAST_THICK_FROM, here for the modules that build
+ * before the grounded model loads (lightModel.selftest pins the copies equal): 1 − cut × smoothstep(from, 1, overcast), the
+ * QA knobs of the same names. 2026-10-06 (the skies lane): the haze law's in-scatter target under a deck takes it too
+ * (hazeLaw.ts hazeTargetTerms) — the air under a thick deck is lit by the same reduced glow as the ground.
+ */
+export const OVERCAST_THICK_CUT_SHARED = 0.55;
+export const OVERCAST_THICK_FROM_SHARED = 0.5;
+export function overcastThickness(overcast: number): number {
+  const o = Number.isFinite(overcast) ? overcast : 0;
+  return 1 - lightTune('OVERCAST_THICK_CUT', OVERCAST_THICK_CUT_SHARED) * smoothstep(lightTune('OVERCAST_THICK_FROM', OVERCAST_THICK_FROM_SHARED), 1, o);
+}
 
 /** How much of the night a dome intensity means: full at the night preset's .08, none from .30 (sky.ts nightAmount). */
 function nightFor(skyIntensity: number): number {
