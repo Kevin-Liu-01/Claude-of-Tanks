@@ -652,11 +652,20 @@ const ayuntamiento: RegionalBuilder = (ctx) => {
     espadana(sink, front, eaveY + 1.9, gw * 0.62, 0.5, 0.3, st.mobile);
     wallPolygon(sink, 'plaster', front, [[-gw / 2, eaveY - 0.3], [gw / 2, eaveY - 0.3], [gw / 2, eaveY + 1.9], [-gw / 2, eaveY + 1.9]], 0.5);
     sink.band('stone', top.x1 - 0.5, eaveY + 1.9, -gw / 2 - 0.08, top.x1 + 0.1, eaveY + 2.1, gw / 2 + 0.08, { decor: true, shadow: true });
-    const clockC = facePoint(front, 0, eaveY + 0.85, 0.0);
-    sink.cylinder('stone', clockC, 'x', 0.08, 0.68, 16, { decor: true });
-    sink.cylinder('structureMetal', [clockC[0] + 0.08, clockC[1], clockC[2]], 'x', 0.02, 0.56, 16, { colour: rgb(0xe8e2d2), decor: true });
-    sink.span('structureMetal', clockC[0] + 0.1, clockC[1] - 0.02, clockC[2] - 0.02, clockC[0] + 0.12, clockC[1] + 0.4, clockC[2] + 0.02, { colour: IRON, decor: true });
-    sink.span('structureMetal', clockC[0] + 0.1, clockC[1] - 0.02, clockC[2] - 0.02, clockC[0] + 0.12, clockC[1] + 0.02, clockC[2] + 0.28, { colour: IRON, decor: true });
+    // (round 3, gauntlet wave 108c: "no visible clock face" from the square: the dial 1.1 m across read as a dot at 60 m;
+    // now 1.6 m in a stone ring, its hours marked, its hands long)
+    const clockC = facePoint(front, 0, eaveY + 0.8, 0.0);
+    sink.cylinder('stone', clockC, 'x', 0.1, 0.94, 20, { decor: true });
+    sink.cylinder('structureMetal', [clockC[0] + 0.1, clockC[1], clockC[2]], 'x', 0.02, 0.8, 20, { colour: rgb(0xece6d6), decor: true });
+    for (let h = 0; h < 12; h++) {
+      const a = (h / 12) * Math.PI * 2, r = 0.68, len = h % 3 === 0 ? 0.16 : 0.09;
+      const cy = clockC[1] + Math.cos(a) * r, cz = clockC[2] + Math.sin(a) * r;
+      sink.span('structureMetal', clockC[0] + 0.12, cy - 0.025, cz - 0.025, clockC[0] + 0.13, cy + 0.025, cz + 0.025,
+        { colour: IRON, decor: true });
+      if (len > 0.1) sink.span('structureMetal', clockC[0] + 0.12, cy - 0.04, cz - 0.04, clockC[0] + 0.13, cy + 0.04, cz + 0.04, { colour: IRON, decor: true });
+    }
+    sink.span('structureMetal', clockC[0] + 0.12, clockC[1] - 0.03, clockC[2] - 0.03, clockC[0] + 0.15, clockC[1] + 0.6, clockC[2] + 0.03, { colour: IRON, decor: true });
+    sink.span('structureMetal', clockC[0] + 0.12, clockC[1] - 0.03, clockC[2] - 0.03, clockC[0] + 0.15, clockC[1] + 0.03, clockC[2] + 0.42, { colour: IRON, decor: true });
   })));
   return sink.finish();
 };
@@ -854,9 +863,11 @@ const ermita: RegionalBuilder = (ctx) => {
       // the round window over the door
       sink.cylinder('plaster2', facePoint(f, 0, H + 0.75, 0.0), 'z', 0.012, 0.45, 12, { decor: true });
       sink.cylinder('dark', facePoint(f, 0, H + 0.75, 0.0), 'z', 0.022, 0.31, 12, { decor: true });
-      // the bell gable on the front gable's apex
+      // the bell gable on the front gable's apex. Round 3 (gauntlet wave 108c: "its bell gable has no bell opening"):
+      // its opening stood level with the roof's ridge, so the tiles closed it from every side; the gable now rises
+      // clear of the ridge, the bell hanging in the sky
       const ridge = frame.roof.ridgeTopY;
-      espadana(sink, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: 1.9 }, ridge - 0.9, 1.9, 0.3, 0.21, st.mobile);
+      espadana(sink, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: 2.2 }, ridge - 0.15, 2.2, 0.32, 0.27, st.mobile);
     });
     // the porch: two white pillars and a lean-to of tiles from the front wall
     const fz = zc + D / 2, pz = fz + porch;
@@ -1226,8 +1237,10 @@ export const ANDALUSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
       plaster3: (_h, s, l) => [0.11, Math.min(1, 0.05 + s * 0.15), Math.min(1, l * 0.32 + 0.255)],
     },
     // round 2 (gauntlet wave 108b: "limewash is popcorn stucco at several times real scale"): coat on coat of lime over
-    // the render, a fine shallow skin — the tile at 1 m instead of 2.4 m, its relief at under half strength
-    relief: { plasterUv: 2.4, normal: 0.45, ao: 0.55 },
+    // the render, a fine shallow skin — the tile at 1 m instead of 2.4 m, its relief at under half strength. Round 3
+    // (108c: "a flat, regular weave-like pattern that reads as synthetic fabric"): the metre tile's repeat read as a
+    // weave, so the tile is 1.3 m and its relief a fifth
+    relief: { plasterUv: 1.8, normal: 0.22, ao: 0.32 },
   },
   builders: ANDALUSIAN_BUILDERS,
   // limewash renewed every spring, sun-bleached tiles lichened yellow-grey, a dry inland climate
