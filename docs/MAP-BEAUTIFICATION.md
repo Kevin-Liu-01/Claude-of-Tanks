@@ -123,7 +123,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Copper Mesa Mine | Extraction benches, haul roads and ore-loading courts; human cuts distinct from natural cliffs |
 | Cinder Junction | Rail ballast, freight platforms, graded service routes and storage blocks |
 | Ironworks | Connected loading courts, factory service yards, soot gradients and workers' streets |
-| Kestrel Airfield | Runway/apron geometry, dispersal bays, perimeter service roads; wide open sightlines |
+| Kestrel Airfield | Runway/apron geometry, dispersal bays, perimeter service roads; wide open sightlines; the An-225 Mriya broken up and burnt in its hangar's ruin, as at Hostomel in 2022 (the landmarks lane, 2026-10-05) |
 | Obsidian Caldera | Black volcanic shelves, ash and extraction equipment; distinct basalt fracture language |
 | Steinburg | Masonry street blocks, courtyards, central civic space and localized war damage |
 | Ruinspires | Monumental damaged street canyons; rubble belongs to adjacent structures and forms clear plazas/routes |
