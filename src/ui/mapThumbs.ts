@@ -36,6 +36,7 @@ export const MAP_THUMBS = Object.freeze({
   mars: '/maps/thumbs/mars.webp',
   moon: '/maps/thumbs/moon.webp',
   cliffbridge: '/maps/thumbs/cliffbridge.webp',
+  goreme: '/maps/thumbs/goreme.webp',
 });
 
 export const MAP_HEROES = Object.freeze({
@@ -72,6 +73,7 @@ export const MAP_HEROES = Object.freeze({
   mars: '/maps/mars.webp',
   moon: '/maps/moon.webp',
   cliffbridge: '/maps/cliffbridge.webp',
+  goreme: '/maps/goreme.webp',
 });
 
 export type MapThumbnailId = keyof typeof MAP_THUMBS;

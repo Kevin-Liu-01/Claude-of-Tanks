@@ -120,6 +120,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   alpine: B('an Alpine pass', { fir: { form: 'larch' }, pine: { form: 'larch' } }),
   // the Scheldt polders: poplar and willow rows (the map's own slots already)
   polders: B('the Scheldt polders, Zeeland', {}),
+  // Göreme's valleys (Chimney Valley): Lombardy poplars along the stream beds (the poplar slot as it is), walnuts in the
+  // orchards (the oak slot as the chestnut's broad crown) and the silver-leaved Russian olive, iğde, of every Anatolian
+  // stream bank (the acacia slot as an olive in its silver); the steppe's low scrub as broom
+  goreme: B('Göreme and its valleys, Cappadocia', { oak: { form: 'chestnut' }, acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }, 'broom'),
 });
 
 /** The form a map's shrubs grow as (their own atlas), or none (the bush slot's). */

@@ -20,6 +20,7 @@ const MAP_REGIONS: Readonly<Record<MapId, readonly RegionTagId[]>> = {
   copper_mesa: ['desert'], airfield: ['woodland'], oasis: ['desert'], whiteout: ['winter'],
   orchard: ['woodland'], longleaf: ['woodland'], mangrove: ['tropical', 'maritime'],
   saltwind: ['maritime', 'desert'], reservoir: ['woodland'], mars: ['desert'], moon: ['night'], cliffbridge: ['woodland'],
+  goreme: ['desert'],
 };
 
 export function regionTagIcon(tag: CamoTagId): UiIconId | undefined {

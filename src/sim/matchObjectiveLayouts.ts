@@ -18,6 +18,9 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // (level aprons in the map file) and the gorge floor west of the viaduct, where the mills stood; the turbo-ball
   // kickoff on the gorge floor east of it. Both teams reach the floor from the fords at the gorge's two ends.
   cliffbridge: { kickoff: { x: 130, z: 0 }, zones: [{ x: 0, z: -172 }, { x: 0, z: 172 }, { x: -130, z: 0 }] },
+  // Chimney Valley (the map-revival lane, 2026-10-05): rotation-symmetric about the centre — the town's junction square
+  // (also the turbo-ball kickoff) and the two chimney fields' aprons in front of the benches, on the line of equal drives
+  goreme: { kickoff: { x: 0, z: 0 }, zones: [{ x: -214, z: 12 }, { x: 0, z: 0 }, { x: 214, z: -12 }] },
   // Amberford (layout brief, 2026-10-03): the three greens — the sunken lane's green in the south-bank orchards near the
   // southern deployment, the ford green on the line of equal drives and the fair green near the northern arc; the
   // kickoff on the north-bank meadow between the bridge and the ford (2026-10-03: 8 m north, where the bounded search

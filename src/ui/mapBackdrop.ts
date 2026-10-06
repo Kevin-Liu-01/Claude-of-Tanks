@@ -12,7 +12,7 @@
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 
 /** Battlefields the media pipeline has not published a card for yet; they keep the hero. */
-export const MAPS_WITHOUT_CARD: ReadonlySet<string> = new Set(['cliffbridge', 'moon']);
+export const MAPS_WITHOUT_CARD: ReadonlySet<string> = new Set(['cliffbridge', 'moon', 'goreme']);
 
 const CARD_WIDTH = 1280;
 /** A card may be stretched this far before the darkened backdrop visibly softens. */

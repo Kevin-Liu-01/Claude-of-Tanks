@@ -55,6 +55,7 @@ import reservoir from './reservoir.ts';
 import mars from './mars.ts';
 import moon from './moon.ts';
 import cliffbridge from './cliffbridge.ts';
+import goreme from './goreme.ts';
 
 const CONFIGS = {
   verdant, desert, winter, urban, coastal, autumn, steppe, railyard,
@@ -62,7 +63,7 @@ const CONFIGS = {
   ruinspires, blackglass, titan_gorge: titanGorge, skybridge,
   polders, copper_mesa: copperMesa, airfield, oasis, whiteout,
   orchard, longleaf, mangrove, saltwind, reservoir,
-  mars, moon, cliffbridge,
+  mars, moon, cliffbridge, goreme,
 } satisfies Record<MapId, object>;
 
 export type BattlefieldMapConfig = (typeof CONFIGS)[MapId];

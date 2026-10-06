@@ -1192,6 +1192,8 @@ const BIOME_PATTERN: Readonly<Record<string, readonly ResolvedMaterialCamoPatter
   railyard: ['urban', 'urbanblock', 'berlin'],
   moon: ['urban', 'urbanblock'],
   cliffbridge: ['summer', 'flecktarn', 'dpm'],
+  // Chimney Valley's cream and rose tuff: the desert family, the pink scheme among it
+  goreme: ['desert', 'pinkdesert', 'chocchip', 'digitaldesert'],
 };
 let activeBiome: string = 'verdant';
 

@@ -82,6 +82,8 @@ export const MAP_SCENES: Readonly<Record<string, EnvironmentScene>> = Object.fre
   mars: scene({ bed: 'amb_mars', spots: spots(['dust_devil', 2], ['wind_gust', 2], ['geo_rumble', 1]), reverb: 'mars', war: 0, spotEveryS: [9, 18] }),
   moon: scene({ bed: 'amb_moon', spots: Object.freeze([]), tail: 'none', reverb: 'none', war: 0 }),
   cliffbridge: scene({ bed: 'amb_highwind', spots: spots(['cable_hum', 2], ['wind_gust', 3], ['eagle', 1], ['gulls', 1]), tail: 'mountain', reverb: 'canyon' }),
+  // Chimney Valley: the tuff valleys' wind, the kestrels and jackdaws of the chimney fields, the town's dogs
+  goreme: scene({ bed: 'amb_canyon', spots: spots(['wind_gust', 3], ['hawk', 2], ['crow', 2], ['dog', 1], ['lark', 1], ['rockfall', 1]), tail: 'mountain', reverb: 'canyon' }),
 });
 
 // The hangar: an audible room tone with workshop sounds a few metres away.

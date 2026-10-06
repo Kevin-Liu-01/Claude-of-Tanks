@@ -20,7 +20,7 @@
 // grass margin with tracks and hedges, a polder's water ditches, a paddy's earth bunds or a karst field's dry stone
 // walls.
 
-export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst'
+export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst' | 'tuff'
   | 'brownfield' | 'coalfield';
 
 /** How a region's fields are bounded (the material's uLandE.z). */
@@ -155,12 +155,16 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // a coalfield valley's farmland (the Ruhr's, Silesia's, the Valleys'): pasture and rough grazing gone ruderal round the
   // pits, small arable fields, and here and there a plot of tipped slag
   coalfield: [[0, 0.26], [17, 0.22], [4, 0.14], [5, 0.14], [1, 0.12], [3, 0.06], [15, 0.06]],
+  // the valley floors of Cappadocia (Göreme, the Pigeon and Love valleys): small plots on the pale volcanic sand — vines
+  // trained low, stubble and ripe wheat, dry grazing gone to cured grass, a little green pasture by the stream; no dark
+  // plough (the tuff soil is pale) and no walls (margins between the plots)
+  tuff: [[12, 0.30], [5, 0.20], [17, 0.18], [1, 0.12], [0, 0.12], [2, 0.08], [13, 0.0]],
 });
 
 /** Each region's field boundary. */
 const BOUNDARIES: Readonly<Record<LandRegion, LandBoundary>> = Object.freeze({
   steppe: 'margin', bocage: 'margin', temperate: 'margin', upland: 'margin', strip: 'margin',
-  polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin',
+  polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin', tuff: 'margin',
 });
 
 /** The rotation's cumulative shares at slots 0..5 (slot 6 takes the rest), normalised. */
@@ -241,6 +245,12 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   railyard: {
     strength: 0.65, heading: 0.066, blockU: 84, blockV: 52, maxSplit: 3, marginM: 1.5, trackShare: 0.3, hedgeShare: 0.3,
     warpM: 14, region: 'coalfield', salt: 97,
+  },
+  // Chimney Valley (goreme: Göreme in Cappadocia): small plots along the two valleys (their axis runs north-south, the
+  // blocks along it), apricot and poplar lines on some short boundaries, tracks between some rows
+  goreme: {
+    strength: 0.85, heading: Math.PI / 2, blockU: 72, blockV: 44, maxSplit: 3, marginM: 1.1, trackShare: 0.3, hedgeShare: 0.15,
+    warpM: 14, region: 'tuff', salt: 101,
   },
 });
 

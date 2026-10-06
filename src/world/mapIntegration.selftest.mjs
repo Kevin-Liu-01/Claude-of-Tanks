@@ -7,9 +7,9 @@ import { PRODUCT_STATS, renderProductStats } from '../productStats.ts';
 import { randomMapPreviewEntries } from '../ui/randomPreviews.ts';
 
 // Mars mode (2026-09-18): Olympus Basin joins the catalog (31 maps); the random draw excludes it
-assert.equal(MAP_IDS.length, 33);
+assert.equal(MAP_IDS.length, 34);
 assert.equal(PRODUCT_STATS.battlefields, MAP_IDS.length, 'public product totals follow the complete roster');
-assert.equal(renderProductStats('{{COT_BATTLEFIELDS}} battlefields'), '33 battlefields');
+assert.equal(renderProductStats('{{COT_BATTLEFIELDS}} battlefields'), '34 battlefields');
 assert.deepEqual(Object.keys(MAP_THUMBS), MAP_IDS, 'picker metadata covers every map in canonical order');
 assert.deepEqual(Object.keys(MAP_HEROES), MAP_IDS, 'loading/hero metadata covers every map in canonical order');
 const previews = MAP_IDS.map((id) => ({ id, thumb: MAP_THUMBS[id] }));

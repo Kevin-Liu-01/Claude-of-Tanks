@@ -89,6 +89,8 @@ const ROCK_CLIMATE: Readonly<Record<string, RockClimate>> = Object.freeze({
   mars: { moss: 0, dust: 0.9, lith: 'basalt', lichen: [0, PALE, PALE, 1] },
   moon: { moss: 0, dust: 0.7, lith: 'basalt', lichen: [0, PALE, PALE, 1] },
   cliffbridge: { moss: 0.6, dust: 0.6, lith: 'limestone', lichen: [0.19, ORANGE, PALE, 0.5] },
+  // Chimney Valley: soft, porous, pale tuff (the chalk's treatment), dusty, the orange lichen of its north faces
+  goreme: { moss: 0.05, dust: 0.6, lith: 'chalk', lichen: [0.08, ORANGE, PALE, 0.55], varnish: 0.05 },
   winter: { moss: 0, dust: 0, lith: 'granite', lichen: [0.16, BLACK, YELLOW_GREEN, 0.6] },
   whiteout: { moss: 0, dust: 0, lith: 'granite', lichen: [0.12, BLACK, YELLOW_GREEN, 0.7] },
 });

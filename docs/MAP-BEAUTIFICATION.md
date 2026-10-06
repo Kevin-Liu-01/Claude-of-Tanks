@@ -6218,6 +6218,7 @@ cumulus its virga). The night column is the diurnal law's cover and the town glo
 | Highland Reservoir (reservoir) | fair-weather-cumulus 0.26 @ 1400 m | 2 contrails, cirrus 0.12 | cover 0.15 |
 | Olympus Basin (mars) | thin-ice-clouds 0.06 @ 2500 m | cirrus 0.45 | cover 0.06 |
 | Aegis Crossing (cliffbridge) | fair-weather-cumulus 0.28 @ 1200 m | 2 contrails, cirrus 0.25 | cover 0.16 |
+| Chimney Valley (goreme) | fair-weather-cumulus 0.30 @ 1800 m | 2 contrails, virga 0.3, cirrus 0.3 | cover 0.17 |
 
 **Cost** (`$SP/p2/clouds/bench-a12.json`: the PR with the light lane, ccd3c3703, against the lane on it, 2e21e663a;
 desktop High at 1600 × 900 on an M5 Max 40-core GPU; sky-w; A B B A per map; the cloud pass measured by repetition —

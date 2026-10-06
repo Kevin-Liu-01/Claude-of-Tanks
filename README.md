@@ -8,7 +8,7 @@
 
 <p align="center">
   Free browser-native armored combat built with <strong>Three.js</strong>. Take 219 production-visible first-party procedural vehicles
-  across 33 battlefields with physical gunnery, plate-level armor, internal damage, guided missiles,
+  across 34 battlefields with physical gunnery, plate-level armor, internal damage, guided missiles,
   magazine autoloaders, terrain-following suspension, X-ray killcams, multiplayer rooms, and Scene Studio.
 </p>
 
@@ -60,7 +60,7 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
 | | Current runtime |
 | --- | --- |
 | Fleet | **219** first-party procedural vehicles in production and local development; **0** GLB-sourced playables |
-| Worlds | **33** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
+| Worlds | **34** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
 | Authority | Fixed **60 Hz** movement, ballistics, armor, damage, spotting, bots, destructibles, and result |
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
 | Play | Thirteen battle modes, solo bots, browser-hosted private rooms, LAN rooms, room chat, spectators, respawns, and rematches |

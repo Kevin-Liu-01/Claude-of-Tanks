@@ -17,6 +17,8 @@ export const LAYOUT_BRIEF_MAPS = Object.freeze([
   'autumn', 'steppe', 'winter', 'fjord',
   // maps lane B, batch 8
   'oasis', 'whiteout',
+  // the map-revival lane (2026-10-05): a new battlefield
+  'goreme',
 ] as const);
 
 export type LayoutBriefMapId = (typeof LAYOUT_BRIEF_MAPS)[number];

@@ -16,7 +16,7 @@ stack, authoring tools, test rigs, and public presentation.
 | --- | --- |
 | Playable fleet | 219 production-visible and 219 local-development first-party procedural vehicles |
 | Runtime vehicle provenance | 0 playable vehicles sourced from GLB geometry |
-| Battlefields | 33 authored and destructible maps |
+| Battlefields | 34 authored and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
 | Presentation | Direct Three.js WebGL rendering with adaptive quality |
 | Modes | Regular Battle, Capture the Flag, Zone Control, Turbo Ball, Endless Horde, Frontline Assault (campaign ladder), Gravity Mode, Juggernaut, Infected, Realistic, Gun Game, Drone and AC-130; one ruleset per mode; solo, private and LAN deployment |
@@ -233,6 +233,7 @@ The game includes:
 31. Olympus Basin — Gravity mode's rust-red impact basin under a galaxy sky, its research station scattered across the floor (2026-09-18)
 32. Earthrise Basin — airless lunar craters, research habitats and a huge Earth above the horizon
 33. Aegis Crossing — a lush green gorge, huge driveable bridge, surrounding buildings and flanking approaches
+34. Chimney Valley — Göreme in Cappadocia: two tuff valleys meeting at a cave town, fairy-chimney fields on the valley sides, castle rocks and flat-capped benches (2026-10-05)
 
 Each battlefield combines a generated height field, material program, authored
 landmarks, roads, structures, foliage, concealment volumes, collision,

@@ -314,6 +314,14 @@ const TERRAIN_PLAN = {
     D: { set: 'dirt', tint: [0.58, 0.62, 0.70], desat: 0.45, lift: 0.05, roughMul: 1.38 },
     R: { set: 'rock', tint: [0.92, 0.98, 1.08], lift: 0.05, roughMul: 1.2 }, M: null,
   },
+  // the map-revival lane (2026-10-05): Chimney Valley (Göreme) — the ignimbrite tuff's cream and rose: the sand set
+  // part desaturated under a pale warm tint, the worn variant a step rosier, and the tuff walls the rock set's blocks
+  // lifted to the pale tuff
+  goreme: {
+    G: { set: 'sand', desat: 0.4, tint: [0.92, 0.86, 0.78], roughMul: 1.24 },
+    D: { set: 'sand', desat: 0.35, tint: [0.88, 0.76, 0.70], roughMul: 1.28 },
+    R: { set: 'rock', desat: 0.85, tint: [1.62, 1.5, 1.36], lift: 0.1, roughMul: 1.2 }, M: null,
+  },
 } satisfies Record<string, TerrainPlan>;
 
 export type TerrainPaletteId = keyof typeof TERRAIN_PLAN;

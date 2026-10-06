@@ -236,6 +236,8 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   mars: { ...ARID, foldMoist: 0, exposure: 0.5, grass: null },
   moon: { ...ARID, foldMoist: 0, exposure: 0, windRipple: 0, grass: null }, // airless regolith: no weathering follows the sun, no wind ripples
   cliffbridge: { ...TEMPERATE, scree: .3, grass: meadow(1.0) },
+  // Chimney Valley: tuff ash soil, no wind ripples (no sand), tuff scree at the chimneys' feet, a thin cured steppe sward
+  goreme: { ...ARID, windRipple: 0, scree: 0.35, grass: steppe(0.45, 0.7) },
 });
 
 const DEFAULT_PROFILE: GroundReduxProfile = Object.freeze({ ...TEMPERATE, grass: null });

@@ -108,6 +108,10 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   // Aegis Crossing redesign (2026-10-02): the main road runs edge to edge over the viaduct; each ford road leaves the
   // main road at a town's edge for its ford, where its other half starts and returns to the main road.
   cliffbridge: [through, join(0, 2), join(1, 0), join(0, 4), join(3, 0)],
+  // Chimney Valley (2026-10-05): the four roads meet in the junction square — Nevşehir's from the west edge and Ürgüp's
+  // out to the east edge, the Pigeon Valley track from the south edge and Avanos's road out to the north edge (each the
+  // other's rotation about the centre)
+  goreme: [['boundary', { junction: 1 }], [{ junction: 0 }, 'boundary'], ['boundary', { junction: 0 }], [{ junction: 0 }, 'boundary']],
 };
 
 /** Segment intersection, including touching and collinear overlap. The

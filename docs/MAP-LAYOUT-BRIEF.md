@@ -440,6 +440,26 @@ Frosthollow, Nordhavn Fjord; Sunscar Oasis, Whiteout Station; October 2–3, 202
   and fix a fast or capped seed with a change that reads right on the map, not by trying perturbations until it
   passes.
 
+## Chimney Valley (October 5, 2026)
+
+The map-revival lane's new battlefield, Göreme in Cappadocia (`goreme`). It is appended to `MAP_IDS`, so every other
+map's pacing seeds keep their index; its own are 54000–54003. Two stream valleys come down off the tuff plateau from
+the south and the north and meet in the bowl at the centre, where the town stands round its junction square. The
+layout turns about the centre: each deployment, valley, bench ramp, castle rock and gate rock is the other's rotation.
+Three lanes cross the middle: the valley floor through the town, and on each side the chimney field with the bench top
+beyond it. The zone discs stand on the town square and on the chimney fields' aprons (seated on their hints, 0.0 m).
+
+Its brief: separation 798 m, route stretch 1.033, 3 lanes, choke 780 m, sight median 92 m (long 0.037, close 0.54),
+cover 0.445 (poorest sector 0.248), hull-down 0.186, relief 4.54 m, orphans 0.12, nothing in the roads, objective
+symmetry 1.058. Pacing at eight seeds: median 267 s (158–315 s).
+
+- **A kit that fills its plots narrows the streets.** Every kit building fills its base's reach (the coverage law).
+  At the base plan's 7 m spacing pad the cappadocia kit's squared-tuff blocks closed the lanes between the minaret,
+  the arasta and the courts, and the pacing seeds' last bots swung for ten minutes between a press point past the town
+  and their opening route's waypoint behind the buildings (705, 392, 622 and 269 s). The yards were not the cause
+  (without them 519, 392, 622 and 269 s). A 10 m pad (`spacingPad`) re-seats the same eighteen buildings with lanes a
+  tank wide. Play a kit's town at more than four seeds before its shard is pinned.
+
 ## Regional building kits
 
 October 3, 2026 (regional-buildings lane). The settlements of a rebuilt map are built in the architecture of the real
@@ -462,6 +482,7 @@ region, registered in `index.ts`:
 | `ruhr` | Ruhr and Silesian junctions: soot-dark brick, yellow-brick bands, slate | Cinder Junction |
 | `kohima` | Kohima 1944: bungalows under painted tin, a bazaar, Angami houses | Monsoon Ridge |
 | `hostomel` | Hostomel (Antonov) airport: a barrel-vaulted cargo hangar, sheet-steel maintenance hangars, a control tower's glazed cab, 1970s terminal and office blocks | Kestrel Airfield |
+| `cappadocia` | Göreme, Cappadocia: squared-tuff houses under flat earth roofs or alaturka tile, carved tympana over the windows, an eyvan, arched courtyard gates and outside stairs, whitewashed pigeon bands; rooms cut into fairy chimneys and outcrops behind built fronts; an Ottoman stone minaret, a Seljuk caravanserai with its portal, arcades and köşk mescit, a domed hamam, the arasta's vaulted shops | Chimney Valley |
 
 **Adopting a kit is one line** in the map's props settings: `architecture: '<kit>'`. The plan builders still run
 first: every draw, the ground fit, the UV jitter and the road frontage see the base geometry, so every building keeps
@@ -565,7 +586,7 @@ scenery: {
 
 | Family | Kinds | Gameplay | Cost |
 | --- | --- | --- | --- |
-| Rock forms (`rocks`) | `tor` (granite: cuboidal blocks split by the sheeting and vertical joints, sheets of every thickness in two to four stacks, set back or overhanging, the sheet rock breaking the turf round them, clitter strewn down the slope; wave 29 read the old pillow slabs as "near-black slabs, all the same thickness"), `outcrop` (sandstone or limestone: hard beds stepping back from a scarp that faces downhill, split into joint blocks), `crag` (slate: steeply dipping plates in ranks, scree below), `pavement` (limestone: clints and grikes flush with the turf, a low scar upslope), `scree` (an angular fan, fining up its apex), `hoodoo` (sandstone: a wind-cut pedestal under a broad cap, the mushroom rocks of Wadi Rum) | a standing form is one static convex collider from the ground to its top (hard cover, never crushed); pavement and scree lie under a hull's 0.55 m step and carry none | one welded mesh on the props rock material for the whole map: one draw plus its shadow passes; a tor about 8.5 k triangles (2 k on phones), an outcrop 2 k, a pavement 3.5 k |
+| Rock forms (`rocks`) | `tor` (granite: cuboidal blocks split by the sheeting and vertical joints, sheets of every thickness in two to four stacks, set back or overhanging, the sheet rock breaking the turf round them, clitter strewn down the slope; wave 29 read the old pillow slabs as "near-black slabs, all the same thickness"), `outcrop` (sandstone or limestone: hard beds stepping back from a scarp that faces downhill, split into joint blocks), `crag` (slate: steeply dipping plates in ranks, scree below), `pavement` (limestone: clints and grikes flush with the turf, a low scar upslope), `scree` (an angular fan, fining up its apex), `hoodoo` (sandstone: a wind-cut pedestal under a broad cap, the mushroom rocks of Wadi Rum); `chimney` (tuff, the fairy chimneys of Cappadocia: a lathe-turned cone, bell, pillar or waisted column, each its own height and girth with its own flutes and lean, under a dark cap of the harder bed on a neck; singles, twins and triplets on one weathered mound, capless points and their fallen caps at the foot; rock fields on the `tuff` geology draw them) | a standing form is one static convex collider from the ground to its top (hard cover, never crushed); pavement and scree lie under a hull's 0.55 m step and carry none | one welded mesh on the props rock material for the whole map: one draw plus its shadow passes; a tor about 8.5 k triangles (2 k on phones), an outcrop 2 k, a pavement 3.5 k |
 | Rock fields (`rockFields`) | the exposed bedrock of a hillside: forms drawn from the geology's mix (`FIELD_FORMS`), the steeper ground first | as above, per form | into the same mesh |
 | Bedrock (`bedrock`) — parked | Not placed on any map: wave 16's critics read the skin on Redrock's smooth domes as masonry ("a ziggurat"), so a hill's shape has to carry its rock first (the landform's geology). The builder stays for a hill whose walls are sheer: a hill's own beds on its steep flanks, read from the live ground by rays from the entry's centre (lobes, ramps, fans and clefts move the beds with them): thick hard beds parted by thin, recessed soft ones in sandstone, now and then a massive one, from the highest ground a hull climbs (grade 0.9) up to a bare-rock crown. Each hill is bedded its own way (bed thickness, a dip of one to five degrees); every bed boundary swells and pinches along its run, a third of the hard beds stand out as ledges, and no bed rings the whole hill. The ground's own clefts (the rills down a wall, wherever the foot line falls back more than 0.9 m against the line a few metres either side) break the beds and seat the master joints, which open clefts from crown to foot, with tight staggered joints between them | none: a skin a little proud of ground no hull reaches; the hill stays the terrain, and the trees keep off its flanks (`BEDROCK_TREE_CLEAR` of the radius) | into the same mesh; Redrock's twelve domes about 41 k triangles together (a main dome 4-8 k, a lobe 2-3.5 k), phones about four fifths |
 | Stone landmarks (`landmarks`) | `calvary` (granite steps, octagonal shaft, cross), `menhir` (a standing stone), `cairn` (a clearance cairn: the gomila, the rujm) | static colliders | in the rock mesh |
@@ -711,6 +732,7 @@ Pick what the place's rock and people actually put there, and name it in the map
 | The Naga Hills (Monsoon Ridge) | a memorial monolith on Garrison Hill, a row of Naga memorial stones by the temple |
 | The Franconian Jura (Steinburg) | limestone crags round the castle rock, Bildstocks at the farm crossings |
 | The coalfield (Cinder Junction) | a 220 kV line across the south of the junction |
+| Cappadocia (Chimney Valley) | fairy chimneys in fields on the valley sides between the floor and the benches (two discs a side, clear of the zone aprons and the castle rocks), a cluster beside each gate rock at the valley heads |
 
 Area-wide land cover — field patchwork, forest masses, grass, bush forms and hedgerows — belongs to the land-cover
 lane, not to this block. Restraint: no smoke (the owner removed distant plumes and hearth smoke as wrong). A feature that hides a hull or breaks

@@ -234,6 +234,13 @@
       "obstacles": 4955,
       "colliders": 5103,
       "concealers": 4093
+    },
+    "goreme": {
+      "bytes": 1067565,
+      "sha256": "bee3c19e507f93ece5b4ce29f79d11b6367907c2575e17a5deae2814e7be7f48",
+      "obstacles": 1512,
+      "colliders": 1467,
+      "concealers": 670
     }
   }
 }

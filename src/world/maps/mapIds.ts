@@ -16,6 +16,8 @@ export const MAP_IDS = Object.freeze([
   'orchard', 'longleaf', 'mangrove', 'saltwind', 'reservoir',
   // Mars mode (owner 2026-09-18): the galaxy-sky basin plays through its own mode, not the random rotation
   'mars', 'moon', 'cliffbridge',
+  // the map-revival lane (2026-10-05): Chimney Valley, Göreme in Cappadocia (appended: the pacing seeds key on the index)
+  'goreme',
 ] as const);
 
 export type MapId = (typeof MAP_IDS)[number];
@@ -54,6 +56,7 @@ const MAP_NAMES = Object.freeze({
   saltwind: 'Saltwind Narrows',
   reservoir: 'Highland Reservoir',
   mars: 'Olympus Basin', moon: 'Earthrise Basin', cliffbridge: 'Aegis Crossing',
+  goreme: 'Chimney Valley',
 } satisfies Record<MapId, string>);
 
 export function isMapId(mapId: string): mapId is MapId {

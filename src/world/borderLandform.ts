@@ -177,6 +177,8 @@ const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
   mars: { forest: 0, hedgerows: 0, fields: 0, farms: 0 },
   moon: { forest: 0, hillHeight: 1.6, hedgerows: 0, fields: 0, farms: 0 },
   cliffbridge: { forest: 0.36, hedgerows: 0.7, fields: 0.65, farms: 9 },
+  // Cappadocia past the valleys: the tuff plateau's wheat and vineyards between flat-roofed stone villages
+  goreme: { forest: 0.05, hedgerows: 0, fields: 0.35, crops: 'steppe', farms: 6, buildings: 'arid' },
 };
 
 export function resolveBorderLandform(
