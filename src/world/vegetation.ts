@@ -43,7 +43,7 @@ import {
 } from './treeGrowth.ts';
 import { makePalmFrondAtlas, makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
-import type { LandFieldSample } from './landUse.ts';
+import { resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
 import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
@@ -195,6 +195,14 @@ interface VegetationConfig {
   palmFallback?: Species;
   clusterScrub?: number;
   authoredTrees?: AuthoredTreeFeature[];
+  /**
+   * Trees lane (2026-10-06, the map lanes' request; Saltmere's Léon bocage first): trees along the map's land-use hedges
+   * — the short field boundaries its profile hedges (landUse.ts hedgeShare), read through the CPU twin (landUseAt) —
+   * a tree every `spacingM` (jittered ±25 %) in the hedge's band, one field gate of `gateM` left open on every hedged
+   * field end, the species drawn from `mix` (the map's own slots; treeBiomes grows them as the place's forms). Ordinary
+   * field trees on their own stream, after every other placement: unset, a map is placed exactly as before.
+   */
+  hedgeTrees?: { mix: SpeciesMix; spacingM: number; gateM?: number };
   stubblePatches?: readonly GrassStubblePatch[];
   /** Reuses the willow species/library slots; no fourth material or atlas. */
   willowForm?: 'tidalMangrove';
@@ -276,6 +284,8 @@ interface TreeRecord {
    * map whose woods close, its species' forest-grown near variants (assignTreeForms); a field tree keeps the open form.
    */
   wood?: boolean;
+  /** Trees lane (2026-10-06): one of a map's hedge trees (vegetation.hedgeTrees, plantHedgeTrees). */
+  hedgeRow?: boolean;
   /** Trees round 5: one of the field trees (placeLoneTrees), the field law's (addFieldTree). */
   field?: boolean;
 }
@@ -2592,6 +2602,8 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
 
 /** Trees round 5: the forest-grown near variants of a wood's species (0 and 1; the third stays open-grown). */
 const FOREST_NEAR_VARIANTS = 2;
+/** Trees lane (2026-10-06): the grid (m) a map's hedge planting reads its land use on (plantHedgeTrees). */
+const HEDGE_SCAN_M = 1.5;
 /** Trees round 5: a shrub stem card's tint (the bark atlas tile's multiplier; buildGrownShrub). */
 const GROWTH_SHRUB_STEM_VALUE = 1.15;
 /** Trees round 5: the shrub atlas' size before the device's texture scale (createBushes; the crowns' are 512). */
@@ -6440,6 +6452,81 @@ function* vegetationBuildSteps(
   }
   placeSaplings();
 
+  /**
+   * Trees lane (2026-10-06): a map's hedge trees (VegetationConfig `hedgeTrees`). The playable ground is read on a
+   * HEDGE_SCAN_M grid through the land use's CPU twin; a point in a hedge's band (hedge ≥ 0.98: within its 1.2 m of the
+   * line, on its field's side) joins its field end's line (the field's id and the side of its short edge). Along each
+   * line, by its coordinate along the block grid's v axis, a seat every spacingM (jittered ±25 %) nearest the line,
+   * the field gate's gap left (its centre a hash of the line), the site's rules and a field tree's 5 m from any tree
+   * kept; the species from the mix. Own stream; census in group.userData.hedgeTrees (with trees per hedge km).
+   */
+  function plantHedgeTrees(): void {
+    const ht = veg.hedgeTrees;
+    if (!ht || hedgeLandAt === null) return;
+    const profile = resolveLandUseProfile((cfg as { id?: string } | null)?.id);
+    if (!profile) return;
+    const hedgeRng = mulberry32((seed ^ 0x4ed9e) >>> 0);
+    const ch = Math.cos(profile.heading), sh = Math.sin(profile.heading);
+    const lines = new Map<number, number[]>(); // key -> [along, x, z, |sU|]*
+    for (let z = -PLAYABLE_HALF_EXTENT_M + 15; z <= PLAYABLE_HALF_EXTENT_M - 15; z += HEDGE_SCAN_M) {
+      for (let x = -PLAYABLE_HALF_EXTENT_M + 15; x <= PLAYABLE_HALF_EXTENT_M - 15; x += HEDGE_SCAN_M) {
+        const at = hedgeLandAt(x, z, _hedgeLand);
+        if (!at.active || at.hedge < 0.98) continue;
+        const key = at.id * 2 + (at.sU >= 0 ? 0 : 1);
+        let line = lines.get(key);
+        if (!line) { line = []; lines.set(key, line); }
+        line.push(-sh * x + ch * z, x, z, Math.abs(at.sU));
+      }
+    }
+    // the trees already standing (the field law's 5 m), on a grid; the hedge trees join it as they stand
+    const cell = 8, near = new Map<number, number[]>();
+    const keyOf = (x: number, z: number): number => (Math.floor(x / cell) + 4096) * 8192 + (Math.floor(z / cell) + 4096);
+    const remember = (x: number, z: number): void => { const k = keyOf(x, z), b = near.get(k); if (b) b.push(x, z); else near.set(k, [x, z]); };
+    for (const t of trees) remember(t.x, t.z);
+    const clear = (x: number, z: number): boolean => {
+      const cx = Math.floor(x / cell), cz = Math.floor(z / cell);
+      for (let gx = cx - 1; gx <= cx + 1; gx++) for (let gz = cz - 1; gz <= cz + 1; gz++) {
+        const b = near.get((gx + 4096) * 8192 + (gz + 4096));
+        if (b) for (let i = 0; i < b.length; i += 2) if (Math.hypot(b[i] - x, b[i + 1] - z) < FIELD_TREE_SPACING_M) return false;
+      }
+      return true;
+    };
+    const census = { lines: 0, km: 0, seats: 0, planted: 0, gates: 0, refused: { site: 0, spacing: 0 }, species: {} as Record<string, number> };
+    const gateHalf = (ht.gateM ?? 4) / 2;
+    for (const key of [...lines.keys()].sort((a, b) => a - b)) {
+      const raw = lines.get(key)!, n = raw.length / 4;
+      if (n < 3) continue;
+      const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => raw[a * 4] - raw[b * 4]);
+      const a0 = raw[order[0] * 4], a1 = raw[order[n - 1] * 4];
+      if (a1 - a0 < ht.spacingM) continue;
+      census.lines++; census.km += (a1 - a0) / 1000;
+      // the field gate: its centre a hash of the line, inside its middle three fifths
+      const gate = a0 + (a1 - a0) * (0.2 + 0.6 * ((Math.imul(key, 2654435761) >>> 0) / 4294967296));
+      census.gates++;
+      let next = a0 + ht.spacingM * 0.5 * (0.5 + hedgeRng());
+      for (let j = 0; j < n; j++) {
+        const i = order[j], along = raw[i * 4];
+        if (along < next) continue;
+        // the seat: of the points within a scan step along, the nearest the line
+        let best = i;
+        for (let k = j + 1; k < n && raw[order[k] * 4] < along + HEDGE_SCAN_M; k++) if (raw[order[k] * 4 + 3] < raw[best * 4 + 3]) best = order[k];
+        next = along + ht.spacingM * (0.75 + 0.5 * hedgeRng());
+        if (Math.abs(along - gate) < gateHalf + 1) continue;
+        const x = raw[best * 4 + 1], z = raw[best * 4 + 2], species = pickSpecies(ht.mix, hedgeRng());
+        census.seats++;
+        if (!clear(x, z)) { census.refused.spacing++; continue; }
+        if (!siteOk(x, z, 0)) { census.refused.site++; continue; }
+        pushTree(x, z, species, 0.9, 1.5, true, hedgeRng, 1);
+        trees[trees.length - 1].hedgeRow = true;
+        remember(x, z);
+        census.planted++;
+        census.species[species] = (census.species[species] ?? 0) + 1;
+      }
+    }
+    group.userData.hedgeTrees = { ...census, km: +census.km.toFixed(2), perKm: census.km > 0 ? +(census.planted / census.km).toFixed(1) : 0 };
+  }
+  plantHedgeTrees();
+
   // Round 77 (2026-09-26): the stand shade. A tree inside a dense stand stands under its neighbours' crowns: the
   // sky over it is mostly leaves, so it reads darker than the trees at the edge — the crown-scale contrast a far
   // forest needs to read as trees and not as a band, and the same tone the near stand's interior carries. Counted
@@ -6525,6 +6612,8 @@ function* vegetationBuildSteps(
         || newlyUnsafeRoadSite(tree.x,tree.z,9,.82),group.userData.tidalMangroves)};
   }
   roadBlockedRimTrees.clear();
+  // (trees lane: the hedge trees still standing once the structure, road and tidal passes have taken theirs)
+  if (group.userData.hedgeTrees) group.userData.hedgeTrees.standing = trees.reduce((n, t) => n + (t.hedgeRow ? 1 : 0), 0);
   // Each LOD is a trunk mesh (opaque bark) + a card mesh (alpha foliage) sharing
   // the same instance matrices.
   const _whiteScratch = new THREE.Color(1, 1, 1);
