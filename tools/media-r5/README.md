@@ -26,6 +26,11 @@ Run from the repo root.
    `route-check.mjs` clears every route of walls, woods, water and the other hulls;
    `previz.mjs --scenes=<dir>` draws each moving scene as a schematic camera's eye beside the map
    and the lens's distance over the take (MP4 + sheet), so choreography is judged before a GPU lease.
+   `motion-search.mjs [--ids=]` stages every site-fifty shot that way: road and open-ground routes
+   (stopping short of the foes for duels), escorts in a column or a fan, guns on their own targets,
+   lens moves by kind (street moves in town), each candidate held to the selftest's bars and scored
+   for close-to-far range, climb, front angles and speed; the winners land in the tracked
+   `site50-motion.json`, which `siteScene` merges (`SITE50_MOTION=0` restores the old motion).
 2. **Lab** — `lab.mjs --scenes=<dir> --out=<dir> --film-frames=5` previews scenes under
    the shared GPU lock (`--lease=budget --lease-min=14`), with autoPlace, sightline and
    path-obstacle notes; `--scout=<maps>` and `--features=<maps>` survey new battlefields;

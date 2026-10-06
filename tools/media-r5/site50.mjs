@@ -5,9 +5,9 @@
 // still at its best moment. Shots reuse the staged sets (sets.mjs) or define their own on battlefields the earlier
 // rounds never filmed. One-shot events (fire, kills) stay inside the loop body, clear of the crossfade window.
 //   MEDIA_R5_LIGHT=1 node tools/media-r5/site50.mjs [outDir=shots/media-r5/site50/scenes] [ids,...]
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildShot, fire, kill, pen, burn, smoke, boom as blast, dust, mg, barrage, exhaust, flare, embers, debris, fireField, huge as hugeBlast, H } from './setups.mjs';
 import { setById, T, pictureFor, LIGHT_READY, sunFor, RIG } from './sets.mjs';
 import { CAST, CAST_NAMES } from './cast.mjs';
@@ -307,10 +307,14 @@ export const SHOTS = [
     // from up the street past the burning wrecks, looking back: their columns rise over the rooftops as the column advances
     // on them (r4c's drone never framed them; r4d's street-level push behind the hero framed only wisps). The wrecks burn 40 to
     // 59 m ahead, 53 m and more from the lens: at 20 m their smoke smeared across the lens between the near rooftops, and the
-    // barrage keeps to the street (review 2026-10-05)
-    { speed: 2.4, sun: 'side',
+    // barrage keeps to the street (review 2026-10-05). Motion (owner 2026-10-05): the lens cranes up out of the street,
+    // 5 m to 27 m, dollying toward the wrecks, so the columns climb past the rooftops into the reveal over the town; the
+    // column closes up toward the outer kerb (every tank 4 m clear of the houses) and creeps on (no route clears the street at speed)
+    { speed: 3, sun: 'side', rail: 'spline', formation: [[0, 0], [1.5, -14], [2, -28]],
       effects: [...wreck('foe0'), ...wreck('foe1'), ...wreck('foe2'), barrage(H(0, 30), 2400, 4, 6), fire('hero', 4200)],
-      cam: RIG.passby({ side: 6, along: 112, lift: 9, fov: 40, look: [0, 30, 6] }) },
+      cam: [{ tMs: 0, frame: 'world', lookFrame: 'hero', side: 6, along: 112, lift: 5, fov: 38, lookHero: [0, 30, 6] },
+        { tMs: 3300, frame: 'world', lookFrame: 'hero', side: 4, along: 106, lift: 14, fov: 41, lookHero: [0, 30, 7] },
+        { tMs: 'end', frame: 'world', lookFrame: 'hero', side: 2, along: 100, lift: 27, fov: 44, lookHero: [0, 30, 4] }] },
     { tMs: 3300, exposureMs: 25 }],
   [41, 'church-tower', 'scene', 'The night street fight seen from the church tower', S.stMain,
     // the tower view, 24 m up between the church and the street: the tanks' fronts from above, the street lit by the flare
@@ -403,7 +407,14 @@ const mirrorCam = cam => cam.map(k => ({ ...k, ...(k.side != null ? { side: -k.s
   ...(k.lookHero ? { lookHero: [-k.lookHero[0], k.lookHero[1], k.lookHero[2]] } : {}) }));
 const tuckCam = cam => cam.map(k => ({ ...k, ...(k.side != null ? { side: k.side * 0.6 } : {}), ...(k.lift != null ? { lift: k.lift + 1.6 } : {}) }));
 /** Builds one site shot's scene JSON (storyboard + still moment + meta). */
-export function siteScene([n, id, kind, title, setRef, film, still]) {
+// The motion plan (motion-search.mjs, owner 2026-10-05: the lens on a 3D track, fast tanks in every direction): a
+// shot with an entry flies its routes and lens move in place of its own motion; SITE50_MOTION=0 restores the old.
+const MOTION_PLAN_FILE = join(dirname(fileURLToPath(import.meta.url)), 'site50-motion.json');
+const MOTION_PLAN = process.env.SITE50_MOTION !== '0' && existsSync(MOTION_PLAN_FILE) ? JSON.parse(readFileSync(MOTION_PLAN_FILE, 'utf8')) : {};
+const OWN_MOTION = ['speed', 'curveDegS', 'foeSpeed', 'pinMs', 'cam', 'turrets', 'guns', 'turretKeys', 'turretSweep', 'keepWidth', 'frame', 'lookFrame', 'ease', 'stepMs'];
+export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
+  const planned = !ownFilm.routes ? MOTION_PLAN[n] : null;
+  const film = planned ? { ...Object.fromEntries(Object.entries(ownFilm).filter(([k]) => !OWN_MOTION.includes(k))), ...Object.fromEntries(Object.entries(planned).filter(([k]) => k !== 'note' && k !== 'checks')) } : ownFilm;
   const set = typeof setRef === 'string' ? setById(setRef) : setRef;
   const time = film.time ?? set.time;
   const base = { ...set, time: T(time), picture: pictureFor({ ...set, time }, { ...SITE_LENS, ...(film.picture ?? {}) }), light: set.light,

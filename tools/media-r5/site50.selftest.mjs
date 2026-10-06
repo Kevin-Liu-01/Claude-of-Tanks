@@ -4,6 +4,11 @@ import { CAST } from './cast.mjs';
 import { isBuiltInCamoId } from '../../src/vehicles/camoPolicy.ts';
 import { DUR, KINDS, LOOP_MS, PAINT, SHOTS, XFADE_MS, siteScene } from './site50.mjs';
 import { blockedFraction, heroInFrameFraction } from './camera-clearance.mjs';
+import { routeProblems, waterBlocks } from './route-check.mjs';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { SHOTS as SHOTS_DIR } from './paths.mjs';
+const featuresOf = (map) => { const f = join(SHOTS_DIR, 'features', `features-${map}.json`); return existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null; };
 import { STUDIO_MAX_ACTOR_KEYS, STUDIO_MAX_CAMERA_SHOTS } from './setups.mjs';
 
 // Owner 2026-10-02: fifty new shots of tanks, battles and battlefields for the site, each one continuous take that
@@ -48,6 +53,12 @@ for (const shot of SHOTS) {
   // review 2026-10-02: lenses that sat ahead of the hero (it fell behind them) or inside a building wasted a GPU pass
   assert.ok(heroInFrameFraction(scene) >= 0.9, `${id}: the hero stays in frame (${heroInFrameFraction(scene).toFixed(2)})`);
   assert.ok(blockedFraction(scene) <= 0.1, `${id}: the lens clears the buildings (${blockedFraction(scene).toFixed(2)} blocked)`);
+  // moving tanks clear walls, woods, water (unless the set drives on the ice), the map's edge and each other
+  const features = featuresOf(scene.map);
+  if (features && scene.storyboard.actorTracks?.length) {
+    const bad = routeProblems(scene, features, { water: waterBlocks(scene) }).filter((p) => !/^foe\d+(\+foe\d+)?$/.test(p.actor));
+    assert.deepEqual(bad, [], `${id}: the routes clear walls, woods, water and the other hulls`);
+  }
   assert.ok(scene.meta.still.tMs > 0 && scene.meta.still.tMs < dur, `${id}: the still moment lies inside the take`);
   for (const a of scene.actors.filter(a => !a.name.startsWith('foe'))) assert.ok(cast.has(a.id), `${id}: ${a.name} is a cast tank (${a.id})`);
   const types = new Set(scene.effects.map(e => e.type));
@@ -112,10 +123,17 @@ for (const shot of SHOTS) {
   const sb = scene.storyboard;
   assert.ok(sb.shots.length <= STUDIO_MAX_CAMERA_SHOTS && sb.shots.at(-1).tMs === sb.durationMs, `${id}: the lens fits the Studio's ${STUDIO_MAX_CAMERA_SHOTS} keys and runs to the end (${sb.shots.length})`);
   for (const tr of tracks) assert.ok(tr.keys.length <= STUDIO_MAX_ACTOR_KEYS && tr.keys.at(-1).tMs === sb.durationMs, `${id}: ${tr.actor}'s track fits ${STUDIO_MAX_ACTOR_KEYS} keys and runs to the end (${tr.keys.length})`);
+  // a moving take (owner 2026-10-05: the motion plan) changes everything between its head and its tail, so its loop is a
+  // dissolve and its stabilised guns track their targets through it: the seam law holds for the hulls that stay put
+  const heroKeys = tracks.find(tr => tr.actor === 'hero')?.keys;
+  const moving = heroKeys && (() => {
+    const at = t => { let i = 0; while (i < heroKeys.length - 2 && heroKeys[i + 1].tMs <= t) i++; return heroKeys[i].pos; };
+    const a = at(0), b = at(LOOP_MS); return Math.hypot(b[0] - a[0], b[1] - a[1]) > 5;
+  })();
   for (const a of scene.actors.filter(x => !x.name.startsWith('foe'))) {
     const keys = tracks.find(tr => tr.actor === a.name)?.keys;
     assert.ok(keys?.length > 2, `${id}: ${a.name}'s turret is keyed`);
-    for (let t = 0; t <= XFADE_MS; t += 50) {
+    for (let t = 0; t <= XFADE_MS && !moving; t += 50) {
       const seam = Math.abs(wrap(trackAt(keys, t, 'turretDeg') - trackAt(keys, t + LOOP_MS, 'turretDeg')));
       assert.ok(seam < 0.5, `${id}: ${a.name}'s turret at ${t} ms differs from ${t + LOOP_MS} ms by ${seam.toFixed(2)}°`);
     }

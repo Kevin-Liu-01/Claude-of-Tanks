@@ -123,7 +123,9 @@ export function pathOf(anchor, heading, speed = 0, curveDegS = 0) {
  * speed"): waypoints `pts` [[lat, lon], ...] in the frame `fr` (the set's anchor and heading at t = 0), joined by a
  * centripetal Catmull-Rom (no cusps or loops between close points) and driven by arc length: standing until `startMs`,
  * then from `v0` (default `speed`) toward `speed` m/s at `accel` m/s². Past the last waypoint the tank carries on along
- * its final tangent. The hull follows the curve's tangent. Returns t (ms) → { p: [x, z], h: deg }.
+ * its final tangent — unless `stop`: then it brakes evenly over the last `brakeM` metres (default 14) and halts on the
+ * last waypoint (a duel in a street, a tank pulling up to fire). The hull follows the curve's tangent. Returns t (ms) →
+ * { p: [x, z], h: deg }.
  */
 export function routePath(route, fr) {
   const pts = route.pts.map(([lat, lon]) => fr.at(lat, lon));
@@ -158,13 +160,26 @@ export function routePath(route, fr) {
   };
   const vmax = route.speed ?? 0, v0 = route.v0 ?? vmax, acc = Math.abs(route.accel ?? 0), startS = (route.startMs ?? 0) / 1000;
   const rampS = acc > 0 ? Math.abs(vmax - v0) / acc : 0, sign = Math.sign(vmax - v0);
+  const free = (T) => (T <= rampS ? v0 * T + 0.5 * sign * acc * T * T : v0 * rampS + 0.5 * sign * acc * rampS * rampS + vmax * (T - rampS));
+  // braking to a halt on the last waypoint: from the moment the free run reaches total - brakeM, an even deceleration
+  // from the speed it has then
+  const brakeM = Math.min(route.brakeM ?? 14, total * 0.5);
+  let brakeT = Infinity, brakeV = vmax;
+  if (route.stop) {
+    let lo = 0, hi = 600;
+    for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (free(mid) < total - brakeM) lo = mid; else hi = mid; }
+    brakeT = hi; brakeV = Math.max(0.1, (free(hi + 0.01) - free(hi)) / 0.01);
+  }
   const dist = (t) => {
     const T = Math.max(0, t / 1000 - startS);
-    if (T <= rampS) return v0 * T + 0.5 * sign * acc * T * T;
-    return v0 * rampS + 0.5 * sign * acc * rampS * rampS + vmax * (T - rampS);
+    if (T <= brakeT) return free(T);
+    const a = brakeV * brakeV / (2 * brakeM), tau = Math.min(T - brakeT, brakeV / a);
+    return total - brakeM + brakeV * tau - 0.5 * a * tau * tau;
   };
+  const endH = Math.atan2(endDir[0], endDir[1]) * 180 / Math.PI;
   return (t) => {
     const d = dist(t), p = at(d);
+    if (route.stop && d >= total - 0.05) return { p, h: endH };
     const q0 = at(Math.max(0, d - 0.8)), q1 = at(d + 0.8);
     const h = Math.atan2(q1[0] - q0[0], q1[1] - q0[1]) * 180 / Math.PI;
     return { p, h };

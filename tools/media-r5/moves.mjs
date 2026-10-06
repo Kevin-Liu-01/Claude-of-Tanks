@@ -67,6 +67,20 @@ export function overtake(dur, { side = 1, lift = [2.4, 1.6, 3.5], radius = [16, 
   ];
 }
 
+/** Each gun on the foe its own rounds go to: the target of the first kill (or hit) within 1.5 s of one of its shots,
+ * else the foes in turn — a knockout round is laid on its victim (the site50 selftest's rule). For buildShot's `aim`. */
+export function aimFor(effects, actors, foeCount) {
+  const target = (actor) => {
+    for (const f of effects.filter((e) => e.type === 'fire' && e.actor === actor).sort((x, y) => x.tMs - y.tMs)) {
+      const after = effects.filter((e) => e.tMs >= f.tMs && e.tMs <= f.tMs + 1500 && (e.actor ?? '').startsWith('foe'));
+      const hit = after.find((e) => e.type === 'tank_kill') ?? after.find((e) => e.type === 'impact');
+      if (hit) return hit.actor;
+    }
+    return null;
+  };
+  return Object.fromEntries(actors.map((a, i) => [a, target(a) ?? `foe${i % Math.max(1, foeCount)}`]));
+}
+
 // ---------------------------------------------------------------------------------------------------- route patterns
 // Waypoints [lat, lon] in the set's frame (lat: + the set heading's right; lon: ahead), long enough for `speed` over the
 // take plus a margin, so nobody stops (routePath carries on past the last point anyway).
