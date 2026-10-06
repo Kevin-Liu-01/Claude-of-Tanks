@@ -2,10 +2,10 @@
 
 The battle HUD now assigns bounded left/right lanes between the visible team
 rosters (or touch minimap) and the bottom controls. Incoming alerts occupy
-the left lane; outgoing reports and the combat log share the right lane.
+the left lane; outgoing reports and the combat log share a stable lower-right dock.
 The lanes update through ResizeObserver and viewport/panel events, not the
 render loop. Resizing a window or enlarging the minimap recalculates an already
-open report. Reports scroll within their lane; alert density reduces when
+open report. The full combat log scrolls within its lane; alert density reduces when
 space is tight. The results footer has its own layout row.
 
 Primary owners: `src/ui/battleHudLayout.ts`, `src/ui/battleHudLayout.css`.
@@ -492,3 +492,28 @@ landscape, Chinese text, four objective states, rotation, and deferred awards.
 It starts and closes its own Vite server and writes receipts under `.qa-dev/`.
 The shared HUD burst fixture alternates attackers to exercise eight separate
 notifications; consecutive hits by one attacker intentionally combine.
+
+## Stable penetration readout
+
+The default mouse HUD seats the ballistic-analysis card 12 CSS pixels above
+its bottom-right minimap, aligned to the map's right edge. Its height budget
+comes from viewport, controls and roster density, never the number of kill
+notifications. The newest card rests at the dock's bottom; kill arrivals,
+expiry and Tab expansion cannot recenter it. Notifications fit the remaining
+space above it. Enlarging the map moves the dock together with the map.
+Drone and AC-130 consoles reserve clearance when they extend into this column;
+on those layouts the report sits above whichever control is higher.
+
+Short displays use the compact header and contained tank diagrams; surplus
+detail rows yield before the images are clipped. Narrow mouse layouts with a
+top-left map keep the report above their bottom controls in the opposite
+column. Touch retains its existing impact feedback rather than opening the
+desktop analysis card. Explicit HUD-editor positions still take precedence.
+
+`node tools/penetration-dock.browser.mjs` runs the production HUD across mouse,
+touch, short landscape, Chinese text, 1/7/14/21/41-per-side rosters, all three
+map sizes and multiplayer connection states. It compares actual report bounds
+before/after kill bursts, Tab and the real notification expiry timers, with a
+detection notice also active. Drone and AC-130 weapon/support controls also
+receive overlap checks on mouse layouts. The regular HUD matrix additionally checks
+countdown, sniper, spectator, settings, log, resized and expanded-map states.

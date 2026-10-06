@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { battleSideStack, battleNotificationRows, battleRosterHeight, installBattleHudLayout, objectiveWidth } from './battleHudLayout.ts';
+import { battleSideStack, battleNotificationRows, battleRosterHeight, installBattleHudLayout, objectiveWidth, battleReportDock, REPORT_MAP_GAP } from './battleHudLayout.ts';
 
 for (const space of [0, 80, 124, 320, 500]) {
   const height = battleRosterHeight(600, space, 124);
@@ -49,6 +49,17 @@ for(const height of [390,600,720,1080])for(const space of [0,40,100,300,600]) {
   if(space>=300)assert.ok(space-roster>=180,'large rosters preserve space for combat feedback');
 }
 
+// Changing notification counts cannot change this dock: only physical space
+// and the deliberate compact report presentation affect its height.
+assert.equal(REPORT_MAP_GAP,12);
+for (const bottom of [120,240,480,800]) for (const ceiling of [80,180,400]) for (const compact of [false,true]) {
+  const dock=battleReportDock(bottom,ceiling,compact);
+  assert.equal(dock.bottom,bottom);
+  assert.equal(dock.top+dock.height,bottom);
+  assert.ok(dock.height>=0&&dock.height<=(compact?160:260));
+  assert.ok(dock.height===0||dock.top>=ceiling);
+}
+
 // Observer lifecycle in a deterministic DOM: no-op attribute records must not
 // turn layout into a per-frame job, but real state/viewport changes still do.
 const originals = new Map(['document','window','ResizeObserver','MutationObserver',
@@ -59,7 +70,7 @@ try {
   const properties=new Map();
   const node=(attrs={})=>({
     attrs:{...attrs},dataset:{},childElementCount:0,visible:true,
-    classList:{contains:()=>false},
+    classList:{contains:()=>false,toggle:()=>false},
     style:{getPropertyValue:key=>properties.get(key)||'',setProperty:(key,value)=>{writes++;properties.set(key,value);},removeProperty:key=>{writes++;properties.delete(key);}},
     getAttribute(key){return this.attrs[key]??null;},
     hasAttribute(key){return this.getAttribute(key)!==null;},
@@ -144,11 +155,11 @@ try {
   assert.equal(properties.has('--hud-roster-top-right'),false,'no strip, no roster lane variable');
   listeners.get('cot-hud-relayout')();assert.equal(frames.size,1,'the strip\'s relayout request schedules one measurement');flush();
   assert.equal(properties.get('--hud-roster-top-right'),'72px','the roster takes the lane 6 px below the strip');
-  assert.equal(properties.get('--hud-right-top'),'148px','the side lane below the roster follows the moved roster (72 + 68 + 8)');
+  assert.equal(properties.get('--hud-right-top'),'126px','network header reserves roster space above the anchored report');
   strip.getBoundingClientRect=()=>rect(140,168,20,180);
   listeners.get('cot-hud-relayout')();flush();
   assert.equal(properties.has('--hud-roster-top-right'),false,'a strip on the left lane (touch portrait) leaves the right roster alone');
-  assert.equal(properties.get('--hud-right-top'),'128px','the roster\'s own bottom decides again (120 + 8)');
+  assert.equal(properties.get('--hud-right-top'),'106px','the report budget returns to the default roster start');
   stripMounted=false;
   listeners.get('cot-hud-relayout')();flush();
   assert.equal(properties.has('--hud-roster-top-right'),false,'the strip\'s dispose removes the variable');
