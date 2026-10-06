@@ -6017,7 +6017,7 @@ function* vegetationBuildSteps(
    * position-hashed, and a map without a field system grows its field trees as before.
    */
   const _fieldLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
-    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0 };
   /** Whether a point stands at a woodlot's edge: within two fifths of the stand's outline beyond it (or inside it). */
   function atWoodEdge(x: number, z: number): boolean {
     for (let i = 0; i < clusters.length; i++) if (standOutlineFraction(i, x, z) <= FIELD_TREE_WOOD_EDGE) return true;
