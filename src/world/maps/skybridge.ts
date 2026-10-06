@@ -141,9 +141,10 @@ export default {
     // round 47: tintB was the darkest macro darkener in the game (0.61/0.40/0.34, luma ×0.46 inside the dark-clover
     // patches) — same red-orange hue (12°), every channel ≥ 0.75 (luma ×0.81), the desert register (0.84/0.78/0.67)
     tintA: [1.02, 0.67, 0.49], tintB: [0.88, 0.78, 0.75], tintC: [1.00, 0.69, 0.49],
-    // (round 3: the canyon's walls "bedded" — the strata bands 0.18 -> 0.24; Titan's 0.22 already read as "wood grain"
-    // on its buttes in wave 134, so the beds come up a step, not to a stripe)
-    roadTint: [0.61, 0.53, 0.47], strata: 0.24, sandMacro: 0.62,
+    // (round 3: the strata bands stay 0.18 — the gate buttes now stand in Titan's round section, whose 0.22 beds read
+    // as "wood grain" and "sawtooth stripes" wrapped round a stump in wave 134; the walls' bedding comes from the rock's
+    // wider tonal range above)
+    roadTint: [0.61, 0.53, 0.47], strata: 0.18, sandMacro: 0.62,
     rippleAmp: 0.14, midRelief: 1.0, midReliefFar: 840,
   },
   vegetation: {
