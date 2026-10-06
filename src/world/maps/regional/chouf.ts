@@ -122,7 +122,7 @@ function dialect(st: ChoufState): HouseDialect {
       doorUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, {
         leaf: shade(st.shutter, 0.8), frame: { bucket: 'stone', width: 0.2, out: 0.06 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'panel',
       }, frame.floors[o.storey] + o.y0);
-      if (big || o.kind === 'gate') roundHead(sink, face, o.u, y0 + o.y0 + o.h + 0.02, o.w + 0.1, 'dark', 0.18);
+      if (big || o.kind === 'gate') roundHead(sink, face, o.u, y0 + o.y0 + o.h + 0.02, o.w + 0.1, 'glass', 0.18);
     },
   };
 }
@@ -197,7 +197,8 @@ function dar(ctx: RegionalBuildContext, opts: DarOpts): RegionalParts {
     const triple = new Set(opts.qanatir ? [-0.98, 0, 0.98].map((k) => (doorU + k).toFixed(2)) : []);
     sink.placed(0, shift, 0, 0, () => {
       const frame = buildHouse(sink, {
-        w: W, d: D, plinth: { h: 0.4, out: 0.06, bucket: 'stone' }, storeys, roof, gableBucket: 'stone', openings,
+        // (round 2, wave 123: "no plinths"): the mountain house's high base course, standing proud of the walls
+        w: W, d: D, plinth: { h: 0.85, out: 0.12, bucket: 'stone' }, storeys, roof, gableBucket: 'stone', openings,
         chimneys: opts.roof === 'tile' ? [{ x: -W * 0.2, z: -D * 0.2, sx: 0.55, sz: 0.55, above: 0.7, bucket: 'stone', cap: 'slab' }] : [],
         gutters: null, verge: null, reveal: 0.3, spall: null,
       }, {
@@ -274,18 +275,21 @@ const hammam: RegionalBuilder = (ctx) => {
   ];
   sink.placed(0, fp.cx, 0, fp.cz, () => {
     const frame = buildHouse(sink, {
-      w: W, d: D, plinth: { h: 0.35, out: 0.06, bucket: 'stone' }, storeys: [{ h: H, wall: 'stone' }], roof: earthRoof(0.4), gableBucket: 'stone', openings,
+      w: W, d: D, plinth: { h: 0.6, out: 0.1, bucket: 'stone' }, storeys: [{ h: H, wall: 'stone' }], roof: earthRoof(0.4), gableBucket: 'stone', openings,
       chimneys: [], gutters: null, verge: null, reveal: 0.35, spall: null,
     }, dialect(st));
     const top = frame.eaveY + 0.3;
     // the hot room's dome over the back half on its octagonal drum, two smaller domes forward
     const R = Math.min(W, D) * 0.27, dz = -D * 0.18;
-    sink.cylinder('plaster', [0, top - 0.1, dz], 'y', 0.9, R + 0.2, 8, {}, R + 0.12, true, Math.PI / 8);
-    dome(sink, 0, top + 0.8, dz, R, 'plaster', 10, look);
+    // (round 2, wave 123: "perched domes"): each dome seated on a drum of its own height with a stone cornice ring
+    sink.cylinder('plaster', [0, top - 0.1, dz], 'y', 1.4, R + 0.3, 8, {}, R + 0.22, true, Math.PI / 8);
+    sink.cylinder('stone', [0, top + 1.18, dz], 'y', 0.14, R + 0.34, 8, { decor: true }, R + 0.34, true, Math.PI / 8);
+    dome(sink, 0, top + 1.3, dz, R, 'plaster', 10, look);
     for (const sx of [-1, 1]) {
       const r = R * 0.55, x = sx * W * 0.26, z = D * 0.24;
-      sink.cylinder('plaster', [x, top - 0.1, z], 'y', 0.5, r + 0.12, 8, {}, r + 0.08, true, Math.PI / 8);
-      dome(sink, x, top + 0.4, z, r, 'plaster', 6, look);
+      sink.cylinder('plaster', [x, top - 0.1, z], 'y', 0.85, r + 0.2, 8, {}, r + 0.14, true, Math.PI / 8);
+      sink.cylinder('stone', [x, top + 0.64, z], 'y', 0.11, r + 0.24, 8, { decor: true }, r + 0.24, true, Math.PI / 8);
+      dome(sink, x, top + 0.75, z, r, 'plaster', 6, look);
     }
     // the furnace stack at the back corner
     sink.span('stone', W / 2 - 1.3, 0, -D / 2 + 0.3, W / 2 - 0.4, top + 3.2, -D / 2 + 1.2);
@@ -305,16 +309,17 @@ const souk: RegionalBuilder = (ctx) => {
     const openings: Opening[] = [];
     for (let k = 0; k < nb; k++) openings.push({ face: 'right', storey: 0, kind: 'door', u: -L / 2 + (k + 0.5) * bay, w: Math.min(1.9, bay - 0.8), y0: 0, h: 2.3 });
     const frame = buildHouse(sink, {
-      w: W, d: L, plinth: { h: 0.25, out: 0.05, bucket: 'stone' }, storeys: [{ h: H, wall: 'stone' }], roof: earthRoof(0.35), gableBucket: 'stone', openings,
+      w: W, d: L, plinth: { h: 0.45, out: 0.08, bucket: 'stone' }, storeys: [{ h: H, wall: 'stone' }], roof: earthRoof(0.35), gableBucket: 'stone', openings,
       chimneys: [], gutters: null, verge: null, reveal: 0.4, spall: null,
     }, {
       window: () => {},
       door: (s, face, o, y0) => {
         // the shop's plank doors folded open on the dark of the vault, the round arch over the opening
         const r = s.recess, go = r > 0 ? -r + 0.03 : 0.015;
-        faceBox(s, 'dark', face, o.u, y0 + o.y0 + o.h / 2, go, o.w, o.h, 0.04, {});
+        // (round 2, wave 123: "black voids"): the vault's back a deep brown of goods and shadow, not a black hole
+        faceBox(s, 'structureWood', face, o.u, y0 + o.y0 + o.h / 2, go, o.w, o.h, 0.04, { colour: rgb(0x3a2c22) });
         for (const side of [-1, 1]) faceBox(s, 'structureWood', face, o.u + side * (o.w / 2 + 0.32), y0 + o.y0 + o.h / 2, 0.05, 0.6, o.h - 0.1, 0.05, { colour: shade(st.shutter, 0.85), decor: true });
-        roundHead(s, face, o.u, y0 + o.y0 + o.h + 0.02, o.w, 'dark', 0.2);
+        roundHead(s, face, o.u, y0 + o.y0 + o.h + 0.02, o.w, 'glass', 0.2);
       },
     });
     // the awnings of cloth over a few of the shops
@@ -353,7 +358,9 @@ const sabil: RegionalBuilder = (ctx) => {
       archHaunches(sink, f, 0, H - a - 0.08, a, a, H, 0.5);
     }
     const S = Math.min(Sx, Sz);
-    dome(sink, 0, H + 0.55, 0, S * 0.42, 'plaster', 0, look);
+    // (round 2, wave 123: "perched domes"): the dome on a short drum over the lintel ring
+    sink.cylinder('plaster', [0, H + 0.55, 0], 'y', 0.55, S * 0.42 + 0.12, 8, {}, S * 0.42 + 0.08, true, Math.PI / 8);
+    dome(sink, 0, H + 1.1, 0, S * 0.42, 'plaster', 0, look);
     // the basin under the dome and the spout's water
     sink.cylinder('stone', [0, 0.25, 0], 'y', 0.6, S * 0.28, 12, {}, S * 0.3);
     sink.cylinder('glass', [0, 0.84, 0], 'y', 0.02, S * 0.25, 12, { decor: true });
@@ -379,7 +386,7 @@ const church: RegionalBuilder = (ctx) => {
       ...lights('right', []),
     ];
     const frame = buildHouse(sink, {
-      w: W, d: D, plinth: { h: 0.45, out: 0.08, bucket: 'stone' }, storeys: [{ h: 5.6, wall: 'stone' }],
+      w: W, d: D, plinth: { h: 0.7, out: 0.1, bucket: 'stone' }, storeys: [{ h: 5.6, wall: 'stone' }],
       roof: { kind: 'gable', pitchDeg: 28, eave: 0.35, verge: 0.25, thickness: 0.12, bucket: 'roof', ridge: 'saddle' }, gableBucket: 'stone', openings,
       chimneys: [], gutters: null, verge: null, reveal: 0.4, spall: null,
     }, { ...dialect(st), window: (s, face, o, y0) => { windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...st.window, shutters: null, bars: 'six' }, rng, 0.3); roundHead(s, face, o.u, y0 + o.y0 + o.h + 0.02, o.w, 'glass'); } });
@@ -427,7 +434,7 @@ const stable: RegionalBuilder = (ctx) => {
       ...windowRhythm('right', 0, L, { w: 0.25, h: 0.9, sill: 1.6, spacing: 2.2, margin: 1.0 }).map((o): Opening => ({ ...o, kind: 'loft' })),
     ];
     const frame = buildHouse(sink, {
-      w: W, d: L, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.4, wall: 'stone' }], roof: tile ? tileHip(22) : earthRoof(0.35),
+      w: W, d: L, plinth: { h: 0.5, out: 0.08, bucket: 'stone' }, storeys: [{ h: 3.4, wall: 'stone' }], roof: tile ? tileHip(22) : earthRoof(0.35),
       gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, reveal: 0.35, spall: null,
     }, dialect({ ...st, litShare: 0 }));
     if (!tile) roller(sink, frame, look);
@@ -492,6 +499,9 @@ export const CHOUF_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.
   marketRow: souk,
   market: sabil,
   tavern: church,
+  // (round 2, gauntlet wave 123: the border villages' generic tower and spire read as a Western church): their church
+  // is the Chouf's own, the open bell arch on its gable
+  church,
   granary: store,
   barn: stable,
   woodshed: arisha,
@@ -502,7 +512,9 @@ export const CHOUF_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   id: 'chouf',
   region: 'The Chouf on Mount Lebanon (Beiteddine, Deir el Qamar, Ain Zhalta): sandstone houses under red Marseille tiles, the triple arch, the hammam',
   surfaces: {
-    roof: { kind: 'pantile', tint: [0.72, 0.36, 0.24] },
+    // (round 2, gauntlet wave 123: the pantile's S-wave read as "corrugated-looking roofs"; the Marseille tile lies flat in
+    // ribbed courses, its red brighter and more orange)
+    roof: { kind: 'beavertail', tint: [0.8, 0.4, 0.25] },
     stone: { kind: 'limestone', tint: [0.84, 0.76, 0.6] },
     sourced: { plaster: false, wood: true },
     tones: {

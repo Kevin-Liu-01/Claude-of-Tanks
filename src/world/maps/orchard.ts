@@ -20,6 +20,9 @@ export default {
   terrain: {
     hillScale: 1.0, microScale: 0.72, rimH: 32,
     village: { x0: -106, x1: 108, z0: -92, z1: 112, cx: -6, cz: 12, feather: 42, flatten: 0.86, relief: 0.12 },
+    // (round 2, gauntlet wave 123: the buildings "set on lawns"): the village ground in its plots — the walled yards,
+    // kitchen gardens and threshing floors running back from the lanes (terrain.ts createVillagePlotWear)
+    villageWear: 'plots',
     roads: { paths: roundRoadBends([
       // The bathhouse street bends into the packing court; the second
       // frontage below turns back around it instead of stringing homes out.
@@ -84,22 +87,26 @@ export default {
     // village's sandstone, every building where it stood
     architecture: 'chouf',
     plan: ['bathhouse', 'farmhouse', 'marketRow', 'rangerlodge', 'granary', 'woodshed', 'cottage', 'barn', 'market', 'farmhouse', 'tavern', 'granary', 'woodshed', 'ruin', 'barn', 'cottage', 'farmhouse', 'marketRow'],
-    destructibleBuildings: ['fieldhut', 'leanto', 'huntingblind', 'longhouse'],
+    // (round 2, wave 123: "leftover Western forms … wood barns"): the war's own light structures in place of the timber
+    // huts and the longhouse — a checkpoint hut, sentry posts, command and aid tents
+    destructibleBuildings: ['checkpointhut', 'guardpost', 'commandtent', 'fieldhospital'],
     buildingLat: [11, 2], destructibleBuildingLat: [15, 3], sideSkip: 0.16, spacingPad: 7.5,
     tacticalBeats: [
-      { id: 'village-packing-court', role: 'brawl', x: 70, z: 56, yawDeg: -90, structure: 'longhouse', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
-      { id: 'western-orchard-watch', role: 'scout', x: -330, z: 140, yawDeg: 110, structure: 'huntingblind', outcrop: { count: 4, radius: 8 } },
-      { id: 'upper-harvest-store', role: 'support', x: 246, z: 238, yawDeg: -105, structure: 'fieldhut', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
+      { id: 'village-packing-court', role: 'brawl', x: 70, z: 56, yawDeg: -90, structure: 'checkpointhut', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
+      { id: 'western-orchard-watch', role: 'scout', x: -330, z: 140, yawDeg: 110, structure: 'guardpost', outcrop: { count: 4, radius: 8 } },
+      { id: 'upper-harvest-store', role: 'support', x: 246, z: 238, yawDeg: -105, structure: 'commandtent', redoubt: true, outcrop: { count: 4, radius: 9 }, wreck: true },
     ],
     wallStyle: 'fieldstone', wallStoneChance: 0.68,
     // Retaining/garden walls parallel the planted terraces, ending at the
     // working tracks. Shorter runs reclaim geometry from remote field edges.
     wallRuns: [[-210, -112, -94, -84, 3], [-212, 22, -112, 48, 3], [92, 54, 242, 78, 3], [108, 110, 266, 130, 2], [-108, 90, -108, 142, 2], [122, -116, 262, -98, 3]],
-    well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
-    haystacks: 12, rocks: 138, outcrops: 20, craters: 48, rubblePiles: 10, cropFields: 7, sandbagLines: 12, hedgehogs: 8,
+    // (round 2, wave 123: hay bales and stacks are the Western farm's; the Chouf threshes on the roof and the floor)
+    well: true, hayCrates: false, fences: true, telegraph: false, carts: true, logs: true,
+    haystacks: 0, rocks: 138, outcrops: 20, craters: 48, rubblePiles: 10, cropFields: 7, sandbagLines: 12, hedgehogs: 8,
     tankWrecks: { era: 'modern', count: 5, debris: true,
       ids: ['marder1a3', 'ua_t84_oplot_m', 'm551_sheridan', 'pt91m', 'm1a1'] },
-    inhabit: { stalls: 4, benches: 4, coreClutter: 22, bales: 8, stooks: 8, pots: 8, laundry: 4, troughs: 2, handcarts: 4, carts: 4, trucks: 4, jeeps: 3, drumClusters: 3, camps: 2, modernClutter: 18, looseClutter: 20, roadFence: 'fencewattle', yardFence: 'fencepicket' },
+    // (round 2, wave 123: "picket and rail fencing"): dry stone walls along the lanes and round the yards
+    inhabit: { stalls: 4, benches: 4, coreClutter: 22, bales: 0, stooks: 0, pots: 8, laundry: 4, troughs: 2, handcarts: 4, carts: 4, trucks: 4, jeeps: 3, drumClusters: 3, camps: 2, modernClutter: 18, looseClutter: 20, roadFence: 'wallstone', yardFence: 'wallstone' },
   },
   // the map-revival lane (2026-10-05; the scenery lane's generators, world/scenery.ts): a Maronite cross at the village's
   // south entry and another on the western spur over the terraces, a cairn on the eastern flank's crest
@@ -113,7 +120,10 @@ export default {
 
   // the mountains lane (2026-10-03, gauntlet wave 15: "mountain ranges behind places that have none"): the valley's
   // forested mountains: steep and rounded, wooded to the crests, no snow or alpine rock (the Barouk's cedar ridge)
-  horizon: { baseHex: 0x5c7154, amp: 1.05, style: 'alpine', treeline: 0.84, snowline: 2, panorama: { regional: 'forested' }, forestHex: 0x2e513c, rockHex: 0x7a8270, haze: 0.9, grain: 0.55 },
+  // 2026-10-05 (the map-revival lane, round 2; gauntlet wave 123: "a flat, cardboard-lit jagged backdrop peak" and a
+  // banded mountainside): Mount Lebanon is long rounded limestone ridges — pale rock on the steeper flanks, pine and
+  // oak scrub below — not alpine peaks: the rolling ring and the upland panorama raised to the Barouk's bulk
+  horizon: { baseHex: 0x5c7154, amp: 0.9, style: 'rolling', treeline: 0.8, snowline: 2, panorama: { regional: 'upland', ampM: 450, treeline: 0.75, rockSlope: 0.35 }, forestHex: 0x2e513c, rockHex: 0x9c9a8a, haze: 0.9, grain: 0.55 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'fair-weather-cumulus', coverage: 0.28, streets: 0.4, contrails: 0.3 },
   sky: { ...verdant.sky, sunElevationDeg: 28, sunAzimuthDeg: 132, turbidity: 4.5, fogDensity: 0.00058, fogTintHex: 0x99aaac, fogMix: 0.5, cloudOpacity: 0.95, cloudOpacity2: 0.62, sunIntensity: 3.9, hemiIntensity: 0.42 },
