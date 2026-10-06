@@ -37,6 +37,8 @@ const SQUARE = 480;
 const SPAWN_CLEAR = 22;
 /** A road core a body may not stand in (the layout brief's carriageway). */
 const ROAD_CORE_M = 3.5;
+/** The parts one compound record holds (server/collisionManifestCodec.ts: a compound of at most 64). */
+const MOVEMENT_PART_LIMIT = 64;
 /** The steepest fall under a footprint a piece is seated on (its plinths reach down this far). */
 const MAX_FALL_M = 3.2;
 
@@ -265,24 +267,26 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     let records = 0;
     if (hasStructure(parts)) try {
       let shell;
+      const movement: CollisionRecord[] = [];
       if (built.movement?.length) {
-        ctx.obstacles.push(movementRecord(built.movement, placement.x, baseY, placement.z, yaw));
+        // a compound holds at most 64 parts (server/collisionManifestCodec.ts): a long bridge's record in runs of 64
+        for (let i = 0; i < built.movement.length; i += MOVEMENT_PART_LIMIT) {
+          movement.push(movementRecord(built.movement.slice(i, i + MOVEMENT_PART_LIMIT), placement.x, baseY, placement.z, yaw));
+        }
+        ctx.obstacles.push(...movement);
         shell = deriveRuntimeStructureShellBands(parts);
       } else {
         const profile = deriveRuntimeStructureCollisionProfile(parts);
         appendStructureCollisionBand(ctx.obstacles, profile.contact, placement.x, baseY, placement.z, yaw).kind = 'structure';
         shell = profile.shell;
       }
-      records++;
+      records += Math.max(1, movement.length);
       for (const band of shell) {
         appendStructureCollisionBand(ctx.colliders, band, placement.x, baseY, placement.z, yaw).kind = 'structure';
         records++;
       }
-      if (built.movement?.length) {
-        // the deck is also what a shell meets over the water: its movement record joins the shells' list as well
-        ctx.colliders.push(cloneCollisionRecord(ctx.obstacles[ctx.obstacles.length - 1]));
-        records++;
-      }
+      // the deck is also what a shell meets over the water: its movement record joins the shells' list as well
+      for (const record of movement) { ctx.colliders.push(cloneCollisionRecord(record)); records++; }
     } catch (error) {
       for (const geometry of partList(parts)) geometry.dispose();
       skip(`collision: ${(error as Error).message}`);

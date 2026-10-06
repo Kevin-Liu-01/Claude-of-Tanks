@@ -201,10 +201,14 @@ export const windmill: LandmarkBuilder = (ctx) => {
   const tower = style === 'tower';
   // the base: brick (an octagonal plinth storey for the smock mill, the round tower itself for a tower mill)
   const r0 = tower ? 4.3 : 4.0, capY = H - 2.2;
+  // the tower mill's sails (their span with the tower's height) and its stage (stelling) low enough that the lowest
+  // sail tip sweeps clear over the stage's railing (1.7 m: the railing and the miller's reach to set the cloth)
+  const sailLen = tower ? Math.min(11.5, capY * 0.6) : 0, towerR = (y: number) => r0 - 0.26 * r0 * Math.max(0, y - 0.6) / (capY - 0.6);
   if (tower) {
-    revolve(sink, 'stone', 0, 0, [[r0 + 0.2, base], [r0 + 0.2, 0.6], [r0, 0.6], [r0 * 0.74, capY]], 16);
+    // (a facet, not a corner, to the front and to each quarter: the door and the windows sit flat on the brick)
+    revolve(sink, 'stone', 0, 0, [[r0 + 0.2, base], [r0 + 0.2, 0.6], [r0, 0.6], [r0 * 0.74, capY]], 16, {}, Math.PI / 16);
     // the stage (stelling) round the tower at a third of its height, its railing and the struts under it
-    const sy = capY * 0.42, rs = r0 * (1 - 0.26 * sy / capY) + 2.2;
+    const sy = Math.min(capY * 0.42, capY + 1.3 - sailLen - 1.7), rs = r0 * (1 - 0.26 * sy / capY) + 2.2;
     // the deck: its soffit, its edge and its boards (a closed ring round the tower)
     revolve(sink, 'structureWood', 0, 0, [[0.5, sy], [rs, sy], [rs, sy + 0.18], [0.5, sy + 0.18]], 16, { colour: TIMBER });
     for (let k = 0; k < 8; k++) {
@@ -214,10 +218,12 @@ export const windmill: LandmarkBuilder = (ctx) => {
       railing(sink, [Math.cos(a) * rs, Math.sin(a) * rs], [Math.cos(b) * rs, Math.sin(b) * rs], 0.95, TIMBER_DARK, { pitch: 1.8, base: sy + 0.18 });
     }
     for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
-      const f: Face = { origin: [Math.sin(a) * (r0 * 0.9), 0, Math.cos(a) * (r0 * 0.9)], u: [Math.cos(a), 0, -Math.sin(a)], out: [Math.sin(a), 0, Math.cos(a)], width: 1 };
+      // (each on the tapering wall at its own height, the 16-sided tower's facet a little inside its corner radius)
+      const rw = towerR(capY * 0.62 + 0.6) * Math.cos(Math.PI / 16) + 0.02;
+      const f: Face = { origin: [Math.sin(a) * rw, 0, Math.cos(a) * rw], u: [Math.cos(a), 0, -Math.sin(a)], out: [Math.sin(a), 0, Math.cos(a)], width: 1 };
       archWindow(sink, f, { u: 0, w: 0.7, y0: capY * 0.62, spring: capY * 0.62 + 1.0, form: 'segmental', rise: 0.18 }, 0, FRAME_WHITE, false, { bars: false });
     }
-    plankDoor(sink, { origin: [0, 0, r0 * 0.97 + 0.05], u: [1, 0, 0], out: [0, 0, 1], width: 1 }, 0, 0.6, 1.1, 2.1, IRON_GREEN, 0.02);
+    plankDoor(sink, { origin: [0, 0, towerR(1.6) * Math.cos(Math.PI / 16) + 0.02], u: [1, 0, 0], out: [0, 0, 1], width: 1 }, 0, 0.6, 1.1, 2.1, IRON_GREEN, 0.02);
   } else {
     revolve(sink, 'stone', 0, 0, [[r0 / Math.cos(OCT), base], [r0 / Math.cos(OCT), 1.6], [(r0 - 0.15) / Math.cos(OCT), 1.6]], 8, {}, OCT);
     const body = ctx.mapId === 'polders' ? 'straw' : 'structureWood';
@@ -245,9 +251,10 @@ export const windmill: LandmarkBuilder = (ctx) => {
   }
   const hubY = capY + 1.3, hubZ = capD / 2 + 0.8;
   sink.member('structureWood', [0, hubY - 0.15, capD / 2 - 0.8], [0, hubY, hubZ], 0.4, 0.4, [1, 0, 0], { colour: TIMBER_DARK, exposed: true }, 0.2);
-  sails(sink, hubY, hubZ, tower ? 11.5 : Math.min(10, hubY - 1.2), tower ? 1.45 : 1.2, turn, TIMBER, cloth);
+  sails(sink, hubY, hubZ, tower ? sailLen : Math.min(10, hubY - 1.2), tower ? 1.45 : 1.2, turn, TIMBER, cloth);
   // the tail pole and its struts down from the cap's back, the capstan wheel at its foot (the miller turns the cap)
-  const footY = tower ? capY * 0.42 + 0.9 : 0.9, footZ = tower ? -(r0 * 0.9 + 2.4) : -(r0 + 3.6);
+  const stageY = Math.min(capY * 0.42, capY + 1.3 - sailLen - 1.7);
+  const footY = tower ? stageY + 0.9 : 0.9, footZ = tower ? -(towerR(stageY) + 1.6) : -(r0 + 3.6);
   bar(sink, 'structureWood', [0, capY + 0.1, -capD / 2 + 0.3], [0, footY, footZ], 0.24, { colour: TIMBER_DARK, decor: true });
   for (const sx of [-1, 1]) bar(sink, 'structureWood', [sx * capW * 0.4, capY + 0.05, -capD / 2 + 0.4], [0, footY + 2.2, footZ * 0.8], 0.14, { colour: TIMBER_DARK, decor: true });
   revolve(sink, 'structureWood', 0, footZ - 0.2, [[0.9, footY - 0.05], [0.9, footY + 0.05]], 10, { colour: TIMBER, decor: true });

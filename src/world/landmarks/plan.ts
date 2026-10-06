@@ -36,8 +36,16 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   baileyBridge: { family: 'bridge', spansRoad: true, defaults: { bays: 8, width: 4.2, deck: 2.4, drivable: true },
     footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'bays') * 3.048 / 2 + 6] },
   // (the abutments run 3.2 m back into the banks; the balance beams' tails reach back over the approaches)
-  liftBridge: { family: 'bridge', spansRoad: true, defaults: { span: 14, width: 5.5, deck: 2.4, drivable: true },
-    footprint: (p) => [num(p, 'width') / 2 + 1.1, num(p, 'span') / 2 + 0.75 + Math.max(3.6, num(p, 'span') * 0.42)] },
+  // (the balances' tails reach back over the approach; the long form — `approach` or `rise` — runs on over its lift piers,
+  // its fixed spans, its abutments and its ramps, each ramp at most (rise + 0.5) / grade long: bridges.ts liftBridge)
+  liftBridge: { family: 'bridge', spansRoad: true, defaults: { span: 14, width: 5.5, deck: 2.4, drivable: true, approach: 0, rise: 0, grade: 1 / 7 },
+    footprint: (p) => {
+      const span = num(p, 'span'), approach = Math.max(0, num(p, 'approach')), rise = Math.max(0, num(p, 'rise'));
+      const balances = span / 2 + 0.75 + Math.max(3.6, span * 0.42);
+      const grade = Math.min(0.25, Math.max(0.05, num(p, 'grade')));
+      const long = approach > 0 || rise > 0 ? span / 2 + (approach > 0 ? 2.6 : 0) + approach + 3.2 + (rise > 0 ? (rise + 0.5) / grade : 0) + 0.3 : 0;
+      return [num(p, 'width') / 2 + 1.1, Math.max(balances, long)];
+    } },
   viaduct: { family: 'bridge', defaults: { arches: 7, archSpan: 12, height: 22, width: 8 },
     footprint: (p) => [num(p, 'width') / 2 + 0.8, (num(p, 'arches') * (num(p, 'archSpan') + 3) + 3) / 2] },
   // ------------------------------------------------------------------------------------------------ monuments

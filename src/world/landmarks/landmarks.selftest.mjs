@@ -239,6 +239,38 @@ for (const kind of ['stoneArchBridge', 'trussBridge', 'trestleBridge', 'baileyBr
   });
 }
 
+// the lift bridge's long form (bridges.ts liftBridge; Tidegate Polders' oxbow): over water level with its fields, the
+// leaves on piers in the water, a fixed span on pile bents to each bank, the roadway `rise` over the banks on paved
+// abutments, a ramp down from each to where it meets the ground — one deck a hull drives on from field to field
+for (const [label, ground] of [
+  ['banks rising unevenly', (lx, lz) => { const a = Math.abs(lz) - 14; return a <= 0 ? 0 : (lz > 0 ? 0.25 : 0.16) * a; }],
+  ['banks level with the water', () => 0],
+]) check(`liftBridge long form, ${label}`, () => {
+  const params = resolveLandmarkParams({ kind: 'liftBridge', x: 0, z: 0, params: { span: 12, approach: 5.6, rise: 1.5 } });
+  const { parts, movement } = build('liftBridge', { span: 12, approach: 5.6, rise: 1.5 }, { ground });
+  assert.ok(triangles(parts) <= BUDGET.liftBridge, `liftBridge long form within its budget (${triangles(parts)})`);
+  const deck = movement.filter((part) => part.kind === 'obb' && Math.abs(part.y1 - part.y0 - 1.0) < 1e-6 && part.hw >= 1.5).sort((p, q) => p.cz - q.cz);
+  assert.ok(deck.length >= 5, 'the roadway in parts');
+  for (let i = 0; i + 1 < deck.length; i++) {
+    const gap = (deck[i + 1].cz - deck[i + 1].hl) - (deck[i].cz + deck[i].hl);
+    assert.ok(Math.abs(gap) <= 0.05, `the roadway runs on unbroken (gap ${gap.toFixed(3)} m at ${deck[i].cz.toFixed(2)})`);
+    assert.ok(Math.abs(deck[i + 1].y1 - deck[i].y1) < HULL_STEP_UP_M, `a hull steps from one roadway part to the next (${deck[i].y1.toFixed(2)} → ${deck[i + 1].y1.toFixed(2)})`);
+    assert.ok(hullPassesObstacleTop(deck[i].y1, deck[i + 1].y1, deck[i + 1].y0), 'a hull on the roadway mounts the next part');
+  }
+  // the roadway stands `rise` over the higher bank, and each end comes down to its ground
+  const top = Math.max(...deck.map((part) => part.y1));
+  assert.ok(top >= 1.5, `the roadway stands its rise over the water (${top.toFixed(2)})`);
+  for (const [part, zs] of [[deck[0], -1], [deck[deck.length - 1], 1]]) {
+    const z = part.cz + zs * part.hl, g = ground(0, z);
+    assert.ok(part.y1 - g < HULL_STEP_UP_M && part.y1 >= g - 0.05, `the ${zs < 0 ? 'near' : 'far'} ramp meets its ground (${part.y1.toFixed(2)} over ${g.toFixed(2)} at ${z.toFixed(1)})`);
+  }
+  // the whole bridge within its footprint, and its shells within the packed manifest's limits
+  const [, hl] = LANDMARK_KINDS.liftBridge.footprint(params);
+  assert.ok(movement.every((part) => Math.abs(part.cz) + (part.hl ?? part.r ?? 0) <= hl + 1e-6), 'the movement within the footprint');
+  packedBandsOk({ contact: { parts: [] }, shell: deriveRuntimeStructureShellBands(parts) }, 'liftBridge long form');
+  for (const g of geometries(parts)) g.dispose();
+});
+
 // ---------------------------------------------------------------------------------------------------------- composer
 {
   const flat = { getHeightAt: () => 0, getWaterMaskAt: () => 0, _roadDist: (x, z) => Math.abs(z - 200) };
@@ -278,6 +310,21 @@ for (const kind of ['stoneArchBridge', 'trussBridge', 'trestleBridge', 'baileyBr
   const church = obstacles.find((o) => o.kind === 'structure');
   assert.ok(church.min[0] < 60 - 12 && church.max[0] > 60 + 10 && church.max[2] - church.min[2] < 20, 'the church lies along x');
   for (const m of merged) for (const g of geometries(m.parts)) g.dispose();
+  // a bridge whose roadway holds more parts than one compound may (64: server/collisionManifestCodec.ts) publishes it
+  // in runs of 64, each its own movement record and each cloned into the shells' list
+  const before = { obstacles: obstacles.length, colliders: colliders.length };
+  const long = run([{ kind: 'liftBridge', x: 200, z: -100, yawDeg: 0, params: { span: 12, approach: 5.6, rise: 1.5 }, name: 'a long bridge' }]);
+  assert.equal(long.placed, 1, 'the long bridge stands');
+  const roadway = obstacles.slice(before.obstacles).filter((o) => o.shape2?.kind === 'compound');
+  const built = build('liftBridge', { span: 12, approach: 5.6, rise: 1.5 }, { ground: () => 0 });
+  assert.ok(built.movement.length > 64, `the flat test ground's roadway outgrows one compound (${built.movement.length} parts)`);
+  assert.equal(roadway.length, Math.ceil(built.movement.length / 64), 'one movement record per 64 parts');
+  assert.ok(roadway.every((o) => o.shape2.parts.length <= 64), 'each within the compound cap');
+  assert.equal(roadway.reduce((n, o) => n + o.shape2.parts.length, 0), built.movement.length, 'every part published');
+  const shellCopies = colliders.slice(before.colliders).filter((o) => o.shape2?.kind === 'compound' && o.shape2.parts.length > 1
+    && roadway.some((r) => r.min[0] === o.min[0] && r.max[2] === o.max[2] && r.shape2.parts.length === o.shape2.parts.length));
+  assert.equal(shellCopies.length, roadway.length, 'each run cloned into the shells');
+  for (const g of geometries(built.parts)) g.dispose();
   // a map without set pieces composes nothing
   const empty = run([]);
   assert.deepEqual(empty, { pieces: [], placed: 0, skipped: 0, triangles: 0 });
