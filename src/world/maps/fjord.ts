@@ -21,8 +21,6 @@
 import { gully, talusFan } from './geology.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
-/** The rock peninsulas' ice-ground gneiss (round 3): sheets in ledges, a wandering knobbed crest, rills down the faces. */
-const PENINSULA = { outline: 0.28, rough: 2.2, gullies: { count: 3, depthM: 3.6, width: 0.45 }, strata: { stepM: 3.4, riser: 0.4 } } as const;
 
 export default {
   id: 'fjord',
@@ -71,13 +69,10 @@ export default {
       { kind: 'basin', x: 252, z: 32, rx: 98, rz: 150, height: -3.2, yawDeg: 3, wetScale: 0.8 },
       // round 47 follow-up: the rock peninsulas between the fjord arms and the walls outside them — the arms' water
       // flattening wins inside the lobes, so each ridge's flanks drop straight into the fjord
-      // (round 3, gauntlet wave 129: "one smooth grey vertical wall with a ruler-straight top edge and no ledges, joints
-      // or glacial rounding"): the gneiss in sheets — the crest wandering and knobbed, the flanks stepped in ledges
-      // 3-4 m apart, rills down the faces
-      { kind: 'ridge', x: 395, z: -32, length: 210, width: 50, height: 13.0, yawDeg: 0, geology: PENINSULA },
-      { kind: 'ridge', x: 395, z: 170, length: 210, width: 46, height: 12.0, yawDeg: 0, geology: PENINSULA },
-      { kind: 'ridge', x: 430, z: -268, length: 170, width: 56, height: 12.0, yawDeg: -4, geology: PENINSULA },
-      { kind: 'ridge', x: 430, z: 378, length: 160, width: 56, height: 11.0, yawDeg: 4, geology: PENINSULA },
+      { kind: 'ridge', x: 395, z: -32, length: 210, width: 50, height: 13.0, yawDeg: 0 },
+      { kind: 'ridge', x: 395, z: 170, length: 210, width: 46, height: 12.0, yawDeg: 0 },
+      { kind: 'ridge', x: 430, z: -268, length: 170, width: 56, height: 12.0, yawDeg: -4 },
+      { kind: 'ridge', x: 430, z: 378, length: 160, width: 56, height: 11.0, yawDeg: 4 },
       // 2026-10-03 (maps lane B): glacial geology (geology.ts). Roches moutonnées on the heights outside the town — the
       // ice that dug the fjord flowed east, so each knob rises gently from the west and breaks off steep to the east (a
       // long low dome with a short steep one at its lee end); two gullies cut the western heights' south face; and
@@ -125,6 +120,11 @@ export default {
     // (sourcedTint divides out the steppe row's own tints)
     sourcedPalette: 'steppe',
     sourcedTint: { G: [0.34, 0.5, 0.47], D: [0.81, 0.9, 1.1], R: [0.48, 0.59, 0.82] },
+    // round 3 (wave 129: the peninsulas' cliffs "one smooth, uniformly grey vertical wall ... no ledges, joints or
+    // glacial rounding"): the gneiss's sheeting and joints drawn on the steep rock only (the material's beds, partings,
+    // joint blocks and varnish streaks, as Aegis's walls); a geology on the peninsula ridges themselves moved the
+    // props' stream (any height change re-seats every later rock and tree) onto zone 1's apron
+    strata: 0.1,
   },
   vegetation: {
     // round 2 (wave 111b: "a monoculture of repeated conifers with no birch anywhere"): Ofoten's woods are downy birch on
