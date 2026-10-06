@@ -288,6 +288,16 @@ export default {
   },
 
   props: {
+    // The landmarks lane (2026-10-06; src/world/landmarks/): the grain station's concrete elevator — the Virgin Lands'
+    // standard battery of silos with its work tower — north of the siding across the track from the long grain store,
+    // the buffer stop at its west end; and the collective farm's entrance arch over the station road where it reaches
+    // the kolkhoz from the highway.
+    landmarks: [
+      { kind: 'grainElevator', x: 186, z: -166, yawDeg: 0, name: 'the grain elevator on the siding' },
+      // (its piers 14 m apart, off the carriageway and its verge, inside the shelterbelts' setback: mr4's check)
+      { kind: 'kolkhozArch', x: -258, z: -148.2, yawDeg: 98.3, name: 'the kolkhoz arch on the station road',
+        params: { span: 13.2, height: 6.6 } },
+    ],
     // The grain station (round 48): the elevator's head tower, long grain
     // stores, the platform hall, the loading gantry, freight ranks and the
     // railway workers' houses along the station road and the east track.
