@@ -98,6 +98,17 @@ export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildC
   const wear = { amount: style.wear ?? 0.2, rng: streamFrom(wearSeed), spall: streamFrom((wearSeed ^ 0x9e3779b9) >>> 0) };
   const tints = pickWeatherTints(palette, weatherRng);
   const parts = weatherRegionalParts(withWear(wear, () => builder(ctx)), tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
+  // map revival lane 2 (2026-10-05): a style's finer render (surfaces.relief) — the walls' tile repeats plasterUv times as
+  // often; absent, every UV stays as it was
+  const relief = style.surfaces.relief;
+  if (relief) {
+    for (const name of ['regionalPlaster', 'regionalPlaster2', 'regionalPlaster3'] as const) {
+      for (const geometry of parts[name]) {
+        const uv = geometry.getAttribute('uv');
+        for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * relief.plasterUv, uv.getY(i) * relief.plasterUv);
+      }
+    }
+  }
   // a phone never builds the fine joinery (geometry.ts EmitOptions.fine: frames, glazing bars, rails, door panels);
   // it is dressing, so the collision stays the desktop's
   if (ctx.tier === 'mobile') {
