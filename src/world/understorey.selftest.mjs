@@ -169,7 +169,14 @@ function produce(id, extra = {}) {
     if (rimBlocks.length > 0) assert.ok(rimCount > 0, `${id}: the rim blocks carry an understorey (${rimBlocks.length} blocks)`);
     // the cover law caps rather than clears: the woods these maps grow leave tall growth out of their cover to cap
     assert.ok(cappedCount > 0, `${id}: capped shrubs below the stands' and the rim's scale`);
+    // trees round 6 (the gauntlet's wave 122: "a single row you can see through", "no shaded forest interior"): a wood's
+    // margin rank (vegetation.ts WOOD_MARGIN_K) and its saplings keep the open-grown form, and an interior wood tree's
+    // trunk stands in its stand's shade (WOOD_INTERIOR_TRUNK_SHADE) — a margin tree's never, a field tree's never
+    const woodTrees = world._trees.filter((t) => t.wood), margin = woodTrees.filter((t) => t.margin);
+    const shaded = world._trees.filter((t) => t.trunkShade !== undefined);
+    assert.ok(shaded.every((t) => t.wood && !t.margin && t.trunkShade > 0.5 && t.trunkShade < 1), `${id}: only interior wood trunks shade, within the law`);
     return { id, tier, instances: mesh.count, stand: standCount, rim: rimCount, mantle: mantleCount, capped: cappedCount, inner: innerCount, screening, clusters: clusters.length, rimBlocks: rimBlocks.length,
+      wood: woodTrees.length, margin: margin.length, shadedTrunks: shaded.length,
       shape, annulus: [+minR.toFixed(3), +maxR.toFixed(3)],
       bushes: bushes.reduce((n, m) => n + m.count, 0), concealers: world.concealers.length, trunks: world.treeObstacles.length };
   } finally { world.dispose(); disposeObject3DResources(world.group); }
@@ -187,8 +194,11 @@ try {
   assert.ok(verdant.annulus[0] < 0.95 && verdant.annulus[1] > 1.3, 'the annulus is used from the edge outward');
   // trees round 4 (the gauntlet's wave 46: Frontier's wood edge "with no shrub mantle"): Verdant's closed woods wear one
   assert.ok(verdant.mantle >= 500, `Verdant's woods wear a mantle (${verdant.mantle})`);
-  // trees round 6: and an understorey under their canopy
+  // trees round 6: and an understorey under their canopy, a margin rank of about a third of their trees, shaded trunks
+  // in their interiors
   assert.ok(verdant.inner >= 300, `Verdant's closed woods carry an inner understorey (${verdant.inner})`);
+  assert.ok(verdant.margin > 0.2 * verdant.wood && verdant.margin < 0.5 * verdant.wood, `Verdant's margin rank (${verdant.margin} of ${verdant.wood})`);
+  assert.ok(verdant.shadedTrunks > 0.3 * (verdant.wood - verdant.margin), `Verdant's interior trunks in shade (${verdant.shadedTrunks})`);
   const repeat = produce('verdant');
   assert.deepEqual(repeat, verdant, 'deterministic');
   // legacyTrees: the round-77 cards, the same placements

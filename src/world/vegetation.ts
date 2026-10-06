@@ -281,6 +281,13 @@ interface TreeRecord {
    * saplings past it — open to the light on the field's side, it keeps the open-grown form (assignTreeForms).
    */
   margin?: boolean;
+  /**
+   * Trees round 6: the share of its tint an interior wood tree's trunk keeps (its stand's shade on its stem: the
+   * crowns over it take the sky as well as the sun); unset, the trunk takes the tree's tint.
+   */
+  trunkShade?: number;
+  /** Trees round 6: the stand shade's density about the tree where it grew (0..1: its neighbours within 10 m, 8 full). */
+  standDensity?: number;
   /** Trees round 5: one of the field trees (placeLoneTrees), the field law's (addFieldTree). */
   field?: boolean;
 }
@@ -1407,6 +1414,8 @@ export function makeTwigTexture(rng: RandomSource, tone: ToneFunction | null = n
 // ---------------------------------------------------------------------------
 
 const _c = new THREE.Color();
+/** Trees round 6: the scratch an interior wood tree's shaded trunk tint is written through (writeTreeSlot). */
+const _trunkShadeColor = new THREE.Color();
 const _v3 = new THREE.Vector3();
 const _e = new THREE.Euler();
 const _qq = new THREE.Quaternion();
@@ -2611,6 +2620,13 @@ const WOOD_MARGIN_K = 0.85;
  * floor between the trunks no longer reads open through the wood.
  */
 const INNER_UNDERSTOREY_M2 = 70;
+/**
+ * Trees round 6 (the gauntlet's wave 122 on Frontier's wood: "the pale trunks under the canopy are lit as brightly as
+ * the open grass, so there is no shaded forest interior"): the share of its tint an interior wood tree's trunk gives up
+ * at its stand's full density (the stand shade's count), over the crown's own stand shade — under a closed canopy the
+ * crowns take the sky from a stem as well as the sun. The margin rank's trunks stand in the light and keep theirs.
+ */
+const WOOD_INTERIOR_TRUNK_SHADE = 0.42;
 /** Trees round 5: a shrub stem card's tint (the bark atlas tile's multiplier; buildGrownShrub). */
 const GROWTH_SHRUB_STEM_VALUE = 1.15;
 /** Trees round 5: the shrub atlas' size before the device's texture scale (createBushes; the crowns' are 512). */
@@ -6491,6 +6507,7 @@ function* vegetationBuildSteps(
       }
       const density = Math.min(1, neighbours / 8);
       t.tint.multiplyScalar(1 - 0.24 * density * density * (3 - 2 * density));
+      t.standDensity = density; // trees round 6: its trunk's shade reads it once every move is made (shadeInteriorTrunks)
     }
   }
 
@@ -6711,6 +6728,19 @@ function* vegetationBuildSteps(
    * the two forest-grown near variants (its drawn variant, the open third's by a position hash); a field tree, the open
    * one. Only the pool a tree draws in moves: its records were registered at its seat, and every tier keeps its own.
    */
+  /**
+   * Trees round 6: an interior wood tree's trunk in its stand's shade (WOOD_INTERIOR_TRUNK_SHADE, by the density it
+   * grew in) — read after every move (the authored rows' and the tidal band's), so a tree a row took into the open keeps
+   * its full tint, and only on a map whose woods close.
+   */
+  function shadeInteriorTrunks(): void {
+    if (treeBiomeWoodSpread(cfg?.id) <= 1) return;
+    for (const t of trees) {
+      if (!t.wood || t.margin || !t.standDensity) continue;
+      const d = t.standDensity;
+      t.trunkShade = 1 - WOOD_INTERIOR_TRUNK_SHADE * d * d * (3 - 2 * d);
+    }
+  }
   function assignTreeForms(): void {
     if (!forestSpecies.size) return;
     let forest = 0, open = 0;
@@ -6847,6 +6877,7 @@ function* vegetationBuildSteps(
     }
   }
   assignTreeForms();
+  shadeInteriorTrunks();
   createTreeMeshPools();
 
   yield { stage: 'treeRimAndMeshes' };
@@ -7562,7 +7593,8 @@ function* vegetationBuildSteps(
   ): void {
     for (const m of meshes) {
       m.setMatrixAt(slot, t.mat);
-      m.setColorAt(slot, t.tint);
+      // (trees round 6: an interior wood tree's trunk takes its stand's shade over the tree's tint)
+      m.setColorAt(slot, t.trunkShade !== undefined && m.userData.treeTrunk ? _trunkShadeColor.copy(t.tint).multiplyScalar(t.trunkShade) : t.tint);
       const fa = m.geometry.getAttribute('aFadeI') as THREE.BufferAttribute | undefined;
       if (fa) fa.array[slot] = fade;
       const lf = m.geometry.getAttribute('aLodF') as THREE.BufferAttribute | undefined;
