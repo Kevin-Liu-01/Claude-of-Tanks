@@ -87,8 +87,8 @@ const BUDGET = {
   obelisk: 4500, statue: 1500, columnMonument: 1500, memorialWall: 2000, equestrianStatue: 1500,
   fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000,
   townGate: 4000, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
-  stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000,
-  aircraftWreck: 9000,
+  stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000, liftBridge: 6000,
+  aircraftWreck: 9000, colonialBungalow: 14000, tennisCourt: 5000,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
 /** The authored variants each kind is built in besides its defaults. */
@@ -96,6 +96,7 @@ const VARIANTS = {
   church: [{ domes: 5, crown: 'onion' }, { tradition: 'western', length: 32, width: 12, tower: 40 }, { tradition: 'western', crown: 'helm', walls: 'render' }],
   windmill: [{ style: 'post' }, { style: 'tower', height: 20 }],
   waterTower: [{ style: 'rozhnovsky', height: 22 }, { style: 'trestle' }],
+  townHall: [{ frame: true, width: 20, depth: 12, storeys: 3, tower: 28 }],
   belfry: [{ crown: 'tent' }, { crown: 'needle' }, { crown: 'helm' }],
   obelisk: [{ finial: 'cross', railing: false }, { finial: 'ball', height: 14 }],
   statue: [{ metal: 'silver', pose: 'robe' }],
@@ -205,7 +206,7 @@ for (const kind of ['kolkhozArch', 'townGate', 'triumphalArch', 'torii', 'parkGa
 });
 
 // ---------------------------------------------------------------------------------------------------------- bridges
-for (const kind of ['stoneArchBridge', 'trussBridge', 'trestleBridge', 'baileyBridge']) {
+for (const kind of ['stoneArchBridge', 'trussBridge', 'trestleBridge', 'baileyBridge', 'liftBridge']) {
   for (const gully of [4, 7]) check(`${kind} over a ${gully} m gully`, () => {
     const params = resolveLandmarkParams({ kind, x: 0, z: 0 });
     const span = kind === 'baileyBridge' ? Number(params.bays) * 3.048 : Number(params.span);
@@ -314,7 +315,7 @@ for (const id of MAP_IDS) {
       const ex = Math.max(0, Math.abs(lx) - hw), ez = Math.max(0, Math.abs(lz) - hl);
       assert.ok(ex * ex + ez * ez >= r * r, `${label}: clear of the objective disc at (${x}, ${z})`);
     }
-    const margin = LANDMARK_KINDS[placement.kind].roadMargin ?? 3.5;
+    const margin = placement.roadMargin ?? LANDMARK_KINDS[placement.kind].roadMargin ?? 3.5;
     if (!LANDMARK_KINDS[placement.kind].spansRoad && margin > 0) assert.ok(field._roadDist(placement.x, placement.z) > margin, `${label}: out of the road core`);
     if (placement.kind !== 'parkSquare') {
       const stood = structures.some((record) => {

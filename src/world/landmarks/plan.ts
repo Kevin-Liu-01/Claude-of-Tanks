@@ -35,6 +35,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'width') / 2 + 1.5, num(p, 'span') / 2 + 2] },
   baileyBridge: { family: 'bridge', spansRoad: true, defaults: { bays: 8, width: 4.2, deck: 2.4, drivable: true },
     footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'bays') * 3.048 / 2 + 6] },
+  // (the abutments run 3.2 m back into the banks; the balance beams' tails reach back over the approaches)
+  liftBridge: { family: 'bridge', spansRoad: true, defaults: { span: 14, width: 5.5, deck: 2.4, drivable: true },
+    footprint: (p) => [num(p, 'width') / 2 + 1.1, num(p, 'span') / 2 + 0.75 + Math.max(3.6, num(p, 'span') * 0.42)] },
   viaduct: { family: 'bridge', defaults: { arches: 7, archSpan: 12, height: 22, width: 8 },
     footprint: (p) => [num(p, 'width') / 2 + 0.8, (num(p, 'arches') * (num(p, 'archSpan') + 3) + 3) / 2] },
   // ------------------------------------------------------------------------------------------------ monuments
@@ -88,8 +91,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     // (an Orthodox church's porticos stand 3 m off the cube; a Western church's apse rounds off past its chancel)
     footprint: (p) => (p.tradition === 'orthodox' ? [num(p, 'width') / 2 + 3.1, num(p, 'length') / 2 + 1.4]
       : [num(p, 'width') / 2 + 1.0, num(p, 'length') / 2 + num(p, 'width') * 0.36 + 0.6]) },
-  townHall: { family: 'civic', defaults: { width: 22, depth: 13, storeys: 3, tower: 34 },
-    footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'depth') / 2 + 1.6] },
+  // (frame: the Hessian Fachwerk-Rathaus, its corner turrets 1.3 m proud of the front)
+  townHall: { family: 'civic', defaults: { width: 22, depth: 13, storeys: 3, tower: 34, frame: false },
+    footprint: (p) => [num(p, 'width') / 2 + (p.frame ? 1.5 : 1.0), num(p, 'depth') / 2 + 1.6] },
   stationHall: { family: 'civic', defaults: { length: 34, depth: 10, canopy: 30 },
     // the platform canopy stands on the +z (track) side
     footprint: (p) => [Math.max(num(p, 'length'), num(p, 'canopy')) / 2 + 2.2, num(p, 'depth') / 2 + 5.4] },
@@ -98,6 +102,13 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   grainElevator: { family: 'civic', defaults: { rows: 2, cols: 4, radius: 3.2, height: 28, head: 38 },
     // the silos along x, the head house at their +x end
     footprint: (p) => [num(p, 'cols') * num(p, 'radius') + 9.0, num(p, 'rows') * num(p, 'radius') + 1.4] },
+  // ------------------------------------------------------------------------------------------------ colonial
+  // the Deputy Commissioner's bungalow: the body, its verandas on the front and both ends, the porch and its steps (the
+  // front is +z)
+  colonialBungalow: { family: 'civic', defaults: { width: 17, depth: 11, veranda: 2.6, damage: 0 },
+    footprint: (p) => [num(p, 'width') / 2 + num(p, 'veranda') + 0.7, num(p, 'depth') / 2 + num(p, 'veranda') + 3.9] },
+  // the terraced tennis court (a doubles court and its run-off, 36.6 × 18.3 m) and its retaining walls
+  tennisCourt: { family: 'park', defaults: { damage: 0 }, footprint: () => [9.9, 19.1] as const },
   // ------------------------------------------------------------------------------------------------ wrecks
   // the An-225 Mriya in the ruin of its hangar (Hostomel, February 2022): a plot `width` × `depth` whose open front (+z)
   // faces an apron, and a `strip` beyond it where burnt debris spills (dressing only); the piece's origin is the centre
