@@ -66,10 +66,9 @@ import {
 } from '../sim/matchRuleset.ts';
 import { readMarsSettings, readTeamArrangement, writeMarsSettings, writeTeamArrangement } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
-import { getServiceRecord, markServiceRecordSeen, unseenAwardCount } from '../game/serviceRecord.ts';
-import {
-  RECORD_TABS, recordFocusWrap, recordSummary, recordTabForKey, recordTabMarkup, type RecordTab, type RecordViewNames,
-} from './serviceRecordView.ts';
+import { unseenAwardCount } from '../game/serviceRecord.ts';
+import type { RecordViewNames } from './serviceRecordView.ts';
+import type { createServiceRecordDialog } from './serviceRecordDialog.ts';
 import type { PlayMode } from '../mp/session/playMode.ts';
 import { shellAmmunitionCapacity } from '../sim/ammunition.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
@@ -608,20 +607,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button type="button" data-mobile-nav="environment">` +
     `${uiIconSVG('garage', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.stagingArea')}</strong><small>${t('garage.tools.chooseStaging')}</small></span></button></div></nav>` +
-    `<div class="cot-record-modal" id="cot-record-modal" role="dialog" aria-modal="true" ` +
-    `aria-labelledby="cot-record-title" aria-describedby="cot-record-description" hidden>` +
-    `<section class="cot-record-dialog">` +
-    `<header class="cot-record-head"><div class="cot-record-title"><div class="eyebrow">${t('garage.record.eyebrow')}</div>` +
-    `<h2 id="cot-record-title">${t('garage.record.heading')}</h2>` +
-    `<p id="cot-record-description">${t('garage.record.description')}</p></div>` +
-    `<div class="cot-record-summary"></div>` +
-    `<button class="cot-record-close" type="button" aria-label="${t('garage.record.close')}">&times;</button></header>` +
-    `<div class="cot-record-tabs" role="tablist" aria-label="${t('garage.record.tabsAria')}">` +
-    RECORD_TABS.map((tab) => `<button type="button" role="tab" id="cot-record-tab-${tab}" data-record-tab="${tab}" ` +
-      `aria-controls="cot-record-panel" aria-selected="${tab === 'overview'}" tabindex="${tab === 'overview' ? 0 : -1}">` +
-      `<span>${t(`garage.record.tab.${tab}`)}</span><small class="cot-record-tab-count"></small></button>`).join('') +
-    `</div><div class="cot-record-body" id="cot-record-panel" role="tabpanel" tabindex="0" ` +
-    `aria-labelledby="cot-record-tab-overview"></div></section></div>` +
     `<div class="cot-battle-control">` +
     `<button class="cot-battle" type="button" aria-label="${t('garage.battle.startBots')}">` +
     `<span class="battle-active-icon">${uiIconSVG('battleBots', 20)}</span>` +
@@ -769,8 +754,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   // The Service Record dialog renders only while open: a garage return after battle
   // refreshes just the button's badges, never a hidden tab of medal artwork.
-  let recordTab: RecordTab = 'overview';
-  let recordUnseen: string[] = [];
+  let serviceRecord: ReturnType<typeof createServiceRecordDialog> | null = null;
+  let recordOpening = false;
+  let recordOpenRevision = 0;
   const recordNames: RecordViewNames = {
     vehicle: (id) => {
       const vehicle = allSpecs.find((spec) => spec.id === id);
@@ -779,27 +765,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     map: (id) => (opts.maps || []).find((entry) => entry.id === id)?.name || id || t('garage.record.unknownMap'),
     modeIcon: (mode) => battleRuleMeta[mode as GameModeId]?.icon || 'modeStandard',
   };
-  function renderServiceRecordTab() {
-    const view = { ...getServiceRecord(), unseen: recordUnseen };
-    const summary = recordSummary(view);
-    const chips = root.querySelector<HTMLElement>('.cot-record-summary');
-    if (chips) chips.innerHTML = summary.chips;
-    for (const tab of root.querySelectorAll<HTMLButtonElement>('[data-record-tab]')) {
-      const id = tab.dataset.recordTab as RecordTab;
-      const selected = id === recordTab;
-      tab.setAttribute('aria-selected', String(selected));
-      tab.tabIndex = selected ? 0 : -1;
-      const prefix = id === 'medals' ? 'medal:' : id === 'achievements' ? 'achievement:' : null;
-      tab.classList.toggle('has-new', !!prefix && recordUnseen.some((key) => key.startsWith(prefix)));
-      const count = tab.querySelector<HTMLElement>('.cot-record-tab-count');
-      if (count) count.textContent = summary.counts[id];
-    }
-    const body = root.querySelector<HTMLElement>('.cot-record-body');
-    if (!body) return;
-    body.setAttribute('aria-labelledby', `cot-record-tab-${recordTab}`);
-    body.innerHTML = recordTabMarkup(recordTab, recordNames, view);
-    body.scrollTop = 0;
-  }
   function refreshServiceRecord() {
     const record = getPlayerRecord();
     const badge = root.querySelector<HTMLElement>('.cot-record-trigger .record-badge');
@@ -809,7 +774,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (dot) dot.hidden = fresh === 0;
     root.querySelector('.cot-record-trigger')?.setAttribute('aria-label',
       fresh ? t('garage.record.triggerNew', { count: formatNumber(fresh) }) : t('garage.nav.record'));
-    if (root.querySelector('.cot-record-modal.open')) renderServiceRecordTab();
+    serviceRecord?.refresh();
   }
 
   // --- MARKETING FEATURED PANEL: rotating in-engine action stills ------------
@@ -925,8 +890,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const garageVariantMenu = requiredElement<HTMLElement>(root, '.cot-garage-variant-menu');
   const garageVariantLabel = requiredElement<HTMLElement>(root, '.cot-garage-variant-label');
   const garageVariantThumb = requiredElement<HTMLImageElement>(root, '.cot-garage-variant-trigger-thumb');
-  const recordModal = requiredElement<HTMLElement>(root, '.cot-record-modal');
-  const recordClose = requiredElement<HTMLButtonElement>(root, '.cot-record-close');
   const mobileNavTrigger = requiredElement<HTMLButtonElement>(root, '.cot-mobile-nav-trigger');
   const mobileNavMenu = requiredElement<HTMLElement>(root, '.cot-mobile-nav-menu');
   const compactMapPreview = requiredElement<HTMLElement>(root, '.cot-garage-map-preview');
@@ -1064,29 +1027,27 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     emit('ui:click', {});
     window.location.href = hrefForLocale(garageGalleryHref(selectedId, layer), getLocale());
   };
-  let recordRestoreFocus: HTMLElement | null = null;
-  const isRecordOpen = () => recordModal.classList.contains('open');
-  const openServiceRecord = () => {
-    closeGarageVariantMenu();
-    setGaragePanel('');
-    // New awards keep their marks for this whole look, across tabs, and are seen once it opens.
-    recordUnseen = getServiceRecord().unseen;
-    markServiceRecordSeen();
-    recordModal.classList.add('open');
-    refreshServiceRecord();
-    recordRestoreFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    recordModal.hidden = false;
-    recordModal.classList.add('open');
-    recordTrigger.setAttribute('aria-expanded', 'true');
-    requestAnimationFrame(() => recordClose.focus());
+  const isRecordOpen = () => serviceRecord?.isOpen() || recordOpening;
+  const openServiceRecord = async () => {
+    if (recordOpening) return;
+    closeGarageVariantMenu(); setGaragePanel('');
+    const revision = ++recordOpenRevision;
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : recordTrigger;
+    recordOpening = true;
+    try {
+      const [{ createServiceRecordDialog }] = await Promise.all([
+        import('./serviceRecordDialog.ts'), import('./serviceRecord.css'), import('./richTooltip.css'),
+      ]);
+      if (revision !== recordOpenRevision) return;
+      serviceRecord ??= createServiceRecordDialog(recordNames, () => {
+        recordTrigger.setAttribute('aria-expanded', 'false'); refreshServiceRecord();
+      });
+      serviceRecord.open(trigger); recordTrigger.setAttribute('aria-expanded', 'true'); refreshServiceRecord();
+    } catch { recordTrigger.title = t('garage.record.loadError'); }
+    finally { recordOpening = false; }
   };
   const closeServiceRecord = ({ restoreFocus = true } = {}) => {
-    if (!isRecordOpen()) return;
-    recordModal.classList.remove('open');
-    recordModal.hidden = true;
-    recordTrigger.setAttribute('aria-expanded', 'false');
-    if (restoreFocus) (recordRestoreFocus || recordTrigger).focus?.();
-    recordRestoreFocus = null;
+    recordOpenRevision++; serviceRecord?.close({ restoreFocus });
   };
   const isMobileNavigationOpen = () => !mobileNavMenu.hidden;
   const closeMobileNavigation = ({ restoreFocus = false } = {}) => {
@@ -1278,39 +1239,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     event.stopImmediatePropagation();
     closeBattleMenu({ restoreFocus: true });
   }, true);
-  // Capture before the global rebindable input layer is created. Escape must
-  // close this modal without also firing the settings-menu action behind it.
-  // Nothing behind the open dialog hears a key, so the dialog's own keys are
-  // handled here: Tab cycles inside it, the arrows and Home/End move between
-  // its tabs, and Enter/Space keep their default activation.
-  window.addEventListener('keydown', (event) => {
-    if (!isRecordOpen()) return;
-    event.stopImmediatePropagation();
-    if (event.code === 'Escape') {
-      event.preventDefault();
-      closeServiceRecord();
-    } else if (event.code === 'Tab') {
-      trapRecordFocus(event);
-    } else {
-      const tab = event.target instanceof HTMLElement ? event.target.closest<HTMLButtonElement>('[data-record-tab]') : null;
-      const next = tab && recordModal.contains(tab) ? recordTabForKey(event.key, tab.dataset.recordTab as RecordTab) : null;
-      if (next) {
-        event.preventDefault();
-        selectRecordTab(next, true);
-      }
-    }
-  }, true);
-  const trapRecordFocus = (event: KeyboardEvent) => {
-    const focusable = [...recordModal.querySelectorAll<HTMLElement>('button, summary, [tabindex="0"]')]
-      .filter((element) => element.tabIndex >= 0 && element.offsetParent !== null && !element.hasAttribute('disabled'));
-    const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const target = recordFocusWrap(focusable, active, !!active && recordModal.contains(active), event.shiftKey);
-    if (target) {
-      event.preventDefault();
-      target.focus();
-    }
-  };
-
   // Show an edge affordance only while cards actually remain beyond it.
   // Keep unavailable buttons in layout (visibility:hidden) so the strip does
   // not jump sideways as the user reaches either end.
@@ -3239,22 +3167,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (isRecordOpen()) closeServiceRecord();
     else openServiceRecord();
   });
-  recordClose.addEventListener('click', () => {
-    emit('ui:click', {});
-    closeServiceRecord();
-  });
-  recordModal.addEventListener('click', (event) => {
-    if (event.target === recordModal) closeServiceRecord();
-  });
-  const recordTabs = [...root.querySelectorAll<HTMLButtonElement>('[data-record-tab]')];
-  const selectRecordTab = (tab: RecordTab, focus = false) => {
-    if (tab !== recordTab) emit('ui:click', {});
-    recordTab = tab;
-    renderServiceRecordTab();
-    if (focus) recordTabs.find((button) => button.dataset.recordTab === tab)?.focus();
-  };
-  // Keys reach the tabs through the dialog's capture handler above; a click selects directly.
-  for (const button of recordTabs) button.addEventListener('click', () => selectRecordTab(button.dataset.recordTab as RecordTab));
   const openStudio = () => {
     emit('ui:click', {});
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'F8' }));

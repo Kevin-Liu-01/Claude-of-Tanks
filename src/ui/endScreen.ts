@@ -28,6 +28,9 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  * base-capture mechanic, so no capture stat is fabricated.
  */
 
+import { containModalTab } from './modal.ts';
+import { createRichTooltip } from './richTooltip.ts';
+import { awardDetails } from './awardDetails.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
 import { iconUrl, maskIcon } from './icons.ts';
@@ -520,6 +523,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   host.setAttribute('aria-label', t('endScreen.resultsAria'));
   host.setAttribute('aria-hidden', 'true');
 
+  const awardTooltip = createRichTooltip(host, '[data-medal-tip],[data-achievement-tip]', awardDetails);
+  host.classList.add('cot-es--record');
+  host.addEventListener('keydown', event => { if (host.classList.contains('show')) containModalTab(event,host,host.querySelector<HTMLButtonElement>('button') || host); });
   let visible = false;
   let garageBtn: HTMLButtonElement | null = null;
   let roomContext: EndScreenRoomContext | null = null;
@@ -844,6 +850,11 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     } else {
       delete host.dataset.finalBlow;
     }
+    renderReportMetadata(hero, sum);
+    if (sum.campaign) renderCampaignDebrief(hero, sum.campaign);
+  }
+
+  function renderReportMetadata(hero: HTMLElement, sum: EndScreenSummary): void {
     const meta = el('div', 'es-meta es-in', hero);
     meta.style.setProperty('--i', nextI());
     const bits: string[] = [];
@@ -869,7 +880,6 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     meta.innerHTML = bits.join('');
     if (sum.map) host.dataset.map = sum.map;
     if (sum.timeS > 0) host.dataset.durationS = String(Math.floor(sum.timeS));
-    if (sum.campaign) renderCampaignDebrief(hero, sum.campaign);
   }
 
   // batch 19 (2026-09-14): a Frontline Assault sortie on a ladder map debriefs the operation —
@@ -963,22 +973,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const strip = el('div', 'es-awards', parent);
     strip.setAttribute('aria-label', t('endScreen.medals.aria'));
     strip.style.setProperty('--i', nextI());
-    // Two awards keep their names; a longer haul is one row of artwork (named in the tooltips), so the column's
-    // fixed height still leaves the kill list its room.
-    const compact = medals.length + tiers.length > 2;
     const attr = (value: string) => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-    const chip = (classes: string, art: string, name: string, title: string, named: boolean) =>
-      `<span class="aw${classes}${named ? '' : ' icon'}" title="${attr(title)}" aria-label="${attr(name)}">${art}${named ? `<b>${name}</b>` : ''}</span>`;
-    strip.innerHTML = `<span class="ak">${uiIconSVG('gold', 16)}<span>${t('endScreen.medals.heading')}</span></span>` +
-      `<span class="al">${medals.map((medal) => {
-        const name = t(`service.medal.${medal.id}.name`);
-        const signature = medal.tier === 'signature';
-        return chip(signature ? ' signature' : '', medalSVG(medal, 26), name, `${name}: ${t(`service.medal.${medal.id}.desc`)}`, !compact);
-      }).join('')}` +
-      `${tiers.map(({ def, tier }) => {
-        const name = `${t(`service.achievement.${def!.id}.name`)} ${['', 'I', 'II', 'III'][tier]}`;
-        return chip(' tier', achievementSVG(def!, tier, 22), name, name, !compact);
-      }).join('')}</span>`;
+    strip.innerHTML = `<div class="ak">${uiIconSVG('gold', 20)}<span>${t('endScreen.medals.heading')}</span><small>${medals.length + tiers.length}</small></div>` +
+      `<div class="al">${medals.map(medal => `<button type="button" class="aw${medal.tier==='signature'?' signature':''}" data-award-earned="true" data-medal-tip="${medal.id}" aria-label="${attr(t(`service.medal.${medal.id}.name`))}">${medalSVG(medal,60)}<b>${t(`service.medal.${medal.id}.name`)}</b></button>`).join('')}` +
+      `${tiers.map(({def,tier})=>`<button type="button" class="aw tier" data-achievement-tip="${def!.id}" data-award-tier="${tier}" aria-label="${attr(t(`service.achievement.${def!.id}.name`))}">${achievementSVG(def!,tier,60)}<b>${t(`service.achievement.${def!.id}.name`)} ${['','I','II','III'][tier]}</b></button>`).join('')}</div>`;
   }
 
   function renderKillList(
@@ -1029,11 +1027,18 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     tile(statGrid, 'kills', t('endScreen.tile.kills'), {
       value: sum.kills.length, datasetV: sum.kills.length, icon: 'skull',
     });
-    renderSecondaryStats(el('div', 'es-stat-secondary', personal), sum.stats,
-      sum.revives ? Math.max(0, Math.floor(Number(sum.playerDeaths) || 0)) : null);
-    renderBestShot(personal, sum.bestShot);
+    tile(statGrid, 'accuracy', t('garage.record.accuracy'), {
+      value: sum.stats.fired ? Math.round(sum.stats.hits / sum.stats.fired * 100) : 0, icon: 'scope',
+    });
+    statGrid.lastElementChild?.setAttribute('data-stat','accuracy');
     renderAwards(personal, sum.awards);
-    renderKillList(personal, result, sum.kills);
+    renderBestShot(personal, sum.bestShot);
+    const detail = el('details', 'es-combat-details', personal);
+    const toggle = el('summary', '', detail);toggle.tabIndex=0;toggle.textContent = t('endScreen.combatDetails');
+    const blow = host.querySelector('.es-blow'); if (blow) detail.append(blow);
+    renderSecondaryStats(el('div', 'es-stat-secondary', detail), sum.stats,
+      sum.revives ? Math.max(0, Math.floor(Number(sum.playerDeaths) || 0)) : null);
+    renderKillList(detail, result, sum.kills);
   }
 
   function renderTeamDebrief(report: HTMLElement, sum: EndScreenSummary): void {
@@ -1068,12 +1073,12 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     host.dataset.maxVehicleDamage = String(Math.round(maxDamage));
   }
 
-  function renderEndRematch(): void {
+  function renderEndRematch(parent: HTMLElement): void {
     if (!roomContext?.state) {
       rematchPanel = null;
       return;
     }
-    rematchPanel = el('section', 'es-rematch es-in', host);
+    rematchPanel = el('section', 'es-rematch es-in', parent);
     rematchPanel.style.setProperty('--i', String(seq + 1));
     renderRematchPanel(rematchPanel);
   }
@@ -1120,6 +1125,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
      * @param {object} sum shotInfo.buildSummary() bundle (resolved-event sums)
      */
     show(result: EndScreenResult, sum: EndScreenSummary): void {
+      awardTooltip.hide();
       stopCounters();
       seq = 0;
       visible = true;
@@ -1133,14 +1139,28 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
 
       renderReportHero(res, sum);
 
-      // --- two equal-height debrief columns --------------------------------
+      // Summary and complete teams share one readable panel, keeping rewards prominent.
+      const tabs = el('div', 'es-view-tabs', host);tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label',t('endScreen.reportViews'));
+      for (const [id,key,icon] of [['personal','endScreen.personal.title','battleRecord'],['teams','endScreen.team.outcome','team']] as const) {
+        const button=el('button','',tabs);button.type='button';button.dataset.reportView=id;button.id=`es-tab-${id}`;button.setAttribute('role','tab');button.setAttribute('aria-controls',`es-panel-${id}`);
+        button.innerHTML=`${uiIconSVG(icon,18)}<span>${t(key)}</span>`;
+        button.onclick=()=>selectView(id);
+        button.onkeydown=event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const next=event.key==='Home'?'personal':event.key==='End'?'teams':id==='personal'?'teams':'personal';selectView(next);tabs.querySelector<HTMLButtonElement>(`[data-report-view="${next}"]`)?.focus();}};
+      }
+      function selectView(id:string) {
+        awardTooltip.hide();
+        for(const panel of host.querySelectorAll<HTMLElement>('.es-debrief')){const name=panel.classList.contains('personal')?'personal':'teams';panel.hidden=name!==id;panel.id=`es-panel-${name}`;panel.setAttribute('role','tabpanel');panel.setAttribute('aria-labelledby',`es-tab-${name}`);}
+        for(const button of tabs.querySelectorAll<HTMLButtonElement>('button')){const active=button.dataset.reportView===id;button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1;}
+      }
       const report = el('div', 'es-report es-in', host);
       report.style.setProperty('--i', nextI());
 
       renderPersonalDebrief(report, res, sum);
       renderTeamDebrief(report, sum);
+      selectView('personal');
 
-      renderEndRematch();
+      renderEndRematch(report);
+      if (rematchPanel) report.prepend(rematchPanel);
       renderEndActions(sum);
 
       host.classList.add('show');
@@ -1152,6 +1172,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
 
     /** Hide + finalize counters (garage entry, battle restart). */
     hide(): void {
+      awardTooltip.hide();
       document.body.classList.remove('cot-es-armed'); // legacy overlay usable again
       if (!visible && !host.classList.contains('show')) return;
       visible = false;

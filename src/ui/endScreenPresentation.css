@@ -1,0 +1,54 @@
+body[data-cot-width] .cot-es.cot-es--record *{box-sizing:border-box;min-width:0}
+/* The debrief keeps result, personal highlights, rewards and team detail distinct. */
+body[data-cot-width] .cot-es.cot-es--record{box-sizing:border-box;justify-content:flex-start;gap:0;padding:clamp(12px,3vh,30px) max(12px,calc((100vw - 1120px)/2));overflow:hidden;pointer-events:auto;background:radial-gradient(ellipse at 0 0,#bd8b2920,transparent 50%),#080f16f7}
+body[data-cot-width] .cot-es.cot-es--record .es-hero{width:100%;max-width:none;flex:0 0 auto;padding:0 4px 18px;max-height:30dvh;overflow:auto;scrollbar-width:thin}
+body[data-cot-width] .cot-es.cot-es--record :is(.es-kick,.es-ban,.es-sub,.es-meta,.es-blow){text-align:left;justify-content:flex-start;text-indent:0;letter-spacing:normal}
+body[data-cot-width] .cot-es.cot-es--record .es-kick{font-size:10px;letter-spacing:.2em;color:#98aebb}
+body[data-cot-width] .cot-es.cot-es--record .es-ban{font-size:clamp(34px,5vw,58px);letter-spacing:-.03em;margin:6px 0 0;text-shadow:none}
+body[data-cot-width] .cot-es.cot-es--record .es-ban.v{color:#b8edc6}body[data-cot-width] .cot-es.cot-es--record .es-ban.d{color:#f1b0a6}
+body[data-cot-width] .cot-es.cot-es--record .es-rule{display:none}
+body[data-cot-width] .cot-es.cot-es--record .es-sub{margin-top:9px;font-size:14px;color:#a8bccb}
+body[data-cot-width] .cot-es.cot-es--record .es-meta{gap:16px;flex-wrap:wrap;font-size:11px;margin-top:9px;letter-spacing:.05em}
+body[data-cot-width] .cot-es.cot-es--record .es-view-tabs{display:flex;gap:4px;width:100%;flex:0 0 auto;padding:6px;background:#14202a;border:1px solid #8b9ead33;border-bottom:0}
+.cot-es--record .es-view-tabs button{display:flex;justify-content:center;align-items:center;gap:9px;min-height:44px;flex:1;border:1px solid transparent;padding:10px;color:#a6b7c5;background:transparent;font:800 12px 'ABC Monument Grotesk',sans-serif;cursor:pointer}.cot-es--record .es-view-tabs [aria-selected=true]{border-color:#b9893d;background:#3d2c16;color:#ffd18a}.cot-es--record button:focus-visible,.cot-es--record summary:focus-visible{outline:2px solid #ffc96b;outline-offset:-2px}
+body[data-cot-width] .cot-es.cot-es--record .es-report{display:block;width:100%;max-width:none;flex:1 1 auto;min-height:0;height:auto;margin:0;overflow:auto;scrollbar-width:thin;scrollbar-color:#6a8397 #111b25;border:1px solid #8b9ead33;overscroll-behavior:contain}
+body[data-cot-width] .cot-es.cot-es--record .es-debrief{display:block;height:auto;min-height:100%;overflow:visible;border:0;box-shadow:none;background:#0d1822}
+body[data-cot-width] .cot-es.cot-es--record .es-debrief[hidden]{display:none}
+body[data-cot-width] .cot-es.cot-es--record .es-dh{display:none}
+body[data-cot-width] .cot-es.cot-es--record .es-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:18px 20px;gap:16px;border-bottom:1px solid #8b9ead33}
+body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{grid-template-columns:140px repeat(3,minmax(0,1fr))}
+body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card{min-height:100px;background:transparent;border:0;box-shadow:none}
+body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card img{object-fit:contain;width:100%;height:100%;max-height:130px}
+body[data-cot-width] .cot-es.cot-es--record .es-tal{background:none;border:0;padding:12px;gap:8px}
+body[data-cot-width] .cot-es.cot-es--record .es-tal .v{font-size:40px;line-height:1.1;letter-spacing:-.03em}
+body[data-cot-width] .cot-es.cot-es--record .es-tal .l{font-size:11px;letter-spacing:.08em}
+body[data-cot-width] .cot-es.cot-es--record .es-tal[data-stat=accuracy] .v::after{content:'%';font-size:.55em;margin-left:3px}
+body[data-cot-width] .cot-es.cot-es--record .es-awards{display:block;margin:0;padding:20px;border:0;border-bottom:1px solid #8b9ead33;background:linear-gradient(120deg,#8b601518,transparent 65%)}
+body[data-cot-width] .cot-es.cot-es--record .es-awards .ak{font-size:11px;letter-spacing:.14em;gap:9px;margin-bottom:16px}
+.cot-es--record .es-awards .ak small{margin-left:auto;color:#92a8b9}
+body[data-cot-width] .cot-es.cot-es--record .es-awards .al{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:12px}
+body[data-cot-width] .cot-es.cot-es--record .es-awards .aw{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px;padding:14px 8px;border:1px solid #88774b44;background:#17212b;cursor:help;min-height:132px;font:inherit;color:#e7eff5}
+body[data-cot-width] .cot-es.cot-es--record .es-awards .aw.signature{border-color:#d09c4d88;background:#32291c}
+body[data-cot-width] .cot-es.cot-es--record .es-awards .aw:hover{border-color:#ffcf7d;background:#343026}
+body[data-cot-width] .cot-es.cot-es--record .es-awards .aw b{white-space:normal;font-size:12px;text-transform:none;letter-spacing:0;text-align:center;line-height:1.4}
+body[data-cot-width] .cot-es.cot-es--record .es-best{margin:18px 20px;background:#1a2832;border:0;border-left:2px solid #d9a04a}
+.cot-es--record .es-combat-details{padding:0 20px 18px}.cot-es--record .es-combat-details>summary{cursor:pointer;min-height:48px;display:flex;align-items:center;gap:10px;border-top:1px solid #ffffff18;color:#a8bdcc;font-size:12px;font-weight:700}.cot-es--record .es-combat-details>summary::before{content:'+';color:#f1b85f;font-size:22px}.cot-es--record .es-combat-details[open]>summary::before{content:'−'}
+body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{border:0;background:#111f2b;margin-bottom:16px}.cot-es--record .es-combat-details .es-mini{padding:14px}.cot-es--record .es-combat-details .es-blow{font-size:12px;margin:10px 0;color:#9db4c5}
+body[data-cot-width] .cot-es.cot-es--record .es-kill-block{flex:none;min-height:0;padding:0}.cot-es--record .es-kl{max-height:none}
+body[data-cot-width] .cot-es.cot-es--record .es-scoreboard{padding:22px;margin:0;background:transparent;border:0;border-bottom:1px solid #ffffff20}
+body[data-cot-width] .cot-es.cot-es--record .es-rosters{flex:none;min-height:0;padding:20px;gap:20px}
+body[data-cot-width] .cot-es.cot-es--record .es-roster-list{overflow:visible;max-height:none;flex:none}
+body[data-cot-width] .cot-es.cot-es--record .es-tr{min-height:56px;height:auto;padding:10px 8px}
+body[data-cot-width] .cot-es.cot-es--record .es-actions{flex:0 0 auto;width:100%;justify-content:flex-end;padding:12px 0 0;margin:0;gap:10px;background:transparent;position:static}
+body[data-cot-width] .cot-es.cot-es--record .cot-es-btn{min-width:160px;min-height:48px;padding:12px 22px;font-size:12px;letter-spacing:.09em}
+body[data-cot-width] .cot-es.cot-es--record .es-rematch{flex:0 0 auto;width:100%;max-height:24dvh;overflow:auto;margin:8px 0 0}
+@media(max-width:700px){body[data-cot-width] .cot-es.cot-es--record{padding:10px}.cot-es--record .es-view-tabs button{font-size:11px}body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{grid-template-columns:66px repeat(3,minmax(0,1fr));padding:10px;gap:3px}body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card{min-height:64px}body[data-cot-width] .cot-es.cot-es--record .es-tal{padding:8px 4px}body[data-cot-width] .cot-es.cot-es--record .es-tal .v{font-size:26px}body[data-cot-width] .cot-es.cot-es--record .es-tal .l{font-size:9px}body[data-cot-width] .cot-es.cot-es--record .es-awards{padding:14px}body[data-cot-width] .cot-es.cot-es--record .es-awards .al{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}body[data-cot-width] .cot-es.cot-es--record .es-awards .aw{padding:12px 6px}body[data-cot-width] .cot-es.cot-es--record .es-rosters{grid-template-columns:1fr;padding:14px}body[data-cot-width] .cot-es.cot-es--record .es-best{margin:14px}.cot-es--record .es-combat-details{padding:0 14px 14px}body[data-cot-width] .cot-es.cot-es--record .cot-es-btn{flex:1;min-width:0;padding:10px;font-size:10px}body[data-cot-width] .cot-es.cot-es--record .es-sub{font-size:12px}body[data-cot-width] .cot-es.cot-es--record .es-meta{gap:8px;font-size:10px}body[data-cot-width] .cot-es.cot-es--record .es-scoreboard{padding:12px}}
+@media(max-height:450px) and (orientation:landscape){body[data-cot-width] .cot-es.cot-es--record{padding:8px 12px}body[data-cot-width] .cot-es.cot-es--record .es-hero{padding:0 4px 8px;max-height:25dvh}body[data-cot-width] .cot-es.cot-es--record .es-kick{display:none}body[data-cot-width] .cot-es.cot-es--record .es-ban{font-size:28px;margin:0}body[data-cot-width] .cot-es.cot-es--record .es-sub{margin-top:4px;font-size:11px}body[data-cot-width] .cot-es.cot-es--record .es-meta{font-size:10px;margin-top:4px}body[data-cot-width] .cot-es.cot-es--record .es-actions{padding-top:6px}body[data-cot-width] .cot-es.cot-es--record .cot-es-btn{min-height:44px}body[data-cot-width] .cot-es.cot-es--record .es-awards .al{grid-template-columns:repeat(4,minmax(0,1fr))}body[data-cot-width] .cot-es.cot-es--record .es-rematch{max-height:30dvh}}
+
+body[data-cot-width] .cot-es.cot-es--record .es-tal .k{flex-wrap:wrap;gap:6px;letter-spacing:.04em;overflow-wrap:anywhere}
+
+body[data-cot-width] .cot-es.cot-es--record .es-report .es-rematch{max-height:none;margin:0;padding:14px;overflow:visible;border:0;border-bottom:1px solid #8b9ead33}
+
+@media(max-width:700px){body[data-cot-width] .cot-es.cot-es--record .es-tal .k{flex-wrap:nowrap;font-size:9px;gap:4px}body[data-cot-width] .cot-es.cot-es--record .es-tal .k svg{width:12px;height:12px}body[data-cot-width] .cot-es.cot-es--record .es-tal.hot .v{font-size:26px}}
+
+@media(max-height:320px) and (orientation:landscape){body[data-cot-width] .cot-es.cot-es--record .es-hero{max-height:32px;padding-bottom:4px}body[data-cot-width] .cot-es.cot-es--record .es-hero :is(.es-sub,.es-meta){display:none}body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{padding:4px 10px}body[data-cot-width] .cot-es.cot-es--record .es-tal{min-height:64px;padding:6px}body[data-cot-width] .cot-es.cot-es--record .es-tal .v,body[data-cot-width] .cot-es.cot-es--record .es-tal.hot .v{font-size:24px}}

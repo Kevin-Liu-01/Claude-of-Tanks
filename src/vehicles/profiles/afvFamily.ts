@@ -703,9 +703,10 @@ function addM3A3Turret(P: AfvBuilderPort): void {
   // sight and left-hand elevating launcher. Every upper edge overlaps the
   // lower ring or the roof cap: there is no daylight seam around the race.
   P.turretG.position.set(0.04, 1.895, -0.36);
-  // Raised trunnions clear the original front AND rear decks at full -9°
-  // depression. The shell's saddles share this pre-compression datum.
-  P.gunG.position.set(-0.06, 0.615, 0.78);
+  // Seat the gun 100 mm lower in the cheek opening. The rear deck uses a
+  // traverse-dependent depression stop instead of lifting the whole gun.
+  // Bearings and saddles share this pre-compression datum.
+  P.gunG.position.set(-0.06, 0.490, 0.78);
   P.add('turret', cylY(0.79, 0.90, 0.13, 26), 0, 0.015, -0.08);
   buildBradleyScoutTurretShell(P);
   // Separate side journals preserve the 70 mm bearing insertion while

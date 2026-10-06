@@ -1,6 +1,7 @@
 /** Ordered regression groups; npm test runs all of them in one invocation. */
 export const SELFTEST_SUITES = Object.freeze({
   pre: Object.freeze([
+    'tools/asset-provenance.selftest.mjs',
     // Group independent full-fleet builders to fill the four CPU slots before
     // the 45-second FIFO drain. 2026-10-02: one fleet pass per build (fleetPass.test-support.mjs) hosts the
     // ten former whole-fleet receipts' audits: HIGH (wheelQuality, surfaceMarkupFleet) and LOW (gunArticulation,
@@ -324,6 +325,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/leopardRevolutionGeometry.selftest.mjs',
     'src/vehicles/profiles/leopardReturnRollers.selftest.mjs',
     'src/vehicles/profiles/sectionSolid.selftest.mjs',
+    'tools/base-shell-audit-math.selftest.mjs',
+    'src/vehicles/profiles/abramsPlanarCheek.selftest.mjs',
+    'src/vehicles/profiles/facetedSlab.selftest.mjs',
+    'src/vehicles/profiles/nationalBaseShell.selftest.mjs',
+    'src/vehicles/profiles/oplotWing.selftest.mjs',
     'src/vehicles/profiles/t14XGeometry.selftest.mjs',
     'src/vehicles/profiles/t14XReturnRollers.selftest.mjs',
     'src/vehicles/sourceXFleet.selftest.mjs',
@@ -772,6 +778,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/keyboardOwnership.selftest.mjs',
     'src/ui/settingsControls.selftest.mjs',
     'src/ui/battleUiVisibility.selftest.mjs',
+    'src/ui/hudPreferences.selftest.mjs',
     'src/vehicles/specHelpers.selftest.mjs',
     'src/dev/perfTrace.selftest.mjs',
     'src/ui/perfHud.selftest.mjs',

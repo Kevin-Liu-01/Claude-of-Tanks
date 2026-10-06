@@ -2,6 +2,8 @@
 // Project each real moving triangle onto the finite upward hull faces. This
 // catches crossings between vertices, including the aft hatch at oblique yaw.
 import {Matrix4,Vector3} from 'three';
+import {minimumMechanicalGunPitch} from '../../sim/gunPitchLimits.ts';
+import {getSpec} from '../specs.ts';
 
 function triangles(group,frame){
   const result=[],inverse=frame.matrixWorld.clone().invert();
@@ -108,7 +110,10 @@ export function measureBradleyGunClearance(tank,{negativeControl=false}={}){
   return measureGunHullClearance(tank,{
     minimumHullY:1.7,
     yawDegrees:negativeControl?[0,180]:[...Array.from({length:72},(_,i)=>i*5),163.55,196.45],
-    pitchDegrees:negativeControl?[-9]:[-9,0,15,30,30+.014*180/Math.PI],
+    pitchDegrees:negativeControl?[-9]:yaw=>[
+      minimumMechanicalGunPitch(getSpec('m3a3_bradley'),yaw*Math.PI/180)*180/Math.PI,
+      0,15,30,30+.014*180/Math.PI,
+    ],
     recoilDistances:negativeControl?[0]:[0,.03,.06],
     pivotOverride:negativeControl?[-.06,.252,.66]:null,
   });

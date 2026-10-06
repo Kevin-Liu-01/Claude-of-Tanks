@@ -419,3 +419,76 @@ magnification and target distance beside it. The header reads the actual escort
 and rescue counts. The shared HUD layout owns minimap clearance. Short landscape
 omits the repeated designation/sight label, while portrait raises the rack above
 fire and zoom. Drone instruments keep their existing layout.
+
+
+## HUD editor and minimal display
+
+Settings → Gameplay → Interface → **Edit HUD layout** opens a still battlefield
+with draggable HUD panels. It uses a UI-free game capture rather than another
+running scene. Currently visible panels are inert snapshots; unavailable panels
+use labeled samples. The inspector can select hidden elements and restore them.
+Drag, arrow keys (Shift for larger steps), or the directional buttons position
+panels. Zoom preview helps on small screens. Save applies the layout; Cancel
+discards it. Reset layout restores the selected profile's responsive defaults.
+
+Desktop, phone portrait, and phone landscape have independent saved layouts.
+Positions remain within the viewport after resizing. Tank labels and floating
+damage numbers can be hidden, but stay attached to their world targets. The
+reticle stays attached to the real aiming point.
+
+**Minimal battle HUD** replaces the former hide-all setting, preserving existing
+preferences. It retains the actual aiming canvas, ammunition/reload, distance,
+zoom, and scope vision switching. Mobile driving and firing controls remain
+available. F10 toggles it; Esc opens Settings; a three-finger tap restores the
+full HUD on touch screens. Aircraft retain sight, weapons and return controls.
+
+`node src/ui/hudPreferences.selftest.mjs` checks profile selection, persistence,
+invalid data, storage failure and full-panel viewport bounds.
+`node tools/hud-editor.browser.mjs` checks the actual Settings entry point,
+dragging, keyboard movement, hiding/restoring, saving, canceling, reset, reload
+persistence, Escape ownership and minimal HUD visibility. The DOM-only matrix
+uses production HUD components at 1440×900, 390×844, 667×375 and 568×256. It does
+not claim native-device touch or rendered ballistic-scene validation.
+
+
+## Service Record and battle debrief
+
+Garage → Service Record uses the shared modal, with keyboard tabs for Overview,
+Medals, Achievements and History. Medals have larger ribbons, engraved symbols,
+laurels and recognizable tier finishes. Hover, keyboard focus or tap reveals
+the actual award requirements. Tooltips sit above scrolling content, stay in
+the viewport and dismiss before the modal on Escape. Locked awards remain
+inspectable. First-earned dates and counts come from the saved record.
+
+Victory, defeat and draw use a common after-action report: personal damage,
+kills and accuracy, followed by named awards and the best shot. Expand combat
+details for penetration, blocked/received damage, deaths and the kill ledger.
+The Battle Outcome tab includes every team member. Garage/Battle Again remain
+accessible while report content scrolls. Multiplayer readiness lives inside
+the report, so short screens can reach both readiness and the footer.
+
+`node tools/service-record.browser.mjs` runs the production Garage entry and
+four record tabs at desktop, 390×844, 320×568, 667×375, 568×256 and Chinese
+landscape. `node tools/end-screen-presentation.browser.mjs` runs victory,
+defeat, draw, empty awards and multiplayer readiness, with 21-member teams.
+Both tools are DOM-only regressions: they verify layout, interaction and
+keyboard focus without claiming rendered battle or native mobile performance.
+
+## Objective and award banner spacing
+
+Objective event notices and earned-medal cards use six-sided outlines. Cards
+start at least 16 CSS pixels below the measured scoreboard/objective bottom,
+then clear visible detection and combat notices by 12 pixels. Their entrance
+fades in place so it cannot cross that gap. The layout observes content and
+viewport changes instead of doing work in the render loop.
+
+When a short phone has no clear lane above its controls, an award stays queued.
+Its display timer runs only while it is visible; resizing or a notice clearing
+retries placement. Combat objective alerts remain visible in their own lane.
+
+Run `node tools/objective-banner.browser.mjs` (with the same optional
+`--playwright-module` argument) for desktop, portrait, 480×270 and 568×256
+landscape, Chinese text, four objective states, rotation, and deferred awards.
+It starts and closes its own Vite server and writes receipts under `.qa-dev/`.
+The shared HUD burst fixture alternates attackers to exercise eight separate
+notifications; consecutive hits by one attacker intentionally combine.

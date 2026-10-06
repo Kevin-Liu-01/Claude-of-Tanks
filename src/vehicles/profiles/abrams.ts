@@ -1,4 +1,6 @@
 import {buildM1A1GunMount} from './m1a1GunMount.ts';
+import {abramsPlanarCheek} from './abramsPlanarCheek.ts';
+import {facetedSlab,symmetricSlab} from './facetedSlab.ts';
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Strict TypeScript Abrams family procedural profiles — gate-v6 rebuild (2026-07-31).
@@ -211,7 +213,7 @@ interface AbramsTurretConfig {
   readonly roofThroatRearY?: number;
   readonly roofThroatFrontY?: number;
   readonly throatChinBevel?: Vec2Tuple;
-  readonly joinedCheekRoof?: boolean;
+  readonly planarCheekCourses?: boolean;
   readonly articulatedThroat?: boolean;
   /** A family-authored mantlet occupies the open pitching bay. */
   readonly separateMantlet?: boolean;
@@ -430,7 +432,8 @@ function loftBand(
     const tf = lineAt(top, zf), tr = lineAt(top, zr);
     const bf = bottomAt(zf), br = bottomAt(zr);
     if (tf - bf < 0.015 && tr - br < 0.015) continue;
-    P.add(bucket, slab(
+    const bandSlab = P.spec.id === 'm1a3' ? symmetricSlab : slab;
+    P.add(bucket, bandSlab(
       [-halfW, bf, zf], [halfW, bf, zf], [halfW, br, zr], [-halfW, br, zr],
       [-(halfW - inset), tf, zf], [halfW - inset, tf, zf],
       [halfW - inset, tr, zr], [-(halfW - inset), tr, zr]));
@@ -528,19 +531,12 @@ function sideSlab(
   t1: Vec3Tuple,
   t2: Vec3Tuple,
   t3: Vec3Tuple,
-  joinMirroredRoof = false,
 ): void {
   const M = ([x, y, z]: Vec3Tuple): Vec3Tuple => [side * x, y, z];
-  // Non-planar cheek roofs must use the same physical diagonal on both
-  // flanks. The historical positive-side order split t0->t2 while the
-  // winding-corrected mirror split t1->t3, so a sufficiently faceted roof
-  // could read as two selectable triangles on only one side. A cyclic ring
-  // rotation preserves outward winding while choosing the mirror's t1->t3
-  // diagonal; legacy profiles retain their byte-identical topology.
+  // Legacy callers retain their existing topology; the M1A3's planar stock
+  // uses abramsPlanarCheek and reflects the completed triangle list.
   P.add(bucket, side > 0
-    ? (joinMirroredRoof
-      ? slab(b1, b2, b3, b0, t1, t2, t3, t0)
-      : slab(b0, b1, b2, b3, t0, t1, t2, t3))
+    ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
     : slab(M(b1), M(b0), M(b3), M(b2), M(t1), M(t0), M(t3), M(t2)));
 }
 
@@ -1653,11 +1649,20 @@ function addAbramsShellCheeks(
     const zT = side > 0 ? (t.zTipR ?? t.zTip) : t.zTip;
     const zW = side > 0 ? (t.zWideR ?? t.zWide) : t.zWide;
     const bx = side > 0 ? (t.twTipR ?? tw) : tw;   // right wide-corner pull-in
+    if(t.planarCheekCourses){
+      P.add('turret',abramsPlanarCheek([
+        [thr,t.yBotTip??t.yBot,zT],[bx,t.yBot,zW+.12],
+        [tw,t.yBot,t.zWide-.7],[thr,t.yBot,zT-1.05],
+      ],[
+        [thr,t.roofTip,zT-faceRake],[Math.min(bx,tw-inset),t.roofWide,zW],
+        [tw-inset,roofCheekOuterRearY,t.zWide-.7],[thr,roofCheekInnerRearY,zT-1.15],
+      ],side));
+      continue;
+    }
     sideSlab(P, 'turret', side,
       [thr, t.yBotTip ?? t.yBot, zT], [bx, t.yBot, zW + 0.12], [tw, t.yBot, t.zWide - 0.7], [thr, t.yBot, zT - 1.05],
       [thr, t.roofTip, zT - faceRake], [Math.min(bx, tw - inset), t.roofWide, zW],
-      [tw - inset, roofCheekOuterRearY, t.zWide - 0.7], [thr, roofCheekInnerRearY, zT - 1.15],
-      t.joinedCheekRoof);
+      [tw - inset, roofCheekOuterRearY, t.zWide - 0.7], [thr, roofCheekInnerRearY, zT - 1.15]);
   }
 }
 
@@ -1736,6 +1741,7 @@ function addAbramsShellBody(
   layout: AbramsShellLayout,
 ): void {
   const { tw, inset, zMain, yBotRear } = layout;
+  const bodySlab = t.planarCheekCourses ? symmetricSlab : slab;
   // Cheek->roof transition wedge (roofWide across the shoulders). wedgePull
   // keeps its bottom face inside the next plan trace column when the flank
   // wall is authored separately (plan-column sliver law).
@@ -1749,7 +1755,13 @@ function addAbramsShellBody(
     for (const [left, right] of [[-(tw - wp), -t.throat], [t.throat, tw - wp]]) {
       const topLeft = Math.max(left, -(tw - inset));
       const topRight = Math.min(right, tw - inset);
-      P.add('turret', slab(
+      P.add('turret', t.planarCheekCourses ? facetedSlab([
+        [t.throat,t.yBot,t.zWide+.1],[tw-wp,t.yBot,t.zWide+.1],
+        [tw-wp,t.yBot,zMain],[t.throat,t.yBot,zMain],
+      ],[
+        [t.throat,t.roofWide,t.zWide],[tw-inset,t.roofWide,t.zWide],
+        [tw-inset,t.roofMain,zMain],[t.throat,t.roofMain,zMain],
+      ],left<0?-1:1) : slab(
         [left, t.yBot, t.zWide + .1], [right, t.yBot, t.zWide + .1], [right, t.yBot, zMain], [left, t.yBot, zMain],
         [topLeft, t.roofWide, t.zWide], [topRight, t.roofWide, t.zWide],
         [topRight, t.roofMain, zMain], [topLeft, t.roofMain, zMain]));
@@ -1808,7 +1820,7 @@ function addAbramsShellBody(
       const [zf, yf] = segsB[k], [zr, yr] = segsB[k + 1];
       const last = k === segsB.length - 2;
       const xb = last ? tw * 0.985 : tw, xt = last ? (tw - inset) * 0.985 : (tw - inset);
-      P.add('turret', slab(
+      P.add('turret', bodySlab(
         [-tw, yf, zf], [tw, yf, zf], [xb, yr, zr], [-xb, yr, zr],
         [-(tw - inset), roofAt(zf), zf], [tw - inset, roofAt(zf), zf],
         [xt, roofAt(zr), last ? zr + 0.10 : zr], [-xt, roofAt(zr), last ? zr + 0.10 : zr]));
@@ -7901,7 +7913,7 @@ function createM1A3BuildLayout() {
     roofThroatRearY: mantletRoofRamp.throatRearY,
     roofThroatFrontY: mantletRoofRamp.throatFrontY,
     throatChinBevel: [0.10, 0.08],
-    joinedCheekRoof: true,
+    planarCheekCourses: true,
     articulatedThroat: true,
     yBotFace: .16, // swept chin clears even the rear deck at 10° depression
     faceRake: 0.44,
@@ -7947,28 +7959,36 @@ function addM1A3Hull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     // Closed shoulder roof spans from the glacis into the skirt crown.
     // Its underside stays above the return shoes; the forward folded apron
     // closes the view into the idler bay without hiding the lower track.
-    sideSlab(P, 'hull', side,
+    P.add('hull', facetedSlab([
       [0.77, 1.46, 3.90], [2.07, 1.505, 3.82], [2.07, 1.505, 2.68], [0.77, 1.50, 2.72],
-      [0.76, 1.51, 3.88], [2.04, 1.575, 3.80], [2.04, 1.615, 2.72], [0.76, 1.61, 2.80]);
-    sideSlab(P, 'hull', side,
+    ], [
+      [0.76, 1.51, 3.88], [2.04, 1.575, 3.80], [2.04, 1.615, 2.72], [0.76, 1.61, 2.80],
+    ], side, 'bd'));
+    P.add('hull', facetedSlab([
       [0.78, 1.12, 4.00], [2.04, 1.16, 3.94], [2.04, 1.16, 3.86], [0.78, 1.12, 3.92],
-      [0.76, 1.515, 3.91], [2.04, 1.58, 3.83], [2.04, 1.58, 3.75], [0.76, 1.515, 3.83]);
+    ], [
+      [0.76, 1.515, 3.91], [2.04, 1.58, 3.83], [2.04, 1.58, 3.75], [0.76, 1.515, 3.83],
+    ], side));
     // Rear sponson roof and short end return sit inside the existing cage.
     // The center overlap joins the powerpack deck; the lower stock leaves
     // the sprocket/shoe sweep open and keeps the exhaust deck uncovered.
-    sideSlab(P, 'hull', side,
+    P.add('hull', facetedSlab([
       [0.99, 1.51, -2.14], [2.08, 1.51, -2.14], [2.08, 1.51, -4.035], [0.99, 1.51, -4.035],
-      [0.99, 1.73, -2.14], [2.08, 1.61, -2.14], [2.08, 1.59, -4.035], [0.99, 1.635, -4.035]);
-    sideSlab(P, 'hull', side,
+    ], [
+      [0.99, 1.73, -2.14], [2.08, 1.61, -2.14], [2.08, 1.59, -4.035], [0.99, 1.635, -4.035],
+    ], side));
+    P.add('hull', facetedSlab([
       [0.99, 1.22, -4.01], [2.08, 1.22, -4.01], [2.08, 1.22, -4.035], [0.99, 1.22, -4.035],
-      [0.99, 1.635, -4.01], [2.08, 1.59, -4.01], [2.08, 1.59, -4.035], [0.99, 1.635, -4.035]);
+    ], [
+      [0.99, 1.635, -4.01], [2.08, 1.59, -4.01], [2.08, 1.59, -4.035], [0.99, 1.635, -4.035],
+    ], side));
     // Join the existing center sponson to the skirt crown between the two
     // new end covers. The underside remains above the complete shoe sweep.
     P.add('hull', box(0.14, 0.06, 5.00), side * 1.82, 1.565, 0.24);
     P.addExternalArmor('hull', box(0.16, 0.14, 0.92), side * 1.71, 1.58, 3.17,
       0, side * -0.10, 0);
   }
-  P.add('hull', slab(
+  P.add('hull', symmetricSlab(
     [-0.70, 1.25, 3.92], [0.70, 1.25, 3.92], [0.82, 1.51, 2.72], [-0.82, 1.51, 2.72],
     [-0.62, 1.31, 3.80], [0.62, 1.31, 3.80], [0.70, 1.59, 2.78], [-0.70, 1.59, 2.78]));
   // Localized upper-fender bridges close the narrow plan-view seam between
@@ -8241,7 +8261,7 @@ function publishM1A3DesignReceipt(P: AbramsBuilderPort, layout: M1A3BuildLayout)
     enhancedCheekModules: 0,
     turretRoofInsetM: t.inset,
     mantletRoofRamp,
-    cheekRoofSurface: 'joined-mirrored-facet',
+    cheekRoofSurface: 'planar-front-and-transverse-roof-courses',
   });
   P.hullG.userData.m1a3DesignReceipt = receipt;
   P.turretG.userData.m1a3DesignReceipt = receipt;

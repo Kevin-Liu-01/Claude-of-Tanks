@@ -90,7 +90,7 @@ export function medalSVG(def: MedalDef, width = 48, { locked = false, className 
       `<polygon points="${hexagon(cx, cy, 19.5)}" fill="url(#${id}e)" stroke="${hi}" stroke-opacity=".55" stroke-width="1"/>`;
   } else if (def.tier === 'gold') {
     medallion =
-      `<polygon points="${star(cx, cy, 25, 20.5, 16)}" fill="url(#${id}m)" stroke="${shade}" stroke-width=".8"/>` +
+      `<polygon points="${star(cx, cy, 25, 19, 8)}" fill="url(#${id}m)" stroke="${shade}" stroke-width=".8"/>` +
       `<circle cx="${cx}" cy="${cy}" r="18" fill="url(#${id}e)" stroke="${hi}" stroke-opacity=".6" stroke-width="1"/>`;
   } else if (def.tier === 'silver') {
     medallion =
@@ -102,8 +102,11 @@ export function medalSVG(def: MedalDef, width = 48, { locked = false, className 
       `<circle cx="${cx}" cy="${cy}" r="22" fill="url(#${id}m)" stroke="${shade}" stroke-width="1"/>` +
       `<circle cx="${cx}" cy="${cy}" r="17.5" fill="url(#${id}e)" stroke="${hi}" stroke-opacity=".5" stroke-width="1"/>`;
   }
+  const leaves = [-1, 1].map(side => `<g transform="translate(32 57) scale(${side} 1)" fill="${body}" stroke="${hi}" stroke-width=".35"><path d="M-5 18C-20 14-23 2-19-8" fill="none" stroke-width=".8"/>` +
+    Array.from({length:5},(_,i)=>{const y=12-i*4.4,x=-12-Math.sin((i+1)*.43)*9;return `<path d="M${x} ${y}q-6-1-6-6q6 0 6 6m0 0q1-6 6-6q0 5-6 6"/>`;}).join('')+'</g>').join('');
+  const engraving = `<path d="M26 77h12M28 79h8" stroke="${hi}" stroke-width=".6" opacity=".6"/>`;
   const glyphColor = locked ? '#6d7882' : hi;
-  const glyph = `<g transform="translate(${cx - 11} ${cy - 11})">${emblem(def.id, def.icon, 22, glyphColor)}</g>`;
+  const glyph = `<g transform="translate(${cx - 12} ${cy - 12})">${emblem(def.id, def.icon, 24, glyphColor)}</g>`;
   const glow = !locked && def.tier === 'signature'
     ? `<circle cx="${cx}" cy="${cy}" r="30" fill="url(#${id}g)"/>` : '';
   return `<svg class="${cls}" viewBox="0 0 64 84" width="${width}" height="${Math.round(width * 1.3125)}" aria-hidden="true">` +
@@ -117,7 +120,9 @@ export function medalSVG(def: MedalDef, width = 48, { locked = false, className 
     `<rect x="30.2" y="0" width="3.6" height="34" fill="${centre}"/>` +
     `<rect x="17" y="0" width="30" height="34" fill="url(#${id}m)" opacity=".16"/></g>` +
     `<circle cx="32" cy="31.5" r="3.2" fill="none" stroke="${body}" stroke-width="1.8"/>` +
-    `${glow}${medallion}${glyph}</svg>`;
+    `<path d="M18 1h28v4H18zM18 24l14 9 14-9" fill="url(#${id}m)" stroke="${shade}" stroke-width=".7"/>` +
+    `<path d="M25 5v20m3-20v22m8-22v22m3-22v20" stroke="${hi}" stroke-width=".5" opacity=".28"/>` +
+    `${glow}${medallion}${leaves}${engraving}${glyph}</svg>`;
 }
 
 /** An achievement shield at its tier (0 = not yet reached), with three tier pips. Height is 1.0833 x the width. */
@@ -136,7 +141,7 @@ export function achievementSVG(def: AchievementDef, tier: number, width = 40, cl
     `<defs><linearGradient id="${id}m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${hi}"/>` +
     `<stop offset=".5" stop-color="${body}"/><stop offset="1" stop-color="${shade}"/></linearGradient>` +
     `<radialGradient id="${id}e" cx=".5" cy=".3" r=".8"><stop offset="0" stop-color="#1c252e"/><stop offset="1" stop-color="#070a0d"/></radialGradient></defs>` +
-    `<path d="M24 1.5 45 8.6V25c0 12.4-8.6 20.6-21 25.5C11.6 45.6 3 37.4 3 25V8.6Z" fill="url(#${id}m)" stroke="${shade}" stroke-width="1"/>` +
-    `<path d="M24 6 40.6 11.6V25c0 9.8-6.7 16.6-16.6 20.8C14.1 41.6 7.4 34.8 7.4 25V11.6Z" fill="url(#${id}e)"/>` +
+    `<path d="M12 2h24l9 9v19L24 50 3 30V11Z" fill="url(#${id}m)" stroke="${shade}" stroke-width="1"/>` +
+    `<path d="M14 6h20l7 7v15L24 45 7 28V13Z" fill="url(#${id}e)"/>` +
     `<g transform="translate(14 13)">${uiIconSVG(def.icon, 20, reached ? hi : '#6d7882')}</g>${pips}</svg>`;
 }

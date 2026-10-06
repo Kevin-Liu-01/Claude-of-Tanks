@@ -1,29 +1,30 @@
 {
-  "baseline": "1eb8375d6",
+  "baseline": "3d0c3c50e004cb34c48a24cfcca20528785e07ed",
   "rows": [
     {
       "id": "m3a3_bradley",
       "quality": "high",
       "scope": "hull-gear",
-      "sha256": "36ee2ea927f962ecc6f1e75fc9f1298b01be3afa38e6f8bcefe7595a5e28429d"
+      "sha256": "d4bdefcb5aa40703294f8567d55e2024d16fd28be1165a6a03d3fa144470757e"
     },
     {
       "id": "m3a3_bradley",
       "quality": "low",
       "scope": "hull-gear",
-      "sha256": "55c61028fdfebf1c10ffb7d4f15f115a6c95788e66fd268fe52e1d5866283bbf"
+      "sha256": "82dfd81d0d3c7250b366e7782dd0046903563bc3a4899f53eb7c90fcbd6083da"
     },
     {
       "id": "ua_m2a3_bradley",
       "quality": "high",
       "scope": "all",
-      "sha256": "9ac3b5ec21e787e879706159ba263aaa5a360aa9a4db5129ad2484f8399573cf"
+      "sha256": "7976645aaaed391bf21487ae58b0371f6f90bcfa629fff31193739dbb13d7e77"
     },
     {
       "id": "ua_m2a3_bradley",
       "quality": "low",
       "scope": "all",
-      "sha256": "6ad17719268d89e1c5c3664c7606192f2527bb4d5c12e0696fd5eb12714fe7ce"
+      "sha256": "dd16bf8d871ea14692d1088c7391e047fe90241e37ced9bbbc947d926d6dc63c"
     }
-  ]
+  ],
+  "note": "Preservation rebased to deployed base-shell repair: corrected Bradley hull bow triangulation, independently measured from the untouched production source clone before M3 gun lowering."
 }

@@ -2,6 +2,10 @@
 
 ## Current revision — 2026-10-04
 
+The [October 6 lower-gun follow-up](m3a3-lower-gun-20261006.md) supersedes the
+raised mantlet position and records the current physical checks and pending
+visual/release validation.
+
 Owner explicitly requested a new M3A3 turret base alongside the separate M6
 Linebacker concept. The chassis, Ukrainian Bradley and existing M3 equipment
 are preserved; the compact scout shell now has clipped shoulders, separate

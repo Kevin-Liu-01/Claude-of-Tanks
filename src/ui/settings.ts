@@ -31,6 +31,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 // BATTLE plate) + red-outline LEAVE BATTLE, overflow-gated scroll fades.
 // Behavior is UNCHANGED: same classes, same rebind/persistence/pause flow.
 
+import { installHudCustomization } from './hudCustomization.ts';
 import { installBattleUiVisibility } from './battleUiVisibility.ts';
 import { FONT_STACK, ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -610,6 +611,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   gear.title = t('settings.gearAria');
   if (!gear.parentNode) document.body.appendChild(gear);
 
+  installHudCustomization();
   const battleUiVisibility = installBattleUiVisibility({
     hidden: () => input.getSettings().hideBattleUi,
     setHidden: (hidden) => input.setSetting('hideBattleUi', hidden),
@@ -1020,6 +1022,17 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     bindBattleTimeChoices(times, () => emit('ui:click', {}));
 
     const iface = groupCard(body, t('settings.interface.title'));
+    const editHud = el('button', 'cot-set-btn cot-set-hud-editor', iface);
+    editHud.type = 'button'; editHud.textContent = t('hudEditor.open');
+    editHud.addEventListener('click', async () => {
+      editHud.disabled = true;
+      try {
+        const [{ openHudEditor }] = await Promise.all([import('./hudEditor.ts'), import('./hudEditor.css')]);
+        if (open) openHudEditor(editHud);
+      } catch {
+        editHud.textContent = t('hudEditor.loadError');
+      } finally { editHud.disabled = false; }
+    });
     onOffRow(iface, t('settings.interface.hideBattleUi'), 'hideBattleUi', battleUiVisibility.refresh);
     const cleanViewNote = el('div', 'cot-set-note', iface);
     cleanViewNote.textContent = t('settings.interface.hideBattleUiNote');
@@ -1414,6 +1427,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     // contains bubbling keys so they still cannot reach the game behind us.
     if (e.target instanceof Element && e.target.closest('.cot-set-crew-field') &&
         (e.code !== 'Escape' || root.querySelector('.cot-custom-select-list:popover-open'))) return;
+    if (isAnyModalOpen()) return; // The HUD editor owns focus and Escape above Settings.
     // While the panel is open it owns the keyboard: nothing leaks to the HUD
     // shell hotkeys or the garage's Enter-to-battle handler behind it.
     e.stopPropagation();
@@ -1467,7 +1481,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         const pressed = pad.buttons[i].pressed || pad.buttons[i].value > 0.5;
         const was = panelPadPrev[i];
         panelPadPrev[i] = pressed;
-        if (!pressed || was) continue;
+        if (!pressed || was || isAnyModalOpen()) continue;
         if (capture && capture.slot === 'pad') {
           finishPadCapture(i);
         } else if (i === PAD_START_BUTTON) {

@@ -1,10 +1,15 @@
+import '../../src/ui/endScreenPresentation.css';
+import '../../src/ui/richTooltip.css';
 // Real production components, deterministic presentation data, no WebGL/simulation.
 import '../../src/ui/motion.css';
+import '../../src/ui/battleUiVisibility.css';
+import '../../src/ui/hudCustomization.css';
 import '../../src/ui/responsiveSurfaces.css';
 import { Vector3 } from 'three';
 import { installResponsiveLayout } from '../../src/ui/responsiveLayout.ts';
 import { createBus } from '../../src/game/stateCore.ts';
 import { createInput } from '../../src/game/input.ts';
+import { installMedalToasts } from '../../src/ui/medalToast.ts';
 import { initHud } from '../../src/ui/hud.ts';
 import { createDamagePanel } from '../../src/ui/damagePanel.ts';
 import { createTouchControls } from '../../src/ui/touchControls.ts';
@@ -23,6 +28,7 @@ installResponsiveLayout();
 const bus = createBus();
 const input = createInput();
 const hud = initHud(bus);
+installMedalToasts(bus);
 createEndOverlayRuntime({bus,onReturnToGarage:()=>hud.setMode('hidden')});
 const panel = createDamagePanel();
 const settings = createSettings({input, bus, isBattleActive:()=>true, gearVisible:()=>false});
@@ -40,8 +46,8 @@ const frame = {matchModeState:{id:'mars'}, auxiliaryKeyLabels:{smoke:'G',lights:
   aim:{shellSlot:0, reload:{t:0,totalS:6}, shells:[
     {name:'DM53',type:'APFSDS',count:24},{name:'DM12A2',type:'HEAT',count:16},{name:'DM11',type:'HE',count:12}
   ]}};
-function hit(incoming=false) {
-  bus.emit('shell:hit',{attackerId:incoming?tanks[8].id:player.id,targetId:incoming?player.id:tanks[8].id,
+function hit(incoming=false, attackerIndex=8) {
+  bus.emit('shell:hit',{attackerId:incoming?tanks[attackerIndex].id:player.id,targetId:incoming?player.id:tanks[8].id,
     attackerName:'Commander_Long_Name_8',targetName:'Leopard 2A5',targetSpecId:'leo2a5',attackerSpecId:'t90m',
     kind:'pen',damage:420,dmgRoll:460,penRoll:560,effectiveArmor:350,baseArmor:220,impactAngleDeg:34,
     shellType:'APFSDS',zone:'hullFront',flightDistM:240,timeS:60,pos:[0,1,50],localPos:[0,1,2],localDir:[0,0,-1]});
@@ -79,7 +85,7 @@ function state(name) {
   }
   if(name==='countdown') hud.preBattleCountdown(5);
   if(name==='reports'||name==='log'||name==='chat'||name==='combined'||name==='feed-burst') {
-    for(let i=0;i<(name==='feed-burst'?14:6);i++){hit();hit(true);}
+    for(let i=0;i<(name==='feed-burst'?14:6);i++){hit();hit(true,name==='feed-burst'?8+i%2:8);}
   }
   if(name==='log'||name==='combined')bus.emit('ui:shotLog',{});
   if(name==='chat'||name==='combined'||name==='spectator'){
