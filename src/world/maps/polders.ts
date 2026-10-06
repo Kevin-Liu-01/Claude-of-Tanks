@@ -83,6 +83,11 @@ export default {
   },
   // Bravo's seven pads stand in two staggered rows 62 m apart behind the northern cross dyke, their centroid near the
   // rotation of alpha's pad about the farm court. 812 m between the anchors.
+  // the landmarks lane (2026-10-05): the oxbow's lift bridge stands its piers and its abutments' feet in the water by design
+  layoutBrief: { exceptions: {
+    solidPropsInWater: 'the oxbow lift bridge\'s piers and abutments (props.landmarks, src/world/landmarks/bridges.ts liftBridge) '
+      + 'stand in the water by design, where it crosses the oxbow\'s waist',
+  } },
   spawns: { player: { x: -94, z: -390 }, enemies: [
     { x: -34, z: 450 }, { x: -65, z: 398 }, { x: -3, z: 398 }, { x: -127, z: 398 },
     { x: 59, z: 398 }, { x: -96, z: 450 }, { x: 28, z: 450 },
@@ -112,6 +117,18 @@ export default {
     // regional-buildings lane: the Zeeland polder kit (maps/regional/polder.ts)
     architecture: 'polder',
     sourcedPalette: 'coastal',
+    // The landmarks lane (2026-10-05; src/world/landmarks/): the old land in the west keeps its brick tower mills, the new
+    // polders in the east were drained by the steel windmotors — one stellingmolen on the field drain's east bank, one at
+    // the oxbow's east tip, each with its stage and thatched cap and its sails turned into the sea wind as the
+    // windmotors' are (yaw 300); and over the oxbow's waist a white double-leaf lift bridge in the Magere Brug's
+    // composition: the leaves on two brick piers in the water, a fixed span on pile bents to each bank, the roadway
+    // 1.5 m over the banks (the basin lies level with its fields) on paved brick abutments with short ramps down.
+    landmarks: [
+      { kind: 'liftBridge', x: -158, z: 265.5, yawDeg: 0, name: 'the lift bridge over the oxbow',
+        params: { span: 12, approach: 5.6, rise: 1.5 } },
+      { kind: 'windmill', x: -106, z: 262, yawDeg: 300, name: 'the oxbow mill', params: { style: 'tower', height: 20 } },
+      { kind: 'windmill', x: -171, z: -316, yawDeg: 300, name: 'the drain mill', params: { style: 'tower', height: 18 } },
+    ],
     plan: ['mill', 'farmhouse', 'granary', 'fishery', 'depot', 'cottage', 'woodshed', 'tavern', 'farmhouse', 'barn', 'barn', 'cottage', 'granary', 'ruin', 'depot', 'woodshed', 'farmhouse', 'barn'],
     destructibleBuildings: ['fieldhut', 'fishershack', 'transformershed', 'huntingblind'],
     buildingLat: [12, 2], destructibleBuildingLat: [16, 3], sideSkip: 0.18, spacingPad: 8,
