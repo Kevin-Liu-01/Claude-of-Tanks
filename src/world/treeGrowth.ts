@@ -439,14 +439,18 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
   // plates, self-pruned to three fifths of its height, under a small, open, irregular crown of a few stout upturned
   // limbs, each ending in great tufts of very long bright-green needles — the fox-tails the species is named for, bare
   // wood between them
+  // (trees lane, 2026-10-05, the gauntlet's wave 124 on Longleaf Crossing: "broccoli-crowned blobs rather than tall,
+  // sparse-crowned longleaf"; the coordinator: a 17-19 m clear bole, the crown from about 70 %, a small ragged tufted
+  // crown): the tallest tree of the fleet, about 18 m at the placed trees' mean scale, its crown a few ragged whorls of
+  // upturned limbs high on the bole, each limb's needles in tufts at its end
   longleafPine: P({
-    family: 'conifer', height: 9.6, heightSpread: 0.12, trunkR: 0.27, form: 'excurrent',
-    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.6, crownR: 2.5,
-    envelope: 'dome', whorled: true, perWhorl: [2, 4], spacing: 0.85, angleLow: 1.4, angleHigh: 0.85,
-    droop: 0.32, upturn: 0.6, sidePerM: 0.9, sideAngle: 0.75, sideRatio: 0.42, sideDroop: 0.12, twigPerM: 0,
-    leafOrder: 1, leafPerM: 1.6, leafFrom: 0.6, spray: [1.0, 1.4], aspect: 0.95, habit: 'tuft', tipSprays: 5,
-    cardBend: 0.24, flatRoll: 0.6, flatDroop: 0.0, bark: 1, barkTint: [0.50, 0.33, 0.25], barkTopTint: [0.60, 0.42, 0.30],
-    foliageValue: 1.18,
+    family: 'conifer', height: 13.6, heightSpread: 0.12, trunkR: 0.24, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.7, crownR: 2.0,
+    envelope: 'dome', whorled: true, perWhorl: [2, 3], spacing: 1.05, angleLow: 1.32, angleHigh: 0.8,
+    droop: 0.28, upturn: 0.7, sidePerM: 0.7, sideAngle: 0.75, sideRatio: 0.42, sideDroop: 0.12, twigPerM: 0,
+    leafOrder: 1, leafPerM: 1.3, leafFrom: 0.65, spray: [1.05, 1.45], aspect: 0.95, habit: 'tuft', tipSprays: 5,
+    cardBend: 0.24, flatRoll: 0.6, flatDroop: 0.0, ragged: 0.4, gnarl: 0.2, bark: 1, barkTint: [0.50, 0.33, 0.25],
+    barkTopTint: [0.60, 0.42, 0.30], foliageValue: 1.18,
   }),
   // the cedar of Lebanon (Cedrus libani, the Chouf): a massive bole under a broad, flat-topped crown of great horizontal
   // shelves — level limbs a tier apart carrying dense flat plates of needle rosettes, open sky between the tiers; dark
