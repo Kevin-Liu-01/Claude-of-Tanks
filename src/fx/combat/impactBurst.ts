@@ -202,7 +202,7 @@ export function groundBurst(C: CombatContext, pos: Vec3Like, caliberMm: number, 
     const v = (outer ? (explosive ? 11 + R() * 7 : 7 + R() * 5) : (explosive ? 4 + R() * 3 : 3 + R() * 2)) * sq;
     mPlace(m, pos.x + Math.cos(a) * 0.6 * s, by + 0.4, pos.z + Math.sin(a) * 0.6 * s, birthOffset + R() * 0.05);
     mMove(m, Math.cos(a) * v, 0.35 + R() * 0.5, Math.sin(a) * v, 3.0, 0.2, 0.9, 0);
-    mShape(m, 2.8 + R() * 1.6, 1.2 * s, (outer ? 4.4 + R() * 1.8 : 3.4 + R() * 1.2) * s * Math.sqrt(L.dustK) * dk, 2.6,
+    mShape(m, 3.5 + R() * 2.0, 1.2 * s, (outer ? 4.4 + R() * 1.8 : 3.4 + R() * 1.2) * s * Math.sqrt(L.dustK) * dk, 2.6,
       0.42, R() * TAU, (R() - 0.5) * 0.6);
     blend(L.ejecta1, L.dust0, 0.6, _c0);
     mLook(m, _c0, L.dust1, (0.5 + R() * 0.14) * Math.min(1, L.dustK), 0.04, 0.4, 0.55, 0.2, 0.05,
@@ -215,11 +215,13 @@ export function groundBurst(C: CombatContext, pos: Vec3Like, caliberMm: number, 
   const crownN = tierCount(C, (explosive ? 16 : 9) * Math.sqrt(L.dustK));
   const crownTop = (explosive ? 5.5 : 3.2) * s * L.heightK;
   for (let i = 0; i < crownN; i++) {
-    const a = R() * TAU, h = 0.7 + Math.pow(R(), 0.8) * crownTop, r = R() * 1.3 * s;
+    // one in three stays low: the cloud keeps a dusty base on the ground while the rest climbs
+    const base = i % 3 === 0;
+    const a = R() * TAU, h = base ? 0.5 + R() * 1.2 : 0.7 + Math.pow(R(), 0.8) * crownTop, r = R() * 1.3 * s;
     const out = 1.2 + R() * 2.0;
     mPlace(m, pos.x + Math.cos(a) * r, by + h, pos.z + Math.sin(a) * r, birthOffset + 0.1 + R() * 0.35);
-    mMove(m, Math.cos(a) * out, 1.2 + R() * 1.8, Math.sin(a) * out, 1.3,
-      (explosive ? 0.85 : 0.3) + R() * 0.35, 1, 0);
+    mMove(m, Math.cos(a) * out, base ? 0.4 + R() * 0.5 : 1.2 + R() * 1.8, Math.sin(a) * out, 1.3,
+      base ? 0.15 + R() * 0.15 : (explosive ? 0.85 : 0.3) + R() * 0.35, 1, 0);
     mShape(m, 5.5 + R() * 2.5, 1.8 * s, (5.8 + R() * 2.8) * s * Math.sqrt(L.dustK) * dk, 1.6, 0.92, R() * TAU,
       (R() - 0.5) * 0.6);
     // born the brown of the fountain's dust, drying and thinning toward the ground's pale dust as it spreads

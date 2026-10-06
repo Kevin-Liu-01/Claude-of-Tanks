@@ -92,6 +92,7 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
       if (ey > 0.3) ey = 0.3 + (ey - 0.3) * 0.45;
       const el = Math.hypot(ex, ey, ez) || 1;
       ex /= el; ey /= el; ez /= el;
+      if (ey > 0) ey *= 0.5;
       const v = (14 + R() * 12) * Math.sqrt(s);
       const along = 0.5 + R() * 0.5;
       mPlace(m, pos.x + dir.x * along, pos.y + dir.y * along, pos.z + dir.z * along, birthOffset + R() * 0.02);

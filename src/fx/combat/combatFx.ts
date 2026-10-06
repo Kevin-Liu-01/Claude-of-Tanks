@@ -267,7 +267,10 @@ export function createCombatFx(o: CombatFxOptions): CombatFx {
     if (fl && fl.intensity > 0.01) {
       uFirePos.value.set(fl.position.x, fl.position.y, fl.position.z, fl.distance || 13);
       const fi = fl.intensity * tune.fire / Math.PI;
-      uFireCol.value.set(fl.color.r * fi, fl.color.g * fi, fl.color.b * fi);
+      // the smoke reads the blaze as orange, not the light's deep red (half way to a fire orange, at about the same
+      // brightness)
+      const k = 0.5 * 0.78 * fi;
+      uFireCol.value.set((fl.color.r + 1) * k, (fl.color.g + 0.5) * k, (fl.color.b + 0.2) * k);
     } else {
       uFireCol.value.set(0, 0, 0);
     }

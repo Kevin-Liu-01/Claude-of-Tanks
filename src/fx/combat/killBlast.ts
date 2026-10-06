@@ -25,11 +25,11 @@ export type KillCause = 'ammorack' | 'shot' | 'fire';
 
 const TAU = Math.PI * 2;
 const SOOT0: Rgb = [0.03, 0.026, 0.023];
-const SOOT1: Rgb = [0.085, 0.078, 0.07];
+const SOOT1: Rgb = [0.1, 0.092, 0.082];
 const SMOKE0: Rgb = [0.032, 0.029, 0.026];
-const SMOKE1: Rgb = [0.12, 0.115, 0.105];
+const SMOKE1: Rgb = [0.16, 0.152, 0.138];
 const SMOKE_LATE0: Rgb = [0.07, 0.066, 0.06];
-const SMOKE_LATE1: Rgb = [0.19, 0.185, 0.175];
+const SMOKE_LATE1: Rgb = [0.24, 0.232, 0.218];
 const WISP0: Rgb = [0.13, 0.125, 0.115];
 const WISP1: Rgb = [0.26, 0.255, 0.245];
 const JET_FIRE: Rgb = [1, 0.78, 0.42];

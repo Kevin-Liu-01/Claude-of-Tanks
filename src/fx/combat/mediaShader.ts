@@ -231,7 +231,7 @@ float softDepthFadeM() {
 vec3 blackbody( float h ) {
   // dark red -> deep orange-red -> orange -> yellow (linear, unscaled; saturated enough to stay fire through the
   // filmic curve, which pales bright colours)
-  vec3 c = mix( vec3( 0.6, 0.03, 0.0 ), vec3( 1.0, 0.2, 0.01 ), smoothstep( 0.08, 0.4, h ) );
+  vec3 c = mix( vec3( 0.6, 0.05, 0.0 ), vec3( 1.0, 0.27, 0.015 ), smoothstep( 0.08, 0.4, h ) );
   c = mix( c, vec3( 1.0, 0.45, 0.06 ), smoothstep( 0.35, 0.72, h ) );
   return mix( c, vec3( 1.0, 0.78, 0.4 ), smoothstep( 0.7, 1.0, h ) );
 }
@@ -271,6 +271,9 @@ void main() {
   float silver = pow( backlit, 2.5 ) * ( 1.0 - thick ) * ( 0.35 + 0.65 * vMisc.y );
   float upN = clamp( dot( n, vUpL ) * 0.5 + 0.5, 0.0, 1.0 );
   vec3 amb = mix( uGroundCol, uSkyCol, upN );
+  // light scattered about inside the smoke mixes the sky's blue with the sun's and the ground's: a shaded face reads
+  // grey, not as a blue tint (thin dark smoke against a backlit sky went blue)
+  amb = mix( amb, vec3( dot( amb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), 0.4 );
   // fire light reaches the faces turned down toward the blaze hardest (fire-lit undersides)
   vec3 fireLit = vFire * ( 0.45 + 0.55 * ( 1.0 - upN ) );
   // one albedo across the puff: a per-texel lift on the thin rims drew a pale web over every dense column
