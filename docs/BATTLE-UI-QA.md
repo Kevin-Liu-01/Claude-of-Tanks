@@ -517,3 +517,28 @@ before/after kill bursts, Tab and the real notification expiry timers, with a
 detection notice also active. Drone and AC-130 weapon/support controls also
 receive overlap checks on mouse layouts. The regular HUD matrix additionally checks
 countdown, sniper, spectator, settings, log, resized and expanded-map states.
+
+## Vehicle condition boxes
+
+The closed-eye concealment chip is now part of the damage panel's condition
+strip. At most four boxes are visible (including overflow); narrow touch
+panels use two or three 44px targets. Fire and disabled tracks take priority,
+then disabled modules and wounded crew, followed by damaged modules and
+concealment. A `+N` box exposes the remaining conditions by hover, keyboard
+focus or tap. The strip never grows into another row.
+
+A red module's translucent bottom-up fill reads its simulation `repairT`
+against the shared `REPAIR_S` target. Equipment speeds are already reflected
+in that accumulator. A combined track box follows the slower disabled track.
+Automatic recovery turns the icon amber and removes the progress fill; full
+repair removes the box. Realistic mode has no automatic repair fill. The
+current multiplayer snapshot carries module states without repair timers,
+so its boxes deliberately omit progress instead of presenting a false 0%.
+
+The strip follows its damage panel through HUD editing and clears for death,
+aerial control and leaving battle. The shared layout reserves space above it
+for feeds and moves it above intersecting driving/system controls. Stable
+frames do not rewrite its DOM. `vehicleStatusPolicy.selftest.mjs` covers the
+state policy and real repair accumulation; `tools/vehicle-status.browser.mjs`
+covers repair changes, overflow, tooltip access, viewport clearance, lifecycle,
+Chinese labels and unchanged-frame mutations across desktop and small phones.

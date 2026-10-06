@@ -141,6 +141,8 @@ export interface CombatState {
   maxHp: number;
   destroyed: boolean;
   modules: Partial<Record<ModuleId, CombatModuleState>>;
+  /** False on snapshot mirrors that carry module states without repair timers. */
+  moduleRepairProgressKnown?: boolean;
   crew: Record<string, boolean>;
   fire: { burning: boolean; tickTimer: number; ticksLeft: number };
   eraSpent: Set<string>;

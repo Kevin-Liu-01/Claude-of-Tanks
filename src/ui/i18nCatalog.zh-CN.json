@@ -3993,5 +3993,15 @@
   "garage.record.loadError": "无法打开服役记录，请重试。",
   "endScreen.combatDetails": "战斗明细与击毁车辆",
   "endScreen.reportViews": "战斗报告视图",
-  "endScreen.awardedThisBattle": "本场战斗获得"
+  "endScreen.awardedThisBattle": "本场战斗获得",
+  "hud.status.title": "车辆状态",
+  "hud.status.fire": "起火",
+  "hud.status.tracks": "履带",
+  "hud.status.crew": "乘员受伤",
+  "hud.status.crewCount": "{count} 名乘员受伤",
+  "hud.status.concealed": "隐蔽生效",
+  "hud.status.disabled": "{name}已失效",
+  "hud.status.damaged": "{name}已受损",
+  "hud.status.repairProgress": "修复中 · {percent}%",
+  "hud.status.more": "另有 {count} 项状态"
 }

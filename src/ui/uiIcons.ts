@@ -3,6 +3,8 @@
 // controls and combat reports read as one authored set at 12-34px.
 
 const P = {
+  statusConcealed: '<path d="M2.5 10c2.7 3.6 6 5.4 9.5 5.4s6.8-1.8 9.5-5.4M6 13.6l-1.5 2M12 15.6v2.3M18 13.6l1.5 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+  statusFire: '<path d="M13 2c1 6-4 6-2 10 2-1 3-3 3-5 5 4 7 8 4 12-3 4-10 4-13-1C2 12 8 9 8 6c0 4 2 4 2 4-1-4 2-5 3-8Z" fill="currentColor"/><path d="M12 13c2 3 4 4 2 6-2 2-5 0-4-2Z" fill="#101920"/>',
   visionInfrared: '<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M6 3v2m6-3v2m6-1v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
   visionThermal: '<path d="M5 20c-3-3 3-4 0-7s3-4 0-7m7 14c-3-3 3-4 0-7s3-4 0-7m7 14c-3-3 3-4 0-7s3-4 0-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
   smoke: '<path d="M3 19h18M5 16c-4-3-1-7 2-6-1-5 6-7 8-3 5-2 9 5 4 8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="m7 20 3-5m3 5 3-5" stroke="currentColor" stroke-width="1.7"/>',

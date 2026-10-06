@@ -86,10 +86,22 @@ export function installBattleHudLayout(root: HTMLElement): void {
       watchAttributes(node, ['class', 'hidden', 'data-count'], content);
     }
   };
+  function statusDockBottom(): number | null {
+    const panel = read('.cot-dp');
+    const strip = read('.cot-vehicle-status:not([hidden])');
+    if (!panel || !strip) return null;
+    let bottom = panel.top - 5;
+    for (const selector of ['.cot-vehicle-controls', '.cot-drive', '.cot-touch.on .joy', '.cot-touch.on .mobile-chrome']) {
+      const box = read(selector);
+      if (box && strip.left < box.right + 8 && strip.right > box.left - 8
+        && bottom > box.top - 8 && bottom - strip.height < box.bottom + 8) bottom = box.top - 8;
+    }
+    return bottom;
+  }
   function leftFloor(height: number, touch: boolean): number {
     const status = read('.cot-dp');
     return Math.min(height - 12,
-      status ? status.top - (touch ? 8 : 36) : height,
+      status ? Math.min(status.top - (touch ? 8 : 36), (statusDockBottom() ?? height) - (read('.cot-vehicle-status:not([hidden])')?.height ?? 0)) : height,
       read('.cot-spec.show')?.top ?? height,
       touch ? read('.cot-touch.on .joy')?.top ?? height : height,
       touch ? read('.cot-touch.on .fire.alt')?.top ?? (height <= 340 ? height - 206 : height) : height,
@@ -113,7 +125,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       document.body.toggleAttribute('data-cot-battle-layout', visible);
     }
     if (!visible) return;
-    observe('.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
+    observe('.cot-vehicle-status,.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
     observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane,.cot-medal-toasts,.cot-si-cardhost,.cot-si-log', true);
     // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
     // asks for a relayout when it mounts, and the right roster takes the lane below it.
@@ -264,6 +276,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const network = !!read('.cot-mp-status.battle');
     const reportBounds = read('.cot-si-cardhost');
     const properties = {
+      'status-lift': Math.max(5, (read('.cot-dp')?.top ?? 0) - (statusDockBottom() ?? height)),
       'center-notice-width': !touch && width >= 768 && reportBounds ? Math.max(136, Math.min(248, (reportBounds.left - width / 2 - 12) * 2)) : 248,
       'flight-right-clearance': map && map.left > width / 2 && map.bottom > height / 2 ? width - map.left + 12 : 12,
       'network-left': width > height ? Math.max(122, (map?.right ?? 104) + 8) : (map?.right ?? 104) + 8,

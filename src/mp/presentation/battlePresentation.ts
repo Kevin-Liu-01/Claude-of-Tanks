@@ -551,6 +551,9 @@ export function createBattlePresentation({
       emitOwnReload(actor);
     }
     const state = viewer.viewer;
+    // The current wire carries states, not repair timers. Do not show a fake
+    // 0% countdown from the presentation actor's freshly created combat state.
+    actor.combat.moduleRepairProgressKnown = false;
     if (state) {
       VIEWER_MODULES.forEach((name, index) => {
         const module = actor.combat.modules[name];
