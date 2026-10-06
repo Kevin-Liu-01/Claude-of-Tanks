@@ -127,7 +127,7 @@ import {
   pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
-import { bakeTankWreckSteps, bakeWreckDebris } from './wrecks.ts';
+import { bakeTankWreckSteps, bakeWreckDebris, wreckRemnantPaint } from './wrecks.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
 import { mergeWreckGeometries } from './exactWreckGeometry.ts';
@@ -6807,7 +6807,8 @@ ${snowCap ? `
       function* bakeFor(specId: string, pop: boolean): Generator<PropsBuildSlice, WreckBake | null, void> {
         const key = specId + (pop ? '|p' : '');
         if (bakeCache.has(key)) return bakeCache.get(key) ?? null;
-        const options = { seed: seed + bakeCache.size * 131, pop };
+        // the map-vehicles lane (P4): the paint this map's tanks wore survives in patches on the burnt hull
+        const options = { seed: seed + bakeCache.size * 131, pop, remnant: wreckRemnantPaint(mapId) };
         let baked: WreckBake | null;
         if (workerWrecks) {
           const request: NonNullable<PropsBuildSlice['wreckBake']> = { specId, options, result: null };

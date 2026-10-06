@@ -274,13 +274,14 @@ for (const failureAt of ['tick', 'import', 'generator']) {
   const end = source.indexOf('\n      function* placeWreck(', begin);
   assert.ok(begin > 0 && end > begin);
   const code = stripTypeScriptTypes(source.slice(begin, end));
-  const make = (cache, disposed) => new Function('bakeCache', 'workerWrecks', 'seed', 'disposeWreckGeometry',
-    code + '\nreturn bakeFor;')(cache, true, 2002, geo => disposed.push(geo));
+  // P4 (the map-vehicles lane): a bake request carries the paint the map's tanks wore (wrecks.ts wreckRemnantPaint)
+  const make = (cache, disposed) => new Function('bakeCache', 'workerWrecks', 'seed', 'disposeWreckGeometry', 'wreckRemnantPaint', 'mapId',
+    code + '\nreturn bakeFor;')(cache, true, 2002, geo => disposed.push(geo), (id) => (id === 'verdant' ? 0x4e5834 : -1), 'verdant');
   const cache = new Map(), disposed = [], geo = {}, shadowGeo = {};
   const bake = make(cache, disposed);
   const abandoned = bake('k2', true);
   const step = abandoned.next().value;
-  assert.deepEqual(step.wreckBake.options, { seed: 2002, pop: true });
+  assert.deepEqual(step.wreckBake.options, { seed: 2002, pop: true, remnant: 0x4e5834 });
   step.wreckBake.result = { geo, shadowGeo };
   abandoned.return();
   assert.deepEqual(disposed, [geo, shadowGeo]);
