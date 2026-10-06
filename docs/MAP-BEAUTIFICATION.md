@@ -7354,6 +7354,21 @@ of the squares' objective ground (yards.ts yardKeepOut: the zone discs, the kick
   "choppiness" is not Ruinspires' frame pacing on the PR head. The candidate gave 17.5/30.1/40.9 and 16.8/36.3/58.8 ms
   at 682 calls and 2.93 M triangles in the chase (head: 679 and 2.83 M). The A B C C B A ×8 cost gate waits for a quiet
   machine.
+- *Cost* (the GPU frame's increment over the PR head; each variant against the head, two pages, 3 × A B B A after a
+  chase visit, a quiet window at load 24–31):
+
+  | Variant | Establishing | Chase |
+  |---|---|---|
+  | the kit, the ground lane's land use and the streets' surfaces | +2.63 ± 0.40 ms | +0.99 ± 0.16 ms |
+  | without the streets' surfaces (`pathStyles`) | −0.60 ± 0.32 ms | +0.52 ± 0.53 ms |
+  | without the `sarajevo` kits | +1.08 ± 0.72 ms | +0.18 ± 1.52 ms |
+  | head and candidate both at `?ground=legacy` (no land use) | −0.62 ± 0.67 ms | +1.17 ± 0.66 ms |
+
+  The increment needs the streets' surfaces and the urban land use together; either alone is within the budget. The
+  map ships without its streets' own surfaces (the boulevard's asphalt, the trunks patched, setts on the terrace and
+  cross streets: ruinspires.ts keeps them in a comment) until the ground lane's fix. On the A B C C B A gate the chase
+  passed (GPU p25 +0.16 ± 0.37 ms); that gate's establishing reading, +11.5 ms with three full worlds in one browser,
+  read about +2 ms with two.
 
 ## Acceptance is visual and measured
 
