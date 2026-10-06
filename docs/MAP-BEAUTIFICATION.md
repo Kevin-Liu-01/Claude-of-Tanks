@@ -7305,8 +7305,9 @@ multiplying as it rises as on Rab's great tower (slits, a monofora, a bifora a f
 on each face, the pyramid inside its balustrade and its cross (3 544 desktop triangles). The planned stone bridge has no
 site here (no gully or stream reaches the bay). Census [3038, 2933, 3408]; every structure, non-tree record and tree
 where it stood. Pacing (4 seeds) 174/199/211/320 s against the head's 174/309/211/320 s. Cost: the establishing shot
-−0.73 ± 0.69 ms and the square's view −0.40 ± 0.45 (accept); chase 0.16 ± 0.85 (ambiguous; its quiet-window re-run is
-queued); every CPU median within 0.29 ms, no long task and no program compiled during a slot.
+−0.73 ± 0.69 ms and the square's view −0.40 ± 0.45 (accept); chase 0.16 ± 0.85, and on its quiet-window re-run 0.10 ±
+0.48, accepted by the integrator's ruling (a mean under 0.6 ms after the quiet re-run, nothing failed); every CPU median
+within 0.29 ms, no long task and no program compiled during a slot.
 
 ### 2026-10-05 — the sea's second round: a shelf by the coast, deep water that reads deep, glitter over white (the skies lane)
 
