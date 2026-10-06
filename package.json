@@ -37,6 +37,7 @@
     "server:mp": "node server/rooms/main.ts",
     "test": "node tools/run-selftests.mjs all",
     "test:all": "node tools/run-selftests.mjs all --all",
+    "test:pacing:tail": "COT_PACING_TAIL=1 node server/battlePacing.selftest.mjs",
     "test:plan": "node tools/run-selftests.mjs all --plan",
     "jev:dev": "node server/jev/main.ts",
     "test:jev": "node server/jev.selftest.mjs && node src/game/jevCommander.selftest.mjs",
