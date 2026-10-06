@@ -19,9 +19,13 @@ const STEEL = rgb(0x5f6466), BLACK = rgb(0x2c2d2e), TIMBER = rgb(0x6a5644), TIMB
 /** The cottages' weatherboards: cream, white, pale green, buff, a faded blue, a Federation red-brown. */
 const COTTAGE: readonly Rgb[] = [0xdcd8cc, 0xe6e2d8, 0xb8c4a8, 0xc8b490, 0xa9b8c4, 0x8a5a46].map(rgb);
 const TRIM: readonly Rgb[] = [0xe4e0d4, 0x4f6a52, 0x8a3a2c, 0x3f5f7a].map(rgb);
-/** The cottages' roofs: red oxide, a Brunswick green, galvanised. */
-const ROOF_PAINT: readonly Rgb[] = [0x8a3a2c, 0x4a5e48, 0x9aa09c, 0x7a3428].map(rgb);
-const LACE = rgb(0x2e3230), ORE = rgb(0x7a4a32), COPPER = rgb(0x4f8a72);
+/** The verandahs' painted iron: a weathered red oxide, a Brunswick green, galvanised, galvanised gone to rust (round 2,
+ *  the gauntlet's wave 117: the bright red oxide on a hip read as "a Mediterranean terracotta tile roof"). */
+const ROOF_PAINT: readonly Rgb[] = [0x6e3a2e, 0x4a5e48, 0x9aa09c, 0x7a6458].map(rgb);
+/** The hotel's cast iron lace, painted cream against the dark posts (round 2: dark lace on dark posts read as plain rails). */
+const LACE = rgb(0xe6e0cc), ORE = rgb(0x7a4a32), COPPER = rgb(0x4f8a72);
+/** Rust on the west coast's iron: the bleed from the sheets' feet and laps, darker where it runs. */
+const RUST = rgb(0x6e3a24), RUST_DARK = rgb(0x4a2a1c);
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -31,6 +35,42 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
 function reach(ctx: RegionalBuildContext): { W: number; D: number; cx: number; cz: number; x0: number; x1: number; z0: number; z1: number } {
   const b = ctx.bounds;
   return { W: b.maxX - b.minX, D: b.maxZ - b.minZ, cx: (b.maxX + b.minX) / 2, cz: (b.maxZ + b.minZ) / 2, x0: b.minX, x1: b.maxX, z0: b.minZ, z1: b.maxZ };
+}
+
+const mix3 = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+
+/**
+ * The rust on a painted or galvanised steel part, by height (the corner's y in the building frame): bleeding up from
+ * its foot, a patch here and there higher up. A colourAt for coloured parts (geometry.ts EmitOptions).
+ */
+function rustBy(base: Rgb, y0: number, y1: number, foot: number, head = 0): (p: Vec3) => Rgb {
+  return (p) => {
+    const t = Math.min(1, Math.max(0, (p[1] - y0) / Math.max(0.01, y1 - y0)));
+    return mix3(base, t < 0.5 ? RUST : RUST_DARK, Math.min(0.85, foot * Math.pow(1 - t, 1.6) + head * Math.pow(t, 3)));
+  };
+}
+
+/**
+ * Corrugated iron weathered as the west coast weathers it (round 2, the gauntlet's wave 117: "pristine corrugated iron
+ * and brickwork, no rust, staining or weathering"): a skin of vertical strips on the four sides of a box of cladding,
+ * each strip its own run of rust up from the sheets' feet, a few with a stain down from the lap at the top. Dressing a
+ * hair proud of the clad wall, so the wall's collision is untouched.
+ */
+function rustSkin(sink: PartSink, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, base: Rgb, look: () => number): void {
+  const faces: Face[] = [
+    { origin: [(x0 + x1) / 2, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: x1 - x0 },
+    { origin: [x1, 0, (z0 + z1) / 2], u: [0, 0, -1], out: [1, 0, 0], width: z1 - z0 },
+    { origin: [(x0 + x1) / 2, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: x1 - x0 },
+    { origin: [x0, 0, (z0 + z1) / 2], u: [0, 0, 1], out: [-1, 0, 0], width: z1 - z0 },
+  ];
+  for (const f of faces) {
+    const n = Math.max(2, Math.min(12, Math.round(f.width / 1.4)));
+    for (let k = 0; k < n; k++) {
+      const u = -f.width / 2 + (k + 0.5) * f.width / n;
+      faceBox(sink, 'structureMetal', f, u, (y0 + y1) / 2, 0.008, f.width / n, y1 - y0, 0.004,
+        { colour: base, colourAt: rustBy(base, y0, y1, 0.18 + look() * 0.5, look() < 0.35 ? 0.2 + look() * 0.35 : 0), decor: true });
+    }
+  }
 }
 
 const SASH = (frame: Rgb): WindowStyle => ({ frame, frameWidth: 0.07, frameOut: 0.05, bars: 'two', surround: null, sill: { bucket: 'structureWood', out: 0.06, colour: frame }, shutters: null });
@@ -62,19 +102,21 @@ const headframe: RegionalBuilder = (ctx) => {
   // the tower, the winding house and the bin fill the old gantry's reach (its bounds, which stand off the plot's centre)
   const R = reach(ctx);
   const L = Math.max(14, R.W - 0.4), Dd = Math.max(4.2, R.D - 0.4);
-  const H = 20 + rng() * 6, cx = -L / 2 + 2.1, steel = pick(rng, [STEEL, rgb(0x2f3a3e), rgb(0x8a3a2c)]);
+  const H = 20 + rng() * 6, cx = -L / 2 + 2.1, steel = pick(rng, [rgb(0x3a4246), rgb(0x2f3a3e), rgb(0x6e3426)]);
+  // (round 2: the headframe's steel weathered — rust bleeding up the legs from the collar, patches on the braces)
+  const rusted = { colourAt: rustBy(steel, 0, H, 0.55, 0.15) };
   sink.placed(0, R.cx, 0, R.cz, () => {
     // the collar and the shaft's concrete head
     sink.span(CONCRETE, cx - 2.0, -0.4, -Dd / 2, cx + 2.0, 0.6, Dd / 2);
     // the four legs of the tower over the shaft
     const legs: Array<[number, number]> = [[-1.4, -1.6], [1.4, -1.6], [-1.4, 1.6], [1.4, 1.6]];
-    for (const [dx, dz] of legs) sink.member('structureMetal', [cx + dx, 0.6, dz * Math.min(1, Dd / 3.4)], [cx + dx * 0.45, H, dz * 0.45], 0.32, 0.32, [1, 0, 0], { colour: steel, exposed: true }, 0);
+    for (const [dx, dz] of legs) sink.member('structureMetal', [cx + dx, 0.6, dz * Math.min(1, Dd / 3.4)], [cx + dx * 0.45, H, dz * 0.45], 0.32, 0.32, [1, 0, 0], { colour: steel, ...rusted, exposed: true }, 0);
     // the backlegs raking down toward the winding house (+x)
-    for (const dz of [-1.2, 1.2]) sink.member('structureMetal', [cx + 0.6, H - 1.0, dz * 0.45], [cx + 9.5, 0.3, dz * Math.min(1, Dd / 3.2)], 0.36, 0.36, [0, 0, 1], { colour: steel, exposed: true }, 0);
+    for (const dz of [-1.2, 1.2]) sink.member('structureMetal', [cx + 0.6, H - 1.0, dz * 0.45], [cx + 9.5, 0.3, dz * Math.min(1, Dd / 3.2)], 0.36, 0.36, [0, 0, 1], { colour: steel, ...rusted, exposed: true }, 0);
     for (let y = 3.5; y < H - 2; y += 3.2) {
       const f = y / H, r = 1.4 - 0.77 * f, rz = (1.6 - 0.88 * f) * Math.min(1, Dd / 3.4);
       for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]] as const) {
-        sink.member('structureMetal', [cx + ax * r, y, az * rz], [cx + bx * r, y, bz * rz], 0.12, 0.12, [0, 1, 0], { colour: steel, decor: true, exposed: true }, 0);
+        sink.member('structureMetal', [cx + ax * r, y, az * rz], [cx + bx * r, y, bz * rz], 0.12, 0.12, [0, 1, 0], { colour: steel, ...rusted, decor: true, exposed: true }, 0);
       }
     }
     // the sheave deck and the two sheave wheels, the winding ropes down to the drum
@@ -88,6 +130,7 @@ const headframe: RegionalBuilder = (ctx) => {
     if (hx1 - hx0 > 3) {
       sink.span(CONCRETE, hx0, -0.4, -Dd / 2, hx1, 0.4, Dd / 2);
       sink.span('structureMetal', hx0, 0.4, -Dd / 2, hx1, hy, Dd / 2, { colour: sheet });
+      rustSkin(sink, hx0, 0.4, -Dd / 2, hx1, hy, Dd / 2, sheet, look);
       const roof: RoofSpec = { kind: 'gable', pitchDeg: 22, eave: 0.3, verge: 0.25, thickness: 0.06, bucket: 'roof', ridge: 'saddle' };
       sink.placed(0, (hx0 + hx1) / 2, 0, 0, () => {
         const rg = roofGeometry(Dd, hx1 - hx0, hy, roof);
@@ -132,6 +175,7 @@ const concentrator: RegionalBuilder = (ctx) => {
     steps.forEach(([, h], k) => {
       const z0 = -D / 2 + k * sec, z1 = z0 + sec;
       sink.span('structureMetal', -W / 2, 0.6, z0, W / 2, h, z1, { colour: shade(sheet, 1 - k * 0.04) });
+      rustSkin(sink, -W / 2, 0.6, z0, W / 2, h, z1, shade(sheet, 1 - k * 0.04), ctx.variant);
       // the monitor roof: a raised clerestory along the section's ridge under its own low gable
       const roof: RoofSpec = { kind: 'gable', pitchDeg: 14, eave: 0.35, verge: 0.2, thickness: 0.06, bucket: 'roof', ridge: 'saddle' };
       sink.placed(0, 0, 0, (z0 + z1) / 2, () => emitRoof(sink, roofGeometry(W, sec, h, roof), roof));
@@ -175,22 +219,51 @@ const hotel: RegionalBuilder = (ctx) => {
     }
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.6, out: 0.08, bucket: CONCRETE }, storeys: [{ h: 4.0, wall: BRICK }, { h: 3.6, wall: BRICK }],
-      roof: { kind: 'hip', pitchDeg: 24, eave: 0.6, verge: 0.6, thickness: 0.1, bucket: 'structureMetal', ridge: 'saddle' }, roofColour: roofPaint,
+      roof: { kind: 'hip', pitchDeg: 24, eave: 0.6, verge: 0.6, thickness: 0.1, bucket: 'roof', ridge: 'saddle' },
       gableBucket: BRICK, openings, chimneys: [{ x: W * 0.28, z: -D * 0.2, sx: 0.6, sz: 0.6, above: 0.9, bucket: BRICK, cap: 'slab' }, { x: -W * 0.28, z: -D * 0.2, sx: 0.6, sz: 0.6, above: 0.9, bucket: BRICK, cap: 'slab' }],
       gutters: null, verge: null, reveal: 0.26, rafters: null,
     }, dialectOf(rng, trim, rgb(0x4a3a2e), 0.45, true));
-    // the two-storey verandah across the front: posts, the upper floor, the shed roof over it
+    // the two-storey verandah across the front: posts, the ground floor's deck, the upper floor, the shed roof over it
     const depth = 2.4, f = frame.faces.front;
     const n = Math.max(3, Math.round(W / 2.4));
-    for (let k = 0; k <= n; k++) {
-      const u = -W / 2 + 0.2 + (W - 0.4) * k / n;
-      faceBox(sink, 'structureWood', f, u, 3.9, depth - 0.1, 0.14, 7.8, 0.14, { colour: trim });
-    }
+    const postU = (k: number) => -W / 2 + 0.2 + (W - 0.4) * k / n;
+    for (let k = 0; k <= n; k++) faceBox(sink, 'structureWood', f, postU(k), 3.9, depth - 0.1, 0.14, 7.8, 0.14, { colour: trim });
+    faceBox(sink, 'structureWood', f, 0, 0.52, depth / 2, W, 0.14, depth, { colour: TIMBER_GREY, decor: true });
     faceBox(sink, 'structureWood', f, 0, 4.0, depth / 2, W, 0.18, depth, { colour: TIMBER_GREY });
-    // the cast-iron lace: the upper balustrade's panels and the frieze under each roof, dark against the paint
-    for (const [y, h] of [[4.55, 0.9], [7.45, 0.45], [3.7, 0.35]] as const) {
-      faceBox(sink, 'structureMetal', f, 0, y, depth - 0.05, W - 0.3, h, 0.03, { colour: LACE, decor: true });
-      for (let u = -W / 2 + 0.3; u < W / 2 - 0.2; u += 0.22) faceBox(sink, 'structureMetal', f, u, y, depth - 0.02, 0.05, h * 0.9, 0.03, { colour: shade(trim, 1.05), decor: true, fine: true });
+    // the cast iron lace (round 2, wave 117: "plain straight posts and rails with no cast-iron lace"): cream against the
+    // dark posts, coarse enough to read across the street — in each bay of the upper balustrade a frame and a diagonal
+    // lattice; under each verandah roof a valance of scallops between the posts; a bracket in each post's head
+    const lo = { colour: LACE, decor: true };
+    for (let k = 0; k < n; k++) {
+      const u0 = postU(k) + 0.1, u1 = postU(k + 1) - 0.1, um = (u0 + u1) / 2, bw = u1 - u0;
+      // the balustrade: top and bottom rails, the bay's lattice of crossing bars
+      for (const y of [4.18, 5.0]) faceBox(sink, 'structureMetal', f, um, y, depth - 0.06, bw, 0.07, 0.05, lo);
+      const m = Math.max(2, Math.round(bw / 0.55));
+      for (let j = 0; j < m; j++) {
+        const a = u0 + bw * j / m, b = u0 + bw * (j + 1) / m;
+        sink.member('structureMetal', [f.origin[0] + a, 4.2, f.origin[2] + depth - 0.06], [f.origin[0] + b, 4.98, f.origin[2] + depth - 0.06], 0.045, 0.04, [0, 0, 1], { ...lo, exposed: true }, 0);
+        sink.member('structureMetal', [f.origin[0] + b, 4.2, f.origin[2] + depth - 0.06], [f.origin[0] + a, 4.98, f.origin[2] + depth - 0.06], 0.045, 0.04, [0, 0, 1], { ...lo, exposed: true }, 0);
+      }
+      // the valances: a row of shallow scallops hung from each beam, under the upper floor and under the roof
+      for (const yTop of [3.86, 7.72]) {
+        faceBox(sink, 'structureMetal', f, um, yTop, depth - 0.06, bw, 0.08, 0.05, lo);
+        const sc = Math.max(2, Math.round(bw / 0.7));
+        for (let j = 0; j < sc; j++) {
+          const a = u0 + bw * j / sc, b = u0 + bw * (j + 1) / sc, c = (a + b) / 2;
+          for (const [p, q] of [[a, c], [c, b]] as const) {
+            const dip = 0.22;
+            sink.member('structureMetal', [f.origin[0] + p, yTop - (p === a ? 0.02 : dip), f.origin[2] + depth - 0.06],
+              [f.origin[0] + q, yTop - (q === b ? 0.02 : dip), f.origin[2] + depth - 0.06], 0.05, 0.04, [0, 0, 1], { ...lo, exposed: true }, 0);
+          }
+        }
+      }
+    }
+    // the brackets: a quarter-round web of lace in each post's head, both ways, under both floors
+    for (let k = 0; k <= n; k++) for (const yTop of [3.86, 7.72]) for (const side of [-1, 1]) {
+      const u = postU(k);
+      if ((k === 0 && side < 0) || (k === n && side > 0)) continue;
+      sink.member('structureMetal', [f.origin[0] + u, yTop - 0.55, f.origin[2] + depth - 0.06], [f.origin[0] + u + side * 0.5, yTop - 0.04, f.origin[2] + depth - 0.06],
+        0.05, 0.04, [0, 0, 1], { ...lo, exposed: true }, 0);
     }
     const verandaRoof: RoofSpec = { kind: 'shed', pitchDeg: 10, eave: 0.15, verge: 0.15, thickness: 0.06, bucket: 'structureMetal' };
     sink.placed(-Math.PI / 2, 0, 0, D / 2 + depth / 2, () => emitRoof(sink, roofGeometry(depth, W, 7.8, verandaRoof), verandaRoof, roofPaint));
@@ -253,6 +326,7 @@ const engineShed: RegionalBuilder = (ctx) => {
   sink.placed(0, R.cx, 0, R.cz, () => {
     sink.span(CONCRETE, -W / 2 - 0.1, -0.4, -D / 2 - 0.1, W / 2 + 0.1, 0.3, D / 2 + 0.1);
     sink.span('structureMetal', -W / 2, 0.3, -D / 2, W / 2, H, D / 2, { colour: sheet });
+    rustSkin(sink, -W / 2, 0.3, -D / 2, W / 2, H, D / 2, sheet, look);
     const roof: RoofSpec = { kind: 'gable', pitchDeg: 18, eave: 0.4, verge: 0.3, thickness: 0.07, bucket: 'roof', ridge: 'saddle' };
     const rg = roofGeometry(W, D, H, roof);
     emitRoof(sink, rg, roof);
@@ -334,7 +408,7 @@ const cottageRow: RegionalBuilder = (ctx) => {
       for (const o of windowRhythm('back', 0, w, { w: 0.9, h: 1.2, sill: 1.0, spacing: 2.4, margin: 0.9, max: 1 })) openings.push(o);
       const frame = buildHouse(sink, {
         w: w - 0.05, d, plinth: { h: 0.5, out: 0.04, bucket: CONCRETE }, storeys: [{ h: 2.7, wall: 'wood' }],
-        roof: { kind: 'hip', pitchDeg: 26, eave: 0.4, verge: 0.4, thickness: 0.06, bucket: 'structureMetal', ridge: 'saddle' }, roofColour: pick(rng, ROOF_PAINT),
+        roof: { kind: 'hip', pitchDeg: 26, eave: 0.4, verge: 0.4, thickness: 0.06, bucket: 'roof', ridge: 'saddle' },
         gableBucket: 'wood', openings, chimneys: [{ x: w * 0.22, z: -d * 0.12, sx: 0.55, sz: 0.7, above: 0.9, bucket: BRICK, cap: 'slab' }],
         gutters: null, verge: null, reveal: 0.1,
       }, dialectOf(rng, trim, shade(paint, 0.8), 0.4));
@@ -348,13 +422,14 @@ const cottageRow: RegionalBuilder = (ctx) => {
       for (const u of [-w / 2 + 0.25, 0, w / 2 - 0.25]) faceBox(sink, 'structureWood', f, u, 1.65, deep - 0.15, 0.12, 2.3, 0.12, { colour: trim });
       faceBox(sink, 'structureWood', f, 0, 0.42, deep / 2, w - 0.2, 0.12, deep, { colour: TIMBER_GREY, decor: true });
       const roofC = pick(look, ROOF_PAINT);
+      const roofRust = { colourAt: rustBy(roofC, 1.6, 2.9, 0.35 + look() * 0.3) };
       sink.span('structureMetal', -w / 2 + 0.05, 2.78, d / 2, w / 2 - 0.05, 2.84, d / 2 + deep - 0.6, { colour: roofC, decor: true, shadow: true });
       // the bullnose: four bent sheets round a quarter circle from the flat sheet's edge down to the verandah's front
       const cy = 2.24, cz = d / 2 + deep - 0.6, rr = 0.6;
       for (let q = 0; q < 4; q++) {
         const t0 = q / 4 * Math.PI / 2, t1 = (q + 1) / 4 * Math.PI / 2, tm = (t0 + t1) / 2;
         sink.member('structureMetal', [0, cy + rr * Math.cos(t0), cz + rr * Math.sin(t0)], [0, cy + rr * Math.cos(t1), cz + rr * Math.sin(t1)], w - 0.1, 0.05,
-          [0, Math.cos(tm), Math.sin(tm)], { colour: roofC, decor: true, shadow: true, exposed: true }, 0);
+          [0, Math.cos(tm), Math.sin(tm)], { colour: roofC, ...roofRust, decor: true, shadow: true, exposed: true }, 0);
       }
     });
   }
@@ -438,7 +513,9 @@ export const QUEENSTOWN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   weather: {
     plaster: [[1, 1, 1], [1.02, 1.0, 0.96], [0.94, 0.94, 0.92]],
     stone: [[1, 1, 1], [0.9, 0.9, 0.88], [1.04, 1.0, 0.97], [0.86, 0.86, 0.85]],
-    roof: [[1, 1, 1], [0.86, 0.8, 0.74], [1.05, 1.02, 1.0], [0.78, 0.74, 0.7]],
+    // (round 2: the cottages' and the hotel's roofs moved onto the weathered sheet: galvanised, red oxide, Brunswick green,
+    // galvanised going to rust, each house its own, the moss and lichen of the wettest town in Australia toward the eaves)
+    roof: [[1, 1, 1], [1.28, 0.82, 0.7], [0.84, 1.02, 0.88], [1.12, 0.94, 0.82], [0.86, 0.8, 0.74], [0.78, 0.74, 0.7]],
     damp: 0.6, moss: 0.3,
   },
   wear: 0.25,

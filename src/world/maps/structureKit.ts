@@ -1926,6 +1926,8 @@ const REGIONAL_PAL = {
   nagaWood: [0x5b4735, 0x856b51, 0x2f251b],
   nipa: [0x6e6447, 0x8f8460, 0x3a3426],
   mekongPlank: [0x6f6150, 0x8d7c66, 0x3c342b],
+  // the Mount Lyell works' corrugated iron: weathered galvanised, the rusted roofs, the dark of a doorway
+  lyellIron: [0x8c8478, 0x6e4a38, 0x3a3634],
 } as const satisfies Record<string, Palette>;
 
 /** A light gable roof built at the origin and moved: the shared roof helper lays its planes out centred on x = 0. */
@@ -2086,6 +2088,46 @@ function makeMekongPondHut(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('fishershack', out);
 }
 
+/**
+ * The Mount Lyell works' open shed (the motor pool's family; the gauntlet's wave 117 read the steel shelter as "a dark-grey
+ * box-section gantry crane"): timber posts under a rusting corrugated-iron skillion, its back and one end walled in
+ * iron, an ore wagon and drums under it. Inside the family's footprint and height (4.91 x 6.18 x 4.2).
+ */
+function makeLyellShed(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = REGIONAL_PAL.lyellIron, w = 9.0, d = 11.5;
+  const roofAngle = 0.11, roofCenterY = 3.5, roofBottomOffset = 0.09;
+  for (const x of [-w / 2, 0, w / 2]) for (const z of [-d / 2, 0, d / 2]) {
+    const postH = roofCenterY + Math.tan(roofAngle) * x - roofBottomOffset;
+    colored(out, box(0.2, postH, 0.2).translate(x, postH / 2, z), PAL.timber[0], rng);
+  }
+  colored(out, pitchRoofPlane(slab(w + 0.8, 0.12, d + 0.8), 'x', -1, roofAngle, 'skillion').translate(0, roofCenterY, 0), p[1], rng, 0.14);
+  const lowH = roofCenterY - Math.tan(roofAngle) * w / 2 - roofBottomOffset - 0.02;
+  colored(out, box(w, lowH, 0.08).translate(0, lowH / 2, -d / 2 - 0.04), p[0], rng, 0.12);
+  colored(out, box(0.08, lowH, d).translate(-w / 2 - 0.04, lowH / 2, 0), p[0], rng, 0.12);
+  // an ore wagon on its four wheels, drums by the open end
+  colored(out, box(1.8, 1.0, 3.0).translate(1.2, 0.85, 0.5), 0x5e4434, rng, 0.1);
+  for (const x of [0.5, 1.9]) for (const z of [-0.6, 1.6]) colored(out, cylinder(0.3, 0.3, 0.12, 10).rotateZ(Math.PI / 2).translate(x, 0.3, z), 0x2e2a28, rng);
+  for (const z of [-3.6, -2.9, 3.4]) colored(out, cylinder(0.3, 0.3, 0.88, 10).translate(-3.2, 0.44, z), 0x6a3a2a, rng, 0.12);
+  return mergeConnectedStructure('motorpool', out);
+}
+
+/**
+ * The Mount Lyell works' workshop (the service garage's family; wave 117: "an oversized grey stone-block texture" where
+ * Queenstown would have corrugated iron): a gabled shed of weathered galvanised iron under a rusted roof, its big plank
+ * door and a row of small windows, a brick forge chimney at one corner. Inside the family's footprint and height
+ * (5.23 x 6.3 x 6.2).
+ */
+function makeLyellWorkshop(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = REGIONAL_PAL.lyellIron, w = 9.6, d = 11.4, wallH = 4.1, roofH = 1.55;
+  colored(out, box(w, wallH, d).translate(0, wallH / 2, 0), p[0], rng, 0.12);
+  colored(out, gable(w + 0.5, roofH, d + 0.5).translate(0, wallH - 0.05, 0), p[1], rng, 0.14);
+  colored(out, box(3.4, 3.4, 0.06).translate(-1.2, 1.7, d / 2 + 0.03), 0x5a4a3a, rng, 0.08);
+  for (const x of [1.6, 3.4]) colored(out, box(0.9, 0.7, 0.06).translate(x, 2.9, d / 2 + 0.03), p[2], rng, 0.04);
+  for (const z of [-3.6, -1.2, 1.2, 3.6]) colored(out, box(0.06, 0.7, 1.0).translate(w / 2 + 0.03, 2.9, z), p[2], rng, 0.04);
+  colored(out, box(0.7, 6.0, 0.7).translate(-w / 2 + 0.6, 3.0, -d / 2 + 0.6), 0x7a3e30, rng, 0.08);
+  return mergeConnectedStructure('servicegarage', out);
+}
+
 /** The architecture kits' light-family variants (maps/regional): kit id -> family key -> the variant. */
 export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = (() => {
   const B = DESTRUCTIBLE_BUILDING_TYPES;
@@ -2107,6 +2149,11 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
     mekong: Object.freeze({
       longhouse: variant('longhouse', REGIONAL_PAL.mekongPlank, makeMekongLongHouse),
       fishershack: variant('fishershack', REGIONAL_PAL.mekongPlank, makeMekongPondHut),
+    }),
+    // Queenstown (Copper Mesa Mine): the works' iron sheds for the steel shelter and the block garage
+    queenstown: Object.freeze({
+      motorpool: variant('motorpool', REGIONAL_PAL.lyellIron, makeLyellShed, 'metal'),
+      servicegarage: variant('servicegarage', REGIONAL_PAL.lyellIron, makeLyellWorkshop, 'metal'),
     }),
   });
 })();

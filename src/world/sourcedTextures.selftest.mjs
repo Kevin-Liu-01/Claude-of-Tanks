@@ -300,7 +300,14 @@ for (let i = 0; i < winterRgb.length; i++) {
   assert.ok(Math.abs(gradedRgb[i] - expected) <= 1, `graded snow byte ${i}: ${gradedRgb[i]} vs winter ${winterRgb[i]} × ${whiteoutSnowTint[i % 3]}`);
 }
 assert.equal(snowRgb(winterLayer).length, winterRgb.length, 'grading Whiteout leaves the winter composite bytes in place');
-for (const mapId of ['oasis', 'copper_mesa', 'titan_gorge', 'skybridge']) {
+// (2026-10-05, the map-revival lane's Copper Mesa round 2: Queenstown's hills are pink-grey conglomerate, not
+// sandstone — its rock layer is the sourced rock set toned pink-grey, below)
+{
+  const layers = { G: freshLayer(), D: freshLayer(), R: freshLayer() };
+  await applySourcedTerrain('copper_mesa', layers, getMapConfig('copper_mesa').splat);
+  assert.equal(layers.R.albedo.disposeCount, 1, 'copper_mesa: the conglomerate is the sourced rock set, toned pink-grey');
+}
+for (const mapId of ['oasis', 'titan_gorge', 'skybridge']) {
   const layers = { G: freshLayer(), D: freshLayer(), R: freshLayer() };
   await applySourcedTerrain(mapId, layers, getMapConfig(mapId).splat);
   assert.equal(layers.G.albedo.disposeCount, 1, `${mapId}: sand replaces the base fallback`);

@@ -88,7 +88,9 @@ export default {
     // the map-revival lane (2026-10-05): the Queenstown kit (maps/regional/queenstown.ts)
     architecture: 'queenstown',
     sourcedPalette: 'foundry',
-    plan: ['gantry', 'warehouse', 'foundryoffice', 'depot', 'watertower', 'containerRow', 'factory', 'ruin', 'warehouse', 'depot', 'gantry', 'containerRow', 'foundryoffice', 'ruin', 'depot', 'warehouse'],
+    // (round 2, the gauntlet's wave 117: more of the town — the second warehouse and depot seats are cottage rows,
+    // Queenstown's weatherboard streets between the works)
+    plan: ['gantry', 'warehouse', 'foundryoffice', 'depot', 'watertower', 'containerRow', 'factory', 'ruin', 'containerRow', 'containerRow', 'gantry', 'containerRow', 'foundryoffice', 'ruin', 'depot', 'warehouse'],
     destructibleBuildings: ['quonsethut', 'motorpool', 'guardpost', 'servicegarage'],
     buildingLat: [14, 3], destructibleBuildingLat: [18, 4], sideSkip: 0.18, spacingPad: 8,
     tacticalBeats: [
@@ -104,7 +106,7 @@ export default {
     rocks: 180, outcrops: 24, craters: 52, rubblePiles: 26, sandbagLines: 16, hedgehogs: 12,
     tankWrecks: { era: 'modern', count: 5, debris: true,
       ids: ['m551_sheridan', 'm60a2', 'm1a1', 'bmp3', 'm60a3'] },
-    inhabit: { stalls: 0, benches: 2, coreClutter: 22, drums: 12, trucks: 7, jeeps: 3, drumClusters: 6, camps: 2, modernClutter: 22, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
+    inhabit: { stalls: 0, benches: 2, coreClutter: 22, drums: 12, trucks: 7, jeeps: 3, drumClusters: 6, camps: 2, modernClutter: 6, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): banding 0.26 — the ore benches inside the square
   // are the most strongly bedded cliffs in the game; the ring behind them ran on the style default 0.16
