@@ -697,7 +697,8 @@ for (const mapId of maps.MAP_IDS) {
 // ---------------------------------------------------------------------------------------------- 5. the wiring
 
 const propsSource = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-assert.match(propsSource, /\{ \.\.\.DESTRUCTIBLE_TYPES, \.\.\.SCENERY_DESTRUCTIBLE_TYPES \}/, 'the kit\'s kinds follow the inhabiting kit\'s');
+// (b15: the regions' field stacks follow the kit's kinds: maps/haystackKit.ts, haystacks.selftest.mjs)
+assert.match(propsSource, /\{ \.\.\.DESTRUCTIBLE_TYPES, \.\.\.SCENERY_DESTRUCTIBLE_TYPES, \.\.\.HAYSTACK_DESTRUCTIBLE_TYPES \}/, 'the kit\'s kinds follow the inhabiting kit\'s');
 const yard = propsSource.indexOf('  yield* placeYardDressing();'), pass = propsSource.indexOf('  yield* placeScenery();');
 const merge = propsSource.indexOf('  yield* mergeMaterialBuckets();');
 assert.ok(yard > 0 && pass > yard && merge > pass, 'the pass runs after every placement and before the bucket merge');
