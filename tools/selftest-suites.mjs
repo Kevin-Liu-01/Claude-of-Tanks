@@ -1284,6 +1284,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/treeCrownShading.selftest.mjs',
     // trees round 2b (2026-10-03): where trees stand: woodland edges and verges, Wadi Rum's groves, the palms' sites
     'src/world/treeSpacing.selftest.mjs',
+    'src/world/hedgeTrees.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
