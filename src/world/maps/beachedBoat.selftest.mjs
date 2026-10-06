@@ -100,7 +100,7 @@ function auditBoat(boat, field) {
   return { minGap, maxGap };
 }
 
-let realBoats = 0, deepest = 0;
+let realBoats = 0, deepest = 0, closest = Infinity;
 for (const seed of [1337, 2049, 7719]) for (const mapId of consumers) {
   const built = build(mapId, seed), stats = inventory(built);
   try {
@@ -113,6 +113,14 @@ for (const seed of [1337, 2049, 7719]) for (const mapId of consumers) {
       const audit = auditBoat(boat, built.field);
       deepest = Math.min(deepest, audit.minGap); realBoats++;
     }
+    // boats drawn up on one shore lie apart (the map-vehicles lane, 2026-10-06): no two hulls' seats within 6.5 m, so
+    // no hull runs into another (Coastal's pair sat 4.1 m apart)
+    const seats = built.boats.map((boat) => boat.receipt);
+    for (let i = 0; i < seats.length; i++) for (let k = i + 1; k < seats.length; k++) {
+      const apart = Math.hypot(seats[i].x - seats[k].x, seats[i].z - seats[k].z);
+      closest = Math.min(closest, apart);
+      assert.ok(apart >= 6.5, `${mapId}/${seed}: two beached boats ${apart.toFixed(2)} m apart`);
+    }
     assert.deepEqual([built.calls, built.next], STREAM[`${mapId}/${seed}`], `${mapId}/${seed}: the kits draw what the box boats drew`);
     const repeated = build(mapId, seed);
     assert.deepEqual(inventory(repeated), stats, 'boat and kit bytes are deterministic');
@@ -121,7 +129,8 @@ for (const seed of [1337, 2049, 7719]) for (const mapId of consumers) {
     dispose(repeated);
   } finally { dispose(built); }
 }
-console.log(`beachedBoat.selftest: ${realBoats} hulls seated; worst penetration ${deepest} m; the kits' streams as the box boats left them`);
+console.log(`beachedBoat.selftest: ${realBoats} hulls seated; worst penetration ${deepest} m; the closest two ${closest.toFixed(2)} m apart; `
+  + 'the kits\' streams as the box boats left them');
 
 for (const slope of [0, .16, -.24]) for (const yaw of [0, .71, 2.8]) for (const seed of [1337, 2049, 7719]) for (const withMast of [true, false]) {
   let queries = 0;

@@ -24,7 +24,7 @@ import { box, gablePrism, jitterUV, pitchSkillionRoof, scaleUV, slabBox } from '
 import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.ts';
 import type { GroundedSegmentEndpoint } from '../propPlacement.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
-import { planRiverLanding, type RiverLandingAnchor } from './riverLandings.ts';
+import { landingBoatSeatOk, planRiverLanding, type RiverLanding, type RiverLandingAnchor } from './riverLandings.ts';
 import {
   JETTY_DECK_HALF_WIDTH_M, JETTY_DECK_THICKNESS_M, JETTY_SPAN_M, MOORED_BOAT_DRAFT_M, MOORED_BOAT_GAP_M,
   MOORED_BOAT_HALF_BEAM_M, landingStream, planShoreJetty, type ShoreJettyPlan,
@@ -158,12 +158,15 @@ interface DressingContext {
   animated?: AnimatedDressing[];
   /** The map-vehicles lane (P5): the map's authored vehicle set pieces (vehicleSetPieces.ts). */
   vehicleSetPieces?: readonly VehicleSetPiece[];
+  /** The map-vehicles lane (2026-10-06): the vegetation's tree trunks (props.ts sceneryTrees); a beached boat keeps its
+   *  hull clear of them. Omitted, the boats seat as drawn. */
+  trees?: readonly CollisionRecord[];
 }
 
 type FocusedDressingContext = Pick<
   DressingContext,
   'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated'
-> & { shore?: ShoreLedger; boats?: BoatFamily };
+> & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[] };
 
 /** A boat hull into the painted (vertex-coloured) bucket, or the timber one without its colours where a kit has no
  * painted bucket (the map-vehicles lane, P2). */
@@ -1122,11 +1125,12 @@ function legacyDressingKits(mapId?: string): readonly string[] {
 /** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
-  obstacles, colliders, animated, vehicleSetPieces,
+  obstacles, colliders, animated, vehicleSetPieces, trees,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
-  const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, shore, animated, boats: boatFamilyForMap(mapId ?? '') };
+  const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
+    trunks: trunksOf(trees) };
   if (mapId === 'cliffbridge') {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
   }
@@ -1211,6 +1215,27 @@ function dressVehicleSetPieces(ctx: FocusedDressingContext, pieces: readonly Veh
 // maps r1 — COASTAL SHORE dressing (beached boats, driftwood, buoys, jetty)
 // =============================================================================
 
+/** A landing's boat seat clear of the trunks: the planned seat when it is, else that seat slid along the shore (the
+ *  hull's length) by 1.5 to 6 m, the smallest such move that also clears the jetty and passes the landing's seat
+ *  checks; null if none does. */
+function landingBoatSeat(landing: RiverLanding, lakes: NonNullable<DressingLayout['lakes']>, heightField: DressingHeightField,
+  trunks: readonly Trunk[], boats: BoatFamily = BOAT_FAMILIES.canot): [number, number] | null {
+  const halfBeam = boats.hull.beam * 1.15 / 2;
+  if (hullClearOfTrunks(landing.boatX, landing.boatZ, landing.boatYaw, halfBeam, trunks)) return [landing.boatX, landing.boatZ];
+  // the jetty's deck as posts every metre, a deck's half-width round each
+  const posts: Trunk[] = [];
+  for (let t = 0; t <= landing.length; t += 1) {
+    posts.push({ x: landing.x + Math.cos(landing.angle) * t, z: landing.z + Math.sin(landing.angle) * t, r: 0.75 });
+  }
+  const ux = Math.cos(landing.boatYaw), uz = -Math.sin(landing.boatYaw);
+  for (const step of [1.5, -1.5, 3, -3, 4.5, -4.5, 6, -6]) {
+    const x = landing.boatX + ux * step, z = landing.boatZ + uz * step;
+    if (hullClearOfTrunks(x, z, landing.boatYaw, halfBeam, trunks) && hullClearOfTrunks(x, z, landing.boatYaw, halfBeam, posts)
+      && landingBoatSeatOk(heightField, lakes, landing, x, z)) return [x, z];
+  }
+  return null;
+}
+
 // Open clinker fishing boat beached above the surf: planked sides, transom,
 // thwarts, a short mast with a furled boom. Reads "working beach" at range.
 function beachedBoat(
@@ -1256,18 +1281,103 @@ function addCoastalBoats(
   groundingReceipts?: GroundingReceipt[] | null,
   shore?: ShoreLedger,
   boats?: BoatFamily,
+  trunks: readonly Trunk[] = [],
 ): void {
   const boatCount = lake.boats ?? (big ? 3 : 1);
+  const beached: Array<[number, number]> = [];
   for (let i = 0; i < boatCount; i++) {
-    const angle = Math.PI + (rng() - 0.5) * 1.5;
+    let angle = Math.PI + (rng() - 0.5) * 1.5;
     const radius = lake.r * (1.045 + rng() * 0.05);
+    if (!isDressingPointClear(heightField, lake.x + Math.cos(angle) * radius, lake.z + Math.sin(angle) * radius, 470, 7)) continue;
+    // the map-vehicles lane (2026-10-06): boats drawn up on one shore lie apart and clear of the trees. A lofted hull
+    // is up to 5.8 m long and lies along the waterline, so a boat whose seat falls within BOAT_SPACING_M of one already
+    // beached here, or within a hull's reach of a trunk, slides along the shore away from it (Coastal's two hulls 4.1 m
+    // apart ran into each other). The slide draws nothing; a boat with no clear seat spends what it would have drawn:
+    // the stream and every later piece of dressing hold.
+    const slid = slideClearOfBoats(lake, angle, radius, beached, trunks, heightField);
+    if (slid === null) { spendBoatDraws(rng); continue; }
+    angle = slid;
     const x = lake.x + Math.cos(angle) * radius;
     const z = lake.z + Math.sin(angle) * radius;
-    if (!isDressingPointClear(heightField, x, z, 470, 7)) continue;
     beachedBoat(buckets, rng, heightField, x, z,
       angle + Math.PI / 2 + (rng() - 0.5) * 0.5, rng() < 0.55, groundingReceipts, boats);
+    beached.push([x, z]);
     shore?.keepOut.push({ x, z, r: 4.2 });
   }
+}
+
+/** Seat-to-seat spacing of two boats beached on one shore: the longest hull (5.8 m) and a strip of sand between. */
+const BOAT_SPACING_M = 6.6;
+/** Half the longest beached hull (4.6 + 1.2 m drawn), and the gap a hull keeps from a trunk. */
+const HULL_HALF_LENGTH_M = 2.9;
+const HULL_TRUNK_GAP_M = 0.25;
+
+/** A tree trunk the boats keep clear of: its centre and radius, from the vegetation's trunk record. */
+interface Trunk { x: number; z: number; r: number }
+function trunksOf(trees?: readonly CollisionRecord[]): Trunk[] {
+  return (trees ?? []).map((t) => ({
+    x: (t.min[0] + t.max[0]) / 2, z: (t.min[2] + t.max[2]) / 2, r: Math.max(t.max[0] - t.min[0], t.max[2] - t.min[2]) / 2,
+  }));
+}
+
+/**
+ * The shore angle at `radius` whose seat clears every boat already beached by BOAT_SPACING_M and every trunk by a
+ * hull's reach: the drawn angle when it does, else the angle slid along the shore away from the nearest crowding one
+ * (then the other way, past it), the first of those whose seat is clear; null when neither is.
+ */
+function slideClearOfBoats(lake: LayoutDisc, angle: number, radius: number, beached: ReadonlyArray<[number, number]>,
+  trunks: readonly Trunk[], heightField: DressingHeightField): number | null {
+  const seat = (a: number): [number, number] => [lake.x + Math.cos(a) * radius, lake.z + Math.sin(a) * radius];
+  // the crowding discs: the boats beached here, and the trunks within reach of this shore (the yaw's jitter is drawn
+  // after the seat, so a trunk keeps a hull's half-length all round)
+  const discs: Array<{ x: number; z: number; r: number }> = beached.map(([x, z]) => ({ x, z, r: BOAT_SPACING_M }));
+  const [x0, z0] = seat(angle);
+  for (const t of trunks) {
+    if (Math.abs(t.x - x0) < 40 && Math.abs(t.z - z0) < 40) discs.push({ x: t.x, z: t.z, r: HULL_HALF_LENGTH_M + t.r + HULL_TRUNK_GAP_M });
+  }
+  const crowding = (a: number) => {
+    const [x, z] = seat(a);
+    let near: { x: number; z: number; r: number } | null = null, worst = 0;
+    for (const d of discs) { const into = d.r - Math.hypot(x - d.x, z - d.z); if (into > worst) { worst = into; near = d; } }
+    return near;
+  };
+  const first = crowding(angle);
+  if (!first) return angle;
+  const at = Math.atan2(first.z - lake.z, first.x - lake.x);
+  const away = Math.sign(Math.atan2(Math.sin(angle - at), Math.cos(angle - at))) || 1;
+  for (const side of [away, -away]) {
+    let a = angle;
+    for (let k = 0; k < 8; k++) {
+      const near = crowding(a);
+      if (!near) break;
+      a = Math.atan2(near.z - lake.z, near.x - lake.x) + side * (near.r / radius) * 1.02;
+    }
+    const [x, z] = seat(a);
+    if (!crowding(a) && isDressingPointClear(heightField, x, z, 470, 7)) return a;
+  }
+  return null;
+}
+
+/** Whether a hull at (x, z) laid on `yaw` (beachedBoat's convention: its length on (cos yaw, -sin yaw)) keeps clear of
+ *  every trunk, with a half-beam of `halfBeam`. */
+function hullClearOfTrunks(x: number, z: number, yaw: number, halfBeam: number, trunks: readonly Trunk[]): boolean {
+  const ux = Math.cos(yaw), uz = -Math.sin(yaw);
+  for (const t of trunks) {
+    const dx = t.x - x, dz = t.z - z;
+    if (Math.abs(dx) > 8 || Math.abs(dz) > 8) continue;
+    const along = Math.max(0, Math.abs(dx * ux + dz * uz) - HULL_HALF_LENGTH_M);
+    const across = Math.max(0, Math.abs(-dx * uz + dz * ux) - halfBeam);
+    if (Math.hypot(along, across) < t.r + HULL_TRUNK_GAP_M) return false;
+  }
+  return true;
+}
+
+/** What a beached boat draws, spent when it is not built: the yaw's jitter, the mast, the length and the box boat's 47
+ *  (its boom's swing with a mast). */
+function spendBoatDraws(rng: Rng): void {
+  rng();
+  const withMast = rng() < 0.55;
+  for (let k = 0; k < 48 + (withMast ? 1 : 0); k++) rng();
 }
 
 function addCoastalDriftwood(
@@ -1527,7 +1637,7 @@ function addCoastalJetty(
 }
 
 function dressCoastalShore({
-  L, heightField, rng, buckets, groundingReceipts, obstacles, shore, animated, boats,
+  L, heightField, rng, buckets, groundingReceipts, obstacles, shore, animated, boats, trunks,
 }: FocusedDressingContext): void {
   const spawns = L.spawns ? [L.spawns.player, ...L.spawns.enemies] : undefined;
   // Round 56: the driftwood's strand admission shares the wrack line's gates (roads, pads, boats, footprints)
@@ -1537,7 +1647,7 @@ function dressCoastalShore({
   };
   for (const lake of L.lakes || []) {
     const big = lake.r >= 110;
-    addCoastalBoats(lake, big, heightField, rng, buckets, groundingReceipts, shore, boats);
+    addCoastalBoats(lake, big, heightField, rng, buckets, groundingReceipts, shore, boats, trunks);
     addCoastalDriftwood(lake, heightField, rng, buckets, groundingReceipts, strand);
     addCoastalBuoys(lake, big, heightField, rng, buckets);
     if (big) addCoastalJetty(lake, heightField, rng, buckets, shore, groundingReceipts, spawns, animated, boats);
@@ -1983,7 +2093,7 @@ function dressAmberfordRiver(ctx: FocusedDressingContext): void {
 }
 
 function dressLakeRiverLandings(
-  { L, heightField, rng, buckets, groundingReceipts, shore, animated, boats }: FocusedDressingContext,
+  { L, heightField, rng, buckets, groundingReceipts, shore, animated, boats, trunks = [] }: FocusedDressingContext,
   anchors: readonly RiverLandingAnchor[],
 ): void {
   // Authored landing budget is independent of channel interpolation density.
@@ -1991,8 +2101,18 @@ function dressLakeRiverLandings(
   for (const anchor of anchors.slice(0, 4)) {
     const landing = planRiverLanding(heightField, L.lakes ?? [], anchor);
     if (!landing) continue;
-    beachedBoat(buckets, rng, heightField, landing.boatX, landing.boatZ,
-      landing.boatYaw, false, groundingReceipts, boats);
+    // the map-vehicles lane (2026-10-06): the boat keeps its hull clear of the trees (Mangrove's relief-island landing
+    // seated it on a mangrove's trunk): its seat slides along the shore by the smallest step that clears every trunk
+    // and the jetty and still passes the landing's own seat checks; a boat with no such seat is not built (its draws
+    // spent, the stream holding)
+    const seat = landingBoatSeat(landing, L.lakes ?? [], heightField, trunks, boats);
+    if (!seat) {
+      for (let k = 0; k < 48; k++) rng(); // the length and the box boat's 47 (no mast at a landing)
+    } else {
+      [landing.boatX, landing.boatZ] = seat;
+      beachedBoat(buckets, rng, heightField, landing.boatX, landing.boatZ,
+        landing.boatYaw, false, groundingReceipts, boats);
+    }
     jetty(buckets, rng, landing.x, landing.z, landing.angle,
       landing.deckY - 0.82, landing.length, heightField, groundingReceipts);
     // Round 58: on a sea strand the pier takes the gangway, moored boat and bollards of the derived landing
