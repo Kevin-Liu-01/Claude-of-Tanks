@@ -50,6 +50,7 @@ import {
 import type { EventBus } from '../game/stateCore.ts';
 import { t } from './i18n.ts';
 import { campaignDebrief, type CampaignDebrief } from '../game/campaignDebrief.ts';
+import { getLastBattleAwards } from '../game/serviceRecord.ts';
 import { resolveFinalBlow, type FinalBlowDestroyed, type FinalBlowLethal } from './finalBlow.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
@@ -1491,6 +1492,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
         (id) => combatants.get(id)?.name ?? null),
       hordeWave: endInfo?.hordeWave ?? null,
       brains: endInfo?.brains ?? null,
+      awards: getLastBattleAwards(),
     };
   }
 

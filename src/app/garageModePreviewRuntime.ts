@@ -38,7 +38,8 @@ export function createGarageModePreviewRuntime({ load, prepare, invalidate, warn
     }
     root = nextRoot; mode = nextMode;
     const token = ++generation, current = () => token === generation;
-    // The ordinary Garage never acquires optional equipment or shader code.
+    // Optional equipment stays lazy; the dormant energy shader is already
+    // part of the pedestal hero's ordinary covered preparation.
     if (!hasPreview(mode) && !owner.current && !pending) return;
     const retry = failed || pending;
     // Resident aura styles and a disabled aura are uniform-only changes.

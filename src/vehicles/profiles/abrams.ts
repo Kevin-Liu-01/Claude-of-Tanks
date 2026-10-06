@@ -213,6 +213,8 @@ interface AbramsTurretConfig {
   readonly throatChinBevel?: Vec2Tuple;
   readonly joinedCheekRoof?: boolean;
   readonly articulatedThroat?: boolean;
+  /** A family-authored mantlet occupies the open pitching bay. */
+  readonly separateMantlet?: boolean;
   readonly faceRake?: number;
   readonly yBotKnees?: readonly Vec2Tuple[];
   readonly inset: number;
@@ -1664,6 +1666,7 @@ function addAbramsShellThroat(
   t: AbramsShellConfig,
   layout: AbramsShellLayout,
 ): void {
+  if (t.separateMantlet) return;
   const { thr, faceRake, roofThroatRearY } = layout;
   // Throat block between the cheeks: recessed face carries the embrasure.
   // t.yBotFace chamfers the block's front bottom edge with the cheeks;
@@ -1751,9 +1754,41 @@ function addAbramsShellBody(
         [topLeft, t.roofWide, t.zWide], [topRight, t.roofWide, t.zWide],
         [topRight, t.roofMain, zMain], [topLeft, t.roofMain, zMain]));
     }
-    P.add('turret', slab(
-      [-t.throat, t.yBot, frontZ], [t.throat, t.yBot, frontZ], [t.throat, t.yBot, zMain], [-t.throat, t.yBot, zMain],
-      [-t.throat, frontY, frontZ], [t.throat, frontY, frontZ], [t.throat, t.roofMain, zMain], [-t.throat, t.roofMain, zMain]));
+    if (t.separateMantlet) {
+      // M1A1: the center roof ends in a curved elevation recess. The old
+      // full-height rectangular throat occupied the moving shield's rear
+      // volume and appeared as an extra cube behind the mantlet.
+      const gun = P.gunG.position;
+      const radius = .356;
+      const profile = new THREE.Shape();
+      profile.moveTo(zMain, t.yBot);
+      profile.lineTo(gun.z - .09, t.yBot);
+      profile.lineTo(gun.z - .09, gun.y - .35);
+      for (let i = 0; i <= 24; i++) {
+        const y = -.344 + i * (.662 / 24);
+        profile.lineTo(gun.z - Math.sqrt(radius * radius - y * y), gun.y + y);
+      }
+      profile.lineTo(gun.z - .22, gun.y + .35);
+      profile.lineTo(zMain, t.roofMain);
+      profile.closePath();
+      P.add('turret', new THREE.ExtrudeGeometry(profile, {
+        depth: t.throat * 2, steps: 1, bevelEnabled: false,
+      }).rotateY(-Math.PI / 2), t.throat, 0, 0);
+      // Coaxial bearing housings seat the journals in the cheek walls;
+      // the 5 mm running gap is radial, never a floating axial mount.
+      const bearing = new THREE.Shape();
+      bearing.absarc(0, 0, .225, 0, Math.PI * 2, false);
+      const bore = new THREE.Path();
+      bore.absarc(0, 0, .180, 0, Math.PI * 2, true);
+      bearing.holes.push(bore);
+      for (const side of [-1, 1]) P.add('turret', new THREE.ExtrudeGeometry(bearing, {
+        depth: .03, steps: 1, bevelEnabled: false, curveSegments: P.q ? 16 : 10,
+      }).rotateY(-Math.PI / 2), side * .39 + .015, gun.y, gun.z);
+    } else {
+      P.add('turret', slab(
+        [-t.throat, t.yBot, frontZ], [t.throat, t.yBot, frontZ], [t.throat, t.yBot, zMain], [-t.throat, t.yBot, zMain],
+        [-t.throat, frontY, frontZ], [t.throat, frontY, frontZ], [t.throat, t.roofMain, zMain], [-t.throat, t.roofMain, zMain]));
+    }
   } else {
     P.add('turret', slab(
       [-(tw - wp), t.yBot, t.zWide + 0.1], [tw - wp, t.yBot, t.zWide + 0.1], [tw - wp, t.yBot, zMain], [-(tw - wp), t.yBot, zMain],
@@ -3182,6 +3217,9 @@ function tejasRoofKit(
         // Keep the complete bank 12 mm farther out on its broad bracket
         // so its bore rims remain clear of the applique face.
         if (side > 0) smokeX += .012;
+        // The wider mantlet bay rotates the cheek frame inward. Restore the
+        // bank's outward reach as one assembly, including its seated foot.
+        smokeX += side * .015;
       }
       tejasSmokeCluster(P, smokeX, smokeY, smokeZ, side);
     }
@@ -4140,14 +4178,11 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
   const t = {
     ...TEJAS_TURRET,
     ...(dufMul ? { rackDufMul: dufMul } : {}),
+    // The owner's photographs replace the earlier plan-skewed throat cover.
+    // Cheeks bound a real bay; the broad M256 shield is authored in gun space.
     articulatedThroat: true,
-    throatChinBevel: [.075,.05] as const,
-    // Short rear heel remains inside the receiver throughout the pitch sweep.
-    // The old full-depth throat would lever its rear through the fixed roof.
-    throatDepth: .65,
-    throatRearBottomY: .06,
-    roofThroatRearY: .55,
-    zFaceSkew: TEJAS_TURRET.zTip - (TEJAS_TURRET.zTipR ?? TEJAS_TURRET.zTip),
+    separateMantlet: true,
+    throat: .39,
     yBot: M1A1_TURRET_FLOOR_Y,
     yBotKnees: TEJAS_TURRET.yBotKnees.map(([z, y]): Vec2Tuple =>
       [z, Math.max(y, M1A1_TURRET_FLOOR_Y)]),
@@ -4380,25 +4415,25 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
       0, (bearingTop + bearingBottom) / 2, 0);
     abramsBustleRack(P, t, 1);
     tejasRoofKit(P, t, p.station ?? 'crows', p.abramsKit);
-    // The raked throat now pitches as one fitted shield between the cheeks.
+    // The photo-based armored face and round cradle pitch as one assembly.
     buildM1A1GunMount(P, P.spec.id === 'm1a1ha');
     if (P.spec.id === 'm1a1ha') {
-      // HA gun-rig searchlight: its rear shell overlaps the left mantlet edge,
-      // so the complete lamp pitches with rig_gun instead of floating on the
-      // turret when the cannon elevates.  The broad glass face is deliberately
+      // HA gun-rig searchlight: a two-stage bracket carries the entire
+      // lamp ahead of the left cheek, and pitches with the gun without
+      // cutting through the fixed turret when it elevates.  The broad glass face is deliberately
       // visible beside the tube from frontal and left-quarter views.
-      P.add('gunMount', box(0.34, 0.32, 0.22), -0.48, 0.04, 0.54);
-      P.add('gunMountDark', box(0.305, 0.285, 0.028), -0.48, 0.04, 0.660);
-      P.add('gunMountGlass', box(0.245, 0.215, 0.016), -0.48, 0.04, 0.683);
-      P.add('gunMountDark', box(0.045, 0.26, 0.19), -0.285, 0.04, 0.525,
+      P.add('gunMount', box(0.34, 0.32, 0.22), -0.48, 0.07, 0.70);
+      P.add('gunMountDark', box(0.305, 0.285, 0.028), -0.48, 0.07, 0.820);
+      P.add('gunMountGlass', box(0.245, 0.215, 0.016), -0.48, 0.07, 0.843);
+      P.add('gunMountDark', box(0.045, 0.26, 0.19), -0.285, 0.07, 0.685,
         0, 0, -0.12);
-      P.add('gunMountDark', box(0.045, 0.26, 0.19), -0.675, 0.04, 0.525,
+      P.add('gunMountDark', box(0.045, 0.26, 0.19), -0.675, 0.07, 0.685,
         0, 0, 0.12);
       P.gunG.userData.abramsGunRigSearchlightReceipt = Object.freeze({
         host: P.spec.id,
         x: -0.48,
-        y: 0.04,
-        z: 0.54,
+        y: 0.07,
+        z: 0.70,
         lensWidthM: 0.245,
         lensHeightM: 0.215,
         pitchesWithGun: true,
@@ -4426,7 +4461,9 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     // carrier and the 1.714/2.046 side lines are byte-equal), short 0.138
     // step rings hugging the drum ends (<= the old cone outline at every z,
     // so no new silhouette pixel), recessed dark cinch/step seams.
-    buildGun(P, { len: t.gunLen, r: t.gunR, sleeve: false, collar: false, baseR: 0.14 });
+    // The recoiling hidden root must fit inside the fixed cradle, including
+    // its 1.15× rear taper. The visible thermal sleeves keep their own radii.
+    buildGun(P, { len: t.gunLen, r: t.gunR, sleeve: false, collar: false, baseR: 0.11 });
     P.add('gun', cylZ(0.166, 0.341, 20), 0, 0, 1.634);
     P.add('gun', cylZ(0.138, 0.06, 18), 0, 0, 1.444);
     P.add('gun', cylZ(0.138, 0.06, 18), 0, 0, 1.824);

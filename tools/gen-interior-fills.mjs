@@ -27,6 +27,7 @@ import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import { interiorFillSelection, mergeInteriorFillGroup } from './interior-fill-selection.mjs';
 import { interiorFillBoundaryTriangles } from './interior-fill-body-policy.mjs';
 import { createBarakBayFillPolicy } from './barak-rear-bay-fill-policy.mjs';
+import { createM1A1FillClearance } from './m1a1-fill-clearance.mjs';
 import { insideTrackLane, trackLaneBoxesForVoxel } from './track-lane-boxes.mjs';
 import { insideBoreAir, physicalBoreAir } from './physical-bore-air.mjs';
 
@@ -159,6 +160,7 @@ for (const id of ids) {
   try { tank = createTank(id, null, { proceduralOnly: true }); }
   catch (error) { throw new Error(`${id}: build failed; no fill records written`, { cause: error }); }
   const sourceAir=createBarakBayFillPolicy(id,tank.root);
+  const movingAir=createM1A1FillClearance(id,tank.root);
   // track lanes (band: two voxels of clearance, the audit samples 2 cm cells; shoe envelope: one voxel) are never
   // interior air — tools/track-lane-boxes.mjs, shared with the watertight check so both tools read the same lanes
   const laneBoxes = trackLaneBoxesForVoxel(tank.root, VOXEL);
@@ -192,9 +194,15 @@ for (const id of ids) {
       // it, as GUN-frame stock (component 3, rides with elevation) when the moving group encloses it,
       // skipped only when neither does
       if (underMovingPart(grid, x, y, z) && !insideTurretProper(proper, grid, x, y, z)) {
-        // whatever the gun closes rides with the gun: inside a casemate the recess is the gun's own
-        // travel space, so gun-frame stock there stays hidden through elevation (chase-to-zero)
-        vox[i] = 3; found++; if (first) skipped++; continue;
+        // Seeing a gun above a voxel does not make the air below it part of
+        // the gun. Require moving shell on BOTH sides of the column before
+        // assigning gun-owned fill. Otherwise a raised trunnion acquires a
+        // long artificial skirt that rotates through its fixed deck/floor.
+        const k = z * nx + x;
+        if (moving.minY[k] < y && y < moving.maxY[k]) {
+          vox[i] = 3; found++; if (first) skipped++;
+        }
+        continue;
       }
       vox[i] = c; found++;
     }
@@ -247,6 +255,11 @@ for (const id of ids) {
       for (let dz = 0; dz < step; dz++) for (let dy = 0; dy < step; dy++) for (let dx = 0; dx < step; dx++) { const i = ((cz * step + dz) * ny + (cy * step + dy)) * nx + (cx * step + dx); compOf[i] = c; vox[i] = 0; claimed[i] = 1; shell[i] = fillGroup[c]; }
     }
   }
+  }
+  const clearance=movingAir?.apply(grid,compOf,()=>greedyBoxes(compOf,nx,ny,nz,2));
+  if(clearance){
+    filledVox-=clearance.removedVoxels;
+    console.log(`${id}: moving clearance ${JSON.stringify(clearance)}`);
   }
   // Global remesh: the rounds and the coarse/fine passes each meshed their own voxels; one greedy pass over the
   // union of every claimed voxel per component yields far fewer boxes for the same solid.

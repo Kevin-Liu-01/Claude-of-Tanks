@@ -339,7 +339,7 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
       silhouetteWidthM: 3.61, silhouetteHeightM: 3.05 },
     armor: ifvArmor({
       hl: 3.27, hw: 1.64, inW: 0.95, floor: 0.45, trkTop: 0.95, roofY: 1.90,
-      turretPivot: [0.04, 1.895, -0.36], gunPivot: [-0.06, 0.252, 0.66],
+      turretPivot: [0.04, 1.895, -0.36], gunPivot: [-0.06, 0.492, 0.78],
       barrelLenM: 2.30, barrelRadM: 0.038,
       glacis: [45, 70, 80], lower: [45, 60, 60], side: [35, 40, 45],
       skirt: [25, 35, 70], rear: 25, roof: 20,

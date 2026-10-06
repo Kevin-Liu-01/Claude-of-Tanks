@@ -5857,6 +5857,96 @@
       "he": [
         "האויב נכנס לנקודה."
       ]
+    },
+    {
+      "id": "think_step_by_step",
+      "role": "commander",
+      "delivery": "measured, deliberate, quietly dry",
+      "context": "Easter egg. Right after a fast run of kills (the Chain of Thought medal) or five hits in a row, the commander reasons out loud like a language model. The gunner answers with step_by_step_reply.",
+      "en-US": [
+        "Let me think step by step."
+      ],
+      "en-GB": [
+        "Let me think step by step."
+      ],
+      "de": [
+        "Lasst mich Schritt für Schritt nachdenken."
+      ],
+      "ru": [
+        "Дайте подумать шаг за шагом."
+      ],
+      "uk": [
+        "Дайте подумати крок за кроком."
+      ],
+      "zh": [
+        "让我一步一步地思考。"
+      ],
+      "fr": [
+        "Laissez-moi réfléchir étape par étape."
+      ],
+      "sv": [
+        "Låt mig tänka steg för steg."
+      ],
+      "ja": [
+        "ステップバイステップで考えよう。"
+      ],
+      "ko": [
+        "단계별로 생각해 보자."
+      ],
+      "it": [
+        "Fatemi pensare passo dopo passo."
+      ],
+      "pl": [
+        "Pomyślmy krok po kroku."
+      ],
+      "he": [
+        "תנו לי לחשוב צעד אחר צעד."
+      ]
+    },
+    {
+      "id": "step_by_step_reply",
+      "role": "gunner",
+      "delivery": "deadpan, crisp, matter-of-fact",
+      "context": "The gunner answers the commander's \"let me think step by step\" with the gunnery drill, flatly.",
+      "en-US": [
+        "Step one: aim. Step two: fire."
+      ],
+      "en-GB": [
+        "Step one: aim. Step two: fire."
+      ],
+      "de": [
+        "Schritt eins: zielen. Schritt zwei: feuern."
+      ],
+      "ru": [
+        "Шаг первый: прицел. Шаг второй: огонь."
+      ],
+      "uk": [
+        "Крок перший: приціл. Крок другий: вогонь."
+      ],
+      "zh": [
+        "第一步：瞄准。第二步：开火。"
+      ],
+      "fr": [
+        "Étape un : viser. Étape deux : tirer."
+      ],
+      "sv": [
+        "Steg ett: sikta. Steg två: eld."
+      ],
+      "ja": [
+        "ステップ一、照準。ステップ二、撃て。"
+      ],
+      "ko": [
+        "1단계, 조준. 2단계, 발사."
+      ],
+      "it": [
+        "Passo uno: mirare. Passo due: fuoco."
+      ],
+      "pl": [
+        "Krok pierwszy: celuj. Krok drugi: ognia."
+      ],
+      "he": [
+        "שלב אחד: לכוון. שלב שתיים: אש."
+      ]
     }
   ]
 }

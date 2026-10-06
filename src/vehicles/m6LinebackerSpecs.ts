@@ -2,7 +2,7 @@
 import {TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS} from './specs.ts';
 import {bindFleetRegistries, cloneFleetVariant, registerFleetSpecs} from './fleetSpecRegistry.ts';
 import {modernArmor, crewBox, shell, plate} from './specHelpers.ts';
-import {LINEBACKER_RING, LINEBACKER_GUN, LINEBACKER_MUZZLE, LINEBACKER_MOUTHS,
+import {LINEBACKER_TURRET_SCALE as T, LINEBACKER_RING, LINEBACKER_GUN, LINEBACKER_MUZZLE, LINEBACKER_MOUTHS,
   LINEBACKER_SKIRT_STATIONS, LINEBACKER_SKIRT_OUTER} from './m6LinebackerLayout.ts';
 
 const spec = cloneFleetVariant(TANK_SPECS, 'm6_linebacker', 'm3a3_bradley', {
@@ -13,12 +13,18 @@ delete spec.balancePeerOf;
 Object.assign(spec, {hp: 2400, enginePowerHp: 800, weightTons: 39.5,
   topSpeedKmh: 60, reverseSpeedKmh: 22, hullTraverseDegS: 42,
   turretTraverseDegS: 65, gunPitchDegS: 50, gunElevationDeg: 45, gunDepressionDeg: 9});
-spec.dims = {hullLengthM: 6.71, overallLengthM: 6.71, widthM: 4.12, heightM: 3.75};
+// The cannon clears the rear stowage at these traverse-dependent stops. Keep
+// full depression over the front; use the shared simulation/gallery policy so
+// rearward aiming cannot drive the recoiling barrel through the deck equipment.
+spec.gunPitchByYawDeg = Object.freeze([
+  [0, -9], [125, -9], [140, -5], [150, -5], [160, -7], [180, -7],
+] as const);
+spec.dims = {hullLengthM: 6.71, overallLengthM: 6.71, widthM: 4.12, heightM: LINEBACKER_RING[1] + (3.75-LINEBACKER_RING[1])*T};
 // Penetration and damage are game balance, not claims about Stinger armor performance.
 // The blast-fragmentation missile is deliberately not the donor's HEAT/TOW round.
 spec.gun = {...spec.gun, caliberMm: 25, reloadS: .30, baseAccuracy: .24, aimTimeS: 1,
   soundProfile: 'm242-bushmaster', muzzleBoreSegments: 24,
-  launcherMuzzles: LINEBACKER_MOUTHS.map(m => ({...m})), shells: [
+  launcherMuzzles: LINEBACKER_MOUTHS.map(m => ({x:m.x*T,y:m.y*T,z:m.z*T})), shells: [
     shell('M919 APFSDS-T', 'APFSDS', 25, 190, 175, 72, 1345, {pen2000Mm: 160, reloadS: .30, count: 360}),
     shell('FIM-92 Stinger', 'HE', 70, 18, 18, 340, 750,
       {pen2000Mm: 18, reloadS: 3.0, count: 12, guided: true, launcherTubes: 4, soundProfile: 'tow-launch'}),
@@ -45,6 +51,16 @@ for (const side of [-1, 1]) for (let i = 0; i < LINEBACKER_SKIRT_STATIONS.length
   const p = plate(`linebacker_skirt_${side}_${i}`, 22, points[0], points[1], points[3], {kind:'spaced', keMm:40, ceMm:80});
   p.verts = points; p.convexPolygon = true;
   armor.hullPlates.push(p);
+}
+// Keep the chassis, armor thickness and weapon capabilities unchanged; only
+// turret-local geometry, firing datums and contained boxes follow the resize.
+armor.gunPivot = LINEBACKER_GUN.map(v => v*T) as [number,number,number];
+armor.gunBarrel.lengthM *= T;
+armor.gunBarrel.radiusM *= T;
+for (const p of armor.turretPlates) p.verts = p.verts.map(v => v.map(n => n*T) as [number,number,number]);
+for (const b of [...armor.modules,...armor.crew]) if (b.turretLocal) {
+  b.min = b.min.map(n => n*T) as [number,number,number];
+  b.max = b.max.map(n => n*T) as [number,number,number];
 }
 spec.armor = armor;
 spec.visual = {...spec.visual, scheme:'nato', base:'#82734f', weather:'#9e8a60',

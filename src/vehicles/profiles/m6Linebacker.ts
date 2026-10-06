@@ -6,11 +6,12 @@ import {KIT, FITTINGS} from './kit.ts';
 import {mount} from './fittingMount.ts';
 import {armorLoft, sideWall, openTube, smokeBank, antenna} from './europeSourcePrimitives.ts';
 import {linebackerOptics} from './m6LinebackerOptics.ts';
+import {linebackerGunMount} from './m6LinebackerGunMount.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {mirrorX} from '../runningGearPrimitives.ts';
 import {weaponAssembly} from './weaponStock.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
-import {LINEBACKER_RING, LINEBACKER_MUZZLE, LINEBACKER_LAUNCHER as L,
+import {LINEBACKER_TURRET_SCALE as T, LINEBACKER_RING, LINEBACKER_MUZZLE, LINEBACKER_LAUNCHER as L,
   LINEBACKER_MOUTHS, LINEBACKER_SKIRT_STATIONS, LINEBACKER_SKIRT_INNER, LINEBACKER_SKIRT_OUTER} from '../m6LinebackerLayout.ts';
 const {box, cylX, cylY, cylZ} = KIT;
 
@@ -64,6 +65,22 @@ function turretBody(P: TankBuilderPort): void {
     [-1.64,.90,1.14,1.02,.17,.52,.84],[-1.08,1.08,1.34,1.16,.06,.51,.91],
     [-.03,1.08,1.34,1.15,.06,.50,.91],
   ]));
+  // A continuous center roof ends in a curved elevation recess. Its inner
+  // surface follows the receiver's swept back with 33 mm radial clearance;
+  // the front stays behind the lifting eyes at full +45 degree elevation.
+  const crown = new THREE.Shape();
+  crown.moveTo(-.05, .48);
+  crown.lineTo(.595, .48);
+  for (let step = 1; step <= 12; step++) {
+    const angle = Math.PI - step * (Math.PI - Math.acos(-.17 / .305)) / 12;
+    crown.lineTo(.90 + .305 * Math.cos(angle), .48 + .305 * Math.sin(angle));
+  }
+  crown.lineTo(.73, .82);
+  crown.lineTo(-.05, .912);
+  crown.closePath();
+  P.add('turret', new THREE.ExtrudeGeometry(crown, {
+    depth: .78, steps: 1, bevelEnabled: false,
+  }).rotateY(-Math.PI / 2), .39, 0, 0);
   for (const side of [-1,1]) {
     const cheek=sectionSolid([
       {z:-.05,ring:[[.37,.06],[1.08,.06],[1.34,.50],[1.15,.91],[.37,.91]]},
@@ -71,7 +88,9 @@ function turretBody(P: TankBuilderPort): void {
       {z:1.08,ring:[[.37,.10],[.74,.10],[.90,.38],[.75,.70],[.37,.70]]},
     ]);
     P.add('turret',side<0?mirrorX(cheek):cheek);
-    P.add('turret',cylX(.19,.13,24),side*.38,.48,.90);
+    const bearing = [[.155,-.0475],[.19,-.0475],[.19,.0475],
+      [.155,.0475],[.155,-.0475]].map(([r,x])=>new THREE.Vector2(r,x));
+    P.add('turret',new THREE.LatheGeometry(bearing,P.q?32:20).rotateZ(-Math.PI/2),side*.3975,.48,.90);
     // Faceted applique follows the broader shoulders, with a cut back nose
     // outside the moving mask and the launcher's elevation envelope.
     const applique=sectionSolid([
@@ -82,16 +101,10 @@ function turretBody(P: TankBuilderPort): void {
     for (const z of [-1.05,-.68,-.31]) P.addEquipment('turretDetail',cylX(.022,.035,10),side*1.343,.49,z);
   }
   P.add('turret',box(.76,.08,1.12),0,.10,.51);
-  // Armored mask fills the split cheek bay. The barrel alone recoils.
-  P.addGunExtra(armorLoft([
-    [-.31,.28,.355,.30,-.26,-.015,.27], [.20,.24,.31,.26,-.22,-.01,.23],
-  ]));
-  P.add('gunMountCanvasSkin',box(.62,.43,.14),0,-.01,-.25);
-  P.addGunExtra(cylZ(.145,.39,24),0,0,.30);
+  linebackerGunMount(P);
   P.add('gun',cylZ(.092,.35,24),0,0,.44);
-  openTube(P,.039,.49,LINEBACKER_MUZZLE,.0125);
+  openTube(P,.039,.49,LINEBACKER_MUZZLE,.0125 / T);
   P.add('gun',cylZ(.051,.13,24),0,0,2.05);
-  P.addGunExtraDark(cylZ(.017,.31,12),.255,-.09,.34);
 }
 
 function launcher(P: TankBuilderPort): void {
@@ -192,8 +205,8 @@ function turretFieldKit(P: TankBuilderPort): void {
     KIT.periscope(P,'turretDetail',x,1.168,-.40);
   }
   P.addEquipment('turretDetail',box(.76,.23,.075),-.48,1.02,-.96);
-  P.addEquipment('turretDetail',box(.46,.035,.37),.15,.934,-.38);
-  P.addEquipment('turretDark',box(.26,.012,.032),.15,.957,-.24);
+  P.addEquipment('turretDetail',box(.46,.035,.37),.15,.914,-.38);
+  P.addEquipment('turretDark',box(.26,.012,.032),.15,.937,-.24);
   // Filled bustle rack: canvas packs, fuel/water can and a spare equipment case.
   for(const x of [-.91,1.00]){
     P.addEquipment('turretCloth',box(.30,.34,.34),x,.575,-1.84);
@@ -201,8 +214,9 @@ function turretFieldKit(P: TankBuilderPort): void {
   }
   P.addEquipment('turretFittingPaint',box(.21,.45,.22),.70,.63,-1.85);
   P.addEquipment('turretDetail',box(.13,.035,.14),.70,.87,-1.85);
-  P.addEquipment('turretDetail',box(.40,.20,.42),-.57,.965,-1.30);
-  for(const x of [-.71,-.43])P.addEquipment('turretDark',box(.028,.205,.43),x,.965,-1.30);
+  P.addEquipment('turretDetail',box(.40,.06,.46),0,.904,-1.30);
+  P.addEquipment('turretDetail',box(.40,.20,.42),0,1.006,-1.30);
+  for(const x of [-.14,.14])P.addEquipment('turretDark',box(.028,.205,.43),x,1.006,-1.30);
 }
 
 export function buildM6Linebacker(P: TankBuilderPort): void {
@@ -214,6 +228,19 @@ export function buildM6Linebacker(P: TankBuilderPort): void {
   roofKit(P);
   turretFieldKit(P);
   P.turretG.userData.linebackerLauncher = {launcherTubes:4};
-  P.topY = .95;
+  // Bake all turret-owned stock about the unchanged ring. The spec already
+  // places the gun pivot at 90%; fittings are separate scene objects and must
+  // scale with their seats. Hull skirts, tracks and fenders are untouched.
+  P.scaleBuckets(['turret','turretDark','turretDetail','turretEquipment',
+    'turretGlass','turretCloth','turretExternalArmor','turretCupola',
+    'turretHatch','turretRubber','turretFittingPaint','turretShadow',
+    'gun','gunDark','gunMount','gunMountDark','gunMountCanvasSkin'],T,T,T);
+  for (const child of P.turretG.children) if (child !== P.gunG) {
+    child.position.multiplyScalar(T);
+    child.scale.multiplyScalar(T);
+  }
+  P.muzzleZ *= T;
+  P.physicalMuzzleBore = {outerRadiusM:.039*T,innerRadiusM:.0125,depthM:.20*T};
+  P.topY = .95 * T;
   P.additionalShadowSources = {hull:['hullExternalArmor'],turret:['turretExternalArmor','turretCupola','turretHatch']};
 }

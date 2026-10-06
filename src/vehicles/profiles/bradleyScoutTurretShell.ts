@@ -43,12 +43,30 @@ export function buildBradleyScoutTurretShell(P: TankBuilderPort): void {
       return {z,ring:side<0?points.reverse():points};
     }));
     P.add('turret',cheek);
-    P.add('turret',KIT.cylX(.18,.10,24),side*.34-.06,.315,.66);
+    // Welded cheek saddles carry the raised trunnion without lifting the
+    // turret or changing its donor hull. Their roots overlap the cheek;
+    // the center stays open for the rocking receiver and closed rear roof.
+    P.add('turret',sectionSolid([
+      {z:.56,top:.755},{z:.78,top:.820},{z:1.04,top:.705},
+    ].map(({z,top})=>{
+      const ring:[number,number][]=[[.34,.30],[.54,.30],[.50,top],[.34,top]];
+      const points=ring.map(([x,y]):[number,number]=>[side*x-.06,y]);
+      return {z,ring:side<0?points.reverse():points};
+    })));
+    P.add('turret',KIT.cylX(.18,.10,24),side*.34-.06,.615,.78);
     // Side cassettes are supported by the widened shoulder and terminate
     // behind the sloped cheek instead of protruding across the gun opening.
     P.addExternalArmor('turret',KIT.box(.07,.38,1.10),side*.993,.35,-.49,0,0,side*.06);
     for (const z of [-.88,-.45,-.02]) P.addEquipment('turretDetail',KIT.cylX(.022,.025,10),side*1.035,.40,z);
   }
+  // Close the fighting-compartment roof between the cheeks. The leading
+  // edge stops behind the rocking mask's complete -9/+30 degree sweep;
+  // a thin, closed plate joins both shoulders and the rear roof bulkhead.
+  P.add('turret',sectionSolid([
+    {z:-.11,ring:[[-.42,.670],[.30,.670],[.30,.735],[-.42,.735]]},
+    {z:.48,ring:[[-.42,.625],[.30,.625],[.30,.690],[-.42,.690]]},
+    {z:.60,ring:[[-.42,.601],[.30,.601],[.30,.666],[-.42,.666]]},
+  ]));
   P.add('turret',KIT.box(.72,.06,1.18),-.06,.025,.49);
   P.addEquipment('turretDark',KIT.box(.92,.016,.49),0,.75,-.67);
 }

@@ -1,3 +1,7 @@
+// Owner 2026-10-04: shrink the complete turret about its existing bearing.
+// The constants below remain the native authoring frame; specs and geometry
+// each apply this factor once, including all four launcher mouths.
+export const LINEBACKER_TURRET_SCALE = .90;
 // Kevin B. Liu — original upgraded Linebacker concept, not a historical replica.
 // Shared firing/armor datums. Metres, +Z forward; launcher mouths are gun-local.
 export const LINEBACKER_RING: [number, number, number] = [.04, 1.895, -.36];

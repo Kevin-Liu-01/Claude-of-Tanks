@@ -22,6 +22,10 @@ const PRIMARY_BODY_BUCKETS = Object.freeze({
   // Linebacker's slat screens, strapped cargo and roof fittings surround exterior
   // air. Its closed Bradley hull and new turret shell bound the actual interior.
   m6_linebacker: Object.freeze(['hull', 'turret']),
+  // The rebuilt scout turret has closed cheeks/roof and an open elevation
+  // bay. Its external ERA, sights and stowage do not bound interior volume.
+  // The unchanged hull retains all its historical boundary buckets below.
+  m3a3_bradley: Object.freeze(['hull', 'turret']),
   // The owner-requested AMX field kit adds strapped packs and open baskets
   // around closed hull/turret shells. Air behind cargo is outside the vehicle,
   // so never bridge it with generated interior solids. Native audits keep it.
@@ -81,6 +85,9 @@ export function interiorFillBoundaryTriangles(id, triangles, meshes) {
   return triangles.filter(triangle => {
     const name = meshes[triangle.mesh];
     if (external?.includes(name)) return false;
+    // This is a turret repair. Narrowing the Bradley's unchanged hull input
+    // would discard its existing sponson closures when regenerating fills.
+    if (id === 'm3a3_bradley' && /^hull/i.test(name)) return true;
     // Primary-body policies retain the complete gun/mount/bore input. The
     // separate launcher policy keeps the recoiling cannon and its backstop.
     return !primary || !/^(hull|turret)/i.test(name) || primary.includes(name);

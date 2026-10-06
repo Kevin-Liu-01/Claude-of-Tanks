@@ -136,6 +136,8 @@ import './ui/battleTimeChoices.css';
 import { createGarage } from './ui/garage.ts';
 import { battleOrdinalBase, installBattleRecords } from './game/profile.ts';
 import { installCampaignProgress } from './game/campaignProgress.ts';
+import { installServiceRecord } from './game/serviceRecord.ts';
+import { installMedalToasts } from './ui/medalToast.ts';
 import {
   createGarageStage, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
 } from './ui/garageStage.ts';
@@ -156,6 +158,7 @@ import {
 } from './game/garagePresentationPose.ts';
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageModePreviewRuntime, prepareGarageModePrograms } from './app/garageModePreviewRuntime.ts';
+import { clearJuggernautVisual, prepareGarageTankEnergyVisual } from './game/juggernautVisual.ts';
 import { createGarageShowroomRuntime } from './game/garageShowroomRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { createGarageReturnAccess } from './game/garageReturnAccess.ts';
@@ -613,6 +616,24 @@ const game: MainGameState = createGameState<
 // Completed matches remain the ordinal base. Independent session entropy keeps
 // reloads/abandoned battles from replaying the same roster at that ordinal.
 game.battleCount = battleOrdinalBase();
+// Medals and achievements read the battle from the same state in solo and network play.
+installServiceRecord(bus, {
+  playerId: () => game.player?.id ?? null,
+  playerTeam: () => game.player?.team ?? null,
+  teamOf: (id) => game.tankById.get(id)?.team ?? null,
+  gameMode: () => game.gameMode,
+  clockS: () => game.timeS,
+  playerHpFraction: () => {
+    const combat = game.player?.combat;
+    return combat && combat.maxHp > 0 ? Math.max(0, combat.hp) / combat.maxHp : null;
+  },
+  playerMaxHp: () => game.player?.combat?.maxHp ?? null,
+  playerNation: () => game.player?.spec?.nation ?? null,
+  playerAerialKind: () => game.player?.aerial?.kind ?? null,
+  playerObjectiveTeam: () => game.matchModeState?.perspectiveTeam ?? null,
+  respawns: () => game.ruleset?.respawnS != null,
+});
+installMedalToasts(bus);
 const rosterPresentation = createRosterPresentation({
   getVehicleName: (specId) => getSpec(specId)?.name,
   getTier: tierNumeral,
@@ -944,6 +965,7 @@ const pedestal = createGaragePedestalRuntime({
   // forwardProgramWarm is initialized before the first pedestal warm is
   // invoked; the closure keeps this early lifecycle declaration independent
   // of the later renderer-target owner.
+  prepareVisual: (visual) => prepareGarageTankEnergyVisual(visual.root, getSpec(visual.specId).dims),
   compilePrograms: (root) => forwardProgramWarm.compile(root),
   // FSP-01: strict first-use preparation (submission, readiness polling,
   // uniform reflection) of the parked hero's forward programs against the
@@ -1179,6 +1201,7 @@ const playSurface = createPlaySurfaceRuntime({
 bus.on('ui:battleStart', () => {
   sceneWatchdogEntryGeneration++;
   garageModePreview.clear();
+  if(pedestal.current)clearJuggernautVisual(pedestal.current.root);
   coveredBattleWatchdog = null;
   playSurface.hideForBattle();
 });
@@ -1360,6 +1383,7 @@ const audio = await bootStage('audio', () => {
   const a = createLazyAudio({ getMapId: () => game.phase === 'battle'
     ? game.mapId : currentWorld()?.mapId ?? game.mapId,
   getGameMode: () => game.gameMode,
+  getObjectiveTeam: () => game.matchModeState?.perspectiveTeam ?? null,
   // Surface under each hull (track sounds), water depth and terrain occlusion.
   getTerrain: () => (currentWorld() ? hfProxy : null) });
   a.bindBus(bus);

@@ -1,5 +1,16 @@
 # M6 Linebacker concept and M3A3 turret revision
 
+## Current follow-up — 2026-10-04 roof and turret size
+
+The owner requested a proper M3A3 roof and a 10% smaller complete M6 turret.
+The latter now has a 2.412 m structural width; its gun, launcher, roof fittings,
+optics, firing datums and turret-local combat boxes follow the same factor
+about the unchanged ring. The Bradley hull and skirts remain unchanged. The
+25 mm bore and weapon capabilities are retained. Earlier M6 geometry receipts
+below are superseded; use [the current packet](bradley-roof-linebacker-resize-20261004.md)
+for actual follow-up outcomes.
+
+
 ## Integrated validation — 2026-10-04
 
 - Owner selected an **upgraded M6 Linebacker concept**, then requested a new M3A3 turret base, a wider M6 turret with Bradley field equipment, and a much stronger optics package.
