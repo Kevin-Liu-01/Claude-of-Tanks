@@ -49,6 +49,10 @@ export interface LandUseProfile {
   region: LandRegion;
   /** Salt of the field hash (two maps with one layout still crop differently). */
   salt: number;
+  /** The map-revival lane (2026-10-05, Frontier Basin): a river floor's water meadows — every field point within
+   * `halfWidthM` of the segment (ax, az)–(bx, bz) is a hay meadow or a pasture (by the field's hash), whatever the
+   * block's rotation. Absent: none. */
+  meadow?: { ax: number; az: number; bx: number; bz: number; halfWidthM: number };
 }
 
 /** Crop kinds (the shader's ids, 0..15). */
@@ -195,8 +199,11 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   },
   // Frontier (the Fulda gap): mixed central-European farming between the woods — medium fields, grain and pasture
   frontier: {
-    strength: 1, heading: 0.95, blockU: 180, blockV: 120, maxSplit: 3, marginM: 2.0, trackShare: 0.45, hedgeShare: 0.4,
-    warpM: 22, region: 'temperate', salt: 41,
+    // (the map-revival lane, 2026-10-05, through the coordinator: the Hünfeld basin's Gewannflur) long strips in blocks
+    // off the lanes, hedges on many short ends (the lynchet banks carry their own), and the river's floor in water meadows
+    strength: 1, heading: 0.95, blockU: 200, blockV: 45, maxSplit: 4, marginM: 1.6, trackShare: 0.5, hedgeShare: 0.55,
+    warpM: 18, region: 'strip', salt: 41,
+    meadow: { ax: -512, az: 34, bx: 512, bz: -34, halfWidthM: 46 },
   },
   // 2026-10-03, the rebuilt maps' regions (the maps lane through the coordinator). Each heading follows the map's own
   // roads (the length-weighted dominant road direction inside the square), so the fields line up with the lanes.
@@ -454,7 +461,15 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
     rowAlongU = blockU > w;
   }
   const fieldA = row, fieldB = col * 8 + k;
-  const crop = kinds[cropFromRoll(cum, luRand(fieldA, fieldB, salt + 23))] as LandCropId;
+  let crop = kinds[cropFromRoll(cum, luRand(fieldA, fieldB, salt + 23))] as LandCropId;
+  const meadow = profile.meadow;
+  if (meadow) {
+    const ex = meadow.bx - meadow.ax, ez = meadow.bz - meadow.az, len2 = ex * ex + ez * ez;
+    const t = len2 > 0 ? Math.max(0, Math.min(1, ((x - meadow.ax) * ex + (z - meadow.az) * ez) / len2)) : 0;
+    if (Math.hypot(x - meadow.ax - ex * t, z - meadow.az - ez * t) < meadow.halfWidthM) {
+      crop = (luRand(fieldA, fieldB, salt + 53) < 0.6 ? LAND_CROP.hay : LAND_CROP.pasture) as LandCropId;
+    }
+  }
   // a long boundary (the row line) carries a track by its own line index and 120 m segment along it, so both blocks
   // either side agree; the short boundaries (block ends and the cuts) carry hedges by the block and cut index
   const lineIdx = lv < blockV * 0.5 ? row : row + 1;

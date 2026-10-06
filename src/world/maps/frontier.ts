@@ -110,6 +110,24 @@ const VILLAGE_HALF: Site[] = [
   lane(WEST_ARM, 116, 1, 'cottage', 8.4), lane(WEST_ARM, 95, -1, 'cottage', 8.4),
   { structure: 'schoolhouse', x: -36, z: -50, yawDeg: 90 },
 ];
+// 2026-10-05 (the map-revival lane, through the coordinator): the Verdant recipe's belts. The lynchet banks carry their
+// field trees — a row of oaks along each bank's crest (the Stufenraine of the Hessian hillsides), each with its rotation
+// (vegetation.ts belts; a bank inside the village's margin plants none) — and the river's line through the meadows its
+// riparian trees, alder and willow drawn by the map's aspen (the biome's leafy birch form) along the south bank west of
+// the village and the north bank east of it (the valley road keeps the other bank).
+const LYNCHETS = [[-250, -168, 160, -3], [110, -176, 150, 4], [-110, -122, 130, 2], [-70, -100, 80, -2]] as const;
+const LYNCHET_HEDGES = LYNCHETS.flatMap(([x, z, length, yaw]) => {
+  const c = Math.cos(yaw * Math.PI / 180), s = Math.sin(yaw * Math.PI / 180), h = length * 0.4;
+  return [[x, z], [-x, -z]].map(([cx, cz]) => ({ x0: cx - c * h, z0: cz - s * h, x1: cx + c * h, z1: cz + s * h,
+    gap: 6.5, jitter: 1.4, skip: 0.15, species: 'oak' as const }));
+});
+const RIVER_TREES = RIVER.slice(0, 4).flatMap(([ax, az], i) => {
+  // the last leg stops at the village's edge (x -128)
+  const [bx, bz] = i < 3 ? RIVER[i + 1] : [-128, 9.6];
+  return [[ax, az - 10, bx, bz - 10], [-ax, -az + 10, -bx, -bz + 10]].map(([x0, z0, x1, z1]) => (
+    { x0, z0, x1, z1, gap: 11, jitter: 3, skip: 0.3, species: 'aspen' as const }));
+});
+
 const rotateSite = (site: Site): Site => ({
   structure: site.structure === 'schoolhouse' ? 'tavern' : site.structure, x: -site.x, z: -site.z, yawDeg: site.yawDeg + 180,
 });
@@ -124,6 +142,10 @@ export default {
     microScale: 0.75, // field-scale folds (was 1.16)
     rimH: 31,
     marshes: [],
+    // 2026-10-05 (the map-revival lane; the coordinator's river (a): the signs of the river): each mill's pond, the water held
+    // back above the wheel, beside the mill on the valley floor (rotation pair), liquid water
+    softLakes: true,
+    lakes: [{ x: -392, z: 84, r: 13, depth: 1.0, boats: 0 }, { x: 392, z: -84, r: 13, depth: 1.0, boats: 0 }],
     // The village: one graded rect around the crossroads.
     village: { x0: -128, x1: 128, z0: -86, z1: 86, cx: 0, cz: 0, feather: 44, flatten: 0.86, relief: 0.14 },
     // 2026-10-05 (the map-revival lane): the village ground in its plots — yards, kitchen gardens and paddocks running
@@ -199,6 +221,8 @@ export default {
     loneMix: [['oak', 0.34], ['aspen', 0.26], ['pine', 0.22], ['spruce', 0.18]], rimMix: [['pine', 0.38], ['spruce', 0.34], ['oak', 0.18], ['aspen', 0.10]],
     clusterCount: 78, loneCount: 188, rimCount: 116, grassDensity: 1.08,
     bushCount: 1.18, bushSpecies: 'oak',
+    // the lynchet banks' field trees and the river's line (2026-10-05; LYNCHET_HEDGES, RIVER_TREES above)
+    belts: [...LYNCHET_HEDGES, ...RIVER_TREES],
   },
   props: {
     // regional-buildings lane: the Hessian Fachwerk kit (maps/regional/hessian.ts)
