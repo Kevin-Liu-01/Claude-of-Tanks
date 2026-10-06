@@ -128,11 +128,12 @@ for(const mapId of MAP_IDS) {
     // publishes a footprint (a convex prism in both sinks, like the coal heaps); every other kit stays soft dressing.
     const mills=candidate.obstacles.filter(record=>record.kind==='mill-house');
     assert.equal(mills.length,mapId==='autumn'?1:0,`${mapId}: only Amberford's river kit seats a mill house`);
-    // the map-revival lane (2026-10-05): Ruinspires' street kit (sarajevoStreets.ts) blocks with its burnt trams and its
-    // container screens, a convex footprint in both sinks like the heaps
+    // the map-revival lane (2026-10-05): the street kits block with their burnt trams and container screens, a convex
+    // footprint in both sinks like the heaps (Ruinspires' sarajevoStreets.ts: trams and screens; Suzhou Creek's
+    // shanghaiStreets.ts: trams)
     const street=record=>record.kind==='tram-wreck'||record.kind==='container-screen';
     const screens=candidate.obstacles.filter(street);
-    assert.equal(screens.length>0,mapId==='ruinspires',`${mapId}: only Ruinspires' street kit stands trams and container screens`);
+    assert.equal(screens.length>0,mapId==='ruinspires'||mapId==='blackglass',`${mapId}: only Ruinspires' and Suzhou Creek's street kits stand trams and container screens`);
     assert.equal(candidate.colliders.filter(street).length,screens.length);
     assert.equal(candidate.colliders.filter(record=>record.kind==='mill-house').length,mills.length);
     // Round 61 (2026-09-24): Amberford's arched bridge is the second — one compound record the ride stands on with the
@@ -143,8 +144,9 @@ for(const mapId of MAP_IDS) {
     // stone builder dresses. A tall bridge's parts exceed the 64-part server wire limit and split into consecutive
     // records of at most 64 parts, so the footprint contract below holds for each deck's records read in order.
     const bridges=candidate.obstacles.filter(record=>record.kind==='bridge'), decks=field.bridgeDecks??[];
-    assert.equal(bridges.length>0,mapId==='autumn'||mapId==='cliffbridge',
-      `${mapId}: only Amberford's river kit and Cliffbridge's viaduct span a bridge`);
+    // 2026-10-05 (the map-revival lane): Suzhou Creek's four bridges are the arched stone builder's third map
+    assert.equal(bridges.length>0,mapId==='autumn'||mapId==='cliffbridge'||mapId==='blackglass',
+      `${mapId}: only Amberford's river kit, Cliffbridge's viaduct and Suzhou Creek's bridges span a bridge`);
     assert.equal(candidate.colliders.filter(record=>record.kind==='bridge').length,bridges.length);
     const deckRecords=decks.map(()=>[]);
     for(const bridge of bridges){

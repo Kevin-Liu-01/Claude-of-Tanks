@@ -33,8 +33,9 @@ for (const character of HORIZON_RELIEF_CHARACTERS) {
     `${character}: the far range's peaks and haze are bounded`);
 }
 // the per-map keys: identity first, the style second, the authored key over both
+// (Suzhou Creek, blackglass's id, authors the delta's coastal relief over its old volcanic identity: the map-revival lane)
 const expectedCharacter = {
-  whiteout: 'polar', winter: 'polar', caldera: 'volcanic', blackglass: 'volcanic', mars: 'martian', monsoon: 'karst', mangrove: 'karst',
+  whiteout: 'polar', winter: 'polar', caldera: 'volcanic', blackglass: 'coastal', mars: 'martian', monsoon: 'karst', mangrove: 'karst',
   coastal: 'coastal', saltwind: 'coastal', polders: 'coastal', fjord: 'alpine', alpine: 'alpine', orchard: 'alpine', reservoir: 'rolling',
   desert: 'mesa', badlands: 'mesa', titan_gorge: 'mesa', skybridge: 'mesa', copper_mesa: 'mesa',
   verdant: 'rolling', urban: 'rolling', railyard: 'rolling', oasis: 'rolling',
