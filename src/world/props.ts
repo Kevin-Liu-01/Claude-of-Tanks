@@ -3266,6 +3266,14 @@ function* propsBuildSteps(
     mats.burlap.envMapIntensity = 0.18;
     mats.structureMetal.envMapIntensity = 0.48;
     mats.glass.envMapIntensity = 1.0; // capped (AA glass spec 4eccce8 — glints
+    // map revival lane 2 (2026-10-05): a kit's finer, shallower render (ArchitectureSurfaces.relief; absent: unchanged)
+    const relief = regionalArchitecture?.surfaces.relief;
+    if (relief) {
+      for (const key of ['regionalPlaster', 'regionalPlaster2', 'regionalPlaster3'] as const) {
+        mats[key].normalScale.set(relief.normal, relief.normal);
+        mats[key].aoMapIntensity = relief.ao;
+      }
+    }
   }
   configureSurfaceMaterials();
   // above this crossed the 1.78 bloom threshold; the post-side firefly clamp
