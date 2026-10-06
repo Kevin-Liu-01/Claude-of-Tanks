@@ -1,10 +1,12 @@
 // Wind-scoured polar logistics station, not an alpine-village reskin:
 // staggered snow berms screen a wide service grid and a frozen melt pan.
 //
-// Reference: a Distant Early Warning Line station on the Tuktoyaktuk Peninsula, Northwest Territories, in the 1980s, as
-// the North Warning System took the line over. The Arctic coastal plain north of the treeline: tundra and frozen
-// thaw lakes on permafrost, pingos and the gravel ridges the ice left, no tree for a hundred kilometres. Nothing the
-// station built stands on the ground: its modules ride on steel piles so their heat cannot thaw it.
+// Reference: DYE-M (Dye Main), the Distant Early Warning Line's eastern main station at Cape Dyer, Baffin Island
+// (Nunavut), in the 1980s, as the North Warning System took the line over: the Upper Camp on a bare plateau some 700 m
+// above Davis Strait at the island's most easterly point, among the Cumberland Peninsula's mountains, the strait's pack
+// ice below. Rock and snow on permafrost, frost-shattered tors, the gravel ridges the ice left and frozen tarns, no
+// tree for hundreds of kilometres. Nothing the station built stands on the ground: its modules ride on steel piles so
+// their heat cannot thaw it. The mountains of the horizon ring are the Cumberland Peninsula's.
 //
 // The station (map revival lane 2, 2026-10-05; the owner: every map as new as Verdant): the arctic kit
 // (maps/regional/arctic.ts) builds every building as the line's own — the module trains on their piles with the white
@@ -53,8 +55,8 @@ export default {
       { kind: 'basin', x: 98, z: 12, rx: 108, rz: 128, height: -2.2, wetScale: 0.2 },
       { kind: 'knoll', x: -346, z: 24, rx: 84, rz: 102, height: 7.0 },
       // 2026-10-03 (maps lane B): periglacial geology — an esker, the sinuous gravel ridge a meltwater tunnel left under
-      // the ice, winds across the south-west tundra in three linked reaches; three pingos, the ice-cored frost mounds
-      // of a polar plain, stand in the open south-east, north-east and south-west.
+      // the ice, winds across the south-west of the plateau in three linked reaches; three tors, the frost-shattered rock
+      // knobs of a polar plateau, stand in the open south-east, north-east and south-west.
       { kind: 'ridge', x: -392, z: -268, length: 90, width: 16, height: 3.2, yawDeg: 62 },
       { kind: 'ridge', x: -352, z: -198, length: 80, width: 15, height: 3.6, yawDeg: 48 },
       { kind: 'ridge', x: -300, z: -146, length: 76, width: 14, height: 3.0, yawDeg: 30 },

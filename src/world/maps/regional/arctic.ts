@@ -1,6 +1,6 @@
-// src/world/maps/regional/arctic.ts — the arctic kit (Whiteout Station: a Distant Early Warning Line station on the
-// Tuktoyaktuk Peninsula, Northwest Territories, in the 1980s, as the North Warning System replaced it; map-revival lane 2,
-// 2026-10-05). Nothing stands on the permafrost: the station's buildings are prefabricated insulated modules raised on
+// src/world/maps/regional/arctic.ts — the arctic kit (Whiteout Station: DYE-M, the Distant Early Warning Line's eastern
+// main station at Cape Dyer, Baffin Island, in the 1980s, as the North Warning System replaced the line; map-revival
+// lane 2, 2026-10-05). Nothing stands on the permafrost: the station's buildings are prefabricated insulated modules raised on
 // steel piles so their heat cannot thaw the ground, joined end to end in the module train under the white radome;
 // the tropospheric-scatter antennas stand beside it, great curved billboards on lattice frames facing the next station
 // over the horizon; a radar on a lattice tower under its own small radome; the steel vehicle garages and the warehouse,
@@ -516,7 +516,7 @@ export const ARCTIC_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object
 
 export const ARCTIC_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   id: 'arctic',
-  region: 'The Tuktoyaktuk Peninsula, Northwest Territories, 1980s: a DEW Line station (module train, radome, tropo-scatter billboards, Jamesways, steel garages)',
+  region: 'Cape Dyer, Baffin Island, 1980s: DYE-M, a DEW Line main station on its plateau above Davis Strait (module train, radome, tropo-scatter billboards, Jamesways, steel garages)',
   surfaces: {
     // ribbed sheet steel
     roof: { kind: 'sheet', tint: [0.72, 0.74, 0.76] },
