@@ -61,11 +61,11 @@
       "concealers": 1091
     },
     "frontier": {
-      "bytes": 2728335,
-      "sha256": "025f1a47ae04748fd005c07e734d1b98f5066e90132da87409f8dbba2c6ff361",
-      "obstacles": 6319,
-      "colliders": 6610,
-      "concealers": 6332
+      "bytes": 2534731,
+      "sha256": "e208fc45ec67c61288ce87874fa0fbc7a1ed1e7d8c4cdb5e3dea10bf881d700b",
+      "obstacles": 6393,
+      "colliders": 6690,
+      "concealers": 6331
     },
     "fjord": {
       "bytes": 1460560,
