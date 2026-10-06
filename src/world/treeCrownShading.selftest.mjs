@@ -412,19 +412,20 @@ assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a
 }
 
 // trees round 4 (the ground lane on Obsidian Caldera's establishing view: the broom "saturated green" on the ash plain):
-// the Las Cañadas broom takes the place's shrub colour over the bush slot's palette — an ash-dulled grey-green, its
-// sprays' saturation cut to three tenths, the hue turned to olive, a little paler — and no other place has one
+// a place's shrub colour (TreeBiome.shrubColour) wins over the bush slot's palette. Las Cañadas named the only one, the
+// Teide broom's ash-dulled grey-green; Caldera is now the Aso caldera (the map-revival lane, merged in batch 4,
+// 2026-10-06), whose grassland scrub keeps the slot's green, so no place names one and the precedence is pinned on the
+// receipt's own copy of that colour (its sprays' saturation cut to three tenths, the hue turned to olive, a little paler)
 {
-  const ash = treeBiomeShrubColour('caldera');
-  assert.ok(ash && ash.texTone && ash.cardSat <= 0.06, 'Las Cañadas has its own shrub colour');
-  const [h, sat, l] = ash.texTone(0.36, 0.6, 0.45);
-  assert.ok(h >= 0.18 && h <= 0.26 && sat <= 0.2 && l >= 0.45, `the broom's tone ash-dulled olive (${h}, ${sat}, ${l})`);
+  const ash = Object.freeze({
+    cardHue: 0.23, cardSat: 0.05, texTone: (_h, s, l) => [0.22, Math.min(1, s * 0.3), Math.min(1, l * 1.07)],
+  });
   const slot = { cardHue: 0.3, cardSat: 0.4, texTone: (hh, ss, ll) => [hh, ss, ll] };
   const pal = treeBiomePalette(slot, { colour: ash }, false, treeBiomeColour('caldera'));
   assert.equal(pal.cardSat, ash.cardSat, 'the shrub colour wins over the slot palette\'s named saturation');
   assert.strictEqual(pal.texTone, ash.texTone, 'and its tone');
-  assert.deepEqual(MAP_IDS.filter((id) => treeBiomeShrubColour(id)), ['caldera'], 'only Las Cañadas names a shrub colour');
-  report.calderaBroom = { h: +h.toFixed(3), s: +sat.toFixed(3), l: +l.toFixed(3) };
+  assert.equal(treeBiomeShrubColour('caldera'), null, 'Aso\'s grassland scrub keeps the slot\'s green');
+  assert.deepEqual(MAP_IDS.filter((id) => treeBiomeShrubColour(id)), [], 'no place names a shrub colour');
 }
 
 // trees round 5 (2026-10-05, the gauntlet's wave 98 on the near field bush: "lobed leaf cards two to four times life
