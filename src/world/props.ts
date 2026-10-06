@@ -7266,6 +7266,38 @@ ${snowCap ? `
     // slabs rendered ~100% white ("sidewalks read emissive") — stone reads as
     // concrete-gray on every map.
     const kerbBucket = 'stone';
+    // mr1 (2026-10-05): the kerb is seated on the carriageway, not stacked on the terrain. The critics' "town behind a
+    // knee-high kerb" was the old seat: a level kerb 0.19 m over the terrain at its centre and a pavement pitched to the
+    // terrain 6.35 m out, which stood up to 0.5 m over the road where the ground rose behind it (0.9 m on Blackglass's
+    // banks). Now the kerb shows a KERB_FACE_M face over the carriageway beside it and follows the road's grade, the
+    // pavement's inner edge is flush with the kerb's top, its outer edge climbs toward rising ground by at most
+    // WALK_RISE_MAX_M, and both slabs reach down into lower ground instead of floating over it. A piece on a bridge
+    // deck's span is left to the bridge's parapets. The kerbs are render geometry only (no collision record), and the
+    // pieces skipped still draw their UV jitter, so every later draw of the dressing stream keeps its seat.
+    const KERB_OFFSET_M = 5.05, KERB_DEPTH_M = 0.34, KERB_FACE_M = 0.12, KERB_EMBED_M = 0.10;
+    const WALK_OFFSET_M = 6.35, WALK_DEPTH_M = 2.25, WALK_EMBED_M = 0.06, WALK_RISE_MAX_M = 0.25;
+    const decks = heightField.bridgeDecks ?? [];
+    const onDeckSpan = (x: number, z: number): boolean => decks.some((deck) => {
+      const ox = x - deck.x, oz = z - deck.z;
+      return Math.abs(ox * deck.ux + oz * deck.uz) < deck.halfLength + 1
+        && Math.abs(ox * deck.uz - oz * deck.ux) < deck.halfWidth + 6;
+    });
+    /**
+     * Seat a slab built along local x (its length) and z (across, +z = `outward` away from the road): each vertex takes
+     * its end's height (x < 0 the piece's start, x > 0 its end) — the top from `top(end, outer)`, the bottom from
+     * `foot(end)` — so the slab follows the grade along the road without a level step at its joints.
+     */
+    const seatSlab = (geometry: THREE.BufferGeometry, outward: number,
+      top: (end: 0 | 1, outer: boolean) => number, foot: (end: 0 | 1) => number): void => {
+      const position = geometry.attributes.position;
+      for (let i = 0; i < position.count; i++) {
+        const end = position.getX(i) > 0 ? 1 : 0;
+        const outer = position.getZ(i) * outward > 0;
+        position.setY(i, position.getY(i) > 0 ? top(end, outer) : foot(end));
+      }
+      position.needsUpdate = true;
+      geometry.computeVertexNormals();
+    };
     for (let ri = 0; ri < roads.length; ri++) {
       const nodes = roads[ri];
       for (let i = 0; i < nodes.length - 1; i++) {
@@ -7282,27 +7314,38 @@ ${snowCap ? `
           const tt0 = k / nSub, tt = (k + 0.5) / nSub, tt1 = (k + 1) / nSub;
           const cx = ax + dx * tt, cz = az + dz * tt;
           for (const side of [-1, 1]) {
-            const px = cx - tz * side * 5.05, pz = cz + tx * side * 5.05;
+            const px = cx - tz * side * KERB_OFFSET_M, pz = cz + tx * side * KERB_OFFSET_M;
             if (distToOtherRoads(px, pz, ri) < 6.8) continue; // open corners
-            const y = heightField.getHeightAt(px, pz);
-            const g = slabBox(segLen, 0.26, 0.34, 1.3);
+            // the ground at the piece's start (end 0) and end (end 1), `offset` metres off the centreline on this side
+            const ground = (end: 0 | 1, offset: number): number => {
+              const t = end ? tt1 : tt0;
+              return heightField.getHeightAt(ax + dx * t - tz * side * offset, az + dz * t + tx * side * offset);
+            };
+            // the carriageway at the kerb's face, the ground behind the kerb, and the pavement's two edges
+            const road = [ground(0, KERB_OFFSET_M - KERB_DEPTH_M / 2), ground(1, KERB_OFFSET_M - KERB_DEPTH_M / 2)];
+            const behind = [ground(0, KERB_OFFSET_M + KERB_DEPTH_M / 2), ground(1, KERB_OFFSET_M + KERB_DEPTH_M / 2)];
+            const inner = [ground(0, WALK_OFFSET_M - WALK_DEPTH_M / 2), ground(1, WALK_OFFSET_M - WALK_DEPTH_M / 2)];
+            const outer = [ground(0, WALK_OFFSET_M + WALK_DEPTH_M / 2), ground(1, WALK_OFFSET_M + WALK_DEPTH_M / 2)];
+            const kerbTop = [road[0] + KERB_FACE_M, road[1] + KERB_FACE_M];
+            const kerbFoot = [Math.min(road[0], behind[0]) - KERB_EMBED_M, Math.min(road[1], behind[1]) - KERB_EMBED_M];
+            const rise = [clamp(outer[0] + 0.03 - kerbTop[0], 0, WALK_RISE_MAX_M), clamp(outer[1] + 0.03 - kerbTop[1], 0, WALK_RISE_MAX_M)];
+            const walkFoot = [Math.min(inner[0], outer[0], kerbTop[0]) - WALK_EMBED_M, Math.min(inner[1], outer[1], kerbTop[1]) - WALK_EMBED_M];
+            const spanned = onDeckSpan(cx, cz);
+            const g = slabBox(segLen, (kerbTop[0] - kerbFoot[0] + kerbTop[1] - kerbFoot[1]) / 2, KERB_DEPTH_M, 1.3);
             jitterUV(g, rng);
-            g.rotateY(yaw);
-            g.translate(px, y + 0.06, pz);
-            buckets[kerbBucket].push(g);
-            // r5: PAVEMENT slab behind the kerb — a 2.2 m sidewalk strip
-            // flanking every street, pitched to the terrain per sub-segment.
-            // The critique's "town = boxes dropped on a lawn" came straight
-            // from streets with no built edge between asphalt and grass.
-            const sx0 = ax + dx * tt0 - tz * side * 6.35, sz0 = az + dz * tt0 + tx * side * 6.35;
-            const sx1 = ax + dx * tt1 - tz * side * 6.35, sz1 = az + dz * tt1 + tx * side * 6.35;
-            const h0 = heightField.getHeightAt(sx0, sz0);
-            const h1 = heightField.getHeightAt(sx1, sz1);
-            const walk = slabBox(segLen, 0.16, 2.25, 0.9); // r2: un-stretched paving
+            // r5: PAVEMENT slab behind the kerb — a 2.2 m sidewalk strip flanking every street. The critique's "town =
+            // boxes dropped on a lawn" came straight from streets with no built edge between asphalt and grass.
+            const walk = slabBox(segLen, (kerbTop[0] + rise[0] / 2 - walkFoot[0] + kerbTop[1] + rise[1] / 2 - walkFoot[1]) / 2,
+              WALK_DEPTH_M, 0.9); // r2: un-stretched paving
             jitterUV(walk, rng);
-            walk.rotateZ(Math.atan2(h1 - h0, segLen));
+            if (spanned) { g.dispose(); walk.dispose(); continue; }
+            seatSlab(g, side, (end) => kerbTop[end], (end) => kerbFoot[end]);
+            g.rotateY(yaw);
+            g.translate(px, 0, pz);
+            buckets[kerbBucket].push(g);
+            seatSlab(walk, side, (end, isOuter) => kerbTop[end] + (isOuter ? rise[end] : 0), (end) => walkFoot[end]);
             walk.rotateY(yaw);
-            walk.translate((sx0 + sx1) / 2, (h0 + h1) / 2 + 0.10, (sz0 + sz1) / 2);
+            walk.translate(cx - tz * side * WALK_OFFSET_M, 0, cz + tx * side * WALK_OFFSET_M);
             buckets[kerbBucket].push(walk);
           }
         }
