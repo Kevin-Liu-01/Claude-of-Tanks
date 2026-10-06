@@ -630,6 +630,17 @@ function prepareTerraceZones(zones: readonly TerraceZoneConfig[] | undefined): T
   });
 }
 
+/** The material's terrace uniforms (T2): each zone's bounding rect (up to four) and the riser band — a face whose slope
+ * (1 − n.y) passes 0.035 → 0.09 (a grade of ~0.27 → ~0.44: a riser, smoothed or not by the far mesh; the benches lie under
+ * it) takes the rock layer. Count 0 without terraces: the shader's branch stays dark. */
+function terrainTerraceUniforms(zones: readonly TerraceZoneConfig[] | undefined): { uTerraceRect: { value: THREE.Vector4[] }; uTerraceParam: { value: THREE.Vector4 } } {
+  const rects = Array.from({ length: 4 }, () => new THREE.Vector4());
+  const prepared = prepareTerraceZones(zones).slice(0, 4);
+  prepared.forEach((zone, i) => rects[i].set(zone.minX, zone.minZ, zone.maxX, zone.maxZ));
+  const feather = prepared.reduce((m, zone) => Math.max(m, zone.feather), 1);
+  return { uTerraceRect: { value: rects }, uTerraceParam: { value: new THREE.Vector4(prepared.length, feather, 0.035, 0.09) } };
+}
+
 /** The strongest terrace zone over (x, z) and its weight — 1 deeper than `feather` inside the outline, easing to 0 at it. */
 function terraceZoneWeight(zones: readonly TerraceZone[], x: number, z: number): TerraceZoneHit | null {
   let best: TerraceZoneHit | null = null;
@@ -3747,6 +3758,20 @@ float gRingAo = 1.0; float gRingSun = 1.0; vec2 gRingGrad = vec2(0.0);
 // the sun visibility keep their full weight). (2, 3) = no fade.
 uniform vec2 uRingReliefWall;
 uniform float uRockGate;  // r6: 1 = slope-rock takeover keyed to the mask-B landform weight (desert mesas)
+// the map-revival lane (2026-10-05): the terrace zones' bounding rects (x0, z0, x1, z1) and (count, feather m, the riser
+// slope band's low and high edge) — terrainTerraceUniforms; count 0 on every map without terraces
+uniform vec4 uTerraceRect[4];
+uniform vec4 uTerraceParam;
+float terraceZoneW(vec2 p) {
+  float w = 0.0;
+  for (int i = 0; i < 4; i++) {
+    if (float(i) >= uTerraceParam.x) break;
+    vec4 r = uTerraceRect[i];
+    vec2 d = min(p - r.xy, r.zw - p);
+    w = max(w, smoothstep(0.0, uTerraceParam.y, min(d.x, d.y)));
+  }
+  return w;
+}
 uniform float uSea;       // maps r1: 1 = M layer is OPEN WATER (sea/river), 0 = legacy mud/ice
 uniform float uSeaFoam;   // maps r1: surf/whitecap strength (0 disables)
 uniform vec2 uSeaRamp;    // maps r1: fM band that ramps to open water (sea wide, river tight)
@@ -4361,6 +4386,10 @@ void splatCompute() {
     fR *= rockKeep;
     steepW *= rockKeep;
   }
+  // the map-revival lane (2026-10-05, Orchard Valley's terraces T2): a terrace zone's risers are its dry-stone walls — the
+  // faces the steps stand steeper than the benches (applyTerraces) take the rock layer whatever the turf's hold, the
+  // benches keep their ground; the carriageways stay road
+  if (uTerraceParam.x > 0.5) fR = max(fR, terraceZoneW(wp.xz) * (1.0 - roadCore) * smoothstep(uTerraceParam.z, uTerraceParam.w, slope));
   // Ground lane (2026-10-03, Caldera's gauntlet: the lava shelves' fronts "read as long dark trenches"): on a volcanic
   // basin (groundRedux VOLCANIC) a lava flow — the landform channel, the maps lane's flowCover in the mask — is basalt
   // over its whole surface, its top, levees and front alike, not only where it is steep
@@ -6581,6 +6610,10 @@ function* createSplatMaterialSteps(
     // r6: landform rock gate — 1 = rock/strata keyed to the mask-B landform
     // weight (desert), 0 = slope-only legacy behavior (B stays marsh/ice)
     shader.uniforms.uRockGate = { value: rockMask ? 1 : 0 };
+    // the map-revival lane (2026-10-05): the terrace zones' rects and riser band (T2; count 0 without terraces)
+    const terraceUniforms = terrainTerraceUniforms(layout.terrain.terraces);
+    shader.uniforms.uTerraceRect = terraceUniforms.uTerraceRect;
+    shader.uniforms.uTerraceParam = terraceUniforms.uTerraceParam;
     const rd = S.rippleDir || [0.8, 0.6];
     const rl = Math.hypot(rd[0], rd[1]) || 1;
     shader.uniforms.uRipple = {
