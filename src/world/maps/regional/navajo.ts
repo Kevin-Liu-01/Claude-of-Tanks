@@ -23,8 +23,9 @@ const DOOR_PAINT: readonly Rgb[] = [0x3d8a86, 0x3f6f99, 0x8a3a2c, 0x4d6f45, 0x7d
 /** Window trim: white, green, blue, red. */
 const TRIM: readonly Rgb[] = [0xd6d0c2, 0x4f7a52, 0x3f6f99, 0x8a3a2c].map(rgb);
 const STOVEPIPE = rgb(0x2c2b29), GALV = rgb(0xa4a8a5), RUSTY = rgb(0x7a5641), IRON = rgb(0x3b3d3e);
-/** Corrugated iron cladding (structureMetal's profiled sheet under a livery): galvanised, dulled, rusting, barn red. */
-const CLADDING: readonly Rgb[] = [0xa4a8a5, 0x8f9390, 0x8a6a55, 0x8b3b2e].map(rgb);
+/** Corrugated iron cladding (structureMetal's profiled sheet under a livery): galvanised, dulled, rusting, oxide brown
+ * (Titan round 3: the barn red read as a Midwest barn). */
+const CLADDING: readonly Rgb[] = [0xa4a8a5, 0x8f9390, 0x8a6a55, 0x76604e].map(rgb);
 /** Hauled water: the blue plastic drum, the old steel one. */
 const DRUM: readonly Rgb[] = [0x2f5f98, 0x2f5f98, 0x6a4a3a].map(rgb);
 const OCT = Math.PI / 4;
@@ -390,7 +391,7 @@ function dialectOf(rng: () => number, trim: Rgb, door: Rgb, opts: { lit?: number
   const style = sashStyle(trim, opts.bars ?? 'two');
   return {
     window: (s, face, o, y0) => {
-      windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, o.kind === 'loft' ? { ...style, bars: 'none', sill: null } : style, rng, o.kind === 'loft' ? 0 : opts.lit ?? 0.35);
+      windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, o.kind === 'loft' ? { ...style, bars: 'none', sill: null } : style, rng, o.kind === 'loft' ? 0 : opts.lit ?? 0.5);
       // the lintel: a squared juniper beam over the opening, its ends in the masonry
       faceBox(s, 'structureWood', face, o.u, y0 + o.y0 + o.h + 0.09, 0.025, o.w + 0.36, 0.17, 0.05, { colour: JUNIPER_DARK, decor: true, fineSides: true });
     },
@@ -443,7 +444,7 @@ function ranchBody(sink: PartSink, rng: () => number, look: () => number, o: Ran
   for (const face of ['left', 'right'] as const) for (const o2 of windowRhythm(face, 0, D, { w: 0.85, h: 1.1, sill: 1.0, spacing: 2.6, margin: 1.0, max: 2 })) openings.push(o2);
   for (const o2 of windowRhythm('back', 0, W, { w: 0.7, h: 0.9, sill: 1.25, spacing: 3.0, margin: 1.2, max: 1 })) openings.push(o2);
   const roof: RoofSpec = o.flat
-    ? { kind: 'flat', pitchDeg: 0, eave: 0.04, verge: 0.04, thickness: 0.24, bucket: o.wall === 'stone' ? 'stone' : 'plaster2', parapet: 0.32 }
+    ? { kind: 'flat', pitchDeg: 0, eave: 0.04, verge: 0.04, thickness: 0.24, bucket: 'plaster', parapet: 0.32 }
     : { kind: 'gable', pitchDeg: 15 + rng() * 6, eave: 0.38, verge: 0.3, thickness: 0.07, bucket: 'roof', ridge: 'saddle' };
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.32, out: 0.05, bucket: 'stone' }, storeys: [{ h: 2.55 + rng() * 0.25, wall: o.wall }], roof,
@@ -554,7 +555,7 @@ const tradingPost: RegionalBuilder = (ctx) => {
     for (const o of windowRhythm('back', 1, W1, { w: 0.8, h: 1.1, sill: 0.8, spacing: 2.8, margin: 1.2, max: 2 })) openings.push(o);
     const frame = buildHouse(sink, {
       w: W1, d: D1, plinth: { h: 0.35, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.3, wall: 'stone' }, { h: 2.9, wall: 'stone' }],
-      roof: { kind: 'flat', pitchDeg: 0, eave: 0.05, verge: 0.05, thickness: 0.25, bucket: 'stone', parapet: 0.6 }, gableBucket: 'stone',
+      roof: { kind: 'flat', pitchDeg: 0, eave: 0.05, verge: 0.05, thickness: 0.25, bucket: 'plaster', parapet: 0.6 }, gableBucket: 'stone',
       openings, chimneys: [], gutters: null, verge: null, reveal: 0.34,
     }, dialectOf(rng, trim, door, { lit: 0.5, leaf: 'glazed' }));
     frameCourse(sink, frame, 0.42);
@@ -594,7 +595,7 @@ const tradingPost: RegionalBuilder = (ctx) => {
     for (const o of windowRhythm('right', 0, D2, { w: 0.7, h: 0.5, sill: 2.0, spacing: 2.4, margin: 1.0 })) openings.push({ ...o, kind: 'loft' });
     const frame = buildHouse(sink, {
       w: W2, d: D2, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.0, wall: 'stone' }],
-      roof: { kind: 'flat', pitchDeg: 0, eave: 0.05, verge: 0.05, thickness: 0.24, bucket: 'plaster2', parapet: 0.35 }, gableBucket: 'stone',
+      roof: { kind: 'flat', pitchDeg: 0, eave: 0.05, verge: 0.05, thickness: 0.24, bucket: 'plaster', parapet: 0.35 }, gableBucket: 'stone',
       openings, chimneys: [], gutters: null, verge: null, reveal: 0.3,
     }, dialectOf(rng, trim, door, { lit: 0 }));
     frameCourse(sink, frame, 0.38);
@@ -631,7 +632,7 @@ const generalStore: RegionalBuilder = (ctx) => {
     const H = 3.5;
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: H, wall }],
-      roof: { kind: 'flat', pitchDeg: 0, eave: 0.05, verge: 0.05, thickness: 0.22, bucket: 'plaster2', parapet: 0.35 }, gableBucket: wall,
+      roof: { kind: 'flat', pitchDeg: 0, eave: 0.05, verge: 0.05, thickness: 0.22, bucket: 'plaster', parapet: 0.35 }, gableBucket: wall,
       openings, chimneys: [], gutters: null, verge: null, reveal: wall === 'stone' ? 0.3 : 0.18,
     }, dialectOf(rng, trim, door, { lit: 0.45, leaf: 'glazed' }));
     frameCourse(sink, frame, 0.3);
@@ -860,9 +861,11 @@ const waterTank: RegionalBuilder = (ctx) => {
 };
 
 /**
- * The BIA day school (a factory plot): two storeys of cut red sandstone under a hipped tin roof painted green or red,
- * tall sash windows in a strict rhythm under stone lintels, a pedimented porch on the gable end, two chimneys and the
- * bell cupola on the ridge; the flagpole by the steps.
+ * The BIA day school (a factory plot): one long storey of rough-laid red sandstone on a footing under a low hipped
+ * roof of galvanised or rusting iron, tall sash windows in a strict rhythm under stone lintels, a gabled porch over the
+ * steps on the front end, a stovepipe flue at each end; the flagpole by the steps. (Titan round 3, gauntlet wave 119:
+ * the two-storey block under a green hip with a bell cupola read as "a red-brick schoolhouse" from somewhere else; the
+ * reservation's day schools of the 1930s-50s are long single storeys of local stone under tin.)
  */
 const daySchool: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -870,49 +873,43 @@ const daySchool: RegionalBuilder = (ctx) => {
   // the school fills the old factory's reach (its bounds): its back wall on the back edge, its porch to the front
   const bb = ctx.bounds;
   const W = Math.max(9, bb.maxX - bb.minX - 1.0), D = Math.max(14, bb.maxZ - bb.minZ - 3.1);
-  const trim = rgb(0xd8d2c4), door = pick(rng, [rgb(0x4d6f45), rgb(0x8a3a2c), rgb(0x3f6f99)]);
-  const roofPaint = pick(rng, [rgb(0x56705a), rgb(0x8b3b2e), rgb(0x5f6f78)]);
+  const trim = rgb(0xd8d2c4), door = pick(rng, [rgb(0x3d8a86), rgb(0x8a3a2c), rgb(0x3f6f99)]);
+  const roofPaint = pick(rng, [GALV, rgb(0x8f9390), RUSTY]);
   const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.7, y0: 0, h: 2.6 }];
-  for (const s of [0, 1]) {
-    for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, s, D, { w: 1.05, h: 1.8, sill: s ? 0.8 : 0.9, spacing: 2.4, margin: 1.2 })) openings.push(o);
-    for (const o of windowRhythm('front', s, W, { w: 1.0, h: 1.7, sill: 0.9, spacing: 2.6, margin: 1.2, max: 3, avoid: s === 0 ? [[-1.2, 1.2]] : [] })) openings.push(o);
-    for (const o of windowRhythm('back', s, W, { w: 1.0, h: 1.7, sill: 0.9, spacing: 2.6, margin: 1.2, max: 3 })) openings.push(o);
-  }
+  for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, D, { w: 1.05, h: 1.9, sill: 0.9, spacing: 2.4, margin: 1.2 })) openings.push(o);
+  for (const o of windowRhythm('front', 0, W, { w: 1.0, h: 1.8, sill: 0.9, spacing: 2.6, margin: 1.2, max: 3, avoid: [[-1.2, 1.2]] })) openings.push(o);
+  for (const o of windowRhythm('back', 0, W, { w: 1.0, h: 1.8, sill: 0.9, spacing: 2.6, margin: 1.2, max: 3 })) openings.push(o);
   const style: WindowStyle = { frame: trim, frameWidth: 0.07, frameOut: 0.05, bars: 'six', surround: { bucket: 'stone', width: 0.16, out: 0.05, lintel: 0.28 },
     sill: { bucket: 'stone', out: 0.08 }, shutters: null };
   sink.placed(0, (bb.maxX + bb.minX) / 2, 0, bb.minZ + 0.45 + D / 2, () => {
   const frame = buildHouse(sink, {
-    w: W, d: D, plinth: { h: 0.55, out: 0.08, bucket: 'stone' }, storeys: [{ h: 3.5, wall: 'stone' }, { h: 3.3, wall: 'stone' }],
-    roof: { kind: 'hip', pitchDeg: 26, eave: 0.55, verge: 0.55, thickness: 0.08, bucket: 'structureMetal', ridge: 'saddle' }, roofColour: roofPaint,
+    w: W, d: D, plinth: { h: 0.55, out: 0.08, bucket: 'stone' }, storeys: [{ h: 3.9, wall: 'stone' }],
+    roof: { kind: 'hip', pitchDeg: 22, eave: 0.55, verge: 0.55, thickness: 0.08, bucket: 'structureMetal', ridge: 'saddle' }, roofColour: roofPaint,
     gableBucket: 'stone', openings,
-    chimneys: [{ x: W * 0.18, z: D * 0.22, sx: 0.6, sz: 0.6, above: 0.9, bucket: 'stone', cap: 'slab' }, { x: -W * 0.18, z: -D * 0.22, sx: 0.6, sz: 0.6, above: 0.9, bucket: 'stone', cap: 'slab' }],
-    gutters: { colour: shade(roofPaint, 0.8) }, verge: null, reveal: 0.36, rafters: rgb(0x6a5a48),
+    chimneys: [],
+    gutters: { colour: shade(roofPaint, 0.8) }, verge: null, reveal: 0.38, rafters: rgb(0x6a5a48),
   }, {
-    window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, style, rng, 0.3),
+    window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, style, rng, 0.55),
     door: (s, face, o, y0, fr) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: door, frame: { bucket: 'stone', width: 0.22, out: 0.08, arch: true },
       transom: true, steps: { bucket: 'stone' }, leafKind: 'panel' }, fr.floors[o.storey] + o.y0),
   });
   frameCourse(sink, frame, 0.62);
-  // a band course of dressed stone between the storeys (string course)
-  const b = frame.bodies[0], yb = frame.floors[1];
-  sink.band('stone', b.x0 - 0.06, yb - 0.12, b.z0 - 0.06, b.x1 + 0.06, yb + 0.06, b.z1 + 0.06, { decor: true });
-  // the porch on the front gable end: two posts, a pediment roof over the steps
-  const pd = 2.4, pw = 3.6, py = 3.4;
+  // the porch on the front end: two posts, a gabled roof over the steps, its gable boarded white
+  const pd = 2.4, pw = 3.6, py = 3.5;
   for (const s of [-1, 1]) sink.span('structureWood', s * (pw / 2 - 0.15) - 0.13, 0.0, D / 2 + pd - 0.3, s * (pw / 2 - 0.15) + 0.13, py, D / 2 + pd - 0.04, { colour: trim });
   const pr: RoofSpec = { kind: 'gable', pitchDeg: 30, eave: 0.2, verge: 0.15, thickness: 0.08, bucket: 'structureMetal', ridge: null };
   sink.placed(Math.PI / 2, 0, 0, D / 2 + pd / 2, () => emitRoof(sink, roofGeometry(pd + 0.1, pw, py, pr), pr, roofPaint));
-  // (the porch roof's gable triangle, boarded white)
   {
     const rise = (pw / 2) * Math.tan(30 * Math.PI / 180);
     sink.prism('structureWood', [[0, py + rise, D / 2 + pd - 0.05], [pw / 2, py, D / 2 + pd - 0.05], [-pw / 2, py, D / 2 + pd - 0.05]], [0, 0, -1], 0.08, { colour: trim, decor: true });
   }
-  // the bell cupola on the ridge
-  const rg = frame.roof, ry = rg.ridgeTopY;
-  sink.span('structureWood', -0.55, ry - 0.5, -0.55, 0.55, ry + 1.0, 0.55, { colour: trim });
-  for (const [x, z] of [[-0.42, -0.42], [0.42, -0.42], [-0.42, 0.42], [0.42, 0.42]] as const) sink.span('structureWood', x - 0.08, ry + 1.0, z - 0.08, x + 0.08, ry + 1.75, z + 0.08, { colour: trim, decor: true });
-  const cap: RoofSpec = { kind: 'hip', pitchDeg: 38, eave: 0.12, verge: 0.12, thickness: 0.06, bucket: 'structureMetal', ridge: null };
-  emitRoof(sink, roofGeometry(1.1, 1.1, ry + 1.75, cap), cap, roofPaint);
-  sink.cylinder('structureMetal', [0, ry + 1.05, 0], 'y', 0.45, 0.32, 10, { colour: rgb(0x5a4a32), decor: true }, 0.18);
+  // the stovepipe flues through the tin at each end of the classrooms
+  for (const end of [-1, 1]) {
+    const fx = W * 0.22 * end, fz = D * 0.3 * end;
+    const top = frame.roof.topAt(fx, fz) ?? frame.roof.ridgeTopY;
+    sink.cylinder('structureMetal', [fx, top - 0.3, fz], 'y', 1.5, 0.1, 8, { colour: STOVEPIPE, decor: true });
+    sink.cylinder('structureMetal', [fx, top + 1.2, fz], 'y', 0.14, 0.2, 8, { colour: STOVEPIPE, decor: true }, 0.04);
+  }
   // the flagpole by the steps
   sink.cylinder('structureMetal', [pw / 2 + 1.0, 0, D / 2 + pd + 0.6], 'y', 9.5, 0.06, 8, { colour: rgb(0xd8d8d4), decor: true }, 0.035);
   });
@@ -1042,7 +1039,9 @@ const trailer: RegionalBuilder = (ctx) => {
   const T = double ? Math.max(5.6, Math.min(7.4, PD - 0.7)) : Math.max(4.3, Math.min(5.4, PD - 2.4));
   const deckD = double ? 1.2 : Math.max(1.8, Math.min(2.6, PD - 0.6 - T));
   const xc = (bb.maxX + bb.minX) / 2, zc = bb.minZ + 0.3 + T / 2;
-  const skin = pick(rng, [rgb(0xe2dccd), rgb(0xd8d4c4), rgb(0xc8c0a8), rgb(0xb8c4c4), rgb(0xa9b4a6)]);
+  // (Titan round 3: the near-white skins read as "white walled compounds" across the valley; the reservation's homes
+  // are faded beige, tan, sage and teal under the dust)
+  const skin = pick(rng, [rgb(0xcfc3ae), rgb(0xc2ae92), rgb(0xb3a088), rgb(0xa9b4a6), rgb(0x9fb0aa)]);
   const stripe = pick(rng, [rgb(0x7a5a3e), rgb(0x3f6f99), rgb(0x8a3a2c), rgb(0x56705a)]);
   const roofColour = double ? pick(rng, [rgb(0x6e6a62), rgb(0x8a8a84), rgb(0x5a4a3e)]) : shade(skin, 1.05);
   const floor = 0.75, top = double ? 3.1 : 3.3;
@@ -1204,9 +1203,12 @@ export const NAVAJO_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
   id: 'navajo',
   region: 'Monument Valley, Four Corners (the Navajo Nation round Oljato and Goulding\'s): log-and-earth hogans facing east, a sandstone trading post, stone ranch houses under tin, juniper corrals and windmills',
   surfaces: {
-    // corrugated iron, galvanised and rusting; the valley's red de Chelly sandstone laid in rough courses
+    // corrugated iron, galvanised and rusting; the valley's red de Chelly sandstone laid as rubble in thick mud mortar
+    // (Titan round 3, gauntlet wave 119: the coursed sandstone's even blocks read as red brick, "a red-brick
+    // schoolhouse", "oversized tiled block textures": Goulding's and the valley's stone houses are rough-laid field
+    // stone)
     roof: { kind: 'sheet', tint: [0.66, 0.66, 0.63] },
-    stone: { kind: 'sandstone', tint: [0.74, 0.46, 0.33] },
+    stone: { kind: 'rubble', tint: [0.72, 0.47, 0.35] },
     sourced: { plaster: false, wood: true },
     tones: {
       // stucco the colour of the sand, the red earth of the hogan roofs and the mud chinking, a white-painted trim
