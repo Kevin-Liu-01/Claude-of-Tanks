@@ -3,7 +3,8 @@
 // cut's source window becomes an event at its global time with its camera distance, resolved the way the game
 // resolves its sound (score.mjs plays them from the recorded library): the shooter's gun class and calibre
 // (weaponAudio.ts), the hero's engine family and track set (vehicleAudioProfiles.ts), and the map's gun-echo tail
-// and ambience bed (environmentScenes.ts), one bed per cut.
+// and ambience bed (environmentScenes.ts), one bed per cut. The hero's crew calls its gun's work over the radio in
+// its own nation's language (owner 2026-10-05: "we have voices and stuff now"; docs/AUDIO.md "Crew radio").
 //   node sfx-cues.mjs <edl.json> <sceneDir> <cues-in.json> <cues-out.json>
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, basename } from 'node:path';
@@ -12,6 +13,8 @@ const { getSpec } = await import('../../../src/vehicles/specs.ts');
 const { resolveVehicleAudioIdentity } = await import('../../../src/audio/vehicleAudioProfiles.ts');
 const { resolveWeaponReport } = await import('../../../src/audio/weaponAudio.ts');
 const { sceneForMap } = await import('../../../src/audio/environmentScenes.ts');
+const { VOICE_PACKS } = await import('../../../src/audio/voiceManifest.generated.ts');
+const { VOICE_LINES, RADIO_DISCIPLINE } = await import('../../../src/audio/voiceLines.ts');
 const specOf = (id) => { try { return getSpec(id); } catch { return null; } };
 const unknown = new Set();
 function gunOf(id) {
@@ -42,7 +45,35 @@ const actorAt = (scene, name, tMs) => {
   return scene.actors.find(a => a.name === name)?.pos ?? null;
 };
 const TURBINE = /^(m1a|ua_m1|t80u|leclerc)/;
-const sfx = [];
+const sfx = [], calls = [];
+const seedOf = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+/**
+ * The hero crew's calls in one cut, as crewRadio.ts would make them: the gunner's "firing" as the round goes, the
+ * result once it lands (target destroyed, penetration, non-penetration, ricochet), a near miss when a shell bursts
+ * close, an ally's kill. Candidates only: the radio discipline below places them.
+ */
+function crewCalls(scene, cut, cutIndex, inMs, outMs, rate) {
+  const heroId = scene.actors.find((a) => a.name === 'hero')?.id ?? '', spec = specOf(heroId);
+  const lang = spec ? resolveVehicleAudioIdentity(spec).crew : 'en-US';
+  const fx = (scene.effects ?? []).filter((e) => e.tMs >= inMs - 400 && e.tMs < outMs).sort((a, b) => a.tMs - b.tMs);
+  const at = (tMs) => +(cut.start + (tMs - inMs) / 1000 / rate).toFixed(3);
+  const out = [], call = (line, tMs) => out.push({ line, lang, t: at(tMs), cutStart: cut.start, cutEnd: cut.start + cut.dur, cutIndex });
+  for (const f of fx.filter((e) => e.type === 'fire')) {
+    const after = fx.filter((e) => e.tMs > f.tMs && e.tMs <= f.tMs + 1600 && (e.actor ?? '').startsWith('foe'));
+    const kill = after.find((e) => e.type === 'tank_kill'), hit = after.find((e) => e.type === 'impact');
+    if (f.actor === 'hero') {
+      call('firing', f.tMs - 520);
+      if (kill) call('target_destroyed', kill.tMs + 380);
+      else if (hit) call({ pen: 'penetration', nonpen: 'nonpen', ricochet: 'ricochet' }[hit.params?.kind] ?? 'penetration', hit.tMs + 280);
+    } else if (kill && (f.actor ?? '').startsWith('ally')) call('ally_kill', kill.tMs + 420);
+  }
+  const heroAt = (tMs) => actorAt(scene, 'hero', tMs);
+  for (const e of fx.filter((x) => x.type === 'explosion' && Array.isArray(x.at))) {
+    const h = heroAt(e.tMs);
+    if (h && Math.hypot(e.at[0] - h[0], e.at[1] - h[1]) < 16) call('near_miss', e.tMs + 260);
+  }
+  return out;
+}
 for (const cut of edl.shots) {
   const id = basename(cut.src, '.mp4').replace(/-p$/, ''); // portrait clips share the landscape scene's timing
   const cands = sceneDir.split(',').flatMap(d => [join(d, `${id}.resolved.json`), join(d, `${id}.json`)]); // first dir wins (re-renders first)
@@ -75,6 +106,7 @@ for (const cut of edl.shots) {
   }
   const env = sceneForMap(scene.map);
   sfx.push({ kind: 'bed', t: +cut.start.toFixed(3), dur: +cut.dur.toFixed(3), asset: env.bed, db: env.bedDb, ...(env.layer ? { layer: env.layer.asset, layerDb: env.layer.db } : {}) });
+  calls.push(...crewCalls(scene, cut, edl.shots.indexOf(cut), inMs, outMs, rate));
   for (const e of scene.effects ?? []) {
     if (e.tMs < inMs || e.tMs >= outMs) continue;
     const t = +(cut.start + (e.tMs - inMs) / 1000 / rate).toFixed(3);
@@ -93,10 +125,29 @@ for (const cut of edl.shots) {
     else if (e.type === 'mg_burst') for (let k = 0; k < Math.min(9, e.params?.count ?? 7); k++) sfx.push({ kind: 'mg', t: +(t + k * 0.075).toFixed(3), cls: 'mg_heavy', caliberMm: 12.7, distM, tail: env.tail, burstHead: k === 0, gain: 0.8 });
   }
 }
+// The radio discipline (crewRadio.ts): one transmission at a time with a breath between, the more urgent call placed
+// first, a call that cannot go out before it goes stale dropped rather than played late — and every transmission
+// inside its own cut, since the next cut may be another nation's crew. A transmission is the key-up, the take, the
+// release (score.mjs plays all three from the recorded library).
+const KEY_LEAD_S = 0.1, KEY_TAIL_S = 0.32;
+const placed = [];
+for (const c of calls.map((c) => ({ ...c, meta: VOICE_LINES[c.line] })).filter((c) => c.meta && VOICE_PACKS[c.lang]?.[c.line]?.length)
+  .sort((a, b) => b.meta.pri - a.meta.pri || a.t - b.t)) {
+  const takes = VOICE_PACKS[c.lang][c.line], take = seedOf(`${edlFile}|${c.cutIndex}|${c.line}`) % takes.length;
+  const span = KEY_LEAD_S + takes[take] + KEY_TAIL_S;
+  for (let s = Math.max(c.t, c.cutStart + 0.15); s <= c.t + c.meta.staleS; s += 0.05) {
+    if (s + span > c.cutEnd + 0.25) break;
+    if (placed.some((p) => s < p.t + p.span + RADIO_DISCIPLINE.gapS && p.t < s + span + RADIO_DISCIPLINE.gapS)) continue;
+    placed.push({ kind: 'radio', t: +s.toFixed(3), lang: c.lang, line: c.line, take, voiceDur: takes[take], span: +span.toFixed(3) });
+    break;
+  }
+}
+sfx.push(...placed);
 sfx.sort((a, b) => a.t - b.t);
 // thin dense clusters: keep the nearest one-shot within 60 ms of the same kind (beds and drives stay)
 const loud = (e) => (e.gain ?? 1) / Math.max(25, e.distM ?? 30);
-const thinned = sfx.filter((e, i) => e.kind === 'bed' || e.kind === 'drive' || e.kind === 'mg' || !sfx.some((o, j) => j !== i && o.kind === e.kind && Math.abs(o.t - e.t) < 0.06 && (loud(o) > loud(e) || (loud(o) === loud(e) && j < i))));
+const thinned = sfx.filter((e, i) => e.kind === 'bed' || e.kind === 'drive' || e.kind === 'mg' || e.kind === 'radio' || !sfx.some((o, j) => j !== i && o.kind === e.kind && Math.abs(o.t - e.t) < 0.06 && (loud(o) > loud(e) || (loud(o) === loud(e) && j < i))));
 if (unknown.size) console.warn(`sfx-cues: no spec for ${[...unknown].join(', ')} (their guns read as 120 mm)`);
 writeFileSync(cuesOut, JSON.stringify({ ...cues, sfx: thinned }, null, 1));
-console.log(`${thinned.length} sfx cues (${sfx.length - thinned.length} thinned) -> ${cuesOut}`);
+const langs = [...new Set(placed.map((p) => p.lang))];
+console.log(`${thinned.length} sfx cues (${sfx.length - thinned.length} thinned), ${placed.length} of ${calls.length} crew calls on the radio (${langs.join(', ') || 'none'}) -> ${cuesOut}`);

@@ -3,8 +3,10 @@
 // generated from the film's cue sheet (music.mjs, Eleven Music) under the game's own recorded sound library
 // (public/audio/sfx, the ElevenLabs-generated set PR #9 ships; docs/AUDIO.md) — gun reports layered as the game
 // layers them (punch, close report, distant report, environment tail), kills, hits, explosions, the tanks' recorded
-// engine and track loops with distance, Doppler and pan for a pass-by, and the map's ambience bed under each cut.
-// Reverb, levels and the two-pass loudness master only process those recordings.
+// engine and track loops with distance, Doppler and pan for a pass-by, and the map's ambience bed under each cut —
+// and the crews' recorded radio calls (public/audio/voice) keyed over the engine's intercom chain, the beds ducking
+// under speech as the game ducks them. Reverb, levels, filters and the two-pass loudness master only process those
+// recordings.
 //
 //   node tools/media-r5/score/score.mjs --cues=<cues.json> --music=<music-gen.wav> --out=<dir>
 //
@@ -58,7 +60,7 @@ function freeverb(inL, inR, { room = 0.86, damp = 0.35, wet = 1, width = 1 } = {
 
 // ------------------------------------------------------------------ buses
 const bus = () => ({ L: new Float32Array(N), R: new Float32Array(N) });
-const music = bus(), sfx = bus(), sfxVerbSend = bus();
+const music = bus(), sfx = bus(), amb = bus(), radio = bus(), sfxVerbSend = bus();
 function put(target, src, at, gain = 1, pan = 0, send = 0) {
   const gl = Math.cos((pan + 1) * Math.PI / 4) * Math.SQRT2, gr = Math.sin((pan + 1) * Math.PI / 4) * Math.SQRT2;
   mix(target.L, src, at, gain * gl); mix(target.R, src, at, gain * gr);
@@ -154,7 +156,54 @@ function sfxEvent(e) {
   if (e.kind === 'sample') return play(e.name, e.t, { gain: g, pan: p, send: e.send ?? 0.2 });
   if (e.kind === 'drive') return drive(e);
   if (e.kind === 'bed') return bed(e);
+  if (e.kind === 'radio') return transmit(e);
   throw Error(`unknown sfx ${e.kind}`);
+}
+/** Run a mono buffer through an ffmpeg filter chain at 48 kHz (the radio's intercom and headset stages). */
+function filtered(src, chain) {
+  const raw = execFileSync('ffmpeg', ['-v', 'error', '-f', 'f32le', '-ar', String(SR), '-ac', '1', '-i', '-', '-af', chain, '-f', 'f32le', '-ar', String(SR), '-ac', '1', '-'],
+    { input: Buffer.from(src.buffer, src.byteOffset, src.byteLength), maxBuffer: 1 << 28 });
+  return new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4).slice();
+}
+// crewRadio.ts's intercom: a 24 dB/oct 320 Hz–3.4 kHz band, the 1.9 kHz presence peak (+5 dB), the radio compressor
+// (−26 dB, 6:1, 3 ms / 120 ms) and the tanh drive (0.25: tanh(3x) / tanh(3)); then the headset speaker every keyed
+// element shares (a 4.6 kHz roll-off, ×1.15). The net static is band-passed at 1.9 kHz before the speaker.
+const INTERCOM = 'highpass=f=320:width_type=q:width=0.7,highpass=f=320:width_type=q:width=0.7,lowpass=f=3400:width_type=q:width=0.75,'
+  + 'lowpass=f=3400:width_type=q:width=0.75,equalizer=f=1900:width_type=q:width=0.9:g=5,acompressor=threshold=0.0501:ratio=6:attack=3:release=120:knee=2,'
+  + 'aeval=tanh(3*val(0))/tanh(3)';
+const HEADSET = 'lowpass=f=4600:width_type=q:width=0.6,volume=1.15';
+const transmissions = [];
+/** A crew's recorded take, as the radio plays it at `rate`. */
+function take(lang, line, k, rate) {
+  const file = join(ROOT, 'public/audio/voice', lang, `${line}_${k}.webm`);
+  if (!existsSync(file)) throw Error(`score: missing crew take ${file}`);
+  const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-f', 'f32le', '-ac', '1', '-ar', String(SR), '-'], { maxBuffer: 1 << 26 });
+  decoded.set(`voice/${lang}/${line}#${k}#false`, true);
+  return atRate(new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4).slice(), rate);
+}
+/**
+ * One transmission as crewRadio.ts keys it: the recorded key-up (×0.1), the take through the intercom from 70 % of the
+ * click on, the recorded net static gated with the take (×0.07, 20 ms in, 40 ms out), the recorded release (×0.15)
+ * 20 ms after the take — all through the headset speaker into the radio bus, centred and dry.
+ */
+function transmit(e) {
+  const rate = 0.99 + (seedOf(`rate@${e.t}`) % 2001) / 100000, keyIn = recording('radio_key_in', variant('radio_key_in', e.t));
+  const voice = filtered(take(e.lang, e.line, e.take ?? 0, rate), INTERCOM);
+  const start = 0.005 + Math.max(0.04, keyIn.length / SR * 0.7), voiceEnd = start + voice.length / SR;
+  const keyOut = recording('radio_key_out', variant('radio_key_out', e.t));
+  const n = Math.ceil((voiceEnd + 0.02 + keyOut.length / SR + 0.05) * SR), out = new Float32Array(n);
+  mix(out, keyIn, 0.005, 0.1);
+  mix(out, voice, start, 1);
+  const statik = filtered(loopRegion('radio_static_loop'), 'bandpass=f=1900:width_type=q:width=0.6');
+  const s0 = Math.round((start - 0.02) * SR), s1 = Math.round((voiceEnd + 0.05) * SR), off = seedOf(`static@${e.t}`) % statik.length;
+  for (let i = Math.max(0, s0); i < Math.min(n, s1 + Math.round(0.12 * SR)); i++) {
+    const g = i < s0 + 0.02 * SR ? (i - s0) / (0.02 * SR) : i > s1 ? Math.max(0, 1 - (i - s1) / (0.04 * SR)) : 1;
+    out[i] += statik[(off + i) % statik.length] * 0.07 * g;
+  }
+  mix(out, keyOut, voiceEnd + 0.02, 0.15);
+  // a film keeps its crews over the fight (the game's voice bus sits lower, under a nearer world): +6 dB by default
+  put(radio, filtered(out, HEADSET), e.t, db(cues.radioDb ?? 6) * (e.gain ?? 1), 0, 0);
+  transmissions.push([e.t + start, e.t + voiceEnd]);
 }
 /**
  * A tank on the move: its engine family's recorded loop (mid or high by speed) over its track set's loop for the
@@ -198,7 +247,7 @@ function bed(e) {
       const j = (offset + i) % chans[0].length, k = Math.min(1, i / fadeN, (n - 1 - i) / fadeN);
       L[i] = chans[0][j] * g * k; R[i] = chans[1][j] * g * k;
     }
-    putStereo(sfx, L, R, e.t, 1);
+    putStereo(amb, L, R, e.t, 1);
   }
 }
 
@@ -212,6 +261,23 @@ for (const s of cues.sfx ?? []) sfxEvent(s);
 
 const [svL, svR] = freeverb(sfxVerbSend.L, sfxVerbSend.R, { room: 0.82, damp: 0.45, width: 0.8 });
 mix(sfx.L, svL, 0, 0.45); mix(sfx.R, svR, 0, 0.45);
+// The beds duck under speech as the game ducks them (mixPolicy VOICE_DUCK: ambience −10 dB, 40 ms in, 450 ms out); the
+// world, −4 dB in the game, gives a film's crews −6 dB (cues.worldDuckDb), and the music, which the game leaves alone,
+// gives them room too (cues.musicDuckDb).
+{
+  const env = new Float32Array(N), atk = 1 - Math.exp(-1 / (0.04 * SR)), rel = 1 - Math.exp(-1 / (0.45 * SR));
+  const on = new Uint8Array(N);
+  for (const [a, b] of transmissions) for (let i = Math.max(0, Math.round(a * SR)); i < Math.min(N, Math.round(b * SR)); i++) on[i] = 1;
+  for (let i = 0, v = 0; i < N; i++) { v += ((on[i] ? 1 : 0) - v) * (on[i] ? atk : rel); env[i] = v; }
+  const duck = (b, dB) => { const g = db(dB) - 1; for (let i = 0; i < N; i++) if (env[i] > 1e-4) { const k = 1 + g * env[i]; b.L[i] *= k; b.R[i] *= k; } };
+  duck(amb, -10); duck(sfx, cues.worldDuckDb ?? -6); duck(music, cues.musicDuckDb ?? -6);
+}
+mix(sfx.L, amb.L, 0, 1); mix(sfx.R, amb.R, 0, 1);
+// each call's speech against what plays under it (dB RMS over the take), for the mix review
+const rmsDb = (b, a0, a1) => { let s = 0, n = 0; for (let i = Math.max(0, a0); i < Math.min(N, a1); i++) { s += b.L[i] * b.L[i] + b.R[i] * b.R[i]; n += 2; } return +(10 * Math.log10(s / Math.max(1, n) + 1e-12)).toFixed(1); };
+const radioLevels = transmissions.map(([a, b], i) => { const a0 = Math.round(a * SR), a1 = Math.round(b * SR), cue = (cues.sfx ?? []).filter((e) => e.kind === 'radio')[i];
+  return { t: +a.toFixed(2), lang: cue?.lang, line: cue?.line, speechDb: rmsDb(radio, a0, a1), underDb: rmsDb(sfx, a0, a1) }; });
+mix(sfx.L, radio.L, 0, 1); mix(sfx.R, radio.R, 0, 1);
 // ducks: automation gain windows on the music bus
 for (const d of cues.ducks ?? []) {
   const a = Math.round(d.from * SR), b = Math.round(d.to * SR), fade = Math.round((d.fade ?? 0.25) * SR), g = db(d.db);
@@ -234,6 +300,7 @@ const pre = (b, g) => { const L = b.L.subarray(0, frames).map(x => x * g), R = b
 const mg = db(cues.musicDb ?? -4), sg = db(cues.sfxDb ?? -2);
 writeWav(join(OUT, 'music-raw.wav'), ...pre(music, mg), frames);
 writeWav(join(OUT, 'sfx-raw.wav'), ...pre(sfx, sg), frames);
+writeWav(join(OUT, 'radio-raw.wav'), ...pre(radio, sg), frames);
 const sum = { L: new Float32Array(frames), R: new Float32Array(frames) };
 for (let i = 0; i < frames; i++) { sum.L[i] = music.L[i] * mg + sfx.L[i] * sg; sum.R[i] = music.R[i] * mg + sfx.R[i] * sg; }
 writeWav(join(OUT, 'sum-raw.wav'), sum.L, sum.R, frames);
@@ -257,6 +324,7 @@ const receipt = { tool: 'media-r5 score', toolSha256: sha(fileURLToPath(import.m
   durationSec: DUR, sampleRate: SR, integratedLufs: Number(integrated), truePeakDbfs: Number(truePeak), music: { file: resolve(args.music), sha256: sha(resolve(args.music)) },
   outputs: Object.fromEntries(['mix.wav', 'music.wav', 'sfx-raw.wav'].map(f => [f, sha(join(OUT, f))])),
   recordings: [...new Set([...decoded.keys()].map(k => k.split('#')[0]))].sort(),
-  provenance: 'Music: Eleven Music (ElevenLabs), generated from this film\'s cue sheet (music.mjs). Effects and ambience: the game\'s recorded sound library (public/audio/sfx, ElevenLabs sound generation; docs/AUDIO.md). Nothing synthesized.' };
+  radio: { transmissions: transmissions.length, seconds: +transmissions.reduce((s, [a, b]) => s + b - a, 0).toFixed(2), lines: radioLevels },
+  provenance: 'Music: Eleven Music (ElevenLabs), generated from this film\'s cue sheet (music.mjs). Effects and ambience: the game\'s recorded sound library (public/audio/sfx, ElevenLabs sound generation; docs/AUDIO.md). Crew voices: the game\'s recorded crew radio (public/audio/voice, ElevenLabs speech; docs/AUDIO.md) through the engine\'s intercom chain. Nothing synthesized.' };
 writeFileSync(join(OUT, 'score-receipt.json'), JSON.stringify(receipt, null, 2));
 console.log(`[score] ${DUR}s · ${integrated} LUFS · true peak ${truePeak} dBFS · ${receipt.recordings.length} recordings -> ${OUT}`);

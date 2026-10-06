@@ -40,7 +40,11 @@ Run from the repo root.
    `posters-build.mjs` lays out the posters. Large type only (`motion/design.md`).
 5. **Sound** (nothing synthesized, owner 2026-10-05) — `score/sfx-cues.mjs` derives a film's
    effect cues from its EDL with the game's own resolvers (gun class, engine family, track
-   set, the map's echo tail and ambience bed); `score/music.mjs --cues=<cues>` turns the cue
+   set, the map's echo tail and ambience bed) and the hero crew's radio calls in its nation's
+   language (firing, the round's result, near misses, an ally's kill), placed with the radio
+   discipline and kept inside their cut; `score.mjs` keys each call over the engine's intercom
+   chain (recorded key-up, static and release) and ducks the beds under speech, metering every
+   call against what plays under it in the receipt; `score/music.mjs --cues=<cues>` turns the cue
    sheet into an Eleven Music composition plan and generates the bed
    (`ELEVENLABS_API_KEY_FILE`, cached with a credit ledger); `score/score.mjs --cues=<cues>
    --music=<music-gen.wav>` mixes it under the game's recorded SFX and masters it.
