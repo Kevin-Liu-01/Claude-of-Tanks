@@ -14,6 +14,7 @@ import { markSmokeTube, alignSmokeBanks, transferSmokeSockets } from './vehicleA
 // independent (see docs/SYSTEMS.md).
 
 import * as THREE from 'three';
+import { vehicleProvenance } from '../authorship.ts';
 import { shareBattleGeometry } from './battleGeometrySharing.ts';
 import { combatVisibleObjects, retainCombatLods } from './combatVisibility.ts';
 import { detachEmptyLodSentinels } from '../engine/lodEmptySentinels.ts';
@@ -6817,6 +6818,7 @@ function* createTankOwnedSteps(
   const root = new THREE.Group();
   root.rotation.order = 'YXZ';
   root.name = `tank_${specId}`;
+  root.userData.provenance = vehicleProvenance(specId);
   root.userData.textureQuality = quality;
   root.userData.geometryQuality = geometryQuality;
   root.userData.materialMode = usesSharedMaterialTextures ? 'rendered' : 'geometry-only';

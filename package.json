@@ -41,7 +41,7 @@
     "jev:dev": "node server/jev/main.ts",
     "test:jev": "node server/jev.selftest.mjs && node src/game/jevCommander.selftest.mjs",
     "prebuild": "npm run i18n:validate",
-    "build": "VITE_PUBLIC_BUILD=1 vite build && node tools/generate-localized-pages.mjs && node tools/strip-nc-assets.mjs",
+    "build": "VITE_PUBLIC_BUILD=1 vite build && node tools/generate-localized-pages.mjs && node tools/strip-nc-assets.mjs && node tools/asset-provenance.mjs --write=dist/asset-provenance.json",
     "prebuild:private": "npm run i18n:validate",
     "build:private": "vite build && node tools/generate-localized-pages.mjs",
     "prebuild:public": "npm run i18n:validate",

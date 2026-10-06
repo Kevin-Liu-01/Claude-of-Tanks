@@ -1,6 +1,7 @@
 /** Ordered regression groups; npm test runs all of them in one invocation. */
 export const SELFTEST_SUITES = Object.freeze({
   pre: Object.freeze([
+    'tools/asset-provenance.selftest.mjs',
     // Group independent full-fleet builders to fill the four CPU slots before
     // the 45-second FIFO drain. 2026-10-02: one fleet pass per build (fleetPass.test-support.mjs) hosts the
     // ten former whole-fleet receipts' audits: HIGH (wheelQuality, surfaceMarkupFleet) and LOW (gunArticulation,
