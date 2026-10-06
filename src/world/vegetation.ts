@@ -44,7 +44,9 @@ import {
 import { makePalmFrondAtlas, makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
 import type { LandFieldSample } from './landUse.ts';
-import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
+import {
+  insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees, type AuthoredTreeFeature,
+} from './authoredTreePlacement.ts';
 import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
@@ -195,6 +197,15 @@ interface VegetationConfig {
   palmFallback?: Species;
   clusterScrub?: number;
   authoredTrees?: AuthoredTreeFeature[];
+  /**
+   * Trees lane (2026-10-05, Kestrel's dispersal stands): the authored stands may stand inside the settlement rect. The rect
+   * and its 24 m margin keep every tree off a map's town, and on Kestrel the rect is the whole plateau. Set, an authored
+   * station skips that one test (the avoid discs, the road verge, hardstands and soft ground, the parks, the spawns and
+   * the slope still hold) and keeps clear of the map's planned sites (authoredTreePlacement.ts plannedSiteClearances) and
+   * of the `clear` polygons it names ([x, z] rings: its aprons, yards or a town plan's lots). A map that leaves it unset
+   * is placed exactly as before.
+   */
+  authoredInSettlement?: { clear?: readonly (readonly (readonly [number, number])[])[] };
   stubblePatches?: readonly GrassStubblePatch[];
   /** Reuses the willow species/library slots; no fourth material or atlas. */
   willowForm?: 'tidalMangrove';
@@ -5577,10 +5588,11 @@ function* vegetationBuildSteps(
       add: concealment,
     });
   }
-  function siteOk(x: number, z: number, margin: number): boolean {
+  /** `settled`: an opted-in map's authored station, admitted inside the settlement rect (`authoredInSettlement`). */
+  function siteOk(x: number, z: number, margin: number, settled = false): boolean {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
     if (inAvoid(x, z)) return false;
-    if (x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
+    if (!settled && x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
     if (admission()._roadDist(x, z) < 9 + margin) return false;
     if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
     if (veg.parks) { // town maps: trees only inside the park belts
@@ -6508,8 +6520,16 @@ function* vegetationBuildSteps(
     const seatKey = (t: TreeRecord): string => `${t.x},${t.z}`;
     const seatWood = new Map<string, boolean>(), seatOf = new Map<TreeRecord, string>();
     for (const t of trees) { const key = seatKey(t); seatWood.set(key, t.wood === true); seatOf.set(t, key); }
+    // (trees lane, 2026-10-05: a map that opts in stands its stands inside its settlement rect, clear of its planned sites
+    // and of the polygons it names; Kestrel's dispersal quarters)
+    const settled = veg.authoredInSettlement;
+    const standSite = settled
+      ? (x: number, z: number, margin: number): boolean => siteOk(x, z, margin, true) && !insideClearPolygon(settled.clear ?? [], x, z)
+      : siteOk;
+    const standClearances = settled
+      ? [...structureClearances, ...plannedSiteClearances(cfg?.props?.plannedSites ?? [])] : structureClearances;
     group.userData.authoredTrees = redistributeAuthoredTrees(trees, treeObstacles, concealers,
-      authoredTreeDonors, veg.authoredTrees, heightField, siteOk, structureClearances, cfg?.props?.wallRuns ?? []);
+      authoredTreeDonors, veg.authoredTrees, heightField, standSite, standClearances, cfg?.props?.wallRuns ?? []);
     for (const t of trees) { const key = seatKey(t); if (key !== seatOf.get(t)) t.wood = seatWood.get(key) ?? false; }
   }
 
