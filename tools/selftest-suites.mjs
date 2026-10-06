@@ -532,6 +532,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/fleetSweep.selftest.mjs',
     'tools/code-quality-metrics.selftest.mjs',
     'tools/capture-lock.selftest.mjs',
+    // 2026-10-05: the polite lock's patient head — the older waiter of one session keeps the head while the session mutex
+    // is busy and takes it when it frees (the old step-behind rule handed it to the newer); the cap; no FIFO lock waiting
+    'tools/visual-census-lock.selftest.mjs',
     'tools/frame-budget-probe.selftest.mjs',
     'tools/capture-command.selftest.mjs',
     'tools/tank-release-plan.selftest.mjs',
