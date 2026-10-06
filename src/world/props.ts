@@ -55,6 +55,8 @@ import {
 } from './rockDressing.ts'; // round 75 item 6
 import { applyPoleTimberHook, markPoleTimber, roundPoleShaft } from './poleTimber.ts'; // the scenery lane: the telegraph poles' timber
 import { composeFieldWorks, composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
+import { composeLandmarks } from './landmarks/compose.ts'; // the landmarks lane, 2026-10-05
+import type { LandmarkPlacement } from './landmarks/types.ts';
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
@@ -350,7 +352,11 @@ interface PropsSettings {
   /** Maps lane B (2026-10-03): `plot` sizes the site — metres across (x) and deep (z) before the yaw — for a builder
    * that honours one (the warehouse; the Hostomel kit raises its barrel-vault cargo hangar on a warehouse plot 21 m
    * wide or more). */
-  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number } }[];
+  plannedSites?: readonly { structure: string; x: number; z: number; yawDeg: number; plot?: { w: number; d: number };
+    /** The landmarks lane (2026-10-05): a set piece (props.landmarks) stands on this site instead. The site keeps its plan
+     * draws, spacing and footprint (every later building, yard and clutter piece stays where it was); its geometry and
+     * collision are the piece's. */
+    vacated?: boolean }[];
   /** Maps lane B (2026-10-03, Nordhavn Fjord): the settlement the props dress — its roadside and block-fill buildings,
    * its plaza (the road crossing nearest cx, cz), street furniture and clutter — when it is not the whole ground the
    * terrain's village rect grades (a harbour town on the quay of a graded valley floor). Default: the village rect. */
@@ -461,6 +467,9 @@ interface PropsSettings {
   rockTalusDeg?: number | null;
   extraKits?: readonly string[] | null;
   riverLandings?: readonly RiverLandingAnchor[];
+  /** The landmarks lane (2026-10-05): the map's set pieces — bridges, monuments, squares, gates, towers and civic
+   * buildings (src/world/landmarks/) — placed once the settlement stands, before every scatter pass. */
+  landmarks?: readonly LandmarkPlacement[];
 }
 
 /** One planned building as a recorded build seated it (PropsMapConfig.townPlan; maps/townPlans.generated.ts): its
@@ -493,6 +502,8 @@ interface PlacedBuilding {
   rot: number;
   /** Round 75: the plan id of a planned building (the yard dressing reads it); other placements carry none. */
   kind?: string;
+  /** The landmarks lane (2026-10-05): a set piece's kind (landmarks/plan.ts) — a footprint, not a planned building. */
+  landmark?: string;
 }
 
 interface TacticalBeatFeature {
@@ -508,6 +519,8 @@ interface PlacedRadius {
   x: number;
   z: number;
   rr: number;
+  /** A set piece's reserved ground (the landmarks pass): kept clear by every later pass, never dressed as a yard. */
+  landmark?: true;
 }
 
 interface DecorationGroundingReceipt {
@@ -3997,7 +4010,7 @@ ${snowCap ? `
   const roadClearanceMoves: { kind: string; from: [number, number]; to: [number, number] | null }[] = [];
   if (P.roadBuildingClearance) group.userData.roadClearanceMoves = roadClearanceMoves;
   function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
-    fromRoad = false, plot?: { w: number; d: number }): boolean {
+    fromRoad = false, plot?: { w: number; d: number }, vacated = false): boolean {
     let tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
@@ -4095,6 +4108,15 @@ ${snowCap ? `
         }
         if (Number.isFinite(b.minX)) body = b;
       }
+    }
+    if (vacated) {
+      // a set piece stands here (the landmarks lane): the plan's draws were taken and the site keeps its footprint, its
+      // geometry and collision are dropped
+      for (const list of Object.values(tmp)) for (const geometry of list as THREE.BufferGeometry[]) geometry.dispose();
+      buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot, kind: structureId });
+      placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
+      if (!explicitStructure) bi++;
+      return true;
     }
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
     const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
@@ -4211,7 +4233,7 @@ ${snowCap ? `
   for (const site of P.townPlan?.length ? [] : P.plannedSites ?? []) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!isRoadBuildingSiteClear(site.x, site.z)) continue;
-    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot);
+    placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot, site.vacated);
     yield { fine: true };
   }
   yield* placeRoadBuildings();
@@ -4633,6 +4655,28 @@ ${snowCap ? `
   }
   moveBuildingsOffCarriageways();
 
+  // The landmarks lane (2026-10-05): the map's set pieces (src/world/landmarks/compose.ts), once the settlement, the
+  // strongpoints and the light buildings stand (so none of those moves for a piece: the composer refuses a piece on
+  // their solids) and before every scatter pass, which keeps off the ground each piece reserves. Built from streams of
+  // their own; a map without set pieces runs nothing there.
+  function* placeLandmarks(): Generator<PropsBuildSlice, void, void> {
+    if (!P.landmarks?.length) return;
+    const receipt = yield* composeLandmarks({
+      mapId, landmarks: P.landmarks, heightField, spawns: [L.spawns.player, ...L.spawns.enemies],
+      obstacles, colliders, architecture: regionalArchitecture, snowCap: structureContext.snowCap, seed,
+      hardKinds: new Set(Object.keys(DESTRUCTIBLE_BUILDING_TYPES)),
+      tier: mobileProps ? 'mobile' : 'desktop',
+      merge: (parts, matrix) => mergeInto(buckets, parts as unknown as PropsBuckets, matrix),
+      reserve: (x, z, r) => { placedB.push({ x, z, rr: r, landmark: true }); },
+      publish: (x, z, w, d, rot, kind) => { buildingFeatures.push({ x, z, w, d, rot, landmark: kind }); },
+      // a piece's benches and lamps join the props' destructibles once every seeded pass is done (below): so the pools
+      // and records every later pass makes keep their order, and their arrangements, as on the map without the piece
+      addDestructible: (kind, x, y, z, yaw, scale) => { landmarkDestructibles.push([kind, x, y, z, yaw, scale]); },
+    });
+    group.userData.landmarks = receipt;
+  }
+  const landmarkDestructibles: Array<[string, number, number, number, number, number]> = [];
+
   // the scenery lane (wave 34, "a stacked prop on a bare mound — no berm, trench or spilled sand"): each nest's spoil
   // banked against it and the spill of a burst bag (sceneryKit.ts buildSandbagBedding), a stream of its own named by
   // its place, in the map's soil (its earth on an arid map); drawn as one receive-only mesh of their own
@@ -4777,6 +4821,8 @@ ${snowCap ? `
     }
   }
   yield* placeDestructibleBuildings();
+  // the set pieces (placeLandmarks above), on the ground the settlement, the strongpoints and the light buildings left
+  yield* placeLandmarks();
 
   // --- yard set-dressing (r2 terrain_environment): woodpiles, barrels and
   // short garden-fence runs around every free-standing building. The village
@@ -4952,6 +4998,7 @@ ${snowCap ? `
       }
     };
     for (const building of placedB) {
+      if (building.landmark) continue; // a set piece keeps its own ground (the landmarks pass)
       placeYardFirewood(building);
       placeYardBarrels(building);
       placeYardTrough(building);
@@ -5308,8 +5355,11 @@ ${snowCap ? `
     const placeSoukObjects = (): void => {
       const potCount = richCount(inh.pots ?? 0);
       if (potCount <= 0) return;
+      // the buildings alone: a set piece's reserved ground (the landmarks pass) is no doorstep, and counting it among the
+      // buildings would turn every pick after it — a map's pots, then the rest of the dressing stream
+      const soukSites = placedB.some((b) => b.landmark) ? placedB.filter((b) => !b.landmark) : placedB;
       for (let t = 0, placed = 0; t < potCount * 16 && placed < potCount; t++) {
-        const pb = placedB.length ? placedB[(drng() * placedB.length) | 0] : null;
+        const pb = soukSites.length ? soukSites[(drng() * soukSites.length) | 0] : null;
         if (!pb) break;
         const a = drng() * Math.PI * 2, r = pb.rr + 0.8 + drng() * 2.6;
         const x = pb.x + Math.cos(a) * r, z = pb.z + Math.sin(a) * r;
@@ -5570,6 +5620,7 @@ ${snowCap ? `
     const hayCrateSites = Math.max(0, Math.round(P.hayCrateSites ?? HAY_CRATE_SITES[mapId] ?? 5));
     for (let i = 0; P.hayCrates && i < Math.min(hayCrateSites, placedB.length); i++) {
       const pb = placedB[i];
+      if (pb.landmark) continue;
       const n = 1 + ((rng() * 3) | 0);
       for (let k = 0; k < n; k++) {
         const a = rng() * Math.PI * 2, r = pb.rr + 2 + rng() * 4;
@@ -7916,6 +7967,7 @@ ${snowCap ? `
       apronGeos: THREE.BufferGeometry[],
     ): Generator<PropsBuildSlice, void, void> {
       for (const building of buildingFeatures) {
+        if (building.landmark) continue; // a set piece is grounded by its own plinths
         if (P.streetRows) {
           apronGeos.push(conformedRect(building.x, building.z,
             building.w / 2 + 2.8, building.d / 2 + 2.8, building.rot || 0));
@@ -8396,6 +8448,8 @@ ${snowCap ? `
     obstacles, colliders, animated: animatedDressing,
   });
   yield { fine: true, stage: 'map-extras' };
+  // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)
+  for (const [kind, x, y, z, yaw, scale] of landmarkDestructibles) addDestructible(kind, x, y, z, yaw, scale);
 
   // All seeded decoration has finished. Relocate accepted records before
   // merging, pool collider refits and spatial indexing; never resample RNG.

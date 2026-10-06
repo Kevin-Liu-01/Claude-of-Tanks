@@ -781,3 +781,58 @@ a sightline changes the map's cover: agree it with the map's layout owner and ru
    census in `server/dedicatedWorldCollision.selftest.mjs` with the before value, and run
    `node tools/map-layout-metrics.mjs --maps=<id> --check`.
 4. Capture the features close up by day and by night, and the map's census views, before and after.
+
+## Set pieces
+
+October 5, 2026 (the landmarks lane; the owner: "we need better buildings/random structures (like bridges or statues or
+parks or gates ANYTHING)/skyscrapers/big buildings"). A map names its set pieces in `props.landmarks`; the builders,
+their parameters and the pass that places them live in `src/world/landmarks/` (`plan.ts` the kinds, parameters and
+footprints; `kit.ts` the geometry kernel; one file per family; `compose.ts` the props pass). The map file carries only
+placements and parameters:
+
+```ts
+props: {
+  landmarks: [
+    { kind: 'church', x: -30, z: 96, yawDeg: -90, name: 'the village church' },            // the front (+z) is the bell tower
+    { kind: 'parkSquare', x: 10, z: 50, params: { centre: 'obelisk', railing: 'picket' }, name: 'the green' },
+    { kind: 'stoneArchBridge', x: 0, z: -120, yawDeg: 0, params: { span: 30, arches: 3 }, name: 'the old bridge' },
+  ],
+},
+```
+
+| Family | Kinds (parameters, defaults in `plan.ts`) |
+| --- | --- |
+| Bridges | `stoneArchBridge` (span, width, arches), `trussBridge` (a camelback through truss: span, panels, spans), `trestleBridge`, `baileyBridge` (bays of 10 ft), `viaduct` (arches, archSpan, height); `drivable: false` for a footbridge |
+| Monuments | `obelisk` (height, finial: star, cross, latin, ball; railing), `columnMonument`, `memorialWall` (length, flame), `statue` (pose: greatcoat, robe; metal: bronze, silver, stone), `equestrianStatue` |
+| Parks | `fountain` (radius, tiers), `bandstand`, `parkGate` (width, railing), `parkSquare` (width, depth, paths: cross, ring, diagonal; railing: iron, picket or false; benches, lamps; centre: any other kind) |
+| Gates | `townGate` (passage, height, walls), `triumphalArch` (passage, arches: 1 or 3), `kolkhozArch` (span), `torii` |
+| Towers | `belfry` (crown: onion, tent, needle, helm), `campanile`, `waterTower` (style: railway, rozhnovsky, trestle), `fireLookout`, `windmill` (style: post, smock, tower) |
+| Civic | `church` (tradition: orthodox — bell tower, refectory, cube with porticos, drum and dome, apse; domes 1 or 5 — or western — nave, chancel, west tower with a broach spire or a helm; walls: stone or render), `townHall`, `stationHall` (length, depth, canopy on the +z track side), `marketHall`, `grainElevator`, `granary` |
+
+**What the pass does.** Once the settlement stands (every planned, recorded, row and block-fill building placed and moved
+off the carriageways) and before the strongpoints, the light buildings and every scatter pass, each piece is admitted
+(inside the square, off the spawn pads, off the objective discs, dry, out of the road cores — a gate's or a bridge's
+passage spans its road — clear of every hard solid), seated on the lowest ground under its footprint, built from a
+stream of its own, weathered with the map's kit (its plain buckets on a map without one), merged into the props buckets
+(no draw of its own), and given collision derived from its solids (`structureCollision.ts`): the ground-contact band for
+movement, the 0.5 m shell bands for shells and sight. A gate builds its piers and the arch over them as separate solids,
+so the passage stays open; a bridge authors its movement record — the deck a standable floor graded from bank to bank,
+its parapets, piers and abutments — and keeps its derived shell bands. Its ground is reserved for the later passes (no
+yard clutter, hay or rock lands in it, and the yards never dress it), the vegetation keeps off its footprint (from the
+config alone), its footprint reaches the minimap, and a square's benches and lamps join the props' destructible pools.
+Nothing placed before it moves; a map without set pieces runs nothing. Every refusal is named in
+`props.group.userData.landmarks`.
+
+**Gameplay.** A set piece is hard cover where it stands: keep the deployments' screens and the objective discs, keep cover
+symmetric where the layout is (Verdant pairs its pieces about the village), and run the pacing receipt
+(`COT_PACING_MAPS=<id>`). A bridge carrying a road over water belongs to the terrain's bridge deck (a marsh station's
+`crossing: 'bridge'`), which the navigation reads; a set-piece bridge stands where the terrain gives it a gully or a
+bank to bear on.
+
+**Procedure.** Author the entry with a name; `node src/world/landmarks/landmarks.selftest.mjs` (every authored piece's
+static admission and its record in the committed shard); rebuild the map's shard
+(`node tools/capture-world-collision-manifests.mjs --node --maps <id>`) and run `server/collisionManifestDrift`,
+`server/dedicatedWorldCollision` and the map's pacing; capture the piece close up, from the street and from the
+establishing view, before and after. Proportions come from the real buildings (a Kursk-governorate village church is
+25-32 m long and 25-30 m to its cross; a railway water tower 16-20 m; a smock mill's sails 9-10 m): check the place and
+the period before choosing a kind.
