@@ -357,15 +357,14 @@ assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alo
   // (Caldera round 2: Aso's sugi stand in closed plantation blocks — Las Cañadas' open groves are gone)
   assert.ok(!treeBiomeOpen('caldera') && !treeBiomeArid('caldera') && treeBiomeOpen('desert') && !treeBiomeOpen('verdant'),
     'open groves on the arid places only');
-  // the Arizona uplands (wave 28): juniper and pinyon for the cedar and pine slots, the mesquite in the acacia slot's own
-  // form, creosote as the broom's switches, zoned by height in open groves under a dusty place colour
-  assert.equal(treeBiomeSlot('copper_mesa', 'cedar')?.form, 'juniper');
-  assert.equal(treeBiomeSlot('copper_mesa', 'pine')?.form, 'pinyon');
-  assert.equal(treeBiomeSlot('copper_mesa', 'acacia'), null, 'the mesquite grows in the acacia slot\'s own bipinnate form');
-  assert.ok(treeBiomeUpland('copper_mesa') && treeBiomeOpen('copper_mesa') && !treeBiomeUpland('caldera'), 'Copper Mesa zoned by height');
-  assert.equal(treeBiomeShrub('copper_mesa'), 'broom');
-  const sonoran = treeBiomeColour('copper_mesa');
-  assert.ok(sonoran && sonoran.cardSat < 0.12 && sonoran.texTone(0.36, 0.2, 0.2)[0] === 0.36, 'a dusty colour that keeps each form\'s hue');
+  // Copper Mesa is Queenstown under Mount Lyell (the map-revival lane, merged in batch 4, 2026-10-06; the trees lane's
+  // Arizona uplands row of wave 28 went with the old identity): eucalypt regrowth in the acacia and cedar slots, the
+  // tea-tree scrub in the holm oak's leaf, no zoning by height; the juniper and pinyon forms stay grown conifers
+  assert.equal(treeBiomeSlot('copper_mesa', 'acacia')?.form, 'eucalyptus');
+  assert.equal(treeBiomeSlot('copper_mesa', 'cedar')?.form, 'eucalyptus');
+  assert.equal(treeBiomeShrub('copper_mesa'), 'holmOak');
+  assert.ok(!treeBiomeUpland('copper_mesa') && !treeBiomeUpland('caldera'), 'Queenstown and Aso are not zoned by height');
+  assert.deepEqual(MAP_IDS.filter((id) => treeBiomeUpland(id)), [], 'no map sets the upland hook');
   for (const form of ['juniper', 'pinyon']) assert.equal(TREE_GROWTH_PROFILES[form].family, 'conifer', `${form}: a conifer (the high zone)`);
 }
 {

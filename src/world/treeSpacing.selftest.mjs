@@ -11,8 +11,6 @@
 //   broadleaf ... on the foreground dune");
 // - Aso (Obsidian Caldera, the map-revival lane's round 2; was Las Cañadas' few open groves): sugi in closed plantation
 //   blocks, the farmed floor open between them (wave 114: "low-poly shrubs spread evenly");
-// - Copper Mesa (the Arizona uplands, wave 28: "green broadleaf and fir clumps on sand"): juniper and pinyon on the
-//   higher ground only, mesquite in the low ground only, few of either;
 // - Whiteout Station (an ice sheet, wave 28): no tree, no shrub.
 // And the woods those stands make keep their summer colour: Verdant's leafy birches (its pine and willow slots) tint
 // their crowns as leaves, not as the bare twigs' warm grey (vegetation.ts grownTintLaw; the round-2 hand-over's frames).
@@ -162,29 +160,9 @@ try {
       report.caldera = { trees: trees.length, groves: groves.length, closed };
     } finally { world.dispose(); }
   }
-  // Copper Mesa: each form in its zone of the square's heights (the top two fifths for the juniper and the pinyon, the
-  // bottom two fifths for the mesquite), every tree past the square's edge too
-  {
-    const { field, world } = produce('copper_mesa');
-    try {
-      const heights = [];
-      for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) heights.push(field.getHeightAt(x, z));
-      heights.sort((a, b) => a - b);
-      const low = heights[Math.floor(heights.length * 0.4)], high = heights[Math.floor(heights.length * 0.6)];
-      const zoned = { conifer: 0, broadleaf: 0 };
-      for (const t of world._trees) {
-        if (t.species === 'snag') continue;
-        const form = treeBiomeSlot('copper_mesa', t.species)?.form ?? t.species;
-        const conifer = TREE_GROWTH_PROFILES[form].family === 'conifer', h = field.getHeightAt(t.x, t.z);
-        assert.ok(conifer ? h >= high - 1e-6 : h <= low + 1e-6,
-          `${form} in its zone (${h.toFixed(1)} m; the low ground under ${low.toFixed(1)}, the high over ${high.toFixed(1)})`);
-        zoned[conifer ? 'conifer' : 'broadleaf']++;
-      }
-      assert.ok(zoned.conifer >= 20 && zoned.broadleaf >= 20, `both zones grow (${JSON.stringify(zoned)})`);
-      assert.ok(world._trees.filter(inside).length < 300, `the mine's uplands carry few trees (${world._trees.filter(inside).length})`);
-      report.copper_mesa = zoned;
-    } finally { world.dispose(); }
-  }
+  // (Copper Mesa's Arizona zoning test — juniper and pinyon on the high ground, mesquite in the washes — went with the
+  // trees lane's Arizona row: the map is Queenstown under Mount Lyell since the map-revival lane's merge in batch 4,
+  // 2026-10-06, and no map sets the upland hook)
   // trees round 5 (the coordinator's ruling on the gauntlet's wave 100: "conifers standing inside the brown ploughed
   // fields ... the Hessian farmland reads as savanna parkland"): on a field-system map no field tree stands in a field's
   // interior (past its grass margin, clear of a road's verge, away from a wood's edge) and no conifer form stands in the
