@@ -263,7 +263,6 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     // that is all dressing (a square's paths and fence) publishes none
     const baseY = ground.y;
     let records = 0;
-    const obstacleStart = ctx.obstacles.length, colliderStart = ctx.colliders.length;
     if (hasStructure(parts)) try {
       let shell;
       if (built.movement?.length) {
@@ -289,10 +288,6 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
       skip(`collision: ${(error as Error).message}`);
       continue;
     }
-    // the records carry the piece's kind: a set piece is no settlement building (the layout brief's building metrics
-    // leave it out — a mill on a crest stands off every road by design)
-    for (let i = obstacleStart; i < ctx.obstacles.length; i++) (ctx.obstacles[i] as CollisionRecord & { landmark?: string }).landmark = placement.kind;
-    for (let i = colliderStart; i < ctx.colliders.length; i++) (ctx.colliders[i] as CollisionRecord & { landmark?: string }).landmark = placement.kind;
     entry.triangles = partList(parts).reduce((n, g) => n + (g.index ? g.index.count : g.getAttribute('position').count) / 3, 0);
     _matrix.compose(_position.set(placement.x, baseY, placement.z), _quaternion.setFromAxisAngle(_up, yaw), _scale);
     ctx.merge(parts, _matrix);
