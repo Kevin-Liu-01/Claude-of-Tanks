@@ -37,6 +37,7 @@ import { GLENCANYON_STYLE } from './glencanyon.ts';
 import { NAVAJO_STYLE } from './navajo.ts';
 import { SAAR_STYLE } from './saar.ts';
 import { SHANGHAI_STYLE } from './shanghai.ts';
+import { LONGLEAF_STYLE } from './longleaf.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
@@ -64,6 +65,7 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   navajo: NAVAJO_STYLE,
   saar: SAAR_STYLE,
   shanghai: SHANGHAI_STYLE,
+  longleaf: LONGLEAF_STYLE,
 });
 
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));
