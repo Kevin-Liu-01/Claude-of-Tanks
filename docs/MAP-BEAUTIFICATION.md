@@ -125,7 +125,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Ironworks | Connected loading courts, factory service yards, soot gradients and workers' streets |
 | Kestrel Airfield | Runway/apron geometry, dispersal bays, perimeter service roads; wide open sightlines |
 | Obsidian Caldera | Black volcanic shelves, ash and extraction equipment; distinct basalt fracture language |
-| Steinburg | Masonry street blocks, courtyards, central civic space and localized war damage |
+| Steinburg | Masonry street blocks, courtyards, central civic space and localized war damage; the two gate towers where the trade road passes the old wall line and the Brunnen at the Hauptstrasse's corner (the landmarks lane, 2026-10-05) |
 | Ruinspires | Monumental damaged street canyons; rubble belongs to adjacent structures and forms clear plazas/routes |
 | Blackglass District | Broken arcologies, elevated transit and flooded finance quarter; glass/concrete, not orange stone towers |
 | Skybridge Chasm | Crossing/abutments/control works organize massive canyon; believable approaches and below-bridge debris |
@@ -7121,6 +7121,19 @@ critics still saw "airbrushed cotton balls … no flat bases or backlit edges" a
 clouds. Contrast alone does not read as volume: the gap is the density field's shape — one flat base at the condensation
 level with cauliflower towers above it — not its light. If the clouds come back: the shape first, measured against
 photographs; the light knobs are on the branch.
+
+### 2026-10-05 — Steinburg: the gate towers and the Brunnen (the landmarks lane)
+
+Kronach's gate towers where the trade road passes the old wall line, north (-51, 96) and south (-50, -96): a square
+tower over a vaulted passage 6.5 m wide, its clock to the road outside, a steep hipped roof, a stub of crenellated wall
+each side, each in the wall's 32 m gap with room to drive past it (1 862 desktop triangles each); a Franconian Brunnen
+at the Hauptstrasse's west corner (1 438); the market square is the zone's disc and stays open. Census [2685, 6750,
+2254]; no building moved. The gates take the ground of a rubble pile, a street lamp and a parked truck in the wall's
+gaps and the Brunnen a crate's at the corner, so the passes that placed them re-plan from there (59 rubble piles, a
+truck, nine crates; wall stones and fences a few centimetres). Pacing (4 seeds) 407/296/198/182 s against the head's
+299/209/284/209 s. Cost: the establishing shot −0.50 ± 0.52 ms and chase −1.06 ± 0.37 (accept); the north gate's view
+0.23 ± 0.59 (ambiguous; its quiet-window re-run is queued); every CPU median within 0.1 ms, no long task and no program
+compiled during a slot.
 
 ### 2026-10-04 — no hard sun disc through a closed deck; the deck brightens toward the sun (the skies lane)
 
