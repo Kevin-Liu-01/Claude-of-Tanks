@@ -4492,10 +4492,13 @@ ${snowCap ? `
       merge: (parts, matrix) => mergeInto(buckets, parts as unknown as PropsBuckets, matrix),
       reserve: (x, z, r) => { placedB.push({ x, z, rr: r, landmark: true }); },
       publish: (x, z, w, d, rot, kind) => { buildingFeatures.push({ x, z, w, d, rot, landmark: kind }); },
-      addDestructible: (kind, x, y, z, yaw, scale) => { addDestructible(kind, x, y, z, yaw, scale); },
+      // a piece's benches and lamps join the props' destructibles once every seeded pass is done (below): so the pools
+      // and records every later pass makes keep their order, and their arrangements, as on the map without the piece
+      addDestructible: (kind, x, y, z, yaw, scale) => { landmarkDestructibles.push([kind, x, y, z, yaw, scale]); },
     });
     group.userData.landmarks = receipt;
   }
+  const landmarkDestructibles: Array<[string, number, number, number, number, number]> = [];
   yield* placeLandmarks();
 
   // the scenery lane (wave 34, "a stacked prop on a bare mound — no berm, trench or spilled sand"): each nest's spoil
@@ -8065,6 +8068,8 @@ ${snowCap ? `
     obstacles, colliders, animated: animatedDressing,
   });
   yield { fine: true, stage: 'map-extras' };
+  // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)
+  for (const [kind, x, y, z, yaw, scale] of landmarkDestructibles) addDestructible(kind, x, y, z, yaw, scale);
 
   // All seeded decoration has finished. Relocate accepted records before
   // merging, pool collider refits and spatial indexing; never resample RNG.

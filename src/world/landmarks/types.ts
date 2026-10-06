@@ -37,8 +37,8 @@ export interface LandmarkPlacement {
   z: number;
   /** The heading of the piece's front (its local +z), degrees: 0 faces +z, 90 faces +x. */
   yawDeg?: number;
-  /** The kind's own parameters (plan.ts LANDMARK_KINDS lists each kind's and its defaults). */
-  params?: LandmarkParams;
+  /** The kind's own parameters over its defaults (plan.ts LANDMARK_KINDS); an absent or undefined key keeps the default. */
+  params?: Readonly<Record<string, number | string | boolean | undefined>>;
   /** What the receipt and the docs call it ("the station at the east level crossing"). */
   name?: string;
   /** A variant seed: another draw of the same kind at the same place. */

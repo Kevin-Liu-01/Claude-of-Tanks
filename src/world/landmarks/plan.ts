@@ -57,7 +57,7 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   parkGate: { family: 'park', spansRoad: true, defaults: { width: 4.4, railing: 10 },
     footprint: (p) => [num(p, 'width') / 2 + num(p, 'railing') + 2.3, 2.2] },
   // a square: a lawn, its paths and railing, benches and lamps (the props destructibles) round a centre piece
-  parkSquare: { family: 'park', defaults: { width: 30, depth: 24, paths: 'cross', railing: true, benches: 4, lamps: 4, centre: 'none' },
+  parkSquare: { family: 'park', defaults: { width: 30, depth: 24, paths: 'cross', railing: true, benches: 4, lamps: 4, centre: 'none', centreHeight: 0 },
     footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'depth') / 2 + 1.0] },
   // ------------------------------------------------------------------------------------------------ gates and arches
   townGate: { family: 'gate', spansRoad: true, defaults: { passage: 5, height: 18, depth: 8, walls: 6 },
@@ -113,7 +113,8 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
 export function resolveLandmarkParams(placement: LandmarkPlacement): LandmarkParams {
   const spec = LANDMARK_KINDS[placement.kind];
   if (!spec) throw new Error(`Unknown landmark kind ${placement.kind}`);
-  return Object.freeze({ ...spec.defaults, ...(placement.params ?? {}) });
+  const authored = Object.entries(placement.params ?? {}).filter((entry): entry is [string, number | string | boolean] => entry[1] !== undefined);
+  return Object.freeze({ ...spec.defaults, ...Object.fromEntries(authored) });
 }
 
 /** The standing footprint's half extents [across, along] of a placement. */

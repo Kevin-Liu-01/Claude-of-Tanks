@@ -508,6 +508,30 @@ function dropCollinearCorners(points: number[]): number[] {
   return out.length >= 6 ? out : points;
 }
 
+/**
+ * The landmarks lane (2026-10-05): a convex loop still over the packed limit once its straight-through corners are gone
+ * (a turned section — a water tower's tank, a drum — is a fine polygon with no collinear corner) sheds, one at a time,
+ * the corner whose removal loses the least area (Visvalingam), down to PACKED_POLYGON_VERTICES. A loop already within
+ * the limit is returned as it was, so every manifest already carried keeps its bytes.
+ */
+function capConvexCorners(points: number[]): number[] {
+  if (points.length <= 2 * PACKED_POLYGON_VERTICES) return points;
+  const xs: number[] = [], zs: number[] = [];
+  for (let i = 0; i < points.length; i += 2) { xs.push(points[i]); zs.push(points[i + 1]); }
+  const area = (a: number, b: number, c: number) => Math.abs((xs[b] - xs[a]) * (zs[c] - zs[a]) - (zs[b] - zs[a]) * (xs[c] - xs[a]));
+  const alive = xs.map((_, i) => i);
+  while (alive.length > PACKED_POLYGON_VERTICES) {
+    let best = 0, bestArea = Infinity;
+    for (let k = 0; k < alive.length; k++) {
+      const a = alive[(k + alive.length - 1) % alive.length], b = alive[k], c = alive[(k + 1) % alive.length];
+      const lost = area(a, b, c);
+      if (lost < bestArea) { bestArea = lost; best = k; }
+    }
+    alive.splice(best, 1);
+  }
+  return alive.flatMap((i) => [xs[i], zs[i]]);
+}
+
 function isConvexPolygon(points: number[]): boolean {
   const count = points.length / 2;
   let sign = 0;
@@ -557,7 +581,7 @@ function bandProjection(solid: LocalSolid, bandMin: number, bandMax: number): { 
     for (const section of sliceContours(solid, level)) {
       loops++;
       if (isConvexPolygon(section)) {
-        const loop = section.length > 2 * PACKED_POLYGON_VERTICES ? dropCollinearCorners(section) : section;
+        const loop = section.length > 2 * PACKED_POLYGON_VERTICES ? capConvexCorners(dropCollinearCorners(section)) : section;
         pieces.push({ points: loop, y0: slabMin, y1: slabMax });
         continue;
       }
@@ -948,7 +972,11 @@ function makeRuntimeBand(
   const source = band
     ? (band.dense ? band.source : shedTrim(band.source))
     : collisionSource(solids, true, projectedCache);
-  if (source.length <= PART_LIMIT) return { minY, maxY, parts: source.map(rangedShape) };
+  // (the landmarks lane, 2026-10-05: a raw dense loop over the packed corner limit — a turned tank's section — collapses
+  // too; every band the manifests already carried was within both limits and publishes as it was)
+  if (source.length <= PART_LIMIT && source.every((item) => item.points.length <= 2 * PACKED_POLYGON_VERTICES)) {
+    return { minY, maxY, parts: source.map(rangedShape) };
+  }
   const collision = collapseRuntimeFootprint(source.map((item) => item.points));
   return { minY, maxY, parts: rangeRectangles(collision, source).map(rangedShape) };
 }
@@ -1009,7 +1037,7 @@ function collapseRuntimeFootprint(source: number[][]): number[][] {
       points.push([polygon[index], polygon[index + 1]]);
     }
   }
-  return [convexHull2(points)];
+  return [capConvexCorners(convexHull2(points))];
 }
 
 function collectSolids(buckets: StructureGeometryBuckets) {
