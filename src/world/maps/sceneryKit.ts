@@ -15,6 +15,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { DestructiblePropType } from './inhabitKit.ts';
+// (b15: the field stacks of every region, and the straw props' bands of the hay print)
+import { HAY_FACE_V, HAY_WOOD_V } from '../hayPrint.ts';
+import { mapToBand } from './haystackKit.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -296,9 +299,9 @@ function bStrawStack(rng: Rng): THREE.BufferGeometry {
     p.setX(i, p.getX(i) * f); p.setZ(i, p.getZ(i) * f);
   }
   stack.computeVertexNormals();
-  parts.push(scaleUV(stack, 3, 2));
+  parts.push(mapToBand(scaleUV(stack, 3, 2), HAY_FACE_V));
   const pole = new THREE.CylinderGeometry(0.05, 0.06, 1.1, 5, 1);
-  parts.push(scaleUV(pole, 0.3, 1).translate((rng() - 0.5) * 0.06, h + 0.4, 0));
+  parts.push(mapToBand(scaleUV(pole, 0.3, 1), HAY_WOOD_V).translate((rng() - 0.5) * 0.06, h + 0.4, 0));
   return merge(parts, false, true);
 }
 
@@ -309,7 +312,7 @@ function bStrawStackBroken(rng: Rng): THREE.BufferGeometry {
     const p = mound.attributes.position;
     for (let i = 0; i < p.count; i++) { const f = 1 + (rng() - 0.5) * 0.3; p.setX(i, p.getX(i) * f); p.setZ(i, p.getZ(i) * f); }
     mound.computeVertexNormals();
-    parts.push(scaleUV(mound, 2, 0.6).translate(ox, 0.27, oz));
+    parts.push(mapToBand(scaleUV(mound, 2, 0.6), HAY_FACE_V).translate(ox, 0.27, oz));
   }
   return merge(parts, false, true);
 }

@@ -122,7 +122,7 @@ const materialStage = section(source, '  const windowStyle = resolveStructureWin
 const roof = new Function('THREE', `${stripTypeScriptTypes(section(source,
   'function makeRoofMaterial(', 'function buildStoneCourseEdges('))}\nreturn makeRoofMaterial;`)(THREE);
 // round 75 (2026-09-26): the 'steel' atlas family joins the material stage (propsSteelAtlas.ts)
-const remaining = ['roofT', 'stone', 'fieldStone', 'fieldMud', 'wood', 'straw', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'vehiclePaint', 'steel', 'rockDetail'];
+const remaining = ['roofT', 'stone', 'fieldStone', 'fieldMud', 'wood', 'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'vehiclePaint', 'steel', 'rockDetail'];
 const materialFactory = new Function('THREE', 'resolveStructureWindowStyle', 'makeRoofMaterial',
   'registerRetainedObject3DResources', '_mustReplace', 'rockDressingFor', 'applyRockShaderHook',
   'STONE_SETTLE_M', 'applyStoneWallHook', 'MUD_SLUMP_M', 'applyMudWallHook', `${stripTypeScriptTypes(`

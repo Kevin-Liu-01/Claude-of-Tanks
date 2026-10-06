@@ -1202,6 +1202,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/stoneWalls.selftest.mjs',
     // the scenery lane (b13, wave 87): the karst field walls laid as dry stone, their face print, the T cut back
     'src/world/fieldWalls.selftest.mjs',
+    // the scenery lane (b15, wave 106): the regions' field stacks and the straw props' hay print
+    'src/world/haystacks.selftest.mjs',
     'src/world/wireMaterial.selftest.mjs',
     'src/world/maps/fieldWallDressing.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',

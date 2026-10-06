@@ -20,6 +20,9 @@ import {
 import { CIVILIAN_VEHICLE_RECEIPTS } from './civilianVehicleKit.ts';
 import { setNightEmissionMask } from '../../engine/nightEmissionMaterial.ts';
 import { FIELD_STONE_FACE_V, FIELD_STONE_HEARTING_V } from '../fieldStoneSurface.ts';
+// (b15: the straw props wear the hay print's bands: hayPrint.ts; the stook is a teepee of bound sheaves: haystackKit.ts)
+import { HAY_FACE_V, HAY_PACKED_V } from '../hayPrint.ts';
+import { buildStook, mapToBand } from './haystackKit.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -236,13 +239,13 @@ function bPalletBroken(rng: Rng): THREE.BufferGeometry {
 
 function bBale(_rng: Rng): THREE.BufferGeometry { // straw-textured round bale
   const b = new THREE.CylinderGeometry(0.72, 0.72, 1.45, 12, 1);
-  scaleUV(b, 2, 1);
+  mapToBand(scaleUV(b, 2, 1), HAY_PACKED_V);
   b.rotateZ(Math.PI / 2);
   return merge([b.translate(0, 0.70, 0)]);
 }
 function bBaleBroken(rng: Rng): THREE.BufferGeometry { // burst low hay heap
   const heap = new THREE.CylinderGeometry(1.0, 1.25, 0.42, 10, 1);
-  scaleUV(heap, 2.5, 0.5);
+  mapToBand(scaleUV(heap, 2.5, 0.5), HAY_FACE_V);
   const p = heap.attributes.position;
   for (let i = 0; i < p.count; i++) { // slump the profile
     const f = 1 + (rng() - 0.5) * 0.3;
@@ -252,36 +255,22 @@ function bBaleBroken(rng: Rng): THREE.BufferGeometry { // burst low hay heap
   const parts = [heap.translate(0, 0.20, 0)];
   for (let k = 0; k < 3; k++) { // thrown wads
     const wad = new THREE.CylinderGeometry(0.22, 0.30, 0.18, 7, 1);
-    scaleUV(wad, 1, 1);
+    mapToBand(scaleUV(wad, 1, 1), HAY_FACE_V);
     const a = rng() * Math.PI * 2;
     parts.push(wad.translate(Math.cos(a) * (0.9 + rng() * 0.6), 0.08, Math.sin(a) * (0.9 + rng() * 0.6)));
   }
   return merge(parts);
 }
 
-function bStook(rng: Rng): THREE.BufferGeometry { // straw-textured harvest sheaf teepee
-  const parts = [];
-  const n = 6;
-  for (let k = 0; k < n; k++) {
-    const a = (k / n) * Math.PI * 2 + rng() * 0.3;
-    const sh = new THREE.CylinderGeometry(0.055, 0.16, 1.25, 6, 1);
-    scaleUV(sh, 1, 1);
-    sh.rotateX(0.34);
-    sh.rotateY(a);
-    sh.translate(Math.cos(a) * 0.22, 0.60, Math.sin(a) * 0.22);
-    parts.push(sh);
-  }
-  const band = new THREE.CylinderGeometry(0.20, 0.20, 0.09, 8, 1, true);
-  scaleUV(band, 1, 1);
-  parts.push(band.translate(0, 0.86, 0));
-  return merge(parts);
+function bStook(rng: Rng): THREE.BufferGeometry { // a teepee of bound sheaves (b15: haystackKit.ts)
+  return buildStook(rng);
 }
 function bStookBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   for (let k = 0; k < 5; k++) { // sheaves knocked flat, radial
     const a = rng() * Math.PI * 2;
     const sh = new THREE.CylinderGeometry(0.06, 0.15, 1.2, 6, 1);
-    scaleUV(sh, 1, 1);
+    mapToBand(scaleUV(sh, 1, 1), HAY_FACE_V);
     sh.rotateZ(Math.PI / 2 - 0.06);
     sh.rotateY(a);
     sh.translate(Math.cos(a) * 0.5, 0.10, Math.sin(a) * 0.5);
@@ -765,14 +754,14 @@ function bHaystack(rng: Rng): THREE.BufferGeometry { // straw-textured slouched 
     }
   }
   stack.computeVertexNormals();
-  scaleUV(stack, 3, 1.5);
+  mapToBand(scaleUV(stack, 3, 1.5), HAY_FACE_V);
   return merge([stack.translate(0, hh / 2 - 0.12, 0)]);
 }
 function bHaystackBroken(rng: Rng): THREE.BufferGeometry { // driven-through stack: low split mound
   const parts = [];
   for (const [ox, oz, r] of [[-0.8, 0.2, 1.3], [0.9, -0.3, 1.1], [0.1, 0.9, 0.8]]) {
     const mound = new THREE.CylinderGeometry(r * 0.55, r, 0.62, 8, 1);
-    scaleUV(mound, 2, 0.6);
+    mapToBand(scaleUV(mound, 2, 0.6), HAY_FACE_V);
     const p = mound.attributes.position;
     for (let i = 0; i < p.count; i++) {
       const f = 1 + (rng() - 0.5) * 0.3;

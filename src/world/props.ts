@@ -60,6 +60,8 @@ type SceneryHardstand = { x: number; z: number; width: number; length: number; y
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
 import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
 import { paintDryWallBuffers } from './fieldWallFace.ts';
+import { paintHayBuffers } from './hayPrint.ts';
+import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, type HaystackStyle } from './maps/haystackKit.ts';
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
 import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
@@ -382,6 +384,8 @@ interface PropsSettings {
   /** environment density pass 2 (2026-09-12): buildings that get bales and crates around them (was a fixed 5). */
   hayCrateSites?: number;
   haystacks: number;
+  /** b15: the region's field stack (maps/haystackKit.ts HAYSTACK_STYLE_BY_MAP gives the map's; 'none' draws none). */
+  haystackStyle?: HaystackStyle;
   rocks: number;
   outcrops: number;
   craters: number;
@@ -764,7 +768,8 @@ export interface PropsRuntime {
 }
 
 // The scenery lane's landmark kinds follow the inhabiting kit's, so no existing kind moves (2026-10-03).
-const PROP_TYPE_REGISTRY: Readonly<Record<string, PropsDestructibleMeta>> = { ...DESTRUCTIBLE_TYPES, ...SCENERY_DESTRUCTIBLE_TYPES };
+// (b15: the regions' field stacks after the scenery's kinds — they are the haystack pass's, not landmarks)
+const PROP_TYPE_REGISTRY: Readonly<Record<string, PropsDestructibleMeta>> = { ...DESTRUCTIBLE_TYPES, ...SCENERY_DESTRUCTIBLE_TYPES, ...HAYSTACK_DESTRUCTIBLE_TYPES };
 
 function canvas2d(
   canvas: HTMLCanvasElement,
@@ -1030,6 +1035,27 @@ function makeStraw(
     albedo: toTexture(px, s, { srgb: true, anisotropy }),
     normal: normalFromHeight(hgt, s, 2.4, anisotropy),
     surface: surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.88, roughMax: 1.0, aoMin: 0.74 }),
+  };
+}
+
+/**
+ * The scenery lane (b15; gauntlet wave 106 on the field haystack: "a bare textureless dark cone"): the straw props'
+ * print (hayPrint.ts) under the map's straw tone — a bale's packed straw, a stack's face drawn down in locks, a thatched
+ * crown's courses and a stack pole's grey timber, four bands of one tile, painted the GPU's way round. Phones paint it
+ * at half size (the same straw). Its own material (mats.hay) on the straw destructibles only: the thatched roofs and the
+ * winter reeds tile their UVs across the whole tile and keep the straw print's uniform stalks (makeStraw).
+ */
+function* makeHay(
+  anisotropy: number,
+  tone: ToneFunction | null,
+  size: number,
+): Generator<PropsBuildSlice, GeneratedSurfaceTextures, void> {
+  const { px, hgt } = yield* paintHayBuffers(size);
+  applyTone(px, tone);
+  return {
+    albedo: toTexture(px, size, { srgb: true, anisotropy }),
+    normal: normalFromHeight(hgt, size, 2.2 * size / 512, anisotropy),
+    surface: surfaceFromHeight(hgt, size, anisotropy, { roughMin: 0.86, roughMax: 1.0, aoMin: 0.7 }),
   };
 }
 
@@ -3034,7 +3060,7 @@ function* propsBuildSteps(
     buildingLat: [10, 4], sideSkip: 0.25, maxSpread: 1.7, spacingPad: 9,
     wallRuns: null, well: true, hayCrates: true, fences: true,
     telegraph: true, carts: true, logs: true, logCount: 26, hayCrateSites: 5,
-    haystacks: 15, rocks: 170, outcrops: 16, craters: 30, rubblePiles: 0,
+    haystacks: 0, rocks: 170, outcrops: 16, craters: 30, rubblePiles: 0,
     wrecks: 4, // r7: burned-out vehicle hulks along the roads (contested read)
     // r6 terrain_environment dressing passes (per-biome, see map configs):
     // cropFields = standing crop-row plots on open farmland; lampposts =
@@ -3108,6 +3134,8 @@ function* propsBuildSteps(
   const wood = makeWood(noi, aniso, T.wood || null);
   yield { fine: true };
   const straw = makeStraw(noi, aniso, T.straw || null);
+  yield { fine: true };
+  const hay = yield* makeHay(aniso, T.straw || null, getDeviceTier() === 'mobile' ? 256 : 512);
   yield { fine: true };
   const structureWood = makeStructureDetail(noi, aniso, 'wood');
   yield { fine: true };
@@ -3231,6 +3259,10 @@ function* propsBuildSteps(
       emissiveIntensity: windowStyle.curtainEmissiveIntensity }),
     straw: new THREE.MeshStandardMaterial({ map: straw.albedo, normalMap: straw.normal,
       roughnessMap: straw.surface, aoMap: straw.surface, roughness: 1, metalness: 0 }),
+    // (b15) the straw destructibles — bales, stooks, the field stacks — wear the hay print's bands (makeHay); the
+    // straw bucket (thatched roofs, reeds) keeps the straw print. The same shader as the straw (its program)
+    hay: new THREE.MeshStandardMaterial({ map: hay.albedo, normalMap: hay.normal,
+      roughnessMap: hay.surface, aoMap: hay.surface, roughness: 1, metalness: 0 }),
     // round 75 item 6: the tile rides the map slots so the library owns it; the rock hook samples it triplanar
     // (a displaced sphere has no UVs), the vertex tone stays the stone's colour
     rock: new THREE.MeshStandardMaterial({
@@ -3292,7 +3324,7 @@ function* propsBuildSteps(
   };
   function configureSurfaceMaterials(): void {
     for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'fieldMud', 'wood',
-      'straw', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
+      'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
       if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
     // the scenery lane (wave 52, Verdant's village wall: its face in shade "a flat extruded slab with a near-black blocky
@@ -3443,9 +3475,10 @@ ${snowCap ? `
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
           : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook
             : materialKind === 'fieldMud' ? mudHook : grimeHook);
-      // (the hessian is the canvas's shader with another map: they share their programs; the field print has its own,
-      // for the modules' shifted windows, and the mud print its own, for its world-space weathering)
-      const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind;
+      // (the hessian is the canvas's shader with another map, and the hay the straw's: they share their programs; the
+      // field print has its own, for the modules' shifted windows, and the mud print its own, for its world-space
+      // weathering)
+      const programKind = materialKind === 'burlap' ? 'structureCanvas' : materialKind === 'hay' ? 'straw' : materialKind;
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
@@ -6207,8 +6240,58 @@ ${snowCap ? `
 
   // --- field haystacks: classic WoT soft-cover silhouettes in the open ---
   const stackSpots: Array<{ x: number; z: number; r: number }> = []; // r6: fed to the grounding-decal pass below
+  // b15 (gauntlet wave 106: the cone "a leftover debug marker"): the region's own stack where its fields stack hay
+  // (maps/haystackKit.ts), none where they do not — the default; a map that authors a count and no region keeps the cone
+  // (the steppe, whose rick is the maps lane's). The draws stay as they were — the authored count's, or the old default's
+  // fifteen — so every later placement keeps its seat; a stack the region does not build, or one too big for its site,
+  // takes its draws and stands nowhere.
+  const authoredHaystacks = (cfg as { props?: { haystacks?: number } } | null)?.props?.haystacks;
+  const haystackStyle: HaystackStyle = P.haystackStyle ?? HAYSTACK_STYLE_BY_MAP[mapId] ?? (authoredHaystacks !== undefined ? 'haystack' : 'none');
+  const haystackDraws = authoredHaystacks ?? 15;
   function placeFieldHaystacks(): void {
-  for (let i = 0, placed = 0; i < P.haystacks * 22 && placed < P.haystacks; i++) {
+  const form = haystackStyle === 'none' ? null : HAYSTACK_STYLE_KINDS[haystackStyle];
+  const meta = form ? PROP_TYPE_REGISTRY[form.kind] : null;
+  /**
+   * A region's stack stands where its builder would have built it: on the most level ground within fourteen metres of
+   * its seat — the seat itself if the ground under its foot is within 0.35 m from side to side, else the levellest of
+   * sixteen stands round it within 0.6 m — clear of the village, the spawns and the road by its reach; null where none
+   * is. The ground under the foot: eight points round a round stack's foot, a hooiberg's or a Diemen's corners and
+   * sides. No draws (every later placement keeps its seat).
+   */
+  function haystackStand(x0: number, z0: number, yaw: number, sc: number): { x: number; z: number; y: number } | null {
+    if (!meta) return null;
+    const box = meta.hw != null && meta.hl != null, footR = ((meta.collisionR ?? meta.r) + 0.25) * sc;
+    const hw = (meta.hw ?? 0) * sc, hl = (meta.hl ?? 0) * sc, c = Math.cos(yaw), s = Math.sin(yaw);
+    let best: { x: number; z: number; y: number } | null = null, bestSpread = 0.6;
+    for (let k = 0; k < 17; k++) {
+      const ring = k === 0 ? 0 : k <= 8 ? 7 : 14, a = ((k - 1) % 8) * (Math.PI / 4) + (k > 8 ? Math.PI / 8 : 0);
+      const x = x0 + Math.cos(a) * ring, z = z0 + Math.sin(a) * ring;
+      if (Math.abs(x) > 430 || Math.abs(z) > 430) continue;
+      if (x > v.x0 - 10 && x < v.x1 + 10 && z > v.z0 - 10 && z < v.z1 + 10) continue;
+      if (heightField._roadDist(x, z) < Math.max(9, 6 + meta.r * sc)) continue;
+      if (heightField.getGroundType(x, z) === 'soft' || noVeg(x, z)) continue;
+      if (heightField.getNormalAt(x, z).y < 0.92) continue;
+      if ([L.spawns.player, ...L.spawns.enemies].some((spawn) => Math.hypot(x - spawn.x, z - spawn.z) < 18)) continue;
+      const y = heightField.getHeightAt(x, z);
+      let lo = y, hi = y;
+      for (let p = 0; p < 8; p++) {
+        let px: number, pz: number;
+        if (box) {
+          const u = [1, 1, -1, -1, 1, -1, 0, 0][p] * hw, w = [1, -1, 1, -1, 0, 0, 1, -1][p] * hl;
+          px = x + u * c + w * s; pz = z - u * s + w * c;
+        } else {
+          px = x + Math.cos((p * Math.PI) / 4) * footR; pz = z + Math.sin((p * Math.PI) / 4) * footR;
+        }
+        const h = heightField.getHeightAt(px, pz);
+        lo = Math.min(lo, h); hi = Math.max(hi, h);
+      }
+      const spread = hi - lo;
+      if (k === 0 && spread <= 0.35) return { x, z, y };
+      if (spread < bestSpread) { bestSpread = spread; best = { x, z, y }; }
+    }
+    return best;
+  }
+  for (let i = 0, placed = 0; i < haystackDraws * 22 && placed < haystackDraws; i++) {
     const x = (rng() * 2 - 1) * 430, z = (rng() * 2 - 1) * 430;
     if (x > v.x0 - 10 && x < v.x1 + 10 && z > v.z0 - 10 && z < v.z1 + 10) continue;
     if (heightField._roadDist(x, z) < 9) continue;
@@ -6225,9 +6308,13 @@ ${snowCap ? `
     // through cosmetically instead of being EATEN (the old collider made a
     // hay pile stop AP rounds; colliders are gone for hay).
     const sc = 0.85 + rng() * 0.4;
-    addDestructible('haystack', x, y - 0.10, z, rng() * Math.PI * 2, sc);
-    stackSpots.push({ x, z, r: 1.9 * sc * 1.5 });
+    const yaw = rng() * Math.PI * 2;
     placed++;
+    if (!form || !meta) continue;
+    const stand = form.kind === 'haystack' ? { x, z, y } : haystackStand(x, z, yaw, sc);
+    if (!stand) continue;
+    addDestructible(form.kind, stand.x, stand.y - 0.10, stand.z, yaw, sc);
+    stackSpots.push({ x: stand.x, z: stand.z, r: form.spotR * sc });
   }
   }
   placeFieldHaystacks();
@@ -8718,8 +8805,9 @@ ${snowCap ? `
   ): Generator<PropsBuildSlice, void, void> {
     const meta = pool.meta;
     // Wall modules use the map-toned masonry materials; other objects keep
-    // the wood, straw, vehicle, or baked family selected by their metadata.
-    let material = mats[meta.mat] || mats.baked;
+    // the wood, straw, vehicle, or baked family selected by their metadata
+    // (b15: a straw object wears the hay print's material).
+    let material = (meta.mat === 'straw' ? mats.hay : mats[meta.mat]) || mats.baked;
     if (kind === 'lamp') {
       // One material for the whole instanced lamp family, not per fixture.
       // Other baked props keep their existing non-emissive shader.
