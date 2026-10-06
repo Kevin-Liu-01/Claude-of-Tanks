@@ -6044,7 +6044,8 @@ function ammoCan(
   body.userData.hinges = 2;
   body.userData.carryHandle = true;
   P.addEquipment(bucket, body, x, y, z, 0, yaw, 0);
-  P.addEquipment(bucket, markEquipmentLid(moldedBox(0.152, 0.026, 0.312, 0.012, 1, 0.006)), x, y + 0.11, z, 0, yaw, 0); // lid
+  // The lid stays a plain box: equipment damage folds marked lids by a BoxGeometry's vertex layout (equipmentDamage.ts).
+  P.addEquipment(bucket, markEquipmentLid(box(0.155, 0.028, 0.315)), x, y + 0.11, z, 0, yaw, 0); // gasketed lid
   for (const side of [-1, 1]) {
     addEquipmentLocal(P, dark, block(0.024, 0.072, 0.02), x, y, z, yaw, side * 0.045, 0.035, 0.158); // latches
     addEquipmentLocal(P, dark, roundBar([-0.02, 0, 0], [0.02, 0, 0], 0.012, 6), x, y, z, yaw,
