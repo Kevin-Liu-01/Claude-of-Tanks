@@ -4765,6 +4765,11 @@
       "id": "cliffbridge",
       "name": "Aegis Crossing",
       "random": true
+    },
+    {
+      "id": "goreme",
+      "name": "Chimney Valley",
+      "random": true
     }
   ],
   "modes": [
