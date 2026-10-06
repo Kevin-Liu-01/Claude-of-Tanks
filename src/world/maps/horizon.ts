@@ -3658,6 +3658,8 @@ export function* buildHorizonRingSteps(
   // (2026-10-05: the beam the deck lets through — the light model's overcast cut; the ring, which samples the cloud shade
   // map where the layer draws, takes the cut a deck with gaps leaves to the map's pattern (resolveDeckClosure); the far
   // range and the panorama, beyond any pattern, take the whole average cut)
+  // (coupled: OVERCAST_DIRECT_CUT_SHARED is lightModel.ts OVERCAST_DIRECT_CUT, pinned equal by lightModel.selftest — a change
+  // to the near beam moves the far land's sun term with it; 0.96 → 0.98 on 2026-10-05 took a closed deck's from 4 % to 2 %)
   const deckPreset = { ...((skyCfg ?? {}) as LightModelPreset), cloudscape: (cfg as { clouds?: LightModelPreset['cloudscape'] } | null | undefined)?.clouds ?? null };
   const deckOvercast = resolveOvercast(deckPreset);
   const lighting: HorizonLighting = {
