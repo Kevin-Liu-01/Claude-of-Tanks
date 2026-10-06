@@ -89,6 +89,7 @@ const BUDGET = {
   townGate: 4000, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
   stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000, liftBridge: 6000,
   aircraftWreck: 9000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000, lighthouse: 3500, mole: 5000,
+  lavoir: 5000, khan: 14000,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
 /** The authored variants each kind is built in besides its defaults. */
@@ -97,7 +98,7 @@ const VARIANTS = {
   windmill: [{ style: 'post' }, { style: 'tower', height: 20 }],
   waterTower: [{ style: 'rozhnovsky', height: 22 }, { style: 'trestle' }],
   townHall: [{ frame: true, width: 20, depth: 12, storeys: 3, tower: 28 }],
-  belfry: [{ crown: 'tent' }, { crown: 'needle' }, { crown: 'helm' }],
+  belfry: [{ crown: 'tent' }, { crown: 'needle' }, { crown: 'helm' }, { style: 'podhale', height: 15, side: 5.4 }],
   obelisk: [{ finial: 'cross', railing: false }, { finial: 'ball', height: 14 }],
   statue: [{ metal: 'silver', pose: 'robe' }],
   parkSquare: [{ centre: 'obelisk', railing: 'picket' }, { paths: 'ring', centre: 'fountain' }, { paths: 'diagonal', railing: false }],
@@ -105,6 +106,8 @@ const VARIANTS = {
   granary: [{ walls: 'timber' }],
   trussBridge: [{ spans: 2, span: 60 }],
   lighthouse: [{ paint: 'green', base: 'rock' }],
+  khan: [{ form: 'arcade', width: 30 }],
+  fountain: [{ style: 'ottoman', radius: 2.6 }],
   mole: [{ sea: 'right', light: 'green' }, { light: 'none', length: 24 }],
 };
 const COLOURED = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']);

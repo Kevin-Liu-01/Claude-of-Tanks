@@ -8,6 +8,7 @@ import { church, grainElevator, granary, marketHall, stationHall, townHall } fro
 import { kolkhozArch, torii, townGate, triumphalArch } from './gates.ts';
 import { columnMonument, equestrianStatue, memorialWall, obelisk, statue } from './monuments.ts';
 import { lighthouse, mole } from './harbour.ts';
+import { khan, lavoir } from './village.ts';
 import { bandstand, fountain, parkGate, parkSquare } from './parks.ts';
 import { aircraftWreck } from './wrecks.ts';
 import { belfry, campanile, fireLookout, valveTower, waterTower, windmill } from './towers.ts';
@@ -28,7 +29,9 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   fountain,
   grainElevator,
   granary,
+  khan,
   kolkhozArch,
+  lavoir,
   liftBridge,
   lighthouse,
   marketHall,

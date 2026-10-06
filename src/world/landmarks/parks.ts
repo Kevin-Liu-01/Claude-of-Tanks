@@ -17,6 +17,7 @@ export const fountain: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const R = Math.max(2, Number(ctx.params.radius)), tiers = Math.max(1, Math.min(3, Math.round(Number(ctx.params.tiers))));
   const base = -0.6 - ctx.groundFall;
+  if (String(ctx.params.style) === 'ottoman') return ottomanFountain(sink, R, base);
   // the basin wall: a ring with its coping (outer face, top, inner face down to the water)
   revolve(sink, 'stone', 0, 0, [[R, base], [R, 0.55], [R + 0.08, 0.55], [R + 0.08, 0.7], [R - 0.42, 0.7], [R - 0.42, 0.42]], 28);
   // the water (dark glass, the sky in it) and the basin floor under it
@@ -35,6 +36,30 @@ export const fountain: LandmarkBuilder = (ctx) => {
   revolve(sink, 'stone', 0, 0, [[r * 1.3, y], [r * 1.1, y + 0.4], [r * 1.6, y + 0.6], [0, y + 0.95]], 10);
   return { parts: sink.finish() };
 };
+
+/**
+ * The Ottoman village fountain (a Levantine market square's, Deir el Qamar's on its Midan): an octagonal basin of dressed
+ * sandstone with its moulded coping, the water in it, and from its middle an octagonal pillar carrying the brass spouts
+ * on each face, a carved band, a moulded cornice and a small ribbed dome with its finial.
+ */
+function ottomanFountain(sink: PartSink, R: number, base: number): ReturnType<LandmarkBuilder> {
+  const oct = Math.PI / 8, Ro = R / Math.cos(oct);
+  revolve(sink, 'stone', 0, 0, [[Ro, base], [Ro, 0.62], [Ro + 0.1, 0.62], [Ro + 0.1, 0.78], [Ro - 0.36, 0.78], [Ro - 0.36, 0.45]], 8, {}, oct);
+  revolve(sink, 'glass', 0, 0, [[Ro - 0.36, 0.55], [0.6, 0.55]], 8, { decor: true }, oct);
+  // the pillar: its foot, the shaft, the band where the spouts come out, the cornice and the dome
+  const p = Math.max(0.45, R * 0.16) / Math.cos(oct);
+  revolve(sink, 'stone', 0, 0, [[p * 1.35, 0.45], [p * 1.35, 0.85], [p, 1.0], [p, 1.9], [p * 1.12, 1.95], [p * 1.12, 2.25], [p, 2.3], [p, 2.6],
+    [p * 1.32, 2.78], [p * 1.32, 2.92], [p * 0.95, 2.95]], 8, {}, oct);
+  revolve(sink, 'stone', 0, 0, [[p * 0.95, 2.95], [p * 0.92, 3.25], [p * 0.7, 3.55], [p * 0.36, 3.75], [0, 3.8]], 8, {}, oct);
+  revolve(sink, 'structureMetal', 0, 0, [[0.04, 3.78], [0.11, 3.88], [0.12, 4.0], [0.05, 4.1], [0.03, 4.45], [0, 4.5]], 8,
+    { colour: rgb(0xa98a46), decor: true });
+  // a brass spout from the middle of each face of the band, over the water
+  for (let k = 0; k < 8; k++) {
+    const a = k * Math.PI / 4, cs = Math.sin(a), cc = Math.cos(a), r0 = p * Math.cos(oct) * 1.12;
+    bar(sink, 'structureMetal', [cs * r0, 2.1, cc * r0], [cs * (r0 + 0.32), 2.04, cc * (r0 + 0.32)], 0.05, { colour: rgb(0xa98a46), decor: true });
+  }
+  return { parts: sink.finish() };
+}
 
 /**
  * The bandstand (a spa park's or a garrison town's music pavilion): an octagonal plinth with its steps, eight slender
