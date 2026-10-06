@@ -196,6 +196,14 @@ interface TimeRecipe {
   readonly cloudLayer?: Partial<CloudLayerPreset>;
   /** A key light decoupled from the sky's sun at this elevation along its bearing (the blue hour's glow). */
   readonly keyElevationDeg?: number;
+  /**
+   * The grounded camera's offset (EV) for this time, added to the map's own `lighting.exposureEV` (2026-10-06, the skies
+   * lane; the media session's review of PR #9's merge: all six night takes read as daylight). Under the grounded light
+   * model (lightModel.ts) the camera adapts to the light the frame receives — `exposure` (postExposure) above sets only
+   * the legacy rig's level — and a moonlit field displays at about a third of noon, the battle night's level (the owner's
+   * 2026-09-14 calibration). The Studio's night is a cinematic night, darker than the battle's.
+   */
+  readonly cameraEV?: number;
 }
 
 /**
@@ -278,6 +286,8 @@ const RECIPES: Readonly<Record<Exclude<StudioTimeOfDay, 'day'>, TimeRecipe>> = O
     cloudHex: 0xb4c0d8, cloudBlend: 1,
     exposure: 1.1, readability: 0.3, horizonDim: 0.2,
     cloudLayer: { shadow: false, sunGain: 3, ambientScale: 2 },
+    // the moonlit grey card at about a seventh of the Studio day (the grounded camera alone kept a third)
+    cameraEV: -1.25,
   },
 });
 
@@ -348,6 +358,8 @@ export function planStudioLight(
     postExposure: round((authored.postExposure ?? 1) * recipe.exposure, 3),
   };
   if (recipe.atmosphere) sky.atmosphere = { ...(authored.atmosphere ?? {}), ...recipe.atmosphere };
+  // the grounded camera's offset joins the map's own lighting block (its ground albedo, overcast and EV kept)
+  if (recipe.cameraEV) sky.lighting = { ...(authored.lighting ?? {}), exposureEV: round((authored.lighting?.exposureEV ?? 0) + recipe.cameraEV, 3) };
   const cloudLayer = { ...(pinnedClouds ?? authored.cloudLayer ?? {}), ...(recipe.cloudLayer ?? {}) };
   if (Object.keys(cloudLayer).length) sky.cloudLayer = cloudLayer;
   if (lab?.[time]?.sky) Object.assign(sky, lab[time].sky);

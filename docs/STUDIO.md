@@ -736,6 +736,15 @@ Changing the light re-keys or rebuilds everything derived from it, and a direct 
   authored windows, lamps and the actors' headlights; budget 4 spot / 2 point lights on desktop; the pooled lights
   run at 0.45 of their battle intensity at dusk and 0.7 at night, so pale snow and sand do not blow out).
 
+**The night's camera** (2026-10-06, the skies lane; the review of the merge with PR #9: the six night takes read as
+daylight under a starry sky). On the grounded light model the camera adapts to the light a frame receives — a recipe's
+`exposure` sets only the legacy rig's level — and a moonlit field displayed at about a third of noon, the battle night's
+level, the moon a hard key of 0.9 over it. The night recipe's `cameraEV` (−1.25, added to the map's own
+`lighting.exposureEV`) holds the Studio night at an eighth to a quarter of the Studio day (overcast and snow maps at the
+top of that range), the moon still the key with a moonlit shadow (`studioLight.selftest`). A scene's `picture.exposure`
+stacks on top: the night takes' +0.3 to +0.6 EV were authored against the darker legacy camera and push a night back
+toward day.
+
 Aerial perspective, sun shafts, the lens flare and water read the live sun every frame. A return to the authored day,
 a battlefield switch and Studio exit restore every mutated value exactly (the battlefield stays cached for battles).
 

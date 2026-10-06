@@ -302,4 +302,44 @@ assert.equal(runtime.plan, null);
   ringRuntime.restore();
   assert.deepEqual(data, before, 'Studio exit restores the atlas');
 }
+// 2026-10-06 (the skies lane; the media session's review of PR #9's merge: all six night takes read as daylight under a
+// starry sky): under the grounded light model the camera adapts to the light (lightModel.ts exposureFor) and a moonlit
+// field displayed at about a third of noon — the battle night's level. The night recipe's camera offset (cameraEV) holds the
+// Studio night darker on every terrestrial map: the moonlit grey card (the horizontal light × the exposure) at most a
+// quarter of the Studio day's, the moon still the key (its absolute 0.9) with a moonlit shadow (the key's share of the
+// light 0.2–0.45, never the clear day's 0.8+), the map's own lighting block kept and the offset added to its EV
+{
+  const core = await import('../engine/lightModelCore.ts');
+  const { skyPresetToAtmosphere } = await import('../engine/atmosphere.ts');
+  const { getMapConfig, MAP_IDS } = await import('../world/maps/index.ts');
+  await core.loadGroundedLightModel();
+  const resolve = (sky) => {
+    const preset = { ...DEFAULT_SKY_PRESET, ...sky }, atmo = skyPresetToAtmosphere(preset);
+    const irr = [0.05, 0.08, 0.14].map((v) => v * (preset.skyIntensity ?? 1));
+    const m = core.resolveLightModel(preset, atmo, { irradianceRaw: irr }, core.authoredSunOf(preset));
+    const keyH = m.sunIntensity * core.luminance(m.sunColor) * Math.max(0, atmo.sunDir[1]);
+    return { m, card: m.illuminance * m.exposure, keyShare: keyH / m.illuminance };
+  };
+  let maps = 0, darkest = 0;
+  for (const mapId of MAP_IDS) {
+    if (STUDIO_SPACE_MAPS.includes(mapId)) continue;
+    const authored = getMapConfig(mapId).sky;
+    const day = resolve(planStudioLight(mapId, authored, 'day', null).sky);
+    const plan = planStudioLight(mapId, authored, 'night', null), night = resolve(plan.sky);
+    assert.equal(night.m.mode, 'physical', `${mapId}: the grounded rig lights the Studio night`);
+    assert.ok(Math.abs(night.m.night - 1) < 1e-9, `${mapId}: full night`);
+    assert.ok(Math.abs(night.m.sunIntensity - 0.9) < 1e-9, `${mapId}: the moon is the key (${night.m.sunIntensity})`);
+    const share = night.card / day.card;
+    assert.ok(share <= 0.25, `${mapId}: the moonlit card ${(100 * share).toFixed(1)} % of the Studio day's (at most a quarter)`);
+    assert.ok(night.keyShare >= 0.2 && night.keyShare <= 0.45, `${mapId}: a moonlit shadow (the key's share ${night.keyShare.toFixed(2)})`);
+    const own = authored.lighting ?? {};
+    for (const [k, v] of Object.entries(own)) if (k !== 'exposureEV') assert.deepEqual(plan.sky.lighting[k], v, `${mapId}: lighting.${k} kept`);
+    assert.ok(Math.abs(plan.sky.lighting.exposureEV - ((own.exposureEV ?? 0) - 1.25)) < 1e-9, `${mapId}: the night's camera offset on the map's own EV`);
+    darkest = Math.max(darkest, share); maps++;
+  }
+  assert.ok(maps >= 30, `the terrestrial maps (${maps})`);
+  // the day keeps the authored light exactly: no camera offset
+  assert.equal(planStudioLight('verdant', getMapConfig('verdant').sky, 'day', null).sky.lighting, getMapConfig('verdant').sky.lighting);
+}
+
 console.log(`studioLight.selftest: ${STUDIO_TIMES.length} times, bands, light block, distinct relative recipes, space-map rule, exact relight restore and ring shadow re-bake pass`);
