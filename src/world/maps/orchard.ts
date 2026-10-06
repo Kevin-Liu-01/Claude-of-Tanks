@@ -86,7 +86,8 @@ export default {
     ],
   },
   props: {
-    sourcedPalette: 'orchard', bathhouseStyle: 'timber',
+    // (2026-10-06, the coordinator: the old identity's timber bathhouse dropped — the Chouf kit builds the hammam)
+    sourcedPalette: 'orchard',
     // the map-revival lane (2026-10-05): the Chouf kit (maps/regional/chouf.ts) builds the plan in the mountain
     // village's sandstone, every building where it stood
     architecture: 'chouf',

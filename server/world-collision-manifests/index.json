@@ -180,8 +180,8 @@
       "concealers": 606
     },
     "orchard": {
-      "bytes": 1530340,
-      "sha256": "deae5655fd7120aa3d2421499519562d962e410d1d73560dc9b54d01f5ac757e",
+      "bytes": 1530388,
+      "sha256": "6f80c3e62372a652afef305f714aa92345894e4ff6251219a96db79fb7a6f8c4",
       "obstacles": 3716,
       "colliders": 3661,
       "concealers": 3917

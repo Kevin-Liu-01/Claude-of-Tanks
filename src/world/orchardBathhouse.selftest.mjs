@@ -372,11 +372,14 @@ function placed(config, field, seed) {
   return step.value;
 }
 
-assert.deepEqual(MAP_IDS.filter(id => getMapConfig(id).props.bathhouseStyle), ['orchard'],
-  'only the explicit Orchard config selects this variant');
-const orchard = getMapConfig('orchard');
-assert.equal(orchard.props.plan[0], 'bathhouse', 'no new catalog ID or additional building slot');
-const previous = { ...orchard, props: { ...orchard.props, bathhouseStyle: undefined } };
+// 2026-10-06 (the map-revival lane, the coordinator's ruling): Orchard Valley is the Chouf now and its kit builds the
+// bathhouse as the hammam, so the old identity's timber variant left its config; no map selects it, and the receipt
+// holds the variant's contract on an Orchard fixture that does (the placement with the kit off, above)
+assert.deepEqual(MAP_IDS.filter(id => getMapConfig(id).props.bathhouseStyle), [],
+  'no map selects the timber variant');
+const previous = getMapConfig('orchard');
+assert.equal(previous.props.plan[0], 'bathhouse', 'no new catalog ID or additional building slot');
+const orchard = { ...previous, props: { ...previous.props, bathhouseStyle: 'timber' } };
 assertExplicitFrontageOwner();
 let savings;
 for (const seed of [1337, 2025, 7719]) {
