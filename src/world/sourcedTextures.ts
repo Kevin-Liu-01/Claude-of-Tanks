@@ -302,9 +302,12 @@ const TERRAIN_PLAN = {
     // brightness of the old ochre floor; the dirt set's 0.43/0.34/0.25 under the same pink would fall to a luma near
     // 0.27, round 47's "ground too black"); the worn variant ≈ 0.55/0.43/0.39. R stays null: the procedural strata keep
     // the benches' bedding.
-    G: { set: 'sand', tint: [0.80, 0.70, 0.80], roughMul: 1.26 },
-    D: { set: 'sand', tint: [0.70, 0.60, 0.68], roughMul: 1.3 },
-    R: null, M: null,
+    // (Copper Mesa round 2, wave 117: still "orange-tan sand"): the sand set half desaturated under a cooler pink-grey,
+    // and the steep ground — the rills' walls, the benches' risers — the grey rock set warmed toward the conglomerate's
+    // pink, lifted off black (round 47)
+    G: { set: 'sand', desat: 0.5, tint: [0.80, 0.72, 0.78], roughMul: 1.26 },
+    D: { set: 'sand', desat: 0.5, tint: [0.70, 0.62, 0.68], roughMul: 1.3 },
+    R: { set: 'rock', desat: 0.55, tint: [1.22, 1.08, 1.06], lift: 0.04, roughMul: 1.2 }, M: null,
   },
   ruinspires: {
     // grey ruined capital between the Ironworks and Steinburg registers: ash-muted city turf (≈ 0.32/0.34/0.23),

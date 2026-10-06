@@ -32,22 +32,33 @@ export default {
       [[-258, 90], [-104, 168], [28, 90], [136, 90], [218, 90], [338, 170]],
     ]) },
     marshes: [{ x: -66, z: 32, r: 38, dip: 0.8 }],
+    // (Copper Mesa round 2, the map-revival lane; gauntlet wave 117: "flat-topped, Monument-Valley-style mesas and soft
+    // desert dunes" where Queenstown sits among steep, gullied, bare conglomerate hills): the ridges and knolls keep their
+    // footprints and crests and take the rain's erosion — dense rill networks down every flank, each hill its own rill
+    // spacing, depth and width (the critics punish a regular comb), talus fans at the knolls' feet, knobbly roughness;
+    // the waste-rock dumps flat-topped. The rills fade out before the crests (landformGeology.ts gullyFlank).
     landforms: [
       { kind: 'basin', x: -78, z: 20, rx: 178, rz: 214, height: -11.0, corridorScale: 0.7 },
-      { kind: 'ridge', x: -322, z: 58, length: 430, width: 78, height: 11.2, yawDeg: 18 },
-      { kind: 'ridge', x: 130, z: 56, length: 400, width: 74, height: 8.4, yawDeg: -8 },
+      { kind: 'ridge', x: -322, z: 58, length: 430, width: 78, height: 11.2, yawDeg: 18,
+        geology: { outline: 0.22, gullies: { count: 5.6, depthM: 3.6, width: 0.42 }, rough: 1.0 } },
+      { kind: 'ridge', x: 130, z: 56, length: 400, width: 74, height: 8.4, yawDeg: -8,
+        geology: { outline: 0.18, gullies: { count: 4.3, depthM: 2.7, width: 0.5 }, rough: 0.8 } },
       // 2026-10-03 (maps lane B): the service shelf north of the pit is gone. It was an 8.6 m ridge running north-south
       // on x -58 from z 120 to z 400, a spine down the middle of the north approach (a ridge's length runs along x at
       // yaw 0 and along z at yaw 90). It lifted the north team's central assembly ground 4-6 m onto a forward slope in
       // full view of the south rim, with nothing like it on the south side. Over 40 all-bot seeds the south won 29-11
       // whichever team stood there (the bots lane's swap test), with 15 of 16 first kills. Without it: 19-21 in each
       // of two 40-seed blocks; first spot, first damage and first kill 8-8, 8-8 and 9-7 over 16.
-      { kind: 'knoll', x: -186, z: -250, rx: 104, rz: 58, height: 5.8 },
-      { kind: 'knoll', x: 310, z: -250, rx: 72, rz: 78, height: 6.8 },
+      { kind: 'knoll', x: -186, z: -250, rx: 104, rz: 58, height: 5.8,
+        geology: { outline: 0.2, gullies: { count: 17, depthM: 2.2, width: 0.4 }, fans: { reach: 0.22 }, rough: 0.7 } },
+      { kind: 'knoll', x: 310, z: -250, rx: 72, rz: 78, height: 6.8,
+        geology: { outline: 0.26, gullies: { count: 21, depthM: 2.9, width: 0.34 }, fans: { reach: 0.26 }, rough: 0.9 } },
       // 2026-10-02 (maps lane B): the waste-rock dumps the haulage tipped beside the pit's south and north approaches,
       // flat-topped spoil heaps that screen each assembly ground from the other.
-      { kind: 'knoll', x: -72, z: -296, rx: 76, rz: 34, height: 8.5, yawDeg: 8, corridorScale: 1 },
-      { kind: 'knoll', x: -12, z: 300, rx: 72, rz: 34, height: 8.5, yawDeg: -6, corridorScale: 1 },
+      { kind: 'knoll', x: -72, z: -296, rx: 76, rz: 34, height: 8.5, yawDeg: 8, corridorScale: 1,
+        geology: { profile: 'butte' as const, wall: [0.5, 0.82] as const, apron: 0.18, outline: 0.12, rough: 0.5 } },
+      { kind: 'knoll', x: -12, z: 300, rx: 72, rz: 34, height: 8.5, yawDeg: -6, corridorScale: 1,
+        geology: { profile: 'butte' as const, wall: [0.5, 0.82] as const, apron: 0.18, outline: 0.12, rough: 0.5 } },
     ],
   },
   spawns: { player: { x: -104, z: -394 }, enemies: [
@@ -59,7 +70,9 @@ export default {
   splat: { sourcedPalette: 'copper_mesa',
     grassTone: (h: number, s: number, l: number) => [0.02, s * 0.35, 0.22 + l * 0.6],
     dirtTone: (h: number, s: number, l: number) => [0.09, s * 0.45, 0.18 + l * 0.58],
-    sandstone: true, strata: 0.12, sandMacro: 0.7, midRelief: 0.8,
+    // (Copper Mesa round 2: the conglomerate is not a bedded sandstone and no wind shapes it — no sandstone tile, no dune
+    // macro; was sandstone, sandMacro 0.7)
+    sandstone: false, strata: 0.12, sandMacro: 0, midRelief: 0.8,
     tintA: [1.0, 0.86, 0.82], tintB: [0.66, 0.58, 0.60], tintC: [1.04, 0.9, 0.7], roadTint: [0.62, 0.56, 0.54],
   },
   vegetation: {
@@ -68,7 +81,8 @@ export default {
     tuftTone: (h: number, s: number, l: number) => [0.11, 0.4, clamp01(l * 0.72 + 0.1)],
     species: ['acacia', 'cedar', 'pine'], clusterMix: [['acacia', 0.58], ['cedar', 0.32], ['pine', 0.1]],
     loneMix: [['acacia', 0.65], ['cedar', 0.25], ['pine', 0.1]], rimMix: [['cedar', 0.5], ['acacia', 0.4], ['pine', 0.1]],
-    clusterCount: 22, loneCount: 32, rimCount: 40, grassDensity: 0.36, bushCount: 0.6, bushSpecies: 'acacia', clusterScrub: 1.6,
+    // (Copper Mesa round 2: the button grass keeps to the hollows — a thinner sward on the bare hills; was 0.36)
+    clusterCount: 22, loneCount: 32, rimCount: 40, grassDensity: 0.18, bushCount: 0.6, bushSpecies: 'acacia', clusterScrub: 1.6,
   },
   props: {
     // the map-revival lane (2026-10-05): the Queenstown kit (maps/regional/queenstown.ts)
@@ -97,7 +111,11 @@ export default {
   // (the map-revival lane, 2026-10-05) the West Coast Range beyond Queenstown's bare hills: pink-grey conglomerate and
   // quartzite faces (base and rock), less strongly bedded than Arizona's benches (banding 0.26 -> 0.14), the
   // rainforest dark and wet on the far slopes (treeline 0.1 -> 0.4, forest 0x5c6141 -> 0x33442e)
-  horizon: { baseHex: 0x7a6a68, amp: 1.5, style: 'mesa', treeline: 0.4, banding: 0.14, forestHex: 0x33442e, rockHex: 0xa0908c, haze: 0.86, grain: 0.55 },
+  // (Copper Mesa round 2, wave 117: the 'mesa' ring read as Monument Valley): the West Coast Range — craggy quartzite
+  // peaks (Owen, Lyell, Sedgwick), dark rainforest low on them, bare grey crags above, no snow; the far country its long
+  // steep ridges
+  horizon: { baseHex: 0x6a625c, amp: 1.35, style: 'alpine', treeline: 0.38, snowline: 2, bareRock: 0.7, outcrops: 0.5,
+    panorama: { regional: 'ridges' }, forestHex: 0x22392b, rockHex: 0x8c8884, haze: 0.88, grain: 0.6 },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the haze a step cooler than the 0xffe0b6 sun
   // (0xaa9b89 -> 0xa8a49c), broken altocumulus (0.68 / 0.35 -> 0.80 / 0.50) on an explicit 880 m deck that keeps its
   // texture at 2-12°, and patchy light across the benches (cloudShadowAmp 0.30)
