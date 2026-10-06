@@ -98,7 +98,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 
 | Map | Primary composition and next visual emphasis |
 |---|---|
-| Verdant Fields | Retain the newer low pastoral horizon per the user's latest reversal; keep road, spawn and loading repairs independent of another outland redesign |
+| Verdant Fields | Retain the newer low pastoral horizon per the user's latest reversal; keep road, spawn and loading repairs independent of another outland redesign; the set pieces of Prokhorovka, July 1943 (the landmarks lane, 2026-10-05): the church, the station with its water tower and the line to a railhead stop, the kolkhoz grain store, water tower and arch, the Civil War memorial green, the post and smock mills on the swells |
 | Amberford | Norman / English river-ford market town (round 48): the river SW→NE through a sculpted valley, the stone bridge and the ford, the walled town on the north-bank rise, weir and mill, orchards and hedged fields, the wooded escarpment, the manor park and lake; warm leaf litter against cool water |
 | Tarkhan Steppe | Open golden folds, sparse windbreaks and distant farms; avoid enclosing mountains |
 | Frontier Basin | Agricultural basin and checkpoint routes; branched gullies and patchy conifer uplands |
@@ -7329,6 +7329,48 @@ never clips … a single smooth, soft-edged bloom column instead of a dense fiel
 - *the far band:* its texture as the PR head's — Saltwind 4.5–5.9 → 4.7–7.5 levels (local deviation, the 200 rows under
   the horizon), Saltmere 3.4–14.8 → 13.3–16.1 (it was 22.7 with one roughness) — and the sun's path keeps its sparkles.
 - *GPU* (the coordinator's rule: in-page, 8 interleaved quartets against a null control, 1920 × 1080 high): the sea's whole change (rounds 1 and 2: the shelf, the swell, the mirror's exponent, the split roughness, the glints' cap) against the PR head's water in-page — the load gate shut past two hours (`$SP/p2/costrule/sea-*`): Saltmere's establishing view +0.11 ± 0.25 ms p50 (+0.13 ± 0.23 p25), the bound +0.60 / +0.58 ms; Saltwind's glint +0.33 ± 0.31 ms p50 (+0.25 ± 0.17 p25), the bound +0.94 / +0.60 ms — both under +1 ms (frames 12.6 and 14.2 ms).
+
+### 2026-10-05 — Verdant v2 and the An-225: the first set pieces from the landmarks library (the landmarks lane)
+
+**The owner:** "we need better buildings/random structures (like bridges or statues or parks or gates ANYTHING)/
+skyscrapers/big buildings. you are capable of making a lot more beautiful buildings then we have".
+
+**The library** (`src/world/landmarks/`, 35 kinds: bridges, monuments, parks and squares, gates and arches, towers,
+civic buildings, a hill station's colonial pieces, temples, wrecks). Each kind is a parametric builder drawing into the
+regional kits' part sink, so a set piece is the map's own masonry, render and roofing under the same weathering, merged
+into the same material buckets as the houses (no draw call of its own). A map names its pieces in `props.landmarks`;
+`compose.ts` places them after the settlement stands and before every scatter pass. A piece is admitted inside the
+square, off the spawn pads, the objective discs, water (a bridge or a valve tower excepted) and the road core; it is
+seated on the lowest ground under its footprint with its plinths reaching down, and its ground is reserved for every
+pass after it (nothing already placed moves). The collision is derived from the solids (a contact band and 0.5 m shell
+bands within the packed manifest's limits) or authored (a bridge's roadway, a terrace's floor); a phone leaves out the
+fine joinery, never a structural part. Receipt: `landmarks.selftest` (budgets, packed bands, the bridges' roadways, the
+composer, every authoring map's seats against its committed shard).
+
+**Verdant v2: Prokhorovka, July 1943** (10 pieces, 39 339 desktop triangles): the village church on the square
+(13 034); Prokhorovka station (10 956) with its railway water tower (4 439), and the line ending at a railhead stop on a
+stream-neutral rail berth (`railSpurs.ts` `berth: 'clearance'`: the trees, grass and litter keep off it and no other
+record moves, `railSpurBerth.selftest`); the kolkhoz grain store, its trestle water tower and its arch on the farm
+road; the Civil War memorial green, an iron-railed square round its obelisk; the post mill on the southern swell and
+the smock mill on the northern.
+
+**Kestrel Airfield: the An-225 Mriya in its hangar** (6 018 triangles): Hostomel, February 2022. At true scale the
+aircraft cannot lie whole on the 56 × 36 m hangar plot, so it lies as the photographs show it, broken up and burnt: the
+forward fuselage, flight deck and wing centre box under the hangar's broken arch ribs, its nose toward the apron; the
+outer wing panels broken off along the plot's back, one engine still on its pylon; the twin-fin tail torn away and lying
+apart, its fins standing; the Antonov livery under the fire's soot.
+
+**Measured:** census Verdant [5269, 5086, 5861] and Kestrel [2481, 2483, 1967] (the pieces' records, the trees off their
+ground; every other record where it stood). Pacing (4 seeds, the 3–8 min window): Verdant 181/180/220/208 s, Kestrel
+189/233/224/183 s; median 208 s against the head's 222 s; no timeouts, none under 120 s. Cost (desktop High, pages A B C
+on the head, the change and the head, A B C C B A, the p25 GPU frame's increment (B − A) − (C − A), mean + 2 SE under 1
+ms; `$SP/lm/cost-*`): Verdant: chase −0.09 ± 0.44 ms (accept), the station view −0.05 ± 0.50 (accept on its re-run in a
+quieter window; first 0.19 ± 0.61), the establishing shot 0.54 ± 0.79 and on its re-run 0.38 ± 0.90 (ambiguous twice:
+that view's cycles swing ±3–5 ms against the change's +2.4 % triangles and two draws there); Kestrel: the hangar view
+−0.14 ± 0.31, chase −0.16 ± 0.56 and the establishing shot −2.6 ± 1.5 (all accept, the last two on their re-run); every
+CPU median within ±0.4 ms, no long task and no program compiled during a slot. Receipts: the 341 the change reaches, all
+green (four flaky under three-way parallel load — the dedicated-collision memory, the match service, the shot schematic,
+the delta plaster palette — green serially).
 
 ## Acceptance is visual and measured
 
