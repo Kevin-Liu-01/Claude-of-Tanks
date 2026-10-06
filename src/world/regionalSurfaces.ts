@@ -353,6 +353,12 @@ const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze
     tint: [1, 1, 1], spread: 0.2, hue: 0.04, relief: 0.7, pillow: 0.5, speckle: 0.2, lichen: 0.3, grime: 0.35, rubble: 0.5 },
   rubble: { courseMin: 36, courseMax: 90, blockMin: 50, blockMax: 160, mortar: 4.2, mortarTint: [0.66, 0.62, 0.55],
     tint: [1, 1, 1], spread: 0.22, hue: 0.06, relief: 0.75, pillow: 0.7, speckle: 0.1, lichen: 0.2, grime: 0.3, rubble: 0.7 },
+  // (the map-revival lane, 2026-10-06, Titan round 3: the rubble kind's pale lime joints between brick-sized stones read
+  // as "a red-brick schoolhouse") field stone laid up in mud: big irregular blocks, 0.25-0.5 m courses split within,
+  // 0.4-1 m long, in a mortar of the same red earth a shade darker, so the joints carry no grid
+  fieldstone: { courseMin: 64, courseMax: 128, blockMin: 96, blockMax: 250, mortar: 3.2, mortarTint: [0.52, 0.38, 0.3],
+    tint: [1, 1, 1], spread: 0.22, hue: 0.07, relief: 0.8, pillow: 0.6, speckle: 0.04, lichen: 0.04, grime: 0.32, rubble: 0.6,
+    bedding: 0.07, mottle: 0.4 },
   // concrete masonry units (0.4 x 0.2 m hollow blocks in running bond): plinths, godowns, desert houses
   block: { courseMin: 51, courseMax: 52, blockMin: 102, blockMax: 103, mortar: 1.5, mortarTint: [0.7, 0.69, 0.66],
     tint: [1, 1, 1], spread: 0.08, hue: 0.02, relief: 0.25, pillow: 0.05, speckle: 0.35, lichen: 0.05, grime: 0.45, rubble: 0 },

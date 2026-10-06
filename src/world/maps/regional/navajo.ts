@@ -1203,12 +1203,12 @@ export const NAVAJO_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
   id: 'navajo',
   region: 'Monument Valley, Four Corners (the Navajo Nation round Oljato and Goulding\'s): log-and-earth hogans facing east, a sandstone trading post, stone ranch houses under tin, juniper corrals and windmills',
   surfaces: {
-    // corrugated iron, galvanised and rusting; the valley's red de Chelly sandstone laid as rubble in thick mud mortar
+    // corrugated iron, galvanised and rusting; the valley's red de Chelly sandstone laid as field stone in mud
     // (Titan round 3, gauntlet wave 119: the coursed sandstone's even blocks read as red brick, "a red-brick
     // schoolhouse", "oversized tiled block textures": Goulding's and the valley's stone houses are rough-laid field
-    // stone)
+    // stone; round 3b: the rubble kind's pale joints still drew a brick grid at range, so big blocks in red mud mortar)
     roof: { kind: 'sheet', tint: [0.66, 0.66, 0.63] },
-    stone: { kind: 'rubble', tint: [0.72, 0.47, 0.35] },
+    stone: { kind: 'fieldstone', tint: [0.72, 0.47, 0.35] },
     sourced: { plaster: false, wood: true },
     tones: {
       // stucco the colour of the sand, the red earth of the hogan roofs and the mud chinking, a white-painted trim
