@@ -7,8 +7,7 @@ import { LocalFrame, PartSink, facePoint, rgb, shade, type Face, type RegionalBu
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import {
   archSurround, archWindow, archedBody, archedSlab, bar, cross, dome, drum, moulding, prismBody, railing, revolve, smoothRender, tentRoof,
-  type ArchHole,
-} from './kit.ts';
+  type ArchHole, LIMEWASH_UV } from './kit.ts';
 import type { LandmarkBuilder } from './types.ts';
 
 const IRON_RED = rgb(0x7a3b2e), IRON_GREEN = rgb(0x4f7d5a), GILT = rgb(0xb8933e), FRAME_WHITE = rgb(0xe8e4da);
@@ -302,7 +301,7 @@ export const belfry: LandmarkBuilder = (ctx) => {
     const head = dome(sink, 'structureMetal', 0, neck, 0, R3 * 0.74, crown === 'helm' ? 'helm' : 'onion', 12, { colour: IRON_GREEN });
     cross(sink, 'structureMetal', 0, head - 0.05, 0, 1.6, 'orthodox', GILT);
   }
-  return { parts: smoothRender(sink.finish(), 0.18), tints: { plaster: [1, 1, 0.99] } };
+  return { parts: smoothRender(sink.finish(), LIMEWASH_UV), tints: { plaster: [1, 1, 0.99] } };
 };
 
 /**

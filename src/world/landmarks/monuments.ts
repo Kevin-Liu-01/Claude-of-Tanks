@@ -3,7 +3,7 @@
 // plinths. The sculpture is stylised but proportioned from life (a figure ~7.5 heads tall, a horse's barrel about its
 // height at the withers); the architecture — the steps, the dies, the cornices, the railings — carries the read.
 import { PartSink, facePoint, rgb, shade, type Face, type Rgb } from '../maps/regional/geometry.ts';
-import { railing, revolve, smoothRender, star, steppedBase, cross, moulding } from './kit.ts';
+import { railing, revolve, smoothRender, star, steppedBase, cross, moulding, LIMEWASH_UV } from './kit.ts';
 import type { Vec3 } from '../maps/regional/geometry.ts';
 import type { LandmarkBuilder } from './types.ts';
 
@@ -59,7 +59,7 @@ export const obelisk: LandmarkBuilder = (ctx) => {
       } else railing(sink, a, b, 0.85, IRON);
     }
   }
-  return { parts: smoothRender(sink.finish(), 0.25) };
+  return { parts: smoothRender(sink.finish(), LIMEWASH_UV) };
 };
 
 /** A stylised standing figure (feet at y, facing +z): a greatcoat or a robe, the head 1/7.5 of its height. */

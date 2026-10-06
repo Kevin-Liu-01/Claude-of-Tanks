@@ -109,6 +109,10 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'width') / 2 + num(p, 'veranda') + 0.7, num(p, 'depth') / 2 + num(p, 'veranda') + 3.9] },
   // the terraced tennis court (a doubles court and its run-off, 36.6 × 18.3 m) and its retaining walls
   tennisCourt: { family: 'park', defaults: { damage: 0 }, footprint: () => [9.9, 19.1] as const },
+  // ------------------------------------------------------------------------------------------------ temples
+  // the Bengal aat-chala temple: the plinth (0.9 m round the cella), the steps 1.3 m out at the front, the eaves' overhang
+  bengalTemple: { family: 'civic', defaults: { side: 7.5 },
+    footprint: (p) => [num(p, 'side') / 2 + 1.1, num(p, 'side') / 2 + 2.2] },
   // ------------------------------------------------------------------------------------------------ wrecks
   // the An-225 Mriya in the ruin of its hangar (Hostomel, February 2022): a plot `width` × `depth` whose open front (+z)
   // faces an apron, and a `strip` beyond it where burnt debris spills (dressing only); the piece's origin is the centre
