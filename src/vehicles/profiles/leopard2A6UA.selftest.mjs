@@ -126,8 +126,10 @@ for (const station of receipt.remoteStations) {
     'merged RWS geometry retains the authored roof-contact ring');
 }
 
+// 2026-10-05 (tank-accessories lane): the suit's garnish is one spray-card 'leaves' layer on the trees lane's atlases
+// (vehicleFoliage.ts) instead of the light and dark flap layers; the net carrier is unchanged.
 for (const owner of ['hull', 'turret', 'gun']) {
-  for (const layer of ['net', 'light', 'dark']) {
+  for (const layer of ['net', 'leaves']) {
     const mesh = tank.root.getObjectByName(`${id}_ghillie_${owner}_${layer}`);
     assert.ok(mesh?.isMesh, `dense ${owner} ghillie ${layer} layer exists`);
     assert.ok(mesh.geometry.getAttribute('position').count > 120,
