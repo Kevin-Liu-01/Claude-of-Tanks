@@ -94,6 +94,8 @@ export interface YardStyle {
   garden: boolean;
   /** a churchyard's graves in place of the beds (yards.ts graveParts; the facades lane, 2026-10-06) */
   graves?: boolean;
+  /** the yard never takes the plot's front (+z, the door's side): a church's approach stays open */
+  keepFront?: boolean;
 }
 
 export type RegionalGeometryBuckets = Record<string, THREE.BufferGeometry[]>;

@@ -222,7 +222,7 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   yard: { kinds: ['cottage', 'farmhouse'], fence: 'wallstone', gate: 'gate', shed: null, garden: true },
   // the churchyard on the church's freest side, walled in stone, its graves in place of beds (a map opts in: props
   // `churchyard: true`; the facades lane, 2026-10-06)
-  churchyard: { kinds: ['church'], fence: 'wallstone', gate: 'gate', shed: null, garden: false, graves: true },
+  churchyard: { kinds: ['church'], fence: 'wallstone', gate: 'gate', shed: null, garden: false, graves: true, keepFront: true },
 });
 
 export type { RegionalParts, RegionalBuildContext };

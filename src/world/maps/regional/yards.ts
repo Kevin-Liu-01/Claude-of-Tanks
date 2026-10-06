@@ -186,6 +186,8 @@ export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rn
   // each side's deepest clear yard
   const options: Array<{ k: number; depth: number }> = [];
   SIDES.forEach((sd, k) => {
+    // a churchyard keeps off the church's front (+z, its door's side: the approach)
+    if (style.keepFront && sd.side === '+z') return;
     const { length, offset, shift } = sideOf(sd);
     const n = dirW(sd.n), t = dirW(sd.t);
     for (let depth = YARD_MAX; depth >= YARD_MIN; depth -= 1) {
