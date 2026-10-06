@@ -121,6 +121,7 @@ const SCOUT_FN = async (mapId, opts) => {
 const lock = createCaptureLock();
 console.log('[lab] waiting for capture lock');
 await lock.acquire(3 * 60 * 60 * 1000);
+const bootLockAt = Date.now();
 const lease = setInterval(() => lock.refresh?.(), 30000); lease.unref();
 // --lease=job: hold the shared GPU lock per map load and per job (short leases), not for the whole run
 const PER_JOB = args.lease === 'job', PER_MAP = args.lease === 'map' || args.lease === 'budget';
@@ -145,7 +146,10 @@ try {
   const first = maps[0] ?? 'verdant';
   await page.goto(`http://127.0.0.1:${port}/?studio=1&nosplash=1&tier=desktop&map=${first}&diag`, { waitUntil: 'domcontentloaded', timeout: 240000 });
   await page.waitForFunction(() => window.__STUDIO?.active && window.__GAME_READY, { timeout: 240000 });
-  if (PER_JOB || PER_MAP) lock.release();
+  // a budget lease starts at the boot's own acquisition and runs on into the first maps (2026-10-06: releasing after
+  // the boot cost a whole trip round a 30-ticket line before the first map); --lease=map and job keep their release
+  if (PER_JOB || (PER_MAP && !BUDGET_MS)) lock.release();
+  else if (BUDGET_MS) { holding = true; heldSince = bootLockAt; }
   const ready = async () => page.evaluate(async () => {
     const { awaitMapCaptureReadiness } = await import('/src/dev/mapCaptureReadiness.ts');
     await awaitMapCaptureReadiness(window.__DEBUG.world, () => window.__DEBUG.world);
@@ -195,6 +199,8 @@ try {
     }
     for (const job of mapJobs) {
       if (PER_JOB) await lock.acquire(LOCK_WAIT);
+      // a budget lease is also checked between jobs, so a map with many takes never holds the line past its budget
+      if (BUDGET_MS && !holding) { await lock.acquire(LOCK_WAIT); holding = true; heldSince = Date.now(); }
       try {
         if (args.format) { job.scene.__format = args.format; if (args['lens-k']) job.scene.__lensK = Number(args['lens-k']); }
         await page.evaluate(scene => {
@@ -436,9 +442,12 @@ try {
       } catch (error) {
         console.error(`[lab] ${job.name} FAILED ${error.message}`);
         results.push({ map, name: job.name, error: String(error.message) });
-      } finally { if (PER_JOB) lock.release(); }
+      } finally {
+        if (PER_JOB) lock.release();
+        else if (BUDGET_MS && holding && Date.now() - heldSince >= BUDGET_MS) { lock.release(); holding = false; }
+      }
     }
-    } finally { if (PER_MAP && (!BUDGET_MS || Date.now() - heldSince >= BUDGET_MS)) { lock.release(); holding = false; } }
+    } finally { if (PER_MAP && holding && (!BUDGET_MS || Date.now() - heldSince >= BUDGET_MS)) { lock.release(); holding = false; } }
   }
   if (errors.length) writeFileSync(join(out, 'page-errors.txt'), errors.join('\n'));
 } finally {
