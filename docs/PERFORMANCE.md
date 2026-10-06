@@ -592,6 +592,17 @@ the prefix decomposition through `tools/frame-pass-timer.mjs`:
   in two holds and 0.4–1.1 ms in the next, and a fixed GPU ballast drawn every frame did not lower it. On this
   machine a light frame does not inflate a toggle's cost through an idle-clocked GPU; foreign GPU load does. Report a
   control beside any toggle under a millisecond, and take at least four quartets an arm.
+- The pages' agreement (2026-10-05, the ground lane's hold 51): two pages of one dist can draw different scenes — the
+  base drew 685 scene draws and 3.50 M triangles there, its twin 369 and 3.20 M, and the twin's −8.3 ms "null" compared
+  the two — so every slot reads its scene's draws and triangles at the first pose before it measures, with a census of
+  its visible meshes by subtree, and `judgeScenes` holds it against the slots before it. Scene identity is the twins'
+  triangles (slots of one root) within `--twin-tris-tol` (3 %); draws may wander `--draws-tol` (10 %: dynamic culling
+  moved them 3.8–5.9 % cycle to cycle within one dist while the triangles held within 1 %); another build's own delta is
+  accepted once two of its stagings in a row repeat its triangles within `--stable-tol` (1 %). A slot that fails is
+  staged again before it measures (three readings at most), an earlier slot the judgement implicates measures again at
+  the end of the run, and a slot whose measured counts leave its staged reading, or a report row whose slots disagree,
+  is VOID. Every sample records its scene draws and triangles. `--scene-check=off` is for a change that adds or removes
+  draws on purpose.
 - Unchanged pictures: `tools/shadow-cache-truth.mjs` renders every scenario through the cache and without it inside
   one page task (temporal AA and the cloud history held, so a frame is a function of the scene state) and runs the
   2026-09-12 consecutive-frame flicker meter on live frames; `tools/frame-capture-compare.mjs` compares the probe's
