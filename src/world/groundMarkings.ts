@@ -129,7 +129,7 @@ function pushQuad(sink: Sink, corners: ReadonlyArray<readonly [number, number]>,
 }
 
 function emitLine(sink: Sink, line: GroundMarkingLine, cfg: GroundMarkingsConfig, groundAt: (x: number, z: number) => number,
-  lift: number): number {
+  lift: number, paved: ((x: number, z: number) => boolean) | null): number {
   if (line.points.length < 2) return 0;
   const pts = roundedPolyline(line.points, line.round ?? 8);
   const half = line.width / 2, slab = cfg.slabM ?? 0, brk = cfg.breakM ?? 0.09;
@@ -173,6 +173,7 @@ function emitLine(sink: Sink, line: GroundMarkingLine, cfg: GroundMarkingsConfig
       for (let k = 0; k < n; k++) {
         const u0 = s0 + (s1 - s0) * k / n, u1 = s0 + (s1 - s0) * (k + 1) / n;
         const x0 = ax + tx * u0, z0 = az + tz * u0, x1 = ax + tx * u1, z1 = az + tz * u1;
+        if (paved && !paved((x0 + x1) / 2, (z0 + z1) / 2)) continue;
         pushQuad(sink, [[x0 - nx * half, z0 - nz * half], [x1 - nx * half, z1 - nz * half],
           [x1 + nx * half, z1 + nz * half], [x0 + nx * half, z0 + nz * half]], groundAt, lift, rgba);
         pieces++;
@@ -229,13 +230,15 @@ function emitNumber(sink: Sink, num: GroundMarkingNumber, cfg: GroundMarkingsCon
   return pieces;
 }
 
-/** The marked ground as one geometry (position, normal, colour with alpha, uv in wear tiles), or null when nothing paints. */
+/** The marked ground as one geometry (position, normal, colour with alpha, uv in wear tiles), or null when nothing paints.
+ * `paved` (optional) is the ground paint stands on: a stripe's piece off it is left out (the grass verge between a
+ * taxiway and its apron takes no paint). */
 export function buildGroundMarkingGeometry(cfg: GroundMarkingsConfig, groundAt: (x: number, z: number) => number,
-  lift = 0.035): { geometry: THREE.BufferGeometry; pieces: number } | null {
+  lift = 0.035, paved: ((x: number, z: number) => boolean) | null = null): { geometry: THREE.BufferGeometry; pieces: number } | null {
   const sink: Sink = { pos: [], col: [], uv: [], idx: [] };
   let pieces = 0;
   // boxes and their numerals after the stripes: a number painted over a line covers it
-  for (const line of cfg.lines) pieces += emitLine(sink, line, cfg, groundAt, lift);
+  for (const line of cfg.lines) pieces += emitLine(sink, line, cfg, groundAt, lift, paved);
   for (const num of cfg.numbers ?? []) pieces += emitNumber(sink, num, cfg, groundAt, lift);
   if (!sink.idx.length) return null;
   const geometry = new THREE.BufferGeometry();
@@ -250,6 +253,28 @@ export function buildGroundMarkingGeometry(cfg: GroundMarkingsConfig, groundAt: 
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   return { geometry, pieces };
+}
+
+/** The ground paint stands on: an apron's own rect (0.3 m in from its edges) or within 2.2 m of a road's line — inside the
+ * narrowest a carriageway's noisy edge comes, so the grass verge between a taxiway and its apron takes no paint. */
+export function pavedGround(hardstands: ReadonlyArray<{ x: number; z: number; width: number; length: number; yawDeg?: number }>,
+  roads: ReadonlyArray<ReadonlyArray<readonly [number, number]>>): (x: number, z: number) => boolean {
+  const strips = hardstands.map((h) => {
+    const a = (h.yawDeg ?? 0) * Math.PI / 180;
+    return { x: h.x, z: h.z, c: Math.cos(a), s: Math.sin(a), hw: h.width / 2 - 0.3, hl: h.length / 2 - 0.3 };
+  });
+  return (px, pz) => {
+    for (const r of strips) {
+      const dx = px - r.x, dz = pz - r.z;
+      if (Math.abs(dx * r.c - dz * r.s) <= r.hw && Math.abs(dx * r.s + dz * r.c) <= r.hl) return true;
+    }
+    for (const line of roads) for (let i = 1; i < line.length; i++) {
+      const [ax, az] = line[i - 1], [bx, bz] = line[i], ex = bx - ax, ez = bz - az, len2 = ex * ex + ez * ez;
+      const t = len2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * ex + (pz - az) * ez) / len2)) : 0;
+      if (Math.hypot(px - ax - ex * t, pz - az - ez * t) < 2.2) return true;
+    }
+    return false;
+  };
 }
 
 /** The worn-paint mask: white, its alpha the paint left — mostly whole, thinned in drifts, lost in flakes and tyre

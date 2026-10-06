@@ -38,7 +38,7 @@ function richCount(n: number | undefined, fallback = 0): number { return Math.ro
 import { markShadowOnly, setShadowCasterCascades, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
-import { buildGroundMarkingGeometry, wornPaintTexture, type GroundMarkingsConfig } from './groundMarkings.ts';
+import { buildGroundMarkingGeometry, pavedGround, wornPaintTexture, type GroundMarkingsConfig } from './groundMarkings.ts';
 import {
   applySourcedBuildings, applySourcedRock, sourcedStoneIsBrick, type BuildingPaletteId, type SourcedTerrainSettings,
   type SourcedTextureApplicationOptions,
@@ -7787,7 +7787,9 @@ ${snowCap ? `
   // terrain mesh as drawn (the scenery lane's meshHeightAt law) 3.5 cm up, over every other ground decal.
   function placeGroundMarkings(markings: GroundMarkingsConfig): void {
     const groundAt = (px: number, pz: number): number => heightField.getHeightAt(px, pz);
-    const built = buildGroundMarkingGeometry(markings, (px, pz) => terrainNearMeshHeightAt(groundAt, px, pz));
+    // paint only on ground the material draws as paving (groundMarkings.ts pavedGround: an apron's rect, a road's line)
+    const paved = pavedGround((cfg as { terrain?: { hardstands?: SceneryHardstand[] } } | null)?.terrain?.hardstands ?? [], L.roads);
+    const built = buildGroundMarkingGeometry(markings, (px, pz) => terrainNearMeshHeightAt(groundAt, px, pz), 0.035, paved);
     if (!built) return;
     const mat = new THREE.MeshStandardMaterial({
       map: wornPaintTexture(aniso), vertexColors: true, transparent: true, depthWrite: false,

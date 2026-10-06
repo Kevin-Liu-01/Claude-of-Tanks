@@ -3,7 +3,7 @@
 // paints nothing in a keep-out; a number's segments read along its heading on its box; the build is deterministic; the
 // worn-paint mask tiles; Kestrel's own markings stay on its pavement inside a small budget.
 import assert from 'node:assert/strict';
-import { buildGroundMarkingGeometry, wornPaintTexture } from './groundMarkings.ts';
+import { buildGroundMarkingGeometry, pavedGround, wornPaintTexture } from './groundMarkings.ts';
 
 const flat = (x, z) => 0.01 * x - 0.02 * z;
 function triangles(geometry) {
@@ -105,13 +105,16 @@ const centroid = (tri) => [0, 2].map((k) => (tri[0][k] + tri[1][k] + tri[2][k]) 
   assert.ok(cfg, 'Kestrel authors its markings');
   const field = terrain.createHeightField(1337, config);
   const ground = (x, z) => field.getHeightAt(x, z);
-  const built = buildGroundMarkingGeometry(cfg, (x, z) => terrain.terrainNearMeshHeightAt(ground, x, z));
+  const paved = pavedGround(config.terrain.hardstands ?? [], field._layout.roads);
+  const built = buildGroundMarkingGeometry(cfg, (x, z) => terrain.terrainNearMeshHeightAt(ground, x, z), 0.035, paved);
   const tris = triangles(built.geometry);
   assert.ok(tris.length < 4000, `Kestrel's paint stays small (${tris.length} triangles)`);
+  const unclipped = buildGroundMarkingGeometry(cfg, (x, z) => terrain.terrainNearMeshHeightAt(ground, x, z));
+  assert.ok(built.pieces < unclipped.pieces, `the grass verges take no paint (${unclipped.pieces - built.pieces} pieces left out)`);
   for (const tri of tris) {
     assert.ok(facesUp(tri), 'a Kestrel quad faces down');
     const [x, z] = centroid(tri);
-    assert.ok(field._roadDist(x, z) <= 3.4, `paint off the pavement at (${x.toFixed(1)}, ${z.toFixed(1)})`);
+    assert.ok(paved(x, z), `paint off the pavement at (${x.toFixed(1)}, ${z.toFixed(1)})`);
     assert.ok(!cfg.keepOut.some((r) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1), 'paint inside a Kestrel keep-out');
     for (const [vx, vy, vz] of tri) assert.ok(vy - ground(vx, vz) > 0.02 && vy - ground(vx, vz) < 0.05, 'paint seated a few centimetres up');
   }
