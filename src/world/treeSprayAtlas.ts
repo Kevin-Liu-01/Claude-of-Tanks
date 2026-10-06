@@ -29,17 +29,21 @@ export type SprayKind = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus' | 
   // trees round 5: the ruderal buddleia of waste ground, slag and rail sidings (a shrub form)
   | 'buddleia'
   // the winter kinds (a map's `vegetation.bare`): the oak's and the poplar's bare twigs, the buddleia's winter canes
-  | 'oak-bare' | 'poplar-bare' | 'buddleia-bare';
+  | 'oak-bare' | 'poplar-bare' | 'buddleia-bare'
+  // the Streuobst meadow orchard's fruit trees (one form: apple, pear and plum sprays on its tiles)
+  | 'apple';
 export const SPRAY_KINDS: readonly SprayKind[] = Object.freeze(['oak', 'poplar', 'willow', 'acacia', 'eucalyptus',
   'birch', 'aspen', 'birch-bare', 'spruce', 'fir', 'pine', 'cedar', 'cypress', 'mangrove',
   'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'broom', 'juniper', 'pinyon',
-  'longleafPine', 'longleafSeedling', 'lebanonCedar', 'sugi', 'redPine', 'buddleia', 'oak-bare', 'poplar-bare', 'buddleia-bare']);
+  'longleafPine', 'longleafSeedling', 'lebanonCedar', 'sugi', 'redPine', 'buddleia', 'oak-bare', 'poplar-bare', 'buddleia-bare', 'apple']);
 /** Tiles per side of every spray atlas. */
 export const SPRAY_ATLAS_TILES = 2;
 // the winter kinds' opaque shares (measured as the table's)
 const OAK_BARE_COVERAGE = 0.122;
 const POPLAR_BARE_COVERAGE = 0.118;
 const BUDDLEIA_BARE_COVERAGE = 0.084;
+// the orchard atlas' opaque share (measured as the table's)
+const APPLE_COVERAGE = 0.222;
 /**
  * Trees round 2 (2026-10-03): each atlas's opaque share, the mean alpha over its painted 512 px atlas
  * (treeCrownShading.selftest.mjs paints them again and holds the table to it). The crown shadow hull's porosity reads
@@ -52,6 +56,7 @@ export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.
   broom: 0.125, juniper: 0.256, pinyon: 0.074,
   longleafPine: 0.169, longleafSeedling: 0.216, lebanonCedar: 0.21, sugi: 0.187, redPine: 0.099, buddleia: 0.133,
   'oak-bare': OAK_BARE_COVERAGE, 'poplar-bare': POPLAR_BARE_COVERAGE, 'buddleia-bare': BUDDLEIA_BARE_COVERAGE,
+  apple: APPLE_COVERAGE,
 });
 
 /**
@@ -121,6 +126,8 @@ const LEAF_COLOR: Readonly<Record<SprayKind, LeafColor>> = Object.freeze({
   'oak-bare': { hue: 0.075, sat: 0.1, light: 0.2 },
   'poplar-bare': { hue: 0.1, sat: 0.14, light: 0.24 },
   'buddleia-bare': { hue: 0.065, sat: 0.45, light: 0.17 },
+  // the orchard's mid green, a little grey with the leaves' down
+  apple: { hue: 0.225, sat: 0.34, light: 0.21 },
   lebanonCedar: { hue: 0.39, sat: 0.2, light: 0.15 },
   sugi: { hue: 0.33, sat: 0.32, light: 0.15 },
   redPine: { hue: 0.26, sat: 0.38, light: 0.19 },
@@ -1221,7 +1228,84 @@ const BARE_PAINTERS: Readonly<Partial<Record<SprayKind, (ctx: CanvasRenderingCon
   'buddleia-bare': paintBuddleiaWinterTile,
 });
 
-const ROUND5_PAINTERS: Readonly<Partial<Record<SprayKind, (ctx: CanvasRenderingContext2D, S: number, rng: Rng) => Pt[][]>>> = Object.freeze({
+/**
+ * Trees lane (2026-10-05, the farmland lane's Streuobst for Frontier Basin): the meadow orchard's fruit trees on one
+ * atlas, a species a tile — the apple's ovate, downy leaves on tiles 0 and 1, the pear's rounder, glossier ones on
+ * tile 2, the plum's narrower, darker ones on tile 3 — each with its high-summer fruit hanging from its twigs: small
+ * apples green-yellow with a red cheek, pears yellow-green and pear-shaped, plums dark blue-purple under their bloom.
+ * The form's variants take their own species' tiles (treeGrowth.ts `variantTiles`).
+ */
+const ORCHARD_RECIPES: Readonly<Record<'apple' | 'pear' | 'plum', BroadleafRecipe>> = Object.freeze({
+  apple: { shape: 'oval', leafLen: 0.08, leafAspect: 0.52, petiole: 0.22, spacing: 0.032, leafAngle: 0.9, twigs: [5, 7], twigLen: [0.22, 0.36], twigAngle: 0.8, hang: 0, droop: 0.3, stemWidth: 2.4 },
+  pear: { shape: 'oval', leafLen: 0.074, leafAspect: 0.6, petiole: 0.4, spacing: 0.034, leafAngle: 0.95, twigs: [4, 6], twigLen: [0.22, 0.34], twigAngle: 0.65, hang: 0, droop: 0.25, stemWidth: 2.4 },
+  plum: { shape: 'oval', leafLen: 0.07, leafAspect: 0.42, petiole: 0.12, spacing: 0.03, leafAngle: 0.85, twigs: [5, 7], twigLen: [0.2, 0.32], twigAngle: 0.85, hang: 0, droop: 0.3, stemWidth: 2.0 },
+});
+const ORCHARD_TILE_SPECIES = Object.freeze(['apple', 'apple', 'pear', 'plum'] as const);
+
+/** One fruit hanging from (x, y) on its stalk: an apple, a pear or a plum, lit from above. */
+function paintFruit(ctx: CanvasRenderingContext2D, S: number, rng: Rng, x: number, y: number, kind: 'apple' | 'pear' | 'plum'): void {
+  const stalk = S * (kind === 'plum' ? 0.012 : 0.02) * (0.8 + rng() * 0.4), sway = (rng() - 0.5) * 0.6;
+  const cx = x + Math.sin(sway) * stalk, cy = y + Math.cos(sway) * stalk;
+  ctx.strokeStyle = css(0.08, 0.3, 0.12);
+  ctx.lineWidth = Math.max(0.6, S * 0.004);
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(cx, cy); ctx.stroke();
+  const r = S * (kind === 'apple' ? 0.03 : kind === 'pear' ? 0.025 : 0.019) * (0.85 + rng() * 0.3);
+  const fy = cy + r * (kind === 'pear' ? 1.4 : 0.9);
+  const gr = ctx.createRadialGradient(cx - r * 0.35, fy - r * 0.45, r * 0.1, cx, fy, r * 1.25);
+  if (kind === 'apple') {
+    gr.addColorStop(0, css(0.17, 0.55, 0.42));
+    gr.addColorStop(0.6, css(0.16, 0.55, 0.3));
+    gr.addColorStop(1, css(0.13, 0.5, 0.16));
+  } else if (kind === 'pear') {
+    gr.addColorStop(0, css(0.17, 0.55, 0.45));
+    gr.addColorStop(0.6, css(0.16, 0.5, 0.32));
+    gr.addColorStop(1, css(0.12, 0.45, 0.18));
+  } else {
+    gr.addColorStop(0, css(0.68, 0.2, 0.34));
+    gr.addColorStop(0.5, css(0.73, 0.42, 0.17));
+    gr.addColorStop(1, css(0.76, 0.45, 0.08));
+  }
+  ctx.fillStyle = gr;
+  ctx.beginPath();
+  if (kind === 'pear') {
+    // the pear's neck narrowing to its stalk over its round foot
+    ctx.ellipse(cx, fy, r, r * 1.05, 0, 0, Math.PI * 2);
+    ctx.moveTo(cx + r * 0.55, fy - r * 0.6);
+    ctx.ellipse(cx, fy - r * 1.05, r * 0.58, r * 0.7, 0, 0, Math.PI * 2);
+  } else {
+    ctx.ellipse(cx, fy, r * (kind === 'plum' ? 0.86 : 1.04), r, 0, 0, Math.PI * 2);
+  }
+  ctx.fill();
+  if (kind === 'apple') {
+    // the apple's red cheek, the side the sun ripens, over half the fruit or more
+    const side = rng() < 0.5 ? -1 : 1, blush = 0.6 + rng() * 0.4;
+    const cheek = ctx.createRadialGradient(cx + side * r * 0.4, fy - r * 0.2, r * 0.1, cx + side * r * 0.3, fy, r * 1.1);
+    cheek.addColorStop(0, css(0.0, 0.62, 0.24, blush));
+    cheek.addColorStop(0.7, css(0.01, 0.6, 0.2, blush * 0.8));
+    cheek.addColorStop(1, css(0.02, 0.55, 0.18, 0));
+    ctx.fillStyle = cheek;
+    ctx.beginPath();
+    ctx.ellipse(cx, fy, r * 1.04, r, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+/** A Streuobst spray tile: the tile's species' leaves (ORCHARD_TILE_SPECIES), then its fruit off the twigs. */
+function paintOrchardTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng, tile = 0): Pt[][] {
+  const kind = ORCHARD_TILE_SPECIES[tile % ORCHARD_TILE_SPECIES.length];
+  const twigs = paintBroadleafTile(ctx, S, rng, 'apple', ORCHARD_RECIPES[kind]);
+  // three to five fruits, singly or in pairs, hanging from the side twigs' outer halves
+  const fruits = 3 + ((rng() * 3) | 0);
+  for (let k = 0; k < fruits && twigs.length > 1; k++) {
+    const tw = twigs[1 + ((rng() * (twigs.length - 1)) | 0)], at = pointAt(tw, 0.5 + rng() * 0.45);
+    paintFruit(ctx, S, rng, at.p.x, at.p.y, kind);
+    if (rng() < 0.35) paintFruit(ctx, S, rng, at.p.x + S * 0.012, at.p.y + S * 0.004, kind);
+  }
+  return twigs;
+}
+
+const ROUND5_PAINTERS: Readonly<Partial<Record<SprayKind, (ctx: CanvasRenderingContext2D, S: number, rng: Rng, tile?: number) => Pt[][]>>> = Object.freeze({
+  apple: paintOrchardTile,
   buddleia: paintBuddleiaTile,
   longleafPine: (ctx, S, rng) => paintBrushTile(ctx, S, rng, 'longleafPine'),
   redPine: (ctx, S, rng) => paintBrushTile(ctx, S, rng, 'redPine'),
@@ -1323,7 +1407,7 @@ export function makeSprayAtlas(kind: SprayKind, rng: Rng, size: number, tone: To
     const twigs = shrub && ty * T + tx === SHRUB_STEM_TILE ? paintShrubStemTile(ctx, S, rng)
       : kind === 'birch-bare' ? paintBareTile(ctx, S, rng) : kind === 'broom' ? paintBroomTile(ctx, S, rng)
       : BARE_PAINTERS[kind] ? BARE_PAINTERS[kind](ctx, S, rng)
-      : ROUND5_PAINTERS[kind] ? ROUND5_PAINTERS[kind](ctx, S, rng)
+      : ROUND5_PAINTERS[kind] ? ROUND5_PAINTERS[kind](ctx, S, rng, ty * T + tx)
       : BROADLEAF_RECIPES[kind] ? paintBroadleafTile(ctx, S, rng, kind, BROADLEAF_RECIPES[kind], shrub)
         : paintConiferTile(ctx, S, rng, kind);
     // a winter palette's snow load rides the twigs of the top tile row — the snow-laden sprays the sky-facing seats

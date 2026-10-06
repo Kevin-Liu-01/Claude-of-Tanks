@@ -25,6 +25,8 @@ export type GrowthSpecies = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus
   // trees round 5 (2026-10-05, the map-revival lanes): the longleaf pine of the Gulf coastal plain (Longleaf Crossing),
   // the cedar of Lebanon (the Chouf, Orchard Valley), the Aso caldera's sugi and Japanese red pine (Obsidian Caldera)
   | 'longleafPine' | 'lebanonCedar' | 'sugi' | 'redPine'
+  // the trees lane (2026-10-05): the Streuobst meadow orchard's fruit tree (Frontier Basin; its variants apple, pear, plum)
+  | 'apple'
   // shrub-only forms (treeBiomes.ts `shrub`): the broom scrub of a volcanic upland; trees round 5: the longleaf's
   // grass-stage seedlings on a cutover — never a tree slot
   | 'broom' | 'longleafSeedling' | 'buddleia';
@@ -33,7 +35,7 @@ type Rng = () => number;
 export const GROWTH_SPECIES: readonly GrowthSpecies[] = Object.freeze([
   'oak', 'poplar', 'willow', 'acacia', 'eucalyptus', 'pine', 'spruce', 'fir', 'cedar', 'cypress', 'birch', 'aspen', 'palm', 'snag',
   'mangrove', 'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'juniper', 'pinyon',
-  'longleafPine', 'lebanonCedar', 'sugi', 'redPine',
+  'longleafPine', 'lebanonCedar', 'sugi', 'redPine', 'apple',
 ]);
 
 /** How a crown envelope narrows from its base (t = 0) to its top (t = 1): the radius fraction at t. */
@@ -142,9 +144,29 @@ interface GrowthProfile {
    * sprays, its wood weathered silver-grey (GROWTH_DEADWOOD_TINT), the limb snapped short at its tip.
    */
   deadwood?: number;
+  /**
+   * Trees lane (2026-10-05): an orchard tree — open-grown wherever it stands (no forest-grown form in a wood: its slot
+   * is never a forest species, forestGrownProfile keeps it), its variants their own shapes (variantShape) and tiles.
+   */
+  orchard?: boolean;
+  /**
+   * Trees lane: each near variant's own shape over the profile (the Streuobst form's plum, apple and pear), grown at the
+   * variant's age as every profile is; unset, the variants are the profile at three ages.
+   */
+  variantShape?: readonly [Partial<GrowthProfile>, Partial<GrowthProfile>, Partial<GrowthProfile>];
+  /** Trees lane: the atlas tiles each near variant's sprays take (the Streuobst atlas paints a species a tile). */
+  variantTiles?: readonly [readonly number[], readonly number[], readonly number[]];
 }
 
 const P = (p: GrowthProfile): Readonly<GrowthProfile> => Object.freeze(p);
+const variantProfiles = new Map<Readonly<GrowthProfile>, Readonly<GrowthProfile>[]>();
+/** A profile's variant shape (variantShape) over it, or the profile itself. */
+function variantProfile(p: Readonly<GrowthProfile>, variant: number): Readonly<GrowthProfile> {
+  if (!p.variantShape) return p;
+  let list = variantProfiles.get(p);
+  if (!list) { list = p.variantShape.map((shape) => P({ ...p, ...shape })); variantProfiles.set(p, list); }
+  return list[variant];
+}
 
 /**
  * The species profiles at the battlefield's scale (the archetypes' heights and crown radii, treeSpecies.ts): a stand
@@ -465,6 +487,30 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     cardBend: 0.1, flatRoll: 0.6, flatDroop: 0.0, gnarl: 0.55, bark: 1, barkTint: [0.48, 0.34, 0.28],
     barkTopTint: [0.88, 0.48, 0.30], foliageValue: 1.1,
   }),
+  // the trees lane (2026-10-05, the farmland lane's Streuobst behind Frontier Basin's farm courtyards): the old meadow
+  // orchard's fruit tree, open-grown in rows over the grass — a short trunk of 1.2-1.8 m (at the placed trees' mean scale)
+  // to three to five spreading scaffolds, a broad, open, rounded crown about as wide as it is tall, crooked with age, the
+  // sky showing through. Its variants are the three trees of a Hessian Streuobstwiese: the plum, smaller and finer; the
+  // apple, round and spreading; the pear, taller and upright — each on its own atlas tiles (treeSprayAtlas.ts
+  // paintOrchardTile: its leaves and its summer fruit)
+  apple: P({
+    family: 'broadleaf', height: 4.6, heightSpread: 0.14, trunkR: 0.13, form: 'decurrent',
+    forkAt: [0.22, 0.29], scaffolds: [3, 5], scaffoldAngle: [0.5, 1.1], crownBase: 0.26, crownR: 2.35,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.45, angleLow: 1.2, angleHigh: 0.7,
+    droop: 0.5, upturn: 0.3, sidePerM: 2.0, sideAngle: 0.85, sideRatio: 0.55, sideDroop: 0.45, twigPerM: 1.2,
+    leafOrder: 1, leafPerM: 1.6, leafFrom: 0.2, spray: [0.45, 0.68], aspect: 0.82, habit: 'spray', tipSprays: 1,
+    cardBend: 0.18, flatRoll: 0.6, flatDroop: 0.0, gnarl: 0.45, bark: 1, barkTint: [0.42, 0.39, 0.35], barkTopTint: null,
+    foliageValue: 1.2, orchard: true,
+    variantShape: [
+      // the plum
+      { height: 4.4, crownR: 2.1, scaffoldAngle: [0.45, 1.0], spray: [0.4, 0.6] },
+      // the apple
+      {},
+      // the pear
+      { height: 4.8, crownR: 1.85, scaffoldAngle: [0.3, 0.75], forkAt: [0.19, 0.25] },
+    ],
+    variantTiles: [[3], [0, 1], [2]],
+  }),
   // the longleaf's grass stage (shrub-only, Longleaf Crossing's cutover): a seedling of its first years is no stem at
   // all, a dense fountain of long needles from the ground like a bunchgrass, a few to a clump; the tree fields mirror the
   // longleaf's (growShrubSkeleton reads the fountain, the aspect and the bend)
@@ -567,7 +613,7 @@ export const GROWTH_FOREST_FORM = Object.freeze({
 const forestProfiles = new Map<Readonly<GrowthProfile>, Readonly<GrowthProfile>>();
 /** A profile's forest-grown form (GROWTH_FOREST_FORM); a palm, a snag or a grass-stage seedling keeps its own. */
 export function forestGrownProfile(p: Readonly<GrowthProfile>): Readonly<GrowthProfile> {
-  if (p.family === 'palm' || p.family === 'dead' || p.fountain) return p;
+  if (p.family === 'palm' || p.family === 'dead' || p.fountain || p.orchard) return p;
   const cached = forestProfiles.get(p);
   if (cached) return cached;
   const f = GROWTH_FOREST_FORM;
@@ -1473,8 +1519,11 @@ function growFountainShrub(species: GrowthSpecies, kind: 'bush' | 'understorey',
  * 1, 2) sets the age class — a younger, narrower tree, the typical one, an older broader one.
  */
 export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: GrowthOptions = {}): TreeSkeleton {
-  const profile = options.forest ? forestGrownProfile(TREE_GROWTH_PROFILES[species]) : TREE_GROWTH_PROFILES[species];
   const variant = ((options.variant ?? 1) % 3 + 3) % 3;
+  // (trees lane: a profile with variant shapes grows each variant's own, at the variant's age as before: the Streuobst
+  // form's plum young and small, its apple in its middle years, its pear old and tall)
+  const base = TREE_GROWTH_PROFILES[species], shaped = variantProfile(base, variant);
+  const profile = options.forest ? forestGrownProfile(shaped) : shaped;
   const mobile = options.tier === 'mobile';
   const ageH = variant === 0 ? 0.88 : variant === 2 ? 1.1 : 1;
   const ageW = variant === 0 ? 0.84 : variant === 2 ? 1.12 : 1;
@@ -1569,6 +1618,10 @@ export function growTreeSkeleton(species: GrowthSpecies, rng: Rng, options: Grow
   let r = 0;
   if (leaves.length) for (const l of leaves) r = Math.max(r, Math.hypot(l.x - cx, (l.y - cy) * 0.8, l.z - cz) + l.length * 0.5);
   else r = ctx.crownR;
+  // (trees lane: a profile's variant tiles — each Streuobst variant's sprays on its own species' tiles, from the tile each
+  // spray drew, so no draw moves)
+  const variantTiles = base.variantTiles?.[variant];
+  if (variantTiles) for (const l of leaves) l.tile = variantTiles[l.tile % variantTiles.length];
   const skeleton: TreeSkeleton = { species, height, branches: ctx.branches, leaves, crown: { x: cx, y: cy, z: cz, r: Math.max(0.8, r) } };
   // the living crowns' masses (a palm's head is fronds round one point, a snag's few dead twigs shade nothing)
   if (leaves.length >= 8 && profile.family !== 'palm' && profile.family !== 'dead') skeleton.lobes = crownLobes(skeleton, crownLobeCount(profile, leaves.length));

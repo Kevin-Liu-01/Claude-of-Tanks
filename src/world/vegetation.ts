@@ -2415,6 +2415,8 @@ export function grownSprayKind(species: Species, palette: VegetationPalette = {}
 export const BARE_SPRAY_KINDS: Readonly<Partial<Record<GrowthSpecies, SprayKind>>> = Object.freeze({
   birch: 'birch-bare', aspen: 'birch-bare', willow: 'birch-bare', beech: 'birch-bare',
   oak: 'oak-bare', chestnut: 'oak-bare', poplar: 'poplar-bare', buddleia: 'buddleia-bare',
+  // the Streuobst fruit trees' crooked spurs are the oak's habit
+  apple: 'oak-bare',
 });
 
 /** Trees round 2: the spray atlas a grown form paints (treeBiomes.ts) — a birch-family form leafy only where the palette
@@ -5232,8 +5234,10 @@ function* vegetationBuildSteps(
   // variants beside the forest-grown ones, each pool mesh carrying its open geometry as userData.formAlt, so the frame
   // probe's forest-form toggle swaps them in one page)
   const forestQuery = typeof location !== 'undefined' ? location.search ?? '' : '';
+  // (trees lane, 2026-10-05: an orchard form's slot stays open-grown in a wood too, its variants its own species)
   const forestSpecies = new Set<Species>(grownTrees && treeBiomeWoodSpread(cfg?.id) > 1 && !/[?&]forestForm=0(&|$)/.test(forestQuery)
-    ? veg.clusterMix.map(([sp]) => sp).filter((sp) => sp !== 'palm') : []);
+    ? veg.clusterMix.map(([sp]) => sp).filter((sp) => sp !== 'palm'
+      && !TREE_GROWTH_PROFILES[(formOf(sp)?.form ?? sp) as GrowthSpecies]?.orchard) : []);
   const forestAB = forestSpecies.size > 0 && /[?&]forestAB=1(&|$)/.test(forestQuery);
   // trees lane (2026-10-05): a bare map's deciduous broadleaves and shrubs stand leafless (VegetationConfig `bare`;
   // `?bare=1` stands any map's bare, the probes' same-build A/B)

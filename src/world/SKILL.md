@@ -266,7 +266,10 @@ a field tree stands on a hedged boundary, a field's edge or a wood's edge, never
 census is `group.userData.fieldTreeLaw`). A map's `vegetation.bare` stands its deciduous broadleaves leafless
 (`BARE_SPRAY_KINDS`: each form's winter twigs in its own habit, the birch's lattice, the oak's crooked twigs, the
 poplar's climbing shoots, the buddleia's winter canes under dry panicles; `bareFormPalette` drops the leaf colours and
-`grownTintLaw` takes the twigs' grey), the conifers and evergreens in leaf; `?bare=1` for the probes.
+`grownTintLaw` takes the twigs' grey), the conifers and evergreens in leaf; `?bare=1` for the probes. The `apple`
+form is the Streuobst fruit tree (an `orchard` profile: never forest-grown, its slot never a forest species): its
+`variantShape` grows the plum, the apple and the pear at their ages, its `variantTiles` give each its own atlas tiles
+(`paintOrchardTile`: leaves and summer fruit).
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
 pole distance representation; callers dispose or transfer every returned mesh.
 `propPlacement.ts` owns typed terrain-support, rigid-footprint, utility-pole,

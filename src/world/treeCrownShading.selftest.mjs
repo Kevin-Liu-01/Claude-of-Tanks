@@ -8,8 +8,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createCanvas, ImageData } from '@napi-rs/canvas';
 import {
-  crownLobes, emitCrownShadowHull, emitLeafCards, GROWTH_CROWN_POROSITY, GROWTH_CROWN_SHADING, GROWTH_SPECIES, growTreeSkeleton,
-  TREE_GROWTH_PROFILES, tuftLobes,
+  crownLobes, emitCrownShadowHull, emitLeafCards, forestGrownProfile, GROWTH_CROWN_POROSITY, GROWTH_CROWN_SHADING, GROWTH_SPECIES,
+  growTreeSkeleton, TREE_GROWTH_PROFILES, tuftLobes,
 } from './treeGrowth.ts';
 import {
   applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, CROWN_DAPPLE_LAW, CROWN_DAPPLE_PROGRAM_KEY, crownDappleTags, crownDappleThreshold,
@@ -549,6 +549,75 @@ assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a
     assert.ok(stats['poplar-bare'].spread < stats['oak-bare'].spread, `the poplar's shoots climb narrower than the oak's twigs spread (${stats['poplar-bare'].spread.toFixed(1)} < ${stats['oak-bare'].spread.toFixed(1)} px)`);
     assert.ok(stats['buddleia-bare'].rust > 0.2 && stats['buddleia-bare'].violet < 0.005, `the buddleia's winter panicles dry and rust-brown, no flowers (${JSON.stringify(stats['buddleia-bare'])})`);
     report.bare = stats;
+  } finally {
+    globalThis.document = savedDocument;
+    globalThis.ImageData = savedImageData;
+  }
+}
+
+// Trees lane (2026-10-05, the farmland lane's Streuobst for Frontier Basin): the meadow orchard's fruit tree — at the
+// placed trees' mean scale a short trunk of 1.2-1.8 m to its scaffolds, a broad, open, rounded crown about as wide as
+// it is tall; its variants the plum (young, small), the apple (in its middle years) and the pear (old, tall, upright),
+// each on its own atlas tiles with its summer fruit; never forest-grown; bare in winter as the oak's crooked twigs.
+{
+  const SCALE = 1.325; // the placed trees' mean (vegetation.ts addTree: 0.95-1.7)
+  const apple = TREE_GROWTH_PROFILES.apple;
+  assert.ok(GROWTH_SPECIES.includes('apple') && apple.orchard === true, 'the fruit tree is a tree form, an orchard one');
+  assert.equal(forestGrownProfile(apple), apple, 'an orchard tree never grows forest-grown');
+  const shape = (variant, seed, forest = false) => {
+    const sk = growTreeSkeleton('apple', mulberry32(seed), { variant, tier: 'desktop', forest });
+    const stem = sk.branches[0], fork = stem.nodes[stem.nodes.length - 1].y;
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, len = 0;
+    for (const l of sk.leaves) { minX = Math.min(minX, l.x); maxX = Math.max(maxX, l.x); minZ = Math.min(minZ, l.z); maxZ = Math.max(maxZ, l.z); len += l.length; }
+    const width = ((maxX - minX) + (maxZ - minZ)) / 2 + len / sk.leaves.length;
+    return { sk, fork: fork * SCALE, height: sk.height * SCALE, width: width * SCALE, sprays: sk.leaves.length };
+  };
+  const mean = (variant, key) => [0, 1, 2, 3].reduce((a, k) => a + shape(variant, 5101 + variant * 13 + k * 101)[key], 0) / 4;
+  for (const variant of [0, 1, 2]) {
+    const fork = mean(variant, 'fork');
+    assert.ok(fork >= 1.2 && fork <= 1.85, `variant ${variant}: a short trunk to the scaffolds (${fork.toFixed(2)} m)`);
+    assert.deepEqual(shape(variant, 77).sk, shape(variant, 77).sk, 'the fruit tree grows deterministically');
+    assert.deepEqual(shape(variant, 77, true).sk, shape(variant, 77).sk, 'in a wood too it grows open');
+  }
+  const [plum, appleTree, pear] = [0, 1, 2].map((v) => ({ height: mean(v, 'height'), width: mean(v, 'width'), sprays: mean(v, 'sprays') }));
+  assert.ok(appleTree.width / appleTree.height > 0.8 && appleTree.width / appleTree.height < 1.15,
+    `the apple's crown about as wide as the tree is tall (${appleTree.width.toFixed(1)} m by ${appleTree.height.toFixed(1)} m)`);
+  assert.ok(appleTree.height > 5 && appleTree.height < 7, `the apple 5-7 m tall (${appleTree.height.toFixed(1)})`);
+  assert.ok(plum.height < appleTree.height && appleTree.height < pear.height, 'the plum smallest, the pear tallest');
+  assert.ok(pear.width / pear.height < appleTree.width / appleTree.height, 'the pear more upright than the apple');
+  const oakSprays = [0, 1, 2, 3].reduce((a, k) => a + growTreeSkeleton('oak', mulberry32(5114 + k * 101), { variant: 1, tier: 'desktop' }).leaves.length, 0) / 4;
+  assert.ok(appleTree.sprays < oakSprays * 0.8, `an open crown, its sky showing through (${appleTree.sprays.toFixed(0)} sprays against the oak's ${oakSprays.toFixed(0)})`);
+  const tilesOf = (variant) => new Set(shape(variant, 91).sk.leaves.map((l) => l.tile));
+  assert.deepEqual([...tilesOf(0)], [3], 'the plum on the plum tile');
+  assert.deepEqual([...tilesOf(1)].sort(), [0, 1], 'the apple on the apple tiles');
+  assert.deepEqual([...tilesOf(2)], [2], 'the pear on the pear tile');
+  assert.equal(BARE_SPRAY_KINDS.apple, 'oak-bare', 'bare in winter, the oak\'s crooked twigs');
+  // the atlas: apples with a red cheek on tiles 0 and 1, yellow-green pears on tile 2, dark plums on tile 3
+  const savedDocument = globalThis.document, savedImageData = globalThis.ImageData;
+  globalThis.ImageData = ImageData;
+  globalThis.document = { createElement() { return createCanvas(1, 1); } };
+  try {
+    const image = makeSprayAtlas('apple', mulberry32(7), 256, null, 0).image;
+    const data = image.getContext ? image.getContext('2d').getImageData(0, 0, image.width, image.height).data : image.data;
+    const c = new THREE.Color(), hsl = { h: 0, s: 0, l: 0 }, tiles = [];
+    for (let t = 0; t < 4; t++) {
+      const ox = (t % 2) * 128, oy = Math.floor(t / 2) * 128;
+      let red = 0, yellow = 0, violet = 0, opaque = 0;
+      for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) {
+        const i = ((oy + y) * 256 + ox + x) * 4;
+        if (data[i + 3] < 200) continue;
+        opaque++;
+        c.setRGB(data[i] / 255, data[i + 1] / 255, data[i + 2] / 255).getHSL(hsl);
+        if (hsl.h < 0.085 && hsl.s > 0.25) red++;
+        if (hsl.h > 0.13 && hsl.h < 0.19 && hsl.s > 0.3) yellow++;
+        if (hsl.h > 0.68 && hsl.h < 0.85 && hsl.s > 0.15) violet++;
+      }
+      tiles.push({ red, yellow, violet, opaque });
+    }
+    assert.ok(tiles[0].red + tiles[1].red > 60 && tiles[2].red + tiles[3].red < 5, `the apples' red cheeks on the apple tiles (${JSON.stringify(tiles)})`);
+    assert.ok(tiles[2].yellow > 20 && tiles[2].violet < 3, `the pears yellow-green on theirs (${JSON.stringify(tiles[2])})`);
+    assert.ok(tiles[3].violet > 10 && tiles[0].violet + tiles[1].violet + tiles[2].violet < 5, `the plums dark violet on theirs (${JSON.stringify(tiles[3])})`);
+    report.orchard = { plum, apple: appleTree, pear, oakSprays, tiles };
   } finally {
     globalThis.document = savedDocument;
     globalThis.ImageData = savedImageData;
