@@ -250,10 +250,19 @@ let junctionSummary = '';
 }
 
 // ------------------------------------------------------------------ every other map: no spur, the exclusion it had
+// (a map whose spurs all keep a 'clearance' berth — Verdant's station line — takes no noVeg exclusion: its berth and its
+// streams are railSpurBerth.selftest's)
+let clearanceMaps = 0;
 for (const mapId of MAP_IDS) {
   if (mapId === 'steppe' || mapId === 'railyard') continue;
   const cfg = getMapConfig(mapId);
+  const spurs = cfg.terrain?.railSpurs;
+  if (spurs?.length && spurs.every((spur) => spur.berth === 'clearance')) {
+    assert.equal(createRailSpurExclusion(spurs), null, `${mapId}: a clearance spur joins no exclusion`);
+    clearanceMaps++;
+    continue;
+  }
   assert.equal(cfg.terrain?.railSpurs, undefined, `${mapId}: no authored spur`);
   assert.equal(createLayout(cfg).railSpurs, undefined, `${mapId}: no layout key`);
 }
-console.log(`railSpurs.selftest: resampler (yard rule + even split), berth, dry-span reduction; three yards deterministic with their 0.16 m slab; Tarkhan siding 92 spans / 184 rails / 276 sleepers / 1 stop bedded with no gap to the map edge, then ${RAIL_OPEN_KIT_M / RAIL_SPUR_LAY_M} spans on the open line past the edge (no record); ${junctionSummary}; ${MAP_IDS.length - 2} other layouts carry no spur`);
+console.log(`railSpurs.selftest: resampler (yard rule + even split), berth, dry-span reduction; three yards deterministic with their 0.16 m slab; Tarkhan siding 92 spans / 184 rails / 276 sleepers / 1 stop bedded with no gap to the map edge, then ${RAIL_OPEN_KIT_M / RAIL_SPUR_LAY_M} spans on the open line past the edge (no record); ${junctionSummary}; ${MAP_IDS.length - 2 - clearanceMaps} other layouts carry no spur, ${clearanceMaps} a clearance-berth line`);
