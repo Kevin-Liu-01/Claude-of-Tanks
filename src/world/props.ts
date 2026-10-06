@@ -79,6 +79,7 @@ import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 // the map-vehicles lane (2026-10-05): the vehicles' surface stream and liveries, their ground-contact patches
 import { applyVehicleSurfaceHook, VEHICLE_SURFACE_PROGRAM } from './maps/vehicleSurface.ts';
 import { buildVehicleContactShadows, vehicleShadowCaster } from './maps/vehicleContactShadow.ts';
+import { PARKED_VEHICLE_CLEARANCE, separateParkedVehicles } from './parkedVehicleSeparation.ts';
 import {
   boxClearOfPoints, boxClearOfRoadCore, discClearOfRoadCore, sharpRoadBends, shiftClearOfRoadCore,
 } from './roadFootprint.ts';
@@ -591,6 +592,8 @@ interface DestructibleRecord {
   looseListed?: boolean;
   _dKey?: string;
   _destructibleIndex?: number;
+  /** The parked-vehicle separation found this vehicle no clear seat: out of play (no obstacle, no instance). */
+  dropped?: boolean;
 }
 
 interface LooseDestructibleRecord extends DestructibleRecord {
@@ -2716,6 +2719,47 @@ function relocateAutumnHarvestRecord(context: DestructibleBuildContext, record: 
   record.ob.min[1] = placement.y; record.ob.max[1] = placement.y + record.h;
   const extents = getDestructibleContactExtents(pool.meta, record.sc, record.yaw, record.r);
   applyDestructibleObstacleShape(record.ob, pool.meta, record, extents);
+}
+
+/** Move an accepted, unfinalized vehicle record to a seat (parkedVehicleSeparation.ts): its record, slot matrix, ground
+ * support, obstacle and collider; the pools' refit later fits both to the seat as to any other. */
+function relocateParkedVehicleRecord(context: DestructibleBuildContext, record: DestructibleRecord, x: number, z: number): void {
+  const pool = context.pools.get(record.kind);
+  const matrix = pool?.mats4[record.slot];
+  if (!pool || !matrix || pool.records[record.slot] !== record || pool.imI || pool.imB || record.state !== 0 || !record.ob
+      || record.body || record.loopRef) {
+    throw new Error('Parked-vehicle separation requires an unfinalized vehicle obstacle');
+  }
+  const meta = resolveDestructibleMeta(context, record.kind);
+  const placement = groundDestructiblePlacement(context.heightField, meta, x, context.heightField.getHeightAt(x, z) - 0.04, z,
+    record.yaw, record.sc, 0, 0);
+  record.x = x; record.z = z; record.y = placement.y;
+  record.groundSupport = placement.support;
+  matrix.setPosition(x, placement.y, z);
+  const extents = getDestructibleContactExtents(meta, record.sc, record.yaw, record.r);
+  for (const obstacle of [record.ob, record.col]) {
+    if (!obstacle) continue;
+    obstacle.min[1] = placement.y; obstacle.max[1] = placement.y + record.h;
+    applyDestructibleObstacleShape(obstacle as PropsCollisionRecord, meta, record, extents);
+  }
+}
+
+/** Take an accepted, unfinalized vehicle record out of play (no clear seat): its obstacle and collider leave the
+ * lists, its slot is scaled to nothing and the record is marked dropped (the contact layer skips it). */
+function dropParkedVehicleRecord(context: DestructibleBuildContext, record: DestructibleRecord): void {
+  const pool = context.pools.get(record.kind);
+  const matrix = pool?.mats4[record.slot];
+  if (!pool || !matrix || pool.records[record.slot] !== record || pool.imI || pool.imB || record.state !== 0 || !record.ob) {
+    throw new Error('Parked-vehicle separation requires an unfinalized vehicle obstacle');
+  }
+  matrix.scale(new THREE.Vector3(1e-4, 1e-4, 1e-4)); // the props' collapsed slot (a crushed instance's scale)
+  const at = context.obstacles.indexOf(record.ob as PropsCollisionRecord);
+  if (at >= 0) context.obstacles.splice(at, 1);
+  if (record.col) {
+    const ci = context.colliders.indexOf(record.col);
+    if (ci >= 0) context.colliders.splice(ci, 1);
+  }
+  record.dropped = true;
 }
 
 function autumnHarvestDonors(records: readonly DestructibleRecord[], first: number,
@@ -8057,6 +8101,47 @@ ${snowCap ? `
   }
   detachAnimatedDressing();
 
+  // the map-vehicles lane (2026-10-05): no parked vehicle stands inside another (parkedVehicleSeparation.ts). Two
+  // roadside picks could land on one station and side; the later vehicle of such a pair slides along its heading onto
+  // clear verge (the roadside rules, the road core, every other obstacle and tree), or is dropped. No stream draws.
+  // It runs once every record has its seat (the wharf, the Foundry court and the Autumn headlands relocate above) and
+  // before anything plans against the vehicles (the yard dressing, the scenery) or refits and indexes the pools.
+  function separateParkedVehicleRecords(): void {
+    const vehicles = destructibles.filter((record) => LOCAL_TYPES[record.kind]?.instancePaint && record.state === 0);
+    if (vehicles.length < 2) return;
+    const roadside = { rng: () => 0, roads: L.roads, heightField, noVegetation: noVeg, spawns: L.spawns, placedBuildings: placedB };
+    const trees = sceneryTrees; // the vegetation is released above; the trees were captured with the scenery's
+    const footprint = (kind: string) => ({ hw: LOCAL_TYPES[kind].hw ?? LOCAL_TYPES[kind].r, hl: LOCAL_TYPES[kind].hl ?? LOCAL_TYPES[kind].r });
+    group.userData.parkedVehicleSeparation = separateParkedVehicles(vehicles, {
+      footprint,
+      seatClear: (record, x, z) => {
+        const { hw, hl } = footprint(record.kind);
+        if (!isRoadsideSpotClear(roadside, x, z)) return false;
+        if (!boxClearOfRoadCore(heightField, x, z, hw * record.sc + 0.05, hl * record.sc + 0.05, record.yaw)) return false;
+        // the seat's footprint (with half the clearance) against each blocker's box: separating axes (the world's two
+        // and the vehicle's own), so a vehicle on a diagonal verge is not held off by its own bounding square
+        const g = PARKED_VEHICLE_CLEARANCE / 2, fx = Math.sin(record.yaw), fz = Math.cos(record.yaw);
+        const fhw = hw * record.sc + g, fhl = hl * record.sc + g;
+        const ex = fhw * Math.abs(fz) + fhl * Math.abs(fx), ez = fhw * Math.abs(fx) + fhl * Math.abs(fz);
+        const blocks = (ob: CollisionRecord) => {
+          const kind = (ob as { kind?: string }).kind;
+          if (ob === record.ob || ob === record.col || (kind && LOCAL_TYPES[kind]?.instancePaint)) return false;
+          if (!(x + ex > ob.min[0] && x - ex < ob.max[0] && z + ez > ob.min[2] && z - ez < ob.max[2])) return false;
+          const bx = (ob.min[0] + ob.max[0]) / 2 - x, bz = (ob.min[2] + ob.max[2]) / 2 - z;
+          const hx = (ob.max[0] - ob.min[0]) / 2, hz = (ob.max[2] - ob.min[2]) / 2;
+          for (const [ax, az, half] of [[fx, fz, fhl], [fz, -fx, fhw]] as const) {
+            if (Math.abs(bx * ax + bz * az) >= half + hx * Math.abs(ax) + hz * Math.abs(az)) return false;
+          }
+          return true;
+        };
+        return !obstacles.some(blocks) && !colliders.some(blocks) && !trees.some(blocks);
+      },
+      move: (record, x, z) => relocateParkedVehicleRecord(destructibleContext, record, x, z),
+      drop: (record) => dropParkedVehicleRecord(destructibleContext, record),
+    });
+  }
+  separateParkedVehicleRecords();
+
   // -------------------------------------------------------------------------
   // Round 75: YARD DRESSING — pallets, crates, drums, cable drums, tyre stacks, fuel tanks and skips in the apron
   // band around the industrial structures (world/yardDressing.ts plans, maps/yardClutterKit.ts builds). Dressing,
@@ -8545,7 +8630,7 @@ ${snowCap ? `
     const contact = buildVehicleContactShadows(destructibles, heightField, aniso, (kind) => {
       const meta = LOCAL_TYPES[kind];
       return meta?.instancePaint && meta.hw !== undefined && meta.hl !== undefined ? { hw: meta.hw, hl: meta.hl } : null;
-    });
+    }, (record) => !record.dropped);
     if (contact) group.add(contact);
   }
 

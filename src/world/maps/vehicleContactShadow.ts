@@ -70,14 +70,14 @@ function contactTexture(anisotropy: number): THREE.Texture {
 
 /** One mesh of contact patches under every vehicle record (null when the map places none); `footprint` is a vehicle
  * kind's footprint on this map (null: not a vehicle). */
-export function buildVehicleContactShadows(records: readonly ContactRecord[], field: ContactField, anisotropy: number,
-  footprint: (kind: string) => { hw: number; hl: number } | null): THREE.Mesh | null {
+export function buildVehicleContactShadows<R extends ContactRecord>(records: readonly R[], field: ContactField, anisotropy: number,
+  footprint: (kind: string) => { hw: number; hl: number } | null, standing: (record: R) => boolean = () => true): THREE.Mesh | null {
   const nx = 5, nz = 7;
   const pos: number[] = [], uv: number[] = [], idx: number[] = [];
   let patches = 0;
   for (const r of records) {
     const own = footprint(r.kind);
-    if (!own) continue;
+    if (!own || !standing(r)) continue;
     const fp = vehicleContactPatch(own.hw, own.hl);
     const hw = fp.hw * r.sc, hl = fp.hl * r.sc, c = Math.cos(r.yaw), s = Math.sin(r.yaw);
     const base = pos.length / 3;
