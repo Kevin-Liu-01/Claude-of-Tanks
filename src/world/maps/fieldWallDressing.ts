@@ -195,7 +195,7 @@ export function buildSnowLoad(g: THREE.BufferGeometry, seed: number, opts: SnowL
  * A fieldstone: a box with its corners knocked well back (each corner in by up to `knock` of its half extents), its
  * bottom left out, a print window of its own at `uvPerM`.
  */
-function fieldStone(w: number, h: number, d: number, r: () => number, knock: number, uvPerM: number, vAt?: number): THREE.BufferGeometry {
+export function fieldStone(w: number, h: number, d: number, r: () => number, knock: number, uvPerM: number, vAt?: number): THREE.BufferGeometry {
   const g = new THREE.BoxGeometry(w, h, d);
   const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
   const corners = new Map<string, [number, number, number]>();
