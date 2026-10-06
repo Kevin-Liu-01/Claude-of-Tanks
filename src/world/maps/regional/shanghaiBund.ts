@@ -9,8 +9,7 @@
 //     ("Big Ching") stepping up to its cap;
 //   - civichall → in the Settlement the Bund's banks, three ways (the HSBC's dome on its drum; a portico of giant columns
 //     in a recessed front under a pediment; a Renaissance block with copper-capped corner turrets); in Zhabei, Shanghai
-//     North Station (skyline.ts stationHall), burnt out as in 1932 and 1937, turned a quarter so its train shed runs the
-//     plot's long side;
+//     North Station (skyline.ts stationHall), burnt out as in 1932 and 1937, its depth held to the plot's;
 //   - parkingdeck → the Joint Trust warehouse ("Sihang", 1931): four storeys of concrete frame, the front's middle bay
 //     rising over the flat roof with the warehouse's name, its windows sandbagged and shot out, the shell holes of
 //     October 1937 in the wall that faced the attack; some of them brick-faced godowns of the same build.
@@ -91,25 +90,42 @@ function scars(sink: PartSink, face: Face, h: number, look: () => number, mobile
  */
 function bundTower(crown: 'pyramid' | 'stepped' | 'needle'): RegionalBuilder {
   const standing = [decoTower({ crown, damage: 0 }), decoTower({ crown, damage: 1 })], any = decoTower({ crown });
-  return (ctx) => (bankOf(ctx) === 'zhabei' ? any(ctx) : standing[ctx.variant() < 0.6 ? 0 : 1](ctx));
+  return (ctx) => {
+    // the deco tower fits the plan's plot; where the base measured wider (the megatower's 25.4 m against its 24.7 m
+    // plot) it fits that reach, so the body stands within half a metre of the base's on every side
+    const b = ctx.bounds;
+    const fitted = { ...ctx, info: { ...ctx.info, w: Math.max(ctx.info.w, b.maxX - b.minX), d: Math.max(ctx.info.d, b.maxZ - b.minZ) } };
+    return bankOf(ctx) === 'zhabei' ? any(fitted) : standing[ctx.variant() < 0.6 ? 0 : 1](fitted);
+  };
 }
 
 /**
- * A builder turned a quarter about the plot's centre: it builds on the plot read with its sides swapped and its parts
- * are turned back, so a long building (a station's train shed) runs the plot's long side whichever way the plot lies.
+ * A builder held to its plot's depth: a building whose own grammar wants more depth than the plot has (the skyline
+ * kit's terminus wants 26 m, the civic halls' plots are 22.8 m) is built at its depth and drawn in toward its street
+ * front's centre line until its solid parts stand within the base's reach, so its head building keeps the street and
+ * its train shed runs back toward the tracks behind it.
  */
-function turnedQuarter(builder: RegionalBuilder): RegionalBuilder {
+function heldToDepth(builder: RegionalBuilder): RegionalBuilder {
   return (ctx) => {
-    const b = ctx.bounds;
-    const parts = builder({ ...ctx, info: { ...ctx.info, w: ctx.info.d, d: ctx.info.w },
-      bounds: { minX: -b.maxZ, maxX: -b.minZ, minZ: b.minX, maxZ: b.maxX, maxY: b.maxY } });
-    for (const list of Object.values(parts)) for (const g of list) g.rotateY(Math.PI / 2);
+    const parts = builder(ctx);
+    const b = ctx.bounds, all = Object.values(parts).flat();
+    let z0 = Infinity, z1 = -Infinity;
+    for (const g of all) {
+      if (g.userData.noCollision) continue;
+      g.computeBoundingBox();
+      z0 = Math.min(z0, g.boundingBox!.min.z); z1 = Math.max(z1, g.boundingBox!.max.z);
+    }
+    const room = b.maxZ - b.minZ - 0.8, cz = (b.minZ + b.maxZ) / 2;
+    if (z1 - z0 > room && z1 > z0) {
+      const k = room / (z1 - z0);
+      for (const g of all) { g.translate(0, 0, -cz); g.scale(1, 1, k); g.translate(0, 0, cz); g.boundingBox = null; }
+    }
     return parts;
   };
 }
 
-/** Shanghai North Station in Zhabei: the skyline kit's terminus, its train shed along the plot, burnt out. */
-const northStation = turnedQuarter(stationHall({ damage: 2 }));
+/** Shanghai North Station in Zhabei: the skyline kit's terminus, its head building to the street, burnt out. */
+const northStation = heldToDepth(stationHall({ damage: 2 }));
 
 // ------------------------------------------------------------------------------------------------ the Bank of China
 

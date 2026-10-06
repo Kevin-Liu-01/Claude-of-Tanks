@@ -124,8 +124,8 @@
       "concealers": 462
     },
     "blackglass": {
-      "bytes": 1231604,
-      "sha256": "61a5034b03f46ca313b86b3af45a61a4a04f90611bf2d54b70c9d564bcede392",
+      "bytes": 1231556,
+      "sha256": "14c1800974b130746b50e0a8217d2ea2b0bd926e6d1fc4c3ebaadc0740230755",
       "obstacles": 2713,
       "colliders": 3124,
       "concealers": 1492
