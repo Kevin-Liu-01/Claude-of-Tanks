@@ -196,6 +196,11 @@ interface VegetationConfig {
   stubblePatches?: readonly GrassStubblePatch[];
   /** Reuses the willow species/library slots; no fourth material or atlas. */
   willowForm?: 'tidalMangrove';
+  /**
+   * Trees round 5: the map's own shrub form (a shrub-only growth form: 'broom', 'longleafSeedling', 'buddleia'), over its
+   * place's (treeBiomes.ts `shrub`); the desktop grown builds only. The bush slot keeps its records, seeds and mobile look.
+   */
+  shrubForm?: GrowthSpecies;
   /** p2 trees lane: keep the legacy card trees on this world even on the desktop tiers (the tidal-mangrove receipt's
    * reviewed comparison, same-build A/B through `?legacyTrees=1`). */
   legacyTrees?: boolean;
@@ -6917,7 +6922,7 @@ function* vegetationBuildSteps(
     // p2 trees lane: the desktop shrubs grow from the bush species' sprays (buildGrownShrub); the phones keep the cards
     // the shrub grows from the sprays its material paints: the Mangrove map's willow form is the mangrove
     // trees round 2: the shrubs grow as the map's shrub form (their own material: shrubMaterials) or the bush slot's form
-    const shrubForm = grownTrees ? treeBiomeShrub(cfg?.id) : null, shrubMats = shrubMaterials(shrubForm, bushPal);
+    const shrubForm = grownTrees ? veg.shrubForm ?? treeBiomeShrub(cfg?.id) : null, shrubMats = shrubMaterials(shrubForm, bushPal);
     // trees round 4: a shrub grown from its slot's sprays shares that slot's crowns' texture and program but not their
     // near reach (FOLIAGE_NEAR_REACH): its own material over the one program, with the shrub hook's uniform — made when
     // the first shrub is planted (a world without shrubs registers none)

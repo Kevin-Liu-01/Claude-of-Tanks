@@ -385,6 +385,29 @@ assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a
 {
   const broom = growShrubSkeleton('broom', 'bush', mulberry32(9));
   assert.ok(broom.leaves.length >= 32 && broom.leaves.every((l) => l.y >= -0.0601), `a broom mound of ${broom.leaves.length} sprays on the ground`);
+  // trees round 5 (the cities lane's Ironworks): the buddleia, a shrub form too — a mound of long, narrow, arching sprays
+  // on the ground, deterministic, its tile purple-flowered (a share of its painted texels violet: the panicles)
+  assert.ok(!GROWTH_SPECIES.includes('buddleia'), 'the buddleia is a shrub form, never a tree slot');
+  const buddleia = growShrubSkeleton('buddleia', 'bush', mulberry32(9));
+  assert.deepEqual(buddleia, growShrubSkeleton('buddleia', 'bush', mulberry32(9)), 'the buddleia grows deterministically');
+  assert.ok(buddleia.leaves.length >= 32 && buddleia.leaves.every((l) => l.y >= -0.0601), `a buddleia mound of ${buddleia.leaves.length} sprays on the ground`);
+  assert.ok(TREE_GROWTH_PROFILES.buddleia.cardBend >= 0.3 && TREE_GROWTH_PROFILES.buddleia.aspect < 0.7, 'its sprays long, narrow and arching');
+  const savedDocument = globalThis.document, savedImageData = globalThis.ImageData;
+  globalThis.ImageData = ImageData;
+  globalThis.document = { createElement() { return createCanvas(1, 1); } };
+  try {
+    const image = makeSprayAtlas('buddleia', mulberry32(7), 256, null, 0).image;
+    const data = image.getContext ? image.getContext('2d').getImageData(0, 0, image.width, image.height).data : image.data;
+    let opaque = 0, violet = 0;
+    const c = new THREE.Color(), hsl = { h: 0, s: 0, l: 0 };
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 200) continue;
+      opaque++;
+      c.setRGB(data[i] / 255, data[i + 1] / 255, data[i + 2] / 255).getHSL(hsl);
+      if (hsl.h > 0.7 && hsl.h < 0.85 && hsl.s > 0.3) violet++;
+    }
+    assert.ok(violet > 0.05 * opaque && violet < 0.5 * opaque, `the buddleia's tile carries its purple panicles (${violet} of ${opaque} texels)`);
+  } finally { globalThis.document = savedDocument; globalThis.ImageData = savedImageData; }
 }
 
 // trees round 4 (the ground lane on Obsidian Caldera's establishing view: the broom "saturated green" on the ash plain):

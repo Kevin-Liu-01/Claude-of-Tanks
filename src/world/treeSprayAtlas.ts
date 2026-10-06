@@ -25,11 +25,13 @@ export type SprayKind = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus' | 
   | 'juniper' | 'pinyon'
   // trees round 5 (2026-10-05, the map-revival lanes): the longleaf pine and its grass-stage seedlings, the cedar of
   // Lebanon, the Aso caldera's sugi and Japanese red pine
-  | 'longleafPine' | 'longleafSeedling' | 'lebanonCedar' | 'sugi' | 'redPine';
+  | 'longleafPine' | 'longleafSeedling' | 'lebanonCedar' | 'sugi' | 'redPine'
+  // trees round 5: the ruderal buddleia of waste ground, slag and rail sidings (a shrub form)
+  | 'buddleia';
 export const SPRAY_KINDS: readonly SprayKind[] = Object.freeze(['oak', 'poplar', 'willow', 'acacia', 'eucalyptus',
   'birch', 'aspen', 'birch-bare', 'spruce', 'fir', 'pine', 'cedar', 'cypress', 'mangrove',
   'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'broom', 'juniper', 'pinyon',
-  'longleafPine', 'longleafSeedling', 'lebanonCedar', 'sugi', 'redPine']);
+  'longleafPine', 'longleafSeedling', 'lebanonCedar', 'sugi', 'redPine', 'buddleia']);
 /** Tiles per side of every spray atlas. */
 export const SPRAY_ATLAS_TILES = 2;
 /**
@@ -42,7 +44,7 @@ export const SPRAY_ATLAS_COVERAGE: Readonly<Record<SprayKind, number>> = Object.
   'birch-bare': 0.15, spruce: 0.241, fir: 0.287, pine: 0.092, cedar: 0.186, cypress: 0.292, mangrove: 0.241,
   beech: 0.292, chestnut: 0.337, holmOak: 0.198, olive: 0.188, canaryPine: 0.098, aleppoPine: 0.071, larch: 0.154,
   broom: 0.125, juniper: 0.256, pinyon: 0.074,
-  longleafPine: 0.169, longleafSeedling: 0.216, lebanonCedar: 0.21, sugi: 0.187, redPine: 0.099,
+  longleafPine: 0.169, longleafSeedling: 0.216, lebanonCedar: 0.21, sugi: 0.187, redPine: 0.099, buddleia: 0.133,
 });
 
 /**
@@ -105,6 +107,8 @@ const LEAF_COLOR: Readonly<Record<SprayKind, LeafColor>> = Object.freeze({
   // dark blue-green, sugi's deep green awl needles, the Japanese red pine's slender bright needles
   longleafPine: { hue: 0.265, sat: 0.42, light: 0.2 },
   longleafSeedling: { hue: 0.265, sat: 0.4, light: 0.21 },
+  // the buddleia's grey-green, felted leaves
+  buddleia: { hue: 0.25, sat: 0.2, light: 0.21 },
   lebanonCedar: { hue: 0.39, sat: 0.2, light: 0.15 },
   sugi: { hue: 0.33, sat: 0.32, light: 0.15 },
   redPine: { hue: 0.26, sat: 0.38, light: 0.19 },
@@ -979,7 +983,70 @@ function paintGrassStageTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng)
 }
 
 /** The round-5 species' painters by kind. */
+/**
+ * Trees round 5 (the cities lane's Ironworks, the Saar works): a buddleia's shoot — an arching cane from the seat, its
+ * long narrow felted leaves in opposite pairs, grey-green over and paler under, a few side shoots, and at the cane's tip
+ * (and at some side shoots') a long nodding panicle of small purple-violet florets, the lower ones open and paler, the
+ * tip in bud. The alpha is the leaves', the canes' and the florets'.
+ */
+function paintBuddleiaTile(ctx: CanvasRenderingContext2D, S: number, rng: Rng): Pt[][] {
+  const base = LEAF_COLOR.buddleia;
+  const lean = (rng() < 0.5 ? -1 : 1) * (0.2 + rng() * 0.2);
+  const cane = twigPoints({ x: S * (0.5 - lean * 0.45), y: S * 0.96 }, -Math.PI / 2 + lean, S * 0.7, lean * 1.5, 10);
+  const shoots: Pt[][] = [cane];
+  const sides = 2 + ((rng() * 3) | 0);
+  for (let k = 0; k < sides; k++) {
+    const at = pointAt(cane, 0.3 + (k + rng() * 0.6) / sides * 0.5), side = k % 2 === 0 ? -1 : 1;
+    shoots.push(twigPoints(at.p, at.a + side * (0.5 + rng() * 0.3), S * (0.2 + rng() * 0.12), -side * 0.5, 6));
+  }
+  for (const sh of shoots) taperStroke(ctx, sh, sh === cane ? S * 0.012 : S * 0.007, S * 0.004, css(0.09, 0.18, 0.16));
+  // the leaves: opposite pairs along each shoot, long lances drooping off it, the pair's undersides paler
+  for (const sh of shoots) {
+    const pairs = sh === cane ? 8 + ((rng() * 3) | 0) : 3 + ((rng() * 2) | 0);
+    for (let k = 0; k < pairs; k++) {
+      const t = 0.12 + (k / pairs) * 0.72 + rng() * 0.04, at = pointAt(sh, t);
+      for (const side of [-1, 1]) {
+        const L = S * (0.14 + rng() * 0.07) * (1.05 - t * 0.4), W = L * 0.21;
+        const angle = at.a + side * (0.85 + rng() * 0.35) + 0.25;
+        const under = rng() < 0.35;
+        ctx.save();
+        ctx.translate(at.p.x, at.p.y);
+        ctx.rotate(angle);
+        ctx.fillStyle = css(base.hue + (rng() - 0.5) * 0.02, base.sat * (under ? 0.6 : 1), base.light * (under ? 1.45 : 0.85 + rng() * 0.3));
+        leafPath(ctx, 'lance', L, W, rng);
+        ctx.fill();
+        ctx.strokeStyle = css(base.hue, base.sat * 0.6, base.light * (under ? 1.6 : 1.25), 0.6);
+        ctx.lineWidth = Math.max(0.5, S / 700);
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(L * 0.9, 0); ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }
+  // the panicles: the cane's and some side shoots', nodding with their shoots
+  for (let i = 0; i < shoots.length; i++) {
+    if (i > 0 && rng() > 0.45) continue;
+    const sh = shoots[i], tip = pointAt(sh, 0.98), len = S * (i === 0 ? 0.3 + rng() * 0.1 : 0.17 + rng() * 0.07);
+    const axis = twigPoints(tip.p, tip.a + (tip.a > -Math.PI / 2 ? 0.25 : -0.25), len, (tip.a > -Math.PI / 2 ? 0.6 : -0.6), 8);
+    const florets = Math.round(len / S * 620);
+    for (let k = 0; k < florets; k++) {
+      const t = Math.pow(rng(), 0.7), at = pointAt(axis, t), girth = len * 0.19 * (1 - t * 0.8) + S * 0.005;
+      const off = (rng() - 0.5) * 2 * girth, nx = -Math.sin(at.a), ny = Math.cos(at.a);
+      const open = t < 0.75 && rng() < 0.7;
+      ctx.fillStyle = css(0.76 + (rng() - 0.5) * 0.04, 0.5 + rng() * 0.15, (open ? 0.32 : 0.2) * (0.85 + rng() * 0.3));
+      ctx.beginPath();
+      ctx.arc(at.p.x + nx * off, at.p.y + ny * off, S * (open ? 0.009 + rng() * 0.004 : 0.006), 0, Math.PI * 2);
+      ctx.fill();
+      if (open && rng() < 0.4) {
+        ctx.fillStyle = css(0.12, 0.7, 0.45);
+        ctx.beginPath(); ctx.arc(at.p.x + nx * off, at.p.y + ny * off, S * 0.0025, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+  return shoots;
+}
+
 const ROUND5_PAINTERS: Readonly<Partial<Record<SprayKind, (ctx: CanvasRenderingContext2D, S: number, rng: Rng) => Pt[][]>>> = Object.freeze({
+  buddleia: paintBuddleiaTile,
   longleafPine: (ctx, S, rng) => paintBrushTile(ctx, S, rng, 'longleafPine'),
   redPine: (ctx, S, rng) => paintBrushTile(ctx, S, rng, 'redPine'),
   sugi: paintSugiTile,

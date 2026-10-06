@@ -27,7 +27,7 @@ export type GrowthSpecies = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus
   | 'longleafPine' | 'lebanonCedar' | 'sugi' | 'redPine'
   // shrub-only forms (treeBiomes.ts `shrub`): the broom scrub of a volcanic upland; trees round 5: the longleaf's
   // grass-stage seedlings on a cutover — never a tree slot
-  | 'broom' | 'longleafSeedling';
+  | 'broom' | 'longleafSeedling' | 'buddleia';
 type Rng = () => number;
 
 export const GROWTH_SPECIES: readonly GrowthSpecies[] = Object.freeze([
@@ -354,6 +354,17 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     leafOrder: 1, leafPerM: 2.2, leafFrom: 0.5, spray: [0.72, 1.0], aspect: 0.92, habit: 'tuft', tipSprays: 3,
     cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.46, 0.40, 0.36], barkTopTint: [0.58, 0.46, 0.38],
     foliageValue: 1.18,
+  }),
+  // trees round 5 (the cities lane's Ironworks, the Saar works): the buddleia of waste ground, slag heaps and rail sidings
+  // — a ruderal shrub of arching canes, long narrow grey-green leaves and nodding purple flower spikes, only ever grown as
+  // a shrub (growShrubSkeleton reads the aspect, the bend and the family: long, narrow, arching sprays)
+  buddleia: P({
+    family: 'broadleaf', height: 3.0, heightSpread: 0.16, trunkR: 0.06, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.1, crownR: 1.4,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.3, angleLow: 0.7, angleHigh: 0.35,
+    droop: 0.3, upturn: 0.1, sidePerM: 1.2, sideAngle: 0.6, sideRatio: 0.5, sideDroop: 0.4, twigPerM: 0,
+    leafOrder: 1, leafPerM: 4, leafFrom: 0, spray: [0.75, 1.1], aspect: 0.62, habit: 'spray', tipSprays: 1,
+    cardBend: 0.42, flatRoll: 0.6, flatDroop: 0, bark: 2, barkTint: [0.44, 0.40, 0.34], barkTopTint: null,
   }),
   // the broom scrub of Las Cañadas (retama del Teide, codeso): a shrub of leafless-looking green-grey switches, only ever
   // grown as a shrub (growShrubSkeleton reads the aspect, the bend and the family); the tree fields mirror the birch's
