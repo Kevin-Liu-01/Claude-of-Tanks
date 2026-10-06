@@ -183,7 +183,7 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     // establishing view, the base town's dark sheets 0.37); old plain tiles weather to a duller brown-red
     roof: { kind: 'beavertail', tint: [0.42, 0.28, 0.22] },
     // (wave 116: "oversized clean ashlar") the town's dressed stone smaller and soiled, the Hessian villages' kept
-    stone: { kind: 'ashlar', tint: [0.64, 0.52, 0.42] },
+    stone: { kind: 'sandstone', tint: [0.64, 0.52, 0.42], dressed: true },
     sourced: { plaster: true, wood: true },
   },
   builders: FRANCONIAN_BUILDERS,

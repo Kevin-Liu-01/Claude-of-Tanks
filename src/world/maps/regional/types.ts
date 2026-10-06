@@ -41,11 +41,12 @@ export type RoofSurfaceKind = 'beavertail' | 'canal' | 'slate' | 'pantile' | 'sh
  */
 export type SurfaceTone = ((hue: number, saturation: number, lightness: number) => readonly [number, number, number])
   & { paint?: { kind: 'limewash'; seed: number } };
-export type StoneSurfaceKind = 'sandstone' | 'ashlar' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block';
+export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block';
 
 export interface ArchitectureSurfaces {
   roof: { kind: RoofSurfaceKind; tint: readonly [number, number, number] };
-  stone: { kind: StoneSurfaceKind; tint: readonly [number, number, number] };
+  /** `dressed`: a town's dressed stone — smaller courses, soiled (regionalSurfaces.ts DRESSED; the facades lane) */
+  stone: { kind: StoneSurfaceKind; tint: readonly [number, number, number]; dressed?: boolean };
   /** the sourced CC0 photo sets the style keeps (the others stay procedural) */
   sourced: { plaster: boolean; wood: boolean };
   /** default tones of the procedural render / timber / thatch canvases; a map's own tones win */

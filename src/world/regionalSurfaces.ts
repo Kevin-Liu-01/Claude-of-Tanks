@@ -419,18 +419,22 @@ const MASONRY: Readonly<Record<StoneSurfaceKind, MasonryRecipe>> = Object.freeze
     tint: [1, 1, 1], spread: 0.2, hue: 0.04, relief: 0.7, pillow: 0.5, speckle: 0.2, lichen: 0.3, grime: 0.35, rubble: 0.5 },
   rubble: { courseMin: 36, courseMax: 90, blockMin: 50, blockMax: 160, mortar: 4.2, mortarTint: [0.66, 0.62, 0.55],
     tint: [1, 1, 1], spread: 0.22, hue: 0.06, relief: 0.75, pillow: 0.7, speckle: 0.1, lichen: 0.2, grime: 0.3, rubble: 0.7 },
-  // (the facades lane, 2026-10-05; gauntlet wave 116 on Steinburg: "oversized clean ashlar") a town's dressed sandstone:
-  // courses of 15-26 cm and blocks of 27-62 cm, soiled — rain runs down the face from every course, grime in the joints
-  ashlar: { courseMin: 38, courseMax: 66, blockMin: 70, blockMax: 160, mortar: 1.7, mortarTint: [0.55, 0.51, 0.47],
-    tint: [1, 1, 1], spread: 0.15, hue: 0.07, relief: 0.4, pillow: 0.22, speckle: 0.04, lichen: 0.22, grime: 0.7, rubble: 0.1,
-    bedding: 0.05, mottle: 0.36, streaks: 0.55 },
   // concrete masonry units (0.4 x 0.2 m hollow blocks in running bond): plinths, godowns, desert houses
   block: { courseMin: 51, courseMax: 52, blockMin: 102, blockMax: 103, mortar: 1.5, mortarTint: [0.7, 0.69, 0.66],
     tint: [1, 1, 1], spread: 0.08, hue: 0.02, relief: 0.25, pillow: 0.05, speckle: 0.35, lichen: 0.05, grime: 0.45, rubble: 0 },
 });
 
-function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number): Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
-  const R = MASONRY[kind];
+/**
+ * A town's dressed stone over a kind's recipe (the facades lane, 2026-10-05; gauntlet wave 116 on Steinburg: "oversized
+ * clean ashlar"): courses of 15-26 cm and blocks of 27-62 cm, soiled — rain runs down the face from every course, grime
+ * in the joints. A style asks for it with `stone.dressed`.
+ */
+const DRESSED: Partial<MasonryRecipe> = Object.freeze({ courseMin: 38, courseMax: 66, blockMin: 70, blockMax: 160, mortar: 1.7,
+  mortarTint: [0.55, 0.51, 0.47] as Tint, spread: 0.15, hue: 0.07, relief: 0.4, pillow: 0.22, speckle: 0.04, lichen: 0.22, grime: 0.7,
+  rubble: 0.1, mottle: 0.36, streaks: 0.55 });
+
+function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, dressed = false): Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
+  const R: MasonryRecipe = dressed ? { ...MASONRY[kind], ...DRESSED } : MASONRY[kind];
   const px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s), rough = new Float32Array(s * s);
   const rowsE = courseEdges(s, R.courseMin, R.courseMax + 1, seed);
   const colsE: number[][] = [];
@@ -531,22 +535,22 @@ export function* makeRegionalRoof(kind: RoofSurfaceKind, tint: Tint, anisotropy:
 }
 
 /** The stone bucket's texture set for a style (512 px). */
-export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotropy: number, seed = 0x51a7):
+export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotropy: number, seed = 0x51a7, dressed = false):
   Generator<SurfaceSlice, RegionalSurfaceTextures, void> {
   const s = 512;
-  const [px, hgt, rough] = yield* cached(`stone:${kind}:${tint.join(',')}:${seed}`, () => masonry(s, kind, tint, seed));
+  const [px, hgt, rough] = yield* cached(`stone:${kind}${dressed ? ':dressed' : ''}:${tint.join(',')}:${seed}`, () => masonry(s, kind, tint, seed, dressed));
   const relief = kind === 'brick' ? 2.2 : kind === 'limestone' ? 2.0 : kind === 'granite' ? 2.4 : 3.0;
   return finish(px, hgt, rough, s, anisotropy, relief, kind === 'limestone' ? 0.74 : 0.66);
 }
 
 /** Paint-only access for receipts (no canvas): the raw buffers. */
-export function* paintRegionalSurfaceBuffers(target: 'roof' | 'stone', kind: RoofSurfaceKind | StoneSurfaceKind, tint: Tint, seed: number):
+export function* paintRegionalSurfaceBuffers(target: 'roof' | 'stone', kind: RoofSurfaceKind | StoneSurfaceKind, tint: Tint, seed: number, dressed = false):
   Generator<SurfaceSlice, { size: number; px: Uint8ClampedArray; hgt: Float32Array; rough: Float32Array }, void> {
   if (target === 'roof') {
     const painter = kind === 'shingle' ? ROOF_PAINTERS.slate : ROOF_PAINTERS[kind as keyof typeof ROOF_PAINTERS];
     const [px, hgt, rough] = yield* painter(256, tint, seed);
     return { size: 256, px, hgt, rough };
   }
-  const [px, hgt, rough] = yield* masonry(512, kind as StoneSurfaceKind, tint, seed);
+  const [px, hgt, rough] = yield* masonry(512, kind as StoneSurfaceKind, tint, seed, dressed);
   return { size: 512, px, hgt, rough };
 }
