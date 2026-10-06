@@ -78,7 +78,7 @@ import {
 import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 // the map-vehicles lane (2026-10-05): the vehicles' surface stream and liveries, their ground-contact patches
 import { applyVehicleSurfaceHook, VEHICLE_SURFACE_PROGRAM } from './maps/vehicleSurface.ts';
-import { buildVehicleContactShadows } from './maps/vehicleContactShadow.ts';
+import { buildVehicleContactShadows, vehicleShadowCaster } from './maps/vehicleContactShadow.ts';
 import {
   boxClearOfPoints, boxClearOfRoadCore, discClearOfRoadCore, sharpRoadBends, shiftClearOfRoadCore,
 } from './roadFootprint.ts';
@@ -3379,18 +3379,14 @@ ${snowCap ? `
 }
 #endif`);
   };
-  // the map-vehicles lane (2026-10-05): the vehicles read their per-vertex surface stream and wear each copy's livery
-  const vehicleHook: MaterialShaderHook = (shader) => { grimeHook(shader); applyVehicleSurfaceHook(shader); };
   function installSurfaceShaderHooks(): void {
     for (const [materialKind, material] of Object.entries(mats)) {
       engineCtx.setupShadowMaterial(material,
         materialKind === 'dark' || materialKind === 'glass' ? null : materialKind === 'rock' ? rockHook
-          : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook
-            : materialKind === 'vehicle' ? vehicleHook : grimeHook);
+          : materialKind === 'fieldStone' ? fieldStoneHook : materialKind === 'pole' ? poleHook : grimeHook);
       // (the mud print is the plaster material's shader with another map, the hessian the canvas's: they share their
       // programs; the field print has its own, for the modules' shifted windows)
-      const programKind = materialKind === 'fieldMud' ? 'plaster' : materialKind === 'burlap' ? 'structureCanvas'
-        : materialKind === 'vehicle' ? `vehicle-${VEHICLE_SURFACE_PROGRAM}` : materialKind;
+      const programKind = materialKind === 'fieldMud' ? 'plaster' : materialKind === 'burlap' ? 'structureCanvas' : materialKind;
       material.customProgramCacheKey = () =>
         'world-props-' + programKind + '-v7' + (snowCap ? 's' : ''); // round 75: the weathering law
     }
@@ -8473,6 +8469,18 @@ ${snowCap ? `
       if (!transferred) geoI.dispose();
     }
   }
+  // the map-vehicles lane (2026-10-05): one clone of the vehicle material for the rebuilt vehicles, its program reading
+  // their per-vertex surface stream (vehicleSurface.ts) and wearing each copy's livery through the paint mask
+  let vehicleSurface: typeof mats.vehicle | null = null;
+  function vehicleSurfaceMaterial(): typeof mats.vehicle {
+    if (vehicleSurface) return vehicleSurface;
+    const material = mats.vehicle.clone();
+    engineCtx.setupShadowMaterial(material, (shader) => { grimeHook(shader); applyVehicleSurfaceHook(shader); });
+    material.customProgramCacheKey = () => `world-props-vehicle-${VEHICLE_SURFACE_PROGRAM}-v7${snowCap ? 's' : ''}`;
+    retainedSurfaceMaterials.push(material);
+    vehicleSurface = material;
+    return material;
+  }
   function* finalizeDestructiblePool(
     kind: string, pool: DestructiblePool,
   ): Generator<PropsBuildSlice, void, void> {
@@ -8480,6 +8488,7 @@ ${snowCap ? `
     // Wall modules use the map-toned masonry materials; other objects keep
     // the wood, straw, vehicle, or baked family selected by their metadata.
     let material = mats[meta.mat] || mats.baked;
+    if (meta.mat === 'vehicle' && meta.instancePaint) material = vehicleSurfaceMaterial();
     if (kind === 'lamp') {
       // One material for the whole instanced lamp family, not per fixture.
       // Other baked props keep their existing non-emissive shader.
@@ -8501,7 +8510,10 @@ ${snowCap ? `
     if (meta.cls === 'topple' || meta.cls === 'toss' || meta.cls === 'physics') imI.frustumCulled = false; // instances animate
     else imI.computeBoundingSphere();
     imI.name = 'destructible-' + kind;
-    if (castsDynamicShadow) setShadowCasterProfile(imI, { heightM: casterHeightM(geoI, pool.mats4), instanced: true }); // round 79
+    // the map-vehicles lane (2026-10-05): a vehicle casts through its coarse stand-in on the pool's own matrices
+    const shadowGeo = castsDynamicShadow && meta.shadowBuild ? meta.shadowBuild() : null;
+    if (shadowGeo) group.add(vehicleShadowCaster(imI, shadowGeo, casterHeightM(shadowGeo, pool.mats4)));
+    else if (castsDynamicShadow) setShadowCasterProfile(imI, { heightM: casterHeightM(geoI, pool.mats4), instanced: true }); // round 79
     if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imI, true);
     group.add(imI);
     pool.imI = imI;

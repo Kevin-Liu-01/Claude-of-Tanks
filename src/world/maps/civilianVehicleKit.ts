@@ -62,25 +62,31 @@ interface BuildContext {
 }
 
 /** Scale a built body into its role's box (a uniform scale about the centre, never up) and seat its tyres on y = 0. */
-function fitToRole(geometry: THREE.BufferGeometry, box: RoleBox): void {
+/** A role's fit into its box: the scale and the lift that sets the lowest tyre point on y = 0. */
+interface RoleFit { s: number; lift: number }
+
+/** Scale a model into its role's box (or by a given fit: a shadow proxy takes its body's). */
+function fitToRole(geometry: THREE.BufferGeometry, box: RoleBox, given?: RoleFit): RoleFit {
   geometry.computeBoundingBox();
   const b = geometry.boundingBox!;
   const sx = box.halfWidth / Math.max(1e-6, Math.max(-b.min.x, b.max.x));
   const sz = box.halfLength / Math.max(1e-6, Math.max(-b.min.z, b.max.z));
   const sy = (box.height + box.rise) / Math.max(1e-6, b.max.y - b.min.y);
-  const s = Math.min(1, sx, sz, sy);
+  const fit = given ?? { s: Math.min(1, sx, sz, sy), lift: -b.min.y };
+  const { s, lift } = fit;
   const position = geometry.getAttribute('position') as THREE.BufferAttribute;
-  const lift = -b.min.y;
   for (let i = 0; i < position.count; i++) {
     position.setXYZ(i, position.getX(i) * s, (position.getY(i) + lift) * s, position.getZ(i) * s);
   }
   position.needsUpdate = true;
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
+  return fit;
 }
 
 /** One role's geometry on a fleet: intact or burnt out. */
-function buildRole(entry: FleetEntry, role: CivilianVehicleKind, ctx: BuildContext, burnt: boolean, seed: number): THREE.BufferGeometry {
+function buildRole(entry: FleetEntry, role: CivilianVehicleKind, ctx: BuildContext, burnt: boolean, seed: number,
+  fitOut?: (fit: RoleFit) => void): THREE.BufferGeometry {
   const mesh = new VehicleMesh();
   mesh.coarse = ctx.coarse;
   buildModel(mesh, entry.model, { coarse: ctx.coarse, burnt });
@@ -89,7 +95,23 @@ function buildRole(entry: FleetEntry, role: CivilianVehicleKind, ctx: BuildConte
     dustRgb: linearHex(ctx.climate.dust), dust: ctx.climate.dustAmount,
     rust: ctx.fleet.age, burnt, wheels: modelWheels(entry.model), seed, voxelAo: !ctx.coarse,
   }));
-  fitToRole(geometry, ROLE_BOXES[role]);
+  const fit = fitToRole(geometry, ROLE_BOXES[role]);
+  fitOut?.(fit);
+  return geometry;
+}
+
+/**
+ * The role's shadow caster: the coarse tier of the same model, positions only, fitted exactly as its intact body
+ * was (the mirrors the coarse tier drops would otherwise change the scale). The shadow passes draw this in place of
+ * the full body, about two fifths of its triangles (props.ts: one shadow-only instanced mesh on the pool's matrices).
+ */
+function buildShadowCaster(entry: FleetEntry, role: CivilianVehicleKind, fit: RoleFit | null): THREE.BufferGeometry {
+  const mesh = new VehicleMesh();
+  mesh.coarse = true;
+  buildModel(mesh, entry.model, { coarse: true, burnt: false });
+  const geometry = mesh.build(vehicleWeathering({ wheels: modelWheels(entry.model), seed: 1, voxelAo: false }));
+  for (const name of Object.keys(geometry.attributes)) if (name !== 'position') geometry.deleteAttribute(name);
+  fitToRole(geometry, ROLE_BOXES[role], fit ?? undefined);
   return geometry;
 }
 
@@ -108,11 +130,14 @@ function spending(draws: number, make: (seed: number) => THREE.BufferGeometry): 
   };
 }
 
-function roleBuilders(role: CivilianVehicleKind, ctx: BuildContext): { build: Builder; broken: Builder } {
+function roleBuilders(role: CivilianVehicleKind, ctx: BuildContext): Pick<CivilianVehicleOverride, 'build' | 'broken' | 'shadowBuild'> {
   const entry = ctx.fleet.roles[role];
+  let fit: RoleFit | null = null;
   return {
-    build: spending(LEGACY_DRAWS[role].build, (seed) => buildRole(entry, role, ctx, false, seed)),
+    build: spending(LEGACY_DRAWS[role].build, (seed) => buildRole(entry, role, ctx, false, seed, (f) => { fit = f; })),
     broken: spending(LEGACY_DRAWS[role].broken, (seed) => buildRole(entry, role, ctx, true, seed)),
+    // the mobile tier's body is already the coarse one: it casts itself
+    ...(ctx.coarse ? {} : { shadowBuild: () => buildShadowCaster(entry, role, fit) }),
   };
 }
 
@@ -157,6 +182,8 @@ export interface CivilianVehicleOverride {
   build: Builder;
   broken: Builder;
   instancePaint: (out: THREE.Color, x: number, z: number, slot: number) => void;
+  /** Desktop tiers: the shadow caster that stands in for the full body in the shadow passes (no stream draws). */
+  shadowBuild?: () => THREE.BufferGeometry;
 }
 
 /**

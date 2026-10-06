@@ -113,14 +113,33 @@ export interface CarBodySpec {
   pillarW: number;
   /** The rear end: notchback (a deck behind the rear window), hatch or estate (the rear window is the tail). */
   rear: 'notch' | 'hatch' | 'estate';
+  /** A hatch's deck behind the rear glass falls to `tailH` like a notchback's (a Beetle's engine lid, a 2CV's boot). */
+  tailSlope?: boolean;
   /** Side glass only between these stations (a panel van's cab); omitted, the whole greenhouse side. */
   sideGlassFrom?: number;
   sideGlassTo?: number;
   /** Window surround (black rubber, chrome on the period cars). */
   windowFrame?: VehicleMaterial;
+  /** The roof's own material (a 2CV's rolled canvas, a two-tone roof); omitted, the body paint. */
+  roofMat?: VehicleMaterial;
+  /** The body behind a station in its own material (a woody's ash-framed wooden body behind the cowl). */
+  rearMat?: { fromZ: number; mat: VehicleMaterial };
   /** The rear screen of a cab-like greenhouse (a pickup, a van's back door): only this share of the width (from the
-   * centre) and of the height (from the roof down) is glass; omitted, the whole rear zone. */
-  backlight?: { w: number; h: number };
+   * centre) and of the height (from the roof down) is glass; omitted, the whole rear zone. `top` keeps that share of the
+   * slope under the roof painted (the header over a fastback's small window); `split` a post down the middle (a van's
+   * two back doors, a split rear window). */
+  backlight?: { w: number; h: number; top?: number; split?: boolean };
+  /** The side glass's height over the waist: the band above it to the roof's edge, and the windscreen above the same
+   * rise, are painted (the period cars' and the vans' tall roof sides and the header over the screen); omitted, the
+   * glass reaches the roof's edge. */
+  glassH?: number;
+  /** The radius of the roof's edge over the side glass (the period cars' rounded "turret tops"); omitted, 0.1 m. */
+  roofEdgeR?: number;
+  /** A two-pane windscreen: a bar down the middle. */
+  splitScreen?: boolean;
+  /** The greenhouse's own paint (a two-tone's upper colour: the pillars, the header and the back round the rear
+   * window); omitted, the body's. */
+  upperMat?: VehicleMaterial;
   /** Mobile tier: coarser stations and sections. */
   coarse?: boolean;
   /** Build only the lower body (a truck's wide front, a pickup's bed sides): no greenhouse. */
@@ -173,7 +192,7 @@ export class CarProfile {
       const t = (z - s.cowlZ) / Math.max(0.01, this.zNose - s.cowlZ);
       return lerp(this.belt(s.cowlZ) + 0.015, s.noseH, t * t * 0.55 + t * 0.45);
     }
-    if (s.rear !== 'notch' || z >= s.glassRearZ) return this.belt(z);
+    if ((s.rear !== 'notch' && !s.tailSlope) || z >= s.glassRearZ) return this.belt(z);
     const t = (s.glassRearZ - z) / Math.max(0.01, s.glassRearZ - this.zTail);
     return lerp(this.belt(s.glassRearZ) + 0.01, s.tailH, t * t * 0.5 + t * 0.5);
   }
@@ -242,7 +261,7 @@ export class CarProfile {
     // the bonnet / deck, crowned across
     const xTop = xs0 - sr;
     const topN = coarse ? 1 : 3;
-    const crown = z >= s.cowlZ || (s.rear === 'notch' && z < s.glassRearZ) ? s.bonnetCrown : 0;
+    const crown = z >= s.cowlZ || ((s.rear === 'notch' || s.tailSlope) && z < s.glassRearZ) ? s.bonnetCrown : 0;
     for (let k = 1; k <= topN; k++) {
       const x = xTop * (1 - k / topN);
       add(x, top + crown * (1 - (x / Math.max(0.01, xTop)) ** 2));
@@ -297,7 +316,8 @@ export function carBody(mesh: VehicleMesh, spec: CarBodySpec, paint: VehicleMate
   mesh.mirrored(() => {
     mesh.grid(zs.length - 1, nj, (i, j, out) => {
       out[0] = sections[i].x[j]; out[1] = sections[i].y[j]; out[2] = zs[i];
-    }, (_i, j) => (j < 3 ? UNDER : paint), { creaseJ: [1, 2, 3] });
+    }, (i, j) => (j < 3 ? UNDER : spec.rearMat && (zs[i] + zs[i + 1]) / 2 < spec.rearMat.fromZ ? spec.rearMat.mat : paint),
+    { creaseJ: [1, 2, 3] });
     // the front and rear faces: the end sections fanned from the centre
     for (const end of [0, zs.length - 1]) {
       const sec = sections[end], z = zs[end], nz = end === 0 ? 1 : -1;
@@ -317,24 +337,40 @@ export function carBody(mesh: VehicleMesh, spec: CarBodySpec, paint: VehicleMate
 function greenhouse(mesh: VehicleMesh, prof: CarProfile, paint: VehicleMaterial): void {
   const s = prof.s, coarse = !!s.coarse;
   const frame = s.windowFrame ?? TRIM;
+  const header = s.glassH !== undefined, glassH = s.glassH ?? 0;
+  const centre = s.splitScreen || s.backlight?.split ? 1 : 0;
   const features = [s.roofFrontZ, s.roofRearZ, ...s.pillars.flatMap((p) => [p - s.pillarW, p + s.pillarW])];
   if (s.sideGlassFrom !== undefined) features.push(s.sideGlassFrom);
   if (s.sideGlassTo !== undefined) features.push(s.sideGlassTo);
+  // the windscreen's top: where its rise from the cowl reaches the side glass's height (the painted header above)
+  let zScreenTop = s.roofFrontZ;
+  if (header && prof.roofAt(s.roofFrontZ) > glassH) {
+    let lo = s.roofFrontZ, hi = s.cowlZ;
+    for (let k = 0; k < 30; k++) {
+      const mid = (lo + hi) / 2;
+      if (prof.roofAt(mid) > glassH) lo = mid; else hi = mid;
+    }
+    zScreenTop = (lo + hi) / 2;
+    features.push(zScreenTop);
+  }
   const rakeN = coarse ? 2 : 4, rearN = s.backlight ? (coarse ? 3 : 6) : rakeN;
-  for (let k = 1; k < rakeN; k++) features.push(lerp(s.cowlZ, s.roofFrontZ, k / rakeN));
+  for (let k = 1; k < rakeN; k++) features.push(lerp(s.cowlZ, zScreenTop, k / rakeN));
+  if (zScreenTop !== s.roofFrontZ && !coarse) features.push((zScreenTop + s.roofFrontZ) / 2);
   for (let k = 1; k < rearN; k++) features.push(lerp(s.glassRearZ, s.roofRearZ, k / rearN));
   const zs = stations(s.glassRearZ, s.cowlZ, coarse ? 0.4 : 0.26, features);
-  const nSide = GH_SIDE_T.length - 1, nj = nSide + GH_CORNER + GH_ROOF;
+  const nSide = header ? 4 : GH_SIDE_T.length - 1, nRoof = GH_ROOF + centre, nj = nSide + GH_CORNER + nRoof;
   const secX: Float64Array[] = [], secY: Float64Array[] = [];
   for (const z of zs) {
     const h = prof.roofAt(z);
     const baseY = prof.topY(z);
     const baseX = prof.ghBase(z);
     const roofX = baseX * s.roofTaper;
-    const rr = Math.min(0.1, h * 0.3);
+    const rr = s.roofEdgeR === undefined ? Math.min(0.1, h * 0.3) : Math.min(s.roofEdgeR, h * 0.4);
     const xs = new Float64Array(nj + 1), ys = new Float64Array(nj + 1);
+    const tg = header ? clamp(glassH / Math.max(1e-4, h - rr), 0, 1) : 1;
+    const sideT = header ? [0, 0.09 * tg, 0.55 * tg, tg, 1] : GH_SIDE_T;
     for (let k = 0; k <= nSide; k++) {
-      const t = GH_SIDE_T[k];
+      const t = sideT[k];
       ys[k] = baseY + (h - rr) * t;
       xs[k] = lerp(baseX, roofX + (baseX - roofX) * 0.0, t * (0.8 + 0.2 * t));
     }
@@ -344,34 +380,47 @@ function greenhouse(mesh: VehicleMesh, prof: CarProfile, paint: VehicleMaterial)
       ys[nSide + k] = baseY + h - rr + Math.sin(a) * rr;
     }
     const x0 = xs[nSide] - rr;
+    // with a centre bar the roof's last row is a narrow strip either side of the centre line
+    const xc = centre ? Math.min(0.028, x0 * 0.2) : 0;
     for (let k = 1; k <= GH_ROOF; k++) {
-      const x = x0 * (1 - k / GH_ROOF);
+      const x = xc + (x0 - xc) * (1 - k / GH_ROOF);
       xs[nSide + GH_CORNER + k] = x;
       ys[nSide + GH_CORNER + k] = baseY + h + s.roofCrown * (1 - (x / Math.max(0.01, x0)) ** 2);
     }
+    if (centre) { xs[nj] = 0; ys[nj] = baseY + h + s.roofCrown; }
     secX.push(xs); secY.push(ys);
   }
   const inPillar = (z: number) => s.pillars.some((p) => Math.abs(z - p) < s.pillarW);
+  const bodyAt = (z: number) => (s.rearMat && z < s.rearMat.fromZ ? s.rearMat.mat : paint);
+  const upperAt = (z: number) => s.upperMat ?? bodyAt(z);
   const sideGlass = (z: number) => (s.sideGlassFrom === undefined || z <= s.sideGlassFrom)
     && (s.sideGlassTo === undefined || z >= s.sideGlassTo);
+  const roof0 = nSide + GH_CORNER;
   const matAt = (i: number, j: number): VehicleMaterial => {
     const zMid = (zs[i] + zs[i + 1]) / 2;
     const windscreen = zMid > s.roofFrontZ, rearScreen = zMid < s.roofRearZ;
+    // the screen's glass is the rise below its top; above it (with a header) the roof's paint
+    const screen = windscreen && zMid > zScreenTop;
     if (j < nSide) {
       // the side glass band; behind a notchback's rear door the quarter is the C-pillar
-      if (inPillar(zMid) || !sideGlass(zMid) || (rearScreen && s.rear === 'notch')) return paint;
+      if (inPillar(zMid) || !sideGlass(zMid) || (rearScreen && s.rear === 'notch')) return upperAt(zMid);
+      if (header && j === nSide - 1) return upperAt(zMid);
       if (j === 0) return frame;
       return GLASS;
     }
-    if (j < nSide + GH_CORNER) return windscreen || (rearScreen && !s.backlight) ? frame : paint;
+    if (j < roof0) return screen || (rearScreen && !s.backlight) ? frame : upperAt(zMid);
+    const middle = centre && j === nj - 1;
     if (rearScreen && s.backlight) {
-      // the back face is the rear zone's top columns: rows near the roof are its top, columns near the centre its middle
-      const up = (zMid - s.glassRearZ) / Math.max(0.01, s.roofRearZ - s.glassRearZ);
-      const outer = 1 - (j - nSide - GH_CORNER) / GH_ROOF; // the quad's outer edge as a share of the half-width
-      return up > 1 - s.backlight.h && outer <= s.backlight.w + 0.01 ? GLASS : paint;
+      // the back face is the rear zone's top columns: rows near the roof are its top (by height: a fastback's or a
+      // notchback's eased slope keeps its window off the roof's curve), columns near the centre its middle
+      if (middle && s.backlight.split) return upperAt(zMid);
+      const up = prof.roofAt(zMid) / Math.max(0.01, s.roofH - prof.belt(zMid));
+      const outer = secX[i][j] / Math.max(1e-4, secX[i][roof0]); // the quad's outer edge as a share of the half-width
+      return up > 1 - s.backlight.h && up < 1 - (s.backlight.top ?? 0) && outer <= s.backlight.w + 0.01 ? GLASS : upperAt(zMid);
     }
-    if (windscreen || rearScreen) return GLASS;
-    return paint;
+    if (screen) return middle && s.splitScreen ? frame : GLASS;
+    if (rearScreen) return GLASS;
+    return s.roofMat ?? (windscreen ? upperAt(zMid) : paint);
   };
   mesh.mirrored(() => {
     mesh.grid(zs.length - 1, nj, (i, j, out) => { out[0] = secX[i][j]; out[1] = secY[i][j]; out[2] = zs[i]; }, matAt,

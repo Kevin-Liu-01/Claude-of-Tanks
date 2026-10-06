@@ -6,7 +6,31 @@
 // collision, no stream draws, desktop tiers only.
 
 import * as THREE from 'three';
+import { markShadowOnly, setShadowCasterProfile } from '../../engine/renderLayers.ts';
 import { vehicleContactFootprint } from './civilianVehicleKit.ts';
+
+const SHADOW_CASTER_MATERIAL = new THREE.MeshBasicMaterial({ name: 'VehicleShadowCaster', colorWrite: false, depthWrite: false });
+
+/**
+ * A vehicle pool's shadow caster: an instanced mesh of the role's coarse build on the pool's OWN instance matrices
+ * (one shared attribute, so a crushed slot's zero scale, a restore and every later write move it too), drawn in the
+ * shadow passes only (the shadow-only layer), with the pool's caster profile. The pool itself stops casting.
+ */
+export function vehicleShadowCaster(pool: THREE.InstancedMesh, geometry: THREE.BufferGeometry, heightM: number): THREE.InstancedMesh {
+  const caster = new THREE.InstancedMesh(geometry, SHADOW_CASTER_MATERIAL, pool.count);
+  caster.instanceMatrix = pool.instanceMatrix;
+  caster.count = pool.count;
+  caster.frustumCulled = pool.frustumCulled;
+  caster.computeBoundingSphere();
+  caster.castShadow = true;
+  caster.receiveShadow = false;
+  caster.matrixAutoUpdate = false;
+  caster.name = `${pool.name}-shadow`;
+  setShadowCasterProfile(caster, { heightM, instanced: true });
+  markShadowOnly(caster);
+  pool.castShadow = false;
+  return caster;
+}
 
 interface ContactRecord {
   kind: string;

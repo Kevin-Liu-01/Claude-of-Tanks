@@ -495,13 +495,18 @@ function shadeVertex(m: VehicleMaterial, px: number, py: number, pz: number, ny:
     } else if (m.role === 'wood' || m.role === 'canvas' || m.role === 'cargo') {
       o[0] = CHAR[0] * 1.2; o[1] = CHAR[1] * 1.1; o[2] = CHAR[2]; rough = 0.97; metal = 0;
     } else {
-      o[0] = CHAR[0]; o[1] = CHAR[1]; o[2] = CHAR[2];
-      mix3(o, OXIDE, smooth(0.38, 0.7, heat) * (0.55 + 0.45 * up));
-      mix3(o, ASH, smooth(0.62, 0.86, heat) * up * 0.65);
+      // burnt sheet steel: mottled oxide brown, the hottest panels (roof, bonnet) burnt through to grey-white ash,
+      // soot-black in patches and streaked up the sides above the waist where the flames left the cabin
+      o[0] = OXIDE[0]; o[1] = OXIDE[1]; o[2] = OXIDE[2];
+      const mottle = fbm(px * 4.1, py * 4.1, pz * 4.1, seed + 307);
+      mix3(o, RUST, smooth(0.45, 0.75, mottle) * 0.6);
+      mix3(o, ASH, smooth(0.5, 0.8, heat) * up * 0.85);
+      mix3(o, CHAR, smooth(0.62, 0.82, fbm(px * 2.2, py * 2.2, pz * 2.2, seed + 311)) * 0.75);
+      if (Math.abs(ny) < 0.55) mix3(o, CHAR, smooth(0.85, 1.5, py) * 0.55 * (0.6 + 0.4 * valueNoise(px * 3, py * 0.8, pz * 3, seed + 313)));
       rough = 0.9; metal = 0.05;
     }
     paint = 0;
-    const soot = smooth(0.3, 1.6, py) * 0.35;
+    const soot = smooth(1.4, 2.4, py) * 0.25;
     o[0] *= 1 - soot; o[1] *= 1 - soot; o[2] *= 1 - soot;
   } else {
     const weather = m.weather;

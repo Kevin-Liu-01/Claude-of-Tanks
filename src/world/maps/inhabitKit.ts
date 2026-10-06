@@ -56,6 +56,8 @@ export interface DestructiblePropType {
   contactBand?: StructureCollisionRuntimeBand;
   /** Each instance's own colour (a vehicle's livery through the material's paint mask), by its place and slot. */
   instancePaint?: (out: THREE.Color, x: number, z: number, slot: number) => void;
+  /** A lighter stand-in that casts the pool's shadows in place of its full geometry (no stream draws). */
+  shadowBuild?: () => THREE.BufferGeometry;
 }
 
 export const FENCE_SEG = 2.4; // fence-kit module pitch, meters

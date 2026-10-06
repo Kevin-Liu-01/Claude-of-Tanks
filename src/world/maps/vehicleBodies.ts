@@ -46,14 +46,41 @@ function bezelMat(l: LampSpec | undefined, paint: VehicleMaterial, fallback: 'ch
   return b === 'chrome' ? CHROME : b === 'black' ? TRIM : paint;
 }
 
-/** Lamps, grille, bumper and plate on a flat face at z (dir 1 the front, -1 the back). */
+/** A face's plan: its half-width before the corners round, and the corners' radius. */
+interface FacePlan { hw: number; r: number }
+
+/** How far a face's rounded plan corner has fallen back at |x|, and the surface's yaw there. */
+function cornerAt(plan: FacePlan | undefined, ax: number): { back: number; yaw: number } {
+  if (!plan || plan.r <= 0.005) return { back: 0, yaw: 0 };
+  const c = plan.hw - plan.r;
+  if (ax <= c) return { back: 0, yaw: 0 };
+  const d = Math.min(plan.r * 0.97, ax - c);
+  return { back: plan.r - Math.sqrt(plan.r * plan.r - d * d), yaw: Math.asin(d / plan.r) };
+}
+
+/** Lamps, grille, bumper and plate on a face at z (dir 1 the front, -1 the back); lamps near a rounded corner follow
+ * it round (set back and turned, a wide lamp in segments), never standing proud of the body. */
 function face(mesh: VehicleMesh, z: number, dir: 1 | -1, f: FaceSpec, paint: VehicleMaterial, coarse: boolean,
-  bumperFn?: (y: number, h: number, style: 'chrome' | 'painted' | 'black' | 'tube', overriders: boolean) => void): void {
+  bumperFn?: (y: number, h: number, style: 'chrome' | 'painted' | 'black' | 'tube', overriders: boolean) => void,
+  plan?: FacePlan): void {
   for (const l of f.lamps) {
     for (const side of l.x === 0 ? [1] : [1, -1]) {
-      const x = side * l.x, zz = z + dir * (l.dz ?? 0);
-      if (l.shape === 'round') roundLamp(mesh, x, l.y, zz, l.r ?? 0.08, lensMat(l), bezelMat(l, paint), dir, 0.05, coarse ? 8 : 12);
-      else rectLamp(mesh, x, l.y, zz, l.w ?? 0.15, l.h ?? 0.08, lensMat(l), bezelMat(l, paint, 'black'), dir);
+      const zz = z + dir * (l.dz ?? 0);
+      if (l.shape === 'round') {
+        const r = l.r ?? 0.08, c = cornerAt(plan, l.x + r * 0.5);
+        mesh.push().translate(side * l.x, 0, zz - dir * c.back).rotateY(dir * side * c.yaw);
+        roundLamp(mesh, 0, l.y, 0, r, lensMat(l), bezelMat(l, paint), dir, 0.05, coarse ? 8 : 12);
+        mesh.pop();
+        continue;
+      }
+      const w = l.w ?? 0.15, curved = cornerAt(plan, l.x + w / 2).back > 0.004;
+      const n = curved ? (coarse ? 2 : 3) : 1;
+      for (let k = 0; k < n; k++) {
+        const ax = l.x - w / 2 + ((k + 0.5) * w) / n, c = cornerAt(plan, ax);
+        mesh.push().translate(side * ax, 0, zz - dir * c.back).rotateY(dir * side * c.yaw);
+        rectLamp(mesh, 0, l.y, 0, w / n + (n > 1 ? 0.014 : 0), l.h ?? 0.08, lensMat(l), bezelMat(l, paint, 'black'), dir);
+        mesh.pop();
+      }
     }
   }
   if (f.grille) {
@@ -99,8 +126,10 @@ export function buildCar(mesh: VehicleMesh, m: CarModel, o: BuildOptions): void 
   for (const side of [1, -1] as const) for (const z of [spec.frontAxle, spec.rearAxle]) {
     wheel(mesh, side * spec.track / 2, spec.wheelR - drop, z, side, ws);
   }
-  face(mesh, prof.zNose, 1, m.front, paint, o.coarse, (y, h, style, ov) => bumper(mesh, prof, 1, y, h, style, paint, ov));
-  face(mesh, prof.zTail, -1, m.rear, paint, o.coarse, (y, h, style, ov) => bumper(mesh, prof, -1, y, h, style, paint, ov));
+  face(mesh, prof.zNose, 1, m.front, paint, o.coarse, (y, h, style, ov) => bumper(mesh, prof, 1, y, h, style, paint, ov),
+    { hw: prof.halfW(prof.zNose - spec.noseRound), r: spec.noseRound });
+  face(mesh, prof.zTail, -1, m.rear, paint, o.coarse, (y, h, style, ov) => bumper(mesh, prof, -1, y, h, style, paint, ov),
+    { hw: prof.halfW(prof.zTail + spec.tailRound), r: spec.tailRound });
   if (m.spareOnTail) {
     mesh.push().translate(0, spec.belt * 0.62, prof.zTail - 0.11).rotateY(Math.PI / 2);
     wheel(mesh, 0, 0, 0, 1, { ...ws, style: 'disc', rim: 0.55 });
@@ -234,9 +263,14 @@ export interface JeepModel {
   bonnet: { hw: number; top: number; slope: number };
   /** The grille face: slots (Willys, CJ), bars (GAZ-67), or none (a rear-engined Kubelwagen's smooth nose). */
   grille: { style: 'slots' | 'vbars' | 'none'; w: number; h: number; y: number; count: number };
-  lamps: { x: number; y: number; r: number; inGrille: boolean };
-  /** The flat wings over the front wheels (and the rear on the 1930s-40s cars). */
+  /** Headlamps in the grille, on the nose, or faired into the wings' crowns (`mount: 'wing'`, the Kubelwagen's). */
+  lamps: { x: number; y: number; r: number; inGrille: boolean; mount?: 'wing' };
+  /** The flat wings over the front wheels: their width and the flat top's height over the ground (metres). */
   wings: { w: number; flatTop: number };
+  /** Doors (the Kubelwagen's four): slab sides at the tub's full height, a seam at each cut line (z). */
+  doors?: readonly number[];
+  /** A rear-engined car's engine deck closing the tub behind the rear seat: from zF at `top` down to `tail` at the back. */
+  rearDeck?: { zF: number; top: number; tail: number };
   windscreen: { h: number; folded: boolean };
   top: 'none' | 'canvas';
   spare: 'rear' | 'side' | 'bonnet' | 'none';
@@ -252,12 +286,19 @@ export function buildOpenJeep(mesh: VehicleMesh, m: JeepModel, o: BuildOptions):
   const t = m.tub;
   // the tub, its rear arch cut, a rounded rear
   // the side dips at the cockpit (no doors): the cut from the scuttle back past the front seats
-  const cutF = t.zF - 0.08, cutB = t.zF - 0.95, dip = (t.top - t.floor) * 0.42;
-  const topAt = (z: number) => t.top - dip * Math.min(clamp((cutF - z) / 0.18, 0, 1), clamp((z - cutB) / 0.22, 0, 1));
+  const cutF = t.zF - 0.08, cutB = t.zF - 0.95, dip = m.doors ? 0 : (t.top - t.floor) * 0.42;
+  // a rear-engined car's sides follow its engine deck down to the tail
+  const deckAt = (z: number) => {
+    const d = m.rearDeck!, f = clamp((d.zF - z) / Math.max(0.01, d.zF - zTail), 0, 1);
+    return lerp(d.top, d.tail, f * (0.6 + 0.4 * f));
+  };
+  const topAt = (z: number) => (m.rearDeck && z < m.rearDeck.zF ? deckAt(z)
+    : t.top - dip * Math.min(clamp((cutF - z) / 0.18, 0, 1), clamp((z - cutB) / 0.22, 0, 1)));
   tub(mesh, t.zF, zTail, t.hw, t.floor - 0.12, t.floor, t.top, 0.035,
     { axle: m.rearAxle, r: m.wheelR + 0.06, wheelY: m.wheelR, xWell: m.track / 2 - m.tyreW / 2 - 0.05 }, paint, paint, coarse,
     { rearRound: t.rearRound, topAt, cut: [cutF, cutF - 0.09, cutF - 0.18, cutB + 0.22, cutB + 0.11, cutB] });
-  mesh.box(0, (t.floor + t.top) / 2, zTail + 0.02, t.hw * 2 - t.rearRound, t.top - t.floor, 0.04, paint, 0.01);
+  const tailTop = m.rearDeck ? m.rearDeck.tail : t.top;
+  mesh.box(0, (t.floor + tailTop) / 2, zTail + 0.02, t.hw * 2 - t.rearRound, tailTop - t.floor, 0.04, paint, 0.01);
   // the scuttle (dash) and the bonnet
   const bonnetZ0 = t.zF + 0.02, bonnetZ1 = zNose - 0.08;
   mesh.box(0, (t.floor + m.bonnet.top) / 2 + 0.05, t.zF - 0.02, t.hw * 2, m.bonnet.top - t.floor + 0.1, 0.06, paint, 0.012);
@@ -278,17 +319,47 @@ export function buildOpenJeep(mesh: VehicleMesh, m: JeepModel, o: BuildOptions):
       mesh.box(x, m.grille.y + (m.grille.style === 'slots' ? 0.03 : 0), gz + 0.012, slotW, m.grille.h * (m.grille.style === 'slots' ? 0.72 : 0.9), 0.024, INTERIOR, 0.004);
     }
   }
+  const R = m.wheelR + 0.06, fy = (m.wings.flatTop - m.wheelR) / R;
   for (const side of [1, -1]) {
+    if (m.lamps.mount === 'wing') {
+      // a pod on the wing's crown, the lens ahead (the Kubelwagen's, the Beetle's)
+      const x = side * m.lamps.x, y = m.wings.flatTop + m.lamps.r * 0.7, z = m.frontAxle + R * 0.7;
+      mesh.push().translate(x, y, z).rotateX(0.08);
+      mesh.lathe([[0.0001, -0.22], [m.lamps.r * 0.85, -0.18], [m.lamps.r * 1.06, -0.05], [m.lamps.r * 1.07, 0.0]], coarse ? 8 : 12, () => paint);
+      mesh.pop();
+      roundLamp(mesh, x, y, z, m.lamps.r, LAMP, paint, 1, 0.01, coarse ? 8 : 12);
+      continue;
+    }
     const lz = m.lamps.inGrille ? bonnetZ1 + 0.05 : bonnetZ1 - 0.1;
     roundLamp(mesh, side * m.lamps.x, m.lamps.y, lz, m.lamps.r, LAMP, m.lamps.inGrille ? TRIM : paint, 1, 0.08, coarse ? 8 : 12);
   }
   // flat wings over the front wheels, from beside the grille back to the scuttle
-  const R = m.wheelR + 0.06;
   mesh.mirrored(() => {
     wing(mesh, m.track / 2, m.frontAxle, m.wheelR, R,
-      [[1.22, 0.4], [1.18, m.wings.flatTop], [0.6, m.wings.flatTop + 0.03], [-0.4, m.wings.flatTop + 0.03], [-0.92, m.wings.flatTop - 0.08]],
+      [[1.22, fy - 0.42], [1.18, fy], [0.6, fy + 0.03], [-0.4, fy + 0.03], [-0.92, fy - 0.08]],
       [t.zF - 0.02, t.floor + 0.08], m.wings.w, paint, coarse);
   });
+  // the doors' seams on the slab sides
+  if (m.doors && !coarse) {
+    mesh.mirrored(() => {
+      for (const z of m.doors!) mesh.box(t.hw + 0.002, (t.floor + t.top) / 2 + 0.02, z, 0.006, t.top - t.floor - 0.1, 0.012, TRIM);
+    });
+  }
+  // the engine deck behind the rear seat: a loft falling to the tail, louvres across it
+  if (m.rearDeck) {
+    const d = m.rearDeck, z1 = zTail + 0.03;
+    const zsD = stations(z1, d.zF, coarse ? 0.5 : 0.25, []);
+    boxLoft(mesh, zsD, (z) => {
+      const f = clamp((d.zF - z) / Math.max(0.01, d.zF - z1), 0, 1);
+      return { hw: t.hw - 0.025 - t.rearRound * 0.5 * f * f, y0: t.floor, y1: deckAt(z) + 0.01, r: 0.08, crown: 0.02, rb: 0.01 };
+    }, () => paint, { coarse, capMat: (end) => (end === 'front' ? paint : null) });
+    if (!coarse) {
+      for (let k = 0; k < 5; k++) {
+        const z = lerp(d.zF - 0.25, d.zF - 0.55, k / 4);
+        mesh.box(0, deckAt(z) + 0.022, z, t.hw * 0.7, 0.012, 0.03, TRIM);
+      }
+    }
+  }
   // the windscreen frame and glass
   const wsY0 = t.top + 0.02, wsH = m.windscreen.h;
   mesh.push().translate(0, wsY0, t.zF + 0.05).rotateX(m.windscreen.folded ? -1.45 : -0.08);
@@ -309,8 +380,8 @@ export function buildOpenJeep(mesh: VehicleMesh, m: JeepModel, o: BuildOptions):
       0.012, 4, TRIM, { closed: true });
     mesh.pop();
   }
-  // the canvas top on its bows
-  if (m.top === 'canvas') {
+  // the canvas top on its bows (burnt away on a burnt-out jeep)
+  if (m.top === 'canvas' && !o.burnt) {
     const zs = stations(zTail + 0.06, t.zF + 0.02, coarse ? 0.6 : 0.3, []);
     boxLoft(mesh, zs, () => ({ hw: t.hw + 0.01, y0: t.top - 0.02, y1: t.top + wsH + 0.02, r: 0.12, rb: 0.01, crown: 0.03, tumble: 0.02 }),
       () => CANVAS, { coarse, capMat: (end) => (end === 'back' ? CANVAS : null) });
@@ -348,10 +419,12 @@ export interface PeriodCarModel {
   /** The wings: their width over the tyre, the front wing's reach ahead of the axle, the rear's sweep. */
   wings: { w: number; front: readonly (readonly [number, number])[]; rear: readonly (readonly [number, number])[] };
   runningBoardY: number;
-  /** The upright grille on the nose face: its width and height, a V (the Emka's, the Opel's) or flat. */
-  grille: { w: number; h: number; y: number; v: number; bars: number; chrome: boolean; vertical?: boolean };
-  /** Headlamps on stalks between the wings and the grille (x, y over the ground, z ahead of the front axle). */
-  lamps: { x: number; y: number; dz: number; r: number };
+  /** The upright grille on the nose face: its width and height, a V (the Emka's, the Opel's) or flat; none on a
+   * rear-engined car (the Beetle's smooth nose). */
+  grille: { w: number; h: number; y: number; v: number; bars: number; chrome: boolean; vertical?: boolean } | null;
+  /** Headlamps on stalks between the wings and the grille (x, y over the ground, z ahead of the front axle), or set
+   * into the wings' crowns (mount 'wing': the Beetle's, the 2CV's). */
+  lamps: { x: number; y: number; dz: number; r: number; mount?: 'stalk' | 'wing' };
   bumpers: 'chrome' | 'painted' | 'none';
   spare: 'tail' | 'side' | 'none';
   rearLamps: readonly LampSpec[];
@@ -386,8 +459,12 @@ export function buildPeriodCar(mesh: VehicleMesh, m: PeriodCarModel, o: BuildOpt
   const R = full.wheelR + 0.07, xW = full.track / 2;
   const rb = m.runningBoardY;
   const frontFoot: [number, number] = [full.cowlZ - 0.05, rb + 0.02];
+  // the wings reach the nose: the front wing's forward control points stretch to the body's overhang (the grille stands
+  // between the wings' noses, never ahead of them); the rear wing's to the tail
+  const reachF = Math.max(1, (full.length / 2 - full.frontAxle - 0.08) / (R * Math.max(...m.wings.front.map((q) => q[0]))));
+  const frontCtrl = m.wings.front.map(([dz, dy]) => [dz > 0 ? dz * reachF : dz, dy] as const);
   mesh.mirrored(() => {
-    wing(mesh, xW, full.frontAxle, full.wheelR, R, m.wings.front, frontFoot, m.wings.w, paint, coarse);
+    wing(mesh, xW, full.frontAxle, full.wheelR, R, frontCtrl, frontFoot, m.wings.w, paint, coarse);
     // the rear wing: from the running board's end up over the wheel and down behind it
     const rearCtrl = m.wings.rear;
     wing(mesh, xW, full.rearAxle, full.wheelR, R, rearCtrl, null, m.wings.w * 0.95, paint, coarse);
@@ -397,30 +474,42 @@ export function buildPeriodCar(mesh: VehicleMesh, m: PeriodCarModel, o: BuildOpt
   // the grille: a V-faced shell on the nose, bars across
   const zF = prof.zNose + zOff;
   const g = m.grille;
-  mesh.push().translate(0, g.y, zF + 0.02);
-  const shellD = 0.06 + g.v;
-  for (const side of [1, -1]) {
-    mesh.push().scale(side, 1, 1).rotateY(-Math.atan2(g.v, g.w / 2));
-    mesh.box(g.w / 4, 0, g.v / 2, g.w / 2 + 0.02, g.h, 0.03, g.chrome ? CHROME : paint, 0.01);
-    mesh.box(g.w / 4, 0, g.v / 2 + 0.012, g.w / 2 - 0.05, g.h - 0.06, 0.012, INTERIOR);
-    const bars = coarse ? 4 : g.bars;
-    for (let k = 1; k < bars; k++) {
-      if (g.vertical) mesh.box((g.w / 2) * (k / bars), 0, g.v / 2 + 0.02, 0.012, g.h - 0.05, 0.012, g.chrome ? BRIGHT : TRIM);
-      else mesh.box(g.w / 4, -g.h / 2 + (g.h * k) / bars, g.v / 2 + 0.018, g.w / 2 - 0.03, 0.012, 0.012, g.chrome ? BRIGHT : TRIM);
+  const trimMat = g?.chrome ?? true ? CHROME : paint;
+  if (g) {
+    mesh.push().translate(0, g.y, zF + 0.02);
+    const shellD = 0.06 + g.v;
+    for (const side of [1, -1]) {
+      mesh.push().scale(side, 1, 1).rotateY(-Math.atan2(g.v, g.w / 2));
+      mesh.box(g.w / 4, 0, g.v / 2, g.w / 2 + 0.02, g.h, 0.03, g.chrome ? CHROME : paint, 0.01);
+      mesh.box(g.w / 4, 0, g.v / 2 + 0.012, g.w / 2 - 0.05, g.h - 0.06, 0.012, INTERIOR);
+      const bars = coarse ? 4 : g.bars;
+      for (let k = 1; k < bars; k++) {
+        if (g.vertical) mesh.box((g.w / 2) * (k / bars), 0, g.v / 2 + 0.02, 0.012, g.h - 0.05, 0.012, g.chrome ? BRIGHT : TRIM);
+        else mesh.box(g.w / 4, -g.h / 2 + (g.h * k) / bars, g.v / 2 + 0.018, g.w / 2 - 0.03, 0.012, 0.012, g.chrome ? BRIGHT : TRIM);
+      }
+      mesh.pop();
     }
+    mesh.box(0, g.h / 2 + 0.02, shellD / 2, 0.06, 0.04, shellD, g.chrome ? CHROME : paint, 0.01);
     mesh.pop();
   }
-  mesh.box(0, g.h / 2 + 0.02, shellD / 2, 0.06, 0.04, shellD, g.chrome ? CHROME : paint, 0.01);
-  mesh.pop();
-  // headlamps on stalks
+  // headlamps on stalks, or set into the wings
   for (const side of [1, -1]) {
     const x = side * m.lamps.x, z = full.frontAxle + m.lamps.dz;
+    if (m.lamps.mount === 'wing') {
+      // a pod faired into the wing's crown, the lens facing ahead
+      mesh.push().translate(x, m.lamps.y, z - 0.06).rotateX(0.12);
+      mesh.lathe([[0.0001, -0.2], [m.lamps.r * 0.8, -0.17], [m.lamps.r * 1.05, -0.05], [m.lamps.r * 1.06, 0.0]].map(([r, a]) => [r, a] as [number, number]),
+        coarse ? 8 : 12, () => paint);
+      mesh.pop();
+      roundLamp(mesh, x, m.lamps.y, z - 0.06, m.lamps.r, LAMP, CHROME, 1, 0.01, coarse ? 8 : 12);
+      continue;
+    }
     if (!coarse) mesh.box(x, m.lamps.y - m.lamps.r - 0.08, z - 0.04, 0.03, 0.16, 0.03, TRIM);
     mesh.push().translate(x, m.lamps.y, z - 0.1);
     mesh.lathe([[0.0001, -0.12], [m.lamps.r * 0.7, -0.1], [m.lamps.r * 1.02, -0.02], [m.lamps.r * 1.05, 0.0]].map(([r, a]) => [r, a] as [number, number]),
-      coarse ? 8 : 12, () => (g.chrome ? CHROME : paint));
+      coarse ? 8 : 12, () => trimMat);
     mesh.pop();
-    roundLamp(mesh, x, m.lamps.y, z - 0.1, m.lamps.r, LAMP, g.chrome ? CHROME : paint, 1, 0.01, coarse ? 8 : 12);
+    roundLamp(mesh, x, m.lamps.y, z - 0.1, m.lamps.r, LAMP, trimMat, 1, 0.01, coarse ? 8 : 12);
   }
   if (m.bumpers !== 'none') {
     const style = m.bumpers === 'chrome' ? 'chrome' : 'painted';
@@ -492,7 +581,7 @@ export interface TruckBodySpec {
   /** Wooden boards (the period beds) or painted steel. */
   wood: boolean;
   /** What a flatbed carries. */
-  load?: 'crates' | 'sacks' | 'hay' | 'logs' | 'pipes' | 'none';
+  load?: 'crates' | 'sacks' | 'hay' | 'logs' | 'pipes' | 'coal' | 'none';
   /** A fixed colour for the box or the tilt (a livery), else the canvas or the paint. */
   colour?: VehicleMaterial;
 }
@@ -557,7 +646,7 @@ export function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): v
   // ---- the cab
   truckCab(mesh, m, paint, coarse);
   // ---- the cargo body
-  truckBody(mesh, m, paint, coarse);
+  truckBody(mesh, m, paint, coarse, o.burnt);
   // ---- hardware: the front bumper, mirrors, tank, spare, rear lamps, mudflaps
   const fb = m.frontFace.bumper;
   if (fb) {
@@ -777,7 +866,7 @@ function truckCab(mesh: VehicleMesh, m: TruckModel, paint: VehicleMaterial, coar
 }
 
 /** The cargo body on the frame. */
-function truckBody(mesh: VehicleMesh, m: TruckModel, paint: VehicleMaterial, coarse: boolean): void {
+function truckBody(mesh: VehicleMesh, m: TruckModel, paint: VehicleMaterial, coarse: boolean, burnt: boolean): void {
   const b = m.body;
   const boardMat = b.wood ? WOOD : paint;
   const len = b.zF - b.zB, zMid = (b.zF + b.zB) / 2;
@@ -800,7 +889,21 @@ function truckBody(mesh: VehicleMesh, m: TruckModel, paint: VehicleMaterial, coa
     mesh.box(0, b.floorY + sh / 2, b.zB + 0.025, b.hw * 2, sh, 0.05, boardMat, 0.008);
     if (!coarse) for (let k = 1; k < boards; k++) mesh.box(0, b.floorY + (sh * k) / boards, b.zB - 0.002, b.hw * 2 - 0.04, 0.012, 0.006, TRIM);
   }
-  if (b.type === 'tilt') {
+  if (b.type === 'tilt' && burnt) {
+    // the canvas burnt away: the bare hoops over the charred bed
+    const top = b.top ?? b.floorY + 1.7;
+    const hoops = Math.max(3, Math.round(len / 1.0));
+    for (let k = 0; k <= hoops; k++) {
+      const z = lerp(b.zF - 0.04, b.zB + 0.04, k / hoops), y0 = b.floorY + b.sideH - 0.1;
+      const n = coarse ? 4 : 8, pts: [number, number, number][] = [];
+      for (let q = 0; q <= n; q++) {
+        const a = Math.PI * (q / n);
+        const rx = b.hw - 0.02, ry = top - y0 - 0.04;
+        pts.push([Math.cos(a) * rx, y0 + Math.min(ry, Math.sin(a) * ry * 1.4), z]);
+      }
+      mesh.tube(pts, 0.018, 4, STEEL);
+    }
+  } else if (b.type === 'tilt') {
     const top = b.top ?? b.floorY + 1.7;
     const hoops = Math.max(3, Math.round(len / 1.0));
     const hz: number[] = [];
@@ -863,6 +966,14 @@ function truckBody(mesh: VehicleMesh, m: TruckModel, paint: VehicleMaterial, coa
   if (b.type === 'flatbed' && b.load && b.load !== 'none') {
     if (b.load === 'logs') logLoad(mesh, b, coarse);
     else if (b.load === 'crates' || b.load === 'sacks' || b.load === 'hay') cargoLoad(mesh, b, b.load, coarse);
+    else if (b.load === 'coal') {
+      // a heaped load of coal: a ridge along the bed, its slopes at the angle of repose, lumps on it
+      const zs = stations(b.zB + 0.08, b.zF - 0.08, coarse ? 0.6 : 0.3, []);
+      boxLoft(mesh, zs, (z) => {
+        const t = Math.min(1, (b.zF - 0.08 - z) / 0.5, (z - b.zB - 0.08) / 0.5);
+        return { hw: b.hw - 0.06, y0: b.floorY + 0.02, y1: b.floorY + 0.25 + 0.3 * t, r: 0.45, rb: 0.01, crown: 0.18 * t };
+      }, () => COAL, { coarse });
+    }
     else if (b.load === 'pipes') {
       for (let k = 0; k < 5; k++) {
         const x = lerp(-b.hw * 0.7, b.hw * 0.7, k / 4), y = b.floorY + 0.14 + (k % 2) * 0.22;
@@ -905,6 +1016,7 @@ function cargoLoad(mesh: VehicleMesh, b: TruckBodySpec, kind: 'crates' | 'sacks'
 }
 
 const HAY_BALE = { ...WOOD, rgb: [0.34, 0.27, 0.12] as const, rough: 0.95 } as VehicleMaterial;
+const COAL = { ...WOOD, role: 'cargo', rgb: [0.022, 0.021, 0.02] as const, rough: 0.7 } as VehicleMaterial;
 
 // ---------------------------------------------------------------------------------------------------- re-exports used by the fleets
 export { PAINT, CHROME, BRIGHT, TRIM, GLASS, RIM_STEEL, STEEL, CANVAS, WOOD, INTERIOR, type BoxSection };

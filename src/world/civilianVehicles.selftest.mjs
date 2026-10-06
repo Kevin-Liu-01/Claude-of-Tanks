@@ -116,6 +116,25 @@ for (const mapId of MAP_IDS) {
         checkRole(`${fleet.id}/${kind}${burnt ? '/burnt' : ''}${mobile ? '/mobile' : ''}`, kind, geometry, burnt, mobile);
         geometry.dispose();
       }
+      // the shadow passes draw a stand-in on desktop tiers: the coarse build, positions only, at most half the body's
+      // triangles, fitted inside the body's own box and spending nothing from the stream; the mobile body casts itself
+      if (mobile) assert.equal(overrides[kind].shadowBuild, undefined, `${fleet.id}/${kind}/mobile: the coarse body casts itself`);
+      else {
+        const rng = seeded(0x91a7), body = overrides[kind].build(rng), calls = rng.calls;
+        const caster = overrides[kind].shadowBuild();
+        assert.equal(rng.calls, calls, `${fleet.id}/${kind}: the shadow stand-in draws nothing from the stream`);
+        assert.deepEqual(Object.keys(caster.attributes), ['position'], `${fleet.id}/${kind}: the stand-in carries positions only`);
+        assert.ok(caster.index.count <= body.index.count * 0.5,
+          `${fleet.id}/${kind}: stand-in ${caster.index.count / 3} triangles <= half the body's ${body.index.count / 3}`);
+        body.computeBoundingBox(); caster.computeBoundingBox();
+        const bb = body.boundingBox, cb = caster.boundingBox;
+        for (const axis of ['x', 'y', 'z']) {
+          assert.ok(cb.min[axis] >= bb.min[axis] - 0.03 && cb.max[axis] <= bb.max[axis] + 0.03,
+            `${fleet.id}/${kind}: the stand-in stays inside the body's box on ${axis}`);
+        }
+        assert.ok(Math.abs(cb.min.y) < 0.03, `${fleet.id}/${kind}: the stand-in stands on the ground (${cb.min.y})`);
+        body.dispose(); caster.dispose();
+      }
       // a livery is one of the role's paints (faded or fresh), the same for the same place
       const a = new THREE.Color(), b = new THREE.Color();
       overrides[kind].instancePaint(a, 12.5, -40.25, 3);
@@ -171,4 +190,4 @@ assert.equal(CIVILIAN_VEHICLES_PER_CLUSTER, 4,
   'each grouped traffic pocket has enough vehicles to read as a convoy or parking row');
 
 console.log(`civilianVehicles.selftest: ${MAP_IDS.length} maps on ${checkedFleets.size} fleets, both tiers, burnt states, `
-  + 'legacy records, contact bands and stream draws, liveries, footprints and budgets passed');
+  + 'legacy records, contact bands and stream draws, liveries, shadow stand-ins, footprints and budgets passed');
