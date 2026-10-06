@@ -7219,9 +7219,8 @@ verandas on three sides, the siege on its veranda roof and plaster (6 054), its 
 7073, 9654]; every structure and non-tree record where it stood (the library's souk-picker hook keeps the town's pots on
 their picks), 25 trees and 21 scrub clumps off their ground. Pacing (4 seeds) 163/166/160/278 s against the head's
 157/160/160/215 s. Cost: the hill's view −0.28 ± 0.39 ms (accept); the establishing shot 0.58 ± 0.37 and chase 0.17 ±
-0.58 (ambiguous, the pieces out of frame in both: the establishing shot draws 11 k more triangles and no more draws;
-their quiet-window re-run is queued); every CPU median within 0.33 ms, no long task and no program compiled during a
-slot.
+0.58 (ambiguous, the pieces far off in both: the establishing shot draws 11 k more triangles and no more draws; their
+quiet-window re-run is queued); every CPU median within 0.33 ms, no long task and no program compiled during a slot.
 
 ### 2026-10-04 — Whiteout's ice sheet re-candidated and dropped; the shell's apron read sky (the mountains lane)
 
