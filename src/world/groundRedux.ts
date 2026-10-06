@@ -229,7 +229,9 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   // rills' hollows darker and damper, scree at the slopes' feet)
   copper_mesa: { ...ARID, patchwork: 0, windRipple: 0, foldMoist: 0.5, foldAO: 0.65, scree: 0.45, grass: null },
   airfield: { ...TEMPERATE, grass: verge(0.6, 0.45) },
-  oasis: { ...ARID, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0.5, swashLines: 0.3, grass: reed(0.5, 1.4, 0.85, 0.2) },
+  // (round 2, the gauntlet's wave 125: "corduroy ripples" and "lawn-green tufts" — the wind's ripples at four tenths, the
+  // reeds at the spring's waterline, a trace of their meadow on the dry banks: 0.05, was 0.2)
+  oasis: { ...ARID, windRipple: 0.4, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0.5, swashLines: 0.3, grass: reed(0.5, 1.4, 0.85, 0.05) },
   // trees round 2b (2026-10-03, gauntlet wave 28): Whiteout Station stands on an ice sheet — no sward through the ice
   whiteout: { ...SNOW, scree: 0.3, grass: null },
   orchard: { ...TEMPERATE, scree: 0.2, grass: meadow(0.9, 0.8) },

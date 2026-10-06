@@ -44,7 +44,7 @@ the fictional map reproduces a particular real-world location.
 | polders | Very low coastal skyline, long dikes and broad drainage cells; preserve the deliberately low amplitude. |
 | copper_mesa | Natural tablelands surrounding distinctly engineered quarry benches. |
 | airfield | Open approach sectors and distant low hills; restrained perimeter berms. |
-| oasis | Asymmetric dune arms and sparse distant rock around a protected spring basin. |
+| oasis | Siwa (settlement 2026-10-05): asymmetric dune arms and sparse distant rock around a protected spring basin; old Shali's kershef town. |
 | whiteout | Exposed snowy plain with broad low glacial rises and wind-shaped snow shoulders. |
 | orchard | Long unequal upland valley sides with cultivated shelves and drainage folds. |
 | longleaf | Interlocking wooded logging-country ridges, creek spurs and clearcut shoulders. |

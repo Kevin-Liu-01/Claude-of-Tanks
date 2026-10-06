@@ -211,9 +211,14 @@ const ruin: RegionalBuilder = (ctx) => {
  */
 const soukStall: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const look = ctx.variant;
   const W = Math.max(4.5, Math.min(6.4, ctx.info.w - 0.4)), D = Math.max(3.6, Math.min(5.0, ctx.info.d - 0.4));
-  const floor = 0.18, top = 2.55, wallZ = -D / 2 + 0.4;
+  stallBody(sink, ctx.variant, W, D);
+  return sink.finish();
+};
+
+/** The stall itself, W x D about the origin, its counter to +z (the ksar's market plot, Siwa's shop rows). */
+function stallBody(sink: PartSink, look: () => number, W: number, D: number, top = 2.55): void {
+  const floor = 0.18, wallZ = -D / 2 + 0.4;
   // a beaten-earth platform skimmed with mud, the back wall of mud brick under plaster standing proud of the mat
   sink.span(MUD, -W / 2 - 0.2, -0.3, -D / 2 - 0.2, W / 2 + 0.2, floor, D / 2 + 0.2);
   sink.span(MUD, -W / 2, floor, -D / 2, W / 2, top + 0.45, wallZ);
@@ -265,8 +270,7 @@ const soukStall: RegionalBuilder = (ctx) => {
     sink.cylinder('structureWood', [x, floor, z], 'y', r * 1.8, r * 0.7, 8, { colour: clay, decor: true }, r * 1.25);
     sink.cylinder('structureWood', [x, floor + r * 1.8, z], 'y', r * 0.9, r * 1.25, 8, { colour: shade(clay, 0.95), decor: true }, r * 0.45);
   }
-  return sink.finish();
-};
+}
 
 export const KSAR_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   adobe: house,
@@ -308,4 +312,352 @@ export const KSAR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   wear: 0.15,
   // the courtyards: mud-brick walls round each house's court (hosh), a gate (yards.ts)
   yard: { kinds: ['adobe'], fence: 'walladobe', gate: 'gate', shed: null, garden: false },
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The siwa variant (the map-revival lane, 2026-10-05). Sunscar Oasis is Siwa, in Egypt's Western Desert: the old town of
+// Shali, houses of kershef (salt-crusted mud and rock) heaped up a hill in rounded, battered blocks of one to three
+// storeys, their corners thickened, palm-trunk beams through the walls under the roof parapets, small windows behind
+// palm-wood shutters and plank doors; the mosque's tapering mud minaret; the springs in their stone rims under palm
+// shelters; the souk's stalls under palm-rib mats. It shares the ksar's mud render (MUD), timber, uv offset and its
+// palm-rib stall (stallBody, and the market plot's soukStall itself); its own forms follow. Every Siwa builder sizes its
+// body from the base's measured reach (ctx.bounds), so no lane opens beside it.
+
+/** Palm-trunk wood: the posts, beams and shutters of Siwa. */
+const PALM = rgb(0x6a5a46), PALM_GREY = rgb(0x8a7c68);
+/** Older kershef, darker and greyer; the mosque's limewash. */
+const KERSHEF_OLD: RegionalBucket = 'plaster2';
+
+function reach(ctx: RegionalBuildContext): { W: number; D: number; cx: number; cz: number; x0: number; x1: number; z0: number; z1: number } {
+  const b = ctx.bounds;
+  return { W: b.maxX - b.minX, D: b.maxZ - b.minZ, cx: (b.maxX + b.minX) / 2, cz: (b.maxZ + b.minZ) / 2, x0: b.minX, x1: b.maxX, z0: b.minZ, z1: b.maxZ };
+}
+
+/** The four faces of a box x0..x1 x z0..z1 (front +z, right +x, back -z, left -x). */
+function boxFaces(x0: number, z0: number, x1: number, z1: number): { front: Face; right: Face; back: Face; left: Face } {
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, w = x1 - x0, d = z1 - z0;
+  return {
+    front: { origin: [cx, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: w },
+    right: { origin: [x1, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: d },
+    back: { origin: [cx, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: w },
+    left: { origin: [x0, 0, cz], u: [0, 0, 1], out: [-1, 0, 0], width: d },
+  };
+}
+
+/**
+ * A rounded rectangle x0..x1 x z0..z1 (each corner cut by two short faces on a circle of radius rc), ordered so a cap
+ * through it faces up (counter-clockwise seen from above). Rings of one family (the same corner centres, the radius
+ * shrunk with the inset) have parallel edges, so the quads between two of them are planar.
+ */
+function roundedRing(x0: number, z0: number, x1: number, z1: number, rc: number, inset: number, y: number): Array<[number, number, number]> {
+  const r = Math.max(0.02, rc - inset);
+  const corners: Array<[number, number, number]> = [[x0 + rc, z0 + rc, -Math.PI / 2], [x0 + rc, z1 - rc, Math.PI], [x1 - rc, z1 - rc, Math.PI / 2], [x1 - rc, z0 + rc, 0]];
+  const out: Array<[number, number, number]> = [];
+  // from each corner's start angle the arc turns a quarter clockwise in (x, z) (counter-clockwise seen from above)
+  for (const [cx, cz, a0] of corners) for (let k = 0; k <= 2; k++) {
+    const a = a0 - k * Math.PI / 4;
+    out.push([cx + Math.cos(a) * r, y, cz + Math.sin(a) * r]);
+  }
+  return out;
+}
+
+/** Quads between two rings of one family (lower, upper), facing out when the rings face up; `inward` reverses them. */
+function ringBand(sink: PartSink, bucket: RegionalBucket, lower: ReadonlyArray<readonly [number, number, number]>, upper: ReadonlyArray<readonly [number, number, number]>,
+  inward = false, opts: { decor?: boolean; shade?: number } = {}): void {
+  const n = lower.length;
+  for (let k = 0; k < n; k++) {
+    const j = (k + 1) % n;
+    if (inward) sink.quad(bucket, lower[j], lower[k], upper[k], upper[j], opts);
+    else sink.quad(bucket, lower[k], lower[j], upper[j], upper[k], opts);
+  }
+}
+
+/**
+ * A kershef block from y0, h high, over x0..x1 x z0..z1, as Shali's houses stand: the walls battered (leaning in as
+ * they rise), the corners rounded, the parapet a slumped ring with a rounded crest round the roof terrace; small dark
+ * windows high in the outer walls (a few behind palm shutters), thin palm-beam ends under the parapet, a plank door in
+ * the front when `door`. One closed solid with its parapet ring: no box edges, no corner posts.
+ */
+type Side = 'front' | 'right' | 'back' | 'left';
+
+/**
+ * A slumped kershef mass over x0..x1 x z0..z1 from yb to top: its walls battered in by `batter` at the top, its corners
+ * rounded (radius rc at the foot), a parapet ring with a bevelled crest and its inner face down to the roof. Returns
+ * the straight run of each side at a height (the batter moves it in as it rises; the run keeps its length, the corner
+ * radius shrinking with the inset), where the dressing stands.
+ */
+function slumpedMass(sink: PartSink, bucket: RegionalBucket, x0: number, z0: number, x1: number, z1: number, yb: number, top: number,
+  rc: number, batter: number, ph: number, t = 0.32): (name: Side, y: number) => Face {
+  const base = roundedRing(x0, z0, x1, z1, rc, 0, yb), crown = roundedRing(x0, z0, x1, z1, rc, batter, top);
+  ringBand(sink, bucket, base, crown);
+  sink.polygon(bucket, crown);
+  sink.polygon(bucket, [...base].reverse());
+  const out1 = roundedRing(x0, z0, x1, z1, rc, batter + 0.06, top + ph), crest = roundedRing(x0, z0, x1, z1, rc, batter + 0.06 + t / 2, top + ph + 0.1);
+  const in1 = roundedRing(x0, z0, x1, z1, rc, batter + 0.06 + t, top + ph), in0 = roundedRing(x0, z0, x1, z1, rc, batter + 0.06 + t, top);
+  ringBand(sink, bucket, crown, out1);
+  ringBand(sink, bucket, out1, crest);
+  ringBand(sink, bucket, in1, crest, true);
+  ringBand(sink, bucket, in0, in1, true, { shade: 0.86 });
+  return (name, y) => {
+    const i = batter * (y - yb) / (top - yb);
+    const fx0 = x0 + rc, fx1 = x1 - rc, fz0 = z0 + rc, fz1 = z1 - rc;
+    if (name === 'front') return { origin: [(fx0 + fx1) / 2, 0, z1 - i], u: [1, 0, 0], out: [0, 0, 1], width: fx1 - fx0 };
+    if (name === 'back') return { origin: [(fx0 + fx1) / 2, 0, z0 + i], u: [-1, 0, 0], out: [0, 0, -1], width: fx1 - fx0 };
+    if (name === 'right') return { origin: [x1 - i, 0, (fz0 + fz1) / 2], u: [0, 0, -1], out: [1, 0, 0], width: fz1 - fz0 };
+    return { origin: [x0 + i, 0, (fz0 + fz1) / 2], u: [0, 0, 1], out: [-1, 0, 0], width: fz1 - fz0 };
+  };
+}
+
+function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: number, y0: number, h: number, bucket: RegionalBucket,
+  rng: () => number, look: () => number, opts: { door?: boolean; faces?: ReadonlyArray<Side> } = {}): void {
+  const yb = y0 > 0 ? y0 : -0.3, top = y0 + h;
+  const batter = Math.min(0.32, 0.055 * (top - yb)) * (0.8 + look() * 0.4);
+  const rc = Math.max(batter + 0.3, Math.min(0.9, Math.min(x1 - x0, z1 - z0) * 0.14));
+  const sideAt = slumpedMass(sink, bucket, x0, z0, x1, z1, yb, top, rc, batter, 0.45 + look() * 0.2);
+  for (const name of opts.faces ?? ['front', 'right', 'back', 'left'] as const) {
+    // the palm-beam ends through the wall under the parapet: thin, a few to a side, not every one
+    const fb = sideAt(name, top - 0.25), n = Math.max(1, Math.floor(fb.width / 1.2));
+    for (let k = 0; k < n; k++) {
+      if (look() < 0.35) continue;
+      const u = -fb.width / 2 + (k + 0.5) * fb.width / n + (look() - 0.5) * 0.3;
+      faceBox(sink, 'structureWood', fb, u, top - 0.25, 0.1, 0.1, 0.1, 0.24, { colour: shade(PALM, 0.8 + look() * 0.3), decor: true, uv: UV_MEMBER });
+    }
+    // small dark windows high in the wall, one or two to a storey; a few behind palm shutters
+    const storeys = Math.max(1, Math.round(h / 3.0));
+    for (let st = 0; st < storeys; st++) {
+      const wy = y0 + st * 3.0 + 1.5;
+      if (wy + 0.6 > top - 0.4) continue;
+      const fw = sideAt(name, wy + 0.25), m = fw.width > 4.5 ? 2 : 1;
+      for (let k = 0; k < m; k++) {
+        if (rng() < 0.3) continue;
+        const u = m === 1 ? (rng() - 0.5) * fw.width * 0.4 : (k === 0 ? -1 : 1) * fw.width * (0.16 + rng() * 0.14);
+        const w = 0.32 + look() * 0.16, hh = 0.42 + look() * 0.2;
+        faceBox(sink, MUD, fw, u, wy + hh / 2, 0.02, w + 0.16, hh + 0.16, 0.04, { decor: true, fineSides: true, shade: 0.8 });
+        faceBox(sink, 'dark', fw, u, wy + hh / 2, 0.042, w, hh, 0.004, { decor: true });
+        if (look() < 0.3) faceBox(sink, 'structureWood', fw, u, wy + hh / 2, 0.052, w - 0.04, hh - 0.04, 0.02, { colour: look() < 0.5 ? PALM : PALM_GREY, decor: true, uv: UV_MEMBER });
+      }
+    }
+  }
+  if (opts.door && y0 === 0) {
+    const f = sideAt('front', 1.0);
+    doorUnit(sink, f, (rng() - 0.5) * Math.max(0, f.width - 2.4) * 0.6, 0, 0.95, 1.95, { leaf: PALM, frame: { bucket, width: 0.2, out: 0.06 }, steps: null, leafKind: 'plank' });
+  }
+}
+
+/** A Siwan house (an adobe plot): a kershef block filling the plot, a door to the lane, often an upper room at the back. */
+const kershefHouse: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng, look = ctx.variant;
+  const R = reach(ctx);
+  const x0 = R.x0 + 0.25, x1 = R.x1 - 0.25, z0 = R.z0 + 0.25, z1 = R.z1 - 0.25, h = 3.1 + rng() * 0.5;
+  kershefBlock(sink, x0, z0, x1, z1, 0, h, rng() < 0.3 ? KERSHEF_OLD : MUD, rng, look, { door: true });
+  if (rng() < 0.55) {
+    const ux1 = x0 + (x1 - x0) * (0.5 + rng() * 0.2), uz1 = z0 + (z1 - z0) * (0.45 + rng() * 0.15);
+    kershefBlock(sink, x0 + 0.45, z0 + 0.45, ux1, uz1, h, 2.6, MUD, rng, look, { faces: ['front', 'right'] });
+  }
+  return sink.finish();
+};
+
+/**
+ * Old Shali (a caravanserai or compound plot): the town's houses heaped together, a block to each cell of the plot,
+ * packed against each other (their battered walls lean apart into narrow clefts as they rise), lower at the edges and
+ * highest in the middle, a room set back on some roofs; the outer faces on the plot's edge, doors to the front lane.
+ */
+const shaliCluster: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng, look = ctx.variant;
+  const R = reach(ctx);
+  const nx = R.W > 15 ? 3 : 2, nz = R.D > 13 ? 3 : 2;
+  const cw = R.W / nx, cd = R.D / nz;
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    // each cell's block reaches 0.1 m past its inner boundaries (the neighbours' feet meet), 0.25 m in from the plot's edge
+    const x0 = R.x0 + i * cw + (i === 0 ? 0.25 : -0.1), x1 = R.x0 + (i + 1) * cw - (i === nx - 1 ? 0.25 : -0.1);
+    const z0 = R.z0 + j * cd + (j === 0 ? 0.25 : -0.1), z1 = R.z0 + (j + 1) * cd - (j === nz - 1 ? 0.25 : -0.1);
+    const edges = (i === 0 ? 1 : 0) + (i === nx - 1 ? 1 : 0) + (j === 0 ? 1 : 0) + (j === nz - 1 ? 1 : 0);
+    const storeys = edges >= 2 ? 1 + Math.floor(rng() * 2) : edges === 1 ? 2 : (rng() < 0.3 ? 4 : 3);
+    const h = 2.9 * storeys + rng() * 0.5;
+    const outer: Array<'front' | 'right' | 'back' | 'left'> = [];
+    if (j === nz - 1) outer.push('front');
+    if (i === nx - 1) outer.push('right');
+    if (j === 0) outer.push('back');
+    if (i === 0) outer.push('left');
+    const bucket = rng() < 0.35 ? KERSHEF_OLD : MUD;
+    kershefBlock(sink, x0, z0, x1, z1, 0, h, bucket, rng, look, { door: j === nz - 1, faces: outer.length ? outer : ['front'] });
+    // a room set back on the roof terrace of some blocks
+    if (storeys >= 2 && rng() < 0.45) {
+      const ux0 = x0 + (x1 - x0) * (0.18 + rng() * 0.12), uz0 = z0 + (z1 - z0) * (0.18 + rng() * 0.12);
+      const ux1 = ux0 + (x1 - x0) * (0.4 + rng() * 0.15), uz1 = uz0 + (z1 - z0) * (0.4 + rng() * 0.15);
+      kershefBlock(sink, ux0, uz0, Math.min(x1 - 0.6, ux1), Math.min(z1 - 0.6, uz1), h, 2.4, MUD, rng, look, { faces: outer.length ? outer : ['front'] });
+    }
+  }
+  return sink.finish();
+};
+
+/**
+ * A square mud tower over S x S tapering to its top: the Shali mosque's minaret (a flat parapet head, a gallery of palm
+ * beams and slit openings near the top) or a watch tower with its door high in the wall. Kershef the
+ * colour of the town (no limewash, no cap of another colour: a tall pale taper with a coloured top reads as a lighthouse).
+ */
+function mudTower(sink: PartSink, S: number, H: number, rng: () => number, look: () => number, minaret: boolean): void {
+  // (round 2, the gauntlet's wave 125: "a straight-sided, crenellated castle keep") the tower is battered to its head —
+  // two fifths in on a minaret, three tenths on a watch tower — its arrises rounded, a flat parapet head with a
+  // bevelled crest, not merlons
+  const a0 = S * 0.5, batter = a0 * (minaret ? 0.4 : 0.3), rc = batter + a0 * 0.14;
+  const sideAt = slumpedMass(sink, MUD, -a0, -a0, a0, a0, -0.3, H, rc, batter, minaret ? 0.7 : 0.55, 0.26);
+  const sides: Side[] = ['front', 'right', 'back', 'left'];
+  if (minaret) {
+    // the gallery's palm beams and the slit openings under the head, on all four faces
+    for (const name of sides) {
+      const f = sideAt(name, H - 1.6);
+      for (const u of [-0.32, 0.32]) {
+        faceBox(sink, MUD, f, u * f.width, H - 2.1 + 0.37, 0.02, 0.36, 0.9, 0.04, { decor: true, fineSides: true, shade: 0.8 });
+        faceBox(sink, 'dark', f, u * f.width, H - 2.1 + 0.37, 0.042, 0.2, 0.74, 0.004, { decor: true });
+      }
+      const g = sideAt(name, H - 0.75);
+      for (let k = -2; k <= 2; k++) faceBox(sink, 'structureWood', g, k * g.width / 5.5, H - 0.75, 0.1, 0.11, 0.11, 0.22, { colour: PALM, decor: true, uv: UV_MEMBER });
+    }
+  } else {
+    // the watch tower's door, high in its front wall, and a beam over it
+    const f = sideAt('front', H * 0.35);
+    doorUnit(sink, f, 0, H * 0.3, 0.8, 1.6, { leaf: PALM, frame: { bucket: MUD, width: 0.2, out: 0.08 }, steps: null, leafKind: 'plank' });
+    faceBox(sink, 'structureWood', f, 0, H * 0.3 + 1.75, 0.14, 1.2, 0.12, 0.28, { colour: PALM, decor: true, uv: UV_MEMBER });
+    if (rng() < 0.5) for (const name of sides) {
+      const g = sideAt(name, H * 0.7);
+      faceBox(sink, MUD, g, 0, H * 0.68 + 0.25, 0.02, 0.46, 0.66, 0.04, { decor: true, fineSides: true, shade: 0.8 });
+      faceBox(sink, 'dark', g, 0, H * 0.68 + 0.25, 0.042, 0.3, 0.5, 0.004, { decor: true });
+    }
+  }
+}
+
+/** The Shali mosque's minaret (a minaret plot): the square mud tower tapering to its crenellated top. */
+const shaliMinaret: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const R = reach(ctx);
+  const S = Math.max(2.6, Math.min(R.W, R.D) - 0.2);
+  sink.placed(0, R.cx, 0, R.cz, () => mudTower(sink, S, Math.max(11, Math.min(15, ctx.info.h - 0.5)), ctx.rng, ctx.variant, true));
+  return sink.finish();
+};
+
+/** A kershef watch tower (a tower plot): the square mud tower with its door high up. */
+const siwaTower: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const R = reach(ctx);
+  const S = Math.max(3.0, Math.min(R.W, R.D) - 0.2);
+  sink.placed(0, R.cx, 0, R.cz, () => mudTower(sink, S, Math.max(7.5, ctx.info.h - 1.5), ctx.rng, ctx.variant, false));
+  return sink.finish();
+};
+
+/**
+ * A spring (a bath house plot), Siwa's Ain Juba (Cleopatra's Spring) and its like: the round pool in its rim of dressed
+ * stone, clear water over the spring's pale sand, steps down; the café's low kershef wall and a palm-rib shelter on its
+ * posts on the plot's long side.
+ */
+const ainSpring: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng, look = ctx.variant;
+  const R = reach(ctx);
+  const r = Math.max(2.4, Math.min(R.W, R.D) / 2 - 0.35);
+  const along = R.W >= R.D;
+  const px = along ? R.x0 + 0.3 + r : R.cx, pz = along ? R.cz : R.z0 + 0.3 + r;
+  const n = 20;
+  for (let k = 0; k < n; k++) {
+    const a0 = k / n * Math.PI * 2, a1 = (k + 1) / n * Math.PI * 2, am = (a0 + a1) / 2;
+    sink.member('stone', [px + Math.cos(a0) * r, 0.3, pz + Math.sin(a0) * r], [px + Math.cos(a1) * r, 0.3, pz + Math.sin(a1) * r], 1.0, 0.5,
+      [Math.cos(am), 0, Math.sin(am)], { exposed: true }, 0);
+  }
+  sink.cylinder('glass', [px, 0.22, pz], 'y', 0.02, r - 0.22, 24, { decor: true });
+  for (let k = 0; k < 3; k++) sink.span('stone', px - 0.8, 0.5 - k * 0.2, pz + r - 0.5 - k * 0.35, px + 0.8, 0.62 - k * 0.2, pz + r - 0.2 - k * 0.35, { decor: true });
+  // the rest of the plot: the café's low wall along the far edge and the palm-rib shelter by the pool
+  const rest = along ? R.x1 - (px + r + 0.25) : R.z1 - (pz + r + 0.25);
+  if (rest > 0.45) {
+    if (along) sink.span(MUD, R.x1 - 0.5, -0.3, R.z0 + 0.3, R.x1 - 0.2, 0.9, R.z1 - 0.3);
+    else sink.span(MUD, R.x0 + 0.3, -0.3, R.z1 - 0.5, R.x1 - 0.3, 0.9, R.z1 - 0.2);
+  }
+  if (rest > 3.4) {
+    const sw = Math.min(5.5, rest - 0.6), sd = Math.min(4.6, (along ? R.D : R.W) - 0.6);
+    if (along) sink.placed(-Math.PI / 2, R.x1 - 0.55 - sw / 2, 0, R.cz, () => stallBody(sink, look, sd, sw));
+    else sink.placed(Math.PI, R.cx, 0, R.z1 - 0.55 - sw / 2, () => stallBody(sink, look, sd, sw));
+  }
+  void rng;
+  return sink.finish();
+};
+
+/** The souk's shop row (a market row plot): palm-rib stalls side by side along the plot. */
+const siwaShops: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const look = ctx.variant;
+  const R = reach(ctx);
+  const n = Math.max(1, Math.round(R.W / 5.2)), w = R.W / n - 0.2, d = Math.max(3.6, R.D - 0.6);
+  // the back wall (0.45 m over the mat's beam) no higher than the market row it replaces: Oasis's east zone stands on an
+  // apron above the row, and the objective search counts a solid reaching within half a metre of a zone's floor
+  const top = Math.max(2.0, Math.min(2.55, ctx.bounds.maxY - 0.45));
+  for (let k = 0; k < n; k++) sink.placed(0, R.x0 + (k + 0.5) * R.W / n, 0, R.cz, () => stallBody(sink, look, w, d, top));
+  return sink.finish();
+};
+
+/** A melted house of old Shali (a ruin plot): the kershef walls slumped to rounded stubs, the roof's rubble inside. */
+const shaliRuin: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng, look = ctx.variant;
+  const R = reach(ctx);
+  const x0 = R.x0 + 0.25, x1 = R.x1 - 0.25, z0 = R.z0 + 0.25, z1 = R.z1 - 0.25, t = 0.45;
+  for (const [a, b, c, d, axis] of [[x0, z0, x1, z0 + t, 'x'], [x0, z1 - t, x1, z1, 'x'], [x0, z0 + t, x0 + t, z1 - t, 'z'], [x1 - t, z0 + t, x1, z1 - t, 'z']] as const) {
+    const len = axis === 'x' ? c - a : d - b, pieces = Math.max(3, Math.round(len / 1.3));
+    for (let k = 0; k < pieces; k++) {
+      if (rng() < 0.2) continue;
+      const p0 = k / pieces, p1 = (k + 1) / pieces, top = 0.7 + rng() * 2.4;
+      if (axis === 'x') sink.span(MUD, a + len * p0, -0.3, b, a + len * p1, top, d);
+      else sink.span(MUD, a, -0.3, b + len * p0, c, top, b + len * p1);
+      // the rain-rounded top of the stub
+      const cxm = axis === 'x' ? a + len * (p0 + p1) / 2 : (a + c) / 2, czm = axis === 'x' ? (b + d) / 2 : b + len * (p0 + p1) / 2;
+      sink.cylinder(MUD, [cxm, top, czm], 'y', 0.35, Math.min(len / pieces, t) * 0.6, 7, { decor: true }, 0.08);
+    }
+  }
+  sink.cylinder(KERSHEF_OLD, [(x0 + x1) / 2, -0.2, (z0 + z1) / 2], 'y', 0.9, Math.min(x1 - x0, z1 - z0) * 0.32, 8, { decor: true }, Math.min(x1 - x0, z1 - z0) * 0.1, true, look());
+  return sink.finish();
+};
+
+export const SIWA_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+  adobe: kershefHouse,
+  caravanserai: shaliCluster,
+  compound: shaliCluster,
+  compoundSouk: shaliCluster,
+  marketRow: siwaShops,
+  minaret: shaliMinaret,
+  tower: siwaTower,
+  bathhouse: ainSpring,
+  ruin: shaliRuin,
+  // the market plot: the ksar's palm-rib stall, shared
+  market: soukStall,
+});
+
+export const SIWA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
+  id: 'siwa',
+  region: 'Siwa, Egypt\'s Western Desert: the kershef houses of old Shali heaped on their hill, palm-trunk beams, the tapering mud minaret, the springs in their stone rims, the souk under palm-rib mats',
+  surfaces: {
+    roof: { kind: 'canal', tint: [0.66, 0.6, 0.52] },
+    stone: { kind: 'rubble', tint: [0.7, 0.66, 0.58] },
+    // (the kershef is the render canvas, toned: the plaster photo set read as speckled grey granite on the walls, h4)
+    sourced: { plaster: false, wood: true },
+    tones: {
+      // kershef: the salt-crusted mud's warm grey-beige; the older walls darker; limewash
+      // (round 2, the gauntlet's wave 125: "kershef tiling noise" — the canvas's lumps at their full contrast read as a
+      // dark speckle tiled over every wall; the salt mud keeps half of it, a shade warmer)
+      plaster: (_h, s, l) => [0.084, Math.min(1, s * 0.3 + 0.12), Math.min(1, l * 0.5 + 0.36)],
+      plaster2: (_h, s, l) => [0.082, Math.min(1, s * 0.26 + 0.1), Math.min(1, l * 0.48 + 0.3)],
+      plaster3: (_h, s, l) => [0.11, Math.min(1, s * 0.12), Math.min(1, l * 1.3 + 0.16)],
+    },
+  },
+  builders: SIWA_BUILDERS,
+  // a hyper-arid oasis: no moss; the salt draws a pale crust up the wall foot rather than a damp stain
+  weather: {
+    plaster: [[1, 1, 1], [1.05, 1.04, 1.02], [0.94, 0.92, 0.88], [0.9, 0.87, 0.82], [1.08, 1.07, 1.05]],
+    stone: [[1, 1, 1], [0.95, 0.94, 0.92]],
+    roof: [[1, 1, 1], [0.9, 0.87, 0.83]],
+    damp: 0.12, moss: 0,
+  },
+  wear: 0.2,
+  // the courtyards: palm-rib (jerid) fences round each house's court (yards.ts; round 2, wave 125: the generic adobe wall
+  // read as "salmon-pink stucco with fired-brick coping")
+  yard: { kinds: ['adobe'], fence: 'fencewattle', gate: null, shed: null, garden: false },
 });

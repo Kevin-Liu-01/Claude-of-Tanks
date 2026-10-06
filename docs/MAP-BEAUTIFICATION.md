@@ -117,7 +117,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Mangrove Reach | Tidal islands, exposed mud, root thickets and raised access; avoid generic grassy countryside |
 | Monsoon Ridge | Humid jungle ridges and weathered valley settlement; darker understory and muddy drainage |
 | Sirocco Wadi | Dry watercourse organizes settlement and palms; windward sand against eroded rock |
-| Sunscar Oasis | Spring-centered grove, caravan compounds, wet bank and bare surrounding dunes |
+| Sunscar Oasis | Siwa: a spring-centred grove and palm gardens, wet banks and bare surrounding dunes; old Shali's kershef houses, the mud minaret and the springs in the `siwa` variant of the ksar kit |
 | Redrock Divide | Stratified escarpments, talus and logistics outpost; controlled arid palette |
 | Titan Gorge | Immense canyon crossroads, branching dry channels and ledges; do not grass over every rock shelf |
 | Copper Mesa Mine | Extraction benches, haul roads and ore-loading courts; human cuts distinct from natural cliffs |
