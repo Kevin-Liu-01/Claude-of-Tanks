@@ -269,7 +269,10 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
       let shell;
       const movement: CollisionRecord[] = [];
       if (built.movement?.length) {
-        // a compound holds at most 64 parts (server/collisionManifestCodec.ts): a long bridge's record in runs of 64
+        // a compound holds at most 64 parts (server/collisionManifestCodec.ts): a long bridge's record in runs of 64.
+        // (A set-piece bridge's roadway stays a 'structure', not a 'bridge' record as the map kits' are: the bots read a
+        // 'bridge' record as a deck their route planner knows from the terrain's bridgeDecks and drive into it, and a
+        // set piece's deck is no terrain deck — they steer round it, the players drive over it.)
         for (let i = 0; i < built.movement.length; i += MOVEMENT_PART_LIMIT) {
           movement.push(movementRecord(built.movement.slice(i, i + MOVEMENT_PART_LIMIT), placement.x, baseY, placement.z, yaw));
         }
