@@ -22,6 +22,17 @@
 // objectives stand on the valley floor: the west river meadow below its mill, the village square and the east river
 // meadow. Three lanes cross the slopes: the west farm lane, the main road, and the ridge lane past the estate.
 
+// 2026-10-05 (the map-revival lane; the owner: "make sure all maps look completely new and revitalized like verdant";
+// gauntlet wave 116: half-timbered houses "standing alone in meadows, with no courtyards and no river", the crossroads a
+// hard square of bare dirt): the village is rebuilt as the Hünfeld basin's villages stand, a Haufendorf of Hofreiten —
+// closed farm courts packed along the four lanes out of the crossing, each the kit's farmhouse gable-on to the lane, its
+// barn across the back of the court and in some a granary on the far side, the court walled on the lane in sandstone
+// with the gate in the wall (maps/regional/yards.ts planCourt, the Hessian kit's court flag), the kitchen garden and
+// woodshed behind the barn; smallholders' cottages, the school, the inn and the shop between them. The roadside builder
+// places nothing (its houses stood alone in the meadows); the village ground lies in plots — yards, gardens and paddocks
+// running back from the lanes (terrain villageWear). The Rathaus and the church stand on the square (the landmarks lane:
+// (-34, 40) yaw 180 and (34, -40) yaw 0, each up to 24 x 16 m; the courts keep 8 m off both and off the square's 33 m).
+
 const rot = ([x, z]: readonly [number, number]): [number, number] => [-x, -z];
 const both = (path: readonly (readonly [number, number])[]): [number, number][][] => [
   path.map(([x, z]) => [x, z] as [number, number]), path.map(rot),
@@ -42,6 +53,67 @@ function valleyTrough(): { kind: string; x: number; z: number; length: number; w
   return out;
 }
 
+// The village (2026-10-05): the lanes out of the crossing as arms from the square (the main road south, the valley road
+// west; the north and east arms are their rotation).
+const SOUTH_ARM = [[0, 0], [8, -60], [24, -140]] as const;
+const WEST_ARM = [[0, 0], [-60, 4], [-120, 10], [-200, 22]] as const;
+type Site = { structure: string; x: number; z: number; yawDeg: number };
+/** A point `s` metres out along an arm, with the arm's unit direction there. */
+function along(arm: readonly (readonly [number, number])[], s: number): [number, number, number, number] {
+  let acc = 0;
+  for (let i = 1; i < arm.length; i++) {
+    const [ax, az] = arm[i - 1], [bx, bz] = arm[i];
+    const len = Math.hypot(bx - ax, bz - az);
+    if (acc + len >= s || i === arm.length - 1) {
+      const t = (s - acc) / len;
+      return [ax + (bx - ax) * t, az + (bz - az) * t, (bx - ax) / len, (bz - az) / len];
+    }
+    acc += len;
+  }
+  return [0, 0, 1, 0];
+}
+const round1 = (v: number) => Math.round(v * 10) / 10;
+/**
+ * A Hofreite on one side of an arm (`side` +1 / -1: the arm's left or right hand), its farmhouse's front gable 8.3 m off
+ * the lane's line. The kit's farmhouse carries its stable wing on its local +x flank, which faces back along the arm on
+ * the +1 side and out along it on the -1 side; the court lies past the wing (10 m across), the barn behind the court
+ * (its gate gable toward the lane, like the house), and in a 'U' court the granary on the court's far side. planCourt
+ * walls the court on the lane, the gate in the wall.
+ */
+function hofreite(arm: readonly (readonly [number, number])[], s: number, side: 1 | -1, kind: 'L' | 'U'): Site[] {
+  const [x, z, tx, tz] = along(arm, s);
+  const nx = -tz * side, nz = tx * side, w = -side, depth = 10, n0 = 8.3 + 5.35;
+  const yawDeg = round1(Math.atan2(-nx, -nz) * 180 / Math.PI);
+  const at = (a: number, n: number) => ({ x: round1(x + tx * a + nx * n), z: round1(z + tz * a + nz * n) });
+  const sites: Site[] = [
+    { structure: 'farmhouse', ...at(0, n0), yawDeg },
+    { structure: 'barn', ...at(w * (8.8 + depth / 2), n0 + 5.2 + 0.6 + 6.4), yawDeg },
+  ];
+  if (kind === 'U') sites.push({ structure: 'granary', ...at(w * (8.8 + depth + 0.6 + 2.1), n0 + 5.2 - 3.2), yawDeg });
+  return sites;
+}
+/** One building on an arm's side, its front `setback` m off the lane's line (its depth `d` behind that). */
+function lane(arm: readonly (readonly [number, number])[], s: number, side: 1 | -1, structure: string, d: number, setback = 8): Site {
+  const [x, z, tx, tz] = along(arm, s);
+  const nx = -tz * side, nz = tx * side, n = setback + d / 2;
+  return { structure, x: round1(x + nx * n), z: round1(z + nz * n), yawDeg: round1(Math.atan2(-nx, -nz) * 180 / Math.PI) };
+}
+// One half of the village (the other is its rotation): on the main road south, two courts in a row on its west side
+// opening south and one past the church on its east side opening toward the square; on the valley road west, two courts
+// in a row on its south side opening toward the square and one past the Rathaus on its north side opening west; the
+// smallholders' cottages and the shop at the arms' ends; the school on the square's south-west corner (the inn is its
+// rotation, on the north-east).
+const VILLAGE_HALF: Site[] = [
+  ...hofreite(SOUTH_ARM, 44, -1, 'L'), ...hofreite(SOUTH_ARM, 71.5, -1, 'U'), ...hofreite(SOUTH_ARM, 90, 1, 'L'),
+  ...hofreite(WEST_ARM, 62, 1, 'U'), ...hofreite(WEST_ARM, 89.5, 1, 'L'), ...hofreite(WEST_ARM, 66, -1, 'U'),
+  lane(SOUTH_ARM, 104, -1, 'cottage', 8.4), lane(SOUTH_ARM, 114, 1, 'cornershop', 10),
+  lane(WEST_ARM, 116, 1, 'cottage', 8.4), lane(WEST_ARM, 95, -1, 'cottage', 8.4),
+  { structure: 'schoolhouse', x: -36, z: -50, yawDeg: 90 },
+];
+const rotateSite = (site: Site): Site => ({
+  structure: site.structure === 'schoolhouse' ? 'tavern' : site.structure, x: -site.x, z: -site.z, yawDeg: site.yawDeg + 180,
+});
+
 export default {
   id: 'frontier',
   name: 'Frontier Basin',
@@ -54,6 +126,9 @@ export default {
     marshes: [],
     // The village: one graded rect around the crossroads.
     village: { x0: -128, x1: 128, z0: -86, z1: 86, cx: 0, cz: 0, feather: 44, flatten: 0.86, relief: 0.14 },
+    // 2026-10-05 (the map-revival lane): the village ground in its plots — yards, kitchen gardens and paddocks running
+    // back from the lanes (terrain.ts createVillagePlotWear), not wear patches round lone houses
+    villageWear: 'plots',
     // Authored paths stop inside the square; the endpoint completion grades each exit through the rim
     // (maps/roadEndpoints.ts).
     roads: { paths: [
@@ -128,9 +203,10 @@ export default {
   props: {
     // regional-buildings lane: the Hessian Fachwerk kit (maps/regional/hessian.ts)
     architecture: 'hessian',
-    plan: ['farmhouse', 'tavern', 'barn', 'schoolhouse', 'cottage', 'granary', 'depot', 'cottage', 'farmhouse',
-      'woodshed', 'cornershop', 'barn', 'cottage', 'ruin', 'farmhouse', 'depot', 'cottage', 'granary', 'barn',
-      'woodshed', 'cottage', 'ruin'],
+    // 2026-10-05 (the map-revival lane): the roadside builder places nothing — the village is authored (VILLAGE_HALF)
+    plan: [],
+    // the courts' buildings stand a few metres apart (the planned-site spacing was the roadside builder's 9 m)
+    spacingPad: 2,
     // The landmarks: the church on the square, the two mills on the river, the farm estates on the slopes.
     plannedSites: [
       { structure: 'church', x: -34, z: 40, yawDeg: 180 }, { structure: 'chapel', x: 34, z: -40, yawDeg: 0 },
@@ -144,6 +220,8 @@ export default {
       // the farmsteads by the ridge lanes
       { structure: 'farmhouse', x: 202, z: -136, yawDeg: 0 }, { structure: 'barn', x: 250, z: -70, yawDeg: 90 },
       { structure: 'farmhouse', x: -214, z: 112, yawDeg: 180 }, { structure: 'barn', x: -238, z: 88, yawDeg: 270 },
+      // the village's courts, cottages, school, inn and shop (2026-10-05; above)
+      ...VILLAGE_HALF, ...VILLAGE_HALF.map(rotateSite),
     ],
     destructibleBuildings: ['fieldhut', 'huntingblind', 'commandtent', 'checkpointhut'],
     tacticalBeats: [

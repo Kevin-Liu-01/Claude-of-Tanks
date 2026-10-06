@@ -4,7 +4,7 @@
 // skipping what does not fit; the beds are dressing.
 import assert from 'node:assert/strict';
 import { ROAD_FRONTAGE_CLEARANCE } from '../../roadBuildingFrontage.ts';
-import { gardenParts, planYard, yardKeepOut, YARD_SHED } from './yards.ts';
+import { gardenParts, planCourt, planYard, yardBackSide, yardKeepOut, YARD_SHED } from './yards.ts';
 import { streamFrom } from './geometry.ts';
 
 const STYLE = { kinds: ['cottage'], fence: 'fencepicket', gate: 'gate', shed: 'woodshed', garden: true };
@@ -79,5 +79,40 @@ for (const list of Object.values(bed)) for (const g of list) {
 }
 assert.ok(tris > 20 && tris < 1200, `a bed is a few hundred triangles (${tris})`);
 assert.ok(minY <= -0.3, 'the raised bed reaches down to the ground on its low side');
+// the map-revival lane (2026-10-05, Frontier's Hofreiten): a farmhouse gable-on to the road (its front, local +z, to the
+// road at x = 0) with its barn behind the court on its +x flank keeps the court between them: walled on the street end
+// with the gate, the court as deep as the barn reaches, nothing inside the barn's plot, no outbuilding or beds; a
+// neighbour's barn (nearer a farmhouse of its own) is not its partner; a plain house keeps no court; the barn's back is
+// the side away from the road
+const COURT = { kinds: ['farmhouse'], partners: ['barn', 'granary'], reach: 16, wall: 'wallstone', gate: 'gate' };
+const farm = { x: 13.6, z: 20, w: 15.5, d: 10.7, rot: -Math.PI / 2, kind: 'farmhouse' };   // front (+z local) toward -x
+const local = (p, lx, lz) => { const c = Math.cos(p.rot), s = Math.sin(p.rot); return [p.x + lx * c + lz * s, p.z - lx * s + lz * c]; };
+const [bx, bz] = local(farm, 13.8, -12.2);
+const barn = { x: bx, z: bz, w: 8.6, d: 12.8, rot: farm.rot, kind: 'barn' };
+const farmBody = { minX: -3.8, maxX: 8.5, minZ: -5.2, maxZ: 5.2 };
+const courtWorld = world({ plots: [farm, barn] });
+const court = planCourt(farm, courtWorld, COURT, 3.0, farmBody);
+assert.ok(court, 'the farmhouse keeps a court with its barn');
+assert.equal(court.partner, barn, 'the court belongs to its own barn');
+assert.equal(court.plan.side, '+x', 'the court lies on the wing flank, toward the barn');
+assert.ok(court.plan.depth >= 6 && court.plan.depth <= 10, `the court reaches the barn's far side at most (${court.plan.depth})`);
+assert.ok(court.plan.gate, 'the street end carries the gate');
+assert.ok(!court.plan.shed && !court.plan.garden, 'no outbuilding or beds in the court');
+const gateRoad = ground.roadDist(court.plan.gate.x, court.plan.gate.z);
+assert.ok(gateRoad >= ROAD_FRONTAGE_CLEARANCE && gateRoad < 12, `the gate stands in the street end (${gateRoad.toFixed(1)} m off the road)`);
+for (const m of court.plan.modules) {
+  const [lx, lz] = toLocal(barn, m.x, m.z);
+  assert.ok(Math.abs(lx) > barn.w / 2 || Math.abs(lz) > barn.d / 2, 'no wall module on the barn');
+}
+const [nx, nz] = local(farm, -40, 0);
+const neighbour = { ...farm, x: nx, z: nz };
+const shared = planCourt(neighbour, world({ plots: [farm, barn, neighbour] }), COURT, 3.0, farmBody);
+assert.equal(shared, null, "a neighbour's barn is not this farmhouse's partner");
+assert.equal(planCourt(house, courtWorld, COURT, 3.0), null, 'a house with no partner on a flank keeps no court');
+assert.equal(yardBackSide(barn, courtWorld), '-z', "the barn's back is its side away from the road");
+const behind = planYard(barn, courtWorld, STYLE, streamFrom(4), 2.0, undefined, yardBackSide(barn, courtWorld));
+if (behind) assert.equal(behind.side, '-z', 'the garden behind the barn keeps to its back');
+
 console.log(`yards.selftest: ${plan.side} yard ${plan.depth} m deep, ${plan.modules.length} modules, gate, outbuilding and beds; `
-  + `spawn pad ${moved ? `moves it to ${moved.side}` : 'leaves no yard'}; crowded house without one; beds ${tris} triangles`);
+  + `spawn pad ${moved ? `moves it to ${moved.side}` : 'leaves no yard'}; crowded house without one; beds ${tris} triangles; `
+  + `court ${court.plan.depth} m to its barn, ${court.plan.modules.length} wall modules and the gate`);

@@ -143,7 +143,7 @@ import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildC
 // regional-buildings lane (2026-10-03): the map's regional architecture kit replaces each placed building's geometry
 // after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
 import { buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
-import { YARD_SHED, gardenParts, planYard, yardKeepOut, type YardWorld } from './maps/regional/yards.ts';
+import { YARD_SHED, gardenParts, planCourt, planYard, yardBackSide, yardKeepOut, type YardPlan, type YardPlot, type YardWorld } from './maps/regional/yards.ts';
 import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
 import type { RegionalBuildContext } from './maps/regional/types.ts';
 import { makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
@@ -7091,7 +7091,7 @@ ${snowCap ? `
     const fenceMeta = resolveDestructibleMeta(destructibleContext, yard.fence);
     const seg = fenceMeta.wall ? WALL_SEG : FENCE_SEG, sink = fenceMeta.wall ? 0.1 : 0.06;
     // the stage's counts on the props group (receipts and captures read them)
-    const stats = { houses: houses.length, yards: 0, streetYards: 0, modules: 0, gates: 0, sheds: 0, gardens: 0 };
+    const stats = { houses: houses.length, yards: 0, streetYards: 0, modules: 0, gates: 0, sheds: 0, gardens: 0, courts: 0 };
     group.userData.regionalYards = stats;
     // a yard's ground grows no crop, tall grass or litter (map.ts holds these holes with the scenery's): discs over the
     // enclosure, from the house wall to its outer run (the close yard pairs of 2026-10-03: a Hessian farmyard full of
@@ -7100,9 +7100,9 @@ ${snowCap ? `
     group.userData.regionalYardHoles = holes;
     /** each yard's enclosure in its house's frame (the sown rows stop at it, trimCropRowsInYards) */
     const rects: Array<{ x: number; z: number; c: number; s: number; x0: number; x1: number; z0: number; z1: number }> = [];
-    for (const house of houses) {
-      const plan = planYard(house, world, yard, yrngYard, seg, regionalBodies.get(house));
-      if (!plan) continue;
+    // one yard plan placed round its anchor plot: its modules (`fenceKind`, `pitch` apart, sunk `drop`), the gate, the
+    // outbuilding the kit builds and the beds, each where the plan put it (the stream's draws in their old order)
+    const placePlan = (house: YardPlot, plan: YardPlan, fenceKind: string, gateKind: string | null, pitch: number, drop: number): void => {
       stats.yards++;
       {
         const c = Math.cos(house.rot), s = Math.sin(house.rot);
@@ -7123,13 +7123,13 @@ ${snowCap ? `
       }
       if (plan.street) stats.streetYards++;
       stats.modules += plan.modules.length;
-      if (plan.gate && yard.gate) stats.gates++;
+      if (plan.gate && gateKind) stats.gates++;
       for (const m of plan.modules) {
-        const ya = heightField.getHeightAt(m.x - Math.sin(m.yaw) * seg / 2, m.z - Math.cos(m.yaw) * seg / 2);
-        const yb = heightField.getHeightAt(m.x + Math.sin(m.yaw) * seg / 2, m.z + Math.cos(m.yaw) * seg / 2);
-        addDestructible(yard.fence, m.x, Math.min(ya, yb) - sink, m.z, m.yaw, 0.96 + yrngYard() * 0.08, Math.atan2(yb - ya, seg) * 0.85);
+        const ya = heightField.getHeightAt(m.x - Math.sin(m.yaw) * pitch / 2, m.z - Math.cos(m.yaw) * pitch / 2);
+        const yb = heightField.getHeightAt(m.x + Math.sin(m.yaw) * pitch / 2, m.z + Math.cos(m.yaw) * pitch / 2);
+        addDestructible(fenceKind, m.x, Math.min(ya, yb) - drop, m.z, m.yaw, 0.96 + yrngYard() * 0.08, Math.atan2(yb - ya, pitch) * 0.85);
       }
-      if (plan.gate && yard.gate) addDestructible(yard.gate, plan.gate.x, heightField.getHeightAt(plan.gate.x, plan.gate.z) - 0.06, plan.gate.z, plan.gate.yaw, 1);
+      if (plan.gate && gateKind) addDestructible(gateKind, plan.gate.x, heightField.getHeightAt(plan.gate.x, plan.gate.z) - 0.06, plan.gate.z, plan.gate.yaw, 1);
       if (plan.shed && yard.shed && style.builders[yard.shed]) {
         const { x, z, yaw, w: sw, d: sd } = plan.shed;
         const fit = groundFit(x, z, sw, sd, yaw);
@@ -7176,6 +7176,37 @@ ${snowCap ? `
           stats.gardens++;
         }
       }
+    };
+    // the map-revival lane (2026-10-05, Frontier's Hofreiten): the courts (the kit's court flag). A farmhouse facing a
+    // barn or granary of its own court keeps the court between them, walled on the street with the gate in the wall
+    // (yards.ts planCourt); its yard (fence, outbuilding, beds) then stands behind the court's barn. Without the flag
+    // every house plans and places its yard exactly as before.
+    const court = yard.court;
+    const courtMeta = court ? resolveDestructibleMeta(destructibleContext, court.wall) : null;
+    const courtSeg = courtMeta?.wall ? WALL_SEG : FENCE_SEG, courtSink = courtMeta?.wall ? 0.1 : 0.06;
+    // every court first (their ground before any garden's), then the gardens behind the courts' barns, then the yards
+    const courted = new Set<YardPlot>();
+    const barns: YardPlot[] = [];
+    if (court) {
+      for (const house of houses) {
+        if (!house.kind || !court.kinds.includes(house.kind)) continue;
+        const planned = planCourt(house, world, court, courtSeg, regionalBodies.get(house));
+        if (!planned) continue;
+        placePlan(house, planned.plan, court.wall, court.gate, courtSeg, courtSink);
+        stats.courts++;
+        courted.add(house);
+        barns.push(planned.partner);
+      }
+      for (const barn of barns) {
+        const behind = planYard(barn, world, yard, yrngYard, seg, regionalBodies.get(barn), yardBackSide(barn, world));
+        if (behind) placePlan(barn, behind, yard.fence, yard.gate, seg, sink);
+      }
+    }
+    for (const house of houses) {
+      if (courted.has(house)) continue;
+      const plan = planYard(house, world, yard, yrngYard, seg, regionalBodies.get(house));
+      if (!plan) continue;
+      placePlan(house, plan, yard.fence, yard.gate, seg, sink);
     }
     trimCropRowsInYards(rects);
   }

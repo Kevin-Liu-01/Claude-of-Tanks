@@ -774,7 +774,11 @@ export const HESSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
   },
   wear: 0.22,
   // the farmyards: a picket fence round a kitchen garden and the woodshed, a gate to the lane (yards.ts)
-  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencepicket', gate: 'gate', shed: 'woodshed', shedSize: [4.2, 5.1], garden: true },
+  // the map-revival lane (2026-10-05, Frontier's Hofreiten; the coordinator approved the flag): a farmhouse whose flank
+  // faces its own barn or granary keeps the court between them (yards.ts planCourt) — the sandstone wall on the lane with
+  // the gate in it, the buildings round the rest — and its kitchen garden and woodshed stand behind the barn
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencepicket', gate: 'gate', shed: 'woodshed', shedSize: [4.2, 5.1], garden: true,
+    court: { kinds: ['farmhouse'], partners: ['barn', 'granary'], reach: 16, wall: 'wallstone', gate: 'gate' } },
 });
 
 export { hashSeed };

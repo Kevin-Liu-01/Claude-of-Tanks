@@ -67,6 +67,21 @@ export interface ArchitectureStyle {
  * freest side, enclosed by a run of the fence or wall destructible with a gate, an outbuilding in a far corner and
  * kitchen-garden beds, each only where it clears the roads, the other plots, the objectives and the spawn pads.
  */
+/** The map-revival lane (2026-10-05, Frontier's Hofreiten): the court a farmhouse keeps with its own outbuildings
+ * (yards.ts planCourt). */
+export interface YardCourtStyle {
+  /** the plan kinds that keep a court when one of their flanks faces a partner */
+  kinds: readonly string[];
+  /** the plot kinds that close a court (a barn behind it, a granary across it) */
+  partners: readonly string[];
+  /** the farthest the court runs out from the house wall, metres */
+  reach: number;
+  /** the destructible kind of the court's walls (the street end and any run no building closes) */
+  wall: string;
+  /** the destructible hung in the street end's gateway (the Hoftor), or none */
+  gate: string | null;
+}
+
 export interface YardStyle {
   /** the plan kinds that keep a yard */
   kinds: readonly string[];
@@ -81,6 +96,8 @@ export interface YardStyle {
   shedSize?: readonly [number, number];
   /** kitchen-garden beds in the yard */
   garden: boolean;
+  /** courts for the farmhouses that keep one (their yards then stand behind the court's barn); absent: none */
+  court?: YardCourtStyle;
 }
 
 export type RegionalGeometryBuckets = Record<string, THREE.BufferGeometry[]>;
