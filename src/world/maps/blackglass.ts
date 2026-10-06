@@ -21,7 +21,9 @@ const CREEK_STATIONS = [
   { x: -20, z: 105 }, { x: 25, z: 104 },
   { x: 69.7, z: 100, r: 10, dip: 0.7, crossing: 'bridge' as const }, // road 0's bridge (the north-east diagonal)
   { x: 120, z: 96 }, { x: 165, z: 95 },
-  { x: 210.2, z: 95, r: 10, dip: 0.7, crossing: 'bridge' as const }, // road 5's bridge
+  // road 5's bridge: its deck stands 1.5 m over the water, so the south bank's road climbs onto it (the crossing sweep's
+  // hull stopped against a deck laid level with the bank's falling road)
+  { x: 210.2, z: 95, r: 10, dip: 0.7, crossing: 'bridge' as const, deckClearM: 1.5 },
   { x: 300, z: 95 }, { x: 400, z: 92 }, { x: 512, z: 90 },
 ].map((m) => ({ r: 17, dip: 1.4, ...(m.crossing ? { deckClearM: 0.6 } : {}), ...m }));
 const BRIDGES = CREEK_STATIONS.filter((station) => station.crossing === 'bridge');
