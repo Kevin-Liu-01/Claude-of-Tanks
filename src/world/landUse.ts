@@ -228,7 +228,9 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   // trace over the snowpack (strength 0.3), the furrows and the stubble grey and straw through a thin cover, the hay
   // meadows white; a track along some of the strips' long lines, a few balks grown up with scrub
   winter: {
-    strength: 0.14, heading: 0.2, blockU: 240, blockV: 30, maxSplit: 2, marginM: 1.2, trackShare: 0.25, hedgeShare: 0.12,
+    // (round 3, gauntlet wave 128: "an empty, dead-flat, uniformly white plain with no field strips ... or tracks") the
+    // strips' traces back over half way (round 2 had taken them to 0.14), more of their long lines tracked and grown up
+    strength: 0.26, heading: 0.2, blockU: 240, blockV: 30, maxSplit: 2, marginM: 1.2, trackShare: 0.38, hedgeShare: 0.22,
     warpM: 14, region: 'podhale', salt: 107,
   },
   // Delta (the Jamuna chars): small paddies between earth bunds, a few raised paths, palm lines on some bunds (~60°)

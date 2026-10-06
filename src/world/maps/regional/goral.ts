@@ -86,7 +86,11 @@ function dialect(st: GoralState): HouseDialect {
 function roofSnow(sink: PartSink, frame: HouseFrame): void {
   const roof = frame.spec.roof;
   if (roof.kind === 'flat') return;
-  const snow: RoofSpec = { ...roof, bucket: 'plaster', thickness: 0.16, decor: true, ridge: null };
+  // (round 3, gauntlet wave 128: "only a thin beige dusting ... a Podhale January would put a thick, overhanging snow
+  // load on these steep roofs"): a third of a metre of snow, run out past the shingles' eaves and verges as a cornice;
+  // its colour is the snow's own (the kit's plaster tone, below), not the slope mask's whitening, which a 45–55° roof
+  // only half takes
+  const snow: RoofSpec = { ...roof, bucket: 'plaster', thickness: 0.32, eave: roof.eave + 0.16, verge: roof.verge + 0.1, decor: true, ridge: null };
   const lift = roof.thickness / Math.cos(roof.pitchDeg * Math.PI / 180) + 0.012;
   emitRoof(sink, roofGeometry(frame.spec.w, frame.spec.d, frame.eaveY + lift, snow), snow);
 }
@@ -549,7 +553,9 @@ export const GORAL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
     sourced: { plaster: false, wood: true },
     tones: {
       // the stacks' whitewash
-      plaster: (_h, s, l) => [0.1, Math.min(1, s * 0.2), Math.min(1, l * 1.15 + 0.1)],
+      // (round 3) and the snow on the roofs (roofSnow): the plaster bucket draws both, so its tone is the snowpack's
+      // (the terrain's own: hue 0.575, saturation 0.03), not a cream
+      plaster: (_h, _s, l) => [0.575, 0.03, Math.min(1, 0.6 + l * 0.3)],
       // the logs: hewn spruce darkened by the smoke and the weather, honey where it is newer
       // (round 2, wave 110b: "clean mid-brown") silvered and darkened by sixty winters, a few newer
       wood: (h, s, l) => [h, Math.min(1, s * 0.6), Math.min(1, l * 0.64)],
@@ -557,7 +563,7 @@ export const GORAL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   },
   builders: GORAL_BUILDERS,
   weather: {
-    plaster: [[1, 1, 1], [0.98, 0.97, 0.95], [0.95, 0.95, 0.94], [1.0, 0.98, 0.96]],
+    plaster: [[1, 1, 1], [0.98, 0.98, 0.99], [0.96, 0.97, 0.98], [1, 1, 1]],
     stone: [[1, 1, 1], [0.95, 0.94, 0.92], [1.03, 1.01, 0.98], [0.9, 0.9, 0.89]],
     roof: [[1, 1, 1], [0.86, 0.84, 0.82], [1.08, 1.04, 0.98], [0.78, 0.77, 0.76]],
     damp: 0.7, moss: 0.55, mossTint: [0.9, 0.95, 0.8],
