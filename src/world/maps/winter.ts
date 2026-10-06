@@ -35,6 +35,21 @@
 // yards are plank-fenced with their woodsheds. Every building stands where it stood.
 
 import { gully, talusFan } from './geology.ts';
+import { createMarshChannel } from './marshChannel.ts';
+
+// The Biały Dunajec frozen in its bed (map revival lane 2, round 3; gauntlet wave 110b: "a chain of ponds"): one ice
+// ribbon down the valley floor through the old pools' centres, a pool (r 21) at each and a run (r 15) between them,
+// the bed 0.6 m under its banks. Under frozenMarshes the marsh chain is the ice sheet; a road crosses dry (the water
+// mask is zeroed within 14 m of its line), so the Bystra crossing and the sawmill lateral keep their causeways, and
+// a hull may cross the ice anywhere else as it could the pools.
+const RIVER_STATIONS = [
+  { x: -40, z: -466 }, { x: -36, z: -434, r: 21 }, { x: -46, z: -387 }, { x: -44, z: -340, r: 21 }, { x: -32, z: -293 },
+  { x: -24, z: -246, r: 21 }, { x: -22, z: -198 }, { x: -16, z: -150, r: 21 }, { x: -17, z: -105 },
+  { x: -14, z: -60, r: 20 }, { x: 0, z: -18 }, { x: 18, z: 26 }, { x: 38, z: 70, r: 21 }, { x: 50, z: 110 },
+  { x: 54, z: 150, r: 21 }, { x: 50, z: 206 }, { x: 44, z: 262, r: 21 }, { x: 32, z: 310 }, { x: 18, z: 356, r: 21 },
+  { x: -6, z: 392 }, { x: -36, z: 424, r: 20 }, { x: -42, z: 458 },
+].map((m) => ({ r: 15, dip: 0.6, ...m }));
+const RIVER = createMarshChannel(RIVER_STATIONS, 0.5).map((station) => ({ ...station, radii: [0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96] as const }));
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
@@ -48,30 +63,9 @@ export default {
     microScale: 0.9,
     rimH: 25,
     frozenMarshes: true,
-    // no soggy marsh bowls — everything frozen reads as a crisp ice sheet
-    marshes: [],
-    // The frozen river: a beaded chain of frozen ponds from the south edge to
-    // the north edge, each sheet just under its lowest bank (depth). Centres
-    // sit 92-112 m apart so no pond's bank band (1.32 r) reaches its
-    // neighbour's sheet: two ponds' auto levels can differ by metres between
-    // seeds and an overlap would turn that step into a ramp INSIDE the ice
-    // (the round-48 berm audit caught exactly that); the steps now fall in
-    // the short snow necks between ponds. Two wider necks carry the crossings
-    // (the Bystra crossing at z -30..32, the sawmill lateral at z 184..224).
-    lakes: [
-      { x: -36, z: -434, r: 34, depth: 0.5 },
-      { x: -44, z: -340, r: 38, depth: 0.5 },
-      { x: -24, z: -246, r: 40, depth: 0.55 },
-      { x: -16, z: -150, r: 38, depth: 0.5 },
-      { x: -14, z: -60, r: 30, depth: 0.45 },
-      // Bystra neck
-      { x: 38, z: 70, r: 40, depth: 0.55 },
-      { x: 54, z: 150, r: 36, depth: 0.5 },
-      // sawmill neck
-      { x: 44, z: 262, r: 40, depth: 0.55 },
-      { x: 18, z: 356, r: 42, depth: 0.55 },
-      { x: -36, z: 424, r: 30, depth: 0.45 },
-    ],
+    // the river is the marsh chain, frozen: one ice ribbon down the valley (round 3: it was ten separate pools)
+    marshes: RIVER,
+    lakes: [],
     // The linear terrace village: a Carpathian street village along the
     // valley road on the west bank, the sawmill yard at its north end. The
     // rect keeps clear of the river sheets (x1 -54) and of the ridge toe.
@@ -223,8 +217,8 @@ export default {
       // map revival lane 2 (2026-10-05): the riverside trees of the Biały Dunajec (alder and willow on the real banks;
       // aspen here, the set's nearest) along the south reach's east bank and the north reach's west bank, clear of the
       // two crossings
-      { x0: 22, z0: -330, x1: 30, z1: -196, gap: 12, jitter: 3, skip: 0.2, species: 'aspen' },
-      { x0: -34, z0: 300, x1: -44, z1: 384, gap: 12, jitter: 3, skip: 0.2, species: 'aspen' },
+      { x0: -4, z0: -330, x1: 6, z1: -196, gap: 12, jitter: 3, skip: 0.2, species: 'aspen' },
+      { x0: -4, z0: 300, x1: -20, z1: 384, gap: 12, jitter: 3, skip: 0.2, species: 'aspen' },
       // round 2 (wave 110b: "no trees around the settlement core"): the birches and spruces behind the houses on both
       // sides of the street village, broken where the yards and the lanes reach them
       { x0: -214, z0: -140, x1: -218, z1: 140, gap: 9, jitter: 4, skip: 0.32, species: 'birch' },
