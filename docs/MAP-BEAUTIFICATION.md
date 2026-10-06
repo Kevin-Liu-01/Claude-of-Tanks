@@ -7358,7 +7358,9 @@ now a hill town's, laid out with the spur's crest. The battlefield outside the t
   740 and no solid prop in a road.
 - *Pacing*:
   - 20 seeds (24000–24019): median 213 s, p10 149 s, minimum 147 s, none under 120 s, no timeouts;
-  - the PR head on the same seeds: 247 / 154 / 125.
+  - the PR head on the same seeds: 247 / 154 / 125;
+  - the full core run (132 matches) passes: median 190.8 s, p10 148 s, no timeouts; Steinburg's four ran 147 / 295 /
+    149 / 254 s. authoritativeBots passes.
 - *The census*: the shard is regenerated at [2535, 5616, 2259] (was [2690, 6647, 2254]).
 - *botRouteClearance*: the Steinburg courtyard case starts in the yard behind the north lane's rows, since the old
   courtyard is gone. Its comment names the receipt's conservatism: the edge-offset containment overstates a rotated
