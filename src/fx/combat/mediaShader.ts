@@ -290,10 +290,10 @@ void main() {
       float fineN = texture2D( uNoise, vUv * 2.6 + vMisc2.yx * 1.9 ).r; // hot puffs alone pay this read
     #endif
     float toward = clamp( dot( vUv - 0.5, vHeatDir.xy ) * 2.4 + 0.35 * vHeatDir.z, -1.0, 1.0 );
-    float structure = d * ( 0.55 + 0.45 * thick ) * ( 0.7 + 0.6 * fineN );
+    float structure = pow( d, 0.7 ) * ( 0.8 + 0.2 * thick ) * ( 0.7 + 0.6 * fineN );
     float h = clamp( heat * structure * ( 0.75 + 0.5 * toward ) * vMisc2.z, 0.0, 1.0 );
     vec3 glow = blackbody( h ) * ( 9.0 * h * h * sqrt( h ) ) * vMisc2.w * uGrade.y;
-    col = col * ( 1.0 - 0.95 * smoothstep( 0.22, 0.75, h ) ) + glow;
+    col = col * ( 1.0 - smoothstep( 0.12, 0.45, h ) ) + glow;
   }
   ${FOG_FACTOR_F}
   #ifdef USE_FOG

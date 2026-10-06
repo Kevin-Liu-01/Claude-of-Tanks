@@ -96,8 +96,8 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
       const v = (14 + R() * 12) * Math.sqrt(s);
       const along = 0.5 + R() * 0.5;
       mPlace(m, pos.x + dir.x * along, pos.y + dir.y * along, pos.z + dir.z * along, birthOffset + R() * 0.02);
-      mMove(m, ex * v, ey * v + 0.3, ez * v, 6.2 + R() * 1.2, 0.32, 1, 0);
-      mShape(m, 2.6 + R() * 1.2, 0.8 * s, (3.4 + R() * 1.6) * s * dk, 2.8, 1, R() * TAU, (R() - 0.5) * 2.2);
+      mMove(m, ex * v, ey * v + 0.3, ez * v, 6.2 + R() * 1.2, 0.38, 1.1, 0);
+      mShape(m, 2.8 + R() * 1.2, 0.8 * s, (3.8 + R() * 1.6) * s * dk, 1.8, 1, R() * TAU, (R() - 0.5) * 2.2);
       mLook(m, CLOUD0, CLOUD1, (0.5 + R() * 0.12) * near, 0.02, 0.34, 0.62, 0.22, 0.025, 0.3, R());
       mHeat(m, 0.45, 16, 0.95, 0.9);
       C.earth(m);
@@ -112,8 +112,8 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
       mPlace(m, pos.x + dir.x * along + (_u.x * ca + _v.x * sa) * lat,
         pos.y + dir.y * along + (_u.y * ca + _v.y * sa) * lat,
         pos.z + dir.z * along + (_u.z * ca + _v.z * sa) * lat, birthOffset + along * 0.012);
-      mMove(m, dir.x * f, dir.y * f + 0.5, dir.z * f, 4.2, 0.3, 1, 0);
-      mShape(m, 2.6 + R() * 1.3, 0.9 * s, (3.2 + R() * 1.5) * s * dk, 2.2, 1, R() * TAU, (R() - 0.5) * 1.5);
+      mMove(m, dir.x * f, dir.y * f + 0.5, dir.z * f, 4.2, 0.36, 1.1, 0);
+      mShape(m, 2.8 + R() * 1.3, 0.9 * s, (3.6 + R() * 1.5) * s * dk, 1.6, 1, R() * TAU, (R() - 0.5) * 1.5);
       mLook(m, CLOUD0, CLOUD1, (0.44 + R() * 0.12) * near, 0.03, 0.32, 0.62, 0.22, 0.02, 0.3, R());
       mHeat(m, 0, 1, 0.5, 1);
       C.earth(m);
@@ -158,10 +158,11 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
     const fwd = 0.5 + 0.5 * (cx * fx + cz * fz);
     const v = (3 + R() * 5 + fwd * 6) * Math.sqrt(s);
     mPlace(m, aheadX + cx * 0.6, gy + 0.3, aheadZ + cz * 0.6, birthOffset + 0.012 + R() * 0.03);
-    mMove(m, cx * v, 0.45 + R() * 0.6, cz * v, 3.3, 0.18, 0.95, 0);
-    // a low sheet that rolls out along the ground (flat from its first frames, smeared along its run)
-    mShape(m, 3.0 + R() * 1.6, 1.2, (4.4 + R() * 2.2 + fwd * 2.2) * s * Math.sqrt(Math.min(1.5, dust)) * dk, 2.5,
-      0.4, R() * TAU, (R() - 0.5) * 0.6);
+    mMove(m, cx * v, 0.45 + R() * 0.6, cz * v, 3.3, 0.3, 1.15, 0);
+    // a low sheet that rolls out along the ground (flat from its first frames, smeared along its run), still
+    // spreading and drifting as the shot's dust settles
+    mShape(m, 3.2 + R() * 1.6, 1.2, (4.8 + R() * 2.2 + fwd * 2.2) * s * Math.sqrt(Math.min(1.5, dust)) * dk, 1.5,
+      0.5, R() * TAU, (R() - 0.5) * 0.6);
     mLook(m, L.dust0, L.dust1, (0.5 + R() * 0.16) * Math.min(1, dust), 0.03, 0.4, 0.55, 0.2, 0.06, L.scatter, R());
     mHeat(m, 0, 1, 0.5, 1);
     C.earth(m);
@@ -173,8 +174,8 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
     const side = (R() - 0.5) * 2.4;
     const px = aheadX + fx * ahead - fz * side, pz = aheadZ + fz * ahead + fx * side;
     mPlace(m, px, C.groundY(px, pz) + 0.45, pz, birthOffset + 0.03 + ahead * 0.01);
-    mMove(m, fx * (6 + R() * 6), 0.8 + R() * 0.8, fz * (6 + R() * 6), 2.8, 0.2, 1, 0);
-    mShape(m, 3 + R() * 1.4, 0.9, (3.6 + R() * 1.6) * s * dk, 2.2, 0.42, R() * TAU, (R() - 0.5) * 0.6);
+    mMove(m, fx * (6 + R() * 6), 0.8 + R() * 0.8, fz * (6 + R() * 6), 2.8, 0.3, 1.15, 0);
+    mShape(m, 3.2 + R() * 1.4, 0.9, (4.0 + R() * 1.6) * s * dk, 1.5, 0.5, R() * TAU, (R() - 0.5) * 0.6);
     mLook(m, L.dust0, L.dust1, (0.36 + R() * 0.12) * Math.min(1, dust), 0.05, 0.35, 0.6, 0.18, 0.02, L.scatter, R());
     mHeat(m, 0, 1, 0.5, 1);
     C.earth(m);

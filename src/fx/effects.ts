@@ -1736,9 +1736,11 @@ function* createFxSteps(
     // petals are short, warm licks around the forward cone — the critics' "cream-white petal-shaped flash"
     col3(0xffffff, _puffO.col0); col3(0xff9a3c, _puffO.col1);
     particles.emit('flash', _puffO);
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2 + 0.4 + rng() * 0.6;
-      const tilt = 1.02 + rng() * 0.3;
+    // three uneven licks, not four even blades (the critics' "pinwheel muzzle flash")
+    const a0 = rng() * Math.PI * 2;
+    for (let i = 0; i < 3; i++) {
+      const a = a0 + i * 2.1 + (rng() - 0.5) * 1.1;
+      const tilt = 0.9 + rng() * 0.45;
       const st2 = Math.sin(tilt), ct2 = Math.cos(tilt);
       _sv.set(
         dir.x * ct2 + (_v1.x * Math.cos(a) + _v2.x * Math.sin(a)) * st2,
@@ -1748,11 +1750,11 @@ function* createFxSteps(
       _jetO.pos[0] = pos.x + dir.x * 0.14; _jetO.pos[1] = pos.y + dir.y * 0.14; _jetO.pos[2] = pos.z + dir.z * 0.14;
       _jetO.axis[0] = _sv.x; _jetO.axis[1] = _sv.y; _jetO.axis[2] = _sv.z;
       _jetO.life = Math.max(0.07 + rng() * 0.03, -birthOffset * 1.5);
-      _jetO.width = 0.20 * s * axSize;
-      _jetO.len0 = 0.3 * s; _jetO.len1 = (0.6 + rng() * 0.3) * s;
+      _jetO.width = (0.15 + rng() * 0.08) * s * axSize;
+      _jetO.len0 = 0.22 * s; _jetO.len1 = (0.35 + rng() * 0.35) * s;
       _jetO.seed = rng();
       col3(0xffc77a, _jetO.col);
-      _jetO.alpha = 0.55 * axAtt; _jetO.birthOffset = birthOffset;
+      _jetO.alpha = (0.32 + rng() * 0.18) * axAtt; _jetO.birthOffset = birthOffset;
       particles.emit('jet', _jetO);
     }
     if (birthOffset >= 0) {

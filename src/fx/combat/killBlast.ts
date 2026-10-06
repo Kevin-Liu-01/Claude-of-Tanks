@@ -126,7 +126,7 @@ export function killBlast(C: CombatContext, pos: Vec3Like, cause: KillCause, bir
       const rs = 1.5 + R() * 0.8;
       mPlace(m, pos.x + Math.cos(a) * rs, gy + 0.6, pos.z + Math.sin(a) * rs, birthOffset + R() * 0.04);
       mMove(m, Math.cos(a) * v, 0.8 + R() * 0.8, Math.sin(a) * v, 3.4, 0.25, 0.9, 0);
-      mShape(m, 2.6 + R() * 1.4, 1.0, (4 + R() * 1.8) * S * dk, 2.6, 0.55, R() * TAU, (R() - 0.5) * 0.6);
+      mShape(m, 3.0 + R() * 1.4, 1.0, (4.6 + R() * 1.8) * S * dk, 1.6, 0.55, R() * TAU, (R() - 0.5) * 0.6);
       mLook(m, L.dust0, L.dust1, (0.36 + R() * 0.12) * Math.min(1, L.dustK), 0.03, 0.35, 0.6, 0.18, 0.02,
         L.scatter, R());
       mHeat(m, 0, 1, 0.5, 1);
@@ -205,10 +205,10 @@ export function columnPuff(C: CombatContext, x: number, y: number, z: number, st
   const a = R() * TAU, r = R() * 0.55 * scale;
   mPlace(m, x + Math.cos(a) * r, y + 1.0 + h, z + Math.sin(a) * r, birthOffset);
   const up = 2.0 + R() * 1.2;
-  mMove(m, Math.cos(a) * 0.5, up, Math.sin(a) * 0.5, 0.75, 2.4 + 1.1 * stage + R() * 0.5, 0.9, 0);
-  mShape(m, 5.6 + R() * 2.2, (1.5 + R() * 0.6) * scale, (7 + R() * 3) * scale, 1.45, 1, R() * TAU, (R() - 0.5) * 0.7);
-  if (stage > 0.45) mLook(m, SMOKE0, SMOKE1, 0.5 + 0.32 * stage, 0.3, 0.42, 0.35, 0.24, 0, 0.1, R());
-  else mLook(m, SMOKE_LATE0, SMOKE_LATE1, 0.36 + 0.3 * stage, 0.3, 0.4, 0.4, 0.26, 0, 0.15, R());
+  mMove(m, Math.cos(a) * 1.0, up, Math.sin(a) * 1.0, 0.75, 2.4 + 1.1 * stage + R() * 0.5, 0.72 + R() * 0.36, 0);
+  mShape(m, 5.6 + R() * 2.2, (1.5 + R() * 0.6) * scale, (9.5 + R() * 3.5) * scale, 1.2, 1, R() * TAU, (R() - 0.5) * 0.7);
+  if (stage > 0.45) mLook(m, SMOKE0, SMOKE1, 0.5 + 0.32 * stage, 0.3, 0.55, 0.35, 0.24, 0, 0.1, R());
+  else mLook(m, SMOKE_LATE0, SMOKE_LATE1, 0.36 + 0.3 * stage, 0.3, 0.52, 0.4, 0.26, 0, 0.15, R());
   // the fire under the smoke lights its first metre from inside
   mHeat(m, h < 0.6 ? 0.45 * stage : 0, 3.2, 1.0, 0.85);
   C.smoke(m);

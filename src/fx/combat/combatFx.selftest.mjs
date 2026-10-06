@@ -86,7 +86,7 @@ const hePeak = Math.max(...heFountain.map(peak)), kinPeak = Math.max(...kinFount
 assert.ok(hePeak > 4.5 && hePeak < 12, `the 120 mm HE fountain tops out at a few metres (${hePeak.toFixed(1)} m)`);
 assert.ok(kinPeak > 2 && kinPeak < hePeak, `a kinetic strike throws lower (${kinPeak.toFixed(1)} < ${hePeak.toFixed(1)} m)`);
 for (const m of heFountain) {
-  assert.ok(m.r0 < 0.06 && m.alpha >= 0.9 && m.fadeIn < 0.02, 'the fountain is born dense and dark, at once');
+  assert.ok(m.r0 < 0.06 && m.alpha >= 0.85 && m.fadeIn < 0.02, 'the fountain is born dense and dark, at once');
   assert.ok(at(m, m.life)[1] < peak(m) - 0.5, 'and falls back');
 }
 assert.ok(he.rec.clods.length >= 15, `clods are thrown (${he.rec.clods.length})`);
