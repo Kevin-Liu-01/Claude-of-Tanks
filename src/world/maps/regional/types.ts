@@ -35,9 +35,13 @@ export type RegionalBuilder = (ctx: RegionalBuildContext) => RegionalParts;
 
 /** Procedural surface painters a style selects for the roof and stone buckets (regionalSurfaces.ts). */
 export type RoofSurfaceKind = 'beavertail' | 'canal' | 'slate' | 'pantile' | 'sheet' | 'asbestos' | 'shingle';
-/** An HSL remap of a procedural surface (props.ts ToneFunction). */
-export type SurfaceTone = (hue: number, saturation: number, lightness: number) => readonly [number, number, number];
-export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block';
+/**
+ * An HSL remap of a procedural surface (props.ts ToneFunction). A render tone may also name its painter: `paint`
+ * lime-wash brushed over mud plaster (regionalSurfaces.ts paintLimewash, its own seed) in place of the plain render.
+ */
+export type SurfaceTone = ((hue: number, saturation: number, lightness: number) => readonly [number, number, number])
+  & { paint?: { kind: 'limewash'; seed: number } };
+export type StoneSurfaceKind = 'sandstone' | 'ashlar' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block';
 
 export interface ArchitectureSurfaces {
   roof: { kind: RoofSurfaceKind; tint: readonly [number, number, number] };

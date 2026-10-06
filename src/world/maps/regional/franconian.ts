@@ -4,9 +4,9 @@
 // rendered front in ochre, cream, rose or pale green with sandstone dressings; steep plain-tile roofs, gable-fronted to
 // the street or eaves-fronted with dormers, a hoist gable for the loft. The framing and openings are the Fachwerk kit's
 // (hessian.ts) under a Franconian palette; the rows replace the street rows and the block-fill row houses.
-import { PartSink, faceBox, pick, rgb, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
+import { PartSink, faceBox, pick, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
-import { doorCanopy, facadeOn, facadeRng, paintSurround, roofDormers, trimRun, windowHead } from './facade.ts';
+import { doorCanopy, facadeOn, facadeRng, gableWindows, paintSurround, roofDormers, trimRun, windowHead } from './facade.ts';
 import { windowUnit } from './openings.ts';
 import {
   bindFachwerk, hessianDialect, houseUvOffset, roofFor, stateFor, withPalette, type FachwerkPalette,
@@ -73,6 +73,18 @@ const townHouse: RegionalBuilder = (ctx) => {
     }, hessianDialect(st));
     if (!framed && facadeOn()) townFront(sink, frame, streetFace, gableFront, render, st.door);
     if (facadeOn()) townDormers(sink, frame, gableFront, framed ? st.infill : render, st);
+    // (facade craft, desktop; wave 116 read "blank gables") the attic's windows in a rendered gable — a framed gable's
+    // timbers carry its own — clear of the street gable's loft door
+    if (facadeOn() && !framed && frame.roof.gable) {
+      const top = frame.bodies[frame.bodies.length - 1], cx = (top.x0 + top.x1) / 2, cz = (top.z0 + top.z1) / 2, hd = (top.z1 - top.z0) / 2;
+      // (no sill: an attic light's sill would add to Steinburg's shadow casters, near their cap)
+      const f = facadeRng(), style = { ...st.window, shutters: null, bars: 'two' as const, sill: null };
+      for (const end of [1, -1] as const) {
+        const face: Face = { origin: [cx, 0, cz + end * hd], u: [end, 0, 0], out: [0, 0, end], width: top.x1 - top.x0 };
+        gableWindows(frame.roof.gable, frame.eaveY, frame.roof.ridgeY, gableFront && end > 0 ? 1.1 : 0,
+          (u, y, w, h) => windowUnit(sink, face, u, y, w, h, style, f, 0.25));
+      }
+    }
     // rendered fronts: sandstone quoins and a cornice
     if (!framed) {
       const b = frame.bodies[0];
@@ -170,7 +182,8 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     // w2/w3 captures: the first tints made the old town a sea of new orange tile (roof pixels at saturation 0.53 in the
     // establishing view, the base town's dark sheets 0.37); old plain tiles weather to a duller brown-red
     roof: { kind: 'beavertail', tint: [0.42, 0.28, 0.22] },
-    stone: { kind: 'sandstone', tint: [0.64, 0.52, 0.42] },
+    // (wave 116: "oversized clean ashlar") the town's dressed stone smaller and soiled, the Hessian villages' kept
+    stone: { kind: 'ashlar', tint: [0.64, 0.52, 0.42] },
     sourced: { plaster: true, wood: true },
   },
   builders: FRANCONIAN_BUILDERS,
