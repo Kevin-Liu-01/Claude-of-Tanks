@@ -75,6 +75,25 @@ function dialectOf(rng: () => number, door: Rgb, lit = 0.35): HouseDialect {
   };
 }
 
+/**
+ * A koshi window (Caldera round 2, wave 114: the windows "flat grey panels"): a shoji panel set back in the opening (lit
+ * at night) behind a lattice of fine vertical cedar slats, in a dark frame proud of the wall.
+ */
+function koshiWindow(sink: PartSink, face: Face, u: number, y0: number, w: number, h: number): void {
+  faceBox(sink, 'curtain', face, u, y0 + h / 2, -0.06, w, h, 0.02, { decor: true, window: face.out });
+  faceBox(sink, 'structureWood', face, u, y0 + h + 0.05, 0.04, w + 0.18, 0.1, 0.09, { colour: CEDAR_DARK, decor: true });
+  faceBox(sink, 'structureWood', face, u, y0 - 0.05, 0.04, w + 0.18, 0.1, 0.09, { colour: CEDAR_DARK, decor: true });
+  for (const side of [-1, 1]) faceBox(sink, 'structureWood', face, u + side * (w / 2 + 0.045), y0 + h / 2, 0.04, 0.09, h + 0.2, 0.09, { colour: CEDAR_DARK, decor: true });
+  const n = Math.max(5, Math.round(w / 0.08));
+  for (let k = 1; k < n; k++) faceBox(sink, 'structureWood', face, u - w / 2 + (w * k) / n, y0 + h / 2, 0.0, 0.028, h, 0.035, { colour: CEDAR_DARK, decor: true, fine: true });
+}
+
+/** The farmhouses' dialect: koshi windows, plank doors and the doma's gate. */
+function farmDialect(rng: () => number, door: Rgb): HouseDialect {
+  const base = dialectOf(rng, door);
+  return { ...base, window: (s, face, o, y0) => koshiWindow(s, face, o.u, y0 + o.y0, o.w, o.h) };
+}
+
 /** Sliding screens along a front between `u0` and `u1`: dark frames over shoji paper (lit at night) in a grid. */
 function screens(sink: PartSink, face: Face, u0: number, u1: number, y0: number, h: number): void {
   const n = Math.max(2, Math.round((u1 - u0) / 0.9));
@@ -106,7 +125,7 @@ function minkaBody(sink: PartSink, rng: () => number, look: () => number, W: num
     w: W, d: D, plinth: { h: 0.45, out: 0.05, bucket: STONE }, storeys: [{ h: 2.9, wall: EARTH }], roof, gableBucket: EARTH,
     ...(roof.bucket === 'structureMetal' ? { roofColour: tin } : {}),
     openings, chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null,
-  }, dialectOf(rng, shade(CEDAR_GREY, 0.9)));
+  }, farmDialect(rng, shade(CEDAR_GREY, 0.9)));
   irimoyaGables(sink, frame.roof, roof, 'structureWood', roof.bucket === 'structureMetal' ? tin : undefined, CEDAR_DARK);
   // the cedar dado (koshi-ita) round the walls, lath strips over it
   const b = frame.bodies[0];
@@ -164,10 +183,23 @@ function kuraBody(sink: PartSink, rng: () => number, w: number, d: number, h: nu
   for (const name of ['front', 'back', 'left', 'right'] as const) {
     const f = frame.faces[name];
     faceBox(sink, 'structureWood', f, 0, b.y0 + 0.65, 0.02, f.width, 1.3, 0.03, { colour: rgb(0x33363a), decor: true });
-    // the pointing: both diagonals of each 0.5 m tile course (the namako lattice)
-    for (let u = -f.width / 2; u < f.width / 2 - 0.45; u += 0.5) {
-      for (const [a, b2] of [[u, u + 0.5], [u + 0.5, u]] as const) {
-        sink.member('structureWood', facePt(f, a, b.y0 + 0.04, 0.04), facePt(f, b2, b.y0 + 1.26, 0.04), 0.05, 0.015, f.out,
+    // the pointing (Caldera round 2, wave 114: "a zigzag band where the diagonal namako tile grid should be"): the
+    // square tiles set on the diagonal, their raised white joints two families of lines at 45 degrees, 0.3 m apart,
+    // each clipped to the band's ends
+    const yb = b.y0 + 0.04, H = 1.22, half = f.width / 2;
+    for (const dir of [1, -1]) {
+      for (let c = -half - H; c < half; c += 0.3) {
+        // the line u = c + dir (y - yb) over the band, clipped to [-half, half]
+        let ua = dir > 0 ? c : c + H, ub = dir > 0 ? c + H : c, ya = yb, yy = yb + H;
+        const clip = (uEdge: number) => {
+          const t = (uEdge - ua) / (ub - ua);
+          return ya + (yy - ya) * t;
+        };
+        if (Math.max(ua, ub) <= -half || Math.min(ua, ub) >= half) continue;
+        if (ua < -half) { ya = clip(-half); ua = -half; } else if (ua > half) { ya = clip(half); ua = half; }
+        if (ub < -half) { yy = clip(-half); ub = -half; } else if (ub > half) { yy = clip(half); ub = half; }
+        if (Math.hypot(ub - ua, yy - ya) < 0.12) continue;
+        sink.member('structureWood', facePt(f, ua, ya, 0.04), facePt(f, ub, yy, 0.04), 0.045, 0.015, f.out,
           { colour: rgb(0xe4e0d6), decor: true, fine: true, exposed: true }, 0);
       }
     }
@@ -206,9 +238,24 @@ const naya: RegionalBuilder = (ctx) => {
   sink.placed(along ? Math.PI / 2 : 0, R.cx, 0, R.cz, () => {
     // (built along its own z, turned to lie along the reach's long side)
     sink.span(STONE, -W / 2 - 0.05, -0.4, -L / 2 - 0.05, W / 2 + 0.05, 0.3, L / 2 + 0.05);
-    sink.span('structureWood', -W / 2, 0.3, -L / 2, -W / 2 + 0.06, 3.6, L / 2, { colour: board });
-    sink.span('structureWood', -W / 2 + 0.06, 0.3, -L / 2, W / 2, 3.6, -L / 2 + 0.06, { colour: board });
-    sink.span('structureWood', -W / 2 + 0.06, 0.3, L / 2 - 0.06, W / 2, 3.6, L / 2, { colour: board });
+    // (Caldera round 2, wave 114: "the barn reads as clean painted board, not rusting tin"): the walls are corrugated tin
+    // on the timber frame, the paint gone to rust at the foot, in runs from the nail lines and patches where sheets lap
+    const rusty = (c: Rgb, k: number): Rgb => [c[0] * (1 - k) + 0.46 * k, c[1] * (1 - k) + 0.27 * k, c[2] * (1 - k) + 0.17 * k];
+    const wallTin = rusty(tin, 0.35 + look() * 0.25);
+    sink.span('structureMetal', -W / 2, 0.3, -L / 2, -W / 2 + 0.06, 3.6, L / 2, { colour: wallTin });
+    sink.span('structureMetal', -W / 2 + 0.06, 0.3, -L / 2, W / 2, 3.6, -L / 2 + 0.06, { colour: wallTin });
+    sink.span('structureMetal', -W / 2 + 0.06, 0.3, L / 2 - 0.06, W / 2, 3.6, L / 2, { colour: wallTin });
+    for (const f of [{ origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: L } as Face,
+      { origin: [0, 0, -L / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W } as Face, { origin: [0, 0, L / 2], u: [1, 0, 0], out: [0, 0, 1], width: W } as Face]) {
+      // the rusted foot, then the runs and the lapped patches
+      faceBox(sink, 'structureMetal', f, 0, 0.5, 0.012, f.width, 0.4, 0.01, { colour: rusty(tin, 0.85), decor: true });
+      const runs = Math.round(f.width / 1.4);
+      for (let k = 0; k < runs; k++) {
+        const u = -f.width / 2 + (k + 0.3 + look() * 0.4) * (f.width / runs), len = 0.5 + look() * 1.4;
+        faceBox(sink, 'structureMetal', f, u, 3.5 - len / 2, 0.012, 0.08 + look() * 0.1, len, 0.01, { colour: rusty(tin, 0.75 + look() * 0.2), decor: true });
+      }
+      if (look() < 0.6) faceBox(sink, 'structureMetal', f, (look() - 0.5) * f.width * 0.6, 1.2 + look() * 1.6, 0.014, 0.9 + look() * 0.6, 0.6 + look() * 0.6, 0.01, { colour: rusty(tin, 0.6), decor: true });
+    }
     // the open front (+x of the barn) on posts, a straw stack and a tractor's dark bay inside
     for (let k = 0; k <= 3; k++) sink.span('structureWood', W / 2 - 0.16, 0.3, -L / 2 + 0.06 + (L - 0.2) * k / 3 - 0.08, W / 2, 3.6, -L / 2 + 0.06 + (L - 0.2) * k / 3 + 0.08, { colour: CEDAR_DARK });
     sink.span('straw', -W / 2 + 0.3, 0.3, -L / 2 + 0.4, W / 2 - 0.9, 1.9, -L / 2 + L * 0.42);
@@ -305,11 +352,21 @@ const works: RegionalBuilder = (ctx) => {
   sink.placed(0, R.cx, 0, R.z0 + 2.7 + D / 2, () => {
   sink.span(STONE, -W / 2 - 0.05, -0.4, -D / 2 - 0.05, W / 2 + 0.05, 0.4, D / 2 + 0.05);
   sink.span('structureWood', -W / 2, 0.4, -D / 2, W / 2, H, D / 2, { colour: board });
-  // the yellow stain the sulphur leaves on the boards' foot, the window band under the eaves
+  // the sulphur's crust on the boards (Caldera round 2, wave 114: "no retort, vents, steam or sulphur crust" — the old
+  // even yellow band read as paint): blotches of every size crowding the foot and thinning up the wall, paler and
+  // darker yellows and the grey-white of the dried crust, and the window band under the eaves as slatted vents
   const faces = bodyFaces(W, D);
   for (const f of [faces.front, faces.back, faces.left, faces.right]) {
-    faceBox(sink, 'structureWood', f, 0, 1.1, 0.015, f.width, 1.4, 0.02, { colour: shade(SULPHUR, 0.85 + look() * 0.2), decor: true });
-    faceBox(sink, 'glass', f, 0, H - 1.3, 0.015, f.width * 0.8, 0.7, 0.02, { decor: true });
+    const n = Math.round(f.width / 0.9);
+    for (let k = 0; k < n; k++) {
+      const u = -f.width / 2 + (k + look()) * (f.width / n), hgt = 0.4 + look() * look() * 2.6, wid = 0.5 + look() * 1.3;
+      const tone = look(), col: Rgb = tone < 0.15 ? rgb(0xd8d4c4) : shade(SULPHUR, 0.7 + tone * 0.45);
+      faceBox(sink, 'structureWood', f, Math.max(-f.width / 2 + wid / 2, Math.min(f.width / 2 - wid / 2, u)), 0.4 + hgt / 2, 0.012 + k % 3 * 0.003,
+        wid, hgt, 0.01, { colour: col, decor: true });
+    }
+    for (let x = -f.width * 0.4; x <= f.width * 0.4 + 1e-6; x += f.width * 0.8 / 6) {
+      faceBox(sink, 'structureWood', f, x, H - 1.3, 0.02, f.width * 0.8 / 6 - 0.15, 0.75, 0.04, { colour: shade(board, 0.6), decor: true, fine: true });
+    }
   }
   const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
   faceBox(sink, 'dark', front, 0, 0.4 + 1.7, 0.02, 3.0, 3.4, 0.03, { decor: true });
@@ -325,9 +382,19 @@ const works: RegionalBuilder = (ctx) => {
   sink.span('structureWood', -0.9, ry - 0.4, -D / 2 + 1, 0.9, ry + 0.9, D / 2 - 1, { colour: shade(board, 0.85) });
   const cap: RoofSpec = { kind: 'gable', pitchDeg: 24, eave: 0.3, verge: 0.2, thickness: 0.06, bucket: 'structureMetal', ridge: null };
   emitRoof(sink, roofGeometry(1.8, D - 2, ry + 0.9, cap), cap, tin);
-  // the retort block and its flue at the back corner, sulphur heaped by the door
-  sink.span('stone', W / 2 - 3.2, -0.3, -D / 2 - 2.4, W / 2 - 0.2, 2.4, -D / 2 - 0.1);
-  sink.cylinder('structureMetal', [W / 2 - 1.7, 2.4, -D / 2 - 1.2], 'y', 9, 0.35, 10, { colour: IRON, decor: true }, 0.3);
+  // the retorts behind the shed: a row of brick melting ovens on a stone bench, each with its iron door and its own
+  // flue, the sulphur run into moulds at their feet; vent pipes on the ridge; sulphur heaped by the door
+  sink.span('stone', -W / 2 + 0.4, -0.3, -D / 2 - 2.4, W / 2 - 0.2, 0.9, -D / 2 - 0.1);
+  const ovens = Math.max(2, Math.min(4, Math.floor((W - 0.6) / 2.6)));
+  for (let k = 0; k < ovens; k++) {
+    const x = -W / 2 + 0.4 + (k + 0.5) * ((W - 0.6) / ovens);
+    sink.cylinder('stone', [x, 0.9, -D / 2 - 1.25], 'y', 1.3, 0.95, 10, {}, 0.8, true);
+    sink.cylinder('stone', [x, 2.2, -D / 2 - 1.25], 'y', 0.5, 0.8, 10, { decor: true }, 0.25, true);
+    sink.cylinder('structureMetal', [x, 2.6, -D / 2 - 1.25], 'y', 3.4 + look() * 2.4, 0.18, 8, { colour: IRON, decor: true }, 0.16);
+    faceBox(sink, 'structureMetal', { origin: [0, 0, -D / 2 - 0.3], u: [1, 0, 0], out: [0, 0, 1], width: W }, x, 1.45, 0.02, 0.6, 0.5, 0.04, { colour: IRON, decor: true });
+    sink.span('structureWood', x - 0.5, -0.05, -D / 2 - 0.1 + 0.05, x + 0.5, 0.12, -D / 2 + 0.35, { colour: shade(SULPHUR, 0.95), decor: true });
+  }
+  for (let k = 0; k < 3; k++) sink.cylinder('structureMetal', [(k - 1) * 0.5, ry + 0.9, -D / 2 + 2 + k * (D - 4) / 2], 'y', 1.6 + look(), 0.14, 8, { colour: IRON, decor: true }, 0.12);
   for (let k = 0; k < 2; k++) sink.cylinder('structureWood', [-W * 0.25 + k * 2.6, 0, D / 2 + 1.1], 'y', 1.0 + look() * 0.4, 1.0, 9, { colour: SULPHUR, decor: true }, 0.2);
   });
   return sink.finish();
@@ -380,7 +447,9 @@ const shrine: RegionalBuilder = (ctx) => {
   // torii on its front edge
   const R = reach(ctx), P = Math.min(R.W, R.D);
   sink.placed(0, R.cx, 0, R.cz, () => {
-  const hz = -R.D / 2 + 1.5, hw = Math.min(2.2, P * 0.42), hd = Math.min(2.0, P * 0.36);
+  // (Caldera round 2, wave 114: the torii read as "a stone-block gate fused with a hut"): the honden smaller and at
+  // the back of the precinct, an open approach of gravel before it, the torii free-standing at the front edge
+  const hd = Math.min(1.6, P * 0.3), hw = Math.min(2.0, P * 0.38), hz = -R.D / 2 + 0.55 + hd / 2;
   {
     const fx = R.W / 2 - 0.3, fz = R.D / 2 - 0.3, fe = R.D / 2 - 1.0;
     for (const s of [-1, 1]) sink.span(STONE, s * fx - 0.15, -0.2, -fz, s * fx + 0.15, 0.6, fe);
@@ -395,14 +464,23 @@ const shrine: RegionalBuilder = (ctx) => {
   sink.placed(Math.PI / 2, 0, 0, hz, () => emitRoof(sink, roofGeometry(hd, hw, 2.2, roof), roof));
   const lean: RoofSpec = { kind: 'shed', pitchDeg: 20, eave: 0.2, verge: 0.3, thickness: 0.1, bucket: 'roof' };
   sink.placed(-Math.PI / 2, 0, 0, hz + hd / 2 + 0.5, () => emitRoof(sink, roofGeometry(1.0, hw + 0.6, 1.9, lean), lean));
-  // the torii at the front of the plot
-  const tz = R.D / 2 - 0.45, tw = Math.min(2.4, P * 0.45), th = 3.0;
-  const red = rng() < 0.6, tc = red ? VERMILION : rgb(0x8a8680);
-  for (const s of [-1, 1]) sink.cylinder(red ? 'structureMetal' : 'stone', [s * tw / 2, 0, tz], 'y', th, 0.15, 10, red ? { colour: tc } : {}, 0.13);
-  sink.span(red ? 'structureMetal' : 'stone', -tw / 2 - 0.15, th - 0.65, tz - 0.09, tw / 2 + 0.15, th - 0.5, tz + 0.09, red ? { colour: tc } : {});
-  sink.member('structureMetal', [-tw / 2 - 0.55, th - 0.05, tz], [tw / 2 + 0.55, th - 0.05, tz], 0.28, 0.22, [0, 1, 0], { colour: red ? CEDAR_DARK : rgb(0x6a6660), exposed: true }, 0);
-  sink.member('structureMetal', [-tw / 2 - 0.45, th + 0.2, tz], [tw / 2 + 0.45, th + 0.2, tz], 0.18, 0.3, [0, 1, 0], { colour: tc, decor: true, exposed: true }, 0);
-  sink.member('structureWood', [-tw / 2 + 0.15, th - 0.9, tz + 0.12], [tw / 2 - 0.15, th - 0.9, tz + 0.12], 0.14, 0.14, [0, 0, 1], { colour: rgb(0xd8c9a0), decor: true, exposed: true }, 0);
+  // the torii (a myojin torii in vermilion): two round pillars leaning in a little, the nuki tie beam through them,
+  // the kasagi's black cap over the shimaki, its ends swept up, the central strut (gakuzuka), the shimenawa rope
+  rng();
+  const tz = R.D / 2 - 0.35, tw = Math.min(2.3, P * 0.42), th = 3.1, tc = VERMILION;
+  for (const s of [-1, 1]) sink.cylinder('structureMetal', [s * (tw / 2 + 0.06), 0, tz], 'y', th - 0.3, 0.16, 12, { colour: tc }, 0.13);
+  sink.span('stone', -tw / 2 - 0.36, -0.1, tz - 0.3, -tw / 2 + 0.24, 0.18, tz + 0.3);
+  sink.span('stone', tw / 2 - 0.24, -0.1, tz - 0.3, tw / 2 + 0.36, 0.18, tz + 0.3);
+  // the nuki runs through the pillars and out past them
+  sink.span('structureMetal', -tw / 2 - 0.42, th - 1.05, tz - 0.07, tw / 2 + 0.42, th - 0.86, tz + 0.07, { colour: tc });
+  sink.span('structureMetal', -0.1, th - 0.86, tz - 0.06, 0.1, th - 0.45, tz + 0.06, { colour: tc, decor: true });
+  // the shimaki, and over it the kasagi: a black beam whose ends rise in a shallow sweep
+  sink.span('structureMetal', -tw / 2 - 0.5, th - 0.45, tz - 0.1, tw / 2 + 0.5, th - 0.27, tz + 0.1, { colour: tc });
+  sink.member('structureMetal', [-tw / 2 - 0.3, th - 0.15, tz], [tw / 2 + 0.3, th - 0.15, tz], 0.26, 0.24, [0, 1, 0], { colour: CEDAR_DARK, exposed: true }, 0);
+  for (const s of [-1, 1]) sink.member('structureMetal', [s * (tw / 2 + 0.3), th - 0.15, tz], [s * (tw / 2 + 0.85), th + 0.05, tz], 0.24, 0.24, [0, 1, 0], { colour: CEDAR_DARK, decor: true, exposed: true }, 0);
+  sink.member('structureWood', [-tw / 2 + 0.2, th - 1.25, tz + 0.12], [tw / 2 - 0.2, th - 1.25, tz + 0.12], 0.12, 0.12, [0, 0, 1], { colour: rgb(0xd8c9a0), decor: true, exposed: true }, 0);
+  // the approach: a gravel path from the torii to the steps
+  sink.span('plaster3', -0.6, -0.2, hz + hd / 2 + 0.9, 0.6, 0.04, tz - 0.3, { decor: true, shade: 0.9 });
   // two stone lanterns beside the path
   for (const s of [-1, 1]) {
     const x = s * Math.min(1.6, P * 0.32), z = (hz + tz) / 2;
@@ -547,4 +625,7 @@ export const KYUSHU_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     damp: 0.7, moss: 0.45,
   },
   wear: 0.22,
+  // (Caldera round 2, wave 114: "buildings sit on bare ground with no yard, wall or hedge"): each farmhouse keeps its
+  // yard, a woven bamboo fence (the wattle module) round its freest side and the kitchen garden's beds inside
+  yard: { kinds: ['depot'], fence: 'fencewattle', gate: null, shed: null, garden: true },
 });
