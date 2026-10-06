@@ -161,7 +161,10 @@ assert.equal(resolveGroundReduxProfile('moon').windRipple, 0, 'and no wind rippl
 // 2026-10-03 the ground lane: a volcanic basin (Caldera, groundRedux VOLCANIC) takes no wind's ripples either
 assert.equal(resolveGroundReduxProfile('caldera').windRipple, 0, 'no wind ripples on the volcanic basin');
 assert.equal(resolveGroundReduxProfile('caldera').patchwork, 0, 'and no blown-sand patchwork');
-for (const id of MAP_IDS) if (id !== 'moon' && id !== 'caldera') assert.equal(resolveGroundReduxProfile(id).windRipple, 1, `${id}: its authored ripples at full`);
+// 2026-10-05 the map-revival lane's Oasis round 2 (gauntlet wave 125: "corduroy ripples"): Siwa's sand takes the wind's
+// ripples at four tenths
+assert.equal(resolveGroundReduxProfile('oasis').windRipple, 0.4, 'Siwa: the ripples at four tenths');
+for (const id of MAP_IDS) if (id !== 'moon' && id !== 'caldera' && id !== 'oasis') assert.equal(resolveGroundReduxProfile(id).windRipple, 1, `${id}: its authored ripples at full`);
 // the sand trains: no global phase over a per-position wind (the round-43 marble), the cell function in its place
 assert.ok(!/float rphase = dot\(uv, wind\)/.test(active(terrain)), 'the global ripple phase over a turned wind is gone');
 assert.ok(/vec2 sandWaves\(vec2 p, vec2 w0, float cellM, float swing, float warp, vec2 k, vec2 amp, out float tone\) \{/.test(terrain), 'the cell-blended wave trains');
