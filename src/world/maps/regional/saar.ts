@@ -106,7 +106,20 @@ const blastFurnace: RegionalBuilder = (ctx) => {
     // the furnace: hearth, bosh and stack, banded; the charging platform and the bell house on top
     sink.cylinder('structureMetal', [0, -0.4, fz], 'y', ch + 1.6, fr, 12, { colour: PLATE }, fr * 1.05, true);
     sink.cylinder('structureMetal', [0, ch + 1.2, fz], 'y', fh - ch - 1.2, fr * 1.05, 12, { colour: PLATE }, fr * 0.72, true);
-    if (!mobile) for (let y = ch + 2.4; y < fh - 1; y += 2.2) ring(sink, 0, y, fz, fr * (1.05 - 0.33 * (y - ch) / (fh - ch)), 0.25);
+    // the riveted shell (wave 137: "smooth dark cylinders"): its plate courses' bands every 1.1 m, and up close the
+    // vertical seams between the plates
+    if (!mobile) for (let y = ch + 1.8; y < fh - 0.6; y += 1.1) ring(sink, 0, y, fz, fr * (1.05 - 0.33 * (y - ch - 1.2) / (fh - ch - 1.2)) + 0.02, 0.18);
+    if (!mobile) for (let k = 0; k < 12; k++) {
+      const a = (k + 0.5) / 12 * Math.PI * 2, r0 = fr * 1.05 + 0.04, r1 = fr * 0.72 + 0.04;
+      sink.member('structureMetal', [Math.cos(a) * r0, ch + 1.2, fz + Math.sin(a) * r0], [Math.cos(a) * r1, fh - 0.2, fz + Math.sin(a) * r1], 0.07, 0.05,
+        [Math.cos(a), 0, Math.sin(a)], { colour: shade(PLATE, 0.78), decor: true, fine: true, exposed: true }, 0);
+    }
+    // the tuyere stocks: from the bustle pipe down into the hearth's ring of tuyeres, through the casting house roof
+    for (let k = 0; k < 8; k++) {
+      const a = (k + 0.5) / 8 * Math.PI * 2, rr = fr + 1.0;
+      sink.member('structureMetal', [Math.cos(a) * rr, 8.8, fz + Math.sin(a) * rr], [Math.cos(a) * (fr * 1.02 + 0.1), ch + 0.4, fz + Math.sin(a) * (fr * 1.02 + 0.1)], 0.22, 0.22,
+        [0, 1, 0], { colour: shade(OXIDE, 0.85), decor: true, exposed: true }, 0);
+    }
     const top = fh;
     sink.span('structureMetal', -fr * 0.72 - 0.7, top, fz - fr * 0.72 - 0.7, fr * 0.72 + 0.7, top + 0.3, fz + fr * 0.72 + 0.7, { colour: TRUSS, decor: true });
     sink.span('structureMetal', -1.2, top + 0.3, fz - 1.2, 1.2, top + 2.8, fz + 1.2, { colour: SHEET, decor: true });
@@ -114,6 +127,8 @@ const blastFurnace: RegionalBuilder = (ctx) => {
     for (const [ux, uz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
       sink.member('structureMetal', [ux * fr * 0.5, top - 0.5, fz + uz * fr * 0.5], [ux * 0.6, top + 5.6, fz + uz * 0.6], 0.5, 0.5, [0, 0, 1], { colour: PLATE, decor: true, exposed: true }, 0);
     }
+    // the bleeder valves' pipes standing over the uptakes' crossing
+    for (const s of [-1, 1]) sink.cylinder('structureMetal', [s * 0.5, top + 5.6, fz], 'y', 3.2, 0.22, 8, { colour: PLATE, decor: true }, 0.22, true);
     const dcx = -W / 2 + 1.6, dcz = cz0 + 1.4;
     sink.member('structureMetal', [0, top + 5.7, fz], [dcx, ch + 4.5, dcz], 0.7, 0.7, [0, 0, 1], { colour: PLATE, decor: true, exposed: true }, 0);
     sink.cylinder('structureMetal', [dcx, ch + 0.5, dcz], 'y', 4.2, 1.2, 10, { colour: STOVE, decor: true }, 1.2);
@@ -128,7 +143,13 @@ const blastFurnace: RegionalBuilder = (ctx) => {
         sink.cylinder('structureMetal', [sx, dy, stz], 'y', sr * h, sr * a, 12, { colour: STOVE, decor: true }, sr * b, true);
         dy += sr * h;
       }
-      if (!mobile) for (let y = 3; y < sh - 1; y += 3.5) ring(sink, sx, y, stz, sr, 0.2);
+      // the stove's riveted courses and, up close, its seams
+      if (!mobile) for (let y = 1.6; y < sh - 0.5; y += 1.75) ring(sink, sx, y, stz, sr + 0.02, 0.16, shade(STOVE, 0.8));
+      if (!mobile) for (let k = 0; k < 8; k++) {
+        const a = (k + 0.5) / 8 * Math.PI * 2, r = sr + 0.04;
+        sink.member('structureMetal', [sx + Math.cos(a) * r, 0, stz + Math.sin(a) * r], [sx + Math.cos(a) * r, sh - 0.1, stz + Math.sin(a) * r], 0.07, 0.05,
+          [Math.cos(a), 0, Math.sin(a)], { colour: shade(STOVE, 0.75), decor: true, fine: true, exposed: true }, 0);
+      }
     }
     sink.member('structureMetal', [-(sr + 0.3), 9.5, stz + sr], [0, 9.5, fz - fr - 0.4], 1.0, 1.0, [0, 1, 0], { colour: OXIDE, decor: true, exposed: true }, 0);
     for (let k = 0; k < 8; k++) {
@@ -464,6 +485,50 @@ const minersHouse: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+/**
+ * The works' water tower as the Saar built them (the map-revival lane, 2026-10-06; wave 137's critics read the Ruhr kit's
+ * square plank-seamed tank house as an American timber tank): a round brick shaft banded in yellow brick, corbelled out
+ * to a brick drum round the tank with its ring of small windows, under a steep slate cone and a lantern. The drum fills
+ * the plot; the cone's eaves stop at its edge.
+ */
+const saarWaterTower: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const half = Math.min(ctx.info.w, ctx.info.d) / 2;
+  const T = Math.max(1.6, half - 0.35), R = Math.max(1.2, Math.min(T - 0.6, 2.0)), H = 12.0, SEG = 16, turn = Math.PI / SEG;
+  sink.cylinder('stone', [0, -0.4, 0], 'y', 1.0, R + 0.25, SEG, {}, R + 0.2, true, turn);
+  sink.cylinder('stone', [0, 0.6, 0], 'y', H - 0.6, R, SEG, {}, R * 0.94, true, turn);
+  for (const y of [3.4, 7.0, 10.6]) {
+    const r = R * (1 - 0.06 * (y - 0.6) / (H - 0.6)) + 0.05;
+    sink.cylinder(YELLOW_BRICK, [0, y, 0], 'y', 0.3, r, SEG, { decor: true }, r, true, turn);
+  }
+  // the corbel out to the drum, the drum, its sill band and cornice. The corbel starts 2 cm over the shaft's head, so
+  // the corbel and drum weld into a solid of their own: the tower's ground contact (structureCollision.ts, the solids
+  // that reach below 1.8 m) is the shaft on its plinth, as the Ruhr kit's tower stood, not the drum's wider round
+  // carried down to the ground
+  sink.cylinder('stone', [0, H + 0.02, 0], 'y', 1.18, R * 0.94, SEG, {}, T, true, turn);
+  const d0 = H + 1.2, dh = 4.2;
+  sink.cylinder('stone', [0, d0, 0], 'y', dh, T, SEG, {}, T, true, turn);
+  sink.cylinder(YELLOW_BRICK, [0, d0 + 0.9, 0], 'y', 0.22, T + 0.04, SEG, { decor: true }, T + 0.04, true, turn);
+  sink.cylinder(YELLOW_BRICK, [0, d0 + dh - 0.35, 0], 'y', 0.35, T + 0.05, SEG, { decor: true }, T + 0.05, true, turn);
+  // the drum's windows, one on every other facet (the facets' centres stand at T cos(pi / SEG))
+  const rf = T * Math.cos(turn);
+  for (let k = 0; k < SEG; k += 2) {
+    const a = turn * 2 * k + turn * 2;
+    const out: Vec3 = [Math.cos(a), 0, Math.sin(a)], u: Vec3 = [Math.sin(a), 0, -Math.cos(a)]; // (u to the right seen from outside)
+    const face: Face = { origin: [out[0] * rf, 0, out[2] * rf], u, out, width: 2 * T * Math.sin(turn) };
+    facePanel(sink, 'dark', face, 0, d0 + 2.3, 0.02, 0.5, 1.3, { decor: true });
+  }
+  // the cone: slate from the cornice's eave to the lantern, the lantern and its cap
+  const c0 = d0 + dh, eave = Math.min(0.3, half - T + 0.02);
+  sink.cylinder('roof', [0, c0, 0], 'y', 3.6, T + eave, SEG, {}, 0.32, true, turn);
+  sink.cylinder('structureMetal', [0, c0 + 3.5, 0], 'y', 0.9, 0.38, 8, { colour: rgb(0x4a5551), decor: true }, 0.38, true);
+  sink.cylinder('structureMetal', [0, c0 + 4.4, 0], 'y', 0.8, 0.5, 8, { colour: rgb(0x4a5551), decor: true }, 0.02, true);
+  // the door at the shaft's foot
+  const front: Face = { origin: [0, 0, R * Math.cos(turn)], u: [1, 0, 0], out: [0, 0, 1], width: 2 };
+  doorUnit(sink, front, 0, 0.6, 1.0, 2.2, { leaf: DOOR, frame: { bucket: YELLOW_BRICK, width: 0.16, out: 0.06, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.6);
+  return sink.finish();
+};
+
 export const SAAR_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   // the coalfield brick the Ruhr kit builds (the water towers, the shells, the goods sheds)
   ...RUHR_BUILDERS,
@@ -479,6 +544,8 @@ export const SAAR_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.f
   firestation: headframe,
   foundryoffice: worksOffice,
   stack: factoryStack,
+  // the Saar's own water tower (a round brick drum under a slate cone), in place of the Ruhr kit's square tank house
+  watertower: saarWaterTower,
 });
 
 export const SAAR_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({

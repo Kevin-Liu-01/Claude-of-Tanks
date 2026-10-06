@@ -42,6 +42,7 @@ import {
   RAIL_OPEN_KIT_M, RAIL_SPUR_BALLAST_M, RAIL_SPUR_GAUGE_M, RAIL_SPUR_LAY_M, railCoalStageStations, railRunLength,
   resampleRailPath, resolveRailCuttings, type RailCutting, type RailSpurConfig,
 } from '../railSpurs.ts';
+import { SAAR_YARD_GAPS, dressSaarWorks } from './saarWorks.ts';
 
 type Rng = () => number;
 type GeometryBucketName = keyof GeometryBuckets & string;
@@ -1123,7 +1124,7 @@ export function dressMapExtras({
     else if (mapId === 'autumn') dressAmberfordRiver(focused);
     else dressAutumnRiver(focused);
   }
-  if (kits.includes('rail')) dressRailYard(focused, mapId === 'skybridge');
+  if (kits.includes('rail')) dressRailYard(focused, mapId === 'skybridge', kits.includes('saar') ? SAAR_YARD_GAPS : []);
   if (kits.includes('winterLake')) dressWinterLakes(focused);
   // Round 56 (2026-09-24, owner decision 21 of 2026-09-23): the wrack line and debris of every strand the map authors
   // (a sea lake with a shelf), after every kit so the boats, jetties and landings above are known and the kits' own
@@ -1136,6 +1137,9 @@ export function dressMapExtras({
   // Round 57 (2026-09-24): authored spurs lay after every kit, so a map that adds one keeps the seeded stream of
   // its earlier dressing; a map without one draws nothing here.
   if (L.railSpurs?.length) dressRailSpurs(focused, L.railSpurs);
+  // the map-revival lane (2026-10-06): Ironworks' furnace line, its high-line over the bunker front and the receiving
+  // yard's heaps (maps/saarWorks.ts), after the rail fan so each trestle and heap clears the sidings' records
+  if (kits.includes('saar')) dressSaarWorks(focused);
 }
 
 // =============================================================================
@@ -2058,6 +2062,8 @@ interface RailLay {
   conform: 'along' | 'full';
   /** Skip spans over the liquid mask (advancing their seeded draws, so the rest of the dressing is unchanged). */
   washout: boolean;
+  /** Skip a span whose middle this rejects, the same way: a map's gap in a yard line (maps/saarWorks.ts). */
+  gap?: (x: number, z: number) => boolean;
 }
 
 /** The 'full' lay's ground samples in the slab's own frame (along, across), each ±1 = the footprint's half-extent. */
@@ -2108,7 +2114,7 @@ function layRailSpan(
   const len = Math.hypot(run, rise);
   const tilt = Math.atan2(rise, run);
   const nS = Math.round(len / 1.4);
-  if (lay.washout && !railSpanIsDry(heightField, ax, az, bx, bz, lay.ballast / 2)) {
+  if ((lay.washout && !railSpanIsDry(heightField, ax, az, bx, bz, lay.ballast / 2)) || lay.gap?.(xm, zm)) {
     // A drowned siding ends at the bank; the liquid surface is not ground
     // that can support a paper-thin ballast slab. Advance the original 24
     // BoxGeometry vertex-color draws plus one jitter draw per sleeper so
@@ -2224,8 +2230,9 @@ function railLine(
   z0: number,
   z1: number,
   washoutLiquid = false,
+  gap?: (x: number, z: number) => boolean,
 ): void {
-  const lay: RailLay = { gauge: RAIL_SPUR_GAUGE_M, ballast: RAIL_SPUR_BALLAST_M, conform: 'along', washout: washoutLiquid };
+  const lay: RailLay = { gauge: RAIL_SPUR_GAUGE_M, ballast: RAIL_SPUR_BALLAST_M, conform: 'along', washout: washoutLiquid, gap };
   for (const span of resampleRailPath([[x, z0], [x, z1]])) {
     layRailSpan(buckets, rng, heightField, span.ax, span.az, span.bx, span.bz, lay);
   }
@@ -2320,15 +2327,32 @@ function addRailYardLines(
   rng: Rng,
   buckets: DressingBuckets,
   washoutLiquid: boolean,
+  gaps: readonly RailYardGap[] = [],
 ): void {
+  const inGap = (gap: RailYardGap) => (_x: number, z: number): boolean => z > gap.z0 && z < gap.z1;
   for (const line of RAIL_YARD_LINES) {
-    railLine(buckets, rng, heightField, line.x, line.z0, line.z1, washoutLiquid);
+    const gap = gaps.find((g) => g.x === line.x);
+    railLine(buckets, rng, heightField, line.x, line.z0, line.z1, washoutLiquid, gap && inGap(gap));
   }
   for (const line of RAIL_YARD_LINES) {
     if (line.z1 < 230) bufferStop(buckets, rng, heightField, line.x, line.z1 + 0.8);
     if (line.z0 > -230) bufferStop(buckets, rng, heightField, line.x, line.z0 - 0.8);
   }
+  // a gap's two buffer stops, 0.8 m past the spans either side of it, each facing its track; after the yard's seeded
+  // draws and with a fixed UV jitter (no draw), so every later draw of the dressing stream keeps its seat
+  const fixed = (): number => 0.5;
+  for (const gap of gaps) {
+    const line = RAIL_YARD_LINES.find((l) => l.x === gap.x);
+    if (!line) continue;
+    const skipped = resampleRailPath([[line.x, line.z0], [line.x, line.z1]]).filter((s) => inGap(gap)(s.ax, (s.az + s.bz) / 2));
+    if (!skipped.length) continue;
+    bufferStop(buckets, fixed, heightField, line.x, skipped[0].az + 0.8);
+    bufferStop(buckets, fixed, heightField, line.x, skipped[skipped.length - 1].bz - 0.8, Math.PI);
+  }
 }
+
+/** A stretch of a yard line (its x) left without track between z0 and z1 (maps/saarWorks.ts SAAR_YARD_GAPS). */
+interface RailYardGap { x: number; z0: number; z1: number }
 
 type CoalVertex = readonly [number, number, number];
 
@@ -2485,10 +2509,10 @@ function addRailYardSupplies(
 }
 
 function dressRailYard(
-  ctx: FocusedDressingContext, washoutLiquid = false,
+  ctx: FocusedDressingContext, washoutLiquid = false, gaps: readonly RailYardGap[] = [],
 ): void {
   const { L, heightField, rng, buckets } = ctx;
-  addRailYardLines(heightField, rng, buckets, washoutLiquid);
+  addRailYardLines(heightField, rng, buckets, washoutLiquid, gaps);
   addRailYardCoalHeaps(heightField, rng, buckets, ctx);
   addRailYardSupplies(L.village, heightField, rng, buckets);
 }

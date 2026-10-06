@@ -155,11 +155,19 @@ function kitSeats(mapId, config, carriageway, structures, now) {
     taken.add(i); moved++; worstMove = Math.max(worstMove, d);
   }
   assert.ok(moved <= carriageway, `${mapId}: only buildings that stood in a carriageway move (${moved} of ${carriageway})`);
+  // the map's own additions to its recorded plan (props.townPlanAdditions; Ironworks' furnace line, the map-revival lane,
+  // 2026-10-06): each stands at its authored pose, as a recorded building stands at its recorded one
+  let added = 0;
+  for (const entry of config.props.townPlanAdditions ?? []) {
+    const [i] = nearest(entry.x, entry.z, KIT_SEAT_M);
+    assert.ok(i >= 0, `${mapId}: the authored addition (${entry.structure}) at (${entry.x}, ${entry.z}) stands at its pose`);
+    taken.add(i); added++;
+  }
   const extra = now.filter((_, i) => !taken.has(i));
   for (const s of extra) {
     assert.ok(s.w <= KIT_SHED_M && s.d <= KIT_SHED_M, `${mapId}: a structure the PR head had no seat for at (${s.cx.toFixed(1)}, ${s.cz.toFixed(1)}) is a yard's shed (${s.w.toFixed(1)} x ${s.d.toFixed(1)} m)`);
   }
-  summary.push(`${mapId} (${config.props.architecture} kit) ${seated} seated (up to ${worstSeat.toFixed(1)} m), ${moved} off a carriageway (up to ${worstMove.toFixed(1)} m), ${extra.length} yard sheds`);
+  summary.push(`${mapId} (${config.props.architecture} kit) ${seated} seated (up to ${worstSeat.toFixed(1)} m), ${moved} off a carriageway (up to ${worstMove.toFixed(1)} m), ${added ? `${added} authored additions, ` : ''}${extra.length} yard sheds`);
 }
 for (const [mapId, { carriageway, structures }] of Object.entries(PR_HEAD)) {
   const config = getMapConfig(mapId);
@@ -200,9 +208,12 @@ for (const [mapId, entries] of Object.entries(TOWN_LIGHT_PLANS)) {
   assert.equal(getMapConfig(mapId).props.townLightPlan, entries, `${mapId}: the map replays its recorded light buildings`);
   const obstacles = decodeCollisionManifest(JSON.parse(readFileSync(
     new URL(`../../server/world-collision-manifests/${mapId}.json`, import.meta.url), 'utf8'))).obstacles;
+  // (a map may replace a recorded kind out of place in its region at the same pose: props townLightPlanSwaps)
+  const swaps = getMapConfig(mapId).props.townLightPlanSwaps ?? {};
   for (const entry of entries) {
-    assert.ok(obstacles.some((o) => o.k === entry.kind && entry.x >= o.b[0] && entry.x <= o.b[3]
-      && entry.z >= o.b[2] && entry.z <= o.b[5]), `${mapId}: the ${entry.kind} stands at its recorded (${entry.x}, ${entry.z})`);
+    const kind = swaps[entry.kind] ?? entry.kind;
+    assert.ok(obstacles.some((o) => o.k === kind && entry.x >= o.b[0] && entry.x <= o.b[3]
+      && entry.z >= o.b[2] && entry.z <= o.b[5]), `${mapId}: the ${kind} stands at its recorded (${entry.x}, ${entry.z})`);
   }
   summary.push(`${mapId} ${entries.length} light buildings at their recorded poses`);
 }
