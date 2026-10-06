@@ -1821,34 +1821,33 @@ export function createShowroomOrbit(
     return true;
   }
 
+  /**
+   * The lateral shift (along the camera's right axis) that frames the subject in the stage rect: the frame centre on
+   * the rect's centre when everything fits, else the nearest shift that does; wider than the rect (a dolly-in), the
+   * front end held on its side and the rear let out. 2026-10-05: solved exactly per point — a point (pr, pc) sits at
+   * NDC (pr - s) / ((distance - pc) * tanH), so it stays right of the rect's left edge while s <= pr - min * depth and
+   * left of its right edge while s >= pr - max * depth. The old one-step correction scaled every NDC error by the frame
+   * centre's depth; dollied in, the near front corner and a long gun's muzzle sit 1.5 m from the lens against 6.5 m
+   * for the centre, so it overshot about fourfold (leo2a7v's close view slid its rear under the right panel, h23f).
+   */
   function fitHorizontalWindow(distance: number, tanH: number, frontRight = 0): number {
-    let shiftX = -win.cx * distance * tanH;
-    let minX = Infinity;
-    let maxX = -Infinity;
-    for (let index = 0; index < 8; index++) {
-      const nx = (_sbPr[index] - shiftX) / ((distance - _sbPc[index]) * tanH);
-      if (nx < minX) minX = nx;
-      if (nx > maxX) maxX = nx;
-    }
-    // the front tip (a gun past the frame's front face) widens the span on its own side
-    if (tip.ok) {
-      const nx = (tip.pr - shiftX) / ((distance - tip.pc) * tanH);
-      if (frontRight < 0) minX = Math.min(minX, nx);
-      else maxX = Math.max(maxX, nx);
-    }
     const windowMin = win.cx - win.hx * 0.995;
     const windowMax = win.cx + win.hx * 0.995;
-    if (maxX - minX > windowMax - windowMin) {
-      // wider than the stage rect (a dolly-in): the front end, gun included, stays inside it; the rear runs out
-      if (frontRight < -SHOW_FRONT_ANCHOR_MIN) shiftX += (minX - windowMin) * distance * tanH;
-      else if (frontRight > SHOW_FRONT_ANCHOR_MIN) shiftX += (maxX - windowMax) * distance * tanH;
-      else shiftX += ((minX + maxX) * 0.5 - win.cx) * distance * tanH;
-    } else if (minX < windowMin) {
-      shiftX += (minX - windowMin) * distance * tanH;
-    } else if (maxX > windowMax) {
-      shiftX += (maxX - windowMax) * distance * tanH;
-    }
-    return shiftX;
+    let hi = Infinity, lo = -Infinity;
+    const take = (pr: number, pc: number): void => {
+      const depth = Math.max(1e-3, (distance - pc) * tanH);
+      hi = Math.min(hi, pr - windowMin * depth);
+      lo = Math.max(lo, pr - windowMax * depth);
+    };
+    for (let index = 0; index < 8; index++) take(_sbPr[index], _sbPc[index]);
+    // the front tip (a gun past the frame's front face) is held inside with the frame
+    if (tip.ok) take(tip.pr, tip.pc);
+    const centred = -win.cx * distance * tanH;
+    if (lo <= hi) return THREE.MathUtils.clamp(centred, lo, hi);
+    // wider than the stage rect (a dolly-in): the front end, gun included, stays inside it; the rear runs out
+    if (frontRight < -SHOW_FRONT_ANCHOR_MIN) return hi;
+    if (frontRight > SHOW_FRONT_ANCHOR_MIN) return lo;
+    return (lo + hi) * 0.5;
   }
 
   /**

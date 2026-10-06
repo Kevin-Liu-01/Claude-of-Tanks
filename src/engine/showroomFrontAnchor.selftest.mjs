@@ -75,6 +75,11 @@ for (const [label, heading] of [['front to the left', 0], ['front to the right',
   assert.ok(rearOut, `${label}: the rear runs out past the rect on its own side`);
   assert.ok(close.tipX >= WIN.x0 - EPS && close.tipX <= WIN.x1 + EPS,
     `${label}: dollied in, the gun's tip past the frame stays inside the stage rect (${close.tipX.toFixed(3)})`);
+  // and it is the anchored edge: the front end sits on the rect's edge, not pushed in past it (2026-10-05: the old
+  // one-step correction overshot about fourfold dollied in, h23f)
+  const edge = close.frontRight < 0 ? Math.min(close.tipX, close.front.x0) : Math.max(close.tipX, close.front.x1);
+  const target = close.frontRight < 0 ? WIN.x0 : WIN.x1;
+  assert.ok(Math.abs(edge - target) < 0.02, `${label}: the front end sits on the rect's edge (${edge.toFixed(3)} against ${target.toFixed(3)})`);
 }
 
 console.log('showroomFrontAnchor.selftest: dolly-in keeps the front end, a long gun included, inside the stage rect on either side');
