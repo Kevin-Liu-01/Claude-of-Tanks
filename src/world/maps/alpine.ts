@@ -99,7 +99,9 @@ export default {
     dirtTone: (h: number, s: number, l: number) => [0.075, 0.09, clamp01(l * 0.78 + 0.12)],
     rockTone: (h: number, s: number, l: number) => [0.59, 0.045, clamp01(l * 0.95 + 0.24)],
     mudTone: (h: number, s: number, l: number) => [0.55, 0.17, clamp01(0.54 + l * 0.32)],
-    iceLake: true, iceDrift: 0.16, marshGloss: 1.0, mudRough: 0.18,
+    // map revival lane 2, round 2 (gauntlet wave 109b: "a treeless saddle around a large snow-covered lake"): the lake
+    // under April's snow, drifted over its ice (was 0.16, a swept rink)
+    iceLake: true, iceDrift: 0.7, marshGloss: 1.0, mudRough: 0.18,
     iceSky: [0.72, 0.82, 0.94],
     tintA: [1.02, 1.08, 1.16], tintB: [0.74, 0.84, 0.96], tintC: [1.12, 1.14, 1.18],
     roadTint: [1.30, 1.46, 1.70], shoulderDirt: 0.30, midRelief: 0.58, // map pass 2026-09-12: packed-snow pass roads, not black mud slashes
@@ -107,7 +109,10 @@ export default {
   vegetation: {
     species: ['spruce', 'fir', 'pine'], clusterMix: [['spruce', 0.62], ['fir', 0.28], ['pine', 0.10]],
     loneMix: [['spruce', 0.52], ['fir', 0.30], ['pine', 0.18]], rimMix: [['spruce', 0.70], ['fir', 0.25], ['pine', 0.05]],
-    clusterCount: 92, loneCount: 146, rimCount: 152, grassDensity: 0.36,
+    // round 2 (wave 109b: "the plateau is a uniform white sheet salted evenly with identical conifers; the saddle should
+    // be nearly treeless above the treeline"): the col stands at 2,080 m, above the larches; a few stands on the floor,
+    // the forest on the slopes round it (the rim's ring)
+    clusterCount: 34, loneCount: 40, rimCount: 152, grassDensity: 0.36,
     bushCount: 0.62, bushSpecies: 'spruce', // map pass 2026-09-12: exposed stone/scrub on the snowfields
   },
   props: {
@@ -147,7 +152,8 @@ export default {
       // Existing instanced loose-prop families absorb these extra sleepers,
       // so the lived-in threshold rises without another draw/material family.
       looseClutter: 26,
-      roadFence: 'fencerail', yardFence: 'fencepicket',
+      // (round 2, wave 109b: "white picket fences") the yards fenced in split larch boards, as the kit's own yards
+      roadFence: 'fencerail', yardFence: 'fenceplank',
     },
   },
   // map revival lane 2 (2026-10-05): the Grande Croix at the foot of the southern climb, beside its chapel

@@ -25,6 +25,7 @@ import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from '.
 const JOINERY: readonly Rgb[] = [0x6b5a44, 0x56483a, 0x4f5f4a, 0x6e3428, 0x5f6a66].map(rgb);
 const LARCH = rgb(0x5e4b38), LARCH_DARK = rgb(0x3f3328), IRON = rgb(0x26282a), TIN = rgb(0x8a9090), BELL = rgb(0x6a5a3a);
 const STEEL = rgb(0x4a4e4c);
+const SHINGLE = rgb(0x3e3a36);
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 /**
@@ -83,7 +84,7 @@ function dialect(st: SavoyardState): HouseDialect {
 
 /** A lauze roof: thick split slabs on a heavy frame, low, reaching far out over the gables. */
 const lauze = (pitch: number, eave: number, verge: number, kind: RoofSpec['kind'] = 'gable'): RoofSpec =>
-  ({ kind, pitchDeg: pitch, eave, verge: kind === 'hip' ? eave : verge, thickness: 0.22, bucket: 'roof', ridge: 'saddle' });
+  ({ kind, pitchDeg: pitch, eave, verge: kind === 'hip' ? eave : verge, thickness: 0.34, bucket: 'roof', ridge: 'saddle' });
 
 /** The purlin ends and the ridge beam showing under a deep verge (the frame that carries the lauzes). */
 function purlins(sink: PartSink, frame: HouseFrame, colour: Rgb): void {
@@ -97,6 +98,37 @@ function purlins(sink: PartSink, frame: HouseFrame, colour: Rgb): void {
     const y = rg.ridgeY - x * rg.tanP - 0.18;
     for (const side of t === 0 ? [0] : [-1, 1]) {
       sink.span('structureWood', side * x - 0.11, y - 0.2, -z1, side * x + 0.11, y, z1, { colour, decor: true, shadow: true });
+    }
+  }
+}
+
+/**
+ * April's snow against a house (round 2, gauntlet wave 109b: "walls meeting the snow on a hard line with no drift or
+ * path"): a bank along each wall of the ground storey, deeper where the wind piled it, run past the corners so the
+ * banks meet there, and cut away before every ground-floor door and gate (the trodden way out); the props' snow cap
+ * whitens its slope. Its foot runs 0.35 m under the floor, so on a gentle slope it meets the ground. Dressing, built
+ * only on a snowbound map.
+ */
+function drifts(sink: PartSink, frame: HouseFrame, openings: readonly Opening[], look: () => number): void {
+  const foot = -0.35;
+  for (const name of ['front', 'back', 'left', 'right'] as const) {
+    const face = frame.faces[name], half = face.width / 2;
+    const out = 0.7 + look() * 0.3;
+    const cuts = openings.filter((o) => o.face === name && o.storey === 0 && (o.kind === 'door' || o.kind === 'gate'))
+      .map((o) => [o.u - o.w / 2 - 0.45, o.u + o.w / 2 + 0.45] as const).sort((a, b) => a[0] - b[0]);
+    let u = -half - out * 0.8;
+    const runs: Array<[number, number]> = [];
+    for (const [c0, c1] of cuts) { if (c0 > u) runs.push([u, c0]); u = Math.max(u, c1); }
+    if (half + out * 0.8 > u) runs.push([u, half + out * 0.8]);
+    for (const [u0, u1] of runs) {
+      if (u1 - u0 < 0.6) continue;
+      const h0 = 0.3 + look() * 0.35, h1 = 0.3 + look() * 0.35;
+      const a = facePoint(face, u0, h0, 0.01), b = facePoint(face, u1, h1, 0.01);
+      const c = facePoint(face, u1, foot, out), d = facePoint(face, u0, foot, out);
+      const opts = { decor: true } as const;
+      sink.polygon('plaster', [a, d, c, b], opts);
+      sink.polygon('plaster', [a, facePoint(face, u0, foot, 0.01), d], opts);
+      sink.polygon('plaster', [b, c, facePoint(face, u1, foot, 0.01)], opts);
     }
   }
 }
@@ -157,6 +189,7 @@ const maison: RegionalBuilder = (ctx) => {
       gutters: null, verge: null, reveal: 0.42, spall: null,
     }, dialect(st));
     purlins(sink, frame, LARCH_DARK);
+    if (ctx.snowCap) drifts(sink, frame, openings, look);
     const f = frame.faces.front;
     gallery(sink, f, frame.floors[1], W - 0.4, 0.95, frame.eaveY + 0.2, shade(LARCH, 0.95), true);
     if (!st.mobile) {
@@ -190,6 +223,7 @@ const grange: RegionalBuilder = (ctx) => {
       chimneys: [], gutters: null, verge: null, reveal: 0.38, spall: null,
     }, dialect({ ...st, litShare: 0.1 }));
     purlins(sink, frame, LARCH_DARK);
+    if (ctx.snowCap) drifts(sink, frame, openings, look);
     if (logs) {
       // the log courses' ends crossing at the corners of the upper floor (the notched joints)
       const b = frame.bodies[1];
@@ -299,6 +333,7 @@ const chapelle: RegionalBuilder = (ctx) => {
       }, { ...dialect(st), door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
         leaf: LARCH_DARK, frame: { bucket: 'stone', width: 0.24, out: 0.06, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank',
       }, y0 + o.y0) });
+      if (ctx.snowCap) drifts(sink, frame, frame.spec.openings, ctx.variant);
       const f = frame.faces.front;
       // the painted panel over the door (the patron saint), its ochre frame
       faceBox(sink, 'plaster2', f, 0, 3.55, 0.012, 1.5, 1.0, 0.02, { decor: true });
@@ -381,16 +416,18 @@ const eglise: RegionalBuilder = (ctx) => {
   }
   sink.band('stone', -half - 0.15, shaft, tz - half - 0.15, half + 0.15, shaft + 0.3, tz + half + 0.15, { decor: true, shadow: true });
   // the bulb: a neck, the swelling bulb, the lantern, the small bulb, the spike and the cross (tin, frustum rings)
-  const ring = (y: number, h: number, r0: number, r1: number, colour: Rgb) => sink.cylinder('structureMetal', [0, y, tz], 'y', h, r0, 12, { colour }, r1);
+  // (round 2, wave 109b: the tin read as "a salmon-pink onion dome" under the low April sun) clad in larch shingles
+  // (tavaillons), dark with age, as many of the Maurienne's bulbs are
+  const ring = (y: number, h: number, r0: number, r1: number, colour: Rgb) => sink.cylinder('structureWood', [0, y, tz], 'y', h, r0, 12, { colour }, r1);
   let y = shaft + 0.3;
   const profile: Array<[number, number, number]> = [[0.4, 1.45, 1.2], [0.45, 1.2, 1.55], [0.5, 1.55, 1.62], [0.5, 1.62, 1.42], [0.45, 1.42, 0.95],
     [0.4, 0.95, 0.42], [0.5, 0.42, 0.42]];
-  for (const [h, r0, r1] of profile) { ring(y, h, r0, r1, TIN); y += h; }
+  for (const [h, r0, r1] of profile) { ring(y, h, r0, r1, SHINGLE); y += h; }
   // the lantern: four little openings in a drum
-  sink.cylinder('structureMetal', [0, y, tz], 'y', 0.75, 0.5, 8, { colour: shade(TIN, 0.9) }, 0.5);
+  sink.cylinder('structureWood', [0, y, tz], 'y', 0.75, 0.5, 8, { colour: shade(SHINGLE, 0.9) }, 0.5);
   for (const fc of faces) faceBox(sink, 'dark', { ...fc, origin: [fc.origin[0] * 0.33, 0, tz + (fc.origin[2] - tz) * 0.33] }, 0, y + 0.38, 0.0, 0.2, 0.45, 0.02, { decor: true });
   y += 0.75;
-  for (const [h, r0, r1] of [[0.3, 0.62, 0.72], [0.35, 0.72, 0.52], [0.35, 0.52, 0.12]] as const) { ring(y, h, r0, r1, TIN); y += h; }
+  for (const [h, r0, r1] of [[0.3, 0.62, 0.72], [0.35, 0.72, 0.52], [0.35, 0.52, 0.12]] as const) { ring(y, h, r0, r1, SHINGLE); y += h; }
   sink.span('structureMetal', -0.03, y - 0.05, tz - 0.03, 0.03, y + 0.95, tz + 0.03, { colour: IRON, decor: true });
   sink.span('structureMetal', -0.24, y + 0.62, tz - 0.03, 0.24, y + 0.68, tz + 0.03, { colour: IRON, decor: true });
   sink.cylinder('structureMetal', [0, y + 0.2, tz], 'y', 0.16, 0.09, 8, { colour: rgb(0xb8933e), decor: true }, 0.09);
@@ -416,13 +453,19 @@ const hospice: RegionalBuilder = (ctx) => {
     }
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.6, out: 0.08, bucket: 'stone' },
-      storeys: [{ h: 3.2, wall: 'plaster' }, { h: 2.9, wall: 'plaster' }, { h: 2.7, wall: 'plaster' }],
-      roof: lauze(26, 0.55, 0.55, 'hip'), openings, gutters: null, verge: null, reveal: 0.45,
+      // (round 2, wave 109b: "an isolated three-storey box with tan speckle ... no whitewashed reveals") the pass's grey
+      // rubble, every opening banded in whitewash, as the village's houses
+      storeys: [{ h: 3.2, wall: 'stone' }, { h: 2.9, wall: 'stone' }, { h: 2.7, wall: 'stone' }],
+      roof: lauze(26, 0.55, 0.55, 'hip'), openings, gutters: null, verge: null, reveal: 0.45, spall: null,
       chimneys: [{ x: -W * 0.22, z: -D * 0.25, sx: 0.8, sz: 0.8, above: 1.0, bucket: 'stone', cap: 'slab' },
         { x: W * 0.22, z: D * 0.22, sx: 0.8, sz: 0.8, above: 1.0, bucket: 'stone', cap: 'slab' }],
     }, { ...dialect(st), window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
-      ...st.window, surround: { bucket: 'stone', width: 0.16, out: 0.04, lintel: 0.22 }, shutters: { colour: rgb(0x6a7270), kind: 'louvred', closed: 0.35 },
+      ...st.window, surround: { bucket: 'plaster', width: 0.18, out: 0.02, lintel: 0.24 }, shutters: { colour: rgb(0x6a7270), kind: 'louvred', closed: 0.35 },
     }, st.rng, 0.35) });
+    if (ctx.snowCap) drifts(sink, frame, openings, ctx.variant);
+    // the way to the door: a flagged apron swept clear before it, out to the road
+    const fa = frame.faces.front;
+    faceBox(sink, 'stone', fa, 0, -0.12, 1.9, 3.4, 0.3, 3.4, { decor: true });
     const b0 = frame.bodies[0];
     for (const [cx, cz] of [[b0.x0, b0.z0], [b0.x1, b0.z0], [b0.x0, b0.z1], [b0.x1, b0.z1]] as const) {
       const sx = cx > 0 ? 1 : -1, sz = cz > 0 ? 1 : -1;
@@ -471,6 +514,7 @@ const caserma: RegionalBuilder = (ctx) => {
       frame: rgb(0xd8d4c8), frameWidth: 0.06, frameOut: 0.04, bars: 'cross', surround: { bucket: 'plaster3', width: 0.14, out: 0.02, lintel: 0.18 },
       sill: { bucket: 'stone', out: 0.08 }, shutters: { colour: rgb(0x5f6a66), kind: 'louvred', closed: 0.4 },
     }, st.rng, 0.4) });
+    if (ctx.snowCap) drifts(sink, frame, openings, ctx.variant);
     const b = frame.bodies[0];
     for (const yb of [frame.floors[1], frame.eaveY - 0.25]) sink.band('plaster3', b.x0 - 0.05, yb - 0.12, b.z0 - 0.05, b.x1 + 0.05, yb + 0.12, b.z1 + 0.05, { decor: true });
     const f = frame.faces.front;
@@ -514,6 +558,7 @@ const grangeLongue: RegionalBuilder = (ctx) => {
       roof: lauze(22, 0.6, 0.55), gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.4, spall: null,
     }, dialect({ ...st, litShare: 0.05 }));
     purlins(sink, frame, LARCH_DARK);
+    if (ctx.snowCap) drifts(sink, frame, openings, ctx.variant);
     // the landing before the hayloft door and the earth ramp down to the lane, both walled in rubble
     const floorY = frame.floors[1], reach = 3.2, run = clamp(D / 2 - zd - 1.9, 4, 8.5);
     sink.span('stone', W / 2 - 0.02, -0.4, zd - 1.5, W / 2 + reach, floorY - 0.05, zd + 1.5);
@@ -524,12 +569,20 @@ const grangeLongue: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A house shelled in April 1945: the rubble shell standing to broken heads, charred beams fallen in, its lauzes heaped. */
+/**
+ * A house shelled in April 1945: the rubble shell standing to broken heads, charred beams fallen in, its lauzes heaped.
+ * (Round 2, gauntlet wave 109b: "the saw-tooth zigzag ruin reads as a cardboard stage flat ... it needs rubble heaps,
+ * fallen lauze, charred larch and an interior".) The walls break course by course — level steps with a ragged breach,
+ * not a sloped zigzag — over a slumped heap of their own rubble inside and out; the floor of the room and its hearth
+ * on the gable wall show through, the lauzes lie fallen and slid against the walls, and the larch frame lies charred
+ * across the heaps, a rafter or two still leaning from a wall head.
+ */
 const ruine: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant;
   const fit = wallsIn(ctx, 0.05, 0.05);
   const W = clamp(fit.w, 5.0, 7.6), D = clamp(fit.d, 6.0, 9.6);
+  const char = rgb(0x2a2420), charred = rgb(0x3b3029);
   sink.placed(0, fit.cx, 0, fit.cz, () => {
     const t = 0.55, H1 = 4.6;
     const faces: Array<{ face: Face; gable: boolean }> = [
@@ -538,28 +591,60 @@ const ruine: RegionalBuilder = (ctx) => {
       { face: { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D - 2 * t }, gable: false },
       { face: { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D - 2 * t }, gable: false },
     ];
+    const heads: number[] = [];
     for (const { face, gable } of faces) {
-      const L = face.width, n = 8;
+      // the courses broken back in level steps: a slow random walk along the wall, a breach on most walls
+      const L = face.width, n = 7;
       const tops: number[] = [];
-      for (let k = 0; k <= n; k++) {
-        const u = -L / 2 + L * k / n, mid = Math.abs(u) / (L / 2);
-        let h = H1 * (0.45 + rng() * 0.45);
-        if (gable && rng() < 0.6) h = Math.max(h, H1 + (1 - mid) * W * 0.2 * (0.5 + rng() * 0.5));
-        tops.push(h);
+      let h = H1 * (0.6 + rng() * 0.35);
+      for (let k = 0; k < n; k++) {
+        h = clamp(h + (rng() - 0.5) * 1.3, 1.4, H1 + (gable ? W * 0.12 : 0));
+        tops.push(Math.round(h / 0.32) * 0.32);
       }
-      if (rng() < 0.55) { const k = 1 + Math.floor(rng() * (n - 2)); tops[k] = 0.8 + rng() * 0.6; tops[k + 1] = Math.min(tops[k + 1], 1.6 + rng()); }
+      if (rng() < 0.6) { const k = 1 + Math.floor(rng() * (n - 2)); tops[k] = 0.64 + Math.round(rng() * 2) * 0.32; tops[k + 1] = Math.min(tops[k + 1], 1.6); }
       for (let k = 0; k < n; k++) {
         const a = -L / 2 + L * k / n, b = -L / 2 + L * (k + 1) / n;
-        wallPolygon(sink, 'stone', face, [[a, -0.3], [b, -0.3], [b, tops[k + 1]], [a, tops[k]]], t);
+        wallPolygon(sink, 'stone', face, [[a, -0.3], [b, -0.3], [b, tops[k]], [a, tops[k]]], t);
+        // the step's broken stones: a few blocks proud of the break
+        if (look() < 0.5) faceBox(sink, 'stone', face, a + (b - a) * (0.25 + look() * 0.5), tops[k] + 0.09, -t / 2, 0.3 + look() * 0.3, 0.18, t * 0.8, { decor: true });
       }
+      heads.push(Math.max(...tops));
     }
-    sink.span('stone', -W * 0.3, -0.2, -D * 0.25, W * 0.3, 0.8, D * 0.2, { decor: true });
-    sink.span('roof', -W * 0.26, 0.75, -D * 0.12, W * 0.22, 1.0, D * 0.14, { decor: true });
-    const char = rgb(0x2a2420);
-    for (let k = 0; k < 4; k++) {
-      const a: Vec3 = [(rng() - 0.5) * W * 0.8, 0.9, (rng() - 0.5) * D * 0.7];
-      const b: Vec3 = [a[0] + (rng() - 0.5) * 3, 0.9 + rng() * 2.2, a[2] + (rng() - 0.5) * 3];
-      sink.member('structureWood', a, b, 0.2, 0.2, [0, 1, 0], { colour: char, decor: true, exposed: true });
+    // the room's floor (beaten earth and the charred boards) and the hearth on the back gable
+    sink.span('structureWood', -W / 2 + t, -0.05, -D / 2 + t, W / 2 - t, 0.06, D / 2 - t, { colour: char, decor: true });
+    const back = faces[1].face;
+    faceBox(sink, 'stone', back, 0.6, 0.9, -t - 0.3, 1.5, 1.8, 0.6, { decor: true });
+    faceBox(sink, 'dark', back, 0.6, 0.55, -t - 0.61, 0.9, 0.9, 0.02, { decor: true });
+    // the rubble: a slumped heap inside, heaps along the walls' feet outside where their heads fell
+    const heap = (x: number, z: number, r: number, hgt: number) => sink.cylinder('stone', [x, -0.25, z], 'y', hgt + 0.25, r, 7,
+      { decor: true, shadow: true }, r * 0.28, true, look() * 3);
+    heap(-W * 0.12, D * 0.08, Math.min(W, D) * 0.3, 1.1 + look() * 0.4);
+    heap(W * 0.18, -D * 0.22, Math.min(W, D) * 0.2, 0.7 + look() * 0.3);
+    for (const { face } of faces) {
+      if (look() < 0.45) continue;
+      const p = facePoint(face, (look() - 0.5) * face.width * 0.6, 0, 0.9);
+      heap(p[0], p[2], 0.9 + look() * 0.6, 0.45 + look() * 0.35);
+    }
+    // the lauzes fallen: slabs slid against the walls and lying on the heaps
+    for (let k = 0; k < 7; k++) {
+      const x = (look() - 0.5) * (W - 1.6), z = (look() - 0.5) * (D - 1.6), y = 0.25 + look() * 0.9;
+      const lw = 0.7 + look() * 0.5, ld = 0.5 + look() * 0.4, tilt = 0.25 + look() * 0.6, th = look() * 6.28;
+      // the slab's frame: along a heading, tipped about it (ax, ay and az orthonormal)
+      const c = Math.cos(th), sn = Math.sin(th), ct = Math.cos(tilt), st = Math.sin(tilt);
+      const frame = new LocalFrame([c, 0, sn], [-sn * st, ct, c * st], [-sn * ct, -st, c * ct], [x, y, z]);
+      sink.box('roof', [x, y, z], [lw / 2, 0.05, ld / 2], { decor: true, shadow: true }, frame);
+    }
+    // the larch frame burnt: beams across the heaps, a rafter or two leaning from a wall head
+    for (let k = 0; k < 6; k++) {
+      const a: Vec3 = [(rng() - 0.5) * W * 0.8, 0.5 + rng() * 0.5, (rng() - 0.5) * D * 0.7];
+      const b: Vec3 = [a[0] + (rng() - 0.5) * 3.2, 0.4 + rng() * 1.2, a[2] + (rng() - 0.5) * 3.2];
+      sink.member('structureWood', a, b, 0.2, 0.2, [0, 1, 0], { colour: k % 2 ? char : charred, decor: true, exposed: true });
+    }
+    for (const sx of [-1, 1]) {
+      if (look() < 0.35) continue;
+      const top: Vec3 = [sx * (W / 2 - t / 2), heads[sx > 0 ? 2 : 3] - 0.2, (look() - 0.5) * D * 0.4];
+      const foot: Vec3 = [sx * (W / 2 - 1.9), 0.2, top[2] + (look() - 0.5) * 1.2];
+      sink.member('structureWood', foot, top, 0.16, 0.18, [0, 1, 0], { colour: char, decor: true, exposed: true });
     }
   });
   return sink.finish();
@@ -624,21 +709,24 @@ export const SAVOYARD_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Obje
 });
 
 /** the roughcast of the Maurienne: a grey-white lime, not a southern whitewash */
-const crepi = (_h: number, s: number, l: number): readonly [number, number, number] => [0.1, Math.min(1, s * 0.22), Math.min(1, l * 1.08 + 0.08)];
+const crepi = (_h: number, s: number, l: number): readonly [number, number, number] => [0.1, Math.min(1, s * 0.08), Math.min(1, l * 1.08 + 0.08)];
 
 export const SAVOYARD_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   id: 'savoyard',
   region: 'Haute-Maurienne and the Col du Mont-Cenis (Savoie), 1945: gneiss rubble under lauze roofs, larch galleries and mazots, the Vallo Alpino blockhouses',
   surfaces: {
     // lauzes: thick split slabs of the valley's schist and gneiss, grey with a brown cast
-    roof: { kind: 'slate', tint: [0.47, 0.46, 0.43] },
+    // (round 2, wave 109b: "thin beige roofs") the schist's blue-grey
+    roof: { kind: 'slate', tint: [0.38, 0.39, 0.41] },
     // the grey gneiss rubble bedded in lime
-    stone: { kind: 'rubble', tint: [0.62, 0.6, 0.56] },
+    // (round 2, wave 109b: "one warm tan texture on every box") grey gneiss rubble in a dark lime mortar
+    stone: { kind: 'greywacke', tint: [0.55, 0.56, 0.58] },
     sourced: { plaster: false, wood: true },
     tones: {
       plaster: crepi,
       // the frontier guard's ochre
-      plaster2: (_h, s, l) => [0.1, Math.min(1, 0.36 + s * 0.5), Math.min(1, l * 0.86 + 0.1)],
+      // (round 2, wave 109b: "saturated mustard reads plastic") a lime ochre, sun-faded
+      plaster2: (_h, s, l) => [0.1, Math.min(1, 0.2 + s * 0.25), Math.min(1, l * 0.8 + 0.12)],
       // the Vallo Alpino's concrete
       plaster3: (_h, s, l) => [0.11, Math.min(1, 0.04 + s * 0.1), Math.min(1, l * 0.72 + 0.1)],
       // larch weathered silver-brown
