@@ -34,6 +34,8 @@ const BLOOMS: readonly Rgb[] = [0xc8282e, 0xd94a6a, 0xb52446, 0xe6e0d8, 0xd6602a
 const LEAF = rgb(0x3d5a2a);
 const BELL = rgb(0x6a5a3a);
 const CACTUS = rgb(0x66794a), CACTUS_FRUIT = rgb(0x9a2a40);
+// the blinds hung outside the windows: esparto grass, sun-bleached; a few slatted ones painted the joinery's green
+const ESPARTO = rgb(0x9a8256), BLIND_GREEN = rgb(0x46604a);
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 /**
@@ -78,7 +80,8 @@ function stateFor(ctx: RegionalBuildContext): AndalusianState {
       shutters: shutters ? { colour: joinery, kind: 'plank', closed: 0.25 } : null,
     },
     reja: rng() < 0.62 ? 'box' : 'flat',
-    litShare: 0.38,
+    // (round 2: most panes curtained by day, net and cotton behind the glass — at 0.38 the bare glass read as black voids)
+    litShare: 0.7,
     mobile: ctx.tier === 'mobile',
   };
 }
@@ -193,8 +196,17 @@ function alero(sink: PartSink, frame: HouseFrame): void {
   const y = frame.eaveY;
   for (const side of [-1, 1]) {
     const x = side > 0 ? b.x1 : b.x0;
-    sink.span('plaster', x, y - 0.1, b.z0 - 0.04, x + side * 0.13, y, b.z1 + 0.04, { decor: true, shadow: true });
-    sink.span('plaster', x, y - 0.2, b.z0 - 0.02, x + side * 0.065, y - 0.1, b.z1 + 0.02, { decor: true });
+    // round 2 (gauntlet wave 108b: "thin flat roof slabs with no eave or ridge depth"): the upper course is the tiles'
+    // own red ends bedded in lime under the eave, the lower one whitewashed, each standing further out
+    sink.span('roof', x, y - 0.12, b.z0 - 0.06, x + side * 0.2, y, b.z1 + 0.06, { decor: true, shadow: true });
+    sink.span('plaster', x, y - 0.25, b.z0 - 0.03, x + side * 0.1, y - 0.12, b.z1 + 0.03, { decor: true, shadow: true });
+  }
+  // the ridge's caballete: a row of cap tiles bedded proud of the ridge, end to end along it
+  const roof = frame.roof;
+  if ((roof.kind === 'gable' || roof.kind === 'hip') && roof.ridgeHalf > 0.3) {
+    const over = roof.kind === 'gable' ? 0.06 : 0;
+    sink.cylinder('roof', [0, roof.ridgeTopY + 0.03, -roof.ridgeHalf - over], 'z', 2 * (roof.ridgeHalf + over), 0.13, 7,
+      { decor: true, shadow: true }, 0.13, true, -Math.PI / 2, Math.PI);
   }
 }
 
@@ -231,7 +243,7 @@ function archFill(sink: PartSink, face: Face, uc: number, r: number, spring: num
  * A bell gable (espadaña) on a wall plane: a base course, two piers either side of the bell's opening, the head over it
  * and its pediment, the bell hung in the opening on an iron yoke, the cross on the apex. (u 0: its axis; y0: its foot.)
  */
-function espadana(sink: PartSink, face: Face, y0: number, w: number, depth: number, bell: number, mobile: boolean): void {
+function espadana(sink: PartSink, face: Face, y0: number, w: number, depth: number, bell: number, mobile: boolean, cross = true): void {
   const ow = bell * 2.3, oh = bell * 3.0, base = y0 + 0.5, head = base + oh;
   wallPolygon(sink, 'plaster', face, [[-w / 2, y0], [w / 2, y0], [w / 2, base], [-w / 2, base]], depth);
   wallPolygon(sink, 'plaster', face, [[-w / 2, base], [-ow / 2, base], [-ow / 2, head], [-w / 2, head]], depth);
@@ -245,6 +257,8 @@ function espadana(sink: PartSink, face: Face, y0: number, w: number, depth: numb
   if (!mobile) {
     faceBox(sink, 'structureMetal', face, 0, base + oh * 0.28 + bell * 1.12, -depth / 2, ow + 0.1, 0.07, 0.07, { colour: IRON, decor: true }, 'ends');
   }
+  // (a farm gate's gable carries none: over the trees round a cortijo the iron cross read as a floating marker, wave 108b)
+  if (!cross) return;
   const apex = facePoint(face, 0, top + w * 0.32, -depth / 2);
   sink.span('structureMetal', apex[0] - 0.03, apex[1] - 0.1, apex[2] - 0.03, apex[0] + 0.03, apex[1] + 0.75, apex[2] + 0.03, { colour: IRON, decor: true });
   const arm = facePoint(face, 0.22, top + w * 0.32 + 0.45, -depth / 2), arm2 = facePoint(face, -0.22, top + w * 0.32 + 0.45, -depth / 2);
@@ -288,6 +302,19 @@ function chumbera(sink: PartSink, x: number, z: number, size: number, look: () =
   }
 }
 
+/**
+ * An esparto blind (persiana de esparto) hung outside an upper window from a hook over its lintel and let down part way
+ * against the sun, rolled at its foot — the Andalusian street's most common window (round 2, gauntlet wave 108b: the
+ * glass read as "black window voids"). Dressing, from the house's look stream.
+ */
+function persiana(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, look: () => number): void {
+  const drop = h * (0.3 + look() * 0.55), top = y + h + 0.12, bottom = top - drop - 0.12;
+  const colour = look() < 0.75 ? shade(ESPARTO, 0.86 + look() * 0.26) : shade(BLIND_GREEN, 0.9 + look() * 0.2);
+  const opts = { colour, decor: true, shadow: true } as const;
+  faceBox(sink, 'structureWood', face, u, (top + bottom) / 2, 0.07, w + 0.16, top - bottom, 0.016, opts);
+  faceBox(sink, 'structureWood', face, u, bottom + 0.045, 0.085, w + 0.18, 0.09, 0.08, opts);
+}
+
 function dialect(st: AndalusianState, look: () => number): HouseDialect {
   return {
     window: (sink, face, o, y0) => {
@@ -295,6 +322,7 @@ function dialect(st: AndalusianState, look: () => number): HouseDialect {
       windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, loft ? { ...st.window, shutters: null, bars: 'none', surround: null } : st.window,
         st.rng, loft ? 0 : st.litShare);
       if (!loft && o.storey === 0 && st.reja) reja(sink, face, o.u, y0 + o.y0, o.w, o.h, st.reja === 'box');
+      if (!loft && o.storey > 0 && look() < 0.45) persiana(sink, face, o.u, y0 + o.y0, o.w, o.h, look);
     },
     door: (sink, face, o, y0, frame) => {
       if (o.kind === 'gate') {
@@ -324,7 +352,7 @@ function streetwise(sink: PartSink, body: () => void): void {
 }
 
 const canal = (pitch: number, eave = 0.28, verge = 0.06, kind: RoofSpec['kind'] = 'gable'): RoofSpec =>
-  ({ kind, pitchDeg: pitch, eave, verge: kind === 'hip' ? eave : verge, thickness: 0.14, bucket: 'roof', ridge: 'round' });
+  ({ kind, pitchDeg: pitch, eave, verge: kind === 'hip' ? eave : verge, thickness: 0.2, bucket: 'roof', ridge: 'round' });
 
 // ------------------------------------------------------------------------------------------------ the houses
 
@@ -366,7 +394,7 @@ function casa(ctx: RegionalBuildContext, opts: { two?: boolean } = {}): Regional
   const spec: HouseSpec = {
     w: D, d: W, plinth: { h: 0.22, out: 0.03, bucket: 'stone' }, storeys: sts, roof, gableBucket: wall, openings,
     chimneys: [{ x: -D * 0.2, z: chimneyZ, sx: 0.55, sz: 0.6, above: 0.75, bucket: 'plaster', cap: 'tile' }],
-    gutters: null, verge: null, reveal: 0.22,
+    gutters: null, verge: null, spall: null, reveal: 0.22,
   };
   const dado = st.band && look() < 0.7, bench = look() < 0.5, pots = look() < 0.55, lantern = look() < 0.4;
   sink.placed(0, fit.cx, 0, fit.cz, () => streetwise(sink, () => {
@@ -434,7 +462,7 @@ function townhouse(ctx: RegionalBuildContext, opts: { shop?: boolean } = {}): Re
     w: D, d: W, plinth: { h: 0.35, out: 0.04, bucket: 'stone' }, storeys: sts, roof: canal(19 + rng() * 5, 0.32), gableBucket: wall, openings,
     chimneys: [{ x: -D * 0.22, z: (rng() < 0.5 ? -1 : 1) * (W / 2 - 0.9), sx: 0.6, sz: 0.7, above: 0.8, bucket: 'plaster', cap: 'tile' },
       ...(W > 9 && rng() < 0.6 ? [{ x: -D * 0.1, z: 0, sx: 0.55, sz: 0.55, above: 0.7, bucket: 'plaster' as RegionalBucket, cap: 'tile' as const }] : [])],
-    gutters: null, verge: null, reveal: 0.26,
+    gutters: null, verge: null, spall: null, reveal: 0.26,
   };
   const impost = rng() < 0.55, dado = st.band !== null || rng() < 0.4, pots = look() < 0.6, lantern = look() < 0.5;
   const span = W - 2.2 + 1.6;
@@ -518,7 +546,7 @@ const posada: RegionalBuilder = (ctx) => {
       roof: canal(21 + rng() * 3, 0.32, 0.32, 'hip'), openings,
       chimneys: [{ x: W * 0.22, z: -D * 0.25, sx: 0.7, sz: 0.7, above: 0.8, bucket: 'plaster', cap: 'tile' },
         { x: -W * 0.2, z: D * 0.15, sx: 0.55, sz: 0.55, above: 0.7, bucket: 'plaster', cap: 'tile' }],
-      gutters: null, verge: null, reveal: 0.28,
+      gutters: null, verge: null, spall: null, reveal: 0.28,
     }, dialect(lst, look));
     alero(sink, frame);
     zocalo(sink, frame, st.band ?? 'plaster3', 0.85);
@@ -587,7 +615,7 @@ const ayuntamiento: RegionalBuilder = (ctx) => {
     const frame = buildHouse(sink, {
       w: body, d: L, plinth: { h: plinth, out: 0.06, bucket: 'stone' },
       storeys: [{ h: g0, wall: 'plaster' }, { h: g1, wall: 'plaster', jetty: [0, arcade, 0, 0] }],
-      roof: canal(20, 0.42, 0.42, 'hip'), openings, gutters: null, verge: null, reveal: 0.32,
+      roof: canal(20, 0.42, 0.42, 'hip'), openings, gutters: null, verge: null, spall: null, reveal: 0.32,
       chimneys: [{ x: -body * 0.25, z: -L * 0.3, sx: 0.7, sz: 0.7, above: 0.8, bucket: 'plaster', cap: 'tile' },
         { x: -body * 0.25, z: L * 0.3, sx: 0.7, sz: 0.7, above: 0.8, bucket: 'plaster', cap: 'tile' }],
     }, dialect({ ...st, reja: null, band: 'plaster2', window: { ...st.window, shutters: null, surround: { bucket: 'stone', width: 0.16, out: 0.03, lintel: 0.22 } } }, look));
@@ -667,7 +695,7 @@ const iglesia: RegionalBuilder = (ctx) => {
   sink.placed(0, 0, 0, (nz0 + nz1) / 2, () => {
     const frame = buildHouse(sink, {
       w: W, d: nave, plinth: { h: 0.4, out: 0.08, bucket: 'stone' }, storeys: [{ h: naveH, wall: 'stone' }],
-      roof: canal(26, 0.3, 0.12), gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, reveal: 0.45,
+      roof: canal(26, 0.3, 0.12), gableBucket: 'stone', openings, chimneys: [], gutters: null, verge: null, spall: null, reveal: 0.45,
     }, plain);
     sink.band('stone', -W / 2 - 0.16, frame.eaveY - 0.32, -nave / 2 - 0.05, W / 2 + 0.16, frame.eaveY, nave / 2 + 0.05, { decor: true, shadow: true });
     // the buttresses: three down each side, stepped back twice
@@ -692,7 +720,7 @@ const iglesia: RegionalBuilder = (ctx) => {
     buildHouse(sink, {
       w: cw, d: chancel + 0.4, plinth: { h: 0.4, out: 0.08, bucket: 'stone' }, storeys: [{ h: naveH - 1.4, wall: 'stone' }],
       roof: canal(24, 0.25, 0.25, 'hip'), gableBucket: 'stone', openings: [{ face: 'back', storey: 0, kind: 'window', u: 0, w: 0.6, h: 1.2, y0: 4.2 }],
-      chimneys: [], gutters: null, verge: null, reveal: 0.4,
+      chimneys: [], gutters: null, verge: null, spall: null, reveal: 0.4,
     }, plain);
   });
   // the tower over the west door
@@ -815,7 +843,7 @@ const ermita: RegionalBuilder = (ctx) => {
     sink.placed(0, 0, 0, zc, () => {
       const frame = buildHouse(sink, {
         w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: H, wall: 'plaster' }],
-        roof: canal(24, 0.25, 0.08), gableBucket: 'plaster', openings, chimneys: [], gutters: null, verge: null, reveal: 0.35,
+        roof: canal(24, 0.25, 0.08), gableBucket: 'plaster', openings, chimneys: [], gutters: null, verge: null, spall: null, reveal: 0.35,
       }, { ...dialect({ ...st, band: 'plaster2', reja: 'flat' }, look),
         door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
           leaf: rgb(0x4a3322), frame: { bucket: 'plaster2', width: 0.26, out: 0.02, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank',
@@ -930,7 +958,7 @@ const escuela: RegionalBuilder = (ctx) => {
     for (const o of windowRhythm('back', 0, W, { w: 1.0, h: 1.4, sill: 1.1, spacing: 2.6, margin: 1.2 })) openings.push(o);
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.55, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.9, wall: 'plaster' }, { h: 3.6, wall: 'plaster' }],
-      roof: canal(22, 0.38, 0.38, 'hip'), openings, gutters: null, verge: null, reveal: 0.3,
+      roof: canal(22, 0.38, 0.38, 'hip'), openings, gutters: null, verge: null, spall: null, reveal: 0.3,
       chimneys: [{ x: W * 0.2, z: -D * 0.28, sx: 0.6, sz: 0.6, above: 0.8, bucket: 'plaster', cap: 'tile' }],
     }, dialect({ ...st, band: 'plaster2', reja: 'flat', window: { ...st.window, surround: { bucket: 'plaster2', width: 0.18, out: 0.02, lintel: 0.24 } } }, look));
     alero(sink, frame);
@@ -981,7 +1009,7 @@ const cortijo: RegionalBuilder = (ctx) => {
       w: hwide, d: D, plinth: { h: 0.25, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.9, wall: 'plaster' }, { h: 2.5, wall: 'plaster' }],
       roof: canal(21 + rng() * 4, 0.3), gableBucket: 'plaster', openings,
       chimneys: [{ x: -hwide * 0.22, z: (rng() < 0.5 ? -1 : 1) * (D / 2 - 0.8), sx: 0.65, sz: 0.65, above: 0.8, bucket: 'plaster', cap: 'tile' }],
-      gutters: null, verge: null, reveal: 0.26,
+      gutters: null, verge: null, spall: null, reveal: 0.26,
     }, dialect({ ...st, reja: st.reja ?? 'box' }, look));
     alero(sink, frame);
     if (st.band) zocalo(sink, frame, st.band, 0.8);
@@ -1013,7 +1041,7 @@ const cortijo: RegionalBuilder = (ctx) => {
   const gd = zz1 - zz0 + 0.16;
   archFill(sink, gf, 0, gateW / 2, 2.45, 0.5, 3.3, gd, 'plaster', 'plaster2', false);
   wallPolygon(sink, 'plaster', gf, [[-pier - 0.35, 3.3], [pier + 0.35, 3.3], [pier + 0.35, 3.75], [-pier - 0.35, 3.75]], gd);
-  espadana(sink, gf, 3.75, 1.5, 0.4, 0.17, st.mobile);
+  espadana(sink, gf, 3.75, 1.5, 0.4, 0.17, st.mobile, false);
   gateUnit(sink, gf, 0, 0, gateW, 2.45, st.door, { bucket: 'plaster2', width: 0.12, out: 0.015 });
   // the patio's well: a whitewashed curb, an iron arch and its pulley
   const wx = gc, wz = -D * 0.1;
@@ -1052,7 +1080,7 @@ const pajar: RegionalBuilder = (ctx) => {
     }
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.4, out: 0.05, bucket: 'stone' }, storeys: [{ h: 4.3, wall: 'plaster' }],
-      roof: canal(20, 0.3), gableBucket: 'plaster', openings, chimneys: [], gutters: null, verge: null, reveal: 0.35,
+      roof: canal(20, 0.3), gableBucket: 'plaster', openings, chimneys: [], gutters: null, verge: null, spall: null, reveal: 0.35,
     }, dialect({ ...st, litShare: 0, reja: null }, look));
     alero(sink, frame);
     const f = frame.faces.front;
@@ -1197,6 +1225,9 @@ export const ANDALUSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
       // the grey of the dados and a few bands
       plaster3: (_h, s, l) => [0.11, Math.min(1, 0.05 + s * 0.15), Math.min(1, l * 0.32 + 0.255)],
     },
+    // round 2 (gauntlet wave 108b: "limewash is popcorn stucco at several times real scale"): coat on coat of lime over
+    // the render, a fine shallow skin — the tile at 1 m instead of 2.4 m, its relief at under half strength
+    relief: { plasterUv: 2.4, normal: 0.45, ao: 0.55 },
   },
   builders: ANDALUSIAN_BUILDERS,
   // limewash renewed every spring, sun-bleached tiles lichened yellow-grey, a dry inland climate

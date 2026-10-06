@@ -156,8 +156,9 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // pits, small arable fields, and here and there a plot of tipped slag
   coalfield: [[0, 0.26], [17, 0.22], [4, 0.14], [5, 0.14], [1, 0.12], [3, 0.06], [15, 0.06]],
   // the secano of the Ronda tableland (map revival lane 2, 2026-10-05): dry-farmed campiña — wheat and barley ripe
-  // and cut, the stubble, the fallow turned, the barbecho grazed, the plateau's vines, a field of sunflower
-  secano: [[1, 0.28], [2, 0.16], [5, 0.22], [4, 0.14], [0, 0.10], [12, 0.06], [6, 0.04]],
+  // and cut, the stubble, the fallow turned, the barbecho grazed (cured and patchy in summer, not a green pasture: wave
+  // 108b's "hard straight seam between golden field and green pasture"), the plateau's vines, a field of sunflower
+  secano: [[1, 0.28], [2, 0.16], [5, 0.22], [4, 0.14], [17, 0.10], [12, 0.06], [6, 0.04]],
 });
 
 /** Each region's field boundary. */

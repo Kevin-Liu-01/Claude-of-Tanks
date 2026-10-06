@@ -88,6 +88,30 @@ const SOUTH_STREETS = [
   { structure: 'cottage', x: 48.26, z: -255.99, yawDeg: -160, terrace: true },
   { structure: 'rowhouse', x: 57.42, z: -258.65, yawDeg: -160, terrace: true },
 ];
+// The square walls (map revival lane 2, round 2, 2026-10-05; gauntlet wave 108b: "squares and streets are open rutted
+// dirt fields ... Ronda wants squares enclosed by facades"): town houses close each market square's sides either side of
+// the casa consistorial and the church, fronting the square on its building lines, and the south side of the east road
+// below the crossroads. Laid like the street walls (each slot from its own house and its mirror's, 0.3 m eaves, the
+// carriageways, the squares, the strongpoints and every door yard 6 m deep kept clear); they stand after every earlier
+// site, so the 78 buildings above keep their places and their streams.
+const SQUARE_WALLS = [
+  // the square's west wall, south of the casa consistorial
+  { structure: 'rowhouse', x: -48.27, z: -185.63, yawDeg: 90, terrace: true },
+  // the west wall, north of it
+  { structure: 'rowhouse', x: -49.18, z: -133.48, yawDeg: 90, terrace: true },
+  // the east wall, south of the church
+  { structure: 'rowhouse', x: 47.69, z: -195.32, yawDeg: -90, terrace: true },
+  { structure: 'cottage', x: 46.33, z: -185.68, yawDeg: -90, terrace: true },
+  // the east wall, north of the church (short of the bridgehead tower)
+  { structure: 'rowhouse', x: 47.7, z: -157.7, yawDeg: -90, terrace: true },
+  { structure: 'rowhouse', x: 47.68, z: -146.38, yawDeg: -90, terrace: true },
+  { structure: 'cottage', x: 46.04, z: -136.22, yawDeg: -90, terrace: true },
+  // the south wall, west of the main street
+  { structure: 'rowhouse', x: -25.89, z: -222.43, yawDeg: 0, terrace: true },
+  // the east road, south side (the swell's flank climbs past these two)
+  { structure: 'cottage', x: 22.34, z: -269.19, yawDeg: 20, terrace: true },
+  { structure: 'cottage', x: 29.83, z: -271.95, yawDeg: 20, terrace: true },
+];
 // The ruined mills on the gorge floor beside the viaduct's piers (their mirrors stand on the north half of the floor).
 const MILLS = [
   { structure: 'ruin', x: -46, z: -32, yawDeg: 0 },
@@ -111,14 +135,28 @@ export default {
     // The two bridgehead towns and the gorge between them (the gorge keeps its full depth: settlementScale 1). The
     // centre is the viaduct, so the spawn corridors converge on the crossing.
     village: { x0: -130, x1: 130, z0: -270, z1: 270, cx: 0, cz: 0, feather: 40, flatten: .9 },
+    // map revival lane 2 (2026-10-05, gauntlet wave 108b: "the Puente Nuevo stands on level meadow ... the gorge shows
+    // as two separate grey pits beside it"): the village rect spans the gorge as well as both towns, and the ground reads
+    // every steep face under a village's worn soil as an earthwork (turf, rock only past ~60°), so the gorge walls were
+    // turf inside the rect and rock only past its ends. The towns' wear stays on their streets and squares; the gorge's
+    // walls are its rock the whole way under the bridge.
+    villageWear: 'activity-patches',
+    // ... and the worn ground the blanket wear gave goes back where it belongs: each town's ground from its swell to the
+    // rim's lip (it ends ~9 m short of the edge), and the gorge's dry gravel bed short of its walls (the fields stay off
+    // all three, as the village wear kept them)
+    workedGround: [
+      { feather: 16, strength: 0.75, boundary: [[-140, -282], [140, -282], [140, -106], [-140, -106]] },
+      { feather: 16, strength: 0.75, boundary: [[-140, 106], [140, 106], [140, 282], [-140, 282]] },
+      { feather: 10, strength: 0.6, boundary: [[-158, -46], [158, -46], [158, 46], [-158, 46]] },
+    ],
     // The viaduct's abutments stand on solid rock 4 m back from each lip, so a hull leaving the road at an abutment
     // stands on the rim, not on the wall.
     bridges: [{ x: 0, z: 0, yawDeg: 90, spanM: 200, widthM: 18, approachM: 45, route: 0 }],
     // The two market squares: level paved aprons on the main road from each abutment into its town, where the
-    // zone-control discs seat.
+    // zone-control discs seat. (Round 2: 72 m across, so the paving meets the house fronts of the square walls.)
     hardstands: [
-      { x: 0, z: -172, width: 64, length: 80, yawDeg: 0, grade: 0 },
-      { x: 0, z: 172, width: 64, length: 80, yawDeg: 0, grade: 0 },
+      { x: 0, z: -172, width: 72, length: 80, yawDeg: 0, grade: 0 },
+      { x: 0, z: 172, width: 72, length: 80, yawDeg: 0, grade: 0 },
     ],
     // Authored paths stop inside the square; the endpoint completion adds each exit and grades it through the rim.
     roads: { paths: [
@@ -192,7 +230,15 @@ export default {
     ],
   },
   splat: {...verdant.splat, sourcedPalette:'verdant', fieldPatch:.35,
-    tintA:[.94,1.04,.87],tintB:[.82,.91,.74],tintC:[1,1.05,.88],roadTint:[.83,.80,.70]},
+    // map revival lane 2, round 2 (gauntlet wave 108b: "grass reads as wet Atlantic pasture"): the sward's tints a
+    // summer's dry campiña, not a wet meadow's
+    tintA:[.98,1.0,.82],tintB:[.86,.88,.72],tintC:[1.03,1.03,.84],roadTint:[.83,.80,.70],
+    // the campiña's tierra calma over the tableland's limestone and marl, a pale warm loam (~0.21 / 0.17 / 0.12 over the
+    // shared palette's dark earth, ~0.084 / 0.058 / 0.042), not Verdant's chernozem; its plough a shade lighter
+    soilTint:[2.5,2.9,2.8], ploughLift:1.25,
+    // the towns' streets and squares paved in setts (the empedrado of Ronda's old town), the country roads past the
+    // village rect earth (terrain.ts townPaving)
+    townPaving:true, pavement:{ slabM:0.32, jointM:0.022, stains:0.3, tyres:0 }},
   // map revival lane 2 (2026-10-05): the Serranía de Ronda's trees. The acacia slot grows as the olive (silver-grey), the
   // oak slot as the holm oak (the encina, dull dark grey-green), the poplars stay poplars, the cypress is the cypress;
   // the scrub grows as the olive's sprays (wild olive and lentisk)
@@ -201,12 +247,16 @@ export default {
     clusterMix: [['acacia', 0.42], ['oak', 0.38], ['poplar', 0.2]],
     loneMix: [['acacia', 0.44], ['oak', 0.3], ['poplar', 0.12], ['cypress', 0.14]],
     rimMix: [['oak', 0.58], ['acacia', 0.3], ['cypress', 0.12]],
-    clusterCount: 60, loneCount: 110, rimCount: 95, grassDensity: 1, bushCount: 0.8, bushSpecies: 'acacia',
+    clusterCount: 60, loneCount: 110, rimCount: 95, grassDensity: 0.45, bushCount: 0.8, bushSpecies: 'acacia',
     palettes: {
       acacia: { form: 'olive', cardHue: 0.3, cardSat: 0.06,
         texTone: (_h: number, s: number, l: number): [number, number, number] => [0.28, Math.min(1, s * 0.5), Math.min(1, l * 1.12)] },
       oak: { form: 'holmOak', cardHue: 0.25, cardSat: 0.09,
         texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.68), l] },
+      // round 2 (gauntlet wave 108b: "poplars still capped with flat brown leaf cards"): the river's white poplar (álamo
+      // blanco), its leaves a silvery green on every card, no autumn brown in August
+      poplar: { cardHue: 0.24, cardSat: 0.14,
+        texTone: (_h: number, s: number, l: number): [number, number, number] => [0.24, Math.min(1, s * 0.6), Math.min(1, l * 1.06)] },
     },
     // planted lines (real cover: belts go through the tree admission), each with its mirror across the gorge: the olive
     // groves' rows on the west terraces (between the rim bank and the upper terrace, and below the lower one), the
@@ -227,7 +277,8 @@ export default {
     // Every building is an authored site (the towns are mirror images), so the roadside builder places none.
     plan: [],
     plannedSites: [...SOUTH_TOWN, ...SOUTH_TOWN.map(mirrorSite), ...MILLS, ...SOUTH_FARMS,
-      ...[...MILLS, ...SOUTH_FARMS].map(mirrorSite), ...SOUTH_STREETS, ...SOUTH_STREETS.map(mirrorSite)],
+      ...[...MILLS, ...SOUTH_FARMS].map(mirrorSite), ...SOUTH_STREETS, ...SOUTH_STREETS.map(mirrorSite),
+      ...SQUARE_WALLS, ...SQUARE_WALLS.map(mirrorSite)],
     destructibleBuildings: ['guardpost', 'fieldhut', 'leanto', 'huntingblind', 'commandtent'],
     blockFill: false, extraKits: [], buildingLat: [20, 5], spacingPad: 12, sideSkip: .12, maxSpread: 3.2,
     // Three strongpoint pairs, each the other's mirror across the gorge: the tollhouses at the bridgeheads, the rim
