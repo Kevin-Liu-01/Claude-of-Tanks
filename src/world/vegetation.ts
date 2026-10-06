@@ -276,6 +276,11 @@ interface TreeRecord {
    * map whose woods close, its species' forest-grown near variants (assignTreeForms); a field tree keeps the open form.
    */
   wood?: boolean;
+  /**
+   * Trees round 6: the tree stands in its wood's margin rank (the outer WOOD_MARGIN_K of its outline) or among the
+   * saplings past it — open to the light on the field's side, it keeps the open-grown form (assignTreeForms).
+   */
+  margin?: boolean;
   /** Trees round 5: one of the field trees (placeLoneTrees), the field law's (addFieldTree). */
   field?: boolean;
 }
@@ -2592,6 +2597,20 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
 
 /** Trees round 5: the forest-grown near variants of a wood's species (0 and 1; the third stays open-grown). */
 const FOREST_NEAR_VARIANTS = 2;
+/**
+ * Trees round 6 (2026-10-05, the gauntlet's wave 122 on Frontier's wood edge: "the wood is a single row you can see
+ * through"; a beech-oak edge has depth — several ranks, an understorey, closed canopy behind): a wood's margin rank,
+ * the trees seated in the outer share of its outline (k at or over this; about a third of a closed wood's trees: k is
+ * u^0.42), grows open-grown — its crown full and low on the stem toward the field, as a real wood's edge mantle does —
+ * and the forest-grown boles stand behind it.
+ */
+const WOOD_MARGIN_K = 0.85;
+/**
+ * Trees round 6: the understorey under a closed wood's canopy — young growth and shrubs between the boles, one to this
+ * many square metres of the wood's inner ground (inside its edge growth's 0.82), from 1 to about 2.4 m tall — so the
+ * floor between the trunks no longer reads open through the wood.
+ */
+const INNER_UNDERSTOREY_M2 = 70;
 /** Trees round 5: a shrub stem card's tint (the bark atlas tile's multiplier; buildGrownShrub). */
 const GROWTH_SHRUB_STEM_VALUE = 1.15;
 /** Trees round 5: the shrub atlas' size before the device's texture scale (createBushes; the crowns' are 512). */
@@ -5875,6 +5894,8 @@ function* vegetationBuildSteps(
         if (addTree(px, pz, sp, wr, woodSpread)) {
           placed++;
           trees[trees.length - 1].wood = true;
+          // trees round 6: the margin rank keeps the open-grown form (WOOD_MARGIN_K)
+          if (k >= WOOD_MARGIN_K) trees[trees.length - 1].margin = true;
           // a closed wood's interior (inside seven tenths of its outline) meets the far tier sooner (TreeRecord.nearScale)
           if (woodSpread > 1 && k < 0.7) trees[trees.length - 1].nearScale = 0.55;
         }
@@ -6425,7 +6446,7 @@ function* vegetationBuildSteps(
           dr: archetypeS.rootDecalRadiusM * Math.max(sapScaleX, sapScaleZ),
           fallH: archetypeS.fallHeightM * sapScaleY,
           fallR: archetypeS.fallRadiusM * Math.max(sapScaleX, sapScaleZ),
-          wood: true,
+          wood: true, margin: true,
         });
         registerTreeInteraction(
           trees.length - 1,
@@ -6695,7 +6716,8 @@ function* vegetationBuildSteps(
     let forest = 0, open = 0;
     for (const t of trees) {
       if (!forestSpecies.has(t.species)) continue;
-      if (t.wood) {
+      // (trees round 6: a wood's margin rank and its saplings keep the open-grown form, WOOD_MARGIN_K)
+      if (t.wood && !t.margin) {
         if (t.variant >= FOREST_NEAR_VARIANTS) t.variant = treePositionNoise(t.x, t.z, 97) < 0.5 ? 0 : 1;
         forest++;
       } else {
@@ -7279,6 +7301,25 @@ function* vegetationBuildSteps(
             seat(x, z, screensInTheOpen(x, z, sc, hy) ? cappedScale(x, z, hy) : sc, hy, yaw, tj, tr, tg, tb);
           }
         });
+        // trees round 6 (the gauntlet's wave 122: "the wood is a single row you can see through"): under a closed wood's
+        // canopy, young growth and shrubs between the boles (INNER_UNDERSTOREY_M2), on their own stream (every other
+        // placement keeps its draws); dressing like the rest of the understorey — the wood's own discs conceal, and one
+        // out of their cover keeps its place as capped young growth
+        if (treeBiomeWoodSpread(cfg?.id) > 1) {
+          const innerRng = mulberry32((seed ^ 0x51d3) >>> 0);
+          clusters.forEach((stand, index) => {
+            const n = Math.round(Math.PI * (stand.r * 0.82) ** 2 / INNER_UNDERSTOREY_M2);
+            for (let i = 0; i < n; i++) {
+              const a = innerRng() * Math.PI * 2, rr = 0.82 * Math.sqrt(0.03 + innerRng() * 0.97);
+              const sc = 1.0 + innerRng() * 1.4, yaw = innerRng() * Math.PI * 2, hy = 0.9 + innerRng() * 0.4;
+              const tj = innerRng(), tr = innerRng(), tg = innerRng(), tb = innerRng();
+              if (innerRng() < 0.2) continue; // the floor's open patches
+              const at = standPoint(index, stand, a, rr), x = at[0], z = at[1];
+              if (!admitted(x, z, sc, 470)) continue;
+              seat(x, z, screensInTheOpen(x, z, sc, hy) ? cappedScale(x, z, hy) : sc, hy, yaw, tj * 0.8, tr, tg, tb);
+            }
+          });
+        }
       }
     }
     function createUnderstoreyMesh(): void {
