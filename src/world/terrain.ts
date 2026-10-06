@@ -325,6 +325,10 @@ interface SplatConfig {
    * as airfield concrete — square slabs `slabM` across with sealed expansion joints (`jointM` half-width), a tone per
    * slab, oil stains (`stains`, 0..1) and rubber streaks along the x axis, the runway's (`tyres`, 0..1). */
   pavement?: { slabM: number; jointM?: number; stains?: number; tyres?: number };
+  /** Map revival lane 2 (2026-10-05, Aegis Crossing's Ronda): the roads and hardstands inside the village rect take the
+   * paved path (pavedRoads' setts, kerb line and gutter, `pavement` when authored) while the country roads past it stay
+   * earth; the road mask also leaves the ground under a dry viaduct's deck unpainted. Absent = off. */
+  townPaving?: boolean;
   /** Maps lane B (2026-10-03, the gauntlet: Tarkhan Steppe's pans "read as snow patches or grey mud"): the dry marsh
    * layer drawn as a sor's salt crust — white-grey salt with faint desiccation polygons (`crackM` across) over the
    * floor, the damp darker silt of its margin (`damp`, 0..1) outside the crust. */
@@ -3325,6 +3329,7 @@ export function makeMaskTexture(
   waterWetnessAt: HeightField['_waterWetnessAt'] | null = null,
   shoreDirtStart: number | null = null,
   sorWetnessAt: HeightField['_sorWetnessAt'] | null = null,
+  viaductCut = false,
 ): THREE.DataTexture {
   const _VILLAGE = layout.village;
   const activityWear = layout.terrain.villageWear === 'activity-patches';
@@ -3420,12 +3425,23 @@ export function makeMaskTexture(
     const patch = 0.45 + 0.55 * (seedNoi.noise(x * 0.045 - 19, z * 0.045 + 8) * 0.5 + 0.5);
     px[j + 3] = vm * patch * 0.8 * 255;
   }
+  // map revival lane 2 (townPaving): the ground under a dry viaduct's deck (its span, to the road field's 12 m) is the gorge's
+  // bed and walls, not the road that rides the deck over them
+  const viaducts = viaductCut ? (layout.terrain.bridges ?? []).map((b) => ({ x: b.x, z: b.z, ux: Math.cos(b.yawDeg * Math.PI / 180),
+    uz: Math.sin(b.yawDeg * Math.PI / 180), hl: b.spanM / 2, hw: Math.max(b.widthM / 2, 12) })) : [];
+  function underViaduct(x: number, z: number): boolean {
+    for (const v of viaducts) {
+      const dx = x - v.x, dz = z - v.z;
+      if (Math.abs(dx * v.ux + dz * v.uz) <= v.hl && Math.abs(dx * v.uz - dz * v.ux) <= v.hw) return true;
+    }
+    return false;
+  }
   function paintMaskPixels(): void {
     for (let tz = 0; tz < s; tz++) {
       const z = (tz + 0.5) / T - HALF;
       for (let tx = 0; tx < s; tx++) {
         const x = (tx + 0.5) / T - HALF, i = tz * s + tx, j = i * 4;
-        paintRoadMask(x, z, i, j);
+        if (!underViaduct(x, z)) paintRoadMask(x, z, i, j);
         px[j + 2] = (landGrid ? landAt(x, z) : sampleMarshMask(x, z)) * 255;
         // Existing roads and liquid margins keep every original mask channel.
         // Only dry, off-road settlement soil moves to authored yard footprints.
@@ -3632,6 +3648,8 @@ uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoul
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
 uniform float uPavedRock;
 uniform vec4 uPaveSlab;   // maps lane B (2026-10-03): airfield concrete (slab m, joint half-width m, stains, tyres); x 0 = off
+uniform vec4 uTownPave;   // map revival lane 2 (2026-10-05): the paved town rect (centre xz, half-size xz); z 0 = off
+float gRoadTex = 0.0;     // uRoadTex, or 1 inside the paved town rect (SplatConfig townPaving)
 uniform vec4 uSaltCrust;  // maps lane B (2026-10-03): a sor's salt crust (on, polygon cell m, damp margin, unused)
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
@@ -3969,6 +3987,11 @@ void splatCompute() {
   vec3 wn = normalize(vWNormal);
   vec2 mUV = wp.xz / uMaskSize + 0.5;
   vec4 mk = maskAt(mUV);
+  gRoadTex = uRoadTex;
+  if (uTownPave.z > 0.0) {
+    vec2 townQ = abs(wp.xz - uTownPave.xy) - uTownPave.zw;
+    gRoadTex = max(gRoadTex, 1.0 - smoothstep(0.0, 6.0, max(townQ.x, townQ.y)));
+  }
   // ground lane (the GPU cut, hold 16): the land use's bake goes out with the ground mask's own read
   vec4 luA = vec4(0.0), luB = vec4(0.0), luK = vec4(0.5); ivec2 luT = ivec2(0);
   if (uLandA.x > 0.001) lu_fetch(wp.xz, luA, luB, luK, luT);
@@ -4139,7 +4162,7 @@ void splatCompute() {
   // ruts, mud, puddles or broken edges"). Where its texels can be seen, a country road's edge wanders by the metre — the
   // turf bites into it in tongues, the wheels spill past it — and it is a sharper line than the 1.1 m feather the gauge
   // keeps at range; the trodden verge beside it ends on a ragged line of its own. Paved streets keep their kerb law.
-  float roadVis = tileVis(2.6) * (1.0 - uRoadTex);
+  float roadVis = tileVis(2.6) * (1.0 - gRoadTex);
   vec2 roadBite = nzq(uv, 0.38, vec2(0.17, 0.53)) - 0.5; // a 2.6 m tile of 0.3–0.7 m tongues
   float roadHalfB = roadHalf + roadBite.x * 1.7 * roadVis;
   if (roadVis > 0.002) {
@@ -5071,7 +5094,7 @@ void splatCompute() {
       a.rgb = mix(a.rgb, a.rgb * uReduxC.rgb, rim * 0.85);
     }
     float vergeW = uReduxB.y * shoulder * fD * (1.0 - roadCore) * (1.0 - projW) * (1.0 - fMs)
-      * (1.0 - smoothstep(90.0, 160.0, camDist)) * (1.0 - uRoadTex * 0.5);
+      * (1.0 - smoothstep(90.0, 160.0, camDist)) * (1.0 - gRoadTex * 0.5);
     vergeW *= tileVis(1.2); // ground lane
     if (vergeW > 0.003) {
       // the road's own grit (the carriageway's clamped zero-mean rock grain) and a dusty, paler tone on the trodden verge
@@ -5509,7 +5532,7 @@ void splatCompute() {
     float gvL = dot(texture2D(uAlbR, uv * 0.83).rgb, vec3(0.34, 0.45, 0.21));
     float gvM = dot(uMeanR.rgb, vec3(0.34, 0.45, 0.21)); // terrain v2: the rock tile's measured mean
     gvL = mix(gvM, gvL, tileVis(1.2)); // ground lane: the 1.2 m grit tile (zero-mean, so it eases to nothing)
-    a.rgb *= 1.0 + clamp((gvL - gvM) * 1.4, -0.16, 0.20) * roadCore * dNear * (1.0 - uRoadTex);
+    a.rgb *= 1.0 + clamp((gvL - gvM) * 1.4, -0.16, 0.20) * roadCore * dNear * (1.0 - gRoadTex);
     // sub-10 m second octave: clod/blade relief right under the camera
     // r6 terrain_environment: band widened (5-15 -> 6-26 m) and the octave
     // now carries ALBEDO as well as normal — the 5-20 m meadow read as one
@@ -5558,7 +5581,7 @@ void splatCompute() {
     // dark wheel ruts, damp borders. uRoadTex (0..1) cross-fades to PAVED
     // town streets: the rock layer (cobble/sett) laid across the full
     // carriageway at every distance, ruts nearly gone.
-    float dW = roadCore * 0.9 * (1.0 - uRoadTex);
+    float dW = roadCore * 0.9 * (1.0 - gRoadTex);
     // Build the compacted core from a deliberately low-frequency dirt
     // sample. Keeping only a quarter of the underlying terrain preserves
     // local variation without baking the source texture's AO/cavity blobs
@@ -5626,19 +5649,19 @@ void splatCompute() {
     // them ruled at 150–300 m) a lane half a metre wide spans under three pixels past a 0.15 m footprint, and seen from a
     // ridge a country road's two tracks merge into one trodden, darker middle — so past it the lanes give way to a broad
     // soft band over the carriageway's middle third (no stripes), the tracks' own darkening near the camera
-    float laneFar = smoothstep(0.08, 0.28, gFootM) * (1.0 - uRoadTex);
+    float laneFar = smoothstep(0.08, 0.28, gFootM) * (1.0 - gRoadTex);
     float trodMid = (1.0 - smoothstep(0.6, 2.4, dRoad)) * roadCore * rutAmp;
-    a.rgb *= 1.0 - min(mix(rut, trodMid * 0.55, laneFar), 1.0) * mix(0.34, 0.26, uRoadTex);
-    a.a = mix(a.a, a.a * 0.86, rut * (1.0 - uRoadTex));
-    a.rgb *= 1.0 + crown * 0.05 * (1.0 - uRoadTex);
-    if (uRoadTex > 0.01) {
+    a.rgb *= 1.0 - min(mix(rut, trodMid * 0.55, laneFar), 1.0) * mix(0.34, 0.26, gRoadTex);
+    a.a = mix(a.a, a.a * 0.86, rut * (1.0 - gRoadTex));
+    a.rgb *= 1.0 + crown * 0.05 * (1.0 - gRoadTex);
+    if (gRoadTex > 0.01) {
       // r5: HARDER pavement edge (0.10-0.26 with less noise wobble) — paved
       // town streets end at a kerb line, they do not alpha-fade into lawn.
       // Patch/repair tone variation breaks the uniform sett sheet.
       // r6: harder pavement edge (0.15-0.24, noise wobble halved) — the wide
       // noise-feathered 0.10-0.26 ramp read as water-eroded banks; a paved
       // street must end on a near-kerb line
-      float paveCore = smoothstep(0.15, 0.24, mk.r + (n1hs - 0.5) * 0.025) * uRoadTex;
+      float paveCore = smoothstep(0.15, 0.24, mk.r + (n1hs - 0.5) * 0.025) * gRoadTex;
       vec4 pav = splatSamp(uAlbR, uv * 0.31, df, mipB, uMeanR);
       vec4 pnn = splatSamp(uNrmR, uv * 0.31, df, mipB, NRM_MEAN);
       pnn.z = 0.5;
@@ -5682,13 +5705,13 @@ void splatCompute() {
         float paveN = nzq(uv, 0.62, vec2(0.71, 0.37)).x;
         // (maps lane B: an airfield's concrete keeps a straight edge — no setts to lose)
         float paveKept = smoothstep(0.15, 0.24, mk.r + (n1hs - 0.5) * 0.025
-          + (paveN - 0.5) * 0.20 * paveVis * (1.0 - step(0.001, uPaveSlab.x))) * uRoadTex;
+          + (paveN - 0.5) * 0.20 * paveVis * (1.0 - step(0.001, uPaveSlab.x))) * gRoadTex;
         paveCore = min(paveCore, paveKept);
         float outer = paveCore * (1.0 - smoothstep(0.24, 0.46, mk.r));
         float pavL = dot(pav.rgb, vec3(0.34, 0.45, 0.21)) / max(dot(uMeanR.rgb, vec3(0.34, 0.45, 0.21)) * 0.8, 1e-3);
         float joint = 1.0 - smoothstep(0.55, 0.95, pavL);
         pav.rgb = mix(pav.rgb, pav.rgb * vec3(0.70, 0.96, 0.50), joint * outer * 0.85);
-        float margin = smoothstep(0.02, 0.15, mk.r + (paveN - 0.5) * 0.06) * (1.0 - paveCore) * uRoadTex;
+        float margin = smoothstep(0.02, 0.15, mk.r + (paveN - 0.5) * 0.06) * (1.0 - paveCore) * gRoadTex;
         a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.76, 0.68), margin * 0.65);
         a.a = mix(a.a, max(a.a, 0.94), margin);
       }
@@ -5698,7 +5721,7 @@ void splatCompute() {
       // gutter shading: a darkened seam just inside the pavement edge gives
       // the street a built profile even before the kerb geometry resolves
       float gutter = smoothstep(0.06, 0.20, mk.r) * (1.0 - smoothstep(0.22, 0.42, mk.r));
-      a.rgb *= 1.0 - gutter * 0.18 * uRoadTex;
+      a.rgb *= 1.0 - gutter * 0.18 * gRoadTex;
     }
   }
   // r4: 0.09 -> 0.16 + a dusty desaturation pull — road shoulders must read
@@ -6298,7 +6321,7 @@ function* createSplatMaterialSteps(
   sourcedTexturesReady.then(measureLayerMeans, measureLayerMeans);
   const maskNoi = new SimplexNoise({ random: mulberry32(3010) });
   const mask = makeMaskTexture(maskNoi, layout, rockMask, waterWetnessAt,
-    S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null, sorWetnessAt);
+    S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null, sorWetnessAt, !!S.townPaving);
   yield;
   if (!_splatFields) yield* splatFieldSteps();
   const noiseTex = makeShaderNoiseTexture(3011);
@@ -6399,6 +6422,9 @@ function* createSplatMaterialSteps(
     shader.uniforms.uStrata = { value: S.strata ?? 0 };
     shader.uniforms.uFormation = formationUniform; // ground lane: set by the build from the field's height span
     shader.uniforms.uRoadTex = { value: S.pavedRoads ? 1 : clamp(S.roadTexMix ?? 0, 0, 1) };
+    const town = layout.village; // map revival lane 2: the paved town rect (townPaving), off unless the map authors it
+    shader.uniforms.uTownPave = { value: S.townPaving ? new THREE.Vector4((town.x0 + town.x1) / 2, (town.z0 + town.z1) / 2,
+      (town.x1 - town.x0) / 2, (town.z1 - town.z0) / 2) : new THREE.Vector4(0, 0, 0, 0) };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uWornDirtStrength = { value: clamp(S.wornDirtStrength ?? 0.84, 0, 1) };
     shader.uniforms.uShoulderDirt = { value: clamp(S.shoulderDirt ?? 1, 0, 1) };
