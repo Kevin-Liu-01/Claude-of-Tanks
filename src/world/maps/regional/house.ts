@@ -7,7 +7,7 @@ import {
   PartSink, bodyFaces, facePoint, faceBox, normalize3,
   type Face, type RegionalBucket, type Rgb, type Vec3, type EmitOptions,
 } from './geometry.ts';
-import { carvedVerge, facadeOn, sillStreaks, thatchCourses } from './facade.ts';
+import { carvedVerge, facadeOn, sillStreaks, thatchCourses, withFacade } from './facade.ts';
 
 export type RoofKind = 'gable' | 'halfhip' | 'hip' | 'flat' | 'shed';
 
@@ -179,12 +179,14 @@ interface WearContext {
   rng: () => number;
   /** spalled render (decor only) draws from its own stream: the damage decisions above never move */
   spall?: () => number;
+  /** the facade craft's slot for the building (facade.ts withFacade), set with the wear */
+  facade?: { tier: 'desktop' | 'mobile'; rng: () => number };
 }
 let wearContext: WearContext | null = null;
 export function withWear<T>(wear: WearContext | null, build: () => T): T {
   const prior = wearContext;
   wearContext = wear;
-  try { return build(); } finally { wearContext = prior; }
+  try { return wear?.facade ? withFacade(wear.facade, build) : build(); } finally { wearContext = prior; }
 }
 
 interface RoofPatch { side: 1 | -1; z0: number; z1: number; x0: number; x1: number }
