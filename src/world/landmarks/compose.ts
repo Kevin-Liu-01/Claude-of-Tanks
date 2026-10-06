@@ -20,7 +20,7 @@
 // Every refusal is named in the receipt (props.group.userData.landmarks); nothing is moved silently.
 import * as THREE from 'three';
 import { appendStructureCollisionBand, deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureShellBands } from '../structureCollision.ts';
-import { cloneCollisionRecord, setCompoundShape, type CollisionRecord, type SimpleCollisionShape } from '../collision.ts';
+import { cloneCollisionRecord, collisionFootprintContainsPoint, setCompoundShape, type CollisionRecord, type SimpleCollisionShape } from '../collision.ts';
 import { sampleObbGround } from '../propPlacement.ts';
 import type { HeightField } from '../terrain.ts';
 import { REGIONAL_BUCKETS, hashSeed, streamFrom, type RegionalParts } from '../maps/regional/geometry.ts';
@@ -142,6 +142,25 @@ function discMeetsFootprint(dx: number, dz: number, r: number, x: number, z: num
   return ex * ex + ez * ez < r * r;
 }
 
+/**
+ * True when a record's exact footprint (its compound shape) reaches into the piece's footprint: the footprint sampled
+ * on a grid of about a metre, edges included. The coarse disc test above it stands for a record by the disc inscribed in
+ * its box, which for a large building turned on the diagonal (a khan, a church) reaches far past its walls and refused
+ * the paving laid against its front (2026-10-06, Orchard's khan).
+ */
+function footprintTouchesRecord(record: CollisionRecord, x: number, z: number, hw: number, hl: number, yaw: number): boolean {
+  if (!record.shape2) return true;
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  const nx = Math.max(1, Math.ceil(hw * 2)), nz = Math.max(1, Math.ceil(hl * 2));
+  for (let i = 0; i <= nx; i++) {
+    for (let j = 0; j <= nz; j++) {
+      const lx = -hw + hw * 2 * i / nx, lz = -hl + hl * 2 * j / nz;
+      if (collisionFootprintContainsPoint(record, x + lx * c + lz * s, z - lx * s + lz * c, 0.05)) return true;
+    }
+  }
+  return false;
+}
+
 /** The hard solid (by kind) standing in the footprint, and the soft ones it overlaps. */
 function solidConflicts(obstacles: readonly CollisionRecord[], x: number, z: number, hw: number, hl: number, yaw: number,
   hardKinds: ReadonlySet<string> | undefined = undefined): { hard: string | null; soft: string[] } {
@@ -153,6 +172,7 @@ function solidConflicts(obstacles: readonly CollisionRecord[], x: number, z: num
     const cx = (ob.min[0] + ob.max[0]) * 0.5, cz = (ob.min[2] + ob.max[2]) * 0.5;
     const r = Math.max(0.3, Math.min(ob.max[0] - ob.min[0], ob.max[2] - ob.min[2]) * 0.5);
     if (!discMeetsFootprint(cx, cz, r, x, z, hw, hl, yaw)) continue;
+    if (!footprintTouchesRecord(ob, x, z, hw, hl, yaw)) continue;
     const kind = ob.kind ?? (ob.crushable ? 'crushable' : 'rock');
     if ((!ob.crushable && !SOFT_KINDS.has(kind)) || hardKinds?.has(kind)) return { hard: kind, soft };
     if (soft.length < 8) soft.push(kind);
