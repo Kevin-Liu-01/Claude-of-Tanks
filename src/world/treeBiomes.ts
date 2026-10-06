@@ -237,9 +237,30 @@ export function treeBiomeUpland(mapId: string | null | undefined): boolean {
   return !!(mapId && TREE_BIOMES[mapId]?.upland);
 }
 
-/** Whether a map's stands are open groves (an arid place's, Las Cañadas'). */
+/**
+ * Trees round 2b (wave 28): an upland place's zones from its square's heights sorted ascending — the quantiles at two
+ * fifths and three fifths. Its conifer forms stand at or over the second, its broadleaf forms at or under the first,
+ * nothing on the slopes between (uplandZoneAllows; vegetation.ts uplandZoneOk). No map sets `upland` since Copper Mesa
+ * became Queenstown (batch 4, 2026-10-06); treeCrownShading pins the law on a synthetic fixture.
+ */
+export function uplandBandOf(sortedHeights: readonly number[]): readonly [number, number] {
+  return [sortedHeights[Math.floor(sortedHeights.length * 0.4)], sortedHeights[Math.floor(sortedHeights.length * 0.6)]];
+}
+
+/** Whether a form (a conifer or not) may stand at height h under an upland band; with no band, anywhere. */
+export function uplandZoneAllows(band: readonly [number, number] | null, conifer: boolean, h: number): boolean {
+  if (!band) return true;
+  return conifer ? h >= band[1] : h <= band[0];
+}
+
+/** Whether a place's stands are open groves: its own flag (`open`) or an arid place's. */
+export function treeBiomeIsOpen(biome: Readonly<Pick<TreeBiome, 'open' | 'arid'>> | null | undefined): boolean {
+  return !!(biome?.open || biome?.arid);
+}
+
+/** Whether a map's stands are open groves (an arid place's, or a place that sets `open`). */
 export function treeBiomeOpen(mapId: string | null | undefined): boolean {
-  return !!(mapId && (TREE_BIOMES[mapId]?.open || TREE_BIOMES[mapId]?.arid));
+  return !!mapId && treeBiomeIsOpen(TREE_BIOMES[mapId]);
 }
 
 /** The foliage colour defaults of a map's place, or none. */

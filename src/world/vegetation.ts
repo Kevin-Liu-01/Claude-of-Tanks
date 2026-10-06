@@ -47,7 +47,7 @@ import { resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees, type AuthoredTreeFeature,
 } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -5729,13 +5729,12 @@ function* vegetationBuildSteps(
     const heights: number[] = [];
     for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) heights.push(heightField.getHeightAt(x, z));
     heights.sort((a, b) => a - b);
-    return [heights[Math.floor(heights.length * 0.4)], heights[Math.floor(heights.length * 0.6)]] as const;
+    return uplandBandOf(heights);
   })() : null;
   function uplandZoneOk(x: number, z: number, sp: Species): boolean {
     if (!uplandBand) return true;
     const form = formOf(sp)?.form ?? sp;
-    const h = heightField.getHeightAt(x, z);
-    return TREE_GROWTH_PROFILES[form as GrowthSpecies]?.family === 'conifer' ? h >= uplandBand[1] : h <= uplandBand[0];
+    return uplandZoneAllows(uplandBand, TREE_GROWTH_PROFILES[form as GrowthSpecies]?.family === 'conifer', heightField.getHeightAt(x, z));
   }
   function addTree(x: number, z: number, species: Species, r: RandomSource = rng, spread = 1): boolean {
     if (!siteOk(x, z, 0)) return false;

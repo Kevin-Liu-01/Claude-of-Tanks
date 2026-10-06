@@ -18,7 +18,7 @@ import {
 import { makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, SPRAY_KINDS } from './treeSprayAtlas.ts';
 import { LOD_SHADOW_FADE_ATTRIBUTE } from '../engine/lodShadowFade.ts';
 import { growShrubSkeleton } from './treeGrowth.ts';
-import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland } from './treeBiomes.ts';
+import { TREE_BIOMES, treeBiomeArid, treeBiomeColour, treeBiomeIsOpen, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, uplandBandOf, uplandZoneAllows } from './treeBiomes.ts';
 import { BARE_SPRAY_KINDS, bareFormPalette, grownFormSprayKind, grownTintLaw } from './vegetation.ts';
 import { TREE_SPECIES } from './treeSpecies.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
@@ -366,6 +366,16 @@ assert.equal(treeBiomeSlot('verdant', 'oak'), null, 'a slot the table leaves alo
   assert.ok(!treeBiomeUpland('copper_mesa') && !treeBiomeUpland('caldera'), 'Queenstown and Aso are not zoned by height');
   assert.deepEqual(MAP_IDS.filter((id) => treeBiomeUpland(id)), [], 'no map sets the upland hook');
   for (const form of ['juniper', 'pinyon']) assert.equal(TREE_GROWTH_PROFILES[form].family, 'conifer', `${form}: a conifer (the high zone)`);
+  // the hooks no map sets now, on synthetic fixtures: the upland zones (the square's height quantiles at two and three
+  // fifths; conifer forms high, broadleaf forms low, nothing between) and the open-grove flag
+  const band = uplandBandOf([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.deepEqual(band, [4, 6], 'the upland band: the quantiles at two and three fifths');
+  assert.ok(uplandZoneAllows(band, true, 6) && !uplandZoneAllows(band, true, 5.9), 'a conifer form on the high ground only');
+  assert.ok(uplandZoneAllows(band, false, 4) && !uplandZoneAllows(band, false, 4.1), 'a broadleaf form in the low ground only');
+  assert.ok(!uplandZoneAllows(band, true, 5) && !uplandZoneAllows(band, false, 5), 'nothing on the slopes between');
+  assert.ok(uplandZoneAllows(null, true, -50) && uplandZoneAllows(null, false, 50), 'no band: a form stands anywhere');
+  assert.ok(treeBiomeIsOpen({ open: true }) && treeBiomeIsOpen({ arid: true }) && !treeBiomeIsOpen({}) && !treeBiomeIsOpen(null),
+    'open groves: a place\'s own flag or an arid place');
 }
 {
   // a form's own colour wins over the map palette's (tuned for the slot's species): Dalmatia's olives silver-grey, its
