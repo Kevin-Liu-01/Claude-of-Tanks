@@ -171,7 +171,10 @@ export const parkSquare: LandmarkBuilder = (ctx) => {
     destructibles.push({ kind: 'lamp', x: ux * t * 0.55 + uz * off, z: uz * t * 0.55 - ux * off, yawDeg: Math.atan2(-uz, ux) * 180 / Math.PI });
   }
   const children: LandmarkPlacement[] = [];
-  if (centre !== 'none' && centre !== '') children.push({ kind: centre as LandmarkKind, x: 0, z: 0, yawDeg: 0, params: centre === 'obelisk' ? { railing: false } : {} });
+  // the centre piece inside the square's own railing; `centreHeight` (when set) sizes it — a village's memorial obelisk
+  // stands a third lower than a town square's
+  const centreHeight = Number(ctx.params.centreHeight) > 0 ? { height: Number(ctx.params.centreHeight) } : {};
+  if (centre !== 'none' && centre !== '') children.push({ kind: centre as LandmarkKind, x: 0, z: 0, yawDeg: 0, params: centre === 'obelisk' ? { railing: false, ...centreHeight } : centreHeight });
   return { parts: sink.finish(), tints: { plaster3: [0.95, 0.86, 0.68] }, destructibles, children };
 };
 

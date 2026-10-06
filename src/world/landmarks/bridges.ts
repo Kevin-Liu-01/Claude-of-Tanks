@@ -1,6 +1,7 @@
 // src/world/landmarks/bridges.ts — bridges (the landmarks lane, 2026-10-05): the multi-span stone arch (Sarajevo's
 // Latin Bridge, a Dalmatian packhorse bridge), the steel camelback through truss on stone piers (Shanghai's Garden
-// Bridge), the timber trestle, the wartime Bailey panel bridge and the arched viaduct.
+// Bridge), the timber trestle, the wartime Bailey panel bridge, the arched viaduct and the Dutch double-leaf lift bridge
+// (a polder canal's ophaalbrug).
 //
 // A bridge's frame: the span runs along z from -span/2 to +span/2 (its abutment faces), x across it, y up from the
 // lowest ground under it. Where the composer gives the ground (types.ts ground) the piers stand on the bed and the deck
@@ -16,7 +17,7 @@ import { archedSlab, bar, extrude, moulding, revolve, type ArchHole } from './ki
 import type { LandmarkBuildContext, LandmarkBuilder } from './types.ts';
 
 const STEEL_GREY = rgb(0x6f777b), STEEL_GREEN = rgb(0x4d5a4e), BAILEY_GREEN = rgb(0x4e5638), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
-const DECK_BOARD = rgb(0x7a6a55), IRON = rgb(0x2b2d2e);
+const DECK_BOARD = rgb(0x7a6a55), IRON = rgb(0x2b2d2e), PAINT_WHITE = rgb(0xe6e3da), PAINT_BLACK = rgb(0x262624);
 
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
 /** A deck part's depth under its surface: a standable floor with margin (collision.ts HULL_STANDABLE_HEIGHT_M is 0.9). */
@@ -324,4 +325,103 @@ export const viaduct: LandmarkBuilder = (ctx) => {
   moulding(sink, 'stone', W, L, H - 0.45, 0.25, 0.14);
   for (const sx of [-1, 1]) sink.span('stone', sx * W / 2 - (sx > 0 ? 0.45 : 0), H, -L / 2, sx * W / 2 + (sx > 0 ? 0 : 0.45), H + 1.1, L / 2);
   return { parts: sink.finish() };
+};
+
+// ---------------------------------------------------------------------------------------------------------- lift bridge
+
+/**
+ * The Dutch double-leaf lift bridge (a dubbele ophaalbrug — Amsterdam's Magere Brug and a polder canal's): two timber
+ * leaves hinged on the brick abutments and meeting over the channel; over each abutment a portal (the hamei) of two posts
+ * and a beam, carrying the balance beams (the balans) that lean back over the approach, their tails tied by a crossbar
+ * and their heads linked to the leaf's tip by iron rods; the railings, the portals and the balances painted white with
+ * black feet, the deck boards bare; the abutments brick (the map's masonry) with stone copings. The leaves lie down: the
+ * bridge is closed and a road crosses it.
+ */
+export const liftBridge: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const span = Math.max(8, Number(ctx.params.span)), W = Math.max(3.5, Number(ctx.params.width)), deck = Math.max(1.2, Number(ctx.params.deck));
+  const top = deckProfile(ctx, span, deck, Math.min(0.25, span * 0.012));
+  const white = { colour: PAINT_WHITE }, black = { colour: PAINT_BLACK }, iron = { colour: IRON };
+  const postX = W / 2 + 0.32, portalH = Math.max(4.6, W * 0.85);
+  // ---- the abutments: brick blocks from below the bed to the deck's underside, a stone coping along the channel face
+  for (const zs of [-1, 1]) {
+    const face = zs * span / 2, back = zs * (span / 2 + 3.2), y = Math.min(top(face), top(zs * span / 2)) - 0.42;
+    const bed = Math.min(groundAt(ctx, 0, face), groundAt(ctx, -W / 2, face), groundAt(ctx, W / 2, face)) - 1.0;
+    const z0 = Math.min(face, back), z1 = Math.max(face, back);
+    sink.span('stone', -W / 2 - 0.9, bed, z0, W / 2 + 0.9, y, z1);
+    sink.span('stone', -W / 2 - 1.0, y - 0.04, face - 0.18, W / 2 + 1.0, y + 0.1, face + 0.18, { decor: true });
+    // the wing walls along the banks
+    for (const sx of [-1, 1]) {
+      const g = groundAt(ctx, sx * (W / 2 + 0.9), zs * (span / 2 + 3.2));
+      sink.member('stone', [sx * (W / 2 + 0.55), y - 0.1, face], [sx * (W / 2 + 0.55), Math.min(y - 0.1, g + 0.3), zs * (span / 2 + 3.6)], 0.6, 1.6, [0, 1, 0], { exposed: true }, 1.2);
+    }
+  }
+  // ---- the leaves: girders, cross-beams and the deck boards, each leaf from its abutment to the meeting line
+  for (const zs of [-1, 1]) {
+    const zA = zs * span / 2, zB = 0;
+    for (const x of [-W * 0.38, 0, W * 0.38]) bar(sink, 'structureWood', [x, top(zA) - 0.36, zA], [x, top(zB) - 0.36, zB - zs * 0.02], 0.28, { colour: TIMBER_DARK });
+    const ribs = Math.max(2, Math.round(span / 2 / 1.6));
+    for (let k = 0; k <= ribs; k++) {
+      const z = zA + (zB - zA) * k / ribs;
+      sink.span('structureWood', -W / 2 - 0.1, top(z) - 0.5, z - 0.09, W / 2 + 0.1, top(z) - 0.2, z + 0.09, { colour: TIMBER_DARK, decor: true });
+    }
+    const planks = Math.round(span / 2 / 0.3);
+    for (let k = 0; k < planks; k++) {
+      const z0 = zA + (zB - zA) * k / planks, z1 = z0 + (zB - zA) / planks * 0.93;
+      const a = Math.min(z0, z1), b = Math.max(z0, z1);
+      extrude(sink, 'structureWood', [[-W / 2, top(a) - 0.1, a], [-W / 2, top(a), a], [-W / 2, top(b), b], [-W / 2, top(b) - 0.1, b]], [1, 0, 0], W,
+        { colour: shade(DECK_BOARD, 0.86 + (k % 3) * 0.07), ...(k % 2 ? { fine: true, decor: true } : {}) });
+    }
+    // the leaf's white edge beams and its railing
+    for (const sx of [-1, 1]) {
+      const x = sx * (W / 2 - 0.06);
+      bar(sink, 'structureWood', [x, top(zA) + 0.02, zA], [x, top(zB) + 0.02, zB], 0.16, white);
+      const posts = Math.max(2, Math.round(span / 2 / 1.5));
+      for (let k = 0; k <= posts; k++) {
+        const z = zA + (zB - zA) * k / posts;
+        sink.span('structureWood', x - 0.05, top(z), z - 0.05, x + 0.05, top(z) + 1.05, z + 0.05, { ...white, decor: true });
+      }
+      bar(sink, 'structureWood', [x, top(zA) + 1.05, zA], [x, top(zB) + 1.05, zB], 0.09, { ...white, decor: true });
+      bar(sink, 'structureWood', [x, top(zA) + 0.55, zA], [x, top(zB) + 0.55, zB], 0.06, { ...white, decor: true, fine: true });
+    }
+  }
+  // ---- the portals over the abutments and the balances on them
+  for (const zs of [-1, 1]) {
+    const z = zs * (span / 2 + 0.55), y0 = top(zs * span / 2), yTop = y0 + portalH;
+    for (const sx of [-1, 1]) {
+      const x = sx * postX;
+      sink.span('structureWood', x - 0.17, y0 - 0.45, z - 0.17, x + 0.17, y0 + 0.5, z + 0.17, black);
+      sink.span('structureWood', x - 0.15, y0 + 0.5, z - 0.15, x + 0.15, yTop, z + 0.15, white);
+      // the struts from the abutment up to the post
+      bar(sink, 'structureWood', [x, y0, z + zs * 1.4], [x, y0 + 2.0, z + zs * 0.12], 0.12, { ...white, decor: true });
+    }
+    sink.span('structureWood', -postX - 0.4, yTop, z - 0.18, postX + 0.4, yTop + 0.34, z + 0.18, white);
+    // the balance: two beams pivoting on the portal's top, their heads over the leaf, their tails over the approach
+    const head = zs * span * 0.06, tail = zs * (span / 2 + 0.55 + Math.max(3.6, span * 0.42)), pivotY = yTop + 0.5;
+    const headY = pivotY - 0.55, tailY = pivotY + 0.55;
+    for (const sx of [-1, 1]) {
+      const x = sx * (postX - 0.02);
+      bar(sink, 'structureWood', [x, headY, head], [x, tailY, tail], 0.2, white);
+      // the iron rods from the balance's head to the leaf's tip
+      bar(sink, 'structureMetal', [x, headY - 0.1, head], [x, top(head) + 0.15, head], 0.05, { ...iron, decor: true });
+      // the pivot block on the portal beam
+      sink.span('structureWood', x - 0.16, yTop + 0.3, z - 0.22, x + 0.16, pivotY + 0.1, z + 0.22, { ...black, decor: true });
+    }
+    // the cross-ties: at the head, at the tail (the counterweight bar) and a diagonal pair between
+    bar(sink, 'structureWood', [-postX, headY, head], [postX, headY, head], 0.16, white);
+    sink.span('structureWood', -postX - 0.1, tailY - 0.34, Math.min(tail, tail + zs * 0.5), postX + 0.1, tailY + 0.12, Math.max(tail, tail + zs * 0.5), black);
+    const mid = (head + tail) / 2 + zs * 0.6, midY = (headY + tailY) / 2;
+    bar(sink, 'structureWood', [-postX, midY, mid - zs * 1.5], [postX, midY, mid + zs * 1.5], 0.1, { ...white, decor: true });
+    bar(sink, 'structureWood', [postX, midY, mid - zs * 1.5], [-postX, midY, mid + zs * 1.5], 0.1, { ...white, decor: true });
+  }
+  const movement = ctx.params.drivable === false ? undefined : (() => {
+    const parts = deckMovement(span, W, top, 1.05, 0.2);
+    // the abutments from the bed to the deck's underside, and the portal posts
+    for (const zs of [-1, 1]) {
+      parts.push({ kind: 'obb', cx: 0, cz: zs * (span / 2 + 1.6), hw: W / 2 + 0.9, hl: 1.6, yaw: 0, y0: groundAt(ctx, 0, zs * span / 2) - 1.0, y1: top(zs * span / 2) - DECK_PART_M });
+      for (const sx of [-1, 1]) parts.push({ kind: 'obb', cx: sx * postX, cz: zs * (span / 2 + 0.55), hw: 0.17, hl: 0.17, yaw: 0, y0: top(zs * span / 2) - 0.45, y1: top(zs * span / 2) + portalH });
+    }
+    return parts;
+  })();
+  return { parts: sink.finish(), movement };
 };

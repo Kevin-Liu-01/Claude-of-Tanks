@@ -4480,23 +4480,27 @@ ${snowCap ? `
   }
   moveBuildingsOffCarriageways();
 
-  // The landmarks lane (2026-10-05): the map's set pieces (src/world/landmarks/compose.ts), once the settlement stands
-  // and before the strongpoints, the light buildings and every scatter pass, which keep off the ground each reserves.
-  // Built from streams of their own; a map without set pieces runs nothing here.
+  // The landmarks lane (2026-10-05): the map's set pieces (src/world/landmarks/compose.ts), once the settlement, the
+  // strongpoints and the light buildings stand (so none of those moves for a piece: the composer refuses a piece on
+  // their solids) and before every scatter pass, which keeps off the ground each piece reserves. Built from streams of
+  // their own; a map without set pieces runs nothing there.
   function* placeLandmarks(): Generator<PropsBuildSlice, void, void> {
     if (!P.landmarks?.length) return;
     const receipt = yield* composeLandmarks({
       mapId, landmarks: P.landmarks, heightField, spawns: [L.spawns.player, ...L.spawns.enemies],
       obstacles, colliders, architecture: regionalArchitecture, snowCap: structureContext.snowCap, seed,
+      hardKinds: new Set(Object.keys(DESTRUCTIBLE_BUILDING_TYPES)),
       tier: mobileProps ? 'mobile' : 'desktop',
       merge: (parts, matrix) => mergeInto(buckets, parts as unknown as PropsBuckets, matrix),
       reserve: (x, z, r) => { placedB.push({ x, z, rr: r, landmark: true }); },
       publish: (x, z, w, d, rot, kind) => { buildingFeatures.push({ x, z, w, d, rot, landmark: kind }); },
-      addDestructible: (kind, x, y, z, yaw, scale) => { addDestructible(kind, x, y, z, yaw, scale); },
+      // a piece's benches and lamps join the props' destructibles once every seeded pass is done (below): so the pools
+      // and records every later pass makes keep their order, and their arrangements, as on the map without the piece
+      addDestructible: (kind, x, y, z, yaw, scale) => { landmarkDestructibles.push([kind, x, y, z, yaw, scale]); },
     });
     group.userData.landmarks = receipt;
   }
-  yield* placeLandmarks();
+  const landmarkDestructibles: Array<[string, number, number, number, number, number]> = [];
 
   // the scenery lane (wave 34, "a stacked prop on a bare mound — no berm, trench or spilled sand"): each nest's spoil
   // banked against it and the spill of a burst bag (sceneryKit.ts buildSandbagBedding), a stream of its own named by
@@ -4640,6 +4644,8 @@ ${snowCap ? `
     }
   }
   yield* placeDestructibleBuildings();
+  // the set pieces (placeLandmarks above), on the ground the settlement, the strongpoints and the light buildings left
+  yield* placeLandmarks();
 
   // --- yard set-dressing (r2 terrain_environment): woodpiles, barrels and
   // short garden-fence runs around every free-standing building. The village
@@ -8065,6 +8071,8 @@ ${snowCap ? `
     obstacles, colliders, animated: animatedDressing,
   });
   yield { fine: true, stage: 'map-extras' };
+  // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)
+  for (const [kind, x, y, z, yaw, scale] of landmarkDestructibles) addDestructible(kind, x, y, z, yaw, scale);
 
   // All seeded decoration has finished. Relocate accepted records before
   // merging, pool collider refits and spatial indexing; never resample RNG.

@@ -3,7 +3,7 @@
 // tower, the railway station with its platform canopy, the market hall and the grain elevator. Proportions from the
 // buildings themselves: a Kursk-governorate village church of 1800-1900 is a whitewashed brick "ship" — the bell tower,
 // the refectory, the cube with its drum and dome, the apse — 25-32 m long, its bell tower 25-30 m to the cross.
-import { LocalFrame, PartSink, facePoint, rgb, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
+import { LocalFrame, PartSink, faceBox, facePoint, rgb, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import {
   archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, cross, dome, drum, extrude, moulding, portico, revolve, smoothRender, tentRoof,
@@ -485,13 +485,17 @@ function frameOf(face: Face) {
 /**
  * The town hall (a German Rathaus): an open arcade across the ground floor of its front, two storeys of windows over
  * it, a steep roof with dormers and stepped gables at its ends, and a ridge turret — the clock stage, an open lantern
- * and a bell-shaped helm with its spike.
+ * and a bell-shaped helm with its spike. `frame` (the Hessian Fachwerk-Rathaus, Alsfeld's): the stone arcade under
+ * upper storeys of render in an oak frame — sill and head beams at every storey, posts at the bays and beside the
+ * windows, the rails under the sills, the corners' braced figures — framed gables under the roof's verge instead of
+ * stepped ones, and the two corner turrets (Erker) with their slate spires over the front.
  */
 export const townHall: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const W = Math.max(14, Number(ctx.params.width)), D = Math.max(9, Number(ctx.params.depth));
   const storeys = Math.max(2, Math.min(4, Math.round(Number(ctx.params.storeys)))), towerTop = Math.max(18, Number(ctx.params.tower));
   const base = -0.6 - ctx.groundFall, wall: RegionalBucket = 'stone', render: RegionalBucket = 'plaster', plinth = 0.5;
+  const framed = ctx.params.frame === true, OAK = rgb(0x46302a);
   const g = 4.6, up = 3.5, eave = plinth + g + up * (storeys - 1), arcadeD = 2.8;
   sink.span(wall, -W / 2 - 0.1, base, -D / 2 - 0.1, W / 2 + 0.1, plinth, D / 2 + 0.1);
   // the ground floor: the arcade slab across the front, the hall's wall set back behind it, the side and back walls
@@ -508,30 +512,90 @@ export const townHall: LandmarkBuilder = (ctx) => {
     const y0 = plinth + g + up * k + 0.9;
     for (let i = 0; i < bays; i++) {
       const u = -W / 2 + bw * (i + 0.5);
-      holes.front!.push({ u, w: 1.15, y0, spring: y0 + 1.75, form: 'segmental', rise: 0.2 });
-      holes.back!.push({ u: -u, w: 1.15, y0, spring: y0 + 1.75, form: 'segmental', rise: 0.2 });
+      const rise = framed ? 0.04 : 0.2;
+      holes.front!.push({ u, w: 1.15, y0, spring: y0 + 1.75, form: 'segmental', rise });
+      holes.back!.push({ u: -u, w: 1.15, y0, spring: y0 + 1.75, form: 'segmental', rise });
     }
     for (const u of [-D * 0.25, D * 0.25]) {
-      holes.left!.push({ u, w: 1.1, y0, spring: y0 + 1.75, form: 'segmental', rise: 0.2 });
-      holes.right!.push({ u, w: 1.1, y0, spring: y0 + 1.75, form: 'segmental', rise: 0.2 });
+      holes.left!.push({ u, w: 1.1, y0, spring: y0 + 1.75, form: 'segmental', rise: framed ? 0.04 : 0.2 });
+      holes.right!.push({ u, w: 1.1, y0, spring: y0 + 1.75, form: 'segmental', rise: framed ? 0.04 : 0.2 });
     }
   }
   const upper = archedBody(sink, render, 0, 0, W, D, plinth + g + ARCH_GAP_M_CIVIC, eave, holes, 0.28);
   for (const name of ['front', 'back', 'left', 'right'] as const) {
     for (const h of holes[name] ?? []) {
       archWindow(sink, upper[name], h, 0.28, FRAME_WHITE, lit(ctx, 0.35));
-      archSurround(sink, wall, upper[name], h, 0.16, 0.06);
+      if (!framed) archSurround(sink, wall, upper[name], h, 0.16, 0.06);
     }
   }
-  for (let k = 0; k < storeys - 1; k++) moulding(sink, wall, W, D, plinth + g + up * k - 0.05, 0.22, 0.1);
-  cornerPilasters(sink, wall, 0, 0, W, D, plinth + g, eave - 0.2, 0.6, 0.07);
-  moulding(sink, wall, W, D, eave - 0.3, 0.3, 0.2);
-  // the roof: ridge along the front (built in a frame turned a quarter), the stepped gables, the dormers
-  const roof: RoofSpec = { kind: 'gable', pitchDeg: 55, eave: 0.4, verge: 0.05, thickness: 0.14, bucket: 'roof', ridge: 'saddle' };
+  if (framed) {
+    // the oak frame over the render: per storey the sill beam, the posts at the bays and either side of each window,
+    // the rails under the sills between them, and a braced figure at each corner
+    for (const name of ['front', 'back', 'left', 'right'] as const) {
+      const face = upper[name], fw = face.width, win = holes[name] ?? [];
+      for (let k = 0; k < storeys - 1; k++) {
+        const y0 = plinth + g + up * k, y1 = y0 + up;
+        faceBox(sink, 'structureWood', face, 0, y0 + 0.14, 0.04, fw, 0.28, 0.08, { colour: OAK, decor: true });
+        const storeyWin = win.filter((h) => h.y0 > y0 && h.y0 < y1);
+        const posts = new Set<number>([-fw / 2 + 0.12, fw / 2 - 0.12]);
+        for (const h of storeyWin) { posts.add(h.u - h.w / 2 - 0.12); posts.add(h.u + h.w / 2 + 0.12); }
+        const bayLines = name === 'front' || name === 'back' ? bays : 3;
+        for (let i = 1; i < bayLines; i++) {
+          const u = -fw / 2 + fw * i / bayLines;
+          if (!storeyWin.some((h) => Math.abs(h.u - u) < h.w / 2 + 0.25)) posts.add(u);
+        }
+        for (const u of posts) faceBox(sink, 'structureWood', face, u, (y0 + y1) / 2 + 0.07, 0.035, 0.18, up - 0.14, 0.07, { colour: OAK, decor: true });
+        // the rails under the sills, interrupted at the windows
+        const sillY = storeyWin.length ? storeyWin[0].y0 - 0.1 : y0 + 0.8;
+        const sorted = [...posts].sort((a, b) => a - b);
+        for (let i = 0; i + 1 < sorted.length; i++) {
+          const a = sorted[i], b = sorted[i + 1];
+          if (storeyWin.some((h) => h.u > a && h.u < b)) continue;
+          faceBox(sink, 'structureWood', face, (a + b) / 2, sillY, 0.035, b - a, 0.14, 0.07, { colour: OAK, decor: true, fine: true });
+          // the braced figure in the end panels
+          if (i === 0 || i + 2 === sorted.length) {
+            const p0 = facePoint(face, i === 0 ? a + 0.1 : b - 0.1, y0 + 0.3, 0.04), p1 = facePoint(face, i === 0 ? b - 0.1 : a + 0.1, y1 - 0.25, 0.04);
+            bar(sink, 'structureWood', p0, p1, 0.12, { colour: OAK, decor: true });
+          }
+        }
+      }
+    }
+    faceBox(sink, 'structureWood', upper.front, 0, eave - 0.12, 0.04, W, 0.24, 0.08, { colour: OAK, decor: true });
+    faceBox(sink, 'structureWood', upper.back, 0, eave - 0.12, 0.04, W, 0.24, 0.08, { colour: OAK, decor: true });
+  } else {
+    for (let k = 0; k < storeys - 1; k++) moulding(sink, wall, W, D, plinth + g + up * k - 0.05, 0.22, 0.1);
+    cornerPilasters(sink, wall, 0, 0, W, D, plinth + g, eave - 0.2, 0.6, 0.07);
+    moulding(sink, wall, W, D, eave - 0.3, 0.3, 0.2);
+  }
+  // the roof: ridge along the front (built in a frame turned a quarter), the gables (stepped, or framed under the verge),
+  // the dormers
+  const roof: RoofSpec = { kind: 'gable', pitchDeg: 55, eave: 0.4, verge: framed ? 0.45 : 0.05, thickness: 0.14, bucket: 'roof', ridge: 'saddle' };
   const rg = roofGeometry(D, W, eave, roof);
   sink.placed(Math.PI / 2, 0, 0, 0, () => emitRoof(sink, rg, roof));
   const rise = rg.ridgeY - eave, steps = 6;
-  for (const sx of [-1, 1]) {
+  if (framed) {
+    for (const sx of [-1, 1]) {
+      const x = sx * W / 2;
+      const A: Vec3 = [x, eave, -D / 2], B: Vec3 = [x, eave, D / 2], C: Vec3 = [x, rg.ridgeY, 0];
+      sink.polygon('plaster', sx > 0 ? [A, C, B] : [A, B, C]);
+      const o = sx * 0.04;
+      // the gable's frame: its foot beam, a collar at half height, the king post and the two raking braces
+      bar(sink, 'structureWood', [x + o, eave + 0.1, -D / 2], [x + o, eave + 0.1, D / 2], 0.2, { colour: OAK, decor: true });
+      const cy = eave + rise * 0.5, half = (D / 2) * 0.5;
+      bar(sink, 'structureWood', [x + o, cy, -half], [x + o, cy, half], 0.16, { colour: OAK, decor: true });
+      bar(sink, 'structureWood', [x + o, eave + 0.1, 0], [x + o, rg.ridgeY - 0.2, 0], 0.16, { colour: OAK, decor: true });
+      for (const zs of [-1, 1]) bar(sink, 'structureWood', [x + o, eave + 0.2, zs * (D / 2 - 0.3)], [x + o, cy, zs * half * 0.4], 0.12, { colour: OAK, decor: true, fine: true });
+    }
+    // the corner turrets over the front: corbelled out from the first upper storey, octagonal, under slate spires
+    for (const sx of [-1, 1]) {
+      const tx = sx * (W / 2 - 0.15), tz = D / 2 - 0.15, y0 = plinth + g + 0.2, yTop = eave + 1.3;
+      revolve(sink, 'plaster', tx, tz, [[0.35, y0], [1.15, y0 + 0.9], [1.15, yTop]], 8, {}, Math.PI / 8);
+      revolve(sink, 'stone', tx, tz, [[1.2, yTop - 0.05], [1.22, yTop + 0.15]], 8, { decor: true }, Math.PI / 8);
+      const spire = yTop + Math.max(3.6, rise * 0.7);
+      revolve(sink, 'structureMetal', tx, tz, [[1.3, yTop + 0.1], [0.04, spire]], 8, { colour: SLATE_BLUE }, Math.PI / 8);
+      revolve(sink, 'structureMetal', tx, tz, [[0.05, spire - 0.1], [0.015, spire + 0.9]], 4, { colour: GILT, decor: true });
+    }
+  } else for (const sx of [-1, 1]) {
     for (let k = 0; k < steps; k++) {
       const y0 = eave + rise * k / steps, y1 = eave + rise * (k + 1) / steps + 0.35, half = (D / 2 + 0.1) * (1 - k / steps);
       sink.span(wall, sx * W / 2 - 0.35, y0, -half, sx * W / 2 + 0.05, y1, half);
@@ -549,7 +613,8 @@ export const townHall: LandmarkBuilder = (ctx) => {
     });
   }
   // the ridge turret
-  const tb = 3.0, ty0 = rg.ridgeY - 1.2, ty1 = rg.ridgeTopY + 3.2;
+  // (its body reaches down to the roof slopes at its sides: no gap shows under it)
+  const tb = 3.0, ty0 = rg.ridgeY - (tb / 2) * Math.tan(roof.pitchDeg * Math.PI / 180) - 0.3, ty1 = rg.ridgeTopY + 3.2;
   const tf = archedBody(sink, render, 0, 0, tb, tb, ty0, ty1, {}, 0);
   for (const name of ['front', 'back', 'left', 'right'] as const) revolveDisc(sink, tf[name], 0, ty1 - 1.3, 0.85);
   moulding(sink, wall, tb, tb, ty1 - 0.2, 0.2, 0.12);

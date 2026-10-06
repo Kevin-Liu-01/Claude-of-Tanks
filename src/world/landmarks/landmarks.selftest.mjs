@@ -32,6 +32,50 @@ import { NIGHT_EMISSION_ATTRIBUTE } from '../../engine/nightEmissionMaterial.ts'
 import { MAP_IDS, getMapConfig } from '../maps/index.ts';
 import { createHeightField } from '../terrain.ts';
 import { decodeCollisionManifest } from '../../../server/collisionManifestCodec.ts';
+import { RAIL_SPUR_BERTH_M } from '../railSpurs.ts';
+
+/** The least distance from a packed shard record's parts to a polyline (0 when a part covers a path point). */
+function recordGapToPath(record, path) {
+  const shape = record.s;
+  const parts = !shape ? [['v', record.b[0], record.b[2], record.b[3], record.b[2], record.b[3], record.b[5], record.b[0], record.b[5]]]
+    : shape[0] === 'm' ? shape.slice(1) : [shape];
+  let best = Infinity;
+  for (const part of parts) {
+    let poly;
+    if (part[0] === 'c') {
+      const [, cx, cz, r] = part;
+      best = Math.min(best, Math.max(0, pathDistance(path, cx, cz) - r));
+      continue;
+    }
+    if (part[0] === 'o') {
+      const [, cx, cz, hw, hl, yaw] = part, c = Math.cos(yaw), s = Math.sin(yaw);
+      poly = [[-hw, -hl], [hw, -hl], [hw, hl], [-hw, hl]].map(([lx, lz]) => [cx + lx * c + lz * s, cz - lx * s + lz * c]);
+    } else {
+      const numbers = part[0] === 'w' ? part.slice(3) : part.slice(1);
+      poly = []; for (let i = 0; i < numbers.length; i += 2) poly.push([numbers[i], numbers[i + 1]]);
+    }
+    best = Math.min(best, polygonGapToPath(poly, path));
+  }
+  return best;
+}
+function segmentDistance(px, pz, ax, az, bx, bz) {
+  const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
+  const t = l2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / l2)) : 0;
+  return Math.hypot(ax + dx * t - px, az + dz * t - pz);
+}
+function pathDistance(path, x, z) {
+  let best = Infinity;
+  for (let i = 1; i < path.length; i++) best = Math.min(best, segmentDistance(x, z, path[i - 1][0], path[i - 1][1], path[i][0], path[i][1]));
+  return best;
+}
+function polygonGapToPath(poly, path) {
+  const inside = (x, z) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, zi] = poly[i], [xj, zj] = poly[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; };
+  if (path.some(([x, z]) => inside(x, z))) return 0;
+  let best = Infinity;
+  for (const [x, z] of poly) best = Math.min(best, pathDistance(path, x, z));
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) for (const [x, z] of path) best = Math.min(best, segmentDistance(x, z, poly[j][0], poly[j][1], poly[i][0], poly[i][1]));
+  return best;
+}
 
 const KINDS = Object.keys(LANDMARK_KINDS);
 assert.deepEqual(Object.keys(LANDMARK_BUILDERS).sort(), [...KINDS].sort(), 'every planned kind has a builder, and every builder is planned');
@@ -43,8 +87,8 @@ const BUDGET = {
   obelisk: 4500, statue: 1500, columnMonument: 1500, memorialWall: 2000, equestrianStatue: 1500,
   fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000,
   townGate: 4000, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
-  stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000,
-  aircraftWreck: 9000,
+  stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000, liftBridge: 6000,
+  aircraftWreck: 9000, colonialBungalow: 14000, tennisCourt: 5000,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
 /** The authored variants each kind is built in besides its defaults. */
@@ -52,6 +96,7 @@ const VARIANTS = {
   church: [{ domes: 5, crown: 'onion' }, { tradition: 'western', length: 32, width: 12, tower: 40 }, { tradition: 'western', crown: 'helm', walls: 'render' }],
   windmill: [{ style: 'post' }, { style: 'tower', height: 20 }],
   waterTower: [{ style: 'rozhnovsky', height: 22 }, { style: 'trestle' }],
+  townHall: [{ frame: true, width: 20, depth: 12, storeys: 3, tower: 28 }],
   belfry: [{ crown: 'tent' }, { crown: 'needle' }, { crown: 'helm' }],
   obelisk: [{ finial: 'cross', railing: false }, { finial: 'ball', height: 14 }],
   statue: [{ metal: 'silver', pose: 'robe' }],
@@ -62,10 +107,17 @@ const VARIANTS = {
 };
 const COLOURED = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']);
 
-function build(kind, params, { seed = 11, tier = 'desktop', ground } = {}) {
+function build(kind, params, { seed = 11, tier = 'desktop', ground, groundFall = 0 } = {}) {
   const resolved = resolveLandmarkParams({ kind, x: 0, z: 0, params });
-  return LANDMARK_BUILDERS[kind]({ kind, params: resolved, rng: streamFrom(seed), variant: streamFrom(seed * 7 + 3), tier, groundFall: 0,
+  return LANDMARK_BUILDERS[kind]({ kind, params: resolved, rng: streamFrom(seed), variant: streamFrom(seed * 7 + 3), tier, groundFall,
     brick: false, snowCap: false, mapId: 'selftest', ground });
+}
+/** A band's parts within the packed manifest's limits (server/collisionManifestFormat.ts): 64 parts, 64 corners each. */
+function packedBandsOk(profile, label) {
+  for (const band of [profile.contact, ...profile.shell]) {
+    assert.ok(band.parts.length <= 64, `${label}: a band within the 64-part cap`);
+    for (const part of band.parts) if (part.points) assert.ok(part.points.length <= 128, `${label}: a band part within 64 corners (${part.points.length / 2})`);
+  }
 }
 const geometries = (parts) => REGIONAL_BUCKETS.flatMap((name) => parts[name] ?? []);
 const triangles = (parts) => geometries(parts).reduce((n, g) => n + g.getAttribute('position').count / 3, 0);
@@ -108,7 +160,15 @@ for (const kind of KINDS) {
     if (hasStructure(a.parts)) {
       const profile = a.movement ? { contact: { parts: a.movement }, shell: deriveRuntimeStructureShellBands(a.parts) } : deriveRuntimeStructureCollisionProfile(a.parts);
       assert.ok(profile.contact.parts.length >= 1, `${label}: a movement footprint`);
-      for (const band of profile.shell) assert.ok(band.parts.length <= 64, `${label}: shell band within the 64-part cap`);
+      packedBandsOk(profile, label);
+      // seated on falling ground the bands slice the piece at other heights (a water tower's turned tank once sliced into
+      // a 272-corner loop at Verdant's station seat): the packed limits hold there too
+      for (const groundFall of [0.7, 1.33, 2.6]) {
+        const sloped = build(kind, params, { groundFall });
+        if (!hasStructure(sloped.parts)) continue;
+        packedBandsOk(sloped.movement ? { contact: { parts: sloped.movement }, shell: deriveRuntimeStructureShellBands(sloped.parts) }
+          : deriveRuntimeStructureCollisionProfile(sloped.parts), `${label} on a ${groundFall} m fall`);
+      }
       const mobileProfile = mobile.movement ? { contact: { parts: mobile.movement }, shell: deriveRuntimeStructureShellBands(dropFine(mobile.parts)) }
         : deriveRuntimeStructureCollisionProfile(dropFine(mobile.parts));
       assert.equal(JSON.stringify(mobileProfile), JSON.stringify(profile), `${label}: mobile collision equals desktop`);
@@ -146,7 +206,7 @@ for (const kind of ['kolkhozArch', 'townGate', 'triumphalArch', 'torii', 'parkGa
 });
 
 // ---------------------------------------------------------------------------------------------------------- bridges
-for (const kind of ['stoneArchBridge', 'trussBridge', 'trestleBridge', 'baileyBridge']) {
+for (const kind of ['stoneArchBridge', 'trussBridge', 'trestleBridge', 'baileyBridge', 'liftBridge']) {
   for (const gully of [4, 7]) check(`${kind} over a ${gully} m gully`, () => {
     const params = resolveLandmarkParams({ kind, x: 0, z: 0 });
     const span = kind === 'baileyBridge' ? Number(params.bays) * 3.048 : Number(params.span);
@@ -234,7 +294,7 @@ assert.match(readFileSync(new URL('../vegetationClearance.ts', import.meta.url),
   'the placed-structure keep-out carries the set pieces');
 
 // ---------------------------------------------------------------------------------------------------------- authoring maps
-let authored = 0;
+let authored = 0, authoredBerths = 0;
 for (const id of MAP_IDS) {
   const config = getMapConfig(id);
   const landmarks = config.props?.landmarks ?? [];
@@ -255,7 +315,7 @@ for (const id of MAP_IDS) {
       const ex = Math.max(0, Math.abs(lx) - hw), ez = Math.max(0, Math.abs(lz) - hl);
       assert.ok(ex * ex + ez * ez >= r * r, `${label}: clear of the objective disc at (${x}, ${z})`);
     }
-    const margin = LANDMARK_KINDS[placement.kind].roadMargin ?? 3.5;
+    const margin = placement.roadMargin ?? LANDMARK_KINDS[placement.kind].roadMargin ?? 3.5;
     if (!LANDMARK_KINDS[placement.kind].spansRoad && margin > 0) assert.ok(field._roadDist(placement.x, placement.z) > margin, `${label}: out of the road core`);
     if (placement.kind !== 'parkSquare') {
       const stood = structures.some((record) => {
@@ -266,7 +326,20 @@ for (const id of MAP_IDS) {
     }
     authored++;
   });
+  // a 'clearance' rail spur's berth (railSpurs.ts): props are not filtered off it, so the line keeps clear of every solid
+  // the shard holds — the berth's half-width to each side of the centreline, shape by shape
+  for (const spur of (config.terrain?.railSpurs ?? []).filter((candidate) => candidate.berth === 'clearance')) check(`${id}/rail berth`, () => {
+    let nearest = Infinity, at = null;
+    for (const record of [...shard.obstacles, ...shard.colliders]) {
+      if (record.k === 'tree' || record.t != null) continue;
+      if (record.b[3] < -480 || record.b[0] > 480) continue;
+      const gap = recordGapToPath(record, spur.path);
+      if (gap < nearest) { nearest = gap; at = `${record.k ?? 'solid'} at (${((record.b[0] + record.b[3]) / 2).toFixed(1)}, ${((record.b[2] + record.b[5]) / 2).toFixed(1)})`; }
+    }
+    assert.ok(nearest >= RAIL_SPUR_BERTH_M, `${id}: the clearance berth is clear of every solid (nearest ${at}, ${nearest.toFixed(2)} m from the line)`);
+    authoredBerths++;
+  });
 }
 
 assert.deepEqual(failures, [], `${failures.length} failures:\n${failures.join('\n')}`);
-console.log(`landmarks selftest: ${KINDS.length} kinds, ${built} builds (${total} desktop triangles), gates, bridges, composer, ${authored} authored pieces OK`);
+console.log(`landmarks selftest: ${KINDS.length} kinds, ${built} builds (${total} desktop triangles), gates, bridges, composer, ${authored} authored pieces, ${authoredBerths} clearance berths OK`);

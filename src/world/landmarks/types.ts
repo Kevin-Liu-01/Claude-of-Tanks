@@ -13,7 +13,7 @@ import type { WeatherTints } from '../maps/regional/weather.ts';
 /** Every kind the library builds, by family. */
 export type LandmarkKind =
   // bridges
-  | 'stoneArchBridge' | 'trussBridge' | 'trestleBridge' | 'baileyBridge' | 'viaduct'
+  | 'stoneArchBridge' | 'trussBridge' | 'trestleBridge' | 'baileyBridge' | 'viaduct' | 'liftBridge'
   // monuments
   | 'obelisk' | 'columnMonument' | 'memorialWall' | 'statue' | 'equestrianStatue'
   // parks and squares
@@ -24,6 +24,8 @@ export type LandmarkKind =
   | 'belfry' | 'campanile' | 'waterTower' | 'fireLookout' | 'windmill'
   // civic buildings
   | 'church' | 'townHall' | 'stationHall' | 'marketHall' | 'grainElevator' | 'granary'
+  // a hill station's colonial pieces
+  | 'colonialBungalow' | 'tennisCourt'
   // wrecks
   | 'aircraftWreck';
 
@@ -37,10 +39,15 @@ export interface LandmarkPlacement {
   z: number;
   /** The heading of the piece's front (its local +z), degrees: 0 faces +z, 90 faces +x. */
   yawDeg?: number;
-  /** The kind's own parameters (plan.ts LANDMARK_KINDS lists each kind's and its defaults). */
-  params?: LandmarkParams;
+  /** The kind's own parameters over its defaults (plan.ts LANDMARK_KINDS); an absent or undefined key keeps the default. */
+  params?: Readonly<Record<string, number | string | boolean | undefined>>;
   /** What the receipt and the docs call it ("the station at the east level crossing"). */
   name?: string;
+  /**
+   * The road core's margin for this placement (m), over its kind's (plan.ts roadMargin, else 3.5): a building fronting a
+   * square's paved apron stands at its edge, as the plot it takes did (the composer keeps it out of the core itself).
+   */
+  roadMargin?: number;
   /** A variant seed: another draw of the same kind at the same place. */
   seed?: number;
 }
