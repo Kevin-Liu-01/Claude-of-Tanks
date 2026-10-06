@@ -171,6 +171,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/efficientReturnRoller.selftest.mjs',
     'src/vehicles/pairedRunningGearStock.selftest.mjs',
     'src/vehicles/loadedTrackContact.selftest.mjs',
+    'src/vehicles/roadWheelTrackSpan.selftest.mjs',
     'src/vehicles/restPoseBatchedGear.selftest.mjs',
     'src/vehicles/trackCarrierSections.selftest.mjs',
     'src/vehicles/profiles/type10XRunningGear.selftest.mjs',
@@ -824,6 +825,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/deviceEnvRadiance.selftest.mjs',
     'src/engine/renderScalePolicy.selftest.mjs',
     'src/engine/shadowStability.selftest.mjs',
+    'src/engine/shadowReceiverOnly.selftest.mjs', // 2026-10-04 (visual/shadow-bias): the ground takes no caster's acne terms
     'src/engine/shadowFitCache.selftest.mjs',
     'src/engine/shadowRefresh.selftest.mjs',
     'src/engine/shadowStaticCache.selftest.mjs', // 2026-10-02: the static shadow-caster cache (P20)
@@ -939,9 +941,15 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/botModes.selftest.mjs',
     'server/botObjectives.selftest.mjs',
     'server/battlePacing.selftest.mjs',
+    // 2026-10-05 (owner: "floor as a tail rate"): the pacing gate's arithmetic and the tail's shard merge.
+    'tools/pacing-tail.selftest.mjs',
     'server/roadCrossingSweep.selftest.mjs', // 2026-10-03: the maps lane's road crossings, driven both ways (nothing standing in a carriageway)
     'src/sim/poseHistory.selftest.mjs',
     'src/sim/movement.selftest.mjs',
+    // 2026-10-04 (physics lane round 8): every playable tank publishes its track contact; the host and solo read it alike.
+    'src/sim/trackContact.selftest.mjs',
+    // 2026-10-05: the contact audit's rules, the run within 5 mm and the belly pan 5 mm below to 1 cm above (the K2 LOW gear).
+    'src/vehicles/trackContactDerivationAudit.selftest.mjs',
     'src/sim/impact.selftest.mjs',
     'src/sim/impactPhysics.selftest.mjs',
     'src/sim/impactParity.selftest.mjs',
@@ -987,6 +995,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.casemateLay.selftest.mjs',
     // 2026-10-03 (bots lane): a patrol leg the grid cannot route still drives (the bridge gate's no-route hold).
     'src/game/ai.patrolNoRoute.selftest.mjs',
+    // 2026-10-04 (physics lane): a fresh contact is no starved trigger; under fire in the open a settle holds nothing.
+    'src/game/ai.underFire.selftest.mjs',
+    // 2026-10-04 (physics lane): a collider stop backs the hull off at once, through an engagement that starts on it.
+    'src/game/ai.colliderStop.selftest.mjs',
     'src/game/botAbilities.selftest.mjs',
     'src/sim/botTerrainSafety.selftest.mjs',
     'src/game/jevCommander.selftest.mjs',
@@ -1252,6 +1264,11 @@ export const SELFTEST_SUITES = Object.freeze({
     // the mountains lane (2026-10-02): the eroded landform, the bed stair and the skyline cone measure
     'src/world/horizonMassif.selftest.mjs',
     'src/world/horizonPanorama.selftest.mjs',
+    // the mountains lane (2026-10-05): the far earth's deck greying is the dome's (sky.ts keeps it inline, so the copy is held here)
+    'src/world/horizonPanoramaDeck.selftest.mjs',
+    // the mountains lane (2026-10-05): and its cloud composite the cloud dome's (volumetricClouds.ts keeps it inline too)
+    'src/world/horizonPanoramaClouds.selftest.mjs',
+    'src/world/horizonCliffNormals.selftest.mjs', // the mountains lane (2026-10-04): the ring's cliffs take their geometry's normals
     'src/world/horizonCloudShade.selftest.mjs',
     'src/world/horizonRockfield.selftest.mjs',
   'src/world/horizonAutumnGround.selftest.mjs',

@@ -547,12 +547,47 @@ the new values can only come from the receipt's own measurement of the current b
   triangles after a world transform through floating-point error, and a since-removed duplicate surface may have
   been catching it. Sample receipt rays off the seam (as `physicalMuzzleBore.ts` does with angle .173).
 
+### The pacing tail (2026-10-05)
+
+`server/battlePacing.selftest` plays deterministic default lobbies with an idle host on every map and judges the
+distribution of their lengths (the gate is `server/battlePacing.test-support.mjs`): a 3–8 minute median, p10 at least
+120 s, at most 5 % of the matches inside 120 s, at most 12.5 % at the 900 s cap. Its floor was "none inside 90 s"
+(owner, 2026-10-03). Each match is chaotic in every input, so a change anywhere in movement or the bots moves most
+outcomes (the physics lane's round-8 set moved 91 of the 132 by more than 10 %), and the one match inside 90 s moved
+from seed to seed with every change while the distribution held. The owner ruled on 2026-10-05, "floor as a tail
+rate": at most 0.5 % of the matches inside 90 s, judged on 264 matches, and no more than the PR head's share on the
+same matches.
+
+| Run | What it plays | The 90 s floor |
+| --- | --- | --- |
+| `npm test` (core) | the 132 matches: samples 0–3 on every map | at most one match |
+| `npm run test:pacing:tail` | the 264 matches: the 132 plus samples 4–7 | at most 0.5 % (one of 264) |
+| `node tools/pacing-tail.mjs --merge=… --baseline=…` | the tail played in shards, on the candidate and the PR head | 0.5 %, and no more than the head's share |
+
+The tail takes a few hours in one process, so play it in shards. Every seed is keyed to its map's index in `MAP_IDS`,
+so a shard plays exactly the full run's matches (`COT_PACING_MAPS` used to key seeds to the filtered list and played
+other matches):
+
+    node tools/pacing-tail.mjs --shards=3          # three COT_PACING_MAPS lists
+    COT_PACING_TAIL=1 COT_PACING_MAPS=<list> COT_PACING_REPORT=.qa-dev/pacing-tail/cand-1.json \
+      node server/battlePacing.selftest.mjs        # once per list, side by side
+    node tools/pacing-tail.mjs --merge=.qa-dev/pacing-tail/cand-1.json,cand-2.json,cand-3.json \
+      --baseline=.qa-dev/pacing-tail/head-1.json,head-2.json,head-3.json
+
+A run over a subset of the maps writes its records and prints its numbers without the gate. The head comparison is
+like for like: play the same three shard commands on a checkout of the PR head (a scratch tree from
+`git archive <head> src server tools package.json tsconfig.json`, with `node_modules` and `public` linked, is enough),
+and merge both. A receipt cannot run the head, so this half is the procedure. Name every match inside 90 s with its
+cause from a trace, or record "no behaviour cause" when the trace shows only ordinary doctrine; a named behaviour
+defect is fixed, not ruled.
+
 ## Verification matrix
 
 | Change area | Minimum checks |
 | --- | --- |
 | Documentation only | Link/path audit, npm run build |
 | Movement or tracks | npm test, track geometry self-test, relevant browser probe |
+| Movement, bots or match pacing | npm test (the core battlePacing), `npm run test:pacing:tail` or its shards with the PR-head comparison (The pacing tail) |
 | Ballistics, armor, damage, spotting | npm test |
 | Vehicle specification or geometry | targeted assets, release check, native check |
 | Network protocol or room lifecycle | npm test, npm run test:net:v2:rooms, npm run test:net:v2:p2p |

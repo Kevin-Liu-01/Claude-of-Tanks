@@ -25,7 +25,7 @@
 import { Euler, Quaternion, Vector3 } from 'three';
 import type { BotMission } from '../sim/matchModes.ts';
 import { createBotAbilityPlanner, type BotAbilityContext } from './botAbilities.ts';
-import { computeDispersionRadM } from '../sim/movement.ts';
+import { computeDispersionRadM, IMPACT_SOURCE_COLLIDER } from '../sim/movement.ts';
 import { createBotTerrainSafety } from '../sim/botTerrainSafety.ts';
 import type { RulesetPhysics } from '../sim/matchRuleset.ts';
 import type { NavigationBridgeDeck } from '../sim/bridgeDeckNavigation.ts';
@@ -475,6 +475,11 @@ const REACT_BACKOFF_HP = 0.42;
 const REACT_ANGLE_RAD = 0.75;
 const REACT_ANGLE_OFFSET_RAD = 0.42;
 const REACT_BACKOFF_M = 32;
+// A scout's armor is its speed (physics lane, 2026-10-04; Tidegate Polders pacing seed 41002 on the merged tree, with
+// the settled-shot halt fixed): a BMP-3 kiting past an enemy Bradley 58 m off its flank was hit, stopped to angle its
+// hull onto the shot for 2 s, took its second hit at rest and died. Angling buys a light hull's plates little against
+// the guns and missiles that hit it; struck from the side, a scout keeps the movement it had (the kite, the orbit, the
+// fallback) rather than park to turn.
 // A casemate lays its gun with the hull (bots lane, 2026-10-03; Aegis Crossing pacing seed 53002, the Strv 103 alone
 // against two T-90Ms): every move that turned the hull turned the gun off its target. Its shoot-and-scoot drove to a
 // spot 94-152 degrees off the bearing, its hit jink turned the bow onto the shooter (a second tank on its flank), its
@@ -529,6 +534,22 @@ const FLANK_ASPECT_RAD  = Math.PI / 3;  // 60° off target nose = flank achieved
 const STUCK_TIME_S      = 2.0;
 const UNSTICK_TIME_S    = 1.4;
 const SLOPE_BLOCK_RECOVERY_S = 0.35;
+// A collider stop (physics lane, 2026-10-04; Tidegate Polders pacing seed 41002 on the merged tree): a UA M1A1 turning a
+// route corner ran into a farm building's wall at 6 m/s and stayed against it for 7.6 s, pivoting where it stood to
+// fight the enemy it saw half a second later, until it was hit; nothing counted the wall, as the low-speed watchdog
+// counts only a drive that wants to move. The movement solve reports a hull a solid primitive stopped (impactSource
+// collider; impactMps, the speed the contact took that step). A contact that took at least COLLIDER_STOP_MPS and most
+// of the hull's speed (COLLIDER_STOP_FRAC) within COLLIDER_STOP_WINDOW_S of its first step (the obstacle push is capped
+// per step, so a stop can span steps; the authority prices a crash over the same window), against a world obstacle
+// rather than another hull, is definitive feedback, as a slope block is: the hull backs off at once for UNSTICK_TIME_S,
+// its bow swinging along the face toward the side its goal lies on. It counts as a stuck strike, which escalates (the
+// detour, the waypoint skip, the pocket escape) only on a repeat before the hull drives free, as the low-speed
+// watchdog's do: the pacing battles stop 250 of their 396 bots 871 times, mostly once or twice each, and escalating
+// every stop sent a lone bump down a detour. A scrape along a face keeps its speed and is no stop; a crawl into one is
+// the low-speed watchdog's.
+const COLLIDER_STOP_MPS = 2;
+const COLLIDER_STOP_FRAC = 0.75;
+const COLLIDER_STOP_WINDOW_S = 0.3;
 const TERRAIN_ROUTE_LOOK_M = 28;
 const TERRAIN_ROUTE_STEP_M = 4;
 const TERRAIN_ROUTE_FAN_RAD = Object.freeze([
@@ -560,6 +581,21 @@ const UNDER_FIRE_RANGE_BONUS_M = 180; // engage-envelope extension toward the sh
 
 const STALEMATE_SILENT_S = 12;   // no shot fired this long w/ contact → push
 const STALEMATE_PUSH_S = 8;      // duration of one forced push window
+// The settled-shot halt (r7's direct trigger, updateEngagementSettle: a starved trigger with a clear ray halts the hull
+// for a clean shot) waits for a trigger that has starved: SETTLE_STARVED_S of contact with its target without a shot
+// (physics lane, 2026-10-04; Tidegate Polders pacing seed 41002 on the merged tree). It counted the silence from the
+// bot's last shot, so a bot that had not fired since it spawned halted the moment it saw an enemy: a BMP-3 kiting at
+// 8 m/s braked to a stop 100 m from an enemy Bradley at 48.75 s and sat facing it, hit from 50.1 s on, through the
+// fallback (50.5 s) and the flank (50.75 s) its own state machine chose, until a backoff took the hull at 51.25 s; it
+// died at 54 s. The stalemate press, which arms a settle with its push on 12 s of silence, halts only once the gun may
+// fire on the contact (the reaction gate): a press begins on a fresh contact when the bot was not pressing before it.
+// Nor does a settle, either one, hold a hull under fire in the open (exposedUnderFire): there the hull keeps the
+// movement its state chose (the scout's kite, the fallback, the flank, cover). In cover, where the gun that hit it no
+// longer sees its body, it still halts to shoot.
+const SETTLE_STARVED_S = 8;
+// A hull stands in the open to a gun that sees it at this fraction of its height off its root: the hull below the
+// turret (findCrestAlong's hull-down crest stands 0.45 of it high).
+const EXPOSED_BODY_FRAC = 0.3;
 // Round 48 pacing (2026-09-24): seconds of a closed penetration gate (no zone at or above the 0.9 ratio, no HE
 // left to fall back on) against a live, visible target before the bot changes the geometry with a flank.
 const PEN_DENIED_FLANK_S = 8;
@@ -1217,6 +1253,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let searchSweepIndex = 0;                  // rotates the sweep bearings across legs
   let searchNextCheckS = -1;
   let strikeEvents = 0;                      // monotonic count of stuck strikes (stuckStrikes itself is reset)
+  let colliderStops = 0;                     // probe-visible count of collider stops backed off (COLLIDER_STOP_MPS)
   // round 62 pacing: the ammunition economy — expected hit chance, the HE fallback's worth, the empty rack
   let heWorth = false;                       // the HE fallback round would burst for HE_SPLASH_WORTH_HP or more
   let heBurstBest = 0;                       // best surface-burst estimate of the HE slot in the last probe pass
@@ -3236,10 +3273,33 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
   }
 
+  /** The trigger has starved (SETTLE_STARVED_S): that long in contact with the current target without a shot. A fresh
+   * contact has not, however long ago the bot last fired. */
+  function triggerStarved(timeS: number): boolean {
+    return timeS - Math.max(lastFiredAtS, acquiredAtS) > SETTLE_STARVED_S;
+  }
+
+  // the last exposedUnderFire sight test, re-cast every LOS_INTERVAL_S while it is asked
+  let openExposedAtS = -Infinity;
+  let openExposed = false;
+  /**
+   * Under fire in the open (SETTLE_STARVED_S): a direct hit inside the under-fire window from a gun that still sees the
+   * hull's body (EXPOSED_BODY_FRAC), with no crest or wall between them.
+   */
+  function exposedUnderFire(timeS: number): boolean {
+    const shooter = directlyUnderFire && timeS < underFireUntilS && underFire && enemyAlive(underFire) ? underFire : null;
+    if (!shooter) return false;
+    if (timeS - openExposedAtS < LOS_INTERVAL_S) return openExposed;
+    openExposedAtS = timeS;
+    const st = entity.state, sp = shooter.state.pos;
+    openExposed = hasLos(sp.x, eyeY(shooter), sp.z, st.pos.x, st.pos.y + spec.dims.heightM * EXPOSED_BODY_FRAC, st.pos.z);
+    return openExposed;
+  }
+
   function updateEngagementSettle(timeS: number): void {
     const reload = entity.combat && entity.combat.reload;
     if (conserving || emptyRack) return; // round 62: the silence is a held round or an empty rack, not a bad lay
-    if (timeS - lastFiredAtS <= 8 || timeS < settleUntilS ||
+    if (!triggerStarved(timeS) || timeS < settleUntilS ||
         timeS < settleCdUntilS || !reload || reload.t > 0.5) return;
     settleStreak = timeS - settleUntilS < 1.5 ? settleStreak + 1 : 0;
     if (settleStreak < 3) {
@@ -4563,7 +4623,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         hasCoverPoint = false;
         if (mode === 'seekCover' || mode === 'patrol') mode = 'engage';
         if (target && !losClear && findVantage()) hasVantage = true;
-        if (target && losClear && !conserving && !emptyRack) settleUntilS = timeS + 3.5;
+        // the push's halt waits until the gun may fire on the contact (the reaction gate; see SETTLE_STARVED_S)
+        if (target && losClear && !conserving && !emptyRack && timeS - acquiredAtS >= tier.reactionS) {
+          settleUntilS = timeS + 3.5;
+        }
       }
       return;
     }
@@ -5266,7 +5329,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    *    → BACKOFF: reverse to cover (or REACT_BACKOFF_M straight back) with the
    *    bow on the shooter — never turn a flank to it;
    *  - seen shooter more than REACT_ANGLE_RAD off the bow → ANGLE the hull onto
-   *    it (REACT_ANGLE_OFFSET_RAD sidescrape offset; casemates face square);
+   *    it (REACT_ANGLE_OFFSET_RAD sidescrape offset; casemates face square; a
+   *    scout keeps moving, see REACT_BACKOFF_M);
    *  - seen frontal shooter while reloading in the open → JINK.
    */
   function reactToHit(shooter: AiEntity, seen: boolean, info: HitReactionInfo): void {
@@ -5289,7 +5353,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         reactPoint.x = st.pos.x + ax * REACT_BACKOFF_M;
         reactPoint.z = st.pos.z + az * REACT_BACKOFF_M;
       }
-    } else if (aspect > REACT_ANGLE_RAD && !casemate) {
+    } else if (aspect > REACT_ANGLE_RAD && !casemate && role !== 'scout') {
       pick = 'angle';
     } else if (cb && cb.reload && cb.reload.t > 1.0 && !hasCoverPoint) {
       pick = 'jink';
@@ -5543,7 +5607,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       drivePassivePress(input);
       return;
     }
-    if (timeS < settleUntilS && target && losClear && !conserving && !emptyRack) {
+    // the settled-shot halt, but not under fire in the open (SETTLE_STARVED_S)
+    if (timeS < settleUntilS && target && losClear && !conserving && !emptyRack && !exposedUnderFire(timeS)) {
       faceYaw(input, Math.atan2(
         target.state.pos.x - entity.state.pos.x,
         target.state.pos.z - entity.state.pos.z,
@@ -5592,6 +5657,48 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     navBestD = Infinity;
     escalateStuckRecovery(timeS, false);
     unstickSteer = detourSide;
+  }
+
+  // the speed a collider contact has taken since its first step (COLLIDER_STOP_WINDOW_S)
+  let colliderLostMps = 0;
+  let colliderContactAtS = -Infinity;
+  function updateColliderRecovery(timeS: number): void {
+    const st = entity.state;
+    if (st.impactSource !== IMPACT_SOURCE_COLLIDER) {
+      colliderLostMps = 0;
+      return;
+    }
+    if (colliderLostMps === 0 || timeS - colliderContactAtS > COLLIDER_STOP_WINDOW_S) {
+      colliderLostMps = 0;
+      colliderContactAtS = timeS;
+    }
+    colliderLostMps += st.impactMps;
+    if (timeS < unstickUntilS || ramming) return;
+    const lost = colliderLostMps;
+    if (lost < COLLIDER_STOP_MPS || lost < (lost + Math.abs(st.speed)) * COLLIDER_STOP_FRAC) return;
+    const nx = st.impactNx, nz = st.impactNz; // off the face, toward the hull
+    // a world primitive on that side, not a hull (the traffic and ram rules own those)
+    if (!findBlockingObstacle(st.pos.x, st.pos.z, -nx, -nz,
+      spec.dims.hullLengthM * 0.5 + 1.5, spec.dims.widthM * 0.5)) return;
+    // the face's tangent on the side of the drive's goal (of the heading, with no drive)
+    let tx = nz, tz = -nx;
+    const goalX = navGoalX - st.pos.x, goalZ = navGoalZ - st.pos.z;
+    const toGoal = driveIntent && Math.abs(navGoalX) < 1e8;
+    if ((toGoal ? tx * goalX + tz * goalZ : tx * Math.sin(st.yaw) + tz * Math.cos(st.yaw)) < 0) {
+      tx = -tx;
+      tz = -tz;
+    }
+    escalateStuckRecovery(timeS, true);
+    // reversing flips the steer (movement.ts): the opposite command swings the bow toward the tangent
+    unstickSteer = wrapAngle(Math.atan2(tx, tz) - st.yaw) >= 0 ? -1 : 1;
+    // and the detour (driveToXZ) goes round on that side (+1 offsets the goal to its bearing's right)
+    if (toGoal) detourSide = tx * goalZ - tz * goalX >= 0 ? 1 : -1;
+    unstickUntilS = timeS + UNSTICK_TIME_S;
+    lowSpeedT = 0;
+    navNoProgressT = 0;
+    navBestD = Infinity;
+    colliderLostMps = 0;
+    colliderStops++;
   }
 
   function applyActiveUnstick(input: AiInput): void {
@@ -5784,6 +5891,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // invalidate the leg promptly so the existing seeded detour/replan policy
     // can route around it. The short dwell filters one-tick ridge contacts.
     updateSlopeRecovery(dt, timeS);
+    updateColliderRecovery(timeS);
     updateLowSpeedRecovery(input, dt, timeS, allyYieldingPrev);
 
     // r6 ORBIT WATCHDOG (see trackNavProgress): continuous displacement with
@@ -6016,6 +6124,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       reaction, reactions, suspectId: suspect && nowS < suspectUntilS ? suspect.id : null,
       scooting: nowS < scootUntilS,
       kiting: nowS < kiteUntilS,
+      settling: nowS < settleUntilS,
+      colliderStops,
       fallingBack: nowS < fallbackUntilS,
       hpFrac: entity.combat && entity.combat.maxHp
         ? +(entity.combat.hp / entity.combat.maxHp).toFixed(2) : 1,
