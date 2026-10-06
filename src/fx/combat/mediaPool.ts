@@ -25,7 +25,7 @@ export interface MediaPuff {
   drag: number; rise: number; windK: number; grav: number;
   growExp: number; flatten: number; fadeIn: number; fadeOut: number;
   seed: number; warp: number; stretch: number; scatter: number;
-  heat: number; cool: number; hotCore: number; emissive: number;
+  heat: number; cool: number; burn: number; emissive: number;
 }
 
 export function makeMediaPuff(): MediaPuff {
@@ -36,7 +36,7 @@ export function makeMediaPuff(): MediaPuff {
     drag: 1, rise: 0, windK: 1, grav: 0,
     growExp: 2, flatten: 1, fadeIn: 0.05, fadeOut: 0.5,
     seed: 0, warp: 0.12, stretch: 0, scatter: 0,
-    heat: 0, cool: 1, hotCore: 0.5, emissive: 1,
+    heat: 0, cool: 1, burn: 1, emissive: 1,
   };
 }
 
@@ -124,7 +124,7 @@ export class MediaPool {
     a = A.aDY; a[j] = o.drag; a[j + 1] = o.rise; a[j + 2] = o.windK; a[j + 3] = o.grav;
     a = A.aSH; a[j] = o.growExp; a[j + 1] = o.flatten; a[j + 2] = o.fadeIn; a[j + 3] = o.fadeOut;
     a = A.aMS; a[j] = o.seed; a[j + 1] = o.warp; a[j + 2] = o.stretch; a[j + 3] = o.scatter;
-    a = A.aHT; a[j] = o.heat; a[j + 1] = o.cool; a[j + 2] = o.hotCore; a[j + 3] = o.emissive;
+    a = A.aHT; a[j] = o.heat; a[j + 1] = o.cool; a[j + 2] = o.burn; a[j + 3] = o.emissive;
     if (birth + o.life > this.liveUntil) this.liveUntil = birth + o.life;
     this.dirty(i);
   }

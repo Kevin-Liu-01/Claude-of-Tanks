@@ -103,7 +103,7 @@ assert.ok(surge.length >= 8, 'a base surge');
 const outward = surge.map((m) => { const p = at(m, 0.5); return Math.hypot(p[0] - m.px, p[2] - m.pz); }).sort((a, b) => a - b);
 assert.ok(outward[Math.floor(outward.length / 2)] > 1.5, `the surge runs out along the ground (median ${outward[Math.floor(outward.length / 2)].toFixed(2)} m)`);
 for (const m of surge) assert.ok(at(m, 0.5)[1] - m.py < 1.5, 'and stays low');
-const crown = he.rec.earth.filter((m) => m.birthOffset >= 0.1 && m.size1 > 4 && m.flatten > 0.8);
+const crown = he.rec.smoke.filter((m) => m.birthOffset >= 0.1 && m.size1 > 4 && m.flatten > 0.8 && m.heat === 0);
 assert.ok(crown.length >= 8, `a crown (${crown.length})`);
 let down = 0, rise = 0;
 for (const m of crown) {
@@ -176,7 +176,7 @@ killBlast(rackKill.C, { x: 0, y: 0, z: 0 }, 'ammorack', 0);
 const shotKill = recorder(13);
 killBlast(shotKill.C, { x: 0, y: 0, z: 0 }, 'shot', 0);
 const heatAt = (m, t) => m.heat * Math.exp(-m.cool * t);
-const core = rackKill.rec.smoke.filter((m) => m.heat > 1);
+const core = rackKill.rec.smoke.filter((m) => m.heat > 1.1);
 assert.ok(core.length >= 6, 'a white-hot fireball body');
 assert.ok(core.every((m) => heatAt(m, 0.67) > 0.6), 'that still burns bright two thirds of a second in');
 assert.ok(core.every((m) => heatAt(m, 3.0) < 0.25), 'and has cooled to soot by three seconds');

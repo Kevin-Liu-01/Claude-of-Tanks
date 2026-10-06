@@ -86,8 +86,9 @@ export function mLook(m: MediaPuff, c0: Rgb, c1: Rgb, alpha: number, fadeIn: num
   m.alpha = alpha; m.fadeIn = fadeIn; m.fadeOut = fadeOut; m.erode = erode; m.warp = warp; m.stretch = stretch;
   m.scatter = scatter; m.seed = seed;
 }
-export function mHeat(m: MediaPuff, heat: number, cool: number, hotCore: number, emissive: number): void {
-  m.heat = heat; m.cool = cool; m.hotCore = hotCore; m.emissive = emissive;
+/** heat at birth, cooling rate (1/s), burn (how much of the puff the heat lights: x the lobe structure), emission gain */
+export function mHeat(m: MediaPuff, heat: number, cool: number, burn: number, emissive: number): void {
+  m.heat = heat; m.cool = cool; m.burn = burn; m.emissive = emissive;
 }
 
 /** Mix two albedos. */

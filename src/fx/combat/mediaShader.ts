@@ -18,8 +18,10 @@
  * LIGHT — the sheets carry dome normals and thickness. Each texel is lit by the scene's own rig
  * (scene.userData.lightRig: sun colour x intensity, hemisphere sky/ground), with wrap diffuse, thick-core
  * self-shadowing, a silver lining on thin texels when the sun is behind the smoke, and the pooled explosion light
- * (fire-lit undersides). A puff may carry HEAT: dense pockets glow on a blackbody ramp and cool on the puff's own
- * rate — the fireball's fire-in-smoke and the muzzle gas that is still burning in the first frames.
+ * (fire-lit undersides). A puff may carry HEAT, cooling on its own rate: the local temperature is that heat x the
+ * lobe structure x the puff's side toward the blast (back along its launch), on a blackbody ramp — the fireball's
+ * fire-in-smoke (its outer shell soots over first, its heart glows on) and the muzzle gas still burning in the first
+ * frames.
  *
  * Contracts shared with particles.ts (duplicated, not imported, so this layer never edits the battle pools):
  * the late-FX soft-depth fade against the copied scene depth, the lens near-fade, and three's fog uniforms.
@@ -64,7 +66,7 @@ export const MEDIA_LAYOUT = Object.freeze({
   aDY: 4, // drag k, terminal rise (m/s, + up), wind coupling, ballistic gravity (m/s^2, + up)
   aSH: 4, // grow exponent, flatten (end-of-life vertical squash), fade-in (s), fade-out start (life fraction)
   aMS: 4, // seed, warp amplitude, velocity smear (per m/s), scatter (thin-edge translucency)
-  aHT: 4, // heat at birth, cooling rate (1/s), hot-core threshold, emissive gain
+  aHT: 4, // heat at birth, cooling rate (1/s), burn (heat x lobe structure gain), emissive gain
 });
 
 export const MEDIA_VERT = /* glsl */ `
@@ -94,7 +96,8 @@ varying vec3 vLight;     // sun direction in the card's frame (x right, y up, z 
 varying vec3 vUpL;       // world up in the card's frame
 varying vec3 vFire;      // fire-light irradiance at the puff
 varying vec4 vMisc;      // erosion, scatter, warp amplitude (age-scaled), heat now
-varying vec4 vMisc2;     // noise offset (2), hot-core threshold, emissive gain
+varying vec4 vMisc2;     // noise offset (2), burn, emissive gain
+varying vec3 vHeatDir;   // toward the blast (back along the launch) in the card's frame
 varying float vParticleDepth;
 ${FOG_PARS_V}
 float nearFadeM( vec3 wpos ) {
@@ -106,7 +109,7 @@ void main() {
   if ( life <= 0.0 || age < 0.0 || age > life ) {
     vUv = uv; vCellA = vec2( 0.0 ); vCellB = vec2( 0.0 ); vFMix = 0.0;
     vColor = vec4( 0.0 ); vT = 0.0; vLight = vec3( 0.0, 0.0, 1.0 ); vUpL = vec3( 0.0, 1.0, 0.0 );
-    vFire = vec3( 0.0 ); vMisc = vec4( 0.0 ); vMisc2 = vec4( 0.0 ); vParticleDepth = 1e9;
+    vFire = vec3( 0.0 ); vMisc = vec4( 0.0 ); vMisc2 = vec4( 0.0 ); vHeatDir = vec3( 0.0 ); vParticleDepth = 1e9;
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
     #ifdef USE_FOG
       vFogDepth = 1.0;
@@ -134,7 +137,7 @@ void main() {
   // flatten along world-up as seen on the card (ground dust spreads wide and low; from straight above it stays round)
   vec2 up2 = vec2( camRight.y, camUp.y );
   float upL = length( up2 );
-  float flatNow = mix( 1.0, aSH.y, smoothstep( 0.0, 0.6, t ) );
+  float flatNow = mix( 1.0, aSH.y, smoothstep( 0.0, 0.3, t ) );
   if ( upL > 0.05 ) {
     vec2 ud = up2 / upL;
     corner += ud * dot( corner, ud ) * ( flatNow - 1.0 ) * upL;
@@ -163,9 +166,15 @@ void main() {
   vec3 upC = -camRight * sa + camUp * ca;
   vLight = vec3( dot( uSunDir, rightC ), dot( uSunDir, upC ), dot( uSunDir, camBack ) );
   vUpL = vec3( rightC.y, upC.y, camBack.y );
-  // fire light (the pooled explosion light) at the puff centre: inverse square with a smooth range window
+  // a puff burns on its side toward the blast (back along its launch): the fireball's outer shell soots over first
+  // while its heart keeps glowing through the gaps (a puff launched straight at the camera shows its sooty face)
+  float vl = length( aVL.xyz );
+  vec3 hd = vl > 1e-3 ? -aVL.xyz / vl : vec3( 0.0 );
+  vHeatDir = vec3( dot( hd, rightC ), dot( hd, upC ), dot( hd, camBack ) );
+  // fire light (the pooled explosion light) at the puff centre: inverse square with a smooth range window, never
+  // nearer than 2.5 m (the light is a point; the smoke it sits in is metres across)
   vec3 dF = center - uFirePos.xyz;
-  float d2 = max( dot( dF, dF ), 1.0 );
+  float d2 = max( dot( dF, dF ), 6.25 );
   float win = clamp( 1.0 - d2 / max( uFirePos.w * uFirePos.w, 1.0 ), 0.0, 1.0 );
   vFire = uFireCol * ( win * win / d2 );
   // --- colour and alpha: per-puff fade-in (s) and fade-out start
@@ -208,6 +217,7 @@ varying vec3 vUpL;
 varying vec3 vFire;
 varying vec4 vMisc;
 varying vec4 vMisc2;
+varying vec3 vHeatDir;
 varying float vParticleDepth;
 ${FOG_PARS_F}
 float softDepthFadeM() {
@@ -219,10 +229,11 @@ float softDepthFadeM() {
   return smoothstep( 0.0, featherM, gapM );
 }
 vec3 blackbody( float h ) {
-  // dull red -> orange -> yellow -> white-hot (linear, unscaled)
-  vec3 c = mix( vec3( 0.45, 0.04, 0.0 ), vec3( 1.0, 0.32, 0.03 ), smoothstep( 0.05, 0.45, h ) );
-  c = mix( c, vec3( 1.0, 0.66, 0.2 ), smoothstep( 0.4, 0.75, h ) );
-  return mix( c, vec3( 1.0, 0.93, 0.74 ), smoothstep( 0.72, 1.0, h ) );
+  // dark red -> deep orange-red -> orange -> yellow (linear, unscaled; saturated enough to stay fire through the
+  // filmic curve, which pales bright colours)
+  vec3 c = mix( vec3( 0.6, 0.03, 0.0 ), vec3( 1.0, 0.2, 0.01 ), smoothstep( 0.08, 0.4, h ) );
+  c = mix( c, vec3( 1.0, 0.45, 0.06 ), smoothstep( 0.35, 0.72, h ) );
+  return mix( c, vec3( 1.0, 0.78, 0.4 ), smoothstep( 0.7, 1.0, h ) );
 }
 void main() {
   #ifdef MEDIA_LITE
@@ -262,27 +273,22 @@ void main() {
   vec3 amb = mix( uGroundCol, uSkyCol, upN );
   // fire light reaches the faces turned down toward the blaze hardest (fire-lit undersides)
   vec3 fireLit = vFire * ( 0.45 + 0.55 * ( 1.0 - upN ) );
-  // thin media scatter more of what they meet: a thin veil of even black smoke reads grey against the sky (never a
-  // darkened blue window onto it); only thick cores keep the authored dark albedo
-  float dens = clamp( d * thick, 0.0, 1.0 );
-  vec3 albedo = mix( min( vColor.rgb * 3.0 + 0.07, vec3( 0.5 ) ), vColor.rgb, smoothstep( 0.12, 0.7, dens ) );
-  albedo = max( albedo, vColor.rgb );
-  vec3 col = albedo * ( uSunCol * ( diff * selfShadow + silver * 1.6 ) + amb * ( 0.85 + 0.3 * vMisc.y ) + fireLit );
-  // heat: the dense pockets burn hottest and longest, the thin rim cools first (fire inside its own smoke). The
-  // emission falls steeply with the local temperature (~h^2.5, Stefan-Boltzmann-like), so a cooling pocket dims to a
-  // dull ember and then to soot — never a uniform glowing disc.
+  // one albedo across the puff: a per-texel lift on the thin rims drew a pale web over every dense column
+  vec3 col = vColor.rgb * ( uSunCol * ( diff * selfShadow + silver * 1.6 ) + amb * ( 0.85 + 0.3 * vMisc.y ) + fireLit );
+  // heat: the local temperature is the puff's heat x its lobe structure (dense, thick texels burn; the thin rim
+  // fades) x its side (hot toward the blast, sooty on the far side), so as the heat decays the burning region shrinks
+  // back into each puff's inner core and the whole fireball's outer shell turns to smoke first. The emission falls
+  // steeply with the temperature (~h^2.5), so a cooling pocket dims to a dull ember and then to soot.
   float heat = vMisc.w;
   if ( heat > 0.002 ) {
-    // fire structure: each lobe's core (thick, facing the camera) burns while its flanks and the thin rim stay soot,
-    // and a finer drifting noise breaks the burning cores into separate pockets (hot puffs alone pay this read)
     #ifdef MEDIA_LITE
-      float fineN = 0.55;
+      float fineN = 0.5;
     #else
-      float fineN = texture2D( uNoise, vUv * 2.6 + vMisc2.yx * 1.9 ).r;
+      float fineN = texture2D( uNoise, vUv * 2.6 + vMisc2.yx * 1.9 ).r; // hot puffs alone pay this read
     #endif
-    float field = d * thick * ( 0.3 + 0.7 * n.z ) * ( 0.55 + 0.9 * fineN );
-    float pocket = smoothstep( vMisc2.z - 0.12, vMisc2.z + 0.14, field );
-    float h = clamp( heat * mix( 0.04, 1.0, pocket ), 0.0, 1.0 );
+    float toward = clamp( dot( vUv - 0.5, vHeatDir.xy ) * 2.4 + 0.35 * vHeatDir.z, -1.0, 1.0 );
+    float structure = d * ( 0.55 + 0.45 * thick ) * ( 0.7 + 0.6 * fineN );
+    float h = clamp( heat * structure * ( 0.75 + 0.5 * toward ) * vMisc2.z, 0.0, 1.0 );
     vec3 glow = blackbody( h ) * ( 9.0 * h * h * sqrt( h ) ) * vMisc2.w * uGrade.y;
     col = col * ( 1.0 - 0.95 * smoothstep( 0.22, 0.75, h ) ) + glow;
   }

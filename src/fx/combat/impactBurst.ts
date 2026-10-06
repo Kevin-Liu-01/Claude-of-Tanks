@@ -125,7 +125,7 @@ export function groundBurst(C: CombatContext, pos: Vec3Like, caliberMm: number, 
     // the column's mass is soil AND dust: it climbs, stalls and sags back (a softer fall than the spikes' clumps) as
     // it fades, never sinking through the ground
     mMove(m, Math.cos(a) * st * v, ct * v, Math.sin(a) * st * v, 2.4, 0, 0.2, -5 * L.heavy);
-    mShape(m, 1.2 + R() * 0.5, (0.9 + R() * 0.4) * s, (2.8 + R() * 1.4) * s * dk, 2.4, 1, R() * TAU, (R() - 0.5) * 2);
+    mShape(m, 1.45 + R() * 0.6, (0.9 + R() * 0.4) * s, (3.0 + R() * 1.4) * s * dk, 2.4, 1, R() * TAU, (R() - 0.5) * 2);
     const soil = surf === 'snow' && explosive && i % 2 === 0;
     const c0 = soil ? UNDER_SNOW_SOIL : L.ejecta0;
     const c1 = soil ? blend(UNDER_SNOW_SOIL, L.ejecta1, 0.5, _c1) : L.ejecta1;
@@ -143,7 +143,9 @@ export function groundBurst(C: CombatContext, pos: Vec3Like, caliberMm: number, 
     mMove(m, Math.cos(a) * st * v, ct * v, Math.sin(a) * st * v, 2.6, 0, 0.2, -9.8 * L.heavy);
     mShape(m, 0.9 + R() * 0.5, 0.4 * s, (1.4 + R() * 0.8) * s * dk, 2, 1, R() * TAU, (R() - 0.5) * 2.4);
     const soil = surf === 'snow' && explosive && i % 3 === 0;
-    mLook(m, soil ? UNDER_SNOW_SOIL : L.ejecta0, L.ejecta1, 0.9, 0.01, 0.5, 0.45, 0.1, L.smear, L.scatter * 0.5, R());
+    // dark jets of soil streaking out of the burst (smeared hard along their flight), drying only halfway
+    blend(L.ejecta0, L.ejecta1, 0.5, _c1);
+    mLook(m, soil ? UNDER_SNOW_SOIL : L.ejecta0, _c1, 0.9, 0.01, 0.5, 0.45, 0.1, L.smear * 2.2, L.scatter * 0.5, R());
     mHeat(m, 0, 1, 0.5, 1);
     C.smoke(m);
   }
@@ -193,36 +195,38 @@ export function groundBurst(C: CombatContext, pos: Vec3Like, caliberMm: number, 
 
   // 4. base surge: low dust driven radially along the ground, spreading wide and flat — two rings (a fast outer wave
   //    and a slower inner roll) of overlapping, tearing cards so the surge reads as one rolling dust wave
-  const surgeN = tierCount(C, (explosive ? 18 : 11) * Math.sqrt(L.dustK));
+  const surgeN = tierCount(C, (explosive ? 24 : 14) * Math.sqrt(L.dustK));
   for (let i = 0; i < surgeN; i++) {
     const outer = i % 3 !== 0;
-    const a = (i / surgeN) * TAU + (R() - 0.5) * 0.6;
+    const a = (i / surgeN) * TAU + (R() - 0.5) * 0.35;
     const v = (outer ? (explosive ? 11 + R() * 7 : 7 + R() * 5) : (explosive ? 4 + R() * 3 : 3 + R() * 2)) * sq;
-    mPlace(m, pos.x + Math.cos(a) * 0.6 * s, by + 0.45, pos.z + Math.sin(a) * 0.6 * s, birthOffset + R() * 0.05);
-    mMove(m, Math.cos(a) * v, 0.5 + R() * 0.8, Math.sin(a) * v, 3.0, 0.22, 0.9, 0);
-    mShape(m, 2.6 + R() * 1.6, 1.0 * s, (outer ? 4.0 + R() * 1.8 : 3.2 + R() * 1.2) * s * Math.sqrt(L.dustK) * dk, 2.6,
-      0.5, R() * TAU, (R() - 0.5) * 0.8);
-    mLook(m, L.dust0, L.dust1, (0.42 + R() * 0.14) * Math.min(1, L.dustK), 0.04, 0.38, 0.8, 0.2, 0.025,
+    mPlace(m, pos.x + Math.cos(a) * 0.6 * s, by + 0.4, pos.z + Math.sin(a) * 0.6 * s, birthOffset + R() * 0.05);
+    mMove(m, Math.cos(a) * v, 0.35 + R() * 0.5, Math.sin(a) * v, 3.0, 0.2, 0.9, 0);
+    mShape(m, 2.8 + R() * 1.6, 1.2 * s, (outer ? 4.4 + R() * 1.8 : 3.4 + R() * 1.2) * s * Math.sqrt(L.dustK) * dk, 2.6,
+      0.42, R() * TAU, (R() - 0.5) * 0.6);
+    blend(L.ejecta1, L.dust0, 0.6, _c0);
+    mLook(m, _c0, L.dust1, (0.5 + R() * 0.14) * Math.min(1, L.dustK), 0.04, 0.4, 0.55, 0.2, 0.05,
       L.scatter, R());
     mHeat(m, 0, 1, 0.5, 1);
     C.earth(m);
   }
 
   // 5. the crown: born as the fountain tops out, billowing, rising (hot gas) and drifting downwind
-  const crownN = tierCount(C, (explosive ? 12 : 7) * Math.sqrt(L.dustK));
+  const crownN = tierCount(C, (explosive ? 16 : 9) * Math.sqrt(L.dustK));
   const crownTop = (explosive ? 5.5 : 3.2) * s * L.heightK;
   for (let i = 0; i < crownN; i++) {
     const a = R() * TAU, h = 0.7 + Math.pow(R(), 0.8) * crownTop, r = R() * 1.3 * s;
-    const out = 1.4 + R() * 2.2;
+    const out = 1.2 + R() * 2.0;
     mPlace(m, pos.x + Math.cos(a) * r, by + h, pos.z + Math.sin(a) * r, birthOffset + 0.1 + R() * 0.35);
     mMove(m, Math.cos(a) * out, 1.2 + R() * 1.8, Math.sin(a) * out, 1.3,
       (explosive ? 0.85 : 0.3) + R() * 0.35, 1, 0);
-    mShape(m, 4.4 + R() * 2.6, 1.7 * s, (5 + R() * 2.5) * s * Math.sqrt(L.dustK) * dk, 1.7, 0.9, R() * TAU,
-      (R() - 0.5) * 0.7);
-    blend(L.dust0, L.ejecta1, 0.35, _c0);
-    mLook(m, _c0, L.dust1, 0.58 + R() * 0.17, 0.2, 0.32, 0.4, 0.22, 0, L.scatter, R());
+    mShape(m, 5.5 + R() * 2.5, 1.8 * s, (5.8 + R() * 2.8) * s * Math.sqrt(L.dustK) * dk, 1.6, 0.92, R() * TAU,
+      (R() - 0.5) * 0.6);
+    // born the brown of the fountain's dust, drying and thinning toward the ground's pale dust as it spreads
+    blend(L.ejecta0, L.dust0, 0.55, _c0);
+    mLook(m, _c0, L.dust0, 0.74 + R() * 0.14, 0.2, 0.38, 0.35, 0.22, 0, L.scatter, R());
     mHeat(m, 0, 1, 0.5, 1);
-    C.earth(m);
+    C.smoke(m);
   }
 
   // explosive residue: dark smoke out of the crater, glowing for its first instant
@@ -234,7 +238,7 @@ export function groundBurst(C: CombatContext, pos: Vec3Like, caliberMm: number, 
       mMove(m, Math.cos(a) * 1.5, 2.5 + R() * 2.5, Math.sin(a) * 1.5, 1.6, 1.0 + R() * 0.4, 1, 0);
       mShape(m, 3.2 + R() * 1.4, 1.1 * s, (3.0 + R() * 1.2) * s * dk, 1.9, 1, R() * TAU, (R() - 0.5) * 0.8);
       mLook(m, BLAST_SMOKE0, BLAST_SMOKE1, 0.55 + R() * 0.15, 0.02, 0.4, 0.4, 0.18, 0, 0.1, R());
-      mHeat(m, 0.95, 5.5, 0.85, 1);
+      mHeat(m, 0.95, 5.5, 0.95, 1);
       C.smoke(m);
     }
     sparkSpray(C, pos.x, by + 0.4, pos.z, tierCount(C, 8), 13 * s, 0.9, EMBER, 0.55, 0.035, birthOffset);
@@ -286,16 +290,17 @@ export function waterBurst(C: CombatContext, pos: Vec3Like, caliberMm: number, e
     mHeat(m, 0, 1, 0.5, 1);
     C.earth(m);
   }
-  // the crown: spray jets fanning out at 25-45 degrees (many small, quickly thinning sheets)
+  // the crown: spray jets fanning out at 25-45 degrees (many small, quickly thinning sheets streaked along their
+  // flight: torn spray, never round puffs)
   const crownN = tierCount(C, 18);
   for (let i = 0; i < crownN; i++) {
     const a = (i / crownN) * TAU + (R() - 0.5) * 0.4, tilt = 0.45 + R() * 0.4, v = (10 + R() * 7) * sq;
     mPlace(m, pos.x + Math.cos(a) * 0.4 * s, wy + 0.25, pos.z + Math.sin(a) * 0.4 * s, birthOffset + R() * 0.03);
     mMove(m, Math.cos(a) * Math.sin(tilt) * v, Math.cos(tilt) * v, Math.sin(a) * Math.sin(tilt) * v, 1.8, 0, 0.3, -9.8);
-    mShape(m, 1.2 + R() * 0.5, 0.35 * s, (1.3 + R() * 0.7) * s * dk, 2, 1, R() * TAU, (R() - 0.5) * 2);
-    mLook(m, L.ejecta0, L.ejecta1, 0.62, 0.012, 0.45, 0.65, 0.12, 0.08, L.scatter, R());
+    mShape(m, 1.2 + R() * 0.5, 0.35 * s, (1.5 + R() * 0.8) * s * dk, 2, 1, R() * TAU, (R() - 0.5) * 2);
+    mLook(m, L.ejecta0, L.ejecta1, 0.55, 0.012, 0.45, 0.7, 0.12, 0.13, L.scatter, R());
     mHeat(m, 0, 1, 0.5, 1);
-    C.smoke(m);
+    C.earth(m);
   }
   // the surge over the surface
   const surgeN = tierCount(C, 10);
@@ -312,8 +317,9 @@ export function waterBurst(C: CombatContext, pos: Vec3Like, caliberMm: number, e
   const mistN = tierCount(C, 6);
   for (let i = 0; i < mistN; i++) {
     const a = R() * TAU, r = R() * 1.6 * s;
-    mPlace(m, pos.x + Math.cos(a) * r, wy + 1.0 + R() * 4 * s, pos.z + Math.sin(a) * r, birthOffset + 0.5 + R() * 0.5);
-    mMove(m, Math.cos(a) * 0.8, 0.3 + R() * 0.5, Math.sin(a) * 0.8, 1.2, 0.25, 1, 0);
+    // low, where the collapsing column leaves it (a mist born high floated off as a lone cloud)
+    mPlace(m, pos.x + Math.cos(a) * r, wy + 0.8 + R() * 2.2 * s, pos.z + Math.sin(a) * r, birthOffset + 0.5 + R() * 0.5);
+    mMove(m, Math.cos(a) * 0.8, 0.15 + R() * 0.3, Math.sin(a) * 0.8, 1.2, 0.12, 1, 0);
     mShape(m, 3.6 + R() * 1.6, 1.8 * s, (5 + R() * 2) * s * dk, 1.6, 0.85, R() * TAU, (R() - 0.5) * 0.4);
     mLook(m, L.dust0, L.dust1, 0.3, 0.3, 0.3, 0.5, 0.25, 0, L.scatter, R());
     mHeat(m, 0, 1, 0.5, 1);

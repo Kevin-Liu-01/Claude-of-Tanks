@@ -1521,7 +1521,8 @@ column, deck flames and smoulder (`emitColumnPuff`, `emitSmolderPuff`). The laye
   soil and spray), grows on an ease-out curve, flattens along world-up, smears along its screen-space velocity and
   is domain-warped, so it deforms rather than scaling one sprite; lit by the published rig (sun, sky / environment,
   ground pole, the pooled explosion light) from the normal-mapped lobed sheets (`mediaAtlas.ts`, baked once from the
-  fx seed in `warmTextures`), with optional blackbody heat in its dense pockets;
+  fx seed in `warmTextures`), with optional blackbody heat: the heat x the lobe structure x the puff's side toward
+  the blast (back along its launch), so a cooling fireball's outer shell turns to smoke first and its heart glows on;
 - thrown clods in the ground's colour (`clods.ts`, a recorded landing point and time) and one crater batch
   (`craters.ts`);
 - the surface classifier (`surface.ts`: soil, sand, snow, mud, rock, water from the height field's water mask,

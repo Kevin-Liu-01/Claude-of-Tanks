@@ -77,7 +77,7 @@ export function groundWindFromAloft(speedAloft: number): number {
  * materials receive it) plus the hemisphere; the legacy rig (phones) has no published environment share, so its
  * hemisphere stands in at a higher gain. Live-tunable through group.userData.combatTune (diagnostics only).
  */
-const DEFAULT_TUNE = Object.freeze({ sun: 1.0, amb: 1.0, legacyAmb: 2.2, fire: 0.32, glow: 1.0, alpha: 1.0, size: 1.0, cool: 1.0 });
+const DEFAULT_TUNE = Object.freeze({ sun: 1.0, amb: 1.0, legacyAmb: 2.2, fire: 0.12, glow: 1.0, alpha: 1.0, size: 1.0, cool: 1.0 });
 
 interface CombatFx {
   readonly group: THREE.Group;

@@ -75,7 +75,7 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
       mMove(m, dir.x * f + rx * r, dir.y * f + Math.max(ry * r, -1) + 0.4, dir.z * f + rz * r, 7, 0.35, 0.7, 0);
       mShape(m, 1.6 + R() * 0.7, 0.55 * s, (2.7 + R() * 1.0) * s * dk, 3.2, 1, R() * TAU, (R() - 0.5) * 3);
       mLook(m, GAS0, GAS1, 0.62 * near, 0.008, 0.4, 0.45, 0.14, 0.02, 0.25, R());
-      mHeat(m, 1.0, 13 + R() * 5, 0.62, 1.05);
+      mHeat(m, 1.0, 13 + R() * 5, 1.15, 1.05);
       C.smoke(m);
     }
     // 2. the overpressure shell: thrown forward and out, stalls within metres, rolls and thins
@@ -88,6 +88,8 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
       let ex = dir.x * fw + rx * side, ey = dir.y * fw + ry * side, ez = dir.z * fw + rz * side;
       // the ground turns the downward half of the ring aside: it spreads out low instead of burrowing
       if (ey < -0.15) { const k = 0.15 / -ey; ey = -0.15; ex /= Math.sqrt(k); ez /= Math.sqrt(k); }
+      // and the upper half rolls out over the bore rather than climbing away as a lone ball above the gun
+      if (ey > 0.3) ey = 0.3 + (ey - 0.3) * 0.45;
       const el = Math.hypot(ex, ey, ez) || 1;
       ex /= el; ey /= el; ez /= el;
       const v = (14 + R() * 12) * Math.sqrt(s);
@@ -96,7 +98,7 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
       mMove(m, ex * v, ey * v + 0.3, ez * v, 6.2 + R() * 1.2, 0.32, 1, 0);
       mShape(m, 2.6 + R() * 1.2, 0.8 * s, (3.4 + R() * 1.6) * s * dk, 2.8, 1, R() * TAU, (R() - 0.5) * 2.2);
       mLook(m, CLOUD0, CLOUD1, (0.5 + R() * 0.12) * near, 0.02, 0.34, 0.62, 0.22, 0.025, 0.3, R());
-      mHeat(m, 0.45, 16, 0.8, 0.9);
+      mHeat(m, 0.45, 16, 0.95, 0.9);
       C.earth(m);
     }
     // 3. the forward plume down the line of fire
@@ -151,11 +153,12 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
     // the wave is strongest down the line of fire, weakest behind the muzzle
     const fwd = 0.5 + 0.5 * (cx * fx + cz * fz);
     const v = (5 + R() * 6 + fwd * 7) * Math.sqrt(s);
-    mPlace(m, aheadX + cx * 0.6, gy + 0.4, aheadZ + cz * 0.6, birthOffset + 0.012 + R() * 0.03);
-    mMove(m, cx * v, 0.7 + R() * 0.9, cz * v, 3.3, 0.2, 0.95, 0);
-    mShape(m, 3.0 + R() * 1.6, 1.0, (4.0 + R() * 2.2 + fwd * 2.0) * s * Math.sqrt(Math.min(1.5, dust)) * dk, 2.5,
-      0.55, R() * TAU, (R() - 0.5) * 0.8);
-    mLook(m, L.dust0, L.dust1, (0.52 + R() * 0.16) * Math.min(1, dust), 0.03, 0.4, 0.7, 0.2, 0.02, L.scatter, R());
+    mPlace(m, aheadX + cx * 0.6, gy + 0.3, aheadZ + cz * 0.6, birthOffset + 0.012 + R() * 0.03);
+    mMove(m, cx * v, 0.45 + R() * 0.6, cz * v, 3.3, 0.18, 0.95, 0);
+    // a low sheet that rolls out along the ground (flat from its first frames, smeared along its run)
+    mShape(m, 3.0 + R() * 1.6, 1.2, (4.0 + R() * 2.2 + fwd * 2.0) * s * Math.sqrt(Math.min(1.5, dust)) * dk, 2.5,
+      0.36, R() * TAU, (R() - 0.5) * 0.6);
+    mLook(m, L.dust0, L.dust1, (0.5 + R() * 0.16) * Math.min(1, dust), 0.03, 0.4, 0.55, 0.2, 0.06, L.scatter, R());
     mHeat(m, 0, 1, 0.5, 1);
     C.earth(m);
   }
@@ -167,7 +170,7 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
     const px = aheadX + fx * ahead - fz * side, pz = aheadZ + fz * ahead + fx * side;
     mPlace(m, px, C.groundY(px, pz) + 0.45, pz, birthOffset + 0.03 + ahead * 0.01);
     mMove(m, fx * (6 + R() * 6), 0.8 + R() * 0.8, fz * (6 + R() * 6), 2.8, 0.2, 1, 0);
-    mShape(m, 3 + R() * 1.4, 0.9, (3.6 + R() * 1.6) * s * dk, 2.2, 0.6, R() * TAU, (R() - 0.5) * 0.6);
+    mShape(m, 3 + R() * 1.4, 0.9, (3.6 + R() * 1.6) * s * dk, 2.2, 0.42, R() * TAU, (R() - 0.5) * 0.6);
     mLook(m, L.dust0, L.dust1, (0.36 + R() * 0.12) * Math.min(1, dust), 0.05, 0.35, 0.6, 0.18, 0.02, L.scatter, R());
     mHeat(m, 0, 1, 0.5, 1);
     C.earth(m);
