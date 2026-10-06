@@ -260,6 +260,8 @@ interface TreeRecord {
    * map whose woods close, its species' forest-grown near variants (assignTreeForms); a field tree keeps the open form.
    */
   wood?: boolean;
+  /** Trees round 5: one of the field trees (placeLoneTrees), the field law's (addFieldTree). */
+  field?: boolean;
 }
 
 export interface TreeObstacle extends CollisionRecord {
@@ -2553,6 +2555,18 @@ const FOREST_NEAR_VARIANTS = 2;
 const GROWTH_SHRUB_STEM_VALUE = 1.15;
 /** Trees round 5: the shrub atlas' size before the device's texture scale (createBushes; the crowns' are 512). */
 const SHRUB_ATLAS_PX = 1024;
+/**
+ * Trees round 5 (the field law, createVegetation's addFieldTree): a field tree within this share of a woodlot's outline
+ * beyond it stands at the wood's edge; past this many metres beyond its field's grass margin it is in the interior, unless
+ * within this many metres of a road (its verge, a field's edge too).
+ */
+const FIELD_TREE_WOOD_EDGE = 1.2;
+/** Trees round 5: the field law on (a probe's copy turns it off for its before census). */
+const FIELD_TREE_LAW = true;
+const FIELD_TREE_MARGIN_M = 3;
+const FIELD_TREE_ROAD_VERGE_M = 18;
+/** Trees round 5: the least distance between two moved field trees' trunks (a hedgerow's standards, m). */
+const FIELD_TREE_SPACING_M = 5;
 
 function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, pal: VegetationPalette = {}, forest = false): TreeGeometryPair {
   const profile = TREE_GROWTH_PROFILES[species];
@@ -5899,6 +5913,169 @@ function* vegetationBuildSteps(
     return mean / 8 - heightField.getHeightAt(x, z);
   }
   /**
+   * Trees round 5 (2026-10-05, the coordinator's ruling on the gauntlet's wave 100: "conifers standing inside the brown
+   * ploughed fields ... the Hessian farmland reads as savanna parkland"): on a map with a field system (the ground lane's
+   * land use, read through the height field's `_landUseAt`) a field tree grows on a hedged boundary or at a wood's edge,
+   * never in a field's interior (past its grass margin and clear of a road's verge). One the draws seat in an interior
+   * moves to the nearest hedged boundary — hedgeSite from its seat, or from points 40 m round it — or, without one, to
+   * the nearest wood's edge within 60 m; only then is it dropped (the lone trees' loop seats another in its place, so a
+   * field keeps its cover count). A conifer form stands in the open only at a wood's edge: elsewhere the lone mix's
+   * broadleaf form takes its slot. A dropped tree's draws are spent as a placed one's (placed and popped), every move is
+   * position-hashed, and a map without a field system grows its field trees as before.
+   */
+  const _fieldLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0 };
+  /** Whether a point stands at a woodlot's edge: within two fifths of the stand's outline beyond it (or inside it). */
+  function atWoodEdge(x: number, z: number): boolean {
+    for (let i = 0; i < clusters.length; i++) if (standOutlineFraction(i, x, z) <= FIELD_TREE_WOOD_EDGE) return true;
+    return false;
+  }
+  /** Whether a point lies in a field's interior: past the field's grass margin and clear of a road's verge. */
+  function inFieldInterior(x: number, z: number): boolean {
+    if (hedgeLandAt === null) return false;
+    hedgeLandAt(x, z, _fieldLand);
+    return _fieldLand.active > 0 && _fieldLand.edgeM > _fieldLand.marginM + FIELD_TREE_MARGIN_M
+      && admission()._roadDist(x, z) > FIELD_TREE_ROAD_VERGE_M;
+  }
+  const _fieldSeat = [0, 0];
+  /** Whether a seat stands clear of the field trees already planted (a moved line never stacks on one boundary point). */
+  function fieldSeatClear(x: number, z: number, from: number): boolean {
+    for (let i = from; i < trees.length; i++) if (Math.hypot(trees[i].x - x, trees[i].z - z) < FIELD_TREE_SPACING_M) return false;
+    return true;
+  }
+  /**
+   * A boundary seat stepped along the boundary's tangent (either way, a spacing at a time) until it stands clear of the
+   * field trees already there, on a site a tree may take, and stays on the boundary (written to the seat); false if
+   * none of seven does.
+   */
+  function fieldSeatAlong(bx: number, bz: number, tx: number, tz: number, from: number): boolean {
+    for (let step = 0; step < 7; step++) {
+      const along = (step === 0 ? 0 : (step % 2 === 1 ? 1 : -1) * Math.ceil(step / 2)) * FIELD_TREE_SPACING_M * 1.25;
+      const cx = bx + tx * along, cz = bz + tz * along;
+      if (fieldSeatClear(cx, cz, from) && siteOk(cx, cz, 0) && (step === 0 || (!inFieldInterior(cx, cz) && !atWoodEdge(cx, cz)))) {
+        _fieldSeat[0] = cx; _fieldSeat[1] = cz;
+        return true;
+      }
+    }
+    return false;
+  }
+  /** A boundary seat from a probe point: across to its field's nearest edge, into the grass margin; or null. */
+  const _boundarySeat = [0, 0, 0, 0];
+  function boundarySeatFrom(px: number, pz: number): number[] | null {
+    if (hedgeLandAt === null) return null;
+    const e0 = hedgeLandAt(px, pz, _fieldLand).edgeM, margin = _fieldLand.marginM;
+    if (!_fieldLand.active) return null;
+    const gx = hedgeLandAt(px + 1, pz, _fieldLand).edgeM - e0, gz = hedgeLandAt(px, pz + 1, _fieldLand).edgeM - e0;
+    const gl = Math.hypot(gx, gz);
+    if (gl < 0.3) return null;
+    const ux = gx / gl, uz = gz / gl, offset = Math.min(2.5, Math.max(1, margin * 0.5));
+    _boundarySeat[0] = px - ux * (e0 - offset); _boundarySeat[1] = pz - uz * (e0 - offset);
+    _boundarySeat[2] = -uz; _boundarySeat[3] = ux;
+    return _boundarySeat;
+  }
+  /**
+   * The seat an interior tree moves to, or null: the nearest boundary in the open — a hedged one (hedgeSite) or any
+   * field's edge, its grass margin — found from the seat and from probes 25, 50, 75 and 100 m round it (a hedged one taken while
+   * within half again the nearest's distance), stepped along it until it stands clear of the field trees already there;
+   * else a wood's edge within 60 m. A seat at a wood's edge is the wood's, not the open field's: the boundaries' are
+   * taken in the open, so the open field keeps its cover.
+   */
+  function fieldTreeMove(x: number, z: number, from: number): number[] | null {
+    let bestHedge = Infinity, bestEdge = Infinity;
+    const hedge = [0, 0, 0, 0], edge = [0, 0, 0, 0];
+    for (let k = -1; k < 32; k++) {
+      const ring = 25 * (1 + Math.floor(Math.max(0, k) / 8)), ang = (k % 8) * Math.PI / 4 + (Math.floor(Math.max(0, k) / 8) % 2) * Math.PI / 8;
+      const px = k < 0 ? x : x + Math.cos(ang) * ring, pz = k < 0 ? z : z + Math.sin(ang) * ring;
+      const site = hedgeSite(px, pz, 83);
+      if ((site[2] !== 0 || site[3] !== 0) && !atWoodEdge(site[0], site[1])) {
+        const d = Math.hypot(site[0] - x, site[1] - z);
+        if (d < bestHedge) { bestHedge = d; hedge[0] = site[0]; hedge[1] = site[1]; hedge[2] = site[2]; hedge[3] = site[3]; }
+      }
+      const seat = boundarySeatFrom(px, pz);
+      if (seat && !inFieldInterior(seat[0], seat[1]) && !atWoodEdge(seat[0], seat[1]) && siteOk(seat[0], seat[1], 0)) {
+        const d = Math.hypot(seat[0] - x, seat[1] - z);
+        if (d < bestEdge) { bestEdge = d; edge[0] = seat[0]; edge[1] = seat[1]; edge[2] = seat[2]; edge[3] = seat[3]; }
+      }
+    }
+    if (bestHedge < Infinity && bestHedge <= 1.5 * bestEdge && fieldSeatAlong(hedge[0], hedge[1], hedge[2], hedge[3], from)) {
+      fieldTreeLaw.toHedge++;
+      return _fieldSeat;
+    }
+    if (bestEdge < Infinity && fieldSeatAlong(edge[0], edge[1], edge[2], edge[3], from)) {
+      fieldTreeLaw.toBoundary++;
+      return _fieldSeat;
+    }
+    if (bestHedge < Infinity && fieldSeatAlong(hedge[0], hedge[1], hedge[2], hedge[3], from)) {
+      fieldTreeLaw.toHedge++;
+      return _fieldSeat;
+    }
+    let bestWood = 120;
+    for (let i = 0; i < clusters.length; i++) {
+      const stand = clusters[i], shape = woodlotShapes[i];
+      const dx = x - stand.x, dz = z - stand.z;
+      const a = shape ? Math.atan2((dz * shape.cos - dx * shape.sin) * shape.stretch, (dx * shape.cos + dz * shape.sin) / shape.stretch)
+        : Math.atan2(dz, dx);
+      const at = standPoint(i, stand, a, 1.1);
+      const d = Math.hypot(at[0] - x, at[1] - z);
+      if (d < bestWood && fieldSeatClear(at[0], at[1], from)) { bestWood = d; _fieldSeat[0] = at[0]; _fieldSeat[1] = at[1]; }
+    }
+    if (bestWood >= 120) return null;
+    fieldTreeLaw.toWood++;
+    return _fieldSeat;
+  }
+  /** Whether a slot grows as a conifer form here (the form a map's palette or biome gives it, every tier alike). */
+  function coniferForm(species: Species): boolean {
+    // (the form formOf gives the slot: the map palette's, else its place's)
+    const form = veg.palettes[species]?.form ?? treeBiomeSlot(cfg?.id, species)?.form ?? species;
+    return (TREE_GROWTH_PROFILES as Partial<Record<string, { family: string }>>)[form]?.family === 'conifer';
+  }
+  /** A lone tree on a field-system map: seated by the field law (above), or as before without a field system. */
+  function addFieldTree(x: number, z: number, species: Species, r: RandomSource, from: number): boolean {
+    // (a town map's trees keep to its park belts, veg.parks, which are no fields)
+    if (hedgeLandAt === null || !FIELD_TREE_LAW || veg.parks) return addTree(x, z, species, r);
+    // a seat its own site refuses is refused as it always was: the lone trees' loop draws the trees it drew before the
+    // law, and only their seats move (a dropped tree counts as planted, below)
+    if (!siteOk(x, z, 0)) return false;
+    let sx = x, sz = z;
+    if (!atWoodEdge(x, z) && inFieldInterior(x, z)) {
+      const seat = fieldTreeMove(x, z, from);
+      if (!seat) return dropFieldTree(x, z, species, r);
+      sx = seat[0]; sz = seat[1];
+      fieldTreeLaw.moved++;
+    }
+    let sp = species;
+    if (coniferForm(sp) && !atWoodEdge(sx, sz)) {
+      const broadleaf = veg.loneMix.filter(([candidate]) => !coniferForm(candidate) && treeGeo[candidate]);
+      if (broadleaf.length) {
+        const total = broadleaf.reduce((sum, [, w]) => sum + w, 0);
+        let roll = treePositionNoise(sx, sz, 89) * total;
+        sp = broadleaf[broadleaf.length - 1][0];
+        for (const [candidate, w] of broadleaf) { roll -= w; if (roll <= 0) { sp = candidate; break; } }
+        fieldTreeLaw.swapped++;
+      }
+    }
+    if (addTree(sx, sz, sp, r)) return true;
+    // (the new seat refused it — a road, a building, the slope)
+    return dropFieldTree(x, z, species, r);
+  }
+  /**
+   * A field tree the law could seat nowhere: its draws spent as a planted tree's (placed at its own seat, then popped
+   * with its records) and counted as planted, so the loop draws on as it did before the law.
+   */
+  function dropFieldTree(x: number, z: number, species: Species, r: RandomSource): boolean {
+    const t0 = trees.length, o0 = treeObstacles.length, c0 = concealers.length;
+    addTree(x, z, species, r);
+    trees.length = t0; treeObstacles.length = o0; concealers.length = c0;
+    fieldTreeLaw.dropped++;
+    return true;
+  }
+  /**
+   * The field law's tally and the field trees' census (the probes': vegetation.group.userData.fieldTreeLaw): the moved
+   * (to a hedge, to their own field's boundary, to a wood's edge), swapped and dropped; the lone trees, those in the open
+   * (not at a wood's edge), in a field's interior, and the conifer forms in the open.
+   */
+  const fieldTreeLaw = { moved: 0, toHedge: 0, toBoundary: 0, toWood: 0, swapped: 0, dropped: 0, lone: 0, open: 0, interior: 0, coniferOpen: 0 };
+  /**
    * Trees round 2b (2026-10-03, the gauntlet's wave 15: "trees scattered at even, savanna-like spacing, whatever the
    * place"; round 3, wave 31: "trees stand singly like savanna; real places have closed woods, groves, shelterbelts and
    * hedgerow lines"): the field trees stand in groups and lines, never singly in the open. Two fifths as fringe groups
@@ -5914,6 +6091,7 @@ function* vegetationBuildSteps(
    */
   function placeLoneTrees(): void {
     replayRoundOneLoneDraws();
+    const loneFrom = trees.length;
     const lr = mulberry32((seed ^ 0x1a0e5) >>> 0);
     const arid = treeBiomeArid(cfg?.id), zoned = uplandBand !== null;
     const loneTarget = Math.round(veg.loneCount * treeRichness());
@@ -5937,7 +6115,7 @@ function* vegetationBuildSteps(
         const sp = stranger ? pickSpecies(veg.loneMix, lr()) : species;
         const px = x0 + dx * along - dz * off, pz = z0 + dz * along + dx * off;
         if (gap || !uplandZoneOk(px, pz, sp)) continue;
-        if (addTree(px, pz, sp, lr)) placed++;
+        if (addFieldTree(px, pz, sp, lr, loneFrom)) placed++;
       }
     };
     for (let i = 0; i < 2400 && placed < loneTarget; i++) {
@@ -6002,6 +6180,20 @@ function* vegetationBuildSteps(
   }
   const authoredLoneStart = trees.length;
   placeLoneTrees();
+  fieldTreeLaw.lone = trees.length - authoredLoneStart;
+  for (let i = authoredLoneStart; i < trees.length; i++) trees[i].field = true;
+  if (hedgeLandAt !== null && !veg.parks) {
+    for (let i = authoredLoneStart; i < trees.length; i++) {
+      const t = trees[i];
+      let inside = false;
+      for (let k = 0; k < clusters.length && !inside; k++) if (standOutlineFraction(k, t.x, t.z) <= 1) inside = true;
+      if (!inside) fieldTreeLaw.open++;
+      if (atWoodEdge(t.x, t.z)) continue;
+      if (inFieldInterior(t.x, t.z)) fieldTreeLaw.interior++;
+      if (coniferForm(t.species)) fieldTreeLaw.coniferOpen++;
+    }
+  }
+  group.userData.fieldTreeLaw = fieldTreeLaw;
   // maps r1 (ADDITIVE, config-gated): WINDBREAK BELTS — authored tree LINES
   // ({x0,z0,x1,z1, gap?, jitter?, species?}) for steppe shelterbelts and
   // field-boundary rows. Runs only when cfg.vegetation.belts exists, so no

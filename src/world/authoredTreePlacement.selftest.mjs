@@ -14,7 +14,8 @@ import { createStructureClearances, excludeStructureVegetation, overlapsStructur
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { authoredTreeStations, redistributeAuthoredTrees } from './authoredTreePlacement.ts';
 import { SHORELINE_SEGMENTS, shorelineDistance, shorelineRadiusAt } from './shoreline.ts';
-import { treeBiomeArid, treeBiomeOpen, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeOpen, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
+import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
 import polders from './maps/polders.ts';
 import mangrove from './maps/mangrove.ts';
 import orchard from './maps/orchard.ts';
@@ -32,9 +33,17 @@ const dependencies = { THREE, mulberry32, treeRichness, TREE_ARCHETYPES, treeTru
   PLAYABLE_HALF_EXTENT_M, isClearOfSpawns, createStructureClearances, excludeStructureVegetation,
   DESTRUCTIBLE_BUILDING_TYPES, redistributeAuthoredTrees, placedStructureClearances,
   // trees round 2b (2026-10-03): the hyper-arid places' groves (vegetation.ts placeTreeClusters)
-  treeBiomeArid, treeBiomeOpen, treeBiomeUpland, treeBiomeWoodSpread };
+  treeBiomeArid, treeBiomeOpen, treeBiomeUpland, treeBiomeWoodSpread,
+  // trees round 5: the field law's conifer forms (vegetation.ts coniferForm)
+  treeBiomeSlot, TREE_GROWTH_PROFILES };
 const builder = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* placement(heightField, cfg) {
   const seed = 2001, rng = mulberry32(seed), group = new THREE.Group();
+  // trees round 5: the field law's constants (vegetation.ts module scope), read from the source
+  const FIELD_TREE_LAW = ${/const FIELD_TREE_LAW = (true|false);/.exec(source)[1]};
+  const FIELD_TREE_WOOD_EDGE = ${/const FIELD_TREE_WOOD_EDGE = ([0-9.]+);/.exec(source)[1]};
+  const FIELD_TREE_MARGIN_M = ${/const FIELD_TREE_MARGIN_M = ([0-9.]+);/.exec(source)[1]};
+  const FIELD_TREE_ROAD_VERGE_M = ${/const FIELD_TREE_ROAD_VERGE_M = ([0-9.]+);/.exec(source)[1]};
+  const FIELD_TREE_SPACING_M = ${/const FIELD_TREE_SPACING_M = ([0-9.]+);/.exec(source)[1]};
   const veg = { parks: null, palettes: {}, avoid: null, ...cfg.vegetation };
   const speciesList = veg.species, treeGeo = Object.fromEntries(speciesList.map(sp => [sp, true]));
   const L = heightField._layout, v = L.village, noVeg = heightField._noVeg;

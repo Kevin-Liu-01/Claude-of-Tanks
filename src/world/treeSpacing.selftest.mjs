@@ -22,6 +22,7 @@ import { createCanvas, ImageData } from '@napi-rs/canvas';
 import { createHeightField } from './terrain.ts';
 import { createVegetation } from './vegetation.ts';
 import { getMapConfig } from './maps/index.ts';
+import { createLandFieldSample } from './landUse.ts';
 import { treeBiomeArid, treeBiomeSlot } from './treeBiomes.ts';
 import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
 
@@ -180,6 +181,39 @@ try {
       assert.ok(zoned.conifer >= 20 && zoned.broadleaf >= 20, `both zones grow (${JSON.stringify(zoned)})`);
       assert.ok(world._trees.filter(inside).length < 300, `the mine's uplands carry few trees (${world._trees.filter(inside).length})`);
       report.copper_mesa = zoned;
+    } finally { world.dispose(); }
+  }
+  // trees round 5 (the coordinator's ruling on the gauntlet's wave 100: "conifers standing inside the brown ploughed
+  // fields ... the Hessian farmland reads as savanna parkland"): on a field-system map no field tree stands in a field's
+  // interior (past its grass margin, clear of a road's verge, away from a wood's edge) and no conifer form stands in the
+  // open; the law moves the field trees it meets there (to a hedge, their own field's boundary, a wood's edge) and drops
+  // hardly any, so the field keeps its cover. A town map's park trees keep their belts.
+  for (const id of ['frontier', 'coastal', 'reservoir']) {
+    const { world, field } = produce(id);
+    try {
+      const law = world.group.userData.fieldTreeLaw, sample = createLandFieldSample();
+      assert.ok(law.moved >= 10 && law.dropped <= 2 && law.interior === 0 && law.coniferOpen === 0,
+        `${id}: the field law moves its field trees off the interiors (${JSON.stringify(law)})`);
+      let interior = 0, coniferOpen = 0, fieldTrees = 0;
+      for (const t of world._trees) {
+        if (!t.field || !inside(t)) continue;
+        fieldTrees++;
+        if (world._clusters.some((_, i) => world._standOutline(i, t.x, t.z) <= 1.2)) continue;
+        field._landUseAt(t.x, t.z, sample);
+        if (sample.active && sample.edgeM > sample.marginM + 3 && field._roadDist(t.x, t.z) > 18) interior++;
+        const form = treeBiomeSlot(id, t.species)?.form ?? t.species;
+        if (TREE_GROWTH_PROFILES[form]?.family === 'conifer') coniferOpen++;
+      }
+      assert.ok(fieldTrees > 30, `${id}: its field trees stand (${fieldTrees})`);
+      assert.equal(interior, 0, `${id}: no field tree in a field's interior`);
+      assert.equal(coniferOpen, 0, `${id}: no conifer form in the open`);
+      report[`${id}FieldLaw`] = { moved: law.moved, dropped: law.dropped, swapped: law.swapped, open: law.open };
+    } finally { world.dispose(); }
+  }
+  {
+    const { world } = produce('urban');
+    try {
+      assert.equal(world.group.userData.fieldTreeLaw.moved, 0, 'a town map keeps its park trees in their belts');
     } finally { world.dispose(); }
   }
   // Whiteout Station: the ice sheet grows nothing

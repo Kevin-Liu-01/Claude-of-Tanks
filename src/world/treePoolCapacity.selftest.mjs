@@ -16,7 +16,8 @@ import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { getMapConfig } from './maps/index.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
 import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from './crownShadowDapple.ts';
-import { treeBiomeArid, treeBiomeOpen, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeOpen, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
+import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
 import { markShadowOnly, setShadowCasterProfile } from '../engine/renderLayers.ts';
 
 // Actual seeded tree placement, allocation, full/incremental partition and LOD
@@ -38,13 +39,21 @@ const dependencies = { THREE, mulberry32, TREE_ARCHETYPES, treeTrunkCollisionRad
   // trees round 2 (2026-10-03): the grown crowns' dappled shadow proxies
   applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags,
   // trees round 2b (2026-10-03): the hyper-arid places' groves
-  treeBiomeArid, treeBiomeOpen, treeBiomeUpland, treeBiomeWoodSpread };
+  treeBiomeArid, treeBiomeOpen, treeBiomeUpland, treeBiomeWoodSpread,
+  // trees round 5: the field law's conifer forms (vegetation.ts coniferForm)
+  treeBiomeSlot, TREE_GROWTH_PROFILES };
 
 function compile(legacy) {
   const pools = legacy ? poolCode.replace(capacityLine, 'const capacity = trees.length;') : poolCode;
   return new Function(...Object.keys(dependencies), `return (${stripTypeScriptTypes(`
     function* build(heightField, cfg, mobileTier, overrideTrees) {
       const seed = 2001, TREE_NEAR_IN = 260, TREE_NEAR_OUT = 290;
+      // trees round 5: the field law's constants (vegetation.ts module scope), read from the source
+      const FIELD_TREE_LAW = ${/const FIELD_TREE_LAW = (true|false);/.exec(source)[1]};
+      const FIELD_TREE_WOOD_EDGE = ${/const FIELD_TREE_WOOD_EDGE = ([0-9.]+);/.exec(source)[1]};
+      const FIELD_TREE_MARGIN_M = ${/const FIELD_TREE_MARGIN_M = ([0-9.]+);/.exec(source)[1]};
+      const FIELD_TREE_ROAD_VERGE_M = ${/const FIELD_TREE_ROAD_VERGE_M = ([0-9.]+);/.exec(source)[1]};
+      const FIELD_TREE_SPACING_M = ${/const FIELD_TREE_SPACING_M = ([0-9.]+);/.exec(source)[1]};
       ${section('  const treeNearIn =', '  let groundCoverBlocked:')}
       const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _qLean = new THREE.Quaternion();
       const _axLean = new THREE.Vector3(), _pv = new THREE.Vector3(), _sv = new THREE.Vector3();

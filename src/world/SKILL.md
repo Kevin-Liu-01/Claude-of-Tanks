@@ -260,7 +260,10 @@ paints its own atlas (`makeSprayAtlas`'s `shrub`: the slot's sprays at a shrub's
 across a field (`paintBirchFarMarks`). A tree inside a closed wood is forest-grown (`forestGrownProfile`: a tall clear
 bole under a high, narrower crown): on a map whose woods close, the woods' species grow near variants 0 and 1 forest-grown
 and keep variant 2 open-grown, the woods' trees take the pair and the field trees the open one (`assignTreeForms`; pools,
-impostor rows and records unchanged; `?forestForm=0` and `?forestAB=1` for the probes).
+impostor rows and records unchanged; `?forestForm=0` and `?forestAB=1` for the probes). On a map with a field system
+a field tree stands on a hedged boundary, a field's edge or a wood's edge, never in a field's interior (`addFieldTree`,
+`fieldTreeMove`: the draws stay, only the seats move; a conifer form stands in the open only at a wood's edge; the
+census is `group.userData.fieldTreeLaw`).
 `propGeometry.ts` owns shared UV-safe primitives and the low-triangle telephone
 pole distance representation; callers dispose or transfer every returned mesh.
 `propPlacement.ts` owns typed terrain-support, rigid-footprint, utility-pole,
