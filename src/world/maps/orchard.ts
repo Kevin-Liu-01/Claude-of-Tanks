@@ -20,6 +20,14 @@ export default {
   terrain: {
     hillScale: 1.0, microScale: 0.72, rimH: 32,
     village: { x0: -106, x1: 108, z0: -92, z1: 112, cx: -6, cz: 12, feather: 42, flatten: 0.86, relief: 0.12 },
+    // 2026-10-05 (the map-revival lane, round 2; gauntlet wave 123: "the terraces never appear … flat, straight-edged
+    // quilted farmland"): the valley sides stepped into the Chouf's contour terraces (terrain.ts applyTerraces) — level
+    // benches a riser of 2.6 m apart, no riser steeper than 0.6, the steps fading on level ground, in the drive corridors,
+    // the village and the marshes — west and east of the village from the valley's southern swell to its northern one
+    terraces: [
+      { polygon: [[-430, -260], [-135, -260], [-135, 260], [-430, 260]], feather: 30, stepM: 2.6 },
+      { polygon: [[135, -260], [430, -260], [430, 260], [135, 260]], feather: 30, stepM: 2.6 },
+    ],
     // (round 2, gauntlet wave 123: the buildings "set on lawns"): the village ground in its plots — the walled yards,
     // kitchen gardens and threshing floors running back from the lanes (terrain.ts createVillagePlotWear)
     villageWear: 'plots',
@@ -65,20 +73,16 @@ export default {
       { x0: 126, z0: -98, x1: 268, z1: -80, gap: 18, jitter: 0.8, species: 'oak' },
     ],
     authoredTrees: [
-      // Four orchard blocks of three contour rows each, 9 m apart, on the terraces above their retaining walls: the
-      // existing oaks rehoused as cultivated parcels (no new trees; the cedar and pine stands stay the edges).
-      { id: 'west-lower-orchard-1', species: 'oak', path: [[-210, -96], [-140, -78]], count: 10, width: 0.15 },
-      { id: 'west-lower-orchard-2', species: 'oak', path: [[-212.2, -87.3], [-142.2, -69.3]], count: 10, width: 0.15 },
-      { id: 'west-lower-orchard-3', species: 'oak', path: [[-214.5, -78.6], [-144.5, -60.6]], count: 10, width: 0.15 },
-      { id: 'west-upper-orchard-1', species: 'oak', path: [[-208, 42], [-142, 60]], count: 10, width: 0.15 },
-      { id: 'west-upper-orchard-2', species: 'oak', path: [[-210.4, 50.7], [-144.4, 68.7]], count: 10, width: 0.15 },
-      { id: 'west-upper-orchard-3', species: 'oak', path: [[-212.7, 59.4], [-146.7, 77.4]], count: 10, width: 0.15 },
-      { id: 'east-lower-orchard-1', species: 'oak', path: [[168, -127], [256, -116]], count: 11, width: 0.15 },
-      { id: 'east-lower-orchard-2', species: 'oak', path: [[169.1, -135.9], [257.1, -124.9]], count: 11, width: 0.15 },
-      { id: 'east-lower-orchard-3', species: 'oak', path: [[170.2, -144.9], [258.2, -133.9]], count: 11, width: 0.15 },
-      { id: 'east-upper-orchard-1', species: 'oak', path: [[150, 132], [246, 146]], count: 12, width: 0.15 },
-      { id: 'east-upper-orchard-2', species: 'oak', path: [[148.7, 140.9], [244.7, 154.9]], count: 12, width: 0.15 },
-      { id: 'east-upper-orchard-3', species: 'oak', path: [[147.4, 149.8], [243.4, 163.8]], count: 12, width: 0.15 },
+      // 2026-10-05 (the map-revival lane, round 2: the terraces' T3): olive groves on the benches beside the village, every
+      // row along a bench's centre line (a contour of the ground before it was stepped, nudged to the bench's level
+      // stretch) on the planar hillsides; the existing oaks rehoused as the olives (no new trees)
+      { id: 'west-lower-orchard-1', species: 'oak', path: [[-130.1, -36.9], [-138.7, -39.4], [-142.7, -45.1], [-143.9, -52.8], [-149.6, -57.4], [-154.9, -62.2], [-158.5, -68.2], [-162.6, -73.9], [-162.2, -82.8], [-171.1, -85.0], [-172.7, -92.5]], count: 11, width: 0.15, bench: { searchM: 10 } },
+      { id: 'west-lower-orchard-2', species: 'oak', path: [[-138.2, -6.6], [-145.5, -10.0], [-149.1, -16.0], [-149.9, -24.0], [-155.6, -28.6], [-161.7, -32.8], [-165.4, -38.8], [-169.0, -44.8], [-171.4, -51.7], [-175.5, -57.4], [-182.0, -61.4]], count: 11, width: 0.15, bench: { searchM: 10 } },
+      { id: 'west-lower-orchard-3', species: 'oak', path: [[-154.7, -7.2], [-157.9, -13.4], [-161.6, -19.4], [-166.8, -24.3], [-174.6, -27.4], [-178.2, -33.4], [-177.8, -42.3], [-186.7, -44.5], [-189.6, -51.1], [-190.0, -59.4], [-198.9, -61.6]], count: 11, width: 0.15, bench: { searchM: 10 } },
+      { id: 'west-upper-orchard-1', species: 'oak', path: [[-198.6, 45.3], [-189.7, 42.7], [-184.4, 47.8], [-178.4, 51.6], [-172.4, 55.4], [-166.6, 59.6], [-160.0, 62.0], [-153.7, 64.9], [-145.0, 62.7], [-141.1, 71.1], [-134.7, 73.9]], count: 11, width: 0.15, bench: { searchM: 10 } },
+      { id: 'east-upper-orchard-1', species: 'oak', path: [[146.9, 78.7], [153.4, 84.8], [160.4, 85.4], [167.9, 80.0], [174.7, 83.1], [181.5, 85.7], [188.6, 83.9], [195.3, 88.4], [202.5, 86.6], [209.7, 83.7], [216.2, 90.3]], count: 11, width: 0.15, bench: { searchM: 10 } },
+      { id: 'east-lower-orchard-1', species: 'oak', path: [[202.2, -168.5], [205.2, -176.3], [213.2, -177.3], [217.0, -183.8], [221.2, -190.0], [228.0, -192.6], [235.4, -194.3], [239.2, -200.9], [244.6, -205.5], [252.6, -206.4], [257.9, -211.0]], count: 11, width: 0.15, bench: { searchM: 10 } },
+      { id: 'east-lower-orchard-2', species: 'oak', path: [[190.0, -176.7], [192.0, -185.7], [201.2, -185.0], [206.8, -189.2], [212.5, -193.4], [215.4, -201.1], [221.1, -205.3], [226.7, -209.5], [233.2, -212.4], [238.2, -217.4], [242.7, -223.1]], count: 11, width: 0.15, bench: { searchM: 10 } },
     ],
   },
   props: {
