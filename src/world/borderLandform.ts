@@ -168,7 +168,7 @@ const MAP_BORDERS: Readonly<Record<string, Partial<BorderLandformSettings>>> = {
   copper_mesa: { forest: 0.03, hedgerows: 0, farms: 2, farmBuildings: false },
   airfield: { enclosure: 0.18, hillHeight: 1.2, reachM: 360, rimFloor: 0.18, wavelengthM: 700, forest: 0.22, hedgerows: 0.4, fields: 0.6, crops: 'steppe', farms: 9, buildings: 'steppe' },
   oasis: { enclosure: 0.32, hillHeight: 1.3, forest: 0.02, hedgerows: 0, fields: 0, farms: 4, buildings: 'arid' },
-  whiteout: { forest: 0.08, ridged: 0.4, hedgerows: 0, fields: 0, farms: 0 },
+  whiteout: { forest: 0, ridged: 0.4, hedgerows: 0, fields: 0, farms: 0 }, // map revival lane 2, round 3: Cape Dyer has no tree for hundreds of kilometres (wave 130: "conifer clusters on both flanks")
   orchard: { forest: 0.4, hedgerows: 0.75, fields: 0.65, farms: 12 },
   longleaf: { forest: 0.62, hedgerows: 0.2, fields: 0.15, farms: 6 },
   mangrove: { enclosure: 0.04, hillHeight: 0.35, reachM: 420, rimFloor: 0.12, wavelengthM: 820, forest: 0.42, hedgerows: 0, fields: 0, farms: 6, buildings: 'tropical', erosion: 0 },

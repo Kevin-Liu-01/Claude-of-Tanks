@@ -116,7 +116,9 @@ export default {
     rocks: 136, outcrops: 22, craters: 50, rubblePiles: 12, sandbagLines: 16, hedgehogs: 12,
     tankWrecks: { era: 'modern', count: 5, debris: true,
       ids: ['strv122', 'cv90', 'leo2a7v', 't80u', 'type90'] },
-    inhabit: { stalls: 0, benches: 2, coreClutter: 20, sleds: 10, drums: 8, trucks: 5, jeeps: 4, drumClusters: 5, camps: 2, modernClutter: 20, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
+    // round 3 (gauntlet wave 130: "an untextured flat-tan box with a tent-shaped canopy, a floating black tyre and steps
+    // to nowhere"): the roadside camps (a canvas tent camp's kit) and the park benches do not belong at a DEW station
+    inhabit: { stalls: 0, benches: 0, coreClutter: 20, sleds: 10, drums: 8, trucks: 5, jeeps: 4, drumClusters: 5, camps: 0, modernClutter: 20, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the flattest ring's tone grain 0.35 -> 0.60
   // round 49 (2026-09-23): the layers probe (ring mesh hidden: skyline ratio 1.005 -> 1.009, edge row unchanged) shows

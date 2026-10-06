@@ -16,6 +16,9 @@ import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from '.
 
 const STEEL = rgb(0x5d6266), STEEL_DARK = rgb(0x34383b), WHITE = rgb(0xe8e9e6), ORANGE = rgb(0xc4602b), BLUE = rgb(0x6f8796);
 const OLIVE = rgb(0x5a5a3e), PLY = rgb(0xa58a60), RADOME = rgb(0xf0f0ec);
+/** (round 3, wave 130: the radar tower's dark lattice under its white dome read as "a wooden water tower") hot-dip
+ * galvanised steel, the pale grey the line's towers weathered to */
+const GALV = rgb(0xa3aaae);
 /** The renders of the kit (its tones): white panels, safety orange, a pale blue-grey. */
 type Paint = 'plaster' | 'plaster2' | 'plaster3';
 const PAINT_RGB: Readonly<Record<Paint, Rgb>> = { plaster: WHITE, plaster2: ORANGE, plaster3: BLUE };
@@ -81,6 +84,25 @@ function drifts(sink: PartSink, frame: HouseFrame, openings: readonly Opening[],
   }
 }
 
+/**
+ * Rust run down painted steel (round 3, gauntlet wave 130: "uniformly clean with no rust streaking ... for decades-old
+ * Arctic infrastructure"): thin streaks from under the eaves and the sills, each its own length, a few to a face. Dressing.
+ */
+const RUST = rgb(0x6a4630);
+/** A dressing-only stream of its own (seeded from a part's place), so the streaks never shift the build or look streams. */
+function rustStream(seed: number): () => number {
+  let a = (Math.floor(seed * 1000) ^ 0x5bd1e995) >>> 0;
+  return () => { a = (a + 0x6d2b79f5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function rustStreaks(sink: PartSink, face: Face, top: number, look: () => number, per = 0.35): void {
+  const n = Math.max(1, Math.round(face.width * per));
+  for (let k = 0; k < n; k++) {
+    const u = (look() - 0.5) * (face.width - 0.6), len = 0.5 + look() * 1.8, w = 0.03 + look() * 0.05;
+    faceBox(sink, 'structureMetal', face, u, top - len / 2, 0.005, w, len, 0.008,
+      { colour: shade(RUST, 0.8 + look() * 0.4), decor: true, fine: true });
+  }
+}
+
 function dialect(rng: () => number, paint: Paint): HouseDialect {
   return {
     window: (sink, face, o, y0) => windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, WINDOW, rng, 0.5),
@@ -115,9 +137,22 @@ function module(sink: PartSink, x0: number, z0: number, x1: number, z1: number, 
   if (piles) {
     const stepZ = Math.max(2.4, (z1 - z0 - 0.4) / Math.max(1, Math.round((z1 - z0 - 0.4) / 3)));
     for (const x of [x0 + 0.25, x1 - 0.25]) {
-      for (let z = z0 + 0.2; z <= z1 - 0.19; z += stepZ) sink.span('structureMetal', x - 0.13, -0.4, z - 0.13, x + 0.13, floor - 0.28, z + 0.13, { colour: STEEL_DARK });
+      const zs: number[] = [];
+      for (let z = z0 + 0.2; z <= z1 - 0.19; z += stepZ) { zs.push(z); sink.span('structureMetal', x - 0.13, -0.4, z - 0.13, x + 0.13, floor - 0.28, z + 0.13, { colour: STEEL_DARK }); }
       sink.span('structureMetal', x - 0.16, floor - 0.3, z0, x + 0.16, floor, z1, { colour: STEEL });
+      // (round 3, wave 130: "sits directly on the snow like a barracks block, with none of the steel piles") the raised
+      // floor's piles braced in X between each pair, the way the line's trains stand clear of the snow
+      if (!mobile && floor > 1.6) {
+        for (let k = 0; k + 1 < zs.length; k++) {
+          const a: Vec3 = [x, 0.15, zs[k]], b: Vec3 = [x, floor - 0.4, zs[k + 1]];
+          const c: Vec3 = [x, floor - 0.4, zs[k]], d: Vec3 = [x, 0.15, zs[k + 1]];
+          sink.member('structureMetal', a, b, 0.06, 0.06, [1, 0, 0], { colour: STEEL_DARK, decor: true, exposed: true });
+          sink.member('structureMetal', d, c, 0.06, 0.06, [1, 0, 0], { colour: STEEL_DARK, decor: true, exposed: true });
+        }
+      }
     }
+    // the shade of the scoured void under the floor, where the wind keeps the snow from the piles
+    if (floor > 1.6) sink.span('dark', x0 + 0.3, -0.06, z0 + 0.3, x1 - 0.3, 0.0, z1 - 0.3, { decor: true });
   }
   sink.span(paint, x0, floor, z0, x1, floor + h, z1);
   sink.span(band, x0 - 0.03, floor + h - 0.5, z0 - 0.03, x1 + 0.03, floor + h - 0.1, z1 + 0.03);
@@ -128,6 +163,12 @@ function module(sink: PartSink, x0: number, z0: number, x1: number, z1: number, 
   for (const side of ['n', 's', 'e', 'w'] as const) {
     const f = boxFace(x0, z0, x1, z1, side);
     for (let u = -f.width / 2 + 1.2; u < f.width / 2 - 0.3; u += 1.2) faceBox(sink, 'structureMetal', f, u, floor + (h - 0.5) / 2, 0.01, 0.04, h - 0.55, 0.02, seam, 'caps');
+    // (round 3: "a long train of joined modules") the joint between one module and the next, every 4.2 m, a steel
+    // collar proud of the skin; and the rust run from under the eaves
+    if (piles && (side === 'e' || side === 'w')) {
+      for (let u = -f.width / 2 + 4.2; u < f.width / 2 - 1.0; u += 4.2) faceBox(sink, 'structureMetal', f, u, floor + h / 2, 0.04, 0.16, h + 0.1, 0.08, { colour: STEEL, decor: true }, 'caps');
+    }
+    if (piles) rustStreaks(sink, f, floor + h - 0.55, rustStream(x0 * 3.1 + z0 * 7.7 + x1 + z1 * 0.37 + side.charCodeAt(0)), 0.25);
   }
 }
 
@@ -185,7 +226,9 @@ const moduleTrain: RegionalBuilder = (ctx) => {
   const W = clamp(fit.w, 8, 16), D = clamp(fit.d, 9, 18);
   const paint: Paint = look() < 0.75 ? 'plaster' : 'plaster3', band: Paint = look() < 0.6 ? 'plaster2' : 'plaster3';
   sink.placed(0, fit.cx, 0, fit.cz, () => {
-    const floor = 1.25, h = 3.0, gap = 1.2, mw = (W - gap) / 2;
+    // (round 3, wave 130: "sits directly on the snow like a barracks block") the floor 2.1 m up on its braced piles, the
+    // void under it in shade (was 1.25 m, where the snow banked to the floor hid the piles)
+    const floor = 2.1, h = 3.0, gap = 1.2, mw = (W - gap) / 2;
     const ax0 = -W / 2, ax1 = -W / 2 + mw, bx0 = W / 2 - mw, bx1 = W / 2;
     // the rows stop short of the plot's +z edge: the stairs to their doors stand in front of them
     module(sink, ax0, -D / 2, ax1, D / 2 - 1.6, floor, h, paint, band, mobile);
@@ -217,54 +260,89 @@ const moduleTrain: RegionalBuilder = (ctx) => {
 };
 
 /**
- * The tropospheric-scatter antennas (the fire station's plot): two curved billboard reflectors side by side on their
- * lattice back frames, facing the next station over the horizon (+z), their feed horns on stands before them, and the
- * transmitter module on its piles at the plot's front.
+ * The tropospheric-scatter antenna (the fire station's plot): one great billboard reflector across the plot, taller than
+ * anything else on the station, a parabolic cylinder of steel panels concave to the next station over the horizon (+z);
+ * the space truss behind it; the feed horn at its focus on a boom from the reflector's foot; the transmitter module at
+ * the plot's front. (Round 3, gauntlet wave 130: "two tall white slabs ... narrow flat panels or silos with a black dot,
+ * lacking the wide curved dish, lattice backing, feed-horn boom and scale"; "the frames behind read as empty
+ * scaffolding". Round 2 drew two reflectors 5.6 m wide and 15.5 m tall from 13 slats with gaps between them.)
  */
 const tropo: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, mobile = ctx.tier === 'mobile';
   const bb = ctx.bounds;
-  const W = bb.maxX - bb.minX - 0.3, cx = (bb.minX + bb.maxX) / 2;
+  const W = bb.maxX - bb.minX, cx = (bb.minX + bb.maxX) / 2;
   const z0 = bb.minZ + 0.2, z1 = bb.maxZ - 0.2;
-  const H = clamp(bb.maxY + 1.5, 12, 16), bw = (W - 0.6) / 2;
-  const back = z0 + 2.6;
-  for (const s of [-1, 1]) {
-    const bx = cx + s * (bw / 2 + 0.3);
-    // the reflector: vertical slats on a parabolic-cylinder curve, concave to +z — deep enough to read as the dish it is
-    // (round 2, wave 112b: "flat white slabs standing in for the curved tropo-scatter reflectors": the sag was 0.9 m)
-    // (the slats are solid: their count is the same on every tier, so the collision is)
-    const n = 13, SAG = 2.4;
-    for (let k = 0; k < n; k++) {
-      const t = (k + 0.5) / n - 0.5, x = bx + t * bw, sag = 4 * SAG * t * t;
-      const ang = Math.atan(8 * SAG * t / bw);
-      const c: Vec3 = [x, H / 2 + 0.6, back + sag];
-      const f = new LocalFrame([Math.cos(ang), 0, Math.sin(ang)], [0, 1, 0], [-Math.sin(ang), 0, Math.cos(ang)], c);
-      sink.box('plaster', c, [bw / n / 2 + 0.02, H / 2 - 0.6, 0.05], { colour: WHITE }, f);
-    }
-    // the back frame: legs, struts down to the ground behind, the braces
-    for (const t of [-0.45, 0, 0.45]) {
-      const x = bx + t * bw;
-      sink.member('structureMetal', [x, -0.3, back + 4 * SAG * t * t - 0.15], [x, H + 0.2, back + 4 * SAG * t * t - 0.15], 0.25, 0.25, [0, 0, 1], { colour: STEEL, exposed: true });
-      sink.member('structureMetal', [x, -0.3, z0], [x, H * 0.75, back + 4 * SAG * t * t - 0.3], 0.18, 0.18, [1, 0, 0], { colour: STEEL, exposed: true });
-    }
-    // the reflector's stiffeners: horizontal ribs following its curve on the back, every three metres (dressing)
-    for (let y = 2.0; y < H - 0.5; y += 3.0) {
+  // the reflector: the plot's whole width, taller than wide, deep
+  const bw = W - 0.3, H = clamp(bw * 1.3, 15, 18), SAG = clamp(bw * 0.24, 2.2, 3.2), foot = 1.2;
+  const back = z0 + 3.0;
+  const curve = (t: number): number => back + 4 * SAG * t * t;
+  // the panels: 24 vertical strips that overlap, so the face reads as one curved sheet (solid: the same on every tier)
+  const n = 24;
+  for (let k = 0; k < n; k++) {
+    const t = (k + 0.5) / n - 0.5, x = cx + t * bw;
+    const ang = Math.atan(8 * SAG * t / bw);
+    const c: Vec3 = [x, foot + H / 2, curve(t)];
+    const f = new LocalFrame([Math.cos(ang), 0, Math.sin(ang)], [0, 1, 0], [-Math.sin(ang), 0, Math.cos(ang)], c);
+    sink.box('plaster', c, [bw / n / 2 + 0.06, H / 2, 0.06], { colour: WHITE }, f);
+  }
+  // the panel joints across the face every 2.25 m, darker (the reflector reads as a built surface, not a slab)
+  if (!mobile) {
+    for (let y = foot + 2.25; y < foot + H - 0.5; y += 2.25) {
       for (let k = 0; k + 1 < n; k++) {
         const ta = (k + 0.5) / n - 0.5, tb = (k + 1.5) / n - 0.5;
-        sink.member('structureMetal', [bx + ta * bw, y, back + 4 * SAG * ta * ta - 0.1], [bx + tb * bw, y, back + 4 * SAG * tb * tb - 0.1], 0.07, 0.12, [0, 1, 0],
+        sink.member('structureMetal', [cx + ta * bw, y, curve(ta) + 0.07], [cx + tb * bw, y, curve(tb) + 0.07], 0.05, 0.03, [0, 0, 1],
+          { colour: shade(WHITE, 0.82), decor: true, fine: true });
+      }
+    }
+  }
+  // the space truss behind: the rear chord frame 2.4 m back, the verticals at seven stations, the horizontal chords
+  // front and rear every 2.25 m, the diagonals between them in each bay, and the legs to the ground
+  const stations = [-0.5, -1 / 3, -1 / 6, 0, 1 / 6, 1 / 3, 0.5];
+  const rearZ = (t: number): number => curve(t) - 2.4;
+  const truss = { colour: STEEL, exposed: true } as const;
+  for (const t of stations) {
+    const x = cx + t * bw * 0.98;
+    sink.member('structureMetal', [x, -0.3, rearZ(t)], [x, foot + H, rearZ(t)], 0.24, 0.24, [0, 0, 1], truss);
+    sink.member('structureMetal', [x, -0.3, curve(t) - 0.15], [x, foot + H, curve(t) - 0.15], 0.2, 0.2, [0, 0, 1], truss);
+  }
+  const levels: number[] = [];
+  for (let y = foot; y <= foot + H + 0.01; y += H / 7) levels.push(y);
+  for (let j = 0; j + 1 < stations.length; j++) {
+    const ta = stations[j], tb = stations[j + 1], xa = cx + ta * bw * 0.98, xb = cx + tb * bw * 0.98;
+    for (let l = 0; l < levels.length; l++) {
+      const y = levels[l];
+      sink.member('structureMetal', [xa, y, rearZ(ta)], [xb, y, rearZ(tb)], 0.12, 0.12, [0, 1, 0], { colour: STEEL_DARK, decor: true, exposed: true });
+      if (!mobile) sink.member('structureMetal', [xa, y, curve(ta) - 0.15], [xb, y, curve(tb) - 0.15], 0.1, 0.1, [0, 1, 0], { colour: STEEL_DARK, decor: true, exposed: true });
+      if (l + 1 < levels.length) {
+        const y2 = levels[l + 1];
+        // the bay's diagonal in the rear plane, alternating, and the web from the rear chord to the face
+        const flip = (j + l) % 2 === 0;
+        sink.member('structureMetal', [flip ? xa : xb, y, rearZ(flip ? ta : tb)], [flip ? xb : xa, y2, rearZ(flip ? tb : ta)], 0.09, 0.09, [0, 0, 1],
+          { colour: STEEL_DARK, decor: true, exposed: true });
+        if (!mobile) sink.member('structureMetal', [xa, y, rearZ(ta)], [xa, y2, curve(ta) - 0.15], 0.07, 0.07, [1, 0, 0],
           { colour: STEEL_DARK, decor: true, exposed: true });
       }
     }
-    if (!mobile) for (let y = 1.5; y < H; y += 2.6) sink.member('structureMetal', [bx - bw * 0.45, y, back - 0.3], [bx + bw * 0.45, y + 1.3, back - 0.3], 0.08, 0.08, [0, 0, 1], { colour: STEEL_DARK, decor: true, exposed: true });
-    // the feed horn on its stand before the reflector's focus
-    const fz = back + 4.2;
-    sink.span('structureMetal', bx - 0.15, -0.3, fz - 0.15, bx + 0.15, H * 0.42, fz + 0.15, { colour: STEEL });
-    // its mouth toward the reflector
-    sink.cylinder('structureMetal', [bx, H * 0.42, fz - 1.1], 'z', 1.1, 0.6, 8, { colour: STEEL_DARK }, 0.25);
   }
+  // the raking legs behind, to the ground
+  for (const t of [-0.5, 0, 0.5]) {
+    const x = cx + t * bw * 0.98;
+    sink.member('structureMetal', [x, -0.3, z0 + 0.15], [x, foot + H * 0.7, rearZ(t)], 0.2, 0.2, [1, 0, 0], truss);
+  }
+  // the feed horn at the focus (f = w^2 / 16 sag before the vertex), its mouth to the reflector, on a boom from the
+  // reflector's foot and a mast from the ground
+  const fz = back + (bw * bw) / (16 * SAG), fy = foot + H * 0.5;
+  sink.cylinder('structureMetal', [cx, fy, fz - 1.4], 'z', 1.4, 0.75, 4, { colour: STEEL_DARK }, 0.3);
+  sink.span('structureMetal', cx - 0.45, fy - 0.45, fz, cx + 0.45, fy + 0.45, fz + 0.9, { colour: STEEL });
+  sink.member('structureMetal', [cx, foot, curve(0) + 0.1], [cx, fy - 0.5, fz + 0.4], 0.22, 0.22, [1, 0, 0], { colour: STEEL, exposed: true });
+  sink.member('structureMetal', [cx, -0.3, fz + 0.5], [cx, fy - 0.45, fz + 0.5], 0.22, 0.22, [1, 0, 0], { colour: STEEL, exposed: true });
+  for (const sx of [-1, 1]) sink.member('structureMetal', [cx + sx * bw * 0.32, foot, curve(0.32) + 0.1], [cx, fy - 0.3, fz + 0.2], 0.12, 0.12, [0, 1, 0],
+    { colour: STEEL_DARK, decor: true, exposed: true });
+  // the waveguide down the mast to the transmitter
+  if (!mobile) sink.member('structureMetal', [cx + 0.3, fy - 0.5, fz + 0.6], [cx + 0.3, 0.9, fz + 0.6], 0.12, 0.08, [1, 0, 0], { colour: STEEL_DARK, decor: true, exposed: true });
   // the transmitter module at the front on its piles, its door and stair
-  const mz1 = z1 - 1.6, mz0 = Math.max(back + 5.2, mz1 - 3.2);
+  const mz1 = z1 - 1.6, mz0 = Math.max(fz + 1.6, mz1 - 3.2);
   module(sink, cx - W / 2 + 0.6, mz0, cx + W / 2 - 0.6, mz1, 1.1, 2.8, 'plaster', 'plaster2', mobile);
   const mf = boxFace(cx - W / 2 + 0.6, mz0, cx + W / 2 - 0.6, mz1, 's');
   moduleDoor(sink, mf, mf.width * 0.25, 1.1);
@@ -285,7 +363,7 @@ const radarTower: RegionalBuilder = (ctx) => {
   sink.placed(0, fit.cx, 0, fit.cz, () => {
     const leg = (sx: number, sz: number, y: number): Vec3 => { const k = y / H, r = B + (T - B) * k; return [sx * r, y, sz * r]; };
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-      sink.member('structureMetal', leg(sx, sz, -0.3), leg(sx, sz, H), 0.2, 0.2, [sx, 0, 0], { colour: STEEL, exposed: true });
+      sink.member('structureMetal', leg(sx, sz, -0.3), leg(sx, sz, H), 0.2, 0.2, [sx, 0, 0], { colour: GALV, exposed: true });
       sink.span('stone', sx * B - 0.45, -0.4, sz * B - 0.45, sx * B + 0.45, 0.25, sz * B + 0.45);
     }
     // the braces: an X in each face, panel by panel
@@ -295,13 +373,13 @@ const radarTower: RegionalBuilder = (ctx) => {
       for (const [s1, s2, t1, t2] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]] as const) {
         // the face's outward normal: a face along x keeps its z sign, a face along z its x sign
         const out: Vec3 = s2 === t2 ? [0, 0, s2] : [s1, 0, 0];
-        const opts = { colour: STEEL_DARK, exposed: true } as const;
+        const opts = { colour: shade(GALV, 0.85), exposed: true } as const;
         sink.member('structureMetal', leg(s1, s2, ya), leg(t1, t2, yb), 0.09, 0.09, out, opts);
         sink.member('structureMetal', leg(t1, t2, ya), leg(s1, s2, yb), 0.09, 0.09, out, opts);
       }
     }
     // the platform, its rail, and the radome on it
-    sink.span('structureMetal', -T - 0.5, H, -T - 0.5, T + 0.5, H + 0.18, T + 0.5, { colour: STEEL });
+    sink.span('structureMetal', -T - 0.5, H, -T - 0.5, T + 0.5, H + 0.18, T + 0.5, { colour: GALV });
     if (!mobile) for (const [a, b] of [[[-1, -1], [1, -1]], [[1, -1], [1, 1]], [[1, 1], [-1, 1]], [[-1, 1], [-1, -1]]] as const) {
       const r = T + 0.45;
       sink.member('structureMetal', [a[0] * r, H + 1.0, a[1] * r], [b[0] * r, H + 1.0, b[1] * r], 0.05, 0.05, [0, 1, 0], { colour: STEEL_DARK, decor: true, exposed: true });
@@ -335,10 +413,14 @@ const garage: RegionalBuilder = (ctx) => {
     const roof: RoofSpec = { kind: 'gable', pitchDeg: 10, eave: 0.35, verge: 0.3, thickness: 0.14, bucket: 'roof', ridge: 'saddle' };
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: 4.6, wall: paint }], roof, gableBucket: paint, openings,
-      chimneys: [{ x: -W * 0.25, z: -D * 0.3, sx: 0.4, sz: 0.4, above: 1.4, bucket: 'stone', cap: 'none' }],
+      chimneys: [{ x: -W * 0.25, z: -D * 0.3, sx: 0.3, sz: 0.3, above: 1.4, bucket: 'structureMetal', cap: 'none' }],
       gutters: null, verge: null, reveal: 0.08, spall: null,
     }, dialect(rng, paint));
     drifts(sink, frame, openings, look);
+    // (round 3, wave 130: "uniformly clean, no rust streaking") the rust run from under the eaves on every wall
+    for (const name of ['front', 'back', 'left', 'right'] as const) {
+      rustStreaks(sink, frame.faces[name], frame.eaveY - 0.15, rustStream(frame.eaveY * 13.1 + frame.faces[name].width * 5.3 + name.length), 0.3);
+    }
     // the apron along the doors
     sink.span('stone', W / 2, -0.3, -D / 2, W / 2 + apron, 0.08, D / 2);
   });
@@ -407,6 +489,10 @@ const warehouse: RegionalBuilder = (ctx) => {
       chimneys: [], gutters: null, verge: null, reveal: 0.08, spall: null,
     }, dialect(rng, paint));
     drifts(sink, frame, openings, look);
+    // (round 3, wave 130: "uniformly clean, no rust streaking") the rust run from under the eaves on every wall
+    for (const name of ['front', 'back', 'left', 'right'] as const) {
+      rustStreaks(sink, frame.faces[name], frame.eaveY - 0.15, rustStream(frame.eaveY * 13.1 + frame.faces[name].width * 5.3 + name.length), 0.3);
+    }
     sink.span('stone', -W / 2, -0.3, D / 2, W / 2, 0.08, D / 2 + apron);
     // the band of the station's colour round the eaves
     sink.span('plaster2', -W / 2 - 0.03, 5.85, -D / 2 - 0.03, W / 2 + 0.03, 6.35, D / 2 + 0.03);
@@ -433,7 +519,9 @@ const jamesway: RegionalBuilder = (ctx) => {
   const endW: Face = { origin: [x0, 0, zc], u: [0, 0, 1], out: [-1, 0, 0], width: 2 * r };
   const pts: Array<[number, number]> = [];
   for (let k = 0; k <= 10; k++) { const a = Math.PI * k / 10; pts.push([-Math.cos(a) * r, fl + Math.sin(a) * r]); }
-  sink.prism('wood', pts.map(([u, y]): Vec3 => [x0 + 0.06, y, zc + u]), [1, 0, 0], 0.05);
+  // (round 3, wave 130: "a brick-patterned end wall": the timber bucket's plank print read as brick at range) painted
+  // plywood, the hut's own olive a shade lighter
+  sink.prism('structureWood', pts.map(([u, y]): Vec3 => [x0 + 0.06, y, zc + u]), [1, 0, 0], 0.05, { colour: shade(OLIVE, 1.25) });
   // the vestibule: a plywood box at the entrance end with its door and a window
   const vx0 = x1 - vest;
   sink.span('plaster2', vx0, fl, zc - r * 0.62, x1, fl + r * 0.95, zc + r * 0.62);
