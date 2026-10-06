@@ -7265,6 +7265,48 @@ floor), the ring and the ghost gone off the ridge; facing the sun on Caldera 3.3
 the sun keep the glow and the streak (the flare's mean lift halved, 0.16 → 0.08 and 0.15 → 0.07 levels). Receipt:
 `lensFlare.selftest` (the twin's closed deck → 0, a veil at the gate's midpoint → half, an edge across the disc → a fifth).
 
+### 2026-10-05 — the facade craft: every kit's houses finished like real ones (the facades & skyline lane)
+
+The owner, after Verdant: "you already know we need better buildings ... you are capable of making a lot more beautiful
+buildings then we have". One shared layer (`maps/regional/facade.ts`, hooks in `house.ts`, `openings.ts`, `weather.ts`,
+`geometry.ts`) finishes every regional kit's houses on a desktop build; the kit guide (docs/MAP-LAYOUT-BRIEF.md, "The
+facade craft") lists the vocabulary.
+
+- **Every kit:** the rain shadow under the eaves (the top row of the top storey's wall vertices darkened by the
+  overhang: no new vertex), two dirt streaks off each sill's ends, gutter hangers, hopper heads, clips and shoes, the
+  stacks' oversailing course; on every straw roof the thatcher's stepped eave course and two course lines (Kohima's and
+  the Mekong's palm thatch: rows only).
+- **Verdant (kolkhoz):** carved nalichniki on most khatas (a crest cut to a gable, an arch or a step, its carved field
+  and rosettes, an apron cut to a drop), painted shutters (a border and a diamond or a heart), the painted line over
+  the plinth, painted bands round the board surrounds of the others, lime worn to the clay, two or three riders over
+  a thatch ridge, hollyhocks; the cowshed's brick piers, dentil cornice, segmental arches and gable vents; the church's
+  pilasters, cornice, arched brows and its drum's bands and windows; the club's cornice, water table and hoods; the
+  granary's carved gable (prichelina and towel board). The calibration pair read "the same village, finer".
+- **Steinburg (franconian):** rendered fronts with Faschen, sandstone string courses and cornices, first-floor hoods,
+  door canopies; dormers along the slopes a row shows. **Frontier, Highland Reservoir (Fachwerk):** door canopies,
+  sandstone lintels on the stone storeys, dormers on the inns and schools; the dam company's cornice and hoods.
+  **Cinder Junction (ruhr):** yellow-brick segmental arches with keystones, dentil cornices, brick piers, gable vents.
+  **Saltwind (dalmatian):** limestone quoins on the rendered houses, a string course on the three-storey ones, a
+  balconette on half the houses. **Tidegate (polder):** brick arches, the white board gutter cornice, wall anchors.
+- **Wave 116** (the critics saw the dressing as no difference at the pairs' framings, and named the reads it could
+  reach): Verdant's render is lime-wash brushed over mud plaster (`regionalSurfaces.ts paintLimewash`, named by the
+  kit's render tones: "a grey stone-chip texture instead of lime-wash"), the khata's plinth painted a dark clay band;
+  Steinburg's stone is dressed (`stone.dressed`: courses of 15-26 cm, soiled; "oversized clean ashlar"), its shops
+  have divided lights, transom lights, a panelled stall riser and a fascia ("plate-glass shopfronts"), its rendered
+  gables attic windows ("blank gables"); Frontier's church tower is rendered with its corners bare as quoin strips
+  ("a church tower brick scaled several times too large"); and every kit's ground storey darkens at its foot, under a
+  deeper rain shadow and broader sill streaks ("almost nothing shows weathering or grime where walls meet the ground").
+- **Laws** (`facade.selftest.mjs`, 600 builds; 750 more against the PR head's trees): dressing only (the structural
+  geometry is the craftless build's byte for byte, so collision and every shard stay), desktop only (a phone's build is
+  byte for byte the PR head's), its own stream (the build and look streams draw as often with it). Every map lane's kit
+  branch (Sarajevo, Andalusian, Kyushu, Bisbee, Glen Canyon, Navajo, Tselina) merges onto it with the laws holding.
+- **Cost** (headless props build against the PR head 5d2461283, wave 116 included; always drawn / shadow casting /
+  meshes): Verdant +1.9k (+4.90 %) / +1.6k (+4.35 %) / +2; Steinburg +7.6k (+2.22 %) / +19.5k (+7.34 %) / +1; Frontier
+  -1.1k / +0.5k / +1; Cinder Junction +6.5k (+1.99 %) / +9.2k (+2.92 %) / 0; Saltwind +1.9k (+3.00 %) / +1.8k (+3.17 %) /
+  +1. The fine dressing (Steinburg +107k, Cinder Junction +47k) is drawn within the fine-detail distance only: on a
+  desktop build the metalwork and the main render batch by the 120 m cells like the timber and stone (the metal's batch
+  replaces its always-drawn mesh).
+
 ### 2026-10-04 — the coast's shelf and swell: turquoise over the sand, deep blue beyond, long waves under the chop (the skies lane)
 
 **The gauntlet's wave 59 on the sea:** "a uniform saturated navy sheet that stays the same deep colour right up to a hard
@@ -7329,39 +7371,6 @@ never clips … a single smooth, soft-edged bloom column instead of a dense fiel
 - *the far band:* its texture as the PR head's — Saltwind 4.5–5.9 → 4.7–7.5 levels (local deviation, the 200 rows under
   the horizon), Saltmere 3.4–14.8 → 13.3–16.1 (it was 22.7 with one roughness) — and the sun's path keeps its sparkles.
 - *GPU* (the coordinator's rule: in-page, 8 interleaved quartets against a null control, 1920 × 1080 high): the sea's whole change (rounds 1 and 2: the shelf, the swell, the mirror's exponent, the split roughness, the glints' cap) against the PR head's water in-page — the load gate shut past two hours (`$SP/p2/costrule/sea-*`): Saltmere's establishing view +0.11 ± 0.25 ms p50 (+0.13 ± 0.23 p25), the bound +0.60 / +0.58 ms; Saltwind's glint +0.33 ± 0.31 ms p50 (+0.25 ± 0.17 p25), the bound +0.94 / +0.60 ms — both under +1 ms (frames 12.6 and 14.2 ms).
-
-### 2026-10-05 — the facade craft: every kit's houses finished like real ones (the facades & skyline lane)
-
-The owner, after Verdant: "you already know we need better buildings ... you are capable of making a lot more beautiful
-buildings then we have". One shared layer (`maps/regional/facade.ts`, hooks in `house.ts`, `openings.ts`, `weather.ts`,
-`geometry.ts`) finishes every regional kit's houses on a desktop build; the kit guide (docs/MAP-LAYOUT-BRIEF.md, "The
-facade craft") lists the vocabulary.
-
-- **Every kit:** the rain shadow under the eaves (the top row of the top storey's wall vertices darkened by the
-  overhang: no new vertex), two dirt streaks off each sill's ends, gutter hangers, hopper heads, clips and shoes, the
-  stacks' oversailing course; on every straw roof the thatcher's stepped eave course and two course lines (Kohima's and
-  the Mekong's palm thatch: rows only).
-- **Verdant (kolkhoz):** carved nalichniki on most khatas (a crest cut to a gable, an arch or a step, its carved field
-  and rosettes, an apron cut to a drop), painted shutters (a border and a diamond or a heart), the painted line over
-  the plinth, painted bands round the board surrounds of the others, lime worn to the clay, two or three riders over
-  a thatch ridge, hollyhocks; the cowshed's brick piers, dentil cornice, segmental arches and gable vents; the church's
-  pilasters, cornice, arched brows and its drum's bands and windows; the club's cornice, water table and hoods; the
-  granary's carved gable (prichelina and towel board). The calibration pair read "the same village, finer".
-- **Steinburg (franconian):** rendered fronts with Faschen, sandstone string courses and cornices, first-floor hoods,
-  door canopies; dormers along the slopes a row shows. **Frontier, Highland Reservoir (Fachwerk):** door canopies,
-  sandstone lintels on the stone storeys, dormers on the inns and schools; the dam company's cornice and hoods.
-  **Cinder Junction (ruhr):** yellow-brick segmental arches with keystones, dentil cornices, brick piers, gable vents.
-  **Saltwind (dalmatian):** limestone quoins on the rendered houses, a string course on the three-storey ones, a
-  balconette on half the houses. **Tidegate (polder):** brick arches, the white board gutter cornice, wall anchors.
-- **Laws** (`facade.selftest.mjs`, 600 builds; 750 more against the PR head's trees): dressing only (the structural
-  geometry is the craftless build's byte for byte, so collision and every shard stay), desktop only (a phone's build is
-  byte for byte the PR head's), its own stream (the build and look streams draw as often with it). Every map lane's kit
-  branch (Sarajevo, Andalusian, Kyushu, Bisbee, Glen Canyon, Navajo, Tselina) merges onto it with the laws holding.
-- **Cost** (headless props build against the PR head; always drawn / shadow casting / meshes): Verdant +1.9k (+4.95 %)
-  / +1.6k (+4.4 %) / +2; Steinburg +6.3k (+1.8 %) / +18.5k (+6.9 %) / +1; Frontier -1.1k / +0.4k / +1; Cinder Junction
-  +6.5k (+2.0 %) / +9.2k (+2.9 %) / 0; Saltwind +1.9k (+3.0 %) / +1.8k (+3.2 %) / +1. The fine dressing (Steinburg +89k,
-  Cinder Junction +47k) is drawn within the fine-detail distance only: on a desktop build the metalwork and the main
-  render batch by the 120 m cells like the timber and stone (the metal's batch replaces its always-drawn mesh).
 
 ## Acceptance is visual and measured
 

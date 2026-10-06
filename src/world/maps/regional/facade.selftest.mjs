@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import { ARCHITECTURE_STYLES, buildRegionalParts } from './index.ts';
 import { streamFrom } from './geometry.ts';
 import { setFacadeCraft } from './facade.ts';
+import { paintDressedStoneBuffers, paintLimewash } from '../../regionalSurfaces.ts';
 
 const BUDGET = 12000;
 function counted(seed) {
@@ -95,3 +96,36 @@ assert.ok(seen.trims > 0, 'the Franconian town fronts carry their trims on a des
 assert.ok(crafted > builds / 2, `most builds carry the craft on a desktop build (${crafted} of ${builds})`);
 console.log(`facade craft: ${builds} builds — structure byte for byte without the craft and on a phone, a phone's build craftless, the build and look streams unmoved, `
   + `${crafted} crafted, worst ${worst} desktop triangles`);
+
+// The wave-116 surfaces (2026-10-05): the khatas' lime-wash and a town's dressed stone — deterministic, in range and
+// seamless (the wrap from the last column or row into the first no harsher than the harshest interior neighbours), as
+// regionalArchitecture.selftest holds the kits' roof and stone prints
+const seamless = (label, size, px) => {
+  const lum = (x, y) => { const j = (y * size + x) * 4; return px[j] + px[j + 1] + px[j + 2]; };
+  const col = (x0, x1) => { let d = 0; for (let y = 0; y < size; y++) d += Math.abs(lum(x0, y) - lum(x1, y)); return d; };
+  const row = (y0, y1) => { let d = 0; for (let x = 0; x < size; x++) d += Math.abs(lum(x, y0) - lum(x, y1)); return d; };
+  let colMax = 0, rowMax = 0;
+  for (let k = 0; k + 1 < size; k++) { colMax = Math.max(colMax, col(k, k + 1)); rowMax = Math.max(rowMax, row(k, k + 1)); }
+  assert.ok(col(size - 1, 0) <= colMax * 1.15, `${label}: the tile wraps across u without a seam`);
+  assert.ok(row(size - 1, 0) <= rowMax * 1.15, `${label}: the tile wraps across v without a seam`);
+};
+for (const seed of [0x11a1, 0x11a2]) {
+  const a = paintLimewash(256, seed), b = paintLimewash(256, seed);
+  assert.deepEqual(Buffer.from(a.px.buffer), Buffer.from(b.px.buffer), 'lime-wash: deterministic pixels');
+  assert.ok(a.hgt.every((v) => v >= 0 && v <= 1), 'lime-wash: height in range');
+  // soft: no pixel far from the coat's mean (a render with no pebbles, no joints)
+  let sum = 0, max = 0;
+  for (let i = 0; i < a.px.length; i += 4) sum += a.px[i];
+  const mean = sum / (a.px.length / 4);
+  for (let i = 0; i < a.px.length; i += 4) max = Math.max(max, Math.abs(a.px[i] - mean));
+  assert.ok(max < 48, `lime-wash: a soft coat (largest departure ${max.toFixed(1)} levels)`);
+  seamless(`lime-wash ${seed.toString(16)}`, 256, a.px);
+}
+{
+  const run = (g) => { let s = g.next(); while (!s.done) s = g.next(); return s.value; };
+  const a = run(paintDressedStoneBuffers('sandstone', [0.64, 0.52, 0.42], 0x51a7));
+  const b = run(paintDressedStoneBuffers('sandstone', [0.64, 0.52, 0.42], 0x51a7));
+  assert.deepEqual(Buffer.from(a.px.buffer), Buffer.from(b.px.buffer), 'dressed stone: deterministic pixels');
+  seamless('dressed stone', a.size, a.px);
+}
+console.log('facade surfaces: the lime-wash and the dressed stone deterministic, soft and seamless');
