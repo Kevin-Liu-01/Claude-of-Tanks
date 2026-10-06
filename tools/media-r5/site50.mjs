@@ -12,6 +12,7 @@ import { buildShot, fire, kill, pen, burn, smoke, boom as blast, dust, mg, barra
 import { setById, T, pictureFor, LIGHT_READY, sunFor, RIG } from './sets.mjs';
 import { CAST, CAST_NAMES } from './cast.mjs';
 import { blockedFraction } from './camera-clearance.mjs';
+import { stillMoments } from './lens-check.mjs';
 import { choreograph } from './turret-choreo.mjs';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
 import { worldModel } from './world-model.mjs';
@@ -526,8 +527,13 @@ export function siteScene([n, id, kind, title, setRef, ownFilm, still]) {
   const az = LIGHT_READY ? sunFor(scene, film.sun ?? set.sun, time) : null;
   if (az != null) scene.light = { ...(scene.light ?? {}), sunAzimuthDeg: az };
   const hero = scene.actors[0]?.id;
+  // the stills the finals render at 4K (lens-check.mjs stillMoments; owner 2026-10-06: "the stills from those are nice,
+  // will we use them too?"): the designated moment where the hero stands centred and clear, and the close portrait
+  const world = modelOf(set.map), moments = world && scene.still ? stillMoments(scene, world, scene.still.tMs) : null;
+  if (moments && moments[0] !== scene.still.tMs) scene.still = { ...scene.still, tMs: moments[0] };
+  if (moments?.length > 1) scene.stillsExtra = moments.slice(1);
   scene.meta = { n, id: `s${String(n).padStart(2, '0')}-${id}`, kind, title, set: set.id, map: set.map, time, hero, heroName: CAST_NAMES[hero]?.[0] ?? hero,
-    loopMs: LOOP_MS, xfadeMs: XFADE_MS, still,
+    loopMs: LOOP_MS, xfadeMs: XFADE_MS, still: scene.still ?? still, ...(scene.stillsExtra ? { stillsExtra: scene.stillsExtra } : {}),
     paint: { unit: base.camo, enemy: base.enemies ? base.enemies.camo ?? base.camo : null },
     turrets: { style, plan: choreo.notes }, ...(cameraFix ? { cameraFix } : {}) };
   return scene;

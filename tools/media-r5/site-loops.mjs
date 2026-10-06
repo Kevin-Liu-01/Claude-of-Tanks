@@ -56,7 +56,12 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   if (only && !only.some(o => id.includes(o))) continue;
   const filmMaster = pick(join(renders, 'films', id, 'films'), /-master\.mov$/);
   const master = filmMaster ?? pick(join(renders, 'films', id, 'films'), /-proxy\.mp4$/);
-  const still = pick(join(renders, 'stills', id, 'stills'), /\.png$/);
+  // the designated still by its moment (the scene's still.tMs), the close portrait (stillsExtra) apart: cinema names
+  // a still by its milliseconds, and a name sort put a 1200 ms portrait before a 4380 ms still (2026-10-06)
+  const sceneFile = join(renders, 'films', 'scenes', `${id}.json`), src = existsSync(sceneFile) ? JSON.parse(readFileSync(sceneFile, 'utf8')) : null;
+  const stillAt = (ms) => pick(join(renders, 'stills', id, 'stills'), new RegExp(`-still-${Math.round(ms)}ms(-e\\d+ms)?\\.png$`));
+  const still = (src?.still ? stillAt(src.still.tMs) : null) ?? pick(join(renders, 'stills', id, 'stills'), /\.png$/);
+  const closeStill = src?.stillsExtra?.length ? stillAt(src.stillsExtra[0]) : null;
   if (!master) { console.log(`${id}: no film yet`); continue; }
   const out = join(deliver, id);
   // up to date: every format newer than its film and still (several passes may cover one shot; --force re-encodes)
@@ -101,6 +106,17 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
     c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
     writeFileSync(join(out, `${id}.webp`), c.toBuffer('image/webp', 92));
     Object.assign(files, { still4k: `${id}/${id}-4k.png`, still4kJpg: `${id}/${id}-4k.jpg`, still: `${id}/${id}.webp` });
+  }
+  if (closeStill) {
+    // the close portrait (owner 2026-10-06): the 4K master, a q95 JPEG and a 1920 px WebP beside the still
+    const png = join(out, `${id}-close-4k.png`); copyFileSync(closeStill, png);
+    const im = await loadImage(readFileSync(png));
+    const full = createCanvas(im.width, im.height); full.getContext('2d').drawImage(im, 0, 0);
+    writeFileSync(join(out, `${id}-close-4k.jpg`), full.toBuffer('image/jpeg', 95));
+    const c = createCanvas(1920, Math.round(im.height * 1920 / im.width));
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    writeFileSync(join(out, `${id}-close.webp`), c.toBuffer('image/webp', 92));
+    Object.assign(files, { close4k: `${id}/${id}-close-4k.png`, close4kJpg: `${id}/${id}-close-4k.jpg`, close: `${id}/${id}-close.webp` });
   }
   if (filmMaster && flags.has('--drop-film-masters')) unlinkSync(filmMaster);
   const size = f => statSync(join(deliver, f)).size, mb = k => files[k] ? `${(size(files[k]) / 1e6).toFixed(1)} MB` : '—';

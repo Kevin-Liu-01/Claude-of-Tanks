@@ -40,14 +40,15 @@ for (const f of files) {
       fps: Number(scene.film?.fps ?? 30), samples: Number(scene.film?.samples ?? 8), 'max-samples': Number(scene.film?.maxSamples ?? 48),
       shutter: Number(scene.film?.shutterDeg ?? 180), master: opt.master ?? 'prores', proxy: 'true', out: resolve(outRoot, name) });
   } else if (mode === 'blur') {
-    // the fifty frames: one motion-blurred still per scene at its timed moment, through the film shutter
+    // the fifty frames: a motion-blurred still per scene at its timed moment and its close portrait (stillsExtra), through
+    // the film shutter
     const src = JSON.parse(readFileSync(join(dir, `${name}.scene.json`), 'utf8'));
     if (!src.still) continue;
     const file = join(sceneDir, `${name}.json`);
     writeFileSync(file, JSON.stringify(scene, null, 1));
     const E = Number(src.still.exposureMs ?? 0);
     jobs.push({ scene: file, formats: opt.formats ?? 'landscape', resolution: Number(opt.resolution ?? 2160), film: 'false',
-      stills: String(src.still.tMs), 'still-exposure-ms': E, 'still-samples': Number(opt['still-samples'] ?? (E >= 100 ? 64 : 32)),
+      stills: [src.still.tMs, ...(src.stillsExtra ?? [])].join(','), 'still-exposure-ms': E, 'still-samples': Number(opt['still-samples'] ?? (E >= 100 ? 64 : 32)),
       'still-max-samples': Number(opt['still-max-samples'] ?? 128), supersample: Number(opt.supersample ?? 1.25), out: resolve(outRoot, name) });
   } else throw Error('mode must be stills|films|blur');
 }

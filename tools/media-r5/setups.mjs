@@ -337,7 +337,10 @@ export function buildShot(s, m) {
     for (const sh of shots) sh.fov = 2 * Math.atan(w0 / Math.max(0.5, d(sh))) * 180 / Math.PI;
   }
   scene.storyboard = { version: 1, durationMs: dur, groundRel: true, groundSmooth: m.groundSmooth ?? (shots.length > 6 ? 3 : 0), shots, actorTracks: tracks, cameraCues: m.cues ?? [] };
-  scene.film = m.film ?? s.film ?? { fps: 30, shutterDeg: 180, samples: 8, maxSamples: 48 };
+  // a 120° shutter (1/90 s at 30 fps; owner 2026-10-06: "make sure the videos are a lot higher quality and not blurry"):
+  // with hulls at 9-15 m/s and the lens sweeping past at 7 m, 180° smeared the detail; a third less blur keeps the
+  // motion smooth and the hulls crisp
+  scene.film = m.film ?? s.film ?? { fps: 30, shutterDeg: 120, samples: 8, maxSamples: 48 };
   scene.effects = [...(s.effects ?? []), ...(m.effects ?? [])].sort((a, b) => a.tMs - b.tMs).map(fx => {
     if (!fx.at?.hero) return fx;
     const hp = heroPath(fx.tMs), q = frame(hp.p, hp.h).at(fx.at.hero[0], fx.at.hero[1]);

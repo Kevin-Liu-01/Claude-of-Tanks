@@ -58,19 +58,21 @@ export function absoluteShots(scene, model) {
 }
 
 /**
- * The lens's view of the hero over the take: { blocked, outOfFrame, samples, worst, blockedAt } where blocked and outOfFrame are
- * fractions of the samples, worst lists the first blocked moments ({ tMs, by }) and blockedAt every blocked time.
+ * The lens's view of the hero over the take: { blocked, outOfFrame, samples, worst, blockedAt, perSample } where blocked
+ * and outOfFrame are fractions of the samples, worst lists the first blocked moments ({ tMs, by }), blockedAt every
+ * blocked time and perSample each sample's { tMs, seen (any hull point in frame), centred (the hull's centre inside
+ * 70 % of the frame), clear (no blocker), distM (lens to hull centre) }.
  */
 export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {}) {
   const shots = absoluteShots(scene, model), dur = scene.storyboard?.durationMs ?? 0;
   const heroKeys = scene.storyboard?.actorTracks?.find((t) => t.actor === 'hero')?.keys;
   const heroActor = scene.actors.find((a) => a.name === 'hero');
-  if (!shots.length || !heroActor) return { blocked: 0, outOfFrame: 0, samples: 0, worst: [], blockedAt: [] };
+  if (!shots.length || !heroActor) return { blocked: 0, outOfFrame: 0, samples: 0, worst: [], blockedAt: [], perSample: [] };
   const [halfLength, halfWidth] = hullOf(heroActor.id);
   const cam = {}, pose = {}, hits = [], fallen = crushTimes(scene, model);
   let samples = 0, blocked = 0, outOfFrame = 0, now = 0;
   const ignore = (r) => (r.crushable && r.max[1] - r.min[1] < LOW_COVER_M) || (fallen.get(r) ?? Infinity) <= now;
-  const worst = [], blockedAt = [];
+  const worst = [], blockedAt = [], perSample = [];
   for (let t = 0; t <= dur; t += stepMs) {
     if (!sampleCameraRail(shots, t, cam)) continue;
     now = t;
@@ -97,7 +99,11 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
       return depth > 0.5 && Math.abs((d[0] * right[0] + d[1] * right[1] + d[2] * right[2]) / depth) < tx * 0.95
         && Math.abs((d[0] * up[0] + d[1] * up[1] + d[2] * up[2]) / depth) < ty * 0.95;
     };
-    if (!points.some(seen)) outOfFrame++;
+    const inView = points.some(seen);
+    if (!inView) outOfFrame++;
+    const c = [points[0][0] - cam.x, points[0][1] - cam.y, points[0][2] - cam.z], cDepth = c[0] * fw[0] + c[1] * fw[1] + c[2] * fw[2];
+    const centred = cDepth > 0.5 && Math.abs((c[0] * right[0] + c[1] * right[1] + c[2] * right[2]) / cDepth) < tx * 0.7
+      && Math.abs((c[0] * up[0] + c[1] * up[1] + c[2] * up[2]) / cDepth) < ty * 0.7;
     const insideAny = insideRecord(model, eye, 0.3), inside = insideAny && !ignore(insideAny) ? insideAny : null;
     let blockedRays = 0, by = inside ? `lens inside a ${inside.kind}` : '';
     if (!inside) {
@@ -114,11 +120,30 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
         if (hit) { blockedRays++; by ||= hit.canopyR ? 'a tree canopy' : `a ${hit.kind}`; }
       }
     }
-    if (inside || blockedRays >= 2) {
+    const isBlocked = !!inside || blockedRays >= 2;
+    if (isBlocked) {
       blocked++;
       blockedAt.push(t);
       if (worst.length < 4) worst.push({ tMs: t, by });
     }
+    perSample.push({ tMs: t, seen: inView, centred, clear: !isBlocked && blockedRays === 0, distM: +Math.hypot(points[0][0] - cam.x, points[0][1] - cam.y, points[0][2] - cam.z).toFixed(1) });
   }
-  return { blocked: samples ? blocked / samples : 0, outOfFrame: samples ? outOfFrame / samples : 0, samples, worst, blockedAt };
+  return { blocked: samples ? blocked / samples : 0, outOfFrame: samples ? outOfFrame / samples : 0, samples, worst, blockedAt, perSample };
+}
+
+/**
+ * The take's still moments (owner 2026-10-06: "the stills from those are nice, will we use them too?"), each a 4K
+ * frame the finals render: the designated moment kept where the hero stands centred and clear there, else the nearest
+ * such sample; and the close portrait, the sample where the lens comes nearest the hull (not under `minDistM`, so the
+ * frame holds it) with the hero centred and clear, at least `apartMs` from the first. Ends of the take are left out
+ * (the loop's crossfade). Returns [ms, ...].
+ */
+export function stillMoments(scene, model, designatedMs, { minDistM = 8, apartMs = 900, edgeMs = 400 } = {}) {
+  const dur = scene.storyboard?.durationMs ?? 0;
+  const good = lensReport(scene, model).perSample.filter((p) => p.seen && p.centred && p.clear && p.tMs >= edgeMs && p.tMs <= dur - edgeMs);
+  if (!good.length) return [designatedMs];
+  const first = good.some((p) => Math.abs(p.tMs - designatedMs) < 50) ? designatedMs
+    : good.reduce((a, b) => (Math.abs(b.tMs - designatedMs) < Math.abs(a.tMs - designatedMs) ? b : a)).tMs;
+  const close = good.filter((p) => p.distM >= minDistM && Math.abs(p.tMs - first) >= apartMs).sort((a, b) => a.distM - b.distM)[0];
+  return close ? [first, close.tMs] : [first];
 }
