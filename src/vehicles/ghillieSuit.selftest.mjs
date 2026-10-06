@@ -40,7 +40,8 @@ for (const id of ids) {
   for (const owner of ['hull', 'turret', 'gun']) {
     if (!cfg[owner]) continue;
     const rig = owner === 'hull' ? hullRig : owner === 'turret' ? turretRig : gunRig;
-    const expectedLayers = cfg.foliage === false ? ['net'] : ['net', 'light', 'dark'];
+    // 2026-10-05 (tank-accessories lane): the garnish is one spray-card draw per owner (vehicleFoliage.ts)
+    const expectedLayers = cfg.foliage === false ? ['net'] : ['net', 'leaves'];
     for (const layer of expectedLayers) {
       const name = `${id}_ghillie_${owner}_${layer}`;
       const mesh = tank.root.getObjectByName(name);
@@ -50,7 +51,7 @@ for (const id of ids) {
         `${name} is detailed geometry, not a token rectangle`);
     }
     if (cfg.foliage === false) {
-      for (const layer of ['light', 'dark']) {
+      for (const layer of ['leaves']) {
         assert.equal(tank.root.getObjectByName(`${id}_ghillie_${owner}_${layer}`), undefined,
           `${id} keeps the carrier net but has no artificial leaf layer`);
       }

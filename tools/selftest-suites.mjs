@@ -1085,6 +1085,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/wheelPaintFloor.selftest.mjs',
     'src/vehicles/runningGearFinish.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
+    'src/vehicles/accessoryMaterials.selftest.mjs',
+    // 2026-10-05 (tank-accessories lane): decor draws per tank at or below their count before the accessory rebuild
+    'src/vehicles/decorDrawBudget.selftest.mjs',
     'src/vehicles/profiles/leopard2A6UA.selftest.mjs',
     'src/vehicles/profiles/type99Armor.selftest.mjs',
     'src/vehicles/profiles/merkavaGunCradle.selftest.mjs',

@@ -58,6 +58,16 @@ import {
   vehicleAmbientFloorHook, getKitPaintTexture, getSharedRoughnessTexture,
 } from './materials.ts';
 import { VEHICLE_ERAS, isContemporaryVehicleEra } from './taxonomy.ts';
+import {
+  buildBranchBundle, buildCargoVariant, buildCupola, buildExhaust, buildHatch, buildLog, buildNetDrape, buildNetRoll,
+  buildPackCluster, buildSearchlight, buildSight, buildTarpRoll, buildTools, buildTravelLock, drum200, duffel, jerrycan,
+  sandbag, type AccessoryPainter, type RGB,
+} from './accessoryKits.ts';
+import { FOLIAGE_ALPHA_TEST, vehicleFoliageAtlas, type VehicleFoliageKind } from './vehicleFoliage.ts';
+import { moldedBox, place, roundBar } from './accessoryPrimitives.ts';
+import {
+  addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield, createPintleLayout,
+} from './machineGunGeometry.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 
@@ -65,11 +75,13 @@ type Rng = () => number;
 type GeometryScale = number | readonly [number, number, number];
 type DecorFrame = 'hull' | 'turret';
 type DecorMaterialKey = 'kit' | 'steel' | 'wood' | 'canvas' | 'burlap'
-  | 'rubber' | 'cans' | 'net' | 'mesh' | 'lens';
+  | 'rubber' | 'cans' | 'net' | 'mesh' | 'lens' | 'foliage';
 
 interface DecorOptions {
   proceduralOnly?: boolean;
   decor?: boolean;
+  /** The factory's geometry tier: 'low' (the mobile tier) builds only the coarse accessory forms. */
+  geometryQuality?: string;
 }
 
 interface ShadowEngineContext {
@@ -100,10 +112,14 @@ interface DecorPart {
 interface DecorPartList extends Array<DecorPart> {
   meta?: DecorPartMeta;
   metaCx?: number;
+  /** The same piece at the coarse level (built from an identically seeded stream; seated with this list's matrix). */
+  coarse?: DecorPartList;
 }
 
 interface DecorKitArgs {
   rng: Rng;
+  /** 1 = the near level, 0 = the coarse level (far LOD and mobile tier). Builders draw rng before branching on it. */
+  detail?: 0 | 1;
   v?: string;
   nation?: string;
   shield?: boolean;
@@ -408,8 +424,6 @@ const cylY = (rT: number, rB: number, h: number, seg = 10) => new THREE.Cylinder
 const cylX = (r: number, len: number, seg = 10, r2?: number) => xform(cylY(r, r2 ?? r, len, seg), 0, 0, 0, 0, 0, Math.PI / 2);
 const cylZ = (r: number, len: number, seg = 10, r2?: number) => xform(cylY(r, r2 ?? r, len, seg), 0, 0, 0, Math.PI / 2, 0, 0);
 const sph = (r: number, w = 9, h = 6) => new THREE.SphereGeometry(r, w, h);
-const capX = (r: number, len: number, seg = 8) =>
-  xform(new THREE.CapsuleGeometry(r, Math.max(len - 2 * r, 0.01), 2, seg), 0, 0, 0, 0, 0, Math.PI / 2);
 const torus = (r: number, tube: number, seg = 10, tSeg = 5, arc = Math.PI * 2) =>
   xform(new THREE.TorusGeometry(r, tube, tSeg, seg, arc), 0, 0, 0, Math.PI / 2, 0, 0);
 // torus in its native XY plane (vertical rings: bail handles, end loops)
@@ -917,6 +931,13 @@ function buildDecorMaterials(
       color: 0x161d23, roughness: 0.28, metalness: 0.6, envMapIntensity: 0.55,
       vertexColors: true,
     }),
+    // fresh-cut branches: the trees lane's species spray atlas on alpha-cut cards (vehicleFoliage.ts); the map and
+    // cut are set before the cascade setup runs, so the atlas gets its coverage-preserving mips
+    foliage: () => painted({
+      map: vehicleFoliageAtlas(FIELD_FOLIAGE[spec.id]?.kind ?? 'oak') ?? undefined, color: 0xffffff,
+      roughness: 0.9, metalness: 0.0, alphaTest: FOLIAGE_ALPHA_TEST, side: THREE.DoubleSide,
+      vertexColors: true, envMapIntensity: 0.1,
+    }),
   };
   return {
     get(key: DecorMaterialKey) {
@@ -935,6 +956,74 @@ function buildDecorMaterials(
 }
 
 // ---------------------------------------------------------------------------
+// Accessory painter: routes the shared accessory builders (accessoryKits.ts) into
+// this kit's material families with its tint / shade / UV conventions. No method
+// draws from the stream: the near and coarse builds of one piece stay aligned.
+// ---------------------------------------------------------------------------
+
+/**
+ * Cargo is seen beneath the same sun/IBL as the tank: raw near-primary tints read
+ * as glossy toys on weathered armor. Keep the hue identity, lower the value and
+ * pull only the brightest colours toward their neutral luminance (fade + grime);
+ * a nation's equipment accent shifts every authored colour slightly.
+ */
+function mutedEquipmentTint(rgb: RGB, nation: string, palette: FleetEquipmentPalette): RGB {
+  const countryTint = palette.accent;
+  const countryMix = nation ? 0.16 : 0;
+  const themed: RGB = [
+    rgb[0] * (1 - countryMix) + countryTint[0] * countryMix,
+    rgb[1] * (1 - countryMix) + countryTint[1] * countryMix,
+    rgb[2] * (1 - countryMix) + countryTint[2] * countryMix,
+  ];
+  const peak = Math.max(themed[0], themed[1], themed[2], 0.0001);
+  // linear-space vertex multipliers: keep peaks in the painted-hardware range
+  const scale = Math.min(0.72, 0.18 / peak);
+  const neutral = ((themed[0] + themed[1] + themed[2]) / 3) * scale;
+  const fade = peak > 0.48 ? 0.28 : 0;
+  return [
+    themed[0] * scale * (1 - fade) + neutral * fade,
+    themed[1] * scale * (1 - fade) + neutral * fade,
+    themed[2] * scale * (1 - fade) + neutral * fade,
+  ];
+}
+
+function accessoryPainter(parts: DecorPartList, rng: Rng, detail: 0 | 1, nation = ''): AccessoryPainter {
+  const palette = equipmentPaletteForNation(nation);
+  return {
+    detail,
+    rng,
+    paint(geo, rgb, ao = 0.26) {
+      const [r, g, b] = mutedEquipmentTint(rgb, nation, palette);
+      parts.push({ mat: 'cans', geo: bakeTint(geo, r, g, b, ao) });
+    },
+    cloth(geo, tone = 0.75, rgb) {
+      const uv = boxUV(geo, 2.5);
+      parts.push({ mat: 'canvas', geo: rgb ? bakeTint(uv, rgb[0] * tone, rgb[1] * tone, rgb[2] * tone, 0.32) : bakeShade(uv, tone, 0.32) });
+    },
+    // Webbing rides the painted-hardware draw, which nearly every frame with cargo already carries (2026-10-05 draw
+    // audit: canvas webbing on rear-rack cans and drums added a canvas draw to 37 hulls with no soft goods). Colour:
+    // the nation's issue canvas through the webbing tint (0.5, 0.56, 0.44), times the weave map's ground over the
+    // lighter hardware map's (#b9b2a4 over #cbc9c1, linear), so the strap reads as it did in the canvas family.
+    strap(geo, tone = 0.6) {
+      const c = new THREE.Color(palette.canvas);
+      parts.push({ mat: 'cans', geo: bakeTint(geo, c.r * 0.5 * 0.8 * tone, c.g * 0.56 * 0.78 * tone, c.b * 0.44 * 0.7 * tone, 0.3) });
+    },
+    // Burlap shares the canvas draw (same weave map, near-identical finish): a warmer tint of the issue fabric.
+    burlap(geo, tone = 0.9) { parts.push({ mat: 'canvas', geo: bakeTint(boxUV(geo, 2.8), 1.42 * tone, 1.16 * tone, 0.94 * tone, 0.3) }); },
+    steel(geo, tone = 0.55) { parts.push({ mat: 'steel', geo: bakeShade(geo, tone) }); },
+    wood(geo, tone = 0.8) { parts.push({ mat: 'wood', geo: bakeShade(boxUV(geo, 2.2), tone) }); },
+    // Small wooden parts ride the painted-hardware draw (grain does not read on a handle; 2026-10-05 draw audit): the
+    // wood family's colour, woodTex ground #8d7a5e x 0x97815f over the hardware map's #cbc9c1 (linear).
+    trim(geo, tone = 0.7) { parts.push({ mat: 'cans', geo: bakeTint(geo, 0.138 * tone, 0.0735 * tone, 0.0242 * tone, 0.28) }); },
+    rubber(geo, tone = 0.6) { parts.push({ mat: 'rubber', geo: bakeShade(geo, tone) }); },
+    kit(geo, tone = 0.92) { parts.push({ mat: 'kit', geo: bakeShade(geo, tone) }); },
+    lens(geo) { parts.push({ mat: 'lens', geo: bakeShade(geo, 0.9) }); },
+    net(geo, tone = 1) { parts.push({ mat: 'net', geo: bakeShade(boxUV(geo, 1.8), tone, 0.12) }); },
+    leaves(geo) { parts.push({ mat: 'foliage', geo }); },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // THE KIT LIBRARY.
 //
 // Every builder: ({ rng, ...params }) => [{ mat:<family>, geo }] in
@@ -946,168 +1035,62 @@ function buildDecorMaterials(
 export const DECOR_KITS: Record<string, DecorKitBuilder> = {
 
   // -- commander's cupola upgrade: raised vision-block ring ------------------
-  cupola({ rng, v = 'ring' }) {
+  cupola({ rng, v = 'ring', detail = 1 }) {
     const parts: DecorPartList = [];
     const tone = 0.92 + rng() * 0.14;
-    if (v === 'ring') {              // low vision-block ring + closed lid
-      const r = 0.30;
-      parts.push({ mat: 'kit', geo: bakeShade(lathe([[r * 0.94, 0], [r, 0.02], [r, 0.16], [r * 0.9, 0.19], [r * 0.62, 0.215], [0.001, 0.225]], 16), tone) });
-      for (let i = 0; i < 7; i++) {   // vision blocks
-        const a = (i / 7) * Math.PI * 2;
-        parts.push({ mat: 'lens', geo: bakeShade(xform(box(0.085, 0.05, 0.03), Math.sin(a) * (r - 0.006), 0.105, Math.cos(a) * (r - 0.006), 0, a, 0), 0.9) });
-      }
-      parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.05, 0.02, 0.16), 0, 0.232, -0.1), tone) }); // lid hinge spine
-    } else if (v === 'drum') {       // taller drum cupola (early pattern)
-      const r = 0.27;
-      parts.push({ mat: 'kit', geo: bakeShade(lathe([[r, 0], [r, 0.24], [r * 0.93, 0.27], [r * 0.5, 0.30], [0.001, 0.305]], 16), tone) });
-      for (let i = 0; i < 5; i++) {   // vision slits
-        const a = (i / 5) * Math.PI * 2 + 0.3;
-        parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.10, 0.035, 0.025), Math.sin(a) * r, 0.17, Math.cos(a) * r, 0, a, 0), 0.55) });
-      }
-    } else {                          // 'split': ring + open lid leaned on the hinge
-      const r = 0.28;
-      const lidR = r * 0.55;
-      parts.push({ mat: 'kit', geo: bakeShade(lathe([[r * 0.95, 0], [r, 0.05], [r, 0.13], [r * 0.6, 0.16], [0.001, 0.165]], 16), tone) });
-      // lid disc pivoted AT ITS EDGE on the ring rim (open ~68 deg)
-      const lid = cylY(lidR, lidR, 0.028, 12);
-      xform(lid, 0, 0, lidR);                        // hinge at disc edge
-      xform(lid, 0, 0, 0, -68 * D2R, 0, 0);          // swing open
-      parts.push({ mat: 'kit', geo: bakeShade(xform(lid, 0, 0.165, -r * 0.72), tone * 1.05) });
-      parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.07, 0.03, 0.05), 0, 0.155, -r * 0.8), 0.55) }); // hinge block
-      parts.push({ mat: 'steel', geo: bakeShade(xform(torus(0.04, 0.01, 8, 4), 0, 0.17, r * 0.35), 0.55) }); // grab ring
-    }
+    buildCupola(accessoryPainter(parts, rng, detail), v, tone);
     return parts;
   },
 
   // -- openable-looking hatch cover with hinges -------------------------------
-  hatch({ rng, v = 'round' }) {
-    const tone = 0.9 + rng() * 0.16;
+  hatch({ rng, v = 'round', detail = 1 }) {
     const parts: DecorPartList = [];
-    if (v === 'round') {
-      const r = 0.25;
-      parts.push({ mat: 'kit', geo: bakeShade(lathe([[r, 0], [r, 0.035], [r * 0.86, 0.055], [r * 0.3, 0.07], [0.001, 0.075]], 14), tone) });
-      parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.05, 0.028, 0.11), 0, 0.02, r * 0.9), 0.62) });    // hinge block
-      parts.push({ mat: 'steel', geo: bakeShade(xform(torus(0.045, 0.011, 8, 4), 0, 0.078, -r * 0.4), 0.6) }); // grab ring
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.08, 0.02, 0.05), 0, 0.03, -r * 0.88), tone) });      // latch lug
-    } else { // rect twin-panel
-      const w = 0.42, d = 0.34;
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(w, 0.05, d), 0, 0.025, 0), tone) });
-      for (const s of [-1, 1]) {
-        parts.push({ mat: 'steel', geo: bakeShade(xform(cylX(0.02, 0.07, 6), s * w * 0.3, 0.03, d / 2 + 0.015), 0.6) });
-      }
-      parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.1, 0.022, 0.04), 0, 0.058, -d * 0.28), 0.65) });   // handle
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.09, 0.06, 0.09), w * 0.28, 0.08, d * 0.1), tone * 1.05) }); // periscope stub
-    }
+    const tone = 0.9 + rng() * 0.16;
+    buildHatch(accessoryPainter(parts, rng, detail), v, tone);
     return parts;
   },
 
   // -- roof AAMG: .50 M2 / DShK, pintle or ring, with/without gun shield ------
+  // The fleet's one Browning-family construction (machineGunGeometry.ts, shared
+  // with the profile fittings): bearing -> spindle -> fork -> trunnion, pressed
+  // receiver, feed cover, spade grips, jacket and muzzle device per class, can
+  // and belt. Weapon steel and ammunition stay gunmetal; the shield and ring
+  // take the scheme's kit paint. Gun and shield stow ~7 deg muzzle-up about
+  // the trunnion; the mount stays plumb.
   aamg({ rng, v = 'm2', shield = false, ring = false }) {
     const parts: DecorPartList = [];
-    const steel = (geo: THREE.BufferGeometry, t = 0.6) => parts.push({ mat: 'steel', geo: bakeShade(geo, t + rng() * 0.06) });
-    const kit = (geo: THREE.BufferGeometry, t = 0.95) => parts.push({ mat: 'kit', geo: bakeShade(geo, t) });
-    const H = 0.30;                          // trunnion height above seat
-    if (ring) {                              // ring mount: rail + 4 standoffs
-      steel(xform(torus(0.33, 0.016, 20, 5), 0, 0.10, 0), 0.55);
-      for (let i = 0; i < 4; i++) {
-        const a = i * (Math.PI * 2 / 4) + 0.5;
-        steel(xform(cylY(0.014, 0.014, 0.10, 6), Math.sin(a) * 0.33, 0.05, Math.cos(a) * 0.33), 0.5);
-      }
-    }
-    // Flanged slew bearing, spindle, bridge, fork arms and trunnion form a
-    // visible load path. This decoration path used to be the last fleet-wide
-    // source of a receiver floating on a single rod.
-    steel(xform(cylY(0.050, 0.060, 0.024, 12), 0, 0.012, 0), 0.54);
-    steel(xform(torus(0.050, 0.008, 16, 5), 0, 0.026, 0), 0.48);
-    steel(xform(cylY(0.025, 0.032, H - 0.06, 10), 0, H / 2 - 0.015, 0), 0.5);
-    steel(xform(box(0.145, 0.045, 0.13), 0, H - 0.055, 0.02), 0.53);
-    for (const side of [-1, 1]) {
-      steel(xform(box(0.022, 0.095, 0.105), side * 0.055, H - 0.015, 0.055,
-        side * 0.05), 0.52);
-    }
-    steel(xform(cylX(0.029, 0.145, 10), 0, H, 0.07), 0.55);
-    const recY = H + 0.055;
-    const gunFrom = parts.length;            // parts from here ride the cradle
-    if (v === 'dshk') {
-      steel(xform(box(0.11, 0.12, 0.42), 0, recY, -0.05), 0.62);               // receiver
-      steel(xform(box(0.10, 0.018, 0.37), 0, recY + 0.069, -0.04), 0.58);      // top cover
-      steel(xform(box(0.020, 0.075, 0.22), 0.066, recY, -0.06), 0.52);         // service plate
-      for (let i = 0; i < 5; i++) {
-        steel(xform(cylZ(0.040, 0.020, 10), 0, recY + 0.01, 0.205 + i * 0.031), 0.50);
-      }
-      steel(xform(cylZ(0.026, 0.62, 10), 0, recY + 0.01, 0.48), 0.58);         // barrel
-      steel(xform(cylZ(0.055, 0.075, 10, 0.028), 0, recY + 0.01, 0.80), 0.55);// muzzle booster
-      steel(xform(box(0.05, 0.14, 0.05), 0, recY - 0.12, -0.24, 0.5), 0.5);   // spade grips
-      steel(xform(box(0.095, 0.12, 0.24), -0.115, recY + 0.01, 0.02), 0.58);  // belt box
-    } else {                                  // Browning M2HB
-      steel(xform(box(0.105, 0.115, 0.46), 0, recY, -0.02), 0.62);            // receiver
-      steel(xform(box(0.097, 0.018, 0.405), 0, recY + 0.066, -0.015), 0.58);  // hinged cover
-      steel(xform(box(0.020, 0.070, 0.23), 0.064, recY, -0.045), 0.52);       // side plate
-      steel(xform(box(0.050, 0.017, 0.075), -0.080, recY + 0.02, -0.04), 0.5);// charge handle
-      steel(xform(cylZ(0.034, 0.24, 12), 0, recY + 0.012, 0.29), 0.52);       // barrel jacket
-      for (let i = 0; i < 5; i++) {
-        steel(xform(torus(0.0345, 0.004, 10, 4), 0, recY + 0.012, 0.19 + i * 0.042), 0.48);
-      }
-      steel(xform(cylZ(0.021, 0.56, 10), 0, recY + 0.012, 0.46), 0.58);       // barrel
-      steel(xform(cylZ(0.034, 0.075, 12), 0, recY + 0.012, 0.778), 0.54);     // flash hider
-      steel(xform(box(0.032, 0.05, 0.07), 0, recY + 0.09, -0.20), 0.5);       // rear sight
-      for (const side of [-1, 1]) {
-        steel(xform(box(0.022, 0.026, 0.10), side * 0.034, recY - 0.02, -0.255,
-          side * 0.08), 0.5);
-      }
-      steel(xform(box(0.095, 0.12, 0.24), -0.115, recY - 0.01, 0.03), 0.58); // ammo can
-    }
-    // Connected disintegrating-link run. Ammunition stays steel/gunmetal and
-    // never samples the host camouflage.
-    for (let index = 0; index < 5; index++) {
-      const t = index / 4;
-      steel(xform(box(0.018, 0.026, 0.024), -0.112 + t * 0.075,
-        recY + 0.025 + t * 0.010, 0.11 + t * 0.08, 0, 0, -0.10 + t * 0.15),
-      index % 2 ? 0.52 : 0.61);
-    }
-    if (shield) {
-      // Split, shallow-chevron shield with edge ribs and real lower braces.
-      for (const side of [-1, 1]) {
-        kit(xform(box(0.235, 0.30, 0.026), side * 0.14, recY + 0.09, 0.15,
-          0, -side * 0.055, side * 0.035), 0.9);
-        steel(xform(box(0.022, 0.275, 0.034), side * 0.262, recY + 0.08, 0.135), 0.5);
-        steel(xform(box(0.024, 0.024, 0.18), side * 0.14, recY - 0.03, 0.06,
-          -0.26, 0, side * 0.08), 0.5);
-      }
-      kit(xform(box(0.32, 0.036, 0.034), 0, recY + 0.255, 0.145), 0.9);
-      steel(xform(box(0.15, 0.10, 0.028), 0, recY + 0.12, 0.175), 0.52);      // sight cutout frame
-    }
-    // gun + shield stowed muzzle-up ~7 deg about the trunnion; mount stays plumb
+    const tone = 0.56 + rng() * 0.06;
+    const collector = {
+      add(slot: string, geo: THREE.BufferGeometry, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {
+        xform(geo, x, y, z, rx, ry, rz);
+        const painted = slot === 'detail' || slot === 'hull';
+        parts.push({ mat: painted ? 'kit' : 'steel', geo: bakeShade(geo, painted ? 0.92 : slot === 'shadow' ? 0.32 : tone) });
+      },
+    };
+    const layout = createPintleLayout({
+      cls: v === 'dshk' ? 'dshk' : 'm2', shield, ring: ring ? { r: 0.33, stubs: 4 } : false, ammo: true, tone: 'two-tone',
+    }, collector);
+    addPintleRing(layout);
+    addPintleMount(layout);
+    const gunFrom = parts.length;
+    addPintleReceiver(layout);
+    addPintleBarrel(layout);
+    addPintleAmmo(layout);
+    addPintleShield(layout);
+    const pivotY = layout.colTop + 0.105 * layout.s, pivotZ = 0.065 * layout.s;
     for (let i = gunFrom; i < parts.length; i++) {
-      xform(parts[i].geo, 0, -H, 0);
+      xform(parts[i].geo, 0, -pivotY, -pivotZ);
       xform(parts[i].geo, 0, 0, 0, -7 * D2R, 0, 0);
-      xform(parts[i].geo, 0, H, 0);
+      xform(parts[i].geo, 0, pivotY, pivotZ);
     }
     return parts;
   },
 
   // -- roof lights: IR searchlight (large/small) + convoy light ----------------
-  light({ rng, v = 'ir_large' }) {
+  light({ rng, v = 'ir_large', detail = 1 }) {
     const parts: DecorPartList = [];
     const tone = 0.9 + rng() * 0.12;
-    if (v === 'convoy') {
-      parts.push({ mat: 'steel', geo: bakeShade(xform(cylY(0.02, 0.024, 0.1, 6), 0, 0.05, 0), 0.55) });
-      parts.push({ mat: 'kit', geo: bakeShade(xform(cylZ(0.045, 0.09, 8), 0, 0.13, 0.008), tone) });
-      parts.push({ mat: 'lens', geo: bakeShade(xform(cylZ(0.038, 0.012, 8), 0, 0.13, 0.056), 1) });
-      return parts;
-    }
-    const R = v === 'ir_large' ? 0.19 : 0.115;   // drum radius
-    const D = v === 'ir_large' ? 0.30 : 0.19;    // drum depth
-    parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.16, 0.035, 0.16), 0, 0.018, 0), tone) }); // base plate
-    for (const s of [-1, 1]) { // yoke arms — stop at the drum axle line
-      parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.02, R + 0.045, 0.045), s * (R + 0.014), (R + 0.045) / 2 + 0.02, 0), 0.55) });
-    }
-    parts.push({ mat: 'kit', geo: bakeShade(xform(cylZ(R, D, 14), 0, R + 0.07, -D * 0.18), tone) });            // drum
-    parts.push({ mat: 'steel', geo: bakeShade(xform(torus(R * 0.99, 0.014, 14, 4), 0, R + 0.07, D * 0.32, Math.PI / 2, 0, 0), 0.55) }); // face rim
-    parts.push({ mat: 'lens', geo: bakeShade(xform(cylZ(R * 0.93, 0.018, 14), 0, R + 0.07, D * 0.325), 1) });   // glass
-    if (v === 'ir_large') { // cable conduit
-      parts.push({ mat: 'steel', geo: bakeShade(xform(cylY(0.012, 0.012, R + 0.05, 5), R + 0.04, (R + 0.05) / 2, 0.03), 0.5) });
-    }
+    buildSearchlight(accessoryPainter(parts, rng, detail), v, tone);
     return parts;
   },
 
@@ -1134,19 +1117,10 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- gunner's sight head / periscope hood ------------------------------------
-  sight({ rng, v = 'peri' }) {
-    const tone = 0.92 + rng() * 0.1;
+  sight({ rng, v = 'peri', detail = 1 }) {
     const parts: DecorPartList = [];
-    if (v === 'peri') {
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.14, 0.09, 0.12), 0, 0.045, 0), tone) });
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.12, 0.05, 0.10), 0, 0.112, -0.012, -14 * D2R), tone) });
-      parts.push({ mat: 'lens', geo: bakeShade(xform(box(0.09, 0.028, 0.012), 0, 0.112, 0.05, -14 * D2R), 1) });
-    } else { // 'doghouse' primary-sight hood
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.26, 0.14, 0.30), 0, 0.07, 0), tone) });
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.26, 0.09, 0.12), 0, 0.175, -0.07, -26 * D2R), tone) });
-      parts.push({ mat: 'lens', geo: bakeShade(xform(box(0.18, 0.05, 0.014), 0, 0.10, 0.152), 1) });
-      parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.28, 0.016, 0.02), 0, 0.148, 0.14), 0.6) }); // brow rail
-    }
+    const tone = 0.92 + rng() * 0.1;
+    buildSight(accessoryPainter(parts, rng, detail), v, tone);
     return parts;
   },
 
@@ -1167,8 +1141,9 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- smoke grenade launcher cluster: 4/6/8 tubes, angled, turret-side --------
-  smoke({ rng, v = '6' }) {
+  smoke({ rng, v = '6', detail = 1 }) {
     const n = parseInt(v, 10) || 6;
+    const tubeSeg = detail ? 8 : 6;
     const parts: DecorPartList = [];
     const tone = 0.9 + rng() * 0.1;
     const rows = n > 6 ? 2 : 1;
@@ -1180,387 +1155,98 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
       const x = (k - (per - 1) / 2) * 0.082;
       const y = 0.115 + row * 0.078;
       const cant = (k - (per - 1) / 2) * 6 * D2R;   // fanned tubes
-      const g = markSmokeTube(cylZ(0.032, 0.21, 8));
+      const g = markSmokeTube(cylZ(0.032, 0.21, tubeSeg));
       xform(g, 0, 0, 0.075);                        // tube forward of its pivot
       // dark muzzle cap disc crisps the tube read at gameplay distance
-      const cap = xform(cylZ(0.0335, 0.014, 8), 0, 0, 0.185);
+      const cap = xform(cylZ(0.0335, 0.014, tubeSeg), 0, 0, 0.185);
       xform(g, 0, 0, 0, -34 * D2R, cant, 0);        // elevated + fanned
       xform(cap, 0, 0, 0, -34 * D2R, cant, 0);
       parts.push({ mat: 'kit', geo: bakeShade(xform(g, x, y, 0.02), tone * (0.94 + rng() * 0.1)) });
-      parts.push({ mat: 'steel', geo: bakeShade(xform(cap, x, y, 0.02), 0.4) });
+      // the dark muzzle cap shares the bank's kit draw (one resident draw per bank family)
+      parts.push({ mat: 'kit', geo: bakeShade(xform(cap, x, y, 0.02), 0.32) });
     }
     return parts;
   },
 
   // -- stowage boxes: wood crate / steel bin / long fender box ------------------
-  bin({ rng, v = 'steel', w = 0.55, h = 0.28, d = 0.4 }) {
+  // Molded / pressed stock (accessoryPrimitives.moldedBox): filleted vertical
+  // edges and bevelled rims, so the boxes catch a highlight on every edge.
+  bin({ rng, v = 'steel', w = 0.55, h = 0.28, d = 0.4, detail = 1 }) {
     const parts: DecorPartList = [];
+    const tone = 0.9 + rng() * 0.2;
+    const seg = detail ? 2 : 1;
     if (v === 'crate') {
-      parts.push({ mat: 'wood', geo: bakeShade(boxUV(xform(box(w, h, d), 0, h / 2, 0), 2.2), 0.9 + rng() * 0.2) });
+      parts.push({ mat: 'wood', geo: bakeShade(boxUV(place(moldedBox(w, h, d, 0.008, 1, 0.006), 0, h / 2, 0), 2.2), tone) });
       for (const sy of [0.14, 0.9]) { // batten frames
-        parts.push({ mat: 'wood', geo: bakeShade(boxUV(xform(box(w + 0.022, 0.035, d + 0.022), 0, h * sy, 0), 2.2), 0.68) });
+        parts.push({ mat: 'wood', geo: bakeShade(boxUV(place(moldedBox(w + 0.022, 0.035, d + 0.022, 0.006, 1, 0.005), 0, h * sy, 0), 2.2), 0.68) });
       }
     } else if (v === 'long') { // fender-length box with proud lid
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(w, h, d), 0, h / 2, 0), 0.94 + rng() * 0.1) });
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(w * 1.012, 0.03, d * 1.03), 0, h + 0.012, 0), 1.04) });
-      for (const fx of [-w * 0.32, w * 0.32]) { // hasp straps
-        parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.03, h * 0.8, 0.012), fx, h * 0.45, d / 2 + 0.007), 0.6) });
+      parts.push({ mat: 'kit', geo: bakeShade(place(moldedBox(w, h * 0.86, d, 0.018, seg, 0.01), 0, h * 0.43, 0), tone * 0.94) });
+      parts.push({ mat: 'kit', geo: bakeShade(place(moldedBox(w * 1.012, h * 0.16, d * 1.03, 0.022, seg, 0.012), 0, h * 0.92, 0), 1.04) });
+      if (detail) {
+        for (const fx of [-w * 0.32, w * 0.32]) { // hasp straps over the lid lip
+          parts.push({ mat: 'steel', geo: bakeShade(place(moldedBox(0.03, h * 0.42, 0.01, 0.003, 0, 0.002), fx, h * 0.74, d / 2 + 0.006), 0.6) });
+        }
       }
-    } else { // steel bin, rounded lid + clasp
-      parts.push({ mat: 'kit', geo: bakeShade(xform(box(w, h * 0.8, d), 0, h * 0.4, 0), 0.95 + rng() * 0.08) });
-      parts.push({ mat: 'kit', geo: bakeShade(xform(cylX(d * 0.49, w * 0.99, 10), 0, h * 0.8, 0), 1.03) });
-      parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.05, 0.03, 0.05), 0, h * 0.8 + d * 0.45, 0), 0.6) });
+    } else { // pressed steel bin, crowned lid + clasp
+      parts.push({ mat: 'kit', geo: bakeShade(place(moldedBox(w, h * 0.8, d, 0.03, seg, 0.012), 0, h * 0.4, 0), 0.95 + (tone - 1) * 0.4) });
+      parts.push({ mat: 'kit', geo: bakeShade(place(moldedBox(w * 1.01, h * 0.22, d * 1.02, 0.045, seg, h * 0.08), 0, h * 0.89, 0), 1.03) });
+      if (detail) {
+        parts.push({ mat: 'steel', geo: bakeShade(place(moldedBox(0.05, 0.05, 0.016, 0.006, 1, 0.003), 0, h * 0.8, d / 2 + 0.01), 0.6) });
+        for (const fx of [-w * 0.34, w * 0.34]) {
+          parts.push({ mat: 'steel', geo: bakeShade(roundBar([fx - 0.03, h * 1.0, -d / 2 - 0.004], [fx + 0.03, h * 1.0, -d / 2 - 0.004], 0.009, 6), 0.55) });
+        }
+      }
     }
     return parts;
   },
 
-  // -- rolled tarp / canvas roll --------------------------------------------------
-  tarp({ rng, v = 'fat', len = 0.9 }) {
+  // -- rolled tarp / canvas roll (accessoryKits.buildTarpRoll) -------------------
+  tarp({ rng, v = 'fat', len = 0.9, detail = 1 }) {
     const parts: DecorPartList = [];
-    const R = v === 'fat' ? 0.125 : 0.085;
     const tone = 0.85 + rng() * 0.25;
-    const body = boxUV(capX(R, len, 9), 2.6);
-    const pos = body.attributes.position;  // sag the ends a touch
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i);
-      pos.setY(i, pos.getY(i) - Math.pow(Math.abs(x) / (len / 2 + 0.01), 2) * 0.02);
-    }
-    body.computeVertexNormals();
-    parts.push({ mat: 'canvas', geo: bakeShade(xform(body, 0, R * 0.92, 0), tone) });
-    for (const s of [-0.3, 0.3]) { // cinch straps
-      parts.push({ mat: 'steel', geo: bakeShade(xform(torusV(R + 0.006, 0.011, 9, 4), s * len, R * 0.92, 0, 0, Math.PI / 2, 0), 0.42) });
-    }
+    buildTarpRoll(accessoryPainter(parts, rng, detail), len, v === 'fat' ? 0.125 : 0.085, tone * 0.9);
     return parts;
   },
 
-  // -- camo netting: rolled bundle or draped flat patch ---------------------------
-  camonet({ rng, v = 'roll', len = 1.0, w = 0.9 }) {
+  // -- camo netting: rolled bundle or draped patch (accessoryKits) ---------------
+  camonet({ rng, v = 'roll', len = 1.0, w = 0.9, detail = 1 }) {
     const parts: DecorPartList = [];
-    if (v === 'roll') {
-      const R = 0.135;
-      const body = boxUV(capX(R, len, 9), 2.0);
-      const pos = body.attributes.position;   // lumpy roll
-      for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-        const k = 1 + 0.12 * Math.sin(x * 9.1 + 2) * Math.sin(y * 7 + z * 8);
-        pos.setY(i, y * k); pos.setZ(i, z * k);
-      }
-      body.computeVertexNormals();
-      parts.push({ mat: 'canvas', geo: bakeShade(xform(body, 0, R, 0), 0.6 + rng() * 0.1) });
-      // net skin wrapped over the top half (open half-cylinder shell)
-      const wrap = new THREE.CylinderGeometry(R + 0.012, R + 0.012, len * 0.94, 10, 1, true, -Math.PI / 2, Math.PI);
-      xform(wrap, 0, 0, 0, 0, 0, Math.PI / 2);
-      parts.push({ mat: 'net', geo: bakeShade(boxUV(xform(wrap, 0, R, 0), 1.8), 0.95) });
-      for (const s of [-0.32, 0.02, 0.34]) {
-        parts.push({ mat: 'steel', geo: bakeShade(xform(torusV(R + 0.014, 0.01, 9, 4), s * len, R, 0, 0, Math.PI / 2, 0), 0.45) });
-      }
-    } else { // draped flat patch (alpha-tested sheet with sag + hang)
-      const g = new THREE.PlaneGeometry(w, len, 7, 7);
-      xform(g, 0, 0, 0, -Math.PI / 2, 0, 0);
-      const pos = g.attributes.position;
+    const painter = accessoryPainter(parts, rng, detail);
+    if (v === 'roll') buildNetRoll(painter, len, 0.6 + rng() * 0.1);
+    else {
       const seed = rng() * 10;
-      for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i), z = pos.getZ(i);
-        const edge = Math.max(Math.abs(x) / (w / 2), Math.abs(z) / (len / 2));
-        pos.setY(i, 0.06 + 0.05 * Math.sin(x * 6 + seed) * Math.cos(z * 5 - seed) - edge * edge * 0.11);
-      }
-      g.computeVertexNormals();
-      parts.push({ mat: 'net', geo: bakeShade(boxUV(g, 1.4), 1.0 + rng() * 0.15, 0.12) });
+      rng();
+      buildNetDrape(painter, w, len, seed);
     }
     return parts;
   },
 
-  // -- unditching log (rear-strapped beam, axis X) ---------------------------------
-  log({ rng, len = 2.4 }) {
+  // -- unditching log (rear-strapped beam, axis X) -------------------------------
+  log({ rng, len = 2.4, detail = 1 }) {
     const parts: DecorPartList = [];
-    const R = 0.115;
-    parts.push({ mat: 'wood', geo: bakeShade(boxUV(cylX(R, len, 9, R * 0.94), 2.0), 0.6 + rng() * 0.12) });
-    for (const s of [-1, 1]) {
-      parts.push({ mat: 'wood', geo: bakeShade(xform(cylX(R * 0.88, 0.03, 9), s * (len / 2 + 0.012), 0, 0), 0.95) }); // pale end cut
-      parts.push({ mat: 'steel', geo: bakeShade(xform(torusV(R + 0.008, 0.013, 9, 4), s * len * 0.31, 0, 0, 0, Math.PI / 2, 0), 0.42) });
-      parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.028, 0.10, 0.012), s * len * 0.31, -R * 0.5, R + 0.02), 0.42) }); // strap tail
-    }
+    const tone = 0.95 + rng() * 0.2;
+    buildLog(accessoryPainter(parts, rng, detail), len, 0.115, tone, Math.floor(rng() * 97));
     return parts;
   },
 
-  // -- soft stowage: rucksack / bedroll / duffel cluster -----------------------------
-  packs({ rng, n = 3 }) {
+  // -- soft stowage: rucksack / bedroll / duffel cluster (accessoryKits) --------
+  packs({ rng, n = 3, detail = 1 }) {
     const parts: DecorPartList = [];
-    let x = 0;
-    for (let i = 0; i < n; i++) {
-      const kind = rng();
-      const tone = 0.52 + rng() * 0.34;
-      if (kind < 0.4) {        // rucksack: squashed sphere + flap
-        const w = 0.26 + rng() * 0.06, h = 0.3 + rng() * 0.07, d = 0.2;
-        parts.push({ mat: 'canvas', geo: bakeShade(boxUV(xform(sph(0.5), x, h * 0.42, 0, rng() * 0.5 - 0.2, rng(), 0, [w, h * 0.62, d]), 2.4), tone) });
-        parts.push({ mat: 'canvas', geo: bakeShade(boxUV(xform(box(w * 0.75, 0.06, d * 1.02), x, h * 0.6, 0, -0.3), 2.4), tone * 0.88) });
-        x += w * 0.95;
-      } else if (kind < 0.75) { // bedroll
-        const len = 0.5 + rng() * 0.15;
-        parts.push({ mat: 'canvas', geo: bakeShade(boxUV(xform(capX(0.085, len, 8), x, 0.085, 0, 0, (rng() - 0.5) * 0.5, 0), 2.6), tone) });
-        x += 0.26;
-      } else {                  // duffel
-        parts.push({ mat: 'canvas', geo: bakeShade(boxUV(xform(capX(0.11, 0.42, 8), x, 0.11, 0.02, 0, rng() * 0.8, 0), 2.6), tone) });
-        x += 0.3;
-      }
-    }
-    xformParts(parts, -x / 2 + 0.12, 0, 0);
+    const span = buildPackCluster(accessoryPainter(parts, rng, detail), n);
+    xformParts(parts, -span / 2, 0, 0);
     return parts;
   },
 
   // -- loose crew cargo: 24 named, material-authored variants ---------------------
-  // Small pieces are deliberately a little graphic at gameplay distance: lids,
-  // handles, straps and latches remain separate instead of becoming one grey
-  // cuboid after merging.  Every geometry still originates at its physical seat.
-  cargo({ rng, v = 'beer-cooler-blue', scale = 1, nation = '', flat }) {
+  // Molded cases, sewn bags, pressed cans and crates from accessoryKits.ts: lids,
+  // handles, straps and latches stay separate members instead of becoming one
+  // grey cuboid after merging. Every geometry still originates at its seat.
+  cargo({ rng, v = 'beer-cooler-blue', scale = 1, nation = '', flat, detail = 1 }) {
     const variant = (FLEET_EQUIPMENT_VARIANTS as readonly string[]).includes(v)
       ? v as FleetEquipmentVariant : 'beer-cooler-blue';
-    const equipmentPalette = equipmentPaletteForNation(nation);
     const parts: DecorPartList = [];
-    const paint = (geo: THREE.BufferGeometry, rgb: readonly [number, number, number], ao = 0.26) => {
-      // Cargo is seen beneath the same sun/IBL as the tank. Raw near-primary
-      // tints therefore read as glossy toys even on a weathered armor shell.
-      // Keep the hue identity, but lower its value and pull only the brightest
-      // colors slightly toward their neutral luminance (paint fade + grime).
-      const countryTint = equipmentPalette.accent;
-      const countryMix = nation ? 0.16 : 0;
-      const themed: readonly [number, number, number] = [
-        rgb[0] * (1 - countryMix) + countryTint[0] * countryMix,
-        rgb[1] * (1 - countryMix) + countryTint[1] * countryMix,
-        rgb[2] * (1 - countryMix) + countryTint[2] * countryMix,
-      ];
-      const peak = Math.max(themed[0], themed[1], themed[2], 0.0001);
-      // Values here are linear-space vertex multipliers; a seemingly modest
-      // 0.4 displays much brighter after output transfer. Keep peaks down in
-      // the painted-hardware range so red/blue pieces do not glow against camo.
-      const scale = Math.min(0.72, 0.18 / peak);
-      const neutral = ((themed[0] + themed[1] + themed[2]) / 3) * scale;
-      const fade = peak > 0.48 ? 0.28 : 0;
-      const muted: readonly [number, number, number] = [
-        themed[0] * scale * (1 - fade) + neutral * fade,
-        themed[1] * scale * (1 - fade) + neutral * fade,
-        themed[2] * scale * (1 - fade) + neutral * fade,
-      ];
-      parts.push({ mat: 'cans', geo: bakeTint(geo, muted[0], muted[1], muted[2], ao) });
-    };
-    const steel = (geo: THREE.BufferGeometry, tone = 0.52) => {
-      parts.push({ mat: 'steel', geo: bakeShade(geo, tone + rng() * 0.04) });
-    };
-    const cloth = (geo: THREE.BufferGeometry, tone = 0.78) => {
-      parts.push({ mat: 'canvas', geo: bakeShade(boxUV(geo, 2.5), tone + rng() * 0.05) });
-    };
-    const wood = (geo: THREE.BufferGeometry, tone = 0.82) => {
-      parts.push({ mat: 'wood', geo: bakeShade(boxUV(geo, 2.2), tone + rng() * 0.05) });
-    };
-    const strap = (x: number, y: number, z: number, w: number, h: number, d: number) => {
-      parts.push({ mat: 'rubber', geo: bakeShade(xform(box(w, h, d), x, y, z), 0.58) });
-    };
-    const hardCase = (
-      rgb: readonly [number, number, number], w = 0.46, h = 0.25, d = 0.32,
-      lid: readonly [number, number, number] = rgb,
-    ) => {
-      paint(xform(box(w, h * 0.78, d), 0, h * 0.39, 0), rgb);
-      paint(xform(box(w * 1.03, h * 0.22, d * 1.035), 0, h * 0.89, 0), lid, 0.18);
-      steel(xform(box(w * 0.26, 0.025, 0.035), 0, h + 0.025, -d * 0.28));
-      for (const side of [-1, 1]) steel(xform(box(0.026, h * 0.30, 0.035), side * w * 0.36, h * 0.49, d * 0.51), 0.46);
-    };
-    const jerryCan = (x: number, rgb: readonly [number, number, number], scale = 1) => {
-      const w = 0.18 * scale, h = 0.40 * scale, d = 0.29 * scale;
-      paint(xform(box(w, h, d), x, h / 2, 0), rgb);
-      // stamped X panel and a real open handle/spout silhouette
-      for (const rz of [-0.58, 0.58]) {
-        paint(xform(box(0.016 * scale, h * 0.68, 0.022 * scale), x, h * 0.47, d / 2 + 0.012, 0, 0, rz),
-          [rgb[0] * 1.08, rgb[1] * 1.08, rgb[2] * 1.08]);
-      }
-      paint(xform(box(w * 0.72, 0.035 * scale, 0.045 * scale), x, h + 0.04 * scale, 0), rgb);
-      paint(xform(box(0.028 * scale, 0.085 * scale, 0.045 * scale), x - w * 0.32, h, 0), rgb);
-      paint(xform(box(0.028 * scale, 0.085 * scale, 0.045 * scale), x + w * 0.32, h, 0), rgb);
-      steel(xform(cylY(0.025 * scale, 0.029 * scale, 0.045 * scale, 7), x - w * 0.27, h + 0.055 * scale, -d * 0.28));
-    };
-
-    const buildCargoGroupOne = (): void => {
-      switch (variant) {
-      case 'beer-cooler-blue': { // weathered field cooler, not a clean/emissive toy block
-        const w = 0.50, h = 0.28, d = 0.34;
-        const body: readonly [number, number, number] = [0.08, 0.19, 0.29];
-        const bodyRaised: readonly [number, number, number] = [0.10, 0.22, 0.32];
-        const bodyScuff: readonly [number, number, number] = [0.07, 0.15, 0.21];
-        const lid: readonly [number, number, number] = [0.50, 0.52, 0.49];
-        const lidEdge: readonly [number, number, number] = [0.41, 0.43, 0.41];
-
-        paint(xform(box(w, h * 0.78, d), 0, h * 0.39, 0), body, 0.34);
-        paint(xform(box(w * 1.025, h * 0.22, d * 1.025), 0, h * 0.89, 0), lid, 0.30);
-        paint(xform(box(w * 0.72, 0.012, d * 0.70), 0, h * 1.015, 0), lidEdge, 0.38);
-        paint(xform(box(w * 1.01, 0.034, d * 1.015), 0, h * 0.77, 0), lidEdge, 0.34);
-        paint(xform(box(w * 0.90, 0.025, d * 1.018), 0, 0.035, 0), bodyScuff, 0.40);
-        for (const z of [-1, 1]) {
-          const faceZ = z * (d / 2 + 0.004);
-          paint(xform(box(w * 0.70, h * 0.43, 0.012), 0, h * 0.40, faceZ), bodyRaised, 0.38);
-          for (const x of [-0.20, 0.20]) {
-            paint(xform(box(0.024, h * 0.60, 0.014), x, h * 0.40, faceZ + z * 0.002), bodyScuff, 0.42);
-          }
-        }
-        paint(xform(box(w * 0.30, 0.026, 0.036), 0, h + 0.018, -d * 0.24), bodyScuff, 0.40);
-        for (const side of [-1, 1]) {
-          paint(xform(box(0.026, h * 0.29, 0.036), side * w * 0.34, h * 0.49, d * 0.505), bodyScuff, 0.42);
-          paint(xform(box(0.050, 0.038, 0.026), side * w * 0.26, h * 0.79, -d * 0.515), lidEdge, 0.40);
-          paint(xform(box(0.042, 0.070, 0.022), side * w * 0.22, h * 0.69, d * 0.518), bodyRaised, 0.40);
-        }
-        break;
-      }
-      case 'cooler-red':
-        hardCase([0.82, 0.12, 0.09], 0.45, 0.25, 0.31, [0.96, 0.96, 0.92]);
-        break;
-      case 'insulated-chest-olive':
-        hardCase([0.34, 0.40, 0.20], 0.56, 0.27, 0.36, [0.48, 0.50, 0.29]);
-        strap(-0.18, 0.15, 0.185, 0.035, 0.22, 0.025);
-        strap(0.18, 0.15, 0.185, 0.035, 0.22, 0.025);
-        break;
-      case 'long-duffel':
-        cloth(xform(capX(0.14, 0.72, 10), 0, 0.14, 0, 0, 0.08, 0), 0.66);
-        for (const side of [-0.23, 0.23]) strap(side, 0.15, 0, 0.026, 0.24, 0.30);
-        steel(xform(torusV(0.12, 0.012, 9, 4), 0, 0.29, 0, Math.PI / 2, 0, 0));
-        break;
-      case 'large-rucksack':
-        cloth(xform(sph(0.5, 11, 7), 0, 0.22, 0, -0.10, 0.12, 0, [0.42, 0.38, 0.25]), 0.62);
-        cloth(xform(box(0.35, 0.10, 0.26), 0, 0.35, 0.015, -0.20), 0.58);
-        for (const side of [-1, 1]) strap(side * 0.13, 0.22, 0.135, 0.028, 0.33, 0.022);
-        break;
-      case 'bedroll-pair':
-        for (const z of [-0.105, 0.105]) {
-          cloth(xform(capX(0.085, 0.55, 9), 0, 0.085, z), z < 0 ? 0.67 : 0.82);
-          for (const x of [-0.15, 0.15]) strap(x, 0.088, z, 0.018, 0.17, 0.18);
-        }
-        break;
-      }
-    };
-    const buildCargoGroupTwo = (): void => {
-      switch (variant) {
-      case 'folded-tarp-pack':
-        for (let i = 0; i < 3; i++) cloth(xform(box(0.50 - i * 0.035, 0.065, 0.34 - i * 0.02), 0, 0.035 + i * 0.064, 0), 0.70 + i * 0.06);
-        for (const x of [-0.15, 0.15]) strap(x, 0.11, 0, 0.025, 0.22, 0.36);
-        break;
-      case 'camo-net-bag': {
-        const bag = xform(sph(0.5, 10, 7), 0, 0.18, 0, 0.12, -0.18, 0, [0.46, 0.32, 0.34]);
-        cloth(bag, 0.52);
-        const skin = xform(sph(0.505, 10, 7), 0, 0.18, 0, 0.12, -0.18, 0, [0.47, 0.33, 0.35]);
-        parts.push({ mat: 'net', geo: bakeShade(boxUV(skin, 1.9), 0.92) });
-        strap(0, 0.34, 0, 0.30, 0.026, 0.035);
-        break;
-      }
-      case 'nato-fuel-can':
-        jerryCan(-0.105, equipmentPalette.fuelA, 0.92);
-        jerryCan(0.105, equipmentPalette.fuelB, 0.92);
-        steel(xform(box(0.44, 0.025, 0.33), 0, 0.015, 0), 0.48);
-        for (const side of [-1, 1]) steel(xform(box(0.024, 0.36, 0.33), side * 0.215, 0.18, 0), 0.48);
-        break;
-      case 'blue-water-can':
-        jerryCan(-0.105, equipmentPalette.waterA, 0.92);
-        jerryCan(0.105, equipmentPalette.waterB, 0.92);
-        steel(xform(box(0.44, 0.025, 0.33), 0, 0.015, 0), 0.48);
-        for (const side of [-1, 1]) steel(xform(box(0.024, 0.36, 0.33), side * 0.215, 0.18, 0), 0.48);
-        break;
-      case 'twin-can-cradle':
-        jerryCan(-0.11, equipmentPalette.fuelA, 0.90);
-        jerryCan(0.11, equipmentPalette.fuelB, 0.90);
-        steel(xform(box(0.46, 0.025, 0.34), 0, 0.015, 0), 0.48);
-        for (const side of [-1, 1]) steel(xform(box(0.025, 0.38, 0.34), side * 0.22, 0.19, 0), 0.48);
-        break;
-      case 'soviet-tool-can':
-        paint(xform(cylX(0.13, 0.60, 12), 0, 0.13, 0), equipmentPalette.toolCan);
-        for (const x of [-0.26, 0.26]) steel(xform(torusV(0.135, 0.012, 12, 4), x, 0.13, 0, 0, Math.PI / 2, 0));
-        steel(xform(box(0.18, 0.025, 0.045), 0, 0.28, 0));
-        break;
-      }
-    };
-    const buildCargoGroupThree = (): void => {
-      switch (variant) {
-      case 'fifty-cal-ammo-can':
-        hardCase(equipmentPalette.ammoCase, 0.36, 0.24, 0.20, equipmentPalette.toolCan);
-        break;
-      case 'wood-ammo-crate':
-        wood(xform(box(0.58, 0.28, 0.34), 0, 0.14, 0), 0.76);
-        for (const x of [-0.23, 0.23]) wood(xform(box(0.055, 0.30, 0.36), x, 0.15, 0), 0.58);
-        for (const z of [-0.145, 0.145]) steel(xform(box(0.46, 0.025, 0.025), 0, 0.29, z), 0.44);
-        break;
-      case 'ration-case':
-        hardCase([0.52, 0.36, 0.18], 0.42, 0.22, 0.30, [0.62, 0.45, 0.25]);
-        for (const x of [-0.12, 0.12]) paint(xform(box(0.045, 0.04, 0.012), x, 0.18, 0.157), [0.92, 0.78, 0.42]);
-        break;
-      case 'medical-case':
-        hardCase([0.33, 0.42, 0.22], 0.42, 0.24, 0.28, [0.40, 0.50, 0.26]);
-        paint(xform(box(0.05, 0.14, 0.014), 0, 0.125, 0.148), [0.92, 0.90, 0.84]);
-        paint(xform(box(0.14, 0.05, 0.014), 0, 0.125, 0.149), [0.92, 0.90, 0.84]);
-        break;
-      case 'mechanics-tool-chest':
-        hardCase([0.68, 0.10, 0.07], 0.52, 0.24, 0.28, [0.78, 0.14, 0.09]);
-        for (const x of [-0.16, 0.16]) steel(xform(box(0.045, 0.055, 0.025), x, 0.19, 0.15), 0.64);
-        break;
-      case 'fire-extinguisher':
-        paint(xform(cylY(0.105, 0.115, 0.44, 12), 0, 0.22, 0), equipmentPalette.extinguisher);
-        paint(xform(cylY(0.07, 0.10, 0.08, 10), 0, 0.48, 0), equipmentPalette.extinguisher);
-        steel(xform(box(0.19, 0.025, 0.035), 0.06, 0.54, 0), 0.54);
-        steel(xform(torusV(0.11, 0.014, 12, 4), 0, 0.25, 0, Math.PI / 2, 0, 0), 0.48);
-        // Fleet cargo bottles are normally transported on their side in a
-        // low retaining cradle. Profile-authored emergency bottles may still
-        // opt into the upright silhouette with `flat:false`.
-        if (flat !== false) {
-          xformParts(parts, -0.27, 0.16, 0, 0, 0, -Math.PI / 2);
-          for (const x of [-0.14, 0.14]) {
-            steel(xform(box(0.025, 0.025, 0.25), x, 0.025, 0), 0.45);
-          }
-        }
-        break;
-      }
-    };
-    const buildCargoGroupFour = (): void => {
-      switch (variant) {
-      case 'cable-reel':
-        for (const x of [-0.14, 0.14]) wood(xform(cylX(0.18, 0.035, 12), x, 0.18, 0), 0.68);
-        wood(xform(cylX(0.08, 0.30, 10), 0, 0.18, 0), 0.58);
-        for (let i = 0; i < 5; i++) steel(xform(torusV(0.085 + i * 0.012, 0.010, 12, 4), -0.10 + i * 0.05, 0.18, 0, 0, Math.PI / 2, 0), 0.42);
-        break;
-      case 'helmet-bundle':
-        for (const x of [-0.15, 0, 0.15]) {
-          paint(xform(sph(0.5, 10, 6), x, 0.10 + Math.abs(x) * 0.12, 0, 0, 0, 0, [0.24, 0.14, 0.22]), [0.30, 0.38, 0.19]);
-          steel(xform(box(0.08, 0.015, 0.025), x, 0.19 + Math.abs(x) * 0.12, 0));
-        }
-        strap(0, 0.11, 0, 0.40, 0.025, 0.035);
-        break;
-      case 'crew-backpack':
-        cloth(xform(box(0.38, 0.38, 0.22), 0, 0.19, 0), 0.60);
-        cloth(xform(box(0.32, 0.12, 0.235), 0, 0.32, 0.012, -0.18), 0.56);
-        for (const x of [-0.12, 0.12]) strap(x, 0.19, 0.12, 0.025, 0.34, 0.02);
-        cloth(xform(box(0.20, 0.12, 0.08), 0, 0.09, 0.15), 0.66);
-        break;
-      case 'folding-chair':
-        for (const x of [-0.18, 0.18]) {
-          steel(xform(cylY(0.012, 0.012, 0.48, 5), x, 0.24, -0.08, 0, 0, x < 0 ? -0.16 : 0.16));
-          steel(xform(cylY(0.012, 0.012, 0.48, 5), x, 0.24, 0.08, 0, 0, x < 0 ? 0.16 : -0.16));
-        }
-        cloth(xform(box(0.42, 0.025, 0.28), 0, 0.27, 0), 0.64);
-        cloth(xform(box(0.42, 0.24, 0.025), 0, 0.41, -0.13, -0.12), 0.68);
-        break;
-      case 'spare-optics-case':
-        hardCase([0.18, 0.20, 0.17], 0.44, 0.30, 0.34, [0.24, 0.26, 0.22]);
-        parts.push({ mat: 'lens', geo: bakeShade(xform(box(0.16, 0.08, 0.014), 0, 0.17, 0.178), 0.72) });
-        steel(xform(box(0.20, 0.018, 0.02), 0, 0.17, 0.188), 0.48);
-        break;
-      case 'thermos-crate':
-        wood(xform(box(0.50, 0.24, 0.34), 0, 0.12, 0), 0.74);
-        for (const x of [-0.13, 0.13]) {
-          paint(xform(cylY(0.060, 0.066, 0.28, 10), x, 0.26, 0), [0.72, 0.72, 0.64]);
-          paint(xform(cylY(0.052, 0.060, 0.045, 10), x, 0.422, 0), [0.18, 0.20, 0.17]);
-        }
-        for (const x of [-0.22, 0.22]) wood(xform(box(0.035, 0.26, 0.36), x, 0.13, 0), 0.56);
-        break;
-      }
-    };
-    const variantIndex = FLEET_EQUIPMENT_VARIANTS.indexOf(variant);
-    if (variantIndex < 6) buildCargoGroupOne();
-    else if (variantIndex < 12) buildCargoGroupTwo();
-    else if (variantIndex < 18) buildCargoGroupThree();
-    else buildCargoGroupFour();
+    buildCargoVariant(variant, accessoryPainter(parts, rng, detail, nation), equipmentPaletteForNation(nation), flat);
     const safeScale = THREE.MathUtils.clamp(Number(scale) || 1, 0.72, 1);
     if (safeScale !== 1) {
       for (const part of parts) part.geo.scale(safeScale, safeScale, safeScale);
@@ -1575,7 +1261,7 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
 
   // -- turret bustle basket (open lattice + shaped soft contents) -------------------
   // Local frame: open face toward +Z (bolts to the bustle), extends -Z.
-  basket({ rng, w = 1.2, d = 0.42, h = 0.34 }) {
+  basket({ rng, w = 1.2, d = 0.42, h = 0.34, detail = 1 }) {
     const parts: DecorPartList = [];
     const rod = Math.max(0.016, Math.min(0.026, Math.min(w, d, h) * 0.065));
     const st = (geo: THREE.BufferGeometry) => parts.push({ mat: 'steel', geo: bakeShade(geo, 0.5 + rng() * 0.06) });
@@ -1617,28 +1303,19 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
       st(xform(box(w * 0.14, 0.045, rod * 1.5), side * w * 0.31,
         h * 0.29, -rod * 0.6));
     }
-    // Contents: two compressible packs with flaps, pockets, and straps plus
-    // a transverse tarp roll. They remain inside the lattice envelope.
-    for (const [x, tone, yaw] of [[-w * 0.22, 0.86, 0.22], [w * 0.24, 0.72, -0.18]] as const) {
-      const bw = Math.min(0.34, w * 0.28);
-      const bh = h * 0.56;
-      const bd = d * 0.50;
-      parts.push({ mat: 'canvas', geo: bakeShade(boxUV(xform(sph(0.5, 10, 7), x,
-        h * 0.48, -d * 0.50, 0.08, yaw, 0, [bw, bh, bd]), 2.4), tone + rng() * 0.08) });
-      parts.push({ mat: 'canvas', geo: bakeShade(boxUV(xform(box(bw * 0.74, 0.026, bd * 0.60),
-        x, h * 0.72, -d * 0.47, -0.12, yaw, 0), 2.4), tone * 0.92) });
-      parts.push({ mat: 'canvas', geo: bakeShade(boxUV(xform(box(bw * 0.52, bh * 0.28, 0.020),
-        x, h * 0.48, -d * 0.23, 0, yaw, 0), 2.4), tone * 0.88) });
-      for (const sx of [-0.22, 0.22]) {
-        st(xform(box(0.015, bh * 0.95, bd * 1.02), x + sx * bw,
-          h * 0.48, -d * 0.50, 0, yaw, 0));
-      }
+    // Contents: two sewn duffels lying in the lattice and a tarp roll across the
+    // top (accessoryKits), inside the lattice envelope.
+    const painter = accessoryPainter(parts, rng, detail);
+    const bagLen = Math.min(0.5, w * 0.4);
+    const bagR = Math.min(0.11, h * 0.34, d * 0.26);
+    for (const [x, tone, yaw] of [[-w * 0.22, 0.86, 0.12], [w * 0.24, 0.72, -0.1]] as const) {
+      duffel(painter, bagLen, bagR, [x, h * 0.30 + rod * 0.6, -d * 0.5], yaw, tone, 500 + Math.round(x * 100));
     }
     const tarpR = Math.min(0.075, h * 0.22);
-    parts.push({ mat: 'canvas', geo: bakeShade(boxUV(xform(capX(tarpR, w * 0.58, 9),
-      0, h * 0.90, -d * 0.42), 2.6), 0.78 + rng() * 0.10) });
-    for (const x of [-w * 0.17, w * 0.17]) st(xform(torusV(tarpR + 0.006, 0.009, 9, 4),
-      x, h * 0.90, -d * 0.42, 0, Math.PI / 2, 0));
+    const tarpParts: DecorPartList = [];
+    buildTarpRoll(accessoryPainter(tarpParts, rng, detail), w * 0.58, tarpR, 0.8);
+    xformParts(tarpParts, 0, h * 0.90 - tarpR, -d * 0.42);
+    parts.push(...tarpParts);
     parts.meta = { basket: true, w, d, h };
     return parts;
   },
@@ -1710,34 +1387,9 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- pioneer tools on fender clamps (laid along +Z, fanned across X) ---------------
-  tools({ rng, set = ['shovel', 'axe', 'crowbar'] }) {
+  tools({ rng, set = ['shovel', 'axe', 'crowbar'], detail = 1 }) {
     const parts: DecorPartList = [];
-    const wood = (geo: THREE.BufferGeometry, t = 1) => parts.push({ mat: 'wood', geo: bakeShade(geo, t) });
-    const st = (geo: THREE.BufferGeometry, t = 0.55) => parts.push({ mat: 'steel', geo: bakeShade(geo, t + rng() * 0.05) });
-    set.forEach((tool, idx) => {
-      const lane = (idx - (set.length - 1) / 2) * 0.115;
-      const from = parts.length;
-      const tone = 0.68 + rng() * 0.16; // worn dull handles, never fresh lumber
-      if (tool === 'shovel') {
-        wood(xform(cylZ(0.016, 0.78, 5), 0, 0.03, 0), tone);
-        st(xform(box(0.13, 0.02, 0.19), 0, 0.03, 0.45));
-        st(xform(box(0.05, 0.028, 0.05), 0, 0.03, -0.42));
-      } else if (tool === 'axe') {
-        wood(xform(cylZ(0.015, 0.62, 5), 0, 0.03, 0), tone);
-        st(xform(box(0.03, 0.05, 0.15), 0, 0.032, 0.30));
-        st(xform(box(0.085, 0.045, 0.05), 0.02, 0.032, 0.33));
-      } else if (tool === 'sledge') {
-        wood(xform(cylZ(0.017, 0.7, 5), 0, 0.035, 0), tone);
-        st(xform(box(0.07, 0.07, 0.14), 0, 0.035, 0.33));
-      } else { // crowbar
-        st(xform(cylZ(0.012, 0.75, 5), 0, 0.026, 0), 0.5);
-        st(xform(cylZ(0.012, 0.09, 5), 0, 0.052, 0.37, 0.6), 0.5);
-      }
-      for (const cz of [-0.2, 0.24]) { // clamp blocks
-        parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.05, 0.05, 0.035), 0, 0.026, cz), 0.88) });
-      }
-      xformParts(parts, lane, 0, (rng() - 0.5) * 0.1, 0, 0, 0, from);
-    });
+    buildTools(accessoryPainter(parts, rng, detail), set);
     return parts;
   },
 
@@ -1761,29 +1413,20 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
 
   // -- external fuel drums --------------------------------------------------------
   // twin: two longitudinal 200 L drums as one piece, brackets down (deck-seat).
-  // single: one TRANSVERSE drum (axis X), rear-plate cantilever mount.
-  drums({ rng, v = 'twin', _W = 0 }) {
+  // single: one TRANSVERSE drum (axis X), rear-plate cantilever mount. The drum
+  // body is a lathe with rolled chimes and rolling hoops (accessoryKits.drum200).
+  drums({ rng, v = 'twin', _W = 0, detail = 1 }) {
     const parts: DecorPartList = [];
+    const painter = accessoryPainter(parts, rng, detail);
     const R = 0.28, L = 0.85;
     const drum = (cx: number, transverse: boolean) => {
       const tone = 0.86 + rng() * 0.18;
-      const body = transverse ? cylX(R, L, 14) : cylZ(R, L, 14);
-      parts.push({ mat: 'kit', geo: bakeShade(xform(body, cx, 0, 0), tone) });
-      for (const rz of [-L * 0.27, L * 0.27]) { // rolling ribs
-        const rib = transverse
-          ? xform(torusV(R + 0.011, 0.012, 14, 4), cx + rz, 0, 0, 0, Math.PI / 2, 0)
-          : xform(torus(R + 0.011, 0.012, 14, 4), cx, 0, rz, Math.PI / 2, 0, 0);
-        parts.push({ mat: 'kit', geo: bakeShade(rib, tone * 0.92) });
-      }
-      const bungAt: [number, number, number] = transverse
-        ? [cx + L * 0.31, R * 0.86, 0.1]
-        : [cx + R * 0.4, R * 0.86, L * 0.31];
-      parts.push({ mat: 'steel', geo: bakeShade(xform(cylY(0.035, 0.035, 0.03, 7), ...bungAt), 0.5) });
+      drum200(painter, cx, transverse, tone);
       // cradle brackets + straps
       for (const b of [-L * 0.3, L * 0.3]) {
         const strap = transverse
-          ? xform(torusV(R + 0.014, 0.009, 12, 4, Math.PI), cx + b, 0, 0, 0, Math.PI / 2, 0)
-          : xform(torus(R + 0.014, 0.009, 12, 4, Math.PI), cx, 0, b, Math.PI / 2, 0, 0);
+          ? xform(torusV(R + 0.014, 0.009, detail ? 10 : 6, 3, Math.PI), cx + b, 0, 0, 0, Math.PI / 2, 0)
+          : xform(torus(R + 0.014, 0.009, detail ? 10 : 6, 3, Math.PI), cx, 0, b, Math.PI / 2, 0, 0);
         parts.push({ mat: 'steel', geo: bakeShade(strap, 0.42) });
         const bx = transverse ? cx + b : cx;
         const bz = transverse ? 0 : b;
@@ -1805,33 +1448,27 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     return parts;
   },
 
-  // -- jerrycan rack (fuel tan / water green) ---------------------------------------
-  jerry({ n = 2, water = true }) {
+  // -- jerrycan rack (fuel tan / water green), pressed 20 L cans ----------------------
+  jerry({ rng, n = 2, water = true, detail = 1 }) {
     const parts: DecorPartList = [];
+    const painter = accessoryPainter(parts, rng, detail);
     const pairedCount = Math.max(2, Math.ceil(n / 2) * 2);
+    const pitch = 0.178;
     for (let i = 0; i < pairedCount; i++) {
-      const x = (i - (pairedCount - 1) / 2) * 0.20;
+      const x = (i - (pairedCount - 1) / 2) * pitch;
       const isWater = water && i >= pairedCount - 2;
-      const tint: [number, number, number] = isWater
-        ? [0.24, 0.30, 0.22]
-        : [0.45, 0.37, 0.24];
-      parts.push({ mat: 'cans', geo: bakeTint(xform(box(0.17, 0.44, 0.33), x, 0.22, 0), ...tint) });
-      for (const s of [-1, 1]) { // X-stamp ribs
-        parts.push({ mat: 'cans', geo: bakeTint(xform(box(0.012, 0.36, 0.05), x + s * 0.086, 0.21, 0, 38 * D2R), tint[0] * 1.08, tint[1] * 1.08, tint[2] * 1.08) });
-        parts.push({ mat: 'cans', geo: bakeTint(xform(box(0.012, 0.36, 0.05), x + s * 0.086, 0.21, 0, -38 * D2R), tint[0] * 1.08, tint[1] * 1.08, tint[2] * 1.08) });
-      }
-      for (const h of [-0.05, 0, 0.05]) { // triple handles
-        parts.push({ mat: 'cans', geo: bakeTint(xform(cylZ(0.011, 0.12, 4), x, 0.465, h), tint[0] * 0.9, tint[1] * 0.9, tint[2] * 0.9) });
-      }
-      parts.push({ mat: 'cans', geo: bakeTint(xform(cylY(0.028, 0.028, 0.05, 6), x - 0.05, 0.46, -0.11), tint[0] * 0.8, tint[1] * 0.8, tint[2] * 0.8) }); // spout
+      const tint: RGB = isWater ? [0.24, 0.30, 0.22] : [0.45, 0.37, 0.24];
+      jerrycan(painter, x, tint, 1, i === 0 ? -1 : i === pairedCount - 1 ? 1 : 0);
     }
-    const W = pairedCount * 0.20 + 0.06; // rack frame
-    parts.push({ mat: 'steel', geo: bakeShade(xform(box(W, 0.03, 0.4), 0, 0.015, 0), 0.5) });
-    parts.push({ mat: 'steel', geo: bakeShade(xform(box(W, 0.05, 0.02), 0, 0.28, -0.18), 0.5) });
-    parts.push({ mat: 'steel', geo: bakeShade(xform(box(W, 0.05, 0.02), 0, 0.28, 0.18), 0.5) });
+    const W = pairedCount * pitch + 0.05; // rack frame
+    parts.push({ mat: 'steel', geo: bakeShade(place(moldedBox(W, 0.026, 0.39, 0, 0, 0.004), 0, 0.013, 0), 0.5) });
+    for (const z of [-0.185, 0.185]) {
+      parts.push({ mat: 'steel', geo: bakeShade(place(moldedBox(W, 0.045, 0.02, 0.004, 0, 0.003), 0, 0.28, z), 0.5) });
+    }
     for (const sx of [-1, 1]) { // diagonal braces back to the hull plate
       parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.025, 0.3, 0.025), sx * W * 0.42, 0.13, -0.19, 0.6, 0, 0), 0.45) });
     }
+    if (detail) painter.cloth(place(moldedBox(W + 0.01, 0.03, 0.012, 0, 0, 0.003), 0, 0.36, 0.2), 0.6, [0.5, 0.56, 0.44]);
     return parts;
   },
 
@@ -1859,36 +1496,27 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- exhaust shroud / muffler (axis Z along the fender) ------------------------------
-  exhaust({ rng, v = 'muffler', len = 0.9 }) {
+  exhaust({ rng, v = 'muffler', len = 0.9, detail = 1 }) {
     const parts: DecorPartList = [];
     const tone = 0.7 + rng() * 0.15; // heat-scorched paint
-    if (v === 'muffler') {
-      parts.push({ mat: 'kit', geo: bakeShade(xform(cylZ(0.105, len, 12), 0, 0.105, 0), tone * 0.82) });
-      parts.push({ mat: 'steel', geo: bakeShade(xform(cylZ(0.042, 0.22, 7), 0.015, 0.12, -len / 2 - 0.06, 0.5, 0, 0), 0.42) }); // tail kick
-      for (const s of [-0.3, 0.3]) {
-        parts.push({ mat: 'steel', geo: bakeShade(xform(torus(0.11, 0.01, 12, 4), 0, 0.105, s * len, Math.PI / 2, 0, 0), 0.4) });
-      }
-    } else { // perforated heat shield over a pipe
-      parts.push({ mat: 'steel', geo: bakeShade(xform(cylZ(0.07, len, 9), 0, 0.09, 0), 0.4) });
-      parts.push({ mat: 'kit', geo: bakeShade(xform(cylZ(0.105, len * 0.92, 9), 0, 0.105, 0), tone) });
-      for (const s of [-0.25, 0.25]) {
-        parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.02, 0.09, 0.03), 0.1, 0.05, s * len), 0.45) });
-      }
-    }
+    buildExhaust(accessoryPainter(parts, rng, detail), v, len, tone);
     return parts;
   },
 
-  // -- sandbag applique (glacis stack) ---------------------------------------------
-  sandbags({ rng, rows = 2, perRow = 4, w = 1.2 }) {
+  // -- sandbag applique (glacis stack): filled bags with tied necks -------------------
+  sandbags({ rng, rows = 2, perRow = 4, w = 1.2, detail = 1 }) {
     const parts: DecorPartList = [];
+    const painter = accessoryPainter(parts, rng, detail);
+    const draws: number[] = [];
+    for (let r = 0; r < rows; r++) for (let i = 0; i < perRow - (r % 2); i++) draws.push(rng(), rng());
+    let k = 0;
     for (let r = 0; r < rows; r++) {
       const n = perRow - (r % 2);
       for (let i = 0; i < n; i++) {
         const x = (i - (n - 1) / 2) * (w / perRow);
-        const tone = 0.78 + rng() * 0.3;
-        const g = sph(0.5, 8, 5);
-        xform(g, 0, 0, 0, 0, 0, (rng() - 0.5) * 0.4, [w / perRow * 0.6, 0.105, 0.21]);
-        parts.push({ mat: 'burlap', geo: bakeShade(boxUV(xform(g, x, 0.085 + r * 0.14, -r * 0.055), 2.8), tone) });
+        const tone = 0.78 + draws[k++] * 0.3;
+        const roll = (draws[k++] - 0.5) * 0.3;
+        sandbag(painter, (w / perRow) * 0.98, 0.24, 0.13, [x, r * 0.11, -r * 0.055], 0, roll, tone, 900 + r * 17 + i);
       }
     }
     return parts;
@@ -1930,27 +1558,28 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
   },
 
   // -- barrel travel lock, stowed folded on the deck -----------------------------------
-  travelLock({ rng }) {
+  travelLock({ rng, detail = 1 }) {
     const parts: DecorPartList = [];
     const tone = 0.9 + rng() * 0.1;
-    parts.push({ mat: 'kit', geo: bakeShade(xform(box(0.14, 0.06, 0.12), 0, 0.03, 0), tone) });
-    for (const s of [-1, 1]) { // folded A-frame arms lying aft
-      parts.push({ mat: 'kit', geo: bakeShade(xform(cylZ(0.024, 0.52, 7), s * 0.06, 0.075, -0.28, 0, s * 0.12, 0), tone) });
-    }
-    parts.push({ mat: 'steel', geo: bakeShade(xform(torusV(0.055, 0.015, 9, 4, Math.PI), 0, 0.06, -0.52, 0, 0, Math.PI), 0.55) }); // saddle claw
-    parts.push({ mat: 'steel', geo: bakeShade(xform(cylX(0.015, 0.13, 5), 0, 0.05, 0.03), 0.55) });
+    buildTravelLock(accessoryPainter(parts, rng, detail), tone);
     return parts;
   },
 
-  // -- ration / small-stores box stack ---------------------------------------------------
-  rations({ rng, n = 2 }) {
+  // -- ration / small-stores case stack: banded fibreboard cases ------------------------
+  rations({ rng, n = 2, detail = 1 }) {
     const parts: DecorPartList = [];
+    const jitter: number[] = [];
+    for (let i = 0; i < n; i++) jitter.push(rng(), rng(), rng(), rng());
     for (let i = 0; i < n; i++) {
-      const w = 0.34 - i * 0.04;
-      parts.push({
-        mat: 'wood',
-        geo: bakeShade(boxUV(xform(box(w, 0.14, 0.24), (rng() - 0.5) * 0.05, 0.07 + i * 0.142, (rng() - 0.5) * 0.04, 0, (rng() - 0.5) * 0.3, 0), 2.6), 0.86 + rng() * 0.2),
-      });
+      const [jx, jz, jy, jt] = jitter.slice(i * 4, i * 4 + 4);
+      const w = 0.34 - i * 0.04, h = 0.14, d = 0.24;
+      const y = 0.07 + i * 0.142;
+      const box2 = place(moldedBox(w, h, d, 0.01, 1, 0.006), (jx - 0.5) * 0.05, y, (jz - 0.5) * 0.04, 0, (jy - 0.5) * 0.3, 0);
+      parts.push({ mat: 'cans', geo: bakeTint(box2, 0.19 * (0.9 + jt * 0.2), 0.14 * (0.9 + jt * 0.2), 0.085, 0.3) });
+      if (detail) {
+        const band = place(moldedBox(w + 0.004, h + 0.004, 0.016, 0, 0, 0.002), (jx - 0.5) * 0.05, y, (jz - 0.5) * 0.04, 0, (jy - 0.5) * 0.3, 0);
+        parts.push({ mat: 'steel', geo: bakeShade(band, 0.42) });
+      }
     }
     return parts;
   },
@@ -1961,6 +1590,13 @@ export const DECOR_KITS: Record<string, DecorKitBuilder> = {
     parts.push({ mat: 'steel', geo: bakeShade(lathe([[0.075, 0], [0.09, 0.02], [0.115, 0.20], [0.105, 0.21], [0.088, 0.205]], 11), 0.62 + rng() * 0.1) });
     parts.push({ mat: 'steel', geo: bakeShade(xform(torusV(0.1, 0.007, 10, 4, Math.PI), 0, 0.21, 0), 0.5) }); // bail up
     parts.push({ mat: 'steel', geo: bakeShade(xform(box(0.02, 0.06, 0.014), 0, 0.30, 0.02), 0.5) });          // hook tab
+    return parts;
+  },
+
+  // -- fresh-cut branch bundle (proposal E, 2026-10-05): per-spec opt-in field camouflage ------
+  foliage({ rng, v = 'upright', n = 5, detail = 1 }) {
+    const parts: DecorPartList = [];
+    buildBranchBundle(accessoryPainter(parts, rng, detail), v === 'lying' ? 'lying' : 'upright', n);
     return parts;
   },
 
@@ -2010,6 +1646,7 @@ export const DECOR_KIT_INFO = {
   rations: { label: 'Ration box stack', eras: ['ww2', 'cold-war', 'modern'], variants: [{ n: 2 }] },
   bucket: { label: 'Bucket', eras: ['ww2', 'cold-war'], variants: [{}] },
   chain: { label: 'Chain segment', eras: ['ww2', 'cold-war', 'modern'], variants: [{ links: 6 }] },
+  foliage: { label: 'Fresh-cut branches (opt-in)', eras: ['modern'], variants: [{ v: 'upright', n: 5 }, { v: 'lying', n: 4 }] },
 };
 
 // ---------------------------------------------------------------------------
@@ -2171,6 +1808,28 @@ function defaultManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
   appendDefaultTurretManifest(manifest, spec, rng, context);
   appendDefaultHullManifest(manifest, spec, rng, context);
   return manifest;
+}
+
+/**
+ * Fresh-cut branch camouflage (owner-approved proposal E, 2026-10-05): the 2022 war imagery shows Ukrainian, Russian
+ * and Polish field vehicles hung with cut branches. Strictly per-spec opt-in; each listed hull names its region's
+ * species (the trees lane's spray atlas) and carries bundles tucked at the turret's rear quarters and along a fender.
+ * Suited hulls (ghillieSuit.ts) and the Garage workshop exhibits stay out of the list.
+ */
+const FIELD_FOLIAGE: Readonly<Record<string, { kind: VehicleFoliageKind }>> = Object.freeze({
+  ua_t80bv: { kind: 'oak' }, ua_t80u_kursk: { kind: 'oak' }, ua_t84_oplot_m: { kind: 'oak' },
+  ua_challenger2: { kind: 'oak' }, ua_m2a3_bradley: { kind: 'oak' },
+  t72b3m: { kind: 'birch' }, t90m_proryv: { kind: 'birch' }, t90a: { kind: 'birch' },
+  pt91m: { kind: 'beech' }, t72_rys: { kind: 'beech' }, t72m1_jaguar: { kind: 'beech' },
+});
+
+function fieldFoliageRows(spec: FleetTankSpec): DecorManifestRow[] {
+  if (!FIELD_FOLIAGE[spec.id]) return [];
+  return [
+    { kit: 'foliage', p: 1, v: { v: 'upright', n: 5 }, slot: ['turretSide', { side: -1, rear: true }] },
+    { kit: 'foliage', p: 1, v: { v: 'upright', n: 4 }, slot: ['turretSide', { side: 1, rear: true }] },
+    { kit: 'foliage', p: 1, v: { v: 'lying', n: 4 }, slot: ['fender', { side: -1, zFrac: 0.12 }] },
+  ];
 }
 
 // Curated per-tank manifests: marquee/composition tanks get an authored,
@@ -2606,7 +2265,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
         ? strvRoofRoutes(-0.25, -0.85) : aftRoutes(side, 0.02) }],
     },
   ];
-  const manifest = [...cargo, ...base];
+  // opt-in branch bundles take their seats before loose cargo crowds the turret's rear quarters
+  const manifest = [...fieldFoliageRows(spec), ...cargo, ...base];
   if (spec.id === 'ares_apc_x') {
     // The tiny remote station is not a turret-bustle cargo shelf. The three
     // procedural soft packs read as sandbags perched on its weapon housing.
@@ -2622,7 +2282,18 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
 // ---------------------------------------------------------------------------
 
 const DECOR_LOD_DIST = 150; // same greeble horizon tankFactory uses
-const GEAR_NAME_RE = /wheel|sprocket|idler|roller|road|track|tread/i;
+/** Past this camera range each cosmetic material family draws its coarse forms (fewer segments, no small hardware). */
+const DECOR_COARSE_DIST = 28;
+// Running gear by name: wheels, sprockets, idlers, rollers, the track run and its pads. The track GUARDS
+// (hullTrackGuardL/R: the mudguards and side skirts) are hull-fixed equipment that decor seats on and is blocked by.
+// Until 2026-10-05 the bare /track/ caught them too, so a side piece could seat on the hull BEHIND a skirt, and the
+// skirt's bucket (rubber or painted) decided decor admission (burlakFixedSidePaint.selftest).
+const GEAR_NAME_RE = /wheel|sprocket|idler|roller|road|track(?!guard)|tread/i;
+
+/** True for running-gear meshes, which decor never probes or seats on (the track guards are not running gear). */
+export function isDecorRunningGearName(name: string): boolean {
+  return GEAR_NAME_RE.test(name);
+}
 
 // probe target collector: visible, color-writing, non-instanced meshes under
 // `group`, excluding running gear (by name), decor itself, and LOD levels > 0.
@@ -2635,7 +2306,7 @@ function probeTargets(group: THREE.Group): SurfaceMesh[] {
     if (o instanceof THREE.LOD) { if (o.levels.length && o.levels[0].object) visit(o.levels[0].object); return; }
     if (o instanceof THREE.Mesh && !(o instanceof THREE.InstancedMesh) && o.geometry) {
       const m = Array.isArray(o.material) ? o.material[0] : o.material;
-      if (m && m.colorWrite !== false && !GEAR_NAME_RE.test(o.name || '')
+      if (m && m.colorWrite !== false && !isDecorRunningGearName(o.name || '')
           && !Array.isArray(o.material)) out.push(o as SurfaceMesh);
     }
     for (const c of o.children) visit(c);
@@ -3047,7 +2718,53 @@ function clonePartList(parts: DecorPartList): DecorPartList {
   const clone = parts.map((p) => ({ mat: p.mat, geo: p.geo.clone() })) as DecorPartList;
   if (parts.meta) clone.meta = { ...parts.meta };
   if (parts.metaCx !== undefined) clone.metaCx = parts.metaCx;
+  if (parts.coarse) clone.coarse = clonePartList(parts.coarse);
   return clone;
+}
+
+/**
+ * Kits whose builders author a coarse level (`detail: 0`): fewer segments and no small hardware inside the same
+ * envelope. Every other kit's coarse level is a copy of its near geometry, because each material bucket's coarse
+ * draw must still carry every piece of that bucket.
+ */
+const DETAIL_KITS = new Set(['smoke', 'bin', 'tarp', 'camonet', 'log', 'packs', 'cargo', 'basket', 'tools', 'drums',
+  'jerry', 'sandbags', 'rations', 'foliage', 'cupola', 'hatch', 'light', 'sight', 'exhaust', 'travelLock']);
+/** Working equipment among the decor kits: its draws stay resident at every range (combatVisibility.ts). */
+const FUNCTIONAL_KITS = new Set(['smoke']);
+/**
+ * Camo-painted hard kit (bins, boxes, the smoke banks' own finish) rides the resident group with the working smoke
+ * banks: it reads as part of the vehicle, it was resident before the 2026-10-05 retag, and sharing that draw keeps
+ * every tank's decor draws at or below the old count (a separate cosmetic 'kit' draw beside the smoke banks' added one
+ * per turret). Past 150 m a tank draws this one decor call; every other family drops.
+ */
+const RESIDENT_FAMILIES: ReadonlySet<DecorMaterialKey> = new Set<DecorMaterialKey>(['kit']);
+
+/**
+ * Small flat-colour families folded into a host family's draw (2026-10-05 draw audit: a searchlight's glass or a
+ * spare wheel's tyre each opened a draw of its own). The vertex-colour multiplier keeps the colour: optic glass
+ * (0x161d23) in the gunmetal steel draw, over the nation's steel colour; tyre rubber (0x232425) in the painted-
+ * hardware draw, over the hardware map's ground (#cbc9c1). Linear values.
+ */
+function decorFamilyFolds(palette: FleetEquipmentPalette): ReadonlyMap<DecorMaterialKey, { to: DecorMaterialKey; k: readonly [number, number, number] }> {
+  const steel = new THREE.Color(palette.steel), glass = new THREE.Color(0x161d23), rubber = new THREE.Color(0x232425);
+  const ground = new THREE.Color(0xcbc9c1);
+  return new Map<DecorMaterialKey, { to: DecorMaterialKey; k: readonly [number, number, number] }>([
+    ['lens', { to: 'steel', k: [glass.r / steel.r, glass.g / steel.g, glass.b / steel.b] }],
+    ['rubber', { to: 'cans', k: [rubber.r / ground.r, rubber.g / ground.g, rubber.b / ground.b] }],
+  ]);
+}
+
+function foldDecorPart(part: DecorPart, folds: ReturnType<typeof decorFamilyFolds>): void {
+  const fold = folds.get(part.mat);
+  if (!fold) return;
+  const color = part.geo.getAttribute('color');
+  if (color) {
+    for (let i = 0; i < color.count; i++) {
+      color.setXYZ(i, color.getX(i) * fold.k[0], color.getY(i) * fold.k[1], color.getZ(i) * fold.k[2]);
+    }
+    color.needsUpdate = true;
+  }
+  part.mat = fold.to;
 }
 /**
  * Attach the decoration kit to a built tank visual.
@@ -3150,6 +2867,7 @@ export function* attachTankDecorationsSteps(
   let claimed = false;
   function disposePartList(parts: DecorPartList): void {
     for (const part of parts) resources.releaseGeometry(part.geo);
+    if (parts.coarse) disposePartList(parts.coarse);
   }
   try {
     function shouldSkipAttachment(): boolean {
@@ -3392,7 +3110,7 @@ export function* attachTankDecorationsSteps(
       const s = new THREE.Vector3();
       hullG.traverse((o) => {
         if (!(o instanceof THREE.Mesh) || !o.geometry) return;
-        const wheelish = o instanceof THREE.InstancedMesh || GEAR_NAME_RE.test(o.name || '');
+        const wheelish = o instanceof THREE.InstancedMesh || isDecorRunningGearName(o.name || '');
         if (!wheelish) return;
         if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
         if (!o.geometry.boundingBox) return;
@@ -3428,11 +3146,26 @@ export function* attachTankDecorationsSteps(
     // Seven visible fleet-equipment stations plus the per-vehicle curated kit
     // fit below this cap. Geometry is still merged by material/frame, so the
     // higher detail allowance grows silhouettes without multiplying draws.
-    const budget = { tris: 0, max: 4200 };
+    // Near-level triangles. The molded / sewn accessories (accessoryKits.ts) spend more per piece than
+    // the old boxes and spheres; their coarse level (from DECOR_COARSE_DIST, and the whole mobile tier)
+    // runs at about two fifths of this, and the cosmetic groups detach at battle range.
+    const budget = { tris: 0, max: 6000 };
     const buckets: Record<DecorFrame, Map<DecorMaterialKey, THREE.BufferGeometry[]>> = {
       hull: new Map(),
       turret: new Map(),
     };
+    // The coarse level of every cosmetic bucket (shown from DECOR_COARSE_DIST) and the working equipment (smoke
+    // banks), which keeps its own resident draws.
+    const coarseBuckets: Record<DecorFrame, Map<DecorMaterialKey, THREE.BufferGeometry[]>> = {
+      hull: new Map(),
+      turret: new Map(),
+    };
+    const functionalBuckets: Record<DecorFrame, Map<DecorMaterialKey, THREE.BufferGeometry[]>> = {
+      hull: new Map(),
+      turret: new Map(),
+    };
+    const lowTier = opts.geometryQuality === 'low';
+    const familyFolds = decorFamilyFolds(equipmentPaletteForNation(spec.nation || ''));
     const summary: DecorSummary = { pieces: [], tris: 0, drawCalls: 0, skipped: [] };
     let basketAnchor: BasketAnchor | null = null; // set by turretRearFrame; used by onBasket packs
 
@@ -3549,12 +3282,28 @@ export function* attachTankDecorationsSteps(
       ledger.push(bb);
       budget.tris += tris;
       const m = new THREE.Matrix4().compose(pos, new THREE.Quaternion().setFromEuler(rot), new THREE.Vector3(1, 1, 1));
-      const map = buckets[frame];
+      const functional = FUNCTIONAL_KITS.has(name);
       for (const p of parts) {
+        foldDecorPart(p, familyFolds);
         p.geo.applyMatrix4(m);
+        const map = (functional || RESIDENT_FAMILIES.has(p.mat) ? functionalBuckets : buckets)[frame];
         if (!map.has(p.mat)) map.set(p.mat, []);
         map.get(p.mat)!.push(p.geo);
         resources.ownGeometry(p.geo);
+      }
+      if (parts.coarse) {
+        // The resident group keeps its near forms at every range; a cosmetic family's coarse copy is
+        // seated with exactly the near copy's matrix.
+        const coarseMap = coarseBuckets[frame];
+        for (const p of parts.coarse) {
+          foldDecorPart(p, familyFolds);
+          if (functional || RESIDENT_FAMILIES.has(p.mat)) { resources.releaseGeometry(p.geo); continue; }
+          p.geo.applyMatrix4(m);
+          if (!coarseMap.has(p.mat)) coarseMap.set(p.mat, []);
+          coarseMap.get(p.mat)!.push(p.geo);
+          resources.ownGeometry(p.geo);
+        }
+        delete parts.coarse;
       }
       const piece: DecorPieceSummary = { kit: name, frame, tris };
       if (receipt) piece.attachment = receipt;
@@ -4026,13 +3775,20 @@ export function* attachTankDecorationsSteps(
       jitterSeed: number,
     ): DecorPartList | null {
       try {
-        const localRng = mulberry32(
-          fnv1a(`${decorId}:${row.kit}:${row.slot[0]}`) ^ jitterSeed,
-        );
+        const seed = fnv1a(`${decorId}:${row.kit}:${row.slot[0]}`) ^ jitterSeed;
         const values = { ...(row.v || {}) };
         if (row.kit === 'wheel') values.r = wheelR;
         if (row.kit === 'drums') values._W = W;
-        return kitFn({ rng: localRng, ...values });
+        // The mobile tier builds only the coarse forms; other tiers build both levels
+        // from identically seeded streams (builders draw before branching on detail).
+        if (lowTier) return kitFn({ rng: mulberry32(seed), ...values, detail: 0 });
+        const parts = kitFn({ rng: mulberry32(seed), ...values, detail: 1 });
+        if (parts) {
+          parts.coarse = DETAIL_KITS.has(row.kit)
+            ? kitFn({ rng: mulberry32(seed), ...values, detail: 0 })
+            : clonePartList(parts);
+        }
+        return parts;
       } catch (error) {
         return null;
       }
@@ -4079,10 +3835,23 @@ export function* attachTankDecorationsSteps(
         const parts = createManifestParts(row, DECOR_KITS.smoke!, jitterSeed);
         if (parts) placeManifestParts(row, slotFn, parts);
       }
+      // Radio whips stand at their mounts before loose cargo fills the rear roof
+      // (2026-10-05: the molded cargo's larger footprints otherwise crowded every
+      // antenna seat). Their own stream keeps the main stream's row draws aligned.
+      const antennaRng = mulberry32(fnv1a(`antenna:${decorId}`));
+      for (const row of manifest) {
+        if (row.kit !== 'antenna') continue;
+        const roll = antennaRng(), jitterSeed = (antennaRng() * 0x7fffffff) | 0;
+        if (roll > (row.p ?? 1)) continue;
+        const slotFn = SLOTS[row.slot[0]];
+        if (!slotFn) continue;
+        const parts = createManifestParts(row, DECOR_KITS.antenna!, jitterSeed);
+        if (parts) placeManifestParts(row, slotFn, parts);
+      }
       for (let index = 0; index < manifest.length; index++) {
         const row = manifest[index];
         const roll = rng(), jitterSeed = (rng() * 0x7fffffff) | 0;
-        if (row.kit !== 'smoke' && !(roll > (row.p ?? 1))) {
+        if (row.kit !== 'smoke' && row.kit !== 'antenna' && !(roll > (row.p ?? 1))) {
           const kitFn = DECOR_KITS[row.kit];
           const slotFn = SLOTS[row.slot[0]];
           if (kitFn && slotFn) {
@@ -4096,56 +3865,87 @@ export function* attachTankDecorationsSteps(
     yield* attachManifestRows();
 
     // ---- merge per family per frame + attach --------------------------------
+    /** Merge one material family's committed geometry into a single draw (or null when empty). */
+    function mergeFamily(geos: THREE.BufferGeometry[]): THREE.BufferGeometry | null {
+      if (!geos.length) return null;
+      const nonIndexed = geos.map((geometry) => {
+        if (!geometry.index) return geometry;
+        const converted = geometry.toNonIndexed();
+        resources.ownGeometry(converted);
+        return converted;
+      });
+      const merged = mergeGeometries(nonIndexed, false);
+      if (merged) resources.ownGeometry(merged);
+      for (const geometry of nonIndexed) resources.releaseGeometry(geometry);
+      return merged;
+    }
+
+    function decorMesh(merged: THREE.BufferGeometry, frame: DecorFrame, matKey: DecorMaterialKey,
+      level: 'near' | 'coarse', functional: boolean): THREE.Mesh {
+      resources.completeGeometry(merged);
+      const mesh = new THREE.Mesh(merged, materials.get(matKey));
+      mesh.name = `decor_${frame}_${matKey}${level === 'coarse' ? '_coarse' : ''}`;
+      // PERF: the fleet's shadow story is proxy-based (procedural proxies /
+      // GLB buildShadowProxy) with per-mesh casters swept off — decor
+      // follows the same contract. receiveShadow keeps the kit grounded.
+      mesh.castShadow = false;
+      mesh.receiveShadow = true;
+      mesh.userData.__decor = true;
+      mesh.userData.decorLevel = level;
+      // Cosmetic stowage is non-armor dressing that distance detail may drop
+      // (combatVisibility.ts); the smoke banks are working equipment.
+      mesh.userData.combatHitboxRole = functional ? 'equipment' : 'nonArmor';
+      return mesh;
+    }
+
     function* mergeDecorationBucket(
       frame: DecorFrame,
       map: Map<DecorMaterialKey, THREE.BufferGeometry[]>,
+      coarseMap: Map<DecorMaterialKey, THREE.BufferGeometry[]>,
+      functional: boolean,
     ): Generator<DecorationWorkSlice, number, void> {
-      if (!map.size) return 0;
+      const keys = [...new Set([...map.keys(), ...coarseMap.keys()])];
+      if (!keys.length) return 0;
       const parent = frame === 'hull' ? hullG : turretG;
       const g = new THREE.Group();
-      g.name = frame === 'hull' ? 'rig_decor_hull' : 'rig_decor_turret';
-      let drawCalls = 0;
-      for (const [matKey, geos] of map) {
-        const nonIndexed = geos.map((geometry) => {
-          if (!geometry.index) return geometry;
-          const converted = geometry.toNonIndexed();
-          resources.ownGeometry(converted);
-          return converted;
-        });
-        const merged = mergeGeometries(nonIndexed, false);
-        if (merged) resources.ownGeometry(merged);
+      g.name = functional ? `rig_decor_${frame}_functional` : frame === 'hull' ? 'rig_decor_hull' : 'rig_decor_turret';
+      let drawCalls = 0, done = 0;
+      for (const matKey of keys) {
+        const geos = map.get(matKey) || [];
+        const coarseGeos = coarseMap.get(matKey) || [];
+        const merged = mergeFamily(geos);
         const socketOwner = new THREE.Object3D();
         registerSmokeSockets(socketOwner, geos);
-        for (const geometry of nonIndexed) resources.releaseGeometry(geometry);
         for (const geometry of geos) resources.releaseGeometry(geometry);
-        if (!merged) continue;
-        resources.completeGeometry(merged);
-        const mesh = new THREE.Mesh(merged, materials.get(matKey));
-        mesh.name = `decor_${frame}_${matKey}`;
-        // PERF: the fleet's shadow story is proxy-based (procedural proxies /
-        // GLB buildShadowProxy) with per-mesh casters swept off — decor
-        // follows the same contract. receiveShadow keeps the kit grounded.
-        mesh.castShadow = false;
-        mesh.receiveShadow = true;
-        mesh.userData.__decor = true;
-        if (socketOwner.userData.smokeSockets) mesh.userData.smokeSockets = socketOwner.userData.smokeSockets;
-        mesh.userData.combatHitboxRole = 'equipment';
-        // LOD: decor vanishes at the fleet's greeble horizon
+        const coarseMerged = mergeFamily(coarseGeos);
+        for (const geometry of coarseGeos) resources.releaseGeometry(geometry);
+        if (!merged && !coarseMerged) continue;
         const lod = new THREE.LOD();
-        lod.addLevel(mesh, 0);
+        if (merged) {
+          const mesh = decorMesh(merged, frame, matKey, 'near', functional);
+          if (socketOwner.userData.smokeSockets) mesh.userData.smokeSockets = socketOwner.userData.smokeSockets;
+          lod.addLevel(mesh, 0);
+          drawCalls++;
+        } else {
+          lod.addLevel(new THREE.Object3D(), 0);
+        }
+        // LOD: the coarse forms from DECOR_COARSE_DIST, nothing past the fleet's greeble horizon
+        if (coarseMerged) lod.addLevel(decorMesh(coarseMerged, frame, matKey, 'coarse', functional), DECOR_COARSE_DIST, 0.1);
         lod.addLevel(new THREE.Object3D(), DECOR_LOD_DIST, 0.1);
         g.add(lod);
-        drawCalls++;
-        yield { stage: 'material-bucket', completed: drawCalls, total: map.size };
+        done++;
+        yield { stage: 'material-bucket', completed: done, total: keys.length };
       }
       resources.addGroup(parent, g);
-      g.userData.combatHitboxRole = 'equipment';
+      g.userData.combatHitboxRole = functional ? 'equipment' : 'nonArmor';
+      g.userData.decorFunctional = functional;
       return drawCalls;
     }
 
     let drawCalls = 0;
-    for (const [frame, map] of Object.entries(buckets)) {
-      drawCalls += yield* mergeDecorationBucket(frame as DecorFrame, map);
+    for (const frame of ['hull', 'turret'] as const) {
+      drawCalls += yield* mergeDecorationBucket(frame, buckets[frame], coarseBuckets[frame], false);
+      drawCalls += yield* mergeDecorationBucket(frame, functionalBuckets[frame], new Map(), true);
     }
     yield { stage: 'publish', completed: resources.groupCount(), total: resources.groupCount() };
     summary.tris = budget.tris;

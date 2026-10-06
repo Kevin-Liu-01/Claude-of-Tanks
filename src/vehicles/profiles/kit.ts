@@ -12,6 +12,12 @@ import * as THREE from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { KIT } from '../tankFactoryCore.ts';
 import { ownFittingGeometry } from '../ownedFittingGeometry.ts';
+import {
+  addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield,
+  createPintleLayout, type PintleLayout,
+} from '../machineGunGeometry.ts';
+import { block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndLayers, type FabricSpec } from '../accessoryPrimitives.ts';
+import { jerrycanParts } from '../accessoryKits.ts';
 import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh, type VehicleLampKind } from '../vehicleNightLighting.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 
@@ -1346,26 +1352,9 @@ function fitAssemble(type: string, parts: FittingParts, opts: FittingOptions): T
   return g;
 }
 
-// Browning-derived MG family table. Every class keeps the same authored load
-// path and receiver grammar (bearing -> fork -> trunnion -> receiver ->
-// jacket/barrel) while caliber-specific dimensions, jackets and muzzle devices
-// preserve national identity. `pintleMG` is the fleet default; exact hero props
-// may add detail, but must not fall back to anonymous rods or floating boxes.
-// rec = [w,h,d] receiver mass.
-const MG_CLASSES = {
-  m2:    { s: 1.00, rec: [0.115, 0.095, 0.46], barrelR: 0.0165, barrelL: 0.52, jacket: 'sleeve', flashR: 0.021, flashL: 0.07, caliber: 12.7, name: 'Browning M2HB' },
-  heavy: { s: 1.00, rec: [0.115, 0.095, 0.46], barrelR: 0.0165, barrelL: 0.52, jacket: 'sleeve', flashR: 0.021, flashL: 0.07, caliber: 12.7, name: 'Browning-pattern HMG' },
-  dshk:  { s: 1.02, rec: [0.105, 0.105, 0.44], barrelR: 0.0155, barrelL: 0.50, jacket: 'fins',   flashR: 0.035, flashL: 0.10, caliber: 12.7, name: 'DShK-pattern HMG' },
-  nsvt:  { s: 0.98, rec: [0.095, 0.100, 0.42], barrelR: 0.0240, barrelL: 0.55, jacket: 'none',   flashR: 0.035, flashL: 0.10, caliber: 12.7, name: 'NSVT-pattern HMG' },
-  kord:  { s: 0.99, rec: [0.100, 0.105, 0.43], barrelR: 0.0220, barrelL: 0.57, jacket: 'ribbed', flashR: 0.033, flashL: 0.10, caliber: 12.7, name: 'Kord-pattern HMG' },
-  mag:   { s: 0.78, rec: [0.100, 0.050, 0.34], barrelR: 0.0120, barrelL: 0.46, jacket: 'none',   flashR: 0.017, flashL: 0.06, caliber: 7.62, name: 'Browning-derived GPMG' },
-  mag58: { s: 0.80, rec: [0.105, 0.052, 0.35], barrelR: 0.0125, barrelL: 0.47, jacket: 'ribbed', flashR: 0.018, flashL: 0.06, caliber: 7.62, name: 'MAG 58 GPMG' },
-};
-
-function isMgClass(value: string | undefined): value is keyof typeof MG_CLASSES {
-  return value !== undefined && Object.hasOwn(MG_CLASSES, value);
-}
-
+// Browning-derived MG family table and construction: src/vehicles/machineGunGeometry.ts (shared with the decor
+// layer's roof gun). `pintleMG` is the fleet default; exact hero props may add detail, but must not fall back to
+// anonymous rods or floating boxes.
 function fittingRing(options: FittingOptions): { r?: number; stubs?: number } | null {
   if (!options.ring) return null;
   return typeof options.ring === 'object' ? options.ring : {};
@@ -1404,233 +1393,20 @@ function placeMachineGunBarrelGeometry(
  * Envelope (m2/scale 1, no ring): x ±0.17, y 0..0.36, z -0.30..+0.93 —
  * authoritative per-build box in group.userData.aabb.
  */
-type MgClassKey = keyof typeof MG_CLASSES;
-type MgClassDefinition = (typeof MG_CLASSES)[MgClassKey];
 
-interface PintleMgBuildContext {
-  readonly opts: FittingOptions;
-  readonly classKey: MgClassKey;
-  readonly cls: MgClassDefinition;
-  readonly s: number;
-  readonly tone: string;
-  readonly weaponSlot: string;
-  readonly supportSlot: string;
-  readonly ammoSlot: string;
-  readonly parts: FittingParts;
-  readonly rw: number;
-  readonly rh: number;
-  readonly rd: number;
-  readonly colTop: number;
-  readonly recY: number;
-  readonly recZ: number;
-  readonly trunY: number;
-  readonly trunZ: number;
-  readonly shieldVariant: FittingOptions['shield'];
-  readonly aim: (geometry: THREE.BufferGeometry, dz: number, dy?: number) => THREE.BufferGeometry;
-}
+type PintleMgBuildContext = Omit<PintleLayout, 'parts'> & { readonly parts: FittingParts; readonly opts: FittingOptions };
 
 function createPintleMgBuildContext(opts: FittingOptions): PintleMgBuildContext {
-  const classKey = isMgClass(opts.cls) ? opts.cls : 'm2';
-  const cls = MG_CLASSES[classKey];
-  const s = (opts.scale || 1) * cls.s;
-  const tone = opts.tone || 'two-tone';
-  // Weapons and ammunition stay neutral gunmetal. Tone now controls only the
-  // support/shield finish; letting the host camouflage color receiver caps and
-  // ammo cans produced the miniature green/tan guns the fleet pass removes.
-  const weaponSlot = 'dark';
-  const supportSlot = tone === 'pale' ? 'detail' : 'dark';
-  const ammoSlot = opts.ammoSlot || 'gunmetalAmmo';
   const parts = fitParts();
-  const [rw, rh, rd] = cls.rec.map((v) => v * s);
-  const colH = 0.16 * s;
-  const colTop = 0.014 + colH;
-  const recY = opts.mount === 'external-cradle' ? rh / 2 : colTop + 0.080 * s + rh / 2;
-  const recZ = 0.06 * s;
-  const trunY = recY + 0.004;
-  const trunZ = recZ + rd / 2;
-  const shieldVariant = opts.shield === true ? 'standard' : opts.shield;
-  const aim = placeMachineGunBarrelGeometry;
-
-  return {
-    opts,
-    classKey,
-    cls,
-    s,
-    tone,
-    weaponSlot,
-    supportSlot,
-    ammoSlot,
-    parts,
-    rw,
-    rh,
-    rd,
-    colTop,
-    recY,
-    recZ,
-    trunY,
-    trunZ,
-    shieldVariant,
-    aim,
-  };
+  return { ...createPintleLayout(opts, parts), parts, opts };
 }
 
-function addPintleMgMount(context: PintleMgBuildContext): void {
-  if (context.opts.mount === 'external-cradle') return;
-  const { box, cylX, cylY, torus } = KIT;
-  const { colTop, parts, s, supportSlot, weaponSlot } = context;
-  // Flanged bearing, spindle, bridge, fork and cross-shaft form one visible
-  // load path. The old single post made every gun look like a block on a rod.
-  const colH = 0.16 * s;
-  parts.add(supportSlot, cylY(0.030 * s, 0.038 * s, 0.014, 14), 0, 0.007, 0);
-  parts.add(weaponSlot, torus(0.031 * s, 0.006 * s, 18), 0, 0.015, 0);
-  parts.add(weaponSlot, cylY(0.018 * s, 0.023 * s, colH, 12), 0, 0.014 + colH / 2, 0);
-  parts.add(weaponSlot, box(0.115 * s, 0.045 * s, 0.15 * s), 0, colTop + 0.0225 * s, 0.01);
-  for (const side of [-1, 1]) {
-    parts.add(weaponSlot, box(0.020 * s, 0.095 * s, 0.105 * s),
-      side * 0.052 * s, colTop + 0.070 * s, 0.045 * s, side * 0.05, 0, 0);
-  }
-  parts.add(weaponSlot, cylX(0.025 * s, 0.130 * s, 12), 0, colTop + 0.105 * s, 0.065 * s);
-}
-
-function addPintleMgReceiver(context: PintleMgBuildContext): void {
-  const { box } = KIT;
-  const { parts, rd, recY, recZ, rh, rw, s, weaponSlot } = context;
-  // Browning-family receiver: service box, hinged top cover, side plate,
-  // buffer head, charging handle, rear sight and dual spade grips.
-  parts.add(weaponSlot, box(rw, rh, rd), 0, recY, recZ);
-  parts.add(weaponSlot, box(rw * 0.92, 0.018 * s, rd * 0.88),
-    0, recY + rh / 2 + 0.009 * s, recZ + 0.005 * s);
-  parts.add(weaponSlot, box(0.020 * s, rh * 0.70, rd * 0.54),
-    rw / 2 + 0.010 * s, recY, recZ - 0.025 * s);
-  parts.add(weaponSlot, box(rw * 0.72, rh * 0.58, 0.050 * s),
-    0, recY - 0.005 * s, recZ - rd / 2 - 0.025 * s);
-  parts.add(weaponSlot, box(0.052 * s, 0.017 * s, 0.075 * s),
-    -rw / 2 - 0.026 * s, recY + 0.018 * s, recZ - 0.015 * s);
-  parts.add(weaponSlot, box(0.044 * s, 0.045 * s, 0.018 * s),
-    0, recY + rh / 2 + 0.030 * s, recZ - rd * 0.22);
-  for (const side of [-1, 1]) {
-    parts.add(weaponSlot, box(0.018 * s, 0.026 * s, 0.095 * s),
-      side * 0.036 * s, recY - 0.012 * s, recZ - rd / 2 - 0.080 * s,
-      side * 0.08, 0, 0);
-    parts.add(weaponSlot, box(0.035 * s, 0.018 * s, 0.018 * s),
-      side * 0.045 * s, recY - 0.042 * s, recZ - rd / 2 - 0.122 * s);
-  }
-  parts.add(weaponSlot, box(0.012 * s, 0.020 * s, 0.020 * s),
-    0, recY + rh / 2 + 0.022 * s, recZ + rd * 0.28);
-}
-
-function addPintleMgBarrel(context: PintleMgBuildContext): void {
-  const { box, cylZ, torus } = KIT;
-  const { aim, cls, opts, parts, s, trunY, trunZ, weaponSlot } = context;
-  // Barrel group stays collinear with the receiver at the front trunnion.
-  if (cls.jacket === 'sleeve') {
-    parts.add(weaponSlot, aim(cylZ(cls.barrelR * s * 1.85, 0.15 * s, 14), 0.075 * s), 0, trunY, trunZ);
-    for (let k = 0; k < 4; k++) {
-      parts.add(weaponSlot, aim(torus(cls.barrelR * s * 1.88, 0.0035 * s, 12),
-        (0.030 + k * 0.034) * s), 0, trunY, trunZ);
-    }
-  } else if (cls.jacket === 'fins') {
-    for (let k = 0; k < 5; k++) {
-      parts.add(weaponSlot, aim(cylZ(cls.barrelR * s * 1.5, 0.020 * s, 12), (0.03 + k * 0.028) * s), 0, trunY, trunZ);
-    }
-  } else if (cls.jacket === 'ribbed') {
-    parts.add(weaponSlot, aim(cylZ(cls.barrelR * s * 1.32, 0.13 * s, 12), 0.065 * s), 0, trunY, trunZ);
-    for (let k = 0; k < 4; k++) {
-      parts.add(weaponSlot, aim(torus(cls.barrelR * s * 1.34, 0.003 * s, 12),
-        (0.026 + k * 0.030) * s), 0, trunY, trunZ);
-    }
-  } else if (opts.barrelBridge) {
-    // Some slim, unsleeved weapons otherwise begin their barrel 100 mm ahead
-    // of the receiver.  Let callers request the missing breech-to-barrel run
-    // without changing the certified silhouettes of existing fittings.
-    parts.add(weaponSlot, aim(cylZ(cls.barrelR * s * 1.12, 0.105 * s, 10), 0.0525 * s), 0, trunY, trunZ);
-  }
-  const bl = cls.barrelL * s;
-  parts.add(weaponSlot, aim(cylZ(cls.barrelR * s, bl, 10), 0.10 * s + bl / 2), 0, trunY, trunZ);
-  parts.add(weaponSlot, aim(cylZ(cls.flashR * s, cls.flashL * s, 12), 0.10 * s + bl + cls.flashL * s / 2), 0, trunY, trunZ);
-  parts.add(weaponSlot, aim(cylZ(cls.barrelR * s * 0.55, 0.010, 10), 0.10 * s + bl + cls.flashL * s + 0.006), 0, trunY, trunZ);
-  parts.add(weaponSlot, aim(box(0.012 * s, 0.026 * s, 0.015 * s), 0.18 * s,
-    cls.barrelR * s + 0.014 * s), 0, trunY, trunZ);
-}
-
-function addPintleMgAmmo(context: PintleMgBuildContext): void {
-  const { box } = KIT;
-  const { ammoSlot, opts, parts, recY, recZ, rw, s, weaponSlot } = context;
-  if (opts.ammo !== false) {
-    const ax = -(rw / 2 + 0.055 * s);
-    parts.add(ammoSlot, box(0.085 * s, 0.11 * s, 0.17 * s), ax, recY - 0.005, recZ - 0.02);
-    parts.add(weaponSlot, box(0.079 * s, 0.008 * s, 0.158 * s), ax, recY + 0.058 * s, recZ - 0.02);
-    parts.add(weaponSlot, box(0.018 * s, 0.060 * s, 0.020 * s),
-      ax - 0.050 * s, recY + 0.002 * s, recZ - 0.020 * s);
-    // Short visible feed run; links stay gunmetal and terminate at the
-    // receiver instead of floating between unrelated boxes.
-    for (let index = 0; index < 5; index++) {
-      const t = index / 4;
-      parts.add(weaponSlot, box(0.018 * s, 0.026 * s, 0.024 * s),
-        ax * (1 - t) - rw * 0.36 * t, recY + (0.020 + t * 0.012) * s,
-        recZ + (0.065 + t * 0.070) * s, 0, 0, -0.10 + t * 0.16);
-    }
-  }
-}
-
-function addPintleMgShield(context: PintleMgBuildContext): void {
-  const { box, cylZ } = KIT;
-  const { parts, recY, s, shieldVariant, tone, trunZ, weaponSlot } = context;
-  if (shieldVariant) {
-    const shieldSlot = tone === 'dark' ? 'dark' : 'detail';
-    const shieldZ = trunZ + 0.035 * s;
-    const sideW = shieldVariant === 'armored' ? 0.18 : 0.145;
-    const shieldH = shieldVariant === 'low' ? 0.14 : shieldVariant === 'armored' ? 0.27 : 0.22;
-    for (const side of [-1, 1]) {
-      parts.add(shieldSlot, box(sideW * s, shieldH * s, 0.022 * s),
-        side * (0.075 + sideW / 2) * s, recY + 0.018 * s, shieldZ,
-        0, -side * 0.055, side * 0.035);
-      parts.add(weaponSlot, box(0.018 * s, shieldH * 0.82 * s, 0.030 * s),
-        side * (0.148 + sideW * 0.45) * s, recY + 0.006 * s, shieldZ - 0.020 * s);
-      parts.add(weaponSlot, box(0.020 * s, 0.020 * s, 0.14 * s),
-        side * 0.115 * s, recY - shieldH * 0.30 * s, shieldZ - 0.060 * s,
-        -0.22, 0, side * 0.08);
-    }
-    parts.add(shieldSlot, box(0.19 * s, 0.032 * s, 0.026 * s),
-      0, recY + shieldH * 0.48 * s, shieldZ);
-    // Folded lips, sight slots and fastener heads keep the shield from
-    // reading as one featureless rectangle. They share the shield plane and
-    // remain part of the equipment fitting rather than turret armor.
-    for (const side of [-1, 1]) {
-      parts.add(shieldSlot, box(0.022 * s, shieldH * 0.92 * s, 0.045 * s),
-        side * (0.075 + sideW - 0.012) * s, recY + 0.018 * s, shieldZ - 0.010 * s,
-        0, -side * 0.10, 0);
-      parts.add('shadow', box(sideW * 0.43 * s, 0.032 * s, 0.012 * s),
-        side * 0.145 * s, recY + shieldH * 0.18 * s, shieldZ + 0.014 * s,
-        0, -side * 0.055, 0);
-      for (const sy of [-0.28, 0.30]) {
-        parts.add('dark', cylZ(0.009 * s, 0.012 * s, 8),
-          side * (0.075 + sideW * 0.70) * s,
-          recY + sy * shieldH * s, shieldZ + 0.018 * s);
-      }
-    }
-    if (shieldVariant === 'armored') {
-      parts.add(shieldSlot, box(0.34 * s, 0.035 * s, 0.18 * s),
-        0, recY + shieldH * 0.58 * s, shieldZ - 0.070 * s);
-    }
-  }
-}
-
-function addPintleMgRing(context: PintleMgBuildContext): void {
-  const { box, torus } = KIT;
-  const { opts, parts, s, tone } = context;
-  const ring = fittingRing(opts);
-  if (ring) {
-    const rr = (ring.r || 0.20) * s;
-    const rSlot = tone === 'dark' ? 'dark' : 'detail';
-    parts.add(rSlot, torus(rr, 0.011, 26), 0, 0.035, 0);
-    const stubs = ring.stubs || 3;
-    for (let k = 0; k < stubs; k++) {
-      const a = 0.6 + k * (Math.PI * 2 / stubs);
-      parts.add(rSlot, box(0.024, 0.032, 0.024), Math.cos(a) * rr * 0.98, 0.018, Math.sin(a) * rr * 0.98);
-    }
-  }
-}
+function addPintleMgMount(context: PintleMgBuildContext): void { addPintleMount(context); }
+function addPintleMgReceiver(context: PintleMgBuildContext): void { addPintleReceiver(context); }
+function addPintleMgBarrel(context: PintleMgBuildContext): void { addPintleBarrel(context); }
+function addPintleMgAmmo(context: PintleMgBuildContext): void { addPintleAmmo(context); }
+function addPintleMgShield(context: PintleMgBuildContext): void { addPintleShield(context); }
+function addPintleMgRing(context: PintleMgBuildContext): void { addPintleRing(context); }
 
 function assemblePintleMg(context: PintleMgBuildContext): THREE.Group {
   const { classKey, cls, opts, parts, shieldVariant } = context;
@@ -2670,6 +2446,25 @@ function addStowageRackFrame(
   return {floorCross,floorStrings,nPosts};
 }
 
+// 2026-10-05 (tank-accessories lane): the rack's load in the sewn / molded grammar of the newest equipment
+// (accessoryPrimitives.ts): nailed crates with steel bands, rolled bedrolls with their rolled layers showing, sewn
+// duffels cinched by their straps with a lid flap and a front pocket, and a strapped tarp roll over the load. The
+// random draws, slots, seats and envelopes are the v2 rack's.
+
+/** A fabric part along +Z turned to lie along X, its pressed base on `floor`; straps on its cinch stations. */
+function addRackFabric(parts: FittingParts, slot: string, spec: FabricSpec, x: number, floor: number, z: number,
+  yaw: number): { lift: number; top: number } {
+  const body = place(fabricBody(spec), 0, 0, 0, 0, Math.PI / 2, 0);
+  body.computeBoundingBox();
+  const lift = floor - body.boundingBox!.min.y;
+  const top = lift + body.boundingBox!.max.y;
+  parts.add(slot, body, x, lift, z, 0, yaw, 0);
+  for (const station of spec.cinch ?? []) {
+    parts.add('dark', place(fabricStrap(spec, station), 0, 0, 0, 0, Math.PI / 2, 0), x, lift, z, 0, yaw, 0);
+  }
+  return { lift, top };
+}
+
 function addStowageRackBundle(
   parts: FittingParts,
   rng: () => number,
@@ -2678,40 +2473,48 @@ function addStowageRackBundle(
   index: number,
   count: number,
 ): boolean {
-  const {box,cylX,sph,xform}=KIT;
   const x=(count === 1 ? 0 : -w / 2 + 0.18 + index * ((w - 0.36) / (count - 1)))
     + (rng() - 0.5) * 0.03;
   const slots=['canvasCloth','wood','canvasCloth','detail'];
   const slot=slots[index % slots.length];
   const yaw=(rng() - 0.5) * 0.16;
+  const z=d * 0.04;
   if (slot === 'wood') {
     const bw=0.24 + rng() * 0.06;
     const bh=0.16 + rng() * 0.05;
-    parts.add('wood',box(bw,bh,d * 0.62),x,bh / 2 + 0.02,d * 0.02,0,yaw,0);
-    parts.add('dark',box(bw * 1.03,bh * 0.16,0.02),x,bh * 0.5 + 0.02,d * 0.33,0,yaw,0);
+    const bd=d * 0.62;
+    // a nailed crate with two steel bands girdling it
+    parts.add('wood',moldedBox(bw,bh,bd,0.008,1,0.006),x,bh / 2 + 0.02,d * 0.02,0,yaw,0);
+    for (const band of [-0.3,0.3]) {
+      parts.add('dark',place(block(0.02,bh * 1.03,bd * 1.03),band * bw,0,0),x,bh / 2 + 0.02,d * 0.02,0,yaw,0);
+    }
     return false;
   }
   if (index % 3 === 0) {
     const r=0.10 + rng() * 0.035;
     const len=0.22 + rng() * 0.10;
-    parts.add(slot,cylX(r,len,10),x,r * 0.92 + 0.02,d * 0.04,0,yaw,0);
-    parts.add('dark',cylX(r * 1.05,0.022,10),x - len * 0.22,r * 0.92 + 0.02,d * 0.04,0,yaw,0);
-    parts.add('dark',cylX(r * 1.05,0.022,10),x + len * 0.22,r * 0.92 + 0.02,d * 0.04,0,yaw,0);
+    // a rolled bedroll: two straps, its rolled layers showing at the ends
+    const roll: FabricSpec = { len, hw: r, hh: r, exponent: 2.1, endScale: 0.92, endLength: 0.05, flatten: 0.14,
+      wrinkle: 0.035, seg: 10, stations: 4, cinch: [-len * 0.22, len * 0.22], cinchDepth: 0.1, seed: 31 + index };
+    const { lift }=addRackFabric(parts,slot,roll,x,0.02,z,yaw);
+    for (const layer of rolledEndLayers(r,len)) parts.add('dark',place(layer,0,0,0,0,Math.PI / 2,0),x,lift,z,0,yaw,0);
     return true;
   }
   const bw=0.22 + rng() * 0.08;
   const bh=0.16 + rng() * 0.06;
   const bd=d * (0.46 + rng() * 0.16);
-  // A low-poly ellipsoid produces an irregular, compressible duffel
-  // silhouette. A raised flap, pockets and real straps explain how the
-  // load stays in the lattice instead of reading as another gray box.
-  parts.add(slot,xform(sph(0.5,10),0,0,0,0,yaw,0,[bw,bh,bd]),x,bh * 0.48 + 0.02,d * 0.04);
-  parts.add(slot,box(bw * 0.76,0.026,bd * 0.54),x,bh * 0.88 + 0.02,d * 0.02,0,yaw,0);
-  parts.add(slot,box(bw * 0.56,bh * 0.34,0.024),x,bh * 0.46 + 0.02,d * 0.18,0,yaw,0);
-  for (const sx of [-0.24,0.24]) {
-    parts.add('dark',box(0.018,bh * 1.06,bd * 1.02),
-      x + sx * bw,bh * 0.49 + 0.02,d * 0.04,0,yaw,0);
-  }
+  // a sewn duffel lying across the rack: cinched by two straps, a lid flap over its top, a pocket on its face
+  const duffel: FabricSpec = { len: bw, hw: bd / 2 / 1.05, hh: bh / (2 + 0.05 - 0.82 * 0.32), exponent: 3,
+    endScale: 0.62, endLength: 0.14, flatten: 0.32, wrinkle: 0.05, seg: 10, stations: 5,
+    cinch: [-bw * 0.24, bw * 0.24], seed: 47 + index };
+  const { top }=addRackFabric(parts,slot,duffel,x,0.02,z,yaw);
+  const flap: FabricSpec = { len: bw * 0.62, hw: bd * 0.27, hh: 0.018, exponent: 3, endScale: 0.8, endLength: 0.1,
+    flatten: 0.6, wrinkle: 0.03, seg: 8, stations: 4, seed: 53 + index };
+  addRackFabric(parts,slot,flap,x,top - 0.022,z,yaw);
+  const pocket: FabricSpec = { len: bw * 0.46, hw: 0.028, hh: bh * 0.22, exponent: 3.4, endScale: 0.7, endLength: 0.2,
+    flatten: 0.3, wrinkle: 0.03, seg: 6, stations: 3, seed: 59 + index };
+  const pocketGeometry=place(fabricBody(pocket),0,0,0,0,Math.PI / 2,0).translate(0,0.02 + bh * 0.42,bd * 0.47);
+  parts.add(slot,pocketGeometry,x,0,z,0,yaw,0);
   return true;
 }
 
@@ -2723,7 +2526,6 @@ function addStowageRackFill(
   h: number,
   rng: () => number,
 ): number {
-  const {cylX}=KIT;
   const fill=opts.fill ?? 0.75;
   if (fill <= 0) return 0;
   const count=Math.max(1,Math.round(fill * w / 0.26));
@@ -2733,10 +2535,13 @@ function addStowageRackFill(
   }
   // One long tarp roll across wide racks, over the bundles.
   if (w > 0.8 && fill >= 0.5) {
-    const r=0.085;
-    parts.add('canvasCloth',cylX(r,w * 0.55,10),0,h * 0.9 + r * 0.4,d * 0.02);
-    parts.add('dark',cylX(r * 1.06,0.024,10),-w * 0.16,h * 0.9 + r * 0.4,d * 0.02);
-    parts.add('dark',cylX(r * 1.06,0.024,10),w * 0.16,h * 0.9 + r * 0.4,d * 0.02);
+    const r=0.085, len=w * 0.55, axisY=h * 0.9 + r * 0.4;
+    const tarp: FabricSpec = { len, hw: r, hh: r, exponent: 2.1, endScale: 0.92, endLength: 0.04, flatten: 0.1,
+      wrinkle: 0.03, seg: 10, stations: 5, cinch: [-w * 0.16, w * 0.16], cinchDepth: 0.1, seed: 67 };
+    const alongX=(geometry: THREE.BufferGeometry): THREE.BufferGeometry => place(geometry,0,0,0,0,Math.PI / 2,0);
+    parts.add('canvasCloth',alongX(fabricBody(tarp)),0,axisY,d * 0.02);
+    for (const station of tarp.cinch ?? []) parts.add('dark',alongX(fabricStrap(tarp,station)),0,axisY,d * 0.02);
+    for (const layer of rolledEndLayers(r,len)) parts.add('dark',alongX(layer),0,axisY,d * 0.02);
   }
   return softBundleCount;
 }
@@ -2759,6 +2564,7 @@ function fittingStowageRack(opts: FittingOptions = {}): THREE.Group {
   fitting.userData.mountingFeet = 2;
   fitting.userData.softBundleCount = softBundleCount;
   fitting.userData.fabricProfiles = ['rolled-tarp', 'duffel', 'ruck-with-flap'];
+  fitting.userData.loadFamily = 'cot-sewn-rack-load-v3';
   fitting.userData.rackEnvelope = { widthM: w, depthM: d, heightM: h };
   return fitting;
 }
@@ -2798,10 +2604,9 @@ function fittingTowCable(opts: FittingOptions = {}): THREE.Group {
  * @param {object} opts  mats; count=2; gap=0.05; slot='detail'
  *   ('detail' pale metal | 'canvasCloth' olive | 'hull' scheme-painted);
  *   strap=true; seed, shadows, rotation
- * Envelope: x ±(count*(0.16+gap))/2, y 0..0.50, z ±0.17.
+ * Envelope: x ±(count*(0.16+gap))/2, y 0..0.49, z ±0.19 (2026-10-05: the shared pressed can).
  */
 function fittingJerryCans(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylY } = KIT;
   const requestedCount = Math.max(2, Math.floor(opts.count ?? 2));
   const count = requestedCount % 2 === 0 ? requestedCount : requestedCount + 1;
   const gap = opts.gap ?? 0.05;
@@ -2814,36 +2619,24 @@ function fittingJerryCans(opts: FittingOptions = {}): THREE.Group {
   for (let i = 0; i < count; i++) {
     const x = (i - (count - 1) / 2) * pitchX;
     const yaw = (rng() - 0.5) * 0.10;
-    parts.add(slot, box(0.16, 0.44, 0.32), x, 0.22, 0, 0, yaw, 0);
-    // Stamped X ribs on both broad faces; these are shallow equipment
-    // details, never armor plates or floating decals.
-    for (const face of [-1, 1]) {
-      for (const rz of [-0.48, 0.48]) {
-        parts.add(slot, box(0.014, 0.29, 0.020), x, 0.22, face * 0.166, 0, yaw, rz);
-      }
-    }
-    // Triple bridge handle and offset threaded spout.
-    for (const hx of [-0.045, 0, 0.045]) {
-      parts.add(slot, box(0.020, 0.055, 0.12), x + hx, 0.465, 0, 0, yaw, 0);
-    }
-    parts.add(slot, box(0.11, 0.018, 0.020), x, 0.495, -0.050, 0, yaw, 0);
-    parts.add(slot, cylY(0.030, 0.033, 0.050, 10), x + 0.045, 0.463, 0.105, 0, yaw, 0);
-    parts.add('dark', cylY(0.027, 0.027, 0.018, 10), x + 0.045, 0.496, 0.105, 0, yaw, 0);
-    // Foot seam and lower corner protectors seat every can in the rack.
-    parts.add('dark', box(0.15, 0.018, 0.31), x, 0.018, 0, 0, yaw, 0);
-    for (const sx of [-1, 1]) parts.add('dark', box(0.018, 0.08, 0.034),
-      x + sx * 0.071, 0.055, 0.145, 0, yaw, 0);
+    // 2026-10-05: the fleet's one pressed 20 L can (accessoryKits.ts jerrycanParts): the stamped X on both
+    // broad faces (the gap shows the inner ones), the three-grip handle comb, the spout and its cap.
+    const can = jerrycanParts(1, [-1, 1]);
+    for (const part of [can.body, ...can.stamps, can.spine, ...can.grips]) parts.add(slot, part, x, 0, 0, 0, yaw, 0);
+    if (can.spout) parts.add('dark', can.spout, x, 0, 0, 0, yaw, 0);
+    // two foot rails seat every can in the rack
+    for (const rail of [-0.11, 0.11]) parts.add('dark', place(block(0.15, 0.018, 0.04), 0, 0.009, rail), x, 0, 0, 0, yaw, 0);
   }
   if (opts.strap !== false) {
     const w = count * pitchX + 0.02;
-    parts.add('dark', box(w, 0.028, 0.018), 0, 0.30, 0.168);
-    parts.add('dark', box(w, 0.028, 0.018), 0, 0.30, -0.168);
-    parts.add('dark', box(0.026, 0.48, 0.026), -w / 2 + 0.018, 0.24, -0.16);
-    parts.add('dark', box(0.026, 0.48, 0.026), w / 2 - 0.018, 0.24, -0.16);
-    parts.add('detail', box(0.055, 0.045, 0.030), 0, 0.30, 0.182);
+    parts.add('dark', block(w, 0.028, 0.012), 0, 0.30, 0.1795);
+    parts.add('dark', block(w, 0.028, 0.012), 0, 0.30, -0.1795);
+    parts.add('dark', block(0.026, 0.48, 0.026), -w / 2 + 0.018, 0.24, -0.16);
+    parts.add('dark', block(0.026, 0.48, 0.026), w / 2 - 0.018, 0.24, -0.16);
+    parts.add('detail', block(0.055, 0.045, 0.024), 0, 0.30, 0.1975);
   }
   const fitting = fitAssemble('jerryCans', parts, opts);
-  fitting.userData.designFamily = 'cot-jerry-can-rack-v2';
+  fitting.userData.designFamily = 'cot-jerry-can-rack-v3';
   fitting.userData.requestedCanCount = requestedCount;
   fitting.userData.canCount = count;
   fitting.userData.paired = true;
@@ -2993,19 +2786,36 @@ function fittingAntennaWhip(opts: FittingOptions = {}): THREE.Group {
  *   shadows, rotation
  */
 function fittingUnditchingLog(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylX } = KIT;
+  const { box } = KIT;
   const len = opts.len || 2.4;
   const r = opts.r || 0.13;
   const straps = Math.max(0, opts.straps ?? 2);
   const rng = fitRng(opts.seed ?? 1);
   const parts = fitParts();
-  parts.add('wood', cylX(r, len, 14), 0, 0, 0);
-  parts.add('detail', cylX(r * 0.94, 0.016, 14), -(len / 2 + 0.004), 0, 0);
-  parts.add('detail', cylX(r * 0.94, 0.016, 14), len / 2 + 0.004, 0, 0);
+  // 2026-10-05 (tank-accessories lane): a trunk, not a pipe. One lathe whose radius swells and tapers along the run
+  // (deterministic in the seed, so the strap draws are unchanged), pale sawn ends with growth rings, and open steel
+  // bands with their buckles; inside the old envelope (straps at 1.06 r, ends a hair past the run).
+  const phase = ((opts.seed ?? 1) * 0.7311) % (Math.PI * 2);
+  const radiusAt = (t: number): number => r * (1 - 0.05 * t) * (1 + 0.035 * Math.sin(t * 9.4 + phase) + 0.02 * Math.sin(t * 23 + phase * 2));
+  const profile: Array<readonly [number, number]> = [[0.0005, 0]];
+  for (let i = 0; i <= 8; i++) profile.push([radiusAt(i / 8), (i / 8) * len]);
+  profile.push([0.0005, len]);
+  parts.add('wood', place(latheY(profile, 14), -len / 2, 0, 0, 0, 0, -Math.PI / 2));
+  for (const side of [-1, 1]) {
+    const end = radiusAt(side < 0 ? 0 : 1);
+    const cut = new THREE.CircleGeometry(end * 0.92, 14).toNonIndexed();
+    parts.add('detail', place(cut, side * (len / 2 + 0.003), 0, 0, 0, side * Math.PI / 2, 0));       // sawn end grain
+    for (const [inner, outer] of [[0.42, 0.47], [0.68, 0.72]] as const) {
+      const ring = new THREE.RingGeometry(end * inner, end * outer, 12, 1).toNonIndexed();
+      parts.add('wood', place(ring, side * (len / 2 + 0.005), 0, 0, 0, side * Math.PI / 2, 0));       // growth rings
+    }
+  }
   for (let i = 0; i < straps; i++) {
     const x = -len / 2 + (i + 1) * (len / (straps + 1)) + (rng() - 0.5) * 0.10;
-    parts.add('dark', cylX(r * 1.06, 0.032, 14), x, 0, 0);
-    parts.add('dark', box(0.034, r * 0.9, 0.016), x, -r * 0.62, r * 0.55, 0.5, 0, 0);
+    const band = radiusAt((x + len / 2) / len) * 1.03;
+    parts.add('dark', place(latheY([[band, 0], [band + 0.006, 0.003], [band + 0.006, 0.029], [band, 0.032]], 14),
+      x - 0.016, 0, 0, 0, 0, -Math.PI / 2));                                                            // steel band
+    parts.add('dark', box(0.034, r * 0.9, 0.016), x, -r * 0.62, r * 0.55, 0.5, 0, 0);                // buckle
   }
   if (opts.axis !== 'z') return fitAssemble('unditchingLog', parts, opts);
   const r0 = opts.rotation || [0, 0, 0];
