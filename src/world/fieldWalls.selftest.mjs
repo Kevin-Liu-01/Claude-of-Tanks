@@ -329,7 +329,8 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
   // the dry-wall print paints the GPU's way round and uploads as it is)
   const flips = props.match(/flipPrintRows\(px, size, 4\); flipPrintRows\(hgt, size, 1\);/g) ?? [];
   assert.equal(flips.length, 2, 'the field-stone and mud prints upload row-reversed, so the GPU\'s v is the painters\' v');
-  assert.match(props, /liftFieldStoneMean\(px, size\);[^\n]*\n\s*yield \{ fine: true, stage: 'field-stone-tone' \};\n\s*flipPrintRows\(px, size, 4\);/,
+  // (b18: the lift and the tone skipped for the chalk's own print, which is painted untoned)
+  assert.match(props, /liftFieldStoneMean\(px, size\);[^\n]*\n\s*\}\n\s*yield \{ fine: true, stage: 'field-stone-tone' \};\n\s*flipPrintRows\(px, size, 4\);/,
     'the lift reads the painter\'s rows before the reversal');
   assert.match(props, /if \(earth\) tintFieldMudToEarth\(px, size, earth\);[^\n]*\n\s*yield \{ fine: true, stage: 'field-mud-tone' \};\n\s*flipPrintRows\(px, size, 4\);/,
     'the mud print reversed after its tint');

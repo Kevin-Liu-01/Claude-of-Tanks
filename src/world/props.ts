@@ -59,7 +59,7 @@ import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSp
 import type { SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
 import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
-import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.ts';
+import { liftFieldStoneMean, paintFieldStoneBuffers, type FieldStoneLithology } from './fieldStoneSurface.ts';
 import { paintDryWallBuffers } from './fieldWallFace.ts';
 import { paintHayBuffers } from './hayPrint.ts';
 import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, type HaystackStyle } from './maps/haystackKit.ts';
@@ -1098,15 +1098,20 @@ function flipPrintRows<T extends Uint8ClampedArray | Float32Array>(data: T, size
  * printed rubble on them as "stamped flagstone with dark outlines") and the hearting's packing stones and voids over a
  * band the core maps. Its palette is the stone print's law, so the tone and a masonry tint give the walls the colour
  * they had, lifted where a dark tone would black them out. Phones paint it at half size (the same stones).
+ * (b18; gauntlet wave 121, Verdant's yard walls "coal or slate bricks rather than the chalk ... of the Belgorod region":
+ * on a chalk map the walls are its chalk, painted for itself and never toned — the map's stone tone is its houses'.)
  */
 function* makeFieldStone(
   anisotropy: number,
   tone: ToneFunction | null,
   size: number,
+  lithology: FieldStoneLithology = 'fieldstone',
 ): Generator<PropsBuildSlice, GeneratedSurfaceTextures, void> {
-  const { px, hgt } = yield* paintFieldStoneBuffers(size);
-  applyTone(px, tone);
-  liftFieldStoneMean(px, size); // (wave 34: never darker than a fieldstone, whatever the map's stone tone)
+  const { px, hgt } = yield* paintFieldStoneBuffers(size, undefined, lithology);
+  if (lithology !== 'chalk') {
+    applyTone(px, tone);
+    liftFieldStoneMean(px, size); // (wave 34: never darker than a fieldstone, whatever the map's stone tone)
+  }
   yield { fine: true, stage: 'field-stone-tone' };
   flipPrintRows(px, size, 4); flipPrintRows(hgt, size, 1); // (b13: the GPU's v is the painter's v)
   return {
@@ -3203,7 +3208,7 @@ function* propsBuildSteps(
   // a map whose walls are mud or brick keeps them on the stone print and paints nothing.
   const fieldWallBucket = P.wallStyle === 'adobe' || sourcedStoneIsBrick(mapId) ? 'stone' : 'fieldStone';
   const fieldStone = fieldWallBucket === 'fieldStone'
-    ? yield* makeFieldStone(aniso, T.stone || null, mobileProps ? 256 : 512)
+    ? yield* makeFieldStone(aniso, T.stone || null, mobileProps ? 256 : 512, rockLithologyFor(mapId) === 'chalk' ? 'chalk' : 'fieldstone')
     : stone;
   // (and a mud-walled map's walls their own worn render over their courses, not the house plaster)
   const adobeWallBucket = P.wallStyle === 'adobe' ? 'fieldMud' : 'plaster';
