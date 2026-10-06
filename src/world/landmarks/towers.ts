@@ -7,7 +7,7 @@
 import { LocalFrame, PartSink, facePoint, rgb, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import {
-  archSurround, archWindow, archedBody, archedSlab, bar, cross, dome, drum, moulding, prismBody, railing, revolve, smoothRender, tentRoof,
+  archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, cross, dome, drum, moulding, prismBody, railing, revolve, smoothRender, tentRoof,
   type ArchHole, LIMEWASH_UV } from './kit.ts';
 import type { LandmarkBuilder } from './types.ts';
 
@@ -370,8 +370,10 @@ export const belfry: LandmarkBuilder = (ctx) => {
 
 /**
  * The campanile (Dalmatia's and Istria's free-standing bell towers, Italy's): a slender square stone shaft divided into
- * stages by string courses, slit windows below, the open bell stage with paired round arches (a bifora on each face)
- * under a stone pyramid and its cross.
+ * stages by string courses, its corners stiffened by lesenes; its openings multiply as it rises, as on Rab's great
+ * tower — slits at the foot, a monofora on each face of the middle stages, a bifora on each face of the top one —
+ * then the open bell stage with paired round arches on a colonnette, a balustrade round the stone pyramid with a
+ * pinnacle at each corner, the ball and the cross.
  */
 export const campanile: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
@@ -379,13 +381,33 @@ export const campanile: LandmarkBuilder = (ctx) => {
   const base = -0.6 - ctx.groundFall;
   sink.span('stone', -S / 2 - 0.2, base, -S / 2 - 0.2, S / 2 + 0.2, 0.7, S / 2 + 0.2);
   const shaftTop = H * 0.68, bellTop = H * 0.82, stages = Math.max(3, Math.round(shaftTop / 6));
+  const stageY = (k: number) => 0.7 + (shaftTop - 0.7) * k / stages;
   const slit = (y: number): ArchHole => ({ u: 0, w: 0.28, y0: y, spring: y + 1.1, form: 'round' });
-  const holes = { front: [{ u: 0, w: 1.2, y0: 0.7, spring: 2.6, form: 'round' as const }, slit(shaftTop * 0.55)], back: [slit(shaftTop * 0.4)],
-    left: [slit(shaftTop * 0.7)], right: [slit(shaftTop * 0.3)] };
-  const f = archedBody(sink, 'stone', 0, 0, S, S, 0.7, shaftTop, holes, 0.36);
+  // the shaft stage by stage (archedFace cuts one row of openings a face): the door and a slit a face in the lowest, a
+  // monofora a face in the middle ones, a bifora a face in the top one, each sill 1 m over its stage's string course
+  type FaceHoles = Record<'front' | 'back' | 'left' | 'right', ArchHole[]>;
+  let front: ReturnType<typeof archedBody> | null = null;
+  for (let k = 0; k < stages; k++) {
+    const y0 = stageY(k), y1 = stageY(k + 1);
+    let holes: FaceHoles;
+    if (k === 0) {
+      const sy = Math.min(y1 - 1.6, y0 + (y1 - y0) * 0.55);
+      holes = { front: [{ u: 0, w: 1.2, y0: 0.7, spring: 2.6, form: 'round' as const }], back: [slit(sy)], left: [slit(sy - 0.6)], right: [slit(sy + 0.4)] };
+    } else {
+      const last = k === stages - 1, wy0 = y0 + 1.0, h = Math.min(y1 - 0.9 - wy0, last ? 2.0 : 2.3);
+      const w = last ? Math.min(0.55, S * 0.11) : Math.min(0.7, S * 0.14);
+      const row = h < 1.2 ? [] : (last ? [-w / 2 - 0.12, w / 2 + 0.12] : [0]).map((u): ArchHole => ({ u, w, y0: wy0, spring: wy0 + h - w / 2, form: 'round' }));
+      holes = { front: row, back: row, left: row, right: row };
+    }
+    const faces = archedBody(sink, 'stone', 0, 0, S, S, y0, y1, holes, 0.36);
+    if (k === 0) front = faces;
+  }
+  const f = front!;
   sink.quad('structureWood', facePoint(f.front, -0.6, 0.7, -0.34), facePoint(f.front, 0.6, 0.7, -0.34), facePoint(f.front, 0.6, 2.6, -0.34),
     facePoint(f.front, -0.6, 2.6, -0.34), { colour: TIMBER_DARK, decor: true });
-  for (let k = 1; k <= stages; k++) moulding(sink, 'stone', S, S, shaftTop * k / stages - 0.2, 0.2, 0.08);
+  for (let k = 1; k <= stages; k++) moulding(sink, 'stone', S, S, stageY(k) - 0.2, 0.2, 0.08);
+  // the lesenes up the corners
+  cornerPilasters(sink, 'stone', 0, 0, S, S, 0.7, shaftTop - 0.2, Math.min(0.55, S * 0.1), 0.07);
   // the bell stage: each face a bifora (two round arches on a colonnette)
   const t = 0.5;
   for (const [yaw, len] of [[0, S], [Math.PI, S], [Math.PI / 2, S - 2 * t], [-Math.PI / 2, S - 2 * t]] as const) {
@@ -398,6 +420,22 @@ export const campanile: LandmarkBuilder = (ctx) => {
   revolve(sink, 'structureMetal', 0, 0, [[0.55, bellTop - 2.6], [0.5, bellTop - 2.45], [0.32, bellTop - 2.05], [0.22, bellTop - 1.75], [0, bellTop - 1.7]], 10,
     { colour: BELL, decor: true });
   moulding(sink, 'stone', S, S, bellTop, 0.3, 0.18);
+  // the balustrade round the pyramid's foot: corner piers, a rail, the balusters between (fine), a pinnacle on each pier
+  const by = bellTop + 0.3, bh = 0.75, e = S / 2 + 0.1;
+  for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+    sink.span('stone', sx * e - 0.22, by, sz * e - 0.22, sx * e + 0.22, by + bh + 0.1, sz * e + 0.22);
+    revolve(sink, 'stone', sx * e, sz * e, [[0.24, by + bh + 0.1], [0, by + bh + 1.05]], 4, { decor: true }, Math.PI / 4);
+  }
+  for (const [x0, z0, x1, z1] of [[-e, -e, e, -e], [e, -e, e, e], [e, e, -e, e], [-e, e, -e, -e]] as const) {
+    const ax = x0 === x1, lo = (v0: number, v1: number) => Math.min(v0, v1), hi = (v0: number, v1: number) => Math.max(v0, v1);
+    sink.span('stone', ax ? x0 - 0.13 : lo(x0, x1), by + bh - 0.12, ax ? lo(z0, z1) : z0 - 0.13, ax ? x0 + 0.13 : hi(x0, x1), by + bh, ax ? hi(z0, z1) : z0 + 0.13,
+      { decor: true });
+    const n = Math.max(4, Math.round((2 * e) / 0.42));
+    for (let k = 1; k < n; k++) {
+      const q = k / n, x = x0 + (x1 - x0) * q, z = z0 + (z1 - z0) * q;
+      sink.span('stone', x - 0.07, by, z - 0.07, x + 0.07, by + bh - 0.12, z + 0.07, { decor: true, fine: true });
+    }
+  }
   // the stone pyramid, a ball and the cross
   revolve(sink, 'stone', 0, 0, [[(S / 2 + 0.1) * Math.SQRT2, bellTop + 0.3], [0, H - 1.3]], 4, {}, Math.PI / 4);
   revolve(sink, 'structureMetal', 0, 0, [[0.05, H - 1.35], [0.2, H - 1.25], [0.22, H - 1.1], [0.05, H - 0.95]], 8, { colour: rgb(0x8a7a5a), decor: true });
