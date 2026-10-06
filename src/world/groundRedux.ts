@@ -226,7 +226,9 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   polders: { ...STILL_WATER, grass: reed(0.7, 1.5, 0.85, 0.7) },
   copper_mesa: { ...ARID, grass: null },
   airfield: { ...TEMPERATE, grass: verge(0.6, 0.45) },
-  oasis: { ...ARID, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0.5, swashLines: 0.3, grass: reed(0.5, 1.4, 0.85, 0.2) },
+  // (round 2, the gauntlet's wave 125: "corduroy ripples" and "lawn-green tufts" — the wind's ripples at four tenths, the
+  // reeds at the spring's waterline, a trace of their meadow on the dry banks: 0.05, was 0.2)
+  oasis: { ...ARID, windRipple: 0.4, swashPeriodS: 0, swashReachM: 2.5, swashStrength: 0.5, swashLines: 0.3, grass: reed(0.5, 1.4, 0.85, 0.05) },
   whiteout: { ...SNOW, scree: 0.3, grass: tundra(0.3, 0.4) },
   orchard: { ...TEMPERATE, scree: 0.2, grass: meadow(0.9, 0.8) },
   longleaf: { ...TEMPERATE, scree: 0.2, grass: savanna(0.7, 0.75) },

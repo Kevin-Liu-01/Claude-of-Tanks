@@ -1926,6 +1926,8 @@ const REGIONAL_PAL = {
   nagaWood: [0x5b4735, 0x856b51, 0x2f251b],
   nipa: [0x6e6447, 0x8f8460, 0x3a3426],
   mekongPlank: [0x6f6150, 0x8d7c66, 0x3c342b],
+  // Siwa's kershef (salt-crusted mud): the wall, its paler crust, the palm-trunk timber
+  kershef: [0x9a8a74, 0xb3a58d, 0x5e5243],
 } as const satisfies Record<string, Palette>;
 
 /** A light gable roof built at the origin and moved: the shared roof helper lays its planes out centred on x = 0. */
@@ -2086,6 +2088,36 @@ function makeMekongPondHut(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('fishershack', out);
 }
 
+/**
+ * The Siwan guard post (the checkpoint hut's family; the gauntlet's wave 125 on Sunscar Oasis: "blue corrugated sheds"
+ * at the caravan toll): a kershef hut with battered walls and a parapet over palm-beam ends, a palm-rib shade on two
+ * palm posts before its plank door, two small dark windows, a water jar by the door. Inside the family's footprint and
+ * height (2.40 x 3.7 x 3.3).
+ */
+function makeSiwaGuardHut(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = REGIONAL_PAL.kershef, w = 4.2, d = 5.4, h = 2.65;
+  colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng, 0.08);
+  // the battered foot and the parapet with rounded corners standing over the roof
+  colored(out, box(w + 0.24, 0.6, d + 0.24).translate(0, 0.3, 0), p[0], rng, 0.06);
+  for (const side of [-1, 1]) {
+    colored(out, box(0.24, 0.42, d).translate(side * (w / 2 - 0.12), h + 0.21, 0), p[1], rng, 0.06);
+    colored(out, box(w - 0.48, 0.42, 0.24).translate(0, h + 0.21, side * (d / 2 - 0.12)), p[1], rng, 0.06);
+  }
+  // palm-beam ends under the parapet along the long sides
+  for (const side of [-1, 1]) for (const z of [-1.8, -0.6, 0.6, 1.8]) colored(out, box(0.2, 0.1, 0.1).translate(side * (w / 2 + 0.08), h - 0.2, z), p[2], rng, 0.1);
+  // the door and the windows: dark openings in the walls
+  colored(out, box(0.95, 1.9, 0.06).translate(0, 0.95, d / 2 + 0.02), 0x3b2f24, rng, 0.04);
+  for (const x of [-1.35, 1.35]) colored(out, box(0.42, 0.5, 0.06).translate(x, 1.75, d / 2 + 0.02), 0x2a241e, rng, 0.04);
+  for (const side of [-1, 1]) colored(out, box(0.06, 0.5, 0.42).translate(side * (w / 2 + 0.02), 1.75, -0.8), 0x2a241e, rng, 0.04);
+  // the palm-rib shade before the door: two palm posts, a beam and the mat
+  for (const x of [-1.25, 1.25]) colored(out, box(0.16, 2.3, 0.16).translate(x, 1.15, d / 2 + 1.0), p[2], rng, 0.08);
+  colored(out, box(2.8, 0.14, 0.16).translate(0, 2.33, d / 2 + 1.0), p[2], rng, 0.08);
+  colored(out, slab(2.9, 0.06, 1.15).translate(0, 2.42, d / 2 + 0.55), 0xa8956f, rng, 0.12);
+  // a water jar by the door
+  colored(out, box(0.36, 0.62, 0.36).translate(0.85, 0.31, d / 2 + 0.3), 0xa8673e, rng, 0.08);
+  return mergeConnectedStructure('checkpointhut', out);
+}
+
 /** The architecture kits' light-family variants (maps/regional): kit id -> family key -> the variant. */
 export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = (() => {
   const B = DESTRUCTIBLE_BUILDING_TYPES;
@@ -2107,6 +2139,10 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
     mekong: Object.freeze({
       longhouse: variant('longhouse', REGIONAL_PAL.mekongPlank, makeMekongLongHouse),
       fishershack: variant('fishershack', REGIONAL_PAL.mekongPlank, makeMekongPondHut),
+    }),
+    // Siwa (Sunscar Oasis): the checkpoint hut stands as a kershef guard post
+    siwa: Object.freeze({
+      checkpointhut: variant('checkpointhut', REGIONAL_PAL.kershef, makeSiwaGuardHut),
     }),
   });
 })();
