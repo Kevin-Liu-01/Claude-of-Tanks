@@ -11,6 +11,7 @@ import {
   EXPOSURE_ADAPTATION, EXPOSURE_KEY, EXPOSURE_MAX, EXPOSURE_MIN, GROUND_SUNLIT_SHARE, LIGHT_SOLAR_IRRADIANCE, LOW_SUN_EV, NIGHT_EV, NIGHT_SKY_GLOW, OVERCAST_GROUND_RETURN, OVERCAST_SKY_CUT,
   SKY_DIFFUSE_CHROMA, SKY_DIFFUSE_GAIN, atmosphereTransmittance, deriveSun, exposureFor, linearToHex, whiteBalanceGains,
   EXPOSURE_ALBEDO_K, EXPOSURE_ALBEDO_REF, exposureAlbedoEV, OVERCAST_DIRECT_CUT, OVERCAST_DIFFUSED_FROM,
+  OVERCAST_THICK_CUT, OVERCAST_THICK_FROM, OVERCAST_SATURATION_CUT,
 } from './lightModel.ts';
 import {
   DEFAULT_GROUND_ALBEDO, EXPOSURE_REFERENCE_ILLUMINANCE, hexToLinear, isGalaxySky, lightTune, loadGroundedLightModel, luminance,
@@ -186,6 +187,38 @@ assert.ok(overcastModel.exposure / clear.exposure < clear.illuminance / overcast
   const full = at(1, { OVERCAST_DIRECT_CUT: 1 });
   near(full.sunIntensity, 0, 1e-12, 'a full cut: no beam');
   near(full.illuminance, closedWas.illuminance, 1e-9, 'a full cut: all of it diffused, the light still whole');
+}
+// 2026-10-05 (the skies lane; the gauntlet's wave 118: "sand and lawn are bright and saturated under grey overcast",
+// ground/sky about twice the overcast photographs'): a thick deck passes less glow — OVERCAST_THICK_CUT over the
+// overcast's last stretch — and the grade's saturation falls with the overcast; neither touches an open sky
+{
+  const at = (overcast, tune) => {
+    const saved = globalThis.__LIGHT_TUNE; globalThis.__LIGHT_TUNE = tune;
+    try { return resolveLightModel({ ...verdantSky, lighting: { overcast } }, verdant, { irradianceRaw: irr }, null); }
+    finally { globalThis.__LIGHT_TUNE = saved; }
+  };
+  assert.ok(OVERCAST_THICK_CUT > 0.4 && OVERCAST_THICK_CUT < 0.7 && OVERCAST_THICK_FROM === 0.5, 'a closed deck passes a little under half the glow');
+  assert.ok(OVERCAST_SATURATION_CUT > 0.1 && OVERCAST_SATURATION_CUT < 0.25, 'the grade loses a sixth of its saturation under a closed deck');
+  const noThick = { OVERCAST_THICK_CUT: 0, OVERCAST_SATURATION_CUT: 0 };
+  // the deck's own light: the hemisphere less what the deck returns of the ground's (E × the return share), and less the
+  // beam the cut diffuses (the QA knob OVERCAST_BEAM_DIFFUSE 0 drops it) — the glow the thickness scales
+  const deckOf = (m, o) => m.hemiIntensity - m.illuminance * Math.min(0.9, o * OVERCAST_GROUND_RETURN * luminance(m.groundAlbedo));
+  const glowOf = (o, tune) => deckOf(at(o, { ...tune, OVERCAST_BEAM_DIFFUSE: 0 }), o);
+  for (const o of [0, 0.3, 0.5]) {
+    const m = at(o, undefined), m0 = at(o, noThick);
+    near(m.hemiIntensity, m0.hemiIntensity, 1e-12, `overcast ${o}: the glow untouched below OVERCAST_THICK_FROM`);
+    near(m.saturation, 1 - OVERCAST_SATURATION_CUT * o, 1e-12, `overcast ${o}: the saturation × (1 − ${OVERCAST_SATURATION_CUT} × overcast)`);
+  }
+  const clearM = at(0, undefined);
+  near(clearM.saturation, 1, 0, 'an open sky keeps its saturation');
+  near(clearM.illuminance, at(0, noThick).illuminance, 0, 'and its light');
+  const shut = at(1, undefined), shut0 = at(1, noThick);
+  near(glowOf(1, {}), (1 - OVERCAST_THICK_CUT) * glowOf(1, noThick), 1e-9, `a closed deck: the glow × ${(1 - OVERCAST_THICK_CUT).toFixed(2)}`);
+  near(deckOf(shut, 1) - glowOf(1, {}), deckOf(shut0, 1) - glowOf(1, noThick), 1e-9, 'the diffused beam is the cut\'s, untouched');
+  near(shut.saturation, 1 - OVERCAST_SATURATION_CUT, 1e-12, 'a closed deck: the saturation');
+  assert.ok(shut.illuminance < 0.7 * shut0.illuminance && shut.exposure > shut0.exposure, `a closed deck: the light ${(shut.illuminance / shut0.illuminance).toFixed(2)}x, the exposure up`);
+  near(shut.sunIntensity, shut0.sunIntensity, 1e-12, 'the beam is the cut\'s alone');
+  near(glowOf(0.75, {}), (1 - OVERCAST_THICK_CUT / 2) * glowOf(0.75, noThick), 1e-9, 'half the cut midway (overcast 0.75)');
 }
 
 {

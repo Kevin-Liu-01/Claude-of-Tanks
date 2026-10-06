@@ -280,8 +280,8 @@ assert.equal(getMapConfig('whiteout').horizon.style, 'alpine', 'round 72: Whiteo
   // level face keeps its light while the faces turned to and from the sun lose the difference
   const sinEl = Math.sin(34 * Math.PI / 180);
   const open = resolveHorizonLightingGains({ sun: 4.5, hemi: 0.51, cover: 1, sinEl });
-  const closed = resolveHorizonLightingGains({ sun: 4.5, hemi: 0.51, cover: 1, direct: 1 - 0.96, sinEl });
-  assert.ok(Math.abs(closed.sunGain - open.sunGain * 0.04) < 1e-12, `a closed deck: the sun term at the beam's 4 % (${closed.sunGain.toFixed(3)})`);
+  const closed = resolveHorizonLightingGains({ sun: 4.5, hemi: 0.51, cover: 1, direct: 1 - 0.98, sinEl });
+  assert.ok(Math.abs(closed.sunGain - open.sunGain * 0.02) < 1e-12, `a closed deck: the sun term at the beam's 2 % (${closed.sunGain.toFixed(3)})`);
   const level = (g) => g.sunGain * 1.05 * sinEl + g.ambient;
   assert.ok(Math.abs(level(closed) - level(open)) < 1e-12, 'a level face keeps its light');
   const facing = (g) => g.sunGain * 1.05 + g.ambient * 0.62, away = (g) => g.ambient * 0.62;

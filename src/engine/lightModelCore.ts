@@ -196,7 +196,7 @@ export function resolveDeckClosure(preset: LightModelPreset, patterned: boolean)
  * The direct cut of a closed deck at overcast 1 — lightModel.ts OVERCAST_DIRECT_CUT, here for the modules that build
  * before the grounded model loads (the far ranges, maps/horizon.ts); lightModel.selftest pins the two equal.
  */
-export const OVERCAST_DIRECT_CUT_SHARED = 0.96;
+export const OVERCAST_DIRECT_CUT_SHARED = 0.98;
 
 /** How much of the night a dome intensity means: full at the night preset's .08, none from .30 (sky.ts nightAmount). */
 function nightFor(skyIntensity: number): number {

@@ -7378,8 +7378,8 @@ light"; blotches on Whiteout's snow. Branch `visual/cloud-land` (the PR head wit
 blotches).
 
 **The far rock under a closed deck keeps only the beam** (`maps/horizon.ts resolveHorizonLightingGains`): the vista's
-sun term takes the deck's beam share (1 − 0.96 × overcast) and the rest returns as sky light (a level face keeps its
-light); the ring takes the uniform share, the far range and the panorama the average cut.
+sun term takes the deck's beam share (1 − 0.98 × overcast, below) and the rest returns as sky light (a level face keeps
+its light); the ring takes the uniform share, the far range and the panorama the average cut.
 
 **The far country under the clouds** (`horizonPanorama.ts`, `horizonFarRange.ts`): the distant hills never showed the
 dappled shadows that best read as cloud shadows. The far country the battle frames show is the panorama shell (the
@@ -7391,6 +7391,21 @@ through the shared lookup (`cotCloudSun`: inside the shade map's 12 km square, f
 panorama's 9). Baked on the tier with a shade map only (phones none); freed with the atlas on a GPU suspension and baked
 again with it; QA `PANO_CLOUD_SHADE 0`. The fallback range's sun term takes the same lookup. Subtle at 3–6 km behind the
 haze, as it should be.
+
+**Overcast reads as overcast** (`lightModel.ts`; the gauntlet's wave 118, both critics: "sand and lawn are bright and
+saturated under grey overcast"). Under a deck the photographs put the ground near its own albedo against the sky
+(ground/sky 0.13–0.16); the game sat at twice that (Railyard 0.31, Titan Gorge's sand 0.48–0.57), with the hemisphere
+carrying 42 % of the clear light. Three scaled laws, all at 1 on the 28 maps without a deck (overcast 0):
+- a thick deck passes less glow: the transmission × (1 − `OVERCAST_THICK_CUT` 0.55 × smoothstep(0.5, 1, overcast)) —
+  Titan Gorge and Whiteout 0.45, Railyard 0.47, Foundry 0.57, Frosthollow 0.66. With the camera adapting 60 % to the
+  horizontal light, ground/sky on screen follows the rendered light: the ground darker, the deck brighter (the lab's
+  half-transmission variant: Railyard 0.31 → 0.24, Titan Gorge 0.57 → 0.42, Frosthollow 1.26 → 1.05);
+- the grade's linear saturation × (1 − `OVERCAST_SATURATION_CUT` 0.18 × overcast): 1.4 → 1.15 under a closed deck
+  (Titan Gorge's sand C* 34 → 26 in the lab; the overcast photographs 8.5–24);
+- `OVERCAST_DIRECT_CUT` (and its shared copy) 0.96 → 0.98: with the glow at 0.45 the 4 % of the beam a closed deck
+  passed rose from 6 % of Titan Gorge's sun-and-deck light to 11 % (Whiteout 3 → 5 %), the hard shadows of waves 80 and
+  82 returning; 2 % keeps the share where it was. A deck with gaps keeps its clear sun in the gaps.
+QA knobs of the same names.
 
 
 ## Acceptance is visual and measured
