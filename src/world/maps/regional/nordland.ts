@@ -626,6 +626,49 @@ const kapell: RegionalBuilder = (ctx) => {
 };
 
 /**
+ * The prayer house (bedehus) of the lay movement, in every Nordland village beside or instead of a chapel (round 2, gauntlet
+ * wave 111b: "the same white chapel stands twice side by side"): a plain white board hall with no tower, its gable to the
+ * road under a slate roof, a small entry porch (vindfang) on the gable with the door, three or four tall plain windows down
+ * each long side, a small cross on the gable's apex.
+ */
+const bedehus: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const st = { ...stateFor(ctx, [1, 0, 0]), boards: 'lapped' as const, trim: WHITE };
+  const rng = st.rng;
+  const fit = wallsIn(ctx, 0.32, 0.12);
+  const W = clamp(fit.w, 4.8, 8), porch = 1.6, D = clamp(fit.d - porch, 6.5, 11);
+  sink.placed(0, fit.cx, 0, fit.cz - porch / 2, () => {
+    const openings: Opening[] = [];
+    for (const face of ['right', 'left'] as const) {
+      for (const o of windowRhythm(face, 0, D, { w: 0.9, h: 1.7, sill: 1.0, spacing: 2.1, margin: 1.0, max: 4 })) openings.push(o);
+    }
+    openings.push({ face: 'back', storey: 0, kind: 'window', u: 0, w: 0.8, h: 1.2, y0: 1.3 });
+    const frame = buildHouse(sink, {
+      w: W, d: D, plinth: footing(0.5), storeys: [{ h: 3.3, wall: 'plaster', framed: true }],
+      roof: skifer(40 + rng() * 6, 0.3, 0.2), gableBucket: 'plaster', gableFramed: true, openings,
+      chimneys: [{ x: 0, z: -D * 0.3, sx: 0.5, sz: 0.5, above: 0.7, bucket: 'plaster', cap: 'slab' }],
+      gutters: null, verge: { colour: WHITE, bucket: 'structureWood' }, reveal: 0.1, spall: null,
+    }, dialect(st));
+    // the porch on the front gable: its own little gable over the door
+    const pz0 = D / 2 - 0.02, pw = 2.4, ph = 2.6;
+    sink.span('stone', -pw / 2 - 0.05, -0.3, pz0, pw / 2 + 0.05, 0.5, pz0 + porch + 0.05);
+    sink.span('plaster', -pw / 2, 0.5, pz0, pw / 2, 0.5 + ph, pz0 + porch);
+    const pf: Face = { origin: [0, 0, pz0 + porch], u: [1, 0, 0], out: [0, 0, 1], width: pw };
+    doorUnit(sink, pf, 0, 0.5, 1.0, 2.1, {
+      leaf: shade(TAR, 1.5), frame: { bucket: 'structureWood', width: 0.12, out: 0.05, colour: WHITE },
+      steps: { bucket: 'stone' }, leafKind: 'panel', transom: false,
+    }, 0.5);
+    const pr: RoofSpec = { kind: 'gable', pitchDeg: 40, eave: 0.2, verge: 0.15, thickness: 0.12, bucket: 'roof' };
+    sink.placed(Math.PI / 2, 0, 0, pz0 + porch / 2, () => emitRoof(sink, roofGeometry(porch, pw, 0.5 + ph, pr), pr));
+    // the cross on the main gable's apex
+    const apexY = frame.roof.ridgeTopY, az = D / 2 + 0.05;
+    sink.span('structureMetal', -0.03, apexY - 0.05, az - 0.03, 0.03, apexY + 0.85, az + 0.03, { colour: IRON, decor: true });
+    sink.span('structureMetal', -0.22, apexY + 0.52, az - 0.03, 0.22, apexY + 0.58, az + 0.03, { colour: IRON, decor: true });
+  });
+  return sink.finish();
+};
+
+/**
  * A house burnt in the fighting of May 1940 (the ruin's plot): the granite footing standing round the cellar, the
  * stack standing alone, charred studs at a corner, a fallen beam and the burnt floor's ash.
  */
@@ -697,7 +740,9 @@ export const NORDLAND_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Obje
   fishery: fiskebruk,
   boatshed: naust,
   netyard: hjell,
-  chapel: kapell,
+  // the village's two chapel plots: one keeps the towered chapel, the other is the prayer house (bedehus). The plot's own
+  // depth splits them (Nordhavn's two plots measure 9.70 and 10.09 m; the split sits between them), so neither stream moves.
+  chapel: (ctx) => (ctx.bounds.maxZ - ctx.bounds.minZ < 9.9 ? bedehus(ctx) : kapell(ctx)),
   ruin: brent,
   woodshed: vedskjul,
 });

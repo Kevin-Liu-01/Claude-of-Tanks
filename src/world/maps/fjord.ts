@@ -110,15 +110,28 @@ export default {
     mudTone: (h: number, s: number, l: number) => [0.54, clamp01(s * 0.85), clamp01(l * 0.68)],
     seaLake: true, seaFoam: 0.54, seaRamp: [0.22, 0.58], iceDrift: 0.08,
     marshGloss: 0.94, iceSky: [0.24, 0.39, 0.50],
-    tintA: [0.86, 0.94, 0.92], tintB: [0.63, 0.72, 0.70], tintC: [0.98, 1.04, 1.02],
+    // map revival lane 2, round 2 (gauntlet wave 111b: "uniform green felt ... a brown spring ground palette"): May 1940 in
+    // Ofoten, a fortnight after the snow: last year's grass straw-brown over the new shoots, the moss dark under it
+    tintA: [0.98, 0.95, 0.80], tintB: [0.72, 0.72, 0.60], tintC: [1.05, 1.0, 0.84],
     roadTint: [0.66, 0.68, 0.67], midRelief: 0.94,
   },
   vegetation: {
-    species: ['spruce', 'fir', 'birch'], clusterMix: [['spruce', 0.58], ['fir', 0.32], ['birch', 0.10]],
-    loneMix: [['spruce', 0.50], ['fir', 0.30], ['birch', 0.20]], rimMix: [['spruce', 0.66], ['fir', 0.29], ['birch', 0.05]],
+    // round 2 (wave 111b: "a monoculture of repeated conifers with no birch anywhere"): Ofoten's woods are downy birch on
+    // the lower slopes, a few Scots pine on the rock, spruce only in the planted stands; in May the birches are bare twigs
+    // just breaking into a pale green haze
+    species: ['birch', 'pine', 'spruce'], clusterMix: [['birch', 0.62], ['pine', 0.24], ['spruce', 0.14]],
+    loneMix: [['birch', 0.66], ['pine', 0.26], ['spruce', 0.08]], rimMix: [['birch', 0.50], ['pine', 0.30], ['spruce', 0.20]],
+    palettes: {
+      birch: { birchLeaves: true, cardHue: 0.2, cardSat: 0.16, cardL0: 0.44,
+        texTone: (h: number, s: number, l: number): [number, number, number] => [clamp01(0.2 + (h - 0.25) * 0.2), clamp01(s * 0.42 + 0.06), clamp01(l * 0.96 + 0.1)],
+        canopy: { hue: 0.2, sat: 0.2, l0: 0.38, l1: 0.54 }, jitterHue: 0.5 },
+    },
     // map pass 2026-09-12: the harbour terraces read as smooth lawn; dwarf
     // spruce scrub and more coastal rock give the slopes a fjord texture.
-    clusterCount: 86, loneCount: 146, rimCount: 132, grassDensity: 0.78,
+    // (wave 111b: "evenly spaced identical lime-green grass billboards") the sward short and thin after the snow, last year's
+    // straw over the new blades
+    clusterCount: 86, loneCount: 146, rimCount: 132, grassDensity: 0.34,
+    grassTexTone: (h: number, s: number, l: number): [number, number, number] => [0.13, clamp01(s * 0.32 + 0.06), clamp01(l * 0.86 + 0.1)],
     bushCount: 1.15, bushSpecies: 'spruce',
   },
   props: {
@@ -165,7 +178,8 @@ export default {
     sandbagLines: 16, tankWrecks: { era: 'modern', count: 5, debris: true,
       ids: ['leo2a7v', 't90a', 'cv90', 'strv122', 'marder1a3'] },
     inhabit: {
-      stalls: 1, benches: 4, coreClutter: 22, trucks: 5, jeeps: 3,
+      // (wave 111b: "a fairground-style market stall") no market stall: the quay's own fish trade has the fish plant
+      stalls: 0, benches: 4, coreClutter: 22, trucks: 5, jeeps: 3,
       // map revival lane 2, round 2: Bjerkvik in 1940 had no traffic cones or concrete jersey barriers — the roadside
       // vocabulary is the wharf's cable reels, the transformer cabinets of the harbour's power and the road signs
       drumClusters: 6, camps: 2, modernClutter: { cablespool: 8, transformer: 4, roadsign: 6 },
