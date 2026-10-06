@@ -89,7 +89,10 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   copper_mesa: [through, through, through, through, join(1, 3)],
   // Kestrel Airfield redesign (2026-10-02): the runway road runs edge to edge; each access road climbs from its edge to
   // the runway road; each taxiway half runs from the runway road at the runway's end to the runway road at its centre.
-  airfield: [through, ['boundary', { junction: 0 }], ['boundary', { junction: 0 }], join(0, 0), join(0, 0)],
+  // (2026-10-05, the map-revival lane: each dacha cooperative's lane leaves its access road and rejoins it round the
+  // cooperative's back row)
+  airfield: [through, ['boundary', { junction: 0 }], ['boundary', { junction: 0 }], join(0, 0), join(0, 0),
+    [{ junction: 1 }, { junction: 1, at: [5, -288] }], [{ junction: 2 }, { junction: 2, at: [-5, 288] }]],
   oasis: [through, through, through, join(1, 2), join(1, 2)],
   whiteout: [join(1, 3), through, through, through, join(1, 3)],
   orchard: [through, through, through, join(1, 2), join(1, 2)],

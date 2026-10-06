@@ -168,6 +168,11 @@ export default {
       // the runway's centre, past the cargo or the terminal apron.
       TAXIWAY,
       TAXIWAY.map(rotatePoint),
+      // 5 / 6 — the dacha cooperatives' lane (2026-10-05, the map-revival lane; the layout brief's orphan rule): off the
+      // access road where it tops the shoulder, between the cooperative's two rows of plots and round the back of the
+      // south row to the access road again — laid in the concrete slabs of every Soviet garden cooperative's lane
+      [[0, -284], [28, -265], [146, -265], [150, -292], [40, -296], [8, -290]],
+      [[0, 284], [-28, 265], [-146, 265], [-150, 292], [-40, 296], [-8, 290]],
     ] },
     // The boggy floors of the two valleys (rotation pair), the Irpin's floodplain: every way between a team's assembly
     // ground and the plateau crosses soft ground, except the access roads' causeways.
@@ -268,8 +273,8 @@ export default {
   // the crowns clear under its spans — 55 m on the east-end route, a transmission giant beside a dacha.)
   scenery: {
     landmarks: [
-      { kind: 'orthodoxcross', x: 20, z: -265, yawDeg: 90, name: 'the cross at the south cooperative' },
-      { kind: 'orthodoxcross', x: -20, z: 265, yawDeg: 270, name: 'the cross at the north cooperative' },
+      { kind: 'orthodoxcross', x: 6, z: -262, yawDeg: 90, name: 'the cross at the south cooperative' },
+      { kind: 'orthodoxcross', x: -6, z: 262, yawDeg: 270, name: 'the cross at the north cooperative' },
     ],
   },
 
