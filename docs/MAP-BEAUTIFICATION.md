@@ -101,7 +101,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Verdant Fields | Retain the newer low pastoral horizon per the user's latest reversal; keep road, spawn and loading repairs independent of another outland redesign |
 | Amberford | Norman / English river-ford market town (round 48): the river SW→NE through a sculpted valley, the stone bridge and the ford, the walled town on the north-bank rise, weir and mill, orchards and hedged fields, the wooded escarpment, the manor park and lake; warm leaf litter against cool water |
 | Tarkhan Steppe | Open golden folds, sparse windbreaks and distant farms; avoid enclosing mountains |
-| Frontier Basin | Agricultural basin and checkpoint routes; branched gullies and patchy conifer uplands |
+| Frontier Basin | Agricultural basin and checkpoint routes; branched gullies and patchy conifer uplands; on the square, the half-timbered Rathaus and the village church with its west tower and spire (the landmarks lane, 2026-10-05) |
 | Tidegate Polders | Drainage channels, straight human-made levees, field headlands and pump yards; very low horizon |
 | Orchard Valley | Orchard rows follow working terraces; packing courts and village lanes, distinct from wild forest |
 | Longleaf Crossing | Logging spur, cut blocks, timber yard and regrowth; visible forest-age variation |
@@ -7099,6 +7099,18 @@ moves it 0.8 — the water's own reflection at grazing incidence is: `shallowWat
   critics (`WATER_SPEC_CAP`). The edge-w view faces away from the sun, where no glitter belongs.
 - *GPU:* the old weight switched in-page, on / off / off / on: −1.3 and −0.3 ms (p25) — a constant.
 Frames: `$SP/p2/sea/pair/{saltwind,coastal}/{a,g}-<view>.png`, the glint `saltwind/{a,g,g~spec25,g~spec4}-glint.png`.
+
+### 2026-10-05 — Frontier Basin: the Rathaus and the village church on the square (the landmarks lane)
+
+On the plots agreed with the map-revival lane (the old church's and the chapel's, each within 24 × 16 m; the two sites
+stay in the plan, vacated, so no planned building moves): the Rathaus of a Hessian market village, Alsfeld's kind — the
+stone arcade, two storeys of render in an oak frame, the framed gables, two corner turrets under slate spires, its front
+to the square (7 410 desktop triangles); the village church with its west tower, clock and spire toward the square, the
+nave and the chancel to the east (5 778). Census [6091, 6015, 6294]; the yards' own stream re-plans round the new
+footprints (three yard sheds moved, five stood). Pacing (4 seeds) 189/178/269/192 s against the head's 221/300/248/181
+s. Cost: the establishing shot −0.18 ± 0.46 ms (accept); chase 1.06 ± 0.70 and the square's view −0.48 ± 0.77 ms
+(ambiguous at a load of 160; their quiet-window re-run is queued); every CPU median within 0.07 ms, no long task and no
+program compiled during a slot.
 
 ### 2026-10-04 — the cumulus item, shelved: what it learned (the skies lane)
 
