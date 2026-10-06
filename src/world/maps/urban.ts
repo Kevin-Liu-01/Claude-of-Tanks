@@ -34,13 +34,14 @@ const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // Street-wall plan: mostly rowhouses so every block frontage reads built-up,
 // ruins interleaved (1 in 5) for shelled-town texture, plus real vertical
-// landmarks — a church (spire) and a factory (chimney stack) — and two
-// squat towers. 'church'/'factory' come from maps/urbanKit.ts (registered
-// in props.ts BUILDER_BY_NAME; they degrade to cottages if unregistered).
+// landmarks — a factory (chimney stack) — and two squat towers. 'church'/'factory'
+// come from maps/urbanKit.ts (registered in props.ts BUILDER_BY_NAME; they
+// degrade to cottages if unregistered). (The map-revival lane, 2026-10-06: the town
+// church stands on the market square as a planned site below; the block fill's
+// fifth plot, which had put it outside the town wall, takes a rowhouse.)
 const PLAN = [];
 for (let i = 0; i < 108; i++) {
-  if (i === 4) PLAN.push('church');
-  else if (i === 11) PLAN.push('factory');
+  if (i === 11) PLAN.push('factory');
   else if (i === 15) PLAN.push('firestation');
   else if (i === 25) PLAN.push('tavern');
   else if (i === 37) PLAN.push('schoolhouse');
@@ -235,6 +236,10 @@ export default {
       { structure: 'barn', x: 160, z: 114, yawDeg: 170 },
       { structure: 'farmhouse', x: 152, z: 136, yawDeg: 170 },
       { structure: 'ruin', x: 140, z: -4, yawDeg: 30 },
+      // the town church on the market square's north side (the map-revival lane, 2026-10-06; wave 150 found the church
+      // on bare ground): its tower and west door face the square, its front square to the apron's turned north edge
+      // (yawDeg 6), the door a step off the paving; the nave runs back north off the crest's street rows
+      { structure: 'church', x: -76, z: 48.6, yawDeg: 186 },
     ],
     // street frontage is built by CONTIGUOUS rowhouse strips (shared walls,
     // varied heights, collapsed slots spilling rubble) + kerbed pavements
