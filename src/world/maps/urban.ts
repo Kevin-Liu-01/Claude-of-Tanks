@@ -238,8 +238,9 @@ export default {
       { structure: 'ruin', x: 140, z: -4, yawDeg: 30 },
       // the town church on the market square's north side (the map-revival lane, 2026-10-06; wave 150 found the church
       // on bare ground): its tower and west door face the square, its front square to the apron's turned north edge
-      // (yawDeg 6), the door a step off the paving; the nave runs back north off the crest's street rows
-      { structure: 'church', x: -76, z: 48.6, yawDeg: 186 },
+      // (yawDeg 6) and 4 m off the paving (the layout brief keeps every solid 3.5 m out of a road's core, and an apron is
+      // a road); the nave runs back north off the crest's street rows
+      { structure: 'church', x: -76, z: 52, yawDeg: 186 },
     ],
     // street frontage is built by CONTIGUOUS rowhouse strips (shared walls,
     // varied heights, collapsed slots spilling rubble) + kerbed pavements
