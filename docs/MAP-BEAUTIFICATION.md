@@ -7349,6 +7349,10 @@ never clips … a single smooth, soft-edged bloom column instead of a dense fiel
 - *Pacing* (20 seeds, 36000–36019): median 180 s, p10 155 s, minimum 143 s, none under 120 s, no timeouts. The PR
   head gives 163 / 149 / 129. The filled works conceal a little more.
 - *Layout brief:* holds as on the PR head (sight median 122 m, cover mid share 0.31, no solid in a road or water).
+- *Cost* (the A B C C B A gate on the kit and the ground lane's land use against the PR head, 1920 × 1080 High; the
+  coordinator's ruling on the pooled cycles): over 16 cycles of two runs (loads 113 and 156) the GPU frame's p25
+  increment is +0.09 ± 0.31 ms in the establishing view (bound 0.70 ms) and +0.33 ± 0.26 ms in the chase (bound
+  0.85 ms); the second run alone gave the chase +0.03 ± 0.30 ms, CPU p25 within 0.2 ms in both views.
 
 ## Acceptance is visual and measured
 
