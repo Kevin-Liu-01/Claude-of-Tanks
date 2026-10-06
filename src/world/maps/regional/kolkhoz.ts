@@ -12,8 +12,8 @@ import {
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { hollyhocks } from './dressing.ts';
-import { dentilCornice, facadeOn, facadeRng, faceSlab, paintBand, paintSurround, pilaster, ridgeRiders, trimRing, trimRun, windowHead } from './facade.ts';
-import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { dentilCornice, facadeOn, facadeRng, faceSlab, paintSurround, pilaster, plinthPaint, ridgeRiders, trimRing, trimRun, windowHead } from './facade.ts';
+import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder, SurfaceTone } from './types.ts';
 
 const PAINTS: readonly Rgb[] = [0x4a7aa8, 0x5a8fb8, 0x4f8a5a, 0x3f6f8f, 0x6b8a4a].map(rgb);
 const WHITE_FRAME = rgb(0xd0ccc0);
@@ -87,13 +87,20 @@ function khata(ctx: RegionalBuildContext, opts: { long?: boolean } = {}): Region
 const CLAY: Rgb = [0.8, 0.7, 0.58];
 const HOLLYHOCK: readonly Rgb[] = [0xc23a5e, 0xd8d0d6, 0x9a2a4a, 0xe08aa8, 0x7a2a6a].map(rgb);
 const RIDER = rgb(0x6e6254);
+/**
+ * the plinth's clay paints: red-brown, umber, a dark blue-grey (sRGB as they should read), as multipliers over the
+ * lime-wash's own albedo (~0.54 linear), so the band reads that dark — a paint in linear values over the lime read pale
+ * in the close views (2026-10-05)
+ */
+const PRYZBA: readonly Rgb[] = [0x5a3a2c, 0x524433, 0x46505c].map((hex) => shade(rgb(hex), 1 / 0.54));
 
 /**
  * The carving and paint of one khata (facade craft, desktop builds; from the facade stream, so the house's build
  * stream draws as before): most carry carved nalichniki — a crest cut to a gable peak, an arch or a step over the
  * window, an apron cut to a drop under it, in the surround's paint with the carved field in the house's other paint —
- * the rest keep their board surrounds inside a band painted on the whitewash; every house gets the painted line over
- * its plinth. Returns the window style with its carving, and the paint of the house's bands.
+ * the rest keep their board surrounds inside a band painted on the whitewash. Returns the window style with its carving,
+ * and the paint of the house's bands (`line`, the light line the plinth carried before its dark clay band, is still
+ * drawn so the stream's later choices keep their order).
  */
 function khataCraft(st: KolkhozState): { window: WindowStyle; line: Rgb; surround: Rgb | null } {
   const f = facadeRng();
@@ -142,7 +149,7 @@ function khataBody(sink: PartSink, ctx: RegionalBuildContext, st0: KolkhozState,
     // (the facade craft, desktop) where the lime has worn off, the clay under it shows
     ...(craft ? { spall: wall, spallTint: CLAY, spallScale: 0.45 } : {}),
   }, dialect(st));
-  if (craft) khataDressing(sink, frame, st, craft, wall);
+  if (craft) khataDressing(sink, frame, st, craft);
   // the porch (ganok) over the door: two posts and a small lean-to
   const f = frame.faces.left, u = D * 0.2, y = frame.eaveY - 0.1;
   for (const du of [-0.75, 0.75]) faceBox(sink, 'structureWood', f, u + du, y / 2, 1.05, 0.12, y, 0.12, { colour: PLANK });
@@ -153,26 +160,23 @@ function khataBody(sink: PartSink, ctx: RegionalBuildContext, st0: KolkhozState,
 }
 
 /**
- * A khata's craft past its windows (desktop): the painted line over the plinth on every face, broken by the door; the
- * painted bands round the board surrounds of an uncarved house; the riders crossed over a thatch ridge; hollyhocks
- * against the front wall.
+ * A khata's craft past its windows (desktop): the painted bands round the board surrounds of an uncarved house; the
+ * riders crossed over a thatch ridge; hollyhocks against the front wall; the plinth painted a dark clay band.
  */
-function khataDressing(sink: PartSink, frame: HouseFrame, st: KolkhozState, craft: { line: Rgb; surround: Rgb | null },
-  wall: RegionalBucket): void {
+function khataDressing(sink: PartSink, frame: HouseFrame, st: KolkhozState, craft: { line: Rgb; surround: Rgb | null }): void {
   const f = facadeRng();
   // (read off the roof the house was built with, not the khata's own draw: the craft follows whatever roofs it)
   const thatched = frame.spec.roof.bucket === 'straw';
   const body = frame.bodies[0], y0 = body.y0;
+  // (the painted bands lie in the first render family whatever the wall's: its fine paint draws by the fine-detail cells,
+  // props.ts DESKTOP_CELLED, where the second and third families' would be drawn at every range)
   for (const name of ['front', 'right', 'back', 'left'] as const) {
     const face = frame.faces[name];
-    const doors = frame.spec.openings.filter((o) => o.face === name && o.storey === 0 && o.kind !== 'window' && o.kind !== 'loft');
-    paintBand(sink, wall, face, -face.width / 2, face.width / 2, y0, y0 + 0.13, craft.line,
-      doors.map((o) => [o.u - o.w / 2 - 0.14, o.u + o.w / 2 + 0.14] as const));
     if (craft.surround) {
       for (const o of frame.spec.openings) {
         if (o.face !== name || o.kind !== 'window' || o.state) continue;
         const sw = st.window.surround?.width ?? 0.12;
-        paintSurround(sink, wall, face, o.u, y0 + o.y0 - 0.09, o.w + 2 * sw, o.h + 0.09 + (st.window.surround?.lintel ?? 0.2), 0.1, craft.surround);
+        paintSurround(sink, 'plaster', face, o.u, y0 + o.y0 - 0.09, o.w + 2 * sw, o.h + 0.09 + (st.window.surround?.lintel ?? 0.2), 0.1, craft.surround);
       }
     }
   }
@@ -195,6 +199,10 @@ function khataDressing(sink: PartSink, frame: HouseFrame, st: KolkhozState, craf
       break;
     }
   }
+  // the plinth (pryzba) painted a dark clay band under the lime (wave 116: "lime-wash should be a soft, brushed white over
+  // mud plaster, with a darker plinth band"): red-brown clay, umber or a dark blue-grey, over the brick the phone keeps
+  const plinth = frame.spec.plinth;
+  if (plinth) plinthPaint(sink, 'plaster', [frame.spec.w / 2, frame.spec.d / 2], plinth.out, -0.6, plinth.h, pick(f, PRYZBA));
 }
 
 /**
@@ -536,6 +544,13 @@ export const KOLKHOZ_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Objec
 
 /** whitewash: the khatas' lime render, cool and bright (the photo render set stays off) */
 const whitewash = (_h: number, s: number, l: number): readonly [number, number, number] => [0.12, Math.min(1, s * 0.25), Math.min(1, l * 1.28 + 0.12)];
+/**
+ * The render painted as lime-wash brushed over mud plaster, not the plain render's canvas (the facades lane,
+ * 2026-10-05; wave 116: the khatas and the church read "a grey stone-chip texture instead of lime-wash"). The blue
+ * family shares the cream one's seed: it borrows that relief (props.ts plaster3).
+ */
+const limewash = (tone: (h: number, s: number, l: number) => readonly [number, number, number], seed: number): SurfaceTone =>
+  Object.assign(tone, { paint: { kind: 'limewash' as const, seed } });
 
 export const KOLKHOZ_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
   id: 'kolkhoz',
@@ -545,9 +560,9 @@ export const KOLKHOZ_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     stone: { kind: 'brick', tint: [0.60, 0.33, 0.25] },
     sourced: { plaster: false, wood: true },
     tones: {
-      plaster: whitewash,
-      plaster2: (_h, s, l) => [0.11, Math.min(1, s * 0.3), Math.min(1, l * 1.2 + 0.1)],
-      plaster3: (_h, s, l) => [0.58, Math.min(1, s * 0.2 + 0.03), Math.min(1, l * 1.15 + 0.1)],
+      plaster: limewash(whitewash, 0x11a1),
+      plaster2: limewash((_h, s, l) => [0.11, Math.min(1, s * 0.3), Math.min(1, l * 1.2 + 0.1)], 0x11a2),
+      plaster3: limewash((_h, s, l) => [0.58, Math.min(1, s * 0.2 + 0.03), Math.min(1, l * 1.15 + 0.1)], 0x11a2),
       straw: (h, s, l) => [h - 0.01, Math.min(1, s * 0.62), Math.min(1, l * 0.86)],
     },
   },

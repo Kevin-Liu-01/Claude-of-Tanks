@@ -48,15 +48,20 @@ export type RegionalBuilder = (ctx: RegionalBuildContext) => RegionalParts;
 
 /** Procedural surface painters a style selects for the roof and stone buckets (regionalSurfaces.ts). */
 export type RoofSurfaceKind = 'beavertail' | 'canal' | 'slate' | 'pantile' | 'sheet' | 'asbestos' | 'shingle';
-/** An HSL remap of a procedural surface (props.ts ToneFunction). */
-export type SurfaceTone = (hue: number, saturation: number, lightness: number) => readonly [number, number, number];
+/**
+ * An HSL remap of a procedural surface (props.ts ToneFunction). A render tone may also name its painter: `paint`
+ * lime-wash brushed over mud plaster (regionalSurfaces.ts paintLimewash, its own seed) in place of the plain render.
+ */
+export type SurfaceTone = ((hue: number, saturation: number, lightness: number) => readonly [number, number, number])
+  & { paint?: { kind: 'limewash'; seed: number } };
 export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block' | 'fieldstone';
 /** Poured concrete prints a style can paint its plaster2 bucket with (regionalSurfaces.ts makeRegionalConcrete). */
 export type ConcreteSurfaceKind = 'boardFormed';
 
 export interface ArchitectureSurfaces {
   roof: { kind: RoofSurfaceKind; tint: readonly [number, number, number] };
-  stone: { kind: StoneSurfaceKind; tint: readonly [number, number, number] };
+  /** `dressed`: a town's dressed stone — smaller courses, soiled (regionalSurfaces.ts DRESSED; the facades lane) */
+  stone: { kind: StoneSurfaceKind; tint: readonly [number, number, number]; dressed?: boolean };
   /** the sourced CC0 photo sets the style keeps (the others stay procedural) */
   sourced: { plaster: boolean; wood: boolean };
   /** default tones of the procedural render / timber / thatch canvases; a map's own tones win */

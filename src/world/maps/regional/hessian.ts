@@ -15,7 +15,7 @@ import {
 } from './house.ts';
 import { bench, flowerBox, roofLadder, tvAerial, wallLantern, woodpile } from './dressing.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { doorCanopy, facadeOn, facadeRng, roofDormers, windowHead } from './facade.ts';
+import { doorCanopy, facadeOn, facadeRng, renderedShaft, roofDormers, shopfrontJoinery, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 // oak framing: dark brown, oxblood (Ochsenblut), weathered grey, black-brown, ochre-red; sRGB, kept above ~6 % linear
@@ -226,6 +226,9 @@ function fachwerkGable(sink: PartSink, face: Face, poly: Array<[number, number]>
   }
 }
 
+/** the shop paints (facade craft): bottle green, oxblood, navy, umber, cream (sRGB, as the kit's door paints) */
+const SHOP_PAINT: readonly Rgb[] = [0x3d5c45, 0x6e2a22, 0x2c3a52, 0x5a4030, 0xd6ccb0].map(rgb);
+
 export function hessianDialect(st: HessianState): HouseDialect {
   return {
     window: (sink, face, o, y0, frame) => {
@@ -246,6 +249,12 @@ export function hessianDialect(st: HessianState): HouseDialect {
       if (o.kind === 'shopfront') {
         windowUnit(sink, face, o.u, y0 + o.y0 + 0.55, o.w, o.h - 0.55, { ...st.window, bars: 'two', shutters: null,
           surround: { bucket: 'stone', width: 0.2, out: 0.12 } }, st.rng, 0.7);
+        // (facade craft, desktop; wave 116 read "large single-pane plate-glass shopfronts") divided lights, transom
+        // lights, a panelled stall riser and a fascia, in a shop paint from the facade stream
+        if (facadeOn()) {
+          shopfrontJoinery(sink, face, o.u, y0 + o.y0 + 0.55, o.w, o.h - 0.55, 0.55, -sink.recess, pick(facadeRng(), SHOP_PAINT),
+            st.window.frame, 0.2, frame.bodies[o.storey].y1);
+        }
         return;
       }
       doorUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, {
@@ -673,6 +682,9 @@ const church: RegionalBuilder = (ctx) => {
   const tz = naveZ + towerZ;
   sink.span('stone', -towerS / 2 - 0.12, -0.5, tz - towerS / 2 - 0.12, towerS / 2 + 0.12, 0.6, tz + towerS / 2 + 0.12);
   sink.span('stone', -towerS / 2, 0.5, tz - towerS / 2, towerS / 2, towerH - 3.6, tz + towerS / 2);
+  // (facade craft, desktop; wave 116 read the bare shaft as "a church tower brick scaled several times too large") the
+  // shaft rendered like the nave over its rubble, its dressed sandstone corners bare as quoin strips, clear of the door
+  if (facadeOn()) renderedShaft(sink, 'plaster', 0, tz, towerS, 0.6, towerH - 3.75, 0.42, [[[-1.14, 1.14, 0.55, 4.1]]]);
   // the belfry stage hung with roof tiles, coursed downward like a roof
   sink.box('roof', [0, towerH - 1.8, tz], [towerS / 2 + 0.08, 1.8, towerS / 2 + 0.08], { uv: { kind: 'plane', origin: [0, towerH, tz], u: [1, 0, 1], v: [0, -1, 0] } });
   const front: Face = { origin: [0, 0, tz + towerS / 2], u: [1, 0, 0], out: [0, 0, 1], width: towerS };

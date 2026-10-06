@@ -17,6 +17,7 @@ import {
   textureFromRgbaPixels as toTexture,
   tileableTorusNoise as torusN,
 } from './proceduralTexture.ts';
+import { paintLimewash } from './regionalSurfaces.ts'; // a kit's lime-wash render (makePlaster; the facades lane)
 import { applyTone, terrainNearMeshHeightAt, type HeightField, type TerrainLayout } from './terrain.ts';
 import { authoredRoadStationCount, authoredRoadStationIndex, buildingRoadStationIndices } from './maps/roadStations.ts';
 import { roadSettlementJunction } from './roadSettlementJunction.ts';
@@ -846,6 +847,18 @@ function makePlaster(
   sharedSurface: Pick<GeneratedSurfaceTextures, 'normal' | 'surface'> | null = null,
 ): GeneratedSurfaceTextures {
   const s = 256, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
+  // the facades lane (2026-10-05): a kit's tone may name its render's painter — the khatas' lime-wash brushed over mud
+  // plaster (regionalSurfaces.ts paintLimewash), matt and soft where this canvas reads as pebble-dash
+  const paint = (tone as { paint?: { kind: 'limewash'; seed: number } } | null)?.paint;
+  if (paint?.kind === 'limewash') {
+    const lime = paintLimewash(s, paint.seed);
+    applyTone(lime.px, tone);
+    return {
+      albedo: toTexture(lime.px, s, { srgb: true, anisotropy }),
+      normal: sharedSurface?.normal ?? normalFromHeight(lime.hgt, s, 0.8, anisotropy),
+      surface: sharedSurface?.surface ?? surfaceFromHeight(lime.hgt, s, anisotropy, { roughMin: 0.9, roughMax: 0.98, aoMin: 0.9 }),
+    };
+  }
   for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
     const i = y * s + x, j = i * 4;
     const n1 = noi.noise(x * 0.045, y * 0.045) * 0.5 + 0.5;
@@ -3160,7 +3173,8 @@ function* propsBuildSteps(
     : makeRoofTiles(noi, aniso, T.roof || null);
   yield { fine: true };
   const stone = regionalArchitecture
-    ? yield* makeRegionalStone(regionalArchitecture.surfaces.stone.kind, regionalArchitecture.surfaces.stone.tint, aniso)
+    ? yield* makeRegionalStone(regionalArchitecture.surfaces.stone.kind, regionalArchitecture.surfaces.stone.tint, aniso, undefined,
+      regionalArchitecture.surfaces.stone.dressed)
     : yield* makeStone(noi, aniso, T.stone || null);
   yield { fine: true, stage: 'stone-maps' };
   const wood = makeWood(noi, aniso, T.wood || null);

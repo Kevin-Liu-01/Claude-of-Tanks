@@ -311,15 +311,16 @@ export function paintSurround(sink: PartSink, bucket: RegionalBucket, face: Face
 export function sillStreaks(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y: number, w: number, floor: number): void {
   for (const side of [-1, 1]) {
     const cu = u + side * (w / 2 + 0.01), k = hash01(cu, y, face.origin[0], face.origin[2]);
-    const len = Math.min(y - floor - 0.05, 0.7 + k * 1.1);
+    const len = Math.min(y - floor - 0.05, 0.8 + k * 0.9);
     if (len < 0.3) continue;
-    const half = 0.035 + k * 0.025, top = y - 0.1, bottom = top - len;
+    // (wave 116: readable at 30 m — a hand wide under the sill's end, a third darker, washing out down the wall)
+    const half = 0.06 + k * 0.04, top = y - 0.1, bottom = top - len;
     const at = (p: Vec3) => {
       const t = Math.min(1, Math.max(0, (top - p[1]) / len));
-      return 0.8 + 0.2 * t * t;
+      return 0.64 + 0.36 * t;
     };
     sink.polygon(bucket, [facePoint(face, cu - half, bottom, 0.012), facePoint(face, cu + half, bottom, 0.012),
-      facePoint(face, cu + half * 0.7, top, 0.012), facePoint(face, cu - half * 0.7, top, 0.012)], { ...DECOR, fine: true, shadeAt: at });
+      facePoint(face, cu + half * 0.6, top, 0.012), facePoint(face, cu - half * 0.6, top, 0.012)], { ...DECOR, fine: true, shadeAt: at });
   }
 }
 
@@ -602,4 +603,134 @@ export function carvedVerge(sink: PartSink, x0: number, y0: number, apex: number
   const w = 0.22, top = apex - 0.12, bottom = top - 1.0;
   faceSlab(sink, 'structureWood', face, [[-w / 2, bottom + 0.14], [0, bottom], [w / 2, bottom + 0.14], [w / 2, top], [-w / 2, top]], 0, 0.035, c);
   faceSlab(sink, 'structureWood', face, [[0, bottom + 0.42], [0.07, bottom + 0.52], [0, bottom + 0.62], [-0.07, bottom + 0.52]], 0.035, 0.008, { colour: [colour[0] * 0.6, colour[1] * 0.6, colour[2] * 0.6], fine: true });
+}
+
+// -------------------------------------------------------------------------------------------------------------------
+// Wave 116 (2026-10-05): the big reads — a painted plinth, shopfronts, gable windows, a rendered tower
+// -------------------------------------------------------------------------------------------------------------------
+
+/**
+ * The plinth painted a dark clay band (the khata's pryzba): its four faces and its ledge under a coat of paint 6 mm
+ * proud, `tint` over the render's lime. `half` is the body's half width (x) and half depth (z) at the wall plane, `out`
+ * the plinth's projection, `y0..y1` its run. Fine paint: drawn within the fine-detail distance, in no shadow map.
+ */
+export function plinthPaint(sink: PartSink, bucket: RegionalBucket, half: readonly [number, number], out: number, y0: number, y1: number,
+  tint: Rgb): void {
+  const [hx, hz] = half, o = out + 0.006, paint = { ...DECOR, tint, fine: true };
+  const faces: Face[] = [
+    { origin: [0, 0, hz], u: [1, 0, 0], out: [0, 0, 1], width: 2 * hx },
+    { origin: [hx, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: 2 * hz },
+    { origin: [0, 0, -hz], u: [-1, 0, 0], out: [0, 0, -1], width: 2 * hx },
+    { origin: [-hx, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: 2 * hz },
+  ];
+  for (const face of faces) {
+    const w = face.width / 2 + o;
+    sink.polygon(bucket, [facePoint(face, -w, y0, o), facePoint(face, w, y0, o), facePoint(face, w, y1, o), facePoint(face, -w, y1, o)], paint);
+    // the ledge, from the wall to the plinth's edge
+    const a = facePoint(face, -w, y1 + 0.004, 0), b = facePoint(face, w, y1 + 0.004, 0);
+    const c = facePoint(face, w, y1 + 0.004, o), d = facePoint(face, -w, y1 + 0.004, o);
+    orientedTri(sink, bucket, a, b, c, [0, 1, 0], paint);
+    orientedTri(sink, bucket, a, c, d, [0, 1, 0], paint);
+  }
+}
+
+/**
+ * A shopfront's joinery (a Central European shop of the 1900s): the glazing divided into lights no wider than ~0.8 m
+ * under a row of transom lights, a panelled stall riser under the sill, and a painted fascia board with a moulded
+ * cornice over the opening — so a shop reads as a shop, not a plate-glass hole. (u, y) is the bottom-centre of the
+ * glazing (above the riser), `w` × `h` the glazing, `riser` the stall riser's height under it; the bars stand at the
+ * depth the window unit's do (`back`, the reveal's).
+ */
+export function shopfrontJoinery(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, riser: number, back: number,
+  paint: Rgb, frame: Rgb, surround: number, top: number): void {
+  const fine = { ...DECOR, colour: frame, fine: true };
+  const bar = 0.045, barO = 0.05;
+  const n = Math.max(2, Math.ceil(w / 0.8));
+  for (let k = 1; k < n; k++) faceBox(sink, 'structureWood', face, u - w / 2 + w * k / n, y + h / 2, back + barO / 2, bar, h - 0.1, barO, fine, 'caps');
+  // the transom: a bar 0.42 m under the head, its lights divided twice as often
+  const ty = y + h - 0.42;
+  faceBox(sink, 'structureWood', face, u, ty, back + barO / 2, w - 0.1, 0.07, barO, fine, 'ends');
+  for (let k = 1; k < 2 * n; k += 2) faceBox(sink, 'structureWood', face, u - w / 2 + w * k / (2 * n), ty + 0.21, back + barO / 2, 0.03, 0.36, barO, fine, 'caps');
+  // the stall riser: a painted panel across the opening's foot, a raised field in it
+  const rw = w + 2 * surround, panel = { ...DECOR, colour: paint };
+  faceBox(sink, 'structureWood', face, u, y - riser / 2, 0.025, rw, riser - 0.04, 0.05, { ...panel, fineSides: true });
+  const fields = Math.max(1, Math.round(rw / 1.1));
+  for (let k = 0; k < fields; k++) {
+    const fu = u - rw / 2 + rw * (k + 0.5) / fields;
+    faceBox(sink, 'structureWood', face, fu, y - riser / 2, 0.06, rw / fields - 0.16, riser - 0.2, 0.02,
+      { ...DECOR, colour: [paint[0] * 0.82, paint[1] * 0.82, paint[2] * 0.82], fine: true });
+  }
+  // the fascia: a painted board over the opening's head, a moulded cornice on it, as deep as the storey leaves room for
+  const foot = y + h + surround + 0.02, room = top - 0.06 - foot, board = Math.min(0.4, room - 0.08);
+  if (board < 0.2) return;
+  faceBox(sink, 'structureWood', face, u, foot + board / 2, 0.05, rw + 0.3, board, 0.1, { ...panel, fineSides: true });
+  faceBox(sink, 'structureWood', face, u, foot + board + 0.035, 0.09, rw + 0.44, 0.07, 0.18, { ...panel, fineSides: true });
+}
+
+/**
+ * Windows lit into a gable (the attic's: a town house's gables are seldom blank): one or two at the first attic floor
+ * clear of the loft door's strip, one small one high under the ridge where the gable is tall enough — each a window
+ * unit standing on the gable face (no opening is cut: the gable keeps its structure). `gable` is the gable polygon
+ * (u, y on the face), `eaveY`/`ridgeY` its foot and apex, `skip` a strip of u the gable's own fittings keep.
+ */
+export function gableWindows(gable: ReadonlyArray<readonly [number, number]>, eaveY: number, ridgeY: number, skip: number,
+  place: (u: number, y: number, w: number, h: number) => void): void {
+  const halfAt = (y: number) => {
+    // the gable's half width at height y: the polygon's widest |u| at that height (a gable or a half-hip's trapezoid)
+    let best = 0;
+    for (let i = 0; i < gable.length; i++) {
+      const [ua, ya] = gable[i], [ub, yb] = gable[(i + 1) % gable.length];
+      if ((ya - y) * (yb - y) > 0 || Math.abs(yb - ya) < 1e-6) continue;
+      best = Math.max(best, Math.abs(ua + (ub - ua) * (y - ya) / (yb - ya)));
+    }
+    return best;
+  };
+  const rise = ridgeY - eaveY;
+  if (rise < 2.2) return;
+  const y1 = eaveY + 0.55, h1 = Math.min(1.1, rise * 0.3), w1 = 0.7;
+  const room = halfAt(y1 + h1 + 0.25) - 0.35;
+  if (skip > 0) {
+    // two windows flanking the loft door's strip
+    const u = skip / 2 + 0.25 + w1 / 2;
+    if (u + w1 / 2 <= room) for (const side of [-1, 1]) place(side * u, y1, w1, h1);
+  } else if (room > w1 * 1.6) {
+    for (const side of [-1, 1]) place(side * Math.min(room - w1 / 2, 0.9), y1, w1, h1);
+  } else if (room > w1 / 2) place(0, y1, w1, h1);
+  // a small window high in the gable, over the door strip's top
+  const y2 = eaveY + Math.max(2.1, rise * 0.62), h2 = 0.55, w2 = 0.45;
+  if (skip === 0 && y2 + h2 < ridgeY - 0.6 && halfAt(y2 + h2 + 0.15) > w2 / 2 + 0.25) place(0, y2, w2, h2);
+}
+
+/**
+ * A tower shaft rendered over its rubble (the Hessian village church's west tower; wave 116 read its bare sandstone as
+ * "a church tower brick scaled several times too large"): a coat of render on each face 12 mm proud, leaving the
+ * dressed corners bare as quoin strips `corner` wide and stopping clear of the openings in `holes` (u0, u1, y0, y1 per
+ * face, by face index front, right, back, left). The four faces of a square shaft `s` wide centred on (cx, cz).
+ */
+export function renderedShaft(sink: PartSink, bucket: RegionalBucket, cx: number, cz: number, s: number, y0: number, y1: number,
+  corner: number, holes: ReadonlyArray<ReadonlyArray<readonly [number, number, number, number]>> = []): void {
+  const h = s / 2;
+  const faces: Face[] = [
+    { origin: [cx, 0, cz + h], u: [1, 0, 0], out: [0, 0, 1], width: s },
+    { origin: [cx + h, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: s },
+    { origin: [cx, 0, cz - h], u: [-1, 0, 0], out: [0, 0, -1], width: s },
+    { origin: [cx - h, 0, cz], u: [0, 0, 1], out: [-1, 0, 0], width: s },
+  ];
+  faces.forEach((face, k) => {
+    const u0 = -h + corner, u1 = h - corner;
+    // the face in strips round its openings: below, above, and either side of each
+    const cut = [...(holes[k] ?? [])].sort((a, b) => a[2] - b[2]);
+    const rect = (a: number, b: number, ya: number, yb: number) => {
+      if (b - a < 0.05 || yb - ya < 0.05) return;
+      sink.polygon(bucket, [facePoint(face, a, ya, 0.012), facePoint(face, b, ya, 0.012), facePoint(face, b, yb, 0.012), facePoint(face, a, yb, 0.012)], DECOR);
+    };
+    let y = y0;
+    for (const [hu0, hu1, hy0, hy1] of cut) {
+      rect(u0, u1, y, hy0);
+      rect(u0, Math.max(u0, hu0), hy0, hy1);
+      rect(Math.min(u1, hu1), u1, hy0, hy1);
+      y = hy1;
+    }
+    rect(u0, u1, y, y1);
+  });
 }
