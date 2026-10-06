@@ -62,6 +62,7 @@ import { liftFieldStoneMean, paintFieldStoneBuffers } from './fieldStoneSurface.
 import { paintDryWallBuffers } from './fieldWallFace.ts';
 import { paintHayBuffers } from './hayPrint.ts';
 import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, type HaystackStyle } from './maps/haystackKit.ts';
+import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
 import { applyStoneWallHook, createStoneWallDepthMaterial, stoneShapeFor, STONE_SETTLE_M } from './stoneWallShader.ts';
 import { createWireMesh } from './wireMaterial.ts'; // the power lines' conductors (the scenery lane, wave 48) // the field walls' rubble print (the scenery lane)
@@ -386,6 +387,12 @@ interface PropsSettings {
   haystacks: number;
   /** b15: the region's field stack (maps/haystackKit.ts HAYSTACK_STYLE_BY_MAP gives the map's; 'none' draws none). */
   haystackStyle?: HaystackStyle;
+  /**
+   * b16 (gauntlet wave 121: "a modern prefab with blue glass windows" at Sirocco Wadi's gates): a region's own build in
+   * place of a generic light kind under the same key — its footprint, ground fit and beats kept (maps/regional
+   * ksarGate.ts STRUCTURE_VARIANTS: { checkpointhut: 'ksargate' }).
+   */
+  structureVariants?: Readonly<Record<string, keyof typeof STRUCTURE_VARIANTS>>;
   rocks: number;
   outcrops: number;
   craters: number;
@@ -3597,6 +3604,12 @@ ${snowCap ? `
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
+    // (b16) and the map's own variants by name, last (the ksar gate post at Sirocco Wadi's and Redrock's gates)
+    ...Object.fromEntries(Object.entries(P.structureVariants ?? {}).map(([key, name]) => {
+      const variant = STRUCTURE_VARIANTS[name];
+      if (!variant) throw new Error(`world/props: unknown structure variant ${name} for ${key}`);
+      return [key, variant];
+    })),
   };
   /** The dry-stone module with the winter's snow load along its top (fieldWallDressing.ts; one stream of its own). */
   function snowLoadedWallstone(buildRng: () => number): THREE.BufferGeometry {
