@@ -46,6 +46,10 @@ export interface ArchitectureSurfaces {
   sourced: { plaster: boolean; wood: boolean };
   /** default tones of the procedural render / timber / thatch canvases; a map's own tones win */
   tones?: Partial<Record<'plaster' | 'plaster2' | 'plaster3' | 'wood' | 'straw', SurfaceTone>>;
+  /** map revival lane 2 (2026-10-05): the walls' render finer and shallower than the shared tile (a limewash's skin, not a
+   * coarse stucco): the tile repeats `plasterUv` times as often over the plaster buckets, its normal map at `normal`
+   * strength and its cavities' occlusion at `ao`. Absent, the shared tile as it is (every other kit's surfaces unchanged). */
+  relief?: { plasterUv: number; normal: number; ao: number };
 }
 
 export interface ArchitectureStyle {
