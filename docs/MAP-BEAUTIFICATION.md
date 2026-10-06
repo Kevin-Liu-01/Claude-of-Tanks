@@ -7155,8 +7155,8 @@ fixed timber span on pile bents to each bank, the roadway 1.5 m over the banks (
 paved brick abutments, short ramps down; a drivable roadway (its movement record), which the bots steer round. Census
 [3419, 3353, 2701]; every structure and non-tree record where it stood, nine fewer trees. Pacing (4 seeds)
 175/163/222/267 s against the head's 175/163/145/178 s. Cost: the establishing shot −1.15 ± 0.34 ms and the oxbow's view
-−0.12 ± 0.47 (accept); chase −0.12 ± 0.64 (ambiguous; its quiet-window re-run is queued); every CPU median within 0.17
-ms, no long task and no program compiled during a slot.
+−0.12 ± 0.47 (accept); chase −0.12 ± 0.64, and on its quiet-window re-run −1.51 ± 0.29 (accept); every CPU median within
+0.17 ms, no long task and no program compiled during a slot.
 
 ### 2026-10-04 — the light under a closed deck, and the decks' own structure (the skies lane)
 
