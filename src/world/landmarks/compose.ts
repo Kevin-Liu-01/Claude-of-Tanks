@@ -30,7 +30,7 @@ import { MATCH_OBJECTIVE_LAYOUTS } from '../../sim/matchObjectiveLayouts.ts';
 import { matchPlacementAnchors } from '../../sim/matchPlacement.ts';
 import { LANDMARK_KINDS, resolveLandmarkParams } from './plan.ts';
 import { LANDMARK_BUILDERS } from './index.ts';
-import type { LandmarkPlacement } from './types.ts';
+import type { LandmarkKind, LandmarkPlacement } from './types.ts';
 
 /** The battlefield square's half size and the spawn pads' clear radius (scenery.ts keeps the same). */
 const SQUARE = 480;
@@ -62,8 +62,11 @@ interface LandmarkComposeContext {
   merge(parts: RegionalParts, matrix: THREE.Matrix4): void;
   /** Reserve a disc of the piece's ground for every pass after this one (the props placement list). */
   reserve(x: number, z: number, r: number): void;
-  /** Publish the piece's footprint (the minimap's building plan). */
-  publish(x: number, z: number, w: number, d: number, rot: number, kind: string): void;
+  /**
+   * Publish the piece's footprint (the minimap's building plan) under its kind: a set piece is no planned building, so it
+   * carries no plan id (the town-plan receipts and the yard dressing read those).
+   */
+  publish(x: number, z: number, w: number, d: number, rot: number, kind: LandmarkKind): void;
   /** Add one of the props' destructibles (a bench, a lamp) at a world pose. */
   addDestructible(kind: string, x: number, y: number, z: number, yaw: number, scale: number): void;
 }
@@ -291,7 +294,7 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
       const lx = along ? 0 : t, lz = along ? t : 0;
       ctx.reserve(placement.x + lx * Math.cos(yaw) + lz * Math.sin(yaw), placement.z - lx * Math.sin(yaw) + lz * Math.cos(yaw), short * 1.05 + 0.5);
     }
-    ctx.publish(placement.x, placement.z, hw * 2, hl * 2, yaw, `landmark:${placement.kind}`);
+    ctx.publish(placement.x, placement.z, hw * 2, hl * 2, yaw, placement.kind);
     // its street furniture into the props pools, its children after it (both from its frame into the world's)
     const c = Math.cos(yaw), s = Math.sin(yaw);
     const toWorld = (lx: number, lz: number): [number, number] => [placement.x + lx * c + lz * s, placement.z - lx * s + lz * c];
