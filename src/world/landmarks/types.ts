@@ -43,6 +43,11 @@ export interface LandmarkPlacement {
   params?: Readonly<Record<string, number | string | boolean | undefined>>;
   /** What the receipt and the docs call it ("the station at the east level crossing"). */
   name?: string;
+  /**
+   * The road core's margin for this placement (m), over its kind's (plan.ts roadMargin, else 3.5): a building fronting a
+   * square's paved apron stands at its edge, as the plot it takes did (the composer keeps it out of the core itself).
+   */
+  roadMargin?: number;
   /** A variant seed: another draw of the same kind at the same place. */
   seed?: number;
 }

@@ -315,7 +315,7 @@ for (const id of MAP_IDS) {
       const ex = Math.max(0, Math.abs(lx) - hw), ez = Math.max(0, Math.abs(lz) - hl);
       assert.ok(ex * ex + ez * ez >= r * r, `${label}: clear of the objective disc at (${x}, ${z})`);
     }
-    const margin = LANDMARK_KINDS[placement.kind].roadMargin ?? 3.5;
+    const margin = placement.roadMargin ?? LANDMARK_KINDS[placement.kind].roadMargin ?? 3.5;
     if (!LANDMARK_KINDS[placement.kind].spansRoad && margin > 0) assert.ok(field._roadDist(placement.x, placement.z) > margin, `${label}: out of the road core`);
     if (placement.kind !== 'parkSquare') {
       const stood = structures.some((record) => {
