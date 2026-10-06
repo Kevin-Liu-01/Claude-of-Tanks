@@ -324,7 +324,9 @@ const kosciol: RegionalBuilder = (ctx) => {
     const frame = buildHouse(sink, {
       // (round 2, wave 110b: the shingle-clad walls read as "a brick-textured church") the nave's hewn logs
       w: W, d: D, plinth: { h: 0.45, out: 0.08, bucket: 'stone' }, storeys: [{ h: 3.6, wall: 'wood' }],
-      roof: gont(55, 0.55, 0.4, 'halfhip'), gableBucket: 'roof', openings, chimneys: [], gutters: null, verge: null, reveal: 0.3, spall: null,
+      // (round 3, wave 128: the church's half-hip gable in shingle read as brick from the street) the gable boarded, as the
+      // houses' are
+      roof: gont(55, 0.55, 0.4, 'halfhip'), gableBucket: 'wood', openings, chimneys: [], gutters: null, verge: null, reveal: 0.3, spall: null,
     }, { ...dialect(st), window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
       frame: WHITE, frameWidth: 0.05, frameOut: 0.03, bars: 'six', surround: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: PALE },
       sill: { bucket: 'structureWood', out: 0.08, colour: PALE }, shutters: null,

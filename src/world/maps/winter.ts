@@ -303,7 +303,9 @@ export default {
       clearcut: [[-318, -250], [-286, -198], [-346, -100], [-372, -60]],
     },
     tones: {
-      plaster: (h: number, s: number, l: number) => [0.085, clamp01(s * 0.7), clamp01(l * 1.02 + 0.03)],
+      // (map revival lane 2, round 3, gauntlet wave 128: "only a thin beige dusting") no plaster tone of the map's own: this
+      // warm cream overrode the goral kit's, and the kit's plaster bucket draws the roofs' snow load and the stacks'
+      // whitewash (goral.ts roofSnow), which take the snowpack's tone from the kit
       roof: (h: number, s: number, l: number) => [0.58, clamp01(s * 0.25), clamp01(l * 1.35 + 0.18)], // snow-capped
       stone: (h: number, s: number, l: number) => [0.60, clamp01(s * 0.35), clamp01(l * 1.05 + 0.05)],
       wood: (h: number, s: number, l: number) => [h, clamp01(s * 0.7), clamp01(l * 0.95 + 0.02)],
