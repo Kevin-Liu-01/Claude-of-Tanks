@@ -123,7 +123,8 @@ export default {
   // 2026-10-05 (the map-revival lane, round 2; gauntlet wave 123: "a flat, cardboard-lit jagged backdrop peak" and a
   // banded mountainside): Mount Lebanon is long rounded limestone ridges — pale rock on the steeper flanks, pine and
   // oak scrub below — not alpine peaks: the rolling ring and the upland panorama raised to the Barouk's bulk
-  horizon: { baseHex: 0x5c7154, amp: 0.9, style: 'rolling', treeline: 0.8, snowline: 2, panorama: { regional: 'upland', ampM: 450, treeline: 0.75, rockSlope: 0.35 }, forestHex: 0x2e513c, rockHex: 0x9c9a8a, haze: 0.9, grain: 0.55 },
+  // (the border's land past the edge keeps its alpine landform; the ring's own relief rolls — horizonRelief ringStyle)
+  horizon: { baseHex: 0x5c7154, amp: 0.9, style: 'alpine', ringStyle: 'rolling', treeline: 0.8, snowline: 2, panorama: { regional: 'upland', ampM: 450, treeline: 0.75, rockSlope: 0.35 }, forestHex: 0x2e513c, rockHex: 0x9c9a8a, haze: 0.9, grain: 0.55 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'fair-weather-cumulus', coverage: 0.28, streets: 0.4, contrails: 0.3 },
   sky: { ...verdant.sky, sunElevationDeg: 28, sunAzimuthDeg: 132, turbidity: 4.5, fogDensity: 0.00058, fogTintHex: 0x99aaac, fogMix: 0.5, cloudOpacity: 0.95, cloudOpacity2: 0.62, sunIntensity: 3.9, hemiIntensity: 0.42 },
