@@ -3774,7 +3774,7 @@ float gStrandFoam = 0.0;     // round 73b: the foam line the last run-up left (m
 float gRoadPuddle = 0.0;     // ground lane: water standing in a road's ruts (smooth in the roughness stage)
 float gFieldWater = 0.0;     // ground lane: a flooded paddy's or a polder ditch's water (smooth in the roughness stage)
 float gCropW = 0.0;          // ground lane: a sown field's weight (not pasture or hay): the sward's own relief stands down there
-float gSoilW = 0.0;          // ground lane: a bare field's weight (plough, terra rossa, a vineyard's earth, slag, ballast)
+float gSoilW = 0.0;          // ground lane: a bare field's weight (plough, terra rossa, a vineyard's earth, slag, ballast, gravel)
 vec3 gMeadowTint = vec3(1.0); // ground lane: the meadow's macro tint the base took (a field divides it back out)
 varying float vFold;         // round 73: the baked fold attribute (−1 crest .. +1 hollow) the chunk vertices carry
 float gFoldAO = 1.0;         // round 73: indirect occlusion in the folds, read by the aomap hook
@@ -4751,7 +4751,8 @@ void splatCompute() {
     // (2026-10-05, Ruinspires: an urban land use — uLandE.w, landUse.ts LandUseProfile.urban — lies inside the village,
     // its yards, courts, allotments and parks under the town's own wear, laid over them below; elsewhere the village and
     // its wear keep the fields off)
-    landW = uLandA.x * (1.0 - projW) * (1.0 - fMs) * (1.0 - fR) * (1.0 - outsideW) * (1.0 - smoothstep(0.05, 0.30, mk.a) * (1.0 - uLandE.w))
+    // (Ironworks: a works' ground is uLandE.w 2 — the village's gate reads it as the urban 1)
+    landW = uLandA.x * (1.0 - projW) * (1.0 - fMs) * (1.0 - fR) * (1.0 - outsideW) * (1.0 - smoothstep(0.05, 0.30, mk.a) * (1.0 - step(0.5, uLandE.w)))
       * (1.0 - shoulder) * (1.0 - smoothstep(0.040, 0.100, slope)) * (1.0 - smoothstep(0.02, 0.10, fM))
       * (1.0 - smoothstep(0.35, 0.70, woods));
     // (wave 81, Frontier's establishing view: "an edgeless blotch of mud-brown, sand and lawn") a field ended wherever
@@ -4850,6 +4851,14 @@ void splatCompute() {
       // is the photo's, untinted, or the place's red soil would redden them twice)
       vec3 soilHue = mix(mix(soil.rgb, uMeanD.rgb, 0.5), vec3(reduxLuma(mix(soil.rgb, uMeanD.rgb, 0.5))), 0.35);
       float water = 0.0; // a flooded paddy's water (mirrors the sky in the roughness stage)
+      // (2026-10-05, Ironworks: slag round the furnaces and along the works roads, ballast on the sidings, gravel in the
+      // courts) a tipped or spread stone's grain near the camera — the noise read at a 0.32 m tile, its finest octave
+      // ~4 cm: the lumps of cinder, the crushed stones, the gravel and their gaps (High, gone by a 4 cm footprint; a
+      // works' ground only, uLandE.w 2: every other map's slag and ballast are what they were)
+      float stoneVis = uLandTier > 1.5 && uLandE.w > 1.5 && ((crop > 14.5 && crop < 16.5) || (crop > 18.5 && crop < 19.5))
+        ? 1.0 - smoothstep(0.02, 0.04, gFootM) : 0.0;
+      float stoneN = stoneVis > 0.001 ? nz(uv, 3.1, vec2(0.29, 0.61)).r : 0.5;
+      float stoneLump = (smoothstep(0.52, 0.68, stoneN) - (1.0 - smoothstep(0.30, 0.44, stoneN))) * stoneVis;
       if (crop < 0.5) {
         // pasture: half the meadows are hay — mown in stripes up and down the field
         rows = jit > 0.5 ? sin(across * 2.094) * 0.06 * tileVis(3.0) : 0.0;
@@ -4974,8 +4983,28 @@ void splatCompute() {
       } else if (crop < 15.5) {
         // slag tipped from the furnaces: black-grey, granular, a little blue in the fresh and rust in the weathered
         cropCol = mix(vec3(0.068, 0.068, 0.072), vec3(0.090, 0.072, 0.060), smoothstep(0.40, 0.75, n1h)) * (0.85 + 0.30 * jit);
+        // its clinker near the camera: lumps a third paler where the glass catches, the gaps black
+        cropCol *= 1.0 + stoneLump * 0.34;
+        if (nrmOn) n.xy += vec2(stoneN - 0.5, 0.5 - stoneN) * 0.40 * stoneVis * inField * landW;
       } else if (crop < 16.5) {
         cropCol = vec3(0.16, 0.155, 0.15) * (0.88 + 0.24 * n1h) * bright; // ballast and hardcore: grey crushed stone
+        cropCol *= 1.0 + stoneLump * 0.26; // its stones near the camera, their gaps shaded
+        if (nrmOn) n.xy += vec2(stoneN - 0.5, 0.5 - stoneN) * 0.45 * stoneVis * inField * landW;
+      } else if (crop > 18.5 && crop < 19.5) {
+        // (2026-10-05, Ironworks) a court's gravel: river gravel and its fines, a warm grey, a shade paler on its dry
+        // crowns; the lorries' wheels pressed into it in pairs of darker, smoother lanes along the court's run, each
+        // pair its own by the court's draw, every 5–8 m (Medium and High); its stones near the camera
+        vec3 grav = vec3(0.150, 0.140, 0.122) * (0.90 + 0.20 * n1h) * bright;
+        if (uLandTier > 0.5) {
+          float pitch = 5.0 + 3.0 * fract(jit * 5.31 + 0.17);
+          float lw = abs(fract(across / pitch + jit * 1.7) - 0.5) * pitch;
+          float lq = (lw - 0.85) / 0.22;
+          float lanes = exp(-lq * lq) * smoothstep(0.12, 0.45, 0.45 / max(gFootM, 1e-3));
+          grav *= 1.0 - 0.18 * lanes;
+          stoneLump *= 1.0 - 0.7 * lanes; // the wheels' lanes pressed smooth
+        }
+        cropCol = grav * (1.0 + stoneLump * 0.30);
+        if (nrmOn) n.xy = mix(n.xy, vec2(0.5), inField * landW * 0.6) + vec2(stoneN - 0.5, 0.5 - stoneN) * 0.35 * stoneVis * inField * landW;
       } else if (crop > 17.5) {
         // (2026-10-05, Ruinspires) hardstanding: the city's patched asphalt and concrete pours between the street rows —
         // a field one pour (asphalt, or concrete in 4 m slabs, by its draw), repaired in rectangles along its rows (newer
@@ -5031,6 +5060,8 @@ void splatCompute() {
         float tram = exp(-tq * tq) * smoothstep(0.12, 0.45, 0.5 / max(gFootM, 1e-3));
         rows -= tram * 0.22;
       }
+      // (Ironworks: a works' ballast and gravel under its soot — a third darker)
+      if (uLandE.w > 1.5 && ((crop > 15.5 && crop < 16.5) || (crop > 18.5 && crop < 19.5))) cropCol *= 0.66;
       cropCol *= (1.0 + rows * rowsShow) * fieldVar;
       a.rgb = mix(a.rgb, cropCol, inField * landW);
       // (an urban land use: the town's wear lies over its parcels — trodden, dusty, dug — at four tenths of the wear the
@@ -5054,7 +5085,8 @@ void splatCompute() {
       // (the verdant establishing pair, hold 3: a turned field read as gravel or crumpled paper — the meadow's blade,
       // tussock and coarse-turf relief and their photo tone ran on under the soil; a sown field carries its own rows)
       gCropW = (crop > 0.5 && (crop < 12.5 || crop > 13.5)) ? inField * landW : 0.0;
-      gSoilW = ((crop > 3.5 && crop < 4.5) || (crop > 10.5 && crop < 12.5) || (crop > 14.5 && crop < 16.5)) ? inField * landW : 0.0;
+      gSoilW = ((crop > 3.5 && crop < 4.5) || (crop > 10.5 && crop < 12.5) || (crop > 14.5 && crop < 16.5) || (crop > 18.5 && crop < 19.5))
+        ? inField * landW : 0.0;
       gFieldWater = water * inField * landW;
       if (water > 0.5 && nrmOn) n = mix(n, NRM_MEAN, gFieldWater);
       if (uLandTier < 0.5) {
@@ -5065,7 +5097,11 @@ void splatCompute() {
         // along its run, under the hedge's own trees and bushes (the vegetation tier seats them on the same line)
         // (waves 46–47: "without crisp parcel edges … hedgerows or farm lanes") the margin's rank grass is the boundary's
         // line from the ridge: a shade darker and greener than either field, so the strip reads at range
-        a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.93, 0.74) * (0.86 + 0.28 * n1h), (1.0 - inField) * (1.0 - track) * landW * 0.80);
+        // (2026-10-05, Ironworks — a works' ground, uLandE.w 2: no grass between its lots) a works' margin is its trodden
+        // dirt, the soil half greyed and darkened, a little lumpy
+        vec3 marginCol = uLandE.w > 1.5 ? mix(soilF, vec3(reduxLuma(soilF)), 0.5) * (0.62 + 0.20 * n1h)
+                                         : a.rgb * vec3(0.80, 0.93, 0.74) * (0.86 + 0.28 * n1h);
+        a.rgb = mix(a.rgb, marginCol, (1.0 - inField) * (1.0 - track) * landW * (uLandE.w > 1.5 ? 0.90 : 0.80));
         if (hedgeL > 0.01) {
           float hb = hedgeL * (0.55 + 0.45 * smoothstep(0.30, 0.70, nEdge.z));
           a.rgb = mix(a.rgb, a.rgb * vec3(0.52, 0.60, 0.46), hb * (1.0 - track) * landW * 0.85);
