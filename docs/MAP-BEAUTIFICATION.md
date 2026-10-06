@@ -102,7 +102,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Amberford | Norman / English river-ford market town (round 48): the river SW→NE through a sculpted valley, the stone bridge and the ford, the walled town on the north-bank rise, weir and mill, orchards and hedged fields, the wooded escarpment, the manor park and lake; warm leaf litter against cool water |
 | Tarkhan Steppe | Open golden folds, sparse windbreaks and distant farms; avoid enclosing mountains |
 | Frontier Basin | Agricultural basin and checkpoint routes; branched gullies and patchy conifer uplands |
-| Tidegate Polders | Drainage channels, straight human-made levees, field headlands and pump yards; very low horizon |
+| Tidegate Polders | Drainage channels, straight human-made levees, field headlands and pump yards; very low horizon; two brick tower mills on the old land and the oxbow's white double-leaf lift bridge (the landmarks lane, 2026-10-05) |
 | Orchard Valley | Orchard rows follow working terraces; packing courts and village lanes, distinct from wild forest |
 | Longleaf Crossing | Logging spur, cut blocks, timber yard and regrowth; visible forest-age variation |
 | Highland Reservoir | Pine catchments, exposed reservoir margin, waterworks and service roads |
@@ -7144,6 +7144,19 @@ disc: 264 near-white pixels facing Titan's sun, 216 on Whiteout's, where a close
 **Measured** (desktop high, in-page toggles on one build; `$SP/p2/decksun`): the disc gone on Titan Gorge and Whiteout
 (near-white pixels 264 → 0 and 216 → 0), Redrock and Saltwind's clear-sky suns as they were; GPU on / off / off / on
 twice: +0.73 / +0.06 ms (p25 / p50) for the cut and the fade, +0.12 / +0.01 ms for the lobe — nil.
+
+### 2026-10-05 — Tidegate Polders: two brick tower mills and the oxbow's lift bridge (the landmarks lane)
+
+The old land in the west keeps its brick tower mills, the new polders in the east were drained by the windmotors: a
+stellingmolen on the field drain's east bank and one at the oxbow's east tip, each with its stage and thatched cap, the
+sails turned into the sea wind as the windmotors' are (6 050 and 6 162 desktop triangles). Over the oxbow's waist a
+white double-leaf lift bridge in the Magere Brug's composition (4 076): the leaves on two brick piers in the water, a
+fixed timber span on pile bents to each bank, the roadway 1.5 m over the banks (the basin lies level with its fields) on
+paved brick abutments, short ramps down; a drivable roadway (its movement record), which the bots steer round. Census
+[3419, 3353, 2701]; every structure and non-tree record where it stood, nine fewer trees. Pacing (4 seeds)
+175/163/222/267 s against the head's 175/163/145/178 s. Cost: the establishing shot −1.15 ± 0.34 ms and the oxbow's view
+−0.12 ± 0.47 (accept); chase −0.12 ± 0.64 (ambiguous; its quiet-window re-run is queued); every CPU median within 0.17
+ms, no long task and no program compiled during a slot.
 
 ### 2026-10-04 — the light under a closed deck, and the decks' own structure (the skies lane)
 
