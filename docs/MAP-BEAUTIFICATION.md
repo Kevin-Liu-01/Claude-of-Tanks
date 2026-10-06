@@ -112,7 +112,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Nordhavn Fjord | Steep harbor settlement, fishing quays, dark water and coastal rock; layered mountain valleys |
 | Whiteout Station | Sparse polar service compound, fuel storage and wind-shaped snow corridors; expansive low backdrop |
 | Saltmere Bay | Dune-backed fishing coast, sheltered harbor and inland pasture; no inland sand marbling |
-| Saltwind Narrows | Dry limestone terraces, scrub and narrow sheltered water; pale stone with restrained green |
+| Saltwind Narrows | Dry limestone terraces, scrub and narrow sheltered water; pale stone with restrained green; the free-standing Venetian campanile on the bay's axis (the landmarks lane, 2026-10-05) |
 | Jade River Delta | Braided channels, floodplain agriculture and raised compounds; vegetation follows water |
 | Mangrove Reach | Tidal islands, exposed mud, root thickets and raised access; avoid generic grassy countryside |
 | Monsoon Ridge | Humid jungle ridges and weathered valley settlement; darker understory and muddy drainage |
@@ -7295,6 +7295,18 @@ Set from a sweep of one knob at a time (`$SP/p2/sea/cap4`): a 45 m colour shelf 
 - *GPU* (the old water in-page, on / off / off / on twice): +0.57 / +1.01 and +0.67 / +0.85 ms (p25 / p50) on the two
   sea views with the unprepared first frame in the "on" set; +0.4 to +0.6 ms without it — a texture fetch and three
   cosines a water fragment, within the run-to-run spread on a loaded machine.
+
+### 2026-10-05 — Saltwind Narrows: the campanile (the landmarks lane)
+
+The village's free-standing Venetian campanile, as Rab's, Hvar's and Korcula's stand apart from their churches: on the
+bay's axis between the village square and the market crossroads (the map's mirror line, so it stands for both halves),
+its door toward the square, 34 m of limestone in string-coursed stages with lesenes up the corners, its openings
+multiplying as it rises as on Rab's great tower (slits, a monofora, a bifora a face), the open bell stage with a bifora
+on each face, the pyramid inside its balustrade and its cross (3 544 desktop triangles). The planned stone bridge has no
+site here (no gully or stream reaches the bay). Census [3038, 2933, 3408]; every structure, non-tree record and tree
+where it stood. Pacing (4 seeds) 174/199/211/320 s against the head's 174/309/211/320 s. Cost: the establishing shot
+−0.73 ± 0.69 ms and the square's view −0.40 ± 0.45 (accept); chase 0.16 ± 0.85 (ambiguous; its quiet-window re-run is
+queued); every CPU median within 0.29 ms, no long task and no program compiled during a slot.
 
 ### 2026-10-05 — the sea's second round: a shelf by the coast, deep water that reads deep, glitter over white (the skies lane)
 
