@@ -486,7 +486,9 @@ assert.match(source, /for \(const spot of rockSpots\) \{\n\s*dirtDiscs\.push\(co
 // lip) a boulder's patch lightens toward the stone, its outer shadow whole; the contact layer carries the shares in its
 // vertex alpha, the other decals keep their geometry
 {
-  const shares = /const ROCK_PATCH: readonly number\[\] = \[([^\]]+)\];/.exec(source)[1].split(',').map(Number);
+  // (b16: the profile lives beside the stones as ROCK_PATCH_SHARES, the beds' shades take it too; the disc's ROCK_PATCH is it)
+  assert.match(source, /const ROCK_PATCH = ROCK_PATCH_SHARES;/, 'the disc\'s shares are the shared profile');
+  const shares = /const ROCK_PATCH_SHARES: readonly number\[\] = \[([^\]]+)\];/.exec(source)[1].split(',').map(Number);
   assert.equal(shares.length, 4, 'a share for every ring');
   assert.ok(shares.every((v, i) => i === 0 || v >= shares[i - 1]) && shares[3] === 1 && shares[2] <= 0.6,
     `the inner rings lightened, the outer one whole (${shares})`);
@@ -577,21 +579,31 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
   const at = source.indexOf('  function* buildRockBeds(): Generator<PropsBuildSlice, THREE.BufferGeometry[], void> {');
   const end = source.indexOf('  // the scenery lane (wave 57, "a ruler-straight base line on the grass with no soil collar")', at);
   assert.ok(at > 0 && end > at, 'the beds\' builder');
-  const build = (dust, snowCap, crushable) => {
+  // (b16) the contact patch's share profile, sliced from props.ts as the beds' builder reads it
+  const shareAt = source.indexOf('  function contactShare(rho: number): number {');
+  assert.ok(shareAt > 0, 'the contact share');
+  const ringsSrc = /const CONTACT_PATCH_RINGS: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1];
+  const sharesSrc = /const ROCK_PATCH_SHARES: readonly number\[\] = (\[[^\]]*\]);/.exec(source)[1];
+  const contactShare = new Function(`const CONTACT_PATCH_RINGS = ${ringsSrc}, ROCK_PATCH_SHARES = ${sharesSrc};\n${stripTypeScriptTypes(source.slice(shareAt, source.indexOf('\n  }\n', shareAt) + 4))}\nreturn contactShare;`)();
+  const SPOT_R = 2.6;
+  const build = (dust, snowCap, crushable, foldAt = undefined) => {
     // (a straight-sided stone, a metre in radius: its section the same at every height, so no lip is held down by a
     // stone drawing in above its foot)
     const form = { geometry: new THREE.CylinderGeometry(1, 1, 2, 48, 12) };
     const placement = new THREE.Matrix4().compose(new THREE.Vector3(10, -0.22 * 1.6, 20), new THREE.Quaternion(), new THREE.Vector3(1.6, 1.6, 1.6));
     const rockPlacements = [[placement], [], []], rockGeos = [form.geometry, form.geometry, form.geometry];
     const rockClutter = new Map(crushable ? [[placement, {}]] : []);
+    const rockContact = !snowCap && dust < 0.5, rockSpotOf = new Map(rockContact ? [[placement, { x: 10, z: 20, r: SPOT_R }]] : []);
+    const rockBedShades = [];
     const fn = new Function('THREE', 'terrainNearMeshHeightAt', 'heightField', 'cfg', 'rockDressing', 'snowCap', 'rockGeos', 'rockPlacements',
-      'rockClutter', 'boulderSections', 'boulderSectionRadius',
-      `${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, { getHeightAt: () => 0 },
-      { splat: { rippleDir: [1, 0] } }, { dust }, snowCap, rockGeos, rockPlacements, rockClutter, boulderSections, boulderSectionRadius);
+      'rockClutter', 'boulderSections', 'boulderSectionRadius', 'rockContact', 'rockSpotOf', 'rockBedShades', 'contactShare',
+      `${stripTypeScriptTypes(source.slice(at, end))}\nreturn buildRockBeds;`)(THREE, terrainNearMeshHeightAt, { getHeightAt: () => 0, ...(foldAt ? { _foldAt: foldAt } : {}) },
+      { splat: { rippleDir: [1, 0] } }, { dust }, snowCap, rockGeos, rockPlacements, rockClutter, boulderSections, boulderSectionRadius,
+      rockContact, rockSpotOf, rockBedShades, contactShare);
     const it = fn();
     let r = it.next();
     while (!r.done) r = it.next();
-    return { beds: r.value, form, placement };
+    return { beds: r.value, form, placement, shades: rockBedShades };
   };
   assert.equal(build(0, false, true).beds.length, 0, 'no bed under a crushable stone (a tank flattens it)');
   const soil = build(0, false, false), sand = build(0.8, false, false);
@@ -599,7 +611,7 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
     assert.equal(beds.length, 1, `${label}: one cell's geometry`);
     const g = beds[0], p = g.attributes.position, idx = g.index.array, sections = boulderSections(form.geometry);
     assert.equal(p.count, 24 * 5, `${label}: 24 directions, five rings`);
-    assert.ok(!g.getAttribute('uv') && g.getAttribute('normal'), `${label}: world space, the terrain material\'s attributes`);
+    assert.ok(!g.getAttribute('uv') && g.getAttribute('normal') && g.getAttribute('fold'), `${label}: world space, the terrain material\'s attributes`);
     for (let k = 0; k < 24; k++) {
       const v = (j) => [p.getX(k * 5 + j) - 10, p.getY(k * 5 + j), p.getZ(k * 5 + j) - 20];
       const [x0, y0, z0] = v(0), [x4, y4, z4] = v(4), [x1, y1, z1] = v(1);
@@ -622,6 +634,34 @@ assert.match(source, /const rockDepth = createRockDepthMaterial\(\);\n\s*retaine
     return y;
   };
   assert.ok(lipAt(sand.beds, -1) > lipAt(sand.beds, 1) * 2 && lipAt(sand.beds, -1) > 0.12, `the drift up the windward side (${lipAt(sand.beds, -1).toFixed(3)} m against ${lipAt(sand.beds, 1).toFixed(3)} m in the lee)`);
+  // (b16; wave 121: "pale halos") the contact patch carried over the bed: the disc's soil at the same place, from the face
+  // out, gone where the bed has sunk under the ground; none on sand (no disc there) — and the ground's fold on the bed
+  assert.equal(sand.shades.length, 0, 'no patch over a sand drift (sand maps lay no disc)');
+  assert.equal(soil.shades.length, 1, 'a soil bed carries its stone\'s patch');
+  {
+    const shade = soil.shades[0], sp = shade.attributes.position, uv = shade.attributes.uv, tint = shade.attributes.color, bed = soil.beds[0].attributes.position;
+    assert.equal(sp.count, 24 * 4, 'the bed\'s rings from the face out');
+    for (let k = 0; k < 24; k++) for (let j = 1; j < 5; j++) {
+      const s = k * 4 + (j - 1), b = k * 5 + j;
+      assert.ok(Math.abs(sp.getX(s) - bed.getX(b)) < 1e-5 && Math.abs(sp.getZ(s) - bed.getZ(b)) < 1e-5 && Math.abs(sp.getY(s) - bed.getY(b) - 0.03) < 1e-5,
+        'over the bed\'s own vertex, 3 cm up');
+      const dx = sp.getX(s) - 10, dz = sp.getZ(s) - 20, rho = Math.hypot(dx, dz) / SPOT_R;
+      if (rho <= 1) assert.ok(Math.abs(uv.getX(s) - (0.5 + 0.5 * dx / SPOT_R)) < 1e-5 && Math.abs(uv.getY(s) - (0.5 + 0.5 * dz / SPOT_R)) < 1e-5, 'the disc\'s uv at the same place');
+      const want = j === 4 ? 0 : contactShare(rho);
+      assert.ok(Math.abs(tint.getW(s) - want) < 1e-5, `the disc's share at the same distance (${tint.getW(s).toFixed(3)} for ${want.toFixed(3)})`);
+    }
+    // the disc's own profile: its rings' shares, linear between them, none past its rim
+    assert.ok(Math.abs(contactShare(0) - 0.3) < 1e-9 && Math.abs(contactShare(0.55) - 0.425) < 1e-9 && Math.abs(contactShare(0.99) - (0.5 + 0.5 * (0.29 / 0.3))) < 1e-9 && contactShare(1.01) === 0, 'the share profile');
+    assert.match(source, /for \(const shade of rockBedShades\) dirtDiscs\.push\(shade\);/, 'the shades join the contact layer');
+    assert.match(source, /const ROCK_PATCH = ROCK_PATCH_SHARES;/, 'the disc and the shades share one profile');
+    assert.match(source, /const rings = CONTACT_PATCH_RINGS, segs = 18;/, 'and one set of rings');
+  }
+  {
+    const flat = soil.beds[0].getAttribute('fold');
+    assert.ok(flat && flat.normalized && flat.array instanceof Int8Array && flat.array.every((v) => v === 0), 'the fold byte, zero where the ground has no fold sampler');
+    const hollow = build(0, false, false, () => 0.5).beds[0].getAttribute('fold');
+    assert.ok(hollow.array.every((v) => v === 64), 'the ground\'s fold under every vertex, as the terrain\'s chunks carry it');
+  }
   assert.match(source, /if \(!mobileProps\) group\.userData\.rockBeds = yield\* buildRockBeds\(\);\n\s*rockClutter\.clear\(\);/, 'the beds built while the crushables are known, not on the phones');
   const map = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
   assert.match(map, /group\.add\(terrain, vegetation\.group, props\.group\);\n\s*bindRockBeds\(terrain, props\.group\);/, 'the world binds the beds');
