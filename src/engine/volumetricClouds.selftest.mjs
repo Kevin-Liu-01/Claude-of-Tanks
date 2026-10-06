@@ -260,7 +260,7 @@ for (const id of MAP_IDS) {
   assert.ok(p.coverage >= 0 && p.coverage <= CLOUD_LAYER_RULES.coverageMax);
   assert.ok(p.baseM > 0 && p.thicknessM > 0 && p.density > 0);
   assert.ok(p.shadowThreshold >= 0 && p.shadowThreshold <= 1);
-  assert.equal(+p.shadowThreshold.toFixed(3), +Math.min(1, 1 - p.coverage + CLOUD_LAYER_RULES.shadowCoreBand).toFixed(3), `${id}: the shadow footprint is the cloud's dense core`);
+  assert.equal(+p.shadowThreshold.toFixed(3), +Math.min(1, 1 - p.coverage + CLOUD_LAYER_RULES.shadowCoreBand).toFixed(3), `${id}: the shadow footprint is the visible cloud's (2026-10-05: no core band)`);
   assert.ok(p.tint.every((c) => c > 0 && c <= 1), `${id} tint in (0, 1]`);
   assert.ok(p.typeRange[0] <= p.typeRange[1] && p.typeRange[0] >= 0 && p.typeRange[1] <= 1, `${id} type range`);
   assert.ok(p.cirrusAltM > p.baseM + p.thicknessM, `${id}: the cirrus sheet sits above the slab`);
@@ -517,7 +517,8 @@ assert.ok(layerSource.includes("name: 'VolumetricCloudTrace'") && layerSource.in
 console.log('volumetricClouds.selftest: deterministic noise (six bakes), tiling, equalisation and street anisotropy, the 31-map cloudscape table, the regime rows, the shadow policy, the slot cycle, the haze mirror and the hooks pinned');
 
 // The shade map keeps the gobos' soft edge band (a continuous opacity over the cut, never a binary stamp).
-assert.match(layerSource,/smoothstep\( uThreshold - 0\.08, uThreshold \+ 0\.08, cloudField/,'cloud edges have a continuous opacity band');
+// (2026-10-05: the band's half-width a QA knob, 0.04 by default — CLOUD_SHADOW_SOFT — over the visible outline)
+assert.match(layerSource,/smoothstep\( uThreshold \+ uShadeLook\.y - uShadeLook\.z, uThreshold \+ uShadeLook\.y \+ uShadeLook\.z, cloudField/,'cloud edges have a continuous opacity band');
 
 // 2026-10-04 (the gauntlet's wave 62 on Titan Gorge: the sun "a flat, hard-edged white disc pasted on a featureless
 // grey-white sky"): a ray the march ends under the 0.03 cut is opaque, its in-scatter renormalised for the remainder —

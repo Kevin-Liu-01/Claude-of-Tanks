@@ -111,6 +111,10 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     offset: legacy.offset,
     clearRadiusM: Math.max(0, pick('clearRadiusM')),
     shadow: shadow && shadowDay,
+    // (2026-10-05: a stratiform deck with gaps casts its cells by day — the shade map's pattern by the deck's openness)
+    shadowPattern: !shadowDay ? 0 : shadow ? 1
+      : 1 - clamp((coverage - R.deckClosedCoverage[0]) / (R.deckClosedCoverage[1] - R.deckClosedCoverage[0]), 0, 1) ** 2
+        * (3 - 2 * clamp((coverage - R.deckClosedCoverage[0]) / (R.deckClosedCoverage[1] - R.deckClosedCoverage[0]), 0, 1)),
     shadowThreshold: clamp(1 - coverage + R.shadowCoreBand, 0, 1),
     typeRange: [clamp(typeRange[0], 0, 1), clamp(typeRange[1], 0, 1)],
     anvil: clamp(pick('anvil'), 0, 1),

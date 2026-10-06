@@ -237,9 +237,11 @@ let shadeRuns = 0, shaded = 0;
   }
   assert.ok(taken.post.has('0:true') && taken.post.has('0:false') && taken.shell.has('0:true') && taken.shell.has('0:false'), 'the shade ran on and off');
   assert.ok(shaded > shadeRuns / 10, `the noise shaded some of the positions (${shaded} of ${shadeRuns})`);
-  assert.ok(post.includes('aerial.uniforms.uCloudShade.value = scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT;') && post.includes('const CLOUD_SHADE_DEFAULT = 0.22;')
-    && readFileSync(new URL('./horizonPanorama.ts', import.meta.url), 'utf8').includes("air.uCloudShade.value = typeof shade === 'number' && Number.isFinite(shade) ? shade : 0.22;"),
-    'the shell reads the shade the aerial pass reads (the published depth, else its 0.22)');
+  // (2026-10-05, the skies lane: both fade by the light model's overcast — none under a closed deck)
+  assert.ok(post.includes('aerial.uniforms.uCloudShade.value = (scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT)\n      * (1 - Math.min(1, Math.max(0, (scene.userData.lightModel as { overcast?: number } | undefined)?.overcast ?? 0)));')
+    && post.includes('const CLOUD_SHADE_DEFAULT = 0.22;')
+    && readFileSync(new URL('./horizonPanorama.ts', import.meta.url), 'utf8').includes("const deck = Math.min(1, Math.max(0, (scene.userData.lightModel as { overcast?: number } | undefined)?.overcast ?? 0));\n    air.uCloudShade.value = (typeof shade === 'number' && Number.isFinite(shade) ? shade : 0.22) * (1 - deck);"),
+    'the shell reads the shade the aerial pass reads (the published depth, else its 0.22, faded alike by the overcast)');
   assert.ok(frag.includes('screen /= max(panoCloudShade(vPanoWorld.xz), 0.05);')
     && frag.indexOf('screen /= max(panoCloudShade(vPanoWorld.xz), 0.05);') < frag.indexOf('inScatter = max((screen - aerialT * (1.0 - Tp)) / max(Tp, vec3(0.05)), vec3(0.0));'),
     'the far earth takes the shade out of its screen horizon, at its own place, before the aerial pass\'s compensation');

@@ -48,6 +48,11 @@ export interface CloudLayerPreset {
   clearRadiusM: number;
   /** Whether the layer casts real cloud shadows through the CSM (cumulus regimes under a strong sun only). */
   shadow: boolean;
+  /**
+   * 2026-10-05: the share of the cloud shade map's pattern the layer casts by day — a shadow-casting regime whole, a
+   * stratiform deck by its gaps (1 at a coverage under CLOUD_LAYER_RULES.deckClosedCoverage[0], 0 over [1]), none at night.
+   */
+  shadowPattern: number;
   /** Alpha test on the equalised coverage field for the shadow footprint (the cloud's dense core). */
   shadowThreshold: number;
   /** Round 71: the cloud type range the weather's vigour channel maps between (0 stratus, 0.5 cumulus, 1 cumulonimbus). */
@@ -178,7 +183,20 @@ export const CLOUD_LAYER_RULES = Object.freeze({
   /** the shadow caster needs a fair-weather cloud-shadow amplitude (the legacy AUTO is 0.22) and a day sky */
   shadowMinAmp: 0.15,
   shadowMinSkyIntensity: 0.3,
-  shadowCoreBand: 0.06,
+  /**
+   * the shade map's cut over the visible coverage's (1 - coverage + band). 2026-10-05 (the skies lane, the clouds and the
+   * land): 0.06 → 0 — the band drew every shadow smaller than its cloud (only the dense core cast one), so a sunlit gap
+   * read wider on the ground than in the sky; the footprint is now the visible cloud's, its edge the shade map's soft band
+   */
+  shadowCoreBand: 0,
+  /**
+   * 2026-10-05 (the skies lane: a deck with gaps): the coverage over which a stratiform deck closes (lightModelCore.ts
+   * DECK_CLOSED_COVERAGE, the receipt pins them equal) — under the first its cells cast the shade map's pattern by day
+   * and the sun shines in its gaps; over the second the light model cuts the sun uniformly
+   */
+  deckClosedCoverage: [0.95, 0.97] as readonly [number, number],
+  /** the share of the sun a deck's cell takes on the shade map (a stratocumulus cell is optically thick) */
+  deckShadowCore: 0.9,
   /** round 71: a sheet this stratiform takes the overcast tint power (a quarter) and the diffuse lighting */
   sheetStratiform: 0.7,
   /** round 71: the cirrus sheet's optical density at full coverage and the far band's ceiling altitude (m) */
@@ -269,7 +287,7 @@ function deriveLegacy(sky: CloudLayerSkyInput): CloudLayerPreset {
     regime, coverage, baseM, thicknessM, towers, stratiform, fieldMix, density, tint, windDirRad, windSpeed,
     offset: mapOffset(sky.sunAzimuthDeg, sky.sunElevationDeg),
     clearRadiusM: storm ? R.stormClearRadiusM : 0,
-    shadow, shadowThreshold: clamp(1 - coverage + R.shadowCoreBand, 0, 1),
+    shadow, shadowPattern: shadow ? 1 : 0, shadowThreshold: clamp(1 - coverage + R.shadowCoreBand, 0, 1),
     // round 71 fields at their neutral values: a cumulus type range, no anvils, the round-68 erosion, no lean,
     // no streets, no cirrus, physical gains, no far band, no scud
     typeRange: storm ? [0.6, 1] : overcast ? [0, 0.2] : [0.3, 0.6], anvil: storm ? 0.5 : 0, wispiness: 0.3, shearM: 0, streets: 0,
@@ -343,7 +361,7 @@ export function deriveCloudLayerPreset(sky: CloudLayerSkyInput): CloudLayerPrese
 /** A stable key of everything the layer's uniforms and shadow caster read (a preset change re-keys the history). */
 export function cloudLayerKey(p: CloudLayerPreset): string {
   return [p.regime, p.coverage, p.baseM, p.thicknessM, p.towers, p.stratiform, p.fieldMix, p.density, ...p.tint,
-    p.windDirRad, p.windSpeed, ...p.offset, p.clearRadiusM, p.shadow ? 1 : 0, p.shadowThreshold,
+    p.windDirRad, p.windSpeed, ...p.offset, p.clearRadiusM, p.shadow ? 1 : 0, p.shadowPattern ?? 0, p.shadowThreshold,
     ...p.typeRange, p.anvil, p.wispiness, p.shearM, p.streets, p.cirrus, p.cirrusAngleRad, p.cirrusAltM, p.cirrusDensity,
     p.sunGain, p.ambientScale, p.farBand, p.farBandAltM, p.scud, p.cells, p.cellM, p.deckLight, p.undulatus, p.interior, p.lumps ?? 0, p.baseFlat ?? 0, p.cluster ?? 0, p.deckDetail ?? 0,
     p.timeOfDay, p.contrails, p.contrailAge, p.rain, p.virga, p.fogBank, p.fogBankTopM, ...p.groundGlow, ...p.keyTint,

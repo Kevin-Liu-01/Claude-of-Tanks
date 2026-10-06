@@ -2836,7 +2836,11 @@ export function createPost(
     updateOutputGrade();
     grade.uniforms.uThermal.value = camera.userData.sensorVision ?? (camera.userData.thermalFlight === true ? (camera.userData.flightVision ?? 1) : 0);
     grade.uniforms.uThermalPixel.value.set(1/sceneTarget.width,1/sceneTarget.height);
-    aerial.uniforms.uCloudShade.value = scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT;
+    // (2026-10-05, the gauntlet's wave 93 on Whiteout: "soft dark-grey blotches stain the snowfield ... cloud shadows that a
+    // solid overcast cannot cast"): the world-anchored patchiness follows no cloud — under a closed deck it goes, by the
+    // light model's overcast
+    aerial.uniforms.uCloudShade.value = (scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT)
+      * (1 - Math.min(1, Math.max(0, (scene.userData.lightModel as { overcast?: number } | undefined)?.overcast ?? 0)));
     updateScopeGrade();
     updateAerialFogColors();
     updateAerialCameraBasis();
