@@ -89,11 +89,11 @@
       "concealers": 283
     },
     "monsoon": {
-      "bytes": 1647596,
-      "sha256": "3716bd50e16412340a03f5dba8c4d17cf3d35931cce061cd7c105474bb4303e5",
-      "obstacles": 7333,
-      "colliders": 7079,
-      "concealers": 9700
+      "bytes": 1674315,
+      "sha256": "68c6c9327b9935af22a86668ee3df4d5e3da1503d6593973289aef1a2eda4953",
+      "obstacles": 7310,
+      "colliders": 7073,
+      "concealers": 9654
     },
     "alpine": {
       "bytes": 1848063,

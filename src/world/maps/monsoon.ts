@@ -99,6 +99,15 @@ export default {
   props: {
     // regional-buildings lane: the Kohima 1944 kit (maps/regional/kohima.ts)
     architecture: 'kohima',
+    // The landmarks lane (2026-10-05; src/world/landmarks/colonial.ts): Garrison Hill's west shoulder, where the siege
+    // lines of April 1944 lay across the Deputy Commissioner's tennis court a grenade's throw apart — the court on its
+    // terrace (the clay, the lines, the net, the wire, the retaining wall, the trench dug across it) and above its west
+    // end the DC's bungalow, whitewashed under red tin, deep verandas on three sides, the siege on its veranda roof
+    // and its plaster; its porch toward the valley and the town.
+    landmarks: [
+      { kind: 'tennisCourt', x: -148, z: 245, yawDeg: 30, name: "the DC's tennis court", params: { damage: 1 } },
+      { kind: 'colonialBungalow', x: -190, z: 262, yawDeg: 150, name: "the Deputy Commissioner's bungalow", params: { damage: 0.5 } },
+    ],
     plan: ['ruin', 'chapel', 'bathhouse', 'marketRow', 'ruin', 'cornershop',
       'granary', 'ruin', 'depot', 'farmhouse', 'tower', 'market', 'ruin', 'woodshed',
       'marketRow', 'ruin', 'farmhouse', 'chapel', 'depot', 'ruin', 'granary', 'cornershop',
