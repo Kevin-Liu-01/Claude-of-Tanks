@@ -145,9 +145,11 @@ export function* paintHayBuffers(size = 512, seed = 0x4a7):
         const bundle = Math.floor(bundleAt), inBundle = fract(bundleAt), tone = hash(bundle & 1023, course & 63, seed + 67) - 0.5;
         const strand = pnoise(u + inCourse * 0.004 * tone, v, 320, seed + 71, 12);
         const seam = 1 - smooth(0.0, 0.12, Math.min(inBundle, 1 - inBundle));
+        // (b21; gauntlet wave 139 on the hooiberg's roof from the field: "a flat, untextured dark pyramid": the thatch a
+        // weathered straw, not a dark one — its courses still shade their butts)
         h = 0.095 + tone * 0.02;
-        s = 0.2 + tone * 0.06;
-        l = 0.35 + tone * 0.08 + (strand - 0.5) * 0.18 + lip * 0.03 - shade * 0.13 - seam * 0.06;
+        s = 0.24 + tone * 0.06;
+        l = 0.42 + tone * 0.08 + (strand - 0.5) * 0.18 + lip * 0.03 - shade * 0.11 - seam * 0.06;
         relief = 0.5 + (strand - 0.5) * 0.3 + inCourse * 0.18 - shade * 0.3 - seam * 0.1;
       } else if (wood >= 0) {
         // a pole's grey timber: grain along v, the odd dark check

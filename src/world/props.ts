@@ -2289,7 +2289,7 @@ function mergeInto(
   carryExteriorChimneyTops(buckets, parts, transform);
 }
 
-type GroundDecalKind = 'dirt' | 'apron' | 'crater' | 'scorch';
+type GroundDecalKind = 'dirt' | 'apron' | 'crater' | 'scorch' | 'straw';
 
 function configureDecalGradient(
   gradient: CanvasGradient,
@@ -2306,6 +2306,11 @@ function configureDecalGradient(
     gradient.addColorStop(0.52, 'rgba(64,50,32,0.88)');
     gradient.addColorStop(0.74, 'rgba(70,56,37,0.55)');
     gradient.addColorStop(1, 'rgba(74,60,40,0)');
+  } else if (kind === 'straw') {
+    // (b21) the trodden straw round a stack: a thin golden scatter over the ground, the strands painted on it
+    gradient.addColorStop(0, 'rgba(150,122,66,0.34)');
+    gradient.addColorStop(0.55, 'rgba(146,118,62,0.2)');
+    gradient.addColorStop(1, 'rgba(140,112,60,0)');
   } else if (kind === 'apron') {
     gradient.addColorStop(0, 'rgba(112,101,84,0.92)');
     gradient.addColorStop(0.55, 'rgba(104,93,76,0.88)');
@@ -2316,6 +2321,29 @@ function configureDecalGradient(
     gradient.addColorStop(0.4, 'rgba(66,53,34,0.82)');
     gradient.addColorStop(0.72, 'rgba(78,64,42,0.5)');
     gradient.addColorStop(1, 'rgba(82,68,45,0)');
+  }
+}
+
+/**
+ * The scenery lane (b21; gauntlet wave 139 on the field stacks: "a base that isn't settled or trodden", "it meets the
+ * sandy ground with a hard, unsettled edge"): the straw a stack sheds round its foot and the boots tread into the
+ * ground — loose strands every way, thick by the stack and thinning out, the odd darker trodden wisp.
+ */
+function paintStrawLitter(ctx: CanvasRenderingContext2D, size: number): void {
+  const rng = mulberry32(6121);
+  ctx.lineCap = 'round';
+  for (let k = 0; k < 1400; k++) {
+    // (more by the stack, fewer out to the rim: the radius's square root weighted toward the middle)
+    const r = Math.pow(rng(), 0.7) * 0.48 * size, a = rng() * Math.PI * 2;
+    const x = size / 2 + Math.cos(a) * r, y = size / 2 + Math.sin(a) * r;
+    const len = (0.012 + rng() * 0.03) * size, dir = rng() * Math.PI * 2, bend = (rng() - 0.5) * 0.6;
+    const dark = rng() < 0.18;
+    ctx.strokeStyle = dark ? `rgba(104,84,46,${0.4 + rng() * 0.3})` : `rgba(${196 + rng() * 30},${160 + rng() * 26},${84 + rng() * 26},${0.45 + rng() * 0.45})`;
+    ctx.lineWidth = 0.6 + rng() * 0.9;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x + Math.cos(dir + bend) * len * 0.5, y + Math.sin(dir + bend) * len * 0.5, x + Math.cos(dir) * len, y + Math.sin(dir) * len);
+    ctx.stroke();
   }
 }
 
@@ -2380,7 +2408,7 @@ function makeGroundDecalTexture(
   anisotropy: number,
   kind: GroundDecalKind,
 ): THREE.CanvasTexture {
-  const size = 128;
+  const size = kind === 'straw' ? 256 : 128; // (b21: a strand wants its texels)
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
   const ctx = canvas2d(canvas, { willReadFrequently: true });
@@ -2393,6 +2421,7 @@ function makeGroundDecalTexture(
   ctx.fillRect(0, 0, size, size);
   if (kind === 'apron') paintApronGrit(ctx, size);
   if (kind === 'crater') paintCraterEjecta(ctx, size);
+  if (kind === 'straw') paintStrawLitter(ctx, size);
   const image = ctx.getImageData(0, 0, size, size);
   applyDecalRaggedEdge(image, noise, size, kind);
   ctx.putImageData(image, 0, 0);
@@ -7945,6 +7974,7 @@ ${snowCap ? `
     function* collectFoundationDecals(
       dirtDiscs: THREE.BufferGeometry[],
       apronGeos: THREE.BufferGeometry[],
+      strawDiscs: THREE.BufferGeometry[] = [],
     ): Generator<PropsBuildSlice, void, void> {
       for (const building of buildingFeatures) {
         if (P.streetRows) {
@@ -7962,6 +7992,9 @@ ${snowCap ? `
       }
       for (const stack of stackSpots) {
         dirtDiscs.push(conformedDisc(stack.x, stack.z, stack.r, [0.05, 0.05, 0.04, 0.03], false, FULL_PATCH));
+        yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
+        // (b21) and the trodden straw it sheds, a third again wider (wave 139: "a base that isn't settled or trodden")
+        strawDiscs.push(conformedDisc(stack.x, stack.z, stack.r * 1.35, [0.055, 0.055, 0.045, 0.035], false, FULL_PATCH));
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const spot of rockSpots) {
@@ -7994,16 +8027,17 @@ ${snowCap ? `
     function* placeFoundationDecals(): Generator<PropsBuildSlice, void, void> {
       const dirtDiscs: THREE.BufferGeometry[] = [];
       const apronGeos: THREE.BufferGeometry[] = [];
+      const strawDiscs: THREE.BufferGeometry[] = [];
       let collected = false;
       try {
-        yield* collectFoundationDecals(dirtDiscs, apronGeos);
+        yield* collectFoundationDecals(dirtDiscs, apronGeos, strawDiscs);
         yield* collectCourtyardDecals(apronGeos);
         collected = true;
       } finally {
         if (!collected) {
           // Only private inputs exist at these checkpoints. Drain every input
           // on IteratorClose without masking the owning build's cancellation.
-          for (const geometries of [dirtDiscs, apronGeos]) {
+          for (const geometries of [dirtDiscs, apronGeos, strawDiscs]) {
             for (const geometry of geometries) {
               try { geometry.dispose(); } catch (_) { /* continue releasing private inputs */ }
             }
@@ -8041,6 +8075,10 @@ ${snowCap ? `
       }
       addDecalMesh(apronGeos, makeGroundDecalTexture(noi, aniso, 'apron'), {
         decalKind: 'apron',
+      });
+      // (b21) the stacks' trodden straw, over their soil (one layer, drawn after the contact's)
+      addDecalMesh(strawDiscs, makeGroundDecalTexture(noi, aniso, 'straw'), {
+        decalKind: 'straw-litter',
       });
     }
     // craters: scattered shell holes with a raised rim mound. Town maps

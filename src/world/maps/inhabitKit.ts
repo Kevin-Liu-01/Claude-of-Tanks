@@ -22,7 +22,7 @@ import { setNightEmissionMask } from '../../engine/nightEmissionMaterial.ts';
 import { FIELD_STONE_FACE_V, FIELD_STONE_HEARTING_V } from '../fieldStoneSurface.ts';
 // (b15: the straw props wear the hay print's bands: hayPrint.ts; the stook is a teepee of bound sheaves: haystackKit.ts)
 import { HAY_FACE_V, HAY_PACKED_V } from '../hayPrint.ts';
-import { buildStook, mapToBand } from './haystackKit.ts';
+import { buildKopna, buildStook, mapToBand } from './haystackKit.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -743,19 +743,17 @@ function bHandcartBroken(rng: Rng): THREE.BufferGeometry {
 }
 
 function bHaystack(rng: Rng): THREE.BufferGeometry { // straw-textured slouched field stack (was merged geometry)
+  // (b21; gauntlet wave 139: the legacy cone read as "a straight-edged, four-sided pyramid" — it is the kopna now,
+  // haystackKit buildKopna, from a stream of its own: the cone's draws are still spent here, one a jittered vertex, so
+  // every pool built after the stacks keeps its geometry)
   const hr = 1.9, hh = 2.5;
   const stack = new THREE.ConeGeometry(hr, hh, 9, 2);
   const sp = stack.attributes.position;
   for (let k = 0; k < sp.count; k++) {
-    const rr2 = Math.hypot(sp.getX(k), sp.getZ(k));
-    if (rr2 > 1e-4) {
-      const f = 1 + (rng() - 0.5) * 0.24;
-      sp.setX(k, sp.getX(k) * f); sp.setZ(k, sp.getZ(k) * f);
-    }
+    if (Math.hypot(sp.getX(k), sp.getZ(k)) > 1e-4) rng();
   }
-  stack.computeVertexNormals();
-  mapToBand(scaleUV(stack, 3, 1.5), HAY_FACE_V);
-  return merge([stack.translate(0, hh / 2 - 0.12, 0)]);
+  stack.dispose();
+  return buildKopna();
 }
 function bHaystackBroken(rng: Rng): THREE.BufferGeometry { // driven-through stack: low split mound
   const parts = [];

@@ -12,7 +12,11 @@
 //      none at the default and on the maps that stack no hay, the steppe's cone left to the maps lane;
 //   4. the wiring (props.ts): the print on the straw destructibles' own material (the roofs and reeds keep the straw
 //      print), the default count none, the draws the old stream's (the authored count or fifteen), a stack the region
-//      does not build taking its draws and standing nowhere.
+//      does not build taking its draws and standing nowhere;
+//   5. (b21; wave 139: "a perfectly smooth, symmetric beehive silhouette", "a straight-edged, four-sided pyramid", "a
+//      base that isn't settled or trodden") the hand-built stacks no solids of revolution — the stog, the plast, the
+//      meule and the kopna slumped to a side through the belly, inside their reach; the legacy cone the kopna, its draws
+//      spent as the cone's; the trodden straw round every stack's foot.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
@@ -61,7 +65,8 @@ const drain = (it) => { let s = it.next(); while (!s.done) s = it.next(); return
 const REG = { ...DESTRUCTIBLE_TYPES, ...SCENERY_DESTRUCTIBLE_TYPES, ...HAYSTACK_DESTRUCTIBLE_TYPES };
 const inBands = (v) => [HAY_PACKED_V, HAY_FACE_V, HAY_THATCH_V, HAY_WOOD_V].some((band) => v >= band[0] - 0.021 && v <= band[1] + 0.021);
 const STACKS = new Set(Object.keys(HAYSTACK_DESTRUCTIBLE_TYPES));
-const BUDGET = { stog: 600, plast: 520, hooiberg: 760, meule: 700, diemen: 640, strawstack: 260, haystack: 100, stook: 420, bale: 130 };
+// (b21: the hooiberg's hay pitched up in layers, its roof's courses stepped; the legacy cone the kopna)
+const BUDGET = { stog: 600, plast: 520, hooiberg: 900, meule: 700, diemen: 640, strawstack: 260, haystack: 340, stook: 420, bale: 130 };
 for (const kind of ['stog', 'plast', 'hooiberg', 'meule', 'diemen', 'strawstack', 'haystack', 'stook', 'bale']) {
   const t = REG[kind];
   assert.ok(t && t.mat === 'straw' && t.cls === 'break' && t.contact === 'ob' && !t.collider, `${kind}: a straw stack, crushable and shoot-through`);
@@ -154,4 +159,41 @@ for (const kind of ['stog', 'plast', 'hooiberg', 'meule', 'diemen', 'strawstack'
     'a stack takes its scale and its yaw before the region decides, so every later placement keeps its seat');
 }
 
-console.log('haystacks.selftest: the hay print\'s four bands (the face lit and in locks, its foot pressed), the regions\' stacks inside their records over their footprints, the maps\' builds, the draws kept');
+// ---------------------------------------------------------------------------------------------- 5. by hand
+{
+  for (const kind of ['stog', 'plast', 'meule', 'haystack']) {
+    const g = REG[kind].build(mulberry32(11)), p = g.attributes.position;
+    g.computeBoundingBox();
+    const H = g.boundingBox.max.y, bins = new Float64Array(16);
+    for (let i = 0; i < p.count; i++) {
+      const y = p.getY(i);
+      if (y < H * 0.2 || y > H * 0.45) continue;
+      const a = Math.atan2(p.getZ(i), p.getX(i)), b = Math.floor(((a / (Math.PI * 2)) + 1) * 16) % 16;
+      bins[b] = Math.max(bins[b], Math.hypot(p.getX(i), p.getZ(i)));
+    }
+    const filled = [...bins].filter((r) => r > 0);
+    const lean = Math.max(...filled) / Math.min(...filled);
+    assert.ok(filled.length >= 12 && lean > 1.06, `${kind}: slumped to a side through its belly, no solid of revolution (${lean.toFixed(3)})`);
+  }
+  // the kopna for the legacy cone: a haycock of loose hay, no pole, and the cone's draws spent first
+  const kopna = REG.haystack.build(mulberry32(3));
+  kopna.computeBoundingBox();
+  assert.ok(kopna.boundingBox.max.y > 2.1 && kopna.boundingBox.max.y <= REG.haystack.h + 1e-6, `the kopna about two metres and a bit (${kopna.boundingBox.max.y.toFixed(2)} m)`);
+  const kp = kopna.attributes.position;
+  assert.ok(kp.count / 3 > 200, `the kopna a stack of locks, not a nine-sided cone (${kp.count / 3} triangles)`);
+  const cone = new THREE.ConeGeometry(1.9, 2.5, 9, 2), cp = cone.attributes.position;
+  let coneDraws = 0;
+  for (let k = 0; k < cp.count; k++) if (Math.hypot(cp.getX(k), cp.getZ(k)) > 1e-4) coneDraws++;
+  let draws = 0;
+  const base = mulberry32(77);
+  REG.haystack.build(() => { draws++; return base(); });
+  assert.equal(draws, coneDraws, 'the kopna spends exactly the legacy cone\'s draws (every later pool keeps its geometry)');
+  // the trodden straw round every stack's foot (props.ts): its own decal, a third again wider than the contact's
+  const props = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+  assert.match(props, /function paintStrawLitter\(ctx: CanvasRenderingContext2D, size: number\): void \{/, 'the litter\'s painter');
+  assert.match(props, /const size = kind === 'straw' \? 256 : 128;/, 'its strands their texels');
+  assert.match(props, /strawDiscs\.push\(conformedDisc\(stack\.x, stack\.z, stack\.r \* 1\.35, /, 'a stack\'s straw a third again wider than its soil');
+  assert.match(props, /addDecalMesh\(strawDiscs, makeGroundDecalTexture\(noi, aniso, 'straw'\), \{\n\s*decalKind: 'straw-litter',/, 'one decal layer for every stack\'s straw');
+}
+
+console.log('haystacks.selftest: the hay print\'s four bands (the face lit and in locks, its foot pressed), the regions\' stacks inside their records over their footprints, the maps\' builds, the draws kept; built by hand, the kopna for the cone, the trodden straw');

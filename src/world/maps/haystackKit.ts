@@ -49,20 +49,43 @@ type ProfilePoint = readonly [r: number, y: number, v: number, rag: number];
  * A turned stack: the profile round the vertical, `segs` round, its radius broken by a periodic noise of the angle and
  * the height (lumps at a metre's scale, locks and tufts at a hand's), u round it in tiles of about four metres. The seam
  * column's normals are the mean of its two sides' (no lighting seam where u wraps).
+ *
+ * (b21; gauntlet wave 139 on the stog: "a perfectly smooth, symmetric beehive silhouette with uniform vertical grooves,
+ * so it reads as a sculpted object rather than loose, combed hay") a stack built by hand (`hand`) is no solid of
+ * revolution: one side slumped fuller than the other through its belly (the crown still on its pole), the hay raked down
+ * in a slight twist, locks standing proud of the skin here and there; `hand` the reach its record gives it, which no
+ * vertex passes. Every number from the stack's own noise tables — no draw more from the stream (every later pool keeps
+ * its geometry).
  */
-function turn(profile: readonly ProfilePoint[], segs: number, rng: Rng, tilesU: number): THREE.BufferGeometry {
+function turn(profile: readonly ProfilePoint[], segs: number, rng: Rng, tilesU: number, hand: number | false = false): THREE.BufferGeometry {
   const lumps = noiseTable(rng, 8), locks = noiseTable(rng, 24);
   const rows = profile.length, cols = segs + 1;
   const pos = new Float32Array(rows * cols * 3), uv = new Float32Array(rows * cols * 2), index: number[] = [];
+  let top = 0;
+  for (const p of profile) top = Math.max(top, p[1]);
+  // the slump's side and its depth, the twist, from the tables already drawn
+  const slumpA = lumps[3] * Math.PI * 2, slump = hand ? 0.05 + lumps[11] * 0.06 : 0, sway = hand ? 0.05 + lumps[19] * 0.07 : 0;
+  const twist = hand ? (lumps[27] - 0.5) * 0.14 : 0;
   for (let k = 0; k < rows; k++) {
     const [r, y, v, rag] = profile[k];
+    const yN = top > 0 ? Math.min(1, Math.max(0, y / top)) : 0, belly = Math.sin(Math.PI * yN);
     for (let j = 0; j < cols; j++) {
       const t = (j % segs) / segs, a = t * Math.PI * 2;
       const wobble = (sampleTable(lumps, 8, t, y * 0.35) - 0.5) * 2 * 0.06 * r + (sampleTable(locks, 24, t * 3, y * 1.6) - 0.5) * 2 * rag;
-      const rr = Math.max(0.02, r + wobble);
+      let rr = Math.max(0.02, r + wobble);
+      let ox = 0, oz = 0;
+      if (hand) {
+        // the fuller side through the belly, and the belly swayed toward it; a lock proud of the skin here and there
+        rr *= 1 + slump * Math.cos(a - slumpA) * belly;
+        ox = Math.cos(slumpA) * sway * belly; oz = Math.sin(slumpA) * sway * belly;
+        const lock = locks[(k * 7 + (j % segs) * 13) % (24 * 24)];
+        if (yN > 0.12 && yN < 0.92 && lock > 0.9) rr += (lock - 0.9) * 1.2 * Math.min(1, r);
+      }
       const o = (k * cols + j) * 3;
-      pos[o] = Math.cos(a) * rr; pos[o + 1] = y; pos[o + 2] = Math.sin(a) * rr;
-      uv[(k * cols + j) * 2] = (j / segs) * tilesU; uv[(k * cols + j) * 2 + 1] = v;
+      let px = Math.cos(a) * rr + ox, pz = Math.sin(a) * rr + oz;
+      if (hand) { const d = Math.hypot(px, pz); if (d > hand) { px *= hand / d; pz *= hand / d; } }
+      pos[o] = px; pos[o + 1] = y; pos[o + 2] = pz;
+      uv[(k * cols + j) * 2] = (j / segs) * tilesU + twist * y; uv[(k * cols + j) * 2 + 1] = v;
     }
   }
   for (let k = 0; k < rows - 1; k++) for (let j = 0; j < segs; j++) {
@@ -193,7 +216,7 @@ function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
  * A stog's (or a plast's) turned body: foot, belly a third of the way up, the shoulder, the crown drawn up round the
  * pole to its tip. Heights and radii in metres.
  */
-function stogBody(R: number, H: number, rng: Rng, segs: number): THREE.BufferGeometry {
+function stogBody(R: number, H: number, rng: Rng, segs: number, reach: number): THREE.BufferGeometry {
   const belly = R * (1.05 + rng() * 0.06), shoulderY = H * (0.62 + rng() * 0.06), tiles = Math.max(2, Math.round((Math.PI * 2 * belly) / 4));
   // (the hay raked down from the pole to the foot: one face band up the whole stack — a thatched cap read as a hut's
   // roof on the meule, and a stog's crown is its own hay drawn up round the pole)
@@ -212,14 +235,14 @@ function stogBody(R: number, H: number, rng: Rng, segs: number): THREE.BufferGeo
     const t = i / 5, y = shoulderY + (H - shoulderY) * t;
     profile.push([belly * 0.86 * Math.pow(1 - t, 0.75) + 0.07, y, crown(y), 0.09 * (1 - t) + 0.03]);
   }
-  return turn(profile, segs, rng, tiles);
+  return turn(profile, segs, rng, tiles, reach);
 }
 
 function bStog(rng: Rng): THREE.BufferGeometry {
   const R = 1.75 + rng() * 0.2, H = 4.3 + rng() * 0.5, segs = 18;
   const lean = 0.12;
   return merge([
-    stogBody(R, H, rng, segs),
+    stogBody(R, H, rng, segs, 2.25),
     footSkirt(R, 0.32, segs, rng, Math.max(2, Math.round((Math.PI * 2 * R) / 4))),
     pole(0.06, -0.4, H + 0.9 + rng() * 0.4, (rng() - 0.5) * lean, (rng() - 0.5) * lean),
   ]);
@@ -228,7 +251,7 @@ function bStog(rng: Rng): THREE.BufferGeometry {
 function bPlast(rng: Rng): THREE.BufferGeometry {
   const R = 1.25 + rng() * 0.15, H = 3.0 + rng() * 0.4, segs = 16;
   return merge([
-    stogBody(R, H, rng, segs),
+    stogBody(R, H, rng, segs, 1.6),
     footSkirt(R, 0.24, segs, rng, 2),
     pole(0.05, -0.3, H + 0.55 + rng() * 0.3, (rng() - 0.5) * 0.1, (rng() - 0.5) * 0.1),
   ]);
@@ -262,22 +285,42 @@ function bPlastBroken(rng: Rng): THREE.BufferGeometry { return hayMounds(rng, 0.
  * the stack below it a square of hay drawn down at its sides, its corners rounded, its foot settled.
  */
 function hooibergStack(half: number, top: number, rng: Rng): THREE.BufferGeometry {
-  // the stack's section: a square with rounded corners, turned as a 'superellipse' profile round the vertical
-  const segs = 28, rows: Array<[number, number]> = [[-0.1, 0], [0.15, 0.06], [top * 0.35, 0.3], [top * 0.7, 0.65], [top, 1]];
+  // the stack's section: a square with rounded corners, turned as a 'superellipse' profile round the vertical.
+  // (b21; gauntlet wave 139: "a dead-straight block of uniform vertical strands like a straw curtain": the hay is
+  // pitched up in layers — each a course of the face band, pressed darker at its foot — drawn in a little at every
+  // layer's joint, its sides bellying out between the poles, the whole leaning a little its own way; every number from
+  // the stack's own noise tables, no draw more from the stream)
+  const segs = 20;
   const lumps = noiseTable(rng, 8), locks = noiseTable(rng, 24);
+  // the layers: about 0.85 m each, their joints off a level by the stack's own noise
+  const layers = Math.max(4, Math.round(top / 0.85)), joints: number[] = [];
+  for (let l = 1; l < layers; l++) joints.push((l + (lumps[(l * 7) % 64] - 0.5) * 0.4) * (top / layers));
+  // [y, the face band's share, the joint's draw-in, the layer's slant]: each forkful's straw slanting its own way, the
+  // next layer's the other (a herringbone of layers the eye finds at any distance; continuous at the joints)
+  const rows: Array<[number, number, number, number]> = [[-0.1, 0, 0, 0], [0.15, 0.06, 0, 0]];
+  let y0 = 0, l = 0;
+  for (const y1 of [...joints, top]) {
+    const h = y1 - y0, slant = (t: number) => (l % 2 === 0 ? t : 1 - t) * 0.07;
+    if (y0 > 0) rows.push([y0, 0.3, 1, slant(0)]);
+    rows.push([y0 + h * 0.55, 0.7, 0, slant(0.55)]);
+    y0 = y1; l++;
+  }
+  rows.push([top, 1, 0, (l % 2 === 0 ? 0 : 1) * 0.07]);
+  const leanA = lumps[5] * Math.PI * 2, lean = 0.04 + lumps[13] * 0.08;
   const cols = segs + 1, pos = new Float32Array(rows.length * cols * 3), uv = new Float32Array(rows.length * cols * 2), index: number[] = [];
   const perimeter = 8 * half, tiles = Math.max(2, Math.round(perimeter / 4));
   for (let k = 0; k < rows.length; k++) {
-    const [y, f] = rows[k];
-    const bulge = 1 + 0.05 * Math.sin(Math.PI * Math.min(1, Math.max(0, y / top)));
+    const [y, f, joint, slant] = rows[k];
+    const yN = Math.min(1, Math.max(0, y / top));
+    const bulge = 1 + 0.05 * Math.sin(Math.PI * yN) - 0.016 * joint;
     for (let j = 0; j < cols; j++) {
       const t = (j % segs) / segs, a = t * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
-      // a rounded square: |x|^p + |z|^p = 1
-      const p = 5, rr = half * bulge / Math.pow(Math.pow(Math.abs(c), p) + Math.pow(Math.abs(s), p), 1 / p);
+      // a rounded square, its sides bellying out between the corners' poles (a lower exponent mid-height)
+      const p = 5 - 1.4 * Math.sin(Math.PI * yN), rr = half * bulge / Math.pow(Math.pow(Math.abs(c), p) + Math.pow(Math.abs(s), p), 1 / p);
       const wobble = (sampleTable(lumps, 8, t, y * 0.4) - 0.5) * 0.12 + (sampleTable(locks, 24, t * 3, y * 1.6) - 0.5) * 0.16;
       const o = (k * cols + j) * 3;
-      pos[o] = c * (rr + wobble); pos[o + 1] = y; pos[o + 2] = s * (rr + wobble);
-      uv[(k * cols + j) * 2] = (j / segs) * tiles; uv[(k * cols + j) * 2 + 1] = bandV(HAY_FACE_V, f);
+      pos[o] = c * (rr + wobble) + Math.cos(leanA) * lean * yN; pos[o + 1] = y; pos[o + 2] = s * (rr + wobble) + Math.sin(leanA) * lean * yN;
+      uv[(k * cols + j) * 2] = (j / segs) * tiles + slant; uv[(k * cols + j) * 2 + 1] = bandV(HAY_FACE_V, f);
     }
   }
   for (let k = 0; k < rows.length - 1; k++) for (let j = 0; j < segs; j++) {
@@ -298,14 +341,18 @@ function pyramidRoof(eave: number, y0: number, y1: number, rng: Rng): THREE.Buff
   const parts: THREE.BufferGeometry[] = [];
   const thick = 0.18;
   for (let side = 0; side < 4; side++) {
-    // one face: a triangle from the eave edge to the apex, as a strip of rows (the courses run along the eave)
+    // one face: a triangle from the eave edge to the apex, as a strip of rows (the courses run along the eave).
+    // (b21; wave 139, the roof from the field "a flat, untextured dark pyramid": each course's butts stand proud of the
+    // course above, a step the light finds from any distance — the rows' odd joints drawn out and down a little; the
+    // eave row's draws as before)
     const rows = 4, cols = 6, pos: number[] = [], uv: number[] = [], index: number[] = [];
     for (let k = 0; k <= rows; k++) {
       const t = k / rows, y = y0 + (y1 - y0) * t, w = eave * (1 - t);
+      const butt = k > 0 && k < rows ? 0.07 * (k % 2 === 1 ? 1 : 0.4) : 0;
       for (let j = 0; j <= cols; j++) {
         const s = j / cols * 2 - 1;
         const ragged = k === 0 ? (rng() - 0.5) * 0.14 : 0;
-        pos.push(s * w, y - (k === 0 ? 0.06 + ragged : 0), eave * (1 - t) + (k === 0 ? 0.04 : 0));
+        pos.push(s * (w + butt), y - (k === 0 ? 0.06 + ragged : butt * 0.4), eave * (1 - t) + (k === 0 ? 0.04 : butt));
         uv.push((j / cols) * (2 * eave) / 4, bandV(HAY_THATCH_V, t));
       }
     }
@@ -374,7 +421,7 @@ function bMeule(rng: Rng): THREE.BufferGeometry {
     const t = i / 6, y = drum + (H - drum) * t;
     profile.push([R * 0.99 * Math.pow(Math.cos((t * Math.PI) / 2), 0.85) + 0.07, y, face(y), 0.09 * (1 - t) + 0.02]);
   }
-  const body = turn(profile, segs, rng, tiles);
+  const body = turn(profile, segs, rng, tiles, 2.65);
   // the topknot: a twist of straw at the dome's tip
   const knot = turn([[0.16, H - 0.05, crown(0.9), 0.03], [0.1, H + 0.25, crown(0.95), 0.02], [0.02, H + 0.42, crown(1), 0]], 8, rng, 1);
   return merge([body, footSkirt(R, 0.3, segs, rng, tiles), knot]);
@@ -485,6 +532,39 @@ export function buildStook(rng: Rng): THREE.BufferGeometry {
     parts.push(sheaf);
   }
   return merge(parts);
+}
+
+/** A stream of the kit's own (a builder that may draw nothing more from the props' destructible stream). */
+function ownStream(seed: number): Rng {
+  let a = seed | 0;
+  return () => {
+    a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * The kopna (b21; gauntlet wave 139, the legacy field stack: "a straight-edged, four-sided pyramid", "a flat, untextured
+ * pyramid"): the haycock a steppe's or a meadow's hay is raked into before it is carted — two metres and a bit of loose
+ * hay drawn up to a rounded top, no pole, its foot settled; built by hand like the stog (its slump, its twist, its proud
+ * locks). From a stream of its own: the legacy stack's draws are spent by its caller (inhabitKit bHaystack), so every
+ * later pool keeps its geometry. Inside the legacy record's reach (r 1.75) and height (h 2.5).
+ */
+export function buildKopna(): THREE.BufferGeometry {
+  const rng = ownStream(0x6b0a7), R = 1.32 + rng() * 0.08, H = 2.3 + rng() * 0.12, segs = 14;
+  const face = (y: number) => bandV(HAY_FACE_V, y / H), tiles = Math.max(2, Math.round((Math.PI * 2 * R) / 4));
+  const profile: ProfilePoint[] = [
+    [R * 0.96, -0.1, face(0), 0.03], [R, 0.1, face(0.1), 0.04], [R * 1.05, H * 0.28, face(H * 0.28), 0.07],
+    [R * 0.98, H * 0.44, face(H * 0.44), 0.08], [R * 0.82, H * 0.58, face(H * 0.58), 0.09],
+  ];
+  // the top: a rounded cone drawn in to a tuft, ragged at its shoulder
+  for (let i = 1; i <= 4; i++) {
+    const t = i / 4, y = H * 0.58 + H * 0.42 * t;
+    profile.push([R * 0.82 * Math.pow(Math.cos((t * Math.PI) / 2), 0.75) + 0.05, y, face(y), 0.08 * (1 - t) + 0.02]);
+  }
+  return merge([turn(profile, segs, rng, tiles, 1.68), footSkirt(R, 0.24, segs, rng, tiles)]);
 }
 
 /**

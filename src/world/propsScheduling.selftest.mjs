@@ -600,7 +600,8 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
   const geometry = geo => ({ index: geo.index ? Array.from(geo.index.array) : null,
     attributes: Object.fromEntries(Object.entries(geo.attributes).map(([name, attr]) => [name, Array.from(attr.array)])) });
   return { ...api, group, buckets, randoms, commands, buildingFeatures, inputs, disposedInputs,
-    foundationCount: buildings + crushables + stacks + rocks + (streetRows && !rejectCourtyards ? 84 : 0),
+    // (b21: a stack's two discs, its contact and its trodden straw, each its own checkpoint)
+    foundationCount: buildings + crushables + stacks * 2 + rocks + (streetRows && !rejectCourtyards ? 84 : 0),
     kinds: () => group.children.map(mesh => mesh.userData.terrainDecalKind),
     snapshot: () => ({ randoms, privateRandoms, heightQueries, commands, pixels: canvas.pixels, clods: buckets.stone.map(geometry),
       meshes: group.children.map(mesh => ({ geometry: geometry(mesh.geometry), data: mesh.userData,
@@ -640,7 +641,7 @@ for (const [streetRows, foundry, options] of [
     const iterator = after.run();
     advanceFoundationInputs(after, iterator);
     assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'ground-foundations' } });
-    assert.deepEqual(after.kinds(), streetRows ? ['ground-contact', 'apron'] : ['ground-contact']);
+    assert.deepEqual(after.kinds(), [...(streetRows ? ['ground-contact', 'apron'] : ['ground-contact']), ...((options.stacks ?? 1) > 0 ? ['straw-litter'] : [])]);
     assert.equal(after.randoms.length, 0, 'scar RNG has not started at the first boundary');
     assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'ground-scars' } });
     assert.equal(after.kinds().includes('crater'), !options.rejectCourtyards);
