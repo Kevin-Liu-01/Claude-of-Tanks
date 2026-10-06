@@ -21,6 +21,8 @@
 import { gully, talusFan } from './geology.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+/** The rock peninsulas' ice-ground gneiss (round 3): sheets in ledges, a wandering knobbed crest, rills down the faces. */
+const PENINSULA = { outline: 0.28, rough: 2.2, gullies: { count: 3, depthM: 3.6, width: 0.45 }, strata: { stepM: 3.4, riser: 0.4 } } as const;
 
 export default {
   id: 'fjord',
@@ -69,10 +71,13 @@ export default {
       { kind: 'basin', x: 252, z: 32, rx: 98, rz: 150, height: -3.2, yawDeg: 3, wetScale: 0.8 },
       // round 47 follow-up: the rock peninsulas between the fjord arms and the walls outside them — the arms' water
       // flattening wins inside the lobes, so each ridge's flanks drop straight into the fjord
-      { kind: 'ridge', x: 395, z: -32, length: 210, width: 50, height: 13.0, yawDeg: 0 },
-      { kind: 'ridge', x: 395, z: 170, length: 210, width: 46, height: 12.0, yawDeg: 0 },
-      { kind: 'ridge', x: 430, z: -268, length: 170, width: 56, height: 12.0, yawDeg: -4 },
-      { kind: 'ridge', x: 430, z: 378, length: 160, width: 56, height: 11.0, yawDeg: 4 },
+      // (round 3, gauntlet wave 129: "one smooth grey vertical wall with a ruler-straight top edge and no ledges, joints
+      // or glacial rounding"): the gneiss in sheets — the crest wandering and knobbed, the flanks stepped in ledges
+      // 3-4 m apart, rills down the faces
+      { kind: 'ridge', x: 395, z: -32, length: 210, width: 50, height: 13.0, yawDeg: 0, geology: PENINSULA },
+      { kind: 'ridge', x: 395, z: 170, length: 210, width: 46, height: 12.0, yawDeg: 0, geology: PENINSULA },
+      { kind: 'ridge', x: 430, z: -268, length: 170, width: 56, height: 12.0, yawDeg: -4, geology: PENINSULA },
+      { kind: 'ridge', x: 430, z: 378, length: 160, width: 56, height: 11.0, yawDeg: 4, geology: PENINSULA },
       // 2026-10-03 (maps lane B): glacial geology (geology.ts). Roches moutonnées on the heights outside the town — the
       // ice that dug the fjord flowed east, so each knob rises gently from the west and breaks off steep to the east (a
       // long low dome with a short steep one at its lee end); two gullies cut the western heights' south face; and
@@ -114,13 +119,21 @@ export default {
     // Ofoten, a fortnight after the snow: last year's grass straw-brown over the new shoots, the moss dark under it
     tintA: [0.98, 0.95, 0.80], tintB: [0.72, 0.72, 0.60], tintC: [1.05, 1.0, 0.84],
     roadTint: [0.66, 0.68, 0.67], midRelief: 0.94,
+    // round 3 (wave 129: "one smooth lime-green grass carpet"; Grass004 is green blades whatever the macro tints do):
+    // the steppe's photo sets under Nordhavn's own tints — last year's matted straw with an olive cast over the new
+    // shoots (withered grass to ~0.115/0.125/0.055 linear), the fjord row's dirt and dark blue-grey gneiss unchanged
+    // (sourcedTint divides out the steppe row's own tints)
+    sourcedPalette: 'steppe',
+    sourcedTint: { G: [0.34, 0.5, 0.47], D: [0.81, 0.9, 1.1], R: [0.48, 0.59, 0.82] },
   },
   vegetation: {
     // round 2 (wave 111b: "a monoculture of repeated conifers with no birch anywhere"): Ofoten's woods are downy birch on
     // the lower slopes, a few Scots pine on the rock, spruce only in the planted stands; in May the birches are bare twigs
     // just breaking into a pale green haze
-    species: ['birch', 'pine', 'spruce'], clusterMix: [['birch', 0.62], ['pine', 0.24], ['spruce', 0.14]],
-    loneMix: [['birch', 0.66], ['pine', 0.26], ['spruce', 0.08]], rimMix: [['birch', 0.50], ['pine', 0.30], ['spruce', 0.20]],
+    // (round 3, wave 129: "palm- or umbrella-crowned trees on the ridges") the Scots pine's high crown on its bare red
+    // trunk read as a parasol pine on the headlands: a pine here and there on the rock, the rims birch and spruce
+    species: ['birch', 'pine', 'spruce'], clusterMix: [['birch', 0.68], ['pine', 0.08], ['spruce', 0.24]],
+    loneMix: [['birch', 0.74], ['pine', 0.08], ['spruce', 0.18]], rimMix: [['birch', 0.55], ['pine', 0.04], ['spruce', 0.41]],
     palettes: {
       birch: { birchLeaves: true, cardHue: 0.2, cardSat: 0.16, cardL0: 0.44,
         texTone: (h: number, s: number, l: number): [number, number, number] => [clamp01(0.2 + (h - 0.25) * 0.2), clamp01(s * 0.42 + 0.06), clamp01(l * 0.96 + 0.1)],
@@ -174,15 +187,18 @@ export default {
     buildingLat: [12, 7], sideSkip: 0.12, maxSpread: 3.0, spacingPad: 8,
     roadBuildingKeepouts: [{ x: 3, z: -67, r: 12 }],
     well: false, hayCrates: false, fences: true, telegraph: true, carts: true, logs: true,
-    rocks: 330, outcrops: 60, craters: 54, rubblePiles: 18, hedgehogs: 14,
+    // (round 3, wave 129: "a heap of white cube-shaped rubble" in the fields) the masonry heaps fewer, the town's own
+    rocks: 330, outcrops: 60, craters: 54, rubblePiles: 6, hedgehogs: 14,
     sandbagLines: 16, tankWrecks: { era: 'modern', count: 5, debris: true,
       ids: ['leo2a7v', 't90a', 'cv90', 'strv122', 'marder1a3'] },
     inhabit: {
       // (wave 111b: "a fairground-style market stall") no market stall: the quay's own fish trade has the fish plant
-      stalls: 0, benches: 4, coreClutter: 22, trucks: 5, jeeps: 3,
+      // (round 3, gauntlet wave 129: "a park bench (1940!)") no park benches either
+      stalls: 0, benches: 0, coreClutter: 22, trucks: 5, jeeps: 3,
       // map revival lane 2, round 2: Bjerkvik in 1940 had no traffic cones or concrete jersey barriers — the roadside
-      // vocabulary is the wharf's cable reels, the transformer cabinets of the harbour's power and the road signs
-      drumClusters: 6, camps: 2, modernClutter: { cablespool: 8, transformer: 4, roadsign: 6 },
+      // vocabulary is the wharf's cable reels and the road signs
+      // (round 3, wave 129: "a flat-shaded green box with three green cylinders") nor a pad transformer's cabinet
+      drumClusters: 6, camps: 2, modernClutter: { cablespool: 10, roadsign: 8 },
       roadFence: 'fencerail', yardFence: 'fencepicket',
     },
   },
