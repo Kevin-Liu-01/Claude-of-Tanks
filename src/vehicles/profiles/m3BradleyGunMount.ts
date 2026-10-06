@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {KIT} from './kit.ts';
+import {sectionSolid} from './sectionSolid.ts';
 
 /** A rounded shoulder casting, with real M242 and M240 passages. Its rear
  * tapers into the existing rotary receiver; all stock stays inside the old
@@ -75,4 +76,11 @@ export function buildM3BradleyGunMount(P: TankBuilderPort): void {
     P.addGunExtraDark(KIT.cylZ(.013,.008, P.q ? 12 : 8), x,y,z+.002);
     P.addGunExtra(KIT.cylZ(.008,.012,6), x,y,z+.004);
   }
+  // Rounded lower receiver shoe behind the shield. All lower stations lie
+  // inside a 240 mm radius about the pitch axis, so rocking the gun cannot
+  // swing a square chin into the deck. Its upper face clears the real barrel
+  // passage and its front keys into the finite shield rather than hovering.
+  P.addGunExtra(sectionSolid([
+    {z:-.10,low:-.218},{z:0,low:-.240},{z:.10,low:-.218},{z:.16,low:-.170},
+  ].map(({z,low})=>({z,ring:[[-.275,low],[.275,low],[.275,-.130],[-.275,-.130]]}))));
 }

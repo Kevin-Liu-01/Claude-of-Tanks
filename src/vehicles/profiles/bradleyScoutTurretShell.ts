@@ -43,17 +43,17 @@ export function buildBradleyScoutTurretShell(P: TankBuilderPort): void {
       return {z,ring:side<0?points.reverse():points};
     }));
     P.add('turret',cheek);
-    // Welded cheek saddles carry the raised trunnion without lifting the
-    // turret or changing its donor hull. Their roots overlap the cheek;
-    // the center stays open for the rocking receiver and closed rear roof.
+    // Low cheek saddles seat the trunnion within the shoulder silhouette.
+    // Their roots overlap the cheek; the center stays open for the rocking
+    // receiver and closed rear roof.
     P.add('turret',sectionSolid([
-      {z:.56,top:.755},{z:.78,top:.820},{z:1.04,top:.705},
+      {z:.56,top:.630},{z:.78,top:.695},{z:1.04,top:.580},
     ].map(({z,top})=>{
       const ring:[number,number][]=[[.34,.30],[.54,.30],[.50,top],[.34,top]];
       const points=ring.map(([x,y]):[number,number]=>[side*x-.06,y]);
       return {z,ring:side<0?points.reverse():points};
     })));
-    P.add('turret',KIT.cylX(.18,.10,24),side*.34-.06,.615,.78);
+    P.add('turret',KIT.cylX(.18,.10,24),side*.34-.06,.490,.78);
     // Side cassettes are supported by the widened shoulder and terminate
     // behind the sloped cheek instead of protruding across the gun opening.
     P.addExternalArmor('turret',KIT.box(.07,.38,1.10),side*.993,.35,-.49,0,0,side*.06);
@@ -68,5 +68,11 @@ export function buildBradleyScoutTurretShell(P: TankBuilderPort): void {
     {z:.60,ring:[[-.42,.601],[.30,.601],[.30,.666],[-.42,.666]]},
   ]));
   P.add('turret',KIT.box(.72,.06,1.18),-.06,.025,.49);
+  // A finite lower sill ties both cheeks to the bay floor. It ends below
+  // the rocking shoe's full sweep, leaving a working seam, not an open slot
+  // down to the hull. Coordinates here undergo the same 0.80 Y conversion.
+  P.add('turret',sectionSolid([
+    {z:.56,top:.145},{z:.84,top:.150},{z:1.08,top:.175},
+  ].map(({z,top})=>({z,ring:[[-.42,.025],[.30,.025],[.30,top],[-.42,top]]}))));
   P.addEquipment('turretDark',KIT.box(.92,.016,.49),0,.75,-.67);
 }

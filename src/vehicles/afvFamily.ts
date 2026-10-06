@@ -318,6 +318,9 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
     terrainResistance: { hard: 0.75, medium: 0.85, soft: 1.4 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 60, gunPitchDegS: 40, gunElevationDeg: 30, gunDepressionDeg: 9,
+    // Preserve full front/side depression with the lower gun seat. Only the
+    // aft hatch sector needs a mechanical stop, shared by game and Gallery.
+    gunPitchByYawDeg: [[0, -9], [150, -9], [160, -5], [180, -5]],
     gun: {
       caliberMm: 25, reloadS: 0.33, baseAccuracy: 0.25, aimTimeS: 1.05,
       soundProfile: 'm242-bushmaster',
@@ -339,7 +342,7 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
       silhouetteWidthM: 3.61, silhouetteHeightM: 3.05 },
     armor: ifvArmor({
       hl: 3.27, hw: 1.64, inW: 0.95, floor: 0.45, trkTop: 0.95, roofY: 1.90,
-      turretPivot: [0.04, 1.895, -0.36], gunPivot: [-0.06, 0.492, 0.78],
+      turretPivot: [0.04, 1.895, -0.36], gunPivot: [-0.06, 0.392, 0.78],
       barrelLenM: 2.30, barrelRadM: 0.038,
       glacis: [45, 70, 80], lower: [45, 60, 60], side: [35, 40, 45],
       skirt: [25, 35, 70], rear: 25, roof: 20,

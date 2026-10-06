@@ -78,8 +78,28 @@ for(const quality of ['high','low']){
     const recoil=root.getObjectByName('rig_recoil'),tube=root.getObjectByName('gun');
     assert.equal(mount.parent,gun,'casting pitches without recoiling');
     near(gun.position.x,-.06,1e-7,'preserved horizontal trunnion');
-    near(gun.position.y,.492,1e-7,'preserved repaired gun height');
+    near(gun.position.y,.392,1e-7,'gun sits 100 mm lower within the turret cheeks');
     near(gun.position.z,.78,1e-7,'preserved repaired gun setback');
+    // Scan real front-facing stock below the barrel opening. The former
+    // raised mask left daylight to the compartment floor; a finite sill
+    // and rocking shoe should leave only a narrow mechanical seam here.
+    const turret=root.getObjectByName('rig_turret'),body=root.getObjectByName('turret');
+    const lowerOpening=()=>{
+      root.updateMatrixWorld(true);let largest=0;
+      for(const x of [-.28,-.06,.16]){
+        let run=0;
+        for(let y=.045;y<.28;y+=.001){
+          ray.set(turret.localToWorld(new Vector3(x,y,1.5)),new Vector3(0,0,-1));ray.far=.94;
+          run=ray.intersectObjects([body,mount],false).length?0:run+.001;
+          largest=Math.max(largest,run);
+        }
+      }
+      return largest;
+    };
+    assert.ok(lowerOpening()<.015,`${quality}: lower silhouette has only a working seam`);
+    gun.position.y+=.10;
+    assert.ok(lowerOpening()>.10,`${quality}: the raised gun reopens the visible lower slot`);
+    gun.position.y-=.10;root.updateMatrixWorld(true);
     const p=tube.geometry.attributes.position,index=tube.geometry.index;
     const vertices=[new Vector3(),new Vector3(),new Vector3()],crossing=new Vector3();
     const supports=[mount,root.getObjectByName('gunMountDark')];

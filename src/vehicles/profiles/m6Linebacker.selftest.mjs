@@ -171,7 +171,10 @@ for(const quality of ['high','low']){
   const scout=createTank('m3a3_bradley',null,{...options,quality});
   try{
     const clearance=measureBradleyGunClearance(scout);
-    assert.ok(clearance.minimum>.020,`${quality}: gun clears actual hull triangles, including fill and recoil: ${JSON.stringify(clearance)}`);
+    assert.ok(clearance.minimum>.005,`${quality}: lowered gun clears actual hull triangles, including fill and recoil: ${JSON.stringify(clearance)}`);
+    near(minimumMechanicalGunPitch(getSpec('m3a3_bradley'),0),-9*Math.PI/180,1e-12,'M3 full forward depression retained');
+    assert.ok(measureGunHullClearance(scout,{minimumHullY:1.7,pitchDegrees:[-9],yawDegrees:[163.55],recoilDistances:[0]}).minimum<-.070,
+      'lowering without the rear mechanical stop really intersects the aft hatch');
     assert.ok(measureBradleyGunClearance(scout,{negativeControl:true}).minimum<-.04,
       'old low trunnion is a real collision, not a vacuous clearance pass');
     console.log(`M3 ${quality}: gun/hull minimum ${(clearance.minimum*1000).toFixed(1)} mm across ${clearance.poses} poses.`);
