@@ -111,7 +111,7 @@ export const TALL_GRASS = Object.freeze({
                       // of Tarkhan's 44 k clumps sat over the tier's 1 ms budget on the toggle bench)
     fade: Object.freeze([-1, 0, 38, 46] as const), // (in0, in1, out0, out1) m — a strict in-ramp (smoothstep needs edge0 < edge1)
     cap: 56000,       // Tarkhan's 1.2 × steppe filled 40 000 and dropped its ring's far cells (the first sheets)
-    programKey: 'world-tall-grass-near-v3', // v3 (ground lane): the shaded sward's light neutralised after the chunk
+    programKey: 'world-tall-grass-near-v4', // v3 (ground lane): the shaded sward's light neutralised after the chunk; v4: the blade's lean
   }),
   far: Object.freeze({
     cellM: 24,
@@ -119,15 +119,17 @@ export const TALL_GRASS = Object.freeze({
     perM2: 0.20,      // single wide blades per square metre (0.30 on the first sheet massed into a dark carpet at 30–120 m)
     fade: Object.freeze([34, 46, 192, 240] as const),
     cap: 84000,       // covers all 529 cells at the maximum 1.3 density without dropping the outer ring
-    programKey: 'world-tall-grass-far-v4', // v4 (ground lane): the shaded sward's light neutralised after the chunk
+    programKey: 'world-tall-grass-far-v5', // v4 (ground lane): the shaded sward's light neutralised after the chunk; v5: the blade's lean
   }),
   /** Blade width multiplier of the far ring (one strip carries the read), the root-to-tip gradient exponents and the
    * far ring's lift: the near clump keeps a dark root; the far blade — seen from above, mostly root in screen space,
-   * averaged with the ground between blades — takes its tip colour early and a third more light, so the 30–120 m
-   * sward stays as light as the meadow it stands in (Monsoon's hillside massed dark on the first two sheets). */
+   * averaged with the ground between blades — takes its tip colour early and a fifth more light, so the 30–120 m
+   * sward stays as light as the meadow it stands in (Monsoon's hillside massed dark on the first two sheets; the lift
+   * was a third while the roots were a third of their tips — wave 71's black stalks raised them to half, and the far
+   * blade's mean holds at 1.2). */
   farWidth: 1.7,
   bladeGamma: Object.freeze({ near: 0.75, far: 0.35 } as const),
-  bladeLift: Object.freeze({ near: 1.0, far: 1.3 } as const),
+  bladeLift: Object.freeze({ near: 1.0, far: 1.2 } as const),
   /** How much darker a crushed blade stays while the bruise lasts (the lane behind the tracks). */
   crushDarken: 0.28,
   cacheCells: 720,  // the 529-cell far ring plus recently visited columns; bounded and larger than the active ring
@@ -288,9 +290,13 @@ uniform vec2 uWindDir; uniform sampler2D uPress; uniform vec4 uPressParams; unif
 attribute vec4 aBlade;
 varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;`);
     // the blade's own normal: its face turned by the yaw, leaning toward the sky so the strip never lights as a wall
+    // (wave 71, every grass view: "thin black stems poking up everywhere") — leaned 29° off the zenith, a blade turned
+    // from a low sun took none of it (N·L ≈ 0 at 27° of elevation against 0.83 for its neighbour turned toward it): one
+    // blade in two stood near-black among the tufts, whose cards lean 6–15° (vegetation.ts buildGrassTuftGeometry). A
+    // thin blade is lit through from behind as well; it now leans 10°, as the cards do, and every blade takes the sun
     shader.vertexShader = mustReplace(shader.vertexShader, '#include <beginnormal_vertex>', /* glsl */`
       float cotYaw = aBlade.x + position.z;
-      vec3 objectNormal = normalize(vec3(sin(cotYaw) * 0.55, 1.0, cos(cotYaw) * 0.55));`);
+      vec3 objectNormal = normalize(vec3(sin(cotYaw) * 0.18, 1.0, cos(cotYaw) * 0.18));`);
     shader.vertexShader = mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`
       vec3 transformed;
       vec3 cotGrassRoot = vec3(0.0);
@@ -378,7 +384,8 @@ varying float vBladeT; varying float vBladeCrush; varying float vBladeTone;`);
       // tip down (the dead leaves of last season standing in the new)
       + `\n{ float cure = smoothstep(0.78, 0.84, vBladeTone) * (0.55 + 0.45 * vBladeT);`
       + `\n  diffuseColor.rgb *= 0.80 + 0.40 * fract(vBladeTone * 3.7);`
-      + `\n  diffuseColor.rgb = mix(diffuseColor.rgb, uGrassDry * mix(0.45, 1.0, vBladeT) * uBladeLift, cure); }`);
+      // (a cured blade's foot is straw, not a burnt stub: wave 71's dark sticks)
+      + `\n  diffuseColor.rgb = mix(diffuseColor.rgb, uGrassDry * mix(0.72, 1.0, vBladeT) * uBladeLift, cure); }`);
   };
 }
 
@@ -403,8 +410,8 @@ function makeSharedUniforms(): SharedUniforms {
     uWindDir: { value: new THREE.Vector2(0.8, 0.6) },
     uPress: { value: null },
     uPressParams: { value: new THREE.Vector4(GROUND_PRESSURE_WINDOW_FALLBACK, 0, 0, 0) },
-    uGrassBase: { value: new THREE.Vector3(0.025, 0.042, 0.012) },
-    uGrassTip: { value: new THREE.Vector3(0.085, 0.170, 0.035) },
+    uGrassBase: { value: new THREE.Vector3(0.052, 0.078, 0.030) },
+    uGrassTip: { value: new THREE.Vector3(0.092, 0.160, 0.045) },
     uGrassDry: { value: new THREE.Vector3(0.27, 0.22, 0.095) },
   };
 }
@@ -545,10 +552,20 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
       if (b.kind === 'dune' && field._waterWetnessAt) keep *= 0.4 + 1.6 * smoothstep(0.03, 0.30, field._waterWetnessAt(x, z));
     }
     if (field._villageMask && field._villageMask(x, z) > 0.35) keep *= b.kind === 'verge' ? 0.4 : 0.12;
+    let grazed = 0;
     if (splatNoise) {
       const sn = splatNoise(x, z, _splat);
       const dirtPatch = smoothstep(0.55, 0.80, sn.n2 + (sn.n1 - 0.5) * 0.45);
-      keep *= 1 - dirtPatch * 0.85;
+      // (wave 71, every grass view: "bare, blurry soil between tufts") the terrain draws a worn patch's rim as grazed
+      // turf and its soil only at the trodden core (terrain.ts wornCore): on the rim the sward stands short, thinner
+      // and part cured, and only the core goes bare (the tundra's scoured crests keep the whole patch)
+      if (b.kind === 'tundra') keep *= 1 - dirtPatch * 0.85;
+      else {
+        const dirtCore = smoothstep(0.78, 1.0, sn.n2 + (sn.n1 - 0.5) * 0.45);
+        keep *= (1 - dirtPatch * 0.30) * (1 - dirtCore * 0.80);
+        heightScale *= 1 - 0.35 * dirtPatch;
+        grazed = dirtPatch;
+      }
       keep *= 0.55 + 0.9 * smoothstep(0.30, 0.75, sn.n1);
     }
     let hollow = 0, crest = 0;
@@ -574,11 +591,12 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     // bare; the field's grass margin grows rank and a little taller, its tracks thin out. The fields keep to the open,
     // level ground the terrain draws them on (off roads, villages, water and slopes) — the same layout (landUseAt).
     let cropTint: readonly [number, number, number] | null = null;
+    let pastureDry = -1;
     if (field._landUseAt && b.kind !== 'reed' && b.kind !== 'tundra') {
       field._landUseAt(x, z, _field);
       const vm = field._villageMask ? field._villageMask(x, z) : 0;
       const slopeN = n ? 1 - n.y : 0;
-      const landW = (1 - smoothstep(0.05, 0.30, vm)) * smoothstep(5.0, 8.0, roadD) * (1 - smoothstep(0.02, 0.06, slopeN))
+      const landW = (1 - smoothstep(0.05, 0.30, vm)) * smoothstep(5.0, 8.0, roadD) * (1 - smoothstep(0.04, 0.10, slopeN))
         * (1 - smoothstep(0.02, 0.10, water));
       if (landW > 0.5 && _field.active) {
         if (_field.track > 0.5) {
@@ -586,7 +604,17 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
           if (_field.boundary === 1) {
             if (_field.edgeM < 0.85) return;
             keep = Math.min(1, keep * 1.3); heightScale *= 1.5; cropTint = [0.16 / b.tip[0], 0.19 / b.tip[1], 0.07 / b.tip[2]];
-          } else keep *= 0.25;
+          } else {
+            // (wave 79, the new ruts: "grass sprouting through them as thickly as on the verge") a farm track's two wheel
+            // lanes (0.85 m either side of its line, the terrain's ruts) grow nothing; a short sward stands on the crown
+            // between them and a trodden one on the verges outside
+            // (wave 83: "painted rails") the lanes wander and swell along the track (landUse.ts laneQ, the material's
+            // own lanes), and the sward's edge along them is ragged by the blade, not a ruled line
+            const dLine = Math.abs(_field.sV);
+            const laneQ = _field.laneQ ?? (dLine - 0.85) / 0.24;
+            if (Math.abs(laneQ) < 1.15 + 0.35 * wR) return;
+            if (laneQ < 0) { keep *= 0.55; heightScale *= 0.55; } else keep *= 0.70;
+          }
         } else if (_field.edgeM < _field.marginM) {
           if (_field.boundary === 3) { if (_field.edgeM < 0.62) return; keep *= 0.6; } // a dry stone wall and its foot
           else if (_field.boundary === 2) { keep *= 0.5; heightScale *= 0.6; } // a bund: short grass on its top
@@ -608,7 +636,19 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
           // ramp — a fixed multiplier set against the meadow's tip turned a steppe or savanna sward pink
           // (a bare field's weeds keep the grass's own cured end, not the soil's colour: LAND_CROP_GROWTH weed)
           if (_field.weed) cropTint = [b.dry[0] / b.tip[0], b.dry[1] / b.tip[1], b.dry[2] / b.tip[2]];
-          else if (crop !== LAND_CROP.pasture) cropTint = [_field.tintR / b.tip[0], _field.tintG / b.tip[1], _field.tintB / b.tip[2]];
+          else if (crop !== LAND_CROP.pasture) {
+            // (wave 71: "hard-edged colour patches … green among straw") a sown field carries its weeds — an eighth of
+            // its blades the sward's own, most of them along its edge, where the crop thins into the margin over three
+            // metres instead of stopping on a line (vegetation.ts makeTuft: the same law for the tufts)
+            const weedP = 0.12 + 0.73 * (1 - smoothstep(0, 3.0, _field.edgeM - _field.marginM));
+            if (((tintR * 7.31 + hR * 3.17) % 1) >= weedP) cropTint = [_field.tintR / b.tip[0], _field.tintG / b.tip[1], _field.tintB / b.tip[2]];
+          } else {
+            // (wave 69: "near-circular blotches … rather than the rectilinear plots") a pasture's straw is its own, by
+            // the field's draw (terrain.ts and vegetation.ts makeTuft: the same, at the bake's six bits) — not the
+            // meadow's round dry patches
+            const jq = Math.round(_field.jitter * 63) / 63;
+            pastureDry = 0.55 * ((jq * 7.31 + 0.13) % 1);
+          }
           // the headland (the terrain draws the same strip): 3–5.5 m inside the margin where the drill turned, the crop
           // pressed flat and thinner, weeds coming up in it
           if (_field.boundary === 0 && crop !== LAND_CROP.pasture) {
@@ -643,7 +683,7 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     if (blocked && blocked(x, y, z, heightM, 0.12)) return;
     const widthM = b.widthM * (ring.far ? TALL_GRASS.farWidth : 1) * (0.8 + 0.4 * wR);
     // the tint: a per-clump luminance jitter, straw on the terrain's dry patches, deeper green in the hollows
-    const dry = splatNoise ? smoothstep(0.55, 0.85, _splat.mA) : 0;
+    const dry = Math.max(pastureDry >= 0 ? pastureDry : splatNoise ? smoothstep(0.55, 0.85, _splat.mA) : 0, grazed * 0.45);
     const lum = 0.82 + 0.36 * tintR;
     const r = (b.tip[0] * (1 - dry) + b.dry[0] * dry) / b.tip[0];
     const g = (b.tip[1] * (1 - dry) + b.dry[1] * dry) / b.tip[1];
