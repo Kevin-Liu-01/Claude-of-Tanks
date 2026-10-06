@@ -96,6 +96,7 @@ const VARIANTS = {
   church: [{ domes: 5, crown: 'onion' }, { tradition: 'western', length: 32, width: 12, tower: 40 }, { tradition: 'western', crown: 'helm', walls: 'render' }],
   windmill: [{ style: 'post' }, { style: 'tower', height: 20 }],
   waterTower: [{ style: 'rozhnovsky', height: 22 }, { style: 'trestle' }],
+  townHall: [{ frame: true, width: 20, depth: 12, storeys: 3, tower: 28 }],
   belfry: [{ crown: 'tent' }, { crown: 'needle' }, { crown: 'helm' }],
   obelisk: [{ finial: 'cross', railing: false }, { finial: 'ball', height: 14 }],
   statue: [{ metal: 'silver', pose: 'robe' }],

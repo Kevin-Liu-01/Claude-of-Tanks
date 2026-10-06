@@ -91,8 +91,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     // (an Orthodox church's porticos stand 3 m off the cube; a Western church's apse rounds off past its chancel)
     footprint: (p) => (p.tradition === 'orthodox' ? [num(p, 'width') / 2 + 3.1, num(p, 'length') / 2 + 1.4]
       : [num(p, 'width') / 2 + 1.0, num(p, 'length') / 2 + num(p, 'width') * 0.36 + 0.6]) },
-  townHall: { family: 'civic', defaults: { width: 22, depth: 13, storeys: 3, tower: 34 },
-    footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'depth') / 2 + 1.6] },
+  // (frame: the Hessian Fachwerk-Rathaus, its corner turrets 1.3 m proud of the front)
+  townHall: { family: 'civic', defaults: { width: 22, depth: 13, storeys: 3, tower: 34, frame: false },
+    footprint: (p) => [num(p, 'width') / 2 + (p.frame ? 1.5 : 1.0), num(p, 'depth') / 2 + 1.6] },
   stationHall: { family: 'civic', defaults: { length: 34, depth: 10, canopy: 30 },
     // the platform canopy stands on the +z (track) side
     footprint: (p) => [Math.max(num(p, 'length'), num(p, 'canopy')) / 2 + 2.2, num(p, 'depth') / 2 + 5.4] },
