@@ -52,6 +52,11 @@ interface LandmarkComposeContext {
   spawns: ReadonlyArray<{ x: number; z: number }>;
   /** The solids already standing; the pass appends each piece's movement record. */
   obstacles: CollisionRecord[];
+  /**
+   * The crushable kinds that still refuse a piece: the light buildings and the strongpoints' structures (huts, tents, a
+   * motor pool), which stand before the pass and must not end up inside a piece (props.ts gives its building types).
+   */
+  hardKinds?: ReadonlySet<string>;
   /** The shells' and sight's records; the pass appends each piece's shell bands. */
   colliders: CollisionRecord[];
   architecture: ArchitectureStyle | null;
@@ -136,8 +141,8 @@ function discMeetsFootprint(dx: number, dz: number, r: number, x: number, z: num
 }
 
 /** The hard solid (by kind) standing in the footprint, and the soft ones it overlaps. */
-function solidConflicts(obstacles: readonly CollisionRecord[], x: number, z: number, hw: number, hl: number, yaw: number):
-  { hard: string | null; soft: string[] } {
+function solidConflicts(obstacles: readonly CollisionRecord[], x: number, z: number, hw: number, hl: number, yaw: number,
+  hardKinds: ReadonlySet<string> | undefined = undefined): { hard: string | null; soft: string[] } {
   const soft: string[] = [];
   const reach = Math.hypot(hw, hl);
   for (const ob of obstacles) {
@@ -147,7 +152,7 @@ function solidConflicts(obstacles: readonly CollisionRecord[], x: number, z: num
     const r = Math.max(0.3, Math.min(ob.max[0] - ob.min[0], ob.max[2] - ob.min[2]) * 0.5);
     if (!discMeetsFootprint(cx, cz, r, x, z, hw, hl, yaw)) continue;
     const kind = ob.kind ?? (ob.crushable ? 'crushable' : 'rock');
-    if (!ob.crushable && !SOFT_KINDS.has(kind)) return { hard: kind, soft };
+    if ((!ob.crushable && !SOFT_KINDS.has(kind)) || hardKinds?.has(kind)) return { hard: kind, soft };
     if (soft.length < 8) soft.push(kind);
   }
   return { hard: null, soft };
@@ -217,7 +222,7 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     const yaw = (placement.yawDeg ?? 0) * Math.PI / 180;
     const refused = admission(ctx, discs, placement, hw, hl, yaw);
     if (refused) { skip(refused); yield { fine: true, progress: false, stage: 'landmarks' }; continue; }
-    const { hard, soft } = solidConflicts(ctx.obstacles, placement.x, placement.z, hw, hl, yaw);
+    const { hard, soft } = solidConflicts(ctx.obstacles, placement.x, placement.z, hw, hl, yaw, ctx.hardKinds);
     if (hard) { skip(`solid ${hard}`); yield { fine: true, progress: false, stage: 'landmarks' }; continue; }
     if (soft.length) entry.overlaps = soft;
     const ground = sampleObbGround(ctx.heightField as HeightField, placement.x, placement.z, hw, hl, yaw);
