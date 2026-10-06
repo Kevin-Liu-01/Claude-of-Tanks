@@ -64,14 +64,12 @@ export default {
       { x: 214, z: -12, width: 54, length: 54, yawDeg: 180, level: 0, grade: 0.05, bankM: 16 },
     ],
     village: { x0: -128, x1: 128, z0: -120, z1: 120, cx: 0, cz: 0, feather: 50, flatten: 0.74, relief: 0.26 },
-    // the four roads meet in the junction square: Nevşehir's from the west past the west castle rock, Ürgüp's to the
-    // east past the east one, the Pigeon Valley track from the south and Avanos's road to the north (each the other's
-    // rotation about the centre)
+    // two roads cross in the junction square: Nevşehir's from the west past the west castle rock running on as Ürgüp's
+    // to the east past the east one, and the Pigeon Valley track from the south running on as Avanos's road to the north
+    // (each half the other's rotation about the centre; the telegraph line follows the first)
     roads: { paths: roundRoadBends([
-      westRoad,
-      rotatedRoad(westRoad),
-      southRoad,
-      rotatedRoad(southRoad),
+      [...westRoad, ...rotatedRoad(westRoad).slice(1)],
+      [...southRoad, ...rotatedRoad(southRoad).slice(1)],
     ]) },
     landforms: [
       // the plateau's two benches along the valley sides, each running out on a ramp at both ends, so its top is a
@@ -126,9 +124,16 @@ export default {
       'caravanserai', 'adobe', 'compoundSouk', 'bathhouse', 'adobe', 'ruin', 'compound', 'adobe'],
     destructibleBuildings: ['guardpost', 'deserttent', 'commandtent'],
     buildingLat: [16.5, 2], destructibleBuildingLat: [16, 3],
+    // the strongpoints in rotated pairs (each the other's turn about the centre), at least 180 m apart and within 60 m of
+    // a road: a lookout on each bench's end over the Nevşehir–Ürgüp road, a sandbagged brawl post at each valley head
+    // beside the valley road, a support camp where each valley floor opens below the town
     tacticalBeats: [
-      { id: 'pigeon-valley-post', role: 'scout', x: -120, z: -260, yawDeg: 20, structure: 'guardpost', outcrop: { count: 5, radius: 9 } },
-      turned({ id: 'avanos-road-post', role: 'scout', x: -120, z: -260, yawDeg: 200, structure: 'guardpost', outcrop: { count: 5, radius: 9 } }),
+      { id: 'west-bench-lookout', role: 'scout', x: -350, z: -225, yawDeg: 30, structure: 'guardpost', outcrop: { count: 5, radius: 9 } },
+      turned({ id: 'east-bench-lookout', role: 'scout', x: -350, z: -225, yawDeg: 210, structure: 'guardpost', outcrop: { count: 5, radius: 9 } }),
+      { id: 'south-valley-redoubt', role: 'brawl', x: -95, z: -310, yawDeg: 10, structure: 'guardpost', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true },
+      turned({ id: 'north-valley-redoubt', role: 'brawl', x: -95, z: -310, yawDeg: 190, structure: 'guardpost', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true }),
+      { id: 'south-road-camp', role: 'support', x: -10, z: -150, yawDeg: 0, structure: 'commandtent', redoubt: true, outcrop: { count: 4, radius: 8 } },
+      turned({ id: 'north-road-camp', role: 'support', x: -10, z: -150, yawDeg: 180, structure: 'commandtent', redoubt: true, outcrop: { count: 4, radius: 8 } }),
     ],
     // (the cappadocia kit's buildings fill their whole plots: at the base plan's 7 m pad the squared-tuff blocks closed
     // the lanes between the minaret, the arasta and the courts, and the pacing seeds' bots circled them for ten minutes;

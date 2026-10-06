@@ -302,6 +302,8 @@ assert.deepEqual(table, {
   reservoir: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
   mars: { regime: 'thin-ice-clouds', coverage: 0.06, baseM: 2500, thicknessM: 400, shadow: false, streets: 0.2, cirrus: 0.45, farBand: 0, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   cliffbridge: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1200, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.25, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
+  // 2026-10-05 the map-revival lane's Chimney Valley: a dry upland's high-based cumulus, cirrus, the airway's contrails
+  goreme: { regime: 'fair-weather-cumulus', coverage: 0.3, baseM: 1800, thicknessM: 820, shadow: true, streets: 0.25, cirrus: 0.3, farBand: 0.25, contrails: 2, rain: 0, virga: 0.3, fogBank: 0 },
 }, 'the cloudscape of every map (round 71 identity table; round 76: foundry and railyard on the industrial stratocumulus, urban on the altocumulus; 2026-10-01: the layered sky — contrails, rain and virga, fog banks)');
 {
   // the regime rows are complete and sane; every regime name resolves

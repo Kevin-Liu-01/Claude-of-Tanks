@@ -232,6 +232,9 @@ const newMapPalettes = {
   // pastoral Verdant ground with its own-id (legacy) building route
   moon: ['moon', 'winter'],
   cliffbridge: ['verdant', null],
+  // 2026-10-05 (the map-revival lane): Chimney Valley's tuff is its own TERRAIN_PLAN row; its buildings are the
+  // cappadocia kit's own surfaces (the legacy own-id building route)
+  goreme: ['goreme', null],
 };
 assert.deepEqual(Object.keys(newMapPalettes), MAP_IDS.slice(16),
   'every battlefield after the legacy sixteen explicitly routes its sourced palettes');

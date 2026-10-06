@@ -39,7 +39,9 @@ const mobileWrecks = new Set();
 // Existing desktop caps are deliberate scene budgets, not a variety knob.
 const extraWreckBudget = { moon: 3, urban: 6, railyard: 6, frontier: 6, delta: 6,
   badlands: 7, monsoon: 7, alpine: 6, caldera: 7, foundry: 8,
-  ruinspires: 9, blackglass: 8, titan_gorge: 8, skybridge: 8 };
+  ruinspires: 9, blackglass: 8, titan_gorge: 8, skybridge: 8,
+  // 2026-10-05: Chimney Valley's valleys keep four hulls (its town and chimney fields carry the cover)
+  goreme: 4 };
 
 function auditUtilityPoleStations(hf, mapId) {
   const stations = [];
@@ -120,7 +122,7 @@ function assertAuthoredMacroTerrain(config, hf) {
 }
 
 // Mars mode (2026-09-18): Olympus Basin joins the catalog
-assert.equal(MAP_IDS.length, 33, 'the battlefield roster contains thirty-three maps');
+assert.equal(MAP_IDS.length, 34, 'the battlefield roster contains thirty-four maps (Chimney Valley appended 2026-10-05)');
 assert.equal(new Set(MAP_IDS).size, MAP_IDS.length, 'map ids are unique');
 assert.deepEqual(MAP_IDS.slice(8, 16), EXPANSION, 'the eight-map expansion stays registered');
 assert.deepEqual(MAP_IDS.slice(16, 20), EXTREME, 'the extreme-environment expansion stays registered');

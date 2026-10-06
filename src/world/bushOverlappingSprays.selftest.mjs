@@ -219,7 +219,7 @@ function nonBush() {
   }
 }
 // Mars mode (2026-09-18): Olympus Basin joins the catalog (31 maps)
-assert.equal(MAP_IDS.length, 33);
+assert.equal(MAP_IDS.length, 34); // 2026-10-05: Chimney Valley (goreme) appended
 for (const id of MAP_IDS) {
   const v = { species: ['pine', 'oak'], bushSpecies: 'oak', palettes: {}, ...getMapConfig(id).vegetation };
   assert.ok(v.species.every(s => TREE_SPECIES.includes(s)));
