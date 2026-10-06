@@ -147,17 +147,20 @@ export function muzzleBlast(C: CombatContext, o: MuzzleBlastInput): void {
   const fl = Math.hypot(fx, fz) || 1;
   fx /= fl; fz /= fl;
   const ringN = tierCount(C, 20 * Math.min(1.4, dust));
+  const aim = Math.atan2(fz, fx);
   for (let i = 0; i < ringN; i++) {
-    const a = (i / ringN) * TAU + (R() - 0.5) * 0.45;
+    // most of the dust rolls out ahead of the muzzle in one overlapping low cloud; a thinner ring runs round it
+    const ahead = i % 4 !== 0;
+    const a = ahead ? aim + ((i + 0.5) / ringN - 0.5) * 2.6 + (R() - 0.5) * 0.3 : (i / ringN) * TAU + (R() - 0.5) * 0.45;
     const cx = Math.cos(a), cz = Math.sin(a);
     // the wave is strongest down the line of fire, weakest behind the muzzle
     const fwd = 0.5 + 0.5 * (cx * fx + cz * fz);
-    const v = (5 + R() * 6 + fwd * 7) * Math.sqrt(s);
+    const v = (3 + R() * 5 + fwd * 6) * Math.sqrt(s);
     mPlace(m, aheadX + cx * 0.6, gy + 0.3, aheadZ + cz * 0.6, birthOffset + 0.012 + R() * 0.03);
     mMove(m, cx * v, 0.45 + R() * 0.6, cz * v, 3.3, 0.18, 0.95, 0);
     // a low sheet that rolls out along the ground (flat from its first frames, smeared along its run)
-    mShape(m, 3.0 + R() * 1.6, 1.2, (4.0 + R() * 2.2 + fwd * 2.0) * s * Math.sqrt(Math.min(1.5, dust)) * dk, 2.5,
-      0.36, R() * TAU, (R() - 0.5) * 0.6);
+    mShape(m, 3.0 + R() * 1.6, 1.2, (4.4 + R() * 2.2 + fwd * 2.2) * s * Math.sqrt(Math.min(1.5, dust)) * dk, 2.5,
+      0.4, R() * TAU, (R() - 0.5) * 0.6);
     mLook(m, L.dust0, L.dust1, (0.5 + R() * 0.16) * Math.min(1, dust), 0.03, 0.4, 0.55, 0.2, 0.06, L.scatter, R());
     mHeat(m, 0, 1, 0.5, 1);
     C.earth(m);
