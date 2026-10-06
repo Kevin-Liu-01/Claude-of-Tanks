@@ -75,7 +75,7 @@ import {
   buildDryStoneWallHead,
   civilianVehicleTypes,
 } from './maps/inhabitKit.ts';
-import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
+import { CIVILIAN_VEHICLE_RECEIPTS, pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 // the map-vehicles lane (2026-10-05): the vehicles' surface stream and liveries, their ground-contact patches
 import { applyVehicleSurfaceHook, VEHICLE_SURFACE_PROGRAM } from './maps/vehicleSurface.ts';
 import { buildVehicleContactShadows, vehicleShadowCaster } from './maps/vehicleContactShadow.ts';
@@ -8108,7 +8108,8 @@ ${snowCap ? `
   // It runs once every record has its seat (the wharf, the Foundry court and the Autumn headlands relocate above) and
   // before anything plans against the vehicles (the yard dressing, the scenery) or refits and indexes the pools.
   function separateParkedVehicleRecords(): void {
-    const vehicles = destructibles.filter((record) => LOCAL_TYPES[record.kind]?.instancePaint && record.state === 0);
+    const roles = new Set(Object.keys(CIVILIAN_VEHICLE_RECEIPTS));
+    const vehicles = destructibles.filter((record) => roles.has(record.kind) && record.state === 0);
     if (vehicles.length < 2) return;
     const roadside = { rng: () => 0, roads: L.roads, heightField, noVegetation: noVeg, spawns: L.spawns, placedBuildings: placedB };
     const trees = sceneryTrees; // the vegetation is released above; the trees were captured with the scenery's
@@ -8126,7 +8127,7 @@ ${snowCap ? `
         const ex = fhw * Math.abs(fz) + fhl * Math.abs(fx), ez = fhw * Math.abs(fx) + fhl * Math.abs(fz);
         const blocks = (ob: CollisionRecord) => {
           const kind = (ob as { kind?: string }).kind;
-          if (ob === record.ob || ob === record.col || (kind && LOCAL_TYPES[kind]?.instancePaint)) return false;
+          if (ob === record.ob || ob === record.col || (kind && roles.has(kind))) return false;
           if (!(x + ex > ob.min[0] && x - ex < ob.max[0] && z + ez > ob.min[2] && z - ez < ob.max[2])) return false;
           const bx = (ob.min[0] + ob.max[0]) / 2 - x, bz = (ob.min[2] + ob.max[2]) / 2 - z;
           const hx = (ob.max[0] - ob.min[0]) / 2, hz = (ob.max[2] - ob.min[2]) / 2;

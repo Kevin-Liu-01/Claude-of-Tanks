@@ -18,6 +18,7 @@ import {
   certifyGroundedStructureParts, certifyStructureAttachments,
 } from '../structureConnectivity.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS, civilianVehicleOverrides } from './civilianVehicleKit.ts';
+import { CART_RECEIPTS, cartOverrides } from './cartKit.ts';
 import type { StructureCollisionRuntimeBand } from '../structureCollision.ts';
 import { setNightEmissionMask } from '../../engine/nightEmissionMaterial.ts';
 import { FIELD_STONE_FACE_V, FIELD_STONE_HEARTING_V } from '../fieldStoneSurface.ts';
@@ -108,7 +109,6 @@ const WHITEWASH: Palette = [0.10, 0.10, 0.68];
 // first closeup pass, so awnings/rugs sit in a weathered dyed-cloth band
 const CANVAS: Palette = [0.096, 0.26, 0.55];
 const CANVAS2: Palette = [0.025, 0.34, 0.38];
-const HAY: Palette = [0.105, 0.55, 0.46];
 const TERRA: Palette = [0.045, 0.52, 0.38];
 const STEEL: Palette = [0.58, 0.04, 0.24];
 const GALV: Palette = [0.56, 0.03, 0.46];
@@ -133,23 +133,6 @@ function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
 // ---------------------------------------------------------------------------
 // shared sub-assemblies
 // ---------------------------------------------------------------------------
-
-/** spoked cart wheel (baked): rim ring + hub + 4 spoke boxes, axis +z */
-function cartWheel(r: number, rng: Rng): THREE.BufferGeometry[] {
-  const parts: THREE.BufferGeometry[] = [];
-  const rim = new THREE.CylinderGeometry(r, r, 0.09, 12, 1);
-  rim.rotateX(Math.PI / 2);
-  parts.push(P(rim, WOOD, 0.10, rng));
-  const hub = new THREE.CylinderGeometry(r * 0.2, r * 0.2, 0.14, 6, 1);
-  hub.rotateX(Math.PI / 2);
-  parts.push(P(hub, WOOD_PALE, 0.08, rng));
-  for (let k = 0; k < 4; k++) {
-    const sp = new THREE.BoxGeometry(0.05, r * 1.7, 0.05);
-    sp.rotateZ(k * Math.PI / 4);
-    parts.push(P(sp, WOOD_PALE, 0.10, rng));
-  }
-  return parts;
-}
 
 /** scatter of flat planks (broken-state filler), painted or UV'd */
 function plankScatter(
@@ -577,28 +560,6 @@ function bDrum(rng: Rng): THREE.BufferGeometry { // baked: 200 L oil drum, rust-
   return merge(parts);
 }
 
-function bSled(_rng: Rng): THREE.BufferGeometry { // wood-textured winter sled
-  const parts = [];
-  for (const s of [-1, 1]) { // runners with curled nose
-    const run = box(0.07, 0.10, 1.9);
-    parts.push(run.translate(s * 0.34, 0.09, 0));
-    const nose = box(0.07, 0.30, 0.09);
-    nose.rotateX(-0.55);
-    parts.push(nose.translate(s * 0.34, 0.22, 0.95));
-    for (const lz of [-0.6, 0.5]) parts.push(box(0.06, 0.18, 0.06).translate(s * 0.34, 0.23, lz));
-  }
-  for (let k = 0; k < 5; k++) parts.push(box(0.86, 0.045, 0.16).translate(0, 0.33, -0.75 + k * 0.33));
-  return merge(parts);
-}
-function bSledBroken(rng: Rng): THREE.BufferGeometry {
-  const parts = [];
-  const half = box(0.5, 0.06, 1.6);
-  half.rotateY(0.4); half.rotateZ(0.12);
-  parts.push(half.translate(-0.2, 0.08, 0));
-  parts.push(...plankScatter(4, 0.6, 0.13, 0.7, rng));
-  return merge(parts);
-}
-
 function bPot(rng: Rng): THREE.BufferGeometry { // baked: terracotta jar cluster (2 big + 1 small)
   const parts = [];
   const spots = [[0, 0, 0.30], [0.42, 0.12, 0.24], [-0.30, 0.28, 0.18]];
@@ -688,76 +649,6 @@ function bLaundryBroken(rng: Rng): THREE.BufferGeometry {
     sheet.rotateY(rng() * Math.PI);
     parts.push(P(sheet.translate((rng() - 0.5) * 1.6, 0.05, (rng() - 0.5) * 0.8), LINEN, 0.10, rng));
   }
-  return merge(parts);
-}
-
-function bHaycart(rng: Rng): THREE.BufferGeometry { // baked: intact hay cart — bed, rails, 2 wheels, shafts, hay load
-  const parts = [];
-  parts.push(P(box(1.6, 0.12, 2.6).translate(0, 0.72, 0), WOOD, 0.12, rng));
-  for (const s of [-1, 1]) {
-    parts.push(P(box(0.08, 0.4, 2.6).translate(s * 0.78, 0.94, 0), WOOD_PALE, 0.12, rng));
-    parts.push(...cartWheel(0.62, rng).map((g) => g.translate(s * 0.92, 0.62, 0.35)));
-    const shaft = box(0.07, 0.07, 1.7);
-    shaft.rotateX(-0.22);
-    parts.push(P(shaft.translate(s * 0.5, 0.58, -1.95), WOOD, 0.10, rng));
-  }
-  const hay = new THREE.ConeGeometry(1.05, 1.1, 8, 1);
-  hay.scale(1, 1, 1.35);
-  parts.push(P(hay.translate(0, 1.45, 0.1), HAY, 0.14, rng));
-  const prop = box(0.08, 0.62, 0.08); // standing prop leg under the shafts
-  prop.rotateX(0.1);
-  parts.push(P(prop.translate(0, 0.30, -2.0), WOOD, 0.10, rng));
-  return merge(parts);
-}
-function bHaycartBroken(rng: Rng): THREE.BufferGeometry {
-  const parts = [];
-  const bed = box(1.55, 0.10, 2.5); // bed dropped and skewed
-  bed.rotateY(0.24); bed.rotateZ(0.16);
-  parts.push(P(bed.translate(0, 0.28, 0), WOOD, 0.12, rng));
-  const w1 = merge(cartWheel(0.60, rng));
-  w1.rotateX(Math.PI / 2);
-  parts.push(w1.translate(1.15, 0.08, 0.7));
-  const w2 = merge(cartWheel(0.60, rng));
-  w2.rotateX(Math.PI / 2 - 0.35);
-  w2.rotateY(0.8);
-  parts.push(w2.translate(-1.05, 0.16, -0.5));
-  const hay = new THREE.CylinderGeometry(0.9, 1.2, 0.4, 8, 1); // spilled hay
-  parts.push(P(hay.translate(0.3, 0.42, 0.4), HAY, 0.14, rng));
-  parts.push(...plankScatter(3, 0.8, 0.14, 1.0, rng, WOOD_PALE));
-  return merge(parts);
-}
-
-function bHandcart(_rng: Rng): THREE.BufferGeometry { // wood-textured: small two-wheel hand cart, tipped back
-  const parts = [];
-  const bed = box(0.95, 0.09, 1.5);
-  bed.rotateX(-0.18);
-  parts.push(bed.translate(0, 0.52, 0));
-  for (const s of [-1, 1]) {
-    const rail = box(0.06, 0.25, 1.5);
-    rail.rotateX(-0.18);
-    parts.push(rail.translate(s * 0.46, 0.68, 0));
-    const wheel = new THREE.CylinderGeometry(0.42, 0.42, 0.08, 10, 1);
-    scaleUV(wheel, 1.5, 1.5);
-    wheel.rotateZ(Math.PI / 2);
-    parts.push(wheel.translate(s * 0.56, 0.42, 0.30));
-    const handle = box(0.05, 0.05, 0.85);
-    handle.rotateX(-0.18);
-    parts.push(handle.translate(s * 0.40, 0.78, -1.05));
-  }
-  const leg = box(0.06, 0.34, 0.06);
-  parts.push(leg.translate(0, 0.17, -0.62));
-  return merge(parts);
-}
-function bHandcartBroken(rng: Rng): THREE.BufferGeometry {
-  const parts = [];
-  const bed = box(0.9, 0.08, 1.4);
-  bed.rotateY(0.5); bed.rotateZ(2.6); // flipped
-  parts.push(bed.translate(0, 0.24, 0));
-  const wheel = new THREE.CylinderGeometry(0.40, 0.40, 0.07, 10, 1);
-  scaleUV(wheel, 1.5, 1.5);
-  wheel.rotateX(Math.PI / 2 - 0.2);
-  parts.push(wheel.translate(0.7, 0.08, 0.4));
-  parts.push(...plankScatter(3, 0.6, 0.12, 0.7, rng));
   return merge(parts);
 }
 
@@ -1890,6 +1781,25 @@ function vehicleEntry(kind: keyof typeof VEHICLE_RECORD_FIELDS): DestructiblePro
   });
 }
 
+/** The cart roles' record fields (the map-vehicles lane, P3): the legacy records' class, contact, radius and height; a
+ * role's footprint, contact band and builders come from the map's carts (cartKit.ts). */
+const CART_RECORD_FIELDS = {
+  haycart: { cls: 'break', mat: 'vehicle', contact: 'ob', r: 1.55, h: 2.1 },
+  handcart: { cls: 'break', mat: 'vehicle', contact: 'ob', r: 0.85, h: 1.1 },
+  sled: { cls: 'break', mat: 'vehicle', contact: 'ob', r: 0.75, h: 0.5 },
+} satisfies Record<string, Omit<DestructiblePropType, 'build' | 'broken'>>;
+
+/** The table's own cart entry: the default set's builders, its footprint and contact band read on first use. */
+function cartEntry(kind: keyof typeof CART_RECORD_FIELDS): DestructiblePropType {
+  const receipt = CART_RECEIPTS[kind];
+  const entry = { ...CART_RECORD_FIELDS[kind], build: receipt.build, broken: receipt.broken } as DestructiblePropType;
+  return Object.defineProperties(entry, {
+    hw: { enumerable: true, get: () => receipt.footprint().hw },
+    hl: { enumerable: true, get: () => receipt.footprint().hl },
+    contactBand: { enumerable: true, get: () => receipt.footprint().contactBand },
+  });
+}
+
 export const DESTRUCTIBLE_TYPES = {
   barrel:      { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.40, h: 1.0,  build: bBarrel,      broken: bBarrelBroken },
   crate:       { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.62, h: 1.1,  hw: 0.51, hl: 0.51, build: bCrate, broken: bCrateBroken },
@@ -1908,12 +1818,12 @@ export const DESTRUCTIBLE_TYPES = {
   bucket:      { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.27, h: 0.62, build: bBucket,      broken: null, bodyR: 0.23, mass: 0.38, bounce: 0.46 },
   jerrycan:    { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.29, h: 0.72, build: bJerryCan,    broken: null, bodyR: 0.27, mass: 0.82, bounce: 0.27 },
   loosewheel:  { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.36, h: 0.69, build: bLooseWheel,  broken: null, bodyR: 0.34, mass: 0.85, bounce: 0.40, friction: 1.15 },
-  sled:        { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.75, h: 0.5,  hw: 0.45, hl: 1.0, build: bSled, broken: bSledBroken },
+  sled: cartEntry('sled'),
   pot:         { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.55, h: 0.75, build: bPot,         broken: bPotBroken },
   rugframe:    { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.15, h: 2.2,  hw: 1.2, hl: 0.12, build: bRugFrame, broken: bRugFrameBroken },
   laundry:     { cls: 'break',  mat: 'baked', contact: 'loop', r: 1.75, h: 1.95, build: bLaundry,     broken: bLaundryBroken },
-  haycart:     { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.55, h: 2.1,  hw: 1.54, hl: 2.16, build: bHaycart, broken: bHaycartBroken },
-  handcart:    { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.85, h: 1.1,  hw: 0.62, hl: 1.14, build: bHandcart, broken: bHandcartBroken },
+  haycart: cartEntry('haycart'),
+  handcart: cartEntry('handcart'),
   haystack:    { cls: 'break',  mat: 'straw', contact: 'ob',   r: 1.75, h: 2.5,  shape: 'circle', collisionR: 1.75, build: bHaystack, broken: bHaystackBroken },
   fenceplank:  { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 1.25, h: 1.1,  hw: 0.10, hl: 1.25, build: bFencePlank,  broken: bFencePlankBroken, fence: true },
   fencepicket: { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.25, h: 1.0,  hw: 0.10, hl: 1.25, build: bFencePicket, broken: bFencePicketBroken, fence: true },
@@ -1945,13 +1855,24 @@ export const DESTRUCTIBLE_TYPES = {
 } satisfies Record<string, DestructiblePropType>;
 
 /**
- * One map's civilian vehicles (the map-vehicles lane, 2026-10-05): every role's entry with the map's fleet builders and
- * liveries over the table's record (footprint, class, collision and contact band unchanged), for props.ts's local types.
+ * One map's civilian vehicles and carts (the map-vehicles lane, 2026-10-05/06): every vehicle role's entry with the
+ * map's fleet builders, liveries, footprint and contact band, and every cart role's with the map's carts (cartKit.ts),
+ * over the table's record (class, contact, radius, height), for props.ts's local types. A cart's footprint and band are
+ * read on first use (a map builds only the roles it places).
  */
 export function civilianVehicleTypes(mapId: string, mobile: boolean): Record<string, DestructiblePropType> {
   const out: Record<string, DestructiblePropType> = {};
   for (const [kind, override] of Object.entries(civilianVehicleOverrides(mapId, mobile))) {
     out[kind] = { ...VEHICLE_RECORD_FIELDS[kind as keyof typeof VEHICLE_RECORD_FIELDS], ...override };
+  }
+  for (const [kind, override] of Object.entries(cartOverrides(mapId, mobile))) {
+    const entry = { ...CART_RECORD_FIELDS[kind as keyof typeof CART_RECORD_FIELDS], build: override.build, broken: override.broken,
+      instancePaint: override.instancePaint, ...(override.shadowBuild ? { shadowBuild: override.shadowBuild } : {}) } as DestructiblePropType;
+    out[kind] = Object.defineProperties(entry, {
+      hw: { enumerable: true, get: () => override.hw },
+      hl: { enumerable: true, get: () => override.hl },
+      contactBand: { enumerable: true, get: () => override.contactBand },
+    });
   }
   return out;
 }
